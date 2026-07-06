@@ -89,6 +89,7 @@ export const MESSAGES: Dict = {
     ko: "모든 스터디와 행사는 디스코드에서 운영됩니다. 합류하고 다음 코호트를 기다리세요.",
     en: "Every study and event runs on Discord. Join and catch the next cohort.",
   },
+  "common.join_qr": { ko: "QR 스캔으로 합류", en: "Scan to join" },
   "footer.tagline": { ko: "미국·캐나다·한국이 함께하는 글로벌 개발자 스터디 클럽", en: "A global engineer study club across the US, Canada & Korea" },
 
   // kind
