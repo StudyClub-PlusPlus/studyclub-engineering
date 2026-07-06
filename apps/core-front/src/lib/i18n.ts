@@ -27,10 +27,10 @@ export const MESSAGES: Dict = {
   "issue.label": { ko: "StudyClub++ · Vol.1", en: "StudyClub++ · Vol.1" },
 
   "hero.eyebrow": { ko: "StudyClub++", en: "StudyClub++" },
-  "hero.title": { ko: "함께 성장하는\n개발자 스터디 클럽++", en: "A study club++\nwhere engineers grow together" },
+  "hero.title": { ko: "미국·캐나다·한국이 함께하는\n글로벌 스터디 클럽++", en: "A global study club++\nacross the US, Canada & Korea" },
   "hero.subtitle": {
-    ko: "개발자 700+명이 모인 커뮤니티. 이력서, 인터뷰, 시스템 디자인까지 — 현직자와 함께 준비합니다.",
-    en: "A 700+ member community of engineers. Resumes, interviews, system design — prepared together with working engineers.",
+    ko: "미국·캐나다·한국의 개발자 2,000여 명이 함께하는 글로벌 커뮤니티. 이력서·인터뷰·시스템 디자인부터 AI까지, 현직자와 함께 준비합니다.",
+    en: "A global community of 2,000+ engineers across the US, Canada, and Korea. From resumes and interviews to system design and AI — prepared together with working engineers.",
   },
   "hero.cta": { ko: "지금 합류하기", en: "Join now" },
   "hero.cta_studies": { ko: "스터디 둘러보기", en: "Browse studies" },
@@ -38,7 +38,7 @@ export const MESSAGES: Dict = {
   "studies.title": { ko: "스터디", en: "Studies" },
   "studies.subtitle": { ko: "지금 열려 있는 코호트와 지난 기수.", en: "Open cohorts and past sessions." },
   "events.title": { ko: "행사", en: "Events" },
-  "events.subtitle": { ko: "오프라인 밋업과 온라인 워크샵.", en: "Offline meetups and online workshops." },
+  "events.subtitle": { ko: "미국·한국·캐나다에서 열린 밋업·워크샵·직업탐방.", en: "Meetups, workshops, and career talks held across the US, Korea, and Canada." },
   "about.title": { ko: "소개", en: "About" },
   "about.subtitle": { ko: "우리가 누구이고, 무엇을 하는지.", en: "Who we are and what we do." },
   "about.operators": { ko: "운영진", en: "Organizers" },
@@ -72,7 +72,7 @@ export const MESSAGES: Dict = {
     ko: "모든 스터디와 행사는 디스코드에서 운영됩니다. 합류하고 다음 코호트를 기다리세요.",
     en: "Every study and event runs on Discord. Join and catch the next cohort.",
   },
-  "footer.tagline": { ko: "함께 성장하는 개발자 커뮤니티", en: "A community where engineers grow together" },
+  "footer.tagline": { ko: "미국·캐나다·한국이 함께하는 글로벌 개발자 스터디 클럽", en: "A global engineer study club across the US, Canada & Korea" },
 };
 
 export function m(key: string, locale: Locale): string {

@@ -6,17 +6,18 @@ import { Pill } from "./Badge";
 
 function dateParts(iso: string, locale: Locale) {
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return { mon: iso, day: "", time: "" };
+  if (isNaN(d.getTime())) return { mon: iso, day: "", year: "", time: "" };
   const loc = locale === "ko" ? "ko-KR" : "en-US";
   return {
     mon: d.toLocaleDateString(loc, { month: "short" }),
     day: d.toLocaleDateString(loc, { day: "numeric" }),
+    year: String(d.getFullYear()),
     time: iso.includes("T") ? d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" }) : "",
   };
 }
 
 export function EventCard({ event, locale }: { event: StudyclubEvent; locale: Locale }) {
-  const { mon, day, time } = dateParts(event.date, locale);
+  const { mon, day, year, time } = dateParts(event.date, locale);
   return (
     <Link href={`/${locale}/events/${event.id}`} className="card card-hover flex items-stretch gap-4 p-4">
       <div
@@ -25,6 +26,7 @@ export function EventCard({ event, locale }: { event: StudyclubEvent; locale: Lo
       >
         <span className="text-[11px] font-semibold uppercase tracking-wide">{mon}</span>
         <span className="text-xl font-bold leading-none">{day}</span>
+        {year && <span className="mt-0.5 text-[10px] font-medium opacity-70">{year}</span>}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">

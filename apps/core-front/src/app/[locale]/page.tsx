@@ -15,8 +15,11 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
     getMembers(),
     getSite(),
   ]);
-  const featured = studies.filter((s) => s.status !== "closed").slice(0, 3);
-  const upcoming = events.slice(0, 2);
+  const featured = studies
+    .filter((s) => s.status === "recruiting" || s.status === "ongoing")
+    .sort((a, b) => (a.status === "recruiting" ? 0 : 1) - (b.status === "recruiting" ? 0 : 1) || (a.order ?? 99) - (b.order ?? 99))
+    .slice(0, 6);
+  const upcoming = [...events].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   const stats = [
     { k: `${site.community.member_count}+`, v: t({ ko: "커뮤니티 멤버", en: "Members" }, locale) },

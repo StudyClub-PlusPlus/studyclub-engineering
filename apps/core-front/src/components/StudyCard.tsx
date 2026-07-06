@@ -24,7 +24,7 @@ export function StudyCard({
       />
 
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[17px] font-semibold leading-snug">{t(study.title, locale)}</h3>
+        <h3 className="min-w-0 break-keep text-[17px] font-semibold leading-snug">{t(study.title, locale)}</h3>
         <StatusBadge status={study.status} locale={locale} />
       </div>
 
@@ -38,9 +38,14 @@ export function StudyCard({
       </div>
 
       <div className="mt-auto flex flex-col gap-1.5 border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-fg-subtle)]">
-        {study.schedule && (
-          <span className="flex items-center gap-1.5">
-            <CalendarClock size={13} /> {t(study.schedule, locale)}
+        {(study.schedule || study.year) && (
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {study.schedule && (
+              <span className="flex items-center gap-1.5">
+                <CalendarClock size={13} /> {t(study.schedule, locale)}
+              </span>
+            )}
+            {study.year && <span>📅 {study.year}</span>}
           </span>
         )}
         <div className="flex items-center justify-between">

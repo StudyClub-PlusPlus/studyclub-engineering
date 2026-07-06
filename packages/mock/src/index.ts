@@ -22,6 +22,7 @@ export type Study = {
   discord_url?: string;
   recruit_url?: string;
   order?: number;
+  year?: string;
 };
 
 export type StudyclubEvent = {
@@ -87,6 +88,7 @@ export const studies: Study[] = [
     tags: ["AI/ML"],
     recruit_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     order: 1,
+    year: "2026",
   },
   {
     id: "pytorch-ai-coding",
@@ -100,6 +102,7 @@ export const studies: Study[] = [
     tags: ["AI/ML", "코딩"],
     recruit_url: "https://forms.gle/CLEr7JzvjwxkdTGP8",
     order: 2,
+    year: "2026",
   },
   {
     id: "python-pandas-ml-coding",
@@ -113,6 +116,7 @@ export const studies: Study[] = [
     tags: ["데이터", "코딩"],
     recruit_url: "https://forms.gle/Xj2u6v3npRSrzSV19",
     order: 3,
+    year: "2026",
   },
   {
     id: "early-bird",
@@ -126,6 +130,7 @@ export const studies: Study[] = [
     tags: ["습관"],
     recruit_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
     order: 4,
+    year: "2026",
   },
   {
     id: "weeklyx",
@@ -139,6 +144,7 @@ export const studies: Study[] = [
     tags: ["습관"],
     recruit_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
     order: 5,
+    year: "2026",
   },
   {
     id: "past-project-review",
@@ -152,6 +158,7 @@ export const studies: Study[] = [
     tags: ["회고", "글쓰기"],
     recruit_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     order: 6,
+    year: "2026",
   },
   {
     id: "system-design-interview",
@@ -165,6 +172,7 @@ export const studies: Study[] = [
     tags: ["인터뷰"],
     recruit_url: "https://forms.gle/QD54d719pDyGcuLF8",
     order: 7,
+    year: "2026",
   },
   {
     id: "daily-leetcode",
@@ -178,6 +186,7 @@ export const studies: Study[] = [
     tags: ["알고리즘"],
     recruit_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
     order: 8,
+    year: "2026",
   },
 
   // ── 진행중 ──────────────────────────────────────────────────────────
@@ -192,6 +201,7 @@ export const studies: Study[] = [
     format: "hybrid",
     tags: ["개발"],
     order: 9,
+    year: "2026",
   },
   {
     id: "system-design-interview-ongoing",
@@ -204,6 +214,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["인터뷰"],
     order: 10,
+    year: "2026",
   },
   {
     id: "ddia-2nd",
@@ -216,6 +227,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["기본기"],
     order: 11,
+    year: "2026",
   },
   {
     id: "renaissance-club",
@@ -228,6 +240,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["회고"],
     order: 12,
+    year: "2026",
   },
 
   // ── 이전(종료) · 2026 ───────────────────────────────────────────────
@@ -239,6 +252,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["아티클"],
     order: 13,
+    year: "2026",
   },
   {
     id: "ai-engineering-book-club",
@@ -248,6 +262,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 14,
+    year: "2026",
   },
   {
     id: "sql-for-data-analysis",
@@ -257,6 +272,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["데이터"],
     order: 15,
+    year: "2026",
   },
   {
     id: "db1-db2",
@@ -266,6 +282,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["기본기"],
     order: 16,
+    year: "2026",
   },
   {
     id: "aws-cpc",
@@ -275,6 +292,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["클라우드"],
     order: 17,
+    year: "2026",
   },
   {
     id: "vibe-coding-basic-3",
@@ -284,6 +302,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["코딩"],
     order: 18,
+    year: "2026",
   },
   {
     id: "leetcode150-2026",
@@ -293,6 +312,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["알고리즘"],
     order: 19,
+    year: "2026",
   },
   {
     id: "security-study",
@@ -302,6 +322,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["보안"],
     order: 20,
+    year: "2026",
   },
   {
     id: "studyclub-improvement",
@@ -311,6 +332,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["운영"],
     order: 21,
+    year: "2026",
   },
   {
     id: "winning-resume",
@@ -320,6 +342,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["커리어"],
     order: 22,
+    year: "2026",
   },
   {
     id: "causal-inference-workshop",
@@ -329,6 +352,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 23,
+    year: "2026",
   },
 
   // ── 이전(종료) · 2025 ───────────────────────────────────────────────
@@ -340,6 +364,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML", "인터뷰"],
     order: 24,
+    year: "2025",
   },
   {
     id: "german",
@@ -349,6 +374,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["언어"],
     order: 25,
+    year: "2025",
   },
   {
     id: "superintelligence",
@@ -358,6 +384,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["북클럽"],
     order: 26,
+    year: "2025",
   },
   {
     id: "practical-causal-inference",
@@ -367,6 +394,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 27,
+    year: "2025",
   },
   {
     id: "start-with-why",
@@ -376,6 +404,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["북클럽"],
     order: 28,
+    year: "2025",
   },
   {
     id: "streaming-systems",
@@ -385,6 +414,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["기본기"],
     order: 29,
+    year: "2025",
   },
   {
     id: "ui-challenge",
@@ -394,6 +424,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["프론트엔드"],
     order: 30,
+    year: "2025",
   },
   {
     id: "outliers-book-study",
@@ -403,6 +434,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["북클럽"],
     order: 31,
+    year: "2025",
   },
   {
     id: "leetcode150",
@@ -412,6 +444,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["알고리즘"],
     order: 32,
+    year: "2025",
   },
   {
     id: "sunday-redis-hands-on",
@@ -421,6 +454,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["백엔드"],
     order: 33,
+    year: "2025",
   },
   {
     id: "neetcode-a",
@@ -430,6 +464,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["알고리즘"],
     order: 34,
+    year: "2025",
   },
   {
     id: "llm-agents-study",
@@ -439,6 +474,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 35,
+    year: "2025",
   },
   {
     id: "vibe-coding",
@@ -448,6 +484,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["코딩"],
     order: 36,
+    year: "2025",
   },
   {
     id: "vibe-coding-advanced",
@@ -457,6 +494,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["코딩"],
     order: 37,
+    year: "2025",
   },
   {
     id: "python-for-cv",
@@ -466,6 +504,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 38,
+    year: "2025",
   },
   {
     id: "the-coming-wave-book-club",
@@ -475,6 +514,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["북클럽"],
     order: 39,
+    year: "2025",
   },
   {
     id: "latest-llm-advanced",
@@ -484,6 +524,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 40,
+    year: "2025",
   },
   {
     id: "system-design-hello-interview",
@@ -493,6 +534,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["인터뷰"],
     order: 41,
+    year: "2025",
   },
   {
     id: "ai-agents",
@@ -502,6 +544,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 42,
+    year: "2025",
   },
   {
     id: "redis-hands-on",
@@ -511,6 +554,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["백엔드"],
     order: 43,
+    year: "2025",
   },
   {
     id: "algorithm-interview-2025",
@@ -520,6 +564,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["알고리즘"],
     order: 44,
+    year: "2025",
   },
   {
     id: "codegenai-proj",
@@ -529,6 +574,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 45,
+    year: "2025",
   },
   {
     id: "mobile-app-growth",
@@ -538,6 +584,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["프로덕트"],
     order: 46,
+    year: "2025",
   },
   {
     id: "hooked",
@@ -547,6 +594,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["북클럽"],
     order: 47,
+    year: "2025",
   },
   {
     id: "vibe-coding-advanced-2",
@@ -556,6 +604,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["코딩"],
     order: 48,
+    year: "2025",
   },
   {
     id: "system-design-mock",
@@ -565,6 +614,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["인터뷰"],
     order: 49,
+    year: "2025",
   },
   {
     id: "social-motivation",
@@ -574,6 +624,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["습관"],
     order: 50,
+    year: "2025",
   },
   {
     id: "english-newspaper",
@@ -583,6 +634,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["언어"],
     order: 51,
+    year: "2025",
   },
   {
     id: "product-book-club",
@@ -592,6 +644,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["프로덕트"],
     order: 52,
+    year: "2025",
   },
   {
     id: "intro-chinese",
@@ -601,6 +654,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["언어"],
     order: 53,
+    year: "2025",
   },
   {
     id: "advanced-llm-agents",
@@ -610,6 +664,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 54,
+    year: "2025",
   },
   {
     id: "thinking-fast-and-slow",
@@ -619,6 +674,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["북클럽"],
     order: 55,
+    year: "2025",
   },
   {
     id: "python-kaggle",
@@ -628,6 +684,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 56,
+    year: "2025",
   },
   {
     id: "vibe-coding-basic",
@@ -637,6 +694,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["코딩"],
     order: 57,
+    year: "2025",
   },
   {
     id: "neetcode-b",
@@ -646,6 +704,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["알고리즘"],
     order: 58,
+    year: "2025",
   },
   {
     id: "hello-b",
@@ -655,6 +714,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["알고리즘"],
     order: 59,
+    year: "2025",
   },
   {
     id: "blockchain-basics",
@@ -664,6 +724,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["블록체인"],
     order: 60,
+    year: "2025",
   },
 
   // ── 이전(종료) · 2024 ───────────────────────────────────────────────
@@ -675,6 +736,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["회고"],
     order: 61,
+    year: "2024",
   },
   {
     id: "react-beginner",
@@ -684,6 +746,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["프론트엔드"],
     order: 62,
+    year: "2024",
   },
   {
     id: "golang",
@@ -693,6 +756,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["백엔드"],
     order: 63,
+    year: "2024",
   },
   {
     id: "public-speaking",
@@ -702,6 +766,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["소프트스킬"],
     order: 64,
+    year: "2024",
   },
   {
     id: "llm",
@@ -711,6 +776,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 65,
+    year: "2024",
   },
   {
     id: "ds-interview-2",
@@ -720,6 +786,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["데이터", "인터뷰"],
     order: 66,
+    year: "2024",
   },
   {
     id: "leetcode-problem-solving",
@@ -729,6 +796,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["알고리즘"],
     order: 67,
+    year: "2024",
   },
   {
     id: "continuous-discovery-habits",
@@ -738,6 +806,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["프로덕트"],
     order: 68,
+    year: "2024",
   },
   {
     id: "ds-algorithms",
@@ -747,6 +816,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["데이터", "알고리즘"],
     order: 69,
+    year: "2024",
   },
   {
     id: "efficient-ml",
@@ -756,6 +826,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 70,
+    year: "2024",
   },
   {
     id: "english-in-korea",
@@ -765,6 +836,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["언어"],
     order: 71,
+    year: "2024",
   },
   {
     id: "english-in-us",
@@ -774,6 +846,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["언어"],
     order: 72,
+    year: "2024",
   },
   {
     id: "kaggle",
@@ -783,6 +856,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 73,
+    year: "2024",
   },
   {
     id: "ml-basics",
@@ -792,6 +866,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 74,
+    year: "2024",
   },
   {
     id: "sw-book-club",
@@ -801,6 +876,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["북클럽"],
     order: 75,
+    year: "2024",
   },
   {
     id: "robot-ai",
@@ -810,6 +886,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["AI/ML"],
     order: 76,
+    year: "2024",
   },
   {
     id: "algorithm-mock-interview",
@@ -819,6 +896,7 @@ export const studies: Study[] = [
     format: "online",
     tags: ["알고리즘", "인터뷰"],
     order: 77,
+    year: "2024",
   },
 ];
 

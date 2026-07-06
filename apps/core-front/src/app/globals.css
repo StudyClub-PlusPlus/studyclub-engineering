@@ -35,6 +35,7 @@
 }
 
 html {
+  color-scheme: light;
   background: var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-sans);

@@ -18,6 +18,7 @@ export type Study = {
   discord_url?: string;
   recruit_url?: string;
   order?: number;
+  year?: string;
 };
 
 export const STUDY_STATUS_LABEL: Record<StudyStatus, L10n> = {
