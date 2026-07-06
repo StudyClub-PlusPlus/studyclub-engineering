@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen, Calendar, MessageCircle } from "lucide-react";
 import { getSite, type Locale } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
 import { JoinCta } from "@/components/JoinCta";
+import { RegionClocks } from "@/components/RegionClocks";
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -10,8 +11,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
   const body = t(
     {
-      ko: `StudyClub++ 는 개발자 ${site.community.member_count}+명이 모인 커뮤니티입니다. SWE/MLE 커리어 — 이력서, 인터뷰, 시스템 디자인, 커리어 생존 — 를 함께 준비하는 자원봉사 운영 모임입니다. 오프라인 밋업과 온라인 세션을 오가며 원격으로도 참여합니다.`,
-      en: `StudyClub++ is a community of ${site.community.member_count}+ engineers. It is a volunteer-run group preparing together for SWE/MLE careers — resumes, interviews, system design, and career survival. We mix offline meetups with online sessions, with members joining remotely.`,
+      ko: `StudyClub++ 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 커뮤니티입니다. SWE/MLE 커리어 — 이력서, 인터뷰, 시스템 디자인, 커리어 생존 — 를 함께 준비하는 자원봉사 운영 모임입니다. 세 지역의 시차를 넘나들며 온라인 세션과 오프라인 밋업을 오가고, 원격으로도 참여합니다.`,
+      en: `StudyClub++ is a global community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It is a volunteer-run group preparing together for SWE/MLE careers — resumes, interviews, system design, and career survival. Spanning three time zones, we mix online sessions with offline meetups, and members join remotely.`,
     },
     locale,
   );
@@ -33,6 +34,14 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
       <div className="card mt-10 p-8">
         <p className="max-w-3xl text-[17px] leading-loose text-[var(--color-fg)]">{body}</p>
+      </div>
+
+      {/* 글로벌 — 세 지역 실시간 시계 */}
+      <div className="mt-10">
+        <h2 className="mb-4 flex items-center gap-2 text-xl font-bold tracking-tight">
+          🌏 {t({ ko: "지금, 세 지역에서", en: "Right now, across three regions" }, locale)}
+        </h2>
+        <RegionClocks locale={locale} />
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
