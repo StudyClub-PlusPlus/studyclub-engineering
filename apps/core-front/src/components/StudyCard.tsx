@@ -3,6 +3,7 @@ import { Users, CalendarClock, ArrowUpRight } from "lucide-react";
 import type { Locale, Operator, Study } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
 import { Pill, StatusBadge } from "./Badge";
+import { StudyThumb } from "./StudyThumb";
 
 export function StudyCard({
   study,
@@ -14,14 +15,20 @@ export function StudyCard({
   lead?: Operator;
   index?: number;
 }) {
+  const host = study.host;
   return (
-    <div className="card card-hover relative flex flex-col gap-3 p-5">
+    <div className="card card-hover relative flex flex-col gap-3 overflow-hidden p-5">
       {/* Stretched link — covers the whole card without nesting anchors */}
       <Link
         href={`/${locale}/studies/${study.id}`}
-        className="absolute inset-0 rounded-[inherit]"
+        className="absolute inset-0 z-[1] rounded-[inherit]"
         aria-label={t(study.title, locale)}
       />
+
+      {/* Thumbnail — full-bleed at the top of the card */}
+      <div className="-mx-5 -mt-5 mb-1">
+        <StudyThumb image={study.image} seed={study.id} category={study.category ?? study.tags?.[0]} />
+      </div>
 
       <div className="flex items-start justify-between gap-3">
         <h3 className="min-w-0 break-keep text-[17px] font-semibold leading-snug">{t(study.title, locale)}</h3>
@@ -45,7 +52,32 @@ export function StudyCard({
         ))}
       </div>
 
-      <div className="mt-auto flex flex-col gap-1.5 border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-fg-subtle)]">
+      {/* Host / 클럽장 */}
+      {host && (
+        <div className="mt-auto flex items-center gap-2.5">
+          {host.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={host.avatar} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+          ) : (
+            <span
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
+              style={{ background: "linear-gradient(135deg, var(--color-accent), #7c75f0)" }}
+            >
+              {t(host.name, locale).charAt(0)}
+            </span>
+          )}
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-xs font-semibold text-[var(--color-fg)]">{t(host.name, locale)}</div>
+            {host.credential && (
+              <div className="truncate text-[11px] text-[var(--color-fg-subtle)]">{t(host.credential, locale)}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`${host ? "" : "mt-auto"} flex flex-col gap-1.5 border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-fg-subtle)]`}
+      >
         {(study.schedule || study.year) && (
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {study.schedule && (
@@ -77,7 +109,7 @@ export function StudyCard({
           href={study.recruit_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="relative z-10 inline-flex items-center gap-1 self-start rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.03]"
+          className="relative z-[2] inline-flex items-center gap-1 self-start rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-transform hover:scale-[1.03]"
           style={{ background: "var(--color-accent)" }}
         >
           {t({ ko: "모집 신청", en: "Apply" }, locale)}

@@ -52,6 +52,8 @@ export type Study = {
   order?: number;
   year?: string;
   date?: string; // 대표 날짜(ISO). 없으면 content 에서 `${year}-01-01` 로 추정 주입.
+  image?: string; // 썸네일 URL(옵션). 없으면 카테고리 기반 기본 이미지 생성.
+  host?: { name: L10n; credential?: L10n; avatar?: string }; // 클럽장/진행자 (동행클럽 host 패턴)
   // ── 확장 (전부 옵션) ──
   kind?: StudyKind; // 기본 study
   category?: string;
@@ -76,6 +78,7 @@ export type StudyclubEvent = {
   location?: L10n;
   link?: string;
   order?: number;
+  image?: string; // 썸네일 URL(옵션). 없으면 기본 이미지 생성.
 };
 
 export type Operator = {
@@ -122,6 +125,10 @@ export const studies: Study[] = [
     id: "ai-paper-study",
     kind: "study",
     title: { ko: "AI 논문 스터디", en: "AI Paper Study" },
+    host: {
+      name: { ko: "H. 김", en: "H. Kim" },
+      credential: { ko: "現 AI 리서처 · 논문 리뷰어", en: "AI Researcher · paper reviewer" },
+    },
     summary: {
       ko: "최신 AI·딥러닝 논문을 함께 읽고 발표·토론합니다.",
       en: "Read, present, and discuss the latest AI and deep-learning papers.",
@@ -142,6 +149,10 @@ export const studies: Study[] = [
     id: "pytorch-ai-coding",
     kind: "study",
     title: { ko: "PyTorch AI 실전 코딩 스터디", en: "PyTorch AI Hands-on Coding" },
+    host: {
+      name: { ko: "J. 신", en: "J. Shin" },
+      credential: { ko: "現 빅테크 MLE · 10년차", en: "Big-tech MLE · 10 yrs" },
+    },
     summary: {
       ko: "Deep Learning·Attention·GPT 개념을 PyTorch로 구현 (7/10 시작).",
       en: "Implement deep learning, attention, and GPT concepts in PyTorch (starts 7/10).",
@@ -163,6 +174,10 @@ export const studies: Study[] = [
     id: "python-pandas-ml-coding",
     kind: "study",
     title: { ko: "Python(Pandas) & ML(Numpy) 실전 코딩", en: "Python (Pandas) & ML (Numpy) Coding" },
+    host: {
+      name: { ko: "S. 이", en: "S. Lee" },
+      credential: { ko: "現 데이터 사이언티스트", en: "Data Scientist" },
+    },
     summary: {
       ko: "Data Scientist/Analyst를 위한 파이썬·ML 실전 코딩.",
       en: "Hands-on Python and ML coding for data scientists and analysts.",
@@ -183,6 +198,10 @@ export const studies: Study[] = [
     id: "early-bird",
     kind: "club",
     title: { ko: "얼리버드", en: "Early Bird" },
+    host: {
+      name: { ko: "M. 박", en: "M. Park" },
+      credential: { ko: "얼리버드 클럽장 · 3년째 운영", en: "Early Bird host · 3rd year" },
+    },
     summary: {
       ko: "아침에 일찍 일어나 공부·자기개발 (매월 추가모집).",
       en: "Wake up early to study and grow yourself (new members monthly).",
@@ -204,6 +223,10 @@ export const studies: Study[] = [
     id: "weeklyx",
     kind: "club",
     title: { ko: "WeeklyX", en: "WeeklyX" },
+    host: {
+      name: { ko: "Y. 정", en: "Y. Jung" },
+      credential: { ko: "WeeklyX 클럽장", en: "WeeklyX host" },
+    },
     summary: {
       ko: "일주일 X시간, 꾸준히 공부하기 (매월 추가모집).",
       en: "Study X hours a week, consistently (new members monthly).",
@@ -225,6 +248,10 @@ export const studies: Study[] = [
     id: "past-project-review",
     kind: "study",
     title: { ko: "지난 플젝 톺아보기", en: "Past Project Review" },
+    host: {
+      name: { ko: "D. 최", en: "D. Choi" },
+      credential: { ko: "시니어 SWE · 글쓰기 멘토", en: "Senior SWE · writing mentor" },
+    },
     summary: {
       ko: "내 프로젝트를 돌아보며 글로 정리합니다.",
       en: "Look back on your projects and write them up.",
@@ -245,6 +272,10 @@ export const studies: Study[] = [
     id: "system-design-interview",
     kind: "study",
     title: { ko: "System Design Interview Study", en: "System Design Interview Study" },
+    host: {
+      name: { ko: "K. 한", en: "K. Han" },
+      credential: { ko: "現 빅테크 스태프 엔지니어", en: "Big-tech Staff Engineer" },
+    },
     summary: {
       ko: "Hello Interview 자료 기반 시스템 디자인 인터뷰 준비.",
       en: "System design interview prep based on Hello Interview material.",
@@ -265,6 +296,10 @@ export const studies: Study[] = [
     id: "daily-leetcode",
     kind: "club",
     title: { ko: "Daily LeetCode", en: "Daily LeetCode" },
+    host: {
+      name: { ko: "R. 오", en: "R. Oh" },
+      credential: { ko: "알고리즘 코치 · ICPC 출신", en: "Algorithm coach · ex-ICPC" },
+    },
     summary: {
       ko: "리트코드 1일 1문제 챌린지.",
       en: "One LeetCode problem a day challenge.",
@@ -288,6 +323,10 @@ export const studies: Study[] = [
     id: "claude-code-source-study",
     kind: "study",
     title: { ko: "Claude Code 소스코드 스터디", en: "Claude Code Source Code Study" },
+    host: {
+      name: { ko: "T. 강", en: "T. Kang" },
+      credential: { ko: "시니어 SWE · 오픈소스 컨트리뷰터", en: "Senior SWE · OSS contributor" },
+    },
     summary: {
       ko: "화요모임 ~8명, 토요저녁 ~12명이 꾸준히 참석 중.",
       en: "~8 at Tuesday sessions, ~12 at Saturday evenings, going strong.",
@@ -316,6 +355,10 @@ export const studies: Study[] = [
     id: "ddia-2nd",
     kind: "study",
     title: { ko: "DDIA 2판 (Designing Data-Intensive Applications)", en: "DDIA 2nd Edition" },
+    host: {
+      name: { ko: "S. 서", en: "S. Seo" },
+      credential: { ko: "現 시니어 백엔드 · 분산시스템", en: "Senior Backend · distributed systems" },
+    },
     summary: {
       ko: "데이터 집약 애플리케이션 설계 2판을 함께 읽습니다.",
       en: "Reading Designing Data-Intensive Applications, 2nd edition.",
@@ -506,6 +549,10 @@ export const studies: Study[] = [
     kind: "study",
     category: "보안",
     title: { ko: "보안 스터디", en: "Security Study" },
+    host: {
+      name: { ko: "P. 문", en: "P. Moon" },
+      credential: { ko: "現 보안 엔지니어 · 8년차", en: "Security Engineer · 8 yrs" },
+    },
     summary: {
       ko: "실제 보안 사고 사례를 분석하며 개발자 관점의 실용 보안을 공부합니다.",
       en: "Study practical, developer-oriented security by analyzing real breach cases.",
@@ -813,6 +860,10 @@ export const studies: Study[] = [
     id: "latest-llm-advanced",
     kind: "study",
     title: { ko: "최신 LLM Advanced 스터디", en: "Latest LLM Advanced Study" },
+    host: {
+      name: { ko: "A. 윤", en: "A. Yoon" },
+      credential: { ko: "現 LLM 리서처", en: "LLM Researcher" },
+    },
     summary: { ko: "최신 LLM 심화 스터디.", en: "Advanced study on the latest LLMs." },
     status: "closed",
     format: "online",

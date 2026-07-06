@@ -77,6 +77,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
         <section className="pb-14">
           <SectionHead
             title={m("studies.title", locale)}
+            subtitle={m("studies.subtitle", locale)}
             href={`/${locale}/studies`}
             more={t({ ko: "전체 보기", en: "View all" }, locale)}
           />
@@ -93,6 +94,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
         <section className="pb-14">
           <SectionHead
             title={m("events.title", locale)}
+            subtitle={m("events.subtitle", locale)}
             href={`/${locale}/events`}
             more={t({ ko: "전체 보기", en: "View all" }, locale)}
           />
@@ -111,11 +113,24 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
   );
 }
 
-function SectionHead({ title, href, more }: { title: string; href: string; more: string }) {
+function SectionHead({
+  title,
+  subtitle,
+  href,
+  more,
+}: {
+  title: string;
+  subtitle?: string;
+  href: string;
+  more: string;
+}) {
   return (
-    <div className="mb-5 flex items-end justify-between">
-      <h2 className="text-xl font-bold tracking-tight">{title}</h2>
-      <Link href={href} className="text-sm font-medium text-[var(--color-accent)] hover:underline">
+    <div className="mb-5 flex items-end justify-between gap-4">
+      <div>
+        <h2 className="text-xl font-bold tracking-tight">{title}</h2>
+        {subtitle && <p className="mt-1 text-sm text-[var(--color-fg-subtle)]">{subtitle}</p>}
+      </div>
+      <Link href={href} className="shrink-0 text-sm font-medium text-[var(--color-accent)] hover:underline">
         {more} →
       </Link>
     </div>

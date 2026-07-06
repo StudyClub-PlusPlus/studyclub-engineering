@@ -112,6 +112,10 @@ export const MESSAGES: Dict = {
   "filter.status": { ko: "상태", en: "Status" },
   "filter.type": { ko: "형태", en: "Type" },
   "filter.year": { ko: "연도", en: "Year" },
+  "filter.date": { ko: "기간", en: "Date" },
+  "filter.date_from": { ko: "시작일", en: "From" },
+  "filter.date_to": { ko: "종료일", en: "To" },
+  "filter.reset": { ko: "초기화", en: "Reset" },
   "filter.all": { ko: "전체", en: "All" },
   "filter.none": { ko: "조건에 맞는 결과가 없어요.", en: "No results match your filters." },
 

@@ -39,6 +39,8 @@ export type Study = {
   order?: number;
   year?: string;
   date?: string;
+  image?: string;
+  host?: { name: L10n; credential?: L10n; avatar?: string };
   kind?: StudyKind;
   category?: string;
   goal?: L10n;

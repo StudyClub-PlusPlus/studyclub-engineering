@@ -48,19 +48,18 @@ export function StudyBrowser({
   const [kind, setKind] = useState<KindFilter>("all");
   // 기본: 종료(closed) 숨김
   const [status, setStatus] = useState<StatusFilter>("all");
-  const [year, setYear] = useState<string>("all");
-
-  // 존재하는 연도(내림차순)
-  const years = useMemo(
-    () => Array.from(new Set(studies.map((s) => s.year).filter(Boolean) as string[])).sort((a, b) => b.localeCompare(a)),
-    [studies],
-  );
+  // 날짜 범위 (ISO yyyy-mm-dd). 빈 문자열 = 열린 경계.
+  const [from, setFrom] = useState<string>("");
+  const [to, setTo] = useState<string>("");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return studies.filter((s) => {
-      // 연도(날짜)
-      if (year !== "all" && s.year !== year) return false;
+      // 날짜 범위 — s.date 는 content 에서 항상 주입됨 (year 없으면 `${year}-01-01`).
+      // yyyy-mm-dd 는 사전순 비교가 곧 날짜순 비교.
+      const d = s.date ?? "";
+      if (from && (!d || d < from)) return false;
+      if (to && (!d || d > to)) return false;
       // 종류
       if (kind !== "all") {
         const k = s.kind ?? "study";
@@ -88,7 +87,7 @@ export function StudyBrowser({
       }
       return true;
     });
-  }, [studies, query, kind, status, year]);
+  }, [studies, query, kind, status, from, to]);
 
   const kindOptions: { value: KindFilter; label: string }[] = [
     { value: "all", label: m("filter.all", locale) },
@@ -137,19 +136,38 @@ export function StudyBrowser({
             </FilterChip>
           ))}
         </div>
-        {years.length > 1 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs font-semibold text-[var(--color-fg-faint)]">{m("filter.year", locale)}</span>
-            <FilterChip active={year === "all"} onClick={() => setYear("all")}>
-              {m("filter.all", locale)}
-            </FilterChip>
-            {years.map((y) => (
-              <FilterChip key={y} active={year === y} onClick={() => setYear(y)}>
-                {y}
-              </FilterChip>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-xs font-semibold text-[var(--color-fg-faint)]">{m("filter.date", locale)}</span>
+          <input
+            type="date"
+            aria-label={m("filter.date_from", locale)}
+            value={from}
+            max={to || undefined}
+            onChange={(e) => setFrom(e.target.value)}
+            className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs outline-none transition-colors focus:border-[var(--color-accent)]"
+          />
+          <span className="text-xs text-[var(--color-fg-faint)]">~</span>
+          <input
+            type="date"
+            aria-label={m("filter.date_to", locale)}
+            value={to}
+            min={from || undefined}
+            onChange={(e) => setTo(e.target.value)}
+            className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs outline-none transition-colors focus:border-[var(--color-accent)]"
+          />
+          {(from || to) && (
+            <button
+              type="button"
+              onClick={() => {
+                setFrom("");
+                setTo("");
+              }}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--color-fg-subtle)] transition-colors hover:text-[var(--color-fg)]"
+            >
+              {m("filter.reset", locale)}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Grid */}
