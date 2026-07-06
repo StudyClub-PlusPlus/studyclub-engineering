@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { MapPin, ArrowRight } from "lucide-react";
+import { MapPin, ChevronRight } from "lucide-react";
 import type { StudyclubEvent, Locale } from "@/lib/content";
-import { t } from "@/lib/i18n";
-import { Pill } from "./Badge";
-import { StudyThumb } from "./StudyThumb";
+import { m, t } from "@/lib/i18n";
 
 function dateParts(iso: string, locale: Locale) {
   const d = new Date(iso);
@@ -17,45 +15,51 @@ function dateParts(iso: string, locale: Locale) {
   };
 }
 
-// 이벤트 타입 → fallback 이모지.
-const TYPE_EMOJI: Record<StudyclubEvent["type"], string> = {
-  meetup: "🤝",
-  workshop: "🛠️",
-  talk: "💬",
-  online: "💻",
-};
-
-export function EventCard({ event, locale }: { event: StudyclubEvent; locale: Locale }) {
+// 행사 목록의 한 "행". (카드 그리드가 아니라 리스트형)
+export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Locale }) {
   const { mon, day, year, time } = dateParts(event.date, locale);
   return (
-    <Link href={`/${locale}/events/${event.id}`} className="card card-hover flex flex-col overflow-hidden">
-      <StudyThumb image={event.image} seed={event.id} emoji={TYPE_EMOJI[event.type] ?? "📅"} />
-      <div className="flex items-stretch gap-4 p-4">
-        <div
-          className="flex w-16 shrink-0 flex-col items-center justify-center rounded-xl py-2 text-center"
-          style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
-        >
-          <span className="text-[11px] font-semibold uppercase tracking-wide">{mon}</span>
-          <span className="text-xl font-bold leading-none">{day}</span>
-          {year && <span className="mt-0.5 text-[10px] font-medium opacity-70">{year}</span>}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill>{event.type}</Pill>
-              {time && <span className="text-xs text-[var(--color-fg-faint)]">{time}</span>}
-            </div>
-            <ArrowRight size={15} className="text-[var(--color-fg-faint)]" />
-          </div>
-          <h3 className="mt-1.5 text-[15px] font-semibold leading-snug">{t(event.title, locale)}</h3>
-          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-[var(--color-fg-muted)]">{t(event.summary, locale)}</p>
+    <Link
+      href={`/${locale}/events/${event.id}`}
+      className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-[var(--color-surface-subtle)] sm:px-5"
+    >
+      {/* 날짜 박스 */}
+      <div
+        className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 text-center"
+        style={{ background: "var(--color-accent-soft)", color: "var(--color-accent)" }}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wide">{mon}</span>
+        <span className="text-lg font-bold leading-none">{day}</span>
+        {year && <span className="mt-0.5 text-[9px] font-medium opacity-70">{year}</span>}
+      </div>
+
+      {/* 본문 */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 text-[11px] text-[var(--color-fg-faint)]">
+          <span
+            className="rounded-full px-2 py-0.5 font-semibold"
+            style={{ color: "var(--color-accent)", background: "var(--color-accent-soft)" }}
+          >
+            {m(`event_type.${event.type}`, locale)}
+          </span>
+          {time && <span>{time}</span>}
           {event.location && (
-            <span className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--color-fg-subtle)]">
-              <MapPin size={12} /> {t(event.location, locale)}
+            <span className="flex items-center gap-0.5">
+              <MapPin size={11} /> {t(event.location, locale)}
             </span>
           )}
         </div>
+        <h3 className="mt-1 truncate text-[15px] font-semibold leading-snug">{t(event.title, locale)}</h3>
+        <p className="truncate text-[13px] text-[var(--color-fg-muted)]">{t(event.summary, locale)}</p>
       </div>
+
+      <ChevronRight
+        size={18}
+        className="shrink-0 text-[var(--color-fg-faint)] transition-transform group-hover:translate-x-0.5"
+      />
     </Link>
   );
 }
+
+// 이전 이름 호환 (행으로 렌더).
+export const EventCard = EventRow;

@@ -98,7 +98,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
             href={`/${locale}/events`}
             more={t({ ko: "전체 보기", en: "View all" }, locale)}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="card divide-y divide-[var(--color-border)] overflow-hidden p-0">
             {upcoming.map((e) => (
               <EventCard key={e.id} event={e} locale={locale} />
             ))}

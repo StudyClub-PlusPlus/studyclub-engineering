@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import type { Locale, StudyclubEvent } from "@/lib/content";
 import { m } from "@/lib/i18n";
-import { EventCard } from "./EventCard";
+import { EventRow } from "./EventCard";
 
 type TypeFilter = "all" | "meetup" | "workshop" | "talk" | "online";
 
@@ -59,37 +59,42 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
   ];
 
   return (
-    <div className="mt-10">
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search
-          size={16}
-          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-fg-faint)]"
-        />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={m("filter.search_events", locale)}
-          className="w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--color-accent)]"
-        />
+    <div className="mt-8">
+      {/* Toolbar */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-5">
+        <div className="relative">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-fg-faint)]"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={m("filter.search_events", locale)}
+            className="w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--color-accent)]"
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-xs font-semibold text-[var(--color-fg-faint)]">{m("filter.type", locale)}</span>
+          {typeOptions.map((o) => (
+            <FilterChip key={o.value} active={type === o.value} onClick={() => setType(o.value)}>
+              {o.label}
+            </FilterChip>
+          ))}
+        </div>
       </div>
 
-      {/* Filter chips */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-xs font-semibold text-[var(--color-fg-faint)]">{m("filter.type", locale)}</span>
-        {typeOptions.map((o) => (
-          <FilterChip key={o.value} active={type === o.value} onClick={() => setType(o.value)}>
-            {o.label}
-          </FilterChip>
-        ))}
+      <div className="mt-5 text-sm font-semibold text-[var(--color-fg-subtle)]">
+        {filtered.length}
+        {locale === "ko" ? "개" : ""}
       </div>
 
-      {/* Grid */}
+      {/* List */}
       {filtered.length > 0 ? (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="card mt-3 divide-y divide-[var(--color-border)] overflow-hidden p-0">
           {filtered.map((e) => (
-            <EventCard key={e.id} event={e} locale={locale} />
+            <EventRow key={e.id} event={e} locale={locale} />
           ))}
         </div>
       ) : (

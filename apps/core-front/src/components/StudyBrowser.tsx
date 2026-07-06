@@ -102,9 +102,11 @@ export function StudyBrowser({
   ];
 
   return (
-    <div className="mt-10">
+    <div className="mt-8">
+      {/* Toolbar — 검색 + 필터를 하나의 정돈된 패널로 */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-5">
       {/* Search */}
-      <div className="relative max-w-md">
+      <div className="relative">
         <Search
           size={16}
           className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-fg-faint)]"
@@ -169,10 +171,17 @@ export function StudyBrowser({
           )}
         </div>
       </div>
+      </div>
+
+      {/* 결과 카운트 */}
+      <div className="mt-5 text-sm font-semibold text-[var(--color-fg-subtle)]">
+        {filtered.length}
+        {locale === "ko" ? "개" : ""}
+      </div>
 
       {/* Grid */}
       {filtered.length > 0 ? (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((s) => (
             <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
           ))}
