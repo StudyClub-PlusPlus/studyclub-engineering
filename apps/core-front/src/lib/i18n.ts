@@ -111,6 +111,7 @@ export const MESSAGES: Dict = {
   "filter.kind": { ko: "종류", en: "Kind" },
   "filter.status": { ko: "상태", en: "Status" },
   "filter.type": { ko: "형태", en: "Type" },
+  "filter.year": { ko: "연도", en: "Year" },
   "filter.all": { ko: "전체", en: "All" },
   "filter.none": { ko: "조건에 맞는 결과가 없어요.", en: "No results match your filters." },
 

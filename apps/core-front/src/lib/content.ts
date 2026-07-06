@@ -37,7 +37,12 @@ function sortByOrder<T extends { id: string; order?: number }>(items: T[]): T[] 
 }
 
 export async function getStudies(): Promise<Study[]> {
-  return sortByOrder(studiesData);
+  // date 없으면 year 기준 1/1 로 추정 주입 (날짜 필터/정렬용).
+  const withDate = studiesData.map((s) => ({
+    ...s,
+    date: s.date ?? (s.year ? `${s.year}-01-01` : undefined),
+  }));
+  return sortByOrder(withDate);
 }
 export async function getEvents(): Promise<StudyclubEvent[]> {
   return sortByOrder(eventsData);

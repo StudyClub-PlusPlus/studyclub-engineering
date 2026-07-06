@@ -48,10 +48,19 @@ export function StudyBrowser({
   const [kind, setKind] = useState<KindFilter>("all");
   // 기본: 종료(closed) 숨김
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [year, setYear] = useState<string>("all");
+
+  // 존재하는 연도(내림차순)
+  const years = useMemo(
+    () => Array.from(new Set(studies.map((s) => s.year).filter(Boolean) as string[])).sort((a, b) => b.localeCompare(a)),
+    [studies],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return studies.filter((s) => {
+      // 연도(날짜)
+      if (year !== "all" && s.year !== year) return false;
       // 종류
       if (kind !== "all") {
         const k = s.kind ?? "study";
@@ -79,7 +88,7 @@ export function StudyBrowser({
       }
       return true;
     });
-  }, [studies, query, kind, status]);
+  }, [studies, query, kind, status, year]);
 
   const kindOptions: { value: KindFilter; label: string }[] = [
     { value: "all", label: m("filter.all", locale) },
@@ -128,6 +137,19 @@ export function StudyBrowser({
             </FilterChip>
           ))}
         </div>
+        {years.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs font-semibold text-[var(--color-fg-faint)]">{m("filter.year", locale)}</span>
+            <FilterChip active={year === "all"} onClick={() => setYear("all")}>
+              {m("filter.all", locale)}
+            </FilterChip>
+            {years.map((y) => (
+              <FilterChip key={y} active={year === y} onClick={() => setYear(y)}>
+                {y}
+              </FilterChip>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Grid */}

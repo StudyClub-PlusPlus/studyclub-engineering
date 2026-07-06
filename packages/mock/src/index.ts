@@ -51,6 +51,7 @@ export type Study = {
   recruit_url?: string;
   order?: number;
   year?: string;
+  date?: string; // 대표 날짜(ISO). 없으면 content 에서 `${year}-01-01` 로 추정 주입.
   // ── 확장 (전부 옵션) ──
   kind?: StudyKind; // 기본 study
   category?: string;

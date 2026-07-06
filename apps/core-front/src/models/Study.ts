@@ -38,6 +38,7 @@ export type Study = {
   recruit_url?: string;
   order?: number;
   year?: string;
+  date?: string;
   kind?: StudyKind;
   category?: string;
   goal?: L10n;

@@ -17,3 +17,23 @@ export const FORMAT_LABEL: Record<string, string> = {
   offline: "오프라인",
   hybrid: "하이브리드",
 };
+
+export const KIND_LABEL: Record<string, string> = {
+  study: "스터디",
+  club: "클럽",
+};
+
+// 모집 모델(recruitment.status) — 스터디 라이프사이클(status)과 별개.
+export const RECRUITMENT_LABEL: Record<string, string> = {
+  open: "모집 중",
+  monthly: "매월 모집",
+  always: "상시 모집",
+  closed: "모집 마감",
+};
+
+export const EVENT_TYPE_LABEL: Record<string, string> = {
+  meetup: "밋업",
+  workshop: "워크샵",
+  talk: "토크",
+  online: "온라인",
+};
