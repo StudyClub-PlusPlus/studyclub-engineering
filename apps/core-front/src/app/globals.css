@@ -46,9 +46,14 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* base 레이어로 넣어야 text-white 같은 유틸리티가 이긴다.
+   (Tailwind v4: unlayered CSS 는 레이어된 유틸리티를 무조건 이겨서, 밖에 두면
+    text-white 앵커도 color:inherit=검정으로 덮여 버림 → 버튼 텍스트 가독성 저하) */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 /* Soft card */
