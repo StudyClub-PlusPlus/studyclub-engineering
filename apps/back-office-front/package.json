@@ -1,0 +1,27 @@
+{
+  "name": "back-office-front",
+  "version": "0.0.1",
+  "private": true,
+  "description": "StudyClub++ 운영자향 백오피스 콘솔 (Next.js App Router, single-locale)",
+  "scripts": {
+    "dev": "next dev --webpack -p 4701",
+    "build": "next build",
+    "start": "next start -p 4701",
+    "lint": "echo 'lint: noop'"
+  },
+  "dependencies": {
+    "@studyclub/mock": "*",
+    "lucide-react": "^0.460.0",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

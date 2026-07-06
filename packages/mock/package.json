@@ -1,0 +1,11 @@
+{
+  "name": "@studyclub/mock",
+  "version": "0.0.1",
+  "private": true,
+  "description": "StudyClub++ 공유 하드코딩 mock 데이터 + 타입 (백엔드 붙기 전 임시)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

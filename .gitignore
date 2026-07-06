@@ -1,0 +1,25 @@
+# deps / build
+node_modules/
+dist/
+.next/
+out/
+.turbo/
+*.log
+
+# secrets — PUBLIC repo, never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secret/
+secrets/
+credentials*.json
+serviceAccount*.json
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/

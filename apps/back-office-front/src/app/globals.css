@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Surfaces */
+  --color-bg: #fbfbfd;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f4f4f7;
+
+  /* Borders */
+  --color-border: #ececef;
+  --color-border-strong: #e0e0e6;
+
+  /* Text */
+  --color-fg: #18181b;
+  --color-fg-muted: #52525b;
+  --color-fg-subtle: #71717a;
+  --color-fg-faint: #a1a1aa;
+
+  /* Accent — indigo */
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-soft: #eef2ff;
+
+  /* Status */
+  --color-recruiting: #15803d;
+  --color-recruiting-soft: #dcfce7;
+  --color-ongoing: #b45309;
+  --color-ongoing-soft: #fef3c7;
+  --color-closed: #6b7280;
+  --color-closed-soft: #f1f1f4;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Soft card */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  box-shadow:
+    0 1px 2px rgba(24, 24, 27, 0.04),
+    0 1px 3px rgba(24, 24, 27, 0.02);
+}
+
+/* Table shell */
+.bo-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+.bo-table thead tr {
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  color: var(--color-fg-subtle);
+  font-size: 0.75rem;
+}
+.bo-table th {
+  padding: 0.625rem 1rem;
+  font-weight: 500;
+}
+.bo-table td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+.btn-primary {
+  color: #fff;
+  background: var(--color-accent);
+}
+.btn-ghost {
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-fg-subtle);
+  padding: 0.375rem 0.75rem;
+}

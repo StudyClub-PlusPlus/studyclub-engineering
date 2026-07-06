@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Surfaces */
+  --color-bg: #fbfbfd;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f4f4f7;
+
+  /* Borders */
+  --color-border: #ececef;
+  --color-border-strong: #e0e0e6;
+
+  /* Text */
+  --color-fg: #18181b;
+  --color-fg-muted: #52525b;
+  --color-fg-subtle: #71717a;
+  --color-fg-faint: #a1a1aa;
+
+  /* Accent — indigo */
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-soft: #eef2ff;
+
+  /* Status */
+  --color-recruiting: #15803d;
+  --color-recruiting-soft: #dcfce7;
+  --color-ongoing: #b45309;
+  --color-ongoing-soft: #fef3c7;
+  --color-closed: #6b7280;
+  --color-closed-soft: #f1f1f4;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Soft card */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  box-shadow:
+    0 1px 2px rgba(24, 24, 27, 0.04),
+    0 1px 3px rgba(24, 24, 27, 0.02);
+}
+
+.card-hover {
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow:
+    0 10px 30px rgba(24, 24, 27, 0.09),
+    0 2px 6px rgba(24, 24, 27, 0.04);
+  transform: translateY(-3px);
+  border-color: var(--color-border-strong);
+}
+
+/* Hero gradient glow */
+.hero-glow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 520px;
+  z-index: -1;
+  background:
+    radial-gradient(40% 60% at 20% 30%, rgba(99, 102, 241, 0.18), transparent 70%),
+    radial-gradient(40% 60% at 75% 20%, rgba(56, 189, 248, 0.14), transparent 70%),
+    radial-gradient(35% 50% at 60% 60%, rgba(236, 72, 153, 0.10), transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}

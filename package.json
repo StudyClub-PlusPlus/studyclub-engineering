@@ -1,0 +1,23 @@
+{
+  "name": "studyclub-engineering",
+  "version": "0.0.1",
+  "private": true,
+  "description": "StudyClub++ 코드 모노레포 (public) — core-front / back-office-front",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10.9.3"
+}

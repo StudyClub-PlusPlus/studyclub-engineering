@@ -1,0 +1,27 @@
+{
+  "name": "core-front",
+  "version": "0.0.1",
+  "private": true,
+  "description": "StudyClub++ 사용자향 랜딩 (Next.js App Router, ko·en)",
+  "scripts": {
+    "dev": "next dev --webpack -p 4700",
+    "build": "next build",
+    "start": "next start -p 4700",
+    "lint": "echo 'lint: noop'"
+  },
+  "dependencies": {
+    "@studyclub/mock": "*",
+    "lucide-react": "^0.460.0",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
