@@ -121,6 +121,14 @@ export const MESSAGES: Dict = {
   "detail.completion_rate": { ko: "완주율", en: "Completion rate" },
   "detail.past_participants": { ko: "지난 참여자", en: "Past participants" },
   "detail.people": { ko: "명", en: "" },
+  "detail.tab_about": { ko: "설명", en: "About" },
+  "detail.tab_members": { ko: "멤버", en: "Members" },
+  "detail.tab_reviews": { ko: "리뷰", en: "Reviews" },
+  "detail.tab_stats": { ko: "통계", en: "Stats" },
+  "detail.empty_about": { ko: "아직 상세 소개가 준비 중이에요.", en: "Details are being prepared." },
+  "detail.empty_members": { ko: "아직 공개된 참여자가 없어요.", en: "No participants to show yet." },
+  "detail.empty_reviews": { ko: "아직 후기가 없어요.", en: "No reviews yet." },
+  "detail.empty_stats": { ko: "아직 집계된 통계가 없어요.", en: "No stats yet." },
 
   // browsers (search + filter)
   "filter.search_studies": { ko: "스터디 검색 (제목·주제·태그)", en: "Search studies (title, topic, tag)" },
