@@ -73,6 +73,52 @@ export const MESSAGES: Dict = {
     en: "Every study and event runs on Discord. Join and catch the next cohort.",
   },
   "footer.tagline": { ko: "미국·캐나다·한국이 함께하는 글로벌 개발자 스터디 클럽", en: "A global engineer study club across the US, Canada & Korea" },
+
+  // kind
+  "kind.study": { ko: "스터디", en: "Study" },
+  "kind.club": { ko: "클럽", en: "Club" },
+  "kind.club_hint": { ko: "주기적 모집", en: "Recurring intake" },
+
+  // recruitment status
+  "recruit.open": { ko: "모집 중", en: "Open" },
+  "recruit.monthly": { ko: "매달 모집", en: "Monthly" },
+  "recruit.always": { ko: "상시 모집", en: "Always open" },
+  "recruit.closed": { ko: "모집 마감", en: "Closed" },
+
+  // detail sections
+  "detail.recruitment": { ko: "모집 안내", en: "Recruitment" },
+  "detail.deadline": { ko: "모집 기한", en: "Deadline" },
+  "detail.kickoff": { ko: "킥오프", en: "Kickoff" },
+  "detail.capacity": { ko: "모집 인원", en: "Capacity" },
+  "detail.cadence": { ko: "주기", en: "Cadence" },
+  "detail.apply": { ko: "모집 신청", en: "Apply" },
+  "detail.recruit_closed": { ko: "모집이 마감되었어요", en: "Recruitment is closed" },
+  "detail.goal": { ko: "목표", en: "Goal" },
+  "detail.topics": { ko: "예시 주제", en: "Topics" },
+  "detail.how_it_works": { ko: "진행 방식", en: "How it works" },
+  "detail.duration": { ko: "기간 · 커리큘럼", en: "Duration & curriculum" },
+  "detail.audience": { ko: "모집 대상", en: "Who can join" },
+  "detail.reviews": { ko: "후기", en: "Reviews" },
+  "detail.stats": { ko: "참여 통계", en: "Stats" },
+  "detail.stat_participants": { ko: "누적 참여자", en: "Participants" },
+  "detail.completion_rate": { ko: "완주율", en: "Completion rate" },
+  "detail.past_participants": { ko: "지난 참여자", en: "Past participants" },
+  "detail.people": { ko: "명", en: "" },
+
+  // browsers (search + filter)
+  "filter.search_studies": { ko: "스터디 검색 (제목·주제·태그)", en: "Search studies (title, topic, tag)" },
+  "filter.search_events": { ko: "행사 검색 (제목·설명)", en: "Search events (title, description)" },
+  "filter.kind": { ko: "종류", en: "Kind" },
+  "filter.status": { ko: "상태", en: "Status" },
+  "filter.type": { ko: "형태", en: "Type" },
+  "filter.all": { ko: "전체", en: "All" },
+  "filter.none": { ko: "조건에 맞는 결과가 없어요.", en: "No results match your filters." },
+
+  // event types
+  "event_type.meetup": { ko: "밋업", en: "Meetup" },
+  "event_type.workshop": { ko: "워크샵", en: "Workshop" },
+  "event_type.talk": { ko: "토크", en: "Talk" },
+  "event_type.online": { ko: "온라인", en: "Online" },
 };
 
 export function m(key: string, locale: Locale): string {

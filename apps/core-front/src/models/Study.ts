@@ -3,6 +3,25 @@ import type { L10n } from "./common";
 
 export type StudyStatus = "recruiting" | "ongoing" | "closed";
 export type StudyFormat = "online" | "offline" | "hybrid";
+export type StudyKind = "study" | "club";
+
+export type RecruitmentStatus = "open" | "monthly" | "always" | "closed";
+export type Recruitment = {
+  status: RecruitmentStatus;
+  cadence?: "one-time" | "monthly" | "weekly" | "rolling";
+  form_url?: string;
+  deadline?: string;
+  kickoff?: string;
+  capacity?: number;
+  note?: L10n;
+};
+export type StudyWeek = { label: L10n; title: L10n };
+export type StudyReview = { text: L10n; author?: L10n };
+export type StudyStats = {
+  participants: number;
+  completion_rate?: number;
+  demographics?: { label: L10n; count: number }[];
+};
 
 export type Study = {
   id: string;
@@ -19,6 +38,30 @@ export type Study = {
   recruit_url?: string;
   order?: number;
   year?: string;
+  kind?: StudyKind;
+  category?: string;
+  goal?: L10n;
+  topics?: L10n[];
+  how_it_works?: L10n[];
+  audience?: L10n;
+  duration?: L10n;
+  weeks?: StudyWeek[];
+  recruitment?: Recruitment;
+  reviews?: StudyReview[];
+  stats?: StudyStats;
+  past_participants?: L10n[];
+};
+
+export const STUDY_KIND_LABEL: Record<StudyKind, L10n> = {
+  study: { ko: "스터디", en: "Study" },
+  club: { ko: "클럽 (주기)", en: "Club (recurring)" },
+};
+
+export const RECRUITMENT_STATUS_LABEL: Record<RecruitmentStatus, L10n> = {
+  open: { ko: "모집 중", en: "Open" },
+  monthly: { ko: "매달 모집", en: "Monthly" },
+  always: { ko: "상시 모집", en: "Always open" },
+  closed: { ko: "모집 마감", en: "Closed" },
 };
 
 export const STUDY_STATUS_LABEL: Record<StudyStatus, L10n> = {

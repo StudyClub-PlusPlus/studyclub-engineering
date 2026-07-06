@@ -31,6 +31,14 @@ export function StudyCard({
       <p className="text-sm leading-relaxed text-[var(--color-fg-muted)]">{t(study.summary, locale)}</p>
 
       <div className="flex flex-wrap gap-1.5">
+        {study.kind === "club" && (
+          <span
+            className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+            style={{ color: "var(--color-accent)", background: "var(--color-accent-soft)" }}
+          >
+            {m("kind.club", locale)}
+          </span>
+        )}
         <Pill>{m(`format.${study.format}`, locale)}</Pill>
         {study.tags?.map((tag) => (
           <Pill key={tag}>#{tag}</Pill>
