@@ -16,6 +16,7 @@ export type Study = {
   lead?: string;
   seats?: { total: number; taken: number };
   discord_url?: string;
+  recruit_url?: string;
   order?: number;
 };
 
