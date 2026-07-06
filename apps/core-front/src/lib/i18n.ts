@@ -20,6 +20,8 @@ export const MESSAGES: Dict = {
   "nav.home": { ko: "홈", en: "Home" },
   "nav.studies": { ko: "스터디", en: "Studies" },
   "nav.events": { ko: "행사", en: "Events" },
+  "nav.guide": { ko: "가이드", en: "Guide" },
+  "nav.notices": { ko: "공지", en: "Notices" },
   "nav.about": { ko: "소개", en: "About" },
   "nav.mentoring": { ko: "멘토링", en: "Mentoring" },
   "nav.join": { ko: "디스코드 합류", en: "Join Discord" },
@@ -41,7 +43,22 @@ export const MESSAGES: Dict = {
   "events.subtitle": { ko: "미국·한국·캐나다에서 열린 밋업·워크샵·직업탐방.", en: "Meetups, workshops, and career talks held across the US, Korea, and Canada." },
   "about.title": { ko: "소개", en: "About" },
   "about.subtitle": { ko: "우리가 누구이고, 무엇을 하는지.", en: "Who we are and what we do." },
-  "about.operators": { ko: "운영진", en: "Organizers" },
+  "about.operators": { ko: "캡틴", en: "Captains" },
+  "about.captain_title": { ko: "캡틴이란?", en: "What's a Captain?" },
+  "about.captain_body": {
+    ko: "캡틴(Captain)은 StudyClub++ 의 자원봉사 운영진입니다. 스터디를 여는 초기 세팅 — 모집 광고, 디스코드 채널 개설, 킥오프 진행 — 을 도와, 스터디원이 공부에만 집중할 수 있게 합니다.",
+    en: "Captains are StudyClub++'s volunteer organizers. They handle the initial setup for a study — recruiting, spinning up the Discord channel, and running the kickoff — so members can focus on studying.",
+  },
+
+  "guide.title": { ko: "가이드", en: "Guide" },
+  "guide.subtitle": { ko: "스터디 클럽을 처음 접했다면 여기서 시작하세요.", en: "New to the study club? Start here." },
+
+  "notices.title": { ko: "공지사항", en: "Notices" },
+  "notices.subtitle": { ko: "모집·개편·밋업 등 최신 소식.", en: "Latest news — recruiting, updates, and meetups." },
+  "notice_tag.notice": { ko: "공지", en: "Notice" },
+  "notice_tag.update": { ko: "업데이트", en: "Update" },
+  "notice_tag.recruit": { ko: "모집", en: "Recruiting" },
+  "notice_tag.event": { ko: "행사", en: "Event" },
 
   "status.recruiting": { ko: "모집 중", en: "Recruiting" },
   "status.ongoing": { ko: "진행 중", en: "Ongoing" },

@@ -8,6 +8,7 @@ import {
   operators as operatorsData,
   members as membersData,
   site as siteData,
+  announcements as announcementsData,
 } from "@studyclub/mock";
 
 export type {
@@ -26,9 +27,10 @@ export type {
   Operator,
   Member,
   Site,
+  Announcement,
 } from "@studyclub/mock";
 
-import type { Study, StudyclubEvent, Operator, Member, Site } from "@studyclub/mock";
+import type { Study, StudyclubEvent, Operator, Member, Site, Announcement } from "@studyclub/mock";
 
 function sortByOrder<T extends { id: string; order?: number }>(items: T[]): T[] {
   return [...items].sort(
@@ -79,4 +81,13 @@ export async function getSite(): Promise<Site> {
 export async function getOperatorMap(): Promise<Record<string, Operator>> {
   const ops = await getOperators();
   return Object.fromEntries(ops.map((o) => [o.id, o]));
+}
+
+/** 공지사항 — 고정(pinned) 먼저, 그다음 날짜 내림차순. */
+export async function getNotices(): Promise<Announcement[]> {
+  return [...announcementsData].sort(
+    (a, b) =>
+      Number(b.pinned ?? false) - Number(a.pinned ?? false) ||
+      b.date.localeCompare(a.date),
+  );
 }

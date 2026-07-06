@@ -28,6 +28,8 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-[var(--color-fg-muted)]">
             <Link href={`/${locale}/studies`} className="hover:text-[var(--color-fg)]">{m("nav.studies", locale)}</Link>
             <Link href={`/${locale}/events`} className="hover:text-[var(--color-fg)]">{m("nav.events", locale)}</Link>
+            <Link href={`/${locale}/guide`} className="hover:text-[var(--color-fg)]">{m("nav.guide", locale)}</Link>
+            <Link href={`/${locale}/notices`} className="hover:text-[var(--color-fg)]">{m("nav.notices", locale)}</Link>
             <Link href={`/${locale}/about`} className="hover:text-[var(--color-fg)]">{m("nav.about", locale)}</Link>
             <a href={site.discord_invite} target="_blank" rel="noreferrer" className="hover:text-[var(--color-fg)]">Discord</a>
             {site.mentoring_url && (

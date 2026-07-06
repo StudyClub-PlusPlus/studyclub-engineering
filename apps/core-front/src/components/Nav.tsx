@@ -16,6 +16,8 @@ export function Nav({
   const links = [
     { href: `/${locale}/studies`, label: m("nav.studies", locale) },
     { href: `/${locale}/events`, label: m("nav.events", locale) },
+    { href: `/${locale}/guide`, label: m("nav.guide", locale) },
+    { href: `/${locale}/notices`, label: m("nav.notices", locale) },
     { href: `/${locale}/about`, label: m("nav.about", locale) },
   ];
 

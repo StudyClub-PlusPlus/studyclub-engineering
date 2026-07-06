@@ -108,6 +108,16 @@ export type Site = {
   community: { member_count: number; region: L10n };
 };
 
+// 공지사항 — 모집/개편/밋업 등 커뮤니티 소식.
+export type Announcement = {
+  id: string;
+  title: L10n;
+  body: L10n;
+  date: string; // ISO (예: "2026-07-01")
+  pinned?: boolean;
+  tag?: "notice" | "update" | "recruit" | "event";
+};
+
 // ── site ──────────────────────────────────────────────────────────────
 export const site: Site = {
   discord_invite: "https://discord.gg/wKdMvFpSDp",
@@ -1314,6 +1324,71 @@ export const studies: Study[] = [
     tags: ["알고리즘", "인터뷰"],
     order: 77,
     year: "2024",
+  },
+];
+
+// ── announcements (공지사항) ──────────────────────────────────────────
+export const announcements: Announcement[] = [
+  {
+    id: "site-renewal",
+    tag: "update",
+    pinned: true,
+    title: { ko: "StudyClub++ 홈페이지 개편 안내", en: "StudyClub++ website renewal" },
+    body: {
+      ko: "스터디·행사·가이드·공지를 한곳에서 볼 수 있도록 홈페이지를 새단장했습니다. 캡틴 소개와 참여 가이드가 새로 추가됐어요. 피드백은 디스코드에서 언제든 환영합니다.",
+      en: "We've refreshed the site so studies, events, guide, and notices all live in one place. New Captain intro and a join guide have been added. Feedback is always welcome on Discord.",
+    },
+    date: "2026-07-01",
+  },
+  {
+    id: "july-study-recruit",
+    tag: "recruit",
+    title: { ko: "7월 스터디 모집 안내", en: "July study recruiting is open" },
+    body: {
+      ko: "AI 논문 스터디, PyTorch 실전 코딩, System Design Interview 등 신규 스터디가 모집을 시작했습니다. 모집 중인 스터디는 스터디 탭에서 확인하고 모집폼으로 신청하세요.",
+      en: "New studies — AI Paper Study, PyTorch hands-on coding, System Design Interview, and more — are now recruiting. Browse the Studies tab and apply via the recruiting form.",
+    },
+    date: "2026-06-25",
+  },
+  {
+    id: "new-club-daily-leetcode",
+    tag: "recruit",
+    title: { ko: "신규 클럽 오픈 — Daily LeetCode", en: "New club open — Daily LeetCode" },
+    body: {
+      ko: "매일 리트코드 한 문제를 함께 푸는 Daily LeetCode 클럽이 새로 열렸습니다. 클럽은 매달 상시 추가 모집하니 언제든 합류할 수 있어요.",
+      en: "A new Daily LeetCode club — one problem a day, together — is now open. Clubs recruit new members every month, so you can join anytime.",
+    },
+    date: "2026-06-18",
+  },
+  {
+    id: "offline-meetup-bayarea",
+    tag: "event",
+    title: { ko: "베이 지역 오프라인 밋업 공지", en: "Bay Area offline meetup" },
+    body: {
+      ko: "베이 지역 스터디원들을 위한 오프라인 네트워킹 밋업을 준비 중입니다. 일정과 장소는 디스코드 공지 채널에서 확정되는 대로 안내드립니다.",
+      en: "We're planning an offline networking meetup for Bay Area members. Date and venue will be shared on the Discord announcements channel once confirmed.",
+    },
+    date: "2026-06-10",
+  },
+  {
+    id: "captain-recruit",
+    tag: "notice",
+    title: { ko: "캡틴(운영진) 상시 모집", en: "Captains wanted — always open" },
+    body: {
+      ko: "스터디 초기 세팅을 돕는 캡틴을 상시 모집합니다. 100% 자원봉사이며, 캡틴은 모든 스터디·이벤트에 무료로 참여할 수 있습니다. 관심 있으면 디스코드로 문의하세요.",
+      en: "We're always looking for Captains to help set up studies. It's 100% volunteer, and Captains join every study and event for free. Reach out on Discord if you're interested.",
+    },
+    date: "2026-05-30",
+  },
+  {
+    id: "beyond-prompt-recap",
+    tag: "event",
+    title: { ko: "Beyond Prompt Engineering 세션 후기", en: "Beyond Prompt Engineering recap" },
+    body: {
+      ko: "온라인으로 진행한 Beyond Prompt Engineering 세션에 약 60명이 참여해주셨습니다. 다음 온라인 세션도 곧 공지할 예정이니 많은 관심 부탁드립니다.",
+      en: "Around 60 people joined our online Beyond Prompt Engineering session. The next online session will be announced soon — stay tuned.",
+    },
+    date: "2026-06-02",
   },
 ];
 

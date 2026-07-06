@@ -1,13 +1,20 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Calendar, MessageCircle } from "lucide-react";
-import { getSite, type Locale } from "@/lib/content";
+import { ArrowRight, BookOpen, Calendar, Compass, MessageCircle } from "lucide-react";
+import { getSite, getOperators, type Locale } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
 import { JoinCta } from "@/components/JoinCta";
 import { RegionClocks } from "@/components/RegionClocks";
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
-  const site = await getSite();
+  const [site, operators] = await Promise.all([getSite(), getOperators()]);
+
+  const captainPoints = [
+    { ko: "스터디 초기 세팅(모집 광고 · 디스코드 · 킥오프)을 도와줍니다.", en: "They handle the initial setup — recruiting, Discord, and kickoff." },
+    { ko: "100% 자원봉사이며, 수익은 전액 기부합니다.", en: "100% volunteer, and all profits are donated." },
+    { ko: "캡틴은 모든 스터디와 이벤트에 무료로 참여합니다.", en: "Captains join every study and event for free." },
+    { ko: "누구나 캡틴에 지원할 수 있습니다.", en: "Anyone can apply to become a Captain." },
+  ];
 
   const body = t(
     {
@@ -35,6 +42,44 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       <div className="card mt-10 p-8">
         <p className="max-w-3xl text-[17px] leading-loose text-[var(--color-fg)]">{body}</p>
       </div>
+
+      {/* 캡틴이란? */}
+      <div
+        className="mt-6 rounded-2xl border p-8"
+        style={{ background: "var(--color-accent-soft)", borderColor: "var(--color-accent-soft)" }}
+      >
+        <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight">
+          <Compass size={20} style={{ color: "var(--color-accent)" }} />
+          {m("about.captain_title", locale)}
+        </h2>
+        <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]">
+          {m("about.captain_body", locale)}
+        </p>
+        <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
+          {captainPoints.map((p, i) => (
+            <li key={i} className="flex items-start gap-2 text-[15px] text-[var(--color-fg)]">
+              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--color-accent)" }} />
+              {t(p, locale)}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 캡틴 (운영진) 소개 */}
+      {operators.length > 0 && (
+        <div className="mt-10">
+          <h2 className="mb-4 text-xl font-bold tracking-tight">{m("about.operators", locale)}</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {operators.map((op) => (
+              <div key={op.id} className="card p-6">
+                <div className="text-base font-bold">{t(op.name, locale)}</div>
+                <div className="mt-0.5 text-sm font-medium text-[var(--color-accent)]">{t(op.role, locale)}</div>
+                <p className="mt-2.5 text-sm leading-relaxed text-[var(--color-fg-muted)]">{t(op.bio, locale)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 글로벌 — 세 지역 실시간 시계 */}
       <div className="mt-10">
