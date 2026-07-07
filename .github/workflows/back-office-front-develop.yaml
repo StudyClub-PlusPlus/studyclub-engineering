@@ -5,8 +5,8 @@ on:
     branches: [develop]
     tags: [back-office-front**]
     paths:
-      - 'apps/back-office-front/**'
-      - 'packages/**'
+      - 'frontend/apps/back-office-front/**'
+      - 'frontend/packages/**'
   workflow_dispatch:
 
 jobs:
@@ -29,8 +29,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
-          context: .
-          file: ./apps/back-office-front/Dockerfile
+          context: frontend
+          file: frontend/apps/back-office-front/Dockerfile
           push: true
           tags: hyperrealitycorp/studyclub-back-office-front-stage
           platforms: linux/amd64

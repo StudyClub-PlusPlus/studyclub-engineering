@@ -5,8 +5,8 @@ on:
     branches: [main]
     tags: [core-front**]
     paths:
-      - 'apps/core-front/**'
-      - 'packages/**'
+      - 'frontend/apps/core-front/**'
+      - 'frontend/packages/**'
   workflow_dispatch:
 
 jobs:
@@ -29,8 +29,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
-          context: .
-          file: ./apps/core-front/Dockerfile
+          context: frontend
+          file: frontend/apps/core-front/Dockerfile
           push: true
           tags: hyperrealitycorp/studyclub-core-front-production
           platforms: linux/amd64

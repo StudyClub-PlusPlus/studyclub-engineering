@@ -16,34 +16,39 @@
 
 ## 이게 뭐
 
-StudyClub++ 스터디 클럽 서비스. 사용자향 **core-front** + 운영자향 **back-office-front**.
-현재 backend 없음 — 화면은 **하드코딩/mock 데이터**로 동작 (팀원 합류 후 실 API 교체).
+StudyClub++ 스터디 클럽 서비스. **frontend**(사용자향 core-front + 운영자향 back-office-front) + **backend**(Spring Boot 멀티모듈).
+프론트는 현재 **하드코딩/mock 데이터**로 동작 (백엔드 API 붙으면 교체). 백엔드는 기본 스캐폴드 단계.
 
-## 구조
+## 구조 (monorepo)
 
 ```
-apps/
-  core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
-  back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
-packages/              # 공유 (mock 데이터, ui 등)
+frontend/                # Node 워크스페이스(turbo) — 프론트 루트
+  apps/
+    core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
+    back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
+  packages/mock          # 하드코딩 mock 데이터 + 공유 타입
+backend/                 # Spring Boot 3 멀티모듈 (Gradle) — api / domain / common
+  api/  domain/  common/
 ```
 
 ## 실행
 
 ```bash
-npm install
-npm run dev            # turbo (모든 앱)
-# 또는 개별
-npm run dev --workspace=core-front
-npm run dev --workspace=back-office-front
+# frontend
+cd frontend && npm install && npm run dev      # turbo (모든 앱)
+#   개별: npm run dev --workspace=core-front
+
+# backend
+cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wrapper 생성 후 ./gradlew)
 ```
 
 ## 작업 룰
 
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
-- 데이터는 지금 `packages/mock` (또는 각 앱 fixtures) 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
+- 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
 - PR 은 CODEOWNERS(@titaniper) 승인 후에만 main 머지 (외부 기여자 포함).
+- CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
 
 ## 관련
 
