@@ -91,6 +91,7 @@ public class AuthService {
     }
 
     private UserView toView(User user) {
-        return new UserView(user.getId(), user.getEmail(), user.getName(), user.getPicture(), user.getRole().name());
+        return new UserView(user.getId(), user.getEmail(), user.getName(), user.getPicture(),
+                user.getRole().name(), String.valueOf(user.getCreatedAt()));
     }
 }

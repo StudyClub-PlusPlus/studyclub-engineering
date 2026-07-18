@@ -13,7 +13,7 @@ public final class AuthDtos {
     public record RefreshRequest(String refreshToken) {
     }
 
-    public record UserView(Long id, String email, String name, String picture, String role) {
+    public record UserView(Long id, String email, String name, String picture, String role, String createdAt) {
     }
 
     public record AuthResponse(

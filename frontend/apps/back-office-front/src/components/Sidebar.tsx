@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, CalendarDays, Users, UserCog } from "lucide-react";
+import { LayoutDashboard, BookOpen, CalendarDays, Users } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "대시보드", icon: LayoutDashboard, exact: true },
   { href: "/studies", label: "스터디", icon: BookOpen },
   { href: "/events", label: "행사", icon: CalendarDays },
-  { href: "/members", label: "스터디원", icon: Users },
-  { href: "/operators", label: "운영진", icon: UserCog },
+  // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
+  { href: "/users", label: "유저", icon: Users },
 ];
 
 export function Sidebar() {
