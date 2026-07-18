@@ -4,6 +4,33 @@ server:
 spring:
   application:
     name: studyclub-api
+  # PUBLIC 레포 — 비밀번호/호스트는 env 로만 주입 (docker-compose → .env, 로컬 host 는 `set -a; source .env`).
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3310/studyclub?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:studyclub}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # 구글 OAuth (GCP 콘솔에서 클라이언트 생성 후 env 로 주입 — 비어있어도 부팅됨)
+google:
+  client-id: ${GOOGLE_CLIENT_ID:}
+  client-secret: ${GOOGLE_CLIENT_SECRET:}
+  redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
+
+# JWT 서명키 (운영은 fleet/secret/ → env 주입, 레포 평문 금지)
+jwt:
+  secret: ${JWT_SECRET:local-dev-jwt-secret-change-me}
+
+# 백오피스 접근 allowlist (콤마 구분, 대소문자 무시)
+back-office:
+  allowed-emails: ${BACK_OFFICE_ALLOWED_EMAILS:}
 
 management:
   endpoints:

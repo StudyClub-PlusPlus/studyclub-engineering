@@ -1,0 +1,81 @@
+# StudyClub++ 로컬 개발 스택 — mysql + api + frontend(core 4700 / back-office 4701)
+#
+#   docker compose up -d --build       # 전체 기동
+#   docker compose logs -f api         # 로그
+#   docker compose down                # 정지 (-v 붙이면 DB 볼륨까지 삭제)
+#
+# 시크릿/설정은 .env 로 주입 (PUBLIC 레포 — .env 는 gitignore, .env.example 참고).
+#
+# ⚠️ name 명시 필수 — 디렉토리 basename 이 'engineering' 이라 다른 서비스(place 등)와
+#    compose 프로젝트명이 충돌한다. 'studyclub' 로 고정해 격리.
+name: studyclub
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: studyclub-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "${MYSQL_PORT:-3310}:3306"
+    volumes:
+      - studyclub-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: studyclub-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      BACK_OFFICE_ALLOWED_EMAILS: ${BACK_OFFICE_ALLOWED_EMAILS}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8080:8080"
+
+  # 단일 컨테이너에서 turbo 로 두 앱 동시 dev (install race 회피). per-app 스토리지
+  # prefix(sc_/bo_)는 코드 상수라 공유 env 여도 무방.
+  frontend:
+    image: node:20-alpine
+    container_name: studyclub-frontend
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - api
+    environment:
+      # 서버측(Next route handler)이 컨테이너 내부에서 백엔드에 닿는 URL
+      API_BASE_URL: http://api:8080
+      # 브라우저용 (호스트에서 접근)
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      NEXT_PUBLIC_OAUTH_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+    ports:
+      - "4700:4700"   # core-front
+      - "4701:4701"   # back-office-front
+    volumes:
+      - ./frontend:/app
+      - studyclub-frontend-node-modules:/app/node_modules
+
+volumes:
+  studyclub-mysql-data:
+  studyclub-frontend-node-modules:
