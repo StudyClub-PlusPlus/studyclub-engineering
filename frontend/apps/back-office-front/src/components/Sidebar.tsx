@@ -31,7 +31,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:flex">
       <div className="flex h-16 items-center gap-2 border-b border-[var(--color-border)] px-5 text-[15px] font-bold">
         <span
           className="grid h-7 w-7 place-items-center rounded-lg text-xs font-extrabold text-white"

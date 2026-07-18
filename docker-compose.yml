@@ -63,6 +63,9 @@ services:
     depends_on:
       - api
     environment:
+      # macOS 도커 bind-mount 는 inotify 이벤트가 컨테이너로 전파 안 됨 → 폴링으로 HMR 활성화
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
       # 서버측(Next route handler)이 컨테이너 내부에서 백엔드에 닿는 URL
       API_BASE_URL: http://api:8080
       # 브라우저용 (호스트에서 접근)
