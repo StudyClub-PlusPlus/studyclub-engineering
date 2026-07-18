@@ -53,5 +53,14 @@ export function setUser(user: SessionUser): void {
 export function clearSession(): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(USER_KEY);
-  document.cookie = `${ACCESS_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
+
+/** 로그아웃 — localStorage 유저 제거 + 서버 라우트로 httpOnly 쿠키 제거. */
+export async function logout(): Promise<void> {
+  clearSession();
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    // 네트워크 실패해도 클라이언트 세션은 이미 지움
+  }
 }
