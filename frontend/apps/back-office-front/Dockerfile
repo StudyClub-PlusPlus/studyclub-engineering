@@ -15,6 +15,12 @@ WORKDIR /app
 # recommended so host artifacts don't leak in — npm ci below reinstalls cleanly anyway).
 COPY . .
 
+# NEXT_PUBLIC_* 는 next build 시 클라이언트 번들에 baked → build-arg 로 받아 ENV 노출
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ARG NEXT_PUBLIC_OAUTH_REDIRECT_URI
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_OAUTH_REDIRECT_URI=$NEXT_PUBLIC_OAUTH_REDIRECT_URI
+
 RUN npm ci
 RUN npm run build --workspace=back-office-front
 
