@@ -1,10 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { buildGoogleAuthUrl, isConfigured, setUser } from "@/lib/auth";
 
+// useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[70vh]" />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const params = useParams();
   const router = useRouter();
   const search = useSearchParams();
