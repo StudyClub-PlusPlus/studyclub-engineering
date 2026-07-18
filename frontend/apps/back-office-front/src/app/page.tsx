@@ -19,7 +19,7 @@ export default function Dashboard() {
       label: "커뮤니티 멤버",
       value: site.community.member_count.toLocaleString(),
       sub: tx(site.community.region),
-      href: "/members",
+      href: "/users",
       icon: Users,
     },
   ];
