@@ -6,8 +6,8 @@
       "outputs": ["dist/**", ".next/**", "out/**", "!.next/cache/**"],
       "passThroughEnv": ["*"]
     },
-    "dev": { "cache": false, "persistent": true },
-    "start:dev": { "cache": false, "persistent": true },
+    "dev": { "cache": false, "persistent": true, "passThroughEnv": ["*"] },
+    "start:dev": { "cache": false, "persistent": true, "passThroughEnv": ["*"] },
     "lint": { "dependsOn": ["^lint"] }
   }
 }
