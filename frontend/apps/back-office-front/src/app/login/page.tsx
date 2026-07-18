@@ -1,10 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buildGoogleAuthUrl, isConfigured, setUser } from "@/lib/auth";
 
+// useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.
 export default function BackOfficeLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[70vh]" />}>
+      <BackOfficeLoginForm />
+    </Suspense>
+  );
+}
+
+function BackOfficeLoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const next = search.get("next") ?? "/";
