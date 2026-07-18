@@ -5,7 +5,7 @@
 // 내 스터디는 당분간 mock (// TODO(api): /auth/me + 내 신청/출석 연동).
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { clearSession, getUser, type SessionUser } from "@/lib/auth";
+import { getUser, logout, type SessionUser } from "@/lib/auth";
 
 export default function MyPage() {
   const params = useParams();
@@ -28,8 +28,8 @@ export default function MyPage() {
     return <div className="px-6 py-16 text-center text-sm text-neutral-500">불러오는 중…</div>;
   }
 
-  function logout() {
-    clearSession();
+  async function handleLogout() {
+    await logout();
     router.replace(`/${locale}`);
   }
 
@@ -50,7 +50,7 @@ export default function MyPage() {
         </div>
         <button
           type="button"
-          onClick={logout}
+          onClick={handleLogout}
           className="ml-auto rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
         >
           로그아웃

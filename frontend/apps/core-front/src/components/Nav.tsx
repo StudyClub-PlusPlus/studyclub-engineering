@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { Locale } from "@/lib/content";
 import { m } from "@/lib/i18n";
+import { NavAuth } from "@/components/NavAuth";
 
 export function Nav({
   locale,
@@ -69,6 +70,7 @@ export function Nav({
           >
             {m("nav.join", locale)}
           </a>
+          <NavAuth locale={locale} />
         </div>
       </div>
     </header>
