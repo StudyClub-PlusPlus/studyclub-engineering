@@ -1,63 +1,33 @@
-@import "tailwindcss";
+/* 운영자 콘솔 스타일 진입점.
+   색은 사용자 사이트와 100% 동일한 소스를 쓴다 — 콘솔이 다른 건 밀도(radius/행높이)뿐.
+   console.overrides.css 는 색을 재정의하지 않는다 (design-system.md §8). */
+@import "@studyclub/design/tokens.css";
+@import "@studyclub/design/compat.css";
+@import "@studyclub/design/console.overrides.css";
 
-@theme inline {
-  --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-
-  /* Surfaces */
-  --color-bg: #fbfbfd;
-  --color-surface: #ffffff;
-  --color-surface-subtle: #f4f4f7;
-
-  /* Borders */
-  --color-border: #ececef;
-  --color-border-strong: #e0e0e6;
-
-  /* Text */
-  --color-fg: #18181b;
-  --color-fg-muted: #52525b;
-  --color-fg-subtle: #71717a;
-  --color-fg-faint: #a1a1aa;
-
-  /* Accent — indigo */
-  --color-accent: #4f46e5;
-  --color-accent-hover: #4338ca;
-  --color-accent-soft: #eef2ff;
-
-  /* Status */
-  --color-recruiting: #15803d;
-  --color-recruiting-soft: #dcfce7;
-  --color-ongoing: #b45309;
-  --color-ongoing-soft: #fef3c7;
-  --color-closed: #6b7280;
-  --color-closed-soft: #f1f1f4;
-}
+/* 공용 컴포넌트는 node_modules 심링크 너머에 있어 Tailwind 자동 탐지에 안 걸린다. */
+@source "../../../../packages/ui/src";
 
 html {
+  color-scheme: light;
   background: var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-sans);
 }
 
-body {
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 /* Soft card */
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 1rem;
-  box-shadow:
-    0 1px 2px rgba(24, 24, 27, 0.04),
-    0 1px 3px rgba(24, 24, 27, 0.02);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
 }
 
 /* Table shell */
@@ -79,6 +49,7 @@ a {
 .bo-table td {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--color-border);
+  height: var(--row-height);
 }
 
 /* Buttons */
@@ -94,7 +65,7 @@ a {
   opacity: 0.85;
 }
 .btn-primary {
-  color: #fff;
+  color: var(--color-on-brand);
   background: var(--color-accent);
 }
 .btn-ghost {

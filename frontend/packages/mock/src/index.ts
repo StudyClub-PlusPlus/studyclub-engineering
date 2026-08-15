@@ -8,8 +8,35 @@ export type L10n = { ko: string; en: string };
 export type StudyStatus = "recruiting" | "ongoing" | "closed";
 export type StudyFormat = "online" | "offline" | "hybrid";
 
-// 스터디(코호트·1회성 기수) vs 클럽(주기적·매달/상시 모집).
+// 스터디는 하나의 개념. 모집 마감일이 있으면 기한 모집, 없으면 상시 모집으로만 구분한다.
 export type StudyKind = "study" | "club";
+
+/**
+ * 스터디 카테고리 (canonical 11종).
+ *
+ * ⚠️ **이 배열의 순서는 "드롭다운에 보이는 순서"일 뿐이다.** 자주 등록하는 분야를 위로 둔다.
+ * 자유입력 레거시 값을 분류하는 **매칭 우선순위는 별개**이며 UI 쪽 RULES 가 보유한다
+ * (거기서는 포괄 항목인 "소프트웨어 개발"·"기타"가 반드시 맨 아래여야 구체 분야를 안 삼킨다).
+ *
+ * 등록 폼은 이 목록만 선택지로 제공한다. 자유 입력이면 표기 흔들림(AI/ML vs AI·ML)으로
+ * 카드 색·아이콘 매칭이 깨진다.
+ */
+export const STUDY_CATEGORIES = [
+  "AI · ML",
+  "알고리즘",
+  "데이터",
+  "소프트웨어 개발",
+  "커리어",
+  "북클럽",
+  "어학",
+  "라이프스타일",
+  "기획 · PM",
+  "비즈니스",
+  "기타",
+] as const;
+
+export type StudyCategory = (typeof STUDY_CATEGORIES)[number];
+
 
 // 모집 정보 — 스터디 라이프사이클(status)과 별개의 "모집" 모델.
 export type RecruitmentStatus = "open" | "monthly" | "always" | "closed";
@@ -43,7 +70,6 @@ export type Study = {
   description?: L10n;
   status: StudyStatus;
   format: StudyFormat;
-  tags?: string[];
   schedule?: L10n;
   lead?: string;
   seats?: { total: number; taken: number };
@@ -52,6 +78,7 @@ export type Study = {
   order?: number;
   year?: string;
   date?: string; // 대표 날짜(ISO). 없으면 content 에서 `${year}-01-01` 로 추정 주입.
+  publish_at?: string; // 공개일(ISO). 미래면 사용자 사이트에 노출되지 않는다. 비우면 즉시 공개.
   image?: string; // 썸네일 URL(옵션). 없으면 카테고리 기반 기본 이미지 생성.
   host?: { name: L10n; credential?: L10n; avatar?: string }; // 클럽장/진행자 (동행클럽 host 패턴)
   // ── 확장 (전부 옵션) ──
@@ -68,6 +95,49 @@ export type Study = {
   stats?: StudyStats; // 참여 통계 (마스킹)
   past_participants?: L10n[]; // 마스킹된 참여자 (예: "김OO / SWE")
 };
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 스터디 상태 판정 — 사용자 사이트와 운영자 콘솔이 **같은 기준**을 쓰도록 여기서 단일 정의한다.
+ * 각 앱에서 따로 계산하면 "사이트에는 모집중인데 콘솔에는 마감"처럼 어긋난다.
+ * 문구(로케일)는 각 앱이 붙이고, 여기서는 판정만 한다.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** "2026/03/21"·"2026-3-21" 등 표기 흔들림을 yyyy-mm-dd 로 통일. 파싱 실패 시 원문 유지. */
+export function toISODate(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const m = raw.trim().match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (!m) return raw.trim() || undefined;
+  return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+}
+
+export function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * 모집 상태. 판정 축은 **모집 마감일 하나**.
+ * 마감일을 비우면 마감 없이 계속 모집하는 것으로 본다(= 모집중).
+ */
+export type RecruitState = "apply" | "closed";
+
+export function recruitState(study: Study): RecruitState {
+  if (study.status !== "recruiting" || study.recruitment?.status === "closed") return "closed";
+  const deadline = toISODate(study.recruitment?.deadline);
+  if (!deadline) return "apply";
+  return deadline >= todayISO() ? "apply" : "closed";
+}
+
+/**
+ * 공개 상태. 등록 폼의 「공개일」 하나로 결정된다.
+ * - live      : 공개일이 없거나(= 등록 즉시 공개) 이미 지남
+ * - scheduled : 공개일이 아직 오지 않음 — 사용자 사이트에 보이지 않는다
+ */
+export type PublishState = "live" | "scheduled";
+
+export function publishState(study: Study): PublishState {
+  const at = toISODate(study.publish_at);
+  return !at || at <= todayISO() ? "live" : "scheduled";
+}
 
 export type StudyclubEvent = {
   id: string;
@@ -91,8 +161,22 @@ export type Operator = {
   order?: number;
 };
 
+/**
+ * 회원 거주 지역. 신청 시 "가능한 시간"을 **각자의 현지 시간**으로 받기 위한 기준.
+ * 한국의 일요일 밤과 북미의 일요일 밤은 서로 다른 시각이므로, 지역 없이 요일·시간대만 받으면
+ * 운영자가 겹치는 시간을 계산할 수 없다.
+ */
+export type MemberRegion = "KR" | "NA" | "ETC";
+
+export const MEMBER_REGIONS: { key: MemberRegion; label: L10n; tzLabel: string; utcOffset: number }[] = [
+  { key: "KR", label: { ko: "한국", en: "Korea" }, tzLabel: "KST", utcOffset: 9 },
+  { key: "NA", label: { ko: "북미", en: "North America" }, tzLabel: "PST", utcOffset: -8 },
+  { key: "ETC", label: { ko: "기타", en: "Other" }, tzLabel: "UTC", utcOffset: 0 },
+];
+
 export type Member = {
   id: string;
+  region?: MemberRegion;
   name: L10n;
   headline: L10n;
   track?: string;
@@ -145,10 +229,16 @@ export const studies: Study[] = [
     },
     status: "recruiting",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     recruit_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     recruitment: {
       status: "open",
+      deadline: "2026-08-25",
       cadence: "one-time",
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
@@ -169,10 +259,15 @@ export const studies: Study[] = [
     },
     status: "recruiting",
     format: "online",
-    tags: ["AI/ML", "코딩"],
+    category: "AI · ML",
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     recruit_url: "https://forms.gle/CLEr7JzvjwxkdTGP8",
     recruitment: {
       status: "open",
+      deadline: "2026-08-31",
       cadence: "one-time",
       form_url: "https://forms.gle/CLEr7JzvjwxkdTGP8",
       kickoff: "7/10 시작",
@@ -194,10 +289,16 @@ export const studies: Study[] = [
     },
     status: "recruiting",
     format: "online",
-    tags: ["데이터", "코딩"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     recruit_url: "https://forms.gle/Xj2u6v3npRSrzSV19",
     recruitment: {
       status: "open",
+      deadline: "2026-09-05",
       cadence: "one-time",
       form_url: "https://forms.gle/Xj2u6v3npRSrzSV19",
     },
@@ -218,10 +319,16 @@ export const studies: Study[] = [
     },
     status: "recruiting",
     format: "online",
-    tags: ["습관"],
+    category: "라이프스타일",
+    schedule: { ko: "매일 인증 · 주 1회 회고", en: "Daily check-in · weekly retro" },
+    description: {
+      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
+      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
+    },
     recruit_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
     recruitment: {
       status: "monthly",
+      deadline: "2026-08-28",
       cadence: "monthly",
       form_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -243,10 +350,16 @@ export const studies: Study[] = [
     },
     status: "recruiting",
     format: "online",
-    tags: ["습관"],
+    category: "라이프스타일",
+    schedule: { ko: "매일 인증 · 주 1회 회고", en: "Daily check-in · weekly retro" },
+    description: {
+      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
+      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
+    },
     recruit_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
     recruitment: {
       status: "monthly",
+      deadline: "2026-08-28",
       cadence: "monthly",
       form_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -256,6 +369,8 @@ export const studies: Study[] = [
   },
   {
     id: "past-project-review",
+    // 공개일이 미래 = 사용자 사이트에 아직 안 보임. 운영자 콘솔에서만 보인다.
+    publish_at: "2026-09-15",
     kind: "study",
     title: { ko: "지난 플젝 톺아보기", en: "Past Project Review" },
     host: {
@@ -268,10 +383,15 @@ export const studies: Study[] = [
     },
     status: "recruiting",
     format: "online",
-    tags: ["회고", "글쓰기"],
+    category: "라이프스타일",
+    description: {
+      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
+      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
+    },
     recruit_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     recruitment: {
       status: "open",
+      deadline: "2026-09-10",
       cadence: "one-time",
       form_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     },
@@ -292,10 +412,15 @@ export const studies: Study[] = [
     },
     status: "recruiting",
     format: "online",
-    tags: ["인터뷰"],
+    category: "커리어",
+    description: {
+      ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
+      en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
+    },
     recruit_url: "https://forms.gle/QD54d719pDyGcuLF8",
     recruitment: {
       status: "open",
+      deadline: "2026-08-20",
       cadence: "one-time",
       form_url: "https://forms.gle/QD54d719pDyGcuLF8",
     },
@@ -316,10 +441,16 @@ export const studies: Study[] = [
     },
     status: "recruiting",
     format: "online",
-    tags: ["알고리즘"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     recruit_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
     recruitment: {
       status: "monthly",
+      deadline: "2026-08-30",
       cadence: "monthly",
       form_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -343,7 +474,12 @@ export const studies: Study[] = [
     },
     status: "ongoing",
     format: "hybrid",
-    tags: ["개발"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 9,
     year: "2026",
   },
@@ -357,7 +493,12 @@ export const studies: Study[] = [
     },
     status: "ongoing",
     format: "online",
-    tags: ["인터뷰"],
+    category: "커리어",
+    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 sessions" },
+    description: {
+      ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
+      en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
+    },
     order: 10,
     year: "2026",
   },
@@ -375,7 +516,12 @@ export const studies: Study[] = [
     },
     status: "ongoing",
     format: "online",
-    tags: ["기본기"],
+    category: "데이터",
+    schedule: { ko: "매주 수 20:30 · 6주 과정", en: "Wed 8:30 PM · 6 weeks" },
+    description: {
+      ko: "실제 데이터셋을 놓고 쿼리와 분석을 직접 해보는 방식으로 진행합니다. 이론 설명은 짧게 하고 대부분의 시간을 손으로 만지는 데 씁니다. 매주 과제가 있고, 각자 결과를 공유하며 다른 접근을 배웁니다. 도구 설치와 환경 설정은 첫 주에 함께 끝냅니다.",
+      en: "We work hands-on with real datasets — queries and analysis you run yourself. Theory is kept short; most of the time is spent doing. Weekly assignments are shared so everyone sees other approaches. Setup is done together in week one.",
+    },
     reviews: [
       {
         text: {
@@ -423,7 +569,12 @@ export const studies: Study[] = [
     },
     status: "ongoing",
     format: "online",
-    tags: ["회고"],
+    category: "라이프스타일",
+    schedule: { ko: "매일 인증 · 주 1회 회고", en: "Daily check-in · weekly retro" },
+    description: {
+      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
+      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
+    },
     recruitment: {
       status: "always",
       cadence: "rolling",
@@ -440,7 +591,12 @@ export const studies: Study[] = [
     summary: { ko: "비즈니스 아티클을 함께 읽는 스터디.", en: "Reading business articles together." },
     status: "closed",
     format: "online",
-    tags: ["아티클"],
+    category: "비즈니스",
+    schedule: { ko: "매주 일 10:00 · 상시", en: "Sun 10:00 AM · ongoing" },
+    description: {
+      ko: "정해진 아티클이나 리포트를 읽고 모여 의견을 나눕니다. 시장과 산업의 흐름을 각자의 관점에서 해석해 보는 시간입니다. 배경 지식이 달라도 괜찮으며, 오히려 다른 시각이 논의를 풍부하게 만듭니다. 자료는 매주 미리 공유됩니다.",
+      en: "We read the assigned article or report and meet to discuss. It's a space to interpret market and industry shifts from your own angle. Different backgrounds are welcome — they make the discussion better. Materials are shared in advance.",
+    },
     order: 13,
     year: "2026",
   },
@@ -451,7 +607,12 @@ export const studies: Study[] = [
     summary: { ko: "\"AI Engineering\" 북클럽.", en: "\"AI Engineering\" book club." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 14,
     year: "2026",
   },
@@ -462,7 +623,12 @@ export const studies: Study[] = [
     summary: { ko: "데이터 분석을 위한 SQL 스터디.", en: "SQL for data analysis." },
     status: "closed",
     format: "online",
-    tags: ["데이터"],
+    category: "데이터",
+    schedule: { ko: "매주 수 20:30 · 6주 과정", en: "Wed 8:30 PM · 6 weeks" },
+    description: {
+      ko: "실제 데이터셋을 놓고 쿼리와 분석을 직접 해보는 방식으로 진행합니다. 이론 설명은 짧게 하고 대부분의 시간을 손으로 만지는 데 씁니다. 매주 과제가 있고, 각자 결과를 공유하며 다른 접근을 배웁니다. 도구 설치와 환경 설정은 첫 주에 함께 끝냅니다.",
+      en: "We work hands-on with real datasets — queries and analysis you run yourself. Theory is kept short; most of the time is spent doing. Weekly assignments are shared so everyone sees other approaches. Setup is done together in week one.",
+    },
     order: 15,
     year: "2026",
   },
@@ -473,7 +639,12 @@ export const studies: Study[] = [
     summary: { ko: "데이터베이스 기초 2트랙.", en: "Two-track database fundamentals." },
     status: "closed",
     format: "online",
-    tags: ["기본기"],
+    category: "데이터",
+    schedule: { ko: "매주 수 20:30 · 6주 과정", en: "Wed 8:30 PM · 6 weeks" },
+    description: {
+      ko: "실제 데이터셋을 놓고 쿼리와 분석을 직접 해보는 방식으로 진행합니다. 이론 설명은 짧게 하고 대부분의 시간을 손으로 만지는 데 씁니다. 매주 과제가 있고, 각자 결과를 공유하며 다른 접근을 배웁니다. 도구 설치와 환경 설정은 첫 주에 함께 끝냅니다.",
+      en: "We work hands-on with real datasets — queries and analysis you run yourself. Theory is kept short; most of the time is spent doing. Weekly assignments are shared so everyone sees other approaches. Setup is done together in week one.",
+    },
     order: 16,
     year: "2026",
   },
@@ -484,7 +655,12 @@ export const studies: Study[] = [
     summary: { ko: "AWS Cloud Practitioner 자격 준비.", en: "Prep for the AWS Cloud Practitioner cert." },
     status: "closed",
     format: "online",
-    tags: ["클라우드"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 17,
     year: "2026",
   },
@@ -495,7 +671,12 @@ export const studies: Study[] = [
     summary: { ko: "바이브 코딩 입문 3기.", en: "Vibe coding basics, cohort 3." },
     status: "closed",
     format: "online",
-    tags: ["코딩"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 18,
     year: "2026",
   },
@@ -506,7 +687,12 @@ export const studies: Study[] = [
     summary: { ko: "리트코드 150선 완주 (2026).", en: "Grinding LeetCode 150 (2026)." },
     status: "closed",
     format: "online",
-    tags: ["알고리즘"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 19,
     year: "2026",
   },
@@ -517,7 +703,12 @@ export const studies: Study[] = [
     summary: { ko: "보안 기초 스터디.", en: "Security fundamentals study." },
     status: "closed",
     format: "online",
-    tags: ["보안"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 20,
     year: "2026",
   },
@@ -528,7 +719,12 @@ export const studies: Study[] = [
     summary: { ko: "스터디 클럽 운영을 개선하는 프로젝트.", en: "A project to improve how the study club runs." },
     status: "closed",
     format: "online",
-    tags: ["운영"],
+    category: "기타",
+    schedule: { ko: "킥오프에서 확정", en: "Set at kickoff" },
+    description: {
+      ko: "관심사가 비슷한 사람들이 모여 함께 배우고 이야기합니다. 진행 방식은 참여자와 상의해 정하며, 첫 모임에서 목표와 일정을 함께 맞춥니다. 부담 없이 참여할 수 있도록 운영합니다. 자세한 내용은 킥오프에서 안내합니다.",
+      en: "People with shared interests gather to learn and talk. The format is decided with participants; goals and schedule are set at the first meeting. It's run to be low-pressure. Details are covered at kickoff.",
+    },
     order: 21,
     year: "2026",
   },
@@ -539,7 +735,12 @@ export const studies: Study[] = [
     summary: { ko: "합격을 부르는 이력서 만들기.", en: "Crafting a resume that lands offers." },
     status: "closed",
     format: "online",
-    tags: ["커리어"],
+    category: "커리어",
+    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 sessions" },
+    description: {
+      ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
+      en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
+    },
     order: 22,
     year: "2026",
   },
@@ -550,14 +751,24 @@ export const studies: Study[] = [
     summary: { ko: "인과추론 워크샵.", en: "Causal inference workshop." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 23,
     year: "2026",
   },
   {
     id: "security-study-2026",
     kind: "study",
-    category: "보안",
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     title: { ko: "보안 스터디", en: "Security Study" },
     host: {
       name: { ko: "P. 문", en: "P. Moon" },
@@ -631,7 +842,6 @@ export const studies: Study[] = [
     },
     status: "closed",
     format: "online",
-    tags: ["보안", "웹보안", "클라우드"],
     recruitment: {
       status: "closed",
       cadence: "one-time",
@@ -697,7 +907,12 @@ export const studies: Study[] = [
     summary: { ko: "ML 시스템 디자인 인터뷰 준비.", en: "Prep for ML system design interviews." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML", "인터뷰"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 24,
     year: "2025",
   },
@@ -708,7 +923,12 @@ export const studies: Study[] = [
     summary: { ko: "독일어 학습 스터디.", en: "German language study." },
     status: "closed",
     format: "online",
-    tags: ["언어"],
+    category: "어학",
+    schedule: { ko: "매주 금 20:00 · 상시", en: "Fri 8:00 PM · ongoing" },
+    description: {
+      ko: "실제로 말하고 쓰는 시간을 최대한 확보합니다. 문법 설명은 최소로 하고, 주제를 정해 대화하거나 짧은 글을 써 옵니다. 서로의 표현을 고쳐주며 자연스러운 문장을 찾아갑니다. 수준이 달라도 짝을 나눠 진행합니다.",
+      en: "We maximize time actually speaking and writing. Grammar explanation is kept minimal; instead we hold themed conversations or bring short pieces of writing. We correct each other toward more natural phrasing. Mixed levels are handled by pairing.",
+    },
     order: 25,
     year: "2025",
   },
@@ -719,7 +939,12 @@ export const studies: Study[] = [
     summary: { ko: "\"Superintelligence\" 북클럽.", en: "\"Superintelligence\" book club." },
     status: "closed",
     format: "online",
-    tags: ["북클럽"],
+    category: "북클럽",
+    schedule: { ko: "매주 월 21:00 · 책 1권", en: "Mon 9:00 PM · one book" },
+    description: {
+      ko: "한 권을 정해 매주 정해진 분량을 읽고 모입니다. 요약보다는 읽으면서 들었던 생각과 질문을 나누는 데 집중합니다. 진도를 못 맞춰도 참석할 수 있으며, 논의는 읽은 만큼만 다룹니다. 책은 참여자 투표로 정합니다.",
+      en: "We pick one book and read a set portion each week. Discussion focuses on reactions and questions rather than summaries. You can join even if you fall behind — we only discuss what's been read. The book is chosen by vote.",
+    },
     order: 26,
     year: "2025",
   },
@@ -730,7 +955,12 @@ export const studies: Study[] = [
     summary: { ko: "실전 인과추론 스터디.", en: "Practical causal inference." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 27,
     year: "2025",
   },
@@ -741,7 +971,12 @@ export const studies: Study[] = [
     summary: { ko: "\"Start With Why\" 북클럽.", en: "\"Start With Why\" book club." },
     status: "closed",
     format: "online",
-    tags: ["북클럽"],
+    category: "북클럽",
+    schedule: { ko: "매주 월 21:00 · 책 1권", en: "Mon 9:00 PM · one book" },
+    description: {
+      ko: "한 권을 정해 매주 정해진 분량을 읽고 모입니다. 요약보다는 읽으면서 들었던 생각과 질문을 나누는 데 집중합니다. 진도를 못 맞춰도 참석할 수 있으며, 논의는 읽은 만큼만 다룹니다. 책은 참여자 투표로 정합니다.",
+      en: "We pick one book and read a set portion each week. Discussion focuses on reactions and questions rather than summaries. You can join even if you fall behind — we only discuss what's been read. The book is chosen by vote.",
+    },
     order: 28,
     year: "2025",
   },
@@ -752,7 +987,12 @@ export const studies: Study[] = [
     summary: { ko: "\"Streaming Systems\" 리딩.", en: "Reading \"Streaming Systems\"." },
     status: "closed",
     format: "online",
-    tags: ["기본기"],
+    category: "기타",
+    schedule: { ko: "킥오프에서 확정", en: "Set at kickoff" },
+    description: {
+      ko: "관심사가 비슷한 사람들이 모여 함께 배우고 이야기합니다. 진행 방식은 참여자와 상의해 정하며, 첫 모임에서 목표와 일정을 함께 맞춥니다. 부담 없이 참여할 수 있도록 운영합니다. 자세한 내용은 킥오프에서 안내합니다.",
+      en: "People with shared interests gather to learn and talk. The format is decided with participants; goals and schedule are set at the first meeting. It's run to be low-pressure. Details are covered at kickoff.",
+    },
     order: 29,
     year: "2025",
   },
@@ -763,7 +1003,12 @@ export const studies: Study[] = [
     summary: { ko: "UI 구현 챌린지.", en: "UI implementation challenge." },
     status: "closed",
     format: "online",
-    tags: ["프론트엔드"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 30,
     year: "2025",
   },
@@ -774,7 +1019,12 @@ export const studies: Study[] = [
     summary: { ko: "\"아웃라이어\" 북스터디.", en: "\"Outliers\" book study." },
     status: "closed",
     format: "online",
-    tags: ["북클럽"],
+    category: "북클럽",
+    schedule: { ko: "매주 월 21:00 · 책 1권", en: "Mon 9:00 PM · one book" },
+    description: {
+      ko: "한 권을 정해 매주 정해진 분량을 읽고 모입니다. 요약보다는 읽으면서 들었던 생각과 질문을 나누는 데 집중합니다. 진도를 못 맞춰도 참석할 수 있으며, 논의는 읽은 만큼만 다룹니다. 책은 참여자 투표로 정합니다.",
+      en: "We pick one book and read a set portion each week. Discussion focuses on reactions and questions rather than summaries. You can join even if you fall behind — we only discuss what's been read. The book is chosen by vote.",
+    },
     order: 31,
     year: "2025",
   },
@@ -785,7 +1035,12 @@ export const studies: Study[] = [
     summary: { ko: "리트코드 150선 완주.", en: "Grinding LeetCode 150." },
     status: "closed",
     format: "online",
-    tags: ["알고리즘"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 32,
     year: "2025",
   },
@@ -796,7 +1051,12 @@ export const studies: Study[] = [
     summary: { ko: "일요일마다 실전 레디스 스터디.", en: "Hands-on Redis on Sundays." },
     status: "closed",
     format: "online",
-    tags: ["백엔드"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 33,
     year: "2025",
   },
@@ -807,7 +1067,12 @@ export const studies: Study[] = [
     summary: { ko: "NeetCode 문제풀이 A반.", en: "NeetCode practice, group A." },
     status: "closed",
     format: "online",
-    tags: ["알고리즘"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 34,
     year: "2025",
   },
@@ -818,7 +1083,12 @@ export const studies: Study[] = [
     summary: { ko: "LLM 에이전트 스터디.", en: "LLM agents study." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 35,
     year: "2025",
   },
@@ -829,7 +1099,12 @@ export const studies: Study[] = [
     summary: { ko: "바이브 코딩 스터디.", en: "Vibe coding." },
     status: "closed",
     format: "online",
-    tags: ["코딩"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 36,
     year: "2025",
   },
@@ -840,7 +1115,12 @@ export const studies: Study[] = [
     summary: { ko: "바이브 코딩 심화.", en: "Vibe coding, advanced." },
     status: "closed",
     format: "online",
-    tags: ["코딩"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 37,
     year: "2025",
   },
@@ -851,7 +1131,12 @@ export const studies: Study[] = [
     summary: { ko: "컴퓨터 비전을 위한 파이썬.", en: "Python for computer vision." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 38,
     year: "2025",
   },
@@ -862,7 +1147,12 @@ export const studies: Study[] = [
     summary: { ko: "\"The Coming Wave\" 북클럽.", en: "\"The Coming Wave\" book club." },
     status: "closed",
     format: "online",
-    tags: ["북클럽"],
+    category: "북클럽",
+    schedule: { ko: "매주 월 21:00 · 책 1권", en: "Mon 9:00 PM · one book" },
+    description: {
+      ko: "한 권을 정해 매주 정해진 분량을 읽고 모입니다. 요약보다는 읽으면서 들었던 생각과 질문을 나누는 데 집중합니다. 진도를 못 맞춰도 참석할 수 있으며, 논의는 읽은 만큼만 다룹니다. 책은 참여자 투표로 정합니다.",
+      en: "We pick one book and read a set portion each week. Discussion focuses on reactions and questions rather than summaries. You can join even if you fall behind — we only discuss what's been read. The book is chosen by vote.",
+    },
     order: 39,
     year: "2025",
   },
@@ -877,7 +1167,12 @@ export const studies: Study[] = [
     summary: { ko: "최신 LLM 심화 스터디.", en: "Advanced study on the latest LLMs." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     reviews: [
       {
         text: {
@@ -923,7 +1218,12 @@ export const studies: Study[] = [
     summary: { ko: "Hello Interview로 시스템 디자인 준비.", en: "System design prep via Hello Interview." },
     status: "closed",
     format: "online",
-    tags: ["인터뷰"],
+    category: "커리어",
+    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 sessions" },
+    description: {
+      ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
+      en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
+    },
     order: 41,
     year: "2025",
   },
@@ -934,7 +1234,12 @@ export const studies: Study[] = [
     summary: { ko: "AI 에이전트 스터디.", en: "AI agents study." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 42,
     year: "2025",
   },
@@ -945,7 +1250,12 @@ export const studies: Study[] = [
     summary: { ko: "실전 레디스 스터디.", en: "Hands-on Redis." },
     status: "closed",
     format: "online",
-    tags: ["백엔드"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 43,
     year: "2025",
   },
@@ -956,7 +1266,12 @@ export const studies: Study[] = [
     summary: { ko: "알고리즘 인터뷰 준비 (2025).", en: "Algorithm interview prep (2025)." },
     status: "closed",
     format: "online",
-    tags: ["알고리즘"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 44,
     year: "2025",
   },
@@ -967,7 +1282,12 @@ export const studies: Study[] = [
     summary: { ko: "코드 생성 AI 프로젝트.", en: "Code-generation AI project." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 45,
     year: "2025",
   },
@@ -978,7 +1298,12 @@ export const studies: Study[] = [
     summary: { ko: "모바일 앱 그로스 스터디.", en: "Mobile app growth." },
     status: "closed",
     format: "online",
-    tags: ["프로덕트"],
+    category: "기획 · PM",
+    schedule: { ko: "격주 목 20:00 · 상시", en: "Every other Thu 8:00 PM · ongoing" },
+    description: {
+      ko: "실무에서 겪는 문제를 사례로 놓고 이야기합니다. 매주 한 명이 진행 중인 과제나 고민을 가져오면 함께 뜯어봅니다. 정답을 찾기보다 다른 조직은 어떻게 푸는지 비교하는 데 의미를 둡니다. 직무 연차와 무관하게 참여할 수 있습니다.",
+      en: "We discuss real problems from our own work. Each week someone brings a live project or question and we unpack it together. The value is comparing how different orgs solve it, not finding one right answer. Open regardless of seniority.",
+    },
     order: 46,
     year: "2025",
   },
@@ -989,7 +1314,12 @@ export const studies: Study[] = [
     summary: { ko: "\"Hooked\" 북클럽.", en: "\"Hooked\" book club." },
     status: "closed",
     format: "online",
-    tags: ["북클럽"],
+    category: "북클럽",
+    schedule: { ko: "매주 월 21:00 · 책 1권", en: "Mon 9:00 PM · one book" },
+    description: {
+      ko: "한 권을 정해 매주 정해진 분량을 읽고 모입니다. 요약보다는 읽으면서 들었던 생각과 질문을 나누는 데 집중합니다. 진도를 못 맞춰도 참석할 수 있으며, 논의는 읽은 만큼만 다룹니다. 책은 참여자 투표로 정합니다.",
+      en: "We pick one book and read a set portion each week. Discussion focuses on reactions and questions rather than summaries. You can join even if you fall behind — we only discuss what's been read. The book is chosen by vote.",
+    },
     order: 47,
     year: "2025",
   },
@@ -1000,7 +1330,12 @@ export const studies: Study[] = [
     summary: { ko: "바이브 코딩 심화 2기.", en: "Vibe coding advanced, cohort 2." },
     status: "closed",
     format: "online",
-    tags: ["코딩"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 48,
     year: "2025",
   },
@@ -1011,7 +1346,12 @@ export const studies: Study[] = [
     summary: { ko: "시스템 디자인 모의 인터뷰.", en: "System design mock interviews." },
     status: "closed",
     format: "online",
-    tags: ["인터뷰"],
+    category: "커리어",
+    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 sessions" },
+    description: {
+      ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
+      en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
+    },
     order: 49,
     year: "2025",
   },
@@ -1022,7 +1362,12 @@ export const studies: Study[] = [
     summary: { ko: "함께하는 동기부여 스터디.", en: "Staying motivated together." },
     status: "closed",
     format: "online",
-    tags: ["습관"],
+    category: "라이프스타일",
+    schedule: { ko: "매일 인증 · 주 1회 회고", en: "Daily check-in · weekly retro" },
+    description: {
+      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
+      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
+    },
     order: 50,
     year: "2025",
   },
@@ -1033,7 +1378,12 @@ export const studies: Study[] = [
     summary: { ko: "영자신문 읽기 스터디.", en: "Reading English newspapers." },
     status: "closed",
     format: "online",
-    tags: ["언어"],
+    category: "어학",
+    schedule: { ko: "매주 금 20:00 · 상시", en: "Fri 8:00 PM · ongoing" },
+    description: {
+      ko: "실제로 말하고 쓰는 시간을 최대한 확보합니다. 문법 설명은 최소로 하고, 주제를 정해 대화하거나 짧은 글을 써 옵니다. 서로의 표현을 고쳐주며 자연스러운 문장을 찾아갑니다. 수준이 달라도 짝을 나눠 진행합니다.",
+      en: "We maximize time actually speaking and writing. Grammar explanation is kept minimal; instead we hold themed conversations or bring short pieces of writing. We correct each other toward more natural phrasing. Mixed levels are handled by pairing.",
+    },
     order: 51,
     year: "2025",
   },
@@ -1044,7 +1394,12 @@ export const studies: Study[] = [
     summary: { ko: "프로덕트 북클럽.", en: "Product book club." },
     status: "closed",
     format: "online",
-    tags: ["프로덕트"],
+    category: "기획 · PM",
+    schedule: { ko: "격주 목 20:00 · 상시", en: "Every other Thu 8:00 PM · ongoing" },
+    description: {
+      ko: "실무에서 겪는 문제를 사례로 놓고 이야기합니다. 매주 한 명이 진행 중인 과제나 고민을 가져오면 함께 뜯어봅니다. 정답을 찾기보다 다른 조직은 어떻게 푸는지 비교하는 데 의미를 둡니다. 직무 연차와 무관하게 참여할 수 있습니다.",
+      en: "We discuss real problems from our own work. Each week someone brings a live project or question and we unpack it together. The value is comparing how different orgs solve it, not finding one right answer. Open regardless of seniority.",
+    },
     order: 52,
     year: "2025",
   },
@@ -1055,7 +1410,12 @@ export const studies: Study[] = [
     summary: { ko: "입문 중국어 스터디.", en: "Beginner Chinese study." },
     status: "closed",
     format: "online",
-    tags: ["언어"],
+    category: "어학",
+    schedule: { ko: "매주 금 20:00 · 상시", en: "Fri 8:00 PM · ongoing" },
+    description: {
+      ko: "실제로 말하고 쓰는 시간을 최대한 확보합니다. 문법 설명은 최소로 하고, 주제를 정해 대화하거나 짧은 글을 써 옵니다. 서로의 표현을 고쳐주며 자연스러운 문장을 찾아갑니다. 수준이 달라도 짝을 나눠 진행합니다.",
+      en: "We maximize time actually speaking and writing. Grammar explanation is kept minimal; instead we hold themed conversations or bring short pieces of writing. We correct each other toward more natural phrasing. Mixed levels are handled by pairing.",
+    },
     order: 53,
     year: "2025",
   },
@@ -1066,7 +1426,12 @@ export const studies: Study[] = [
     summary: { ko: "고급 LLM 에이전트 스터디.", en: "Advanced LLM agents." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 54,
     year: "2025",
   },
@@ -1077,7 +1442,12 @@ export const studies: Study[] = [
     summary: { ko: "\"Thinking, Fast and Slow\" 북클럽.", en: "\"Thinking, Fast and Slow\" book club." },
     status: "closed",
     format: "online",
-    tags: ["북클럽"],
+    category: "북클럽",
+    schedule: { ko: "매주 월 21:00 · 책 1권", en: "Mon 9:00 PM · one book" },
+    description: {
+      ko: "한 권을 정해 매주 정해진 분량을 읽고 모입니다. 요약보다는 읽으면서 들었던 생각과 질문을 나누는 데 집중합니다. 진도를 못 맞춰도 참석할 수 있으며, 논의는 읽은 만큼만 다룹니다. 책은 참여자 투표로 정합니다.",
+      en: "We pick one book and read a set portion each week. Discussion focuses on reactions and questions rather than summaries. You can join even if you fall behind — we only discuss what's been read. The book is chosen by vote.",
+    },
     order: 55,
     year: "2025",
   },
@@ -1088,7 +1458,12 @@ export const studies: Study[] = [
     summary: { ko: "파이썬 캐글 스터디.", en: "Python Kaggle study." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 56,
     year: "2025",
   },
@@ -1099,7 +1474,12 @@ export const studies: Study[] = [
     summary: { ko: "바이브 코딩 입문.", en: "Vibe coding basics." },
     status: "closed",
     format: "online",
-    tags: ["코딩"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 57,
     year: "2025",
   },
@@ -1110,7 +1490,12 @@ export const studies: Study[] = [
     summary: { ko: "NeetCode 문제풀이 B반.", en: "NeetCode practice, group B." },
     status: "closed",
     format: "online",
-    tags: ["알고리즘"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 58,
     year: "2025",
   },
@@ -1121,7 +1506,12 @@ export const studies: Study[] = [
     summary: { ko: "Hello 알고리즘 B반.", en: "Hello algorithms, group B." },
     status: "closed",
     format: "online",
-    tags: ["알고리즘"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 59,
     year: "2025",
   },
@@ -1132,7 +1522,12 @@ export const studies: Study[] = [
     summary: { ko: "블록체인 기초 스터디.", en: "Blockchain fundamentals." },
     status: "closed",
     format: "online",
-    tags: ["블록체인"],
+    category: "기타",
+    schedule: { ko: "킥오프에서 확정", en: "Set at kickoff" },
+    description: {
+      ko: "관심사가 비슷한 사람들이 모여 함께 배우고 이야기합니다. 진행 방식은 참여자와 상의해 정하며, 첫 모임에서 목표와 일정을 함께 맞춥니다. 부담 없이 참여할 수 있도록 운영합니다. 자세한 내용은 킥오프에서 안내합니다.",
+      en: "People with shared interests gather to learn and talk. The format is decided with participants; goals and schedule are set at the first meeting. It's run to be low-pressure. Details are covered at kickoff.",
+    },
     order: 60,
     year: "2025",
   },
@@ -1145,7 +1540,12 @@ export const studies: Study[] = [
     summary: { ko: "2024 회고 모임.", en: "2024 retrospective club." },
     status: "closed",
     format: "online",
-    tags: ["회고"],
+    category: "라이프스타일",
+    schedule: { ko: "매일 인증 · 주 1회 회고", en: "Daily check-in · weekly retro" },
+    description: {
+      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
+      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
+    },
     order: 61,
     year: "2024",
   },
@@ -1156,7 +1556,12 @@ export const studies: Study[] = [
     summary: { ko: "React 입문 스터디.", en: "Beginner React." },
     status: "closed",
     format: "online",
-    tags: ["프론트엔드"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 62,
     year: "2024",
   },
@@ -1167,7 +1572,12 @@ export const studies: Study[] = [
     summary: { ko: "Go 언어 스터디.", en: "Go language study." },
     status: "closed",
     format: "online",
-    tags: ["백엔드"],
+    category: "소프트웨어 개발",
+    schedule: { ko: "매주 토 10:00 · 10주 과정", en: "Sat 10:00 AM · 10 weeks" },
+    description: {
+      ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
+      en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
+    },
     order: 63,
     year: "2024",
   },
@@ -1178,7 +1588,12 @@ export const studies: Study[] = [
     summary: { ko: "발표 스킬 스터디.", en: "Public speaking practice." },
     status: "closed",
     format: "online",
-    tags: ["소프트스킬"],
+    category: "기타",
+    schedule: { ko: "킥오프에서 확정", en: "Set at kickoff" },
+    description: {
+      ko: "관심사가 비슷한 사람들이 모여 함께 배우고 이야기합니다. 진행 방식은 참여자와 상의해 정하며, 첫 모임에서 목표와 일정을 함께 맞춥니다. 부담 없이 참여할 수 있도록 운영합니다. 자세한 내용은 킥오프에서 안내합니다.",
+      en: "People with shared interests gather to learn and talk. The format is decided with participants; goals and schedule are set at the first meeting. It's run to be low-pressure. Details are covered at kickoff.",
+    },
     order: 64,
     year: "2024",
   },
@@ -1189,7 +1604,12 @@ export const studies: Study[] = [
     summary: { ko: "LLM 스터디.", en: "LLM study." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 65,
     year: "2024",
   },
@@ -1200,7 +1620,12 @@ export const studies: Study[] = [
     summary: { ko: "데이터 사이언스 인터뷰 2기.", en: "Data science interview, cohort 2." },
     status: "closed",
     format: "online",
-    tags: ["데이터", "인터뷰"],
+    category: "데이터",
+    schedule: { ko: "매주 수 20:30 · 6주 과정", en: "Wed 8:30 PM · 6 weeks" },
+    description: {
+      ko: "실제 데이터셋을 놓고 쿼리와 분석을 직접 해보는 방식으로 진행합니다. 이론 설명은 짧게 하고 대부분의 시간을 손으로 만지는 데 씁니다. 매주 과제가 있고, 각자 결과를 공유하며 다른 접근을 배웁니다. 도구 설치와 환경 설정은 첫 주에 함께 끝냅니다.",
+      en: "We work hands-on with real datasets — queries and analysis you run yourself. Theory is kept short; most of the time is spent doing. Weekly assignments are shared so everyone sees other approaches. Setup is done together in week one.",
+    },
     order: 66,
     year: "2024",
   },
@@ -1211,7 +1636,12 @@ export const studies: Study[] = [
     summary: { ko: "리트코드 문제풀이 스터디.", en: "LeetCode problem solving." },
     status: "closed",
     format: "online",
-    tags: ["알고리즘"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 67,
     year: "2024",
   },
@@ -1222,7 +1652,12 @@ export const studies: Study[] = [
     summary: { ko: "지속적 발견 습관 스터디.", en: "Continuous discovery habits." },
     status: "closed",
     format: "online",
-    tags: ["프로덕트"],
+    category: "기획 · PM",
+    schedule: { ko: "격주 목 20:00 · 상시", en: "Every other Thu 8:00 PM · ongoing" },
+    description: {
+      ko: "실무에서 겪는 문제를 사례로 놓고 이야기합니다. 매주 한 명이 진행 중인 과제나 고민을 가져오면 함께 뜯어봅니다. 정답을 찾기보다 다른 조직은 어떻게 푸는지 비교하는 데 의미를 둡니다. 직무 연차와 무관하게 참여할 수 있습니다.",
+      en: "We discuss real problems from our own work. Each week someone brings a live project or question and we unpack it together. The value is comparing how different orgs solve it, not finding one right answer. Open regardless of seniority.",
+    },
     order: 68,
     year: "2024",
   },
@@ -1233,7 +1668,12 @@ export const studies: Study[] = [
     summary: { ko: "데이터 사이언스 알고리즘 스터디.", en: "Data science algorithms." },
     status: "closed",
     format: "online",
-    tags: ["데이터", "알고리즘"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 69,
     year: "2024",
   },
@@ -1244,7 +1684,12 @@ export const studies: Study[] = [
     summary: { ko: "효율적 ML 스터디.", en: "Efficient ML." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 70,
     year: "2024",
   },
@@ -1255,7 +1700,12 @@ export const studies: Study[] = [
     summary: { ko: "한국에서 영어 스터디.", en: "English study in Korea." },
     status: "closed",
     format: "online",
-    tags: ["언어"],
+    category: "어학",
+    schedule: { ko: "매주 금 20:00 · 상시", en: "Fri 8:00 PM · ongoing" },
+    description: {
+      ko: "실제로 말하고 쓰는 시간을 최대한 확보합니다. 문법 설명은 최소로 하고, 주제를 정해 대화하거나 짧은 글을 써 옵니다. 서로의 표현을 고쳐주며 자연스러운 문장을 찾아갑니다. 수준이 달라도 짝을 나눠 진행합니다.",
+      en: "We maximize time actually speaking and writing. Grammar explanation is kept minimal; instead we hold themed conversations or bring short pieces of writing. We correct each other toward more natural phrasing. Mixed levels are handled by pairing.",
+    },
     order: 71,
     year: "2024",
   },
@@ -1266,7 +1716,12 @@ export const studies: Study[] = [
     summary: { ko: "미국에서 영어 스터디.", en: "English study in the US." },
     status: "closed",
     format: "online",
-    tags: ["언어"],
+    category: "어학",
+    schedule: { ko: "매주 금 20:00 · 상시", en: "Fri 8:00 PM · ongoing" },
+    description: {
+      ko: "실제로 말하고 쓰는 시간을 최대한 확보합니다. 문법 설명은 최소로 하고, 주제를 정해 대화하거나 짧은 글을 써 옵니다. 서로의 표현을 고쳐주며 자연스러운 문장을 찾아갑니다. 수준이 달라도 짝을 나눠 진행합니다.",
+      en: "We maximize time actually speaking and writing. Grammar explanation is kept minimal; instead we hold themed conversations or bring short pieces of writing. We correct each other toward more natural phrasing. Mixed levels are handled by pairing.",
+    },
     order: 72,
     year: "2024",
   },
@@ -1277,7 +1732,12 @@ export const studies: Study[] = [
     summary: { ko: "캐글 스터디.", en: "Kaggle study." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 73,
     year: "2024",
   },
@@ -1288,7 +1748,12 @@ export const studies: Study[] = [
     summary: { ko: "머신러닝 기초 스터디.", en: "Machine learning basics." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 74,
     year: "2024",
   },
@@ -1299,7 +1764,12 @@ export const studies: Study[] = [
     summary: { ko: "소프트웨어 북클럽.", en: "Software book club." },
     status: "closed",
     format: "online",
-    tags: ["북클럽"],
+    category: "북클럽",
+    schedule: { ko: "매주 월 21:00 · 책 1권", en: "Mon 9:00 PM · one book" },
+    description: {
+      ko: "한 권을 정해 매주 정해진 분량을 읽고 모입니다. 요약보다는 읽으면서 들었던 생각과 질문을 나누는 데 집중합니다. 진도를 못 맞춰도 참석할 수 있으며, 논의는 읽은 만큼만 다룹니다. 책은 참여자 투표로 정합니다.",
+      en: "We pick one book and read a set portion each week. Discussion focuses on reactions and questions rather than summaries. You can join even if you fall behind — we only discuss what's been read. The book is chosen by vote.",
+    },
     order: 75,
     year: "2024",
   },
@@ -1310,7 +1780,12 @@ export const studies: Study[] = [
     summary: { ko: "로봇 AI 스터디.", en: "Robotics AI study." },
     status: "closed",
     format: "online",
-    tags: ["AI/ML"],
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
+    description: {
+      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
+      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
+    },
     order: 76,
     year: "2024",
   },
@@ -1321,7 +1796,12 @@ export const studies: Study[] = [
     summary: { ko: "알고리즘 모의 인터뷰.", en: "Algorithm mock interviews." },
     status: "closed",
     format: "online",
-    tags: ["알고리즘", "인터뷰"],
+    category: "알고리즘",
+    schedule: { ko: "매주 화·목 21:00 · 상시", en: "Tue & Thu 9:00 PM · ongoing" },
+    description: {
+      ko: "정해진 문제를 각자 풀어 온 뒤 모여서 풀이를 비교합니다. 같은 문제를 서로 다르게 접근한 지점을 짚어보는 것이 핵심입니다. 시간 복잡도와 더 나은 풀이를 함께 찾고, 막힌 부분은 그 자리에서 같이 봅니다. 난이도는 참여자 수준에 맞춰 조정합니다.",
+      en: "We each solve the assigned problems beforehand, then compare approaches together. The point is spotting where our solutions diverged. We review complexity, look for better solutions, and work through blockers on the spot. Difficulty adapts to the group.",
+    },
     order: 77,
     year: "2024",
   },
@@ -1394,6 +1874,43 @@ export const announcements: Announcement[] = [
 
 // ── events ────────────────────────────────────────────────────────────
 export const events: StudyclubEvent[] = [
+  // ── 예정된 행사 ──
+  {
+    id: "fall-kickoff-meetup",
+    title: { ko: "2026 가을 시즌 킥오프 밋업", en: "2026 Fall Season Kickoff Meetup" },
+    summary: {
+      ko: "가을 시즌 스터디 소개와 크루 네트워킹.",
+      en: "Fall season study intros and crew networking.",
+    },
+    date: "2026-08-22",
+    type: "meetup",
+    location: { ko: "온라인", en: "Online" },
+    order: 0,
+  },
+  {
+    id: "resume-review-workshop",
+    title: { ko: "이력서 리뷰 워크샵", en: "Resume Review Workshop" },
+    summary: {
+      ko: "현직자와 함께 이력서를 고쳐 쓰는 실습 워크샵.",
+      en: "Hands-on resume rewriting with working engineers.",
+    },
+    date: "2026-09-05",
+    type: "workshop",
+    location: { ko: "온라인", en: "Online" },
+    order: 0,
+  },
+  {
+    id: "system-design-live-talk",
+    title: { ko: "시스템 디자인 라이브 토크", en: "System Design Live Talk" },
+    summary: {
+      ko: "실제 면접 문제를 함께 풀어보는 라이브 세션.",
+      en: "Solving real interview problems live.",
+    },
+    date: "2026-09-19",
+    type: "talk",
+    location: { ko: "온라인", en: "Online" },
+    order: 0,
+  },
   {
     id: "beyond-prompt-engineering",
     title: { ko: "Beyond Prompt Engineering", en: "Beyond Prompt Engineering" },
@@ -1553,3 +2070,14 @@ export const members: Member[] = [
     order: 5,
   },
 ];
+
+export {
+  getStudyCrew,
+  attendanceRate,
+  isHotStudy,
+  type AttendanceStatus,
+  type CrewStatus,
+  type Crew,
+  type StudySession,
+  type StudyCrewData,
+} from "./crew";
