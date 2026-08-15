@@ -1,0 +1,81 @@
+# Module Structure
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Module Responsibilities](#module-responsibilities)
+- [Dependency Direction](#dependency-direction)
+- [Package Convention](#package-convention)
+
+## Overview
+
+Spring Boot 3 멀티모듈 Gradle 프로젝트. 3개 모듈로 구성.
+
+```
+backend/
+├── api/          # REST 컨트롤러, 보안 설정, DTO
+├── domain/       # 도메인 엔티티, 비즈니스 규칙
+└── common/       # 공용 응답 포맷, 유틸
+```
+
+## Module Responsibilities
+
+### api
+
+- Spring MVC 컨트롤러 (`@RestController`)
+- Spring Security 설정 (JWT 필터, SecurityConfig)
+- OAuth 클라이언트 (Google)
+- DTO 정의 (요청/응답)
+- `application.yml` 설정
+
+### domain
+
+- JPA 엔티티 (`@Entity`)
+- 비즈니스 규칙 (도메인 로직은 엔티티 메서드로)
+- Repository 인터페이스는 domain 에 둘 수도 있으나, 현재는 api 모듈에 위치
+
+### common
+
+- `ApiResponse<T>` — 공통 응답 래퍼
+- 향후 공용 예외, 유틸리티
+
+## Dependency Direction
+
+```
+api → domain → common
+api → common
+```
+
+- **domain 은 api 를 모른다.** domain 에서 컨트롤러나 DTO 를 import 하지 않는다.
+- **common 은 어디에도 의존하지 않는다.** 순수 유틸.
+
+`build.gradle.kts` 에서:
+
+```kotlin
+// api/build.gradle.kts
+dependencies {
+    implementation(project(":domain"))
+    implementation(project(":common"))
+}
+
+// domain/build.gradle.kts
+dependencies {
+    implementation(project(":common"))
+}
+```
+
+## Package Convention
+
+```
+com.studyclub.api.*       # api 모듈
+com.studyclub.domain.*    # domain 모듈
+com.studyclub.common.*    # common 모듈
+```
+
+기능별 하위 패키지:
+
+```
+com.studyclub.api.auth      # 인증 관련 (컨트롤러, 서비스, DTO)
+com.studyclub.api.web       # 일반 API (Health, Study 등)
+com.studyclub.domain.study  # 스터디 도메인
+```
