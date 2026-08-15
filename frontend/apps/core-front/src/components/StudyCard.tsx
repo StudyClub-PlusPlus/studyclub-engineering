@@ -1,9 +1,39 @@
 import Link from "next/link";
-import { Users, CalendarClock, ArrowUpRight } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import type { Locale, Operator, Study } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
-import { Pill, StatusBadge } from "./Badge";
-import { StudyThumb } from "./StudyThumb";
+import { recruitLabel, recruitState, toISODate } from "@/lib/recruit";
+import { isHotStudy } from "@studyclub/mock";
+import { categoryGradient, categoryMeta } from "./StudyThumb";
+import { BookmarkButton } from "./BookmarkButton";
+import { HotBadge } from "./HotBadge";
+
+function RecruitCta({ study, locale }: { study: Study; locale: Locale }) {
+  const state = recruitState(study);
+  const label = recruitLabel(state, locale);
+  const base =
+    "inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-pill px-5 text-[13px] font-bold";
+
+  if (state === "apply") {
+    return (
+      <a
+        // TODO(api): 사내 신청 플로우가 생기면 그 경로로 교체. 외부 폼이 남아 있으면 그쪽 우선.
+        href={study.recruit_url ?? `/${locale}/studies/${study.id}`}
+        {...(study.recruit_url ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        // z-[2] — 카드 전체를 덮는 stretched link 위로 올려 클릭을 가로챈다
+        className={`${base} relative z-[2] bg-brand text-on-brand shadow-sm transition-[background-color,box-shadow,transform] hover:bg-brand-hover hover:shadow-md hover:scale-[1.04] focus-visible:outline-none focus-visible:shadow-[var(--ring)]`}
+      >
+        {label}
+      </a>
+    );
+  }
+
+  return (
+    <span className={`${base} bg-surface-2 text-fg-placeholder`}>
+      {label}
+    </span>
+  );
+}
 
 export function StudyCard({
   study,
@@ -15,7 +45,9 @@ export function StudyCard({
   lead?: Operator;
   index?: number;
 }) {
-  const host = study.host;
+  const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
+  const deadline = recruitState(study) === "closed" ? undefined : toISODate(study.recruitment?.deadline);
+
   return (
     <div className="card card-hover relative flex flex-col overflow-hidden">
       {/* Stretched link — covers the whole card without nesting anchors */}
@@ -25,88 +57,50 @@ export function StudyCard({
         aria-label={t(study.title, locale)}
       />
 
-      {/* Thumbnail — banner at the top */}
-      <StudyThumb image={study.image} seed={study.id} category={study.category ?? study.tags?.[0]} />
-
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="min-w-0 break-keep text-[15px] font-semibold leading-snug">{t(study.title, locale)}</h3>
-          <StatusBadge status={study.status} locale={locale} />
-        </div>
-
-        <p className="line-clamp-2 text-[13px] leading-relaxed text-[var(--color-fg-muted)]">{t(study.summary, locale)}</p>
-
-        <div className="flex flex-wrap gap-1.5">
-          {study.kind === "club" && (
-            <span
-              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
-              style={{ color: "var(--color-accent)", background: "var(--color-accent-soft)" }}
-            >
-              {m("kind.club", locale)}
-            </span>
-          )}
-          <Pill>{m(`format.${study.format}`, locale)}</Pill>
-          {study.tags?.slice(0, 2).map((tag) => (
-            <Pill key={tag}>#{tag}</Pill>
-          ))}
-        </div>
-
-        {/* 하단 그룹 (host · 메타 · 신청) — mt-auto 로 바닥 정렬 */}
-        <div className="mt-auto flex flex-col gap-2 border-t border-[var(--color-border)] pt-3">
-          {host && (
-            <div className="flex items-center gap-2">
-              {host.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={host.avatar} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
-              ) : (
-                <span
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
-                  style={{ background: "linear-gradient(135deg, var(--color-accent), #7c75f0)" }}
-                >
-                  {t(host.name, locale).charAt(0)}
-                </span>
-              )}
-              <div className="min-w-0 leading-tight">
-                <span className="text-xs font-semibold text-[var(--color-fg)]">{t(host.name, locale)}</span>
-                {host.credential && (
-                  <span className="ml-1.5 text-[11px] text-[var(--color-fg-subtle)]">· {t(host.credential, locale)}</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between text-[11px] text-[var(--color-fg-subtle)]">
-            <span className="flex items-center gap-3">
-              {study.schedule ? (
-                <span className="flex items-center gap-1">
-                  <CalendarClock size={12} /> {t(study.schedule, locale)}
-                </span>
-              ) : study.year ? (
-                <span className="flex items-center gap-1">
-                  <CalendarClock size={12} /> {study.year}
-                </span>
-              ) : (
-                <span />
-              )}
-              {study.seats && (
-                <span className="flex items-center gap-1">
-                  <Users size={12} /> {study.seats.taken}/{study.seats.total}
-                </span>
-              )}
-            </span>
-            {study.recruit_url && (
-              <a
-                href={study.recruit_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative z-[2] inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-transform hover:scale-[1.03]"
-                style={{ background: "var(--color-accent)" }}
-              >
-                {t({ ko: "모집 신청", en: "Apply" }, locale)}
-                <ArrowUpRight size={12} />
-              </a>
-            )}
+      {/* 컬러 헤더 — 배너 지면을 제목이 차지한다. 색은 카테고리를 따라간다(같은 분야 = 같은 색). */}
+      <div
+        className="relative flex min-h-[124px] flex-col justify-between gap-2 overflow-hidden px-5 pb-4 pt-4"
+        style={{ background: categoryGradient(study.category) }}
+      >
+        <CategoryIcon
+          className="pointer-events-none absolute -bottom-5 -right-4 text-white/15"
+          size={104}
+          strokeWidth={1.25}
+          aria-hidden="true"
+        />
+        <div className="relative flex items-start justify-between gap-3">
+          <span className="flex items-center gap-1.5 pt-1 text-white/85">
+            <CategoryIcon size={13} strokeWidth={1.75} className="shrink-0" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em]">{categoryLabel}</span>
+          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            {isHotStudy(study) && <HotBadge />}
+            <BookmarkButton studyId={study.id} locale={locale} />
           </div>
+        </div>
+        {/* 최대 2줄 — 넘치면 말줄임. 카드 높이를 균일하게 유지한다. */}
+        <h3 className="relative line-clamp-2 break-keep text-2xl font-extrabold leading-[1.25] tracking-tight text-white">
+          {t(study.title, locale)}
+        </h3>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-3 p-5">
+        <p className="line-clamp-2 text-[15px] leading-relaxed text-fg-secondary">{t(study.summary, locale)}</p>
+
+        {study.schedule && (
+          <p className="flex items-center gap-1.5 text-[13px] font-medium text-fg-secondary">
+            <CalendarClock size={13} strokeWidth={1.75} className="shrink-0" />
+            {t(study.schedule, locale)}
+          </p>
+        )}
+
+
+        {/* 하단: 좌측 마감일, 우측 신청 버튼 */}
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3">
+          <span className="tnum text-[12px] font-medium text-fg-secondary">
+            {deadline ? t({ ko: `${deadline}까지`, en: `by ${deadline}` }, locale) : ""}
+          </span>
+          <RecruitCta study={study} locale={locale} />
         </div>
       </div>
     </div>

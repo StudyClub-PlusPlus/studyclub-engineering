@@ -2,14 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import { STUDY_CATEGORIES } from "@studyclub/mock";
 import type { Locale, Operator, Study } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
+import { recruitState, recruitTabLabel, type RecruitState } from "@/lib/recruit";
 import { StudyCard } from "./StudyCard";
 
-type KindFilter = "all" | "study" | "club";
-type StatusFilter = "all" | "recruiting" | "ongoing" | "closed";
+/** 상태는 칩이 아니라 최상위 탭으로 분기한다. 카드 CTA와 동일 기준(`lib/recruit`). */
+type StateTab = RecruitState | "all";
 
-function FilterChip({
+const TAB_ORDER: StateTab[] = ["apply", "closed", "all"];
+
+function CategoryChip({
   active,
   onClick,
   children,
@@ -23,12 +27,12 @@ function FilterChip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
-      style={
+      // 테두리로 칸을 나눈다 — 배경색만으로는 흰 바탕에서 칩 경계가 보이지 않는다
+      className={`shrink-0 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
         active
-          ? { color: "#fff", background: "var(--color-accent)" }
-          : { color: "var(--color-fg-subtle)", background: "var(--color-surface-subtle)" }
-      }
+          ? "border-brand bg-brand text-on-brand"
+          : "border-border-strong bg-bg text-fg-secondary hover:border-fg-muted hover:text-fg"
+      }`}
     >
       {children}
     </button>
@@ -45,143 +49,93 @@ export function StudyBrowser({
   leads: Record<string, Operator>;
 }) {
   const [query, setQuery] = useState("");
-  const [kind, setKind] = useState<KindFilter>("all");
-  // 기본: 종료(closed) 숨김
-  const [status, setStatus] = useState<StatusFilter>("all");
-  // 날짜 범위 (ISO yyyy-mm-dd). 빈 문자열 = 열린 경계.
-  const [from, setFrom] = useState<string>("");
-  const [to, setTo] = useState<string>("");
-
-  const filtered = useMemo(() => {
+  // 기본 탭은 "모집 신청" — 목록에 들어온 사람이 가장 먼저 찾는 것
+  const [tab, setTab] = useState<StateTab>("apply");
+  /** 카테고리는 상태 탭의 **하위** 필터 — 먼저 모집 여부로 고르고, 그 안에서 분야를 좁힌다. */
+  const [category, setCategory] = useState<string>("all");
+  /** 탭을 제외한 나머지 조건만 적용한 집합 — 탭별 건수 계산의 기준이 된다. */
+  const base = useMemo(() => {
     const q = query.trim().toLowerCase();
     return studies.filter((s) => {
-      // 날짜 범위 — s.date 는 content 에서 항상 주입됨 (year 없으면 `${year}-01-01`).
-      // yyyy-mm-dd 는 사전순 비교가 곧 날짜순 비교.
-      const d = s.date ?? "";
-      if (from && (!d || d < from)) return false;
-      if (to && (!d || d > to)) return false;
-      // 종류
-      if (kind !== "all") {
-        const k = s.kind ?? "study";
-        if (k !== kind) return false;
-      }
-      // 상태 — 기본(all)은 종료 숨김, "종료" 선택 시에만 종료 표시
-      if (status === "all") {
-        if (s.status === "closed") return false;
-      } else if (s.status !== status) {
-        return false;
-      }
-      // 검색 — 제목·요약·태그·카테고리 (ko+en)
-      if (q) {
-        const hay = [
-          s.title.ko,
-          s.title.en,
-          s.summary.ko,
-          s.summary.en,
-          s.category ?? "",
-          ...(s.tags ?? []),
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+      if (category !== "all" && s.category !== category) return false;
+      // 제목만 찾는다 — 소개·카테고리까지 훑으면 엉뚱한 결과가 섞여 무엇이 걸렸는지 알 수 없다
+      if (q && !`${s.title.ko} ${s.title.en}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [studies, query, kind, status, from, to]);
+  }, [studies, query, category]);
 
-  const kindOptions: { value: KindFilter; label: string }[] = [
-    { value: "all", label: m("filter.all", locale) },
-    { value: "study", label: m("kind.study", locale) },
-    { value: "club", label: m("kind.club", locale) },
-  ];
-  const statusOptions: { value: StatusFilter; label: string }[] = [
-    { value: "all", label: m("filter.all", locale) },
-    { value: "recruiting", label: m("status.recruiting", locale) },
-    { value: "ongoing", label: m("status.ongoing", locale) },
-    { value: "closed", label: m("status.closed", locale) },
-  ];
+  const counts = useMemo(() => {
+    const c: Record<StateTab, number> = { apply: 0, closed: 0, all: base.length };
+    for (const s of base) c[recruitState(s)] += 1;
+    return c;
+  }, [base]);
+
+  const filtered = useMemo(
+    () => (tab === "all" ? base : base.filter((s) => recruitState(s) === tab)),
+    [base, tab],
+  );
+
+  const tabLabel = (s: StateTab) =>
+    s === "all" ? t({ ko: "전체", en: "All" }, locale) : recruitTabLabel(s, locale);
 
   return (
-    <div className="mt-8">
-      {/* Toolbar — 검색 + 필터를 하나의 정돈된 패널로 */}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm sm:p-5">
-      {/* Search */}
-      <div className="relative">
-        <Search
-          size={16}
-          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-fg-faint)]"
-        />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={m("filter.search_studies", locale)}
-          className="w-full rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-[var(--color-accent)]"
-        />
+    <div>
+      {/*
+        층마다 다른 모양을 쓴다 — 상단 사이트 메뉴가 이미 밑줄 탭이라, 여기서도 밑줄을 쓰면
+        같은 위계로 읽힌다. 상태는 **세그먼트**, 카테고리는 **테두리 칩**.
+      */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div role="tablist" className="inline-flex shrink-0 rounded-pill bg-surface-2 p-1">
+          {TAB_ORDER.map((s) => {
+            const on = tab === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => setTab(s)}
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
+                  on ? "bg-bg text-fg shadow-sm" : "text-fg-secondary hover:text-fg"
+                }`}
+              >
+                {tabLabel(s)}
+                <span className={`tnum text-xs ${on ? "text-fg-secondary" : "text-fg-muted"}`}>{counts[s]}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative w-52 shrink-0">
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder"
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={m("filter.search_studies", locale)}
+            className="h-8 w-full rounded-pill border border-border-strong bg-bg pl-9 pr-3 text-sm outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]"
+          />
+        </div>
       </div>
 
-      {/* Filter chips */}
-      <div className="mt-4 flex flex-col gap-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-xs font-semibold text-[var(--color-fg-faint)]">{m("filter.kind", locale)}</span>
-          {kindOptions.map((o) => (
-            <FilterChip key={o.value} active={kind === o.value} onClick={() => setKind(o.value)}>
-              {o.label}
-            </FilterChip>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-xs font-semibold text-[var(--color-fg-faint)]">{m("filter.status", locale)}</span>
-          {statusOptions.map((o) => (
-            <FilterChip key={o.value} active={status === o.value} onClick={() => setStatus(o.value)}>
-              {o.label}
-            </FilterChip>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-xs font-semibold text-[var(--color-fg-faint)]">{m("filter.date", locale)}</span>
-          <input
-            type="date"
-            aria-label={m("filter.date_from", locale)}
-            value={from}
-            max={to || undefined}
-            onChange={(e) => setFrom(e.target.value)}
-            className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs outline-none transition-colors focus:border-[var(--color-accent)]"
-          />
-          <span className="text-xs text-[var(--color-fg-faint)]">~</span>
-          <input
-            type="date"
-            aria-label={m("filter.date_to", locale)}
-            value={to}
-            min={from || undefined}
-            onChange={(e) => setTo(e.target.value)}
-            className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs outline-none transition-colors focus:border-[var(--color-accent)]"
-          />
-          {(from || to) && (
-            <button
-              type="button"
-              onClick={() => {
-                setFrom("");
-                setTo("");
-              }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--color-fg-subtle)] transition-colors hover:text-[var(--color-fg)]"
-            >
-              {m("filter.reset", locale)}
-            </button>
-          )}
-        </div>
-      </div>
-      </div>
-
-      {/* 결과 카운트 */}
-      <div className="mt-5 text-sm font-semibold text-[var(--color-fg-subtle)]">
-        {filtered.length}
-        {locale === "ko" ? "개" : ""}
+      {/* 카테고리 — 상태의 하위 필터. 한 줄을 온전히 써서 줄바꿈이 나지 않는다 */}
+      <div className="no-scrollbar mb-5 flex gap-1.5 overflow-x-auto whitespace-nowrap">
+        <CategoryChip active={category === "all"} onClick={() => setCategory("all")}>
+          {t({ ko: "전체", en: "All" }, locale)}
+        </CategoryChip>
+        {STUDY_CATEGORIES.map((c) => (
+          <CategoryChip key={c} active={category === c} onClick={() => setCategory(c)}>
+            {c}
+          </CategoryChip>
+        ))}
       </div>
 
       {/* Grid */}
       {filtered.length > 0 ? (
-        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((s) => (
             <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
           ))}

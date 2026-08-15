@@ -77,7 +77,6 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
         <section className="pb-14">
           <SectionHead
             title={m("studies.title", locale)}
-            subtitle={m("studies.subtitle", locale)}
             href={`/${locale}/studies`}
             more={t({ ko: "전체 보기", en: "View all" }, locale)}
           />

@@ -1,0 +1,48 @@
+/* =============================================================================
+   compat.css — 구 토큰 → 디자인 시스템 v1.0 매핑 (마이그레이션 브리지)
+
+   기존 core-front/back-office-front 의 globals.css 색 토큰은 컴포넌트 36개 파일에서
+   약 350회 참조된다 (bg-accent / text-fg-subtle / bg-recruiting-soft ...).
+   이름을 한 번에 갈아엎으면 전 화면이 깨지므로, 구 이름을 신규 semantic 토큰의
+   별칭으로 남겨 두고 점진적으로 걷어낸다.
+
+   ⚠️ 신규 코드에서는 이 파일의 토큰을 쓰지 말 것 — tokens.css 의 semantic 토큰
+      (--color-brand / --color-fg-muted / --color-recruiting-fg ...) 을 직접 참조한다.
+      구 참조를 전부 치환하고 나면 이 파일과 import 를 삭제하면 된다.
+
+   매핑 근거는 design-system.md §8 "마이그레이션 순서" 1번(가장 가까운 토큰에 매핑).
+   ============================================================================= */
+
+@theme inline {
+  /* ---- Surfaces ----
+     구 --color-bg(#fbfbfd)는 "페이지 바닥", --color-surface(#fff)는 "카드"였다.
+     신규는 --color-bg 가 흰색이므로 이름이 뒤집힌다. 역할 기준으로 매핑한다. */
+  --color-bg: var(--color-neutral-50); /* was #fbfbfd */
+  --color-surface: var(--color-neutral-0); /* was #ffffff */
+  --color-surface-subtle: var(--color-neutral-100); /* was #f4f4f7 */
+
+  /* ---- Borders ---- */
+  --color-border: var(--color-neutral-200); /* was #ececef */
+  --color-border-strong: var(--color-neutral-300); /* was #e0e0e6 */
+
+  /* ---- Text ---- */
+  --color-fg: var(--color-neutral-900); /* was #18181b */
+  --color-fg-muted: var(--color-neutral-700); /* was #52525b */
+  --color-fg-subtle: var(--color-neutral-600); /* was #71717a */
+  --color-fg-faint: var(--color-neutral-400); /* was #a1a1aa */
+
+  /* ---- Accent → Brand ---- */
+  --color-accent: var(--color-primary-600); /* was #4f46e5 */
+  --color-accent-hover: var(--color-primary-700); /* was #4338ca */
+  --color-accent-soft: var(--color-primary-50); /* was #eef2ff */
+
+  /* ---- Study status ----
+     ⚠️ ongoing 은 색상군이 바뀐다: 구 amber → 신규 info(blue).
+     design-system.md §2-5 가 "진행중 = inprogress = info" 로 규정. */
+  --color-recruiting: var(--color-success-700); /* was #15803d */
+  --color-recruiting-soft: var(--color-success-50); /* was #dcfce7 */
+  --color-ongoing: var(--color-info-700); /* was #b45309 (amber) */
+  --color-ongoing-soft: var(--color-info-50); /* was #fef3c7 (amber) */
+  --color-closed: var(--color-neutral-600); /* was #6b7280 */
+  --color-closed-soft: var(--color-neutral-100); /* was #f1f1f4 */
+}

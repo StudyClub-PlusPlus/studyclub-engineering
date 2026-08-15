@@ -38,7 +38,6 @@ export const MESSAGES: Dict = {
   "hero.cta_studies": { ko: "스터디 둘러보기", en: "Browse studies" },
 
   "studies.title": { ko: "스터디", en: "Studies" },
-  "studies.subtitle": { ko: "지금 열려 있는 코호트와 지난 기수.", en: "Open cohorts and past sessions." },
   "events.title": { ko: "행사", en: "Events" },
   "events.subtitle": { ko: "미국·한국·캐나다에서 열린 밋업·워크샵·직업탐방.", en: "Meetups, workshops, and career talks held across the US, Korea, and Canada." },
   "about.title": { ko: "소개", en: "About" },
@@ -86,16 +85,13 @@ export const MESSAGES: Dict = {
   "common.mentoring": { ko: "멘토링", en: "Mentoring" },
   "common.join_cta_title": { ko: "디스코드에서 시작하세요", en: "Get started on Discord" },
   "common.join_cta_body": {
-    ko: "모든 스터디와 행사는 디스코드에서 운영됩니다. 합류하고 다음 코호트를 기다리세요.",
-    en: "Every study and event runs on Discord. Join and catch the next cohort.",
+    ko: "모든 스터디와 행사는 디스코드에서 운영됩니다. 합류하고 새 스터디 소식을 받아보세요.",
+    en: "Every study and event runs on Discord. Join to catch new studies as they open.",
   },
   "common.join_qr": { ko: "QR 스캔으로 합류", en: "Scan to join" },
   "footer.tagline": { ko: "미국·캐나다·한국이 함께하는 글로벌 개발자 스터디 클럽", en: "A global engineer study club across the US, Canada & Korea" },
 
   // kind
-  "kind.study": { ko: "스터디", en: "Study" },
-  "kind.club": { ko: "클럽", en: "Club" },
-  "kind.club_hint": { ko: "주기적 모집", en: "Recurring intake" },
 
   // recruitment status
   "recruit.open": { ko: "모집 중", en: "Open" },
@@ -132,8 +128,8 @@ export const MESSAGES: Dict = {
   "detail.empty_stats": { ko: "아직 집계된 통계가 없어요.", en: "No stats yet." },
 
   // browsers (search + filter)
-  "filter.search_studies": { ko: "스터디 검색 (제목·주제·태그)", en: "Search studies (title, topic, tag)" },
-  "filter.search_events": { ko: "행사 검색 (제목·설명)", en: "Search events (title, description)" },
+  "filter.search_studies": { ko: "스터디 제목 검색", en: "Search by title" },
+  "filter.search_events": { ko: "행사명 검색", en: "Search by title" },
   "filter.kind": { ko: "종류", en: "Kind" },
   "filter.status": { ko: "상태", en: "Status" },
   "filter.type": { ko: "형태", en: "Type" },

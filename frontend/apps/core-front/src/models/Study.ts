@@ -30,7 +30,6 @@ export type Study = {
   description?: L10n;
   status: StudyStatus;
   format: StudyFormat;
-  tags?: string[];
   schedule?: L10n;
   lead?: string;
   seats?: { total: number; taken: number };
@@ -39,6 +38,7 @@ export type Study = {
   order?: number;
   year?: string;
   date?: string;
+  publish_at?: string;
   image?: string;
   host?: { name: L10n; credential?: L10n; avatar?: string };
   kind?: StudyKind;
@@ -55,10 +55,6 @@ export type Study = {
   past_participants?: L10n[];
 };
 
-export const STUDY_KIND_LABEL: Record<StudyKind, L10n> = {
-  study: { ko: "스터디", en: "Study" },
-  club: { ko: "클럽 (주기)", en: "Club (recurring)" },
-};
 
 export const RECRUITMENT_STATUS_LABEL: Record<RecruitmentStatus, L10n> = {
   open: { ko: "모집 중", en: "Open" },

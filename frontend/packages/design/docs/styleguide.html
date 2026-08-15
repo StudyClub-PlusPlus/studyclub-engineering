@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스터디클럽 디자인 시스템 · 스타일가이드</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+/* ============ TOKENS (tokens.css 미러 — 브라우저 단독 렌더용) ============ */
+:root{
+  /* primary */
+  --color-primary-50:#F5F7FF;--color-primary-100:#E8EEFF;--color-primary-200:#D5DFFF;--color-primary-300:#B6C6FF;--color-primary-400:#8BA3FF;--color-primary-500:#647CFF;--color-primary-600:#4856F5;--color-primary-700:#3A44D3;--color-primary-800:#2F39AA;--color-primary-900:#263087;--color-primary-950:#171E58;
+  /* neutral */
+  --color-neutral-0:#FFFFFF;--color-neutral-50:#F9FAFC;--color-neutral-100:#F4F5F9;--color-neutral-200:#E6E8ED;--color-neutral-300:#D4D7DE;--color-neutral-400:#A6A9B2;--color-neutral-500:#7E818C;--color-neutral-600:#5D616A;--color-neutral-700:#464951;--color-neutral-800:#2D2F35;--color-neutral-900:#1C1E23;--color-neutral-950:#0D0E13;
+  /* semantic scales */
+  --color-success-50:#E6F9EA;--color-success-100:#CEF3D6;--color-success-500:#43B16A;--color-success-600:#2A9754;--color-success-700:#227C45;
+  --color-warning-50:#FFF3E4;--color-warning-100:#FFE7C9;--color-warning-400:#F4B64A;--color-warning-500:#E9A128;--color-warning-600:#D08B00;--color-warning-700:#9D6800;
+  --color-error-50:#FFEFEE;--color-error-100:#FFDFDC;--color-error-500:#F1383E;--color-error-600:#DB0C26;--color-error-700:#B5081E;
+  --color-info-50:#E9F5FF;--color-info-100:#D6EDFF;--color-info-500:#0095DB;--color-info-600:#007CB7;--color-info-700:#006799;
+  --color-chart-1:#6D83E6;--color-chart-2:#BC7D00;--color-chart-3:#00A0A6;--color-chart-4:#B36BC4;--color-chart-5:#2EA55C;--color-chart-6:#D8625C;
+  /* semantic aliases */
+  --color-brand:var(--color-primary-600);--color-brand-hover:var(--color-primary-700);--color-brand-active:var(--color-primary-800);--color-brand-subtle:var(--color-primary-50);--color-brand-subtle-hover:var(--color-primary-100);--color-on-brand:#fff;
+  --color-fg:var(--color-neutral-900);--color-fg-secondary:var(--color-neutral-700);--color-fg-muted:var(--color-neutral-600);--color-fg-placeholder:var(--color-neutral-500);
+  --color-bg:#fff;--color-surface-1:var(--color-neutral-50);--color-surface-2:var(--color-neutral-100);--color-surface-3:var(--color-neutral-200);
+  --color-border:var(--color-neutral-200);--color-border-strong:var(--color-neutral-300);--color-border-interactive:var(--color-neutral-400);
+  /* radius */
+  --radius-control:8px;--radius-chip:8px;--radius-card:16px;--radius-modal:24px;--radius-pill:9999px;
+  /* shadow */
+  --shadow-xs:0 1px 2px rgba(23,25,35,.06);
+  --shadow-sm:0 1px 2px rgba(23,25,35,.06),0 2px 6px rgba(23,25,35,.08);
+  --shadow-md:0 2px 4px rgba(23,25,35,.06),0 6px 16px rgba(23,25,35,.10);
+  --shadow-lg:0 4px 8px rgba(23,25,35,.06),0 12px 28px rgba(23,25,35,.12);
+  --shadow-xl:0 8px 16px rgba(23,25,35,.08),0 24px 56px rgba(23,25,35,.16);
+  --ring:0 0 0 3px rgba(72,86,245,.35);--ring-error:0 0 0 3px rgba(219,12,38,.30);
+  --ease-out:cubic-bezier(.22,1,.36,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Pretendard Variable",Pretendard,-apple-system,"Malgun Gothic",sans-serif;color:var(--color-fg);background:var(--color-surface-1);-webkit-font-smoothing:antialiased;line-height:1.6;font-feature-settings:"tnum" 0}
+.wrap{max-width:1080px;margin:0 auto;padding:48px 24px 120px}
+h1{font-size:36px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:24px;font-weight:700;letter-spacing:-.015em;margin:0 0 20px;padding-top:8px}
+h3{font-size:15px;font-weight:600;color:var(--color-fg-secondary);margin:24px 0 12px;letter-spacing:.02em}
+.sub{color:var(--color-fg-muted);font-size:15px;margin-top:8px}
+section{background:#fff;border:1px solid var(--color-border);border-radius:var(--radius-card);padding:32px;margin-top:24px;box-shadow:var(--shadow-sm)}
+.tnum{font-variant-numeric:tabular-nums}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;color:var(--color-fg-muted)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.grid{display:grid;gap:16px}
+
+/* ramps */
+.ramp{display:grid;grid-template-columns:repeat(11,1fr);border-radius:12px;overflow:hidden;border:1px solid var(--color-border)}
+.ramp.short{grid-template-columns:repeat(5,1fr)}
+.ramp.chart{grid-template-columns:repeat(6,1fr)}
+.sw{height:64px;display:flex;align-items:flex-end;padding:6px;font-size:10px;font-weight:600}
+.sw small{font-size:9px;font-weight:500;opacity:.85;display:block}
+
+/* type */
+.type-row{display:flex;align-items:baseline;gap:20px;padding:10px 0;border-bottom:1px dashed var(--color-border)}
+.type-row .lbl{width:120px;flex:none;color:var(--color-fg-muted);font-size:12px;font-family:"JetBrains Mono",monospace}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-weight:600;font-size:14px;border:1px solid transparent;border-radius:var(--radius-control);cursor:pointer;transition:all .15s var(--ease-out);height:40px;padding:0 16px}
+.btn:focus-visible{outline:none;box-shadow:var(--ring)}
+.btn-primary{background:var(--color-brand);color:#fff}
+.btn-primary:hover{background:var(--color-brand-hover)}
+.btn-tonal{background:var(--color-brand-subtle);color:var(--color-primary-700)}
+.btn-tonal:hover{background:var(--color-brand-subtle-hover)}
+.btn-secondary{background:#fff;border-color:var(--color-border-strong);color:var(--color-neutral-800)}
+.btn-secondary:hover{background:var(--color-surface-1);border-color:var(--color-neutral-400)}
+.btn-ghost{background:transparent;color:var(--color-fg-secondary)}
+.btn-ghost:hover{background:var(--color-surface-2)}
+.btn-destructive{background:var(--color-error-600);color:#fff}
+.btn-destructive:hover{background:var(--color-error-700)}
+.btn:disabled{background:var(--color-neutral-200);color:var(--color-neutral-400);border-color:transparent;cursor:not-allowed}
+.btn-sm{height:32px;font-size:13px;padding:0 12px}
+.btn-lg{height:48px;font-size:16px;padding:0 20px}
+
+/* input */
+.field{max-width:360px}
+.field label{display:block;font-size:14px;font-weight:500;color:var(--color-neutral-800);margin-bottom:6px}
+.input{width:100%;height:40px;padding:0 14px;font-family:inherit;font-size:15px;color:var(--color-fg);background:#fff;border:1px solid var(--color-border-strong);border-radius:var(--radius-control);transition:all .15s var(--ease-out)}
+.input::placeholder{color:var(--color-fg-placeholder)}
+.input:focus{outline:none;border-color:var(--color-brand);box-shadow:var(--ring)}
+.input.err{border-color:var(--color-error-600)}
+.input.err:focus{box-shadow:var(--ring-error)}
+.help{font-size:12px;color:var(--color-fg-muted);margin-top:6px}
+.help.err{color:var(--color-error-700)}
+
+/* badge */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:3px 9px;border-radius:var(--radius-pill);line-height:1.4}
+.badge .dot{width:6px;height:6px;border-radius:9999px}
+.b-recruiting{background:var(--color-success-50);color:var(--color-success-700)} .b-recruiting .dot{background:var(--color-success-500)}
+.b-closing{background:var(--color-warning-50);color:var(--color-warning-700)} .b-closing .dot{background:var(--color-warning-500)}
+.b-closed{background:var(--color-neutral-100);color:var(--color-neutral-600)} .b-closed .dot{background:var(--color-neutral-400)}
+.b-progress{background:var(--color-info-50);color:var(--color-info-700)} .b-progress .dot{background:var(--color-info-500)}
+.b-captain{background:var(--color-primary-50);color:var(--color-primary-700)}
+.b-navigator{background:var(--color-info-50);color:var(--color-info-700)}
+.b-member{background:var(--color-neutral-100);color:var(--color-neutral-700)}
+.att{display:inline-flex;align-items:center;justify-content:center;min-width:52px;height:28px;font-size:12px;font-weight:600;border-radius:8px}
+.a-present{background:var(--color-success-50);color:var(--color-success-700)}
+.a-late{background:var(--color-warning-50);color:var(--color-warning-700)}
+.a-absent{background:var(--color-error-50);color:var(--color-error-700)}
+.a-leave{background:var(--color-info-50);color:var(--color-info-700)}
+.a-none{background:var(--color-neutral-100);color:var(--color-neutral-500)}
+
+/* study card */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.study{background:#fff;border:1px solid var(--color-border);border-radius:var(--radius-card);overflow:hidden;box-shadow:var(--shadow-sm);transition:all .25s var(--ease-out);cursor:pointer}
+.study:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.study .strip{height:4px;background:var(--color-chart-1)}
+.study .body{padding:20px}
+.study .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.tag{font-size:12px;font-weight:600;color:var(--color-fg-muted);background:var(--color-surface-2);padding:2px 8px;border-radius:6px}
+.study h4{font-size:20px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
+.study .meta{font-size:14px;color:var(--color-fg-muted)}
+.study .foot{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid var(--color-border)}
+.study .info{font-size:12px;color:var(--color-fg-placeholder);display:flex;gap:10px}
+.bar{height:6px;background:var(--color-surface-3);border-radius:9999px;overflow:hidden;margin-top:14px}
+.bar > i{display:block;height:100%;background:var(--color-brand);border-radius:9999px}
+.bar.warn > i{background:var(--color-warning-500)}
+.bookmark{color:var(--color-neutral-400);font-size:18px}
+
+/* attendance table */
+table.data{border-collapse:collapse;width:100%;font-size:14px}
+table.data th,table.data td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--color-border)}
+table.data thead th{background:var(--color-surface-2);font-size:12px;font-weight:600;color:var(--color-fg-muted);position:sticky;top:0}
+table.data td.name{font-weight:500;color:var(--color-neutral-800)}
+table.data .rate{font-weight:700}
+.rate-good{color:var(--color-success-700)}.rate-warn{color:var(--color-warning-700)}.rate-bad{color:var(--color-error-700)}
+
+/* stat */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.stat{background:#fff;border:1px solid var(--color-border);border-radius:12px;padding:20px}
+.stat .k{font-size:14px;color:var(--color-fg-muted)}
+.stat .v{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-top:4px;font-variant-numeric:tabular-nums}
+.stat .d{font-size:13px;margin-top:6px}
+.up{color:var(--color-success-700)}.down{color:var(--color-error-700)}
+
+/* tabs / chips */
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--color-border)}
+.tab{padding:12px 0;font-size:15px;font-weight:500;color:var(--color-fg-muted);border-bottom:2px solid transparent;cursor:pointer}
+.tab.on{color:var(--color-primary-700);font-weight:600;border-bottom-color:var(--color-brand)}
+.chip{font-size:13px;font-weight:500;padding:7px 14px;border-radius:var(--radius-pill);border:1px solid var(--color-border-strong);color:var(--color-fg-secondary);background:#fff;cursor:pointer}
+.chip.on{background:var(--color-brand-subtle);border-color:transparent;color:var(--color-primary-700);font-weight:600}
+
+/* misc */
+.spec{display:flex;gap:16px;flex-wrap:wrap}
+.spec .box{width:96px;height:96px;background:#fff;border:1px solid var(--color-border);display:flex;align-items:flex-end;justify-content:center;padding:6px;font-size:11px;color:var(--color-fg-muted)}
+.shadowbox{width:140px;height:80px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--color-fg-muted)}
+.empty{text-align:center;padding:40px;color:var(--color-fg-muted)}
+.empty .ico{font-size:40px}
+.note{font-size:13px;color:var(--color-fg-muted);background:var(--color-surface-2);border-radius:8px;padding:10px 14px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge b-recruiting" style="margin-bottom:12px"><span class="dot"></span>Design System v1.0</div>
+    <h1>스터디클럽 디자인 시스템</h1>
+    <p class="sub">사용자 사이트 + 운영자 콘솔 공용 · 친근·따뜻한 전문성 · Indigo-Violet · Light 전용(MVP)</p>
+  </header>
+
+  <!-- COLOR -->
+  <section>
+    <h2>1 · Color</h2>
+    <h3>Primary — Indigo-Violet (브랜드)</h3>
+    <div class="ramp" id="rp-primary"></div>
+    <h3>Neutral — Cool Slate</h3>
+    <div class="ramp" id="rp-neutral"></div>
+    <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-top:24px">
+      <div><h3>Success</h3><div class="ramp short" id="rp-success"></div></div>
+      <div><h3>Warning</h3><div class="ramp short" id="rp-warning"></div></div>
+      <div><h3>Error</h3><div class="ramp short" id="rp-error"></div></div>
+      <div><h3>Info</h3><div class="ramp short" id="rp-info"></div></div>
+    </div>
+    <h3>Chart categorical (분야별 · 5색 이하 권장)</h3>
+    <div class="ramp chart" id="rp-chart"></div>
+    <div class="note">규칙: 상태는 <b>색 + 텍스트 + 아이콘</b> 3중으로. warning은 흰 글씨 금지(어두운 텍스트). primary-500은 큰 그래픽만.</div>
+  </section>
+
+  <!-- TYPE -->
+  <section>
+    <h2>2 · Typography</h2>
+    <p class="sub" style="margin-bottom:8px">Pretendard Variable · ratio 1.2 · 한글 자간 음수 보정</p>
+    <div id="type"></div>
+  </section>
+
+  <!-- SPACING / RADIUS / SHADOW -->
+  <section>
+    <h2>3 · Spacing · Radius · Elevation</h2>
+    <h3>Radius (control 8 · card 16 · pill ∞)</h3>
+    <div class="spec">
+      <div class="box" style="border-radius:2px">xs 2</div>
+      <div class="box" style="border-radius:4px">sm 4</div>
+      <div class="box" style="border-radius:8px">md 8</div>
+      <div class="box" style="border-radius:12px">lg 12</div>
+      <div class="box" style="border-radius:16px">xl 16</div>
+      <div class="box" style="border-radius:24px">2xl 24</div>
+    </div>
+    <h3>Elevation</h3>
+    <div class="row" style="gap:20px">
+      <div class="shadowbox" style="box-shadow:var(--shadow-xs)">xs</div>
+      <div class="shadowbox" style="box-shadow:var(--shadow-sm)">sm</div>
+      <div class="shadowbox" style="box-shadow:var(--shadow-md)">md</div>
+      <div class="shadowbox" style="box-shadow:var(--shadow-lg)">lg</div>
+      <div class="shadowbox" style="box-shadow:var(--shadow-xl)">xl</div>
+    </div>
+  </section>
+
+  <!-- BUTTONS -->
+  <section>
+    <h2>4 · Button</h2>
+    <div class="row">
+      <button class="btn btn-primary">스터디 신청하기</button>
+      <button class="btn btn-tonal">북마크</button>
+      <button class="btn btn-secondary">취소</button>
+      <button class="btn btn-ghost">더보기</button>
+      <button class="btn btn-destructive">거절</button>
+      <button class="btn btn-primary" disabled>모집마감</button>
+    </div>
+    <h3>Sizes</h3>
+    <div class="row">
+      <button class="btn btn-primary btn-sm">Small</button>
+      <button class="btn btn-primary">Medium</button>
+      <button class="btn btn-primary btn-lg">Large</button>
+    </div>
+  </section>
+
+  <!-- INPUT -->
+  <section>
+    <h2>5 · Input</h2>
+    <div class="row" style="align-items:flex-start;gap:32px">
+      <div class="field"><label>이름</label><input class="input" placeholder="홍길동"></div>
+      <div class="field"><label>이메일</label><input class="input" value="focus 상태" style="border-color:var(--color-brand);box-shadow:var(--ring)"><div class="help">Discord 알림을 받을 주소예요</div></div>
+      <div class="field"><label>신청 동기</label><input class="input err" value="필수 항목이에요"><div class="help err">신청 동기를 입력해 주세요</div></div>
+    </div>
+  </section>
+
+  <!-- BADGES -->
+  <section>
+    <h2>6 · Badge — 상태 · 역할 · 출석</h2>
+    <h3>모집/진행 상태</h3>
+    <div class="row">
+      <span class="badge b-recruiting"><span class="dot"></span>모집중</span>
+      <span class="badge b-closing"><span class="dot"></span>마감임박</span>
+      <span class="badge b-closed"><span class="dot"></span>모집마감</span>
+      <span class="badge b-progress"><span class="dot"></span>진행중</span>
+      <span class="badge b-closed"><span class="dot"></span>종료</span>
+    </div>
+    <h3>역할</h3>
+    <div class="row">
+      <span class="badge b-captain">캡틴 · 운영진</span>
+      <span class="badge b-navigator">네비게이터 · 스터디장</span>
+      <span class="badge b-member">멤버</span>
+    </div>
+    <h3>출석</h3>
+    <div class="row">
+      <span class="att a-present">출석</span>
+      <span class="att a-late">지각</span>
+      <span class="att a-absent">결석</span>
+      <span class="att a-leave">휴가</span>
+      <span class="att a-none">미체크</span>
+    </div>
+  </section>
+
+  <!-- STUDY CARDS -->
+  <section>
+    <h2>7 · Study Card</h2>
+    <div class="cards">
+      <div class="study">
+        <div class="strip" style="background:var(--color-chart-1)"></div>
+        <div class="body">
+          <div class="top"><span class="tag">개발</span><span class="badge b-recruiting"><span class="dot"></span>모집중</span></div>
+          <h4>React 딥다이브 스터디</h4>
+          <div class="meta">매주 목 20:00 · 8주 과정</div>
+          <div class="bar warn"><i style="width:75%"></i></div>
+          <div class="foot">
+            <div class="info tnum"><span>👥 6/8명</span><span>👁 124</span></div>
+            <button class="btn btn-primary btn-sm">신청하기</button>
+          </div>
+        </div>
+      </div>
+      <div class="study">
+        <div class="strip" style="background:var(--color-chart-2)"></div>
+        <div class="body">
+          <div class="top"><span class="tag">어학</span><span class="badge b-progress"><span class="dot"></span>진행중</span></div>
+          <h4>새벽 6시 영어 스피킹</h4>
+          <div class="meta">매일 06:00 · 4주차 진행</div>
+          <div class="bar"><i style="width:100%"></i></div>
+          <div class="foot">
+            <div class="info tnum"><span>👥 10/10명</span><span>👁 302</span></div>
+            <button class="btn btn-secondary btn-sm">대기 신청</button>
+          </div>
+        </div>
+      </div>
+      <div class="study">
+        <div class="strip" style="background:var(--color-chart-4)"></div>
+        <div class="body">
+          <div class="top"><span class="tag">자격증</span><span class="badge b-closing"><span class="dot"></span>마감임박</span></div>
+          <h4>정보처리기사 실기 대비</h4>
+          <div class="meta">주 2회 화·금 21:00 · 6주</div>
+          <div class="bar warn"><i style="width:88%"></i></div>
+          <div class="foot">
+            <div class="info tnum"><span>👥 14/16명</span><span>👁 198</span></div>
+            <button class="btn btn-primary btn-sm">신청하기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ATTENDANCE -->
+  <section>
+    <h2>8 · Attendance Table <span class="sub" style="font-size:14px">(구글시트 대체)</span></h2>
+    <table class="data">
+      <thead><tr><th>멤버</th><th>1회차</th><th>2회차</th><th>3회차</th><th>4회차</th><th style="text-align:right">출석률</th></tr></thead>
+      <tbody>
+        <tr><td class="name">김서연 <span class="badge b-navigator" style="font-size:10px;padding:1px 6px">네비게이터</span></td><td><span class="att a-present">출석</span></td><td><span class="att a-present">출석</span></td><td><span class="att a-present">출석</span></td><td><span class="att a-late">지각</span></td><td class="rate rate-good" style="text-align:right">92%</td></tr>
+        <tr><td class="name">이준호</td><td><span class="att a-present">출석</span></td><td><span class="att a-leave">휴가</span></td><td><span class="att a-present">출석</span></td><td><span class="att a-present">출석</span></td><td class="rate rate-good" style="text-align:right">83%</td></tr>
+        <tr><td class="name">박지민</td><td><span class="att a-present">출석</span></td><td><span class="att a-absent">결석</span></td><td><span class="att a-late">지각</span></td><td><span class="att a-absent">결석</span></td><td class="rate rate-warn" style="text-align:right">63%</td></tr>
+        <tr><td class="name">최유진</td><td><span class="att a-absent">결석</span></td><td><span class="att a-absent">결석</span></td><td><span class="att a-present">출석</span></td><td><span class="att a-none">미체크</span></td><td class="rate rate-bad" style="text-align:right">42%</td></tr>
+      </tbody>
+    </table>
+    <div class="note">셀 탭 → 출석/지각/결석/휴가/미체크 순환. 출석률은 즉시 집계, 임계 색(≥80 초록 · 60–79 앰버 · &lt;60 빨강).</div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section>
+    <h2>9 · Dashboard (운영자 콘솔)</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">운영 스터디</div><div class="v">24<span style="font-size:16px;color:var(--color-fg-muted)">개</span></div><div class="d up">▲ 3 이번 주</div></div>
+      <div class="stat"><div class="k">활성 인원</div><div class="v">128<span style="font-size:16px;color:var(--color-fg-muted)">명</span></div><div class="d up">▲ 12</div></div>
+      <div class="stat"><div class="k">평균 출석률</div><div class="v">82<span style="font-size:16px;color:var(--color-fg-muted)">%</span></div><div class="d up">▲ 3%p</div></div>
+      <div class="stat"><div class="k">이번 주 신청</div><div class="v">37<span style="font-size:16px;color:var(--color-fg-muted)">건</span></div><div class="d down">▼ 5</div></div>
+    </div>
+    <h3>분야별 스터디 (차트 색)</h3>
+    <div id="chartbars" style="display:flex;gap:0;height:24px;border-radius:8px;overflow:hidden;max-width:520px"></div>
+    <div class="row" id="chartlegend" style="margin-top:12px;gap:16px"></div>
+  </section>
+
+  <!-- TABS / CHIPS -->
+  <section>
+    <h2>10 · Tabs · Filter Chips</h2>
+    <div class="tabs">
+      <div class="tab on">전체</div><div class="tab">모집중</div><div class="tab">진행중</div><div class="tab">내 스터디</div>
+    </div>
+    <h3>카테고리 필터</h3>
+    <div class="row">
+      <span class="chip on">전체</span><span class="chip">개발</span><span class="chip">디자인</span><span class="chip">어학</span><span class="chip">자격증</span><span class="chip">독서</span>
+    </div>
+    <h3>Empty State</h3>
+    <div class="empty">
+      <div class="ico">🔍</div>
+      <p style="font-weight:600;color:var(--color-fg);margin-top:8px">아직 신청한 스터디가 없어요</p>
+      <p style="margin:4px 0 16px">관심 분야의 스터디를 둘러볼까요?</p>
+      <button class="btn btn-primary">스터디 탐색하기</button>
+    </div>
+  </section>
+
+  <p style="text-align:center;color:var(--color-fg-placeholder);font-size:13px;margin-top:40px">색상 OKLCH 설계 → sRGB 변환 → WCAG 2.2 AA 검증 완료 · 다크 확장 구조 내장</p>
+</div>
+
+<script>
+const V=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function ramp(id,name,steps){
+  const el=document.getElementById(id);
+  steps.forEach(s=>{
+    const hex=V(`--color-${name}-${s}`);
+    const dark=parseInt(s)>=(name==='neutral'||name==='primary'?400:500)|| (name!=='neutral'&&parseInt(s)>=500);
+    const d=document.createElement('div');d.className='sw';d.style.background=hex;
+    d.style.color=(parseInt(s)>=(name==='warning'?600:500))?'#fff':'#1C1E23';
+    if(name==='neutral'&&parseInt(s)<=300)d.style.color='#1C1E23';
+    d.innerHTML=`${s}<small>${hex}</small>`;el.appendChild(d);
+  });
+}
+ramp('rp-primary','primary',[50,100,200,300,400,500,600,700,800,900,950]);
+ramp('rp-neutral','neutral',[50,100,200,300,400,500,600,700,800,900,950]);
+ramp('rp-success','success',[50,100,500,600,700]);
+ramp('rp-warning','warning',[50,100,500,600,700]);
+ramp('rp-error','error',[50,100,500,600,700]);
+ramp('rp-info','info',[50,100,500,600,700]);
+// chart
+const chart=document.getElementById('rp-chart');
+[1,2,3,4,5,6].forEach(i=>{const hex=V(`--color-chart-${i}`);const d=document.createElement('div');d.className='sw';d.style.background=hex;d.style.color='#fff';d.innerHTML=`c${i}<small>${hex}</small>`;chart.appendChild(d);});
+// type
+const T=[['text-xs / 12',12,500,'.01em','뱃지·캡션·메타'],['text-sm / 14',14,400,'.005em','보조 텍스트·테이블 셀'],['text-base / 16',16,400,'0','기본 본문'],['text-lg / 18',18,500,'-.005em','리드 문단'],['text-xl / 20',20,600,'-.01em','카드 제목'],['text-2xl / 24',24,600,'-.015em','섹션 소제목'],['text-3xl / 30',30,700,'-.02em','섹션 제목'],['text-4xl / 36',36,700,'-.02em','페이지 타이틀'],['text-5xl / 48',48,800,'-.025em','히어로']];
+const tw=document.getElementById('type');
+T.forEach(([l,sz,w,ls,use])=>{const r=document.createElement('div');r.className='type-row';r.innerHTML=`<span class="lbl">${l}</span><span style="font-size:${sz}px;font-weight:${w};letter-spacing:${ls};line-height:1.2">함께 성장하는 스터디 Aa 123</span><span class="mono" style="margin-left:auto">${use}</span>`;tw.appendChild(r);});
+// dashboard chart bars
+const seg=[['개발',34,1],['어학',22,2],['디자인',18,3],['자격증',14,4],['독서',12,5]];
+const cb=document.getElementById('chartbars'),cl=document.getElementById('chartlegend');
+seg.forEach(([n,p,i])=>{const b=document.createElement('div');b.style.width=p+'%';b.style.background=V(`--color-chart-${i}`);cb.appendChild(b);
+const lg=document.createElement('span');lg.style.cssText='font-size:13px;color:var(--color-fg-secondary);display:flex;align-items:center;gap:6px';lg.innerHTML=`<i style="width:10px;height:10px;border-radius:3px;background:${V(`--color-chart-${i}`)};display:inline-block"></i>${n} ${p}%`;cl.appendChild(lg);});
+</script>
+</body>
+</html>

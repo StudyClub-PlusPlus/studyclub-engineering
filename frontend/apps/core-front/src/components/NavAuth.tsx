@@ -1,13 +1,14 @@
 "use client";
 
 // Nav 우측 auth 영역 — 서버 컴포넌트 Nav 안에 끼우는 client 아일랜드.
-// 로그아웃 상태: "로그인" 버튼 / 로그인 상태: 아바타+이름 → 드롭다운(내 스터디·로그아웃).
+// 로그아웃 상태: "로그인" 버튼 / 로그인 상태: 아바타+이름 → 드롭다운(마이페이지·로그아웃).
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import type { Locale } from "@/lib/content";
 import { getUser, logout, type SessionUser } from "@/lib/auth";
+import { IS_DEV, enterPreview as startPreview, syncPreview } from "@/lib/preview";
 
 export function NavAuth({ locale }: { locale: Locale }) {
   const router = useRouter();
@@ -18,7 +19,8 @@ export function NavAuth({ locale }: { locale: Locale }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setUser(getUser());
+    // 미리보기 세션은 정의가 바뀌었을 수 있어 맞춰서 읽는다
+    setUser(syncPreview());
   }, []);
 
   useEffect(() => {
@@ -29,14 +31,32 @@ export function NavAuth({ locale }: { locale: Locale }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  function enterPreview() {
+    startPreview();
+    setUser(getUser());
+    router.push(`/${locale}/my`);
+  }
+
   if (!user) {
     return (
-      <Link
-        href={`/${locale}/login`}
-        className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-fg)] transition-colors hover:bg-[var(--color-surface-subtle)]"
-      >
-        {locale === "en" ? "Log in" : "로그인"}
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/${locale}/login`}
+          className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-fg)] transition-colors hover:bg-[var(--color-surface-subtle)]"
+        >
+          {locale === "en" ? "Log in" : "로그인"}
+        </Link>
+        {IS_DEV && (
+          <button
+            type="button"
+            onClick={enterPreview}
+            title="로그인 없이 마이페이지 보기 (로컬 개발 서버 전용)"
+            className="rounded-full border border-dashed border-[var(--color-border-strong)] px-3 py-2 text-sm font-semibold text-[var(--color-fg-muted)] transition-colors hover:bg-[var(--color-surface-subtle)]"
+          >
+            MY
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -69,7 +89,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
             onClick={() => setOpen(false)}
             className="block px-4 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]"
           >
-            {locale === "en" ? "My studies" : "내 스터디"}
+            {locale === "en" ? "My page" : "마이페이지"}
           </Link>
           <button
             type="button"

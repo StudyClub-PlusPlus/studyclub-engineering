@@ -1,29 +1,27 @@
+import { Badge, type BadgeTone } from "@studyclub/ui";
 import type { Locale, Study } from "@/lib/content";
 import { m } from "@/lib/i18n";
 
-const STATUS_STYLE: Record<Study["status"], { fg: string; bg: string }> = {
-  recruiting: { fg: "var(--color-recruiting)", bg: "var(--color-recruiting-soft)" },
-  ongoing: { fg: "var(--color-ongoing)", bg: "var(--color-ongoing-soft)" },
-  closed: { fg: "var(--color-closed)", bg: "var(--color-closed-soft)" },
+/** 스터디 상태 → 디자인 시스템 tone (design-system.md §2-5).
+ *  ongoing 은 "진행중" = inprogress(info) 로 매핑된다. */
+const STATUS_TONE: Record<Study["status"], BadgeTone> = {
+  recruiting: "recruiting",
+  ongoing: "inprogress",
+  closed: "closed",
 };
 
 export function StatusBadge({ status, locale }: { status: Study["status"]; locale: Locale }) {
-  const s = STATUS_STYLE[status];
   return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold"
-      style={{ color: s.fg, background: s.bg }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.fg }} />
+    <Badge tone={STATUS_TONE[status]} dot className="px-2.5 py-1 font-semibold">
       {m(`status.${status}`, locale)}
-    </span>
+    </Badge>
   );
 }
 
 export function Pill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-[var(--color-surface-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--color-fg-subtle)]">
+    <Badge tone="neutral" className="px-2.5 py-1">
       {children}
-    </span>
+    </Badge>
   );
 }

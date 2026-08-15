@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, Compass, Repeat, UserPlus, Sparkles, HelpCircle } from "lucide-react";
+import { BookOpen, Compass, UserPlus, Sparkles, HelpCircle } from "lucide-react";
 import { getSite, type Locale, type L10n } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
 import { JoinCta } from "@/components/JoinCta";
@@ -9,7 +9,6 @@ type Section = { id: string; icon: typeof BookOpen; title: L10n };
 const SECTIONS: Section[] = [
   { id: "what", icon: BookOpen, title: { ko: "스터디 클럽이란?", en: "What is the study club?" } },
   { id: "captain", icon: Compass, title: { ko: "캡틴이란?", en: "What's a Captain?" } },
-  { id: "kinds", icon: Repeat, title: { ko: "스터디 vs 클럽", en: "Study vs. Club" } },
   { id: "join", icon: UserPlus, title: { ko: "참여하는 법", en: "How to join" } },
   { id: "propose", icon: Sparkles, title: { ko: "스터디 제안·개설하는 법", en: "How to propose a study" } },
   { id: "faq", icon: HelpCircle, title: { ko: "자주 묻는 질문", en: "FAQ" } },
@@ -21,7 +20,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
 
   const joinSteps: L10n[] = [
     { ko: "디스코드에 합류합니다.", en: "Join the Discord server." },
-    { ko: "모집 중인 스터디·클럽을 찾습니다.", en: "Find a study or club that's recruiting." },
+    { ko: "모집 중인 스터디를 찾습니다.", en: "Find a study that's recruiting." },
     { ko: "모집폼(구글폼)으로 신청합니다.", en: "Apply through the recruiting form." },
     { ko: "킥오프에 참여해 반장·일정·진행 방식을 정합니다.", en: "Join the kickoff to set the lead, schedule, and format." },
   ];
@@ -44,7 +43,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
     {
       q: { ko: "개발자가 아니어도 참여할 수 있나요?", en: "Can I join if I'm not a developer?" },
       a: {
-        ko: "네. 개발·AI 스터디가 많지만 언어·북클럽·습관 클럽 등 다양한 스터디가 있어, 관심만 있으면 누구나 참여할 수 있습니다.",
+        ko: "네. 개발·AI 스터디가 많지만 어학·북클럽·라이프스타일 등 다양한 스터디가 있어, 관심만 있으면 누구나 참여할 수 있습니다.",
         en: "Yes. There are many dev and AI studies, but also language, book club, and habit clubs — anyone interested is welcome.",
       },
     },
@@ -56,17 +55,10 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       },
     },
     {
-      q: { ko: "스터디와 클럽은 뭐가 다른가요?", en: "What's the difference between a study and a club?" },
-      a: {
-        ko: "스터디는 기수제 코호트(정해진 기간)이고, 클럽은 매달·상시로 모집하는 반복 모임입니다. 자세한 내용은 위 '스터디 vs 클럽' 섹션을 참고하세요.",
-        en: "A study is a fixed-term cohort; a club is a recurring group that recruits monthly or continuously. See the 'Study vs. Club' section above.",
-      },
-    },
-    {
       q: { ko: "중간에 합류할 수 있나요?", en: "Can I join partway through?" },
       a: {
-        ko: "클럽은 매달·상시 모집하므로 언제든 합류할 수 있습니다. 스터디(기수제)는 다음 기수 모집을 기다리면 됩니다.",
-        en: "Clubs recruit monthly or continuously, so you can join anytime. For fixed-term studies, just wait for the next cohort.",
+        ko: "마감일이 없는 스터디는 언제든 합류할 수 있습니다. 마감일이 지난 스터디는 다음 모집을 기다리면 됩니다.",
+        en: "Studies with no deadline accept members anytime. For studies with a deadline, wait for the next intake.",
       },
     },
     {
@@ -127,41 +119,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
         </Link>
       </div>
 
-      {/* 스터디 vs 클럽 */}
-      <SectionHeading section={SECTIONS[2]} locale={locale} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="card p-6">
-          <div className="text-sm font-bold uppercase tracking-wide text-[var(--color-accent)]">
-            {m("kind.study", locale)}
-          </div>
-          <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-fg-muted)]">
-            {t(
-              {
-                ko: "기수제 코호트. 정해진 기간 동안 한 기수가 함께 시작하고 끝냅니다 (예: 시스템 디자인 인터뷰, DDIA 2판).",
-                en: "A fixed-term cohort. One group starts and finishes together over a set period (e.g. System Design Interview, DDIA 2nd edition).",
-              },
-              locale,
-            )}
-          </p>
-        </div>
-        <div className="card p-6">
-          <div className="text-sm font-bold uppercase tracking-wide text-[var(--color-accent)]">
-            {m("kind.club", locale)}
-          </div>
-          <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-fg-muted)]">
-            {t(
-              {
-                ko: "매달·상시로 모집하는 반복 모임. 언제든 합류할 수 있습니다 (예: Daily LeetCode, WeeklyX, 얼리버드, 르네상스).",
-                en: "A recurring group that recruits monthly or continuously — join anytime (e.g. Daily LeetCode, WeeklyX, Early Bird, Renaissance).",
-              },
-              locale,
-            )}
-          </p>
-        </div>
-      </div>
-
       {/* 참여하는 법 */}
-      <SectionHeading section={SECTIONS[3]} locale={locale} />
+      <SectionHeading section={SECTIONS[2]} locale={locale} />
       <ol className="grid gap-3 sm:grid-cols-2">
         {joinSteps.map((step, i) => (
           <li key={i} className="card flex items-start gap-3 p-5">
@@ -177,7 +136,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       </ol>
 
       {/* 스터디 제안·개설하는 법 */}
-      <SectionHeading section={SECTIONS[4]} locale={locale} />
+      <SectionHeading section={SECTIONS[3]} locale={locale} />
       <ol className="grid gap-3 sm:grid-cols-2">
         {proposeSteps.map((step, i) => (
           <li key={i} className="card flex items-start gap-3 p-5">
@@ -193,7 +152,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       </ol>
 
       {/* FAQ */}
-      <SectionHeading section={SECTIONS[5]} locale={locale} />
+      <SectionHeading section={SECTIONS[4]} locale={locale} />
       <div className="flex flex-col gap-3">
         {faqs.map((f, i) => (
           <details key={i} className="card group p-5">
