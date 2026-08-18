@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* 토큰·베이스는 공유본 — 색·타이포를 바꾸려면 packages/ui/src/theme.css 를 고친다 */
+@import "../../../../packages/ui/src/theme.css";
+
+/* 공유 UI 패키지의 클래스도 스캔 대상 — 없으면 스타일이 통째로 빠진다 */
+@source "../../../../packages/ui/src";
