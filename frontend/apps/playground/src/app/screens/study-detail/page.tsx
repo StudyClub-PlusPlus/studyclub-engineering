@@ -1,108 +1,95 @@
 // 화면 시안 — 스터디 상세.
 // 새 화면을 만들 때 이 폴더를 통째로 복사해서 시작하세요.
-// 규칙 하나: 컴포넌트는 직접 만들지 말고 @studyclub/ui 에서 가져옵니다.
-//           여기 없는 게 필요하면 일단 이 파일 안에 만들고, 두 화면에서 쓰이게 되면 ui 로 올립니다.
-import { StatusBadge, Pill, StudyThumb, Tabs, JoinCta, t, m } from "@studyclub/ui";
-import { studies, operators, site } from "@studyclub/mock";
-import type { Locale } from "@studyclub/mock";
-
-const LOCALE: Locale = "ko";
+// 규칙 하나: 부품은 직접 만들지 말고 @studyclub/ui 에서 가져옵니다.
+//           여기 없는 게 필요하면 일단 이 파일 안에 만들고,
+//           두 화면에서 쓰이게 되면 그때 packages/ui 로 올립니다.
+import { Avatar, Badge, Button, CapacityBar, Card } from "@studyclub/ui";
+import { studies, operators } from "@studyclub/mock";
+import { CalendarClock, MapPin } from "lucide-react";
 
 export default function StudyDetailScreen() {
   const study = studies[0];
   const lead = operators.find((o) => o.id === study.lead);
+  const capacity = study.seats?.total ?? study.recruitment?.capacity ?? 20;
+  const taken = study.seats?.taken ?? Math.round(capacity * 0.85);
 
   return (
     <article className="space-y-8">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-fg-faint)]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-fg-muted)]">
         화면 시안 · 스터디 상세
       </p>
 
-      {/* 헤더 — 썸네일 + 제목 + 메타 */}
-      <header className="grid gap-6 sm:grid-cols-[220px_1fr]">
-        <StudyThumb seed={study.id} image={study.image} category={study.category} />
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={study.status} locale={LOCALE} />
-            {(study.tags ?? []).slice(0, 4).map((tag) => (
-              <Pill key={tag}>{tag}</Pill>
-            ))}
-          </div>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight">{t(study.title, LOCALE)}</h1>
-          <p className="mt-3 leading-relaxed text-[var(--color-fg-muted)]">{t(study.summary, LOCALE)}</p>
+      <header className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="recruiting" dot>
+            모집 중
+          </Badge>
+          {(study.topics ?? []).slice(0, 4).map((topic) => (
+            <Badge key={topic.ko} tone="neutral">
+              {topic.ko}
+            </Badge>
+          ))}
+        </div>
 
-          <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-            <Meta label={m("common.lead", LOCALE)} value={lead ? t(lead.name, LOCALE) : "—"} />
-            <Meta label={m("common.format", LOCALE)} value={m(`format.${study.format}`, LOCALE)} />
-            <Meta label={m("common.schedule", LOCALE)} value={study.schedule ? t(study.schedule, LOCALE) : "—"} />
-          </dl>
+        <h1 className="text-3xl font-extrabold tracking-tight">{study.title.ko}</h1>
+        <p className="max-w-2xl leading-relaxed text-[var(--color-fg-muted)]">{study.summary.ko}</p>
+
+        <div className="flex flex-wrap items-center gap-5 text-sm text-[var(--color-fg-muted)]">
+          {lead && (
+            <span className="flex items-center gap-2">
+              <Avatar name={lead.name.ko} size={24} role="captain" />
+              {lead.name.ko}
+            </span>
+          )}
+          <span className="flex items-center gap-1.5">
+            <CalendarClock size={15} />
+            {study.schedule?.ko ?? "일정 미정"}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <MapPin size={15} />
+            {study.format}
+          </span>
         </div>
       </header>
 
-      <Tabs
-        tabs={[
-          {
-            key: "about",
-            label: m("detail.tab_about", LOCALE),
-            content: (
-              <div className="py-6 leading-relaxed text-[var(--color-fg-muted)]">
-                {study.description ? t(study.description, LOCALE) : m("detail.empty_about", LOCALE)}
-              </div>
-            ),
-          },
-          {
-            key: "weeks",
-            label: m("detail.duration", LOCALE),
-            badge: study.weeks?.length,
-            content: (
-              <ol className="divide-y divide-[var(--color-border)] py-2">
-                {(study.weeks ?? []).map((w, i) => (
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <Card padding="lg">
+          <h2 className="text-base font-bold">스터디 소개</h2>
+          <p className="mt-3 leading-relaxed text-[var(--color-fg-muted)]">
+            {study.description?.ko ?? "아직 상세 소개가 준비 중이에요."}
+          </p>
+
+          {!!study.weeks?.length && (
+            <>
+              <h3 className="mt-8 text-base font-bold">커리큘럼</h3>
+              <ol className="mt-3 divide-y divide-[var(--color-border)]">
+                {study.weeks.map((w, i) => (
                   <li key={i} className="flex gap-4 py-3 text-sm">
-                    <span className="w-16 shrink-0 font-semibold text-[var(--color-fg-faint)]">
-                      {t(w.label, LOCALE)}
-                    </span>
-                    <span>{t(w.title, LOCALE)}</span>
+                    <span className="w-16 shrink-0 font-semibold text-[var(--color-fg-muted)]">{w.label.ko}</span>
+                    <span>{w.title.ko}</span>
                   </li>
                 ))}
-                {!study.weeks?.length && (
-                  <li className="py-6 text-sm text-[var(--color-fg-subtle)]">커리큘럼이 아직 없습니다.</li>
-                )}
               </ol>
-            ),
-          },
-          {
-            key: "reviews",
-            label: m("detail.tab_reviews", LOCALE),
-            badge: study.reviews?.length,
-            content: (
-              <div className="space-y-3 py-4">
-                {(study.reviews ?? []).map((r, i) => (
-                  <blockquote key={i} className="card p-5 text-sm leading-relaxed">
-                    “{t(r.text, LOCALE)}”
-                    {r.author && (
-                      <footer className="mt-2 text-xs text-[var(--color-fg-faint)]">— {t(r.author, LOCALE)}</footer>
-                    )}
-                  </blockquote>
-                ))}
-                {!study.reviews?.length && (
-                  <p className="text-sm text-[var(--color-fg-subtle)]">{m("detail.empty_reviews", LOCALE)}</p>
-                )}
-              </div>
-            ),
-          },
-        ]}
-      />
+            </>
+          )}
+        </Card>
 
-      <JoinCta locale={LOCALE} discordUrl={site.discord_invite} />
+        {/* 신청 사이드바 */}
+        <aside className="space-y-4">
+          <Card padding="lg">
+            <h2 className="text-base font-bold">모집 현황</h2>
+            <div className="mt-4">
+              <CapacityBar taken={taken} total={capacity} showLabel />
+            </div>
+            <Button className="mt-5 w-full" size="lg">
+              신청하기
+            </Button>
+            <p className="mt-3 text-center text-xs text-[var(--color-fg-muted)]">
+              신청하면 캡틴에게 알림이 갑니다
+            </p>
+          </Card>
+        </aside>
+      </div>
     </article>
-  );
-}
-
-function Meta({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold text-[var(--color-fg-faint)]">{label}</dt>
-      <dd className="mt-0.5 font-medium">{value}</dd>
-    </div>
   );
 }

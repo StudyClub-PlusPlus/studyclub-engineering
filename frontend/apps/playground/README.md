@@ -43,6 +43,14 @@ cp -r study-detail 내가-만들-화면-이름
 **규칙 하나** — 버튼·카드 같은 부품은 직접 만들지 말고 `@studyclub/ui` 에서 가져옵니다.
 어떤 게 있는지는 http://localhost:4702/components 에서 전부 볼 수 있습니다.
 
+### 디자인 시스템 문서 3종의 역할
+
+| | 무엇 | 언제 본다 |
+|---|---|---|
+| `packages/design/docs/design-system.md` | 규칙의 **정본** — 색·타이포·간격·접근성 기준 | 왜 이렇게 생겼는지 알고 싶을 때 |
+| `packages/design/docs/styleguide.html` | 손으로 쓴 **정적 목업** | 의도한 모습을 볼 때 (코드와 갈릴 수 있음) |
+| **이 playground `/components`** | **실제 React 컴포넌트를 렌더** | 지금 코드가 어떻게 생겼는지 볼 때 |
+
 ```tsx
 import { StudyCard, StatusBadge, Pill } from "@studyclub/ui";
 ```
@@ -52,8 +60,9 @@ import { StudyCard, StatusBadge, Pill } from "@studyclub/ui";
 
 ## 색·글꼴을 바꾸고 싶다면
 
-`frontend/packages/ui/src/theme.css` 한 파일입니다. 여기를 고치면
+`frontend/packages/design/tokens.css` 한 파일입니다. 여기를 고치면
 playground 와 실제 서비스가 **같이** 바뀝니다 — 그래서 시안 확인용으로 정확합니다.
+바꾸기 전에 `packages/design/docs/design-system.md` 의 토큰 규칙을 먼저 읽으세요.
 
 ## 올리기 (PR)
 
@@ -73,6 +82,7 @@ git push -u origin design/내가-만든-화면
 ## 개발자용 메모
 
 - 이 앱은 `core-front` 와 **배포가 완전히 분리**돼 있다. playground 빌드가 깨져도 core-front CI 는 영향 없음
-- 컴포넌트는 `@studyclub/ui`, 데이터는 `@studyclub/mock` (하드코딩). 백엔드 호출 없음
+- 컴포넌트는 `@studyclub/ui`(디자인 시스템 프리미티브), 토큰은 `@studyclub/design`, 데이터는 `@studyclub/mock`. 백엔드 호출 없음
 - `robots.ts` 로 전체 noindex — 미공개 시안이 검색에 잡히지 않게
-- `Nav` / `NavAuth` 는 카탈로그에서 뺐다. Nav 는 앱 라우팅, NavAuth 는 세션에 묶여 있음
+- 카탈로그는 **프리미티브만** 다룬다. `StudyCard`·`Nav` 같은 도메인 컴포넌트는 core-front 앱 안에 있어 여기서 import 하지 않는다.
+  두 앱에서 같은 도메인 컴포넌트가 필요해지면 그때 `packages/ui` 승격을 논의한다

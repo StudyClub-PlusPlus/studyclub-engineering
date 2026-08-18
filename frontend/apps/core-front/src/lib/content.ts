@@ -38,9 +38,22 @@ function sortByOrder<T extends { id: string; order?: number }>(items: T[]): T[] 
   );
 }
 
+/**
+ * 공개 여부 — 공개일이 오늘 이후면 아직 노출하지 않는다. 공개일이 없으면 즉시 공개.
+ *
+ * ⚠️ 목록 페이지는 정적 생성되므로 이 판정은 **빌드 시점** 기준으로 굳는다.
+ * 예약 공개가 자동으로 열리려면 재빌드 또는 동적 렌더가 필요하다.
+ * TODO(api): 서버가 공개 여부를 계산해 내려주도록 전환.
+ */
+function isPublished(s: { publish_at?: string }): boolean {
+  if (!s.publish_at) return true;
+  return s.publish_at <= new Date().toISOString().slice(0, 10);
+}
+
+/** 사용자 사이트용 스터디 목록 — 미공개 건은 여기서 걸러진다(운영자 콘솔은 별도). */
 export async function getStudies(): Promise<Study[]> {
   // date 없으면 year 기준 1/1 로 추정 주입 (날짜 필터/정렬용).
-  const withDate = studiesData.map((s) => ({
+  const withDate = studiesData.filter(isPublished).map((s) => ({
     ...s,
     date: s.date ?? (s.year ? `${s.year}-01-01` : undefined),
   }));

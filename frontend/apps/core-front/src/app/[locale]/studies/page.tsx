@@ -1,6 +1,5 @@
 import { getStudies, getOperatorMap, type Locale } from "@/lib/content";
-import { m } from "@/lib/i18n";
-import { StudyBrowser } from "@studyclub/ui";
+import { StudyBrowser } from "@/components/StudyBrowser";
 
 const STATUS_RANK: Record<string, number> = { recruiting: 0, ongoing: 1, closed: 2 };
 
@@ -13,12 +12,7 @@ export default async function StudiesPage({ params }: { params: Promise<{ locale
   );
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-14">
-      <header className="max-w-2xl">
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{m("studies.title", locale)}</h1>
-        <p className="mt-3 text-lg text-[var(--color-fg-muted)]">{m("studies.subtitle", locale)}</p>
-      </header>
-
+    <div className="mx-auto max-w-6xl px-6 pb-14 pt-6">
       <StudyBrowser studies={sorted} locale={locale} leads={leads} />
     </div>
   );

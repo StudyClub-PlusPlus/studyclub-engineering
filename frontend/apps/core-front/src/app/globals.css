@@ -1,7 +1,88 @@
-@import "tailwindcss";
+/* 사용자 사이트 스타일 진입점.
+   색·타이포·간격·그림자는 전부 디자인 시스템(@studyclub/design)이 소유한다.
+   여기에는 이 앱 고유의 컴포넌트 클래스만 남긴다 — 색 토큰을 새로 정의하지 말 것. */
+@import "@studyclub/design/tokens.css";
+@import "@studyclub/design/compat.css";
 
-/* 토큰·베이스는 공유본 — 색·타이포를 바꾸려면 packages/ui/src/theme.css 를 고친다 */
-@import "../../../../packages/ui/src/theme.css";
-
-/* 공유 UI 패키지의 클래스도 스캔 대상 — 없으면 스타일이 통째로 빠진다 */
+/* 공용 컴포넌트는 node_modules 심링크 너머에 있어 Tailwind 자동 탐지에 안 걸린다.
+   명시하지 않으면 @studyclub/ui 가 쓰는 유틸리티가 통째로 생성되지 않는다. */
 @source "../../../../packages/ui/src";
+
+html {
+  color-scheme: light;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+
+/* base 레이어로 넣어야 text-white 같은 유틸리티가 이긴다.
+   (Tailwind v4: unlayered CSS 는 레이어된 유틸리티를 무조건 이겨서, 밖에 두면
+    text-white 앵커도 color:inherit=검정으로 덮여 버림 → 버튼 텍스트 가독성 저하) */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* tokens.css 는 body 에 불투명 배경을 깐다. 사용자 사이트는 히어로 글로우를
+     z-index:-1 로 body 뒤에 두므로, 그대로 두면 글로우가 통째로 가려진다.
+     바탕색은 html 이 이미 칠하므로 body 는 투명으로 되돌린다. */
+  body {
+    background: transparent;
+  }
+}
+
+/* Soft card */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+}
+
+.card-hover {
+  transition:
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+  border-color: var(--color-border-strong);
+}
+
+/* Hero gradient glow
+   raw rgba() 를 쓰면 팔레트를 바꿔도 여기만 옛 색으로 남는다.
+   토큰 + color-mix 로 묶어 두면 tokens.css 를 갈아끼울 때 글로우도 같이 따라온다.
+   (구 값: indigo rgba(99,102,241,.18) / sky rgba(56,189,248,.14) / pink rgba(236,72,153,.10)) */
+.hero-glow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 520px;
+  z-index: -1;
+  background:
+    radial-gradient(
+      40% 60% at 20% 30%,
+      color-mix(in oklab, var(--color-primary-500) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      40% 60% at 75% 20%,
+      color-mix(in oklab, var(--color-info-500) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      35% 50% at 60% 60%,
+      color-mix(in oklab, var(--color-chart-4) 14%, transparent),
+      transparent 70%
+    );
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+/* 가로 스크롤 필터 줄 — 스크롤바가 보이면 칩 아래 여백이 들쭉날쭉해진다 */
+@layer utilities {
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}

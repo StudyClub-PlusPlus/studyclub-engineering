@@ -2,7 +2,7 @@
   "name": "core-front",
   "version": "0.0.1",
   "private": true,
-  "description": "StudyClub++ \uc0ac\uc6a9\uc790\ud5a5 \ub79c\ub529 (Next.js App Router, ko\u00b7en)",
+  "description": "StudyClub++ 사용자향 랜딩 (Next.js App Router, ko·en)",
   "scripts": {
     "dev": "next dev --webpack -p 4700",
     "build": "next build",
@@ -10,6 +10,7 @@
     "lint": "echo 'lint: noop'"
   },
   "dependencies": {
+    "@studyclub/design": "*",
     "@studyclub/mock": "*",
     "@studyclub/ui": "*",
     "lucide-react": "^0.460.0",

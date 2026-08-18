@@ -1,20 +1,18 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import type { Locale } from "@studyclub/mock";
-import { m } from "./i18n";
+import type { Locale } from "@/lib/content";
+import { m } from "@/lib/i18n";
+import { NavAuth } from "@/components/NavAuth";
+import { NavLinks } from "@/components/NavLinks";
+import { MyStudiesLink } from "@/components/MyStudiesLink";
 
 export function Nav({
   locale,
   discordUrl,
   mentoringUrl,
-  auth,
 }: {
   locale: Locale;
   discordUrl: string;
   mentoringUrl?: string;
-  /** 로그인 상태 UI. 세션에 묶여 있어 패키지 밖(앱)에서 주입한다. 없으면 자리를 비운다. */
-  auth?: ReactNode;
 }) {
   const other: Locale = locale === "ko" ? "en" : "ko";
   const links = [
@@ -38,24 +36,10 @@ export function Nav({
           StudyClub++
         </Link>
 
-        <nav className="ml-2 hidden items-center gap-6 text-sm font-medium md:flex">
-          {links.map((l) => (
-            <Link key={l.href} href={l.href} className="text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]">
-              {l.label}
-            </Link>
-          ))}
-          {mentoringUrl && (
-            <a
-              href={mentoringUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-0.5 text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-accent)]"
-            >
-              {m("nav.mentoring", locale)}
-              <ArrowUpRight size={13} />
-            </a>
-          )}
-        </nav>
+        <NavLinks
+          links={links}
+          mentoring={mentoringUrl ? { href: mentoringUrl, label: m("nav.mentoring", locale) } : undefined}
+        />
 
         <div className="ml-auto flex items-center gap-3">
           <Link
@@ -64,6 +48,7 @@ export function Nav({
           >
             {other.toUpperCase()}
           </Link>
+          <MyStudiesLink locale={locale} />
           <a
             href={discordUrl}
             target="_blank"
@@ -73,7 +58,7 @@ export function Nav({
           >
             {m("nav.join", locale)}
           </a>
-          {auth}
+          <NavAuth locale={locale} />
         </div>
       </div>
     </header>

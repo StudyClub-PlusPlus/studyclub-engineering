@@ -1,7 +1,22 @@
-@import "tailwindcss";
+/* playground 스타일 진입점. core-front 와 같은 구성을 쓴다 —
+   여기서 보이는 것이 실제 서비스와 같아야 시안 확인이 의미가 있다.
+   색·타이포·간격은 @studyclub/design 소유. 여기서 토큰을 새로 정의하지 말 것. */
+@import "@studyclub/design/tokens.css";
+@import "@studyclub/design/compat.css";
 
-/* 토큰·베이스는 공유본 — 색·타이포를 바꾸려면 packages/ui/src/theme.css 를 고친다 */
-@import "../../../../packages/ui/src/theme.css";
-
-/* 공유 UI 패키지의 클래스도 스캔 대상 — 없으면 스타일이 통째로 빠진다 */
+/* 공용 컴포넌트는 node_modules 심링크 너머라 Tailwind 자동 탐지에 안 걸린다. */
 @source "../../../../packages/ui/src";
+
+html {
+  color-scheme: light;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

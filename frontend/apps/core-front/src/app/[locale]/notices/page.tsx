@@ -1,7 +1,7 @@
 import { getNotices, getSite, type Locale } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
-import { Pill } from "@studyclub/ui";
-import { JoinCta } from "@studyclub/ui";
+import { Pill } from "@/components/Badge";
+import { JoinCta } from "@/components/JoinCta";
 
 export default async function NoticesPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;

@@ -2,7 +2,7 @@
   "name": "back-office-front",
   "version": "0.0.1",
   "private": true,
-  "description": "StudyClub++ \uc6b4\uc601\uc790\ud5a5 \ubc31\uc624\ud53c\uc2a4 \ucf58\uc194 (Next.js App Router, single-locale)",
+  "description": "StudyClub++ 운영자향 백오피스 콘솔 (Next.js App Router, single-locale)",
   "scripts": {
     "dev": "next dev --webpack -p 4701",
     "build": "next build",
@@ -10,6 +10,7 @@
     "lint": "echo 'lint: noop'"
   },
   "dependencies": {
+    "@studyclub/design": "*",
     "@studyclub/mock": "*",
     "@studyclub/ui": "*",
     "lucide-react": "^0.460.0",

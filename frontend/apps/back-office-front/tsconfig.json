@@ -9,7 +9,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
-      "@studyclub/mock": ["../../packages/mock/src/index.ts"]
+      "@studyclub/mock": ["../../packages/mock/src/index.ts"],
+      "@studyclub/ui": ["../../packages/ui/src/index.ts"]
     }
   },
   "include": [

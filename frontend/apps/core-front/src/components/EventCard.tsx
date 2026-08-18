@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MapPin, ChevronRight } from "lucide-react";
-import type { StudyclubEvent, Locale } from "@studyclub/mock";
-import { m, t } from "./i18n";
+import type { StudyclubEvent, Locale } from "@/lib/content";
+import { m, t } from "@/lib/i18n";
 
 function dateParts(iso: string, locale: Locale) {
   const d = new Date(iso);

@@ -1,0 +1,17 @@
+{
+  "name": "@studyclub/design",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StudyClub++ 디자인 시스템 v1.0 — 사용자 사이트 + 운영자 콘솔 공용 토큰 (Tailwind v4 CSS-first)",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./compat.css": "./compat.css",
+    "./console.overrides.css": "./console.overrides.css"
+  },
+  "files": [
+    "tokens.css",
+    "compat.css",
+    "console.overrides.css",
+    "docs"
+  ]
+}

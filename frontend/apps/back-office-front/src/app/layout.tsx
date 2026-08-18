@@ -21,7 +21,8 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
-      <body className="min-h-full">
+      {/* data-app="console" — console.overrides.css 의 본문 밀도(15px) 스코프 앵커 */}
+      <body className="min-h-full" data-app="console">
         <AppShell>{children}</AppShell>
       </body>
     </html>
