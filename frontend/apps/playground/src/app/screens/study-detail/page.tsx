@@ -2,8 +2,6 @@
 // 새 화면을 만들 때 이 폴더를 통째로 복사해서 시작하세요.
 // 규칙 하나: 컴포넌트는 직접 만들지 말고 @studyclub/ui 에서 가져옵니다.
 //           여기 없는 게 필요하면 일단 이 파일 안에 만들고, 두 화면에서 쓰이게 되면 ui 로 올립니다.
-"use client";
-
 import { StatusBadge, Pill, StudyThumb, Tabs, JoinCta, t, m } from "@studyclub/ui";
 import { studies, operators, site } from "@studyclub/mock";
 import type { Locale } from "@studyclub/mock";
