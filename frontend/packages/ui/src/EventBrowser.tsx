@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import type { Locale, StudyclubEvent } from "@/lib/content";
-import { m } from "@/lib/i18n";
+import type { Locale, StudyclubEvent } from "@studyclub/mock";
+import { m } from "./i18n";
 import { EventRow } from "./EventCard";
 
 type TypeFilter = "all" | "meetup" | "workshop" | "talk" | "online";

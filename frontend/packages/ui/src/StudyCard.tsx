@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Users, CalendarClock, ArrowUpRight } from "lucide-react";
-import type { Locale, Operator, Study } from "@/lib/content";
-import { m, t } from "@/lib/i18n";
+import type { Locale, Operator, Study } from "@studyclub/mock";
+import { m, t } from "./i18n";
 import { Pill, StatusBadge } from "./Badge";
 import { StudyThumb } from "./StudyThumb";
 

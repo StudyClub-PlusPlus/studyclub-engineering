@@ -2,9 +2,9 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
-import { StudyCard } from "@/components/StudyCard";
-import { EventCard } from "@/components/EventCard";
-import { JoinCta } from "@/components/JoinCta";
+import { StudyCard } from "@studyclub/ui";
+import { EventCard } from "@studyclub/ui";
+import { JoinCta } from "@studyclub/ui";
 
 export default async function Landing({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;

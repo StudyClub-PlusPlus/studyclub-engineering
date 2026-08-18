@@ -1,12 +1,12 @@
 {
-  "name": "core-front",
+  "name": "playground",
   "version": "0.0.1",
   "private": true,
-  "description": "StudyClub++ \uc0ac\uc6a9\uc790\ud5a5 \ub79c\ub529 (Next.js App Router, ko\u00b7en)",
+  "description": "StudyClub++ 디자인 playground — 디자이너·기획자가 실컴포넌트로 화면을 조립하는 샌드박스 (playground.studyclub-plusplus.com)",
   "scripts": {
-    "dev": "next dev --webpack -p 4700",
+    "dev": "next dev --webpack -p 4702",
     "build": "next build",
-    "start": "next start -p 4700",
+    "start": "next start -p 4702",
     "lint": "echo 'lint: noop'"
   },
   "dependencies": {

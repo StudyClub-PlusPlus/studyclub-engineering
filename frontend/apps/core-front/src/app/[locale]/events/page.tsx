@@ -1,6 +1,6 @@
 import { getEvents, type Locale } from "@/lib/content";
 import { m } from "@/lib/i18n";
-import { EventBrowser } from "@/components/EventBrowser";
+import { EventBrowser } from "@studyclub/ui";
 
 export default async function EventsPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;

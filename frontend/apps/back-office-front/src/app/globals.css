@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 공유 UI 패키지의 클래스도 스캔 대상 — 없으면 playground/앱에서 스타일이 통째로 빠진다 */
+@source "../../../../packages/ui/src";
+
 @theme inline {
   --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;

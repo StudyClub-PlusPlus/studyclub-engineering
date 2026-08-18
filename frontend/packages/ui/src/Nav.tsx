@@ -1,17 +1,20 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import type { Locale } from "@/lib/content";
-import { m } from "@/lib/i18n";
-import { NavAuth } from "@/components/NavAuth";
+import type { Locale } from "@studyclub/mock";
+import { m } from "./i18n";
 
 export function Nav({
   locale,
   discordUrl,
   mentoringUrl,
+  auth,
 }: {
   locale: Locale;
   discordUrl: string;
   mentoringUrl?: string;
+  /** 로그인 상태 UI. 세션에 묶여 있어 패키지 밖(앱)에서 주입한다. 없으면 자리를 비운다. */
+  auth?: ReactNode;
 }) {
   const other: Locale = locale === "ko" ? "en" : "ko";
   const links = [
@@ -70,7 +73,7 @@ export function Nav({
           >
             {m("nav.join", locale)}
           </a>
-          <NavAuth locale={locale} />
+          {auth}
         </div>
       </div>
     </header>

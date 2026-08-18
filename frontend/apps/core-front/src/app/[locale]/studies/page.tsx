@@ -1,6 +1,6 @@
 import { getStudies, getOperatorMap, type Locale } from "@/lib/content";
 import { m } from "@/lib/i18n";
-import { StudyBrowser } from "@/components/StudyBrowser";
+import { StudyBrowser } from "@studyclub/ui";
 
 const STATUS_RANK: Record<string, number> = { recruiting: 0, ongoing: 1, closed: 2 };
 

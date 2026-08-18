@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import type { Locale, Operator, Study } from "@/lib/content";
-import { m, t } from "@/lib/i18n";
+import type { Locale, Operator, Study } from "@studyclub/mock";
+import { m, t } from "./i18n";
 import { StudyCard } from "./StudyCard";
 
 type KindFilter = "all" | "study" | "club";

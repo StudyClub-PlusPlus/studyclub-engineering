@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import type { Locale, Site } from "@/lib/content";
-import { m, t } from "@/lib/i18n";
+import type { Locale, Site } from "@studyclub/mock";
+import { m, t } from "./i18n";
 
 export function Footer({ locale, site }: { locale: Locale; site: Site }) {
   return (
