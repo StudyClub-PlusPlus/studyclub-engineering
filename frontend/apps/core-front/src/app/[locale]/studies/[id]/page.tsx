@@ -23,9 +23,9 @@ import {
   type Locale,
 } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
-import { StatusBadge, Pill } from "@/components/Badge";
-import { StudyThumb } from "@/components/StudyThumb";
-import { Tabs, type TabItem } from "@/components/Tabs";
+import { StatusBadge, Pill } from "@studyclub/ui";
+import { StudyThumb } from "@studyclub/ui";
+import { Tabs, type TabItem } from "@studyclub/ui";
 
 export async function generateStaticParams() {
   const studies = await getStudies();

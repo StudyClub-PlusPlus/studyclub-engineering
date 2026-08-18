@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Locale } from "@/lib/content";
+import type { Locale } from "@studyclub/mock";
 
 type Region = {
   id: string;

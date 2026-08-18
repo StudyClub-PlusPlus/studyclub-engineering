@@ -1,6 +1,6 @@
 import { MessageCircle } from "lucide-react";
-import type { Locale } from "@/lib/content";
-import { m } from "@/lib/i18n";
+import type { Locale } from "@studyclub/mock";
+import { m } from "./i18n";
 
 export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
   return (

@@ -1,24 +1,12 @@
 import type { ReactNode } from "react";
 import { Plus } from "lucide-react";
-import { STATUS_LABEL } from "@/lib/l10n";
+import type { StudyStatus } from "@studyclub/mock";
+import { StatusBadge as SharedStatusBadge } from "@studyclub/ui";
 
-const STATUS_STYLE: Record<string, { fg: string; bg: string }> = {
-  recruiting: { fg: "var(--color-recruiting)", bg: "var(--color-recruiting-soft)" },
-  ongoing: { fg: "var(--color-ongoing)", bg: "var(--color-ongoing-soft)" },
-  closed: { fg: "var(--color-closed)", bg: "var(--color-closed-soft)" },
-};
-
+// 상태 배지는 @studyclub/ui 와 스타일·라벨이 동일했다 (모집 중/진행 중/종료).
+// 여기서 다시 정의하지 않고 공유본을 ko 로 고정해 감싼다 — 호출부는 그대로 둔다.
 export function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_STYLE[status] ?? STATUS_STYLE.closed;
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-      style={{ color: s.fg, background: s.bg }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.fg }} />
-      {STATUS_LABEL[status] ?? status}
-    </span>
-  );
+  return <SharedStatusBadge status={status as StudyStatus} locale="ko" />;
 }
 
 /** 페이지 헤더 + (비활성) 생성 버튼. */

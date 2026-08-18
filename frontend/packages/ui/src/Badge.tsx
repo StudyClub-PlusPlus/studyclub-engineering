@@ -1,5 +1,5 @@
-import type { Locale, Study } from "@/lib/content";
-import { m } from "@/lib/i18n";
+import type { Locale, Study } from "@studyclub/mock";
+import { m } from "./i18n";
 
 const STATUS_STYLE: Record<Study["status"], { fg: string; bg: string }> = {
   recruiting: { fg: "var(--color-recruiting)", bg: "var(--color-recruiting-soft)" },
