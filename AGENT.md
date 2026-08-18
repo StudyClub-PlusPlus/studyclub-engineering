@@ -58,6 +58,8 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 
 - **기존 API 를 먼저 활용한다.** 새 엔드포인트를 만들기 전에 기존 것으로 해결 가능한지 확인.
   → 상세: [`docs/common-guide.md`](docs/common-guide.md)
+- **PR 라벨·팀 구성** — `area:`/`type:` 라벨은 자동 부여되고, `squad:`/`domain:` 은 직접 붙인다.
+  스쿼드·파트 매핑과 라벨 규칙: [`docs/team.md`](docs/team.md)
 
 ### Backend (Spring Boot)
 

@@ -1,0 +1,71 @@
+name: pr-label
+
+# PR 에 라벨을 자동으로 붙인다.
+#   area:  변경된 경로 기준 (.github/labeler.yml)
+#   type:  PR 제목의 컨벤셔널 프리픽스 기준
+# squad:/domain: 은 사람이 직접 붙인다. 라벨 정의는 .github/labels.yml 참조.
+#
+# ── pull_request_target 을 쓰는 이유 ────────────────────────────────────────
+# 이 레포는 PUBLIC 이라 외부 기여자의 fork PR 을 받는다. fork 에서 발생한
+# `pull_request` 이벤트의 GITHUB_TOKEN 은 읽기 전용이라 라벨을 붙이지 못한다.
+# `pull_request_target` 은 base 레포 컨텍스트로 실행되어 쓰기 토큰이 붙는다.
+#
+# ── 🚫 이 워크플로에서 절대 하면 안 되는 것 ──────────────────────────────────
+# PR 의 코드를 checkout 하거나 실행하지 말 것 (빌드·테스트·npm install 포함).
+# pull_request_target 은 base 권한과 시크릿을 갖고 돌기 때문에, 포크가 보낸 코드를
+# 가져와 실행하면 그 코드가 토큰·시크릿을 탈취할 수 있다 ("pwn request" 취약점).
+# 이 워크플로에는 checkout 스텝이 없고 GitHub API 로만 읽는다.
+# 빌드·테스트가 필요하면 별도의 `pull_request` 워크플로에서 하라.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    name: 라벨 부여
+    runs-on: ubuntu-latest
+    steps:
+      # 변경된 경로 -> `area:` 라벨. 설정은 base 브랜치의 .github/labeler.yml 을 읽는다.
+      - name: area 라벨 (변경 경로 기반)
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+      # PR 제목의 컨벤셔널 프리픽스 -> `type:` 라벨.
+      # 제목을 ${{ }} 로 셸에 끼워넣지 않고 gh 로 읽는다 (스크립트 인젝션 방지).
+      - name: type 라벨 (PR 제목 프리픽스)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          title="$(gh pr view "$PR" --repo "$REPO" --json title --jq .title)"
+          prefix="$(printf '%s' "$title" | sed -nE 's/^([a-zA-Z]+)(\([^)]*\))?!?:.*/\1/p' | tr '[:upper:]' '[:lower:]')"
+          case "$prefix" in
+            feat)                   label="type: feat" ;;
+            fix|hotfix)             label="type: fix" ;;
+            docs)                   label="type: docs" ;;
+            ci|build|deploy)        label="type: ci" ;;
+            refactor|perf|style)    label="type: refactor" ;;
+            chore|test)             label="type: chore" ;;
+            *)                      label="" ;;
+          esac
+          if [ -z "$label" ]; then
+            echo "제목에 컨벤셔널 프리픽스가 없다: $title"
+            echo "type 라벨은 건너뛴다 (수동 부여 가능)."
+            exit 0
+          fi
+          gh pr edit "$PR" --repo "$REPO" --add-label "$label"
+          echo "부여: $label"

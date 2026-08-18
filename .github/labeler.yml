@@ -1,0 +1,54 @@
+# actions/labeler v5 설정 — 변경된 경로로 `area:` 라벨을 자동 부여한다.
+# 이 라벨이 Discord 알림 라우팅과 리뷰어 배정의 입력이 되므로, 새 앱/패키지를
+# 추가하면 여기와 .github/labels.yml 을 함께 갱신할 것.
+
+"area: core-front":
+  - changed-files:
+      - any-glob-to-any-file: "frontend/apps/core-front/**"
+
+"area: back-office-front":
+  - changed-files:
+      - any-glob-to-any-file: "frontend/apps/back-office-front/**"
+
+"area: playground":
+  - changed-files:
+      - any-glob-to-any-file: "frontend/apps/playground/**"
+
+"area: design-system":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "frontend/packages/design/**"
+          - "frontend/packages/ui/**"
+
+"area: mock":
+  - changed-files:
+      - any-glob-to-any-file: "frontend/packages/mock/**"
+
+"area: backend-api":
+  - changed-files:
+      - any-glob-to-any-file: "backend/api/**"
+
+"area: backend-domain":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/domain/**"
+          - "backend/common/**"
+
+"area: infra":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - "docker-compose.yml"
+          - "**/Dockerfile"
+          - "**/.dockerignore"
+          - "backend/*.gradle.kts"
+          - "backend/gradle.properties"
+          - "frontend/turbo.json"
+          - "frontend/package.json"
+
+"area: docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "specs/**"
+          - "*.md"

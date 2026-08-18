@@ -1,0 +1,97 @@
+# 라벨 SSOT. 이 파일이 정본이고, 반영은 `.github/scripts/sync-labels.sh` 로 한다.
+#
+# 3축 구조
+#   area:   코드 위치. .github/labeler.yml 이 변경 경로를 보고 자동 부여한다.
+#   type:   변경 종류. PR 제목의 컨벤셔널 프리픽스에서 자동 부여한다.
+#   squad:  조직 스쿼드(팀원 DB 기준). 수동.
+#   domain: 제품 도메인(도메인 문서 기준). 수동.
+#
+# squad 와 domain 은 서로 다른 분류다 — squad 는 "누가", domain 은 "무엇을".
+# 이름이 겹치는 study 도 별개 축이므로 접두사로 구분한다.
+# 멤버-스쿼드 매핑은 docs/team.md 참조.
+
+# ── area ────────────────────────────────────────────────────────────
+- name: "area: core-front"
+  color: "1D76DB"
+  description: "사용자향 Next.js 앱 (frontend/apps/core-front)"
+- name: "area: back-office-front"
+  color: "1D76DB"
+  description: "운영 콘솔 Next.js 앱 (frontend/apps/back-office-front)"
+- name: "area: playground"
+  color: "1D76DB"
+  description: "디자인 playground 앱 (frontend/apps/playground)"
+- name: "area: design-system"
+  color: "5319E7"
+  description: "@studyclub/ui · @studyclub/design"
+- name: "area: mock"
+  color: "C5DEF5"
+  description: "@studyclub/mock 하드코딩 데이터"
+- name: "area: backend-api"
+  color: "0E8A16"
+  description: "Spring api 모듈 (컨트롤러·서비스·인증)"
+- name: "area: backend-domain"
+  color: "0E8A16"
+  description: "Spring domain · common 모듈"
+- name: "area: infra"
+  color: "5A5A5A"
+  description: "CI/CD · Docker · Gradle · 워크스페이스 설정"
+- name: "area: docs"
+  color: "0075CA"
+  description: "문서 · 스펙 · PRD"
+
+# ── type ────────────────────────────────────────────────────────────
+- name: "type: feat"
+  color: "A2EEEF"
+  description: "새 기능"
+- name: "type: fix"
+  color: "D73A4A"
+  description: "버그 수정"
+- name: "type: docs"
+  color: "0075CA"
+  description: "문서만 변경"
+- name: "type: ci"
+  color: "5A5A5A"
+  description: "빌드·배포·워크플로"
+- name: "type: refactor"
+  color: "FBCA04"
+  description: "동작 변화 없는 구조 개선·성능·스타일"
+- name: "type: chore"
+  color: "EDEDED"
+  description: "잡무·의존성·테스트"
+
+# ── squad (조직) ────────────────────────────────────────────────────
+- name: "squad: study"
+  color: "F9D0C4"
+  description: "스터디 스쿼드"
+- name: "squad: community"
+  color: "F9D0C4"
+  description: "커뮤니티 스쿼드"
+- name: "squad: discord"
+  color: "F9D0C4"
+  description: "디스코드 스쿼드"
+- name: "squad: device"
+  color: "F9D0C4"
+  description: "디바이스 스쿼드"
+- name: "squad: planning"
+  color: "F9D0C4"
+  description: "기획 스쿼드"
+- name: "squad: ops"
+  color: "F9D0C4"
+  description: "운영 스쿼드"
+- name: "squad: design"
+  color: "F9D0C4"
+  description: "디자이너 스쿼드"
+
+# ── domain (제품) ───────────────────────────────────────────────────
+- name: "domain: study"
+  color: "BFD4F2"
+  description: "스터디 생성·탐색·모집·신청"
+- name: "domain: attendance"
+  color: "BFD4F2"
+  description: "출석·수강 관리 (세션·출석부·정정·휴가)"
+- name: "domain: dashboard"
+  color: "BFD4F2"
+  description: "현황·통계 대시보드"
+- name: "domain: platform"
+  color: "BFD4F2"
+  description: "기반 (스키마·인증·공통)"
