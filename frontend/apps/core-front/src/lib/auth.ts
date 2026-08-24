@@ -6,6 +6,7 @@ export const STORAGE_PREFIX = "sc_";
 export const PLATFORM = "CORE";
 
 export const ACCESS_COOKIE = `${STORAGE_PREFIX}access_token`;
+export const REFRESH_COOKIE = `${STORAGE_PREFIX}refresh_token`;
 const USER_KEY = `${STORAGE_PREFIX}user`;
 
 export type SessionUser = {
