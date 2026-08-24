@@ -1,6 +1,7 @@
 // BO code 교환 — platform 을 서버측에서 BACK_OFFICE 로 강제 주입(클라이언트 값 불신).
 // 백엔드가 allowlist(BACK_OFFICE_ALLOWED_EMAILS) 통과자만 토큰 발급.
 import { NextRequest, NextResponse } from "next/server";
+
 import { ACCESS_COOKIE } from "@/lib/auth";
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";

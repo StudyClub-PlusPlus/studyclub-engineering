@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { Heart } from "lucide-react";
+
 import type { Locale } from "@/lib/content";
 import { t } from "@/lib/i18n";
 import { getBookmarks, setBookmarked } from "@/lib/me";

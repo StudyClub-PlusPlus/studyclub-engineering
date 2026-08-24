@@ -1,5 +1,5 @@
-import { getStudies, getOperatorMap, type Locale } from "@/lib/content";
 import { StudyBrowser } from "@/components/StudyBrowser";
+import { getStudies, getOperatorMap, type Locale } from "@/lib/content";
 
 const STATUS_RANK: Record<string, number> = { recruiting: 0, ongoing: 1, closed: 2 };
 

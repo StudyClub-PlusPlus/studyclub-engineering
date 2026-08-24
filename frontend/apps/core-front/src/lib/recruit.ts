@@ -12,6 +12,7 @@
  */
 
 import { recruitState, toISODate, type RecruitState } from "@studyclub/mock";
+
 import type { Locale, Study } from "@/lib/content";
 import { t } from "@/lib/i18n";
 

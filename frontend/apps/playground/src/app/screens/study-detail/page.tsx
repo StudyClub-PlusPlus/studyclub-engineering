@@ -3,8 +3,8 @@
 // 규칙 하나: 부품은 직접 만들지 말고 @studyclub/ui 에서 가져옵니다.
 //           여기 없는 게 필요하면 일단 이 파일 안에 만들고,
 //           두 화면에서 쓰이게 되면 그때 packages/ui 로 올립니다.
-import { Avatar, Badge, Button, CapacityBar, Card } from "@studyclub/ui";
 import { studies, operators } from "@studyclub/mock";
+import { Avatar, Badge, Button, CapacityBar, Card } from "@studyclub/ui";
 import { CalendarClock, MapPin } from "lucide-react";
 
 export default function StudyDetailScreen() {

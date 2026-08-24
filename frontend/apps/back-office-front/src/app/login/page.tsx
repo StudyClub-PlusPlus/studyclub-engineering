@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+
 import { buildGoogleAuthUrl, isConfigured, setUser } from "@/lib/auth";
 
 // useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.

@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { BookOpen, CalendarDays, TrendingUp, Users } from "lucide-react";
+
 import {
   MEMBER_REGIONS,
-  attendanceRate,
   events,
   getStudyCrew,
   recruitState,
@@ -12,9 +11,11 @@ import {
   type MemberRegion,
 } from "@studyclub/mock";
 import { StatCard } from "@studyclub/ui";
-import { tx, EVENT_TYPE_LABEL } from "@/lib/l10n";
-import { PageHeader, TableCard } from "@/components/ui";
+import { BookOpen, CalendarDays, TrendingUp, Users } from "lucide-react";
+
 import { Card, CategoryBars, RegionDonut } from "@/components/DashboardCharts";
+import { PageHeader, TableCard } from "@/components/ui";
+import { tx, EVENT_TYPE_LABEL } from "@/lib/l10n";
 
 /**
  * 운영 대시보드.

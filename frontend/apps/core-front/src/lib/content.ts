@@ -2,6 +2,7 @@
 // 예전 dogfood 버전은 파일시스템 yaml 을 읽었지만, public 레포에선
 // 하드코딩 mock (@studyclub/mock) 을 소스로 쓴다. 함수 시그니처/반환 모양은 동일 유지.
 // TODO(api): 팀 합류 후 api.studyclub-plusplus.com fetch 로 교체.
+import type { Study, StudyclubEvent, Operator, Member, Site, Announcement } from "@studyclub/mock";
 import {
   studies as studiesData,
   events as eventsData,
@@ -29,8 +30,6 @@ export type {
   Site,
   Announcement,
 } from "@studyclub/mock";
-
-import type { Study, StudyclubEvent, Operator, Member, Site, Announcement } from "@studyclub/mock";
 
 function sortByOrder<T extends { id: string; order?: number }>(items: T[]): T[] {
   return [...items].sort(

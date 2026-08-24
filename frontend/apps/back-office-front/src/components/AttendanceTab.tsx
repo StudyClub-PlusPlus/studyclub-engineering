@@ -1,6 +1,5 @@
 "use client";
 
-import { Plus } from "lucide-react";
 import {
   attendanceRate,
   type AttendanceStatus,
@@ -9,6 +8,7 @@ import {
   type StudySession,
 } from "@studyclub/mock";
 import { Button } from "@studyclub/ui";
+import { Plus } from "lucide-react";
 
 /**
  * 출석 탭 — 크루 × 회차 격자.
@@ -55,7 +55,6 @@ function Cell({
 }
 
 export function AttendanceTab({
-  study,
   crew,
   sessions,
   attendance,

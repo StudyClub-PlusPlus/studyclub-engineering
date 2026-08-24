@@ -1,7 +1,8 @@
 // BFF — bo_access_token 쿠키(httpOnly)를 서버측에서 읽어 백엔드 /users 를 Bearer 로 호출.
 // 클라이언트는 이 라우트만 치면 됨(같은 오리진, 쿠키 자동 첨부).
-import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+
 import { ACCESS_COOKIE } from "@/lib/auth";
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";

@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 import { LayoutDashboard, BookOpen, CalendarDays, Users, LogOut } from "lucide-react";
+
 import { getUser, logout, type SessionUser } from "@/lib/auth";
 
 const NAV = [
