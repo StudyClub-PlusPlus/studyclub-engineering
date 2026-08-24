@@ -75,6 +75,53 @@ export function joinStudy(id: string): Promise<void> {
 }
 ```
 
+## 인증 & 쿠키
+
+### 쿠키 자동 전송
+
+`sc_access_token` httpOnly 쿠키는 **동일 오리진 요청에 자동으로 포함**된다. `fetch` 에 `credentials: 'include'` 를 추가할 필요 없다. 단, `/api/auth/*` BFF Route Handler 는 쿠키를 읽어 백엔드에 `Authorization: Bearer <token>` 헤더로 전달한다.
+
+클라이언트 코드에서 직접 백엔드를 호출하지 않는다 — 반드시 `/api/*` BFF 를 거쳐야 한다.
+
+### 401 처리 — 토큰 재발급 후 재시도
+
+access token 이 만료되면 백엔드가 401 을 반환한다. 클라이언트는 다음 순서로 처리한다:
+
+```typescript
+// lib/api/client.ts — 401 재시도 포함 예시
+export async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+  });
+
+  if (res.status === 401) {
+    // refresh 시도
+    const refreshed = await fetch('/api/auth/refresh', { method: 'POST' });
+    if (!refreshed.ok) {
+      // refresh 도 실패 → 로그인 페이지로
+      window.location.href = '/login';
+      throw new ApiError(401, 'Session expired');
+    }
+    // 원래 요청 재시도 (1회)
+    const retry = await fetch(`/api${path}`, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...options?.headers },
+    });
+    if (!retry.ok) throw new ApiError(retry.status, 'Request failed after refresh');
+    return (await retry.json()).data;
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, body?.message ?? 'Request failed');
+  }
+  return (await res.json()).data;
+}
+```
+
+Server Component 에서의 401 은 미들웨어가 차단하기 전에 발생하지 않는다. 위 패턴은 Client Component 의 mutation(POST/PUT/DELETE) 에 적용한다.
+
 ## Mock → 실 API 교체 전략
 
 ### Step 1: `// TODO(api)` 검색

@@ -15,8 +15,16 @@
 | 레이아웃 | `src/app/**/layout.tsx` | 공통 레이아웃 |
 | UI 컴포넌트 | `src/components/` | StudyCard, Nav, Footer |
 
-현재 공유 컴포넌트 라이브러리(`packages/ui`)는 없음. 앱별 `components/` 에 직접 작성.
-앱 간 공유가 필요해지면 `packages/ui` 패키지를 만들어 이동.
+공유 컴포넌트 라이브러리 `@studyclub/ui` (`packages/ui`) 가 존재한다. 세 앱 모두 이 패키지에 의존하고 있으므로, **새 컴포넌트를 앱 로컬에 직접 만들기 전에 먼저 확인할 것**.
+
+**`@studyclub/ui` 제공 컴포넌트**: `Button` `Badge` `Card` `Input` `Select` `Textarea` `FilterChip` `Avatar` `StatCard` `CapacityBar` `Checkbox` `Modal` `EmptyState`
+
+```typescript
+import { Button, Badge, Card } from '@studyclub/ui';
+```
+
+두 앱에 걸쳐 공유되는 새 컴포넌트는 `packages/ui/src/` 에 추가하고 `src/index.ts` 에 export 한다.
+앱 전용(한 앱에서만 쓰이는) 컴포넌트는 해당 앱의 `src/components/` 에 작성한다.
 
 ## 네이밍 규칙
 
