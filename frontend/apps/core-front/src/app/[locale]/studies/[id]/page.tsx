@@ -9,7 +9,7 @@ import { BookmarkButton } from "@/components/BookmarkButton";
 import { HotBadge } from "@/components/HotBadge";
 import { categoryGradient, categoryMeta } from "@/components/StudyThumb";
 import { getStudy, getStudies, type Locale } from "@/lib/content";
-import { t } from "@/lib/i18n";
+import { m, t } from "@/lib/i18n";
 import { toISODate } from "@/lib/recruit";
 
 export async function generateStaticParams() {
