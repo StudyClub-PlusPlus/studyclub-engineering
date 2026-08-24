@@ -1,5 +1,7 @@
 import Link from "next/link";
+
 import { MapPin, ChevronRight } from "lucide-react";
+
 import type { StudyclubEvent, Locale } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
 

@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
 import { Search } from "lucide-react";
+
+import { EventRow } from "./EventCard";
 import type { Locale, StudyclubEvent } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
-import { EventRow } from "./EventCard";
 
 /**
  * 행사 목록 — 스터디 목록과 **같은 규칙**으로 고른다.

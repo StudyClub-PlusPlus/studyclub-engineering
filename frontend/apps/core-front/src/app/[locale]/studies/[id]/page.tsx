@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarClock, CalendarCheck } from "lucide-react";
-import { getStudy, getStudies, type Locale } from "@/lib/content";
+
 import { isHotStudy } from "@studyclub/mock";
-import { m, t } from "@/lib/i18n";
-import { categoryGradient, categoryMeta } from "@/components/StudyThumb";
-import { recruitLabel, recruitState, toISODate } from "@/lib/recruit";
+import { ArrowLeft, CalendarClock } from "lucide-react";
+
+import { ApplyButton } from "@/components/ApplyButton";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { HotBadge } from "@/components/HotBadge";
-import { ApplyButton } from "@/components/ApplyButton";
+import { categoryGradient, categoryMeta } from "@/components/StudyThumb";
+import { getStudy, getStudies, type Locale } from "@/lib/content";
+import { t } from "@/lib/i18n";
+import { toISODate } from "@/lib/recruit";
 
 export async function generateStaticParams() {
   const studies = await getStudies();
@@ -32,8 +34,6 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
   const rec = study.recruitment;
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
   // 모집 여부는 목록 카드·탭과 **같은 함수**로 판정한다. 여기서 따로 계산하면 화면 간 표기가 어긋난다.
-  const state = recruitState(study);
-  const closed = state === "closed";
   const deadline = toISODate(rec?.deadline);
 
 

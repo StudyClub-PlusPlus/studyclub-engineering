@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useMemo, useState } from "react";
+
 import {
   STUDY_CATEGORIES,
   attendanceRate,
@@ -11,9 +12,10 @@ import {
   toISODate,
   type Study,
 } from "@studyclub/mock";
-import { tx } from "@/lib/l10n";
-import { TableCard } from "@/components/ui";
 import { Badge } from "@studyclub/ui";
+
+import { TableCard } from "@/components/ui";
+import { tx } from "@/lib/l10n";
 
 /**
  * 스터디 관리 목록.

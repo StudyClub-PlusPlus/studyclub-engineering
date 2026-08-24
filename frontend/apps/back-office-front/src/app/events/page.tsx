@@ -1,7 +1,8 @@
 import { events } from "@studyclub/mock";
-import { PageHeader } from "@/components/ui";
-import { EventsTable } from "@/components/EventsTable";
+
 import { EventCreateButton } from "@/components/EventCreateButton";
+import { EventsTable } from "@/components/EventsTable";
+import { PageHeader } from "@/components/ui";
 
 export const metadata = { title: "행사" };
 

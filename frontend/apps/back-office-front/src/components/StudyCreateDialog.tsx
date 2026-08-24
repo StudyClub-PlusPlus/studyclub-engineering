@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
+import type { Study } from "@studyclub/mock";
 import { Button, Modal } from "@studyclub/ui";
+
 import {
   EMPTY_FORM,
   StudyForm,
@@ -10,7 +13,6 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from "@/components/StudyForm";
-import type { Study } from "@studyclub/mock";
 
 /**
  * 스터디 등록 팝업 — 프로토타입.

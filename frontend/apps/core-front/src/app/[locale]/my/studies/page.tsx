@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { CalendarClock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
 import { studies as allStudies, type Study } from "@studyclub/mock";
-import { getUser } from "@/lib/auth";
-import type { Locale } from "@/lib/content";
-import { t } from "@/lib/i18n";
-import { getApplications } from "@/lib/me";
+import { CalendarClock } from "lucide-react";
+
 import { categoryGradient, categoryMeta } from "@/components/StudyThumb";
 import {
   STATUS_LABEL,
@@ -23,6 +21,10 @@ import {
   todaySession,
   type MyStatus,
 } from "@/lib/attendance";
+import { getUser } from "@/lib/auth";
+import type { Locale } from "@/lib/content";
+import { t } from "@/lib/i18n";
+import { getApplications } from "@/lib/me";
 
 /**
  * 내 스터디.

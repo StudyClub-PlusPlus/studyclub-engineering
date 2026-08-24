@@ -1,4 +1,5 @@
 import { MessageCircle } from "lucide-react";
+
 import type { Locale } from "@/lib/content";
 import { m } from "@/lib/i18n";
 

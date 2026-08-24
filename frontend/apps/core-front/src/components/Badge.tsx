@@ -1,4 +1,5 @@
 import { Badge, type BadgeTone } from "@studyclub/ui";
+
 import type { Locale, Study } from "@/lib/content";
 import { m } from "@/lib/i18n";
 

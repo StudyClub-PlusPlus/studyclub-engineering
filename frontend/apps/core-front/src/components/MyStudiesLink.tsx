@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { getUser } from "@/lib/auth";
 import type { Locale } from "@/lib/content";
 import { t } from "@/lib/i18n";
-import { getUser } from "@/lib/auth";
 
 /**
  * 상단 「내 스터디」 — 로그인한 회원에게만 보인다.

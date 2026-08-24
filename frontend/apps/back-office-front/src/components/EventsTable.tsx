@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
 import type { StudyclubEvent } from "@studyclub/mock";
 import { Badge } from "@studyclub/ui";
-import { tx, EVENT_TYPE_LABEL } from "@/lib/l10n";
-import { TableCard } from "@/components/ui";
+
 import { EventDialog } from "@/components/EventDialog";
 import { EVENT_TYPES } from "@/components/EventForm";
+import { TableCard } from "@/components/ui";
+import { tx, EVENT_TYPE_LABEL } from "@/lib/l10n";
 
 /**
  * 행사 관리 목록 — 스터디 목록과 같은 규칙.

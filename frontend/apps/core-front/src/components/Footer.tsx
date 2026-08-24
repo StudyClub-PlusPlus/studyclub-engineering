@@ -1,5 +1,7 @@
 import Link from "next/link";
+
 import { ArrowUpRight } from "lucide-react";
+
 import type { Locale, Site } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
 

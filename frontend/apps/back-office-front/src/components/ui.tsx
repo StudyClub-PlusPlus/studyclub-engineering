@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
-import { Plus } from "lucide-react";
+
 import { Badge, Button, type BadgeTone } from "@studyclub/ui";
+import { Plus } from "lucide-react";
+
 import { STATUS_LABEL } from "@/lib/l10n";
 
 /** 스터디 상태 → 디자인 시스템 tone (design-system.md §2-5). */

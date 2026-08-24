@@ -1,8 +1,10 @@
 import Link from "next/link";
+
 import { BookOpen, Compass, UserPlus, Sparkles, HelpCircle } from "lucide-react";
+
+import { JoinCta } from "@/components/JoinCta";
 import { getSite, type Locale, type L10n } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
-import { JoinCta } from "@/components/JoinCta";
 
 type Section = { id: string; icon: typeof BookOpen; title: L10n };
 

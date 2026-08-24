@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import type { Study } from "@studyclub/mock";
 import { Button, Modal } from "@studyclub/ui";
+
 import {
   StudyForm,
   studyToForm,

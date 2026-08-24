@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from "lucide-react";
+
 import { getEvent, getEvents, type Locale } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
 
