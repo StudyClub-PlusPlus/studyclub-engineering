@@ -2,6 +2,7 @@
 
 import type { StudyclubEvent } from "@studyclub/mock";
 import { Input, Select } from "@studyclub/ui";
+
 import { tx, EVENT_TYPE_LABEL } from "@/lib/l10n";
 
 /**

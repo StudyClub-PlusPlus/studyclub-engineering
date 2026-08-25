@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { CalendarClock } from "lucide-react";
-import type { Locale, Operator, Study } from "@/lib/content";
-import { m, t } from "@/lib/i18n";
-import { recruitLabel, recruitState, toISODate } from "@/lib/recruit";
+
 import { isHotStudy } from "@studyclub/mock";
-import { categoryGradient, categoryMeta } from "./StudyThumb";
+import { CalendarClock } from "lucide-react";
+
 import { BookmarkButton } from "./BookmarkButton";
 import { HotBadge } from "./HotBadge";
+import { categoryGradient, categoryMeta } from "./StudyThumb";
+import type { Locale, Operator, Study } from "@/lib/content";
+import { t } from "@/lib/i18n";
+import { recruitLabel, recruitState, toISODate } from "@/lib/recruit";
 
 function RecruitCta({ study, locale }: { study: Study; locale: Locale }) {
   const state = recruitState(study);
@@ -38,7 +40,6 @@ function RecruitCta({ study, locale }: { study: Study; locale: Locale }) {
 export function StudyCard({
   study,
   locale,
-  lead,
 }: {
   study: Study;
   locale: Locale;

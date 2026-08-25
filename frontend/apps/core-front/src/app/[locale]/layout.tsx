@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
-import { Nav } from "@/components/Nav";
+
 import { Footer } from "@/components/Footer";
+import { Nav } from "@/components/Nav";
 import { getSite } from "@/lib/content";
 import { LOCALES, isLocale } from "@/lib/i18n";
 

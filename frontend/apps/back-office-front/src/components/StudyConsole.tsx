@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { useMemo, useState } from "react";
+
 import {
   attendanceRate,
   getStudyCrew,
@@ -15,10 +15,12 @@ import {
   type Study,
 } from "@studyclub/mock";
 import { Badge } from "@studyclub/ui";
-import { tx } from "@/lib/l10n";
-import { CrewTab } from "@/components/CrewTab";
+import { ArrowLeft } from "lucide-react";
+
 import { AttendanceTab } from "@/components/AttendanceTab";
+import { CrewTab } from "@/components/CrewTab";
 import { StudyInfoTab } from "@/components/StudyInfoTab";
+import { tx } from "@/lib/l10n";
 
 /**
  * 스터디 운영 콘솔.

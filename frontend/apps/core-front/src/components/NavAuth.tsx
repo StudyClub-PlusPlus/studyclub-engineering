@@ -2,12 +2,14 @@
 
 // Nav 우측 auth 영역 — 서버 컴포넌트 Nav 안에 끼우는 client 아일랜드.
 // 로그아웃 상태: "로그인" 버튼 / 로그인 상태: 아바타+이름 → 드롭다운(마이페이지·로그아웃).
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
 import { ChevronDown } from "lucide-react";
-import type { Locale } from "@/lib/content";
+
 import { getUser, logout, type SessionUser } from "@/lib/auth";
+import type { Locale } from "@/lib/content";
 import { IS_DEV, enterPreview as startPreview, syncPreview } from "@/lib/preview";
 
 export function NavAuth({ locale }: { locale: Locale }) {

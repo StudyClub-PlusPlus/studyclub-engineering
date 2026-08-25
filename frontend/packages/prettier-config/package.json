@@ -1,0 +1,14 @@
+{
+  "name": "@studyclub/prettier-config",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "main": "index.js",
+  "types": "index.d.ts",
+  "peerDependencies": {
+    "prettier": ">= 3"
+  },
+  "devDependencies": {
+    "@types/prettier": "^3.0.0"
+  }
+}

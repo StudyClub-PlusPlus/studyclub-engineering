@@ -1,7 +1,8 @@
 import { studies } from "@studyclub/mock";
-import { PageHeader } from "@/components/ui";
+
 import { StudiesTable } from "@/components/StudiesTable";
 import { StudyCreateButton } from "@/components/StudyCreateButton";
+import { PageHeader } from "@/components/ui";
 
 export const metadata = { title: "스터디" };
 

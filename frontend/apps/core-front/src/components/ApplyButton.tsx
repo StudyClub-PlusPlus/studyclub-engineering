@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+
+import { ApplyDialog } from "./ApplyDialog";
 import type { Locale, Study } from "@/lib/content";
 import { recruitLabel, recruitState } from "@/lib/recruit";
-import { ApplyDialog } from "./ApplyDialog";
 
 /** 신청 버튼 + 폼. 서버 컴포넌트인 상세 페이지에서 이 조각만 클라이언트로 분리한다. */
 export function ApplyButton({ study, locale }: { study: Study; locale: Locale }) {

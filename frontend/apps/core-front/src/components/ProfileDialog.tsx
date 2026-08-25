@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { MEMBER_REGIONS, type MemberRegion } from "@studyclub/mock";
 import { Button, Input, Modal } from "@studyclub/ui";
+
 import type { Locale } from "@/lib/content";
 import { t } from "@/lib/i18n";
 

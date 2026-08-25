@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+
 import { STUDY_CATEGORIES } from "@studyclub/mock";
+import { Search } from "lucide-react";
+
+import { StudyCard } from "./StudyCard";
 import type { Locale, Operator, Study } from "@/lib/content";
 import { m, t } from "@/lib/i18n";
 import { recruitState, recruitTabLabel, type RecruitState } from "@/lib/recruit";
-import { StudyCard } from "./StudyCard";
 
 /** 상태는 칩이 아니라 최상위 탭으로 분기한다. 카드 CTA와 동일 기준(`lib/recruit`). */
 type StateTab = RecruitState | "all";

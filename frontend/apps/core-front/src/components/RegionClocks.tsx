@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import type { Locale } from "@/lib/content";
 
 type Region = {

@@ -1,9 +1,11 @@
 import Link from "next/link";
+
 import { ArrowRight, BookOpen, Calendar, Compass, MessageCircle } from "lucide-react";
-import { getSite, getOperators, type Locale } from "@/lib/content";
-import { m, t } from "@/lib/i18n";
+
 import { JoinCta } from "@/components/JoinCta";
 import { RegionClocks } from "@/components/RegionClocks";
+import { getSite, getOperators, type Locale } from "@/lib/content";
+import { m, t } from "@/lib/i18n";
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;

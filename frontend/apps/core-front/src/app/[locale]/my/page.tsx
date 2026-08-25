@@ -2,18 +2,18 @@
 
 // 수강생 페이지(A8) — 로그인 게이팅. 서버 미들웨어가 access 쿠키로 1차 게이트하고,
 // 여기서도 클라이언트 세션(sc_user)이 없으면 /login 으로 보낸다(방어적).
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { CalendarClock, Heart } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
 import { MEMBER_REGIONS, studies as allStudies, type MemberRegion, type Study } from "@studyclub/mock";
+import { CalendarClock, Heart } from "lucide-react";
+
+import { ProfileDialog } from "@/components/ProfileDialog";
+import { categoryGradient, categoryMeta } from "@/components/StudyThumb";
 import { getUser, logout, type SessionUser } from "@/lib/auth";
 import type { Locale } from "@/lib/content";
 import { t } from "@/lib/i18n";
-import { recruitState } from "@/lib/recruit";
-import { categoryGradient, categoryMeta } from "@/components/StudyThumb";
-import { ProfileDialog } from "@/components/ProfileDialog";
-import { IS_DEV, syncPreview } from "@/lib/preview";
 import {
   cancelApplication,
   getApplications,
@@ -29,6 +29,8 @@ import {
   type Application,
   type DiscordLink,
 } from "@/lib/me";
+import { IS_DEV, syncPreview } from "@/lib/preview";
+import { recruitState } from "@/lib/recruit";
 
 /**
  * 마이페이지.

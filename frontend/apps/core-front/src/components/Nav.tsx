@@ -1,9 +1,10 @@
 import Link from "next/link";
-import type { Locale } from "@/lib/content";
-import { m } from "@/lib/i18n";
+
+import { MyStudiesLink } from "@/components/MyStudiesLink";
 import { NavAuth } from "@/components/NavAuth";
 import { NavLinks } from "@/components/NavLinks";
-import { MyStudiesLink } from "@/components/MyStudiesLink";
+import type { Locale } from "@/lib/content";
+import { m } from "@/lib/i18n";
 
 export function Nav({
   locale,
