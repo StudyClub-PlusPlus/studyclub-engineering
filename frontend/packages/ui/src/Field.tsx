@@ -1,25 +1,21 @@
-"use client";
+'use client';
 
-import { useId } from "react";
-import type {
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
-} from "react";
-import { cx } from "./cx";
+import { useId } from 'react';
+import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+
+import { cx } from './cx';
 
 /** design-system.md §9-2 — 입력 계열 공통 셸. */
 const CONTROL_BASE = cx(
-  "w-full rounded-control border bg-bg px-3.5 text-sm text-neutral-900",
-  "placeholder:text-fg-placeholder",
-  "transition-[border-color,box-shadow] duration-fast ease-out",
-  "focus:outline-none",
-  "disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-neutral-400",
+  'w-full rounded-control border bg-bg px-3.5 text-sm text-neutral-900',
+  'placeholder:text-fg-placeholder',
+  'transition-[border-color,box-shadow] duration-fast ease-out',
+  'focus:outline-none',
+  'disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-neutral-400',
 );
 
-const CONTROL_OK = "border-border-strong focus:border-brand focus:shadow-[var(--ring)]";
-const CONTROL_ERROR = "border-error-600 focus:border-error-600 focus:shadow-[var(--ring-error)]";
+const CONTROL_OK = 'border-border-strong focus:border-brand focus:shadow-(--ring)';
+const CONTROL_ERROR = 'border-error-600 focus:border-error-600 focus:shadow-(--ring-error)';
 
 function controlClass(invalid: boolean, extra?: string) {
   return cx(CONTROL_BASE, invalid ? CONTROL_ERROR : CONTROL_OK, extra);
@@ -37,40 +33,30 @@ export interface FieldShellProps {
 }
 
 /** 라벨 + 컨트롤 + helper/error 를 묶는다. error 가 있으면 helper 대신 error 를 보여준다. */
-export function FieldShell({
-  label,
-  helper,
-  error,
-  required,
-  labelHint,
-  htmlFor,
-  children,
-}: FieldShellProps) {
+export function FieldShell({ label, helper, error, required, labelHint, htmlFor, children }: FieldShellProps) {
   const message = error ?? helper;
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className='flex flex-col gap-1.5'>
       {(label || labelHint) && (
-        <div className="flex items-baseline justify-between gap-2">
-          <label htmlFor={htmlFor} className="text-sm font-medium text-neutral-800">
+        <div className='flex items-baseline justify-between gap-2'>
+          <label htmlFor={htmlFor} className='text-sm font-medium text-neutral-800'>
             {label}
             {required && (
-              <span className="ml-0.5 text-error-600" aria-hidden="true">
+              <span className='ml-0.5 text-error-600' aria-hidden='true'>
                 *
               </span>
             )}
           </label>
-          {labelHint && <span className="shrink-0 text-xs text-fg-placeholder">{labelHint}</span>}
+          {labelHint && <span className='shrink-0 text-xs text-fg-placeholder'>{labelHint}</span>}
         </div>
       )}
       {children}
-      {message && (
-        <p className={cx("text-xs", error ? "text-error-700" : "text-fg-muted")}>{message}</p>
-      )}
+      {message && <p className={cx('text-xs', error ? 'text-error-700' : 'text-fg-muted')}>{message}</p>}
     </div>
   );
 }
 
-type FieldMeta = Pick<FieldShellProps, "label" | "helper" | "error" | "required" | "labelHint">;
+type FieldMeta = Pick<FieldShellProps, 'label' | 'helper' | 'error' | 'required' | 'labelHint'>;
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement>, FieldMeta {}
 
@@ -85,7 +71,7 @@ export function Input({ label, helper, error, required, labelHint, className, id
         id={fieldId}
         required={required}
         aria-invalid={invalid || undefined}
-        className={controlClass(invalid, cx("h-10", className))}
+        className={controlClass(invalid, cx('h-10', className))}
       />
     </FieldShell>
   );
@@ -104,7 +90,7 @@ export function Select({ label, helper, error, required, labelHint, className, i
         id={fieldId}
         required={required}
         aria-invalid={invalid || undefined}
-        className={controlClass(invalid, cx("h-10", className))}
+        className={controlClass(invalid, cx('h-10', className))}
       />
     </FieldShell>
   );
@@ -134,7 +120,7 @@ export function Textarea({
         rows={rows}
         required={required}
         aria-invalid={invalid || undefined}
-        className={controlClass(invalid, cx("py-2.5 leading-relaxed", className))}
+        className={controlClass(invalid, cx('py-2.5 leading-relaxed', className))}
       />
     </FieldShell>
   );

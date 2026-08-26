@@ -1,4 +1,4 @@
-import { cx } from "./cx";
+import { cx } from './cx';
 
 /**
  * design-system.md §9-5 정원 진행바.
@@ -25,20 +25,14 @@ export interface CapacityBarProps {
   className?: string;
 }
 
-export function CapacityBar({
-  taken,
-  total,
-  showLabel = false,
-  label,
-  className,
-}: CapacityBarProps) {
+export function CapacityBar({ taken, total, showLabel = false, label, className }: CapacityBarProps) {
   const pct = capacityPercent(taken, total);
   const warn = pct >= CAPACITY_WARN_THRESHOLD;
   return (
-    <div className={cx("flex flex-col gap-1", className)}>
+    <div className={cx('flex flex-col gap-1', className)}>
       <div
-        className="h-1.5 w-full overflow-hidden rounded-pill bg-surface-3"
-        role="progressbar"
+        className='h-1.5 w-full overflow-hidden rounded-pill bg-surface-3'
+        role='progressbar'
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -46,13 +40,13 @@ export function CapacityBar({
       >
         <div
           className={cx(
-            "h-full rounded-pill transition-[width] duration-base ease-out",
-            warn ? "bg-warning-500" : "bg-brand",
+            'h-full rounded-pill transition-[width] duration-base ease-out',
+            warn ? 'bg-warning-500' : 'bg-brand',
           )}
           style={{ width: `${pct}%` }}
         />
       </div>
-      {showLabel && <span className="tnum text-xs text-fg-placeholder">{label ?? `정원 ${pct}%`}</span>}
+      {showLabel && <span className='tnum text-xs text-fg-placeholder'>{label ?? `정원 ${pct}%`}</span>}
     </div>
   );
 }
