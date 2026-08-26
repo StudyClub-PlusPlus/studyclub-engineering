@@ -9,6 +9,7 @@
     "dev": { "cache": false, "persistent": true, "passThroughEnv": ["*"] },
     "start:dev": { "cache": false, "persistent": true, "passThroughEnv": ["*"] },
     "lint": { "dependsOn": ["^lint"] },
-    "typecheck": { "dependsOn": ["^typecheck"] }
+    "typecheck": { "dependsOn": ["^typecheck"] },
+    "test": { "dependsOn": ["^build"] }
   }
 }
