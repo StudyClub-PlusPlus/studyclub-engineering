@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { getStudyCrew, type Study, type StudySession } from "@studyclub/mock";
+import { getStudyCrew, type Study, type StudySession } from '@studyclub/mock';
 
 /**
  * 회원 본인의 출석.
@@ -16,29 +16,29 @@ import { getStudyCrew, type Study, type StudySession } from "@studyclub/mock";
  * TODO(api): POST /api/studies/{id}/sessions/{sessionId}/attendance
  */
 
-const KEY = "sc_my_attendance";
+const KEY = 'sc_my_attendance';
 
 /** 휴가는 회원이 미리 알리는 부재다. 운영자 출석부의 출석/지각/결석과는 별개 축. */
-export type MyStatus = "present" | "late" | "absent" | "excused";
+export type MyStatus = 'present' | 'late' | 'absent' | 'excused';
 
 export const STATUS_LABEL: Record<MyStatus, string> = {
-  present: "출석",
-  late: "지각",
-  absent: "결석",
-  excused: "휴가",
+  present: '출석',
+  late: '지각',
+  absent: '결석',
+  excused: '휴가',
 };
 
 export const STATUS_STYLE: Record<MyStatus, string> = {
-  present: "bg-success-100 text-success-700",
-  late: "bg-warning-100 text-warning-700",
-  absent: "bg-error-50 text-error-700",
-  excused: "bg-surface-2 text-fg-secondary",
+  present: 'bg-success-100 text-success-700',
+  late: 'bg-warning-100 text-warning-700',
+  absent: 'bg-error-50 text-error-700',
+  excused: 'bg-surface-2 text-fg-secondary',
 };
 
 type Store = Record<string, Record<string, MyStatus>>;
 
 function read(): Store {
-  if (typeof window === "undefined") return {};
+  if (typeof window === 'undefined') return {};
   try {
     const raw = localStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as Store) : {};
@@ -67,7 +67,7 @@ function save(studyId: string, sessionId: string, status: MyStatus) {
 
 /** 「매주 목 20:00 · 8주 과정」에서 시각을 뽑는다. 없으면 20:00 으로 본다. */
 function startHour(study: Study): { h: number; m: number } {
-  const raw = study.schedule?.ko ?? "";
+  const raw = study.schedule?.ko ?? '';
   const m = raw.match(/(\d{1,2}):(\d{2})/);
   return m ? { h: Number(m[1]), m: Number(m[2]) } : { h: 20, m: 0 };
 }
@@ -97,20 +97,20 @@ export function resolveStatus(
 ): MyStatus | undefined {
   const saved = stored[session.id];
   if (saved) return saved;
-  return now > sessionWindow(study, session).end ? "absent" : undefined;
+  return now > sessionWindow(study, session).end ? 'absent' : undefined;
 }
 
 /** 지금 체크인한다. 누른 시각으로 출석·지각이 갈린다. */
 export function checkIn(study: Study, session: StudySession, now = new Date()): MyStatus {
   const { start } = sessionWindow(study, session);
-  const status: MyStatus = now.getTime() <= start.getTime() + LATE_AFTER_MIN * 60_000 ? "present" : "late";
+  const status: MyStatus = now.getTime() <= start.getTime() + LATE_AFTER_MIN * 60_000 ? 'present' : 'late';
   save(study.id, session.id, status);
   return status;
 }
 
 export function takeLeave(study: Study, session: StudySession): MyStatus {
-  save(study.id, session.id, "excused");
-  return "excused";
+  save(study.id, session.id, 'excused');
+  return 'excused';
 }
 
 /** 오늘 회차. 없으면 undefined — 오늘 모이지 않는 스터디다. */
@@ -123,18 +123,14 @@ export function sessionsOf(study: Study): StudySession[] {
 }
 
 /** 내 출석률(%). 아직 끝나지 않은 회차는 분모에서 뺀다. 휴가는 결석으로 세지 않는다. */
-export function myRate(
-  study: Study,
-  stored: Record<string, MyStatus>,
-  now = new Date(),
-): number | undefined {
+export function myRate(study: Study, stored: Record<string, MyStatus>, now = new Date()): number | undefined {
   const done = sessionsOf(study).filter((s) => now > sessionWindow(study, s).end);
   if (done.length === 0) return undefined;
-  const counted = done.filter((s) => (stored[s.id] ?? "absent") !== "excused");
+  const counted = done.filter((s) => (stored[s.id] ?? 'absent') !== 'excused');
   if (counted.length === 0) return undefined;
   const attended = counted.filter((s) => {
     const v = stored[s.id];
-    return v === "present" || v === "late";
+    return v === 'present' || v === 'late';
   }).length;
   return Math.round((attended / counted.length) * 100);
 }

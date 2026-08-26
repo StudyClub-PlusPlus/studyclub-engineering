@@ -1,14 +1,8 @@
-"use client";
+'use client';
 
-import {
-  attendanceRate,
-  type AttendanceStatus,
-  type Crew,
-  type Study,
-  type StudySession,
-} from "@studyclub/mock";
-import { Button } from "@studyclub/ui";
-import { Plus } from "lucide-react";
+import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudySession } from '@studyclub/mock';
+import { Button } from '@studyclub/ui';
+import { Plus } from 'lucide-react';
 
 /**
  * 출석 탭 — 크루 × 회차 격자.
@@ -22,34 +16,28 @@ import { Plus } from "lucide-react";
  */
 
 const CELL_STYLE: Record<AttendanceStatus, string> = {
-  present: "border-transparent bg-success-100 text-success-700",
-  late: "border-transparent bg-warning-100 text-warning-700",
-  absent: "border-transparent bg-error-50 text-error-700",
+  present: 'border-transparent bg-success-100 text-success-700',
+  late: 'border-transparent bg-warning-100 text-warning-700',
+  absent: 'border-transparent bg-error-50 text-error-700',
 };
 
 const CELL_LABEL: Record<AttendanceStatus, string> = {
-  present: "출석",
-  late: "지각",
-  absent: "결석",
+  present: '출석',
+  late: '지각',
+  absent: '결석',
 };
 
-function Cell({
-  status,
-  onClick,
-}: {
-  status: AttendanceStatus | undefined;
-  onClick: () => void;
-}) {
+function Cell({ status, onClick }: { status: AttendanceStatus | undefined; onClick: () => void }) {
   return (
     <button
-      type="button"
+      type='button'
       onClick={onClick}
-      title="눌러서 출석 → 지각 → 결석 → 미체크"
+      title='눌러서 출석 → 지각 → 결석 → 미체크'
       className={`h-8 w-full rounded-sm border text-[11px] font-bold transition-colors ${
-        status ? CELL_STYLE[status] : "border-dashed border-border-strong bg-surface text-fg-muted hover:bg-surface-2"
+        status ? CELL_STYLE[status] : 'border-dashed border-border-strong bg-surface text-fg-muted hover:bg-surface-2'
       }`}
     >
-      {status ? CELL_LABEL[status] : ""}
+      {status ? CELL_LABEL[status] : ''}
     </button>
   );
 }
@@ -68,9 +56,9 @@ export function AttendanceTab({
 }) {
   if (sessions.length === 0) {
     return (
-      <div className="card px-6 py-10 text-center">
-        <p className="text-sm font-semibold text-fg">아직 회차가 없습니다.</p>
-        <Button size="sm" className="mt-4" leadingIcon={<Plus size={15} />} disabled title="미구현">
+      <div className='card px-6 py-10 text-center'>
+        <p className='text-sm font-semibold text-fg'>아직 회차가 없습니다.</p>
+        <Button size='sm' className='mt-4' leadingIcon={<Plus size={15} />} disabled title='미구현'>
           회차 등록
         </Button>
       </div>
@@ -79,32 +67,34 @@ export function AttendanceTab({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-[15px] font-bold">
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <h2 className='text-[15px] font-bold'>
           출석부
-          <span className="ml-2 text-[13px] font-medium text-fg-muted">
+          <span className='ml-2 text-[13px] font-medium text-fg-muted'>
             크루 {crew.length} · 회차 {sessions.length}
           </span>
         </h2>
-        <Button size="sm" variant="secondary" leadingIcon={<Plus size={15} />} disabled title="미구현">
+        <Button size='sm' variant='secondary' leadingIcon={<Plus size={15} />} disabled title='미구현'>
           회차 등록
         </Button>
       </div>
 
-      <div className="card mt-3 overflow-x-auto">
-        <table className="w-full border-separate border-spacing-0 text-sm">
+      <div className='card mt-3 overflow-x-auto'>
+        <table className='w-full border-separate border-spacing-0 text-sm'>
           <thead>
             <tr>
-              <th className="sticky left-0 z-[1] bg-surface px-4 py-3 text-left text-xs font-semibold text-fg-muted">
+              <th className='sticky left-0 z-[1] bg-surface px-4 py-3 text-left text-xs font-semibold text-fg-muted'>
                 크루
               </th>
               {sessions.map((s) => (
-                <th key={s.id} className="tnum w-[3.6rem] px-1 py-2 text-center text-[11px] font-semibold text-fg-secondary">
-                  {s.no}회
-                  <span className="block text-[10px] font-medium text-fg-muted">{s.date.slice(5)}</span>
+                <th
+                  key={s.id}
+                  className='tnum w-[3.6rem] px-1 py-2 text-center text-[11px] font-semibold text-fg-secondary'
+                >
+                  {s.no}회<span className='block text-[10px] font-medium text-fg-muted'>{s.date.slice(5)}</span>
                 </th>
               ))}
-              <th className="px-3 py-2 text-right text-xs font-semibold text-fg-muted">출석률</th>
+              <th className='px-3 py-2 text-right text-xs font-semibold text-fg-muted'>출석률</th>
             </tr>
           </thead>
           <tbody>
@@ -113,19 +103,19 @@ export function AttendanceTab({
               const rate = attendanceRate(row);
               return (
                 <tr key={c.id}>
-                  <td className="sticky left-0 z-[1] whitespace-nowrap border-t border-border bg-surface px-4 py-1.5 font-semibold">
+                  <td className='sticky left-0 z-[1] whitespace-nowrap border-t border-border bg-surface px-4 py-1.5 font-semibold'>
                     {c.name}
                   </td>
                   {sessions.map((s) => (
-                    <td key={s.id} className="border-t border-border px-1 py-1.5">
+                    <td key={s.id} className='border-t border-border px-1 py-1.5'>
                       <Cell status={row?.[s.id]} onClick={() => onToggle(c.id, s.id)} />
                     </td>
                   ))}
-                  <td className="tnum border-t border-border px-3 py-1.5 text-right font-bold">
+                  <td className='tnum border-t border-border px-3 py-1.5 text-right font-bold'>
                     {rate === undefined ? (
-                      <span className="text-fg-muted">—</span>
+                      <span className='text-fg-muted'>—</span>
                     ) : (
-                      <span className={rate >= 80 ? "text-success-700" : rate >= 60 ? "text-fg" : "text-error-700"}>
+                      <span className={rate >= 80 ? 'text-success-700' : rate >= 60 ? 'text-fg' : 'text-error-700'}>
                         {rate}%
                       </span>
                     )}
@@ -137,7 +127,9 @@ export function AttendanceTab({
         </table>
       </div>
 
-      <p className="mt-2 text-xs text-fg-muted">칸을 누르면 출석 → 지각 → 결석 → 미체크 순으로 바뀝니다. 출석률에는 지각도 참석으로 셉니다.</p>
+      <p className='mt-2 text-xs text-fg-muted'>
+        칸을 누르면 출석 → 지각 → 결석 → 미체크 순으로 바뀝니다. 출석률에는 지각도 참석으로 셉니다.
+      </p>
     </div>
   );
 }

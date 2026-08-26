@@ -1,5 +1,5 @@
-import { StudyBrowser } from "@/components/StudyBrowser";
-import { getStudies, getOperatorMap, type Locale } from "@/lib/content";
+import { StudyBrowser } from '@/components/StudyBrowser';
+import { getStudies, getOperatorMap, type Locale } from '@/lib/content';
 
 const STATUS_RANK: Record<string, number> = { recruiting: 0, ongoing: 1, closed: 2 };
 
@@ -12,7 +12,7 @@ export default async function StudiesPage({ params }: { params: Promise<{ locale
   );
 
   return (
-    <div className="mx-auto max-w-6xl px-6 pb-14 pt-6">
+    <div className='mx-auto max-w-6xl px-6 pb-14 pt-6'>
       <StudyBrowser studies={sorted} locale={locale} leads={leads} />
     </div>
   );

@@ -11,24 +11,24 @@
  * 않고 마감일 유무로만 표현하므로, 등록 폼에서 마감일은 선택 입력이다.
  */
 
-import { recruitState, toISODate, type RecruitState } from "@studyclub/mock";
+import { recruitState, toISODate, type RecruitState } from '@studyclub/mock';
 
-import type { Locale, Study } from "@/lib/content";
-import { t } from "@/lib/i18n";
+import type { Locale, Study } from '@/lib/content';
+import { t } from '@/lib/i18n';
 
 export { recruitState, toISODate };
 export type { RecruitState };
 
 /** 카드 CTA 문구 — 행동을 지시한다. */
 const CTA_LABEL: Record<RecruitState, { ko: string; en: string }> = {
-  apply: { ko: "신청하기", en: "Apply" },
-  closed: { ko: "모집 마감", en: "Closed" },
+  apply: { ko: '신청하기', en: 'Apply' },
+  closed: { ko: '모집 마감', en: 'Closed' },
 };
 
 /** 목록 탭 문구 — 상태를 분류한다. CTA와 달리 명사형. */
 const TAB_LABEL: Record<RecruitState, { ko: string; en: string }> = {
-  apply: { ko: "모집중", en: "Open" },
-  closed: { ko: "모집 마감", en: "Closed" },
+  apply: { ko: '모집중', en: 'Open' },
+  closed: { ko: '모집 마감', en: 'Closed' },
 };
 
 export function recruitLabel(state: RecruitState, locale: Locale): string {
@@ -46,5 +46,5 @@ export function recruitTabLabel(state: RecruitState, locale: Locale): string {
 export function recruitDeadline(study: Study, locale: Locale): string | undefined {
   const d = toISODate(study.recruitment?.deadline);
   if (!d) return undefined;
-  return locale === "ko" ? `마감 ${d}` : `Due ${d}`;
+  return locale === 'ko' ? `마감 ${d}` : `Due ${d}`;
 }

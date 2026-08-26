@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
-import type { Study } from "@studyclub/mock";
-import { Button, Modal } from "@studyclub/ui";
+import type { Study } from '@studyclub/mock';
+import { Button, Modal } from '@studyclub/ui';
 
 import {
   StudyForm,
@@ -11,7 +11,7 @@ import {
   validateStudyForm,
   type StudyFormErrors,
   type StudyFormValues,
-} from "@/components/StudyForm";
+} from '@/components/StudyForm';
 
 /**
  * 정보 탭.
@@ -52,21 +52,21 @@ export function StudyInfoTab({ study }: { study: Study }) {
   }
 
   return (
-    <div className="card px-6 py-5">
+    <div className='card px-6 py-5'>
       <StudyForm value={form} errors={errors} onChange={change} />
 
-      <div className="mt-6 flex items-center gap-3 border-t border-border pt-4">
+      <div className='mt-6 flex items-center gap-3 border-t border-border pt-4'>
         {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
         <button
-          type="button"
+          type='button'
           onClick={() => setConfirmDelete(true)}
           disabled={saving}
-          className="h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50"
+          className='h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
         >
           스터디 삭제
         </button>
-        <div className="ml-auto flex items-center gap-3">
-          {saved && <span className="text-sm font-medium text-success-700">저장되었습니다.</span>}
+        <div className='ml-auto flex items-center gap-3'>
+          {saved && <span className='text-sm font-medium text-success-700'>저장되었습니다.</span>}
           <Button onClick={save} loading={saving}>
             저장
           </Button>
@@ -76,23 +76,21 @@ export function StudyInfoTab({ study }: { study: Study }) {
       <Modal
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
-        title="스터디 삭제"
+        title='스터디 삭제'
         footer={
           <>
-            <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
+            <Button variant='secondary' onClick={() => setConfirmDelete(false)}>
               취소
             </Button>
-            <Button variant="destructive" onClick={() => setConfirmDelete(false)}>
+            <Button variant='destructive' onClick={() => setConfirmDelete(false)}>
               삭제
             </Button>
           </>
         }
       >
-        <div className="py-6 text-center">
-          <p className="text-sm font-semibold text-fg">‘{form.title}’ 스터디를 삭제합니다.</p>
-          <p className="mt-1.5 text-sm text-fg-muted">
-            크루 명단과 출석 기록도 함께 사라지며 되돌릴 수 없습니다.
-          </p>
+        <div className='py-6 text-center'>
+          <p className='text-sm font-semibold text-fg'>‘{form.title}’ 스터디를 삭제합니다.</p>
+          <p className='mt-1.5 text-sm text-fg-muted'>크루 명단과 출석 기록도 함께 사라지며 되돌릴 수 없습니다.</p>
         </div>
       </Modal>
     </div>
