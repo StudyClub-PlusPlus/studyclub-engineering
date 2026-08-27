@@ -4,7 +4,7 @@
   "private": true,
   "description": "StudyClub++ 사용자향 랜딩 (Next.js App Router, ko·en)",
   "scripts": {
-    "dev": "next dev --webpack -p 4700",
+    "dev": "next dev -p 4700",
     "build": "next build",
     "start": "next start -p 4700",
     "lint": "eslint . --max-warnings 0",
