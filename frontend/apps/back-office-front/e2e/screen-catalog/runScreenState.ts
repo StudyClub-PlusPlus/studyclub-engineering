@@ -1,9 +1,10 @@
 import type { Page, TestInfo } from '@playwright/test';
 import { expect } from '@playwright/test';
-import type { ScreenStateDef } from '../../screen-catalog/types';
-import { VIEWPORTS, resolveViewports } from '../../screen-catalog/viewports';
+
 import { executeSteps } from './adapters/screenStep';
 import { waitForPageStable } from './waitForPageStable';
+import type { ScreenStateDef } from '../../screen-catalog/types';
+import { VIEWPORTS, resolveViewports } from '../../screen-catalog/viewports';
 
 export async function runScreenState(
   page: Page,
