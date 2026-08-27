@@ -1,9 +1,9 @@
 /* 운영자 콘솔 스타일 진입점.
    색은 사용자 사이트와 100% 동일한 소스를 쓴다 — 콘솔이 다른 건 밀도(radius/행높이)뿐.
    console.overrides.css 는 색을 재정의하지 않는다 (design-system.md §8). */
-@import "@studyclub/design/tokens.css";
-@import "@studyclub/design/compat.css";
-@import "@studyclub/design/console.overrides.css";
+@import '@studyclub/design/tokens.css';
+@import '@studyclub/design/compat.css';
+@import '@studyclub/design/console.overrides.css';
 
 /* 공용 컴포넌트는 node_modules 심링크 너머에 있어 Tailwind 자동 탐지에 안 걸린다. */
 @source "../../../../packages/ui/src";

@@ -6,8 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ACCESS_COOKIE, REFRESH_COOKIE, PLATFORM } from '@/lib/auth';
 
 // 서버(컨테이너) 내부에서 백엔드에 닿는 URL. 브라우저용 NEXT_PUBLIC_API_BASE_URL 과 구분.
-const API_BASE =
-  process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));

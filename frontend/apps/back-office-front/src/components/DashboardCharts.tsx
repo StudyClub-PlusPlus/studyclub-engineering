@@ -1,4 +1,4 @@
-import { MEMBER_REGIONS, type MemberRegion } from "@studyclub/mock";
+import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
 
 /**
  * 대시보드 차트.
@@ -8,16 +8,16 @@ import { MEMBER_REGIONS, type MemberRegion } from "@studyclub/mock";
  */
 
 const REGION_COLOR: Record<MemberRegion, string> = {
-  KR: "var(--color-primary-600)",
-  NA: "var(--color-info-500)",
-  ETC: "var(--color-neutral-300)",
+  KR: 'var(--color-primary-600)',
+  NA: 'var(--color-info-500)',
+  ETC: 'var(--color-neutral-300)',
 };
 
 /** 출석률 색 — 80 이상 정상, 60 이상 주의, 그 아래 위험. 표의 출석률 색과 같은 기준. */
 function rateColor(rate: number): string {
-  if (rate >= 80) return "var(--color-success-500)";
-  if (rate >= 60) return "var(--color-warning-500)";
-  return "var(--color-error-500)";
+  if (rate >= 80) return 'var(--color-success-500)';
+  if (rate >= 60) return 'var(--color-warning-500)';
+  return 'var(--color-error-500)';
 }
 
 export function Card({
@@ -30,12 +30,12 @@ export function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="card px-6 py-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-[15px] font-bold">{title}</h2>
+    <section className='card px-6 py-5'>
+      <div className='flex items-baseline justify-between gap-3'>
+        <h2 className='text-[15px] font-bold'>{title}</h2>
         {action}
       </div>
-      <div className="mt-4">{children}</div>
+      <div className='mt-4'>{children}</div>
     </section>
   );
 }
@@ -48,20 +48,20 @@ export function RegionDonut({ data }: { data: { key: MemberRegion; count: number
   let offset = 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-6">
-      <svg viewBox="0 0 140 140" className="h-[140px] w-[140px] shrink-0 -rotate-90">
-        <circle cx="70" cy="70" r={R} fill="none" stroke="var(--color-surface-2)" strokeWidth="20" />
+    <div className='flex flex-wrap items-center gap-6'>
+      <svg viewBox='0 0 140 140' className='h-[140px] w-[140px] shrink-0 -rotate-90'>
+        <circle cx='70' cy='70' r={R} fill='none' stroke='var(--color-surface-2)' strokeWidth='20' />
         {data.map((d) => {
           const len = (d.count / total) * C;
           const el = (
             <circle
               key={d.key}
-              cx="70"
-              cy="70"
+              cx='70'
+              cy='70'
               r={R}
-              fill="none"
+              fill='none'
               stroke={REGION_COLOR[d.key]}
-              strokeWidth="20"
+              strokeWidth='20'
               strokeDasharray={`${len} ${C - len}`}
               strokeDashoffset={-offset}
             />
@@ -71,23 +71,23 @@ export function RegionDonut({ data }: { data: { key: MemberRegion; count: number
         })}
       </svg>
 
-      <ul className="flex min-w-0 flex-1 flex-col gap-2.5">
+      <ul className='flex min-w-0 flex-1 flex-col gap-2.5'>
         {data.map((d) => {
           const meta = MEMBER_REGIONS.find((r) => r.key === d.key);
           const pct = Math.round((d.count / total) * 100);
           return (
-            <li key={d.key} className="flex items-center gap-2.5">
+            <li key={d.key} className='flex items-center gap-2.5'>
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                className='h-2.5 w-2.5 shrink-0 rounded-full'
                 style={{ background: REGION_COLOR[d.key] }}
-                aria-hidden="true"
+                aria-hidden='true'
               />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
+              <span className='min-w-0 flex-1 truncate text-sm font-medium text-fg'>
                 {meta?.label.ko ?? d.key}
-                <span className="ml-1.5 text-xs text-fg-muted">{meta?.tzLabel}</span>
+                <span className='ml-1.5 text-xs text-fg-muted'>{meta?.tzLabel}</span>
               </span>
-              <span className="tnum shrink-0 text-sm font-bold text-fg">{pct}%</span>
-              <span className="tnum w-12 shrink-0 text-right text-xs text-fg-muted">{d.count}명</span>
+              <span className='tnum shrink-0 text-sm font-bold text-fg'>{pct}%</span>
+              <span className='tnum w-12 shrink-0 text-right text-xs text-fg-muted'>{d.count}명</span>
             </li>
           );
         })}
@@ -97,29 +97,25 @@ export function RegionDonut({ data }: { data: { key: MemberRegion; count: number
 }
 
 /** 카테고리별 출석률 — 가로 막대. 세로 막대는 카테고리 이름이 겹쳐 읽히지 않는다. */
-export function CategoryBars({
-  data,
-}: {
-  data: { category: string; rate: number; crew: number }[];
-}) {
+export function CategoryBars({ data }: { data: { category: string; rate: number; crew: number }[] }) {
   if (data.length === 0) {
-    return <p className="py-6 text-center text-sm text-fg-muted">집계할 출석 기록이 없습니다.</p>;
+    return <p className='py-6 text-center text-sm text-fg-muted'>집계할 출석 기록이 없습니다.</p>;
   }
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className='flex flex-col gap-3'>
       {data.map((d) => (
-        <li key={d.category} className="flex items-center gap-3">
-          <span className="w-24 shrink-0 truncate text-[13px] font-medium text-fg-secondary" title={d.category}>
+        <li key={d.category} className='flex items-center gap-3'>
+          <span className='w-24 shrink-0 truncate text-[13px] font-medium text-fg-secondary' title={d.category}>
             {d.category}
           </span>
-          <span className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2">
+          <span className='h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
             <span
-              className="block h-full rounded-pill"
+              className='block h-full rounded-pill'
               style={{ width: `${d.rate}%`, background: rateColor(d.rate) }}
             />
           </span>
-          <span className="tnum w-10 shrink-0 text-right text-[13px] font-bold text-fg">{d.rate}%</span>
-          <span className="tnum w-14 shrink-0 text-right text-xs text-fg-muted">{d.crew}명</span>
+          <span className='tnum w-10 shrink-0 text-right text-[13px] font-bold text-fg'>{d.rate}%</span>
+          <span className='tnum w-14 shrink-0 text-right text-xs text-fg-muted'>{d.crew}명</span>
         </li>
       ))}
     </ul>

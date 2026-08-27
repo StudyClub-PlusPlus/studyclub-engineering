@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
-import { cx } from "./cx";
+import type { ReactNode } from 'react';
+
+import { cx } from './cx';
 
 /**
  * design-system.md §9-8 Empty State.
@@ -17,16 +18,16 @@ export function EmptyState({ icon, title, description, action, className }: Empt
   return (
     <div
       className={cx(
-        "flex flex-col items-center justify-center gap-3 rounded-card border border-dashed border-border-strong px-6 py-14 text-center",
+        'flex flex-col items-center justify-center gap-3 rounded-card border border-dashed border-border-strong px-6 py-14 text-center',
         className,
       )}
     >
-      {icon && <span className="text-fg-placeholder">{icon}</span>}
-      <div className="flex flex-col gap-1">
-        <p className="text-base font-semibold text-neutral-900">{title}</p>
-        {description && <p className="text-sm text-fg-muted">{description}</p>}
+      {icon && <span className='text-fg-placeholder'>{icon}</span>}
+      <div className='flex flex-col gap-1'>
+        <p className='text-base font-semibold text-neutral-900'>{title}</p>
+        {description && <p className='text-sm text-fg-muted'>{description}</p>}
       </div>
-      {action && <div className="mt-1">{action}</div>}
+      {action && <div className='mt-1'>{action}</div>}
     </div>
   );
 }

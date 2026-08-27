@@ -1,5 +1,5 @@
 // Operator(운영진 · 캡틴) 도메인 모델.
-import type { L10n } from "./common";
+import type { L10n } from './common';
 
 export type Operator = {
   id: string;

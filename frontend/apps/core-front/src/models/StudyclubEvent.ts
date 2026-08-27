@@ -1,7 +1,7 @@
 // Event(이벤트 · 밋업/워크샵/토크) 도메인 모델.
-import type { L10n } from "./common";
+import type { L10n } from './common';
 
-export type EventType = "meetup" | "workshop" | "talk" | "online";
+export type EventType = 'meetup' | 'workshop' | 'talk' | 'online';
 
 export type StudyclubEvent = {
   id: string;
@@ -15,10 +15,10 @@ export type StudyclubEvent = {
 };
 
 export const EVENT_TYPE_LABEL: Record<EventType, L10n> = {
-  meetup: { ko: "밋업", en: "Meetup" },
-  workshop: { ko: "워크샵", en: "Workshop" },
-  talk: { ko: "토크", en: "Talk" },
-  online: { ko: "온라인", en: "Online" },
+  meetup: { ko: '밋업', en: 'Meetup' },
+  workshop: { ko: '워크샵', en: 'Workshop' },
+  talk: { ko: '토크', en: 'Talk' },
+  online: { ko: '온라인', en: 'Online' },
 };
 
 /** 기준 시각(now) 이후면 예정 이벤트. */

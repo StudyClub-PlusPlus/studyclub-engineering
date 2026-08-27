@@ -17,7 +17,10 @@
 
 공유 컴포넌트 라이브러리 `@studyclub/ui` (`packages/ui`) 가 존재한다. 세 앱 모두 이 패키지에 의존하고 있으므로, **새 컴포넌트를 앱 로컬에 직접 만들기 전에 먼저 확인할 것**.
 
-**`@studyclub/ui` 제공 컴포넌트**: `Button` `Badge` `Card` `Input` `Select` `Textarea` `FilterChip` `Avatar` `StatCard` `CapacityBar` `Checkbox` `Modal` `EmptyState`
+**`@studyclub/ui` 제공 컴포넌트**: `Button` `Badge` `Card` `FieldShell` `Input` `Select` `Textarea` `FilterChip` `Avatar` `StatCard` `CapacityBar` `Checkbox` `Modal` `EmptyState`
+
+> `Input` · `Select` · `Textarea` · `FieldShell` 은 `Field.tsx` 에서 함께 export 된다.
+> `FilterChip` 은 `Chip.tsx` 에서 export 된다.
 
 ```typescript
 import { Button, Badge, Card } from '@studyclub/ui';

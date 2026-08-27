@@ -1,8 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound } from 'next/navigation';
 
-import { studies } from "@studyclub/mock";
+import { studies } from '@studyclub/mock';
 
-import { StudyConsole } from "@/components/StudyConsole";
+import { StudyConsole } from '@/components/StudyConsole';
 
 export function generateStaticParams() {
   return studies.map((s) => ({ id: s.id }));

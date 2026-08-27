@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
-import type { Study } from "@studyclub/mock";
-import { Button, Modal } from "@studyclub/ui";
+import type { Study } from '@studyclub/mock';
+import { Button, Modal } from '@studyclub/ui';
 
 import {
   EMPTY_FORM,
@@ -12,7 +12,7 @@ import {
   validateStudyForm,
   type StudyFormErrors,
   type StudyFormValues,
-} from "@/components/StudyForm";
+} from '@/components/StudyForm';
 
 /**
  * 스터디 등록 팝업 — 프로토타입.
@@ -68,30 +68,30 @@ export function StudyCreateDialog({
     <Modal
       open={open}
       onClose={close}
-      title={editing ? "스터디 편집" : "스터디 등록"}
-      size="lg"
+      title={editing ? '스터디 편집' : '스터디 등록'}
+      size='lg'
       footer={
         done ? (
           <Button onClick={close}>확인</Button>
         ) : (
           <>
-            <Button variant="secondary" onClick={close} disabled={saving}>
+            <Button variant='secondary' onClick={close} disabled={saving}>
               취소
             </Button>
             <Button onClick={handleSubmit} loading={saving}>
-              {editing ? "저장" : "등록"}
+              {editing ? '저장' : '등록'}
             </Button>
           </>
         )
       }
     >
       {done ? (
-        <p className="py-6 text-center text-sm text-fg-muted">
+        <p className='py-6 text-center text-sm text-fg-muted'>
           {editing
-            ? "저장되었습니다."
+            ? '저장되었습니다.'
             : form.publishAt
               ? `등록되었습니다. ${form.publishAt}부터 사이트에 공개됩니다.`
-              : "등록되었습니다. 사이트에 바로 공개됩니다."}
+              : '등록되었습니다. 사이트에 바로 공개됩니다.'}
         </p>
       ) : (
         <StudyForm value={form} errors={errors} onChange={setForm} />

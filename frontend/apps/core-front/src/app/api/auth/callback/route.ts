@@ -1,11 +1,11 @@
 // 구글 OAuth redirect 착지점. 팝업에서 열리며, code 를 opener(로그인 페이지)로
 // postMessage 하고 창을 닫는다. (zapp popupResponse 패턴)
-import { NextRequest } from "next/server";
+import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const code = req.nextUrl.searchParams.get("code") ?? "";
-  const error = req.nextUrl.searchParams.get("error") ?? "";
-  const payload = JSON.stringify({ source: "studyclub-oauth", code, error });
+  const code = req.nextUrl.searchParams.get('code') ?? '';
+  const error = req.nextUrl.searchParams.get('error') ?? '';
+  const payload = JSON.stringify({ source: 'studyclub-oauth', code, error });
 
   const html = `<!doctype html><html><body><script>
     (function () {
@@ -16,5 +16,5 @@ export async function GET(req: NextRequest) {
     })();
   </script></body></html>`;
 
-  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
