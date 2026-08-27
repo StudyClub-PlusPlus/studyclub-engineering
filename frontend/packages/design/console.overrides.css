@@ -9,7 +9,7 @@
 
    적용 방법 (콘솔 앱에서만):
        @import "./tokens.css";
-       @import "./console.overrides.css";   /* 반드시 tokens.css 다음에 */
+       @import "./console.overrides.css";   (반드시 tokens.css 다음에)
    사용자 사이트에는 이 파일을 import 하지 않습니다(사이트는 tokens.css 기본값).
 
    필요 없으면? 콘솔도 사이트와 같은 밀도로 가면 이 파일은 그냥 두지 않아도 됩니다.
