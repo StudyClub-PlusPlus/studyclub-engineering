@@ -4,7 +4,7 @@
  */
 export function HotBadge() {
   return (
-    <span className="rounded-pill bg-white/95 px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-error-600 shadow-sm">
+    <span className='rounded-pill bg-white/95 px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-error-600 shadow-sm'>
       HOT
     </span>
   );

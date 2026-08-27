@@ -1,0 +1,16 @@
+# playwright
+# NOTE: e2e/screen-catalog/specs/__screenshots__ (golden baselines) ARE committed.
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/
+
+# testing
+/coverage/
+
+# next.js (generated)
+next-env.d.ts
+*.tsbuildinfo
+
+# vitest
+/vitest.config.ts.timestamp-*

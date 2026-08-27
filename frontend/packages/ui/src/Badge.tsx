@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
-import { cx } from "./cx";
+import type { ReactNode } from 'react';
+
+import { cx } from './cx';
 
 /**
  * design-system.md §9-4 / §2-5.
@@ -11,42 +12,42 @@ import { cx } from "./cx";
  */
 export type BadgeTone =
   // 스터디 상태
-  | "recruiting"
-  | "closingsoon"
-  | "inprogress"
-  | "closed"
-  | "ended"
+  | 'recruiting'
+  | 'closingsoon'
+  | 'inprogress'
+  | 'closed'
+  | 'ended'
   // 역할
-  | "captain"
-  | "navigator"
-  | "member"
+  | 'captain'
+  | 'navigator'
+  | 'member'
   // 출석
-  | "present"
-  | "late"
-  | "absent"
-  | "leave"
-  | "unchecked"
+  | 'present'
+  | 'late'
+  | 'absent'
+  | 'leave'
+  | 'unchecked'
   // 중립
-  | "neutral";
+  | 'neutral';
 
 const TONE: Record<BadgeTone, { chip: string; dot: string }> = {
-  recruiting: { chip: "bg-recruiting-bg text-recruiting-fg", dot: "bg-recruiting-dot" },
-  closingsoon: { chip: "bg-closingsoon-bg text-closingsoon-fg", dot: "bg-closingsoon-dot" },
-  inprogress: { chip: "bg-inprogress-bg text-inprogress-fg", dot: "bg-inprogress-dot" },
-  closed: { chip: "bg-closed-bg text-closed-fg", dot: "bg-closed-dot" },
-  ended: { chip: "bg-ended-bg text-ended-fg", dot: "bg-ended-dot" },
+  recruiting: { chip: 'bg-recruiting-bg text-recruiting-fg', dot: 'bg-recruiting-dot' },
+  closingsoon: { chip: 'bg-closingsoon-bg text-closingsoon-fg', dot: 'bg-closingsoon-dot' },
+  inprogress: { chip: 'bg-inprogress-bg text-inprogress-fg', dot: 'bg-inprogress-dot' },
+  closed: { chip: 'bg-closed-bg text-closed-fg', dot: 'bg-closed-dot' },
+  ended: { chip: 'bg-ended-bg text-ended-fg', dot: 'bg-ended-dot' },
 
-  captain: { chip: "bg-captain-bg text-captain-fg", dot: "bg-captain-fg" },
-  navigator: { chip: "bg-navigator-bg text-navigator-fg", dot: "bg-navigator-fg" },
-  member: { chip: "bg-member-bg text-member-fg", dot: "bg-member-fg" },
+  captain: { chip: 'bg-captain-bg text-captain-fg', dot: 'bg-captain-fg' },
+  navigator: { chip: 'bg-navigator-bg text-navigator-fg', dot: 'bg-navigator-fg' },
+  member: { chip: 'bg-member-bg text-member-fg', dot: 'bg-member-fg' },
 
-  present: { chip: "bg-present-bg text-present-fg", dot: "bg-present-fg" },
-  late: { chip: "bg-late-bg text-late-fg", dot: "bg-late-fg" },
-  absent: { chip: "bg-absent-bg text-absent-fg", dot: "bg-absent-fg" },
-  leave: { chip: "bg-leave-bg text-leave-fg", dot: "bg-leave-fg" },
-  unchecked: { chip: "bg-unchecked-bg text-unchecked-fg", dot: "bg-unchecked-fg" },
+  present: { chip: 'bg-present-bg text-present-fg', dot: 'bg-present-fg' },
+  late: { chip: 'bg-late-bg text-late-fg', dot: 'bg-late-fg' },
+  absent: { chip: 'bg-absent-bg text-absent-fg', dot: 'bg-absent-fg' },
+  leave: { chip: 'bg-leave-bg text-leave-fg', dot: 'bg-leave-fg' },
+  unchecked: { chip: 'bg-unchecked-bg text-unchecked-fg', dot: 'bg-unchecked-fg' },
 
-  neutral: { chip: "bg-surface-2 text-fg-muted", dot: "bg-fg-muted" },
+  neutral: { chip: 'bg-surface-2 text-fg-muted', dot: 'bg-fg-muted' },
 };
 
 export interface BadgeProps {
@@ -57,17 +58,17 @@ export interface BadgeProps {
   children: ReactNode;
 }
 
-export function Badge({ tone = "neutral", dot = false, className, children }: BadgeProps) {
+export function Badge({ tone = 'neutral', dot = false, className, children }: BadgeProps) {
   const t = TONE[tone];
   return (
     <span
       className={cx(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium",
+        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium',
         t.chip,
         className,
       )}
     >
-      {dot && <span className={cx("h-1.5 w-1.5 shrink-0 rounded-full", t.dot)} aria-hidden="true" />}
+      {dot && <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', t.dot)} aria-hidden='true' />}
       {children}
     </span>
   );

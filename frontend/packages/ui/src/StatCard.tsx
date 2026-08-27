@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
-import { Card } from "./Card";
-import { cx } from "./cx";
+import type { ReactNode } from 'react';
+
+import { Card } from './Card';
+import { cx } from './cx';
 
 /**
  * design-system.md §9-7 Dashboard Stat Card.
@@ -35,38 +36,36 @@ export function StatCard({
   icon,
   className,
 }: StatCardProps) {
-  const up = typeof delta === "number" && delta > 0;
-  const down = typeof delta === "number" && delta < 0;
+  const up = typeof delta === 'number' && delta > 0;
+  const down = typeof delta === 'number' && delta < 0;
   return (
-    <Card className={cx("flex flex-col gap-1", className)}>
+    <Card className={cx('flex flex-col gap-1', className)}>
       {/* §9-7 순서: 라벨 → 값 → 델타. 값은 neutral-900 + tabular-nums(.stat-value). */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-sm text-fg-muted">
+      <div className='flex items-center justify-between gap-2'>
+        <span className='flex items-center gap-1.5 text-sm text-fg-muted'>
           {leadingIcon}
           {label}
         </span>
-        {icon && <span className="text-fg-placeholder">{icon}</span>}
+        {icon && <span className='text-fg-placeholder'>{icon}</span>}
       </div>
-      <span className="stat-value text-3xl font-bold tracking-tight text-neutral-900">{value}</span>
+      <span className='stat-value text-3xl font-bold tracking-tight text-neutral-900'>{value}</span>
       {(up || down) && (
-        <span className="flex items-baseline gap-1.5 text-sm">
-          <span
-            className={cx("tnum font-medium", up ? "text-success-700" : "text-error-700")}
-          >
-            {up ? "▲" : "▼"} {Math.abs(delta as number)}
+        <span className='flex items-baseline gap-1.5 text-sm'>
+          <span className={cx('tnum font-medium', up ? 'text-success-700' : 'text-error-700')}>
+            {up ? '▲' : '▼'} {Math.abs(delta as number)}
             {deltaSuffix}
           </span>
-          {deltaLabel && <span className="text-xs text-fg-placeholder">{deltaLabel}</span>}
+          {deltaLabel && <span className='text-xs text-fg-placeholder'>{deltaLabel}</span>}
         </span>
       )}
-      {sub && <span className="text-xs text-fg-placeholder">{sub}</span>}
+      {sub && <span className='text-xs text-fg-placeholder'>{sub}</span>}
     </Card>
   );
 }
 
 /** §9-6 출석률 임계 색: ≥80 success / 60–79 warning / <60 error. */
 export function rateToneClass(rate: number): string {
-  if (rate >= 80) return "text-success-700";
-  if (rate >= 60) return "text-warning-700";
-  return "text-error-700";
+  if (rate >= 80) return 'text-success-700';
+  if (rate >= 60) return 'text-warning-700';
+  return 'text-error-700';
 }

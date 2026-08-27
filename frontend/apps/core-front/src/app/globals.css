@@ -1,8 +1,8 @@
 /* 사용자 사이트 스타일 진입점.
    색·타이포·간격·그림자는 전부 디자인 시스템(@studyclub/design)이 소유한다.
    여기에는 이 앱 고유의 컴포넌트 클래스만 남긴다 — 색 토큰을 새로 정의하지 말 것. */
-@import "@studyclub/design/tokens.css";
-@import "@studyclub/design/compat.css";
+@import '@studyclub/design/tokens.css';
+@import '@studyclub/design/compat.css';
 
 /* 공용 컴포넌트는 node_modules 심링크 너머에 있어 Tailwind 자동 탐지에 안 걸린다.
    명시하지 않으면 @studyclub/ui 가 쓰는 유틸리티가 통째로 생성되지 않는다. */
@@ -67,22 +67,18 @@ html {
       color-mix(in oklab, var(--color-primary-500) 22%, transparent),
       transparent 70%
     ),
-    radial-gradient(
-      40% 60% at 75% 20%,
-      color-mix(in oklab, var(--color-info-500) 16%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      35% 50% at 60% 60%,
-      color-mix(in oklab, var(--color-chart-4) 14%, transparent),
-      transparent 70%
-    );
+    radial-gradient(40% 60% at 75% 20%, color-mix(in oklab, var(--color-info-500) 16%, transparent), transparent 70%),
+    radial-gradient(35% 50% at 60% 60%, color-mix(in oklab, var(--color-chart-4) 14%, transparent), transparent 70%);
   filter: blur(20px);
   pointer-events: none;
 }
 
 /* 가로 스크롤 필터 줄 — 스크롤바가 보이면 칩 아래 여백이 들쭉날쭉해진다 */
 @layer utilities {
-  .no-scrollbar { scrollbar-width: none; }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

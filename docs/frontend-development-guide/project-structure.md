@@ -11,15 +11,20 @@
 
 ## Overview
 
-Next.js App Router 기반. Turborepo 로 두 개 앱 + 공유 패키지를 관리.
+Next.js App Router 기반. Turborepo 로 세 개 앱 + 공유 패키지를 관리.
 
 ```
 frontend/
 ├── apps/
-│   ├── core-front/           # 사용자향 (studyclub-plusplus.com)
-│   └── back-office-front/    # 운영자향 (back-office.studyclub-plusplus.com)
+│   ├── core-front/           # 사용자향 (studyclub-plusplus.com) :4700
+│   ├── back-office-front/    # 운영자향 (back-office.studyclub-plusplus.com) :4701
+│   └── playground/           # 컴포넌트 개발·실험용
 ├── packages/
-│   └── mock/                 # 공유 mock 데이터 + 타입
+│   ├── ui/                   # 공유 UI 컴포넌트 라이브러리 (@studyclub/ui)
+│   ├── design/               # 디자인 토큰·CSS 변수 (@studyclub/design)
+│   ├── mock/                 # 공유 mock 데이터 + 타입 (@studyclub/mock)
+│   ├── eslint-config/        # 공유 ESLint 설정
+│   └── prettier-config/      # 공유 Prettier 설정
 ├── turbo.json
 ├── package.json              # 워크스페이스 루트
 └── tsconfig.base.json        # 공유 TS 설정
@@ -44,7 +49,7 @@ frontend/
 | 항목 | 값 |
 |------|-----|
 | 도메인 | studyclub-plusplus.com |
-| 포트 | 3000 |
+| 포트 | 4700 |
 | 주요 기능 | 랜딩, 스터디 목록, 이벤트, 마이페이지, 구글 로그인 |
 | i18n | `[locale]` 동적 라우트 (ko/en) |
 
@@ -53,23 +58,39 @@ frontend/
 | 항목 | 값 |
 |------|-----|
 | 도메인 | back-office.studyclub-plusplus.com |
-| 포트 | 3001 |
+| 포트 | 4701 |
 | 주요 기능 | 스터디 관리, 이벤트 관리, 회원 관리, 구글 로그인 |
 
 ## 디렉토리 구조
 
-각 앱의 `src/` 구조:
+각 앱의 구조:
 
 ```
-src/
-├── app/              # Next.js App Router 라우트
-│   ├── [locale]/     # (core-front) i18n 라우트
-│   ├── api/          # Route Handlers (BFF)
-│   └── layout.tsx
-├── components/       # 앱 전용 컴포넌트
-├── lib/              # 유틸 (auth, i18n, content)
-├── models/           # (core-front) 타입 정의
-└── middleware.ts      # Next.js 미들웨어 (인증 리다이렉트)
+apps/{app}/
+├── src/
+│   ├── app/              # Next.js App Router 라우트
+│   │   ├── [locale]/     # (core-front 전용) i18n 라우트
+│   │   ├── api/          # Route Handlers (BFF)
+│   │   └── layout.tsx
+│   ├── components/       # 앱 전용 컴포넌트
+│   ├── lib/              # 유틸 (auth, i18n, content)
+│   ├── models/           # (core-front) 타입 정의
+│   └── middleware.ts     # Next.js 미들웨어 (인증 리다이렉트)
+├── screen-catalog/       # 화면 상태 선언 (비주얼 회귀 카탈로그)
+│   ├── catalog.ts
+│   ├── types.ts
+│   ├── viewports.ts
+│   ├── pages/
+│   └── features/{flow}/{feature}.feature + .meta.ts
+├── e2e/
+│   ├── playwright.config.ts
+│   ├── specs/            # smoke 테스트
+│   └── screen-catalog/   # 비주얼 회귀 러너
+│       ├── runScreenState.ts
+│       ├── waitForPageStable.ts
+│       ├── adapters/
+│       └── specs/__screenshots__/   # golden 스냅샷 (커밋 대상)
+└── .gitignore
 ```
 
 ### 파일 배치 규칙
@@ -103,6 +124,9 @@ API 교체 지점은 `// TODO(api)` 주석으로 표시되어 있음.
 cd frontend && npm install && npm run dev
 
 # 개별 앱
-npm run dev --workspace=core-front
-npm run dev --workspace=back-office-front
+npm run dev --workspace=core-front        # :4700
+npm run dev --workspace=back-office-front # :4701
+
+# Storybook
+npm run storybook --workspace=@studyclub/ui  # :6006
 ```
