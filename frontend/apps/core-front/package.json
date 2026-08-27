@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts --project=smoke",
+    "test:e2e:catalog": "playwright test --config=e2e/playwright.config.ts --project=screen-catalog --workers=1",
+    "test:e2e:catalog:update": "playwright test --config=e2e/playwright.config.ts --project=screen-catalog --workers=1 --update-snapshots",
+    "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui"
   },
   "dependencies": {
     "@studyclub/design": "*",

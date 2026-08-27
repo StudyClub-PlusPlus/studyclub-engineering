@@ -4,14 +4,17 @@
   "private": true,
   "description": "StudyClub++ 운영자향 백오피스 콘솔 (Next.js App Router, single-locale)",
   "scripts": {
-    "dev": "next dev --webpack -p 4701",
+    "dev": "next dev -p 4701",
     "build": "next build",
     "start": "next start -p 4701",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts --project=smoke",
+    "test:e2e:catalog": "playwright test --config=e2e/playwright.config.ts --project=screen-catalog --workers=1",
+    "test:e2e:catalog:update": "playwright test --config=e2e/playwright.config.ts --project=screen-catalog --workers=1 --update-snapshots",
+    "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui"
   },
   "dependencies": {
     "@studyclub/design": "*",
