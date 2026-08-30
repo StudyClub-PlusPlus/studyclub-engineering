@@ -1,0 +1,129 @@
+/* 프로토 화면 전용 스타일.
+   core-front · back-office-front 의 globals.css 에서 **앱 고유 클래스만** 가져온다.
+   색·타이포·간격 토큰은 @studyclub/design 이 소유하고 playground globals.css 가 이미 불러온다 —
+   여기서 토큰을 새로 정의하지 말 것.
+
+   복사한 화면 코드는 손대지 않는 게 원칙이라, 원본이 기대하는 클래스를 여기서 그대로 제공한다. */
+
+/* Tailwind 는 심링크 밖 소스를 자동 탐지하지 않는다. 프로토 소스를 명시하지 않으면
+   화면이 쓰는 유틸리티가 통째로 생성되지 않아 스타일이 빈다. */
+@source "../../proto";
+
+/* ── 사용자 사이트 (core-front/src/app/globals.css) ───────────────────────── */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+}
+
+.card-hover {
+  transition:
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+  border-color: var(--color-border-strong);
+}
+
+/* 히어로 글로우는 z-index:-1 이다. 원본 앱은 body 를 투명으로 만들어 뒤를 비웠지만,
+   playground 의 body 는 /components 와 공유하므로 건드리지 않는다.
+   대신 프로토 래퍼가 쌓임 맥락을 만들어(z-index:0) 글로우를 그 안에 가둔다 — 같은 그림, 부작용 없음. */
+.proto-stack {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+}
+
+.hero-glow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 520px;
+  z-index: -1;
+  background:
+    radial-gradient(
+      40% 60% at 20% 30%,
+      color-mix(in oklab, var(--color-primary-500) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(40% 60% at 75% 20%, color-mix(in oklab, var(--color-info-500) 16%, transparent), transparent 70%),
+    radial-gradient(35% 50% at 60% 60%, color-mix(in oklab, var(--color-chart-4) 14%, transparent), transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── 운영 콘솔 (back-office-front/src/app/globals.css) ─────────────────────── */
+
+.bo-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+.bo-table thead tr {
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  color: var(--color-fg-subtle);
+  font-size: 0.75rem;
+}
+.bo-table th {
+  padding: 0.625rem 1rem;
+  font-weight: 500;
+}
+.bo-table td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-border);
+  height: var(--row-height);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+.btn-primary {
+  color: var(--color-on-brand);
+  background: var(--color-accent);
+}
+.btn-ghost {
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-fg-subtle);
+  padding: 0.375rem 0.75rem;
+}
+
+/* ── 콘솔 밀도 오버라이드 ──────────────────────────────────────────────────
+   원본 console.overrides.css 는 :root 에 선언한다. 한 앱에 두 표면이 같이 사는 여기서는
+   그대로 쓰면 사용자 사이트 프로토까지 콘솔 밀도로 조여진다. 값은 그대로 두고
+   선택자만 [data-app="console"] 로 좁힌다 — 색은 여전히 tokens.css 한 곳에서만 온다. */
+[data-app='console'] {
+  --radius-control: 6px;
+  --radius-chip: 6px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+  --row-height: 44px;
+  font-size: 15px;
+}
+
+/* 번호 패널이 열리면 본문을 그만큼 왼쪽으로 민다.
+   패널이 화면 오른쪽을 덮으면 정작 대조하려던 요소가 가려진다. */
+body.anno-open .proto-stack {
+  padding-right: 380px;
+}
