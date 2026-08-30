@@ -9,6 +9,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
+      "@core/*": ["./src/proto/core/*"],
+      "@console/*": ["./src/proto/console/*"],
       "@studyclub/mock": ["../../packages/mock/src/index.ts"],
       "@studyclub/ui": ["../../packages/ui/src/index.ts"]
     }
