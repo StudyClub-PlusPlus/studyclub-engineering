@@ -24,7 +24,7 @@ export default async function LocaleLayout({
     <div className='flex min-h-screen flex-col'>
       <Nav locale={locale} discordUrl={site.discord_invite} mentoringUrl={site.mentoring_url} />
       <main className='flex-1'>{children}</main>
-      <Footer locale={locale} site={site} />
+      <Footer locale={locale} />
     </div>
   );
 }
