@@ -75,6 +75,7 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 | 예외 처리 | [`docs/backend-development-guide/exception-handling-guide.md`](docs/backend-development-guide/exception-handling-guide.md) |
 | 로깅 | [`docs/backend-development-guide/logging-guide.md`](docs/backend-development-guide/logging-guide.md) |
 | JPA·N+1·트랜잭션 | [`docs/backend-development-guide/jpa-guide.md`](docs/backend-development-guide/jpa-guide.md) |
+| DB 스키마·상태값·전이 (ERD) | [`docs/erd/README.md`](docs/erd/README.md) — 테이블당 md 1개, 변경은 PR |
 
 #### BE 핵심 요약
 
