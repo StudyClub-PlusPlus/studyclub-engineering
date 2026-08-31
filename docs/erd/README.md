@@ -11,15 +11,17 @@ mermaid 는 PR diff 에 그대로 뜨고 GitHub 이 렌더한다.
 
 ## 규약 (제안 — 08/30 일 회의에서 확정)
 
-| 항목 | 규칙 | 예 |
-|---|---|---|
-| 테이블·컬럼 이름 | **대문자 · snake_case · 단수** | `STUDY_SECTION`, `CREATED_AT` |
-| PK | `ID BIGINT AUTO_INCREMENT` | |
-| FK | `<참조테이블>_ID` | `STUDY_ID`, `USER_ID` |
-| 시각 | `DATETIME` (UTC 저장, 표시 시 사용자 `TIME_ZONE` 적용) | |
-| enum | `VARCHAR(20)` 에 대문자 코드 문자열. 숫자 코드 대신 문자열 — 로그·쿼리에서 읽힌다 | `PENDING`, `APPROVED` |
-| 감사 컬럼 | `CREATED_AT` · `UPDATED_AT` 은 전 테이블 기본. 운영자가 만지는 테이블은 `CREATED_BY` · `UPDATED_BY`(USER.ID) 추가 | |
-| 삭제 | 물리 삭제 대신 상태(`CLOSED`/`WITHDRAWN`) 또는 `REMOVED_AT` | |
+
+| 항목        | 규칙                                                                                            | 예                             |
+| --------- | --------------------------------------------------------------------------------------------- | ----------------------------- |
+| 테이블·컬럼 이름 | **대문자 · snake_case · 단수**                                                                     | `STUDY_SECTION`, `CREATED_AT` |
+| PK        | `ID BIGINT AUTO_INCREMENT`                                                                    |                               |
+| FK        | `<참조테이블>_ID`                                                                                  | `STUDY_ID`, `USER_ID`         |
+| 시각        | `DATETIME` (UTC 저장, 표시 시 사용자 `TIME_ZONE` 적용)                                                  |                               |
+| enum      | `VARCHAR(20)` 에 대문자 코드 문자열. 숫자 코드 대신 문자열 — 로그·쿼리에서 읽힌다                                        | `PENDING`, `APPROVED`         |
+| 감사 컬럼     | `CREATED_AT` · `UPDATED_AT` 은 전 테이블 기본. 운영자가 만지는 테이블은 `CREATED_BY` · `UPDATED_BY`(USER.ID) 추가 |                               |
+| 삭제        | 물리 삭제 대신 상태(`CLOSED`/`WITHDRAWN`) 또는 `REMOVED_AT`                                             |                               |
+
 
 drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8 타입**으로 옮겼다 (`BIGINT`/`INT`/`DATETIME`/`DATE`).
 
@@ -33,7 +35,6 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 ## 한눈에 보기 (관계도)
 
 테이블과 연결만. 컬럼은 아래 [전체 ERD](#전체-erd-컬럼-포함) 또는 각 테이블 문서에.
-
 
 ```mermaid
 erDiagram
@@ -116,6 +117,7 @@ erDiagram
     json     CURRICULUM           "주차별 커리큘럼"
     int      CAPACITY             "전체 정원"
     datetime DEADLINE             "모집 마감"
+    json     FORM                 "제출 당시 질문 정의"
     date     START_DATE
     date     END_DATE
     boolean  IS_HIDDEN            "목록 노출 제어"
@@ -151,7 +153,6 @@ erDiagram
     bigint   USER_ID            FK
     bigint   STUDY_ID           FK
     varchar  STATUS                "PENDING / APPROVED / REJECTED / WITHDRAWN / WAITLISTED"
-    json     FORM_SNAPSHOT         "제출 당시 질문 정의"
     json     FORM_ANSWER
     datetime CREATED_AT            "신청 시각"
     datetime UPDATED_AT            "마지막 상태 변경"
@@ -259,34 +260,38 @@ erDiagram
 
 ## 테이블
 
-| 영역 | 테이블 | 한 줄 | 저장하는 상태 |
-|---|---|---|---|
-| 회원 | [USER](./USER.md) | 회원 프로필 | `ROLE` |
-| 회원 | [IDENTITY](./IDENTITY.md) | 소셜 로그인 수단 (구글 → 애플 확장) | — |
-| 회원 | [SESSION](./SESSION.md) | 발급 토큰 (캐시 후보) | — (만료·폐기는 시각으로 계산) |
-| 스터디 | [STUDY](./STUDY.md) | 스터디/클럽 본체 | `STATUS`, `OPERATION_MODE`, `FORMAT` |
-| 스터디 | [STUDY_SECTION](./STUDY_SECTION.md) | 반 (요일·시간대별) | — |
-| 스터디 | [STUDY_SESSION](./STUDY_SESSION.md) | 회차 (반의 N번째 모임) | — |
-| 모집 | [STUDY_APPLICATION](./STUDY_APPLICATION.md) | 신청서 (폼 스냅샷 + 답변) | `STATUS` |
-| 모집 | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md) | 명부 — 반에 소속된 사람 | `STATUS`, `ROLE` |
-| 모집 | [STUDY_INTEREST](./STUDY_INTEREST.md) | 반 관심/대기 등록 | `STATUS`, `ROLE` |
-| 운영 | [ATTENDANCE](./ATTENDANCE.md) | 회차별 출석 | `STATUS` |
-| 반응 | [STUDY_REVIEW](./STUDY_REVIEW.md) | 후기 | — |
-| 반응 | [STUDY_FAVORITE](./STUDY_FAVORITE.md) | 북마크 | — |
-| 제안 | [STUDY_PROPOSAL](./STUDY_PROPOSAL.md) | "이런 스터디 열어주세요" | `STATUS` |
-| 제안 | [STUDY_PROPOSAL_INTEREST](./STUDY_PROPOSAL_INTEREST.md) | 제안에 "나도" | — |
+
+| 영역  | 테이블                                                     | 한 줄                    | 저장하는 상태                              |
+| --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
+| 회원  | [USER](./USER.md)                                       | 회원 프로필                 | `ROLE`                               |
+| 회원  | [IDENTITY](./IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
+| 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (캐시 후보)          | — (만료·폐기는 시각으로 계산)                   |
+| 스터디 | [STUDY](./STUDY.md)                                     | 스터디/클럽 본체              | `STATUS`, `OPERATION_MODE`, `FORMAT` |
+| 스터디 | [STUDY_SECTION](./STUDY_SECTION.md)                     | 반 (요일·시간대별)            | —                                    |
+| 스터디 | [STUDY_SESSION](./STUDY_SESSION.md)                     | 회차 (반의 N번째 모임)         | —                                    |
+| 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
+| 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 반에 소속된 사람         | `STATUS`, `ROLE`                     |
+| 모집  | [STUDY_INTEREST](./STUDY_INTEREST.md)                   | 반 관심/대기 등록             | `STATUS`, `ROLE`                     |
+| 운영  | [ATTENDANCE](./ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
+| 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
+| 반응  | [STUDY_FAVORITE](./STUDY_FAVORITE.md)                   | 북마크                    | —                                    |
+| 제안  | [STUDY_PROPOSAL](./STUDY_PROPOSAL.md)                   | "이런 스터디 열어주세요"         | `STATUS`                             |
+| 제안  | [STUDY_PROPOSAL_INTEREST](./STUDY_PROPOSAL_INTEREST.md) | 제안에 "나도"               | —                                    |
+
 
 ## ERD 추가·변경 절차
 
 **테이블을 하나 추가하면 문서 1개를 만들고 mermaid 2곳을 고친다.** 셋 중 하나라도 빠지면
 그림과 문서가 갈라지고, 갈라진 순간부터 아무도 어느 쪽을 믿을지 모른다.
 
-| # | 무엇을 | 어디를 |
-|---|---|---|
-| 1 | **문서 1개 추가** | `docs/erd/<TABLE>.md` — 아래 템플릿 |
-| 2 | **mermaid ①** — 관계선 추가 | README [§한눈에 보기](#한눈에-보기-관계도) |
-| 3 | **mermaid ②** — 엔티티 블록 + 관계선 추가 | README [§전체 ERD](#전체-erd-컬럼-포함) |
-| 4 | 표에 한 줄 추가 | README [§테이블](#테이블) |
+
+| #   | 무엇을                             | 어디를                             |
+| --- | ------------------------------- | ------------------------------- |
+| 1   | **문서 1개 추가**                    | `docs/erd/<TABLE>.md` — 아래 템플릿  |
+| 2   | **mermaid ①** — 관계선 추가          | README [§한눈에 보기](#한눈에-보기-관계도)   |
+| 3   | **mermaid ②** — 엔티티 블록 + 관계선 추가 | README [§전체 ERD](#전체-erd-컬럼-포함) |
+| 4   | 표에 한 줄 추가                       | README [§테이블](#테이블)             |
+
 
 **컬럼만 바꿀 때**는 2곳 — 해당 테이블 문서 + §전체 ERD 의 그 엔티티 블록.
 (관계가 안 바뀌면 §한눈에 보기는 그대로 둔다.)
@@ -359,3 +364,4 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 - **STUDY.CATEGORY** — 코드값(drawio)인지 `STUDY_CATEGORY` 테이블 FK(표 설계)인지.
 - **스터디 vs 클럽** — 스터디=1회성, 클럽=기수제·반복. 스터디가 클럽이 될 수 있다 → `OPERATION_MODE` 변경으로 표현. 기수(코호트) 테이블은 아직 없음.
 - **회차 알림 자동화·디스코드 명령어 출석** — 스키마 영향 없음(ATTENDANCE.CREATED_BY 로 충분). 봇 쪽 결정.
+
