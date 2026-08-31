@@ -30,14 +30,18 @@ backend/
 
 ### domain
 
-- JPA 엔티티 (`@Entity`)
+- JPA 엔티티 (`@Entity`), 값 객체 (`@Embeddable`)
+- `support/BaseEntity` — 모든 엔티티의 부모 (감사 컬럼)
 - 비즈니스 규칙 (도메인 로직은 엔티티 메서드로)
+- **스프링 의존은 JPA/Auditing 까지.** MVC·Security 는 들이지 않는다 —
+  도메인이 HTTP 를 알면 배치·이벤트 같은 다른 진입점에서 재사용할 수 없다
 - Repository 인터페이스는 domain 에 둘 수도 있으나, 현재는 api 모듈에 위치
 
 ### common
 
-- `ApiResponse<T>` — 공통 응답 래퍼
-- 향후 공용 예외, 유틸리티
+- `error/ErrorCode` · `error/ErrorResponse` · `error/BusinessException` — 에러 계약
+- **순수 Java 만.** 그래서 `ErrorCode` 는 `HttpStatus` 가 아니라 `int status` 를 든다
+- 향후 공용 유틸리티
 
 ## Dependency Direction
 
@@ -60,7 +64,8 @@ dependencies {
 
 // domain/build.gradle.kts
 dependencies {
-    implementation(project(":common"))
+    api(project(":common"))
+    api("org.springframework.boot:spring-boot-starter-data-jpa")   // 엔티티가 사는 곳
 }
 ```
 
@@ -75,7 +80,10 @@ com.studyclub.common.*    # common 모듈
 기능별 하위 패키지:
 
 ```
-com.studyclub.api.auth      # 인증 관련 (컨트롤러, 서비스, DTO)
-com.studyclub.api.web       # 일반 API (Health, Study 등)
-com.studyclub.domain.study  # 스터디 도메인
+com.studyclub.api.auth        # 인증 관련 (컨트롤러, 서비스, DTO, 시큐리티)
+com.studyclub.api.web         # 일반 API (Health, Study) + GlobalExceptionHandler
+com.studyclub.api.config      # 스프링 설정 (JpaConfig, 네이밍 전략)
+com.studyclub.domain.study    # 스터디 도메인
+com.studyclub.domain.support  # BaseEntity 등 도메인 공용
+com.studyclub.common.error    # 에러 계약
 ```

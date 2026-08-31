@@ -10,9 +10,18 @@ spring:
     username: ${DB_USERNAME:studyclub}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  # 스키마의 정본은 db/migration/*.sql (Flyway) 하나다.
+  # ddl-auto 는 validate — 엔티티가 운영 DB 를 조용히 바꾸지 못하게 막고, 매핑과 실제 스키마가
+  # 어긋나면 부팅에서 바로 터뜨린다. prod 는 물론 로컬도 같은 값을 쓴다 (환경마다 다르면 드리프트가 난다).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO:validate}
+      # 테이블 대문자 / 컬럼 snake_case 를 코드로 강제 (@Table 을 깜빡해도 규칙이 유지된다)
+      naming:
+        physical-strategy: com.studyclub.api.config.UpperCaseTableNamingStrategy
     open-in-view: false
     properties:
       hibernate:

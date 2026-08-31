@@ -22,6 +22,10 @@ mermaid 는 PR diff 에 그대로 뜨고 GitHub 이 렌더한다.
 | 감사 컬럼     | `CREATED_AT` · `UPDATED_AT` 은 전 테이블 기본. 운영자가 만지는 테이블은 `CREATED_BY` · `UPDATED_BY`(USER.ID) 추가 |                               |
 | 삭제        | 물리 삭제 대신 상태(`CLOSED`/`WITHDRAWN`) 또는 `REMOVED_AT`                                             |                               |
 
+> **컬럼 대문자는 이 문서의 표기법이다 — 물리 컬럼은 소문자다.**
+> MySQL 은 컬럼 식별자를 항상 대소문자 구분 없이 다루므로 `CREATED_AT` 과 `created_at` 은 같은 컬럼이다.
+> 실제로 갈리는 건 **테이블 이름뿐**이라(리눅스 `lower_case_table_names=0`) 테이블만 물리적으로
+> 대문자로 고정한다 — [database-guide §테이블·컬럼 이름 규칙](../backend-development-guide/database-guide.md#테이블컬럼-이름-규칙)
 
 drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8 타입**으로 옮겼다 (`BIGINT`/`INT`/`DATETIME`/`DATE`).
 

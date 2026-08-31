@@ -99,9 +99,8 @@ public record StudyResponse(Long id, String title, String status) {
 
 // 컨트롤러
 @GetMapping("/studies/{id}")
-public ApiResponse<StudyResponse> getStudy(@PathVariable Long id) {
-    Study study = studyService.findById(id);
-    return ApiResponse.success(StudyResponse.from(study));
+public StudyResponse getStudy(@PathVariable Long id) {
+    return studyService.findById(id);   // 서비스가 트랜잭션 안에서 DTO 로 변환해 돌려준다
 }
 ```
 
