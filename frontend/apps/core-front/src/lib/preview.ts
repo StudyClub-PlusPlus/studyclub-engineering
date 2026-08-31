@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { getUser, setUser, type SessionUser } from "@/lib/auth";
-import { seedDemoData } from "@/lib/me";
+import { getUser, setUser, type SessionUser } from '@/lib/auth';
+import { seedDemoData } from '@/lib/me';
 
 /**
  * 프로토타입 미리보기 세션 — **로컬 개발 서버에서만** 쓰인다.
@@ -9,17 +9,17 @@ import { seedDemoData } from "@/lib/me";
  * 구글 OAuth 키가 로컬에 없어 실제 로그인을 할 수 없는데, 마이페이지는 로그인해야 보이는
  * 화면이라 기획·디자인 검토를 할 방법이 없다. 개발팀이 만든 로그인 게이트는 손대지 않는다.
  */
-export const IS_DEV = process.env.NODE_ENV === "development";
+export const IS_DEV = process.env.NODE_ENV === 'development';
 
 /** 미리보기 세션 식별자. 실제 회원은 서버가 발급한 양수 id 를 갖는다. */
 const PREVIEW_ID = 0;
 
 export const PREVIEW_USER: SessionUser = {
   id: PREVIEW_ID,
-  email: "jiwon@example.com",
-  name: "지원",
+  email: 'jiwon@example.com',
+  name: '지원',
   picture: null,
-  role: "MEMBER",
+  role: 'MEMBER',
 };
 
 export function isPreview(user: SessionUser | null): boolean {
@@ -44,6 +44,6 @@ export function syncPreview(): SessionUser | null {
 export function enterPreview() {
   setUser(PREVIEW_USER);
   // 미들웨어가 존재 여부만 보는 게이트 쿠키. 서버가 발급하는 진짜 토큰이 아니다.
-  document.cookie = "sc_access_token=dev-preview; path=/";
+  document.cookie = 'sc_access_token=dev-preview; path=/';
   seedDemoData();
 }

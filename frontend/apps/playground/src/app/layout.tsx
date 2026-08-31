@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,12 +7,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const NAV = [
-  { href: "/", label: "홈" },
-  { href: "/components", label: "컴포넌트" },
-  { href: "/screens/study-detail", label: "화면 · 스터디 상세" },
-];
-
+/**
+ * 루트는 문서 껍데기만 담당한다.
+ *
+ * 헤더·본문 폭은 라우트 그룹이 각자 정한다 — `(site)` 는 max-w-6xl 문서형 크롬,
+ * `(proto)` 는 실제 서비스 화면을 그대로 재현해야 해서 full-bleed 다.
+ * 폭 제한을 루트에 두면 프로토 화면이 6xl 안에 갇혀 시안 확인이 안 된다.
+ */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko" className="h-full">
@@ -23,36 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
-      <body className="min-h-full">
-        <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-          <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6">
-            <Link href="/" className="flex items-center gap-2 text-sm font-bold">
-              <span
-                className="grid h-6 w-6 place-items-center rounded-md text-[11px] font-extrabold text-white"
-                style={{ background: "var(--color-accent)" }}
-              >
-                S
-              </span>
-              Playground
-            </Link>
-            <nav className="flex items-center gap-5 text-sm">
-              {NAV.map((n) => (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className="text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
-                >
-                  {n.label}
-                </Link>
-              ))}
-            </nav>
-            <span className="ml-auto rounded-full bg-[var(--color-surface-subtle)] px-3 py-1 text-[11px] font-semibold text-[var(--color-fg-subtle)]">
-              미공개 · noindex
-            </span>
-          </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

@@ -1,10 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { MEMBER_REGIONS, type MemberRegion } from "@studyclub/mock";
-import { Button, Input, Modal } from "@studyclub/ui";
-import type { Locale } from "@/lib/content";
-import { t } from "@/lib/i18n";
+import { useEffect, useState } from 'react';
+
+import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
+import { Button, Input, Modal } from '@studyclub/ui';
+
+import type { Locale } from '@/lib/content';
+import { t } from '@/lib/i18n';
 
 /**
  * 내 정보 수정.
@@ -45,7 +47,7 @@ export function ProfileDialog({
 
   function submit() {
     if (!draft.trim()) {
-      setError("이름을 입력하세요.");
+      setError('이름을 입력하세요.');
       return;
     }
     onSave({ name: draft.trim(), region: draftRegion });
@@ -56,19 +58,19 @@ export function ProfileDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title="내 정보 수정"
+      title='내 정보 수정'
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant='secondary' onClick={onClose}>
             취소
           </Button>
           <Button onClick={submit}>저장</Button>
         </>
       }
     >
-      <div className="flex flex-col gap-5">
+      <div className='flex flex-col gap-5'>
         <Input
-          label="이름"
+          label='이름'
           required
           value={draft}
           onChange={(e) => {
@@ -79,27 +81,25 @@ export function ProfileDialog({
         />
 
         <div>
-          <p className="text-sm font-medium text-neutral-800">이메일</p>
-          <p className="mt-1.5 text-sm text-fg-secondary">{email}</p>
+          <p className='text-sm font-medium text-neutral-800'>이메일</p>
+          <p className='mt-1.5 text-sm text-fg-secondary'>{email}</p>
         </div>
 
         <div>
-          <p className="text-sm font-medium text-neutral-800">거주 지역</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <p className='text-sm font-medium text-neutral-800'>거주 지역</p>
+          <div className='mt-2 flex flex-wrap gap-1.5'>
             {MEMBER_REGIONS.map((r) => (
               <button
                 key={r.key}
-                type="button"
+                type='button'
                 onClick={() => setDraftRegion(r.key)}
                 aria-pressed={draftRegion === r.key}
                 className={`rounded-pill px-4 py-1.5 text-[13px] font-semibold transition-colors ${
-                  draftRegion === r.key
-                    ? "bg-brand text-on-brand"
-                    : "bg-surface-2 text-fg-secondary hover:bg-surface-3"
+                  draftRegion === r.key ? 'bg-brand text-on-brand' : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
                 }`}
               >
                 {t(r.label, locale)}
-                <span className="ml-1.5 text-[11px] opacity-70">{r.tzLabel}</span>
+                <span className='ml-1.5 text-[11px] opacity-70'>{r.tzLabel}</span>
               </button>
             ))}
           </div>
