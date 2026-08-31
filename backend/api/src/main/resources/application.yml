@@ -11,8 +11,9 @@ spring:
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   # 스키마의 정본은 db/migration/*.sql (Flyway) 하나다.
-  # ddl-auto 는 validate — 엔티티가 운영 DB 를 조용히 바꾸지 못하게 막고, 매핑과 실제 스키마가
-  # 어긋나면 부팅에서 바로 터뜨린다. prod 는 물론 로컬도 같은 값을 쓴다 (환경마다 다르면 드리프트가 난다).
+  # ddl-auto 기본값 validate — 엔티티가 운영 DB 를 조용히 바꾸지 못하게 막고, 매핑과 실제 스키마가
+  # 어긋나면 부팅에서 바로 터뜨린다. prod 는 이 기본값을 그대로 쓴다 (DDL_AUTO 를 주입하지 않는다).
+  # stage 만 k8s studyclub-api-stage-env 에서 DDL_AUTO=update 를 넣는다 — docs/.../database-guide.md
   flyway:
     enabled: true
     locations: classpath:db/migration
