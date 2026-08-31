@@ -4,14 +4,14 @@ import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.api.auth.dto.AuthDtos.UserView;
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import io.jsonwebtoken.Claims;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
@@ -34,7 +34,7 @@ public class AuthService {
     @Transactional
     public AuthResponse socialLogin(String code, String platform, String redirectOverride) {
         if (code == null || code.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "code 가 필요합니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "code 가 필요합니다.");
         }
         GoogleUser g = google.exchange(code, redirectOverride);
         String email = g.email().toLowerCase();
@@ -50,19 +50,19 @@ public class AuthService {
     @Transactional(readOnly = true)
     public UserView me(String email) {
         User user = users.findByEmail(email.toLowerCase())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
         return toView(user);
     }
 
     public AccessTokenResponse refresh(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "refreshToken 이 필요합니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "refreshToken 이 필요합니다.");
         }
         try {
             Claims c = jwt.parse(refreshToken);
             return new AccessTokenResponse(jwt.issueAccess(c.getSubject(), c.get("email", String.class)));
         } catch (RuntimeException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
         }
     }
 
@@ -76,7 +76,7 @@ public class AuthService {
                 .filter(s -> !s.isBlank())
                 .toList();
         if (!allowed.contains(email)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "백오피스 접근이 허용되지 않은 계정입니다.");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "백오피스 접근이 허용되지 않은 계정입니다.");
         }
     }
 

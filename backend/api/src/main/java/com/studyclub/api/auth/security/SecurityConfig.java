@@ -1,5 +1,6 @@
 package com.studyclub.api.auth.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studyclub.api.auth.JwtService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,10 +9,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -22,13 +21,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtService jwt;
+    private final ObjectMapper objectMapper;
 
     /** 콤마 구분 허용 오리진 (프론트 dev + prod 도메인). */
     @Value("${cors.allowed-origins:http://localhost:4700,http://localhost:4701}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtService jwt) {
+    public SecurityConfig(JwtService jwt, ObjectMapper objectMapper) {
         this.jwt = jwt;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -48,8 +49,8 @@ public class SecurityConfig {
                                 "/auth/refresh")
                         .permitAll()
                         .anyRequest().authenticated())
-                // 미인증 → 403(기본) 대신 401 로. ERROR 디스패치가 막히지 않도록 /error 는 위에서 permitAll.
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                // 미인증 → 403(기본) 대신 401 + ErrorResponse 바디. ERROR 디스패치가 막히지 않도록 /error 는 위에서 permitAll.
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(new JsonAuthenticationEntryPoint(objectMapper)))
                 .addFilterBefore(new JwtAuthFilter(jwt), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
