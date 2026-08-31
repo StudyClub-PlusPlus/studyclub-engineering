@@ -10,6 +10,7 @@
 - [애그리거트 — 경계가 트랜잭션이다](#애그리거트--경계가-트랜잭션이다)
 - [엔티티에 행위를 둔다](#엔티티에-행위를-둔다)
 - [값 객체](#값-객체)
+- [도메인 서비스 — 마지막 수단](#도메인-서비스--마지막-수단)
 - [애플리케이션 서비스는 조립만 한다](#애플리케이션-서비스는-조립만-한다)
 - [도메인 예외](#도메인-예외)
 - [새 기능 추가 절차](#새-기능-추가-절차)
@@ -154,6 +155,97 @@ public record Capacity(int min, int max) {
 
 원시 타입을 그냥 쓰면 그 검증과 질문이 호출부마다 복사된다.
 
+## 도메인 서비스 — 마지막 수단
+
+**엔티티에 넣을 자리가 정말 없을 때만 만든다.** 도메인 규칙의 기본 집은 엔티티이고,
+도메인 서비스는 예외다. 이 순서를 뒤집으면 이름만 도메인일 뿐 [빈약한 도메인 모델](#안티패턴)이 된다.
+
+### 판정 — 세 개를 다 통과해야 만든다
+
+1. **어느 엔티티의 규칙도 아니다.** "이 판단의 주인이 누구냐"에 답이 안 나온다
+   (여러 애그리거트를 동시에 봐야 하거나, 어느 쪽에 넣어도 그 엔티티가 남의 일을 하게 된다)
+2. **도메인 언어로 이름이 붙는다.** `StudyEnrollment`, `WaitlistPromotion` — 회의에서 쓰는 말이다.
+   `StudyHelper`·`StudyManager`·`StudyUtil` 이 나오면 그건 도메인 서비스가 아니다
+3. **상태를 갖지 않는다.** 필드는 리포지토리·다른 도메인 서비스뿐. 요청 데이터를 담아 두지 않는다
+
+### 예시 — 신청 승인 (두 애그리거트를 걸친다)
+
+신청서는 `STUDY_APPLICATION` 애그리거트, 명부는 `STUDY_PARTICIPANT` 애그리거트다.
+"승인하면 명부에 편입된다"는 **어느 한쪽의 규칙이 아니다** — 양쪽을 다 알아야 판단이 선다.
+
+```java
+// domain/.../study/StudyEnrollment.java — 스프링 어노테이션 없는 순수 클래스
+public class StudyEnrollment {
+
+    private final StudyParticipantRepository participants;
+
+    public StudyEnrollment(StudyParticipantRepository participants) {
+        this.participants = participants;
+    }
+
+    /** 승인 = 신청서 상태 전이 + 명부 편입. 둘 중 하나만 일어나면 안 된다. */
+    public StudyParticipant approve(StudyApplication application, StudySection section) {
+        if (participants.existsBySectionAndUser(section.getId(), application.getUserId())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "이미 명부에 있는 사람입니다.");
+        }
+        if (section.isFull(participants.countActive(section.getId()))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "반 정원이 찼습니다.");
+        }
+        application.approve();                       // 상태 전이는 여전히 엔티티가 한다
+        return participants.save(StudyParticipant.of(section.getId(), application.getUserId()));
+    }
+}
+```
+
+**엔티티가 할 일을 뺏지 않았다** — `application.approve()` 는 그대로 신청서가 한다.
+도메인 서비스는 **두 애그리거트를 잇는 규칙**(중복·정원)만 갖는다.
+
+> ⚠️ 이 예시는 [애그리거트 규칙 2번](#애그리거트--경계가-트랜잭션이다)("한 트랜잭션 = 한 애그리거트")과
+> 부딪친다. 신청 승인은 **부분 성공이 곧 데이터 깨짐**이라 예외로 한 트랜잭션에 묶는다.
+> 이런 예외를 만들 때는 **왜 나눌 수 없는지**를 코드 주석에 남긴다. 남기지 않으면 다음 사람이
+> "규칙이 안 지켜지네" 하고 아무 데서나 따라 한다.
+
+### 도메인 서비스 vs 애플리케이션 서비스
+
+이름이 비슷해서 제일 많이 섞인다.
+
+| | 도메인 서비스 | 애플리케이션 서비스 |
+|---|---|---|
+| 모듈 | `domain` | `api` |
+| 아는 것 | 도메인 규칙 | 유스케이스 흐름 |
+| 모르는 것 | 트랜잭션·DTO·HTTP·인증 | 도메인 규칙의 세부 |
+| `@Transactional` | **안 붙인다** | 붙인다 |
+| DTO 변환 | 안 한다 | 한다 |
+| 답하는 질문 | "이 편입이 유효한가" | "이 요청을 어떤 순서로 처리하나" |
+
+```java
+// 애플리케이션 서비스 — 조립만
+@Transactional
+public StudyParticipantResponse approve(Long applicationId, Long sectionId) {
+    StudyApplication application = applications.findById(applicationId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "신청서를 찾을 수 없습니다."));
+    StudySection section = sections.findById(sectionId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "반을 찾을 수 없습니다."));
+
+    StudyParticipant participant = enrollment.approve(application, section);   // ← 규칙은 전부 저 안
+
+    return StudyParticipantResponse.from(participant);
+}
+```
+
+### 만들지 말아야 할 때
+
+| 상황 | 왜 아닌가 | 대신 |
+|---|---|---|
+| 엔티티 하나만 보면 되는 검증 | 그 엔티티의 규칙이다 | 엔티티 메서드 |
+| 값에 대한 검증·계산 | 그 값의 규칙이다 | [값 객체](#값-객체) |
+| 외부 API 호출·메일 발송 | 도메인이 아니라 인프라다 | 애플리케이션 서비스에서 트랜잭션 밖으로 |
+| 조회 전용 로직 | 규칙이 아니라 질의다 | 리포지토리 쿼리 + DTO 변환 |
+| "서비스가 길어져서" | 길이는 이유가 아니다 | 규칙을 엔티티로 되돌린다 |
+
+> **현재 이 프로젝트에 도메인 서비스는 하나도 없다.** 애그리거트가 아직 `User` 하나뿐이라
+> 걸칠 대상이 없다. 위 예시는 목표 모양이다 — 첫 번째를 만들 때 이 절의 판정 3개를 먼저 통과시킨다.
+
 ## 애플리케이션 서비스는 조립만 한다
 
 애플리케이션 서비스(`@Service`)가 하는 일은 **네 가지뿐**이다.
@@ -197,6 +289,7 @@ throw new ResponseStatusException(HttpStatus.CONFLICT, "...");
 1. **기존 API 로 되는지 먼저 본다** — [`../common-guide.md`](../common-guide.md)
 2. **애그리거트를 정한다.** 무엇과 무엇이 한 트랜잭션에서 같이 바뀌는가. 루트는 누구인가
 3. **domain 에 엔티티/값 객체와 규칙을 쓴다.** 웹 타입 import 금지. `BaseEntity` 상속
+   · 여러 애그리거트를 걸치는 규칙만 [도메인 서비스](#도메인-서비스--마지막-수단)로 (판정 3개 통과 시)
 4. **단위 테스트로 규칙을 먼저 못 박는다** — 실패 케이스부터 ([`testing-guide.md`](testing-guide.md))
 5. **리포지토리 인터페이스**를 애그리거트 루트 단위로 추가
 6. **마이그레이션 SQL**(`V{n}__*.sql`)을 쓴다 — [`database-guide.md`](database-guide.md)
@@ -214,6 +307,7 @@ throw new ResponseStatusException(HttpStatus.CONFLICT, "...");
 | **도메인이 웹을 안다** | domain 에서 `HttpStatus` import | `ErrorCode` 로 바꾼다 |
 | **DTO 가 엔티티를 노출** | 컨트롤러가 엔티티를 그대로 반환 | 서비스에서 DTO 변환 (PII 도 여기서 거른다) |
 | **리포지토리 남발** | 애그리거트 내부 엔티티마다 리포지토리 | 루트 리포지토리 하나 |
+| **도메인 서비스 남용** | `XxxManager`·`XxxHelper` 가 늘고 엔티티는 getter 뿐 | [판정 3개](#판정--세-개를-다-통과해야-만든다)를 다시 통과시킨다 |
 
 ## 현재 알려진 부채
 
