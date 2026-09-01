@@ -37,11 +37,21 @@ public record CreateStudyRequest(
 
 ```java
 @PostMapping("/studies")
-public ApiResponse<StudyResponse> create(@Valid @RequestBody CreateStudyRequest request) {
-    // request 는 이미 검증 완료된 상태
+public StudyResponse create(@Valid @RequestBody CreateStudyRequest request) {
+    // request 는 이미 검증 완료된 상태 (성공 응답에 래퍼를 두지 않는다)
     ...
 }
 ```
+
+검증에 걸리면 `GlobalExceptionHandler` 가 **400 + `errorCode: "INVALID_INPUT"`** 으로 바꾼다.
+어느 필드가 왜 틀렸는지는 `errorMessage` 에 담긴다:
+
+```jsonc
+{ "errorCode": "INVALID_INPUT", "errorMessage": "maxMembers: 최소 2명 이상이어야 합니다" }
+```
+
+> 필드별로 나눠진 맵이 필요해지면(폼 화면에서 인풋마다 표시) 그때 `ErrorResponse` 에 필드를
+> 하나 더 얹는다. 지금은 그 화면이 없어서 두지 않았다.
 
 ### 자주 쓰는 어노테이션
 

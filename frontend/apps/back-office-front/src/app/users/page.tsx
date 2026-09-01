@@ -53,7 +53,7 @@ export default function UsersAdmin() {
     fetch('/api/users', { cache: 'no-store' })
       .then(async (r) => {
         const data = await r.json().catch(() => null);
-        if (!r.ok) throw new Error(data?.message ?? `조회 실패 (${r.status})`);
+        if (!r.ok) throw new Error(data?.errorMessage ?? data?.message ?? `조회 실패 (${r.status})`);
         return data as ApiUser[];
       })
       .then(setUsers)

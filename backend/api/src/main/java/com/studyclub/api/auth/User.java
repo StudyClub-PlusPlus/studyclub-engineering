@@ -1,5 +1,6 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.Instant;
 
 /**
  * 최소 User — 구글 프로필 + 역할. 신청/출석 등은 이후 얹는다.
@@ -23,8 +23,8 @@ import java.time.Instant;
  * 없으므로, <b>진입 지점 가드를 backstop 으로 같이 둔다</b> — 넘치더라도 500 대신 값만 포기한다.
  */
 @Entity
-@Table(name = "users", uniqueConstraints = @UniqueConstraint(name = "uk_users_email", columnNames = "email"))
-public class User {
+@Table(name = "USERS", uniqueConstraints = @UniqueConstraint(name = "uk_users_email", columnNames = "email"))
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,8 +45,9 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role = Role.STUDENT;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt = Instant.now();
+    /** 컬럼 길이 상한. 엔티티가 자기 한계를 알고 있어야 호출부마다 방어하지 않는다. */
+    private static final int NAME_MAX = 255;
+    private static final int PICTURE_MAX = 2048;
 
     /** 컬럼 길이 상한. 엔티티가 자기 한계를 알고 있어야 호출부마다 방어하지 않는다. */
     private static final int NAME_MAX = 255;
@@ -61,7 +62,6 @@ public class User {
         this.picture = dropIfTooLong(picture, PICTURE_MAX);
         this.googleSub = googleSub;
         this.role = role != null ? role : Role.STUDENT;
-        this.createdAt = Instant.now();
     }
 
     public Long getId() {
@@ -86,10 +86,6 @@ public class User {
 
     public Role getRole() {
         return role;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
     }
 
     public void setName(String name) {

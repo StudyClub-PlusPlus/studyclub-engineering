@@ -37,7 +37,7 @@ function LoginForm() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          throw new Error(data?.message ?? `로그인 실패 (${res.status})`);
+          throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
         }
         if (data.user) setUser(data.user);
         router.replace(next);

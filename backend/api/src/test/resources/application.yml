@@ -1,0 +1,26 @@
+# 테스트 전용 설정. MySQL 컨테이너 없이 도는 것이 목적 — 테스트가 인프라를 요구하면 아무도 안 돌린다.
+#
+# ⚠️ 한계: Flyway 를 끄고 스키마를 엔티티에서 생성한다. 따라서 이 테스트들은
+#    **마이그레이션 SQL 이 맞는지는 검증하지 않는다** (V1__init.sql 은 MySQL 전용 DDL).
+#    마이그레이션 검증이 필요해지면 Testcontainers(MySQL) 로 올린다.
+spring:
+  datasource:
+    url: jdbc:h2:mem:studyclub;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+      naming:
+        physical-strategy: com.studyclub.api.config.UpperCaseTableNamingStrategy
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+jwt:
+  secret: test-only-secret
+back-office:
+  allowed-emails: ops@studyclub-plusplus.com

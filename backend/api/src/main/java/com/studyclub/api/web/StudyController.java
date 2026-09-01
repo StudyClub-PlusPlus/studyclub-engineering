@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.studyclub.common.ApiResponse;
 import com.studyclub.domain.study.Study;
 
 @RestController
@@ -21,7 +20,7 @@ public class StudyController {
     );
 
     @GetMapping
-    public ApiResponse<List<Study>> list() {
-        return ApiResponse.ok(STUDIES);
+    public List<Study> list() {
+        return STUDIES;
     }
 }

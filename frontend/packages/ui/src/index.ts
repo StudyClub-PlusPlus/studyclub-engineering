@@ -39,3 +39,6 @@ export type { ModalProps } from './Modal';
 
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
+
+export { Toaster, toast } from './Toast';
+export type { Toast, ToasterProps } from './Toast';

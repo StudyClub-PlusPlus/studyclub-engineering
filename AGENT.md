@@ -63,8 +63,13 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 
 코드를 작성·수정할 때 아래 가이드를 상황에 맞게 참고한다.
 
+> **아무 코드나 쓰기 전에 [`docs/backend-development-guide/ddd-guide.md`](docs/backend-development-guide/ddd-guide.md) 를 먼저 읽는다.**
+> 애그리거트를 어디에 긋고 로직을 어디에 두는지가 거기 있다. 새 기능은 그 문서의
+> [새 기능 추가 절차](docs/backend-development-guide/ddd-guide.md#새-기능-추가-절차) 순서를 따른다.
+
 | 상황 | 참고 문서 |
 |------|----------|
+| **설계 — 애그리거트·엔티티·값 객체·레이어** | [`docs/backend-development-guide/ddd-guide.md`](docs/backend-development-guide/ddd-guide.md) |
 | 모듈 구조·패키지 규약 | [`docs/backend-development-guide/module-structure.md`](docs/backend-development-guide/module-structure.md) |
 | API 엔드포인트 추가·수정 | [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md) |
 | 인증·JWT·OAuth | [`docs/backend-development-guide/auth-guide.md`](docs/backend-development-guide/auth-guide.md) |
@@ -74,14 +79,25 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 | 입력 검증 (`@Valid`) | [`docs/backend-development-guide/validation-guide.md`](docs/backend-development-guide/validation-guide.md) |
 | 예외 처리 | [`docs/backend-development-guide/exception-handling-guide.md`](docs/backend-development-guide/exception-handling-guide.md) |
 | 로깅 | [`docs/backend-development-guide/logging-guide.md`](docs/backend-development-guide/logging-guide.md) |
-| JPA·N+1·트랜잭션 | [`docs/backend-development-guide/jpa-guide.md`](docs/backend-development-guide/jpa-guide.md) |
+| JPA·BaseEntity·N+1·트랜잭션 | [`docs/backend-development-guide/jpa-guide.md`](docs/backend-development-guide/jpa-guide.md) |
+| 스키마 변경·마이그레이션·테이블 이름·외래키 | [`docs/backend-development-guide/database-guide.md`](docs/backend-development-guide/database-guide.md) |
+| 데이터 모델 — 테이블·컬럼·상태값·전이 (ERD) | [`docs/erd/README.md`](docs/erd/README.md) — 테이블당 md 1개, 변경은 PR |
 
 #### BE 핵심 요약
 
-1. **PII 마스킹** — 응답과 로그에 개인정보 평문 노출 금지
-2. **캡슐화** — 엔티티 상태 변경은 의미 있는 메서드로. setter 금지, 호출자는 내부 구현을 모른다
-3. **테스트** — 도메인 로직은 단위 테스트, API 흐름은 슬라이스/통합 테스트. Given-When-Then
-4. **기존 API 활용** — 새 엔드포인트 전에 기존 것 확장으로 해결 가능한지 먼저 확인
+1. **DDD 먼저** — 애그리거트를 정하고 규칙을 엔티티에 둔다. 서비스는 조립만 한다
+2. **엔티티는 `BaseEntity` 상속** — `createdAt`/`updatedAt` 을 손으로 채우지 않는다
+3. **테이블 이름은 대문자**(`USERS`), 컬럼은 소문자 snake_case
+4. **스키마는 Flyway 가 만든다** — prod·로컬은 `ddl-auto: validate`, **stage 만 `update`**.
+   엔티티를 바꿨으면 같은 PR 에 `V{n}__*.sql` (stage 에서 통과했다고 prod 가 통과하는 게 아니다)
+5. **외래키는 애그리거트 안에만** — 애그리거트 사이는 ID 참조 + 인덱스
+6. **에러 응답은 `{errorCode, errorMessage}` 하나뿐** — 성공 응답에는 래퍼(`success`)가 없다.
+   `BusinessException(ErrorCode.X, "...")` 로 던지면 `GlobalExceptionHandler` 가 변환한다
+7. **PII 마스킹** — 응답과 로그에 개인정보 평문 노출 금지
+8. **캡슐화** — 엔티티 상태 변경은 의미 있는 메서드로. setter 금지
+9. **테스트를 같이 낸다** — 통합은 성공 1건 + 실패 코어(401/400/403/404), 단위는 규칙의 세부까지.
+   `@DisplayName` 은 한글로
+10. **기존 API 활용** — 새 엔드포인트 전에 기존 것 확장으로 해결 가능한지 먼저 확인
 
 ### Frontend (Next.js)
 
