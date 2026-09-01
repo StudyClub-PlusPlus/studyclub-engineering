@@ -31,18 +31,39 @@ spring:
 
 ### 환경별
 
-| 환경 | `ddl-auto` | 누가 정하나 | 왜 |
-|------|-----------|------------|-----|
-| 로컬 | `validate` (기본값) | — | 마이그레이션을 쓰는 습관이 여기서 생긴다 |
-| **stage** | **`update`** | k8s `studyclub-api-stage-env` 의 `DDL_AUTO` | 기능 개발 중 스키마를 빨리 돌려 보기 위해 |
-| **prod** | **`validate`** (기본값) | 아무것도 주입하지 않는다 | 엔티티가 운영 스키마를 바꾸지 못하게 |
+**스키마를 만드는 주체는 환경마다 하나뿐이다** — Flyway 아니면 Hibernate. 둘 다 켜지 않는다.
 
-> **prod 에 `DDL_AUTO` 를 넣지 않는다.** 이 환경변수는 stage 를 위한 것이지 설정 손잡이가 아니다.
-> prod 에 넣는 순간 위 표의 마지막 줄이 무의미해진다.
+| 환경 | 스키마를 만드는 주체 | `ddl-auto` | `FLYWAY_ENABLED` |
+|------|---------------------|-----------|------------------|
+| 로컬 | **Flyway** | `validate` (기본값) | `true` (기본값) |
+| **stage** | **Hibernate** | `update` | **`false`** |
+| **prod** | **Flyway** | `validate` (기본값) | `true` (기본값) |
 
-**stage 도 Flyway 는 켜져 있다.** `update` 는 마이그레이션을 대신하는 게 아니라 그 위에 얹히는
-편의다 — 마이그레이션을 안 쓰면 stage 스키마가 prod 가 갖게 될 모양과 갈린다.
-그때 stage 는 리허설이 아니라 그냥 다른 DB 다.
+stage 의 두 값은 k8s `studyclub-api-stage-env` 시크릿이 넣는다. **prod 에는 둘 다 넣지 않는다** —
+이 환경변수들은 stage 를 위한 것이지 설정 손잡이가 아니다.
+
+### 왜 둘을 같이 켜지 않나
+
+부팅 순서는 Flyway → Hibernate 다. 그래서 **첫 배포는 멀쩡히 지나간다.**
+깨지는 건 나중이다:
+
+1. stage 에서 엔티티에 `nickname` 을 추가 → Hibernate `update` 가 컬럼을 만든다
+2. 며칠 뒤 같은 내용을 `V2__add_nickname.sql` 로 쓴다
+3. 다음 stage 배포에서 Flyway 가 `ADD COLUMN nickname` 을 실행 → **`Duplicate column` 으로 부팅 실패**
+
+터지는 시점이 만든 시점에서 멀어서 원인이 안 보인다. 그래서 stage 는 Flyway 를 끈다.
+
+### 그럼 마이그레이션은 어디서 검증하나
+
+**CI 에서.** stage 가 Flyway 를 안 돌리므로, 끄기만 하면 `V*.sql` 이 **처음 실행되는 곳이 prod** 가 된다.
+그래서 `backend-migration-check.yaml` 이 PR·푸시마다 **빈 MySQL 8 에 마이그레이션을 처음부터 적용하고
+`ddl-auto: validate` 로 앱을 띄운다.** 부팅이 성공하면 두 가지가 동시에 증명된다:
+
+- 마이그레이션 SQL 이 실제 MySQL 에서 돈다
+- 엔티티 매핑과 마이그레이션이 만든 스키마가 일치한다 (`validate` 통과)
+
+stage 를 리허설로 쓰는 것보다 정확하다 — CI 는 **항상 빈 DB 에서 시작**하기 때문이다.
+stage DB 는 누적된 상태라 "우연히 되는" 경우가 생긴다.
 
 > **stage 는 prod 와 다른 DB 다** (2026-08-31 분리). 그전까지 stage 가 prod 인스턴스의 같은 스키마를
 > 그대로 썼기 때문에, 그 상태로 `update` 를 켰다면 **stage 배포가 운영 컬럼을 바꿨다.**

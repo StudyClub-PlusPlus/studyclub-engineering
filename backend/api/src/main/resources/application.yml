@@ -14,8 +14,11 @@ spring:
   # ddl-auto 기본값 validate — 엔티티가 운영 DB 를 조용히 바꾸지 못하게 막고, 매핑과 실제 스키마가
   # 어긋나면 부팅에서 바로 터뜨린다. prod 는 이 기본값을 그대로 쓴다 (DDL_AUTO 를 주입하지 않는다).
   # stage 만 k8s studyclub-api-stage-env 에서 DDL_AUTO=update 를 넣는다 — docs/.../database-guide.md
+  # stage 는 FLYWAY_ENABLED=false — 거기서는 Hibernate(ddl-auto: update)가 스키마를 만든다.
+  # 둘을 같이 켜면 Hibernate 가 먼저 만든 컬럼을 나중에 V{n} 이 또 추가하려다 Duplicate column 으로
+  # 부팅이 죽는다. 첫 배포는 멀쩡히 지나가고 컬럼을 하나 추가하는 날 터져서 원인이 안 보인다.
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:true}
     locations: classpath:db/migration
   jpa:
     hibernate:
