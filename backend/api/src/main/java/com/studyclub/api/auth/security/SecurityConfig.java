@@ -45,6 +45,12 @@ public class SecurityConfig {
                                 "/api/health",
                                 "/actuator/**",
                                 "/api/studies",
+                                // API 문서 — 스펙(springdoc) + Scalar UI.
+                                // /scalar/** 까지 열어야 한다: UI 페이지가 /scalar/scalar.js 를 로드하는데
+                                // 이게 막히면 페이지 자체는 200 이고 브라우저에서 빈 화면으로만 드러난다.
+                                "/v3/api-docs/**",
+                                "/scalar",
+                                "/scalar/**",
                                 "/auth/social-login",
                                 "/auth/refresh")
                         .permitAll()
