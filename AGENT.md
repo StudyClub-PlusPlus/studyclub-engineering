@@ -49,6 +49,7 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 - 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
 - PR 은 CODEOWNERS(@titaniper) 승인 후에만 main 머지 (외부 기여자 포함).
 - CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
+  `backend-migration-check` 는 PR 마다 빈 MySQL 에 마이그레이션을 적용해 본다 — 여기서 깨지면 `V*.sql` 을 고친다.
 
 ---
 
@@ -88,8 +89,9 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 1. **DDD 먼저** — 애그리거트를 정하고 규칙을 엔티티에 둔다. 서비스는 조립만 한다
 2. **엔티티는 `BaseEntity` 상속** — `createdAt`/`updatedAt` 을 손으로 채우지 않는다
 3. **테이블 이름은 대문자**(`USERS`), 컬럼은 소문자 snake_case
-4. **스키마는 Flyway 가 만든다** — prod·로컬은 `ddl-auto: validate`, **stage 만 `update`**.
-   엔티티를 바꿨으면 같은 PR 에 `V{n}__*.sql` (stage 에서 통과했다고 prod 가 통과하는 게 아니다)
+4. **스키마를 만드는 주체는 환경마다 하나** — prod·로컬은 Flyway(`validate`), **stage 는
+   Hibernate(`update`, Flyway off)**. 둘 다 켜면 나중에 `Duplicate column` 으로 죽는다.
+   엔티티를 바꿨으면 같은 PR 에 `V{n}__*.sql` — 검증은 `backend-migration-check` CI 가 한다
 5. **외래키는 애그리거트 안에만** — 애그리거트 사이는 ID 참조 + 인덱스
 6. **에러 응답은 `{errorCode, errorMessage}` 하나뿐** — 성공 응답에는 래퍼(`success`)가 없다.
    `BusinessException(ErrorCode.X, "...")` 로 던지면 `GlobalExceptionHandler` 가 변환한다
