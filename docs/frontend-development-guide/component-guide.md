@@ -73,6 +73,53 @@ export default function Tabs({ items }: { items: string[] }) {
 
 **원칙**: `'use client'` 는 가능한 말단(leaf) 컴포넌트에만. 상위 레이아웃/페이지는 Server Component 유지.
 
+## 폼 유효성 검사
+
+제출이 있는 폼은 **`react-hook-form` + `zod` + `@hookform/resolvers`** 조합으로 작성한다.
+
+- **Zod 스키마**로 타입과 검증 규칙을 한 곳에서 선언한다. `z.infer<typeof schema>`로 폼 타입을 자동 파생해 타입 중복을 없앤다.
+- 조건부 검증(스터디 일정 유무 등)은 `.superRefine()`으로 표현한다.
+- 커스텀 입력(버튼 그룹·토글 격자 등 DOM 입력이 아닌 필드)은 `watch` + `setValue`로 관리한다.
+
+```tsx
+// 스키마 — 컴포넌트 바깥에서 선언해 리렌더링마다 재생성되지 않게 한다
+const profileSchema = z.object({
+  name: z.string().min(1, '이름을 입력하세요.').refine((v) => v.trim().length > 0, '이름을 입력하세요.'),
+  region: z.string() as z.ZodType<MemberRegion>,
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+
+// 컴포넌트
+const { register, handleSubmit, formState: { errors }, reset, watch, setValue } =
+  useForm<ProfileFormValues>({
+    defaultValues: { name, region },
+    resolver: zodResolver(profileSchema),
+  });
+
+// 표준 입력 — register() 스프레드 (React 19에서 ref가 일반 prop이므로 forwardRef 불필요)
+<Input {...register('name')} label='이름' error={errors.name?.message} />
+
+// 커스텀 입력 — watch + setValue
+const draftRegion = watch('region');
+<button onClick={() => setValue('region', r.key)} aria-pressed={draftRegion === r.key} />
+
+// 다이얼로그 재오픈 시 초기화
+useEffect(() => {
+  if (!open) return;
+  reset({ name, region });
+}, [open, name, region, reset]);
+```
+
+조건부 스키마가 필요할 때는 `useMemo`로 감싸 prop 변화에 반응하게 한다.
+
+```tsx
+const schema = useMemo(() => makeSchema(Boolean(fixedSchedule), locale), [fixedSchedule, locale]);
+const { ... } = useForm({ resolver: zodResolver(schema) });
+```
+
+**필터·검색 UI**(`StudyBrowser`, `EventBrowser` 등)는 제출이 없는 즉시 반응 상태라 `useState`로 충분하다 — RHF 대상이 아니다.
+
 ## 스타일링
 
 - **Tailwind CSS** 사용 (postcss.config.mjs 설정 완료)
