@@ -1,6 +1,6 @@
 # STUDY_APPLICATION — 신청서
 
-회원이 스터디의 특정 기수에 낸 신청. 폼 답변을 보관한다. 폼 질문 정의는 [STUDY_COHORT.FORM](./STUDY_COHORT.md) 을 참조한다.
+회원이 스터디의 특정 기수에 낸 신청. 폼 답변을 보관한다. 폼 질문 정의는 [STUDY_COHORT.APPLICATION_FORM](./STUDY_COHORT.md) 을 참조한다.
 
 > **STUDY_ID → STUDY_COHORT_ID.** "이 사람이 몇 기에 신청했는가"를 답하려면 기수를
 > 가리켜야 한다. 부수 효과: 클럽 3기에서 `WITHDRAWN`/`REJECTED` 된 사람도 4기가
@@ -15,8 +15,6 @@
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 구 `STUDY_ID` |
 | STATUS | VARCHAR(20) | N | 아래 |
 | FORM_ANSWER | JSON | N | 답변 |
-| CREATED_AT | DATETIME | N | = 신청 시각 |
-| UPDATED_AT | DATETIME | N | = 마지막 상태 변경 시각 |
 
 ## 관계
 - N : 1 [USER](./USER.md), [STUDY_COHORT](./STUDY_COHORT.md)
@@ -54,6 +52,6 @@ stateDiagram-v2
 - 인덱스 `(STUDY_COHORT_ID, STATUS)` — 운영자 신청 목록
 
 ## 미확정
-- 폼 구조를 `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 테이블로 정규화할지 — 현재는 STUDY_COHORT.FORM JSON + STUDY_APPLICATION.FORM_ANSWER JSON 으로 단순화.
+- 폼 구조를 `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 테이블로 정규화할지 — 현재는 STUDY_COHORT.APPLICATION_FORM JSON + STUDY_APPLICATION.FORM_ANSWER JSON 으로 단순화.
 - 결정자·거절 사유(`DECIDED_BY`, `DECIDED_AT`, `REJECTION_REASON`) — 표 설계에 있음. 운영자 화면에 필요하면 추가.
-- 운영자가 신청 목록에서 "이전 참여 이력·완주율"을 보려면 STUDY_PARTICIPANT + ATTENDANCE 조인 — 스키마 추가 없음.
+- 운영자가 신청 목록에서 "이전 참여 이력·완주율"을 보려면 STUDY_PARTICIPANT + STUDY_ATTENDANCE 조인 — 스키마 추가 없음.

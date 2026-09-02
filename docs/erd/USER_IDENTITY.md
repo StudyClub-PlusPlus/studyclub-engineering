@@ -1,4 +1,4 @@
-# IDENTITY — 로그인 수단
+# USER_IDENTITY — 로그인 수단
 
 한 회원이 가진 소셜 로그인 연결. 구글로 시작, 애플 추가 예정. **이메일 자동 병합 없음** — 로그인된 상태에서 명시적으로 연결한다.
 
@@ -10,7 +10,6 @@
 | USER_ID | BIGINT FK → USER | N | |
 | ISSUER | VARCHAR(20) | N | `GOOGLE` / `APPLE` |
 | PROVIDER_USER_ID | VARCHAR(255) | N | OAuth `sub` |
-| CREATED_AT | DATETIME | N | 최초 연결 |
 | LAST_LOGIN_AT | DATETIME | Y | |
 
 ## 관계

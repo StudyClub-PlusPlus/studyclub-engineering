@@ -9,7 +9,6 @@
 | ID | BIGINT PK | N | |
 | USER_ID | BIGINT FK → USER | N | |
 | STUDY_ID | BIGINT FK → STUDY | N | |
-| CREATED_AT | DATETIME | N | |
 
 ## 관계
 - N : 1 [USER](./USER.md), [STUDY](./STUDY.md)

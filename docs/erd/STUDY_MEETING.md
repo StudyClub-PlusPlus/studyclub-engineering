@@ -11,11 +11,10 @@
 | SCHEDULED_AT | DATETIME | N | 예정 시각 (UTC) |
 | STARTS_AT | DATETIME | Y | 실제 시작 — 반장이 시작 명령 시 기록 |
 | ENDS_AT | DATETIME | Y | 실제 종료 |
-| CREATED_AT / UPDATED_AT | DATETIME | N | |
 
 ## 관계
 - N : 1 [STUDY_CLASS](./STUDY_CLASS.md)
-- 1 : N [ATTENDANCE](./ATTENDANCE.md)
+- 1 : N [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)
 
 ## 상태 (저장하지 않음 — 시각으로 계산)
 

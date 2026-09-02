@@ -14,9 +14,8 @@
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 구 `STUDY_ID` |
 | NAME | VARCHAR(50) | N | `목요일반` |
 | STARTS_AT | TIME | Y | 반 정규 시작 시각 (요일은 미확정 — 아래) |
-| STANDARD_TIMEZONE | VARCHAR(64) | Y | IANA. 회차 시각 기준 시간대 |
+| TIMEZONE | VARCHAR(64) | Y | IANA. 회차 시각 기준 시간대 |
 | CAPACITY | INT | Y | 반 정원 |
-| CREATED_AT / UPDATED_AT | DATETIME | N | |
 
 ## 관계
 - N : 1 [STUDY_COHORT](./STUDY_COHORT.md)
@@ -31,4 +30,3 @@
 ## 미확정
 - 요일(`WEEKDAY MON~SUN`) 컬럼 — 표 설계에 있음. 반복 회차 자동 생성하려면 필요.
 - 멤버의 반 이동은 STUDY_PARTICIPANT.STUDY_CLASS_ID 갱신 + 이력 남길지.
-- 감사 컬럼(`CREATED_BY/UPDATED_BY`) 추가 여부 — 운영자가 만지는 테이블이라 규약상 넣는 쪽.
