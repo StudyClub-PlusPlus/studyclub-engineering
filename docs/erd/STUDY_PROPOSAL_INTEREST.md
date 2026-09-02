@@ -16,7 +16,7 @@
 - N : 1 [STUDY_PROPOSAL](./STUDY_PROPOSAL.md), [USER](./USER.md)
 
 ## 상태
-없음. 취소 = 행 삭제 (STUDY_FAVORITE 와 같은 취급).
+없음. 취소 = 행 삭제 (STUDY_BOOKMARK 와 같은 취급).
 
 ## 제약
 - `UNIQUE(PROPOSAL_ID, USER_ID)`

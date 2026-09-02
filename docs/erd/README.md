@@ -14,7 +14,7 @@ mermaid 는 PR diff 에 그대로 뜨고 GitHub 이 렌더한다.
 
 | 항목        | 규칙                                                                                            | 예                             |
 | --------- | --------------------------------------------------------------------------------------------- | ----------------------------- |
-| 테이블·컬럼 이름 | **대문자 · snake_case · 단수**                                                                     | `STUDY_SECTION`, `CREATED_AT` |
+| 테이블·컬럼 이름 | **대문자 · snake_case · 단수**                                                                     | `STUDY_CLASS`, `CREATED_AT` |
 | PK        | `ID BIGINT AUTO_INCREMENT`                                                                    |                               |
 | FK        | `<참조테이블>_ID`                                                                                  | `STUDY_ID`, `USER_ID`         |
 | 시각        | `DATETIME` (UTC 저장, 표시 시 사용자 `TIME_ZONE` 적용)                                                  |                               |
@@ -43,21 +43,19 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 ```mermaid
 erDiagram
   USER ||--o{ IDENTITY : "로그인 수단"
-  USER ||--o{ SESSION : "토큰"
-  STUDY ||--o{ STUDY_SECTION : "반"
-  STUDY_SECTION ||--o{ STUDY_SESSION : "회차"
-  STUDY_SESSION ||--o{ ATTENDANCE : "출석"
+  STUDY ||--o{ STUDY_COHORT : "기수"
+  STUDY_COHORT ||--o{ STUDY_CLASS : "반"
+  STUDY_CLASS ||--o{ STUDY_MEETING : "회차"
+  STUDY_MEETING ||--o{ ATTENDANCE : "출석"
   USER ||--o{ ATTENDANCE : ""
-  STUDY ||--o{ STUDY_APPLICATION : "신청"
+  STUDY_COHORT ||--o{ STUDY_APPLICATION : "신청"
   USER ||--o{ STUDY_APPLICATION : ""
-  STUDY_SECTION ||--o{ STUDY_PARTICIPANT : "명부"
+  STUDY_CLASS ||--o{ STUDY_PARTICIPANT : "명부"
   USER ||--o{ STUDY_PARTICIPANT : ""
-  STUDY_SECTION ||--o{ STUDY_INTEREST : "관심/대기"
-  USER ||--o{ STUDY_INTEREST : ""
-  STUDY ||--o{ STUDY_REVIEW : "후기"
+  STUDY_COHORT ||--o{ STUDY_REVIEW : "후기"
   USER ||--o{ STUDY_REVIEW : ""
-  STUDY ||--o{ STUDY_FAVORITE : "북마크"
-  USER ||--o{ STUDY_FAVORITE : ""
+  STUDY ||--o{ STUDY_BOOKMARK : "북마크"
+  USER ||--o{ STUDY_BOOKMARK : ""
   USER ||--o{ STUDY_PROPOSAL : "제안"
   STUDY_PROPOSAL ||--o{ STUDY_PROPOSAL_INTEREST : "관심 표시"
   USER ||--o{ STUDY_PROPOSAL_INTEREST : ""
@@ -96,34 +94,14 @@ erDiagram
     datetime LAST_LOGIN_AT
   }
 
-  SESSION {
-    bigint   ID                PK
-    bigint   USER_ID           FK
-    varchar  TOKEN_HASH        UK "원문 저장 안 함"
-    datetime EXPIRES_AT
-    datetime CREATED_AT
-    datetime UPDATED_AT
-    datetime REMOVED_AT           "로그아웃·강제 폐기"
-  }
-
   STUDY {
     bigint   ID                PK
     varchar  SLUG              UK "URL 식별자"
     varchar  TITLE
     text     DESCRIPTION
     varchar  CATEGORY             "AI, BACKEND, PAPER …"
-    varchar  OPERATION_MODE       "ONE_TIME / RECURRING / ALWAYS"
-    varchar  FORMAT               "ONLINE / OFFLINE / HYBRID"
-    varchar  STATUS               "DRAFT / OPEN / CLOSED"
+    varchar  TYPE                 "ONE_TIME / RECURRING / ROLLING"
     varchar  THUMBNAIL_URL
-    varchar  DISCORD_CHANNEL
-    varchar  DRIVE_URL
-    json     CURRICULUM           "주차별 커리큘럼"
-    int      CAPACITY             "전체 정원"
-    datetime DEADLINE             "모집 마감"
-    json     FORM                 "제출 당시 질문 정의"
-    date     START_DATE
-    date     END_DATE
     boolean  IS_HIDDEN            "목록 노출 제어"
     bigint   CREATED_BY        FK
     bigint   UPDATED_BY        FK
@@ -131,9 +109,26 @@ erDiagram
     datetime UPDATED_AT
   }
 
-  STUDY_SECTION {
+  STUDY_COHORT {
     bigint   ID                 PK
     bigint   STUDY_ID           FK
+    varchar  FORMAT               "ONLINE / OFFLINE / HYBRID"
+    varchar  STATUS               "DRAFT / OPEN / CLOSED"
+    json     FORM                 "이 기수 신청 폼 질문 정의"
+    json     CURRICULUM           "주차별 커리큘럼"
+    int      CAPACITY             "이 기수 전체 정원"
+    datetime DEADLINE             "이 기수 모집 마감"
+    date     START_DATE
+    date     END_DATE              "ROLLING 코호트는 NULL"
+    varchar  DISCORD_CHANNEL
+    varchar  DRIVE_URL
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  STUDY_CLASS {
+    bigint   ID                 PK
+    bigint   STUDY_COHORT_ID    FK
     varchar  NAME                  "목요일반"
     time     STARTS_AT             "반 정규 시작 시각"
     varchar  STANDARD_TIMEZONE     "IANA"
@@ -142,9 +137,9 @@ erDiagram
     datetime UPDATED_AT
   }
 
-  STUDY_SESSION {
+  STUDY_MEETING {
     bigint   ID                 PK
-    bigint   STUDY_SECTION_ID   FK
+    bigint   STUDY_CLASS_ID     FK
     datetime SCHEDULED_AT          "예정 시각 (UTC)"
     datetime STARTS_AT             "실제 시작"
     datetime ENDS_AT               "실제 종료"
@@ -155,7 +150,7 @@ erDiagram
   STUDY_APPLICATION {
     bigint   ID                 PK
     bigint   USER_ID            FK
-    bigint   STUDY_ID           FK
+    bigint   STUDY_COHORT_ID    FK
     varchar  STATUS                "PENDING / APPROVED / REJECTED / WITHDRAWN / WAITLISTED"
     json     FORM_ANSWER
     datetime CREATED_AT            "신청 시각"
@@ -165,7 +160,8 @@ erDiagram
   STUDY_PARTICIPANT {
     bigint   ID                 PK
     bigint   USER_ID            FK
-    bigint   STUDY_SECTION_ID   FK
+    bigint   STUDY_CLASS_ID     FK
+    bigint   STUDY_COHORT_ID    FK "비정규화"
     varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED"
     varchar  ROLE                  "MEMBER / LEADER / CO_LEADER"
     datetime JOINED_AT             "편입 시각"
@@ -173,22 +169,12 @@ erDiagram
     datetime UPDATED_AT
   }
 
-  STUDY_INTEREST {
-    bigint   ID                 PK
-    bigint   USER_ID            FK
-    bigint   STUDY_SECTION_ID   FK
-    varchar  STATUS                "WAITING / PROMOTED / CANCELED"
-    varchar  ROLE                  "편입 시 받을 역할"
-    datetime JOINED_AT             "대기 순번 기준"
-    datetime CREATED_AT
-    datetime UPDATED_AT
-  }
-
   ATTENDANCE {
     bigint   ID                 PK
     bigint   USER_ID            FK
-    bigint   STUDY_SECTION_ID   FK "비정규화 — 반별 집계용"
-    bigint   STUDY_SESSION_ID   FK
+    bigint   STUDY_COHORT_ID    FK "비정규화 — 기수별 집계용"
+    bigint   STUDY_CLASS_ID     FK "비정규화 — 반별 집계용"
+    bigint   STUDY_MEETING_ID   FK
     varchar  STATUS                "PRESENT / LATE / EXCUSED / ABSENT"
     datetime START_TIME            "입장"
     datetime END_TIME              "퇴장"
@@ -201,12 +187,13 @@ erDiagram
   STUDY_REVIEW {
     bigint   ID                 PK
     bigint   USER_ID            FK
-    bigint   STUDY_ID           FK
+    bigint   STUDY_COHORT_ID    FK "정본 — 어느 기수 후기인지"
+    bigint   STUDY_ID           FK "비정규화 — 상세 페이지 전체 후기 조회용"
     text     CONTENT
     datetime CREATED_AT
   }
 
-  STUDY_FAVORITE {
+  STUDY_BOOKMARK {
     bigint   ID                 PK
     bigint   USER_ID            FK
     bigint   STUDY_ID           FK
@@ -234,31 +221,30 @@ erDiagram
   }
 
   USER                  ||--o{ IDENTITY                : "로그인 수단"
-  USER                  ||--o{ SESSION                 : "토큰"
   USER                  ||--o{ STUDY_APPLICATION       : "신청"
   USER                  ||--o{ STUDY_PARTICIPANT       : "명부"
-  USER                  ||--o{ STUDY_INTEREST          : "대기"
   USER                  ||--o{ ATTENDANCE              : "출석"
   USER                  ||--o{ STUDY_REVIEW            : "후기"
-  USER                  ||--o{ STUDY_FAVORITE          : "북마크"
+  USER                  ||--o{ STUDY_BOOKMARK          : "북마크"
   USER                  ||--o{ STUDY_PROPOSAL          : "제안"
   USER                  ||--o{ STUDY_PROPOSAL_INTEREST : "관심 표시"
 
-  STUDY                 ||--o{ STUDY_SECTION           : "반"
-  STUDY                 ||--o{ STUDY_APPLICATION       : "신청서"
-  STUDY                 ||--o{ STUDY_REVIEW            : "후기"
-  STUDY                 ||--o{ STUDY_FAVORITE          : "북마크"
+  STUDY                 ||--o{ STUDY_COHORT           : "기수"
+  STUDY                 ||--o{ STUDY_BOOKMARK          : "북마크"
+  STUDY                 ||--o{ STUDY_REVIEW            : "전체 후기 조회 (비정규화)"
 
-  STUDY_SECTION         ||--o{ STUDY_SESSION           : "회차"
-  STUDY_SECTION         ||--o{ STUDY_PARTICIPANT       : "소속"
-  STUDY_SECTION         ||--o{ STUDY_INTEREST          : "대기 명부"
-  STUDY_SECTION         ||--o{ ATTENDANCE              : "반별 집계"
+  STUDY_COHORT          ||--o{ STUDY_CLASS             : "반"
+  STUDY_COHORT          ||--o{ STUDY_APPLICATION       : "신청서"
+  STUDY_COHORT          ||--o{ STUDY_REVIEW            : "후기"
 
-  STUDY_SESSION         ||--o{ ATTENDANCE              : "회차 출석"
+  STUDY_CLASS           ||--o{ STUDY_MEETING           : "회차"
+  STUDY_CLASS           ||--o{ STUDY_PARTICIPANT       : "소속"
+  STUDY_CLASS           ||--o{ ATTENDANCE              : "반별 집계"
+
+  STUDY_MEETING         ||--o{ ATTENDANCE              : "회차 출석"
   STUDY_PROPOSAL        ||--o{ STUDY_PROPOSAL_INTEREST : "나도"
 
   STUDY_APPLICATION     ||..o| STUDY_PARTICIPANT         : "승인 시 생성"
-  STUDY_INTEREST        ||..o| STUDY_PARTICIPANT         : "자리 나면 편입"
   STUDY_PROPOSAL        ||..o| STUDY                     : "채택 시 승격"
 ```
 
@@ -269,16 +255,16 @@ erDiagram
 | --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
 | 회원  | [USER](./USER.md)                                       | 회원 프로필                 | `ROLE`                               |
 | 회원  | [IDENTITY](./IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
-| 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (캐시 후보)          | — (만료·폐기는 시각으로 계산)                   |
-| 스터디 | [STUDY](./STUDY.md)                                     | 스터디/클럽 본체              | `STATUS`, `OPERATION_MODE`, `FORMAT` |
-| 스터디 | [STUDY_SECTION](./STUDY_SECTION.md)                     | 반 (요일·시간대별)            | —                                    |
-| 스터디 | [STUDY_SESSION](./STUDY_SESSION.md)                     | 회차 (반의 N번째 모임)         | —                                    |
+| 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
+| 스터디 | [STUDY](./STUDY.md)                                     | 스터디/클럽 정체성             | `TYPE`                               |
+| 스터디 | [STUDY_COHORT](./STUDY_COHORT.md)                       | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `FORMAT`                   |
+| 스터디 | [STUDY_CLASS](./STUDY_CLASS.md)                         | 반 (요일·시간대별)            | —                                    |
+| 스터디 | [STUDY_MEETING](./STUDY_MEETING.md)                     | 회차 (반의 N번째 모임)         | —                                    |
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 반에 소속된 사람         | `STATUS`, `ROLE`                     |
-| 모집  | [STUDY_INTEREST](./STUDY_INTEREST.md)                   | 반 관심/대기 등록             | `STATUS`, `ROLE`                     |
 | 운영  | [ATTENDANCE](./ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
-| 반응  | [STUDY_FAVORITE](./STUDY_FAVORITE.md)                   | 북마크                    | —                                    |
+| 반응  | [STUDY_BOOKMARK](./STUDY_BOOKMARK.md)                   | 북마크                    | —                                    |
 | 제안  | [STUDY_PROPOSAL](./STUDY_PROPOSAL.md)                   | "이런 스터디 열어주세요"         | `STATUS`                             |
 | 제안  | [STUDY_PROPOSAL_INTEREST](./STUDY_PROPOSAL_INTEREST.md) | 제안에 "나도"               | —                                    |
 
@@ -335,7 +321,7 @@ erDiagram
 - <확정 안 된 것. 없으면 섹션 생략>
 ```
 
-- **상태값은 저장하는 것만 표에 쓴다.** 날짜로 계산하는 상태는 "저장하지 않음 — 시각으로 계산"으로 따로 (예: [SESSION](./SESSION.md), [STUDY_SESSION](./STUDY_SESSION.md))
+- **상태값은 저장하는 것만 표에 쓴다.** 날짜로 계산하는 상태는 "저장하지 않음 — 시각으로 계산"으로 따로 (예: [SESSION](./SESSION.md), [STUDY_MEETING](./STUDY_MEETING.md))
 - 이름·타입은 위 [규약](#규약-제안--0830-일-회의에서-확정)을 따른다
 
 ### 셀프 체크
@@ -361,11 +347,15 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 
 ## 미확정 (08/28 안건)
 
-- **네이밍** — 대문자·snake·단수. drawio 에 소문자 테이블(`STUDY_SECTION`·`STUDY_PROPOSAL*`)이 섞여 있다.
-- **STUDY.STATUS 를 둘 것인가** — 표 설계는 "상태 컬럼 없이 날짜로 계산" 추천, drawio 는 `STATUS` 보유. 이 문서는 **라이프사이클(DRAFT/OPEN/CLOSED)만 저장, 모집 상태는 계산**으로 절충 — [STUDY](./STUDY.md#상태).
-- **STUDY_INTEREST vs STUDY_PARTICIPANT** — 컬럼이 같다. 대기자 명부로 쓸지, PARTICIPANT.STATUS=`WAITLISTED` 로 합칠지.
-- **신청 폼** — `FORM_SNAPSHOT`/`FORM_ANSWER` JSON 으로 갈지(drawio), `STUDY_QUESTION`+`STUDY_APPLICATION_ANSWER` 테이블로 갈지(표 설계).
+- **네이밍** — 대문자·snake·단수. drawio 에 소문자 테이블(`STUDY_CLASS`·`STUDY_PROPOSAL*`)이 섞여 있다.
+- **신청 폼** — `STUDY_COHORT.FORM` + `STUDY_APPLICATION.FORM_ANSWER` JSON 으로 갈지, `STUDY_QUESTION`+`STUDY_APPLICATION_ANSWER` 테이블로 갈지(표 설계).
 - **STUDY.CATEGORY** — 코드값(drawio)인지 `STUDY_CATEGORY` 테이블 FK(표 설계)인지.
-- **스터디 vs 클럽** — 스터디=1회성, 클럽=기수제·반복. 스터디가 클럽이 될 수 있다 → `OPERATION_MODE` 변경으로 표현. 기수(코호트) 테이블은 아직 없음.
 - **회차 알림 자동화·디스코드 명령어 출석** — 스키마 영향 없음(ATTENDANCE.CREATED_BY 로 충분). 봇 쪽 결정.
+
+**해결됨 — 기수(코호트)**: 클럽 N기는 새 STUDY 행이 아니라 별도 테이블
+[STUDY_COHORT](./STUDY_COHORT.md) 로 낸다. `STUDY.TYPE`
+(`ONE_TIME`/`RECURRING`/`ROLLING`)이 STUDY 에 남고,
+기수마다 달라지는 `FORMAT`·`STATUS`·`CURRICULUM`·`CAPACITY`·`DEADLINE`·
+`START_DATE`/`END_DATE`·`DISCORD_CHANNEL`·`DRIVE_URL` 은 전부 STUDY_COHORT 로
+이동했다. 근거는 `study_schema_design_decisions.md` 참고.
 

@@ -1,6 +1,6 @@
 # ATTENDANCE — 출석
 
-회차(STUDY_SESSION) × 회원 1행. 반장이 회차 시작 시 디스코드 명령어로 찍고, 사후 수정 가능.
+회차(STUDY_MEETING) × 회원 1행. 반장이 회차 시작 시 디스코드 명령어로 찍고, 사후 수정 가능.
 마이페이지 출석 현황·완주율은 **여기서 계산**해서 가져간다 (다른 화면에서 재계산 금지).
 
 ## 컬럼
@@ -9,8 +9,9 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | USER_ID | BIGINT FK → USER | N | |
-| STUDY_SECTION_ID | BIGINT FK → STUDY_SECTION | N | 비정규화 — 반별 집계 쿼리용 (SESSION 을 통해 도출 가능) |
-| STUDY_SESSION_ID | BIGINT FK → STUDY_SESSION | N | |
+| STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 비정규화 — 기수별 전체 출석 집계용 |
+| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | 비정규화 — 반별 출석 집계용. 실제 참석한 반 (cross-class 출석 시 home class 가 아닐 수 있음) |
+| STUDY_MEETING_ID | BIGINT FK → STUDY_MEETING | N | |
 | STATUS | VARCHAR(20) | N | 아래 |
 | START_TIME | DATETIME | Y | 입장 시각 |
 | END_TIME | DATETIME | Y | 퇴장 시각 |
@@ -19,7 +20,7 @@
 | CREATED_AT / UPDATED_AT | DATETIME | N | |
 
 ## 관계
-- N : 1 [USER](./USER.md), [STUDY_SESSION](./STUDY_SESSION.md), [STUDY_SECTION](./STUDY_SECTION.md)
+- N : 1 [USER](./USER.md), [STUDY_MEETING](./STUDY_MEETING.md), [STUDY_CLASS](./STUDY_CLASS.md), [STUDY_COHORT](./STUDY_COHORT.md)
 
 ## 상태 — STATUS
 
@@ -43,8 +44,9 @@ stateDiagram-v2
 ```
 
 ## 제약
-- `UNIQUE(STUDY_SESSION_ID, USER_ID)`
-- 인덱스 `(USER_ID, STUDY_SECTION_ID)` — 마이페이지 출석 현황
+- `UNIQUE(STUDY_MEETING_ID, USER_ID)`
+- 인덱스 `(USER_ID, STUDY_COHORT_ID)` — 마이페이지 전체 출석 현황
+- 인덱스 `(USER_ID, STUDY_CLASS_ID)` — 반별 출석 현황
 
 ## 미확정
 - 행 생성 시점 — 회차 시작 시 참가자 전원 `ABSENT` 로 미리 만들지(집계 단순), 체크된 사람만 만들지(행 적음). 전자 제안.
