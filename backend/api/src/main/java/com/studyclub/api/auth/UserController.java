@@ -3,6 +3,8 @@ package com.studyclub.api.auth;
 import com.studyclub.api.auth.dto.AuthDtos.UserView;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.studyclub.domain.user.User;
+import com.studyclub.domain.user.UserRepository;
 import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,8 +28,8 @@ public class UserController {
     @GetMapping
     public List<UserView> list() {
         return users.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
-                .map(u -> new UserView(u.getId(), u.getEmail(), u.getName(), u.getPicture(),
-                        u.getRole().name(), String.valueOf(u.getCreatedAt())))
+                .map(u -> new UserView(u.getId(), u.getEmail(), u.getNickname(), u.getProfileImgUrl(),
+                        u.getSystemRole().name(), String.valueOf(u.getCreatedAt())))
                 .toList();
     }
 }

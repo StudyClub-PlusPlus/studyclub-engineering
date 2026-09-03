@@ -2,6 +2,9 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
+import com.studyclub.domain.user.SystemRole;
+import com.studyclub.domain.user.User;
+import com.studyclub.domain.user.UserRepository;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.api.auth.dto.AuthDtos.UserView;
 import com.studyclub.common.error.BusinessException;
@@ -42,7 +45,7 @@ public class AuthService {
         assertBackOfficePermitted(email, platform);
 
         User user = users.findByEmail(email).orElseGet(() ->
-                users.save(new User(email, g.name(), g.picture(), g.sub(), Role.STUDENT)));
+                users.save(new User(email, g.name(), g.picture(), SystemRole.MEMBER)));
 
         return issueFor(user);
     }
@@ -91,7 +94,7 @@ public class AuthService {
     }
 
     private UserView toView(User user) {
-        return new UserView(user.getId(), user.getEmail(), user.getName(), user.getPicture(),
-                user.getRole().name(), String.valueOf(user.getCreatedAt()));
+        return new UserView(user.getId(), user.getEmail(), user.getNickname(), user.getProfileImgUrl(),
+                user.getSystemRole().name(), String.valueOf(user.getCreatedAt()));
     }
 }

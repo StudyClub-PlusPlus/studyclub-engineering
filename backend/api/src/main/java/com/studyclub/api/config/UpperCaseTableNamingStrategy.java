@@ -26,4 +26,13 @@ public class UpperCaseTableNamingStrategy extends CamelCaseToUnderscoresNamingSt
         }
         return Identifier.toIdentifier(snake.getText().toUpperCase(Locale.ROOT), snake.isQuoted());
     }
+
+    @Override
+    public Identifier toPhysicalColumnName(Identifier name, JdbcEnvironment jdbcEnvironment) {
+        Identifier snake = super.toPhysicalColumnName(name, jdbcEnvironment);
+        if (snake == null) {
+            return null;
+        }
+        return Identifier.toIdentifier(snake.getText().toUpperCase(Locale.ROOT), snake.isQuoted());
+    }
 }

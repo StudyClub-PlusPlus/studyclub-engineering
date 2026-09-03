@@ -3,6 +3,9 @@ package com.studyclub.api.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.api.config.JpaConfig;
+import com.studyclub.domain.user.SystemRole;
+import com.studyclub.domain.user.User;
+import com.studyclub.domain.user.UserRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +39,7 @@ class UserAuditingTest {
         Instant before = Instant.now();
 
         // when
-        User saved = users.save(new User("audit@studyclub-plusplus.com", "감사", null, "sub-1", Role.STUDENT));
+        User saved = users.save(new User("audit@studyclub-plusplus.com", "감사", null, SystemRole.MEMBER));
         em.flush();
 
         // then
@@ -48,13 +51,13 @@ class UserAuditingTest {
     @DisplayName("수정하면 updatedAt 만 움직이고 createdAt 은 고정이다")
     void movesOnlyUpdatedAtOnModify() {
         // given
-        User saved = users.save(new User("edit@studyclub-plusplus.com", "수정", null, "sub-2", Role.STUDENT));
+        User saved = users.save(new User("edit@studyclub-plusplus.com", "수정", null, SystemRole.MEMBER));
         em.flush();
         Instant createdAt = saved.getCreatedAt();
         Instant updatedAt = saved.getUpdatedAt();
 
         // when
-        saved.setName("수정됨");
+        saved.setNickname("수정됨");
         em.flush();
 
         // then
