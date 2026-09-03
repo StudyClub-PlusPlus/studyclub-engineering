@@ -9,14 +9,14 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | USER_ID | BIGINT FK → USER | N | |
-| STUDY_SECTION_ID | BIGINT FK → STUDY_SECTION | N | 반. 반 이동 = 이 값 변경 |
+| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | 반. 반 이동 = 이 값 변경 |
+| STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 비정규화 — "이 사람이 몇 기 멤버였는가" 조회용 (STUDY_CLASS_ID 로 도출 가능). 반 이동 시에도 같은 기수 안이면 불변 |
 | STATUS | VARCHAR(20) | N | 아래 |
-| ROLE | VARCHAR(20) | N | 아래 |
+| PARTICIPANT_ROLE | VARCHAR(20) | N | 아래 |
 | JOINED_AT | DATETIME | N | 편입 시각 |
-| CREATED_AT / UPDATED_AT | DATETIME | N | |
 
 ## 관계
-- N : 1 [USER](./USER.md), [STUDY_SECTION](./STUDY_SECTION.md)
+- N : 1 [USER](./USER.md), [STUDY_CLASS](./STUDY_CLASS.md)
 - 출처: [STUDY_APPLICATION](./STUDY_APPLICATION.md) `APPROVED`
 
 ## 상태 — STATUS
@@ -40,9 +40,9 @@ stateDiagram-v2
   COMPLETED --> [*]
 ```
 
-## 상태 — ROLE
+## 상태 — PARTICIPANT_ROLE
 
-스터디 안에서의 역할. 시스템 권한(USER.ROLE)과 별개.
+스터디 안에서의 역할. 시스템 권한(USER.SYSTEM_ROLE)과 별개.
 
 | 값 | 뜻 |
 |---|---|
@@ -51,10 +51,9 @@ stateDiagram-v2
 | `CO_LEADER` | 부반장. LEADER 와 같은 권한 |
 
 ## 제약
-- `UNIQUE(USER_ID, STUDY_SECTION_ID)`
-- 같은 STUDY 의 다른 반에 동시 소속 금지는 앱 레벨 (STUDY_ID 가 이 테이블에 없음)
+- `UNIQUE(USER_ID, STUDY_CLASS_ID)`
+- 같은 기수의 다른 반에 동시 소속 금지는 앱 레벨 (`STUDY_COHORT_ID` 는 비정규화 컬럼이라 DB 제약 대상이 아님)
 
 ## 미확정
 - 반 이동 이력을 남길지 (`SECTION_MOVED_AT` 또는 별도 로그).
 - `LEFT_AT`·운영 `MEMO` — 표 설계에 있음.
-- [STUDY_INTEREST](./STUDY_INTEREST.md) 와 병합 여부.

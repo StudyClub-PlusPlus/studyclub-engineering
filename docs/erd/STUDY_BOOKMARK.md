@@ -1,4 +1,4 @@
-# STUDY_FAVORITE — 북마크
+# STUDY_BOOKMARK — 북마크
 
 회원이 스터디를 찜. 마이페이지 북마크 목록·탐색 카드 하트 상태.
 
@@ -9,7 +9,6 @@
 | ID | BIGINT PK | N | |
 | USER_ID | BIGINT FK → USER | N | |
 | STUDY_ID | BIGINT FK → STUDY | N | |
-| CREATED_AT | DATETIME | N | |
 
 ## 관계
 - N : 1 [USER](./USER.md), [STUDY](./STUDY.md)
