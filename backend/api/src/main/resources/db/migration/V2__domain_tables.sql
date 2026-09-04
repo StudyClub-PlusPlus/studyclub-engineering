@@ -47,8 +47,7 @@ CREATE TABLE STUDY_COHORT (
     CREATED_AT            DATETIME   NOT NULL,
     UPDATED_AT            DATETIME   NOT NULL,
     PRIMARY KEY (ID),
-    INDEX idx_study_cohort_study (STUDY_ID),
-    INDEX idx_study_cohort_status_deadline (STATUS, RECRUIT_DEADLINE),
+    INDEX idx_study_cohort_study_status (STUDY_ID, STATUS),
     CONSTRAINT fk_study_cohort_study FOREIGN KEY (STUDY_ID) REFERENCES STUDY (ID) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
@@ -107,8 +106,8 @@ CREATE TABLE STUDY_PARTICIPANT (
     PRIMARY KEY (ID),
     CONSTRAINT uk_study_participant_user_class UNIQUE (USER_ID, STUDY_CLASS_ID),
     INDEX idx_study_participant_user (USER_ID),
-    INDEX idx_study_participant_class (STUDY_CLASS_ID),
-    INDEX idx_study_participant_cohort (STUDY_COHORT_ID)
+    INDEX idx_study_participant_class_status (STUDY_CLASS_ID, STATUS),
+    INDEX idx_study_participant_cohort_status (STUDY_COHORT_ID, STATUS)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE STUDY_ATTENDANCE (
@@ -124,7 +123,7 @@ CREATE TABLE STUDY_ATTENDANCE (
     CONSTRAINT uk_study_attendance_meeting_user UNIQUE (STUDY_MEETING_ID, USER_ID),
     INDEX idx_study_attendance_user_cohort (USER_ID, STUDY_COHORT_ID),
     INDEX idx_study_attendance_user_class (USER_ID, STUDY_CLASS_ID),
-    INDEX idx_study_attendance_meeting (STUDY_MEETING_ID)
+    INDEX idx_study_attendance_cohort_status (STUDY_COHORT_ID, STATUS)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE STUDY_REVIEW (

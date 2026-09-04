@@ -19,8 +19,8 @@ import java.time.Instant;
     uniqueConstraints = @UniqueConstraint(name = "uk_study_participant_user_class", columnNames = {"USER_ID", "STUDY_CLASS_ID"}),
     indexes = {
         @Index(name = "idx_study_participant_user", columnList = "USER_ID"),
-        @Index(name = "idx_study_participant_class", columnList = "STUDY_CLASS_ID"),
-        @Index(name = "idx_study_participant_cohort", columnList = "STUDY_COHORT_ID")
+        @Index(name = "idx_study_participant_class_status", columnList = "STUDY_CLASS_ID, STATUS"),
+        @Index(name = "idx_study_participant_cohort_status", columnList = "STUDY_COHORT_ID, STATUS")
     }
 )
 public class StudyParticipant extends BaseEntity {

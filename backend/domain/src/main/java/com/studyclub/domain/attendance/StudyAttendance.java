@@ -19,7 +19,7 @@ import jakarta.persistence.UniqueConstraint;
     indexes = {
         @Index(name = "idx_study_attendance_user_cohort", columnList = "USER_ID, STUDY_COHORT_ID"),
         @Index(name = "idx_study_attendance_user_class", columnList = "USER_ID, STUDY_CLASS_ID"),
-        @Index(name = "idx_study_attendance_meeting", columnList = "STUDY_MEETING_ID")
+        @Index(name = "idx_study_attendance_cohort_status", columnList = "STUDY_COHORT_ID, STATUS")
     }
 )
 public class StudyAttendance extends BaseEntity {

@@ -15,7 +15,7 @@ import java.time.Instant;
 @Entity
 @Table(
     name = "STUDY_COHORT",
-    indexes = @Index(name = "idx_study_cohort_status_deadline", columnList = "STATUS, RECRUIT_DEADLINE")
+    indexes = @Index(name = "idx_study_cohort_study_status", columnList = "STUDY_ID, STATUS")
 )
 public class StudyCohort extends BaseEntity {
 
