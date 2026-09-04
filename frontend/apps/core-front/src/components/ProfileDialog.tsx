@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
 import { Button, Input, Modal } from '@studyclub/ui';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
@@ -16,6 +19,17 @@ import { t } from '@/lib/i18n';
  *
  * TODO(api): PATCH /api/me — 지금은 브라우저에만 저장한다.
  */
+
+const profileSchema = z.object({
+  name: z
+    .string()
+    .min(1, '이름을 입력하세요.')
+    .refine((v) => v.trim().length > 0, '이름을 입력하세요.'),
+  region: z.string() as z.ZodType<MemberRegion>,
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+
 export function ProfileDialog({
   open,
   onClose,
@@ -33,26 +47,30 @@ export function ProfileDialog({
   region: MemberRegion;
   onSave: (next: { name: string; region: MemberRegion }) => void;
 }) {
-  const [draft, setDraft] = useState(name);
-  const [draftRegion, setDraftRegion] = useState(region);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    watch,
+    setValue,
+  } = useForm<ProfileFormValues>({
+    defaultValues: { name, region },
+    resolver: zodResolver(profileSchema),
+  });
 
   // 열 때마다 현재 값에서 다시 시작한다. 취소하고 다시 열면 이전 편집이 남아 있으면 안 된다.
   useEffect(() => {
     if (!open) return;
-    setDraft(name);
-    setDraftRegion(region);
-    setError(null);
-  }, [open, name, region]);
+    reset({ name, region });
+  }, [open, name, region, reset]);
 
-  function submit() {
-    if (!draft.trim()) {
-      setError('이름을 입력하세요.');
-      return;
-    }
-    onSave({ name: draft.trim(), region: draftRegion });
+  const draftRegion = watch('region');
+
+  const onSubmit = handleSubmit((values) => {
+    onSave({ name: values.name.trim(), region: values.region });
     onClose();
-  }
+  });
 
   return (
     <Modal
@@ -64,21 +82,12 @@ export function ProfileDialog({
           <Button variant='secondary' onClick={onClose}>
             취소
           </Button>
-          <Button onClick={submit}>저장</Button>
+          <Button onClick={onSubmit}>저장</Button>
         </>
       }
     >
       <div className='flex flex-col gap-5'>
-        <Input
-          label='이름'
-          required
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            setError(null);
-          }}
-          error={error ?? undefined}
-        />
+        <Input {...register('name')} label='이름' required error={errors.name?.message} />
 
         <div>
           <p className='text-sm font-medium text-neutral-800'>이메일</p>
@@ -92,7 +101,7 @@ export function ProfileDialog({
               <button
                 key={r.key}
                 type='button'
-                onClick={() => setDraftRegion(r.key)}
+                onClick={() => setValue('region', r.key)}
                 aria-pressed={draftRegion === r.key}
                 className={`rounded-pill px-4 py-1.5 text-[13px] font-semibold transition-colors ${
                   draftRegion === r.key ? 'bg-brand text-on-brand' : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'

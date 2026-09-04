@@ -41,40 +41,59 @@
 
 ## 응답 포맷
 
-`ApiResponse<T>` 래퍼를 사용:
+**성공 응답에는 래퍼가 없다.** payload 를 그대로 돌려준다 — 성공/실패는 HTTP 상태가 말하므로
+바디에 `success` 플래그를 두지 않는다 (상태 코드와 중복이고, 어긋나면 어느 쪽이 진실인지 알 수 없다).
 
-```json
-{
-  "success": true,
-  "data": { ... },
-  "message": null
-}
+```jsonc
+// 200
+[{ "id": 1, "title": "알고리즘 스터디", "status": "RECRUITING" }]
 ```
 
-에러 시:
+에러는 **어디서 나든 이 모양 하나**:
 
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Study not found"
-}
+```jsonc
+// 404
+{ "errorCode": "NOT_FOUND", "errorMessage": "스터디를 찾을 수 없습니다." }
 ```
+
+- 프론트는 `errorMessage` 가 아니라 **`errorCode` 로 분기**한다 (메시지는 표시용)
+- 코드 목록과 던지는 법: [`../exception-handling-guide.md`](../exception-handling-guide.md)
 
 ## 인증
 
 - 인증이 필요한 엔드포인트: `Authorization: Bearer <JWT>` 헤더
 - 공개 엔드포인트는 `SecurityConfig` 에서 `permitAll()` 로 명시
 
-현재 공개 엔드포인트:
-- `POST /auth/google` — 구글 로그인
-- `GET /health` — 헬스 체크
+인증이 필요한 요청이 토큰 없이 오면 **401 + `errorCode: "UNAUTHORIZED"`** 가 나간다
+(시큐리티 필터가 막는 경우에도 같은 모양).
+
+현재 공개 엔드포인트 (`SecurityConfig` 의 `permitAll` 목록이 정본):
+- `GET /`, `GET /api/health`, `GET /actuator/**` — 헬스·상태
+- `GET /api/studies` — 스터디 목록
+- `POST /auth/social-login`, `POST /auth/refresh` — 로그인·토큰 갱신
+- `GET /v3/api-docs`, `GET /scalar`, `GET /webjars/**` — API 문서와 그 JS 번들
+
+화이트리스트 밖은 전부 인증이 필요하다. **없는 경로도 404 가 아니라 401 이 나간다** —
+어떤 엔드포인트가 있는지 밖에서 훑을 수 없게 하기 위해서다.
 
 ## 현재 엔드포인트 목록
 
+**정본은 실행 중인 서버의 API 문서다** — 아래 표는 손으로 관리하므로 반드시 뒤처진다.
+
+| | |
+|---|---|
+| Scalar UI | `http://localhost:8080/scalar` |
+| OpenAPI 스펙(JSON) | `http://localhost:8080/v3/api-docs` |
+
+스펙은 springdoc 이 컨트롤러에서 생성한다. 인증이 필요한 엔드포인트에는 메서드에
+`@SecurityRequirement(name = "bearerAuth")` 를 달아야 문서에 자물쇠가 붙는다 (안 달면 공개로 보인다).
+문서를 감춰야 하면 `API_DOCS_ENABLED=false` 로 스펙·UI 가 함께 꺼진다.
+
 | Method | Path | 설명 | 인증 |
 |--------|------|------|------|
-| GET | `/health` | 헬스 체크 | X |
-| POST | `/auth/google` | 구글 OAuth 로그인 | X |
-| GET | `/users/me` | 내 정보 조회 | O |
-| GET | `/studies` | 스터디 목록 | O |
+| GET | `/api/health` | 헬스 체크 | X |
+| GET | `/api/studies` | 스터디 목록 (현재 하드코딩 픽스처) | X |
+| POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
+| POST | `/auth/refresh` | access token 재발급 | X |
+| GET | `/auth/me` | 내 정보 조회 | O |
+| GET | `/users` | 유저 목록 (백오피스) | O |

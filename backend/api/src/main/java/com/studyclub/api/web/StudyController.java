@@ -6,9 +6,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.studyclub.common.ApiResponse;
 import com.studyclub.domain.study.Study;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "스터디", description = "스터디 목록")
 @RestController
 @RequestMapping("/api/studies")
 public class StudyController {
@@ -21,7 +23,7 @@ public class StudyController {
     );
 
     @GetMapping
-    public ApiResponse<List<Study>> list() {
-        return ApiResponse.ok(STUDIES);
+    public List<Study> list() {
+        return STUDIES;
     }
 }

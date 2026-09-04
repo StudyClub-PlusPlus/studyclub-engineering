@@ -10,9 +10,22 @@ spring:
     username: ${DB_USERNAME:studyclub}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  # 스키마의 정본은 db/migration/*.sql (Flyway) 하나다.
+  # ddl-auto 기본값 validate — 엔티티가 운영 DB 를 조용히 바꾸지 못하게 막고, 매핑과 실제 스키마가
+  # 어긋나면 부팅에서 바로 터뜨린다. prod 는 이 기본값을 그대로 쓴다 (DDL_AUTO 를 주입하지 않는다).
+  # stage 만 k8s studyclub-api-stage-env 에서 DDL_AUTO=update 를 넣는다 — docs/.../database-guide.md
+  # stage 는 FLYWAY_ENABLED=false — 거기서는 Hibernate(ddl-auto: update)가 스키마를 만든다.
+  # 둘을 같이 켜면 Hibernate 가 먼저 만든 컬럼을 나중에 V{n} 이 또 추가하려다 Duplicate column 으로
+  # 부팅이 죽는다. 첫 배포는 멀쩡히 지나가고 컬럼을 하나 추가하는 날 터져서 원인이 안 보인다.
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO:validate}
+      # 테이블 대문자 / 컬럼 snake_case 를 코드로 강제 (@Table 을 깜빡해도 규칙이 유지된다)
+      naming:
+        physical-strategy: com.studyclub.api.config.UpperCaseTableNamingStrategy
     open-in-view: false
     properties:
       hibernate:
@@ -31,6 +44,17 @@ jwt:
 # 백오피스 접근 allowlist (콤마 구분, 대소문자 무시)
 back-office:
   allowed-emails: ${BACK_OFFICE_ALLOWED_EMAILS:}
+
+# API 문서 — 스펙은 springdoc 이 컨트롤러에서 생성하고, UI 는 Scalar 가 그린다 (/scalar).
+# JS 번들은 jar 안에 들어있어 CDN 을 타지 않는다.
+# 운영에서 스펙을 감추려면 API_DOCS_ENABLED=false 하나로 둘 다 꺼진다.
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+scalar:
+  enabled: ${API_DOCS_ENABLED:true}
+  # UI 가 Scalar 로 사용량을 보내는 기본값을 끈다
+  telemetry: false
 
 management:
   endpoints:

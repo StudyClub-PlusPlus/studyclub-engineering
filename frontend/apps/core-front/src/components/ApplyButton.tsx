@@ -20,6 +20,20 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     );
   }
 
+  // 외부 신청 폼(구글 폼 등)이 있으면 그쪽으로 보낸다. 없을 때만 내부 다이얼로그.
+  if (study.recruit_url) {
+    return (
+      <a
+        href={study.recruit_url}
+        target='_blank'
+        rel='noopener noreferrer'
+        className='inline-flex items-center rounded-pill bg-brand px-8 py-3 text-sm font-bold text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)'
+      >
+        {label}
+      </a>
+    );
+  }
+
   return (
     <>
       <button

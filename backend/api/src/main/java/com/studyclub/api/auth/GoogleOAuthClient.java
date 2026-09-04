@@ -1,8 +1,9 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -10,7 +11,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.server.ResponseStatusException;
 
 /** 구글 OAuth code → access_token 교환 → userinfo 조회. */
 @Component
@@ -32,7 +32,7 @@ public class GoogleOAuthClient {
 
     public GoogleUser exchange(String code, String redirectOverride) {
         if (!StringUtils.hasText(clientId) || !StringUtils.hasText(clientSecret)) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+            throw new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR,
                     "구글 OAuth 클라이언트가 설정되지 않았습니다 (GOOGLE_CLIENT_ID/SECRET).");
         }
         String redirect = StringUtils.hasText(redirectOverride) ? redirectOverride : defaultRedirectUri;
@@ -56,7 +56,7 @@ public class GoogleOAuthClient {
                     .body(Map.class);
 
             if (token == null || token.get("access_token") == null) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "구글 토큰 교환에 실패했습니다.");
+                throw new BusinessException(ErrorCode.UNAUTHORIZED, "구글 토큰 교환에 실패했습니다.");
             }
             String accessToken = String.valueOf(token.get("access_token"));
 
@@ -66,11 +66,11 @@ public class GoogleOAuthClient {
                     .retrieve()
                     .body(Map.class);
         } catch (RestClientException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "구글 인증에 실패했습니다 (code 무효/만료).");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "구글 인증에 실패했습니다 (code 무효/만료).");
         }
 
         if (info == null || info.get("email") == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "구글 계정 정보를 가져오지 못했습니다.");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "구글 계정 정보를 가져오지 못했습니다.");
         }
         return new GoogleUser(
                 asString(info.get("sub")),
