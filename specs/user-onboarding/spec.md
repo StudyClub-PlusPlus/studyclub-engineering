@@ -98,7 +98,7 @@ IDENTITY
 | Method | Path | 설명 | 인증 |
 |---|---|---|---|
 | POST | `/auth/social-login` | 구글 로그인. 신규면 USER+IDENTITY 생성, 기존이면 조회. 완료 여부와 무관하게 토큰 발급 | X |
-| GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O |
+| GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) |
 | POST | `/users/onboarding` | 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
 
 `POST /users/onboarding`은 기존 `/users` 프리픽스에 얹는다. 온보딩은 1회성 완료 액션이라 마이페이지 수정 API(별도 스펙, `/users/me` 형태 예상)와는 경로를 분리한다.
@@ -110,13 +110,13 @@ IDENTITY
 - `nickname` — 신규 가입 직후엔 임시값(`user_<랜덤>`) 그대로 내려간다. 화면에는 보여주지 않는다.
 - `onboardingCompletedAt` — `string | null` (ISO-8601). `null`이면 프론트가 `/[locale]/onboarding`으로 보낸다.
 - `timeZone` — `string | null`.
-- 기존 구현이 내려주는 `name` 필드는 이 계약에서 제거 대상이다 — "제공자 name은 저장 안 한다"(위 참조)와 어긋나는 현재 구현이며, 반영은 후속 구현 작업이다.
+- `name` — 이 응답에 한해 **유지한다.** 구글이 이번 로그인에 실어 보낸 실명을 그대로 담아, 온보딩 화면의 닉네임 입력칸 초기값으로만 쓴다(93행). "제공자 name은 저장 안 한다"(81행)는 **DB 컬럼으로 남기지 않는다**는 뜻이지, 로그인 응답에서 지운다는 뜻이 아니다 — 응답에서마저 지우면 93행의 닉네임 프리필을 구현할 방법이 없어진다.
 
 에러: 이메일 없음 / `email_verified != true` → `400 SOCIAL_LOGIN_EMAIL_REQUIRED`. 프론트는 이 코드로 "가입 불가 안내" 화면을 다른 400 케이스와 구분해 분기한다.
 
 ### `GET /auth/me`
 
-응답 `UserView`는 `POST /auth/social-login`과 동일하게 `onboardingCompletedAt`·`timeZone`을 포함한다. 미완료 사용자도 호출 가능하다.
+응답 `UserView`는 `onboardingCompletedAt`·`timeZone`을 포함한다. `name`은 포함하지 않는다 — DB에 저장하지 않으므로 로그인 시점이 지나면 조회할 원본이 없다. 미완료 사용자도 호출 가능하다.
 
 ### `POST /users/onboarding`
 
@@ -132,11 +132,13 @@ IDENTITY
 }
 ```
 
-성공 응답은 `200 OK`, body는 닉네임·타임존·`onboardingCompletedAt`이 반영된 `UserView`. 이미 완료된 사용자가 같은 요청을 보내면 값 변경 없이 `200 OK`를 그대로 반환한다(멱등, 위 참조).
+성공 응답은 `200 OK`, body는 닉네임·타임존·`onboardingCompletedAt`이 반영된 `UserView`.
+
+멱등: 이미 `ONBOARDING_COMPLETED_AT`이 채워진 사용자가 다시 호출하면, **검증·중복 체크보다 먼저** 그 사실을 확인하고 요청 바디를 무시한 채 현재 상태 그대로 `200 OK`를 반환한다(위 참조). 이 순서를 지키지 않으면 — 예: 이미 완료된 사용자가 그 사이 다른 사람이 선점한 닉네임을 담아 재제출한 경우 — 검증이 먼저 돌아 `409 CONFLICT`가 나가버려 멱등이 깨진다.
 
 에러:
 
-- `400 INVALID_INPUT` — 약관 미동의, 닉네임 길이/형식 위반, 타임존 미유효. 이 검증들은 "가입 불가"와 달리 프론트가 별도 화면으로 분기할 이유가 없는 일반 폼 검증이라 전용 코드를 쓰지 않는다. `errorMessage`는 대표 실패 필드 하나만 `"필드명: 사유"` 형태로 담는다(예: `"nickname: 2~20자여야 합니다"`) — 레포 전역 검증 컨벤션과 동일하게 필드 배열은 쓰지 않고, 여러 필드가 동시에 실패해도 응답은 하나. 재제출 시 다음 실패 필드를 순차 확인한다.
+- `400 INVALID_INPUT` — 약관 미동의, 닉네임 길이/형식 위반, 타임존 미유효. 이 검증들은 "가입 불가"와 달리 프론트가 별도 화면으로 분기할 이유가 없는 일반 폼 검증이라 전용 코드를 쓰지 않는다. `errorMessage`는 레포의 `@Valid` 컨벤션 그대로 **실패한 필드 전부**를 `"필드명: 사유"` 형태로 콤마 join 해서 담는다(예: `"termsOfServiceAgreed: 약관에 동의해야 합니다, nickname: 2~20자여야 합니다"`, `GlobalExceptionHandler.handleValidation` 참고) — 필드 배열 같은 새 포맷은 쓰지 않는다.
 - `409 CONFLICT` — 닉네임 중복.
 - `401 UNAUTHORIZED` — 토큰 없음/만료.
 
