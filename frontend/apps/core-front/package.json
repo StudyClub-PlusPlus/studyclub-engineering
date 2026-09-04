@@ -17,6 +17,7 @@
     "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@studyclub/design": "*",
     "@studyclub/mock": "*",
     "@studyclub/ui": "*",
@@ -31,6 +32,9 @@
   },
   "prettier": "@studyclub/prettier-config",
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@studyclub/eslint-config": "*",
+    "@studyclub/prettier-config": "*",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -39,11 +43,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.5.2",
-    "@studyclub/eslint-config": "*",
-    "@studyclub/prettier-config": "*",
     "eslint": "^9.24.0",
     "jsdom": "^26.1.0",
-    "@playwright/test": "^1.52.0",
     "prettier": "^3.5.3",
     "tailwindcss": "^4",
     "typescript": "^5",
