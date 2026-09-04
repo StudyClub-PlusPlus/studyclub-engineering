@@ -79,6 +79,22 @@ services:
       - ./frontend:/app
       - studyclub-frontend-node-modules:/app/node_modules
 
+  discord:
+    image: studyclub-discord
+    container_name: studyclub-discord
+    build: ./discord
+    env_file: ./.env
+    ports:
+      - "4800:4800"
+    volumes:
+      - ./discordBot/config.json:/app/config.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4800/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   studyclub-mysql-data:
   studyclub-frontend-node-modules:
