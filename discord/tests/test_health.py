@@ -1,12 +1,12 @@
 from fastapi.testclient import TestClient
 
 from app.api.server import create_app
-from app.config import Settings, SettingsStore
+from app.config import Settings
 
 
 def _client(bot) -> TestClient:
     """Return a test client for an app wired to ``bot``."""
-    return TestClient(create_app(SettingsStore(Settings()), bot))
+    return TestClient(create_app(Settings(), bot))
 
 
 def test_health_endpoint():

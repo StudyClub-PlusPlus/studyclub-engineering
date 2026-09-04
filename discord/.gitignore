@@ -9,7 +9,6 @@ env/
 
 # Secrets / local env
 .env
-config.json
 
 # pytest
 .pytest_cache/

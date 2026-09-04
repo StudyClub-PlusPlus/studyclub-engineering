@@ -12,11 +12,9 @@ PING_CONTENT = "ping from client"
 
 @router.post("/ping")
 async def ping(request: Request) -> dict:
-    """Post :data:`PING_CONTENT` to ``discord_bot_output_channel``.
+    """Post :data:`PING_CONTENT` to ``DISCORD_BOT_OUTPUT_CHANNEL``.
 
     Runs on the same event loop as the bot, so the send is awaited directly.
-    The channel ID is read from the store on every call, so ``!reloadConfig``
-    changes where this posts without a restart.
     """
     bot = request.app.state.bot
     if bot is None:
@@ -24,10 +22,10 @@ async def ping(request: Request) -> dict:
     if not bot.is_ready():
         raise HTTPException(status_code=503, detail="discord bot is not connected yet")
 
-    channel_id = request.app.state.store.current.output_channel_id
+    channel_id = request.app.state.settings.output_channel_id
     if channel_id is None:
         raise HTTPException(
-            status_code=409, detail="no discord_bot_output_channel configured in config.json"
+            status_code=409, detail="no DISCORD_BOT_OUTPUT_CHANNEL configured"
         )
 
     channel = bot.get_channel(channel_id)

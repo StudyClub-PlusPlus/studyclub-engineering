@@ -1,23 +1,20 @@
 """Configuration loading.
 
-Secrets come from the environment (populated from ``.env`` in development).
-``config.json`` holds the runtime-tunable settings (currently just the output
-channel). ``load_settings`` merges the two into an immutable :class:`Settings`
-object; :class:`SettingsStore` lets a running bot re-read the file on demand.
+Every setting comes from the environment (populated from ``.env`` in
+development), so a deployment is fully described by its env vars.
 
-``command_prefix`` and ``log_level`` are not read from ``config.json`` -- they
+``command_prefix`` and ``log_level`` are not read from the environment -- they
 are effectively fixed for a deployment, so change their defaults below.
 """
 
 from __future__ import annotations
 
-import json
+import logging
 import os
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Mapping
+from dataclasses import dataclass
+from typing import Mapping
 
-DEFAULT_CONFIG_PATH = Path(os.getenv("CONFIG_PATH", "config.json"))
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -31,31 +28,25 @@ class Settings:
     # and README.md.
     api_port: int = 4800
     log_level: str = "INFO"
-    # Re-read from config.json at runtime via SettingsStore.reload().
+    # DISCORD_BOT_OUTPUT_CHANNEL, as the int discord.py looks channels up by.
+    # Captured at startup, so changing it needs a restart.
     output_channel_id: int | None = None
-    extra: dict[str, Any] = field(default_factory=dict)
-
-
-def load_config_file(path: Path | str = DEFAULT_CONFIG_PATH) -> dict[str, Any]:
-    """Return the parsed ``config.json`` contents, or ``{}`` when absent."""
-    path = Path(path)
-    if not path.exists():
-        return {}
-    with path.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
 
 
 def load_settings(
-    config_path: Path | str | None = None,
     environ: Mapping[str, str] | None = None,
     load_dotenv_file: bool = True,
 ) -> Settings:
-    """Build :class:`Settings` from ``config.json`` + environment variables.
+    """Build :class:`Settings` from environment variables.
 
-    A missing ``DISCORD_TOKEN`` is not an error -- it yields
-    ``discord_token=None`` so the API can run without the Discord bot.
+    Nothing here raises, so a bad value cannot stop the service from starting:
+    a missing ``DISCORD_TOKEN`` yields ``discord_token=None`` and the API runs
+    without the Discord bot, while a ``DISCORD_BOT_OUTPUT_CHANNEL`` that is not
+    a number is logged and dropped, leaving ``output_channel_id=None`` -- the
+    same "nowhere to post" state as leaving it unset, which
+    ``/api/v1/ping`` already reports as a 409.
 
-    Parameters are injectable so tests never touch the real filesystem or env.
+    Parameters are injectable so tests never touch the real env.
     """
     if load_dotenv_file:
         from dotenv import load_dotenv
@@ -63,38 +54,22 @@ def load_settings(
         load_dotenv()
 
     env: Mapping[str, str] = environ if environ is not None else os.environ
-    # Resolve CONFIG_PATH at call time so SettingsStore.reload() honours it.
-    cfg = load_config_file(config_path or Path(os.getenv("CONFIG_PATH", "config.json")))
 
     token = env.get("DISCORD_TOKEN", "").strip()
+    raw_channel = env.get("DISCORD_BOT_OUTPUT_CHANNEL", "").strip()
 
-    raw_channel = cfg.get("discord_bot_output_channel")
-    output_channel_id = int(raw_channel) if raw_channel is not None else None
+    output_channel_id: int | None = None
+    if raw_channel:
+        try:
+            output_channel_id = int(raw_channel)
+        except ValueError:
+            logger.warning(
+                "ignoring DISCORD_BOT_OUTPUT_CHANNEL=%r: not a channel ID, "
+                "so /api/v1/ping has nowhere to post",
+                raw_channel,
+            )
 
     return Settings(
         discord_token=token or None,
         output_channel_id=output_channel_id,
-        extra=dict(cfg.get("extra", {}) or {}),
     )
-
-
-class SettingsStore:
-    """Holds the current :class:`Settings` and re-reads ``config.json`` on demand.
-
-    Only :attr:`Settings.output_channel_id` is expected to change between
-    reloads; secrets and the API bind address are captured once at startup.
-    """
-
-    def __init__(self, settings: Settings) -> None:
-        """Store the initial settings snapshot."""
-        self._settings = settings
-
-    @property
-    def current(self) -> Settings:
-        """Return the settings currently in effect."""
-        return self._settings
-
-    def reload(self) -> Settings:
-        """Re-read ``config.json``, replace the stored settings, and return them."""
-        self._settings = load_settings()
-        return self._settings

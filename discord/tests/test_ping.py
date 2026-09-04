@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.routes.ping import PING_CONTENT
 from app.api.server import create_app
-from app.config import Settings, SettingsStore
+from app.config import Settings
 
 
 def _bot(channel=None, ready=True) -> Mock:
@@ -18,8 +18,7 @@ def _bot(channel=None, ready=True) -> Mock:
 
 def _client(bot, output_channel_id=42) -> TestClient:
     """Return a test client for an app wired to ``bot`` and that channel ID."""
-    store = SettingsStore(Settings(output_channel_id=output_channel_id))
-    return TestClient(create_app(store, bot))
+    return TestClient(create_app(Settings(output_channel_id=output_channel_id), bot))
 
 
 def _channel() -> Mock:
@@ -42,20 +41,6 @@ def test_ping_posts_to_configured_channel():
     channel.send.assert_awaited_once_with("ping from client")
 
 
-def test_ping_uses_the_current_store_value():
-    """The channel is re-read per request, so a reload redirects the endpoint."""
-    bot = _bot(_channel())
-    store = SettingsStore(Settings(output_channel_id=42))
-    client = TestClient(create_app(store, bot))
-
-    store._settings = Settings(output_channel_id=99)
-    response = client.post("/api/v1/ping")
-
-    assert response.status_code == 200
-    assert response.json()["channel_id"] == 99
-    bot.get_channel.assert_called_once_with(99)
-
-
 def test_ping_without_bot_is_unavailable():
     """With no token configured there is no bot to send with."""
     response = _client(None).post("/api/v1/ping")
@@ -73,7 +58,7 @@ def test_ping_before_connect_is_unavailable():
 
 
 def test_ping_without_configured_channel_conflicts():
-    """config.json with a null output channel leaves nowhere to post."""
+    """An unset DISCORD_BOT_OUTPUT_CHANNEL leaves nowhere to post."""
     response = _client(_bot(_channel()), output_channel_id=None).post("/api/v1/ping")
 
     assert response.status_code == 409

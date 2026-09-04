@@ -1,4 +1,4 @@
-# myDiscordBotTest
+# StudyClub++ Discord
 
 Baseline Discord bot + FastAPI service in Python. The Discord client and the HTTP
 API run concurrently on one asyncio event loop, so neither blocks the other.
@@ -7,16 +7,15 @@ API run concurrently on one asyncio event loop, so neither blocks the other.
 
 ```
 app/
-  config.py            # .env (secrets) + config.json (settings) -> Settings
+  config.py            # environment (.env in dev) -> Settings
   main.py              # runs the API and the bot together (asyncio.TaskGroup)
   api/
-    server.py          # FastAPI app factory (holds the bot + settings store)
+    server.py          # FastAPI app factory (holds the bot + settings)
     routes/health.py   # GET /api/v1/health (liveness + bot state)
     routes/ping.py     # POST /api/v1/ping (bot posts a ping to the output channel)
   bot/
     client.py            # Discord bot factory
-    commands/test_cmd.py    # testCmd command
-    commands/reload_cmd.py  # reloadConfig command (owner-only)
+    commands/test_cmd.py   # testCmd command
 tests/                 # pytest unit tests
 ```
 
@@ -27,24 +26,23 @@ tests/                 # pytest unit tests
   Copy `.env.example` to `.env` there and set `DISCORD_TOKEN`. With no token
   the API still starts and `/api/v1/health` reports `"bot": "disabled"`; only a
   token that is set but invalid is fatal.
-- **Settings** — `config.json` holds `discord_bot_output_channel` (a numeric
-  Discord channel ID, or `null`). Copy `config.json.example` to `config.json`;
-  like `.env`, the real file is git-ignored and only the example is committed.
-  A missing file is not an error — the settings fall back to their defaults.
-  Override the file path with `CONFIG_PATH`.
-  A running bot re-reads the file when the owner runs `!reloadConfig`, so the
-  output channel can change without a restart. `command_prefix` and `log_level`
-  are fixed per deployment — change their defaults in `app/config.py`. The API
-  binds `0.0.0.0:4800` (fixed to match the container).
+- **Settings** — `DISCORD_BOT_OUTPUT_CHANNEL` is the numeric Discord channel ID
+  the bot posts to. Leave it empty for "no output channel": the service starts
+  and `/api/v1/ping` answers `409`. A non-numeric value is logged and dropped at
+  startup, which lands in that same `409` — the service always starts. It is
+  read once at startup, so changing it means `docker compose up -d discord`
+  (a restart alone will not re-read `.env`).
+  `command_prefix` and `log_level` are fixed per deployment — change
+  their defaults in `app/config.py`. The API binds `0.0.0.0:4800` (fixed to
+  match the container).
 
 ## Run locally
 
 ```bash
-cd discordBot
+cd discord
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp ../.env.example ../.env     # shared root .env, then edit DISCORD_TOKEN
-cp config.json.example config.json
 python -m app.main
 ```
 
@@ -59,7 +57,7 @@ the response stays 200 either way — it tracks the API, so the container
 healthcheck passes on an API-only run.
 
 Ping Discord through the API — the bot posts `ping from client` to
-`discord_bot_output_channel`, so `!reloadConfig` also redirects this endpoint:
+`DISCORD_BOT_OUTPUT_CHANNEL`:
 
 ```bash
 curl -X POST http://localhost:4800/api/v1/ping
@@ -74,21 +72,24 @@ Failures are explicit: `503` when the bot is disabled or still connecting,
 channel, and `502` when Discord rejects the send (e.g. missing permissions).
 The API is unauthenticated, so do not expose port 4800 beyond a trusted network.
 
-In Discord: `!testCmd`, or `!reloadConfig` (owner only) after editing `config.json`
+In Discord: `!testCmd`
 
 ## Docker
 
 `docker-compose.yml` lives at the repo root. From there:
 
 ```bash
-cp discordBot/config.json.example discordBot/config.json   # mounted read-only
 docker compose up --build
 ```
+
+The service reads the root `.env` via `env_file`, so `DISCORD_TOKEN` and
+`DISCORD_BOT_OUTPUT_CHANNEL` are picked up there. After editing either, run
+`docker compose up -d discord` to recreate the container with the new values.
 
 ## Tests
 
 ```bash
-cd discordBot
+cd discord
 pip install -r requirements-dev.txt
 pytest
 ```
