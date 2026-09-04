@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.studyclub.domain.study.Study;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "스터디", description = "스터디 목록")
 @RestController
 @RequestMapping("/api/studies")
 public class StudyController {

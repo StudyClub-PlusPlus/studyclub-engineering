@@ -7,6 +7,8 @@ import com.studyclub.api.auth.dto.AuthDtos.SocialLoginRequest;
 import com.studyclub.api.auth.dto.AuthDtos.UserView;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "인증", description = "구글 소셜 로그인 · 토큰 갱신 · 내 정보")
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -30,6 +33,7 @@ public class AuthController {
         return authService.socialLogin(req.code(), req.platform(), req.redirectUri());
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
     public UserView me(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {

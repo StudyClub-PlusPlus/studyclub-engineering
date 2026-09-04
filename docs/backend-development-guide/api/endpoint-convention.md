@@ -71,11 +71,23 @@
 - `GET /`, `GET /api/health`, `GET /actuator/**` — 헬스·상태
 - `GET /api/studies` — 스터디 목록
 - `POST /auth/social-login`, `POST /auth/refresh` — 로그인·토큰 갱신
+- `GET /v3/api-docs`, `GET /scalar`, `GET /webjars/**` — API 문서와 그 JS 번들
 
 화이트리스트 밖은 전부 인증이 필요하다. **없는 경로도 404 가 아니라 401 이 나간다** —
 어떤 엔드포인트가 있는지 밖에서 훑을 수 없게 하기 위해서다.
 
 ## 현재 엔드포인트 목록
+
+**정본은 실행 중인 서버의 API 문서다** — 아래 표는 손으로 관리하므로 반드시 뒤처진다.
+
+| | |
+|---|---|
+| Scalar UI | `http://localhost:8080/scalar` |
+| OpenAPI 스펙(JSON) | `http://localhost:8080/v3/api-docs` |
+
+스펙은 springdoc 이 컨트롤러에서 생성한다. 인증이 필요한 엔드포인트에는 메서드에
+`@SecurityRequirement(name = "bearerAuth")` 를 달아야 문서에 자물쇠가 붙는다 (안 달면 공개로 보인다).
+문서를 감춰야 하면 `API_DOCS_ENABLED=false` 로 스펙·UI 가 함께 꺼진다.
 
 | Method | Path | 설명 | 인증 |
 |--------|------|------|------|

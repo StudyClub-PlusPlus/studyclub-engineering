@@ -12,6 +12,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
+
+    // OpenAPI 스펙 생성 + Scalar UI (Swagger UI 대신)
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-scalar:2.9.0")
     runtimeOnly("com.mysql:mysql-connector-j")
 
     // 스키마 변경은 마이그레이션 파일로만. ddl-auto 는 validate — 엔티티가 DB 를 바꾸지 않는다.

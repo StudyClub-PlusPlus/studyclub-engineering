@@ -45,6 +45,17 @@ jwt:
 back-office:
   allowed-emails: ${BACK_OFFICE_ALLOWED_EMAILS:}
 
+# API 문서 — 스펙은 springdoc 이 컨트롤러에서 생성하고, UI 는 Scalar 가 그린다 (/scalar).
+# JS 번들은 jar 안에 들어있어 CDN 을 타지 않는다.
+# 운영에서 스펙을 감추려면 API_DOCS_ENABLED=false 하나로 둘 다 꺼진다.
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+scalar:
+  enabled: ${API_DOCS_ENABLED:true}
+  # UI 가 Scalar 로 사용량을 보내는 기본값을 끈다
+  telemetry: false
+
 management:
   endpoints:
     web:
