@@ -85,40 +85,50 @@ IDENTITY
 
 - **이용약관** — 필수. `true` 아니면 거부. `ACCOUNT_CONSENT` `TERMS_OF_SERVICE`
 - **개인정보 수집·이용** — 필수. `true` 아니면 거부. `ACCOUNT_CONSENT` `PRIVACY_POLICY`
-- **마케팅 수신** — 선택. `ACCOUNT_CONSENT` `MARKETING`. 거부해도 `AGREED=false` 행을 남긴다
-- **닉네임** — 필수. trim 후 2~20자, **중복 불가**(이미 쓰는 닉네임이면 거부). `ACCOUNT.NICKNAME`
+- **마케팅 수신** — 동의 여부는 선택이지만 요청 필드는 필수. `false`도 정상값이며 `ACCOUNT_CONSENT` `MARKETING`에 거부 이력을 남긴다
+- **닉네임** — 필수. trim 후 2~20자, **중복 불가**. 모든 언어의 글자·숫자·밑줄(`_`)만 허용하고 공백·줄바꿈·그 외 특수문자는 허용하지 않는다. 밑줄만으로 구성할 수 없으며 영문 대소문자는 구분하지 않는다. `운영진`·`관리자`·`admin` 등 공식 계정으로 오해할 수 있는 이름과 `account_` 접두사는 사용할 수 없다. `ACCOUNT.NICKNAME`
 - **타임존** — 필수. IANA ID (`ZoneId.of()` 통과). `ACCOUNT.TIME_ZONE`
 
 약관 버전은 클라이언트가 안 보낸다. **서버가 현재 게시 버전을 붙인다.**
 초기값 — 닉네임=제공자 `name`, 타임존=브라우저 `Intl.DateTimeFormat().resolvedOptions().timeZone`. 편의일 뿐, 검증은 똑같이 탄다. DB 의 임시 닉네임(`account_<랜덤>`)은 화면에 안 보여준다 — 온보딩에서 반드시 정한다.
 하나라도 실패하면 아무것도 저장 안 하고 필드별 오류.
 
+### 약관 문안·버전 관리
+
+- 약관 문안과 현재 버전은 코드 또는 서버 설정으로 관리하고, MVP에는 별도 테이블·CMS·관리자 편집 화면을 만들지 않는다. 변경 이력은 Git으로 남긴다.
+- 이용약관·개인정보처리방침·마케팅 동의 버전은 종류별로 관리하며, 동의 시점의 버전을 각각 `ACCOUNT_CONSENT.CONSENT_VERSION`에 저장한다.
+- 약관 문안과 버전은 같은 PR에서 함께 변경한다. 약관 개정 후 기존 회원의 재동의는 별도 기획한다.
+
 ## API 계약
 
 | Method | Path | 설명 | 인증 |
 |---|---|---|---|
-| POST | `/auth/social-login` | 구글 로그인. 신규면 USER+IDENTITY 생성, 기존이면 조회. 완료 여부와 무관하게 토큰 발급 | X |
+| POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+IDENTITY 생성, 기존이면 조회. 완료 여부와 무관하게 토큰 발급 | X |
 | GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) |
-| POST | `/users/onboarding` | 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
+| POST | `/accounts/onboarding` | 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
 
-`POST /users/onboarding`은 기존 `/users` 프리픽스에 얹는다. 온보딩은 1회성 완료 액션이라 마이페이지 수정 API(별도 스펙, `/users/me` 형태 예상)와는 경로를 분리한다.
+`POST /accounts/onboarding`은 기존 ACCOUNT 리소스 경로를 사용한다. 온보딩은 1회성 완료 액션이라 마이페이지 수정 API(별도 스펙, `/accounts/me` 형태 예상)와 경로를 분리한다.
+
+### 인증된 ACCOUNT 식별
+
+`POST /accounts/onboarding`은 `accountId`를 요청 바디·경로·쿼리에서 받지 않는다. 백엔드는 JWT의 `sub`에 저장된 `ACCOUNT.ID`로 현재 로그인한 ACCOUNT를 찾아 해당 계정의 온보딩만 처리한다.
 
 ### `POST /auth/social-login`
 
-기존에 구현된 엔드포인트다. 요청은 그대로 `{code, provider, platform, redirectUri}` (`provider=GOOGLE`). 응답 `user`(`UserView`)에 이 스펙이 요구하는 필드를 추가한다:
+기존에 구현된 엔드포인트다. 요청은 그대로 `{code, provider, platform, redirectUri}` (`provider=GOOGLE`). 로그인 응답의 회원 정보 필드는 `user`에서 `account`로 변경하고, 로그인 전용 View를 사용한다:
 
-- `nickname` — 신규 가입 직후엔 임시값(`user_<랜덤>`) 그대로 내려간다. 화면에는 보여주지 않는다.
-- `onboardingCompletedAt` — `string | null` (ISO-8601). `null`이면 프론트가 `/[locale]/onboarding`으로 보낸다.
+- `nickname` — 신규 가입 직후엔 임시값(`account_<랜덤>`) 그대로 내려간다. 화면에는 보여주지 않는다.
+- `onboardingCompletedAt` — `string | null` (ISO-8601 UTC). `null`이면 프론트가 `/[locale]/onboarding`으로 보낸다.
 - `timeZone` — `string | null`.
-- `name` — 이 응답에 한해 **유지한다.** 구글이 이번 로그인에 실어 보낸 실명을 그대로 담아, 온보딩 화면의 닉네임 입력칸 초기값으로만 쓴다(93행). "제공자 name은 저장 안 한다"(81행)는 **DB 컬럼으로 남기지 않는다**는 뜻이지, 로그인 응답에서 지운다는 뜻이 아니다 — 응답에서마저 지우면 93행의 닉네임 프리필을 구현할 방법이 없어진다.
+- `suggestedNickname` — 구글이 이번 로그인에 제공한 `name`. 온보딩 닉네임 입력칸의 초기값으로만 사용하고 DB에는 저장하지 않는다.
 
 에러: 이메일 없음 / `email_verified != true` → `400 SOCIAL_LOGIN_EMAIL_REQUIRED`. 프론트는 이 코드로 "가입 불가 안내" 화면을 다른 400 케이스와 구분해 분기한다.
 
 ### `GET /auth/me`
 
-응답 `UserView`는 `onboardingCompletedAt`·`timeZone`을 포함한다. `name`은 포함하지 않는다 — DB에 저장하지 않으므로 로그인 시점이 지나면 조회할 원본이 없다. 미완료 사용자도 호출 가능하다.
+응답은 DB에 저장된 정보만 담는 `AccountView`를 사용한다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다.
 
-### `POST /users/onboarding`
+### `POST /accounts/onboarding`
 
 요청 바디:
 
@@ -126,13 +136,15 @@ IDENTITY
 {
   "termsOfServiceAgreed": true,   // 필수, true 아니면 거부
   "privacyPolicyAgreed": true,    // 필수, true 아니면 거부
-  "marketingAgreed": false,       // 선택, false도 유효 (거부 이력 남김)
-  "nickname": "jinjoong",         // 필수, trim 후 2~20자, 중복 불가
+  "marketingAgreed": false,       // 필수, false도 유효 (거부 이력 남김)
+  "nickname": "jinjoong",         // 필수, 닉네임 규칙 적용
   "timeZone": "Asia/Seoul"        // 필수, ZoneId.of() 통과하는 IANA ID
 }
 ```
 
-성공 응답은 `200 OK`, body는 닉네임·타임존·`onboardingCompletedAt`이 반영된 `UserView`.
+성공 응답은 `200 OK`, body는 닉네임·타임존·`onboardingCompletedAt`이 반영된 `AccountView`.
+
+완료 시각·동의 시각·마지막 로그인 시각 등 모든 시각은 UTC로 저장하고 API에서는 ISO-8601 UTC 형식으로 반환한다(예: `2026-09-05T18:30:00Z`). 화면에서는 ACCOUNT의 타임존에 맞게 변환한다.
 
 멱등: 이미 `ONBOARDING_COMPLETED_AT`이 채워진 사용자가 다시 호출하면, **검증·중복 체크보다 먼저** 그 사실을 확인하고 요청 바디를 무시한 채 현재 상태 그대로 `200 OK`를 반환한다(위 참조). 이 순서를 지키지 않으면 — 예: 이미 완료된 사용자가 그 사이 다른 사람이 선점한 닉네임을 담아 재제출한 경우 — 검증이 먼저 돌아 `409 CONFLICT`가 나가버려 멱등이 깨진다.
 
@@ -150,6 +162,8 @@ IDENTITY
 
 - `ErrorCode` enum에 `SOCIAL_LOGIN_EMAIL_REQUIRED`(400), `ONBOARDING_REQUIRED`(403) 추가.
 - 백엔드 가이드의 에러코드 표에 위 두 코드 반영.
+- 백엔드 `AuthResponse.user`와 프론트엔드의 `data.user` 사용 부분을 각각 `account`와 `data.account`로 함께 변경.
+- `JwtAuthFilter`는 JWT `sub`의 `ACCOUNT.ID`를 현재 로그인한 사용자값(principal)으로 등록하고, `/auth/me`도 이메일이 아닌 `ACCOUNT.ID`로 조회하도록 변경.
 
 ## 미완료 사용자가 할 수 있는 것
 
@@ -210,7 +224,6 @@ IDENTITY
 ## 한계 / 후속
 
 - **탈퇴** 시 ACCOUNT·ACCOUNT_CONSENT·IDENTITY 처리 — PRD 미정, 별도 스펙. ERD 원칙대로면 삭제 대신 `REMOVED_AT`.
-- **약관 문안·버전 출처** 미정 — `POLICY_VERSION` 을 설정으로 둘지 테이블로 둘지는 구현 때.
 - 약관 개정 **재동의** 흐름 없음. 버전은 남으니 나중에 구버전 동의자는 골라낼 수 있다.
 - 구글·애플 **명시적 연결**(마이페이지 "계정 연결") — 애플과 같이.
 - 프로필 이미지·마이페이지 수정 API 는 별도.
