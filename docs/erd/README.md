@@ -14,9 +14,9 @@ mermaid 는 PR diff 에 그대로 뜨고 GitHub 이 렌더한다.
 
 | 항목        | 규칙                                                                                            | 예                             |
 | --------- | --------------------------------------------------------------------------------------------- | ----------------------------- |
-| 테이블·컬럼 이름 | **대문자 · snake_case · 단수**                                                                     | `STUDY_CLASS`, `USER_ID`    |
+| 테이블·컬럼 이름 | **대문자 · snake_case · 단수**                                                                     | `STUDY_CLASS`, `ACCOUNT_ID`    |
 | PK        | `ID BIGINT AUTO_INCREMENT`                                                                    |                               |
-| FK        | `<참조테이블>_ID`                                                                                  | `STUDY_ID`, `USER_ID`         |
+| FK        | `<참조테이블>_ID`                                                                                  | `STUDY_ID`, `ACCOUNT_ID`         |
 | 시각        | `DATETIME` (UTC 저장, 표시 시 사용자 `TIME_ZONE` 적용)                                                  |                               |
 | enum      | `VARCHAR(20)` 에 대문자 코드 문자열. 숫자 코드 대신 문자열 — 로그·쿼리에서 읽힌다                                        | `PENDING`, `APPROVED`         |
 | 삭제        | 물리 삭제 대신 상태(`CLOSED`/`WITHDRAWN`) 또는 `REMOVED_AT`                                             |                               |
@@ -32,7 +32,7 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY_COHORT.RECRUIT_DEADLINE`·`START_DATE` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
 2. **삭제 대신 종료.** 스터디는 `CLOSED`, 참가자는 `WITHDRAWN`.
-3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 승인 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `USER_ID`·`STUDY_ID` 를 따라간다.
+3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 승인 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `ACCOUNT_ID`·`STUDY_ID` 를 따라간다.
 4. 비회원 공개 범위(목록·상세)와 로그인 사용자 범위(신청·출석·마이페이지)를 분리한다.
 
 ## 한눈에 보기 (관계도)
@@ -41,24 +41,24 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 ```mermaid
 erDiagram
-  USER ||--o{ USER_IDENTITY : "로그인 수단"
-  USER ||--o{ USER_CONSENT : "동의"
+  ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
+  ACCOUNT ||--o{ ACCOUNT_CONSENT : "동의"
   STUDY ||--o{ STUDY_COHORT : "기수"
   STUDY_COHORT ||--o{ STUDY_CLASS : "반"
   STUDY_CLASS ||--o{ STUDY_MEETING : "회차"
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
-  USER ||--o{ STUDY_ATTENDANCE : ""
+  ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
   STUDY_COHORT ||--o{ STUDY_APPLICATION : "신청"
-  USER ||--o{ STUDY_APPLICATION : ""
+  ACCOUNT ||--o{ STUDY_APPLICATION : ""
   STUDY_CLASS ||--o{ STUDY_PARTICIPANT : "명부"
-  USER ||--o{ STUDY_PARTICIPANT : ""
+  ACCOUNT ||--o{ STUDY_PARTICIPANT : ""
   STUDY_COHORT ||--o{ STUDY_REVIEW : "후기"
-  USER ||--o{ STUDY_REVIEW : ""
+  ACCOUNT ||--o{ STUDY_REVIEW : ""
   STUDY ||--o{ STUDY_BOOKMARK : "북마크"
-  USER ||--o{ STUDY_BOOKMARK : ""
-  USER ||--o{ STUDY_PROPOSAL : "제안"
+  ACCOUNT ||--o{ STUDY_BOOKMARK : ""
+  ACCOUNT ||--o{ STUDY_PROPOSAL : "제안"
   STUDY_PROPOSAL ||--o{ STUDY_PROPOSAL_INTEREST : "관심 표시"
-  USER ||--o{ STUDY_PROPOSAL_INTEREST : ""
+  ACCOUNT ||--o{ STUDY_PROPOSAL_INTEREST : ""
 ```
 
 ## 전체 ERD (컬럼 포함)
@@ -68,7 +68,7 @@ erDiagram
 
 ```mermaid
 erDiagram
-  USER {
+  ACCOUNT {
     bigint   ID                PK
     varchar  EMAIL             UK "대표 이메일"
     varchar  NICKNAME          UK "화면 표시명"
@@ -84,18 +84,18 @@ erDiagram
     datetime onboarding_completed_at    "온보딩 완료 시각"
   }
 
-  USER_IDENTITY {
+  ACCOUNT_IDENTITY {
     bigint   ID                PK
-    bigint   USER_ID           FK
+    bigint   ACCOUNT_ID           FK
     varchar  ISSUER               "GOOGLE / APPLE"
-    varchar  PROVIDER_USER_ID     "OAuth sub"
-    varchar  PROVIDER_EMAIL       "OAuth 제공자 이메일. USER.EMAIL 과 다를 수 있음"
+    varchar  PROVIDER_ACCOUNT_ID     "OAuth sub"
+    varchar  PROVIDER_EMAIL       "OAuth 제공자 이메일. ACCOUNT.EMAIL 과 다를 수 있음"
     datetime LAST_LOGIN_AT
   }
 
-  USER_CONSENT {
+  ACCOUNT_CONSENT {
     bigint   ID                PK
-    bigint   USER_ID           FK
+    bigint   ACCOUNT_ID           FK
     varchar  CONSENT_TYPE         "MARKETING / TERMS_OF_SERVICE / PRIVACY_POLICY"
     boolean  AGREED
     datetime AGREED_AT
@@ -147,7 +147,7 @@ erDiagram
 
   STUDY_APPLICATION {
     bigint   ID                 PK
-    bigint   USER_ID            FK
+    bigint   ACCOUNT_ID            FK
     bigint   STUDY_COHORT_ID    FK
     varchar  STATUS                "PENDING / APPROVED / REJECTED / WITHDRAWN / WAITLISTED"
     json     FORM_ANSWER
@@ -155,7 +155,7 @@ erDiagram
 
   STUDY_PARTICIPANT {
     bigint   ID                 PK
-    bigint   USER_ID            FK
+    bigint   ACCOUNT_ID            FK
     bigint   STUDY_CLASS_ID     FK
     bigint   STUDY_COHORT_ID    FK "비정규화"
     varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED"
@@ -165,7 +165,7 @@ erDiagram
 
   STUDY_ATTENDANCE {
     bigint   ID                 PK
-    bigint   USER_ID            FK
+    bigint   ACCOUNT_ID            FK
     bigint   STUDY_COHORT_ID    FK "비정규화 — 기수별 집계용"
     bigint   STUDY_CLASS_ID     FK "비정규화 — 반별 집계용"
     bigint   STUDY_MEETING_ID   FK
@@ -174,7 +174,7 @@ erDiagram
 
   STUDY_REVIEW {
     bigint   ID                 PK
-    bigint   USER_ID            FK
+    bigint   ACCOUNT_ID            FK
     bigint   STUDY_COHORT_ID    FK "정본 — 어느 기수 후기인지"
     bigint   STUDY_ID           FK "비정규화 — 상세 페이지 전체 후기 조회용"
     text     CONTENT
@@ -182,13 +182,13 @@ erDiagram
 
   STUDY_BOOKMARK {
     bigint   ID                 PK
-    bigint   USER_ID            FK
+    bigint   ACCOUNT_ID            FK
     bigint   STUDY_ID           FK
   }
 
   STUDY_PROPOSAL {
     bigint   ID                 PK
-    bigint   PROPOSER_USER_ID   FK
+    bigint   PROPOSER_ACCOUNT_ID   FK
     text     CONTENT
     date     PROPOSED_DATE         "희망 시작 시기"
     varchar  STATUS                "OPEN / ACCEPTED / REJECTED / CLOSED"
@@ -197,18 +197,18 @@ erDiagram
   STUDY_PROPOSAL_INTEREST {
     bigint   ID                 PK
     bigint   PROPOSAL_ID        FK
-    bigint   USER_ID            FK
+    bigint   ACCOUNT_ID            FK
   }
 
-  USER                  ||--o{ USER_IDENTITY                : "로그인 수단"
-  USER                  ||--o{ USER_CONSENT                  : "동의"
-  USER                  ||--o{ STUDY_APPLICATION       : "신청"
-  USER                  ||--o{ STUDY_PARTICIPANT       : "명부"
-  USER                  ||--o{ STUDY_ATTENDANCE              : "출석"
-  USER                  ||--o{ STUDY_REVIEW            : "후기"
-  USER                  ||--o{ STUDY_BOOKMARK          : "북마크"
-  USER                  ||--o{ STUDY_PROPOSAL          : "제안"
-  USER                  ||--o{ STUDY_PROPOSAL_INTEREST : "관심 표시"
+  ACCOUNT ||--o{ ACCOUNT_IDENTITY                : "로그인 수단"
+  ACCOUNT ||--o{ ACCOUNT_CONSENT                  : "동의"
+  ACCOUNT ||--o{ STUDY_APPLICATION       : "신청"
+  ACCOUNT ||--o{ STUDY_PARTICIPANT       : "명부"
+  ACCOUNT ||--o{ STUDY_ATTENDANCE              : "출석"
+  ACCOUNT ||--o{ STUDY_REVIEW            : "후기"
+  ACCOUNT ||--o{ STUDY_BOOKMARK          : "북마크"
+  ACCOUNT ||--o{ STUDY_PROPOSAL          : "제안"
+  ACCOUNT ||--o{ STUDY_PROPOSAL_INTEREST : "관심 표시"
 
   STUDY                 ||--o{ STUDY_COHORT           : "기수"
   STUDY                 ||--o{ STUDY_BOOKMARK          : "북마크"
@@ -234,9 +234,9 @@ erDiagram
 
 | 영역  | 테이블                                                     | 한 줄                    | 저장하는 상태                              |
 | --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
-| 회원  | [USER](./USER.md)                                       | 회원 프로필                 | `SYSTEM_ROLE`                        |
-| 회원  | [USER_IDENTITY](./USER_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
-| 회원  | [USER_CONSENT](./USER_CONSENT.md)                               | 회원 동의                 | —                                    |
+| 회원  | [USER](./ACCOUNT.md)                                       | 회원 프로필                 | `SYSTEM_ROLE`                        |
+| 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
+| 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                               | 회원 동의                 | —                                    |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
 | 스터디 | [STUDY](./STUDY.md)                                     | 스터디/클럽 정체성             | `STUDY_KIND`                         |
 | 스터디 | [STUDY_COHORT](./STUDY_COHORT.md)                       | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`    |

@@ -7,13 +7,13 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| PROPOSER_USER_ID | BIGINT FK → USER | N | 제안자 |
+| PROPOSER_ACCOUNT_ID | BIGINT FK → USER | N | 제안자 |
 | CONTENT | TEXT | N | 제안 내용 |
 | PROPOSED_DATE | DATE | N | 희망 시작 시기 |
 | STATUS | VARCHAR(20) | N | 아래 |
 
 ## 관계
-- N : 1 [USER](./USER.md)
+- N : 1 [USER](./ACCOUNT.md)
 - 1 : N [STUDY_PROPOSAL_INTEREST](./STUDY_PROPOSAL_INTEREST.md)
 - 채택 시 → [STUDY](./STUDY.md) (역참조 컬럼 `STUDY_ID` 추가 미확정)
 
