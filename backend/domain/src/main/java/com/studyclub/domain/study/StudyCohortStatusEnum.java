@@ -1,7 +1,7 @@
 package com.studyclub.domain.study;
 
 public enum StudyCohortStatusEnum {
-    SCHEDULED,
+    DRAFT,
     OPEN,
     CLOSED
 }

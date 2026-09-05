@@ -1,4 +1,4 @@
-# ACCOUNT_CONSENT — 회원 동의
+# USER_CONSENT — 회원 동의
 
 회원 가입 시점에 동의한 약관.
 온보딩 완료 시점에 3행이 만들어짐.
@@ -16,7 +16,7 @@
 | CONSENT_VERSION | VARCHAR(20) | N | 동의한 약관 버전. `docs/terms-of-service.md`·`docs/privacy-policy.md` 의 `version` 필드와 일치 |
 
 ## 관계
-- N : 1 [USER](./ACCOUNT.md)
+- N : 1 [ACCOUNT](./ACCOUNT.md)
 
 ## CONSENT_TYPE
 - `MARKETING` — 마케팅 수신 동의. 이메일·디스코드

@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 /**
  * 구글이 주는 프로필 문자열이 컬럼보다 길어도 로그인이 죽지 않아야 한다.
  *
- * <p>2026-08-24 사고: picture 가 varchar(512) 를 넘겨 INSERT 가 터지고 /auth/social-login 이 500 을 냈다.
- * USER.md 에 PROFILE_IMG_URL VARCHAR(512) 로 확정됐다. 아래 가드는 그래도 넘칠 때의 backstop 이다.
+ * <p>2026-08-24 사고: picture 가 varchar(2048) 를 넘겨 INSERT 가 터지고 /auth/social-login 이 500 을 냈다.
+ * USER.md 에 PROFILE_IMG_URL VARCHAR(2048) 로 확정됐다. 아래 가드는 그래도 넘칠 때의 backstop 이다.
  */
 class AccountTest {
 
@@ -47,7 +47,7 @@ class AccountTest {
     }
 
     @Test
-    @DisplayName("null 은 그대��� 통과 — 사진 없는 계정이 있다")
+    @DisplayName("null 은 그대로 통과 — 사진 없는 계정이 있다")
     void allowsNull() {
         Account account = new Account("a@b.com", null, null, SystemRole.MEMBER);
 

@@ -1,4 +1,4 @@
-// BFF — bo_access_token 쿠키(httpOnly)를 서버측에서 읽어 백엔드 /users 를 Bearer 로 호출.
+// BFF — bo_access_token 쿠키(httpOnly)를 서버측에서 읽어 백엔드 /accounts 를 Bearer 로 호출.
 // 클라이언트는 이 라우트만 치면 됨(같은 오리진, 쿠키 자동 첨부).
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ message: '인증이 필요합니다.' }, { status: 401 });
   }
   try {
-    const upstream = await fetch(`${API_BASE}/users`, {
+    const upstream = await fetch(`${API_BASE}/accounts`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
