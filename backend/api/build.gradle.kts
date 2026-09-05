@@ -18,7 +18,10 @@ dependencies {
     runtimeOnly("com.mysql:mysql-connector-j")
 
     // 스키마 변경은 마이그레이션 파일로만. ddl-auto 는 validate — 엔티티가 DB 를 바꾸지 않는다.
-    implementation("org.flywaydb:flyway-core")
+    // Boot 4 는 Flyway 자동설정을 spring-boot-flyway 모듈로 분리했다. flyway-core 만 넣으면
+    // FlywayAutoConfiguration 이 클래스패스에 없어 마이그레이션이 조용히 안 돌고,
+    // 빈 DB 에 validate 가 걸려 "missing table [USERS]" 로만 드러난다.
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     runtimeOnly("org.flywaydb:flyway-mysql")
 
     // JWT (access/refresh)
