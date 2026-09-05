@@ -1,4 +1,4 @@
-# USER_CONSENT — 회원 동의
+# ACCOUNT_CONSENT — 회원 동의
 
 회원 가입 시점에 동의한 약관.
 온보딩 완료 시점에 3행이 만들어짐.
