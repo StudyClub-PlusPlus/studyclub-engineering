@@ -11,13 +11,13 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| USER_ID | BIGINT FK → USER | N | 신청자 |
+| ACCOUNT_ID | BIGINT FK → USER | N | 신청자 |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 구 `STUDY_ID` |
 | STATUS | VARCHAR(20) | N | 아래 |
 | FORM_ANSWER | JSON | N | 답변 |
 
 ## 관계
-- N : 1 [USER](./USER.md), [STUDY_COHORT](./STUDY_COHORT.md)
+- N : 1 [USER](./ACCOUNT.md), [STUDY_COHORT](./STUDY_COHORT.md)
 - 승인되면 [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md) 행이 생긴다 (신청서는 그대로 남는다)
 
 ## 상태 — STATUS
@@ -48,7 +48,7 @@ stateDiagram-v2
 - 신청 가능 조건: STUDY_COHORT.STATUS=`OPEN` + 모집 상태 `RECRUITING` + 로그인 + 같은 기수에 열린 신청 없음.
 
 ## 제약
-- `UNIQUE(STUDY_COHORT_ID, USER_ID)` — 같은 기수 중복 신청 차단. `WITHDRAWN` 후 같은 기수 재신청을 허용하려면 부분 유니크(활성 상태만) 또는 앱 레벨 검사.
+- `UNIQUE(STUDY_COHORT_ID, ACCOUNT_ID)` — 같은 기수 중복 신청 차단. `WITHDRAWN` 후 같은 기수 재신청을 허용하려면 부분 유니크(활성 상태만) 또는 앱 레벨 검사.
 - 인덱스 `(STUDY_COHORT_ID, STATUS)` — 운영자 신청 목록
 
 ## 미확정

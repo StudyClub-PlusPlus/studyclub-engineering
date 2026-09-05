@@ -1,6 +1,6 @@
 # USER — 회원
 
-로그인한 사람. 프로필·지역·디스코드 연결. 인증 수단은 [USER_IDENTITY](./USER_IDENTITY.md) 로 분리.
+로그인한 사람. 프로필·지역·디스코드 연결. 인증 수단은 [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md) 로 분리.
 
 ## 컬럼
 
@@ -21,8 +21,8 @@
 | onboarding_completed_at | DATETIME | Y | 온보딩 완료 시간 |
 
 ## 관계
-- 1 : N [USER_IDENTITY](./USER_IDENTITY.md)
-- 1 : N [USER_CONSENT](./USER_CONSENT.md)
+- 1 : N [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)
+- 1 : N [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)
 - 세션 토큰은 [SESSION](./SESSION.md) (Redis 캐시 — DB 관계 없음)
 - 1 : N [STUDY_APPLICATION](./STUDY_APPLICATION.md), [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md), [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md), [STUDY_REVIEW](./STUDY_REVIEW.md), [STUDY_BOOKMARK](./STUDY_BOOKMARK.md), [STUDY_PROPOSAL](./STUDY_PROPOSAL.md)
 

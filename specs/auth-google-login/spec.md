@@ -1,8 +1,8 @@
-# 구글 로그인 + 최소 유저 (zapp 패턴 이식)
+# 구글 로그인 + 최소 Account (zapp 패턴 이식)
 
 ## WHAT
 
-core-front·back-office-front 의 `/login` 에 **구글 소셜 로그인**을 붙이고, **Spring 백엔드가 User·JWT 의
+core-front·back-office-front 의 `/login` 에 **구글 소셜 로그인**을 붙이고, **Spring 백엔드가 Account·JWT 의
 주인**이 된다. 로그인해야 **수강생 페이지(A8)** 가 뜨고, 백오피스는 **이메일 allowlist** 통과자만 들어온다.
 DB 가 0 에서 시작이라 **로컬 MySQL + docker-compose 신설**이 P0 의 첫 작업.
 
@@ -16,7 +16,7 @@ DB 가 0 에서 시작이라 **로컬 MySQL + docker-compose 신설**이 P0 의 
 ```
 docker compose up
   mysql:8.0     studyclub DB (host :3310 → 3306), utf8mb4, 볼륨 영속
-  api           :8080  Spring Boot, JPA→mysql (ddl-auto=update)
+  api           :8080  Spring Boot, Flyway 마이그레이션, ddl-auto=validate
   frontend      :4700 core-front / :4701 back-office-front  (node:20, turbo dev 단일 컨테이너)
 ```
 
@@ -36,14 +36,15 @@ Next /api/auth/social/login  (BO 는 여기서 platform=BACK_OFFICE 서버측 �
 Spring POST /auth/social-login { code, provider, platform }
    getGoogleUserInfo(code) → email/name/picture/sub
    platform=BACK_OFFICE 면 assertBackOfficePermitted(email)  ← allowlist(env) 강제
-   미가입이면 자동가입(role=STUDENT) → JWT access(7d)/refresh(30d) 발급
+   미가입이면 자동가입(systemRole=MEMBER) → JWT access(7d)/refresh(30d) 발급
 ```
 
 ### 백엔드 (Spring, 신규)
 
 | 표면 | 위치 |
 |---|---|
-| User 엔티티 | `domain` : `id, email(uniq), name, picture, googleSub, role(STUDENT\|OPERATOR\|ADMIN), createdAt` |
+| Account 엔티티 | `domain` : `id, email(uniq), nickname, profileImgUrl, systemRole(MEMBER\|ADMIN), jobTitle, countryCode, city, regionGroup, timeZone, discordId(uniq), discordHandle, createdAt, updatedAt` |
+| AccountIdentity 엔티티 | `domain` : `id, accountId, issuer, providerUserId, lastLoginAt` — OAuth 수단 분리 |
 | 인증 서비스 | `api` : Google code→token→userinfo 교환, 자동가입, JWT 발급, `assertBackOfficePermitted` |
 | 엔드포인트 | `POST /auth/social-login`, `GET /auth/me`, `POST /auth/refresh` |
 | 보안 | SecurityConfig(JWT 필터, `/auth/**`·`/api/health` permitAll, 나머지 인증) |
@@ -53,7 +54,7 @@ Spring POST /auth/social-login { code, provider, platform }
 
 - `/login` + 구글 버튼 → 팝업 → Next API 라우트 → api `/auth/social-login`.
 - **세션키 앱별 격리** (zapp 가 데인 함정: localhost 쿠키 domain 공유 오염 → 백지 데드락): core=`sc_`, bo=`bo_`.
-- core `/[locale]/my`(수강생 A8) 신규 — 미로그인 `/login` 바운스, 로그인 시 유저 + 내 스터디(당분간 mock).
+- core `/[locale]/my`(수강생 A8) 신규 — 미로그인 `/login` 바운스, 로그인 시 account + 내 스터디(당분간 mock).
 - BO 전 페이지 로그인 + allowlist 게이트(미들웨어), `platform=BACK_OFFICE` 는 BO Next 라우트에서 강제.
 
 ## 한계 / 후속
@@ -68,3 +69,4 @@ Spring POST /auth/social-login { code, provider, platform }
 | 날짜 | 변경 | 근거 |
 |---|---|---|
 | 2026-07-18 | 최초 작성 — 구글 로그인 + 최소 User(Spring 중심) + 로컬 MySQL/compose | fleet 이슈 `studyclub-plusplus-google-login` |
+| 2026-09-04 | User → Account 전면 개명, ddl-auto=validate + Flyway 전환, SystemRole(MEMBER\|ADMIN), googleSub 제거, AccountIdentity 분리, 신규 프로필 컬럼 반영 | ddlsetup 브랜치 작업 |

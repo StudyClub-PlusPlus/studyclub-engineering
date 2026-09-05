@@ -8,14 +8,14 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| USER_ID | BIGINT FK → USER | N | |
+| ACCOUNT_ID | BIGINT FK → USER | N | |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 비정규화 — 기수별 전체 출석 집계용 |
 | STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | 비정규화 — 반별 출석 집계용. 실제 참석한 반 (cross-class 출석 시 home class 가 아닐 수 있음) |
 | STUDY_MEETING_ID | BIGINT FK → STUDY_MEETING | N | |
 | STATUS | VARCHAR(20) | N | 아래 |
 
 ## 관계
-- N : 1 [USER](./USER.md), [STUDY_MEETING](./STUDY_MEETING.md), [STUDY_CLASS](./STUDY_CLASS.md), [STUDY_COHORT](./STUDY_COHORT.md)
+- N : 1 [USER](./ACCOUNT.md), [STUDY_MEETING](./STUDY_MEETING.md), [STUDY_CLASS](./STUDY_CLASS.md), [STUDY_COHORT](./STUDY_COHORT.md)
 
 ## 상태 — STATUS
 
@@ -39,9 +39,9 @@ stateDiagram-v2
 ```
 
 ## 제약
-- `UNIQUE(STUDY_MEETING_ID, USER_ID)`
-- 인덱스 `(USER_ID, STUDY_COHORT_ID)` — 마이페이지 전체 출석 현황
-- 인덱스 `(USER_ID, STUDY_CLASS_ID)` — 반별 출석 현황
+- `UNIQUE(STUDY_MEETING_ID, ACCOUNT_ID)`
+- 인덱스 `(ACCOUNT_ID, STUDY_COHORT_ID)` — 마이페이지 전체 출석 현황
+- 인덱스 `(ACCOUNT_ID, STUDY_CLASS_ID)` — 반별 출석 현황
 
 ## 미확정
 - 행 생성 시점 — 회차 시작 시 참가자 전원 `ABSENT` 로 미리 만들지(집계 단순), 체크된 사람만 만들지(행 적음). 전자 제안.

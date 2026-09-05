@@ -13,7 +13,7 @@ public final class AuthDtos {
     public record RefreshRequest(String refreshToken) {
     }
 
-    public record UserView(Long id, String email, String name, String picture, String role, String createdAt) {
+    public record AccountView(Long id, String email, String name, String picture, String role, String createdAt) {
     }
 
     public record AuthResponse(
@@ -21,7 +21,7 @@ public final class AuthDtos {
             String refreshToken,
             long accessTokenExpiresIn,
             long refreshTokenExpiresIn,
-            UserView user) {
+            AccountView user) {
     }
 
     public record AccessTokenResponse(String accessToken) {
