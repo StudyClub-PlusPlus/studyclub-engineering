@@ -4,11 +4,11 @@
 
 ## 컬럼
 
-| 컬럼 | 타입 | NULL | 설명 | 
+| 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | EMAIL | VARCHAR(255) | N | 대표 이메일. UNIQUE |
-| NICKNAME | VARCHAR(100) | N | 화면 표시명 UNIQUE |
+| NICKNAME | VARCHAR(20) | N | 화면 표시명. 2~20자, UNIQUE |
 | PROFILE_IMG_URL | VARCHAR(512) | Y | |
 | JOB_TITLE | VARCHAR(100) | Y | SWE, PM … |
 | COUNTRY_CODE | CHAR(2) | Y | ISO 3166-1 alpha-2 (`KR`, `US`, `CA`) |

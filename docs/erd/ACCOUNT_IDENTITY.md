@@ -10,7 +10,7 @@
 | ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
 | ISSUER | VARCHAR(20) | N | `GOOGLE` / `APPLE` |
 | PROVIDER_ACCOUNT_ID | VARCHAR(255) | N | OAuth `sub` |
-| PROVIDER_EMAIL | VARCHAR(255) | Y | OAuth 제공자가 전달한 이메일 원본. ACCOUNT.EMAIL 과 다를 수 있음 |
+| PROVIDER_EMAIL | VARCHAR(255) | N | OAuth 제공자가 전달한 이메일 원본. ACCOUNT.EMAIL 과 다를 수 있음 |
 | LAST_LOGIN_AT | DATETIME | Y | |
 
 ## 관계
@@ -25,7 +25,3 @@
 
 ## 미확정
 - drawio 에는 `ACCOUNT_ID VARCHAR`로 되어 있으나 ACCOUNT.ID가 BIGINT이므로 맞춘다.
-
-## 이메일 검증
-- `PROVIDER_EMAIL`은 OAuth 제공자가 전달한 이메일 원본을 기록한다.
-- `EMAIL_VERIFIED`는 가입 시 `true`인지 검증하지만 별도 컬럼으로 저장하지 않는다.
