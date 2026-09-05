@@ -8,40 +8,53 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
 ## 흐름
 
 ```
-로그인 화면 ──구글 인증──▶ 토큰 검증 → sub · email · email_verified · name
-                              │
-                              ├─ email 없음 / email_verified≠true ──▶ 가입 불가 안내 → 로그인 화면
-                              │
-                              ▼
-                    ACCOUNT_IDENTITY(ISSUER, PROVIDER_ACCOUNT_ID=sub) 조회
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-   없음 = 신규            있음 · 미완료           있음 · 완료
-   ACCOUNT + ACCOUNT_IDENTITY 생성   기존 ACCOUNT              기존 ACCOUNT
-   ONBOARDING_COMPLETED_AT=NULL
-   NICKNAME=account_<랜덤> (임시)
-   EMAIL=구글 이메일
-        │                     │                     │
-        └────────┬────────────┘                     ▼
-                 ▼                            홈 (next 있으면 거기)
-            온보딩 화면
-            약관 3종 · 닉네임(제공자 이름 미리 채움) · 타임존(브라우저 타임존 미리 선택)
-                 │
-                 ├─ 검증 실패 ──▶ 필드별 오류, 저장 없음, 온보딩 화면
-                 ▼
-            완료 처리 (한 트랜잭션)
-            ACCOUNT.NICKNAME · TIME_ZONE · ONBOARDING_COMPLETED_AT=now
-            ACCOUNT_CONSENT 3행
-                 │
-                 ▼
-            UserRegisteredEvent 발행 ──▶ 알림팀 → 웰컴메일
-                 │
-                 ▼
-            홈 (next 있으면 거기)
+로그인 화면
+  │
+  └─ 구글 인증 → 토큰 검증 → sub · email · email_verified · name
+                     │
+                     ├─ email 없음 / email_verified≠true
+                     │    └─ 가입 불가 안내 → 로그인 화면
+                     │
+                     └─ 검증 통과
+                          │
+                          ▼
+        ACCOUNT_IDENTITY(ISSUER, PROVIDER_ACCOUNT_ID=sub) 조회
+                          │
+                          ├─ 있음
+                          │    └─ 연결된 ACCOUNT 조회
+                          │         ├─ 온보딩 미완료 → 온보딩 화면
+                          │         └─ 온보딩 완료   → 홈 (next 있으면 거기)
+                          │
+                          └─ 없음
+                               └─ 동일 EMAIL의 ACCOUNT 조회
+                                    ├─ 있음
+                                    │    └─ 409 ACCOUNT_LINK_REQUIRED
+                                    │       새 계정 생성·자동 연결·JWT 발급 없음
+                                    │       기존 로그인 수단으로 로그인 후 계정 연결 안내
+                                    │
+                                    └─ 없음 = 신규
+                                         └─ ACCOUNT + ACCOUNT_IDENTITY 생성
+                                            ONBOARDING_COMPLETED_AT=NULL
+                                            NICKNAME=account_<랜덤> (임시)
+                                            EMAIL=구글 이메일
+                                            → JWT 발급 → 온보딩 화면
+
+온보딩 화면
+  │  약관 3종 · 닉네임(제공자 이름 미리 채움) · 타임존(브라우저 타임존 미리 선택)
+  │
+  ├─ 검증 실패 → 필드별 오류, 저장 없음 → 온보딩 화면
+  │
+  └─ 검증 성공 → 완료 처리 (한 트랜잭션)
+                     │  ACCOUNT.NICKNAME · TIME_ZONE · ONBOARDING_COMPLETED_AT=now
+                     │  ACCOUNT_CONSENT 3행
+                     ▼
+                UserRegisteredEvent 발행 → 알림팀 → 웰컴메일
+                     │
+                     ▼
+                홈 (next 있으면 거기)
 ```
 
-- 토큰은 신규·미완료·완료 전부에서 발급한다. **온보딩 미완료도 로그인 상태**다. 쓸 수 있는 게 적을 뿐.
+- 토큰은 신규·미완료·완료 전부에서 발급한다. 단, 동일 이메일의 기존 ACCOUNT가 발견되어 `ACCOUNT_LINK_REQUIRED`가 반환된 경우에는 발급하지 않는다. **온보딩 미완료도 로그인 상태**다. 쓸 수 있는 게 적을 뿐.
 - 미완료·완료 로그인 때 `ACCOUNT_IDENTITY.LAST_LOGIN_AT` 을 갱신한다. ERD 에 있는 컬럼 — 그 로그인 수단으로 마지막에 들어온 시각. 신규는 행 만들 때 채워진다.
 
 ## 사람을 어떻게 찾나 — `(ISSUER, sub)`
@@ -51,12 +64,13 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
 ```
 로그인 성공 → (issuer, sub, email, email_verified, name)
 
-1. email 없음 / email_verified ≠ true   → 가입 불가
-2. ACCOUNT_IDENTITY(issuer, sub) 있음    → 그 ACCOUNT
-3. ACCOUNT_IDENTITY(issuer, sub) 없음    → ACCOUNT + ACCOUNT_IDENTITY 신규
+1. email 없음 / email_verified ≠ true                  → 가입 불가
+2. ACCOUNT_IDENTITY(issuer, sub) 있음                   → 그 ACCOUNT
+3. ACCOUNT_IDENTITY(issuer, sub) 없음 + 동일 email 있음 → 409 ACCOUNT_LINK_REQUIRED
+4. ACCOUNT_IDENTITY(issuer, sub) 없음 + 동일 email 없음 → ACCOUNT + ACCOUNT_IDENTITY 신규
 ```
 
-이메일이 같다는 이유만으로 기존 ACCOUNT에 로그인 수단을 자동 연결하지 않는다. Google·Apple 계정 연결은 로그인한 상태에서 사용자가 명시적으로 진행하며, MVP 이후 별도 기능으로 구현한다.
+보안을 위해 이메일이 같다는 이유만으로 기존 ACCOUNT에 로그인 수단을 자동 연결하지 않는다. 처음 보는 `(issuer, sub)`인데 동일 이메일의 ACCOUNT가 이미 있으면 새 ACCOUNT를 만들거나 JWT를 발급하지 않고 `409 ACCOUNT_LINK_REQUIRED`를 반환한다. Google·Apple 계정 연결은 기존 로그인 수단으로 로그인한 상태에서 사용자가 명시적으로 진행하며, MVP 이후 별도 기능으로 구현한다.
 
 예 — 진중이 구글로 가입하고, 나중에 애플도 연결한 상태:
 
@@ -70,10 +84,11 @@ ACCOUNT_IDENTITY
 
 구글로 로그인 → (GOOGLE, 110293847562938475) → ACCOUNT_IDENTITY 1 → ACCOUNT 7. 완료 상태니 홈
 애플로 로그인 → (APPLE, 001234.abcd1234…)   → ACCOUNT_IDENTITY 2 → ACCOUNT 7. 같은 사람
-처음 보는 sub → ACCOUNT_IDENTITY 없음        → ACCOUNT 8 새로 만들고 온보딩
+처음 보는 sub + 동일 이메일 ACCOUNT 없음      → ACCOUNT 8 새로 만들고 온보딩
+처음 보는 sub + 동일 이메일 ACCOUNT 있음      → ACCOUNT_LINK_REQUIRED, 기존 계정으로 로그인 후 연결
 ```
 
-이메일은 어디에도 조회 조건으로 안 쓰인다. `ACCOUNT.EMAIL` 은 연락처, `ACCOUNT_IDENTITY.PROVIDER_EMAIL` 은 "그 제공자가 준 원본" 기록용.
+로그인할 계정을 식별할 때는 이메일을 사용하지 않고 `(ISSUER, PROVIDER_ACCOUNT_ID)`를 사용한다. 이메일은 신규 계정 생성 전에 동일 이메일 ACCOUNT가 있는지 확인하여 중복 가입을 막을 때만 사용한다. `ACCOUNT.EMAIL`은 연락처, `ACCOUNT_IDENTITY.PROVIDER_EMAIL`은 "그 제공자가 준 원본" 기록용이다.
 
 - 구글 문서: "Use `sub` within your application as the unique-identifier key for the user." — 이메일은 바뀔 수 있어서 식별자로 쓰지 말라고 못박아 뒀다. ([OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect))
 - `ACCOUNT.EMAIL` 은 식별자가 아니라 **연락처**. **첫 가입한 제공자의 이메일**을 넣는다. 자유 입력 수정은 PRD 대로 없고, 제공자를 둘 이상 연결한 뒤 그중 하나로 바꾸는 것만 허용 — [미확정](#미확정-팀-결정).
@@ -121,7 +136,10 @@ ACCOUNT_IDENTITY
 - `timeZone` — `string | null`.
 - `suggestedNickname` — 구글이 이번 로그인에 제공한 `name`. 온보딩 닉네임 입력칸의 초기값으로만 사용하고 DB에는 저장하지 않는다.
 
-에러: 이메일 없음 / `email_verified != true` → `400 SOCIAL_LOGIN_EMAIL_REQUIRED`. 프론트는 이 코드로 "가입 불가 안내" 화면을 다른 400 케이스와 구분해 분기한다.
+에러:
+
+- 이메일 없음 / `email_verified != true` → `400 SOCIAL_LOGIN_EMAIL_REQUIRED`. 프론트는 이 코드로 "가입 불가 안내" 화면을 다른 400 케이스와 구분해 분기한다.
+- 처음 보는 `(issuer, sub)`이지만 동일 이메일의 ACCOUNT가 이미 있음 → `409 ACCOUNT_LINK_REQUIRED`. ACCOUNT·ACCOUNT_IDENTITY를 생성하거나 JWT를 발급하지 않는다. 프론트는 기존 로그인 수단으로 로그인한 뒤 계정을 연결하라고 안내한다.
 
 ### `GET /auth/me`
 
@@ -159,8 +177,8 @@ ACCOUNT_IDENTITY
 
 ### 후속 (이 문서 범위 밖)
 
-- `ErrorCode` enum에 `SOCIAL_LOGIN_EMAIL_REQUIRED`(400), `ONBOARDING_REQUIRED`(403) 추가.
-- 백엔드 가이드의 에러코드 표에 위 두 코드 반영.
+- `ErrorCode` enum에 `SOCIAL_LOGIN_EMAIL_REQUIRED`(400), `ACCOUNT_LINK_REQUIRED`(409), `ONBOARDING_REQUIRED`(403) 추가.
+- 백엔드 가이드의 에러코드 표에 위 세 코드 반영.
 - 백엔드 `AuthResponse.user`와 프론트엔드의 `data.user` 사용 부분을 각각 `account`와 `data.account`로 함께 변경.
 - `JwtAuthFilter`는 JWT `sub`의 `ACCOUNT.ID`를 현재 로그인한 사용자값(principal)으로 등록하고, `/auth/me`도 이메일이 아닌 `ACCOUNT.ID`로 조회하도록 변경.
 
@@ -188,7 +206,11 @@ ACCOUNT_IDENTITY
 - `TIME_ZONE` — 온보딩시 정함. NULL 가능 
 - `NAME` — 안 만든다. 굳이 실명을 써야할 이유가 없음
 
-**ACCOUNT_IDENTITY** — `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)`가 소셜 계정의 중복 연결을 막는다. `PROVIDER_EMAIL`은 OAuth 제공자가 전달한 이메일 원본을 기록한다. `EMAIL_VERIFIED`는 가입 시 `true`인지 검증하지만 별도 컬럼으로 저장하지 않는다.
+**ACCOUNT_IDENTITY**
+
+- `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)`가 소셜 계정의 중복 연결을 막는다.
+- `PROVIDER_EMAIL`은 OAuth 제공자가 전달한 이메일 원본을 기록한다.
+- 로그인·가입 요청에서 `EMAIL_VERIFIED=true`인 경우에만 처리하며, 검증 결과는 별도 컬럼으로 저장하지 않는다.
 
 
 ## 그외 - 애플 붙일 때
