@@ -10,6 +10,7 @@
 | USER_ID | BIGINT FK → USER | N | |
 | ISSUER | VARCHAR(20) | N | `GOOGLE` / `APPLE` |
 | PROVIDER_USER_ID | VARCHAR(255) | N | OAuth `sub` |
+| PROVIDER_EMAIL | VARCHAR(255) | Y | OAuth 제공자 이메일. USER.EMAIL 과 다를 수 있음 |
 | LAST_LOGIN_AT | DATETIME | Y | |
 
 ## 관계

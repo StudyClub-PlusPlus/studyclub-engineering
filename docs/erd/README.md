@@ -42,6 +42,7 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 ```mermaid
 erDiagram
   USER ||--o{ USER_IDENTITY : "로그인 수단"
+  USER ||--o{ USER_CONSENT : "동의"
   STUDY ||--o{ STUDY_COHORT : "기수"
   STUDY_COHORT ||--o{ STUDY_CLASS : "반"
   STUDY_CLASS ||--o{ STUDY_MEETING : "회차"
@@ -70,7 +71,7 @@ erDiagram
   USER {
     bigint   ID                PK
     varchar  EMAIL             UK "대표 이메일"
-    varchar  NICKNAME             "화면 표시명"
+    varchar  NICKNAME          UK "화면 표시명"
     varchar  PROFILE_IMG_URL
     varchar  JOB_TITLE            "SWE, PM …"
     char     COUNTRY_CODE         "ISO 3166-1 alpha-2"
@@ -80,6 +81,7 @@ erDiagram
     varchar  TIME_ZONE            "IANA"
     varchar  DISCORD_ID        UK "snowflake"
     varchar  DISCORD_HANDLE
+    datetime onboarding_completed_at    "온보딩 완료 시각"
   }
 
   USER_IDENTITY {
@@ -87,7 +89,17 @@ erDiagram
     bigint   USER_ID           FK
     varchar  ISSUER               "GOOGLE / APPLE"
     varchar  PROVIDER_USER_ID     "OAuth sub"
+    varchar  PROVIDER_EMAIL       "OAuth 제공자 이메일. USER.EMAIL 과 다를 수 있음"
     datetime LAST_LOGIN_AT
+  }
+
+  USER_CONSENT {
+    bigint   ID                PK
+    bigint   USER_ID           FK
+    varchar  CONSENT_TYPE         "MARKETING / TERMS_OF_SERVICE / PRIVACY_POLICY"
+    boolean  AGREED
+    datetime AGREED_AT
+    varchar  CONSENT_VERSION      "동의한 약관 버전"
   }
 
   STUDY {
@@ -189,6 +201,7 @@ erDiagram
   }
 
   USER                  ||--o{ USER_IDENTITY                : "로그인 수단"
+  USER                  ||--o{ USER_CONSENT                  : "동의"
   USER                  ||--o{ STUDY_APPLICATION       : "신청"
   USER                  ||--o{ STUDY_PARTICIPANT       : "명부"
   USER                  ||--o{ STUDY_ATTENDANCE              : "출석"
@@ -223,6 +236,7 @@ erDiagram
 | --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
 | 회원  | [USER](./USER.md)                                       | 회원 프로필                 | `SYSTEM_ROLE`                        |
 | 회원  | [USER_IDENTITY](./USER_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
+| 회원  | [USER_CONSENT](./USER_CONSENT.md)                               | 회원 동의                 | —                                    |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
 | 스터디 | [STUDY](./STUDY.md)                                     | 스터디/클럽 정체성             | `STUDY_KIND`                         |
 | 스터디 | [STUDY_COHORT](./STUDY_COHORT.md)                       | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`    |
