@@ -24,7 +24,8 @@ export const ROLES: { key: RoleKey; label: string; scope: string; desc: string }
     key: 'navigator',
     label: '네비게이터',
     scope: '맡은 스터디',
-    desc: '자기가 맡은 스터디의 신청 승인·출석·정보를 관리한다.',
+    // 현장에서 부르는 이름은 「반장」이다. 화면 표기는 네비게이터로 통일한다.
+    desc: '맡은 스터디를 진행한다 — 알럿·출석·정보 수정. 참여 신청 처리는 하지 않는다.',
   },
   {
     key: 'crew',
@@ -42,12 +43,30 @@ export const ROLE_LABEL: Record<RoleKey, string> = {
 
 /** 권한 키 — `대상.행위`. 화면 하나가 아니라 **행위** 단위로 쪼갠다. */
 export type PermissionKey =
-  'study.create' | 'study.edit' | 'crew.approve' | 'event.manage' | 'notice.publish' | 'user.view' | 'user.role';
+  | 'study.create'
+  | 'study.edit'
+  | 'crew.approve'
+  | 'study.alert'
+  | 'attendance.check'
+  | 'attendance.edit'
+  | 'event.manage'
+  | 'notice.publish'
+  | 'user.view'
+  | 'user.role';
 
 export const PERMISSIONS: { key: PermissionKey; label: string; desc: string }[] = [
   { key: 'study.create', label: '스터디 개설', desc: '새 스터디를 만든다' },
   { key: 'study.edit', label: '스터디 정보 수정', desc: '제목·일정·모집 정보를 고친다' },
   { key: 'crew.approve', label: '신청 승인 · 내보내기', desc: '스터디 참여 신청을 처리한다' },
+  { key: 'study.alert', label: '스터디 알럿 발송', desc: '스터디 디스코드 채널에 알림을 보낸다' },
+  {
+    key: 'attendance.check',
+    label: '출석 체크',
+    // 신규 방식: 보이스룸에서 네비게이터가 `/StudyStart` → 시작 10분 뒤 자동 체크.
+    // 현재는 참석자 화면을 캡처해 구글 시트에 옮겨 적는다.
+    desc: '디스코드 명령어로 출석을 기록한다',
+  },
+  { key: 'attendance.edit', label: '출석 현황 수정', desc: '기록된 출석을 고친다' },
   { key: 'event.manage', label: '행사 관리', desc: '행사를 등록·수정한다' },
   { key: 'notice.publish', label: '공지 발행', desc: '사용자 사이트에 공지를 올린다' },
   { key: 'user.view', label: '유저 명단 열람', desc: '유저 목록과 참여 이력을 본다' },
@@ -60,8 +79,21 @@ export const PERMISSIONS: { key: PermissionKey; label: string; desc: string }[] 
  * `user.role` 은 캡틴에게만 있다 — 역할을 줄 수 있는 사람이 여럿이면 권한이 조용히 번진다.
  */
 export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
-  captain: ['study.create', 'study.edit', 'crew.approve', 'event.manage', 'notice.publish', 'user.view', 'user.role'],
-  navigator: ['study.edit', 'user.view'],
+  captain: [
+    'study.create',
+    'study.edit',
+    'crew.approve',
+    'study.alert',
+    'attendance.check',
+    'attendance.edit',
+    'event.manage',
+    'notice.publish',
+    'user.view',
+    'user.role',
+  ],
+  // 네비게이터는 **맡은 스터디를 굴리는 데 필요한 것**만 갖는다.
+  // 신청 승인·내보내기는 없다 — 누가 들어오는지는 캡틴이 정한다.
+  navigator: ['study.edit', 'study.alert', 'attendance.check', 'attendance.edit', 'user.view'],
   crew: [],
 };
 
