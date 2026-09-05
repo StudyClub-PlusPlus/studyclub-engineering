@@ -81,7 +81,7 @@ erDiagram
     varchar  TIME_ZONE            "IANA"
     varchar  DISCORD_ID        UK "snowflake"
     varchar  DISCORD_HANDLE
-    datetime onboarding_completed_at    "온보딩 완료 시각"
+    datetime ONBOARDING_COMPLETED_AT    "온보딩 완료 시각"
   }
 
   ACCOUNT_IDENTITY {
@@ -339,4 +339,3 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 기수마다 달라지는 `STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·`CAPACITY`·`RECRUIT_DEADLINE`·
 `START_DATE`/`END_DATE`·`DISCORD_CHANNEL_URL`·`DRIVE_URL` 은 전부 STUDY_COHORT 로
 이동했다. 근거는 `study_schema_design_decisions.md` 참고.
-

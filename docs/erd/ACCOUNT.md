@@ -1,4 +1,4 @@
-# USER — 회원
+# ACCOUNT — 회원
 
 로그인한 사람. 프로필·지역·디스코드 연결. 인증 수단은 [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md) 로 분리.
 
@@ -18,7 +18,7 @@
 | TIME_ZONE | VARCHAR(64) | Y | IANA (`Asia/Seoul`, `America/Los_Angeles`) |
 | DISCORD_ID | VARCHAR(64) | Y | 디스코드 내부 식별자 (snowflake) |
 | DISCORD_HANDLE | VARCHAR(64) | Y | 표시용 핸들 |
-| onboarding_completed_at | DATETIME | Y | 온보딩 완료 시간 |
+| ONBOARDING_COMPLETED_AT | DATETIME | Y | 온보딩 완료 시간 |
 
 ## 관계
 - 1 : N [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)
@@ -39,6 +39,7 @@
 
 ## 제약
 - `UNIQUE(EMAIL)`
+- `UNIQUE(NICKNAME)` — 영문 대소문자를 구분하지 않고 중복 방지
 - `UNIQUE(DISCORD_ID)` — NULL 허용
 
 ## 미확정

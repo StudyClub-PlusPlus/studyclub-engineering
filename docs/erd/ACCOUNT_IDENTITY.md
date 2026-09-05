@@ -7,14 +7,14 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| ACCOUNT_ID | BIGINT FK → USER | N | |
+| ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
 | ISSUER | VARCHAR(20) | N | `GOOGLE` / `APPLE` |
 | PROVIDER_ACCOUNT_ID | VARCHAR(255) | N | OAuth `sub` |
-| PROVIDER_EMAIL | VARCHAR(255) | Y | OAuth 제공자 이메일. USER.EMAIL 과 다를 수 있음 |
+| PROVIDER_EMAIL | VARCHAR(255) | Y | OAuth 제공자가 전달한 이메일 원본. ACCOUNT.EMAIL 과 다를 수 있음 |
 | LAST_LOGIN_AT | DATETIME | Y | |
 
 ## 관계
-- N : 1 [USER](./ACCOUNT.md)
+- N : 1 [ACCOUNT](./ACCOUNT.md)
 
 ## 상태
 없음. 연결/해제는 행 존재 여부.
@@ -24,5 +24,8 @@
 - `UNIQUE(ACCOUNT_ID, ISSUER)` — 한 회원이 같은 제공자를 두 번 연결 못 함
 
 ## 미확정
-- drawio 에는 `ACCOUNT_ID VARCHAR` 로 되어 있으나 USER.ID 가 BIGINT 이므로 맞춘다.
-- 표 설계에 있던 `PROVIDER_EMAIL`·`EMAIL_VERIFIED` 를 넣을지 (제공자 이메일 ≠ USER.EMAIL 인 경우 추적용).
+- drawio 에는 `ACCOUNT_ID VARCHAR`로 되어 있으나 ACCOUNT.ID가 BIGINT이므로 맞춘다.
+
+## 이메일 검증
+- `PROVIDER_EMAIL`은 OAuth 제공자가 전달한 이메일 원본을 기록한다.
+- `EMAIL_VERIFIED`는 가입 시 `true`인지 검증하지만 별도 컬럼으로 저장하지 않는다.
