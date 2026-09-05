@@ -93,7 +93,7 @@ ACCOUNT_IDENTITY
 - 구글 문서: "Use `sub` within your application as the unique-identifier key for the user." — 이메일은 바뀔 수 있어서 식별자로 쓰지 말라고 못박아 뒀다. ([OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect))
 - `ACCOUNT.EMAIL` 은 식별자가 아니라 **연락처**. **첫 가입한 제공자의 이메일**을 넣는다. 자유 입력 수정은 PRD 대로 없고, 제공자를 둘 이상 연결한 뒤 그중 하나로 바꾸는 것만 허용 — [미확정](#미확정-팀-결정).
 - 제공자 `name` 은 **저장 안 한다.** 로그인 응답에 실어 온보딩 닉네임 칸 초기값으로만 쓴다. 사이트에서 부르는 이름은 `NICKNAME` 하나면 되고, 실명은 안 갖고 있는 게 낫다.
-- 같은 `sub` 가 동시에 두 번 들어와 3 에서 INSERT 가 겹치면 UNIQUE 에 걸린다 → 재조회해서 2 로 태운다.
+- 같은 `sub` 가 동시에 두 번 들어와 4 에서 INSERT 가 겹치면 UNIQUE 에 걸린다 → 재조회해서 2 로 태운다.
 
 ## 온보딩 입력
 
@@ -117,7 +117,7 @@ ACCOUNT_IDENTITY
 
 | Method | Path | 설명 | 인증 |
 |---|---|---|---|
-| POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+ACCOUNT_IDENTITY 생성, 기존이면 조회. 완료 여부와 무관하게 토큰 발급 | X |
+| POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+ACCOUNT_IDENTITY 생성, 기존이면 조회. 동일 이메일 충돌 시 `ACCOUNT_LINK_REQUIRED`를 반환하며 토큰을 발급하지 않음 | X |
 | GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) |
 | POST | `/accounts/onboarding` | 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
 
@@ -203,7 +203,7 @@ ACCOUNT_IDENTITY
 
 - `NICKNAME` — `NOT NULL` 그대로. 로그인 직후엔 `account_<랜덤>` 임시값을 넣고 온보딩에서 정한다. **`UNIQUE(NICKNAME)` 추가** — 임시값이 겹치면 다시 생성
 - `ONBOARDING_COMPLETED_AT` — **추가**, `DATETIME NULL`. NULL = 미완료. 이벤트 1회 기준
-- `TIME_ZONE` — 온보딩시 정함. NULL 가능 
+- `TIME_ZONE` — 온보딩시 정함. NULL 가능
 - `NAME` — 안 만든다. 굳이 실명을 써야할 이유가 없음
 
 **ACCOUNT_IDENTITY**
@@ -217,14 +217,14 @@ ACCOUNT_IDENTITY
 
 애플을 붙일 때 DB·온보딩을 다시 뜯지 않도록 미리 정해 둔 두 가지 —
 
-**온보딩 전 `NICKNAME` 을 NULL 로 허용하나 → 아니오. `NOT NULL` 유지.** 
+**온보딩 전 `NICKNAME` 을 NULL 로 허용하나 → 아니오. `NOT NULL` 유지.**
 - 로그인 직후엔 `account_<랜덤>` 임시값을 넣고, 온보딩에서 사용자가 직접 정한다.
 - NULL 을 허용하면 명부·후기 등 닉네임을 보여주는 모든 화면이 "닉네임 없는 회원" 을 따로 처리해야 한다.
 - 제공자 이름을 닉네임에 넣는 것도 안 된다. 구글은 이름을 매번 주지만 애플은 첫 로그인에만 준다. 그러면 구글 / 애플 첫 로그인 / 애플 재로그인이 다 다르게 갈린다. 임시값을 넣으면 제공자가 뭐든 똑같이 흐른다.
 - "ACCOUNT 를 온보딩 완료 때 만들면 되지 않나" — 그러면 온보딩 화면에서 저장 요청을 보낼 때 서버가 누구 요청인지 알 수 없다. 토큰에는 ACCOUNT ID 를 담는데 ACCOUNT 가 아직 없으니까. "아직 회원이 아닌 사람용 임시 토큰" 을 따로 설계해야 해서 더 복잡하다.
 
-**애플 비공개 중계 주소(`@privaterelay.appleid.com`)를 `ACCOUNT.EMAIL` 로 인정하나 → 예. 그대로 저장.** 
-- 식별은 `sub` 라 이메일이 뭐든 로그인엔 영향 없고, 중계 주소도 애플이 실제 메일함으로 전달해 주니 연락처로 유효하다. 
+**애플 비공개 중계 주소(`@privaterelay.appleid.com`)를 `ACCOUNT.EMAIL` 로 인정하나 → 예. 그대로 저장.**
+- 식별은 `sub` 라 이메일이 뭐든 로그인엔 영향 없고, 중계 주소도 애플이 실제 메일함으로 전달해 주니 연락처로 유효하다.
 - 원본은 `ACCOUNT_IDENTITY.PROVIDER_EMAIL` 에 남는다. 단 구글 이메일과 달라 구글 계정이 있어도 자동으로 묶지 않는다 → 별개 ACCOUNT, 명시적 연결(후속). 다른 길인 "중계 주소면 가입 거부" 는 '이메일 가리기' 를 쓰는 애플 사용자를 통째로 못 받는다.
 - 제공자가 둘 이상 연결되면 `ACCOUNT.EMAIL` 은 첫 가입 제공자 것이 그대로다. 애플(중계)로 먼저 가입하고 구글을 연결하면 진짜 주소를 알면서도 알림이 중계로 나가니, **연결된 ACCOUNT_IDENTITY의 `PROVIDER_EMAIL` 중 하나를 대표로 고르는 것**은 허용. 검증된 주소 중 선택이라 아무 주소나 넣는 걸 막는 PRD 취지와 안 부딪히고, 인증 메일도 필요 없다. MVP 는 구글만이라 선택 UI 없음 — 애플과 같이.
 
