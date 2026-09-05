@@ -8,14 +8,14 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| ACCOUNT_ID | BIGINT FK → USER | N | |
+| ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 비정규화 — 기수별 전체 출석 집계용 |
 | STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | 비정규화 — 반별 출석 집계용. 실제 참석한 반 (cross-class 출석 시 home class 가 아닐 수 있음) |
 | STUDY_MEETING_ID | BIGINT FK → STUDY_MEETING | N | |
 | STATUS | VARCHAR(20) | N | 아래 |
 
 ## 관계
-- N : 1 [USER](./ACCOUNT.md), [STUDY_MEETING](./STUDY_MEETING.md), [STUDY_CLASS](./STUDY_CLASS.md), [STUDY_COHORT](./STUDY_COHORT.md)
+- N : 1 [ACCOUNT](./ACCOUNT.md), [STUDY_MEETING](./STUDY_MEETING.md), [STUDY_CLASS](./STUDY_CLASS.md), [STUDY_COHORT](./STUDY_COHORT.md)
 
 ## 상태 — STATUS
 
