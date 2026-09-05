@@ -1,4 +1,4 @@
-package com.studyclub.domain.user;
+package com.studyclub.domain.account;
 
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
@@ -14,20 +14,20 @@ import java.time.Instant;
 
 @Entity
 @Table(
-    name = "USER_IDENTITY",
+    name = "ACCOUNT_IDENTITY",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_user_identity_user_issuer", columnNames = {"USER_ID", "ISSUER"}),
-        @UniqueConstraint(name = "uk_user_identity_issuer_provider", columnNames = {"ISSUER", "PROVIDER_USER_ID"})
+        @UniqueConstraint(name = "uk_account_identity_account_issuer", columnNames = {"ACCOUNT_ID", "ISSUER"}),
+        @UniqueConstraint(name = "uk_account_identity_issuer_provider", columnNames = {"ISSUER", "PROVIDER_USER_ID"})
     }
 )
-public class UserIdentity extends BaseEntity {
+public class AccountIdentity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "USER_ID", nullable = false)
-    private Long userId;
+    @Column(name = "ACCOUNT_ID", nullable = false)
+    private Long accountId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -39,18 +39,18 @@ public class UserIdentity extends BaseEntity {
     @Column(name = "LAST_LOGIN_AT")
     private Instant lastLoginAt;
 
-    protected UserIdentity() {
+    protected AccountIdentity() {
     }
 
-    public UserIdentity(Long userId, Issuer issuer, String providerUserId, Instant lastLoginAt) {
-        this.userId = userId;
+    public AccountIdentity(Long accountId, Issuer issuer, String providerUserId, Instant lastLoginAt) {
+        this.accountId = userId;
         this.issuer = issuer;
         this.providerUserId = providerUserId;
         this.lastLoginAt = lastLoginAt;
     }
 
     public Long getId() { return id; }
-    public Long getUserId() { return userId; }
+    public Long getAccountId() { return userId; }
     public Issuer getIssuer() { return issuer; }
     public String getProviderUserId() { return providerUserId; }
     public Instant getLastLoginAt() { return lastLoginAt; }

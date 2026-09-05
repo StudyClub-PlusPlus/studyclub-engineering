@@ -15,10 +15,10 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(
     name = "STUDY_ATTENDANCE",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_attendance_meeting_user", columnNames = {"STUDY_MEETING_ID", "USER_ID"}),
+    uniqueConstraints = @UniqueConstraint(name = "uk_study_attendance_meeting_account", columnNames = {"STUDY_MEETING_ID", "ACCOUNT_ID"}),
     indexes = {
-        @Index(name = "idx_study_attendance_user_cohort", columnList = "USER_ID, STUDY_COHORT_ID"),
-        @Index(name = "idx_study_attendance_user_class", columnList = "USER_ID, STUDY_CLASS_ID"),
+        @Index(name = "idx_study_attendance_account_cohort", columnList = "ACCOUNT_ID, STUDY_COHORT_ID"),
+        @Index(name = "idx_study_attendance_account_class", columnList = "ACCOUNT_ID, STUDY_CLASS_ID"),
         @Index(name = "idx_study_attendance_cohort_status", columnList = "STUDY_COHORT_ID, STATUS")
     }
 )
@@ -28,8 +28,8 @@ public class StudyAttendance extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "USER_ID", nullable = false)
-    private Long userId;
+    @Column(name = "ACCOUNT_ID", nullable = false)
+    private Long accountId;
 
     @Column(name = "STUDY_COHORT_ID", nullable = false)
     private Long studyCohortId;
@@ -47,9 +47,9 @@ public class StudyAttendance extends BaseEntity {
     protected StudyAttendance() {
     }
 
-    public StudyAttendance(Long userId, Long studyCohortId, Long studyClassId,
+    public StudyAttendance(Long accountId, Long studyCohortId, Long studyClassId,
                            Long studyMeetingId, AttendanceStatusEnum status) {
-        this.userId = userId;
+        this.accountId = userId;
         this.studyCohortId = studyCohortId;
         this.studyClassId = studyClassId;
         this.studyMeetingId = studyMeetingId;
@@ -57,7 +57,7 @@ public class StudyAttendance extends BaseEntity {
     }
 
     public Long getId() { return id; }
-    public Long getUserId() { return userId; }
+    public Long getAccountId() { return userId; }
     public Long getStudyCohortId() { return studyCohortId; }
     public Long getStudyClassId() { return studyClassId; }
     public Long getStudyMeetingId() { return studyMeetingId; }

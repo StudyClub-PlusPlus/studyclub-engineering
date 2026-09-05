@@ -13,10 +13,10 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(
     name = "STUDY_PROPOSAL_INTEREST",
-    uniqueConstraints = @UniqueConstraint(name = "uk_proposal_interest_proposal_user", columnNames = {"PROPOSAL_ID", "USER_ID"}),
+    uniqueConstraints = @UniqueConstraint(name = "uk_proposal_interest_proposal_account", columnNames = {"PROPOSAL_ID", "ACCOUNT_ID"}),
     indexes = {
         @Index(name = "idx_proposal_interest_proposal", columnList = "PROPOSAL_ID"),
-        @Index(name = "idx_proposal_interest_user", columnList = "USER_ID")
+        @Index(name = "idx_proposal_interest_account", columnList = "ACCOUNT_ID")
     }
 )
 public class StudyProposalInterest extends BaseEntity {
@@ -28,18 +28,18 @@ public class StudyProposalInterest extends BaseEntity {
     @Column(name = "PROPOSAL_ID", nullable = false)
     private Long proposalId;
 
-    @Column(name = "USER_ID", nullable = false)
-    private Long userId;
+    @Column(name = "ACCOUNT_ID", nullable = false)
+    private Long accountId;
 
     protected StudyProposalInterest() {
     }
 
-    public StudyProposalInterest(Long proposalId, Long userId) {
+    public StudyProposalInterest(Long proposalId, Long accountId) {
         this.proposalId = proposalId;
-        this.userId = userId;
+        this.accountId = userId;
     }
 
     public Long getId() { return id; }
     public Long getProposalId() { return proposalId; }
-    public Long getUserId() { return userId; }
+    public Long getAccountId() { return userId; }
 }

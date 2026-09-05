@@ -19,7 +19,7 @@ UPDATE USERS SET SYSTEM_ROLE = 'MEMBER' WHERE SYSTEM_ROLE IN ('STUDENT', 'OPERAT
 -- 4. 임시 DEFAULT 제거
 ALTER TABLE USERS ALTER COLUMN NICKNAME DROP DEFAULT;
 
--- 5. google_sub 제거 — 인증 수단 식별자는 USER_IDENTITY 로
+-- 5. google_sub 제거 — 인증 수단 식별자는 ACCOUNT_IDENTITY 로
 ALTER TABLE USERS DROP COLUMN google_sub;
 
 -- 6. ERD 신규 컬럼 추가 (모두 nullable 로 시작)

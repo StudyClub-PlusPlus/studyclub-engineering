@@ -2,11 +2,11 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
-import com.studyclub.domain.user.SystemRole;
-import com.studyclub.domain.user.User;
-import com.studyclub.domain.user.UserRepository;
+import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
-import com.studyclub.api.auth.dto.AuthDtos.UserView;
+import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.jsonwebtoken.Claims;
@@ -21,15 +21,15 @@ public class AuthService {
 
     private static final String PLATFORM_BACK_OFFICE = "BACK_OFFICE";
 
-    private final UserRepository users;
+    private final AccountRepository accounts;
     private final GoogleOAuthClient google;
     private final JwtService jwt;
 
     @Value("${back-office.allowed-emails:}")
     private String allowedEmailsRaw;
 
-    public AuthService(UserRepository users, GoogleOAuthClient google, JwtService jwt) {
-        this.users = users;
+    public AuthService(AccountRepository accounts, GoogleOAuthClient google, JwtService jwt) {
+        this.accounts = accounts;
         this.google = google;
         this.jwt = jwt;
     }
@@ -44,17 +44,17 @@ public class AuthService {
 
         assertBackOfficePermitted(email, platform);
 
-        User user = users.findByEmail(email).orElseGet(() ->
-                users.save(new User(email, g.name(), g.picture(), SystemRole.MEMBER)));
+        Account account = accounts.findByEmail(email).orElseGet(() ->
+                accounts.save(new Account(email, g.name(), g.picture(), SystemRole.MEMBER)));
 
-        return issueFor(user);
+        return issueFor(account);
     }
 
     @Transactional(readOnly = true)
-    public UserView me(String email) {
-        User user = users.findByEmail(email.toLowerCase())
+    public AccountView me(String email) {
+        Account account = accounts.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
-        return toView(user);
+        return toView(account);
     }
 
     public AccessTokenResponse refresh(String refreshToken) {
@@ -83,18 +83,18 @@ public class AuthService {
         }
     }
 
-    private AuthResponse issueFor(User user) {
-        String sub = String.valueOf(user.getId());
+    private AuthResponse issueFor(Account account) {
+        String sub = String.valueOf(account.getId());
         return new AuthResponse(
-                jwt.issueAccess(sub, user.getEmail()),
-                jwt.issueRefresh(sub, user.getEmail()),
+                jwt.issueAccess(sub, account.getEmail()),
+                jwt.issueRefresh(sub, account.getEmail()),
                 jwt.accessTtlSeconds(),
                 jwt.refreshTtlSeconds(),
-                toView(user));
+                toView(account));
     }
 
-    private UserView toView(User user) {
-        return new UserView(user.getId(), user.getEmail(), user.getNickname(), user.getProfileImgUrl(),
-                user.getSystemRole().name(), String.valueOf(user.getCreatedAt()));
+    private AccountView toView(Account account) {
+        return new AccountView(account.getId(), account.getEmail(), account.getNickname(), account.getProfileImgUrl(),
+                account.getSystemRole().name(), String.valueOf(account.getCreatedAt()));
     }
 }

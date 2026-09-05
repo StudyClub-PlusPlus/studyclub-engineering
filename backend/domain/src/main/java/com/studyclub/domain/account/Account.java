@@ -1,4 +1,4 @@
-package com.studyclub.domain.user;
+package com.studyclub.domain.account;
 
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
@@ -12,20 +12,20 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 /**
- * 회원. 프로필·지역·디스코드 연결. 인증 수단은 UserIdentity 로 분리.
+ * 회원. 프로필·지역·디스코드 연결. 인증 수단은 AccountIdentity 로 분리.
  *
  * <p>구글 프로필 URL 은 길이를 믿지 않는다. 컬럼(512)보다 길면 아바타를 포기하고 로그인은
  * 통과시킨다 — 잘린 URL 은 깨진 이미지라 없느니만 못하다.
  */
 @Entity
 @Table(
-    name = "USER",
+    name = "ACCOUNT",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_users_email", columnNames = "EMAIL"),
         @UniqueConstraint(name = "uk_users_discord_id", columnNames = "DISCORD_ID")
     }
 )
-public class User extends BaseEntity {
+public class Account extends BaseEntity {
 
     private static final int NICKNAME_MAX = 255;
     private static final int PROFILE_IMG_URL_MAX = 2048;

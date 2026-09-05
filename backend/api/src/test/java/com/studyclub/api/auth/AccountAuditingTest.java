@@ -3,9 +3,9 @@ package com.studyclub.api.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.api.config.JpaConfig;
-import com.studyclub.domain.user.SystemRole;
-import com.studyclub.domain.user.User;
-import com.studyclub.domain.user.UserRepository;
+import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
@@ -24,10 +24,10 @@ import org.springframework.context.annotation.Import;
  */
 @DataJpaTest
 @Import(JpaConfig.class)
-class UserAuditingTest {
+class AccountAuditingTest {
 
     @Autowired
-    UserRepository users;
+    AccountRepository accounts;
 
     @Autowired
     EntityManager em;
@@ -39,7 +39,7 @@ class UserAuditingTest {
         Instant before = Instant.now();
 
         // when
-        User saved = users.save(new User("audit@studyclub-plusplus.com", "감사", null, SystemRole.MEMBER));
+        Account saved = accounts.save(new Account("audit@studyclub-plusplus.com", "감사", null, SystemRole.MEMBER));
         em.flush();
 
         // then
@@ -51,7 +51,7 @@ class UserAuditingTest {
     @DisplayName("수정하면 updatedAt 만 움직이고 createdAt 은 고정이다")
     void movesOnlyUpdatedAtOnModify() {
         // given
-        User saved = users.save(new User("edit@studyclub-plusplus.com", "수정", null, SystemRole.MEMBER));
+        Account saved = accounts.save(new Account("edit@studyclub-plusplus.com", "수정", null, SystemRole.MEMBER));
         em.flush();
         Instant createdAt = saved.getCreatedAt();
         Instant updatedAt = saved.getUpdatedAt();

@@ -16,9 +16,9 @@ import java.time.Instant;
 @Entity
 @Table(
     name = "STUDY_PARTICIPANT",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_participant_user_class", columnNames = {"USER_ID", "STUDY_CLASS_ID"}),
+    uniqueConstraints = @UniqueConstraint(name = "uk_study_participant_account_class", columnNames = {"ACCOUNT_ID", "STUDY_CLASS_ID"}),
     indexes = {
-        @Index(name = "idx_study_participant_user", columnList = "USER_ID"),
+        @Index(name = "idx_study_participant_account", columnList = "ACCOUNT_ID"),
         @Index(name = "idx_study_participant_class_status", columnList = "STUDY_CLASS_ID, STATUS"),
         @Index(name = "idx_study_participant_cohort_status", columnList = "STUDY_COHORT_ID, STATUS")
     }
@@ -29,8 +29,8 @@ public class StudyParticipant extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "USER_ID", nullable = false)
-    private Long userId;
+    @Column(name = "ACCOUNT_ID", nullable = false)
+    private Long accountId;
 
     @Column(name = "STUDY_CLASS_ID", nullable = false)
     private Long studyClassId;
@@ -52,9 +52,9 @@ public class StudyParticipant extends BaseEntity {
     protected StudyParticipant() {
     }
 
-    public StudyParticipant(Long userId, Long studyClassId, Long studyCohortId,
+    public StudyParticipant(Long accountId, Long studyClassId, Long studyCohortId,
                             ParticipantStatusEnum status, ParticipantRoleEnum participantRole, Instant joinedAt) {
-        this.userId = userId;
+        this.accountId = userId;
         this.studyClassId = studyClassId;
         this.studyCohortId = studyCohortId;
         this.status = status;
@@ -63,7 +63,7 @@ public class StudyParticipant extends BaseEntity {
     }
 
     public Long getId() { return id; }
-    public Long getUserId() { return userId; }
+    public Long getAccountId() { return userId; }
     public Long getStudyClassId() { return studyClassId; }
     public Long getStudyCohortId() { return studyCohortId; }
     public ParticipantStatusEnum getStatus() { return status; }

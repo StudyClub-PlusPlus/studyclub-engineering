@@ -16,7 +16,7 @@ import java.time.Instant;
 @Table(
     name = "STUDY_PROPOSAL",
     indexes = {
-        @Index(name = "idx_study_proposal_proposer", columnList = "PROPOSER_USER_ID"),
+        @Index(name = "idx_study_proposal_proposer_account", columnList = "PROPOSER_ACCOUNT_ID"),
         @Index(name = "idx_study_proposal_status_created", columnList = "STATUS, CREATED_AT")
     }
 )
@@ -26,8 +26,8 @@ public class StudyProposal extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "PROPOSER_USER_ID", nullable = false)
-    private Long proposerUserId;
+    @Column(name = "PROPOSER_ACCOUNT_ID", nullable = false)
+    private Long proposerAccountId;
 
     @Column(nullable = false, columnDefinition = "text")
     private String content;
@@ -42,15 +42,15 @@ public class StudyProposal extends BaseEntity {
     protected StudyProposal() {
     }
 
-    public StudyProposal(Long proposerUserId, String content, Instant proposedDate, StudyProposalStatusEnum status) {
-        this.proposerUserId = proposerUserId;
+    public StudyProposal(Long proposerAccountId, String content, Instant proposedDate, StudyProposalStatusEnum status) {
+        this.proposerAccountId = proposerAccountId;
         this.content = content;
         this.proposedDate = proposedDate;
         this.status = status;
     }
 
     public Long getId() { return id; }
-    public Long getProposerUserId() { return proposerUserId; }
+    public Long getProposerAccountId() { return proposerAccountId; }
     public String getContent() { return content; }
     public Instant getProposedDate() { return proposedDate; }
     public StudyProposalStatusEnum getStatus() { return status; }

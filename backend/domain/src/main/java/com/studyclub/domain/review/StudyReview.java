@@ -13,9 +13,9 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(
     name = "STUDY_REVIEW",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_review_cohort_user", columnNames = {"STUDY_COHORT_ID", "USER_ID"}),
+    uniqueConstraints = @UniqueConstraint(name = "uk_study_review_cohort_account", columnNames = {"STUDY_COHORT_ID", "ACCOUNT_ID"}),
     indexes = {
-        @Index(name = "idx_study_review_user", columnList = "USER_ID"),
+        @Index(name = "idx_study_review_account", columnList = "ACCOUNT_ID"),
         @Index(name = "idx_study_review_cohort", columnList = "STUDY_COHORT_ID"),
         @Index(name = "idx_study_review_study_created", columnList = "STUDY_ID, CREATED_AT")
     }
@@ -26,8 +26,8 @@ public class StudyReview extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "USER_ID", nullable = false)
-    private Long userId;
+    @Column(name = "ACCOUNT_ID", nullable = false)
+    private Long accountId;
 
     @Column(name = "STUDY_COHORT_ID", nullable = false)
     private Long studyCohortId;
@@ -41,15 +41,15 @@ public class StudyReview extends BaseEntity {
     protected StudyReview() {
     }
 
-    public StudyReview(Long userId, Long studyCohortId, Long studyId, String content) {
-        this.userId = userId;
+    public StudyReview(Long accountId, Long studyCohortId, Long studyId, String content) {
+        this.accountId = userId;
         this.studyCohortId = studyCohortId;
         this.studyId = studyId;
         this.content = content;
     }
 
     public Long getId() { return id; }
-    public Long getUserId() { return userId; }
+    public Long getAccountId() { return userId; }
     public Long getStudyCohortId() { return studyCohortId; }
     public Long getStudyId() { return studyId; }
     public String getContent() { return content; }

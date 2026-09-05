@@ -15,9 +15,9 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(
     name = "STUDY_APPLICATION",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_application_cohort_user", columnNames = {"STUDY_COHORT_ID", "USER_ID"}),
+    uniqueConstraints = @UniqueConstraint(name = "uk_study_application_cohort_account", columnNames = {"STUDY_COHORT_ID", "ACCOUNT_ID"}),
     indexes = {
-        @Index(name = "idx_study_application_user", columnList = "USER_ID"),
+        @Index(name = "idx_study_application_account", columnList = "ACCOUNT_ID"),
         @Index(name = "idx_study_application_cohort_status", columnList = "STUDY_COHORT_ID, STATUS")
     }
 )
@@ -27,8 +27,8 @@ public class StudyApplication extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "USER_ID", nullable = false)
-    private Long userId;
+    @Column(name = "ACCOUNT_ID", nullable = false)
+    private Long accountId;
 
     @Column(name = "STUDY_COHORT_ID", nullable = false)
     private Long studyCohortId;
@@ -43,15 +43,15 @@ public class StudyApplication extends BaseEntity {
     protected StudyApplication() {
     }
 
-    public StudyApplication(Long userId, Long studyCohortId, ApplicationStatusEnum status, String formAnswer) {
-        this.userId = userId;
+    public StudyApplication(Long accountId, Long studyCohortId, ApplicationStatusEnum status, String formAnswer) {
+        this.accountId = userId;
         this.studyCohortId = studyCohortId;
         this.status = status;
         this.formAnswer = formAnswer;
     }
 
     public Long getId() { return id; }
-    public Long getUserId() { return userId; }
+    public Long getAccountId() { return userId; }
     public Long getStudyCohortId() { return studyCohortId; }
     public ApplicationStatusEnum getStatus() { return status; }
     public String getFormAnswer() { return formAnswer; }
