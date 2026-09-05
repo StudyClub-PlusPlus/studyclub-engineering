@@ -236,14 +236,14 @@ assertThat(result).isEqualTo(11000);  // price=10000, tax=10%
 cd backend
 
 # 전체 테스트
-gradle test
+./gradlew test
 
 # 특정 모듈
-gradle :api:test
-gradle :domain:test
+./gradlew :api:test
+./gradlew :domain:test
 
 # 특정 클래스
-gradle test --tests "com.studyclub.api.ApiIntegrationTest"
+./gradlew test --tests "com.studyclub.api.ApiIntegrationTest"
 ```
 
 > CI(`backend-*.yaml`)는 현재 `bootJar` 만 돌린다. 테스트는 **로컬에서 통과시킨 뒤** PR 을 올린다.
