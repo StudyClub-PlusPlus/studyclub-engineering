@@ -14,7 +14,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
 
     // OpenAPI 스펙 생성 + Scalar UI (Swagger UI 대신)
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-scalar:2.9.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.1.0")
     runtimeOnly("com.mysql:mysql-connector-j")
 
     // 스키마 변경은 마이그레이션 파일로만. ddl-auto 는 validate — 엔티티가 DB 를 바꾸지 않는다.
@@ -28,6 +28,11 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+    // Boot 4 는 테스트 슬라이스를 기술별 모듈로 쪼갰다. starter-test 는 더 이상
+    // TestRestTemplate 도 @DataJpaTest 도 딸려오지 않으므로 쓰는 것만 명시한다.
+    testImplementation("org.springframework.boot:spring-boot-resttestclient")
+    testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
+    testRuntimeOnly("org.springframework.boot:spring-boot-restclient")
     // 통합/슬라이스 테스트용 인메모리 DB (MySQL 호환 모드). 운영 경로에는 들어가지 않는다.
     testRuntimeOnly("com.h2database:h2")
 }
