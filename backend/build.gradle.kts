@@ -2,7 +2,7 @@ plugins {
     // Boot & dependency-management are declared here but applied only in the modules
     // that need them (the :api Spring Boot app). Declaring with `apply false` keeps
     // the plugin versions on the root classpath so submodules can apply them.
-    id("org.springframework.boot") version "3.5.16" apply false
+    id("org.springframework.boot") version "4.1.1" apply false
     id("io.spring.dependency-management") version "1.1.7" apply false
 }
 
@@ -14,7 +14,7 @@ subprojects {
 
     extensions.configure<JavaPluginExtension> {
         toolchain {
-            languageVersion.set(JavaLanguageVersion.of(17))
+            languageVersion.set(JavaLanguageVersion.of(25))
         }
     }
 

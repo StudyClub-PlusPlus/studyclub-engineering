@@ -27,7 +27,7 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
     core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
     back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
   packages/mock          # 하드코딩 mock 데이터 + 공유 타입
-backend/                 # Spring Boot 3 멀티모듈 (Gradle) — api / domain / common
+backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
 ```
 
@@ -39,7 +39,7 @@ cd frontend && npm install && npm run dev      # turbo (모든 앱)
 #   개별: npm run dev --workspace=core-front
 
 # backend
-cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wrapper 생성 후 ./gradlew)
+cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapper 가 받아온다
 ```
 
 ## 작업 룰

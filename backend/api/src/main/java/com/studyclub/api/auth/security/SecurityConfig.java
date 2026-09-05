@@ -1,6 +1,6 @@
 package com.studyclub.api.auth.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.studyclub.api.auth.JwtService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;

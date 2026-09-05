@@ -17,7 +17,7 @@ frontend/                # Node 워크스페이스 (npm + turbo)
     back-office-front/   # 운영자향 (Next.js 16) — 스터디/행사/멤버/캡틴 관리 콘솔
   packages/
     mock/                # 하드코딩 mock 데이터 + 공유 타입 (@studyclub/mock)
-backend/                 # Spring Boot 3 멀티모듈 (Gradle Kotlin DSL, Java 17)
+backend/                 # Spring Boot 4 멀티모듈 (Gradle Kotlin DSL, Java 25)
   api/                   # 실행 모듈 — REST API (:8080)
   domain/                # 도메인 모델
   common/                # 공통 (ApiResponse 등)
@@ -48,12 +48,12 @@ npm run build
 
 ```bash
 cd backend
-gradle :api:bootRun                      # http://localhost:8080
-# gradle 미설치 시 wrapper 생성 후 사용
-gradle wrapper && ./gradlew :api:bootRun
+./gradlew :api:bootRun                   # http://localhost:8080
 # 빌드 (실행 jar)
-gradle :api:bootJar                      # → api/build/libs/app.jar
+./gradlew :api:bootJar                   # → api/build/libs/app.jar
 ```
+
+- JDK 25 필요. Gradle 은 wrapper(9.7.1 고정)가 받아오므로 따로 설치하지 않습니다.
 
 주요 엔드포인트:
 

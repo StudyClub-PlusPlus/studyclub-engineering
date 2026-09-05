@@ -9,7 +9,7 @@
 
 ## Overview
 
-Spring Boot 3 멀티모듈 Gradle 프로젝트. 3개 모듈로 구성.
+Spring Boot 4 멀티모듈 Gradle 프로젝트. 3개 모듈로 구성.
 
 ```
 backend/
