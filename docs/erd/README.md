@@ -236,7 +236,7 @@ erDiagram
 | --- | ------------------------------------------------------- | ---------------------- | ------------------------------------ |
 | 회원  | [ACCOUNT](./ACCOUNT.md)                                    | 회원 프로필                 | `SYSTEM_ROLE`                        |
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
-| 회원  | [ACCOUNT_CONSENT](./USER_CONSENT.md)                                  | 회원 동의                 | —                                    |
+| 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
 | 스터디 | [STUDY](./STUDY.md)                                     | 스터디/클럽 정체성             | `STUDY_KIND`                         |
 | 스터디 | [STUDY_COHORT](./STUDY_COHORT.md)                       | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`    |

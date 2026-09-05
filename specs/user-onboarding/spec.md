@@ -32,7 +32,7 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
                  ▼
             완료 처리 (한 트랜잭션)
             USER.NICKNAME · TIME_ZONE · ONBOARDING_COMPLETED_AT=now
-            USER_CONSENT 3행
+            ACCOUNT_CONSENT 3행
                  │
                  ▼
             UserRegisteredEvent 발행 ──▶ 알림팀 → 웰컴메일
@@ -83,9 +83,9 @@ IDENTITY
 
 ## 온보딩 입력
 
-- **이용약관** — 필수. `true` 아니면 거부. `USER_CONSENT` `TERMS_OF_SERVICE`
-- **개인정보 수집·이용** — 필수. `true` 아니면 거부. `USER_CONSENT` `PRIVACY_POLICY`
-- **마케팅 수신** — 선택. `USER_CONSENT` `MARKETING`. 거부해도 `AGREED=false` 행을 남긴다
+- **이용약관** — 필수. `true` 아니면 거부. `ACCOUNT_CONSENT` `TERMS_OF_SERVICE`
+- **개인정보 수집·이용** — 필수. `true` 아니면 거부. `ACCOUNT_CONSENT` `PRIVACY_POLICY`
+- **마케팅 수신** — 선택. `ACCOUNT_CONSENT` `MARKETING`. 거부해도 `AGREED=false` 행을 남긴다
 - **닉네임** — 필수. trim 후 2~20자, **중복 불가**(이미 쓰는 닉네임이면 거부). `USER.NICKNAME`
 - **타임존** — 필수. IANA ID (`ZoneId.of()` 통과). `USER.TIME_ZONE`
 
@@ -106,7 +106,7 @@ IDENTITY
 
 - **중복 방지 기준 = `ONBOARDING_COMPLETED_AT` 이 NULL → 값으로 바뀐 그 요청.** 완료 시각은 "아직 NULL 인 경우에만" 채우고, 실제로 바뀐 요청에서만 이벤트를 낸다. 이미 완료된 사람이 또 요청하거나 두 탭에서 동시에 눌러도 DB 가 한 쪽만 통과시키니 USER 당 1회. 나중에 애플 IDENTITY 가 붙어도 마찬가지. `sub` 기준으로 잡으면 IDENTITY 가 둘일 때 두 번 나갈 수 있어 USER 기준.
 - 이벤트는 저장이 확정된 **커밋 후**에 낸다 — 저장 실패했는데 웰컴메일 나가는 일 방지.
-- 페이로드는 `userId` 뿐. 마케팅 동의 여부 등은 알림팀이 `USER_CONSENT` 에서 읽는다. 사용자 기능은 SES 를 직접 안 부른다.
+- 페이로드는 `userId` 뿐. 마케팅 동의 여부 등은 알림팀이 `ACCOUNT_CONSENT` 에서 읽는다. 사용자 기능은 SES 를 직접 안 부른다.
 - 완료된 사용자가 또 부르면 변경 없이 성공 (멱등). 닉네임·타임존 수정은 마이페이지 API (닉네임 중복 검사는 거기서도 같이).
 
 
@@ -151,7 +151,7 @@ IDENTITY
 
 ## 한계 / 후속
 
-- **탈퇴** 시 USER·USER_CONSENT·IDENTITY 처리 — PRD 미정, 별도 스펙. ERD 원칙대로면 삭제 대신 `REMOVED_AT`.
+- **탈퇴** 시 USER·ACCOUNT_CONSENT·IDENTITY 처리 — PRD 미정, 별도 스펙. ERD 원칙대로면 삭제 대신 `REMOVED_AT`.
 - **약관 문안·버전 출처** 미정 — `POLICY_VERSION` 을 설정으로 둘지 테이블로 둘지는 구현 때.
 - 약관 개정 **재동의** 흐름 없음. 버전은 남으니 나중에 구버전 동의자는 골라낼 수 있다.
 - 구글·애플 **명시적 연결**(마이페이지 "계정 연결") — 애플과 같이.
