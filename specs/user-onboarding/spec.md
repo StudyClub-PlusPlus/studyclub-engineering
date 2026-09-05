@@ -93,6 +93,64 @@ IDENTITY
 초기값 — 닉네임=제공자 `name`, 타임존=브라우저 `Intl.DateTimeFormat().resolvedOptions().timeZone`. 편의일 뿐, 검증은 똑같이 탄다. DB 의 임시 닉네임(`account_<랜덤>`)은 화면에 안 보여준다 — 온보딩에서 반드시 정한다.
 하나라도 실패하면 아무것도 저장 안 하고 필드별 오류.
 
+## API 계약
+
+| Method | Path | 설명 | 인증 |
+|---|---|---|---|
+| POST | `/auth/social-login` | 구글 로그인. 신규면 USER+IDENTITY 생성, 기존이면 조회. 완료 여부와 무관하게 토큰 발급 | X |
+| GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) |
+| POST | `/users/onboarding` | 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
+
+`POST /users/onboarding`은 기존 `/users` 프리픽스에 얹는다. 온보딩은 1회성 완료 액션이라 마이페이지 수정 API(별도 스펙, `/users/me` 형태 예상)와는 경로를 분리한다.
+
+### `POST /auth/social-login`
+
+기존에 구현된 엔드포인트다. 요청은 그대로 `{code, provider, platform, redirectUri}` (`provider=GOOGLE`). 응답 `user`(`UserView`)에 이 스펙이 요구하는 필드를 추가한다:
+
+- `nickname` — 신규 가입 직후엔 임시값(`user_<랜덤>`) 그대로 내려간다. 화면에는 보여주지 않는다.
+- `onboardingCompletedAt` — `string | null` (ISO-8601). `null`이면 프론트가 `/[locale]/onboarding`으로 보낸다.
+- `timeZone` — `string | null`.
+- `name` — 이 응답에 한해 **유지한다.** 구글이 이번 로그인에 실어 보낸 실명을 그대로 담아, 온보딩 화면의 닉네임 입력칸 초기값으로만 쓴다(93행). "제공자 name은 저장 안 한다"(81행)는 **DB 컬럼으로 남기지 않는다**는 뜻이지, 로그인 응답에서 지운다는 뜻이 아니다 — 응답에서마저 지우면 93행의 닉네임 프리필을 구현할 방법이 없어진다.
+
+에러: 이메일 없음 / `email_verified != true` → `400 SOCIAL_LOGIN_EMAIL_REQUIRED`. 프론트는 이 코드로 "가입 불가 안내" 화면을 다른 400 케이스와 구분해 분기한다.
+
+### `GET /auth/me`
+
+응답 `UserView`는 `onboardingCompletedAt`·`timeZone`을 포함한다. `name`은 포함하지 않는다 — DB에 저장하지 않으므로 로그인 시점이 지나면 조회할 원본이 없다. 미완료 사용자도 호출 가능하다.
+
+### `POST /users/onboarding`
+
+요청 바디:
+
+```jsonc
+{
+  "termsOfServiceAgreed": true,   // 필수, true 아니면 거부
+  "privacyPolicyAgreed": true,    // 필수, true 아니면 거부
+  "marketingAgreed": false,       // 선택, false도 유효 (거부 이력 남김)
+  "nickname": "jinjoong",         // 필수, trim 후 2~20자, 중복 불가
+  "timeZone": "Asia/Seoul"        // 필수, ZoneId.of() 통과하는 IANA ID
+}
+```
+
+성공 응답은 `200 OK`, body는 닉네임·타임존·`onboardingCompletedAt`이 반영된 `UserView`.
+
+멱등: 이미 `ONBOARDING_COMPLETED_AT`이 채워진 사용자가 다시 호출하면, **검증·중복 체크보다 먼저** 그 사실을 확인하고 요청 바디를 무시한 채 현재 상태 그대로 `200 OK`를 반환한다(위 참조). 이 순서를 지키지 않으면 — 예: 이미 완료된 사용자가 그 사이 다른 사람이 선점한 닉네임을 담아 재제출한 경우 — 검증이 먼저 돌아 `409 CONFLICT`가 나가버려 멱등이 깨진다.
+
+에러:
+
+- `400 INVALID_INPUT` — 약관 미동의, 닉네임 길이/형식 위반, 타임존 미유효. 이 검증들은 "가입 불가"와 달리 프론트가 별도 화면으로 분기할 이유가 없는 일반 폼 검증이라 전용 코드를 쓰지 않는다. `errorMessage`는 레포의 `@Valid` 컨벤션 그대로 **실패한 필드 전부**를 `"필드명: 사유"` 형태로 콤마 join 해서 담는다(예: `"termsOfServiceAgreed: 약관에 동의해야 합니다, nickname: 2~20자여야 합니다"`, `GlobalExceptionHandler.handleValidation` 참고) — 필드 배열 같은 새 포맷은 쓰지 않는다.
+- `409 CONFLICT` — 닉네임 중복.
+- `401 UNAUTHORIZED` — 토큰 없음/만료.
+
+### 회원 전용 API 공통 규칙
+
+`ONBOARDING_COMPLETED_AT IS NULL`인 사용자가 회원 전용 API(신청·출석·마이페이지 수정 등)를 호출하면 `403 ONBOARDING_REQUIRED`. 프론트는 이 코드를 받으면 별도 조회 없이 바로 `/[locale]/onboarding`으로 리다이렉트한다 — 순수 권한 없음(`FORBIDDEN`)과 다른 코드를 써서 두 화면(권한 오류 vs 온보딩 유도)을 구분한다.
+
+### 후속 (이 문서 범위 밖)
+
+- `ErrorCode` enum에 `SOCIAL_LOGIN_EMAIL_REQUIRED`(400), `ONBOARDING_REQUIRED`(403) 추가.
+- 백엔드 가이드의 에러코드 표에 위 두 코드 반영.
+
 ## 미완료 사용자가 할 수 있는 것
 
 `ONBOARDING_COMPLETED_AT IS NULL` 이면 온보딩·내 정보 조회·로그아웃·약관 열람만.
