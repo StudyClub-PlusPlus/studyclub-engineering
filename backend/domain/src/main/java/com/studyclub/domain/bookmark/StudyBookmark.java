@@ -35,11 +35,11 @@ public class StudyBookmark extends BaseEntity {
     }
 
     public StudyBookmark(Long accountId, Long studyId) {
-        this.accountId = userId;
+        this.accountId = accountId;
         this.studyId = studyId;
     }
 
     public Long getId() { return id; }
-    public Long getAccountId() { return userId; }
+    public Long getAccountId() { return accountId; }
     public Long getStudyId() { return studyId; }
 }

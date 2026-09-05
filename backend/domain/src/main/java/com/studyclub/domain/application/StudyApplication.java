@@ -44,14 +44,14 @@ public class StudyApplication extends BaseEntity {
     }
 
     public StudyApplication(Long accountId, Long studyCohortId, ApplicationStatusEnum status, String formAnswer) {
-        this.accountId = userId;
+        this.accountId = accountId;
         this.studyCohortId = studyCohortId;
         this.status = status;
         this.formAnswer = formAnswer;
     }
 
     public Long getId() { return id; }
-    public Long getAccountId() { return userId; }
+    public Long getAccountId() { return accountId; }
     public Long getStudyCohortId() { return studyCohortId; }
     public ApplicationStatusEnum getStatus() { return status; }
     public String getFormAnswer() { return formAnswer; }

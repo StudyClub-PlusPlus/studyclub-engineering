@@ -3,6 +3,8 @@ package com.studyclub.api.auth;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,8 +20,8 @@ public class AccountController {
 
     private final AccountRepository accounts;
 
-    public UserController(AccountRepository accounts) {
-        this.accounts = users;
+    public AccountController(AccountRepository accounts) {
+        this.accounts = accounts;
     }
 
     @SecurityRequirement(name = "bearerAuth")

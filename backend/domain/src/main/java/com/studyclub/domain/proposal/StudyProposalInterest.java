@@ -36,10 +36,10 @@ public class StudyProposalInterest extends BaseEntity {
 
     public StudyProposalInterest(Long proposalId, Long accountId) {
         this.proposalId = proposalId;
-        this.accountId = userId;
+        this.accountId = accountId;
     }
 
     public Long getId() { return id; }
     public Long getProposalId() { return proposalId; }
-    public Long getAccountId() { return userId; }
+    public Long getAccountId() { return accountId; }
 }

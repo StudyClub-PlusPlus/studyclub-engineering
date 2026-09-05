@@ -43,14 +43,14 @@ public class AccountIdentity extends BaseEntity {
     }
 
     public AccountIdentity(Long accountId, Issuer issuer, String providerUserId, Instant lastLoginAt) {
-        this.accountId = userId;
+        this.accountId = accountId;
         this.issuer = issuer;
         this.providerUserId = providerUserId;
         this.lastLoginAt = lastLoginAt;
     }
 
     public Long getId() { return id; }
-    public Long getAccountId() { return userId; }
+    public Long getAccountId() { return accountId; }
     public Issuer getIssuer() { return issuer; }
     public String getProviderUserId() { return providerUserId; }
     public Instant getLastLoginAt() { return lastLoginAt; }

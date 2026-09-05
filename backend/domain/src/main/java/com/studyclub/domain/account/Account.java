@@ -68,10 +68,10 @@ public class Account extends BaseEntity {
     @Column(name = "DISCORD_HANDLE", length = 64)
     private String discordHandle;
 
-    protected User() {
+    protected Account() {
     }
 
-    public User(String email, String nickname, String profileImgUrl, SystemRole systemRole) {
+    public Account(String email, String nickname, String profileImgUrl, SystemRole systemRole) {
         this.email = email;
         this.nickname = clip(nickname, NICKNAME_MAX);
         this.profileImgUrl = dropIfTooLong(profileImgUrl, PROFILE_IMG_URL_MAX);

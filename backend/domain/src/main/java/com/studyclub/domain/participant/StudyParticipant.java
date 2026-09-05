@@ -54,7 +54,7 @@ public class StudyParticipant extends BaseEntity {
 
     public StudyParticipant(Long accountId, Long studyClassId, Long studyCohortId,
                             ParticipantStatusEnum status, ParticipantRoleEnum participantRole, Instant joinedAt) {
-        this.accountId = userId;
+        this.accountId = accountId;
         this.studyClassId = studyClassId;
         this.studyCohortId = studyCohortId;
         this.status = status;
@@ -63,7 +63,7 @@ public class StudyParticipant extends BaseEntity {
     }
 
     public Long getId() { return id; }
-    public Long getAccountId() { return userId; }
+    public Long getAccountId() { return accountId; }
     public Long getStudyClassId() { return studyClassId; }
     public Long getStudyCohortId() { return studyCohortId; }
     public ParticipantStatusEnum getStatus() { return status; }

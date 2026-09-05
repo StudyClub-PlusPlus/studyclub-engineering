@@ -42,14 +42,14 @@ public class StudyReview extends BaseEntity {
     }
 
     public StudyReview(Long accountId, Long studyCohortId, Long studyId, String content) {
-        this.accountId = userId;
+        this.accountId = accountId;
         this.studyCohortId = studyCohortId;
         this.studyId = studyId;
         this.content = content;
     }
 
     public Long getId() { return id; }
-    public Long getAccountId() { return userId; }
+    public Long getAccountId() { return accountId; }
     public Long getStudyCohortId() { return studyCohortId; }
     public Long getStudyId() { return studyId; }
     public String getContent() { return content; }
