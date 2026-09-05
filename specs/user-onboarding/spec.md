@@ -1,6 +1,6 @@
 # 회원가입·온보딩 흐름
 
-소셜 로그인 **첫 성공이 곧 가입**이다. 로그인 직후 ACCOUNT·IDENTITY 를 만들고, 온보딩(필수 약관 + 닉네임 + 타임존)을 마쳐야 가입 완료. 완료 시점에 `UserRegisteredEvent` 를 **ACCOUNT 당 1회** 발행하고 웰컴메일은 알림팀이 받아서 보낸다.
+소셜 로그인 **첫 성공이 곧 가입**이다. 로그인 직후 ACCOUNT·ACCOUNT_IDENTITY 를 만들고, 온보딩(필수 약관 + 닉네임 + 타임존)을 마쳐야 가입 완료. 완료 시점에 `UserRegisteredEvent` 를 **ACCOUNT 당 1회** 발행하고 웰컴메일은 알림팀이 받아서 보낸다.
 
 MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있게만 해 두고 구현하지 않는다 — [애플 붙일 때](#애플-붙일-때).
 프로필 이미지는 온보딩에서 안 받는다 (마이페이지, 별도 스펙).
@@ -13,12 +13,12 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
                               ├─ email 없음 / email_verified≠true ──▶ 가입 불가 안내 → 로그인 화면
                               │
                               ▼
-                    IDENTITY(ISSUER, PROVIDER_USER_ID=sub) 조회
+                    ACCOUNT_IDENTITY(ISSUER, PROVIDER_ACCOUNT_ID=sub) 조회
                               │
         ┌─────────────────────┼─────────────────────┐
         ▼                     ▼                     ▼
    없음 = 신규            있음 · 미완료           있음 · 완료
-   ACCOUNT + IDENTITY 생성   기존 ACCOUNT              기존 ACCOUNT
+   ACCOUNT + ACCOUNT_IDENTITY 생성   기존 ACCOUNT              기존 ACCOUNT
    ONBOARDING_COMPLETED_AT=NULL
    NICKNAME=account_<랜덤> (임시)
    EMAIL=구글 이메일
@@ -42,22 +42,21 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
 ```
 
 - 토큰은 신규·미완료·완료 전부에서 발급한다. **온보딩 미완료도 로그인 상태**다. 쓸 수 있는 게 적을 뿐.
-- 미완료·완료 로그인 때 `IDENTITY.LAST_LOGIN_AT` 을 갱신한다. ERD 에 있는 컬럼 — 그 로그인 수단으로 마지막에 들어온 시각. 신규는 행 만들 때 채워진다.
+- 미완료·완료 로그인 때 `ACCOUNT_IDENTITY.LAST_LOGIN_AT` 을 갱신한다. ERD 에 있는 컬럼 — 그 로그인 수단으로 마지막에 들어온 시각. 신규는 행 만들 때 채워진다.
 
 ## 사람을 어떻게 찾나 — `(ISSUER, sub)`
 
-이메일이 아니라 제공자가 준 고유값 `sub` 로 찾는다. `sub` 는 제공자 안에서만 고유하니 항상 `ISSUER` 와 쌍으로. ERD `IDENTITY` 의 `UNIQUE(ISSUER, PROVIDER_USER_ID)` 가 그거다.
+이메일이 아니라 제공자가 준 고유값 `sub` 로 찾는다. `sub` 는 제공자 안에서만 고유하니 항상 `ISSUER` 와 쌍으로. ERD `ACCOUNT_IDENTITY` 의 `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)` 가 그거다.
 
 ```
 로그인 성공 → (issuer, sub, email, email_verified, name)
 
 1. email 없음 / email_verified ≠ true   → 가입 불가
-2. IDENTITY(issuer, sub) 있음            → 그 ACCOUNT
-3. 없음, ACCOUNT(EMAIL=email) 있음           → 그 ACCOUNT 에 IDENTITY 추가   ← 애플 붙일 때 켤지 미정
-4. 둘 다 없음                            → ACCOUNT + IDENTITY 신규
+2. ACCOUNT_IDENTITY(issuer, sub) 있음    → 그 ACCOUNT
+3. ACCOUNT_IDENTITY(issuer, sub) 없음    → ACCOUNT + ACCOUNT_IDENTITY 신규
 ```
 
-구글만일 땐 1·2·4 만 돈다.
+이메일이 같다는 이유만으로 기존 ACCOUNT에 로그인 수단을 자동 연결하지 않는다. Google·Apple 계정 연결은 로그인한 상태에서 사용자가 명시적으로 진행하며, MVP 이후 별도 기능으로 구현한다.
 
 예 — 진중이 구글로 가입하고, 나중에 애플도 연결한 상태:
 
@@ -65,21 +64,21 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
 ACCOUNT
   ID=7  EMAIL=jin@gmail.com  NICKNAME=jinjoong  ONBOARDING_COMPLETED_AT=2026-09-02 …
 
-IDENTITY
-  ID=1  ACCOUNT_ID=7  ISSUER=GOOGLE  PROVIDER_USER_ID=110293847562938475  PROVIDER_EMAIL=jin@gmail.com
-  ID=2  ACCOUNT_ID=7  ISSUER=APPLE   PROVIDER_USER_ID=001234.abcd1234…    PROVIDER_EMAIL=abc@privaterelay.appleid.com
+ACCOUNT_IDENTITY
+  ID=1  ACCOUNT_ID=7  ISSUER=GOOGLE  PROVIDER_ACCOUNT_ID=110293847562938475  PROVIDER_EMAIL=jin@gmail.com
+  ID=2  ACCOUNT_ID=7  ISSUER=APPLE   PROVIDER_ACCOUNT_ID=001234.abcd1234…    PROVIDER_EMAIL=abc@privaterelay.appleid.com
 
-구글로 로그인 → (GOOGLE, 110293847562938475) → IDENTITY 1 → ACCOUNT 7. 완료 상태니 홈
-애플로 로그인 → (APPLE, 001234.abcd1234…)   → IDENTITY 2 → ACCOUNT 7. 같은 사람
-처음 보는 sub → IDENTITY 없음                → ACCOUNT 8 새로 만들고 온보딩
+구글로 로그인 → (GOOGLE, 110293847562938475) → ACCOUNT_IDENTITY 1 → ACCOUNT 7. 완료 상태니 홈
+애플로 로그인 → (APPLE, 001234.abcd1234…)   → ACCOUNT_IDENTITY 2 → ACCOUNT 7. 같은 사람
+처음 보는 sub → ACCOUNT_IDENTITY 없음        → ACCOUNT 8 새로 만들고 온보딩
 ```
 
-이메일은 어디에도 조회 조건으로 안 쓰인다. `ACCOUNT.EMAIL` 은 연락처, `IDENTITY.PROVIDER_EMAIL` 은 "그 제공자가 준 원본" 기록용.
+이메일은 어디에도 조회 조건으로 안 쓰인다. `ACCOUNT.EMAIL` 은 연락처, `ACCOUNT_IDENTITY.PROVIDER_EMAIL` 은 "그 제공자가 준 원본" 기록용.
 
 - 구글 문서: "Use `sub` within your application as the unique-identifier key for the user." — 이메일은 바뀔 수 있어서 식별자로 쓰지 말라고 못박아 뒀다. ([OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect))
 - `ACCOUNT.EMAIL` 은 식별자가 아니라 **연락처**. **첫 가입한 제공자의 이메일**을 넣는다. 자유 입력 수정은 PRD 대로 없고, 제공자를 둘 이상 연결한 뒤 그중 하나로 바꾸는 것만 허용 — [미확정](#미확정-팀-결정).
 - 제공자 `name` 은 **저장 안 한다.** 로그인 응답에 실어 온보딩 닉네임 칸 초기값으로만 쓴다. 사이트에서 부르는 이름은 `NICKNAME` 하나면 되고, 실명은 안 갖고 있는 게 낫다.
-- 같은 `sub` 가 동시에 두 번 들어와 4 에서 INSERT 가 겹치면 UNIQUE 에 걸린다 → 재조회해서 2 로 태운다.
+- 같은 `sub` 가 동시에 두 번 들어와 3 에서 INSERT 가 겹치면 UNIQUE 에 걸린다 → 재조회해서 2 로 태운다.
 
 ## 온보딩 입력
 
@@ -103,7 +102,7 @@ IDENTITY
 
 | Method | Path | 설명 | 인증 |
 |---|---|---|---|
-| POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+IDENTITY 생성, 기존이면 조회. 완료 여부와 무관하게 토큰 발급 | X |
+| POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+ACCOUNT_IDENTITY 생성, 기존이면 조회. 완료 여부와 무관하게 토큰 발급 | X |
 | GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) |
 | POST | `/accounts/onboarding` | 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
 
@@ -176,7 +175,7 @@ IDENTITY
 
 완료 처리는 **한 트랜잭션**이다 — 닉네임·타임존·완료 시각 저장과 약관 동의 3행 저장이 한 묶음. 하나만 저장되고 하나는 실패하는 상태는 없다.
 
-- **중복 방지 기준 = `ONBOARDING_COMPLETED_AT` 이 NULL → 값으로 바뀐 그 요청.** 완료 시각은 "아직 NULL 인 경우에만" 채우고, 실제로 바뀐 요청에서만 이벤트를 낸다. 이미 완료된 사람이 또 요청하거나 두 탭에서 동시에 눌러도 DB 가 한 쪽만 통과시키니 ACCOUNT 당 1회. 나중에 애플 IDENTITY 가 붙어도 마찬가지. `sub` 기준으로 잡으면 IDENTITY 가 둘일 때 두 번 나갈 수 있어 ACCOUNT 기준.
+- **중복 방지 기준 = `ONBOARDING_COMPLETED_AT` 이 NULL → 값으로 바뀐 그 요청.** 완료 시각은 "아직 NULL 인 경우에만" 채우고, 실제로 바뀐 요청에서만 이벤트를 낸다. 이미 완료된 사람이 또 요청하거나 두 탭에서 동시에 눌러도 DB 가 한 쪽만 통과시키니 ACCOUNT 당 1회. 나중에 애플 ACCOUNT_IDENTITY 가 붙어도 마찬가지. `sub` 기준으로 잡으면 ACCOUNT_IDENTITY 가 둘일 때 두 번 나갈 수 있어 ACCOUNT 기준.
 - 이벤트는 저장이 확정된 **커밋 후**에 낸다 — 저장 실패했는데 웰컴메일 나가는 일 방지.
 - 페이로드는 `accountId` 뿐. 마케팅 동의 여부 등은 알림팀이 `ACCOUNT_CONSENT` 에서 읽는다. 사용자 기능은 SES 를 직접 안 부른다.
 - 완료된 사용자가 또 부르면 변경 없이 성공 (멱등). 닉네임·타임존 수정은 마이페이지 API (닉네임 중복 검사는 거기서도 같이).
@@ -189,7 +188,7 @@ IDENTITY
 - `TIME_ZONE` — 온보딩시 정함. NULL 가능 
 - `NAME` — 안 만든다. 굳이 실명을 써야할 이유가 없음
 
-**IDENTITY** — 그대로. `UNIQUE(ISSUER, PROVIDER_USER_ID)` 가 곧 "googleSub unique". 미확정이던 `PROVIDER_EMAIL` 은 **넣자** — 제공자가 준 이메일 원본. 애플 중계 이메일이 들어오면 어디서 뭐가 왔는지 이걸로 본다. `EMAIL_VERIFIED` 는 가입 조건이 `true` 강제라 항상 `true` → 불필요.
+**ACCOUNT_IDENTITY** — `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)`가 소셜 계정의 중복 연결을 막는다. `PROVIDER_EMAIL`은 OAuth 제공자가 전달한 이메일 원본을 기록한다. `EMAIL_VERIFIED`는 가입 시 `true`인지 검증하지만 별도 컬럼으로 저장하지 않는다.
 
 
 ## 그외 - 애플 붙일 때
@@ -204,8 +203,8 @@ IDENTITY
 
 **애플 비공개 중계 주소(`@privaterelay.appleid.com`)를 `ACCOUNT.EMAIL` 로 인정하나 → 예. 그대로 저장.** 
 - 식별은 `sub` 라 이메일이 뭐든 로그인엔 영향 없고, 중계 주소도 애플이 실제 메일함으로 전달해 주니 연락처로 유효하다. 
-- 원본은 `IDENTITY.PROVIDER_EMAIL` 에 남는다. 단 구글 이메일과 달라 구글 계정이 있어도 안 묶인다 → 별개 ACCOUNT, 명시적 연결(후속). 다른 길인 "중계 주소면 가입 거부" 는 '이메일 가리기' 를 쓰는 애플 사용자를 통째로 못 받는다. 
-- 제공자가 둘 이상 연결되면 `ACCOUNT.EMAIL` 은 첫 가입 제공자 것이 그대로다. 애플(중계)로 먼저 가입하고 구글을 연결하면 진짜 주소를 알면서도 알림이 중계로 나가니, **연결된 IDENTITY 의 `PROVIDER_EMAIL` 중 하나를 대표로 고르는 것**은 허용. 검증된 주소 중 선택이라 아무 주소나 넣는 걸 막는 PRD 취지와 안 부딪히고, 인증 메일도 필요 없다. MVP 는 구글만이라 선택 UI 없음 — 애플과 같이.
+- 원본은 `ACCOUNT_IDENTITY.PROVIDER_EMAIL` 에 남는다. 단 구글 이메일과 달라 구글 계정이 있어도 자동으로 묶지 않는다 → 별개 ACCOUNT, 명시적 연결(후속). 다른 길인 "중계 주소면 가입 거부" 는 '이메일 가리기' 를 쓰는 애플 사용자를 통째로 못 받는다.
+- 제공자가 둘 이상 연결되면 `ACCOUNT.EMAIL` 은 첫 가입 제공자 것이 그대로다. 애플(중계)로 먼저 가입하고 구글을 연결하면 진짜 주소를 알면서도 알림이 중계로 나가니, **연결된 ACCOUNT_IDENTITY의 `PROVIDER_EMAIL` 중 하나를 대표로 고르는 것**은 허용. 검증된 주소 중 선택이라 아무 주소나 넣는 걸 막는 PRD 취지와 안 부딪히고, 인증 메일도 필요 없다. MVP 는 구글만이라 선택 UI 없음 — 애플과 같이.
 
 애플 문서 ([Authenticating users with Sign in with Apple](https://developer.apple.com/documentation/signinwithapple/authenticating-users-with-sign-in-with-apple)):
 
@@ -223,7 +222,7 @@ IDENTITY
 
 ## 한계 / 후속
 
-- **탈퇴** 시 ACCOUNT·ACCOUNT_CONSENT·IDENTITY 처리 — PRD 미정, 별도 스펙. ERD 원칙대로면 삭제 대신 `REMOVED_AT`.
+- **탈퇴** 시 ACCOUNT·ACCOUNT_CONSENT·ACCOUNT_IDENTITY 처리 — PRD 미정, 별도 스펙. ERD 원칙대로면 삭제 대신 `REMOVED_AT`.
 - 약관 개정 **재동의** 흐름 없음. 버전은 남으니 나중에 구버전 동의자는 골라낼 수 있다.
 - 구글·애플 **명시적 연결**(마이페이지 "계정 연결") — 애플과 같이.
 - 프로필 이미지·마이페이지 수정 API 는 별도.
