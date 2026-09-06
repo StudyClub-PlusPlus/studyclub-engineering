@@ -11,13 +11,13 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| ACCOUNT_ID | BIGINT FK → USER | N | 신청자 |
+| ACCOUNT_ID | BIGINT FK → ACCOUNT | N | 신청자 |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 구 `STUDY_ID` |
 | STATUS | VARCHAR(20) | N | 아래 |
 | FORM_ANSWER | JSON | N | 답변 |
 
 ## 관계
-- N : 1 [USER](./ACCOUNT.md), [STUDY_COHORT](./STUDY_COHORT.md)
+- N : 1 [ACCOUNT](./ACCOUNT.md), [STUDY_COHORT](./STUDY_COHORT.md)
 - 승인되면 [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md) 행이 생긴다 (신청서는 그대로 남는다)
 
 ## 상태 — STATUS

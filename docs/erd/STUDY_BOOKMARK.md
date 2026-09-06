@@ -7,11 +7,11 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| ACCOUNT_ID | BIGINT FK → USER | N | |
+| ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
 | STUDY_ID | BIGINT FK → STUDY | N | |
 
 ## 관계
-- N : 1 [USER](./ACCOUNT.md), [STUDY](./STUDY.md)
+- N : 1 [ACCOUNT](./ACCOUNT.md), [STUDY](./STUDY.md)
 
 ## 상태
 없음. 해제 = 행 삭제 (이 테이블만 물리 삭제 허용 — 이력 가치 없음).

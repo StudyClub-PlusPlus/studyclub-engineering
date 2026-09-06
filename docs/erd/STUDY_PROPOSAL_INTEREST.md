@@ -8,14 +8,13 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | PROPOSAL_ID | BIGINT FK → STUDY_PROPOSAL | N | |
-| ACCOUNT_ID | BIGINT FK → USER | N | |
+| ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
 
 ## 관계
-- N : 1 [STUDY_PROPOSAL](./STUDY_PROPOSAL.md), [USER](./ACCOUNT.md)
+- N : 1 [STUDY_PROPOSAL](./STUDY_PROPOSAL.md), [ACCOUNT](./ACCOUNT.md)
 
 ## 상태
 없음. 취소 = 행 삭제 (STUDY_BOOKMARK 와 같은 취급).
 
 ## 제약
 - `UNIQUE(PROPOSAL_ID, ACCOUNT_ID)`
-

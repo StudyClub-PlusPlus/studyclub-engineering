@@ -12,13 +12,13 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| ACCOUNT_ID | BIGINT FK → USER | N | |
+| ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 정본. 어느 기수에 대한 후기인지 |
 | STUDY_ID | BIGINT FK → STUDY | N | 비정규화 — 스터디 상세 페이지 "전체 후기" 조회용 (STUDY_COHORT_ID 로 도출 가능) |
 | CONTENT | TEXT | N | |
 
 ## 관계
-- N : 1 [USER](./ACCOUNT.md), [STUDY_COHORT](./STUDY_COHORT.md), [STUDY](./STUDY.md)
+- N : 1 [ACCOUNT](./ACCOUNT.md), [STUDY_COHORT](./STUDY_COHORT.md), [STUDY](./STUDY.md)
 
 ## 상태
 없음.
