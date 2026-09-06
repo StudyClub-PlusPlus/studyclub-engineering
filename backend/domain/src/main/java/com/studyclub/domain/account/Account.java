@@ -10,11 +10,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Instant;
 
 /**
  * 회원. 프로필·지역·디스코드 연결. 인증 수단은 AccountIdentity 로 분리.
  *
- * <p>구글 프로필 URL 은 길이를 믿지 않는다. 컬럼(512)보다 길면 아바타를 포기하고 로그인은
+ * <p>구글 프로필 URL 은 길이를 믿지 않는다. 컬럼(2048)보다 길면 아바타를 포기하고 로그인은
  * 통과시킨다 — 잘린 URL 은 깨진 이미지라 없느니만 못하다.
  */
 @Entity
@@ -22,7 +23,8 @@ import jakarta.persistence.UniqueConstraint;
     name = "ACCOUNT",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_users_email", columnNames = "EMAIL"),
-        @UniqueConstraint(name = "uk_users_discord_id", columnNames = "DISCORD_ID")
+        @UniqueConstraint(name = "uk_users_discord_id", columnNames = "DISCORD_ID"),
+        @UniqueConstraint(name = "uk_account_nickname", columnNames = "NICKNAME")
     }
 )
 public class Account extends BaseEntity {
@@ -68,6 +70,10 @@ public class Account extends BaseEntity {
     @Column(name = "DISCORD_HANDLE", length = 64)
     private String discordHandle;
 
+    /** NULL 이면 온보딩 미완료. */
+    @Column(name = "ONBOARDING_COMPLETED_AT")
+    private Instant onboardingCompletedAt;
+
     protected Account() {
     }
 
@@ -90,6 +96,7 @@ public class Account extends BaseEntity {
     public String getTimeZone() { return timeZone; }
     public String getDiscordId() { return discordId; }
     public String getDiscordHandle() { return discordHandle; }
+    public Instant getOnboardingCompletedAt() { return onboardingCompletedAt; }
 
     public void setNickname(String nickname) {
         this.nickname = clip(nickname, NICKNAME_MAX);

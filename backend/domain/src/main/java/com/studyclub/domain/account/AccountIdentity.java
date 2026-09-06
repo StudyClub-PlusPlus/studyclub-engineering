@@ -12,12 +12,16 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
+/**
+ * 한 회원의 소셜 로그인 수단. 식별은 {@code (issuer, providerAccountId)} —
+ * 이메일이 아니라 OAuth {@code sub}.
+ */
 @Entity
 @Table(
     name = "ACCOUNT_IDENTITY",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_account_identity_account_issuer", columnNames = {"ACCOUNT_ID", "ISSUER"}),
-        @UniqueConstraint(name = "uk_account_identity_issuer_provider", columnNames = {"ISSUER", "PROVIDER_USER_ID"})
+        @UniqueConstraint(name = "uk_account_identity_issuer_provider", columnNames = {"ISSUER", "PROVIDER_ACCOUNT_ID"})
     }
 )
 public class AccountIdentity extends BaseEntity {
@@ -33,8 +37,13 @@ public class AccountIdentity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private Issuer issuer;
 
-    @Column(name = "PROVIDER_USER_ID", nullable = false)
-    private String providerUserId;
+    /** OAuth 제공자 {@code sub}. */
+    @Column(name = "PROVIDER_ACCOUNT_ID", nullable = false)
+    private String providerAccountId;
+
+    /** 제공자가 준 이메일 원본. ACCOUNT.EMAIL 과 다를 수 있다. */
+    @Column(name = "PROVIDER_EMAIL", length = 255)
+    private String providerEmail;
 
     @Column(name = "LAST_LOGIN_AT")
     private Instant lastLoginAt;
@@ -42,17 +51,24 @@ public class AccountIdentity extends BaseEntity {
     protected AccountIdentity() {
     }
 
-    public AccountIdentity(Long accountId, Issuer issuer, String providerUserId, Instant lastLoginAt) {
+    public AccountIdentity(
+            Long accountId,
+            Issuer issuer,
+            String providerAccountId,
+            String providerEmail,
+            Instant lastLoginAt) {
         this.accountId = accountId;
         this.issuer = issuer;
-        this.providerUserId = providerUserId;
+        this.providerAccountId = providerAccountId;
+        this.providerEmail = providerEmail;
         this.lastLoginAt = lastLoginAt;
     }
 
     public Long getId() { return id; }
     public Long getAccountId() { return accountId; }
     public Issuer getIssuer() { return issuer; }
-    public String getProviderUserId() { return providerUserId; }
+    public String getProviderAccountId() { return providerAccountId; }
+    public String getProviderEmail() { return providerEmail; }
     public Instant getLastLoginAt() { return lastLoginAt; }
 
     public void recordLogin(Instant at) {
