@@ -6,9 +6,11 @@ import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { recruitState, recruitTabLabel, type RecruitState } from '@core/lib/recruit';
 import { STUDY_CATEGORIES } from '@studyclub/mock';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
+import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { STUDY_BROWSER_SPEC } from '@/proto/specs/study-browser';
 
 /** 상태는 칩이 아니라 최상위 탭으로 분기한다. 카드 CTA와 동일 기준(`lib/recruit`). */
 type StateTab = RecruitState | 'all';
@@ -50,6 +52,7 @@ export function StudyBrowser({
   locale: Locale;
   leads: Record<string, Operator>;
 }) {
+  const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   // 기본 탭은 "모집 신청" — 목록에 들어온 사람이 가장 먼저 찾는 것
   const [tab, setTab] = useState<StateTab>('apply');
@@ -60,8 +63,7 @@ export function StudyBrowser({
     const q = query.trim().toLowerCase();
     return studies.filter((s) => {
       if (category !== 'all' && s.category !== category) return false;
-      // 제목만 찾는다 — 소개·카테고리까지 훑으면 엉뚱한 결과가 섞여 무엇이 걸렸는지 알 수 없다
-      if (q && !`${s.title.ko} ${s.title.en}`.toLowerCase().includes(q)) return false;
+      if (q && !`${s.title.ko} ${s.title.en} ${s.category ?? ''}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [studies, query, category]);
@@ -72,74 +74,140 @@ export function StudyBrowser({
     return c;
   }, [base]);
 
-  const filtered = useMemo(() => (tab === 'all' ? base : base.filter((s) => recruitState(s) === tab)), [base, tab]);
+  const hasQuery = query.trim().length > 0;
+  const commitSearch = () => setQuery(input);
+
+  // 검색 중에는 탭 필터 우회 — 전체 상태 혼합 결과를 보여준다. PRD §2 핵심 동작
+  const filtered = useMemo(
+    () => (hasQuery || tab === 'all' ? base : base.filter((s) => recruitState(s) === tab)),
+    [base, tab, hasQuery],
+  );
 
   const tabLabel = (s: StateTab) => (s === 'all' ? t({ ko: '전체', en: 'All' }, locale) : recruitTabLabel(s, locale));
 
   return (
     <div>
-      {/*
-        층마다 다른 모양을 쓴다 — 상단 사이트 메뉴가 이미 밑줄 탭이라, 여기서도 밑줄을 쓰면
-        같은 위계로 읽힌다. 상태는 **세그먼트**, 카테고리는 **테두리 칩**.
-      */}
-      <div className='mb-3 flex items-center justify-between gap-3'>
-        <div role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
-          {TAB_ORDER.map((s) => {
-            const on = tab === s;
-            return (
-              <button
-                key={s}
-                type='button'
-                role='tab'
-                aria-selected={on}
-                onClick={() => setTab(s)}
-                className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
-                  on ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
-                }`}
-              >
-                {tabLabel(s)}
-                <span className={`tnum text-xs ${on ? 'text-fg-secondary' : 'text-fg-muted'}`}>{counts[s]}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className='relative w-52 shrink-0'>
-          <Search
-            size={15}
-            className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder'
-          />
+      <ScreenSpecRegistrar spec={STUDY_BROWSER_SPEC} />
+      {/* 검색바(왼쪽) + 상태 탭(오른쪽) — 한 줄 인라인. PRD §2-1 */}
+      <div className='mb-3 flex items-center gap-3'>
+        <div
+          data-anno='1'
+          className='relative flex flex-1 items-center rounded-xl border border-border-strong bg-bg transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[var(--ring)]'
+        >
           <input
-            type='search'
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            data-anno='1-1'
+            type='text'
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
             placeholder={m('filter.search_studies', locale)}
-            className='h-8 w-full rounded-pill border border-border-strong bg-bg pl-9 pr-3 text-sm outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+            className='h-11 flex-1 bg-transparent pl-4 pr-2 text-sm outline-none'
           />
+          {/* X 버튼 — 검색어 있을 때만 */}
+          {(input || hasQuery) && (
+            <button
+              data-anno='1-2'
+              type='button'
+              onClick={() => {
+                setInput('');
+                setQuery('');
+              }}
+              aria-label='검색어 지우기'
+              className='shrink-0 rounded-full p-1 text-fg-muted hover:text-fg'
+            >
+              <X size={14} />
+            </button>
+          )}
+          {/* 구분선 + 돋보기 버튼 */}
+          <div className='mx-1 h-5 w-px shrink-0 bg-border-strong' />
+          <button
+            data-anno='1-4'
+            type='button'
+            onClick={commitSearch}
+            aria-label='검색'
+            className='shrink-0 rounded-lg px-3 py-2 text-fg-secondary hover:text-fg'
+          >
+            <Search size={16} />
+          </button>
         </div>
+
+        {/* 상태 탭 — 검색 중에는 숨김. PRD §2-2 */}
+        {!hasQuery && (
+          <div data-anno='2' role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
+            {TAB_ORDER.map((s) => {
+              const on = tab === s;
+              return (
+                <button
+                  key={s}
+                  type='button'
+                  role='tab'
+                  aria-selected={on}
+                  onClick={() => setTab(s)}
+                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
+                    on ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
+                  }`}
+                >
+                  {tabLabel(s)}
+                  <span className={`tnum text-xs ${on ? 'text-fg-secondary' : 'text-fg-muted'}`}>{counts[s]}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* 카테고리 — 상태의 하위 필터. 한 줄을 온전히 써서 줄바꿈이 나지 않는다 */}
-      <div className='no-scrollbar mb-5 flex gap-1.5 overflow-x-auto whitespace-nowrap'>
-        <CategoryChip active={category === 'all'} onClick={() => setCategory('all')}>
-          {t({ ko: '전체', en: 'All' }, locale)}
-        </CategoryChip>
-        {STUDY_CATEGORIES.map((c) => (
-          <CategoryChip key={c} active={category === c} onClick={() => setCategory(c)}>
-            {c}
+      {/* 검색 중: 결과 건수. 기본: 카테고리 칩. PRD §2-2 */}
+      {hasQuery ? (
+        <p data-anno='4' className='mb-5 text-sm text-fg-secondary'>
+          <span className='font-semibold text-fg'>"{query.trim()}"</span>
+          {t({ ko: ` 검색 결과 `, en: ` — ` }, locale)}
+          <span className='font-semibold text-fg'>
+            {filtered.length}
+            {t({ ko: '개', en: ` result${filtered.length !== 1 ? 's' : ''}` }, locale)}
+          </span>
+        </p>
+      ) : (
+        /* 카테고리 — 상태의 하위 필터 */
+        <div data-anno='3' className='no-scrollbar mb-5 flex gap-1.5 overflow-x-auto whitespace-nowrap'>
+          <CategoryChip active={category === 'all'} onClick={() => setCategory('all')}>
+            {t({ ko: '전체', en: 'All' }, locale)}
           </CategoryChip>
-        ))}
-      </div>
+          {STUDY_CATEGORIES.map((c) => (
+            <CategoryChip key={c} active={category === c} onClick={() => setCategory(c)}>
+              {c}
+            </CategoryChip>
+          ))}
+        </div>
+      )}
 
       {/* Grid */}
       {filtered.length > 0 ? (
-        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+        <div data-anno='5' className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
           {filtered.map((s) => (
             <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
           ))}
         </div>
+      ) : hasQuery ? (
+        /* 검색 결과 없음 — PRD §2 상태별 화면 empty */
+        <div data-anno='6' className='flex min-h-[240px] flex-col items-center justify-center gap-4 text-center'>
+          <p className='text-base font-bold text-fg-secondary'>
+            <span className='text-fg'>"{query.trim()}"</span>
+            {t({ ko: '에 해당하는 스터디를 찾을 수 없어요', en: ' — no studies found' }, locale)}
+          </p>
+          <button
+            type='button'
+            onClick={() => setQuery('')}
+            className='rounded-pill border border-border-strong px-4 py-1.5 text-sm font-semibold text-fg-secondary hover:border-fg-muted hover:text-fg'
+          >
+            {t({ ko: '검색어 지우기', en: 'Clear search' }, locale)}
+          </button>
+        </div>
       ) : (
-        <p className='mt-10 text-sm text-[var(--color-fg-subtle)]'>{m('filter.none', locale)}</p>
+        <div className='flex min-h-[240px] items-center justify-center'>
+          <p data-anno='7' className='text-base font-bold text-[var(--color-fg-subtle)]'>
+            {m('filter.none', locale)}
+          </p>
+        </div>
       )}
     </div>
   );
