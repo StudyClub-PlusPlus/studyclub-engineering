@@ -20,10 +20,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class MockParticipantHubDataProvider implements ParticipantHubDataProvider {
 
+    private static final String MOCK_ACCOUNT_EMAIL = "member@example.com";
     private static final Set<Long> KNOWN_COHORT_IDS = Set.of(291L, 301L, 302L, 303L, 304L);
 
     @Override
     public ParticipantHubOverviewResponse getParticipantHubOverview(String accountEmail) {
+        if (!MOCK_ACCOUNT_EMAIL.equalsIgnoreCase(accountEmail)) {
+            return new ParticipantHubOverviewResponse(List.of(), List.of(), List.of(), List.of(), List.of());
+        }
         return new ParticipantHubOverviewResponse(
                 List.of(
                         new ParticipatingStudySummary(301L, 101L, "AI 논문 읽기", ParticipantStatusEnum.ACTIVE, 100,
@@ -51,6 +55,9 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
     @Override
     public Optional<ParticipatingStudyCohortDetailResponse> findParticipatingStudyCohortDetail(
             String accountEmail, Long cohortId) {
+        if (!MOCK_ACCOUNT_EMAIL.equalsIgnoreCase(accountEmail)) {
+            return Optional.empty();
+        }
         if (cohortId == 301L) {
             return Optional.of(ongoingStudy());
         }
@@ -101,7 +108,13 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                 8, 8, 88, java.time.LocalDate.parse("2026-05-06"), null,
                 List.of(
                         completedAttendance(901L, "2026-05-06T11:00:00Z", AttendanceStatusEnum.PRESENT),
-                        completedAttendance(902L, "2026-05-13T11:00:00Z", AttendanceStatusEnum.ABSENT)),
+                        completedAttendance(902L, "2026-05-13T11:00:00Z", AttendanceStatusEnum.PRESENT),
+                        completedAttendance(903L, "2026-05-20T11:00:00Z", AttendanceStatusEnum.PRESENT),
+                        completedAttendance(904L, "2026-05-27T11:00:00Z", AttendanceStatusEnum.PRESENT),
+                        completedAttendance(905L, "2026-06-03T11:00:00Z", AttendanceStatusEnum.PRESENT),
+                        completedAttendance(906L, "2026-06-10T11:00:00Z", AttendanceStatusEnum.PRESENT),
+                        completedAttendance(907L, "2026-06-17T11:00:00Z", AttendanceStatusEnum.PRESENT),
+                        completedAttendance(908L, "2026-06-24T11:00:00Z", AttendanceStatusEnum.ABSENT)),
                 "https://drive.google.com/drive/folders/mock-writing-cohort-1");
     }
 

@@ -2,6 +2,8 @@ package com.studyclub.api.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,9 +37,11 @@ class OpenApiDocsTest {
                 .contains("/api/studies")
                 .contains("/api/me/studies")
                 .contains("/api/me/study-cohorts/{cohortId}")
-                .contains("bearerAuth")
                 // 전역 커스터마이저가 붙인 공통 에러 스키마
                 .contains("errorCode");
+
+        assertGetOperationRequiresBearerAuthentication("/api/me/studies");
+        assertGetOperationRequiresBearerAuthentication("/api/me/study-cohorts/{cohortId}");
     }
 
     @Test
@@ -46,5 +50,18 @@ class OpenApiDocsTest {
         assertThat(rest.getForEntity("/scalar", String.class).getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(rest.getForEntity("/scalar/scalar.js", String.class).getStatusCode())
                 .isEqualTo(HttpStatus.OK);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assertGetOperationRequiresBearerAuthentication(String path) {
+        Map<String, Object> document = rest.getForObject("/v3/api-docs", Map.class);
+        Map<String, Object> paths = (Map<String, Object>) document.get("paths");
+        Map<String, Object> pathItem = (Map<String, Object>) paths.get(path);
+        Map<String, Object> getOperation = (Map<String, Object>) pathItem.get("get");
+        List<Map<String, Object>> securityRequirements =
+                (List<Map<String, Object>>) getOperation.get("security");
+
+        assertThat(securityRequirements)
+                .anySatisfy(requirement -> assertThat(requirement).containsKey("bearerAuth"));
     }
 }
