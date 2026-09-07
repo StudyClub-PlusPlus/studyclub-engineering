@@ -1,6 +1,8 @@
 package com.studyclub.api.auth;
 
-import com.studyclub.api.auth.dto.AuthDtos.UserView;
+import com.studyclub.api.auth.dto.AuthDtos.AccountView;
+import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountRepository;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -13,21 +15,21 @@ import org.springframework.web.bind.annotation.RestController;
  *  (역할별 접근 가드는 후속 — 현재는 로그인 유저면 조회 가능) */
 @Tag(name = "유저", description = "백오피스 유저 목록")
 @RestController
-@RequestMapping("/users")
-public class UserController {
+@RequestMapping("/accounts")
+public class AccountController {
 
-    private final UserRepository users;
+    private final AccountRepository accounts;
 
-    public UserController(UserRepository users) {
-        this.users = users;
+    public AccountController(AccountRepository accounts) {
+        this.accounts = accounts;
     }
 
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping
-    public List<UserView> list() {
-        return users.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
-                .map(u -> new UserView(u.getId(), u.getEmail(), u.getName(), u.getPicture(),
-                        u.getRole().name(), String.valueOf(u.getCreatedAt())))
+    public List<AccountView> list() {
+        return accounts.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+                .map(u -> new AccountView(u.getId(), u.getEmail(), u.getNickname(), u.getProfileImgUrl(),
+                        u.getSystemRole().name(), String.valueOf(u.getCreatedAt())))
                 .toList();
     }
 }

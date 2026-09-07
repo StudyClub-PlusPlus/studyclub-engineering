@@ -88,7 +88,7 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 
 1. **DDD 먼저** — 애그리거트를 정하고 규칙을 엔티티에 둔다. 서비스는 조립만 한다
 2. **엔티티는 `BaseEntity` 상속** — `createdAt`/`updatedAt` 을 손으로 채우지 않는다
-3. **테이블 이름은 대문자**(`USERS`), 컬럼은 소문자 snake_case
+3. **테이블 이름은 대문자**(`ACCOUNT`), 컬럼은 소문자 snake_case
 4. **스키마를 만드는 주체는 환경마다 하나** — prod·로컬은 Flyway(`validate`), **stage 는
    Hibernate(`update`, Flyway off)**. 둘 다 켜면 나중에 `Duplicate column` 으로 죽는다.
    엔티티를 바꿨으면 같은 PR 에 `V{n}__*.sql` — 검증은 `backend-migration-check` CI 가 한다
