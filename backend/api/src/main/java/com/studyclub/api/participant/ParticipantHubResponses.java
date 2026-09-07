@@ -8,20 +8,20 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-public final class ParticipantHubDtos {
+public final class ParticipantHubResponses {
 
-    private ParticipantHubDtos() {
+    private ParticipantHubResponses() {
     }
 
-    public record HubResponse(
-            List<StudySummary> activeStudies,
-            List<StudySummary> pastStudies,
-            List<ApplicationSummary> applications,
-            List<UpcomingMeeting> upcomingMeetings,
-            List<BookmarkSummary> bookmarks) {
+    public record ParticipantHubOverviewResponse(
+            List<ParticipatingStudySummary> activeStudies,
+            List<ParticipatingStudySummary> pastStudies,
+            List<StudyApplicationSummary> applications,
+            List<UpcomingStudyMeeting> upcomingMeetings,
+            List<BookmarkedStudySummary> bookmarks) {
     }
 
-    public record StudySummary(
+    public record ParticipatingStudySummary(
             Long cohortId,
             Long studyId,
             String title,
@@ -31,7 +31,7 @@ public final class ParticipantHubDtos {
             String thumbnailUrl) {
     }
 
-    public record ApplicationSummary(
+    public record StudyApplicationSummary(
             Long id,
             Long cohortId,
             Long studyId,
@@ -40,7 +40,7 @@ public final class ParticipantHubDtos {
             Instant appliedAt) {
     }
 
-    public record UpcomingMeeting(
+    public record UpcomingStudyMeeting(
             Long id,
             Long cohortId,
             Long studyId,
@@ -48,14 +48,14 @@ public final class ParticipantHubDtos {
             Instant scheduledAt) {
     }
 
-    public record BookmarkSummary(
+    public record BookmarkedStudySummary(
             Long id,
             Long studyId,
             String studyTitle,
             String thumbnailUrl) {
     }
 
-    public record StudyDetail(
+    public record ParticipatingStudyCohortDetailResponse(
             Long cohortId,
             Long studyId,
             String title,
@@ -68,12 +68,12 @@ public final class ParticipantHubDtos {
             int totalMeetingCount,
             Integer attendanceRate,
             LocalDate startsOn,
-            UpcomingMeeting nextMeeting,
-            List<AttendanceItem> attendance,
+            UpcomingStudyMeeting nextMeeting,
+            List<StudyMeetingAttendance> attendance,
             String driveUrl) {
     }
 
-    public record AttendanceItem(
+    public record StudyMeetingAttendance(
             Long meetingId,
             Instant scheduledAt,
             Instant startsAt,

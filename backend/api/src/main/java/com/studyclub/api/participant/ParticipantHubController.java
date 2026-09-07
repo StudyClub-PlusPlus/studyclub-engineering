@@ -1,7 +1,7 @@
 package com.studyclub.api.participant;
 
-import com.studyclub.api.participant.ParticipantHubDtos.HubResponse;
-import com.studyclub.api.participant.ParticipantHubDtos.StudyDetail;
+import com.studyclub.api.participant.ParticipantHubResponses.ParticipantHubOverviewResponse;
+import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyCohortDetailResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,22 +19,24 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/me")
 public class ParticipantHubController {
 
-    private final ParticipantHubService participantHubService;
+    private final ParticipantHubQueryService participantHubQueryService;
 
-    public ParticipantHubController(ParticipantHubService participantHubService) {
-        this.participantHubService = participantHubService;
+    public ParticipantHubController(ParticipantHubQueryService participantHubQueryService) {
+        this.participantHubQueryService = participantHubQueryService;
     }
 
     @Operation(summary = "내 참가자 허브 조회")
     @GetMapping("/studies")
-    public HubResponse getHub(Authentication authentication) {
-        return participantHubService.getHub(authenticatedEmail(authentication));
+    public ParticipantHubOverviewResponse getParticipantHubOverview(Authentication authentication) {
+        return participantHubQueryService.getParticipantHubOverview(authenticatedEmail(authentication));
     }
 
     @Operation(summary = "내 수강 스터디 상세 조회")
     @GetMapping("/study-cohorts/{cohortId}")
-    public StudyDetail getStudy(@PathVariable Long cohortId, Authentication authentication) {
-        return participantHubService.getStudy(authenticatedEmail(authentication), cohortId);
+    public ParticipatingStudyCohortDetailResponse getParticipatingStudyCohortDetail(
+            @PathVariable Long cohortId, Authentication authentication) {
+        return participantHubQueryService.getParticipatingStudyCohortDetail(
+                authenticatedEmail(authentication), cohortId);
     }
 
     private String authenticatedEmail(Authentication authentication) {
