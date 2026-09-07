@@ -11,6 +11,11 @@ const ENTRIES = [
     title: "화면 · 스터디 상세",
     body: "프리미티브로 조립한 화면 시안. 새 화면을 만들 때 이 폴더를 복사해서 시작한다.",
   },
+  {
+    href: "/proto/core/ko/my/joined",
+    title: "내 스터디 · 참여 모음",
+    body: "크루가 참여 중인 스터디를 모아 본다. 기본 탭은 참여중. 참여 종료 탭에 완주(메달)와 참여 중단이 함께 모인다.",
+  },
 ];
 
 export default function PlaygroundIndex() {

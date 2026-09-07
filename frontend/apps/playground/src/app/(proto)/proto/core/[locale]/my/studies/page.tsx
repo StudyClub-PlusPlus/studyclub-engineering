@@ -9,6 +9,7 @@ import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import {
   STATUS_LABEL,
   STATUS_STYLE,
+  canCheckIn,
   checkIn,
   getMyAttendance,
   myRate,
@@ -197,8 +198,9 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
             <button
               type='button'
               onClick={() => act('in')}
+              disabled={!canCheckIn(study, session)}
               data-anno='3-4'
-              className='rounded-pill bg-brand px-4 py-2 text-[13px] font-bold text-on-brand transition-colors hover:bg-brand-hover'
+              className='rounded-pill bg-brand px-4 py-2 text-[13px] font-bold text-on-brand transition-colors hover:bg-brand-hover disabled:bg-neutral-200 disabled:text-neutral-400'
             >
               출석
             </button>
