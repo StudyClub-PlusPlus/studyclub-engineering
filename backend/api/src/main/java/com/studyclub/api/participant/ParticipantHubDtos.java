@@ -1,5 +1,9 @@
 package com.studyclub.api.participant;
 
+import com.studyclub.domain.application.ApplicationStatusEnum;
+import com.studyclub.domain.attendance.AttendanceStatusEnum;
+import com.studyclub.domain.participant.ParticipantStatusEnum;
+import com.studyclub.domain.study.StudyCohortStatusEnum;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,10 +22,10 @@ public final class ParticipantHubDtos {
     }
 
     public record StudySummary(
-            Long id,
+            Long cohortId,
+            Long studyId,
             String title,
-            String cohortName,
-            String status,
+            ParticipantStatusEnum participantStatus,
             Integer attendanceRate,
             Instant nextMeetingAt,
             String thumbnailUrl) {
@@ -29,18 +33,18 @@ public final class ParticipantHubDtos {
 
     public record ApplicationSummary(
             Long id,
+            Long cohortId,
             Long studyId,
             String studyTitle,
-            String cohortName,
-            String status,
+            ApplicationStatusEnum status,
             Instant appliedAt) {
     }
 
     public record UpcomingMeeting(
             Long id,
+            Long cohortId,
             Long studyId,
             String studyTitle,
-            int sessionNumber,
             Instant scheduledAt) {
     }
 
@@ -48,15 +52,15 @@ public final class ParticipantHubDtos {
             Long id,
             Long studyId,
             String studyTitle,
-            String thumbnailUrl,
-            LocalDate recruitDeadline) {
+            String thumbnailUrl) {
     }
 
     public record StudyDetail(
-            Long id,
+            Long cohortId,
+            Long studyId,
             String title,
-            String cohortName,
-            String status,
+            StudyCohortStatusEnum cohortStatus,
+            ParticipantStatusEnum participantStatus,
             String className,
             String timezone,
             String leaderName,
@@ -71,9 +75,10 @@ public final class ParticipantHubDtos {
 
     public record AttendanceItem(
             Long meetingId,
-            int sessionNumber,
             Instant scheduledAt,
-            String status) {
+            Instant startsAt,
+            Instant endsAt,
+            AttendanceStatusEnum attendanceStatus) {
     }
 
 }

@@ -38,7 +38,7 @@ class ParticipantHubIntegrationTest {
     @Test
     @DisplayName("성공 - 내 수강 상세는 출석률과 출석 타임라인을 같은 응답으로 준다")
     void returnsParticipantStudyDetail() {
-        var response = rest.exchange("/api/me/studies/101", HttpMethod.GET, authenticatedRequest(), Map.class);
+        var response = rest.exchange("/api/me/study-cohorts/301", HttpMethod.GET, authenticatedRequest(), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("attendanceRate", 100);
@@ -57,7 +57,7 @@ class ParticipantHubIntegrationTest {
     @Test
     @DisplayName("실패 - 신청만 했거나 북마크한 스터디 상세는 참가자가 아니므로 403을 준다")
     void rejectsNonParticipant() {
-        var response = rest.exchange("/api/me/studies/103", HttpMethod.GET, authenticatedRequest(), Map.class);
+        var response = rest.exchange("/api/me/study-cohorts/303", HttpMethod.GET, authenticatedRequest(), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
@@ -66,7 +66,7 @@ class ParticipantHubIntegrationTest {
     @Test
     @DisplayName("실패 - 존재하지 않는 스터디 상세는 404를 준다")
     void rejectsUnknownStudy() {
-        var response = rest.exchange("/api/me/studies/999", HttpMethod.GET, authenticatedRequest(), Map.class);
+        var response = rest.exchange("/api/me/study-cohorts/999", HttpMethod.GET, authenticatedRequest(), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");

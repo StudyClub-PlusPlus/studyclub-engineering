@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "참가자 허브", description = "로그인한 참가자의 스터디·신청·일정·북마크")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
-@RequestMapping("/api/me/studies")
+@RequestMapping("/api/me")
 public class ParticipantHubController {
 
     private final ParticipantHubService participantHubService;
@@ -26,15 +26,15 @@ public class ParticipantHubController {
     }
 
     @Operation(summary = "내 참가자 허브 조회")
-    @GetMapping
+    @GetMapping("/studies")
     public HubResponse getHub(Authentication authentication) {
         return participantHubService.getHub(authenticatedEmail(authentication));
     }
 
     @Operation(summary = "내 수강 스터디 상세 조회")
-    @GetMapping("/{studyId}")
-    public StudyDetail getStudy(@PathVariable Long studyId, Authentication authentication) {
-        return participantHubService.getStudy(authenticatedEmail(authentication), studyId);
+    @GetMapping("/study-cohorts/{cohortId}")
+    public StudyDetail getStudy(@PathVariable Long cohortId, Authentication authentication) {
+        return participantHubService.getStudy(authenticatedEmail(authentication), cohortId);
     }
 
     private String authenticatedEmail(Authentication authentication) {

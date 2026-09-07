@@ -34,6 +34,7 @@ class OpenApiDocsTest {
                 .contains("/auth/social-login")
                 .contains("/api/studies")
                 .contains("/api/me/studies")
+                .contains("/api/me/study-cohorts/{cohortId}")
                 .contains("bearerAuth")
                 // 전역 커스터마이저가 붙인 공통 에러 스키마
                 .contains("errorCode");
