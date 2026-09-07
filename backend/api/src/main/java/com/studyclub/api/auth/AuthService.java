@@ -12,6 +12,7 @@ import com.studyclub.common.error.ErrorCode;
 import io.jsonwebtoken.Claims;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,10 +45,23 @@ public class AuthService {
 
         assertBackOfficePermitted(email, platform);
 
+        // UNIQUE(NICKNAME) + VARCHAR(20) — 제공자 표시명을 그대로 넣으면 동명이인/길이에서 터진다.
+        // 온보딩 전 임시값 account_<랜덤>(총 20자). 화면에는 안 보여주고 온보딩에서 확정한다.
         Account account = accounts.findByEmail(email).orElseGet(() ->
-                accounts.save(new Account(email, g.name(), g.picture(), SystemRole.MEMBER)));
+                accounts.save(new Account(email, uniqueTemporaryNickname(), g.picture(), SystemRole.MEMBER)));
 
         return issueFor(account);
+    }
+
+    /** {@code account_}(8) + 12 hex = 20자. 충돌 시 재생성. */
+    String uniqueTemporaryNickname() {
+        for (int i = 0; i < 5; i++) {
+            String candidate = "account_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            if (!accounts.existsByNickname(candidate)) {
+                return candidate;
+            }
+        }
+        throw new BusinessException(ErrorCode.CONFLICT, "임시 닉네임을 생성하지 못했습니다.");
     }
 
     @Transactional(readOnly = true)

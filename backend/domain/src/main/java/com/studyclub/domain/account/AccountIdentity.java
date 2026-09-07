@@ -42,7 +42,7 @@ public class AccountIdentity extends BaseEntity {
     private String providerAccountId;
 
     /** 제공자가 준 이메일 원본. ACCOUNT.EMAIL 과 다를 수 있다. */
-    @Column(name = "PROVIDER_EMAIL", length = 255)
+    @Column(name = "PROVIDER_EMAIL", nullable = false, length = 255)
     private String providerEmail;
 
     @Column(name = "LAST_LOGIN_AT")

@@ -22,14 +22,15 @@ import java.time.Instant;
 @Table(
     name = "ACCOUNT",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_email", columnNames = "EMAIL"),
-        @UniqueConstraint(name = "uk_users_discord_id", columnNames = "DISCORD_ID"),
+        @UniqueConstraint(name = "uk_account_email", columnNames = "EMAIL"),
+        @UniqueConstraint(name = "uk_account_discord_id", columnNames = "DISCORD_ID"),
         @UniqueConstraint(name = "uk_account_nickname", columnNames = "NICKNAME")
     }
 )
 public class Account extends BaseEntity {
 
-    private static final int NICKNAME_MAX = 255;
+    /** 온보딩 스펙·ERD: 2~20자. */
+    private static final int NICKNAME_MAX = 20;
     private static final int PROFILE_IMG_URL_MAX = 2048;
 
     @Id
@@ -39,7 +40,7 @@ public class Account extends BaseEntity {
     @Column(nullable = false, length = 255)
     private String email;
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false, length = 20)
     private String nickname;
 
     @Column(name = "PROFILE_IMG_URL", length = 2048)
