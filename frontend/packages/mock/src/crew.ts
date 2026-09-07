@@ -84,10 +84,39 @@ function baseDate(raw?: string): string {
   return Number.isNaN(new Date(`${iso}T00:00:00Z`).getTime()) ? FALLBACK_DATE : iso;
 }
 
-function addWeeks(iso: string, weeks: number): string {
+function addDays(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + weeks * 7);
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+function mondayOf(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  const dow = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  return d.toISOString().slice(0, 10);
+}
+
+const KO_DOW: Record<string, number> = { 월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6 };
+
+/** 일정 문구에서 요일을 읽는다. "매일"의 일은 요일이 아니다. */
+function weekdaysOf(study: Study, seed: number): number[] {
+  const ko = study.schedule?.ko ?? "";
+  const found: number[] = [];
+  for (const name of ["월", "화", "수", "목", "금", "토"] as const) {
+    if (ko.includes(name)) found.push(KO_DOW[name]);
+  }
+  if (/(?:매주|격주)\s*일|일요일/.test(ko)) found.push(0);
+  if (found.length) return [...new Set(found)];
+  return [pick(seed + 53, 7)];
+}
+
+function dateOnWeek(monday: string, utcDow: number): string {
+  return addDays(monday, utcDow === 0 ? 6 : utcDow - 1);
+}
+
+function addWeeks(iso: string, weeks: number): string {
+  return addDays(iso, weeks * 7);
 }
 
 /**
@@ -130,10 +159,16 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
   // 잡으면 모집 중인 스터디는 회차가 전부 미래라 출석이 한 칸도 없고, 출석부를 볼 수 없다.
   const weeks = 6 + pick(seed + 41, 3) * 2; // 6 · 8 · 10
   const doneCount = 2 + pick(seed + 47, weeks - 2); // 최소 2회차는 지나 있다
-  const start = addWeeks(today, -(doneCount - 1));
+  const weekdays = weekdaysOf(study, seed);
+  const thisMonday = mondayOf(today);
   const sessions: StudySession[] = [];
-  for (let i = 0; i < weeks; i++) {
-    sessions.push({ id: `${study.id}-s${i + 1}`, no: i + 1, date: addWeeks(start, i) });
+  let no = 1;
+  for (let w = 0; w < weeks; w++) {
+    const weekMon = addWeeks(thisMonday, w - (doneCount - 1));
+    for (const dow of weekdays) {
+      sessions.push({ id: `${study.id}-s${no}`, no, date: dateOnWeek(weekMon, dow) });
+      no += 1;
+    }
   }
 
   const diligence = 45 + pick(seed + 61, 9) * 5; // 45 · 50 … 85

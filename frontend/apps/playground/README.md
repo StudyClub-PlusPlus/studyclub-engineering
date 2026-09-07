@@ -114,6 +114,7 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 | 화면 | 주소 | 명세 출처 |
 |---|---|---|
 | 스터디 등록 모달 | `/proto/console/studies?new=1` | Story PRD 「운영자로서, 스터디를 등록할 수 있다.」 |
+| 내 스터디 · 참여 모음 | `/proto/core/ko/my/joined` | 코드 (`lib/joined.ts`) |
 | 내 스터디 · 출석 | `/proto/core/ko/my/studies` | 코드 (`lib/attendance.ts`) |
 | 스터디 운영 | `/proto/console/studies/{id}` | 코드 (`StudyConsole.tsx`) |
 
