@@ -20,7 +20,7 @@
 | APPLICATION_FORM | JSON | Y | 이 기수 신청 폼 질문 정의 |
 | CURRICULUM | JSON | Y | 주차별 커리큘럼. 구조는 프론트와 합의 |
 | CAPACITY | INT | Y | 이 기수 전체 정원. 반별 정원은 STUDY_CLASS |
-| RECRUIT_RECRUIT_DEADLINE | DATETIME | N | 이 기수 모집 마감 |
+| RECRUIT_DEADLINE | DATETIME | N | 이 기수 모집 마감 |
 | START_DATE | DATE | Y | 진행 시작일 |
 | END_DATE | DATE | Y | 진행 종료일. NULL 허용 — 고정 종료 없는 클럽은 NULL |
 | DISCORD_CHANNEL_URL | VARCHAR(512) | Y | 이 기수 디스코드 채널 링크 |

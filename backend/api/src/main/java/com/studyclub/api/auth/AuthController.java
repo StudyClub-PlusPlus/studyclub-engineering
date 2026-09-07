@@ -4,7 +4,7 @@ import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.api.auth.dto.AuthDtos.RefreshRequest;
 import com.studyclub.api.auth.dto.AuthDtos.SocialLoginRequest;
-import com.studyclub.api.auth.dto.AuthDtos.UserView;
+import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -35,7 +35,7 @@ public class AuthController {
 
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
-    public UserView me(Authentication authentication) {
+    public AccountView me(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }

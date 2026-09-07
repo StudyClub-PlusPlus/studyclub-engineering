@@ -149,7 +149,7 @@ INDEX idx_studies_owner (owner_id)   -- FK 제약은 걸지 않는다
 
 ```bash
 docker compose up -d mysql          # DB 만 기동
-cd backend && gradle :api:bootRun   # Flyway 가 마이그레이션 적용 후 부팅
+cd backend && ./gradlew :api:bootRun  # Flyway 가 마이그레이션 적용 후 부팅
 ```
 
 **기존에 `ddl-auto: update` 로 만들어진 로컬 DB 가 있으면** 소문자 `users` 테이블이 남아 있다.

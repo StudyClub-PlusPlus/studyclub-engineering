@@ -1,6 +1,6 @@
 package com.studyclub.api.auth.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.common.error.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
