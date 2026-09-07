@@ -66,9 +66,7 @@ public final class ParticipantHubDtos {
             LocalDate startsOn,
             UpcomingMeeting nextMeeting,
             List<AttendanceItem> attendance,
-            LeaveRequest leaveRequest,
-            List<WeeklyTask> weeklyTasks,
-            List<ResourceItem> resources) {
+            String driveUrl) {
     }
 
     public record AttendanceItem(
@@ -78,26 +76,4 @@ public final class ParticipantHubDtos {
             String status) {
     }
 
-    public record LeaveRequest(
-            Long id,
-            Long meetingId,
-            Instant meetingAt,
-            String status) {
-    }
-
-    public record WeeklyTask(
-            Long id,
-            String title,
-            Instant dueAt,
-            String status,
-            String submissionUrl) {
-    }
-
-    public record ResourceItem(
-            Long id,
-            String title,
-            String type,
-            String url,
-            Instant publishedAt) {
-    }
 }

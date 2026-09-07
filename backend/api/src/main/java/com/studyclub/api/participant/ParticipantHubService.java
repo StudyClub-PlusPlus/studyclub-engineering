@@ -4,12 +4,9 @@ import com.studyclub.api.participant.ParticipantHubDtos.ApplicationSummary;
 import com.studyclub.api.participant.ParticipantHubDtos.AttendanceItem;
 import com.studyclub.api.participant.ParticipantHubDtos.BookmarkSummary;
 import com.studyclub.api.participant.ParticipantHubDtos.HubResponse;
-import com.studyclub.api.participant.ParticipantHubDtos.LeaveRequest;
-import com.studyclub.api.participant.ParticipantHubDtos.ResourceItem;
 import com.studyclub.api.participant.ParticipantHubDtos.StudyDetail;
 import com.studyclub.api.participant.ParticipantHubDtos.StudySummary;
 import com.studyclub.api.participant.ParticipantHubDtos.UpcomingMeeting;
-import com.studyclub.api.participant.ParticipantHubDtos.WeeklyTask;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import java.time.Instant;
@@ -72,11 +69,7 @@ public class ParticipantHubService {
                         new AttendanceItem(1002L, 2, Instant.parse("2026-08-25T11:00:00Z"), "PRESENT"),
                         new AttendanceItem(1003L, 3, Instant.parse("2026-09-01T11:00:00Z"), "LATE"),
                         new AttendanceItem(1004L, 4, Instant.parse("2026-09-08T11:00:00Z"), "SCHEDULED")),
-                new LeaveRequest(801L, 1004L, Instant.parse("2026-09-08T11:00:00Z"), "PENDING"),
-                List.of(new WeeklyTask(901L, "4주차 논문 읽기", Instant.parse("2026-09-08T10:00:00Z"),
-                        "TODO", "https://example.com/submissions/901")),
-                List.of(new ResourceItem(951L, "4주차 발제 자료", "MATERIAL",
-                        "https://example.com/resources/951", Instant.parse("2026-09-06T01:00:00Z"))));
+                "https://drive.google.com/drive/folders/mock-ai-paper-cohort-3");
     }
 
     private StudyDetail upcomingStudy() {
@@ -85,9 +78,8 @@ public class ParticipantHubService {
                 0, 8, null, LocalDate.parse("2026-09-12"),
                 new UpcomingMeeting(1101L, 102L, "Spring Boot 딥다이브", 1,
                         Instant.parse("2026-09-12T10:00:00Z")),
-                List.of(), null, List.of(),
-                List.of(new ResourceItem(952L, "시작 전 안내", "NOTICE",
-                        "https://example.com/notices/952", Instant.parse("2026-09-04T02:00:00Z"))));
+                List.of(),
+                "https://drive.google.com/drive/folders/mock-spring-boot-cohort-2");
     }
 
     private StudyDetail completedStudy() {
@@ -97,6 +89,6 @@ public class ParticipantHubService {
                 List.of(
                         new AttendanceItem(901L, 1, Instant.parse("2026-05-06T11:00:00Z"), "PRESENT"),
                         new AttendanceItem(902L, 2, Instant.parse("2026-05-13T11:00:00Z"), "ABSENT")),
-                null, List.of(), List.of());
+                "https://drive.google.com/drive/folders/mock-writing-cohort-1");
     }
 }
