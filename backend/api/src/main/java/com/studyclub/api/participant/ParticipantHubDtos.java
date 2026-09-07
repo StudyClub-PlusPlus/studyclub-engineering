@@ -51,4 +51,53 @@ public final class ParticipantHubDtos {
             String thumbnailUrl,
             LocalDate recruitDeadline) {
     }
+
+    public record StudyDetail(
+            Long id,
+            String title,
+            String cohortName,
+            String status,
+            String className,
+            String timezone,
+            String leaderName,
+            int completedMeetingCount,
+            int totalMeetingCount,
+            Integer attendanceRate,
+            LocalDate startsOn,
+            UpcomingMeeting nextMeeting,
+            List<AttendanceItem> attendance,
+            LeaveRequest leaveRequest,
+            List<WeeklyTask> weeklyTasks,
+            List<ResourceItem> resources) {
+    }
+
+    public record AttendanceItem(
+            Long meetingId,
+            int sessionNumber,
+            Instant scheduledAt,
+            String status) {
+    }
+
+    public record LeaveRequest(
+            Long id,
+            Long meetingId,
+            Instant meetingAt,
+            String status) {
+    }
+
+    public record WeeklyTask(
+            Long id,
+            String title,
+            Instant dueAt,
+            String status,
+            String submissionUrl) {
+    }
+
+    public record ResourceItem(
+            Long id,
+            String title,
+            String type,
+            String url,
+            Instant publishedAt) {
+    }
 }
