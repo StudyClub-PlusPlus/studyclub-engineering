@@ -46,21 +46,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '25'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Test (H2)
         working-directory: backend
-        run: gradle :api:test --no-daemon
+        run: ./gradlew :api:test --no-daemon
 
       - name: Build bootJar
         working-directory: backend
-        run: gradle :api:bootJar --no-daemon
+        run: ./gradlew :api:bootJar --no-daemon
 
       # 빈 DB → Flyway 가 V1..Vn 적용 → Hibernate validate → 부팅 성공해야 통과.
       # 실패하면 마이그레이션이 틀렸거나 엔티티와 어긋난 것이다. 로그를 그대로 뱉는다.
