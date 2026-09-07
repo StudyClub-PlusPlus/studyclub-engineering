@@ -33,6 +33,8 @@ class OpenApiDocsTest {
         assertThat(response.getBody())
                 .contains("/auth/social-login")
                 .contains("/api/studies")
+                .contains("/api/me/studies")
+                .contains("bearerAuth")
                 // 전역 커스터마이저가 붙인 공통 에러 스키마
                 .contains("errorCode");
     }

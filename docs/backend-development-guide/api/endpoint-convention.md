@@ -93,6 +93,8 @@
 |--------|------|------|------|
 | GET | `/api/health` | 헬스 체크 | X |
 | GET | `/api/studies` | 스터디 목록 (현재 하드코딩 픽스처) | X |
+| GET | `/api/me/studies` | 내 참여·신청·일정·북마크 목록 (목업) | O |
+| GET | `/api/me/studies/{studyId}` | 내 수강 스터디·출석 상세 (목업) | O |
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
 | POST | `/auth/refresh` | access token 재발급 | X |
 | GET | `/auth/me` | 내 정보 조회 | O |
