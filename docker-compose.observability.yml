@@ -1,0 +1,229 @@
+# StudyClub++ 관측 스택 — 로그 경로 (Grafana + Loki + Alloy)
+#
+# ⚠️ **이 파일은 단독으로 실행되지 않는다.** `api:` 가 image/build 없는 오버라이드라
+#    compose 가 거부한다. 그게 의도다 — 아래 두 방식 중 하나로 쓴다.
+#
+#   로컬:  docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+#   운영:  이 파일의 내용을 **호스트의 기존 compose 에 붙여넣는다** (services/configs/volumes 각각).
+#          운영 호스트에는 이 레포가 clone 되어 있지 않으므로 `-f` 로 참조할 수 없다.
+#
+# 그래서 설정 파일을 bind mount 하지 않고 **compose 안에 인라인**한다(`configs:`).
+# 호스트에 따로 놓아야 할 파일이 0개다 — 이 블록만 옮기면 된다.
+# (bind mount 로 두면 loki-config·alloy config·datasource 까지 5개 파일을 별도로 옮겨야 하는데,
+#  레포가 없는 호스트에서 그 경로를 맞추는 건 사고가 나기 쉽다.)
+#
+# 대시보드는 일부러 넣지 않았다. 로그 검색의 핵심은 Grafana **Explore** 이고, 대시보드는
+# 편의 기능이라 배포가 실제로 되는지부터 확인한 뒤에 붙인다.
+
+name: studyclub
+
+configs:
+  loki_config:
+    content: |
+      # 단일 노드 모놀리식 + 파일시스템 저장. 이 규모에 클러스터 구성은 과하다.
+      auth_enabled: false
+
+      server:
+        http_listen_port: 3100
+        log_level: warn        # Loki 자신의 로그가 시끄러우면 진짜 로그가 묻힌다
+
+      common:
+        instance_addr: 127.0.0.1
+        path_prefix: /loki
+        storage:
+          filesystem:
+            chunks_directory: /loki/chunks
+            rules_directory: /loki/rules
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+
+      schema_config:
+        configs:
+          - from: 2024-01-01
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+
+      # ⚠️ retention_period 만 적어두면 Loki 는 아무것도 지우지 않는다.
+      #    compactor 를 켜야 실제로 삭제가 돈다. 이 두 줄이 없으면 디스크가 무한히 찬다.
+      compactor:
+        working_directory: /loki/compactor
+        retention_enabled: true
+        delete_request_store: filesystem
+
+      limits_config:
+        retention_period: 720h          # 30일
+        # 로그 폭주 1회로 디스크가 소진되지 않게 유입 자체를 막는다.
+        ingestion_rate_mb: 4
+        ingestion_burst_size_mb: 8
+        per_stream_rate_limit: 3MB
+        per_stream_rate_limit_burst: 6MB
+        max_global_streams_per_user: 500
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+
+  alloy_config:
+    content: |
+      // 앱이 쓴 JSON 로그 파일을 읽어 Loki 로 보낸다. docker socket 을 쓰지 않는다.
+      //
+      // glob 에 * 를 붙이는 이유: 로테이션되면 app.json 은 app.json.<날짜>.0 이 된다.
+      // 그 파일을 감시 대상에서 빼면, Alloy 가 밀려 있는 상태에서 로테이션이 날 때
+      // 그 구간이 Loki 에 영영 들어가지 않는다.
+      local.file_match "studyclub_api" {
+        path_targets = [{
+          __path__ = "/var/log/studyclub/app.json*",
+          job      = "studyclub-api",
+          service  = "studyclub-api",
+        }]
+      }
+
+      loki.source.file "studyclub_api" {
+        targets    = local.file_match.studyclub_api.targets
+        forward_to = [loki.process.studyclub_api.receiver]
+      }
+
+      // ⚠️ 라벨은 저카디널리티만 둔다. requestId 를 라벨로 만들면 요청마다 새 스트림이 생겨
+      //    Loki 가 무너진다. requestId 는 로그 본문에 있고, 조회할 때 | json 으로 파싱해 찾는다.
+      //
+      // ⚠️ expressions 의 값에 따옴표를 씌우지 않는다. ECS 포맷은 level 을
+      //    {"log":{"level":"INFO"}} 로 nest 한다 (Spring Boot 의
+      //    ElasticCommonSchemaStructuredLogFormatter 에 하드코딩, 설정으로 못 바꿈).
+      //    log.level (따옴표 없음) 은 JMESPath 로 중첩을 타고 들어간다 — 맞음.
+      //    "log.level" (따옴표 있음) 은 그 이름 그대로의 flat 키를 찾는다 — ECS 에 그런 키가
+      //    없어 매치가 조용히 실패하고 level 라벨이 빈 값이 된다 (에러 없이).
+      loki.process "studyclub_api" {
+        stage.json {
+          expressions = {
+            level = "log.level",
+          }
+        }
+        stage.labels {
+          values = {
+            level = "",
+          }
+        }
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki:3100/loki/api/v1/push"
+        }
+      }
+
+  grafana_datasource_loki:
+    content: |
+      # 1단계 — 로그. Alloy 가 공유 볼륨의 앱 JSON 로그를 tail 해 Loki 로 보낸다.
+      #
+      # UI 에서 클릭해 만든 데이터소스는 Grafana 볼륨에만 존재한다. 머신이 죽거나 볼륨을 지우면
+      # 같이 사라진다. git 이 정본이어야 재현 가능하다.
+      apiVersion: 1
+
+      datasources:
+        - name: Loki
+          type: loki
+          uid: loki
+          access: proxy
+          url: http://loki:3100
+          # ⚠️ **기본 데이터소스는 이 파일 하나만 갖는다.** Grafana 는 기본값이 둘이면
+          #    기동을 거부한다(crash-loop, 실측). 단계가 올라가도 기본값은 Loki 로 유지된다 —
+          #    Loki 는 1단계부터 항상 존재하는 유일한 데이터소스이기 때문이다.
+          #    대시보드는 uid 로 참조하므로 기본값이 무엇인지는 동작에 영향이 없다.
+          isDefault: true
+
+services:
+  # ── 관측 대상: 호스트의 기존 api 서비스에 이 네 가지를 더한다 ────────────────
+  # 운영에서는 이 블록을 호스트 compose 의 api 서비스에 합쳐 넣는다(별도 서비스가 아니다).
+  api:
+    environment:
+      LOG_JSON_FORMAT: ecs                       # 파일만 ECS JSON. 콘솔은 텍스트 유지
+      LOG_FILE: /var/log/studyclub/app.json      # Alloy 가 이 파일을 tail 한다
+      MANAGEMENT_PORT: 9090                      # actuator 를 앱 포트에서 뗀다(호스트에 publish 안 함)
+    volumes:
+      - studyclub-applog:/var/log/studyclub
+    logging:
+      driver: json-file
+      options:
+        # docker 기본값은 무제한이다. 걸지 않으면 컨테이너 stdout 만으로 디스크가 찬다.
+        max-size: "10m"
+        max-file: "3"
+
+  loki:
+    image: grafana/loki:3.7.7
+    container_name: studyclub-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    configs:
+      - source: loki_config
+        target: /etc/loki/loki-config.yml
+    volumes:
+      - loki-data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: studyclub-alloy
+    restart: unless-stopped
+    depends_on:
+      - loki
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    configs:
+      - source: alloy_config
+        target: /etc/alloy/config.alloy
+    volumes:
+      - studyclub-applog:/var/log/studyclub:ro   # api 가 쓴 것을 읽기만 한다
+      # ↓ positions. 없으면 재기동마다 파일을 처음부터 다시 읽어 로그가 중복 적재된다.
+      #   배포할 때마다 alloy 도 재기동되므로 상시로 벌어진다. 절대 지우지 않는다.
+      - alloy-data:/var/lib/alloy/data
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    container_name: studyclub-grafana
+    restart: unless-stopped
+    depends_on:
+      - loki
+    ports:
+      # ← 호스트에 여는 유일한 포트. 127.0.0.1 바인딩이라 리버스 프록시나 SSH 터널로만 닿는다.
+      - "127.0.0.1:3000:3000"
+    configs:
+      - source: grafana_datasource_loki
+        target: /etc/grafana/provisioning/datasources/loki.yml
+    environment:
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD 가 비어있다 - .env 에 강한 값을 채워라(openssl rand -base64 32) - 이 값이 Grafana 로 들어가는 문이다}
+      # ── 구글 로그인 + 이메일 allowlist ───────────────────────────────────────
+      # 기본값은 **꺼짐**이다. 첫 배포는 SSH 터널로 127.0.0.1:3000 에 붙어 확인하면 되고,
+      # 그때는 GCP 콘솔·DNS·인증서가 아직 필요 없다.
+      # ⚠️ **서브도메인을 인터넷에 열기 전에 반드시 켜고, 허용되지 않은 계정이 실제로
+      #    거부되는 것을 눈으로 확인한다.** Grafana 는 모든 애플리케이션 로그를 들고 있다.
+      GF_AUTH_GOOGLE_ENABLED: ${GRAFANA_GOOGLE_ENABLED:-false}
+      GF_AUTH_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GF_AUTH_GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GF_AUTH_GOOGLE_SCOPES: "openid email profile"
+      GF_AUTH_GOOGLE_ALLOW_SIGN_UP: "true"
+      # ⚠️ [auth.google] 는 skip_org_role_sync 기본값이 true 다(13.2.1 defaults.ini — 같은
+      #    이미지의 다른 커넥터는 전부 false, google 만 유일하게 true). 켜져 있으면 아래
+      #    role_attribute_path/strict 가 통째로 무시되고 **구글 계정을 가진 누구나 Viewer 로
+      #    로그인된다.** 조용히 죽는 설정이라 기동 로그에 아무 경고도 없다(실측).
+      GF_AUTH_GOOGLE_SKIP_ORG_ROLE_SYNC: "false"
+      # ⚠️ GRAFANA_ALLOWED_EMAILS 가 비면 contains([], email) 이 JMESPath 타입 에러가 되고
+      #    strict 가 그 실패를 로그인 거부로 처리한다 — fail-closed 가 기본값이다(실측).
+      GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_PATH: "contains([${GRAFANA_ALLOWED_EMAILS}], email) && 'Admin' || ''"
+      GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_STRICT: "true"
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  studyclub-applog:   # api 가 쓰고 alloy 가 읽는 큐 — 배포 때 지우지 않는다
+  alloy-data:         # alloy positions — 지우면 로그가 Loki 에 중복 적재된다
+  loki-data:          # 30일치 로그 아카이브
+  grafana-data:
