@@ -151,7 +151,7 @@ export const MESSAGES: Dict = {
   'detail.empty_stats': { ko: '아직 집계된 통계가 없어요.', en: 'No stats yet.' },
 
   // browsers (search + filter)
-  'filter.search_studies': { ko: '스터디 제목 검색', en: 'Search by title' },
+  'filter.search_studies': { ko: '스터디 검색', en: 'Search studies' },
   'filter.search_events': { ko: '행사명 검색', en: 'Search by title' },
   'filter.kind': { ko: '종류', en: 'Kind' },
   'filter.status': { ko: '상태', en: 'Status' },
@@ -163,6 +163,7 @@ export const MESSAGES: Dict = {
   'filter.reset': { ko: '초기화', en: 'Reset' },
   'filter.all': { ko: '전체', en: 'All' },
   'filter.none': { ko: '조건에 맞는 결과가 없어요.', en: 'No results match your filters.' },
+  'filter.search_error': { ko: '검색 결과를 불러오지 못했어요', en: 'Failed to load search results' },
 
   // event types
   'event_type.meetup': { ko: '밋업', en: 'Meetup' },
