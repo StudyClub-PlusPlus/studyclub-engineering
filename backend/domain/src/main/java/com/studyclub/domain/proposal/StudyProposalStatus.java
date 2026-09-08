@@ -1,6 +1,6 @@
 package com.studyclub.domain.proposal;
 
-public enum StudyProposalStatusEnum {
+public enum StudyProposalStatus {
     OPEN,
     ACCEPTED,
     REJECTED,

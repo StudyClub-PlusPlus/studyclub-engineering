@@ -28,11 +28,11 @@ public class StudyCohort extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STUDY_DELIVERY_FORMAT", nullable = false, length = 20)
-    private DeliveryFormatEnum studyDeliveryFormatEnum;
+    private DeliveryFormat studyDeliveryFormat;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private StudyCohortStatusEnum status;
+    private StudyCohortStatus status;
 
     @Column(name = "APPLICATION_FORM", columnDefinition = "json")
     private String applicationForm;
@@ -60,12 +60,12 @@ public class StudyCohort extends BaseEntity {
     protected StudyCohort() {
     }
 
-    public StudyCohort(Long studyId, DeliveryFormatEnum studyDeliveryFormatEnum, StudyCohortStatusEnum status,
+    public StudyCohort(Long studyId, DeliveryFormat studyDeliveryFormat, StudyCohortStatus status,
                        String applicationForm, String curriculum, Integer capacity,
                        Instant recruitDeadline, Instant startDate, Instant endDate,
                        String discordChannelUrl, String driveUrl) {
         this.studyId = studyId;
-        this.studyDeliveryFormatEnum = studyDeliveryFormatEnum;
+        this.studyDeliveryFormat = studyDeliveryFormat;
         this.status = status;
         this.applicationForm = applicationForm;
         this.curriculum = curriculum;
@@ -79,8 +79,8 @@ public class StudyCohort extends BaseEntity {
 
     public Long getId() { return id; }
     public Long getStudyId() { return studyId; }
-    public DeliveryFormatEnum getStudyDeliveryFormatEnum() { return studyDeliveryFormatEnum; }
-    public StudyCohortStatusEnum getStatus() { return status; }
+    public DeliveryFormat getStudyDeliveryFormat() { return studyDeliveryFormat; }
+    public StudyCohortStatus getStatus() { return status; }
     public String getApplicationForm() { return applicationForm; }
     public String getCurriculum() { return curriculum; }
     public Integer getCapacity() { return capacity; }

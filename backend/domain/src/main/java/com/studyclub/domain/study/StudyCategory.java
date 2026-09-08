@@ -1,6 +1,6 @@
 package com.studyclub.domain.study;
 
-public enum StudyCategoryEnum {
+public enum StudyCategory {
     AI,
     BACKEND,
     FRONTEND,
