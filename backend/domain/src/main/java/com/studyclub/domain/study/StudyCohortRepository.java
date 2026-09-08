@@ -5,5 +5,5 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StudyCohortRepository extends JpaRepository<StudyCohort, Long> {
-    List<StudyCohort> findByStudyIdInAndStatus(Collection<Long> studyIds, StudyCohortStatusEnum status);
+    List<StudyCohort> findByStudyIdInAndStatus(Collection<Long> studyIds, StudyCohortStatus status);
 }

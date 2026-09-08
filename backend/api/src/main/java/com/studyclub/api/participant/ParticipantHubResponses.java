@@ -1,9 +1,9 @@
 package com.studyclub.api.participant;
 
-import com.studyclub.domain.application.ApplicationStatusEnum;
-import com.studyclub.domain.attendance.AttendanceStatusEnum;
-import com.studyclub.domain.participant.ParticipantStatusEnum;
-import com.studyclub.domain.study.StudyCohortStatusEnum;
+import com.studyclub.domain.application.ApplicationStatus;
+import com.studyclub.domain.attendance.AttendanceStatus;
+import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.study.StudyCohortStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,7 +25,7 @@ public final class ParticipantHubResponses {
             Long cohortId,
             Long studyId,
             String title,
-            ParticipantStatusEnum participantStatus,
+            ParticipantStatus participantStatus,
             Integer attendanceRate,
             Instant nextMeetingAt,
             String thumbnailUrl) {
@@ -36,7 +36,7 @@ public final class ParticipantHubResponses {
             Long cohortId,
             Long studyId,
             String studyTitle,
-            ApplicationStatusEnum status,
+            ApplicationStatus status,
             Instant appliedAt) {
     }
 
@@ -59,8 +59,8 @@ public final class ParticipantHubResponses {
             Long cohortId,
             Long studyId,
             String title,
-            StudyCohortStatusEnum cohortStatus,
-            ParticipantStatusEnum participantStatus,
+            StudyCohortStatus cohortStatus,
+            ParticipantStatus participantStatus,
             String className,
             String timezone,
             String leaderName,
@@ -78,7 +78,7 @@ public final class ParticipantHubResponses {
             Instant scheduledAt,
             Instant startsAt,
             Instant endsAt,
-            AttendanceStatusEnum attendanceStatus) {
+            AttendanceStatus attendanceStatus) {
     }
 
 }
