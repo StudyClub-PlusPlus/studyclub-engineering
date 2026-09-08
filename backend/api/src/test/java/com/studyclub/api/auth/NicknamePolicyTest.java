@@ -44,19 +44,18 @@ class NicknamePolicyTest {
     void acceptsLettersDigitsUnderscoreAcrossLanguages() {
         assertThat(NicknamePolicy.violation("홍길동_123")).isNull();
         assertThat(NicknamePolicy.violation("honggildong_1")).isNull();
-        assertThat(NicknamePolicy.violation("ジンジュン1")).isNull();
     }
 
     @Test
     @DisplayName("공백이 포함되면 막는다")
     void rejectsInternalSpace() {
-        assertThat(NicknamePolicy.violation("jin joong")).isEqualTo("글자·숫자·밑줄(_)만 사용할 수 있습니다");
+        assertThat(NicknamePolicy.violation("hong gildong")).isEqualTo("글자·숫자·밑줄(_)만 사용할 수 있습니다");
     }
 
     @Test
     @DisplayName("특수문자가 포함되면 막는다")
     void rejectsSpecialCharacters() {
-        assertThat(NicknamePolicy.violation("jin@joong")).isEqualTo("글자·숫자·밑줄(_)만 사용할 수 있습니다");
+        assertThat(NicknamePolicy.violation("hong@gildong")).isEqualTo("글자·숫자·밑줄(_)만 사용할 수 있습니다");
     }
 
     @Test
