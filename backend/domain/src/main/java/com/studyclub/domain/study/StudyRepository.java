@@ -6,4 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StudyRepository extends JpaRepository<Study, Long> {
     List<Study> findAllByIdIn(Collection<Long> studyIds);
+
+    List<Study> findAllByIsHiddenFalse();
+
+    List<Study> findAllByIsHiddenFalseAndCategory(StudyCategory category);
 }

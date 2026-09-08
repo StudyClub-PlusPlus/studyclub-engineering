@@ -77,6 +77,15 @@ public class StudyCohort extends BaseEntity {
         this.driveUrl = driveUrl;
     }
 
+    private static final long CLOSING_SOON_DAYS = 3;
+
+    /** 모집 중 + 마감까지 3일 이내이면 종료 임박. */
+    public boolean isClosingSoon() {
+        return status == StudyCohortStatus.OPEN
+                && recruitDeadline != null
+                && recruitDeadline.isBefore(Instant.now().plus(CLOSING_SOON_DAYS, java.time.temporal.ChronoUnit.DAYS));
+    }
+
     public Long getId() { return id; }
     public Long getStudyId() { return studyId; }
     public DeliveryFormat getStudyDeliveryFormat() { return studyDeliveryFormat; }

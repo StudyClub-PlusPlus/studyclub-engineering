@@ -23,17 +23,38 @@ export type StudyKind = "study" | "club";
  */
 export const STUDY_CATEGORIES = [
   "AI · ML",
-  "알고리즘",
+  "CS",
   "데이터",
-  "소프트웨어 개발",
+  "백엔드",
+  "프론트엔드",
+  "모바일",
+  "기획",
+  "PM",
+  "디자인",
   "커리어",
-  "북클럽",
   "어학",
   "라이프스타일",
-  "기획 · PM",
   "비즈니스",
   "기타",
 ] as const;
+
+/** API StudyCategory enum → 프론트 표시 이름 매핑. */
+export const CATEGORY_DISPLAY: Record<string, string> = {
+  AI_ML: "AI · ML",
+  CS: "CS",
+  DATA: "데이터",
+  BACKEND: "백엔드",
+  FRONTEND: "프론트엔드",
+  MOBILE: "모바일",
+  PLANNING: "기획",
+  PM: "PM",
+  DESIGN: "디자인",
+  CAREER: "커리어",
+  LANGUAGE: "어학",
+  LIFESTYLE: "라이프스타일",
+  BUSINESS: "비즈니스",
+  OTHER: "기타",
+};
 
 export type StudyCategory = (typeof STUDY_CATEGORIES)[number];
 
