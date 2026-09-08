@@ -1,12 +1,12 @@
 package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
-import com.studyclub.api.auth.dto.AccountDtos.AccountView;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
+import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.jsonwebtoken.Claims;

@@ -2,43 +2,17 @@ package com.studyclub.api.auth.dto;
 
 import com.studyclub.api.auth.validation.ValidNickname;
 import com.studyclub.api.auth.validation.ValidTimeZone;
-import com.studyclub.domain.account.Account;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * ACCOUNT 리소스 DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 다르지만,
- * {@link AccountView} 는 로그인 응답({@code AuthResponse.user})에도 실려 나가므로 그쪽에서
- * 이 클래스를 참조한다 — "Account 를 어떻게 보여주는가" 는 인증이 아니라 계정 쪽 관심사라서
- * 이름과 위치를 맞췄다.
+ * ACCOUNT 리소스(POST/GET /accounts/**) 요청 DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는
+ * 관심사가 달라 분리한다 — 여긴 "가입 완료 이후의 계정 관리" 쪽이다.
  */
 public final class AccountDtos {
 
     private AccountDtos() {
-    }
-
-    public record AccountView(
-            Long id,
-            String email,
-            String name,
-            String picture,
-            String role,
-            String createdAt,
-            String timeZone,
-            String onboardingCompletedAt) {
-
-        public static AccountView from(Account account) {
-            return new AccountView(
-                    account.getId(),
-                    account.getEmail(),
-                    account.getNickname(),
-                    account.getProfileImgUrl(),
-                    account.getSystemRole().name(),
-                    String.valueOf(account.getCreatedAt()),
-                    account.getTimeZone(),
-                    account.getOnboardingCompletedAt() == null ? null : account.getOnboardingCompletedAt().toString());
-        }
     }
 
     /**

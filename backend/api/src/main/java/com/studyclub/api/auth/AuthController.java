@@ -1,10 +1,10 @@
 package com.studyclub.api.auth;
 
-import com.studyclub.api.auth.dto.AccountDtos.AccountView;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.api.auth.dto.AuthDtos.RefreshRequest;
 import com.studyclub.api.auth.dto.AuthDtos.SocialLoginRequest;
+import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

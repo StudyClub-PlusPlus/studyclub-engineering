@@ -1,7 +1,7 @@
 package com.studyclub.api.auth;
 
-import com.studyclub.api.auth.dto.AccountDtos.AccountView;
 import com.studyclub.api.auth.dto.AccountDtos.OnboardingRequest;
+import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
