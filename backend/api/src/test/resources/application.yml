@@ -24,3 +24,15 @@ jwt:
   secret: test-only-secret
 back-office:
   allowed-emails: ops@studyclub-plusplus.com
+
+# 테스트는 관리 포트도 랜덤으로 띄운다. 고정 9090 이면 병렬 실행·로컬 개발 스택과 충돌한다.
+# src/test/resources/application.yml 은 src/main 의 application.yml 을 덮어쓴다(shadowing, 병합 아님 —
+# classpath:/application.yml 조회는 첫 매치 하나만 쓴다). 그래서 exposure.include 도 여기 다시 적어야
+# 관리 포트에서 prometheus 가 실제로 뜬다.
+management:
+  server:
+    port: 0
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

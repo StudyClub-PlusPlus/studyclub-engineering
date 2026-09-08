@@ -108,4 +108,15 @@ class ApiIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
         assertThat(response.getBody()).doesNotContainKeys("timestamp", "path", "success");
     }
+
+    @Test
+    @DisplayName("성공 - 모든 응답에 X-Request-Id 가 실린다 (로그 추적용 식별자)")
+    void everyResponseCarriesRequestId() {
+        var ok = rest.getForEntity("/api/health", String.class);
+        assertThat(ok.getHeaders().getFirst("X-Request-Id")).isNotBlank();
+
+        // 시큐리티가 끊는 요청도 식별자를 가져야 한다 — 장애는 대개 이쪽에서 난다
+        var unauthorized = rest.getForEntity("/auth/me", String.class);
+        assertThat(unauthorized.getHeaders().getFirst("X-Request-Id")).isNotBlank();
+    }
 }
