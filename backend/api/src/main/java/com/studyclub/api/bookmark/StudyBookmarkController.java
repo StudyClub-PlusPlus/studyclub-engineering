@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "북마크", description = "스터디 북마크 조회")
 @RestController
-@RequestMapping("/accounts")
+@RequestMapping("/api/me")
 public class StudyBookmarkController {
 
     private final StudyBookmarkService studyBookmarkService;

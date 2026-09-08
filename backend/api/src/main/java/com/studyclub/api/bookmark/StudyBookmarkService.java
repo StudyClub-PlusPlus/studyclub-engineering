@@ -15,7 +15,7 @@ public class StudyBookmarkService {
                 new StudyBookmarkDtos("java study", "OPEN", "BACKEND", "every week", "8 weeks"),
                 new StudyBookmarkDtos("DDIA", "CLOSED", "DATA", "once a week", "12 weeks")
         );
-        return new Result(new StudyBookmarkResponse(mockItems), HttpStatus.OK);
+        return new Result(new StudyBookmarkResponse(mockItems, mockItems.size(), offset, limit), HttpStatus.OK);
     }
 
     public record Result(StudyBookmarkResponse response, HttpStatus httpStatus) {
