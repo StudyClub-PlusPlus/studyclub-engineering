@@ -30,7 +30,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   const body = t(
     {
       ko: `StudyClub++ 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 커뮤니티입니다. SWE/MLE 커리어 — 이력서, 인터뷰, 시스템 디자인, 커리어 생존 — 를 함께 준비하는 자원봉사 운영 모임입니다. 세 지역의 시차를 넘나들며 온라인 세션과 오프라인 밋업을 오가고, 원격으로도 참여합니다.`,
-      en: `StudyClub++ is a global community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It is a volunteer-run group preparing together for SWE/MLE careers — resumes, interviews, system design, and career survival. Spanning three time zones, we mix online sessions with offline meetups, and members join remotely.`,
+      en: `StudyClub++ is a global community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It is a volunteer-run group preparing together for SWE/MLE careers — resumes, interviews, system design, and career survival. Spanning three time zones, we mix online meetings with offline meetups, and members join remotely.`,
     },
     locale,
   );

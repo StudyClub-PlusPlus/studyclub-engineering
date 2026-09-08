@@ -1,6 +1,6 @@
 package com.studyclub.domain.study;
 
-public enum DeliveryFormatEnum {
+public enum DeliveryFormat {
     ONLINE,
     OFFLINE,
     HYBRID

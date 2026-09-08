@@ -27,7 +27,7 @@ public record StudyDetailResponse(
         static CohortResponse from(StudyCohort c) {
             return new CohortResponse(
                     c.getId(),
-                    c.getStudyDeliveryFormatEnum().name(),
+                    c.getStudyDeliveryFormat().name(),
                     c.getStatus().name(),
                     c.getCurriculum(),
                     c.getCapacity(),
@@ -45,7 +45,7 @@ public record StudyDetailResponse(
                 study.getTitle(),
                 study.getDescription(),
                 study.getCategory().name(),
-                study.getStudyKindEnum().name(),
+                study.getStudyKind().name(),
                 study.getThumbnailUrl(),
                 cohort != null ? CohortResponse.from(cohort) : null
         );

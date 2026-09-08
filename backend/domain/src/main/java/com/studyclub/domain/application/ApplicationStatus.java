@@ -1,6 +1,6 @@
 package com.studyclub.domain.application;
 
-public enum ApplicationStatusEnum {
+public enum ApplicationStatus {
     PENDING,
     APPROVED,
     REJECTED,

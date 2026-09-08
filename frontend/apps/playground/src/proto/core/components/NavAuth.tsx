@@ -91,6 +91,20 @@ export function NavAuth({ locale }: { locale: Locale }) {
           >
             {locale === 'en' ? 'My page' : '마이페이지'}
           </Link>
+          <Link
+            href={`/proto/core/${locale}/my/joined`}
+            onClick={() => setOpen(false)}
+            className='block px-4 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+          >
+            {locale === 'en' ? 'My studies' : '내 스터디'}
+          </Link>
+          <Link
+            href={`/proto/core/${locale}/my/saved`}
+            onClick={() => setOpen(false)}
+            className='block px-4 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+          >
+            {locale === 'en' ? 'Saved' : '찜한 스터디'}
+          </Link>
           <button
             type='button'
             onClick={async () => {

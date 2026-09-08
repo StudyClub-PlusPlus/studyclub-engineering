@@ -42,13 +42,13 @@ public class StudyAttendance extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private AttendanceStatusEnum status;
+    private AttendanceStatus status;
 
     protected StudyAttendance() {
     }
 
     public StudyAttendance(Long accountId, Long studyCohortId, Long studyClassId,
-                           Long studyMeetingId, AttendanceStatusEnum status) {
+                           Long studyMeetingId, AttendanceStatus status) {
         this.accountId = accountId;
         this.studyCohortId = studyCohortId;
         this.studyClassId = studyClassId;
@@ -61,5 +61,5 @@ public class StudyAttendance extends BaseEntity {
     public Long getStudyCohortId() { return studyCohortId; }
     public Long getStudyClassId() { return studyClassId; }
     public Long getStudyMeetingId() { return studyMeetingId; }
-    public AttendanceStatusEnum getStatus() { return status; }
+    public AttendanceStatus getStatus() { return status; }
 }

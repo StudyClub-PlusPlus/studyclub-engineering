@@ -39,11 +39,11 @@ class AccountTest {
     }
 
     @Test
-    @DisplayName("닉네임이 255 를 넘으면 잘라서라도 남긴다 — 잘린 이름도 사람을 알아보는 데 쓸모가 있다")
+    @DisplayName("닉네임이 20 을 넘으면 잘라서라도 남긴다 — 잘린 이름도 사람을 알아보는 데 쓸모가 있다")
     void clipsOverlongNickname() {
-        Account account = new Account("a@b.com", repeat('가', 300), null, SystemRole.MEMBER);
+        Account account = new Account("a@b.com", repeat('가', 30), null, SystemRole.MEMBER);
 
-        assertThat(account.getNickname()).hasSize(255);
+        assertThat(account.getNickname()).hasSize(20);
     }
 
     @Test
@@ -61,9 +61,9 @@ class AccountTest {
         Account account = new Account("a@b.com", "n", null, SystemRole.MEMBER);
 
         account.setProfileImgUrl("https://x/" + repeat('y', 2100));
-        account.setNickname(repeat('나', 300));
+        account.setNickname(repeat('나', 30));
 
         assertThat(account.getProfileImgUrl()).isNull();
-        assertThat(account.getNickname()).hasSize(255);
+        assertThat(account.getNickname()).hasSize(20);
     }
 }
