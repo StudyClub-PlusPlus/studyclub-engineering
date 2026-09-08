@@ -44,6 +44,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 ## 작업 룰
 
+- **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
 - 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
@@ -73,6 +74,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 | **설계 — 애그리거트·엔티티·값 객체·레이어** | [`docs/backend-development-guide/ddd-guide.md`](docs/backend-development-guide/ddd-guide.md) |
 | 모듈 구조·패키지 규약 | [`docs/backend-development-guide/module-structure.md`](docs/backend-development-guide/module-structure.md) |
 | API 엔드포인트 추가·수정 | [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md) |
+| **스펙 주도 개발 — 코드 전에 스펙** | [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md) |
 | 인증·JWT·OAuth | [`docs/backend-development-guide/auth-guide.md`](docs/backend-development-guide/auth-guide.md) |
 | 보안·개인정보 마스킹 | [`docs/backend-development-guide/security-guide.md`](docs/backend-development-guide/security-guide.md) |
 | OOP·캡슐화·DTO 변환 | [`docs/backend-development-guide/oop-guide.md`](docs/backend-development-guide/oop-guide.md) |
