@@ -33,11 +33,11 @@ public class Study extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private StudyCategoryEnum category;
+    private StudyCategory category;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STUDY_KIND", nullable = false, length = 20)
-    private StudyKindEnum studyKind;
+    private StudyKind studyKind;
 
     @Column(name = "THUMBNAIL_URL", length = 2048)
     private String thumbnailUrl;
@@ -48,8 +48,8 @@ public class Study extends BaseEntity {
     protected Study() {
     }
 
-    public Study(String slug, String title, String description, StudyCategoryEnum category,
-                 StudyKindEnum studyKind, String thumbnailUrl, boolean isHidden) {
+    public Study(String slug, String title, String description, StudyCategory category,
+                 StudyKind studyKind, String thumbnailUrl, boolean isHidden) {
         this.slug = slug;
         this.title = title;
         this.description = description;
@@ -63,8 +63,8 @@ public class Study extends BaseEntity {
     public String getSlug() { return slug; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
-    public StudyCategoryEnum getCategory() { return category; }
-    public StudyKindEnum getStudyKindEnum() { return studyKind; }
+    public StudyCategory getCategory() { return category; }
+    public StudyKind getStudyKind() { return studyKind; }
     public String getThumbnailUrl() { return thumbnailUrl; }
     public boolean isHidden() { return isHidden; }
 }

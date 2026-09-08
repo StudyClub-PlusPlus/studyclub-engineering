@@ -1,6 +1,6 @@
 'use client';
 
-import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudySession } from '@studyclub/mock';
+import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
 import { Button } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
@@ -19,12 +19,14 @@ const CELL_STYLE: Record<AttendanceStatus, string> = {
   present: 'border-transparent bg-success-100 text-success-700',
   late: 'border-transparent bg-warning-100 text-warning-700',
   absent: 'border-transparent bg-error-50 text-error-700',
+  excused: 'border-transparent bg-surface-2 text-fg-secondary',
 };
 
 const CELL_LABEL: Record<AttendanceStatus, string> = {
   present: '출석',
   late: '지각',
   absent: '결석',
+  excused: '휴가',
 };
 
 function Cell({ status, onClick }: { status: AttendanceStatus | undefined; onClick: () => void }) {
@@ -32,7 +34,7 @@ function Cell({ status, onClick }: { status: AttendanceStatus | undefined; onCli
     <button
       type='button'
       onClick={onClick}
-      title='눌러서 출석 → 지각 → 결석 → 미체크'
+      title='눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'
       className={`h-8 w-full rounded-sm border text-[11px] font-bold transition-colors ${
         status ? CELL_STYLE[status] : 'border-dashed border-border-strong bg-surface text-fg-muted hover:bg-surface-2'
       }`}
@@ -44,17 +46,17 @@ function Cell({ status, onClick }: { status: AttendanceStatus | undefined; onCli
 
 export function AttendanceTab({
   crew,
-  sessions,
+  meetings,
   attendance,
   onToggle,
 }: {
   study: Study;
   crew: Crew[];
-  sessions: StudySession[];
+  meetings: StudyMeeting[];
   attendance: Record<string, Record<string, AttendanceStatus>>;
-  onToggle: (crewId: string, sessionId: string) => void;
+  onToggle: (crewId: string, meetingId: string) => void;
 }) {
-  if (sessions.length === 0) {
+  if (meetings.length === 0) {
     return (
       <div className='card px-6 py-10 text-center'>
         <p className='text-sm font-semibold text-fg'>아직 회차가 없습니다.</p>
@@ -71,7 +73,7 @@ export function AttendanceTab({
         <h2 className='text-[15px] font-bold'>
           출석부
           <span className='ml-2 text-[13px] font-medium text-fg-muted'>
-            크루 {crew.length} · 회차 {sessions.length}
+            크루 {crew.length} · 회차 {meetings.length}
           </span>
         </h2>
         <Button size='sm' variant='secondary' leadingIcon={<Plus size={15} />} disabled title='미구현'>
@@ -86,7 +88,7 @@ export function AttendanceTab({
               <th className='sticky left-0 z-[1] bg-surface px-4 py-3 text-left text-xs font-semibold text-fg-muted'>
                 크루
               </th>
-              {sessions.map((s) => (
+              {meetings.map((s) => (
                 <th
                   key={s.id}
                   className='tnum w-[3.6rem] px-1 py-2 text-center text-[11px] font-semibold text-fg-secondary'
@@ -106,7 +108,7 @@ export function AttendanceTab({
                   <td className='sticky left-0 z-[1] whitespace-nowrap border-t border-border bg-surface px-4 py-1.5 font-semibold'>
                     {c.name}
                   </td>
-                  {sessions.map((s) => (
+                  {meetings.map((s) => (
                     <td key={s.id} className='border-t border-border px-1 py-1.5'>
                       <Cell status={row?.[s.id]} onClick={() => onToggle(c.id, s.id)} />
                     </td>
@@ -128,7 +130,7 @@ export function AttendanceTab({
       </div>
 
       <p className='mt-2 text-xs text-fg-muted'>
-        칸을 누르면 출석 → 지각 → 결석 → 미체크 순으로 바뀝니다. 출석률에는 지각도 참석으로 셉니다.
+        칸을 누르면 출석 → 지각 → 결석 → 휴가 → 미체크 순으로 바뀝니다. 출석률은 출석·지각을 같은 점수로 셉니다.
       </p>
     </div>
   );

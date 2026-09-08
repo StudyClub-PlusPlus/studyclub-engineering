@@ -1,6 +1,6 @@
 package com.studyclub.domain.participant;
 
-public enum ParticipantRoleEnum {
+public enum ParticipantRole {
     MEMBER,
     LEADER,
     CO_LEADER

@@ -45,8 +45,22 @@
 바디에 `success` 플래그를 두지 않는다 (상태 코드와 중복이고, 어긋나면 어느 쪽이 진실인지 알 수 없다).
 
 ```jsonc
-// 200
+// 200 — 단건 또는 목록 (페이지네이션 불필요)
 [{ "id": 1, "title": "알고리즘 스터디", "status": "RECRUITING" }]
+```
+
+**페이지네이션이 필요한 목록**은 예외적으로 envelope 을 허용한다.
+`items` + 페이지 메타데이터를 함께 돌려줘야 하기 때문이다.
+래퍼 필드명은 `items` 고정, 메타는 `total` · `offset` · `limit` 을 포함해야 한다.
+
+```jsonc
+// 200 — 페이지네이션 목록
+{
+  "items": [{ "title": "java study", "status": "OPEN" }],
+  "total": 42,
+  "offset": 0,
+  "limit": 20
+}
 ```
 
 에러는 **어디서 나든 이 모양 하나**:
@@ -93,6 +107,8 @@
 |--------|------|------|------|
 | GET | `/api/health` | 헬스 체크 | X |
 | GET | `/api/studies` | 스터디 목록 (현재 하드코딩 픽스처) | X |
+| GET | `/api/me/studies` | 내 참여·신청·일정·북마크 목록 (목업) | O |
+| GET | `/api/me/study-cohorts/{cohortId}` | 내 수강 기수·출석 상세 (목업) | O |
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
 | POST | `/auth/refresh` | access token 재발급 | X |
 | GET | `/auth/me` | 내 정보 조회 | O |

@@ -1,6 +1,6 @@
 package com.studyclub.domain.participant;
 
-public enum ParticipantStatusEnum {
+public enum ParticipantStatus {
     ACTIVE,
     PAUSED,
     WITHDRAWN,

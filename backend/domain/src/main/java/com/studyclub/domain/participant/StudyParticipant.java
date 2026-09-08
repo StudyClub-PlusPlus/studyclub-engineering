@@ -40,11 +40,11 @@ public class StudyParticipant extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private ParticipantStatusEnum status;
+    private ParticipantStatus status;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "PARTICIPANT_ROLE", nullable = false, length = 20)
-    private ParticipantRoleEnum participantRole;
+    private ParticipantRole participantRole;
 
     @Column(name = "JOINED_AT", nullable = false)
     private Instant joinedAt;
@@ -53,7 +53,7 @@ public class StudyParticipant extends BaseEntity {
     }
 
     public StudyParticipant(Long accountId, Long studyClassId, Long studyCohortId,
-                            ParticipantStatusEnum status, ParticipantRoleEnum participantRole, Instant joinedAt) {
+                            ParticipantStatus status, ParticipantRole participantRole, Instant joinedAt) {
         this.accountId = accountId;
         this.studyClassId = studyClassId;
         this.studyCohortId = studyCohortId;
@@ -66,7 +66,7 @@ public class StudyParticipant extends BaseEntity {
     public Long getAccountId() { return accountId; }
     public Long getStudyClassId() { return studyClassId; }
     public Long getStudyCohortId() { return studyCohortId; }
-    public ParticipantStatusEnum getStatus() { return status; }
-    public ParticipantRoleEnum getParticipantRoleEnum() { return participantRole; }
+    public ParticipantStatus getStatus() { return status; }
+    public ParticipantRole getParticipantRole() { return participantRole; }
     public Instant getJoinedAt() { return joinedAt; }
 }

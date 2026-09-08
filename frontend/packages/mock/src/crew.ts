@@ -6,11 +6,11 @@ import type { MemberRegion, Study } from "./index";
  * 실제 데이터는 백엔드에 없으므로 **스터디 id 로부터 결정적으로 생성**한다. 난수를 쓰면 서버 렌더와
  * 클라이언트 렌더 결과가 달라지고, 새로고침마다 명단이 바뀌어 화면을 판단할 수 없다.
  *
- * TODO(api): GET /api/studies/{id}/crew · /sessions · /attendance
+ * TODO(api): GET /api/studies/{id}/crew · /meetings · /attendance
  */
 
-/** 출석 상태. */
-export type AttendanceStatus = "present" | "late" | "absent";
+/** 출석 상태. 값이 없으면 미체크. */
+export type AttendanceStatus = "present" | "late" | "absent" | "excused";
 
 /**
  * 크루 상태.
@@ -37,17 +37,19 @@ export type Crew = {
   motivation?: string;
 };
 
-export type StudySession = {
+/** 회차. ERD `STUDY_MEETING`. 영어는 meeting (로그인 SESSION과 구분). */
+export type StudyMeeting = {
   id: string;
   no: number;
+  /** 예정일 (ERD STUDY_MEETING.SCHEDULED_AT 의 날짜). 실제 시작·종료는 반장이 열 때. */
   date: string; // yyyy-mm-dd
 };
 
 export type StudyCrewData = {
   capacity: number;
   crew: Crew[];
-  sessions: StudySession[];
-  /** crewId → sessionId → 상태. 값이 없으면 아직 체크하지 않은 것. */
+  meetings: StudyMeeting[];
+  /** crewId → meetingId → 상태. 값이 없으면 아직 체크하지 않은 것. */
   attendance: Record<string, Record<string, AttendanceStatus>>;
 };
 
@@ -84,10 +86,153 @@ function baseDate(raw?: string): string {
   return Number.isNaN(new Date(`${iso}T00:00:00Z`).getTime()) ? FALLBACK_DATE : iso;
 }
 
-function addWeeks(iso: string, weeks: number): string {
+function addDays(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + weeks * 7);
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+function mondayOf(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  const dow = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  return d.toISOString().slice(0, 10);
+}
+
+const KO_DOW: Record<string, number> = { 월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6 };
+
+/** 일정 문구에서 요일을 읽는다. "매일"의 일은 요일이 아니다. */
+function weekdaysOf(study: Study, seed: number): number[] {
+  const ko = study.schedule?.ko ?? "";
+  const found: number[] = [];
+  for (const name of ["월", "화", "수", "목", "금", "토"] as const) {
+    if (ko.includes(name)) found.push(KO_DOW[name]);
+  }
+  if (/(?:매주|격주)\s*일|일요일/.test(ko)) found.push(0);
+  if (found.length) return [...new Set(found)];
+  return [pick(seed + 53, 7)];
+}
+
+function dateOnWeek(monday: string, utcDow: number): string {
+  return addDays(monday, utcDow === 0 ? 6 : utcDow - 1);
+}
+
+/** 월별 클럽 기수(id 가 `-g1`·`-g2`·`-g3`)는 그 달 안의 회차만 만든다. */
+function monthRangeMeetings(study: Study, seed: number): StudyMeeting[] | undefined {
+  if (!study.date || !/-g[123]$/.test(study.id)) return undefined;
+  const start = study.date;
+  const [y, mo] = start.split("-").map(Number);
+  const end = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10);
+  const weekdays = weekdaysOf(study, seed);
+  const meetings: StudyMeeting[] = [];
+  let no = 1;
+  for (let iso = start; iso <= end; iso = addDays(iso, 1)) {
+    const dow = new Date(`${iso}T00:00:00Z`).getUTCDay();
+    if (!weekdays.includes(dow)) continue;
+    meetings.push({ id: `${study.id}-s${no}`, no, date: iso });
+    no += 1;
+  }
+  return meetings.length ? meetings : undefined;
+}
+
+function addWeeks(iso: string, weeks: number): string {
+  return addDays(iso, weeks * 7);
+}
+
+/**
+ * 프로토 크루 화면의 나와의 관계. `joined.ts` lifeStatus 와 같은 스터디 id 를 쓴다.
+ * - upcoming  : 시작전 — 회차는 전부 미래, 출석 칸은 비움
+ * - active    : 참여중 — 지난 회차만 채움
+ * - completed : 완주 — 회차는 전부 과거, 칸을 다 채움
+ * - left      : 참여 중단 — 지난 회차만 채움, 완주 아님
+ */
+export type DemoCrewRelation = "upcoming" | "active" | "completed" | "left";
+
+const LEFT_EARLY_IDS = new Set(["renaissance-club", "system-design-interview-ongoing"]);
+const FORCE_ACTIVE_IDS = new Set(["ai-paper-study"]);
+const MISS_ONE_IDS = new Set(["weeklyx-g2", "daily-leetcode-g2"]);
+const PARTIAL_COMPLETE_IDS = new Set(["sql-for-data-analysis"]);
+
+export function demoCrewRelation(study: Study): DemoCrewRelation {
+  if (LEFT_EARLY_IDS.has(study.id)) return "left";
+  if (FORCE_ACTIVE_IDS.has(study.id)) return "active";
+  if (study.status === "closed") return "completed";
+  if (study.status === "recruiting") return "upcoming";
+  return "active";
+}
+
+function weeksOf(study: Study, seed: number): number {
+  const ko = study.schedule?.ko ?? "";
+  const weeks = ko.match(/(\d+)\s*주/);
+  if (weeks) return Number(weeks[1]);
+  // "4회" 같은 과정 길이만. "주 1회 회고"는 주기다.
+  const times = ko.match(/·\s*(\d+)\s*회/);
+  if (times) return Number(times[1]);
+  // LeetCode150 전회 예시: 화·목 × 5주 = 10회
+  if (study.id === "leetcode150-2026") return 5;
+  return 6 + pick(seed + 41, 3) * 2; // 6 · 8 · 10
+}
+
+/** 첫 회차가 속한 월요일. 관계에 맞춰 과거·미래를 가른다. */
+function firstMondayOf(study: Study, weeks: number, seed: number, today: string): string {
+  const thisMonday = mondayOf(today);
+  const relation = demoCrewRelation(study);
+  if (relation === "completed") {
+    // 마지막 주 = 지난주. 완주 회차가 오늘 이후에 남지 않게 한다.
+    return addWeeks(mondayOf(addDays(today, -7)), 1 - weeks);
+  }
+  if (relation === "upcoming") {
+    return addWeeks(thisMonday, 1);
+  }
+  // 참여중·참여 중단: 지난주를 마지막으로 몇 주는 지나 있고, 최소 1주는 남긴다.
+  const lastPastMonday = mondayOf(addDays(today, -7));
+  const pastWeeks =
+    weeks <= 1 ? 1 : Math.min(weeks - 1, Math.max(2, 2 + pick(seed + 47, Math.max(1, weeks - 3))));
+  return addWeeks(lastPastMonday, 1 - pastWeeks);
+}
+
+const ACTIVE_CYCLE: AttendanceStatus[] = ["present", "late", "present", "late", "absent", "excused"];
+const LEFT_CYCLE: AttendanceStatus[] = ["present", "late", "absent", "excused", "absent"];
+
+/**
+ * 내 출석 시드. 회차 칸 · 출석률 · 완주 점수판이 같은 값을 보게 한다.
+ *
+ * - 시작전: 비움
+ * - 참여중: 지난 회차에 출석·지각·결석·휴가 순환. 미래는 비움
+ * - 완주: 전회(LeetCode 등) 또는 일부 결석(SQL · g2 일부)
+ * - 참여 중단: 지난 회차만 섞어서 채움
+ */
+export function demoMyAttendance(
+  study: Study,
+  meetings: StudyMeeting[],
+  today: string,
+): Record<string, AttendanceStatus> {
+  const row: Record<string, AttendanceStatus> = {};
+  const relation = demoCrewRelation(study);
+  if (relation === "upcoming") return row;
+
+  if (relation === "completed") {
+    if (PARTIAL_COMPLETE_IDS.has(study.id)) {
+      const attended = Math.max(1, Math.round(meetings.length * 0.6));
+      meetings.forEach((m, i) => {
+        row[m.id] = i < attended ? "present" : "absent";
+      });
+      return row;
+    }
+    const missOne = MISS_ONE_IDS.has(study.id);
+    meetings.forEach((m, i) => {
+      row[m.id] = missOne && i === meetings.length - 1 ? "absent" : "present";
+    });
+    return row;
+  }
+
+  const cycle = relation === "left" ? LEFT_CYCLE : ACTIVE_CYCLE;
+  meetings
+    .filter((m) => m.date < today)
+    .forEach((m, i) => {
+      row[m.id] = cycle[i % cycle.length];
+    });
+  return row;
 }
 
 /**
@@ -126,44 +271,62 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
 
   // 회차 — 일정이 적혀 있지 않아도 실제로는 회차를 돌린다. 출석부가 비면 화면을 볼 수 없다.
   //
-  // 시작일을 **오늘 기준**으로 잡아 이미 몇 회차가 지난 상태로 만든다. 모집 마감일 이후로
-  // 잡으면 모집 중인 스터디는 회차가 전부 미래라 출석이 한 칸도 없고, 출석부를 볼 수 없다.
-  const weeks = 6 + pick(seed + 41, 3) * 2; // 6 · 8 · 10
-  const doneCount = 2 + pick(seed + 47, weeks - 2); // 최소 2회차는 지나 있다
-  const start = addWeeks(today, -(doneCount - 1));
-  const sessions: StudySession[] = [];
-  for (let i = 0; i < weeks; i++) {
-    sessions.push({ id: `${study.id}-s${i + 1}`, no: i + 1, date: addWeeks(start, i) });
+  // 시작일은 나와의 관계에 맞춘다. 시작전은 전부 미래, 완주는 전부 과거, 참여중은 일부를 지나게.
+  const monthMeetings = monthRangeMeetings(study, seed);
+  const meetings: StudyMeeting[] = monthMeetings ?? [];
+  if (!monthMeetings) {
+    const weeks = weeksOf(study, seed);
+    const weekdays = weekdaysOf(study, seed);
+    const firstMonday = firstMondayOf(study, weeks, seed, today);
+    let no = 1;
+    for (let w = 0; w < weeks; w++) {
+      const weekMon = addWeeks(firstMonday, w);
+      for (const dow of weekdays) {
+        meetings.push({ id: `${study.id}-s${no}`, no, date: dateOnWeek(weekMon, dow) });
+        no += 1;
+      }
+    }
   }
 
-  const diligence = 45 + pick(seed + 61, 9) * 5; // 45 · 50 … 85
+  // 회차 생성 시 전원 ABSENT. 지난 회차에만 데모 상태를 덮는다. 미래 회차는 행을 두지 않아
+  // 시작 전 결석이 화면에 안 나온다.
+  const DEMO_CYCLE: AttendanceStatus[] = ["present", "late", "present", "late", "absent", "excused"];
   const attendance: StudyCrewData["attendance"] = {};
   for (const c of crew) {
     if (c.status !== "active") continue;
     const row: Record<string, AttendanceStatus> = {};
-    for (const ses of sessions) {
-      if (ses.date > today) continue; // 아직 오지 않은 회차는 비워 둔다
-      // 스터디마다 성실도가 다르다(출석 확률 55~95%). 전부 같은 확률이면 카테고리별 출석률이
-      // 전부 90% 언저리로 뭉쳐 그래프가 아무것도 말해주지 못한다.
-      const r = pick(hash(c.id + ses.id), 100);
-      row[ses.id] = r < diligence ? "present" : r < diligence + 12 ? "late" : "absent";
+    let past = 0;
+    for (const m of meetings) {
+      if (m.date > today) continue;
+      row[m.id] = DEMO_CYCLE[past % DEMO_CYCLE.length];
+      past += 1;
     }
     attendance[c.id] = row;
   }
 
-  return { capacity, crew, sessions, attendance };
+  return { capacity, crew, meetings, attendance };
+}
+
+/**
+ * 출석률 = 완주율.
+ * 출석·지각 = 1, 결석 = 0. 휴가는 분모에서 뺀다.
+ */
+export function attendancePoint(status: AttendanceStatus): number {
+  if (status === "present" || status === "late") return 1;
+  return 0;
 }
 
 /**
  * 출석률(%).
- * - 분모: **체크된 회차만** — 아직 열리지 않은 회차 때문에 낮아 보이면 안 된다
- * - 분자: 출석 + 지각 — 늦게라도 참석한 것은 결석과 같지 않다
+ * - 분모: 대상 회차 — 휴가 제외. 아직 시작하지 않은 회차(키 없음)는 넣지 않는다
+ * - 분자: 출석 + 지각
  */
 export function attendanceRate(row: Record<string, AttendanceStatus> | undefined): number | undefined {
   if (!row) return undefined;
-  const values = Object.values(row);
-  if (values.length === 0) return undefined;
-  return Math.round((values.filter((v) => v !== "absent").length / values.length) * 100);
+  const target = Object.values(row).filter((v) => v !== "excused");
+  if (target.length === 0) return undefined;
+  const score = target.reduce((sum, v) => sum + attendancePoint(v), 0);
+  return Math.round((score / target.length) * 100);
 }
 
 /**

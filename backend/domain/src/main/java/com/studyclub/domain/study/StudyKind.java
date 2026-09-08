@@ -1,6 +1,6 @@
 package com.studyclub.domain.study;
 
-public enum StudyKindEnum {
+public enum StudyKind {
     STUDY,
     CLUB
 }
