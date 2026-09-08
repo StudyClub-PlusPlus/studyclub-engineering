@@ -79,7 +79,6 @@ public class StudyCohort extends BaseEntity {
 
     private static final long CLOSING_SOON_DAYS = 3;
 
-    /** 모집 중 + 마감까지 3일 이내이면 종료 임박. */
     public boolean isClosingSoon() {
         return status == StudyCohortStatus.OPEN
                 && recruitDeadline != null

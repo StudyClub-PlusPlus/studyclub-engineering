@@ -8,7 +8,6 @@ import com.studyclub.domain.study.StudyCohortStatus;
 import java.time.Instant;
 import java.util.List;
 
-/** 페이지네이션 목록 응답 — endpoint-convention.md: { items, total, offset, limit }. */
 public record StudyListResponse(
         List<StudySummary> items,
         long total,

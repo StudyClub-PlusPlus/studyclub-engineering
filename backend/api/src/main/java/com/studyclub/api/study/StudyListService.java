@@ -16,24 +16,20 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 스터디 목록 조회 — 애플리케이션 서비스.
- * 리포지토리로 데이터를 가져오고, 필터링·정렬·DTO 변환만 한다.
- */
 @Service
 @Transactional(readOnly = true)
 public class StudyListService {
 
-    private final StudyRepository studies;
-    private final StudyCohortRepository cohorts;
-    private final StudyApplicationRepository applications;
+    private final StudyRepository studyRepository;
+    private final StudyCohortRepository studyCohortRepository;
+    private final StudyApplicationRepository studyApplicationRepository;
 
-    public StudyListService(StudyRepository studies,
-                            StudyCohortRepository cohorts,
-                            StudyApplicationRepository applications) {
-        this.studies = studies;
-        this.cohorts = cohorts;
-        this.applications = applications;
+    public StudyListService(StudyRepository studyRepository,
+                            StudyCohortRepository studyCohortRepository,
+                            StudyApplicationRepository studyApplicationRepository) {
+        this.studyRepository = studyRepository;
+        this.studyCohortRepository = studyCohortRepository;
+        this.studyApplicationRepository = studyApplicationRepository;
     }
 
     public StudyListResponse list(StudyCategory category,
@@ -43,33 +39,32 @@ public class StudyListService {
                                   int offset,
                                   int limit) {
 
-        // 1. 리포지토리에서 공개 스터디 조회
         List<Study> allStudies = (category != null)
-                ? studies.findAllByIsHiddenFalseAndCategory(category)
-                : studies.findAllByIsHiddenFalse();
+                ? studyRepository.findAllByIsHiddenFalseAndCategory(category)
+                : studyRepository.findAllByIsHiddenFalse();
 
         if (allStudies.isEmpty()) {
             return new StudyListResponse(List.of(), 0, offset, limit);
         }
 
-        // 2. 스터디별 최신 코호트 조회
+
         List<Long> studyIds = allStudies.stream().map(Study::getId).toList();
-        Map<Long, StudyCohort> latestCohorts = cohorts.findLatestByStudyIds(studyIds)
+        Map<Long, StudyCohort> latestCohorts = studyCohortRepository.findLatestByStudyIds(studyIds)
                 .stream()
                 .collect(Collectors.toMap(StudyCohort::getStudyId, Function.identity()));
 
-        // 3. 코호트별 신청자 수
+
         List<Long> cohortIds = latestCohorts.values().stream().map(StudyCohort::getId).toList();
         Map<Long, Long> applicantCounts = Map.of();
         if (!cohortIds.isEmpty()) {
-            applicantCounts = applications.countByCohortIds(cohortIds)
+            applicantCounts = studyApplicationRepository.countByCohortIds(cohortIds)
                     .stream()
                     .collect(Collectors.toMap(
                             row -> (Long) row[0],
                             row -> (Long) row[1]));
         }
 
-        // 4. 필터 (키워드·상태·마감일)
+
         final Map<Long, Long> counts = applicantCounts;
         List<StudyListResponse.StudySummary> filtered = allStudies.stream()
                 .filter(s -> latestCohorts.containsKey(s.getId()))
@@ -95,7 +90,7 @@ public class StudyListService {
                 })
                 .toList();
 
-        // 5. 페이지네이션
+
         long total = filtered.size();
         List<StudyListResponse.StudySummary> page = filtered.stream()
                 .skip(offset)
