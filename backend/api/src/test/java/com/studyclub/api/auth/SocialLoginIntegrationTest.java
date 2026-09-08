@@ -50,10 +50,14 @@ class SocialLoginIntegrationTest {
         accounts.deleteAll();
     }
 
-    /** "구글이 이런 사람이라고 답했다" 를 세팅 */
+    /** "구글이 이런 사람이라고 답했다" 를 세팅. 기본은 검증된 이메일 */
     private void googleReturns(String sub, String email, String name) {
+        googleReturns(sub, email, true, name);
+    }
+
+    private void googleReturns(String sub, String email, boolean emailVerified, String name) {
         when(google.exchange(anyString(), any()))
-                .thenReturn(new GoogleUser(sub, email, name, "https://img/pic.png"));
+                .thenReturn(new GoogleUser(sub, email, emailVerified, name, "https://img/pic.png"));
     }
 
     /** 로그인 API 를 실제로 쏜다 */
@@ -136,6 +140,23 @@ class SocialLoginIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "ACCOUNT_LINK_REQUIRED");
         assertThat(response.getBody()).doesNotContainKey("accessToken");
         assertThat(accounts.count()).isEqualTo(1);
+        assertThat(identities.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("실패 - 구글이 이메일 소유를 확인하지 않았으면 400 SOCIAL_LOGIN_EMAIL_REQUIRED, 아무것도 만들지 않는다")
+    void unverifiedEmailIsRejected() {
+        // given — 외부 이메일로 만든 구글 계정 등, email_verified=false 로 온 경우
+        googleReturns(SUB, RAW_EMAIL, false, "홍길동");
+
+        // when
+        var response = login();
+
+        // then — 400 + 전용 코드 (프론트가 일반 400 과 다른 안내 화면으로 분기), 토큰 없음, DB 비어 있음
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "SOCIAL_LOGIN_EMAIL_REQUIRED");
+        assertThat(response.getBody()).doesNotContainKey("accessToken");
+        assertThat(accounts.count()).isZero();
         assertThat(identities.count()).isZero();
     }
 }

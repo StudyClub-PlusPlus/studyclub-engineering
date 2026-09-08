@@ -69,12 +69,15 @@ public class GoogleOAuthClient {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "구글 인증에 실패했습니다 (code 무효/만료).");
         }
 
-        if (info == null || info.get("email") == null) {
+        // email 유무·검증 여부는 AuthService 가 400 SOCIAL_LOGIN_EMAIL_REQUIRED 로 판단한다. 여기선 응답 자체가 없는 경우만.
+        if (info == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "구글 계정 정보를 가져오지 못했습니다.");
         }
         return new GoogleUser(
                 asString(info.get("sub")),
                 asString(info.get("email")),
+                // 없으면 false — 검증 여부를 모르는 이메일은 검증 안 된 것으로 취급
+                Boolean.TRUE.equals(info.get("email_verified")),
                 asString(info.get("name")),
                 asString(info.get("picture")));
     }
@@ -83,6 +86,7 @@ public class GoogleOAuthClient {
         return o == null ? null : String.valueOf(o);
     }
 
-    public record GoogleUser(String sub, String email, String name, String picture) {
+    /** @param emailVerified 구글이 이메일 소유를 확인했는지. Gmail 은 항상 true, 외부 이메일로 만든 계정은 false 일 수 있다 */
+    public record GoogleUser(String sub, String email, boolean emailVerified, String name, String picture) {
     }
 }

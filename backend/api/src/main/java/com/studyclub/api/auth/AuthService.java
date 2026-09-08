@@ -49,6 +49,12 @@ public class AuthService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "code 가 필요합니다.");
         }
         GoogleUser g = google.exchange(code, redirectOverride);
+
+        // 특이 케이스 — Gmail 은 항상 검증돼 있고, 외부 이메일로 만든 구글 계정 중 소유 확인을 안 끝낸 경우만 여기 걸린다.
+        // 검증 안 된 이메일은 남의 것일 수 있으니 계정을 찾거나 만들지 않고 가입 자체를 안 받는다 (스펙: 가입 불가).
+        if (g.email() == null || g.email().isBlank() || !g.emailVerified()) {
+            throw new BusinessException(ErrorCode.SOCIAL_LOGIN_EMAIL_REQUIRED, "구글 계정의 이메일이 확인되지 않았습니다.");
+        }
         String email = g.email().toLowerCase();
 
         assertBackOfficePermitted(email, platform);
