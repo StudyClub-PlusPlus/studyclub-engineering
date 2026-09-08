@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import {
   attendanceRate,
+  attendancePoint,
   getStudyCrew,
   publishState,
   recruitState,
@@ -52,39 +53,42 @@ export function StudyConsole({ study }: { study: Study }) {
   const deadline = toISODate(study.recruitment?.deadline);
   const scheduled = publishState(study) === 'scheduled';
 
-  // 스터디 전체 출석률 — 크루별 출석률의 평균이 아니라 **전체 체크 건수 기준**.
+  // 스터디 전체 출석률 — 크루별 출석률의 평균이 아니라 **전체 대상 회차 기준**.
   // 평균을 쓰면 한 번만 나온 사람과 열 번 나온 사람이 같은 무게가 된다.
-  // 지각은 참석으로 센다(개인 출석률과 같은 기준).
+  // 분자: present + late × W. 개인 출석률과 같은 기준이다.
   const overall = useMemo(() => {
-    let present = 0;
+    let score = 0;
     let total = 0;
     for (const c of active) {
       for (const v of Object.values(attendance[c.id] ?? {})) {
+        if (v === 'excused') continue;
         total += 1;
-        if (v !== 'absent') present += 1;
+        score += attendancePoint(v);
       }
     }
-    return total === 0 ? undefined : Math.round((present / total) * 100);
+    return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [active, attendance]);
 
   function setStatus(crewId: string, status: CrewStatus) {
     setCrew((list) => list.map((c) => (c.id === crewId ? { ...c, status } : c)));
   }
 
-  function toggleAttendance(crewId: string, sessionId: string) {
+  function toggleAttendance(crewId: string, meetingId: string) {
     setAttendance((a) => {
       const row = { ...(a[crewId] ?? {}) };
-      // 미체크 → 출석 → 지각 → 결석 → 미체크. 잘못 누른 것을 되돌릴 수 있어야 한다.
+      // 미체크 → 출석 → 지각 → 결석 → 휴가 → 미체크. 잘못 누른 것을 되돌릴 수 있어야 한다.
       const next: AttendanceStatus | undefined =
-        row[sessionId] === undefined
+        row[meetingId] === undefined
           ? 'present'
-          : row[sessionId] === 'present'
+          : row[meetingId] === 'present'
             ? 'late'
-            : row[sessionId] === 'late'
+            : row[meetingId] === 'late'
               ? 'absent'
-              : undefined;
-      if (next === undefined) delete row[sessionId];
-      else row[sessionId] = next;
+              : row[meetingId] === 'absent'
+                ? 'excused'
+                : undefined;
+      if (next === undefined) delete row[meetingId];
+      else row[meetingId] = next;
       return { ...a, [crewId]: row };
     });
   }
@@ -125,7 +129,7 @@ export function StudyConsole({ study }: { study: Study }) {
           label='진행 일정'
           value={study.schedule ? tx(study.schedule) : '미정 · 신청자 조율'}
           small
-          sub={`${initial.sessions.length}회차`}
+          sub={`${initial.meetings.length}회차`}
         />
         <Stat label='참석자' value={`${active.length}/${initial.capacity}`} />
         <Stat label='승인 대기' value={`${pending.length}`} tone={pending.length > 0 ? 'warn' : undefined} />
@@ -158,7 +162,7 @@ export function StudyConsole({ study }: { study: Study }) {
           <AttendanceTab
             study={study}
             crew={active}
-            sessions={initial.sessions}
+            meetings={initial.meetings}
             attendance={attendance}
             onToggle={toggleAttendance}
           />

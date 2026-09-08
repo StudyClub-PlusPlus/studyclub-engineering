@@ -7,6 +7,7 @@ import {
   MEMBER_REGIONS,
   events,
   getStudyCrew,
+  attendancePoint,
   publishState,
   recruitState,
   studies,
@@ -71,13 +72,13 @@ function aggregate() {
         regionCount[c.region] += 1;
       }
       for (const v of Object.values(attendance[c.id] ?? {})) {
+        if (v === 'excused') continue;
         checked += 1;
         bucket.checked += 1;
-        // 지각도 참석으로 센다 — 출석부의 출석률과 같은 기준
-        if (v !== 'absent') {
-          present += 1;
-          bucket.present += 1;
-        }
+        // 출석률 = (present + late × W) / 대상 회차
+        const pt = attendancePoint(v);
+        present += pt;
+        bucket.present += pt;
       }
     }
     byCategory.set(category, bucket);
