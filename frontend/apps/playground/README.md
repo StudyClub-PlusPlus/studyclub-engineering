@@ -109,12 +109,12 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 화면 아래 **설명 보기** 버튼(단축키 <kbd>A</kbd>)을 누르면 요소마다 번호 배지가 붙고
 오른쪽에 그 번호의 설명이 열립니다. 기획서의 "1 · 1-1 · 1-2" 번호 규칙을 화면 위에서 그대로 씁니다.
 
-지금 명세가 있는 화면은 셋입니다.
+지금 명세가 있는 화면은 아래입니다.
 
 | 화면 | 주소 | 명세 출처 |
 |---|---|---|
 | 스터디 등록 모달 | `/proto/console/studies?new=1` | Story PRD 「운영자로서, 스터디를 등록할 수 있다.」 |
-| 내 스터디 · 참여 모음 | `/proto/core/ko/my/joined` | 코드 (`lib/joined.ts`) |
+| 내 스터디 · 참여 모음 | `/proto/core/ko/my/joined` | 코드 (`lib/joined.ts`, `lib/attendance-book.ts`) |
 | 내 스터디 · 출석 | `/proto/core/ko/my/studies` | 코드 (`lib/attendance.ts`) |
 | 스터디 운영 | `/proto/console/studies/{id}` | 코드 (`StudyConsole.tsx`) |
 
