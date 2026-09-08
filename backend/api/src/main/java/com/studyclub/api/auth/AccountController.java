@@ -1,7 +1,6 @@
 package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
-import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,8 +27,7 @@ public class AccountController {
     @GetMapping
     public List<AccountView> list() {
         return accounts.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
-                .map(u -> new AccountView(u.getId(), u.getEmail(), u.getNickname(), u.getProfileImgUrl(),
-                        u.getSystemRole().name(), String.valueOf(u.getCreatedAt())))
+                .map(AccountView::from)
                 .toList();
     }
 }
