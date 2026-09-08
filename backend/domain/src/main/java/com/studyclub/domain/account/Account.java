@@ -103,6 +103,24 @@ public class Account extends BaseEntity {
         this.nickname = clip(nickname, NICKNAME_MAX);
     }
 
+    /**
+     * 온보딩 완료 — 닉네임·타임존 확정 + 완료 시각 기록. 멱등: 이미 완료된 계정은 아무것도
+     * 바꾸지 않고 {@code false} 를 돌려준다. 호출자는 이 반환값으로 {@code UserRegisteredEvent}를
+     * 낼지 판단한다 — ACCOUNT 당 한 번만 실제로 전이가 일어나야 하기 때문이다.
+     *
+     * <p>닉네임·타임존 형식 검증은 호출자(DTO 의 {@code @Valid})가 이미 끝낸 값을 넘긴다고
+     * 가정한다 — 이 메서드는 "온보딩을 완료했는가"라는 상태 전이만 책임진다.
+     */
+    public boolean completeOnboarding(String nickname, String timeZone, Instant now) {
+        if (onboardingCompletedAt != null) {
+            return false;
+        }
+        this.nickname = nickname;
+        this.timeZone = timeZone;
+        this.onboardingCompletedAt = now;
+        return true;
+    }
+
     public void setProfileImgUrl(String profileImgUrl) {
         this.profileImgUrl = dropIfTooLong(profileImgUrl, PROFILE_IMG_URL_MAX);
     }

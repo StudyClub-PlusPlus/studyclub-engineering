@@ -108,7 +108,6 @@ public class AuthService {
     }
 
     private AccountView toView(Account account) {
-        return new AccountView(account.getId(), account.getEmail(), account.getNickname(), account.getProfileImgUrl(),
-                account.getSystemRole().name(), String.valueOf(account.getCreatedAt()));
+        return AccountView.from(account);
     }
 }

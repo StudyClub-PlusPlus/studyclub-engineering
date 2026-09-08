@@ -1,5 +1,6 @@
 package com.studyclub.api.participant;
 
+import com.studyclub.api.auth.security.RequireOnboarding;
 import com.studyclub.api.participant.ParticipantHubResponses.ParticipantHubOverviewResponse;
 import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyCohortDetailResponse;
 import com.studyclub.common.error.BusinessException;
@@ -13,8 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 회원 전용 — 온보딩 미완료 계정은 {@code @RequireOnboarding} 가드가 403 ONBOARDING_REQUIRED 로 막는다. */
 @Tag(name = "참가자 허브", description = "로그인한 참가자의 스터디·신청·일정·북마크")
 @SecurityRequirement(name = "bearerAuth")
+@RequireOnboarding
 @RestController
 @RequestMapping("/api/me")
 public class ParticipantHubController {
