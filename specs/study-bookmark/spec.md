@@ -75,7 +75,6 @@
 |------|-----------|------|
 | 401 | `UNAUTHORIZED` | 토큰 없음 또는 만료 |
 | 400 | `INVALID_INPUT` | `offset < 0` 또는 `limit ≤ 0` 또는 `limit > 100` |
-| 404 | `NOT_FOUND` | 북마크된 `STUDY_COHORT_ID` 에 해당하는 기수가 STUDY_COHORT 테이블에 없음 (고아 북마크) |
 | 500 | `INTERNAL_ERROR` | 예기치 않은 서버 오류 |
 
 ### 프론트엔드 사용처

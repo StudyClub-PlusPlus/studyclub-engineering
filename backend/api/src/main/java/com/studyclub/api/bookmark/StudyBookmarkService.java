@@ -16,7 +16,7 @@ public class StudyBookmarkService {
 
     public Result getStudyBookmarks(Long accountId, int offset, int limit) {
         List<StudyBookmarkResponse.StudyBookmarkItem> items = studyBookmarkRepository
-                .findBookmarkItems(accountId, limit, offset)
+                .findBookmarkItems(accountId, offset, limit)
                 .stream()
                 .map(StudyBookmarkResponse.StudyBookmarkItem::from)
                 .toList();

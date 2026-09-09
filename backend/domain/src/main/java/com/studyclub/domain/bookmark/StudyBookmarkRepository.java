@@ -15,8 +15,8 @@ public interface StudyBookmarkRepository extends JpaRepository<StudyBookmark, Lo
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<StudyBookmarkSummary> findBookmarkItems(@Param("accountId") Long accountId,
-                                                   @Param("limit") int limit,
-                                                   @Param("offset") int offset);
+                                                   @Param("offset") int offset,
+                                                   @Param("limit") int limit);
 
     long countByAccountId(Long accountId);
 
