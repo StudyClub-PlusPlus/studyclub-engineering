@@ -2186,6 +2186,7 @@ export {
   getStudyCrew,
   attendanceRate,
   attendancePoint,
+  LATE_WEIGHT,
   isHotStudy,
   demoCrewRelation,
   demoMyAttendance,
