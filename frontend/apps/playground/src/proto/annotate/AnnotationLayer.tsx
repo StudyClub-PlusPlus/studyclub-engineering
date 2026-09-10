@@ -22,7 +22,7 @@ function byNumber(a: string, b: string): number {
 }
 
 export function AnnotationLayer() {
-  const { spec, on } = useAnnotate();
+  const { specs, spec, activeIndex, setActiveIndex, on } = useAnnotate();
   const [hits, setHits] = useState<Hit[]>([]);
   const specRef = useRef(spec);
   specRef.current = spec;
@@ -60,8 +60,21 @@ export function AnnotationLayer() {
         if (el) push(e.n, el);
       });
 
+      const scope = specRef.current?.scope;
       document.querySelectorAll('[data-anno]').forEach((el) => {
-        const n = el.getAttribute('data-anno');
+        const raw = el.getAttribute('data-anno');
+        if (!raw) return;
+        // `data-anno="attendee:2 crew:1"` — 한 요소가 여러 Story 에 나올 수 있다.
+        // 번호는 Story 마다 1 부터 다시 매기므로, 지금 고른 Story 의 번호만 꺼낸다.
+        const n = raw
+          .trim()
+          .split(/\s+/)
+          .map((tok) => {
+            const i = tok.indexOf(':');
+            if (i === -1) return scope ? null : tok; // 이름공간 없는 옛 표기
+            return tok.slice(0, i) === scope ? tok.slice(i + 1) : null;
+          })
+          .find((v): v is string => v !== null);
         if (!n) return;
         // 같은 번호가 여러 번 나오는 건 목록이 반복되기 때문이다(스터디 카드 N장).
         // 번호는 **요소의 종류**에 붙는 것이라 첫 번째에만 배지를 단다 —
@@ -87,11 +100,18 @@ export function AnnotationLayer() {
   const entries = [...spec.entries].sort((a, b) => byNumber(a.n, b.n));
   const hitMap = new Map(hits.map((h) => [h.n, h]));
   const specNums = new Set(entries.map((e) => e.n));
+  // 같은 지면의 다른 Story 가 설명하는 번호. 이건 "설명 없는 요소"가 아니다.
+  const documentedAnywhere = new Set(specs.flatMap((s) => s.entries.map((e) => e.n)));
+
+  // **고른 Story 의 번호만 그린다.** 다른 Story 것까지 그리면 캡처에 남의 번호가 섞이고,
+  // 문서에 「이 번호는 범위 밖」 같은 변명을 쓰게 된다.
+  const shown = hits.filter((h) => specNums.has(h.n));
 
   // 스킬의 두 가지 검증을 그대로 화면에 세운다.
   const missing = entries.filter((e) => !hitMap.has(e.n) && !e.when); // 스펙엔 있는데 화면에 없다
   const conditional = entries.filter((e) => !hitMap.has(e.n) && e.when); // 조건이 안 맞아 지금은 안 보인다
-  const undocumented = hits.filter((h) => !specNums.has(h.n)); // 화면엔 있는데 스펙에 없다
+  // 어느 Story 도 설명하지 않는 요소 — 진짜 미설명이다
+  const undocumented = hits.filter((h) => !documentedAnywhere.has(h.n));
 
   return (
     <>
@@ -101,9 +121,8 @@ export function AnnotationLayer() {
         className='pointer-events-none z-[60]'
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 0 }}
       >
-        {hits.map((h) => {
-          const known = specNums.has(h.n);
-          const color = known ? 'var(--color-accent)' : 'var(--color-danger-500, #dc2626)';
+        {shown.map((h) => {
+          const color = 'var(--color-accent)';
           return (
             <div key={h.n + h.rect.top}>
               <div
@@ -142,7 +161,32 @@ export function AnnotationLayer() {
         <header className='border-b px-5 py-4' style={{ borderColor: 'var(--color-border)' }}>
           <div className='text-[11px] font-semibold text-[var(--color-fg-subtle)]'>설명</div>
           <h2 className='mt-0.5 text-base font-bold'>{spec.screen}</h2>
-          {spec.story ? (
+
+          {/* 스토리 칩 — 한 지면에 Story 가 여럿이면 고르는 자리.
+              번호는 Story 마다 따로 매겨지므로, 고른 Story 것만 화면에 뜬다. */}
+          {specs.length > 1 && (
+            <div className='mt-2.5 flex flex-wrap gap-1.5'>
+              {specs.map((s, i) => {
+                const active = i === activeIndex;
+                return (
+                  <button
+                    key={(s.story ?? s.chip ?? s.screen) + i}
+                    type='button'
+                    onClick={() => setActiveIndex(i)}
+                    className='rounded-pill px-2.5 py-1 text-[11px] font-semibold transition-colors'
+                    style={
+                      active
+                        ? { background: 'var(--color-accent)', color: '#fff' }
+                        : { background: 'var(--color-surface-2, #f1f2f6)', color: 'var(--color-fg-muted)' }
+                    }
+                  >
+                    {s.story ?? s.chip ?? s.screen}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {specs.length === 1 && spec.story ? (
             <div className='mt-1 text-[11px] text-[var(--color-fg-subtle)]'>{spec.story}</div>
           ) : null}
         </header>
@@ -165,28 +209,26 @@ export function AnnotationLayer() {
 
           {conditional.length > 0 && (
             <p className='mt-4 text-[12px] leading-relaxed text-[var(--color-fg-subtle)]'>
-              지금 화면에 없는 조건부 번호 — {conditional.map((e) => e.n).join(', ')}. 탭을 바꾸거나 상태를 만들면 나타난다.
+              지금 화면에 없는 조건부 번호 — {conditional.map((e) => e.n).join(', ')}. 탭을 바꾸거나 상태를 만들면
+              나타난다.
             </p>
           )}
 
           {(missing.length > 0 || undocumented.length > 0) && (
-            <section
-              className='mt-6 rounded-lg border p-3'
-              style={{ borderColor: 'var(--color-danger-500, #dc2626)' }}
-            >
+            <section className='mt-6 rounded-lg border p-3' style={{ borderColor: 'var(--color-danger-500, #dc2626)' }}>
               <h3 className='text-[13px] font-bold' style={{ color: 'var(--color-danger-600, #b91c1c)' }}>
                 대조 실패
               </h3>
               {missing.length > 0 && (
                 <p className='mt-1.5 text-[12px] leading-relaxed'>
-                  <strong>화면에 없는 번호</strong> — {missing.map((e) => e.n).join(', ')}.
-                  명세만 있고 붙일 요소가 없다. 화면이 바뀌었거나 <code>data-anno</code> 를 안 달았다.
+                  <strong>화면에 없는 번호</strong> — {missing.map((e) => e.n).join(', ')}. 명세만 있고 붙일 요소가
+                  없다. 화면이 바뀌었거나 <code>data-anno</code> 를 안 달았다.
                 </p>
               )}
               {undocumented.length > 0 && (
                 <p className='mt-1.5 text-[12px] leading-relaxed'>
-                  <strong>명세 없는 번호</strong> — {undocumented.map((h) => h.n).join(', ')}.
-                  요소에 번호는 붙었는데 설명이 없다 (미설명 요소).
+                  <strong>명세 없는 번호</strong> — {undocumented.map((h) => h.n).join(', ')}. 요소에 번호는 붙었는데
+                  설명이 없다 (미설명 요소).
                 </p>
               )}
             </section>
