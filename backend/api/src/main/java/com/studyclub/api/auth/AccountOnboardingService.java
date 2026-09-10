@@ -35,6 +35,15 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>중복 방지 기준은 {@code ONBOARDING_COMPLETED_AT} 이 NULL → 값으로 바뀐 "그 요청" 하나뿐</li>
  *   <li>이벤트는 커밋 후 발행 (리스너가 {@code @TransactionalEventListener(AFTER_COMMIT)})</li>
  * </ul>
+ *
+ * <p><b>계정 조회는 항상 락을 먼저 잡는다 — 락 없는 선조회를 두지 않는다.</b> 처음엔 "이미
+ * 완료된 흔한 경로는 락 없이 먼저 끝내자"는 최적화로 {@code findByEmail} 을 먼저 부르고
+ * 나서야 {@code findByEmailForUpdate} 를 불렀는데, 같은 트랜잭션(=같은 영속성 컨텍스트)
+ * 안에서는 두 번째 조회가 실제로 {@code SELECT ... FOR UPDATE} 를 DB 에 보내 락은 제대로
+ * 걸어도, Hibernate 가 1차 캐시(identity map)에 이미 있는 엔티티를 그대로 돌려주기 때문에
+ * 자바 객체의 필드값은 최초(락 없는) 조회 시점 그대로 남는다. 그 결과 두 트랜잭션이 동시에
+ * 미완료 상태를 읽고 한쪽이 커밋한 뒤 잠금이 풀려도, 뒤늦게 깨어난 쪽이 여전히 "미완료"로
+ * 잘못 판단해 멱등이 깨진다(리뷰에서 재현됨). 그래서 락 조회 하나만 쓴다.
  */
 @Service
 public class AccountOnboardingService {
@@ -60,25 +69,19 @@ public class AccountOnboardingService {
     public AccountView complete(String email, OnboardingRequest request) {
         String normalizedEmail = email.toLowerCase();
 
-        // 흔한 경로(이미 완료된 계정의 재호출)는 검증도 락도 없이 먼저 끝낸다 — 요청 바디가
-        // 형식적으로 틀려도(예: 약관 필드 false) 이미 완료된 계정이면 그대로 통과해야 한다.
-        Account account = requireAccountByEmail(normalizedEmail);
+        // 처음부터 잠금 조회 하나만 쓴다 — 락 없는 선조회를 두면 Hibernate 1차 캐시 때문에
+        // 이 잠금 조회가 사실상 무의미해진다 (클래스 Javadoc 참고).
+        Account account = requireAccountByEmailForUpdate(normalizedEmail);
         if (account.getOnboardingCompletedAt() != null) {
             return AccountView.from(account);
         }
 
         validateOrThrow(request);
 
-        // 아직 미완료면 행을 잠그고 재확인 — 두 탭이 동시에 눌러도 한쪽만 통과시킨다.
-        Account lockedAccount = requireAccountByEmailForUpdate(normalizedEmail);
-        if (lockedAccount.getOnboardingCompletedAt() != null) {
-            return AccountView.from(lockedAccount);
+        if (applyOnboarding(account, request)) {
+            recordConsentsAndPublishEvent(account, request);
         }
-
-        if (applyOnboarding(lockedAccount, request)) {
-            recordConsentsAndPublishEvent(lockedAccount, request);
-        }
-        return AccountView.from(lockedAccount);
+        return AccountView.from(account);
     }
 
     /**
@@ -96,11 +99,6 @@ public class AccountOnboardingService {
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .collect(Collectors.joining(", "));
         throw new BusinessException(ErrorCode.INVALID_INPUT, message);
-    }
-
-    private Account requireAccountByEmail(String email) {
-        return accounts.findByEmail(email)
-                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
     }
 
     private Account requireAccountByEmailForUpdate(String email) {

@@ -9,11 +9,18 @@ import com.studyclub.domain.account.ConsentType;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.account.UserRegisteredEvent;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +36,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 /**
@@ -263,5 +271,41 @@ class AccountOnboardingIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("name", originalNickname);
+    }
+
+    @Test
+    @DisplayName("동시성 - 같은 계정에 동시에 완료 요청이 들어와도 한쪽만 실제로 저장되고 나머지는 그 결과를 그대로 받는다 "
+            + "— 리뷰에서 지적된 회귀: 락 없는 findByEmail 을 먼저 부르면 Hibernate 1차 캐시가 이후의 "
+            + "findByEmailForUpdate 결과를 무시해 두 요청 다 '미완료'로 착각하고 409 로 충돌한다")
+    void concurrentCompletionRequestsAreConsistent() throws Exception {
+        Account account = seedUnonboardedAccount();
+        String nickname = uniqueNickname();
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        CyclicBarrier barrier = new CyclicBarrier(2);
+        Callable<ResponseEntity<Map>> callOnboarding = () -> {
+            barrier.await(5, TimeUnit.SECONDS);
+            return rest.exchange(
+                    "/accounts/onboarding", HttpMethod.POST,
+                    authenticatedBody(account, validRequest(nickname)), Map.class);
+        };
+
+        try {
+            List<Future<ResponseEntity<Map>>> futures = pool.invokeAll(List.of(callOnboarding, callOnboarding));
+            List<ResponseEntity<Map>> responses = new ArrayList<>();
+            for (Future<ResponseEntity<Map>> future : futures) {
+                responses.add(future.get(10, TimeUnit.SECONDS));
+            }
+
+            assertThat(responses).allSatisfy(r -> assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK));
+            assertThat(responses).allSatisfy(r -> assertThat(r.getBody()).containsEntry("name", nickname));
+        } finally {
+            pool.shutdown();
+        }
+
+        assertThat(consents.findByAccountId(account.getId())).hasSize(3);
+        assertThat(eventRecorder.received().stream()
+                .filter(e -> e.accountId().equals(account.getId())))
+                .hasSize(1);
     }
 }
