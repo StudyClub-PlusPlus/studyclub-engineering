@@ -24,8 +24,10 @@ class StudyBookmarkControllerTest {
     void rejectsNegativeOffset() {
         assertThatThrownBy(() -> controller.getBookmarks(-1, 20, null))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).errorCode())
-                        .isEqualTo(ErrorCode.INVALID_INPUT));
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
     }
 
     @Test
@@ -33,8 +35,10 @@ class StudyBookmarkControllerTest {
     void rejectsZeroLimit() {
         assertThatThrownBy(() -> controller.getBookmarks(0, 0, null))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).errorCode())
-                        .isEqualTo(ErrorCode.INVALID_INPUT));
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
     }
 
     @Test
@@ -42,7 +46,9 @@ class StudyBookmarkControllerTest {
     void rejectsLimitExceedingMax() {
         assertThatThrownBy(() -> controller.getBookmarks(0, 101, null))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).errorCode())
-                        .isEqualTo(ErrorCode.INVALID_INPUT));
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
     }
 }

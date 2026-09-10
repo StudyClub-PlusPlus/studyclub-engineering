@@ -51,8 +51,9 @@ class StudyBookmarkIntegrationTest {
             StudyCohort cohort = resource.saveCohort(study.getId());
             resource.saveBookmark(cohort.getId());
 
-            var response = rest.exchange(
-                    "/api/me/bookmarks", HttpMethod.GET, authenticatedRequest(), Map.class);
+            var response =
+                    rest.exchange(
+                            "/api/me/bookmarks", HttpMethod.GET, authenticatedRequest(), Map.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).containsKeys("items", "total", "offset", "limit");
@@ -60,7 +61,8 @@ class StudyBookmarkIntegrationTest {
             assertThat(response.getBody().get("offset")).isEqualTo(0);
             assertThat(response.getBody().get("limit")).isEqualTo(20);
 
-            List<Map<String, Object>> items = (List<Map<String, Object>>) response.getBody().get("items");
+            List<Map<String, Object>> items =
+                    (List<Map<String, Object>>) response.getBody().get("items");
             assertThat(items).hasSize(1);
             assertThat(items.get(0)).containsEntry("title", "Java Study");
             assertThat(items.get(0)).containsEntry("category", "BACKEND");
@@ -70,8 +72,9 @@ class StudyBookmarkIntegrationTest {
     @Test
     @DisplayName("성공 - 북마크가 없으면 빈 목록과 total 0을 반환한다")
     void testReturnsEmptyList() {
-        var response = rest.exchange(
-                "/api/me/bookmarks", HttpMethod.GET, authenticatedRequest(), Map.class);
+        var response =
+                rest.exchange(
+                        "/api/me/bookmarks", HttpMethod.GET, authenticatedRequest(), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().get("total")).isEqualTo(0);
@@ -90,15 +93,20 @@ class StudyBookmarkIntegrationTest {
             resource.saveBookmark(resource.saveCohort(studyC.getId()).getId());
 
             // offset=1, limit=1 → 두 번째 항목(Study B)만 반환
-            var response = rest.exchange(
-                    "/api/me/bookmarks?offset=1&limit=1", HttpMethod.GET, authenticatedRequest(), Map.class);
+            var response =
+                    rest.exchange(
+                            "/api/me/bookmarks?offset=1&limit=1",
+                            HttpMethod.GET,
+                            authenticatedRequest(),
+                            Map.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().get("total")).isEqualTo(3);
             assertThat(response.getBody().get("offset")).isEqualTo(1);
             assertThat(response.getBody().get("limit")).isEqualTo(1);
 
-            List<Map<String, Object>> items = (List<Map<String, Object>>) response.getBody().get("items");
+            List<Map<String, Object>> items =
+                    (List<Map<String, Object>>) response.getBody().get("items");
             assertThat(items).hasSize(1);
             assertThat(items.get(0)).containsEntry("title", "Study B");
         }
@@ -116,16 +124,28 @@ class StudyBookmarkIntegrationTest {
         private final List<Long> studyIds = new ArrayList<>();
 
         Study saveStudy(String slug, String title, StudyCategory category) {
-            Study study = studyRepository.save(
-                    new Study(slug, title, null, category, StudyKind.STUDY, null, false));
+            Study study =
+                    studyRepository.save(
+                            new Study(slug, title, null, category, StudyKind.STUDY, null, false));
             studyIds.add(study.getId());
             return study;
         }
 
         StudyCohort saveCohort(Long studyId) {
-            StudyCohort cohort = studyCohortRepository.save(
-                    new StudyCohort(studyId, DeliveryFormat.ONLINE, StudyCohortStatus.OPEN,
-                            null, null, 10, Instant.now().plusSeconds(3600), null, null, null, null));
+            StudyCohort cohort =
+                    studyCohortRepository.save(
+                            new StudyCohort(
+                                    studyId,
+                                    DeliveryFormat.ONLINE,
+                                    StudyCohortStatus.OPEN,
+                                    null,
+                                    null,
+                                    10,
+                                    Instant.now().plusSeconds(3600),
+                                    null,
+                                    null,
+                                    null,
+                                    null));
             cohortIds.add(cohort.getId());
             return cohort;
         }

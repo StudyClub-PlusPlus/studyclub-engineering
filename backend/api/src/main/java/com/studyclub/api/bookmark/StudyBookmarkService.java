@@ -1,7 +1,7 @@
 package com.studyclub.api.bookmark;
 
-import java.util.List;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -15,11 +15,10 @@ public class StudyBookmarkService {
     }
 
     public Result getStudyBookmarks(Long accountId, int offset, int limit) {
-        List<StudyBookmarkResponse.StudyBookmarkItem> items = studyBookmarkRepository
-                .findBookmarkItems(accountId, offset, limit)
-                .stream()
-                .map(StudyBookmarkResponse.StudyBookmarkItem::from)
-                .toList();
+        List<StudyBookmarkResponse.StudyBookmarkItem> items =
+                studyBookmarkRepository.findBookmarkItems(accountId, offset, limit).stream()
+                        .map(StudyBookmarkResponse.StudyBookmarkItem::from)
+                        .toList();
         long total = studyBookmarkRepository.countByAccountId(accountId);
         return new Result(new StudyBookmarkResponse(items, total, offset, limit), HttpStatus.OK);
     }

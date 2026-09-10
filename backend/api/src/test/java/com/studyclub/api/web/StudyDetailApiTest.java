@@ -22,16 +22,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
-
-import com.studyclub.domain.study.DeliveryFormat;
-import com.studyclub.domain.study.Study;
-import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyCohort;
-import com.studyclub.domain.study.StudyCohortRepository;
-import com.studyclub.domain.study.StudyCohortStatus;
-import com.studyclub.domain.study.StudyKind;
-import com.studyclub.domain.study.StudyRepository;
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 class StudyDetailApiTest {
