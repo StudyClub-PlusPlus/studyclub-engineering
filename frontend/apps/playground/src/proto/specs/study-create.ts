@@ -46,7 +46,7 @@ export const STUDY_CREATE_SPEC: ScreenSpec = {
     {
       n: '3',
       title: '모집 마감일',
-      display: ['날짜 입력 (152px, 좌측 정렬)'],
+      display: ['날짜 입력'],
       behavior: ['미설정 시 마감 없이 계속 모집'],
       policy: [
         '이 값 하나로 모집 상태가 정해진다 — 등록 시 상태를 고르게 하지 않는다',

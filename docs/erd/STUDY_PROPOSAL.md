@@ -7,14 +7,13 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| PROPOSER_USER_ID | BIGINT FK → USER | N | 제안자 |
+| PROPOSER_ACCOUNT_ID | BIGINT FK → ACCOUNT | N | 제안자 |
 | CONTENT | TEXT | N | 제안 내용 |
 | PROPOSED_DATE | DATE | N | 희망 시작 시기 |
 | STATUS | VARCHAR(20) | N | 아래 |
-| CREATED_AT / UPDATED_AT | DATETIME | N | |
 
 ## 관계
-- N : 1 [USER](./USER.md)
+- N : 1 [ACCOUNT](./ACCOUNT.md)
 - 1 : N [STUDY_PROPOSAL_INTEREST](./STUDY_PROPOSAL_INTEREST.md)
 - 채택 시 → [STUDY](./STUDY.md) (역참조 컬럼 `STUDY_ID` 추가 미확정)
 
@@ -41,4 +40,3 @@ stateDiagram-v2
 ## 미확정
 - drawio 에는 `TITLE` 이 없다 — 목록에 띄우려면 필요.
 - 채택 시 생성된 STUDY 를 가리키는 `STUDY_ID` 컬럼.
-- 감사 컬럼 (`CREATED_BY` 는 PROPOSER_USER_ID 와 중복이라 생략 가능).

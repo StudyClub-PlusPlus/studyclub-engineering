@@ -27,7 +27,7 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
     core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
     back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
   packages/mock          # 하드코딩 mock 데이터 + 공유 타입
-backend/                 # Spring Boot 3 멀티모듈 (Gradle) — api / domain / common
+backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
 ```
 
@@ -39,16 +39,22 @@ cd frontend && npm install && npm run dev      # turbo (모든 앱)
 #   개별: npm run dev --workspace=core-front
 
 # backend
-cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wrapper 생성 후 ./gradlew)
+cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapper 가 받아온다
 ```
 
 ## 작업 룰
 
+- **푸시 전에 빌드한다** — 백엔드는 `cd backend && ./gradlew check` (테스트 + 포맷 검사),
+  프론트는 `npm test`. 포맷이 걸리면 `./gradlew spotlessApply` 로 고친다.
+  로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
+- **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
 - 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
 - PR 은 CODEOWNERS(@titaniper) 승인 후에만 main 머지 (외부 기여자 포함).
 - CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
+  `backend-PR-CI` 는 PR 마다 `./gradlew check` 를 돌린다 — 컴파일 실패·포맷 위반이 머지되는 걸 막는 게이트.
+  `backend-migration-check` 는 PR 마다 빈 MySQL 에 마이그레이션을 적용해 본다 — 여기서 깨지면 `V*.sql` 을 고친다.
 
 ---
 
@@ -72,9 +78,11 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 | **설계 — 애그리거트·엔티티·값 객체·레이어** | [`docs/backend-development-guide/ddd-guide.md`](docs/backend-development-guide/ddd-guide.md) |
 | 모듈 구조·패키지 규약 | [`docs/backend-development-guide/module-structure.md`](docs/backend-development-guide/module-structure.md) |
 | API 엔드포인트 추가·수정 | [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md) |
+| **스펙 주도 개발 — 코드 전에 스펙** | [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md) |
 | 인증·JWT·OAuth | [`docs/backend-development-guide/auth-guide.md`](docs/backend-development-guide/auth-guide.md) |
 | 보안·개인정보 마스킹 | [`docs/backend-development-guide/security-guide.md`](docs/backend-development-guide/security-guide.md) |
 | OOP·캡슐화·DTO 변환 | [`docs/backend-development-guide/oop-guide.md`](docs/backend-development-guide/oop-guide.md) |
+| 네이밍·주석 규약 | [`docs/backend-development-guide/code-style-guide.md`](docs/backend-development-guide/code-style-guide.md) |
 | 테스트 코드 작성 | [`docs/backend-development-guide/testing-guide.md`](docs/backend-development-guide/testing-guide.md) |
 | 입력 검증 (`@Valid`) | [`docs/backend-development-guide/validation-guide.md`](docs/backend-development-guide/validation-guide.md) |
 | 예외 처리 | [`docs/backend-development-guide/exception-handling-guide.md`](docs/backend-development-guide/exception-handling-guide.md) |
@@ -87,9 +95,10 @@ cd backend && gradle :api:bootRun              # (gradle 미설치면 gradle wra
 
 1. **DDD 먼저** — 애그리거트를 정하고 규칙을 엔티티에 둔다. 서비스는 조립만 한다
 2. **엔티티는 `BaseEntity` 상속** — `createdAt`/`updatedAt` 을 손으로 채우지 않는다
-3. **테이블 이름은 대문자**(`USERS`), 컬럼은 소문자 snake_case
-4. **스키마는 Flyway 가 만든다** — prod·로컬은 `ddl-auto: validate`, **stage 만 `update`**.
-   엔티티를 바꿨으면 같은 PR 에 `V{n}__*.sql` (stage 에서 통과했다고 prod 가 통과하는 게 아니다)
+3. **테이블 이름은 대문자**(`ACCOUNT`), 컬럼은 소문자 snake_case
+4. **스키마를 만드는 주체는 환경마다 하나** — prod·로컬은 Flyway(`validate`), **stage 는
+   Hibernate(`update`, Flyway off)**. 둘 다 켜면 나중에 `Duplicate column` 으로 죽는다.
+   엔티티를 바꿨으면 같은 PR 에 `V{n}__*.sql` — 검증은 `backend-migration-check` CI 가 한다
 5. **외래키는 애그리거트 안에만** — 애그리거트 사이는 ID 참조 + 인덱스
 6. **에러 응답은 `{errorCode, errorMessage}` 하나뿐** — 성공 응답에는 래퍼(`success`)가 없다.
    `BusinessException(ErrorCode.X, "...")` 로 던지면 `GlobalExceptionHandler` 가 변환한다

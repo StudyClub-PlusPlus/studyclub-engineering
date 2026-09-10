@@ -45,8 +45,40 @@
 바디에 `success` 플래그를 두지 않는다 (상태 코드와 중복이고, 어긋나면 어느 쪽이 진실인지 알 수 없다).
 
 ```jsonc
-// 200
+// 200 — 단건 또는 목록 (페이지네이션 불필요)
 [{ "id": 1, "title": "알고리즘 스터디", "status": "RECRUITING" }]
+```
+
+**페이지네이션이 필요한 목록**은 예외적으로 envelope 을 허용한다.
+`items` + 페이지 메타데이터를 함께 돌려줘야 하기 때문이다.
+래퍼 필드명은 `items` 고정, 메타는 `total` · `offset` · `limit` 을 포함해야 한다.
+
+```jsonc
+// 200 — 페이지네이션 목록
+{
+  "items": [{ "title": "java study", "status": "OPEN" }],
+  "total": 42,
+  "offset": 0,
+  "limit": 20
+}
+```
+
+> ⚠️ **Spring `Page<T>` / `Slice<T>` 를 컨트롤러에서 그대로 반환하지 않는다.**
+> Spring 페이지네이션 객체는 `content` · `totalElements` · `pageable` · `sort` 등
+> 프레임워크 고유 필드를 내보낸다. 프론트와의 계약은 위 `items/total/offset/limit`
+> 네 필드뿐이다. 응답 DTO `record` 를 직접 만들어 반환한다.
+
+```java
+// ❌ Spring Page 를 그대로 반환 — content/totalElements/pageable/sort 등 프레임워크 필드가 노출된다
+@GetMapping
+public Page<StudySummary> list(Pageable pageable) { ... }
+
+// ✅ 프로젝트 응답 계약에 맞는 커스텀 DTO
+public record StudyListResponse(List<StudySummary> items, long total, int offset, int limit) {}
+
+@GetMapping
+public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
+                              @RequestParam(defaultValue = "20") int limit) { ... }
 ```
 
 에러는 **어디서 나든 이 모양 하나**:
@@ -71,16 +103,30 @@
 - `GET /`, `GET /api/health`, `GET /actuator/**` — 헬스·상태
 - `GET /api/studies` — 스터디 목록
 - `POST /auth/social-login`, `POST /auth/refresh` — 로그인·토큰 갱신
+- `GET /v3/api-docs`, `GET /scalar`, `GET /webjars/**` — API 문서와 그 JS 번들
 
 화이트리스트 밖은 전부 인증이 필요하다. **없는 경로도 404 가 아니라 401 이 나간다** —
 어떤 엔드포인트가 있는지 밖에서 훑을 수 없게 하기 위해서다.
 
 ## 현재 엔드포인트 목록
 
+**정본은 실행 중인 서버의 API 문서다** — 아래 표는 손으로 관리하므로 반드시 뒤처진다.
+
+| | |
+|---|---|
+| Scalar UI | `http://localhost:8080/scalar` |
+| OpenAPI 스펙(JSON) | `http://localhost:8080/v3/api-docs` |
+
+스펙은 springdoc 이 컨트롤러에서 생성한다. 인증이 필요한 엔드포인트에는 메서드에
+`@SecurityRequirement(name = "bearerAuth")` 를 달아야 문서에 자물쇠가 붙는다 (안 달면 공개로 보인다).
+문서를 감춰야 하면 `API_DOCS_ENABLED=false` 로 스펙·UI 가 함께 꺼진다.
+
 | Method | Path | 설명 | 인증 |
 |--------|------|------|------|
 | GET | `/api/health` | 헬스 체크 | X |
 | GET | `/api/studies` | 스터디 목록 (현재 하드코딩 픽스처) | X |
+| GET | `/api/me/studies` | 내 참여·신청·일정·북마크 목록 (목업) | O |
+| GET | `/api/me/study-cohorts/{cohortId}` | 내 수강 기수·출석 상세 (목업) | O |
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
 | POST | `/auth/refresh` | access token 재발급 | X |
 | GET | `/auth/me` | 내 정보 조회 | O |

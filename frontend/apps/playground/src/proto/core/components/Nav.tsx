@@ -49,7 +49,6 @@ export function Nav({
           >
             {other.toUpperCase()}
           </Link>
-          <MyStudiesLink locale={locale} />
           <a
             href={discordUrl}
             target='_blank'
@@ -59,6 +58,7 @@ export function Nav({
           >
             {m('nav.join', locale)}
           </a>
+          <MyStudiesLink locale={locale} />
           <NavAuth locale={locale} />
         </div>
       </div>

@@ -22,7 +22,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
-      - "${MYSQL_PORT:-3310}:3306"
+      - "${MYSQL_PORT:-23310}:3306"
     volumes:
       - studyclub-mysql-data:/var/lib/mysql
     healthcheck:
@@ -50,7 +50,7 @@ services:
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "8080:8080"
+      - "${API_PORT:-28080}:8080"
 
   # 단일 컨테이너에서 turbo 로 두 앱 동시 dev (install race 회피). per-app 스토리지
   # prefix(sc_/bo_)는 코드 상수라 공유 env 여도 무방.
@@ -69,15 +69,29 @@ services:
       # 서버측(Next route handler)이 컨테이너 내부에서 백엔드에 닿는 URL
       API_BASE_URL: http://api:8080
       # 브라우저용 (호스트에서 접근)
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:28080}
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       NEXT_PUBLIC_OAUTH_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
     ports:
-      - "4700:4700"   # core-front
-      - "4701:4701"   # back-office-front
+      - "${CORE_FRONT_PORT:-24700}:4700"   # core-front
+      - "${BO_FRONT_PORT:-24701}:4701"     # back-office-front
     volumes:
       - ./frontend:/app
       - studyclub-frontend-node-modules:/app/node_modules
+
+  discord:
+    image: studyclub-discord
+    container_name: studyclub-discord
+    build: ./discord
+    env_file: ./.env
+    ports:
+      - "${DISCORD_PORT:-24800}:4800"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4800/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   studyclub-mysql-data:

@@ -7,8 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
@@ -16,26 +17,25 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
  * API 코어 경로 통합 테스트 — <b>성공 하나, 실패 여럿.</b>
  *
  * <p>여기서 지키는 것은 기능이 아니라 <b>계약</b>이다:
+ *
  * <ol>
- *   <li>성공 응답에 {@code success} 같은 래퍼 필드가 없다 (payload 직접)</li>
- *   <li>실패 응답은 어디서 나든 {@code {errorCode, errorMessage}} 한 모양이다 —
- *       컨트롤러가 던지든, 시큐리티 필터가 막든</li>
+ *   <li>성공 응답에 {@code success} 같은 래퍼 필드가 없다 (payload 직접)
+ *   <li>실패 응답은 어디서 나든 {@code {errorCode, errorMessage}} 한 모양이다 — 컨트롤러가 던지든, 시큐리티 필터가 막든
  * </ol>
  *
- * <p>2번이 특히 잘 깨진다. 시큐리티 필터는 {@code @RestControllerAdvice} 앞에서 응답을 끝내기
- * 때문에, 핸들러만 고치고 EntryPoint 를 잊으면 <b>인증 실패만 조용히 빈 바디</b>가 된다.
+ * <p>2번이 특히 잘 깨진다. 시큐리티 필터는 {@code @RestControllerAdvice} 앞에서 응답을 끝내기 때문에, 핸들러만 고치고 EntryPoint 를
+ * 잊으면 <b>인증 실패만 조용히 빈 바디</b>가 된다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestRestTemplate
 class ApiIntegrationTest {
 
-    @Autowired
-    TestRestTemplate rest;
+    @Autowired TestRestTemplate rest;
 
     /**
-     * 레거시 {@code HttpURLConnection} 은 <b>바디가 있는 POST 에 401 이 돌아오면</b> 인증 재시도
-     * 로직에 걸려 응답을 못 읽고 I/O 에러를 던진다("cannot retry due to server authentication").
-     * 서버가 아니라 클라이언트 제약이다 — curl 로는 401 바디가 정상적으로 보인다.
-     * 인증 실패 경로를 검증하는 게 이 클래스의 절반이므로 java.net.http 기반 팩토리로 바꾼다.
+     * 레거시 {@code HttpURLConnection} 은 <b>바디가 있는 POST 에 401 이 돌아오면</b> 인증 재시도 로직에 걸려 응답을 못 읽고 I/O
+     * 에러를 던진다("cannot retry due to server authentication"). 서버가 아니라 클라이언트 제약이다 — curl 로는 401 바디가
+     * 정상적으로 보인다. 인증 실패 경로를 검증하는 게 이 클래스의 절반이므로 java.net.http 기반 팩토리로 바꾼다.
      */
     @BeforeEach
     void useModernHttpClient() {
@@ -50,7 +50,7 @@ class ApiIntegrationTest {
 
         // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).startsWith("[").contains("알고리즘 스터디");
+        assertThat(response.getBody()).contains("\"items\"");
         assertThat(response.getBody()).doesNotContain("success");
     }
 
@@ -77,7 +77,8 @@ class ApiIntegrationTest {
     @Test
     @DisplayName("실패 - code 없이 소셜 로그인 → 400 + errorCode INVALID_INPUT (BusinessException 경로)")
     void socialLoginWithoutCode() {
-        var response = rest.postForEntity("/auth/social-login", Map.of("platform", "CORE"), Map.class);
+        var response =
+                rest.postForEntity("/auth/social-login", Map.of("platform", "CORE"), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
@@ -87,7 +88,8 @@ class ApiIntegrationTest {
     @Test
     @DisplayName("실패 - 위조된 refresh token → 401 + errorCode UNAUTHORIZED (내부 예외가 새지 않는다)")
     void refreshWithBogusToken() {
-        var response = rest.postForEntity("/auth/refresh", Map.of("refreshToken", "not-a-jwt"), Map.class);
+        var response =
+                rest.postForEntity("/auth/refresh", Map.of("refreshToken", "not-a-jwt"), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");

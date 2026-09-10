@@ -23,17 +23,38 @@ export type StudyKind = "study" | "club";
  */
 export const STUDY_CATEGORIES = [
   "AI · ML",
-  "알고리즘",
+  "CS",
   "데이터",
-  "소프트웨어 개발",
+  "백엔드",
+  "프론트엔드",
+  "모바일",
+  "기획",
+  "PM",
+  "디자인",
   "커리어",
-  "북클럽",
   "어학",
   "라이프스타일",
-  "기획 · PM",
   "비즈니스",
   "기타",
 ] as const;
+
+/** API StudyCategory enum → 프론트 표시 이름 매핑. */
+export const CATEGORY_DISPLAY: Record<string, string> = {
+  AI_ML: "AI · ML",
+  CS: "CS",
+  DATA: "데이터",
+  BACKEND: "백엔드",
+  FRONTEND: "프론트엔드",
+  MOBILE: "모바일",
+  PLANNING: "기획",
+  PM: "PM",
+  DESIGN: "디자인",
+  CAREER: "커리어",
+  LANGUAGE: "어학",
+  LIFESTYLE: "라이프스타일",
+  BUSINESS: "비즈니스",
+  OTHER: "기타",
+};
 
 export type StudyCategory = (typeof STUDY_CATEGORIES)[number];
 
@@ -211,6 +232,37 @@ export const site: Site = {
     region: { ko: "미국·한국·캐나다·유럽", en: "US · Korea · Canada · Europe" },
   },
 };
+
+/** 매달 기수를 여는 클럽 — 1기(7월) · 2기(8월) · 3기(9월). */
+const MONTHLY_CLUB_GENS = [
+  { g: 1, month: 7, monthEn: "Jul", status: "closed" as const, date: "2026-07-01", deadline: "2026-06-28" },
+  { g: 2, month: 8, monthEn: "Aug", status: "closed" as const, date: "2026-08-01", deadline: "2026-07-28" },
+  { g: 3, month: 9, monthEn: "Sep", status: "ongoing" as const, date: "2026-09-01", deadline: "2026-08-28" },
+] as const;
+
+function monthlyClubCohorts(
+  id: string,
+  title: L10n,
+  shared: Omit<Study, "id" | "title" | "status" | "date" | "year">,
+): Study[] {
+  return MONTHLY_CLUB_GENS.map((c) => ({
+    ...shared,
+    id: `${id}-g${c.g}`,
+    title: {
+      ko: `${title.ko} ${c.g}기 (${c.month}월)`,
+      en: `${title.en} ${c.g} (${c.monthEn})`,
+    },
+    status: c.status,
+    date: c.date,
+    year: "2026",
+    recruitment: {
+      ...(shared.recruitment ?? {}),
+      status: c.status === "closed" ? "closed" : "monthly",
+      cadence: "monthly" as const,
+      deadline: c.deadline,
+    },
+  }));
+}
 
 // ── studies ───────────────────────────────────────────────────────────
 export const studies: Study[] = [
@@ -459,6 +511,65 @@ export const studies: Study[] = [
     year: "2026",
   },
 
+  // ── 월별 클럽 기수 (7·8·9월). 모집중 카드는 위에 그대로 두고, 기수는 참여 이력·출석부용.
+  ...monthlyClubCohorts("early-bird", { ko: "얼리버드", en: "Early Bird" }, {
+    kind: "club",
+    host: {
+      name: { ko: "M. 박", en: "M. Park" },
+      credential: { ko: "얼리버드 클럽장 · 3년째 운영", en: "Early Bird host · 3rd year" },
+    },
+    summary: {
+      ko: "아침에 일찍 일어나 공부·자기개발.",
+      en: "Wake up early to study and grow yourself.",
+    },
+    format: "online",
+    category: "라이프스타일",
+    schedule: { ko: "매일 인증 · 주 1회 회고", en: "Daily check-in · weekly retro" },
+    description: {
+      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다.",
+      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back.",
+    },
+    recruit_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
+  }),
+  ...monthlyClubCohorts("weeklyx", { ko: "WeeklyX", en: "WeeklyX" }, {
+    kind: "club",
+    host: {
+      name: { ko: "Y. 정", en: "Y. Jung" },
+      credential: { ko: "WeeklyX 클럽장", en: "WeeklyX host" },
+    },
+    summary: {
+      ko: "일주일 X시간, 꾸준히 공부하기.",
+      en: "Study X hours a week, consistently.",
+    },
+    format: "online",
+    category: "라이프스타일",
+    schedule: { ko: "매일 인증 · 주 1회 회고", en: "Daily check-in · weekly retro" },
+    description: {
+      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다.",
+      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back.",
+    },
+    recruit_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
+  }),
+  ...monthlyClubCohorts("daily-leetcode", { ko: "Daily LeetCode", en: "Daily LeetCode" }, {
+    kind: "club",
+    host: {
+      name: { ko: "R. 오", en: "R. Oh" },
+      credential: { ko: "알고리즘 코치 · ICPC 출신", en: "Algorithm coach · ex-ICPC" },
+    },
+    summary: {
+      ko: "리트코드 1일 1문제 챌린지.",
+      en: "One LeetCode problem a day challenge.",
+    },
+    format: "online",
+    category: "AI · ML",
+    schedule: { ko: "매주 목 20:00 · 4주 과정", en: "Thu 8:00 PM · 4 weeks" },
+    description: {
+      ko: "매일 리트코드 한 문제를 풀고 주 1회 모여 풀이를 나눕니다.",
+      en: "Solve one LeetCode problem a day and meet weekly to share solutions.",
+    },
+    recruit_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
+  }),
+
   // ── 진행중 ──────────────────────────────────────────────────────────
   {
     id: "claude-code-source-study",
@@ -470,7 +581,7 @@ export const studies: Study[] = [
     },
     summary: {
       ko: "화요모임 ~8명, 토요저녁 ~12명이 꾸준히 참석 중.",
-      en: "~8 at Tuesday sessions, ~12 at Saturday evenings, going strong.",
+      en: "~8 at Tuesday meetings, ~12 at Saturday evenings, going strong.",
     },
     status: "ongoing",
     format: "hybrid",
@@ -494,7 +605,7 @@ export const studies: Study[] = [
     status: "ongoing",
     format: "online",
     category: "커리어",
-    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 sessions" },
+    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 meetings" },
     description: {
       ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
       en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
@@ -736,7 +847,7 @@ export const studies: Study[] = [
     status: "closed",
     format: "online",
     category: "커리어",
-    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 sessions" },
+    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 meetings" },
     description: {
       ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
       en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
@@ -829,7 +940,7 @@ export const studies: Study[] = [
       },
       {
         label: { ko: "2~9주차", en: "Weeks 2–9" },
-        title: { ko: "본 스터디 진행", en: "Main study sessions" },
+        title: { ko: "본 스터디 진행", en: "Main study meetings" },
       },
       {
         label: { ko: "10주차", en: "Week 10" },
@@ -1219,7 +1330,7 @@ export const studies: Study[] = [
     status: "closed",
     format: "online",
     category: "커리어",
-    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 sessions" },
+    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 meetings" },
     description: {
       ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
       en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
@@ -1347,7 +1458,7 @@ export const studies: Study[] = [
     status: "closed",
     format: "online",
     category: "커리어",
-    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 sessions" },
+    schedule: { ko: "격주 수 20:00 · 4회", en: "Every other Wed 8:00 PM · 4 meetings" },
     description: {
       ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
       en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
@@ -2074,10 +2185,14 @@ export const members: Member[] = [
 export {
   getStudyCrew,
   attendanceRate,
+  attendancePoint,
   isHotStudy,
+  demoCrewRelation,
+  demoMyAttendance,
   type AttendanceStatus,
   type CrewStatus,
   type Crew,
-  type StudySession,
+  type StudyMeeting,
   type StudyCrewData,
+  type DemoCrewRelation,
 } from "./crew";
