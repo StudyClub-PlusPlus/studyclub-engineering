@@ -1,8 +1,8 @@
-name: playground-main-CI
+name: playground-beta-CI
 
 on:
   push:
-    branches: [main]
+    branches: [beta]
     tags: [playground**]
     paths:
       - 'frontend/apps/playground/**'
