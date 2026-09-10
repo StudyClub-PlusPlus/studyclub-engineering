@@ -36,7 +36,7 @@ public class Study extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(name = "ONE_LINE_SUMMARY", length = 255)
+    @Column(name = "ONE_LINE_SUMMARY", nullable = false, length = 255)
     private String oneLineSummary;
 
     @Column(columnDefinition = "text")

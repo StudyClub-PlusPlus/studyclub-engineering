@@ -45,6 +45,7 @@ class StudyDetailApiTest {
                         Study.builder()
                                 .slug("algo-study")
                                 .title("알고리즘 스터디")
+                                .oneLineSummary("알고리즘 문제 풀이 스터디")
                                 .category(StudyCategory.BACKEND)
                                 .studyKind(StudyKind.STUDY)
                                 .description("설명")
@@ -81,6 +82,7 @@ class StudyDetailApiTest {
                         Study.builder()
                                 .slug("no-cohort")
                                 .title("코호트 없음")
+                                .oneLineSummary("코호트 없는 스터디")
                                 .category(StudyCategory.AI_ML)
                                 .studyKind(StudyKind.STUDY)
                                 .build());
@@ -109,6 +111,7 @@ class StudyDetailApiTest {
                         Study.builder()
                                 .slug("hidden")
                                 .title("숨김 스터디")
+                                .oneLineSummary("숨김 처리된 스터디")
                                 .category(StudyCategory.OTHER)
                                 .studyKind(StudyKind.STUDY)
                                 .isHidden(true)

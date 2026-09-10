@@ -129,6 +129,7 @@ class StudyBookmarkIntegrationTest {
                             Study.builder()
                                     .slug(slug)
                                     .title(title)
+                                    .oneLineSummary("테스트 스터디")
                                     .category(category)
                                     .studyKind(StudyKind.STUDY)
                                     .build());
