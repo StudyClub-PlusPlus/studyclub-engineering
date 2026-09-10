@@ -1,13 +1,7 @@
 package com.studyclub.api.bookmark;
 
 import com.studyclub.api.bookmark.dto.StudyBookmarkDtos;
-
 import java.util.List;
 
 public record StudyBookmarkResponse(
-        List<StudyBookmarkDtos> items,
-        long total,
-        int offset,
-        int limit
-) {
-}
+        List<StudyBookmarkDtos> items, long total, int offset, int limit) {}

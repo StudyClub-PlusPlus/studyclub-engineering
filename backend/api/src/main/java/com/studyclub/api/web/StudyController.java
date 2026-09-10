@@ -26,8 +26,7 @@ public class StudyController {
         this.studyService = studyService;
     }
 
-    @Operation(summary = "스터디 목록 조회",
-            description = "카테고리·모집 상태·키워드·모집 마감일 필터로 스터디 목록을 조회한다.")
+    @Operation(summary = "스터디 목록 조회", description = "카테고리·모집 상태·키워드·모집 마감일 필터로 스터디 목록을 조회한다.")
     @GetMapping
     public StudyListResponse list(
             @RequestParam(required = false) StudyCategory category,
@@ -37,7 +36,8 @@ public class StudyController {
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit) {
 
-        return studyListService.list(category, status, keyword, recruitDeadlineBefore, offset, limit);
+        return studyListService.list(
+                category, status, keyword, recruitDeadlineBefore, offset, limit);
     }
 
     @GetMapping("/{studyId}")

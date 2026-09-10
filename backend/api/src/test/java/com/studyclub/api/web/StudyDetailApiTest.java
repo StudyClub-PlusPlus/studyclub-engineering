@@ -2,18 +2,6 @@ package com.studyclub.api.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
-import java.util.Map;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
-
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
@@ -22,6 +10,17 @@ import com.studyclub.domain.study.StudyCohortRepository;
 import com.studyclub.domain.study.StudyCohortStatus;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyRepository;
+import java.time.Instant;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -41,13 +40,29 @@ class StudyDetailApiTest {
     @Test
     @DisplayName("성공 — 스터디 상세 조회 (코호트 포함)")
     void detailWithCohort() {
-        var study = studyRepository.save(
-                new Study("algo-study", "알고리즘 스터디", "설명", StudyCategory.BACKEND,
-                        StudyKind.STUDY, null, false));
+        var study =
+                studyRepository.save(
+                        new Study(
+                                "algo-study",
+                                "알고리즘 스터디",
+                                "설명",
+                                StudyCategory.BACKEND,
+                                StudyKind.STUDY,
+                                null,
+                                false));
         cohortRepository.save(
-                new StudyCohort(study.getId(), DeliveryFormat.ONLINE, StudyCohortStatus.OPEN,
-                        null, null, 20, Instant.parse("2026-10-01T00:00:00Z"),
-                        Instant.parse("2026-10-15T00:00:00Z"), null, null, null));
+                new StudyCohort(
+                        study.getId(),
+                        DeliveryFormat.ONLINE,
+                        StudyCohortStatus.OPEN,
+                        null,
+                        null,
+                        20,
+                        Instant.parse("2026-10-01T00:00:00Z"),
+                        Instant.parse("2026-10-15T00:00:00Z"),
+                        null,
+                        null,
+                        null));
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
 
@@ -66,9 +81,16 @@ class StudyDetailApiTest {
     @Test
     @DisplayName("성공 — 코호트 없는 스터디도 조회 가능 (cohort: null)")
     void detailWithoutCohort() {
-        var study = studyRepository.save(
-                new Study("no-cohort", "코호트 없음", null, StudyCategory.AI_ML,
-                        StudyKind.STUDY, null, false));
+        var study =
+                studyRepository.save(
+                        new Study(
+                                "no-cohort",
+                                "코호트 없음",
+                                null,
+                                StudyCategory.AI_ML,
+                                StudyKind.STUDY,
+                                null,
+                                false));
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
 
@@ -89,9 +111,16 @@ class StudyDetailApiTest {
     @Test
     @DisplayName("실패 — 숨김 스터디 → 404 NOT_FOUND")
     void hiddenStudyReturns404() {
-        var study = studyRepository.save(
-                new Study("hidden", "숨김 스터디", null, StudyCategory.OTHER,
-                        StudyKind.STUDY, null, true));
+        var study =
+                studyRepository.save(
+                        new Study(
+                                "hidden",
+                                "숨김 스터디",
+                                null,
+                                StudyCategory.OTHER,
+                                StudyKind.STUDY,
+                                null,
+                                true));
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
 

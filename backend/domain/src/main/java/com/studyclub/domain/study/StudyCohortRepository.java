@@ -13,8 +13,9 @@ public interface StudyCohortRepository extends JpaRepository<StudyCohort, Long> 
     Optional<StudyCohort> findFirstByStudyIdOrderByIdDesc(Long studyId);
 
     /** 스터디별 가장 최근(id 가 큰) 코호트를 가져온다. */
-    @Query("SELECT c FROM StudyCohort c WHERE c.id = "
-            + "(SELECT MAX(c2.id) FROM StudyCohort c2 WHERE c2.studyId = c.studyId) "
-            + "AND c.studyId IN :studyIds")
+    @Query(
+            "SELECT c FROM StudyCohort c WHERE c.id = "
+                    + "(SELECT MAX(c2.id) FROM StudyCohort c2 WHERE c2.studyId = c.studyId) "
+                    + "AND c.studyId IN :studyIds")
     List<StudyCohort> findLatestByStudyIds(@Param("studyIds") Collection<Long> studyIds);
 }

@@ -32,10 +32,12 @@ public class GoogleOAuthClient {
 
     public GoogleUser exchange(String code, String redirectOverride) {
         if (!StringUtils.hasText(clientId) || !StringUtils.hasText(clientSecret)) {
-            throw new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR,
+            throw new BusinessException(
+                    ErrorCode.EXTERNAL_SERVICE_ERROR,
                     "구글 OAuth 클라이언트가 설정되지 않았습니다 (GOOGLE_CLIENT_ID/SECRET).");
         }
-        String redirect = StringUtils.hasText(redirectOverride) ? redirectOverride : defaultRedirectUri;
+        String redirect =
+                StringUtils.hasText(redirectOverride) ? redirectOverride : defaultRedirectUri;
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("code", code);
@@ -48,23 +50,27 @@ public class GoogleOAuthClient {
         Map<?, ?> info;
         try {
             // 잘못/만료/재사용된 code → 구글이 4xx → 500 대신 401 로 매핑
-            token = restClient.post()
-                    .uri(TOKEN_URL)
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(form)
-                    .retrieve()
-                    .body(Map.class);
+            token =
+                    restClient
+                            .post()
+                            .uri(TOKEN_URL)
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                            .body(form)
+                            .retrieve()
+                            .body(Map.class);
 
             if (token == null || token.get("access_token") == null) {
                 throw new BusinessException(ErrorCode.UNAUTHORIZED, "구글 토큰 교환에 실패했습니다.");
             }
             String accessToken = String.valueOf(token.get("access_token"));
 
-            info = restClient.get()
-                    .uri(USERINFO_URL)
-                    .header("Authorization", "Bearer " + accessToken)
-                    .retrieve()
-                    .body(Map.class);
+            info =
+                    restClient
+                            .get()
+                            .uri(USERINFO_URL)
+                            .header("Authorization", "Bearer " + accessToken)
+                            .retrieve()
+                            .body(Map.class);
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "구글 인증에 실패했습니다 (code 무효/만료).");
         }
@@ -83,6 +89,5 @@ public class GoogleOAuthClient {
         return o == null ? null : String.valueOf(o);
     }
 
-    public record GoogleUser(String sub, String email, String name, String picture) {
-    }
+    public record GoogleUser(String sub, String email, String name, String picture) {}
 }

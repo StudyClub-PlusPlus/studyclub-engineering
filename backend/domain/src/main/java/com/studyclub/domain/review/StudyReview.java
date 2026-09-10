@@ -12,14 +12,16 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-    name = "STUDY_REVIEW",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_review_cohort_account", columnNames = {"STUDY_COHORT_ID", "ACCOUNT_ID"}),
-    indexes = {
-        @Index(name = "idx_study_review_account", columnList = "ACCOUNT_ID"),
-        @Index(name = "idx_study_review_cohort", columnList = "STUDY_COHORT_ID"),
-        @Index(name = "idx_study_review_study_created", columnList = "STUDY_ID, CREATED_AT")
-    }
-)
+        name = "STUDY_REVIEW",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_study_review_cohort_account",
+                        columnNames = {"STUDY_COHORT_ID", "ACCOUNT_ID"}),
+        indexes = {
+            @Index(name = "idx_study_review_account", columnList = "ACCOUNT_ID"),
+            @Index(name = "idx_study_review_cohort", columnList = "STUDY_COHORT_ID"),
+            @Index(name = "idx_study_review_study_created", columnList = "STUDY_ID, CREATED_AT")
+        })
 public class StudyReview extends BaseEntity {
 
     @Id
@@ -38,8 +40,7 @@ public class StudyReview extends BaseEntity {
     @Column(nullable = false, columnDefinition = "text")
     private String content;
 
-    protected StudyReview() {
-    }
+    protected StudyReview() {}
 
     public StudyReview(Long accountId, Long studyCohortId, Long studyId, String content) {
         this.accountId = accountId;
@@ -48,9 +49,23 @@ public class StudyReview extends BaseEntity {
         this.content = content;
     }
 
-    public Long getId() { return id; }
-    public Long getAccountId() { return accountId; }
-    public Long getStudyCohortId() { return studyCohortId; }
-    public Long getStudyId() { return studyId; }
-    public String getContent() { return content; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
+
+    public Long getStudyCohortId() {
+        return studyCohortId;
+    }
+
+    public Long getStudyId() {
+        return studyId;
+    }
+
+    public String getContent() {
+        return content;
+    }
 }

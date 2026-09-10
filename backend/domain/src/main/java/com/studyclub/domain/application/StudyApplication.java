@@ -14,13 +14,17 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-    name = "STUDY_APPLICATION",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_application_cohort_account", columnNames = {"STUDY_COHORT_ID", "ACCOUNT_ID"}),
-    indexes = {
-        @Index(name = "idx_study_application_account", columnList = "ACCOUNT_ID"),
-        @Index(name = "idx_study_application_cohort_status", columnList = "STUDY_COHORT_ID, STATUS")
-    }
-)
+        name = "STUDY_APPLICATION",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_study_application_cohort_account",
+                        columnNames = {"STUDY_COHORT_ID", "ACCOUNT_ID"}),
+        indexes = {
+            @Index(name = "idx_study_application_account", columnList = "ACCOUNT_ID"),
+            @Index(
+                    name = "idx_study_application_cohort_status",
+                    columnList = "STUDY_COHORT_ID, STATUS")
+        })
 public class StudyApplication extends BaseEntity {
 
     @Id
@@ -40,19 +44,33 @@ public class StudyApplication extends BaseEntity {
     @Column(name = "FORM_ANSWER", nullable = false, columnDefinition = "json")
     private String formAnswer;
 
-    protected StudyApplication() {
-    }
+    protected StudyApplication() {}
 
-    public StudyApplication(Long accountId, Long studyCohortId, ApplicationStatus status, String formAnswer) {
+    public StudyApplication(
+            Long accountId, Long studyCohortId, ApplicationStatus status, String formAnswer) {
         this.accountId = accountId;
         this.studyCohortId = studyCohortId;
         this.status = status;
         this.formAnswer = formAnswer;
     }
 
-    public Long getId() { return id; }
-    public Long getAccountId() { return accountId; }
-    public Long getStudyCohortId() { return studyCohortId; }
-    public ApplicationStatus getStatus() { return status; }
-    public String getFormAnswer() { return formAnswer; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
+
+    public Long getStudyCohortId() {
+        return studyCohortId;
+    }
+
+    public ApplicationStatus getStatus() {
+        return status;
+    }
+
+    public String getFormAnswer() {
+        return formAnswer;
+    }
 }

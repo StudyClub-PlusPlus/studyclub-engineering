@@ -8,12 +8,7 @@ import com.studyclub.domain.study.StudyCohortStatus;
 import java.time.Instant;
 import java.util.List;
 
-public record StudyListResponse(
-        List<StudySummary> items,
-        long total,
-        int offset,
-        int limit
-) {
+public record StudyListResponse(List<StudySummary> items, long total, int offset, int limit) {
 
     public record StudySummary(
             Long studyId,
@@ -22,8 +17,7 @@ public record StudyListResponse(
             StudyCategory category,
             String thumbnailUrl,
             String studyKind,
-            CohortSummary cohort
-    ) {
+            CohortSummary cohort) {
         public static StudySummary from(Study study, StudyCohort cohort, long applicantCount) {
             return new StudySummary(
                     study.getId(),
@@ -32,8 +26,7 @@ public record StudyListResponse(
                     study.getCategory(),
                     study.getThumbnailUrl(),
                     study.getStudyKind().name(),
-                    CohortSummary.from(cohort, applicantCount)
-            );
+                    CohortSummary.from(cohort, applicantCount));
         }
     }
 
@@ -45,8 +38,7 @@ public record StudyListResponse(
             long currentApplicants,
             Instant recruitDeadline,
             Instant startDate,
-            boolean closingSoon
-    ) {
+            boolean closingSoon) {
         public static CohortSummary from(StudyCohort cohort, long applicantCount) {
             return new CohortSummary(
                     cohort.getId(),
@@ -56,8 +48,7 @@ public record StudyListResponse(
                     applicantCount,
                     cohort.getRecruitDeadline(),
                     cohort.getStartDate(),
-                    cohort.isClosingSoon()
-            );
+                    cohort.isClosingSoon());
         }
     }
 }

@@ -45,7 +45,17 @@ class StudyCohortTest {
     }
 
     private StudyCohort cohort(StudyCohortStatus status, Instant deadline) {
-        return new StudyCohort(1L, DeliveryFormat.ONLINE, status,
-                null, null, 30, deadline, null, null, null, null);
+        return new StudyCohort(
+                1L,
+                DeliveryFormat.ONLINE,
+                status,
+                null,
+                null,
+                30,
+                deadline,
+                null,
+                null,
+                null,
+                null);
     }
 }

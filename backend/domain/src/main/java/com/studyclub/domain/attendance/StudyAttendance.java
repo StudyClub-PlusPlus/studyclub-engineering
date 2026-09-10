@@ -14,14 +14,22 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-    name = "STUDY_ATTENDANCE",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_attendance_meeting_account", columnNames = {"STUDY_MEETING_ID", "ACCOUNT_ID"}),
-    indexes = {
-        @Index(name = "idx_study_attendance_account_cohort", columnList = "ACCOUNT_ID, STUDY_COHORT_ID"),
-        @Index(name = "idx_study_attendance_account_class", columnList = "ACCOUNT_ID, STUDY_CLASS_ID"),
-        @Index(name = "idx_study_attendance_cohort_status", columnList = "STUDY_COHORT_ID, STATUS")
-    }
-)
+        name = "STUDY_ATTENDANCE",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_study_attendance_meeting_account",
+                        columnNames = {"STUDY_MEETING_ID", "ACCOUNT_ID"}),
+        indexes = {
+            @Index(
+                    name = "idx_study_attendance_account_cohort",
+                    columnList = "ACCOUNT_ID, STUDY_COHORT_ID"),
+            @Index(
+                    name = "idx_study_attendance_account_class",
+                    columnList = "ACCOUNT_ID, STUDY_CLASS_ID"),
+            @Index(
+                    name = "idx_study_attendance_cohort_status",
+                    columnList = "STUDY_COHORT_ID, STATUS")
+        })
 public class StudyAttendance extends BaseEntity {
 
     @Id
@@ -44,11 +52,14 @@ public class StudyAttendance extends BaseEntity {
     @Column(nullable = false, length = 20)
     private AttendanceStatus status;
 
-    protected StudyAttendance() {
-    }
+    protected StudyAttendance() {}
 
-    public StudyAttendance(Long accountId, Long studyCohortId, Long studyClassId,
-                           Long studyMeetingId, AttendanceStatus status) {
+    public StudyAttendance(
+            Long accountId,
+            Long studyCohortId,
+            Long studyClassId,
+            Long studyMeetingId,
+            AttendanceStatus status) {
         this.accountId = accountId;
         this.studyCohortId = studyCohortId;
         this.studyClassId = studyClassId;
@@ -56,10 +67,27 @@ public class StudyAttendance extends BaseEntity {
         this.status = status;
     }
 
-    public Long getId() { return id; }
-    public Long getAccountId() { return accountId; }
-    public Long getStudyCohortId() { return studyCohortId; }
-    public Long getStudyClassId() { return studyClassId; }
-    public Long getStudyMeetingId() { return studyMeetingId; }
-    public AttendanceStatus getStatus() { return status; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
+
+    public Long getStudyCohortId() {
+        return studyCohortId;
+    }
+
+    public Long getStudyClassId() {
+        return studyClassId;
+    }
+
+    public Long getStudyMeetingId() {
+        return studyMeetingId;
+    }
+
+    public AttendanceStatus getStatus() {
+        return status;
+    }
 }

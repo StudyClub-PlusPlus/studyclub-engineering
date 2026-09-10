@@ -14,21 +14,18 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
 /**
- * 회원 약관 동의 이력. 온보딩 완료 시 유형별 1행(버전 포함).
- * 약관 개정 시 같은 {@link ConsentType} 에 새 {@code consentVersion} 행을 추가한다.
+ * 회원 약관 동의 이력. 온보딩 완료 시 유형별 1행(버전 포함). 약관 개정 시 같은 {@link ConsentType} 에 새 {@code consentVersion} 행을
+ * 추가한다.
  */
 @Entity
 @Table(
-    name = "ACCOUNT_CONSENT",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            name = "uk_account_consent_account_type_version",
-            columnNames = {"ACCOUNT_ID", "CONSENT_TYPE", "CONSENT_VERSION"})
-    },
-    indexes = {
-        @Index(name = "idx_account_consent_account", columnList = "ACCOUNT_ID")
-    }
-)
+        name = "ACCOUNT_CONSENT",
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_account_consent_account_type_version",
+                    columnNames = {"ACCOUNT_ID", "CONSENT_TYPE", "CONSENT_VERSION"})
+        },
+        indexes = {@Index(name = "idx_account_consent_account", columnList = "ACCOUNT_ID")})
 public class AccountConsent extends BaseEntity {
 
     @Id
@@ -51,8 +48,7 @@ public class AccountConsent extends BaseEntity {
     @Column(name = "CONSENT_VERSION", nullable = false, length = 20)
     private String consentVersion;
 
-    protected AccountConsent() {
-    }
+    protected AccountConsent() {}
 
     public AccountConsent(
             Long accountId,
@@ -67,10 +63,27 @@ public class AccountConsent extends BaseEntity {
         this.consentVersion = consentVersion;
     }
 
-    public Long getId() { return id; }
-    public Long getAccountId() { return accountId; }
-    public ConsentType getConsentType() { return consentType; }
-    public boolean isAgreed() { return agreed; }
-    public Instant getAgreedAt() { return agreedAt; }
-    public String getConsentVersion() { return consentVersion; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
+
+    public ConsentType getConsentType() {
+        return consentType;
+    }
+
+    public boolean isAgreed() {
+        return agreed;
+    }
+
+    public Instant getAgreedAt() {
+        return agreedAt;
+    }
+
+    public String getConsentVersion() {
+        return consentVersion;
+    }
 }

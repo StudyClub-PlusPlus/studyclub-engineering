@@ -12,8 +12,7 @@ public record StudyDetailResponse(
         String category,
         String studyKind,
         String thumbnailUrl,
-        CohortResponse cohort
-) {
+        CohortResponse cohort) {
     public record CohortResponse(
             Long id,
             String deliveryFormat,
@@ -22,8 +21,7 @@ public record StudyDetailResponse(
             Integer capacity,
             Instant recruitDeadline,
             Instant startDate,
-            Instant endDate
-    ) {
+            Instant endDate) {
         static CohortResponse from(StudyCohort c) {
             return new CohortResponse(
                     c.getId(),
@@ -33,8 +31,7 @@ public record StudyDetailResponse(
                     c.getCapacity(),
                     c.getRecruitDeadline(),
                     c.getStartDate(),
-                    c.getEndDate()
-            );
+                    c.getEndDate());
         }
     }
 
@@ -47,7 +44,6 @@ public record StudyDetailResponse(
                 study.getCategory().name(),
                 study.getStudyKind().name(),
                 study.getThumbnailUrl(),
-                cohort != null ? CohortResponse.from(cohort) : null
-        );
+                cohort != null ? CohortResponse.from(cohort) : null);
     }
 }

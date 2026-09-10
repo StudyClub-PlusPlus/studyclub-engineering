@@ -21,7 +21,8 @@ public class ParticipantHubQueryService {
 
     public ParticipatingStudyCohortDetailResponse getParticipatingStudyCohortDetail(
             String accountEmail, Long cohortId) {
-        return participantHubDataProvider.findParticipatingStudyCohortDetail(accountEmail, cohortId)
+        return participantHubDataProvider
+                .findParticipatingStudyCohortDetail(accountEmail, cohortId)
                 .orElseThrow(() -> inaccessibleStudyCohort(cohortId));
     }
 
