@@ -13,6 +13,7 @@ public interface StudyBookmarkRepository extends JpaRepository<StudyBookmark, Lo
             JOIN STUDY_COHORT sc ON sb.STUDY_COHORT_ID = sc.ID
             JOIN STUDY s ON sc.STUDY_ID = s.ID
             WHERE sb.ACCOUNT_ID = :accountId
+            ORDER BY sb.ID ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<StudyBookmarkSummary> findBookmarkItems(@Param("accountId") Long accountId,

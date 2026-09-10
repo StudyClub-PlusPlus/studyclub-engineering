@@ -45,7 +45,7 @@ class StudyBookmarkIntegrationTest {
 
     @Test
     @DisplayName("성공 - 북마크 목록을 items·total·offset·limit 형태로 반환한다")
-    void returnsBookmarkedStudies() {
+    void testReturnsBookmarkedStudies() {
         try (var resource = new TestDataResource()) {
             Study study = resource.saveStudy("bm-java-study", "Java Study", StudyCategory.BACKEND);
             StudyCohort cohort = resource.saveCohort(study.getId());
@@ -69,7 +69,7 @@ class StudyBookmarkIntegrationTest {
 
     @Test
     @DisplayName("성공 - 북마크가 없으면 빈 목록과 total 0을 반환한다")
-    void returnsEmptyListWhenNoBookmarks() {
+    void testReturnsEmptyList() {
         var response = rest.exchange(
                 "/api/me/bookmarks", HttpMethod.GET, authenticatedRequest(), Map.class);
 
@@ -79,14 +79,29 @@ class StudyBookmarkIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 요청한 offset과 limit이 응답에 그대로 반영된다")
-    void reflectsOffsetAndLimitInResponse() {
-        var response = rest.exchange(
-                "/api/me/bookmarks?offset=5&limit=10", HttpMethod.GET, authenticatedRequest(), Map.class);
+    @DisplayName("성공 - offset/limit 이 실제 페이지네이션에 적용된다")
+    void testPagination() {
+        try (var resource = new TestDataResource()) {
+            Study studyA = resource.saveStudy("bm-study-a", "Study A", StudyCategory.BACKEND);
+            Study studyB = resource.saveStudy("bm-study-b", "Study B", StudyCategory.FRONTEND);
+            Study studyC = resource.saveStudy("bm-study-c", "Study C", StudyCategory.AI);
+            resource.saveBookmark(resource.saveCohort(studyA.getId()).getId());
+            resource.saveBookmark(resource.saveCohort(studyB.getId()).getId());
+            resource.saveBookmark(resource.saveCohort(studyC.getId()).getId());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().get("offset")).isEqualTo(5);
-        assertThat(response.getBody().get("limit")).isEqualTo(10);
+            // offset=1, limit=1 → 두 번째 항목(Study B)만 반환
+            var response = rest.exchange(
+                    "/api/me/bookmarks?offset=1&limit=1", HttpMethod.GET, authenticatedRequest(), Map.class);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().get("total")).isEqualTo(3);
+            assertThat(response.getBody().get("offset")).isEqualTo(1);
+            assertThat(response.getBody().get("limit")).isEqualTo(1);
+
+            List<Map<String, Object>> items = (List<Map<String, Object>>) response.getBody().get("items");
+            assertThat(items).hasSize(1);
+            assertThat(items.get(0)).containsEntry("title", "Study B");
+        }
     }
 
     private HttpEntity<Void> authenticatedRequest() {
