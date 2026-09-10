@@ -106,6 +106,7 @@ erDiagram
     bigint   ID                PK
     varchar  SLUG              UK "URL 식별자"
     varchar  TITLE
+    varchar  ONE_LINE_SUMMARY     "한 줄 소개"
     text     DESCRIPTION
     varchar  CATEGORY             "AI, BACKEND, PAPER …"
     varchar  STUDY_KIND           "STUDY / CLUB"
@@ -126,6 +127,8 @@ erDiagram
     date     END_DATE              "고정 종료 없는 클럽은 NULL"
     varchar  DISCORD_CHANNEL_URL
     varchar  DRIVE_URL
+    varchar  SCHEDULE              "운영 일정 요약"
+    datetime PUBLISH_DATE         "공개 예정 일시"
   }
 
   STUDY_CLASS {

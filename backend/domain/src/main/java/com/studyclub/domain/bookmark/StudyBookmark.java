@@ -9,6 +9,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
@@ -21,6 +26,10 @@ import jakarta.persistence.UniqueConstraint;
             @Index(name = "idx_study_bookmark_account", columnList = "ACCOUNT_ID"),
             @Index(name = "idx_study_bookmark_cohort", columnList = "STUDY_COHORT_ID")
         })
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class StudyBookmark extends BaseEntity {
 
     @Id
@@ -32,23 +41,4 @@ public class StudyBookmark extends BaseEntity {
 
     @Column(name = "STUDY_COHORT_ID", nullable = false)
     private Long studyCohortId;
-
-    protected StudyBookmark() {}
-
-    public StudyBookmark(Long accountId, Long studyCohortId) {
-        this.accountId = accountId;
-        this.studyCohortId = studyCohortId;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getAccountId() {
-        return accountId;
-    }
-
-    public Long getStudyCohortId() {
-        return studyCohortId;
-    }
 }

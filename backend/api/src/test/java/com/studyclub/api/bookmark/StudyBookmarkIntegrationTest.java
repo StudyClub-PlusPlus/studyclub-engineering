@@ -126,7 +126,13 @@ class StudyBookmarkIntegrationTest {
         Study saveStudy(String slug, String title, StudyCategory category) {
             Study study =
                     studyRepository.save(
-                            new Study(slug, title, null, category, StudyKind.STUDY, null, false));
+                            Study.builder()
+                                    .slug(slug)
+                                    .title(title)
+                                    .oneLineSummary("테스트 스터디")
+                                    .category(category)
+                                    .studyKind(StudyKind.STUDY)
+                                    .build());
             studyIds.add(study.getId());
             return study;
         }
@@ -134,24 +140,20 @@ class StudyBookmarkIntegrationTest {
         StudyCohort saveCohort(Long studyId) {
             StudyCohort cohort =
                     studyCohortRepository.save(
-                            new StudyCohort(
-                                    studyId,
-                                    DeliveryFormat.ONLINE,
-                                    StudyCohortStatus.OPEN,
-                                    null,
-                                    null,
-                                    10,
-                                    Instant.now().plusSeconds(3600),
-                                    null,
-                                    null,
-                                    null,
-                                    null));
+                            StudyCohort.builder()
+                                    .studyId(studyId)
+                                    .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                                    .status(StudyCohortStatus.OPEN)
+                                    .recruitDeadline(Instant.now().plusSeconds(3600))
+                                    .capacity(10)
+                                    .build());
             cohortIds.add(cohort.getId());
             return cohort;
         }
 
         void saveBookmark(Long cohortId) {
-            studyBookmarkRepository.save(new StudyBookmark(ACCOUNT_ID, cohortId));
+            studyBookmarkRepository.save(
+                    StudyBookmark.builder().accountId(ACCOUNT_ID).studyCohortId(cohortId).build());
         }
 
         @Override
