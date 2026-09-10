@@ -61,10 +61,10 @@ class AccountOnboardingIntegrationTest {
     JwtService jwt;
 
     @Autowired
-    AccountRepository accounts;
+    AccountRepository accountRepository;
 
     @Autowired
-    AccountConsentRepository consents;
+    AccountConsentRepository accountConsentRepository;
 
     @Autowired
     RecordingUserRegisteredEventListener eventRecorder;
@@ -99,7 +99,7 @@ class AccountOnboardingIntegrationTest {
     private Account seedUnonboardedAccount() {
         String email = "onboarding-" + UUID.randomUUID() + "@example.com";
         String tempNickname = "account_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        return accounts.save(new Account(email, tempNickname, null, SystemRole.MEMBER));
+        return accountRepository.save(new Account(email, tempNickname, null, SystemRole.MEMBER));
     }
 
     /** 테스트마다 겹치지 않는 닉네임 — DB(H2)는 테스트 사이에 초기화되지 않으므로 리터럴을 공유하면 순서에 따라 409가 섞여 든다. */
@@ -137,7 +137,7 @@ class AccountOnboardingIntegrationTest {
         assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
         assertThat(response.getBody().get("onboardingCompletedAt")).isNotNull();
 
-        var savedConsents = consents.findByAccountId(account.getId());
+        var savedConsents = accountConsentRepository.findByAccountId(account.getId());
         assertThat(savedConsents).hasSize(3);
         assertThat(savedConsents).anySatisfy(c -> {
             assertThat(c.getConsentType()).isEqualTo(ConsentType.MARKETING);
@@ -212,7 +212,7 @@ class AccountOnboardingIntegrationTest {
         String baseNickname = uniqueNickname();
         Account taken = seedUnonboardedAccount();
         taken.completeOnboarding(baseNickname.toUpperCase(java.util.Locale.ROOT), "Asia/Seoul", Instant.now());
-        accounts.save(taken);
+        accountRepository.save(taken);
 
         Account account = seedUnonboardedAccount();
 
@@ -237,7 +237,7 @@ class AccountOnboardingIntegrationTest {
         String takenByOther = uniqueNickname();
         Account other = seedUnonboardedAccount();
         other.completeOnboarding(takenByOther, "UTC", Instant.now());
-        accounts.save(other);
+        accountRepository.save(other);
 
         var response = rest.exchange(
                 "/accounts/onboarding", HttpMethod.POST,
@@ -246,7 +246,7 @@ class AccountOnboardingIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("name", originalNickname);
 
-        assertThat(consents.findByAccountId(account.getId())).hasSize(3);
+        assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
     }
 
     @Test
@@ -303,7 +303,7 @@ class AccountOnboardingIntegrationTest {
             pool.shutdown();
         }
 
-        assertThat(consents.findByAccountId(account.getId())).hasSize(3);
+        assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
         assertThat(eventRecorder.received().stream()
                 .filter(e -> e.accountId().equals(account.getId())))
                 .hasSize(1);

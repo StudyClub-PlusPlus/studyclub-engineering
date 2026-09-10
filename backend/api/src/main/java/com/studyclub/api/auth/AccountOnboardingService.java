@@ -48,20 +48,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccountOnboardingService {
 
-    private final AccountRepository accounts;
-    private final AccountConsentRepository consents;
-    private final ApplicationEventPublisher events;
+    private final AccountRepository accountRepository;
+    private final AccountConsentRepository accountConsentRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final Validator validator;
 
     public AccountOnboardingService(
-            AccountRepository accounts,
-            AccountConsentRepository consents,
-            ApplicationEventPublisher events,
+            AccountRepository accountRepository,
+            AccountConsentRepository accountConsentRepository,
+            ApplicationEventPublisher applicationEventPublisher,
             Validator validator
     ) {
-        this.accounts = accounts;
-        this.consents = consents;
-        this.events = events;
+        this.accountRepository = accountRepository;
+        this.accountConsentRepository = accountConsentRepository;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.validator = validator;
     }
 
@@ -102,20 +102,20 @@ public class AccountOnboardingService {
     }
 
     private Account requireAccountByEmailForUpdate(String email) {
-        return accounts.findByEmailForUpdate(email)
+        return accountRepository.findByEmailForUpdate(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
     }
 
     /** 닉네임 중복 검사 + 상태 전이 + flush. 실제로 전이가 일어났으면(=최초 완료) {@code true}. */
     private boolean applyOnboarding(Account lockedAccount, OnboardingRequest request) {
         String nickname = request.nickname().trim();
-        if (accounts.existsByNicknameIgnoreCase(nickname)) {
+        if (accountRepository.existsByNicknameIgnoreCase(nickname)) {
             throw new BusinessException(ErrorCode.CONFLICT, "이미 사용 중인 닉네임입니다.");
         }
 
         boolean firstCompletion = lockedAccount.completeOnboarding(nickname, request.timeZone(), Instant.now());
         try {
-            accounts.saveAndFlush(lockedAccount);
+            accountRepository.saveAndFlush(lockedAccount);
         } catch (DataIntegrityViolationException e) {
             // 검사와 flush 사이에 다른 계정이 같은 닉네임을 먼저 확정한 경우의 마지막 방어선.
             throw new BusinessException(ErrorCode.CONFLICT, "이미 사용 중인 닉네임입니다.");
@@ -127,13 +127,13 @@ public class AccountOnboardingService {
         // ACCOUNT.onboarding_completed_at 에 실제로 저장된 시각을 그대로 쓴다 —
         // 동의 3행과 완료 시각이 다른 Instant.now() 호출로 미세하게 어긋나지 않게.
         Instant agreedAt = account.getOnboardingCompletedAt();
-        consents.saveAll(List.of(
+        accountConsentRepository.saveAll(List.of(
                 new AccountConsent(account.getId(), ConsentType.TERMS_OF_SERVICE,
                         request.termsOfServiceAgreed(), agreedAt, ConsentType.TERMS_OF_SERVICE.currentVersion()),
                 new AccountConsent(account.getId(), ConsentType.PRIVACY_POLICY,
                         request.privacyPolicyAgreed(), agreedAt, ConsentType.PRIVACY_POLICY.currentVersion()),
                 new AccountConsent(account.getId(), ConsentType.MARKETING,
                         request.marketingAgreed(), agreedAt, ConsentType.MARKETING.currentVersion())));
-        events.publishEvent(new UserRegisteredEvent(account.getId()));
+        applicationEventPublisher.publishEvent(new UserRegisteredEvent(account.getId()));
     }
 }

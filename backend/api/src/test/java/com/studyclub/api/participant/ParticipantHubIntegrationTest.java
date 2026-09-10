@@ -38,7 +38,7 @@ class ParticipantHubIntegrationTest {
     JwtService jwt;
 
     @Autowired
-    AccountRepository accounts;
+    AccountRepository accountRepository;
 
     @BeforeEach
     void seedOnboardedAccounts() {
@@ -47,11 +47,11 @@ class ParticipantHubIntegrationTest {
     }
 
     private void onboardedAccount(String email) {
-        accounts.findByEmail(email).orElseGet(() -> {
+        accountRepository.findByEmail(email).orElseGet(() -> {
             String nickname = uniqueNickname();
             Account account = new Account(email, nickname, null, SystemRole.MEMBER);
             account.completeOnboarding(nickname, "Asia/Seoul", Instant.now());
-            return accounts.save(account);
+            return accountRepository.save(account);
         });
     }
 
@@ -150,8 +150,8 @@ class ParticipantHubIntegrationTest {
     @DisplayName("실패 - 온보딩 미완료 계정은 회원 전용 API 에서 403 ONBOARDING_REQUIRED 를 받는다")
     void rejectsAccountThatHasNotCompletedOnboarding() {
         String email = "onboarding-incomplete@example.com";
-        accounts.findByEmail(email).orElseGet(() ->
-                accounts.save(new Account(email, uniqueNickname(), null, SystemRole.MEMBER)));
+        accountRepository.findByEmail(email).orElseGet(() ->
+                accountRepository.save(new Account(email, uniqueNickname(), null, SystemRole.MEMBER)));
 
         var response = rest.exchange(
                 "/api/me/studies", HttpMethod.GET, authenticatedRequest(email), Map.class);

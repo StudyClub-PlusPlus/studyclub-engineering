@@ -19,10 +19,10 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @Component
 public class OnboardingGuardInterceptor implements HandlerInterceptor {
 
-    private final AccountRepository accounts;
+    private final AccountRepository accountRepository;
 
-    public OnboardingGuardInterceptor(AccountRepository accounts) {
-        this.accounts = accounts;
+    public OnboardingGuardInterceptor(AccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -39,7 +39,7 @@ public class OnboardingGuardInterceptor implements HandlerInterceptor {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
-        Account account = accounts.findByEmail(authentication.getName().toLowerCase())
+        Account account = accountRepository.findByEmail(authentication.getName().toLowerCase())
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
         if (account.getOnboardingCompletedAt() == null) {
             throw new BusinessException(ErrorCode.ONBOARDING_REQUIRED);

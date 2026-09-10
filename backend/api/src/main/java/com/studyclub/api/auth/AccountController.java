@@ -25,11 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final AccountRepository accounts;
-    private final AccountOnboardingService onboarding;
+    private final AccountOnboardingService accountOnboardingService;
 
-    public AccountController(AccountRepository accounts, AccountOnboardingService onboarding) {
+    public AccountController(AccountRepository accounts, AccountOnboardingService accountOnboardingService) {
         this.accounts = accounts;
-        this.onboarding = onboarding;
+        this.accountOnboardingService = accountOnboardingService;
     }
 
     @SecurityRequirement(name = "bearerAuth")
@@ -56,6 +56,6 @@ public class AccountController {
         if (authentication == null || authentication.getName() == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        return onboarding.complete(authentication.getName(), req);
+        return accountOnboardingService.complete(authentication.getName(), req);
     }
 }
