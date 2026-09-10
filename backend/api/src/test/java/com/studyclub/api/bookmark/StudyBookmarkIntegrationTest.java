@@ -87,7 +87,7 @@ class StudyBookmarkIntegrationTest {
         try (var resource = new TestDataResource()) {
             Study studyA = resource.saveStudy("bm-study-a", "Study A", StudyCategory.BACKEND);
             Study studyB = resource.saveStudy("bm-study-b", "Study B", StudyCategory.FRONTEND);
-            Study studyC = resource.saveStudy("bm-study-c", "Study C", StudyCategory.AI);
+            Study studyC = resource.saveStudy("bm-study-c", "Study C", StudyCategory.AI_ML);
             resource.saveBookmark(resource.saveCohort(studyA.getId()).getId());
             resource.saveBookmark(resource.saveCohort(studyB.getId()).getId());
             resource.saveBookmark(resource.saveCohort(studyC.getId()).getId());
