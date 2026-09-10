@@ -23,6 +23,18 @@
   - ✅ `StudyCohortStatus`, `StudyStatus`
 - 타입 자체가 이미 열거형임을 나타내므로 `Enum` 을 이름에 포함하는 것은 중복이다.
 
+### 의존성 필드
+
+- **주입받는 의존성 필드는 타입명을 lowerCamelCase 로 그대로 쓴다.**
+  - ❌ `private final AccountRepository accounts;` — 도메인 복수형은 실제 목록에 써야 한다
+  - ❌ `private final GoogleOAuthClient google;` · `private final StudyCohortRepository cohortRepository;`
+  - ✅ `private final AccountRepository accountRepository;` · `private final GoogleOAuthClient googleOAuthClient;`
+- 길어지지만 **무엇을 주입받았는지가 이름에 그대로 남는다.** 축약하면 같은 타입을 파일마다 다른
+  이름으로 부르게 되고(`cohortRepository` vs `studyCohortRepository`), grep 이 안 걸린다.
+- `accounts` 같은 복수형은 **실제 도메인 객체 목록**을 위해 비워 둔다:
+  `List<Account> accounts = accountRepository.findAll();`
+- 값·상태 필드에는 적용하지 않는다 — 의미 있는 이름을 쓴다 (`SecretKey key`, `String defaultMessage`).
+
 ### 주석
 
 - **코드가 말하는 것을 주석으로 반복하지 않는다.**

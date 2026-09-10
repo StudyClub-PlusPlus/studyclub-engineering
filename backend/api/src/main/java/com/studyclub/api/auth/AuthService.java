@@ -22,17 +22,17 @@ public class AuthService {
 
     private static final String PLATFORM_BACK_OFFICE = "BACK_OFFICE";
 
-    private final AccountRepository accounts;
-    private final GoogleOAuthClient google;
-    private final JwtService jwt;
+    private final AccountRepository accountRepository;
+    private final GoogleOAuthClient googleOAuthClient;
+    private final JwtService jwtService;
 
     @Value("${back-office.allowed-emails:}")
     private String allowedEmailsRaw;
 
-    public AuthService(AccountRepository accounts, GoogleOAuthClient google, JwtService jwt) {
-        this.accounts = accounts;
-        this.google = google;
-        this.jwt = jwt;
+    public AuthService(AccountRepository accountRepository, GoogleOAuthClient googleOAuthClient, JwtService jwtService) {
+        this.accountRepository = accountRepository;
+        this.googleOAuthClient = googleOAuthClient;
+        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -40,15 +40,15 @@ public class AuthService {
         if (code == null || code.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "code 가 필요합니다.");
         }
-        GoogleUser g = google.exchange(code, redirectOverride);
+        GoogleUser g = googleOAuthClient.exchange(code, redirectOverride);
         String email = g.email().toLowerCase();
 
         assertBackOfficePermitted(email, platform);
 
         // UNIQUE(NICKNAME) + VARCHAR(20) — 제공자 표시명을 그대로 넣으면 동명이인/길이에서 터진다.
         // 온보딩 전 임시값 account_<랜덤>(총 20자). 화면에는 안 보여주고 온보딩에서 확정한다.
-        Account account = accounts.findByEmail(email).orElseGet(() ->
-                accounts.save(new Account(email, uniqueTemporaryNickname(), g.picture(), SystemRole.MEMBER)));
+        Account account = accountRepository.findByEmail(email).orElseGet(() ->
+                accountRepository.save(new Account(email, uniqueTemporaryNickname(), g.picture(), SystemRole.MEMBER)));
 
         return issueFor(account);
     }
@@ -57,7 +57,7 @@ public class AuthService {
     String uniqueTemporaryNickname() {
         for (int i = 0; i < 5; i++) {
             String candidate = "account_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-            if (!accounts.existsByNickname(candidate)) {
+            if (!accountRepository.existsByNickname(candidate)) {
                 return candidate;
             }
         }
@@ -66,7 +66,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AccountView me(String email) {
-        Account account = accounts.findByEmail(email.toLowerCase())
+        Account account = accountRepository.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
         return toView(account);
     }
@@ -76,8 +76,8 @@ public class AuthService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "refreshToken 이 필요합니다.");
         }
         try {
-            Claims c = jwt.parse(refreshToken);
-            return new AccessTokenResponse(jwt.issueAccess(c.getSubject(), c.get("email", String.class)));
+            Claims c = jwtService.parse(refreshToken);
+            return new AccessTokenResponse(jwtService.issueAccess(c.getSubject(), c.get("email", String.class)));
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
         }
@@ -100,10 +100,10 @@ public class AuthService {
     private AuthResponse issueFor(Account account) {
         String sub = String.valueOf(account.getId());
         return new AuthResponse(
-                jwt.issueAccess(sub, account.getEmail()),
-                jwt.issueRefresh(sub, account.getEmail()),
-                jwt.accessTtlSeconds(),
-                jwt.refreshTtlSeconds(),
+                jwtService.issueAccess(sub, account.getEmail()),
+                jwtService.issueRefresh(sub, account.getEmail()),
+                jwtService.accessTtlSeconds(),
+                jwtService.refreshTtlSeconds(),
                 toView(account));
     }
 

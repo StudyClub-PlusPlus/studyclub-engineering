@@ -20,15 +20,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtService jwt;
+    private final JwtService jwtService;
     private final ObjectMapper objectMapper;
 
     /** 콤마 구분 허용 오리진 (프론트 dev + prod 도메인). */
     @Value("${cors.allowed-origins:http://localhost:4700,http://localhost:4701}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtService jwt, ObjectMapper objectMapper) {
-        this.jwt = jwt;
+    public SecurityConfig(JwtService jwtService, ObjectMapper objectMapper) {
+        this.jwtService = jwtService;
         this.objectMapper = objectMapper;
     }
 
@@ -58,7 +58,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 // 미인증 → 403(기본) 대신 401 + ErrorResponse 바디. ERROR 디스패치가 막히지 않도록 /error 는 위에서 permitAll.
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new JsonAuthenticationEntryPoint(objectMapper)))
-                .addFilterBefore(new JwtAuthFilter(jwt), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

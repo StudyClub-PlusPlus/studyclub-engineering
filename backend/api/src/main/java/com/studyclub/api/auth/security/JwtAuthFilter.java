@@ -15,10 +15,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /** Authorization: Bearer <access> 를 파싱해 email 을 principal 로 하는 인증을 세팅. */
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtService jwt;
+    private final JwtService jwtService;
 
-    public JwtAuthFilter(JwtService jwt) {
-        this.jwt = jwt;
+    public JwtAuthFilter(JwtService jwtService) {
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -29,7 +29,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String token = header.substring(7);
             try {
-                Claims c = jwt.parse(token);
+                Claims c = jwtService.parse(token);
                 String email = c.get("email", String.class);
                 if (email != null && !email.isBlank()) {
                     var auth = new UsernamePasswordAuthenticationToken(email, null, List.of());
