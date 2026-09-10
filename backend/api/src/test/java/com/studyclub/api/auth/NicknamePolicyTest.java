@@ -7,8 +7,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * 온보딩 스펙(specs/user-onboarding/spec.md)의 닉네임 형식 규칙을 분기마다 못 박는다.
- * 중복 검사(DB 조회)는 여기 대상이 아니다 — {@code AccountOnboardingIntegrationTest} 가 본다.
+ * 온보딩 스펙(specs/user-onboarding/spec.md)의 닉네임 형식 규칙을 분기마다 못 박는다. 중복 검사(DB 조회)는 여기 대상이 아니다 — {@code
+ * AccountOnboardingIntegrationTest} 가 본다.
  */
 class NicknamePolicyTest {
 

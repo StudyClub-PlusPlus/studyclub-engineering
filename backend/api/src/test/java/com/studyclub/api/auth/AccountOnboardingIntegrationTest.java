@@ -40,34 +40,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 /**
- * POST /accounts/onboarding — 성공 1건 + 실패 코어 (testing-guide.md).
- * 조합 폭발(닉네임 규칙 세부 등)은 {@link NicknamePolicyTest} 가 단위로 덮는다.
+ * POST /accounts/onboarding — 성공 1건 + 실패 코어 (testing-guide.md). 조합 폭발(닉네임 규칙 세부 등)은 {@link
+ * NicknamePolicyTest} 가 단위로 덮는다.
  *
- * <p>{@code UserRegisteredEvent} 발행 검증에 Spring 의 {@code ApplicationEvents} 테스트
- * 유틸을 쓰지 않는다 — 그건 "테스트를 실행한 스레드"에서 발행된 이벤트만 기록하는데,
- * {@code TestRestTemplate}(RANDOM_PORT)은 실제 서블릿 컨테이너 스레드에서 요청을 처리하므로
- * 이벤트가 그 스레드에서 발행돼 기록되지 않는다. 대신 진짜 리스너 빈을 등록해 스레드와
- * 무관하게 기록한다.
+ * <p>{@code UserRegisteredEvent} 발행 검증에 Spring 의 {@code ApplicationEvents} 테스트 유틸을 쓰지 않는다 — 그건
+ * "테스트를 실행한 스레드"에서 발행된 이벤트만 기록하는데, {@code TestRestTemplate}(RANDOM_PORT)은 실제 서블릿 컨테이너 스레드에서 요청을
+ * 처리하므로 이벤트가 그 스레드에서 발행돼 기록되지 않는다. 대신 진짜 리스너 빈을 등록해 스레드와 무관하게 기록한다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 @Import(AccountOnboardingIntegrationTest.RecordingConfig.class)
 class AccountOnboardingIntegrationTest {
 
-    @Autowired
-    TestRestTemplate rest;
+    @Autowired TestRestTemplate rest;
 
-    @Autowired
-    JwtService jwt;
+    @Autowired JwtService jwt;
 
-    @Autowired
-    AccountRepository accountRepository;
+    @Autowired AccountRepository accountRepository;
 
-    @Autowired
-    AccountConsentRepository accountConsentRepository;
+    @Autowired AccountConsentRepository accountConsentRepository;
 
-    @Autowired
-    RecordingUserRegisteredEventListener eventRecorder;
+    @Autowired RecordingUserRegisteredEventListener eventRecorder;
 
     @TestConfiguration
     static class RecordingConfig {
@@ -98,7 +91,8 @@ class AccountOnboardingIntegrationTest {
 
     private Account seedUnonboardedAccount() {
         String email = "onboarding-" + UUID.randomUUID() + "@example.com";
-        String tempNickname = "account_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String tempNickname =
+                "account_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         return accountRepository.save(new Account(email, tempNickname, null, SystemRole.MEMBER));
     }
 
@@ -107,7 +101,8 @@ class AccountOnboardingIntegrationTest {
         return "n" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
-    private HttpEntity<Map<String, Object>> authenticatedBody(Account account, Map<String, Object> body) {
+    private HttpEntity<Map<String, Object>> authenticatedBody(
+            Account account, Map<String, Object> body) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(jwt.issueAccess(String.valueOf(account.getId()), account.getEmail()));
         return new HttpEntity<>(body, headers);
@@ -128,9 +123,12 @@ class AccountOnboardingIntegrationTest {
         Account account = seedUnonboardedAccount();
         String nickname = uniqueNickname();
 
-        var response = rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, validRequest(nickname)), Map.class);
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, validRequest(nickname)),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("name", nickname);
@@ -139,22 +137,30 @@ class AccountOnboardingIntegrationTest {
 
         var savedConsents = accountConsentRepository.findByAccountId(account.getId());
         assertThat(savedConsents).hasSize(3);
-        assertThat(savedConsents).anySatisfy(c -> {
-            assertThat(c.getConsentType()).isEqualTo(ConsentType.MARKETING);
-            assertThat(c.isAgreed()).isFalse();
-        });
-        assertThat(savedConsents).allSatisfy(c ->
-                assertThat(c.getConsentVersion()).isEqualTo(c.getConsentType().currentVersion()));
+        assertThat(savedConsents)
+                .anySatisfy(
+                        c -> {
+                            assertThat(c.getConsentType()).isEqualTo(ConsentType.MARKETING);
+                            assertThat(c.isAgreed()).isFalse();
+                        });
+        assertThat(savedConsents)
+                .allSatisfy(
+                        c ->
+                                assertThat(c.getConsentVersion())
+                                        .isEqualTo(c.getConsentType().currentVersion()));
 
-        assertThat(eventRecorder.received().stream()
-                .filter(e -> e.accountId().equals(account.getId())))
+        assertThat(
+                        eventRecorder.received().stream()
+                                .filter(e -> e.accountId().equals(account.getId())))
                 .hasSize(1);
     }
 
     @Test
     @DisplayName("실패 - 토큰 없이 온보딩을 완료하려 하면 401 + errorCode UNAUTHORIZED")
     void rejectsUnauthenticated() {
-        var response = rest.postForEntity("/accounts/onboarding", validRequest(uniqueNickname()), Map.class);
+        var response =
+                rest.postForEntity(
+                        "/accounts/onboarding", validRequest(uniqueNickname()), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
@@ -167,13 +173,18 @@ class AccountOnboardingIntegrationTest {
         Map<String, Object> body = new HashMap<>(validRequest(uniqueNickname()));
         body.put("termsOfServiceAgreed", false);
 
-        var response = rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, body), Map.class);
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, body),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
-        assertThat(response.getBody().get("errorMessage")).asString().contains("termsOfServiceAgreed");
+        assertThat(response.getBody().get("errorMessage"))
+                .asString()
+                .contains("termsOfServiceAgreed");
     }
 
     @Test
@@ -181,9 +192,12 @@ class AccountOnboardingIntegrationTest {
     void rejectsTooShortNickname() {
         Account account = seedUnonboardedAccount();
 
-        var response = rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, validRequest("a")), Map.class);
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, validRequest("a")),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
@@ -197,9 +211,12 @@ class AccountOnboardingIntegrationTest {
         Map<String, Object> body = new HashMap<>(validRequest(uniqueNickname()));
         body.put("timeZone", "Not/AZone");
 
-        var response = rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, body), Map.class);
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, body),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
@@ -211,14 +228,18 @@ class AccountOnboardingIntegrationTest {
     void rejectsDuplicateNicknameIgnoringCase() {
         String baseNickname = uniqueNickname();
         Account taken = seedUnonboardedAccount();
-        taken.completeOnboarding(baseNickname.toUpperCase(java.util.Locale.ROOT), "Asia/Seoul", Instant.now());
+        taken.completeOnboarding(
+                baseNickname.toUpperCase(java.util.Locale.ROOT), "Asia/Seoul", Instant.now());
         accountRepository.save(taken);
 
         Account account = seedUnonboardedAccount();
 
-        var response = rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, validRequest(baseNickname)), Map.class);
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, validRequest(baseNickname)),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).containsEntry("errorCode", "CONFLICT");
@@ -230,8 +251,10 @@ class AccountOnboardingIntegrationTest {
         Account account = seedUnonboardedAccount();
         String originalNickname = uniqueNickname();
         rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, validRequest(originalNickname)), Map.class);
+                "/accounts/onboarding",
+                HttpMethod.POST,
+                authenticatedBody(account, validRequest(originalNickname)),
+                Map.class);
 
         // 이미 완료됐으니 다른 사람이 쓰는 닉네임이라도 검증·중복 체크 없이 그대로 통과해야 한다.
         String takenByOther = uniqueNickname();
@@ -239,9 +262,12 @@ class AccountOnboardingIntegrationTest {
         other.completeOnboarding(takenByOther, "UTC", Instant.now());
         accountRepository.save(other);
 
-        var response = rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, validRequest(takenByOther)), Map.class);
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, validRequest(takenByOther)),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("name", originalNickname);
@@ -250,62 +276,76 @@ class AccountOnboardingIntegrationTest {
     }
 
     @Test
-    @DisplayName("멱등 - 이미 완료된 계정은 요청 바디가 형식적으로 틀려도(약관 미동의 등) 검증 없이 그대로 200 "
-            + "— 로컬 기능 테스트에서 실제로 걸렸던 회귀: 컨트롤러의 @Valid 가 서비스의 멱등 체크보다 먼저 돌면 "
-            + "이미 완료된 계정도 400 을 받는다")
+    @DisplayName(
+            "멱등 - 이미 완료된 계정은 요청 바디가 형식적으로 틀려도(약관 미동의 등) 검증 없이 그대로 200 "
+                    + "— 로컬 기능 테스트에서 실제로 걸렸던 회귀: 컨트롤러의 @Valid 가 서비스의 멱등 체크보다 먼저 돌면 "
+                    + "이미 완료된 계정도 400 을 받는다")
     void idempotentEvenWithInvalidBody() {
         Account account = seedUnonboardedAccount();
         String originalNickname = uniqueNickname();
         rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, validRequest(originalNickname)), Map.class);
+                "/accounts/onboarding",
+                HttpMethod.POST,
+                authenticatedBody(account, validRequest(originalNickname)),
+                Map.class);
 
         Map<String, Object> invalidBody = new HashMap<>(validRequest("a"));
         invalidBody.put("termsOfServiceAgreed", false);
         invalidBody.put("privacyPolicyAgreed", false);
         invalidBody.put("timeZone", "Not/AZone");
 
-        var response = rest.exchange(
-                "/accounts/onboarding", HttpMethod.POST,
-                authenticatedBody(account, invalidBody), Map.class);
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, invalidBody),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("name", originalNickname);
     }
 
     @Test
-    @DisplayName("동시성 - 같은 계정에 동시에 완료 요청이 들어와도 한쪽만 실제로 저장되고 나머지는 그 결과를 그대로 받는다 "
-            + "— 리뷰에서 지적된 회귀: 락 없는 findByEmail 을 먼저 부르면 Hibernate 1차 캐시가 이후의 "
-            + "findByEmailForUpdate 결과를 무시해 두 요청 다 '미완료'로 착각하고 409 로 충돌한다")
+    @DisplayName(
+            "동시성 - 같은 계정에 동시에 완료 요청이 들어와도 한쪽만 실제로 저장되고 나머지는 그 결과를 그대로 받는다 "
+                    + "— 리뷰에서 지적된 회귀: 락 없는 findByEmail 을 먼저 부르면 Hibernate 1차 캐시가 이후의 "
+                    + "findByEmailForUpdate 결과를 무시해 두 요청 다 '미완료'로 착각하고 409 로 충돌한다")
     void concurrentCompletionRequestsAreConsistent() throws Exception {
         Account account = seedUnonboardedAccount();
         String nickname = uniqueNickname();
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CyclicBarrier barrier = new CyclicBarrier(2);
-        Callable<ResponseEntity<Map>> callOnboarding = () -> {
-            barrier.await(5, TimeUnit.SECONDS);
-            return rest.exchange(
-                    "/accounts/onboarding", HttpMethod.POST,
-                    authenticatedBody(account, validRequest(nickname)), Map.class);
-        };
+        Callable<ResponseEntity<Map>> callOnboarding =
+                () -> {
+                    barrier.await(5, TimeUnit.SECONDS);
+                    return rest.exchange(
+                            "/accounts/onboarding",
+                            HttpMethod.POST,
+                            authenticatedBody(account, validRequest(nickname)),
+                            Map.class);
+                };
 
         try {
-            List<Future<ResponseEntity<Map>>> futures = pool.invokeAll(List.of(callOnboarding, callOnboarding));
+            List<Future<ResponseEntity<Map>>> futures =
+                    pool.invokeAll(List.of(callOnboarding, callOnboarding));
             List<ResponseEntity<Map>> responses = new ArrayList<>();
             for (Future<ResponseEntity<Map>> future : futures) {
                 responses.add(future.get(10, TimeUnit.SECONDS));
             }
 
-            assertThat(responses).allSatisfy(r -> assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK));
-            assertThat(responses).allSatisfy(r -> assertThat(r.getBody()).containsEntry("name", nickname));
+            assertThat(responses)
+                    .allSatisfy(r -> assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK));
+            assertThat(responses)
+                    .allSatisfy(r -> assertThat(r.getBody()).containsEntry("name", nickname));
         } finally {
             pool.shutdown();
         }
 
         assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
-        assertThat(eventRecorder.received().stream()
-                .filter(e -> e.accountId().equals(account.getId())))
+        assertThat(
+                        eventRecorder.received().stream()
+                                .filter(e -> e.accountId().equals(account.getId())))
                 .hasSize(1);
     }
 }

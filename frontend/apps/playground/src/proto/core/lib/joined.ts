@@ -1,7 +1,7 @@
-import { sessionsOf } from '@core/lib/attendance';
+import { meetingsOf } from '@core/lib/attendance';
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
-import { site, type MemberRegion, type Study, type StudySession } from '@studyclub/mock';
+import { site, type MemberRegion, type Study, type StudyMeeting } from '@studyclub/mock';
 
 export type WallTz = 'KST' | 'PDT';
 export type MeetRegion = 'kr' | 'us' | 'both';
@@ -54,16 +54,6 @@ export function isCompleted(study: Study): boolean {
   return endKindOf(study) === 'completed';
 }
 
-/** 프로토용 완주 출석. 서버가 생기면 명부 출석 합으로 교체한다. */
-const COMPLETED_ATTEND: Record<string, { attended: number; total: number }> = {
-  'leetcode150-2026': { attended: 10, total: 10 },
-  'sql-for-data-analysis': { attended: 6, total: 10 },
-};
-
-export function completedAttend(study: Study): { attended: number; total: number } {
-  return COMPLETED_ATTEND[study.id] ?? { attended: 10, total: 10 };
-}
-
 const FORMAT_LABEL: Record<Study['format'], { ko: string; en: string }> = {
   online: { ko: '온라인', en: 'Online' },
   offline: { ko: '오프라인', en: 'Offline' },
@@ -95,14 +85,17 @@ export function userWallTz(region: MemberRegion): WallTz {
   return region === 'NA' ? 'PDT' : 'KST';
 }
 
-/** 첫 회차 ~ 마지막 회차. 주 수 문구가 아니라 날짜 구간으로 본다. */
-export function durationOf(study: Study, locale: Locale): string {
-  const sessions = sessionsOf(study);
-  if (sessions.length === 0) return locale === 'en' ? 'Dates TBD' : '기간 미정';
-  return `${sessions[0].date} ~ ${sessions[sessions.length - 1].date}`;
+/** 첫 회차 ~ 마지막 회차. 예정일(SCHEDULED_AT)을 고른 타임존 날짜로 붙인다. */
+export function durationOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
+  const meetings = meetingsOf(study);
+  if (meetings.length === 0) return locale === 'en' ? 'Dates TBD' : '기간 미정';
+  const clock = meetingClock(study);
+  const start = formatInTz(asKstInstant(meetings[0].date, clock), tz).date;
+  const end = formatInTz(asKstInstant(meetings[meetings.length - 1].date, clock), tz).date;
+  return `${start} ~ ${end}`;
 }
 
-function sessionClock(study: Study): string {
+function meetingClock(study: Study): string {
   const raw = study.schedule?.ko ?? '';
   const m = raw.match(/(\d{1,2}):(\d{2})/);
   return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '20:00';
@@ -143,7 +136,7 @@ export function ymdInTz(at: Date, tz: WallTz): string {
 
 export type WeekHit = {
   studyId: string;
-  sessionId: string;
+  meetingId: string;
   title: string;
   no: number;
   time: string;
@@ -171,11 +164,11 @@ export function weekDays(studies: Study[], locale: Locale, tz: WallTz, monday: s
 
   for (const study of studies) {
     if (lifeStatus(study) === 'ended') continue;
-    for (const ses of sessionsOf(study)) {
-      const { date, time } = formatInTz(asKstInstant(ses.date, sessionClock(study)), tz);
+    for (const m of meetingsOf(study)) {
+      const { date, time } = formatInTz(asKstInstant(m.date, meetingClock(study)), tz);
       if (date < monday || date > end) continue;
       const hits = byDate.get(date) ?? [];
-      hits.push({ studyId: study.id, sessionId: ses.id, title: t(study.title, locale), no: ses.no, time });
+      hits.push({ studyId: study.id, meetingId: m.id, title: t(study.title, locale), no: m.no, time });
       byDate.set(date, hits);
     }
   }
@@ -219,24 +212,29 @@ function formatInTz(instant: Date, tz: WallTz): { date: string; time: string } {
   };
 }
 
+/** 회차 예정일(SCHEDULED_AT)을 고른 타임존 날짜(yyyy-mm-dd)로. */
+export function meetingWallDate(study: Study, meeting: StudyMeeting, tz: WallTz): string {
+  return formatInTz(asKstInstant(meeting.date, meetingClock(study)), tz).date;
+}
+
 /** 다가오는 회차. 참여 종료·완주는 없다. */
-export function upcomingSession(study: Study, tz: WallTz = 'KST'): StudySession | undefined {
+export function upcomingMeeting(study: Study, tz: WallTz = 'KST'): StudyMeeting | undefined {
   const life = lifeStatus(study);
   if (life === 'ended') return undefined;
   const today = ymdInTz(new Date(), tz);
-  const sessions = sessionsOf(study);
-  return life === 'upcoming' ? sessions[0] : sessions.find((s) => s.date >= today);
+  const meetings = meetingsOf(study);
+  return life === 'upcoming' ? meetings[0] : meetings.find((m) => m.date >= today);
 }
 
 /** 다가오는 일정. 회차·날짜·시각을 선택한 타임존으로 붙인다. */
 export function upcomingOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
-  const next = upcomingSession(study, tz);
+  const next = upcomingMeeting(study, tz);
   if (next) {
-    const { date, time } = formatInTz(asKstInstant(next.date, sessionClock(study)), tz);
+    const { date, time } = formatInTz(asKstInstant(next.date, meetingClock(study)), tz);
     return `${next.no}회차 · ${date} ${time}`;
   }
-  if (lifeStatus(study) === 'ended') return locale === 'en' ? 'No upcoming session' : '다음 일정 없음';
-  return study.schedule ? t(study.schedule, locale) : locale === 'en' ? 'No upcoming session' : '오늘 이후 회차 없음';
+  if (lifeStatus(study) === 'ended') return locale === 'en' ? 'No upcoming meeting' : '다음 일정 없음';
+  return study.schedule ? t(study.schedule, locale) : locale === 'en' ? 'No upcoming meeting' : '오늘 이후 회차 없음';
 }
 
 /** 스터디 채널. 완주면 채널이 닫혀 클럽 로비(초대)로 보낸다. */

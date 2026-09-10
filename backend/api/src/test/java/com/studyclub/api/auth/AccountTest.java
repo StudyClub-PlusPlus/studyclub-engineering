@@ -2,8 +2,8 @@ package com.studyclub.api.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.SystemRole;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,8 @@ class AccountTest {
     void keepsNormalPicture() {
         String ok = "https://lh3.googleusercontent.com/a/" + repeat('x', 600);
 
-        assertThat(new Account("a@b.com", "n", ok, SystemRole.MEMBER).getProfileImgUrl()).isEqualTo(ok);
+        assertThat(new Account("a@b.com", "n", ok, SystemRole.MEMBER).getProfileImgUrl())
+                .isEqualTo(ok);
     }
 
     @Test
@@ -89,7 +90,8 @@ class AccountTest {
         Instant firstCompletedAt = Instant.now();
         account.completeOnboarding("honggildong", "Asia/Seoul", firstCompletedAt);
 
-        boolean result = account.completeOnboarding("kimcheolsu", "America/New_York", Instant.now());
+        boolean result =
+                account.completeOnboarding("kimcheolsu", "America/New_York", Instant.now());
 
         assertThat(result).isFalse();
         assertThat(account.getNickname()).isEqualTo("honggildong");

@@ -10,8 +10,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 회원 전용 — 온보딩 미완료 계정은 {@code @RequireOnboarding} 가드가 403 ONBOARDING_REQUIRED 로 막는다. */
@@ -31,7 +31,8 @@ public class ParticipantHubController {
     @Operation(summary = "내 참가자 허브 조회")
     @GetMapping("/studies")
     public ParticipantHubOverviewResponse getParticipantHubOverview(Authentication authentication) {
-        return participantHubQueryService.getParticipantHubOverview(authenticatedEmail(authentication));
+        return participantHubQueryService.getParticipantHubOverview(
+                authenticatedEmail(authentication));
     }
 
     @Operation(summary = "내 수강 스터디 상세 조회")

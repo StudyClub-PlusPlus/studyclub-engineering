@@ -5,15 +5,13 @@ import com.studyclub.domain.account.Account;
 /** 인증 요청/응답 DTO 모음. */
 public final class AuthDtos {
 
-    private AuthDtos() {
-    }
+    private AuthDtos() {}
 
     /** platform: "CORE"(기본) | "BACK_OFFICE". BACK_OFFICE 는 BO Next 라우트에서 서버측 강제 주입. */
-    public record SocialLoginRequest(String code, String provider, String platform, String redirectUri) {
-    }
+    public record SocialLoginRequest(
+            String code, String provider, String platform, String redirectUri) {}
 
-    public record RefreshRequest(String refreshToken) {
-    }
+    public record RefreshRequest(String refreshToken) {}
 
     public record AccountView(
             Long id,
@@ -34,7 +32,9 @@ public final class AuthDtos {
                     account.getSystemRole().name(),
                     String.valueOf(account.getCreatedAt()),
                     account.getTimeZone(),
-                    account.getOnboardingCompletedAt() == null ? null : account.getOnboardingCompletedAt().toString());
+                    account.getOnboardingCompletedAt() == null
+                            ? null
+                            : account.getOnboardingCompletedAt().toString());
         }
     }
 
@@ -43,9 +43,7 @@ public final class AuthDtos {
             String refreshToken,
             long accessTokenExpiresIn,
             long refreshTokenExpiresIn,
-            AccountView user) {
-    }
+            AccountView user) {}
 
-    public record AccessTokenResponse(String accessToken) {
-    }
+    public record AccessTokenResponse(String accessToken) {}
 }

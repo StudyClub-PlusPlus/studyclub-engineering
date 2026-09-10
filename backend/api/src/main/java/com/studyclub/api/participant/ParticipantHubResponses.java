@@ -1,66 +1,53 @@
 package com.studyclub.api.participant;
 
-import com.studyclub.domain.application.ApplicationStatusEnum;
-import com.studyclub.domain.attendance.AttendanceStatusEnum;
-import com.studyclub.domain.participant.ParticipantStatusEnum;
-import com.studyclub.domain.study.StudyCohortStatusEnum;
+import com.studyclub.domain.application.ApplicationStatus;
+import com.studyclub.domain.attendance.AttendanceStatus;
+import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.study.StudyCohortStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 public final class ParticipantHubResponses {
 
-    private ParticipantHubResponses() {
-    }
+    private ParticipantHubResponses() {}
 
     public record ParticipantHubOverviewResponse(
             List<ParticipatingStudySummary> activeStudies,
             List<ParticipatingStudySummary> pastStudies,
             List<StudyApplicationSummary> applications,
             List<UpcomingStudyMeeting> upcomingMeetings,
-            List<BookmarkedStudySummary> bookmarks) {
-    }
+            List<BookmarkedStudySummary> bookmarks) {}
 
     public record ParticipatingStudySummary(
             Long cohortId,
             Long studyId,
             String title,
-            ParticipantStatusEnum participantStatus,
+            ParticipantStatus participantStatus,
             Integer attendanceRate,
             Instant nextMeetingAt,
-            String thumbnailUrl) {
-    }
+            String thumbnailUrl) {}
 
     public record StudyApplicationSummary(
             Long id,
             Long cohortId,
             Long studyId,
             String studyTitle,
-            ApplicationStatusEnum status,
-            Instant appliedAt) {
-    }
+            ApplicationStatus status,
+            Instant appliedAt) {}
 
     public record UpcomingStudyMeeting(
-            Long id,
-            Long cohortId,
-            Long studyId,
-            String studyTitle,
-            Instant scheduledAt) {
-    }
+            Long id, Long cohortId, Long studyId, String studyTitle, Instant scheduledAt) {}
 
     public record BookmarkedStudySummary(
-            Long id,
-            Long studyId,
-            String studyTitle,
-            String thumbnailUrl) {
-    }
+            Long id, Long studyId, String studyTitle, String thumbnailUrl) {}
 
     public record ParticipatingStudyCohortDetailResponse(
             Long cohortId,
             Long studyId,
             String title,
-            StudyCohortStatusEnum cohortStatus,
-            ParticipantStatusEnum participantStatus,
+            StudyCohortStatus cohortStatus,
+            ParticipantStatus participantStatus,
             String className,
             String timezone,
             String leaderName,
@@ -70,15 +57,12 @@ public final class ParticipantHubResponses {
             LocalDate startsOn,
             UpcomingStudyMeeting nextMeeting,
             List<StudyMeetingAttendance> attendance,
-            String driveUrl) {
-    }
+            String driveUrl) {}
 
     public record StudyMeetingAttendance(
             Long meetingId,
             Instant scheduledAt,
             Instant startsAt,
             Instant endsAt,
-            AttendanceStatusEnum attendanceStatus) {
-    }
-
+            AttendanceStatus attendanceStatus) {}
 }

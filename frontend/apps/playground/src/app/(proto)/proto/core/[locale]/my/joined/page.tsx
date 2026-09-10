@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { AttendanceGrid } from '@core/components/AttendanceGrid';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import {
   STATUS_LABEL,
@@ -13,9 +14,10 @@ import {
   cancelLeave,
   getMyAttendance,
   resolveStatus,
-  sessionsOf,
+  meetingsOf,
   takeLeave,
 } from '@core/lib/attendance';
+import { bookScore, myAttendanceBook, rateTone, type MyAttendanceBook } from '@core/lib/attendance-book';
 import { getUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
@@ -26,7 +28,6 @@ import {
   canOpenAttendance,
   canOpenDiscord,
   canOpenDrive,
-  completedAttend,
   discordUrl,
   driveUrl,
   durationOf,
@@ -34,8 +35,8 @@ import {
   lifeStatus,
   mondayOf,
   tagsOf,
+  upcomingMeeting,
   upcomingOf,
-  upcomingSession,
   userWallTz,
   weekDays,
   ymdInTz,
@@ -44,12 +45,13 @@ import {
   type WeekDay,
 } from '@core/lib/joined';
 import { getApplications, getRegion } from '@core/lib/me';
-import { studies as allStudies, type Study, type StudySession } from '@studyclub/mock';
+import { studies as allStudies, type Study, type StudyMeeting } from '@studyclub/mock';
 import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
 import {
   Award,
   BookOpen,
   CalendarClock,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -89,6 +91,12 @@ const EMPTY: Record<Filter, { title: string; description: string }> = {
   },
 };
 
+function studiesIn(mine: Study[], filter: Filter): Study[] {
+  const list = filter === 'all' ? mine : mine.filter((s) => lifeStatus(s) === filter);
+  if (filter !== 'ended') return list;
+  return [...list].sort((a, b) => Number(isCompleted(b)) - Number(isCompleted(a)));
+}
+
 function weekRangeLabel(days: WeekDay[]): string {
   if (days.length === 0) return '';
   const ymd = days[0].date;
@@ -97,7 +105,7 @@ function weekRangeLabel(days: WeekDay[]): string {
 
 function AttendActions({
   study,
-  session,
+  meeting,
   compact,
   attendAnno,
   leaveAnno,
@@ -105,7 +113,7 @@ function AttendActions({
   onChange,
 }: {
   study: Study;
-  session: StudySession;
+  meeting: StudyMeeting;
   compact?: boolean;
   attendAnno: string;
   leaveAnno: string;
@@ -113,13 +121,11 @@ function AttendActions({
   onChange: () => void;
 }) {
   const stored = getMyAttendance(study.id);
-  const raw = resolveStatus(study, session, stored);
+  const status = resolveStatus(study, meeting, stored);
   const upcoming = lifeStatus(study) === 'upcoming';
-  /** 시작전 스터디는 아직 모이지 않았으므로 결석으로 읽지 않는다. */
-  const status = raw === 'absent' && upcoming ? undefined : raw;
   const onLeave = status === 'excused';
-  const joinOn = canCheckIn(study, session) && canOpenDiscord(study);
-  const cancelOn = onLeave && canCancelLeave(study, session);
+  const joinOn = canCheckIn(study, meeting) && canOpenDiscord(study);
+  const cancelOn = onLeave && canCancelLeave(study, meeting);
 
   function join() {
     if (!joinOn) return;
@@ -127,12 +133,12 @@ function AttendActions({
   }
 
   function leave() {
-    takeLeave(study, session);
+    takeLeave(study, meeting);
     onChange();
   }
 
   function undoLeave() {
-    if (!cancelLeave(study, session)) return;
+    if (!cancelLeave(study, meeting)) return;
     onChange();
   }
 
@@ -233,7 +239,7 @@ function WeekStrip({
     <section data-anno='1-1' className='mt-5'>
       <div className='flex flex-wrap items-end justify-between gap-2'>
         <h2 className='text-lg font-extrabold tracking-tight'>
-          {thisWeek ? '이번 주 일정' : '주간 일정'}{' '}
+          {thisWeek ? '이번 주 일정 ' : '주간 일정 '}{' '}
           <span className='tnum font-bold text-fg-muted'>{range}</span>
         </h2>
         <div className='flex items-center gap-2'>
@@ -281,11 +287,11 @@ function WeekStrip({
               <ul className='mt-1 flex min-h-10 flex-col gap-0.5'>
                 {d.hits.map((hit) => {
                   const study = byId.get(hit.studyId);
-                  const session = study
-                    ? sessionsOf(study).find((s) => s.id === hit.sessionId)
+                  const meeting = study
+                    ? meetingsOf(study).find((m) => m.id === hit.meetingId)
                     : undefined;
                   return (
-                    <li key={`${hit.studyId}-${hit.sessionId}`}>
+                    <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
                         type='button'
                         title={`${hit.time} ${hit.title} ${hit.no}회차`}
@@ -295,10 +301,10 @@ function WeekStrip({
                         <span className='tnum block text-[10px] font-semibold text-fg-muted'>{hit.time}</span>
                         <span className='block truncate'>{hit.title}</span>
                       </button>
-                      {study && session && (
+                      {study && meeting && (
                         <AttendActions
                           study={study}
-                          session={session}
+                          meeting={meeting}
                           compact
                           attendAnno='1-1-2'
                           leaveAnno='1-1-3'
@@ -407,7 +413,7 @@ function Pager({
  * 내 스터디 — 참여 목록.
  *
  * 기본 탭은 참여중. 크루가 여기 오는 이유는 지금 어디 들어가는지 확인하는 것이다.
- * 오늘 참석·휴가는 주간 줄과 카드에서 바로 찍고, 이력은 출석부(`/my/studies`)로 본다.
+ * 오늘 참석·휴가는 주간 줄과 카드에서 바로 찍고, 지난 칸은 카드 안 출석 기록에서 본다.
  */
 export default function MyJoinedPage() {
   const params = useParams();
@@ -420,7 +426,9 @@ export default function MyJoinedPage() {
   const [wallTz, setWallTz] = useState<WallTz>('KST');
   const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
   const [attendTick, setAttendTick] = useState(0);
+  const [openIds, setOpenIds] = useState<string[]>([]);
   const listTop = useRef<HTMLDivElement>(null);
+  const appliedOpen = useRef(false);
 
   useEffect(() => {
     if (!getUser()) {
@@ -445,11 +453,28 @@ export default function MyJoinedPage() {
   const days = useMemo(() => weekDays(mine, locale, wallTz, weekStart), [mine, locale, wallTz, weekStart]);
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
 
-  const shown = useMemo(() => {
-    const list = filter === 'all' ? mine : mine.filter((s) => lifeStatus(s) === filter);
-    if (filter !== 'ended') return list;
-    return [...list].sort((a, b) => Number(isCompleted(b)) - Number(isCompleted(a)));
-  }, [filter, mine]);
+  const shown = useMemo(() => studiesIn(mine, filter), [filter, mine]);
+
+  useEffect(() => {
+    if (!ready || appliedOpen.current) return;
+    const open = new URLSearchParams(window.location.search).get('open');
+    if (!open) {
+      appliedOpen.current = true;
+      return;
+    }
+    const study = mine.find((s) => s.id === open);
+    if (!study) {
+      appliedOpen.current = true;
+      return;
+    }
+    const nextFilter = lifeStatus(study);
+    const list = studiesIn(mine, nextFilter);
+    const idx = list.findIndex((s) => s.id === open);
+    appliedOpen.current = true;
+    setFilter(nextFilter);
+    if (idx >= 0) setPage(Math.floor(idx / PAGE_SIZE) + 1);
+    setOpenIds([open]);
+  }, [ready, mine]);
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
   const pageSafe = Math.min(page, pages);
@@ -514,10 +539,14 @@ export default function MyJoinedPage() {
           <ul className='mt-6 flex flex-col gap-3'>
             {paged.map((study) => (
               <StudyItem
-                key={`${study.id}-${attendTick}`}
+                key={study.id}
                 study={study}
                 locale={locale}
                 wallTz={wallTz}
+                bookOpen={openIds.includes(study.id)}
+                onToggleBook={() =>
+                  setOpenIds((cur) => (cur.includes(study.id) ? cur.filter((id) => id !== study.id) : [...cur, study.id]))
+                }
                 onAttendChange={() => setAttendTick((n) => n + 1)}
               />
             ))}
@@ -529,9 +558,13 @@ export default function MyJoinedPage() {
   );
 }
 
-function MissionClear({ study }: { study: Study }) {
-  const { attended, total } = completedAttend(study);
+function MissionClear({ book }: { book: MyAttendanceBook }) {
+  const { attended, total } = bookScore(book);
   const perfect = total > 0 && attended >= total;
+  const bars = book.meetings.filter((s) => {
+    const st = book.cells[s.id];
+    return st !== undefined && st !== 'excused';
+  });
   return (
     <div
       data-anno='4-4'
@@ -557,15 +590,16 @@ function MissionClear({ study }: { study: Study }) {
         <span className='ml-1 text-[13px] font-bold text-fg-muted'>회</span>
       </p>
       <ol className='mt-2.5 flex gap-1' aria-hidden='true'>
-        {Array.from({ length: total }, (_, i) => (
-          <li
-            key={i}
-            className={cx(
-              'h-2 min-w-0 flex-1 rounded-pill',
-              i < attended ? 'bg-warning-400' : 'bg-surface-3',
-            )}
-          />
-        ))}
+        {bars.map((s) => {
+          const st = book.cells[s.id];
+          const filled = st === 'present' || st === 'late';
+          return (
+            <li
+              key={s.id}
+              className={cx('h-2 min-w-0 flex-1 rounded-pill', filled ? 'bg-warning-400' : 'bg-surface-3')}
+            />
+          );
+        })}
       </ol>
     </div>
   );
@@ -575,14 +609,17 @@ function StudyItem({
   study,
   locale,
   wallTz,
+  bookOpen,
+  onToggleBook,
   onAttendChange,
 }: {
   study: Study;
   locale: Locale;
   wallTz: WallTz;
+  bookOpen: boolean;
+  onToggleBook: () => void;
   onAttendChange: () => void;
 }) {
-  const router = useRouter();
   const { icon: Icon, label } = categoryMeta(study.category);
   const life = lifeStatus(study);
   const completed = isCompleted(study);
@@ -591,7 +628,9 @@ function StudyItem({
   const attendanceOn = canOpenAttendance();
   const discordOn = canOpenDiscord(study);
   const driveOn = canOpenDrive(study);
-  const nextSession = upcomingSession(study, wallTz);
+  const nextMeeting = upcomingMeeting(study, wallTz);
+  const book = myAttendanceBook(study);
+  const panelId = `attendance-${study.id}`;
 
   return (
     <li>
@@ -644,7 +683,7 @@ function StudyItem({
           </div>
 
           {completed ? (
-            <MissionClear study={study} />
+            <MissionClear book={book} />
           ) : (
             <div data-anno='4-4' className='mt-3'>
               <p className='text-[13px] font-semibold text-fg-muted'>다가오는 일정</p>
@@ -653,10 +692,10 @@ function StudyItem({
                 <span className='min-w-0 text-lg font-extrabold tracking-tight text-fg'>
                   {upcomingOf(study, locale, wallTz)}
                 </span>
-                {nextSession && (
+                {nextMeeting && (
                   <AttendActions
                     study={study}
-                    session={nextSession}
+                    meeting={nextMeeting}
                     attendAnno='4-4-1'
                     leaveAnno='4-4-2'
                     cancelAnno='4-4-3'
@@ -668,7 +707,13 @@ function StudyItem({
           )}
           <p data-anno='4-5' className='mt-1.5 flex items-center gap-2 text-[13px] text-fg-muted'>
             <Clock3 size={16} strokeWidth={1.75} className='shrink-0' />
-            {durationOf(study, locale)}
+            {durationOf(study, locale, wallTz)}
+          </p>
+          <p data-anno='4-8' className='mt-1 text-sm text-fg-secondary'>
+            내 출석률{' '}
+            <span className={cx('tnum font-bold', book.rate === undefined ? 'text-fg-muted' : rateTone(book.rate))}>
+              {book.rate === undefined ? '—' : `${book.rate}%`}
+            </span>
           </p>
 
           <div data-anno='4-6' className='mt-4 flex flex-wrap gap-2'>
@@ -677,11 +722,20 @@ function StudyItem({
               variant='secondary'
               size='sm'
               leadingIcon={<ClipboardList size={14} />}
+              trailingIcon={
+                <ChevronDown
+                  size={14}
+                  className={cx('transition-transform', bookOpen && 'rotate-180')}
+                  aria-hidden='true'
+                />
+              }
               disabled={!attendanceOn}
-              title={attendanceOn ? undefined : '참여가 끝나 출석부를 열 수 없습니다'}
-              onClick={() => router.push(`/proto/core/${locale}/my/studies`)}
+              title={attendanceOn ? undefined : '참여가 끝나 내 출석을 열 수 없습니다'}
+              aria-expanded={bookOpen}
+              aria-controls={panelId}
+              onClick={onToggleBook}
             >
-              출석부
+              출석 기록
             </Button>
             <Button
               data-anno='4-6-2'
@@ -706,6 +760,12 @@ function StudyItem({
               자료실
             </Button>
           </div>
+
+          {bookOpen && (
+            <div id={panelId} data-anno='4-6-1-1' className='mt-3'>
+              <AttendanceGrid book={book} study={study} wallTz={wallTz} headAnno='4-6-1-1' cellAnno='4-6-1-2' />
+            </div>
+          )}
 
           <ul data-anno='4-7' className='mt-4 flex flex-wrap gap-1.5'>
             {tags.map((tag) => (

@@ -13,8 +13,8 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * {@link RequireOnboarding} 이 붙은 핸들러 앞에서 온보딩 완료 여부를 확인한다.
- * 인증 자체는 시큐리티 필터가 이미 끝낸 뒤라 여기서는 "이 계정이 온보딩을 마쳤는가"만 본다.
+ * {@link RequireOnboarding} 이 붙은 핸들러 앞에서 온보딩 완료 여부를 확인한다. 인증 자체는 시큐리티 필터가 이미 끝낸 뒤라 여기서는 "이 계정이 온보딩을
+ * 마쳤는가"만 본다.
  */
 @Component
 public class OnboardingGuardInterceptor implements HandlerInterceptor {
@@ -26,7 +26,8 @@ public class OnboardingGuardInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(
+            HttpServletRequest request, HttpServletResponse response, Object handler) {
         if (!(handler instanceof HandlerMethod handlerMethod)) {
             return true;
         }
@@ -39,8 +40,13 @@ public class OnboardingGuardInterceptor implements HandlerInterceptor {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
-        Account account = accountRepository.findByEmail(authentication.getName().toLowerCase())
-                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
+        Account account =
+                accountRepository
+                        .findByEmail(authentication.getName().toLowerCase())
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
         if (account.getOnboardingCompletedAt() == null) {
             throw new BusinessException(ErrorCode.ONBOARDING_REQUIRED);
         }

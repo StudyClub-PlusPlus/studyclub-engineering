@@ -45,8 +45,40 @@
 바디에 `success` 플래그를 두지 않는다 (상태 코드와 중복이고, 어긋나면 어느 쪽이 진실인지 알 수 없다).
 
 ```jsonc
-// 200
+// 200 — 단건 또는 목록 (페이지네이션 불필요)
 [{ "id": 1, "title": "알고리즘 스터디", "status": "RECRUITING" }]
+```
+
+**페이지네이션이 필요한 목록**은 예외적으로 envelope 을 허용한다.
+`items` + 페이지 메타데이터를 함께 돌려줘야 하기 때문이다.
+래퍼 필드명은 `items` 고정, 메타는 `total` · `offset` · `limit` 을 포함해야 한다.
+
+```jsonc
+// 200 — 페이지네이션 목록
+{
+  "items": [{ "title": "java study", "status": "OPEN" }],
+  "total": 42,
+  "offset": 0,
+  "limit": 20
+}
+```
+
+> ⚠️ **Spring `Page<T>` / `Slice<T>` 를 컨트롤러에서 그대로 반환하지 않는다.**
+> Spring 페이지네이션 객체는 `content` · `totalElements` · `pageable` · `sort` 등
+> 프레임워크 고유 필드를 내보낸다. 프론트와의 계약은 위 `items/total/offset/limit`
+> 네 필드뿐이다. 응답 DTO `record` 를 직접 만들어 반환한다.
+
+```java
+// ❌ Spring Page 를 그대로 반환 — content/totalElements/pageable/sort 등 프레임워크 필드가 노출된다
+@GetMapping
+public Page<StudySummary> list(Pageable pageable) { ... }
+
+// ✅ 프로젝트 응답 계약에 맞는 커스텀 DTO
+public record StudyListResponse(List<StudySummary> items, long total, int offset, int limit) {}
+
+@GetMapping
+public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
+                              @RequestParam(defaultValue = "20") int limit) { ... }
 ```
 
 에러는 **어디서 나든 이 모양 하나**:

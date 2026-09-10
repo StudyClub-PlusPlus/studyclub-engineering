@@ -1,7 +1,6 @@
 // StudyClub++ 콘텐츠 접근자.
-// 예전 dogfood 버전은 파일시스템 yaml 을 읽었지만, public 레포에선
-// 하드코딩 mock (@studyclub/mock) 을 소스로 쓴다. 함수 시그니처/반환 모양은 동일 유지.
-// TODO(api): 팀 합류 후 api.studyclub-plusplus.com fetch 로 교체.
+// 스터디 목록은 백엔드 API 에서 가져온다. API 실패 시 mock fallback.
+// 나머지(이벤트·운영자·멤버 등)는 아직 mock.
 import type { Study, StudyclubEvent, Operator, Member, Site, Announcement } from '@studyclub/mock';
 import {
   studies as studiesData,
@@ -11,6 +10,7 @@ import {
   site as siteData,
   announcements as announcementsData,
 } from '@studyclub/mock';
+import { fetchStudies } from './api';
 
 export type {
   Locale,
@@ -47,9 +47,15 @@ function isPublished(s: { publish_at?: string }): boolean {
   return s.publish_at <= new Date().toISOString().slice(0, 10);
 }
 
-/** 사용자 사이트용 스터디 목록 — 미공개 건은 여기서 걸러진다(운영자 콘솔은 별도). */
+/** 사용자 사이트용 스터디 목록 — API 우선, 실패 시 mock fallback. */
 export async function getStudies(): Promise<Study[]> {
-  // date 없으면 year 기준 1/1 로 추정 주입 (날짜 필터/정렬용).
+  try {
+    const apiStudies = await fetchStudies();
+    if (apiStudies.length > 0) return apiStudies;
+  } catch (e) {
+    console.warn('[content] API fetch failed, falling back to mock:', e);
+  }
+  // fallback: mock 데이터
   const withDate = studiesData.filter(isPublished).map((s) => ({
     ...s,
     date: s.date ?? (s.year ? `${s.year}-01-01` : undefined),

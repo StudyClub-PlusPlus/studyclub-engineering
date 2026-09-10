@@ -14,12 +14,13 @@ import java.time.Instant;
 
 @Entity
 @Table(
-    name = "STUDY_PROPOSAL",
-    indexes = {
-        @Index(name = "idx_study_proposal_proposer_account", columnList = "PROPOSER_ACCOUNT_ID"),
-        @Index(name = "idx_study_proposal_status_created", columnList = "STATUS, CREATED_AT")
-    }
-)
+        name = "STUDY_PROPOSAL",
+        indexes = {
+            @Index(
+                    name = "idx_study_proposal_proposer_account",
+                    columnList = "PROPOSER_ACCOUNT_ID"),
+            @Index(name = "idx_study_proposal_status_created", columnList = "STATUS, CREATED_AT")
+        })
 public class StudyProposal extends BaseEntity {
 
     @Id
@@ -37,21 +38,38 @@ public class StudyProposal extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private StudyProposalStatusEnum status;
+    private StudyProposalStatus status;
 
-    protected StudyProposal() {
-    }
+    protected StudyProposal() {}
 
-    public StudyProposal(Long proposerAccountId, String content, Instant proposedDate, StudyProposalStatusEnum status) {
+    public StudyProposal(
+            Long proposerAccountId,
+            String content,
+            Instant proposedDate,
+            StudyProposalStatus status) {
         this.proposerAccountId = proposerAccountId;
         this.content = content;
         this.proposedDate = proposedDate;
         this.status = status;
     }
 
-    public Long getId() { return id; }
-    public Long getProposerAccountId() { return proposerAccountId; }
-    public String getContent() { return content; }
-    public Instant getProposedDate() { return proposedDate; }
-    public StudyProposalStatusEnum getStatus() { return status; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getProposerAccountId() {
+        return proposerAccountId;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public Instant getProposedDate() {
+        return proposedDate;
+    }
+
+    public StudyProposalStatus getStatus() {
+        return status;
+    }
 }

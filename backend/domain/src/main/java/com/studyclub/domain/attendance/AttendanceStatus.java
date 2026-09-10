@@ -1,6 +1,6 @@
 package com.studyclub.domain.attendance;
 
-public enum AttendanceStatusEnum {
+public enum AttendanceStatus {
     PRESENT,
     LATE,
     EXCUSED,

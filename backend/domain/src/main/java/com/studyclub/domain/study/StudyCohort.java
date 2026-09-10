@@ -14,9 +14,8 @@ import java.time.Instant;
 
 @Entity
 @Table(
-    name = "STUDY_COHORT",
-    indexes = @Index(name = "idx_study_cohort_study_status", columnList = "STUDY_ID, STATUS")
-)
+        name = "STUDY_COHORT",
+        indexes = @Index(name = "idx_study_cohort_study_status", columnList = "STUDY_ID, STATUS"))
 public class StudyCohort extends BaseEntity {
 
     @Id
@@ -28,11 +27,11 @@ public class StudyCohort extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STUDY_DELIVERY_FORMAT", nullable = false, length = 20)
-    private DeliveryFormatEnum studyDeliveryFormatEnum;
+    private DeliveryFormat studyDeliveryFormat;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private StudyCohortStatusEnum status;
+    private StudyCohortStatus status;
 
     @Column(name = "APPLICATION_FORM", columnDefinition = "json")
     private String applicationForm;
@@ -57,15 +56,22 @@ public class StudyCohort extends BaseEntity {
     @Column(name = "DRIVE_URL", length = 2048)
     private String driveUrl;
 
-    protected StudyCohort() {
-    }
+    protected StudyCohort() {}
 
-    public StudyCohort(Long studyId, DeliveryFormatEnum studyDeliveryFormatEnum, StudyCohortStatusEnum status,
-                       String applicationForm, String curriculum, Integer capacity,
-                       Instant recruitDeadline, Instant startDate, Instant endDate,
-                       String discordChannelUrl, String driveUrl) {
+    public StudyCohort(
+            Long studyId,
+            DeliveryFormat studyDeliveryFormat,
+            StudyCohortStatus status,
+            String applicationForm,
+            String curriculum,
+            Integer capacity,
+            Instant recruitDeadline,
+            Instant startDate,
+            Instant endDate,
+            String discordChannelUrl,
+            String driveUrl) {
         this.studyId = studyId;
-        this.studyDeliveryFormatEnum = studyDeliveryFormatEnum;
+        this.studyDeliveryFormat = studyDeliveryFormat;
         this.status = status;
         this.applicationForm = applicationForm;
         this.curriculum = curriculum;
@@ -77,16 +83,60 @@ public class StudyCohort extends BaseEntity {
         this.driveUrl = driveUrl;
     }
 
-    public Long getId() { return id; }
-    public Long getStudyId() { return studyId; }
-    public DeliveryFormatEnum getStudyDeliveryFormatEnum() { return studyDeliveryFormatEnum; }
-    public StudyCohortStatusEnum getStatus() { return status; }
-    public String getApplicationForm() { return applicationForm; }
-    public String getCurriculum() { return curriculum; }
-    public Integer getCapacity() { return capacity; }
-    public Instant getRecruitDeadline() { return recruitDeadline; }
-    public Instant getStartDate() { return startDate; }
-    public Instant getEndDate() { return endDate; }
-    public String getDiscordChannelUrl() { return discordChannelUrl; }
-    public String getDriveUrl() { return driveUrl; }
+    private static final long CLOSING_SOON_DAYS = 3;
+
+    public boolean isClosingSoon() {
+        return status == StudyCohortStatus.OPEN
+                && recruitDeadline != null
+                && recruitDeadline.isBefore(
+                        Instant.now().plus(CLOSING_SOON_DAYS, java.time.temporal.ChronoUnit.DAYS));
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getStudyId() {
+        return studyId;
+    }
+
+    public DeliveryFormat getStudyDeliveryFormat() {
+        return studyDeliveryFormat;
+    }
+
+    public StudyCohortStatus getStatus() {
+        return status;
+    }
+
+    public String getApplicationForm() {
+        return applicationForm;
+    }
+
+    public String getCurriculum() {
+        return curriculum;
+    }
+
+    public Integer getCapacity() {
+        return capacity;
+    }
+
+    public Instant getRecruitDeadline() {
+        return recruitDeadline;
+    }
+
+    public Instant getStartDate() {
+        return startDate;
+    }
+
+    public Instant getEndDate() {
+        return endDate;
+    }
+
+    public String getDiscordChannelUrl() {
+        return discordChannelUrl;
+    }
+
+    public String getDriveUrl() {
+        return driveUrl;
+    }
 }
