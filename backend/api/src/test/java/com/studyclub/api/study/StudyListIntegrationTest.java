@@ -2,14 +2,14 @@ package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyCohort;
+import com.studyclub.domain.study.StudyCohortRepository;
 import com.studyclub.domain.study.StudyCohortStatus;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyRepository;
-import com.studyclub.domain.study.StudyCohortRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -35,26 +35,77 @@ class StudyListIntegrationTest {
         cohortRepo.deleteAll();
         studyRepo.deleteAll();
 
-        var algo = studyRepo.save(new Study("daily-leetcode", "데일리 리트코드", "알고리즘 스터디",
-                StudyCategory.CS, StudyKind.STUDY, null, false));
-        cohortRepo.save(new StudyCohort(algo.getId(), DeliveryFormat.ONLINE, StudyCohortStatus.OPEN,
-                null, null, 30,
-                Instant.now().plus(2, ChronoUnit.DAYS),
-                Instant.now().plus(10, ChronoUnit.DAYS), null, null, null));
+        var algo =
+                studyRepo.save(
+                        new Study(
+                                "daily-leetcode",
+                                "데일리 리트코드",
+                                "알고리즘 스터디",
+                                StudyCategory.CS,
+                                StudyKind.STUDY,
+                                null,
+                                false));
+        cohortRepo.save(
+                new StudyCohort(
+                        algo.getId(),
+                        DeliveryFormat.ONLINE,
+                        StudyCohortStatus.OPEN,
+                        null,
+                        null,
+                        30,
+                        Instant.now().plus(2, ChronoUnit.DAYS),
+                        Instant.now().plus(10, ChronoUnit.DAYS),
+                        null,
+                        null,
+                        null));
 
-        var spring = studyRepo.save(new Study("spring-deep", "Spring 딥다이브", "스프링 스터디",
-                StudyCategory.BACKEND, StudyKind.STUDY, null, false));
-        cohortRepo.save(new StudyCohort(spring.getId(), DeliveryFormat.OFFLINE, StudyCohortStatus.DRAFT,
-                null, null, 20,
-                Instant.now().plus(30, ChronoUnit.DAYS),
-                Instant.now().plus(40, ChronoUnit.DAYS), null, null, null));
+        var spring =
+                studyRepo.save(
+                        new Study(
+                                "spring-deep",
+                                "Spring 딥다이브",
+                                "스프링 스터디",
+                                StudyCategory.BACKEND,
+                                StudyKind.STUDY,
+                                null,
+                                false));
+        cohortRepo.save(
+                new StudyCohort(
+                        spring.getId(),
+                        DeliveryFormat.OFFLINE,
+                        StudyCohortStatus.DRAFT,
+                        null,
+                        null,
+                        20,
+                        Instant.now().plus(30, ChronoUnit.DAYS),
+                        Instant.now().plus(40, ChronoUnit.DAYS),
+                        null,
+                        null,
+                        null));
 
-        var closed = studyRepo.save(new Study("old-study", "종료 스터디", "지난 스터디",
-                StudyCategory.CS, StudyKind.STUDY, null, false));
-        cohortRepo.save(new StudyCohort(closed.getId(), DeliveryFormat.ONLINE, StudyCohortStatus.CLOSED,
-                null, null, 10,
-                Instant.now().minus(10, ChronoUnit.DAYS),
-                Instant.now().minus(5, ChronoUnit.DAYS), null, null, null));
+        var closed =
+                studyRepo.save(
+                        new Study(
+                                "old-study",
+                                "종료 스터디",
+                                "지난 스터디",
+                                StudyCategory.CS,
+                                StudyKind.STUDY,
+                                null,
+                                false));
+        cohortRepo.save(
+                new StudyCohort(
+                        closed.getId(),
+                        DeliveryFormat.ONLINE,
+                        StudyCohortStatus.CLOSED,
+                        null,
+                        null,
+                        10,
+                        Instant.now().minus(10, ChronoUnit.DAYS),
+                        Instant.now().minus(5, ChronoUnit.DAYS),
+                        null,
+                        null,
+                        null));
     }
 
     @Test
@@ -98,8 +149,10 @@ class StudyListIntegrationTest {
     @DisplayName("성공 - 모집 마감일 필터 (종료 임박)")
     void filterByRecruitDeadlineBefore() {
         Instant threeDaysLater = Instant.now().plus(3, ChronoUnit.DAYS);
-        var response = rest.getForEntity(
-                "/api/studies?recruitDeadlineBefore=" + threeDaysLater.toString(), Map.class);
+        var response =
+                rest.getForEntity(
+                        "/api/studies?recruitDeadlineBefore=" + threeDaysLater.toString(),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("total", 1);

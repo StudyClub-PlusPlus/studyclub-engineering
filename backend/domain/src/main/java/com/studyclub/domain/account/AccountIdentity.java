@@ -12,18 +12,18 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
-/**
- * 한 회원의 소셜 로그인 수단. 식별은 {@code (issuer, providerAccountId)} —
- * 이메일이 아니라 OAuth {@code sub}.
- */
+/** 한 회원의 소셜 로그인 수단. 식별은 {@code (issuer, providerAccountId)} — 이메일이 아니라 OAuth {@code sub}. */
 @Entity
 @Table(
-    name = "ACCOUNT_IDENTITY",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_account_identity_account_issuer", columnNames = {"ACCOUNT_ID", "ISSUER"}),
-        @UniqueConstraint(name = "uk_account_identity_issuer_provider", columnNames = {"ISSUER", "PROVIDER_ACCOUNT_ID"})
-    }
-)
+        name = "ACCOUNT_IDENTITY",
+        uniqueConstraints = {
+            @UniqueConstraint(
+                    name = "uk_account_identity_account_issuer",
+                    columnNames = {"ACCOUNT_ID", "ISSUER"}),
+            @UniqueConstraint(
+                    name = "uk_account_identity_issuer_provider",
+                    columnNames = {"ISSUER", "PROVIDER_ACCOUNT_ID"})
+        })
 public class AccountIdentity extends BaseEntity {
 
     @Id
@@ -48,8 +48,7 @@ public class AccountIdentity extends BaseEntity {
     @Column(name = "LAST_LOGIN_AT")
     private Instant lastLoginAt;
 
-    protected AccountIdentity() {
-    }
+    protected AccountIdentity() {}
 
     public AccountIdentity(
             Long accountId,
@@ -64,12 +63,29 @@ public class AccountIdentity extends BaseEntity {
         this.lastLoginAt = lastLoginAt;
     }
 
-    public Long getId() { return id; }
-    public Long getAccountId() { return accountId; }
-    public Issuer getIssuer() { return issuer; }
-    public String getProviderAccountId() { return providerAccountId; }
-    public String getProviderEmail() { return providerEmail; }
-    public Instant getLastLoginAt() { return lastLoginAt; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
+
+    public Issuer getIssuer() {
+        return issuer;
+    }
+
+    public String getProviderAccountId() {
+        return providerAccountId;
+    }
+
+    public String getProviderEmail() {
+        return providerEmail;
+    }
+
+    public Instant getLastLoginAt() {
+        return lastLoginAt;
+    }
 
     public void recordLogin(Instant at) {
         this.lastLoginAt = at;

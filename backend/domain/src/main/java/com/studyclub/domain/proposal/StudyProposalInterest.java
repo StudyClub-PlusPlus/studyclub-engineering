@@ -12,13 +12,15 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-    name = "STUDY_PROPOSAL_INTEREST",
-    uniqueConstraints = @UniqueConstraint(name = "uk_proposal_interest_proposal_account", columnNames = {"PROPOSAL_ID", "ACCOUNT_ID"}),
-    indexes = {
-        @Index(name = "idx_proposal_interest_proposal", columnList = "PROPOSAL_ID"),
-        @Index(name = "idx_proposal_interest_account", columnList = "ACCOUNT_ID")
-    }
-)
+        name = "STUDY_PROPOSAL_INTEREST",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_proposal_interest_proposal_account",
+                        columnNames = {"PROPOSAL_ID", "ACCOUNT_ID"}),
+        indexes = {
+            @Index(name = "idx_proposal_interest_proposal", columnList = "PROPOSAL_ID"),
+            @Index(name = "idx_proposal_interest_account", columnList = "ACCOUNT_ID")
+        })
 public class StudyProposalInterest extends BaseEntity {
 
     @Id
@@ -31,15 +33,22 @@ public class StudyProposalInterest extends BaseEntity {
     @Column(name = "ACCOUNT_ID", nullable = false)
     private Long accountId;
 
-    protected StudyProposalInterest() {
-    }
+    protected StudyProposalInterest() {}
 
     public StudyProposalInterest(Long proposalId, Long accountId) {
         this.proposalId = proposalId;
         this.accountId = accountId;
     }
 
-    public Long getId() { return id; }
-    public Long getProposalId() { return proposalId; }
-    public Long getAccountId() { return accountId; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getProposalId() {
+        return proposalId;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
 }

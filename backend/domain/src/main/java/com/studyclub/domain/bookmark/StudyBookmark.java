@@ -12,13 +12,15 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-    name = "STUDY_BOOKMARK",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_bookmark_account_study", columnNames = {"ACCOUNT_ID", "STUDY_ID"}),
-    indexes = {
-        @Index(name = "idx_study_bookmark_account", columnList = "ACCOUNT_ID"),
-        @Index(name = "idx_study_bookmark_study", columnList = "STUDY_ID")
-    }
-)
+        name = "STUDY_BOOKMARK",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_study_bookmark_account_study",
+                        columnNames = {"ACCOUNT_ID", "STUDY_ID"}),
+        indexes = {
+            @Index(name = "idx_study_bookmark_account", columnList = "ACCOUNT_ID"),
+            @Index(name = "idx_study_bookmark_study", columnList = "STUDY_ID")
+        })
 public class StudyBookmark extends BaseEntity {
 
     @Id
@@ -31,15 +33,22 @@ public class StudyBookmark extends BaseEntity {
     @Column(name = "STUDY_ID", nullable = false)
     private Long studyId;
 
-    protected StudyBookmark() {
-    }
+    protected StudyBookmark() {}
 
     public StudyBookmark(Long accountId, Long studyId) {
         this.accountId = accountId;
         this.studyId = studyId;
     }
 
-    public Long getId() { return id; }
-    public Long getAccountId() { return accountId; }
-    public Long getStudyId() { return studyId; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
+
+    public Long getStudyId() {
+        return studyId;
+    }
 }

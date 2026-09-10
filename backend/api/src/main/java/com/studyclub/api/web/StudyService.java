@@ -14,15 +14,21 @@ public class StudyService {
     private final StudyRepository studyRepository;
     private final StudyCohortRepository studyCohortRepository;
 
-    public StudyService(StudyRepository studyRepository, StudyCohortRepository studyCohortRepository) {
+    public StudyService(
+            StudyRepository studyRepository, StudyCohortRepository studyCohortRepository) {
         this.studyRepository = studyRepository;
         this.studyCohortRepository = studyCohortRepository;
     }
 
     @Transactional(readOnly = true)
     public StudyDetailResponse getDetail(Long studyId) {
-        Study study = studyRepository.findByIdAndIsHiddenFalse(studyId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+        Study study =
+                studyRepository
+                        .findByIdAndIsHiddenFalse(studyId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
 
         var cohort = studyCohortRepository.findFirstByStudyIdOrderByIdDesc(studyId).orElse(null);
         return StudyDetailResponse.from(study, cohort);

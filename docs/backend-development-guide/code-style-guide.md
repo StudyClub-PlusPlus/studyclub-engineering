@@ -2,6 +2,18 @@
 
 이름·주석처럼 **어떻게 쓸지**의 규약. 설계 원칙(무엇을 어디에 둘지)은 [`oop-guide.md`](oop-guide.md) 를 본다.
 
+## 포맷은 도구가 강제한다
+
+[google-java-format](https://github.com/google/google-java-format) (AOSP 스타일 — 4-space indent)
+을 spotless 로 걸어 뒀다. **들여쓰기·줄바꿈·import 순서를 손으로 맞추지 않는다.**
+
+```bash
+cd backend && ./gradlew spotlessApply   # 고친다
+cd backend && ./gradlew check           # 테스트 + 포맷 검사 (CI 와 같은 것)
+```
+
+포맷 위반은 `backend-PR-CI` 가 막는다. 아래 규약들은 도구가 못 잡는 것 — 사람이 지킨다.
+
 ## Table of Contents
 
 - [네이밍 규약](#네이밍-규약)

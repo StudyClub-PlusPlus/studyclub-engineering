@@ -13,9 +13,8 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-    name = "STUDY",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_slug", columnNames = "SLUG")
-)
+        name = "STUDY",
+        uniqueConstraints = @UniqueConstraint(name = "uk_study_slug", columnNames = "SLUG"))
 public class Study extends BaseEntity {
 
     @Id
@@ -45,11 +44,16 @@ public class Study extends BaseEntity {
     @Column(name = "IS_HIDDEN", nullable = false)
     private boolean isHidden = false;
 
-    protected Study() {
-    }
+    protected Study() {}
 
-    public Study(String slug, String title, String description, StudyCategory category,
-                 StudyKind studyKind, String thumbnailUrl, boolean isHidden) {
+    public Study(
+            String slug,
+            String title,
+            String description,
+            StudyCategory category,
+            StudyKind studyKind,
+            String thumbnailUrl,
+            boolean isHidden) {
         this.slug = slug;
         this.title = title;
         this.description = description;
@@ -59,12 +63,35 @@ public class Study extends BaseEntity {
         this.isHidden = isHidden;
     }
 
-    public Long getId() { return id; }
-    public String getSlug() { return slug; }
-    public String getTitle() { return title; }
-    public String getDescription() { return description; }
-    public StudyCategory getCategory() { return category; }
-    public StudyKind getStudyKind() { return studyKind; }
-    public String getThumbnailUrl() { return thumbnailUrl; }
-    public boolean isHidden() { return isHidden; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public StudyCategory getCategory() {
+        return category;
+    }
+
+    public StudyKind getStudyKind() {
+        return studyKind;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public boolean isHidden() {
+        return isHidden;
+    }
 }

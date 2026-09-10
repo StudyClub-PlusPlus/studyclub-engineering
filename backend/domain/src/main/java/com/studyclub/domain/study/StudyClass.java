@@ -12,9 +12,11 @@ import java.time.Instant;
 
 @Entity
 @Table(
-    name = "STUDY_CLASS",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_class_cohort_name", columnNames = {"STUDY_COHORT_ID", "NAME"})
-)
+        name = "STUDY_CLASS",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_study_class_cohort_name",
+                        columnNames = {"STUDY_COHORT_ID", "NAME"}))
 public class StudyClass extends BaseEntity {
 
     @Id
@@ -35,10 +37,10 @@ public class StudyClass extends BaseEntity {
 
     private Integer capacity;
 
-    protected StudyClass() {
-    }
+    protected StudyClass() {}
 
-    public StudyClass(Long studyCohortId, String name, Instant startsAt, String timezone, Integer capacity) {
+    public StudyClass(
+            Long studyCohortId, String name, Instant startsAt, String timezone, Integer capacity) {
         this.studyCohortId = studyCohortId;
         this.name = name;
         this.startsAt = startsAt;
@@ -46,10 +48,27 @@ public class StudyClass extends BaseEntity {
         this.capacity = capacity;
     }
 
-    public Long getId() { return id; }
-    public Long getStudyCohortId() { return studyCohortId; }
-    public String getName() { return name; }
-    public Instant getStartsAt() { return startsAt; }
-    public String getTimezone() { return timezone; }
-    public Integer getCapacity() { return capacity; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getStudyCohortId() {
+        return studyCohortId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Instant getStartsAt() {
+        return startsAt;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public Integer getCapacity() {
+        return capacity;
+    }
 }
