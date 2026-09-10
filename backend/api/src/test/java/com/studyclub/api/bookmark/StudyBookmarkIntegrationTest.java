@@ -126,7 +126,15 @@ class StudyBookmarkIntegrationTest {
         Study saveStudy(String slug, String title, StudyCategory category) {
             Study study =
                     studyRepository.save(
-                            new Study(slug, title, null, category, StudyKind.STUDY, null, false));
+                            new Study(
+                                    slug,
+                                    title,
+                                    null,
+                                    null,
+                                    category,
+                                    StudyKind.STUDY,
+                                    null,
+                                    false));
             studyIds.add(study.getId());
             return study;
         }
@@ -142,6 +150,8 @@ class StudyBookmarkIntegrationTest {
                                     null,
                                     10,
                                     Instant.now().plusSeconds(3600),
+                                    null,
+                                    null,
                                     null,
                                     null,
                                     null,

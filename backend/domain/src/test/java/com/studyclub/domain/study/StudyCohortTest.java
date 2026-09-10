@@ -56,6 +56,8 @@ class StudyCohortTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 }

@@ -45,6 +45,7 @@ class StudyDetailApiTest {
                         new Study(
                                 "algo-study",
                                 "알고리즘 스터디",
+                                null,
                                 "설명",
                                 StudyCategory.BACKEND,
                                 StudyKind.STUDY,
@@ -60,6 +61,8 @@ class StudyDetailApiTest {
                         20,
                         Instant.parse("2026-10-01T00:00:00Z"),
                         Instant.parse("2026-10-15T00:00:00Z"),
+                        null,
+                        null,
                         null,
                         null,
                         null));
@@ -86,6 +89,7 @@ class StudyDetailApiTest {
                         new Study(
                                 "no-cohort",
                                 "코호트 없음",
+                                null,
                                 null,
                                 StudyCategory.AI_ML,
                                 StudyKind.STUDY,
@@ -116,6 +120,7 @@ class StudyDetailApiTest {
                         new Study(
                                 "hidden",
                                 "숨김 스터디",
+                                null,
                                 null,
                                 StudyCategory.OTHER,
                                 StudyKind.STUDY,

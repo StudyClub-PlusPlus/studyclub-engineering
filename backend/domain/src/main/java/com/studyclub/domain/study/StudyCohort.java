@@ -56,6 +56,12 @@ public class StudyCohort extends BaseEntity {
     @Column(name = "DRIVE_URL", length = 2048)
     private String driveUrl;
 
+    @Column(length = 255)
+    private String schedule;
+
+    @Column(name = "PUBLISH_DATE")
+    private Instant publishDate;
+
     protected StudyCohort() {}
 
     public StudyCohort(
@@ -69,7 +75,9 @@ public class StudyCohort extends BaseEntity {
             Instant startDate,
             Instant endDate,
             String discordChannelUrl,
-            String driveUrl) {
+            String driveUrl,
+            String schedule,
+            Instant publishDate) {
         this.studyId = studyId;
         this.studyDeliveryFormat = studyDeliveryFormat;
         this.status = status;
@@ -81,6 +89,8 @@ public class StudyCohort extends BaseEntity {
         this.endDate = endDate;
         this.discordChannelUrl = discordChannelUrl;
         this.driveUrl = driveUrl;
+        this.schedule = schedule;
+        this.publishDate = publishDate;
     }
 
     private static final long CLOSING_SOON_DAYS = 3;
@@ -138,5 +148,13 @@ public class StudyCohort extends BaseEntity {
 
     public String getDriveUrl() {
         return driveUrl;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public Instant getPublishDate() {
+        return publishDate;
     }
 }

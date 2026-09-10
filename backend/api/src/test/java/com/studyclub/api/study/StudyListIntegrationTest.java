@@ -40,6 +40,7 @@ class StudyListIntegrationTest {
                         new Study(
                                 "daily-leetcode",
                                 "데일리 리트코드",
+                                null,
                                 "알고리즘 스터디",
                                 StudyCategory.CS,
                                 StudyKind.STUDY,
@@ -57,6 +58,8 @@ class StudyListIntegrationTest {
                         Instant.now().plus(10, ChronoUnit.DAYS),
                         null,
                         null,
+                        null,
+                        null,
                         null));
 
         var spring =
@@ -64,6 +67,7 @@ class StudyListIntegrationTest {
                         new Study(
                                 "spring-deep",
                                 "Spring 딥다이브",
+                                null,
                                 "스프링 스터디",
                                 StudyCategory.BACKEND,
                                 StudyKind.STUDY,
@@ -81,6 +85,8 @@ class StudyListIntegrationTest {
                         Instant.now().plus(40, ChronoUnit.DAYS),
                         null,
                         null,
+                        null,
+                        null,
                         null));
 
         var closed =
@@ -88,6 +94,7 @@ class StudyListIntegrationTest {
                         new Study(
                                 "old-study",
                                 "종료 스터디",
+                                null,
                                 "지난 스터디",
                                 StudyCategory.CS,
                                 StudyKind.STUDY,
@@ -103,6 +110,8 @@ class StudyListIntegrationTest {
                         10,
                         Instant.now().minus(10, ChronoUnit.DAYS),
                         Instant.now().minus(5, ChronoUnit.DAYS),
+                        null,
+                        null,
                         null,
                         null,
                         null));

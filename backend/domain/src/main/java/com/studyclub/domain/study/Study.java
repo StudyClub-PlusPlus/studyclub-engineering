@@ -27,6 +27,9 @@ public class Study extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String title;
 
+    @Column(name = "ONE_LINE_SUMMARY", length = 255)
+    private String oneLineSummary;
+
     @Column(columnDefinition = "text")
     private String description;
 
@@ -49,6 +52,7 @@ public class Study extends BaseEntity {
     public Study(
             String slug,
             String title,
+            String oneLineSummary,
             String description,
             StudyCategory category,
             StudyKind studyKind,
@@ -56,6 +60,7 @@ public class Study extends BaseEntity {
             boolean isHidden) {
         this.slug = slug;
         this.title = title;
+        this.oneLineSummary = oneLineSummary;
         this.description = description;
         this.category = category;
         this.studyKind = studyKind;
@@ -73,6 +78,10 @@ public class Study extends BaseEntity {
 
     public String getTitle() {
         return title;
+    }
+
+    public String getOneLineSummary() {
+        return oneLineSummary;
     }
 
     public String getDescription() {
