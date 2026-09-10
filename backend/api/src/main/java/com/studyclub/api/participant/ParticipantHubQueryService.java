@@ -9,24 +9,25 @@ import org.springframework.stereotype.Service;
 @Service
 public class ParticipantHubQueryService {
 
-    private final ParticipantHubDataProvider dataProvider;
+    private final ParticipantHubDataProvider participantHubDataProvider;
 
-    public ParticipantHubQueryService(ParticipantHubDataProvider dataProvider) {
-        this.dataProvider = dataProvider;
+    public ParticipantHubQueryService(ParticipantHubDataProvider participantHubDataProvider) {
+        this.participantHubDataProvider = participantHubDataProvider;
     }
 
     public ParticipantHubOverviewResponse getParticipantHubOverview(String accountEmail) {
-        return dataProvider.getParticipantHubOverview(accountEmail);
+        return participantHubDataProvider.getParticipantHubOverview(accountEmail);
     }
 
     public ParticipatingStudyCohortDetailResponse getParticipatingStudyCohortDetail(
             String accountEmail, Long cohortId) {
-        return dataProvider.findParticipatingStudyCohortDetail(accountEmail, cohortId)
+        return participantHubDataProvider
+                .findParticipatingStudyCohortDetail(accountEmail, cohortId)
                 .orElseThrow(() -> inaccessibleStudyCohort(cohortId));
     }
 
     private BusinessException inaccessibleStudyCohort(Long cohortId) {
-        if (dataProvider.studyCohortExists(cohortId)) {
+        if (participantHubDataProvider.studyCohortExists(cohortId)) {
             return new BusinessException(ErrorCode.FORBIDDEN, "참여 중인 스터디가 아닙니다.");
         }
         return new BusinessException(ErrorCode.NOT_FOUND, "스터디 기수를 찾을 수 없습니다.");

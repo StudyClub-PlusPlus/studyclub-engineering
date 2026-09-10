@@ -3,12 +3,10 @@ package com.studyclub.common.error;
 /**
  * 에러 응답의 {@code errorCode} 정본.
  *
- * <p>프론트는 <b>사람이 읽는 메시지가 아니라 이 코드로 분기</b>한다. 메시지는 문구가 바뀌고
- * 번역되지만 코드는 계약이다. 새 코드를 추가할 때는 프론트가 실제로 분기할 이유가 있을 때만
- * 추가한다 — 코드가 늘어나면 프론트의 switch 도 같이 늘어난다.
+ * <p>프론트는 <b>사람이 읽는 메시지가 아니라 이 코드로 분기</b>한다. 메시지는 문구가 바뀌고 번역되지만 코드는 계약이다. 새 코드를 추가할 때는 프론트가 실제로 분기할
+ * 이유가 있을 때만 추가한다 — 코드가 늘어나면 프론트의 switch 도 같이 늘어난다.
  *
- * <p>HTTP 상태는 여기서 한 번만 정한다. 컨트롤러/서비스는 상태 코드를 신경 쓰지 않고
- * {@link BusinessException} 에 ErrorCode 만 넘긴다.
+ * <p>HTTP 상태는 여기서 한 번만 정한다. 컨트롤러/서비스는 상태 코드를 신경 쓰지 않고 {@link BusinessException} 에 ErrorCode 만 넘긴다.
  */
 public enum ErrorCode {
 
@@ -48,8 +46,8 @@ public enum ErrorCode {
     }
 
     /**
-     * 프레임워크가 던진 예외(HTTP 상태만 아는 것)를 우리 코드로 되돌린다.
-     * 매핑되는 코드가 없으면 4xx 는 {@link #INVALID_INPUT}, 그 외는 {@link #INTERNAL_ERROR}.
+     * 프레임워크가 던진 예외(HTTP 상태만 아는 것)를 우리 코드로 되돌린다. 매핑되는 코드가 없으면 4xx 는 {@link #INVALID_INPUT}, 그 외는
+     * {@link #INTERNAL_ERROR}.
      */
     public static ErrorCode fromStatus(int status) {
         for (ErrorCode code : values()) {

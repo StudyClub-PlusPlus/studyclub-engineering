@@ -12,9 +12,11 @@ import java.time.Instant;
 
 @Entity
 @Table(
-    name = "STUDY_MEETING",
-    indexes = @Index(name = "idx_study_meeting_class_scheduled", columnList = "STUDY_CLASS_ID, SCHEDULED_AT")
-)
+        name = "STUDY_MEETING",
+        indexes =
+                @Index(
+                        name = "idx_study_meeting_class_scheduled",
+                        columnList = "STUDY_CLASS_ID, SCHEDULED_AT"))
 public class StudyMeeting extends BaseEntity {
 
     @Id
@@ -33,8 +35,7 @@ public class StudyMeeting extends BaseEntity {
     @Column(name = "ENDS_AT")
     private Instant endsAt;
 
-    protected StudyMeeting() {
-    }
+    protected StudyMeeting() {}
 
     public StudyMeeting(Long studyClassId, Instant scheduledAt, Instant startsAt, Instant endsAt) {
         this.studyClassId = studyClassId;
@@ -43,9 +44,23 @@ public class StudyMeeting extends BaseEntity {
         this.endsAt = endsAt;
     }
 
-    public Long getId() { return id; }
-    public Long getStudyClassId() { return studyClassId; }
-    public Instant getScheduledAt() { return scheduledAt; }
-    public Instant getStartsAt() { return startsAt; }
-    public Instant getEndsAt() { return endsAt; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getStudyClassId() {
+        return studyClassId;
+    }
+
+    public Instant getScheduledAt() {
+        return scheduledAt;
+    }
+
+    public Instant getStartsAt() {
+        return startsAt;
+    }
+
+    public Instant getEndsAt() {
+        return endsAt;
+    }
 }

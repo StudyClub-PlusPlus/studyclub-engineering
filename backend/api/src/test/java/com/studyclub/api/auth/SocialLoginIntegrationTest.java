@@ -9,10 +9,10 @@ import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountIdentity;
 import com.studyclub.domain.account.AccountIdentityRepository;
+import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.SystemRole;
 import java.time.Instant;
-import com.studyclub.domain.account.AccountRepository;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,21 +32,23 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 class SocialLoginIntegrationTest {
 
     private static final String SUB = "google-sub-1";
+
     /** 구글이 준 원본. 대소문자가 섞여 있어야 정규화(ACCOUNT.EMAIL)와 원본 보관(PROVIDER_EMAIL)이 구분된다 */
     private static final String RAW_EMAIL = "User1@Example.com";
+
     private static final String EMAIL = "user1@example.com";
 
-    @Autowired TestRestTemplate rest;               // 이 테스트가 "프론트" 역할 — HTTP 를 실제로 쏜다
-    @Autowired AccountRepository accounts;          // DB 에 행이 생겼는지 직접 본다
+    @Autowired TestRestTemplate rest; // 이 테스트가 "프론트" 역할 — HTTP 를 실제로 쏜다
+    @Autowired AccountRepository accounts; // DB 에 행이 생겼는지 직접 본다
     @Autowired AccountIdentityRepository identities;
 
-    @MockitoBean GoogleOAuthClient google;          // 구글 왕복만 가짜. 파이썬의 mock.patch 와 같다
+    @MockitoBean GoogleOAuthClient google; // 구글 왕복만 가짜. 파이썬의 mock.patch 와 같다
 
     @BeforeEach
     void setUp() {
         // 기존 ApiIntegrationTest 와 같은 이유 — 레거시 HttpURLConnection 은 바디 있는 POST 의 4xx 를 못 읽는다
         rest.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
-        identities.deleteAll();   // FK 때문에 자식 먼저
+        identities.deleteAll(); // FK 때문에 자식 먼저
         accounts.deleteAll();
     }
 
@@ -63,8 +65,10 @@ class SocialLoginIntegrationTest {
     /** 로그인 API 를 실제로 쏜다 */
     @SuppressWarnings("unchecked")
     private ResponseEntity<Map> login() {
-        return rest.postForEntity("/auth/social-login",
-                Map.of("code", "dummy", "provider", "google", "platform", "CORE"), Map.class);
+        return rest.postForEntity(
+                "/auth/social-login",
+                Map.of("code", "dummy", "provider", "google", "platform", "CORE"),
+                Map.class);
     }
 
     @Test
@@ -99,9 +103,10 @@ class SocialLoginIntegrationTest {
 
         // then ⑥ DB: ACCOUNT 1행, ACCOUNT_IDENTITY 1행 — 그리고 identity 는 (GOOGLE, sub) 로 찾아진다
         assertThat(accounts.count()).isEqualTo(1);
-        AccountIdentity identity = identities.findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB).orElseThrow();
+        AccountIdentity identity =
+                identities.findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB).orElseThrow();
         assertThat(identity.getAccountId()).isEqualTo(((Number) account.get("id")).longValue());
-        assertThat(identity.getProviderEmail()).isEqualTo(RAW_EMAIL);   // PROVIDER_EMAIL 은 제공자 원본 그대로
+        assertThat(identity.getProviderEmail()).isEqualTo(RAW_EMAIL); // PROVIDER_EMAIL 은 제공자 원본 그대로
         assertThat(identity.getLastLoginAt()).isNotNull();
     }
 
@@ -111,7 +116,11 @@ class SocialLoginIntegrationTest {
         // given — 한 번 가입해 둔다
         googleReturns(SUB, EMAIL, "홍길동");
         login();
-        Instant firstLogin = identities.findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB).orElseThrow().getLastLoginAt();
+        Instant firstLogin =
+                identities
+                        .findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB)
+                        .orElseThrow()
+                        .getLastLoginAt();
 
         // when — 같은 sub, 그런데 이메일은 바뀐 채로 다시 로그인. sub 가 같으면 같은 사람이어야 한다
         googleReturns(SUB, "changed@example.com", "홍길동");
@@ -121,7 +130,11 @@ class SocialLoginIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(accounts.count()).isEqualTo(1);
         assertThat(identities.count()).isEqualTo(1);
-        Instant secondLogin = identities.findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB).orElseThrow().getLastLoginAt();
+        Instant secondLogin =
+                identities
+                        .findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB)
+                        .orElseThrow()
+                        .getLastLoginAt();
         assertThat(secondLogin).isAfterOrEqualTo(firstLogin);
     }
 

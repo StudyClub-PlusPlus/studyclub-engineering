@@ -34,7 +34,7 @@ export const SPEC: ScreenSpec = {
         '승인(accepted)된 신청만 보인다. 대기 중이거나 종료된 스터디는 나오지 않는다',
         '오늘 회차가 없는 스터디도 카드는 보이되 액션이 없다',
       ],
-      data: ['참여 목록 = 내 신청 중 status가 accepted 인 것 · 회차 = 스터디 크루의 sessions'],
+      data: ['참여 목록 = 내 신청 중 status가 accepted 인 것 · 회차 = 스터디 크루의 meetings'],
       when: '탭이 "오늘 출석"일 때',
     },
     {
@@ -94,8 +94,8 @@ export const SPEC: ScreenSpec = {
       title: '내 출석률',
       display: ['정수 % 또는 —'],
       policy: [
-        '분모는 종료된 회차 중 휴가가 아닌 것',
-        '분자는 출석 + 지각 (지각도 출석으로 센다)',
+        '분자는 출석·지각 = 1, 결석은 0. 출석률과 완주율은 같다',
+        '분모(대상 회차)는 시작된 회차 중 휴가가 아닌 것',
         '끝난 회차가 없거나 전부 휴가면 — 로 표시한다',
       ],
       when: '탭이 "출석 현황"일 때',
@@ -105,7 +105,7 @@ export const SPEC: ScreenSpec = {
       title: '회차 격자',
       display: ['칸 하나가 회차 하나. 위에 회차 번호와 날짜, 아래 상태'],
       policy: ['운영자 출석부와 같은 모양을 쓴다 — 회원과 운영자가 같은 그림을 보고 이야기하게'],
-      data: ['스터디 크루의 sessions 전체'],
+      data: ['스터디 크루의 meetings 전체'],
       when: '탭이 "출석 현황"일 때',
     },
   ],

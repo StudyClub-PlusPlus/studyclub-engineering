@@ -14,14 +14,7 @@
 - **캡슐화** — 내부 상태 변경은 객체 자신의 메서드를 통해서만
 - **호출자는 구현을 모른다** — 메서드 시그니처만 보고 무엇을 하는지 알 수 있어야 한다
 
-## 네이밍 규약
-
-### Enum 클래스
-
-- **Enum 클래스 이름에 `Enum` 접미사를 붙이지 않는다.**
-  - ❌ `StudyCohortStatusEnum`, `StudyStatusEnum`
-  - ✅ `StudyCohortStatus`, `StudyStatus`
-- 타입 자체가 이미 열거형임을 나타내므로 `Enum` 을 이름에 포함하는 것은 중복이다.
+> 이름·주석 같은 표기 규약은 [`code-style-guide.md`](code-style-guide.md) 가 갖는다. 이 문서는 설계 원칙만 다룬다.
 
 ## 메서드는 내부 구현을 숨긴다
 

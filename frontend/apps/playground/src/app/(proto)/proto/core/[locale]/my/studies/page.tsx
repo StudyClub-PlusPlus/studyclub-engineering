@@ -14,10 +14,10 @@ import {
   getMyAttendance,
   myRate,
   resolveStatus,
-  sessionWindow,
-  sessionsOf,
+  meetingWindow,
+  meetingsOf,
   takeLeave,
-  todaySession,
+  todayMeeting,
   type MyStatus,
 } from '@core/lib/attendance';
 import { getUser } from '@core/lib/auth';
@@ -138,14 +138,14 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
   useEffect(() => setStored(getMyAttendance(study.id)), [study.id]);
 
   const { icon: Icon, label } = categoryMeta(study.category);
-  const session = todaySession(study);
-  const status = session ? resolveStatus(study, session, stored) : undefined;
-  const win = session ? sessionWindow(study, session) : null;
+  const meeting = todayMeeting(study);
+  const status = meeting ? resolveStatus(study, meeting, stored) : undefined;
+  const win = meeting ? meetingWindow(study, meeting) : null;
 
   function act(next: 'in' | 'leave') {
-    if (!session) return;
-    if (next === 'in') checkIn(study, session);
-    else takeLeave(study, session);
+    if (!meeting) return;
+    if (next === 'in') checkIn(study, meeting);
+    else takeLeave(study, meeting);
     setStored(getMyAttendance(study.id));
     onChange();
   }
@@ -175,9 +175,9 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
           <span className='shrink-0 text-fg-muted'>{label}</span>
           <span className='text-fg-muted'>·</span>
           <CalendarClock size={12} strokeWidth={1.75} className='shrink-0' />
-          {session && win ? (
+          {meeting && win ? (
             <span className='tnum truncate'>
-              오늘 {session.no}회차 {fmtTime(win.start)}~{fmtTime(win.end)}
+              오늘 {meeting.no}회차 {fmtTime(win.start)}~{fmtTime(win.end)}
             </span>
           ) : (
             <span className='truncate'>오늘 회차 없음</span>
@@ -185,7 +185,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
         </p>
       </div>
 
-      {session &&
+      {meeting &&
         (status ? (
           <span
             data-anno='3-3'
@@ -198,7 +198,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
             <button
               type='button'
               onClick={() => act('in')}
-              disabled={!canCheckIn(study, session)}
+              disabled={!canCheckIn(study, meeting)}
               data-anno='3-4'
               className='rounded-pill bg-brand px-4 py-2 text-[13px] font-bold text-on-brand transition-colors hover:bg-brand-hover disabled:bg-neutral-200 disabled:text-neutral-400'
             >
@@ -223,7 +223,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
   const [stored, setStored] = useState<Record<string, MyStatus>>({});
   useEffect(() => setStored(getMyAttendance(study.id)), [study.id]);
 
-  const sessions = sessionsOf(study);
+  const meetings = meetingsOf(study);
   const rate = myRate(study, stored);
 
   return (
@@ -244,24 +244,24 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
         <table className='w-full border-separate border-spacing-1 text-sm'>
           <thead>
             <tr>
-              {sessions.map((se) => (
+              {meetings.map((m) => (
                 <th
-                  key={se.id}
+                  key={m.id}
                   className='tnum w-[3.4rem] px-0 pb-1 text-center text-[11px] font-semibold text-fg-secondary'
                 >
-                  {se.no}회<span className='block text-[10px] font-medium text-fg-muted'>{se.date.slice(5)}</span>
+                  {m.no}회<span className='block text-[10px] font-medium text-fg-muted'>{m.date.slice(5)}</span>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             <tr>
-              {sessions.map((se) => {
-                const status = resolveStatus(study, se, stored);
+              {meetings.map((m) => {
+                const status = resolveStatus(study, m, stored);
                 return (
-                  <td key={se.id} className='p-0'>
+                  <td key={m.id} className='p-0'>
                     <span
-                      title={`${se.no}회차 ${se.date}`}
+                      title={`${m.no}회차 ${m.date}`}
                       className={`grid h-8 w-full place-items-center rounded-sm text-[11px] font-bold ${
                         status ? STATUS_STYLE[status] : 'border border-dashed border-border-strong text-fg-muted'
                       }`}
