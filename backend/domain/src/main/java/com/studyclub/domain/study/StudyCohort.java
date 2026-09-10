@@ -11,11 +11,21 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
         name = "STUDY_COHORT",
         indexes = @Index(name = "idx_study_cohort_study_status", columnList = "STUDY_ID, STATUS"))
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class StudyCohort extends BaseEntity {
 
     @Id
@@ -62,99 +72,11 @@ public class StudyCohort extends BaseEntity {
     @Column(name = "PUBLISH_DATE")
     private Instant publishDate;
 
-    protected StudyCohort() {}
-
-    public StudyCohort(
-            Long studyId,
-            DeliveryFormat studyDeliveryFormat,
-            StudyCohortStatus status,
-            String applicationForm,
-            String curriculum,
-            Integer capacity,
-            Instant recruitDeadline,
-            Instant startDate,
-            Instant endDate,
-            String discordChannelUrl,
-            String driveUrl,
-            String schedule,
-            Instant publishDate) {
-        this.studyId = studyId;
-        this.studyDeliveryFormat = studyDeliveryFormat;
-        this.status = status;
-        this.applicationForm = applicationForm;
-        this.curriculum = curriculum;
-        this.capacity = capacity;
-        this.recruitDeadline = recruitDeadline;
-        this.startDate = startDate;
-        this.endDate = endDate;
-        this.discordChannelUrl = discordChannelUrl;
-        this.driveUrl = driveUrl;
-        this.schedule = schedule;
-        this.publishDate = publishDate;
-    }
-
     private static final long CLOSING_SOON_DAYS = 3;
 
     public boolean isClosingSoon() {
         return status == StudyCohortStatus.OPEN
                 && recruitDeadline != null
-                && recruitDeadline.isBefore(
-                        Instant.now().plus(CLOSING_SOON_DAYS, java.time.temporal.ChronoUnit.DAYS));
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getStudyId() {
-        return studyId;
-    }
-
-    public DeliveryFormat getStudyDeliveryFormat() {
-        return studyDeliveryFormat;
-    }
-
-    public StudyCohortStatus getStatus() {
-        return status;
-    }
-
-    public String getApplicationForm() {
-        return applicationForm;
-    }
-
-    public String getCurriculum() {
-        return curriculum;
-    }
-
-    public Integer getCapacity() {
-        return capacity;
-    }
-
-    public Instant getRecruitDeadline() {
-        return recruitDeadline;
-    }
-
-    public Instant getStartDate() {
-        return startDate;
-    }
-
-    public Instant getEndDate() {
-        return endDate;
-    }
-
-    public String getDiscordChannelUrl() {
-        return discordChannelUrl;
-    }
-
-    public String getDriveUrl() {
-        return driveUrl;
-    }
-
-    public String getSchedule() {
-        return schedule;
-    }
-
-    public Instant getPublishDate() {
-        return publishDate;
+                && recruitDeadline.isBefore(Instant.now().plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
     }
 }

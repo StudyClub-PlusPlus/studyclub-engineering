@@ -17,6 +17,11 @@ dependencies {
     // BaseEntity 가 @MappedSuperclass · AuditingEntityListener 를 쓴다.
     api("org.springframework.boot:spring-boot-starter-data-jpa")
 
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
+
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

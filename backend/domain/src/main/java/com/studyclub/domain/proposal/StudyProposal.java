@@ -11,6 +11,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
@@ -21,6 +26,10 @@ import java.time.Instant;
                     columnList = "PROPOSER_ACCOUNT_ID"),
             @Index(name = "idx_study_proposal_status_created", columnList = "STATUS, CREATED_AT")
         })
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class StudyProposal extends BaseEntity {
 
     @Id
@@ -39,37 +48,4 @@ public class StudyProposal extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StudyProposalStatus status;
-
-    protected StudyProposal() {}
-
-    public StudyProposal(
-            Long proposerAccountId,
-            String content,
-            Instant proposedDate,
-            StudyProposalStatus status) {
-        this.proposerAccountId = proposerAccountId;
-        this.content = content;
-        this.proposedDate = proposedDate;
-        this.status = status;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getProposerAccountId() {
-        return proposerAccountId;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public Instant getProposedDate() {
-        return proposedDate;
-    }
-
-    public StudyProposalStatus getStatus() {
-        return status;
-    }
 }

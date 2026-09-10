@@ -10,11 +10,20 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
         name = "STUDY",
         uniqueConstraints = @UniqueConstraint(name = "uk_study_slug", columnNames = "SLUG"))
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Study extends BaseEntity {
 
     @Id
@@ -45,62 +54,5 @@ public class Study extends BaseEntity {
     private String thumbnailUrl;
 
     @Column(name = "IS_HIDDEN", nullable = false)
-    private boolean isHidden = false;
-
-    protected Study() {}
-
-    public Study(
-            String slug,
-            String title,
-            String oneLineSummary,
-            String description,
-            StudyCategory category,
-            StudyKind studyKind,
-            String thumbnailUrl,
-            boolean isHidden) {
-        this.slug = slug;
-        this.title = title;
-        this.oneLineSummary = oneLineSummary;
-        this.description = description;
-        this.category = category;
-        this.studyKind = studyKind;
-        this.thumbnailUrl = thumbnailUrl;
-        this.isHidden = isHidden;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getSlug() {
-        return slug;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public String getOneLineSummary() {
-        return oneLineSummary;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public StudyCategory getCategory() {
-        return category;
-    }
-
-    public StudyKind getStudyKind() {
-        return studyKind;
-    }
-
-    public String getThumbnailUrl() {
-        return thumbnailUrl;
-    }
-
-    public boolean isHidden() {
-        return isHidden;
-    }
+    private boolean isHidden;
 }

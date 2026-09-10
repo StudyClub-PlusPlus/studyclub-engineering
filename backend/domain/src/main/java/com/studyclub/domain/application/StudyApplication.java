@@ -11,6 +11,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
@@ -25,6 +30,10 @@ import jakarta.persistence.UniqueConstraint;
                     name = "idx_study_application_cohort_status",
                     columnList = "STUDY_COHORT_ID, STATUS")
         })
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class StudyApplication extends BaseEntity {
 
     @Id
@@ -43,34 +52,4 @@ public class StudyApplication extends BaseEntity {
 
     @Column(name = "FORM_ANSWER", nullable = false, columnDefinition = "json")
     private String formAnswer;
-
-    protected StudyApplication() {}
-
-    public StudyApplication(
-            Long accountId, Long studyCohortId, ApplicationStatus status, String formAnswer) {
-        this.accountId = accountId;
-        this.studyCohortId = studyCohortId;
-        this.status = status;
-        this.formAnswer = formAnswer;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getAccountId() {
-        return accountId;
-    }
-
-    public Long getStudyCohortId() {
-        return studyCohortId;
-    }
-
-    public ApplicationStatus getStatus() {
-        return status;
-    }
-
-    public String getFormAnswer() {
-        return formAnswer;
-    }
 }
