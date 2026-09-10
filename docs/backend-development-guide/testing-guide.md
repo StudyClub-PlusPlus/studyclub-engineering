@@ -68,6 +68,11 @@ void dropsOverlongPicture() { ... }
 
 도메인 규칙은 Spring 없이, 분기마다 검증한다. 빠르니까 아낄 이유가 없다.
 
+> ⚠️ **도메인 엔티티·값 객체에 행위 메서드를 추가하면 단위 테스트를 반드시 같이 낸다.**
+> `isClosingSoon()`, `addMember()`, `approve()` 처럼 분기나 계산이 있는 메서드는
+> 테스트 없이 머지하지 않는다. 테스트가 없으면 리팩터링 때 규칙이 조용히 깨진다.
+> getter 만 있는 메서드(`getId()`, `getTitle()`)는 테스트하지 않는다.
+
 ```java
 class StudyTest {
 

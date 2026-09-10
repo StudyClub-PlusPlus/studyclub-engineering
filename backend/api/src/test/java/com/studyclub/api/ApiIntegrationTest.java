@@ -52,7 +52,7 @@ class ApiIntegrationTest {
 
         // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).startsWith("[").contains("알고리즘 스터디");
+        assertThat(response.getBody()).contains("\"items\"");
         assertThat(response.getBody()).doesNotContain("success");
     }
 

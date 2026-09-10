@@ -19,7 +19,7 @@ public class GoogleOAuthClient {
     private static final String TOKEN_URL = "https://oauth2.googleapis.com/token";
     private static final String USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
-    private final RestClient http = RestClient.create();
+    private final RestClient restClient = RestClient.create();
 
     @Value("${google.client-id:}")
     private String clientId;
@@ -48,7 +48,7 @@ public class GoogleOAuthClient {
         Map<?, ?> info;
         try {
             // 잘못/만료/재사용된 code → 구글이 4xx → 500 대신 401 로 매핑
-            token = http.post()
+            token = restClient.post()
                     .uri(TOKEN_URL)
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(form)
@@ -60,7 +60,7 @@ public class GoogleOAuthClient {
             }
             String accessToken = String.valueOf(token.get("access_token"));
 
-            info = http.get()
+            info = restClient.get()
                     .uri(USERINFO_URL)
                     .header("Authorization", "Bearer " + accessToken)
                     .retrieve()

@@ -12,11 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudyService {
 
     private final StudyRepository studyRepository;
-    private final StudyCohortRepository cohortRepository;
+    private final StudyCohortRepository studyCohortRepository;
 
-    public StudyService(StudyRepository studyRepository, StudyCohortRepository cohortRepository) {
+    public StudyService(StudyRepository studyRepository, StudyCohortRepository studyCohortRepository) {
         this.studyRepository = studyRepository;
-        this.cohortRepository = cohortRepository;
+        this.studyCohortRepository = studyCohortRepository;
     }
 
     @Transactional(readOnly = true)
@@ -24,7 +24,7 @@ public class StudyService {
         Study study = studyRepository.findByIdAndIsHiddenFalse(studyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
 
-        var cohort = cohortRepository.findFirstByStudyIdOrderByIdDesc(studyId).orElse(null);
+        var cohort = studyCohortRepository.findFirstByStudyIdOrderByIdDesc(studyId).orElse(null);
         return StudyDetailResponse.from(study, cohort);
     }
 }

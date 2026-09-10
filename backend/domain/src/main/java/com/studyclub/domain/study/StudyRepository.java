@@ -9,4 +9,8 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
     List<Study> findAllByIdIn(Collection<Long> studyIds);
 
     Optional<Study> findByIdAndIsHiddenFalse(Long id);
+
+    List<Study> findAllByIsHiddenFalse();
+
+    List<Study> findAllByIsHiddenFalseAndCategory(StudyCategory category);
 }

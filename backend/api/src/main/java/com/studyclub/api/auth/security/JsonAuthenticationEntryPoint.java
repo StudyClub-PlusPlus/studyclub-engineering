@@ -19,10 +19,10 @@ import org.springframework.security.web.AuthenticationEntryPoint;
  */
 public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    private final ObjectMapper mapper;
+    private final ObjectMapper objectMapper;
 
-    public JsonAuthenticationEntryPoint(ObjectMapper mapper) {
-        this.mapper = mapper;
+    public JsonAuthenticationEntryPoint(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -31,6 +31,6 @@ public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setStatus(ErrorCode.UNAUTHORIZED.status());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        mapper.writeValue(response.getWriter(), ErrorResponse.of(ErrorCode.UNAUTHORIZED));
+        objectMapper.writeValue(response.getWriter(), ErrorResponse.of(ErrorCode.UNAUTHORIZED));
     }
 }

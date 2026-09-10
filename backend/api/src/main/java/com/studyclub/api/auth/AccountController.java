@@ -15,19 +15,19 @@ import org.springframework.web.bind.annotation.RestController;
  *  (역할별 접근 가드는 후속 — 현재는 로그인 유저면 조회 가능) */
 @Tag(name = "유저", description = "백오피스 유저 목록")
 @RestController
-@RequestMapping("/accounts")
+@RequestMapping("/accountRepository")
 public class AccountController {
 
-    private final AccountRepository accounts;
+    private final AccountRepository accountRepository;
 
-    public AccountController(AccountRepository accounts) {
-        this.accounts = accounts;
+    public AccountController(AccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
     }
 
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping
     public List<AccountView> list() {
-        return accounts.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+        return accountRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
                 .map(u -> new AccountView(u.getId(), u.getEmail(), u.getNickname(), u.getProfileImgUrl(),
                         u.getSystemRole().name(), String.valueOf(u.getCreatedAt())))
                 .toList();
