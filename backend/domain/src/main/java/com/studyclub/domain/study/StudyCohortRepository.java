@@ -2,12 +2,15 @@ package com.studyclub.domain.study;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface StudyCohortRepository extends JpaRepository<StudyCohort, Long> {
     List<StudyCohort> findByStudyIdInAndStatus(Collection<Long> studyIds, StudyCohortStatus status);
+
+    Optional<StudyCohort> findFirstByStudyIdOrderByIdDesc(Long studyId);
 
     /** 스터디별 가장 최근(id 가 큰) 코호트를 가져온다. */
     @Query("SELECT c FROM StudyCohort c WHERE c.id = "

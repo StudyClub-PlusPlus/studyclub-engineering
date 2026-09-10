@@ -8,19 +8,22 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "스터디", description = "스터디 목록 조회")
+@Tag(name = "스터디", description = "스터디 목록·상세")
 @RestController
 @RequestMapping("/api/studies")
 public class StudyController {
 
     private final StudyListService studyListService;
+    private final StudyService studyService;
 
-    public StudyController(StudyListService studyListService) {
+    public StudyController(StudyListService studyListService, StudyService studyService) {
         this.studyListService = studyListService;
+        this.studyService = studyService;
     }
 
     @Operation(summary = "스터디 목록 조회",
@@ -35,5 +38,10 @@ public class StudyController {
             @RequestParam(defaultValue = "20") int limit) {
 
         return studyListService.list(category, status, keyword, recruitDeadlineBefore, offset, limit);
+    }
+
+    @GetMapping("/{studyId}")
+    public StudyDetailResponse detail(@PathVariable Long studyId) {
+        return studyService.getDetail(studyId);
     }
 }
