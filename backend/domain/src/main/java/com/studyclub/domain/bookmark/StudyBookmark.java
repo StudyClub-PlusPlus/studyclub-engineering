@@ -12,14 +12,15 @@ import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(
-    name = "STUDY_BOOKMARK",
-    uniqueConstraints = @UniqueConstraint(name = "uk_study_bookmark_account_cohort", columnNames = {"ACCOUNT_ID", "STUDY_COHORT_ID"}),
-    indexes = {
-        @Index(name = "idx_study_bookmark_account", columnList = "ACCOUNT_ID"),
-        @Index(name = "idx_study_bookmark_cohort", columnList = "STUDY_COHORT_ID")
-    }
-)
-
+        name = "STUDY_BOOKMARK",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_study_bookmark_account_cohort",
+                        columnNames = {"ACCOUNT_ID", "STUDY_COHORT_ID"}),
+        indexes = {
+            @Index(name = "idx_study_bookmark_account", columnList = "ACCOUNT_ID"),
+            @Index(name = "idx_study_bookmark_cohort", columnList = "STUDY_COHORT_ID")
+        })
 public class StudyBookmark extends BaseEntity {
 
     @Id
@@ -39,7 +40,15 @@ public class StudyBookmark extends BaseEntity {
         this.studyCohortId = studyCohortId;
     }
 
-    public Long getId() { return id; }
-    public Long getAccountId() { return accountId; }
-    public Long getStudyCohortId() { return studyCohortId; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getAccountId() {
+        return accountId;
+    }
+
+    public Long getStudyCohortId() {
+        return studyCohortId;
+    }
 }

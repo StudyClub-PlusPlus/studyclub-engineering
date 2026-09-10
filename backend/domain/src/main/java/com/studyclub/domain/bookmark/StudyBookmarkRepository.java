@@ -7,7 +7,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface StudyBookmarkRepository extends JpaRepository<StudyBookmark, Long> {
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT s.TITLE AS title, s.CATEGORY AS category
             FROM STUDY_BOOKMARK sb
             JOIN STUDY_COHORT sc ON sb.STUDY_COHORT_ID = sc.ID
@@ -15,10 +17,12 @@ public interface StudyBookmarkRepository extends JpaRepository<StudyBookmark, Lo
             WHERE sb.ACCOUNT_ID = :accountId
             ORDER BY sb.ID ASC
             LIMIT :limit OFFSET :offset
-            """, nativeQuery = true)
-    List<StudyBookmarkSummary> findBookmarkItems(@Param("accountId") Long accountId,
-                                                   @Param("offset") int offset,
-                                                   @Param("limit") int limit);
+            """,
+            nativeQuery = true)
+    List<StudyBookmarkSummary> findBookmarkItems(
+            @Param("accountId") Long accountId,
+            @Param("offset") int offset,
+            @Param("limit") int limit);
 
     long countByAccountId(Long accountId);
 
