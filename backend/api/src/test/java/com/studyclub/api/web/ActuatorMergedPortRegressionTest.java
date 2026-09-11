@@ -13,13 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-/**
- * 관리 포트가 앱 포트와 합쳐진 상태를 재현해, 그때도 actuator 가 인증 없이 새지 않는지 지킨다 — 나중에 누군가 {@code
- * management.server.port} 를 지우는 경우에 대한 회귀 방지다.
- *
- * <p>{@code server.port} 명시와 {@code @AutoConfigureMetrics} 가 둘 다 있어야 이 시나리오가 재현된다. 배경은
- * specs/observability-stack/spec.md 의 "구현 중 실측으로 확인한 함정" 참조.
- */
+/** 관리 포트가 앱 포트와 합쳐져도 actuator 가 인증 없이 새지 않는지 지킨다 (회귀 방지). */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.MOCK,
         properties = {"server.port=8080", "management.server.port=8080"})

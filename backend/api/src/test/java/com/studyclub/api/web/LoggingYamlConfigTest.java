@@ -10,13 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
-/**
- * main {@code application.yml} 의 {@code logging:} 배선이 살아있는지를 지킨다. {@link StructuredLoggingTest} 는
- * 프로퍼티를 직접 주입해 부팅하므로 main yml 을 통째로 지워도 green 이다.
- *
- * <p>{@code src/test/resources/application.yml} 이 main 을 shadow 해서 {@code @SpringBootTest} 로는 태울 수
- * 없다. 그래서 Spring 을 띄우지 않고 파일을 직접 읽어 SnakeYAML 로 검증한다. 이 배선이 사라지면 관측 스택은 죽는데 앱은 정상 부팅되어 아무 에러도 안 난다.
- */
+/** main application.yml 의 logging 배선을 지킨다. test yml 이 main 을 shadow 해 부팅으로는 검증할 수 없다. */
 class LoggingYamlConfigTest {
 
     private static final Path MAIN_YML = Path.of("src/main/resources/application.yml");

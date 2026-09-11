@@ -12,13 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.web.client.RestTemplate;
 
-/**
- * actuator 가 <b>앱 포트에서 보이지 않는다</b>는 것을 지킨다. 운영에서 {@code /actuator} 는 인증 없이 200 이었고, 거기 prometheus 를
- * 얹으면 URI별 호출량·DB 커넥션풀·JVM 상태가 그대로 공개된다.
- *
- * <p>상태코드가 아니라 <b>메트릭 본문이 새는지</b>를 단언한다. {@code @AutoConfigureMetrics} 는 {@code @SpringBootTest} 가
- * 기본으로 끄는 실제 exporter 를 되살려, "없어서 안 샌 것"과 "막아서 안 샌 것"을 구분하기 위한 것이다.
- */
+/** actuator 가 앱 포트에서 보이지 않는다는 것을 지킨다. 상태코드가 아니라 메트릭 본문이 새는지를 단언한다. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 @AutoConfigureMetrics
@@ -44,9 +38,7 @@ class ActuatorExposureTest {
     void prometheusIsServedFromManagementPort() {
         String managementPort = env.getProperty("local.management.port");
         String serverPort = env.getProperty("local.server.port");
-        // isNotNull() 만으로는 포트가 실제로 분리됐는지 증명하지 못한다 — 합쳐진 상태에서도
-        // local.management.port 는 non-null 이다(=앱 포트와 같은 값). 앱 포트와 달라야만
-        // "분리됨" 을 실제로 검증하는 것이다.
+        // 합쳐진 상태에서도 non-null 이므로 앱 포트와 다른지까지 봐야 한다.
         assertThat(managementPort).as("관리 포트가 앱 포트와 달라야 한다").isNotNull().isNotEqualTo(serverPort);
 
         String body =

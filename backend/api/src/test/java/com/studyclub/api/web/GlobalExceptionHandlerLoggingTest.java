@@ -14,10 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
-/**
- * 에러 로그가 <b>원인 추적에 쓸모 있는지</b>를 지킨다 — 기존 500 로그는 어느 URI 에서 터졌는지 알 수 없었고 4xx 는 로그가 아예 없었다. 본문 메시지는
- * 사용자 입력(이메일 등)이 섞이므로 남기지 않는다.
- */
+/** 에러 로그에 uri 가 남는지, 본문 메시지(PII)가 안 남는지 지킨다. */
 class GlobalExceptionHandlerLoggingTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();

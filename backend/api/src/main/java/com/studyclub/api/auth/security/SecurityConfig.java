@@ -35,11 +35,7 @@ public class SecurityConfig {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * 관리 포트(actuator) 전용 체인. 관리 포트는 호스트에 publish 하지 않으므로 permitAll 이어도 외부에서 도달할 수 없다.
-     * {@code @ConditionalOnManagementPort(DIFFERENT)} 없이 경로 매처만 쓰면 {@code management.server.port} 가
-     * 사라지는 순간 앱 포트에서도 열린다 (회귀 테스트: {@code ActuatorMergedPortRegressionTest}).
-     */
+    /** 관리 포트 전용 체인. 조건 없이 경로 매처만 쓰면 포트가 합쳐질 때 앱 포트에서도 actuator 가 열린다. */
     @Bean
     @Order(0)
     @ConditionalOnManagementPort(ManagementPortType.DIFFERENT)
