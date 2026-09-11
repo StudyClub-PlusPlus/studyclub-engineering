@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.SystemRole;
+import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -66,5 +67,35 @@ class AccountTest {
 
         assertThat(account.getProfileImgUrl()).isNull();
         assertThat(account.getNickname()).hasSize(20);
+    }
+
+    @Test
+    @DisplayName("온보딩 완료 - 최초 호출이면 닉네임·타임존·완료시각을 반영하고 true 를 돌려준다")
+    void completesOnboardingOnFirstCall() {
+        Account account = new Account("a@b.com", "account_temp12345678", null, SystemRole.MEMBER);
+        Instant now = Instant.now();
+
+        boolean result = account.completeOnboarding("honggildong", "Asia/Seoul", now);
+
+        assertThat(result).isTrue();
+        assertThat(account.getNickname()).isEqualTo("honggildong");
+        assertThat(account.getTimeZone()).isEqualTo("Asia/Seoul");
+        assertThat(account.getOnboardingCompletedAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("온보딩 완료 - 이미 완료된 계정은 재호출해도 아무것도 바꾸지 않고 false 를 돌려준다 (멱등)")
+    void secondCompleteOnboardingCallIsNoop() {
+        Account account = new Account("a@b.com", "account_temp12345678", null, SystemRole.MEMBER);
+        Instant firstCompletedAt = Instant.now();
+        account.completeOnboarding("honggildong", "Asia/Seoul", firstCompletedAt);
+
+        boolean result =
+                account.completeOnboarding("kimcheolsu", "America/New_York", Instant.now());
+
+        assertThat(result).isFalse();
+        assertThat(account.getNickname()).isEqualTo("honggildong");
+        assertThat(account.getTimeZone()).isEqualTo("Asia/Seoul");
+        assertThat(account.getOnboardingCompletedAt()).isEqualTo(firstCompletedAt);
     }
 }
