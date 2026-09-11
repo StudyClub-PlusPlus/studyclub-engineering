@@ -15,12 +15,8 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 /**
- * 에러 로그가 <b>원인 추적에 쓸모 있는지</b>를 지킨다.
- *
- * <p>기존 코드는 500 을 {@code log.error("Unhandled exception", e)} 로만 남겨서 <b>어느 URI 에서 터졌는지 알 수 없었고</b>,
- * 4xx 는 로그가 아예 없었다. 정작 같은 레포의 logging-guide 는 {@code uri=} 를 남기라고 예시를 든다.
- *
- * <p>본문 메시지는 남기지 않는다 — 검증 실패 메시지에 사용자 입력(이메일 등)이 섞인다.
+ * 에러 로그가 <b>원인 추적에 쓸모 있는지</b>를 지킨다 — 기존 500 로그는 어느 URI 에서 터졌는지 알 수 없었고 4xx 는 로그가 아예 없었다. 본문 메시지는
+ * 사용자 입력(이메일 등)이 섞이므로 남기지 않는다.
  */
 class GlobalExceptionHandlerLoggingTest {
 

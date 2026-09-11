@@ -355,6 +355,24 @@ Loki(uid 10001) 가 서로 다른 uid 로 돌아 권한 문제로 부팅이 깨�
 
 `@DisplayName` 은 한글로 (testing-guide 규약).
 
+### 구현 중 실측으로 확인한 함정
+
+코드 주석에 적지 않고 여기 모아둔다. 공통점은 **설정이 틀린 티를 내지 않는다**는 것 — 에러도
+경고도 없이 그냥 기대한 일이 안 일어난다.
+
+| 지점 | 기본값/직관 | 실제 | 안 막으면 |
+|---|---|---|---|
+| Grafana `[auth.google] skip_org_role_sync` | 다른 커넥터처럼 `false` 일 것 | **구글 커넥터만 기본 `true`** | `role_attribute_path` 가 통째로 무시돼 **구글 계정만 있으면 누구나 로그인**. mock OIDC 로 미허용 계정이 Viewer 로 들어오는 것 재현함 |
+| Alloy `level = "log.level"` | 따옴표를 씌우는 게 안전 | 씌우면 **flat 키** `"log.level"` 을 찾음 | ECS 는 중첩(`log:{level:}`)이라 `level` 라벨이 조용히 빈 값 |
+| `EndpointRequest.toAnyEndpoint()` | actuator 매처로 충분 | 관리 포트가 분리되면 엔드포인트가 **자식 컨텍스트**에만 매핑돼 `PathMappedEndpoints` 를 못 찾고 매치 자체가 안 됨 | 관리 포트 요청이 `anyRequest().authenticated()` 로 떨어져 401 (Prometheus 스크랩 차단) |
+| 경로 매처만으로 actuator 체인 구성 | 포트별로 갈릴 것 | 빈이 메인·관리 **양쪽 컨텍스트에 다 적용**됨 | 누가 `management.server.port` 를 지우면 그 순간 **앱 포트에서 `/actuator/**` 가 permitAll** — 제거했던 취약점이 부활. 그래서 `@ConditionalOnManagementPort(DIFFERENT)` 로 빈 존재 자체를 막는다 (회귀 테스트: `ActuatorMergedPortRegressionTest`) |
+| `LogbackLoggingSystem` 재초기화 | 컨텍스트마다 초기화 | `LoggerContext` 가 JVM 싱글턴이고 "이미 초기화됨" 마커를 심어 **두 번째부터 통째로 건너뜀** | 스위트 전체를 돌리면 뒤에 뜨는 테스트의 `logging.file.name` 오버라이드가 무시돼 파일이 안 생김. 단독 실행은 통과하고 전체 실행만 깨져 원인 찾기 어려움 |
+| `api/src/test/resources/application.yml` | main 과 병합될 것 | 같은 `classpath:/application.yml` 이라 **main 을 통째로 가림** | 테스트 런타임에 `logging.logback.rollingpolicy` 블록이 아예 없음 → **롤링 정책은 자동 테스트가 못 지킨다.** `LoggingYamlConfigTest` 는 yaml 텍스트만 검사하고, 실제 동작은 bootJar 로 수동 확인해야 한다 |
+| `file-name-pattern: ${LOG_FILE}...` + `LOG_FILE` 미설정 | placeholder 해결 실패로 기동 오류 | `logging.file.name` 이 비면 파일 어펜더 자체가 비활성이라 **평가되지 않음** | (문제 없음 — 로컬 개발·CI 경로가 안전하다는 확인) |
+
+Spring Boot 4.1.1 / Java 25 에서 재확인한 것: ECS 의 `log.level` 중첩 구조 유지, 롤링 아카이브에
+`.gz` 없음(`app.json.2026-09-11.0`), `max-history` 1일 적용.
+
 ### 사람이 해야 하는 작업 (코드로 안 되는 것)
 
 1. 호스트 SSH 접속 후 자원 확인 (`free -h`, `df -h /var/lib/docker`, `docker network ls`)

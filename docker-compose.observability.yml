@@ -1,26 +1,18 @@
 # StudyClub++ 관측 스택 — 로그 경로 (Grafana + Loki + Alloy)
 #
-# ⚠️ **이 파일은 단독으로 실행되지 않는다.** `api:` 가 image/build 없는 오버라이드라
-#    compose 가 거부한다. 그게 의도다 — 아래 두 방식 중 하나로 쓴다.
-#
+# ⚠️ 단독 실행되지 않는다 — `api:` 가 image/build 없는 오버라이드라 compose 가 거부한다.
 #   로컬:  docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
-#   운영:  이 파일의 내용을 **호스트의 기존 compose 에 붙여넣는다** (services/configs/volumes 각각).
-#          운영 호스트에는 이 레포가 clone 되어 있지 않으므로 `-f` 로 참조할 수 없다.
+#   운영:  이 파일 내용을 호스트의 기존 compose 에 붙여넣는다 (레포가 clone 되어 있지 않다).
 #
-# 그래서 설정 파일을 bind mount 하지 않고 **compose 안에 인라인**한다(`configs:`).
-# 호스트에 따로 놓아야 할 파일이 0개다 — 이 블록만 옮기면 된다.
-# (bind mount 로 두면 loki-config·alloy config·datasource 까지 5개 파일을 별도로 옮겨야 하는데,
-#  레포가 없는 호스트에서 그 경로를 맞추는 건 사고가 나기 쉽다.)
-#
-# 대시보드는 일부러 넣지 않았다. 로그 검색의 핵심은 Grafana **Explore** 이고, 대시보드는
-# 편의 기능이라 배포가 실제로 되는지부터 확인한 뒤에 붙인다.
+# 설정을 bind mount 하지 않고 `configs:` 로 인라인해서 호스트에 놓을 파일이 0개다.
+# 배포 절차는 docs/observability-host-setup.md 참조.
 
 name: studyclub
 
 configs:
   loki_config:
     content: |
-      # 단일 노드 모놀리식 + 파일시스템 저장. 이 규모에 클러스터 구성은 과하다.
+      # 단일 노드 모놀리식 + 파일시스템 저장.
       auth_enabled: false
 
       server:
@@ -49,8 +41,7 @@ configs:
               prefix: index_
               period: 24h
 
-      # ⚠️ retention_period 만 적어두면 Loki 는 아무것도 지우지 않는다.
-      #    compactor 를 켜야 실제로 삭제가 돈다. 이 두 줄이 없으면 디스크가 무한히 찬다.
+      # ⚠️ retention_period 만으론 Loki 가 아무것도 지우지 않는다. compactor 를 켜야 삭제가 돈다.
       compactor:
         working_directory: /loki/compactor
         retention_enabled: true
@@ -118,10 +109,7 @@ configs:
 
   grafana_datasource_loki:
     content: |
-      # 1단계 — 로그. Alloy 가 공유 볼륨의 앱 JSON 로그를 tail 해 Loki 로 보낸다.
-      #
-      # UI 에서 클릭해 만든 데이터소스는 Grafana 볼륨에만 존재한다. 머신이 죽거나 볼륨을 지우면
-      # 같이 사라진다. git 이 정본이어야 재현 가능하다.
+      # UI 로 만든 데이터소스는 Grafana 볼륨에만 남아 재현이 안 된다. git 을 정본으로 둔다.
       apiVersion: 1
 
       datasources:
@@ -130,10 +118,7 @@ configs:
           uid: loki
           access: proxy
           url: http://loki:3100
-          # ⚠️ **기본 데이터소스는 이 파일 하나만 갖는다.** Grafana 는 기본값이 둘이면
-          #    기동을 거부한다(crash-loop, 실측). 단계가 올라가도 기본값은 Loki 로 유지된다 —
-          #    Loki 는 1단계부터 항상 존재하는 유일한 데이터소스이기 때문이다.
-          #    대시보드는 uid 로 참조하므로 기본값이 무엇인지는 동작에 영향이 없다.
+          # ⚠️ 기본 데이터소스는 이 파일 하나만 갖는다 — 둘이면 Grafana 가 기동을 거부한다(실측).
           isDefault: true
 
 services:
@@ -201,22 +186,17 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD 가 비어있다 - .env 에 강한 값을 채워라(openssl rand -base64 32) - 이 값이 Grafana 로 들어가는 문이다}
       # ── 구글 로그인 + 이메일 allowlist ───────────────────────────────────────
-      # 기본값은 **꺼짐**이다. 첫 배포는 SSH 터널로 127.0.0.1:3000 에 붙어 확인하면 되고,
-      # 그때는 GCP 콘솔·DNS·인증서가 아직 필요 없다.
-      # ⚠️ **서브도메인을 인터넷에 열기 전에 반드시 켜고, 허용되지 않은 계정이 실제로
-      #    거부되는 것을 눈으로 확인한다.** Grafana 는 모든 애플리케이션 로그를 들고 있다.
+      # 기본 꺼짐(첫 배포는 SSH 터널로 확인). ⚠️ 인터넷에 열기 전에 반드시 켜고, 허용되지 않은
+      # 계정이 실제로 거부되는 것을 눈으로 확인한다 — Grafana 는 모든 앱 로그를 들고 있다.
       GF_AUTH_GOOGLE_ENABLED: ${GRAFANA_GOOGLE_ENABLED:-false}
       GF_AUTH_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GF_AUTH_GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GF_AUTH_GOOGLE_SCOPES: "openid email profile"
       GF_AUTH_GOOGLE_ALLOW_SIGN_UP: "true"
-      # ⚠️ [auth.google] 는 skip_org_role_sync 기본값이 true 다(13.2.1 defaults.ini — 같은
-      #    이미지의 다른 커넥터는 전부 false, google 만 유일하게 true). 켜져 있으면 아래
-      #    role_attribute_path/strict 가 통째로 무시되고 **구글 계정을 가진 누구나 Viewer 로
-      #    로그인된다.** 조용히 죽는 설정이라 기동 로그에 아무 경고도 없다(실측).
+      # ⚠️ [auth.google] 만 skip_org_role_sync 기본값이 true 다. 켜져 있으면 아래 allowlist 가
+      #    통째로 무시되고 구글 계정만 있으면 누구나 로그인된다 (경고 없음, spec.md 참조).
       GF_AUTH_GOOGLE_SKIP_ORG_ROLE_SYNC: "false"
-      # ⚠️ GRAFANA_ALLOWED_EMAILS 가 비면 contains([], email) 이 JMESPath 타입 에러가 되고
-      #    strict 가 그 실패를 로그인 거부로 처리한다 — fail-closed 가 기본값이다(실측).
+      # 값이 비면 JMESPath 타입 에러 → strict 가 로그인 거부로 처리한다 (fail-closed).
       GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_PATH: "contains([${GRAFANA_ALLOWED_EMAILS}], email) && 'Admin' || ''"
       GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_STRICT: "true"
     volumes:
