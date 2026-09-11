@@ -19,8 +19,6 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.1.0")
     runtimeOnly("com.mysql:mysql-connector-j")
 
-    // /actuator/prometheus 를 만들어 주는 actuator 의 표준 짝. 런타임 전용.
-    // 외부 노출은 management.server.port 분리로 막는다 (application.yml).
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     // 스키마 변경은 마이그레이션 파일로만. ddl-auto 는 validate — 엔티티가 DB 를 바꾸지 않는다.
@@ -46,9 +44,6 @@ dependencies {
     // TestRestTemplate 도 @DataJpaTest 도 딸려오지 않으므로 쓰는 것만 명시한다.
     testImplementation("org.springframework.boot:spring-boot-resttestclient")
     testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
-    // actuator 노출 회귀 테스트용. Boot 4 는 @AutoConfigureMockMvc 를 webmvc-test 로,
-    // 메트릭 export 강제(@AutoConfigureMetrics, Boot 3 의 @AutoConfigureObservability)를
-    // micrometer-metrics-test 로 옮겼다.
     testImplementation("org.springframework.boot:spring-boot-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-micrometer-metrics-test")
     testRuntimeOnly("org.springframework.boot:spring-boot-restclient")

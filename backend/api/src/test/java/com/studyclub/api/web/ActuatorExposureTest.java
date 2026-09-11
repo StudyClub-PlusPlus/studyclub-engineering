@@ -13,7 +13,12 @@ import org.springframework.core.env.Environment;
 import org.springframework.web.client.RestTemplate;
 
 /** actuator 가 앱 포트에서 보이지 않는다는 것을 지킨다. 상태코드가 아니라 메트릭 본문이 새는지를 단언한다. */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            "management.server.port=0",
+            "management.endpoints.web.exposure.include=health,info,prometheus"
+        })
 @AutoConfigureTestRestTemplate
 @AutoConfigureMetrics
 class ActuatorExposureTest {

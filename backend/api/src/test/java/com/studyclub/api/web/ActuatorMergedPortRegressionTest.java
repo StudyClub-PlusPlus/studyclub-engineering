@@ -16,7 +16,11 @@ import org.springframework.test.web.servlet.MvcResult;
 /** 관리 포트가 앱 포트와 합쳐져도 actuator 가 인증 없이 새지 않는지 지킨다 (회귀 방지). */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-        properties = {"server.port=8080", "management.server.port=8080"})
+        properties = {
+            "server.port=8080",
+            "management.server.port=8080",
+            "management.endpoints.web.exposure.include=health,info,prometheus"
+        })
 @AutoConfigureMockMvc
 @AutoConfigureMetrics
 class ActuatorMergedPortRegressionTest {
