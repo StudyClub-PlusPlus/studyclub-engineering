@@ -3,6 +3,7 @@ package com.studyclub.api.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
@@ -12,8 +13,11 @@ import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.SystemRole;
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,10 +25,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.jpa.repository.support.JpaRepositoryFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /** 소셜 로그인 — 사람을 찾는 키는 (ISSUER, sub) 다. 구글 왕복만 가짜로 바꾸고 나머지는 진짜로 돈다. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -39,8 +45,9 @@ class SocialLoginIntegrationTest {
     private static final String EMAIL = "user1@example.com";
 
     @Autowired TestRestTemplate rest; // 이 테스트가 "프론트" 역할 — HTTP 를 실제로 쏜다
-    @Autowired AccountRepository accounts; // DB 에 행이 생겼는지 직접 본다
-    @Autowired AccountIdentityRepository identities;
+    @MockitoSpyBean AccountRepository accounts; // DB 에 행이 생겼는지 직접 본다. spy 는 동시 가입 테스트용
+    @MockitoSpyBean AccountIdentityRepository identities;
+    @Autowired EntityManager em;
 
     @MockitoBean GoogleOAuthClient google; // 구글 왕복만 가짜. 파이썬의 mock.patch 와 같다
 
@@ -128,6 +135,58 @@ class SocialLoginIntegrationTest {
 
         // then — 행이 늘지 않고, 마지막 로그인 시각만 앞으로 간다
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(accounts.count()).isEqualTo(1);
+        assertThat(identities.count()).isEqualTo(1);
+        Instant secondLogin =
+                identities
+                        .findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB)
+                        .orElseThrow()
+                        .getLastLoginAt();
+        assertThat(secondLogin).isAfterOrEqualTo(firstLogin);
+    }
+
+    @Test
+    @DisplayName("성공 - 같은 sub 가 동시에 들어와 INSERT 가 UNIQUE 에 걸리면 재조회해서 기존 계정으로 로그인")
+    void concurrentSignupFallsBackToExistingAccount() {
+        // given — 요청 A 는 가입 완료
+        googleReturns(SUB, EMAIL, "홍길동");
+        login();
+        Instant firstLogin =
+                identities
+                        .findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB)
+                        .orElseThrow()
+                        .getLastLoginAt();
+
+        // 요청 B — A 커밋 전 상태를 흉내 내려고 첫 조회(sub·이메일)만 "없음" 으로 답한다. 이후는 진짜 DB.
+        // 인터페이스 spy 는 callRealMethod 가 안 돼서 진짜 repository 를 따로 만들어 위임
+        JpaRepositoryFactory factory = new JpaRepositoryFactory(em);
+        AccountIdentityRepository realIdentities =
+                factory.getRepository(AccountIdentityRepository.class);
+        AccountRepository realAccounts = factory.getRepository(AccountRepository.class);
+        AtomicBoolean subLookedUp = new AtomicBoolean();
+        doAnswer(
+                        inv ->
+                                subLookedUp.getAndSet(true)
+                                        ? realIdentities.findByIssuerAndProviderAccountId(
+                                                Issuer.GOOGLE, SUB)
+                                        : Optional.empty())
+                .when(identities)
+                .findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB);
+        AtomicBoolean emailLookedUp = new AtomicBoolean();
+        doAnswer(
+                        inv ->
+                                emailLookedUp.getAndSet(true)
+                                        ? realAccounts.findByEmail(EMAIL)
+                                        : Optional.empty())
+                .when(accounts)
+                .findByEmail(EMAIL);
+
+        // when
+        var response = login();
+
+        // then — 재조회로 로그인 성공, 행 수 그대로
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsKey("accessToken");
         assertThat(accounts.count()).isEqualTo(1);
         assertThat(identities.count()).isEqualTo(1);
         Instant secondLogin =
