@@ -16,9 +16,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 /**
  * 한 요청이 남긴 로그를 나중에 꿰어보려면 요청마다 식별자가 있어야 한다.
  *
- * <p>여기서 지키는 것 셋: (1) 식별자가 MDC 에 들어간다, (2) 요청이 끝나면 <b>반드시</b> 지워진다
- * — 스레드는 재사용되므로 안 지우면 다음 요청 로그에 남의 requestId 가 붙는다,
- * (3) 들어온 {@code X-Request-Id} 를 계승한다 — 프론트·게이트웨이가 붙인 것을 이어받는다.
+ * <p>여기서 지키는 것 셋: (1) 식별자가 MDC 에 들어간다, (2) 요청이 끝나면 <b>반드시</b> 지워진다 — 스레드는 재사용되므로 안 지우면 다음 요청 로그에 남의
+ * requestId 가 붙는다, (3) 들어온 {@code X-Request-Id} 를 계승한다 — 프론트·게이트웨이가 붙인 것을 이어받는다.
  */
 class RequestLogFilterTest {
 
@@ -31,11 +30,12 @@ class RequestLogFilterTest {
         var response = new MockHttpServletResponse();
         var captured = new String[3];
 
-        FilterChain chain = (req, res) -> {
-            captured[0] = MDC.get("requestId");
-            captured[1] = MDC.get("method");
-            captured[2] = MDC.get("uri");
-        };
+        FilterChain chain =
+                (req, res) -> {
+                    captured[0] = MDC.get("requestId");
+                    captured[1] = MDC.get("method");
+                    captured[2] = MDC.get("uri");
+                };
 
         filter.doFilter(request, response, chain);
 
@@ -64,9 +64,12 @@ class RequestLogFilterTest {
         var response = new MockHttpServletResponse();
 
         try {
-            filter.doFilter(request, response, (req, res) -> {
-                throw new IllegalStateException("boom");
-            });
+            filter.doFilter(
+                    request,
+                    response,
+                    (req, res) -> {
+                        throw new IllegalStateException("boom");
+                    });
         } catch (Exception ignored) {
             // 예외 전파 자체는 이 테스트의 관심사가 아니다
         }
@@ -185,7 +188,8 @@ class RequestLogFilterTest {
         var appender = captureLogs();
         var response = new MockHttpServletResponse();
 
-        filter.doFilter(new MockHttpServletRequest("GET", "/api/health"), response, (req, res) -> {});
+        filter.doFilter(
+                new MockHttpServletRequest("GET", "/api/health"), response, (req, res) -> {});
 
         assertThat(appender.list).isEmpty();
     }

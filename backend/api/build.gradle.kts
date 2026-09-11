@@ -46,6 +46,11 @@ dependencies {
     // TestRestTemplate 도 @DataJpaTest 도 딸려오지 않으므로 쓰는 것만 명시한다.
     testImplementation("org.springframework.boot:spring-boot-resttestclient")
     testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
+    // actuator 노출 회귀 테스트용. Boot 4 는 @AutoConfigureMockMvc 를 webmvc-test 로,
+    // 메트릭 export 강제(@AutoConfigureMetrics, Boot 3 의 @AutoConfigureObservability)를
+    // micrometer-metrics-test 로 옮겼다.
+    testImplementation("org.springframework.boot:spring-boot-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-micrometer-metrics-test")
     testRuntimeOnly("org.springframework.boot:spring-boot-restclient")
     // 통합/슬라이스 테스트용 인메모리 DB (MySQL 호환 모드). 운영 경로에는 들어가지 않는다.
     testRuntimeOnly("com.h2database:h2")

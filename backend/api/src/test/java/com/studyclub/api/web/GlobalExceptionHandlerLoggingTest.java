@@ -17,9 +17,8 @@ import org.slf4j.MDC;
 /**
  * 에러 로그가 <b>원인 추적에 쓸모 있는지</b>를 지킨다.
  *
- * <p>기존 코드는 500 을 {@code log.error("Unhandled exception", e)} 로만 남겨서 <b>어느 URI 에서
- * 터졌는지 알 수 없었고</b>, 4xx 는 로그가 아예 없었다. 정작 같은 레포의 logging-guide 는
- * {@code uri=} 를 남기라고 예시를 든다.
+ * <p>기존 코드는 500 을 {@code log.error("Unhandled exception", e)} 로만 남겨서 <b>어느 URI 에서 터졌는지 알 수 없었고</b>,
+ * 4xx 는 로그가 아예 없었다. 정작 같은 레포의 logging-guide 는 {@code uri=} 를 남기라고 예시를 든다.
  *
  * <p>본문 메시지는 남기지 않는다 — 검증 실패 메시지에 사용자 입력(이메일 등)이 섞인다.
  */
@@ -53,7 +52,8 @@ class GlobalExceptionHandlerLoggingTest {
     @Test
     @DisplayName("성공 - 의도한 4xx 는 WARN 으로 errorCode 만 남는다")
     void businessExceptionLogsWarnWithCodeOnly() {
-        handler.handleBusiness(new BusinessException(ErrorCode.UNAUTHORIZED, "user@example.com 없음"));
+        handler.handleBusiness(
+                new BusinessException(ErrorCode.UNAUTHORIZED, "user@example.com 없음"));
 
         assertThat(appender.list).hasSize(1);
         var event = appender.list.get(0);
@@ -64,7 +64,8 @@ class GlobalExceptionHandlerLoggingTest {
     @Test
     @DisplayName("성공 - 4xx 로그에 예외 메시지 본문이 새지 않는다 (PII 방지)")
     void businessExceptionNeverLeaksMessageBody() {
-        handler.handleBusiness(new BusinessException(ErrorCode.UNAUTHORIZED, "user@example.com 없음"));
+        handler.handleBusiness(
+                new BusinessException(ErrorCode.UNAUTHORIZED, "user@example.com 없음"));
 
         assertThat(appender.list.get(0).getFormattedMessage()).doesNotContain("user@example.com");
     }
