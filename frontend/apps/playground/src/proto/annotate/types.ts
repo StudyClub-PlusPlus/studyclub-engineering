@@ -37,6 +37,8 @@ export type AnnoEntry = {
    * 조건부 요소까지 실패로 뜨면 경고가 늘 켜져 있어 진짜 실패를 못 본다.
    */
   when?: string;
+  /** 배지 위치를 기본값(top -10, left -10)에서 추가로 이동할 픽셀. 겹침 보정에 사용. */
+  chipOffset?: { top?: number; left?: number };
 };
 
 export type ScreenSpec = {

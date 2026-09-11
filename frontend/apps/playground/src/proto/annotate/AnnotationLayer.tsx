@@ -123,6 +123,9 @@ export function AnnotationLayer() {
       >
         {shown.map((h) => {
           const color = 'var(--color-accent)';
+          const entry = entries.find((e) => e.n === h.n);
+          const chipTop = h.rect.top - 10 + (entry?.chipOffset?.top ?? 0);
+          const chipLeft = h.rect.left - 10 + (entry?.chipOffset?.left ?? 0);
           return (
             <div key={h.n + h.rect.top}>
               <div
@@ -140,8 +143,8 @@ export function AnnotationLayer() {
               <div
                 className='absolute grid min-w-[22px] place-items-center rounded-full px-1.5 text-[11px] font-extrabold text-white shadow-sm'
                 style={{
-                  top: h.rect.top - 10,
-                  left: h.rect.left - 10,
+                  top: chipTop,
+                  left: chipLeft,
                   height: 22,
                   background: color,
                 }}
