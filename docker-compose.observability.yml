@@ -1,5 +1,6 @@
 # StudyClub++ 관측 스택 — 로그 경로. 배포 절차는 docs/observability-host-setup.md 참조.
 # 단독 실행되지 않는다. 호스트에서는 이 내용을 기존 compose 에 붙여넣는다.
+# 인라인 configs 를 쓰므로 docker compose 2.23.1 이상이 필요하다.
 #   로컬: docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
 
 name: studyclub

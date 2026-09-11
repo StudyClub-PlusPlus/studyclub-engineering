@@ -28,6 +28,27 @@
 
 대시보드도 일부러 안 넣었다. 로그 검색의 핵심은 **Explore** 이고, 대시보드는 편의 기능이다.
 
+## 0. 붙여넣기 전에 호스트에서 먼저 확인 (전부 미확인 상태)
+
+아래는 **이 설계가 성립하기 위한 전제**인데 아직 아무도 호스트에서 확인하지 않았다. 하나라도
+어긋나면 붙여넣기 전에 설계를 고쳐야 한다.
+
+```bash
+docker compose version        # ⚠️ 2.23.1 이상이어야 한다
+docker volume ls | grep -i studyclub
+grep -nE '^\s*(api|services|configs|volumes):' <호스트 compose 경로>
+free -h && df -h /var/lib/docker
+```
+
+| 확인할 것 | 왜 | 어긋나면 |
+|---|---|---|
+| **`docker compose` ≥ 2.23.1** | 인라인 `configs: content:` 가 그 버전에서 도입됐다 | **이 설계가 통째로 안 된다.** 설정을 호스트 파일로 떨어뜨리는 bind mount 방식으로 다시 만들어야 한다 (호스트에 놓을 파일 5개) |
+| 호스트 compose 에 **`api` 라는 이름의 서비스**가 있는가 | 이 파일의 `api:` 블록을 거기에 합쳐 넣는다 | 이름이 다르면 붙여넣을 곳을 바꿔야 한다 |
+| compose **프로젝트 이름** | 볼륨이 프로젝트 단위로 이름공간을 갖는다 | 이름이 다르면 `studyclub-applog` 이 갈라져 **Alloy 가 빈 디렉터리를 tail 하고 로그가 조용히 끊긴다** |
+| 여유 메모리 · 디스크 | Loki+Alloy+Grafana 가 얹힌다 | 같은 머신의 다른 프로젝트까지 같이 죽는다 |
+
+`docker compose version` 이 `v1.x` 이거나 `docker-compose` (하이픈) 만 있으면 2.23.1 미만이다.
+
 ## 운영 호스트에 어떻게 올리나
 
 **⚠️ 이 레포는 운영 호스트에 clone 되어 있지 않다.** 배포는 GitHub Actions 가 Docker 이미지를
