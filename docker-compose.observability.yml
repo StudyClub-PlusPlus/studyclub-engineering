@@ -1,7 +1,6 @@
 # StudyClub++ 관측 스택 — 로그 경로. 배포 절차는 docs/observability-host-setup.md 참조.
-# 단독 실행되지 않는다 (`api:` 가 image/build 없는 오버라이드).
-#   로컬:  docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
-#   운영:  이 파일 내용을 호스트의 기존 compose 에 붙여넣는다.
+# 단독 실행되지 않는다. 호스트에서는 이 내용을 기존 compose 에 붙여넣는다.
+#   로컬: docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
 
 name: studyclub
 
@@ -12,7 +11,7 @@ configs:
 
       server:
         http_listen_port: 3100
-        log_level: warn        # Loki 자신의 로그가 시끄러우면 진짜 로그가 묻힌다
+        log_level: warn
 
       common:
         instance_addr: 127.0.0.1
@@ -54,11 +53,7 @@ configs:
 
   alloy_config:
     content: |
-      // 앱이 쓴 JSON 로그 파일을 읽어 Loki 로 보낸다. docker socket 을 쓰지 않는다.
-      //
-      // glob 에 * 를 붙이는 이유: 로테이션되면 app.json 은 app.json.<날짜>.0 이 된다.
-      // 그 파일을 감시 대상에서 빼면, Alloy 가 밀려 있는 상태에서 로테이션이 날 때
-      // 그 구간이 Loki 에 영영 들어가지 않는다.
+      // app.json* 의 * 는 로테이션된 파일을 놓치지 않기 위한 것이다.
       local.file_match "studyclub_api" {
         path_targets = [{
           __path__ = "/var/log/studyclub/app.json*",
@@ -72,15 +67,8 @@ configs:
         forward_to = [loki.process.studyclub_api.receiver]
       }
 
-      // ⚠️ 라벨은 저카디널리티만 둔다. requestId 를 라벨로 만들면 요청마다 새 스트림이 생겨
-      //    Loki 가 무너진다. requestId 는 로그 본문에 있고, 조회할 때 | json 으로 파싱해 찾는다.
-      //
-      // ⚠️ expressions 의 값에 따옴표를 씌우지 않는다. ECS 포맷은 level 을
-      //    {"log":{"level":"INFO"}} 로 nest 한다 (Spring Boot 의
-      //    ElasticCommonSchemaStructuredLogFormatter 에 하드코딩, 설정으로 못 바꿈).
-      //    log.level (따옴표 없음) 은 JMESPath 로 중첩을 타고 들어간다 — 맞음.
-      //    "log.level" (따옴표 있음) 은 그 이름 그대로의 flat 키를 찾는다 — ECS 에 그런 키가
-      //    없어 매치가 조용히 실패하고 level 라벨이 빈 값이 된다 (에러 없이).
+      // ⚠️ 라벨은 저카디널리티만. requestId 를 라벨로 올리면 스트림이 폭발한다.
+      // ⚠️ log.level 에 따옴표를 씌우면 flat 키를 찾아 조용히 빈 값이 된다 (ECS 는 중첩).
       loki.process "studyclub_api" {
         stage.json {
           expressions = {
@@ -118,9 +106,9 @@ services:
   # 별도 서비스가 아니다 — 호스트 compose 의 기존 api 서비스에 합쳐 넣는다.
   api:
     environment:
-      LOG_JSON_FORMAT: ecs                       # 파일만 ECS JSON. 콘솔은 텍스트 유지
-      LOG_FILE: /var/log/studyclub/app.json      # Alloy 가 이 파일을 tail 한다
-      MANAGEMENT_PORT: 9090                      # actuator 를 앱 포트에서 뗀다(호스트에 publish 안 함)
+      LOG_JSON_FORMAT: ecs
+      LOG_FILE: /var/log/studyclub/app.json
+      MANAGEMENT_PORT: 9090
     volumes:
       - studyclub-applog:/var/log/studyclub
     logging:
@@ -154,7 +142,7 @@ services:
       - source: alloy_config
         target: /etc/alloy/config.alloy
     volumes:
-      - studyclub-applog:/var/log/studyclub:ro   # api 가 쓴 것을 읽기만 한다
+      - studyclub-applog:/var/log/studyclub:ro
       # ⚠️ positions. 지우면 재기동마다 처음부터 다시 읽어 로그가 중복 적재된다.
       - alloy-data:/var/lib/alloy/data
 
@@ -187,8 +175,9 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
 
+# ⚠️ 배포 때 지우지 않는다. 지우면 로그가 유실되거나 중복 적재된다.
 volumes:
-  studyclub-applog:   # api 가 쓰고 alloy 가 읽는 큐 — 배포 때 지우지 않는다
-  alloy-data:         # alloy positions — 지우면 로그가 Loki 에 중복 적재된다
-  loki-data:          # 30일치 로그 아카이브
+  studyclub-applog:
+  alloy-data:
+  loki-data:
   grafana-data:
