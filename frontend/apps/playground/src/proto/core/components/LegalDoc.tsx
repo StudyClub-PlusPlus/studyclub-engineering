@@ -1,5 +1,5 @@
 import type { Locale } from '@core/lib/content';
-import { LEGAL_TEXT, lx, type Block, type LegalDocument, type LegalSection } from '@core/lib/legal';
+import { LEGAL_TEXT, lx, type Block, type LegalDocument } from '@core/lib/legal';
 
 /**
  * 이용약관·개인정보처리방침 공용 화면.
@@ -18,34 +18,14 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
       </header>
 
       {doc.intro?.length ? (
-        <div className='mt-8 flex flex-col gap-3'>
+        <div data-anno='1-2' className='mt-8 flex flex-col gap-3'>
           {doc.intro.map((b, i) => (
             <BlockView key={i} block={b} locale={locale} />
           ))}
         </div>
       ) : null}
 
-      <nav data-anno='2' className='mt-10 rounded-card border border-(--color-border) px-6 py-5'>
-        <h2 className='text-sm font-bold'>{lx(LEGAL_TEXT.toc, locale)}</h2>
-        {groupByChapter(doc.sections).map((g, gi) => (
-          <div key={gi} className={gi === 0 ? 'mt-3' : 'mt-4'}>
-            {g.chapter ? (
-              <div className='text-[13px] font-semibold text-(--color-fg-subtle)'>{lx(g.chapter, locale)}</div>
-            ) : null}
-            <ol className={`flex flex-col gap-1.5 text-sm text-(--color-fg-muted) ${g.chapter ? 'mt-1.5' : ''}`}>
-              {g.sections.map((sec) => (
-                <li key={sec.id}>
-                  <a href={`#${sec.id}`} className='underline-offset-4 hover:text-(--color-fg) hover:underline'>
-                    {lx(sec.heading, locale)}
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </div>
-        ))}
-      </nav>
-
-      <div data-anno='3' className='mt-10 flex flex-col gap-10'>
+      <div data-anno='2' className='mt-10 flex flex-col gap-10'>
         {doc.sections.map((s, i) => (
           <section key={s.id} id={s.id} className='scroll-mt-24'>
             {s.chapter && s.chapter.ko !== doc.sections[i - 1]?.chapter?.ko ? (
@@ -66,7 +46,6 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
           </section>
         ))}
       </div>
-
     </div>
   );
 }
@@ -155,17 +134,5 @@ function BlockView({ block, locale }: { block: Block; locale: Locale }) {
           {lx(block.text, locale)}
         </p>
       );
-
   }
-}
-
-/** 목차를 장 단위로 묶는다. 장이 없는 문서는 한 덩어리로 남는다. */
-function groupByChapter(sections: LegalSection[]): { chapter?: LegalSection['chapter']; sections: LegalSection[] }[] {
-  const out: { chapter?: LegalSection['chapter']; sections: LegalSection[] }[] = [];
-  for (const s of sections) {
-    const last = out[out.length - 1];
-    if (last && last.chapter?.ko === s.chapter?.ko) last.sections.push(s);
-    else out.push({ chapter: s.chapter, sections: [s] });
-  }
-  return out;
 }
