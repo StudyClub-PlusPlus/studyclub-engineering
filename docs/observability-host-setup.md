@@ -45,7 +45,19 @@ free -h && df -h /var/lib/docker
 | **`docker compose` ≥ 2.23.1** | 인라인 `configs: content:` 가 그 버전에서 도입됐다 | **이 설계가 통째로 안 된다.** 설정을 호스트 파일로 떨어뜨리는 bind mount 방식으로 다시 만들어야 한다 (호스트에 놓을 파일 5개) |
 | 호스트 compose 에 **`api` 라는 이름의 서비스**가 있는가 | 이 파일의 `api:` 블록을 거기에 합쳐 넣는다 | 이름이 다르면 붙여넣을 곳을 바꿔야 한다 |
 | compose **프로젝트 이름** | 볼륨이 프로젝트 단위로 이름공간을 갖는다 | 이름이 다르면 `studyclub-applog` 이 갈라져 **Alloy 가 빈 디렉터리를 tail 하고 로그가 조용히 끊긴다** |
-| 여유 메모리 · 디스크 | Loki+Alloy+Grafana 가 얹힌다 | 같은 머신의 다른 프로젝트까지 같이 죽는다 |
+| 여유 메모리 · 디스크 | Loki+Alloy+Grafana 가 얹힌다 (아래 실측치) | 같은 머신의 다른 프로젝트까지 같이 죽는다 |
+| `127.0.0.1:3000` 이 비었는가 | Grafana 가 그 포트를 쓴다 | 이미 쓰는 것이 있으면 포트를 바꿔야 한다 |
+| 외부 헬스체크가 때리는 경로 | actuator 가 앱 포트에서 사라진다 | `/actuator/health` 를 쓰고 있으면 **배포 즉시 404** |
+
+**자원 실측치** (유휴, macOS Docker Desktop — 리눅스는 다를 수 있다):
+
+```
+loki     142 MiB      이미지   188 MB
+alloy    241 MiB      이미지   877 MB
+grafana  535 MiB      이미지  1.79 GB
+─────────────────────────────────────
+합계     ~920 MiB     이미지  ~2.9 GB    + Loki 가 쌓는 로그 30일치
+```
 
 `docker compose version` 이 `v1.x` 이거나 `docker-compose` (하이픈) 만 있으면 2.23.1 미만이다.
 
