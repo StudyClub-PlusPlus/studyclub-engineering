@@ -44,7 +44,7 @@ export const ATTENDEE_SPEC: ScreenSpec = {
     {
       n: '2',
       title: '탭',
-      display: ['정보 · 신청자 · 출석. 참석자 명단은 신청자 탭에 있다'],
+      display: ['정보 · 신청 폼 · 신청자 · 출석. 참석자 명단은 신청자 탭에 있다'],
       behavior: ['신청자 탭에는 승인 대기가 있으면 배지가 붙는다'],
     },
     {
@@ -143,4 +143,63 @@ export const EDIT_SPEC: ScreenSpec = {
   ],
 };
 
-export const SPECS = [ATTENDEE_SPEC, CREW_SPEC, EDIT_SPEC];
+/** 신청 폼 설계 — 캡틴이 이 코호트의 신청서 질문을 만든다. */
+export const FORM_SPEC: ScreenSpec = {
+  screen: '스터디 운영 (운영 콘솔)',
+  chip: '신청 폼 설계',
+  scope: 'form',
+  notes: [
+    '유저스토리 "캡틴은 스터디 폼을 작성할 수 있다" 2단계 프로토타입',
+    '저장은 화면 상태로만 처리한다. 새로고침하면 되돌아간다 — 저장 API(STUDY_COHORT.APPLICATION_FORM)가 아직 없다',
+    '신청 폼 수정은 모집 시작 전일 때만 가능해야 한다. 모집이 시작되면 이미 들어온 신청서와 질문이 어긋나지 않게 잠근다 — 이 화면은 아직 잠그지 않고 기획만 적는다',
+  ],
+  entries: [
+    {
+      n: '1',
+      title: '폼 헤더 카드',
+      display: ['스터디 제목 · 소개 · 예시 지원자 홍길동 / gildongHong@example.com'],
+      policy: ['미리보기 칸을 따로 두지 않는다. 편집 카드 자체가 지원자가 보는 작성 화면과 같은 모양이다'],
+    },
+    {
+      n: '2',
+      title: '기본 질문 — 디스코드 서버 별명',
+      display: ['[스터디 클럽++] 디스코드 서버 별명 · 단답형 · 필수 · 예) 홍길동/SWE/산호세/시스템디자인'],
+      policy: [
+        '삭제·타입 변경 불가 — 모든 신청 폼에 항상 포함되는 질문이다',
+        'ACCOUNT.DISCORD_NICKNAME 이 있으면 그 값을 그대로 쓰고, 없으면 지원자가 필수 입력한다',
+      ],
+    },
+    {
+      n: '3',
+      title: '질문 설계 영역',
+      display: ['기본 질문 아래 추가 질문 목록. 추가 질문이 없으면 안내 문구'],
+      policy: ['이름·이메일은 신청 폼에 받지 않고 계정에서 읽는다'],
+    },
+    {
+      n: '3-1',
+      title: '질문 추가',
+      behavior: ['누르면 빈 질문(단답형, 필수) 1개가 목록 끝에 추가되고 바로 편집 상태로 선택된다'],
+    },
+    {
+      n: '3-2',
+      title: '질문 카드',
+      display: ['카드를 누르면 편집 상태로 펼쳐진다. 질문 텍스트 · 타입(단답형/장문형/객관식/체크박스/드롭다운) · 필수 여부'],
+      behavior: [
+        '위/아래 화살표로 순서 변경',
+        '객관식·체크박스·드롭다운은 선택지를 한 줄씩 추가·수정·삭제한다. 옵션 입력 중 Enter 는 바로 아래에 새 옵션을 넣는다',
+        '객관식·체크박스는 「기타」 자유 입력을 켤 수 있다',
+        '삭제 누르면 그 질문만 목록에서 제거',
+      ],
+      data: ['ApplicationQuestion[] — id/label/type/required/options/allowOther/placeholder'],
+    },
+    {
+      n: '4',
+      title: '저장',
+      behavior: ['저장 → 완료 문구 표시', '처리 중 스피너로 중복 제출 차단'],
+      policy: ['모집 시작 전에는 저장할 수 있다. 모집 시작 이후 수정은 막아야 한다 — 프로토타입은 아직 막지 않는다'],
+      data: ['PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form — 미구현'],
+    },
+  ],
+};
+
+export const SPECS = [ATTENDEE_SPEC, CREW_SPEC, EDIT_SPEC, FORM_SPEC];

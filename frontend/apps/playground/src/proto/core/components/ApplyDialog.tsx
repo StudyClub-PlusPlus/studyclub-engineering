@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from 'react';
 
-
+import { formCardClass, FormHeaderCard, QuestionFillView } from '@core/components/ApplicationFormUi';
+import { DiscordNicknameField } from '@core/components/DiscordNicknameField';
+import { getUser } from '@core/lib/auth';
 import type { Locale, Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
-import { addApplication, getRegion } from '@core/lib/me';
-import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
+import { addApplication, getDiscordNickname, getDisplayName, getRegion, setDiscordNickname } from '@core/lib/me';
+import { PREVIEW_USER } from '@core/lib/preview';
+import { MEMBER_REGIONS, type ApplicationQuestion, type MemberRegion } from '@studyclub/mock';
 import { Button, Checkbox, Modal, Textarea } from '@studyclub/ui';
+
+function hasAnswer(q: ApplicationQuestion, answer: string | string[] | undefined) {
+  if (q.type === 'checkbox') return Array.isArray(answer) && answer.length > 0;
+  return typeof answer === 'string' && answer.trim().length > 0;
+}
 
 /**
  * 스터디 신청 폼 — 프로토타입.
@@ -20,8 +28,11 @@ import { Button, Checkbox, Modal, Textarea } from '@studyclub/ui';
  * 한국의 일요일 저녁과 북미의 일요일 저녁은 다른 시각이라, 지역 없이 요일·시간대만 모으면
  * 운영자가 겹치는 시간을 구할 수 없다. 저장 시 지역(기준 시간대)을 함께 남긴다.
  *
+ * 이름·이메일은 폼에 받지 않고 계정에서 읽는다. 디스코드 서버 별명은 계정에 있으면
+ * 그대로 쓰고, 없으면 이 화면에서 필수로 받아 계정에 저장한다.
+ *
  * TODO(api): POST /api/studies/{id}/applications — 저장 테이블·API 미구현이라 화면 상태로만 처리.
- * TODO(api): 신청자 지역은 로그인 회원 정보에서 읽는다. 지금은 마이페이지에서 고른 값을 쓴다.
+ * TODO(api): 신청자 지역·이름·이메일·디스코드 별명은 로그인 회원 정보에서 읽는다.
  */
 
 const DAYS = [
@@ -62,14 +73,32 @@ export function ApplyDialog({
    *  "월 저녁 + 일 오후" 같은 실제 가능 시간을 표현할 수 없다. */
   const [cells, setCells] = useState<string[]>([]);
   const [motivation, setMotivation] = useState('');
+  const [storedNick, setStoredNick] = useState<string | undefined>();
+  const [draftNick, setDraftNick] = useState('');
+  const [accountName, setAccountName] = useState(PREVIEW_USER.name ?? PREVIEW_USER.email);
+  const [accountEmail, setAccountEmail] = useState(PREVIEW_USER.email);
   const [error, setError] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const extraQuestions = (study.applicationForm ?? []).filter((q) => q.id !== 'discord');
+
+  useEffect(() => {
+    const user = getUser() ?? PREVIEW_USER;
+    const preview = user.id === PREVIEW_USER.id;
+    setAccountName(preview ? (PREVIEW_USER.name ?? user.email) : (getDisplayName() ?? user.name ?? user.email));
+    setAccountEmail(preview ? PREVIEW_USER.email : user.email);
+    setStoredNick(getDiscordNickname());
+    setDraftNick('');
+    setAnswers({});
+  }, [open]);
 
   function close() {
     setAgreed(false);
     setCells([]);
     setMotivation('');
+    setDraftNick('');
+    setAnswers({});
     setError(null);
     setDone(false);
     onClose();
@@ -81,6 +110,17 @@ export function ApplyDialog({
   }
 
   async function submit() {
+    if (!storedNick && !draftNick.trim()) {
+      return setError(
+        t({ ko: '디스코드 서버 별명을 입력해 주세요.', en: 'Enter your Discord server nickname.' }, locale),
+      );
+    }
+    const missing = extraQuestions.find((q) => q.required && !hasAnswer(q, answers[q.id]));
+    if (missing) {
+      return setError(
+        t({ ko: '필수 질문에 답해 주세요.', en: 'Please answer required questions.' }, locale),
+      );
+    }
     if (fixedSchedule) {
       if (!agreed)
         return setError(
@@ -94,6 +134,7 @@ export function ApplyDialog({
     }
     setError(null);
     setSaving(true);
+    if (!storedNick) setDiscordNickname(draftNick);
     // TODO(api): POST /api/studies/{id}/applications
     await new Promise((r) => setTimeout(r, 400));
     addApplication({
@@ -139,27 +180,30 @@ export function ApplyDialog({
           )}
         </p>
       ) : (
-        <div className='flex flex-col gap-5'>
-          {/* 어떤 스터디에 신청하는지 — 목록 카드와 같은 어휘(작은 라벨 + 굵은 제목)를 쓴다 */}
-          <div className='border-b border-border pb-4'>
-            <p className='text-[11px] font-bold uppercase tracking-[0.14em] text-fg-muted'>
-              {t({ ko: '신청 대상', en: 'Applying to' }, locale)}
-            </p>
-            <p className='mt-1.5 text-lg font-bold leading-snug text-fg'>{t(study.title, locale)}</p>
-            <p className='mt-1 text-[13px] leading-relaxed text-fg-secondary'>{t(study.summary, locale)}</p>
-          </div>
+        <div className='flex flex-col gap-3'>
+          <FormHeaderCard
+            title={t(study.title, locale)}
+            summary={t(study.summary, locale)}
+            account={{ name: accountName, email: accountEmail }}
+          />
+
+          <section className={formCardClass()}>
+            <DiscordNicknameField stored={storedNick} value={draftNick} onChange={setDraftNick} />
+          </section>
 
           {fixedSchedule ? (
-            <Checkbox
-              label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
-              checked={agreed}
-              onChange={(e) => {
-                setAgreed(e.target.checked);
-                setError(null);
-              }}
-            />
+            <section className={formCardClass()}>
+              <Checkbox
+                label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
+                checked={agreed}
+                onChange={(e) => {
+                  setAgreed(e.target.checked);
+                  setError(null);
+                }}
+              />
+            </section>
           ) : (
-            <>
+            <section className={formCardClass()}>
               <div className='flex flex-col gap-2'>
                 <div className='flex items-baseline justify-between gap-2'>
                   <p className='text-sm font-medium text-neutral-800'>
@@ -232,22 +276,44 @@ export function ApplyDialog({
                   )}
                 </p>
               </div>
-            </>
+            </section>
           )}
 
-          <Textarea
-            label={t({ ko: '지원 동기', en: "Why you're applying" }, locale)}
-            rows={3}
-            value={motivation}
-            onChange={(e) => setMotivation(e.target.value)}
-            placeholder={t(
-              {
-                ko: '선택 입력입니다. 간단히 적어 주시면 운영진이 참고합니다.',
-                en: 'Optional. A short note helps the organizers.',
-              },
-              locale,
-            )}
-          />
+          {extraQuestions.map((q) => (
+            <section key={q.id} className={formCardClass()}>
+              <QuestionFillView
+                q={q}
+                value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
+                values={Array.isArray(answers[q.id]) ? (answers[q.id] as string[]) : []}
+                onChange={(value) => setAnswers((prev) => ({ ...prev, [q.id]: value }))}
+                onToggle={(option) =>
+                  setAnswers((prev) => {
+                    const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
+                    return {
+                      ...prev,
+                      [q.id]: cur.includes(option) ? cur.filter((x) => x !== option) : [...cur, option],
+                    };
+                  })
+                }
+              />
+            </section>
+          ))}
+
+          <section className={formCardClass()}>
+            <Textarea
+              label={t({ ko: '지원 동기', en: "Why you're applying" }, locale)}
+              rows={3}
+              value={motivation}
+              onChange={(e) => setMotivation(e.target.value)}
+              placeholder={t(
+                {
+                  ko: '선택 입력입니다. 간단히 적어 주시면 운영진이 참고합니다.',
+                  en: 'Optional. A short note helps the organizers.',
+                },
+                locale,
+              )}
+            />
+          </section>
 
           {error && <p className='text-xs text-error-700'>{error}</p>}
         </div>

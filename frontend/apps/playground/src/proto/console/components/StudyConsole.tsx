@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
+import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { CrewTab } from '@console/components/CrewTab';
 import { StudyInfoTab } from '@console/components/StudyInfoTab';
@@ -27,8 +28,8 @@ import { useAnnotate } from '@/proto/annotate';
 /**
  * 스터디 운영 콘솔.
  *
- * 한 스터디를 놓고 운영자가 하는 일은 셋뿐이라 탭도 셋이다:
- * **신청자**(누가 들어오는가) · **출석**(누가 나오는가) · **정보**(무엇을 알리는가).
+ * 한 스터디를 놓고 캡틴(=운영자)이 하는 일은 넷이라 탭도 넷이다:
+ * **신청자**(누가 들어오는가) · **출석**(누가 나오는가) · **신청 폼**(어떻게 물어보는가) · **정보**(무엇을 알리는가).
  *
  * 상태는 이 컴포넌트가 들고 있다 — 크루 승인이 출석부 명단을 바꾸므로 탭마다 따로 두면 어긋난다.
  * TODO(api): 승인·출석 체크는 화면 상태로만 처리. 저장 API 연결 필요.
@@ -36,6 +37,7 @@ import { useAnnotate } from '@/proto/annotate';
 
 const TABS = [
   { key: 'info', label: '정보' },
+  { key: 'form', label: '신청 폼' },
   { key: 'crew', label: '신청자' },
   { key: 'attendance', label: '출석' },
 ] as const;
@@ -51,7 +53,7 @@ export function StudyConsole({ study }: { study: Study }) {
   // 스토리 칩을 고르면 그 Story 의 요소가 **보이는 탭**으로 옮겨 준다.
   // 「참석자 목록」을 골랐는데 정보 탭이 떠 있으면 명단 번호가 화면에 없어 대조할 수가 없다.
   const { spec, on } = useAnnotate();
-  const storyTab: Partial<Record<string, TabKey>> = { attendee: 'crew', crew: 'crew', edit: 'info' };
+  const storyTab: Partial<Record<string, TabKey>> = { attendee: 'crew', crew: 'crew', edit: 'info', form: 'form' };
   const wanted = spec?.scope ? storyTab[spec.scope] : undefined;
   useEffect(() => {
     if (on && wanted) setTab(wanted);
@@ -159,6 +161,7 @@ export function StudyConsole({ study }: { study: Study }) {
             onToggle={toggleAttendance}
           />
         )}
+        {tab === 'form' && <ApplicationFormTab study={study} />}
         {tab === 'info' && <StudyInfoTab study={study} />}
       </div>
     </div>
