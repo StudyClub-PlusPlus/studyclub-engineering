@@ -54,6 +54,7 @@ export function StudyBrowser({
 }) {
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
   // 기본 탭은 "모집중" — 목록에 들어온 사람이 가장 먼저 찾는 것
   const [tab, setTab] = useState<StateTab>('apply');
   /** 카테고리는 상태 탭의 **하위** 필터 — 먼저 모집 여부로 고르고, 그 안에서 분야를 좁힌다. */
@@ -90,46 +91,10 @@ export function StudyBrowser({
   return (
     <div>
       <ScreenSpecRegistrar spec={STUDY_BROWSER_SPEC} />
-      {/* 검색바(왼쪽) + 상태 탭(오른쪽) — 항상 인라인 배치 */}
-      <div className='mb-3 flex items-center gap-3'>
-        <div
-          data-anno='1'
-          className='relative flex flex-1 items-center rounded-xl border border-border-strong bg-bg transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[var(--ring)]'
-        >
-          <input
-            data-anno='1-1'
-            type='text'
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
-            placeholder={m('filter.search_studies', locale)}
-            className='h-11 flex-1 bg-transparent pl-4 pr-2 text-sm outline-none'
-          />
-          {(input || hasQuery) && (
-            <button
-              data-anno='1-2'
-              type='button'
-              onClick={clearSearch}
-              aria-label='검색어 지우기'
-              className='shrink-0 rounded-full p-1 text-fg-muted hover:text-fg'
-            >
-              <X size={14} />
-            </button>
-          )}
-          <div className='mx-1 h-5 w-px shrink-0 bg-border-strong' />
-          <button
-            data-anno='1-3'
-            type='button'
-            onClick={commitSearch}
-            aria-label='검색'
-            className='shrink-0 rounded-lg px-3 py-2 text-fg-secondary hover:text-fg'
-          >
-            <Search size={16} />
-          </button>
-        </div>
-
-        {/* 상태 탭 — 항상 표시 */}
-        <div data-anno='2' role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
+      {/* 상태 탭(왼쪽) + 검색바(오른쪽) — justify-between */}
+      <div className='mb-3 flex items-center justify-between'>
+        {/* 상태 탭 — 좌측, 항상 표시 */}
+        <div data-anno='1' role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
           {TAB_ORDER.map((s) => {
             const on = tab === s;
             return (
@@ -148,6 +113,50 @@ export function StudyBrowser({
               </button>
             );
           })}
+        </div>
+
+        {/* 검색바 — 우측, 기본 폭 좁음 / 포커스 시 확장 */}
+        <div
+          data-anno='2'
+          onFocus={() => setSearchExpanded(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setSearchExpanded(false);
+            }
+          }}
+          style={{ width: searchExpanded ? '24rem' : '16rem' }}
+          className='relative flex items-center rounded-xl border border-border-strong bg-bg transition-[border-color,box-shadow,width] duration-200 focus-within:border-brand focus-within:shadow-[var(--ring)]'
+        >
+          <input
+            data-anno='2-1'
+            type='text'
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
+            placeholder={m('filter.search_studies', locale)}
+            className='h-11 min-w-0 flex-1 bg-transparent pl-4 pr-2 text-sm outline-none'
+          />
+          {(input || hasQuery) && (
+            <button
+              data-anno='2-2'
+              type='button'
+              onClick={clearSearch}
+              aria-label='검색어 지우기'
+              className='shrink-0 rounded-full p-1 text-fg-muted hover:text-fg'
+            >
+              <X size={14} />
+            </button>
+          )}
+          <div className='mx-1 h-5 w-px shrink-0 bg-border-strong' />
+          <button
+            data-anno='2-3'
+            type='button'
+            onClick={commitSearch}
+            aria-label='검색'
+            className='shrink-0 rounded-lg px-3 py-2 text-fg-secondary hover:text-fg'
+          >
+            <Search size={16} />
+          </button>
         </div>
       </div>
 

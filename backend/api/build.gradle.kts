@@ -12,6 +12,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    // Jakarta Bean Validation (@Valid, @NotBlank 등) — validation-guide.md 가 전제하는 스타터
+    implementation("org.springframework.boot:spring-boot-starter-validation")
 
     // OpenAPI 스펙 생성 + Scalar UI (Swagger UI 대신)
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.1.0")
@@ -28,6 +30,11 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")

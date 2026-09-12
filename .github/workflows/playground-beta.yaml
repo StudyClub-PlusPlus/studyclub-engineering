@@ -1,0 +1,71 @@
+name: playground-beta-CI
+
+on:
+  push:
+    branches: [beta]
+    tags: [playground**]
+    paths:
+      - 'frontend/apps/playground/**'
+      - 'frontend/packages/**'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx turbo run lint typecheck --filter=playground
+        working-directory: frontend
+
+  docker:
+    needs: lint
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.BUILD_SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      # playground 는 mock 데이터만 쓴다 → NEXT_PUBLIC_* build-arg 없음
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/apps/playground/Dockerfile
+          push: true
+          tags: hyperrealitycorp/studyclub-playground-production
+          platforms: linux/amd64
+          build-args: |
+            NODE_ENV=production
+            COMMIT_HASH=${{ github.sha }}
+      - name: Deployment
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.REMOTE_SSH_IP }}
+          username: ${{ secrets.REMOTE_SSH_ID }}
+          password: ${{ secrets.REMOTE_SSH_PASSWORD }}
+          port: ${{ secrets.REMOTE_SSH_PORT }}
+          script: |
+            source ~/.bashrc
+            bash ./deployment/studyclub/playground-production.sh
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          steps: ${{ toJson(steps) }}
+          channel: '#build-status'
+        if: always()

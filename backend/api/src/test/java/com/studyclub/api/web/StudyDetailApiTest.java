@@ -42,27 +42,23 @@ class StudyDetailApiTest {
     void detailWithCohort() {
         var study =
                 studyRepository.save(
-                        new Study(
-                                "algo-study",
-                                "알고리즘 스터디",
-                                "설명",
-                                StudyCategory.BACKEND,
-                                StudyKind.STUDY,
-                                null,
-                                false));
+                        Study.builder()
+                                .slug("algo-study")
+                                .title("알고리즘 스터디")
+                                .oneLineSummary("알고리즘 문제 풀이 스터디")
+                                .category(StudyCategory.BACKEND)
+                                .studyKind(StudyKind.STUDY)
+                                .description("설명")
+                                .build());
         cohortRepository.save(
-                new StudyCohort(
-                        study.getId(),
-                        DeliveryFormat.ONLINE,
-                        StudyCohortStatus.OPEN,
-                        null,
-                        null,
-                        20,
-                        Instant.parse("2026-10-01T00:00:00Z"),
-                        Instant.parse("2026-10-15T00:00:00Z"),
-                        null,
-                        null,
-                        null));
+                StudyCohort.builder()
+                        .studyId(study.getId())
+                        .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                        .status(StudyCohortStatus.OPEN)
+                        .recruitDeadline(Instant.parse("2026-10-01T00:00:00Z"))
+                        .capacity(20)
+                        .startDate(Instant.parse("2026-10-15T00:00:00Z"))
+                        .build());
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
 
@@ -83,14 +79,13 @@ class StudyDetailApiTest {
     void detailWithoutCohort() {
         var study =
                 studyRepository.save(
-                        new Study(
-                                "no-cohort",
-                                "코호트 없음",
-                                null,
-                                StudyCategory.AI_ML,
-                                StudyKind.STUDY,
-                                null,
-                                false));
+                        Study.builder()
+                                .slug("no-cohort")
+                                .title("코호트 없음")
+                                .oneLineSummary("코호트 없는 스터디")
+                                .category(StudyCategory.AI_ML)
+                                .studyKind(StudyKind.STUDY)
+                                .build());
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
 
@@ -113,14 +108,14 @@ class StudyDetailApiTest {
     void hiddenStudyReturns404() {
         var study =
                 studyRepository.save(
-                        new Study(
-                                "hidden",
-                                "숨김 스터디",
-                                null,
-                                StudyCategory.OTHER,
-                                StudyKind.STUDY,
-                                null,
-                                true));
+                        Study.builder()
+                                .slug("hidden")
+                                .title("숨김 스터디")
+                                .oneLineSummary("숨김 처리된 스터디")
+                                .category(StudyCategory.OTHER)
+                                .studyKind(StudyKind.STUDY)
+                                .isHidden(true)
+                                .build());
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
 

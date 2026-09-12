@@ -37,75 +37,63 @@ class StudyListIntegrationTest {
 
         var algo =
                 studyRepo.save(
-                        new Study(
-                                "daily-leetcode",
-                                "데일리 리트코드",
-                                "알고리즘 스터디",
-                                StudyCategory.CS,
-                                StudyKind.STUDY,
-                                null,
-                                false));
+                        Study.builder()
+                                .slug("daily-leetcode")
+                                .title("데일리 리트코드")
+                                .oneLineSummary("매일 알고리즘 문제 풀이")
+                                .category(StudyCategory.CS)
+                                .studyKind(StudyKind.STUDY)
+                                .description("알고리즘 스터디")
+                                .build());
         cohortRepo.save(
-                new StudyCohort(
-                        algo.getId(),
-                        DeliveryFormat.ONLINE,
-                        StudyCohortStatus.OPEN,
-                        null,
-                        null,
-                        30,
-                        Instant.now().plus(2, ChronoUnit.DAYS),
-                        Instant.now().plus(10, ChronoUnit.DAYS),
-                        null,
-                        null,
-                        null));
+                StudyCohort.builder()
+                        .studyId(algo.getId())
+                        .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                        .status(StudyCohortStatus.OPEN)
+                        .recruitDeadline(Instant.now().plus(2, ChronoUnit.DAYS))
+                        .capacity(30)
+                        .startDate(Instant.now().plus(10, ChronoUnit.DAYS))
+                        .build());
 
         var spring =
                 studyRepo.save(
-                        new Study(
-                                "spring-deep",
-                                "Spring 딥다이브",
-                                "스프링 스터디",
-                                StudyCategory.BACKEND,
-                                StudyKind.STUDY,
-                                null,
-                                false));
+                        Study.builder()
+                                .slug("spring-deep")
+                                .title("Spring 딥다이브")
+                                .oneLineSummary("스프링 심화 학습")
+                                .category(StudyCategory.BACKEND)
+                                .studyKind(StudyKind.STUDY)
+                                .description("스프링 스터디")
+                                .build());
         cohortRepo.save(
-                new StudyCohort(
-                        spring.getId(),
-                        DeliveryFormat.OFFLINE,
-                        StudyCohortStatus.DRAFT,
-                        null,
-                        null,
-                        20,
-                        Instant.now().plus(30, ChronoUnit.DAYS),
-                        Instant.now().plus(40, ChronoUnit.DAYS),
-                        null,
-                        null,
-                        null));
+                StudyCohort.builder()
+                        .studyId(spring.getId())
+                        .studyDeliveryFormat(DeliveryFormat.OFFLINE)
+                        .status(StudyCohortStatus.DRAFT)
+                        .recruitDeadline(Instant.now().plus(30, ChronoUnit.DAYS))
+                        .capacity(20)
+                        .startDate(Instant.now().plus(40, ChronoUnit.DAYS))
+                        .build());
 
         var closed =
                 studyRepo.save(
-                        new Study(
-                                "old-study",
-                                "종료 스터디",
-                                "지난 스터디",
-                                StudyCategory.CS,
-                                StudyKind.STUDY,
-                                null,
-                                false));
+                        Study.builder()
+                                .slug("old-study")
+                                .title("종료 스터디")
+                                .oneLineSummary("종료된 스터디")
+                                .category(StudyCategory.CS)
+                                .studyKind(StudyKind.STUDY)
+                                .description("지난 스터디")
+                                .build());
         cohortRepo.save(
-                new StudyCohort(
-                        closed.getId(),
-                        DeliveryFormat.ONLINE,
-                        StudyCohortStatus.CLOSED,
-                        null,
-                        null,
-                        10,
-                        Instant.now().minus(10, ChronoUnit.DAYS),
-                        Instant.now().minus(5, ChronoUnit.DAYS),
-                        null,
-                        null,
-                        null));
+                StudyCohort.builder()
+                        .studyId(closed.getId())
+                        .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                        .status(StudyCohortStatus.CLOSED)
+                        .recruitDeadline(Instant.now().minus(10, ChronoUnit.DAYS))
+                        .capacity(10)
+                        .startDate(Instant.now().minus(5, ChronoUnit.DAYS))
+                        .build());
     }
 
     @Test
