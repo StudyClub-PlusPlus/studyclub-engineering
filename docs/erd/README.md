@@ -81,6 +81,7 @@ erDiagram
     varchar  TIME_ZONE            "IANA"
     varchar  DISCORD_ID        UK "snowflake"
     varchar  DISCORD_HANDLE
+    varchar  DISCORD_NICKNAME     "스터디클럽++ 서버 별명. 없으면 신청 시 필수 입력"
     datetime ONBOARDING_COMPLETED_AT    "온보딩 완료 시각"
   }
 

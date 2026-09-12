@@ -71,6 +71,18 @@ export type Recruitment = {
   note?: L10n; // "초과시 반을 나눌 수 있습니다" 등
 };
 
+// 신청 폼 — 캡틴이 설계하는 질문 목록. 이름·이메일은 계정에서 읽고, 디스코드 서버 별명은 계정에 없으면 필수로 받는다.
+export type ApplicationQuestionType = "text" | "textarea" | "radio" | "checkbox" | "select";
+export type ApplicationQuestion = {
+  id: string;
+  label: string;
+  type: ApplicationQuestionType;
+  required: boolean;
+  options?: string[]; // radio · checkbox · select 일 때
+  allowOther?: boolean; // radio · checkbox — 「기타」 자유 입력
+  placeholder?: string; // text · textarea 안내 예시
+};
+
 // 주차별 커리큘럼.
 export type StudyWeek = { label: L10n; title: L10n };
 
@@ -112,6 +124,7 @@ export type Study = {
   duration?: L10n; // 기간 요약 (예: "킥오프 포함 총 10주")
   weeks?: StudyWeek[]; // 주차별 커리큘럼
   recruitment?: Recruitment; // 모집 모델 (별도)
+  applicationForm?: ApplicationQuestion[]; // 캡틴이 설계한 신청 폼 추가 질문. 없으면 계정 정보 + 디스코드 서버 별명만 받음
   reviews?: StudyReview[]; // 후기
   stats?: StudyStats; // 참여 통계 (마스킹)
   past_participants?: L10n[]; // 마스킹된 참여자 (예: "김OO / SWE")
@@ -294,6 +307,30 @@ export const studies: Study[] = [
       cadence: "one-time",
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
+    applicationForm: [
+      { id: "reason", label: "지원 사유", type: "text", required: true, placeholder: "내 답변" },
+      {
+        id: "time",
+        label: "참여 가능 시간을 모두 선택하세요",
+        type: "checkbox",
+        required: true,
+        options: ["평일 오전", "평일 오후", "주말 오전", "주말 오후"],
+      },
+      {
+        id: "level",
+        label: "희망 난이도를 선택하세요",
+        type: "radio",
+        required: true,
+        options: ["입문", "초급", "중급", "고급", "심화"],
+      },
+      {
+        id: "kickoff",
+        label: "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
+        type: "select",
+        required: true,
+        options: ["예", "아니오"],
+      },
+    ],
     order: 1,
     year: "2026",
   },

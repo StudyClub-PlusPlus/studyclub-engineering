@@ -17,11 +17,13 @@ import {
   getApplications,
   getBookmarks,
   getDiscord,
+  getDiscordNickname,
   getDisplayName,
   getRegion,
   seedDemoData,
   setDiscord,
   setBookmarked,
+  setDiscordNickname,
   setDisplayName,
   setRegion,
   type Application,
@@ -163,6 +165,7 @@ export default function MyPage() {
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [discord, setDiscordState] = useState<DiscordLink>(null);
+  const [discordNickname, setDiscordNicknameState] = useState('');
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -179,6 +182,7 @@ export default function MyPage() {
     setApplications(getApplications());
     setBookmarks(getBookmarks());
     setDiscordState(getDiscord());
+    setDiscordNicknameState(getDiscordNickname() ?? '');
     setReady(true);
   }, [locale, router]);
 
@@ -206,11 +210,13 @@ export default function MyPage() {
     router.replace(`/proto/core/${locale}`);
   }
 
-  function saveProfile(next: { name: string; region: MemberRegion }) {
+  function saveProfile(next: { name: string; region: MemberRegion; discordNickname: string }) {
     setName(next.name);
     setDisplayName(next.name);
     setRegionState(next.region);
     setRegion(next.region);
+    setDiscordNickname(next.discordNickname);
+    setDiscordNicknameState(next.discordNickname);
   }
 
   function connectDiscord() {
@@ -253,6 +259,9 @@ export default function MyPage() {
             <div className='min-w-0'>
               <p className='truncate text-lg font-bold text-fg'>{name}</p>
               <p className='truncate text-sm text-fg-secondary'>{user.email}</p>
+              <p className='mt-1 truncate text-[13px] text-fg-secondary'>
+                서버 별명 · {discordNickname || '없음 (신청 시 입력)'}
+              </p>
               <p className='mt-1 text-[13px] text-fg-secondary'>
                 거주 지역 · {t(regionMeta.label, locale)}
                 <span className='ml-1 text-fg-muted'>{regionMeta.tzLabel}</span>
@@ -435,6 +444,7 @@ export default function MyPage() {
         email={user.email}
         name={name}
         region={region}
+        discordNickname={discordNickname}
         onSave={saveProfile}
       />
     </div>

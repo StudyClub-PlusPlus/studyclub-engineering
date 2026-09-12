@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react';
 
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
+import { DISCORD_NICKNAME_EXAMPLE } from '@core/lib/me';
 import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
 import { Button, Input, Modal } from '@studyclub/ui';
-
 
 /**
  * 내 정보 수정.
  *
- * 고칠 수 있는 것은 **이름과 거주 지역** 둘뿐이다. 이메일은 로그인 계정 그 자체라 여기서 바꾸면
+ * 이름·거주 지역·디스코드 서버 별명을 고친다. 이메일은 로그인 계정 그 자체라 여기서 바꾸면
  * 로그인이 깨진다 — 보여주기만 한다.
  *
  * TODO(api): PATCH /api/me — 지금은 브라우저에만 저장한다.
@@ -23,6 +23,7 @@ export function ProfileDialog({
   email,
   name,
   region,
+  discordNickname,
   onSave,
 }: {
   open: boolean;
@@ -31,10 +32,12 @@ export function ProfileDialog({
   email: string;
   name: string;
   region: MemberRegion;
-  onSave: (next: { name: string; region: MemberRegion }) => void;
+  discordNickname: string;
+  onSave: (next: { name: string; region: MemberRegion; discordNickname: string }) => void;
 }) {
   const [draft, setDraft] = useState(name);
   const [draftRegion, setDraftRegion] = useState(region);
+  const [draftNick, setDraftNick] = useState(discordNickname);
   const [error, setError] = useState<string | null>(null);
 
   // 열 때마다 현재 값에서 다시 시작한다. 취소하고 다시 열면 이전 편집이 남아 있으면 안 된다.
@@ -42,15 +45,16 @@ export function ProfileDialog({
     if (!open) return;
     setDraft(name);
     setDraftRegion(region);
+    setDraftNick(discordNickname);
     setError(null);
-  }, [open, name, region]);
+  }, [open, name, region, discordNickname]);
 
   function submit() {
     if (!draft.trim()) {
       setError('이름을 입력하세요.');
       return;
     }
-    onSave({ name: draft.trim(), region: draftRegion });
+    onSave({ name: draft.trim(), region: draftRegion, discordNickname: draftNick.trim() });
     onClose();
   }
 
@@ -84,6 +88,14 @@ export function ProfileDialog({
           <p className='text-sm font-medium text-neutral-800'>이메일</p>
           <p className='mt-1.5 text-sm text-fg-secondary'>{email}</p>
         </div>
+
+        <Input
+          label='디스코드 서버 별명'
+          value={draftNick}
+          onChange={(e) => setDraftNick(e.target.value)}
+          placeholder={DISCORD_NICKNAME_EXAMPLE}
+          helper='비어 있으면 스터디 신청 때 필수로 받습니다.'
+        />
 
         <div>
           <p className='text-sm font-medium text-neutral-800'>거주 지역</p>
