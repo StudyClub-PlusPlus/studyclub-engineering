@@ -1,0 +1,184 @@
+# StudyClub++ 관측 스택 — 로그 경로. 배포 절차는 docs/observability-host-setup.md 참조.
+# 단독 실행되지 않는다. 호스트에서는 이 내용을 기존 compose 에 붙여넣는다.
+# 인라인 configs 를 쓰므로 docker compose 2.23.1 이상이 필요하다.
+#   로컬: docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+
+name: studyclub
+
+configs:
+  loki_config:
+    content: |
+      auth_enabled: false
+
+      server:
+        http_listen_port: 3100
+        log_level: warn
+
+      common:
+        instance_addr: 127.0.0.1
+        path_prefix: /loki
+        storage:
+          filesystem:
+            chunks_directory: /loki/chunks
+            rules_directory: /loki/rules
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+
+      schema_config:
+        configs:
+          - from: 2024-01-01
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+
+      # ⚠️ retention_period 만으론 Loki 가 아무것도 지우지 않는다. compactor 를 켜야 삭제가 돈다.
+      compactor:
+        working_directory: /loki/compactor
+        retention_enabled: true
+        delete_request_store: filesystem
+
+      limits_config:
+        retention_period: 720h          # 30일
+        ingestion_rate_mb: 4
+        ingestion_burst_size_mb: 8
+        per_stream_rate_limit: 3MB
+        per_stream_rate_limit_burst: 6MB
+        max_global_streams_per_user: 500
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+
+  alloy_config:
+    content: |
+      // app.json* 의 * 는 로테이션된 파일을 놓치지 않기 위한 것이다.
+      local.file_match "studyclub_api" {
+        path_targets = [{
+          __path__ = "/var/log/studyclub/app.json*",
+          job      = "studyclub-api",
+          service  = "studyclub-api",
+        }]
+      }
+
+      loki.source.file "studyclub_api" {
+        targets    = local.file_match.studyclub_api.targets
+        forward_to = [loki.process.studyclub_api.receiver]
+      }
+
+      // ⚠️ 라벨은 저카디널리티만. requestId 를 라벨로 올리면 스트림이 폭발한다.
+      // ⚠️ log.level 에 따옴표를 씌우면 flat 키를 찾아 조용히 빈 값이 된다 (ECS 는 중첩).
+      loki.process "studyclub_api" {
+        stage.json {
+          expressions = {
+            level = "log.level",
+          }
+        }
+        stage.labels {
+          values = {
+            level = "",
+          }
+        }
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki:3100/loki/api/v1/push"
+        }
+      }
+
+  grafana_datasource_loki:
+    content: |
+      apiVersion: 1
+
+      datasources:
+        - name: Loki
+          type: loki
+          uid: loki
+          access: proxy
+          url: http://loki:3100
+          # ⚠️ 기본 데이터소스는 이 파일 하나만 갖는다 — 둘이면 Grafana 가 기동을 거부한다(실측).
+          isDefault: true
+
+services:
+  # 별도 서비스가 아니다 — 호스트 compose 의 기존 api 서비스에 합쳐 넣는다.
+  api:
+    environment:
+      LOG_JSON_FORMAT: ecs
+      LOG_FILE: /var/log/studyclub/app.json
+      MANAGEMENT_PORT: 9090
+    volumes:
+      - studyclub-applog:/var/log/studyclub
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  loki:
+    image: grafana/loki:3.7.7
+    container_name: studyclub-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    configs:
+      - source: loki_config
+        target: /etc/loki/loki-config.yml
+    volumes:
+      - loki-data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: studyclub-alloy
+    restart: unless-stopped
+    depends_on:
+      - loki
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    configs:
+      - source: alloy_config
+        target: /etc/alloy/config.alloy
+    volumes:
+      - studyclub-applog:/var/log/studyclub:ro
+      # ⚠️ positions. 지우면 재기동마다 처음부터 다시 읽어 로그가 중복 적재된다.
+      - alloy-data:/var/lib/alloy/data
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    container_name: studyclub-grafana
+    restart: unless-stopped
+    depends_on:
+      - loki
+    ports:
+      - "127.0.0.1:3000:3000"
+    configs:
+      - source: grafana_datasource_loki
+        target: /etc/grafana/provisioning/datasources/loki.yml
+    environment:
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD 가 비어있다 - .env 에 강한 값을 채워라(openssl rand -base64 32) - 이 값이 Grafana 로 들어가는 문이다}
+      # ⚠️ 기본 꺼짐. 인터넷에 열기 전에 반드시 켜고 미허용 계정이 거부되는지 확인한다.
+      GF_AUTH_GOOGLE_ENABLED: ${GRAFANA_GOOGLE_ENABLED:-false}
+      GF_AUTH_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GF_AUTH_GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GF_AUTH_GOOGLE_SCOPES: "openid email profile"
+      GF_AUTH_GOOGLE_ALLOW_SIGN_UP: "true"
+      # ⚠️ google 만 이 기본값이 true 다. true 면 아래 allowlist 가 통째로 무시된다 (spec.md).
+      GF_AUTH_GOOGLE_SKIP_ORG_ROLE_SYNC: "false"
+      GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_PATH: "contains([${GRAFANA_ALLOWED_EMAILS}], email) && 'Admin' || ''"
+      GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_STRICT: "true"
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+# ⚠️ 배포 때 지우지 않는다. 지우면 로그가 유실되거나 중복 적재된다.
+volumes:
+  studyclub-applog:
+  alloy-data:
+  loki-data:
+  grafana-data:

@@ -56,11 +56,39 @@ scalar:
   # UI 가 Scalar 로 사용량을 보내는 기본값을 끈다
   telemetry: false
 
+# 콘솔은 텍스트 그대로 두고(docker logs 가독성) 파일만 ECS JSON 으로 쓴다. 두 env 가 비어 있으면
+# 동작이 지금과 완전히 동일하다.
+logging:
+  structured:
+    format:
+      file: ${LOG_JSON_FORMAT:}
+  file:
+    name: ${LOG_FILE:}
+  logback:
+    rollingpolicy:
+      # ⚠️ max-history 는 파일 개수가 아니라 일수다. 디스크 상한 역할을 하는 것은 total-size-cap 뿐이다.
+      max-file-size: 10MB
+      max-history: 1
+      total-size-cap: 30MB
+      # .gz 를 뺀다 — 압축되면 Alloy 의 감시 대상 밖이 된다.
+      file-name-pattern: ${LOG_FILE}.%d{yyyy-MM-dd}.%i
+
+# actuator 는 앱 포트가 아니라 관리 포트에서만 산다 (compose 가 호스트에 publish 하지 않는다).
+# 외부 헬스체크는 /api/health 를 쓴다.
 management:
+  server:
+    port: ${MANAGEMENT_PORT:9090}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: never
+  metrics:
+    distribution:
+      # 없으면 _bucket 시계열이 안 생겨 histogram_quantile() 이 빈 결과를 준다.
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,500ms,1s,2s
