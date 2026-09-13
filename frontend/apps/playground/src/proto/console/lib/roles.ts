@@ -45,6 +45,7 @@ export const ROLE_LABEL: Record<RoleKey, string> = {
 export type PermissionKey =
   | 'study.create'
   | 'study.edit'
+  | 'study.publish'
   | 'crew.manage'
   | 'notice.study'
   | 'attendance.edit'
@@ -66,6 +67,9 @@ export const PERMISSIONS: { key: PermissionKey; label: string; desc: string }[] 
   // 묶음 안에서는 개설 → 고치기 → 굴리기 → 알리기 순으로 둔다.
   { key: 'study.create', label: '스터디 개설', desc: '새 스터디를 만든다' },
   { key: 'study.edit', label: '스터디 정보 수정', desc: '제목·일정·모집 정보를 고친다' },
+  // 공개는 정보 수정에 딸려 있지 않다. 딸려 있으면 담당 스터디를 굴리는 네비게이터가
+  // 사이트에 스터디를 세울 수 있게 된다 — 세우는 일은 캡틴의 판단이다.
+  { key: 'study.publish', label: '스터디 공개', desc: '등록한 스터디를 사용자 사이트에 세우거나 내린다' },
   { key: 'crew.manage', label: '반 편성', desc: '반을 만들고 크루를 반에 넣거나 옮긴다' },
   { key: 'attendance.edit', label: '출석 현황 수정', desc: '기록된 출석을 고친다' },
   { key: 'notice.study', label: '스터디 공지 발행', desc: '스터디 크루에게 공지를 보낸다 (디스코드 채널)' },
@@ -99,6 +103,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, Partial<Record<PermissionKey, Sco
   captain: {
     'study.create': 'all',
     'study.edit': 'all',
+    'study.publish': 'all',
     'crew.manage': 'all',
     'attendance.edit': 'all',
     'event.create': 'all',
