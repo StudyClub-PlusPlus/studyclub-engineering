@@ -52,7 +52,7 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
 
 const TEXT = 'text-[15px] leading-relaxed text-(--color-fg-muted)';
 
-function BlockView({ block, locale }: { block: Block; locale: Locale }) {
+export function BlockView({ block, locale }: { block: Block; locale: Locale }) {
   switch (block.kind) {
     case 'p':
       // 원문에서 굵게 강조된 문단 — 면책·책임 한계처럼 놓치면 안 되는 조항이다.
