@@ -16,9 +16,11 @@ export type LifeStatus = 'upcoming' | 'active' | 'ended';
 
 /**
  * 관계가 끝난 이유.
- * 크루 화면에서 참여 중단 배지는 참여 종료다. 완주만 따로 기린다.
+ *
+ * 완주와 자진 하차 둘뿐이다. **「내보내짐」은 없다** — 운영자가 크루를 빼는 수단 자체가 없다.
+ * 화면에서는 완주만 따로 기리고, 나머지는 「참여 종료」 하나로 보인다.
  */
-export type EndKind = 'completed' | 'withdrawn' | 'expelled';
+export type EndKind = 'completed' | 'withdrawn';
 
 export const LIFE_LABEL: Record<LifeStatus, string> = {
   upcoming: '시작전',
@@ -29,7 +31,7 @@ export const LIFE_LABEL: Record<LifeStatus, string> = {
 /** 프로토용 명부. 서버가 생기면 STUDY_PARTICIPANT.STATUS 로 교체한다. */
 const END_KIND: Record<string, EndKind> = {
   'renaissance-club': 'withdrawn',
-  'system-design-interview-ongoing': 'expelled',
+  'system-design-interview-ongoing': 'withdrawn',
 };
 
 export function endKindOf(study: Study): EndKind | undefined {
@@ -176,7 +178,9 @@ export function weekDays(studies: Study[], locale: Locale, tz: WallTz, monday: s
   const labels = locale === 'en' ? DOW_EN : DOW_KO;
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(monday, i);
-    const hits = (byDate.get(date) ?? []).sort((a, b) => a.time.localeCompare(b.time) || a.title.localeCompare(b.title));
+    const hits = (byDate.get(date) ?? []).sort(
+      (a, b) => a.time.localeCompare(b.time) || a.title.localeCompare(b.title),
+    );
     return {
       date,
       label: labels[i],

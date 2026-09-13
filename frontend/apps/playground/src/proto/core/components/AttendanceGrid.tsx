@@ -47,20 +47,13 @@ export function AttendanceGrid({
   return (
     <div className='flex flex-col gap-3'>
       {rows.map((row) => (
-        <div
-          key={row[0]?.id}
-          className='grid gap-1'
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-        >
+        <div key={row[0]?.id} className='grid gap-1' style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
           {row.map((m) => {
             const status = book.cells[m.id];
             const label = status ? BOOK_LABEL[status] : undefined;
             const live = Boolean(action && m.id === actionMeetingId && !status);
             return (
-              <div
-                key={m.id}
-                className='min-w-0 text-center'
-              >
+              <div key={m.id} className='min-w-0 text-center'>
                 <p data-anno={headAnno} className='tnum text-[10px] font-semibold text-fg-secondary'>
                   {m.no}회
                   <span className='block font-medium text-fg-muted'>
