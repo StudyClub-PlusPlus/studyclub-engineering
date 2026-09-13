@@ -202,7 +202,7 @@ Location: /api/studies/{id}
 - ~~권한 범위~~ → **결정**: `SYSTEM_ROLE=ADMIN` 만 개설 가능 ("캡틴 = 운영자", 지금 단계). 일반 회원에게 캡틴 자격을 부여하는 신청/승인 플로우는 범위 밖 — 필요해지면 별도 Story
 - ~~캡틴 ↔ STUDY_PARTICIPANT 연결~~ → **결정**: 개설과 동시에 기본 반(`STUDY_CLASS`) 1개를 생성하고, 개설자를 그 반의 `STUDY_PARTICIPANT`(`PARTICIPANT_ROLE=LEADER`, `STATUS=ACTIVE`)로 편입한다
 - ~~DRAFT → OPEN 전환 주체~~ → **결정**: 개설자(=ADMIN)가 직접 전환한다. 별도 승인 단계 없음 — ERD 상태 다이어그램의 "운영자 공개"를 개설자 본인이 수행하는 것으로 해석
-- [NEEDS CLARIFICATION] **상시 모집** — proto 스펙엔 "미설정 시 마감 없이 계속 모집"이 있는데 ERD `STUDY_COHORT.RECRUIT_DEADLINE` 은 NOT NULL. 둘 중 하나를 고쳐야 한다
+- ~~상시 모집~~ → **결정**: `STUDY_COHORT.RECRUIT_DEADLINE` 을 NULL 허용으로 변경 (V8 마이그레이션). null = 상시 모집
 
 ---
 
