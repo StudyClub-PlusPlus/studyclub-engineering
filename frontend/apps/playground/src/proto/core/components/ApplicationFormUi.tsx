@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 
 import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
-import { Checkbox, FieldShell, Input, Select, Textarea } from '@studyclub/ui';
-import { X } from 'lucide-react';
+import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
+import { Pencil, X } from 'lucide-react';
 
 export const QUESTION_TYPES: ApplicationQuestionType[] = ['text', 'textarea', 'radio', 'checkbox', 'select'];
 
@@ -30,23 +31,211 @@ export function seedOptions(existing?: string[]) {
 
 export function formCardClass(active?: boolean) {
   return active
-    ? 'rounded-xl border border-border border-l-4 border-l-brand bg-bg px-6 py-5 shadow-sm'
-    : 'rounded-xl border border-border bg-bg px-6 py-5';
+    ? 'rounded-xl border border-border border-l-4 border-l-brand bg-surface px-6 py-5 shadow-sm'
+    : 'rounded-xl border border-border bg-surface px-6 py-5';
+}
+
+const HEADER_CLASS: Record<number, string> = {
+  1: 'text-lg font-bold',
+  2: 'text-base font-bold',
+  3: 'text-sm font-bold',
+  4: 'text-sm font-semibold',
+  5: 'text-sm font-semibold',
+  6: 'text-xs font-semibold',
+};
+
+/**
+ * 인라인 마크다운을 치환한다 — 이미지 `![대체](url)` · 링크 `[텍스트](url)` · 인라인 코드 `` `코드` `` ·
+ * 굵게 `**볼드**`/`__볼드__` · 취소선 `~~취소선~~` · 기울임 `*이탤릭*`/`_이탤릭_`.
+ * 인라인 코드 구간은 다른 문법으로 재해석하지 않는다.
+ */
+function formatInline(text: string, keyPrefix: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const regex =
+    /!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|~~([^~]+)~~|\*([^*]+)\*|_([^_]+)_/g;
+  let last = 0;
+  let i = 0;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(text))) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const key = `${keyPrefix}-${i++}`;
+    if (m[1] !== undefined) {
+      // eslint-disable-next-line @next/next/no-img-element
+      nodes.push(<img key={key} src={m[2]} alt={m[1]} className='my-1 max-w-full rounded-control' />);
+    } else if (m[3] !== undefined) {
+      nodes.push(
+        <a key={key} href={m[4]} target='_blank' rel='noreferrer' className='text-brand underline underline-offset-2'>
+          {m[3]}
+        </a>,
+      );
+    } else if (m[5] !== undefined) {
+      nodes.push(
+        <code key={key} className='rounded-xs bg-surface-2 px-1 py-0.5 font-mono text-[0.85em]'>
+          {m[5]}
+        </code>,
+      );
+    } else if (m[6] !== undefined || m[7] !== undefined) {
+      nodes.push(<strong key={key}>{m[6] ?? m[7]}</strong>);
+    } else if (m[8] !== undefined) {
+      nodes.push(<del key={key}>{m[8]}</del>);
+    } else {
+      nodes.push(<em key={key}>{m[9] ?? m[10]}</em>);
+    }
+    last = regex.lastIndex;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
+/**
+ * 설문지 설명용 경량 마크다운 렌더러.
+ * 지원: 제목(`#`~`######`) · 굵게/기울임/취소선 · 순서·비순서 목록 · 링크·이미지 · 인라인·펜스 코드 블록.
+ */
+export function MarkdownLite({ text, className }: { text: string; className?: string }) {
+  const blocks: ReactNode[] = [];
+  let listBuffer: string[] = [];
+  let listType: 'ul' | 'ol' | null = null;
+  let codeBuffer: string[] | null = null;
+
+  const flushList = (key: string) => {
+    if (!listBuffer.length || !listType) return;
+    const Tag = listType;
+    blocks.push(
+      <Tag key={key} className={Tag === 'ul' ? 'list-disc space-y-0.5 pl-5' : 'list-decimal space-y-0.5 pl-5'}>
+        {listBuffer.map((item, idx) => (
+          <li key={idx}>{formatInline(item, `${key}-${idx}`)}</li>
+        ))}
+      </Tag>,
+    );
+    listBuffer = [];
+    listType = null;
+  };
+
+  text.split('\n').forEach((line, idx) => {
+    if (/^```/.test(line)) {
+      if (codeBuffer === null) {
+        flushList(`list-${idx}`);
+        codeBuffer = [];
+      } else {
+        blocks.push(
+          <pre key={`code-${idx}`} className='overflow-x-auto rounded-control bg-surface-2 px-3 py-2 text-xs'>
+            <code className='font-mono'>{codeBuffer.join('\n')}</code>
+          </pre>,
+        );
+        codeBuffer = null;
+      }
+      return;
+    }
+    if (codeBuffer !== null) {
+      codeBuffer.push(line);
+      return;
+    }
+
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      flushList(`list-${idx}`);
+      const level = heading[1].length;
+      const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+      blocks.push(
+        <Tag key={`h-${idx}`} className={HEADER_CLASS[level]}>
+          {formatInline(heading[2], `h-${idx}`)}
+        </Tag>,
+      );
+      return;
+    }
+
+    const ordered = /^\d+\.\s+(.*)$/.exec(line);
+    const bullet = /^[-*+]\s+(.*)$/.exec(line);
+    if (ordered) {
+      if (listType === 'ul') flushList(`list-${idx}`);
+      listType = 'ol';
+      listBuffer.push(ordered[1]);
+      return;
+    }
+    if (bullet) {
+      if (listType === 'ol') flushList(`list-${idx}`);
+      listType = 'ul';
+      listBuffer.push(bullet[1]);
+      return;
+    }
+
+    flushList(`list-${idx}`);
+    if (line.trim() === '') return;
+    blocks.push(<p key={`p-${idx}`}>{formatInline(line, `p-${idx}`)}</p>);
+  });
+  flushList('list-end');
+  return <div className={className}>{blocks}</div>;
 }
 
 export function FormHeaderCard({
   title,
   summary,
   account,
+  editable,
+  selected,
+  onSelect,
+  onTitleChange,
+  onSummaryChange,
+  cardRef,
 }: {
   title: string;
   summary?: string;
   account: { name: string; email: string };
+  /** true 면 캡틴이 제목·설명을 직접 고칠 수 있다 (콘솔 전용). 지원자 화면에서는 생략한다 */
+  editable?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
+  onTitleChange?: (value: string) => void;
+  onSummaryChange?: (value: string) => void;
+  cardRef?: (el: HTMLElement | null) => void;
 }) {
+  const editing = Boolean(editable && selected);
   return (
-    <section className={`${formCardClass()} border-t-4 border-t-brand`}>
-      <h2 className='text-xl font-bold tracking-tight text-fg'>{title}</h2>
-      {summary && <p className='mt-2 text-sm leading-relaxed text-fg-secondary'>{summary}</p>}
+    <section
+      ref={cardRef}
+      onClick={editable && !selected ? onSelect : undefined}
+      className={`relative ${formCardClass(selected)} border-t-4 border-t-brand ${editable && !selected ? 'cursor-pointer' : ''}`}
+    >
+      {editable && !selected && (
+        <button
+          type='button'
+          aria-label='설문지 제목·설명 수정'
+          onClick={(ev) => {
+            ev.stopPropagation();
+            onSelect?.();
+          }}
+          className='absolute right-4 top-4 text-fg-muted transition-colors hover:text-fg'
+        >
+          <Pencil size={15} />
+        </button>
+      )}
+
+      {editing ? (
+        <div className='flex flex-col gap-3 pr-1'>
+          <Input
+            autoFocus
+            value={title}
+            onChange={(ev) => onTitleChange?.(ev.target.value)}
+            onClick={(ev) => ev.stopPropagation()}
+            placeholder='설문지 제목'
+            className='font-semibold'
+          />
+          <Textarea
+            value={summary ?? ''}
+            onChange={(ev) => onSummaryChange?.(ev.target.value)}
+            onClick={(ev) => ev.stopPropagation()}
+            placeholder='설문지 설명 (선택)'
+            helper='마크다운을 쓸 수 있습니다: # 제목, **굵게**, *기울임*, ~~취소선~~, `코드`, [링크](url), 1. 순서 목록, - 목록'
+            rows={3}
+          />
+        </div>
+      ) : (
+        <>
+          <h2 className='text-xl font-bold tracking-tight text-fg'>{title}</h2>
+          {summary && <MarkdownLite text={summary} className='mt-2 text-sm leading-relaxed text-fg-secondary' />}
+        </>
+      )}
+
       <p className='mt-4 text-sm text-fg'>
         <span className='font-medium'>{account.name}</span>
         <span className='text-fg-muted'> · {account.email}</span>
@@ -159,6 +348,23 @@ export function OptionEditor({
   );
 }
 
+/** 질문 제목 + 설명(있으면 바로 아래) — 답변 칸 위에 둔다. */
+function QuestionLabel({ label, required, description }: { label: string; required?: boolean; description?: string }) {
+  return (
+    <div className='flex flex-col gap-0.5'>
+      <p className='text-sm font-medium text-neutral-800'>
+        {label}
+        {required && (
+          <span className='ml-0.5 text-error-600' aria-hidden='true'>
+            *
+          </span>
+        )}
+      </p>
+      {description && <p className='text-xs text-fg-muted'>{description}</p>}
+    </div>
+  );
+}
+
 /** 작성 화면과 같은 답변 UI. 편집 카드에서도 그대로 쓴다. */
 export function QuestionFillView({
   q,
@@ -185,40 +391,45 @@ export function QuestionFillView({
 
   if (q.type === 'textarea') {
     return (
-      <Textarea
-        label={ghost ? undefined : label}
-        required={!ghost && q.required}
-        disabled={locked}
-        rows={3}
-        value={ghost ? '' : value}
-        onChange={ghost ? undefined : (ev) => onChange?.(ev.target.value)}
-        placeholder={ghost ? '장문형 텍스트' : (q.placeholder ?? '내 답변')}
-      />
+      <div className='flex flex-col gap-1.5'>
+        {!ghost && <QuestionLabel label={label} required={q.required} description={q.description} />}
+        <Textarea
+          required={!ghost && q.required}
+          disabled={locked}
+          rows={3}
+          value={ghost ? '' : value}
+          onChange={ghost ? undefined : (ev) => onChange?.(ev.target.value)}
+          placeholder={ghost ? '장문형 텍스트' : (q.placeholder ?? '내 답변')}
+        />
+      </div>
     );
   }
 
   if (q.type === 'select') {
     return (
-      <Select
-        label={ghost ? undefined : label}
-        required={!ghost && q.required}
-        disabled={locked}
-        value={ghost ? '' : (value ?? '')}
-        onChange={ghost ? undefined : (ev) => onChange?.(ev.target.value)}
-      >
-        <option value=''>선택하세요</option>
-        {fallback.map((o, i) => (
-          <option key={`${o}-${i}`} value={o}>
-            {o}
-          </option>
-        ))}
-      </Select>
+      <div className='flex flex-col gap-1.5'>
+        {!ghost && <QuestionLabel label={label} required={q.required} description={q.description} />}
+        <Select
+          required={!ghost && q.required}
+          disabled={locked}
+          value={ghost ? '' : (value ?? '')}
+          onChange={ghost ? undefined : (ev) => onChange?.(ev.target.value)}
+        >
+          <option value=''>선택하세요</option>
+          {fallback.map((o, i) => (
+            <option key={`${o}-${i}`} value={o}>
+              {o}
+            </option>
+          ))}
+        </Select>
+      </div>
     );
   }
 
   if (q.type === 'radio') {
     return (
-      <FieldShell label={ghost ? undefined : label} required={!ghost && q.required}>
+      <div className='flex flex-col gap-1.5'>
+        {!ghost && <QuestionLabel label={label} required={q.required} description={q.description} />}
         <div className='flex flex-col gap-2'>
           {fallback.map((o, i) => (
             <label key={`${o}-${i}`} className={`inline-flex items-center gap-2 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -244,13 +455,14 @@ export function QuestionFillView({
             </label>
           )}
         </div>
-      </FieldShell>
+      </div>
     );
   }
 
   if (q.type === 'checkbox') {
     return (
-      <FieldShell label={ghost ? undefined : label} required={!ghost && q.required}>
+      <div className='flex flex-col gap-1.5'>
+        {!ghost && <QuestionLabel label={label} required={q.required} description={q.description} />}
         <div className='flex flex-col gap-2'>
           {fallback.map((o, i) => (
             <Checkbox
@@ -263,18 +475,20 @@ export function QuestionFillView({
           ))}
           {q.allowOther && <Checkbox label='기타' disabled={locked} />}
         </div>
-      </FieldShell>
+      </div>
     );
   }
 
   return (
-    <Input
-      label={ghost ? undefined : label}
-      required={!ghost && q.required}
-      disabled={locked}
-      value={ghost ? '' : (value ?? '')}
-      onChange={ghost ? undefined : (ev) => onChange?.(ev.target.value)}
-      placeholder={ghost ? '단답형 텍스트' : (q.placeholder ?? '내 답변')}
-    />
+    <div className='flex flex-col gap-1.5'>
+      {!ghost && <QuestionLabel label={label} required={q.required} description={q.description} />}
+      <Input
+        required={!ghost && q.required}
+        disabled={locked}
+        value={ghost ? '' : (value ?? '')}
+        onChange={ghost ? undefined : (ev) => onChange?.(ev.target.value)}
+        placeholder={ghost ? '단답형 텍스트' : (q.placeholder ?? '내 답변')}
+      />
+    </div>
   );
 }
