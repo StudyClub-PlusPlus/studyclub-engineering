@@ -178,6 +178,7 @@ export function OnboardingConsent({
             {item.doc && (
               <button
                 type='button'
+                data-anno='4-3'
                 onClick={() => setReading(item.doc)}
                 className='-mr-1 flex shrink-0 items-center gap-0.5 rounded-control px-2 py-1 text-xs font-medium text-fg-muted transition-colors hover:bg-surface-1 hover:text-fg'
               >

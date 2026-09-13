@@ -323,6 +323,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
           {/* 도움말 자리를 **교체**한다. 줄을 새로 더하면 상태가 바뀔 때마다 아래가 밀린다. */}
           <p
             id='nickname-help'
+            data-anno='2-1'
             role={nickLine.tone === 'error' ? 'alert' : undefined}
             className={`mt-2 flex items-center gap-1.5 text-xs leading-relaxed ${
               nickLine.tone === 'ok' ? 'text-success-700' : nickLine.tone === 'error' ? 'text-error-700' : 'text-fg-muted'

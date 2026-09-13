@@ -13,7 +13,8 @@ export function normalizeNickname(raw: string): string {
 }
 
 /** 이미 쓰이고 있는 이름 (프로토용). 실제 판정은 서버의 UNIQUE 인덱스가 한다. */
-const TAKEN = ['studyclub', 'journey', '운영진', 'admin'].map(normalizeNickname);
+// 제안값(구글 이름)은 넣지 않는다 — 기본 화면이 첫 진입부터 빨간 오류로 뜬다.
+const TAKEN = ['studyclub', 'gaon', '운영진', 'admin'].map(normalizeNickname);
 
 export type Availability = { available: boolean };
 
