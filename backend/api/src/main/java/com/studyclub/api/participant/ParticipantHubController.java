@@ -44,9 +44,9 @@ public class ParticipantHubController {
     }
 
     private Long authenticatedAccountId(Authentication authentication) {
-        if (authentication == null || authentication.getDetails() == null) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        return Long.valueOf((String) authentication.getDetails());
+        return accountId;
     }
 }
