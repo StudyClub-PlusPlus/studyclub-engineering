@@ -136,7 +136,8 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const nickAbort = useRef<AbortController | null>(null);
   const trimmedNick = draft.nickname.trim();
-  const nickFormatError = nicknameError(draft.nickname, locale);
+  // 조합 중에는 검증하지 않는다 — 「ㄱ」 상태에서 「2자 이상」이 뜨면 치는 사람이 놀란다.
+  const nickFormatError = composing ? undefined : nicknameError(draft.nickname, locale);
 
   useEffect(() => {
     nickAbort.current?.abort();
@@ -174,10 +175,12 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
    * 형식 오류는 친 순간 보여주고, 중복 여부는 형식이 맞은 뒤에만 말한다.
    */
   const nickLine: { text: string; tone: 'muted' | 'error' | 'ok' } = !trimmedNick
-    ? {
-        text: ko ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)' : '2–20 characters · Korean, letters, numbers, underscore (_)',
-        tone: 'muted',
-      }
+    ? touched
+      ? { text: ko ? '닉네임을 입력해 주세요' : 'Enter a nickname.', tone: 'error' }
+      : {
+          text: ko ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)' : '2–20 characters · Korean, letters, numbers, underscore (_)',
+          tone: 'muted',
+        }
     : nickFormatError
       ? { text: nickFormatError, tone: 'error' }
       : nickStatus === 'checking'
