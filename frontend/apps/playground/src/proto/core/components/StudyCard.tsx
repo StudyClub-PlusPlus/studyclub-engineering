@@ -17,15 +17,15 @@ function RecruitCta({ study, locale }: { study: Study; locale: Locale }) {
 
   if (state === 'apply') {
     return (
-      <a
-        // TODO(api): 사내 신청 플로우가 생기면 그 경로로 교체. 외부 폼이 남아 있으면 그쪽 우선.
-        href={study.recruit_url ?? `/proto/core/${locale}/studies/${study.id}`}
-        {...(study.recruit_url ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      <Link
+        // 신청은 사내 폼(상세 페이지의 ApplyDialog)에서 받는다 — 목록에서 바로 신청을 받지 않고
+        // 상세 페이지로 보내 스터디 소개를 먼저 읽게 한다.
+        href={`/proto/core/${locale}/studies/${study.id}`}
         // z-[2] — 카드 전체를 덮는 stretched link 위로 올려 클릭을 가로챈다
         className={`${base} relative z-[2] bg-brand text-on-brand shadow-sm transition-[background-color,box-shadow,transform] hover:bg-brand-hover hover:shadow-md hover:scale-[1.04] focus-visible:outline-none focus-visible:shadow-[var(--ring)]`}
       >
         {label}
-      </a>
+      </Link>
     );
   }
 

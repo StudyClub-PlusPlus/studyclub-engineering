@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { formCardClass, FormHeaderCard, QuestionFillView } from '@core/components/ApplicationFormUi';
 import { DiscordNicknameField } from '@core/components/DiscordNicknameField';
@@ -83,6 +83,15 @@ export function ApplyDialog({
   const [done, setDone] = useState(false);
   const extraQuestions = (study.applicationForm ?? []).filter((q) => q.id !== 'discord');
 
+  // 미입력 항목이 있으면 신청을 누른 자리에서 그 항목으로 화면을 옮긴다.
+  const discordRef = useRef<HTMLElement>(null);
+  const scheduleRef = useRef<HTMLElement>(null);
+  const questionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  function scrollTo(ref: { current: HTMLElement | null }) {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   useEffect(() => {
     const user = getUser() ?? PREVIEW_USER;
     const preview = user.id === PREVIEW_USER.id;
@@ -111,26 +120,30 @@ export function ApplyDialog({
 
   async function submit() {
     if (!storedNick && !draftNick.trim()) {
+      scrollTo(discordRef);
       return setError(
         t({ ko: '디스코드 서버 별명을 입력해 주세요.', en: 'Enter your Discord server nickname.' }, locale),
       );
     }
     const missing = extraQuestions.find((q) => q.required && !hasAnswer(q, answers[q.id]));
     if (missing) {
-      return setError(
-        t({ ko: '필수 질문에 답해 주세요.', en: 'Please answer required questions.' }, locale),
-      );
+      scrollTo({ current: questionRefs.current[missing.id] ?? null });
+      return setError(t({ ko: '필수 질문에 답해 주세요.', en: 'Please answer required questions.' }, locale));
     }
     if (fixedSchedule) {
-      if (!agreed)
+      if (!agreed) {
+        scrollTo(scheduleRef);
         return setError(
           t({ ko: '일정 참여 가능 여부를 확인해 주세요.', en: 'Please confirm you can attend.' }, locale),
         );
+      }
     } else {
-      if (cells.length === 0)
+      if (cells.length === 0) {
+        scrollTo(scheduleRef);
         return setError(
           t({ ko: '가능한 시간을 하나 이상 선택해 주세요.', en: 'Select at least one time slot.' }, locale),
         );
+      }
     }
     setError(null);
     setSaving(true);
@@ -156,168 +169,187 @@ export function ApplyDialog({
       title={t({ ko: '스터디 신청', en: 'Apply to study' }, locale)}
       footer={
         done ? (
-          <Button onClick={close}>{t({ ko: '확인', en: 'Done' }, locale)}</Button>
+          <Button data-anno='apply:11' onClick={close}>
+            {t({ ko: '확인', en: 'Done' }, locale)}
+          </Button>
         ) : (
           <>
-            <Button variant='secondary' onClick={close} disabled={saving}>
+            <Button data-anno='apply:8' variant='secondary' onClick={close} disabled={saving}>
               {t({ ko: '취소', en: 'Cancel' }, locale)}
             </Button>
-            <Button onClick={submit} loading={saving}>
+            <Button data-anno='apply:9' onClick={submit} loading={saving}>
               {t({ ko: '신청', en: 'Apply' }, locale)}
             </Button>
           </>
         )
       }
     >
-      {done ? (
-        <p className='py-6 text-center text-sm text-fg-secondary'>
-          {t(
-            {
-              ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.',
-              en: "Your application was received. We'll email you the result.",
-            },
-            locale,
-          )}
-        </p>
-      ) : (
-        <div className='flex flex-col gap-3'>
-          <FormHeaderCard
-            title={t(study.title, locale)}
-            summary={t(study.summary, locale)}
-            account={{ name: accountName, email: accountEmail }}
-          />
-
-          <section className={formCardClass()}>
-            <DiscordNicknameField stored={storedNick} value={draftNick} onChange={setDraftNick} />
-          </section>
-
-          {fixedSchedule ? (
-            <section className={formCardClass()}>
-              <Checkbox
-                label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
-                checked={agreed}
-                onChange={(e) => {
-                  setAgreed(e.target.checked);
-                  setError(null);
-                }}
+      <div className='-mx-6 -my-4 h-full bg-surface-1 px-6 py-4'>
+        {done ? (
+          <p data-anno='apply:10' className='py-6 text-center text-sm text-fg-secondary'>
+            {t(
+              {
+                ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.',
+                en: "Your application was received. We'll email you the result.",
+              },
+              locale,
+            )}
+          </p>
+        ) : (
+          <div className='flex flex-col gap-3'>
+            <div data-anno='apply:1'>
+              <FormHeaderCard
+                title={t(study.title, locale)}
+                summary={t(study.summary, locale)}
+                account={{ name: accountName, email: accountEmail }}
               />
+            </div>
+
+            <section data-anno='apply:2' ref={discordRef} className={formCardClass()}>
+              <DiscordNicknameField stored={storedNick} value={draftNick} onChange={setDraftNick} />
             </section>
-          ) : (
-            <section className={formCardClass()}>
-              <div className='flex flex-col gap-2'>
-                <div className='flex items-baseline justify-between gap-2'>
-                  <p className='text-sm font-medium text-neutral-800'>
-                    {t({ ko: '가능한 시간', en: "When you're available" }, locale)}
-                    <span className='ml-0.5 text-error-600'>*</span>
-                  </p>
-                  <span className='text-xs text-fg-muted'>
+
+            {fixedSchedule ? (
+              <section data-anno='apply:3' ref={scheduleRef} className={formCardClass()}>
+                <Checkbox
+                  label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
+                  checked={agreed}
+                  onChange={(e) => {
+                    setAgreed(e.target.checked);
+                    setError(null);
+                  }}
+                />
+              </section>
+            ) : (
+              <section data-anno='apply:4' ref={scheduleRef} className={formCardClass()}>
+                <div className='flex flex-col gap-2'>
+                  <div className='flex items-baseline justify-between gap-2'>
+                    <p className='text-sm font-medium text-neutral-800'>
+                      {t({ ko: '가능한 시간', en: "When you're available" }, locale)}
+                      <span className='ml-0.5 text-error-600'>*</span>
+                    </p>
+                    <span className='text-xs text-fg-muted'>
+                      {t(
+                        {
+                          ko: `${t(region.label, locale)} 시간(${region.tzLabel}) 기준`,
+                          en: `In ${t(region.label, locale)} time (${region.tzLabel})`,
+                        },
+                        locale,
+                      )}
+                    </span>
+                  </div>
+
+                  {/* 요일 × 시간대 격자 — 칸을 눌러 조합을 고른다 (월 저녁 + 일 오후 같은 응답이 가능) */}
+                  <div className='overflow-x-auto'>
+                    <table className='w-full table-fixed border-separate border-spacing-1'>
+                      <thead>
+                        <tr>
+                          <th className='w-9 p-0' />
+                          {DAYS.map((d) => (
+                            <th key={d.key} className='pb-1 text-center text-xs font-semibold text-fg-secondary'>
+                              {locale === 'ko' ? d.ko : d.en}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {SLOTS.map((sl) => (
+                          <tr key={sl.key}>
+                            <th
+                              scope='row'
+                              className='w-9 whitespace-nowrap pr-1.5 text-right text-xs font-medium text-fg-secondary'
+                            >
+                              {locale === 'ko' ? sl.ko : sl.en}
+                            </th>
+                            {DAYS.map((d) => {
+                              const key = `${d.key}-${sl.key}`;
+                              const on = cells.includes(key);
+                              return (
+                                <td key={key} className='p-0'>
+                                  <button
+                                    type='button'
+                                    aria-pressed={on}
+                                    aria-label={`${locale === 'ko' ? d.ko : d.en} ${locale === 'ko' ? sl.ko : sl.en}`}
+                                    onClick={() => toggleCell(key)}
+                                    className={`h-9 w-full rounded-sm border transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)] ${
+                                      on
+                                        ? 'border-transparent bg-brand'
+                                        : 'border-border-strong bg-bg hover:bg-surface-2'
+                                    }`}
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className='text-xs text-fg-muted'>
                     {t(
                       {
-                        ko: `${t(region.label, locale)} 시간(${region.tzLabel}) 기준`,
-                        en: `In ${t(region.label, locale)} time (${region.tzLabel})`,
+                        ko: '일정이 아직 정해지지 않아 신청자들의 응답을 모아 정합니다. 되는 시간을 모두 선택해 주세요. 다른 지역 신청자와는 시차를 반영해 맞춥니다.',
+                        en: "The schedule isn't set yet — it's decided from applicants' answers. Select every slot that works; time zones are reconciled across regions.",
                       },
                       locale,
                     )}
-                  </span>
+                  </p>
                 </div>
+              </section>
+            )}
 
-                {/* 요일 × 시간대 격자 — 칸을 눌러 조합을 고른다 (월 저녁 + 일 오후 같은 응답이 가능) */}
-                <div className='overflow-x-auto'>
-                  <table className='w-full table-fixed border-separate border-spacing-1'>
-                    <thead>
-                      <tr>
-                        <th className='w-9 p-0' />
-                        {DAYS.map((d) => (
-                          <th key={d.key} className='pb-1 text-center text-xs font-semibold text-fg-secondary'>
-                            {locale === 'ko' ? d.ko : d.en}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {SLOTS.map((sl) => (
-                        <tr key={sl.key}>
-                          <th
-                            scope='row'
-                            className='w-9 whitespace-nowrap pr-1.5 text-right text-xs font-medium text-fg-secondary'
-                          >
-                            {locale === 'ko' ? sl.ko : sl.en}
-                          </th>
-                          {DAYS.map((d) => {
-                            const key = `${d.key}-${sl.key}`;
-                            const on = cells.includes(key);
-                            return (
-                              <td key={key} className='p-0'>
-                                <button
-                                  type='button'
-                                  aria-pressed={on}
-                                  aria-label={`${locale === 'ko' ? d.ko : d.en} ${locale === 'ko' ? sl.ko : sl.en}`}
-                                  onClick={() => toggleCell(key)}
-                                  className={`h-9 w-full rounded-sm border transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)] ${
-                                    on ? 'border-transparent bg-brand' : 'border-border-strong bg-bg hover:bg-surface-2'
-                                  }`}
-                                />
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            {extraQuestions.map((q) => (
+              <section
+                key={q.id}
+                data-anno='apply:5'
+                ref={(el) => {
+                  questionRefs.current[q.id] = el;
+                }}
+                className={formCardClass()}
+              >
+                <QuestionFillView
+                  q={q}
+                  value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
+                  values={Array.isArray(answers[q.id]) ? (answers[q.id] as string[]) : []}
+                  onChange={(value) => setAnswers((prev) => ({ ...prev, [q.id]: value }))}
+                  onToggle={(option) =>
+                    setAnswers((prev) => {
+                      const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
+                      return {
+                        ...prev,
+                        [q.id]: cur.includes(option) ? cur.filter((x) => x !== option) : [...cur, option],
+                      };
+                    })
+                  }
+                />
+              </section>
+            ))}
 
-                <p className='text-xs text-fg-muted'>
-                  {t(
-                    {
-                      ko: '일정이 아직 정해지지 않아 신청자들의 응답을 모아 정합니다. 되는 시간을 모두 선택해 주세요. 다른 지역 신청자와는 시차를 반영해 맞춥니다.',
-                      en: "The schedule isn't set yet — it's decided from applicants' answers. Select every slot that works; time zones are reconciled across regions.",
-                    },
-                    locale,
-                  )}
-                </p>
-              </div>
-            </section>
-          )}
-
-          {extraQuestions.map((q) => (
-            <section key={q.id} className={formCardClass()}>
-              <QuestionFillView
-                q={q}
-                value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
-                values={Array.isArray(answers[q.id]) ? (answers[q.id] as string[]) : []}
-                onChange={(value) => setAnswers((prev) => ({ ...prev, [q.id]: value }))}
-                onToggle={(option) =>
-                  setAnswers((prev) => {
-                    const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
-                    return {
-                      ...prev,
-                      [q.id]: cur.includes(option) ? cur.filter((x) => x !== option) : [...cur, option],
-                    };
-                  })
-                }
+            <section data-anno='apply:6' className={formCardClass()}>
+              <Textarea
+                label={t({ ko: '지원 동기', en: "Why you're applying" }, locale)}
+                rows={3}
+                value={motivation}
+                onChange={(e) => setMotivation(e.target.value)}
+                placeholder={t(
+                  {
+                    ko: '선택 입력입니다. 간단히 적어 주시면 운영진이 참고합니다.',
+                    en: 'Optional. A short note helps the organizers.',
+                  },
+                  locale,
+                )}
               />
             </section>
-          ))}
 
-          <section className={formCardClass()}>
-            <Textarea
-              label={t({ ko: '지원 동기', en: "Why you're applying" }, locale)}
-              rows={3}
-              value={motivation}
-              onChange={(e) => setMotivation(e.target.value)}
-              placeholder={t(
-                {
-                  ko: '선택 입력입니다. 간단히 적어 주시면 운영진이 참고합니다.',
-                  en: 'Optional. A short note helps the organizers.',
-                },
-                locale,
-              )}
-            />
-          </section>
-
-          {error && <p className='text-xs text-error-700'>{error}</p>}
-        </div>
-      )}
+            {error && (
+              <p data-anno='apply:7' className='text-xs text-error-700'>
+                {error}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </Modal>
   );
 }
