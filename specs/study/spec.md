@@ -209,6 +209,7 @@ Location: /api/studies/{id}
 ## 신청 폼 설계
 
 > 유저스토리: "캡틴은 스터디 폼을 작성할 수 있다" 2단계 — 개설한 코호트의 신청서 질문을 캡틴이 직접 구성.
+> > `STUDY_COHORT.APPLICATION_FORM` (JSON) 을 채우는 엔드포인트. ERD 는 이 컬럼의 구조(JSON 자유형 vs `STUDY_QUESTION`+`STUDY_APPLICATION_ANSWER` 정규화 테이블)를 팀 회의 미확정으로 남겨뒀는데, 이 스펙에서는 **일단 JSON 유지로 결정** — 정규화는 필요해지면 재검토(ERD README 의 해당 미확정 항목 자체는 팀 확정 전까지 그대로 둔다).
 
 ### 기본 정보
 
@@ -237,9 +238,9 @@ Location: /api/studies/{id}
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| questions[].id | String | Y | 질문 식별자 |
+| questions[].id | String | Y | 질문 식별자 — `STUDY_APPLICATION.FORM_ANSWER` 에서 이 id 로 답을 매핑 |
 | questions[].label | String | Y | |
-| questions[].type | String | Y | `TEXT` / `TEXTAREA` / `RADIO` / `CHECKBOX` / `SELECT` |
+| questions[].type | String | Y | enum — `TEXT`(단답형) / `TEXTAREA`(장문형) / `RADIO`(객관식) / `CHECKBOX`(체크박스) / `SELECT`(드롭다운) |
 | questions[].required | Boolean | Y | |
 | questions[].options | String[] | type=RADIO·CHECKBOX·SELECT 일 때 Y | |
 | questions[].allowOther | Boolean | N | type=RADIO·CHECKBOX 일 때 「기타」 자유 입력 |
