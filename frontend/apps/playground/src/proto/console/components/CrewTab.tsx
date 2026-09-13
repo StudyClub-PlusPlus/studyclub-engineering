@@ -4,7 +4,6 @@ import { TableCard } from '@console/components/ui';
 import { MEMBER_REGIONS, type Crew, type CrewStatus } from '@studyclub/mock';
 import { Button } from '@studyclub/ui';
 
-
 /**
  * 신청자 탭 — 승인 대기 처리와 참여 명단.
  *
@@ -50,7 +49,7 @@ export function CrewTab({
 
   return (
     <div className='flex flex-col gap-6'>
-      <section>
+      <section data-anno='crew:2'>
         <h2 className='flex items-baseline gap-2 text-[15px] font-bold'>
           승인 대기
           <span className='tnum text-[13px] font-medium text-fg-muted'>{pending.length}</span>
@@ -102,8 +101,8 @@ export function CrewTab({
         )}
       </section>
 
-      <section>
-        <h2 className='flex items-baseline gap-2 text-[15px] font-bold'>
+      <section data-anno='attendee:3'>
+        <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 text-[15px] font-bold'>
           참여 크루
           <span className='tnum text-[13px] font-medium text-fg-muted'>
             {active.length}/{capacity}

@@ -37,6 +37,8 @@ export type AnnoEntry = {
    * 조건부 요소까지 실패로 뜨면 경고가 늘 켜져 있어 진짜 실패를 못 본다.
    */
   when?: string;
+  /** 배지 위치를 기본값(top -10, left -10)에서 추가로 이동할 픽셀. 겹침 보정에 사용. */
+  chipOffset?: { top?: number; left?: number };
 };
 
 export type ScreenSpec = {
@@ -47,6 +49,22 @@ export type ScreenSpec = {
    * 없으면 비워 둔다 — 그럴듯한 `ST-012` 를 적으면 읽는 사람은 원장이 있다고 믿는다.
    */
   story?: string;
+  /**
+   * 스토리 칩에 적을 짧은 이름.
+   *
+   * 한 화면에 여러 Story 가 산다. 스터디 상세만 해도 신청자 승인·출석·수정이 한 지면에 있고,
+   * 번호는 **Story 마다 따로** 매겨진다. 칩으로 Story 를 고르면 그 Story 번호만 화면에 뜬다.
+   * ID 발급 전에는 이 요약이 칩 이름이 된다 (`story` 가 있으면 그쪽이 우선).
+   */
+  chip?: string;
+  /**
+   * 이 Story 의 번호 이름공간. 요소는 `data-anno="<scope>:<n>"` 으로 단다.
+   *
+   * **번호는 Story 마다 1 부터 다시 매긴다.** 한 지면에 Story 가 여럿이라고 번호를 이어 붙이면
+   * (수정 Story 가 9 부터 시작하는 식) 문서를 읽는 사람은 앞 번호를 찾아 헤맨다.
+   * 한 요소가 여러 Story 에 나오면 공백으로 나열한다 — `data-anno="attendee:2 crew:1"`.
+   */
+  scope?: string;
   /** 이 화면이 하지 않는 것 · 오픈 이슈. */
   notes?: string[];
   entries: AnnoEntry[];

@@ -39,7 +39,7 @@ public class StudyBookmarkController {
 
         Long accountId = Long.valueOf((String) authentication.getDetails());
         StudyBookmarkService.Result result =
-                studyBookmarkService.getBookmarks(accountId, offset, limit);
+                studyBookmarkService.getStudyBookmarks(accountId, offset, limit);
         return ResponseEntity.status(result.httpStatus()).body(result.response());
     }
 }

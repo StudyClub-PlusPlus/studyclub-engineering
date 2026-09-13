@@ -17,6 +17,10 @@ const APPLICATION_KEY = 'sc_applications';
 const REGION_KEY = 'sc_region';
 const NAME_KEY = 'sc_display_name';
 const DISCORD_KEY = 'sc_discord';
+const DISCORD_NICK_KEY = 'sc_discord_nickname';
+
+/** 스터디클럽++ 서버 별명 예시. 이름/직무/지역/관심주제. */
+export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자인';
 
 function readJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -133,6 +137,23 @@ export function getDiscord(): DiscordLink {
 
 export function setDiscord(handle: string | null) {
   writeJSON(DISCORD_KEY, handle ?? '');
+}
+
+/**
+ * 스터디클럽++ 디스코드 서버 별명.
+ *
+ * 계정(`ACCOUNT.DISCORD_NICKNAME`)에 있으면 신청 폼은 그 값을 그대로 쓰고,
+ * 없으면 신청 시 필수로 받아 여기에 저장한다.
+ *
+ * TODO(api): GET/PATCH /api/me — ACCOUNT.DISCORD_NICKNAME
+ */
+export function getDiscordNickname(): string | undefined {
+  const v = readJSON<string>(DISCORD_NICK_KEY, '');
+  return v.trim() || undefined;
+}
+
+export function setDiscordNickname(nickname: string) {
+  writeJSON(DISCORD_NICK_KEY, nickname.trim());
 }
 
 /* ── 데모 데이터 ─────────────────────────────────────────────────────────── */

@@ -185,7 +185,7 @@ export function StudyForm({
           label='진행 일정'
           value={value.schedule}
           onChange={(ev) => set('schedule', ev.target.value)}
-          placeholder='매주 목 20:00 · 8주 과정'
+          placeholder='2026.11-2026.12'
         />
         </div>
         <div data-anno='8'>

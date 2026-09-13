@@ -1,12 +1,11 @@
-name: playground-main-CI
+name: storybook-develop-CI
 
 on:
   push:
-    branches: [main]
-    tags: [playground**]
+    branches: [develop]
     paths:
-      - 'frontend/apps/playground/**'
-      - 'frontend/packages/**'
+      - 'frontend/packages/ui/**'
+      - 'frontend/packages/design/**'
   workflow_dispatch:
 
 jobs:
@@ -21,7 +20,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
-      - run: npx turbo run lint typecheck --filter=playground
+      - run: npx turbo run lint typecheck --filter=@studyclub/ui
         working-directory: frontend
 
   docker:
@@ -41,28 +40,24 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      # playground 는 mock 데이터만 쓴다 → NEXT_PUBLIC_* build-arg 없음
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: frontend
-          file: frontend/apps/playground/Dockerfile
+          file: frontend/packages/ui/Dockerfile
           push: true
-          tags: hyperrealitycorp/studyclub-playground-production
+          tags: hyperrealitycorp/studyclub-storybook-stage
           platforms: linux/amd64
-          build-args: |
-            NODE_ENV=production
-            COMMIT_HASH=${{ github.sha }}
       - name: Deployment
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.REMOTE_SSH_IP }}
-          username: ${{ secrets.REMOTE_SSH_ID }}
-          password: ${{ secrets.REMOTE_SSH_PASSWORD }}
-          port: ${{ secrets.REMOTE_SSH_PORT }}
+          host: ${{ secrets.STAGE_REMOTE_SSH_IP }}
+          username: ${{ secrets.STAGE_REMOTE_SSH_ID }}
+          password: ${{ secrets.STAGE_REMOTE_SSH_PASSWORD }}
+          port: ${{ secrets.STAGE_REMOTE_SSH_PORT }}
           script: |
             source ~/.bashrc
-            bash ./deployment/studyclub/playground-production.sh
+            bash ./deployment/studyclub/storybook-stage.sh
       - uses: act10ns/slack@v1
         with:
           status: ${{ job.status }}

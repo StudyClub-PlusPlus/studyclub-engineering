@@ -100,7 +100,7 @@ export const STUDY_CREATE_SPEC: ScreenSpec = {
     {
       n: '7',
       title: '진행 일정',
-      display: ['한 줄 입력. 플레이스홀더 「매주 목 20:00 · 8주 과정」'],
+      display: ['한 줄 입력. 플레이스홀더 「2026.11-2026.12」'],
       behavior: ['자유 텍스트. 날짜 형식 강제 없음'],
       policy: ['모집 마감일과 별개 개념. 이쪽은 「언제 모이느냐」, 마감일은 「언제까지 신청받느냐」'],
       data: ['study.schedule — 미설정 시 카드에 일정 미표시'],

@@ -11,6 +11,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(
@@ -30,6 +35,10 @@ import jakarta.persistence.UniqueConstraint;
                     name = "idx_study_attendance_cohort_status",
                     columnList = "STUDY_COHORT_ID, STATUS")
         })
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class StudyAttendance extends BaseEntity {
 
     @Id
@@ -51,43 +60,4 @@ public class StudyAttendance extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AttendanceStatus status;
-
-    protected StudyAttendance() {}
-
-    public StudyAttendance(
-            Long accountId,
-            Long studyCohortId,
-            Long studyClassId,
-            Long studyMeetingId,
-            AttendanceStatus status) {
-        this.accountId = accountId;
-        this.studyCohortId = studyCohortId;
-        this.studyClassId = studyClassId;
-        this.studyMeetingId = studyMeetingId;
-        this.status = status;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getAccountId() {
-        return accountId;
-    }
-
-    public Long getStudyCohortId() {
-        return studyCohortId;
-    }
-
-    public Long getStudyClassId() {
-        return studyClassId;
-    }
-
-    public Long getStudyMeetingId() {
-        return studyMeetingId;
-    }
-
-    public AttendanceStatus getStatus() {
-        return status;
-    }
 }

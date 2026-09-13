@@ -71,6 +71,19 @@ export type Recruitment = {
   note?: L10n; // "초과시 반을 나눌 수 있습니다" 등
 };
 
+// 신청 폼 — 캡틴이 설계하는 질문 목록. 이름·이메일은 계정에서 읽고, 디스코드 서버 별명은 계정에 없으면 필수로 받는다.
+export type ApplicationQuestionType = "text" | "textarea" | "radio" | "checkbox" | "select";
+export type ApplicationQuestion = {
+  id: string;
+  label: string;
+  type: ApplicationQuestionType;
+  required: boolean;
+  options?: string[]; // radio · checkbox · select 일 때
+  allowOther?: boolean; // radio · checkbox — 「기타」 자유 입력
+  placeholder?: string; // text · textarea 안내 예시
+  description?: string; // 지원자에게 보여줄 부가 설명 (선택)
+};
+
 // 주차별 커리큘럼.
 export type StudyWeek = { label: L10n; title: L10n };
 
@@ -112,6 +125,9 @@ export type Study = {
   duration?: L10n; // 기간 요약 (예: "킥오프 포함 총 10주")
   weeks?: StudyWeek[]; // 주차별 커리큘럼
   recruitment?: Recruitment; // 모집 모델 (별도)
+  applicationForm?: ApplicationQuestion[]; // 캡틴이 설계한 신청 폼 추가 질문. 없으면 계정 정보 + 디스코드 서버 별명만 받음
+  applicationFormTitle?: string; // 신청 폼 제목. 없으면 스터디 제목을 그대로 쓴다
+  applicationFormDescription?: string; // 신청 폼 설명. 마크다운(**굵게**·*기울임*·[링크](url)·목록) 허용. 없으면 스터디 소개를 그대로 쓴다
   reviews?: StudyReview[]; // 후기
   stats?: StudyStats; // 참여 통계 (마스킹)
   past_participants?: L10n[]; // 마스킹된 참여자 (예: "김OO / SWE")
@@ -290,10 +306,34 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     recruitment: {
       status: "open",
-      deadline: "2026-08-25",
+      deadline: "2026-10-05",
       cadence: "one-time",
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
+    applicationForm: [
+      { id: "reason", label: "지원 사유", type: "text", required: true, placeholder: "내 답변" },
+      {
+        id: "time",
+        label: "참여 가능 시간을 모두 선택하세요",
+        type: "checkbox",
+        required: true,
+        options: ["평일 오전", "평일 오후", "주말 오전", "주말 오후"],
+      },
+      {
+        id: "level",
+        label: "희망 난이도를 선택하세요",
+        type: "radio",
+        required: true,
+        options: ["입문", "초급", "중급", "고급", "심화"],
+      },
+      {
+        id: "kickoff",
+        label: "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
+        type: "select",
+        required: true,
+        options: ["예", "아니오"],
+      },
+    ],
     order: 1,
     year: "2026",
   },
@@ -306,8 +346,8 @@ export const studies: Study[] = [
       credential: { ko: "現 빅테크 MLE · 10년차", en: "Big-tech MLE · 10 yrs" },
     },
     summary: {
-      ko: "Deep Learning·Attention·GPT 개념을 PyTorch로 구현 (7/10 시작).",
-      en: "Implement deep learning, attention, and GPT concepts in PyTorch (starts 7/10).",
+      ko: "Deep Learning·Attention·GPT 개념을 PyTorch로 구현 (10/15 시작).",
+      en: "Implement deep learning, attention, and GPT concepts in PyTorch (starts 10/15).",
     },
     status: "recruiting",
     format: "online",
@@ -319,10 +359,10 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/CLEr7JzvjwxkdTGP8",
     recruitment: {
       status: "open",
-      deadline: "2026-08-31",
+      deadline: "2026-10-10",
       cadence: "one-time",
       form_url: "https://forms.gle/CLEr7JzvjwxkdTGP8",
-      kickoff: "7/10 시작",
+      kickoff: "10/15 시작",
     },
     order: 2,
     year: "2026",
@@ -350,7 +390,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/Xj2u6v3npRSrzSV19",
     recruitment: {
       status: "open",
-      deadline: "2026-09-05",
+      deadline: "2026-10-15",
       cadence: "one-time",
       form_url: "https://forms.gle/Xj2u6v3npRSrzSV19",
     },
@@ -380,7 +420,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
     recruitment: {
       status: "monthly",
-      deadline: "2026-08-28",
+      deadline: "2026-09-30",
       cadence: "monthly",
       form_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -411,7 +451,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
     recruitment: {
       status: "monthly",
-      deadline: "2026-08-28",
+      deadline: "2026-09-30",
       cadence: "monthly",
       form_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -443,7 +483,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     recruitment: {
       status: "open",
-      deadline: "2026-09-10",
+      deadline: "2026-10-20",
       cadence: "one-time",
       form_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     },
@@ -472,7 +512,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/QD54d719pDyGcuLF8",
     recruitment: {
       status: "open",
-      deadline: "2026-08-20",
+      deadline: "2026-09-29",
       cadence: "one-time",
       form_url: "https://forms.gle/QD54d719pDyGcuLF8",
     },
@@ -502,7 +542,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
     recruitment: {
       status: "monthly",
-      deadline: "2026-08-30",
+      deadline: "2026-09-30",
       cadence: "monthly",
       form_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -2186,6 +2226,7 @@ export {
   getStudyCrew,
   attendanceRate,
   attendancePoint,
+  LATE_WEIGHT,
   isHotStudy,
   demoCrewRelation,
   demoMyAttendance,

@@ -1,6 +1,6 @@
 'use client';
 
-import { demoMyAttendance, getStudyCrew, studies, type Study, type StudyMeeting } from '@studyclub/mock';
+import { attendancePoint, demoMyAttendance, getStudyCrew, studies, type Study, type StudyMeeting } from '@studyclub/mock';
 
 /**
  * 회원 본인의 출석.
@@ -172,16 +172,12 @@ export function meetingsOf(study: Study): StudyMeeting[] {
   return getStudyCrew(study).meetings;
 }
 
-/** 내 출석률(%). 출석률 = 완주율. 출석·지각 = 1. 대상은 시작된 회차 중 휴가가 아닌 것. */
+/** 내 출석률(%). (present + late × 0.5) / 대상 회차. 대상은 시작된 회차 중 휴가가 아닌 것. */
 export function myRate(study: Study, stored: Record<string, MyStatus>, now = new Date()): number | undefined {
   const started = meetingsOf(study).filter((m) => now.getTime() >= meetingWindow(study, m).start.getTime());
   if (started.length === 0) return undefined;
   const target = started.filter((m) => (stored[m.id] ?? 'absent') !== 'excused');
   if (target.length === 0) return undefined;
-  const score = target.reduce((sum, m) => {
-    const v = stored[m.id] ?? 'absent';
-    if (v === 'present' || v === 'late') return sum + 1;
-    return sum;
-  }, 0);
+  const score = target.reduce((sum, m) => sum + attendancePoint(stored[m.id] ?? 'absent'), 0);
   return Math.round((score / target.length) * 100);
 }

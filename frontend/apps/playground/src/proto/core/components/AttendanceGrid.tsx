@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import {
   BOOK_LABEL,
   BOOK_STYLE,
@@ -15,6 +17,7 @@ import { cx } from '@studyclub/ui';
 /**
  * 내 출석 격자. 한 줄에 최대 10회. 10회 미만이면 그 칸 수로 한 줄을 채운다.
  * 아직 시작하지 않은 회차의 결석은 빈 칸이다. 일자는 주간 줄과 같은 타임존.
+ * 다음 회차 칸만 참석을 받을 수 있다. 지난 칸은 조회만.
  */
 export function AttendanceGrid({
   book,
@@ -22,12 +25,17 @@ export function AttendanceGrid({
   wallTz,
   headAnno,
   cellAnno,
+  actionMeetingId,
+  action,
 }: {
   book: MyAttendanceBook;
   study: Study;
   wallTz: WallTz;
   headAnno?: string;
   cellAnno?: string;
+  /** 참석을 둘 회차. 지난 칸·다른 미래 칸은 그대로 둔다. */
+  actionMeetingId?: string;
+  action?: ReactNode;
 }) {
   if (book.meetings.length === 0) {
     return <p className='py-3 text-center text-sm text-fg-secondary'>아직 회차가 없습니다.</p>;
@@ -47,24 +55,32 @@ export function AttendanceGrid({
           {row.map((m) => {
             const status = book.cells[m.id];
             const label = status ? BOOK_LABEL[status] : undefined;
+            const live = Boolean(action && m.id === actionMeetingId && !status);
             return (
-              <div key={m.id} className='min-w-0 text-center'>
+              <div
+                key={m.id}
+                className='min-w-0 text-center'
+              >
                 <p data-anno={headAnno} className='tnum text-[10px] font-semibold text-fg-secondary'>
                   {m.no}회
                   <span className='block font-medium text-fg-muted'>
                     {meetingDayLabel(meetingWallDate(study, m, wallTz))}
                   </span>
                 </p>
-                <span
-                  data-anno={cellAnno}
-                  title={label ? `${m.no}회차 ${label}` : `${m.no}회차`}
-                  className={cx(
-                    'mt-0.5 block min-h-[1.625rem] truncate rounded-sm px-0.5 py-1 text-[10px] font-bold',
-                    status ? BOOK_STYLE[status] : 'border border-dashed border-border-strong',
-                  )}
-                >
-                  {label}
-                </span>
+                {live ? (
+                  action
+                ) : (
+                  <span
+                    data-anno={cellAnno}
+                    title={label ? `${m.no}회차 ${label}` : `${m.no}회차`}
+                    className={cx(
+                      'mt-0.5 block min-h-[1.625rem] truncate rounded-sm px-0.5 py-1 text-[10px] font-bold',
+                      status ? BOOK_STYLE[status] : 'border border-dashed border-border-strong',
+                    )}
+                  >
+                    {label}
+                  </span>
+                )}
               </div>
             );
           })}

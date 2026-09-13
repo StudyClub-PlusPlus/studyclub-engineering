@@ -29,3 +29,7 @@ serviceAccount*.json
 .idea/
 .vscode/
 .gstack/
+
+# local dev tooling
+.claude/
+.envrc
