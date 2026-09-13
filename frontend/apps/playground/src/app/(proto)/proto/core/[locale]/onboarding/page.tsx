@@ -6,6 +6,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { OnboardingConsent } from '@core/components/OnboardingConsent';
 import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { checkNicknameAvailability } from '@core/lib/nickname-availability';
 import { getUser, setUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import {
@@ -66,11 +67,6 @@ function OnboardingScreen() {
           <h1 className='break-keep text-2xl font-bold tracking-tight sm:text-[28px]'>
             {locale === 'ko' ? 'StudyClub++에 오신 것을 환영해요' : 'Welcome to StudyClub++'}
           </h1>
-          <p className='mt-2 break-keep text-sm leading-relaxed text-fg-muted'>
-            {locale === 'ko'
-              ? '기본 정보를 설정하고 약관에 동의하면 가입이 완료돼요.'
-              : 'Set up your profile and review the terms to finish joining.'}
-          </p>
         </header>
         {ready ? (
           <OnboardingForm
@@ -131,18 +127,111 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
     : touched && !composing
       ? nicknameError(draft.nickname, locale)
       : undefined;
+  /**
+   * 닉네임 중복 검사.
+   *
+   * **형식이 맞는 값만 묻는다.** 두 글자가 안 되는 값을 서버에 던지면 「이미 사용 중」과 「너무 짧다」가
+   * 뒤섞여 무엇을 고쳐야 할지 알 수 없다. 마지막 입력에서 400ms 쉬면 그때 한 번 보낸다.
+   */
+  const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
+  const nickAbort = useRef<AbortController | null>(null);
+  const trimmedNick = draft.nickname.trim();
+  // 조합 중에는 검증하지 않는다 — 「ㄱ」 상태에서 「2자 이상」이 뜨면 치는 사람이 놀란다.
+  const nickFormatError = composing ? undefined : nicknameError(draft.nickname, locale);
+
+  useEffect(() => {
+    nickAbort.current?.abort();
+    if (composing || nickFormatError) {
+      setNickStatus('idle');
+      return;
+    }
+    const controller = new AbortController();
+    nickAbort.current = controller;
+    setNickStatus('checking');
+    const timer = setTimeout(() => {
+      checkNicknameAvailability(trimmedNick, controller.signal)
+        .then((result) => setNickStatus(result.available ? 'available' : 'taken'))
+        // 취소된 요청은 최신 상태를 덮어쓰지 않는다 — 늦게 온 과거 응답이 답을 바꾸면 안 된다.
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+          setNickStatus('error');
+        });
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [trimmedNick, composing, nickFormatError]);
+
+  // TODO(api): 만 14세 확인을 저장할 필드가 아직 없다. 지금은 화면 상태로만 들고 있다.
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const requiredAgreed = ageConfirmed && draft.termsOfServiceAgreed && draft.privacyPolicyAgreed;
+  // 「확인 중」에도 누를 수 있어야 한다 — 400ms 를 기다렸다 누르게 하면 다 채운 사람이 멈춰 선다.
+  // 중복으로 판명된 값만 막는다.
   const valid =
-    !nicknameError(draft.nickname, locale) &&
-    isValidTimeZone(draft.timeZone) &&
-    draft.termsOfServiceAgreed &&
-    draft.privacyPolicyAgreed;
+    !nicknameError(draft.nickname, locale) && nickStatus !== 'taken' && isValidTimeZone(draft.timeZone) && requiredAgreed;
+  /**
+   * 닉네임 칸 아래 한 줄. **자리를 하나만 쓴다** — 상태마다 줄을 더하면 아래가 밀린다.
+   * 형식 오류는 친 순간 보여주고, 중복 여부는 형식이 맞은 뒤에만 말한다.
+   */
+  const nickLine: { text: string; tone: 'muted' | 'error' | 'ok' } = !trimmedNick
+    ? touched
+      ? { text: ko ? '닉네임을 입력해 주세요' : 'Enter a nickname.', tone: 'error' }
+      : {
+          text: ko ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)' : '2–20 characters · Korean, letters, numbers, underscore (_)',
+          tone: 'muted',
+        }
+    : nickFormatError
+      ? { text: nickFormatError, tone: 'error' }
+      : nickStatus === 'checking'
+        ? { text: ko ? '확인 중입니다' : 'Checking…', tone: 'muted' }
+        : nickStatus === 'available'
+          ? { text: ko ? '사용할 수 있는 닉네임입니다' : 'This nickname is available', tone: 'ok' }
+          : nickStatus === 'taken'
+            ? { text: ko ? '이미 사용중인 닉네임입니다' : 'This nickname is taken', tone: 'error' }
+            : nickStatus === 'error'
+              ? {
+                  text: ko ? '확인하지 못했습니다. 다시 시도해 주세요' : 'Could not check. Try again',
+                  tone: 'muted',
+                }
+              : {
+                  text: ko
+                    ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
+                    : '2–20 characters · Korean, letters, numbers, underscore (_)',
+                  tone: 'muted',
+                };
+
+  /** 검사가 끝나기 전에 제출을 눌렀는가. 끝나는 대로 이어서 보낸다. */
+  const [awaitingCheck, setAwaitingCheck] = useState(false);
   const disabled = pending || problem === 'expired';
+
+  // 기다리던 검사가 끝났다. 쓸 수 있으면 이어서 보내고, 이미 쓰이는 이름이면 그 칸으로 돌려보낸다.
+  useEffect(() => {
+    if (!awaitingCheck || nickStatus === 'checking') return;
+    if (nickStatus === 'taken') {
+      setAwaitingCheck(false);
+      document.getElementById('onboarding-nickname')?.focus();
+      return;
+    }
+    setAwaitingCheck(false);
+    send();
+  });
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    send();
+  }
+
+  function send() {
     if (submitting.current || disabled) return;
     setTouched(true);
     if (!valid || composing) return;
+    // 검사가 아직 돌고 있으면 결과를 기다렸다 이어서 보낸다.
+    if (nickStatus === 'checking') {
+      setAwaitingCheck(true);
+      return;
+    }
+    setAwaitingCheck(false);
     submitting.current = true;
     setPending(true);
     setProblem(null);
@@ -226,15 +315,22 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
             onBlur={() => setTouched(true)}
             onCompositionStart={() => setComposing(true)}
             onCompositionEnd={() => setComposing(false)}
-            error={nameProblem}
+            aria-invalid={nickLine.tone === 'error'}
             labelHint={`${draft.nickname.trim().length}/20`}
-            className='h-12'
+            className={`h-12 ${nickLine.tone === 'error' ? 'border-error-600 focus:border-error-600' : ''}`}
             aria-describedby='nickname-help'
           />
-          <p id='nickname-help' className='mt-2 text-xs leading-relaxed text-fg-muted'>
-            {ko
-              ? '2~20자 · 글자, 숫자, 밑줄(_)을 사용할 수 있어요.'
-              : '2–20 characters · Letters, numbers and underscores (_) are welcome.'}
+          {/* 도움말 자리를 **교체**한다. 줄을 새로 더하면 상태가 바뀔 때마다 아래가 밀린다. */}
+          <p
+            id='nickname-help'
+            data-anno='2-1'
+            role={nickLine.tone === 'error' ? 'alert' : undefined}
+            className={`mt-2 flex items-center gap-1.5 text-xs leading-relaxed ${
+              nickLine.tone === 'ok' ? 'text-success-700' : nickLine.tone === 'error' ? 'text-error-700' : 'text-fg-muted'
+            }`}
+          >
+            {nickLine.tone === 'ok' && <Check size={13} aria-hidden='true' />}
+            {nickLine.text}
           </p>
         </div>
 
@@ -252,7 +348,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
           }
         />
 
-        <section className='border-t border-border pt-6' data-anno='4'>
+        <section className='border-t border-border pt-6'>
           <h2 className='mb-4 text-base font-semibold'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
           {!ko && (
             <p
@@ -262,55 +358,33 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
               The documents below are currently available in Korean. English versions have not been provided yet.
             </p>
           )}
-          <div className='space-y-5'>
-            <OnboardingConsent
-              kind='terms'
-              locale={locale}
-              checked={draft.termsOfServiceAgreed}
-              onChange={(value) => update('termsOfServiceAgreed', value)}
-              disabled={disabled}
-              error={
-                scenario === 'empty' && !draft.termsOfServiceAgreed
-                  ? ko
-                    ? '가입하려면 이용약관에 동의해 주세요.'
-                    : 'Agree to the Terms of Service to join.'
-                  : undefined
+          <OnboardingConsent
+            locale={locale}
+            disabled={disabled}
+            values={{
+              age: ageConfirmed,
+              terms: draft.termsOfServiceAgreed,
+              privacy: draft.privacyPolicyAgreed,
+              marketing: draft.marketingAgreed,
+            }}
+            onChange={(key, value) => {
+              if (key === 'age') {
+                setAgeConfirmed(value);
+                return;
               }
-            />
-            <OnboardingConsent
-              kind='privacy'
-              locale={locale}
-              checked={draft.privacyPolicyAgreed}
-              onChange={(value) => update('privacyPolicyAgreed', value)}
-              disabled={disabled}
-              error={
-                scenario === 'empty' && !draft.privacyPolicyAgreed
-                  ? ko
-                    ? '가입하려면 개인정보 수집·이용에 동의해 주세요.'
-                    : 'Agree to the collection and use of personal information to join.'
-                  : undefined
-              }
-            />
-            <div className='rounded-control bg-surface-1 py-3.5' data-anno='4-3'>
-              <div className='flex items-start gap-2'>
-                <span className={`mt-0.5 shrink-0 text-xs font-medium text-fg-muted ${ko ? 'w-8' : 'w-16'}`}>
-                  {ko ? '[선택]' : '[Optional]'}
-                </span>
-                <Checkbox
-                  id='marketing-agreed'
-                  checked={draft.marketingAgreed}
-                  onChange={(event) => update('marketingAgreed', event.target.checked)}
-                  label={ko ? '마케팅 정보 수신에 동의합니다.' : 'I agree to receive marketing messages.'}
-                  className='items-start [&_input]:mt-0.5 [&_span]:break-keep [&_span]:leading-snug'
-                />
-              </div>
-              <p className='mt-2 text-xs leading-relaxed text-fg-muted'>
-                {ko
-                  ? '스터디 소식과 행사 안내를 보내드려요. 동의하지 않아도 가입할 수 있어요.'
-                  : 'Get study news and event updates. You can join without opting in.'}
-              </p>
-            </div>
-          </div>
+              update(
+                key === 'terms' ? 'termsOfServiceAgreed' : key === 'privacy' ? 'privacyPolicyAgreed' : 'marketingAgreed',
+                value,
+              );
+            }}
+            error={
+              (touched || scenario === 'empty') && !requiredAgreed
+                ? ko
+                  ? '필수 항목을 확인해 주세요.'
+                  : 'Confirm the required items to join.'
+                : undefined
+            }
+          />
         </section>
       </fieldset>
 
@@ -320,7 +394,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
           size='lg'
           className='w-full'
           disabled={!valid || composing || problem === 'expired'}
-          loading={pending}
+          loading={pending || awaitingCheck}
           trailingIcon={!pending ? <ArrowRight size={17} aria-hidden='true' /> : undefined}
         >
           {pending
@@ -335,12 +409,6 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
                 ? '가입 완료'
                 : 'Complete sign-up'}
         </Button>
-        <p className='mt-3 flex items-center justify-center gap-1.5 text-center text-xs leading-relaxed text-fg-muted'>
-          <ShieldCheck size={13} className='shrink-0' aria-hidden='true' />
-          {ko
-            ? '닉네임·시간대와 필수 동의를 확인해 주세요.'
-            : 'A valid nickname, time zone and required agreements are needed.'}
-        </p>
       </div>
     </form>
   );
