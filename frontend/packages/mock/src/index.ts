@@ -306,7 +306,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     recruitment: {
       status: "open",
-      deadline: "2026-08-25",
+      deadline: "2026-10-05",
       cadence: "one-time",
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
@@ -346,8 +346,8 @@ export const studies: Study[] = [
       credential: { ko: "現 빅테크 MLE · 10년차", en: "Big-tech MLE · 10 yrs" },
     },
     summary: {
-      ko: "Deep Learning·Attention·GPT 개념을 PyTorch로 구현 (7/10 시작).",
-      en: "Implement deep learning, attention, and GPT concepts in PyTorch (starts 7/10).",
+      ko: "Deep Learning·Attention·GPT 개념을 PyTorch로 구현 (10/15 시작).",
+      en: "Implement deep learning, attention, and GPT concepts in PyTorch (starts 10/15).",
     },
     status: "recruiting",
     format: "online",
@@ -359,10 +359,10 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/CLEr7JzvjwxkdTGP8",
     recruitment: {
       status: "open",
-      deadline: "2026-08-31",
+      deadline: "2026-10-10",
       cadence: "one-time",
       form_url: "https://forms.gle/CLEr7JzvjwxkdTGP8",
-      kickoff: "7/10 시작",
+      kickoff: "10/15 시작",
     },
     order: 2,
     year: "2026",
@@ -390,7 +390,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/Xj2u6v3npRSrzSV19",
     recruitment: {
       status: "open",
-      deadline: "2026-09-05",
+      deadline: "2026-10-15",
       cadence: "one-time",
       form_url: "https://forms.gle/Xj2u6v3npRSrzSV19",
     },
@@ -420,7 +420,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
     recruitment: {
       status: "monthly",
-      deadline: "2026-08-28",
+      deadline: "2026-09-30",
       cadence: "monthly",
       form_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -451,7 +451,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
     recruitment: {
       status: "monthly",
-      deadline: "2026-08-28",
+      deadline: "2026-09-30",
       cadence: "monthly",
       form_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -483,7 +483,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     recruitment: {
       status: "open",
-      deadline: "2026-09-10",
+      deadline: "2026-10-20",
       cadence: "one-time",
       form_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     },
@@ -512,7 +512,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/QD54d719pDyGcuLF8",
     recruitment: {
       status: "open",
-      deadline: "2026-08-20",
+      deadline: "2026-09-29",
       cadence: "one-time",
       form_url: "https://forms.gle/QD54d719pDyGcuLF8",
     },
@@ -542,7 +542,7 @@ export const studies: Study[] = [
     recruit_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
     recruitment: {
       status: "monthly",
-      deadline: "2026-08-30",
+      deadline: "2026-09-30",
       cadence: "monthly",
       form_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
