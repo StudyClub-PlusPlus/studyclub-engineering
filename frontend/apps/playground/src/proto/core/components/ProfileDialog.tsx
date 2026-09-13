@@ -7,7 +7,6 @@ import { t } from '@core/lib/i18n';
 import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
 import { Button, Input, Modal } from '@studyclub/ui';
 
-
 /**
  * 내 정보 수정.
  *

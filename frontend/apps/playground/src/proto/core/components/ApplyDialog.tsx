@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-
 import type { Locale, Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { addApplication, getRegion } from '@core/lib/me';

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 
-
 import { EventDialog } from '@console/components/EventDialog';
 import { EVENT_TYPES } from '@console/components/EventForm';
 import { TableCard } from '@console/components/ui';
