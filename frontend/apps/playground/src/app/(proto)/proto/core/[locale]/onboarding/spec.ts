@@ -1,0 +1,85 @@
+import type { ScreenSpec } from '@/proto/annotate';
+
+export const SPEC: ScreenSpec = {
+  screen: '회원가입 · 온보딩',
+  notes: [
+    'Notion PRD: https://app.notion.com/p/benkang/1f683feabad3839b996781bd773ec465',
+    '개발 계약: specs/user-onboarding/spec.md. 실제 코드 확인 기준: beta 3622c4c.',
+    '이 화면은 playground 전용이다. 실제 Google 인증·회원 저장·동의 저장·메일 발송은 하지 않는다. 작성 중 입력은 sessionStorage에 보관하고 완료/초기화 시 지운다. 완료한 예시 프로필은 기존 미리보기 세션처럼 localStorage에 저장한다.',
+    '한국어·영어 UI를 제공한다. 약관 원문은 기존 lib/legal.ts의 한국어 문안을 공유한다. 영문 약관은 아직 없어 별도 안내하며 임의 번역하지 않는다.',
+    '현재 로그인 응답은 user.name과 최상위 suggestedNickname. 명세의 account.nickname으로 바꾸는 작업은 별도 연동 사항. core-front의 로그인 중계에서도 suggestedNickname 전달이 필요하다.',
+    '상단 검토 도구에서 빈 값·닉네임 형식·중복·서버 오류·세션 만료·제출 중을 볼 수 있다. 중복 예시 닉네임은 studyclub. 오류 예시는 이전 제출이 실패한 상태에서 시작한다.',
+    '실서비스에서는 기존 회원이 온보딩을 건너뛴다. 이 미리보기에서 ?scenario=default를 붙이면 완료 여부와 관계없이 새 가입 화면을 검토한다.',
+  ],
+  entries: [
+    {
+      n: '1',
+      title: '가입 안내',
+      display: ['환영 문구 · 기본 정보와 약관 동의를 완료하면 가입이 끝난다는 안내'],
+      policy: ['한 페이지 폼. 사진·관심 분야·거주 국가·도시·비밀번호 입력 없음'],
+    },
+    {
+      n: '2',
+      title: '닉네임',
+      display: ['Google 이름을 제안값으로 표시. 예시는 Journey'],
+      behavior: ['입력창을 벗어나면 형식 확인. 오류 이후 입력 중 수정 결과를 반영. 한글 조합 중에는 검사 보류'],
+      policy: ['trim 후 2~20자. 글자·숫자·밑줄만. 밑줄만/예약어/account_ 접두사 금지. 중복은 제출 시 서버 판정'],
+      data: ['요청 nickname. suggestedNickname이 없으면 빈 칸. 임시 account_ 이름은 표시하지 않음'],
+    },
+    {
+      n: '3',
+      title: '시간대 선택',
+      display: ['화면 언어에 맞춘 국가·대표 도시 이름과 현재 UTC 시차. 검색창과 선택 목록'],
+      behavior: ['기기 시간대 자동 선택 후 변경 가능. 한국어/영어 도시 이름·IANA ID 검색. 방향키·Enter·Escape 지원'],
+      policy: ['한국·북미 대표 시간대를 먼저 보여주되 다른 IANA 시간대도 선택 가능. 대표 도시는 실제 거주 정보가 아님'],
+      data: ['요청 timeZone. 예: America/Toronto. 고정 UTC 시차로 저장하지 않음. 표시 이름은 Unicode CLDR 번역 사용'],
+    },
+    {
+      n: '3-1',
+      title: '선택 시간대의 현재 시각',
+      when: '시간대가 선택됐을 때',
+      display: ['선택값 확인용 현지 날짜·시각·현재 UTC 시차'],
+      policy: ['Intl 시간대 규칙을 이용해 해당 날짜의 서머타임을 반영'],
+    },
+    {
+      n: '4',
+      title: '약관·동의',
+      display: ['필수 2종과 선택 1종'],
+      policy: ['모든 동의는 기본 미선택. 전체 동의 버튼과 끝까지 스크롤 강제 없음. 열람과 동의는 독립 동작'],
+    },
+    {
+      n: '4-1',
+      title: '이용약관',
+      display: ['스크롤 박스 · 필수 동의'],
+      behavior: ['키보드와 포인터로 본문을 스크롤'],
+      data: ['TERMS 원문 재사용. 요청 termsOfServiceAgreed=true 필수'],
+    },
+    {
+      n: '4-2',
+      title: '개인정보 수집·이용',
+      display: ['스크롤 박스 · 필수 동의'],
+      data: ['PRIVACY 원문 재사용. 요청 privacyPolicyAgreed=true 필수'],
+    },
+    {
+      n: '4-3',
+      title: '마케팅 정보 수신',
+      display: ['선택 동의 · 거부해도 가입 가능 안내'],
+      data: ['marketingAgreed는 미동의일 때도 false 전송. 약관 버전·동의 시각은 서버가 관리'],
+    },
+    {
+      n: '5',
+      title: '가입 완료',
+      display: ['가입 완료 버튼 · 필수 항목 안내'],
+      behavior: ['입력·필수 동의가 유효하면 활성화. 제출 중 중복 클릭 방지. 성공하면 원래 화면, 없으면 홈으로 이동'],
+      data: ['POST /accounts/onboarding → 200 AccountView. 이 프로토에서는 동일 형태의 예시 요청을 로컬 처리'],
+    },
+    {
+      n: '6',
+      title: '오류 안내',
+      when: '서버 오류 또는 세션 만료',
+      display: ['오류 이유 · 재시도 또는 다시 로그인'],
+      policy: ['400 형식 오류는 해당 필드, 409 중복은 닉네임, 401은 재로그인. 오류 후 입력 유지'],
+      behavior: ['세션 만료 후 같은 미리보기 계정으로 돌아오면 입력을 이어서 작성'],
+    },
+  ],
+};

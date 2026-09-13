@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
+import { RegistrationFeedback, RegistrationPreviewToolbar } from '@core/components/RegistrationPreview';
+import { getUser } from '@core/lib/auth';
 import { enterPreview } from '@core/lib/preview';
 
 import { AnnotateProvider, AnnotateToggle, AnnotationLayer } from '@/proto/annotate';
@@ -31,7 +33,7 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
   // useState 초기화 함수는 자식이 렌더되기 전에 한 번 돌아서 순서가 맞는다.
   // (서버 렌더에는 localStorage·document 가 없으므로 브라우저에서만.)
   useState(() => {
-    if (typeof window !== 'undefined') enterPreview();
+    if (typeof window !== 'undefined' && !/\/(login|onboarding)$/.test(pathname) && !getUser()) enterPreview();
     return null;
   });
 
@@ -39,7 +41,7 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
     <AnnotateProvider>
       <div className='proto-stack'>
         <div className='border-b border-[var(--color-border)] bg-[var(--color-fg)] text-white'>
-          <div className='mx-auto flex h-10 max-w-none items-center gap-5 px-5 text-[12px]'>
+          <div className='mx-auto flex min-h-10 max-w-none flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2 text-[12px]'>
             <Link href='/' className='font-bold opacity-70 transition-opacity hover:opacity-100'>
               ← playground
             </Link>
@@ -58,11 +60,19 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
                 );
               })}
             </nav>
-            <span className='ml-auto opacity-50'>mock 데이터 · 저장되지 않음</span>
+            <span className='ml-auto opacity-50'>
+              {pathname.includes('/core/en') ? 'Preview only · no server saves' : '미리보기 · 서버에 저장되지 않음'}
+            </span>
           </div>
         </div>
 
+        <Suspense fallback={null}>
+          <RegistrationPreviewToolbar />
+        </Suspense>
+
         {children}
+
+        <RegistrationFeedback />
 
         <AnnotationLayer />
         <AnnotateToggle />

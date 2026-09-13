@@ -14,7 +14,10 @@ import { t } from '@core/lib/i18n';
  */
 export function MyStudiesLink({ locale }: { locale: Locale }) {
   const [signedIn, setSignedIn] = useState(false);
-  useEffect(() => setSignedIn(Boolean(getUser())), []);
+  useEffect(() => {
+    const user = getUser();
+    setSignedIn(Boolean(user) && user?.onboardingCompletedAt !== null);
+  }, []);
   if (!signedIn) return null;
 
   return (
