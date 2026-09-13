@@ -1,11 +1,9 @@
 package com.studyclub.api.web;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "상태", description = "헬스 체크")
 @RestController

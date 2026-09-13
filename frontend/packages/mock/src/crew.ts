@@ -195,7 +195,8 @@ const ACTIVE_CYCLE: AttendanceStatus[] = ["present", "late", "present", "late", 
 const LEFT_CYCLE: AttendanceStatus[] = ["present", "late", "absent", "excused", "absent"];
 
 /**
- * 내 출석 시드. 회차 칸 · 출석률 · 완주 점수판이 같은 값을 보게 한다.
+ * 내 출석 시드. 회차 칸 · 출석률 · 완주 점수판이 같은 시드를 본다.
+ * 출석률은 지각을 0.5로 세고, 완주 점수판 n/n 은 출석+지각 횟수다.
  *
  * - 시작전: 비움
  * - 참여중: 지난 회차에 출석·지각·결석·휴가 순환. 미래는 비움
@@ -307,19 +308,22 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
   return { capacity, crew, meetings, attendance };
 }
 
+/** 지각 가중치. 출석률 = (present + late × W) / 대상 회차. */
+export const LATE_WEIGHT = 0.5;
+
 /**
- * 출석률 = 완주율.
- * 출석·지각 = 1, 결석 = 0. 휴가는 분모에서 뺀다.
+ * 출석률 분자에 넣는 점수. 출석 = 1, 지각 = W, 결석 = 0. 휴가는 분모에서 뺀다.
  */
 export function attendancePoint(status: AttendanceStatus): number {
-  if (status === "present" || status === "late") return 1;
+  if (status === "present") return 1;
+  if (status === "late") return LATE_WEIGHT;
   return 0;
 }
 
 /**
  * 출석률(%).
  * - 분모: 대상 회차 — 휴가 제외. 아직 시작하지 않은 회차(키 없음)는 넣지 않는다
- * - 분자: 출석 + 지각
+ * - 분자: present + late × W. W = 0.5
  */
 export function attendanceRate(row: Record<string, AttendanceStatus> | undefined): number | undefined {
   if (!row) return undefined;

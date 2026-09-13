@@ -63,6 +63,24 @@
 }
 ```
 
+> ⚠️ **Spring `Page<T>` / `Slice<T>` 를 컨트롤러에서 그대로 반환하지 않는다.**
+> Spring 페이지네이션 객체는 `content` · `totalElements` · `pageable` · `sort` 등
+> 프레임워크 고유 필드를 내보낸다. 프론트와의 계약은 위 `items/total/offset/limit`
+> 네 필드뿐이다. 응답 DTO `record` 를 직접 만들어 반환한다.
+
+```java
+// ❌ Spring Page 를 그대로 반환 — content/totalElements/pageable/sort 등 프레임워크 필드가 노출된다
+@GetMapping
+public Page<StudySummary> list(Pageable pageable) { ... }
+
+// ✅ 프로젝트 응답 계약에 맞는 커스텀 DTO
+public record StudyListResponse(List<StudySummary> items, long total, int offset, int limit) {}
+
+@GetMapping
+public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
+                              @RequestParam(defaultValue = "20") int limit) { ... }
+```
+
 에러는 **어디서 나든 이 모양 하나**:
 
 ```jsonc

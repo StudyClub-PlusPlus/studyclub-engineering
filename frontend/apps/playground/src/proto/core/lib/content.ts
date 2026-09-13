@@ -42,7 +42,9 @@ function sortByOrder<T extends { id: string; order?: number }>(items: T[]): T[] 
  * 예약 공개가 자동으로 열리려면 재빌드 또는 동적 렌더가 필요하다.
  * TODO(api): 서버가 공개 여부를 계산해 내려주도록 전환.
  */
-function isPublished(s: { publish_at?: string }): boolean {
+function isPublished(s: { publish_at?: string; published?: boolean }): boolean {
+  // 등록만 해 둔 스터디는 사이트에 없다 — 신청 폼도 없이 공개되는 일을 막는다.
+  if (s.published === false) return false;
   if (!s.publish_at) return true;
   return s.publish_at <= new Date().toISOString().slice(0, 10);
 }

@@ -10,16 +10,14 @@ import java.util.List;
 
 public final class ParticipantHubResponses {
 
-    private ParticipantHubResponses() {
-    }
+    private ParticipantHubResponses() {}
 
     public record ParticipantHubOverviewResponse(
             List<ParticipatingStudySummary> activeStudies,
             List<ParticipatingStudySummary> pastStudies,
             List<StudyApplicationSummary> applications,
             List<UpcomingStudyMeeting> upcomingMeetings,
-            List<BookmarkedStudySummary> bookmarks) {
-    }
+            List<BookmarkedStudySummary> bookmarks) {}
 
     public record ParticipatingStudySummary(
             Long cohortId,
@@ -28,8 +26,7 @@ public final class ParticipantHubResponses {
             ParticipantStatus participantStatus,
             Integer attendanceRate,
             Instant nextMeetingAt,
-            String thumbnailUrl) {
-    }
+            String thumbnailUrl) {}
 
     public record StudyApplicationSummary(
             Long id,
@@ -37,23 +34,13 @@ public final class ParticipantHubResponses {
             Long studyId,
             String studyTitle,
             ApplicationStatus status,
-            Instant appliedAt) {
-    }
+            Instant appliedAt) {}
 
     public record UpcomingStudyMeeting(
-            Long id,
-            Long cohortId,
-            Long studyId,
-            String studyTitle,
-            Instant scheduledAt) {
-    }
+            Long id, Long cohortId, Long studyId, String studyTitle, Instant scheduledAt) {}
 
     public record BookmarkedStudySummary(
-            Long id,
-            Long studyId,
-            String studyTitle,
-            String thumbnailUrl) {
-    }
+            Long id, Long studyId, String studyTitle, String thumbnailUrl) {}
 
     public record ParticipatingStudyCohortDetailResponse(
             Long cohortId,
@@ -70,15 +57,12 @@ public final class ParticipantHubResponses {
             LocalDate startsOn,
             UpcomingStudyMeeting nextMeeting,
             List<StudyMeetingAttendance> attendance,
-            String driveUrl) {
-    }
+            String driveUrl) {}
 
     public record StudyMeetingAttendance(
             Long meetingId,
             Instant scheduledAt,
             Instant startsAt,
             Instant endsAt,
-            AttendanceStatus attendanceStatus) {
-    }
-
+            AttendanceStatus attendanceStatus) {}
 }

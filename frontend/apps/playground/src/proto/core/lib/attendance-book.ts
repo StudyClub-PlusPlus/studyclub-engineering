@@ -29,7 +29,7 @@ export type MyAttendanceBook = {
   rate: number | undefined;
 };
 
-/** 화면에 보이는 칸만 센다. 빈 칸(시작 전 결석)·휴가는 분모에서 뺀다. 지각은 출석과 같다. */
+/** 화면에 보이는 칸만 센다. 빈 칸(시작 전 결석)·휴가는 분모에서 뺀다. 출석률 = (present + late × 0.5) / 대상 회차. */
 function rateFromCells(cells: MyAttendanceBook['cells']): number | undefined {
   const target = Object.values(cells).filter((v): v is BookStatus => v !== undefined && v !== 'excused');
   if (target.length === 0) return undefined;
@@ -44,7 +44,7 @@ export function myAttendanceBook(study: Study): MyAttendanceBook {
   return { meetings, cells, rate: rateFromCells(cells) };
 }
 
-/** 완주 점수판. 출석률과 같다 — 시작된 회차 중 휴가 제외, 출석+지각 분자. */
+/** 완주 점수판. 출석·지각 횟수 / 대상 회차. 출석률의 지각 가중치(0.5)와는 다르다. */
 export function bookScore(book: MyAttendanceBook): { attended: number; total: number } {
   const target = book.meetings.filter((m) => {
     const st = book.cells[m.id];

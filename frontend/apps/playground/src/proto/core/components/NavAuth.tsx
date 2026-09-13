@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-
 import { getUser, logout, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@core/lib/preview';

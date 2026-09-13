@@ -2,20 +2,16 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { AttendanceGrid } from '@core/components/AttendanceGrid';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import {
   STATUS_LABEL,
   STATUS_STYLE,
-  canCancelLeave,
   canCheckIn,
-  cancelLeave,
   getMyAttendance,
   resolveStatus,
-  meetingsOf,
-  takeLeave,
 } from '@core/lib/attendance';
 import { bookScore, myAttendanceBook, rateTone, type MyAttendanceBook } from '@core/lib/attendance-book';
 import { getUser } from '@core/lib/auth';
@@ -34,7 +30,6 @@ import {
   isCompleted,
   lifeStatus,
   mondayOf,
-  tagsOf,
   upcomingMeeting,
   upcomingOf,
   userWallTz,
@@ -50,15 +45,12 @@ import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
 import {
   Award,
   BookOpen,
-  CalendarClock,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Clock3,
   FolderOpen,
   Heart,
-  MessageCircle,
 } from 'lucide-react';
 
 import { SPEC } from './spec';
@@ -106,49 +98,26 @@ function weekRangeLabel(days: WeekDay[]): string {
 function AttendActions({
   study,
   meeting,
-  compact,
   attendAnno,
-  leaveAnno,
-  cancelAnno,
-  onChange,
 }: {
   study: Study;
   meeting: StudyMeeting;
-  compact?: boolean;
   attendAnno: string;
-  leaveAnno: string;
-  cancelAnno: string;
-  onChange: () => void;
 }) {
   const stored = getMyAttendance(study.id);
   const status = resolveStatus(study, meeting, stored);
-  const upcoming = lifeStatus(study) === 'upcoming';
-  const onLeave = status === 'excused';
   const joinOn = canCheckIn(study, meeting) && canOpenDiscord(study);
-  const cancelOn = onLeave && canCancelLeave(study, meeting);
 
   function join() {
     if (!joinOn) return;
     window.open(discordUrl(study), '_blank', 'noopener,noreferrer');
   }
 
-  function leave() {
-    takeLeave(study, meeting);
-    onChange();
-  }
-
-  function undoLeave() {
-    if (!cancelLeave(study, meeting)) return;
-    onChange();
-  }
-
-  /** 출석·지각·결석만 배지. 휴가는 참석 버튼을 남겨 두고 오른쪽만 바꾼다. */
-  if (status && !onLeave) {
+  if (status) {
     return (
       <span
         className={cx(
-          'inline-flex shrink-0 items-center justify-center rounded-pill font-bold',
-          compact ? 'px-1 py-0.5 text-[9px] leading-tight' : 'px-3 py-1.5 text-xs',
+          'mt-0.5 block min-h-[1.625rem] truncate rounded-sm px-0.5 py-1 text-[10px] font-bold',
           STATUS_STYLE[status],
         )}
       >
@@ -157,58 +126,65 @@ function AttendActions({
     );
   }
 
-  if (compact) {
-    return (
-      <span className='mt-0.5 grid w-full grid-cols-2 gap-0.5'>
-        <button
-          type='button'
-          data-anno={attendAnno}
-          disabled={!joinOn}
-          onClick={join}
-          className='truncate rounded-pill bg-brand px-0.5 py-0.5 text-[9px] font-bold leading-tight text-on-brand hover:bg-brand-hover disabled:bg-neutral-200 disabled:text-neutral-400'
-        >
-          참석
-        </button>
-        {onLeave ? (
-          <button
-            type='button'
-            data-anno={cancelAnno}
-            disabled={!cancelOn}
-            onClick={undoLeave}
-            className='truncate rounded-pill bg-surface-2 px-0.5 py-0.5 text-[9px] font-bold leading-tight text-fg-secondary hover:bg-surface-3 disabled:text-fg-muted'
-          >
-            {cancelOn ? '휴가 취소' : '휴가'}
-          </button>
-        ) : (
-          <button
-            type='button'
-            data-anno={leaveAnno}
-            onClick={leave}
-            className='truncate rounded-pill border border-border-strong bg-bg px-0.5 py-0.5 text-[9px] font-bold leading-tight text-fg-secondary hover:bg-surface-2'
-          >
-            휴가
-          </button>
-        )}
-      </span>
-    );
-  }
-
   return (
-    <span className='flex shrink-0 items-center gap-1.5'>
-      <Button data-anno={attendAnno} variant='primary' size='sm' disabled={!joinOn} onClick={join}>
-        지금 참석
-      </Button>
-      {onLeave ? (
-        <Button data-anno={cancelAnno} variant='tonal' size='sm' disabled={!cancelOn} onClick={undoLeave}>
-          {cancelOn ? '휴가 취소' : upcoming ? '휴가 신청' : '휴가'}
-        </Button>
-      ) : (
-        <Button data-anno={leaveAnno} variant='secondary' size='sm' onClick={leave}>
-          휴가 신청
-        </Button>
+    <button
+      type='button'
+      data-anno={attendAnno}
+      disabled={!joinOn}
+      onClick={join}
+      className={cx(
+        'mt-0.5 block min-h-[1.625rem] w-full truncate rounded-sm px-0.5 py-1 text-[10px] font-bold',
+        joinOn
+          ? 'bg-brand text-on-brand hover:bg-brand-hover'
+          : 'bg-neutral-200 text-neutral-400',
       )}
-    </span>
+    >
+      참석
+    </button>
   );
+}
+
+function DiscordGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+      <path d='M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515.07.07 0 0 0-.079.035c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0 12.6 12.6 0 0 0-.617-1.25.08.08 0 0 0-.079-.035A19.7 19.7 0 0 0 3.677 4.37a.08.08 0 0 0-.037.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.08.08 0 0 0 .084-.028 14 14 0 0 0 1.226-1.994.07.07 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.08.08 0 0 1-.008-.132c.126-.094.252-.192.372-.291a.07.07 0 0 1 .078-.01c3.927 1.793 8.18 1.793 12.061 0a.07.07 0 0 1 .079.01c.12.099.246.198.373.292a.08.08 0 0 1-.006.132 12.3 12.3 0 0 1-1.873.891.08.08 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028 19.8 19.8 0 0 0 6.002-3.03.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z' />
+    </svg>
+  );
+}
+
+function ResourceIcon({
+  label,
+  anno,
+  disabled,
+  title,
+  onClick,
+  children,
+}: {
+  label: string;
+  anno: string;
+  disabled?: boolean;
+  title?: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type='button'
+      data-anno={anno}
+      aria-label={label}
+      title={title ?? label}
+      disabled={disabled}
+      onClick={onClick}
+      className='grid h-8 w-8 shrink-0 place-items-center rounded-control text-fg hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:text-fg-muted'
+    >
+      {children}
+    </button>
+  );
+}
+
+function weekChip(category: string | undefined): { accent: string; tint: number } {
+  const [accent] = categoryMeta(category).color;
+  return { accent, tint: 14 };
 }
 
 function WeekStrip({
@@ -220,7 +196,6 @@ function WeekStrip({
   onWallTz,
   onPrev,
   onNext,
-  onAttendChange,
 }: {
   days: WeekDay[];
   thisWeek: boolean;
@@ -230,7 +205,6 @@ function WeekStrip({
   onWallTz: (tz: WallTz) => void;
   onPrev: () => void;
   onNext: () => void;
-  onAttendChange: () => void;
 }) {
   const router = useRouter();
   const range = weekRangeLabel(days);
@@ -284,34 +258,27 @@ function WeekStrip({
               >
                 {d.day}
               </p>
-              <ul className='mt-1 flex min-h-10 flex-col gap-0.5'>
+              <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
-                  const study = byId.get(hit.studyId);
-                  const meeting = study
-                    ? meetingsOf(study).find((m) => m.id === hit.meetingId)
-                    : undefined;
+                  const { accent, tint } = weekChip(byId.get(hit.studyId)?.category);
                   return (
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
                         type='button'
                         title={`${hit.time} ${hit.title} ${hit.no}회차`}
                         onClick={() => router.push(`/proto/core/${locale}/studies/${hit.studyId}`)}
-                        className='block w-full truncate rounded-pill bg-bg px-1 py-0.5 text-left text-[10px] font-bold leading-tight text-primary-700 hover:bg-brand-subtle-hover'
+                        className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left text-[10px] font-bold leading-tight hover:brightness-[0.97]'
+                        style={{
+                          borderLeftColor: accent,
+                          backgroundColor: `color-mix(in srgb, ${accent} ${tint}%, var(--color-bg))`,
+                          color: accent,
+                        }}
                       >
-                        <span className='tnum block text-[10px] font-semibold text-fg-muted'>{hit.time}</span>
-                        <span className='block truncate'>{hit.title}</span>
+                        <span className='tnum block text-[10px] font-semibold opacity-75'>{hit.time}</span>
+                        <span data-anno='1-1-2' className='line-clamp-2 break-keep'>
+                          {hit.title}
+                        </span>
                       </button>
-                      {study && meeting && (
-                        <AttendActions
-                          study={study}
-                          meeting={meeting}
-                          compact
-                          attendAnno='1-1-2'
-                          leaveAnno='1-1-3'
-                          cancelAnno='1-1-4'
-                          onChange={onAttendChange}
-                        />
-                      )}
                     </li>
                   );
                 })}
@@ -413,7 +380,7 @@ function Pager({
  * 내 스터디 — 참여 목록.
  *
  * 기본 탭은 참여중. 크루가 여기 오는 이유는 지금 어디 들어가는지 확인하는 것이다.
- * 오늘 참석·휴가는 주간 줄과 카드에서 바로 찍고, 지난 칸은 카드 안 출석 기록에서 본다.
+ * 이번 주 회차는 주간 줄에서 보고, 참석은 카드 출석 기록의 다음 회차 칸에서 찍는다.
  */
 export default function MyJoinedPage() {
   const params = useParams();
@@ -425,7 +392,6 @@ export default function MyJoinedPage() {
   const [page, setPage] = useState(1);
   const [wallTz, setWallTz] = useState<WallTz>('KST');
   const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
-  const [attendTick, setAttendTick] = useState(0);
   const [openIds, setOpenIds] = useState<string[]>([]);
   const listTop = useRef<HTMLDivElement>(null);
   const appliedOpen = useRef(false);
@@ -504,7 +470,6 @@ export default function MyJoinedPage() {
       </h1>
 
       <WeekStrip
-        key={attendTick}
         days={days}
         thisWeek={thisWeek}
         locale={locale}
@@ -513,7 +478,6 @@ export default function MyJoinedPage() {
         onWallTz={setWallTz}
         onPrev={() => setWeekStart(addDays(weekStart, -7))}
         onNext={() => setWeekStart(addDays(weekStart, 7))}
-        onAttendChange={() => setAttendTick((n) => n + 1)}
       />
 
       <div className='mt-5 flex flex-wrap items-center gap-2'>
@@ -547,7 +511,6 @@ export default function MyJoinedPage() {
                 onToggleBook={() =>
                   setOpenIds((cur) => (cur.includes(study.id) ? cur.filter((id) => id !== study.id) : [...cur, study.id]))
                 }
-                onAttendChange={() => setAttendTick((n) => n + 1)}
               />
             ))}
           </ul>
@@ -560,27 +523,16 @@ export default function MyJoinedPage() {
 
 function MissionClear({ book }: { book: MyAttendanceBook }) {
   const { attended, total } = bookScore(book);
-  const perfect = total > 0 && attended >= total;
   const bars = book.meetings.filter((s) => {
     const st = book.cells[s.id];
     return st !== undefined && st !== 'excused';
   });
   return (
-    <div
-      data-anno='4-4'
-      className='mt-3 rounded-card border border-warning-400 bg-bg px-3 py-2.5 shadow-xs'
-    >
-      <div className='flex items-center justify-between gap-2'>
-        <p className='flex items-center gap-1.5 text-[13px] font-extrabold tracking-tight text-warning-700'>
-          <Award size={15} strokeWidth={2.5} aria-hidden='true' />
-          완주를 축하합니다!
-        </p>
-        {perfect && (
-          <span className='rounded-pill bg-warning-400 px-2 py-0.5 text-[11px] font-extrabold text-fg'>
-            전회 출석
-          </span>
-        )}
-      </div>
+    <div data-anno='4-4' className='mt-3 rounded-card border border-warning-400 bg-bg px-3 py-2.5 shadow-xs'>
+      <p className='flex items-center gap-1.5 text-[13px] font-extrabold tracking-tight text-warning-700'>
+        <Award size={15} strokeWidth={2.5} aria-hidden='true' />
+        완주를 축하합니다!
+      </p>
       <p className='mt-1 flex items-baseline gap-1'>
         <span className='tnum text-[32px] font-extrabold leading-none tracking-tight text-warning-700'>
           {attended}
@@ -611,26 +563,25 @@ function StudyItem({
   wallTz,
   bookOpen,
   onToggleBook,
-  onAttendChange,
 }: {
   study: Study;
   locale: Locale;
   wallTz: WallTz;
   bookOpen: boolean;
   onToggleBook: () => void;
-  onAttendChange: () => void;
 }) {
-  const { icon: Icon, label } = categoryMeta(study.category);
+  const { icon: Icon } = categoryMeta(study.category);
   const life = lifeStatus(study);
   const completed = isCompleted(study);
   const left = life === 'ended' && !completed;
-  const tags = tagsOf(study, locale, label);
   const attendanceOn = canOpenAttendance();
   const discordOn = canOpenDiscord(study);
   const driveOn = canOpenDrive(study);
   const nextMeeting = upcomingMeeting(study, wallTz);
   const book = myAttendanceBook(study);
   const panelId = `attendance-${study.id}`;
+  const ended = life === 'ended' && !completed;
+  const showRate = !completed && book.rate !== undefined;
 
   return (
     <li>
@@ -661,119 +612,118 @@ function StudyItem({
 
         <div className='min-w-0 flex-1'>
           <div className='flex items-start justify-between gap-3'>
-            <Link
-              data-anno='4-2'
-              href={`/proto/core/${locale}/studies/${study.id}`}
-              className='min-w-0 truncate text-[17px] font-bold text-fg underline-offset-4 hover:underline'
-            >
-              {t(study.title, locale)}
-            </Link>
-            <span data-anno='4-3'>
-              {completed ? (
-                <span className='inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill bg-warning-100 px-2 py-0.5 text-xs font-bold text-warning-700'>
-                  <Award size={12} strokeWidth={2.5} aria-hidden='true' />
-                  완주
-                </span>
-              ) : (
-                <Badge tone={left ? LEFT_BADGE.tone : LIFE_TONE[life]} dot>
-                  {left ? LEFT_BADGE.label : LIFE_LABEL[life]}
-                </Badge>
+            <div className='min-w-0'>
+              <Link
+                data-anno='4-2'
+                href={`/proto/core/${locale}/studies/${study.id}`}
+                className='block truncate text-[17px] font-bold text-fg underline-offset-4 hover:underline'
+              >
+                {t(study.title, locale)}
+              </Link>
+              <p data-anno='4-5' className='mt-0.5 text-[13px] text-fg-muted'>
+                {durationOf(study, locale, wallTz)}
+              </p>
+            </div>
+            <span className='flex shrink-0 items-center gap-0.5'>
+              {discordOn && (
+                <ResourceIcon
+                  anno='4-6-2'
+                  label='디스코드'
+                  onClick={() => window.open(discordUrl(study), '_blank', 'noopener,noreferrer')}
+                >
+                  <DiscordGlyph size={16} />
+                </ResourceIcon>
               )}
+              {driveOn && (
+                <ResourceIcon
+                  anno='4-6-3'
+                  label='자료실'
+                  onClick={() => window.open(driveUrl(study), '_blank', 'noopener,noreferrer')}
+                >
+                  <FolderOpen size={16} strokeWidth={1.75} />
+                </ResourceIcon>
+              )}
+              <span data-anno='4-3' className='ml-1'>
+                {completed ? (
+                  <span className='inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill bg-warning-100 px-2 py-0.5 text-xs font-bold text-warning-700'>
+                    <Award size={12} strokeWidth={2.5} aria-hidden='true' />
+                    완주
+                  </span>
+                ) : (
+                  <Badge tone={left ? LEFT_BADGE.tone : LIFE_TONE[life]} dot>
+                    {left ? LEFT_BADGE.label : LIFE_LABEL[life]}
+                  </Badge>
+                )}
+              </span>
             </span>
           </div>
 
           {completed ? (
             <MissionClear book={book} />
           ) : (
-            <div data-anno='4-4' className='mt-3'>
-              <p className='text-[13px] font-semibold text-fg-muted'>다가오는 일정</p>
-              <div className='mt-1.5 flex flex-wrap items-center gap-2'>
-                <CalendarClock size={16} strokeWidth={2} className='shrink-0 text-brand' />
-                <span className='min-w-0 text-lg font-extrabold tracking-tight text-fg'>
-                  {upcomingOf(study, locale, wallTz)}
-                </span>
-                {nextMeeting && (
-                  <AttendActions
-                    study={study}
-                    meeting={nextMeeting}
-                    attendAnno='4-4-1'
-                    leaveAnno='4-4-2'
-                    cancelAnno='4-4-3'
-                    onChange={onAttendChange}
-                  />
-                )}
-              </div>
-            </div>
+            <p
+              data-anno='4-4'
+              className={cx(
+                'mt-3 tracking-tight',
+                ended ? 'text-sm font-semibold text-fg-muted' : 'text-lg font-extrabold text-fg',
+              )}
+            >
+              {upcomingOf(study, locale, wallTz)}
+            </p>
           )}
-          <p data-anno='4-5' className='mt-1.5 flex items-center gap-2 text-[13px] text-fg-muted'>
-            <Clock3 size={16} strokeWidth={1.75} className='shrink-0' />
-            {durationOf(study, locale, wallTz)}
-          </p>
-          <p data-anno='4-8' className='mt-1 text-sm text-fg-secondary'>
-            내 출석률{' '}
-            <span className={cx('tnum font-bold', book.rate === undefined ? 'text-fg-muted' : rateTone(book.rate))}>
-              {book.rate === undefined ? '—' : `${book.rate}%`}
-            </span>
-          </p>
 
-          <div data-anno='4-6' className='mt-4 flex flex-wrap gap-2'>
-            <Button
+          <div
+            data-anno='4-6'
+            className={cx(
+              'mt-3 overflow-hidden rounded-control border border-border-strong bg-bg',
+              bookOpen && 'bg-surface-1',
+            )}
+          >
+            <button
+              type='button'
               data-anno='4-6-1'
-              variant='secondary'
-              size='sm'
-              leadingIcon={<ClipboardList size={14} />}
-              trailingIcon={
-                <ChevronDown
-                  size={14}
-                  className={cx('transition-transform', bookOpen && 'rotate-180')}
-                  aria-hidden='true'
-                />
-              }
               disabled={!attendanceOn}
               title={attendanceOn ? undefined : '참여가 끝나 내 출석을 열 수 없습니다'}
               aria-expanded={bookOpen}
               aria-controls={panelId}
               onClick={onToggleBook}
+              className='flex w-full items-center gap-1.5 px-3 py-2 text-left text-sm font-bold text-fg-secondary hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:text-fg-muted'
             >
+              <ClipboardList size={14} aria-hidden='true' />
               출석 기록
-            </Button>
-            <Button
-              data-anno='4-6-2'
-              variant='secondary'
-              size='sm'
-              leadingIcon={<MessageCircle size={14} />}
-              disabled={!discordOn}
-              title={discordOn ? undefined : '참여가 끝나 채널에 들어갈 수 없습니다'}
-              onClick={() => window.open(discordUrl(study), '_blank', 'noopener,noreferrer')}
-            >
-              디스코드
-            </Button>
-            <Button
-              data-anno='4-6-3'
-              variant='secondary'
-              size='sm'
-              leadingIcon={<FolderOpen size={14} />}
-              disabled={!driveOn}
-              title={driveOn ? undefined : '참여가 끝나 자료실을 열 수 없습니다'}
-              onClick={() => window.open(driveUrl(study), '_blank', 'noopener,noreferrer')}
-            >
-              자료실
-            </Button>
+              {showRate && (
+                <span data-anno='4-8' className={cx('tnum', rateTone(book.rate!))}>
+                  {book.rate}%
+                </span>
+              )}
+              <ChevronDown
+                size={14}
+                className={cx('ml-auto shrink-0 transition-transform', bookOpen && 'rotate-180')}
+                aria-hidden='true'
+              />
+            </button>
+            {bookOpen && (
+              <div id={panelId} data-anno='4-6-1-1' className='border-t border-border px-3 pb-3 pt-2'>
+                <AttendanceGrid
+                  book={book}
+                  study={study}
+                  wallTz={wallTz}
+                  headAnno='4-6-1-1'
+                  cellAnno='4-6-1-2'
+                  actionMeetingId={nextMeeting?.id}
+                  action={
+                    nextMeeting ? (
+                      <AttendActions
+                        study={study}
+                        meeting={nextMeeting}
+                        attendAnno='4-6-1-3'
+                      />
+                    ) : undefined
+                  }
+                />
+              </div>
+            )}
           </div>
-
-          {bookOpen && (
-            <div id={panelId} data-anno='4-6-1-1' className='mt-3'>
-              <AttendanceGrid book={book} study={study} wallTz={wallTz} headAnno='4-6-1-1' cellAnno='4-6-1-2' />
-            </div>
-          )}
-
-          <ul data-anno='4-7' className='mt-4 flex flex-wrap gap-1.5'>
-            {tags.map((tag) => (
-              <li key={tag}>
-                <Badge>{tag}</Badge>
-              </li>
-            ))}
-          </ul>
         </div>
       </Card>
     </li>

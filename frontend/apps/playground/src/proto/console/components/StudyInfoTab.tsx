@@ -12,7 +12,6 @@ import {
 import type { Study } from '@studyclub/mock';
 import { Button, Modal } from '@studyclub/ui';
 
-
 /**
  * 정보 탭.
  *
@@ -29,6 +28,8 @@ export function StudyInfoTab({ study }: { study: Study }) {
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // 스터디가 바뀔 때만 폼을 되돌린다. 회차를 의존성에 넣으면 저장 직후 방금 만든 회차가
+  // 규칙으로 되읽혀 폼이 제자리에서 튄다.
   useEffect(() => {
     setForm(studyToForm(study));
     setErrors({});
@@ -53,12 +54,15 @@ export function StudyInfoTab({ study }: { study: Study }) {
 
   return (
     <div className='card px-6 py-5'>
-      <StudyForm value={form} errors={errors} onChange={change} />
+      <div data-anno='edit:1'>
+        <StudyForm value={form} errors={errors} onChange={change} />
+      </div>
 
       <div className='mt-6 flex items-center gap-3 border-t border-border pt-4'>
         {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
         <button
           type='button'
+          data-anno='edit:3'
           onClick={() => setConfirmDelete(true)}
           disabled={saving}
           className='h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
@@ -67,9 +71,11 @@ export function StudyInfoTab({ study }: { study: Study }) {
         </button>
         <div className='ml-auto flex items-center gap-3'>
           {saved && <span className='text-sm font-medium text-success-700'>저장되었습니다.</span>}
-          <Button onClick={save} loading={saving}>
-            저장
-          </Button>
+          <span data-anno='edit:2'>
+            <Button onClick={save} loading={saving}>
+              저장
+            </Button>
+          </span>
         </div>
       </div>
 

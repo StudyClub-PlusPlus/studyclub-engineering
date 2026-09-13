@@ -130,7 +130,7 @@ export function AttendanceTab({
       </div>
 
       <p className='mt-2 text-xs text-fg-muted'>
-        칸을 누르면 출석 → 지각 → 결석 → 휴가 → 미체크 순으로 바뀝니다. 출석률은 출석·지각을 같은 점수로 셉니다.
+        칸을 누르면 출석 → 지각 → 결석 → 휴가 → 미체크 순으로 바뀝니다. 출석률은 출석 1, 지각 0.5로 셉니다.
       </p>
     </div>
   );

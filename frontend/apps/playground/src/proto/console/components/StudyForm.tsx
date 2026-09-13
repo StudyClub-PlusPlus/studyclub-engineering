@@ -1,9 +1,8 @@
 'use client';
 
 import { tx } from '@console/lib/l10n';
-import { STUDY_CATEGORIES, toISODate, type Study } from '@studyclub/mock';
-import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
-
+import { STUDY_CATEGORIES, categoriesOf, toISODate, type Study } from '@studyclub/mock';
+import { Checkbox, Input, Textarea } from '@studyclub/ui';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -28,14 +27,28 @@ export const TITLE_RECOMMENDED = 24;
 /** 카드 한 줄 소개가 줄바꿈 없이 한 줄로 유지되는 최대 글자수. */
 export const SUMMARY_RECOMMENDED = 25;
 
+/**
+ * 한 스터디가 달 수 있는 주제 수.
+ *
+ * 셋을 넘기면 목록에서 스터디 이름보다 주제가 넓어지고, 「이 스터디가 무슨 분야인가」라는
+ * 질문에 답이 없어진다. 다 고르는 것은 아무것도 안 고른 것과 같다.
+ */
+export const CATEGORY_MAX = 3;
+
 export type StudyFormValues = {
   title: string;
   summary: string;
   description: string;
-  category: string;
+  /** 고른 주제. 한 스터디가 여러 분야에 걸칠 수 있어 목록으로 받는다. */
+  categories: string[];
   deadline: string;
   alwaysOpen: boolean;
-  publishAt: string;
+  /**
+   * 모집 때 알리는 일정 문구. 비워 두면 신청 화면이 **가능한 시간**을 대신 묻는다.
+   *
+   * 실제로 회차를 만드는 요일·시간은 여기가 아니라 **반**이 갖는다 (크루 탭에서 정한다).
+   * 모집 시점에는 반이 없기 때문이다 — 몇 시에 몇 개를 열지는 신청자 응답을 봐야 안다.
+   */
   schedule: string;
 };
 
@@ -43,10 +56,9 @@ export const EMPTY_FORM: StudyFormValues = {
   title: '',
   summary: '',
   description: '',
-  category: '',
+  categories: [],
   deadline: '',
   alwaysOpen: false,
-  publishAt: '',
   schedule: '',
 };
 
@@ -57,10 +69,9 @@ export function studyToForm(study: Study): StudyFormValues {
     title: tx(study.title),
     summary: tx(study.summary),
     description: tx(study.description),
-    category: study.category ?? '',
+    categories: categoriesOf(study),
     deadline,
     alwaysOpen: !deadline,
-    publishAt: toISODate(study.publish_at) ?? '',
     schedule: tx(study.schedule),
   };
 }
@@ -72,10 +83,8 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.title.trim()) e.title = '제목을 입력하세요.';
   else if (f.title.trim().length > 60) e.title = '60자 이내로 입력하세요.';
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
-  if (!f.category.trim()) e.category = '카테고리를 선택하세요.';
-  if (f.publishAt && f.deadline && f.publishAt > f.deadline) {
-    e.publishAt = '공개일이 모집 마감일보다 늦습니다.';
-  }
+  if (f.categories.length === 0) e.categories = '주제를 하나 이상 고르세요.';
+  else if (f.categories.length > CATEGORY_MAX) e.categories = `최대 ${CATEGORY_MAX}개까지 고를 수 있습니다.`;
   return e;
 }
 
@@ -101,24 +110,64 @@ export function StudyForm({
 
   return (
     <div className='flex flex-col gap-3'>
-      <div className='grid gap-3 sm:grid-cols-2'>
-        <div data-anno='2'>
-        <Select
-          label='카테고리'
+      {/*
+        **무엇을 만드는지부터 적고 날짜는 마지막에 받는다.** 제목·소개를 쓰기 전에 마감일을 묻는 것은
+        운영자가 아직 정하지 않은 것을 먼저 묻는 일이다.
+      */}
+      <div data-anno='2'>
+        <Input
+          label='제목'
           required
-          value={value.category}
-          onChange={(ev) => set('category', ev.target.value)}
-          error={errors.category}
-        >
-          <option value=''>선택하세요</option>
-          {STUDY_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-        </div>
-        <div data-anno='3' className='flex flex-col gap-1.5'>
+          value={value.title}
+          onChange={(ev) => set('title', ev.target.value)}
+          placeholder='AI 논문 스터디'
+          error={errors.title}
+          labelHint={<CharCount anno='2-1' len={value.title.trim().length} max={TITLE_RECOMMENDED} />}
+        />
+      </div>
+
+      <div data-anno='3'>
+        <Input
+          label='한 줄 소개'
+          required
+          value={value.summary}
+          onChange={(ev) => set('summary', ev.target.value)}
+          placeholder='AI 논문을 함께 읽고 토론합니다.'
+          error={errors.summary}
+          labelHint={<CharCount anno='3-1' len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
+        />
+      </div>
+
+      <div data-anno='4'>
+        <CategoryField
+          value={value.categories}
+          error={errors.categories}
+          onChange={(next) => set('categories', next)}
+        />
+      </div>
+
+      <div data-anno='5'>
+        <Textarea
+          label='상세 설명'
+          rows={4}
+          value={value.description}
+          onChange={(ev) => set('description', ev.target.value)}
+          placeholder='스터디 목표, 진행 방식, 준비물, 대상 등을 자유롭게 작성하세요.'
+        />
+      </div>
+
+      <div data-anno='6'>
+        <Input
+          label='진행 일정'
+          value={value.schedule}
+          onChange={(ev) => set('schedule', ev.target.value)}
+          placeholder='2026.11-2026.12'
+          labelHint={<span data-anno='6-1'>비우면 신청 시 가능한 시간을 받습니다</span>}
+        />
+      </div>
+
+      <div className='grid gap-3 sm:grid-cols-2'>
+        <div data-anno='7' className='flex flex-col gap-1.5'>
           <label htmlFor='deadline' className='text-sm font-medium text-neutral-800'>
             모집 마감일
           </label>
@@ -131,74 +180,82 @@ export function StudyForm({
               onChange={(ev) => set('deadline', ev.target.value)}
               className='h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)] disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-neutral-400'
             />
-            <div data-anno='3-1'>
-            <Checkbox
-              label='상시 모집'
-              checked={value.alwaysOpen}
-              onChange={(ev) => {
-                const on = ev.target.checked;
-                onChange({ ...value, alwaysOpen: on, deadline: on ? '' : value.deadline });
-              }}
-            />
+            <div data-anno='7-1'>
+              <Checkbox
+                label='상시 모집'
+                checked={value.alwaysOpen}
+                onChange={(ev) => {
+                  const on = ev.target.checked;
+                  onChange({ ...value, alwaysOpen: on, deadline: on ? '' : value.deadline });
+                }}
+              />
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div data-anno='4'>
-      <Input
-        label='제목'
-        required
-        value={value.title}
-        onChange={(ev) => set('title', ev.target.value)}
-        placeholder='AI 논문 스터디'
-        error={errors.title}
-        labelHint={<CharCount anno='4-1' len={value.title.trim().length} max={TITLE_RECOMMENDED} />}
-      />
+/**
+ * 주제 — 여러 개 고른다.
+ *
+ * 드롭다운을 쓰지 않는다. 고른 것이 접혀 보이지 않으면 몇 개를 골랐는지 매번 펼쳐 확인해야 한다.
+ */
+function CategoryField({
+  value,
+  error,
+  onChange,
+}: {
+  value: string[];
+  error?: string;
+  onChange: (next: string[]) => void;
+}) {
+  const full = value.length >= CATEGORY_MAX;
+
+  function toggle(c: string) {
+    onChange(value.includes(c) ? value.filter((x) => x !== c) : [...value, c]);
+  }
+
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <div className='flex items-baseline gap-2'>
+        <span className='text-sm font-medium text-neutral-800'>
+          주제
+          <span className='ml-0.5 text-error-600'>*</span>
+        </span>
+        <span data-anno='2-1' className='text-xs text-fg-muted'>
+          최대 {CATEGORY_MAX}개
+        </span>
+        <span className='tnum ml-auto text-xs text-fg-placeholder'>
+          {value.length}/{CATEGORY_MAX}
+        </span>
       </div>
 
-      <div data-anno='5'>
-      <Input
-        label='한 줄 소개'
-        required
-        value={value.summary}
-        onChange={(ev) => set('summary', ev.target.value)}
-        placeholder='AI 논문을 함께 읽고 토론합니다.'
-        error={errors.summary}
-        labelHint={<CharCount anno='5-1' len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
-      />
+      <div className='flex flex-wrap gap-1.5'>
+        {STUDY_CATEGORIES.map((c) => {
+          const on = value.includes(c);
+          return (
+            <button
+              key={c}
+              type='button'
+              aria-pressed={on}
+              // 이미 최대만큼 골랐으면 나머지는 누를 수 없다 — 눌러 놓고 거절당하는 것보다 낫다
+              disabled={!on && full}
+              onClick={() => toggle(c)}
+              className={`rounded-pill border px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                on
+                  ? 'border-brand bg-brand text-white'
+                  : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2 disabled:cursor-not-allowed disabled:text-fg-placeholder disabled:hover:bg-bg'
+              }`}
+            >
+              {c}
+            </button>
+          );
+        })}
       </div>
 
-      <div data-anno='6'>
-      <Textarea
-        label='상세 설명'
-        rows={4}
-        value={value.description}
-        onChange={(ev) => set('description', ev.target.value)}
-        placeholder='스터디 목표, 진행 방식, 준비물, 대상 등을 자유롭게 작성하세요.'
-      />
-      </div>
-
-      <div className='grid gap-3 sm:grid-cols-2'>
-        <div data-anno='7'>
-        <Input
-          label='진행 일정'
-          value={value.schedule}
-          onChange={(ev) => set('schedule', ev.target.value)}
-          placeholder='매주 목 20:00 · 8주 과정'
-        />
-        </div>
-        <div data-anno='8'>
-        <Input
-          label='공개일'
-          type='date'
-          value={value.publishAt}
-          onChange={(ev) => set('publishAt', ev.target.value)}
-          error={errors.publishAt}
-          labelHint={<span data-anno='8-1'>미설정 시 즉시 공개</span>}
-        />
-        </div>
-      </div>
+      {error && <p className='text-xs font-medium text-error-600'>{error}</p>}
     </div>
   );
 }
