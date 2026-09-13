@@ -6,9 +6,9 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { OnboardingConsent } from '@core/components/OnboardingConsent';
 import { TimeZonePicker } from '@core/components/TimeZonePicker';
-import { checkNicknameAvailability } from '@core/lib/nickname-availability';
 import { getUser, setUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
+import { checkNicknameAvailability } from '@core/lib/nickname-availability';
 import {
   clearDrafts,
   initialDraft,
@@ -21,8 +21,8 @@ import {
   type OnboardingRequest,
   type OnboardingScenario,
 } from '@core/lib/onboarding';
-import { Button, Checkbox, Input } from '@studyclub/ui';
-import { AlertCircle, ArrowRight, Check, ShieldCheck } from 'lucide-react';
+import { Button, Input } from '@studyclub/ui';
+import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 
 
 import { SPEC } from './spec';
@@ -95,9 +95,8 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
   const [draft, setDraft] = useState<OnboardingRequest>(() => initialDraft(scenario));
   const [touched, setTouched] = useState(['empty', 'nickname'].includes(scenario));
   const [composing, setComposing] = useState(false);
-  const [duplicate, setDuplicate] = useState(
-    scenario === 'duplicate' && initialDraft(scenario).nickname.toLowerCase() === 'studyclub',
-  );
+  // 중복은 2-1 상태 줄이 말한다. 시나리오로 미리 켜 두던 플래그는 더 필요하지 않다.
+  const [, setDuplicate] = useState(false);
   const [problem, setProblem] = useState<'server' | 'expired' | null>(
     scenario === 'server' ? 'server' : scenario === 'expired' ? 'expired' : null,
   );
@@ -120,13 +119,6 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
     if (field === 'nickname') setDuplicate(false);
   }
 
-  const nameProblem = duplicate
-    ? ko
-      ? '이미 사용 중인 닉네임이에요. 다른 이름을 입력해 주세요.'
-      : 'This nickname is already taken. Choose another one.'
-    : touched && !composing
-      ? nicknameError(draft.nickname, locale)
-      : undefined;
   /**
    * 닉네임 중복 검사.
    *
@@ -206,6 +198,8 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
   const disabled = pending || problem === 'expired';
 
   // 기다리던 검사가 끝났다. 쓸 수 있으면 이어서 보내고, 이미 쓰이는 이름이면 그 칸으로 돌려보낸다.
+  // `send` 는 매 렌더 새로 만들어지므로 의존성에 두지 않고 ref 로 최신 값만 참조한다.
+  const sendRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!awaitingCheck || nickStatus === 'checking') return;
     if (nickStatus === 'taken') {
@@ -214,13 +208,16 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
       return;
     }
     setAwaitingCheck(false);
-    send();
-  });
+    sendRef.current();
+  }, [awaitingCheck, nickStatus]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     send();
   }
+
+
+  sendRef.current = send;
 
   function send() {
     if (submitting.current || disabled) return;
