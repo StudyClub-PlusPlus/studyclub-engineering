@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PageHeader, TableCard } from '@console/components/ui';
-import { PERMISSIONS, ROLES, ROLE_LABEL, ROLE_PERMISSIONS, assignBlockReason, type RoleKey } from '@console/lib/roles';
+import { PERMISSIONS, ROLES, ROLE_LABEL, assignBlockReason, scopeOf, type RoleKey, type Scope } from '@console/lib/roles';
 import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
 import { Badge, Modal, type BadgeTone } from '@studyclub/ui';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Info, Minus } from 'lucide-react';
@@ -84,7 +84,7 @@ function RoleBadgeSelect({
 
   if (blocked) {
     return (
-      <span title={blocked} className='inline-flex cursor-not-allowed opacity-70'>
+      <span data-anno='role:1' title={blocked} className='inline-flex cursor-not-allowed opacity-70'>
         {badge}
       </span>
     );
@@ -95,6 +95,7 @@ function RoleBadgeSelect({
       <button
         ref={buttonRef}
         type='button'
+        data-anno='role:1'
         onMouseDown={(e) => e.stopPropagation()}
         onClick={() => {
           const r = buttonRef.current?.getBoundingClientRect();
@@ -112,6 +113,7 @@ function RoleBadgeSelect({
       {open && pos && (
         <div
           role='listbox'
+          data-anno='role:2'
           onMouseDown={(e) => e.stopPropagation()}
           style={{ top: pos.top, left: pos.left }}
           className='fixed z-50 w-40 rounded-card border border-border bg-surface p-1 shadow-lg'
@@ -160,7 +162,7 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
   if (total <= 1) return null;
   const cell = 'grid h-8 min-w-8 place-items-center rounded-control px-2 text-sm transition-colors';
   return (
-    <nav data-anno='6' className='mt-4 flex items-center justify-center gap-1'>
+    <nav data-anno='list:4' className='mt-4 flex items-center justify-center gap-1'>
       <button
         type='button'
         onClick={() => onChange(page - 1)}
@@ -206,7 +208,7 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
 function PermissionMatrixDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal open onClose={onClose} size='lg' title='역할별 기본 권한'>
-      <TableCard>
+      <TableCard anno='role:4'>
         <thead>
           <tr>
             <th className='w-[46%]'>권한</th>
@@ -221,24 +223,25 @@ function PermissionMatrixDialog({ onClose }: { onClose: () => void }) {
           {PERMISSIONS.map((p) => (
             <tr key={p.key}>
               <td className='font-semibold'>{p.label}</td>
-              {ROLES.map((r) => {
-                const on = ROLE_PERMISSIONS[r.key].includes(p.key);
-                return (
-                  <td key={r.key} className='text-center'>
-                    {on ? (
-                      <Check size={15} className='inline text-success-700' aria-label='허용' />
-                    ) : (
-                      <Minus size={15} className='inline text-fg-placeholder' aria-label='없음' />
-                    )}
-                  </td>
-                );
-              })}
+              {ROLES.map((r) => (
+                <td key={r.key} className='text-center'>
+                  <ScopeCell scope={scopeOf(r.key, p.key)} />
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </TableCard>
+      {/* 체크 표시만으로는 범위를 말할 수 없다 — 한 줄로 적는다 */}
+      <p className='mt-3 text-xs text-fg-muted'>네비게이터의 권한은 담당 스터디에 한한다.</p>
     </Modal>
   );
+}
+
+/** 권한 칸. 범위(전체·맡은 스터디)는 칸이 아니라 표 아래 한 줄이 말한다. */
+function ScopeCell({ scope }: { scope: Scope }) {
+  if (scope === 'none') return <Minus size={15} className='inline text-fg-placeholder' aria-label='없음' />;
+  return <Check size={15} className='inline text-success-700' aria-label='허용' />;
 }
 
 export function UsersTable() {
@@ -273,13 +276,13 @@ export function UsersTable() {
 
   return (
     <div>
-      <div data-anno='1'>
+      <div data-anno='list:1'>
         <PageHeader
           title='유저'
           action={
             <button
               type='button'
-              data-anno='2'
+              data-anno='role:3'
               onClick={() => setMatrixOpen(true)}
               title='역할별 기본 권한'
               aria-label='역할별 기본 권한'
@@ -291,7 +294,7 @@ export function UsersTable() {
         />
       </div>
 
-      <div data-anno='4' className='mb-3 flex flex-wrap items-center gap-3'>
+      <div data-anno='list:2' className='mb-3 flex flex-wrap items-center gap-3'>
         {/* 역할은 셋뿐이라 접어 둘 이유가 없다 — 펴 두면 지금 무엇으로 걸러져 있는지 한눈에 보인다 */}
         <nav className='inline-flex rounded-pill bg-surface-2 p-1'>
           {ROLE_FILTERS.map((o) => {
@@ -327,8 +330,8 @@ export function UsersTable() {
         <span className='tnum ml-auto text-sm text-fg-muted'>총 {filtered.length}명</span>
       </div>
 
-      <div data-anno='5'>
-        <TableCard>
+      <div>
+        <TableCard anno='list:3'>
           <thead>
             <tr>
               <th className='w-[18%] whitespace-nowrap'>이름</th>

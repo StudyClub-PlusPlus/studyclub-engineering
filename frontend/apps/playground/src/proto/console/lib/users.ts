@@ -21,7 +21,7 @@ export type ConsoleUser = {
   role: RoleKey;
   /** 가입일 (yyyy-mm-dd). */
   joinedAt: string;
-  /** 승인되어 참여 중인 스터디 id. */
+  /** 참여 중인 스터디 id. */
   studyIds: string[];
   status: UserStatus;
 };

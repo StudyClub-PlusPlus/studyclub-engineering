@@ -45,57 +45,90 @@ export const ROLE_LABEL: Record<RoleKey, string> = {
 export type PermissionKey =
   | 'study.create'
   | 'study.edit'
-  | 'crew.approve'
-  | 'study.alert'
-  | 'attendance.check'
+  | 'study.publish'
+  | 'crew.manage'
+  | 'notice.study'
   | 'attendance.edit'
-  | 'event.manage'
-  | 'notice.publish'
+  | 'event.create'
+  | 'event.edit'
+  | 'notice.site'
   | 'user.view'
   | 'user.role';
 
+/**
+ * 권한이 붙는 행위만 담는다.
+ *
+ * **출석 체크는 여기 없다.** 보이스룸에서 `/StudyStart` 로 그날 출석을 여는 일은 누구나 할 수 있어
+ * 역할로 가르지 않는다. 권한이 필요한 것은 **이미 기록된 출석을 고치는 일**(attendance.edit)이다.
+ */
 export const PERMISSIONS: { key: PermissionKey; label: string; desc: string }[] = [
+  // **대상으로 묶는다** — 스터디에 하는 일, 행사에 하는 일, 사이트와 사람에 하는 일 순.
+  // 역할 경계(네비게이터가 어디까지 되는가)로 묶지 않는다. 경계는 체크 열이 이미 말한다.
+  // 묶음 안에서는 개설 → 고치기 → 굴리기 → 알리기 순으로 둔다.
   { key: 'study.create', label: '스터디 개설', desc: '새 스터디를 만든다' },
   { key: 'study.edit', label: '스터디 정보 수정', desc: '제목·일정·모집 정보를 고친다' },
-  { key: 'crew.approve', label: '신청 승인 · 내보내기', desc: '스터디 참여 신청을 처리한다' },
-  { key: 'study.alert', label: '스터디 알럿 발송', desc: '스터디 디스코드 채널에 알림을 보낸다' },
-  {
-    key: 'attendance.check',
-    label: '출석 체크',
-    // 신규 방식: 보이스룸에서 네비게이터가 `/StudyStart` → 시작 10분 뒤 자동 체크.
-    // 현재는 참석자 화면을 캡처해 구글 시트에 옮겨 적는다.
-    desc: '디스코드 명령어로 출석을 기록한다',
-  },
+  // 공개는 정보 수정에 딸려 있지 않다. 딸려 있으면 담당 스터디를 굴리는 네비게이터가
+  // 사이트에 스터디를 세울 수 있게 된다 — 세우는 일은 캡틴의 판단이다.
+  { key: 'study.publish', label: '스터디 공개', desc: '등록한 스터디를 사용자 사이트에 세우거나 내린다' },
+  { key: 'crew.manage', label: '반 편성', desc: '반을 만들고 크루를 반에 넣거나 옮긴다' },
   { key: 'attendance.edit', label: '출석 현황 수정', desc: '기록된 출석을 고친다' },
-  { key: 'event.manage', label: '행사 관리', desc: '행사를 등록·수정한다' },
-  { key: 'notice.publish', label: '공지 발행', desc: '사용자 사이트에 공지를 올린다' },
-  { key: 'user.view', label: '유저 명단 열람', desc: '유저 목록과 참여 이력을 본다' },
+  { key: 'notice.study', label: '스터디 공지 발행', desc: '스터디 크루에게 공지를 보낸다 (디스코드 채널)' },
+  { key: 'event.create', label: '행사 개설', desc: '새 행사를 만든다' },
+  { key: 'event.edit', label: '행사 정보 수정', desc: '날짜·장소·모집 정보를 고친다' },
+  { key: 'notice.site', label: '사이트 공지 발행', desc: '사용자 사이트 공지사항에 글을 올린다' },
+  { key: 'user.view', label: '전체 유저 명단 열람', desc: '가입한 유저 전체 목록과 참여 이력을 본다' },
   { key: 'user.role', label: '역할 부여', desc: '다른 유저의 역할·권한을 바꾼다' },
 ];
 
 /**
- * 역할별 기본 권한.
+ * 권한이 미치는 범위.
+ *
+ * **네비게이터의 권한은 전부 「맡은 스터디」 안에서만 선다.** 허용·없음 두 값으로만 그리면
+ * 「스터디 정보 수정 ✓」이 모든 스터디를 고칠 수 있다는 뜻으로 읽힌다.
+ */
+export type Scope = 'all' | 'own' | 'none';
+
+export const SCOPE_LABEL: Record<Scope, string> = {
+  all: '전체',
+  own: '맡은 스터디',
+  none: '없음',
+};
+
+/**
+ * 역할별 기본 권한과 그 범위.
  *
  * `user.role` 은 캡틴에게만 있다 — 역할을 줄 수 있는 사람이 여럿이면 권한이 조용히 번진다.
  */
-export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
-  captain: [
-    'study.create',
-    'study.edit',
-    'crew.approve',
-    'study.alert',
-    'attendance.check',
-    'attendance.edit',
-    'event.manage',
-    'notice.publish',
-    'user.view',
-    'user.role',
-  ],
-  // 네비게이터는 **맡은 스터디를 굴리는 데 필요한 것**만 갖는다.
-  // 신청 승인·내보내기는 없다 — 누가 들어오는지는 캡틴이 정한다.
-  navigator: ['study.edit', 'study.alert', 'attendance.check', 'attendance.edit', 'user.view'],
-  crew: [],
+export const ROLE_PERMISSIONS: Record<RoleKey, Partial<Record<PermissionKey, Scope>>> = {
+  captain: {
+    'study.create': 'all',
+    'study.edit': 'all',
+    'study.publish': 'all',
+    'crew.manage': 'all',
+    'attendance.edit': 'all',
+    'event.create': 'all',
+    'event.edit': 'all',
+    'notice.study': 'all',
+    'notice.site': 'all',
+    'user.view': 'all',
+    'user.role': 'all',
+  },
+  // 네비게이터는 **맡은 스터디를 굴리는 데 필요한 것**만, 그 스터디 안에서만 갖는다.
+  // 반 편성은 없다 — 누가 어느 반에 들어가는지는 캡틴이 정한다.
+  // 전체 유저 명단도 없다 — 맡은 스터디의 크루 명단은 그 스터디를 굴리면 따라오는 것이라
+  // 권한으로 가르지 않는다. 권한이 필요한 것은 **가입자 전체**를 보는 일이다.
+  navigator: {
+    'study.edit': 'own',
+    'notice.study': 'own',
+    'attendance.edit': 'own',
+  },
+  crew: {},
 };
+
+/** 이 역할이 이 권한을 어디까지 갖는가. */
+export function scopeOf(role: RoleKey, key: PermissionKey): Scope {
+  return ROLE_PERMISSIONS[role][key] ?? 'none';
+}
 
 export const PERMISSION_LABEL: Record<PermissionKey, string> = Object.fromEntries(
   PERMISSIONS.map((p) => [p.key, p.label]),

@@ -11,7 +11,6 @@
  * 않고 마감일 유무로만 표현하므로, 등록 폼에서 마감일은 선택 입력이다.
  */
 
-
 import type { Locale, Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { recruitState, toISODate, type RecruitState } from '@studyclub/mock';
