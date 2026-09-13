@@ -24,6 +24,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -110,6 +112,7 @@ class AccountOnboardingIntegrationTest {
 
     private Map<String, Object> validRequest(String nickname) {
         return Map.of(
+                "age14Confirmed", true,
                 "termsOfServiceAgreed", true,
                 "privacyPolicyAgreed", true,
                 "marketingAgreed", false,
@@ -187,6 +190,45 @@ class AccountOnboardingIntegrationTest {
                 .contains("termsOfServiceAgreed");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"false", "null", "missing"})
+    @DisplayName("실패 - 만 14세 확인이 false·null·누락이면 가입 상태·동의·이벤트를 남기지 않는다")
+    void rejectsUnconfirmedAgeWithoutSideEffects(String ageInput) {
+        Account account = seedUnonboardedAccount();
+        String originalNickname = account.getNickname();
+        Map<String, Object> body = new HashMap<>(validRequest(uniqueNickname()));
+        setAgeInput(body, ageInput);
+
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, body),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        assertThat(response.getBody().get("errorMessage")).asString().contains("age14Confirmed");
+        Account saved = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(saved.getNickname()).isEqualTo(originalNickname);
+        assertThat(saved.getTimeZone()).isNull();
+        assertThat(saved.getOnboardingCompletedAt()).isNull();
+        assertThat(accountConsentRepository.findByAccountId(account.getId())).isEmpty();
+        assertThat(
+                        eventRecorder.received().stream()
+                                .filter(e -> e.accountId().equals(account.getId())))
+                .isEmpty();
+    }
+
+    private void setAgeInput(Map<String, Object> body, String input) {
+        switch (input) {
+            case "false" -> body.put("age14Confirmed", false);
+            case "null" -> body.put("age14Confirmed", null);
+            case "missing" -> body.remove("age14Confirmed");
+            default -> throw new IllegalArgumentException(input);
+        }
+    }
+
     @Test
     @DisplayName("실패 - 닉네임이 1자면 400 + errorCode INVALID_INPUT")
     void rejectsTooShortNickname() {
@@ -246,6 +288,52 @@ class AccountOnboardingIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - 사전 조회 후 다른 회원이 선점하면 최종 가입에서 409로 막는다")
+    void rejectsNicknameClaimedAfterAvailabilityCheck() {
+        Account account = seedUnonboardedAccount();
+        String nickname = uniqueNickname();
+        var availability =
+                rest.exchange(
+                        "/api/nicknames/availability?value={value}",
+                        HttpMethod.GET,
+                        authenticatedBody(account, null),
+                        Map.class,
+                        nickname);
+        assertThat(availability.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(availability.getBody()).containsEntry("available", true);
+
+        Account other = seedUnonboardedAccount();
+        var claimed =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(other, validRequest(nickname)),
+                        Map.class);
+        assertThat(claimed.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, validRequest(nickname)),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "CONFLICT");
+        assertThat(
+                        accountRepository
+                                .findById(account.getId())
+                                .orElseThrow()
+                                .getOnboardingCompletedAt())
+                .isNull();
+        assertThat(accountConsentRepository.findByAccountId(account.getId())).isEmpty();
+        assertThat(
+                        eventRecorder.received().stream()
+                                .filter(e -> e.accountId().equals(account.getId())))
+                .isEmpty();
+    }
+
+    @Test
     @DisplayName("멱등 - 이미 완료된 계정이 다시 호출하면 요청 바디를 무시하고 현재 상태 그대로 200")
     void idempotentOnSecondCall() {
         Account account = seedUnonboardedAccount();
@@ -275,12 +363,13 @@ class AccountOnboardingIntegrationTest {
         assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = {"false", "null", "missing"})
     @DisplayName(
-            "멱등 - 이미 완료된 계정은 요청 바디가 형식적으로 틀려도(약관 미동의 등) 검증 없이 그대로 200 "
+            "멱등 - 이미 완료된 계정은 연령 확인·약관 등 입력이 틀려도 검증 없이 그대로 200 "
                     + "— 로컬 기능 테스트에서 실제로 걸렸던 회귀: 컨트롤러의 @Valid 가 서비스의 멱등 체크보다 먼저 돌면 "
                     + "이미 완료된 계정도 400 을 받는다")
-    void idempotentEvenWithInvalidBody() {
+    void idempotentEvenWithInvalidBody(String ageInput) {
         Account account = seedUnonboardedAccount();
         String originalNickname = uniqueNickname();
         rest.exchange(
@@ -290,6 +379,7 @@ class AccountOnboardingIntegrationTest {
                 Map.class);
 
         Map<String, Object> invalidBody = new HashMap<>(validRequest("a"));
+        setAgeInput(invalidBody, ageInput);
         invalidBody.put("termsOfServiceAgreed", false);
         invalidBody.put("privacyPolicyAgreed", false);
         invalidBody.put("timeZone", "Not/AZone");
@@ -303,6 +393,11 @@ class AccountOnboardingIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("name", originalNickname);
+        assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
+        assertThat(
+                        eventRecorder.received().stream()
+                                .filter(e -> e.accountId().equals(account.getId())))
+                .hasSize(1);
     }
 
     @Test

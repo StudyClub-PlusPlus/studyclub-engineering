@@ -72,6 +72,7 @@ public class AccountOnboardingService {
             return AccountView.from(account);
         }
 
+        // 연령 확인도 최초 완료 때만 검증한다. 동의 기록과 달리 확인값을 따로 저장하지 않는다.
         validateOrThrow(request);
 
         if (applyOnboarding(account, request)) {
