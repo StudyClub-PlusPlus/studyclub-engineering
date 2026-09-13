@@ -18,7 +18,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '2',
       title: 'Google 로그인',
-      display: ['로그인 버튼 · 신규 회원 가입 안내'],
+      display: ['로그인 버튼. 이 화면의 유일한 주액션이다'],
       behavior: ['처리 중 버튼 잠금. 신규/미완료는 온보딩, 완료 회원은 원래 화면 또는 홈'],
       data: [
         '실서비스 POST /auth/social-login. user.onboardingCompletedAt으로 분기, suggestedNickname은 온보딩 제안값',
@@ -30,12 +30,6 @@ export const SPEC: ScreenSpec = {
       when: '취소 또는 실패 예시',
       display: ['오류와 다시 시도 안내'],
       behavior: ['다시 누르면 로그인 흐름 재개'],
-    },
-    {
-      n: '4',
-      title: '먼저 둘러보기',
-      display: ['스터디 목록 링크'],
-      policy: ['공개 목록은 가입 완료 전에도 열람 가능'],
     },
   ],
 };

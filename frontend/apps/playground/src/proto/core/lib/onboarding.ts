@@ -82,22 +82,48 @@ export function initialDraft(scenario: OnboardingScenario): OnboardingRequest {
   };
 }
 
-/** Mirrors NicknamePolicy: trim, UTF-16 length, Unicode letters/digits, reserved names. */
+/**
+ * 닉네임 형식 검사 — 서버 `NicknamePolicy` 를 그대로 옮긴 것.
+ *
+ * **틀린 이유는 방금 친 글자로 말한다.** 「허용되지 않은 문자」라고만 하면 스무 자 중 어느 것이
+ * 문제인지 찾아야 한다. 위반 문자를 따옴표로 감싸 보여주면 바로 알아본다.
+ *
+ * 다만 따옴표로 감쌀 수 없는 것이 둘 있다 — **공백**은 감싸도 안 보이고, **이모지**는
+ * 「'😀'는 사용할 수 없는 문자입니다」가 어색하다. 둘은 문장으로 따로 뺀다.
+ */
+const ALLOWED = /[\p{L}\p{Nd}_]/u;
+const EMOJI = /\p{Extended_Pictographic}/u;
+
+/** 위반 문자를 앞에서부터, 중복 없이. */
+function violations(value: string): string[] {
+  const found: string[] = [];
+  for (const char of value) {
+    if (ALLOWED.test(char) || found.includes(char)) continue;
+    found.push(char);
+  }
+  return found;
+}
+
 export function nicknameError(raw: string, locale: Locale): string | undefined {
   const value = raw.trim();
   const ko = locale === 'ko';
-  if (!value) return ko ? '닉네임을 입력해 주세요.' : 'Enter a nickname.';
-  if (value.length < 2 || value.length > 20) return ko ? '닉네임은 2~20자로 입력해 주세요.' : 'Use 2–20 characters.';
-  if (!/^[\p{L}\p{Nd}_]+$/u.test(value))
-    return ko
-      ? '글자·숫자·밑줄(_)만 사용할 수 있어요. 공백은 빼 주세요.'
-      : 'Use letters, numbers or underscores (_), without spaces.';
-  if (/^_+$/.test(value))
-    return ko ? '밑줄만으로 된 닉네임은 사용할 수 없어요.' : 'Your nickname cannot contain only underscores.';
+  if (!value) return ko ? '닉네임을 입력해 주세요' : 'Enter a nickname.';
+
+  // 문자부터 본다 — 길이를 먼저 말하면 지우고 다시 쳐도 같은 문자를 또 넣는다.
+  const bad = violations(value);
+  if (bad.length > 0) {
+    if (/\s/.test(raw)) return ko ? '공백은 사용할 수 없습니다' : 'Spaces are not allowed.';
+    if (bad.some((char) => EMOJI.test(char))) return ko ? '이모지는 사용할 수 없습니다' : 'Emoji are not allowed.';
+    if (bad.length > 3) return ko ? '사용할 수 없는 문자가 포함되어 있습니다' : 'Contains characters that are not allowed.';
+    const quoted = bad.map((char) => `'${char}'`).join(', ');
+    return ko ? `${quoted}는 사용할 수 없는 문자입니다` : `${quoted} cannot be used.`;
+  }
+
+  if (value.length < 2) return ko ? '2자 이상 입력해 주세요' : 'Use at least 2 characters.';
+  if (value.length > 20) return ko ? '20자 이내로 입력해 주세요' : 'Use 20 characters or fewer.';
+  if (/^_+$/.test(value)) return ko ? '밑줄만으로는 닉네임을 만들 수 없습니다' : 'Your nickname cannot be only underscores.';
   if (['운영진', '관리자', 'admin'].includes(value.toLowerCase()) || value.toLowerCase().startsWith('account_')) {
-    return ko
-      ? '사용할 수 없는 닉네임이에요. 다른 이름을 입력해 주세요.'
-      : 'This nickname is reserved. Choose another one.';
+    return ko ? '사용할 수 없는 닉네임입니다' : 'This nickname is reserved.';
   }
 }
 
