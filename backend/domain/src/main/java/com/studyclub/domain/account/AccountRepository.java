@@ -13,8 +13,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     /**
      * 온보딩 완료 처리 전용 — 행을 잠근다. 두 탭에서 동시에 완료 요청을 보내도 한쪽이 먼저 커밋할 때까지 다른 쪽을 블록시켜, {@code
-     * UserRegisteredEvent} 가 두 번 나가는 걸 막는다 (specs/user-onboarding/spec.md). 일반 조회(findById)에는 락을
-     * 걸지 않는다 — 로그인 등 훨씬 빈번한 경로의 동시성을 불필요하게 낮추지 않기 위해서다.
+     * UserRegisteredEvent} 가 두 번 나가는 걸 막는다 (specs/user-onboarding/spec.md). 일반 조회(findById)에는 락을 걸지
+     * 않는다 — 로그인 등 훨씬 빈번한 경로의 동시성을 불필요하게 낮추지 않기 위해서다.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Account a where a.id = :id")
