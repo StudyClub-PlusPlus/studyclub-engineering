@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { DragEvent } from 'react';
 
 import { tx } from '@console/lib/l10n';
 import {
@@ -20,15 +21,19 @@ import { DISCORD_NICKNAME_EXAMPLE, getDiscordNickname, getDisplayName } from '@c
 import { PREVIEW_USER } from '@core/lib/preview';
 import type { ApplicationQuestion, ApplicationQuestionType, Study } from '@studyclub/mock';
 import { Button, Checkbox, Input, Select } from '@studyclub/ui';
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 
 /**
  * 신청 폼 탭 — 캡틴이 이 스터디의 신청서 질문을 직접 설계한다.
  *
  * 구글 폼처럼 **편집 카드가 작성 화면과 같은 모양**이다. 따로 미리보기를 두지 않는다.
+ * 카드는 연필 아이콘(또는 카드 클릭)으로 편집 상태에 들어가고, 카드 밖 배경을 누르면 빠져나온다.
  *
  * TODO(api): 저장 대상 컬럼(STUDY_COHORT.APPLICATION_FORM)이 아직 없어 화면 상태로만 처리.
  */
+
+/** 선택 상태를 헤더 카드까지 통합해 다루기 위한 sentinel — 헤더도 카드 하나처럼 취급한다 */
+const HEADER_ID = '__form-header__';
 
 const DISCORD_QUESTION: ApplicationQuestion = {
   id: 'discord',
@@ -57,15 +62,22 @@ function readApplicantAccount() {
 
 export function ApplicationFormTab({ study }: { study: Study }) {
   const [questions, setQuestions] = useState<ApplicationQuestion[]>(() => extrasOf(study));
+  const [formTitle, setFormTitle] = useState(() => study.applicationFormTitle ?? tx(study.title));
+  const [formDescription, setFormDescription] = useState(
+    () => study.applicationFormDescription ?? tx(study.summary) ?? '',
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [focusOption, setFocusOption] = useState<{ id: string; index: number } | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [account, setAccount] = useState(() => ({
     name: PREVIEW_USER.name ?? '홍길동',
     email: PREVIEW_USER.email,
     discordNickname: undefined as string | undefined,
   }));
+  const cardRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
     const live = readApplicantAccount();
@@ -75,6 +87,17 @@ export function ApplicationFormTab({ study }: { study: Study }) {
       discordNickname: live.discordNickname,
     });
   }, []);
+
+  // 편집 중인 카드 밖 배경을 누르면 편집 상태를 빠져나온다.
+  useEffect(() => {
+    if (!selectedId) return;
+    function onPointerDown(ev: MouseEvent) {
+      const el = selectedId ? cardRefs.current[selectedId] : null;
+      if (el && !el.contains(ev.target as Node)) setSelectedId(null);
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [selectedId]);
 
   function update(id: string, patch: Partial<ApplicationQuestion>) {
     setQuestions((qs) => qs.map((q) => (q.id === id ? { ...q, ...patch } : q)));
@@ -94,16 +117,30 @@ export function ApplicationFormTab({ study }: { study: Study }) {
     setSaved(false);
   }
 
-  function move(id: string, dir: -1 | 1) {
+  function handleDragOver(ev: DragEvent, id: string) {
+    ev.preventDefault();
+    if (id !== dragOverId) setDragOverId(id);
+  }
+
+  function handleDrop(id: string) {
     setQuestions((qs) => {
-      const i = qs.findIndex((q) => q.id === id);
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= qs.length) return qs;
+      if (!dragId || dragId === id) return qs;
+      const from = qs.findIndex((q) => q.id === dragId);
+      const to = qs.findIndex((q) => q.id === id);
+      if (from < 0 || to < 0) return qs;
       const next = [...qs];
-      [next[i], next[j]] = [next[j], next[i]];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return next;
     });
     setSaved(false);
+    setDragId(null);
+    setDragOverId(null);
+  }
+
+  function handleDragEnd() {
+    setDragId(null);
+    setDragOverId(null);
   }
 
   function setOptions(id: string, options: string[]) {
@@ -148,122 +185,143 @@ export function ApplicationFormTab({ study }: { study: Study }) {
   return (
     <div className='mx-auto flex w-full max-w-2xl flex-col gap-3'>
       <div data-anno='form:1'>
-        <FormHeaderCard title={tx(study.title)} summary={tx(study.summary)} account={account} />
+        <FormHeaderCard
+          cardRef={(el) => {
+            cardRefs.current[HEADER_ID] = el;
+          }}
+          editable
+          selected={selectedId === HEADER_ID}
+          onSelect={() => setSelectedId(HEADER_ID)}
+          title={formTitle}
+          summary={formDescription}
+          onTitleChange={(v) => {
+            setFormTitle(v);
+            setSaved(false);
+          }}
+          onSummaryChange={(v) => {
+            setFormDescription(v);
+            setSaved(false);
+          }}
+          account={account}
+        />
       </div>
 
       <section data-anno='form:2' className={formCardClass()}>
         <DiscordNicknameField stored={account.discordNickname} disabled />
       </section>
 
-      <div data-anno='form:3' className='flex items-center justify-between gap-3'>
-        <p className='text-xs text-fg-muted'>카드를 누르면 질문을 고칩니다. 모양은 지원자가 보는 작성 화면과 같습니다.</p>
+      <div data-anno='form:3' className='flex justify-end'>
         <Button data-anno='form:3-1' size='sm' variant='secondary' leadingIcon={<Plus size={15} />} onClick={add}>
           질문 추가
         </Button>
       </div>
 
-      {questions.map((q, i) => {
+      {questions.map((q) => {
         const selected = selectedId === q.id;
+        const dragging = dragId === q.id;
+        const dragOver = !selected && dragOverId === q.id && dragId !== q.id;
         return (
           <section
             key={q.id}
+            ref={(el) => {
+              cardRefs.current[q.id] = el;
+            }}
             data-anno='form:3-2'
-            className={formCardClass(selected)}
+            className={`${formCardClass(selected)} ${dragging ? 'opacity-40' : ''} ${dragOver ? 'border-t-2 border-t-brand' : ''}`}
             onClick={() => setSelectedId(q.id)}
+            draggable={!selected}
+            onDragStart={() => setDragId(q.id)}
+            onDragOver={(ev) => handleDragOver(ev, q.id)}
+            onDrop={() => handleDrop(q.id)}
+            onDragEnd={handleDragEnd}
           >
             {selected ? (
-              <div className='flex items-start gap-2'>
-                <div className='flex flex-col gap-0.5 pt-1.5'>
-                  <button
-                    type='button'
-                    aria-label='위로 이동'
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      move(q.id, -1);
+              <div className='flex flex-col gap-3'>
+                <div className='grid gap-2 sm:grid-cols-[1fr_9rem]'>
+                  <Input
+                    autoFocus
+                    value={q.label}
+                    onChange={(ev) => update(q.id, { label: ev.target.value })}
+                    placeholder={`질문 ${questions.indexOf(q) + 1}`}
+                  />
+                  <Select
+                    value={q.type}
+                    onChange={(ev) => {
+                      const type = ev.target.value as ApplicationQuestionType;
+                      update(q.id, {
+                        type,
+                        options: needsOptions(type) ? seedOptions(q.options) : undefined,
+                        allowOther: allowsOther(type) ? q.allowOther : undefined,
+                      });
                     }}
-                    disabled={i === 0}
-                    className='text-fg-muted transition-colors hover:text-fg disabled:opacity-30'
                   >
-                    <ChevronUp size={14} />
-                  </button>
-                  <button
-                    type='button'
-                    aria-label='아래로 이동'
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      move(q.id, 1);
-                    }}
-                    disabled={i === questions.length - 1}
-                    className='text-fg-muted transition-colors hover:text-fg disabled:opacity-30'
-                  >
-                    <ChevronDown size={14} />
-                  </button>
+                    {QUESTION_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {TYPE_LABEL[t]}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
 
-                <div className='flex min-w-0 flex-1 flex-col gap-3'>
-                  <div className='grid gap-2 sm:grid-cols-[1fr_9rem]'>
-                    <Input
-                      value={q.label}
-                      onChange={(ev) => update(q.id, { label: ev.target.value })}
-                      placeholder={`질문 ${i + 1}`}
-                    />
-                    <Select
-                      value={q.type}
-                      onChange={(ev) => {
-                        const type = ev.target.value as ApplicationQuestionType;
-                        update(q.id, {
-                          type,
-                          options: needsOptions(type) ? seedOptions(q.options) : undefined,
-                          allowOther: allowsOther(type) ? q.allowOther : undefined,
-                        });
-                      }}
-                    >
-                      {QUESTION_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {TYPE_LABEL[t]}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
+                <Input
+                  value={q.description ?? ''}
+                  onChange={(ev) => update(q.id, { description: ev.target.value })}
+                  placeholder='설명 (선택)'
+                />
 
-                  {needsOptions(q.type) ? (
-                    <OptionEditor
-                      type={q.type}
-                      options={q.options ?? ['옵션 1']}
-                      allowOther={Boolean(q.allowOther)}
-                      focusIndex={focusOption?.id === q.id ? focusOption.index : undefined}
-                      onChange={(index, value) => changeOption(q.id, index, value)}
-                      onAdd={() => addOption(q.id)}
-                      onAddAfter={(index) => addOption(q.id, index)}
-                      onRemove={(index) => removeOption(q.id, index)}
-                      onToggleOther={(on) => update(q.id, { allowOther: on })}
-                    />
-                  ) : (
-                    <QuestionFillView q={q} ghost />
-                  )}
+                {needsOptions(q.type) ? (
+                  <OptionEditor
+                    type={q.type}
+                    options={q.options ?? ['옵션 1']}
+                    allowOther={Boolean(q.allowOther)}
+                    focusIndex={focusOption?.id === q.id ? focusOption.index : undefined}
+                    onChange={(index, value) => changeOption(q.id, index, value)}
+                    onAdd={() => addOption(q.id)}
+                    onAddAfter={(index) => addOption(q.id, index)}
+                    onRemove={(index) => removeOption(q.id, index)}
+                    onToggleOther={(on) => update(q.id, { allowOther: on })}
+                  />
+                ) : (
+                  <QuestionFillView q={q} ghost />
+                )}
 
-                  <div className='flex items-center justify-between border-t border-border pt-3'>
-                    <Checkbox
-                      label='필수 응답'
-                      checked={q.required}
-                      onChange={(ev) => update(q.id, { required: ev.target.checked })}
-                    />
-                    <button
-                      type='button'
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        remove(q.id);
-                      }}
-                      className='inline-flex items-center gap-1 text-xs font-semibold text-error-600 hover:underline'
-                    >
-                      <Trash2 size={13} /> 삭제
-                    </button>
-                  </div>
+                <div className='flex items-center justify-between border-t border-border pt-3'>
+                  <Checkbox
+                    label='필수 응답'
+                    checked={q.required}
+                    onChange={(ev) => update(q.id, { required: ev.target.checked })}
+                  />
+                  <button
+                    type='button'
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      remove(q.id);
+                    }}
+                    className='inline-flex items-center gap-1 text-xs font-semibold text-error-600 hover:underline'
+                  >
+                    <Trash2 size={13} /> 삭제
+                  </button>
                 </div>
               </div>
             ) : (
-              <div className='pointer-events-none'>
-                <QuestionFillView q={q} disabled />
+              <div className='flex items-start gap-2'>
+                <span className='mt-1 shrink-0 cursor-grab text-fg-muted' aria-hidden>
+                  <GripVertical size={15} />
+                </span>
+                <div className='pointer-events-none min-w-0 flex-1'>
+                  <QuestionFillView q={q} disabled />
+                </div>
+                <button
+                  type='button'
+                  aria-label='질문 수정'
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    setSelectedId(q.id);
+                  }}
+                  className='shrink-0 text-fg-muted transition-colors hover:text-fg'
+                >
+                  <Pencil size={15} />
+                </button>
               </div>
             )}
           </section>

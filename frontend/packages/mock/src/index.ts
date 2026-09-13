@@ -81,6 +81,7 @@ export type ApplicationQuestion = {
   options?: string[]; // radio · checkbox · select 일 때
   allowOther?: boolean; // radio · checkbox — 「기타」 자유 입력
   placeholder?: string; // text · textarea 안내 예시
+  description?: string; // 지원자에게 보여줄 부가 설명 (선택)
 };
 
 // 주차별 커리큘럼.
@@ -125,6 +126,8 @@ export type Study = {
   weeks?: StudyWeek[]; // 주차별 커리큘럼
   recruitment?: Recruitment; // 모집 모델 (별도)
   applicationForm?: ApplicationQuestion[]; // 캡틴이 설계한 신청 폼 추가 질문. 없으면 계정 정보 + 디스코드 서버 별명만 받음
+  applicationFormTitle?: string; // 신청 폼 제목. 없으면 스터디 제목을 그대로 쓴다
+  applicationFormDescription?: string; // 신청 폼 설명. 마크다운(**굵게**·*기울임*·[링크](url)·목록) 허용. 없으면 스터디 소개를 그대로 쓴다
   reviews?: StudyReview[]; // 후기
   stats?: StudyStats; // 참여 통계 (마스킹)
   past_participants?: L10n[]; // 마스킹된 참여자 (예: "김OO / SWE")

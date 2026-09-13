@@ -199,8 +199,8 @@ export function ApplyDialog({
           <div className='flex flex-col gap-3'>
             <div data-anno='apply:1'>
               <FormHeaderCard
-                title={t(study.title, locale)}
-                summary={t(study.summary, locale)}
+                title={study.applicationFormTitle ?? t(study.title, locale)}
+                summary={study.applicationFormDescription ?? t(study.summary, locale)}
                 account={{ name: accountName, email: accountEmail }}
               />
             </div>
