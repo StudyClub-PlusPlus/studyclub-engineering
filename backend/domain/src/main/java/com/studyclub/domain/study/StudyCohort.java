@@ -51,7 +51,7 @@ public class StudyCohort extends BaseEntity {
 
     private Integer capacity;
 
-    @Column(name = "RECRUIT_DEADLINE", nullable = false)
+    @Column(name = "RECRUIT_DEADLINE")
     private Instant recruitDeadline;
 
     @Column(name = "START_DATE")
