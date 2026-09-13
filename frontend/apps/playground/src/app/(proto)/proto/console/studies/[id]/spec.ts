@@ -157,8 +157,17 @@ export const FORM_SPEC: ScreenSpec = {
     {
       n: '1',
       title: '폼 헤더 카드',
-      display: ['스터디 제목 · 소개 · 예시 지원자 홍길동 / gildongHong@example.com'],
-      policy: ['미리보기 칸을 따로 두지 않는다. 편집 카드 자체가 지원자가 보는 작성 화면과 같은 모양이다'],
+      display: ['설문지 제목 · 설명 · 예시 지원자 홍길동 / gildongHong@example.com'],
+      behavior: [
+        '연필 아이콘(또는 카드 클릭) → 제목·설명을 직접 고치는 편집 상태로 펼쳐진다',
+        '카드 밖 배경을 누르면 편집 상태를 빠져나오고 값이 반영된 모양으로 되돌아간다',
+      ],
+      policy: [
+        '미리보기 칸을 따로 두지 않는다. 편집 카드 자체가 지원자가 보는 작성 화면과 같은 모양이다',
+        '제목·설명 기본값은 스터디 제목·소개다. 캡틴이 고치면 그 값을 우선한다',
+        '설명에는 마크다운(#~###### 제목·**굵게**·*기울임*·~~취소선~~·`코드`·[링크](url)·순서/비순서 목록·펜스 코드 블록)을 쓸 수 있다 — 지원자 화면에도 그대로 렌더링된다',
+      ],
+      data: ['Study.applicationFormTitle · applicationFormDescription'],
     },
     {
       n: '2',
@@ -183,14 +192,17 @@ export const FORM_SPEC: ScreenSpec = {
     {
       n: '3-2',
       title: '질문 카드',
-      display: ['카드를 누르면 편집 상태로 펼쳐진다. 질문 텍스트 · 타입(단답형/장문형/객관식/체크박스/드롭다운) · 필수 여부'],
+      display: [
+        '카드 우측 연필 아이콘(또는 카드 클릭)을 누르면 편집 상태로 펼쳐진다. 질문 텍스트 · 설명(선택) · 타입(단답형/장문형/객관식/체크박스/드롭다운) · 필수 여부',
+      ],
       behavior: [
-        '위/아래 화살표로 순서 변경',
+        '접힌 카드를 좌측 그립 아이콘으로 눌러 끌면 드래그 앤 드롭으로 순서를 바꾼다 — 편집 중인 카드는 끌 수 없다',
+        '카드 밖 배경을 누르면 편집 상태를 빠져나온다',
         '객관식·체크박스·드롭다운은 선택지를 한 줄씩 추가·수정·삭제한다. 옵션 입력 중 Enter 는 바로 아래에 새 옵션을 넣는다',
         '객관식·체크박스는 「기타」 자유 입력을 켤 수 있다',
         '삭제 누르면 그 질문만 목록에서 제거',
       ],
-      data: ['ApplicationQuestion[] — id/label/type/required/options/allowOther/placeholder'],
+      data: ['ApplicationQuestion[] — id/label/type/required/options/allowOther/placeholder/description'],
     },
     {
       n: '4',
