@@ -32,7 +32,7 @@ public class ParticipantHubController {
     @GetMapping("/studies")
     public ParticipantHubOverviewResponse getParticipantHubOverview(Authentication authentication) {
         return participantHubQueryService.getParticipantHubOverview(
-                authenticatedEmail(authentication));
+                authenticatedAccountId(authentication));
     }
 
     @Operation(summary = "내 수강 스터디 상세 조회")
@@ -40,13 +40,13 @@ public class ParticipantHubController {
     public ParticipatingStudyCohortDetailResponse getParticipatingStudyCohortDetail(
             @PathVariable Long cohortId, Authentication authentication) {
         return participantHubQueryService.getParticipatingStudyCohortDetail(
-                authenticatedEmail(authentication), cohortId);
+                authenticatedAccountId(authentication), cohortId);
     }
 
-    private String authenticatedEmail(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null) {
+    private Long authenticatedAccountId(Authentication authentication) {
+        if (authentication == null || authentication.getDetails() == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        return authentication.getName();
+        return Long.valueOf((String) authentication.getDetails());
     }
 }
