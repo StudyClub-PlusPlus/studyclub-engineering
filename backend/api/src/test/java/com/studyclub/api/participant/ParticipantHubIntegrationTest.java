@@ -3,12 +3,11 @@ package com.studyclub.api.participant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.api.auth.JwtService;
-import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +19,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * 참가자 허브는 이제 {@code @RequireOnboarding} 가드 대상이다 — 온보딩을 완료한 ACCOUNT가 DB에 실제로 있어야 통과한다. 예전에는 mock
@@ -29,32 +29,42 @@ import org.springframework.http.HttpStatus;
 @AutoConfigureTestRestTemplate
 class ParticipantHubIntegrationTest {
 
+    // 목업 대상은 mock 의 MOCK_ACCOUNT_ID, 나머지는 이 테스트만 쓰는 고정 id
+    private static final Long ANOTHER_ACCOUNT_ID = 1001L;
+    private static final Long INCOMPLETE_ACCOUNT_ID = 1002L;
+
     @Autowired TestRestTemplate rest;
 
     @Autowired JwtService jwt;
 
     @Autowired AccountRepository accountRepository;
 
+    @Autowired JdbcTemplate jdbcTemplate;
+
     @BeforeEach
-    void seedOnboardedAccounts() {
-        onboardedAccount("member@example.com");
-        onboardedAccount("another@example.com");
+    void seedAccounts() {
+        insertAccount(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID, "member@example.com", true);
+        insertAccount(ANOTHER_ACCOUNT_ID, "another@example.com", true);
+        insertAccount(INCOMPLETE_ACCOUNT_ID, "onboarding-incomplete@example.com", false);
     }
 
-    private void onboardedAccount(String email) {
-        accountRepository
-                .findByEmail(email)
-                .orElseGet(
-                        () -> {
-                            String nickname = uniqueNickname();
-                            Account account = new Account(email, nickname, null, SystemRole.MEMBER);
-                            account.completeOnboarding(nickname, "Asia/Seoul", Instant.now());
-                            return accountRepository.save(account);
-                        });
-    }
-
-    private String uniqueNickname() {
-        return "hub_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    private void insertAccount(Long id, String email, boolean onboarded) {
+        if (accountRepository.findById(id).isPresent()) {
+            return;
+        }
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO ACCOUNT (ID, EMAIL, NICKNAME, SYSTEM_ROLE, TIME_ZONE,"
+                        + " ONBOARDING_COMPLETED_AT, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                id,
+                email,
+                "hub_" + id,
+                SystemRole.MEMBER.name(),
+                onboarded ? "Asia/Seoul" : null,
+                onboarded ? now : null,
+                now,
+                now);
     }
 
     @Test
@@ -64,7 +74,7 @@ class ParticipantHubIntegrationTest {
                 rest.exchange(
                         "/api/me/studies",
                         HttpMethod.GET,
-                        authenticatedRequest("member@example.com"),
+                        authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -84,7 +94,7 @@ class ParticipantHubIntegrationTest {
                 rest.exchange(
                         "/api/me/study-cohorts/301",
                         HttpMethod.GET,
-                        authenticatedRequest("member@example.com"),
+                        authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -99,7 +109,7 @@ class ParticipantHubIntegrationTest {
                 rest.exchange(
                         "/api/me/study-cohorts/291",
                         HttpMethod.GET,
-                        authenticatedRequest("member@example.com"),
+                        authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -123,7 +133,7 @@ class ParticipantHubIntegrationTest {
                 rest.exchange(
                         "/api/me/study-cohorts/303",
                         HttpMethod.GET,
-                        authenticatedRequest("member@example.com"),
+                        authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -137,7 +147,7 @@ class ParticipantHubIntegrationTest {
                 rest.exchange(
                         "/api/me/study-cohorts/999",
                         HttpMethod.GET,
-                        authenticatedRequest("member@example.com"),
+                        authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -151,7 +161,7 @@ class ParticipantHubIntegrationTest {
                 rest.exchange(
                         "/api/me/studies",
                         HttpMethod.GET,
-                        authenticatedRequest("another@example.com"),
+                        authenticatedRequest(ANOTHER_ACCOUNT_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -165,7 +175,7 @@ class ParticipantHubIntegrationTest {
                 rest.exchange(
                         "/api/me/study-cohorts/301",
                         HttpMethod.GET,
-                        authenticatedRequest("another@example.com"),
+                        authenticatedRequest(ANOTHER_ACCOUNT_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -175,26 +185,22 @@ class ParticipantHubIntegrationTest {
     @Test
     @DisplayName("실패 - 온보딩 미완료 계정은 회원 전용 API 에서 403 ONBOARDING_REQUIRED 를 받는다")
     void rejectsAccountThatHasNotCompletedOnboarding() {
-        String email = "onboarding-incomplete@example.com";
-        accountRepository
-                .findByEmail(email)
-                .orElseGet(
-                        () ->
-                                accountRepository.save(
-                                        new Account(
-                                                email, uniqueNickname(), null, SystemRole.MEMBER)));
-
         var response =
                 rest.exchange(
-                        "/api/me/studies", HttpMethod.GET, authenticatedRequest(email), Map.class);
+                        "/api/me/studies",
+                        HttpMethod.GET,
+                        authenticatedRequest(INCOMPLETE_ACCOUNT_ID),
+                        Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).containsEntry("errorCode", "ONBOARDING_REQUIRED");
     }
 
-    private HttpEntity<Void> authenticatedRequest(String email) {
+    private HttpEntity<Void> authenticatedRequest(Long accountId) {
+
+        String email = accountRepository.findById(accountId).orElseThrow().getEmail();
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(jwt.issueAccess("1", email));
+        headers.setBearerAuth(jwt.issueAccess(String.valueOf(accountId), email));
         return new HttpEntity<>(headers);
     }
 }

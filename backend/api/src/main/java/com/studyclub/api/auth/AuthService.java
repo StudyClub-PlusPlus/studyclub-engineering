@@ -73,10 +73,10 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public AccountView me(String email) {
+    public AccountView me(Long accountId) {
         Account account =
                 accountRepository
-                        .findByEmail(email.toLowerCase())
+                        .findById(accountId)
                         .orElseThrow(
                                 () ->
                                         new BusinessException(

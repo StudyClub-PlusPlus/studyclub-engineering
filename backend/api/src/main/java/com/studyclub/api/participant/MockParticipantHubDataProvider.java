@@ -20,12 +20,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class MockParticipantHubDataProvider implements ParticipantHubDataProvider {
 
-    private static final String MOCK_ACCOUNT_EMAIL = "member@example.com";
+    // 테스트가 같은 id 로 계정을 심어야 해서 package-private
+    static final Long MOCK_ACCOUNT_ID = 1000L;
     private static final Set<Long> KNOWN_COHORT_IDS = Set.of(291L, 301L, 302L, 303L, 304L);
 
     @Override
-    public ParticipantHubOverviewResponse getParticipantHubOverview(String accountEmail) {
-        if (!MOCK_ACCOUNT_EMAIL.equalsIgnoreCase(accountEmail)) {
+    public ParticipantHubOverviewResponse getParticipantHubOverview(Long accountId) {
+        if (!MOCK_ACCOUNT_ID.equals(accountId)) {
             return new ParticipantHubOverviewResponse(
                     List.of(), List.of(), List.of(), List.of(), List.of());
         }
@@ -91,8 +92,8 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
 
     @Override
     public Optional<ParticipatingStudyCohortDetailResponse> findParticipatingStudyCohortDetail(
-            String accountEmail, Long cohortId) {
-        if (!MOCK_ACCOUNT_EMAIL.equalsIgnoreCase(accountEmail)) {
+            Long accountId, Long cohortId) {
+        if (!MOCK_ACCOUNT_ID.equals(accountId)) {
             return Optional.empty();
         }
         if (cohortId == 301L) {

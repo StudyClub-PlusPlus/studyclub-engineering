@@ -37,7 +37,7 @@ public class StudyBookmarkController {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "limit 은 1 이상 100 이하여야 합니다.");
         }
 
-        Long accountId = Long.valueOf((String) authentication.getDetails());
+        Long accountId = (Long) authentication.getPrincipal();
         StudyBookmarkService.Result result =
                 studyBookmarkService.getStudyBookmarks(accountId, offset, limit);
         return ResponseEntity.status(result.httpStatus()).body(result.response());
