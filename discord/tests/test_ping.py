@@ -36,7 +36,7 @@ def test_ping_posts_to_configured_channel():
     response = _client(bot).post("/api/v1/ping")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "sent", "channel_id": 42, "message_id": 7}
+    assert response.json() == {"status": "sent", "channel_id": "42", "message_id": "7"}
     bot.get_channel.assert_called_once_with(42)
     channel.send.assert_awaited_once_with("ping from client")
 

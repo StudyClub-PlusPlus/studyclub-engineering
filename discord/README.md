@@ -64,7 +64,7 @@ curl -X POST http://localhost:4800/api/v1/ping
 ```
 
 ```json
-{"status": "sent", "channel_id": 42, "message_id": 1234567890}
+{"status": "sent", "channel_id": "42", "message_id": "1234567890"}
 ```
 
 Failures are explicit: `503` when the bot is disabled or still connecting,
