@@ -3,10 +3,10 @@
 import { useMemo, useState } from 'react';
 
 import type { Locale, Operator, Study } from '@core/lib/content';
-import { m } from '@core/lib/i18n';
+import { m, t } from '@core/lib/i18n';
 import { recruitState } from '@core/lib/recruit';
 import { toISODate } from '@studyclub/mock';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -148,6 +148,15 @@ export function StudyBrowser({
   }, [studies, query, category, timezone]);
 
 
+  const hasQuery = query.trim().length > 0;
+  const commitSearch = () => setQuery(input);
+  const clearSearch = () => {
+    setInput('');
+    setQuery('');
+    setRecruitment('all');
+    setCategory('all');
+    setTimezone('all');
+  };
 
   const filtered = useMemo(() => (recruitment === 'all' ? base : base.filter((s) => statusOf(s) === recruitment)), [base, recruitment]);
 
