@@ -130,7 +130,8 @@ UPDATE notification SET status = 'PROCESSING', locked_at = UTC_TIMESTAMP() WHERE
 지금부터 이 모양으로 둔다.
 
 - 클레임(SELECT+UPDATE)과 실제 SES 호출은 **반드시 다른 트랜잭션**이다 — 네트워크 호출을 트랜잭션 안에 넣지 않는다.
-- `(status, created_at)` 인덱스 필요 — 없으면 폴링마다 풀스캔.
+- 인덱스 초기 후보는 `(status, created_at)` — 없으면 폴링마다 풀스캔. 다만 이건 후보일 뿐, 최종 인덱스는
+  구현 시 실제 데이터로 실행 계획(EXPLAIN)을 보고 정한다(리뷰 코멘트).
 - **배치 크기 = 100** (확정). 폴링 주기(30초)보다 배치가 커서 밀리면 다음 폴링에서 나머지를 그대로 이어서 클레임하므로(SKIP LOCKED), 100건이 30초 안에 다 안 나가도 유실되지 않는다.
 
 ### 재수거(reclaim) 타임아웃 — 5분 권장
@@ -213,10 +214,17 @@ stateDiagram-v2
 "백오피스에서 템플릿과 발송 주소(수신처)를 볼 수 있어야 한다"는 요구를 읽기 전용 API 2개로 반영한다.
 **편집·재발송은 이번 구현에 없다** — 둘 다 조회만.
 
-인증은 기존 백오피스 로그인(`POST /auth/social-login`, `platform=BACK_OFFICE`, allowlist 이메일)을
-그대로 쓴다 — 새 권한 체계를 만들지 않는다. **결정 — 지금 있는 백오피스 allowlist(운영진)로 충분하다.**
-스터디 캡틴용 별도 권한은 두지 않는다. 알림 설계 문서 원안(§1)의 "캡틴만 열람"은 이 스펙에서는 따르지
-않는다 — 웰컴메일은 특정 스터디에 속하지 않는 계정 단위 알림이라 캡틴이 볼 이유가 약하다.
+인증은 기존 백오피스 로그인 플로우(`POST /auth/social-login`, `platform=BACK_OFFICE`)를 그대로 쓴다 —
+이 스펙이 새 권한 체계를 만들지는 않는다. 다만 그 로그인의 인가 방식 자체가 지금의 이메일 allowlist에서
+`ACCOUNT.SYSTEM_ROLE = ADMIN` 검사로 바뀔 예정이다(리뷰 코멘트, 이 스펙과 별개로 진행되는 변경) — 이
+두 엔드포인트는 그 변경이 어떤 시점에 나가든 **그때의 백오피스 인가 방식을 그대로 따른다**는 것이
+이번 결정이다. 스터디 캡틴용 별도 권한은 두지 않는다. 알림 설계 문서 원안(§1)의 "캡틴만 열람"은 이
+스펙에서는 따르지 않는다 — 웰컴메일은 특정 스터디에 속하지 않는 계정 단위 알림이라 캡틴이 볼 이유가
+약하다.
+
+`SYSTEM_ROLE = ADMIN` 검사가 로그인 시점이 아니라 요청마다 걸리는 역할 검사로 바뀌면, "로그인은 됐지만
+ADMIN이 아님"과 "토큰 자체가 없음/만료"를 구분해야 한다 — 아래 각 엔드포인트의 에러 응답에 `403
+FORBIDDEN`을 추가했다.
 
 ### `GET /back-office/notification-templates`
 
@@ -249,7 +257,12 @@ stateDiagram-v2
 | updatedAt | String | N | ISO-8601 UTC | NOTIFICATION_TEMPLATE.UPDATED_AT |
 | updatedByAdminId | Long | Y | 편집 화면이 없어 이번 구현에서는 항상 `null` | NOTIFICATION_TEMPLATE.UPDATED_BY_ADMIN_ID |
 
-**Error Responses**: `401 UNAUTHORIZED` — 토큰 없음/만료 또는 allowlist 밖.
+**Error Responses**:
+
+| 상태 | errorCode | 조건 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 토큰 없음/만료 |
+| 403 | FORBIDDEN | 로그인은 됐지만 백오피스 인가 조건(현재 allowlist, 추후 `SYSTEM_ROLE = ADMIN`)을 만족하지 않음 |
 
 ### `GET /back-office/notifications`
 
@@ -289,7 +302,12 @@ stateDiagram-v2
 | sentAt | String | Y | ISO-8601 UTC | NOTIFICATION.SENT_AT |
 | createdAt | String | N | ISO-8601 UTC | NOTIFICATION.CREATED_AT |
 
-**Error Responses**: `401 UNAUTHORIZED` — 토큰 없음/만료 또는 allowlist 밖.
+**Error Responses**:
+
+| 상태 | errorCode | 조건 |
+|---|---|---|
+| 401 | UNAUTHORIZED | 토큰 없음/만료 |
+| 403 | FORBIDDEN | 로그인은 됐지만 백오피스 인가 조건(현재 allowlist, 추후 `SYSTEM_ROLE = ADMIN`)을 만족하지 않음 |
 
 **결정 — `recipientValue` 마스킹 예외는 두지 않는다.** 운영진이 특정 회원 문의 대응 시 이메일 원문
 대조가 필요해질 수 있다는 점은 알아두되, 이번 구현에서는 고려하지 않는다 — 필요해지면 별도 스펙에서
