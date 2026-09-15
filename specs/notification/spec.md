@@ -1,9 +1,8 @@
 # 알림 — 회원가입 웰컴메일 (USER_REGISTERED · EMAIL)
 
-> ERD: 아직 없음 — 이 스펙에서 `NOTIFICATION`/`NOTIFICATION_TEMPLATE` 을 처음 정의한다. 구현 PR 에서
-> `docs/erd/NOTIFICATION.md`, `docs/erd/NOTIFICATION_TEMPLATE.md` 를 추가한다 ([절차](../../docs/erd/README.md#erd-추가변경-절차)).
+> ERD: [NOTIFICATION](../../docs/erd/NOTIFICATION.md), [NOTIFICATION_TEMPLATE](../../docs/erd/NOTIFICATION_TEMPLATE.md)
 > 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) (트리거 쪽 계약)
-> 생성일: 2026-09-12 · 상태: 스펙작성중
+> 생성일: 2026-09-12 · 상태: 구현중
 
 ## 범위
 
@@ -22,8 +21,8 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | `/back-office/notification-templates` | 알림 템플릿 목록 조회 | O (백오피스) | 스펙작성중 |
-| GET | `/back-office/notifications` | 발송 이력 조회 | O (백오피스) | 스펙작성중 |
+| GET | `/back-office/notification-templates` | 알림 템플릿 목록 조회 | O (백오피스) | 구현중 |
+| GET | `/back-office/notifications` | 발송 이력 조회 | O (백오피스) | 구현중 |
 
 ### 이 기능이 "알림(Notification)" 으로 추상화되고 이벤트 핸들러 방식으로 개발된다는 것의 확인
 
@@ -345,36 +344,42 @@ StudyClub++ 드림
 
 ## 메일 발송 자격증명 (환경 설정)
 
-SES 자격증명·발신 도메인은 `application.yml` 에 `mail` 하위로 **용도별 5개 카테고리**를 미리 정의해
+SES 자격증명·발신 도메인은 notification 모듈의 `src/main/resources/notification.yml` 에
+`mail` 하위로 **용도별 5개 카테고리**를 미리 정의해
 두고, 값은 전부 env var 로 주입한다(PUBLIC 레포 — 레포에 평문 금지, [AGENT.md](../../AGENT.md)):
 
 ```yaml
 mail:
   auth:
+    configuration-set-name: ${MAIL_AUTH_CONFIGURATION_SET_NAME:}
     region: ${MAIL_AUTH_REGION:}
     sub-domain: ${MAIL_AUTH_SUB_DOMAIN:}
     from-address: ${MAIL_AUTH_FROM_ADDRESS:}
     access-key-id: ${MAIL_AUTH_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_AUTH_SECRET_ACCESS_KEY:}
   news:
+    configuration-set-name: ${MAIL_NEWS_CONFIGURATION_SET_NAME:}
     region: ${MAIL_NEWS_REGION:}
     sub-domain: ${MAIL_NEWS_SUB_DOMAIN:}
     from-address: ${MAIL_NEWS_FROM_ADDRESS:}
     access-key-id: ${MAIL_NEWS_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_NEWS_SECRET_ACCESS_KEY:}
   notify:
+    configuration-set-name: ${MAIL_NOTIFY_CONFIGURATION_SET_NAME:}
     region: ${MAIL_NOTIFY_REGION:}
     sub-domain: ${MAIL_NOTIFY_SUB_DOMAIN:}
     from-address: ${MAIL_NOTIFY_FROM_ADDRESS:}
     access-key-id: ${MAIL_NOTIFY_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_NOTIFY_SECRET_ACCESS_KEY:}
   order:
+    configuration-set-name: ${MAIL_ORDER_CONFIGURATION_SET_NAME:}
     region: ${MAIL_ORDER_REGION:}
     sub-domain: ${MAIL_ORDER_SUB_DOMAIN:}
     from-address: ${MAIL_ORDER_FROM_ADDRESS:}
     access-key-id: ${MAIL_ORDER_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_ORDER_SECRET_ACCESS_KEY:}
   cs:
+    configuration-set-name: ${MAIL_CS_CONFIGURATION_SET_NAME:}
     region: ${MAIL_CS_REGION:}
     sub-domain: ${MAIL_CS_SUB_DOMAIN:}
     from-address: ${MAIL_CS_FROM_ADDRESS:}
@@ -401,12 +406,25 @@ mail:
 - AWS SDK(SES) 의존성 추가는 [AGENT.md](../../AGENT.md) 의 "외부 라이브러리 임의 추가 금지 — 합의
   필수" 대상 — 구현 PR 리뷰에서 확인한다.
 
+API의 `application.yml`은 `spring.config.import: classpath:notification.yml`로 모듈 설정을 읽는다.
+`notification.polling.*` 기본값도 같은 파일에서 관리한다. 로컬의 실제 값은
+`spring.config.additional-location`으로 읽는 외부 `secrets/application-local.yml`에서 덮어쓴다.
+
+### SES configuration set
+
+`mail.{category}.configuration-set-name`으로 카테고리별 구성 세트 이름을 지정한다.
+값이 있으면 SES `SendEmail` 요청의 `ConfigurationSetName`에 전달한다.
+미설정·빈 문자열·공백만 있는 값은 요청에서 생략하여 SES 발신 identity의 기본 설정을 따른다.
+구성 세트 생성과 이벤트 수집 대상 설정은 인프라에서 관리한다.
+참고: [SES SendEmail](https://docs.aws.amazon.com/ses/latest/APIReference/API_SendEmail.html).
+
 ## 실패 시 동작
 
 `AFTER_COMMIT` 리스너 안에서 `NOTIFICATION` INSERT 가 실패하면(예: 그 순간 DB 커넥션 문제):
 
+- 생성 서비스는 `REQUIRES_NEW` 로 새 트랜잭션을 연다. 기본 `REQUIRED` 는 AFTER_COMMIT 에 남은 기존 자원에 참여해 INSERT 가 커밋되지 않을 수 있다.
 - ACCOUNT 트랜잭션은 이미 커밋된 뒤라 롤백되지 않는다 — 회원가입 자체는 그대로 성공한다.
-- Spring 은 `AFTER_COMMIT` 콜백의 예외를 호출자에게 전파하지 않고 로그만 남긴다 — 온보딩 API 호출자는 이 실패를 알 방법이 없다.
+- `@TransactionalEventListener(AFTER_COMMIT)` 는 커밋 성공 후 `afterCompletion` 경로에서 실행된다. 일반 `TransactionSynchronization.afterCommit()` 과는 다르며, 리스너 예외는 호출자에게 전파되지 않는다. 구현은 수신자 정보가 포함될 수 있는 예외 전문 대신 계정 ID와 예외 종류만 로그로 남긴다.
 - 이 경우 그 회원은 **웰컴메일을 영영 못 받는다** — `NOTIFICATION` 행 자체가 안 생겼으니 폴링도, 나중에 만들 재시도 버튼도 대상을 못 찾는다.
 
 이 위험은 알림 설계 문서가 `BEFORE_COMMIT` 으로 막으려던 바로 그 문제이지만, 위에서 설명했듯 이미
