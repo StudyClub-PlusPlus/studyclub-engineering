@@ -1,5 +1,38 @@
 # 관측 스택 — 호스트 작업
 
+> ## ⚠️ 2026-09-16 — 배치가 docker compose 에서 k8s 로 바뀌었다
+>
+> 이 문서는 **운영 호스트의 docker compose 에 붙여넣는 것**을 전제로 쓰였다. 실제 인프라를
+> 확인해 보니 studyclub api 는 **k8s 배포**다 (환경별 deployment 2개,
+> 배포는 k8s API PATCH rollout). **붙여넣을
+> 호스트 compose 가 존재하지 않는다.** 공유 볼륨 + Alloy tail 방식도 성립하지 않는다 —
+> 컨테이너가 노드를 옮겨 다닌다.
+>
+> 그래서 배치가 이렇게 바뀌었다. 결정과 근거는 **인프라 레포의 ADR 0027** (로그는 클러스터당
+> 멀티테넌트 Loki 하나에 모으고 프로젝트로 가른다) — 인프라 담당자에게 요청.
+>
+> | | 이 문서(원래) | 실제 |
+> |---|---|---|
+> | 실행 주체 | 호스트 docker compose | k8s (클러스터당 한 벌, terraform) |
+> | Grafana | 이 PR 이 컨테이너로 띄움 | 인프라가 띄운 Grafana 1대 · `<로그 조회 도메인>` |
+> | 로그 경로 | 앱 → JSON 파일 → 공유 볼륨 → Alloy | 앱 → **stdout** → `/var/log/containers` → Alloy DaemonSet |
+> | 권한 | Grafana Google allowlist | **Loki 멀티테넌시** + Grafana Org (OSS 는 데이터소스 권한이 없다) |
+> | 앱 설정 | `LOG_FILE` + `LOG_JSON_FORMAT` | `LOG_JSON_CONSOLE=ecs` 하나 |
+>
+> **아래 본문 중 compose·리버스 프록시·DNS·인증서·GCP 콘솔 절은 이 배치에 적용되지 않는다.**
+> 지우지 않고 남겨 둔다 — **함정 실측 기록은 그대로 유효하다.** 특히 이 넷은 k8s 배치에서도
+> 똑같이 밟는다:
+>
+> - Loki `retention_period` 만으론 삭제 안 됨 → compactor `retention_enabled` 필수
+> - Alloy `level` 표현식에 따옴표를 더 씌우지 않는다 — ECS 는 `log.level` 이 **중첩**이라
+>   씌우면 flat 키를 찾아 level 이 조용히 빈 값이 된다
+> - Grafana google 커넥터만 `skip_org_role_sync` 기본 true
+> - `LogbackLoggingSystem` JVM 싱글턴 — 전체 테스트 스위트에서만 깨짐
+>
+> 반대로 **없어진 함정**: compose `configs: content:` 재생성 문제 · `max-history` 일수 ·
+> `total-size-cap` 디스크 상한 (로테이션은 kubelet 이 한다).
+
+
 설계는 [`specs/observability-stack/spec.md`](../specs/observability-stack/spec.md),
 구현 계획은 [`specs/observability-stack/plan.md`](../specs/observability-stack/plan.md).
 
