@@ -24,8 +24,7 @@
 POST /api/v1/channels/announcement/msg
 ```
 
-헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다
-(메시지 전송은 되돌릴 수 없고, 재시도가 길드 전체에 `@everyone` 알림을 두 번 울리면 안 된다).
+헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다 (로그 추적용 — [중복 전송과 재시도](#중복-전송과-재시도) 참고).
 
 **captain 역할을 가진 멤버만 호출할 수 있다.** [`create-study`](create-study.md#요청) ·
 [`assign-role`](assign-role.md#요청) 과 같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를 조회해
@@ -74,7 +73,6 @@ captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는
 `@everyone` 알림이 실제로 울렸다는 보장은 아니다 — 봇에게 `Mention Everyone` 권한이 없으면 알림 없이 올라가고
 그래도 204 다 ([아래](#mention-everyone-권한이-없을-때) 참고).
 `msg` 에서 `@everyone` · `@here` 를 지웠더라도 204 다 — 호출자에게 따로 알리지 않는다.
-같은 `Idempotency-Key` 의 재시도에도 새로 보내지 않고 204 를 그대로 돌려준다 ([아래](#중복-전송과-재시도) 참고).
 
 생성된 **메시지 ID 는 응답에 넣지 않는다.** 호출자가 공지를 수정·삭제할 일이 생기면 그때 추가한다.
 
@@ -88,10 +86,10 @@ captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는
 | 상태 | 언제 |
 |------|------|
 | **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 — 이 엔드포인트는 captain 확인 때문에 필수다 |
+| **400** | `Idempotency-Key` 없음 |
 | **401** | `X-API-Key` 없음 또는 불일치 |
 | **403** | 요청자에게 captain 역할이 없음 |
 | **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
-| **409** | 같은 `Idempotency-Key` 로 다른 바디가 옴 |
 
 ### 이 엔드포인트에서 나는 것
 
@@ -102,7 +100,7 @@ captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는
 | **400** | `msg` 가 1990자 초과 | 위와 같음. 잘라서 보내지 않는다 — 공지 뒷부분이 조용히 사라진다. 길이는 **가공 전** 값으로 잰다 |
 | **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
 | **404** | announcement 채널을 봇이 찾지 못함, 또는 그 ID 가 메시지를 올릴 수 있는 채널(텍스트 · 공지 채널)이 아님 | 위와 같은 **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨. `POST /api/v1/ping` 의 채널 404 와 같은 결 |
-| **409** | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. `POST /api/v1/ping` 이 `DISCORD_BOT_OUTPUT_CHANNEL` 미설정을 409 로 돌려주는 것과 같은 결. `detail` 로 멱등 키 409 와 구분한다 |
+| **409** | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. `POST /api/v1/ping` 이 `DISCORD_BOT_OUTPUT_CHANNEL` 미설정을 409 로 돌려주는 것과 같은 결. |
 | **502** | Discord 가 전송을 거부 | 봇 권한 부족(announcement 채널의 `Send Messages`), 그 밖의 Discord 5xx |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
@@ -155,14 +153,13 @@ alert 보다 중복의 비용이 크다.
 1. **먼저 다 확인하고, 그 다음에 보낸다** — 요청자 멤버 · captain 역할 · announcement 채널을 먼저
    해석하고, 하나라도 문제가 있으면 아무것도 보내지 않고 실패한다. `Mention Everyone` 권한은 확인만 하고
    막지 않는다 ([위](#mention-everyone-권한이-없을-때) 참고).
-2. **`Idempotency-Key` 는 성공(204)했을 때만 저장한다.** 실패한 요청은 메시지가 올라가지 않았으므로,
-   같은 키로 다시 오면 **다시 실행**한다.
-3. **응답을 못 받은 호출자는 같은 키로 재시도한다.** 네트워크가 끊겼을 뿐 공지는 이미 올라갔을 수
-   있는데, 새 키로 재시도하면 `@everyone` 이 두 번 울린다.
+2. **서버는 중복 요청을 막지 않는다.** `Idempotency-Key` 는 [로그 추적용](common-header.md#idempotency-key)이라,
+   같은 키로 다시 와도 **다시 실행**한다.
+3. **응답을 못 받은 호출자가 재시도하면 공지가 한 번 더 올라갈 수 있다.** 네트워크가 끊겼을 뿐 공지는
+   이미 올라갔을 수 있다. 재시도할 때는 같은 키를 보내 로그에서 두 시도를 묶는다.
 
-> **막을 수 없는 틈이 하나 있다.** Discord 가 메시지를 받은 직후, 키를 저장하기 전에 서비스가 죽으면
-> 같은 키의 재시도가 한 번 더 보낸다. 되돌릴 수 없는 외부 호출과 키 저장을 한 트랜잭션으로 묶을 수
-> 없어서다. 드문 경우라 받아들이되, 중복 공지는 captain 이 Discord 에서 직접 지운다.
+> **중복은 받아들인다.** 세 메시지 엔드포인트 중 중복 비용이 가장 크지만(`@everyone` 이 두 번 울린다),
+> 타임아웃 뒤 재시도라는 드문 경우에만 생기므로 치명적이지 않다. 중복 공지는 captain 이 Discord 에서 직접 지운다.
 
 ## send-alert-message 와 다른 점
 

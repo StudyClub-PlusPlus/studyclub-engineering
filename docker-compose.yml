@@ -83,9 +83,7 @@ services:
     image: studyclub-discord
     container_name: studyclub-discord
     build: ./discord
-    environment:
-      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
-      DISCORD_BOT_OUTPUT_CHANNEL: ${DISCORD_BOT_OUTPUT_CHANNEL:-}
+    env_file: ./.env
     ports:
       - "${DISCORD_PORT:-24800}:4800"
     restart: unless-stopped

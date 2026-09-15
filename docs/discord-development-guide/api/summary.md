@@ -41,7 +41,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 | `Content-Type: application/json` | 바디가 있을 때만 | — |
 | `X-API-Key` | 항상 — 서비스 간 인증 | 401 (경로가 없어도 401 우선) |
 | `X-Discord-User-ID` | 역할 확인이 필요한 요청 — **현재 모든 엔드포인트** | 400, 길드 멤버 아님 404, 자격 없음 403 |
-| `Idempotency-Key` | 상태를 바꾸는 요청 (`GET` 제외 전부) | 같은 키에 다른 요청이면 409 |
+| `Idempotency-Key` | 상태를 바꾸는 요청 (`GET` 제외 전부) — 로그 추적용 요청 ID | 없으면 400 |
 
 **ID 와 설정**
 
@@ -60,15 +60,16 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 | 400 | 요청 형식·값 잘못 | 소용없음 |
 | 401 / 403 | 인증 실패 / 역할 없음 | 조건이 바뀌기 전엔 소용없음 |
 | 404 | 요청자·대상 멤버, 역할, 채널 없음 — `detail` 로 구분 | 원인에 따라 다름 |
-| 409 | 멱등 키 충돌, 또는 서버 설정 누락 — `detail` 로 구분 | 소용없음 |
+| 409 | 같은 이름의 스터디가 있거나 만드는 중(create-study), 또는 서버 설정 누락 — `detail` 로 구분 | 소용없음 |
 | 502 | Discord 가 거부 (권한 부족, 역할 서열, Discord 5xx) | 5xx 는 가능, 권한·서열은 설정을 고쳐야 함 |
 | 503 | 봇 비활성 또는 아직 미연결 | 가능 |
 
 - 에러 바디는 FastAPI 기본형 `{"detail": "..."}` 이다.
 - **429 는 밖으로 나가지 않는다** — discord.py 가 내부에서 기다리므로 응답이 느려질 뿐이다. 호출자는 타임아웃을 넉넉히 잡는다.
 - **먼저 다 확인하고, 그 다음에 실행한다** — 검증에서 걸리면 Discord 에 아무것도 보내지 않는다.
-- **`Idempotency-Key` 는 성공했을 때만 저장한다.** 실패한 요청은 같은 키로 다시 오면 다시 실행한다.
-  응답을 못 받은 호출자는 **같은 키로** 재시도한다.
+- **`Idempotency-Key` 는 저장하지 않는다** — 로그 추적용이다. 재시도할 때 **같은 키**를 보내 시도들을 로그에서 묶는다.
+- **중복 요청은 create-study 만 막는다** (`studyName` 을 SQLite 에 예약). 나머지는 같은 요청이 다시 오면 다시 실행한다 —
+  역할은 멱등이라 결과가 같고, 메시지는 드문 중복을 받아들인다.
 
 ## 스터디
 
@@ -76,14 +77,17 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 
 - `{ "studyName": "..." }` (1–100자) 로 **카테고리 + 텍스트 채널 + 음성 채널 + 전용 역할**을 한 번에 만든다.
 - 응답 `discordStudyId`(카테고리 ID) · `discordRoleId`(역할 ID) 쌍을 백엔드가 저장해 이후 요청에 그대로 쓴다.
-- 같은 이름의 스터디 카테고리가 있으면 409.
+- 같은 이름의 스터디가 있거나 만드는 중이면 409. **중복 요청을 막는 유일한 장치**다 — `studyName` 을 SQLite 에
+  `PROCESSING` 으로 먼저 INSERT 하고, 넷 다 만들면 `COMPLETED` 로 바꾼다. 실패 후 정리까지 끝나면 행을 지운다.
+- 응답을 못 받고 재시도하면 409 를 받고 ID 도 못 받는다 — 처리 방법은 미정.
 - 네 단계 중 하나라도 실패하면 **만든 것을 역순으로 지운다.** 롤백까지 실패하면 502 + 남은 ID 를 로그에 남긴다.
 
 ### [get-study-channels](get-study-channels.md) — `GET /api/v1/studies/{discordStudyId}/channels`
 
-- 스터디 카테고리 **바로 아래의 텍스트 채널** 목록 `[{discordChannelId, discordChannelName}]` 을 사이드바 순서로 돌려준다.
-  `send-message` 에 쓸 채널을 고르는 용도다.
-- 봇이 볼 수 없는 채널과 텍스트가 아닌 채널은 빠진다. 채널이 없으면 `[]` + 200.
+- 스터디 카테고리 **바로 아래의 텍스트 · 음성 채널** 목록 `[{discordChannelId, discordChannelName, discordChannelType}]` 을
+  사이드바 순서(텍스트 먼저, 그 다음 음성)로 돌려준다. `discordChannelType` 은 `TEXT` · `VOICE` 다 (`FORUM` · `STAGE` 는 예약 값, 지금은 안 돌려줌).
+- `send-message` 에 쓸 수 있는 건 `TEXT` 채널뿐이다 (`VOICE` 면 400).
+- 봇이 볼 수 없는 채널과 포럼 · 스테이지 채널은 빠진다 — 호출자는 모르는 타입 값을 건너뛴다. 채널이 없으면 `[]` + 200.
 - 조회라 `Idempotency-Key` 없음, 409 없음. 몇 번이고 다시 불러도 안전하다.
 
 ## 역할
@@ -111,7 +115,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 ## 메시지
 
 세 엔드포인트 모두 바디는 `msg` 를 받고, 성공은 **204** (메시지 ID 는 돌려주지 않음)다.
-메시지 전송은 멱등이 아니라 **중복 전송**을 `Idempotency-Key` 로 막는다.
+메시지 전송은 멱등이 아니지만 **중복 전송을 막지 않는다** — 응답을 못 받고 재시도하면 두 번 올라갈 수 있다.
 
 | | [send-message](send-message.md) | [send-alert-message](send-alert-message.md) | [send-announcement-message](send-announcement-message.md) |
 |------|------|------|------|
@@ -130,7 +134,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 - **alert · announcement** 는 채널 ID 설정이 없으면 409, 채널을 못 찾으면 404 다. 봇에게 `Send Messages` 권한이 없으면 **모든 요청이** 502 다.
 - **announcement** 에서 봇에게 `Mention Everyone` 권한이 없으면 공지는 알림 없이 올리고 **204** 를 돌려준 뒤,
   alert 채널에 권한 문제를 따로 알린다 (그 알림이 실패해도 204).
-- 키 저장 직전에 서비스가 죽으면 한 번 더 보내질 수 있다 — 드문 중복은 받아들이고 captain 이 직접 지운다.
+- 재시도로 생기는 드문 중복은 받아들이고 captain 이 직접 지운다.
 
 ## 경로 충돌
 

@@ -1,7 +1,7 @@
 # Get Study Channels
 
-**스터디 카테고리 아래의 텍스트 채널 목록**을 돌려준다. 호출자가 [`send-message`](send-message.md) 로
-메시지를 올릴 채널을 고를 때 쓰는 조회용이다. 아무것도 만들거나 바꾸지 않는다.
+**스터디 카테고리 아래의 텍스트 · 음성 채널 목록**을 돌려준다. 호출자가 스터디의 채널 구성을 보거나,
+[`send-message`](send-message.md) 로 메시지를 올릴 채널을 고를 때 쓰는 조회용이다. 아무것도 만들거나 바꾸지 않는다.
 
 > ⚠️ **아직 구현 전이다.** 이 문서는 구현할 계약이다.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
@@ -41,12 +41,16 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 
 ### 돌려주는 채널
 
-- **`discordStudyId` 카테고리 바로 아래의 텍스트 채널만** 돌려준다 (`category.text_channels`).
-  음성 · 포럼 · 스테이지 채널은 빠진다 — `send-message` 가 [텍스트 채널에만 올리므로](send-message.md#이-엔드포인트에서-나는-것)
-  목록에 있어도 쓸 수 없다.
-- **봇에게 `View Channel` 권한이 없는 채널은 빠진다.** `send-message` 가 그 채널을 [찾지 못해 404](send-message.md#이-엔드포인트에서-나는-것)
-  를 내므로, 목록에 올리면 고를 수는 있는데 보낼 수는 없는 채널이 된다.
-- **순서는 Discord 사이드바 순서**(`position` 오름차순)다.
+- **`discordStudyId` 카테고리 바로 아래의 텍스트 채널과 음성 채널만** 돌려준다. 둘은 [`discordChannelType`](#성공-응답)
+  으로 구분한다. 포럼 · 스테이지 채널은 지금은 빠진다 — [`create-study`](create-study.md#요청) 가 만드는 건 텍스트 · 음성
+  채널뿐이다. 나중에 넣을 수 있게 타입 값 `FORUM` · `STAGE` 는 [자리만 잡아 둔다](#성공-응답).
+- **`send-message` 에 쓸 수 있는 건 `TEXT` 뿐이다.** `send-message` 는 [텍스트 채널에만 올리므로](send-message.md#이-엔드포인트에서-나는-것)
+  `VOICE` 채널 ID 로 부르면 400 이다. 메시지 채널을 고르는 호출자는 `TEXT` 만 거른다.
+- **봇에게 `View Channel` 권한이 없는 채널은 빠진다.** 봇 캐시에 보이지 않는 채널이고, 텍스트 채널이라면
+  `send-message` 가 그 채널을 [찾지 못해 404](send-message.md#이-엔드포인트에서-나는-것) 를 내므로
+  목록에 올리면 고를 수는 있는데 보낼 수는 없는 채널이 된다.
+- **순서는 Discord 사이드바 순서**다 — 텍스트 채널이 먼저, 그 다음 음성 채널이고, 각각 `position` 오름차순이다
+  (`category.channels` 의 정렬과 같다).
 
 검증하지 **않는** 것:
 
@@ -62,20 +66,25 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 
 ```jsonc
 [
-  { "discordChannelId": "1327394882193883137", "discordChannelName": "일반" },
-  { "discordChannelId": "1327394882193883141", "discordChannelName": "자료실" }
+  { "discordChannelId": "1327394882193883137", "discordChannelName": "일반", "discordChannelType": "TEXT" },
+  { "discordChannelId": "1327394882193883141", "discordChannelName": "자료실", "discordChannelType": "TEXT" },
+  { "discordChannelId": "1327394882193883138", "discordChannelName": "스터디룸", "discordChannelType": "VOICE" }
 ]
 ```
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| `discordChannelId` | string | 텍스트 채널의 Discord 채널 ID (snowflake). `send-message` 의 경로 변수로 그대로 쓴다 |
+| `discordChannelId` | string | 채널의 Discord 채널 ID (snowflake). `TEXT` 채널이면 `send-message` 의 경로 변수로 그대로 쓴다 |
 | `discordChannelName` | string | Discord 에 보이는 채널 이름 그대로 |
+| `discordChannelType` | string | `TEXT` (텍스트 채널) · `VOICE` (음성 채널). `FORUM` (포럼 채널) · `STAGE` (스테이지 채널) 은 **예약 값**이다 — 지금은 돌려주지 않는다 |
 
-**둘 다 문자열이다** — snowflake 는 64비트라 JSON 숫자로 내보내면 JS 호출자에서 정밀도가
+**호출자는 모르는 `discordChannelType` 값을 에러로 다루지 말고 건너뛴다.** 예약 값을 실제로 돌려주기 시작해도
+호출자가 깨지지 않게 하기 위해서다.
+
+**ID 는 문자열이다** — snowflake 는 64비트라 JSON 숫자로 내보내면 JS 호출자에서 정밀도가
 깨진다 ([common-header.md](common-header.md#x-discord-user-id) 와 같은 규칙).
 
-**텍스트 채널이 하나도 없으면 빈 배열 `[]` 과 200 이다.** 카테고리는 있으므로 404 가 아니다.
+**텍스트 · 음성 채널이 하나도 없으면 빈 배열 `[]` 과 200 이다.** 카테고리는 있으므로 404 가 아니다.
 
 목록은 **요청 시점의 스냅샷**이다. 받은 뒤 길드에서 채널이 지워지거나 옮겨지면 그 ID 로 보낸 `send-message` 는
 404 가 난다 — 호출자는 목록을 오래 캐시하지 않는다.
