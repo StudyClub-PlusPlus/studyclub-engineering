@@ -1,6 +1,7 @@
 package com.studyclub.notification;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +54,11 @@ public class NotificationClaimService {
             return List.of();
         }
         List<Notification> claimed = notificationRepository.findAllById(ids);
-        Instant lockedAt = Instant.now();
+        // 밀리초로 자른다 — markSent/markFailed 는 이 값을 클레임 토큰으로 삼아 DB 에서 다시 읽은 lockedAt 과
+        // 정확히 같은지 비교한다(verifyClaim). 자르지 않은 Instant.now() 는 리눅스에서 저장 컬럼의 정밀도보다
+        // 더 세밀한 하위 자리를 갖고 있어, 저장 후 다시 읽으면 그 자리가 잘려나가 항상 불일치로 판정된다 — 로컬(맥) 클럭은
+        // 우연히 그 자리가 이미 0이라 재현되지 않았다.
+        Instant lockedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         claimed.forEach(n -> n.markProcessing(lockedAt));
         return claimed;
     }
