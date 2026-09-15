@@ -97,8 +97,9 @@ class BackOfficeNotificationIntegrationTest {
         pending("hello@example.com");
         pending("a@example.com");
         Notification failed = pending("failed@example.com");
-        failed.markProcessing(Instant.now());
-        failed.markFailed(NotificationErrorType.PROVIDER_ERROR);
+        Instant lockedAt = Instant.now();
+        failed.markProcessing(lockedAt);
+        failed.markFailed(NotificationErrorType.PROVIDER_ERROR, lockedAt);
         notificationRepository.save(failed);
         var headers = authenticated(SystemRole.ADMIN);
         var response =

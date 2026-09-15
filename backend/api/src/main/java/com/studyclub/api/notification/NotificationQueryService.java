@@ -2,7 +2,6 @@ package com.studyclub.api.notification;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
-import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
@@ -24,19 +23,14 @@ public class NotificationQueryService {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "offset 은 0 이상, limit 은 1 이상이어야 합니다.");
         }
-        List<Notification> filtered =
-                notificationRepository.findAllByOrderByCreatedAtDesc().stream()
-                        .filter(n -> eventType == null || n.getEventType() == eventType)
-                        .filter(n -> status == null || n.getStatus() == status)
-                        .toList();
+        String eventTypeParam = eventType == null ? null : eventType.name();
+        String statusParam = status == null ? null : status.name();
 
-        long total = filtered.size();
         List<NotificationListResponse.NotificationSummary> page =
-                filtered.stream()
-                        .skip(offset)
-                        .limit(limit)
+                notificationRepository.findPage(eventTypeParam, statusParam, limit, offset).stream()
                         .map(NotificationListResponse.NotificationSummary::from)
                         .toList();
+        long total = notificationRepository.countFiltered(eventTypeParam, statusParam);
 
         return new NotificationListResponse(page, total, offset, limit);
     }

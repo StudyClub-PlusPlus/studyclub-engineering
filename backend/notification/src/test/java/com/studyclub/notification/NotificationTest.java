@@ -42,7 +42,7 @@ class NotificationTest {
         assertThat(notification.getLockedAt()).isEqualTo(lockedAt);
 
         Instant sentAt = Instant.now();
-        notification.markSent(sentAt);
+        notification.markSent(sentAt, lockedAt);
         assertThat(notification.getStatus()).isEqualTo(NotificationStatus.SENT);
         assertThat(notification.getSentAt()).isEqualTo(sentAt);
         assertThat(notification.getLockedAt()).isNull();
@@ -52,9 +52,10 @@ class NotificationTest {
     @DisplayName("PENDING -> PROCESSING -> FAILED, errorType 기록")
     void markProcessing_thenMarkFailed() {
         Notification notification = pending();
-        notification.markProcessing(Instant.now());
+        Instant lockedAt = Instant.now();
+        notification.markProcessing(lockedAt);
 
-        notification.markFailed(NotificationErrorType.PROVIDER_ERROR);
+        notification.markFailed(NotificationErrorType.PROVIDER_ERROR, lockedAt);
 
         assertThat(notification.getStatus()).isEqualTo(NotificationStatus.FAILED);
         assertThat(notification.getErrorType()).isEqualTo(NotificationErrorType.PROVIDER_ERROR);
@@ -78,17 +79,33 @@ class NotificationTest {
     void markSent_fromPending_throws() {
         Notification notification = pending();
 
-        assertThatThrownBy(() -> notification.markSent(Instant.now()))
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> notification.markSent(Instant.now(), Instant.now()))
+                .isInstanceOf(NotificationClaimLostException.class);
     }
 
     @Test
     @DisplayName("SENT 는 재수거 대상이 아니다")
     void reclaim_fromSent_throws() {
         Notification notification = pending();
-        notification.markProcessing(Instant.now());
-        notification.markSent(Instant.now());
+        Instant lockedAt = Instant.now();
+        notification.markProcessing(lockedAt);
+        notification.markSent(Instant.now(), lockedAt);
 
         assertThatThrownBy(notification::reclaim).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("재수거로 클레임 토큰이 바뀌면 이전 토큰으로는 완료 처리를 못 한다 — 중복 발송 방지의 근거")
+    void markSent_withStaleClaimToken_throwsClaimLost() {
+        Notification notification = pending();
+        Instant firstLockedAt = Instant.now();
+        notification.markProcessing(firstLockedAt);
+        notification.reclaim();
+        Instant secondLockedAt = firstLockedAt.plusSeconds(1);
+        notification.markProcessing(secondLockedAt);
+
+        assertThatThrownBy(() -> notification.markSent(Instant.now(), firstLockedAt))
+                .isInstanceOf(NotificationClaimLostException.class);
+        assertThat(notification.getStatus()).isEqualTo(NotificationStatus.PROCESSING);
     }
 }

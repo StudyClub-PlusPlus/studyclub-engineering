@@ -6,6 +6,9 @@
 -- notification 모듈이 자기 엔티티의 마이그레이션을 직접 갖는 첫 사례다. Flyway 는 classpath:db/migration 을
 -- 모듈 경계 없이 한 시퀀스로 스캔하므로, domain 모듈의 V11 을 이어 V12 로 번호를 매긴다.
 
+-- ACCOUNT(UPDATED_BY_ADMIN_ID)·NOTIFICATION_TEMPLATE/ACCOUNT(NOTIFICATION 쪽)는 모두 다른 애그리거트를 잇는
+-- 참조라 FK 를 걸지 않는다 — ID 컬럼 + 인덱스만 둔다 (database-guide.md 의 "외래키 정책": 애그리거트 사이는 FK 대신
+-- ID+인덱스, 애그리거트마다 트랜잭션이 다르므로 DB 제약으로 묶으면 경계가 다시 붙어 버린다).
 CREATE TABLE NOTIFICATION_TEMPLATE (
     ID                   BIGINT       NOT NULL AUTO_INCREMENT,
     EVENT_TYPE           VARCHAR(40)  NOT NULL,
@@ -18,8 +21,7 @@ CREATE TABLE NOTIFICATION_TEMPLATE (
     PRIMARY KEY (ID),
     CONSTRAINT uk_notification_template_event_channel
         UNIQUE (EVENT_TYPE, CHANNEL),
-    CONSTRAINT fk_notification_template_admin
-        FOREIGN KEY (UPDATED_BY_ADMIN_ID) REFERENCES ACCOUNT (ID) ON DELETE SET NULL
+    INDEX idx_notification_template_updated_by_admin (UPDATED_BY_ADMIN_ID)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE NOTIFICATION (
@@ -31,18 +33,16 @@ CREATE TABLE NOTIFICATION (
     TEMPLATE_ID        BIGINT       NOT NULL,
     PAYLOAD            JSON         NOT NULL,
     STATUS             VARCHAR(20)  NOT NULL,
-    LOCKED_AT          DATETIME     NULL,
+    LOCKED_AT          DATETIME(6)  NULL,
     ERROR_TYPE         VARCHAR(30)  NULL,
-    SCHEDULED_AT       DATETIME     NULL,
-    SENT_AT            DATETIME     NULL,
+    SCHEDULED_AT       DATETIME(6)  NULL,
+    SENT_AT            DATETIME(6)  NULL,
     CREATED_AT         DATETIME(6)  NOT NULL,
     UPDATED_AT         DATETIME(6)  NOT NULL,
     PRIMARY KEY (ID),
     INDEX idx_notification_status_created (STATUS, CREATED_AT),
-    CONSTRAINT fk_notification_recipient_account
-        FOREIGN KEY (RECIPIENT_USER_ID) REFERENCES ACCOUNT (ID) ON DELETE SET NULL,
-    CONSTRAINT fk_notification_template
-        FOREIGN KEY (TEMPLATE_ID) REFERENCES NOTIFICATION_TEMPLATE (ID)
+    INDEX idx_notification_recipient_user (RECIPIENT_USER_ID),
+    INDEX idx_notification_template (TEMPLATE_ID)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- 웰컴메일 템플릿 시딩 (유일한 등록 경로 — 편집 화면 없음).

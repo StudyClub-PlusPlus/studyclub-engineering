@@ -1,6 +1,7 @@
 package com.studyclub.notification;
 
 import com.studyclub.notification.mail.MailSendException;
+import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,22 +40,26 @@ public class NotificationPollingScheduler {
         List<Notification> claimed = notificationClaimService.claim(batchSize);
         for (Notification notification : claimed) {
             // 클레임(SELECT+UPDATE) 트랜잭션은 이미 커밋된 뒤다 — 실제 SES 호출(네트워크)은 트랜잭션 밖에서 한다.
+            // lockedAt 을 클레임 토큰으로 들고 있다가 완료 처리 시 그대로 넘긴다 — 발송이 오래 걸려 그 사이 재수거됐다면
+            // markSent/markFailed 가 조용히 스킵한다(NotificationClaimService 참고).
+            Instant claimToken = notification.getLockedAt();
             try {
                 welcomeEmailDispatcher.dispatch(notification);
-                notificationClaimService.markSent(notification.getId());
+                notificationClaimService.markSent(notification.getId(), claimToken);
             } catch (MailSendException e) {
                 log.error(
                         "알림 발송 실패. notificationId={}, errorType={}",
                         notification.getId(),
                         e.errorType());
-                notificationClaimService.markFailed(notification.getId(), e.errorType());
+                notificationClaimService.markFailed(
+                        notification.getId(), e.errorType(), claimToken);
             } catch (RuntimeException e) {
                 log.error(
                         "알림 처리 실패. notificationId={}, cause={}",
                         notification.getId(),
                         e.getClass().getSimpleName());
                 notificationClaimService.markFailed(
-                        notification.getId(), NotificationErrorType.UNKNOWN);
+                        notification.getId(), NotificationErrorType.UNKNOWN, claimToken);
             }
         }
     }

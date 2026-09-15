@@ -13,6 +13,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * "이벤트가 발생했다는 사실"과 "실제로 언제·누구에게·어떻게 보냈는지"를 기록하는 아웃박스(outbox) 레코드 (specs/notification/spec.md).
@@ -110,18 +111,34 @@ public class Notification extends BaseEntity {
         this.lockedAt = lockedAt;
     }
 
-    public void markSent(Instant sentAt) {
-        requireStatus(NotificationStatus.PROCESSING, "SENT");
+    /**
+     * {@code expectedLockedAt} 은 이 알림을 클레임할 때 발급된 토큰이다 — 발송(SES 호출)이 재수거 타임아웃보다 오래 걸려 그 사이에 다른
+     * 인스턴스가 재수거({@link #reclaim()})해 갔다면 현재 {@code lockedAt} 과 더 이상 일치하지 않는다. 그 경우 이미 소유권을 잃은 뒤이므로
+     * 상태를 덮어쓰지 않고 {@link NotificationClaimLostException} 을 던진다 — 호출자(폴링 스케줄러)가 이를 크래시가 아니라 "예상된 경쟁
+     * 결과"로 다뤄야 한다.
+     */
+    public void markSent(Instant sentAt, Instant expectedLockedAt) {
+        verifyClaim(expectedLockedAt, "SENT");
         this.status = NotificationStatus.SENT;
         this.sentAt = sentAt;
         this.lockedAt = null;
     }
 
-    public void markFailed(NotificationErrorType errorType) {
-        requireStatus(NotificationStatus.PROCESSING, "FAILED");
+    /** {@link #markSent} 와 같은 이유로 {@code expectedLockedAt} 을 받는다. */
+    public void markFailed(NotificationErrorType errorType, Instant expectedLockedAt) {
+        verifyClaim(expectedLockedAt, "FAILED");
         this.status = NotificationStatus.FAILED;
         this.errorType = errorType;
         this.lockedAt = null;
+    }
+
+    private void verifyClaim(Instant expectedLockedAt, String targetDescription) {
+        if (this.status != NotificationStatus.PROCESSING
+                || !Objects.equals(this.lockedAt, expectedLockedAt)) {
+            throw new NotificationClaimLostException(
+                    "id=%s status=%s lockedAt=%s 로 %s 전이할 수 없습니다 (재수거되어 클레임 소유권을 잃음, expected lockedAt=%s)."
+                            .formatted(id, status, lockedAt, targetDescription, expectedLockedAt));
+        }
     }
 
     /** 재수거 — {@code locked_at} 타임아웃을 넘겨 멈춰버린 PROCESSING 행을 다시 PENDING 으로 되돌린다. */

@@ -145,8 +145,9 @@ class NotificationPollingIntegrationTest {
         recent.markProcessing(Instant.now());
         notificationRepository.save(recent);
         Notification failed = pending();
-        failed.markProcessing(Instant.now().minusSeconds(360));
-        failed.markFailed(NotificationErrorType.INVALID_RECIPIENT);
+        Instant failedLockedAt = Instant.now().minusSeconds(360);
+        failed.markProcessing(failedLockedAt);
+        failed.markFailed(NotificationErrorType.INVALID_RECIPIENT, failedLockedAt);
         notificationRepository.save(failed);
         notificationClaimService.reclaimStuck(5);
         assertThat(reload(stale).getStatus()).isEqualTo(NotificationStatus.PENDING);
