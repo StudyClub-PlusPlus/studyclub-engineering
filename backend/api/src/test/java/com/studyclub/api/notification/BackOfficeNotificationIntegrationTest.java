@@ -132,19 +132,6 @@ class BackOfficeNotificationIntegrationTest {
     }
 
     @Test
-    @DisplayName("MEMBER 는 두 백오피스 조회 모두 403 — 로그인 성공만으로 이력을 볼 수 없다")
-    void memberIsForbidden() {
-        var headers = authenticated(SystemRole.MEMBER);
-        for (String path : new String[] {"notification-templates", "notifications"}) {
-            var response =
-                    testRestTemplate.exchange(
-                            "/back-office/" + path, HttpMethod.GET, headers, Map.class);
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-            assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
-        }
-    }
-
-    @Test
     @DisplayName("토큰이 없으면 두 조회 모두 401 — 필터 오류도 공통 에러 계약을 지킨다")
     void unauthenticatedIsRejected() {
         for (String path : new String[] {"notification-templates", "notifications"}) {

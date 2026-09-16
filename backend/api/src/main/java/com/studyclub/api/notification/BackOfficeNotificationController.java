@@ -1,6 +1,5 @@
 package com.studyclub.api.notification;
 
-import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationStatus;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,10 +12,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 백오피스 전용 조회 — {@code SystemRole.ADMIN} 이 아니면 {@code @RequireAdmin} 가드가 403 FORBIDDEN 으로 막는다. */
+/**
+ * 백오피스 전용 조회 — 지금은 로그인(인증)만 요구하고 {@code SystemRole.ADMIN} 여부는 확인하지 않는다.
+ * specs/back-office-login/spec.md 가 "로그인 뒤 요청의 ADMIN 판별은 후속 PR 에서 요청마다 DB 조회로 붙인다"고 명시적으로 후속 PR 로
+ * 미뤄뒀다 — 그 가드(#78 의 accountId principal 기준)가 붙기 전까지는 로그인한 어떤 계정이든 이 엔드포인트를 호출할 수 있다.
+ */
 @Tag(name = "백오피스 · 알림", description = "알림 템플릿·발송 이력 조회 (읽기 전용)")
 @SecurityRequirement(name = "bearerAuth")
-@RequireAdmin
 @RestController
 @RequestMapping("/back-office")
 @RequiredArgsConstructor
