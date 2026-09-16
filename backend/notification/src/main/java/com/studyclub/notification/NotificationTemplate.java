@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.Getter;
 
 /**
  * 알림 문구. DB 에 저장해 문구 수정마다 PR·배포가 필요해지는 걸 피한다(specs/notification/spec.md) — 백오피스 편집 화면은 별도 기능이라 이번
@@ -23,6 +24,7 @@ import jakarta.persistence.UniqueConstraint;
                     name = "uk_notification_template_event_channel",
                     columnNames = {"EVENT_TYPE", "CHANNEL"})
         })
+@Getter
 public class NotificationTemplate extends BaseEntity {
 
     @Id
@@ -61,29 +63,5 @@ public class NotificationTemplate extends BaseEntity {
         this.channel = channel;
         this.subject = subject;
         this.body = body;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public NotificationEventType getEventType() {
-        return eventType;
-    }
-
-    public NotificationChannel getChannel() {
-        return channel;
-    }
-
-    public String getSubject() {
-        return subject;
-    }
-
-    public String getBody() {
-        return body;
-    }
-
-    public Long getUpdatedByAdminId() {
-        return updatedByAdminId;
     }
 }

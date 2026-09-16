@@ -2,7 +2,6 @@ package com.studyclub.notification;
 
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,6 +13,9 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import lombok.Getter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * "이벤트가 발생했다는 사실"과 "실제로 언제·누구에게·어떻게 보냈는지"를 기록하는 아웃박스(outbox) 레코드 (specs/notification/spec.md).
@@ -27,6 +29,7 @@ import java.util.Objects;
         indexes = {
             @Index(name = "idx_notification_status_created", columnList = "STATUS, CREATED_AT")
         })
+@Getter
 public class Notification extends BaseEntity {
 
     @Id
@@ -52,7 +55,8 @@ public class Notification extends BaseEntity {
     @Column(name = "TEMPLATE_ID", nullable = false)
     private Long templateId;
 
-    @Convert(converter = JsonMapConverter.class)
+    /** Hibernate 7 이 Jackson 3(이 프로젝트가 쓰는 버전)을 자동 인식해 직렬화한다 — 커스텀 컨버터 불필요. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "PAYLOAD", nullable = false)
     private Map<String, Object> payload;
 
@@ -153,53 +157,5 @@ public class Notification extends BaseEntity {
             throw new IllegalStateException(
                     "status=" + this.status + " 에서 " + targetDescription + " 로 전이할 수 없습니다.");
         }
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public NotificationEventType getEventType() {
-        return eventType;
-    }
-
-    public NotificationChannel getRecipientType() {
-        return recipientType;
-    }
-
-    public String getRecipientValue() {
-        return recipientValue;
-    }
-
-    public Long getRecipientUserId() {
-        return recipientUserId;
-    }
-
-    public Long getTemplateId() {
-        return templateId;
-    }
-
-    public Map<String, Object> getPayload() {
-        return payload;
-    }
-
-    public NotificationStatus getStatus() {
-        return status;
-    }
-
-    public Instant getLockedAt() {
-        return lockedAt;
-    }
-
-    public NotificationErrorType getErrorType() {
-        return errorType;
-    }
-
-    public Instant getScheduledAt() {
-        return scheduledAt;
-    }
-
-    public Instant getSentAt() {
-        return sentAt;
     }
 }
