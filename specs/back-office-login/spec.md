@@ -27,7 +27,7 @@
 - 같은 이메일 계정은 있는데 sub 가 다른 경우, core-front 는 `409 ACCOUNT_LINK_REQUIRED` 다. 백오피스는 identity 가 없으면 전부 `SIGNUP_REQUIRED` 로 본다.
 - 거절은 두 코드로 가른다. **계정 없음 → `403 SIGNUP_REQUIRED`(신규)**, **MEMBER → `403 FORBIDDEN`(기존)**. 부트스트랩이 "core-front 로그인 → 승격" 순서라, 계정 없는 사람에게 "먼저 서비스에서 로그인하라" 고 알려줘야 캡틴에게 헛요청이 안 간다. 계정 존재 여부가 새어 나갈 걱정은 없다 — 구글 인증을 통과해야 여기 오므로 자기 계정만 확인할 수 있다.
 - 온보딩 완료 여부는 안 본다. ADMIN 은 core-front 에서 온보딩을 안 마쳤을 수 있고, 백오피스에는 온보딩 화면이 없다.
-- ADMIN 판정은 **로그인 시점에 DB 를 읽는다.** 이번 PR 은 JWT 형식을 안 바꾼다. 로그인 뒤 요청의 ADMIN 판별(토큰 claim vs 요청마다 DB 조회)은 후속 PR 에서 정한다 — [한계 / 후속](#한계--후속).
+- ADMIN 판정은 **로그인 시점에 DB 를 읽는다.** 이번 PR 은 JWT 형식을 안 바꾼다. 로그인 뒤 요청의 ADMIN 판별은 후속 PR 에서 **요청마다 DB 조회**로 붙인다 — [한계 / 후속](#한계--후속).
 - allowlist 는 제거한다. `AuthService` 의 `@Value`·`allowedEmailsRaw`, `application.yml` 의 `back-office.allowed-emails`, `.env.example`, 테스트 `application.yml` 전부.
 
 ## ADMIN 은 어떻게 생기나 (부트스트랩)
@@ -53,8 +53,8 @@ SQL 은 첫 ADMIN 까지다. 그 뒤로는 ADMIN 이 백오피스 화면에서 �
 - BE `PATCH /accounts/{id}/role` — 호출자 ADMIN 만. `MEMBER ↔ ADMIN`. 자기 자신 변경 금지. 마지막 남은 1명의 ADMIN 은 강등될 수 없음 (PRD `04b` "전원이 잠길 수 있다").
 - 백오피스 `/users` — 역할 배지 클릭 → 변경. 화면 형태는 playground 프로토(`/proto/console/users`, 역할 드롭다운)를 따른다.
 - 첫 ADMIN 은 그래도 SQL 이다. 이 기능은 두 번째 ADMIN 부터 쓴다.
-- 기획 쪽 스토리 PRD "캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다" 에 같은 기능이 이미 있다. 거기서는 역할이 캡틴·네비게이터·크루 3개고, API 를 `PATCH /api/users/{id}/role` 로 잡아 뒀다. 우리 코드는 MEMBER·ADMIN 2개라 네비게이터를 어떻게 할지 미정이다.
-- 그래서 지금은 MEMBER·ADMIN 만 받되, 나중에 값이 하나 늘어도(예: NAVIGATOR) enum 에 값만 추가하면 되게 만든다. 경로나 요청 형식을 다시 짜는 일이 없어야 한다.
+- 기획 쪽 스토리 PRD "캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다" 에 같은 기능이 이미 있다. 거기서는 역할이 캡틴·네비게이터·크루 3개고, API 를 `PATCH /api/users/{id}/role` 로 잡아 뒀다.
+- 네비게이터는 SYSTEM_ROLE 값이 아니다. 스터디별 반장이라 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER`·`CO_LEADER` 인 사람이다. 자주 바뀌는 자리라 enum 에 값을 넣지 않는다. 이 API 는 MEMBER·ADMIN 만 받는다.
 - 그 스토리 PRD 에 담당자가 지정돼 있다. 우리가 먼저 API 를 만들면 그 사람 일과 겹칠 수 있으니 시작 전에 확인한다.
 
 ## API 계약
@@ -93,7 +93,7 @@ Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountVi
 
 화면 신설 없음. API 연결만 진행
 
-- `src/app/api/auth/social/login/route.ts` — 백엔드 403 은 지금처럼 그대로 넘긴다. 추가로 **`data.user.role !== 'ADMIN'` 이면 쿠키를 심지 않고 403** 을 돌려준다. 백엔드가 뚫려도 프론트가 한 번 더 막는다(PRD `04b` "두 겹으로 막는다"). 파일 상단 allowlist 주석 갱신.
+- `src/app/api/auth/social/login/route.ts` — 백엔드 403 은 지금처럼 그대로 넘긴다. 추가로 **`data.user.role !== 'ADMIN'` 이면 쿠키를 심지 않고 403** 을 돌려준다. 이때도 응답은 `errorCode: FORBIDDEN` + 같은 메시지로 맞춰서, 로그인 화면이 백엔드 403 과 구분 없이 처리한다. 백엔드가 뚫려도 프론트가 한 번 더 막는다(PRD `04b` "두 겹으로 막는다"). 파일 상단 allowlist 주석 갱신.
 - `src/app/login/page.tsx` — `errorCode` 로 가른다. `FORBIDDEN` 이면 PRD BO-05 문구 「운영 권한이 없어요. 캡틴에게 요청하세요.」, `SIGNUP_REQUIRED` 면 「먼저 스터디클럽 사이트에서 로그인해 주세요.」. 나머지 에러는 지금처럼 `errorMessage`.
 
 ## 테스트
@@ -116,20 +116,25 @@ Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountVi
 - 백엔드 가이드 에러코드 표에 `SIGNUP_REQUIRED` 추가(온보딩 스펙이 세 코드를 추가할 때와 같은 자리).
 - `docs/backend-development-guide/auth-guide.md` 의 role claim 설명은 코드와 다르다. 이번 PR 에서 안 고친다 — 별도.
 
+## 리뷰에서 결정 (2026-09-15)
+
+- **백오피스 로그인에서 계정을 만들지 않는다.** 만들어도 MEMBER 라 어차피 못 들어오고, 공개 URL 에서 로그인 버튼만 눌러도 온보딩 미완료 MEMBER 행이 쌓인다. 부트스트랩의 "core-front 에서 먼저 로그인" 단계와 `SIGNUP_REQUIRED` 코드는 그대로 간다. (j00hyun · rowing0328)
+- **네비게이터(반장)는 SYSTEM_ROLE 로 안 푼다.** 스터디별 반장이라 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER`·`CO_LEADER` 인 사람이다. **이 PR 은 ADMIN(=캡틴)만 본다.** 기획이 네비게이터 백오피스 접근을 확정하면 별도 PR 에서 게이트를 `SYSTEM_ROLE = ADMIN OR PARTICIPANT_ROLE IN (LEADER, CO_LEADER)` 로 넓힌다. (j00hyun)
+- **로그인 이후 요청의 ADMIN 판별은 요청마다 DB 조회.** 아래 [한계 / 후속](#한계--후속). (j00hyun)
+
 ## 미확정 (팀 결정)
 
-1. **최초 ADMIN 부트스트랩 — SQL(리더·인프라) vs Flyway 시드.** 이 문서는 SQL. 운영 DB 에 SQL 을 칠 사람이 누구인지, 그게 부담이면 Flyway 로 갈지 리더 결정.
-2. **네비게이터(반장)의 백오피스 접근.** 기획은 네비게이터도 백오피스에서 담당 스터디를 관리하는 그림인데, 3역할(캡틴·네비게이터·크루)과 SYSTEM_ROLE(MEMBER·ADMIN)을 어떻게 맞출지는 기획도 미정(스토리 PRD 미확정 2번). **이 PR 은 ADMIN(=캡틴)만 본다.** 네비게이터는 기획이 확정된 뒤 별도 PR 에서 게이트를 "ADMIN 또는 담당 스터디가 있는 네비게이터" 로 넓힌다.
-3. **백오피스 로그인에서 계정 생성을 아예 막을지 (태스크 3번).** 이 문서는 막는다. 대신 부트스트랩에 "core-front 에서 먼저 로그인" 단계가 생기고 `SIGNUP_REQUIRED` 코드가 하나 는다. 막지 않으면(core-front 처럼 MEMBER 로 만들고 나서 ADMIN 아니면 거절) 둘 다 없어지고 코드도 줄지만, 공개된 백오피스 URL 에서 아무 구글 계정이나 로그인 버튼만 눌러도 온보딩 미완료 MEMBER 행이 생긴다. 리더 판단.
+1. **최초 ADMIN 부트스트랩 — 누구를 ADMIN 으로 올리나.** 방식은 SQL 로 간다(rowing0328). 다만 누가 캡틴인지, 첫 ADMIN 을 누구로 잡을지는 j00hyun 이 주영님께 확인 뒤 알려주기로 함. **이 답을 기다리지 않고 구현은 시작한다.** 배포 전에만 정해지면 된다 — [부트스트랩](#admin-은-어떻게-생기나-부트스트랩)의 배포 순서 참고.
 
 ## 한계 / 후속
 
-- **로그인 이후 요청은 아직 role 을 안 본다.** core-front 로 받은 MEMBER 토큰으로 `GET /accounts` 를 부르면 전체 회원 이메일이 나온다. allowlist 시절부터 있던 구멍이라 이번 작업으로 나빠지진 않지만 없어지지도 않는다. 후속 PR 에서 백오피스 API 에 ADMIN 가드를 붙인다(**#78 머지 후**). 그때까지는 프론트의 두 번째 방어(`role !== 'ADMIN'` 이면 쿠키 안 심기)만 있다. 방식은 둘 중 하나, 리더 결정:
-  - **요청마다 DB 조회** — `@RequireAdmin` + 인터셉터. 온보딩 가드(`RequireOnboarding`)와 같은 모양. ACCOUNT PK 1건이라 운영자 몇 명 규모에선 비용이 없다. 강등 즉시 반영. 토큰 형식 불변이라 core-front 회귀 없음. 변경 범위 작음.
-  - **JWT 에 role claim** — 서버가 DB 를 안 본다. 표준적이고 트래픽이 커져도 버틴다. 대신 강등이 토큰 만료까지 안 먹는다. 지금 access 가 7일이고 백오피스에 refresh 가 없어서, 이 방식은 **access 만료 단축(5~15분) + 백오피스 refresh 라우트 + `refresh()` 가 DB 를 다시 읽어 role 갱신**이 한 세트다. `JwtService`·`JwtAuthFilter`·프론트까지 건드린다.
+- **로그인 이후 요청은 아직 role 을 안 본다.** core-front 로 받은 MEMBER 토큰으로 `GET /accounts` 를 부르면 전체 회원 이메일이 나온다. allowlist 시절부터 있던 구멍이라 이번 작업으로 나빠지진 않지만 없어지지도 않는다. 후속 PR 에서 백오피스 API 에 ADMIN 가드를 붙인다(**#78 머지 후**). 그때까지는 프론트의 두 번째 방어(`role !== 'ADMIN'` 이면 쿠키 안 심기)만 있다.
+  - **방식은 요청마다 DB 조회로 확정** — `@RequireAdmin` + 인터셉터. 온보딩 가드(`RequireOnboarding`)와 같은 모양이라 통일된다. ACCOUNT PK 1건이라 운영자 몇 명 규모에선 비용이 없다. 강등 즉시 반영. 토큰 형식 불변이라 core-front 회귀 없음.
+  - JWT 에 role claim 을 넣는 안은 안 간다. 강등이 토큰 만료까지 안 먹고, 지금 access 가 7일·백오피스에 refresh 가 없어서 만료 단축 + refresh 라우트 + `JwtService`·`JwtAuthFilter`·프론트를 한 세트로 건드려야 한다.
 
 ## 변경이력
 
 | 날짜 | 변경 | 근거 |
 |---|---|---|
 | 2026-09-14 | 최초 작성 — allowlist → SYSTEM_ROLE=ADMIN 전환, 자동 가입·승격 없음, 역할 부여는 2단계 별도 PR | 커뮤니티 스쿼드 회의 4 배정 + 리더 확답(ADMIN 전원), PRD 01 인증 BO-05 / 04b IAM, ERD ACCOUNT.md 미확정 |
+| 2026-09-16 | 리뷰 반영 — 계정 미생성 확정, 네비게이터는 PARTICIPANT_ROLE 로(enum 추가 안 함), 후속 ADMIN 가드는 DB 조회로 확정, 프론트 2차 차단도 FORBIDDEN 으로, 부트스트랩은 SQL·대상자 확인 보류 | PR #80 리뷰(j00hyun 4건, rowing0328 1건) |
