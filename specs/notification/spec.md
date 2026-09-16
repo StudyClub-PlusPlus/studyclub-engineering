@@ -161,15 +161,15 @@ WHERE status = 'PROCESSING'
 | EVENT_TYPE | VARCHAR(40) | N | 이번 구현에서 쓰는 값은 `USER_REGISTERED` 뿐. 다른 5종은 코드에 없음 |
 | RECIPIENT_TYPE | VARCHAR(20) | N | 이번 구현에서 쓰는 값은 `EMAIL` 뿐. `DISCORD` 는 정의하지 않는다 |
 | RECIPIENT_VALUE | VARCHAR(255) | N | 발송 시점 이메일 스냅샷 (나중에 회원이 이메일을 바꿔도 이 값은 그대로) |
-| RECIPIENT_USER_ID | BIGINT FK→ACCOUNT | N | 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
-| TEMPLATE_ID | BIGINT FK→NOTIFICATION_TEMPLATE | N | |
+| RECIPIENT_USER_ID | BIGINT | N | ID 참조(ACCOUNT, FK 없음 — 애그리거트 간 참조는 ID+인덱스만) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
+| TEMPLATE_ID | BIGINT | N | ID 참조(NOTIFICATION_TEMPLATE, FK 없음) |
 | PAYLOAD | JSON | N | `{"nickname": "..."}`. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
 | STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED` |
-| LOCKED_AT | DATETIME | Y | PROCESSING 전환 시각. 재수거 판단 기준 |
+| LOCKED_AT | DATETIME(6) | Y | PROCESSING 전환 시각. 재수거 판단 기준이자 클레임 토큰 — 재수거로 값이 바뀌면 이전 클레임의 완료 처리를 무시한다 |
 | ERROR_TYPE | VARCHAR(30) | Y | FAILED 일 때만. `TEMPLATE_MISSING`/`INVALID_RECIPIENT`/`PROVIDER_ERROR`/`UNKNOWN`. 자동 재시도 판단에는 안 쓴다(이번 구현엔 자동 재시도가 없음) — 실패 원인을 나중에 사람이 보기 위한 값 |
-| SCHEDULED_AT | DATETIME | Y | 이번 구현에서는 항상 NULL(즉시 발송). 시간 트리거형 이벤트를 위해 컬럼만 미리 둔다 |
-| SENT_AT | DATETIME | Y | 발송 성공 시각 |
-| CREATED_AT / UPDATED_AT | DATETIME | N | `BaseEntity` |
+| SCHEDULED_AT | DATETIME(6) | Y | 이번 구현에서는 항상 NULL(즉시 발송). 시간 트리거형 이벤트를 위해 컬럼만 미리 둔다 |
+| SENT_AT | DATETIME(6) | Y | 발송 성공 시각 |
+| CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 
 > **소스**: 신규 테이블 — 소스 컬럼 표기 대상 없음. PAYLOAD.nickname 의 소스는 `ACCOUNT.NICKNAME`(스냅샷, INSERT 시점).
 
@@ -187,10 +187,12 @@ WHERE status = 'PROCESSING'
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
 | BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함 |
-| UPDATED_AT | DATETIME | N | `BaseEntity` |
-| UPDATED_BY_ADMIN_ID | BIGINT FK→ACCOUNT | Y | 편집 화면이 아직 없어 이번 구현에서는 항상 NULL(마이그레이션이 만든 행) |
+| UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
+| UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음) — 편집 화면이 아직 없어 이번 구현에서는 항상 NULL(마이그레이션이 만든 행) |
 
 - `UNIQUE(EVENT_TYPE, CHANNEL)`
+- RECIPIENT_USER_ID·TEMPLATE_ID·UPDATED_BY_ADMIN_ID 는 애그리거트 사이 참조라 FK 를 걸지 않는다 — ID + 인덱스만
+  ([database-guide.md 외래키 정책](../../docs/backend-development-guide/database-guide.md)).
 
 ### 상태 전이
 
@@ -221,9 +223,13 @@ stateDiagram-v2
 스펙에서는 따르지 않는다 — 웰컴메일은 특정 스터디에 속하지 않는 계정 단위 알림이라 캡틴이 볼 이유가
 약하다.
 
-`SYSTEM_ROLE = ADMIN` 검사가 로그인 시점이 아니라 요청마다 걸리는 역할 검사로 바뀌면, "로그인은 됐지만
-ADMIN이 아님"과 "토큰 자체가 없음/만료"를 구분해야 한다 — 아래 각 엔드포인트의 에러 응답에 `403
-FORBIDDEN`을 추가했다.
+**갱신(구현 PR) — 요청마다 걸리는 ADMIN 역할 검사는 이번 구현에 없다.** 애초 이 절은 `SYSTEM_ROLE =
+ADMIN` 검사가 요청마다 걸리는 걸 전제로 두 엔드포인트에 403 FORBIDDEN 을 넣어뒀지만, 구현 중 그 가드를
+직접 만들어 넣는 건 이 스펙(웰컴메일)의 범위를 넘어선다고 판단해 뺐다 —
+[specs/back-office-login/spec.md](../back-office-login/spec.md) 도 "로그인 뒤 요청의 ADMIN 판별은
+후속 PR 에서 요청마다 DB 조회로 붙인다"고 이미 후속 PR 로 못박아 둔 항목이다. 그래서 지금은 **로그인만
+되어 있으면(SystemRole 과 무관하게) 이 두 엔드포인트를 호출할 수 있다** — 아래 403 FORBIDDEN 행은 그
+후속 PR 이 실제로 가드를 붙이기 전까지는 발생하지 않는다.
 
 ### `GET /back-office/notification-templates`
 
@@ -261,7 +267,7 @@ FORBIDDEN`을 추가했다.
 | 상태 | errorCode | 조건 |
 |---|---|---|
 | 401 | UNAUTHORIZED | 토큰 없음/만료 |
-| 403 | FORBIDDEN | 로그인은 됐지만 백오피스 인가 조건(현재 allowlist, 추후 `SYSTEM_ROLE = ADMIN`)을 만족하지 않음 |
+| 403 | FORBIDDEN | (후속 PR 예정) 로그인은 됐지만 `SYSTEM_ROLE = ADMIN` 이 아님 — 이번 구현에는 이 검사가 없어 지금은 발생하지 않는다 |
 
 ### `GET /back-office/notifications`
 
@@ -306,7 +312,7 @@ FORBIDDEN`을 추가했다.
 | 상태 | errorCode | 조건 |
 |---|---|---|
 | 401 | UNAUTHORIZED | 토큰 없음/만료 |
-| 403 | FORBIDDEN | 로그인은 됐지만 백오피스 인가 조건(현재 allowlist, 추후 `SYSTEM_ROLE = ADMIN`)을 만족하지 않음 |
+| 403 | FORBIDDEN | (후속 PR 예정) 로그인은 됐지만 `SYSTEM_ROLE = ADMIN` 이 아님 — 이번 구현에는 이 검사가 없어 지금은 발생하지 않는다 |
 
 **결정 — `recipientValue` 마스킹 예외는 두지 않는다.** 운영진이 특정 회원 문의 대응 시 이메일 원문
 대조가 필요해질 수 있다는 점은 알아두되, 이번 구현에서는 고려하지 않는다 — 필요해지면 별도 스펙에서
