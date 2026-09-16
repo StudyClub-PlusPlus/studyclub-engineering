@@ -9,9 +9,9 @@
 - `.env`, `.env.*`, 어떤 형태의 토큰·API 키·시크릿·비밀번호
 - DB 접속 정보, 내부 서버 IP/URL, SSH 키(`*.pem`, `*.key`)
 - 개인정보(회원 실명/연락처/이메일), 결제 정보
-- 내부 전용 문서, fleet 경로/구조가 드러나는 내용
+- 내부 전용 문서, 내부 레포의 경로/디렉토리 구조가 드러나는 내용
 
-**시크릿은 fleet/secret/ SSOT 에서만 관리**하고, 배포 시 GitHub Actions Secret 으로 주입한다 (레포에 평문 금지).
+**시크릿은 내부 인프라 레포의 시크릿 SSOT 에서만 관리**하고, 배포 시 GitHub Actions Secret 으로 주입한다 (레포에 평문 금지).
 민감정보가 필요하면 코드에는 `process.env.XXX` 로 참조만 하고 값은 넣지 않는다.
 
 ## 이게 뭐
@@ -130,6 +130,6 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 ## 관련
 
-- 승격 원본(도그푸딩): fleet `apps/bakg`, `.bakg/`
-- 에픽: fleet `issues/ongoing-1/studyclub-plusplus-service-setup/`
+- 승격 원본(도그푸딩): 내부 레포의 bakg 앱
+- 에픽: 내부 이슈 트래커의 `studyclub-plusplus-service-setup`
 - 도메인: studyclub-plusplus.com / stage / api / back-office / back-office-stage

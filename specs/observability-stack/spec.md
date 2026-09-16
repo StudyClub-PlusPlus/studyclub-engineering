@@ -1,5 +1,19 @@
 # 로그·메트릭 관측 스택 — Grafana 단일 창구
 
+> ## ⚠️ 2026-09-16 — 배치 갱신: docker compose → k8s
+>
+> 이 스펙의 **설계 판단(무엇을 왜 고르는가)은 그대로 유효**하고, **배치(어디서 어떻게 도는가)만
+> 바뀌었다.** studyclub api 가 k8s 배포라서 호스트 compose 가 없다.
+>
+> - Loki · Alloy · Grafana 는 이 레포가 아니라 **인프라 레포(terraform)** 가 띄운다 —
+>   클러스터당 한 벌
+> - 앱은 파일이 아니라 **stdout** 으로 ECS JSON 을 낸다 (`LOG_JSON_CONSOLE=ecs`)
+> - 프로젝트 격리는 **Loki 멀티테넌시** — 테넌트 키는 파드 라벨 `project`
+> - Grafana 는 프로젝트당 인스턴스가 아니라 **Org**
+>
+> 결정·대안·트레이드오프: 인프라 레포의 **ADR 0027**
+
+
 ## WHAT
 
 운영 백엔드(`studyclub-api`)의 **로그와 메트릭을 Grafana 한 곳으로 모으고**, 운영자가 서버에 SSH 하지
