@@ -36,10 +36,10 @@ public class AuthController {
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
     public AccountView me(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        return authService.me(authentication.getName());
+        return authService.me(accountId);
     }
 
     @PostMapping("/refresh")

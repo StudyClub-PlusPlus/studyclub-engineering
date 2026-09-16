@@ -36,13 +36,13 @@ public class OnboardingGuardInterceptor implements HandlerInterceptor {
         }
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getName() == null) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
         Account account =
                 accountRepository
-                        .findByEmail(authentication.getName().toLowerCase())
+                        .findById(accountId)
                         .orElseThrow(
                                 () ->
                                         new BusinessException(
