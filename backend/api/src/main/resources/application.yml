@@ -41,10 +41,6 @@ google:
 jwt:
   secret: ${JWT_SECRET:local-dev-jwt-secret-change-me}
 
-# 백오피스 접근 allowlist (콤마 구분, 대소문자 무시)
-back-office:
-  allowed-emails: ${BACK_OFFICE_ALLOWED_EMAILS:}
-
 # API 문서 — 스펙은 springdoc 이 컨트롤러에서 생성하고, UI 는 Scalar 가 그린다 (/scalar).
 # JS 번들은 jar 안에 들어있어 CDN 을 타지 않는다.
 # 운영에서 스펙을 감추려면 API_DOCS_ENABLED=false 하나로 둘 다 꺼진다.

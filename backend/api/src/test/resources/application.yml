@@ -22,5 +22,3 @@ spring:
 
 jwt:
   secret: test-only-secret
-back-office:
-  allowed-emails: ops@studyclub-plusplus.com
