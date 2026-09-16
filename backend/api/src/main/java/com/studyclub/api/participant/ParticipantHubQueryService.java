@@ -15,14 +15,14 @@ public class ParticipantHubQueryService {
         this.participantHubDataProvider = participantHubDataProvider;
     }
 
-    public ParticipantHubOverviewResponse getParticipantHubOverview(String accountEmail) {
-        return participantHubDataProvider.getParticipantHubOverview(accountEmail);
+    public ParticipantHubOverviewResponse getParticipantHubOverview(Long accountId) {
+        return participantHubDataProvider.getParticipantHubOverview(accountId);
     }
 
     public ParticipatingStudyCohortDetailResponse getParticipatingStudyCohortDetail(
-            String accountEmail, Long cohortId) {
+            Long accountId, Long cohortId) {
         return participantHubDataProvider
-                .findParticipatingStudyCohortDetail(accountEmail, cohortId)
+                .findParticipatingStudyCohortDetail(accountId, cohortId)
                 .orElseThrow(() -> inaccessibleStudyCohort(cohortId));
     }
 

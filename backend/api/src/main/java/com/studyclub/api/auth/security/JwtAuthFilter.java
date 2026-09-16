@@ -12,7 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Authorization: Bearer <access> 를 파싱해 email 을 principal 로 하는 인증을 세팅. */
+/** Authorization: Bearer <access> 를 파싱해 sub(ACCOUNT.ID) 를 principal 로 하는 인증을 세팅. */
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -32,12 +32,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 Claims c = jwtService.parse(token);
-                String email = c.get("email", String.class);
-                if (email != null && !email.isBlank()) {
-                    var auth = new UsernamePasswordAuthenticationToken(email, null, List.of());
-                    auth.setDetails(c.getSubject());
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
+                Long accountId = Long.valueOf(c.getSubject());
+                var auth = new UsernamePasswordAuthenticationToken(accountId, null, List.of());
+                SecurityContextHolder.getContext().setAuthentication(auth);
             } catch (RuntimeException ignored) {
                 // 유효하지 않은 토큰 → 인증 미설정 (이후 authorize 단계에서 401)
             }

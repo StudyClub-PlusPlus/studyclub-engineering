@@ -42,7 +42,8 @@ public class AccountController {
     }
 
     /**
-     * 온보딩 완료 — 약관 3종·닉네임·타임존을 한 트랜잭션으로 저장하고 가입을 확정한다. 온보딩 미완료 사용자도 호출할 수 있다(회원 전용 API 가드 대상이 아니다).
+     * 온보딩 완료 — 만 14세 이상 확인을 검증하고 약관 3종·닉네임·타임존을 한 트랜잭션으로 저장해 가입을 확정한다. 온보딩 미완료 사용자도 호출할 수 있다(회원 전용
+     * API 가드 대상이 아니다).
      *
      * <p>일부러 {@code @Valid} 를 안 쓴다 — {@code @Valid} 는 서비스 메서드가 호출되기도 전에 검증하므로, 이미 완료된 계정이 다시 호출할 때
      * "검증보다 멱등 체크가 먼저"라는 스펙 순서(specs/user-onboarding/spec.md)를 지킬 수 없다. 검증은 {@link
@@ -53,9 +54,9 @@ public class AccountController {
     @PostMapping("/onboarding")
     public AccountView completeOnboarding(
             Authentication authentication, @RequestBody OnboardingRequest req) {
-        if (authentication == null || authentication.getName() == null) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        return accountOnboardingService.complete(authentication.getName(), req);
+        return accountOnboardingService.complete(accountId, req);
     }
 }
