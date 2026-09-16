@@ -54,9 +54,9 @@ public class AccountController {
     @PostMapping("/onboarding")
     public AccountView completeOnboarding(
             Authentication authentication, @RequestBody OnboardingRequest req) {
-        if (authentication == null || authentication.getName() == null) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        return accountOnboardingService.complete(authentication.getName(), req);
+        return accountOnboardingService.complete(accountId, req);
     }
 }

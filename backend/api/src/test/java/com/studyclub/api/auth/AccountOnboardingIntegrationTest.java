@@ -404,7 +404,7 @@ class AccountOnboardingIntegrationTest {
     @DisplayName(
             "동시성 - 같은 계정에 동시에 완료 요청이 들어와도 한쪽만 실제로 저장되고 나머지는 그 결과를 그대로 받는다 "
                     + "— 리뷰에서 지적된 회귀: 락 없는 findByEmail 을 먼저 부르면 Hibernate 1차 캐시가 이후의 "
-                    + "findByEmailForUpdate 결과를 무시해 두 요청 다 '미완료'로 착각하고 409 로 충돌한다")
+                    + "findByIdForUpdate 결과를 무시해 두 요청 다 '미완료'로 착각하고 409 로 충돌한다")
     void concurrentCompletionRequestsAreConsistent() throws Exception {
         Account account = seedUnonboardedAccount();
         String nickname = uniqueNickname();
