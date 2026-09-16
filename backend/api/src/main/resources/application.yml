@@ -37,7 +37,7 @@ google:
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
 
-# JWT 서명키 (운영은 fleet/secret/ → env 주입, 레포 평문 금지)
+# JWT 서명키 (운영은 내부 시크릿 SSOT → env 주입, 레포 평문 금지)
 jwt:
   secret: ${JWT_SECRET:local-dev-jwt-secret-change-me}
 
