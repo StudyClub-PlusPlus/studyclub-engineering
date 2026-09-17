@@ -3,46 +3,38 @@
 import { useMemo, useState } from 'react';
 
 import type { Locale, Operator, Study } from '@core/lib/content';
-import { m, t } from '@core/lib/i18n';
+import { m } from '@core/lib/i18n';
 import { recruitState } from '@core/lib/recruit';
-import { toISODate } from '@studyclub/mock';
 import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 import { STUDY_BROWSER_SPEC } from '@/proto/specs/study-browser';
 
-type RecruitmentFilter = 'all' | 'scheduled' | 'recruiting' | 'imminent' | 'closed' | 'always';
+type RecruitmentFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
 type TimezoneFilter = 'all' | 'KST' | 'PST' | 'both';
 
 const RECRUITMENT_OPTIONS: { value: RecruitmentFilter; label: string }[] = [
-  { value: 'all', label: '전체' }, { value: 'scheduled', label: '모집 예정' },
-  { value: 'recruiting', label: '모집 중' }, { value: 'imminent', label: '종료 임박' },
-  { value: 'closed', label: '모집 마감' }, { value: 'always', label: '상시 모집' },
+  { value: 'all', label: '모집 전체' },
+  { value: 'recruiting', label: '모집 중' },
+  { value: 'ongoing', label: '진행 중' },
+  { value: 'closed', label: '종료' },
 ];
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: '전체' }, { value: 'AI&ML', label: 'AI · ML' },
-  { value: 'CS(컴퓨터 사이언스)', label: 'CS' }, { value: '데이터 사이언스', label: '데이터' },
-  { value: 'BE', label: '백엔드' }, { value: 'FE', label: '프론트엔드' },
-  { value: '모바일 프로그래밍', label: '모바일' }, { value: '기획', label: '기획' },
-  { value: 'PM', label: 'PM' }, { value: '디자인', label: '디자인' },
-  { value: '커리어', label: '커리어' }, { value: '어학', label: '어학' },
-  { value: '라이프스타일', label: '라이프스타일' }, { value: '비즈니스', label: '비즈니스' },
-  { value: '기타', label: '기타' },
+  { value: '알고리즘', label: '알고리즘' }, { value: '데이터', label: '데이터' },
+  { value: '소프트웨어 개발', label: '소프트웨어 개발' }, { value: '커리어', label: '커리어' },
+  { value: '북클럽', label: '북클럽' }, { value: '어학', label: '어학' },
+  { value: '라이프스타일', label: '라이프스타일' }, { value: '기획 · PM', label: '기획 · PM' },
+  { value: '비즈니스', label: '비즈니스' }, { value: '기타', label: '기타' },
 ];
 const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
   { value: 'KST', label: 'KST' }, { value: 'PST', label: 'PST' }, { value: 'both', label: '동시 모집' },
 ];
 
 function statusOf(study: Study): Exclude<RecruitmentFilter, 'all'> {
-  if (study.recruitment?.status === 'always' || study.recruitment?.status === 'monthly') return 'always';
+  if (study.status === 'ongoing') return 'ongoing';
   if (study.status === 'closed' || recruitState(study) === 'closed') return 'closed';
-  if (study.publish_at && study.publish_at > new Date().toISOString().slice(0, 10)) return 'scheduled';
-  const deadline = toISODate(study.recruitment?.deadline);
-  if (deadline) {
-    const days = Math.ceil((Date.parse(`${deadline}T23:59:59`) - Date.now()) / 86_400_000);
-    if (days >= 0 && days <= 3) return 'imminent';
-  }
   return 'recruiting';
 }
 function timezoneOf(study: Study): Exclude<TimezoneFilter, 'all'> {
@@ -52,9 +44,16 @@ function timezoneOf(study: Study): Exclude<TimezoneFilter, 'all'> {
   return 'both';
 }
 function categoryMatches(study: Study, value: string): boolean {
-  if (value === 'PM') return /pm|프로덕트|product/i.test(`${study.category ?? ''} ${study.title.ko}`);
-  if (value === '커리어') return /커리어|career|취업|resume|이력서|interview|면접/i.test(`${study.category ?? ''} ${study.title.ko} ${study.summary.ko}`);
-  return study.category === value;
+  const text = `${study.category ?? ''} ${study.title.ko} ${study.summary.ko}`;
+  const patterns: Record<string, RegExp> = {
+    알고리즘: /알고리즘|algorithm|leetcode|리트코드|코테/i,
+    데이터: /데이터|data|sql|db|디비/i,
+    '소프트웨어 개발': /be|fe|소프트웨어 개발|코딩|coding|backend|frontend|개발/i,
+    커리어: /커리어|career|취업|resume|이력서|interview|면접/i,
+    북클럽: /북클럽|book|독서|리딩/i,
+    '기획 · PM': /기획|pm|프로덕트|product/i,
+  };
+  return patterns[value]?.test(text) ?? study.category === value;
 }
 function searchText(study: Study): string {
   return [study.title.ko, study.title.en, study.summary.ko, study.summary.en].filter(Boolean).join(' ').toLowerCase();
@@ -81,46 +80,35 @@ function FilterOption({
           : 'border-border-strong bg-bg text-fg-secondary hover:border-fg-muted hover:text-fg'
       }`}
     >
-      <span aria-hidden='true' className={active ? 'text-current' : 'text-fg-muted'}>{active ? '●' : '○'}</span>
       {children}
     </button>
   );
 }
 
 function FilterSelect<T extends string>({
-  label,
   value,
   options,
   onChange,
 }: {
-  label: string;
   value: T;
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
 }) {
   return (
-    <label className='flex items-center gap-3'>
-      <span className='w-20 shrink-0 text-sm font-bold text-fg'>{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value as T)}
-        className='h-9 min-w-44 rounded-lg border border-border-strong bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
-    </label>
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value as T)}
+      className='h-9 w-fit min-w-0 rounded-lg border border-border-strong bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>{option.label}</option>
+      ))}
+    </select>
   );
 }
 
-function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
-      <span className='w-20 shrink-0 text-sm font-bold text-fg'>{label}</span>
-      <div className='no-scrollbar flex gap-1.5 overflow-x-auto whitespace-nowrap'>{children}</div>
-    </div>
-  );
+function FilterRow({ children }: { children: React.ReactNode }) {
+  return <div className='flex flex-wrap gap-1.5'>{children}</div>;
 }
 
 export function StudyBrowser({
@@ -134,7 +122,7 @@ export function StudyBrowser({
 }) {
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
-  const [recruitment, setRecruitment] = useState<RecruitmentFilter>('recruiting');
+  const [recruitment, setRecruitment] = useState<RecruitmentFilter>('all');
   const [category, setCategory] = useState<string>('all');
   const [timezone, setTimezone] = useState<TimezoneFilter>('all');
   const base = useMemo(() => {
@@ -168,24 +156,25 @@ export function StudyBrowser({
         같은 위계로 읽힌다. 상태는 **세그먼트**, 카테고리는 **테두리 칩**.
       */}
       <div className='mb-6 flex flex-col gap-4'>
-        <FilterSelect
-          label='모집 상태'
-          value={recruitment}
-          options={RECRUITMENT_OPTIONS}
-          onChange={setRecruitment}
-        />
-        <FilterRow label='카테고리'>
-          {CATEGORY_OPTIONS.map((option) => (
-            <FilterOption key={option.value} active={category === option.value} onClick={() => setCategory(option.value)}>{option.label}</FilterOption>
-          ))}
-        </FilterRow>
-        <FilterSelect
-          label='시간대'
-          value={timezone}
-          options={[{ value: 'all' as const, label: '전체' }, ...TIMEZONE_OPTIONS]}
-          onChange={setTimezone}
-        />
-        <div className='relative w-full shrink-0 sm:w-52'>
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div role='tablist' aria-label='모집 상태' className='inline-flex w-fit shrink-0 rounded-pill bg-surface-2 p-1'>
+          {RECRUITMENT_OPTIONS.map((option) => {
+            const active = recruitment === option.value;
+            return (
+              <button
+                key={option.value}
+                type='button'
+                role='tab'
+                aria-selected={active}
+                onClick={() => setRecruitment(option.value)}
+                className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 sm:w-[312px]'>
           <Search
             size={15}
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder'
@@ -197,7 +186,7 @@ export function StudyBrowser({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
             placeholder={m('filter.search_studies', locale)}
-            className='h-11 min-w-0 flex-1 bg-transparent pl-4 pr-2 text-sm outline-none'
+            className='h-9 min-w-0 flex-1 bg-transparent pl-9 pr-2 text-sm outline-none'
           />
           {(input || hasQuery) && (
             <button
@@ -221,6 +210,18 @@ export function StudyBrowser({
             <Search size={16} />
           </button>
         </div>
+        </div>
+        <FilterRow>
+          {CATEGORY_OPTIONS.map((option) => (
+            <FilterOption key={option.value} active={category === option.value} onClick={() => setCategory(option.value)}>{option.label}</FilterOption>
+          ))}
+        </FilterRow>
+        <FilterSelect
+          value={timezone}
+          options={[{ value: 'all' as const, label: '시간대' }, ...TIMEZONE_OPTIONS]}
+          onChange={setTimezone}
+        />
+
       </div>
 
       {/* Grid */}
