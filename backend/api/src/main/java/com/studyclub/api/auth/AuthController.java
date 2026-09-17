@@ -1,10 +1,10 @@
 package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
+import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.api.auth.dto.AuthDtos.RefreshRequest;
 import com.studyclub.api.auth.dto.AuthDtos.SocialLoginRequest;
-import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,10 +36,10 @@ public class AuthController {
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
     public AccountView me(Authentication authentication) {
-        if (authentication == null || authentication.getName() == null) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        return authService.me(authentication.getName());
+        return authService.me(accountId);
     }
 
     @PostMapping("/refresh")

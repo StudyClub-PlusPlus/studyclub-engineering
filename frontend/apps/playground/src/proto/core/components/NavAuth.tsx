@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-
 import { getUser, logout, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@core/lib/preview';
@@ -37,6 +36,17 @@ export function NavAuth({ locale }: { locale: Locale }) {
     startPreview();
     setUser(getUser());
     router.push(`/proto/core/${locale}/my`);
+  }
+
+  if (user?.onboardingCompletedAt === null) {
+    return (
+      <Link
+        href={`/proto/core/${locale}/onboarding`}
+        className='rounded-full bg-brand px-4 py-2 text-sm font-semibold text-on-brand'
+      >
+        {locale === 'en' ? 'Finish sign-up' : '가입 마무리'}
+      </Link>
+    );
   }
 
   if (!user) {

@@ -9,9 +9,9 @@
 - `.env`, `.env.*`, 어떤 형태의 토큰·API 키·시크릿·비밀번호
 - DB 접속 정보, 내부 서버 IP/URL, SSH 키(`*.pem`, `*.key`)
 - 개인정보(회원 실명/연락처/이메일), 결제 정보
-- 내부 전용 문서, fleet 경로/구조가 드러나는 내용
+- 내부 전용 문서, 내부 레포의 경로/디렉토리 구조가 드러나는 내용
 
-**시크릿은 fleet/secret/ SSOT 에서만 관리**하고, 배포 시 GitHub Actions Secret 으로 주입한다 (레포에 평문 금지).
+**시크릿은 내부 인프라 레포의 시크릿 SSOT 에서만 관리**하고, 배포 시 GitHub Actions Secret 으로 주입한다 (레포에 평문 금지).
 민감정보가 필요하면 코드에는 `process.env.XXX` 로 참조만 하고 값은 넣지 않는다.
 
 ## 이게 뭐
@@ -44,11 +44,17 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 ## 작업 룰
 
+- **푸시 전에 빌드한다** — 백엔드는 `cd backend && ./gradlew check` (테스트 + 포맷 검사),
+  프론트는 `npm test`. 포맷이 걸리면 `./gradlew spotlessApply` 로 고친다.
+  로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
+- **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
 - 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
 - PR 은 CODEOWNERS(@titaniper) 승인 후에만 main 머지 (외부 기여자 포함).
 - CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
+  **playground 만 `beta` 브랜치에서 배포된다** (`playground-beta.yaml`) — 프로토타입이라 main 을 기다리지 않는다.
+  `backend-PR-CI` 는 PR 마다 `./gradlew check` 를 돌린다 — 컴파일 실패·포맷 위반이 머지되는 걸 막는 게이트.
   `backend-migration-check` 는 PR 마다 빈 MySQL 에 마이그레이션을 적용해 본다 — 여기서 깨지면 `V*.sql` 을 고친다.
 
 ---
@@ -73,9 +79,11 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 | **설계 — 애그리거트·엔티티·값 객체·레이어** | [`docs/backend-development-guide/ddd-guide.md`](docs/backend-development-guide/ddd-guide.md) |
 | 모듈 구조·패키지 규약 | [`docs/backend-development-guide/module-structure.md`](docs/backend-development-guide/module-structure.md) |
 | API 엔드포인트 추가·수정 | [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md) |
+| **스펙 주도 개발 — 코드 전에 스펙** | [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md) |
 | 인증·JWT·OAuth | [`docs/backend-development-guide/auth-guide.md`](docs/backend-development-guide/auth-guide.md) |
 | 보안·개인정보 마스킹 | [`docs/backend-development-guide/security-guide.md`](docs/backend-development-guide/security-guide.md) |
 | OOP·캡슐화·DTO 변환 | [`docs/backend-development-guide/oop-guide.md`](docs/backend-development-guide/oop-guide.md) |
+| 네이밍·주석 규약 | [`docs/backend-development-guide/code-style-guide.md`](docs/backend-development-guide/code-style-guide.md) |
 | 테스트 코드 작성 | [`docs/backend-development-guide/testing-guide.md`](docs/backend-development-guide/testing-guide.md) |
 | 입력 검증 (`@Valid`) | [`docs/backend-development-guide/validation-guide.md`](docs/backend-development-guide/validation-guide.md) |
 | 예외 처리 | [`docs/backend-development-guide/exception-handling-guide.md`](docs/backend-development-guide/exception-handling-guide.md) |
@@ -122,6 +130,6 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 ## 관련
 
-- 승격 원본(도그푸딩): fleet `apps/bakg`, `.bakg/`
-- 에픽: fleet `issues/ongoing-1/studyclub-plusplus-service-setup/`
+- 승격 원본(도그푸딩): 내부 레포의 bakg 앱
+- 에픽: 내부 이슈 트래커의 `studyclub-plusplus-service-setup`
 - 도메인: studyclub-plusplus.com / stage / api / back-office / back-office-stage

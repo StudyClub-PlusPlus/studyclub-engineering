@@ -1,12 +1,18 @@
 package com.studyclub.domain.study;
 
 public enum StudyCategory {
-    AI,
+    AI_ML,
+    CS,
+    DATA,
     BACKEND,
     FRONTEND,
-    DATA,
-    PAPER,
+    MOBILE,
+    PLANNING,
+    PM,
     DESIGN,
-    PRODUCT,
+    CAREER,
+    LANGUAGE,
+    LIFESTYLE,
+    BUSINESS,
     OTHER
 }

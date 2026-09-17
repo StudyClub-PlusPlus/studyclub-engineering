@@ -3,10 +3,8 @@ import { notFound } from 'next/navigation';
 import { StudyConsole } from '@console/components/StudyConsole';
 import { studies } from '@studyclub/mock';
 
-
-import { SPEC } from './spec';
+import { SPECS } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
-
 
 export function generateStaticParams() {
   return studies.map((s) => ({ id: s.id }));
@@ -20,7 +18,9 @@ export default async function StudyAdminDetail({ params }: { params: Promise<{ i
 
   return (
     <>
-      <ScreenSpecRegistrar spec={SPEC} />
+      {SPECS.map((spec) => (
+        <ScreenSpecRegistrar key={spec.chip ?? spec.screen} spec={spec} />
+      ))}
       <StudyConsole study={study} />
     </>
   );

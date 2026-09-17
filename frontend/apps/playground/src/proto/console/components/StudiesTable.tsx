@@ -7,15 +7,17 @@ import { TableCard } from '@console/components/ui';
 import { tx } from '@console/lib/l10n';
 import {
   STUDY_CATEGORIES,
+  applyFormUrl,
   attendanceRate,
   getStudyCrew,
   publishState,
   recruitState,
   toISODate,
   type Study,
+  categoriesOf,
 } from '@studyclub/mock';
 import { Badge } from '@studyclub/ui';
-
+import { Check, Minus } from 'lucide-react';
 
 /**
  * 스터디 관리 목록.
@@ -27,16 +29,16 @@ import { Badge } from '@studyclub/ui';
  * 판정 함수는 사용자 사이트와 공유한다(`@studyclub/mock`) — 콘솔에만 "마감"으로 보이는 사고 방지.
  *
  * 행에 편집·삭제 버튼을 두지 않는다. 스터디 이름을 누르면 **운영 페이지**로 들어가고, 거기서
- * 크루 승인·출석·정보 수정을 모두 한다.
+ * 크루 명단·출석·정보 수정을 모두 한다.
  */
 
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: '카테고리 전체' },
+  { value: 'all', label: '주제 전체' },
   ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
 ];
 
 type RecruitFilter = 'all' | 'apply' | 'closed';
-type PublishFilter = 'all' | 'live' | 'scheduled';
+type PublishFilter = 'all' | 'live' | 'draft';
 
 // "전체" 항목에 축 이름을 붙인다 — 필터가 한 줄에 나란히 서면 어떤 축인지 라벨 없이 알아야 한다.
 const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
@@ -48,7 +50,7 @@ const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
 const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
   { value: 'all', label: '공개 전체' },
   { value: 'live', label: '공개' },
-  { value: 'scheduled', label: '공개 예정' },
+  { value: 'draft', label: '미공개' },
 ];
 
 /** 필터 셀렉트 — 세 축이 한 줄에 나란히 서므로 생김새를 하나로 맞춘다. */
@@ -86,12 +88,15 @@ function summarize(study: Study) {
   return {
     capacity,
     active: active.length,
-    pending: crew.filter((c) => c.status === 'pending').length,
     rate: rows.length === 0 ? undefined : Math.round(rows.reduce((a, b) => a + b, 0) / rows.length),
   };
 }
 
+/** 화면에서 바꾼 공개 상태. TODO(api): 저장 API 를 붙이면 서버 값으로 대체한다. */
+type PublishPatch = { published?: boolean; publish_at?: string };
+
 export function StudiesTable({ studies }: { studies: Study[] }) {
+  const [patch, setPatch] = useState<Record<string, PublishPatch>>({});
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
@@ -101,12 +106,13 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
     const q = query.trim().toLowerCase();
     return (
       studies
+        .map((s) => (patch[s.id] ? { ...s, ...patch[s.id] } : s))
         .filter((s) => {
-          if (category !== 'all' && s.category !== category) return false;
+          if (category !== 'all' && !categoriesOf(s).includes(category)) return false;
           if (recruit !== 'all' && recruitState(s) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
           if (q) {
-            const hay = `${tx(s.title)} ${tx(s.summary)} ${s.category ?? ''}`.toLowerCase();
+            const hay = `${tx(s.title)} ${tx(s.summary)} ${categoriesOf(s).join(' ')}`.toLowerCase();
             if (!hay.includes(q)) return false;
           }
           return true;
@@ -122,7 +128,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           return da.localeCompare(db);
         })
     );
-  }, [studies, query, category, recruit, publish]);
+  }, [studies, patch, query, category, recruit, publish]);
 
   return (
     <div>
@@ -136,7 +142,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         />
         <FilterSelect value={category} onChange={setCategory} options={CATEGORY_OPTIONS} />
         <FilterSelect value={recruit} onChange={setRecruit} options={RECRUIT_OPTIONS} />
-        <FilterSelect value={publish} onChange={setPublish} options={PUBLISH_OPTIONS} />
+        <span data-anno='publish:3'>
+          <FilterSelect value={publish} onChange={setPublish} options={PUBLISH_OPTIONS} />
+        </span>
         <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
       </div>
 
@@ -144,23 +152,22 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         <thead>
           <tr>
             <th>스터디</th>
-            <th className='whitespace-nowrap'>카테고리</th>
+            <th className='whitespace-nowrap'>주제</th>
             <th className='whitespace-nowrap'>모집</th>
             <th className='whitespace-nowrap'>크루</th>
             <th className='whitespace-nowrap'>출석률</th>
-            <th className='whitespace-nowrap'>공개</th>
+            <th className='whitespace-nowrap'>신청 폼</th>
+            <th className='whitespace-nowrap'>공개 설정</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((s) => {
             const open = recruitState(s) === 'apply';
             const deadline = toISODate(s.recruitment?.deadline);
-            const publishAt = toISODate(s.publish_at);
-            const scheduled = publishState(s) === 'scheduled';
             const crewStat = summarize(s);
             return (
               <tr key={s.id}>
-                <td className='w-[42%] max-w-0'>
+                <td className='w-[30%] max-w-0'>
                   <Link
                     href={`/proto/console/studies/${s.id}`}
                     className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
@@ -168,7 +175,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     {tx(s.title)}
                   </Link>
                 </td>
-                <td className='whitespace-nowrap text-fg-secondary'>{s.category ?? '—'}</td>
+                <td className='whitespace-nowrap text-fg-secondary'>
+                  <CategoryCell categories={categoriesOf(s)} />
+                </td>
                 <td>
                   <div className='flex items-center gap-2 whitespace-nowrap'>
                     <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
@@ -183,20 +192,24 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                 <td className='tnum whitespace-nowrap text-xs font-semibold text-fg-secondary'>
                   {crewStat.rate === undefined ? <span className='text-fg-muted'>—</span> : `${crewStat.rate}%`}
                 </td>
-                {/* 공개 예정은 사용자 사이트에서 아직 안 보인다는 뜻 — 날짜를 함께 보여준다 */}
-                <td className='tnum whitespace-nowrap text-xs'>
-                  {scheduled ? (
-                    <span className='font-semibold text-warning-700'>{publishAt} 공개</span>
-                  ) : (
-                    <span className='text-fg-secondary'>공개</span>
-                  )}
+                <td data-anno='publish:2' className='whitespace-nowrap text-xs'>
+                  <FormCell url={applyFormUrl(s)} recruiting={open} />
+                </td>
+                <td data-anno='publish:1' className='whitespace-nowrap text-xs'>
+                  <PublishCell
+                    live={publishState(s) === 'live'}
+                    hasForm={Boolean(applyFormUrl(s))}
+                    onToggle={(next) =>
+                      setPatch((m) => ({ ...m, [s.id]: { published: next, publish_at: undefined } }))
+                    }
+                  />
                 </td>
               </tr>
             );
           })}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={5} className='text-center text-fg-muted'>
+              <td colSpan={7} className='text-center text-fg-muted'>
                 조건에 맞는 스터디가 없습니다.
               </td>
             </tr>
@@ -204,5 +217,97 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         </tbody>
       </TableCard>
     </div>
+  );
+}
+
+/**
+ * 공개 설정 칸 — **공개는 여기서 켠다.**
+ *
+ * 등록 폼에는 공개일이 없다. 등록 직후에는 신청 폼도 회차도 없어서, 그 상태로 사이트에 뜨면
+ * 크루가 신청할 데 없는 스터디를 보게 된다. 그래서 등록은 늘 미공개로 끝나고, 준비가 된 뒤
+ * 이 자리에서 켠다.
+ *
+ * **예약 공개는 두지 않는다** — 준비가 됐는지는 날짜가 아니라 사람이 판단한다.
+ * **신청 폼이 없으면 켤 수 없다** — 공개하는 순간 신청할 데 없는 스터디가 목록에 선다.
+ */
+function PublishCell({
+  live,
+  hasForm,
+  onToggle,
+}: {
+  live: boolean;
+  hasForm: boolean;
+  onToggle: (next: boolean) => void;
+}) {
+  const blocked = !live && !hasForm;
+  return (
+    <button
+      type='button'
+      onClick={() => !blocked && onToggle(!live)}
+      disabled={blocked}
+      data-anno={blocked ? 'publish:1-1' : undefined}
+      title={blocked ? '신청 폼을 먼저 연결하세요.' : live ? '눌러서 내린다' : '눌러서 공개한다'}
+      className={`rounded-pill px-2.5 py-1 text-xs font-semibold transition-colors ${
+        live
+          ? 'bg-success-50 text-success-700 hover:bg-success-100'
+          : blocked
+            ? 'cursor-not-allowed bg-surface-2 text-fg-placeholder'
+            : 'bg-surface-2 text-fg-secondary hover:bg-neutral-200'
+      }`}
+    >
+      {live ? '공개' : '미공개'}
+    </button>
+  );
+}
+
+/**
+ * 신청 폼 칸 — 폼이 걸려 있는가.
+ *
+ * 값을 읽기만 한다. **폼을 붙이는 자리는 스터디 운영 화면의 신청폼 탭**이며, 그 탭은 다른
+ * 작업으로 만들어지는 중이다. 여기서 또 입력받게 하면 같은 값을 두 곳에서 고치게 된다.
+ *
+ * 있고 없고 두 값뿐이라 글자로 쓰지 않는다. 목록에서 훑는 값이라 표시가 짧을수록 빨리 읽힌다.
+ * **모집중인데 폼이 없으면** 신청할 데가 없다는 뜻이므로 그 경우만 눈에 띄게 하고,
+ * 마감된 스터디의 빈 폼은 조용히 둔다 — 이미 지난 일이라 고칠 것이 없다.
+ */
+function FormCell({ url, recruiting }: { url?: string; recruiting: boolean }) {
+  if (url) {
+    return (
+      <span title={url}>
+        <Check size={15} className='inline text-success-700' aria-label='연결됨' />
+      </span>
+    );
+  }
+  return (
+    <Minus
+      size={15}
+      className={`inline ${recruiting ? 'text-warning-700' : 'text-fg-placeholder'}`}
+      aria-label={recruiting ? '없음 — 모집중인데 신청 폼이 없다' : '없음'}
+    />
+  );
+}
+
+/** 목록에서 보여줄 주제 수. 셋을 넘기면 제목 칸이 밀려 스터디를 못 읽는다. */
+const CATEGORY_PREVIEW = 2;
+
+/**
+ * 주제 칸.
+ *
+ * 주제는 여러 개 붙는다. 전부 늘어놓으면 이 칸이 제목보다 넓어지므로 **두 개까지만** 적고
+ * 나머지는 개수로 접는다. 접힌 이름은 마우스를 올리면 볼 수 있다.
+ */
+function CategoryCell({ categories }: { categories: string[] }) {
+  if (categories.length === 0) return <span className='text-fg-muted'>—</span>;
+  const shown = categories.slice(0, CATEGORY_PREVIEW);
+  const rest = categories.slice(CATEGORY_PREVIEW);
+  return (
+    <span className='inline-flex items-center gap-1.5' title={categories.join(' · ')}>
+      {shown.map((c) => (
+        <span key={c} className='rounded-pill bg-surface-2 px-2 py-0.5 text-xs font-medium text-fg-secondary'>
+          {c}
+        </span>
+      ))}
+      {rest.length > 0 && <span className='tnum text-xs text-fg-muted'>+{rest.length}</span>}
+    </span>
   );
 }

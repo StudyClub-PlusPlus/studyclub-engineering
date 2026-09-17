@@ -16,6 +16,8 @@ public record ErrorResponse(String errorCode, String errorMessage) {
     }
 
     public static ErrorResponse of(ErrorCode code, String message) {
-        return new ErrorResponse(code.name(), message == null || message.isBlank() ? code.defaultMessage() : message);
+        return new ErrorResponse(
+                code.name(),
+                message == null || message.isBlank() ? code.defaultMessage() : message);
     }
 }

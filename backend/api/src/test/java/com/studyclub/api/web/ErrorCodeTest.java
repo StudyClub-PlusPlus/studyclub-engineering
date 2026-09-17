@@ -8,8 +8,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * 에러 계약의 세부. 통합 테스트가 "한 모양으로 나온다"를 지킨다면, 여기서는
- * <b>매핑 규칙 자체</b>를 지킨다 — 특히 모르는 상태가 들어왔을 때 조용히 500 이 되지 않는 것.
+ * 에러 계약의 세부. 통합 테스트가 "한 모양으로 나온다"를 지킨다면, 여기서는 <b>매핑 규칙 자체</b>를 지킨다 — 특히 모르는 상태가 들어왔을 때 조용히 500 이 되지
+ * 않는 것.
  */
 class ErrorCodeTest {
 

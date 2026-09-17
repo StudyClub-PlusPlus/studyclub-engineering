@@ -67,8 +67,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* 계정 + 로그아웃 (사이드바 하단) */}
-      <div className='border-t border-[var(--color-border)] p-3'>
+      {/* 계정 + 로그아웃 (사이드바 하단). mt-auto 로 바닥에 붙여 마지막 줄이 잘리지 않게 한다 */}
+      <div className='mt-auto border-t border-[var(--color-border)] p-3 pb-4'>
         {user ? (
           <div className='flex items-center gap-2.5'>
             {user.picture ? (

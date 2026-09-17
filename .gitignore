@@ -1,5 +1,7 @@
 # deps / build
 node_modules/
+build/
+.gradle/
 dist/
 .next/
 out/
@@ -19,8 +21,15 @@ secrets/
 credentials*.json
 serviceAccount*.json
 
+# workspace (self-review 등 로컬 작업 파일)
+.workspace/
+
 # os / editor
 .DS_Store
 .idea/
 .vscode/
 .gstack/
+
+# local dev tooling
+.claude/
+.envrc

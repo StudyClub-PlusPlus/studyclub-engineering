@@ -1,4 +1,3 @@
-
 import type { Locale } from '@core/lib/content';
 import { m } from '@core/lib/i18n';
 import { MessageCircle } from 'lucide-react';

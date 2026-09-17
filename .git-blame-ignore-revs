@@ -1,0 +1,6 @@
+# 포맷만 바꾼 커밋 — git blame 에서 건너뛴다.
+# 로컬 적용: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub 웹 blame 은 이 파일을 자동으로 읽는다)
+
+# chore: google-java-format(spotless) 도입 + 전체 리포맷
+2c51ca0a834948101f5c6c7c61e0261497cb206a

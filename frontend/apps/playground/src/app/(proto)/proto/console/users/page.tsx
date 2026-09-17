@@ -1,6 +1,6 @@
 import { UsersTable } from '@console/components/UsersTable';
 
-import { SPEC } from './spec';
+import { SPECS } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 export const metadata = { title: '유저' };
@@ -16,7 +16,9 @@ export const metadata = { title: '유저' };
 export default function UsersAdmin() {
   return (
     <div>
-      <ScreenSpecRegistrar spec={SPEC} />
+      {SPECS.map((spec) => (
+        <ScreenSpecRegistrar key={spec.chip ?? spec.screen} spec={spec} />
+      ))}
       <UsersTable />
     </div>
   );

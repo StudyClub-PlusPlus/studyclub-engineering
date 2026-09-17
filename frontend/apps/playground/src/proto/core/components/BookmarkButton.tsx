@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { getBookmarks, setBookmarked } from '@core/lib/me';

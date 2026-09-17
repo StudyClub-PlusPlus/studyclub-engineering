@@ -255,6 +255,8 @@ public StudyParticipantResponse approve(Long applicationId, Long sectionId) {
 3. **애그리거트에게 시키기** (여기에 if 문이 쌓이면 도메인 로직이 샌 것)
 4. DTO 로 변환해 돌려주기 (트랜잭션 안에서 — [`jpa-guide.md`](jpa-guide.md) Lazy 참고)
 
+### 커맨드(쓰기) 예시
+
 ```java
 @Transactional
 public StudyResponse join(Long studyId, Long userId) {
@@ -266,6 +268,55 @@ public StudyResponse join(Long studyId, Long userId) {
     return StudyResponse.from(study);
 }
 ```
+
+### 쿼리(읽기) 예시 — 목록 조회
+
+읽기도 같은 원칙이다. **리포지토리가 데이터를 가져오고, 엔티티가 파생값을 계산하고, 서비스는 조립만 한다.**
+
+```java
+// ❌ 서비스가 EntityManager 로 JPQL 을 직접 짜고, 파생값도 서비스에서 계산한다
+@Transactional(readOnly = true)
+public List<StudySummary> list() {
+    String jpql = "SELECT s.id, s.title, c.status, c.recruitDeadline ...";
+    TypedQuery<Object[]> q = em.createQuery(jpql, Object[].class);
+    return q.getResultList().stream().map(row -> {
+        // 종료 임박 판정을 서비스에서 직접 — 도메인 규칙이 샜다
+        boolean closingSoon = ((Instant) row[3]).isBefore(Instant.now().plusSeconds(3 * 86400));
+        return new StudySummary((Long) row[0], (String) row[1], closingSoon);
+    }).toList();
+}
+
+// ✅ 리포지토리에서 데이터 → 엔티티가 파생값 계산 → 서비스는 조립만
+@Transactional(readOnly = true)
+public StudyListResponse list(StudyCategory category, int offset, int limit) {
+    // 1. 리포지토리에서 조회
+    List<Study> allStudies = (category != null)
+            ? studies.findAllByIsHiddenFalseAndCategory(category)
+            : studies.findAllByIsHiddenFalse();
+
+    // 2. 코호트 조회
+    Map<Long, StudyCohort> latestCohorts = cohorts.findLatestByStudyIds(studyIds) ...;
+
+    // 3. DTO 변환 — 파생값(closingSoon)은 엔티티 메서드가 계산한다
+    List<StudySummary> items = allStudies.stream()
+            .map(s -> StudySummary.from(s, latestCohorts.get(s.getId())))  // cohort.isClosingSoon()
+            .toList();
+
+    return new StudyListResponse(items, total, offset, limit);
+}
+```
+
+핵심 구분:
+
+| 판단 | 누가 하나 | 왜 |
+|------|-----------|-----|
+| "이 코호트가 종료 임박인가" | `StudyCohort.isClosingSoon()` | 3일 기준은 **도메인 규칙**이다 |
+| "이 스터디의 최신 코호트를 꺼내라" | `StudyCohortRepository.findLatestByStudyIds()` | **데이터 접근**이다 |
+| "필터 걸고 DTO 로 변환해라" | `StudyListService` | **유스케이스 조립**이다 |
+
+> ⚠️ **`EntityManager` 를 서비스에서 직접 쓰지 않는다.** 동적 조건이 필요하면 리포지토리에
+> `@Query` 메서드를 추가하거나, 데이터가 적으면 전체 조회 후 Java 필터로 충분하다.
+> `EntityManager` 를 꺼내는 순간 리포지토리 계층이 무너지고, 쿼리와 비즈니스 로직이 서비스에 뭉친다.
 
 **서비스 메서드에 `if` 가 세 개 넘게 쌓이면 멈추고 묻는다** — 이 판단은 엔티티가 해야 하는 것 아닌가.
 
@@ -308,6 +359,9 @@ throw new ResponseStatusException(HttpStatus.CONFLICT, "...");
 | **DTO 가 엔티티를 노출** | 컨트롤러가 엔티티를 그대로 반환 | 서비스에서 DTO 변환 (PII 도 여기서 거른다) |
 | **리포지토리 남발** | 애그리거트 내부 엔티티마다 리포지토리 | 루트 리포지토리 하나 |
 | **도메인 서비스 남용** | `XxxManager`·`XxxHelper` 가 늘고 엔티티는 getter 뿐 | [판정 3개](#판정--세-개를-다-통과해야-만든다)를 다시 통과시킨다 |
+| **서비스에서 EntityManager 직접 사용** | JPQL 문자열 빌딩이 서비스에 앉는다 | 리포지토리 `@Query` 메서드로 분리하거나, 데이터가 적으면 전체 조회 + Java 필터 |
+| **프레임워크 기본값 그대로 노출** | Spring `Page<T>` 반환 → `content/pageable/sort` 노출 | 프로젝트 응답 계약(`items/total/offset/limit`) DTO 로 변환 — [endpoint-convention.md](api/endpoint-convention.md) |
+| **파생값을 서비스에서 계산** | `if (deadline < now + 3일)` 이 서비스에 있다 | 엔티티 메서드로 (`cohort.isClosingSoon()`) — 도메인 규칙은 엔티티가 안다 |
 
 ## 현재 알려진 부채
 
