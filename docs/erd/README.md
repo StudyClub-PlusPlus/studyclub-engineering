@@ -18,7 +18,7 @@ mermaid 는 PR diff 에 그대로 뜨고 GitHub 이 렌더한다.
 | PK        | `ID BIGINT AUTO_INCREMENT`                                                                    |                               |
 | FK        | `<참조테이블>_ID`                                                                                  | `STUDY_ID`, `ACCOUNT_ID`         |
 | 시각        | `DATETIME` (UTC 저장, 표시 시 사용자 `TIME_ZONE` 적용)                                                  |                               |
-| enum      | `VARCHAR(20)` 에 대문자 코드 문자열. 숫자 코드 대신 문자열 — 로그·쿼리에서 읽힌다                                        | `PENDING`, `APPROVED`         |
+| enum      | `VARCHAR(20)` 에 대문자 코드 문자열. 숫자 코드 대신 문자열 — 로그·쿼리에서 읽힌다                                        | `ACTIVE`, `CLOSED`            |
 | 삭제        | 물리 삭제 대신 상태(`CLOSED`/`WITHDRAWN`) 또는 `REMOVED_AT`                                             |                               |
 
 > **컬럼 대문자는 이 문서의 표기법이다 — 물리 컬럼은 소문자다.**
@@ -30,9 +30,9 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 ## 설계 원칙 (요구사항 정의에서)
 
-1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY_COHORT.RECRUIT_DEADLINE`·`START_DATE` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
+1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY_COHORT.RECRUIT_DEADLINE`·`START_DATE` 로 판정. 저장하는 상태는 사람이 결정하는 것(출석)만. 신청서는 행이 있으면 제출 완료다.
 2. **삭제 대신 종료.** 스터디는 `CLOSED`, 참가자는 `WITHDRAWN`.
-3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 승인 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `ACCOUNT_ID`·`STUDY_ID` 를 따라간다.
+3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `ACCOUNT_ID`·`STUDY_ID` 를 따라간다.
 4. 비회원 공개 범위(목록·상세)와 로그인 사용자 범위(신청·출석·마이페이지)를 분리한다.
 
 ## 한눈에 보기 (관계도)
@@ -153,7 +153,6 @@ erDiagram
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
     bigint   STUDY_COHORT_ID    FK
-    varchar  STATUS                "PENDING / APPROVED / REJECTED / WITHDRAWN / WAITLISTED"
     json     FORM_ANSWER
   }
 
@@ -229,7 +228,7 @@ erDiagram
   STUDY_MEETING         ||--o{ STUDY_ATTENDANCE              : "회차 출석"
   STUDY_PROPOSAL        ||--o{ STUDY_PROPOSAL_INTEREST : "나도"
 
-  STUDY_APPLICATION     ||..o| STUDY_PARTICIPANT         : "승인 시 생성"
+  STUDY_APPLICATION     ||..o| STUDY_PARTICIPANT         : "제출 시 생성"
   STUDY_PROPOSAL        ||..o| STUDY                     : "채택 시 승격"
 ```
 
@@ -246,7 +245,7 @@ erDiagram
 | 스터디 | [STUDY_COHORT](./STUDY_COHORT.md)                       | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`    |
 | 스터디 | [STUDY_CLASS](./STUDY_CLASS.md)                         | 반 (요일·시간대별)            | —                                    |
 | 스터디 | [STUDY_MEETING](./STUDY_MEETING.md)                     | 회차 (반의 N번째 모임)         | —                                    |
-| 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
+| 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | —                                    |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 반에 소속된 사람         | `STATUS`, `PARTICIPANT_ROLE`         |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
