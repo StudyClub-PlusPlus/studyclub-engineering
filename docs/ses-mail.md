@@ -21,7 +21,7 @@ SES_SMTP_ENDPOINT=email-smtp.ap-northeast-2.amazonaws.com
 
 # 서브도메인별 키 — 용도에 맞는 것만 사용
 # 실제 값은 인프라 담당자에게 요청하거나
-# fleet/infrastructure/terraform/modules/aws/ses/ 에서 terraform output 으로 꺼낸다
+# 인프라 레포의 SES terraform 에서 terraform output 으로 꺼낸다
 
 # auth
 SES_AUTH_ACCESS_KEY_ID=
