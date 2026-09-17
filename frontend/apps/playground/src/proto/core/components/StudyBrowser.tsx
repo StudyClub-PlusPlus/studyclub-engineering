@@ -1,17 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { Locale, Operator, Study } from '@core/lib/content';
-import { m } from '@core/lib/i18n';
+import { m, t } from '@core/lib/i18n';
 import { recruitState } from '@core/lib/recruit';
-import { Search, X } from 'lucide-react';
+import { toISODate } from '@studyclub/mock';
+import { Check, Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
+import { getBookmarks } from '@core/lib/me';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 import { STUDY_BROWSER_SPEC } from '@/proto/specs/study-browser';
 
 type RecruitmentFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
+type SortOption = 'default' | 'deadline' | 'bookmarks' | 'participants' | 'ended' | 'completion';
 type TimezoneFilter = 'all' | 'KST' | 'PST' | 'both';
 
 const RECRUITMENT_OPTIONS: { value: RecruitmentFilter; label: string }[] = [
@@ -37,6 +40,29 @@ function statusOf(study: Study): Exclude<RecruitmentFilter, 'all'> {
   if (study.status === 'closed' || recruitState(study) === 'closed') return 'closed';
   return 'recruiting';
 }
+function sortOptionsFor(status: RecruitmentFilter): { value: SortOption; label: string }[] {
+  if (status === 'recruiting') {
+    return [
+      { value: 'deadline', label: '모집 기한이 가까운 순' },
+      { value: 'bookmarks', label: '찜 순' },
+    ];
+  }
+  if (status === 'ongoing') return [{ value: 'participants', label: '사람 많은 순' }];
+  if (status === 'closed') {
+    return [
+      { value: 'ended', label: '스터디 끝난 기한 순' },
+      { value: 'participants', label: '사람 많은 순' },
+      { value: 'completion', label: '완주율 순' },
+    ];
+  }
+  return [{ value: 'default', label: '기본 순' }];
+}
+
+function dateNumber(raw?: string): number {
+  const value = raw ? Date.parse(`${toISODate(raw)}T23:59:59`) : Number.NaN;
+  return Number.isNaN(value) ? 0 : value;
+}
+
 function timezoneOf(study: Study): Exclude<TimezoneFilter, 'all'> {
   const text = [study.schedule?.ko, study.schedule?.en, study.recruitment?.kickoff].filter(Boolean).join(' ');
   if (/PST|PDT/i.test(text)) return 'PST';
@@ -107,6 +133,36 @@ function FilterSelect<T extends string>({
   );
 }
 
+function SortChoices({
+  value,
+  options,
+  onChange,
+}: {
+  value: SortOption;
+  options: { value: SortOption; label: string }[];
+  onChange: (value: SortOption) => void;
+}) {
+  return (
+    <div className='flex flex-wrap gap-x-5 gap-y-2'>
+      {options.map((option) => {
+        const active = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type='button'
+            aria-pressed={active}
+            onClick={() => onChange(option.value)}
+            className={`inline-flex items-center gap-1.5 text-sm font-semibold transition-colors ${active ? 'text-brand' : 'text-fg-secondary hover:text-fg'}`}
+          >
+            <Check size={16} strokeWidth={2.5} className={active ? 'text-brand' : 'invisible'} aria-hidden='true' />
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function FilterRow({ children }: { children: React.ReactNode }) {
   return <div className='flex flex-wrap gap-1.5'>{children}</div>;
 }
@@ -123,6 +179,9 @@ export function StudyBrowser({
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [recruitment, setRecruitment] = useState<RecruitmentFilter>('all');
+  const [sort, setSort] = useState<SortOption>('default');
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  useEffect(() => setBookmarks(getBookmarks()), []);
   const [category, setCategory] = useState<string>('all');
   const [timezone, setTimezone] = useState<TimezoneFilter>('all');
   const base = useMemo(() => {
@@ -142,11 +201,24 @@ export function StudyBrowser({
     setInput('');
     setQuery('');
     setRecruitment('all');
+    setSort('default');
     setCategory('all');
     setTimezone('all');
   };
 
-  const filtered = useMemo(() => (recruitment === 'all' ? base : base.filter((s) => statusOf(s) === recruitment)), [base, recruitment]);
+  const filtered = useMemo(() => {
+    const list = recruitment === 'all' ? base : base.filter((s) => statusOf(s) === recruitment);
+    return [...list].sort((a, b) => {
+      if (sort === 'deadline') return (dateNumber(a.recruitment?.deadline) || Number.MAX_SAFE_INTEGER) - (dateNumber(b.recruitment?.deadline) || Number.MAX_SAFE_INTEGER);
+      if (sort === 'bookmarks') return Number(bookmarks.includes(b.id)) - Number(bookmarks.includes(a.id)) || (a.order ?? 99) - (b.order ?? 99);
+      if (sort === 'participants') return (b.stats?.participants ?? b.seats?.taken ?? 0) - (a.stats?.participants ?? a.seats?.taken ?? 0);
+      if (sort === 'ended') return dateNumber(b.date ?? b.recruitment?.deadline) - dateNumber(a.date ?? a.recruitment?.deadline);
+      if (sort === 'completion') return (b.stats?.completion_rate ?? -1) - (a.stats?.completion_rate ?? -1);
+      return (a.order ?? 99) - (b.order ?? 99);
+    });
+  }, [base, bookmarks, recruitment, sort]);
+
+  const sortOptions = sortOptionsFor(recruitment);
 
 
   return (
@@ -166,7 +238,10 @@ export function StudyBrowser({
                 type='button'
                 role='tab'
                 aria-selected={active}
-                onClick={() => setRecruitment(option.value)}
+                onClick={() => {
+                  setRecruitment(option.value);
+                  setSort(sortOptionsFor(option.value)[0].value);
+                }}
                 className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
               >
                 {option.label}
@@ -221,6 +296,7 @@ export function StudyBrowser({
           options={[{ value: 'all' as const, label: '시간대' }, ...TIMEZONE_OPTIONS]}
           onChange={setTimezone}
         />
+        <SortChoices value={sort} options={sortOptions} onChange={setSort} />
 
       </div>
 
