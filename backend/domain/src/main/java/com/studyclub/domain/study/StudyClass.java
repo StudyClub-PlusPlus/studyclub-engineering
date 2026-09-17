@@ -29,8 +29,8 @@ public class StudyClass extends BaseEntity {
     @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(name = "STARTS_AT")
-    private Instant startsAt;
+    @Column(name = "START_AT")
+    private Instant startAt;
 
     @Column(length = 64)
     private String timezone;
@@ -40,10 +40,10 @@ public class StudyClass extends BaseEntity {
     protected StudyClass() {}
 
     public StudyClass(
-            Long studyCohortId, String name, Instant startsAt, String timezone, Integer capacity) {
+            Long studyCohortId, String name, Instant startAt, String timezone, Integer capacity) {
         this.studyCohortId = studyCohortId;
         this.name = name;
-        this.startsAt = startsAt;
+        this.startAt = startAt;
         this.timezone = timezone;
         this.capacity = capacity;
     }
@@ -60,8 +60,8 @@ public class StudyClass extends BaseEntity {
         return name;
     }
 
-    public Instant getStartsAt() {
-        return startsAt;
+    public Instant getStartAt() {
+        return startAt;
     }
 
     public String getTimezone() {

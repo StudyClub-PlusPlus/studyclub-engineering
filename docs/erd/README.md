@@ -48,7 +48,8 @@ erDiagram
   STUDY_CLASS ||--o{ STUDY_MEETING : "회차"
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
   ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
-  STUDY_COHORT ||--o{ STUDY_APPLICATION : "신청"
+  STUDY_COHORT ||--o{ STUDY_RECRUITMENT : "모집"
+  STUDY_RECRUITMENT ||--o{ STUDY_APPLICATION : "신청서"
   ACCOUNT ||--o{ STUDY_APPLICATION : ""
   STUDY_CLASS ||--o{ STUDY_PARTICIPANT : "명부"
   ACCOUNT ||--o{ STUDY_PARTICIPANT : ""
@@ -136,7 +137,7 @@ erDiagram
     bigint   ID                 PK
     bigint   STUDY_COHORT_ID    FK
     varchar  NAME                  "목요일반"
-    time     STARTS_AT             "반 정규 시작 시각"
+    time     START_AT              "반 정규 시작 시각"
     varchar  TIMEZONE              "IANA"
     int      CAPACITY              "반 정원"
   }
@@ -145,14 +146,24 @@ erDiagram
     bigint   ID                 PK
     bigint   STUDY_CLASS_ID     FK
     datetime SCHEDULED_AT          "예정 시각 (UTC)"
-    datetime STARTS_AT             "실제 시작"
-    datetime ENDS_AT               "실제 종료"
+    datetime START_AT              "실제 시작"
+    datetime END_AT                "실제 종료"
+  }
+
+  STUDY_RECRUITMENT {
+    bigint   ID                   PK
+    bigint   COHORT_ID               "STUDY_COHORT 참조"
+    varchar  TITLE
+    text     DESCRIPTION
+    datetime START_AT
+    datetime CLOSE_AT
+    int      RECRUITMENT_CAPACITY    "NULL 이면 제한 없음"
   }
 
   STUDY_APPLICATION {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
-    bigint   STUDY_COHORT_ID    FK
+    bigint   RECRUITMENT_ID        "STUDY_RECRUITMENT 참조"
     varchar  STATUS                "PENDING / APPROVED / REJECTED / WITHDRAWN / WAITLISTED"
     json     FORM_ANSWER
   }
@@ -219,7 +230,8 @@ erDiagram
   STUDY                 ||--o{ STUDY_REVIEW            : "전체 후기 조회 (비정규화)"
 
   STUDY_COHORT          ||--o{ STUDY_CLASS             : "반"
-  STUDY_COHORT          ||--o{ STUDY_APPLICATION       : "신청서"
+  STUDY_COHORT          ||--o{ STUDY_RECRUITMENT       : "모집"
+  STUDY_RECRUITMENT     ||--o{ STUDY_APPLICATION       : "신청서"
   STUDY_COHORT          ||--o{ STUDY_REVIEW            : "후기"
 
   STUDY_CLASS           ||--o{ STUDY_MEETING           : "회차"
@@ -246,6 +258,7 @@ erDiagram
 | 스터디 | [STUDY_COHORT](./STUDY_COHORT.md)                       | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`    |
 | 스터디 | [STUDY_CLASS](./STUDY_CLASS.md)                         | 반 (요일·시간대별)            | —                                    |
 | 스터디 | [STUDY_MEETING](./STUDY_MEETING.md)                     | 회차 (반의 N번째 모임)         | —                                    |
+| 모집  | [STUDY_RECRUITMENT](./STUDY_RECRUITMENT.md)             | 모집 회차 — 기수의 모집 기간/조건   | —                                    |
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 반에 소속된 사람         | `STATUS`, `PARTICIPANT_ROLE`         |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |

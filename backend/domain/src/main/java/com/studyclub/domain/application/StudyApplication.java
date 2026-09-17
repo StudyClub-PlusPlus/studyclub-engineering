@@ -22,13 +22,13 @@ import lombok.NoArgsConstructor;
         name = "STUDY_APPLICATION",
         uniqueConstraints =
                 @UniqueConstraint(
-                        name = "uk_study_application_cohort_account",
-                        columnNames = {"STUDY_COHORT_ID", "ACCOUNT_ID"}),
+                        name = "uk_study_application_recruitment_account",
+                        columnNames = {"RECRUITMENT_ID", "ACCOUNT_ID"}),
         indexes = {
             @Index(name = "idx_study_application_account", columnList = "ACCOUNT_ID"),
             @Index(
-                    name = "idx_study_application_cohort_status",
-                    columnList = "STUDY_COHORT_ID, STATUS")
+                    name = "idx_study_application_recruitment_status",
+                    columnList = "RECRUITMENT_ID, STATUS")
         })
 @Getter
 @Builder
@@ -43,8 +43,8 @@ public class StudyApplication extends BaseEntity {
     @Column(name = "ACCOUNT_ID", nullable = false)
     private Long accountId;
 
-    @Column(name = "STUDY_COHORT_ID", nullable = false)
-    private Long studyCohortId;
+    @Column(name = "RECRUITMENT_ID", nullable = false)
+    private Long recruitmentId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

@@ -13,7 +13,7 @@
 | ID | BIGINT PK | N | |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 구 `STUDY_ID` |
 | NAME | VARCHAR(50) | N | `목요일반` |
-| STARTS_AT | TIME | Y | 반 정규 시작 시각 (요일은 미확정 — 아래) |
+| START_AT | TIME | Y | 반 정규 시작 시각 (요일은 미확정 — 아래) |
 | TIMEZONE | VARCHAR(64) | Y | IANA. 회차 시각 기준 시간대 |
 | CAPACITY | INT | Y | 반 정원 |
 
