@@ -3,5 +3,6 @@ package com.studyclub.domain.participant;
 public enum ParticipantStatus {
     ACTIVE,
     PAUSED,
-    WITHDRAWN
+    WITHDRAWN,
+    COMPLETED
 }
