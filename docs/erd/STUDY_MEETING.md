@@ -9,8 +9,8 @@
 | ID | BIGINT PK | N | |
 | STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | |
 | SCHEDULED_AT | DATETIME | N | 예정 시각 (UTC) |
-| STARTS_AT | DATETIME | Y | 실제 시작 — 반장이 시작 명령 시 기록 |
-| ENDS_AT | DATETIME | Y | 실제 종료 |
+| START_AT | DATETIME | Y | 실제 시작 — 반장이 시작 명령 시 기록 |
+| END_AT | DATETIME | Y | 실제 종료 |
 
 ## 관계
 - N : 1 [STUDY_CLASS](./STUDY_CLASS.md)
@@ -20,10 +20,10 @@
 
 | 판정 | 조건 |
 |---|---|
-| `SCHEDULED` | `STARTS_AT IS NULL AND now() < SCHEDULED_AT` |
-| `IN_PROGRESS` | `STARTS_AT IS NOT NULL AND ENDS_AT IS NULL` |
-| `DONE` | `ENDS_AT IS NOT NULL` |
-| `MISSED` | `STARTS_AT IS NULL AND now() > SCHEDULED_AT + 여유` — 열리지 않은 회차 |
+| `SCHEDULED` | `START_AT IS NULL AND now() < SCHEDULED_AT` |
+| `IN_PROGRESS` | `START_AT IS NOT NULL AND END_AT IS NULL` |
+| `DONE` | `END_AT IS NOT NULL` |
+| `MISSED` | `START_AT IS NULL AND now() > SCHEDULED_AT + 여유` — 열리지 않은 회차 |
 
 ## 제약
 - 인덱스 `(STUDY_CLASS_ID, SCHEDULED_AT)`
