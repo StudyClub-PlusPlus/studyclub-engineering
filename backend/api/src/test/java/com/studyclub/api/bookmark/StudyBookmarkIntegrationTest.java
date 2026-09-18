@@ -8,11 +8,11 @@ import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyCohort;
-import com.studyclub.domain.study.StudyCohortRepository;
-import com.studyclub.domain.study.StudyCohortStatus;
 import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,17 +39,18 @@ class StudyBookmarkIntegrationTest {
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwt;
 
+    @Autowired StudyProgramRepository studyProgramRepository;
     @Autowired StudyRepository studyRepository;
-    @Autowired StudyCohortRepository studyCohortRepository;
     @Autowired StudyBookmarkRepository studyBookmarkRepository;
 
     @Test
     @DisplayName("성공 - 북마크 목록을 items·total·offset·limit 형태로 반환한다")
     void testReturnsBookmarkedStudies() {
         try (var resource = new TestDataResource()) {
-            Study study = resource.saveStudy("bm-java-study", "Java Study", StudyCategory.BACKEND);
-            StudyCohort cohort = resource.saveCohort(study.getId());
-            resource.saveBookmark(cohort.getId());
+            StudyProgram program =
+                    resource.saveProgram("bm-java-study", "Java Study", StudyCategory.BACKEND);
+            Study study = resource.saveStudy(program.getId());
+            resource.saveBookmark(study.getId());
 
             var response =
                     rest.exchange(
@@ -85,12 +86,15 @@ class StudyBookmarkIntegrationTest {
     @DisplayName("성공 - offset/limit 이 실제 페이지네이션에 적용된다")
     void testPagination() {
         try (var resource = new TestDataResource()) {
-            Study studyA = resource.saveStudy("bm-study-a", "Study A", StudyCategory.BACKEND);
-            Study studyB = resource.saveStudy("bm-study-b", "Study B", StudyCategory.FRONTEND);
-            Study studyC = resource.saveStudy("bm-study-c", "Study C", StudyCategory.AI_ML);
-            resource.saveBookmark(resource.saveCohort(studyA.getId()).getId());
-            resource.saveBookmark(resource.saveCohort(studyB.getId()).getId());
-            resource.saveBookmark(resource.saveCohort(studyC.getId()).getId());
+            StudyProgram studyProgramA =
+                    resource.saveProgram("bm-study-a", "Study A", StudyCategory.BACKEND);
+            StudyProgram studyProgramB =
+                    resource.saveProgram("bm-study-b", "Study B", StudyCategory.FRONTEND);
+            StudyProgram studyProgramC =
+                    resource.saveProgram("bm-study-c", "Study C", StudyCategory.AI_ML);
+            resource.saveBookmark(resource.saveStudy(studyProgramA.getId()).getId());
+            resource.saveBookmark(resource.saveStudy(studyProgramB.getId()).getId());
+            resource.saveBookmark(resource.saveStudy(studyProgramC.getId()).getId());
 
             // offset=1, limit=1 → 두 번째 항목(Study B)만 반환
             var response =
@@ -120,47 +124,47 @@ class StudyBookmarkIntegrationTest {
 
     private class TestDataResource implements AutoCloseable {
 
-        private final List<Long> cohortIds = new ArrayList<>();
         private final List<Long> studyIds = new ArrayList<>();
+        private final List<Long> programIds = new ArrayList<>();
 
-        Study saveStudy(String slug, String title, StudyCategory category) {
-            Study study =
-                    studyRepository.save(
-                            Study.builder()
+        StudyProgram saveProgram(String slug, String title, StudyCategory category) {
+            StudyProgram program =
+                    studyProgramRepository.save(
+                            StudyProgram.builder()
                                     .slug(slug)
                                     .title(title)
                                     .oneLineSummary("테스트 스터디")
                                     .category(category)
                                     .studyKind(StudyKind.STUDY)
                                     .build());
+            programIds.add(program.getId());
+            return program;
+        }
+
+        Study saveStudy(Long programId) {
+            Study study =
+                    studyRepository.save(
+                            Study.builder()
+                                    .programId(programId)
+                                    .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                                    .status(StudyStatus.OPEN)
+                                    .recruitDeadline(Instant.now().plusSeconds(3600))
+                                    .capacity(10)
+                                    .build());
             studyIds.add(study.getId());
             return study;
         }
 
-        StudyCohort saveCohort(Long studyId) {
-            StudyCohort cohort =
-                    studyCohortRepository.save(
-                            StudyCohort.builder()
-                                    .studyId(studyId)
-                                    .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                                    .status(StudyCohortStatus.OPEN)
-                                    .recruitDeadline(Instant.now().plusSeconds(3600))
-                                    .capacity(10)
-                                    .build());
-            cohortIds.add(cohort.getId());
-            return cohort;
-        }
-
-        void saveBookmark(Long cohortId) {
+        void saveBookmark(Long studyId) {
             studyBookmarkRepository.save(
-                    StudyBookmark.builder().accountId(ACCOUNT_ID).studyCohortId(cohortId).build());
+                    StudyBookmark.builder().accountId(ACCOUNT_ID).studyId(studyId).build());
         }
 
         @Override
         public void close() {
             studyBookmarkRepository.deleteByAccountId(ACCOUNT_ID);
-            studyCohortRepository.deleteAllById(cohortIds);
             studyRepository.deleteAllById(studyIds);
+            studyProgramRepository.deleteAllById(programIds);
         }
     }
 }

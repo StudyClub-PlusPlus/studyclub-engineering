@@ -12,8 +12,8 @@ public interface StudyBookmarkRepository extends JpaRepository<StudyBookmark, Lo
                     """
             SELECT s.TITLE AS title, s.CATEGORY AS category
             FROM STUDY_BOOKMARK sb
-            JOIN STUDY_COHORT sc ON sb.STUDY_COHORT_ID = sc.ID
-            JOIN STUDY s ON sc.STUDY_ID = s.ID
+            JOIN STUDY sc ON sb.STUDY_ID = sc.ID
+            JOIN STUDY_PROGRAM s ON sc.PROGRAM_ID = s.ID
             WHERE sb.ACCOUNT_ID = :accountId
             ORDER BY sb.ID ASC
             LIMIT :limit OFFSET :offset

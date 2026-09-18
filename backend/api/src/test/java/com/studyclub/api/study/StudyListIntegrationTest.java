@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyCohort;
-import com.studyclub.domain.study.StudyCohortRepository;
-import com.studyclub.domain.study.StudyCohortStatus;
 import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -27,17 +27,17 @@ import org.springframework.http.HttpStatus;
 class StudyListIntegrationTest {
 
     @Autowired TestRestTemplate rest;
+    @Autowired StudyProgramRepository studyProgramRepo;
     @Autowired StudyRepository studyRepo;
-    @Autowired StudyCohortRepository cohortRepo;
 
     @BeforeEach
     void setUp() {
-        cohortRepo.deleteAll();
         studyRepo.deleteAll();
+        studyProgramRepo.deleteAll();
 
         var algo =
-                studyRepo.save(
-                        Study.builder()
+                studyProgramRepo.save(
+                        StudyProgram.builder()
                                 .slug("daily-leetcode")
                                 .title("데일리 리트코드")
                                 .oneLineSummary("매일 알고리즘 문제 풀이")
@@ -45,19 +45,19 @@ class StudyListIntegrationTest {
                                 .studyKind(StudyKind.STUDY)
                                 .description("알고리즘 스터디")
                                 .build());
-        cohortRepo.save(
-                StudyCohort.builder()
-                        .studyId(algo.getId())
+        studyRepo.save(
+                Study.builder()
+                        .programId(algo.getId())
                         .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                        .status(StudyCohortStatus.OPEN)
+                        .status(StudyStatus.OPEN)
                         .recruitDeadline(Instant.now().plus(2, ChronoUnit.DAYS))
                         .capacity(30)
                         .startDate(Instant.now().plus(10, ChronoUnit.DAYS))
                         .build());
 
         var spring =
-                studyRepo.save(
-                        Study.builder()
+                studyProgramRepo.save(
+                        StudyProgram.builder()
                                 .slug("spring-deep")
                                 .title("Spring 딥다이브")
                                 .oneLineSummary("스프링 심화 학습")
@@ -65,19 +65,19 @@ class StudyListIntegrationTest {
                                 .studyKind(StudyKind.STUDY)
                                 .description("스프링 스터디")
                                 .build());
-        cohortRepo.save(
-                StudyCohort.builder()
-                        .studyId(spring.getId())
+        studyRepo.save(
+                Study.builder()
+                        .programId(spring.getId())
                         .studyDeliveryFormat(DeliveryFormat.OFFLINE)
-                        .status(StudyCohortStatus.DRAFT)
+                        .status(StudyStatus.DRAFT)
                         .recruitDeadline(Instant.now().plus(30, ChronoUnit.DAYS))
                         .capacity(20)
                         .startDate(Instant.now().plus(40, ChronoUnit.DAYS))
                         .build());
 
         var closed =
-                studyRepo.save(
-                        Study.builder()
+                studyProgramRepo.save(
+                        StudyProgram.builder()
                                 .slug("old-study")
                                 .title("종료 스터디")
                                 .oneLineSummary("종료된 스터디")
@@ -85,11 +85,11 @@ class StudyListIntegrationTest {
                                 .studyKind(StudyKind.STUDY)
                                 .description("지난 스터디")
                                 .build());
-        cohortRepo.save(
-                StudyCohort.builder()
-                        .studyId(closed.getId())
+        studyRepo.save(
+                Study.builder()
+                        .programId(closed.getId())
                         .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                        .status(StudyCohortStatus.CLOSED)
+                        .status(StudyStatus.CLOSED)
                         .recruitDeadline(Instant.now().minus(10, ChronoUnit.DAYS))
                         .capacity(10)
                         .startDate(Instant.now().minus(5, ChronoUnit.DAYS))

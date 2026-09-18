@@ -1,0 +1,70 @@
+-- V13 — 도메인 용어 정비: STUDY → STUDY_PROGRAM, STUDY_COHORT → STUDY, STUDY_CLASS → STUDY_GROUP
+-- 테이블명·FK 컬럼명·인덱스명 전부 변경.
+
+-- 1-1. 테이블 rename
+RENAME TABLE STUDY TO STUDY_PROGRAM;
+RENAME TABLE STUDY_COHORT TO STUDY;
+RENAME TABLE STUDY_CLASS TO STUDY_GROUP;
+
+-- 1-2. FK 컬럼 rename
+
+-- STUDY (구 STUDY_COHORT): STUDY_PROGRAM을 가리키는 컬럼
+ALTER TABLE STUDY RENAME COLUMN STUDY_ID TO PROGRAM_ID;
+
+-- STUDY_GROUP (구 STUDY_CLASS): STUDY를 가리키는 컬럼
+ALTER TABLE STUDY_GROUP RENAME COLUMN STUDY_COHORT_ID TO STUDY_ID;
+
+-- STUDY_MEETING: STUDY_GROUP을 가리키는 컬럼
+ALTER TABLE STUDY_MEETING RENAME COLUMN STUDY_CLASS_ID TO STUDY_GROUP_ID;
+
+-- STUDY_PARTICIPANT
+ALTER TABLE STUDY_PARTICIPANT RENAME COLUMN STUDY_CLASS_ID TO STUDY_GROUP_ID;
+ALTER TABLE STUDY_PARTICIPANT RENAME COLUMN STUDY_COHORT_ID TO STUDY_ID;
+
+-- STUDY_ATTENDANCE
+ALTER TABLE STUDY_ATTENDANCE RENAME COLUMN STUDY_CLASS_ID TO STUDY_GROUP_ID;
+ALTER TABLE STUDY_ATTENDANCE RENAME COLUMN STUDY_COHORT_ID TO STUDY_ID;
+
+-- STUDY_BOOKMARK (V7에서 STUDY_COHORT_ID로 이미 변경됨)
+ALTER TABLE STUDY_BOOKMARK RENAME COLUMN STUDY_COHORT_ID TO STUDY_ID;
+
+-- STUDY_REVIEW: 순서 중요 — STUDY_ID를 먼저 rename해야 STUDY_COHORT_ID를 STUDY_ID로 쓸 수 있음
+ALTER TABLE STUDY_REVIEW RENAME COLUMN STUDY_ID TO STUDY_PROGRAM_ID;
+ALTER TABLE STUDY_REVIEW RENAME COLUMN STUDY_COHORT_ID TO STUDY_ID;
+
+-- STUDY_RECRUITMENT
+ALTER TABLE STUDY_RECRUITMENT RENAME COLUMN COHORT_ID TO STUDY_ID;
+
+-- 1-3. 인덱스 rename
+
+-- STUDY_PROGRAM (구 STUDY)
+ALTER TABLE STUDY_PROGRAM RENAME INDEX uk_study_slug TO uk_study_program_slug;
+
+-- STUDY (구 STUDY_COHORT)
+ALTER TABLE STUDY RENAME INDEX idx_study_cohort_study_status TO idx_study_program_study_status;
+
+-- STUDY_GROUP (구 STUDY_CLASS)
+ALTER TABLE STUDY_GROUP RENAME INDEX uk_study_class_cohort_name TO uk_study_group_study_name;
+ALTER TABLE STUDY_GROUP RENAME INDEX idx_study_class_cohort TO idx_study_group_study;
+
+-- STUDY_MEETING
+ALTER TABLE STUDY_MEETING RENAME INDEX idx_study_meeting_class_scheduled TO idx_study_meeting_group_scheduled;
+
+-- STUDY_PARTICIPANT
+ALTER TABLE STUDY_PARTICIPANT RENAME INDEX uk_study_participant_account_class TO uk_study_participant_account_group;
+ALTER TABLE STUDY_PARTICIPANT RENAME INDEX idx_study_participant_class_status TO idx_study_participant_group_status;
+ALTER TABLE STUDY_PARTICIPANT RENAME INDEX idx_study_participant_cohort_status TO idx_study_participant_study_status;
+
+-- STUDY_ATTENDANCE
+ALTER TABLE STUDY_ATTENDANCE RENAME INDEX idx_study_attendance_account_cohort TO idx_study_attendance_account_study;
+ALTER TABLE STUDY_ATTENDANCE RENAME INDEX idx_study_attendance_account_class TO idx_study_attendance_account_group;
+ALTER TABLE STUDY_ATTENDANCE RENAME INDEX idx_study_attendance_cohort_status TO idx_study_attendance_study_status;
+
+-- STUDY_REVIEW
+ALTER TABLE STUDY_REVIEW RENAME INDEX uk_study_review_cohort_account TO uk_study_review_study_account;
+ALTER TABLE STUDY_REVIEW RENAME INDEX idx_study_review_cohort TO idx_study_review_study;
+ALTER TABLE STUDY_REVIEW RENAME INDEX idx_study_review_study_created TO idx_study_review_program_created;
+
+-- STUDY_BOOKMARK
+ALTER TABLE STUDY_BOOKMARK RENAME INDEX uk_study_bookmark_account_cohort TO uk_study_bookmark_account_study;
+ALTER TABLE STUDY_BOOKMARK RENAME INDEX idx_study_bookmark_cohort TO idx_study_bookmark_study;

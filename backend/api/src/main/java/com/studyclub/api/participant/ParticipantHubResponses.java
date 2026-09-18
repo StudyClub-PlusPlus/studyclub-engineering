@@ -2,7 +2,7 @@ package com.studyclub.api.participant;
 
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.participant.ParticipantStatus;
-import com.studyclub.domain.study.StudyCohortStatus;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -40,7 +40,7 @@ public final class ParticipantHubResponses {
             Long cohortId,
             Long studyId,
             String title,
-            StudyCohortStatus cohortStatus,
+            StudyStatus cohortStatus,
             ParticipantStatus participantStatus,
             String className,
             String timezone,

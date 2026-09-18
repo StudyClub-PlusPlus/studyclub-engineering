@@ -9,7 +9,6 @@ import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyCohort;
 import com.studyclub.domain.study.StudyCohortRepository;
 import com.studyclub.domain.study.StudyCohortStatus;
 import com.studyclub.domain.study.StudyKind;
