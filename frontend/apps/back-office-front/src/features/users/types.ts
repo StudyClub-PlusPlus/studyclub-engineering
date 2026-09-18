@@ -3,7 +3,7 @@
 export type ApiUser = {
   id: number;
   email: string;
-  name: string | null;
+  nickname: string | null;
   picture: string | null;
   role: string;
   createdAt: string | null;

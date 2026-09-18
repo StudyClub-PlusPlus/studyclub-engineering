@@ -46,15 +46,15 @@ function LoginForm() {
         if (!res.ok) {
           throw new Error(loginErrorFromExchange(res.status, data));
         }
-        if (data.user) {
-          const user = data.user as SessionUser;
-          setUser(user);
+        if (data.account) {
+          const account = data.account as SessionUser;
+          setUser(account);
           if (typeof data.suggestedNickname === 'string' && data.suggestedNickname.trim()) {
             setSuggestedNickname(data.suggestedNickname.trim());
           } else {
             setSuggestedNickname(null);
           }
-          if (!user.onboardingCompletedAt) {
+          if (!account.onboardingCompletedAt) {
             router.replace(`/${locale}/onboarding?next=${encodeURIComponent(next)}`);
             return;
           }

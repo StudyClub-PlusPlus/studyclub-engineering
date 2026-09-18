@@ -62,7 +62,7 @@ SQL 은 첫 ADMIN 까지다. 그 뒤로는 ADMIN 이 백오피스 화면에서 �
 ### `POST /auth/social-login` (변경)
 
 Request 그대로. `platform` = `CORE` | `BACK_OFFICE`.
-Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountView.role`).
+Response 200 그대로. `account.role` 은 이미 실려 있다(`AuthDtos.AccountView.role`).
 
 | 상태 | errorCode | 조건 |
 |---|---|---|
@@ -93,7 +93,7 @@ Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountVi
 
 화면 신설 없음. API 연결만 진행
 
-- `src/app/api/auth/social/login/route.ts` — 백엔드 403 은 지금처럼 그대로 넘긴다. 추가로 **`data.user.role !== 'ADMIN'` 이면 쿠키를 심지 않고 403** 을 돌려준다. 이때도 응답은 `errorCode: FORBIDDEN` + 같은 메시지로 맞춰서, 로그인 화면이 백엔드 403 과 구분 없이 처리한다. 백엔드가 뚫려도 프론트가 한 번 더 막는다(PRD `04b` "두 겹으로 막는다"). 파일 상단 allowlist 주석 갱신.
+- `src/app/api/auth/social/login/route.ts` — 백엔드 403 은 지금처럼 그대로 넘긴다. 추가로 **`data.account.role !== 'ADMIN'` 이면 쿠키를 심지 않고 403** 을 돌려준다. 이때도 응답은 `errorCode: FORBIDDEN` + 같은 메시지로 맞춰서, 로그인 화면이 백엔드 403 과 구분 없이 처리한다. 백엔드가 뚫려도 프론트가 한 번 더 막는다(PRD `04b` "두 겹으로 막는다"). 파일 상단 allowlist 주석 갱신.
 - `src/app/login/page.tsx` — `errorCode` 로 가른다. `FORBIDDEN` 이면 PRD BO-05 문구 「운영 권한이 없어요. 캡틴에게 요청하세요.」, `SIGNUP_REQUIRED` 면 「먼저 스터디클럽 사이트에서 로그인해 주세요.」. 나머지 에러는 지금처럼 `errorMessage`.
 
 ## 테스트
@@ -102,7 +102,7 @@ Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountVi
 
 - BACK_OFFICE + 처음 보는 sub → 403 SIGNUP_REQUIRED. ACCOUNT·ACCOUNT_IDENTITY 행 수 그대로.
 - BACK_OFFICE + MEMBER 계정 → 403 FORBIDDEN. SYSTEM_ROLE 그대로 MEMBER, LAST_LOGIN_AT 안 바뀜.
-- BACK_OFFICE + ADMIN 계정 → 200. 토큰 발급, LAST_LOGIN_AT 갱신, `user.role = ADMIN`.
+- BACK_OFFICE + ADMIN 계정 → 200. 토큰 발급, LAST_LOGIN_AT 갱신, `account.role = ADMIN`.
 - BACK_OFFICE + ADMIN 인데 온보딩 미완료 → 200 (온보딩을 안 본다).
 - CORE 기존 5건 그대로 통과 — allowlist 제거가 core-front 에 영향 없음.
 - 테스트 `application.yml` 의 `back-office.allowed-emails` 제거.

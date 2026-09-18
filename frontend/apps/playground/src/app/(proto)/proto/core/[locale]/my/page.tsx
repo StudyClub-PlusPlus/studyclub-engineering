@@ -184,7 +184,7 @@ export default function MyPage() {
       return;
     }
     setUser(u);
-    setName(getDisplayName() ?? u.name ?? u.email);
+    setName(getDisplayName() ?? u.nickname ?? u.email);
     setTimeZoneState(getTimeZone());
     setApplications(getApplications());
     setBookmarks(getBookmarks());

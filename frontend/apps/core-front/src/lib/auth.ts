@@ -10,14 +10,11 @@ export const REFRESH_COOKIE = `${STORAGE_PREFIX}refresh_token`;
 const USER_KEY = `${STORAGE_PREFIX}user`;
 const SUGGESTED_NICKNAME_KEY = `${STORAGE_PREFIX}suggested_nickname`;
 
-/**
- * UI 세션용 회원 스냅샷.
- * TODO(api): 백엔드 필드명 정합(user→account, name→nickname) 후 nickname 으로 교체.
- */
+/** UI 세션용 회원 스냅샷. localStorage 키는 sc_user 로 유지한다. */
 export type SessionUser = {
   id: number;
   email: string;
-  name: string | null;
+  nickname: string | null;
   picture: string | null;
   role: string;
   timeZone?: string | null;
