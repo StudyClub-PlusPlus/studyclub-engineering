@@ -18,6 +18,7 @@
 | TIME_ZONE | VARCHAR(64) | Y | IANA (`Asia/Seoul`, `America/Los_Angeles`) |
 | DISCORD_ID | VARCHAR(64) | Y | 디스코드 내부 식별자 (snowflake) |
 | DISCORD_HANDLE | VARCHAR(64) | Y | 표시용 핸들 |
+| DISCORD_NICKNAME | VARCHAR(100) | Y | 스터디클럽++ 서버 별명 (이름/직무/지역/관심주제). 없으면 스터디 신청 시 필수 입력 |
 | ONBOARDING_COMPLETED_AT | DATETIME | Y | 온보딩 완료 시간 |
 
 ## 관계

@@ -13,6 +13,10 @@ public final class AuthDtos {
 
     public record RefreshRequest(String refreshToken) {}
 
+    /**
+     * 로그인·me·백오피스 목록 공용 회원 View. {@code onboardingCompletedAt == null} 이면 프론트가 온보딩 화면으로 보낸다. 필드명 스펙
+     * 정합(user→account, name→nickname)은 프론트 동반 수정이 필요해 별도 PR.
+     */
     public record AccountView(
             Long id,
             String email,
@@ -43,7 +47,9 @@ public final class AuthDtos {
             String refreshToken,
             long accessTokenExpiresIn,
             long refreshTokenExpiresIn,
-            AccountView user) {}
+            AccountView user,
+            /** 구글이 이번 로그인에 준 name. 온보딩 닉네임 입력칸 초기값용이라 DB 에 저장하지 않는다. */
+            String suggestedNickname) {}
 
     public record AccessTokenResponse(String accessToken) {}
 }

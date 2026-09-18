@@ -4,7 +4,6 @@ import { STATUS_LABEL } from '@console/lib/l10n';
 import { Badge, Button, type BadgeTone } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
-
 /** 스터디 상태 → 디자인 시스템 tone (design-system.md §2-5). */
 const STATUS_TONE: Record<string, BadgeTone> = {
   recruiting: 'recruiting',
@@ -66,9 +65,9 @@ export function RowActions() {
   );
 }
 
-export function TableCard({ children }: { children: ReactNode }) {
+export function TableCard({ children, anno }: { children: ReactNode; anno?: string }) {
   return (
-    <div className='card overflow-x-auto'>
+    <div data-anno={anno} className='card overflow-x-auto'>
       <table className='bo-table'>{children}</table>
     </div>
   );

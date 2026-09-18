@@ -12,6 +12,9 @@ import { toISODate } from '@core/lib/recruit';
 import { isHotStudy } from '@studyclub/mock';
 import { ArrowLeft, CalendarClock } from 'lucide-react';
 
+import { SPECS } from './spec';
+import { ScreenSpecRegistrar } from '@/proto/annotate';
+
 export async function generateStaticParams() {
   const studies = await getStudies();
   return studies.map((s) => ({ id: s.id }));
@@ -38,6 +41,9 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
 
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-8'>
+      {SPECS.map((spec) => (
+        <ScreenSpecRegistrar key={spec.chip ?? spec.screen} spec={spec} />
+      ))}
       <Link
         href={`/proto/core/${locale}/studies`}
         className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg'

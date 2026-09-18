@@ -1,4 +1,4 @@
-import type { MemberRegion, Study } from "./index";
+import type { ApplicationQuestion, MemberRegion, Study } from "./index";
 
 /**
  * 크루(참여자)·회차·출석 mock.
@@ -35,6 +35,13 @@ export type Crew = {
   /** 일정 미정 스터디에서 고른 가능 시간 */
   cells?: string[];
   motivation?: string;
+  /** 신청 폼 추가 질문(`Study.applicationForm`)에 대한 답변. questionId → 답. 체크박스는 배열. */
+  answers?: Record<string, string | string[]>;
+  /**
+   * 신청 시 받은 디스코드 서버 별명. 모든 신청서에 항상 있는 기본 질문의 답이라, 신청
+   * 결과 화면에서는 계정 실명 대신 이걸로 응답자를 가리킨다 (`ApplicationFormTab` 참고).
+   */
+  discordNickname: string;
 };
 
 /** 회차. ERD `STUDY_MEETING`. 영어는 meeting (로그인 SESSION과 구분). */
@@ -74,6 +81,53 @@ function hash(s: string): number {
 /** seed 로부터 0 이상 max 미만 정수. */
 function pick(seed: number, max: number): number {
   return Math.abs(Math.imul(seed ^ 0x9e3779b9, 2654435761)) % max;
+}
+
+const DISCORD_JOBS = ["SWE", "PM", "데이터 분석가", "백엔드 개발자", "프론트엔드 개발자", "대학원생", "ML 엔지니어", "디자이너"];
+const DISCORD_LOCATIONS = ["서울", "판교", "부산", "산호세", "뉴욕", "시애틀", "대전", "인천"];
+const DISCORD_TOPICS = ["시스템디자인", "알고리즘", "논문리딩", "커리어전환", "사이드프로젝트", "취업준비"];
+
+/** 신청 시 받는 디스코드 서버 별명. 형식은 `DISCORD_NICKNAME_EXAMPLE` 예시(이름/직군/지역/관심사)와 같다. */
+function discordNicknameFor(name: string, seed: number): string {
+  const job = DISCORD_JOBS[pick(seed + 1, DISCORD_JOBS.length)];
+  const location = DISCORD_LOCATIONS[pick(seed + 2, DISCORD_LOCATIONS.length)];
+  const topic = DISCORD_TOPICS[pick(seed + 3, DISCORD_TOPICS.length)];
+  return `${name}/${job}/${location}/${topic}`;
+}
+
+/** 단답형·장문형 질문에 채울 예시 답변. 질문 내용을 모르므로 지원 동기류로 범용화한다. */
+const TEXT_ANSWER_BANK = [
+  "관련 분야로 이직을 준비하고 있어서 체계적으로 공부할 계기가 필요했습니다.",
+  "혼자 하면 자꾸 미뤄서, 같이 진도를 맞출 사람들이 필요해 신청합니다.",
+  "실무에서 부족하다고 느낀 부분이라 이번 기회에 제대로 다지고 싶습니다.",
+  "최근 관심이 생긴 주제라 스터디원들과 의견을 나눠 보고 싶습니다.",
+  "학교에서 배운 내용을 실전 감각으로 이어가고 싶어 신청합니다.",
+];
+
+/**
+ * study.applicationForm 질문에 대한 결정적 답변을 만든다.
+ *
+ * TODO(api): GET /api/studies/{id}/cohorts/{cohortId}/applications 로 대체
+ */
+function answersFor(questions: ApplicationQuestion[], seed: number): Record<string, string | string[]> {
+  const answers: Record<string, string | string[]> = {};
+  questions.forEach((q, qi) => {
+    const s = seed + qi * 211;
+    if (q.type === "text" || q.type === "textarea") {
+      answers[q.id] = TEXT_ANSWER_BANK[pick(s, TEXT_ANSWER_BANK.length)];
+      return;
+    }
+    const options = q.options ?? [];
+    if (options.length === 0) return;
+    if (q.type === "radio" || q.type === "select") {
+      answers[q.id] = options[pick(s, options.length)];
+      return;
+    }
+    // checkbox — 최소 1개, 옵션마다 절반 확률로 포함. 전부 빠지면 하나는 채운다.
+    const chosen = options.filter((_, i) => pick(s + i * 31, 2) === 0);
+    answers[q.id] = chosen.length ? chosen : [options[pick(s, options.length)]];
+  });
+  return answers;
 }
 
 const FALLBACK_DATE = "2026-08-01";
@@ -252,14 +306,16 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
 
   const crew: Crew[] = [];
   const total = activeCount + pendingCount + waitlistCount;
+  const formQuestions = study.applicationForm ?? [];
   for (let i = 0; i < total; i++) {
     const s = seed + i * 101;
     const past = pick(s + 3, 5); // 0~4
     const status: CrewStatus =
       i < activeCount ? "active" : i < activeCount + pendingCount ? "pending" : "waitlist";
+    const name = CLEAN_NAMES[pick(s, CLEAN_NAMES.length)];
     crew.push({
       id: `${study.id}-c${i + 1}`,
-      name: CLEAN_NAMES[pick(s, CLEAN_NAMES.length)],
+      name,
       email: `member${(pick(s + 1, 900) + 100).toString()}@example.com`,
       region: REGIONS[pick(s + 5, REGIONS.length)],
       status,
@@ -267,6 +323,8 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
       pastStudies: past,
       completionRate: past === 0 ? undefined : 60 + pick(s + 11, 5) * 10, // 60~100
       motivation: undefined,
+      answers: formQuestions.length ? answersFor(formQuestions, s + 17) : undefined,
+      discordNickname: discordNicknameFor(name, s + 23),
     });
   }
 

@@ -13,7 +13,6 @@ import {
 import type { StudyclubEvent } from '@studyclub/mock';
 import { Button, Modal } from '@studyclub/ui';
 
-
 /**
  * 행사 등록·편집 팝업 — 스터디 팝업과 같은 규칙.
  *

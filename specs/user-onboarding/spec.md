@@ -40,7 +40,7 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
                                             → JWT 발급 → 온보딩 화면
 
 온보딩 화면
-  │  약관 3종 · 닉네임(제공자 이름 미리 채움) · 타임존(브라우저 타임존 미리 선택)
+  │  만 14세 이상 확인 · 약관 3종 · 닉네임(제공자 이름 미리 채움) · 타임존(브라우저 타임존 미리 선택)
   │
   ├─ 검증 실패 → 필드별 오류, 저장 없음 → 온보딩 화면
   │
@@ -102,6 +102,7 @@ ACCOUNT_IDENTITY
 - **마케팅 수신** — 동의 여부는 선택이지만 요청 필드는 필수. `false`도 정상값이며 `ACCOUNT_CONSENT` `MARKETING`에 거부 이력을 남긴다
 - **닉네임** — 필수. trim 후 2~20자, **중복 불가**. 모든 언어의 글자·숫자·밑줄(`_`)만 허용하고 공백·줄바꿈·그 외 특수문자는 허용하지 않는다. 밑줄만으로 구성할 수 없으며 영문 대소문자는 구분하지 않는다. `운영진`·`관리자`·`admin` 등 공식 계정으로 오해할 수 있는 이름과 `account_` 접두사는 사용할 수 없다. `ACCOUNT.NICKNAME`
 - **타임존** — 필수. IANA ID (`ZoneId.of()` 통과). `ACCOUNT.TIME_ZONE`
+- **만 14세 이상 확인** — 필수. `age14Confirmed=true`만 허용하며 `false`·`null`·누락은 `400 INVALID_INPUT`. 본인의 연령 확인 진술을 검증하는 항목이며 실제 나이 인증은 아니다. 별도 약관 문서·버전·DB 컬럼·`ACCOUNT_CONSENT` 행은 만들지 않는다.
 
 약관 버전은 클라이언트가 안 보낸다. **서버가 현재 게시 버전을 붙인다.**
 초기값 — 닉네임=제공자 `name`, 타임존=브라우저 `Intl.DateTimeFormat().resolvedOptions().timeZone`. 편의일 뿐, 검증은 똑같이 탄다. DB 의 임시 닉네임(`account_<랜덤>`)은 화면에 안 보여준다 — 온보딩에서 반드시 정한다.
@@ -119,7 +120,8 @@ ACCOUNT_IDENTITY
 |---|---|---|---|
 | POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+ACCOUNT_IDENTITY 생성, 기존이면 조회. 동일 이메일 충돌 시 `ACCOUNT_LINK_REQUIRED`를 반환하며 토큰을 발급하지 않음 | X |
 | GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) |
-| POST | `/accounts/onboarding` | 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
+| GET | `/api/nicknames/availability` | 입력 중 닉네임 사용 가능 여부 조회 | O (미완료도 가능) |
+| POST | `/accounts/onboarding` | 만 14세 이상 확인 후 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
 
 `POST /accounts/onboarding`은 기존 ACCOUNT 리소스 경로를 사용한다. 온보딩은 1회성 완료 액션이라 마이페이지 수정 API(별도 스펙, `/accounts/me` 형태 예상)와 경로를 분리한다.
 
@@ -145,12 +147,37 @@ ACCOUNT_IDENTITY
 
 응답은 DB에 저장된 정보만 담는 `AccountView`를 사용한다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다.
 
+### `GET /api/nicknames/availability`
+
+온보딩에서 닉네임을 입력하는 동안 실제 DB의 사용 여부를 조회한다. 쿼리 `value`는 필수 문자열이며 예시는 `/api/nicknames/availability?value=Journey`다. 클라이언트는 쿼리 값을 URL 인코딩한다.
+
+- 인증된 사용자만 호출할 수 있고, 온보딩 미완료 사용자도 허용한다. Google 로그인 후 사용하는 기능이므로 기획 PR #75의 비로그인 공개 제안 대신 기존 JWT 인증을 사용한다. `@RequireOnboarding`은 적용하지 않는다.
+- `NicknamePolicy.normalize()`로 앞뒤 공백을 제거하고 같은 클래스의 형식 규칙을 검사한 뒤, `AccountRepository.existsByNicknameIgnoreCase()`로 중복을 조회한다. 가입 완료 때와 같은 비교 기준을 사용한다.
+- 현재 기준은 모든 언어의 글자·숫자·밑줄을 허용하며 대소문자를 구분하지 않는다. Playground의 예시 목록과 NFC 변환은 서버의 판정 기준이 아니다. NFC 정책을 도입하려면 조회·최종 검사·기존 데이터를 함께 검토한다.
+- 조회는 닉네임을 예약하거나 계정·동의 기록을 저장하지 않는다. 로그인한 본인의 이름도 이미 DB에 있으면 사용 중으로 반환한다. 마이페이지의 본인 닉네임 유지 여부 판정은 별도 계약이다.
+
+응답:
+
+| 상황 | 상태 | Body |
+|---|---|---|
+| 유효한 형식이고 사용되지 않음 | `200 OK` | `{"available": true}` |
+| 유효한 형식이고 이미 사용 중 | `200 OK` | `{"available": false}` |
+| `value` 누락·공백·길이/문자 위반·예약어 | `400 Bad Request` | 기존 `INVALID_INPUT` 오류 |
+| 토큰 없음·무효·만료 | `401 Unauthorized` | 기존 `UNAUTHORIZED` 오류 |
+
+성공 응답에는 `data`·`success` 래퍼가 없다. 형식 오류를 중복(`available=false`)으로 취급하지 않는다. 서비스에서 검출한 형식 오류는 `errorMessage`에 `value: 사유`를 담는다.
+
+프론트는 형식이 유효한 값에 대해 마지막 입력 후 400ms 대기한 뒤 조회하며, 한글 조합 중에는 조회하지 않고 이전 입력의 요청·응답이 최신 상태를 덮지 않도록 처리한다. 서버는 인위적으로 응답을 지연하지 않는다. 조회 실패를 사용 가능으로 표시하지 않는다.
+
+조회 결과는 조회 시점의 정보다. 이후 다른 사람이 같은 닉네임으로 가입할 수 있으므로 `POST /accounts/onboarding`의 최종 중복 검사와 DB UNIQUE 제약을 유지한다. 최종 제출에서 중복이면 기존 `409 CONFLICT`로 응답한다.
+
 ### `POST /accounts/onboarding`
 
 요청 바디:
 
 ```jsonc
 {
+  "age14Confirmed": true,        // 필수, true만 허용. 별도 저장하지 않음
   "termsOfServiceAgreed": true,   // 필수, true 아니면 거부
   "privacyPolicyAgreed": true,    // 필수, true 아니면 거부
   "marketingAgreed": false,       // 필수, false도 유효 (거부 이력 남김)
@@ -165,9 +192,13 @@ ACCOUNT_IDENTITY
 
 멱등: 이미 `ONBOARDING_COMPLETED_AT`이 채워진 사용자가 다시 호출하면, **검증·중복 체크보다 먼저** 그 사실을 확인하고 요청 바디를 무시한 채 현재 상태 그대로 `200 OK`를 반환한다(위 참조). 이 순서를 지키지 않으면 — 예: 이미 완료된 사용자가 그 사이 다른 사람이 선점한 닉네임을 담아 재제출한 경우 — 검증이 먼저 돌아 `409 CONFLICT`가 나가버려 멱등이 깨진다.
 
+만 14세 이상 확인도 같은 순서로 검증한다. 최초 완료 요청의 `false`·`null`·누락은 거절하고 닉네임 확정·동의 저장·가입 완료 이벤트를 발생시키지 않는다. 이미 완료된 계정의 재요청은 이 값이 없어도 현재 상태를 반환한다. 기존 회원에게 새 확인을 소급해서 받는 것은 별도 기획이다.
+
+`age14Confirmed`는 신규 필수 항목이므로 프론트는 실제 체크 상태를 요청에 포함해야 한다. 기존 다섯 필드만 보내는 미완료 계정의 요청은 거절된다. 적용 시 프론트와 백엔드의 배포를 맞추며, 호환성을 이유로 누락값을 `true`로 간주하지 않는다.
+
 에러:
 
-- `400 INVALID_INPUT` — 약관 미동의, 닉네임 길이/형식 위반, 타임존 미유효. 이 검증들은 "가입 불가"와 달리 프론트가 별도 화면으로 분기할 이유가 없는 일반 폼 검증이라 전용 코드를 쓰지 않는다. `errorMessage`는 레포의 `@Valid` 컨벤션 그대로 **실패한 필드 전부**를 `"필드명: 사유"` 형태로 콤마 join 해서 담는다(예: `"termsOfServiceAgreed: 약관에 동의해야 합니다, nickname: 2~20자여야 합니다"`, `GlobalExceptionHandler.handleValidation` 참고) — 필드 배열 같은 새 포맷은 쓰지 않는다.
+- `400 INVALID_INPUT` — 만 14세 이상 확인 실패/누락, 약관 미동의, 닉네임 길이/형식 위반, 타임존 미유효. 이 검증들은 "가입 불가"와 달리 프론트가 별도 화면으로 분기할 이유가 없는 일반 폼 검증이라 전용 코드를 쓰지 않는다. `errorMessage`는 레포의 `@Valid` 컨벤션 그대로 **실패한 필드 전부**를 `"필드명: 사유"` 형태로 콤마 join 해서 담는다(예: `"termsOfServiceAgreed: 약관에 동의해야 합니다, nickname: 2~20자여야 합니다"`, `GlobalExceptionHandler.handleValidation` 참고) — 필드 배열 같은 새 포맷은 쓰지 않는다.
 - `409 CONFLICT` — 닉네임 중복.
 - `401 UNAUTHORIZED` — 토큰 없음/만료.
 
@@ -184,7 +215,7 @@ ACCOUNT_IDENTITY
 
 ## 미완료 사용자가 할 수 있는 것
 
-`ONBOARDING_COMPLETED_AT IS NULL` 이면 온보딩·내 정보 조회·로그아웃·약관 열람만.
+`ONBOARDING_COMPLETED_AT IS NULL` 이면 온보딩·닉네임 사용 가능 여부 조회·내 정보 조회·로그아웃·약관 열람만.
 
 - 프론트: 로그인 필요한 페이지 들어오면 `/[locale]/onboarding` 으로 보낸다. 비회원 공개 범위(목록·상세)는 그대로.
 - 백엔드: 회원 기능 API(신청·출석·마이페이지 수정…)는 미완료면 403. 프론트 가드만 믿지 않는다.

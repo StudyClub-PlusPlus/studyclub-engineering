@@ -1,6 +1,13 @@
 'use client';
 
-import { attendancePoint, demoMyAttendance, getStudyCrew, studies, type Study, type StudyMeeting } from '@studyclub/mock';
+import {
+  attendancePoint,
+  demoMyAttendance,
+  getStudyCrew,
+  studies,
+  type Study,
+  type StudyMeeting,
+} from '@studyclub/mock';
 
 /**
  * 회원 본인의 출석.

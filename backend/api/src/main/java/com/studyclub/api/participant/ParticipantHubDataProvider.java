@@ -6,10 +6,10 @@ import java.util.Optional;
 
 public interface ParticipantHubDataProvider {
 
-    ParticipantHubOverviewResponse getParticipantHubOverview(String accountEmail);
+    ParticipantHubOverviewResponse getParticipantHubOverview(Long accountId);
 
     Optional<ParticipatingStudyCohortDetailResponse> findParticipatingStudyCohortDetail(
-            String accountEmail, Long cohortId);
+            Long accountId, Long cohortId);
 
     boolean studyCohortExists(Long cohortId);
 }

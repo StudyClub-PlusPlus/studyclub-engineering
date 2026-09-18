@@ -113,6 +113,21 @@ export function AnnotationLayer() {
   // 어느 Story 도 설명하지 않는 요소 — 진짜 미설명이다
   const undocumented = hits.filter((h) => !documentedAnywhere.has(h.n));
 
+  // 상자 원점이 겹치는 요소가 있다(예: 표 전체와 그 첫 열). 배지를 그대로 두면 하나가 다른
+  // 하나를 완전히 가려 캡처에서 번호가 사라진다. 겹치면 오른쪽으로 한 칸씩 비켜 세운다.
+  const placed: { x: number; y: number; w: number }[] = [];
+  const badgePos = new Map<string, { x: number; y: number }>();
+  for (const h of [...shown].sort((a, b) => byNumber(a.n, b.n))) {
+    const w = 22 + h.n.length * 4;
+    let x = h.rect.left - 10;
+    const y = h.rect.top - 10;
+    while (placed.some((p) => Math.abs(p.y - y) < 22 && x < p.x + p.w + 4 && p.x < x + w + 4)) {
+      x += w + 6;
+    }
+    placed.push({ x, y, w });
+    badgePos.set(h.n, { x, y });
+  }
+
   return (
     <>
       {/* 배지 + 요소 테두리 */}
@@ -124,8 +139,10 @@ export function AnnotationLayer() {
         {shown.map((h) => {
           const color = 'var(--color-accent)';
           const entry = entries.find((e) => e.n === h.n);
-          const chipTop = h.rect.top - 10 + (entry?.chipOffset?.top ?? 0);
-          const chipLeft = h.rect.left - 10 + (entry?.chipOffset?.left ?? 0);
+          // 자동 회피 위치를 바탕으로 하고, 명세가 손으로 밀어 둔 값(chipOffset)을 얹는다.
+          const auto = badgePos.get(h.n);
+          const chipTop = (auto?.y ?? h.rect.top - 10) + (entry?.chipOffset?.top ?? 0);
+          const chipLeft = (auto?.x ?? h.rect.left - 10) + (entry?.chipOffset?.left ?? 0);
           return (
             <div key={h.n + h.rect.top}>
               <div

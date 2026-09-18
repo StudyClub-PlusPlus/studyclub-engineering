@@ -18,7 +18,7 @@
 
 ## 공통 사항
 
-- **accountId**: 요청 파라미터가 아닌 JWT 토큰의 Security Context(`authentication.getDetails()`)에서 추출한다.
+- **accountId**: 요청 파라미터가 아닌 JWT 토큰의 Security Context(`authentication.getPrincipal()`)에서 추출한다.
 - **500**: 모든 엔드포인트는 예기치 않은 서버 오류 시 `500 INTERNAL_ERROR` 를 반환할 수 있다.
 
 ---

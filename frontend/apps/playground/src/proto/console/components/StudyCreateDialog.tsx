@@ -16,7 +16,6 @@ import { Button, Modal } from '@studyclub/ui';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 import { STUDY_CREATE_SPEC as SPEC } from '@/proto/specs/study-create';
 
-
 /**
  * 스터디 등록 팝업 — 프로토타입.
  *
@@ -70,38 +69,36 @@ export function StudyCreateDialog({
   return (
     <>
       {open && !editing ? <ScreenSpecRegistrar spec={SPEC} /> : null}
-    <Modal
-      open={open}
-      onClose={close}
-      title={editing ? '스터디 편집' : '스터디 등록'}
-      size='lg'
-      footer={
-        done ? (
-          <Button onClick={close}>확인</Button>
+      <Modal
+        open={open}
+        onClose={close}
+        title={editing ? '스터디 편집' : '스터디 등록'}
+        size='lg'
+        footer={
+          done ? (
+            <Button onClick={close}>확인</Button>
+          ) : (
+            <>
+              <Button data-anno='8' variant='secondary' onClick={close} disabled={saving}>
+                취소
+              </Button>
+              <Button data-anno='9' onClick={handleSubmit} loading={saving}>
+                {editing ? '저장' : '등록'}
+              </Button>
+            </>
+          )
+        }
+      >
+        {done ? (
+          <p className='py-6 text-center text-sm text-fg-muted'>
+            {editing
+              ? '저장되었습니다.'
+              : '등록되었습니다. 아직 사이트에 보이지 않습니다 — 목록에서 공개를 켜세요.'}
+          </p>
         ) : (
-          <>
-            <Button data-anno='9' variant='secondary' onClick={close} disabled={saving}>
-              취소
-            </Button>
-            <Button data-anno='10' onClick={handleSubmit} loading={saving}>
-              {editing ? '저장' : '등록'}
-            </Button>
-          </>
-        )
-      }
-    >
-      {done ? (
-        <p className='py-6 text-center text-sm text-fg-muted'>
-          {editing
-            ? '저장되었습니다.'
-            : form.publishAt
-              ? `등록되었습니다. ${form.publishAt}부터 사이트에 공개됩니다.`
-              : '등록되었습니다. 사이트에 바로 공개됩니다.'}
-        </p>
-      ) : (
-        <StudyForm value={form} errors={errors} onChange={setForm} />
-      )}
-    </Modal>
+          <StudyForm value={form} errors={errors} onChange={setForm} />
+        )}
+      </Modal>
     </>
   );
 }

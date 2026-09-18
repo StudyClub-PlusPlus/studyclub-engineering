@@ -15,7 +15,10 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
 
   if (state === 'closed') {
     return (
-      <span className='inline-flex items-center rounded-pill bg-surface-2 px-7 py-3 text-sm font-bold text-fg-placeholder'>
+      <span
+        data-anno='view:1'
+        className='inline-flex items-center rounded-pill bg-surface-2 px-7 py-3 text-sm font-bold text-fg-placeholder'
+      >
         {label}
       </span>
     );
@@ -25,6 +28,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     <>
       <button
         type='button'
+        data-anno='view:2'
         onClick={() => setOpen(true)}
         className='inline-flex items-center rounded-pill bg-brand px-8 py-3 text-sm font-bold text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)'
       >

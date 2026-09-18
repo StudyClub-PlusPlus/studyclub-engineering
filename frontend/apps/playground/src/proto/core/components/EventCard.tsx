@@ -1,6 +1,5 @@
 import Link from 'next/link';
 
-
 import type { StudyclubEvent, Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { MapPin, ChevronRight } from 'lucide-react';
