@@ -20,7 +20,7 @@
 | 메일 | MailClient + SesMailClient, 용도별 설정 | 실제 SES와 테스트 목 분리, 다음 메일 기능에서 재사용 |
 | 관리자 | (제거) 로그인만 요구, ADMIN 역할 검사 없음 | 애초 RequireAdmin+AdminGuardInterceptor 로 넣었으나 이 스펙 범위를 넘어선다고 판단 — [back-office-login/spec.md](../back-office-login/spec.md)의 후속 PR에서 요청마다 DB 조회로 붙인다 |
 | 조회 | 전체 조회 후 필터·페이지 DTO, 이메일 마스킹 | 초기 소규모 이력, 기존 조회 서비스 패턴 |
-| 마이그레이션 | notification 모듈의 V13 | 원래 V12 로 배정했으나 beta 에 domain 모듈의 V12(recruit_schema, PR #91)가 먼저 병합돼 충돌 — V13 으로 재번호 |
+| 마이그레이션 | notification 모듈의 V14 | 원래 V12 로 배정했으나 PR 오픈 기간 중 beta 에 domain 모듈의 V12(recruit_schema, PR #91)·V13(drop_study_application_status)이 잇따라 병합돼 두 차례 재번호 — 머지 직전에 beta 최신 번호 재확인 필요 |
 
 ## 애그리거트 매핑
 
@@ -30,7 +30,7 @@
 
 ## 구현 순서
 
-1. 모듈 등록·엔티티·리포지토리·V13 및 템플릿 시딩
+1. 모듈 등록·엔티티·리포지토리·V14 및 템플릿 시딩
 2. 이벤트 리스너·별도 생성 트랜잭션
 3. 재수거·클레임·렌더링·SES·결과 저장
 4. 조회 API와 마스킹 (관리자 가드는 구현 중 제거 — 위 표 참고)
