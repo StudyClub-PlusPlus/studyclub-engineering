@@ -10,6 +10,7 @@
 | 회원 | [account/](./account/) | — | 인증·프로필·온보딩 |
 | 제안 | [proposal/](./proposal/) | — | 스터디 제안·관심 표시 |
 | 알림 | [notification/](./notification/) | 스펙작성중 | 이벤트 기반 알림 발송 (첫 구현: 회원가입 웰컴메일) |
+| 대시보드 | [dashboard/](./dashboard/) | 스펙작성중 | 운영 대시보드 화면·집계·API 및 미정 사항 |
 
 ## 도메인 외 스펙
 
