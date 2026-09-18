@@ -1,10 +1,12 @@
--- V12 — 회원가입 웰컴메일 알림 (specs/notification/spec.md).
+-- V13 — 회원가입 웰컴메일 알림 (specs/notification/spec.md).
 --   * NOTIFICATION_TEMPLATE: 알림 문구. 백오피스 편집 화면이 아직 없어 이 파일이 유일한 등록 경로(시딩).
 --   * NOTIFICATION: "이벤트가 발생했다는 사실"과 "실제로 언제·누구에게·어떻게 보냈는지"를 기록하는 아웃박스.
 --     재시도 체인 컬럼(root_notification_id 등)은 이번 구현 범위 밖 — 자동/수동 재시도가 아직 없다.
 --
 -- notification 모듈이 자기 엔티티의 마이그레이션을 직접 갖는 첫 사례다. Flyway 는 classpath:db/migration 을
--- 모듈 경계 없이 한 시퀀스로 스캔하므로, domain 모듈의 V11 을 이어 V12 로 번호를 매긴다.
+-- 모듈 경계 없이 한 시퀀스로 스캔한다. 원래 domain 모듈의 V11 을 이어 V12 로 번호를 매겼으나, 그 사이 beta 에
+-- domain 모듈의 V12(recruit_schema, PR #91)가 먼저 병합되어 버전이 충돌해(Flyway "Found more than one
+-- migration with version 12") V13 으로 재번호했다.
 
 -- ACCOUNT(UPDATED_BY_ADMIN_ID)·NOTIFICATION_TEMPLATE/ACCOUNT(NOTIFICATION 쪽)는 모두 다른 애그리거트를 잇는
 -- 참조라 FK 를 걸지 않는다 — ID 컬럼 + 인덱스만 둔다 (database-guide.md 의 "외래키 정책": 애그리거트 사이는 FK 대신

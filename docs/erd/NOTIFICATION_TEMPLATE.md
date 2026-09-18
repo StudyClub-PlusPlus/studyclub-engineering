@@ -1,6 +1,6 @@
 # NOTIFICATION_TEMPLATE — 알림 템플릿
 
-이벤트·채널별 메일 문구를 저장한다. V12 마이그레이션이 웰컴메일 한 건을 시딩하며 편집 API는 별도 기능이다.
+이벤트·채널별 메일 문구를 저장한다. V13 마이그레이션이 웰컴메일 한 건을 시딩하며 편집 API는 별도 기능이다.
 
 > 스펙: [notification](../../specs/notification/spec.md)
 

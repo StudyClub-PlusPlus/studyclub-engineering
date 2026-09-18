@@ -5,7 +5,7 @@
 ## 구현
 
 - [x] T001 notification 모듈 등록 및 컴포넌트 스캔
-- [x] T002 엔티티·리포지토리·JSON 변환 및 V12 템플릿 시딩
+- [x] T002 엔티티·리포지토리·JSON 변환 및 V13(원래 V12, beta 의 domain V12 recruit_schema 와 충돌해 재번호) 템플릿 시딩
 - [x] T003 AFTER_COMMIT 리스너와 REQUIRES_NEW 생성 서비스, 디버그 코드 제거
 - [x] T004 재수거·클레임·메일 발송·결과 저장
 - [x] T005 MailClient/SES 구현 및 mail 카테고리 설정
@@ -16,7 +16,7 @@
 ## 검증·리뷰
 
 - [x] T009 ./gradlew check
-- [x] T010 빈 MySQL에 V1–V12 적용 및 Hibernate validate
+- [x] T010 빈 MySQL에 V1–V13 적용 및 Hibernate validate
 - [x] T011 실제 SES 자격증명으로 메일 수신 확인 (온보딩 200 → SENT, 사용자 수신 확인)
 - [ ] T012 diff 사용자 검토 후 커밋 승인
 - [x] T013 구현 PR에서 AWS SDK 합의 확인 (#80 가드 재사용은 취소 — RequireAdmin/AdminGuardInterceptor 삭제)
