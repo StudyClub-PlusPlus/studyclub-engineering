@@ -7,7 +7,6 @@ import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyS
 import com.studyclub.api.participant.ParticipantHubResponses.StudyApplicationSummary;
 import com.studyclub.api.participant.ParticipantHubResponses.StudyMeetingAttendance;
 import com.studyclub.api.participant.ParticipantHubResponses.UpcomingStudyMeeting;
-import com.studyclub.domain.application.ApplicationStatus;
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.StudyCohortStatus;
@@ -63,14 +62,12 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                                 303L,
                                 103L,
                                 "오픈소스 첫 기여",
-                                ApplicationStatus.PENDING,
                                 Instant.parse("2026-09-05T04:30:00Z")),
                         new StudyApplicationSummary(
                                 502L,
                                 304L,
                                 104L,
                                 "데이터 시각화",
-                                ApplicationStatus.REJECTED,
                                 Instant.parse("2026-08-20T02:00:00Z"))),
                 List.of(
                         new UpcomingStudyMeeting(
