@@ -1,8 +1,11 @@
 package com.studyclub.notification;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -10,6 +13,17 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     /** 테스트 전용 — 계정 하나가 받은 알림을 뒤져볼 때만 쓴다. 백오피스 조회는 볼륨이 계속 느는 아웃박스라 {@link #findPage} 를 쓴다. */
     List<Notification> findAllByOrderByCreatedAtDesc();
+
+    /**
+     * 완료 처리(markSent/markFailed) 전용 — 행을 잠근다({@code AccountRepository.findByEmailForUpdate} 와 같은
+     * 이유). 일반 {@code findById} 는 트랜잭션 시작 시점의 스냅샷을 읽을 뿐이라, 이 값을 읽어 자바에서 상태·lockedAt 을 확인한 뒤 저장하는 사이에
+     * 다른 트랜잭션(재수거 등)이 같은 행을 먼저 바꿔도 알아채지 못하고 덮어쓸 수 있다 — 확인과 갱신이 원자적이지 않다는 리뷰 지적. {@code FOR UPDATE}
+     * 로 읽으면 그 사이 재수거의 {@code FOR UPDATE SKIP LOCKED} 가 이 행을 건너뛰어 이번 재수거 사이클에서 손대지 않으므로, 확인·갱신이 사실상
+     * 한 트랜잭션 안에서 원자적으로 처리된다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select n from Notification n where n.id = :id")
+    Optional<Notification> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * 백오피스 발송 이력 조회 — LIMIT/OFFSET 을 DB 에 위임한다. {@code eventType}/{@code status} 는 null 이면 필터를 적용하지

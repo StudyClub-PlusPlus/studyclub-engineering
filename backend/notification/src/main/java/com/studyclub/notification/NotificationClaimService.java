@@ -64,14 +64,19 @@ public class NotificationClaimService {
     }
 
     /**
-     * {@code expectedLockedAt} 은 호출자가 {@link #claim} 에서 받은 클레임 토큰이다. 그 사이 재수거되어 소유권을 잃었으면 {@link
-     * Notification#markSent} 가 {@link NotificationClaimLostException} 을 던지는데, 이는 버그가 아니라 "이미 다른
-     * 인스턴스가 처리했다"는 예상된 경쟁 결과이므로 예외를 전파하지 않고 경고 로그만 남긴다 — 여기서 전파하면 폴링 스케줄러의 배치 나머지 처리가 조용히 중단된다.
+     * {@code expectedLockedAt} 은 호출자가 {@link #claim} 에서 받은 클레임 토큰이다. {@link
+     * NotificationRepository#findByIdForUpdate} 로 행을 잠가서 읽는다 — 일반 조회로 읽으면 "확인(상태·lockedAt 비교)"과
+     * "갱신(저장)" 사이에 다른 트랜잭션(재수거 등)이 같은 행을 먼저 바꿔도 알아채지 못하고 덮어쓸 수 있다(리뷰 지적, PR #82). 잠근 채로 읽으면 그 사이
+     * 재수거의 {@code FOR UPDATE SKIP LOCKED} 가 이 행을 건너뛰므로 확인·갱신이 사실상 원자적이다.
+     *
+     * <p>그래도 재수거되어 소유권을 잃었으면(이 트랜잭션이 락을 얻기 전에 이미 재수거·재클레임이 끝난 경우) {@link Notification#markSent} 가
+     * {@link NotificationClaimLostException} 을 던지는데, 이는 버그가 아니라 "이미 다른 인스턴스가 처리했다"는 예상된 경쟁 결과이므로
+     * 예외를 전파하지 않고 경고 로그만 남긴다 — 여기서 전파하면 폴링 스케줄러의 배치 나머지 처리가 조용히 중단된다.
      */
     @Transactional
     public void markSent(Long notificationId, Instant expectedLockedAt) {
         notificationRepository
-                .findById(notificationId)
+                .findByIdForUpdate(notificationId)
                 .ifPresentOrElse(
                         n -> {
                             try {
@@ -88,12 +93,12 @@ public class NotificationClaimService {
                                         notificationId));
     }
 
-    /** {@link #markSent} 와 같은 이유로 {@code expectedLockedAt} 을 받고, 소유권을 잃은 경우 예외를 삼킨다. */
+    /** {@link #markSent} 와 같은 이유로 락을 잡고 읽고, {@code expectedLockedAt} 을 받아 소유권을 잃은 경우 예외를 삼킨다. */
     @Transactional
     public void markFailed(
             Long notificationId, NotificationErrorType errorType, Instant expectedLockedAt) {
         notificationRepository
-                .findById(notificationId)
+                .findByIdForUpdate(notificationId)
                 .ifPresentOrElse(
                         n -> {
                             try {
