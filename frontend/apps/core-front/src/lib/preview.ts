@@ -20,6 +20,8 @@ export const PREVIEW_USER: SessionUser = {
   name: '지원',
   picture: null,
   role: 'MEMBER',
+  timeZone: 'Asia/Seoul',
+  onboardingCompletedAt: '2026-01-01T00:00:00Z',
 };
 
 export function isPreview(user: SessionUser | null): boolean {
