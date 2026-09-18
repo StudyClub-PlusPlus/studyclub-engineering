@@ -21,7 +21,7 @@
 - 1 : N [STUDY_APPLICATION](./STUDY_APPLICATION.md)
 
 ## 상태
-없음 — 모집중/마감 여부는 `STARTS_AT`·`CLOSES_AT`·`RECRUITMENT_CAPACITY` 로 계산한다. 저장하지 않는다.
+없음 — 모집중/마감 여부는 `START_AT`·`CLOSE_AT`·`RECRUITMENT_CAPACITY` 로 계산한다. 저장하지 않는다.
 
 ## 제약
 - 인덱스 `(COHORT_ID)` — 기수별 모집 회차 조회
