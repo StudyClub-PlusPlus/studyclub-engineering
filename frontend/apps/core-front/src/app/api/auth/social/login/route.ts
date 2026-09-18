@@ -35,7 +35,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data, { status: upstream.status });
   }
 
-  const res = NextResponse.json({ user: data.user });
+  // 로그인 응답: account + suggestedNickname (스펙 정합)
+  const res = NextResponse.json({
+    account: data.account,
+    suggestedNickname: data.suggestedNickname ?? null,
+  });
   res.cookies.set(ACCESS_COOKIE, data.accessToken, {
     httpOnly: true,
     sameSite: 'lax',

@@ -4,29 +4,30 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
-import { OnboardingConsent } from '@core/components/OnboardingConsent';
-import { TimeZonePicker } from '@core/components/TimeZonePicker';
-import { getUser, setUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
-import { checkNicknameAvailability } from '@core/lib/nickname-availability';
+import { OnboardingConsent } from '@/components/OnboardingConsent';
+import { TimeZonePicker } from '@/components/TimeZonePicker';
+import { ApiError } from '@/lib/api/client';
+import { checkNicknameAvailability } from '@/lib/api/nicknames';
+import { completeOnboarding } from '@/lib/api/onboarding';
 import {
-  clearDrafts,
+  getSuggestedNickname,
+  getUser,
+  logout,
+  setSuggestedNickname,
+  setUser,
+} from '@/lib/auth';
+import type { Locale } from '@/lib/content';
+import {
+  clearDraft,
   initialDraft,
-  isValidTimeZone,
+  isOnboardingTimeZone,
   nicknameError,
-  ONBOARDING_SCENARIOS,
   returnPath,
   saveDraft,
-  SUCCESS_KEY,
-  type OnboardingRequest,
-  type OnboardingScenario,
-} from '@core/lib/onboarding';
+  type OnboardingDraft,
+} from '@/lib/onboarding';
 import { Button, Input } from '@studyclub/ui';
 import { AlertCircle, ArrowRight, Check } from 'lucide-react';
-
-
-import { SPEC } from './spec';
-import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 export default function OnboardingPage() {
   return (
@@ -42,24 +43,25 @@ function OnboardingScreen() {
   const search = useSearchParams();
   const router = useRouter();
   const next = returnPath(search.get('next'), locale);
-  const forcedPreview = search.has('scenario');
-  const candidate = search.get('scenario');
-  const scenario = ONBOARDING_SCENARIOS.find((value) => value === candidate) ?? 'default';
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (getUser()?.onboardingCompletedAt && !forcedPreview) {
-      router.replace(next);
-    } else {
-      setReady(true);
+    const user = getUser();
+    if (!user) {
+      router.replace(`/${locale}/login?next=${encodeURIComponent(`/${locale}/onboarding?next=${encodeURIComponent(next)}`)}`);
+      return;
     }
-  }, [forcedPreview, next, router]);
+    if (user.onboardingCompletedAt) {
+      router.replace(next);
+      return;
+    }
+    setReady(true);
+  }, [locale, next, router]);
 
   return (
     <div className='min-h-[80vh] bg-surface-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12'>
-      <ScreenSpecRegistrar spec={SPEC} />
       <div className='mx-auto max-w-[540px]'>
-        <header className='mb-7 text-center' data-anno='1'>
+        <header className='mb-7 text-center'>
           <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 text-xs font-medium text-primary-700'>
             <Check size={13} aria-hidden='true' />
             {locale === 'ko' ? 'Google 계정 연결 완료' : 'Google account connected'}
@@ -69,12 +71,7 @@ function OnboardingScreen() {
           </h1>
         </header>
         {ready ? (
-          <OnboardingForm
-            key={`${scenario}:${search.get('reset') ?? ''}:${locale}`}
-            locale={locale}
-            scenario={scenario}
-            next={next}
-          />
+          <OnboardingForm locale={locale} next={next} />
         ) : (
           <div
             aria-busy='true'
@@ -89,51 +86,33 @@ function OnboardingScreen() {
   );
 }
 
-function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: OnboardingScenario; next: string }) {
+function OnboardingForm({ locale, next }: { locale: Locale; next: string }) {
   const ko = locale === 'ko';
   const router = useRouter();
-  const [draft, setDraft] = useState<OnboardingRequest>(() => initialDraft(scenario));
-  const [touched, setTouched] = useState(['empty', 'nickname'].includes(scenario));
+  const [draft, setDraft] = useState<OnboardingDraft>(() => initialDraft(getSuggestedNickname()));
+  const [touched, setTouched] = useState(false);
   const [composing, setComposing] = useState(false);
-  // 중복은 2-1 상태 줄이 말한다. 시나리오로 미리 켜 두던 플래그는 더 필요하지 않다.
-  const [, setDuplicate] = useState(false);
-  const [problem, setProblem] = useState<'server' | 'expired' | null>(
-    scenario === 'server' ? 'server' : scenario === 'expired' ? 'expired' : null,
-  );
-  const [pending, setPending] = useState(scenario === 'loading');
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [problem, setProblem] = useState<'server' | 'expired' | null>(null);
+  const [pending, setPending] = useState(false);
   const submitting = useRef(false);
 
   useEffect(() => {
-    saveDraft(scenario, draft);
-  }, [draft, scenario]);
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
+    saveDraft(draft);
+  }, [draft]);
 
-  function update<K extends keyof OnboardingRequest>(field: K, value: OnboardingRequest[K]) {
+  function update<K extends keyof OnboardingDraft>(field: K, value: OnboardingDraft[K]) {
     setDraft((previous) => ({ ...previous, [field]: value }));
-    if (field === 'nickname') setDuplicate(false);
   }
 
-  /**
-   * 닉네임 중복 검사.
-   *
-   * **형식이 맞는 값만 묻는다.** 두 글자가 안 되는 값을 서버에 던지면 「이미 사용 중」과 「너무 짧다」가
-   * 뒤섞여 무엇을 고쳐야 할지 알 수 없다. 마지막 입력에서 400ms 쉬면 그때 한 번 보낸다.
-   */
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const nickAbort = useRef<AbortController | null>(null);
   const trimmedNick = draft.nickname.trim();
-  // 조합 중에는 검증하지 않는다 — 「ㄱ」 상태에서 「2자 이상」이 뜨면 치는 사람이 놀란다.
   const nickFormatError = composing ? undefined : nicknameError(draft.nickname, locale);
 
   useEffect(() => {
     nickAbort.current?.abort();
-    if (composing || nickFormatError) {
+    if (composing || nickFormatError || !trimmedNick) {
       setNickStatus('idle');
       return;
     }
@@ -143,9 +122,12 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
     const timer = setTimeout(() => {
       checkNicknameAvailability(trimmedNick, controller.signal)
         .then((result) => setNickStatus(result.available ? 'available' : 'taken'))
-        // 취소된 요청은 최신 상태를 덮어쓰지 않는다 — 늦게 온 과거 응답이 답을 바꾸면 안 된다.
         .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return;
+          if (err instanceof ApiError && err.status === 401) {
+            setProblem('expired');
+            return;
+          }
           setNickStatus('error');
         });
     }, 400);
@@ -155,17 +137,13 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
     };
   }, [trimmedNick, composing, nickFormatError]);
 
-  // TODO(api): 만 14세 확인을 저장할 필드가 아직 없다. 지금은 화면 상태로만 들고 있다.
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const requiredAgreed = ageConfirmed && draft.termsOfServiceAgreed && draft.privacyPolicyAgreed;
-  // 「확인 중」에도 누를 수 있어야 한다 — 400ms 를 기다렸다 누르게 하면 다 채운 사람이 멈춰 선다.
-  // 중복으로 판명된 값만 막는다.
   const valid =
-    !nicknameError(draft.nickname, locale) && nickStatus !== 'taken' && isValidTimeZone(draft.timeZone) && requiredAgreed;
-  /**
-   * 닉네임 칸 아래 한 줄. **자리를 하나만 쓴다** — 상태마다 줄을 더하면 아래가 밀린다.
-   * 형식 오류는 친 순간 보여주고, 중복 여부는 형식이 맞은 뒤에만 말한다.
-   */
+    !nicknameError(draft.nickname, locale) &&
+    nickStatus !== 'taken' &&
+    isOnboardingTimeZone(draft.timeZone) &&
+    requiredAgreed;
+
   const nickLine: { text: string; tone: 'muted' | 'error' | 'ok' } = !trimmedNick
     ? touched
       ? { text: ko ? '닉네임을 입력해 주세요' : 'Enter a nickname.', tone: 'error' }
@@ -193,13 +171,10 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
                   tone: 'muted',
                 };
 
-  /** 검사가 끝나기 전에 제출을 눌렀는가. 끝나는 대로 이어서 보낸다. */
   const [awaitingCheck, setAwaitingCheck] = useState(false);
   const disabled = pending || problem === 'expired';
-
-  // 기다리던 검사가 끝났다. 쓸 수 있으면 이어서 보내고, 이미 쓰이는 이름이면 그 칸으로 돌려보낸다.
-  // `send` 는 매 렌더 새로 만들어지므로 의존성에 두지 않고 ref 로 최신 값만 참조한다.
   const sendRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     if (!awaitingCheck || nickStatus === 'checking') return;
     if (nickStatus === 'taken') {
@@ -216,14 +191,12 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
     send();
   }
 
-
   sendRef.current = send;
 
-  function send() {
+  async function send() {
     if (submitting.current || disabled) return;
     setTouched(true);
     if (!valid || composing) return;
-    // 검사가 아직 돌고 있으면 결과를 기다렸다 이어서 보낸다.
     if (nickStatus === 'checking') {
       setAwaitingCheck(true);
       return;
@@ -232,32 +205,44 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
     submitting.current = true;
     setPending(true);
     setProblem(null);
-    timer.current = setTimeout(() => {
+    try {
+      const account = await completeOnboarding({
+        age14Confirmed: ageConfirmed,
+        termsOfServiceAgreed: draft.termsOfServiceAgreed,
+        privacyPolicyAgreed: draft.privacyPolicyAgreed,
+        marketingAgreed: draft.marketingAgreed,
+        nickname: draft.nickname.trim(),
+        timeZone: draft.timeZone,
+      });
+      setUser({
+        id: account.id,
+        email: account.email,
+        nickname: account.nickname,
+        picture: account.picture,
+        role: account.role,
+        timeZone: account.timeZone,
+        onboardingCompletedAt: account.onboardingCompletedAt,
+      });
+      setSuggestedNickname(null);
+      clearDraft();
+      router.replace(next);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setProblem('expired');
+        } else if (err.status === 409) {
+          setNickStatus('taken');
+          document.getElementById('onboarding-nickname')?.focus();
+        } else {
+          setProblem('server');
+        }
+      } else {
+        setProblem('server');
+      }
+    } finally {
       submitting.current = false;
       setPending(false);
-      if (draft.nickname.trim().toLowerCase() === 'studyclub') {
-        setDuplicate(true);
-        document.getElementById('onboarding-nickname')?.focus();
-        return;
-      }
-      // Playground completion only. Never send a real consent or registration request.
-      setUser({
-        id: -1001,
-        email: 'crew@example.com',
-        nickname: draft.nickname.trim(),
-        picture: null,
-        role: 'MEMBER',
-        timeZone: draft.timeZone,
-        onboardingCompletedAt: new Date().toISOString(),
-      });
-      clearDrafts();
-      try {
-        sessionStorage.setItem(SUCCESS_KEY, JSON.stringify({ nickname: draft.nickname.trim(), locale }));
-      } catch {
-        /* Optional toast. */
-      }
-      router.replace(next);
-    }, 900);
+    }
   }
 
   return (
@@ -269,7 +254,6 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
     >
       {problem && (
         <div
-          data-anno='6'
           role='alert'
           className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 text-sm text-error-700'
         >
@@ -287,8 +271,11 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
           </div>
           {problem === 'expired' && (
             <Link
-              onClick={() => saveDraft('default', draft)}
-              href={`/proto/core/${locale}/login?scenario=returning&next=${encodeURIComponent(next)}`}
+              onClick={() => {
+                saveDraft(draft);
+                void logout();
+              }}
+              href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/onboarding?next=${encodeURIComponent(next)}`)}`}
               className='mt-3 inline-flex font-semibold underline underline-offset-4'
             >
               {ko ? '다시 로그인' : 'Log in again'} <ArrowRight size={15} className='ml-1' />
@@ -299,7 +286,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
 
       <fieldset disabled={disabled} className='min-w-0 space-y-6'>
         <legend className='sr-only'>{ko ? '기본 정보와 약관 동의' : 'Profile details and agreements'}</legend>
-        <div data-anno='2'>
+        <div>
           <Input
             id='onboarding-nickname'
             name='nickname'
@@ -317,13 +304,15 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
             className={`h-12 ${nickLine.tone === 'error' ? 'border-error-600 focus:border-error-600' : ''}`}
             aria-describedby='nickname-help'
           />
-          {/* 도움말 자리를 **교체**한다. 줄을 새로 더하면 상태가 바뀔 때마다 아래가 밀린다. */}
           <p
             id='nickname-help'
-            data-anno='2-1'
             role={nickLine.tone === 'error' ? 'alert' : undefined}
             className={`mt-2 flex items-center gap-1.5 text-xs leading-relaxed ${
-              nickLine.tone === 'ok' ? 'text-success-700' : nickLine.tone === 'error' ? 'text-error-700' : 'text-fg-muted'
+              nickLine.tone === 'ok'
+                ? 'text-success-700'
+                : nickLine.tone === 'error'
+                  ? 'text-error-700'
+                  : 'text-fg-muted'
             }`}
           >
             {nickLine.tone === 'ok' && <Check size={13} aria-hidden='true' />}
@@ -337,10 +326,10 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
           locale={locale}
           disabled={disabled}
           error={
-            touched && !isValidTimeZone(draft.timeZone)
+            touched && !isOnboardingTimeZone(draft.timeZone)
               ? ko
-                ? '일정에 사용할 시간대를 선택해 주세요.'
-                : 'Choose a time zone for your schedule.'
+                ? '나의 시간대를 선택해 주세요.'
+                : 'Choose your time zone.'
               : undefined
           }
         />
@@ -370,12 +359,16 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
                 return;
               }
               update(
-                key === 'terms' ? 'termsOfServiceAgreed' : key === 'privacy' ? 'privacyPolicyAgreed' : 'marketingAgreed',
+                key === 'terms'
+                  ? 'termsOfServiceAgreed'
+                  : key === 'privacy'
+                    ? 'privacyPolicyAgreed'
+                    : 'marketingAgreed',
                 value,
               );
             }}
             error={
-              (touched || scenario === 'empty') && !requiredAgreed
+              touched && !requiredAgreed
                 ? ko
                   ? '필수 항목을 확인해 주세요.'
                   : 'Confirm the required items to join.'
@@ -385,7 +378,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
         </section>
       </fieldset>
 
-      <div className='mt-7' data-anno='5'>
+      <div className='mt-7'>
         <Button
           type='submit'
           size='lg'

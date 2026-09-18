@@ -134,7 +134,7 @@ class AccountOnboardingIntegrationTest {
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("name", nickname);
+        assertThat(response.getBody()).containsEntry("nickname", nickname);
         assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
         assertThat(response.getBody().get("onboardingCompletedAt")).isNotNull();
 
@@ -358,7 +358,7 @@ class AccountOnboardingIntegrationTest {
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("name", originalNickname);
+        assertThat(response.getBody()).containsEntry("nickname", originalNickname);
 
         assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
     }
@@ -392,7 +392,7 @@ class AccountOnboardingIntegrationTest {
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("name", originalNickname);
+        assertThat(response.getBody()).containsEntry("nickname", originalNickname);
         assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
         assertThat(
                         eventRecorder.received().stream()
@@ -432,7 +432,7 @@ class AccountOnboardingIntegrationTest {
             assertThat(responses)
                     .allSatisfy(r -> assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK));
             assertThat(responses)
-                    .allSatisfy(r -> assertThat(r.getBody()).containsEntry("name", nickname));
+                    .allSatisfy(r -> assertThat(r.getBody()).containsEntry("nickname", nickname));
         } finally {
             pool.shutdown();
         }

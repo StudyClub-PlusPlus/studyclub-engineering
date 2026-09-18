@@ -12,7 +12,7 @@ const USER_KEY = `${STORAGE_PREFIX}user`;
 export type SessionUser = {
   id: number;
   email: string;
-  name: string | null;
+  nickname: string | null;
   picture: string | null;
   role: string;
 };

@@ -74,10 +74,10 @@ export function NavAuth({ locale }: { locale: Locale }) {
           <img src={user.picture} alt='' className='h-8 w-8 rounded-full' />
         ) : (
           <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-[var(--color-accent)]'>
-            {(user.name ?? user.email).slice(0, 1).toUpperCase()}
+            {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
           </span>
         )}
-        <span className='hidden max-w-[8rem] truncate text-sm font-semibold sm:block'>{user.name ?? user.email}</span>
+        <span className='hidden max-w-[8rem] truncate text-sm font-semibold sm:block'>{user.nickname ?? user.email}</span>
         <ChevronDown size={14} className='text-[var(--color-fg-subtle)]' />
       </button>
 

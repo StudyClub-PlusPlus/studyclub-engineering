@@ -135,7 +135,7 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 - `next`로 전달된 playground 내부 주소가 있으면 가입 후 해당 화면으로 돌아갑니다. 외부 주소는 허용하지 않습니다.
 
 정책 출처: [온보딩 PRD](https://app.notion.com/p/benkang/1f683feabad3839b996781bd773ec465), `specs/user-onboarding/spec.md`.
-실제 서비스 연동 시 로그인 응답의 `user.name`·최상위 `suggestedNickname`과 명세의 응답 구조 차이, `core-front` 로그인 중계의 `suggestedNickname` 전달을 확인해야 합니다. 시안은 playground 안에서만 동작합니다.
+실제 서비스 연동 시 로그인 응답은 `account.nickname`과 최상위 `suggestedNickname`입니다. 시안은 playground 안에서만 동작합니다.
 
 ### 새 화면에 번호를 달려면
 

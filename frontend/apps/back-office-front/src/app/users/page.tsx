@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/ui';
 type ApiUser = {
   id: number;
   email: string;
-  name: string | null;
+  nickname: string | null;
   picture: string | null;
   role: 'STUDENT' | 'OPERATOR' | 'ADMIN' | string;
   createdAt: string | null;
@@ -103,10 +103,10 @@ export default function UsersAdmin() {
                         <img src={u.picture} alt='' className='h-8 w-8 rounded-full' />
                       ) : (
                         <div className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-surface-subtle)] text-xs font-bold'>
-                          {(u.name ?? u.email).slice(0, 1).toUpperCase()}
+                          {(u.nickname ?? u.email).slice(0, 1).toUpperCase()}
                         </div>
                       )}
-                      <span className='font-medium'>{u.name ?? '-'}</span>
+                      <span className='font-medium'>{u.nickname ?? '-'}</span>
                     </div>
                   </td>
                   <td className='px-4 py-3 text-[var(--color-fg-muted)]'>{u.email}</td>

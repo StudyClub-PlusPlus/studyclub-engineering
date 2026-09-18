@@ -210,7 +210,6 @@ ACCOUNT_IDENTITY
 
 - `ErrorCode` enum에 `SOCIAL_LOGIN_EMAIL_REQUIRED`(400), `ACCOUNT_LINK_REQUIRED`(409), `ONBOARDING_REQUIRED`(403) 추가.
 - 백엔드 가이드의 에러코드 표에 위 세 코드 반영.
-- 백엔드 `AuthResponse.user`와 프론트엔드의 `data.user` 사용 부분을 각각 `account`와 `data.account`로 함께 변경.
 - `JwtAuthFilter`는 JWT `sub`의 `ACCOUNT.ID`를 현재 로그인한 사용자값(principal)으로 등록하고, `/auth/me`도 이메일이 아닌 `ACCOUNT.ID`로 조회하도록 변경.
 
 ## 미완료 사용자가 할 수 있는 것

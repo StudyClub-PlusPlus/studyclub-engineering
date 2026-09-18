@@ -37,7 +37,7 @@ function BackOfficeLoginForm() {
         if (!res.ok) {
           throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
         }
-        if (data.user) setUser(data.user);
+        if (data.account) setUser(data.account);
         router.replace(next);
       } catch (e) {
         setError(e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.');

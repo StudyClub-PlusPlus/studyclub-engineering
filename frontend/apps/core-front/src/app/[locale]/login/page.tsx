@@ -3,7 +3,8 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { buildGoogleAuthUrl, isConfigured, setUser } from '@/lib/auth';
+import { buildGoogleAuthUrl, isConfigured, setSuggestedNickname, setUser } from '@/lib/auth';
+import type { SessionUser } from '@/lib/auth';
 
 // useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.
 export default function LoginPage() {
@@ -39,7 +40,21 @@ function LoginForm() {
         if (!res.ok) {
           throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
         }
-        if (data.user) setUser(data.user);
+        if (data.account) {
+          const account = data.account as SessionUser;
+          setUser(account);
+          if (typeof data.suggestedNickname === 'string' && data.suggestedNickname.trim()) {
+            setSuggestedNickname(data.suggestedNickname.trim());
+          } else {
+            setSuggestedNickname(null);
+          }
+          if (!account.onboardingCompletedAt) {
+            router.replace(
+              `/${locale}/onboarding?next=${encodeURIComponent(next)}`,
+            );
+            return;
+          }
+        }
         router.replace(next);
       } catch (e) {
         setError(e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.');
@@ -47,7 +62,7 @@ function LoginForm() {
         setLoading(false);
       }
     },
-    [next, router],
+    [locale, next, router],
   );
 
   useEffect(() => {
