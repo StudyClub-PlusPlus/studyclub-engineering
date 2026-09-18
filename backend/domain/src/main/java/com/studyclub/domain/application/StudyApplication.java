@@ -20,8 +20,8 @@ import lombok.NoArgsConstructor;
         name = "STUDY_APPLICATION",
         uniqueConstraints =
                 @UniqueConstraint(
-                        name = "uk_study_application_cohort_account",
-                        columnNames = {"STUDY_COHORT_ID", "ACCOUNT_ID"}),
+                        name = "uk_study_application_recruitment_account",
+                        columnNames = {"RECRUITMENT_ID", "ACCOUNT_ID"}),
         indexes = {@Index(name = "idx_study_application_account", columnList = "ACCOUNT_ID")})
 @Getter
 @Builder
@@ -36,8 +36,8 @@ public class StudyApplication extends BaseEntity {
     @Column(name = "ACCOUNT_ID", nullable = false)
     private Long accountId;
 
-    @Column(name = "STUDY_COHORT_ID", nullable = false)
-    private Long studyCohortId;
+    @Column(name = "RECRUITMENT_ID", nullable = false)
+    private Long recruitmentId;
 
     @Column(name = "FORM_ANSWER", nullable = false, columnDefinition = "json")
     private String formAnswer;

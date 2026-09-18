@@ -1,6 +1,5 @@
 package com.studyclub.api.study;
 
-import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyCohort;
@@ -19,18 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class StudyListService {
-
     private final StudyRepository studyRepository;
     private final StudyCohortRepository studyCohortRepository;
-    private final StudyApplicationRepository studyApplicationRepository;
 
     public StudyListService(
-            StudyRepository studyRepository,
-            StudyCohortRepository studyCohortRepository,
-            StudyApplicationRepository studyApplicationRepository) {
+            StudyRepository studyRepository, StudyCohortRepository studyCohortRepository) {
         this.studyRepository = studyRepository;
         this.studyCohortRepository = studyCohortRepository;
-        this.studyApplicationRepository = studyApplicationRepository;
     }
 
     public StudyListResponse list(
@@ -55,15 +49,8 @@ public class StudyListService {
                 studyCohortRepository.findLatestByStudyIds(studyIds).stream()
                         .collect(Collectors.toMap(StudyCohort::getStudyId, Function.identity()));
 
-        List<Long> cohortIds = latestCohorts.values().stream().map(StudyCohort::getId).toList();
-        Map<Long, Long> applicantCounts = Map.of();
-        if (!cohortIds.isEmpty()) {
-            applicantCounts =
-                    studyApplicationRepository.countByCohortIds(cohortIds).stream()
-                            .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
-        }
-
-        final Map<Long, Long> counts = applicantCounts;
+        // TODO(recruitment): 모집 회차 레포지토리 추가 후 recruitmentId 기반 신청자 수 집계로 교체
+        final Map<Long, Long> counts = Map.of();
         List<StudyListResponse.StudySummary> filtered =
                 allStudies.stream()
                         .filter(s -> latestCohorts.containsKey(s.getId()))
