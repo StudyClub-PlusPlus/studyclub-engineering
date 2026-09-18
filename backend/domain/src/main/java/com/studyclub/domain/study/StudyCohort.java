@@ -87,8 +87,8 @@ public class StudyCohort extends BaseEntity {
      * <p>{@code recruitDeadline == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code capacity == null} 은 무제한이라
      * 정원으로도 마감되지 않는다.
      *
-     * <p>신청자 수는 STUDY_APPLICATION 애그리거트 소관이라 밖에서 받는다. 정원을 차지하는 신청만 세야 하므로 {@code
-     * StudyApplicationRepository.countByCohortIds} 가 주는 값을 그대로 넘긴다.
+     * <p>참여자 수는 STUDY_PARTICIPANT 애그리거트 소관이라 밖에서 받는다. 정원을 차지하는 참여자(ACTIVE·PAUSED)만 세야 하므로 {@code
+     * StudyParticipantRepository.countByCohortIds} 가 주는 값을 그대로 넘긴다.
      */
     public RecruitStatus recruitStatus(long applicantCount) {
         if (status != StudyCohortStatus.OPEN) {

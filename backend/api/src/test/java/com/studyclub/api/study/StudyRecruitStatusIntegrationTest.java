@@ -2,9 +2,10 @@ package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.studyclub.domain.application.ApplicationStatus;
-import com.studyclub.domain.application.StudyApplication;
-import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.participant.StudyParticipant;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
@@ -33,14 +34,14 @@ class StudyRecruitStatusIntegrationTest {
     @Autowired TestRestTemplate rest;
     @Autowired StudyRepository studyRepo;
     @Autowired StudyCohortRepository cohortRepo;
-    @Autowired StudyApplicationRepository applicationRepo;
+    @Autowired StudyParticipantRepository participantRepo;
 
     private final AtomicLong accountIdSeq = new AtomicLong(1);
     private final AtomicLong slugSeq = new AtomicLong(1);
 
     @BeforeEach
     void setUp() {
-        applicationRepo.deleteAll();
+        participantRepo.deleteAll();
         cohortRepo.deleteAll();
         studyRepo.deleteAll();
         accountIdSeq.set(1);
@@ -67,8 +68,8 @@ class StudyRecruitStatusIntegrationTest {
     @DisplayName("성공 — 목록: 정원이 차면 마감 전이어도 recruitStatus=RECRUIT_CLOSED")
     void listRecruitClosedByCapacity() {
         var cohort = openCohort(2, Instant.now().plus(7, ChronoUnit.DAYS));
-        apply(cohort, ApplicationStatus.APPROVED);
-        apply(cohort, ApplicationStatus.PENDING);
+        enroll(cohort, ParticipantStatus.ACTIVE);
+        enroll(cohort, ParticipantStatus.PAUSED);
 
         var body = firstListCohort();
         assertThat(body).containsEntry("recruitStatus", "RECRUIT_CLOSED");
@@ -76,12 +77,12 @@ class StudyRecruitStatusIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 — 목록: 정원 null(무제한)이면 신청이 아무리 많아도 RECRUITING")
+    @DisplayName("성공 — 목록: 정원 null(무제한)이면 참여자가 아무리 많아도 RECRUITING")
     void listNullCapacityNeverFills() {
         var cohort = openCohort(null, Instant.now().plus(7, ChronoUnit.DAYS));
-        apply(cohort, ApplicationStatus.APPROVED);
-        apply(cohort, ApplicationStatus.APPROVED);
-        apply(cohort, ApplicationStatus.PENDING);
+        enroll(cohort, ParticipantStatus.ACTIVE);
+        enroll(cohort, ParticipantStatus.ACTIVE);
+        enroll(cohort, ParticipantStatus.PAUSED);
 
         var body = firstListCohort();
         assertThat(body).containsEntry("recruitStatus", "RECRUITING");
@@ -89,13 +90,11 @@ class StudyRecruitStatusIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 — 목록: 거절·철회·대기자는 정원을 차지하지 않는다")
-    void listRejectedWithdrawnWaitlistedDoNotTakeSeats() {
+    @DisplayName("성공 — 목록: 탈퇴 참여자는 정원을 차지하지 않는다")
+    void listWithdrawnDoesNotTakeSeat() {
         var cohort = openCohort(2, Instant.now().plus(7, ChronoUnit.DAYS));
-        apply(cohort, ApplicationStatus.APPROVED);
-        apply(cohort, ApplicationStatus.REJECTED);
-        apply(cohort, ApplicationStatus.WITHDRAWN);
-        apply(cohort, ApplicationStatus.WAITLISTED);
+        enroll(cohort, ParticipantStatus.ACTIVE);
+        enroll(cohort, ParticipantStatus.WITHDRAWN);
 
         var body = firstListCohort();
         assertThat(body).containsEntry("currentApplicants", 1);
@@ -114,7 +113,7 @@ class StudyRecruitStatusIntegrationTest {
     @DisplayName("성공 — 상세: 정원이 차면 recruitStatus=RECRUIT_CLOSED")
     void detailRecruitClosedByCapacity() {
         var cohort = openCohort(1, Instant.now().plus(7, ChronoUnit.DAYS));
-        apply(cohort, ApplicationStatus.PENDING);
+        enroll(cohort, ParticipantStatus.ACTIVE);
 
         assertThat(detailCohort(cohort.getStudyId()))
                 .containsEntry("recruitStatus", "RECRUIT_CLOSED");
@@ -165,13 +164,15 @@ class StudyRecruitStatusIntegrationTest {
                         .build());
     }
 
-    private void apply(StudyCohort cohort, ApplicationStatus status) {
-        applicationRepo.save(
-                StudyApplication.builder()
+    private void enroll(StudyCohort cohort, ParticipantStatus status) {
+        participantRepo.save(
+                StudyParticipant.builder()
                         .accountId(accountIdSeq.getAndIncrement())
+                        .studyClassId(1L)
                         .studyCohortId(cohort.getId())
                         .status(status)
-                        .formAnswer("{}")
+                        .participantRole(ParticipantRole.MEMBER)
+                        .joinedAt(Instant.now())
                         .build());
     }
 
