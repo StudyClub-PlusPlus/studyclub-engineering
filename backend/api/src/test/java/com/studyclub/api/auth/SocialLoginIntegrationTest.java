@@ -92,14 +92,13 @@ class SocialLoginIntegrationTest {
         Map<String, Object> body = response.getBody();
         assertThat(body).containsKey("accessToken").containsKey("refreshToken");
 
-        // then ② 회원 정보 (키 user→account, name→nickname 개명은 프론트 동반 수정이 필요해 별도 PR)
-        //         ACCOUNT.EMAIL 은 소문자 정규화
-        assertThat(body).containsKey("user");
-        Map<String, Object> account = (Map<String, Object>) body.get("user");
+        // then ② 회원 정보 — ACCOUNT.EMAIL 은 소문자 정규화
+        assertThat(body).containsKey("account");
+        Map<String, Object> account = (Map<String, Object>) body.get("account");
         assertThat(account.get("email")).isEqualTo(EMAIL);
 
         // then ③ 닉네임은 임시값 account_<12hex> (총 20자). 구글 name 은 DB 에 안 넣는다
-        assertThat(account.get("name")).asString().startsWith("account_").hasSize(20);
+        assertThat(account.get("nickname")).asString().startsWith("account_").hasSize(20);
 
         // then ④ 온보딩 안 한 사람 → null. 프론트가 이걸 보고 온보딩 화면으로 보낸다
         assertThat(account.get("onboardingCompletedAt")).isNull();

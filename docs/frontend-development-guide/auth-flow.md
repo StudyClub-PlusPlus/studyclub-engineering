@@ -55,7 +55,7 @@ window.opener.postMessage(data, appOrigin);
 - 백엔드 응답의 accessToken → `sc_access_token` httpOnly 쿠키 설정
 - 백엔드 응답의 refreshToken → `sc_refresh_token` httpOnly 쿠키 설정 (`path: "/api/auth"`)
 - `refreshToken` / `accessToken` 은 JSON 응답 본문에 포함하지 않음 (JS 접근 차단)
-- `user` 객체는 JSON 응답으로 반환 → 클라이언트가 `sc_user` 로 localStorage 에 저장
+- `account` 객체는 JSON 응답으로 반환 → 클라이언트가 `sc_user` 로 localStorage 에 저장
 
 ## 세션 저장 구조
 
@@ -63,7 +63,7 @@ window.opener.postMessage(data, appOrigin);
 |--------|-----|------|------|
 | httpOnly 쿠키 | `sc_access_token` | JWT access token | 미들웨어 인증 게이팅 |
 | httpOnly 쿠키 | `sc_refresh_token` | refresh token (`path: /api/auth`) | 토큰 재발급 전용 |
-| localStorage | `sc_user` | `{ id, name, email, ... }` | 클라이언트 UI 렌더링 |
+| localStorage | `sc_user` | `{ id, nickname, email, ... }` | 클라이언트 UI 렌더링 |
 
 `sc_access_token` 은 JS 에서 읽을 수 없고 미들웨어와 Route Handler 에서만 접근된다.
 `sc_user` 는 민감 정보를 담지 않으며 UI 표시용으로만 쓴다.

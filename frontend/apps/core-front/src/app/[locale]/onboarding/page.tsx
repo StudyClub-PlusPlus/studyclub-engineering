@@ -217,7 +217,7 @@ function OnboardingForm({ locale, next }: { locale: Locale; next: string }) {
       setUser({
         id: account.id,
         email: account.email,
-        name: account.name,
+        nickname: account.nickname,
         picture: account.picture,
         role: account.role,
         timeZone: account.timeZone,

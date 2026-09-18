@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data, { status: upstream.status });
   }
 
-  // TODO(api): 백엔드 필드명 정합(user→account) 후 account 로 교체.
+  // 로그인 응답: account + suggestedNickname (스펙 정합)
   const res = NextResponse.json({
-    user: data.user,
+    account: data.account,
     suggestedNickname: data.suggestedNickname ?? null,
   });
   res.cookies.set(ACCESS_COOKIE, data.accessToken, {

@@ -24,7 +24,7 @@ const PREVIEW_ID = 0;
 export const PREVIEW_USER: SessionUser = {
   id: PREVIEW_ID,
   email: 'gildongHong@example.com',
-  name: '홍길동',
+  nickname: '홍길동',
   picture: null,
   role: 'MEMBER',
 };
@@ -40,7 +40,7 @@ export function isPreview(user: SessionUser | null): boolean {
 export function syncPreview(): SessionUser | null {
   const u = getUser();
   if (!isPreview(u)) return u;
-  if (u!.name !== PREVIEW_USER.name || u!.email !== PREVIEW_USER.email) {
+  if (u!.nickname !== PREVIEW_USER.nickname || u!.email !== PREVIEW_USER.email) {
     setUser(PREVIEW_USER);
     return PREVIEW_USER;
   }

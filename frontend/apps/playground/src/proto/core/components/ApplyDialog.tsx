@@ -75,7 +75,7 @@ export function ApplyDialog({
   const [motivation, setMotivation] = useState('');
   const [storedNick, setStoredNick] = useState<string | undefined>();
   const [draftNick, setDraftNick] = useState('');
-  const [accountName, setAccountName] = useState(PREVIEW_USER.name ?? PREVIEW_USER.email);
+  const [accountName, setAccountName] = useState(PREVIEW_USER.nickname ?? PREVIEW_USER.email);
   const [accountEmail, setAccountEmail] = useState(PREVIEW_USER.email);
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -95,7 +95,7 @@ export function ApplyDialog({
   useEffect(() => {
     const user = getUser() ?? PREVIEW_USER;
     const preview = user.id === PREVIEW_USER.id;
-    setAccountName(preview ? (PREVIEW_USER.name ?? user.email) : (getDisplayName() ?? user.name ?? user.email));
+    setAccountName(preview ? (PREVIEW_USER.nickname ?? user.email) : (getDisplayName() ?? user.nickname ?? user.email));
     setAccountEmail(preview ? PREVIEW_USER.email : user.email);
     setStoredNick(getDiscordNickname());
     setDraftNick('');
