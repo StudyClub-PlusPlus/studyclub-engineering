@@ -1,4 +1,4 @@
--- V13 — 도메인 용어 정비: STUDY → STUDY_PROGRAM, STUDY_COHORT → STUDY, STUDY_CLASS → STUDY_GROUP
+-- V15 — 도메인 용어 정비: STUDY → STUDY_PROGRAM, STUDY_COHORT → STUDY, STUDY_CLASS → STUDY_GROUP
 -- 테이블명·FK 컬럼명·인덱스명 전부 변경.
 
 -- 1-1. 테이블 rename

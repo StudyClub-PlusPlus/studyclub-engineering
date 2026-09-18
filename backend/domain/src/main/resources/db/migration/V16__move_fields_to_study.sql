@@ -1,4 +1,4 @@
--- V14 — STUDY_PROGRAM의 기수별 속성을 STUDY로 이전 + COHORT 컬럼 추가
+-- V16 — STUDY_PROGRAM의 기수별 속성을 STUDY로 이전 + COHORT 컬럼 추가
 
 -- 1-1. STUDY에 컬럼 추가
 ALTER TABLE STUDY
