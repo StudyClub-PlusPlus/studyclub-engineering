@@ -15,7 +15,6 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | PROGRAM_ID | BIGINT | N | STUDY_PROGRAM 참조 |
-| COHORT | INT | Y | 기수 번호 (1기, 2기 …). 단발 스터디는 NULL 가능 |
 | TITLE | VARCHAR(200) | N | 이 기수 제목 |
 | SLUG | VARCHAR(100) | N | URL 식별자. UNIQUE |
 | ONE_LINE_SUMMARY | VARCHAR(255) | N | 한 줄 소개 |

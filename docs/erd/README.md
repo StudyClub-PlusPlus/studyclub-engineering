@@ -112,7 +112,6 @@ erDiagram
   STUDY {
     bigint   ID                 PK
     bigint   PROGRAM_ID            "→ STUDY_PROGRAM 참조"
-    int      COHORT               "기수 번호"
     varchar  TITLE
     varchar  SLUG              UK "URL 식별자"
     varchar  ONE_LINE_SUMMARY     "한 줄 소개"
@@ -354,5 +353,5 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 [STUDY](./STUDY.md) 로 낸다. `STUDY_PROGRAM` 은 `ID`·`TITLE` 만 갖는 identity anchor 이고,
 기수마다 달라지는 모든 속성(`SLUG`·`TITLE`·`ONE_LINE_SUMMARY`·`DESCRIPTION`·`CATEGORY`·
 `STUDY_KIND`·`THUMBNAIL_URL`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·
-`CAPACITY`·`RECRUIT_DEADLINE`·`START_DATE`/`END_DATE`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`) 은
+`CAPACITY`·`RECRUIT_DEADLINE`·`START_DATE`/`END_DATE`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`)은
 전부 STUDY 로 이동했다. 근거는 `study_schema_design_decisions.md` 참고.
