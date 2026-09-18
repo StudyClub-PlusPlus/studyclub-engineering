@@ -1,5 +1,6 @@
 package com.studyclub.api.study;
 
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyCohort;
@@ -20,11 +21,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudyListService {
     private final StudyRepository studyRepository;
     private final StudyCohortRepository studyCohortRepository;
+    private final StudyParticipantRepository studyParticipantRepository;
 
     public StudyListService(
-            StudyRepository studyRepository, StudyCohortRepository studyCohortRepository) {
+            StudyRepository studyRepository,
+            StudyCohortRepository studyCohortRepository,
+            StudyParticipantRepository studyParticipantRepository) {
         this.studyRepository = studyRepository;
         this.studyCohortRepository = studyCohortRepository;
+        this.studyParticipantRepository = studyParticipantRepository;
     }
 
     public StudyListResponse list(
@@ -49,8 +54,10 @@ public class StudyListService {
                 studyCohortRepository.findLatestByStudyIds(studyIds).stream()
                         .collect(Collectors.toMap(StudyCohort::getStudyId, Function.identity()));
 
-        // TODO(recruitment): 모집 회차 레포지토리 추가 후 recruitmentId 기반 신청자 수 집계로 교체
-        final Map<Long, Long> counts = Map.of();
+        List<Long> cohortIds = latestCohorts.values().stream().map(StudyCohort::getId).toList();
+        Map<Long, Long> counts =
+                studyParticipantRepository.countByCohortIds(cohortIds).stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
         List<StudyListResponse.StudySummary> filtered =
                 allStudies.stream()
                         .filter(s -> latestCohorts.containsKey(s.getId()))

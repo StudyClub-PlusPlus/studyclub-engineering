@@ -1,6 +1,7 @@
 package com.studyclub.api.study;
 
 import com.studyclub.domain.study.DeliveryFormat;
+import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyCohort;
@@ -33,6 +34,7 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
     public record CohortSummary(
             Long cohortId,
             StudyCohortStatus status,
+            RecruitStatus recruitStatus,
             DeliveryFormat deliveryFormat,
             Integer capacity,
             long currentApplicants,
@@ -43,6 +45,7 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
             return new CohortSummary(
                     cohort.getId(),
                     cohort.getStatus(),
+                    cohort.recruitStatus(applicantCount),
                     cohort.getStudyDeliveryFormat(),
                     cohort.getCapacity(),
                     applicantCount,
