@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import lombok.AccessLevel;
@@ -21,6 +22,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "STUDY",
+        uniqueConstraints = @UniqueConstraint(name = "uk_study_slug", columnNames = "SLUG"),
         indexes =
                 @Index(name = "idx_study_program_study_status", columnList = "PROGRAM_ID, STATUS"))
 @Getter
@@ -35,6 +37,32 @@ public class Study extends BaseEntity {
 
     @Column(name = "PROGRAM_ID", nullable = false)
     private Long programId;
+
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Column(nullable = false, unique = true, length = 100)
+    private String slug;
+
+    @Column(name = "ONE_LINE_SUMMARY", nullable = false, length = 255)
+    private String oneLineSummary;
+
+    @Column(columnDefinition = "text")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private StudyCategory category;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "STUDY_KIND", nullable = false, length = 20)
+    private StudyKind studyKind;
+
+    @Column(name = "THUMBNAIL_URL", length = 2048)
+    private String thumbnailUrl;
+
+    @Column(name = "IS_HIDDEN", nullable = false)
+    private boolean isHidden;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STUDY_DELIVERY_FORMAT", nullable = false, length = 20)

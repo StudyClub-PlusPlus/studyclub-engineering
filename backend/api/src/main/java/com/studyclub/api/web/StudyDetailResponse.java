@@ -2,7 +2,6 @@ package com.studyclub.api.web;
 
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
-import com.studyclub.domain.study.StudyProgram;
 import java.time.Instant;
 
 public record StudyDetailResponse(
@@ -22,23 +21,22 @@ public record StudyDetailResponse(
         Instant startDate,
         Instant endDate) {
 
-    public static StudyDetailResponse from(
-            StudyProgram studyProgram, Study study, long applicantCount) {
+    public static StudyDetailResponse from(Study study, long applicantCount) {
         return new StudyDetailResponse(
-                studyProgram.getId(),
-                studyProgram.getSlug(),
-                studyProgram.getTitle(),
-                studyProgram.getDescription(),
-                studyProgram.getCategory().name(),
-                studyProgram.getStudyKind().name(),
-                studyProgram.getThumbnailUrl(),
-                study != null ? study.getStudyDeliveryFormat().name() : null,
-                study != null ? study.getStatus().name() : null,
-                study != null ? study.recruitStatus(applicantCount) : null,
-                study != null ? study.getCurriculum() : null,
-                study != null ? study.getCapacity() : null,
-                study != null ? study.getRecruitDeadline() : null,
-                study != null ? study.getStartDate() : null,
-                study != null ? study.getEndDate() : null);
+                study.getId(),
+                study.getSlug(),
+                study.getTitle(),
+                study.getDescription(),
+                study.getCategory().name(),
+                study.getStudyKind().name(),
+                study.getThumbnailUrl(),
+                study.getStudyDeliveryFormat().name(),
+                study.getStatus().name(),
+                study.recruitStatus(applicantCount),
+                study.getCurriculum(),
+                study.getCapacity(),
+                study.getRecruitDeadline(),
+                study.getStartDate(),
+                study.getEndDate());
     }
 }

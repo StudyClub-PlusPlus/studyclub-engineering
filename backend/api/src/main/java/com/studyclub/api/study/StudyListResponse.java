@@ -1,6 +1,9 @@
 package com.studyclub.api.study;
 
-import com.studyclub.domain.study.*;
+import com.studyclub.domain.study.DeliveryFormat;
+import com.studyclub.domain.study.RecruitStatus;
+import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.util.List;
 

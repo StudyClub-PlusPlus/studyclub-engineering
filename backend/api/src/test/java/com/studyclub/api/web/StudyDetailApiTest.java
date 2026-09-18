@@ -41,18 +41,16 @@ class StudyDetailApiTest {
     @DisplayName("성공 — 스터디 상세 조회 (코호트 포함)")
     void detailWithCohort() {
         var studyProgram =
-                studyProgramRepository.save(
-                        StudyProgram.builder()
-                                .slug("algo-study")
-                                .title("알고리즘 스터디")
-                                .oneLineSummary("알고리즘 문제 풀이 스터디")
-                                .category(StudyCategory.BACKEND)
-                                .studyKind(StudyKind.STUDY)
-                                .description("설명")
-                                .build());
+                studyProgramRepository.save(StudyProgram.builder().title("알고리즘 스터디").build());
         studyRepository.save(
                 Study.builder()
                         .programId(studyProgram.getId())
+                        .slug("algo-study")
+                        .title("알고리즘 스터디")
+                        .oneLineSummary("알고리즘 문제 풀이 스터디")
+                        .category(StudyCategory.BACKEND)
+                        .studyKind(StudyKind.STUDY)
+                        .description("설명")
                         .studyDeliveryFormat(DeliveryFormat.ONLINE)
                         .status(StudyStatus.OPEN)
                         .recruitDeadline(Instant.parse("2026-10-01T00:00:00Z"))
@@ -75,23 +73,15 @@ class StudyDetailApiTest {
     }
 
     @Test
-    @DisplayName("성공 — 코호트 없는 스터디도 조회 가능 (cohort: null)")
+    @DisplayName("실패 — Study 없는 programId → 404 NOT_FOUND")
     void detailWithoutCohort() {
         var studyProgram =
-                studyProgramRepository.save(
-                        StudyProgram.builder()
-                                .slug("no-cohort")
-                                .title("코호트 없음")
-                                .oneLineSummary("코호트 없는 스터디")
-                                .category(StudyCategory.AI_ML)
-                                .studyKind(StudyKind.STUDY)
-                                .build());
+                studyProgramRepository.save(StudyProgram.builder().title("코호트 없음").build());
 
         var response = rest.getForEntity("/api/studies/" + studyProgram.getId(), Map.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("title", "코호트 없음");
-        assertThat(response.getBody().get("cohort")).isNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
     }
 
     @Test
@@ -107,15 +97,19 @@ class StudyDetailApiTest {
     @DisplayName("실패 — 숨김 스터디 → 404 NOT_FOUND")
     void hiddenStudyReturns404() {
         var studyProgram =
-                studyProgramRepository.save(
-                        StudyProgram.builder()
-                                .slug("hidden")
-                                .title("숨김 스터디")
-                                .oneLineSummary("숨김 처리된 스터디")
-                                .category(StudyCategory.OTHER)
-                                .studyKind(StudyKind.STUDY)
-                                .isHidden(true)
-                                .build());
+                studyProgramRepository.save(StudyProgram.builder().title("숨김 스터디").build());
+        studyRepository.save(
+                Study.builder()
+                        .programId(studyProgram.getId())
+                        .slug("hidden")
+                        .title("숨김 스터디")
+                        .oneLineSummary("숨김 처리된 스터디")
+                        .category(StudyCategory.OTHER)
+                        .studyKind(StudyKind.STUDY)
+                        .isHidden(true)
+                        .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                        .status(StudyStatus.DRAFT)
+                        .build());
 
         var response = rest.getForEntity("/api/studies/" + studyProgram.getId(), Map.class);
 

@@ -10,11 +10,11 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     /** 코호트별 정원을 차지하는 참여자 수 (ACTIVE + PAUSED). 정원 도달 판정에 사용한다. */
     @Query(
-            "SELECT p.studyCohortId, COUNT(p) FROM StudyParticipant p "
-                    + "WHERE p.studyCohortId IN :cohortIds "
+            "SELECT p.studyId, COUNT(p) FROM StudyParticipant p "
+                    + "WHERE p.studyId IN :studyIds "
                     + "AND p.status IN ("
                     + "com.studyclub.domain.participant.ParticipantStatus.ACTIVE, "
                     + "com.studyclub.domain.participant.ParticipantStatus.PAUSED) "
-                    + "GROUP BY p.studyCohortId")
-    List<Object[]> countByCohortIds(@Param("cohortIds") Collection<Long> cohortIds);
+                    + "GROUP BY p.studyId")
+    List<Object[]> countByStudyIds(@Param("studyIds") Collection<Long> studyIds);
 }

@@ -1,12 +1,7 @@
 package com.studyclub.api.study;
 
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.Study;
-import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyProgram;
-import com.studyclub.domain.study.StudyProgramRepository;
-import com.studyclub.domain.study.StudyRepository;
-import com.studyclub.domain.study.StudyStatus;
+import com.studyclub.domain.study.*;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -19,16 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class StudyListService {
-    private final StudyProgramRepository studyProgramRepository;
     private final StudyRepository studyRepository;
     private final StudyParticipantRepository studyParticipantRepository;
 
     public StudyListService(
             StudyRepository studyRepository,
-            StudyProgramRepository studyProgramRepository,
             StudyParticipantRepository studyParticipantRepository) {
         this.studyRepository = studyRepository;
-        this.studyProgramRepository = studyProgramRepository;
         this.studyParticipantRepository = studyParticipantRepository;
     }
 
@@ -40,57 +32,53 @@ public class StudyListService {
             int offset,
             int limit) {
 
-        List<StudyProgram> allStudyPrograms =
+        List<Study> allStudies =
                 (category != null)
-                        ? studyProgramRepository.findAllByIsHiddenFalseAndCategory(category)
-                        : studyProgramRepository.findAllByIsHiddenFalse();
+                        ? studyRepository.findAllByIsHiddenFalseAndCategory(category)
+                        : studyRepository.findAllByIsHiddenFalse();
 
-        if (allStudyPrograms.isEmpty()) {
+        if (allStudies.isEmpty()) {
             return new StudyListResponse(List.of(), 0, offset, limit);
         }
 
-        List<Long> studyProgramIds = allStudyPrograms.stream().map(StudyProgram::getId).toList();
         Map<Long, Study> latestStudies =
-                studyRepository.findLatestByProgramIds(studyProgramIds).stream()
-                        .collect(Collectors.toMap(Study::getProgramId, Function.identity()));
+                allStudies.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        Study::getProgramId,
+                                        Function.identity(),
+                                        (a, b) -> a.getId() > b.getId() ? a : b));
 
         List<Long> studyIds = latestStudies.values().stream().map(Study::getId).toList();
         Map<Long, Long> counts =
-                studyParticipantRepository.countByCohortIds(studyIds).stream()
+                studyParticipantRepository.countByStudyIds(studyIds).stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
         List<StudyListResponse.StudySummary> filtered =
-                allStudyPrograms.stream()
-                        .filter(studyProgram -> latestStudies.containsKey(studyProgram.getId()))
+                latestStudies.values().stream()
                         .filter(
-                                studyProgram ->
+                                study ->
                                         keyword == null
                                                 || keyword.isBlank()
-                                                || studyProgram
-                                                        .getTitle()
+                                                || study.getTitle()
                                                         .toLowerCase()
                                                         .contains(keyword.toLowerCase()))
                         .filter(
-                                studyProgram -> {
-                                    Study s = latestStudies.get(studyProgram.getId());
-                                    if (status != null && s.getStatus() != status) return false;
+                                study -> {
+                                    if (status != null && study.getStatus() != status) return false;
                                     if (recruitDeadlineBefore != null) {
-                                        return s.getStatus() == StudyStatus.OPEN
-                                                && s.getRecruitDeadline() != null
-                                                && s.getRecruitDeadline()
+                                        return study.getStatus() == StudyStatus.OPEN
+                                                && study.getRecruitDeadline() != null
+                                                && study.getRecruitDeadline()
                                                         .isBefore(recruitDeadlineBefore);
                                     }
                                     return true;
                                 })
                         .sorted(
                                 Comparator.comparing(
-                                        (StudyProgram studyProgram) ->
-                                                latestStudies
-                                                        .get(studyProgram.getId())
-                                                        .getRecruitDeadline(),
+                                        Study::getRecruitDeadline,
                                         Comparator.nullsLast(Comparator.reverseOrder())))
                         .map(
-                                studyProgram -> {
-                                    Study study = latestStudies.get(studyProgram.getId());
+                                study -> {
                                     long count = counts.getOrDefault(study.getId(), 0L);
                                     return StudyListResponse.StudySummary.from(study, count);
                                 })

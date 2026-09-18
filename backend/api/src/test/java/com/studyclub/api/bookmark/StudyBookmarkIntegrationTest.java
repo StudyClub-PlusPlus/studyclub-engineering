@@ -49,7 +49,7 @@ class StudyBookmarkIntegrationTest {
         try (var resource = new TestDataResource()) {
             StudyProgram program =
                     resource.saveProgram("bm-java-study", "Java Study", StudyCategory.BACKEND);
-            Study study = resource.saveStudy(program.getId());
+            Study study = resource.saveStudy(program.getId(), "Java Study", StudyCategory.BACKEND);
             resource.saveBookmark(study.getId());
 
             var response =
@@ -92,9 +92,15 @@ class StudyBookmarkIntegrationTest {
                     resource.saveProgram("bm-study-b", "Study B", StudyCategory.FRONTEND);
             StudyProgram studyProgramC =
                     resource.saveProgram("bm-study-c", "Study C", StudyCategory.AI_ML);
-            resource.saveBookmark(resource.saveStudy(studyProgramA.getId()).getId());
-            resource.saveBookmark(resource.saveStudy(studyProgramB.getId()).getId());
-            resource.saveBookmark(resource.saveStudy(studyProgramC.getId()).getId());
+            resource.saveBookmark(
+                    resource.saveStudy(studyProgramA.getId(), "Study A", StudyCategory.BACKEND)
+                            .getId());
+            resource.saveBookmark(
+                    resource.saveStudy(studyProgramB.getId(), "Study B", StudyCategory.FRONTEND)
+                            .getId());
+            resource.saveBookmark(
+                    resource.saveStudy(studyProgramC.getId(), "Study C", StudyCategory.AI_ML)
+                            .getId());
 
             // offset=1, limit=1 → 두 번째 항목(Study B)만 반환
             var response =
@@ -129,23 +135,22 @@ class StudyBookmarkIntegrationTest {
 
         StudyProgram saveProgram(String slug, String title, StudyCategory category) {
             StudyProgram program =
-                    studyProgramRepository.save(
-                            StudyProgram.builder()
-                                    .slug(slug)
-                                    .title(title)
-                                    .oneLineSummary("테스트 스터디")
-                                    .category(category)
-                                    .studyKind(StudyKind.STUDY)
-                                    .build());
+                    studyProgramRepository.save(StudyProgram.builder().title(title).build());
             programIds.add(program.getId());
             return program;
         }
 
-        Study saveStudy(Long programId) {
+        Study saveStudy(Long programId, String title, StudyCategory category) {
+            long count = studyIds.size();
             Study study =
                     studyRepository.save(
                             Study.builder()
                                     .programId(programId)
+                                    .slug("bm-study-slug-" + count)
+                                    .title(title)
+                                    .oneLineSummary("테스트 스터디")
+                                    .category(category)
+                                    .studyKind(StudyKind.STUDY)
                                     .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                     .status(StudyStatus.OPEN)
                                     .recruitDeadline(Instant.now().plusSeconds(3600))

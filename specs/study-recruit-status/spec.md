@@ -49,7 +49,7 @@ capacity != null && 신청자수 >= capacity           → RECRUIT_CLOSED
 신청자 수는 `STUDY_APPLICATION` 애그리거트 소관이라 엔티티가 직접 세지 않고 **인자로 받는다**
 (애그리거트 사이는 ID 참조 — [ddd-guide](../../docs/backend-development-guide/ddd-guide.md)).
 
-## 정원을 차지하는 신청 — `countByCohortIds` 수정
+## 정원을 차지하는 신청 — `countByStudyIds` 수정
 
 `StudyApplicationRepository.countByCohortIds` 가 `REJECTED` 만 빼고 세고 있었다.
 `WITHDRAWN`(철회) · `WAITLISTED`(대기자)까지 세는 값을 정원 도달 판정에 그대로 쓰면
@@ -198,4 +198,4 @@ capacity != null && 신청자수 >= capacity           → RECRUIT_CLOSED
 
 | 날짜 | 변경 | 근거 |
 |---|---|---|
-| 2026-09-15 | 최초 작성 — `RecruitStatus` 파생 상태 + `countByCohortIds` 정원 판정 기준 수정 | Notion 이슈 51 |
+| 2026-09-15 | 최초 작성 — `RecruitStatus` 파생 상태 + `countByStudyIds` 정원 판정 기준 수정 | Notion 이슈 51 |
