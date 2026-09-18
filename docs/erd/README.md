@@ -30,11 +30,7 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 ## 설계 원칙 (요구사항 정의에서)
 
-<<<<<<< HEAD
-1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY_COHORT.RECRUIT_DEADLINE`·`START_DATE` 로 판정. 저장하는 상태는 사람이 결정하는 것(출석)만. 신청서는 행이 있으면 제출 완료다.
-=======
 1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY.RECRUIT_DEADLINE`·`START_DATE` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
->>>>>>> 45e18b4 (feat: rename tables)
 2. **삭제 대신 종료.** 스터디는 `CLOSED`, 참가자는 `WITHDRAWN`.
 3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `ACCOUNT_ID`·`STUDY_ID` 를 따라간다.
 4. 비회원 공개 범위(목록·상세)와 로그인 사용자 범위(신청·출석·마이페이지)를 분리한다.
@@ -110,19 +106,21 @@ erDiagram
 
   STUDY_PROGRAM {
     bigint   ID                PK
-    varchar  SLUG              UK "URL 식별자"
     varchar  TITLE
+  }
+
+  STUDY {
+    bigint   ID                 PK
+    bigint   PROGRAM_ID            "→ STUDY_PROGRAM 참조"
+    int      COHORT               "기수 번호"
+    varchar  TITLE
+    varchar  SLUG              UK "URL 식별자"
     varchar  ONE_LINE_SUMMARY     "한 줄 소개"
     text     DESCRIPTION
     varchar  CATEGORY             "AI, BACKEND, PAPER …"
     varchar  STUDY_KIND           "STUDY / CLUB"
     varchar  THUMBNAIL_URL
     boolean  IS_HIDDEN            "목록 노출 제어"
-  }
-
-  STUDY {
-    bigint   ID                 PK
-    bigint   PROGRAM_ID            "→ STUDY_PROGRAM 참조"
     varchar  STUDY_DELIVERY_FORMAT "ONLINE / OFFLINE / HYBRID"
     varchar  STATUS               "DRAFT / OPEN / CLOSED"
     json     APPLICATION_FORM     "이 기수 신청 폼 질문 정의"
@@ -257,8 +255,8 @@ erDiagram
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
 | 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
-| 스터디 | [STUDY_PROGRAM](./STUDY_PROGRAM.md)                     | 스터디/클럽 정체성             | `STUDY_KIND`                         |
-| 스터디 | [STUDY](./STUDY.md)                                     | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`    |
+| 스터디 | [STUDY_PROGRAM](./STUDY_PROGRAM.md)                     | 스터디/클럽 정체성             | —                                    |
+| 스터디 | [STUDY](./STUDY.md)                                     | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`, `STUDY_KIND` |
 | 스터디 | [STUDY_GROUP](./STUDY_GROUP.md)                         | 분반 (요일·시간대별)           | —                                    |
 | 스터디 | [STUDY_MEETING](./STUDY_MEETING.md)                     | 회차 (분반의 N번째 모임)        | —                                    |
 | 모집  | [STUDY_RECRUITMENT](./STUDY_RECRUITMENT.md)             | 모집 회차 — 기수의 모집 기간/조건   | —                                    |
@@ -353,8 +351,8 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 - **회차 알림 자동화·디스코드 명령어 출석** — 스키마 영향 없음. 봇 쪽 결정.
 
 **해결됨 — 기수(기수)**: 클럽 N기는 새 STUDY_PROGRAM 행이 아니라 별도 테이블
-[STUDY](./STUDY.md) 로 낸다. `STUDY_PROGRAM.STUDY_KIND`
-(`STUDY`/`CLUB`)이 STUDY_PROGRAM 에 남고,
-기수마다 달라지는 `STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·`CAPACITY`·`RECRUIT_DEADLINE`·
-`START_DATE`/`END_DATE`·`DISCORD_CHANNEL_URL`·`DRIVE_URL` 은 전부 STUDY 로
-이동했다. 근거는 `study_schema_design_decisions.md` 참고.
+[STUDY](./STUDY.md) 로 낸다. `STUDY_PROGRAM` 은 `ID`·`TITLE` 만 갖는 identity anchor 이고,
+기수마다 달라지는 모든 속성(`SLUG`·`TITLE`·`ONE_LINE_SUMMARY`·`DESCRIPTION`·`CATEGORY`·
+`STUDY_KIND`·`THUMBNAIL_URL`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·
+`CAPACITY`·`RECRUIT_DEADLINE`·`START_DATE`/`END_DATE`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`) 은
+전부 STUDY 로 이동했다. 근거는 `study_schema_design_decisions.md` 참고.

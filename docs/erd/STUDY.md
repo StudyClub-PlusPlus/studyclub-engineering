@@ -1,9 +1,9 @@
 # STUDY — 기수 / 운영 스터디
 
-[STUDY_PROGRAM](./STUDY_PROGRAM.md) 의 특정 회차/기수. "스터디가 무엇인가"는 STUDY_PROGRAM 이,
-"이번 기수는 어떻게 운영되는가"는 여기가 답한다. 클럽(`STUDY_KIND=CLUB`)은 여러 STUDY 를 갖고,
-지난 기수는 그대로 남아 이력 조회가 가능해야 한다. 스터디(`STUDY_KIND=STUDY`)도
-예외 없이 기수를 1개 갖는다 — "기수 없는 STUDY_PROGRAM"이라는
+[STUDY_PROGRAM](./STUDY_PROGRAM.md) 의 특정 회차/기수. "스터디가 무엇인가(정체성)"는 STUDY_PROGRAM 이,
+"이번 기수는 어떻게 운영되는가"와 "이번 기수의 제목·설명·카테고리는 무엇인가"는 모두 여기가 답한다.
+클럽(`STUDY_KIND=CLUB`)은 여러 STUDY 를 갖고, 지난 기수는 그대로 남아 이력 조회가 가능해야 한다.
+스터디(`STUDY_KIND=STUDY`)도 예외 없이 기수를 1개 갖는다 — "기수 없는 STUDY_PROGRAM"이라는
 특수 케이스를 만들지 않는다.
 
 새 기수를 만들 때는 직전 기수의 설정을 복사해 시작점으로 삼을 수 있지만, 이후 값은
@@ -14,7 +14,16 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| PROGRAM_ID | BIGINT | N | STUDY_PROGRAM 참조. 구 `STUDY_ID` |
+| PROGRAM_ID | BIGINT | N | STUDY_PROGRAM 참조 |
+| COHORT | INT | Y | 기수 번호 (1기, 2기 …). 단발 스터디는 NULL 가능 |
+| TITLE | VARCHAR(200) | N | 이 기수 제목 |
+| SLUG | VARCHAR(100) | N | URL 식별자. UNIQUE |
+| ONE_LINE_SUMMARY | VARCHAR(255) | N | 한 줄 소개 |
+| DESCRIPTION | TEXT | Y | 상세 소개 |
+| CATEGORY | VARCHAR(50) | N | 분야 (`AI`, `BACKEND`, `PAPER` …) |
+| STUDY_KIND | VARCHAR(20) | N | 아래 |
+| THUMBNAIL_URL | VARCHAR(2048) | Y | |
+| IS_HIDDEN | BOOLEAN | N | 목록 노출 제어. 기본 FALSE |
 | STUDY_DELIVERY_FORMAT | VARCHAR(20) | N | `ONLINE` / `OFFLINE` / `HYBRID` |
 | STATUS | VARCHAR(20) | N | 아래 |
 | APPLICATION_FORM | JSON | Y | 이 기수 신청 폼 질문 정의 |
@@ -65,7 +74,17 @@ stateDiagram-v2
 | `ONGOING` 진행중 | `START_DATE <= today <= END_DATE` |
 | `ENDED` 종료 | `today > END_DATE` |
 
+## STUDY_KIND
+
+| 값 | 뜻 |
+|---|---|
+| `STUDY` | 스터디. 한 번 모집해 한 번 진행. STUDY_PROGRAM 에 STUDY 를 딱 1개만 갖는다 |
+| `CLUB` | 클럽. 기수제로 반복 — STUDY_PROGRAM 에 STUDY 가 여러 개 쌓인다 |
+
+스터디가 클럽이 되면 `STUDY → CLUB` 으로 바꾼다.
+
 ## 제약
+- `UNIQUE(SLUG)` — `uk_study_slug`
 - 인덱스 `(PROGRAM_ID, STATUS)` — `idx_study_program_study_status`
 
 ## 미확정

@@ -41,6 +41,12 @@ public class StudyListService {
             return new StudyListResponse(List.of(), 0, offset, limit);
         }
 
+        // TODO: come back to this logic. There is a caveat with this approach. It is possible that
+        // a study 1 is active (i.e. on going)
+        // and study 2 is accepting participant for near future. Then this will only show study 2
+        // when we want study 1 as well.
+        // Not touching in table-structure task as this is business logic and it is not the
+        // restructure scope.
         Map<Long, Study> latestStudies =
                 allStudies.stream()
                         .collect(
