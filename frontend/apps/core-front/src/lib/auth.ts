@@ -8,13 +8,20 @@ export const PLATFORM = 'CORE';
 export const ACCESS_COOKIE = `${STORAGE_PREFIX}access_token`;
 export const REFRESH_COOKIE = `${STORAGE_PREFIX}refresh_token`;
 const USER_KEY = `${STORAGE_PREFIX}user`;
+const SUGGESTED_NICKNAME_KEY = `${STORAGE_PREFIX}suggested_nickname`;
 
+/**
+ * UI 세션용 회원 스냅샷.
+ * TODO(api): 백엔드 필드명 정합(user→account, name→nickname) 후 nickname 으로 교체.
+ */
 export type SessionUser = {
   id: number;
   email: string;
   name: string | null;
   picture: string | null;
   role: string;
+  timeZone?: string | null;
+  onboardingCompletedAt?: string | null;
 };
 
 /** 브라우저에서 구글 OAuth authorize URL (팝업으로 연다). */
@@ -52,9 +59,30 @@ export function setUser(user: SessionUser): void {
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+/** 구글 name — 온보딩 닉네임 칸 초기값. DB 에 저장하지 않는다. */
+export function getSuggestedNickname(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage.getItem(SUGGESTED_NICKNAME_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setSuggestedNickname(value: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!value) window.sessionStorage.removeItem(SUGGESTED_NICKNAME_KEY);
+    else window.sessionStorage.setItem(SUGGESTED_NICKNAME_KEY, value);
+  } catch {
+    // sessionStorage 비활성 환경에서는 닉네임 칸만 비운다.
+  }
+}
+
 export function clearSession(): void {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(USER_KEY);
+  setSuggestedNickname(null);
 }
 
 /** 로그아웃 — localStorage 유저 제거 + 서버 라우트로 httpOnly 쿠키 제거. */
