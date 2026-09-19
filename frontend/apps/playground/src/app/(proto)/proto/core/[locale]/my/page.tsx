@@ -7,9 +7,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 
-import { ProfileDialog } from '@core/components/ProfileDialog';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
-import { getUser, logout, type SessionUser } from '@core/lib/auth';
+import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
+import { getUser, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import {
@@ -17,22 +17,26 @@ import {
   getApplications,
   getBookmarks,
   getDiscord,
-  getDiscordNickname,
   getDisplayName,
-  getRegion,
+  getTimeZone,
   seedDemoData,
   setDiscord,
   setBookmarked,
-  setDiscordNickname,
   setDisplayName,
-  setRegion,
+  setTimeZone,
   type Application,
   type DiscordLink,
 } from '@core/lib/me';
+import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname-availability';
+import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
 import { recruitState } from '@core/lib/recruit';
-import { MEMBER_REGIONS, studies as allStudies, type MemberRegion, type Study } from '@studyclub/mock';
-import { CalendarClock, Heart } from 'lucide-react';
+import { studies as allStudies, type Study } from '@studyclub/mock';
+import { Button, Input } from '@studyclub/ui';
+import { CalendarClock, Heart, Pencil } from 'lucide-react';
+
+import { SPEC } from './spec';
+import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 /**
  * 마이페이지.
@@ -160,13 +164,17 @@ export default function MyPage() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
 
-  const [region, setRegionState] = useState<MemberRegion>('KR');
+  const [timeZone, setTimeZoneState] = useState('Asia/Seoul');
   const [applications, setApplications] = useState<Application[]>([]);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [discord, setDiscordState] = useState<DiscordLink>(null);
-  const [discordNickname, setDiscordNicknameState] = useState('');
+  // 인라인 편집 — 고치는 값 옆에서 바로 고친다. 항목이 둘뿐이라 따로 지면을 열 일이 아니다.
   const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [draftZone, setDraftZone] = useState('Asia/Seoul');
+  const [composing, setComposing] = useState(false);
+  const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
 
   useEffect(() => {
     // 로컬 미리보기에서는 세션 정의를 맞추고 더미를 채운다(버전이 같으면 아무것도 하지 않는다)
@@ -178,11 +186,10 @@ export default function MyPage() {
     }
     setUser(u);
     setName(getDisplayName() ?? u.name ?? u.email);
-    setRegionState(getRegion());
+    setTimeZoneState(getTimeZone());
     setApplications(getApplications());
     setBookmarks(getBookmarks());
     setDiscordState(getDiscord());
-    setDiscordNicknameState(getDiscordNickname() ?? '');
     setReady(true);
   }, [locale, router]);
 
@@ -199,24 +206,65 @@ export default function MyPage() {
     .filter((s): s is Study => Boolean(s))
     .reverse();
 
-  const regionMeta = MEMBER_REGIONS.find((r) => r.key === region)!;
+  const trimmedName = draftName.trim();
+  const unchangedName = normalizeNickname(trimmedName) === normalizeNickname(name);
+  const nameFormatError = composing ? undefined : nicknameError(draftName, locale);
+
+  useEffect(() => {
+    if (!editing || composing || nameFormatError || unchangedName) {
+      setNickStatus('idle');
+      return;
+    }
+    const controller = new AbortController();
+    setNickStatus('checking');
+    const timer = setTimeout(() => {
+      checkNicknameAvailability(trimmedName, controller.signal)
+        .then((r) => setNickStatus(r.available ? 'available' : 'taken'))
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === 'AbortError') return;
+          setNickStatus('error');
+        });
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [editing, trimmedName, composing, nameFormatError, unchangedName]);
+
+  const nameLine: { text: string; tone: 'muted' | 'error' | 'ok' } = nameFormatError
+    ? { text: nameFormatError, tone: 'error' }
+    : nickStatus === 'checking'
+      ? { text: '확인 중입니다', tone: 'muted' }
+      : nickStatus === 'available'
+        ? { text: '사용할 수 있는 닉네임입니다', tone: 'ok' }
+        : nickStatus === 'taken'
+          ? { text: '이미 사용중인 닉네임입니다', tone: 'error' }
+          : nickStatus === 'error'
+            ? { text: '확인하지 못했습니다. 다시 시도해 주세요', tone: 'muted' }
+            : { text: '2~20자 · 한글, 영문, 숫자, 밑줄(_)', tone: 'muted' };
+
+  const nameBlocked = Boolean(nameFormatError) || nickStatus === 'taken' || nickStatus === 'checking';
+
+  const zoneLabel = zoneName(timeZone, locale) ?? timeZone;
 
   if (!ready || !user) {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
-  async function handleLogout() {
-    await logout();
-    router.replace(`/proto/core/${locale}`);
+
+  function openEditor() {
+    setDraftName(name);
+    setDraftZone(timeZone);
+    setEditing(true);
   }
 
-  function saveProfile(next: { name: string; region: MemberRegion; discordNickname: string }) {
-    setName(next.name);
-    setDisplayName(next.name);
-    setRegionState(next.region);
-    setRegion(next.region);
-    setDiscordNickname(next.discordNickname);
-    setDiscordNicknameState(next.discordNickname);
+  function save() {
+    if (nameBlocked) return;
+    setName(trimmedName);
+    setDisplayName(trimmedName);
+    setTimeZoneState(draftZone);
+    setTimeZone(draftZone);
+    setEditing(false);
   }
 
   function connectDiscord() {
@@ -244,77 +292,124 @@ export default function MyPage() {
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
       <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
 
-      {/* 내 정보 — 이름·이메일·거주 지역. 고치는 건 한 곳(수정 팝업)에서 한다 */}
-      <section className='card mt-5 px-6 py-5'>
-        <div className='flex items-start justify-between gap-4'>
-          <div className='flex min-w-0 items-center gap-4'>
-            {user.picture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.picture} alt='' className='h-14 w-14 shrink-0 rounded-full' />
-            ) : (
-              <div className='grid h-14 w-14 shrink-0 place-items-center rounded-full bg-surface-2 text-lg font-bold text-fg-secondary'>
-                {name.slice(0, 1).toUpperCase()}
+      <ScreenSpecRegistrar spec={SPEC} />
+      {/* 내 정보 — 닉네임·이메일·나의 시간대. 고치는 건 한 곳(수정 팝업)에서 한다 */}
+      {/* 내 정보 — 이름줄 하나, 값줄 셋. 값을 가로로 늘어놓아야 카드가 비어 보이지 않는다 */}
+      {/* 내 정보 — 보기와 편집이 같은 카드 안에서 바뀐다. 고칠 것이 셋뿐이라 지면을 옮길 일이 아니다 */}
+      {/* 편집 중에는 넘치게 둔다 — 시간대 메뉴가 카드 밖으로 열린다 */}
+      <section data-anno='profile:1' className={`card mt-5 ${editing ? '' : 'overflow-hidden'}`}>
+        <div className='flex items-start justify-between gap-4 px-6 pt-5'>
+          <div className='min-w-0 flex-1'>
+            {editing ? (
+              <div data-anno='profile:2' className='max-w-sm'>
+                <Input
+                  label='닉네임'
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onCompositionStart={() => setComposing(true)}
+                  onCompositionEnd={() => setComposing(false)}
+                  labelHint={`${trimmedName.length}/20`}
+                  autoFocus
+                />
+                <p
+                  className={`mt-2 text-xs ${
+                    nameLine.tone === 'ok'
+                      ? 'text-success-700'
+                      : nameLine.tone === 'error'
+                        ? 'text-error-700'
+                        : 'text-fg-muted'
+                  }`}
+                >
+                  {nameLine.text}
+                </p>
               </div>
+            ) : (
+              <>
+                <p className='truncate text-xl font-extrabold tracking-tight text-fg'>{name}</p>
+                <p className='mt-0.5 truncate text-sm text-fg-muted'>{user.email}</p>
+              </>
             )}
-            <div className='min-w-0'>
-              <p className='truncate text-lg font-bold text-fg'>{name}</p>
-              <p className='truncate text-sm text-fg-secondary'>{user.email}</p>
-              <p className='mt-1 truncate text-[13px] text-fg-secondary'>
-                서버 별명 · {discordNickname || '없음 (신청 시 입력)'}
-              </p>
-              <p className='mt-1 text-[13px] text-fg-secondary'>
-                거주 지역 · {t(regionMeta.label, locale)}
-                <span className='ml-1 text-fg-muted'>{regionMeta.tzLabel}</span>
-              </p>
-              {/* 스터디가 디스코드에서 진행되므로, 연결 여부는 회원이 바로 알아야 한다 */}
-              <p className='mt-1 flex flex-wrap items-center gap-1.5 text-[13px]'>
-                <span className='text-fg-secondary'>디스코드 ·</span>
-                {discord ? (
-                  <>
-                    <span className='inline-flex items-center gap-1 rounded-pill bg-recruiting-bg px-2 py-0.5 text-[11px] font-bold text-recruiting-fg'>
-                      연결됨
-                    </span>
-                    <span className='text-fg-secondary'>@{discord.handle}</span>
-                    <button
-                      type='button'
-                      onClick={disconnectDiscord}
-                      className='text-xs font-semibold text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
-                    >
-                      연결 해제
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className='inline-flex items-center gap-1 rounded-pill bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-fg-secondary'>
-                      연결 안 됨
-                    </span>
-                    <button
-                      type='button'
-                      onClick={connectDiscord}
-                      className='text-xs font-semibold text-brand underline-offset-4 hover:underline'
-                    >
-                      연결하기
-                    </button>
-                  </>
-                )}
-              </p>
-            </div>
           </div>
-          <div className='flex shrink-0 items-center gap-2'>
+
+          {!editing && (
             <button
               type='button'
-              onClick={() => setEditing(true)}
-              className='rounded-control border border-border-strong px-3 py-1.5 text-xs font-semibold text-fg-secondary transition-colors hover:bg-surface-2'
+              data-anno='profile:1-1'
+              onClick={openEditor}
+              title='내 정보 수정'
+              aria-label='내 정보 수정'
+              className='grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border-strong text-fg-secondary transition-colors hover:bg-surface-2 hover:text-fg'
             >
-              내 정보 수정
+              <Pencil size={15} />
             </button>
-            <button
-              type='button'
-              onClick={handleLogout}
-              className='rounded-control px-3 py-1.5 text-xs font-semibold text-fg-muted transition-colors hover:bg-surface-2'
-            >
-              로그아웃
-            </button>
+          )}
+        </div>
+
+        {/* 값은 이름과 값 두 줄로만 세운다 — 칸을 나눠 담으면 둘뿐인 값이 표처럼 보인다 */}
+        <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-baseline gap-x-6 gap-y-3 px-6 pb-5 text-sm'>
+          <dt className='text-fg-muted'>시간대</dt>
+          <dd data-anno='profile:3' className='min-w-0'>
+            {editing ? (
+              <div className='max-w-xs'>
+                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel />
+              </div>
+            ) : (
+              <span className='font-semibold text-fg'>{zoneLabel}</span>
+            )}
+          </dd>
+
+          <dt className='text-fg-muted'>디스코드</dt>
+          <dd data-anno='profile:4' className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
+            {discord ? (
+              <>
+                <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
+                {editing && (
+                  <button
+                    type='button'
+                    onClick={disconnectDiscord}
+                    className='text-xs font-semibold text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
+                  >
+                    연결 해제
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <span className='font-semibold text-fg-muted'>연결 안 됨</span>
+                {editing && (
+                  <button
+                    type='button'
+                    onClick={connectDiscord}
+                    className='text-xs font-semibold text-brand underline-offset-4 hover:underline'
+                  >
+                    연결하기
+                  </button>
+                )}
+              </>
+            )}
+          </dd>
+        </dl>
+
+        {/* 닫는 줄 — 무거운 동작은 왼쪽 끝, 주액션은 오른쪽 끝 */}
+        <div className='flex items-center justify-between gap-3 border-t border-border px-6 py-3'>
+          <Link
+            data-anno='profile:6'
+            href={`/proto/core/${locale}/my/leave`}
+            className='text-xs text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
+          >
+            회원 탈퇴
+          </Link>
+          <div data-anno='profile:5' className='flex items-center gap-2'>
+            {editing && (
+              <>
+                <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
+                  취소
+                </Button>
+                <Button size='sm' onClick={save} disabled={nameBlocked}>
+                  저장
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -437,16 +532,6 @@ export default function MyPage() {
         }
       </ArchiveTabs>
 
-      <ProfileDialog
-        open={editing}
-        onClose={() => setEditing(false)}
-        locale={locale}
-        email={user.email}
-        name={name}
-        region={region}
-        discordNickname={discordNickname}
-        onSave={saveProfile}
-      />
     </div>
   );
 }
