@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  config:
+    import: classpath:notification.yml
   application:
     name: studyclub-api
   # PUBLIC 레포 — 비밀번호/호스트는 env 로만 주입 (docker-compose → .env, 로컬 host 는 `set -a; source .env`).

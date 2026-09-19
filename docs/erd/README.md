@@ -41,6 +41,9 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 ```mermaid
 erDiagram
+  ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
+  ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
+  NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
   ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
   ACCOUNT ||--o{ ACCOUNT_CONSENT : "동의"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
@@ -69,6 +72,37 @@ erDiagram
 
 ```mermaid
 erDiagram
+  ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
+  ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
+  NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  NOTIFICATION {
+    bigint ID PK
+    varchar EVENT_TYPE
+    varchar RECIPIENT_TYPE
+    varchar RECIPIENT_VALUE
+    bigint RECIPIENT_USER_ID
+    bigint TEMPLATE_ID
+    json PAYLOAD
+    varchar STATUS
+    datetime LOCKED_AT
+    varchar ERROR_TYPE
+    datetime SCHEDULED_AT
+    datetime SENT_AT
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  NOTIFICATION_TEMPLATE {
+    bigint ID PK
+    varchar EVENT_TYPE
+    varchar CHANNEL
+    varchar SUBJECT
+    text BODY
+    datetime UPDATED_AT
+    bigint UPDATED_BY_ADMIN_ID
+    datetime CREATED_AT
+  }
+
   ACCOUNT {
     bigint   ID                PK
     varchar  EMAIL             UK "대표 이메일"
@@ -265,6 +299,9 @@ erDiagram
 | 반응  | [STUDY_BOOKMARK](./STUDY_BOOKMARK.md)                   | 북마크                    | —                                    |
 | 제안  | [STUDY_PROPOSAL](./STUDY_PROPOSAL.md)                   | "이런 스터디 열어주세요"         | `STATUS`                             |
 | 제안  | [STUDY_PROPOSAL_INTEREST](./STUDY_PROPOSAL_INTEREST.md) | 제안에 "나도"               | —                                    |
+
+| 알림 | [NOTIFICATION](./NOTIFICATION.md) | 알림 발송 이력 | `STATUS`, `ERROR_TYPE` |
+| 알림 | [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md) | 이벤트별 메일 문구 | — |
 
 
 ## ERD 추가·변경 절차
