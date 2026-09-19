@@ -2,6 +2,7 @@
 
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_COHORT](../../docs/erd/STUDY_COHORT.md)
 > 생성일: 2026-09-08 (GET) · 2026-09-11 (POST 절 추가 · STUDY/STUDY_COHORT 스키마 변경)
+> 갱신: 2026-09-19 — 신청 폼·제출·결과 API 는 [study-application/spec.md](../study-application/spec.md) 로 분리
 
 ## 엔드포인트 목록
 
@@ -10,7 +11,8 @@
 | GET | /api/studies | 스터디 목록 | X | 구현완료 (fixture) |
 | GET | /api/studies/{studyId} | 스터디 상세 조회 | X | 스펙확정 |
 | POST | /api/studies | 스터디 등록 | O (ADMIN) | 스펙확정 |
-| PATCH | /api/studies/{studyId}/cohorts/{cohortId}/application-form | 신청 폼 설계 | O (캡틴) | 스펙작성중 |
+
+신청 폼 설계 · 신청 제출 · 신청 결과 · 디스코드 연동은 [study-application/spec.md](../study-application/spec.md). 옛 경로 `PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form` 은 폐기.
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -211,59 +213,12 @@ Location: /api/studies/{id}
 
 ---
 
-## 신청 폼 설계
+## 신청 폼 · 신청 · 결과
 
-> 유저스토리: "캡틴은 스터디 폼을 작성할 수 있다" 2단계 — 개설한 코호트의 신청서 질문을 캡틴이 직접 구성.
-> > `STUDY_COHORT.APPLICATION_FORM` (JSON) 을 채우는 엔드포인트. ERD 는 이 컬럼의 구조(JSON 자유형 vs `STUDY_QUESTION`+`STUDY_APPLICATION_ANSWER` 정규화 테이블)를 팀 회의 미확정으로 남겨뒀는데, 이 스펙에서는 **일단 JSON 유지로 결정** — 정규화는 필요해지면 재검토(ERD README 의 해당 미확정 항목 자체는 팀 확정 전까지 그대로 둔다).
+유저스토리 「캡틴은 스터디 신청용 폼을 작성할 수 있다」·「크루는 스터디 신청 폼을 제출할 수 있다」·「캡틴은 스터디 신청서 결과를 모아볼 수 있다」는 [study-application/spec.md](../study-application/spec.md) 가 정본이다.
 
-### 기본 정보
+결정 요약 (상세는 그쪽):
 
-- **Method**: PATCH
-- **Path**: `/api/studies/{studyId}/cohorts/{cohortId}/application-form`
-- **인증**: 필요 — `SYSTEM_ROLE=ADMIN` **이면서** 이 코호트의 `STUDY_PARTICIPANT(LEADER)` 본인 (다른 캡틴의 스터디 폼은 못 건드림)
-- **설명**: 코호트의 신청 폼 질문 목록을 통째로 교체한다. **모집 시작 전일 때만** 수정할 수 있다
-
-### Path Parameters
-
-| 이름 | 타입 | 설명 |
-|------|------|------|
-| studyId | Long | 스터디 ID |
-| cohortId | Long | 코호트 ID |
-
-### Request Body
-
-```json
-{
-  "questions": [
-    { "id": "q1", "label": "지원 동기를 알려주세요", "type": "TEXTAREA", "required": true },
-    { "id": "q2", "label": "가능한 요일", "type": "CHECKBOX", "required": true, "options": ["월", "화", "수"] }
-  ]
-}
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|------|------|------|------|
-| questions[].id | String | Y | 질문 식별자 — `STUDY_APPLICATION.FORM_ANSWER` 에서 이 id 로 답을 매핑 |
-| questions[].label | String | Y | |
-| questions[].type | String | Y | enum — `TEXT`(단답형) / `TEXTAREA`(장문형) / `RADIO`(객관식) / `CHECKBOX`(체크박스) / `SELECT`(드롭다운) |
-| questions[].required | Boolean | Y | |
-| questions[].options | String[] | type=RADIO·CHECKBOX·SELECT 일 때 Y | |
-| questions[].allowOther | Boolean | N | type=RADIO·CHECKBOX 일 때 「기타」 자유 입력 |
-| questions[].placeholder | String | N | type=TEXT·TEXTAREA 안내 예시 |
-
-### Response — 200
-
-`STUDY_COHORT.APPLICATION_FORM` 저장 후 요청 바디와 동일한 shape 반환.
-
-### Error Responses
-
-| 상태 | errorCode | 조건 |
-|------|-----------|------|
-| 401 | UNAUTHORIZED | 로그인 필요 |
-| 403 | FORBIDDEN | `SYSTEM_ROLE` 이 `ADMIN` 아님, 또는 이 코호트의 캡틴(LEADER)이 아님 |
-| 404 | NOT_FOUND | studyId/cohortId 불일치 또는 없음 |
-| 409 | CONFLICT | 모집이 이미 시작된 뒤 신청 폼을 수정하려 할 때 |
-
-### 미확정
-
-- [NEEDS CLARIFICATION] 계정 필드(이름·이메일·디스코드 별명) 처리 방식 — 신청 폼에 포함할지, 계정에서 자동으로 읽을지
+- 저장 위치는 `STUDY.APPLICATION_FORM` (기수). 신청 행은 `STUDY_APPLICATION.RECRUITMENT_ID` (모집 회차)
+- 이름·이메일은 폼에 두지 않고 계정에서 읽는다. 디스코드 별명·참여 요일은 플랫폼 기본 문항
+- 질문 설명은 여러 줄 마크다운 원문

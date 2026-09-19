@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 
+import { OTHER_ANSWER_MAX, TEXT_ANSWER_MAX, TEXTAREA_ANSWER_MAX } from '@core/lib/apply-validation';
 import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
 import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { Pencil, X } from 'lucide-react';
@@ -43,6 +44,9 @@ const HEADER_CLASS: Record<number, string> = {
   5: 'text-sm font-semibold',
   6: 'text-xs font-semibold',
 };
+
+export const MARKDOWN_HINT =
+  '마크다운을 쓸 수 있습니다: # 제목, **굵게**, *기울임*, ~~취소선~~, `코드`, [링크](url), 1. 순서 목록, - 목록';
 
 /**
  * 인라인 마크다운을 치환한다 — 이미지 `![대체](url)` · 링크 `[텍스트](url)` · 인라인 코드 `` `코드` `` ·
@@ -180,7 +184,8 @@ export function FormHeaderCard({
 }: {
   title: string;
   summary?: string;
-  account: { name: string; email: string };
+  /** 없으면 이름·이메일을 헤더에 그리지 않는다. 지원자 신청 폼은 계정에서 읽기만 하고 화면에 두지 않는다. */
+  account?: { name: string; email: string };
   /** true 면 캡틴이 제목·설명을 직접 고칠 수 있다 (콘솔 전용). 지원자 화면에서는 생략한다 */
   editable?: boolean;
   selected?: boolean;
@@ -225,7 +230,7 @@ export function FormHeaderCard({
             onChange={(ev) => onSummaryChange?.(ev.target.value)}
             onClick={(ev) => ev.stopPropagation()}
             placeholder='설문지 설명 (선택)'
-            helper='마크다운을 쓸 수 있습니다: # 제목, **굵게**, *기울임*, ~~취소선~~, `코드`, [링크](url), 1. 순서 목록, - 목록'
+            helper={MARKDOWN_HINT}
             rows={3}
           />
         </div>
@@ -236,10 +241,12 @@ export function FormHeaderCard({
         </>
       )}
 
-      <p className='mt-4 text-sm text-fg'>
-        <span className='font-medium'>{account.name}</span>
-        <span className='text-fg-muted'> · {account.email}</span>
-      </p>
+      {account && (
+        <p className='mt-4 text-sm text-fg'>
+          <span className='font-medium'>{account.name}</span>
+          <span className='text-fg-muted'> · {account.email}</span>
+        </p>
+      )}
     </section>
   );
 }
@@ -348,7 +355,7 @@ export function OptionEditor({
   );
 }
 
-/** 질문 제목 + 설명(있으면 바로 아래) — 답변 칸 위에 둔다. */
+/** 질문 제목 + 설명(있으면 바로 아래) — 답변 칸 위에 둔다. 설명은 설문지 헤더와 같은 마크다운을 쓴다. */
 function QuestionLabel({ label, required, description }: { label: string; required?: boolean; description?: string }) {
   return (
     <div className='flex flex-col gap-0.5'>
@@ -360,7 +367,7 @@ function QuestionLabel({ label, required, description }: { label: string; requir
           </span>
         )}
       </p>
-      {description && <p className='text-xs text-fg-muted'>{description}</p>}
+      {description && <MarkdownLite text={description} className='text-xs leading-relaxed text-fg-muted' />}
     </div>
   );
 }
@@ -397,6 +404,7 @@ export function QuestionFillView({
           required={!ghost && q.required}
           disabled={locked}
           rows={3}
+          maxLength={TEXTAREA_ANSWER_MAX}
           value={ghost ? '' : value}
           onChange={ghost ? undefined : (ev) => onChange?.(ev.target.value)}
           placeholder={ghost ? '장문형 텍스트' : (q.placeholder ?? '내 답변')}
@@ -450,6 +458,7 @@ export function QuestionFillView({
               <span className='text-sm text-neutral-800'>기타:</span>
               <input
                 disabled={locked}
+                maxLength={OTHER_ANSWER_MAX}
                 className='h-8 min-w-0 flex-1 border-0 border-b border-border bg-transparent px-1 text-sm'
               />
             </label>
@@ -485,6 +494,7 @@ export function QuestionFillView({
       <Input
         required={!ghost && q.required}
         disabled={locked}
+        maxLength={TEXT_ANSWER_MAX}
         value={ghost ? '' : (value ?? '')}
         onChange={ghost ? undefined : (ev) => onChange?.(ev.target.value)}
         placeholder={ghost ? '단답형 텍스트' : (q.placeholder ?? '내 답변')}

@@ -3,6 +3,9 @@
 > ERD: [링크](../../docs/erd/README.md)
 > 생성일: {날짜}
 > 상태: 스펙작성중
+>
+> Story PRD:
+> - [{Actor}로서, …할 수 있다](../../planning/stories/{story-slug}/PRD.md)
 
 ## 엔드포인트 목록
 
