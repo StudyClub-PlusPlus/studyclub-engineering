@@ -17,11 +17,12 @@ public record StudyDetailResponse(
         RecruitStatus recruitStatus,
         String curriculum,
         Integer capacity,
-        Instant recruitDeadline,
-        Instant startDate,
-        Instant endDate) {
+        Instant recruitDeadlineAt,
+        Instant startAt,
+        Instant endAt) {
 
-    public static StudyDetailResponse from(Study study, long applicantCount) {
+    public static StudyDetailResponse from(
+            Study study, long applicantCount, Instant recruitDeadlineAt) {
         return new StudyDetailResponse(
                 study.getId(),
                 study.getSlug(),
@@ -32,11 +33,11 @@ public record StudyDetailResponse(
                 study.getThumbnailUrl(),
                 study.getStudyDeliveryFormat().name(),
                 study.getStatus().name(),
-                study.recruitStatus(applicantCount),
+                study.recruitStatus(applicantCount, recruitDeadlineAt),
                 study.getCurriculum(),
                 study.getCapacity(),
-                study.getRecruitDeadline(),
-                study.getStartDate(),
-                study.getEndDate());
+                recruitDeadlineAt,
+                study.getStartAt(),
+                study.getEndAt());
     }
 }

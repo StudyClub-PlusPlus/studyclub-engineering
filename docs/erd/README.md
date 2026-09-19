@@ -30,7 +30,7 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 ## 설계 원칙 (요구사항 정의에서)
 
-1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY.RECRUIT_DEADLINE`·`START_DATE` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
+1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT`·`STUDY.START_AT` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
 2. **삭제 대신 종료.** 스터디는 `CLOSED`, 참가자는 `WITHDRAWN`.
 3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `ACCOUNT_ID`·`STUDY_ID` 를 따라간다.
 4. 비회원 공개 범위(목록·상세)와 로그인 사용자 범위(신청·출석·마이페이지)를 분리한다.
@@ -125,13 +125,12 @@ erDiagram
     json     APPLICATION_FORM     "이 기수 신청 폼 질문 정의"
     json     CURRICULUM           "주차별 커리큘럼"
     int      CAPACITY             "이 기수 전체 정원"
-    datetime RECRUIT_DEADLINE     "이 기수 모집 마감"
-    date     START_DATE
-    date     END_DATE              "고정 종료 없는 클럽은 NULL"
+    datetime START_AT
+    datetime END_AT               "고정 종료 없는 클럽은 NULL"
     varchar  DISCORD_CHANNEL_URL
     varchar  DRIVE_URL
     varchar  SCHEDULE              "운영 일정 요약"
-    datetime PUBLISH_DATE         "공개 예정 일시"
+    datetime PUBLISH_AT           "공개 예정 일시"
   }
 
   STUDY_GROUP {
@@ -157,7 +156,7 @@ erDiagram
     varchar  TITLE
     text     DESCRIPTION
     datetime START_AT
-    datetime CLOSE_AT
+    datetime RECRUIT_DEADLINE_AT     "계획된 모집 마감"
     int      RECRUITMENT_CAPACITY    "NULL 이면 제한 없음"
   }
 
@@ -205,7 +204,7 @@ erDiagram
     bigint   ID                 PK
     bigint   PROPOSER_ACCOUNT_ID   FK
     text     CONTENT
-    date     PROPOSED_DATE         "희망 시작 시기"
+    datetime PROPOSED_AT          "희망 시작 시기"
     varchar  STATUS                "OPEN / ACCEPTED / REJECTED / CLOSED"
   }
 
@@ -353,5 +352,5 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 [STUDY](./STUDY.md) 로 낸다. `STUDY_PROGRAM` 은 `ID`·`TITLE` 만 갖는 identity anchor 이고,
 기수마다 달라지는 모든 속성(`SLUG`·`TITLE`·`ONE_LINE_SUMMARY`·`DESCRIPTION`·`CATEGORY`·
 `STUDY_KIND`·`THUMBNAIL_URL`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·
-`CAPACITY`·`RECRUIT_DEADLINE`·`START_DATE`/`END_DATE`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`)은
+`CAPACITY`·`START_AT`/`END_AT`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`)은
 전부 STUDY 로 이동했다. 근거는 `study_schema_design_decisions.md` 참고.

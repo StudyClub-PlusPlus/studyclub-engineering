@@ -2,7 +2,7 @@ package com.studyclub.api.participant;
 
 import com.studyclub.api.participant.ParticipantHubResponses.BookmarkedStudySummary;
 import com.studyclub.api.participant.ParticipantHubResponses.ParticipantHubOverviewResponse;
-import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyCohortDetailResponse;
+import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyDetailResponse;
 import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudySummary;
 import com.studyclub.api.participant.ParticipantHubResponses.StudyApplicationSummary;
 import com.studyclub.api.participant.ParticipantHubResponses.StudyMeetingAttendance;
@@ -21,7 +21,7 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
 
     // 테스트가 같은 id 로 계정을 심어야 해서 package-private
     static final Long MOCK_ACCOUNT_ID = 1000L;
-    private static final Set<Long> KNOWN_COHORT_IDS = Set.of(291L, 301L, 302L, 303L, 304L);
+    private static final Set<Long> KNOWN_STUDY_IDS = Set.of(291L, 301L, 302L, 303L, 304L);
 
     @Override
     public ParticipantHubOverviewResponse getParticipantHubOverview(Long accountId) {
@@ -88,30 +88,30 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
     }
 
     @Override
-    public Optional<ParticipatingStudyCohortDetailResponse> findParticipatingStudyCohortDetail(
-            Long accountId, Long cohortId) {
+    public Optional<ParticipatingStudyDetailResponse> findParticipatingStudyDetail(
+            Long accountId, Long studyId) {
         if (!MOCK_ACCOUNT_ID.equals(accountId)) {
             return Optional.empty();
         }
-        if (cohortId == 301L) {
+        if (studyId == 301L) {
             return Optional.of(ongoingStudy());
         }
-        if (cohortId == 302L) {
+        if (studyId == 302L) {
             return Optional.of(upcomingStudy());
         }
-        if (cohortId == 291L) {
+        if (studyId == 291L) {
             return Optional.of(completedStudy());
         }
         return Optional.empty();
     }
 
     @Override
-    public boolean studyCohortExists(Long cohortId) {
-        return KNOWN_COHORT_IDS.contains(cohortId);
+    public boolean studyExists(Long studyId) {
+        return KNOWN_STUDY_IDS.contains(studyId);
     }
 
-    private ParticipatingStudyCohortDetailResponse ongoingStudy() {
-        return new ParticipatingStudyCohortDetailResponse(
+    private ParticipatingStudyDetailResponse ongoingStudy() {
+        return new ParticipatingStudyDetailResponse(
                 301L,
                 101L,
                 "AI 논문 읽기",
@@ -137,8 +137,8 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                 "https://drive.google.com/drive/folders/mock-ai-paper-cohort-3");
     }
 
-    private ParticipatingStudyCohortDetailResponse upcomingStudy() {
-        return new ParticipatingStudyCohortDetailResponse(
+    private ParticipatingStudyDetailResponse upcomingStudy() {
+        return new ParticipatingStudyDetailResponse(
                 302L,
                 102L,
                 "Spring Boot 딥다이브",
@@ -161,8 +161,8 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                 "https://drive.google.com/drive/folders/mock-spring-boot-cohort-2");
     }
 
-    private ParticipatingStudyCohortDetailResponse completedStudy() {
-        return new ParticipatingStudyCohortDetailResponse(
+    private ParticipatingStudyDetailResponse completedStudy() {
+        return new ParticipatingStudyDetailResponse(
                 291L,
                 91L,
                 "개발자 글쓰기",

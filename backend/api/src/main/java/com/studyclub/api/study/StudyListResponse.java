@@ -10,26 +10,27 @@ import java.util.List;
 public record StudyListResponse(List<StudySummary> items, long total, int offset, int limit) {
 
     public record StudySummary(
-            Long cohortId,
+            Long studyId,
             StudyStatus status,
             RecruitStatus recruitStatus,
             DeliveryFormat deliveryFormat,
             Integer capacity,
             long currentApplicants,
-            Instant recruitDeadline,
-            Instant startDate,
+            Instant recruitDeadlineAt,
+            Instant startAt,
             boolean closingSoon) {
-        public static StudySummary from(Study study, long applicantCount) {
+        public static StudySummary from(
+                Study study, long applicantCount, Instant recruitDeadlineAt) {
             return new StudySummary(
                     study.getId(),
                     study.getStatus(),
-                    study.recruitStatus(applicantCount),
+                    study.recruitStatus(applicantCount, recruitDeadlineAt),
                     study.getStudyDeliveryFormat(),
                     study.getCapacity(),
                     applicantCount,
-                    study.getRecruitDeadline(),
-                    study.getStartDate(),
-                    study.isClosingSoon());
+                    recruitDeadlineAt,
+                    study.getStartAt(),
+                    study.isClosingSoon(recruitDeadlineAt));
         }
     }
 }

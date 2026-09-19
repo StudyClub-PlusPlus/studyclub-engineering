@@ -28,13 +28,12 @@
 | APPLICATION_FORM | JSON | Y | 이 기수 신청 폼 질문 정의 |
 | CURRICULUM | JSON | Y | 주차별 커리큘럼. 구조는 프론트와 합의 |
 | CAPACITY | INT | Y | 이 기수 전체 정원. 분반별 정원은 STUDY_GROUP |
-| RECRUIT_DEADLINE | DATETIME | Y | 이 기수 모집 마감 |
-| START_DATE | DATE | Y | 진행 시작일 |
-| END_DATE | DATE | Y | 진행 종료일. NULL 허용 — 고정 종료 없는 클럽은 NULL |
+| START_AT | DATETIME | Y | 진행 시작 일시 |
+| END_AT | DATETIME | Y | 진행 종료 일시. NULL 허용 — 고정 종료 없는 클럽은 NULL |
 | DISCORD_CHANNEL_URL | VARCHAR(2048) | Y | 이 기수 디스코드 채널 링크 |
 | DRIVE_URL | VARCHAR(2048) | Y | 이 기수 자료 드라이브 링크 |
 | SCHEDULE | VARCHAR(255) | Y | 운영 일정 요약 |
-| PUBLISH_DATE | DATETIME | Y | 공개 예정 일시 |
+| PUBLISH_AT | DATETIME | Y | 공개 예정 일시 |
 
 ## 관계
 - N : 1 [STUDY_PROGRAM](./STUDY_PROGRAM.md)
@@ -57,7 +56,7 @@ stateDiagram-v2
   [*] --> DRAFT
   DRAFT --> OPEN : 운영자 공개
   OPEN --> DRAFT : 공개 취소 (신청 0건일 때만)
-  OPEN --> CLOSED : 운영자 종료 / END_DATE 경과
+  OPEN --> CLOSED : 운영자 종료 / END_AT 경과
   CLOSED --> [*]
 ```
 
@@ -68,10 +67,10 @@ stateDiagram-v2
 | 판정 | 조건 |
 |---|---|
 | `UPCOMING` 모집예정 | `now() < 모집 시작` |
-| `RECRUITING` 모집중 | `모집 시작 <= now() < RECRUIT_DEADLINE` 그리고 정원 미달 |
-| `RECRUIT_CLOSED` 모집마감 | `now() >= RECRUIT_DEADLINE` 또는 정원 도달 |
-| `ONGOING` 진행중 | `START_DATE <= today <= END_DATE` |
-| `ENDED` 종료 | `today > END_DATE` |
+| `RECRUITING` 모집중 | `모집 시작 <= now() < STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT` 그리고 정원 미달 |
+| `RECRUIT_CLOSED` 모집마감 | `now() >= STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT` 또는 정원 도달 |
+| `ONGOING` 진행중 | `START_AT <= now() <= END_AT` |
+| `ENDED` 종료 | `now() > END_AT` |
 
 ## STUDY_KIND
 

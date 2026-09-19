@@ -8,6 +8,8 @@ import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
+import com.studyclub.domain.study.StudyRecruitment;
+import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
@@ -29,10 +31,12 @@ class StudyDetailApiTest {
     @Autowired TestRestTemplate rest;
     @Autowired StudyProgramRepository studyProgramRepository;
     @Autowired StudyRepository studyRepository;
+    @Autowired StudyRecruitmentRepository recruitmentRepository;
 
     @BeforeEach
     void setup() {
         rest.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
+        recruitmentRepository.deleteAll();
         studyRepository.deleteAll();
         studyProgramRepository.deleteAll();
     }
@@ -54,10 +58,17 @@ class StudyDetailApiTest {
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .recruitDeadline(Instant.parse("2026-10-01T00:00:00Z"))
                                 .capacity(20)
-                                .startDate(Instant.parse("2026-10-15T00:00:00Z"))
+                                .startAt(Instant.parse("2026-10-15T00:00:00Z"))
                                 .build());
+        recruitmentRepository.save(
+                StudyRecruitment.builder()
+                        .studyId(study.getId())
+                        .title("모집")
+                        .description("모집 설명")
+                        .startAt(Instant.parse("2026-09-01T00:00:00Z"))
+                        .recruitDeadlineAt(Instant.parse("2026-10-01T00:00:00Z"))
+                        .build());
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
 
@@ -72,7 +83,7 @@ class StudyDetailApiTest {
 
     @Test
     @DisplayName("실패 — 존재하지 않는 studyId → 404 NOT_FOUND")
-    void detailWithoutCohort() {
+    void detailWithoutStudy() {
         var studyProgram =
                 studyProgramRepository.save(StudyProgram.builder().title("코호트 없음").build());
 

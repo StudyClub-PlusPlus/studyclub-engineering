@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "STUDY_RECRUITMENT",
-        indexes = @Index(name = "idx_study_recruitment_cohort", columnList = "STUDY_ID"))
+        indexes = @Index(name = "idx_study_recruitment_study", columnList = "STUDY_ID"))
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -41,8 +41,8 @@ public class StudyRecruitment extends BaseEntity {
     @Column(name = "START_AT", nullable = false)
     private Instant startAt;
 
-    @Column(name = "CLOSE_AT", nullable = false)
-    private Instant closeAt;
+    @Column(name = "RECRUIT_DEADLINE_AT", nullable = false)
+    private Instant recruitDeadlineAt;
 
     @Column(name = "RECRUITMENT_CAPACITY")
     private Integer recruitmentCapacity;

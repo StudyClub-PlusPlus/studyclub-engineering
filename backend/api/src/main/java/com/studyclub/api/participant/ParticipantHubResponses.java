@@ -36,11 +36,11 @@ public final class ParticipantHubResponses {
     public record BookmarkedStudySummary(
             Long id, Long studyId, String studyTitle, String thumbnailUrl) {}
 
-    public record ParticipatingStudyCohortDetailResponse(
+    public record ParticipatingStudyDetailResponse(
             Long cohortId,
             Long studyId,
             String title,
-            StudyStatus cohortStatus,
+            StudyStatus studyStatus,
             ParticipantStatus participantStatus,
             String className,
             String timezone,

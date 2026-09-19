@@ -80,14 +80,11 @@ public class Study extends BaseEntity {
 
     private Integer capacity;
 
-    @Column(name = "RECRUIT_DEADLINE")
-    private Instant recruitDeadline;
+    @Column(name = "START_AT")
+    private Instant startAt;
 
-    @Column(name = "START_DATE")
-    private Instant startDate;
-
-    @Column(name = "END_DATE")
-    private Instant endDate;
+    @Column(name = "END_AT")
+    private Instant endAt;
 
     @Column(name = "DISCORD_CHANNEL_URL", length = 2048)
     private String discordChannelUrl;
@@ -98,33 +95,36 @@ public class Study extends BaseEntity {
     @Column(length = 255)
     private String schedule;
 
-    @Column(name = "PUBLISH_DATE")
-    private Instant publishDate;
+    @Column(name = "PUBLISH_AT")
+    private Instant publishAt;
 
     private static final long CLOSING_SOON_DAYS = 3;
 
-    public boolean isClosingSoon() {
+    public boolean isClosingSoon(Instant recruitDeadlineAt) {
         return status == StudyStatus.OPEN
-                && recruitDeadline != null
-                && recruitDeadline.isBefore(Instant.now().plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
+                && recruitDeadlineAt != null
+                && recruitDeadlineAt.isBefore(
+                        Instant.now().plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
     }
 
     /**
      * 모집 상태를 계산한다. {@code STATUS = OPEN} 일 때만 의미가 있어 그 밖에서는 {@code null} 을 돌려준다 — 모집 상태가 "없는" 것이지
      * 마감된 것이 아니다.
      *
-     * <p>{@code recruitDeadline == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code capacity == null} 은 무제한이라
-     * 정원으로도 마감되지 않는다.
+     * <p>{@code recruitDeadlineAt == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code capacity == null} 은
+     * 무제한이라 정원으로도 마감되지 않는다.
      *
      * <p>참여자 수는 STUDY_PARTICIPANT 애그리거트 소관이라 밖에서 받는다. 정원을 차지하는 참여자(ACTIVE·PAUSED)만 세야 하므로 {@code
-     * StudyParticipantRepository.countByCohortIds} 가 주는 값을 그대로 넘긴다.
+     * StudyParticipantRepository.countByStudyIds} 가 주는 값을 그대로 넘긴다.
+     *
+     * <p>{@code recruitDeadlineAt} 은 STUDY_RECRUITMENT 에서 가져온 계획된 마감 시각이다.
      */
-    public RecruitStatus recruitStatus(long applicantCount) {
+    public RecruitStatus recruitStatus(long applicantCount, Instant recruitDeadlineAt) {
         if (status != StudyStatus.OPEN) {
             return null;
         }
         boolean deadlinePassed =
-                recruitDeadline != null && !Instant.now().isBefore(recruitDeadline);
+                recruitDeadlineAt != null && !Instant.now().isBefore(recruitDeadlineAt);
         boolean capacityReached = capacity != null && applicantCount >= capacity;
         return (deadlinePassed || capacityReached)
                 ? RecruitStatus.RECRUIT_CLOSED
