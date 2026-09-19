@@ -27,6 +27,8 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
     core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
     back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
   packages/mock          # 하드코딩 mock 데이터 + 공유 타입
+planning/stories/        # Story PRD — planning/stories/{slug}/PRD.md
+specs/                   # API 스펙 — specs/{도메인}/spec.md
 backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
 ```
@@ -48,6 +50,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   프론트는 `npm test`. 포맷이 걸리면 `./gradlew spotlessApply` 로 고친다.
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
+- **Story PRD** — 화면 기획은 `planning/stories/{slug}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`planning/README.md`](planning/README.md)
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
 - 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.

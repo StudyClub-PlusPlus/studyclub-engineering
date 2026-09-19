@@ -83,6 +83,54 @@ export type ApplicationQuestion = {
   description?: string; // 지원자에게 보여줄 부가 설명 (선택)
 };
 
+/**
+ * 백오피스 「신청 폼」 탭과 같은 목데이터.
+ * 캡틴이 설계할 수 있는 타입·옵션을 한 폼에 넣는다 — 지원자 화면과 콘솔이 같은 목록을 본다.
+ *
+ * 원본(ai-paper-study): 지원 사유 · 참여 가능 시간 · 희망 난이도 · 킥오프 확인
+ * 보강: 장문형, 객관식·체크박스 「기타」
+ */
+export const DEMO_APPLICATION_FORM: ApplicationQuestion[] = [
+  {
+    id: "reason",
+    label: "지원 사유",
+    type: "text",
+    required: true,
+    placeholder: "내 답변",
+  },
+  {
+    id: "intro",
+    label: "하고 싶은 말",
+    type: "textarea",
+    required: false,
+    placeholder: "내 답변",
+    description: "선택 입력입니다.\n\n**자유롭게** 적어도 됩니다.",
+  },
+  {
+    id: "time",
+    label: "참여 가능 시간을 모두 선택하세요",
+    type: "checkbox",
+    required: true,
+    options: ["평일 오전", "평일 오후", "주말 오전", "주말 오후"],
+    allowOther: true,
+  },
+  {
+    id: "level",
+    label: "희망 난이도를 선택하세요",
+    type: "radio",
+    required: true,
+    options: ["입문", "초급", "중급", "고급", "심화"],
+    allowOther: true,
+  },
+  {
+    id: "kickoff",
+    label: "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
+    type: "select",
+    required: true,
+    options: ["예", "아니오"],
+  },
+];
+
 // 주차별 커리큘럼.
 export type StudyWeek = { label: L10n; title: L10n };
 
@@ -361,7 +409,7 @@ function monthlyClubCohorts(
 }
 
 // ── studies ───────────────────────────────────────────────────────────
-export const studies: Study[] = [
+const STUDIES_SEED: Study[] = [
   // ── 예정(모집중) ────────────────────────────────────────────────────
   {
     id: "ai-paper-study",
@@ -394,30 +442,6 @@ export const studies: Study[] = [
       cadence: "one-time",
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
-    applicationForm: [
-      { id: "reason", label: "지원 사유", type: "text", required: true, placeholder: "내 답변" },
-      {
-        id: "time",
-        label: "참여 가능 시간을 모두 선택하세요",
-        type: "checkbox",
-        required: true,
-        options: ["평일 오전", "평일 오후", "주말 오전", "주말 오후"],
-      },
-      {
-        id: "level",
-        label: "희망 난이도를 선택하세요",
-        type: "radio",
-        required: true,
-        options: ["입문", "초급", "중급", "고급", "심화"],
-      },
-      {
-        id: "kickoff",
-        label: "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
-        type: "select",
-        required: true,
-        options: ["예", "아니오"],
-      },
-    ],
     order: 1,
     year: "2026",
   },
@@ -2332,6 +2356,12 @@ export const studies: Study[] = [
     year: "2024",
   },
 ];
+
+/** 백오피스 신청 폼 탭과 지원자 화면이 같은 질문 목록을 본다. */
+export const studies: Study[] = STUDIES_SEED.map((s) => ({
+  ...s,
+  applicationForm: DEMO_APPLICATION_FORM,
+}));
 
 // ── announcements (공지사항) ──────────────────────────────────────────
 export const announcements: Announcement[] = [

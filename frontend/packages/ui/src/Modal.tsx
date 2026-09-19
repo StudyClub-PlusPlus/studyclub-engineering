@@ -18,6 +18,8 @@ export interface ModalProps {
   description?: string;
   /** 하단 액션 영역 (버튼 등). */
   footer?: ReactNode;
+  /** 제목 오른쪽 — 닫기(X) 같은 헤더 액션. */
+  headerEnd?: ReactNode;
   size?: 'md' | 'lg';
   children: ReactNode;
   className?: string;
@@ -25,7 +27,17 @@ export interface ModalProps {
 
 const SIZE = { md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' } as const;
 
-export function Modal({ open, onClose, title, description, footer, size = 'md', children, className }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  description,
+  footer,
+  headerEnd,
+  size = 'md',
+  children,
+  className,
+}: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   // onClose 는 부모가 매 렌더마다 새로 만드는 경우가 많다. 의존성에 그대로 두면
@@ -100,9 +112,12 @@ export function Modal({ open, onClose, title, description, footer, size = 'md', 
           className,
         )}
       >
-        <header className='flex flex-col gap-1 border-b border-border px-6 py-4'>
-          <h2 className='text-lg font-bold tracking-tight text-neutral-900'>{title}</h2>
-          {description && <p className='text-sm text-fg-muted'>{description}</p>}
+        <header className='flex items-start gap-3 border-b border-border px-6 py-4'>
+          <div className='flex min-w-0 flex-1 flex-col gap-1'>
+            <h2 className='text-lg font-bold tracking-tight text-neutral-900'>{title}</h2>
+            {description && <p className='text-sm text-fg-muted'>{description}</p>}
+          </div>
+          {headerEnd}
         </header>
 
         <div className='flex-1 overflow-y-auto px-6 py-4'>{children}</div>
