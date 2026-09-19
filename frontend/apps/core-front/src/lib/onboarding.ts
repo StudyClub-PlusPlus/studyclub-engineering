@@ -9,15 +9,25 @@ export type OnboardingDraft = {
   marketingAgreed: boolean;
 };
 
-export const ONBOARDING_ZONES = ['Asia/Seoul', 'America/New_York', 'America/Vancouver'] as const;
+/** 한국 / 북미 동부 / 밴쿠버 / LA — 서머타임 정책 차이로 밴쿠버·LA 를 분리한다. */
+export const ONBOARDING_ZONES = [
+  'Asia/Seoul',
+  'America/New_York',
+  'America/Vancouver',
+  'America/Los_Angeles',
+] as const;
 export type OnboardingZone = (typeof ONBOARDING_ZONES)[number];
 
-const DRAFT_KEY = 'sc_onboarding_draft';
+const DRAFT_PREFIX = 'sc_onboarding_draft_';
 
-export function readDraft(): OnboardingDraft | null {
+function draftKey(accountId: number): string {
+  return `${DRAFT_PREFIX}${accountId}`;
+}
+
+export function readDraft(accountId: number): OnboardingDraft | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = sessionStorage.getItem(DRAFT_KEY);
+    const raw = sessionStorage.getItem(draftKey(accountId));
     if (!raw) return null;
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== 'object') return null;
@@ -36,25 +46,25 @@ export function readDraft(): OnboardingDraft | null {
   }
 }
 
-export function saveDraft(draft: OnboardingDraft) {
+export function saveDraft(accountId: number, draft: OnboardingDraft) {
   if (typeof window === 'undefined') return;
   try {
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    sessionStorage.setItem(draftKey(accountId), JSON.stringify(draft));
   } catch {
     // Storage may be disabled.
   }
 }
 
-export function clearDraft() {
+export function clearDraft(accountId: number) {
   if (typeof window === 'undefined') return;
   try {
-    sessionStorage.removeItem(DRAFT_KEY);
+    sessionStorage.removeItem(draftKey(accountId));
   } catch {
     // optional
   }
 }
 
-/** 기기 시간대를 온보딩 3개 중 하나로 접는다. 못 접으면 빈 값 — 사용자가 고른다. */
+/** 기기 시간대를 온보딩 4개 중 하나로 접는다. 못 접으면 빈 값 — 사용자가 고른다. */
 export function snapToOnboardingZone(iana: string): OnboardingZone | '' {
   if ((ONBOARDING_ZONES as readonly string[]).includes(iana)) return iana as OnboardingZone;
   const aliases: Record<string, OnboardingZone> = {
@@ -62,9 +72,8 @@ export function snapToOnboardingZone(iana: string): OnboardingZone | '' {
     'America/Toronto': 'America/New_York',
     'America/Detroit': 'America/New_York',
     'America/Montreal': 'America/New_York',
-    'America/Los_Angeles': 'America/Vancouver',
-    'America/Seattle': 'America/Vancouver',
-    'America/Tijuana': 'America/Vancouver',
+    'America/Seattle': 'America/Los_Angeles',
+    'America/Tijuana': 'America/Los_Angeles',
   };
   if (aliases[iana]) return aliases[iana]!;
   try {
@@ -93,8 +102,8 @@ function offsetMinutes(zone: string): number {
   return sign * (hours * 60 + minutes);
 }
 
-export function initialDraft(suggestedNickname: string | null): OnboardingDraft {
-  const saved = readDraft();
+export function initialDraft(accountId: number, suggestedNickname: string | null): OnboardingDraft {
+  const saved = readDraft(accountId);
   if (saved) return saved;
   let detected = '';
   try {
