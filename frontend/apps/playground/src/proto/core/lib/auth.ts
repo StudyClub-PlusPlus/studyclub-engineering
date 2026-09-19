@@ -13,7 +13,6 @@ export type SessionUser = {
   id: number;
   email: string;
   name: string | null;
-  picture: string | null;
   role: string;
   timeZone?: string | null;
   onboardingCompletedAt?: string | null;

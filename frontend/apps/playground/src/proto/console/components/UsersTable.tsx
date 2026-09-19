@@ -3,27 +3,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PageHeader, TableCard } from '@console/components/ui';
-import { PERMISSIONS, ROLES, ROLE_LABEL, assignBlockReason, scopeOf, type RoleKey, type Scope } from '@console/lib/roles';
+import {
+  ACCOUNT_ROLES,
+  PERMISSIONS,
+  PERMISSION_GROUPS,
+  ROLES,
+  ROLE_LABEL,
+  assignBlockReason,
+  scopeOf,
+  type AccountRole,
+  type RoleKey,
+  type Scope,
+} from '@console/lib/roles';
 import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
 import { Badge, Modal, type BadgeTone } from '@studyclub/ui';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Info, Minus } from 'lucide-react';
 
-/**
- * 유저 — 명단과 역할 부여.
- *
- * 역할은 **셀에서 바로 바꾼다.** 별도 「역할 변경」 버튼과 모달을 거치면 한 명 바꾸는 데 세 번을
- * 눌러야 하는데, 캡틴이 여기서 하는 일은 사실상 역할 하나 고르는 것뿐이다.
- *
- * 역할별 기본 권한표는 제목 옆 ⓘ 안에 둔다 — 명단은 매번 보고 역할 체계는 가끔 본다.
- *
- * 이 화면을 여는 사람은 캡틴이다(아니면 라우트에서 막힌다). 그래서 「캡틴인가」는 묻지 않는다.
- *
- * 역할 변경은 화면 상태로만 처리한다. 새로고침하면 되돌아간다.
- * TODO(api): PATCH /api/users/{id}/role
- */
-
-// 크루는 디자인 시스템의 중립(member) 톤을 쓴다 — 토큰 이름만 다르고 같은 자리다.
-const ROLE_TONE: Record<RoleKey, BadgeTone> = { captain: 'captain', navigator: 'navigator', crew: 'member' };
 
 /** 한 화면에 20명. 스크롤로 다 내리는 것보다 「몇 번째 장을 보고 있는가」가 남는 편이 낫다. */
 const PAGE_SIZE = 20;
@@ -31,25 +26,32 @@ const PAGE_SIZE = 20;
 type RoleFilter = 'all' | RoleKey;
 
 // 순서는 어디서나 같다: 전체 → 캡틴 → 네비게이터 → 크루. `ROLES` 가 그 순서를 소유한다.
+/** 계정 권한 색. 캡틴과 크루를 색만으로 가르지 않으므로 이름도 함께 적는다. */
+const ROLE_TONE: Record<AccountRole, BadgeTone> = { captain: 'captain', crew: 'member' };
+
 const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
   { value: 'all', label: '전체' },
   ...ROLES.map((r) => ({ value: r.key as RoleFilter, label: r.label })),
 ];
 
+
 /**
- * 역할 배지 — 누르면 그 자리에서 역할을 고른다.
+ * 계정 권한 배지 — 누르면 그 자리에서 캡틴·크루를 고른다.
  *
  * 배지가 곧 버튼이다. 배지(현재 상태)와 셀렉트(바꾸는 자리)를 따로 두면 같은 것을 두 번 그리게
  * 된다. 메뉴는 `position: fixed` 로 띄운다 — 표가 가로 스크롤을 가지고 있어 안에 그리면 잘린다.
+ *
+ * **고를 수 있는 것은 둘뿐이다.** 네비게이터는 계정 권한이 아니라 스터디마다 서는 역할이라
+ * 그 스터디의 크루 명단에서 정한다.
  */
 function RoleBadgeSelect({
   role,
   blocked,
   onChange,
 }: {
-  role: RoleKey;
+  role: AccountRole;
   blocked: string | null;
-  onChange: (next: RoleKey) => void;
+  onChange: (next: AccountRole) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -116,9 +118,9 @@ function RoleBadgeSelect({
           data-anno='role:2'
           onMouseDown={(e) => e.stopPropagation()}
           style={{ top: pos.top, left: pos.left }}
-          className='fixed z-50 w-40 rounded-card border border-border bg-surface p-1 shadow-lg'
+          className='fixed z-50 rounded-card border border-border bg-surface p-1 shadow-lg'
         >
-          {ROLES.map((r) => (
+          {ACCOUNT_ROLES.map((r) => (
             <button
               key={r.key}
               type='button'
@@ -131,12 +133,11 @@ function RoleBadgeSelect({
                 onChange(r.key);
                 setOpen(false);
               }}
-              className='flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left hover:bg-surface-2'
+              className='flex w-full rounded-control p-1 hover:bg-surface-2'
             >
               <Badge tone={ROLE_TONE[r.key]} dot className='whitespace-nowrap px-2.5 py-1 font-semibold'>
                 {r.label}
               </Badge>
-              {r.key === role && <Check size={14} className='ml-auto text-fg-muted' />}
             </button>
           ))}
         </div>
@@ -204,62 +205,97 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
   );
 }
 
-/** 역할별 기본 권한 — 제목 옆 ⓘ 로 연다. */
+/**
+ * 역할별 기본 권한 — 제목 옆 ⓘ 로 연다.
+ *
+ * **표를 둘로 가른다.** 담당 스터디 안에서 도는 일과 사이트 전체에 미치는 일은 같은 체크가
+ * 아니다. 한 표에 섞으면 네비게이터의 ✓ 가 모든 스터디를 뜻하는 것처럼 읽힌다.
+ */
 function PermissionMatrixDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal open onClose={onClose} size='lg' title='역할별 기본 권한'>
-      <TableCard anno='role:4'>
-        <thead>
-          <tr>
-            <th className='w-[46%]'>권한</th>
-            {ROLES.map((r) => (
-              <th key={r.key} className='whitespace-nowrap text-center'>
-                {r.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {PERMISSIONS.map((p) => (
-            <tr key={p.key}>
-              <td className='font-semibold'>{p.label}</td>
-              {ROLES.map((r) => (
-                <td key={r.key} className='text-center'>
-                  <ScopeCell scope={scopeOf(r.key, p.key)} />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </TableCard>
-      {/* 체크 표시만으로는 범위를 말할 수 없다 — 한 줄로 적는다 */}
-      <p className='mt-3 text-xs text-fg-muted'>네비게이터의 권한은 담당 스터디에 한한다.</p>
+      <div className='flex flex-col gap-6' data-anno='role:4'>
+        {PERMISSION_GROUPS.map((group) => (
+          <section key={group.key}>
+            <h3 className='mb-2 flex items-baseline gap-2 text-sm font-bold'>
+              {group.label}
+              {group.note && <span className='text-xs font-medium text-fg-muted'>{group.note}</span>}
+            </h3>
+            <TableCard>
+              <thead>
+                <tr>
+                  <th className='w-[46%]'>하는 일</th>
+                  {group.roles.map((role) => (
+                    <th key={role} className='whitespace-nowrap text-center'>
+                      {ROLE_LABEL[role]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {PERMISSIONS.filter((p) => p.group === group.key).map((p) => (
+                  <tr key={p.key}>
+                    <td className='font-semibold'>{p.label}</td>
+                    {group.roles.map((role) => (
+                      <td key={role} className='text-center'>
+                        <ScopeCell scope={scopeOf(role, p.key)} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </TableCard>
+          </section>
+        ))}
+      </div>
     </Modal>
   );
 }
 
-/** 권한 칸. 범위(전체·맡은 스터디)는 칸이 아니라 표 아래 한 줄이 말한다. */
+/**
+ * 네비게이터 칸 — 맡은 스터디 이름.
+ *
+ * **여기서 바꾸지 않는다.** 누가 어느 스터디를 맡는지는 그 스터디의 크루 명단에서 정한다 —
+ * 스터디를 보면서 정할 일을 사람 목록에서 하면 어느 스터디 이야기인지 알 수 없다.
+ */
+function NavigatorCell({ studyIds }: { studyIds: string[] }) {
+  if (studyIds.length === 0) return <span className='text-fg-muted'>—</span>;
+  const [first, ...rest] = studyIds;
+  return (
+    <span className='inline-flex items-center gap-1.5' title={studyIds.map((id) => studyTitleById[id] ?? id).join(', ')}>
+      <span className='max-w-[18ch] truncate text-fg'>{studyTitleById[first!] ?? first}</span>
+      {rest.length > 0 && <span className='tnum text-fg-muted'>+{rest.length}</span>}
+    </span>
+  );
+}
+
+/** 권한 칸. 범위는 표 제목 옆 한마디가 말한다. */
 function ScopeCell({ scope }: { scope: Scope }) {
   if (scope === 'none') return <Minus size={15} className='inline text-fg-placeholder' aria-label='없음' />;
   return <Check size={15} className='inline text-success-700' aria-label='허용' />;
 }
 
 export function UsersTable() {
+  // TODO(api): PATCH /api/users/{id}/role. 지금은 화면 상태로만 바뀐다.
   const [rows, setRows] = useState<ConsoleUser[]>(consoleUsers);
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [page, setPage] = useState(1);
 
-  // TODO(api): 로그인한 계정 id 로 교체. 자기 역할을 스스로 못 바꾸게 하는 데 쓴다.
-  const actorId = rows.find((r) => r.role === 'captain')?.id ?? '';
+  // TODO(api): 로그인한 계정 id 로 교체. 자기 권한을 스스로 못 내리게 하는 데 쓴다.
+  const actorId = rows.find((r) => r.account === 'captain')?.id ?? '';
+  const captainCount = rows.filter((r) => r.account === 'captain').length;
 
-  const captainCount = rows.filter((r) => r.role === 'captain').length;
+  function setAccount(id: string, account: AccountRole) {
+    setRows((list) => list.map((m) => (m.id === id ? { ...m, account } : m)));
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((m) => {
-      if (roleFilter !== 'all' && m.role !== roleFilter) return false;
+      if (roleFilter === 'navigator' ? m.navigatorOf.length === 0 : roleFilter !== 'all' && m.account !== roleFilter)
+        return false;
       if (q && !`${m.name} ${m.email}`.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -270,9 +306,6 @@ export function UsersTable() {
   const current = Math.min(page, pageCount);
   const pageRows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
-  function setRole(id: string, role: RoleKey) {
-    setRows((list) => list.map((m) => (m.id === id ? { ...m, role } : m)));
-  }
 
   return (
     <div>
@@ -335,42 +368,38 @@ export function UsersTable() {
           <thead>
             <tr>
               <th className='w-[18%] whitespace-nowrap'>이름</th>
-              <th className='w-[38%]'>이메일</th>
-              <th className='w-[14%] whitespace-nowrap'>역할</th>
-              <th className='whitespace-nowrap'>참여 스터디</th>
+              <th className='w-[32%]'>이메일</th>
+              <th className='w-[12%] whitespace-nowrap'>권한</th>
+              <th className='whitespace-nowrap'>네비게이터</th>
               <th className='whitespace-nowrap'>가입일</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((m) => {
-              const blocked = assignBlockReason({
-                isSelf: m.id === actorId,
-                targetRole: m.role,
-                captainCount,
-              });
-              return (
-                <tr key={m.id}>
-                  <td className='whitespace-nowrap font-semibold'>
-                    {m.name}
-                    {m.status === 'dormant' && <span className='ml-1.5 text-xs text-fg-muted'>휴면</span>}
-                  </td>
-                  <td className='max-w-0 truncate text-fg-secondary'>{m.email}</td>
-                  <td>
-                    <RoleBadgeSelect role={m.role} blocked={blocked} onChange={(next) => setRole(m.id, next)} />
-                  </td>
-                  <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
-                    {m.studyIds.length === 0 ? (
-                      <span className='text-fg-muted'>없음</span>
-                    ) : (
-                      <span title={m.studyIds.map((id) => studyTitleById[id] ?? id).join(', ')}>
-                        {m.studyIds.length}개
-                      </span>
-                    )}
-                  </td>
-                  <td className='tnum whitespace-nowrap text-xs text-fg-muted'>{m.joinedAt}</td>
-                </tr>
-              );
-            })}
+            {pageRows.map((m) => (
+              <tr key={m.id}>
+                <td className='whitespace-nowrap font-semibold'>
+                  {m.name}
+                  {m.status === 'dormant' && <span className='ml-1.5 text-xs text-fg-muted'>휴면</span>}
+                </td>
+                <td className='max-w-0 truncate text-fg-secondary'>{m.email}</td>
+                <td>
+                  <RoleBadgeSelect
+                    role={m.account}
+                    blocked={assignBlockReason({
+                      isSelf: m.id === actorId,
+                      targetRole: m.account,
+                      captainCount,
+                    })}
+                    onChange={(next) => setAccount(m.id, next)}
+                  />
+                </td>
+                {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
+                <td className='whitespace-nowrap text-xs text-fg-secondary'>
+                  <NavigatorCell studyIds={m.navigatorOf} />
+                </td>
+                <td className='tnum whitespace-nowrap text-xs text-fg-muted'>{m.joinedAt}</td>
+              </tr>
+            ))}
             {pageRows.length === 0 && (
               <tr>
                 <td colSpan={5} className='text-center text-fg-muted'>
