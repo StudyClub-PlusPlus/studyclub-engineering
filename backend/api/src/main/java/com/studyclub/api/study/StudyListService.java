@@ -16,12 +16,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudyListService {
     private final StudyRepository studyRepository;
     private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyRecruitmentRepository studyRecruitmentRepository;
 
     public StudyListService(
             StudyRepository studyRepository,
-            StudyParticipantRepository studyParticipantRepository) {
+            StudyParticipantRepository studyParticipantRepository,
+            StudyRecruitmentRepository studyRecruitmentRepository) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
+        this.studyRecruitmentRepository = studyRecruitmentRepository;
     }
 
     public StudyListResponse list(
@@ -56,9 +59,21 @@ public class StudyListService {
                                         (a, b) -> a.getId() > b.getId() ? a : b));
 
         List<Long> studyIds = latestStudies.values().stream().map(Study::getId).toList();
+
         Map<Long, Long> counts =
                 studyParticipantRepository.countByStudyIds(studyIds).stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+
+        // studyId → 가장 최근(id 가 큰) 모집 회차의 마감 시각
+        Map<Long, Instant> deadlines =
+                studyRecruitmentRepository.findByStudyIdIn(studyIds).stream()
+                        .sorted(Comparator.comparing(StudyRecruitment::getId).reversed())
+                        .collect(
+                                Collectors.toMap(
+                                        StudyRecruitment::getStudyId,
+                                        StudyRecruitment::getRecruitDeadlineAt,
+                                        (a, b) -> a));
+
         List<StudyListResponse.StudySummary> filtered =
                 latestStudies.values().stream()
                         .filter(
@@ -72,21 +87,23 @@ public class StudyListService {
                                 study -> {
                                     if (status != null && study.getStatus() != status) return false;
                                     if (recruitDeadlineBefore != null) {
+                                        Instant deadline = deadlines.get(study.getId());
                                         return study.getStatus() == StudyStatus.OPEN
-                                                && study.getRecruitDeadline() != null
-                                                && study.getRecruitDeadline()
-                                                        .isBefore(recruitDeadlineBefore);
+                                                && deadline != null
+                                                && deadline.isBefore(recruitDeadlineBefore);
                                     }
                                     return true;
                                 })
                         .sorted(
                                 Comparator.comparing(
-                                        Study::getRecruitDeadline,
+                                        study -> deadlines.get(study.getId()),
                                         Comparator.nullsLast(Comparator.reverseOrder())))
                         .map(
                                 study -> {
                                     long count = counts.getOrDefault(study.getId(), 0L);
-                                    return StudyListResponse.StudySummary.from(study, count);
+                                    Instant deadline = deadlines.get(study.getId());
+                                    return StudyListResponse.StudySummary.from(
+                                            study, count, deadline);
                                 })
                         .toList();
 

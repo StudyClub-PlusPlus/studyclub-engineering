@@ -42,8 +42,8 @@ public class StudyProposal extends BaseEntity {
     @Column(nullable = false, columnDefinition = "text")
     private String content;
 
-    @Column(name = "PROPOSED_DATE", nullable = false)
-    private Instant proposedDate;
+    @Column(name = "PROPOSED_AT", nullable = false)
+    private Instant proposedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

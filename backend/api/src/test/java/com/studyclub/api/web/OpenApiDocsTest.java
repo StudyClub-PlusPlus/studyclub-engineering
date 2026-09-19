@@ -34,12 +34,12 @@ class OpenApiDocsTest {
                 .contains("/auth/social-login")
                 .contains("/api/studies")
                 .contains("/api/me/studies")
-                .contains("/api/me/study-cohorts/{cohortId}")
+                .contains("/api/me/studies/{studyId}")
                 // 전역 커스터마이저가 붙인 공통 에러 스키마
                 .contains("errorCode");
 
         assertGetOperationRequiresBearerAuthentication("/api/me/studies");
-        assertGetOperationRequiresBearerAuthentication("/api/me/study-cohorts/{cohortId}");
+        assertGetOperationRequiresBearerAuthentication("/api/me/studies/{studyId}");
     }
 
     @Test

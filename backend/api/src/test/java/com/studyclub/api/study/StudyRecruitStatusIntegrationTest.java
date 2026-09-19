@@ -12,6 +12,8 @@ import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
+import com.studyclub.domain.study.StudyRecruitment;
+import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
@@ -35,6 +37,7 @@ class StudyRecruitStatusIntegrationTest {
     @Autowired StudyProgramRepository studyProgramRepo;
     @Autowired StudyRepository studyRepo;
     @Autowired StudyParticipantRepository participantRepo;
+    @Autowired StudyRecruitmentRepository recruitmentRepo;
 
     private final AtomicLong accountIdSeq = new AtomicLong(1);
     private final AtomicLong slugSeq = new AtomicLong(1);
@@ -42,6 +45,7 @@ class StudyRecruitStatusIntegrationTest {
     @BeforeEach
     void setUp() {
         participantRepo.deleteAll();
+        recruitmentRepo.deleteAll();
         studyRepo.deleteAll();
         studyProgramRepo.deleteAll();
         accountIdSeq.set(1);
@@ -51,7 +55,7 @@ class StudyRecruitStatusIntegrationTest {
     @Test
     @DisplayName("성공 — 목록: 마감 전 + 정원 미달이면 recruitStatus=RECRUITING")
     void listRecruiting() {
-        openCohort(30, Instant.now().plus(7, ChronoUnit.DAYS));
+        openStudy(30, Instant.now().plus(7, ChronoUnit.DAYS));
 
         assertThat(firstListItem()).containsEntry("recruitStatus", "RECRUITING");
     }
@@ -59,7 +63,7 @@ class StudyRecruitStatusIntegrationTest {
     @Test
     @DisplayName("성공 — 목록: 마감 시각이 지나면 recruitStatus=RECRUIT_CLOSED")
     void listRecruitClosedByDeadline() {
-        openCohort(30, Instant.now().minus(1, ChronoUnit.DAYS));
+        openStudy(30, Instant.now().minus(1, ChronoUnit.DAYS));
 
         assertThat(firstListItem()).containsEntry("recruitStatus", "RECRUIT_CLOSED");
     }
@@ -67,9 +71,9 @@ class StudyRecruitStatusIntegrationTest {
     @Test
     @DisplayName("성공 — 목록: 정원이 차면 마감 전이어도 recruitStatus=RECRUIT_CLOSED")
     void listRecruitClosedByCapacity() {
-        var cohort = openCohort(2, Instant.now().plus(7, ChronoUnit.DAYS));
-        enroll(cohort, ParticipantStatus.ACTIVE);
-        enroll(cohort, ParticipantStatus.PAUSED);
+        var study = openStudy(2, Instant.now().plus(7, ChronoUnit.DAYS));
+        enroll(study, ParticipantStatus.ACTIVE);
+        enroll(study, ParticipantStatus.PAUSED);
 
         var body = firstListItem();
         assertThat(body).containsEntry("recruitStatus", "RECRUIT_CLOSED");
@@ -79,10 +83,10 @@ class StudyRecruitStatusIntegrationTest {
     @Test
     @DisplayName("성공 — 목록: 정원 null(무제한)이면 참여자가 아무리 많아도 RECRUITING")
     void listNullCapacityNeverFills() {
-        var cohort = openCohort(null, Instant.now().plus(7, ChronoUnit.DAYS));
-        enroll(cohort, ParticipantStatus.ACTIVE);
-        enroll(cohort, ParticipantStatus.ACTIVE);
-        enroll(cohort, ParticipantStatus.PAUSED);
+        var study = openStudy(null, Instant.now().plus(7, ChronoUnit.DAYS));
+        enroll(study, ParticipantStatus.ACTIVE);
+        enroll(study, ParticipantStatus.ACTIVE);
+        enroll(study, ParticipantStatus.PAUSED);
 
         var body = firstListItem();
         assertThat(body).containsEntry("recruitStatus", "RECRUITING");
@@ -92,9 +96,9 @@ class StudyRecruitStatusIntegrationTest {
     @Test
     @DisplayName("성공 — 목록: 탈퇴 참여자는 정원을 차지하지 않는다")
     void listWithdrawnDoesNotTakeSeat() {
-        var cohort = openCohort(2, Instant.now().plus(7, ChronoUnit.DAYS));
-        enroll(cohort, ParticipantStatus.ACTIVE);
-        enroll(cohort, ParticipantStatus.WITHDRAWN);
+        var study = openStudy(2, Instant.now().plus(7, ChronoUnit.DAYS));
+        enroll(study, ParticipantStatus.ACTIVE);
+        enroll(study, ParticipantStatus.WITHDRAWN);
 
         var body = firstListItem();
         assertThat(body).containsEntry("currentApplicants", 1);
@@ -104,7 +108,7 @@ class StudyRecruitStatusIntegrationTest {
     @Test
     @DisplayName("성공 — 목록: STATUS 가 OPEN 이 아니면 recruitStatus 는 null")
     void listNoRecruitStatusWhenNotOpen() {
-        cohort(StudyStatus.DRAFT, 30, Instant.now().plus(7, ChronoUnit.DAYS));
+        createStudy(StudyStatus.DRAFT, 30, Instant.now().plus(7, ChronoUnit.DAYS));
 
         assertThat(firstListItem()).containsEntry("recruitStatus", null);
     }
@@ -112,59 +116,68 @@ class StudyRecruitStatusIntegrationTest {
     @Test
     @DisplayName("성공 — 상세: 정원이 차면 recruitStatus=RECRUIT_CLOSED")
     void detailRecruitClosedByCapacity() {
-        var cohort = openCohort(1, Instant.now().plus(7, ChronoUnit.DAYS));
-        enroll(cohort, ParticipantStatus.ACTIVE);
+        var study = openStudy(1, Instant.now().plus(7, ChronoUnit.DAYS));
+        enroll(study, ParticipantStatus.ACTIVE);
 
-        assertThat(detailBody(cohort.getId())).containsEntry("recruitStatus", "RECRUIT_CLOSED");
+        assertThat(detailBody(study.getId())).containsEntry("recruitStatus", "RECRUIT_CLOSED");
     }
 
     @Test
     @DisplayName("성공 — 상세: 마감 전 + 정원 미달이면 recruitStatus=RECRUITING")
     void detailRecruiting() {
-        var cohort = openCohort(30, Instant.now().plus(7, ChronoUnit.DAYS));
+        var study = openStudy(30, Instant.now().plus(7, ChronoUnit.DAYS));
 
-        assertThat(detailBody(cohort.getId())).containsEntry("recruitStatus", "RECRUITING");
+        assertThat(detailBody(study.getId())).containsEntry("recruitStatus", "RECRUITING");
     }
 
     @Test
     @DisplayName("성공 — 상세: STATUS 가 CLOSED 면 recruitStatus 는 null")
     void detailNoRecruitStatusWhenClosed() {
-        var cohort = cohort(StudyStatus.CLOSED, 30, Instant.now().plus(7, ChronoUnit.DAYS));
+        var study = createStudy(StudyStatus.CLOSED, 30, Instant.now().plus(7, ChronoUnit.DAYS));
 
-        assertThat(detailBody(cohort.getId())).containsEntry("recruitStatus", null);
+        assertThat(detailBody(study.getId())).containsEntry("recruitStatus", null);
     }
 
     // ── fixtures ──────────────────────────────────────────────────────────
 
-    private Study openCohort(Integer capacity, Instant recruitDeadline) {
-        return cohort(StudyStatus.OPEN, capacity, recruitDeadline);
+    private Study openStudy(Integer capacity, Instant recruitDeadline) {
+        return createStudy(StudyStatus.OPEN, capacity, recruitDeadline);
     }
 
-    private Study cohort(StudyStatus status, Integer capacity, Instant recruitDeadline) {
+    private Study createStudy(StudyStatus status, Integer capacity, Instant recruitDeadline) {
         var program = studyProgramRepo.save(StudyProgram.builder().title("모집 상태 스터디").build());
-        return studyRepo.save(
-                Study.builder()
-                        .programId(program.getId())
-                        .slug("recruit-status-" + slugSeq.getAndIncrement())
-                        .title("모집 상태 스터디")
-                        .oneLineSummary("모집 상태 계산 검증용")
-                        .category(StudyCategory.BACKEND)
-                        .studyKind(StudyKind.STUDY)
-                        .description("설명")
-                        .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                        .status(status)
-                        .capacity(capacity)
-                        .recruitDeadline(recruitDeadline)
-                        .startDate(Instant.now().plus(30, ChronoUnit.DAYS))
+        var study =
+                studyRepo.save(
+                        Study.builder()
+                                .programId(program.getId())
+                                .slug("recruit-status-" + slugSeq.getAndIncrement())
+                                .title("모집 상태 스터디")
+                                .oneLineSummary("모집 상태 계산 검증용")
+                                .category(StudyCategory.BACKEND)
+                                .studyKind(StudyKind.STUDY)
+                                .description("설명")
+                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                                .status(status)
+                                .capacity(capacity)
+                                .startAt(Instant.now().plus(30, ChronoUnit.DAYS))
+                                .build());
+        recruitmentRepo.save(
+                StudyRecruitment.builder()
+                        .studyId(study.getId())
+                        .title("모집")
+                        .description("모집 설명")
+                        .startAt(Instant.now().minus(7, ChronoUnit.DAYS))
+                        .recruitDeadlineAt(recruitDeadline)
                         .build());
+        return study;
     }
 
-    private void enroll(Study cohort, ParticipantStatus status) {
+    private void enroll(Study study, ParticipantStatus status) {
         participantRepo.save(
                 StudyParticipant.builder()
                         .accountId(accountIdSeq.getAndIncrement())
                         .studyGroupId(1L)
-                        .studyId(cohort.getId())
+                        .studyId(study.getId())
                         .status(status)
                         .participantRole(ParticipantRole.MEMBER)
                         .joinedAt(Instant.now())
