@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, type MouseEvent } from 'react';
-import { createPortal } from 'react-dom';
+
 
 import type { Locale, Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { getApplication, getDiscord } from '@core/lib/me';
 import { recruitLabel, recruitState } from '@core/lib/recruit';
+import { createPortal } from 'react-dom';
 
 import { ApplyCompleteDialog } from './ApplyCompleteDialog';
 import { ApplyDialog } from './ApplyDialog';

@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
+
 
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { Button, Modal } from '@studyclub/ui';
+import { X } from 'lucide-react';
 
 /**
  * 스터디 신청 완료 팝업.

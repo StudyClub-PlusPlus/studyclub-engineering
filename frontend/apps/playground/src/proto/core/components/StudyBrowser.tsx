@@ -4,15 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
+import { getBookmarks } from '@core/lib/me';
 import { recruitState } from '@core/lib/recruit';
 import { toISODate } from '@studyclub/mock';
 import { Check, Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
-import { getBookmarks } from '@core/lib/me';
-import { ScreenSpecRegistrar } from '@/proto/annotate';
-import { APPLY_COMPLETE_SPEC, APPLY_SPEC, DISCORD_GATE_SPEC } from '@/proto/specs/study-apply';
-import { STUDY_BROWSER_SPEC } from '@/proto/specs/study-browser';
 
 type RecruitmentFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
 type SortOption = 'default' | 'deadline' | 'bookmarks' | 'participants' | 'ended' | 'completion';
