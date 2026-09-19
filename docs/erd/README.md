@@ -390,4 +390,4 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 기수마다 달라지는 모든 속성(`SLUG`·`TITLE`·`ONE_LINE_SUMMARY`·`DESCRIPTION`·`CATEGORY`·
 `STUDY_KIND`·`THUMBNAIL_URL`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·
 `CAPACITY`·`START_AT`/`END_AT`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`)은
-전부 STUDY 로 이동했다. 근거는 `study_schema_design_decisions.md` 참고.
+전부 STUDY 로 이동했다.
