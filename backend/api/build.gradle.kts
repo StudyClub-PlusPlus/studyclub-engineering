@@ -7,6 +7,7 @@ plugins {
 dependencies {
     implementation(project(":domain"))
     implementation(project(":common"))
+    implementation(project(":notification"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -18,6 +19,8 @@ dependencies {
     // OpenAPI 스펙 생성 + Scalar UI (Swagger UI 대신)
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.1.0")
     runtimeOnly("com.mysql:mysql-connector-j")
+
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     // 스키마 변경은 마이그레이션 파일로만. ddl-auto 는 validate — 엔티티가 DB 를 바꾸지 않는다.
     // Boot 4 는 Flyway 자동설정을 spring-boot-flyway 모듈로 분리했다. flyway-core 만 넣으면
@@ -42,6 +45,8 @@ dependencies {
     // TestRestTemplate 도 @DataJpaTest 도 딸려오지 않으므로 쓰는 것만 명시한다.
     testImplementation("org.springframework.boot:spring-boot-resttestclient")
     testImplementation("org.springframework.boot:spring-boot-data-jpa-test")
+    testImplementation("org.springframework.boot:spring-boot-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-micrometer-metrics-test")
     testRuntimeOnly("org.springframework.boot:spring-boot-restclient")
     // 통합/슬라이스 테스트용 인메모리 DB (MySQL 호환 모드). 운영 경로에는 들어가지 않는다.
     testRuntimeOnly("com.h2database:h2")

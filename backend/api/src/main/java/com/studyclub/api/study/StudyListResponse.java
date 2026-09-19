@@ -1,10 +1,9 @@
 package com.studyclub.api.study;
 
 import com.studyclub.domain.study.DeliveryFormat;
+import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
-import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyCohort;
-import com.studyclub.domain.study.StudyCohortStatus;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.util.List;
 
@@ -12,43 +11,26 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
 
     public record StudySummary(
             Long studyId,
-            String slug,
-            String title,
-            StudyCategory category,
-            String thumbnailUrl,
-            String studyKind,
-            CohortSummary cohort) {
-        public static StudySummary from(Study study, StudyCohort cohort, long applicantCount) {
-            return new StudySummary(
-                    study.getId(),
-                    study.getSlug(),
-                    study.getTitle(),
-                    study.getCategory(),
-                    study.getThumbnailUrl(),
-                    study.getStudyKind().name(),
-                    CohortSummary.from(cohort, applicantCount));
-        }
-    }
-
-    public record CohortSummary(
-            Long cohortId,
-            StudyCohortStatus status,
+            StudyStatus status,
+            RecruitStatus recruitStatus,
             DeliveryFormat deliveryFormat,
             Integer capacity,
             long currentApplicants,
-            Instant recruitDeadline,
-            Instant startDate,
+            Instant recruitDeadlineAt,
+            Instant startAt,
             boolean closingSoon) {
-        public static CohortSummary from(StudyCohort cohort, long applicantCount) {
-            return new CohortSummary(
-                    cohort.getId(),
-                    cohort.getStatus(),
-                    cohort.getStudyDeliveryFormat(),
-                    cohort.getCapacity(),
+        public static StudySummary from(
+                Study study, long applicantCount, Instant recruitDeadlineAt) {
+            return new StudySummary(
+                    study.getId(),
+                    study.getStatus(),
+                    study.recruitStatus(applicantCount, recruitDeadlineAt),
+                    study.getStudyDeliveryFormat(),
+                    study.getCapacity(),
                     applicantCount,
-                    cohort.getRecruitDeadline(),
-                    cohort.getStartDate(),
-                    cohort.isClosingSoon());
+                    recruitDeadlineAt,
+                    study.getStartAt(),
+                    study.isClosingSoon(recruitDeadlineAt));
         }
     }
 }

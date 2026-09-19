@@ -3,8 +3,11 @@ package com.studyclub.api.auth.security;
 import com.studyclub.api.auth.JwtService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.web.server.ConditionalOnManagementPort;
+import org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -32,6 +35,17 @@ public class SecurityConfig {
         this.objectMapper = objectMapper;
     }
 
+    /** 관리 포트 전용 체인. 조건 없이 경로 매처만 쓰면 포트가 합쳐질 때 앱 포트에서도 actuator 가 열린다. */
+    @Bean
+    @Order(0)
+    @ConditionalOnManagementPort(ManagementPortType.DIFFERENT)
+    SecurityFilterChain managementChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/actuator/**")
+                .authorizeHttpRequests(a -> a.anyRequest().permitAll())
+                .csrf(AbstractHttpConfigurer::disable);
+        return http.build();
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
@@ -43,7 +57,6 @@ public class SecurityConfig {
                                                 "/",
                                                 "/error",
                                                 "/api/health",
-                                                "/actuator/**",
                                                 "/api/studies",
                                                 "/api/studies/*",
                                                 // API 문서 — 스펙(springdoc) + Scalar UI.

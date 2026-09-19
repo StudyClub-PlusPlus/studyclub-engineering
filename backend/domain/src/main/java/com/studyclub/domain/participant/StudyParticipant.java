@@ -23,16 +23,14 @@ import lombok.NoArgsConstructor;
         name = "STUDY_PARTICIPANT",
         uniqueConstraints =
                 @UniqueConstraint(
-                        name = "uk_study_participant_account_class",
-                        columnNames = {"ACCOUNT_ID", "STUDY_CLASS_ID"}),
+                        name = "uk_study_participant_account_group",
+                        columnNames = {"ACCOUNT_ID", "STUDY_GROUP_ID"}),
         indexes = {
             @Index(name = "idx_study_participant_account", columnList = "ACCOUNT_ID"),
             @Index(
-                    name = "idx_study_participant_class_status",
-                    columnList = "STUDY_CLASS_ID, STATUS"),
-            @Index(
-                    name = "idx_study_participant_cohort_status",
-                    columnList = "STUDY_COHORT_ID, STATUS")
+                    name = "idx_study_participant_group_status",
+                    columnList = "STUDY_GROUP_ID, STATUS"),
+            @Index(name = "idx_study_participant_study_status", columnList = "STUDY_ID, STATUS")
         })
 @Getter
 @Builder
@@ -47,11 +45,11 @@ public class StudyParticipant extends BaseEntity {
     @Column(name = "ACCOUNT_ID", nullable = false)
     private Long accountId;
 
-    @Column(name = "STUDY_CLASS_ID", nullable = false)
-    private Long studyClassId;
+    @Column(name = "STUDY_GROUP_ID", nullable = false)
+    private Long studyGroupId;
 
-    @Column(name = "STUDY_COHORT_ID", nullable = false)
-    private Long studyCohortId;
+    @Column(name = "STUDY_ID", nullable = false)
+    private Long studyId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

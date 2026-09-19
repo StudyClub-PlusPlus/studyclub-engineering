@@ -3,7 +3,7 @@ package com.studyclub.api.web;
 import com.studyclub.api.study.StudyListResponse;
 import com.studyclub.api.study.StudyListService;
 import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyCohortStatus;
+import com.studyclub.domain.study.StudyStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
@@ -30,7 +30,7 @@ public class StudyController {
     @GetMapping
     public StudyListResponse list(
             @RequestParam(required = false) StudyCategory category,
-            @RequestParam(required = false) StudyCohortStatus status,
+            @RequestParam(required = false) StudyStatus status,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Instant recruitDeadlineBefore,
             @RequestParam(defaultValue = "0") int offset,

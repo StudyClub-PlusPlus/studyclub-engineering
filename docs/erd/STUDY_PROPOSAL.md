@@ -9,7 +9,7 @@
 | ID | BIGINT PK | N | |
 | PROPOSER_ACCOUNT_ID | BIGINT FK → ACCOUNT | N | 제안자 |
 | CONTENT | TEXT | N | 제안 내용 |
-| PROPOSED_DATE | DATE | N | 희망 시작 시기 |
+| PROPOSED_AT | DATETIME | N | 희망 시작 시기 |
 | STATUS | VARCHAR(20) | N | 아래 |
 
 ## 관계

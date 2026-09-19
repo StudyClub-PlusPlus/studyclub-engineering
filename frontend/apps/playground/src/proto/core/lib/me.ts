@@ -15,6 +15,7 @@ import type { MemberRegion } from '@studyclub/mock';
 const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
 const REGION_KEY = 'sc_region';
+const ZONE_KEY = 'sc_timezone';
 const NAME_KEY = 'sc_display_name';
 const DISCORD_KEY = 'sc_discord';
 const DISCORD_NICK_KEY = 'sc_discord_nickname';
@@ -97,6 +98,22 @@ export function cancelApplication(studyId: string) {
 export function getRegion(): MemberRegion {
   const v = readJSON<string>(REGION_KEY, 'KR');
   return v === 'NA' || v === 'ETC' ? v : 'KR';
+}
+
+/**
+ * 나의 시간대. 회차 시각을 이 기준으로 적고, 반도 이 값으로 갈린다.
+ *
+ * 지역(`MemberRegion`)은 여기서 파생한다 — 두 값을 따로 저장하면 한쪽만 고쳐져 어긋난다.
+ */
+export function getTimeZone(): string {
+  const saved = readJSON<string>(ZONE_KEY, '');
+  if (saved) return saved;
+  return getRegion() === 'KR' ? 'Asia/Seoul' : 'America/Vancouver';
+}
+
+export function setTimeZone(zone: string) {
+  writeJSON(ZONE_KEY, zone);
+  setRegion(zone === 'Asia/Seoul' ? 'KR' : 'NA');
 }
 
 export function setRegion(region: MemberRegion) {

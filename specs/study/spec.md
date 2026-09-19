@@ -14,6 +14,9 @@
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
+> 목록·상세 응답의 `cohort.recruitStatus`(모집중/모집마감 파생 판정)와 `cohort.currentApplicants`
+> 의 집계 기준은 [study-recruit-status/spec.md](../study-recruit-status/spec.md) 가 정본이다.
+
 ---
 
 ## 스터디 목록 조회
@@ -70,6 +73,7 @@
     "id": 1,
     "deliveryFormat": "ONLINE",
     "status": "OPEN",
+    "recruitStatus": "RECRUITING",
     "curriculum": "[{\"week\":1,\"topic\":\"배열\"}]",
     "capacity": 20,
     "recruitDeadline": "2026-10-01T00:00:00Z",
@@ -94,7 +98,8 @@
 | cohort | Object | Y | 최신 코호트. 코호트가 없으면 null | — |
 | cohort.id | Long | N | 코호트 ID | STUDY_COHORT.ID |
 | cohort.deliveryFormat | String | N | 진행 방식 (enum) | STUDY_COHORT.STUDY_DELIVERY_FORMAT |
-| cohort.status | String | N | 코호트 상태 (enum) | STUDY_COHORT.STATUS |
+| cohort.status | String | N | 코호트 라이프사이클 (enum) — 사람이 정한다 | STUDY_COHORT.STATUS |
+| cohort.recruitStatus | String | Y | 모집 상태 (enum) `RECRUITING` / `RECRUIT_CLOSED`. `status != OPEN` 이면 null | 계산: 마감 시각 경과 또는 정원 도달 → [상세](../study-recruit-status/spec.md#판정-규칙) |
 | cohort.curriculum | String | Y | 커리큘럼 JSON | STUDY_COHORT.CURRICULUM |
 | cohort.capacity | Integer | Y | 정원 | STUDY_COHORT.CAPACITY |
 | cohort.recruitDeadline | String | Y | 모집 마감 (ISO 8601 UTC). null = 상시 모집 | STUDY_COHORT.RECRUIT_DEADLINE (변경: NULL 허용) |

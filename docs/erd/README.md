@@ -14,11 +14,11 @@ mermaid 는 PR diff 에 그대로 뜨고 GitHub 이 렌더한다.
 
 | 항목        | 규칙                                                                                            | 예                             |
 | --------- | --------------------------------------------------------------------------------------------- | ----------------------------- |
-| 테이블·컬럼 이름 | **대문자 · snake_case · 단수**                                                                     | `STUDY_CLASS`, `ACCOUNT_ID`    |
+| 테이블·컬럼 이름 | **대문자 · snake_case · 단수**                                                                     | `STUDY_GROUP`, `ACCOUNT_ID`    |
 | PK        | `ID BIGINT AUTO_INCREMENT`                                                                    |                               |
-| FK        | `<참조테이블>_ID`                                                                                  | `STUDY_ID`, `ACCOUNT_ID`         |
+| FK        | `<참조테이블>_ID`                                                                                  | `PROGRAM_ID`, `ACCOUNT_ID`         |
 | 시각        | `DATETIME` (UTC 저장, 표시 시 사용자 `TIME_ZONE` 적용)                                                  |                               |
-| enum      | `VARCHAR(20)` 에 대문자 코드 문자열. 숫자 코드 대신 문자열 — 로그·쿼리에서 읽힌다                                        | `PENDING`, `APPROVED`         |
+| enum      | `VARCHAR(20)` 에 대문자 코드 문자열. 숫자 코드 대신 문자열 — 로그·쿼리에서 읽힌다                                        | `ACTIVE`, `CLOSED`            |
 | 삭제        | 물리 삭제 대신 상태(`CLOSED`/`WITHDRAWN`) 또는 `REMOVED_AT`                                             |                               |
 
 > **컬럼 대문자는 이 문서의 표기법이다 — 물리 컬럼은 소문자다.**
@@ -30,9 +30,9 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 ## 설계 원칙 (요구사항 정의에서)
 
-1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY_COHORT.RECRUIT_DEADLINE`·`START_DATE` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
+1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT`·`STUDY.START_AT` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
 2. **삭제 대신 종료.** 스터디는 `CLOSED`, 참가자는 `WITHDRAWN`.
-3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 승인 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `ACCOUNT_ID`·`STUDY_ID` 를 따라간다.
+3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `ACCOUNT_ID`·`STUDY_ID` 를 따라간다.
 4. 비회원 공개 범위(목록·상세)와 로그인 사용자 범위(신청·출석·마이페이지)를 분리한다.
 
 ## 한눈에 보기 (관계도)
@@ -41,20 +41,24 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 ```mermaid
 erDiagram
+  ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
+  ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
+  NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
   ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
   ACCOUNT ||--o{ ACCOUNT_CONSENT : "동의"
-  STUDY ||--o{ STUDY_COHORT : "기수"
-  STUDY_COHORT ||--o{ STUDY_CLASS : "반"
-  STUDY_CLASS ||--o{ STUDY_MEETING : "회차"
+  STUDY_PROGRAM ||--o{ STUDY : "기수"
+  STUDY ||--o{ STUDY_GROUP : "분반"
+  STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
   ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
-  STUDY_COHORT ||--o{ STUDY_APPLICATION : "신청"
+  STUDY ||--o{ STUDY_RECRUITMENT : "모집"
+  STUDY_RECRUITMENT ||--o{ STUDY_APPLICATION : "신청서"
   ACCOUNT ||--o{ STUDY_APPLICATION : ""
-  STUDY_CLASS ||--o{ STUDY_PARTICIPANT : "명부"
+  STUDY_GROUP ||--o{ STUDY_PARTICIPANT : "명부"
   ACCOUNT ||--o{ STUDY_PARTICIPANT : ""
-  STUDY_COHORT ||--o{ STUDY_REVIEW : "후기"
+  STUDY ||--o{ STUDY_REVIEW : "후기"
   ACCOUNT ||--o{ STUDY_REVIEW : ""
-  STUDY ||--o{ STUDY_BOOKMARK : "북마크"
+  STUDY_PROGRAM ||--o{ STUDY_BOOKMARK : "북마크"
   ACCOUNT ||--o{ STUDY_BOOKMARK : ""
   ACCOUNT ||--o{ STUDY_PROPOSAL : "제안"
   STUDY_PROPOSAL ||--o{ STUDY_PROPOSAL_INTEREST : "관심 표시"
@@ -68,6 +72,37 @@ erDiagram
 
 ```mermaid
 erDiagram
+  ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
+  ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
+  NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  NOTIFICATION {
+    bigint ID PK
+    varchar EVENT_TYPE
+    varchar RECIPIENT_TYPE
+    varchar RECIPIENT_VALUE
+    bigint RECIPIENT_USER_ID
+    bigint TEMPLATE_ID
+    json PAYLOAD
+    varchar STATUS
+    datetime LOCKED_AT
+    varchar ERROR_TYPE
+    datetime SCHEDULED_AT
+    datetime SENT_AT
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  NOTIFICATION_TEMPLATE {
+    bigint ID PK
+    varchar EVENT_TYPE
+    varchar CHANNEL
+    varchar SUBJECT
+    text BODY
+    datetime UPDATED_AT
+    bigint UPDATED_BY_ADMIN_ID
+    datetime CREATED_AT
+  }
+
   ACCOUNT {
     bigint   ID                PK
     varchar  EMAIL             UK "대표 이메일"
@@ -103,65 +138,74 @@ erDiagram
     varchar  CONSENT_VERSION      "동의한 약관 버전"
   }
 
-  STUDY {
+  STUDY_PROGRAM {
     bigint   ID                PK
-    varchar  SLUG              UK "URL 식별자"
     varchar  TITLE
+  }
+
+  STUDY {
+    bigint   ID                 PK
+    bigint   PROGRAM_ID            "→ STUDY_PROGRAM 참조"
+    varchar  TITLE
+    varchar  SLUG              UK "URL 식별자"
     varchar  ONE_LINE_SUMMARY     "한 줄 소개"
     text     DESCRIPTION
     varchar  CATEGORY             "AI, BACKEND, PAPER …"
     varchar  STUDY_KIND           "STUDY / CLUB"
     varchar  THUMBNAIL_URL
     boolean  IS_HIDDEN            "목록 노출 제어"
-  }
-
-  STUDY_COHORT {
-    bigint   ID                 PK
-    bigint   STUDY_ID           FK
     varchar  STUDY_DELIVERY_FORMAT "ONLINE / OFFLINE / HYBRID"
     varchar  STATUS               "DRAFT / OPEN / CLOSED"
     json     APPLICATION_FORM     "이 기수 신청 폼 질문 정의"
     json     CURRICULUM           "주차별 커리큘럼"
     int      CAPACITY             "이 기수 전체 정원"
-    datetime RECRUIT_DEADLINE     "이 기수 모집 마감"
-    date     START_DATE
-    date     END_DATE              "고정 종료 없는 클럽은 NULL"
+    datetime START_AT
+    datetime END_AT               "고정 종료 없는 클럽은 NULL"
     varchar  DISCORD_CHANNEL_URL
     varchar  DRIVE_URL
     varchar  SCHEDULE              "운영 일정 요약"
-    datetime PUBLISH_DATE         "공개 예정 일시"
+    datetime PUBLISH_AT           "공개 예정 일시"
   }
 
-  STUDY_CLASS {
+  STUDY_GROUP {
     bigint   ID                 PK
-    bigint   STUDY_COHORT_ID    FK
+    bigint   STUDY_ID              "→ STUDY 참조"
     varchar  NAME                  "목요일반"
-    time     STARTS_AT             "반 정규 시작 시각"
+    time     START_AT              "분반 정규 시작 시각"
     varchar  TIMEZONE              "IANA"
-    int      CAPACITY              "반 정원"
+    int      CAPACITY              "분반 정원"
   }
 
   STUDY_MEETING {
     bigint   ID                 PK
-    bigint   STUDY_CLASS_ID     FK
+    bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조"
     datetime SCHEDULED_AT          "예정 시각 (UTC)"
-    datetime STARTS_AT             "실제 시작"
-    datetime ENDS_AT               "실제 종료"
+    datetime START_AT              "실제 시작"
+    datetime END_AT                "실제 종료"
+  }
+
+  STUDY_RECRUITMENT {
+    bigint   ID                   PK
+    bigint   STUDY_ID                "→ STUDY 참조"
+    varchar  TITLE
+    text     DESCRIPTION
+    datetime START_AT
+    datetime RECRUIT_DEADLINE_AT     "계획된 모집 마감"
+    int      RECRUITMENT_CAPACITY    "NULL 이면 제한 없음"
   }
 
   STUDY_APPLICATION {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
-    bigint   STUDY_COHORT_ID    FK
-    varchar  STATUS                "PENDING / APPROVED / REJECTED / WITHDRAWN / WAITLISTED"
+    bigint   RECRUITMENT_ID        "STUDY_RECRUITMENT 참조"
     json     FORM_ANSWER
   }
 
   STUDY_PARTICIPANT {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
-    bigint   STUDY_CLASS_ID     FK
-    bigint   STUDY_COHORT_ID    FK "비정규화"
+    bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조"
+    bigint   STUDY_ID              "→ STUDY 참조 (비정규화)"
     varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED"
     varchar  PARTICIPANT_ROLE      "MEMBER / LEADER / CO_LEADER"
     datetime JOINED_AT             "편입 시각"
@@ -170,8 +214,8 @@ erDiagram
   STUDY_ATTENDANCE {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
-    bigint   STUDY_COHORT_ID    FK "비정규화 — 기수별 집계용"
-    bigint   STUDY_CLASS_ID     FK "비정규화 — 반별 집계용"
+    bigint   STUDY_ID              "→ STUDY 참조 (비정규화 — 기수별 집계용)"
+    bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조 (비정규화 — 분반별 집계용)"
     bigint   STUDY_MEETING_ID   FK
     varchar  STATUS                "PRESENT / LATE / EXCUSED / ABSENT"
   }
@@ -179,22 +223,22 @@ erDiagram
   STUDY_REVIEW {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
-    bigint   STUDY_COHORT_ID    FK "정본 — 어느 기수 후기인지"
-    bigint   STUDY_ID           FK "비정규화 — 상세 페이지 전체 후기 조회용"
+    bigint   STUDY_ID              "→ STUDY 참조 (정본 — 어느 기수 후기인지)"
+    bigint   STUDY_PROGRAM_ID      "→ STUDY_PROGRAM 참조 (비정규화 — 상세 페이지 전체 후기 조회용)"
     text     CONTENT
   }
 
   STUDY_BOOKMARK {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
-    bigint   STUDY_ID           FK
+    bigint   STUDY_ID           FK "→ STUDY"
   }
 
   STUDY_PROPOSAL {
     bigint   ID                 PK
     bigint   PROPOSER_ACCOUNT_ID   FK
     text     CONTENT
-    date     PROPOSED_DATE         "희망 시작 시기"
+    datetime PROPOSED_AT          "희망 시작 시기"
     varchar  STATUS                "OPEN / ACCEPTED / REJECTED / CLOSED"
   }
 
@@ -214,23 +258,24 @@ erDiagram
   ACCOUNT ||--o{ STUDY_PROPOSAL          : "제안"
   ACCOUNT ||--o{ STUDY_PROPOSAL_INTEREST : "관심 표시"
 
-  STUDY                 ||--o{ STUDY_COHORT           : "기수"
-  STUDY                 ||--o{ STUDY_BOOKMARK          : "북마크"
-  STUDY                 ||--o{ STUDY_REVIEW            : "전체 후기 조회 (비정규화)"
+  STUDY_PROGRAM         ||--o{ STUDY               : "기수"
+  STUDY_PROGRAM         ||--o{ STUDY_BOOKMARK       : "북마크"
+  STUDY_PROGRAM         ||--o{ STUDY_REVIEW         : "전체 후기 조회 (비정규화)"
 
-  STUDY_COHORT          ||--o{ STUDY_CLASS             : "반"
-  STUDY_COHORT          ||--o{ STUDY_APPLICATION       : "신청서"
-  STUDY_COHORT          ||--o{ STUDY_REVIEW            : "후기"
+  STUDY                 ||--o{ STUDY_GROUP           : "분반"
+  STUDY                 ||--o{ STUDY_RECRUITMENT     : "모집"
+  STUDY_RECRUITMENT     ||--o{ STUDY_APPLICATION     : "신청서"
+  STUDY                 ||--o{ STUDY_REVIEW          : "후기"
 
-  STUDY_CLASS           ||--o{ STUDY_MEETING           : "회차"
-  STUDY_CLASS           ||--o{ STUDY_PARTICIPANT       : "소속"
-  STUDY_CLASS           ||--o{ STUDY_ATTENDANCE              : "반별 집계"
+  STUDY_GROUP           ||--o{ STUDY_MEETING         : "회차"
+  STUDY_GROUP           ||--o{ STUDY_PARTICIPANT     : "소속"
+  STUDY_GROUP           ||--o{ STUDY_ATTENDANCE      : "분반별 집계"
 
-  STUDY_MEETING         ||--o{ STUDY_ATTENDANCE              : "회차 출석"
+  STUDY_MEETING         ||--o{ STUDY_ATTENDANCE      : "회차 출석"
   STUDY_PROPOSAL        ||--o{ STUDY_PROPOSAL_INTEREST : "나도"
 
-  STUDY_APPLICATION     ||..o| STUDY_PARTICIPANT         : "승인 시 생성"
-  STUDY_PROPOSAL        ||..o| STUDY                     : "채택 시 승격"
+  STUDY_APPLICATION     ||..o| STUDY_PARTICIPANT       : "승인 시 생성"
+  STUDY_PROPOSAL        ||..o| STUDY_PROGRAM           : "채택 시 승격"
 ```
 
 ## 테이블
@@ -242,17 +287,21 @@ erDiagram
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
 | 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
-| 스터디 | [STUDY](./STUDY.md)                                     | 스터디/클럽 정체성             | `STUDY_KIND`                         |
-| 스터디 | [STUDY_COHORT](./STUDY_COHORT.md)                       | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`    |
-| 스터디 | [STUDY_CLASS](./STUDY_CLASS.md)                         | 반 (요일·시간대별)            | —                                    |
-| 스터디 | [STUDY_MEETING](./STUDY_MEETING.md)                     | 회차 (반의 N번째 모임)         | —                                    |
+| 스터디 | [STUDY_PROGRAM](./STUDY_PROGRAM.md)                     | 스터디/클럽 정체성             | —                                    |
+| 스터디 | [STUDY](./STUDY.md)                                     | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`, `STUDY_KIND` |
+| 스터디 | [STUDY_GROUP](./STUDY_GROUP.md)                         | 분반 (요일·시간대별)           | —                                    |
+| 스터디 | [STUDY_MEETING](./STUDY_MEETING.md)                     | 회차 (분반의 N번째 모임)        | —                                    |
+| 모집  | [STUDY_RECRUITMENT](./STUDY_RECRUITMENT.md)             | 모집 회차 — 기수의 모집 기간/조건   | —                                    |
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
-| 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 반에 소속된 사람         | `STATUS`, `PARTICIPANT_ROLE`         |
+| 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 분반에 소속된 사람        | `STATUS`, `PARTICIPANT_ROLE`         |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
 | 반응  | [STUDY_BOOKMARK](./STUDY_BOOKMARK.md)                   | 북마크                    | —                                    |
 | 제안  | [STUDY_PROPOSAL](./STUDY_PROPOSAL.md)                   | "이런 스터디 열어주세요"         | `STATUS`                             |
 | 제안  | [STUDY_PROPOSAL_INTEREST](./STUDY_PROPOSAL_INTEREST.md) | 제안에 "나도"               | —                                    |
+
+| 알림 | [NOTIFICATION](./NOTIFICATION.md) | 알림 발송 이력 | `STATUS`, `ERROR_TYPE` |
+| 알림 | [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md) | 이벤트별 메일 문구 | — |
 
 
 ## ERD 추가·변경 절차
@@ -332,14 +381,13 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 
 ## 미확정 (08/28 안건)
 
-- **네이밍** — 대문자·snake·단수. drawio 에 소문자 테이블(`STUDY_CLASS`·`STUDY_PROPOSAL*`)이 섞여 있다.
-- **신청 폼** — `STUDY_COHORT.APPLICATION_FORM` + `STUDY_APPLICATION.FORM_ANSWER` JSON 으로 갈지, `STUDY_QUESTION`+`STUDY_APPLICATION_ANSWER` 테이블로 갈지(표 설계).
-- **STUDY.CATEGORY** — 코드값(drawio)인지 `STUDY_CATEGORY` 테이블 FK(표 설계)인지.
+- **신청 폼** — `STUDY.APPLICATION_FORM` + `STUDY_APPLICATION.FORM_ANSWER` JSON 으로 갈지, `STUDY_QUESTION`+`STUDY_APPLICATION_ANSWER` 테이블로 갈지(표 설계).
+- **STUDY_PROGRAM.CATEGORY** — 코드값(drawio)인지 `STUDY_CATEGORY` 테이블 FK(표 설계)인지.
 - **회차 알림 자동화·디스코드 명령어 출석** — 스키마 영향 없음. 봇 쪽 결정.
 
-**해결됨 — 기수(코호트)**: 클럽 N기는 새 STUDY 행이 아니라 별도 테이블
-[STUDY_COHORT](./STUDY_COHORT.md) 로 낸다. `STUDY.STUDY_KIND`
-(`STUDY`/`CLUB`)이 STUDY 에 남고,
-기수마다 달라지는 `STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·`CAPACITY`·`RECRUIT_DEADLINE`·
-`START_DATE`/`END_DATE`·`DISCORD_CHANNEL_URL`·`DRIVE_URL` 은 전부 STUDY_COHORT 로
-이동했다. 근거는 `study_schema_design_decisions.md` 참고.
+**해결됨 — 기수(기수)**: 클럽 N기는 새 STUDY_PROGRAM 행이 아니라 별도 테이블
+[STUDY](./STUDY.md) 로 낸다. `STUDY_PROGRAM` 은 `ID`·`TITLE` 만 갖는 identity anchor 이고,
+기수마다 달라지는 모든 속성(`SLUG`·`TITLE`·`ONE_LINE_SUMMARY`·`DESCRIPTION`·`CATEGORY`·
+`STUDY_KIND`·`THUMBNAIL_URL`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·
+`CAPACITY`·`START_AT`/`END_AT`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`)은
+전부 STUDY 로 이동했다.

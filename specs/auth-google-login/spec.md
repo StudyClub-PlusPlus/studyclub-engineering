@@ -69,6 +69,6 @@ Spring POST /auth/social-login { code, provider, platform }
 
 | 날짜 | 변경 | 근거 |
 |---|---|---|
-| 2026-07-18 | 최초 작성 — 구글 로그인 + 최소 User(Spring 중심) + 로컬 MySQL/compose | fleet 이슈 `studyclub-plusplus-google-login` |
+| 2026-07-18 | 최초 작성 — 구글 로그인 + 최소 User(Spring 중심) + 로컬 MySQL/compose | 내부 이슈 `studyclub-plusplus-google-login` |
 | 2026-09-04 | User → Account 전면 개명, ddl-auto=validate + Flyway 전환, SystemRole(MEMBER\|ADMIN), googleSub 제거, AccountIdentity 분리, 신규 프로필 컬럼 반영 | ddlsetup 브랜치 작업 |
 | 2026-09-16 | 백오피스 게이트 allowlist → `SYSTEM_ROLE=ADMIN`, 백오피스는 자동가입 없음(`SIGNUP_REQUIRED`), 프론트 `user.role` 2차 차단 | env allowlist 는 역할 부여 기능으로 이어질 수 없어 SYSTEM_ROLE 로 전환 |

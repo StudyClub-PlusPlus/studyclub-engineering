@@ -41,16 +41,28 @@ export const ROLE_LABEL: Record<RoleKey, string> = {
   crew: '크루',
 };
 
+/**
+ * 계정 권한 — 사람에게 붙는 값. **네비게이터는 여기 없다** — 스터디마다 서는 역할이라
+ * 계정이 아니라 참여 건에 붙는다.
+ */
+export type AccountRole = Extract<RoleKey, 'captain' | 'crew'>;
+
+/** 계정에 줄 수 있는 것은 둘뿐. 화면 어디서나 캡틴 → 크루 순. */
+export const ACCOUNT_ROLES: { key: AccountRole; label: string }[] = [
+  { key: 'captain', label: '캡틴' },
+  { key: 'crew', label: '크루' },
+];
+
 /** 권한 키 — `대상.행위`. 화면 하나가 아니라 **행위** 단위로 쪼갠다. */
 export type PermissionKey =
-  | 'study.create'
+  | 'crew.view'
   | 'study.edit'
+  | 'attendance.edit'
+  | 'notice.study'
+  | 'study.create'
   | 'study.publish'
   | 'crew.manage'
-  | 'notice.study'
-  | 'attendance.edit'
-  | 'event.create'
-  | 'event.edit'
+  | 'event.manage'
   | 'notice.site'
   | 'user.view'
   | 'user.role';
@@ -61,23 +73,46 @@ export type PermissionKey =
  * **출석 체크는 여기 없다.** 보이스룸에서 `/StudyStart` 로 그날 출석을 여는 일은 누구나 할 수 있어
  * 역할로 가르지 않는다. 권한이 필요한 것은 **이미 기록된 출석을 고치는 일**(attendance.edit)이다.
  */
-export const PERMISSIONS: { key: PermissionKey; label: string; desc: string }[] = [
-  // **대상으로 묶는다** — 스터디에 하는 일, 행사에 하는 일, 사이트와 사람에 하는 일 순.
-  // 역할 경계(네비게이터가 어디까지 되는가)로 묶지 않는다. 경계는 체크 열이 이미 말한다.
-  // 묶음 안에서는 개설 → 고치기 → 굴리기 → 알리기 순으로 둔다.
-  { key: 'study.create', label: '스터디 개설', desc: '새 스터디를 만든다' },
-  { key: 'study.edit', label: '스터디 정보 수정', desc: '제목·일정·모집 정보를 고친다' },
+/**
+ * 권한이 붙는 행위만 담는다.
+ *
+ * **두 묶음으로 가른다.** 「스터디 단위」는 담당 스터디 안에서만 도는 일이라 네비게이터가 나눠 갖고,
+ * 「사이트 전체」는 어느 한 스터디의 일이 아니라서 캡틴만 갖는다. 표를 하나로 합치면 같은 체크가
+ * 어디까지 미치는지 알 수 없다 — 「스터디 정보 수정 ✓」이 모든 스터디를 고친다는 뜻으로 읽힌다.
+ *
+ * **출석 체크는 여기 없다.** 보이스룸에서 `/StudyStart` 로 그날 출석을 여는 일은 누구나 할 수 있어
+ * 역할로 가르지 않는다. 권한이 필요한 것은 **이미 기록된 출석을 고치는 일**(attendance.edit)이다.
+ */
+export type PermissionGroup = 'study' | 'site';
+
+export const PERMISSION_GROUPS: { key: PermissionGroup; label: string; roles: RoleKey[]; note: string }[] = [
+  {
+    key: 'study',
+    label: '스터디 단위 권한',
+    roles: ['captain', 'navigator', 'crew'],
+    note: '네비게이터 권한은 담당 스터디에 국한',
+  },
+  { key: 'site', label: '사이트 전체 권한', roles: ['captain', 'crew'], note: '' },
+];
+
+export const PERMISSIONS: { key: PermissionKey; group: PermissionGroup; label: string; desc: string }[] = [
+  // 스터디 단위 — 보는 것 → 고치는 것 → 굴리는 것 → 알리는 것 순.
+  { key: 'crew.view', group: 'study', label: '스터디 크루 명단 열람', desc: '그 스터디에 누가 있는지 본다' },
+  { key: 'study.edit', group: 'study', label: '스터디 정보 수정', desc: '제목·일정·모집 정보를 고친다' },
+  { key: 'attendance.edit', group: 'study', label: '출석 현황 수정', desc: '기록된 출석을 고친다' },
+  { key: 'notice.study', group: 'study', label: '스터디 공지 발행', desc: '스터디 크루에게 공지를 보낸다 (디스코드 채널)' },
+
+  // 사이트 전체 — 만드는 것 → 세우는 것 → 사람 다루는 것 순.
+  { key: 'study.create', group: 'site', label: '스터디 등록', desc: '새 스터디를 만든다' },
   // 공개는 정보 수정에 딸려 있지 않다. 딸려 있으면 담당 스터디를 굴리는 네비게이터가
   // 사이트에 스터디를 세울 수 있게 된다 — 세우는 일은 캡틴의 판단이다.
-  { key: 'study.publish', label: '스터디 공개', desc: '등록한 스터디를 사용자 사이트에 세우거나 내린다' },
-  { key: 'crew.manage', label: '반 편성', desc: '반을 만들고 크루를 반에 넣거나 옮긴다' },
-  { key: 'attendance.edit', label: '출석 현황 수정', desc: '기록된 출석을 고친다' },
-  { key: 'notice.study', label: '스터디 공지 발행', desc: '스터디 크루에게 공지를 보낸다 (디스코드 채널)' },
-  { key: 'event.create', label: '행사 개설', desc: '새 행사를 만든다' },
-  { key: 'event.edit', label: '행사 정보 수정', desc: '날짜·장소·모집 정보를 고친다' },
-  { key: 'notice.site', label: '사이트 공지 발행', desc: '사용자 사이트 공지사항에 글을 올린다' },
-  { key: 'user.view', label: '전체 유저 명단 열람', desc: '가입한 유저 전체 목록과 참여 이력을 본다' },
-  { key: 'user.role', label: '역할 부여', desc: '다른 유저의 역할·권한을 바꾼다' },
+  { key: 'study.publish', group: 'site', label: '스터디 공개', desc: '등록한 스터디를 사용자 사이트에 세우거나 내린다' },
+  // 반 편성은 스터디에 하는 일이지만 캡틴만 갖는다 — 누가 어느 반에 들어가는지는 한 사람이 정한다.
+  { key: 'crew.manage', group: 'site', label: '반 편성', desc: '반을 만들고 크루를 반에 넣거나 옮긴다' },
+  { key: 'event.manage', group: 'site', label: '행사 등록 및 수정', desc: '행사를 만들고 날짜·장소를 고친다' },
+  { key: 'notice.site', group: 'site', label: '사이트 공지 발행', desc: '사용자 사이트 공지사항에 글을 올린다' },
+  { key: 'user.view', group: 'site', label: '전체 유저 명단 열람', desc: '가입한 유저 전체 목록과 참여 이력을 본다' },
+  { key: 'user.role', group: 'site', label: '유저 역할 수정', desc: '다른 유저의 역할을 바꾼다' },
 ];
 
 /**
@@ -101,26 +136,25 @@ export const SCOPE_LABEL: Record<Scope, string> = {
  */
 export const ROLE_PERMISSIONS: Record<RoleKey, Partial<Record<PermissionKey, Scope>>> = {
   captain: {
-    'study.create': 'all',
+    'crew.view': 'all',
     'study.edit': 'all',
+    'attendance.edit': 'all',
+    'notice.study': 'all',
+    'study.create': 'all',
     'study.publish': 'all',
     'crew.manage': 'all',
-    'attendance.edit': 'all',
-    'event.create': 'all',
-    'event.edit': 'all',
-    'notice.study': 'all',
+    'event.manage': 'all',
     'notice.site': 'all',
     'user.view': 'all',
     'user.role': 'all',
   },
-  // 네비게이터는 **맡은 스터디를 굴리는 데 필요한 것**만, 그 스터디 안에서만 갖는다.
-  // 반 편성은 없다 — 누가 어느 반에 들어가는지는 캡틴이 정한다.
-  // 전체 유저 명단도 없다 — 맡은 스터디의 크루 명단은 그 스터디를 굴리면 따라오는 것이라
-  // 권한으로 가르지 않는다. 권한이 필요한 것은 **가입자 전체**를 보는 일이다.
+  // 네비게이터는 **담당 스터디를 굴리는 데 필요한 것**만, 그 스터디 안에서만 갖는다.
+  // 사이트 전체 권한은 하나도 없다 — 반 편성도, 공개도, 명단 열람도 캡틴의 일이다.
   navigator: {
+    'crew.view': 'own',
     'study.edit': 'own',
-    'notice.study': 'own',
     'attendance.edit': 'own',
+    'notice.study': 'own',
   },
   crew: {},
 };
@@ -141,7 +175,7 @@ export const PERMISSION_LABEL: Record<PermissionKey, string> = Object.fromEntrie
  * 「캡틴인가」는 묻지 않는다. 이 화면에 들어온 것 자체가 캡틴이라는 뜻이고,
  * 아닌 사람은 라우트에서 막힌다.
  */
-export function assignBlockReason(args: { isSelf: boolean; targetRole: RoleKey; captainCount: number }): string | null {
+export function assignBlockReason(args: { isSelf: boolean; targetRole: AccountRole; captainCount: number }): string | null {
   const { isSelf, targetRole, captainCount } = args;
   // 자기 역할을 스스로 내리면 되돌릴 사람이 자기 자신뿐인 상황이 생긴다.
   if (isSelf) return '자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.';
