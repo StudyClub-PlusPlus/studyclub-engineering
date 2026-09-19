@@ -113,6 +113,8 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 
 | 화면 | 주소 | 명세 출처 |
 |---|---|---|
+| 회원가입 · 온보딩 | `/proto/core/ko/onboarding?scenario=default` | Story PRD · `specs/user-onboarding/spec.md` |
+| Google 로그인 미리보기 | `/proto/core/ko/login?scenario=new` | 온보딩 진입·복귀 흐름 |
 | 스터디 등록 모달 | `/proto/console/studies?new=1` | Story PRD 「운영자로서, 스터디를 등록할 수 있다.」 |
 | 내 스터디 · 참여 모음 | `/proto/core/ko/my/joined` | 코드 (`lib/joined.ts`, `lib/attendance-book.ts`) |
 | 내 스터디 · 출석 | `/proto/core/ko/my/studies` | 코드 (`lib/attendance.ts`) |
@@ -120,6 +122,20 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 
 **기획 문서는 앱과 자동으로 연결되지 않습니다.** 문서가 정본이고, `spec.ts` 는 그것을 옮겨 적은 사본입니다.
 문서를 고치면 `spec.ts` 도 같이 고쳐야 합니다.
+
+### 온보딩 시안 검토
+
+- 한국어: `/proto/core/ko/onboarding?scenario=default`
+- 영어: `/proto/core/en/onboarding?scenario=default`
+- 상단의 **화면 상태**로 필수값 누락, 닉네임 형식·중복, 서버 오류, 세션 만료, 제출 중을 확인합니다. **초기화**는 작성 중인 값을 지우고 해당 상태로 돌아갑니다.
+- **로그인**에서는 신규·미완료·기존 회원의 진입 동선과 인증 취소·실패를 확인합니다. 실제 Google 인증이나 API 호출은 하지 않습니다.
+- 언어를 전환해도 작성 중인 값과 동의가 유지됩니다. 시간대는 기기 값을 기본 선택하고, 국가·도시 또는 IANA 이름으로 검색합니다.
+- 약관 2종은 기존 한국어 원문을 스크롤 박스로 재사용합니다. 영어 화면에도 한국어 약관 제공 안내가 있으며, 영문 법률 문안은 별도 준비가 필요합니다.
+- 작성 중 값은 탭의 `sessionStorage`에 저장하고 완료·초기화 때 지웁니다. 완료한 예시 프로필은 기존 미리보기 세션의 `localStorage`에만 저장됩니다. 서버 저장·메일 발송은 없습니다.
+- `next`로 전달된 playground 내부 주소가 있으면 가입 후 해당 화면으로 돌아갑니다. 외부 주소는 허용하지 않습니다.
+
+정책 출처: [온보딩 PRD](https://app.notion.com/p/benkang/1f683feabad3839b996781bd773ec465), `specs/user-onboarding/spec.md`.
+실제 서비스 연동 시 로그인 응답의 `user.name`·최상위 `suggestedNickname`과 명세의 응답 구조 차이, `core-front` 로그인 중계의 `suggestedNickname` 전달을 확인해야 합니다. 시안은 playground 안에서만 동작합니다.
 
 ### 새 화면에 번호를 달려면
 

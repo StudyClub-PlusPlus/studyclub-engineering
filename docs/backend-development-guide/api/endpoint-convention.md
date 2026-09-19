@@ -130,4 +130,6 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
 | POST | `/auth/refresh` | access token 재발급 | X |
 | GET | `/auth/me` | 내 정보 조회 | O |
+| GET | `/api/nicknames/availability?value={nickname}` | 실제 DB의 닉네임 사용 가능 여부 (`{available}`), 온보딩 미완료도 허용 | O |
+| POST | `/accounts/onboarding` | 만 14세 이상 확인 후 가입 완료, 요청·오류 상세는 [온보딩 spec](../../../specs/user-onboarding/spec.md) 참조 | O |
 | GET | `/users` | 유저 목록 (백오피스) | O |

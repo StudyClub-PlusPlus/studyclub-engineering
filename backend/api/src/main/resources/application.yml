@@ -37,7 +37,7 @@ google:
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
 
-# JWT 서명키 (운영은 fleet/secret/ → env 주입, 레포 평문 금지)
+# JWT 서명키 (운영은 내부 시크릿 SSOT → env 주입, 레포 평문 금지)
 jwt:
   secret: ${JWT_SECRET:local-dev-jwt-secret-change-me}
 
@@ -56,11 +56,47 @@ scalar:
   # UI 가 Scalar 로 사용량을 보내는 기본값을 끈다
   telemetry: false
 
+# 세 env 가 다 비어 있으면 동작이 지금과 완전히 동일하다 (콘솔 텍스트, 파일 안 씀).
+#
+# 로컬·compose 는 콘솔 텍스트를 그대로 쓴다. k8s 는 LOG_JSON_CONSOLE=ecs 만 주입한다 —
+# 파일이 아니라 stdout 으로 내야 kubelet 이 /var/log/containers 로 떨어뜨리고 노드당 Alloy
+# DaemonSet 하나가 전부 읽는다. 파일로 쓰면 파드마다 emptyDir + 수집 사이드카가 붙어서
+# 수집기가 파드 수만큼 늘어난다. (인프라 레포 ADR 0027)
+#
+# ⚠️ 기본 콘솔 패턴에는 MDC 가 안 들어간다. 텍스트 stdout 을 수집하면 requestId 가 로그에
+#    아예 없어서 요청 추적이 성립하지 않는다 — k8s 에서 이 env 를 켜는 것이 필수인 이유다.
+logging:
+  structured:
+    format:
+      console: ${LOG_JSON_CONSOLE:}
+      file: ${LOG_JSON_FORMAT:}
+  file:
+    name: ${LOG_FILE:}
+  logback:
+    rollingpolicy:
+      # ⚠️ max-history 는 파일 개수가 아니라 일수다. 디스크 상한 역할을 하는 것은 total-size-cap 뿐이다.
+      max-file-size: 10MB
+      max-history: 1
+      total-size-cap: 30MB
+      # .gz 를 뺀다 — 압축되면 Alloy 의 감시 대상 밖이 된다.
+      file-name-pattern: ${LOG_FILE}.%d{yyyy-MM-dd}.%i
+
+# actuator 는 앱 포트가 아니라 관리 포트에서만 산다 (compose 가 호스트에 publish 하지 않는다).
+# 외부 헬스체크는 /api/health 를 쓴다.
 management:
+  server:
+    port: ${MANAGEMENT_PORT:9090}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: never
+  metrics:
+    distribution:
+      # 없으면 _bucket 시계열이 안 생겨 histogram_quantile() 이 빈 결과를 준다.
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,500ms,1s,2s

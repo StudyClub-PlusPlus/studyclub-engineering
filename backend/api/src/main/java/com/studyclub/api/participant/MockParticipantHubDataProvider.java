@@ -7,7 +7,6 @@ import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyS
 import com.studyclub.api.participant.ParticipantHubResponses.StudyApplicationSummary;
 import com.studyclub.api.participant.ParticipantHubResponses.StudyMeetingAttendance;
 import com.studyclub.api.participant.ParticipantHubResponses.UpcomingStudyMeeting;
-import com.studyclub.domain.application.ApplicationStatus;
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.StudyCohortStatus;
@@ -20,12 +19,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class MockParticipantHubDataProvider implements ParticipantHubDataProvider {
 
-    private static final String MOCK_ACCOUNT_EMAIL = "member@example.com";
+    // 테스트가 같은 id 로 계정을 심어야 해서 package-private
+    static final Long MOCK_ACCOUNT_ID = 1000L;
     private static final Set<Long> KNOWN_COHORT_IDS = Set.of(291L, 301L, 302L, 303L, 304L);
 
     @Override
-    public ParticipantHubOverviewResponse getParticipantHubOverview(String accountEmail) {
-        if (!MOCK_ACCOUNT_EMAIL.equalsIgnoreCase(accountEmail)) {
+    public ParticipantHubOverviewResponse getParticipantHubOverview(Long accountId) {
+        if (!MOCK_ACCOUNT_ID.equals(accountId)) {
             return new ParticipantHubOverviewResponse(
                     List.of(), List.of(), List.of(), List.of(), List.of());
         }
@@ -62,14 +62,12 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                                 303L,
                                 103L,
                                 "오픈소스 첫 기여",
-                                ApplicationStatus.PENDING,
                                 Instant.parse("2026-09-05T04:30:00Z")),
                         new StudyApplicationSummary(
                                 502L,
                                 304L,
                                 104L,
                                 "데이터 시각화",
-                                ApplicationStatus.REJECTED,
                                 Instant.parse("2026-08-20T02:00:00Z"))),
                 List.of(
                         new UpcomingStudyMeeting(
@@ -91,8 +89,8 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
 
     @Override
     public Optional<ParticipatingStudyCohortDetailResponse> findParticipatingStudyCohortDetail(
-            String accountEmail, Long cohortId) {
-        if (!MOCK_ACCOUNT_EMAIL.equalsIgnoreCase(accountEmail)) {
+            Long accountId, Long cohortId) {
+        if (!MOCK_ACCOUNT_ID.equals(accountId)) {
             return Optional.empty();
         }
         if (cohortId == 301L) {

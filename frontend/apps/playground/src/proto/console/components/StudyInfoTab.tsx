@@ -28,6 +28,8 @@ export function StudyInfoTab({ study }: { study: Study }) {
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // 스터디가 바뀔 때만 폼을 되돌린다. 회차를 의존성에 넣으면 저장 직후 방금 만든 회차가
+  // 규칙으로 되읽혀 폼이 제자리에서 튄다.
   useEffect(() => {
     setForm(studyToForm(study));
     setErrors({});

@@ -1,6 +1,6 @@
 package com.studyclub.api.study;
 
-import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyCohort;
@@ -19,18 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class StudyListService {
-
     private final StudyRepository studyRepository;
     private final StudyCohortRepository studyCohortRepository;
-    private final StudyApplicationRepository studyApplicationRepository;
+    private final StudyParticipantRepository studyParticipantRepository;
 
     public StudyListService(
             StudyRepository studyRepository,
             StudyCohortRepository studyCohortRepository,
-            StudyApplicationRepository studyApplicationRepository) {
+            StudyParticipantRepository studyParticipantRepository) {
         this.studyRepository = studyRepository;
         this.studyCohortRepository = studyCohortRepository;
-        this.studyApplicationRepository = studyApplicationRepository;
+        this.studyParticipantRepository = studyParticipantRepository;
     }
 
     public StudyListResponse list(
@@ -56,14 +55,9 @@ public class StudyListService {
                         .collect(Collectors.toMap(StudyCohort::getStudyId, Function.identity()));
 
         List<Long> cohortIds = latestCohorts.values().stream().map(StudyCohort::getId).toList();
-        Map<Long, Long> applicantCounts = Map.of();
-        if (!cohortIds.isEmpty()) {
-            applicantCounts =
-                    studyApplicationRepository.countByCohortIds(cohortIds).stream()
-                            .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
-        }
-
-        final Map<Long, Long> counts = applicantCounts;
+        Map<Long, Long> counts =
+                studyParticipantRepository.countByCohortIds(cohortIds).stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
         List<StudyListResponse.StudySummary> filtered =
                 allStudies.stream()
                         .filter(s -> latestCohorts.containsKey(s.getId()))

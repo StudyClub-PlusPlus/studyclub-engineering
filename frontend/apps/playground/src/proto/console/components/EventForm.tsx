@@ -4,7 +4,6 @@ import { tx, EVENT_TYPE_LABEL } from '@console/lib/l10n';
 import type { StudyclubEvent } from '@studyclub/mock';
 import { Input, Select } from '@studyclub/ui';
 
-
 /**
  * 행사 입력 폼 — **등록 팝업과 편집 팝업이 나눠 쓴다.** 스터디 폼(`StudyForm`)과 같은 규칙이다.
  *

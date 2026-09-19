@@ -6,6 +6,7 @@ import com.studyclub.common.error.ErrorResponse;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +30,8 @@ public class GlobalExceptionHandler {
     /** 우리가 의도적으로 던진 예외 — 상태·코드는 ErrorCode 가 안다. */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
+        // 코드만 남긴다. 메시지 본문에는 사용자 입력(이메일 등)이 섞일 수 있다.
+        log.warn("Business error: code={}", e.errorCode().name());
         return respond(e.errorCode(), e.getMessage());
     }
 
@@ -62,7 +65,7 @@ public class GlobalExceptionHandler {
         if (e instanceof org.springframework.web.ErrorResponse known) {
             return respond(ErrorCode.fromStatus(known.getStatusCode().value()), null);
         }
-        log.error("Unhandled exception", e);
+        log.error("Unhandled exception: method={}, uri={}", MDC.get("method"), MDC.get("uri"), e);
         return respond(ErrorCode.INTERNAL_ERROR, null);
     }
 

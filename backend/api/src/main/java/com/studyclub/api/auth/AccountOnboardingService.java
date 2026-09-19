@@ -37,10 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  *
  * <p><b>계정 조회는 항상 락을 먼저 잡는다 — 락 없는 선조회를 두지 않는다.</b> 처음엔 "이미 완료된 흔한 경로는 락 없이 먼저 끝내자"는 최적화로 {@code
- * findByEmail} 을 먼저 부르고 나서야 {@code findByEmailForUpdate} 를 불렀는데, 같은 트랜잭션(=같은 영속성 컨텍스트) 안에서는 두 번째
- * 조회가 실제로 {@code SELECT ... FOR UPDATE} 를 DB 에 보내 락은 제대로 걸어도, Hibernate 가 1차 캐시(identity map)에 이미
- * 있는 엔티티를 그대로 돌려주기 때문에 자바 객체의 필드값은 최초(락 없는) 조회 시점 그대로 남는다. 그 결과 두 트랜잭션이 동시에 미완료 상태를 읽고 한쪽이 커밋한 뒤
- * 잠금이 풀려도, 뒤늦게 깨어난 쪽이 여전히 "미완료"로 잘못 판단해 멱등이 깨진다(리뷰에서 재현됨). 그래서 락 조회 하나만 쓴다.
+ * findById} 를 먼저 부르고 나서야 {@code findByIdForUpdate} 를 불렀는데, 같은 트랜잭션(=같은 영속성 컨텍스트) 안에서는 두 번째 조회가 실제로
+ * {@code SELECT ... FOR UPDATE} 를 DB 에 보내 락은 제대로 걸어도, Hibernate 가 1차 캐시(identity map)에 이미 있는 엔티티를
+ * 그대로 돌려주기 때문에 자바 객체의 필드값은 최초(락 없는) 조회 시점 그대로 남는다. 그 결과 두 트랜잭션이 동시에 미완료 상태를 읽고 한쪽이 커밋한 뒤 잠금이 풀려도,
+ * 뒤늦게 깨어난 쪽이 여전히 "미완료"로 잘못 판단해 멱등이 깨진다(리뷰에서 재현됨). 그래서 락 조회 하나만 쓴다.
  */
 @Service
 public class AccountOnboardingService {
@@ -62,16 +62,15 @@ public class AccountOnboardingService {
     }
 
     @Transactional
-    public AccountView complete(String email, OnboardingRequest request) {
-        String normalizedEmail = email.toLowerCase();
-
+    public AccountView complete(Long accountId, OnboardingRequest request) {
         // 처음부터 잠금 조회 하나만 쓴다 — 락 없는 선조회를 두면 Hibernate 1차 캐시 때문에
         // 이 잠금 조회가 사실상 무의미해진다 (클래스 Javadoc 참고).
-        Account account = requireAccountByEmailForUpdate(normalizedEmail);
+        Account account = requireAccountByIdForUpdate(accountId);
         if (account.getOnboardingCompletedAt() != null) {
             return AccountView.from(account);
         }
 
+        // 연령 확인도 최초 완료 때만 검증한다. 동의 기록과 달리 확인값을 따로 저장하지 않는다.
         validateOrThrow(request);
 
         if (applyOnboarding(account, request)) {
@@ -98,9 +97,9 @@ public class AccountOnboardingService {
         throw new BusinessException(ErrorCode.INVALID_INPUT, message);
     }
 
-    private Account requireAccountByEmailForUpdate(String email) {
+    private Account requireAccountByIdForUpdate(Long accountId) {
         return accountRepository
-                .findByEmailForUpdate(email)
+                .findByIdForUpdate(accountId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
     }
 

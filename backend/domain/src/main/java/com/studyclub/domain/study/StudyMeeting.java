@@ -29,19 +29,19 @@ public class StudyMeeting extends BaseEntity {
     @Column(name = "SCHEDULED_AT", nullable = false)
     private Instant scheduledAt;
 
-    @Column(name = "STARTS_AT")
-    private Instant startsAt;
+    @Column(name = "START_AT")
+    private Instant startAt;
 
-    @Column(name = "ENDS_AT")
-    private Instant endsAt;
+    @Column(name = "END_AT")
+    private Instant endAt;
 
     protected StudyMeeting() {}
 
-    public StudyMeeting(Long studyClassId, Instant scheduledAt, Instant startsAt, Instant endsAt) {
+    public StudyMeeting(Long studyClassId, Instant scheduledAt, Instant startAt, Instant endAt) {
         this.studyClassId = studyClassId;
         this.scheduledAt = scheduledAt;
-        this.startsAt = startsAt;
-        this.endsAt = endsAt;
+        this.startAt = startAt;
+        this.endAt = endAt;
     }
 
     public Long getId() {
@@ -56,11 +56,11 @@ public class StudyMeeting extends BaseEntity {
         return scheduledAt;
     }
 
-    public Instant getStartsAt() {
-        return startsAt;
+    public Instant getStartAt() {
+        return startAt;
     }
 
-    public Instant getEndsAt() {
-        return endsAt;
+    public Instant getEndAt() {
+        return endAt;
     }
 }

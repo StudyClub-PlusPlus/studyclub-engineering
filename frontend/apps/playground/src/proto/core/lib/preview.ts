@@ -23,8 +23,8 @@ const PREVIEW_ID = 0;
 
 export const PREVIEW_USER: SessionUser = {
   id: PREVIEW_ID,
-  email: 'jiwon@example.com',
-  name: '지원',
+  email: 'gildongHong@example.com',
+  name: '홍길동',
   picture: null,
   role: 'MEMBER',
 };

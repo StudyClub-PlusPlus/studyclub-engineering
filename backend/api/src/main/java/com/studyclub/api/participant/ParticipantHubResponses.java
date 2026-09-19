@@ -1,6 +1,5 @@
 package com.studyclub.api.participant;
 
-import com.studyclub.domain.application.ApplicationStatus;
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.StudyCohortStatus;
@@ -29,12 +28,7 @@ public final class ParticipantHubResponses {
             String thumbnailUrl) {}
 
     public record StudyApplicationSummary(
-            Long id,
-            Long cohortId,
-            Long studyId,
-            String studyTitle,
-            ApplicationStatus status,
-            Instant appliedAt) {}
+            Long id, Long cohortId, Long studyId, String studyTitle, Instant appliedAt) {}
 
     public record UpcomingStudyMeeting(
             Long id, Long cohortId, Long studyId, String studyTitle, Instant scheduledAt) {}
