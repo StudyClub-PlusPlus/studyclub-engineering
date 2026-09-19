@@ -1,6 +1,6 @@
 package com.studyclub.domain.study;
 
-public enum StudyCohortStatus {
+public enum StudyStatus {
     DRAFT,
     OPEN,
     CLOSED

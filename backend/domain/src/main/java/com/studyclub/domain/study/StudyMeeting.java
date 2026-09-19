@@ -15,16 +15,16 @@ import java.time.Instant;
         name = "STUDY_MEETING",
         indexes =
                 @Index(
-                        name = "idx_study_meeting_class_scheduled",
-                        columnList = "STUDY_CLASS_ID, SCHEDULED_AT"))
+                        name = "idx_study_meeting_group_scheduled",
+                        columnList = "STUDY_GROUP_ID, SCHEDULED_AT"))
 public class StudyMeeting extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "STUDY_CLASS_ID", nullable = false)
-    private Long studyClassId;
+    @Column(name = "STUDY_GROUP_ID", nullable = false)
+    private Long studyGroupId;
 
     @Column(name = "SCHEDULED_AT", nullable = false)
     private Instant scheduledAt;
@@ -37,8 +37,8 @@ public class StudyMeeting extends BaseEntity {
 
     protected StudyMeeting() {}
 
-    public StudyMeeting(Long studyClassId, Instant scheduledAt, Instant startAt, Instant endAt) {
-        this.studyClassId = studyClassId;
+    public StudyMeeting(Long studyGroupId, Instant scheduledAt, Instant startAt, Instant endAt) {
+        this.studyGroupId = studyGroupId;
         this.scheduledAt = scheduledAt;
         this.startAt = startAt;
         this.endAt = endAt;
@@ -48,8 +48,8 @@ public class StudyMeeting extends BaseEntity {
         return id;
     }
 
-    public Long getStudyClassId() {
-        return studyClassId;
+    public Long getStudyGroupId() {
+        return studyGroupId;
     }
 
     public Instant getScheduledAt() {

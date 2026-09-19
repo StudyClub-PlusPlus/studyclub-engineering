@@ -9,7 +9,7 @@ import com.studyclub.api.participant.ParticipantHubResponses.StudyMeetingAttenda
 import com.studyclub.api.participant.ParticipantHubResponses.UpcomingStudyMeeting;
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.participant.ParticipantStatus;
-import com.studyclub.domain.study.StudyCohortStatus;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -115,7 +115,7 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                 301L,
                 101L,
                 "AI 논문 읽기",
-                StudyCohortStatus.OPEN,
+                StudyStatus.OPEN,
                 ParticipantStatus.ACTIVE,
                 "화요일반",
                 "Asia/Seoul",
@@ -142,7 +142,7 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                 302L,
                 102L,
                 "Spring Boot 딥다이브",
-                StudyCohortStatus.OPEN,
+                StudyStatus.OPEN,
                 ParticipantStatus.ACTIVE,
                 "토요일반",
                 "Asia/Seoul",
@@ -166,7 +166,7 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                 291L,
                 91L,
                 "개발자 글쓰기",
-                StudyCohortStatus.CLOSED,
+                StudyStatus.CLOSED,
                 ParticipantStatus.COMPLETED,
                 "수요일반",
                 "Asia/Seoul",

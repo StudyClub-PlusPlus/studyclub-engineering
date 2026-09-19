@@ -7,13 +7,13 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | |
+| STUDY_GROUP_ID | BIGINT FK → STUDY_GROUP | N | |
 | SCHEDULED_AT | DATETIME | N | 예정 시각 (UTC) |
 | START_AT | DATETIME | Y | 실제 시작 — 반장이 시작 명령 시 기록 |
 | END_AT | DATETIME | Y | 실제 종료 |
 
 ## 관계
-- N : 1 [STUDY_CLASS](./STUDY_CLASS.md)
+- N : 1 [STUDY_GROUP](./STUDY_GROUP.md)
 - 1 : N [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)
 
 ## 상태 (저장하지 않음 — 시각으로 계산)
@@ -26,7 +26,7 @@
 | `MISSED` | `START_AT IS NULL AND now() > SCHEDULED_AT + 여유` — 열리지 않은 회차 |
 
 ## 제약
-- 인덱스 `(STUDY_CLASS_ID, SCHEDULED_AT)`
+- 인덱스 `(STUDY_GROUP_ID, SCHEDULED_AT)` — `idx_study_meeting_group_scheduled`
 
 ## 미확정
 - 회차 번호(`MEETING_NO`)·제목(`TITLE`) — 표 설계에 있음. "3주차 논문 읽기" 같은 표시용.

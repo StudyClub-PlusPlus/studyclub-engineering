@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "STUDY_RECRUITMENT",
-        indexes = @Index(name = "idx_study_recruitment_cohort", columnList = "COHORT_ID"))
+        indexes = @Index(name = "idx_study_recruitment_cohort", columnList = "STUDY_ID"))
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -29,8 +29,8 @@ public class StudyRecruitment extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "COHORT_ID", nullable = false)
-    private Long cohortId;
+    @Column(name = "STUDY_ID", nullable = false)
+    private Long studyId;
 
     @Column(nullable = false, length = 255)
     private String title;

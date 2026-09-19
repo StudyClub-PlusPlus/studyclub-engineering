@@ -9,11 +9,11 @@ import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyCohort;
-import com.studyclub.domain.study.StudyCohortRepository;
-import com.studyclub.domain.study.StudyCohortStatus;
 import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -32,8 +32,8 @@ import org.springframework.http.HttpStatus;
 class StudyRecruitStatusIntegrationTest {
 
     @Autowired TestRestTemplate rest;
+    @Autowired StudyProgramRepository studyProgramRepo;
     @Autowired StudyRepository studyRepo;
-    @Autowired StudyCohortRepository cohortRepo;
     @Autowired StudyParticipantRepository participantRepo;
 
     private final AtomicLong accountIdSeq = new AtomicLong(1);
@@ -42,8 +42,8 @@ class StudyRecruitStatusIntegrationTest {
     @BeforeEach
     void setUp() {
         participantRepo.deleteAll();
-        cohortRepo.deleteAll();
         studyRepo.deleteAll();
+        studyProgramRepo.deleteAll();
         accountIdSeq.set(1);
         slugSeq.set(1);
     }
@@ -53,7 +53,7 @@ class StudyRecruitStatusIntegrationTest {
     void listRecruiting() {
         openCohort(30, Instant.now().plus(7, ChronoUnit.DAYS));
 
-        assertThat(firstListCohort()).containsEntry("recruitStatus", "RECRUITING");
+        assertThat(firstListItem()).containsEntry("recruitStatus", "RECRUITING");
     }
 
     @Test
@@ -61,7 +61,7 @@ class StudyRecruitStatusIntegrationTest {
     void listRecruitClosedByDeadline() {
         openCohort(30, Instant.now().minus(1, ChronoUnit.DAYS));
 
-        assertThat(firstListCohort()).containsEntry("recruitStatus", "RECRUIT_CLOSED");
+        assertThat(firstListItem()).containsEntry("recruitStatus", "RECRUIT_CLOSED");
     }
 
     @Test
@@ -71,7 +71,7 @@ class StudyRecruitStatusIntegrationTest {
         enroll(cohort, ParticipantStatus.ACTIVE);
         enroll(cohort, ParticipantStatus.PAUSED);
 
-        var body = firstListCohort();
+        var body = firstListItem();
         assertThat(body).containsEntry("recruitStatus", "RECRUIT_CLOSED");
         assertThat(body).containsEntry("currentApplicants", 2);
     }
@@ -84,7 +84,7 @@ class StudyRecruitStatusIntegrationTest {
         enroll(cohort, ParticipantStatus.ACTIVE);
         enroll(cohort, ParticipantStatus.PAUSED);
 
-        var body = firstListCohort();
+        var body = firstListItem();
         assertThat(body).containsEntry("recruitStatus", "RECRUITING");
         assertThat(body).containsEntry("currentApplicants", 3);
     }
@@ -96,7 +96,7 @@ class StudyRecruitStatusIntegrationTest {
         enroll(cohort, ParticipantStatus.ACTIVE);
         enroll(cohort, ParticipantStatus.WITHDRAWN);
 
-        var body = firstListCohort();
+        var body = firstListItem();
         assertThat(body).containsEntry("currentApplicants", 1);
         assertThat(body).containsEntry("recruitStatus", "RECRUITING");
     }
@@ -104,9 +104,9 @@ class StudyRecruitStatusIntegrationTest {
     @Test
     @DisplayName("성공 — 목록: STATUS 가 OPEN 이 아니면 recruitStatus 는 null")
     void listNoRecruitStatusWhenNotOpen() {
-        cohort(StudyCohortStatus.DRAFT, 30, Instant.now().plus(7, ChronoUnit.DAYS));
+        cohort(StudyStatus.DRAFT, 30, Instant.now().plus(7, ChronoUnit.DAYS));
 
-        assertThat(firstListCohort()).containsEntry("recruitStatus", null);
+        assertThat(firstListItem()).containsEntry("recruitStatus", null);
     }
 
     @Test
@@ -115,8 +115,7 @@ class StudyRecruitStatusIntegrationTest {
         var cohort = openCohort(1, Instant.now().plus(7, ChronoUnit.DAYS));
         enroll(cohort, ParticipantStatus.ACTIVE);
 
-        assertThat(detailCohort(cohort.getStudyId()))
-                .containsEntry("recruitStatus", "RECRUIT_CLOSED");
+        assertThat(detailBody(cohort.getId())).containsEntry("recruitStatus", "RECRUIT_CLOSED");
     }
 
     @Test
@@ -124,38 +123,34 @@ class StudyRecruitStatusIntegrationTest {
     void detailRecruiting() {
         var cohort = openCohort(30, Instant.now().plus(7, ChronoUnit.DAYS));
 
-        assertThat(detailCohort(cohort.getStudyId())).containsEntry("recruitStatus", "RECRUITING");
+        assertThat(detailBody(cohort.getId())).containsEntry("recruitStatus", "RECRUITING");
     }
 
     @Test
     @DisplayName("성공 — 상세: STATUS 가 CLOSED 면 recruitStatus 는 null")
     void detailNoRecruitStatusWhenClosed() {
-        var cohort = cohort(StudyCohortStatus.CLOSED, 30, Instant.now().plus(7, ChronoUnit.DAYS));
+        var cohort = cohort(StudyStatus.CLOSED, 30, Instant.now().plus(7, ChronoUnit.DAYS));
 
-        assertThat(detailCohort(cohort.getStudyId())).containsEntry("recruitStatus", null);
+        assertThat(detailBody(cohort.getId())).containsEntry("recruitStatus", null);
     }
 
     // ── fixtures ──────────────────────────────────────────────────────────
 
-    private StudyCohort openCohort(Integer capacity, Instant recruitDeadline) {
-        return cohort(StudyCohortStatus.OPEN, capacity, recruitDeadline);
+    private Study openCohort(Integer capacity, Instant recruitDeadline) {
+        return cohort(StudyStatus.OPEN, capacity, recruitDeadline);
     }
 
-    private StudyCohort cohort(
-            StudyCohortStatus status, Integer capacity, Instant recruitDeadline) {
-        var study =
-                studyRepo.save(
-                        Study.builder()
-                                .slug("recruit-status-" + slugSeq.getAndIncrement())
-                                .title("모집 상태 스터디")
-                                .oneLineSummary("모집 상태 계산 검증용")
-                                .category(StudyCategory.BACKEND)
-                                .studyKind(StudyKind.STUDY)
-                                .description("설명")
-                                .build());
-        return cohortRepo.save(
-                StudyCohort.builder()
-                        .studyId(study.getId())
+    private Study cohort(StudyStatus status, Integer capacity, Instant recruitDeadline) {
+        var program = studyProgramRepo.save(StudyProgram.builder().title("모집 상태 스터디").build());
+        return studyRepo.save(
+                Study.builder()
+                        .programId(program.getId())
+                        .slug("recruit-status-" + slugSeq.getAndIncrement())
+                        .title("모집 상태 스터디")
+                        .oneLineSummary("모집 상태 계산 검증용")
+                        .category(StudyCategory.BACKEND)
+                        .studyKind(StudyKind.STUDY)
+                        .description("설명")
                         .studyDeliveryFormat(DeliveryFormat.ONLINE)
                         .status(status)
                         .capacity(capacity)
@@ -164,12 +159,12 @@ class StudyRecruitStatusIntegrationTest {
                         .build());
     }
 
-    private void enroll(StudyCohort cohort, ParticipantStatus status) {
+    private void enroll(Study cohort, ParticipantStatus status) {
         participantRepo.save(
                 StudyParticipant.builder()
                         .accountId(accountIdSeq.getAndIncrement())
-                        .studyClassId(1L)
-                        .studyCohortId(cohort.getId())
+                        .studyGroupId(1L)
+                        .studyId(cohort.getId())
                         .status(status)
                         .participantRole(ParticipantRole.MEMBER)
                         .joinedAt(Instant.now())
@@ -177,18 +172,18 @@ class StudyRecruitStatusIntegrationTest {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> firstListCohort() {
+    private Map<String, Object> firstListItem() {
         var response = rest.getForEntity("/api/studies", Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         var items = (java.util.List<Map<String, Object>>) response.getBody().get("items");
         assertThat(items).hasSize(1);
-        return (Map<String, Object>) items.get(0).get("cohort");
+        return items.get(0);
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> detailCohort(Long studyId) {
+    private Map<String, Object> detailBody(Long studyId) {
         var response = rest.getForEntity("/api/studies/" + studyId, Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        return (Map<String, Object>) response.getBody().get("cohort");
+        return response.getBody();
     }
 }

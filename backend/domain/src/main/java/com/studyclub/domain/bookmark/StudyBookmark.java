@@ -20,11 +20,11 @@ import lombok.NoArgsConstructor;
         name = "STUDY_BOOKMARK",
         uniqueConstraints =
                 @UniqueConstraint(
-                        name = "uk_study_bookmark_account_cohort",
-                        columnNames = {"ACCOUNT_ID", "STUDY_COHORT_ID"}),
+                        name = "uk_study_bookmark_account_study",
+                        columnNames = {"ACCOUNT_ID", "STUDY_ID"}),
         indexes = {
             @Index(name = "idx_study_bookmark_account", columnList = "ACCOUNT_ID"),
-            @Index(name = "idx_study_bookmark_cohort", columnList = "STUDY_COHORT_ID")
+            @Index(name = "idx_study_bookmark_study", columnList = "STUDY_ID")
         })
 @Getter
 @Builder
@@ -39,6 +39,6 @@ public class StudyBookmark extends BaseEntity {
     @Column(name = "ACCOUNT_ID", nullable = false)
     private Long accountId;
 
-    @Column(name = "STUDY_COHORT_ID", nullable = false)
-    private Long studyCohortId;
+    @Column(name = "STUDY_ID", nullable = false)
+    private Long studyId;
 }

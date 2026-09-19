@@ -6,25 +6,27 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
 @Entity
 @Table(
-        name = "STUDY_CLASS",
+        name = "STUDY_GROUP",
         uniqueConstraints =
                 @UniqueConstraint(
-                        name = "uk_study_class_cohort_name",
-                        columnNames = {"STUDY_COHORT_ID", "NAME"}))
-public class StudyClass extends BaseEntity {
+                        name = "uk_study_group_study_name",
+                        columnNames = {"STUDY_ID", "NAME"}),
+        indexes = @Index(name = "idx_study_group_study", columnList = "STUDY_ID"))
+public class StudyGroup extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "STUDY_COHORT_ID", nullable = false)
-    private Long studyCohortId;
+    @Column(name = "STUDY_ID", nullable = false)
+    private Long studyId;
 
     @Column(nullable = false, length = 255)
     private String name;
@@ -37,11 +39,11 @@ public class StudyClass extends BaseEntity {
 
     private Integer capacity;
 
-    protected StudyClass() {}
+    protected StudyGroup() {}
 
-    public StudyClass(
-            Long studyCohortId, String name, Instant startAt, String timezone, Integer capacity) {
-        this.studyCohortId = studyCohortId;
+    public StudyGroup(
+            Long studyId, String name, Instant startAt, String timezone, Integer capacity) {
+        this.studyId = studyId;
         this.name = name;
         this.startAt = startAt;
         this.timezone = timezone;
@@ -52,8 +54,8 @@ public class StudyClass extends BaseEntity {
         return id;
     }
 
-    public Long getStudyCohortId() {
-        return studyCohortId;
+    public Long getStudyId() {
+        return studyId;
     }
 
     public String getName() {

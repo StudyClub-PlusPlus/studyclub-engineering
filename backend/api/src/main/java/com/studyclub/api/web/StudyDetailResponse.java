@@ -2,7 +2,6 @@ package com.studyclub.api.web;
 
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
-import com.studyclub.domain.study.StudyCohort;
 import java.time.Instant;
 
 public record StudyDetailResponse(
@@ -13,32 +12,16 @@ public record StudyDetailResponse(
         String category,
         String studyKind,
         String thumbnailUrl,
-        CohortResponse cohort) {
-    public record CohortResponse(
-            Long id,
-            String deliveryFormat,
-            String status,
-            RecruitStatus recruitStatus,
-            String curriculum,
-            Integer capacity,
-            Instant recruitDeadline,
-            Instant startDate,
-            Instant endDate) {
-        static CohortResponse from(StudyCohort c, long applicantCount) {
-            return new CohortResponse(
-                    c.getId(),
-                    c.getStudyDeliveryFormat().name(),
-                    c.getStatus().name(),
-                    c.recruitStatus(applicantCount),
-                    c.getCurriculum(),
-                    c.getCapacity(),
-                    c.getRecruitDeadline(),
-                    c.getStartDate(),
-                    c.getEndDate());
-        }
-    }
+        String deliveryFormat,
+        String status,
+        RecruitStatus recruitStatus,
+        String curriculum,
+        Integer capacity,
+        Instant recruitDeadline,
+        Instant startDate,
+        Instant endDate) {
 
-    public static StudyDetailResponse from(Study study, StudyCohort cohort, long applicantCount) {
+    public static StudyDetailResponse from(Study study, long applicantCount) {
         return new StudyDetailResponse(
                 study.getId(),
                 study.getSlug(),
@@ -47,6 +30,13 @@ public record StudyDetailResponse(
                 study.getCategory().name(),
                 study.getStudyKind().name(),
                 study.getThumbnailUrl(),
-                cohort != null ? CohortResponse.from(cohort, applicantCount) : null);
+                study.getStudyDeliveryFormat().name(),
+                study.getStatus().name(),
+                study.recruitStatus(applicantCount),
+                study.getCurriculum(),
+                study.getCapacity(),
+                study.getRecruitDeadline(),
+                study.getStartDate(),
+                study.getEndDate());
     }
 }
