@@ -1,4 +1,6 @@
+import { ScreenSpecRegistrar } from '@/proto/annotate';
 import { StudyBrowser } from '@core/components/StudyBrowser';
+import { SPEC } from './spec';
 import { getStudies, getOperatorMap, type Locale } from '@core/lib/content';
 
 const STATUS_RANK: Record<string, number> = { recruiting: 0, ongoing: 1, closed: 2 };
@@ -13,6 +15,7 @@ export default async function StudiesPage({ params }: { params: Promise<{ locale
 
   return (
     <div className='mx-auto max-w-6xl px-6 pb-14 pt-6'>
+      <ScreenSpecRegistrar spec={SPEC} />
       <StudyBrowser studies={sorted} locale={locale} leads={leads} />
     </div>
   );
