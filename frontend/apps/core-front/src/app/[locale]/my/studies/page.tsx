@@ -54,8 +54,13 @@ export default function MyStudiesPage() {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    if (!getUser()) {
+    const u = getUser();
+    if (!u) {
       router.replace(`/${locale}/login?next=/${locale}/my/studies`);
+      return;
+    }
+    if (!u.onboardingCompletedAt) {
+      router.replace(`/${locale}/onboarding?next=${encodeURIComponent(`/${locale}/my/studies`)}`);
       return;
     }
     setMineIds(

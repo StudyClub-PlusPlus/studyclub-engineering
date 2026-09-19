@@ -44,6 +44,7 @@ function OnboardingScreen() {
   const router = useRouter();
   const next = returnPath(search.get('next'), locale);
   const [ready, setReady] = useState(false);
+  const [accountId, setAccountId] = useState<number | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -55,6 +56,7 @@ function OnboardingScreen() {
       router.replace(next);
       return;
     }
+    setAccountId(user.id);
     setReady(true);
   }, [locale, next, router]);
 
@@ -70,8 +72,8 @@ function OnboardingScreen() {
             {locale === 'ko' ? 'StudyClub++에 오신 것을 환영해요' : 'Welcome to StudyClub++'}
           </h1>
         </header>
-        {ready ? (
-          <OnboardingForm locale={locale} next={next} />
+        {ready && accountId != null ? (
+          <OnboardingForm locale={locale} next={next} accountId={accountId} />
         ) : (
           <div
             aria-busy='true'
@@ -86,20 +88,31 @@ function OnboardingScreen() {
   );
 }
 
-function OnboardingForm({ locale, next }: { locale: Locale; next: string }) {
+function OnboardingForm({
+  locale,
+  next,
+  accountId,
+}: {
+  locale: Locale;
+  next: string;
+  accountId: number;
+}) {
   const ko = locale === 'ko';
   const router = useRouter();
-  const [draft, setDraft] = useState<OnboardingDraft>(() => initialDraft(getSuggestedNickname()));
+  const [draft, setDraft] = useState<OnboardingDraft>(() =>
+    initialDraft(accountId, getSuggestedNickname()),
+  );
   const [touched, setTouched] = useState(false);
   const [composing, setComposing] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
-  const [problem, setProblem] = useState<'server' | 'expired' | null>(null);
+  const [problem, setProblem] = useState<'expired' | 'server' | null>(null);
+  const [problemDetail, setProblemDetail] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const submitting = useRef(false);
 
   useEffect(() => {
-    saveDraft(draft);
-  }, [draft]);
+    saveDraft(accountId, draft);
+  }, [accountId, draft]);
 
   function update<K extends keyof OnboardingDraft>(field: K, value: OnboardingDraft[K]) {
     setDraft((previous) => ({ ...previous, [field]: value }));
@@ -126,6 +139,7 @@ function OnboardingForm({ locale, next }: { locale: Locale; next: string }) {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           if (err instanceof ApiError && err.status === 401) {
             setProblem('expired');
+            setProblemDetail(null);
             return;
           }
           setNickStatus('error');
@@ -205,6 +219,7 @@ function OnboardingForm({ locale, next }: { locale: Locale; next: string }) {
     submitting.current = true;
     setPending(true);
     setProblem(null);
+    setProblemDetail(null);
     try {
       const account = await completeOnboarding({
         age14Confirmed: ageConfirmed,
@@ -224,20 +239,26 @@ function OnboardingForm({ locale, next }: { locale: Locale; next: string }) {
         onboardingCompletedAt: account.onboardingCompletedAt,
       });
       setSuggestedNickname(null);
-      clearDraft();
+      clearDraft(accountId);
       router.replace(next);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
           setProblem('expired');
+          setProblemDetail(null);
         } else if (err.status === 409) {
           setNickStatus('taken');
           document.getElementById('onboarding-nickname')?.focus();
+        } else if (err.status === 400) {
+          setProblem('server');
+          setProblemDetail(err.message);
         } else {
           setProblem('server');
+          setProblemDetail(null);
         }
       } else {
         setProblem('server');
+        setProblemDetail(null);
       }
     } finally {
       submitting.current = false;
@@ -264,15 +285,17 @@ function OnboardingForm({ locale, next }: { locale: Locale; next: string }) {
                 ? ko
                   ? '로그인 시간이 만료됐어요. 다시 로그인하면 입력하던 내용을 이어서 작성할 수 있어요.'
                   : 'Your session has expired. Log in again to continue where you left off.'
-                : ko
-                  ? '저장하지 못했어요. 입력한 내용은 유지됐으니 다시 시도해 주세요.'
-                  : 'We couldn’t save your details. Your entries are still here. Please try again.'}
+                : problemDetail
+                  ? problemDetail
+                  : ko
+                    ? '저장하지 못했어요. 입력한 내용은 유지됐으니 다시 시도해 주세요.'
+                    : 'We couldn’t save your details. Your entries are still here. Please try again.'}
             </p>
           </div>
           {problem === 'expired' && (
             <Link
               onClick={() => {
-                saveDraft(draft);
+                saveDraft(accountId, draft);
                 void logout();
               }}
               href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/onboarding?next=${encodeURIComponent(next)}`)}`}
