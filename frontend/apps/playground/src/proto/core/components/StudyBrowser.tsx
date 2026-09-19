@@ -18,7 +18,7 @@ type SortOption = 'default' | 'deadline' | 'bookmarks' | 'participants' | 'ended
 type TimezoneFilter = 'all' | 'KST' | 'PST' | 'both';
 
 const RECRUITMENT_OPTIONS: { value: RecruitmentFilter; label: string }[] = [
-  { value: 'all', label: '모집 전체' },
+  { value: 'all', label: '전체' },
   { value: 'recruiting', label: '모집 중' },
   { value: 'ongoing', label: '진행 중' },
   { value: 'closed', label: '종료' },
@@ -228,7 +228,7 @@ export function StudyBrowser({
         같은 위계로 읽힌다. 상태는 **세그먼트**, 카테고리는 **테두리 칩**.
       */}
       <div className='mb-6 flex flex-col gap-4'>
-        <div className='flex flex-wrap items-center justify-between gap-3'>
+        <div className='flex flex-wrap items-center justify-start gap-3'>
         <div role='tablist' aria-label='모집 상태' className='inline-flex w-fit shrink-0 rounded-pill bg-surface-2 p-1'>
           {RECRUITMENT_OPTIONS.map((option) => {
             const active = recruitment === option.value;
@@ -249,7 +249,12 @@ export function StudyBrowser({
             );
           })}
         </div>
-        <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 sm:w-[312px]'>
+        <FilterSelect
+          value={timezone}
+          options={[{ value: 'all' as const, label: '시간대' }, ...TIMEZONE_OPTIONS]}
+          onChange={setTimezone}
+        />
+        <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 sm:ml-auto sm:w-[312px]'>
           <Search
             size={15}
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder'
@@ -291,11 +296,6 @@ export function StudyBrowser({
             <FilterOption key={option.value} active={category === option.value} onClick={() => setCategory(option.value)}>{option.label}</FilterOption>
           ))}
         </FilterRow>
-        <FilterSelect
-          value={timezone}
-          options={[{ value: 'all' as const, label: '시간대' }, ...TIMEZONE_OPTIONS]}
-          onChange={setTimezone}
-        />
         <SortChoices value={sort} options={sortOptions} onChange={setSort} />
 
       </div>
