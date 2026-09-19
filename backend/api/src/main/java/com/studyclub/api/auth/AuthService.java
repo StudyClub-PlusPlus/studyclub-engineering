@@ -9,9 +9,6 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import io.jsonwebtoken.Claims;
-import java.util.Arrays;
-import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +22,6 @@ public class AuthService {
     private final AccountRegistrar accountRegistrar;
     private final GoogleOAuthClient googleOAuthClient;
     private final JwtService jwtService;
-
-    @Value("${back-office.allowed-emails:}")
-    private String allowedEmailsRaw;
 
     public AuthService(
             AccountRepository accountRepository,
@@ -55,9 +49,13 @@ public class AuthService {
         }
         String email = g.email().toLowerCase();
 
-        assertBackOfficePermitted(email, platform);
-
-        Account account = findOrRegister(g, email);
+        // 백오피스는 ADMIN 만, 백오피스에서는 가입이 안되기 때문에 findAdmin 만 호출한다.
+        Account account;
+        if (PLATFORM_BACK_OFFICE.equalsIgnoreCase(platform)) {
+            account = accountRegistrar.findAdmin(g);
+        } else {
+            account = findOrRegister(g, email);
+        }
 
         // suggestedNickname 은 이번 로그인의 구글 name. DB 에 넣지 않고 응답에만 실린다 (스펙).
         return issueFor(account, g.name());
@@ -94,21 +92,6 @@ public class AuthService {
                     jwtService.issueAccess(c.getSubject(), c.get("email", String.class)));
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
-        }
-    }
-
-    /** platform=BACK_OFFICE 로그인은 allowlist 이메일만 허용 (zapp assertBackOfficePermitted 이식). */
-    private void assertBackOfficePermitted(String email, String platform) {
-        if (!PLATFORM_BACK_OFFICE.equalsIgnoreCase(platform)) {
-            return;
-        }
-        List<String> allowed =
-                Arrays.stream(allowedEmailsRaw.split(","))
-                        .map(s -> s.trim().toLowerCase())
-                        .filter(s -> !s.isBlank())
-                        .toList();
-        if (!allowed.contains(email)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "백오피스 접근이 허용되지 않은 계정입니다.");
         }
     }
 

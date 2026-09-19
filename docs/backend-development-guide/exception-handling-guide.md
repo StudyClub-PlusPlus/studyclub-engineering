@@ -53,6 +53,7 @@
 | `INVALID_INPUT` | 400 | 검증 실패, 필수 값 누락 |
 | `UNAUTHORIZED` | 401 | 인증 없음, 토큰 무효·만료 |
 | `FORBIDDEN` | 403 | 인증은 됐으나 권한 없음 |
+| `SIGNUP_REQUIRED` | 403 | 백오피스 로그인인데 계정이 없음. 만들지 않고 "먼저 서비스에서 로그인" 안내 |
 | `NOT_FOUND` | 404 | 리소스 없음 |
 | `CONFLICT` | 409 | 비즈니스 규칙 위반 (중복 신청, 마감된 스터디 등) |
 | `EXTERNAL_SERVICE_ERROR` | 503 | 외부 연동 실패 (구글 OAuth 등) |
