@@ -53,10 +53,6 @@ function optionSet(q: ApplicationQuestion) {
   return new Set((q.options ?? []).filter(Boolean));
 }
 
-function isOtherValue(q: ApplicationQuestion, value: string) {
-  return Boolean(q.allowOther) && !optionSet(q).has(value);
-}
-
 export function extraAnswerIssue(
   q: ApplicationQuestion,
   answer: string | string[] | undefined,
