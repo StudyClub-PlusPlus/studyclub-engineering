@@ -291,7 +291,7 @@ class SocialLoginIntegrationTest {
     }
 
     @Test
-    @DisplayName("백오피스 성공 - ADMIN 계정이면 200, 토큰 발급 + LAST_LOGIN_AT 갱신 + user.role=ADMIN")
+    @DisplayName("백오피스 성공 - ADMIN 계정이면 200, 토큰 발급 + LAST_LOGIN_AT 갱신 + 운영 권한 확인")
     void backOfficeAdminLogsIn() {
         // given — 온보딩까지 마친 ADMIN
         Instant seededLogin = Instant.parse("2026-01-01T00:00:00Z");
@@ -303,11 +303,11 @@ class SocialLoginIntegrationTest {
         // when
         var response = login("BACK_OFFICE");
 
-        // then — 200 + 토큰, user.role = ADMIN
+        // then — 200 + 토큰, account.role = ADMIN
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsKey("accessToken");
-        Map<String, Object> user = (Map<String, Object>) response.getBody().get("user");
-        assertThat(user.get("role")).isEqualTo("ADMIN");
+        Map<String, Object> account = (Map<String, Object>) response.getBody().get("account");
+        assertThat(account).containsEntry("role", "ADMIN");
 
         // then — 새 행 없음, 마지막 로그인 시각만 앞으로 간다
         assertThat(accounts.count()).isEqualTo(1);
@@ -333,7 +333,9 @@ class SocialLoginIntegrationTest {
         // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsKey("accessToken");
-        Map<String, Object> user = (Map<String, Object>) response.getBody().get("user");
-        assertThat(user.get("onboardingCompletedAt")).isNull();
+        Map<String, Object> account = (Map<String, Object>) response.getBody().get("account");
+        assertThat(account)
+                .containsEntry("role", "ADMIN")
+                .containsEntry("onboardingCompletedAt", null);
     }
 }

@@ -1,5 +1,5 @@
 // BO code 교환 — platform 을 서버측에서 BACK_OFFICE 로 강제 주입(클라이언트 값 불신).
-// 백엔드가 SYSTEM_ROLE=ADMIN 계정만 토큰 발급. 여기서 user.role 을 한 번 더 본다(두 겹).
+// 백엔드가 SYSTEM_ROLE=ADMIN 계정만 토큰 발급. 여기서 계정의 role 을 한 번 더 본다(두 겹).
 import { NextRequest, NextResponse } from 'next/server';
 
 import { ACCESS_COOKIE } from '@/lib/auth';
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 백엔드가 뚫려도 쿠키를 안 심는다. 응답은 백엔드 403 과 같은 모양이라 로그인 화면이 구분 없이 처리한다.
-  if (data.user?.role !== 'ADMIN') {
+  if (data.account?.role !== 'ADMIN') {
     return NextResponse.json(
       { errorCode: 'FORBIDDEN', errorMessage: '백오피스 운영 권한이 없는 계정입니다.' },
       { status: 403 },
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({
-    user: data.user,
+    account: data.account,
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
   });
