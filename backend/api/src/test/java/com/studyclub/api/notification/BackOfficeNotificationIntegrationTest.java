@@ -13,6 +13,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -139,6 +141,22 @@ class BackOfficeNotificationIntegrationTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
             assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"status=INVALID", "eventType=INVALID"})
+    @DisplayName("알 수 없는 알림 필터는 400 — enum 변환 실패를 서버 오류로 보고하지 않는다")
+    void rejectsUnknownNotificationFilter(String query) {
+        var response =
+                testRestTemplate.exchange(
+                        "/back-office/notifications?" + query,
+                        HttpMethod.GET,
+                        authenticated(SystemRole.ADMIN),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        assertThat(response.getBody().get("errorMessage")).isEqualTo("입력값이 올바르지 않습니다.");
     }
 
     @Test

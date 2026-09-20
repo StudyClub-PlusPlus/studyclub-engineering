@@ -220,6 +220,33 @@ class AccountOnboardingIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"termsOfServiceAgreed", "privacyPolicyAgreed"})
+    @DisplayName("필수 boolean 동의값 누락은 400 — 본문 변환 실패로 500 을 내거나 가입을 완료하지 않는다")
+    void rejectsMissingConsentWithoutSideEffects(String missingField) {
+        Account account = seedUnonboardedAccount();
+        Map<String, Object> body = new HashMap<>(validRequest(uniqueNickname()));
+        body.remove(missingField);
+
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, body),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        Account saved = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(saved.getNickname()).isEqualTo(account.getNickname());
+        assertThat(saved.getOnboardingCompletedAt()).isNull();
+        assertThat(accountConsentRepository.findByAccountId(account.getId())).isEmpty();
+        assertThat(
+                        eventRecorder.received().stream()
+                                .filter(e -> e.accountId().equals(account.getId())))
+                .isEmpty();
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"false", "null", "missing"})
     @DisplayName("실패 - 만 14세 확인이 false·null·누락이면 가입 상태·동의·이벤트를 남기지 않는다")
     void rejectsUnconfirmedAgeWithoutSideEffects(String ageInput) {
