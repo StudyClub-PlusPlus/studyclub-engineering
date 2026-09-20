@@ -3,7 +3,6 @@ package com.studyclub.api.attendance;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,11 +39,12 @@ public class AttendanceController {
 
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping
-    public ResponseEntity<List<ParticipantRate>> upsertAttendances(
+    public ResponseEntity<Void> upsertAttendances(
             @PathVariable Long studyId,
             @RequestBody @Valid AttendanceUpsertRequest request,
             Authentication authentication) {
         Long accountId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(attendanceUpsertService.upsert(studyId, accountId, request));
+        attendanceUpsertService.upsert(studyId, accountId, request);
+        return ResponseEntity.noContent().build();
     }
 }

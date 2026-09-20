@@ -8,17 +8,15 @@ import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.StudyGroup;
-import com.studyclub.domain.study.StudyGroupRepository;
-import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyRepository;
-import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,30 +25,50 @@ import org.springframework.transaction.annotation.Transactional;
 public class AttendanceUpsertService {
 
     private final StudyRepository studyRepository;
-    private final StudyGroupRepository studyGroupRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
 
     public AttendanceUpsertService(
             StudyRepository studyRepository,
-            StudyGroupRepository studyGroupRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository) {
         this.studyRepository = studyRepository;
-        this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
     }
 
-    public List<ParticipantRate> upsert(
-            Long studyId, Long callerAccountId, AttendanceUpsertRequest request) {
+    public void upsert(Long studyId, Long callerAccountId, AttendanceUpsertRequest request) {
+        validateStudyExists(studyId);
+        validateCallerIsCaptain(callerAccountId, studyId);
+
+        List<AttendanceUpsertRequest.AttendanceUpsertItem> upsertRequests = request.updates();
+        ValidRequestContext validRequestContext = validateRequests(upsertRequests);
+
+        validateMeetingsBelongToStudy(validRequestContext.meetingIds(), studyId);
+        Map<Long, StudyParticipant> participantById =
+                loadAndValidateParticipants(validRequestContext.participantIds(), studyId);
+        Map<Pair<Long, Long>, StudyAttendance> existingAttendances =
+                loadExistingAttendances(validRequestContext.meetingIds());
+
+        studyAttendanceRepository.saveAll(
+                buildToSave(
+                        upsertRequests,
+                        validRequestContext.statuses(),
+                        participantById,
+                        existingAttendances,
+                        studyId));
+    }
+
+    private void validateStudyExists(Long studyId) {
         studyRepository
                 .findById(studyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    }
 
+    private void validateCallerIsCaptain(Long callerAccountId, Long studyId) {
         boolean isCaptain =
                 studyParticipantRepository.existsByAccountIdAndStudyIdAndParticipantRoleIn(
                         callerAccountId,
@@ -59,98 +77,73 @@ public class AttendanceUpsertService {
         if (!isCaptain) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
+    }
 
-        List<AttendanceUpsertRequest.AttendanceUpsertItem> updates = request.updates();
+    private ValidRequestContext validateRequests(
+            List<AttendanceUpsertRequest.AttendanceUpsertItem> updates) {
+        List<AttendanceStatus> statuses = new ArrayList<>(updates.size());
+        Set<Long> meetingIds = new HashSet<>();
+        Set<Long> participantIds = new HashSet<>();
+        Set<Pair<Long, Long>> seenPairs = new HashSet<>();
 
-        // Parse and validate status values
-        List<AttendanceStatus> parsedStatuses =
-                updates.stream()
-                        .map(
-                                item -> {
-                                    try {
-                                        return AttendanceStatus.valueOf(
-                                                item.status().toUpperCase());
-                                    } catch (IllegalArgumentException e) {
-                                        throw new BusinessException(
-                                                ErrorCode.INVALID_INPUT,
-                                                "유효하지 않은 status: " + item.status());
-                                    }
-                                })
-                        .toList();
-
-        // Check for duplicate (meetingId, participantId) pairs in request
-        long distinctPairs =
-                updates.stream()
-                        .map(i -> i.meetingId() + ":" + i.participantId())
-                        .distinct()
-                        .count();
-        if (distinctPairs != updates.size()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT, "(meetingId, participantId) 조합이 중복되었습니다.");
-        }
-
-        List<Long> groupIds =
-                studyGroupRepository.findByStudyId(studyId).stream()
-                        .map(StudyGroup::getId)
-                        .toList();
-
-        List<StudyMeeting> allMeetings =
-                groupIds.isEmpty()
-                        ? List.of()
-                        : studyMeetingRepository.findByStudyGroupIdInOrderByScheduledAt(groupIds);
-
-        Set<Long> validMeetingIds =
-                allMeetings.stream().map(StudyMeeting::getId).collect(Collectors.toSet());
-
-        // Validate meetingIds belong to this study
         for (AttendanceUpsertRequest.AttendanceUpsertItem item : updates) {
-            if (!validMeetingIds.contains(item.meetingId())) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_INPUT,
-                        "meetingId " + item.meetingId() + "는 이 스터디에 속하지 않습니다.");
+            try {
+                statuses.add(AttendanceStatus.from(item.status()));
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
             }
+            if (!seenPairs.add(Pair.of(item.meetingId(), item.participantId()))) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT, "(meetingId, participantId) 조합이 중복되었습니다.");
+            }
+            meetingIds.add(item.meetingId());
+            participantIds.add(item.participantId());
         }
 
-        // Validate and load participants
-        Set<Long> requestParticipantIds =
-                updates.stream()
-                        .map(AttendanceUpsertRequest.AttendanceUpsertItem::participantId)
-                        .collect(Collectors.toSet());
-        List<StudyParticipant> requestParticipants =
-                studyParticipantRepository.findByIdInAndStudyId(requestParticipantIds, studyId);
-        if (requestParticipants.size() != requestParticipantIds.size()) {
+        return new ValidRequestContext(statuses, meetingIds, participantIds);
+    }
+
+    private void validateMeetingsBelongToStudy(Set<Long> meetingIds, Long studyId) {
+        int found = studyMeetingRepository.findByIdInAndStudyId(meetingIds, studyId).size();
+        if (found != meetingIds.size()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "meetingId가 존재하지 않거나 이 스터디에 속하지 않습니다.");
+        }
+    }
+
+    private Map<Long, StudyParticipant> loadAndValidateParticipants(
+            Set<Long> participantIds, Long studyId) {
+        List<StudyParticipant> participants =
+                studyParticipantRepository.findByIdInAndStudyId(participantIds, studyId);
+        if (participants.size() != participantIds.size()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "participantId가 이 스터디에 속하지 않습니다.");
         }
+        return participants.stream().collect(Collectors.toMap(StudyParticipant::getId, p -> p));
+    }
 
-        Map<Long, StudyParticipant> participantById =
-                requestParticipants.stream()
-                        .collect(Collectors.toMap(StudyParticipant::getId, p -> p));
+    private Map<Pair<Long, Long>, StudyAttendance> loadExistingAttendances(Set<Long> meetingIds) {
+        return studyAttendanceRepository.findByStudyMeetingIdIn(meetingIds).stream()
+                .collect(
+                        Collectors.toMap(
+                                a -> Pair.of(a.getStudyMeetingId(), a.getAccountId()), a -> a));
+    }
 
-        // Load existing attendance records for request meetings (batch)
-        Set<Long> requestMeetingIds =
-                updates.stream()
-                        .map(AttendanceUpsertRequest.AttendanceUpsertItem::meetingId)
-                        .collect(Collectors.toSet());
-        Map<String, StudyAttendance> existingByKey =
-                studyAttendanceRepository.findByStudyMeetingIdIn(requestMeetingIds).stream()
-                        .collect(
-                                Collectors.toMap(
-                                        a -> a.getStudyMeetingId() + ":" + a.getAccountId(),
-                                        a -> a));
-
+    private List<StudyAttendance> buildToSave(
+            List<AttendanceUpsertRequest.AttendanceUpsertItem> updates,
+            List<AttendanceStatus> statuses,
+            Map<Long, StudyParticipant> participantById,
+            Map<Pair<Long, Long>, StudyAttendance> existingAttendances,
+            Long studyId) {
         List<StudyAttendance> toSave = new ArrayList<>();
-        Set<Long> affectedAccountIds = new java.util.HashSet<>();
 
         for (int i = 0; i < updates.size(); i++) {
             AttendanceUpsertRequest.AttendanceUpsertItem item = updates.get(i);
-            AttendanceStatus status = parsedStatuses.get(i);
+            AttendanceStatus status = statuses.get(i);
             StudyParticipant participant = participantById.get(item.participantId());
-            Long itemAccountId = participant.getAccountId();
+            Long accountId = participant.getAccountId();
 
-            affectedAccountIds.add(itemAccountId);
-
-            String key = item.meetingId() + ":" + itemAccountId;
-            StudyAttendance existing = existingByKey.get(key);
+            StudyAttendance existing =
+                    existingAttendances.get(Pair.of(item.meetingId(), accountId));
 
             if (existing != null) {
                 existing.updateStatus(status);
@@ -158,7 +151,7 @@ public class AttendanceUpsertService {
             } else {
                 toSave.add(
                         StudyAttendance.builder()
-                                .accountId(itemAccountId)
+                                .accountId(accountId)
                                 .studyId(studyId)
                                 .studyGroupId(participant.getStudyGroupId())
                                 .studyMeetingId(item.meetingId())
@@ -167,33 +160,9 @@ public class AttendanceUpsertService {
             }
         }
 
-        studyAttendanceRepository.saveAll(toSave);
-
-        // Re-query after flush to get complete picture for rate calculation
-        List<StudyAttendance> affectedAttendances =
-                studyAttendanceRepository.findByStudyIdAndAccountIdIn(studyId, affectedAccountIds);
-        Map<Long, Map<Long, StudyAttendance>> byAccount =
-                affectedAttendances.stream()
-                        .collect(
-                                Collectors.groupingBy(
-                                        StudyAttendance::getAccountId,
-                                        Collectors.toMap(
-                                                StudyAttendance::getStudyMeetingId, a -> a)));
-
-        Instant now = Instant.now();
-
-        return requestParticipants.stream()
-                .map(
-                        p -> {
-                            double[] rc =
-                                    AttendanceRateCalculator.components(
-                                            p,
-                                            allMeetings,
-                                            byAccount.getOrDefault(p.getAccountId(), Map.of()),
-                                            now);
-                            return new ParticipantRate(
-                                    p.getId(), AttendanceRateCalculator.rate(rc));
-                        })
-                .toList();
+        return toSave;
     }
+
+    private record ValidRequestContext(
+            List<AttendanceStatus> statuses, Set<Long> meetingIds, Set<Long> participantIds) {}
 }

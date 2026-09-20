@@ -228,17 +228,9 @@ countable_meetings = 스터디의 미팅 중
 | updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 400 |
 | updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 400 |
 
-### Response — 200
+### Response — 204 No Content
 
-```json
-[
-  { "participantId": 20, "attendanceRate": 0.83 },
-  { "participantId": 10, "attendanceRate": 1.0 },
-  { "participantId": 30, "attendanceRate": 1.0 }
-]
-```
-
-- 이번 배치가 건드린 참가자당 한 줄, 모든 변경이 반영된 최종 출석률.
+응답 바디 없음.
 
 ### 서버 동작
 
@@ -248,7 +240,6 @@ countable_meetings = 스터디의 미팅 중
 2. 있으면 status update, 없으면 생성.
 3. 배치 전체를 하나의 트랜잭션으로 묶음 (all-or-nothing).
 4. `(study_meeting_id, account_id)` unique 제약으로 동시 insert race를 409로 전환.
-5. 변경된 참가자 집합에 대해서만 rate 재계산 후 응답 배열에 반영.
 
 ### 동시성
 
