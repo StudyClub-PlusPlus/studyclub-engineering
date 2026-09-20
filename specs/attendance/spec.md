@@ -8,7 +8,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/studies/{studyId}/attendances | 출석 명부 조회 | O (캡틴) | 스펙확정 |
+| GET | /api/studies/{studyId}/attendances | 출석 명부 조회 | O | 스펙확정 |
 | POST | /api/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (캡틴) | 스펙확정 |
 
 > 이번 스코프는 명부 화면을 띄우는 데 필요한 **조회 1개 + 생성 1개** API만 다룬다. 세션 취소, 휴가 신청·승인, 정정 이력 조회 등 나머지 CRUD는 별도 스펙.
@@ -32,11 +32,7 @@ STUDY_GROUP {
 }
 
 STUDY_MEETING {
-  id: long, study_group_id: long, scheduled_at,
-  status: 'SCHEDULED' | 'IN_PROGRESS' | 'DONE' | 'MISSED' | 'CANCELLED'
-  // ⚠️ STATUS 컬럼 신규 추가 필요 — 현재 ERD 미존재, 마이그레이션 필요.
-  // CANCELLED는 운영자가 명시적으로 세팅하는 저장값.
-  // 나머지는 scheduled_at / starts_at / ends_at 으로 계산.
+  id: long, study_group_id: long, scheduled_at, start_at, end_at
 }
 
 STUDY_PARTICIPANT {
@@ -52,8 +48,7 @@ STUDY_ATTENDANCE {
 ```
 
 - `UNIQUE(study_meeting_id, account_id)`.
-- `status='EXCUSED'`는 이 스코프에서는 POST 호출로 직접 세팅되는 경로만 다룬다.
-- 정정 이력 테이블(AttendanceEditLog)은 현재 ERD에 없음 — 구현 시 스키마 추가 필요. 이 스펙의 계약: "이 API 호출은 반드시 이력을 남긴다".
+- `status='EXCUSED'`는 이 스코프에서는 POST 호출로 직접 세팅된다 (LeaveRequest 연동 없음).
 
 ---
 
@@ -63,8 +58,8 @@ STUDY_ATTENDANCE {
 
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/attendances`
-- **인증**: 필요 — 담당 캡틴
-- **설명**: 스터디의 전체 명부(모든 회차 × 모든 참가자)를 기본으로 반환. `meetingId` 쿼리 파라미터로 특정 회차 하나만 필터링 가능 — 응답 구조는 동일, 내용만 좁아짐
+- **인증**: 필요 (Bearer)
+- **설명**: 지정한 그룹의 명부(모든 회차 × 해당 그룹 참가자)를 기본으로 반환. `meetingId` 쿼리 파라미터로 특정 회차 하나만 필터링 가능 — 응답 구조는 동일, 내용만 좁아짐
 
 ### Path Parameters
 
@@ -76,38 +71,41 @@ STUDY_ATTENDANCE {
 
 | 이름 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| meetingId | Long | N | 특정 회차 하나만 필터링. 이 스터디 소속이 아니거나 존재하지 않으면 422 |
+| studyGroupId | Long | **Y** | 조회할 그룹 ID. 존재하지 않으면 404. studyId 소속이 아니면 400 |
+| meetingId | Long | N | 특정 회차 하나만 필터링. 해당 그룹 소속이 아니거나 존재하지 않으면 404 |
 
 ### Request Body
 
 없음
 
-### 조회 로직 — 5개 테이블 스티칭
+### 조회 로직 — 그룹 스코프 스티칭
 
 단일 SQL JOIN으로 안 풀리는 이유: 출석률 계산에 "참가자 합류일 이전 미팅 제외" 같은 조건부 로직이 들어가서 애플리케이션 레이어에서 한 번 더 필터링이 필요하다. 각 테이블을 따로 조회하고, 합치는 것과 산식 계산은 서비스 레이어에서 한다.
 
 ```
-1. STUDY                     WHERE STUDY.id = studyId
-                             → 헤더 정보. study.title = STUDY.TITLE
+1. STUDY                     WHERE id = studyId
+                             → 404 if not found. 헤더 정보(title) 제공
 
-2. STUDY_GROUP               WHERE study_id = studyId
-                             → 반 목록 (경유 키 역할)
+2. STUDY_GROUP               WHERE id = studyGroupId
+                             → 404 if not found. group.study_id ≠ studyId → 400
 
-3. STUDY_PARTICIPANT         WHERE study_group_id IN (2의 id 목록)
-                             → 참가자 목록. joined_at / status 포함
+3. STUDY_PARTICIPANT         WHERE study_group_id = studyGroupId
+                             → 해당 그룹 참가자 목록. joined_at / status 포함
 
-4. STUDY_MEETING             WHERE study_group_id IN (2의 id 목록) ORDER BY scheduled_at
-                             → 미팅 목록 (전체)
+4. STUDY_MEETING             WHERE study_group_id = studyGroupId ORDER BY scheduled_at
+                             → 해당 그룹 미팅 목록
 
-5. STUDY_ATTENDANCE          WHERE study_meeting_id IN (4의 id 목록)
+5. meetingId 파라미터가 있으면 4의 목록에 속하는지 확인 → 없으면 404
+
+6. STUDY_ATTENDANCE          WHERE study_meeting_id IN (4의 id 목록)
                              → 출석 값. (study_meeting_id, account_id)로 매핑
 
-6. 서비스 레이어:
-   - 3 × 4 매트릭스 생성, 5의 값으로 셀 채움 (없으면 status=null)
-   - 참가자별 attendanceRate 계산 (출석률 산식 절 참고) — meetingId 필터 여부와 무관하게 항상 스터디 전체 기준
-   - 스터디 평균(가중평균) 계산 — 역시 스터디 전체 기준
+7. 서비스 레이어:
+   - 3 × 4 매트릭스 생성, 6의 값으로 셀 채움 (없으면 status=null)
+   - 참가자별 attendanceRate 계산 (출석률 산식 절 참고) — meetingId 필터 여부와 무관하게 항상 그룹 전체 기준
+   - 그룹 평균(가중평균) 계산 — 역시 그룹 전체 기준
 
-7. meetingId 쿼리 파라미터가 있으면, 6까지 다 계산한 뒤 마지막에
+8. meetingId 쿼리 파라미터가 있으면, 7까지 다 계산한 뒤 마지막에
    meetings[]와 각 참가자의 attendances[]를 그 미팅 하나로 필터링한다.
    필터는 응답을 "잘라내는" 것이지, 계산 자체를 줄이지 않는다.
 ```
@@ -126,7 +124,7 @@ STUDY_ATTENDANCE {
     "avgAttendanceRate": 0.82
   },
   "meetings": [
-    { "id": 1, "scheduledAt": "2026-09-21T20:00:00+09:00", "status": "SCHEDULED" }
+    { "id": 1, "scheduledAt": "2026-09-21T20:00:00+09:00" }
   ],
   "participants": [
     {
@@ -146,12 +144,11 @@ STUDY_ATTENDANCE {
 |------|------|------|------|------|
 | study.id | Long | N | 스터디 ID | STUDY.ID |
 | study.title | String | N | 스터디 제목 | STUDY.TITLE |
-| study.participantCount | Int | N | 전체 참가자 수 | 계산: STUDY_PARTICIPANT count |
-| study.totalMeetings | Int | N | 전체 회차 수 | 계산: STUDY_MEETING count |
-| study.avgAttendanceRate | Double | Y | 스터디 가중평균. 분모 0이면 null | 계산: 출석률 산식 참고 |
+| study.participantCount | Int | N | 해당 그룹 참가자 수 | 계산: STUDY_PARTICIPANT count (그룹 스코프) |
+| study.totalMeetings | Int | N | 해당 그룹 회차 수 | 계산: STUDY_MEETING count (그룹 스코프) |
+| study.avgAttendanceRate | Double | Y | 그룹 가중평균. 분모 0이면 null | 계산: 출석률 산식 참고 |
 | meetings[].id | Long | N | 미팅 ID | STUDY_MEETING.ID |
 | meetings[].scheduledAt | String | N | 예정 시각 (ISO 8601) | STUDY_MEETING.SCHEDULED_AT |
-| meetings[].status | String | N | `SCHEDULED \| IN_PROGRESS \| DONE \| MISSED \| CANCELLED` | STUDY_MEETING.STATUS (계산 또는 저장) |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].displayName | String | N | | ACCOUNT.NICKNAME |
 | participants[].attendances[].meetingId | Long | N | | STUDY_MEETING.ID |
@@ -167,13 +164,11 @@ STUDY_ATTENDANCE {
   분모 = 0이면 null ("–")
   else Σ(가중치) / countable_meetings
 
-가중치: PRESENT=1.0, LATE=W(기본 0.5, [OPEN]), ABSENT=0
+가중치: PRESENT=1.0, LATE=0.5, ABSENT=0
 countable_meetings = 스터디의 미팅 중
-  status != 'CANCELLED'
-  AND scheduled_at <= now()
+  scheduled_at <= now()
   AND scheduled_at >= participant.joined_at
-  AND participant.status IN ('ACTIVE', 'PAUSED')
-      [OPEN] PAUSED 참가자를 분모에 포함할지 여부 확정 필요.
+  AND participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED')
   AND 해당 미팅의 STUDY_ATTENDANCE.status != 'EXCUSED'   // 분모에서도 제외
 
 스터디 평균 = 분모 0인 참가자는 제외하고 Σ(개인 분자) / Σ(개인 분모)   // 가중평균
@@ -185,16 +180,12 @@ countable_meetings = 스터디의 미팅 중
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 403 | FORBIDDEN | 담당 스터디 아님 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
-| 422 | INVALID_INPUT | meetingId가 이 스터디 소속이 아니거나 존재하지 않음 |
+| 404 | NOT_FOUND | 존재하지 않는 studyGroupId |
+| 400 | INVALID_INPUT | studyGroupId가 해당 studyId 소속이 아님 |
+| 404 | NOT_FOUND | meetingId가 해당 그룹 소속이 아니거나 존재하지 않음 |
 
 미팅이 하나도 없으면 200, `meetings: []`, `participants[].attendances: []`, `study.avgAttendanceRate: null`.
-
-### 미확정
-
-- `[OPEN]` LATE 가중치 W (기본 0.5) — 운영 정책 확정 필요
-- `[OPEN]` PAUSED 참가자 출석률 분모 포함 여부
 
 ---
 
@@ -204,7 +195,7 @@ countable_meetings = 스터디의 미팅 중
 
 - **Method**: POST
 - **Path**: `/api/studies/{studyId}/attendances`
-- **인증**: 필요 — 담당 캡틴
+- **인증**: 필요 — LEADER 또는 CO_LEADER 역할 보유자
 - **설명**: 스터디 안에서 하나 이상의 미팅 × 참가자 조합에 대해 출석 상태를 한 번에 기록. 여러 회차에 걸친 정정 + 신규 입력이 한 요청에 섞여도 됨. row가 없으면 INSERT, 있으면 UPDATE.
 
 ### Path Parameters
@@ -232,10 +223,10 @@ countable_meetings = 스터디의 미팅 중
 | 필드 | 타입 | 필수 | 검증 |
 |------|------|------|------|
 | updates | array | Y | 1개 이상. 빈 배열 → 400 |
-| updates[].meetingId | Long | Y | studyId에 속한 StudyMeeting.id여야 함 → 아니면 422 |
-| updates[].participantId | Long | Y | studyId에 속한 StudyParticipant.id여야 함 → 아니면 422 |
-| updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 422 |
-| updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 422 |
+| updates[].meetingId | Long | Y | studyId에 속한 StudyMeeting.id여야 함 → 아니면 400 |
+| updates[].participantId | Long | Y | studyId에 속한 StudyParticipant.id여야 함 → 아니면 400 |
+| updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 400 |
+| updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 400 |
 
 ### Response — 200
 
@@ -248,19 +239,16 @@ countable_meetings = 스터디의 미팅 중
 ```
 
 - 이번 배치가 건드린 참가자당 한 줄, 모든 변경이 반영된 최종 출석률.
-- create/update 여부는 응답에 담지 않는다 — 구분은 AttendanceEditLog.from_status가 담당.
 
 ### 서버 동작
 
 각 `updates[]` 항목마다:
 
 1. `participantId`로 `account_id`를 조회한 뒤 `(study_meeting_id, account_id)`로 기존 row 조회.
-2. 있으면 update, 없으면 생성. 이전 `status`가 `AttendanceEditLog.from_status` (없으면 null = create).
-3. `status='EXCUSED'`는 내부적으로 승인된 LeaveRequest 생성/연결.
-4. `AttendanceEditLog`에 `from_status → to_status` 기록 — 빠지면 버그.
-5. 배치 전체를 하나의 트랜잭션으로 묶음 (all-or-nothing). `[OPEN]`
-6. `(study_meeting_id, account_id)` unique 제약으로 동시 insert race를 409로 전환.
-7. 변경된 참가자 집합에 대해서만 rate 재계산 후 응답 배열에 반영.
+2. 있으면 status update, 없으면 생성.
+3. 배치 전체를 하나의 트랜잭션으로 묶음 (all-or-nothing).
+4. `(study_meeting_id, account_id)` unique 제약으로 동시 insert race를 409로 전환.
+5. 변경된 참가자 집합에 대해서만 rate 재계산 후 응답 배열에 반영.
 
 ### 동시성
 
@@ -271,16 +259,14 @@ countable_meetings = 스터디의 미팅 중
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 400 | INVALID_INPUT | updates가 빈 배열 |
-| 403 | FORBIDDEN | 담당 스터디 아님 |
+| 403 | FORBIDDEN | LEADER·CO_LEADER 역할 없음 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
-| 409 | CONFLICT | 대상 미팅 중 status='CANCELLED' 포함 (배치 전체 거부, 원인 meetingId 명시) |
 | 409 | CONFLICT | 동시 쓰기로 unique 제약 위반 |
-| 422 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
-| 422 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |
-| 422 | INVALID_INPUT | updates[].status 허용값 외 |
-| 422 | INVALID_INPUT | updates[] 내 (meetingId, participantId) 중복 |
+| 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
+| 400 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |
+| 400 | INVALID_INPUT | updates[].status 허용값 외 |
+| 400 | INVALID_INPUT | updates[] 내 (meetingId, participantId) 중복 |
 
 ### 미확정
 
-- `[OPEN]` 배치 트랜잭션 범위 — all-or-nothing 확정 필요
 - `[OPEN]` 버전 체크(낙관적 잠금) 필요 여부
