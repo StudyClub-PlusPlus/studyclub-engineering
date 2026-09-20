@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
 public class AttendanceUpsertService {
 
     private final StudyRepository studyRepository;
@@ -40,6 +39,7 @@ public class AttendanceUpsertService {
         this.studyAttendanceRepository = studyAttendanceRepository;
     }
 
+    @Transactional
     public void upsert(Long studyId, Long callerAccountId, AttendanceUpsertRequest request) {
         validateStudyExists(studyId);
         validateCallerIsCaptain(callerAccountId, studyId);

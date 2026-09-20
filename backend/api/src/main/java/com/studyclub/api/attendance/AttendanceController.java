@@ -1,5 +1,6 @@
 package com.studyclub.api.attendance;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ public class AttendanceController {
         this.attendanceUpsertService = attendanceUpsertService;
     }
 
+    @Operation(summary = "출석 명부 조회", description = "지정한 그룹의 전체 명부를 반환한다. meetingId로 특정 회차만 필터링 가능.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping
     public ResponseEntity<AttendanceResponse> getAttendances(
@@ -37,6 +39,9 @@ public class AttendanceController {
                 attendanceService.getAttendances(studyId, studyGroupId, meetingId));
     }
 
+    @Operation(
+            summary = "출석 생성/수정 (upsert)",
+            description = "캡틴 전용. 기존 레코드가 있으면 status를 갱신하고, 없으면 새로 생성한다.")
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping
     public ResponseEntity<Void> upsertAttendances(

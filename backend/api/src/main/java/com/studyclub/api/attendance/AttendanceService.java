@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
 public class AttendanceService {
 
     private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
@@ -48,6 +47,7 @@ public class AttendanceService {
         this.accountRepository = accountRepository;
     }
 
+    @Transactional(readOnly = true)
     public AttendanceResponse getAttendances(Long studyId, Long studyGroupId, Long meetingId) {
         var study =
                 studyRepository
