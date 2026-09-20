@@ -33,6 +33,7 @@ class OpenApiDocsTest {
         assertThat(response.getBody())
                 .contains("/auth/social-login")
                 .contains("/api/studies")
+                .contains("/api/studies/{studyId}/application-form")
                 .contains("/api/studies/{studyId}/applications")
                 .contains("/api/me/studies")
                 .contains("/api/me/studies/{studyId}")
@@ -42,6 +43,7 @@ class OpenApiDocsTest {
         assertGetOperationRequiresBearerAuthentication("/api/me/studies");
         assertGetOperationRequiresBearerAuthentication("/api/me/studies/{studyId}");
         assertGetOperationRequiresBearerAuthentication("/api/studies/{studyId}/applications");
+        assertPatchOperationRequiresBearerAuthentication("/api/studies/{studyId}/application-form");
     }
 
     @Test
@@ -55,10 +57,20 @@ class OpenApiDocsTest {
 
     @SuppressWarnings("unchecked")
     private void assertGetOperationRequiresBearerAuthentication(String path) {
+        assertOperationRequiresBearerAuthentication(path, "get");
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assertPatchOperationRequiresBearerAuthentication(String path) {
+        assertOperationRequiresBearerAuthentication(path, "patch");
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assertOperationRequiresBearerAuthentication(String path, String method) {
         Map<String, Object> document = rest.getForObject("/v3/api-docs", Map.class);
         Map<String, Object> paths = (Map<String, Object>) document.get("paths");
         Map<String, Object> pathItem = (Map<String, Object>) paths.get(path);
-        Map<String, Object> getOperation = (Map<String, Object>) pathItem.get("get");
+        Map<String, Object> getOperation = (Map<String, Object>) pathItem.get(method);
         List<Map<String, Object>> securityRequirements =
                 (List<Map<String, Object>>) getOperation.get("security");
 

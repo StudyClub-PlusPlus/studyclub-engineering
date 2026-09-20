@@ -1,5 +1,6 @@
 package com.studyclub.domain.study;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -21,4 +22,6 @@ public interface StudyRecruitmentRepository extends JpaRepository<StudyRecruitme
     List<StudyRecruitment> findOpenByStudyIdOrderByStartAtDesc(@Param("studyId") Long studyId);
 
     Optional<StudyRecruitment> findFirstByStudyIdOrderByStartAtDescIdDesc(Long studyId);
+
+    boolean existsByStudyIdAndStartAtLessThanEqual(Long studyId, Instant now);
 }

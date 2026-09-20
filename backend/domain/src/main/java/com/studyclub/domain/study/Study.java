@@ -130,4 +130,12 @@ public class Study extends BaseEntity {
                 ? RecruitStatus.RECRUIT_CLOSED
                 : RecruitStatus.RECRUITING;
     }
+
+    public boolean isPubliclyVisible() {
+        return status == StudyStatus.OPEN && !isHidden;
+    }
+
+    public void replaceApplicationForm(String applicationForm) {
+        this.applicationForm = applicationForm;
+    }
 }

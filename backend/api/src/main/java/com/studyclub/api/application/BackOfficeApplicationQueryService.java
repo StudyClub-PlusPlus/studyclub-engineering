@@ -5,12 +5,8 @@ import com.studyclub.api.application.BackOfficeApplicationResponses.StudyApplica
 import com.studyclub.api.application.BackOfficeApplicationResponses.StudyApplicationsResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
-import com.studyclub.domain.account.Account;
-import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.application.StudyApplicationWithAccount;
-import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantHistory;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
@@ -33,14 +29,11 @@ import tools.jackson.databind.ObjectMapper;
 @Transactional(readOnly = true)
 public class BackOfficeApplicationQueryService {
 
-    private static final List<ParticipantRole> CAPTAIN_ROLES =
-            List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER);
-
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyParticipantRepository studyParticipantRepository;
-    private final AccountRepository accountRepository;
+    private final BackOfficeStudyAccessGuard backOfficeStudyAccessGuard;
     private final ObjectMapper objectMapper;
 
     public BackOfficeApplicationQueryService(
@@ -48,13 +41,13 @@ public class BackOfficeApplicationQueryService {
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyApplicationRepository studyApplicationRepository,
             StudyParticipantRepository studyParticipantRepository,
-            AccountRepository accountRepository,
+            BackOfficeStudyAccessGuard backOfficeStudyAccessGuard,
             ObjectMapper objectMapper) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyParticipantRepository = studyParticipantRepository;
-        this.accountRepository = accountRepository;
+        this.backOfficeStudyAccessGuard = backOfficeStudyAccessGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -64,7 +57,7 @@ public class BackOfficeApplicationQueryService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        assertCaptain(accountId, studyId);
+        backOfficeStudyAccessGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 결과를 볼 권한이 없습니다.");
 
         StudyRecruitment recruitment = resolveRecruitment(studyId, requestedRecruitmentId);
         if (recruitment == null) {
@@ -96,22 +89,6 @@ public class BackOfficeApplicationQueryService {
                                                 histories.get(application.accountId())))
                         .toList();
         return new StudyApplicationsResponse(applications.size(), questionsOf(study), applications);
-    }
-
-    private void assertCaptain(Long accountId, Long studyId) {
-        Account account =
-                accountRepository
-                        .findById(accountId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
-        if (account.getSystemRole() == SystemRole.ADMIN) {
-            return;
-        }
-        boolean captain =
-                studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        studyId, accountId, CAPTAIN_ROLES);
-        if (!captain) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "이 스터디의 신청 결과를 볼 권한이 없습니다.");
-        }
     }
 
     private StudyRecruitment resolveRecruitment(Long studyId, Long requestedRecruitmentId) {
