@@ -37,10 +37,10 @@ public class BackOfficeApplicationController {
                     승인/거절 처리는 이 API 범위가 아닙니다.""")
     @GetMapping
     public StudyApplicationsResponse getApplications(
-            @Parameter(description = "신청 결과를 조회할 스터디 ID", example = "1")
-                    @PathVariable
-                    Long studyId,
-            @Parameter(description = "특정 모집 회차만 조회할 때 사용합니다. 이 스터디 소속이 아니면 INVALID_INPUT입니다.", example = "3")
+            @Parameter(description = "신청 결과를 조회할 스터디 ID", example = "1") @PathVariable Long studyId,
+            @Parameter(
+                            description = "특정 모집 회차만 조회할 때 사용합니다. 이 스터디 소속이 아니면 INVALID_INPUT입니다.",
+                            example = "3")
                     @RequestParam(required = false)
                     Long recruitmentId,
             Authentication authentication) {

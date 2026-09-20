@@ -83,10 +83,15 @@ public class BackOfficeApplicationQueryService {
                                 .stream()
                                 .collect(
                                         Collectors.toMap(
-                                                StudyParticipantHistory::accountId, Function.identity()));
+                                                StudyParticipantHistory::accountId,
+                                                Function.identity()));
         List<StudyApplicationResponse> applications =
                 applicationRows.stream()
-                        .map(application -> toResponse(application, histories.get(application.accountId())))
+                        .map(
+                                application ->
+                                        toResponse(
+                                                application,
+                                                histories.get(application.accountId())))
                         .toList();
         return new StudyApplicationsResponse(applications.size(), questionsOf(study), applications);
     }
@@ -123,7 +128,9 @@ public class BackOfficeApplicationQueryService {
         if (!open.isEmpty()) {
             return open.get(0);
         }
-        return studyRecruitmentRepository.findFirstByStudyIdOrderByStartAtDescIdDesc(studyId).orElse(null);
+        return studyRecruitmentRepository
+                .findFirstByStudyIdOrderByStartAtDescIdDesc(studyId)
+                .orElse(null);
     }
 
     private StudyApplicationResponse toResponse(
@@ -161,7 +168,11 @@ public class BackOfficeApplicationQueryService {
                     .map(
                             q ->
                                     new ApplicationQuestionResponse(
-                                            q.id(), q.label(), q.type(), q.options(), q.allowOther()))
+                                            q.id(),
+                                            q.label(),
+                                            q.type(),
+                                            q.options(),
+                                            q.allowOther()))
                     .toList();
         } catch (IllegalArgumentException | JacksonException e) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
