@@ -108,6 +108,20 @@ class BackOfficeApplicationIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - 토큰 없이 신청 결과를 조회하면 401 + errorCode UNAUTHORIZED를 반환한다")
+    void rejectsUnauthenticatedRequest() {
+        var response =
+                rest.exchange(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        HttpMethod.GET,
+                        HttpEntity.EMPTY,
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
     @DisplayName("실패 - 캡틴이 아니면 신청 결과를 볼 수 없다")
     void rejectsNonCaptain() {
         var response =

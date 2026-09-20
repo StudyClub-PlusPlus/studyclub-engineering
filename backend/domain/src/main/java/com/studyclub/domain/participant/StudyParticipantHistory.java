@@ -7,6 +7,7 @@ public record StudyParticipantHistory(
         if (previousParticipationCount == 0) {
             return null;
         }
-        return Math.toIntExact(Math.round(completedParticipationCount * 100.0 / previousParticipationCount));
+        return Math.toIntExact(
+                Math.round(completedParticipationCount * 100.0 / previousParticipationCount));
     }
 }
