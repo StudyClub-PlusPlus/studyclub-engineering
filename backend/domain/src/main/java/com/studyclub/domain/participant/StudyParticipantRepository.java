@@ -10,11 +10,31 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     /** 코호트별 정원을 차지하는 참여자 수 (ACTIVE + PAUSED). 정원 도달 판정에 사용한다. */
     @Query(
-            "SELECT p.studyId, COUNT(p) FROM StudyParticipant p "
-                    + "WHERE p.studyId IN :studyIds "
-                    + "AND p.status IN ("
+            "SELECT participant.studyId, COUNT(participant) FROM StudyParticipant participant "
+                    + "WHERE participant.studyId IN :studyIds "
+                    + "AND participant.status IN ("
                     + "com.studyclub.domain.participant.ParticipantStatus.ACTIVE, "
                     + "com.studyclub.domain.participant.ParticipantStatus.PAUSED) "
-                    + "GROUP BY p.studyId")
+                    + "GROUP BY participant.studyId")
     List<Object[]> countByStudyIds(@Param("studyIds") Collection<Long> studyIds);
+
+    boolean existsByStudyIdAndAccountIdAndParticipantRoleIn(
+            Long studyId, Long accountId, Collection<ParticipantRole> participantRoles);
+
+    @Query(
+            "SELECT new com.studyclub.domain.participant.StudyParticipantHistory("
+                    + "participant.accountId, COUNT(participant), "
+                    + "SUM(CASE WHEN participant.status = "
+                    + "com.studyclub.domain.participant.ParticipantStatus.COMPLETED "
+                    + "THEN 1 ELSE 0 END)) "
+                    + "FROM StudyParticipant participant "
+                    + "WHERE participant.accountId IN :accountIds "
+                    + "AND participant.studyId <> :currentStudyId "
+                    + "AND participant.status IN ("
+                    + "com.studyclub.domain.participant.ParticipantStatus.COMPLETED, "
+                    + "com.studyclub.domain.participant.ParticipantStatus.WITHDRAWN) "
+                    + "GROUP BY participant.accountId")
+    List<StudyParticipantHistory> findHistoriesByAccountIds(
+            @Param("accountIds") Collection<Long> accountIds,
+            @Param("currentStudyId") Long currentStudyId);
 }

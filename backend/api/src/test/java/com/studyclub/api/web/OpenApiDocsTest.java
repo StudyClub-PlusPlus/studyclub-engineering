@@ -33,6 +33,7 @@ class OpenApiDocsTest {
         assertThat(response.getBody())
                 .contains("/auth/social-login")
                 .contains("/api/studies")
+                .contains("/api/studies/{studyId}/applications")
                 .contains("/api/me/studies")
                 .contains("/api/me/studies/{studyId}")
                 // 전역 커스터마이저가 붙인 공통 에러 스키마
@@ -40,6 +41,7 @@ class OpenApiDocsTest {
 
         assertGetOperationRequiresBearerAuthentication("/api/me/studies");
         assertGetOperationRequiresBearerAuthentication("/api/me/studies/{studyId}");
+        assertGetOperationRequiresBearerAuthentication("/api/studies/{studyId}/applications");
     }
 
     @Test
