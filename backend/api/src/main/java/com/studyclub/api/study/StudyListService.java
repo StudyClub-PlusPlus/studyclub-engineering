@@ -64,15 +64,13 @@ public class StudyListService {
                 studyParticipantRepository.countByStudyIds(studyIds).stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
 
-        // studyId → 가장 최근(id 가 큰) 모집 회차의 마감 시각
+        // studyId → 가장 최근(id 최대) 모집 회차의 마감 시각 (DB에서 1건씩 추출)
         Map<Long, Instant> deadlines =
-                studyRecruitmentRepository.findByStudyIdIn(studyIds).stream()
-                        .sorted(Comparator.comparing(StudyRecruitment::getId).reversed())
+                studyRecruitmentRepository.findLatestByStudyIdIn(studyIds).stream()
                         .collect(
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId,
-                                        StudyRecruitment::getRecruitDeadlineAt,
-                                        (a, b) -> a));
+                                        StudyRecruitment::getRecruitDeadlineAt));
 
         List<StudyListResponse.StudySummary> filtered =
                 latestStudies.values().stream()

@@ -8,6 +8,15 @@ import org.springframework.data.repository.query.Param;
 
 public interface StudyParticipantRepository extends JpaRepository<StudyParticipant, Long> {
 
+    List<StudyParticipant> findByStudyId(Long studyId);
+
+    List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
+
+    List<StudyParticipant> findByIdInAndStudyId(Collection<Long> ids, Long studyId);
+
+    boolean existsByAccountIdAndStudyIdAndParticipantRoleIn(
+            Long accountId, Long studyId, Collection<ParticipantRole> roles);
+
     /** 코호트별 정원을 차지하는 참여자 수 (ACTIVE + PAUSED). 정원 도달 판정에 사용한다. */
     @Query(
             "SELECT participant.studyId, COUNT(participant) FROM StudyParticipant participant "
