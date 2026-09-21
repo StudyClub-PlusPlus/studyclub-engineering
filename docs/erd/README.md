@@ -51,7 +51,7 @@ erDiagram
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
   ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
-  STUDY ||--|| STUDY_DISCORD_LINK : "디스코드 연결"
+  STUDY ||--o| STUDY_DISCORD_LINK : "디스코드 연결 (없을 수 있음)"
   STUDY ||--o{ STUDY_RECRUITMENT : "모집"
   STUDY_RECRUITMENT ||--o{ STUDY_APPLICATION : "신청서"
   ACCOUNT ||--o{ STUDY_APPLICATION : ""
@@ -271,7 +271,7 @@ erDiagram
   STUDY_PROGRAM         ||--o{ STUDY_REVIEW         : "전체 후기 조회 (비정규화)"
 
   STUDY                 ||--o{ STUDY_GROUP           : "분반"
-  STUDY                 ||--|| STUDY_DISCORD_LINK    : "디스코드 연결"
+  STUDY                 ||--o| STUDY_DISCORD_LINK    : "디스코드 연결 (없을 수 있음)"
   STUDY                 ||--o{ STUDY_RECRUITMENT     : "모집"
   STUDY_RECRUITMENT     ||--o{ STUDY_APPLICATION     : "신청서"
   STUDY                 ||--o{ STUDY_REVIEW          : "후기"

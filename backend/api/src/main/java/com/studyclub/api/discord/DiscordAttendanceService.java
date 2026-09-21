@@ -120,6 +120,9 @@ public class DiscordAttendanceService {
     /**
      * 그 스터디의 반장인지는 백엔드만 안다 — 봇의 captain·navigator 역할은 길드 전체에 하나뿐이라 스터디를 구분하지 못한다 (봇 계약 summary.md §
      * 역할).
+     *
+     * <p>역할만 보면 안 된다. 하차·완주는 행을 지우지 않고 STATUS 만 바꾸므로 PARTICIPANT_ROLE 은 LEADER 로 남는다 — 지난 기수 반장이 계속
+     * 출석을 찍을 수 있게 된다. 명부에 살아 있는지를 같이 본다.
      */
     private void requireLeader(
             String callerDiscordId,
@@ -128,7 +131,9 @@ public class DiscordAttendanceService {
         Long callerAccountId = accountIdByDiscordId.get(callerDiscordId);
         StudyParticipant caller =
                 callerAccountId == null ? null : participantByAccountId.get(callerAccountId);
-        if (caller == null || !LEADER_ROLES.contains(caller.getParticipantRole())) {
+        if (caller == null
+                || !ATTENDABLE.contains(caller.getStatus())
+                || !LEADER_ROLES.contains(caller.getParticipantRole())) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
     }
@@ -138,8 +143,9 @@ public class DiscordAttendanceService {
      * 날아가는 걸 막으려고 커맨드를 하나로 둔다.
      */
     private PickedMeeting pickMeeting(Long studyGroupId) {
+        // 잠금 조회 — 여기부터 출석 쓰기까지가 한 덩어리라 반 단위로 직렬화한다.
         List<StudyMeeting> meetings =
-                studyMeetingRepository.findByStudyGroupIdOrderByScheduledAt(studyGroupId);
+                studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId);
 
         List<StudyMeeting> inProgress =
                 meetings.stream().filter(StudyMeeting::isInProgress).toList();

@@ -12,7 +12,7 @@ import java.util.List;
  */
 public record DiscordAttendanceRequest(
         @NotBlank @Pattern(regexp = SNOWFLAKE) String callerDiscordUserId,
-        @NotEmpty @Size(max = 100) List<@Pattern(regexp = SNOWFLAKE) String> discordUserIds) {
+        @NotEmpty @Size(max = 100) List<@NotBlank @Pattern(regexp = SNOWFLAKE) String> discordUserIds) {
 
     static final String SNOWFLAKE = "^[0-9]{17,20}$";
 }
