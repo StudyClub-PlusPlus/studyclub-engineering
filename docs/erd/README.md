@@ -51,6 +51,7 @@ erDiagram
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
   ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
+  STUDY ||--|| STUDY_DISCORD_LINK : "디스코드 연결"
   STUDY ||--o{ STUDY_RECRUITMENT : "모집"
   STUDY_RECRUITMENT ||--o{ STUDY_APPLICATION : "신청서"
   ACCOUNT ||--o{ STUDY_APPLICATION : ""
@@ -220,6 +221,13 @@ erDiagram
     varchar  STATUS                "PRESENT / LATE / EXCUSED / ABSENT"
   }
 
+  STUDY_DISCORD_LINK {
+    bigint   ID                 PK
+    bigint   STUDY_ID           FK "→ STUDY"
+    varchar  DISCORD_STUDY_ID      "카테고리 snowflake (문자열)"
+    varchar  DISCORD_ROLE_ID       "역할 snowflake (문자열)"
+  }
+
   STUDY_REVIEW {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
@@ -263,6 +271,7 @@ erDiagram
   STUDY_PROGRAM         ||--o{ STUDY_REVIEW         : "전체 후기 조회 (비정규화)"
 
   STUDY                 ||--o{ STUDY_GROUP           : "분반"
+  STUDY                 ||--|| STUDY_DISCORD_LINK    : "디스코드 연결"
   STUDY                 ||--o{ STUDY_RECRUITMENT     : "모집"
   STUDY_RECRUITMENT     ||--o{ STUDY_APPLICATION     : "신청서"
   STUDY                 ||--o{ STUDY_REVIEW          : "후기"
@@ -295,6 +304,7 @@ erDiagram
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 분반에 소속된 사람        | `STATUS`, `PARTICIPANT_ROLE`         |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
+| 운영  | [STUDY_DISCORD_LINK](./STUDY_DISCORD_LINK.md)           | 스터디 ↔ 디스코드 카테고리·역할 ID  | —                                    |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
 | 반응  | [STUDY_BOOKMARK](./STUDY_BOOKMARK.md)                   | 북마크                    | —                                    |
 | 제안  | [STUDY_PROPOSAL](./STUDY_PROPOSAL.md)                   | "이런 스터디 열어주세요"         | `STATUS`                             |

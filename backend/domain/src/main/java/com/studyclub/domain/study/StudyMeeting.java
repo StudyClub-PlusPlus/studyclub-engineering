@@ -44,6 +44,28 @@ public class StudyMeeting extends BaseEntity {
         this.endAt = endAt;
     }
 
+    /** 회차가 진행 중인지 — 시작했고 아직 끝나지 않았다. 상태를 저장하지 않으므로 시각으로 판정한다. */
+    public boolean isInProgress() {
+        return startAt != null && endAt == null;
+    }
+
+    /** 아직 시작하지 않았는지. */
+    public boolean isNotStarted() {
+        return startAt == null;
+    }
+
+    /**
+     * 회차를 시작한다. 디스코드 출석 체크가 예정 회차를 자동으로 열 때 쓴다 (specs/discord-attendance/spec.md).
+     *
+     * @throws IllegalStateException 이미 시작했을 때 — 시작 시각을 덮어쓰면 진행 중 판정이 흔들린다
+     */
+    public void start(Instant at) {
+        if (startAt != null) {
+            throw new IllegalStateException("이미 시작한 회차입니다: " + id);
+        }
+        this.startAt = at;
+    }
+
     public Long getId() {
         return id;
     }

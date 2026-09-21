@@ -1,6 +1,8 @@
 package com.studyclub.domain.account;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -19,6 +21,9 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Account a where a.id = :id")
     Optional<Account> findByIdForUpdate(@Param("id") Long id);
+
+    /** 디스코드 유저 ID 다건 → 회원. DISCORD_ID 는 UNIQUE 라 유저당 최대 1행이다. */
+    List<Account> findByDiscordIdIn(Collection<String> discordIds);
 
     boolean existsByNickname(String nickname);
 

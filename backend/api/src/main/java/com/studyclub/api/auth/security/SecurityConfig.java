@@ -30,6 +30,10 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:4700,http://localhost:4701}")
     private String allowedOrigins;
 
+    /** 디스코드 봇이 보내는 서비스 키. 값은 배포 시 주입한다 (PUBLIC 레포 — 커밋 금지). */
+    @Value("${discord.api-key:}")
+    private String discordApiKey;
+
     public SecurityConfig(JwtService jwtService, ObjectMapper objectMapper) {
         this.jwtService = jwtService;
         this.objectMapper = objectMapper;
@@ -43,6 +47,28 @@ public class SecurityConfig {
         http.securityMatcher("/actuator/**")
                 .authorizeHttpRequests(a -> a.anyRequest().permitAll())
                 .csrf(AbstractHttpConfigurer::disable);
+        return http.build();
+    }
+
+    /**
+     * 디스코드 봇 전용 체인. 사용자 JWT 와 서비스 키를 한 체인에 섞으면 "둘 중 아무거나 있으면 통과" 로 흐르기 쉬워, 경로로 갈라 둔다. 아래 기본 체인보다 먼저
+     * 매칭되어야 하므로 @Order 가 필요하다.
+     */
+    @Bean
+    @Order(1)
+    SecurityFilterChain discordChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/api/discord/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(AbstractHttpConfigurer::disable)
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .exceptionHandling(
+                        ex ->
+                                ex.authenticationEntryPoint(
+                                        new JsonAuthenticationEntryPoint(objectMapper)))
+                .addFilterBefore(
+                        new ApiKeyAuthFilter(discordApiKey),
+                        UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
