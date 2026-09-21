@@ -1,6 +1,7 @@
 package com.studyclub.api.config;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeIn;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
@@ -37,6 +38,12 @@ import org.springframework.context.annotation.Configuration;
         type = SecuritySchemeType.HTTP,
         scheme = "bearer",
         bearerFormat = "JWT")
+@SecurityScheme(
+        name = "discordApiKey",
+        type = SecuritySchemeType.APIKEY,
+        in = SecuritySchemeIn.HEADER,
+        paramName = "X-API-Key",
+        description = "디스코드 봇 전용 서비스 키. 사용자 토큰이 아니라 서비스 간 인증이다.")
 public class OpenApiConfig {
 
     /**
