@@ -21,8 +21,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.StudyGroup;
-import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import java.time.Instant;
@@ -38,20 +36,22 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/** 회차 선택 규칙과 덮어쓰기 보호의 세부. HTTP 표면은 {@link DiscordAttendanceIntegrationTest} 가 본다. */
+/** 회차 선택 규칙, 반 가르기, 덮어쓰기 보호의 세부. HTTP 표면은 {@link DiscordAttendanceIntegrationTest} 가 본다. */
 @ExtendWith(MockitoExtension.class)
 class DiscordAttendanceServiceTest {
 
     private static final String DISCORD_STUDY_ID = "1327394882193883136";
     private static final String LEADER_DISCORD_ID = "1327394882193880001";
     private static final String MEMBER_DISCORD_ID = "1327394882193880002";
+    private static final String OTHER_GROUP_DISCORD_ID = "1327394882193880003";
     private static final Long STUDY_ID = 7L;
-    private static final Long GROUP_ID = 70L;
+    private static final Long GROUP_A = 70L;
+    private static final Long GROUP_B = 71L;
     private static final Long LEADER_ACCOUNT_ID = 700L;
     private static final Long MEMBER_ACCOUNT_ID = 701L;
+    private static final Long OTHER_GROUP_ACCOUNT_ID = 702L;
 
     @Mock StudyDiscordLinkRepository studyDiscordLinkRepository;
-    @Mock StudyGroupRepository studyGroupRepository;
     @Mock StudyMeetingRepository studyMeetingRepository;
     @Mock StudyParticipantRepository studyParticipantRepository;
     @Mock StudyAttendanceRepository studyAttendanceRepository;
@@ -62,75 +62,95 @@ class DiscordAttendanceServiceTest {
     @Test
     @DisplayName("진행_중인_회차가_있으면_그_회차에_찍고_새로_시작하지_않는다")
     void 진행_중인_회차가_있으면_그_회차에_찍고_새로_시작하지_않는다() {
-        StudyMeeting inProgress = meeting(1L, Instant.now().minus(1, ChronoUnit.HOURS), true);
-        StudyMeeting upcoming = meeting(2L, Instant.now(), false);
-        givenStudyWithMeetings(List.of(inProgress, upcoming));
+        StudyMeeting inProgress =
+                meeting(1L, GROUP_A, Instant.now().minus(1, ChronoUnit.HOURS), true);
+        StudyMeeting upcoming = meeting(2L, GROUP_A, Instant.now(), false);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(inProgress, upcoming));
         givenAccounts();
 
         DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
 
-        assertThat(response.studyMeetingId()).isEqualTo(1L);
-        assertThat(response.meetingStarted()).isFalse();
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
+                            assertThat(g.studyMeetingId()).isEqualTo(1L);
+                            assertThat(g.meetingStarted()).isFalse();
+                        });
         assertThat(upcoming.getStartAt()).isNull();
     }
 
     @Test
     @DisplayName("진행_중인_회차가_없으면_2시간_이내_예정_회차를_시작시킨다")
     void 진행_중인_회차가_없으면_2시간_이내_예정_회차를_시작시킨다() {
-        StudyMeeting upcoming = meeting(2L, Instant.now().plus(90, ChronoUnit.MINUTES), false);
-        givenStudyWithMeetings(List.of(upcoming));
+        StudyMeeting upcoming =
+                meeting(2L, GROUP_A, Instant.now().plus(90, ChronoUnit.MINUTES), false);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(upcoming));
         givenAccounts();
 
         DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
 
-        assertThat(response.studyMeetingId()).isEqualTo(2L);
-        assertThat(response.meetingStarted()).isTrue();
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingId()).isEqualTo(2L);
+                            assertThat(g.meetingStarted()).isTrue();
+                        });
         assertThat(upcoming.getStartAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("예정_회차가_2시간_밖이면_404_찍지_않는다")
-    void 예정_회차가_2시간_밖이면_404_찍지_않는다() {
-        StudyMeeting far = meeting(2L, Instant.now().plus(3, ChronoUnit.HOURS), false);
-        givenStudyWithMeetings(List.of(far));
+    @DisplayName("예정_회차가_2시간_밖이면_찍지_않고_noMeeting_으로_돌려준다")
+    void 예정_회차가_2시간_밖이면_찍지_않고_noMeeting_으로_돌려준다() {
+        StudyMeeting far = meeting(2L, GROUP_A, Instant.now().plus(3, ChronoUnit.HOURS), false);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(far));
         givenAccounts();
 
-        assertThatThrownBy(() -> service.mark(DISCORD_STUDY_ID, request()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).errorCode())
-                .isEqualTo(ErrorCode.NOT_FOUND);
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups()).isEmpty();
+        assertThat(response.noMeeting())
+                .containsExactlyInAnyOrder(LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
         assertThat(far.getStartAt()).isNull();
-        verify(studyAttendanceRepository, never()).saveAll(any());
+        verify(studyAttendanceRepository).saveAll(List.of());
     }
 
     @Test
-    @DisplayName("끝난_회차만_있으면_404_소급_입력하지_않는다")
-    void 끝난_회차만_있으면_404_소급_입력하지_않는다() {
+    @DisplayName("끝난_회차만_있으면_소급_입력하지_않는다")
+    void 끝난_회차만_있으면_소급_입력하지_않는다() {
         Instant scheduledAt = Instant.now().minus(30, ChronoUnit.MINUTES);
         StudyMeeting done =
                 withId(
                         new StudyMeeting(
-                                GROUP_ID,
+                                GROUP_A,
                                 scheduledAt,
                                 scheduledAt,
                                 Instant.now().minus(5, ChronoUnit.MINUTES)),
                         3L);
-        givenStudyWithMeetings(List.of(done));
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(done));
         givenAccounts();
 
-        assertThatThrownBy(() -> service.mark(DISCORD_STUDY_ID, request()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).errorCode())
-                .isEqualTo(ErrorCode.NOT_FOUND);
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups()).isEmpty();
+        assertThat(response.noMeeting()).isNotEmpty();
     }
 
     @Test
     @DisplayName("시작할_수_있는_회차가_2개면_409_아무거나_고르지_않는다")
     void 시작할_수_있는_회차가_2개면_409_아무거나_고르지_않는다() {
-        givenStudyWithMeetings(
+        givenOneGroupStudy();
+        givenMeetings(
+                GROUP_A,
                 List.of(
-                        meeting(4L, Instant.now().plus(10, ChronoUnit.MINUTES), false),
-                        meeting(5L, Instant.now().plus(20, ChronoUnit.MINUTES), false)));
+                        meeting(4L, GROUP_A, Instant.now().plus(10, ChronoUnit.MINUTES), false),
+                        meeting(5L, GROUP_A, Instant.now().plus(20, ChronoUnit.MINUTES), false)));
         givenAccounts();
 
         assertThatThrownBy(() -> service.mark(DISCORD_STUDY_ID, request()))
@@ -140,32 +160,127 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
-    @DisplayName("분반이_2개면_409_어느_반인지_정할_수_없다")
-    void 분반이_2개면_409_어느_반인지_정할_수_없다() {
+    @DisplayName("반이_여러_개면_각자_자기_반_회차에_찍힌다")
+    void 반이_여러_개면_각자_자기_반_회차에_찍힌다() {
         when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))
                 .thenReturn(Optional.of(link()));
-        when(studyGroupRepository.findByStudyId(STUDY_ID))
-                .thenReturn(List.of(group(GROUP_ID), group(71L)));
+        when(studyParticipantRepository.findByStudyId(STUDY_ID))
+                .thenReturn(
+                        List.of(
+                                participant(LEADER_ACCOUNT_ID, GROUP_A, ParticipantRole.LEADER),
+                                participant(MEMBER_ACCOUNT_ID, GROUP_A, ParticipantRole.MEMBER),
+                                participant(
+                                        OTHER_GROUP_ACCOUNT_ID, GROUP_B, ParticipantRole.MEMBER)));
+        givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
+        givenMeetings(GROUP_B, List.of(meeting(9L, GROUP_B, Instant.now(), true)));
+        when(accountRepository.findByDiscordIdIn(any()))
+                .thenReturn(
+                        List.of(
+                                account(LEADER_ACCOUNT_ID, LEADER_DISCORD_ID),
+                                account(MEMBER_ACCOUNT_ID, MEMBER_DISCORD_ID),
+                                account(OTHER_GROUP_ACCOUNT_ID, OTHER_GROUP_DISCORD_ID)));
 
-        assertThatThrownBy(() -> service.mark(DISCORD_STUDY_ID, request()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).errorCode())
-                .isEqualTo(ErrorCode.CONFLICT);
+        DiscordAttendanceResponse response =
+                service.mark(
+                        DISCORD_STUDY_ID,
+                        new DiscordAttendanceRequest(
+                                LEADER_DISCORD_ID,
+                                List.of(
+                                        LEADER_DISCORD_ID,
+                                        MEMBER_DISCORD_ID,
+                                        OTHER_GROUP_DISCORD_ID)));
+
+        assertThat(response.groups()).hasSize(2);
+        assertThat(response.groups())
+                .anySatisfy(
+                        g -> {
+                            assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
+                            assertThat(g.studyMeetingId()).isEqualTo(1L);
+                            assertThat(g.marked())
+                                    .containsExactlyInAnyOrder(
+                                            LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
+                        })
+                .anySatisfy(
+                        g -> {
+                            assertThat(g.studyGroupId()).isEqualTo(GROUP_B);
+                            assertThat(g.studyMeetingId()).isEqualTo(9L);
+                            assertThat(g.marked()).containsExactly(OTHER_GROUP_DISCORD_ID);
+                        });
+        assertThat(response.noMeeting()).isEmpty();
     }
 
     @Test
-    @DisplayName("호출자가_반장이_아니면_403_회차를_시작시키지_않는다")
-    void 호출자가_반장이_아니면_403_회차를_시작시키지_않는다() {
+    @DisplayName("한_반만_모이는_중이면_나머지_반_사람은_noMeeting_이고_전체가_실패하지_않는다")
+    void 한_반만_모이는_중이면_나머지_반_사람은_noMeeting_이고_전체가_실패하지_않는다() {
         when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))
                 .thenReturn(Optional.of(link()));
-        when(studyGroupRepository.findByStudyId(STUDY_ID)).thenReturn(List.of(group(GROUP_ID)));
-        when(studyParticipantRepository.findByStudyGroupId(GROUP_ID))
+        when(studyParticipantRepository.findByStudyId(STUDY_ID))
                 .thenReturn(
                         List.of(
+                                participant(LEADER_ACCOUNT_ID, GROUP_A, ParticipantRole.LEADER),
                                 participant(
-                                        LEADER_ACCOUNT_ID,
-                                        ParticipantRole.MEMBER,
-                                        ParticipantStatus.ACTIVE)));
+                                        OTHER_GROUP_ACCOUNT_ID, GROUP_B, ParticipantRole.MEMBER)));
+        givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
+        givenMeetings(GROUP_B, List.of());
+        when(accountRepository.findByDiscordIdIn(any()))
+                .thenReturn(
+                        List.of(
+                                account(LEADER_ACCOUNT_ID, LEADER_DISCORD_ID),
+                                account(OTHER_GROUP_ACCOUNT_ID, OTHER_GROUP_DISCORD_ID)));
+
+        DiscordAttendanceResponse response =
+                service.mark(
+                        DISCORD_STUDY_ID,
+                        new DiscordAttendanceRequest(
+                                LEADER_DISCORD_ID,
+                                List.of(LEADER_DISCORD_ID, OTHER_GROUP_DISCORD_ID)));
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
+                            assertThat(g.marked()).containsExactly(LEADER_DISCORD_ID);
+                        });
+        assertThat(response.noMeeting()).containsExactly(OTHER_GROUP_DISCORD_ID);
+    }
+
+    @Test
+    @DisplayName("옆_반_반장이_쳐도_통과한다_공부방을_같이_쓴다")
+    void 옆_반_반장이_쳐도_통과한다_공부방을_같이_쓴다() {
+        when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))
+                .thenReturn(Optional.of(link()));
+        when(studyParticipantRepository.findByStudyId(STUDY_ID))
+                .thenReturn(
+                        List.of(
+                                participant(LEADER_ACCOUNT_ID, GROUP_B, ParticipantRole.LEADER),
+                                participant(MEMBER_ACCOUNT_ID, GROUP_A, ParticipantRole.MEMBER)));
+        givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
+        givenAccounts();
+
+        DiscordAttendanceResponse response =
+                service.mark(
+                        DISCORD_STUDY_ID,
+                        new DiscordAttendanceRequest(
+                                LEADER_DISCORD_ID, List.of(MEMBER_DISCORD_ID)));
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
+                            assertThat(g.marked()).containsExactly(MEMBER_DISCORD_ID);
+                        });
+    }
+
+    @Test
+    @DisplayName("호출자가_반장이_아니면_403_회차를_건드리지_않는다")
+    void 호출자가_반장이_아니면_403_회차를_건드리지_않는다() {
+        when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))
+                .thenReturn(Optional.of(link()));
+        when(studyParticipantRepository.findByStudyId(STUDY_ID))
+                .thenReturn(
+                        List.of(participant(LEADER_ACCOUNT_ID, GROUP_A, ParticipantRole.MEMBER)));
         givenAccounts();
 
         assertThatThrownBy(() -> service.mark(DISCORD_STUDY_ID, request()))
@@ -176,9 +291,31 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("하차한_전_반장은_역할이_남아있어도_403")
+    void 하차한_전_반장은_역할이_남아있어도_403() {
+        when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))
+                .thenReturn(Optional.of(link()));
+        when(studyParticipantRepository.findByStudyId(STUDY_ID))
+                .thenReturn(
+                        List.of(
+                                participant(
+                                        LEADER_ACCOUNT_ID,
+                                        GROUP_A,
+                                        ParticipantRole.LEADER,
+                                        ParticipantStatus.WITHDRAWN)));
+        givenAccounts();
+
+        assertThatThrownBy(() -> service.mark(DISCORD_STUDY_ID, request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
     @DisplayName("LATE_와_EXCUSED_는_스냅샷으로_덮어쓰지_않는다")
     void LATE_와_EXCUSED_는_스냅샷으로_덮어쓰지_않는다() {
-        givenStudyWithMeetings(List.of(meeting(1L, Instant.now(), true)));
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
         givenAccounts();
         StudyAttendance late = attendance(MEMBER_ACCOUNT_ID, AttendanceStatus.LATE);
         StudyAttendance excused = attendance(LEADER_ACCOUNT_ID, AttendanceStatus.EXCUSED);
@@ -189,7 +326,7 @@ class DiscordAttendanceServiceTest {
 
         assertThat(late.getStatus()).isEqualTo(AttendanceStatus.LATE);
         assertThat(excused.getStatus()).isEqualTo(AttendanceStatus.EXCUSED);
-        assertThat(response.marked())
+        assertThat(response.groups().get(0).marked())
                 .containsExactlyInAnyOrder(LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<StudyAttendance>> saved = ArgumentCaptor.forClass(List.class);
@@ -200,7 +337,8 @@ class DiscordAttendanceServiceTest {
     @Test
     @DisplayName("ABSENT_는_PRESENT_로_올린다")
     void ABSENT_는_PRESENT_로_올린다() {
-        givenStudyWithMeetings(List.of(meeting(1L, Instant.now(), true)));
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
         givenAccounts();
         StudyAttendance absent = attendance(MEMBER_ACCOUNT_ID, AttendanceStatus.ABSENT);
         when(studyAttendanceRepository.findByStudyMeetingIdIn(List.of(1L)))
@@ -212,48 +350,17 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
-    @DisplayName("하차한_전_반장은_역할이_남아있어도_403")
-    void 하차한_전_반장은_역할이_남아있어도_403() {
-        when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))
-                .thenReturn(Optional.of(link()));
-        when(studyGroupRepository.findByStudyId(STUDY_ID)).thenReturn(List.of(group(GROUP_ID)));
-        when(studyParticipantRepository.findByStudyGroupId(GROUP_ID))
-                .thenReturn(
-                        List.of(
-                                participant(
-                                        LEADER_ACCOUNT_ID,
-                                        ParticipantRole.LEADER,
-                                        ParticipantStatus.WITHDRAWN)));
-        givenAccounts();
-
-        assertThatThrownBy(() -> service.mark(DISCORD_STUDY_ID, request()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).errorCode())
-                .isEqualTo(ErrorCode.FORBIDDEN);
-        verify(studyMeetingRepository, never()).findByStudyGroupIdForUpdate(any());
-    }
-
-    private StudyAttendance attendance(Long accountId, AttendanceStatus status) {
-        return StudyAttendance.builder()
-                .accountId(accountId)
-                .studyId(STUDY_ID)
-                .studyGroupId(GROUP_ID)
-                .studyMeetingId(1L)
-                .status(status)
-                .build();
-    }
-
-    @Test
     @DisplayName("연동_안된_유저는_에러가_아니라_unmatched_로_돌려준다")
     void 연동_안된_유저는_에러가_아니라_unmatched_로_돌려준다() {
-        givenStudyWithMeetings(List.of(meeting(1L, Instant.now(), true)));
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
         when(accountRepository.findByDiscordIdIn(any()))
                 .thenReturn(List.of(account(LEADER_ACCOUNT_ID, LEADER_DISCORD_ID)));
 
         DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
 
         assertThat(response.unmatched()).containsExactly(MEMBER_DISCORD_ID);
-        assertThat(response.marked()).containsExactly(LEADER_DISCORD_ID);
+        assertThat(response.groups().get(0).marked()).containsExactly(LEADER_DISCORD_ID);
     }
 
     private DiscordAttendanceRequest request() {
@@ -261,22 +368,18 @@ class DiscordAttendanceServiceTest {
                 LEADER_DISCORD_ID, List.of(LEADER_DISCORD_ID, MEMBER_DISCORD_ID));
     }
 
-    private void givenStudyWithMeetings(List<StudyMeeting> meetings) {
+    private void givenOneGroupStudy() {
         when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))
                 .thenReturn(Optional.of(link()));
-        when(studyGroupRepository.findByStudyId(STUDY_ID)).thenReturn(List.of(group(GROUP_ID)));
-        when(studyParticipantRepository.findByStudyGroupId(GROUP_ID))
+        when(studyParticipantRepository.findByStudyId(STUDY_ID))
                 .thenReturn(
                         List.of(
-                                participant(
-                                        LEADER_ACCOUNT_ID,
-                                        ParticipantRole.LEADER,
-                                        ParticipantStatus.ACTIVE),
-                                participant(
-                                        MEMBER_ACCOUNT_ID,
-                                        ParticipantRole.MEMBER,
-                                        ParticipantStatus.ACTIVE)));
-        when(studyMeetingRepository.findByStudyGroupIdForUpdate(GROUP_ID)).thenReturn(meetings);
+                                participant(LEADER_ACCOUNT_ID, GROUP_A, ParticipantRole.LEADER),
+                                participant(MEMBER_ACCOUNT_ID, GROUP_A, ParticipantRole.MEMBER)));
+    }
+
+    private void givenMeetings(Long groupId, List<StudyMeeting> meetings) {
+        when(studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)).thenReturn(meetings);
     }
 
     private void givenAccounts() {
@@ -291,19 +394,29 @@ class DiscordAttendanceServiceTest {
         return new StudyDiscordLink(STUDY_ID, DISCORD_STUDY_ID, "1327394882193883140");
     }
 
-    private StudyGroup group(Long id) {
-        return withId(new StudyGroup(STUDY_ID, "A반", Instant.now(), "Asia/Seoul", 10), id);
+    private StudyParticipant participant(Long accountId, Long groupId, ParticipantRole role) {
+        return participant(accountId, groupId, role, ParticipantStatus.ACTIVE);
     }
 
     private StudyParticipant participant(
-            Long accountId, ParticipantRole role, ParticipantStatus status) {
+            Long accountId, Long groupId, ParticipantRole role, ParticipantStatus status) {
         return StudyParticipant.builder()
                 .accountId(accountId)
-                .studyGroupId(GROUP_ID)
+                .studyGroupId(groupId)
                 .studyId(STUDY_ID)
                 .status(status)
                 .participantRole(role)
                 .joinedAt(Instant.now())
+                .build();
+    }
+
+    private StudyAttendance attendance(Long accountId, AttendanceStatus status) {
+        return StudyAttendance.builder()
+                .accountId(accountId)
+                .studyId(STUDY_ID)
+                .studyGroupId(GROUP_A)
+                .studyMeetingId(1L)
+                .status(status)
                 .build();
     }
 
@@ -313,9 +426,9 @@ class DiscordAttendanceServiceTest {
         return withId(account, id);
     }
 
-    private StudyMeeting meeting(Long id, Instant scheduledAt, boolean started) {
+    private StudyMeeting meeting(Long id, Long groupId, Instant scheduledAt, boolean started) {
         return withId(
-                new StudyMeeting(GROUP_ID, scheduledAt, started ? scheduledAt : null, null), id);
+                new StudyMeeting(groupId, scheduledAt, started ? scheduledAt : null, null), id);
     }
 
     /** 엔티티 ID 는 DB 가 채우므로 단위 테스트에서는 직접 넣는다. */
