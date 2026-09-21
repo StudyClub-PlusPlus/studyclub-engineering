@@ -21,9 +21,10 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
                     + "AND s.programId IN :programIds")
     List<Study> findLatestByProgramIds(@Param("programIds") Collection<Long> programIds);
 
-    List<Study> findAllByIsHiddenFalse();
+    List<Study> findAllByIsHiddenFalseAndStatusNot(StudyStatus status);
 
-    List<Study> findAllByIsHiddenFalseAndCategory(StudyCategory category);
+    List<Study> findAllByIsHiddenFalseAndStatusNotAndCategory(
+            StudyStatus status, StudyCategory category);
 
     Optional<Study> findFirstByProgramIdAndIsHiddenFalseOrderByIdDesc(Long programId);
 }

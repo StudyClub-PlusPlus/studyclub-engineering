@@ -27,6 +27,14 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
                     + "GROUP BY participant.studyId")
     List<Object[]> countByStudyIds(@Param("studyIds") Collection<Long> studyIds);
 
+    /** 스터디별·상태별 참여자 수. 행은 {@code [studyId, ParticipantStatus, count]}. 목록 조회 전용. */
+    @Query(
+            "SELECT participant.studyId, participant.status, COUNT(participant) "
+                    + "FROM StudyParticipant participant "
+                    + "WHERE participant.studyId IN :studyIds "
+                    + "GROUP BY participant.studyId, participant.status")
+    List<Object[]> countByStudyIdsGroupByStatus(@Param("studyIds") Collection<Long> studyIds);
+
     boolean existsByStudyIdAndAccountIdAndParticipantRoleIn(
             Long studyId, Long accountId, Collection<ParticipantRole> participantRoles);
 
