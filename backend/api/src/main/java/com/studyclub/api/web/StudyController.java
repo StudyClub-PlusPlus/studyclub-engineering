@@ -5,10 +5,17 @@ import com.studyclub.api.study.StudyListService;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyStatus;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.net.URI;
 import java.time.Instant;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,5 +50,15 @@ public class StudyController {
     @GetMapping("/{studyId}")
     public StudyDetailResponse detail(@PathVariable Long studyId) {
         return studyService.getDetail(studyId);
+    }
+
+    @Operation(summary = "스터디 등록", description = "ADMIN 만 호출 가능. 등록 후 STATUS=DRAFT 로 비공개.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping
+    public ResponseEntity<Void> create(
+            @Valid @RequestBody StudyCreateRequest request, Authentication authentication) {
+        Long accountId = (Long) authentication.getPrincipal();
+        Long studyId = studyService.create(accountId, request);
+        return ResponseEntity.created(URI.create("/api/studies/" + studyId)).build();
     }
 }

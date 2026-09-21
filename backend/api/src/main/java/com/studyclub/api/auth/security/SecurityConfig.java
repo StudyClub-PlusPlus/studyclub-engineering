@@ -57,8 +57,6 @@ public class SecurityConfig {
                                                 "/",
                                                 "/error",
                                                 "/api/health",
-                                                "/api/studies",
-                                                "/api/studies/*",
                                                 // API 문서 — 스펙(springdoc) + Scalar UI.
                                                 // /scalar/** 까지 열어야 한다: UI 페이지가 /scalar/scalar.js 를
                                                 // 로드하는데

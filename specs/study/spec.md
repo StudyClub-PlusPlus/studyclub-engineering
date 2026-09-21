@@ -9,7 +9,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/studies | 스터디 목록 | X | 구현완료 (fixture) |
+| GET | /api/studies | 스터디 목록 | X | 구현완료 |
 | GET | /api/studies/{studyId} | 스터디 상세 조회 | X | 스펙확정 |
 | POST | /api/studies | 스터디 등록 | O (ADMIN) | 스펙확정 |
 
@@ -35,7 +35,7 @@
 
 ### 상태
 
-구현완료 (fixture) — 하드코딩된 fixture 데이터를 반환하는 상태이며, 필드 단위 스펙은 아직 작성되지 않았다. 실제 테이블 연결 및 필드 스펙 작성은 별도로 필요하다.
+구현완료 — DB 기반으로 동작 중 (카테고리·상태·키워드·마감일 필터 포함). 필드 단위 응답 스펙은 미작성.
 
 ---
 
@@ -96,7 +96,7 @@
 | title | String | N | 스터디 제목 | STUDY.TITLE |
 | oneLineSummary | String | N | 한 줄 소개 | STUDY.ONE_LINE_SUMMARY |
 | description | String | Y | 상세 소개 | STUDY.DESCRIPTION |
-| category | String | N | 분야 (enum) | STUDY.CATEGORY |
+| category | String | N | 분야 (enum). 유효값은 아래 표 참조 | STUDY.CATEGORY |
 | studyKind | String | N | STUDY / CLUB | STUDY.STUDY_KIND |
 | thumbnailUrl | String | Y | 썸네일 | STUDY.THUMBNAIL_URL |
 | deliveryFormat | String | N | 진행 방식 (enum) | STUDY.STUDY_DELIVERY_FORMAT |
@@ -104,13 +104,32 @@
 | recruitStatus | String | Y | 모집 상태 (enum). `status != OPEN` 이면 null | 계산: STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT 경과 또는 정원 도달 → [상세](../study-recruit-status/spec.md#판정-규칙) |
 | curriculum | String | Y | 커리큘럼 JSON | STUDY.CURRICULUM |
 | capacity | Integer | Y | 전체 정원 | STUDY.CAPACITY |
-| recruitDeadline | String | Y | 모집 마감 (ISO 8601 UTC). null = 모집 회차 없음(상시 모집) | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — id 최대인 회차 1건. STUDY_RECRUITMENT 행이 없으면 null |
+| recruitDeadline | String | Y | 모집 마감 (ISO 8601 UTC). null = 상시 모집 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — id 최대인 회차 1건 |
 | publishAt | String | Y | 공개 예정 일시 (ISO 8601 UTC). null = 즉시 공개 | STUDY.PUBLISH_AT |
 | schedule | String | Y | 진행 일정 (자유 텍스트) | STUDY.SCHEDULE |
 | startAt | String | Y | 시작일 (ISO 8601 UTC) | STUDY.START_AT |
 | endAt | String | Y | 종료일 (ISO 8601 UTC) | STUDY.END_AT |
 
 > **소스**: 이 필드가 어느 테이블·컬럼에서 오는지. 계산 필드는 `계산: {로직}`
+
+#### category 유효값 (StudyCategory enum)
+
+| 코드 | 라벨 |
+|------|------|
+| `AI_ML` | AI · ML |
+| `CS` | CS · 알고리즘 |
+| `DATA` | 데이터 |
+| `BACKEND` | 백엔드 |
+| `FRONTEND` | 프론트엔드 |
+| `MOBILE` | 모바일 |
+| `PLANNING` | 기획 |
+| `PM` | PM |
+| `DESIGN` | 디자인 |
+| `CAREER` | 커리어 |
+| `LANGUAGE` | 어학 |
+| `LIFESTYLE` | 라이프스타일 |
+| `BUSINESS` | 비즈니스 |
+| `OTHER` | 기타 |
 
 ### Error Responses
 
@@ -135,12 +154,22 @@
 
 > 유저스토리: 운영자(ADMIN)가 새 스터디를 등록한다.
 
+### 인수 기준
+
+| ID | 기준 |
+|----|------|
+| AC-1 | title·oneLineSummary·category 세 필수 항목을 채우면 등록된다 |
+| AC-2 | 등록한 스터디는 공개 API(`STATUS=DRAFT`)에 노출되지 않는다. 운영 콘솔 조회에는 포함된다 |
+| AC-3 | recruitDeadline 을 지정하면 그날이 지나면 `RECRUIT_CLOSED` 로 판정된다 |
+| AC-4 | recruitDeadline 을 비우면 마감 없이 계속 모집한다 |
+| AC-5 | category 가 목록 카드 색·아이콘의 기준이다 |
+
 ### 기본 정보
 
 - **Method**: POST
 - **Path**: `/api/studies`
 - **인증**: 필요 — `ACCOUNT.SYSTEM_ROLE=ADMIN` 만 (지금 단계에서는 **캡틴 = 운영자**. 일반 회원에게 셀프서비스로 캡틴 자격을 여는 건 이후 Story)
-- **설명**: 캡틴(=ADMIN)이 새 스터디(`STUDY_KIND=STUDY`, `STATUS=DRAFT`)를 등록한다. `recruitDeadline` 이 있으면 `STUDY_RECRUITMENT` 행 1개를 함께 생성한다.
+- **설명**: 캡틴(=ADMIN)이 새 스터디(`STUDY_KIND=STUDY`, `STATUS=DRAFT`)를 등록한다. `STUDY_RECRUITMENT` 행 1개를 항상 함께 생성한다. `recruitDeadline` 미전송/null 이면 `RECRUIT_DEADLINE_AT=null` (상시 모집).
 
 ### Request Body
 
@@ -161,9 +190,9 @@
 | title | String | Y | 1~60자 (trim 후) | STUDY.TITLE |
 | oneLineSummary | String | Y | 비어 있으면 등록 불가 | STUDY.ONE_LINE_SUMMARY |
 | description | String | N | — | STUDY.DESCRIPTION |
-| category | String | Y | 유효한 enum 값 중 하나 | STUDY.CATEGORY |
+| category | String | Y | StudyCategory enum 값 중 하나. 유효값은 GET 응답의 enum 표 참조 | STUDY.CATEGORY |
 | thumbnailUrl | String | N | — | STUDY.THUMBNAIL_URL |
-| recruitDeadline | String | N | null 또는 미전송 = 상시 모집 (STUDY_RECRUITMENT 행 생성 안 함). 값이 있으면 미래여야 함 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — 값이 있으면 STUDY_RECRUITMENT 행 1개 함께 생성 |
+| recruitDeadline | String | N | null 또는 미전송 = 상시 모집. 값이 있으면 미래여야 함 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT (nullable 로 변경 필요 — 현재 엔티티는 non-null). 항상 STUDY_RECRUITMENT 행 1개 함께 생성 |
 | schedule | String | N | 자유 텍스트 | STUDY.SCHEDULE |
 
 **서버가 자동으로 채우는 필드 (요청에 포함하지 않음):**
@@ -189,7 +218,7 @@ Location: /api/studies/{id}
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | title·oneLineSummary·category 누락, title 60자 초과, category 가 유효하지 않은 값, recruitDeadline 이 과거. 실패한 필드 전부를 `필드명: 사유` 형태로 응답 |
+| 400 | INVALID_INPUT | title·oneLineSummary·category 누락, title 60자 초과, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거. 실패한 필드 전부를 `필드명: 사유` 형태로 응답 |
 | 401 | UNAUTHORIZED | 로그인 필요 |
 | 403 | FORBIDDEN | `SYSTEM_ROLE` 이 `ADMIN` 아님 |
 
@@ -202,9 +231,11 @@ Location: /api/studies/{id}
 ### 미확정
 
 - ~~권한 범위~~ → **결정**: `SYSTEM_ROLE=ADMIN` 만 개설 가능 ("캡틴 = 운영자", 지금 단계). 일반 회원에게 캡틴 자격을 부여하는 신청/승인 플로우는 범위 밖 — 필요해지면 별도 Story
-- ~~캡틴 ↔ STUDY_PARTICIPANT 연결~~ → **결정**: 개설과 동시에 기본 분반(`STUDY_GROUP`) 1개를 생성하고, 개설자를 그 분반의 `STUDY_PARTICIPANT`(`PARTICIPANT_ROLE=LEADER`, `STATUS=ACTIVE`)로 편입한다
+
 - ~~DRAFT → OPEN 전환 주체~~ → **결정**: 개설자(=ADMIN)가 직접 전환한다. 별도 승인 단계 없음 — ERD 상태 다이어그램의 "운영자 공개"를 개설자 본인이 수행하는 것으로 해석
-- ~~상시 모집~~ → **결정**: `recruitDeadline` 미전송/null = 상시 모집. `STUDY_RECRUITMENT` 행을 생성하지 않는다. 응답의 `recruitDeadline` = null 은 STUDY_RECRUITMENT 행이 없음을 의미한다 (컬럼이 nullable 이 아니라 행 자체가 없는 것)
+- ~~상시 모집~~ → **결정**: `recruitDeadline` 미전송/null = 상시 모집. `STUDY_RECRUITMENT` 행은 항상 생성하되 `RECRUIT_DEADLINE_AT` 을 null 로 저장한다. 스키마 변경 필요: `RECRUIT_DEADLINE_AT` NOT NULL → NULL 허용 (마이그레이션 필요)
+- **`publishAt` 등록 시 미지원** — `STUDY.PUBLISH_AT` 컬럼은 존재하나 등록 API 입력으로 받지 않는다. 공개 예약은 별도 Story. 등록 후 `STATUS=DRAFT` 로 비공개 상태이며, 운영자가 직접 OPEN 으로 전환한다
+- **다중 카테고리 미지원** — 현재는 `category` 단일 값만 지원한다. 1~3개 허용으로 확장할 경우 `STUDY_CATEGORY` junction table 이 필요하다 (별도 Story)
 
 ---
 
