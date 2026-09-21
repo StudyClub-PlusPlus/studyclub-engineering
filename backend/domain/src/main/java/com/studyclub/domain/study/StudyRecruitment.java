@@ -41,7 +41,7 @@ public class StudyRecruitment extends BaseEntity {
     @Column(name = "START_AT", nullable = false)
     private Instant startAt;
 
-    @Column(name = "RECRUIT_DEADLINE_AT", nullable = false)
+    @Column(name = "RECRUIT_DEADLINE_AT")
     private Instant recruitDeadlineAt;
 
     @Column(name = "RECRUITMENT_CAPACITY")
