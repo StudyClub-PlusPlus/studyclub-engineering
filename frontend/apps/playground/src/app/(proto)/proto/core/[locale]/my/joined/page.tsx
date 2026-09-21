@@ -50,7 +50,6 @@ import {
   ChevronRight,
   ClipboardList,
   FolderOpen,
-  Heart,
 } from 'lucide-react';
 
 import { SPEC } from './spec';
@@ -482,16 +481,6 @@ export default function MyJoinedPage() {
 
       <div className='mt-5 flex flex-wrap items-center gap-2'>
         <SegmentTabs anno='2' value={filter} options={FILTERS} onChange={changeFilter} />
-        <span data-anno='2-1' className='ml-auto'>
-          <Button
-            variant='secondary'
-            size='sm'
-            leadingIcon={<Heart size={14} />}
-            onClick={() => router.push(`/proto/core/${locale}/my/saved`)}
-          >
-            찜한 스터디
-          </Button>
-        </span>
       </div>
 
       {shown.length === 0 ? (

@@ -7,7 +7,6 @@ import { isHotStudy } from '@studyclub/mock';
 import { CalendarClock } from 'lucide-react';
 
 import { ApplyButton } from './ApplyButton';
-import { BookmarkButton } from './BookmarkButton';
 import { HotBadge } from './HotBadge';
 import { categoryGradient, categoryMeta } from './StudyThumb';
 
@@ -42,7 +41,6 @@ export function StudyCard({ study, locale }: { study: Study; locale: Locale; lea
           </span>
           <div className='flex shrink-0 items-center gap-2'>
             {isHotStudy(study) && <HotBadge />}
-            <BookmarkButton studyId={study.id} locale={locale} />
           </div>
         </div>
         {/* 최대 2줄 — 넘치면 말줄임. 카드 높이를 균일하게 유지한다. */}

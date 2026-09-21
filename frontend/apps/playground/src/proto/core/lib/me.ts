@@ -4,15 +4,14 @@ import { seedMyAttendance } from '@core/lib/attendance';
 import type { MemberRegion } from '@studyclub/mock';
 
 /**
- * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청·거주 지역.
+ * 로그인한 회원의 개인 데이터 — 스터디 신청·거주 지역.
  *
  * 저장할 서버가 아직 없어 **브라우저에만** 남긴다(기기·브라우저가 바뀌면 사라진다).
  * 서버가 생기면 이 파일의 read/write 만 fetch 로 갈아끼우면 되고, 화면 코드는 그대로 둔다.
  *
- * TODO(api): GET/PUT /api/me/bookmarks · /api/me/applications · /api/me
+ * TODO(api): GET/PUT /api/me/applications · /api/me
  */
 
-const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
 const REGION_KEY = 'sc_region';
 const ZONE_KEY = 'sc_timezone';
@@ -39,17 +38,6 @@ function writeJSON(key: string, value: unknown) {
   } catch {
     // 저장 실패(프라이빗 모드 등)해도 화면 동작은 막지 않는다
   }
-}
-
-/* ── 관심 스터디 ─────────────────────────────────────────────────────────────── */
-
-export function getBookmarks(): string[] {
-  return readJSON<string[]>(BOOKMARK_KEY, []);
-}
-
-export function setBookmarked(studyId: string, on: boolean) {
-  const ids = getBookmarks().filter((x) => x !== studyId);
-  writeJSON(BOOKMARK_KEY, on ? [...ids, studyId] : ids);
 }
 
 /* ── 스터디 신청 ─────────────────────────────────────────────────────────── */
@@ -240,7 +228,6 @@ export function seedDemoData() {
       .filter((a) => a.status === 'accepted')
       .map((a) => a.studyId),
   );
-  writeJSON(BOOKMARK_KEY, ['daily-leetcode', 'early-bird', 'system-design-interview']);
   writeJSON(DISCORD_KEY, 'jiwon_dev');
   writeJSON(DISCORD_NICK_KEY, DISCORD_NICKNAME_EXAMPLE);
 }

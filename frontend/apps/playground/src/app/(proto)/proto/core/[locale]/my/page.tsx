@@ -15,13 +15,11 @@ import { t } from '@core/lib/i18n';
 import {
   cancelApplication,
   getApplications,
-  getBookmarks,
   getDiscord,
   getDisplayName,
   getTimeZone,
   seedDemoData,
   setDiscord,
-  setBookmarked,
   setDisplayName,
   setTimeZone,
   type Application,
@@ -30,10 +28,9 @@ import {
 import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname-availability';
 import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
-import { recruitState } from '@core/lib/recruit';
 import { studies as allStudies, type Study } from '@studyclub/mock';
 import { Button, Input } from '@studyclub/ui';
-import { CalendarClock, Heart, Pencil } from 'lucide-react';
+import { CalendarClock, Pencil } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -95,43 +92,6 @@ function Section({ title, count, children }: { title: string; count: number; chi
   );
 }
 
-/**
- * 쌓이는 목록(참여 이력·관심 스터디)은 탭 하나로 묶는다.
- *
- * 넷을 모두 세로로 늘어놓으면 스터디가 쌓일수록 페이지가 끝없이 길어진다. 반대로 넷을 전부
- * 탭으로 만들면 "승인 대기가 있는지"를 보려고 탭을 눌러야 한다 — **지금 할 일은 펼쳐 두고,
- * 쌓이기만 하는 것만 접는다.**
- */
-function ArchiveTabs({
-  tabs,
-  children,
-}: {
-  tabs: { key: string; label: string; count: number }[];
-  children: (key: string) => React.ReactNode;
-}) {
-  const [active, setActive] = useState(tabs[0].key);
-  return (
-    <section className='card mt-6 px-6 py-5'>
-      <div className='flex gap-1 border-b border-border'>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type='button'
-            onClick={() => setActive(t.key)}
-            className={`-mb-px border-b-2 px-3 pb-2.5 text-[15px] font-bold transition-colors ${
-              active === t.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
-            }`}
-          >
-            {t.label}
-            <span className='tnum ml-1.5 text-[13px] font-medium text-fg-muted'>{t.count}</span>
-          </button>
-        ))}
-      </div>
-      <div className='mt-2'>{children(active)}</div>
-    </section>
-  );
-}
-
 /** 길어지는 목록은 일부만 보이고 나머지는 눌러서 편다. */
 function ExpandableList({ children, initial = 5 }: { children: React.ReactNode[]; initial?: number }) {
   const [all, setAll] = useState(false);
@@ -165,7 +125,6 @@ export default function MyPage() {
 
   const [timeZone, setTimeZoneState] = useState('Asia/Seoul');
   const [applications, setApplications] = useState<Application[]>([]);
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [discord, setDiscordState] = useState<DiscordLink>(null);
   // 인라인 편집 — 고치는 값 옆에서 바로 고친다. 항목이 둘뿐이라 따로 지면을 열 일이 아니다.
@@ -187,7 +146,6 @@ export default function MyPage() {
     setName(getDisplayName() ?? u.name ?? u.email);
     setTimeZoneState(getTimeZone());
     setApplications(getApplications());
-    setBookmarks(getBookmarks());
     setDiscordState(getDiscord());
     setReady(true);
   }, [locale, router]);
@@ -200,10 +158,6 @@ export default function MyPage() {
   const pending = joined.filter((x) => x.app.status === 'pending');
   const active = joined.filter((x) => x.app.status === 'accepted' && x.study.status !== 'closed');
   const past = joined.filter((x) => x.app.status === 'accepted' && x.study.status === 'closed');
-  const marked = bookmarks
-    .map((id) => byId.get(id))
-    .filter((s): s is Study => Boolean(s))
-    .reverse();
 
   const trimmedName = draftName.trim();
   const unchangedName = normalizeNickname(trimmedName) === normalizeNickname(name);
@@ -280,11 +234,6 @@ export default function MyPage() {
   function handleCancel(studyId: string) {
     cancelApplication(studyId);
     setApplications(getApplications());
-  }
-
-  function handleUnbookmark(studyId: string) {
-    setBookmarked(studyId, false);
-    setBookmarks(getBookmarks());
   }
 
   return (
@@ -468,68 +417,29 @@ export default function MyPage() {
         )}
       </Section>
 
-      {/* 쌓이기만 하는 두 목록 — 탭으로 묶어 페이지가 길어지지 않게 한다 */}
-      <ArchiveTabs
-        // 관심이 앞 — 다시 열어볼 일이 더 잦고, 참여 이력은 굳이 찾아보는 기록이다
-        tabs={[
-          { key: 'saved', label: '관심 스터디', count: marked.length },
-          { key: 'past', label: '참여 이력', count: past.length },
-        ]}
-      >
-        {(key) =>
-          key === 'past' ? (
-            past.length === 0 ? (
-              <Empty>아직 완료한 스터디가 없습니다.</Empty>
-            ) : (
-              <ExpandableList>
-                {past.map(({ app, study }) => (
-                  <StudyRow
-                    key={study.id}
-                    study={study}
-                    locale={locale}
-                    right={
-                      <div className='shrink-0 text-right'>
-                        <span className='inline-flex rounded-pill bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-fg-secondary'>
-                          완료
-                        </span>
-                        <p className='tnum mt-1 text-[11px] text-fg-muted'>{app.appliedAt} 참여</p>
-                      </div>
-                    }
-                  />
-                ))}
-              </ExpandableList>
-            )
-          ) : marked.length === 0 ? (
-            <Empty>스터디 카드의 하트를 누르면 여기에 모입니다.</Empty>
-          ) : (
-            <ExpandableList>
-              {marked.map((s) => (
-                <StudyRow
-                  key={s.id}
-                  study={s}
-                  locale={locale}
-                  right={
-                    <div className='flex shrink-0 items-center gap-3'>
-                      <span className='text-xs font-medium text-fg-secondary'>
-                        {recruitState(s) === 'apply' ? '모집중' : '모집 마감'}
-                      </span>
-                      <button
-                        type='button'
-                        onClick={() => handleUnbookmark(s.id)}
-                        aria-label='관심 스터디에서 빼기'
-                        title='관심 스터디에서 빼기'
-                        className='grid h-8 w-8 place-items-center rounded-full text-error-500 transition-colors hover:bg-surface-2'
-                      >
-                        <Heart size={16} strokeWidth={2} className='fill-current' />
-                      </button>
-                    </div>
-                  }
-                />
-              ))}
-            </ExpandableList>
-          )
-        }
-      </ArchiveTabs>
+      <Section title='참여 이력' count={past.length}>
+        {past.length === 0 ? (
+          <Empty>아직 완료한 스터디가 없습니다.</Empty>
+        ) : (
+          <ExpandableList>
+            {past.map(({ app, study }) => (
+              <StudyRow
+                key={study.id}
+                study={study}
+                locale={locale}
+                right={
+                  <div className='shrink-0 text-right'>
+                    <span className='inline-flex rounded-pill bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-fg-secondary'>
+                      완료
+                    </span>
+                    <p className='tnum mt-1 text-[11px] text-fg-muted'>{app.appliedAt} 참여</p>
+                  </div>
+                }
+              />
+            ))}
+          </ExpandableList>
+        )}
+      </Section>
 
     </div>
   );

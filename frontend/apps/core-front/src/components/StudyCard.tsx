@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { isHotStudy } from '@studyclub/mock';
 import { CalendarClock } from 'lucide-react';
 
-import { BookmarkButton } from './BookmarkButton';
 import { HotBadge } from './HotBadge';
 import { categoryGradient, categoryMeta } from './StudyThumb';
 import type { Locale, Operator, Study } from '@/lib/content';
@@ -61,10 +60,7 @@ export function StudyCard({ study, locale }: { study: Study; locale: Locale; lea
             <CategoryIcon size={13} strokeWidth={1.75} className='shrink-0' />
             <span className='text-[11px] font-bold uppercase tracking-[0.14em]'>{categoryLabel}</span>
           </span>
-          <div className='flex shrink-0 items-center gap-2'>
-            {isHotStudy(study) && <HotBadge />}
-            <BookmarkButton studyId={study.id} locale={locale} />
-          </div>
+          <div className='flex shrink-0 items-center gap-2'>{isHotStudy(study) && <HotBadge />}</div>
         </div>
         {/* 최대 2줄 — 넘치면 말줄임. 카드 높이를 균일하게 유지한다. */}
         <h3 className='relative line-clamp-2 break-keep text-2xl font-extrabold leading-[1.25] tracking-tight text-white'>

@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 
 
 import { ApplyButton } from '@core/components/ApplyButton';
-import { BookmarkButton } from '@core/components/BookmarkButton';
 import { HotBadge } from '@core/components/HotBadge';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { getStudy, getStudies, type Locale } from '@core/lib/content';
@@ -65,7 +64,6 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
             </div>
             <div className='flex shrink-0 items-center gap-2'>
               {isHotStudy(study) && <HotBadge />}
-              <BookmarkButton studyId={study.id} locale={locale} />
             </div>
           </div>
           <h1 className='break-keep text-[28px] font-bold leading-[1.25] tracking-tight text-white'>

@@ -5,7 +5,6 @@ import { isHotStudy } from '@studyclub/mock';
 import { ArrowLeft, CalendarClock } from 'lucide-react';
 
 import { ApplyButton } from '@/components/ApplyButton';
-import { BookmarkButton } from '@/components/BookmarkButton';
 import { HotBadge } from '@/components/HotBadge';
 import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
 import { getStudy, getStudies, type Locale } from '@/lib/content';
@@ -57,10 +56,7 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
               <CategoryIcon size={14} strokeWidth={1.75} className='shrink-0' />
               <span className='text-[11px] font-bold uppercase tracking-[0.14em]'>{categoryLabel}</span>
             </div>
-            <div className='flex shrink-0 items-center gap-2'>
-              {isHotStudy(study) && <HotBadge />}
-              <BookmarkButton studyId={study.id} locale={locale} />
-            </div>
+            <div className='flex shrink-0 items-center gap-2'>{isHotStudy(study) && <HotBadge />}</div>
           </div>
           <h1 className='break-keep text-[28px] font-bold leading-[1.25] tracking-tight text-white'>
             {t(study.title, locale)}

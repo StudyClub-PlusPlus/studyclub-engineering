@@ -23,9 +23,7 @@ export type StudyKind = "study" | "club";
  *
  * 등록 폼은 이 목록만 선택지로 제공한다. 자유 입력이면 표기 흔들림(AI/ML vs AI·ML)으로
  * 카드 색·아이콘 매칭이 깨진다. 한 스터디가 여러 주제에 걸치면 `categories` 로 더 단다.
- *
- * TODO(api): 백엔드 StudyCategory enum 에 ALGORITHM · SOFTWARE · BOOK_CLUB 추가 필요.
- * 현재 enum 은 CS·BACKEND·FRONTEND·MOBILE·PLANNING·PM·DESIGN 을 갖고 있으나 해당 스터디가 0건이다.
+
  */
 export const STUDY_CATEGORIES = [
   "AI · ML",
@@ -41,7 +39,7 @@ export const STUDY_CATEGORIES = [
   "기타",
 ] as const;
 
-/** API StudyCategory enum → 프론트 표시 이름 매핑. */
+/** API StudyCategory enum → 프론트 표시 이름 매핑. 선언 순서 = 백엔드 enum 순서 = 필터 칩 순서. */
 export const CATEGORY_DISPLAY: Record<string, string> = {
   AI_ML: "AI · ML",
   ALGORITHM: "알고리즘",
@@ -71,7 +69,8 @@ export type Recruitment = {
 };
 
 // 신청 폼 — 캡틴이 설계하는 질문 목록. 이름·이메일은 계정에서 읽고, 디스코드 서버 별명은 계정에 없으면 필수로 받는다.
-export type ApplicationQuestionType = "text" | "textarea" | "radio" | "checkbox" | "select";
+export type ApplicationQuestionType =
+  "text" | "textarea" | "radio" | "checkbox" | "select";
 export type ApplicationQuestion = {
   id: string;
   label: string;
@@ -124,7 +123,8 @@ export const DEMO_APPLICATION_FORM: ApplicationQuestion[] = [
   },
   {
     id: "kickoff",
-    label: "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
+    label:
+      "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
     type: "select",
     required: true,
     options: ["예", "아니오"],

@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
-import { getBookmarks } from '@core/lib/me';
 import { recruitState } from '@core/lib/recruit';
 import { toISODate } from '@studyclub/mock';
 import { Check, Search, X } from 'lucide-react';
@@ -12,7 +11,7 @@ import { Check, Search, X } from 'lucide-react';
 import { StudyCard } from './StudyCard';
 
 type RecruitmentFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
-type SortOption = 'default' | 'deadline' | 'bookmarks' | 'participants' | 'ended' | 'completion';
+type SortOption = 'default' | 'deadline' | 'participants' | 'ended' | 'completion';
 type TimezoneFilter = 'all' | 'KST' | 'PST' | 'both';
 
 const RECRUITMENT_OPTIONS: { value: RecruitmentFilter; label: string }[] = [
@@ -40,10 +39,7 @@ function statusOf(study: Study): Exclude<RecruitmentFilter, 'all'> {
 }
 function sortOptionsFor(status: RecruitmentFilter): { value: SortOption; label: string }[] {
   if (status === 'recruiting') {
-    return [
-      { value: 'deadline', label: '모집 기한이 가까운 순' },
-      { value: 'bookmarks', label: '찜 순' },
-    ];
+    return [{ value: 'deadline', label: '모집 기한이 가까운 순' }];
   }
   if (status === 'ongoing') return [{ value: 'participants', label: '사람 많은 순' }];
   if (status === 'closed') {
@@ -178,8 +174,6 @@ export function StudyBrowser({
   const [query, setQuery] = useState('');
   const [recruitment, setRecruitment] = useState<RecruitmentFilter>('all');
   const [sort, setSort] = useState<SortOption>('default');
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
-  useEffect(() => setBookmarks(getBookmarks()), []);
   const [category, setCategory] = useState<string>('all');
   const [timezone, setTimezone] = useState<TimezoneFilter>('all');
   const base = useMemo(() => {
@@ -208,13 +202,12 @@ export function StudyBrowser({
     const list = recruitment === 'all' ? base : base.filter((s) => statusOf(s) === recruitment);
     return [...list].sort((a, b) => {
       if (sort === 'deadline') return (dateNumber(a.recruitment?.deadline) || Number.MAX_SAFE_INTEGER) - (dateNumber(b.recruitment?.deadline) || Number.MAX_SAFE_INTEGER);
-      if (sort === 'bookmarks') return Number(bookmarks.includes(b.id)) - Number(bookmarks.includes(a.id)) || (a.order ?? 99) - (b.order ?? 99);
       if (sort === 'participants') return (b.stats?.participants ?? b.seats?.taken ?? 0) - (a.stats?.participants ?? a.seats?.taken ?? 0);
       if (sort === 'ended') return dateNumber(b.date ?? b.recruitment?.deadline) - dateNumber(a.date ?? a.recruitment?.deadline);
       if (sort === 'completion') return (b.stats?.completion_rate ?? -1) - (a.stats?.completion_rate ?? -1);
       return (a.order ?? 99) - (b.order ?? 99);
     });
-  }, [base, bookmarks, recruitment, sort]);
+  }, [base, recruitment, sort]);
 
   const sortOptions = sortOptionsFor(recruitment);
 
