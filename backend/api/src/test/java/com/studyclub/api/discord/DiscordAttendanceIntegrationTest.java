@@ -160,11 +160,19 @@ class DiscordAttendanceIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         DiscordAttendanceResponse body = response.getBody();
         assertThat(body).isNotNull();
-        assertThat(body.studyMeetingId()).isEqualTo(meeting.getId());
-        assertThat(body.meetingStarted()).isFalse();
-        assertThat(body.marked()).containsExactlyInAnyOrder(LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
+        assertThat(body.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingId()).isEqualTo(meeting.getId());
+                            assertThat(g.meetingStarted()).isFalse();
+                            assertThat(g.marked())
+                                    .containsExactlyInAnyOrder(
+                                            LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
+                        });
         assertThat(body.unmatched()).containsExactly(STRANGER_DISCORD_ID);
         assertThat(body.notParticipant()).isEmpty();
+        assertThat(body.noMeeting()).isEmpty();
 
         List<StudyAttendance> saved = studyAttendanceRepo.findAll();
         assertThat(saved).hasSize(2);
