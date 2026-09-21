@@ -187,12 +187,13 @@
 
 | 필드 | 타입 | 필수 | 검증 | 소스 |
 |------|------|------|------|------|
+| studyProgramId | Long | N | null 이면 title 로 StudyProgram 자동 생성. 값이 있으면 해당 프로그램이 존재해야 함 | STUDY.PROGRAM_ID (STUDY_PROGRAM 참조) |
 | title | String | Y | 1~60자 (trim 후) | STUDY.TITLE |
 | oneLineSummary | String | Y | 비어 있으면 등록 불가 | STUDY.ONE_LINE_SUMMARY |
 | description | String | N | — | STUDY.DESCRIPTION |
 | category | String | Y | StudyCategory enum 값 중 하나. 유효값은 GET 응답의 enum 표 참조 | STUDY.CATEGORY |
 | thumbnailUrl | String | N | — | STUDY.THUMBNAIL_URL |
-| recruitDeadline | String | N | null 또는 미전송 = 상시 모집. 값이 있으면 미래여야 함 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT (nullable 로 변경 필요 — 현재 엔티티는 non-null). 항상 STUDY_RECRUITMENT 행 1개 함께 생성 |
+| recruitDeadline | String | N | null 또는 미전송 = 상시 모집. 값이 있으면 미래여야 함 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT (nullable). 항상 STUDY_RECRUITMENT 행 1개 함께 생성 |
 | schedule | String | N | 자유 텍스트 | STUDY.SCHEDULE |
 
 **서버가 자동으로 채우는 필드 (요청에 포함하지 않음):**

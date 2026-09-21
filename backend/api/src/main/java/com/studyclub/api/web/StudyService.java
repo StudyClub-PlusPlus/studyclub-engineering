@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StudyService {
 
+    private static final String DEFAULT_RECRUITMENT_TITLE = "1차 모집";
+
     private final StudyRepository studyRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
@@ -45,6 +47,7 @@ public class StudyService {
 
     @Transactional
     public Long create(Long accountId, StudyCreateRequest request) {
+        Instant now = Instant.now();
         Account account =
                 accountRepository
                         .findById(accountId)
@@ -52,8 +55,7 @@ public class StudyService {
         if (account.getSystemRole() != SystemRole.ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 등록 권한이 없습니다.");
         }
-        if (request.recruitDeadline() != null
-                && !Instant.now().isBefore(request.recruitDeadline())) {
+        if (request.recruitDeadline() != null && !now.isBefore(request.recruitDeadline())) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
         }
@@ -92,9 +94,9 @@ public class StudyService {
         studyRecruitmentRepository.save(
                 StudyRecruitment.builder()
                         .studyId(study.getId())
-                        .title("1차 모집")
+                        .title(DEFAULT_RECRUITMENT_TITLE)
                         .description("")
-                        .startAt(Instant.now())
+                        .startAt(now)
                         .recruitDeadlineAt(request.recruitDeadline())
                         .build());
 

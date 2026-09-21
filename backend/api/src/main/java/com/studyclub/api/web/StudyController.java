@@ -2,6 +2,8 @@ package com.studyclub.api.web;
 
 import com.studyclub.api.study.StudyListResponse;
 import com.studyclub.api.study.StudyListService;
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyStatus;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,6 +59,9 @@ public class StudyController {
     @PostMapping
     public ResponseEntity<Void> create(
             @Valid @RequestBody StudyCreateRequest request, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
         Long accountId = (Long) authentication.getPrincipal();
         Long studyId = studyService.create(accountId, request);
         return ResponseEntity.created(URI.create("/api/studies/" + studyId)).build();

@@ -9,7 +9,7 @@ import java.time.Instant;
 public record StudyCreateRequest(
         Long studyProgramId,
         @NotBlank @Size(max = 60) String title,
-        @NotBlank String oneLineSummary,
+        @NotBlank @Size(max = 255) String oneLineSummary,
         String description,
         @NotNull StudyCategory category,
         String thumbnailUrl,
