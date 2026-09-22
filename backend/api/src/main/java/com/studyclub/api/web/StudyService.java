@@ -131,6 +131,15 @@ public class StudyService {
                 accountRepository
                         .findById(accountId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+
+        Study study =
+                studyRepository
+                        .findById(studyId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+
         boolean isAdmin = account.getSystemRole() == SystemRole.ADMIN;
         boolean isNavigator =
                 studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
@@ -140,14 +149,6 @@ public class StudyService {
         if (!isAdmin && !isNavigator) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 수정 권한이 없습니다.");
         }
-
-        Study study =
-                studyRepository
-                        .findById(studyId)
-                        .orElseThrow(
-                                () ->
-                                        new BusinessException(
-                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
 
         if (request.title() != null && request.title().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "title: 제목을 입력하세요.");
@@ -197,10 +198,10 @@ public class StudyService {
                         .map(StudyRecruitment::getId)
                         .toList();
 
-        studyAttendanceRepository.deleteByStudyId(studyId);
         if (!groupIds.isEmpty()) {
             studyMeetingRepository.deleteByStudyGroupIdIn(groupIds);
         }
+        studyAttendanceRepository.deleteByStudyId(studyId);
         studyGroupRepository.deleteByStudyId(studyId);
         studyParticipantRepository.deleteByStudyId(studyId);
         if (!recruitmentIds.isEmpty()) {

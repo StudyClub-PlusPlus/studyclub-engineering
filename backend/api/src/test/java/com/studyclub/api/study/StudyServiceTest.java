@@ -130,6 +130,7 @@ class StudyServiceTest {
     void updateForbiddenForMember() {
         Account member = mockAccount(SystemRole.MEMBER);
         when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
         when(studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
                         10L, 1L, List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER)))
                 .thenReturn(false);
@@ -242,10 +243,12 @@ class StudyServiceTest {
     @Test
     @DisplayName("실패(삭제) - LEADER/CO_LEADER 도 삭제 불가 → FORBIDDEN")
     void deleteForbiddenForNavigator() {
-        Account member = mockAccount(SystemRole.MEMBER);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
+        // Navigator 는 SystemRole.MEMBER 이다. delete() 는 SystemRole.ADMIN 만 허용하므로
+        // studyParticipantRepository 조회 없이 FORBIDDEN 을 던진다.
+        Account navigator = mockAccount(SystemRole.MEMBER);
+        when(accountRepository.findById(2L)).thenReturn(Optional.of(navigator));
 
-        assertThatThrownBy(() -> studyService.delete(1L, 10L))
+        assertThatThrownBy(() -> studyService.delete(2L, 10L))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->

@@ -107,7 +107,7 @@ public class Study extends BaseEntity {
             StudyCategory category,
             String schedule) {
         if (title != null) this.title = title.trim();
-        if (oneLineSummary != null) this.oneLineSummary = oneLineSummary;
+        if (oneLineSummary != null) this.oneLineSummary = oneLineSummary.trim();
         if (description != null) this.description = description;
         if (category != null) this.category = category;
         if (schedule != null) this.schedule = schedule;

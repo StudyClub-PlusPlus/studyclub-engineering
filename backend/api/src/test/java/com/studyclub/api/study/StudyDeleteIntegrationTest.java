@@ -68,12 +68,14 @@ class StudyDeleteIntegrationTest {
         Long studyId = createStudy("케스케이드 스터디", "소개", "BACKEND");
         assertThat(recruitmentRepository.findByStudyId(studyId)).isNotEmpty();
 
-        rest.exchange(
-                "/api/studies/" + studyId,
-                HttpMethod.DELETE,
-                authenticatedNoBody(ADMIN_ID),
-                Void.class);
+        var response =
+                rest.exchange(
+                        "/api/studies/" + studyId,
+                        HttpMethod.DELETE,
+                        authenticatedNoBody(ADMIN_ID),
+                        Void.class);
 
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(recruitmentRepository.findByStudyId(studyId)).isEmpty();
     }
 

@@ -12,7 +12,7 @@ import java.time.Instant;
  */
 public record StudyUpdateRequest(
         @Size(max = 60) String title,
-        String oneLineSummary,
+        @Size(max = 255) String oneLineSummary,
         String description,
         StudyCategory category,
         Instant recruitDeadline,

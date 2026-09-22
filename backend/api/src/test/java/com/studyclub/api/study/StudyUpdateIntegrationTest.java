@@ -87,7 +87,8 @@ class StudyUpdateIntegrationTest {
 
         var recruitment = recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId);
         assertThat(recruitment).isPresent();
-        assertThat(recruitment.get().getRecruitDeadlineAt()).isNotNull();
+        assertThat(recruitment.get().getRecruitDeadlineAt())
+                .isEqualTo(Instant.parse(futureDeadline));
     }
 
     @Test
@@ -172,7 +173,7 @@ class StudyUpdateIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         var recruitment = recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId);
         assertThat(recruitment).isPresent();
-        assertThat(recruitment.get().getRecruitDeadlineAt()).isNotNull();
+        assertThat(recruitment.get().getRecruitDeadlineAt()).isEqualTo(Instant.parse(newDeadline));
     }
 
     private Long createStudy(String title, String oneLineSummary, String category) {
