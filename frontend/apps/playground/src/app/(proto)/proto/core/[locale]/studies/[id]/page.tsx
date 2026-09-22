@@ -14,11 +14,11 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 export async function generateStaticParams() {
   const studies = await getStudies();
-  return studies.map((s) => ({ id: s.id }));
+  return studies.map((s) => ({ id: String(s.study_id) }));
 }
 
 /**
- * 스터디 상세.
+ * 스터디 상세. 주소의 id 는 슬러그가 아니라 `study_id` 다.
  *
  * **등록 폼(운영자 콘솔)에 있는 항목만 노출한다.** 폼에 없는 값은 운영자가 채울 방법이 없으므로
  * 화면에도 두지 않는다 — 목표·주제·대상·주차 커리큘럼·멤버·후기·통계·정원 전부 제외.
@@ -43,6 +43,7 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
         <ScreenSpecRegistrar key={spec.chip ?? spec.screen} spec={spec} />
       ))}
       <Link
+        data-anno='view:1'
         href={`/proto/core/${locale}/studies`}
         className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg'
       >
@@ -56,20 +57,20 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
           className='flex flex-col gap-2.5 px-8 pb-7 pt-6'
           style={{ background: categoryGradient(study.category) }}
         >
-          <span className='inline-flex w-fit items-center gap-1.5 rounded-pill bg-black/40 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md'>
+          <span data-anno='view:2' className='inline-flex w-fit items-center gap-1.5 rounded-pill bg-black/40 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md'>
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${badge.dotClass}`} aria-hidden='true' />
             {badge.label}
           </span>
-          <div className='flex items-center gap-1.5 text-white/85'>
+          <div data-anno='view:3' className='flex items-center gap-1.5 text-white/85'>
             <CategoryIcon size={14} strokeWidth={1.75} className='shrink-0' />
             <span className='text-[11px] font-bold uppercase tracking-[0.14em]'>{categoryLabel}</span>
           </div>
-          <h1 className='break-keep text-[28px] font-bold leading-[1.25] tracking-tight text-white'>
+          <h1 data-anno='view:4' className='break-keep text-[28px] font-bold leading-[1.25] tracking-tight text-white'>
             {t(study.title, locale)}
           </h1>
-          <p className='text-[16px] leading-relaxed text-white/90'>{t(study.summary, locale)}</p>
+          <p data-anno='view:5' className='text-[16px] leading-relaxed text-white/90'>{t(study.summary, locale)}</p>
           {/* 일정 · 시간대 — 목록 카드와 같은 판정을 쓴다 */}
-          <p className='flex items-center gap-1.5 text-[14px] font-medium text-white/90'>
+          <p data-anno='view:6' className='flex items-center gap-1.5 text-[14px] font-medium text-white/90'>
             {study.schedule ? (
               <>
                 <CalendarClock size={14} strokeWidth={1.75} className='shrink-0' />
@@ -86,7 +87,7 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
         </header>
 
         {study.description && (
-          <div className='px-8 py-7'>
+          <div data-anno='view:7' className='px-8 py-7'>
             <h2 className='text-[15px] font-bold text-fg'>{m('common.about_study', locale)}</h2>
             <p className='mt-3 whitespace-pre-line text-[16px] leading-[1.85] text-fg-secondary'>
               {t(study.description, locale)}
@@ -100,7 +101,7 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
         */}
         <div className='flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface-1 px-8 py-5'>
           {/* 모집 마감일은 헤더 배지(D-N/모집 마감/상시 모집)와 항상 겹치므로 여기 따로 두지 않는다 */}
-          <span className='tnum flex items-center gap-1.5 text-sm font-semibold text-fg-secondary'>
+          <span data-anno='view:8' className='tnum flex items-center gap-1.5 text-sm font-semibold text-fg-secondary'>
             <Rocket size={14} strokeWidth={2} className='shrink-0' />
             {startText}
           </span>

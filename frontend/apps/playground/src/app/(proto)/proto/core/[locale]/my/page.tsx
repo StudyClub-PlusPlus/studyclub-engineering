@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
 import { getUser, type SessionUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import {
   cancelApplication,
@@ -65,7 +65,7 @@ function StudyRow({ study, locale, right }: { study: Study; locale: Locale; righ
       </span>
       <div className='min-w-0 flex-1'>
         <Link
-          href={`/proto/core/${locale}/studies/${study.id}`}
+          href={userStudyPath(locale, study)}
           className='block truncate font-bold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}

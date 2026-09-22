@@ -6,6 +6,7 @@
 > 갱신: 2026-09-20 — STUDY_COHORT 테이블 폐기. 코호트 필드는 STUDY 로 통합, 모집 마감은 STUDY_RECRUITMENT 로 분리. 응답·요청 구조 반영
 > 갱신: 2026-09-21 — PATCH/DELETE 스펙 추가
 > 갱신: 2026-09-22 — 목록 카드가 `startAt` 을 표시하도록 playground 변경. 목록 응답 필드 스펙(미작성)에 `startAt` 포함 필요 — 아래 미확정 참고
+> 갱신: 2026-09-23 — 사용자 사이트 상세 조회 키는 `studyId`(`STUDY.ID`). `slug` 는 경로 키가 아니다. 기획: [스터디 상세](../../planning/stories/crew-view-study-detail/PRD.md)
 
 ## 엔드포인트 목록
 
@@ -57,13 +58,13 @@
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}`
 - **인증**: 불필요 (공개)
-- **설명**: 스터디 ID 로 스터디 정보를 조회한다
+- **설명**: `studyId`(`STUDY.ID`)로 스터디 정보를 조회한다. 사용자 사이트 상세 주소의 키도 이 값이다. `slug`로 조회하지 않는다
 
 ### Path Parameters
 
 | 이름 | 타입 | 설명 |
 |------|------|------|
-| studyId | Long | 스터디 ID |
+| studyId | Long | 스터디 ID (`STUDY.ID`). 사용자 사이트 상세 경로 키. `slug` 를 넣지 않는다 |
 
 ### Query Parameters
 
@@ -103,7 +104,7 @@
 |------|------|------|------|------|
 | id | Long | N | 스터디 ID | STUDY.ID |
 | programId | Long | N | 스터디 프로그램 ID | STUDY.PROGRAM_ID |
-| slug | String | N | URL 식별자 | STUDY.SLUG |
+| slug | String | N | 저장용 식별자. 사용자 사이트 상세 경로·조회 키로 쓰지 않는다 | STUDY.SLUG |
 | title | String | N | 스터디 제목 | STUDY.TITLE |
 | oneLineSummary | String | N | 한 줄 소개 | STUDY.ONE_LINE_SUMMARY |
 | description | String | Y | 상세 소개 | STUDY.DESCRIPTION |
@@ -149,10 +150,12 @@
 | 404 | NOT_FOUND | studyId 에 해당하는 스터디 없음 |
 | 404 | NOT_FOUND | 스터디가 숨김 상태 (isHidden=true) |
 
+사용자 사이트는 경로 키가 정수가 아니거나(`slug` 포함) 공개 스터디가 없으면 상세를 열지 않는다. 기획: [crew-view-study-detail](../../planning/stories/crew-view-study-detail/PRD.md)
+
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/app/[locale]/studies/[id]/page.tsx` — 상세 페이지
-- `frontend/apps/core-front/src/lib/content.ts` — `getStudy(id)` mock 함수
+- `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/studies/[id]/page.tsx` — 경로 `id` 는 `studyId`. `getStudy` 는 `study_id` 가 일치할 때만 반환한다
+- 목록 카드·내 스터디·참여·찜의 상세 링크도 `studyId`
 
 ### 미확정
 
@@ -212,7 +215,7 @@
 
 | 필드 | 고정값 | 비고 |
 |------|--------|------|
-| STUDY.SLUG | `{slug}-{id}` | 서버 자동 생성 — 생성 규칙 미확정 |
+| STUDY.SLUG | 서버 자동 생성 | 생성 규칙 미확정. 사용자 사이트 상세 경로에는 쓰지 않는다. 상세 경로는 `/api/studies/{studyId}` |
 | STUDY.STUDY_KIND | `STUDY` | 등록 시 항상 고정. CLUB 전환은 별도 운영 액션 |
 | STUDY.IS_HIDDEN | `false` | 등록 시 기본 공개 |
 | STUDY.STUDY_DELIVERY_FORMAT | `ONLINE` | 등록 시 기본값 |

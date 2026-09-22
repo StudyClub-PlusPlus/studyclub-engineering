@@ -51,6 +51,7 @@ function mapToStudy(api: ApiStudy): Study {
 
   return {
     id: api.slug,
+    study_id: api.studyId,
     title: { ko: api.title, en: api.title },
     summary: { ko: '', en: '' },
     status: mapStatus(api.cohort.status),
