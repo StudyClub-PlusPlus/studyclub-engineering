@@ -5,6 +5,7 @@
 > 갱신: 2026-09-19 — 신청 폼·제출·결과 API 는 [study-application/spec.md](../study-application/spec.md) 로 분리
 > 갱신: 2026-09-20 — STUDY_COHORT 테이블 폐기. 코호트 필드는 STUDY 로 통합, 모집 마감은 STUDY_RECRUITMENT 로 분리. 응답·요청 구조 반영
 > 갱신: 2026-09-21 — PATCH/DELETE 스펙 추가
+> 갱신: 2026-09-22 — 목록 카드가 `startAt` 을 표시하도록 playground 변경. 목록 응답 필드 스펙(미작성)에 `startAt` 포함 필요 — 아래 미확정 참고
 
 ## 엔드포인트 목록
 
@@ -39,6 +40,13 @@
 ### 상태
 
 구현완료 — DB 기반으로 동작 중 (카테고리·상태·키워드·마감일 필터 포함). 필드 단위 응답 스펙은 미작성.
+
+> **FE 사용처 갱신(2026-09-22)**: 사용자 사이트 목록·상세 카드가 시작일(`startAt`)을 항상 표시한다.
+> 필드 단위 응답 스펙을 쓸 때 `startAt` 을 반드시 포함할 것 — 상세 조회 응답과 같은 소스(`STUDY.START_AT`)다.
+> 모집 마감일은 카드에 따로 텍스트로 두지 않고, 상단 상태 배지(`모집중 (D-N)`·`상시 모집`·`진행중`·`모집 마감`)로만 표현한다 —
+> `recruitDeadline`·`recruitStatus` 로 계산한다. D-N 산정은 `recruitDeadline` 하나면 된다.
+> 목록에서는 정렬·신청하기·찜을 더 이상 제공하지 않는다(둘러보기 전용으로 축소). 상세는 신청하기를 그대로 유지한다.
+> playground 근거: [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md)
 
 ---
 
@@ -150,6 +158,7 @@
 
 - [NEEDS CLARIFICATION] CLUB 에서 같은 STUDY_PROGRAM 아래 여러 STUDY 가 있을 때 어떤 기수를 기본으로 보여줄지 (현재는 studyId 직접 지정)
 - [NEEDS CLARIFICATION] isHidden=true 스터디를 404 로 처리할지, 응답에 포함하되 FE 에서 걸러낼지
+- [NEEDS CLARIFICATION] `startAt`/`endAt` 입력 경로 — 등록(POST)·수정(PATCH) 요청 본문에 없다. 응답에는 있지만 누가·언제 채우는지 미정. FE 는 이 값이 비어 있을 걸 가정하고 다른 필드(대표 날짜·킥오프 문구·모집 마감일)로 추정해 표시 중 — [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md) 참고
 
 ---
 
