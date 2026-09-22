@@ -15,6 +15,7 @@ API 계약은 [`specs/`](../specs/README.md) 의 `spec.md`.
 
 | Story | PRD |
 | --- | --- |
+| 크루로서, 스터디 목록을 둘러보고 검색·필터링할 수 있다 | [crew-browse-studies](./stories/crew-browse-studies/PRD.md) |
 | 캡틴으로서, 스터디 신청용 폼을 제작할 수 있다 | [captain-application-form](./stories/captain-application-form/PRD.md) |
 | 크루로서, 스터디 신청 폼을 제출할 수 있다 | [crew-submit-application](./stories/crew-submit-application/PRD.md) |
 | 캡틴으로서, 스터디 신청서 결과를 모아볼 수 있다 | [captain-application-results](./stories/captain-application-results/PRD.md) |

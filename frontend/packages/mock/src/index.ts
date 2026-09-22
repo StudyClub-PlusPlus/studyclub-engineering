@@ -159,6 +159,7 @@ export type Study = {
   order?: number;
   year?: string;
   date?: string; // 대표 날짜(ISO). 없으면 content 에서 `${year}-01-01` 로 추정 주입.
+  start_at?: string; // STUDY.START_AT(ISO). 등록 폼에 아직 입력란이 없어 studies export 에서 추정 주입.
   publish_at?: string; // 레거시 공개일(ISO). 새로 쓰지 않는다 — 공개는 `published` 로만 정한다.
   /**
    * 공개 여부. **등록 직후에는 `false`** 다 — 신청 폼도 없는 스터디가 사이트에 뜨는 일을 막는다.
@@ -2357,10 +2358,35 @@ const STUDIES_SEED: Study[] = [
   },
 ];
 
+/**
+ * 시작일(STUDY.START_AT) 추정 — 등록 폼에 아직 입력란이 없어 기존 필드에서 유도한다.
+ * 우선순위: 코호트 대표 날짜(`date`) → 킥오프 문구의 날짜 → 모집 마감 + 1주.
+ * TODO(api): 등록/수정 API 에 startAt 입력이 생기면 이 추정 로직은 걷어낸다.
+ */
+function deriveStartAt(s: Study): string | undefined {
+  if (s.date) return toISODate(s.date);
+
+  const kickoff = s.recruitment?.kickoff;
+  const fullDate = kickoff?.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (fullDate) return `${fullDate[1]}-${fullDate[2].padStart(2, "0")}-${fullDate[3].padStart(2, "0")}`;
+
+  const deadline = toISODate(s.recruitment?.deadline);
+  const shortDate = kickoff?.match(/^(\d{1,2})\/(\d{1,2})/);
+  if (shortDate && deadline) {
+    return `${deadline.slice(0, 4)}-${shortDate[1].padStart(2, "0")}-${shortDate[2].padStart(2, "0")}`;
+  }
+
+  if (!deadline) return undefined;
+  const started = new Date(`${deadline}T00:00:00Z`);
+  started.setUTCDate(started.getUTCDate() + 7);
+  return started.toISOString().slice(0, 10);
+}
+
 /** 백오피스 신청 폼 탭과 지원자 화면이 같은 질문 목록을 본다. */
 export const studies: Study[] = STUDIES_SEED.map((s) => ({
   ...s,
   applicationForm: DEMO_APPLICATION_FORM,
+  start_at: s.start_at ?? deriveStartAt(s),
 }));
 
 // ── announcements (공지사항) ──────────────────────────────────────────
