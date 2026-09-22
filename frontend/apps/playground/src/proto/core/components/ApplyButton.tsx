@@ -70,15 +70,15 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
 
   const trigger =
     state === 'closed' ? (
-      <span data-anno='view:1' className={`${card} ${idle}`}>
+      <span data-anno='view:9' className={`${card} ${idle}`}>
         {applyLabel}
       </span>
     ) : ready && alreadyApplied ? (
-      <span data-anno='view:2' className={`${card} ${idle}`}>
+      <span data-anno='view:9' className={`${card} ${idle}`}>
         {doneLabel}
       </span>
     ) : (
-      <button type='button' data-anno='view:2' onClick={requestApply} className={`${card} ${live}`}>
+      <button type='button' data-anno='view:9' onClick={requestApply} className={`${card} ${live}`}>
         {applyLabel}
       </button>
     );

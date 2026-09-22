@@ -15,7 +15,7 @@ import {
 } from '@core/lib/attendance';
 import { bookScore, myAttendanceBook, rateTone, type MyAttendanceBook } from '@core/lib/attendance-book';
 import { getUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import {
   LEFT_BADGE,
@@ -260,13 +260,14 @@ function WeekStrip({
               </p>
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
-                  const { accent, tint } = weekChip(byId.get(hit.studyId)?.category);
+                  const study = byId.get(hit.studyId);
+                  const { accent, tint } = weekChip(study?.category);
                   return (
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
                         type='button'
                         title={`${hit.time} ${hit.title} ${hit.no}회차`}
-                        onClick={() => router.push(`/proto/core/${locale}/studies/${hit.studyId}`)}
+                        onClick={() => study && router.push(userStudyPath(locale, study))}
                         className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left text-[10px] font-bold leading-tight hover:brightness-[0.97]'
                         style={{
                           borderLeftColor: accent,
@@ -615,7 +616,7 @@ function StudyItem({
             <div className='min-w-0'>
               <Link
                 data-anno='4-2'
-                href={`/proto/core/${locale}/studies/${study.id}`}
+                href={userStudyPath(locale, study)}
                 className='block truncate text-[17px] font-bold text-fg underline-offset-4 hover:underline'
               >
                 {t(study.title, locale)}
