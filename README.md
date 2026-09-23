@@ -8,6 +8,8 @@ StudyClub++ 코드 모노레포 (**public**). 미국·캐나다·한국의 개�
 
 > ⚠️ **PUBLIC 레포** — `.env`·토큰·키·개인정보 등 민감정보 커밋 금지. 자세한 규칙은 [`CLAUDE.md`](./CLAUDE.md).
 
+> 🚀 **처음이면 [`ONBOARDING.md`](./ONBOARDING.md) 부터** — 클론 → `.env` → 실행 방식 고르기(전부 Docker / 프론트만 로컬 / 백엔드도 로컬 / 운영 API) → 구글 로그인까지 한 장에 있다.
+
 ## 구조
 
 ```
@@ -27,6 +29,8 @@ backend/                 # Spring Boot 4 멀티모듈 (Gradle Kotlin DSL, Java 2
 실 API 연동 지점은 코드에 `// TODO(api)` 로 표시돼 있습니다.
 
 ## 실행
+
+> 로컬 전체 셋업(구글 로그인 · docker compose 포함)은 [`ONBOARDING.md`](./ONBOARDING.md). 아래는 앱 단위 명령 요약이다.
 
 ### Frontend
 
