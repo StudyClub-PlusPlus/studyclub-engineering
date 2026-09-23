@@ -24,14 +24,14 @@
 | `OPEN` | 게시됨, 관심 모으는 중. 기본값 |
 | `ACCEPTED` | 운영자 채택 → STUDY 생성 |
 | `REJECTED` | 운영자 반려 |
-| `CLOSED` | 제안자 철회 / 기한 만료 |
+| `CLOSED` | 제안자 철회 / 기한 만료 / 제안자 탈퇴 (탈퇴 처리는 [user-leave spec](../../specs/user-leave/spec.md#study_proposal-처리--기존-상태-전이-재사용) 참고) |
 
 ```mermaid
 stateDiagram-v2
   [*] --> OPEN
   OPEN --> ACCEPTED : 운영자 채택 → STUDY 생성
   OPEN --> REJECTED : 운영자 반려
-  OPEN --> CLOSED : 제안자 철회 / 만료
+  OPEN --> CLOSED : 제안자 철회 / 만료 / 탈퇴
 ```
 
 ## 제약
