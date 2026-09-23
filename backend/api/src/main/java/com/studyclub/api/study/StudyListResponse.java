@@ -1,4 +1,4 @@
-package com.studyclub.api.study.query;
+package com.studyclub.api.study;
 
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.RecruitStatus;

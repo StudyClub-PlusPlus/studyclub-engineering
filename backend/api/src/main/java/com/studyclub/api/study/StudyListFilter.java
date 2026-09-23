@@ -1,4 +1,4 @@
-package com.studyclub.api.study.query;
+package com.studyclub.api.study;
 
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyPhase;

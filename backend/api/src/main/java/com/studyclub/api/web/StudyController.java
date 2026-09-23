@@ -1,8 +1,8 @@
 package com.studyclub.api.web;
 
-import com.studyclub.api.study.query.StudyListFilter;
-import com.studyclub.api.study.query.StudyListQueryService;
-import com.studyclub.api.study.query.StudyListResponse;
+import com.studyclub.api.study.StudyListFilter;
+import com.studyclub.api.study.StudyListResponse;
+import com.studyclub.api.study.StudyListService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.study.StudyCategory;
@@ -29,11 +29,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/studies")
 public class StudyController {
 
-    private final StudyListQueryService studyListQueryService;
+    private final StudyListService studyListService;
     private final StudyService studyService;
 
-    public StudyController(StudyListQueryService studyListQueryService, StudyService studyService) {
-        this.studyListQueryService = studyListQueryService;
+    public StudyController(StudyListService studyListService, StudyService studyService) {
+        this.studyListService = studyListService;
         this.studyService = studyService;
     }
 
@@ -51,7 +51,7 @@ public class StudyController {
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit) {
 
-        return studyListQueryService.list(
+        return studyListService.list(
                 new StudyListFilter(category, status, timezone, keyword, recruitDeadlineBefore),
                 offset,
                 limit);

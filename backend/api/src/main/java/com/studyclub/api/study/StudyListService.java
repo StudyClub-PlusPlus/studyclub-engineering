@@ -1,4 +1,4 @@
-package com.studyclub.api.study.query;
+package com.studyclub.api.study;
 
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
@@ -11,16 +11,19 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 목록 조회 조립 — 조회 결과에 파생값(모집 상태·종료 임박·단계)을 붙여 응답으로 만든다. 판정 자체는 {@link Study} 가 한다. */
+/**
+ * 목록 조회 조립 — {@link StudyListDao} 가 가져온 결과에 파생값(모집 상태·종료 임박·단계)을 붙여 응답으로 만든다. 판정 자체는 {@link Study}
+ * 가 한다.
+ */
 @Service
 @Transactional(readOnly = true)
-public class StudyListQueryService {
+public class StudyListService {
 
     private final StudyListDao studyListDao;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
 
-    public StudyListQueryService(
+    public StudyListService(
             StudyListDao studyListDao,
             StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository) {

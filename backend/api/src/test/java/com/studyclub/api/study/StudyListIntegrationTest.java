@@ -1,4 +1,4 @@
-package com.studyclub.api.study.query;
+package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
