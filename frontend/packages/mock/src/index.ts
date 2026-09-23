@@ -252,8 +252,8 @@ export function recruitState(study: Study): RecruitState {
 
 /**
  * 공개 상태. 등록 폼의 「공개일」 하나로 결정된다.
- * - live      : 공개일이 없거나(= 등록 즉시 공개) 이미 지남
- * - scheduled : 공개일이 아직 오지 않음 — 사용자 사이트에 보이지 않는다
+ * - live  : 공개일이 없거나(= 등록 즉시 공개) 이미 지남
+ * - draft : 아직 안 켰거나 공개일이 오지 않음 — 사용자 사이트에 보이지 않는다 (옛 `scheduled` 를 합쳤다)
  */
 export type PublishState = "draft" | "live";
 
@@ -2374,7 +2374,8 @@ function deriveStartAt(s: StudyDraft): string | undefined {
 
   const kickoff = s.recruitment?.kickoff;
   const fullDate = kickoff?.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
-  if (fullDate) return `${fullDate[1]}-${fullDate[2].padStart(2, "0")}-${fullDate[3].padStart(2, "0")}`;
+  if (fullDate)
+    return `${fullDate[1]}-${fullDate[2].padStart(2, "0")}-${fullDate[3].padStart(2, "0")}`;
 
   const deadline = toISODate(s.recruitment?.deadline);
   const shortDate = kickoff?.match(/^(\d{1,2})\/(\d{1,2})/);

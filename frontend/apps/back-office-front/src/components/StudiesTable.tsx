@@ -36,7 +36,7 @@ const CATEGORY_OPTIONS: { value: string; label: string }[] = [
 ];
 
 type RecruitFilter = 'all' | 'apply' | 'closed';
-type PublishFilter = 'all' | 'live' | 'scheduled';
+type PublishFilter = 'all' | 'live' | 'draft';
 
 // "전체" 항목에 축 이름을 붙인다 — 필터가 한 줄에 나란히 서면 어떤 축인지 라벨 없이 알아야 한다.
 const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
@@ -48,7 +48,7 @@ const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
 const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
   { value: 'all', label: '공개 전체' },
   { value: 'live', label: '공개' },
-  { value: 'scheduled', label: '공개 예정' },
+  { value: 'draft', label: '공개 전' },
 ];
 
 /** 필터 셀렉트 — 세 축이 한 줄에 나란히 서므로 생김새를 하나로 맞춘다. */
@@ -156,7 +156,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             const open = recruitState(s) === 'apply';
             const deadline = toISODate(s.recruitment?.deadline);
             const publishAt = toISODate(s.publish_at);
-            const scheduled = publishState(s) === 'scheduled';
+            const unpublished = publishState(s) === 'draft';
             const crewStat = summarize(s);
             return (
               <tr key={s.id}>
@@ -183,10 +183,10 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                 <td className='tnum whitespace-nowrap text-xs font-semibold text-fg-secondary'>
                   {crewStat.rate === undefined ? <span className='text-fg-muted'>—</span> : `${crewStat.rate}%`}
                 </td>
-                {/* 공개 예정은 사용자 사이트에서 아직 안 보인다는 뜻 — 날짜를 함께 보여준다 */}
+                {/* 공개 전은 사용자 사이트에서 아직 안 보인다는 뜻 — 공개일이 잡혀 있으면 함께 보여준다 */}
                 <td className='tnum whitespace-nowrap text-xs'>
-                  {scheduled ? (
-                    <span className='font-semibold text-warning-700'>{publishAt} 공개</span>
+                  {unpublished ? (
+                    <span className='font-semibold text-warning-700'>{publishAt ? `${publishAt} 공개` : '비공개'}</span>
                   ) : (
                     <span className='text-fg-secondary'>공개</span>
                   )}
