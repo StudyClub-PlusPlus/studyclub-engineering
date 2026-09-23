@@ -15,6 +15,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -55,11 +56,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         auth ->
                                 auth.requestMatchers(
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(HttpMethod.GET, "/api/studies"),
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(HttpMethod.GET, "/api/studies/*"))
+                                        .permitAll()
+                                        .requestMatchers(
                                                 "/",
                                                 "/error",
                                                 "/api/health",
-                                                "/api/studies",
-                                                "/api/studies/*",
                                                 // API 문서 — 스펙(springdoc) + Scalar UI.
                                                 // /scalar/** 까지 열어야 한다: UI 페이지가 /scalar/scalar.js 를
                                                 // 로드하는데

@@ -35,8 +35,11 @@ backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain 
 
 ## 실행
 
+> 셋업 전체(.env · docker compose · 구글 로그인 · 실행 방식 A~D)는 [`ONBOARDING.md`](ONBOARDING.md). 아래는 요약.
+
 ```bash
 # frontend
+docker compose up -d --build                   # 전부 Docker (기본) — cp .env.example .env 먼저
 cd frontend && npm install && npm run dev      # turbo (모든 앱)
 #   개별: npm run dev --workspace=core-front
 

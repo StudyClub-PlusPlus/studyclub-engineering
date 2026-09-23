@@ -31,7 +31,8 @@ import lombok.NoArgsConstructor;
             @Index(
                     name = "idx_study_attendance_account_group",
                     columnList = "ACCOUNT_ID, STUDY_GROUP_ID"),
-            @Index(name = "idx_study_attendance_study_status", columnList = "STUDY_ID, STATUS")
+            @Index(name = "idx_study_attendance_study_status", columnList = "STUDY_ID, STATUS"),
+            @Index(name = "idx_study_attendance_study_account", columnList = "STUDY_ID, ACCOUNT_ID")
         })
 @Getter
 @Builder
@@ -58,4 +59,8 @@ public class StudyAttendance extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AttendanceStatus status;
+
+    public void updateStatus(AttendanceStatus status) {
+        this.status = status;
+    }
 }
