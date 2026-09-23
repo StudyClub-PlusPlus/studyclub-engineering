@@ -3,22 +3,24 @@ package com.studyclub.api.study;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyPhase;
-import com.studyclub.domain.study.StudyTimezone;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.springframework.stereotype.Repository;
 
 /**
- * {@link StudyListDao} 의 JPQL 구현.
+ * {@link StudyListDao} 의 JPQL 구현 — <b>조건을 받아 쿼리를 조립</b>한다. 걸리지 않은 필터는 절 자체가 만들어지지 않는다.
  *
- * <p>조건의 <b>뜻</b>은 도메인이 갖는다 — 단계는 {@link Study#phase}, 시간대는 {@link Study#timezone}, 정원 판정은 {@link
- * Study#recruitStatus} 다. 여기 있는 식은 <b>같은 규칙을 DB 에서 한 번 더</b> 쓴 것이다. 페이지네이션 때문에 필터·정렬이 DB 에서 일어나야 해서
- * 생긴 중복이라, 한쪽을 고치면 다른 쪽도 고친다 — {@code StudyListIntegrationTest} 가 {@code status} 필터 결과와 응답 {@code
- * phase} 를 함께 검증한다.
+ * <p>판정(무엇이 모집 중인가·어느 시간대인가)은 도메인이 한다 — {@link Study#phase} · {@link Study#timezone} · {@link
+ * Study#recruitStatus}. 여기 {@link #PHASE_RANK} 는 <b>같은 규칙을 DB 에서 한 번 더</b> 쓴 것이다. 페이지네이션 때문에 거르고
+ * 정렬하는 일이 DB 에서 일어나야 해서 생긴 복제라, 한쪽을 고치면 다른 쪽도 고친다 — {@code StudyListIntegrationTest} 가 {@code
+ * status} 필터 결과와 응답 {@code phase} 를 함께 본다.
  */
 @Repository
 class StudyListJpqlDao implements StudyListDao {
@@ -59,50 +61,25 @@ class StudyListJpqlDao implements StudyListDao {
                     + " WHEN UPPER(s.schedule) LIKE '%KST%' THEN 'KST'"
                     + " ELSE 'BOTH' END";
 
-    /** 공개 대상 — 숨김·작성 중(DRAFT)은 빼고, 프로그램마다 가장 최근 기수 1건만. */
+    /**
+     * 공개 대상 — 숨김·작성 중(DRAFT)은 뺀다. 필터와 무관하게 항상 걸린다.
+     *
+     * <p>기수를 묶지 않는다. 같은 프로그램의 3기가 진행 중이고 4기가 모집 중이면 <b>둘 다</b> 나와야 한다 — 기획도 스터디 단위로
+     * 나열한다(planning/stories/crew-browse-studies). 묶어서 최신 1건만 주면 진행 중인 기수가 목록에서 사라진다.
+     */
     private static final String VISIBLE =
-            " WHERE s.isHidden = false"
-                    + " AND s.status <> com.studyclub.domain.study.StudyStatus.DRAFT"
-                    + " AND s.id = (SELECT MAX(s2.id) FROM Study s2 WHERE s2.programId = s.programId"
-                    + "   AND s2.isHidden = false"
-                    + "   AND s2.status <> com.studyclub.domain.study.StudyStatus.DRAFT)";
-
-    /** 값이 없는 조건은 걸리지 않는다. */
-    private static final String FILTERS =
-            " AND (:category IS NULL OR s.category = :category)"
-                    + " AND (:keyword IS NULL OR LOWER(s.title) LIKE :keyword"
-                    + "   OR LOWER(s.oneLineSummary) LIKE :keyword)"
-                    + " AND (:timezone IS NULL OR "
-                    + TIMEZONE
-                    + " = :timezone)"
-                    + " AND (:phaseRank IS NULL OR "
-                    + PHASE_RANK
-                    + " = :phaseRank)"
-                    // 종료 임박 — 지금 신청할 수 있는 스터디 중에서만 고른다
-                    + " AND (:deadlineBefore IS NULL OR ("
-                    + PHASE_RANK
-                    + " = 0 AND "
-                    + CURRENT_DEADLINE
-                    + " IS NOT NULL AND "
-                    + CURRENT_DEADLINE
-                    + " < :deadlineBefore))";
+            "s.isHidden = false" + " AND s.status <> com.studyclub.domain.study.StudyStatus.DRAFT";
 
     /** 모집 중 → 진행 중 → 종료, 같은 단계에서는 최근 등록 순. 사용자가 고르는 정렬은 없다. */
-    private static final String SEARCH =
-            "SELECT s FROM Study s"
-                    + VISIBLE
-                    + FILTERS
-                    + " ORDER BY "
-                    + PHASE_RANK
-                    + " ASC, s.id DESC";
-
-    private static final String COUNT = "SELECT COUNT(s) FROM Study s" + VISIBLE + FILTERS;
+    private static final String ORDER_BY = " ORDER BY " + PHASE_RANK + " ASC, s.id DESC";
 
     @PersistenceContext private EntityManager em;
 
     @Override
     public List<Study> search(StudyListFilter filter, int offset, int limit) {
-        return bind(em.createQuery(SEARCH, Study.class), filter)
+        Assembled where = assemble(filter);
+        String jpql = "SELECT s FROM Study s" + where.jpql() + ORDER_BY;
+        return bind(em.createQuery(jpql, Study.class), jpql, where)
                 .setFirstResult(Math.max(offset, 0))
                 .setMaxResults(limit)
                 .getResultList();
@@ -110,30 +87,72 @@ class StudyListJpqlDao implements StudyListDao {
 
     @Override
     public long count(StudyListFilter filter) {
-        return bind(em.createQuery(COUNT, Long.class), filter).getSingleResult();
+        Assembled where = assemble(filter);
+        String jpql = "SELECT COUNT(s) FROM Study s" + where.jpql();
+        return bind(em.createQuery(jpql, Long.class), jpql, where).getSingleResult();
     }
 
-    private <T> TypedQuery<T> bind(TypedQuery<T> query, StudyListFilter filter) {
-        return query.setParameter("now", Instant.now())
-                .setParameter("occupying", OCCUPYING)
-                .setParameter("category", filter.category())
-                .setParameter("keyword", likePattern(filter.keyword()))
-                .setParameter("timezone", name(filter.timezone()))
-                .setParameter("phaseRank", rank(filter.phase()))
-                .setParameter("deadlineBefore", filter.recruitDeadlineBefore());
+    /** 조립 결과 — WHERE 절과 그 절이 쓰는 값. */
+    private record Assembled(String jpql, Map<String, Object> params) {}
+
+    private static Assembled assemble(StudyListFilter filter) {
+        List<String> conditions = new ArrayList<>();
+        Map<String, Object> params = new LinkedHashMap<>();
+
+        conditions.add(VISIBLE);
+
+        if (filter.category() != null) {
+            conditions.add("s.category = :category");
+            params.put("category", filter.category());
+        }
+        String keyword = likePattern(filter.keyword());
+        if (keyword != null) {
+            conditions.add(
+                    "(LOWER(s.title) LIKE :keyword OR LOWER(s.oneLineSummary) LIKE :keyword)");
+            params.put("keyword", keyword);
+        }
+        if (filter.timezone() != null) {
+            conditions.add(TIMEZONE + " = :timezone");
+            params.put("timezone", filter.timezone().name());
+        }
+        if (filter.phase() != null) {
+            conditions.add(PHASE_RANK + " = :phaseRank");
+            params.put("phaseRank", filter.phase().ordinal());
+        }
+        // 종료 임박 — 지금 신청할 수 있는 스터디 중에서만 고른다
+        if (filter.recruitDeadlineBefore() != null) {
+            conditions.add(
+                    "("
+                            + PHASE_RANK
+                            + " = 0 AND "
+                            + CURRENT_DEADLINE
+                            + " IS NOT NULL AND "
+                            + CURRENT_DEADLINE
+                            + " < :deadlineBefore)");
+            params.put("deadlineBefore", filter.recruitDeadlineBefore());
+        }
+
+        return new Assembled(" WHERE " + String.join(" AND ", conditions), params);
+    }
+
+    /**
+     * 조립된 값과, 단계 판정이 쓰는 {@code :now}·{@code :occupying} 을 바인딩한다. 단계 판정은 필터로도 정렬로도 들어올 수 있어, 최종 JPQL
+     * 에 그 이름이 실제로 남았을 때만 넣는다 (없는 파라미터를 넣으면 Hibernate 가 예외를 던진다).
+     */
+    private <T> TypedQuery<T> bind(TypedQuery<T> query, String jpql, Assembled where) {
+        where.params().forEach(query::setParameter);
+        if (jpql.contains(":now")) {
+            query.setParameter("now", Instant.now());
+        }
+        if (jpql.contains(":occupying")) {
+            query.setParameter("occupying", OCCUPYING);
+        }
+        return query;
     }
 
     private static String likePattern(String keyword) {
         return (keyword == null || keyword.isBlank())
                 ? null
                 : "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
-    }
-
-    private static String name(StudyTimezone timezone) {
-        return timezone == null ? null : timezone.name();
-    }
-
-    private static Integer rank(StudyPhase phase) {
-        return phase == null ? null : phase.ordinal();
     }
 }

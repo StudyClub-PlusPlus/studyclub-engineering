@@ -93,6 +93,34 @@ class StudyListIntegrationTest {
 
         var draft = study("준비 중 스터디", "아직 비공개", StudyCategory.ALGORITHM, StudyStatus.DRAFT).build();
         save(draft, now.plus(5, ChronoUnit.DAYS));
+
+        // 같은 프로그램의 두 기수 — 3기는 진행 중, 4기는 모집 중. 둘 다 목록에 나와야 한다
+        var program = studyProgramRepo.save(StudyProgram.builder().title("영어 회화 클럽").build());
+        var season3 =
+                seasonOf(program.getId(), "영어 회화 3기", StudyCategory.LANGUAGE)
+                        .startAt(now.minus(3, ChronoUnit.DAYS))
+                        .endAt(now.plus(30, ChronoUnit.DAYS))
+                        .build();
+        save(season3, now.minus(10, ChronoUnit.DAYS));
+        var season4 =
+                seasonOf(program.getId(), "영어 회화 4기", StudyCategory.LANGUAGE)
+                        .startAt(now.plus(40, ChronoUnit.DAYS))
+                        .build();
+        save(season4, now.plus(20, ChronoUnit.DAYS));
+    }
+
+    /** 같은 프로그램 아래 기수를 하나 더 만든다. */
+    private Study.StudyBuilder seasonOf(Long programId, String title, StudyCategory category) {
+        return Study.builder()
+                .programId(programId)
+                .slug("season-" + title.hashCode())
+                .title(title)
+                .oneLineSummary("기수별로 따로 모집한다")
+                .category(category)
+                .studyKind(StudyKind.CLUB)
+                .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                .status(StudyStatus.OPEN)
+                .capacity(30);
     }
 
     private Study.StudyBuilder study(
@@ -157,8 +185,10 @@ class StudyListIntegrationTest {
     void listAll() {
         var body = get("");
 
-        assertThat(body).containsEntry("total", 4);
-        assertThat(titles(body)).containsExactly("북클럽", "데일리 리트코드", "Spring 딥다이브", "지난 알고리즘");
+        assertThat(body).containsEntry("total", 6);
+        assertThat(titles(body))
+                .containsExactly(
+                        "영어 회화 4기", "북클럽", "데일리 리트코드", "영어 회화 3기", "Spring 딥다이브", "지난 알고리즘");
     }
 
     @Test
@@ -172,8 +202,10 @@ class StudyListIntegrationTest {
     @Test
     @DisplayName("성공 - 모집 상태 필터 (모집 중 / 진행 중 / 종료). 필터(DB)와 응답 phase(도메인) 가 일치한다")
     void filterByStatus() {
-        assertThat(titles(get("?status=RECRUITING"))).containsExactlyInAnyOrder("데일리 리트코드", "북클럽");
-        assertThat(titles(get("?status=ONGOING"))).containsExactly("Spring 딥다이브");
+        assertThat(titles(get("?status=RECRUITING")))
+                .containsExactlyInAnyOrder("데일리 리트코드", "북클럽", "영어 회화 4기");
+        assertThat(titles(get("?status=ONGOING")))
+                .containsExactlyInAnyOrder("Spring 딥다이브", "영어 회화 3기");
         assertThat(titles(get("?status=CLOSED"))).containsExactly("지난 알고리즘");
 
         for (String phase : List.of("RECRUITING", "ONGOING", "CLOSED")) {
@@ -188,7 +220,8 @@ class StudyListIntegrationTest {
     void filterByTimezone() {
         assertThat(titles(get("?timezone=KST"))).containsExactly("데일리 리트코드");
         assertThat(titles(get("?timezone=PST"))).containsExactly("Spring 딥다이브");
-        assertThat(titles(get("?timezone=BOTH"))).containsExactlyInAnyOrder("지난 알고리즘", "북클럽");
+        assertThat(titles(get("?timezone=BOTH")))
+                .containsExactlyInAnyOrder("지난 알고리즘", "북클럽", "영어 회화 3기", "영어 회화 4기");
     }
 
     @Test
@@ -227,13 +260,21 @@ class StudyListIntegrationTest {
     @DisplayName("성공 - 페이지네이션은 DB 에서 자른다 — offset 이 밀려도 total 은 전체 건수")
     void pagination() {
         var first = get("?offset=0&limit=2");
-        assertThat(first).containsEntry("total", 4).containsEntry("offset", 0);
+        assertThat(first).containsEntry("total", 6).containsEntry("offset", 0);
         assertThat(items(first)).hasSize(2);
 
-        var second = get("?offset=3&limit=2");
-        assertThat(second).containsEntry("total", 4);
+        var second = get("?offset=5&limit=2");
+        assertThat(second).containsEntry("total", 6);
         assertThat(items(second)).hasSize(1);
         assertThat(titles(second)).doesNotContainAnyElementsOf(titles(first));
+    }
+
+    @Test
+    @DisplayName("성공 - 같은 프로그램의 진행 중 기수와 모집 중 기수가 둘 다 나온다 (기수를 묶지 않는다)")
+    void seasonsOfSameProgramAreListedTogether() {
+        assertThat(titles(get("?keyword=영어 회화"))).containsExactlyInAnyOrder("영어 회화 3기", "영어 회화 4기");
+        assertThat(titles(get("?status=ONGOING"))).contains("영어 회화 3기");
+        assertThat(titles(get("?status=RECRUITING"))).contains("영어 회화 4기");
     }
 
     @Test
