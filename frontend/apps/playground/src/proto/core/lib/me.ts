@@ -15,6 +15,7 @@ import type { MemberRegion } from '@studyclub/mock';
 const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
 const REGION_KEY = 'sc_region';
+const ZONE_KEY = 'sc_timezone';
 const NAME_KEY = 'sc_display_name';
 const DISCORD_KEY = 'sc_discord';
 const DISCORD_NICK_KEY = 'sc_discord_nickname';
@@ -67,7 +68,7 @@ export type Application = {
   status: ApplicationStatus;
   /** 신청 당시 거주 지역. 가능 시간을 어느 시간대로 적었는지 여기서 결정된다. */
   region: MemberRegion;
-  /** 일정 미정 스터디에서 고른 "요일-시간대" 조합 (예: mon-evening) */
+  /** 참여 가능한 요일. 예: `mon`, `wed`. */
   cells?: string[];
   motivation?: string;
 };
@@ -76,9 +77,16 @@ export function getApplications(): Application[] {
   return readJSON<Application[]>(APPLICATION_KEY, []);
 }
 
+export function getApplication(studyId: string): Application | undefined {
+  return getApplications().find((a) => a.studyId === studyId);
+}
+
+/**
+ * 이미 낸 신청서는 덮어쓰지 않는다. 수정은 아직 받지 않는다.
+ */
 export function addApplication(app: Application) {
-  const rest = getApplications().filter((a) => a.studyId !== app.studyId);
-  writeJSON(APPLICATION_KEY, [...rest, app]);
+  if (getApplication(app.studyId)) return;
+  writeJSON(APPLICATION_KEY, [...getApplications(), app]);
 }
 
 export function cancelApplication(studyId: string) {
@@ -91,12 +99,28 @@ export function cancelApplication(studyId: string) {
 /* ── 거주 지역 ───────────────────────────────────────────────────────────── */
 
 /**
- * 회원 거주 지역. 신청 폼이 "가능한 시간"을 어느 시간대 기준으로 받을지 정하는 값이라
- * 회원이 직접 고칠 수 있어야 한다(마이페이지).
+ * 회원 거주 지역. 신청 응답과 함께 남겨 운영자가 어느 권역 신청인지 알게 한다.
+ * 회원이 마이페이지에서 고친다.
  */
 export function getRegion(): MemberRegion {
   const v = readJSON<string>(REGION_KEY, 'KR');
   return v === 'NA' || v === 'ETC' ? v : 'KR';
+}
+
+/**
+ * 나의 시간대. 회차 시각을 이 기준으로 적고, 반도 이 값으로 갈린다.
+ *
+ * 지역(`MemberRegion`)은 여기서 파생한다 — 두 값을 따로 저장하면 한쪽만 고쳐져 어긋난다.
+ */
+export function getTimeZone(): string {
+  const saved = readJSON<string>(ZONE_KEY, '');
+  if (saved) return saved;
+  return getRegion() === 'KR' ? 'Asia/Seoul' : 'America/Vancouver';
+}
+
+export function setTimeZone(zone: string) {
+  writeJSON(ZONE_KEY, zone);
+  setRegion(zone === 'Asia/Seoul' ? 'KR' : 'NA');
 }
 
 export function setRegion(region: MemberRegion) {
@@ -142,8 +166,8 @@ export function setDiscord(handle: string | null) {
 /**
  * 스터디클럽++ 디스코드 서버 별명.
  *
- * 계정(`ACCOUNT.DISCORD_NICKNAME`)에 있으면 신청 폼은 그 값을 그대로 쓰고,
- * 없으면 신청 시 필수로 받아 여기에 저장한다.
+ * 계정(`ACCOUNT.DISCORD_NICKNAME`)에 있으면 신청 폼의 기본값으로 채운다.
+ * 지원자가 고친 값은 여기에 다시 저장한다.
  *
  * TODO(api): GET/PATCH /api/me — ACCOUNT.DISCORD_NICKNAME
  */
@@ -164,7 +188,7 @@ export function setDiscordNickname(nickname: string) {
  */
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 9;
+const SEED_VERSION = 10;
 
 function accepted(studyId: string, appliedAt: string): Application {
   return { studyId, appliedAt, status: 'accepted', region: 'KR' };
@@ -206,7 +230,7 @@ export function seedDemoData() {
         appliedAt: '2026-08-14',
         status: 'pending',
         region: 'KR',
-        cells: ['mon-evening', 'wed-evening', 'sun-afternoon'],
+        cells: ['mon', 'wed', 'sun'],
         motivation: 'PyTorch로 직접 구현해보고 싶어 신청합니다.',
       },
     ] satisfies Application[]);
@@ -218,4 +242,5 @@ export function seedDemoData() {
   );
   writeJSON(BOOKMARK_KEY, ['daily-leetcode', 'early-bird', 'system-design-interview']);
   writeJSON(DISCORD_KEY, 'jiwon_dev');
+  writeJSON(DISCORD_NICK_KEY, DISCORD_NICKNAME_EXAMPLE);
 }

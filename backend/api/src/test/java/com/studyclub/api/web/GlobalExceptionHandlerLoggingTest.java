@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
 
 /** 에러 로그에 uri 가 남는지, 본문 메시지(PII)가 안 남는지 지킨다. */
 class GlobalExceptionHandlerLoggingTest {
@@ -33,8 +34,11 @@ class GlobalExceptionHandlerLoggingTest {
     @Test
     @DisplayName("성공 - 예상 못 한 500 은 ERROR 로 method·uri 와 함께 남는다")
     void unexpectedErrorLogsMethodAndUri() {
-        handler.handleUnexpected(new IllegalStateException("boom"));
+        var response = handler.handleUnexpected(new IllegalStateException("boom"));
 
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody().errorCode()).isEqualTo("INTERNAL_ERROR");
+        assertThat(response.getBody().errorMessage()).isEqualTo("서버 오류가 발생했습니다.");
         assertThat(appender.list).hasSize(1);
         var event = appender.list.get(0);
         assertThat(event.getLevel()).isEqualTo(Level.ERROR);

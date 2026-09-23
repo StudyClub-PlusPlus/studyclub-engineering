@@ -23,9 +23,7 @@ export type StudyKind = "study" | "club";
  *
  * 등록 폼은 이 목록만 선택지로 제공한다. 자유 입력이면 표기 흔들림(AI/ML vs AI·ML)으로
  * 카드 색·아이콘 매칭이 깨진다. 한 스터디가 여러 주제에 걸치면 `categories` 로 더 단다.
- *
- * TODO(api): 백엔드 StudyCategory enum 에 ALGORITHM · SOFTWARE · BOOK_CLUB 추가 필요.
- * 현재 enum 은 CS·BACKEND·FRONTEND·MOBILE·PLANNING·PM·DESIGN 을 갖고 있으나 해당 스터디가 0건이다.
+
  */
 export const STUDY_CATEGORIES = [
   "AI · ML",
@@ -41,7 +39,7 @@ export const STUDY_CATEGORIES = [
   "기타",
 ] as const;
 
-/** API StudyCategory enum → 프론트 표시 이름 매핑. */
+/** API StudyCategory enum → 프론트 표시 이름 매핑. 선언 순서 = 백엔드 enum 순서 = 필터 칩 순서. */
 export const CATEGORY_DISPLAY: Record<string, string> = {
   AI_ML: "AI · ML",
   ALGORITHM: "알고리즘",
@@ -71,7 +69,8 @@ export type Recruitment = {
 };
 
 // 신청 폼 — 캡틴이 설계하는 질문 목록. 이름·이메일은 계정에서 읽고, 디스코드 서버 별명은 계정에 없으면 필수로 받는다.
-export type ApplicationQuestionType = "text" | "textarea" | "radio" | "checkbox" | "select";
+export type ApplicationQuestionType =
+  "text" | "textarea" | "radio" | "checkbox" | "select";
 export type ApplicationQuestion = {
   id: string;
   label: string;
@@ -82,6 +81,55 @@ export type ApplicationQuestion = {
   placeholder?: string; // text · textarea 안내 예시
   description?: string; // 지원자에게 보여줄 부가 설명 (선택)
 };
+
+/**
+ * 백오피스 「신청 폼」 탭과 같은 목데이터.
+ * 캡틴이 설계할 수 있는 타입·옵션을 한 폼에 넣는다 — 지원자 화면과 콘솔이 같은 목록을 본다.
+ *
+ * 원본(ai-paper-study): 지원 사유 · 참여 가능 시간 · 희망 난이도 · 킥오프 확인
+ * 보강: 장문형, 객관식·체크박스 「기타」
+ */
+export const DEMO_APPLICATION_FORM: ApplicationQuestion[] = [
+  {
+    id: "reason",
+    label: "지원 사유",
+    type: "text",
+    required: true,
+    placeholder: "내 답변",
+  },
+  {
+    id: "intro",
+    label: "하고 싶은 말",
+    type: "textarea",
+    required: false,
+    placeholder: "내 답변",
+    description: "선택 입력입니다.\n\n**자유롭게** 적어도 됩니다.",
+  },
+  {
+    id: "time",
+    label: "참여 가능 시간을 모두 선택하세요",
+    type: "checkbox",
+    required: true,
+    options: ["평일 오전", "평일 오후", "주말 오전", "주말 오후"],
+    allowOther: true,
+  },
+  {
+    id: "level",
+    label: "희망 난이도를 선택하세요",
+    type: "radio",
+    required: true,
+    options: ["입문", "초급", "중급", "고급", "심화"],
+    allowOther: true,
+  },
+  {
+    id: "kickoff",
+    label:
+      "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
+    type: "select",
+    required: true,
+    options: ["예", "아니오"],
+  },
+];
 
 // 주차별 커리큘럼.
 export type StudyWeek = { label: L10n; title: L10n };
@@ -97,7 +145,10 @@ export type StudyStats = {
 };
 
 export type Study = {
+  /** 슬러그. 북마크·신청·출석의 내부 키. 사용자 사이트 상세 URL 에는 쓰지 않는다. */
   id: string;
+  /** STUDY.ID. 사용자 사이트 상세 조회 키. 시드에는 없고 `studies` export 에서 붙인다. */
+  study_id: number;
   title: L10n;
   summary: L10n;
   description?: L10n;
@@ -111,6 +162,7 @@ export type Study = {
   order?: number;
   year?: string;
   date?: string; // 대표 날짜(ISO). 없으면 content 에서 `${year}-01-01` 로 추정 주입.
+  start_at?: string; // STUDY.START_AT(ISO). 등록 폼에 아직 입력란이 없어 studies export 에서 추정 주입.
   publish_at?: string; // 레거시 공개일(ISO). 새로 쓰지 않는다 — 공개는 `published` 로만 정한다.
   /**
    * 공개 여부. **등록 직후에는 `false`** 다 — 신청 폼도 없는 스터디가 사이트에 뜨는 일을 막는다.
@@ -336,11 +388,14 @@ const MONTHLY_CLUB_GENS = [
   },
 ] as const;
 
+/** 시드 한 건. `study_id` 는 export 때 순번으로 붙인다. */
+type StudyDraft = Omit<Study, "study_id">;
+
 function monthlyClubCohorts(
   id: string,
   title: L10n,
-  shared: Omit<Study, "id" | "title" | "status" | "date" | "year">,
-): Study[] {
+  shared: Omit<StudyDraft, "id" | "title" | "status" | "date" | "year">,
+): StudyDraft[] {
   return MONTHLY_CLUB_GENS.map((c) => ({
     ...shared,
     id: `${id}-g${c.g}`,
@@ -361,7 +416,7 @@ function monthlyClubCohorts(
 }
 
 // ── studies ───────────────────────────────────────────────────────────
-export const studies: Study[] = [
+const STUDIES_SEED: StudyDraft[] = [
   // ── 예정(모집중) ────────────────────────────────────────────────────
   {
     id: "ai-paper-study",
@@ -394,30 +449,6 @@ export const studies: Study[] = [
       cadence: "one-time",
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
-    applicationForm: [
-      { id: "reason", label: "지원 사유", type: "text", required: true, placeholder: "내 답변" },
-      {
-        id: "time",
-        label: "참여 가능 시간을 모두 선택하세요",
-        type: "checkbox",
-        required: true,
-        options: ["평일 오전", "평일 오후", "주말 오전", "주말 오후"],
-      },
-      {
-        id: "level",
-        label: "희망 난이도를 선택하세요",
-        type: "radio",
-        required: true,
-        options: ["입문", "초급", "중급", "고급", "심화"],
-      },
-      {
-        id: "kickoff",
-        label: "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
-        type: "select",
-        required: true,
-        options: ["예", "아니오"],
-      },
-    ],
     order: 1,
     year: "2026",
   },
@@ -2332,6 +2363,38 @@ export const studies: Study[] = [
     year: "2024",
   },
 ];
+
+/**
+ * 시작일(STUDY.START_AT) 추정 — 등록 폼에 아직 입력란이 없어 기존 필드에서 유도한다.
+ * 우선순위: 코호트 대표 날짜(`date`) → 킥오프 문구의 날짜 → 모집 마감 + 1주.
+ * TODO(api): 등록/수정 API 에 startAt 입력이 생기면 이 추정 로직은 걷어낸다.
+ */
+function deriveStartAt(s: StudyDraft): string | undefined {
+  if (s.date) return toISODate(s.date);
+
+  const kickoff = s.recruitment?.kickoff;
+  const fullDate = kickoff?.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (fullDate) return `${fullDate[1]}-${fullDate[2].padStart(2, "0")}-${fullDate[3].padStart(2, "0")}`;
+
+  const deadline = toISODate(s.recruitment?.deadline);
+  const shortDate = kickoff?.match(/^(\d{1,2})\/(\d{1,2})/);
+  if (shortDate && deadline) {
+    return `${deadline.slice(0, 4)}-${shortDate[1].padStart(2, "0")}-${shortDate[2].padStart(2, "0")}`;
+  }
+
+  if (!deadline) return undefined;
+  const started = new Date(`${deadline}T00:00:00Z`);
+  started.setUTCDate(started.getUTCDate() + 7);
+  return started.toISOString().slice(0, 10);
+}
+
+/** 백오피스 신청 폼 탭과 지원자 화면이 같은 질문 목록을 본다. */
+export const studies: Study[] = STUDIES_SEED.map((s, i) => ({
+  ...s,
+  study_id: i + 1,
+  applicationForm: DEMO_APPLICATION_FORM,
+  start_at: s.start_at ?? deriveStartAt(s),
+}));
 
 // ── announcements (공지사항) ──────────────────────────────────────────
 export const announcements: Announcement[] = [

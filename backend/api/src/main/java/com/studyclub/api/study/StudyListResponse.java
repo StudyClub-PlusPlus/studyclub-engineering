@@ -1,10 +1,13 @@
 package com.studyclub.api.study;
 
 import com.studyclub.domain.study.DeliveryFormat;
+import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyCohort;
-import com.studyclub.domain.study.StudyCohortStatus;
+import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyPhase;
+import com.studyclub.domain.study.StudyStatus;
+import com.studyclub.domain.study.StudyTimezone;
 import java.time.Instant;
 import java.util.List;
 
@@ -14,41 +17,44 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
             Long studyId,
             String slug,
             String title,
+            String oneLineSummary,
             StudyCategory category,
+            StudyKind studyKind,
             String thumbnailUrl,
-            String studyKind,
-            CohortSummary cohort) {
-        public static StudySummary from(Study study, StudyCohort cohort, long applicantCount) {
+            String schedule,
+            StudyTimezone timezone,
+            StudyStatus status,
+            StudyPhase phase,
+            RecruitStatus recruitStatus,
+            DeliveryFormat deliveryFormat,
+            Integer capacity,
+            long currentApplicants,
+            Instant recruitDeadlineAt,
+            Instant startAt,
+            Instant endAt,
+            boolean closingSoon) {
+        public static StudySummary from(
+                Study study, long applicantCount, Instant recruitDeadlineAt) {
             return new StudySummary(
                     study.getId(),
                     study.getSlug(),
                     study.getTitle(),
+                    study.getOneLineSummary(),
                     study.getCategory(),
+                    study.getStudyKind(),
                     study.getThumbnailUrl(),
-                    study.getStudyKind().name(),
-                    CohortSummary.from(cohort, applicantCount));
-        }
-    }
-
-    public record CohortSummary(
-            Long cohortId,
-            StudyCohortStatus status,
-            DeliveryFormat deliveryFormat,
-            Integer capacity,
-            long currentApplicants,
-            Instant recruitDeadline,
-            Instant startDate,
-            boolean closingSoon) {
-        public static CohortSummary from(StudyCohort cohort, long applicantCount) {
-            return new CohortSummary(
-                    cohort.getId(),
-                    cohort.getStatus(),
-                    cohort.getStudyDeliveryFormat(),
-                    cohort.getCapacity(),
+                    study.getSchedule(),
+                    study.timezone(),
+                    study.getStatus(),
+                    study.phase(applicantCount, recruitDeadlineAt),
+                    study.recruitStatus(applicantCount, recruitDeadlineAt),
+                    study.getStudyDeliveryFormat(),
+                    study.getCapacity(),
                     applicantCount,
-                    cohort.getRecruitDeadline(),
-                    cohort.getStartDate(),
-                    cohort.isClosingSoon());
+                    recruitDeadlineAt,
+                    study.getStartAt(),
+                    study.getEndAt(),
+                    study.isClosingSoon(recruitDeadlineAt));
         }
     }
 }

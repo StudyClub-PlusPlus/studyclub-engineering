@@ -27,7 +27,7 @@ public class AuthController {
         this.authService = authService;
     }
 
-    /** 구글 소셜 로그인 — 미가입이면 자동가입(STUDENT) + JWT 발급. platform=BACK_OFFICE 는 allowlist 강제. */
+    /** 구글 소셜 로그인 — 미가입이면 자동가입(STUDENT) + JWT 발급. BACK_OFFICE 는 ADMIN 만 통과. */
     @PostMapping("/social-login")
     public AuthResponse socialLogin(@RequestBody SocialLoginRequest req) {
         return authService.socialLogin(req.code(), req.platform(), req.redirectUri());

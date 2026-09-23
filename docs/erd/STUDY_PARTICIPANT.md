@@ -1,7 +1,7 @@
 # STUDY_PARTICIPANT — 명부
 
-반에 소속된 사람. 신청 승인 시 생기고, 출석·마이페이지·완주율의 기준이 된다.
-"운영자가 수동으로 옮기거나 복사하는 단계"를 없애는 테이블 — 승인 = 명부 편입.
+반에 소속된 사람. 신청 제출 시 생기고, 출석·마이페이지·완주율의 기준이 된다.
+"운영자가 수동으로 옮기거나 복사하는 단계"를 없애는 테이블 — 제출 = 명부 편입.
 
 ## 컬럼
 
@@ -17,7 +17,7 @@
 
 ## 관계
 - N : 1 [ACCOUNT](./ACCOUNT.md), [STUDY_CLASS](./STUDY_CLASS.md)
-- 출처: [STUDY_APPLICATION](./STUDY_APPLICATION.md) `APPROVED`
+- 출처: [STUDY_APPLICATION](./STUDY_APPLICATION.md) 제출
 
 ## 상태 — STATUS
 
@@ -30,7 +30,7 @@
 
 ```mermaid
 stateDiagram-v2
-  [*] --> ACTIVE : 신청 승인
+  [*] --> ACTIVE : 신청 제출
   ACTIVE --> PAUSED : 본인/운영자
   PAUSED --> ACTIVE : 복귀
   ACTIVE --> WITHDRAWN : 하차

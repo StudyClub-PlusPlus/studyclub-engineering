@@ -25,7 +25,6 @@ export const PREVIEW_USER: SessionUser = {
   id: PREVIEW_ID,
   email: 'gildongHong@example.com',
   name: '홍길동',
-  picture: null,
   role: 'MEMBER',
 };
 

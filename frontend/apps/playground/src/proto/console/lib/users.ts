@@ -9,7 +9,7 @@
 import { getStudyCrew, studies } from '@studyclub/mock';
 import type { MemberRegion } from '@studyclub/mock';
 
-import type { RoleKey } from './roles';
+import type { AccountRole } from './roles';
 
 export type UserStatus = 'active' | 'dormant';
 
@@ -18,7 +18,10 @@ export type ConsoleUser = {
   name: string;
   email: string;
   region: MemberRegion;
-  role: RoleKey;
+  /** 계정 권한 — 캡틴이거나 크루다. 네비게이터는 계정이 아니라 **스터디마다** 서는 역할이다. */
+  account: AccountRole;
+  /** 네비게이터로 맡은 스터디 id. 비어 있으면 맡은 스터디가 없다. */
+  navigatorOf: string[];
   /** 가입일 (yyyy-mm-dd). */
   joinedAt: string;
   /** 참여 중인 스터디 id. */
@@ -58,7 +61,8 @@ function buildRoster(): ConsoleUser[] {
   for (const captain of CAPTAINS) {
     byEmail.set(captain.email, {
       ...captain,
-      role: 'captain',
+      account: 'captain',
+      navigatorOf: [],
       studyIds: [],
       status: 'active',
     });
@@ -79,7 +83,8 @@ function buildRoster(): ConsoleUser[] {
         name: c.name,
         email: c.email,
         region: c.region,
-        role: 'crew',
+        account: 'crew',
+        navigatorOf: [],
         joinedAt: joinDate(seed),
         studyIds: c.status === 'active' ? [study.id] : [],
         status: 'active',
@@ -90,24 +95,21 @@ function buildRoster(): ConsoleUser[] {
   // 승인된 스터디가 하나도 없으면 휴면으로 본다 — 신청만 해 두고 참여하지 않은 계정.
   const rows = [...byEmail.values()].map((m) => ({
     ...m,
-    status: (m.role === 'captain' || m.studyIds.length > 0 ? 'active' : 'dormant') as UserStatus,
+    status: (m.account === 'captain' || m.studyIds.length > 0 ? 'active' : 'dormant') as UserStatus,
   }));
 
-  // 캡틴 먼저, 그다음 네비게이터, 그다음 참여 스터디가 많은 순 — 운영자가 손댈 사람이 위로.
-  const rank: Record<RoleKey, number> = { captain: 0, navigator: 1, crew: 2 };
-  rows.sort(
-    (a, b) => rank[a.role] - rank[b.role] || b.studyIds.length - a.studyIds.length || a.name.localeCompare(b.name),
-  );
+  // 캡틴 먼저, 그다음 담당 스터디가 있는 사람, 그다음 참여가 많은 순 — 손댈 사람이 위로.
+  const rank = (u: ConsoleUser) => (u.account === 'captain' ? 0 : u.navigatorOf.length > 0 ? 1 : 2);
 
-  // 네비게이터 두 명을 시연용으로 세운다. 정렬 뒤에 얹어야 매번 같은 사람이 걸린다.
-  const promotable = rows.filter((r) => r.role === 'crew' && r.studyIds.length > 0);
-  promotable.slice(0, 2).forEach((r) => {
-    r.role = 'navigator';
+  // 네비게이터를 시연용으로 세운다. 한 명은 두 스터디를 맡아 「+1」 표기를 볼 수 있게 한다.
+  const staffable = rows
+    .filter((r) => r.account === 'crew' && r.studyIds.length > 0)
+    .sort((a, b) => b.studyIds.length - a.studyIds.length || a.email.localeCompare(b.email));
+  staffable.slice(0, 2).forEach((r, i) => {
+    r.navigatorOf = r.studyIds.slice(0, i === 0 ? 2 : 1);
   });
 
-  rows.sort(
-    (a, b) => rank[a.role] - rank[b.role] || b.studyIds.length - a.studyIds.length || a.name.localeCompare(b.name),
-  );
+  rows.sort((a, b) => rank(a) - rank(b) || b.studyIds.length - a.studyIds.length || a.name.localeCompare(b.name));
   return rows;
 }
 

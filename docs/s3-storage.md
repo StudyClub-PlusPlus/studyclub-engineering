@@ -25,7 +25,7 @@ AWS_ACCESS_KEY_ID=     # 인프라 담당자에게 요청
 AWS_SECRET_ACCESS_KEY= # 인프라 담당자에게 요청
 ```
 
-> 키는 `fleet/infrastructure/terraform/platform/namespace/aws/iam/` 에서 `terraform output` 으로 꺼낸다.
+> 키는 인프라 레포의 AWS IAM terraform 에서 `terraform output` 으로 꺼낸다 (인프라 담당자에게 요청).
 > **이 문서에 실제 키를 적지 않는다.**
 
 ## 권한

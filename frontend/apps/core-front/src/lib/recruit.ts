@@ -11,7 +11,7 @@
  * 않고 마감일 유무로만 표현하므로, 등록 폼에서 마감일은 선택 입력이다.
  */
 
-import { recruitState, toISODate, type RecruitState } from '@studyclub/mock';
+import { recruitState, todayISO, toISODate, type RecruitState } from '@studyclub/mock';
 
 import type { Locale, Study } from '@/lib/content';
 import { t } from '@/lib/i18n';
@@ -47,4 +47,57 @@ export function recruitDeadline(study: Study, locale: Locale): string | undefine
   const d = toISODate(study.recruitment?.deadline);
   if (!d) return undefined;
   return locale === 'ko' ? `마감 ${d}` : `Due ${d}`;
+}
+
+/** 시작일 표시값 — `STUDY.START_AT` 이 없으면 `미정`. */
+export function studyStartValue(study: Study, locale: Locale): string {
+  return toISODate(study.start_at) ?? t({ ko: '미정', en: 'TBD' }, locale);
+}
+
+/**
+ * 스터디가 도는 시간대 — 목록 필터·목록/상세 표기가 **같은 판정**을 쓰도록 여기서 단일 정의한다.
+ * 일정·킥오프 문구에 표기가 없으면 `both`(동시 모집)로 본다.
+ */
+export type StudyTimezone = 'KST' | 'PST' | 'both';
+
+export function studyTimezone(study: Study): StudyTimezone {
+  const text = [study.schedule?.ko, study.schedule?.en, study.recruitment?.kickoff].filter(Boolean).join(' ');
+  if (/PST|PDT/i.test(text)) return 'PST';
+  if (/KST/i.test(text)) return 'KST';
+  return 'both';
+}
+
+const TIMEZONE_LABEL: Record<StudyTimezone, { ko: string; en: string }> = {
+  KST: { ko: 'KST', en: 'KST' },
+  PST: { ko: 'PST', en: 'PST' },
+  both: { ko: '동시 모집(KST·PST)', en: 'Multiple timezones (KST·PST)' },
+};
+
+export function studyTimezoneLabel(study: Study, locale: Locale): string {
+  return t(TIMEZONE_LABEL[studyTimezone(study)], locale);
+}
+
+/**
+ * 카드 상단 상태 배지(예: "모집중 (D-3)") — dot 색은 design-system 상태 tone 을 그대로 쓴다.
+ * 마감 임박(D-3 이내) 판정은 백엔드 `isClosingSoon()` 과 같은 기준(3일) —
+ * [study-recruit-status/spec.md](../../../../specs/study-recruit-status/spec.md#판정-규칙) 참고.
+ */
+export function recruitBadge(study: Study, locale: Locale): { label: string; dotClass: string } {
+  if (study.status === 'ongoing') {
+    return { label: t({ ko: '진행중', en: 'Ongoing' }, locale), dotClass: 'bg-inprogress-dot' };
+  }
+  if (recruitState(study) === 'closed') {
+    return { label: t({ ko: '모집 마감', en: 'Closed' }, locale), dotClass: 'bg-closed-dot' };
+  }
+  const deadline = toISODate(study.recruitment?.deadline);
+  if (!deadline) {
+    return { label: t({ ko: '상시 모집', en: 'Always open' }, locale), dotClass: 'bg-recruiting-dot' };
+  }
+  const days = Math.round((Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${todayISO()}T00:00:00Z`)) / 86_400_000);
+  const dLabel = days <= 0 ? 'D-DAY' : `D-${days}`;
+  const closingSoon = days <= 3;
+  return {
+    label: t({ ko: `모집중 (${dLabel})`, en: `Open (${dLabel})` }, locale),
+    dotClass: closingSoon ? 'bg-closingsoon-dot' : 'bg-recruiting-dot',
+  };
 }
