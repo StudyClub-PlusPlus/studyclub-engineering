@@ -9,7 +9,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
@@ -22,8 +21,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@NamedQuery(name = Study.LIST_SEARCH, query = StudyListQuery.SEARCH)
-@NamedQuery(name = Study.LIST_COUNT, query = StudyListQuery.COUNT)
 @Table(
         name = "STUDY",
         uniqueConstraints = @UniqueConstraint(name = "uk_study_slug", columnNames = "SLUG"),
@@ -34,11 +31,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Study extends BaseEntity {
-
-    /** 공개 목록 조회 — JPQL 은 {@link StudyListQuery}. 부팅 때 Hibernate 가 검증한다. */
-    public static final String LIST_SEARCH = "Study.listSearch";
-
-    public static final String LIST_COUNT = "Study.listCount";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

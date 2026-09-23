@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface StudyRepository extends JpaRepository<Study, Long>, StudyListQueryRepository {
+public interface StudyRepository extends JpaRepository<Study, Long> {
     List<Study> findByProgramIdInAndStatus(Collection<Long> programIds, StudyStatus status);
 
     Optional<Study> findFirstByProgramIdOrderByIdDesc(Long programId);
