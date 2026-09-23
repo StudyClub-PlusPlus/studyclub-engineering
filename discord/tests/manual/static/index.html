@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Discord API manual test</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Discord service · manual test</h1>
+    <div id="status" class="status">loading…</div>
+  </header>
+
+  <section class="bar">
+    <label>target
+      <input id="baseUrl" type="text" size="26" placeholder="http://localhost:4800">
+    </label>
+    <span class="hint">4800 = <code>python -m app.main</code> · 24800 = docker compose</span>
+    <span class="spacer"></span>
+    <label class="chk"><input type="checkbox" id="omitIdempotencyKey"> omit <code>Idempotency-Key</code></label>
+    <label class="chk"><input type="checkbox" id="badApiKey"> wrong <code>X-API-Key</code></label>
+    <label class="chk"><input type="checkbox" id="omitApiKey"> omit <code>X-API-Key</code></label>
+    <label class="chk"><input type="checkbox" id="omitUserId"> omit <code>X-Discord-User-ID</code></label>
+    <label>override user ID
+      <input id="userIdOverride" type="text" size="20" placeholder="(from OAuth session)">
+    </label>
+  </section>
+
+  <main>
+    <section id="oauth" class="card">
+      <h2>OAuth2 authorization code flow</h2>
+      <p class="note">
+        Each leg is a separate button so the flow can be broken on purpose:
+        deny on the consent screen, edit the <code>state</code> in the authorize URL,
+        press <em>exchange</em> twice on the same code.
+      </p>
+
+      <div class="legs">
+        <div class="leg">
+          <h3>1 · authorize</h3>
+          <label>scope <input id="scope" type="text" size="30" value="identify"></label>
+          <label>prompt
+            <select id="prompt"><option>consent</option><option>none</option></select>
+          </label>
+          <div class="row">
+            <button id="btnAuthorizeUrl" class="ghost">build URL</button>
+            <button id="btnAuthorize">build &amp; open</button>
+          </div>
+          <pre id="legAuthorize" class="out">—</pre>
+        </div>
+
+        <div class="leg">
+          <h3>2 · callback</h3>
+          <p class="note">Filled in when Discord redirects back. The code is <strong>not</strong> exchanged automatically.</p>
+          <pre id="legCallback" class="out">—</pre>
+        </div>
+
+        <div class="leg">
+          <h3>3 · token</h3>
+          <label>code override <input id="codeOverride" type="text" size="30" placeholder="(from callback)"></label>
+          <div class="row">
+            <button id="btnToken">exchange code</button>
+            <button id="btnRefresh" class="ghost">refresh</button>
+            <label class="chk"><input type="checkbox" id="revealTokens"> reveal tokens</label>
+          </div>
+          <pre id="legToken" class="out">—</pre>
+        </div>
+
+        <div class="leg">
+          <h3>4 · /users/@me</h3>
+          <p class="note">The <code>id</code> here becomes <code>X-Discord-User-ID</code> on every call below.</p>
+          <div class="row">
+            <button id="btnMe">call /users/@me</button>
+            <button id="btnReset" class="ghost danger">reset session</button>
+          </div>
+          <pre id="legMe" class="out">—</pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="production" class="card">
+      <h2>Production · one button</h2>
+      <p class="note">
+        The same grant as above, packaged the way the app would ship it —
+        popup, the code exchanged server-side, <code>postMessage</code> back to the opener.
+        A shipped app would end at the profile; the trace below is the harness showing
+        its work, and is the only reason the browser can see a code or a token here.
+      </p>
+      <div class="row">
+        <button id="btnDiscordAuth" class="discord">auth with discord</button>
+        <button id="btnLogout" class="ghost" hidden>log out</button>
+        <span id="authError" class="autherr"></span>
+      </div>
+      <div id="profile" class="profile" hidden></div>
+
+      <details id="authDebug" class="debug" hidden>
+        <summary>trace — every step the server ran</summary>
+        <label class="chk"><input type="checkbox" id="revealAuthTokens"> reveal tokens</label>
+        <pre id="authTrace" class="out">—</pre>
+      </details>
+    </section>
+
+    <section id="endpoints"></section>
+
+    <section class="card">
+      <h2>Log <button id="btnClearLog" class="ghost small">clear</button></h2>
+      <div id="log"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

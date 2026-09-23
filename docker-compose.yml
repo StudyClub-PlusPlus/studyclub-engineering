@@ -1,10 +1,17 @@
-# StudyClub++ 로컬 개발 스택 — mysql + api + frontend(core 4700 / back-office 4701)
+# StudyClub++ 로컬 개발 스택 — mysql + api + frontend(core 4700 / back-office 4701 / playground 4702) + discord
 #
-#   docker compose up -d --build       # 전체 기동
+#   cp .env.example .env               # 처음 한 번. 구글 OAuth 값은 담당자(@titaniper)에게 DM 으로 받는다
+#   docker compose up -d --build       # 전체 기동 → http://localhost:4700
 #   docker compose logs -f api         # 로그
 #   docker compose down                # 정지 (-v 붙이면 DB 볼륨까지 삭제)
 #
+# 기본값은 전부 **로컬끼리** 붙는다 — 서비스 간에는 내부 주소(api:8080, mysql:3306), 브라우저는 localhost.
+# 처음부터 끝까지는 ONBOARDING.md.
+#
 # 시크릿/설정은 .env 로 주입 (PUBLIC 레포 — .env 는 gitignore, .env.example 참고).
+#
+# ⚠️ 프론트 포트 4700/4701 은 바꾸지 않는다 — GCP 에 등록된 구글 콜백(http://localhost:4700/api/auth/callback)과
+#    백엔드 CORS 기본값이 이 번호에 묶여 있다. 로컬 npm run dev 와 동시에 띄우면 포트가 겹치니 한쪽만 쓴다.
 #
 # ⚠️ name 명시 필수 — 디렉토리 basename 이 'engineering' 이라 다른 서비스(place 등)와
 #    compose 프로젝트명이 충돌한다. 'studyclub' 로 고정해 격리.
@@ -44,11 +51,11 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
       DB_USERNAME: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
-      BACK_OFFICE_ALLOWED_EMAILS: ${BACK_OFFICE_ALLOWED_EMAILS}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:4700/api/auth/callback}
       JWT_SECRET: ${JWT_SECRET}
+      LOG_JSON_CONSOLE: ${LOG_JSON_CONSOLE:-}
       MAIL_NOTIFY_CONFIGURATION_SET_NAME: ${MAIL_NOTIFY_CONFIGURATION_SET_NAME}
       MAIL_NOTIFY_REGION: ${MAIL_NOTIFY_REGION}
       MAIL_NOTIFY_SUB_DOMAIN: ${MAIL_NOTIFY_SUB_DOMAIN}
@@ -72,18 +79,33 @@ services:
       # macOS 도커 bind-mount 는 inotify 이벤트가 컨테이너로 전파 안 됨 → 폴링으로 HMR 활성화
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
-      # 서버측(Next route handler)이 컨테이너 내부에서 백엔드에 닿는 URL
+      # 서버측(Next route handler)이 컨테이너 내부에서 백엔드에 닿는 URL.
+      # .env 의 API_BASE_URL(로컬 npm 용 localhost:28080)은 컨테이너 안에선 안 닿아서 여기서 고정한다.
       API_BASE_URL: http://api:8080
       # 브라우저용 (호스트에서 접근)
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:28080}
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-28080}
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      NEXT_PUBLIC_OAUTH_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      NEXT_PUBLIC_OAUTH_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:4700/api/auth/callback}
+      # ── 운영 API 에 붙이기 (화면만 볼 때) ──────────────────────────────────────────
+      # 위 세 줄 대신 아래를 쓰고 `docker compose up -d --no-deps frontend` 로 frontend 만 띄운다.
+      # 콜백은 운영 페이지가 받아 localhost 로그인 창으로 code 를 넘긴다. ⚠️ 운영 데이터 — 쓰기는 실제로 반영된다.
+      # API_BASE_URL: https://api.studyclub-plusplus.com
+      # NEXT_PUBLIC_API_BASE_URL: https://api.studyclub-plusplus.com
+      # NEXT_PUBLIC_OAUTH_REDIRECT_URI: https://studyclub-plusplus.com/api/auth/callback
+      # ── stage ──────────────────────────────────────────────────────────────────
+      # stage API 는 외부 주소가 없다 (클러스터 내부 전용). stage 로 확인할 일은 담당자(@titaniper)에게 문의.
     ports:
-      - "${CORE_FRONT_PORT:-24700}:4700"   # core-front
-      - "${BO_FRONT_PORT:-24701}:4701"     # back-office-front
+      - "${CORE_FRONT_PORT:-4700}:4700"     # core-front
+      - "${BO_FRONT_PORT:-4701}:4701"       # back-office-front
+      - "${PLAYGROUND_PORT:-4702}:4702"     # playground (프로토타입)
     volumes:
       - ./frontend:/app
       - studyclub-frontend-node-modules:/app/node_modules
+      # .next 는 컨테이너 전용 볼륨으로 뺀다 — 호스트와 공유하면 컨테이너 경로(/app/...)가 박힌 캐시가 남아
+      # 로컬 npm run dev 가 Turbopack panic(Read-only file system)으로 죽는다.
+      - studyclub-frontend-next-core:/app/apps/core-front/.next
+      - studyclub-frontend-next-bo:/app/apps/back-office-front/.next
+      - studyclub-frontend-next-playground:/app/apps/playground/.next
 
   discord:
     image: studyclub-discord
@@ -102,3 +124,22 @@ services:
 volumes:
   studyclub-mysql-data:
   studyclub-frontend-node-modules:
+  studyclub-frontend-next-core:
+  studyclub-frontend-next-bo:
+  studyclub-frontend-next-playground:
+
+# ─── stage / prod 는 compose 로 띄우지 않는다 ─────────────────────────────────────
+# 운영·stage 는 k8s 에 배포된다 (이미지 빌드·배포는 .github/workflows, 클러스터 설정은 인프라 레포).
+# 거기서 쓰는 값(DB·JWT·OAuth·SES)은 내부 시크릿 저장소에서 주입되며 이 레포에는 없다.
+#
+# 운영 DB 를 로컬 api 에 붙이는 것은 금지 — 로컬 코드의 마이그레이션(V{n})이 운영 스키마에 적용된다.
+# 필요한 확인은 위 frontend 의 「운영 API 에 붙이기」로 하고, 그 이상은 담당자(@titaniper)에게 문의.
+#
+# 참고용 — 운영과 같은 설정으로 로컬 api 를 띄워 볼 때 달라지는 env (값은 담당자에게):
+#   api:
+#     environment:
+#       DB_URL: jdbc:mysql://<운영 DB 호스트>/studyclub     # ⚠️ 위 금지 사항 참고
+#       JWT_SECRET: <운영 서명키>
+#       LOG_JSON_CONSOLE: ecs
+#       API_DOCS_ENABLED: "false"
+#   stage 만: DDL_AUTO=update, FLYWAY_ENABLED=false (docs/backend-development-guide/database-guide.md)

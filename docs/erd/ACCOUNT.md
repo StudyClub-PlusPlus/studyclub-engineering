@@ -36,7 +36,7 @@
 | `MEMBER` | 기본. 탐색·신청·출석·마이페이지 |
 | `ADMIN` | 운영자. 백오피스 전 기능 |
 
-전이는 운영자 수동뿐. 기본값 `MEMBER`.
+전이는 운영자 수동뿐. 기본값 `MEMBER`. 백오피스 로그인은 `ADMIN` 만 통과한다 — 첫 ADMIN 은 SQL 로 올린다
 
 ## 제약
 - `UNIQUE(EMAIL)`
@@ -45,4 +45,3 @@
 
 ## 미확정
 - drawio 는 `COUNTRY_CODE`·`TIME_ZONE`·`SYSTEM_ROLE` 이 NUMBER(코드). 여기서는 문자열 코드로 제안.
-- 백오피스 접근이 현재는 이메일 허용 목록으로 동작 — `SYSTEM_ROLE=ADMIN` 으로 옮길지.

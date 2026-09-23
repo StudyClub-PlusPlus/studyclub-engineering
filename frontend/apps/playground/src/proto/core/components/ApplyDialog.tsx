@@ -4,150 +4,276 @@ import { useEffect, useRef, useState } from 'react';
 
 import { formCardClass, FormHeaderCard, QuestionFillView } from '@core/components/ApplicationFormUi';
 import { DiscordNicknameField } from '@core/components/DiscordNicknameField';
-import { getUser } from '@core/lib/auth';
+import {
+  AVAILABLE_DAYS,
+  daysIssue,
+  extraAnswerIssue,
+  nicknameIssue,
+} from '@core/lib/apply-validation';
 import type { Locale, Study } from '@core/lib/content';
-import { t } from '@core/lib/i18n';
-import { addApplication, getDiscordNickname, getDisplayName, getRegion, setDiscordNickname } from '@core/lib/me';
-import { PREVIEW_USER } from '@core/lib/preview';
-import { MEMBER_REGIONS, type ApplicationQuestion, type MemberRegion } from '@studyclub/mock';
-import { Button, Checkbox, Modal, Textarea } from '@studyclub/ui';
-
-function hasAnswer(q: ApplicationQuestion, answer: string | string[] | undefined) {
-  if (q.type === 'checkbox') return Array.isArray(answer) && answer.length > 0;
-  return typeof answer === 'string' && answer.trim().length > 0;
-}
+import { m, t } from '@core/lib/i18n';
+import { addApplication, getApplication, getDiscordNickname, getRegion, setDiscordNickname } from '@core/lib/me';
+import { categoriesOf, toISODate, type MemberRegion } from '@studyclub/mock';
+import { Button, Checkbox, Modal } from '@studyclub/ui';
+import { CalendarClock } from 'lucide-react';
 
 /**
  * 스터디 신청 폼 — 프로토타입.
  *
- * **스터디마다 폼을 설계하지 않는다.** 운영자가 등록 때 넣은 「진행 일정」 유무로 묻는 것이 갈린다:
- * - 일정 있음 → 그 시간에 참여 가능한지 **확인**만 받는다
- * - 일정 미정 → 참여자끼리 맞춰야 하므로 **가능한 요일·시간대를 받는다**
+ * 이름·이메일은 폼에 두지 않는다 — 계정에서 읽기만 한다.
+ * 디스코드 **계정 연동**은 이 화면 앞에서 확인한다. 서버 별명이 있으면 기본값으로 채우고
+ * 지원자가 고칠 수 있다. 고친 값은 계정에 다시 저장한다.
  *
- * 회원은 여러 지역에 흩어져 있으므로 **가능한 시간은 각자의 현지 시간으로 받는다.**
- * 한국의 일요일 저녁과 북미의 일요일 저녁은 다른 시각이라, 지역 없이 요일·시간대만 모으면
- * 운영자가 겹치는 시간을 구할 수 없다. 저장 시 지역(기준 시간대)을 함께 남긴다.
+ * 참여 가능한 요일은 모든 신청 폼에서 받는다. 확정된 진행 일정이 있으면 그 시간에
+ * 참여 가능한지 확인도 받는다.
  *
- * 이름·이메일은 폼에 받지 않고 계정에서 읽는다. 디스코드 서버 별명은 계정에 있으면
- * 그대로 쓰고, 없으면 이 화면에서 필수로 받아 계정에 저장한다.
+ * 이미 제출한 신청서는 고치지 않는다. 같은 스터디에 다시 저장하지 않는다.
  *
  * TODO(api): POST /api/studies/{id}/applications — 저장 테이블·API 미구현이라 화면 상태로만 처리.
- * TODO(api): 신청자 지역·이름·이메일·디스코드 별명은 로그인 회원 정보에서 읽는다.
+ * TODO(api): 신청자 지역·디스코드 별명은 로그인 회원 정보에서 읽는다.
  */
 
-const DAYS = [
-  { key: 'mon', ko: '월', en: 'Mon' },
-  { key: 'tue', ko: '화', en: 'Tue' },
-  { key: 'wed', ko: '수', en: 'Wed' },
-  { key: 'thu', ko: '목', en: 'Thu' },
-  { key: 'fri', ko: '금', en: 'Fri' },
-  { key: 'sat', ko: '토', en: 'Sat' },
-  { key: 'sun', ko: '일', en: 'Sun' },
-] as const;
+/**
+ * 백오피스 신청 폼 헤더(제목·설명) + 등록 폼에 있는 스터디 항목.
+ * 이름·이메일은 지원자 화면에 두지 않는다.
+ */
+function StudyFormHeader({ study, locale }: { study: Study; locale: Locale }) {
+  const cats = categoriesOf(study);
+  const deadline = toISODate(study.recruitment?.deadline);
+  const schedule = study.schedule
+    ? t(study.schedule, locale)
+    : t({ ko: '일정 미정', en: 'Schedule TBD' }, locale);
+  const deadlineLabel = deadline
+    ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale)
+    : t({ ko: '상시 모집', en: 'Always open' }, locale);
 
-const SLOTS = [
-  { key: 'morning', ko: '오전', en: 'Morning' },
-  { key: 'afternoon', ko: '오후', en: 'Afternoon' },
-  { key: 'evening', ko: '저녁', en: 'Evening' },
-] as const;
+  return (
+    <div data-anno='apply:1'>
+      <FormHeaderCard
+        title={study.applicationFormTitle ?? t(study.title, locale)}
+        summary={study.applicationFormDescription ?? t(study.summary, locale)}
+      />
+      <section className={`${formCardClass()} mt-3`}>
+        {cats.length > 0 && (
+          <p className='text-[11px] font-bold uppercase tracking-[0.14em] text-fg-muted'>{cats.join(' · ')}</p>
+        )}
+        <dl className={`${cats.length > 0 ? 'mt-3' : ''} flex flex-col gap-2 text-sm`}>
+          <div className='flex items-start gap-2'>
+            <dt className='shrink-0 font-medium text-fg'>{m('common.schedule', locale)}</dt>
+            <dd className='flex items-center gap-1.5 text-fg-secondary'>
+              <CalendarClock size={13} strokeWidth={1.75} className='shrink-0' />
+              {schedule}
+            </dd>
+          </div>
+          <div className='flex items-start gap-2'>
+            <dt className='shrink-0 font-medium text-fg'>{m('detail.deadline', locale)}</dt>
+            <dd className='text-fg-secondary'>{deadlineLabel}</dd>
+          </div>
+        </dl>
+        {study.description && (
+          <div className='mt-4 border-t border-border pt-4'>
+            <p className='text-sm font-bold text-fg'>{m('common.about_study', locale)}</p>
+            <p className='mt-2 whitespace-pre-line text-sm leading-[1.75] text-fg-secondary'>
+              {t(study.description, locale)}
+            </p>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
 
 export function ApplyDialog({
   study,
   locale,
   open,
   onClose,
+  onSubmitted,
 }: {
   study: Study;
   locale: Locale;
   open: boolean;
   onClose: () => void;
+  onSubmitted: () => void;
 }) {
   const fixedSchedule = study.schedule ? t(study.schedule, locale) : null;
   const [myRegion, setMyRegion] = useState<MemberRegion>('KR');
   // 지역은 브라우저에 저장돼 있어 서버 렌더 시점에는 알 수 없다. 마운트 후 읽는다.
   useEffect(() => setMyRegion(getRegion()), [open]);
-  const region = MEMBER_REGIONS.find((r) => r.key === myRegion)!;
 
   const [agreed, setAgreed] = useState(false);
-  /** 선택된 "요일-시간대" 조합. 예: `mon-evening`. 요일과 시간대를 따로 받으면
-   *  "월 저녁 + 일 오후" 같은 실제 가능 시간을 표현할 수 없다. */
-  const [cells, setCells] = useState<string[]>([]);
-  const [motivation, setMotivation] = useState('');
-  const [storedNick, setStoredNick] = useState<string | undefined>();
+  const [days, setDays] = useState<string[]>([]);
   const [draftNick, setDraftNick] = useState('');
-  const [accountName, setAccountName] = useState(PREVIEW_USER.name ?? PREVIEW_USER.email);
-  const [accountEmail, setAccountEmail] = useState(PREVIEW_USER.email);
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
   const extraQuestions = (study.applicationForm ?? []).filter((q) => q.id !== 'discord');
+  const [invalidKey, setInvalidKey] = useState<string | null>(null);
+  const [attention, setAttention] = useState(0);
 
   // 미입력 항목이 있으면 신청을 누른 자리에서 그 항목으로 화면을 옮긴다.
   const discordRef = useRef<HTMLElement>(null);
   const scheduleRef = useRef<HTMLElement>(null);
+  const daysRef = useRef<HTMLElement>(null);
   const questionRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  function scrollTo(ref: { current: HTMLElement | null }) {
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  function cardClass(key: string) {
+    return invalidKey === key
+      ? 'apply-invalid rounded-xl border-2 border-error-600 bg-error-50 px-6 py-5'
+      : formCardClass();
+  }
+
+  function fieldOf(key: string | null) {
+    if (!key) return null;
+    if (key === 'discord') return discordRef.current;
+    if (key === 'schedule') return scheduleRef.current;
+    if (key === 'days') return daysRef.current;
+    return questionRefs.current[key] ?? null;
+  }
+
+  function markInvalid(key: string, message: string) {
+    setInvalidKey(key);
+    setAttention((n) => n + 1);
+    setError(message);
+  }
+
+  function clearInvalid(key: string) {
+    setError(null);
+    setInvalidKey((cur) => (cur === key ? null : cur));
+  }
+
+  function FieldHint({ field }: { field: string }) {
+    if (invalidKey !== field || !error) return null;
+    return (
+      <p data-anno='apply:7' role='alert' className='mt-2 text-xs text-error-700'>
+        {error}
+      </p>
+    );
   }
 
   useEffect(() => {
-    const user = getUser() ?? PREVIEW_USER;
-    const preview = user.id === PREVIEW_USER.id;
-    setAccountName(preview ? (PREVIEW_USER.name ?? user.email) : (getDisplayName() ?? user.name ?? user.email));
-    setAccountEmail(preview ? PREVIEW_USER.email : user.email);
-    setStoredNick(getDiscordNickname());
-    setDraftNick('');
+    if (!open || !invalidKey) return;
+    const el = fieldOf(invalidKey);
+    if (!el) return;
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const id = window.setTimeout(() => {
+      const control = el.querySelector<HTMLElement>(
+        'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])',
+      );
+      (control ?? el).focus({ preventScroll: true });
+    }, 280);
+    return () => window.clearTimeout(id);
+  }, [invalidKey, attention, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setAgreed(false);
+    setDays([]);
+    setDraftNick(getDiscordNickname() ?? '');
     setAnswers({});
+    setError(null);
+    setInvalidKey(null);
+    setAttention(0);
+    setSaving(false);
   }, [open]);
 
   function close() {
     setAgreed(false);
-    setCells([]);
-    setMotivation('');
+    setDays([]);
     setDraftNick('');
     setAnswers({});
     setError(null);
-    setDone(false);
+    setInvalidKey(null);
+    setAttention(0);
     onClose();
   }
 
-  function toggleCell(key: string) {
-    setError(null);
-    setCells((c) => (c.includes(key) ? c.filter((x) => x !== key) : [...c, key]));
+  function toggleDay(key: string) {
+    clearInvalid('days');
+    setDays((d) => (d.includes(key) ? d.filter((x) => x !== key) : [...d, key]));
   }
 
   async function submit() {
-    if (!storedNick && !draftNick.trim()) {
-      scrollTo(discordRef);
-      return setError(
+    if (getApplication(study.id)) {
+      onSubmitted();
+      return;
+    }
+    const nick = nicknameIssue(draftNick);
+    if (nick === 'empty') {
+      return markInvalid(
+        'discord',
         t({ ko: '디스코드 서버 별명을 입력해 주세요.', en: 'Enter your Discord server nickname.' }, locale),
       );
     }
-    const missing = extraQuestions.find((q) => q.required && !hasAnswer(q, answers[q.id]));
-    if (missing) {
-      scrollTo({ current: questionRefs.current[missing.id] ?? null });
-      return setError(t({ ko: '필수 질문에 답해 주세요.', en: 'Please answer required questions.' }, locale));
+    if (nick === 'max') {
+      return markInvalid(
+        'discord',
+        t({ ko: '100자 이내로 입력해 주세요.', en: 'Enter 100 characters or fewer.' }, locale),
+      );
     }
-    if (fixedSchedule) {
-      if (!agreed) {
-        scrollTo(scheduleRef);
-        return setError(
-          t({ ko: '일정 참여 가능 여부를 확인해 주세요.', en: 'Please confirm you can attend.' }, locale),
-        );
-      }
-    } else {
-      if (cells.length === 0) {
-        scrollTo(scheduleRef);
-        return setError(
-          t({ ko: '가능한 시간을 하나 이상 선택해 주세요.', en: 'Select at least one time slot.' }, locale),
-        );
-      }
+    const dayProblem = daysIssue(days);
+    if (dayProblem === 'empty' || dayProblem === 'max') {
+      return markInvalid(
+        'days',
+        t({ ko: '참여 가능한 요일을 하나 이상 선택해 주세요.', en: 'Select at least one day you can join.' }, locale),
+      );
+    }
+    if (dayProblem === 'enum') {
+      return markInvalid(
+        'days',
+        t({ ko: '참여 가능한 요일을 다시 선택해 주세요.', en: 'Select a valid weekday.' }, locale),
+      );
+    }
+    const extraProblem = extraQuestions
+      .map((q) => ({ q, issue: extraAnswerIssue(q, answers[q.id]) }))
+      .find((row) => row.issue);
+    if (extraProblem?.issue === 'empty') {
+      return markInvalid(
+        extraProblem.q.id,
+        t({ ko: '필수 질문에 답해 주세요.', en: 'Please answer required questions.' }, locale),
+      );
+    }
+    if (extraProblem?.issue === 'max') {
+      const cap = extraProblem.q.type === 'textarea' ? '2,000' : '200';
+      return markInvalid(
+        extraProblem.q.id,
+        t(
+          { ko: `${cap}자 이내로 입력해 주세요.`, en: `Enter ${cap.replace(',', '')} characters or fewer.` },
+          locale,
+        ),
+      );
+    }
+    if (extraProblem?.issue === 'enum') {
+      return markInvalid(
+        extraProblem.q.id,
+        t({ ko: '선택지를 다시 골라 주세요.', en: 'Choose from the given options.' }, locale),
+      );
+    }
+    if (extraProblem?.issue === 'other-empty') {
+      return markInvalid(
+        extraProblem.q.id,
+        t({ ko: '기타 내용을 입력해 주세요.', en: 'Enter the other option.' }, locale),
+      );
+    }
+    if (extraProblem?.issue === 'other-max') {
+      return markInvalid(
+        extraProblem.q.id,
+        t({ ko: '100자 이내로 입력해 주세요.', en: 'Enter 100 characters or fewer.' }, locale),
+      );
+    }
+    if (fixedSchedule && !agreed) {
+      return markInvalid(
+        'schedule',
+        t({ ko: '일정 참여 가능 여부를 확인해 주세요.', en: 'Please confirm you can attend.' }, locale),
+      );
     }
     setError(null);
+    setInvalidKey(null);
     setSaving(true);
-    if (!storedNick) setDiscordNickname(draftNick);
+    setDiscordNickname(draftNick);
     // TODO(api): POST /api/studies/{id}/applications
     await new Promise((r) => setTimeout(r, 400));
     addApplication({
@@ -155,200 +281,109 @@ export function ApplyDialog({
       appliedAt: new Date().toISOString().slice(0, 10),
       status: 'pending',
       region: myRegion,
-      cells: fixedSchedule ? undefined : cells,
-      motivation: motivation.trim() || undefined,
+      cells: days,
     });
     setSaving(false);
-    setDone(true);
+    onSubmitted();
   }
 
   return (
     <Modal
       open={open}
       onClose={close}
+      size='lg'
       title={t({ ko: '스터디 신청', en: 'Apply to study' }, locale)}
       footer={
-        done ? (
-          <Button data-anno='apply:11' onClick={close}>
-            {t({ ko: '확인', en: 'Done' }, locale)}
+        <>
+          <Button data-anno='apply:8' variant='secondary' onClick={close} disabled={saving}>
+            {t({ ko: '취소', en: 'Cancel' }, locale)}
           </Button>
-        ) : (
-          <>
-            <Button data-anno='apply:8' variant='secondary' onClick={close} disabled={saving}>
-              {t({ ko: '취소', en: 'Cancel' }, locale)}
-            </Button>
-            <Button data-anno='apply:9' onClick={submit} loading={saving}>
-              {t({ ko: '신청', en: 'Apply' }, locale)}
-            </Button>
-          </>
-        )
+          <Button data-anno='apply:9' onClick={submit} loading={saving}>
+            {t({ ko: '신청', en: 'Apply' }, locale)}
+          </Button>
+        </>
       }
     >
       <div className='-mx-6 -my-4 h-full bg-surface-1 px-6 py-4'>
-        {done ? (
-          <p data-anno='apply:10' className='py-6 text-center text-sm text-fg-secondary'>
-            {t(
-              {
-                ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.',
-                en: "Your application was received. We'll email you the result.",
-              },
-              locale,
-            )}
-          </p>
-        ) : (
-          <div className='flex flex-col gap-3'>
-            <div data-anno='apply:1'>
-              <FormHeaderCard
-                title={study.applicationFormTitle ?? t(study.title, locale)}
-                summary={study.applicationFormDescription ?? t(study.summary, locale)}
-                account={{ name: accountName, email: accountEmail }}
-              />
-            </div>
+        <div className='flex flex-col gap-3'>
+          <StudyFormHeader study={study} locale={locale} />
 
-            <section data-anno='apply:2' ref={discordRef} className={formCardClass()}>
-              <DiscordNicknameField stored={storedNick} value={draftNick} onChange={setDraftNick} />
-            </section>
+          <section data-anno='apply:2' ref={discordRef} tabIndex={-1} className={`${cardClass('discord')} outline-none`}>
+            <DiscordNicknameField
+              value={draftNick}
+              onChange={(v) => {
+                clearInvalid('discord');
+                setDraftNick(v);
+              }}
+            />
+            <FieldHint field='discord' />
+          </section>
 
-            {fixedSchedule ? (
-              <section data-anno='apply:3' ref={scheduleRef} className={formCardClass()}>
+          <section data-anno='apply:4' ref={daysRef} tabIndex={-1} className={`${cardClass('days')} outline-none`}>
+            <p className='text-sm font-medium text-neutral-800'>
+              {t({ ko: '참여 가능한 요일', en: 'Days you can join' }, locale)}
+              <span className='ml-0.5 text-error-600'>*</span>
+            </p>
+            <div className='mt-2 flex flex-col gap-2'>
+              {AVAILABLE_DAYS.map((d) => (
                 <Checkbox
-                  label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
-                  checked={agreed}
-                  onChange={(e) => {
-                    setAgreed(e.target.checked);
-                    setError(null);
-                  }}
+                  key={d.key}
+                  label={locale === 'ko' ? d.ko : d.en}
+                  checked={days.includes(d.key)}
+                  onChange={() => toggleDay(d.key)}
                 />
-              </section>
-            ) : (
-              <section data-anno='apply:4' ref={scheduleRef} className={formCardClass()}>
-                <div className='flex flex-col gap-2'>
-                  <div className='flex items-baseline justify-between gap-2'>
-                    <p className='text-sm font-medium text-neutral-800'>
-                      {t({ ko: '가능한 시간', en: "When you're available" }, locale)}
-                      <span className='ml-0.5 text-error-600'>*</span>
-                    </p>
-                    <span className='text-xs text-fg-muted'>
-                      {t(
-                        {
-                          ko: `${t(region.label, locale)} 시간(${region.tzLabel}) 기준`,
-                          en: `In ${t(region.label, locale)} time (${region.tzLabel})`,
-                        },
-                        locale,
-                      )}
-                    </span>
-                  </div>
+              ))}
+            </div>
+            <FieldHint field='days' />
+          </section>
 
-                  {/* 요일 × 시간대 격자 — 칸을 눌러 조합을 고른다 (월 저녁 + 일 오후 같은 응답이 가능) */}
-                  <div className='overflow-x-auto'>
-                    <table className='w-full table-fixed border-separate border-spacing-1'>
-                      <thead>
-                        <tr>
-                          <th className='w-9 p-0' />
-                          {DAYS.map((d) => (
-                            <th key={d.key} className='pb-1 text-center text-xs font-semibold text-fg-secondary'>
-                              {locale === 'ko' ? d.ko : d.en}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {SLOTS.map((sl) => (
-                          <tr key={sl.key}>
-                            <th
-                              scope='row'
-                              className='w-9 whitespace-nowrap pr-1.5 text-right text-xs font-medium text-fg-secondary'
-                            >
-                              {locale === 'ko' ? sl.ko : sl.en}
-                            </th>
-                            {DAYS.map((d) => {
-                              const key = `${d.key}-${sl.key}`;
-                              const on = cells.includes(key);
-                              return (
-                                <td key={key} className='p-0'>
-                                  <button
-                                    type='button'
-                                    aria-pressed={on}
-                                    aria-label={`${locale === 'ko' ? d.ko : d.en} ${locale === 'ko' ? sl.ko : sl.en}`}
-                                    onClick={() => toggleCell(key)}
-                                    className={`h-9 w-full rounded-sm border transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)] ${
-                                      on
-                                        ? 'border-transparent bg-brand'
-                                        : 'border-border-strong bg-bg hover:bg-surface-2'
-                                    }`}
-                                  />
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <p className='text-xs text-fg-muted'>
-                    {t(
-                      {
-                        ko: '일정이 아직 정해지지 않아 신청자들의 응답을 모아 정합니다. 되는 시간을 모두 선택해 주세요. 다른 지역 신청자와는 시차를 반영해 맞춥니다.',
-                        en: "The schedule isn't set yet — it's decided from applicants' answers. Select every slot that works; time zones are reconciled across regions.",
-                      },
-                      locale,
-                    )}
-                  </p>
-                </div>
-              </section>
-            )}
-
-            {extraQuestions.map((q) => (
-              <section
-                key={q.id}
-                data-anno='apply:5'
-                ref={(el) => {
-                  questionRefs.current[q.id] = el;
+          {fixedSchedule && (
+            <section data-anno='apply:3' ref={scheduleRef} tabIndex={-1} className={`${cardClass('schedule')} outline-none`}>
+              <Checkbox
+                label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
+                checked={agreed}
+                onChange={(e) => {
+                  setAgreed(e.target.checked);
+                  clearInvalid('schedule');
                 }}
-                className={formCardClass()}
-              >
-                <QuestionFillView
-                  q={q}
-                  value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
-                  values={Array.isArray(answers[q.id]) ? (answers[q.id] as string[]) : []}
-                  onChange={(value) => setAnswers((prev) => ({ ...prev, [q.id]: value }))}
-                  onToggle={(option) =>
-                    setAnswers((prev) => {
-                      const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
-                      return {
-                        ...prev,
-                        [q.id]: cur.includes(option) ? cur.filter((x) => x !== option) : [...cur, option],
-                      };
-                    })
-                  }
-                />
-              </section>
-            ))}
-
-            <section data-anno='apply:6' className={formCardClass()}>
-              <Textarea
-                label={t({ ko: '지원 동기', en: "Why you're applying" }, locale)}
-                rows={3}
-                value={motivation}
-                onChange={(e) => setMotivation(e.target.value)}
-                placeholder={t(
-                  {
-                    ko: '선택 입력입니다. 간단히 적어 주시면 운영진이 참고합니다.',
-                    en: 'Optional. A short note helps the organizers.',
-                  },
-                  locale,
-                )}
               />
+              <FieldHint field='schedule' />
             </section>
+          )}
 
-            {error && (
-              <p data-anno='apply:7' className='text-xs text-error-700'>
-                {error}
-              </p>
-            )}
-          </div>
-        )}
+          {extraQuestions.map((q) => (
+            <section
+              key={q.id}
+              data-anno='apply:5'
+              tabIndex={-1}
+              ref={(el) => {
+                questionRefs.current[q.id] = el;
+              }}
+              className={`${cardClass(q.id)} outline-none`}
+            >
+              <QuestionFillView
+                q={q}
+                value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
+                values={Array.isArray(answers[q.id]) ? (answers[q.id] as string[]) : []}
+                onChange={(value) => {
+                  clearInvalid(q.id);
+                  setAnswers((prev) => ({ ...prev, [q.id]: value }));
+                }}
+                onToggle={(option) => {
+                  clearInvalid(q.id);
+                  setAnswers((prev) => {
+                    const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
+                    return {
+                      ...prev,
+                      [q.id]: cur.includes(option) ? cur.filter((x) => x !== option) : [...cur, option],
+                    };
+                  });
+                }}
+              />
+              <FieldHint field={q.id} />
+            </section>
+          ))}
+        </div>
       </div>
     </Modal>
   );

@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
 import { getUser, type SessionUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import {
   cancelApplication,
@@ -48,8 +48,7 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
  *
  * 참여 중과 참여 이력을 가르는 것은 신청 상태가 아니라 **스터디가 끝났는지** 여부다.
  *
- * 거주 지역은 내 정보에 있다: 일정 미정 스터디의 신청 폼이 "가능한 시간"을 이 지역의 현지
- * 시간으로 받으므로, 지역이 틀리면 운영자가 겹치는 시간을 잘못 계산한다.
+ * 거주 지역은 내 정보에 있다. 신청 시 참여 가능 요일과 함께 남겨, 운영자가 어느 시간대 응답인지 알게 한다.
  */
 
 /** 목록 한 줄 — 카테고리 색 막대로 어느 분야인지 한눈에 구분한다(목록 카드와 같은 색 규칙). */
@@ -66,7 +65,7 @@ function StudyRow({ study, locale, right }: { study: Study; locale: Locale; righ
       </span>
       <div className='min-w-0 flex-1'>
         <Link
-          href={`/proto/core/${locale}/studies/${study.id}`}
+          href={userStudyPath(locale, study)}
           className='block truncate font-bold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}

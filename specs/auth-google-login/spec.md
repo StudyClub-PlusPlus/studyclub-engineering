@@ -3,7 +3,7 @@
 ## WHAT
 
 core-front·back-office-front 의 `/login` 에 **구글 소셜 로그인**을 붙이고, **Spring 백엔드가 Account·JWT 의
-주인**이 된다. 로그인해야 **수강생 페이지(A8)** 가 뜨고, 백오피스는 **이메일 allowlist** 통과자만 들어온다.
+주인**이 된다. 로그인해야 **수강생 페이지(A8)** 가 뜨고, 백오피스는 **`SYSTEM_ROLE=ADMIN`** 계정만 들어온다.
 DB 가 0 에서 시작이라 **로컬 MySQL + docker-compose 신설**이 P0 의 첫 작업.
 
 레퍼런스: zapp `specs/back-office-google-login/spec.md` + `apps/core-api/.../auth-service.ts`.
@@ -35,8 +35,9 @@ Next /api/auth/social/login  (BO 는 여기서 platform=BACK_OFFICE 서버측 �
    ▼
 Spring POST /auth/social-login { code, provider, platform }
    getGoogleUserInfo(code) → email/name/picture/sub
-   platform=BACK_OFFICE 면 assertBackOfficePermitted(email)  ← allowlist(env) 강제
-   미가입이면 자동가입(systemRole=MEMBER) → JWT access(7d)/refresh(30d) 발급
+   platform=BACK_OFFICE 면 조회만 — identity 없으면 403 SIGNUP_REQUIRED, ADMIN 아니면 403 FORBIDDEN
+   platform=CORE 는 미가입이면 자동가입(systemRole=MEMBER)
+   → JWT access(7d)/refresh(30d) 발급
 ```
 
 ### 백엔드 (Spring, 신규)
@@ -45,21 +46,21 @@ Spring POST /auth/social-login { code, provider, platform }
 |---|---|
 | Account 엔티티 | `domain` : `id, email(uniq), nickname, profileImgUrl, systemRole(MEMBER\|ADMIN), jobTitle, countryCode, city, regionGroup, timeZone, discordId(uniq), discordHandle, createdAt, updatedAt` |
 | AccountIdentity 엔티티 | `domain` : `id, accountId, issuer, providerUserId, lastLoginAt` — OAuth 수단 분리 |
-| 인증 서비스 | `api` : Google code→token→userinfo 교환, 자동가입, JWT 발급, `assertBackOfficePermitted` |
+| 인증 서비스 | `api` : Google code→token→userinfo 교환, 자동가입(CORE), 백오피스 조회 전용 `AccountRegistrar.findAdmin`, JWT 발급 |
 | 엔드포인트 | `POST /auth/social-login`, `GET /auth/me`, `POST /auth/refresh` |
 | 보안 | SecurityConfig(JWT 필터, `/auth/**`·`/api/health` permitAll, 나머지 인증) |
-| allowlist SoT | env `BACK_OFFICE_ALLOWED_EMAILS`(콤마, 소문자 무시), fallback = 운영자 이메일 |
+| 백오피스 게이트 | `ACCOUNT.SYSTEM_ROLE=ADMIN`. 첫 ADMIN 은 SQL |
 
 ### 프론트 (core + BO)
 
 - `/login` + 구글 버튼 → 팝업 → Next API 라우트 → api `/auth/social-login`.
 - **세션키 앱별 격리** (zapp 가 데인 함정: localhost 쿠키 domain 공유 오염 → 백지 데드락): core=`sc_`, bo=`bo_`.
 - core `/[locale]/my`(수강생 A8) 신규 — 미로그인 `/login` 바운스, 로그인 시 account + 내 스터디(당분간 mock).
-- BO 전 페이지 로그인 + allowlist 게이트(미들웨어), `platform=BACK_OFFICE` 는 BO Next 라우트에서 강제.
+- BO 전 페이지 로그인 게이트(미들웨어), `platform=BACK_OFFICE` 는 BO Next 라우트에서 강제. 응답 `user.role` 이 ADMIN 아니면 쿠키를 안 심는다(2차 차단).
 
 ## 한계 / 후속
 
-- admin 컨트롤러 **롤가드는 후속** (zapp 도 미룸) — 현재 방어선은 allowlist + JWT.
+- admin 컨트롤러 **롤가드는 후속** (zapp 도 미룸) — 로그인 게이트는 `SYSTEM_ROLE=ADMIN` 으로 옮겼고, 로그인 이후 요청의 ADMIN 가드(요청마다 DB 조회)는 후속.
 - **prod K8s MySQL 은 terraform 후속** — 이번은 로컬 compose 만.
 - 구글 code 오류 시 500 가능(토큰교환 예외 미처리, zapp 과 동일 초기 한계).
 - **GCP OAuth 클라이언트 등록은 사람 작업** — 등록 전까지 스캐폴드·엔드포인트·게이팅·부팅까지 완비, 실제 왕복만 이후 검증.
@@ -70,3 +71,4 @@ Spring POST /auth/social-login { code, provider, platform }
 |---|---|---|
 | 2026-07-18 | 최초 작성 — 구글 로그인 + 최소 User(Spring 중심) + 로컬 MySQL/compose | 내부 이슈 `studyclub-plusplus-google-login` |
 | 2026-09-04 | User → Account 전면 개명, ddl-auto=validate + Flyway 전환, SystemRole(MEMBER\|ADMIN), googleSub 제거, AccountIdentity 분리, 신규 프로필 컬럼 반영 | ddlsetup 브랜치 작업 |
+| 2026-09-16 | 백오피스 게이트 allowlist → `SYSTEM_ROLE=ADMIN`, 백오피스는 자동가입 없음(`SIGNUP_REQUIRED`), 프론트 `user.role` 2차 차단 | env allowlist 는 역할 부여 기능으로 이어질 수 없어 SYSTEM_ROLE 로 전환 |
