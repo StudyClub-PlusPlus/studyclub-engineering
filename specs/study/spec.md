@@ -300,7 +300,7 @@ Location: /api/studies/{id}
 | oneLineSummary | String | N | 비어 있으면 저장 불가 | STUDY.ONE_LINE_SUMMARY |
 | description | String | N | — | STUDY.DESCRIPTION |
 | category | String | N | StudyCategory enum 값 중 하나. 유효값은 GET 응답의 enum 표 참조 | STUDY.CATEGORY |
-| recruitDeadline | String | N | null = 상시 모집. 값이 있으면 미래여야 함 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — 최신 회차 행 UPDATE |
+| recruitDeadline | String | N | null 또는 미전송 = **변경 없음** (기존 마감일 유지). 상시 모집으로 전환(마감일 제거)은 별도 API 필요. 값이 있으면 미래여야 함 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — 최신 회차 행 UPDATE |
 | schedule | String | N | 자유 텍스트 | STUDY.SCHEDULE |
 
 **수정 불가 필드:**
@@ -376,6 +376,9 @@ Location: /api/studies/{id}
 | STUDY_APPLICATION | RECRUITMENT_ID in 위 회차 | 신청 기록 |
 | STUDY_PARTICIPANT | STUDY_ID = studyId | 크루 명단 |
 | ATTENDANCE | STUDY_ID = studyId (또는 연관 FK) | 출석 기록 |
+| STUDY_GROUP | STUDY_ID = studyId | 스터디 그룹 |
+| STUDY_MEETING | STUDY_GROUP_ID in 위 그룹 | 모임 기록 |
+| STUDY_BOOKMARK | STUDY_ID = studyId | 북마크 기록 |
 
 > 위 테이블 목록은 현재 ERD 기준이며, 관련 테이블이 추가되면 함께 갱신한다.
 

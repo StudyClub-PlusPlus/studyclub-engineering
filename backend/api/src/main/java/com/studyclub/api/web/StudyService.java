@@ -5,10 +5,17 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.attendance.StudyAttendanceRepository;
+import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyGroup;
+import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitment;
@@ -31,18 +38,33 @@ public class StudyService {
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyProgramRepository studyProgramRepository;
     private final AccountRepository accountRepository;
+    private final StudyGroupRepository studyGroupRepository;
+    private final StudyMeetingRepository studyMeetingRepository;
+    private final StudyAttendanceRepository studyAttendanceRepository;
+    private final StudyApplicationRepository studyApplicationRepository;
+    private final StudyBookmarkRepository studyBookmarkRepository;
 
     public StudyService(
             StudyRepository studyRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyProgramRepository studyProgramRepository,
-            AccountRepository accountRepository) {
+            AccountRepository accountRepository,
+            StudyGroupRepository studyGroupRepository,
+            StudyMeetingRepository studyMeetingRepository,
+            StudyAttendanceRepository studyAttendanceRepository,
+            StudyApplicationRepository studyApplicationRepository,
+            StudyBookmarkRepository studyBookmarkRepository) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyProgramRepository = studyProgramRepository;
         this.accountRepository = accountRepository;
+        this.studyGroupRepository = studyGroupRepository;
+        this.studyMeetingRepository = studyMeetingRepository;
+        this.studyAttendanceRepository = studyAttendanceRepository;
+        this.studyApplicationRepository = studyApplicationRepository;
+        this.studyBookmarkRepository = studyBookmarkRepository;
     }
 
     @Transactional
@@ -101,6 +123,93 @@ public class StudyService {
                         .build());
 
         return study.getId();
+    }
+
+    @Transactional
+    public void update(Long accountId, Long studyId, StudyUpdateRequest request) {
+        Account account =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+
+        Study study =
+                studyRepository
+                        .findById(studyId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+
+        boolean isAdmin = account.getSystemRole() == SystemRole.ADMIN;
+        boolean isNavigator =
+                studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
+                        studyId,
+                        accountId,
+                        List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER));
+        if (!isAdmin && !isNavigator) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 수정 권한이 없습니다.");
+        }
+
+        if (request.title() != null && request.title().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "title: 제목을 입력하세요.");
+        }
+        if (request.oneLineSummary() != null && request.oneLineSummary().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "oneLineSummary: 한 줄 소개를 입력하세요.");
+        }
+        if (request.recruitDeadline() != null
+                && !Instant.now().isBefore(request.recruitDeadline())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
+        }
+
+        study.update(
+                request.title(),
+                request.oneLineSummary(),
+                request.description(),
+                request.category(),
+                request.schedule());
+
+        if (request.recruitDeadline() != null) {
+            studyRecruitmentRepository
+                    .findFirstByStudyIdOrderByIdDesc(studyId)
+                    .ifPresent(r -> r.updateDeadline(request.recruitDeadline()));
+        }
+    }
+
+    @Transactional
+    public void delete(Long accountId, Long studyId) {
+        Account account =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        if (account.getSystemRole() != SystemRole.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 삭제 권한이 없습니다.");
+        }
+        if (!studyRepository.existsById(studyId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
+        }
+
+        List<Long> groupIds =
+                studyGroupRepository.findByStudyId(studyId).stream()
+                        .map(StudyGroup::getId)
+                        .toList();
+        List<Long> recruitmentIds =
+                studyRecruitmentRepository.findByStudyId(studyId).stream()
+                        .map(StudyRecruitment::getId)
+                        .toList();
+
+        if (!groupIds.isEmpty()) {
+            studyMeetingRepository.deleteByStudyGroupIdIn(groupIds);
+        }
+        studyAttendanceRepository.deleteByStudyId(studyId);
+        studyGroupRepository.deleteByStudyId(studyId);
+        studyParticipantRepository.deleteByStudyId(studyId);
+        if (!recruitmentIds.isEmpty()) {
+            studyApplicationRepository.deleteByRecruitmentIdIn(recruitmentIds);
+        }
+        studyRecruitmentRepository.deleteByStudyId(studyId);
+        studyBookmarkRepository.deleteByStudyId(studyId);
+        studyRepository.deleteById(studyId);
     }
 
     @Transactional(readOnly = true)
