@@ -12,6 +12,7 @@ import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,7 +59,8 @@ class StudyUpdateIntegrationTest {
     @DisplayName("성공 - ADMIN 이 전체 필드를 수정하면 204 + DB 값이 변경된다")
     void adminUpdatesAllFields() {
         Long studyId = createStudy("수정 전 제목", "수정 전 소개", "BACKEND");
-        String futureDeadline = Instant.now().plusSeconds(86400).toString();
+        String futureDeadline =
+                Instant.now().plusSeconds(86400).truncatedTo(ChronoUnit.MICROS).toString();
 
         Map<String, Object> body =
                 Map.of(
@@ -155,7 +157,8 @@ class StudyUpdateIntegrationTest {
     @DisplayName("성공 - recruitDeadline 을 수정하면 STUDY_RECRUITMENT 행이 업데이트된다")
     void adminUpdatesRecruitDeadline() {
         Long studyId = createStudy("마감일 수정", "소개", "DATA");
-        String newDeadline = Instant.now().plusSeconds(172800).toString();
+        String newDeadline =
+                Instant.now().plusSeconds(172800).truncatedTo(ChronoUnit.MICROS).toString();
 
         Map<String, Object> body =
                 Map.of(

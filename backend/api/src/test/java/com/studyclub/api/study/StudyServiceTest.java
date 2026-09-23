@@ -146,8 +146,8 @@ class StudyServiceTest {
     @Test
     @DisplayName("실패(수정) - 존재하지 않는 studyId → NOT_FOUND")
     void updateStudyNotFound() {
-        Account admin = mockAccount(SystemRole.ADMIN);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(admin));
+        // getSystemRole() is never reached — study lookup throws NOT_FOUND first
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(mock(Account.class)));
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> studyService.update(1L, 10L, validUpdateRequest()))
