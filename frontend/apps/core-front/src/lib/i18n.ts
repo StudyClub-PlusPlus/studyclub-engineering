@@ -149,7 +149,7 @@ export const MESSAGES: Dict = {
   'detail.empty_stats': { ko: '아직 집계된 통계가 없어요.', en: 'No stats yet.' },
 
   // browsers (search + filter)
-  'filter.search_studies': { ko: '스터디 검색', en: 'Search studies' },
+  'filter.search_studies': { ko: '스터디 제목 검색', en: 'Search by title' },
   'filter.search_events': { ko: '행사명 검색', en: 'Search by title' },
   'filter.kind': { ko: '종류', en: 'Kind' },
   'filter.status': { ko: '상태', en: 'Status' },

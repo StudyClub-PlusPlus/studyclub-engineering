@@ -21,7 +21,7 @@ import {
   type MyStatus,
 } from '@core/lib/attendance';
 import { getUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { getApplications } from '@core/lib/me';
 import { studies as allStudies, type Study } from '@studyclub/mock';
@@ -163,7 +163,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
       <div className='min-w-0 flex-1'>
         <Link
           data-anno='3-1'
-          href={`/proto/core/${locale}/studies/${study.id}`}
+          href={userStudyPath(locale, study)}
           className='block truncate font-bold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}
@@ -230,7 +230,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
     <section data-anno='4' className='card px-5 py-4'>
       <div className='flex items-baseline justify-between gap-3'>
         <Link
-          href={`/proto/core/${locale}/studies/${study.id}`}
+          href={userStudyPath(locale, study)}
           className='min-w-0 truncate font-bold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}

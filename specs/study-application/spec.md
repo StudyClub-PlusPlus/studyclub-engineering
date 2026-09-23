@@ -335,7 +335,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 - `frontend/apps/playground/src/proto/core/components/ApplyCompleteDialog.tsx`
 - `frontend/apps/playground/src/proto/core/lib/apply-validation.ts`
 
-목록 카드와 상세의 신청하기는 같은 이 API 를 쓴다. 상세를 거치지 않아도 된다.
+신청하기는 상세에서만 연다(2026-09-22 변경 — 목록은 둘러보기 전용으로 신청하기·찜을 빼고, 이 API 는 상세의 신청하기 하나만 쓴다). `ApplyButton` 은 클릭 시 로그인 → 디스코드 연동 순으로 확인한 뒤 이 API 로 제출한다.
 
 ---
 
