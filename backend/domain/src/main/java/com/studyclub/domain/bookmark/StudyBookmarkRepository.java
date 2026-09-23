@@ -27,4 +27,7 @@ public interface StudyBookmarkRepository extends JpaRepository<StudyBookmark, Lo
 
     @Transactional
     void deleteByAccountId(Long accountId);
+
+    @Transactional
+    void deleteByStudyId(Long studyId);
 }

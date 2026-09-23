@@ -1,5 +1,6 @@
 package com.studyclub.domain.application;
 
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -18,4 +19,6 @@ public interface StudyApplicationRepository extends JpaRepository<StudyApplicati
                     + "ORDER BY application.id ASC")
     List<StudyApplicationWithAccount> findAllWithAccountByRecruitmentId(
             @Param("recruitmentId") Long recruitmentId);
+
+    void deleteByRecruitmentIdIn(Collection<Long> recruitmentIds);
 }

@@ -46,4 +46,8 @@ public class StudyRecruitment extends BaseEntity {
 
     @Column(name = "RECRUITMENT_CAPACITY")
     private Integer recruitmentCapacity;
+
+    public void updateDeadline(Instant recruitDeadlineAt) {
+        this.recruitDeadlineAt = recruitDeadlineAt;
+    }
 }
