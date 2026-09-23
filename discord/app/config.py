@@ -3,8 +3,9 @@
 Every setting comes from the environment (populated from ``.env`` in
 development), so a deployment is fully described by its env vars.
 
-``command_prefix`` and ``log_level`` are not read from the environment -- they
-are effectively fixed for a deployment, so change their defaults below.
+``command_prefix``, ``log_level``, and ``db_path`` are not read from the
+environment -- they are effectively fixed for a deployment, so change their
+defaults below.
 """
 
 from __future__ import annotations
@@ -31,6 +32,32 @@ class Settings:
     # DISCORD_BOT_OUTPUT_CHANNEL, as the int discord.py looks channels up by.
     # Captured at startup, so changing it needs a restart.
     output_channel_id: int | None = None
+    # DISCORD_GUILD_ID: the one guild studies are created in.
+    guild_id: int | None = None
+    # DISCORD_CAPTAIN_ROLE_ID: the existing role allowed to create studies.
+    captain_role_id: int | None = None
+    # DISCORD_NAVIGATOR_ROLE_ID: the existing role that, like captain, may read
+    # a study's channels.
+    navigator_role_id: int | None = None
+    # DISCORD_API_KEY: the X-API-Key callers must send. ``None`` rejects every
+    # request to a protected route, so a missing key never means "open".
+    api_key: str | None = None
+    # The SQLite file holding study-name reservations. Relative to the working
+    # directory, so /app/data in the container -- docker-compose.yml mounts a
+    # volume there. If you change this, update that mount too.
+    db_path: str = "data/discord.sqlite3"
+
+
+def _parse_id(env: Mapping[str, str], name: str) -> int | None:
+    """Read the snowflake in ``env[name]``; log and drop it if it is not a number."""
+    raw = env.get(name, "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning("ignoring %s=%r: not a Discord ID", name, raw)
+        return None
 
 
 def load_settings(
@@ -69,7 +96,13 @@ def load_settings(
                 raw_channel,
             )
 
+    api_key = env.get("DISCORD_API_KEY", "").strip()
+
     return Settings(
         discord_token=token or None,
         output_channel_id=output_channel_id,
+        guild_id=_parse_id(env, "DISCORD_GUILD_ID"),
+        captain_role_id=_parse_id(env, "DISCORD_CAPTAIN_ROLE_ID"),
+        navigator_role_id=_parse_id(env, "DISCORD_NAVIGATOR_ROLE_ID"),
+        api_key=api_key or None,
     )

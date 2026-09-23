@@ -91,6 +91,9 @@ services:
     env_file: ./.env
     ports:
       - "${DISCORD_PORT:-24800}:4800"
+    # create-study 의 스터디 이름 예약(SQLite, /app/data/discord.sqlite3)이 컨테이너 재생성 후에도 남도록.
+    volumes:
+      - studyclub-discord-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4800/api/v1/health')"]
@@ -101,3 +104,4 @@ services:
 volumes:
   studyclub-mysql-data:
   studyclub-frontend-node-modules:
+  studyclub-discord-data:
