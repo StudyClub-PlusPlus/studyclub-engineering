@@ -16,4 +16,6 @@ public interface StudyMeetingRepository extends JpaRepository<StudyMeeting, Long
             "SELECT m FROM StudyMeeting m JOIN StudyGroup g ON m.studyGroupId = g.id WHERE m.id IN :ids AND g.studyId = :studyId")
     List<StudyMeeting> findByIdInAndStudyId(
             @Param("ids") Collection<Long> ids, @Param("studyId") Long studyId);
+
+    void deleteByStudyGroupIdIn(Collection<Long> studyGroupIds);
 }

@@ -27,4 +27,8 @@ public interface StudyRecruitmentRepository extends JpaRepository<StudyRecruitme
     List<StudyRecruitment> findOpenByStudyIdOrderByStartAtDesc(@Param("studyId") Long studyId);
 
     Optional<StudyRecruitment> findFirstByStudyIdOrderByStartAtDescIdDesc(Long studyId);
+
+    List<StudyRecruitment> findByStudyId(Long studyId);
+
+    void deleteByStudyId(Long studyId);
 }

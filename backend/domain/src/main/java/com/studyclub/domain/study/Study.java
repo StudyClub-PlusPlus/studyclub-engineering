@@ -103,6 +103,19 @@ public class Study extends BaseEntity {
     private static final Pattern PST_PATTERN = Pattern.compile("PST|PDT", Pattern.CASE_INSENSITIVE);
     private static final Pattern KST_PATTERN = Pattern.compile("KST", Pattern.CASE_INSENSITIVE);
 
+    public void update(
+            String title,
+            String oneLineSummary,
+            String description,
+            StudyCategory category,
+            String schedule) {
+        if (title != null) this.title = title.trim();
+        if (oneLineSummary != null) this.oneLineSummary = oneLineSummary.trim();
+        if (description != null) this.description = description;
+        if (category != null) this.category = category;
+        if (schedule != null) this.schedule = schedule;
+    }
+
     public boolean isClosingSoon(Instant recruitDeadlineAt) {
         return status == StudyStatus.OPEN
                 && recruitDeadlineAt != null
