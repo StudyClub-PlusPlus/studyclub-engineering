@@ -85,6 +85,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 | **설계 — 애그리거트·엔티티·값 객체·레이어** | [`docs/backend-development-guide/ddd-guide.md`](docs/backend-development-guide/ddd-guide.md) |
 | 모듈 구조·패키지 규약 | [`docs/backend-development-guide/module-structure.md`](docs/backend-development-guide/module-structure.md) |
 | API 엔드포인트 추가·수정 | [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md) |
+| **목록·검색 조회 코드를 어디에 둘지** | [`docs/backend-development-guide/query-placement-guide.md`](docs/backend-development-guide/query-placement-guide.md) |
 | **스펙 주도 개발 — 코드 전에 스펙** | [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md) |
 | 인증·JWT·OAuth | [`docs/backend-development-guide/auth-guide.md`](docs/backend-development-guide/auth-guide.md) |
 | 보안·개인정보 마스킹 | [`docs/backend-development-guide/security-guide.md`](docs/backend-development-guide/security-guide.md) |
