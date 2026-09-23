@@ -136,7 +136,7 @@ class StudyUpdateIntegrationTest {
     @Test
     @DisplayName("성공 - CO_LEADER 도 수정 가능하다")
     void coLeaderCanUpdate() {
-        Long studyId = createStudy("코리더 수정 전", "소개", "FRONTEND");
+        Long studyId = createStudy("코리더 수정 전", "소개", "SOFTWARE");
         insertParticipantIfAbsent(studyId, CO_LEADER_ID, ParticipantRole.CO_LEADER);
 
         Map<String, Object> body = Map.of("title", "코리더 수정 후", "oneLineSummary", "소개");

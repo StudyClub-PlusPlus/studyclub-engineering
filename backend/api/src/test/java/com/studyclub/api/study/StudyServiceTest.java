@@ -75,7 +75,8 @@ class StudyServiceTest {
         when(studyProgramRepository.findById(999L)).thenReturn(Optional.empty());
 
         StudyCreateRequest request =
-                new StudyCreateRequest(999L, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+                new StudyCreateRequest(
+                        999L, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
 
         assertThatThrownBy(() -> studyService.create(1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -274,7 +275,8 @@ class StudyServiceTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private StudyCreateRequest validCreateRequest() {
-        return new StudyCreateRequest(null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+        return new StudyCreateRequest(
+                null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
     }
 
     private StudyUpdateRequest validUpdateRequest() {
