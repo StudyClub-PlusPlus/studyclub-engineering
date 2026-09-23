@@ -6,9 +6,9 @@
 
 ## 한 줄
 
-**애그리거트 리포지토리는 애그리거트만 다룬다. 화면용 조회는 `query` 패키지로 뺀다.**
+**애그리거트 리포지토리는 애그리거트만 다룬다. 화면용 조회는 전용 DAO 로 뺀다.**
 
-## 판정 — 셋 중 하나에 걸리면 `query` 패키지다
+## 판정 — 셋 중 하나에 걸리면 조회 전용 DAO 로 뺀다
 
 | 신호 | 예 |
 |---|---|
@@ -25,18 +25,24 @@ domain/<도메인>/
   Study.java                  엔티티 + 규칙 (판정·상태 변경)
   StudyRepository.java        애그리거트 저장·조회
 
-api/<도메인>/query/
-  StudyListData.java          화면용 읽기 전용 DTO
-  StudyListDao.java           조회 (필요한 메서드만)
-  StudyListQueryService.java  조건 조립 · 응답 변환
+api/<도메인>/
+  StudyListDao.java           조회 (인터페이스 — 쓰는 메서드만)
+  StudyListJpqlDao.java       조회 구현 (쿼리 텍스트는 여기)
+  StudyListService.java       조건 조립 · 응답 변환
+  StudyListResponse.java      응답 DTO
 ```
+
+**폴더를 새로 파지 않는다.** `api` 모듈이 이미 조회 계층이고, 역할은 **이름**(`…Dao`·`…Service`·`…Response`)이 말한다.
+조회가 한 도메인에서 서넛으로 늘어 파일이 섞이기 시작하면 그때 `query/` 같은 하위 패키지로 묶는다 —
+**조회 하나 때문에 패키지 규칙을 먼저 만들지 않는다.**
 
 ### 규칙
 
-1. **조회 DAO 는 `JpaRepository` 를 상속하지 않는다.** `org.springframework.data.repository.Repository` 를 상속해 **쓰는 메서드만** 노출한다. 목록 조회를 애그리거트 리포지토리에 붙이면 그 리포지토리를 주입하는 **모든** 서비스가 목록 쿼리를 보게 된다.
-2. **판정·정의는 도메인에 남긴다.** "종료 임박은 3일", "정원은 ACTIVE·PAUSED 만 차지" 같은 규칙은 엔티티 메서드다. `query` 패키지는 그 값을 **쓰기만** 한다.
-3. **쿼리 텍스트는 `query` 패키지 안에 둔다.** 엔티티에 `@NamedQuery` 로 매달지 않는다 — JPA 가 엔티티에만 붙일 수 있게 해서 그렇지, 도메인이 조회 방법을 알아야 할 이유는 없다.
-4. **`EntityManager` 는 서비스에서 쓰지 않는다.** 필요하면 `query` 패키지의 DAO 구현체에서만.
+1. **조회는 애그리거트 리포지토리에 붙이지 않는다.** 목록 쿼리를 `StudyRepository` 에 붙이면, 그 리포지토리를 주입하는 **모든** 서비스(출석·등록·백오피스…)가 목록 쿼리를 보게 된다.
+2. **조회 DAO 는 `JpaRepository` 를 상속하지 않는다.** 전용 인터페이스에 **쓰는 메서드만** 둔다. Spring Data 로 풀리는 조회면 `org.springframework.data.repository.Repository` 를 상속해 메서드를 제한한다.
+3. **판정·정의는 도메인에 남긴다.** "종료 임박은 3일", "정원은 ACTIVE·PAUSED 만 차지" 같은 규칙은 엔티티 메서드다. 조회 쪽은 그 값을 **쓰기만** 한다.
+4. **쿼리 텍스트는 조회 구현체에 둔다.** 엔티티에 `@NamedQuery` 로 매달지 않는다 — JPA 가 엔티티에만 붙일 수 있게 해서 그렇지, 도메인이 조회 방법을 알아야 할 이유는 없다.
+5. **`EntityManager` 는 서비스에서 쓰지 않는다.** 필요하면 조회 DAO 구현체에서만.
 
 ## DB 에서 거를 것인가, Java 에서 거를 것인가
 
@@ -61,13 +67,13 @@ DB 에서 거르기로 하면 **판정이 SQL 에도 생긴다.** 그때는 다�
 |---|---|
 | 도메인 모델과 JPA 엔티티 분리 | 변환 코드·중복 필드 비용이 지금 얻는 것보다 크다 |
 | 헥사고날 port/adapter 전면 도입 | 기능 하나에 Port·Adapter 를 동시에 고쳐야 한다 |
-| 조회 전용 모듈·서비스 분리 | 도메인이 얇다. 모듈은 팀이 쪼개질 때 쪼갠다 |
+| 조회 전용 모듈·패키지를 미리 만들기 | 도메인이 얇다. 파일이 섞일 때 묶어도 비용이 같다 |
 
 ## 근거
 
 국내외 사례를 2026-09 기준으로 조사한 결과다.
 
-- **『도메인 주도 개발 시작하기』 공식 예제**는 컨텍스트마다 `command/` 와 `query/` 를 나눈다. 조회는 `ProductData`·`ProductDataDao`·`ProductQueryService` 가 맡고, DAO 는 `Repository` 를 상속해 메서드를 제한한다 — https://github.com/madvirus/ddd-start2
+- **『도메인 주도 개발 시작하기』 공식 예제**는 조회를 애그리거트에서 떼어 `ProductData`·`ProductDataDao`·`ProductQueryService` 가 맡게 하고, DAO 는 `Repository` 를 상속해 메서드를 제한한다. 거기서는 컨텍스트마다 `command/`·`query/` 로 폴더까지 나누는데, **그건 조회가 여러 개일 때의 모양**이다 — https://github.com/madvirus/ddd-start2
 - **ddd-by-examples/library** 는 읽기 모델을 애그리거트와 분리하고, 인터페이스·DTO 는 도메인 쪽에, SQL 은 infrastructure 에 둔다 — https://github.com/ddd-by-examples/library
 - **우아한형제들**: "도메인 리포지토리가 **모든** 조회를 하는 것이 아니다. 중심 역할이 아닌 조회(통계 등)는 사용하는 측(Application)에 작성한다" — https://techblog.woowahan.com/2637/
 - **카카오엔터테인먼트**는 Load Port / Save Port 를, **카카오스타일**은 Query Port / Command Port 를 나눈다 — https://tech.kakaoent.com/tech/ifkakao-2022-ddd/ · https://devblog.kakaostyle.com/ko/2025-03-21-1-domain-driven-hexagonal-architecture-by-example/
