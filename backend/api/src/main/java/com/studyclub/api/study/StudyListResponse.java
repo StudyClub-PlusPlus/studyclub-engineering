@@ -1,6 +1,5 @@
 package com.studyclub.api.study;
 
-import com.studyclub.domain.participant.StudyParticipantCounts;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
@@ -30,17 +29,12 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
             DeliveryFormat deliveryFormat,
             Integer capacity,
             long currentApplicants,
-            long participantCount,
-            Integer completionRate,
             Instant recruitDeadlineAt,
             Instant startAt,
             Instant endAt,
             boolean closingSoon) {
         public static StudySummary from(
-                Study study,
-                StudyParticipantCounts counts,
-                Instant recruitDeadlineAt,
-                StudyPhase phase) {
+                Study study, long applicantCount, Instant recruitDeadlineAt) {
             return new StudySummary(
                     study.getId(),
                     study.getSlug(),
@@ -52,13 +46,11 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
                     study.getSchedule(),
                     study.timezone(),
                     study.getStatus(),
-                    phase,
-                    study.recruitStatus(counts.occupying(), recruitDeadlineAt),
+                    study.phase(applicantCount, recruitDeadlineAt),
+                    study.recruitStatus(applicantCount, recruitDeadlineAt),
                     study.getStudyDeliveryFormat(),
                     study.getCapacity(),
-                    counts.occupying(),
-                    counts.participated(),
-                    counts.completionRate(),
+                    applicantCount,
                     recruitDeadlineAt,
                     study.getStartAt(),
                     study.getEndAt(),

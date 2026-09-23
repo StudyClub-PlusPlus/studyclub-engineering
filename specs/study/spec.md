@@ -5,6 +5,7 @@
 > 갱신: 2026-09-19 — 신청 폼·제출·결과 API 는 [study-application/spec.md](../study-application/spec.md) 로 분리
 > 갱신: 2026-09-20 — STUDY_COHORT 테이블 폐기. 코호트 필드는 STUDY 로 통합, 모집 마감은 STUDY_RECRUITMENT 로 분리. 응답·요청 구조 반영
 > 갱신: 2026-09-21 — 목록: 모집 상태(RECRUITING/ONGOING/CLOSED)·시간대 필터 추가, 카드 필드 추가, DRAFT 제외. 카테고리 14 → 11종
+> 갱신: 2026-09-23 — 목록 정렬 옵션 제거(기획 재설계 — 목록은 검색·필터 전용). 필터·정렬·페이징은 DB 에서 수행
 > 갱신: 2026-09-21 — PATCH/DELETE 스펙 추가
 > 갱신: 2026-09-22 — 목록 카드가 `startAt` 을 표시하도록 playground 변경. 목록 응답 필드 스펙(미작성)에 `startAt` 포함 필요 — 아래 미확정 참고
 > 갱신: 2026-09-23 — 사용자 사이트 상세 조회 키는 `studyId`(`STUDY.ID`). `slug` 는 경로 키가 아니다. 기획: [스터디 상세](../../planning/stories/crew-view-study-detail/PRD.md)
@@ -48,23 +49,10 @@
 | timezone | StudyTimezone | N | 전체 | `KST` / `PST` / `BOTH`(동시 모집). `SCHEDULE` 문구의 표기로 판정 |
 | keyword | String | N | - | 제목·한 줄 소개 부분 일치. 대소문자 무시, 앞뒤 공백 제거 |
 | recruitDeadlineBefore | Instant (ISO 8601) | N | - | 모집 마감이 이 시각 이전인 **모집 중** 스터디만 (종료 임박 = now + 3일) |
-| sort | StudyListSort | N | `DEFAULT` | 아래 표 |
 | offset | int | N | 0 | 건너뛸 개수 |
 | limit | int | N | 20 | 가져올 개수 |
 
 잘못된 enum 값은 400 `INVALID_INPUT`.
-
-#### sort
-
-| 값 | 순서 | 화면 |
-|----|------|------|
-| `DEFAULT` | 모집 중 → 진행 중 → 종료 | 전체: 기본 순 |
-| `DEADLINE` | 모집 마감 가까운 순. 상시 모집은 맨 뒤 | 모집 중: 모집 기한이 가까운 순 |
-| `PARTICIPANTS` | 참여 인원(하차 제외) 많은 순 | 진행 중·종료: 사람 많은 순 |
-| `ENDED` | `END_AT` 최근 순. 없으면 맨 뒤 | 종료: 스터디 끝난 기한 순 |
-| `COMPLETION` | 완주율 높은 순. 없으면 맨 뒤 | 종료: 완주율 순 |
-
-동률이면 최근 등록(id 큰) 순.
 
 #### 모집 상태 탭 판정
 
@@ -74,6 +62,10 @@
 4. 그 밖(시작 전인데 모집 마감) → `CLOSED`
 
 `DRAFT` 는 목록에 나오지 않는다 (AC-2). 숨김(`IS_HIDDEN`)도 제외. 같은 프로그램은 가장 최근 기수 1건만 나온다.
+
+정렬은 **모집 중 → 진행 중 → 종료**, 같은 단계에서는 최근 등록 순으로 고정한다. 사용자가 고르는 정렬 옵션은 없다 (기획 재설계로 목록은 검색·필터 전용).
+
+필터·정렬·페이징은 **DB 에서** 한다 (`StudyListQueryRepository`). 단계 판정식이 SQL 과 `Study.phase` 두 곳에 있으므로, 통합 테스트가 `status` 필터 결과와 응답 `phase` 가 일치하는지 함께 검증한다.
 
 ### Response — 200
 
@@ -96,8 +88,6 @@
       "deliveryFormat": "ONLINE",
       "capacity": 30,
       "currentApplicants": 12,
-      "participantCount": 12,
-      "completionRate": null,
       "recruitDeadlineAt": "2026-09-30T15:00:00Z",
       "startAt": "2026-10-01T00:00:00Z",
       "endAt": null,
@@ -116,8 +106,6 @@
 | timezone | String | N | 진행 시간대 | 계산: `SCHEDULE` 에 PST·PDT → PST, KST → KST, 없으면 BOTH |
 | recruitStatus | String | Y | `status != OPEN` 이면 null | [study-recruit-status](../study-recruit-status/spec.md) |
 | currentApplicants | Long | N | 정원을 차지하는 인원 (ACTIVE+PAUSED) | STUDY_PARTICIPANT |
-| participantCount | Long | N | 참여 인원 (ACTIVE+PAUSED+COMPLETED) | STUDY_PARTICIPANT |
-| completionRate | Integer | Y | 완주율 0~100. COMPLETED ÷ (참여 + 하차). 이력 없으면 null | STUDY_PARTICIPANT |
 | recruitDeadlineAt | String | Y | 최근 모집 회차 마감. null = 상시 모집 | STUDY_RECRUITMENT |
 | closingSoon | Boolean | N | OPEN 이고 마감 3일 이내 | 계산 |
 

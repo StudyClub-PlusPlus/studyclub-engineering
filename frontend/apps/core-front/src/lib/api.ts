@@ -7,7 +7,6 @@ const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_UR
 
 export type StudyPhaseFilter = 'recruiting' | 'ongoing' | 'closed';
 export type StudyTimezoneFilter = 'KST' | 'PST' | 'both';
-export type StudySort = 'default' | 'deadline' | 'participants' | 'ended' | 'completion';
 
 /** 스터디 목록 조건. 전부 선택 — 비우면 그 조건을 걸지 않는다. `category` 는 API enum 값(`AI_ML` …). */
 export type StudySearch = {
@@ -15,7 +14,6 @@ export type StudySearch = {
   status?: StudyPhaseFilter;
   timezone?: StudyTimezoneFilter;
   category?: string;
-  sort?: StudySort;
 };
 
 type ApiStudy = {
@@ -34,8 +32,6 @@ type ApiStudy = {
   deliveryFormat: 'ONLINE' | 'OFFLINE' | 'HYBRID';
   capacity: number | null;
   currentApplicants: number;
-  participantCount: number;
-  completionRate: number | null;
   recruitDeadlineAt: string | null;
   startAt: string | null;
   endAt: string | null;
@@ -78,7 +74,6 @@ export function toStudy(api: ApiStudy): Study {
       status: api.recruitStatus !== 'RECRUITING' ? 'closed' : api.recruitDeadlineAt ? 'open' : 'always',
       deadline: api.recruitDeadlineAt?.slice(0, 10),
     },
-    stats: { participants: api.participantCount, completion_rate: api.completionRate ?? undefined },
   };
 }
 
@@ -91,7 +86,6 @@ export function studyQuery(search: StudySearch): URLSearchParams {
   if (search.status) q.set('status', search.status.toUpperCase());
   if (search.timezone) q.set('timezone', search.timezone.toUpperCase());
   if (search.category) q.set('category', search.category);
-  if (search.sort && search.sort !== 'default') q.set('sort', search.sort.toUpperCase());
   return q;
 }
 

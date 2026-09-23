@@ -10,7 +10,6 @@ export async function GET(req: NextRequest) {
     status: (p.get('status') ?? undefined) as StudySearch['status'],
     timezone: (p.get('timezone') ?? undefined) as StudySearch['timezone'],
     category: p.get('category') ?? undefined,
-    sort: (p.get('sort') ?? undefined) as StudySearch['sort'],
   };
   try {
     return NextResponse.json(await fetchStudies(search));

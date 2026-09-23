@@ -36,7 +36,7 @@ import org.springframework.http.HttpStatus;
  * <ul>
  *   <li>데일리 리트코드: ALGORITHM · 모집 중 · 마감 2일 후(종료 임박) · KST · 참여 2
  *   <li>Spring 딥다이브: SOFTWARE · 진행 중 · PDT · 참여 5
- *   <li>지난 알고리즘: ALGORITHM · 종료 · 시간대 표기 없음 · 완주 3 / 하차 1 (완주율 75)
+ *   <li>지난 알고리즘: ALGORITHM · 종료 · 시간대 표기 없음
  *   <li>북클럽: BOOK_CLUB · 모집 중 · 상시 모집(마감 없음) · 소개에 "독서"
  *   <li>준비 중 스터디: DRAFT — 목록 제외
  * </ul>
@@ -86,7 +86,6 @@ class StudyListIntegrationTest {
                         .build();
         save(closed, now.minus(70, ChronoUnit.DAYS));
         participants(closed, ParticipantStatus.COMPLETED, 3);
-        participants(closed, ParticipantStatus.WITHDRAWN, 1);
 
         var bookClub =
                 study("북클럽", "한 달에 한 권 함께 독서", StudyCategory.BOOK_CLUB, StudyStatus.OPEN).build();
@@ -171,11 +170,17 @@ class StudyListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 모집 상태 필터 (모집 중 / 진행 중 / 종료)")
+    @DisplayName("성공 - 모집 상태 필터 (모집 중 / 진행 중 / 종료). 필터(DB)와 응답 phase(도메인) 가 일치한다")
     void filterByStatus() {
         assertThat(titles(get("?status=RECRUITING"))).containsExactlyInAnyOrder("데일리 리트코드", "북클럽");
         assertThat(titles(get("?status=ONGOING"))).containsExactly("Spring 딥다이브");
         assertThat(titles(get("?status=CLOSED"))).containsExactly("지난 알고리즘");
+
+        for (String phase : List.of("RECRUITING", "ONGOING", "CLOSED")) {
+            assertThat(items(get("?status=" + phase)))
+                    .isNotEmpty()
+                    .allSatisfy(item -> assertThat(item).containsEntry("phase", phase));
+        }
     }
 
     @Test
@@ -204,28 +209,6 @@ class StudyListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 정렬: 모집 마감 가까운 순은 상시 모집을 맨 뒤로 보낸다")
-    void sortByDeadline() {
-        assertThat(titles(get("?status=RECRUITING&sort=DEADLINE")))
-                .containsExactly("데일리 리트코드", "북클럽");
-    }
-
-    @Test
-    @DisplayName("성공 - 정렬: 사람 많은 순은 하차자를 빼고 센다")
-    void sortByParticipants() {
-        assertThat(titles(get("?sort=PARTICIPANTS")))
-                .containsExactly("Spring 딥다이브", "지난 알고리즘", "데일리 리트코드", "북클럽");
-    }
-
-    @Test
-    @DisplayName("성공 - 정렬: 완주율 순 · 끝난 기한 순")
-    void sortByCompletionAndEnded() {
-        assertThat(titles(get("?sort=COMPLETION")).getFirst()).isEqualTo("지난 알고리즘");
-        assertThat(titles(get("?sort=ENDED")).subList(0, 2))
-                .containsExactly("Spring 딥다이브", "지난 알고리즘");
-    }
-
-    @Test
     @DisplayName("성공 - 카드에 필요한 필드와 파생값을 내려준다")
     void responseFields() {
         var closed = items(get("?status=CLOSED")).getFirst();
@@ -237,20 +220,20 @@ class StudyListIntegrationTest {
                 .containsEntry("studyKind", "STUDY")
                 .containsEntry("phase", "CLOSED")
                 .containsEntry("timezone", "BOTH")
-                .containsEntry("participantCount", 3)
-                .containsEntry("completionRate", 75)
                 .containsKeys("slug", "thumbnailUrl", "schedule", "endAt", "closingSoon");
     }
 
     @Test
-    @DisplayName("성공 - 페이지네이션 (offset/limit)")
+    @DisplayName("성공 - 페이지네이션은 DB 에서 자른다 — offset 이 밀려도 total 은 전체 건수")
     void pagination() {
-        var body = get("?offset=0&limit=2");
+        var first = get("?offset=0&limit=2");
+        assertThat(first).containsEntry("total", 4).containsEntry("offset", 0);
+        assertThat(items(first)).hasSize(2);
 
-        assertThat(body).containsEntry("total", 4);
-        assertThat(items(body)).hasSize(2);
-        assertThat(body).containsEntry("offset", 0);
-        assertThat(body).containsEntry("limit", 2);
+        var second = get("?offset=3&limit=2");
+        assertThat(second).containsEntry("total", 4);
+        assertThat(items(second)).hasSize(1);
+        assertThat(titles(second)).doesNotContainAnyElementsOf(titles(first));
     }
 
     @Test

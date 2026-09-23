@@ -18,8 +18,6 @@ const apiStudy = {
   deliveryFormat: 'ONLINE' as const,
   capacity: 30,
   currentApplicants: 12,
-  participantCount: 12,
-  completionRate: null,
   recruitDeadlineAt: '2026-09-30T15:00:00Z',
   startAt: '2026-10-01T00:00:00Z',
   endAt: null,
@@ -27,13 +25,12 @@ const apiStudy = {
 };
 
 describe('studyQuery', () => {
-  it('화면 조건을 백엔드 enum 쿼리로 올리고, 빈 조건과 기본 정렬은 보내지 않는다', () => {
+  it('화면 조건을 백엔드 enum 쿼리로 올리고, 빈 조건은 보내지 않는다', () => {
     const q = studyQuery({
       keyword: '  리트코드 ',
       status: 'recruiting',
       timezone: 'both',
       category: 'ALGORITHM',
-      sort: 'deadline',
     });
     expect(Object.fromEntries(q)).toEqual({
       limit: '100',
@@ -41,9 +38,8 @@ describe('studyQuery', () => {
       status: 'RECRUITING',
       timezone: 'BOTH',
       category: 'ALGORITHM',
-      sort: 'DEADLINE',
     });
-    expect(Object.fromEntries(studyQuery({ keyword: ' ', sort: 'default' }))).toEqual({ limit: '100' });
+    expect(Object.fromEntries(studyQuery({ keyword: ' ' }))).toEqual({ limit: '100' });
   });
 });
 

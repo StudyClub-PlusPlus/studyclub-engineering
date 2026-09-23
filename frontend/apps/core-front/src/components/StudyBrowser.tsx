@@ -3,16 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
-import { Check, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
-import {
-  searchStudies,
-  type StudyPhaseFilter,
-  type StudySearch,
-  type StudySort,
-  type StudyTimezoneFilter,
-} from '@/lib/api';
+import { searchStudies, type StudyPhaseFilter, type StudySearch, type StudyTimezoneFilter } from '@/lib/api';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 
@@ -25,7 +19,7 @@ const RECRUITMENT_OPTIONS: { value: RecruitmentFilter; label: string }[] = [
   { value: 'ongoing', label: '진행 중' },
   { value: 'closed', label: '종료' },
 ];
-/** 값은 API enum, 라벨은 화면 표기. 순서는 `CATEGORY_DISPLAY` 선언 순서(= 백엔드 enum 순서). */
+/** 값은 API enum(`AI_ML` …), 라벨은 화면 표기. 순서는 `CATEGORY_DISPLAY` 선언 순서. */
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: '전체' },
   ...Object.entries(CATEGORY_DISPLAY).map(([value, label]) => ({ value, label })),
@@ -35,20 +29,6 @@ const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
   { value: 'PST', label: 'PST' },
   { value: 'both', label: '동시 모집' },
 ];
-
-/** 모집 상태마다 고를 수 있는 정렬이 다르다. 첫 번째가 그 상태의 기본값. */
-function sortOptionsFor(status: RecruitmentFilter): { value: StudySort; label: string }[] {
-  if (status === 'recruiting') return [{ value: 'deadline', label: '모집 기한이 가까운 순' }];
-  if (status === 'ongoing') return [{ value: 'participants', label: '사람 많은 순' }];
-  if (status === 'closed') {
-    return [
-      { value: 'ended', label: '스터디 끝난 기한 순' },
-      { value: 'participants', label: '사람 많은 순' },
-      { value: 'completion', label: '완주율 순' },
-    ];
-  }
-  return [{ value: 'default', label: '기본 순' }];
-}
 
 function FilterOption({
   active,
@@ -100,42 +80,16 @@ function FilterSelect<T extends string>({
   );
 }
 
-function SortChoices({
-  value,
-  options,
-  onChange,
-}: {
-  value: StudySort;
-  options: { value: StudySort; label: string }[];
-  onChange: (value: StudySort) => void;
-}) {
+function FilterRow({ children, ...rest }: React.ComponentPropsWithoutRef<'div'>) {
   return (
-    <div className='flex flex-wrap gap-x-5 gap-y-2'>
-      {options.map((option) => {
-        const active = value === option.value;
-        return (
-          <button
-            key={option.value}
-            type='button'
-            aria-pressed={active}
-            onClick={() => onChange(option.value)}
-            className={`inline-flex items-center gap-1.5 text-sm font-semibold transition-colors ${active ? 'text-brand' : 'text-fg-secondary hover:text-fg'}`}
-          >
-            <Check size={16} strokeWidth={2.5} className={active ? 'text-brand' : 'invisible'} aria-hidden='true' />
-            {option.label}
-          </button>
-        );
-      })}
+    <div {...rest} className='flex flex-wrap gap-1.5'>
+      {children}
     </div>
   );
 }
 
-function FilterRow({ children }: { children: React.ReactNode }) {
-  return <div className='flex flex-wrap gap-1.5'>{children}</div>;
-}
-
 /**
- * 스터디 목록 + 필터. 필터·정렬은 **서버가** 한다 — 조건이 바뀌면 `/api/studies` 를 다시 부른다.
+ * 스터디 목록 + 필터. 필터는 **서버가** 한다 — 조건이 바뀌면 `/api/studies` 를 다시 부른다.
  * 첫 화면은 서버 컴포넌트가 기본 조건으로 받아 둔 `studies` 를 그대로 쓴다.
  */
 export function StudyBrowser({
@@ -150,7 +104,6 @@ export function StudyBrowser({
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [recruitment, setRecruitment] = useState<RecruitmentFilter>('all');
-  const [sort, setSort] = useState<StudySort>('default');
   const [category, setCategory] = useState<string>('all');
   const [timezone, setTimezone] = useState<TimezoneFilter>('all');
 
@@ -170,7 +123,6 @@ export function StudyBrowser({
       status: recruitment === 'all' ? undefined : recruitment,
       timezone: timezone === 'all' ? undefined : timezone,
       category: category === 'all' ? undefined : category,
-      sort,
     };
     // 빠르게 필터를 바꾸면 늦게 온 이전 응답이 새 결과를 덮는다 — 이전 요청은 끊는다
     const controller = new AbortController();
@@ -187,7 +139,7 @@ export function StudyBrowser({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [query, recruitment, timezone, category, sort]);
+  }, [query, recruitment, timezone, category]);
 
   const hasQuery = query.trim().length > 0;
   const commitSearch = () => setQuery(input);
@@ -195,12 +147,9 @@ export function StudyBrowser({
     setInput('');
     setQuery('');
     setRecruitment('all');
-    setSort('default');
     setCategory('all');
     setTimezone('all');
   };
-
-  const sortOptions = sortOptionsFor(recruitment);
 
   return (
     <div>
@@ -223,10 +172,7 @@ export function StudyBrowser({
                   type='button'
                   role='tab'
                   aria-selected={active}
-                  onClick={() => {
-                    setRecruitment(option.value);
-                    setSort(sortOptionsFor(option.value)[0].value);
-                  }}
+                  onClick={() => setRecruitment(option.value)}
                   className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
                 >
                   {option.label}
@@ -234,11 +180,13 @@ export function StudyBrowser({
               );
             })}
           </div>
-          <FilterSelect
-            value={timezone}
-            options={[{ value: 'all' as const, label: '시간대' }, ...TIMEZONE_OPTIONS]}
-            onChange={setTimezone}
-          />
+          <div>
+            <FilterSelect
+              value={timezone}
+              options={[{ value: 'all' as const, label: '시간대 전체' }, ...TIMEZONE_OPTIONS]}
+              onChange={setTimezone}
+            />
+          </div>
           <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 sm:ml-auto sm:w-[312px]'>
             <Search
               size={15}
@@ -284,7 +232,6 @@ export function StudyBrowser({
             </FilterOption>
           ))}
         </FilterRow>
-        <SortChoices value={sort} options={sortOptions} onChange={setSort} />
       </div>
 
       {/* Grid */}
@@ -310,7 +257,6 @@ export function StudyBrowser({
           ))}
         </div>
       ) : hasQuery ? (
-        /* 검색 결과 없음 — PRD §2 상태별 화면 empty */
         <div className='flex min-h-[240px] flex-col items-center justify-center gap-4 text-center'>
           <p className='text-base font-bold text-fg-secondary'>
             <span className='text-fg'>&quot;{query.trim()}&quot;</span>

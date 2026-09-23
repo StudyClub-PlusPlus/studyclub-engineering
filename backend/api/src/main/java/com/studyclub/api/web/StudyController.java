@@ -1,12 +1,11 @@
 package com.studyclub.api.web;
 
-import com.studyclub.api.study.StudyListCondition;
 import com.studyclub.api.study.StudyListResponse;
 import com.studyclub.api.study.StudyListService;
-import com.studyclub.api.study.StudyListSort;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.study.StudyCategory;
+import com.studyclub.domain.study.StudyListFilter;
 import com.studyclub.domain.study.StudyPhase;
 import com.studyclub.domain.study.StudyTimezone;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,8 +40,7 @@ public class StudyController {
     @Operation(
             summary = "스터디 목록 조회",
             description =
-                    "카테고리·모집 상태·시간대·키워드(제목·한 줄 소개)·모집 마감일 필터와 정렬로 공개 스터디 목록을 조회한다."
-                            + " DRAFT 는 나오지 않는다.")
+                    "카테고리·모집 상태·시간대·키워드(제목·한 줄 소개)·모집 마감일로 공개 스터디 목록을 조회한다." + " DRAFT 는 나오지 않는다.")
     @GetMapping
     public StudyListResponse list(
             @RequestParam(required = false) StudyCategory category,
@@ -50,13 +48,11 @@ public class StudyController {
             @RequestParam(required = false) StudyTimezone timezone,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Instant recruitDeadlineBefore,
-            @RequestParam(defaultValue = "DEFAULT") StudyListSort sort,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit) {
 
         return studyListService.list(
-                new StudyListCondition(
-                        category, status, timezone, keyword, recruitDeadlineBefore, sort),
+                new StudyListFilter(category, status, timezone, keyword, recruitDeadlineBefore),
                 offset,
                 limit);
     }
