@@ -51,7 +51,8 @@ export function StudyConsole({ study }: { study: Study }) {
   const pending = crew.filter((c) => c.status === 'pending');
   const open = recruitState(study) === 'apply';
   const deadline = toISODate(study.recruitment?.deadline);
-  const scheduled = publishState(study) === 'scheduled';
+  // 예약 공개는 없앴다 — 공개는 사람이 켜는 것이라 상태는 draft/live 둘뿐이다.
+  const unpublished = publishState(study) === 'draft';
 
   // 스터디 전체 출석률 — 크루별 출석률의 평균이 아니라 **전체 대상 회차 기준**.
   // 평균을 쓰면 한 번만 나온 사람과 열 번 나온 사람이 같은 무게가 된다.
@@ -107,10 +108,10 @@ export function StudyConsole({ study }: { study: Study }) {
           <h1 className='text-2xl font-extrabold tracking-tight'>{tx(study.title)}</h1>
           <p className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-secondary'>
             <span>{study.category ?? '—'}</span>
-            {scheduled && (
+            {unpublished && (
               <>
                 <span className='text-fg-muted'>·</span>
-                <span className='font-semibold text-warning-700'>{toISODate(study.publish_at)} 공개</span>
+                <span className='font-semibold text-warning-700'>비공개 — 사용자 사이트에 안 보임</span>
               </>
             )}
           </p>

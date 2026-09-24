@@ -1,16 +1,13 @@
 package com.studyclub.api.application;
 
-import com.studyclub.api.application.BackOfficeApplicationResponses.ApplicationQuestionResponse;
-import com.studyclub.api.application.BackOfficeApplicationResponses.StudyApplicationResponse;
-import com.studyclub.api.application.BackOfficeApplicationResponses.StudyApplicationsResponse;
+import com.studyclub.api.application.AdminApplicationResponses.ApplicationQuestionResponse;
+import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationResponse;
+import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationsResponse;
+import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
-import com.studyclub.domain.account.Account;
-import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.application.StudyApplicationWithAccount;
-import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantHistory;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
@@ -31,30 +28,27 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Transactional(readOnly = true)
-public class BackOfficeApplicationQueryService {
-
-    private static final List<ParticipantRole> CAPTAIN_ROLES =
-            List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER);
+public class AdminApplicationQueryService {
 
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyParticipantRepository studyParticipantRepository;
-    private final AccountRepository accountRepository;
+    private final StudyCaptainGuard studyCaptainGuard;
     private final ObjectMapper objectMapper;
 
-    public BackOfficeApplicationQueryService(
+    public AdminApplicationQueryService(
             StudyRepository studyRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyApplicationRepository studyApplicationRepository,
             StudyParticipantRepository studyParticipantRepository,
-            AccountRepository accountRepository,
+            StudyCaptainGuard studyCaptainGuard,
             ObjectMapper objectMapper) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyParticipantRepository = studyParticipantRepository;
-        this.accountRepository = accountRepository;
+        this.studyCaptainGuard = studyCaptainGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -64,7 +58,7 @@ public class BackOfficeApplicationQueryService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        assertCaptain(accountId, studyId);
+        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 결과를 볼 권한이 없습니다.");
 
         StudyRecruitment recruitment = resolveRecruitment(studyId, requestedRecruitmentId);
         if (recruitment == null) {
@@ -96,22 +90,6 @@ public class BackOfficeApplicationQueryService {
                                                 histories.get(application.accountId())))
                         .toList();
         return new StudyApplicationsResponse(applications.size(), questionsOf(study), applications);
-    }
-
-    private void assertCaptain(Long accountId, Long studyId) {
-        Account account =
-                accountRepository
-                        .findById(accountId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
-        if (account.getSystemRole() == SystemRole.ADMIN) {
-            return;
-        }
-        boolean captain =
-                studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        studyId, accountId, CAPTAIN_ROLES);
-        if (!captain) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "이 스터디의 신청 결과를 볼 권한이 없습니다.");
-        }
     }
 
     private StudyRecruitment resolveRecruitment(Long studyId, Long requestedRecruitmentId) {

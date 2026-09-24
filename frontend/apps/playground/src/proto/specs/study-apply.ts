@@ -30,12 +30,12 @@ export const APPLY_SPEC: ScreenSpec = {
       title: '스터디 정보',
       display: [
         '백오피스 신청 폼과 같은 설문지 제목 · 설명',
-        '등록 폼 항목: 주제 · 진행 일정 · 모집 마감(또는 상시 모집) · 상세 설명',
+        '등록 폼 항목: 주제 · 진행 일정 · 모집 마감 · 상세 설명',
       ],
       policy: [
         '제목·설명은 applicationFormTitle / applicationFormDescription, 없으면 스터디 제목·한 줄 소개',
         '이름·이메일은 이 카드에 두지 않는다',
-        '일정이 없으면 「일정 미정」, 마감일이 없으면 「상시 모집」',
+        '일정이 없으면 「일정 미정」',
       ],
       data: [
         'study.applicationFormTitle ?? study.title · applicationFormDescription ?? study.summary',

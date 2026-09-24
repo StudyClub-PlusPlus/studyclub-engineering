@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+
 import './globals.css';
+import { Providers } from '@/app/providers';
 
 export const metadata: Metadata = {
   title: {
@@ -18,7 +20,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable.min.css'
         />
       </head>
-      <body className='min-h-full'>{children}</body>
+      <body className='min-h-full'>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

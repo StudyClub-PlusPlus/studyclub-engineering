@@ -291,6 +291,16 @@ export function demoMyAttendance(
 }
 
 /**
+ * 모집 정원 — 운영자가 등록 폼에 적은 값. **없으면 제한 없음**이다.
+ *
+ * `getStudyCrew().capacity` 는 데모 명단을 만들 때 쓰는 값이라 정원이 없어도 숫자가 나온다.
+ * 화면에 「정원」으로 보일 값은 반드시 이 함수로 읽는다.
+ */
+export function recruitCapacity(study: Study): number | undefined {
+  return study.recruitment?.capacity;
+}
+
+/**
  * 스터디의 크루·회차·출석을 만든다.
  *
  * 회차는 **오늘까지 지난 것만 출석이 채워진다** — 앞으로 열릴 회차가 미리 체크돼 있으면
@@ -298,7 +308,8 @@ export function demoMyAttendance(
  */
 export function getStudyCrew(study: Study, today = new Date().toISOString().slice(0, 10)): StudyCrewData {
   const seed = hash(study.id);
-  const capacity = 12 + pick(seed, 3) * 4; // 12 · 16 · 20
+  // 운영자가 정한 모집 정원이 있으면 그것을, 없으면(제한 없음) 데모 명단 크기용 값을 쓴다.
+  const capacity = recruitCapacity(study) ?? 12 + pick(seed, 3) * 4; // 12 · 16 · 20
   const activeCount = Math.max(5, capacity - 2 - pick(seed + 7, 5));
   // 마감된 스터디에도 처리되지 않은 신청은 남는다 — 승인 대기는 상태와 무관하게 존재한다
   const pendingCount = 1 + pick(seed + 13, 4);

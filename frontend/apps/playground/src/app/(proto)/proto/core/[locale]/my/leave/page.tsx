@@ -26,12 +26,12 @@ const REASONS = ['원하는 스터디 없음', '스터디 참여가 부담됨', 
 export default function LeavePage() {
   return (
     <Suspense fallback={<div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>}>
-      <LeaveScreen />
+      <LeavePageInner />
     </Suspense>
   );
 }
 
-function LeaveScreen() {
+function LeavePageInner() {
   const params = useParams();
   const router = useRouter();
   const search = useSearchParams();
