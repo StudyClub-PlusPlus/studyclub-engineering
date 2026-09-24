@@ -18,7 +18,28 @@ public final class StudyApplicationFormRequests {
             @Schema(description = "설문 설명 마크다운 원문. 비우면 스터디 한 줄 소개를 사용합니다.")
                     @Size(max = 5_000, message = "description: 길이 제한을 넘었습니다.") String description,
             @Schema(description = "캡틴 추가 질문 목록. 빈 배열 허용, null 불가")
-                    @NotNull(message = "questions는 필수입니다.") List<@Valid @NotNull ApplicationFormQuestionRequest> questions) {}
+                    @NotNull(message = "questions는 필수입니다.") List<@Valid @NotNull ApplicationFormQuestionRequest> questions) {
+
+        public StudyApplicationFormRequest {
+            if (title != null && title.length() > 200) {
+                throw new IllegalArgumentException("title: 길이 제한을 넘었습니다.");
+            }
+
+            if (description != null && description.length() > 5_000) {
+                throw new IllegalArgumentException("description: 길이 제한을 넘었습니다.");
+            }
+
+            if (questions == null) {
+                throw new IllegalArgumentException("questions는 필수입니다.");
+            }
+
+            for (int i = 0; i < questions.size(); i++) {
+                if (questions.get(i) == null) {
+                    throw new IllegalArgumentException("questions[" + i + "]: null 값이 허용되지 않습니다.");
+                }
+            }
+        }
+    }
 
     @Schema(description = "신청 폼 추가 질문 저장 요청")
     public record ApplicationFormQuestionRequest(
@@ -44,5 +65,53 @@ public final class StudyApplicationFormRequests {
                                             message = "questions[].options[] 길이 제한을 넘었습니다.")
                                     String>
                             options,
-            @Schema(description = "RADIO/CHECKBOX 전용 기타 직접 입력 허용 여부") Boolean allowOther) {}
+            @Schema(description = "RADIO/CHECKBOX 전용 기타 직접 입력 허용 여부") Boolean allowOther) {
+
+        public ApplicationFormQuestionRequest {
+            if (id == null || id.isBlank()) {
+                throw new IllegalArgumentException("questions[].id 값을 입력해 주세요.");
+            }
+            if (id.length() > 200) {
+                throw new IllegalArgumentException("questions[].id 길이 제한을 넘었습니다.");
+            }
+
+            if (label == null || label.isBlank()) {
+                throw new IllegalArgumentException("questions[].label 값을 입력해 주세요.");
+            }
+            if (label.length() > 200) {
+                throw new IllegalArgumentException("questions[].label 길이 제한을 넘었습니다.");
+            }
+
+            if (type == null || type.isBlank()) {
+                throw new IllegalArgumentException("questions[].type 값을 입력해 주세요.");
+            }
+            if (!List.of("TEXT", "TEXTAREA", "RADIO", "CHECKBOX", "SELECT").contains(type)) {
+                throw new IllegalArgumentException("questions[].type: 유효하지 않은 값입니다.");
+            }
+
+            if (required == null) {
+                throw new IllegalArgumentException("required는 필수입니다.");
+            }
+
+            if (placeholder != null && placeholder.length() > 200) {
+                throw new IllegalArgumentException("questions[].placeholder 길이 제한을 넘었습니다.");
+            }
+
+            if (description != null && description.length() > 5_000) {
+                throw new IllegalArgumentException("questions[].description 길이 제한을 넘었습니다.");
+            }
+
+            if (options != null) {
+                for (int i = 0; i < options.size(); i++) {
+                    String option = options.get(i);
+                    if (option == null || option.isBlank()) {
+                        throw new IllegalArgumentException("questions[].options[" + i + "] 값을 입력해 주세요.");
+                    }
+                    if (option.length() > 200) {
+                        throw new IllegalArgumentException("questions[].options[" + i + "] 길이 제한을 넘었습니다.");
+                    }
+                }
+            }
+        }
+    }
 }
