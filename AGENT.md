@@ -60,6 +60,11 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - **관객으로 경로를 가른다** — 백오피스가 부르는 API 는 `/api/admin` 아래, 파일은 `Admin*`.
   같은 일을 사용자 사이트에서도 하면 **사이트용 엔드포인트를 따로** 만든다 (권한 판정이 다르다).
   [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md)
+- **개발이 끝나면 스테이지까지 올린다** — PR 이 머지됐다고 끝이 아니다. `develop` 에 합쳐져야
+  스테이지(`backend-develop` · `core-front-develop` · `back-office-front-develop`)가 배포되고,
+  그때 처음 **기획·디자인이 눈으로 본다.** 내 브랜치에만 있으면 아무도 못 본 기능이다.
+  에이전트는 작업을 마칠 때 **"`develop` 에 병합해서 스테이지에 올릴까요?" 를 먼저 묻는다** —
+  시키기를 기다리지 않는다. 확인 주소는 `stage.studyclub-plusplus.com`.
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
 - 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
