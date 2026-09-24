@@ -27,6 +27,12 @@
 ## 디렉터리 구조
 
 ```
+planning/
+├── README.md                        # Story PRD 인덱스
+└── stories/
+    └── {story-slug}/
+        └── PRD.md                   # 화면·동작·권한 (기획 정본). 한 스토리 = 파일 하나
+
 specs/
 ├── README.md                        # 스펙 인덱스 — 전체 도메인·기능 목록
 ├── study/                           # 도메인 단위 폴더
@@ -52,13 +58,16 @@ specs/
 - **파일 이름은 고정.** `spec.md`, `plan.md`, `tasks.md` — 어디서든 같은 이름
 - **contracts/ 는 선택.** 응답 JSON 예시가 길어지면 분리. 짧으면 spec.md 안에 인라인
 - **ERD 와 1:1 이 아니다.** ERD 는 테이블 단위, 스펙은 API 도메인 단위. study/ 스펙이 STUDY + STUDY_COHORT + STUDY_CLASS 를 포함할 수 있다
+- **Story PRD 는 `planning/stories/{slug}/PRD.md` 에만 만든다.** `specs/{도메인}/` 안에 `PRD.md` 를 두지 않는다. 레포 밖(`studyclubplusplus/planning/` 등)에 쓰지 않는다
 
 ## 워크플로우
 
 spec-kit 의 specify → plan → tasks → implement → converge 를 이 프로젝트 규모에 맞게 줄였다.
 
 ```
-1. /spec {도메인}          ← 스펙 초안 생성 (spec.md)
+0. Story PRD               ← planning/stories/{slug}/PRD.md
+   ↓
+1. /spec {도메인}          ← 스펙 초안 생성 (spec.md). 헤더에 PRD 링크
    ↓
 2. 스펙 리뷰               ← BE·FE 가 shape·에러·인증 합의
    ↓
@@ -83,6 +92,18 @@ spec-kit 의 specify → plan → tasks → implement → converge 를 이 프�
 
 ## 파일별 역할과 템플릿
 
+### PRD.md — Story 기획 (화면 정본)
+
+한 유저스토리의 화면·동작·권한·빈 상태·오류. API shape 는 여기에 쓰지 않고 `spec.md` 로 보낸다.
+
+```
+planning/stories/{story-slug}/PRD.md
+```
+
+- **slug** 는 kebab-case. 폴더명에 `ST-###` 를 넣지 않는다
+- 새 PRD 는 이 경로에만 만든다. 인덱스 [`planning/README.md`](../../planning/README.md) 표에 한 줄 추가
+- `spec.md` 헤더 `Story PRD:` 에 상대 링크로 건다 (`../../planning/stories/{slug}/PRD.md`)
+
 ### spec.md — API 스펙 (정본)
 
 도메인의 모든 엔드포인트를 한 파일에. 이 파일이 **BE·FE 계약의 정본**이다.
@@ -91,6 +112,8 @@ spec-kit 의 specify → plan → tasks → implement → converge 를 이 프�
 # {도메인} API Spec
 
 > ERD: [STUDY](../../docs/erd/STUDY.md), [STUDY_COHORT](../../docs/erd/STUDY_COHORT.md)
+> Story PRD:
+> - [{Actor}로서, …할 수 있다](../../planning/stories/{story-slug}/PRD.md)
 
 ## 엔드포인트 목록
 
@@ -322,9 +345,11 @@ contracts/
 ## 스펙과 코드의 관계
 
 ```
-specs/{도메인}/spec.md   ← 설계 합의 (정본)
+planning/stories/{slug}/PRD.md   ← 화면·동작 (기획 정본)
+       ↓
+specs/{도메인}/spec.md           ← API 계약 (정본)
        ↕ 사람이 맞춘다
-springdoc OpenAPI        ← 실제 코드가 내보내는 것 (구현 검증)
+springdoc OpenAPI                ← 실제 코드가 내보내는 것 (구현 검증)
 ```
 
 - **스펙과 구현이 다르면 구현을 고친다** (스펙이 정본)
@@ -338,15 +363,21 @@ springdoc OpenAPI        ← 실제 코드가 내보내는 것 (구현 검증)
 | [ddd-guide.md](ddd-guide.md) | 애그리거트·엔티티 설계 | plan.md 의 애그리거트 매핑이 여기를 따른다 |
 | [endpoint-convention.md](api/endpoint-convention.md) | URL·메서드·응답 포맷 규칙 | spec.md 가 이 규칙을 따라야 함 |
 | [common-guide.md](../common-guide.md) | 기존 API 활용 원칙 | 새 엔드포인트 추가 전 기존 것 확인 |
+| [planning/README.md](../../planning/README.md) | Story PRD 위치 | `planning/stories/{slug}/PRD.md`. spec.md 헤더에 링크 |
 | [ERD](../erd/README.md) | 테이블·컬럼·상태 전이 | spec.md 필드의 소스 컬럼이 ERD 에서 유도 가능해야 함 |
 | [testing-guide.md](testing-guide.md) | 테스트 작성 | spec.md 의 에러 응답 = 통합 테스트 실패 케이스 |
 
 ## specs/ 시작하기
 
 ```bash
+# 새 Story PRD (화면 기획)
+mkdir -p planning/stories/{story-slug}
+# PRD.md 를 그 폴더에 작성. planning/README.md 표에 한 줄 추가
+
 # 새 도메인 스펙 시작
 mkdir -p specs/{도메인}
 cp specs/_templates/spec-template.md specs/{도메인}/spec.md
+# spec.md 헤더에 Story PRD 링크를 건다
 # spec.md 작성 후 리뷰
 # 리뷰 통과 후
 cp specs/_templates/plan-template.md specs/{도메인}/plan.md

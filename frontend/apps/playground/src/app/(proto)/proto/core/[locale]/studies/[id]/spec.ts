@@ -1,4 +1,5 @@
 import type { ScreenSpec } from '@/proto/annotate';
+import { APPLY_COMPLETE_SPEC, APPLY_SPEC, DISCORD_GATE_SPEC } from '@/proto/specs/study-apply';
 
 /**
  * 스터디 상세 — Story 별 번호 명세.
@@ -9,156 +10,101 @@ import type { ScreenSpec } from '@/proto/annotate';
  * Story ID 는 `stories.md` 발번 대장에서 실제로 발급받기 전에는 적지 않는다.
  */
 
-/** 스터디 상세보기 — 신청 버튼을 누르기 전, 상세 페이지 자체. */
+/** 스터디 상세보기. 번호는 crew-view-study-detail PRD 와 같다. */
 export const VIEW_SPEC: ScreenSpec = {
   screen: '스터디 상세',
   chip: '스터디 상세보기',
   scope: 'view',
-  entries: [
-    {
-      n: '1',
-      title: '모집 마감 배지',
-      display: ['버튼이 아니라 "모집 마감" 고정 문구만 있는 pill'],
-      policy: ['recruitState() 가 closed 일 때 — 스터디 상태가 recruiting 이 아니거나, 모집 마감일이 지났거나, 운영자가 모집을 닫았을 때'],
-      when: '모집 상태가 마감일 때',
-    },
-    {
-      n: '2',
-      title: '신청하기 버튼',
-      display: ['모집 상태 문구가 라벨인 pill 버튼'],
-      behavior: ['누르면 "스터디 신청하기" Story 의 다이얼로그가 열린다'],
-      policy: ['모집 마감일이 없으면 상시 모집으로 보고 항상 이 버튼을 보여준다'],
-      when: '모집 상태가 모집중일 때',
-    },
-  ],
-};
-
-/**
- * 스터디 신청하기 — 신청 폼 다이얼로그.
- *
- * 유저스토리 "크루는 스터디 신청 폼을 제출할 수 있다"의 프로토타입.
- * 캡틴이 설계하는 신청 폼(운영 콘솔의 "신청 폼 설계" Story)의 반대편 — 크루가 그 폼을 실제로 보고 채워 제출하는 화면이다.
- */
-export const APPLY_SPEC: ScreenSpec = {
-  screen: '스터디 상세',
-  chip: '스터디 신청하기',
-  scope: 'apply',
   notes: [
-    '신청 결과는 화면 상태(localStorage)로만 남는다 — POST /api/studies/{id}/applications 가 아직 없다',
-    '제출하면 마이페이지 "승인 대기" 목록에 즉시 반영된다. 취소도 거기서 한다 — 이 다이얼로그 범위 밖',
-    '같은 스터디에 다시 신청하면 이전 신청을 덮어쓴다. 화면에 "이미 신청함" 안내는 아직 없다',
-    '이름·이메일은 이 폼에서 받지 않는다 — 로그인 계정 값을 그대로 보여준다',
-    '디스코드 서버 별명은 모든 신청 폼에 항상 포함되는 기본 질문이라 캡틴이 지우거나 타입을 바꿀 수 없다',
-    '카드(2~6)는 다이얼로그 몸통보다 밝은 색을 써서 각 입력 단위가 도드라지게 한다',
-    '미입력 필수 항목이 있으면 신청을 눌렀을 때 그 항목으로 화면을 옮긴다(검사 순서 = 번호 순서)',
+    '이 화면은 study_id(STUDY.ID)로만 연다. 슬러그 주소는 열리지 않는다',
+    '목록·내 스터디·참여·찜에서 들어오는 주소 키도 study_id다',
   ],
   entries: [
     {
       n: '1',
-      title: '신청 폼 헤더 카드',
-      display: ['스터디 제목 · 소개 한 줄 · 신청자 이름 · 이메일'],
-      policy: [
-        '이름·이메일은 폼에 입력받지 않고 로그인 계정에서 그대로 읽어 보여준다',
-        '로그인하지 않은 미리보기 상태에서는 미리보기 계정(PREVIEW_USER) 값을 보여준다',
-      ],
-      data: ['study.title / study.summary (locale) · 계정 표시 이름 · 이메일'],
-      when: '신청 폼 다이얼로그가 열려 있을 때',
+      title: '스터디 목록',
+      display: ['스터디 목록'],
+      behavior: ['누르면 스터디 목록으로 간다'],
     },
     {
       n: '2',
-      title: '디스코드 서버 별명',
-      display: ['"[스터디 클럽++] 디스코드 서버 별명" 단답형. 예시 placeholder "홍길동/SWE/산호세/시스템디자인"'],
-      policy: [
-        '계정(ACCOUNT.DISCORD_NICKNAME)에 이미 값이 있으면 그 값을 그대로 보여주고 잠가 수정하지 못하게 한다',
-        '값이 없으면 신청 시 필수로 입력받아 계정에 저장한다',
-        '비워 둔 채 제출하면 오류(7) "디스코드 서버 별명을 입력해 주세요."로 막고 이 카드로 화면을 옮긴다',
+      title: '모집 상태',
+      display: [
+        '모집 중이고 마감일이 있으면 모집중 (D-N). 마감 당일은 모집중 (D-DAY)',
+        '마감일이 없으면 상시 모집',
+        '진행 중이면 진행중',
+        '모집이 끝났으면 모집 마감',
       ],
-      data: ['getDiscordNickname() / setDiscordNickname()'],
-      when: '신청 폼 다이얼로그가 열려 있을 때',
+      policy: [
+        '문구는 recruitBadge() 한 곳이다. 목록과 여기서 따로 계산하지 않는다',
+        'D-N은 마감일에서 오늘을 뺀 일수다. 0 이하면 D-DAY',
+        '마감까지 3일 이하면 마감 임박으로 구분한다. 구분 값은 D-N 숫자다',
+      ],
+      data: ['study.status', 'study.recruitment.deadline'],
     },
     {
       n: '3',
-      title: '일정 참여 확인 체크박스',
-      display: ['"{스터디 일정} 참여 가능합니다" 체크박스 하나'],
-      policy: [
-        '스터디에 확정된 일정(study.schedule)이 있을 때만 보인다',
-        '체크하지 않고 제출하면 오류(7) "일정 참여 가능 여부를 확인해 주세요."로 막고 이 카드로 화면을 옮긴다',
-      ],
-      when: '스터디에 확정된 일정이 있을 때',
+      title: '분야',
+      display: ['스터디 분야 이름'],
+      data: ['study.category'],
     },
     {
       n: '4',
-      title: '가능한 시간 격자',
-      display: [
-        '요일(월~일) × 시간대(오전/오후/저녁) 7×3 칸. 칸을 눌러 조합을 고른다',
-        '오른쪽에 신청자 거주 지역 기준 시간대 안내 문구',
-      ],
-      behavior: ['칸을 누르면 그 요일-시간대 조합이 토글된다 (예: mon-evening)', '여러 칸을 동시에 고를 수 있다 — "월 저녁 + 일 오후" 같은 조합'],
-      policy: [
-        '스터디에 확정된 일정이 없을 때만 보인다 — 신청자 응답을 모아 일정을 정하는 스터디',
-        '가능한 시간은 신청자의 거주 지역(현지 시간) 기준으로 받는다 — 지역마다 저녁 시각이 달라 지역 없이 모으면 운영자가 겹치는 시간을 계산할 수 없다',
-        '한 칸도 고르지 않고 제출하면 오류(7) "가능한 시간을 하나 이상 선택해 주세요."로 막고 이 카드로 화면을 옮긴다',
-      ],
-      data: ['거주 지역 = getRegion() (마이페이지에서 수정)'],
-      when: '스터디에 확정된 일정이 없을 때',
+      title: '제목',
+      display: ['보는 언어의 스터디 제목'],
+      data: ['study.title'],
     },
     {
       n: '5',
-      title: '캡틴이 설계한 추가 질문',
-      display: ['질문마다 카드 하나. 단답형·장문형·객관식·체크박스·드롭다운 중 캡틴이 고른 타입 그대로 렌더링'],
-      policy: [
-        '스터디에 캡틴이 설계한 신청 폼(study.applicationForm)이 있을 때만 보인다 — 없으면 계정 정보 + 디스코드 별명만 받는다',
-        '필수 질문에 답하지 않고 제출하면 오류(7) "필수 질문에 답해 주세요."로 막고, 답하지 않은 질문 카드로 화면을 옮긴다',
-        '캡틴이 폼을 설계할 때 미리 보는 편집 카드와 같은 컴포넌트(QuestionFillView)를 쓴다 — 지원자가 실제로 보는 모양 그대로다',
-      ],
-      data: ['study.applicationForm 중 id 가 discord 가 아닌 질문 전부'],
-      when: '캡틴이 설계한 추가 질문이 있을 때',
+      title: '한 줄 소개',
+      display: ['보는 언어의 한 줄 소개'],
+      data: ['study.summary'],
     },
     {
       n: '6',
-      title: '지원 동기',
-      display: ['장문형 textarea, 3줄. "선택 입력입니다…" placeholder'],
-      policy: ['유일한 선택 입력이다 — 비워 둬도 제출된다'],
-      when: '신청 폼 다이얼로그가 열려 있을 때',
+      title: '일정·시간대',
+      display: [
+        '일정이 있으면 일정 문구와 시간대를 함께 알려 준다',
+        '일정이 없으면 시간대만 알려 준다',
+        '시간대는 KST, PST, 표기가 없으면 동시 모집(KST·PST)',
+      ],
+      policy: ['시간대는 studyTimezone() 한 곳이다. 목록 필터·목록·상세가 같은 함수를 쓴다'],
+      data: ['study.schedule', 'study.recruitment.kickoff'],
     },
     {
       n: '7',
-      title: '오류 메시지',
-      display: ['폼 맨 아래, 빨간 글씨 한 줄'],
-      policy: ['한 번에 하나만 보여준다', '검사 순서: 디스코드 별명(2) → 필수 추가 질문(5) → 일정 확인(3)/가능한 시간(4)'],
-      when: '필수 입력을 채우지 않고 신청을 눌렀을 때',
+      title: '스터디 소개',
+      display: ['제목은 스터디 소개. 본문은 상세 소개 원문'],
+      policy: ['study.description 이 있을 때만 보인다'],
+      data: ['study.description'],
+      when: '상세 소개가 있을 때',
     },
     {
       n: '8',
-      title: '취소 버튼',
-      behavior: ['누르면 입력한 내용을 전부 버리고 다이얼로그를 닫는다'],
-      policy: ['제출 처리 중에는 비활성화된다'],
-      when: '신청 폼 다이얼로그가 열려 있을 때',
+      title: '시작 예정일',
+      display: ['시작 예정일 {날짜}. 값이 없으면 시작 예정일 미정'],
+      policy: [
+        '표시 값은 studyStartValue() 한 곳이다. 목록과 여기서 따로 계산하지 않는다',
+        '모집 마감일은 여기 두지 않는다. 모집 상태(2)가 이미 말한다',
+      ],
+      data: ['study.start_at'],
     },
     {
       n: '9',
-      title: '신청 버튼',
-      behavior: ['누르면 검증 후 통과 시 저장하고 접수 완료 화면(10)으로 바뀐다', '처리 중에는 로딩 스피너로 바뀌며 중복 제출을 막는다'],
+      title: '신청',
+      display: ['모집중이면 신청하기', '이미 신청했으면 신청 완료', '마감이면 모집 마감'],
+      behavior: ['신청하기만 누를 수 있다. 누르면 신청 흐름이 시작된다'],
       policy: [
-        '저장은 화면 상태(localStorage)로만 처리한다',
-        '같은 스터디에 다시 신청하면 이전 신청을 덮어쓴다 — 별도 중복 경고는 없다',
+        '마감 판정은 recruitState()다. 모집 중이 아니거나, 마감일이 지났거나, 모집을 닫았으면 마감이다',
+        '마감일이 없으면 상시 모집이다. 신청하기를 보여 준다',
+        '신청 완료와 모집 마감은 누르지 못한다',
+        '누른 뒤의 로그인·디스코드·폼은 신청 스토리가 정한다',
       ],
-      data: ['TODO(api): POST /api/studies/{id}/applications'],
-      when: '신청 폼 다이얼로그가 열려 있을 때',
-    },
-    {
-      n: '10',
-      title: '접수 완료 문구',
-      display: ['"신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다."'],
-      when: '신청을 제출한 뒤',
-    },
-    {
-      n: '11',
-      title: '확인 버튼',
-      behavior: ['누르면 다이얼로그가 닫힌다'],
-      when: '신청을 제출한 뒤',
+      data: ['recruitState(study)', '이 스터디의 신청 여부'],
     },
   ],
 };
 
-export const SPECS = [VIEW_SPEC, APPLY_SPEC];
+export { APPLY_COMPLETE_SPEC, APPLY_SPEC, DISCORD_GATE_SPEC };
+
+export const SPECS = [VIEW_SPEC, APPLY_SPEC, DISCORD_GATE_SPEC, APPLY_COMPLETE_SPEC];

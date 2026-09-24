@@ -44,10 +44,9 @@ export type StudyFormValues = {
   deadline: string;
   alwaysOpen: boolean;
   /**
-   * 모집 때 알리는 일정 문구. 비워 두면 신청 화면이 **가능한 시간**을 대신 묻는다.
+   * 모집 때 알리는 일정 문구. 비워 두면 신청 화면에 일정 미정으로 안내한다.
    *
    * 실제로 회차를 만드는 요일·시간은 여기가 아니라 **반**이 갖는다 (크루 탭에서 정한다).
-   * 모집 시점에는 반이 없기 때문이다 — 몇 시에 몇 개를 열지는 신청자 응답을 봐야 안다.
    */
   schedule: string;
 };
@@ -162,7 +161,7 @@ export function StudyForm({
           value={value.schedule}
           onChange={(ev) => set('schedule', ev.target.value)}
           placeholder='2026.11-2026.12'
-          labelHint={<span data-anno='6-1'>비우면 신청 시 가능한 시간을 받습니다</span>}
+          labelHint={<span data-anno='6-1'>비우면 신청 화면에 일정 미정으로 안내합니다</span>}
         />
       </div>
 

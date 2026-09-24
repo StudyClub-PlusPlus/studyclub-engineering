@@ -1,9 +1,8 @@
 # 알림 — 회원가입 웰컴메일 (USER_REGISTERED · EMAIL)
 
-> ERD: 아직 없음 — 이 스펙에서 `NOTIFICATION`/`NOTIFICATION_TEMPLATE` 을 처음 정의한다. 구현 PR 에서
-> `docs/erd/NOTIFICATION.md`, `docs/erd/NOTIFICATION_TEMPLATE.md` 를 추가한다 ([절차](../../docs/erd/README.md#erd-추가변경-절차)).
+> ERD: [NOTIFICATION](../../docs/erd/NOTIFICATION.md), [NOTIFICATION_TEMPLATE](../../docs/erd/NOTIFICATION_TEMPLATE.md)
 > 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) (트리거 쪽 계약)
-> 생성일: 2026-09-12 · 상태: 스펙작성중
+> 생성일: 2026-09-12 · 상태: 구현중
 
 ## 범위
 
@@ -22,8 +21,8 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | `/back-office/notification-templates` | 알림 템플릿 목록 조회 | O (백오피스) | 스펙작성중 |
-| GET | `/back-office/notifications` | 발송 이력 조회 | O (백오피스) | 스펙작성중 |
+| GET | `/back-office/notification-templates` | 알림 템플릿 목록 조회 | O (백오피스) | 구현중 |
+| GET | `/back-office/notifications` | 발송 이력 조회 | O (백오피스) | 구현중 |
 
 ### 이 기능이 "알림(Notification)" 으로 추상화되고 이벤트 핸들러 방식으로 개발된다는 것의 확인
 
@@ -162,15 +161,15 @@ WHERE status = 'PROCESSING'
 | EVENT_TYPE | VARCHAR(40) | N | 이번 구현에서 쓰는 값은 `USER_REGISTERED` 뿐. 다른 5종은 코드에 없음 |
 | RECIPIENT_TYPE | VARCHAR(20) | N | 이번 구현에서 쓰는 값은 `EMAIL` 뿐. `DISCORD` 는 정의하지 않는다 |
 | RECIPIENT_VALUE | VARCHAR(255) | N | 발송 시점 이메일 스냅샷 (나중에 회원이 이메일을 바꿔도 이 값은 그대로) |
-| RECIPIENT_USER_ID | BIGINT FK→ACCOUNT | N | 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
-| TEMPLATE_ID | BIGINT FK→NOTIFICATION_TEMPLATE | N | |
+| RECIPIENT_USER_ID | BIGINT | N | ID 참조(ACCOUNT, FK 없음 — 애그리거트 간 참조는 ID+인덱스만) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
+| TEMPLATE_ID | BIGINT | N | ID 참조(NOTIFICATION_TEMPLATE, FK 없음) |
 | PAYLOAD | JSON | N | `{"nickname": "..."}`. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
-| STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED` |
-| LOCKED_AT | DATETIME | Y | PROCESSING 전환 시각. 재수거 판단 기준 |
+| STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED`/`CANCELLED` |
+| LOCKED_AT | DATETIME(6) | Y | PROCESSING 전환 시각. 재수거 판단 기준이자 클레임 토큰 — 재수거로 값이 바뀌면 이전 클레임의 완료 처리를 무시한다 |
 | ERROR_TYPE | VARCHAR(30) | Y | FAILED 일 때만. `TEMPLATE_MISSING`/`INVALID_RECIPIENT`/`PROVIDER_ERROR`/`UNKNOWN`. 자동 재시도 판단에는 안 쓴다(이번 구현엔 자동 재시도가 없음) — 실패 원인을 나중에 사람이 보기 위한 값 |
-| SCHEDULED_AT | DATETIME | Y | 이번 구현에서는 항상 NULL(즉시 발송). 시간 트리거형 이벤트를 위해 컬럼만 미리 둔다 |
-| SENT_AT | DATETIME | Y | 발송 성공 시각 |
-| CREATED_AT / UPDATED_AT | DATETIME | N | `BaseEntity` |
+| SCHEDULED_AT | DATETIME(6) | Y | 이번 구현에서는 항상 NULL(즉시 발송). 시간 트리거형 이벤트를 위해 컬럼만 미리 둔다 |
+| SENT_AT | DATETIME(6) | Y | 발송 성공 시각 |
+| CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 
 > **소스**: 신규 테이블 — 소스 컬럼 표기 대상 없음. PAYLOAD.nickname 의 소스는 `ACCOUNT.NICKNAME`(스냅샷, INSERT 시점).
 
@@ -188,10 +187,12 @@ WHERE status = 'PROCESSING'
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
 | BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함 |
-| UPDATED_AT | DATETIME | N | `BaseEntity` |
-| UPDATED_BY_ADMIN_ID | BIGINT FK→ACCOUNT | Y | 편집 화면이 아직 없어 이번 구현에서는 항상 NULL(마이그레이션이 만든 행) |
+| UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
+| UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음) — 편집 화면이 아직 없어 이번 구현에서는 항상 NULL(마이그레이션이 만든 행) |
 
 - `UNIQUE(EVENT_TYPE, CHANNEL)`
+- RECIPIENT_USER_ID·TEMPLATE_ID·UPDATED_BY_ADMIN_ID 는 애그리거트 사이 참조라 FK 를 걸지 않는다 — ID + 인덱스만
+  ([database-guide.md 외래키 정책](../../docs/backend-development-guide/database-guide.md)).
 
 ### 상태 전이
 
@@ -202,12 +203,23 @@ stateDiagram-v2
     PROCESSING --> SENT : SES 발송 성공
     PROCESSING --> FAILED : SES 발송 실패 (error_type 기록)
     PROCESSING --> PENDING : 재수거 (locked_at 타임아웃 — 인스턴스 재시작 등)
+    PENDING --> CANCELLED : 수신 계정 탈퇴 — 발송 시도 전에 취소
     SENT --> [*]
     FAILED --> [*] : 자동/수동 재시도 없음 — 그대로 남는다
+    CANCELLED --> [*]
 ```
 
 `FAILED` 로 남은 건 이번 구현 범위에서는 **아무 것도 자동으로 하지 않는다** — 재시도 버튼도, 운영 알림도
 없다. [이번 스펙에서 뺀 것](#이번-스펙에서-뺀-것) 참고.
+
+`CANCELLED` 는 `FAILED` 와 다르다 — `FAILED` 는 "발송을 시도했다가 실패"(`ERROR_TYPE` 이 그 원인을
+설명), `CANCELLED` 는 "발송을 시도하기도 전에 더 이상 보낼 이유가 없어짐"이다. 둘을 구분하지 않고
+같은 상태로 합치면, 운영에서 `FAILED` 를 모아 실제 발송 장애를 진단할 때 정상적인 취소 건이 섞여
+노이즈가 된다. 이번 구현에서 `CANCELLED` 로 전이하는 유일한 트리거는 회원 탈퇴다 —
+[user-leave spec](../user-leave/spec.md#알림-비식별화) 의 `DELETE /api/me` 가 `RECIPIENT_USER_ID`
+가 자신인 `PENDING` 행을 이 상태로 전환한다(`PROCESSING` 은 이미 발송 시도 중이라 끼어들지 않는다).
+`ERROR_TYPE` 은 `FAILED` 전용이라 `CANCELLED` 에는 채우지 않는다 — 사유는 상태값 자체로 이미
+드러난다.
 
 ## 백오피스 — 알림 조회 (읽기 전용)
 
@@ -222,9 +234,13 @@ stateDiagram-v2
 스펙에서는 따르지 않는다 — 웰컴메일은 특정 스터디에 속하지 않는 계정 단위 알림이라 캡틴이 볼 이유가
 약하다.
 
-`SYSTEM_ROLE = ADMIN` 검사가 로그인 시점이 아니라 요청마다 걸리는 역할 검사로 바뀌면, "로그인은 됐지만
-ADMIN이 아님"과 "토큰 자체가 없음/만료"를 구분해야 한다 — 아래 각 엔드포인트의 에러 응답에 `403
-FORBIDDEN`을 추가했다.
+**갱신(구현 PR) — 요청마다 걸리는 ADMIN 역할 검사는 이번 구현에 없다.** 애초 이 절은 `SYSTEM_ROLE =
+ADMIN` 검사가 요청마다 걸리는 걸 전제로 두 엔드포인트에 403 FORBIDDEN 을 넣어뒀지만, 구현 중 그 가드를
+직접 만들어 넣는 건 이 스펙(웰컴메일)의 범위를 넘어선다고 판단해 뺐다 —
+[specs/back-office-login/spec.md](../back-office-login/spec.md) 도 "로그인 뒤 요청의 ADMIN 판별은
+후속 PR 에서 요청마다 DB 조회로 붙인다"고 이미 후속 PR 로 못박아 둔 항목이다. 그래서 지금은 **로그인만
+되어 있으면(SystemRole 과 무관하게) 이 두 엔드포인트를 호출할 수 있다** — 아래 403 FORBIDDEN 행은 그
+후속 PR 이 실제로 가드를 붙이기 전까지는 발생하지 않는다.
 
 ### `GET /back-office/notification-templates`
 
@@ -262,7 +278,7 @@ FORBIDDEN`을 추가했다.
 | 상태 | errorCode | 조건 |
 |---|---|---|
 | 401 | UNAUTHORIZED | 토큰 없음/만료 |
-| 403 | FORBIDDEN | 로그인은 됐지만 백오피스 인가 조건(현재 allowlist, 추후 `SYSTEM_ROLE = ADMIN`)을 만족하지 않음 |
+| 403 | FORBIDDEN | (후속 PR 예정) 로그인은 됐지만 `SYSTEM_ROLE = ADMIN` 이 아님 — 이번 구현에는 이 검사가 없어 지금은 발생하지 않는다 |
 
 ### `GET /back-office/notifications`
 
@@ -297,7 +313,7 @@ FORBIDDEN`을 추가했다.
 | eventType | String | N | | NOTIFICATION.EVENT_TYPE |
 | recipientType | String | N | | NOTIFICATION.RECIPIENT_TYPE |
 | recipientValue | String | N | **마스킹됨** (`h***@gmail.com`) — [security-guide.md](../../docs/backend-development-guide/security-guide.md) 의 이메일 마스킹 규칙 그대로 | NOTIFICATION.RECIPIENT_VALUE, 계산: 마스킹 |
-| status | String | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED` | NOTIFICATION.STATUS |
+| status | String | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED`/`CANCELLED` | NOTIFICATION.STATUS |
 | templateId | Long | N | | NOTIFICATION.TEMPLATE_ID |
 | sentAt | String | Y | ISO-8601 UTC | NOTIFICATION.SENT_AT |
 | createdAt | String | N | ISO-8601 UTC | NOTIFICATION.CREATED_AT |
@@ -307,7 +323,7 @@ FORBIDDEN`을 추가했다.
 | 상태 | errorCode | 조건 |
 |---|---|---|
 | 401 | UNAUTHORIZED | 토큰 없음/만료 |
-| 403 | FORBIDDEN | 로그인은 됐지만 백오피스 인가 조건(현재 allowlist, 추후 `SYSTEM_ROLE = ADMIN`)을 만족하지 않음 |
+| 403 | FORBIDDEN | (후속 PR 예정) 로그인은 됐지만 `SYSTEM_ROLE = ADMIN` 이 아님 — 이번 구현에는 이 검사가 없어 지금은 발생하지 않는다 |
 
 **결정 — `recipientValue` 마스킹 예외는 두지 않는다.** 운영진이 특정 회원 문의 대응 시 이메일 원문
 대조가 필요해질 수 있다는 점은 알아두되, 이번 구현에서는 고려하지 않는다 — 필요해지면 별도 스펙에서
@@ -345,36 +361,42 @@ StudyClub++ 드림
 
 ## 메일 발송 자격증명 (환경 설정)
 
-SES 자격증명·발신 도메인은 `application.yml` 에 `mail` 하위로 **용도별 5개 카테고리**를 미리 정의해
+SES 자격증명·발신 도메인은 notification 모듈의 `src/main/resources/notification.yml` 에
+`mail` 하위로 **용도별 5개 카테고리**를 미리 정의해
 두고, 값은 전부 env var 로 주입한다(PUBLIC 레포 — 레포에 평문 금지, [AGENT.md](../../AGENT.md)):
 
 ```yaml
 mail:
   auth:
+    configuration-set-name: ${MAIL_AUTH_CONFIGURATION_SET_NAME:}
     region: ${MAIL_AUTH_REGION:}
     sub-domain: ${MAIL_AUTH_SUB_DOMAIN:}
     from-address: ${MAIL_AUTH_FROM_ADDRESS:}
     access-key-id: ${MAIL_AUTH_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_AUTH_SECRET_ACCESS_KEY:}
   news:
+    configuration-set-name: ${MAIL_NEWS_CONFIGURATION_SET_NAME:}
     region: ${MAIL_NEWS_REGION:}
     sub-domain: ${MAIL_NEWS_SUB_DOMAIN:}
     from-address: ${MAIL_NEWS_FROM_ADDRESS:}
     access-key-id: ${MAIL_NEWS_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_NEWS_SECRET_ACCESS_KEY:}
   notify:
+    configuration-set-name: ${MAIL_NOTIFY_CONFIGURATION_SET_NAME:}
     region: ${MAIL_NOTIFY_REGION:}
     sub-domain: ${MAIL_NOTIFY_SUB_DOMAIN:}
     from-address: ${MAIL_NOTIFY_FROM_ADDRESS:}
     access-key-id: ${MAIL_NOTIFY_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_NOTIFY_SECRET_ACCESS_KEY:}
   order:
+    configuration-set-name: ${MAIL_ORDER_CONFIGURATION_SET_NAME:}
     region: ${MAIL_ORDER_REGION:}
     sub-domain: ${MAIL_ORDER_SUB_DOMAIN:}
     from-address: ${MAIL_ORDER_FROM_ADDRESS:}
     access-key-id: ${MAIL_ORDER_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_ORDER_SECRET_ACCESS_KEY:}
   cs:
+    configuration-set-name: ${MAIL_CS_CONFIGURATION_SET_NAME:}
     region: ${MAIL_CS_REGION:}
     sub-domain: ${MAIL_CS_SUB_DOMAIN:}
     from-address: ${MAIL_CS_FROM_ADDRESS:}
@@ -401,12 +423,25 @@ mail:
 - AWS SDK(SES) 의존성 추가는 [AGENT.md](../../AGENT.md) 의 "외부 라이브러리 임의 추가 금지 — 합의
   필수" 대상 — 구현 PR 리뷰에서 확인한다.
 
+API의 `application.yml`은 `spring.config.import: classpath:notification.yml`로 모듈 설정을 읽는다.
+`notification.polling.*` 기본값도 같은 파일에서 관리한다. 로컬의 실제 값은
+`spring.config.additional-location`으로 읽는 외부 `secrets/application-local.yml`에서 덮어쓴다.
+
+### SES configuration set
+
+`mail.{category}.configuration-set-name`으로 카테고리별 구성 세트 이름을 지정한다.
+값이 있으면 SES `SendEmail` 요청의 `ConfigurationSetName`에 전달한다.
+미설정·빈 문자열·공백만 있는 값은 요청에서 생략하여 SES 발신 identity의 기본 설정을 따른다.
+구성 세트 생성과 이벤트 수집 대상 설정은 인프라에서 관리한다.
+참고: [SES SendEmail](https://docs.aws.amazon.com/ses/latest/APIReference/API_SendEmail.html).
+
 ## 실패 시 동작
 
 `AFTER_COMMIT` 리스너 안에서 `NOTIFICATION` INSERT 가 실패하면(예: 그 순간 DB 커넥션 문제):
 
+- 생성 서비스는 `REQUIRES_NEW` 로 새 트랜잭션을 연다. 기본 `REQUIRED` 는 AFTER_COMMIT 에 남은 기존 자원에 참여해 INSERT 가 커밋되지 않을 수 있다.
 - ACCOUNT 트랜잭션은 이미 커밋된 뒤라 롤백되지 않는다 — 회원가입 자체는 그대로 성공한다.
-- Spring 은 `AFTER_COMMIT` 콜백의 예외를 호출자에게 전파하지 않고 로그만 남긴다 — 온보딩 API 호출자는 이 실패를 알 방법이 없다.
+- `@TransactionalEventListener(AFTER_COMMIT)` 는 커밋 성공 후 `afterCompletion` 경로에서 실행된다. 일반 `TransactionSynchronization.afterCommit()` 과는 다르며, 리스너 예외는 호출자에게 전파되지 않는다. 구현은 수신자 정보가 포함될 수 있는 예외 전문 대신 계정 ID와 예외 종류만 로그로 남긴다.
 - 이 경우 그 회원은 **웰컴메일을 영영 못 받는다** — `NOTIFICATION` 행 자체가 안 생겼으니 폴링도, 나중에 만들 재시도 버튼도 대상을 못 찾는다.
 
 이 위험은 알림 설계 문서가 `BEFORE_COMMIT` 으로 막으려던 바로 그 문제이지만, 위에서 설명했듯 이미
@@ -440,3 +475,4 @@ mail:
 - 나머지 5개 알림 이벤트(모집 시작·마감임박·신청접수·승인/거절·세션리마인드·출석경고), 디스코드 채널, 자동/수동 재시도, 묶어 보내기, 참가자 수신설정 화면 — 전부 별도 스펙.
 - 백오피스 **조회**(템플릿 목록·발송 이력)는 이번 스펙에 포함하지만, **편집**(템플릿 수정·재발송 버튼)은 별도 스펙 — 재시도 기능이 없는 상태에서는 재발송 버튼을 만들 수 없다.
 - 이 스펙 이후 두 번째 이벤트를 구현할 때 `NotificationSender` 전략 패턴·`RecipientResolver` 도입, 그리고 `notification` 모듈이 아직 `domain` 에 직접 의존하는 부분(진짜 서버 분리 시 끊어야 할 지점)을 재검토한다(알림 설계 문서 참고).
+- **스케줄러 중복 실행 방지 — `@Lock` vs `ShedLock`(리뷰 코멘트, PR #82).** 지금은 `NotificationRepository.findByIdForUpdate`(`@Lock(PESSIMISTIC_WRITE)`)로 `markSent`/`markFailed`의 확인·갱신만 원자적으로 묶어 데이터 정합성을 지킨다. 이건 "같은 행을 두 서버가 동시에 잘못 덮어쓰지 않는다"는 보장이지, "같은 스케줄 작업 자체를 한 서버만 실행한다"는 보장은 아니다 — 서버가 여러 대면 `@Scheduled` 폴링이 인스턴스마다 독립적으로 돈다. 서버가 실제로 여러 대가 될 때 어느 쪽으로 갈지는 그때의 요구사항에 달려 있다: 메일량이 늘어 여러 서버가 나눠 처리하는 게 유리하면 지금의 `@Lock` 방식을 그대로 확장하고, 메일량은 적지만 운영을 단순화하고 중복 실행 자체를 막는 게 더 중요해지면 `ShedLock` 같은 분산 락으로 스케줄러를 아예 한 인스턴스만 돌게 한다.

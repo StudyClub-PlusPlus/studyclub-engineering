@@ -6,11 +6,16 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 /**
@@ -83,6 +88,45 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
         assertThat(response.getBody().get("errorMessage")).asString().contains("code");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "{\"code\":", "{\"code\":{\"email\":\"private@example.test\"}}"})
+    @DisplayName("읽을 수 없는 로그인 본문은 400 — 빈 본문·깨진 JSON·자료형 오류가 서버 오류나 입력값 노출로 이어지지 않는다")
+    void unreadableRequestBodyReturnsBadRequest(String body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        var response =
+                rest.postForEntity(
+                        "/auth/social-login", new HttpEntity<>(body, headers), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .containsExactlyInAnyOrderEntriesOf(
+                        Map.of(
+                                "errorCode", "INVALID_INPUT",
+                                "errorMessage", "입력값이 올바르지 않습니다."));
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "/api/studies?limit=abc",
+                "/api/studies?category=INVALID",
+                "/api/studies?recruitDeadlineBefore=not-a-date",
+                "/api/studies/abc"
+            })
+    @DisplayName("숫자·상태·날짜·경로 ID 형식 오류는 400 — 컨트롤러에 도달하기 전의 입력 오류도 같은 계약을 지킨다")
+    void invalidRequestArgumentReturnsBadRequest(String path) {
+        var response = rest.getForEntity(path, Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .containsExactlyInAnyOrderEntriesOf(
+                        Map.of(
+                                "errorCode", "INVALID_INPUT",
+                                "errorMessage", "입력값이 올바르지 않습니다."));
     }
 
     @Test

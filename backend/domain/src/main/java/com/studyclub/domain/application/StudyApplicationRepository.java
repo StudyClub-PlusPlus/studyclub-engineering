@@ -8,10 +8,17 @@ import org.springframework.data.repository.query.Param;
 
 public interface StudyApplicationRepository extends JpaRepository<StudyApplication, Long> {
 
-    /** 코호트별 신청자 수 (거절 제외). */
     @Query(
-            "SELECT a.studyCohortId, COUNT(a) FROM StudyApplication a "
-                    + "WHERE a.studyCohortId IN :cohortIds AND a.status <> com.studyclub.domain.application.ApplicationStatus.REJECTED "
-                    + "GROUP BY a.studyCohortId")
-    List<Object[]> countByCohortIds(@Param("cohortIds") Collection<Long> cohortIds);
+            "SELECT new com.studyclub.domain.application.StudyApplicationWithAccount("
+                    + "application.id, application.recruitmentId, application.accountId, "
+                    + "account.nickname, account.email, application.formAnswer, "
+                    + "application.createdAt) "
+                    + "FROM StudyApplication application "
+                    + "JOIN Account account ON account.id = application.accountId "
+                    + "WHERE application.recruitmentId = :recruitmentId "
+                    + "ORDER BY application.id ASC")
+    List<StudyApplicationWithAccount> findAllWithAccountByRecruitmentId(
+            @Param("recruitmentId") Long recruitmentId);
+
+    void deleteByRecruitmentIdIn(Collection<Long> recruitmentIds);
 }

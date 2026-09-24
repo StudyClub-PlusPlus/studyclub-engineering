@@ -1,51 +1,90 @@
-# STUDY — 스터디 / 클럽 (정체성)
+# STUDY — 기수 / 운영 스터디
 
-모집 공고이자 운영 단위의 **영속적 식별자**. 실제 모집·정원·기간·커리큘럼 등
-회차마다 달라질 수 있는 값은 [STUDY_COHORT](./STUDY_COHORT.md) 로 옮겼다 —
-"스터디 자체가 무엇인가"만 여기 남고, "이번 기수는 어떻게 운영되는가"는 코호트가 답한다.
+[STUDY_PROGRAM](./STUDY_PROGRAM.md) 의 특정 회차/기수. "스터디가 무엇인가(정체성)"는 STUDY_PROGRAM 이,
+"이번 기수는 어떻게 운영되는가"와 "이번 기수의 제목·설명·카테고리는 무엇인가"는 모두 여기가 답한다.
+클럽(`STUDY_KIND=CLUB`)은 여러 STUDY 를 갖고, 지난 기수는 그대로 남아 이력 조회가 가능해야 한다.
+스터디(`STUDY_KIND=STUDY`)도 예외 없이 기수를 1개 갖는다 — "기수 없는 STUDY_PROGRAM"이라는
+특수 케이스를 만들지 않는다.
 
-**스터디** = 1회성, **클럽** = 기수제·반복 — 둘은 같은 테이블이고 `STUDY_KIND` 으로 구분한다.
+새 기수를 만들 때는 직전 기수의 설정을 복사해 시작점으로 삼을 수 있지만, 이후 값은
+독립적으로 저장된다 — 새 기수를 나중에 고쳐도 지난 기수 값은 바뀌지 않는다.
 
 ## 컬럼
 
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| SLUG | VARCHAR(100) | N | URL 식별자. UNIQUE |
-| TITLE | VARCHAR(200) | N | |
+| PROGRAM_ID | BIGINT | N | STUDY_PROGRAM 참조 |
+| TITLE | VARCHAR(200) | N | 이 기수 제목 |
+| SLUG | VARCHAR(100) | N | 저장용 식별자. UNIQUE. 사용자 사이트 URL 키는 ID |
+| ONE_LINE_SUMMARY | VARCHAR(255) | N | 한 줄 소개 |
 | DESCRIPTION | TEXT | Y | 상세 소개 |
-| CATEGORY | VARCHAR(50) | N | 분야 (`AI`, `BACKEND`, `PAPER` …) |
+| CATEGORY | VARCHAR(50) | N | 분야 11종 (`AI_ML`, `ALGORITHM`, `SOFTWARE` …). 정본은 `StudyCategory` enum |
 | STUDY_KIND | VARCHAR(20) | N | 아래 |
-| THUMBNAIL_URL | VARCHAR(512) | Y | |
+| THUMBNAIL_URL | VARCHAR(2048) | Y | |
 | IS_HIDDEN | BOOLEAN | N | 목록 노출 제어. 기본 FALSE |
-
-> STUDY_DELIVERY_FORMAT · STATUS(모집/진행 라이프사이클) · APPLICATION_FORM · CURRICULUM · CAPACITY · RECRUIT_DEADLINE ·
-> START_DATE/END_DATE · DISCORD_CHANNEL_URL · DRIVE_URL 은 기수마다 달라질 수 있고
-> 지난 기수 값은 보존돼야 하므로 전부 [STUDY_COHORT](./STUDY_COHORT.md) 로 이동했다.
+| STUDY_DELIVERY_FORMAT | VARCHAR(20) | N | `ONLINE` / `OFFLINE` / `HYBRID` |
+| STATUS | VARCHAR(20) | N | 아래 |
+| APPLICATION_FORM | JSON | Y | 이 기수 신청 폼 질문 정의 |
+| CURRICULUM | JSON | Y | 주차별 커리큘럼. 구조는 프론트와 합의 |
+| CAPACITY | INT | Y | 이 기수 전체 정원. 분반별 정원은 STUDY_GROUP |
+| START_AT | DATETIME | Y | 진행 시작 일시 |
+| END_AT | DATETIME | Y | 진행 종료 일시. NULL 허용 — 고정 종료 없는 클럽은 NULL |
+| DISCORD_CHANNEL_URL | VARCHAR(2048) | Y | 이 기수 디스코드 채널 링크 |
+| DRIVE_URL | VARCHAR(2048) | Y | 이 기수 자료 드라이브 링크 |
+| SCHEDULE | VARCHAR(255) | Y | 운영 일정 요약 |
+| PUBLISH_AT | DATETIME | Y | 공개 예정 일시 |
 
 ## 관계
-- 1 : N [STUDY_COHORT](./STUDY_COHORT.md) — 실제 회차/기수. 반이 하나뿐인 스터디도, 클럽도 코호트를 1개 가진다
-- 1 : N [STUDY_BOOKMARK](./STUDY_BOOKMARK.md) — 스터디 시리즈 자체를 북마크 (기수 무관)
-- 1 : N [STUDY_REVIEW](./STUDY_REVIEW.md) — 정본 FK 는 STUDY_COHORT_ID, STUDY_ID 는 스터디 상세 페이지 후기 조회용 비정규화 컬럼
+- N : 1 [STUDY_PROGRAM](./STUDY_PROGRAM.md)
+- 1 : N [STUDY_GROUP](./STUDY_GROUP.md) — 분반이 하나뿐인 기수도 분반을 1개 만든다
+- 1 : N [STUDY_RECRUITMENT](./STUDY_RECRUITMENT.md) — 모집 회차
+- 1 : N [STUDY_REVIEW](./STUDY_REVIEW.md) — 정본 FK. STUDY_PROGRAM_ID 는 STUDY_REVIEW 쪽 비정규화 컬럼
+
+## 상태 — STATUS (라이프사이클)
+
+사람이 결정하는 것만 저장 — 모집중/마감은 아래 "모집 상태"에서 계산.
+
+| 값 | 뜻 | 편집 |
+|---|---|---|
+| `DRAFT` | 작성 중. 비공개 | 전부 가능 |
+| `OPEN` | 공개. 탐색에 노출, 신청 가능 여부는 날짜로 | 기본 정보 일부 잠김 (기간·정원·포맷) |
+| `CLOSED` | 이 기수 종료. 지난 기수 탭에 노출. 클럽이면 다음 기수를 새로 열 수 있다 | 읽기 전용 |
+
+```mermaid
+stateDiagram-v2
+  [*] --> DRAFT
+  DRAFT --> OPEN : 운영자 공개
+  OPEN --> DRAFT : 공개 취소 (신청 0건일 때만)
+  OPEN --> CLOSED : 운영자 종료 / END_AT 경과
+  CLOSED --> [*]
+```
+
+### 모집 상태 (계산 — 저장 안 함)
+
+`STATUS = OPEN` 일 때만 의미 있다.
+
+| 판정 | 조건 |
+|---|---|
+| `UPCOMING` 모집예정 | `now() < 모집 시작` |
+| `RECRUITING` 모집중 | `모집 시작 <= now() < STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT` 그리고 정원 미달 |
+| `RECRUIT_CLOSED` 모집마감 | `now() >= STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT` 또는 정원 도달 |
+| `ONGOING` 진행중 | `START_AT <= now() <= END_AT` |
+| `ENDED` 종료 | `now() > END_AT` |
 
 ## STUDY_KIND
 
 | 값 | 뜻 |
 |---|---|
-| `STUDY` | 스터디. 한 번 모집해 한 번 진행. 코호트를 딱 1개만 갖는다 |
-| `CLUB` | 클럽. 기수제로 반복 — 코호트가 여러 개 쌓인다 |
+| `STUDY` | 스터디. 한 번 모집해 한 번 진행. STUDY_PROGRAM 에 STUDY 를 딱 1개만 갖는다 |
+| `CLUB` | 클럽. 기수제로 반복 — STUDY_PROGRAM 에 STUDY 가 여러 개 쌓인다 |
 
 스터디가 클럽이 되면 `STUDY → CLUB` 으로 바꾼다.
 
 ## 제약
-- `UNIQUE(SLUG)`
-
-> 탐색 목록 쿼리용 인덱스(`STATUS`, `RECRUIT_DEADLINE` 기준)는 해당 컬럼들과 함께
-> [STUDY_COHORT](./STUDY_COHORT.md#제약) 로 이동했다.
+- `UNIQUE(SLUG)` — `uk_study_slug`
+- 인덱스 `(PROGRAM_ID, STATUS)` — `idx_study_program_study_status`
 
 ## 미확정
-- `CATEGORY` 를 문자열 코드로 둘지 `STUDY_CATEGORY` 테이블 FK 로 둘지.
-- 국/영문 이중 제목(`TITLE_KO/EN`) — 표 설계에 있음. 프론트가 ko/en 이라 필요할 수 있다.
-- 기존 데이터 마이그레이션 — 모든 기존 STUDY 행마다 코호트 1개씩 생성하며 기존 STUDY 컬럼값
-  (STUDY_DELIVERY_FORMAT/STATUS/APPLICATION_FORM/CURRICULUM/CAPACITY/RECRUIT_DEADLINE/START_DATE/END_DATE/DISCORD_CHANNEL_URL/DRIVE_URL)
-  을 그대로 옮겨 담기. 마이그레이션 계획은 별도 문서에서 검토 후 작성.
+- 모집 시작 시각 컬럼 (`PUBLISH_AT` / `RECRUIT_START_DATE`) — 모집예정 탭을 하려면 필요.
+- `PARENT_STUDY_ID` — 기수 포크가 필요하다는 요구가 생기기 전까지는 추가하지 않는다.

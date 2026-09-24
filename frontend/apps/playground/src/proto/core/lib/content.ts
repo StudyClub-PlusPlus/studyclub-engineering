@@ -73,8 +73,19 @@ export async function getStudyMap(): Promise<Record<string, Study>> {
   return Object.fromEntries(studies.map((s) => [s.id, s]));
 }
 
-export async function getStudy(id: string): Promise<Study | null> {
-  return (await getStudies()).find((s) => s.id === id) ?? null;
+/** 사용자 사이트 상세 경로. 조회 키는 `study_id`(STUDY.ID). 슬러그(`id`)는 넣지 않는다. */
+export function userStudyPath(locale: string, study: Pick<Study, 'study_id'>): string {
+  return `/proto/core/${locale}/studies/${study.study_id}`;
+}
+
+/**
+ * 사용자 사이트 상세 조회.
+ * 경로 값은 `study_id` 다. 슬러그로 들어온 주소는 찾지 않는다.
+ */
+export async function getStudy(studyId: string): Promise<Study | null> {
+  const id = Number(studyId);
+  if (!Number.isInteger(id)) return null;
+  return (await getStudies()).find((s) => s.study_id === id) ?? null;
 }
 
 export async function getEvent(id: string): Promise<StudyclubEvent | null> {

@@ -22,5 +22,17 @@ spring:
 
 jwt:
   secret: test-only-secret
-back-office:
-  allowed-emails: ops@studyclub-plusplus.com
+
+mail:
+  notify:
+    region: ap-northeast-2
+    sub-domain: notify.test.studyclub-plusplus.com
+    from-address: notify@test.studyclub-plusplus.com
+    access-key-id: test-access-key
+    secret-access-key: test-secret-key
+
+# 이 모듈과 무관한 기존 통합 테스트가 @SpringBootTest 로 전체 컨텍스트를 띄울 때 스케줄러가 같이 깨어나
+# 실제 SES 호출을 시도하지 않도록 기본은 꺼둔다. 스케줄러 테스트는 poll() 을 직접 호출해 시각 의존 없이 검증한다.
+notification:
+  polling:
+    enabled: false

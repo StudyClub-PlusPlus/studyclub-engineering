@@ -8,6 +8,7 @@ import {
   allowsOther,
   formCardClass,
   FormHeaderCard,
+  MARKDOWN_HINT,
   needsOptions,
   OptionEditor,
   QUESTION_TYPES,
@@ -20,7 +21,7 @@ import { getUser } from '@core/lib/auth';
 import { DISCORD_NICKNAME_EXAMPLE, getDiscordNickname, getDisplayName } from '@core/lib/me';
 import { PREVIEW_USER } from '@core/lib/preview';
 import type { ApplicationQuestion, ApplicationQuestionType, Study } from '@studyclub/mock';
-import { Button, Checkbox, Input, Select } from '@studyclub/ui';
+import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 
 /**
@@ -207,7 +208,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
       </div>
 
       <section data-anno='form:2' className={formCardClass()}>
-        <DiscordNicknameField stored={account.discordNickname} disabled />
+        <DiscordNicknameField value={account.discordNickname} disabled />
       </section>
 
       <div data-anno='form:3' className='flex justify-end'>
@@ -263,10 +264,12 @@ export function ApplicationFormTab({ study }: { study: Study }) {
                   </Select>
                 </div>
 
-                <Input
+                <Textarea
                   value={q.description ?? ''}
                   onChange={(ev) => update(q.id, { description: ev.target.value })}
                   placeholder='설명 (선택)'
+                  helper={MARKDOWN_HINT}
+                  rows={3}
                 />
 
                 {needsOptions(q.type) ? (

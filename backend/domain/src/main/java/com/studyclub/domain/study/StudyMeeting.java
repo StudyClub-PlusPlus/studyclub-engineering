@@ -15,52 +15,52 @@ import java.time.Instant;
         name = "STUDY_MEETING",
         indexes =
                 @Index(
-                        name = "idx_study_meeting_class_scheduled",
-                        columnList = "STUDY_CLASS_ID, SCHEDULED_AT"))
+                        name = "idx_study_meeting_group_scheduled",
+                        columnList = "STUDY_GROUP_ID, SCHEDULED_AT"))
 public class StudyMeeting extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "STUDY_CLASS_ID", nullable = false)
-    private Long studyClassId;
+    @Column(name = "STUDY_GROUP_ID", nullable = false)
+    private Long studyGroupId;
 
     @Column(name = "SCHEDULED_AT", nullable = false)
     private Instant scheduledAt;
 
-    @Column(name = "STARTS_AT")
-    private Instant startsAt;
+    @Column(name = "START_AT")
+    private Instant startAt;
 
-    @Column(name = "ENDS_AT")
-    private Instant endsAt;
+    @Column(name = "END_AT")
+    private Instant endAt;
 
     protected StudyMeeting() {}
 
-    public StudyMeeting(Long studyClassId, Instant scheduledAt, Instant startsAt, Instant endsAt) {
-        this.studyClassId = studyClassId;
+    public StudyMeeting(Long studyGroupId, Instant scheduledAt, Instant startAt, Instant endAt) {
+        this.studyGroupId = studyGroupId;
         this.scheduledAt = scheduledAt;
-        this.startsAt = startsAt;
-        this.endsAt = endsAt;
+        this.startAt = startAt;
+        this.endAt = endAt;
     }
 
     public Long getId() {
         return id;
     }
 
-    public Long getStudyClassId() {
-        return studyClassId;
+    public Long getStudyGroupId() {
+        return studyGroupId;
     }
 
     public Instant getScheduledAt() {
         return scheduledAt;
     }
 
-    public Instant getStartsAt() {
-        return startsAt;
+    public Instant getStartAt() {
+        return startAt;
     }
 
-    public Instant getEndsAt() {
-        return endsAt;
+    public Instant getEndAt() {
+        return endAt;
     }
 }

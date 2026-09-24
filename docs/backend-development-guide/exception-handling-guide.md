@@ -53,6 +53,7 @@
 | `INVALID_INPUT` | 400 | 검증 실패, 필수 값 누락 |
 | `UNAUTHORIZED` | 401 | 인증 없음, 토큰 무효·만료 |
 | `FORBIDDEN` | 403 | 인증은 됐으나 권한 없음 |
+| `SIGNUP_REQUIRED` | 403 | 백오피스 로그인인데 계정이 없음. 만들지 않고 "먼저 서비스에서 로그인" 안내 |
 | `NOT_FOUND` | 404 | 리소스 없음 |
 | `CONFLICT` | 409 | 비즈니스 규칙 위반 (중복 신청, 마감된 스터디 등) |
 | `EXTERNAL_SERVICE_ERROR` | 503 | 외부 연동 실패 (구글 OAuth 등) |
@@ -96,6 +97,14 @@ public class GlobalExceptionHandler {
         return respond(ErrorCode.INVALID_INPUT, detail.isBlank() ? null : detail);
     }
 
+    @ExceptionHandler({
+        HttpMessageNotReadableException.class,
+        MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ErrorResponse> handleInvalidRequest() {
+        return respond(ErrorCode.INVALID_INPUT, null);
+    }
+
     @ExceptionHandler(ResponseStatusException.class)   // 프레임워크/레거시 경로
     public ResponseEntity<ErrorResponse> handleStatus(ResponseStatusException e) {
         return respond(ErrorCode.fromStatus(e.getStatusCode().value()), e.getReason());
@@ -114,6 +123,12 @@ public class GlobalExceptionHandler {
 
 마지막 핸들러의 `instanceof` 가 있는 이유: 라우팅 실패처럼 **자기 상태를 아는 예외**를
 `Exception` 으로 뭉뚱그리면 404 가 500 으로 보고된다. 상태를 아는 것은 그 상태를 살린다.
+
+본문을 읽거나 파라미터를 변환하다 실패하면 컨트롤러의 검증 코드까지 도달하지 못한다.
+빈 필수 본문·깨진 JSON·본문 자료형 오류(`HttpMessageNotReadableException`)와
+숫자·enum·날짜·경로 ID 변환 오류(`MethodArgumentTypeMismatchException`)는 별도로
+`400 INVALID_INPUT`으로 처리한다. 예외 메시지에 사용자 입력이나 내부 타입 정보가 섞일 수 있으므로
+응답에는 기본 문구만 사용한다. 예상하지 못한 서버 오류는 기존대로 `500 INTERNAL_ERROR`를 유지한다.
 
 ## 시큐리티 경로의 401
 

@@ -115,6 +115,8 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 |---|---|---|
 | 회원가입 · 온보딩 | `/proto/core/ko/onboarding?scenario=default` | Story PRD · `specs/user-onboarding/spec.md` |
 | Google 로그인 미리보기 | `/proto/core/ko/login?scenario=new` | 온보딩 진입·복귀 흐름 |
+| 스터디 목록 | `/proto/core/ko/studies` | Story PRD 「크루로서, 스터디 목록을 둘러보고 검색·필터링할 수 있다.」 |
+| 스터디 상세 · 신청 | `/proto/core/ko/studies/{id}` | Story PRD 「크루로서, 스터디 신청 폼을 제출할 수 있다.」 |
 | 스터디 등록 모달 | `/proto/console/studies?new=1` | Story PRD 「운영자로서, 스터디를 등록할 수 있다.」 |
 | 내 스터디 · 참여 모음 | `/proto/core/ko/my/joined` | 코드 (`lib/joined.ts`, `lib/attendance-book.ts`) |
 | 내 스터디 · 출석 | `/proto/core/ko/my/studies` | 코드 (`lib/attendance.ts`) |
