@@ -326,7 +326,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 | 400 | INVALID_INPUT | 유효값 표 위반. `fields` 에 사유 코드. 답 원문 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
 | 403 | FORBIDDEN | `DISCORD_ID` 없음. 화면은 연동 팝업을 연다 |
-| 404 | NOT_FOUND | studyId 없음 또는 비공개(모집 시작 일자 없음) |
+| 404 | NOT_FOUND | studyId 없음 또는 비공개(`STATUS = DRAFT`) |
 | 409 | CONFLICT | 이미 이 모집 회차에 신청함 · 모집 마감 · 정원 초과. `errorMessage` 로 구분 |
 
 `errorMessage` (409):

@@ -12,7 +12,7 @@
 | STUDY_ID | BIGINT | N | STUDY 참조 (인덱스만, FK 없음) |
 | TITLE | VARCHAR(255) | N | 모집 회차 제목 |
 | DESCRIPTION | TEXT | N | 모집 상세 설명 |
-| START_AT | DATETIME | Y | 모집 시작 시각 (UTC). **비어 있으면 아직 공개 전(`DRAFT`)** — 캡틴이 모집을 시작하면 채운다 |
+| START_AT | DATETIME | Y | 모집 시작 시각 (UTC). 캡틴이 모집을 시작하면 `STUDY.STATUS: DRAFT → OPEN` 과 함께 채워진다 — 사실 데이터일 뿐, 공개 판정은 `STUDY.STATUS` 로 한다([STUDY ERD](./STUDY.md#공개-여부)) |
 | RECRUIT_DEADLINE_AT | DATETIME | N | 모집 마감 시각 (UTC). 상시 모집은 없다 — 항상 마감이 있다. 계획된 hard cutoff — 정원 도달로 인한 조기 마감은 계산으로 판정 |
 | RECRUITMENT_CAPACITY | INT | Y | 이 회차 모집 정원. NULL 이면 제한 없음 |
 

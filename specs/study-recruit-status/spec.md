@@ -25,7 +25,7 @@
 | `recruitStatus` (모집 상태) | `RecruitStatus` = `RECRUITING` / `RECRUIT_CLOSED` | 날짜·정원 | **안 함 (계산)** |
 
 `recruitStatus` 는 `status = OPEN` 일 때만 값이 있다. 그 밖에서는 **`null`** —
-"마감됐다"가 아니라 "모집 상태라는 개념이 없다"다. `DRAFT` 는 아직 공개 전(모집 시작 일자 없음)이고 `ONGOING`·`ENDED`·`CLOSED` 는
+"마감됐다"가 아니라 "모집 상태라는 개념이 없다"다. `DRAFT` 는 아직 공개 전이고 `ONGOING`·`ENDED`·`CLOSED` 는
 모집 이후 단계이니, 그 넷은 `status` 가 이미 다 말해준다.
 
 ## 판정 규칙
@@ -171,7 +171,7 @@ recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_C
 
 ## 미확정
 
-- ~~`UPCOMING`(모집예정)~~ → **폐지**: 예약 공개는 없다. 공개 = 모집 시작이라 `START_AT` 이 채워지는 순간 모집이 시작되고, `START_AT` 이 비어 있으면 아직 공개 전(`DRAFT`)이라 목록에 나오지 않는다. 그래서 모집예정으로 판정할 구간이 없다
+- ~~`UPCOMING`(모집예정)~~ → **폐지**: 예약 공개는 없다. 공개 = 모집 시작이라 캡틴이 모집을 시작하는 순간(`STATUS: DRAFT → OPEN`) 모집도 함께 시작되고, `DRAFT` 는 목록에 나오지 않는다. 그래서 모집예정으로 판정할 구간이 없다
 - ~~`ONGOING` / `ENDED`~~ → **결정(2026-09-22 제안)**: 진행·종료는 모집 상태가 아니라 라이프사이클 `STATUS` 로 **저장**한다 (`DRAFT → OPEN → ONGOING → ENDED → CLOSED`, [전이 규칙](../../docs/erd/STUDY.md#상태--status-운영진행-라이프사이클)). 날짜로 계산하지 않고 사람·이벤트가 바꾼다. `RecruitStatus` 는 모집중/마감 둘만 유지하고 `status != OPEN` 이면 `null` 이라는 규칙은 그대로다
 - **[NEEDS CLARIFICATION] 서버측 `recruitStatus` 필터 파라미터.**
   목록은 필터 → 정렬 → `offset/limit` 순으로 **서버에서** 자르므로, 프론트가 받은 페이지만
