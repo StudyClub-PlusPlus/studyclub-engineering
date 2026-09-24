@@ -5,9 +5,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-public final class BackOfficeApplicationResponses {
+public final class AdminApplicationResponses {
 
-    private BackOfficeApplicationResponses() {}
+    private AdminApplicationResponses() {}
 
     @Schema(description = "백오피스 스터디 신청 결과 목록 응답")
     public record StudyApplicationsResponse(

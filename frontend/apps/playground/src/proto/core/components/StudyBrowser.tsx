@@ -131,7 +131,6 @@ export function StudyBrowser({
     });
   }, [studies, query, category, timezone]);
 
-
   const hasQuery = query.trim().length > 0;
   const commitSearch = () => setQuery(input);
   const clearSearch = () => {
@@ -142,6 +141,7 @@ export function StudyBrowser({
     setTimezone('all');
   };
 
+  // 정렬은 두지 않는다 — 목록은 둘러보기 전용이라 등록 순서 그대로 보인다.
   const filtered = useMemo(() => {
     const list = recruitment === 'all' ? base : base.filter((s) => statusOf(s) === recruitment);
     return [...list].sort((a, b) => (a.order ?? 99) - (b.order ?? 99));

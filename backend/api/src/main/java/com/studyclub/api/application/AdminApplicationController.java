@@ -1,6 +1,6 @@
 package com.studyclub.api.application;
 
-import com.studyclub.api.application.BackOfficeApplicationResponses.StudyApplicationsResponse;
+import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationsResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,14 +17,13 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "백오피스 신청", description = "운영자가 스터디 신청서 결과를 조회한다")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
-@RequestMapping("/api/studies/{studyId}/applications")
-public class BackOfficeApplicationController {
+@RequestMapping("/api/admin/studies/{studyId}/applications")
+public class AdminApplicationController {
 
-    private final BackOfficeApplicationQueryService backOfficeApplicationQueryService;
+    private final AdminApplicationQueryService adminApplicationQueryService;
 
-    public BackOfficeApplicationController(
-            BackOfficeApplicationQueryService backOfficeApplicationQueryService) {
-        this.backOfficeApplicationQueryService = backOfficeApplicationQueryService;
+    public AdminApplicationController(AdminApplicationQueryService adminApplicationQueryService) {
+        this.adminApplicationQueryService = adminApplicationQueryService;
     }
 
     @Operation(
@@ -44,7 +43,7 @@ public class BackOfficeApplicationController {
                     @RequestParam(required = false)
                     Long recruitmentId,
             Authentication authentication) {
-        return backOfficeApplicationQueryService.getApplications(
+        return adminApplicationQueryService.getApplications(
                 authenticatedAccountId(authentication), studyId, recruitmentId);
     }
 

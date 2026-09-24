@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
 import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
-import { searchStudies, type StudyPhaseFilter, type StudySearch, type StudyTimezoneFilter } from '@/lib/api';
+import { useStudies } from '@/features/studies/queries';
+import type { StudyPhaseFilter, StudySearch, StudyTimezoneFilter } from '@/lib/api';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 
@@ -107,39 +108,18 @@ export function StudyBrowser({
   const [category, setCategory] = useState<string>('all');
   const [timezone, setTimezone] = useState<TimezoneFilter>('all');
 
-  const [studies, setStudies] = useState(initial);
-  const [loading, setLoading] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const firstRender = useRef(true);
-
-  useEffect(() => {
-    // 첫 화면은 서버가 기본 조건으로 받아 뒀다 — 같은 요청을 한 번 더 보내지 않는다
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    const search: StudySearch = {
-      keyword: query.trim() || undefined,
-      status: recruitment === 'all' ? undefined : recruitment,
-      timezone: timezone === 'all' ? undefined : timezone,
-      category: category === 'all' ? undefined : category,
-    };
-    // 빠르게 필터를 바꾸면 늦게 온 이전 응답이 새 결과를 덮는다 — 이전 요청은 끊는다
-    const controller = new AbortController();
-    setLoading(true);
-    searchStudies(search, controller.signal)
-      .then((next) => {
-        setStudies(next);
-        setFailed(false);
-      })
-      .catch((e: unknown) => {
-        if ((e as Error).name !== 'AbortError') setFailed(true);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [query, recruitment, timezone, category]);
+  const search: StudySearch = {
+    keyword: query.trim() || undefined,
+    status: recruitment === 'all' ? undefined : recruitment,
+    timezone: timezone === 'all' ? undefined : timezone,
+    category: category === 'all' ? undefined : category,
+  };
+  // 첫 화면은 서버가 기본 조건으로 받아 뒀다(initial) — 같은 조건이면 다시 부르지 않는다.
+  // 늦게 온 이전 응답이 새 결과를 덮는 문제는 쿼리 키가 조건별로 갈려 생기지 않는다.
+  const { data, isFetching, isError } = useStudies(search, initial);
+  const studies = data ?? initial;
+  const loading = isFetching;
+  const failed = isError;
 
   const hasQuery = query.trim().length > 0;
   const commitSearch = () => setQuery(input);
