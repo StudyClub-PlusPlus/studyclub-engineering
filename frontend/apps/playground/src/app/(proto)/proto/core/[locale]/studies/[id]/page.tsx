@@ -16,7 +16,8 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 export async function generateStaticParams() {
   const studies = await getStudies();
-  return studies.map((s) => ({ id: s.id }));
+  // 조회 키는 study_id(STUDY.ID) — 슬러그(s.id)는 내부 키일 뿐 URL에 쓰지 않는다. getStudy()와 짝이 맞아야 한다.
+  return studies.map((s) => ({ id: String(s.study_id) }));
 }
 
 /**

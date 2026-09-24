@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 import { getUser, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
@@ -24,6 +24,14 @@ const REASONS = ['원하는 스터디 없음', '스터디 참여가 부담됨', 
  * TODO(api): DELETE /api/me — 지금은 화면에서만 처리한다. 담당 스터디 여부도 서버가 판정해야 한다.
  */
 export default function LeavePage() {
+  return (
+    <Suspense fallback={<div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>}>
+      <LeavePageInner />
+    </Suspense>
+  );
+}
+
+function LeavePageInner() {
   const params = useParams();
   const router = useRouter();
   const search = useSearchParams();

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import type { Locale, Operator, Study } from '@core/lib/content';
+import { userStudyPath, type Locale, type Operator, type Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { recruitBadge, studyStartValue, studyTimezoneLabel } from '@core/lib/recruit';
 import { CalendarClock, Globe, Rocket } from 'lucide-react';
@@ -31,7 +31,7 @@ export function StudyCard({ study, locale }: { study: Study; locale: Locale; lea
     <div data-anno='5-1' className='card card-hover relative flex flex-col overflow-hidden'>
       {/* Stretched link — covers the whole card without nesting anchors */}
       <Link
-        href={`/proto/core/${locale}/studies/${study.id}`}
+        href={userStudyPath(locale, study)}
         className='absolute inset-0 z-[1] rounded-[inherit]'
         aria-label={t(study.title, locale)}
       />

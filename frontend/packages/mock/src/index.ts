@@ -158,7 +158,10 @@ export type StudyStats = {
 };
 
 export type Study = {
+  /** 슬러그. 북마크·신청·출석의 내부 키. 사용자 사이트 상세 URL에는 쓰지 않는다 — 그건 `study_id`. */
   id: string;
+  /** STUDY.ID. 사용자 사이트 상세 조회 키. 시드에는 없고 `studies` export 에서 순번으로 붙인다. */
+  study_id: number;
   title: L10n;
   summary: L10n;
   description?: L10n;
@@ -437,8 +440,8 @@ const MONTHLY_CLUB_GENS = [
 function monthlyClubCohorts(
   id: string,
   title: L10n,
-  shared: Omit<Study, "id" | "title" | "status" | "date" | "year">,
-): Study[] {
+  shared: Omit<Study, "id" | "study_id" | "title" | "status" | "date" | "year">,
+): StudyDraft[] {
   return MONTHLY_CLUB_GENS.map((c) => ({
     ...shared,
     id: `${id}-g${c.g}`,
@@ -459,7 +462,9 @@ function monthlyClubCohorts(
 }
 
 // ── studies ───────────────────────────────────────────────────────────
-const STUDIES_SEED: Study[] = [
+/** 시드 한 건. `study_id` 는 export 때(`studies`) 순번으로 붙인다 — 시드에서 직접 정하지 않는다. */
+type StudyDraft = Omit<Study, "study_id">;
+const STUDIES_SEED: StudyDraft[] = [
   // ── 예정(모집중) ────────────────────────────────────────────────────
   {
     id: "ai-paper-study",
@@ -2459,7 +2464,7 @@ for (const s of STUDIES_SEED) {
  * 우선순위: 코호트 대표 날짜(`date`) → 킥오프 문구의 날짜 → 모집 마감 + 1주.
  * TODO(mock): 시드에 실제 startAt 을 채우면 이 추정 로직은 걷어낸다.
  */
-function deriveStartAt(s: Study): string | undefined {
+function deriveStartAt(s: StudyDraft): string | undefined {
   if (s.date) return toISODate(s.date);
 
   const kickoff = s.recruitment?.kickoff;
@@ -2479,8 +2484,10 @@ function deriveStartAt(s: Study): string | undefined {
 }
 
 export const studies: Study[] = STUDIES_SEED.map(
-  (s) => ({
+  (s, i) => ({
     ...s,
+    /** STUDY.ID. 사용자 사이트 상세 조회 키 — 슬러그(`id`)는 URL에 쓰지 않는다. 시드에는 없고 여기서 순번으로 붙인다. */
+    study_id: i + 1,
     startAt: s.startAt ?? deriveStartAt(s),
     program: (() => {
       const title = programStem(s.title);
