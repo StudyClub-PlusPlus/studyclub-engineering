@@ -18,6 +18,7 @@ import { ApplyDiscordGate } from './ApplyDiscordGate';
  * 신청 버튼 + 로그인 확인 + 디스코드 연동 확인 + 폼 + 완료 팝업.
  *
  * 서버 컴포넌트인 상세 페이지에서 이 조각만 클라이언트로 분리한다.
+ * 상세에서만 연다 — 목록 카드는 둘러보기 전용이라 신청하기를 두지 않는다.
  */
 export function ApplyButton({ study, locale }: { study: Study; locale: Locale }) {
   const router = useRouter();
@@ -70,15 +71,15 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
 
   const trigger =
     state === 'closed' ? (
-      <span data-anno='view:9' className={`${card} ${idle}`}>
+      <span data-anno='view:1' className={`${card} ${idle}`}>
         {applyLabel}
       </span>
     ) : ready && alreadyApplied ? (
-      <span data-anno='view:9' className={`${card} ${idle}`}>
+      <span data-anno='view:2' className={`${card} ${idle}`}>
         {doneLabel}
       </span>
     ) : (
-      <button type='button' data-anno='view:9' onClick={requestApply} className={`${card} ${live}`}>
+      <button type='button' data-anno='view:2' onClick={requestApply} className={`${card} ${live}`}>
         {applyLabel}
       </button>
     );

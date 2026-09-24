@@ -8,8 +8,18 @@ export type L10n = { ko: string; en: string };
 export type StudyStatus = "recruiting" | "ongoing" | "closed";
 export type StudyFormat = "online" | "offline" | "hybrid";
 
-// 스터디는 하나의 개념. 모집 마감일이 있으면 기한 모집, 없으면 상시 모집으로만 구분한다.
+// 스터디는 하나의 개념. 상시 모집은 없다 — 모집은 항상 마감일이 있다.
+// 종류: study 는 새 공고마다 참여 신청이 필요하고, club 은 같은 프로그램의 새 기수 공고에서 참여가 자동 유지된다.
 export type StudyKind = "study" | "club";
+
+/**
+ * 스터디가 도는 시간대. `both` = 한국·미국 서부 동시 진행(교차 시간대 모임).
+ *
+ * 등록 폼에서 운영자가 직접 고르는 값이다(STUDY.TIMEZONE). 이 필드가 생기기 전 시드 데이터는
+ * 값이 없고, 그런 행은 사이트에서 "시간대 미정"으로 정직하게 표시한다 — 일정·킥오프 문구에
+ * KST/PST 표기가 있으면 그걸로 추정하기는 하지만, 표기가 없다고 "동시 진행"이라 단정하지 않는다.
+ */
+export type StudyTimezone = "KST" | "PST" | "both";
 
 /**
  * 스터디 주제 (canonical 11종).
@@ -23,7 +33,9 @@ export type StudyKind = "study" | "club";
  *
  * 등록 폼은 이 목록만 선택지로 제공한다. 자유 입력이면 표기 흔들림(AI/ML vs AI·ML)으로
  * 카드 색·아이콘 매칭이 깨진다. 한 스터디가 여러 주제에 걸치면 `categories` 로 더 단다.
-
+ *
+ * TODO(api): 백엔드 StudyCategory enum 에 ALGORITHM · SOFTWARE · BOOK_CLUB 추가 필요.
+ * 현재 enum 은 CS·BACKEND·FRONTEND·MOBILE·PLANNING·PM·DESIGN 을 갖고 있으나 해당 스터디가 0건이다.
  */
 export const STUDY_CATEGORIES = [
   "AI · ML",
@@ -39,7 +51,7 @@ export const STUDY_CATEGORIES = [
   "기타",
 ] as const;
 
-/** API StudyCategory enum → 프론트 표시 이름 매핑. 선언 순서 = 백엔드 enum 순서 = 필터 칩 순서. */
+/** API StudyCategory enum → 프론트 표시 이름 매핑. */
 export const CATEGORY_DISPLAY: Record<string, string> = {
   AI_ML: "AI · ML",
   ALGORITHM: "알고리즘",
@@ -62,6 +74,7 @@ export type Recruitment = {
   status: RecruitmentStatus; // open=마감기한 있는 모집, monthly=매달 정기, always=상시, closed=마감
   cadence?: "one-time" | "monthly" | "weekly" | "rolling";
   form_url?: string; // 모집 구글폼
+  start?: string; // 모집 시작 일자 — 있으면 공개로 본다 (STUDY_RECRUITMENT.START_AT)
   deadline?: string; // 모집 기한 (예: "2026/03/21")
   kickoff?: string; // 킥오프 일시 (예: "2026/03/23 (월) 6:00 PM PDT")
   capacity?: number; // 모집 인원
@@ -145,34 +158,51 @@ export type StudyStats = {
 };
 
 export type Study = {
-  /** 슬러그. 북마크·신청·출석의 내부 키. 사용자 사이트 상세 URL 에는 쓰지 않는다. */
   id: string;
-  /** STUDY.ID. 사용자 사이트 상세 조회 키. 시드에는 없고 `studies` export 에서 붙인다. */
-  study_id: number;
   title: L10n;
   summary: L10n;
   description?: L10n;
   status: StudyStatus;
   format: StudyFormat;
   schedule?: L10n;
+  /** STUDY.TIMEZONE — 운영자가 등록 폼에서 직접 고른 값. 없으면(레거시) 일정·킥오프 문구로 추정하거나 「시간대 미정」. */
+  timezone?: StudyTimezone;
   lead?: string;
   seats?: { total: number; taken: number };
+  /**
+   * STUDY.DISCORD_CHANNEL_URL — 참고용 링크 하나(주로 로비/공지 채널). 참여 안내에서 site 기본 초대 링크 대신 우선 쓴다.
+   * **클럽은 기수가 바뀌어도 보통 같은 채널을 쓴다** — 새 기수 등록 시 최신 기수 값을 그대로 물려받는다
+   * (`cohortDefaults()`). 실제로 여러 채널(공지·잡담·인증 등)을 운영해도 여기엔 하나만 담는다 — 자동화(채널
+   * 목록 조회, 삭제 감지)의 근거로 쓰지 않는다. 운영 종료(`CLOSED`)는 캡틴이 직접 확인하고 전환하는 수동
+   * 조작이다.
+   */
   discord_url?: string;
+  /** STUDY.DRIVE_URL — 이 기수 자료 드라이브 링크. discord_url 과 같은 이유로 클럽은 보통 기수마다 같은 값이다. */
+  driveUrl?: string;
+  /** STUDY.START_AT — 진행 시작 일시(날짜만 다룬다). 모집 마감일·「진행 일정」 자유 텍스트와는 다른 값이다. */
+  startAt?: string; // ISO date
   recruit_url?: string;
   order?: number;
   year?: string;
   date?: string; // 대표 날짜(ISO). 없으면 content 에서 `${year}-01-01` 로 추정 주입.
-  start_at?: string; // STUDY.START_AT(ISO). 등록 폼에 아직 입력란이 없어 studies export 에서 추정 주입.
   publish_at?: string; // 레거시 공개일(ISO). 새로 쓰지 않는다 — 공개는 `published` 로만 정한다.
   /**
    * 공개 여부. **등록 직후에는 `false`** 다 — 신청 폼도 없는 스터디가 사이트에 뜨는 일을 막는다.
    * 공개는 목록에서 캡틴이 켠다. 값이 없으면 공개로 본다(레거시).
    */
   published?: boolean;
+  /**
+   * 스터디 프로그램(STUDY_PROGRAM) — 같은 프로그램의 기수(STUDY)끼리 묶는 정체성. 클럽은 기수가 여러 개 쌓인다.
+   * **종류(`kind`)는 프로그램이 갖는다** — STUDY_PROGRAM.STUDY_KIND. 기수마다 달라지는 값이 아니다.
+   */
+  program?: { id: string; title: L10n; kind: StudyKind };
+  /** 종료된 스터디의 채널을 캡틴이 삭제하고 운영을 끝냈는가 (`CLOSED`). 없으면 종료(`ENDED`)까지만 간 것이다. */
+  channelDeleted?: boolean;
   image?: string; // 썸네일 URL(옵션). 없으면 카테고리 기반 기본 이미지 생성.
   host?: { name: L10n; credential?: L10n; avatar?: string }; // 클럽장/진행자 (동행클럽 host 패턴)
   // ── 확장 (전부 옵션) ──
-  kind?: StudyKind; // 기본 study
+  /** @deprecated 종류는 프로그램이 갖는다(`program.kind`). 시드에서 프로그램 종류를 정할 때만 읽는다. */
+  kind?: StudyKind;
   /**
    * 대표 카테고리. 한 스터디가 여러 분야에 걸치면 `categories` 에 나머지를 둔다.
    * 목록·필터·집계는 전부 `categoriesOf()` 로 읽는다 — 두 필드를 직접 보면 한쪽을 빠뜨린다.
@@ -238,7 +268,7 @@ export function todayISO(): string {
 
 /**
  * 모집 상태. 판정 축은 **모집 마감일 하나**.
- * 마감일을 비우면 마감 없이 계속 모집하는 것으로 본다(= 모집중).
+ * 마감일은 필수다. 값이 없는 옛 데이터만 마감 없는 것으로 읽는다(= 모집중).
  */
 export type RecruitState = "apply" | "closed";
 
@@ -263,6 +293,22 @@ export function publishState(study: Study): PublishState {
   if (study.published === false) return "draft";
   const at = toISODate(study.publish_at);
   return at && at > todayISO() ? "draft" : "live";
+}
+
+/**
+ * 스터디 상태 — 백엔드 `STUDY.STATUS` 5단계.
+ * DRAFT(작성 중·모집 전) → OPEN(개설 — 공개하며 모집 시작) → ONGOING((미팅) 진행 중) → ENDED((미팅) 종료) → CLOSED(채널 삭제 완료).
+ *
+ * 모집중/마감은 상태가 아니라 모집 마감일·정원에서 계산하는 값이라 `recruitState()` 가 따로 답한다.
+ * mock 은 옛 3단계(`status`)라서 공개 여부와 `channelDeleted` 를 겹쳐 5단계로 읽는다.
+ */
+export type LifecycleState = "DRAFT" | "OPEN" | "ONGOING" | "ENDED" | "CLOSED";
+
+export function lifecycleState(study: Study): LifecycleState {
+  if (publishState(study) === "draft") return "DRAFT";
+  if (study.status === "recruiting") return "OPEN";
+  if (study.status === "ongoing") return "ONGOING";
+  return study.channelDeleted ? "CLOSED" : "ENDED";
 }
 
 export type StudyclubEvent = {
@@ -388,14 +434,11 @@ const MONTHLY_CLUB_GENS = [
   },
 ] as const;
 
-/** 시드 한 건. `study_id` 는 export 때 순번으로 붙인다. */
-type StudyDraft = Omit<Study, "study_id">;
-
 function monthlyClubCohorts(
   id: string,
   title: L10n,
-  shared: Omit<StudyDraft, "id" | "title" | "status" | "date" | "year">,
-): StudyDraft[] {
+  shared: Omit<Study, "id" | "title" | "status" | "date" | "year">,
+): Study[] {
   return MONTHLY_CLUB_GENS.map((c) => ({
     ...shared,
     id: `${id}-g${c.g}`,
@@ -416,7 +459,7 @@ function monthlyClubCohorts(
 }
 
 // ── studies ───────────────────────────────────────────────────────────
-const STUDIES_SEED: StudyDraft[] = [
+const STUDIES_SEED: Study[] = [
   // ── 예정(모집중) ────────────────────────────────────────────────────
   {
     id: "ai-paper-study",
@@ -521,7 +564,7 @@ const STUDIES_SEED: StudyDraft[] = [
   {
     id: "early-bird",
     kind: "club",
-    title: { ko: "얼리버드", en: "Early Bird" },
+    title: { ko: "얼리버드 4기 (10월)", en: "Early Bird 4 (Oct)" },
     host: {
       name: { ko: "M. 박", en: "M. Park" },
       credential: {
@@ -540,6 +583,7 @@ const STUDIES_SEED: StudyDraft[] = [
       ko: "매일 인증 · 주 1회 회고",
       en: "Daily check-in · weekly retro",
     },
+    timezone: "KST",
     description: {
       ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
       en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
@@ -558,7 +602,7 @@ const STUDIES_SEED: StudyDraft[] = [
   {
     id: "weeklyx",
     kind: "club",
-    title: { ko: "WeeklyX", en: "WeeklyX" },
+    title: { ko: "WeeklyX 4기 (10월)", en: "WeeklyX 4 (Oct)" },
     host: {
       name: { ko: "Y. 정", en: "Y. Jung" },
       credential: { ko: "WeeklyX 클럽장", en: "WeeklyX host" },
@@ -574,6 +618,7 @@ const STUDIES_SEED: StudyDraft[] = [
       ko: "매일 인증 · 주 1회 회고",
       en: "Daily check-in · weekly retro",
     },
+    timezone: "both",
     description: {
       ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
       en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
@@ -662,7 +707,7 @@ const STUDIES_SEED: StudyDraft[] = [
   {
     id: "daily-leetcode",
     kind: "club",
-    title: { ko: "Daily LeetCode", en: "Daily LeetCode" },
+    title: { ko: "Daily LeetCode 4기 (10월)", en: "Daily LeetCode 4 (Oct)" },
     host: {
       name: { ko: "R. 오", en: "R. Oh" },
       credential: {
@@ -1164,6 +1209,7 @@ const STUDIES_SEED: StudyDraft[] = [
       ko: "매주 토 10:00 · 10주 과정",
       en: "Sat 10:00 AM · 10 weeks",
     },
+    timezone: "PST",
     description: {
       ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
       en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
@@ -2365,11 +2411,55 @@ const STUDIES_SEED: StudyDraft[] = [
 ];
 
 /**
- * 시작일(STUDY.START_AT) 추정 — 등록 폼에 아직 입력란이 없어 기존 필드에서 유도한다.
- * 우선순위: 코호트 대표 날짜(`date`) → 킥오프 문구의 날짜 → 모집 마감 + 1주.
- * TODO(api): 등록/수정 API 에 startAt 입력이 생기면 이 추정 로직은 걷어낸다.
+ * 데모용 스터디 프로그램 — 시드에는 프로그램이 없어 **제목에서 기수 표기를 뗀 것**을 프로그램으로 본다.
+ * 프로그램 id 는 처음 나온 순서대로 1부터 매긴다. 실제 값이 아니라 목록의 그룹 보기를 보이려는 것이다.
+ *
+ * 제목에서 "N기"를 떼어내는 이 편법은 데모용이다. 실제 스키마는 기수 순서를 별도 컬럼으로 저장하지 않고
+ * `STUDY.ID`(생성 순서)로 판정한다 — `START_AT` 은 쓰지 않는다(이유: docs/erd/STUDY.md#채널-삭제와-closed).
  */
-function deriveStartAt(s: StudyDraft): string | undefined {
+function programStem(title: L10n): L10n {
+  const strip = (t: string) =>
+    t
+      .replace(/\s*\d+기\s*(\([^)]*\))?\s*$/, "")
+      .replace(/\s*Cohort\s*\d+\s*(\([^)]*\))?\s*$/, "")
+      .replace(/\s*\(?\d{4}년.*$/, "")
+      .replace(/\s*\d+월.*$/, "")
+      .replace(/\s*(\d+기|시즌\s*\d+)\s*$/, "")
+      .trim() || t;
+  return { ko: strip(title.ko), en: strip(title.en) };
+}
+
+/**
+ * 데모용 모집 시작일 — 시드에는 시작일이 없어 마감 14일 전으로 채운다.
+ * 목록의 「모집 시작일」이 비지 않게 하려는 것뿐이며 실제 값이 아니다.
+ */
+function withDemoStart(rec: Recruitment | undefined): Recruitment | undefined {
+  if (!rec || rec.start) return rec;
+  const end = toISODate(rec.deadline);
+  if (!end || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return rec;
+  const start = new Date(Date.parse(`${end}T00:00:00Z`) - 14 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  return { ...rec, start };
+}
+
+/** 백오피스 신청 폼 탭과 지원자 화면이 같은 질문 목록을 본다. */
+const DEMO_PROGRAM_IDS = new Map<string, string>();
+
+/** 시드의 기수 중 하나라도 클럽이면 그 프로그램은 클럽이다 — 종류는 기수가 아니라 프로그램의 것이다. */
+const DEMO_PROGRAM_KINDS = new Map<string, StudyKind>();
+for (const s of STUDIES_SEED) {
+  const stem = programStem(s.title).ko;
+  if (s.kind === "club" || !DEMO_PROGRAM_KINDS.has(stem))
+    DEMO_PROGRAM_KINDS.set(stem, s.kind === "club" ? "club" : "study");
+}
+
+/**
+ * 시작일(STUDY.START_AT) 추정 — 등록 폼이 이 값을 받게 된 건 최근이라 옛 시드에는 비어 있는 게 많다.
+ * 우선순위: 코호트 대표 날짜(`date`) → 킥오프 문구의 날짜 → 모집 마감 + 1주.
+ * TODO(mock): 시드에 실제 startAt 을 채우면 이 추정 로직은 걷어낸다.
+ */
+function deriveStartAt(s: Study): string | undefined {
   if (s.date) return toISODate(s.date);
 
   const kickoff = s.recruitment?.kickoff;
@@ -2388,13 +2478,52 @@ function deriveStartAt(s: StudyDraft): string | undefined {
   return started.toISOString().slice(0, 10);
 }
 
-/** 백오피스 신청 폼 탭과 지원자 화면이 같은 질문 목록을 본다. */
-export const studies: Study[] = STUDIES_SEED.map((s, i) => ({
-  ...s,
-  study_id: i + 1,
-  applicationForm: DEMO_APPLICATION_FORM,
-  start_at: s.start_at ?? deriveStartAt(s),
-}));
+export const studies: Study[] = STUDIES_SEED.map(
+  (s) => ({
+    ...s,
+    startAt: s.startAt ?? deriveStartAt(s),
+    program: (() => {
+      const title = programStem(s.title);
+      if (!DEMO_PROGRAM_IDS.has(title.ko))
+        DEMO_PROGRAM_IDS.set(title.ko, String(DEMO_PROGRAM_IDS.size + 1));
+      return {
+        id: DEMO_PROGRAM_IDS.get(title.ko)!,
+        title,
+        kind: DEMO_PROGRAM_KINDS.get(title.ko) ?? "study",
+      };
+    })(),
+    recruitment: withDemoStart(s.recruitment),
+    // 데모: 지난해 이전에 끝난 스터디는 채널까지 정리된 것으로 본다
+    channelDeleted:
+      s.channelDeleted ??
+      (s.status === "closed" && Boolean(s.year) && Number(s.year) < 2026
+        ? true
+        : undefined),
+    applicationForm: DEMO_APPLICATION_FORM,
+  }),
+);
+
+/** 스터디 프로그램 목록 — 기수(스터디)가 하나라도 있는 프로그램. 프로그램만 따로 만들지 않는다. */
+export type StudyProgram = NonNullable<Study["program"]> & { cohorts: number };
+export const programs: StudyProgram[] = (() => {
+  const map = new Map<string, StudyProgram>();
+  for (const s of studies) {
+    if (!s.program) continue;
+    const cur = map.get(s.program.id);
+    if (cur) cur.cohorts += 1;
+    else map.set(s.program.id, { ...s.program, cohorts: 1 });
+  }
+  return [...map.values()];
+})();
+
+/** 프로그램의 최신 기수 — 모집 마감일이 가장 늦은 기수. 새 기수의 기본값을 가져올 때 쓴다. */
+export function latestCohort(programId: string): Study | undefined {
+  const key = (s: Study) =>
+    toISODate(s.recruitment?.deadline) ?? toISODate(s.recruitment?.start) ?? "";
+  return studies
+    .filter((s) => s.program?.id === programId)
+    .sort((a, b) => key(b).localeCompare(key(a)))[0];
+}
 
 // ── announcements (공지사항) ──────────────────────────────────────────
 export const announcements: Announcement[] = [
@@ -2704,6 +2833,7 @@ export const members: Member[] = [
 
 export {
   getStudyCrew,
+  recruitCapacity,
   attendanceRate,
   attendancePoint,
   LATE_WEIGHT,

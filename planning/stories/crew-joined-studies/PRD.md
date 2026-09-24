@@ -341,7 +341,7 @@ erDiagram
 | 신청 | FORM_ANSWER | JSON | 행이 있으면 제출 완료. 상태값 없음. 이 화면은 명부(`STUDY_PARTICIPANT`)만. 프로토 `accepted`는 명부 `ACTIVE` |
 | 명부 | STATUS | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | `WITHDRAWN` = 참여 중단 → 크루 배지 `참여 종료`. `COMPLETED` = 완주. `PAUSED` 화면 미정 |
 | 스터디 | TITLE, STUDY_KIND, CATEGORY | `STUDY` / `CLUB` | 기간·포맷·채널·자료는 기수 |
-| 기수 | START_DATE, END_DATE, STUDY_DELIVERY_FORMAT, DISCORD_CHANNEL_URL, DRIVE_URL, STATUS | 포맷 `ONLINE` / `OFFLINE` / `HYBRID`. 기수 상태 `DRAFT` / `OPEN` / `CLOSED` | 모집중·진행중은 저장하지 않고 날짜로 계산 |
+| 기수 | START_DATE, END_DATE, DISCORD_CHANNEL_URL, DRIVE_URL, STATUS | 기수 상태 `DRAFT` / `OPEN` / `CLOSED` | 모집중·진행중은 저장하지 않고 날짜로 계산 |
 | 반 | NAME, STARTS_AT, TIMEZONE | IANA | 참가·회차·출석의 소속 |
 | 회차 | SCHEDULED_AT, STARTS_AT, ENDS_AT | `STUDY_MEETING`. UTC datetime | 영어는 meeting. 회차 번호는 ERD 미확정. 프로토는 일정 문구에서 시각을 읽음 |
 | 내 출석 | STATUS | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT` | 휴가 = `EXCUSED`. 회차 생성 시 전원 `ABSENT`. 시작 전 화면은 결석을 그리지 않음 |
