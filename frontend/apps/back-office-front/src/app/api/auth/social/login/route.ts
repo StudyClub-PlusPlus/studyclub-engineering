@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { ACCESS_COOKIE } from '@/lib/auth';
+import { accessCookie } from '@/lib/cookies';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -45,16 +46,6 @@ export async function POST(req: NextRequest) {
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
   });
-  res.cookies.set(ACCESS_COOKIE, data.accessToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    // 화면이 API 를 직접 부르므로 쿠키가 API 도메인까지 닿아야 한다.
-    // 로컬은 host 가 같아(localhost) 불필요 — 배포에서만 `.studyclub-plusplus.com` 처럼 넣는다.
-    // 넓힐수록 이 쿠키가 통하는 서브도메인이 늘어난다. 필요한 만큼만 넣을 것.
-    ...(process.env.AUTH_COOKIE_DOMAIN ? { domain: process.env.AUTH_COOKIE_DOMAIN } : {}),
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7,
-  });
+  res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7));
   return res;
 }

@@ -1,6 +1,6 @@
-// 백엔드 API 클라이언트.
-// `fetchStudies` 는 서버(SSR · route handler)에서 호출한다 — 서버 내부 URL 을 우선 쓴다.
-// `searchStudies` 는 브라우저에서 호출한다 — 같은 출처의 `/api/studies` route handler 를 거친다.
+// 백엔드 API 클라이언트 — **서버 전용**.
+// `fetchStudies` 는 서버 컴포넌트가 첫 화면을 그릴 때 쓴다(컨테이너 내부 URL + ISR).
+// 브라우저 조회는 `features/studies/queries.ts` 가 백엔드를 직접 부른다.
 import { CATEGORY_DISPLAY, type Study, type StudyFormat, type StudyStatus } from '@studyclub/mock';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -16,7 +16,7 @@ export type StudySearch = {
   category?: string;
 };
 
-type ApiStudy = {
+export type ApiStudy = {
   studyId: number;
   slug: string;
   title: string;
@@ -38,7 +38,7 @@ type ApiStudy = {
   closingSoon: boolean;
 };
 
-type ApiPage<T> = {
+export type ApiPage<T> = {
   items: T[];
   total: number;
   offset: number;
@@ -100,11 +100,5 @@ export async function fetchStudies(search: StudySearch = {}): Promise<Study[]> {
   return page.items.map(toStudy);
 }
 
-/** 브라우저 전용 — 필터를 바꿀 때 호출한다. 조건은 route handler 가 그대로 백엔드에 넘긴다. */
-export async function searchStudies(search: StudySearch, signal?: AbortSignal): Promise<Study[]> {
-  const q = new URLSearchParams();
-  for (const [key, value] of Object.entries(search)) if (value) q.set(key, value);
-  const res = await fetch(`/api/studies?${q}`, { signal });
-  if (!res.ok) throw new Error(`GET /api/studies failed: ${res.status}`);
-  return res.json();
-}
+// 브라우저에서의 조회는 features/studies/queries.ts 가 한다 — 백엔드를 직접 부른다.
+// 중계(route handler)를 두지 않는다: 하는 일이 "그대로 넘기기"뿐이라 파일만 는다.
