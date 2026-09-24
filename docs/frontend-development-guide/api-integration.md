@@ -35,6 +35,18 @@ export async function proxyGet(path: string) {
 
 토큰을 `localStorage` 에 두면 BFF 없이 부를 수 있지만, **XSS 한 번에 토큰이 털린다.** 그 교환은 하지 않는다.
 
+**쿠키를 상위 도메인(`.studyclub-plusplus.com`)에 두고 백엔드가 쿠키를 받게 하는 길도 있다.**
+서브도메인끼리는 same-site 라 `SameSite=Lax` 가 막지 않으니 기술적으로는 된다(막는 건 CORS 쪽이다).
+쓰지 않는 이유는 **보안 반경**이다 — 쿠키 Domain 을 넓히고 CORS 를 여러 서브도메인에 열면,
+그중 하나만 뚫려도 그 쿠키로 백엔드를 부를 수 있다. 얻는 건 중계 레이어 하나를 없애는 것뿐이다.
+
+**서버 컴포넌트는 BFF 없이 백엔드를 직접 부를 수 있다**(서버에서 `cookies()` 를 읽어 Bearer 로).
+다만 그건 **첫 렌더에만** 해당한다 — 마운트 뒤의 필터 변경·재조회는 브라우저가 보내므로 BFF 가 필요하다.
+그래서 둘은 대체재가 아니라 역할이 다르다.
+
+`queryFn` 에서 **Server Action 을 부르지 않는다.** 공식 문서가 명시한다 — 클라이언트에서 호출된
+Server Action 은 **직렬로 실행**되어 병렬 조회를 전제하는 쿼리 동작과 충돌한다. Route Handler 를 쓴다.
+
 > 백오피스 화면이 부르는 백엔드 경로는 `/api/admin/...` 이다 — [엔드포인트 규약](api/endpoint-convention.md).
 
 ## 어디에 두나 — 기능 옆에
