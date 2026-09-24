@@ -1,8 +1,9 @@
 package com.studyclub.api.application;
 
-import com.studyclub.api.application.BackOfficeApplicationResponses.ApplicationQuestionResponse;
-import com.studyclub.api.application.BackOfficeApplicationResponses.StudyApplicationResponse;
-import com.studyclub.api.application.BackOfficeApplicationResponses.StudyApplicationsResponse;
+import com.studyclub.api.application.AdminApplicationResponses.ApplicationQuestionResponse;
+import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationResponse;
+import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationsResponse;
+import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.application.StudyApplicationRepository;
@@ -27,27 +28,27 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Transactional(readOnly = true)
-public class BackOfficeApplicationQueryService {
+public class AdminApplicationQueryService {
 
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyParticipantRepository studyParticipantRepository;
-    private final BackOfficeStudyAccessGuard backOfficeStudyAccessGuard;
+    private final StudyCaptainGuard studyCaptainGuard;
     private final ObjectMapper objectMapper;
 
-    public BackOfficeApplicationQueryService(
+    public AdminApplicationQueryService(
             StudyRepository studyRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyApplicationRepository studyApplicationRepository,
             StudyParticipantRepository studyParticipantRepository,
-            BackOfficeStudyAccessGuard backOfficeStudyAccessGuard,
+            StudyCaptainGuard studyCaptainGuard,
             ObjectMapper objectMapper) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyParticipantRepository = studyParticipantRepository;
-        this.backOfficeStudyAccessGuard = backOfficeStudyAccessGuard;
+        this.studyCaptainGuard = studyCaptainGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -57,7 +58,7 @@ public class BackOfficeApplicationQueryService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        backOfficeStudyAccessGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 결과를 볼 권한이 없습니다.");
+        studyCaptainGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 결과를 볼 권한이 없습니다.");
 
         StudyRecruitment recruitment = resolveRecruitment(studyId, requestedRecruitmentId);
         if (recruitment == null) {

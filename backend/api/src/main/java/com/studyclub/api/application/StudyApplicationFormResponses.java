@@ -4,9 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 
-public final class BackOfficeApplicationFormResponses {
+public final class StudyApplicationFormResponses {
 
-    private BackOfficeApplicationFormResponses() {}
+    private StudyApplicationFormResponses() {}
 
     @Schema(description = "백오피스 신청 폼 조회/저장 응답")
     public record StudyApplicationFormResponse(

@@ -26,7 +26,7 @@ import org.springframework.http.*;
         properties =
                 "spring.datasource.url=jdbc:h2:mem:notification-admin;MODE=MySQL;DB_CLOSE_DELAY=-1")
 @AutoConfigureTestRestTemplate
-class BackOfficeNotificationIntegrationTest {
+class AdminNotificationIntegrationTest {
     @Autowired TestRestTemplate testRestTemplate;
     @Autowired JwtService jwtService;
     @Autowired AccountRepository accountRepository;
@@ -78,7 +78,7 @@ class BackOfficeNotificationIntegrationTest {
     void adminListsTemplates() {
         var response =
                 testRestTemplate.exchange(
-                        "/back-office/notification-templates",
+                        "/api/admin/notification-templates",
                         HttpMethod.GET,
                         authenticated(SystemRole.ADMIN),
                         NotificationTemplateResponse[].class);
@@ -106,7 +106,7 @@ class BackOfficeNotificationIntegrationTest {
         var headers = authenticated(SystemRole.ADMIN);
         var response =
                 testRestTemplate.exchange(
-                        "/back-office/notifications?eventType=USER_REGISTERED&status=PENDING&offset=0&limit=1",
+                        "/api/admin/notifications?eventType=USER_REGISTERED&status=PENDING&offset=0&limit=1",
                         HttpMethod.GET,
                         headers,
                         NotificationListResponse.class);
@@ -123,7 +123,7 @@ class BackOfficeNotificationIntegrationTest {
                         });
         var secondPage =
                 testRestTemplate.exchange(
-                        "/back-office/notifications?status=PENDING&offset=1&limit=1",
+                        "/api/admin/notifications?status=PENDING&offset=1&limit=1",
                         HttpMethod.GET,
                         headers,
                         NotificationListResponse.class);
@@ -137,7 +137,7 @@ class BackOfficeNotificationIntegrationTest {
     @DisplayName("토큰이 없으면 두 조회 모두 401 — 필터 오류도 공통 에러 계약을 지킨다")
     void unauthenticatedIsRejected() {
         for (String path : new String[] {"notification-templates", "notifications"}) {
-            var response = testRestTemplate.getForEntity("/back-office/" + path, Map.class);
+            var response = testRestTemplate.getForEntity("/api/admin/" + path, Map.class);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
             assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
         }
@@ -149,7 +149,7 @@ class BackOfficeNotificationIntegrationTest {
     void rejectsUnknownNotificationFilter(String query) {
         var response =
                 testRestTemplate.exchange(
-                        "/back-office/notifications?" + query,
+                        "/api/admin/notifications?" + query,
                         HttpMethod.GET,
                         authenticated(SystemRole.ADMIN),
                         Map.class);
@@ -166,7 +166,7 @@ class BackOfficeNotificationIntegrationTest {
         for (String query : new String[] {"offset=-1", "limit=0"}) {
             var response =
                     testRestTemplate.exchange(
-                            "/back-office/notifications?" + query,
+                            "/api/admin/notifications?" + query,
                             HttpMethod.GET,
                             headers,
                             Map.class);

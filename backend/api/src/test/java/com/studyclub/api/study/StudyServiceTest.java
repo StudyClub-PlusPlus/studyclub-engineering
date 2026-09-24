@@ -2,6 +2,7 @@ package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -16,7 +17,6 @@ import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
-import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
@@ -26,7 +26,6 @@ import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +47,7 @@ class StudyServiceTest {
     @Mock StudyAttendanceRepository studyAttendanceRepository;
     @Mock StudyApplicationRepository studyApplicationRepository;
     @Mock StudyBookmarkRepository studyBookmarkRepository;
+    @Mock StudyCaptainGuard studyCaptainGuard;
 
     @InjectMocks StudyService studyService;
 
@@ -116,7 +116,7 @@ class StudyServiceTest {
     @Test
     @DisplayName("실패(수정) - 인증 없음 → UNAUTHORIZED")
     void updateUnauthorizedWhenAccountNotFound() {
-        when(accountRepository.findById(1L)).thenReturn(Optional.empty());
+        when(accountRepository.existsById(1L)).thenReturn(false);
 
         assertThatThrownBy(() -> studyService.update(1L, 10L, validUpdateRequest()))
                 .isInstanceOf(BusinessException.class)
@@ -127,14 +127,13 @@ class StudyServiceTest {
     }
 
     @Test
-    @DisplayName("실패(수정) - MEMBER 이고 navigator 아님 → FORBIDDEN")
+    @DisplayName("실패(수정) - 캡틴이 아니면 FORBIDDEN (판정은 StudyCaptainGuard 가 한다)")
     void updateForbiddenForMember() {
-        Account member = mockAccount(SystemRole.MEMBER);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(accountRepository.existsById(1L)).thenReturn(true);
         when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
-        when(studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        10L, 1L, List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER)))
-                .thenReturn(false);
+        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "스터디 수정 권한이 없습니다."))
+                .when(studyCaptainGuard)
+                .assertCaptain(1L, 10L, "스터디 수정 권한이 없습니다.");
 
         assertThatThrownBy(() -> studyService.update(1L, 10L, validUpdateRequest()))
                 .isInstanceOf(BusinessException.class)
@@ -147,8 +146,8 @@ class StudyServiceTest {
     @Test
     @DisplayName("실패(수정) - 존재하지 않는 studyId → NOT_FOUND")
     void updateStudyNotFound() {
-        // getSystemRole() is never reached — study lookup throws NOT_FOUND first
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(mock(Account.class)));
+        // 권한 판정까지 가지 않는다 — 스터디 조회가 먼저 NOT_FOUND 를 던진다
+        when(accountRepository.existsById(1L)).thenReturn(true);
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> studyService.update(1L, 10L, validUpdateRequest()))
@@ -162,8 +161,7 @@ class StudyServiceTest {
     @Test
     @DisplayName("실패(수정) - title 빈 문자열 → INVALID_INPUT")
     void updateBlankTitleThrowsInvalidInput() {
-        Account admin = mockAccount(SystemRole.ADMIN);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(accountRepository.existsById(1L)).thenReturn(true);
         when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
 
         StudyUpdateRequest request = new StudyUpdateRequest("  ", "소개", null, null, null, null);
@@ -179,8 +177,7 @@ class StudyServiceTest {
     @Test
     @DisplayName("실패(수정) - oneLineSummary 빈 문자열 → INVALID_INPUT")
     void updateBlankOneLineSummaryThrowsInvalidInput() {
-        Account admin = mockAccount(SystemRole.ADMIN);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(accountRepository.existsById(1L)).thenReturn(true);
         when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
 
         StudyUpdateRequest request = new StudyUpdateRequest("제목", "  ", null, null, null, null);
@@ -196,8 +193,7 @@ class StudyServiceTest {
     @Test
     @DisplayName("실패(수정) - recruitDeadline 과거 → INVALID_INPUT")
     void updatePastRecruitDeadlineThrowsInvalidInput() {
-        Account admin = mockAccount(SystemRole.ADMIN);
-        when(accountRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(accountRepository.existsById(1L)).thenReturn(true);
         when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
 
         StudyUpdateRequest request =

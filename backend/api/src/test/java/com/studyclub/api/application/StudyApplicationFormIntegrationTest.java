@@ -24,7 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
-class BackOfficeApplicationFormIntegrationTest {
+class StudyApplicationFormIntegrationTest {
 
     private static final Long LEADER_ID = 9601L;
     private static final Long MEMBER_ID = 9602L;
@@ -110,8 +110,8 @@ class BackOfficeApplicationFormIntegrationTest {
     void captainReplacesForm() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
-                        HttpMethod.PATCH,
+                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        HttpMethod.PUT,
                         authenticatedJsonRequest(LEADER_ID, validRequest()),
                         Map.class);
 
@@ -147,8 +147,8 @@ class BackOfficeApplicationFormIntegrationTest {
     void rejectsNonCaptain() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
-                        HttpMethod.PATCH,
+                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        HttpMethod.PUT,
                         authenticatedJsonRequest(MEMBER_ID, validRequest()),
                         Map.class);
 
@@ -161,8 +161,8 @@ class BackOfficeApplicationFormIntegrationTest {
     void rejectsLockedForm() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + LOCKED_STUDY_ID + "/application-form",
-                        HttpMethod.PATCH,
+                        "/api/admin/studies/" + LOCKED_STUDY_ID + "/application-form",
+                        HttpMethod.PUT,
                         authenticatedJsonRequest(LEADER_ID, validRequest()),
                         Map.class);
 
@@ -193,8 +193,8 @@ class BackOfficeApplicationFormIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
-                        HttpMethod.PATCH,
+                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        HttpMethod.PUT,
                         authenticatedJsonRequest(LEADER_ID, request),
                         Map.class);
 

@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "백오피스 · 알림", description = "알림 템플릿·발송 이력 조회 (읽기 전용)")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
-@RequestMapping("/back-office")
+@RequestMapping("/api/admin")
 @RequiredArgsConstructor
-public class BackOfficeNotificationController {
+public class AdminNotificationController {
 
     private final NotificationTemplateQueryService notificationTemplateQueryService;
     private final NotificationQueryService notificationQueryService;

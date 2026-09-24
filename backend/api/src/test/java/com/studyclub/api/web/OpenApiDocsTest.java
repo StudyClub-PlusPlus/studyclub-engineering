@@ -34,7 +34,7 @@ class OpenApiDocsTest {
                 .contains("/auth/social-login")
                 .contains("/api/studies")
                 .contains("/api/studies/{studyId}/application-form")
-                .contains("/api/studies/{studyId}/applications")
+                .contains("/api/admin/studies/{studyId}/applications")
                 .contains("/api/me/studies")
                 .contains("/api/me/studies/{studyId}")
                 // 전역 커스터마이저가 붙인 공통 에러 스키마
@@ -42,8 +42,9 @@ class OpenApiDocsTest {
 
         assertGetOperationRequiresBearerAuthentication("/api/me/studies");
         assertGetOperationRequiresBearerAuthentication("/api/me/studies/{studyId}");
-        assertGetOperationRequiresBearerAuthentication("/api/studies/{studyId}/applications");
-        assertPatchOperationRequiresBearerAuthentication("/api/studies/{studyId}/application-form");
+        assertGetOperationRequiresBearerAuthentication("/api/admin/studies/{studyId}/applications");
+        assertPutOperationRequiresBearerAuthentication(
+                "/api/admin/studies/{studyId}/application-form");
     }
 
     @Test
@@ -61,8 +62,8 @@ class OpenApiDocsTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void assertPatchOperationRequiresBearerAuthentication(String path) {
-        assertOperationRequiresBearerAuthentication(path, "patch");
+    private void assertPutOperationRequiresBearerAuthentication(String path) {
+        assertOperationRequiresBearerAuthentication(path, "put");
     }
 
     @SuppressWarnings("unchecked")

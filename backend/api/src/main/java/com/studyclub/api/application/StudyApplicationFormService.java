@@ -1,9 +1,10 @@
 package com.studyclub.api.application;
 
-import com.studyclub.api.application.BackOfficeApplicationFormRequests.ApplicationFormQuestionRequest;
-import com.studyclub.api.application.BackOfficeApplicationFormRequests.StudyApplicationFormRequest;
-import com.studyclub.api.application.BackOfficeApplicationFormResponses.ApplicationFormQuestionResponse;
-import com.studyclub.api.application.BackOfficeApplicationFormResponses.StudyApplicationFormResponse;
+import com.studyclub.api.application.StudyApplicationFormRequests.ApplicationFormQuestionRequest;
+import com.studyclub.api.application.StudyApplicationFormRequests.StudyApplicationFormRequest;
+import com.studyclub.api.application.StudyApplicationFormResponses.ApplicationFormQuestionResponse;
+import com.studyclub.api.application.StudyApplicationFormResponses.StudyApplicationFormResponse;
+import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.application.StudyApplicationRepository;
@@ -14,6 +15,8 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
@@ -22,7 +25,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
-public class BackOfficeApplicationFormService {
+public class StudyApplicationFormService {
+
+    private static final Logger log = LoggerFactory.getLogger(StudyApplicationFormService.class);
 
     private static final int TITLE_MAX = 200;
     private static final int DESCRIPTION_MAX = 5_000;
@@ -33,19 +38,19 @@ public class BackOfficeApplicationFormService {
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyApplicationRepository studyApplicationRepository;
-    private final BackOfficeStudyAccessGuard backOfficeStudyAccessGuard;
+    private final StudyCaptainGuard studyCaptainGuard;
     private final ObjectMapper objectMapper;
 
-    public BackOfficeApplicationFormService(
+    public StudyApplicationFormService(
             StudyRepository studyRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyApplicationRepository studyApplicationRepository,
-            BackOfficeStudyAccessGuard backOfficeStudyAccessGuard,
+            StudyCaptainGuard studyCaptainGuard,
             ObjectMapper objectMapper) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyApplicationRepository = studyApplicationRepository;
-        this.backOfficeStudyAccessGuard = backOfficeStudyAccessGuard;
+        this.studyCaptainGuard = studyCaptainGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -56,8 +61,7 @@ public class BackOfficeApplicationFormService {
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (!study.isPubliclyVisible()) {
-            backOfficeStudyAccessGuard.assertCaptain(
-                    accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
+            studyCaptainGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
         }
         return toResponse(study);
     }
@@ -69,30 +73,32 @@ public class BackOfficeApplicationFormService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        backOfficeStudyAccessGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
+        studyCaptainGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
         assertUnlocked(studyId);
 
         NormalizedApplicationForm form = normalize(request);
         try {
             study.replaceApplicationForm(objectMapper.writeValueAsString(form));
         } catch (JacksonException e) {
+            log.error("신청 폼 직렬화 실패 — studyId={}", studyId, e);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
         return toResponse(study);
     }
 
+    /** 신청서와 질문이 어긋나지 않도록 잠근다. 막힌 사유를 구분해 준다 — 캡틴이 무엇 때문인지 알아야 다음 행동이 정해진다. */
     private void assertUnlocked(Long studyId) {
-        if (studyApplicationRepository.existsByStudyId(studyId)
-                || studyRecruitmentRepository.existsByStudyIdAndStartAtLessThanEqual(
-                        studyId, Instant.now())) {
+        if (studyApplicationRepository.existsByStudyId(studyId)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "이미 들어온 신청서가 있어 신청 폼을 수정할 수 없습니다.");
+        }
+        if (studyRecruitmentRepository.existsByStudyIdAndStartAtLessThanEqual(
+                studyId, Instant.now())) {
             throw new BusinessException(ErrorCode.CONFLICT, "모집이 시작되어 신청 폼을 수정할 수 없습니다.");
         }
     }
 
+    /** 형식·길이는 요청 DTO 의 Bean Validation 이 막는다. 여기서는 <b>규칙</b>만 본다 — 공백 정리, 플랫폼 문항, id 중복, 타입별 조합. */
     private NormalizedApplicationForm normalize(StudyApplicationFormRequest request) {
-        if (request == null || request.questions() == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "questions는 필수입니다.");
-        }
         String title = normalizeOptionalSingleLine(request.title(), TITLE_MAX, "title");
         String description =
                 normalizeOptionalMultiline(request.description(), DESCRIPTION_MAX, "description");
@@ -108,9 +114,6 @@ public class BackOfficeApplicationFormService {
 
     private NormalizedApplicationQuestion normalizeQuestion(
             ApplicationFormQuestionRequest question, Set<String> ids) {
-        if (question == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "questions[]는 null일 수 없습니다.");
-        }
         String id = normalizeRequiredSingleLine(question.id(), TITLE_MAX, "questions[].id");
         if (DISCORD_QUESTION_ID.equals(id)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "플랫폼 기본 문항은 추가 질문에 넣을 수 없습니다.");
@@ -123,9 +126,6 @@ public class BackOfficeApplicationFormService {
         String label =
                 normalizeRequiredSingleLine(question.label(), TITLE_MAX, "questions[].label");
         Boolean required = question.required();
-        if (required == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "required는 필수입니다.");
-        }
         String placeholder =
                 type.supportsPlaceholder()
                         ? normalizeOptionalSingleLine(
@@ -251,10 +251,15 @@ public class BackOfficeApplicationFormService {
                             : List.of();
             return new StoredApplicationForm(title, description, questions);
         } catch (IllegalArgumentException | JacksonException e) {
+            log.error("저장된 신청 폼을 읽지 못했다 — 원문 길이={}", raw.length(), e);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
     }
 
+    /**
+     * 저장된 폼을 읽는다. JSON 을 <b>문자열로 한 번 더 감싼</b> 값이 들어 있는 경우를 함께 받아 준다 — 이 API 이전에 들어간 레거시 데이터 때문이다.
+     * 새로 저장하는 경로는 항상 객체로 넣으므로, 레거시가 정리되면 이 분기를 지운다.
+     */
     private JsonNode jsonNodeOf(String raw) throws JacksonException {
         JsonNode node = objectMapper.readTree(raw);
         if (node.isTextual()) {

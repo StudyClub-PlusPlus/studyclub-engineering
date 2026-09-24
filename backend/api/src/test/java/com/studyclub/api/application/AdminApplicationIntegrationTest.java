@@ -24,7 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
-class BackOfficeApplicationIntegrationTest {
+class AdminApplicationIntegrationTest {
 
     private static final Long ADMIN_ID = 9101L;
     private static final Long LEADER_ID = 9102L;
@@ -68,7 +68,7 @@ class BackOfficeApplicationIntegrationTest {
     void captainReadsApplications() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + STUDY_ID + "/applications",
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
                         authenticatedRequest(LEADER_ID),
                         Map.class);
@@ -98,7 +98,7 @@ class BackOfficeApplicationIntegrationTest {
     void adminReadsApplications() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + STUDY_ID + "/applications",
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
                         authenticatedRequest(ADMIN_ID),
                         Map.class);
@@ -112,7 +112,7 @@ class BackOfficeApplicationIntegrationTest {
     void rejectsUnauthenticatedRequest() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + STUDY_ID + "/applications",
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
                         HttpEntity.EMPTY,
                         Map.class);
@@ -126,7 +126,7 @@ class BackOfficeApplicationIntegrationTest {
     void rejectsNonCaptain() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + STUDY_ID + "/applications",
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
                         authenticatedRequest(MEMBER_ID),
                         Map.class);
@@ -140,7 +140,7 @@ class BackOfficeApplicationIntegrationTest {
     void rejectsRecruitmentOfAnotherStudy() {
         var response =
                 rest.exchange(
-                        "/api/studies/"
+                        "/api/admin/studies/"
                                 + STUDY_ID
                                 + "/applications?recruitmentId="
                                 + OTHER_RECRUITMENT_ID,
