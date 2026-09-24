@@ -143,7 +143,7 @@ public class StudyService {
                                         new BusinessException(
                                                 ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
 
-        studyCaptainGuard.assertCaptain(accountId, studyId, "스터디 수정 권한이 없습니다.");
+        studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "스터디 수정 권한이 없습니다.");
 
         if (request.title() != null && request.title().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "title: 제목을 입력하세요.");

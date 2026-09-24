@@ -58,7 +58,7 @@ public class AdminApplicationQueryService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        studyCaptainGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 결과를 볼 권한이 없습니다.");
+        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 결과를 볼 권한이 없습니다.");
 
         StudyRecruitment recruitment = resolveRecruitment(studyId, requestedRecruitmentId);
         if (recruitment == null) {

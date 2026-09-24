@@ -70,7 +70,7 @@ class AdminApplicationIntegrationTest {
                 rest.exchange(
                         "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
-                        authenticatedRequest(LEADER_ID),
+                        authenticatedRequest(ADMIN_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -94,17 +94,17 @@ class AdminApplicationIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 시스템 관리자는 스터디 내부 역할이 없어도 신청 결과를 조회한다")
-    void adminReadsApplications() {
+    @DisplayName("실패 - 네비게이터라도 백오피스 신청자 목록은 볼 수 없다 (POL-0001)")
+    void rejectsNavigator() {
         var response =
                 rest.exchange(
                         "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
-                        authenticatedRequest(ADMIN_ID),
+                        authenticatedRequest(LEADER_ID),
                         Map.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("respondentCount", 1);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
     }
 
     @Test
@@ -122,7 +122,7 @@ class AdminApplicationIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 캡틴이 아니면 신청 결과를 볼 수 없다")
+    @DisplayName("실패 - 아무 역할도 없으면 신청 결과를 볼 수 없다")
     void rejectsNonCaptain() {
         var response =
                 rest.exchange(
@@ -145,7 +145,7 @@ class AdminApplicationIntegrationTest {
                                 + "/applications?recruitmentId="
                                 + OTHER_RECRUITMENT_ID,
                         HttpMethod.GET,
-                        authenticatedRequest(LEADER_ID),
+                        authenticatedRequest(ADMIN_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

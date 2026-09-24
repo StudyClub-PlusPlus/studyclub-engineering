@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,11 +29,22 @@ public class AdminApplicationFormController {
         this.studyApplicationFormService = studyApplicationFormService;
     }
 
+    @Operation(summary = "스터디 신청 폼 조회 (백오피스)", description = "캡틴만 조회합니다. DRAFT·숨김 스터디도 볼 수 있습니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping
+    public StudyApplicationFormResponse getForm(
+            @Parameter(description = "신청 폼을 조회할 스터디 ID", example = "1") @PathVariable Long studyId,
+            Authentication authentication) {
+        return studyApplicationFormService.getFormForBackOffice(
+                studyId, authenticatedAccountId(authentication));
+    }
+
     @Operation(
-            summary = "스터디 신청 폼 저장",
+            summary = "스터디 신청 폼 저장 (백오피스)",
             description =
                     """
                     캡틴이 만든 추가 질문을 통째로 교체합니다 (부분 수정이 아니라 전체 교체라 PUT).
+                    백오피스는 캡틴만 들어옵니다 — 네비게이터는 사용자 사이트 경로를 씁니다 (POL-0001).
                     이미 신청서가 있거나 모집 시작 시간이 지난 모집 회차가 있으면 CONFLICT입니다.
                     질문 설명과 폼 설명은 마크다운 원문으로 저장하며 서버는 HTML로 변환하지 않습니다.""")
     @SecurityRequirement(name = "bearerAuth")
@@ -41,7 +53,7 @@ public class AdminApplicationFormController {
             @Parameter(description = "신청 폼을 저장할 스터디 ID", example = "1") @PathVariable Long studyId,
             @Valid @RequestBody StudyApplicationFormRequest request,
             Authentication authentication) {
-        return studyApplicationFormService.replaceForm(
+        return studyApplicationFormService.replaceFormFromBackOffice(
                 studyId, authenticatedAccountId(authentication), request);
     }
 

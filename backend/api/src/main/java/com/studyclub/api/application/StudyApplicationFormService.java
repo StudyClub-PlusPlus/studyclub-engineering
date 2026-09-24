@@ -54,6 +54,14 @@ public class StudyApplicationFormService {
         this.objectMapper = objectMapper;
     }
 
+    /** 백오피스 조회 — 캡틴만. 판정만 다르고 본문은 사용자 사이트 조회와 같다. */
+    @Transactional(readOnly = true)
+    public StudyApplicationFormResponse getFormForBackOffice(Long studyId, Long accountId) {
+        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 폼을 볼 권한이 없습니다.");
+        return getForm(studyId, accountId);
+    }
+
+    /** 사용자 사이트 조회 — 공개 스터디면 누구나, 비공개면 캡틴·네비게이터만. */
     @Transactional(readOnly = true)
     public StudyApplicationFormResponse getForm(Long studyId, Long accountId) {
         Study study =
@@ -61,19 +69,35 @@ public class StudyApplicationFormService {
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (!study.isPubliclyVisible()) {
-            studyCaptainGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
+            studyCaptainGuard.assertCaptainOrNavigator(
+                    accountId, studyId, "이 스터디의 신청 폼을 볼 권한이 없습니다.");
         }
         return toResponse(study);
     }
 
+    /** 사용자 사이트에서 저장한다 — 캡틴이거나 그 스터디의 네비게이터 (POL-0001). */
     @Transactional
-    public StudyApplicationFormResponse replaceForm(
+    public StudyApplicationFormResponse replaceFormFromSite(
             Long studyId, Long accountId, StudyApplicationFormRequest request) {
+        studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
+        return replace(studyId, request);
+    }
+
+    /** 백오피스에서 저장한다 — 캡틴만. 네비게이터는 백오피스에 들어오지 못한다 (POL-0001). */
+    @Transactional
+    public StudyApplicationFormResponse replaceFormFromBackOffice(
+            Long studyId, Long accountId, StudyApplicationFormRequest request) {
+        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 폼을 고칠 권한이 없습니다.");
+        return replace(studyId, request);
+    }
+
+    /** 저장 자체는 어느 화면에서 왔든 같다 — 권한만 위에서 갈린다. */
+    private StudyApplicationFormResponse replace(
+            Long studyId, StudyApplicationFormRequest request) {
         Study study =
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        studyCaptainGuard.assertCaptain(accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
         assertUnlocked(studyId);
 
         NormalizedApplicationForm form = normalize(request);

@@ -26,6 +26,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @AutoConfigureTestRestTemplate
 class StudyApplicationFormIntegrationTest {
 
+    private static final Long CAPTAIN_ID = 9600L;
     private static final Long LEADER_ID = 9601L;
     private static final Long MEMBER_ID = 9602L;
     private static final Long APPLICANT_ID = 9603L;
@@ -49,6 +50,7 @@ class StudyApplicationFormIntegrationTest {
     void seed() {
         Timestamp now = Timestamp.from(Instant.now());
         cleanSeedRows();
+        insertAccount(CAPTAIN_ID, "application-form-captain@example.com", SystemRole.ADMIN, now);
         insertAccount(LEADER_ID, "application-form-leader@example.com", SystemRole.MEMBER, now);
         insertAccount(MEMBER_ID, "application-form-member@example.com", SystemRole.MEMBER, now);
         insertAccount(
@@ -106,11 +108,11 @@ class StudyApplicationFormIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 캡틴은 신청 폼을 저장하고 정규화된 폼을 다시 받는다")
-    void captainReplacesForm() {
+    @DisplayName("성공 - 네비게이터는 사용자 사이트에서 신청 폼을 저장하고 정규화된 폼을 다시 받는다")
+    void navigatorReplacesFormFromSite() {
         var response =
                 rest.exchange(
-                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
                         HttpMethod.PUT,
                         authenticatedJsonRequest(LEADER_ID, validRequest()),
                         Map.class);
@@ -143,13 +145,41 @@ class StudyApplicationFormIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 캡틴이 아니면 신청 폼을 저장할 수 없다")
-    void rejectsNonCaptain() {
+    @DisplayName("실패 - 그 스터디의 네비게이터도 캡틴도 아니면 저장할 수 없다")
+    void rejectsOutsider() {
+        var response =
+                rest.exchange(
+                        "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        HttpMethod.PUT,
+                        authenticatedJsonRequest(MEMBER_ID, validRequest()),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
+    }
+
+    @Test
+    @DisplayName("성공 - 캡틴은 백오피스에서 신청 폼을 저장한다")
+    void captainReplacesFormFromBackOffice() {
         var response =
                 rest.exchange(
                         "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
                         HttpMethod.PUT,
-                        authenticatedJsonRequest(MEMBER_ID, validRequest()),
+                        authenticatedJsonRequest(CAPTAIN_ID, validRequest()),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("title", "새 신청 폼");
+    }
+
+    @Test
+    @DisplayName("실패 - 네비게이터는 백오피스로 신청 폼을 저장할 수 없다 (POL-0001)")
+    void navigatorCannotUseBackOffice() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        HttpMethod.PUT,
+                        authenticatedJsonRequest(LEADER_ID, validRequest()),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -161,7 +191,7 @@ class StudyApplicationFormIntegrationTest {
     void rejectsLockedForm() {
         var response =
                 rest.exchange(
-                        "/api/admin/studies/" + LOCKED_STUDY_ID + "/application-form",
+                        "/api/studies/" + LOCKED_STUDY_ID + "/application-form",
                         HttpMethod.PUT,
                         authenticatedJsonRequest(LEADER_ID, validRequest()),
                         Map.class);
@@ -193,7 +223,7 @@ class StudyApplicationFormIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        "/api/studies/" + EDITABLE_STUDY_ID + "/application-form",
                         HttpMethod.PUT,
                         authenticatedJsonRequest(LEADER_ID, request),
                         Map.class);

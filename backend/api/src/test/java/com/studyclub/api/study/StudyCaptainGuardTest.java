@@ -23,7 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** 캡틴 판정은 여러 서비스가 함께 쓰므로 규칙을 여기서 검증한다. */
+/** 권한 규칙(POL-0001)을 여기서 검증한다 — 캡틴은 사이트 전체, 네비게이터는 맡은 스터디까지. 백오피스({@code /api/admin})는 캡틴만 통과한다. */
 @ExtendWith(MockitoExtension.class)
 class StudyCaptainGuardTest {
 
@@ -33,36 +33,38 @@ class StudyCaptainGuardTest {
     @InjectMocks StudyCaptainGuard guard;
 
     @Test
-    @DisplayName("성공 - ADMIN 은 그 스터디의 멤버가 아니어도 통과한다")
-    void adminPasses() {
+    @DisplayName("성공 - 캡틴(ADMIN)은 그 스터디의 멤버가 아니어도 통과한다")
+    void captainPassesSitePath() {
         Account admin = account(SystemRole.ADMIN);
         when(accountRepository.findById(1L)).thenReturn(Optional.of(admin));
 
-        assertThatCode(() -> guard.assertCaptain(1L, 10L, "권한이 없습니다.")).doesNotThrowAnyException();
+        assertThatCode(() -> guard.assertCaptainOrNavigator(1L, 10L, "권한이 없습니다."))
+                .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("성공 - 그 스터디의 LEADER·CO_LEADER 면 통과한다")
-    void captainPasses() {
+    @DisplayName("성공 - 그 스터디의 네비게이터(LEADER)면 사용자 사이트에서 통과한다")
+    void navigatorPassesSitePath() {
         Account member = account(SystemRole.MEMBER);
         when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
         when(studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
                         anyLong(), anyLong(), any(Collection.class)))
                 .thenReturn(true);
 
-        assertThatCode(() -> guard.assertCaptain(1L, 10L, "권한이 없습니다.")).doesNotThrowAnyException();
+        assertThatCode(() -> guard.assertCaptainOrNavigator(1L, 10L, "권한이 없습니다."))
+                .doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("실패 - 캡틴이 아니면 FORBIDDEN 과 전달받은 메시지")
-    void notCaptainIsForbidden() {
+    @DisplayName("실패 - 캡틴도 네비게이터도 아니면 FORBIDDEN 과 전달받은 메시지")
+    void neitherIsForbidden() {
         Account member = account(SystemRole.MEMBER);
         when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
         when(studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
                         anyLong(), anyLong(), any(Collection.class)))
                 .thenReturn(false);
 
-        assertThatThrownBy(() -> guard.assertCaptain(1L, 10L, "스터디 수정 권한이 없습니다."))
+        assertThatThrownBy(() -> guard.assertCaptainOrNavigator(1L, 10L, "스터디 수정 권한이 없습니다."))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e -> {
@@ -75,7 +77,7 @@ class StudyCaptainGuardTest {
     @Test
     @DisplayName("실패 - 로그인하지 않았으면 UNAUTHORIZED")
     void anonymousIsUnauthorized() {
-        assertThatThrownBy(() -> guard.assertCaptain(null, 10L, "권한이 없습니다."))
+        assertThatThrownBy(() -> guard.assertCaptainOrNavigator(null, 10L, "권한이 없습니다."))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -88,12 +90,35 @@ class StudyCaptainGuardTest {
     void unknownAccountIsUnauthorized() {
         when(accountRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> guard.assertCaptain(1L, 10L, "권한이 없습니다."))
+        assertThatThrownBy(() -> guard.assertCaptainOrNavigator(1L, 10L, "권한이 없습니다."))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
                                 assertThat(((BusinessException) e).errorCode())
                                         .isEqualTo(ErrorCode.UNAUTHORIZED));
+    }
+
+    @Test
+    @DisplayName("성공 - 백오피스는 캡틴만 통과한다")
+    void captainPassesBackOfficePath() {
+        Account admin = account(SystemRole.ADMIN);
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(admin));
+
+        assertThatCode(() -> guard.assertCaptain(1L, "권한이 없습니다.")).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("실패 - 네비게이터는 백오피스에 들어오지 못한다 (POL-0001)")
+    void navigatorCannotEnterBackOffice() {
+        Account member = account(SystemRole.MEMBER);
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> guard.assertCaptain(1L, "백오피스 권한이 없습니다."))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.FORBIDDEN));
     }
 
     private Account account(SystemRole role) {

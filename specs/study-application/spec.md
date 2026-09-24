@@ -25,7 +25,9 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | Method | Path | 설명 | 인증 | 스토리 | 상태 |
 |--------|------|------|------|--------|------|
 | GET | /api/studies/{studyId}/application-form | 신청 폼 조회 | 공개 (OPEN 기수) | 캡틴 설계 · 크루 제출 | 스펙작성중 |
-| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
+| PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | O (그 스터디 네비게이터 또는 캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
+| GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
+| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
 | POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 스펙작성중 |
@@ -230,10 +232,17 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 
 ### 기본 정보
 
-- **Method**: PUT
-- **Path**: `/api/admin/studies/{studyId}/application-form`
-- **인증**: 필요 — 캡틴
+**같은 일을 두 관객이 한다 — 경로가 둘이다.** 본문 처리는 같고 권한 판정만 다르다.
+
+| Method | Path | 누가 | 판정 |
+|---|---|---|---|
+| PUT | `/api/studies/{studyId}/application-form` | 그 스터디 **네비게이터** 또는 캡틴 | `assertCaptainOrNavigator` |
+| PUT | `/api/admin/studies/{studyId}/application-form` | **캡틴만** (백오피스) | `assertCaptain` |
+| GET | `/api/admin/studies/{studyId}/application-form` | **캡틴만** (백오피스 편집 화면) | `assertCaptain` |
+
 - **설명**: 기수 신청 폼을 통째로 교체한다. 질문 설명은 여러 줄·마크다운 원문을 그대로 저장한다.
+- 백오피스는 캡틴만 들어간다(POL-0001). 네비게이터도 자기 스터디 폼은 고쳐야 하므로 **사용자 사이트 경로**로 연다.
+  결정 기록: [`share/2026-09-24-admin-api-path.md`](../../share/2026-09-24-admin-api-path.md)
 
 ### 정책
 
@@ -273,7 +282,7 @@ GET 신청 폼 조회와 같은 shape.
 ### 기본 정보
 
 - **Method**: POST
-- **Path**: `/api/admin/studies/{studyId}/applications`
+- **Path**: `/api/studies/{studyId}/applications`
 - **인증**: 필요 — 로그인 회원. `ACCOUNT.DISCORD_ID` 가 있어야 한다 (화면 게이트만으로 끝내지 않는다)
 - **설명**: 열려 있는 모집 회차에 신청 1건을 만든다. 별명이 바뀌었으면 계정도 갱신한다. 같은 트랜잭션에서 기본 분반 명부에 편입한다.
 

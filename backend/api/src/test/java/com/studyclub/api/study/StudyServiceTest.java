@@ -133,7 +133,7 @@ class StudyServiceTest {
         when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
         doThrow(new BusinessException(ErrorCode.FORBIDDEN, "스터디 수정 권한이 없습니다."))
                 .when(studyCaptainGuard)
-                .assertCaptain(1L, 10L, "스터디 수정 권한이 없습니다.");
+                .assertCaptainOrNavigator(1L, 10L, "스터디 수정 권한이 없습니다.");
 
         assertThatThrownBy(() -> studyService.update(1L, 10L, validUpdateRequest()))
                 .isInstanceOf(BusinessException.class)
