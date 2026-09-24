@@ -25,6 +25,7 @@ jobs:
   docker:
     needs: test
     runs-on: ubuntu-latest
+    environment: production
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.BUILD_SLACK_WEBHOOK_URL }}
     steps:

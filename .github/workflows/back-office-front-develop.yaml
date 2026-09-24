@@ -27,6 +27,7 @@ jobs:
   docker:
     needs: lint
     runs-on: ubuntu-latest
+    environment: stage
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.BUILD_SLACK_WEBHOOK_URL }}
     steps:
@@ -52,16 +53,16 @@ jobs:
           build-args: |
             NODE_ENV=production
             COMMIT_HASH=${{ github.sha }}
-            NEXT_PUBLIC_API_BASE_URL=${{ secrets.STAGE_NEXT_PUBLIC_API_BASE_URL }}
+            NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-            NEXT_PUBLIC_OAUTH_REDIRECT_URI=${{ secrets.STAGE_NEXT_PUBLIC_OAUTH_REDIRECT_URI }}
+            NEXT_PUBLIC_OAUTH_REDIRECT_URI=${{ secrets.NEXT_PUBLIC_OAUTH_REDIRECT_URI }}
       - name: Deployment
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.STAGE_REMOTE_SSH_IP }}
-          username: ${{ secrets.STAGE_REMOTE_SSH_ID }}
-          password: ${{ secrets.STAGE_REMOTE_SSH_PASSWORD }}
-          port: ${{ secrets.STAGE_REMOTE_SSH_PORT }}
+          host: ${{ secrets.REMOTE_SSH_IP }}
+          username: ${{ secrets.REMOTE_SSH_ID }}
+          password: ${{ secrets.REMOTE_SSH_PASSWORD }}
+          port: ${{ secrets.REMOTE_SSH_PORT }}
           script: |
             source ~/.bashrc
             bash ./deployment/studyclub/back-office-front-stage.sh
