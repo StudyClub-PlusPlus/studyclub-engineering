@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -128,20 +127,7 @@ function LoginForm({
                   ? 'Google 계정으로 로그인'
                   : 'Continue with Google'}
             </Button>
-            <p className='mt-4 text-center text-xs leading-relaxed text-fg-muted'>
-              {ko
-                ? '처음 로그인하면 기본 정보와 약관 동의를 확인한 뒤 가입이 완료돼요.'
-                : 'New here? After signing in, set up your profile and review the terms to join.'}
-            </p>
           </div>
-        </div>
-        <div className='mt-6 text-center' data-anno='4'>
-          <Link
-            href={`/proto/core/${locale}/studies`}
-            className='text-sm text-fg-muted underline underline-offset-4 hover:text-fg'
-          >
-            {ko ? '스터디 먼저 둘러보기' : 'Explore studies first'}
-          </Link>
         </div>
       </div>
     </div>
