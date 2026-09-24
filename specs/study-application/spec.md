@@ -25,10 +25,10 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | Method | Path | 설명 | 인증 | 스토리 | 상태 |
 |--------|------|------|------|--------|------|
 | GET | /api/studies/{studyId}/application-form | 신청 폼 조회 | 공개 (OPEN 기수) | 캡틴 설계 · 크루 제출 | 스펙작성중 |
-| PATCH | /api/studies/{studyId}/application-form | 신청 폼 저장 | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
+| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
 | POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
-| GET | /api/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 스펙작성중 |
+| GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 스펙작성중 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -230,8 +230,8 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 
 ### 기본 정보
 
-- **Method**: PATCH
-- **Path**: `/api/studies/{studyId}/application-form`
+- **Method**: PUT
+- **Path**: `/api/admin/studies/{studyId}/application-form`
 - **인증**: 필요 — 캡틴
 - **설명**: 기수 신청 폼을 통째로 교체한다. 질문 설명은 여러 줄·마크다운 원문을 그대로 저장한다.
 
@@ -273,7 +273,7 @@ GET 신청 폼 조회와 같은 shape.
 ### 기본 정보
 
 - **Method**: POST
-- **Path**: `/api/studies/{studyId}/applications`
+- **Path**: `/api/admin/studies/{studyId}/applications`
 - **인증**: 필요 — 로그인 회원. `ACCOUNT.DISCORD_ID` 가 있어야 한다 (화면 게이트만으로 끝내지 않는다)
 - **설명**: 열려 있는 모집 회차에 신청 1건을 만든다. 별명이 바뀌었으면 계정도 갱신한다. 같은 트랜잭션에서 기본 분반 명부에 편입한다.
 
@@ -386,7 +386,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 ### 기본 정보
 
 - **Method**: GET
-- **Path**: `/api/studies/{studyId}/applications`
+- **Path**: `/api/admin/studies/{studyId}/applications`
 - **인증**: 필요 — 캡틴
 - **설명**: 이 기수 모집 회차의 신청 행을 반환한다. **집계 API 는 없다.** 질문별 막대·응답자별 표는 클라이언트가 이 목록으로 계산한다.
 

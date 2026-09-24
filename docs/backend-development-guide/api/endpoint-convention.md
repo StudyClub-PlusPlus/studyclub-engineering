@@ -4,6 +4,7 @@
 
 - [Base URL](#base-url)
 - [URL 구조](#url-구조)
+- [관객으로 경로를 가른다 — /api/admin](#관객으로-경로를-가른다--apiadmin)
 - [HTTP Method 사용](#http-method-사용)
 - [응답 포맷](#응답-포맷)
 - [인증](#인증)
@@ -28,6 +29,24 @@
 - 복수형 명사 사용: `/studies`, `/users`, `/events`
 - kebab-case: `/study-groups` (camelCase 금지)
 - 동사 금지: `/getStudies` (X) → `GET /studies` (O)
+
+## 관객으로 경로를 가른다 — `/api/admin`
+
+**누가 쓰는 API 인지로 경로를 먼저 가른다.** 같은 리소스라도 크루가 보는 것과 운영자가 고치는 것은 다른 화면, 다른 권한, 다른 수명을 갖는다.
+
+| 접두 | 관객 | 인증 | 예 |
+|---|---|---|---|
+| `/api/...` | 크루(사용자)·비로그인 | 공개이거나 본인 것 | `GET /api/studies` · `GET /api/me/studies` |
+| `/api/admin/...` | 운영자·캡틴 (백오피스 화면) | **항상 인증**. 권한은 `StudyCaptainGuard` 등이 본다 | `PUT /api/admin/studies/{id}/application-form` |
+
+규칙:
+
+1. **백오피스 화면이 부르는 API 는 `/api/admin` 아래 둔다.** 리소스 경로는 그대로 이어 쓴다 — `/api/admin/studies/{studyId}/applications`
+2. **컨트롤러도 관객으로 나눈다.** 한 컨트롤러에 공개 GET 과 운영 PUT 을 같이 두지 않는다. 태그·문서·권한이 섞여 읽는 사람이 무엇이 공개인지 모른다
+3. **`/api/admin` 은 기본이 인증**이다 (`SecurityConfig` 가 `anyRequest().authenticated()`). 공개로 열 일이 생기면 그건 `/api` 쪽에 따로 만든다 — admin 경로에 `permitAll` 을 뚫지 않는다
+4. 접두가 없는 옛 경로(`/auth`, `/accounts`, `/back-office`)는 **새로 만들지 않는다.** 손대는 김에 `/api/...` 로 옮긴다
+
+**왜** — 권한은 잊어버리기 쉽다. 경로로 갈라 두면 "admin 아래면 인증"이라는 한 문장이 방어선이 되고, 애너테이션을 깜빡해도 새지 않는다. 반대로 공개 API 가 운영용 컨트롤러에 섞여 있으면, 나중에 그 컨트롤러 전체에 권한을 거는 순간 사용자 화면이 조용히 깨진다.
 
 ## HTTP Method 사용
 
