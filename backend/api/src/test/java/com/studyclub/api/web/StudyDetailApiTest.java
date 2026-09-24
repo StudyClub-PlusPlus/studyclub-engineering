@@ -53,7 +53,7 @@ class StudyDetailApiTest {
                                 .slug("algo-study")
                                 .title("알고리즘 스터디")
                                 .oneLineSummary("알고리즘 문제 풀이 스터디")
-                                .category(StudyCategory.BACKEND)
+                                .category(StudyCategory.SOFTWARE)
                                 .studyKind(StudyKind.STUDY)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
@@ -76,7 +76,7 @@ class StudyDetailApiTest {
         var body = response.getBody();
         assertThat(body).containsEntry("title", "알고리즘 스터디");
         assertThat(body).containsEntry("slug", "algo-study");
-        assertThat(body).containsEntry("category", "BACKEND");
+        assertThat(body).containsEntry("category", "SOFTWARE");
         assertThat(body).containsEntry("status", "OPEN");
         assertThat(body).doesNotContainKey("success");
     }

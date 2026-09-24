@@ -19,7 +19,7 @@
 | SLUG | VARCHAR(100) | N | 저장용 식별자. UNIQUE. 사용자 사이트 URL 키는 ID |
 | ONE_LINE_SUMMARY | VARCHAR(255) | N | 한 줄 소개 |
 | DESCRIPTION | TEXT | Y | 상세 소개 |
-| CATEGORY | VARCHAR(50) | N | 분야 (`AI`, `BACKEND`, `PAPER` …) |
+| CATEGORY | VARCHAR(50) | N | 분야 11종 (`AI_ML`, `ALGORITHM`, `SOFTWARE` …). 정본은 `StudyCategory` enum |
 | STUDY_KIND | VARCHAR(20) | N | 아래 |
 | THUMBNAIL_URL | VARCHAR(2048) | Y | |
 | IS_HIDDEN | BOOLEAN | N | 목록 노출 제어. 기본 FALSE |

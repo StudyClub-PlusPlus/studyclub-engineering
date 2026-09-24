@@ -100,7 +100,7 @@ class BackOfficeApplicationFormIntegrationTest {
         assertThat(response.getBody()).containsEntry("studyId", PUBLIC_STUDY_ID.intValue());
         assertThat(response.getBody()).containsEntry("title", "저장된 신청 제목");
         assertThat(response.getBody()).containsEntry("description", "저장된 설명");
-        assertThat(response.getBody()).containsEntry("category", "BACKEND");
+        assertThat(response.getBody()).containsEntry("category", "SOFTWARE");
         assertThat(response.getBody()).containsKey("recruitDeadline");
         assertThat(response.getBody().get("questions")).asList().hasSize(1);
     }
@@ -294,7 +294,7 @@ class BackOfficeApplicationFormIntegrationTest {
                 slug,
                 "신청 폼 한 줄 소개",
                 "신청 폼 상세 소개",
-                "BACKEND",
+                "SOFTWARE",
                 "STUDY",
                 hidden,
                 "ONLINE",

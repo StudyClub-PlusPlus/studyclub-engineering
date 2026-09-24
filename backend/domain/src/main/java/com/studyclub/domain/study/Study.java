@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.regex.Pattern;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -99,6 +100,8 @@ public class Study extends BaseEntity {
     private Instant publishAt;
 
     private static final long CLOSING_SOON_DAYS = 3;
+    private static final Pattern PST_PATTERN = Pattern.compile("PST|PDT", Pattern.CASE_INSENSITIVE);
+    private static final Pattern KST_PATTERN = Pattern.compile("KST", Pattern.CASE_INSENSITIVE);
 
     public void update(
             String title,
@@ -142,6 +145,46 @@ public class Study extends BaseEntity {
         return (deadlinePassed || capacityReached)
                 ? RecruitStatus.RECRUIT_CLOSED
                 : RecruitStatus.RECRUITING;
+    }
+
+    /**
+     * 목록 탭 단계를 계산한다. {@code DRAFT} 는 공개 목록에 나오지 않아 {@code null} 이다.
+     *
+     * <p>판정 순서: 종료(운영자 종료 또는 {@code END_AT} 경과) → 진행 중({@code START_AT} 경과) → 모집 중(모집 상태가 {@code
+     * RECRUITING}) → 나머지는 종료. 시작 전인데 모집이 마감된 스터디는 신청할 수 없으니 종료로 본다.
+     */
+    public StudyPhase phase(long applicantCount, Instant recruitDeadlineAt) {
+        if (status == StudyStatus.DRAFT) {
+            return null;
+        }
+        Instant now = Instant.now();
+        if (status == StudyStatus.CLOSED || (endAt != null && !now.isBefore(endAt))) {
+            return StudyPhase.CLOSED;
+        }
+        if (startAt != null && !now.isBefore(startAt)) {
+            return StudyPhase.ONGOING;
+        }
+        return recruitStatus(applicantCount, recruitDeadlineAt) == RecruitStatus.RECRUITING
+                ? StudyPhase.RECRUITING
+                : StudyPhase.CLOSED;
+    }
+
+    /**
+     * 진행 시간대를 일정 문구({@code SCHEDULE})의 표기로 판정한다. PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시
+     * 모집이다.
+     */
+    // ponytail: 자유 텍스트 판정 — 표기가 흔들리면 틀린다. 운영에서 문제가 되면 TIMEZONE 컬럼으로 올린다
+    public StudyTimezone timezone() {
+        if (schedule == null) {
+            return StudyTimezone.BOTH;
+        }
+        if (PST_PATTERN.matcher(schedule).find()) {
+            return StudyTimezone.PST;
+        }
+        if (KST_PATTERN.matcher(schedule).find()) {
+            return StudyTimezone.KST;
+        }
+        return StudyTimezone.BOTH;
     }
 
     public boolean isPubliclyVisible() {

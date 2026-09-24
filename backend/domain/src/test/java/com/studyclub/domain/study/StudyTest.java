@@ -127,6 +127,77 @@ class StudyTest {
         assertThat(study.recruitStatus(0, Instant.now().plus(7, ChronoUnit.DAYS))).isNull();
     }
 
+    @Test
+    @DisplayName("단계: DRAFT → 없음 (공개 목록 대상이 아니다)")
+    void phase_draftIsNull() {
+        var study = getStudy(StudyStatus.DRAFT);
+        assertThat(study.phase(0, null)).isNull();
+    }
+
+    @Test
+    @DisplayName("단계: 시작 전 + 모집 중 → RECRUITING")
+    void phase_recruiting() {
+        var study = phased(StudyStatus.OPEN, days(10), null);
+        assertThat(study.phase(0, days(3))).isEqualTo(StudyPhase.RECRUITING);
+    }
+
+    @Test
+    @DisplayName("단계: 시작 전인데 모집 마감 → CLOSED (신청할 수 없다)")
+    void phase_recruitClosedBeforeStart() {
+        var study = phased(StudyStatus.OPEN, days(10), null);
+        assertThat(study.phase(0, days(-1))).isEqualTo(StudyPhase.CLOSED);
+    }
+
+    @Test
+    @DisplayName("단계: 시작 후 종료 전 → ONGOING (모집 마감 여부와 무관)")
+    void phase_ongoing() {
+        var study = phased(StudyStatus.OPEN, days(-1), days(30));
+        assertThat(study.phase(0, days(-5))).isEqualTo(StudyPhase.ONGOING);
+    }
+
+    @Test
+    @DisplayName("단계: 종료 시각 경과 → CLOSED (운영자가 아직 닫지 않아도)")
+    void phase_endedByDate() {
+        var study = phased(StudyStatus.OPEN, days(-30), days(-1));
+        assertThat(study.phase(0, null)).isEqualTo(StudyPhase.CLOSED);
+    }
+
+    @Test
+    @DisplayName("단계: 운영자 종료 → CLOSED")
+    void phase_closedByOperator() {
+        var study = phased(StudyStatus.CLOSED, days(10), null);
+        assertThat(study.phase(0, days(3))).isEqualTo(StudyPhase.CLOSED);
+    }
+
+    @Test
+    @DisplayName("시간대: PDT·PST → PST, KST → KST, 표기 없음 → BOTH")
+    void timezone_fromSchedule() {
+        assertThat(scheduled("Thu 6:00 PM PDT").timezone()).isEqualTo(StudyTimezone.PST);
+        assertThat(scheduled("매주 목 20:00 pst").timezone()).isEqualTo(StudyTimezone.PST);
+        assertThat(scheduled("매주 화 21:00 KST").timezone()).isEqualTo(StudyTimezone.KST);
+        assertThat(scheduled("매주 화 21:00").timezone()).isEqualTo(StudyTimezone.BOTH);
+        assertThat(scheduled(null).timezone()).isEqualTo(StudyTimezone.BOTH);
+    }
+
+    private static Instant days(long days) {
+        return Instant.now().plus(days, ChronoUnit.DAYS);
+    }
+
+    private Study phased(StudyStatus status, Instant startAt, Instant endAt) {
+        return Study.builder()
+                .programId(1L)
+                .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                .status(status)
+                .capacity(30)
+                .startAt(startAt)
+                .endAt(endAt)
+                .build();
+    }
+
+    private Study scheduled(String schedule) {
+        return Study.builder().programId(1L).status(StudyStatus.OPEN).schedule(schedule).build();
+    }
+
     private Study getStudy(StudyStatus status) {
         return getStudy(status, 30);
     }

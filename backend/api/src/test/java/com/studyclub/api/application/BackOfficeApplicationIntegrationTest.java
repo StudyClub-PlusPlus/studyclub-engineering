@@ -199,7 +199,7 @@ class BackOfficeApplicationIntegrationTest {
                 "신청 조회 스터디",
                 slug,
                 "한 줄 소개",
-                "BACKEND",
+                "SOFTWARE",
                 "STUDY",
                 false,
                 "ONLINE",
