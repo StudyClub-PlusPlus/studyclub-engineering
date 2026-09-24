@@ -18,8 +18,8 @@ export const studyKeys = {
 
 /**
  * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 백오피스 전용 목록 API 는
- * 다른 담당자가 개발 예정이라 사용자 목록 API 를 중계해 쓴다 (`app/api/studies/route.ts`).
- * 그래서 **공개된 스터디만** 온다.
+ * 다른 담당자가 개발 예정이라 **사용자 사이트용 목록 API** 를 그대로 쓴다.
+ * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외). 전용 API 가 생기면 이 경로만 바꾼다.
  */
 function fetchStudies(filter: StudyFilter): Promise<ApiStudyPage> {
   return http<ApiStudyPage>(

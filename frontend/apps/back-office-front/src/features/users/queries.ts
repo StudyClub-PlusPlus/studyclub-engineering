@@ -11,6 +11,6 @@ export const userKeys = {
 export function useUsers() {
   return useQuery({
     queryKey: userKeys.list(),
-    queryFn: () => http<ApiUser[]>('/api/users'),
+    queryFn: () => http<ApiUser[]>('/accounts'),
   });
 }

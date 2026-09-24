@@ -10,7 +10,7 @@ export const notificationTemplateKeys = {
 };
 
 function fetchNotificationTemplates(): Promise<NotificationTemplate[]> {
-  return http<NotificationTemplate[]>('/api/notification-templates');
+  return http<NotificationTemplate[]>('/api/admin/notification-templates');
 }
 
 export function useNotificationTemplates() {

@@ -3,7 +3,7 @@
 ## Table of Contents
 
 - [세 줄 요약](#세-줄-요약)
-- [왜 BFF 를 거치나](#왜-bff-를-거치나)
+- [인증 — 쿠키를 실어 보낸다](#인증--쿠키를-실어-보낸다)
 - [어디에 두나 — 기능 옆에](#어디에-두나--기능-옆에)
 - [서버 상태는 TanStack Query 로](#서버-상태는-tanstack-query-로)
 - [쿼리 키](#쿼리-키)
@@ -14,38 +14,52 @@
 
 ## 세 줄 요약
 
-1. 브라우저는 **백엔드를 직접 부르지 않는다.** 같은 출처의 `/api/*` route handler(BFF)를 거친다
+1. 브라우저가 **백엔드를 직접 부른다.** 중계(BFF) 라우트를 만들지 않는다 — 인증은 **쿠키**로 간다
 2. 조회는 `useEffect + fetch` 가 아니라 **`useQuery`** 로 한다
 3. fetcher·쿼리 키·훅은 **그 기능 폴더 안에** 둔다 (`src/features/<기능>/queries.ts`)
 
-## 왜 BFF 를 거치나
+## 인증 — 쿠키를 실어 보낸다
 
-액세스 토큰이 **httpOnly 쿠키**에 있다. 브라우저 JS 가 읽을 수 없으므로 `Authorization: Bearer` 를
-직접 붙일 수 없다. BFF route handler 가 서버에서 쿠키를 읽어 Bearer 로 바꿔 백엔드를 부른다.
+액세스 토큰은 **httpOnly 쿠키**다. 브라우저 JS 가 값을 읽을 수 없으니 `Authorization` 헤더를 만들 수 없다.
+대신 **브라우저가 쿠키를 자동으로 싣게** 하고, 백엔드가 쿠키에서 토큰을 꺼낸다.
 
 ```ts
-// src/lib/bff.ts — 서버에서만 돈다
-export async function proxyGet(path: string) {
-  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
-  if (!token) return NextResponse.json({ message: '인증이 필요합니다.' }, { status: 401 });
-  const upstream = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
-  ...
+// src/lib/http.ts — 모든 호출이 여기를 지난다
+const res = await fetch(`${API_BASE}${path}`, {
+  credentials: 'include', // ← 빼면 전부 401 이다
+  ...init,
+});
+```
+
+```java
+// JwtAuthFilter — 헤더가 먼저, 없으면 쿠키
+private String resolveToken(HttpServletRequest request) {
+    String header = request.getHeader("Authorization");
+    if (header != null && header.startsWith("Bearer ")) return header.substring(7);
+    // sc_access_token · bo_access_token
 }
 ```
 
-토큰을 `localStorage` 에 두면 BFF 없이 부를 수 있지만, **XSS 한 번에 토큰이 털린다.** 그 교환은 하지 않는다.
+**토큰을 `localStorage` 로 내리지 않는다.** 그러면 헤더를 직접 만들 수 있지만 XSS 한 번에 털린다.
+httpOnly 를 유지한 채 쿠키로 보내는 것이 이 구조의 핵심이다.
 
-**쿠키를 상위 도메인(`.studyclub-plusplus.com`)에 두고 백엔드가 쿠키를 받게 하는 길도 있다.**
-서브도메인끼리는 same-site 라 `SameSite=Lax` 가 막지 않으니 기술적으로는 된다(막는 건 CORS 쪽이다).
-쓰지 않는 이유는 **보안 반경**이다 — 쿠키 Domain 을 넓히고 CORS 를 여러 서브도메인에 열면,
-그중 하나만 뚫려도 그 쿠키로 백엔드를 부를 수 있다. 얻는 건 중계 레이어 하나를 없애는 것뿐이다.
+### 이 방식이 요구하는 것 — 둘 다 지켜야 한다
 
-**서버 컴포넌트는 BFF 없이 백엔드를 직접 부를 수 있다**(서버에서 `cookies()` 를 읽어 Bearer 로).
-다만 그건 **첫 렌더에만** 해당한다 — 마운트 뒤의 필터 변경·재조회는 브라우저가 보내므로 BFF 가 필요하다.
-그래서 둘은 대체재가 아니라 역할이 다르다.
+| 전제 | 어디서 | 안 지키면 |
+|---|---|---|
+| CORS 허용 오리진을 **좁게** 유지 | 백엔드 `cors.allowed-origins` | 쿠키 인증이므로 허용된 오리진은 사용자 세션으로 API 를 부를 수 있다 |
+| 쿠키가 API 도메인까지 닿을 것 | `AUTH_COOKIE_DOMAIN` (배포에서만) | 배포에서 전부 401. 로컬은 host 가 같아 불필요 |
+
+`AUTH_COOKIE_DOMAIN` 은 **넓힐수록 그 쿠키가 통하는 서브도메인이 늘어난다.** 공통 상위 도메인까지만 넣는다.
+쿠키를 **지울 때도 심을 때와 같은 `domain`** 이어야 한다 — 다르면 브라우저가 다른 쿠키로 보고 원본이 남는다.
+
+### 서버에서 부를 때
+
+서버 컴포넌트·route handler 에서 백엔드를 부를 때는 쿠키가 자동으로 안 붙는다.
+`cookies()` 로 읽어 `Authorization: Bearer` 로 직접 붙인다(서버끼리는 헤더가 자연스럽다).
 
 `queryFn` 에서 **Server Action 을 부르지 않는다.** 공식 문서가 명시한다 — 클라이언트에서 호출된
-Server Action 은 **직렬로 실행**되어 병렬 조회를 전제하는 쿼리 동작과 충돌한다. Route Handler 를 쓴다.
+Server Action 은 **직렬로 실행**되어 병렬 조회를 전제하는 쿼리 동작과 충돌한다.
 
 > 백오피스 화면이 부르는 백엔드 경로는 `/api/admin/...` 이다 — [엔드포인트 규약](api/endpoint-convention.md).
 
@@ -65,7 +79,7 @@ src/features/studies/
 | 한 기능에서만 쓴다 | `src/features/<기능>/` — 타입·fetcher·훅·전용 컴포넌트를 **같이** |
 | 여러 기능이 쓴다 | `src/components/`(UI) · `src/lib/`(순수 유틸: `http.ts`, `auth.ts`) |
 | 라우트 | `src/app/` — 페이지는 **조립만** 한다. fetch 를 직접 쓰지 않는다 |
-| BFF | `src/app/api/` |
+| 서버 라우트 | `src/app/api/` — **인증(쿠키 심기·지우기)만.** 데이터 중계용으로 만들지 않는다 |
 
 **왜** — 타입별 서랍(`components/`·`lib/api/`·`models/`)으로 나누면 기능 하나를 고칠 때 서랍 네 개를 연다.
 반대로 `lib/api/studies.ts` 한 파일에는 서로 무관한 화면 다섯 개의 함수가 쌓인다.
@@ -80,7 +94,7 @@ src/features/studies/
 export function useStudies(filter: StudyFilter) {
   return useQuery({
     queryKey: studyKeys.list(filter),
-    queryFn: () => http<ApiStudyPage>(`/api/studies${qs({ ...filter, limit: 100 })}`),
+    queryFn: () => http<ApiStudyPage>(`/api/studies${qs({ ...filter, limit: 100 })}`), // http 가 API_BASE 를 붙인다
     select: (page) => ({ rows: page.items.map(toRow), total: page.total }),
     placeholderData: (previous) => previous, // 타이핑 중 목록이 깜빡이지 않게
   });
@@ -165,7 +179,6 @@ const { mutate } = useMutation({
 | 첫 화면 깜빡임이 실제로 거슬리는 화면 | 그 화면만 `prefetchQuery` + `HydrationBoundary` |
 
 전면 prefetch/hydration 파이프라인은 이 규모에 과하다. 필요한 화면에만 붙인다.
-서버에서 prefetch 할 때 BFF 상대경로는 **서버에서 안 풀린다** — 절대 URL + 쿠키 전달이 필요하다.
 
 ## 응답 형태 주의
 
