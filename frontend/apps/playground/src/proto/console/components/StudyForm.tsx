@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, type ChangeEvent } from 'react';
+
 import { tx } from '@console/lib/l10n';
 import { MARKDOWN_HINT } from '@core/components/ApplicationFormUi';
 import {
@@ -96,6 +98,13 @@ export type StudyFormValues = {
   schedule: string;
   /** STUDY.TIMEZONE. 빈 문자열 = 미정. 「진행 일정」과 달리 KST·PST·동시 진행 중 하나를 고르는 값이다. */
   timezone: StudyTimezone | '';
+  /**
+   * STUDY.THUMBNAIL_URL. 선택 입력 — 비우면 목록·상세가 주제 기반 기본 이미지를 쓴다.
+   * 업로드한 파일의 미리보기 값(blob: URL)이 프로토타입 한정으로 여기 들어간다 — 실제 업로드
+   * 엔드포인트가 없어 별도 스토리지에 올리지 못한다. THUMBNAIL_URL 은 VARCHAR(2048)이라 파일을
+   * data URL로 직접 넣을 수 없다 — 실제 연동 시엔 presigned-upload 로 받은 짧은 호스팅 URL이어야 한다.
+   */
+  thumbnail: string;
   /** 진행 시작일(STUDY.START_AT). 모임이 실제로 시작하는 날 — 모집 마감일·「진행 일정」 문구와는 다른 값이다. 선택 입력. */
   startAt: string;
   /** STUDY.DISCORD_CHANNEL_URL. 선택 입력 — 채널을 아직 안 만들었으면 비워 둔다. */
@@ -117,6 +126,7 @@ export const EMPTY_FORM: StudyFormValues = {
   unlimited: true,
   schedule: '',
   timezone: '',
+  thumbnail: '',
   startAt: '',
   discordUrl: '',
   driveUrl: '',
@@ -145,6 +155,7 @@ export function cohortDefaults(programId: string): Partial<StudyFormValues> {
       // 시간대는 모임이 실제로 도는 기준이라 채널·드라이브와 같은 이유로 최신 기수 값을 물려준다 —
       // 기수가 바뀌었다고 클럽이 갑자기 다른 시간대로 옮겨가지는 않는다.
       timezone: latest.timezone ?? '',
+      thumbnail: latest.image ?? '',
       discordUrl: latest.discord_url ?? '',
       driveUrl: latest.driveUrl ?? '',
     }),
@@ -167,6 +178,7 @@ export function studyToForm(study: Study): StudyFormValues {
     unlimited: !study.recruitment?.capacity,
     schedule: tx(study.schedule),
     timezone: study.timezone ?? '',
+    thumbnail: study.image ?? '',
     startAt: toISODate(study.startAt) ?? '',
     discordUrl: study.discord_url ?? '',
     driveUrl: study.driveUrl ?? '',
@@ -244,6 +256,10 @@ export function StudyForm({
           error={errors.summary}
           labelHint={<CharCount anno='3-1' len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
         />
+      </div>
+
+      <div data-anno='17'>
+        <ThumbnailField value={value.thumbnail} onChange={(next) => set('thumbnail', next)} />
       </div>
 
       <div data-anno='4'>
@@ -352,6 +368,69 @@ export function StudyForm({
           placeholder='https://drive.google.com/…'
           error={errors.driveUrl}
         />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 썸네일 — **선택 입력.** 목록·상세 카드에 쓸 이미지를 올린다. 비우면 주제 기반 기본 이미지를 쓴다
+ * (아래 목록 카드가 늘 그렇게 동작해 왔다 — 이 필드는 그 기본값을 덮어쓰는 자리다).
+ *
+ * 실제 업로드 엔드포인트가 아직 없다 — 고른 파일은 이 화면 안에서만 보이는 미리보기(`blob:` URL)로
+ * 남고, 새로고침하면 사라진다. 실제 연동 시엔 여기서 파일을 스토리지에 먼저 올리고, 돌아온 짧은
+ * 호스팅 URL을 `STUDY.THUMBNAIL_URL`(VARCHAR(2048))에 넣어야 한다 — data URL은 못 들어간다.
+ */
+function ThumbnailField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function pick(ev: ChangeEvent<HTMLInputElement>) {
+    const file = ev.target.files?.[0];
+    ev.target.value = ''; // 같은 파일을 다시 골라도 onChange 가 일어나게 비워 둔다
+    if (!file) return;
+    if (value.startsWith('blob:')) URL.revokeObjectURL(value); // 미리보기 하나만 살아 있으면 된다
+    onChange(URL.createObjectURL(file));
+  }
+
+  function remove() {
+    if (value.startsWith('blob:')) URL.revokeObjectURL(value);
+    onChange('');
+  }
+
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <span className='text-sm font-medium text-neutral-800'>썸네일</span>
+      <div className='flex items-center gap-3'>
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element -- blob: 미리보기는 next/image 최적화 대상이 아니다
+          <img src={value} alt='' className='h-16 w-16 shrink-0 rounded-control border border-border object-cover' />
+        ) : (
+          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-[11px] text-fg-muted'>
+            주제 기본값
+          </div>
+        )}
+        <div className='flex flex-col gap-1'>
+          <div className='flex gap-1.5'>
+            <button
+              type='button'
+              onClick={() => inputRef.current?.click()}
+              className='h-8 rounded-control border border-border-strong bg-bg px-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-surface-2'
+            >
+              {value ? '다른 이미지로 바꾸기' : '이미지 업로드'}
+            </button>
+            {value && (
+              <button
+                type='button'
+                onClick={remove}
+                className='h-8 rounded-control border border-border-strong bg-bg px-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-surface-2'
+              >
+                제거
+              </button>
+            )}
+          </div>
+          <span className='text-xs text-fg-muted'>비우면 주제에 맞는 기본 이미지가 쓰입니다</span>
+        </div>
+        <input ref={inputRef} type='file' accept='image/*' onChange={pick} className='hidden' />
       </div>
     </div>
   );

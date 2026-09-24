@@ -19,7 +19,7 @@
 | ONE_LINE_SUMMARY | VARCHAR(255) | N | 한 줄 소개 |
 | DESCRIPTION | TEXT | Y | 상세 소개. **마크다운 허용.** 등록 시 기본 템플릿 제공 — `## 목표` · `## 진행 방식` · `## 참가 대상` · `## 특이사항`. 별도 칸이 없는 내용(킥오프·문의처 등)은 여기에 쓴다 |
 | CATEGORY | VARCHAR(50) | N | 분야 (`AI`, `BACKEND`, `PAPER` …) |
-| THUMBNAIL_URL | VARCHAR(2048) | Y | |
+| THUMBNAIL_URL | VARCHAR(2048) | Y | 목록·상세 카드 이미지. 등록 폼에서 업로드한 파일을 올린 뒤 그 호스팅 URL을 담는다(업로드 엔드포인트는 미구현 — 실제 파일을 못 넣는다, data URL로도 대체 불가). 비어 있으면 주제 기반 기본 이미지를 쓴다 |
 | STATUS | VARCHAR(20) | N | 아래 |
 | APPLICATION_FORM | JSON | Y | 이 기수 신청 폼 질문 정의 |
 | CURRICULUM | JSON | Y | 주차별 커리큘럼. 구조는 프론트와 합의 |
