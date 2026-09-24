@@ -20,7 +20,7 @@
 
 ## 제출 조건
 - 기수 `STATUS=OPEN` + 모집 기간 내 + 로그인 + 같은 모집 회차에 신청 행 없음.
-- 정원은 모집 회차가 속한 기수의 명부 활성 인원(`STUDY_PARTICIPANT` 중 `WITHDRAWN` 제외) 기준으로 검사한다. 가득이면 저장하지 않는다. **반은 신청 이후에 정해지므로** [STUDY_CLASS.CAPACITY](./STUDY_CLASS.md)는 신청 검사에 넣지 않는다. 대기열은 두지 않는다.
+- 정원은 모집 회차의 `RECRUITMENT_CAPACITY` 를 그 회차의 `STUDY_APPLICATION` 행 수와 비교해 검사한다 (모집 회차마다 독립). 가득이면 저장하지 않는다. **반은 신청 이후에 정해지므로** [STUDY_CLASS.CAPACITY](./STUDY_CLASS.md)는 신청 검사에 넣지 않는다. 대기열은 두지 않는다.
 
 ## 제약
 - `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)` — 같은 모집 회차 중복 신청 차단.

@@ -1,8 +1,8 @@
 # 모집 상태 (모집 마감 자동 판정) Spec
 
-> ERD: [STUDY_COHORT](../../docs/erd/STUDY_COHORT.md) § "모집 상태" · 관련 스펙: [study/spec.md](../study/spec.md)
+> ERD: [STUDY](../../docs/erd/STUDY.md) § "모집 상태" · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md) · 관련 스펙: [study/spec.md](../study/spec.md)
 > 생성일: 2026-09-15
-> 상태: 구현완료 (UPCOMING 은 범위 밖 — 아래 미확정)
+> 상태: 구현완료 (`UPCOMING` 은 없다 — 예약 공개가 없어 모집 예정 판정이 필요 없다)
 > 이슈: Notion 51 「[기능] 모집 마감 (정원 도달 or 기한 만료 시 자동)」
 
 ## WHAT
@@ -21,29 +21,29 @@
 
 | | 타입 | 정하는 주체 | 저장 |
 |---|---|---|---|
-| `status` (라이프사이클) | `StudyCohortStatus` = `DRAFT` / `OPEN` / `CLOSED` | 사람(운영자) | `STUDY_COHORT.STATUS` |
+| `status` (라이프사이클) | `StudyStatus` = `DRAFT` / `OPEN` / `ONGOING` / `ENDED` / `CLOSED` (5단계 제안 — 구현은 아직 3값) | 사람(운영자·네비게이터) | `STUDY.STATUS` |
 | `recruitStatus` (모집 상태) | `RecruitStatus` = `RECRUITING` / `RECRUIT_CLOSED` | 날짜·정원 | **안 함 (계산)** |
 
 `recruitStatus` 는 `status = OPEN` 일 때만 값이 있다. 그 밖에서는 **`null`** —
-"마감됐다"가 아니라 "모집 상태라는 개념이 없다"다. `DRAFT` 는 아직 공개 전이고 `CLOSED` 는
-기수 자체가 끝났으니, 그 둘은 `status` 가 이미 다 말해준다.
+"마감됐다"가 아니라 "모집 상태라는 개념이 없다"다. `DRAFT` 는 아직 공개 전(모집 시작 일자 없음)이고 `ONGOING`·`ENDED`·`CLOSED` 는
+모집 이후 단계이니, 그 넷은 `status` 가 이미 다 말해준다.
 
 ## 판정 규칙
 
 ```
 status != OPEN                        → null
-recruitDeadline != null && now >= recruitDeadline → RECRUIT_CLOSED
-capacity != null && 신청자수 >= capacity           → RECRUIT_CLOSED
+now >= recruitDeadline                            → RECRUIT_CLOSED
+recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_CLOSED
 그 외                                              → RECRUITING
 ```
 
 | 경계 | 결과 | 근거 |
 |---|---|---|
 | `now == recruitDeadline` (정확히 마감 시각) | `RECRUIT_CLOSED` | ERD 가 `now() >= RECRUIT_DEADLINE` 을 마감으로 쓴다. 마감 시각 그 순간은 이미 못 받는다 |
-| `recruitDeadline == null` | 시각으로는 마감 안 됨 | V8 이후 NULL = 상시 모집 ([study/spec.md](../study/spec.md)) |
-| `capacity == null` | 정원으로는 마감 안 됨 | 무제한. 신청자가 9999 여도 `RECRUITING` |
-| `capacity == null` **그리고** `recruitDeadline == null` | 항상 `RECRUITING` | 마감 조건이 하나도 없는 코호트 |
-| 신청자수 `== capacity` | `RECRUIT_CLOSED` | 정원 "도달"이 마감. 초과까지 기다리지 않는다 |
+| `recruitmentCapacity == null` | 정원으로는 마감 안 됨 | 무제한. 신청자가 9999 여도 `RECRUITING` |
+| 신청자수 `== recruitmentCapacity` | `RECRUIT_CLOSED` | 정원 "도달"이 마감. 초과까지 기다리지 않는다 |
+
+**정원·마감·신청자 수는 모집 회차 단위다.** `STUDY.CAPACITY` 는 없고 `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 만 쓴다. 신청자 수는 그 회차의 `STUDY_APPLICATION` 수다. 모집 회차가 여러 개면 id 최대인 회차 1건을 기준으로 판정한다 ([study/spec.md](../study/spec.md)). 응답 필드명 `capacity` 는 유지하되 값은 그 회차의 `RECRUITMENT_CAPACITY` 다.
 
 구현: `StudyCohort.recruitStatus(long applicantCount)` — `isClosingSoon()` 바로 옆.
 신청자 수는 `STUDY_APPLICATION` 애그리거트 소관이라 엔티티가 직접 세지 않고 **인자로 받는다**
@@ -166,23 +166,13 @@ capacity != null && 신청자수 >= capacity           → RECRUIT_CLOSED
 
 | 위치 | 덮는 것 |
 |---|---|
-| `domain/.../StudyCohortTest` | 판정 규칙 단위 — 마감 시각 정확히 now / 1초 전 / 경과, 정원 도달·초과, `capacity` null, `recruitDeadline` null, `DRAFT`·`CLOSED` → null |
+| `domain/.../StudyCohortTest` | 판정 규칙 단위 — 마감 시각 정확히 now / 1초 전 / 경과, 정원 도달·초과, `recruitmentCapacity` null, `DRAFT`·`CLOSED` → null |
 | `api/.../StudyRecruitStatusIntegrationTest` | 목록·상세 응답에 필드가 실제로 실리는지, `REJECTED`·`WITHDRAWN`·`WAITLISTED` 가 정원을 안 차지하는지 |
 
 ## 미확정
 
-- **[NEEDS CLARIFICATION] `UPCOMING`(모집예정) — 이번 범위에서 뺐다.**
-  ERD § 미확정 은 "모집 시작 시각 컬럼(`PUBLISH_AT` / `RECRUIT_START_DATE`) 미확정" 이라고
-  적혀 있고(2026-09-02), 그 뒤 V10(2026-09-13)이 `PUBLISH_DATE` 를 추가했다. 그런데 V10 은
-  ERD 의 그 미확정 항목을 닫지 않았고, [study/spec.md](../study/spec.md) 는 `PUBLISH_DATE` 를
-  **"공개일 · null = 즉시 공개"** 로만 정의한다 — *모집 시작*이라고 쓴 문서가 없다.
-  `PUBLISH_DATE = 모집 시작` 이면 `UPCOMING` 은 3줄이면 되지만, 그렇게 못 박는 건 추측이라
-  **9/19 스쿼드 회의 안건**으로 남긴다. 결정되면 ERD 미확정 항목도 같이 닫는다.
-- **[NEEDS CLARIFICATION] `ONGOING` / `ENDED` 도 이번 범위 밖.**
-  ERD § "모집 상태" 표에 같이 있지만 축이 다르다 — 모집이 아니라 **진행**이고,
-  `START_DATE`/`END_DATE` 로 판정하며 `status = CLOSED` 와 의미가 겹친다.
-  이슈 51 은 모집 마감만 다루므로 `RecruitStatus` 에 넣지 않았다.
-  필요해지면 별도 타입(`ProgressStatus`)이 맞는지부터 정한다.
+- ~~`UPCOMING`(모집예정)~~ → **폐지**: 예약 공개는 없다. 공개 = 모집 시작이라 `START_AT` 이 채워지는 순간 모집이 시작되고, `START_AT` 이 비어 있으면 아직 공개 전(`DRAFT`)이라 목록에 나오지 않는다. 그래서 모집예정으로 판정할 구간이 없다
+- ~~`ONGOING` / `ENDED`~~ → **결정(2026-09-22 제안)**: 진행·종료는 모집 상태가 아니라 라이프사이클 `STATUS` 로 **저장**한다 (`DRAFT → OPEN → ONGOING → ENDED → CLOSED`, [전이 규칙](../../docs/erd/STUDY.md#상태--status-운영진행-라이프사이클)). 날짜로 계산하지 않고 사람·이벤트가 바꾼다. `RecruitStatus` 는 모집중/마감 둘만 유지하고 `status != OPEN` 이면 `null` 이라는 규칙은 그대로다
 - **[NEEDS CLARIFICATION] 서버측 `recruitStatus` 필터 파라미터.**
   목록은 필터 → 정렬 → `offset/limit` 순으로 **서버에서** 자르므로, 프론트가 받은 페이지만
   걸러내면 페이지마다 개수가 들쭉날쭉해진다. 상태 필터를 제대로 하려면
@@ -199,3 +189,4 @@ capacity != null && 신청자수 >= capacity           → RECRUIT_CLOSED
 | 날짜 | 변경 | 근거 |
 |---|---|---|
 | 2026-09-15 | 최초 작성 — `RecruitStatus` 파생 상태 + `countByStudyIds` 정원 판정 기준 수정 | Notion 이슈 51 |
+| 2026-09-22 | 상시 모집·`UPCOMING`·`STUDY.CAPACITY`·`IS_HIDDEN` 폐지, `status` 5단계로 확장 (제안 — 백엔드 미반영) | 스키마 정리 제안 |

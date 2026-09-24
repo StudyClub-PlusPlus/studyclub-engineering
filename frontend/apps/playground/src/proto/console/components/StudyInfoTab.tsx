@@ -55,7 +55,7 @@ export function StudyInfoTab({ study }: { study: Study }) {
   return (
     <div className='card px-6 py-5'>
       <div data-anno='edit:1'>
-        <StudyForm value={form} errors={errors} onChange={change} />
+        <StudyForm mode='edit' value={form} errors={errors} onChange={change} />
       </div>
 
       <div className='mt-6 flex items-center gap-3 border-t border-border pt-4'>

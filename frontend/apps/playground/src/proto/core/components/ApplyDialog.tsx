@@ -45,7 +45,7 @@ function StudyFormHeader({ study, locale }: { study: Study; locale: Locale }) {
     : t({ ko: '일정 미정', en: 'Schedule TBD' }, locale);
   const deadlineLabel = deadline
     ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale)
-    : t({ ko: '상시 모집', en: 'Always open' }, locale);
+    : '';
 
   return (
     <div data-anno='apply:1'>
