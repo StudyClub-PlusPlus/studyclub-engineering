@@ -59,9 +59,10 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 비교 대상은 **분반 정원이 아니다.** 반은 신청 이후에 정한다. 대기열 없음.
 
-1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 그 회차의 `STUDY_APPLICATION` 행 수와 비교
-2. `STUDY.CAPACITY` 가 있으면 — 그 기수 명부 활성 인원(`STUDY_PARTICIPANT` 중 `WITHDRAWN` 제외)과 비교
-3. 둘 다 없으면 인원 제한 없음
+1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 그 회차의 `STUDY_APPLICATION` 행 수와 비교. 모집 회차가 여러 개여도 회차마다 독립적으로 판단한다
+2. 없으면 인원 제한 없음
+
+기수 단위 정원(`STUDY.CAPACITY`)은 없다.
 
 가득이면 저장하지 않는다.
 
@@ -163,7 +164,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/application-form`
-- **인증**: 불필요 — `STUDY.STATUS=OPEN` 이고 `IS_HIDDEN=false` 일 때. 캡틴이 DRAFT 기수를 보려면 로그인 + 캡틴
+- **인증**: 불필요 — `STUDY.STATUS=OPEN` 일 때. 캡틴이 DRAFT 기수를 보려면 로그인 + 캡틴
 - **설명**: 설문 제목·설명·추가 질문과, 신청 화면에 필요한 기수 안내(일정·모집 기한·주제)를 반환한다. 플랫폼 기본 문항 정의는 응답에 넣지 않는다 — 클라이언트·서버가 이 스펙 표로 안다.
 
 ### Path Parameters
@@ -203,7 +204,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 | title | String | N | 설문 제목. 폼 title 없으면 기수 제목 | APPLICATION_FORM.title ?? STUDY.TITLE |
 | description | String | Y | 설문 설명 마크다운. 폼 description 없으면 한 줄 소개 | APPLICATION_FORM.description ?? STUDY.ONE_LINE_SUMMARY |
 | schedule | String | Y | 진행 일정. null 이면 신청 화면은 `일정 미정` 이고 참여 확인을 받지 않는다 | STUDY.SCHEDULE |
-| recruitDeadline | String | Y | 열려 있는 모집 회차 마감. null 이면 상시 모집(열려 있는 회차의 마감이 없음) | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT |
+| recruitDeadline | String | N | 열려 있는 모집 회차 마감 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT |
 | category | String | N | 주제 | STUDY.CATEGORY |
 | summary | String | N | 한 줄 소개 (등록 폼 항목 표시용) | STUDY.ONE_LINE_SUMMARY |
 | detail | String | Y | 상세 소개 | STUDY.DESCRIPTION |
@@ -217,7 +218,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 |------|-----------|------|
 | 401 | UNAUTHORIZED | DRAFT 기수인데 미로그인 |
 | 403 | FORBIDDEN | DRAFT 기수인데 이 기수 캡틴이 아님 |
-| 404 | NOT_FOUND | studyId 없음, 또는 OPEN 이 아닌데 캡틴도 아님, 또는 `IS_HIDDEN=true` 를 비캡틴이 조회 |
+| 404 | NOT_FOUND | studyId 없음, 또는 OPEN 이 아닌데 캡틴도 아님 |
 
 ### 프론트엔드 사용처
 
@@ -325,7 +326,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 | 400 | INVALID_INPUT | 유효값 표 위반. `fields` 에 사유 코드. 답 원문 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
 | 403 | FORBIDDEN | `DISCORD_ID` 없음. 화면은 연동 팝업을 연다 |
-| 404 | NOT_FOUND | studyId 없음 또는 숨김 |
+| 404 | NOT_FOUND | studyId 없음 또는 비공개(`STATUS = DRAFT`) |
 | 409 | CONFLICT | 이미 이 모집 회차에 신청함 · 모집 마감 · 정원 초과. `errorMessage` 로 구분 |
 
 `errorMessage` (409):
@@ -533,7 +534,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 | 동작 | 허용 | 검증 위치 |
 |------|------|-----------|
-| 신청 폼 조회 (OPEN) | 누구나 | 서버 (숨김·상태) |
+| 신청 폼 조회 (OPEN) | 누구나 | 서버 (공개 여부·상태) |
 | 신청 폼 저장 | 이 기수 캡틴 | 서버 |
 | 신청 제출 | 로그인 + `DISCORD_ID` | 서버 |
 | 내 신청 여부 | 로그인 본인 | 서버 |
@@ -562,4 +563,3 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 - [NEEDS CLARIFICATION] `STUDY_APPLICATION` 생성시각 컬럼. 없으면 `applications/me.submittedAt` 은 null
 - [NEEDS CLARIFICATION] 열려 있는 모집 회차가 동시에 둘이면 어느 회차에 붙일지. 지금은 1건이라고 가정
 - [NEEDS CLARIFICATION] 결과 목록에서 명부 `WITHDRAWN` 인 사람의 신청을 뺄지. ERD 는 신청 행에 거절 상태가 없음
-- [NEEDS CLARIFICATION] `RECRUITMENT_CAPACITY` 와 `STUDY.CAPACITY` 가 둘 다 있을 때 어느 쪽을 먼저 볼지. 위 [정원](#정원) 은 둘 다 검사하는 제안

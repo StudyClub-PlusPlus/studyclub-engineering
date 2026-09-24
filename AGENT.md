@@ -52,11 +52,15 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - **푸시 전에 빌드한다** — 백엔드는 `cd backend && ./gradlew check` (테스트 + 포맷 검사),
   프론트는 `npm test`. 포맷이 걸리면 `./gradlew spotlessApply` 로 고친다.
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
+  **playground 를 고쳤으면 커밋 전에 `npm run build --workspace=playground` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에서 바로 배포되는 유일한 앱이라(`playground-beta.yaml`) 다른 앱의 CI 게이트를 안 거친다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
 - **Story PRD** — 화면 기획은 `planning/stories/{slug}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`planning/README.md`](planning/README.md)
 - **팀에 물을 것·정해진 것은 `share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`share/README.md`](share/README.md) 목록에 한 줄 추가한다.
   PR 설명이나 코드 주석에만 있으면 머지되는 순간 안 읽힌다. 규칙이 굳으면 `docs/` 로 올린다.
+  **쓸 때는 그 작업을 안 한 사람이 읽는다고 가정한다** — 맨 앞에 「미리 알아야 할 것」으로 용어·배경을
+  풀고, 약어는 처음 나올 때 설명하고, 비유를 하나 넣는다. 기획자·디자이너·이번 주 합류자가 읽고
+  "무슨 일이 왜 정해졌는지" 말할 수 있어야 한다. 규칙 전문은 [`share/README.md`](share/README.md) §쓰는 법.
 - **관객으로 경로를 가른다** — 백오피스가 부르는 API 는 `/api/admin` 아래, 파일은 `Admin*`.
   같은 일을 사용자 사이트에서도 하면 **사이트용 엔드포인트를 따로** 만든다 (권한 판정이 다르다).
   [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md)
