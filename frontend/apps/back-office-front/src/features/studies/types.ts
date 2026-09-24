@@ -29,6 +29,13 @@ export type ApiStudyPage = {
   limit: number;
 };
 
+/** 목록 조건. 비우면 그 조건을 걸지 않는다. 쿼리 키에 그대로 들어간다. */
+export type StudyFilter = {
+  keyword?: string;
+  category?: string;
+  phase?: StudyPhase;
+};
+
 /** 목록 한 줄이 실제로 그리는 값. API 가 안 주는 값(출석률 등)은 아예 두지 않는다. */
 export type StudyRow = {
   studyId: number;

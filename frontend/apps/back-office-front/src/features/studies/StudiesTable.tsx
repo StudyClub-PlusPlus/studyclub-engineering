@@ -3,7 +3,7 @@
 import { Badge } from '@studyclub/ui';
 
 import { TableCard } from '@/components/ui';
-import { PHASE_LABEL, type StudyRow } from '@/lib/studies';
+import { PHASE_LABEL, type StudyRow } from '@/features/studies/types';
 
 /**
  * 스터디 관리 목록.

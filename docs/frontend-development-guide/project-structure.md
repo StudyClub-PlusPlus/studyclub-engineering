@@ -72,9 +72,10 @@ apps/{app}/
 │   │   ├── [locale]/     # (core-front 전용) i18n 라우트
 │   │   ├── api/          # Route Handlers (BFF)
 │   │   └── layout.tsx
-│   ├── components/       # 앱 전용 컴포넌트
-│   ├── lib/              # 유틸 (auth, i18n, content)
-│   ├── models/           # (core-front) 타입 정의
+│   ├── features/         # 기능별 묶음 (타입·fetcher·쿼리 훅·전용 컴포넌트)
+│   │   └── studies/{types.ts, queries.ts, StudiesTable.tsx}
+│   ├── components/       # 두 기능 이상이 쓰는 UI
+│   ├── lib/              # 순수 유틸 (http, auth, query-client, i18n)
 │   └── middleware.ts     # Next.js 미들웨어 (인증 리다이렉트)
 ├── screen-catalog/       # 화면 상태 선언 (비주얼 회귀 카탈로그)
 │   ├── catalog.ts
@@ -93,13 +94,24 @@ apps/{app}/
 └── .gitignore
 ```
 
-### 파일 배치 규칙
+### 파일 배치 규칙 — 기능 옆에 둔다
 
-- **컴포넌트**: `src/components/` — 파일명 PascalCase (`StudyCard.tsx`)
-- **라우트**: `src/app/` — Next.js 규약 (`page.tsx`, `layout.tsx`)
-- **API Route**: `src/app/api/` — BFF 용도 (백엔드 프록시, 인증 콜백)
-- **유틸/헬퍼**: `src/lib/` — 파일명 camelCase (`auth.ts`)
-- **타입/모델**: `src/models/` — PascalCase (`Study.ts`)
+**판정 한 문장** — *"이 기능이 없어지면 같이 지워지는가."* 그렇다면 `features/<기능>/` 안이다.
+
+| 무엇 | 어디 | 예 |
+|---|---|---|
+| 한 기능에서만 쓰는 타입·fetcher·쿼리 훅·컴포넌트 | `src/features/<기능>/` | `features/studies/{types,queries}.ts`, `features/studies/StudiesTable.tsx` |
+| **두 기능 이상**이 쓰는 UI | `src/components/` | `ui.tsx`, `AppShell.tsx` |
+| 순수 유틸 (기능 지식이 없는 것) | `src/lib/` | `http.ts`, `auth.ts`, `query-client.ts` |
+| 라우트 | `src/app/` | `page.tsx` — **조립만** 한다, fetch 를 직접 쓰지 않는다 |
+| BFF Route Handler | `src/app/api/` | `api/studies/route.ts` |
+
+- 기능 폴더 이름은 kebab-case (`notification-templates`), 컴포넌트 파일은 PascalCase, 나머지는 camelCase
+- **`lib/api/` 처럼 타입별 서랍을 만들지 않는다.** 기능 하나를 고치는 데 서랍 네 개를 열게 된다
+- 처음부터 폴더를 쪼개지 않는다 — 파일 하나로 시작해서 커지면 나눈다. 빈 `index.ts` 를 두지 않는다
+- **`src/models/` 은 쓰지 않는다**(레거시). 타입은 그 기능의 `types.ts` 로 간다
+
+상세: [API 연동 가이드](api-integration.md) · [관심사 분리](separation-of-concerns.md)
 
 ## Mock 데이터
 
