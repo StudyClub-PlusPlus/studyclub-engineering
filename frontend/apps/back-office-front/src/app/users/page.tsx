@@ -1,18 +1,8 @@
 'use client';
 
 // 유저 (스터디원 + 운영진 통합) — 실제 DB 유저를 백엔드에서 조회.
-import { useEffect, useState } from 'react';
-
 import { PageHeader } from '@/components/ui';
-
-type ApiUser = {
-  id: number;
-  email: string;
-  name: string | null;
-  picture: string | null;
-  role: 'STUDENT' | 'OPERATOR' | 'ADMIN' | string;
-  createdAt: string | null;
-};
+import { useUsers } from '@/features/users/queries';
 
 const ROLE_LABEL: Record<string, string> = {
   STUDENT: '스터디원',
@@ -46,19 +36,7 @@ function fmtDate(iso: string | null): string {
 }
 
 export default function UsersAdmin() {
-  const [users, setUsers] = useState<ApiUser[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('/api/users', { cache: 'no-store' })
-      .then(async (r) => {
-        const data = await r.json().catch(() => null);
-        if (!r.ok) throw new Error(data?.errorMessage ?? data?.message ?? `조회 실패 (${r.status})`);
-        return data as ApiUser[];
-      })
-      .then(setUsers)
-      .catch((e) => setError(e instanceof Error ? e.message : '유저 조회 중 오류'));
-  }, []);
+  const { data: users, error, isPending } = useUsers();
 
   return (
     <div>
@@ -66,23 +44,23 @@ export default function UsersAdmin() {
 
       {error && (
         <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-sm text-red-600'>
-          {error}
+          {error.message}
         </div>
       )}
 
-      {!error && users === null && (
+      {isPending && (
         <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-subtle)]'>
           불러오는 중…
         </div>
       )}
 
-      {!error && users?.length === 0 && (
+      {users?.length === 0 && (
         <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-subtle)]'>
           아직 가입한 유저가 없어요. 구글 로그인으로 첫 유저가 생기면 여기 표시됩니다.
         </div>
       )}
 
-      {!error && users && users.length > 0 && (
+      {users && users.length > 0 && (
         <div className='overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]'>
           <table className='w-full text-sm'>
             <thead>
