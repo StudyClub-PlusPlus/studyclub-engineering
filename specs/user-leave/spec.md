@@ -70,7 +70,7 @@
    - `STUDY_PARTICIPANT` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (참여 기록 파기 — 이 사람이 맡고 있던 네비게이터 자리가 사라진다. 공동 네비게이터가 없었다면 그 스터디는 네비게이터가 없는 상태가 되고, 있었다면 그 사람만 남는다 — 어느 쪽이든 시스템은 구분하지 않고 똑같이 처리한다).
    - `STUDY_BOOKMARK` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
    - `STUDY_PROPOSAL_INTEREST` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
-   - `NOTIFICATION` WHERE `RECIPIENT_USER_ID=accountId` 인 행의 `RECIPIENT_VALUE`·`PAYLOAD.nickname` 을 비식별 처리한다 (행은 유지, 발송 이력 자체는 지우지 않는다) — [알림 비식별화](#알림-비식별화) 참고.
+   - `NOTIFICATION` WHERE `RECIPIENT_USER_ID=accountId` 인 행의 `RECIPIENT_VALUE`·`PAYLOAD.nickname` 을 비식별 처리한다(행은 유지, 발송 이력 자체는 지우지 않는다). `STATUS=PENDING` 인 행은 추가로 `CANCELLED` 로 전환한다 — [알림 비식별화](#알림-비식별화) 참고.
    - `STUDY_PROPOSAL` WHERE `PROPOSER_ACCOUNT_ID=accountId` AND `STATUS=OPEN` → `STATUS=CLOSED` 로 전환한다. `CONTENT`·`PROPOSED_AT` 은 그대로 둔다. `ACCEPTED`/`REJECTED`/이미 `CLOSED` 인 행은 이미 종결 상태라 건드리지 않는다 — [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) 참고.
    - `STUDY_APPLICATION` WHERE `ACCOUNT_ID=accountId` 인 행의 `FORM_ANSWER.discordNickname` 을 고정 마스킹 값으로 치환한다(`availableDays`·`scheduleAgreed`·`answers` 는 그대로 둔다). 행 자체는 지우지 않는다 — [STUDY_APPLICATION 의 FORM_ANSWER.discordNickname](#study_application-의-form_answerdiscordnickname) 참고.
    - `ACCOUNT` 행 삭제. `ACCOUNT_CONSENT` 는 `fk_account_consent_account ... ON DELETE CASCADE` 로 함께 삭제된다 (프로필·동의 파기).
@@ -322,6 +322,17 @@ PRD 의 "법령상 보존이 필요한 정보는 그 기간 동안 보관한다"
 (발송 이력·상태·시각)는 지우지 않는다 — "탈퇴한 계정에게 언제 무슨 알림이 나갔는지"는 발송 이력이지
 회원 개인정보가 아니다.
 
+**`PENDING` 인 행은 마스킹과 함께 `STATUS=CANCELLED` 로 전환한다.** 마스킹만 하고 두면 폴링
+스케줄러가 나중에 이 행을 집어 존재하지 않는 수신자에게 발송을 시도하게 된다 — 지금은 웰컴메일뿐이라
+사실상 안 일어나지만, 예약 발송이 생기면 실제로 발생한다(PR #110 리뷰에서 제기). 기존 `FAILED`+
+`ERROR_TYPE=INVALID_RECIPIENT` 재사용도 검토했으나, `INVALID_RECIPIENT` 는 이미 "SES 가 실제 발송을
+시도했다가 거부함"(`SesMailClient.java`)이라는 구체적인 의미로 코드에서 쓰이고 있어 "발송 시도조차
+안 하고 취소"와 섞이면 나중에 진짜 발송 장애를 진단할 때 노이즈가 된다 — `NotificationStatus` 에
+`CANCELLED` 를 신설하기로 리뷰에서 합의했다(`ERROR_TYPE` 은 `FAILED` 전용이라 채우지 않는다). `PROCESSING`
+은 이미 발송 시도 중이라 끼어들지 않고 마스킹만 적용한다. 자세한 상태 전이는
+[notification spec](../notification/spec.md#상태-전이) 참고 — `NotificationStatus` enum(코드)에
+`CANCELLED` 를 추가하는 작업은 이 스펙의 구현 PR이 아니라 notification 모듈 쪽 후속 작업이다.
+
 - 구체적인 마스킹 값·컬럼 갱신 코드는 notification 모듈 소관이다. 이 스펙은 "무엇을 비식별해야
   하는가"까지만 정의하고, "어떻게(이벤트 vs 직접 리포지토리 호출)"는 plan.md 에서 정한다.
 - **동기 처리**를 전제로 한다 — 온보딩의 `UserRegisteredEvent`처럼 커밋 후 비동기로 미루면, 그 사이
@@ -356,11 +367,12 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 
 ## 미확정
 
-이번 리뷰 라운드에서 아래 세 가지는 결정했다 — 더 이상 열린 질문이 아니고, 참고로만 남긴다:
+이번 리뷰 라운드에서 아래 네 가지는 결정했다 — 더 이상 열린 질문이 아니고, 참고로만 남긴다:
 
 - ~~`STUDY_APPLICATION` 처리~~ → 보존, 단 `FORM_ANSWER.discordNickname` 만 비식별 ([근거](#삭제--보존-정책-요약)).
 - ~~탈퇴 화면 프론트 경로~~ → `/[locale]/my/leave` 신설, 진입 링크는 "내 정보 수정" 모달(`ProfileDialog.tsx`) 콘텐츠 맨 아래 ([근거](#프론트엔드-사용처)).
 - ~~`ACCOUNT_LEAVE_REASON` 백오피스 노출~~ → 이번 스펙 범위 밖, 저장까지만 ([근거](#신규--account_leave_reason)).
+- ~~`NOTIFICATION` 의 `PENDING` 건 취소 처리~~ → `NotificationStatus` 에 `CANCELLED` 신설, `FAILED` 와 구분 (PR #110 리뷰에서 합의) ([근거](#알림-비식별화)).
 
 실제로 열려 있는 건 하나뿐이다:
 
@@ -376,3 +388,4 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 |------|------|------|
 | 2026-09-19 | 최초 작성 — `DELETE /api/me` 스펙 초안 + `GET /api/me/studies` 확장 | 회원 탈퇴 기획 (PRD, 프로토타입 `/proto/core/ko/my/leave`) |
 | 2026-09-23 | PR #110 리뷰(j00hyun) 반영 — SESSION(Redis) 미구현 사실 정정, `GET /api/me/studies` 를 `isActiveNavigator` 계산 필드로 교체, `STUDY_APPLICATION.FORM_ANSWER.discordNickname` 비식별 추가, `STUDY_PROPOSAL` ERD 상태도에 탈퇴 트리거 반영, 디스코드 role 제거 범위 밖 명시. `NOTIFICATION` PENDING 건 취소 처리는 PR 코멘트 스레드에서 별도 논의 후 반영 예정이라 이 라운드에서는 보류 | PR 리뷰 코멘트 7건 + `beta` 병합으로 새로 생긴 `specs/study-application/spec.md`·`POL-0007` |
+| 2026-09-24 | `NOTIFICATION` PENDING 취소 처리 확정 — PR #110 리뷰 스레드에서 `NotificationStatus.CANCELLED` 신설로 합의. `specs/notification/spec.md`·`docs/erd/NOTIFICATION.md` 상태도에도 반영 | PR #110 코멘트 스레드 합의 (j00hyun) |
