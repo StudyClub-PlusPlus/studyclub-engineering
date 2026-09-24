@@ -7,6 +7,7 @@
 > 갱신: 2026-09-22 — 스키마 정리 제안 반영(**백엔드 미반영, 제안 단계**): `STUDY_KIND` 를 STUDY_PROGRAM 으로 이동, `SLUG`·`IS_HIDDEN`·`PUBLISH_AT`·`STUDY.CAPACITY`·`STUDY_DELIVERY_FORMAT` 삭제, 공개 = `STUDY_RECRUITMENT.START_AT` 유무, 상태 5단계, 상시 모집 폐지
 > 갱신: 2026-09-22 — PATCH/DELETE 스펙 추가 (#117 을 이 스펙의 스키마 제안에 맞춰 반영: `isHidden` 삭제, `studyKind` 는 STUDY_PROGRAM 소속이라 수정 불가, `recruitDeadline` null 불가, `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 수정 항목 추가)
 > 갱신: 2026-09-23 — `timezone` 필드 추가(**제안 단계, 백엔드 미반영**): 등록 폼에서 운영자가 KST/PST/동시 진행 중 직접 고르는 선택 입력. GET/POST/PATCH 세 곳에 반영. 운영 콘솔 목록에 컬럼 추가. 이 필드가 생기기 전 데이터는 값이 없어 사이트가 일정·킥오프 문구로 추정하거나 「시간대 미정」으로 보인다 — [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md#3-시간대-필터)
+> 갱신: 2026-09-24 — **공개 판정 정정**(PR #129 리뷰): 「공개 = `START_AT` 유무」를 「공개 = `STATUS != DRAFT`」로 바꾼다. `START_AT` 은 `STATUS` 와 별개 필드라 한쪽만 바뀌는 동기화 버그 여지가 있고, 지금 등록 API가 `START_AT=now` 를 채우는 별도 버그와도 얽혀 있었다 — `STATUS` 하나로 판정하면 두 문제 다 공개 여부에는 영향을 주지 않는다. 상세: [ERD](../../docs/erd/STUDY.md#공개-여부) · [POL-0002](../../01-planning/_registry/policies/POL-0002-study-status.md#공개-여부)
 
 ## 엔드포인트 목록
 
@@ -44,7 +45,11 @@
 
 구현완료 — DB 기반으로 동작 중 (카테고리·상태·키워드·마감일 필터 포함). 필드 단위 응답 스펙은 미작성.
 
-> **공개 기준(변경 예정)**: 목록에는 모집 시작 일자(`STUDY_RECRUITMENT.START_AT`, id 최대인 회차)가 있는 스터디만 나온다. 지금 구현은 `STATUS = OPEN` 으로 거르며 `IS_HIDDEN`·등록 시 `START_AT=now` 를 함께 쓴다 — 제안 반영 시 `START_AT` 기준으로 바꾼다. `status` 필터 값은 5단계로 늘어난다.
+> **공개 기준**: 목록에는 `STATUS != DRAFT` 인 스터디만 나온다. 지금 구현은 `STATUS = OPEN` 필터에
+> `IS_HIDDEN` 을 더해 쓴다 — 제안 반영 시 `IS_HIDDEN` 을 없애고 `STATUS != DRAFT` 하나로 정리한다
+> (`STATUS` 가 5단계로 늘어나므로 `= OPEN` 만으로는 `ONGOING`·`ENDED`·`CLOSED` 를 놓친다).
+> **모집 시작 일자(`START_AT`) 는 공개 판정에 쓰지 않는다** — `STATUS` 와 별개 필드라 동기화가 어긋날
+> 수 있어서다([ERD](../../docs/erd/STUDY.md#공개-여부) 참고). `status` 필터 값은 5단계로 늘어난다.
 >
 > **사이트 상태 표기**: `DRAFT` 안 보임 / `OPEN` = 모집 중 / `ONGOING` = 진행 중 / `ENDED`·`CLOSED` = 종료 ([ERD](../../docs/erd/STUDY.md#사용자-사이트-표기)).
 >
@@ -164,7 +169,7 @@
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 404 | NOT_FOUND | studyId 에 해당하는 스터디 없음 |
-| 404 | NOT_FOUND | 스터디가 비공개 상태 (모집 시작 일자 없음 = `STATUS = DRAFT`) |
+| 404 | NOT_FOUND | 스터디가 비공개 상태 (`STATUS = DRAFT`) |
 
 ### 프론트엔드 사용처
 
@@ -175,7 +180,7 @@
 
 - [NEEDS CLARIFICATION] CLUB 에서 같은 STUDY_PROGRAM 아래 여러 STUDY 가 있을 때 어떤 기수를 기본으로 보여줄지 (현재는 studyId 직접 지정)
 - [NEEDS CLARIFICATION] `startAt` 이 비어 있는 기존 데이터의 처리 — 등록·수정 요청에는 필드가 생겼지만(위 참고), 이 필드가 생기기 전 데이터는 여전히 비어 있을 수 있다. playground mock 은 대표 날짜·킥오프 문구·모집 마감일로 값을 추정해 채운다(FE 전용 임시 처리) — 실제 데이터 백필 여부와 방법 미정. [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md) 참고
-- 공개 여부는 모집 시작 일자(`STUDY_RECRUITMENT.START_AT`)로 정한다 — 없으면(`DRAFT`) 404, 있으면 조회 가능. 별도 숨김 플래그(`IS_HIDDEN`)는 없다.
+- 공개 여부는 `STATUS != DRAFT` 로 정한다 — `DRAFT` 면 404, 아니면 조회 가능. 별도 숨김 플래그(`IS_HIDDEN`)는 없다. 모집 시작 일자(`START_AT`)는 판정에 쓰지 않는다 — [ERD](../../docs/erd/STUDY.md#공개-여부) 참고.
 
 ---
 
@@ -188,7 +193,7 @@
 | ID | 기준 |
 |----|------|
 | AC-1 | title·oneLineSummary·category 세 필수 항목을 채우면 등록된다 |
-| AC-2 | 등록한 스터디는 공개 API 에 노출되지 않는다 — 등록 시 `START_AT` 을 채우지 않아 비공개(`STATUS=DRAFT`)다. 운영 콘솔 조회에는 포함된다 |
+| AC-2 | 등록한 스터디는 공개 API 에 노출되지 않는다 — 등록 직후는 항상 `STATUS=DRAFT`(비공개)다. 운영 콘솔 조회에는 포함된다 |
 | AC-3 | recruitDeadline 을 지정하면 그날이 지나면 `RECRUIT_CLOSED` 로 판정된다 |
 | AC-4 | recruitDeadline 을 비우면 등록되지 않는다(400). 상시 모집은 없다 |
 | AC-5 | category 가 목록 카드 색·아이콘의 기준이다 |
@@ -244,7 +249,7 @@
 | 필드 | 고정값 | 비고 |
 |------|--------|------|
 | STUDY.STATUS | `DRAFT` | 등록 후 ADMIN이 [공개(모집 시작)](#스터디-공개--공개-취소)로 OPEN 으로 전환 |
-| STUDY_RECRUITMENT.START_AT | `null` | 등록 시 채우지 않는다 — 비어 있으면 비공개. 공개할 때 채운다 |
+| STUDY_RECRUITMENT.START_AT | `null` | 등록 시 채우지 않는다 — 공개할 때(`STATUS: DRAFT → OPEN`) 함께 채운다. 공개 판정 자체는 `STATUS` 로 한다 |
 | STUDY_PROGRAM.TITLE | 요청의 `title` | 새 프로그램일 때만. 프로그램 제목은 첫 기수 제목을 따른다 |
 
 ### Response — 201 No Content
@@ -301,7 +306,8 @@ Location: /api/studies/{id}
 | 공개 | `STATUS=DRAFT`, 신청 폼(`APPLICATION_FORM`)이 있음 | `STATUS=OPEN`, 최신 모집 회차의 `START_AT` = now. 예약 공개는 없다 |
 | 공개 취소 | `STATUS=OPEN` | `STATUS=DRAFT`, `START_AT` = null |
 
-- 공개 = 모집 시작. 사이트 노출 여부는 `START_AT` 유무 하나로 정한다 ([ERD](../../docs/erd/STUDY.md#공개-여부)).
+- 공개 = 모집 시작. 사이트 노출 여부는 `STATUS != DRAFT` 하나로 정한다 — `START_AT` 은 이 액션이 함께
+  채우는 사실 데이터일 뿐, 노출 판정의 근거는 아니다 ([ERD](../../docs/erd/STUDY.md#공개-여부)).
 - 프로토타입은 공개·공개 취소 모두 확인 팝업을 거친다. 서버는 별도 확인 절차를 두지 않는다.
 
 ### Error Responses

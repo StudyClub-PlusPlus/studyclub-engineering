@@ -29,7 +29,7 @@
 |---|---|---|
 | 1 | `STATUS` 를 3값에서 **5값**(`DRAFT`/`OPEN`/`ONGOING`/`ENDED`/`CLOSED`)으로 확장. 진행중·종료를 계산이 아니라 라이프사이클로 저장 | [POL-0002](policies/POL-0002-study-status.md) |
 | 2 | `STUDY_KIND` 를 `STUDY` 에서 `STUDY_PROGRAM` 으로 이동 | [POL-0002](policies/POL-0002-study-status.md) · [POL-0003](policies/POL-0003-study-fields.md) |
-| 3 | `IS_HIDDEN`·`PUBLISH_AT`·`SLUG`·`STUDY.CAPACITY`·`STUDY_DELIVERY_FORMAT` 삭제. 공개 여부는 `STUDY_RECRUITMENT.START_AT` 유무로 판정 | [POL-0002](policies/POL-0002-study-status.md) · [POL-0003](policies/POL-0003-study-fields.md) |
+| 3 | `IS_HIDDEN`·`PUBLISH_AT`·`SLUG`·`STUDY.CAPACITY`·`STUDY_DELIVERY_FORMAT` 삭제. 공개 여부는 `STATUS != DRAFT` 로 판정(`STUDY_RECRUITMENT.START_AT` 은 판정에 쓰지 않는다 — 별개 필드라 동기화 버그 여지가 있다) | [POL-0002](policies/POL-0002-study-status.md) · [POL-0003](policies/POL-0003-study-fields.md) |
 | 4 | `RECRUIT_DEADLINE_AT` 을 NOT NULL 로 — 상시 모집을 두지 않는다 | [POL-0002](policies/POL-0002-study-status.md) |
 | 5 | `END_AT` 경과로 자동 종료 전환 삭제. `ONGOING → ENDED` 만 N주 경과로 자동, `ENDED → CLOSED` 는 캡틴 수동 확인만(디스코드 채널 삭제를 시스템이 검증하지 않는다) | [POL-0002](policies/POL-0002-study-status.md) |
 | 6 | 등록·수정 API 가 `startAt`·`discordChannelUrl`·`driveUrl` 을 입력으로 받도록 확장 | [POL-0003](policies/POL-0003-study-fields.md) |

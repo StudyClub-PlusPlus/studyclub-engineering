@@ -38,15 +38,22 @@ STUDY_KIND(스터디/클럽)는 기수가 아니라 프로그램의 속성이라
 | `ENDED` | (없음) | 종료 |
 | `CLOSED` | (없음) | 운영 종료 (사용자 사이트에서는 「종료」에 묶는다) |
 
-콘솔 단계 이름에는 **「공개」를 쓰지 않는다** — 진행 중인 기수도 공개 상태이기 때문이다. 공개 여부는
-모집 시작 일자(아래)가, 신청 가능 여부는 모집 상태가 말하고, `STATUS` 는 그 둘과 다른 사실(어디까지
-진행됐는가)만 말한다.
+콘솔 단계 이름에는 **「공개」를 쓰지 않는다** — `DRAFT` 를 벗어난 네 단계(`OPEN`·`ONGOING`·`ENDED`·
+`CLOSED`) 는 전부 공개 상태이기 때문이다. 공개 여부는 아래(`STATUS != DRAFT`)가, 신청 가능 여부는
+모집 상태가 말한다.
 
 ## 공개 여부
 
-별도 플래그(`IS_HIDDEN`)를 두지 않는다. **공개 = 모집 시작 일자(`STUDY_RECRUITMENT.START_AT`)가
-있는가.** 캡틴이 모집을 시작하면 `STATUS: DRAFT → OPEN` 이 되고 이 일자가 채워진다 — 두 조건은
-항상 함께 움직인다. 예약 공개는 없다.
+별도 플래그(`IS_HIDDEN`)를 두지 않는다. **판정은 `STATUS != DRAFT` 하나다.** 모집 시작 일자
+(`STUDY_RECRUITMENT.START_AT`)로 판정하지 않는다 — 캡틴이 모집을 시작하면 `STATUS: DRAFT → OPEN`
+과 `START_AT` 채움이 항상 같이 일어나 두 값이 이론상 늘 일치하지만, 필드가 둘이면 한쪽만 바뀌는
+버그가 생길 여지가 있다(공개 취소가 `STATUS` 만 되돌리고 `START_AT` 은 못 지우면, `START_AT` 기준
+판정은 여전히 공개로 남는다). `STATUS` 하나만 보면 이 동기화 문제가 없다. 예약 공개는 없다.
+
+> 지금 등록 API가 `START_AT` 을 `now()` 로 채우는 것도 고쳐야 할 별도 버그다(등록 직후 미공개로
+> 두려는 기획과 어긋난다) — 자세한 내용은 [STUDY.md](../../../docs/erd/STUDY.md#공개-여부) 참고.
+> `STATUS` 기준으로 판정을 옮기면 이 버그가 공개 여부에는 더 이상 영향을 주지 않지만, `START_AT` 자체는
+> 여전히 잘못된 값이라 데이터 정확성을 위해 별도로 고쳐야 한다.
 
 ## 판정 규칙
 
@@ -83,7 +90,7 @@ STUDY_KIND(스터디/클럽)는 기수가 아니라 프로그램의 속성이라
 |---|---|---|
 | `STATUS` 값 | 3값(`DRAFT`/`OPEN`/`CLOSED`) | **5값** — `ONGOING`·`ENDED` 추가. 진행중·종료를 모집 상태가 아니라 라이프사이클로 저장 |
 | `STUDY_KIND` | `STUDY` 컬럼(기수 단위) | `STUDY_PROGRAM` 으로 이동(프로그램 단위). 한 번 정하면 변경 불가 — [POL-0003](POL-0003-study-fields.md) |
-| 공개 여부 | `IS_HIDDEN` 플래그. 등록 시 `START_AT=now` 를 채움 | `IS_HIDDEN` 삭제. 공개 = `STUDY_RECRUITMENT.START_AT` 유무. 등록 직후는 항상 미공개 |
+| 공개 여부 | `IS_HIDDEN` 플래그. 등록 시 `START_AT=now` 를 채움 | `IS_HIDDEN` 삭제. 공개 = `STATUS != DRAFT`. 등록 직후는 항상 `DRAFT`(미공개) — 등록 API가 `START_AT=now` 채우는 것도 별도로 고쳐야 함 |
 | 상시 모집 | `RECRUIT_DEADLINE_AT` NULL 허용 | NOT NULL — 상시 모집 없음. 이어지는 참여는 클럽의 기수 이월로 표현 |
 | 완료 전환 | 「운영자 종료 또는 `END_AT` 경과」로 `CLOSED` | `END_AT` 경과로 자동 종료하지 않는다. `ONGOING → ENDED` 만 N주 경과로 자동, `ENDED → CLOSED` 는 캡틴 수동 확인만 |
 | 모집 회차 | 1개로 가정 | 여러 개 허용(추가 모집). id 최대인 회차 기준으로 판정 — [study-recruit-status](../../../specs/study-recruit-status/spec.md) |
