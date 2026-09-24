@@ -58,7 +58,7 @@ class StudyUpdateIntegrationTest {
     @Test
     @DisplayName("성공 - ADMIN 이 전체 필드를 수정하면 204 + DB 값이 변경된다")
     void adminUpdatesAllFields() {
-        Long studyId = createStudy("수정 전 제목", "수정 전 소개", "BACKEND");
+        Long studyId = createStudy("수정 전 제목", "수정 전 소개", "SOFTWARE");
         String futureDeadline =
                 Instant.now().plusSeconds(86400).truncatedTo(ChronoUnit.MICROS).toString();
 
@@ -96,7 +96,7 @@ class StudyUpdateIntegrationTest {
     @Test
     @DisplayName("성공 - 일부 필드만 전송하면 나머지 필드는 기존 값을 유지한다")
     void adminUpdatesPartialFields() {
-        Long studyId = createStudy("원래 제목", "원래 소개", "CS");
+        Long studyId = createStudy("원래 제목", "원래 소개", "ALGORITHM");
 
         Map<String, Object> body = Map.of("title", "바뀐 제목", "oneLineSummary", "원래 소개");
 
@@ -111,13 +111,13 @@ class StudyUpdateIntegrationTest {
 
         var study = studyRepository.findById(studyId).orElseThrow();
         assertThat(study.getTitle()).isEqualTo("바뀐 제목");
-        assertThat(study.getCategory()).isEqualTo(StudyCategory.CS);
+        assertThat(study.getCategory()).isEqualTo(StudyCategory.ALGORITHM);
     }
 
     @Test
     @DisplayName("성공 - LEADER 도 수정 가능하다")
     void leaderCanUpdate() {
-        Long studyId = createStudy("리더 수정 전", "소개", "BACKEND");
+        Long studyId = createStudy("리더 수정 전", "소개", "SOFTWARE");
         insertParticipantIfAbsent(studyId, LEADER_ID, ParticipantRole.LEADER);
 
         Map<String, Object> body = Map.of("title", "리더 수정 후", "oneLineSummary", "소개");
@@ -136,7 +136,7 @@ class StudyUpdateIntegrationTest {
     @Test
     @DisplayName("성공 - CO_LEADER 도 수정 가능하다")
     void coLeaderCanUpdate() {
-        Long studyId = createStudy("코리더 수정 전", "소개", "FRONTEND");
+        Long studyId = createStudy("코리더 수정 전", "소개", "SOFTWARE");
         insertParticipantIfAbsent(studyId, CO_LEADER_ID, ParticipantRole.CO_LEADER);
 
         Map<String, Object> body = Map.of("title", "코리더 수정 후", "oneLineSummary", "소개");

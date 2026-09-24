@@ -4,8 +4,11 @@
 > 생성일: 2026-09-08 (GET) · 2026-09-11 (POST 절 추가)
 > 갱신: 2026-09-19 — 신청 폼·제출·결과 API 는 [study-application/spec.md](../study-application/spec.md) 로 분리
 > 갱신: 2026-09-20 — STUDY_COHORT 테이블 폐기. 코호트 필드는 STUDY 로 통합, 모집 마감은 STUDY_RECRUITMENT 로 분리. 응답·요청 구조 반영
+> 갱신: 2026-09-21 — 목록: 모집 상태(RECRUITING/ONGOING/CLOSED)·시간대 필터 추가, 카드 필드 추가, DRAFT 제외. 카테고리 14 → 11종
+> 갱신: 2026-09-23 — 목록 정렬 옵션 제거(기획 재설계 — 목록은 검색·필터 전용). 필터·정렬·페이징은 DB 에서 수행
 > 갱신: 2026-09-21 — PATCH/DELETE 스펙 추가
 > 갱신: 2026-09-22 — 목록 카드가 `startAt` 을 표시하도록 playground 변경. 목록 응답 필드 스펙(미작성)에 `startAt` 포함 필요 — 아래 미확정 참고
+> 갱신: 2026-09-23 — 목록은 기수를 묶지 않는다(프로그램당 최신 1건 → 공개 기수 전부). 정렬 옵션 제거
 > 갱신: 2026-09-23 — 사용자 사이트 상세 조회 키는 `studyId`(`STUDY.ID`). `slug` 는 경로 키가 아니다. 기획: [스터디 상세](../../planning/stories/crew-view-study-detail/PRD.md)
 
 ## 엔드포인트 목록
@@ -38,9 +41,83 @@
 - **인증**: 불필요 (공개)
 - **설명**: 공개된 스터디 목록을 조회한다
 
-### 상태
+### Query Parameters
 
-구현완료 — DB 기반으로 동작 중 (카테고리·상태·키워드·마감일 필터 포함). 필드 단위 응답 스펙은 미작성.
+| 이름 | 타입 | 필수 | 기본값 | 설명 |
+|------|------|------|--------|------|
+| category | StudyCategory | N | 전체 | 분야 enum (단일). 유효값은 아래 표 |
+| status | StudyPhase | N | 전체 | `RECRUITING` 모집 중 / `ONGOING` 진행 중 / `CLOSED` 종료. 계산값 — [판정](#모집-상태-탭-판정) |
+| timezone | StudyTimezone | N | 전체 | `KST` / `PST` / `BOTH`(동시 모집). `SCHEDULE` 문구의 표기로 판정 |
+| keyword | String | N | - | 제목·한 줄 소개 부분 일치. 대소문자 무시, 앞뒤 공백 제거 |
+| recruitDeadlineBefore | Instant (ISO 8601) | N | - | 모집 마감이 이 시각 이전인 **모집 중** 스터디만 (종료 임박 = now + 3일) |
+| offset | int | N | 0 | 건너뛸 개수 |
+| limit | int | N | 20 | 가져올 개수 |
+
+잘못된 enum 값은 400 `INVALID_INPUT`.
+
+#### 모집 상태 탭 판정
+
+1. `STATUS = CLOSED` 또는 `END_AT` 경과 → `CLOSED`
+2. `START_AT` 경과 → `ONGOING`
+3. `recruitStatus = RECRUITING` → `RECRUITING`
+4. 그 밖(시작 전인데 모집 마감) → `CLOSED`
+
+`DRAFT` 는 목록에 나오지 않는다 (AC-2). 숨김(`IS_HIDDEN`)도 제외.
+
+**기수를 묶지 않는다.** 같은 `STUDY_PROGRAM` 의 3기가 진행 중이고 4기가 모집 중이면 **둘 다** 나온다. 기획도 스터디 단위로 나열한다 ([crew-browse-studies](../../planning/stories/crew-browse-studies/PRD.md)). 묶어서 최신 1건만 주면 진행 중인 기수가 목록에서 사라진다 — 2026-09-23 수정, 그전 구현은 프로그램당 최신 1건이었다.
+
+정렬은 **모집 중 → 진행 중 → 종료**, 같은 단계에서는 최근 등록 순으로 고정한다. 사용자가 고르는 정렬 옵션은 없다 (기획 재설계로 목록은 검색·필터 전용).
+
+필터·정렬·페이징은 **DB 에서** 한다 (`StudyListQueryRepository`). 단계 판정식이 SQL 과 `Study.phase` 두 곳에 있으므로, 통합 테스트가 `status` 필터 결과와 응답 `phase` 가 일치하는지 함께 검증한다.
+
+### Response — 200
+
+```json
+{
+  "items": [
+    {
+      "studyId": 1,
+      "slug": "daily-leetcode-1",
+      "title": "데일리 리트코드",
+      "oneLineSummary": "매일 알고리즘 문제 풀이",
+      "category": "ALGORITHM",
+      "studyKind": "STUDY",
+      "thumbnailUrl": null,
+      "schedule": "매주 화 21:00 KST",
+      "timezone": "KST",
+      "status": "OPEN",
+      "phase": "RECRUITING",
+      "recruitStatus": "RECRUITING",
+      "deliveryFormat": "ONLINE",
+      "capacity": 30,
+      "currentApplicants": 12,
+      "recruitDeadlineAt": "2026-09-30T15:00:00Z",
+      "startAt": "2026-10-01T00:00:00Z",
+      "endAt": null,
+      "closingSoon": false
+    }
+  ],
+  "total": 4,
+  "offset": 0,
+  "limit": 20
+}
+```
+
+| 필드 | 타입 | NULL | 설명 | 소스 |
+|------|------|------|------|------|
+| phase | String | N | 모집 상태 탭 값 | 계산: 위 판정 |
+| timezone | String | N | 진행 시간대 | 계산: `SCHEDULE` 에 PST·PDT → PST, KST → KST, 없으면 BOTH |
+| recruitStatus | String | Y | `status != OPEN` 이면 null | [study-recruit-status](../study-recruit-status/spec.md) |
+| currentApplicants | Long | N | 정원을 차지하는 인원 (ACTIVE+PAUSED) | STUDY_PARTICIPANT |
+| recruitDeadlineAt | String | Y | 최근 모집 회차 마감. null = 상시 모집 | STUDY_RECRUITMENT |
+| closingSoon | Boolean | N | OPEN 이고 마감 3일 이내 | 계산 |
+
+나머지(`slug`·`title`·`oneLineSummary`·`category`·`studyKind`·`thumbnailUrl`·`schedule`·`status`·`deliveryFormat`·`capacity`·`startAt`·`endAt`)는 STUDY 컬럼 그대로.
+
+### 프론트엔드 사용처
+
+- `frontend/apps/core-front/src/components/StudyBrowser.tsx` — 필터를 바꿀 때마다 `/api/studies`(route handler) → 이 API
+- `frontend/apps/core-front/src/lib/api.ts` — 쿼리 조립·응답 매핑
 
 > **FE 사용처 갱신(2026-09-22)**: 사용자 사이트 목록·상세 카드가 시작일(`startAt`)을 항상 표시한다.
 > 필드 단위 응답 스펙을 쓸 때 `startAt` 을 반드시 포함할 것 — 상세 조회 응답과 같은 소스(`STUDY.START_AT`)다.
@@ -84,7 +161,7 @@
   "title": "알고리즘 스터디",
   "oneLineSummary": "매주 알고리즘 문제를 풀고 코드 리뷰합니다.",
   "description": "매주 알고리즘 문제를 풀고 코드 리뷰하는 스터디",
-  "category": "BACKEND",
+  "category": "SOFTWARE",
   "studyKind": "STUDY",
   "thumbnailUrl": "https://example.com/thumb.jpg",
   "deliveryFormat": "ONLINE",
@@ -129,19 +206,18 @@
 | 코드 | 라벨 |
 |------|------|
 | `AI_ML` | AI · ML |
-| `CS` | CS · 알고리즘 |
+| `ALGORITHM` | 알고리즘 |
 | `DATA` | 데이터 |
-| `BACKEND` | 백엔드 |
-| `FRONTEND` | 프론트엔드 |
-| `MOBILE` | 모바일 |
-| `PLANNING` | 기획 |
-| `PM` | PM |
-| `DESIGN` | 디자인 |
+| `SOFTWARE` | 소프트웨어 개발 |
 | `CAREER` | 커리어 |
+| `BOOK_CLUB` | 북클럽 |
 | `LANGUAGE` | 어학 |
 | `LIFESTYLE` | 라이프스타일 |
+| `PRODUCT` | 기획 · PM |
 | `BUSINESS` | 비즈니스 |
 | `OTHER` | 기타 |
+
+> 2026-09-21 14종 → 11종 (V20). CS → ALGORITHM, BACKEND·FRONTEND·MOBILE → SOFTWARE, PLANNING·PM → PRODUCT, DESIGN → OTHER.
 
 ### Error Responses
 

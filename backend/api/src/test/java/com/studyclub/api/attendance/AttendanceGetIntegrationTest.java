@@ -90,7 +90,7 @@ class AttendanceGetIntegrationTest {
                                 .slug("system-design-study")
                                 .title("시스템 디자인 스터디")
                                 .oneLineSummary("시스템 디자인 심화")
-                                .category(StudyCategory.CS)
+                                .category(StudyCategory.ALGORITHM)
                                 .studyKind(StudyKind.STUDY)
                                 .description("시스템 디자인 스터디 설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)

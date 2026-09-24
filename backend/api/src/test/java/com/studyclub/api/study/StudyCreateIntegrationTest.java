@@ -85,7 +85,7 @@ class StudyCreateIntegrationTest {
                 Map.of(
                         "title", "백엔드 스터디",
                         "oneLineSummary", "백엔드 심화 학습",
-                        "category", "BACKEND",
+                        "category", "SOFTWARE",
                         "recruitDeadline", futureDeadline);
 
         var response =
@@ -106,7 +106,7 @@ class StudyCreateIntegrationTest {
                 Map.of(
                         "title", "오픈 스터디",
                         "oneLineSummary", "상시 모집 스터디",
-                        "category", "CS");
+                        "category", "ALGORITHM");
 
         var response =
                 rest.postForEntity("/api/studies", authenticated(ADMIN_ID, body), Void.class);
@@ -129,7 +129,7 @@ class StudyCreateIntegrationTest {
                         "studyProgramId", program.getId(),
                         "title", "클럽 3기",
                         "oneLineSummary", "3기 모집",
-                        "category", "BACKEND");
+                        "category", "SOFTWARE");
 
         var response =
                 rest.postForEntity("/api/studies", authenticated(ADMIN_ID, body), Void.class);
