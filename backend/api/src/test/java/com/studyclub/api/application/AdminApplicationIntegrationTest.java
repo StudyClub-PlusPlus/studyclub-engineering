@@ -24,7 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
-class BackOfficeApplicationIntegrationTest {
+class AdminApplicationIntegrationTest {
 
     private static final Long ADMIN_ID = 9101L;
     private static final Long LEADER_ID = 9102L;
@@ -68,9 +68,9 @@ class BackOfficeApplicationIntegrationTest {
     void captainReadsApplications() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + STUDY_ID + "/applications",
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
-                        authenticatedRequest(LEADER_ID),
+                        authenticatedRequest(ADMIN_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -94,17 +94,17 @@ class BackOfficeApplicationIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 시스템 관리자는 스터디 내부 역할이 없어도 신청 결과를 조회한다")
-    void adminReadsApplications() {
+    @DisplayName("실패 - 네비게이터라도 백오피스 신청자 목록은 볼 수 없다 (POL-0001)")
+    void rejectsNavigator() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + STUDY_ID + "/applications",
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
-                        authenticatedRequest(ADMIN_ID),
+                        authenticatedRequest(LEADER_ID),
                         Map.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("respondentCount", 1);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
     }
 
     @Test
@@ -112,7 +112,7 @@ class BackOfficeApplicationIntegrationTest {
     void rejectsUnauthenticatedRequest() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + STUDY_ID + "/applications",
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
                         HttpEntity.EMPTY,
                         Map.class);
@@ -122,11 +122,11 @@ class BackOfficeApplicationIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 캡틴이 아니면 신청 결과를 볼 수 없다")
+    @DisplayName("실패 - 아무 역할도 없으면 신청 결과를 볼 수 없다")
     void rejectsNonCaptain() {
         var response =
                 rest.exchange(
-                        "/api/studies/" + STUDY_ID + "/applications",
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
                         HttpMethod.GET,
                         authenticatedRequest(MEMBER_ID),
                         Map.class);
@@ -140,12 +140,12 @@ class BackOfficeApplicationIntegrationTest {
     void rejectsRecruitmentOfAnotherStudy() {
         var response =
                 rest.exchange(
-                        "/api/studies/"
+                        "/api/admin/studies/"
                                 + STUDY_ID
                                 + "/applications?recruitmentId="
                                 + OTHER_RECRUITMENT_ID,
                         HttpMethod.GET,
-                        authenticatedRequest(LEADER_ID),
+                        authenticatedRequest(ADMIN_ID),
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

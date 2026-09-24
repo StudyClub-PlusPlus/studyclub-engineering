@@ -186,4 +186,12 @@ public class Study extends BaseEntity {
         }
         return StudyTimezone.BOTH;
     }
+
+    public boolean isPubliclyVisible() {
+        return status == StudyStatus.OPEN && !isHidden;
+    }
+
+    public void replaceApplicationForm(String applicationForm) {
+        this.applicationForm = applicationForm;
+    }
 }

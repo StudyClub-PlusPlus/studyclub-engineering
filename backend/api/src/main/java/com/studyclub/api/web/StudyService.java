@@ -1,5 +1,6 @@
 package com.studyclub.api.web;
 
+import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -8,7 +9,6 @@ import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
-import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
@@ -43,6 +43,7 @@ public class StudyService {
     private final StudyAttendanceRepository studyAttendanceRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyBookmarkRepository studyBookmarkRepository;
+    private final StudyCaptainGuard studyCaptainGuard;
 
     public StudyService(
             StudyRepository studyRepository,
@@ -54,7 +55,8 @@ public class StudyService {
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository,
             StudyApplicationRepository studyApplicationRepository,
-            StudyBookmarkRepository studyBookmarkRepository) {
+            StudyBookmarkRepository studyBookmarkRepository,
+            StudyCaptainGuard studyCaptainGuard) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
@@ -65,6 +67,7 @@ public class StudyService {
         this.studyAttendanceRepository = studyAttendanceRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyBookmarkRepository = studyBookmarkRepository;
+        this.studyCaptainGuard = studyCaptainGuard;
     }
 
     @Transactional
@@ -127,10 +130,10 @@ public class StudyService {
 
     @Transactional
     public void update(Long accountId, Long studyId, StudyUpdateRequest request) {
-        Account account =
-                accountRepository
-                        .findById(accountId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        // 권한(ADMIN·캡틴) 판정은 StudyCaptainGuard 가 한다. 여기서는 "누구인지 모르는 요청" 만 먼저 막는다
+        if (!accountRepository.existsById(accountId)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
 
         Study study =
                 studyRepository
@@ -140,15 +143,7 @@ public class StudyService {
                                         new BusinessException(
                                                 ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
 
-        boolean isAdmin = account.getSystemRole() == SystemRole.ADMIN;
-        boolean isNavigator =
-                studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        studyId,
-                        accountId,
-                        List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER));
-        if (!isAdmin && !isNavigator) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 수정 권한이 없습니다.");
-        }
+        studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "스터디 수정 권한이 없습니다.");
 
         if (request.title() != null && request.title().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "title: 제목을 입력하세요.");

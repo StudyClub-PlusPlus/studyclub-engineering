@@ -54,6 +54,17 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
 - **Story PRD** — 화면 기획은 `planning/stories/{slug}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`planning/README.md`](planning/README.md)
+- **팀에 물을 것·정해진 것은 `share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
+  `share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`share/README.md`](share/README.md) 목록에 한 줄 추가한다.
+  PR 설명이나 코드 주석에만 있으면 머지되는 순간 안 읽힌다. 규칙이 굳으면 `docs/` 로 올린다.
+- **관객으로 경로를 가른다** — 백오피스가 부르는 API 는 `/api/admin` 아래, 파일은 `Admin*`.
+  같은 일을 사용자 사이트에서도 하면 **사이트용 엔드포인트를 따로** 만든다 (권한 판정이 다르다).
+  [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md)
+- **개발이 끝나면 스테이지까지 올린다** — PR 이 머지됐다고 끝이 아니다. `develop` 에 합쳐져야
+  스테이지(`backend-develop` · `core-front-develop` · `back-office-front-develop`)가 배포되고,
+  그때 처음 **기획·디자인이 눈으로 본다.** 내 브랜치에만 있으면 아무도 못 본 기능이다.
+  에이전트는 작업을 마칠 때 **"`develop` 에 병합해서 스테이지에 올릴까요?" 를 먼저 묻는다** —
+  시키기를 기다리지 않는다. 확인 주소는 `stage.studyclub-plusplus.com`.
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
 - 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
