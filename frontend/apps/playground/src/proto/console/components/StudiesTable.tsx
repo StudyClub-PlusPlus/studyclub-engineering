@@ -44,7 +44,7 @@ import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'l
  * 판정 함수는 사용자 사이트와 공유한다(`@studyclub/mock`) — 콘솔에만 "마감"으로 보이는 사고 방지.
  *
  * 필터는 **사용자 사이트 목록과 같은 모양**이다 — 선택지가 적은 축은 드롭다운이 아니라 세그먼트 탭으로,
- * 눌러 보기 전에 무엇이 걸려 있는지 보이게 한다. 주제는 다중 선택 여부를 정하는 중이라 지금은 그대로 둔다.
+ * 눌러 보기 전에 무엇이 걸려 있는지 보이게 한다. 주제는 `STUDY.CATEGORY` 가 단일 값이라 드롭다운 단일 선택이다.
  *
  * 컬럼 순서는 운영자가 바꿀 수 있다. **프로그램 ID › 스터디(제목) 두 칸은 맨 앞에 고정**한다 — 행이 어느 스터디인지 잃으면
  * 나머지 칸을 읽을 수 없고, 프로그램이 스터디를 묶는 위계라 그 앞에 온다.
@@ -117,7 +117,7 @@ function FilterSelect<T extends string>({
   );
 }
 
-/** 주제 셀렉트. 다중 선택으로 바뀌면 칩으로 교체한다 (회의 후 결정). */
+/** 주제 셀렉트. `STUDY.CATEGORY` 가 단일 값이라 단일 선택 드롭다운으로 고정한다. */
 function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <select

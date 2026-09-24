@@ -32,7 +32,7 @@ export type StudyTimezone = "KST" | "PST" | "both";
  * (거기서는 포괄 항목인 "소프트웨어 개발"·"기타"가 반드시 맨 아래여야 구체 분야를 안 삼킨다).
  *
  * 등록 폼은 이 목록만 선택지로 제공한다. 자유 입력이면 표기 흔들림(AI/ML vs AI·ML)으로
- * 카드 색·아이콘 매칭이 깨진다. 한 스터디가 여러 주제에 걸치면 `categories` 로 더 단다.
+ * 카드 색·아이콘 매칭이 깨진다. **다중 카테고리는 지원하지 않는다** — `STUDY.CATEGORY` 단일 값이다.
  *
  * TODO(api): 백엔드 StudyCategory enum 에 ALGORITHM · SOFTWARE · BOOK_CLUB 추가 필요.
  * 현재 enum 은 CS·BACKEND·FRONTEND·MOBILE·PLANNING·PM·DESIGN 을 갖고 있으나 해당 스터디가 0건이다.
@@ -207,12 +207,10 @@ export type Study = {
   /** @deprecated 종류는 프로그램이 갖는다(`program.kind`). 시드에서 프로그램 종류를 정할 때만 읽는다. */
   kind?: StudyKind;
   /**
-   * 대표 카테고리. 한 스터디가 여러 분야에 걸치면 `categories` 에 나머지를 둔다.
-   * 목록·필터·집계는 전부 `categoriesOf()` 로 읽는다 — 두 필드를 직접 보면 한쪽을 빠뜨린다.
+   * 주제. **STUDY.CATEGORY 는 단일 값이다** — 다중 카테고리는 지원하지 않는다(등록 폼도 단일 선택).
+   * 목록·필터·집계는 `categoriesOf()` 로 읽는다 — 값이 없는 레거시 행을 함께 처리하기 위한 얇은 래퍼다.
    */
   category?: string;
-  /** 추가 카테고리. 대표 카테고리는 여기 다시 적지 않는다. */
-  categories?: string[];
   goal?: L10n; // 목표
   topics?: L10n[]; // 예시 주제
   how_it_works?: L10n[]; // 진행 방식 (단계별)
@@ -243,16 +241,13 @@ export function toISODate(raw?: string): string | undefined {
 }
 
 /**
- * 스터디가 단 카테고리 전부 (대표 + 추가).
+ * 스터디가 단 카테고리 — 단일 값을 배열로 감싸서 돌려준다.
  *
- * 주제는 **중복해서 달 수 있다.** 한 스터디가 「AI · ML」이면서 「북클럽」일 수 있다.
- * 세는 쪽에서는 합계가 총 스터디 수를 넘는 것이 정상이다.
+ * `study.category` 를 직접 읽지 않고 이 함수를 거치는 이유는 값이 없는 레거시 행(빈 문자열) 때문이다.
+ * 목록·필터·집계가 전부 이 함수 하나를 쓰면, 나중에 "카테고리 없음" 처리 방식이 바뀌어도 한 곳만 고치면 된다.
  */
 export function categoriesOf(study: Study): string[] {
-  const all = [study.category, ...(study.categories ?? [])].filter(
-    (c): c is string => typeof c === "string" && c.length > 0,
-  );
-  return [...new Set(all)];
+  return study.category ? [study.category] : [];
 }
 
 /**
@@ -484,7 +479,6 @@ const STUDIES_SEED: StudyDraft[] = [
     status: "recruiting",
     format: "online",
     category: "AI · ML",
-    categories: ["북클럽"],
     schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
     description: {
       ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
@@ -694,7 +688,6 @@ const STUDIES_SEED: StudyDraft[] = [
     status: "recruiting",
     format: "online",
     category: "커리어",
-    categories: ["소프트웨어 개발"],
     description: {
       ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
       en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
@@ -849,7 +842,6 @@ const STUDIES_SEED: StudyDraft[] = [
     status: "ongoing",
     format: "hybrid",
     category: "소프트웨어 개발",
-    categories: ["AI · ML"],
     schedule: {
       ko: "매주 토 10:00 · 10주 과정",
       en: "Sat 10:00 AM · 10 weeks",
@@ -907,7 +899,6 @@ const STUDIES_SEED: StudyDraft[] = [
     status: "ongoing",
     format: "online",
     category: "데이터",
-    categories: ["소프트웨어 개발", "북클럽"],
     schedule: { ko: "매주 수 20:30 · 6주 과정", en: "Wed 8:30 PM · 6 weeks" },
     description: {
       ko: "실제 데이터셋을 놓고 쿼리와 분석을 직접 해보는 방식으로 진행합니다. 이론 설명은 짧게 하고 대부분의 시간을 손으로 만지는 데 씁니다. 매주 과제가 있고, 각자 결과를 공유하며 다른 접근을 배웁니다. 도구 설치와 환경 설정은 첫 주에 함께 끝냅니다.",
@@ -1033,7 +1024,6 @@ const STUDIES_SEED: StudyDraft[] = [
     status: "closed",
     format: "online",
     category: "데이터",
-    categories: ["소프트웨어 개발"],
     schedule: { ko: "매주 수 20:30 · 6주 과정", en: "Wed 8:30 PM · 6 weeks" },
     description: {
       ko: "실제 데이터셋을 놓고 쿼리와 분석을 직접 해보는 방식으로 진행합니다. 이론 설명은 짧게 하고 대부분의 시간을 손으로 만지는 데 씁니다. 매주 과제가 있고, 각자 결과를 공유하며 다른 접근을 배웁니다. 도구 설치와 환경 설정은 첫 주에 함께 끝냅니다.",
@@ -1367,7 +1357,6 @@ const STUDIES_SEED: StudyDraft[] = [
     status: "closed",
     format: "online",
     category: "AI · ML",
-    categories: ["소프트웨어 개발", "커리어"],
     schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
     description: {
       ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
@@ -1511,7 +1500,6 @@ const STUDIES_SEED: StudyDraft[] = [
     status: "closed",
     format: "online",
     category: "알고리즘",
-    categories: ["커리어"],
     schedule: {
       ko: "매주 화·목 21:00 · 상시",
       en: "Tue & Thu 9:00 PM · ongoing",
