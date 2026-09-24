@@ -2,13 +2,10 @@ package com.studyclub.api.auth.dto;
 
 import com.studyclub.api.auth.validation.ValidNickname;
 import com.studyclub.api.auth.validation.ValidTimeZone;
-import com.studyclub.domain.account.NicknamePolicy;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.time.DateTimeException;
-import java.time.ZoneId;
 
 /**
  * ACCOUNT 리소스(POST/GET /accounts/**) 요청 DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 달라 분리한다 — 여긴
@@ -32,46 +29,5 @@ public final class AccountDtos {
             @AssertTrue(message = "개인정보 수집·이용에 동의해야 합니다") boolean privacyPolicyAgreed,
             @NotNull(message = "마케팅 수신 동의 여부는 필수입니다") Boolean marketingAgreed,
             @NotBlank(message = "닉네임은 필수입니다") @ValidNickname String nickname,
-            @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {
-
-        public OnboardingRequest {
-            if (age14Confirmed == null) {
-                throw new IllegalArgumentException("만 14세 이상 여부를 확인해야 합니다");
-            }
-            if (!age14Confirmed) {
-                throw new IllegalArgumentException("만 14세 이상이어야 가입할 수 있습니다");
-            }
-
-            if (!termsOfServiceAgreed) {
-                throw new IllegalArgumentException("약관에 동의해야 합니다");
-            }
-
-            if (!privacyPolicyAgreed) {
-                throw new IllegalArgumentException("개인정보 수집·이용에 동의해야 합니다");
-            }
-
-            if (marketingAgreed == null) {
-                throw new IllegalArgumentException("마케팅 수신 동의 여부는 필수입니다");
-            }
-
-            if (nickname == null || nickname.isBlank()) {
-                throw new IllegalArgumentException("닉네임은 필수입니다");
-            }
-
-            String nicknameViolation = NicknamePolicy.violation(NicknamePolicy.normalize(nickname));
-            if (nicknameViolation != null) {
-                throw new IllegalArgumentException(nicknameViolation);
-            }
-
-            if (timeZone == null || timeZone.isBlank()) {
-                throw new IllegalArgumentException("타임존은 필수입니다");
-            }
-
-            try {
-                ZoneId.of(timeZone);
-            } catch (DateTimeException e) {
-                throw new IllegalArgumentException("타임존: 유효하지 않은 값입니다");
-            }
-        }
-    }
+            @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {}
 }

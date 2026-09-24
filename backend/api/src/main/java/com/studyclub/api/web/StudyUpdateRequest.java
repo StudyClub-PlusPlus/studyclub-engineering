@@ -16,36 +16,4 @@ public record StudyUpdateRequest(
         String description,
         StudyCategory category,
         Instant recruitDeadline,
-        String schedule) {
-
-    public StudyUpdateRequest {
-        if (title != null) {
-            title = title.trim();
-            if (title.length() > 60) {
-                throw new IllegalArgumentException("title: 길이 제한을 넘었습니다.");
-            }
-        }
-
-        if (oneLineSummary != null) {
-            oneLineSummary = oneLineSummary.trim();
-            if (oneLineSummary.isBlank()) {
-                throw new IllegalArgumentException("oneLineSummary: 비어 있으면 저장 불가입니다.");
-            }
-            if (oneLineSummary.length() > 255) {
-                throw new IllegalArgumentException("oneLineSummary: 길이 제한을 넘었습니다.");
-            }
-        }
-
-        if (description != null && description.length() > 5_000) {
-            throw new IllegalArgumentException("description: 길이 제한을 넘었습니다.");
-        }
-
-        if (recruitDeadline != null && recruitDeadline.isBefore(Instant.now())) {
-            throw new IllegalArgumentException("recruitDeadline: 미래 시간을 입력해 주세요.");
-        }
-
-        if (schedule != null && schedule.length() > 500) {
-            throw new IllegalArgumentException("schedule: 길이 제한을 넘었습니다.");
-        }
-    }
-}
+        String schedule) {}
