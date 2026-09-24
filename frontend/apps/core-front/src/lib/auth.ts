@@ -15,6 +15,7 @@ export type SessionUser = {
   name: string | null;
   picture: string | null;
   role: string;
+  onboardingCompletedAt?: string | null;
 };
 
 /** 브라우저에서 구글 OAuth authorize URL (팝업으로 연다). */
