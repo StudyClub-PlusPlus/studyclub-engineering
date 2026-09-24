@@ -68,7 +68,7 @@ export function toStudy(api: ApiStudy): Study {
     image: api.thumbnailUrl ?? undefined,
     schedule: api.schedule ? l10n(api.schedule) : undefined,
     date: api.endAt?.slice(0, 10),
-    start_at: api.startAt ?? undefined,
+    startAt: api.startAt ?? undefined,
     seats: api.capacity ? { total: api.capacity, taken: api.currentApplicants } : undefined,
     recruitment: {
       status: api.recruitStatus !== 'RECRUITING' ? 'closed' : api.recruitDeadlineAt ? 'open' : 'always',

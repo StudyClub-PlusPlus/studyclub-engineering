@@ -51,7 +51,7 @@ export function recruitDeadline(study: Study, locale: Locale): string | undefine
 
 /** 시작일 표시값 — `STUDY.START_AT` 이 없으면 `미정`. */
 export function studyStartValue(study: Study, locale: Locale): string {
-  return toISODate(study.start_at) ?? t({ ko: '미정', en: 'TBD' }, locale);
+  return toISODate(study.startAt) ?? t({ ko: '미정', en: 'TBD' }, locale);
 }
 
 /**
