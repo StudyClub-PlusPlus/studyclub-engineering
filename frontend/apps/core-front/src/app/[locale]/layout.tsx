@@ -12,7 +12,7 @@ import { RegistrationNavigation } from '@/components/RegistrationNavigation';
 import { getSite } from '@/lib/content';
 import { LOCALES, isLocale, m } from '@/lib/i18n';
 import { JsonLd, organizationJsonLd, webSiteJsonLd } from '@/lib/jsonld';
-import { SITE_NAME, SITE_URL, alternatesFor } from '@/lib/seo';
+import { IS_INDEXABLE, SITE_NAME, SITE_URL, alternatesFor } from '@/lib/seo';
 
 /**
  * **이 파일이 루트 레이아웃이다** (`app/layout.tsx` 는 없다).
@@ -40,6 +40,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       .split(',')
       .map((k) => k.trim()),
     alternates: alternatesFor(locale),
+    // stage·프리뷰 빌드는 통째로 색인 금지 (lib/seo.ts IS_INDEXABLE 주석 참고)
+    ...(IS_INDEXABLE ? {} : { robots: { index: false, follow: false } }),
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,

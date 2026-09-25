@@ -7,9 +7,25 @@ import type { Metadata } from 'next';
 import type { Locale } from './content';
 import { DEFAULT_LOCALE, LOCALES } from './i18n';
 
+/** 색인해도 되는 유일한 호스트. 여기 말고 다른 곳에 뜬 우리 사이트는 전부 색인 금지다. */
+export const CANONICAL_ORIGIN = 'https://studyclub-plusplus.com';
+
 /** 배포 도메인. 환경변수로 덮을 수 있게 둔다 — 프리뷰 배포에서 canonical 이 prod 를 가리키면 안 된다. */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://studyclub-plusplus.com').replace(/\/+$/, '');
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? CANONICAL_ORIGIN).replace(/\/+$/, '');
 export const SITE_NAME = 'StudyClub++';
+
+/**
+ * **이 빌드가 색인되어도 되는가.**
+ *
+ * ⚠️ stage(`stage.studyclub-plusplus.com`)가 색인되면 prod 와 **같은 콘텐츠로 경쟁한다** —
+ * 하필 우리가 이기려는 그 키워드로. 구글이 둘 중 하나를 골라 버리는데 고르는 쪽이 stage 일 수도 있다.
+ * robots.txt 로 `Allow: /` 를 내보내는 순간 "와서 가져가라"고 초대하는 꼴이라
+ * 호스트별로 반드시 갈라야 한다.
+ *
+ * 판정은 `NEXT_PUBLIC_SITE_URL` 하나로 한다 — 배포 파이프라인이 주입하는 값이라
+ * 코드가 자기 환경을 짐작하지 않는다. 안 넘어오면 prod 로 본다(기본값이 prod 도메인이므로).
+ */
+export const IS_INDEXABLE = SITE_URL === CANONICAL_ORIGIN;
 
 /** 로케일 접두를 뺀 경로('' | '/studies' | '/studies/foo')를 정규화. */
 function normalize(path: string): string {
@@ -63,7 +79,8 @@ export function pageMetadata({
     title: titleAbsolute ? { absolute: title } : title,
     description,
     alternates,
-    ...(noindex ? { robots: { index: false, follow: false } } : {}),
+    // 색인 불가 호스트(stage·프리뷰)면 페이지 성격과 무관하게 전부 막는다.
+    ...(noindex || !IS_INDEXABLE ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       type: ogType ?? 'website',
       siteName: SITE_NAME,

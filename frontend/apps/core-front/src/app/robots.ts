@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-import { SITE_URL } from '@/lib/seo';
+import { IS_INDEXABLE, SITE_URL } from '@/lib/seo';
 
 /**
  * AI 크롤러를 **명시적으로 허용**한다.
@@ -20,6 +20,9 @@ const AI_CRAWLERS = [
 ];
 
 export default function robots(): MetadataRoute.Robots {
+  // stage·프리뷰는 전면 차단. sitemap 도 안 알린다 — 알리면 거기부터 긁어간다.
+  if (!IS_INDEXABLE) return { rules: [{ userAgent: '*', disallow: '/' }] };
+
   return {
     rules: [
       {
