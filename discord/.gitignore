@@ -10,6 +10,9 @@ env/
 # Secrets / local env
 .env
 
+# SQLite (study-name reservations)
+data/
+
 # pytest
 .pytest_cache/
 

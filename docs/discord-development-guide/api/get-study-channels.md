@@ -3,7 +3,7 @@
 **스터디 카테고리 아래의 텍스트 · 음성 채널 목록**을 돌려준다. 호출자가 스터디의 채널 구성을 보거나,
 [`send-message`](send-message.md) 로 메시지를 올릴 채널을 고를 때 쓰는 조회용이다. 아무것도 만들거나 바꾸지 않는다.
 
-> ⚠️ **아직 구현 전이다.** 이 문서는 구현할 계약이다.
+> 구현: `discord/app/api/routes/studies.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
 > **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다.
 
@@ -35,7 +35,7 @@ GET /api/v1/studies/{discordStudyId}/channels
 
 captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 역할이다. 이 엔드포인트는 어느 것도 만들지 않고,
 찾지 못하면 목록을 돌려주지 말고 실패한다. 둘 다 **설정값으로 ID 를 받는다**
-(예: `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID`) — 이름으로 찾지 않는다.
+(`DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID`) — 이름으로 찾지 않는다.
 
 `discordStudyId` 는 `^[0-9]{17,20}$` 로 검증한다.
 
@@ -104,12 +104,14 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 | **403** | 요청자에게 captain 역할도 navigator 역할도 없음 |
 | **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
 
-`Idempotency-Key` 를 쓰지 않으므로 409 는 없다.
+`Idempotency-Key` 를 쓰지 않으므로 중복 요청 409 는 없다. 409 는 아래의 설정 누락 하나뿐이다.
 
 ### 이 엔드포인트에서 나는 것
 
 | 상태 | 언제 | 원인 |
 |------|------|------|
+| **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정 없음 | 서버 설정 문제. [create-study](create-study.md#이-엔드포인트에서-나는-것) 와 같다 |
+| **404** | 봇이 `DISCORD_GUILD_ID` 길드를 찾지 못함 | 서버 설정 문제(ID 오타, 봇이 그 길드에 없음) |
 | **400** | `discordStudyId` 가 snowflake 형식이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
 | **400** | `discordStudyId` 가 카테고리가 아닌 채널의 ID 임 (텍스트 · 음성 채널 등) | 위와 같음. 텍스트 채널 ID 를 카테고리 ID 자리에 넣은 경우가 흔하다 |
 | **404** | captain 역할 또는 navigator 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. **요청자가 다른 쪽 역할을 갖고 있어도 실패한다** — 설정이 깨진 채로 권한 검사를 반쪽만 하지 않는다 ([send-message](send-message.md#이-엔드포인트에서-나는-것) 와 같다) |

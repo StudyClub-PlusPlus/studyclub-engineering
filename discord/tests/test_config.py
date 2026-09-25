@@ -54,3 +54,37 @@ def test_load_settings_defaults():
     assert settings.api_port == 4800
     assert settings.log_level == "INFO"
     assert settings.output_channel_id is None
+
+
+def test_load_settings_reads_study_settings():
+    """The guild, captain and navigator roles, and API key come from the environment."""
+    settings = load_settings(
+        environ={
+            "DISCORD_GUILD_ID": "123456789012345678",
+            "DISCORD_CAPTAIN_ROLE_ID": "223456789012345678",
+            "DISCORD_NAVIGATOR_ROLE_ID": "323456789012345678",
+            "DISCORD_API_KEY": " key ",
+        },
+        load_dotenv_file=False,
+    )
+
+    assert settings.guild_id == 123456789012345678
+    assert settings.captain_role_id == 223456789012345678
+    assert settings.navigator_role_id == 323456789012345678
+    assert settings.api_key == "key"
+
+
+def test_load_settings_study_settings_default_to_unset(caplog):
+    """Blank values leave the settings unset; a non-numeric ID is logged and dropped."""
+    with caplog.at_level("WARNING"):
+        settings = load_settings(
+            environ={"DISCORD_GUILD_ID": "not-an-id", "DISCORD_API_KEY": "  "},
+            load_dotenv_file=False,
+        )
+
+    assert settings.guild_id is None
+    assert settings.captain_role_id is None
+    assert settings.navigator_role_id is None
+    assert settings.api_key is None
+    assert settings.db_path == "data/discord.sqlite3"
+    assert "not-an-id" in caplog.text

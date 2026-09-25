@@ -99,6 +99,8 @@ async def run(settings: Settings) -> None:
     bot = create_bot(settings) if token is not None else None
     if bot is None:
         logger.warning("DISCORD_TOKEN is not set - running the API only, Discord bot disabled")
+    if settings.api_key is None:
+        logger.warning("DISCORD_API_KEY is not set - /api/v1/studies rejects every request with 401")
 
     server = _Server(
         uvicorn.Config(
@@ -106,6 +108,7 @@ async def run(settings: Settings) -> None:
             host=settings.api_host,
             port=settings.api_port,
             log_level=settings.log_level.lower(),
+            access_log=False,
         )
     )
 

@@ -21,7 +21,7 @@ const ENDPOINTS = [
     caller: "captain",
     expect: "201 · 400 401 403 404 409 502 503",
     fields: [
-      { name: "studyName", in: "body", type: "text", value: "알고리즘 스터디", note: "1–100자" },
+      { name: "studyName", in: "body", type: "text", value: "알고리즘 스터디", note: "1–96자" },
     ],
   },
   {
@@ -29,7 +29,7 @@ const ENDPOINTS = [
     method: "GET",
     path: "/api/v1/studies/{discordStudyId}/channels",
     caller: "captain · navigator",
-    expect: "200 · 400 401 403 404 503",
+    expect: "200 · 400 401 403 404 409 502 503",
     fields: [{ name: "discordStudyId", in: "path", type: "text", value: STUDY }],
   },
   {

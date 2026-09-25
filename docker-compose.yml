@@ -114,6 +114,9 @@ services:
     env_file: ./.env
     ports:
       - "${DISCORD_PORT:-24800}:4800"
+    # create-study 의 스터디 이름 예약(SQLite, /app/data/discord.sqlite3)이 컨테이너 재생성 후에도 남도록.
+    volumes:
+      - studyclub-discord-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4800/api/v1/health')"]
@@ -127,6 +130,7 @@ volumes:
   studyclub-frontend-next-core:
   studyclub-frontend-next-bo:
   studyclub-frontend-next-playground:
+  studyclub-discord-data:
 
 # ─── stage / prod 는 compose 로 띄우지 않는다 ─────────────────────────────────────
 # 운영·stage 는 k8s 에 배포된다 (이미지 빌드·배포는 .github/workflows, 클러스터 설정은 인프라 레포).
