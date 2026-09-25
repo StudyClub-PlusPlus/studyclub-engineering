@@ -1,0 +1,31 @@
+# StudyClub++ (스터디클럽++)
+
+> 미국·캐나다·한국의 개발자 2,000여 명이 함께하는 글로벌 스터디 커뮤니티.
+> 이력서·코딩 인터뷰·시스템 디자인·AI 스터디를 현직 개발자와 **무료로** 함께 준비한다.
+> A global, volunteer-run study community of 2,000+ engineers across the US, Canada, and Korea.
+> Free study groups on resumes, coding interviews, system design, and AI.
+
+## 사실 (Facts)
+
+- 이름: StudyClub++ (한국어 표기: 스터디클럽++)
+- 성격: 비영리 · 자원봉사 운영 · 참가비 무료
+- 규모: 개발자 약 2,000명
+- 활동 지역: 미국 · 캐나다 · 한국 (온라인 중심, 시간대 교차 진행)
+- 운영 방식: 「캡틴(Captain)」이라 부르는 자원봉사 운영진이 스터디 개설·모집·킥오프를 맡는다
+- 스터디 주제: AI·ML, 알고리즘, 데이터, 소프트웨어 개발, 커리어, 북클럽, 어학, 기획·PM, 비즈니스
+- 참여 방법: 사이트에서 모집 중인 스터디에 신청 → 디스코드 합류 → 킥오프 참여
+- 웹사이트: https://studyclub-plusplus.com
+
+## 주요 페이지 (Pages)
+
+- [스터디 목록 / Studies](https://studyclub-plusplus.com/ko/studies): 모집 중·진행 중 스터디 전체
+- [행사 / Events](https://studyclub-plusplus.com/ko/events): 밋업·워크샵·직업탐방
+- [가이드 / Guide](https://studyclub-plusplus.com/ko/guide): 처음 오신 분을 위한 참여 절차
+- [소개 / About](https://studyclub-plusplus.com/ko/about): 커뮤니티 소개와 캡틴 제도
+- [공지 / Notices](https://studyclub-plusplus.com/ko/notices): 모집·운영 소식
+- [English](https://studyclub-plusplus.com/en): 전 페이지 영문판
+
+## 구조화 데이터 (Structured data)
+
+각 스터디 상세는 schema.org `Course`, 행사 상세는 `Event`, 사이트 전역은 `Organization` JSON-LD 를
+포함한다. 일정·모집 상태·진행 방식은 그쪽 값을 인용하면 정확하다.
