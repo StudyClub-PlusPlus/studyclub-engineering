@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import {
   STUDY_CATEGORIES,
@@ -15,7 +15,6 @@ import {
 } from '@studyclub/mock';
 import { Badge } from '@studyclub/ui';
 
-import { TableCard } from '@/components/ui';
 import { tx } from '@/lib/l10n';
 
 /**
@@ -102,6 +101,20 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   const [category, setCategory] = useState('all');
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
   const [publish, setPublish] = useState<PublishFilter>('all');
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  const syncTableScroll = () => {
+    if (topScrollRef.current && tableScrollRef.current) {
+      tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+
+  const syncTopScroll = () => {
+    if (topScrollRef.current && tableScrollRef.current) {
+      topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+    }
+  };
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -146,11 +159,21 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
       </div>
 
-      <TableCard>
-        <thead>
+      <div className='card'>
+        <div
+          ref={topScrollRef}
+          className='overflow-x-auto border-b border-border'
+          onScroll={syncTableScroll}
+          aria-label='테이블 가로 스크롤'
+        >
+          <div className='h-3 min-w-[1500px]' />
+        </div>
+        <div ref={tableScrollRef} className='overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' onScroll={syncTopScroll}>
+          <table className='bo-table min-w-[1500px]'>
+            <thead>
           <tr>
             <th className='whitespace-nowrap'>p-id</th>
-            <th>스터디</th>
+            <th>스터디명</th>
             <th className='whitespace-nowrap'>카테고리</th>
             <th className='whitespace-nowrap'>종류</th>
             <th className='whitespace-nowrap'>시간대</th>
@@ -173,6 +196,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             const applied = crewStat.applied;
             return (
               <tr key={s.id}>
+                <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
                 <td className='w-[42%] max-w-0'>
                   <Link
                     href={`/studies/${s.id}`}
@@ -181,7 +205,6 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     {tx(s.title)}
                   </Link>
                 </td>
-                <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
                 <td className='whitespace-nowrap text-fg-secondary'>{s.category ?? '—'}</td>
                 <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
                 <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '—'}</td>
@@ -217,8 +240,10 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
               </td>
             </tr>
           )}
-        </tbody>
-      </TableCard>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
