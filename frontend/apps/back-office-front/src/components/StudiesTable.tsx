@@ -10,6 +10,7 @@ import {
   publishState,
   recruitState,
   toISODate,
+  applyFormUrl,
   type Study,
 } from '@studyclub/mock';
 import { Badge } from '@studyclub/ui';
@@ -86,9 +87,14 @@ function summarize(study: Study) {
   return {
     capacity,
     active: active.length,
+    applied: crew.filter((c) => c.status !== 'rejected').length,
     pending: crew.filter((c) => c.status === 'pending').length,
     rate: rows.length === 0 ? undefined : Math.round(rows.reduce((a, b) => a + b, 0) / rows.length),
   };
+}
+
+function displayDate(value?: string) {
+  return toISODate(value) ?? '—';
 }
 
 export function StudiesTable({ studies }: { studies: Study[] }) {
@@ -143,21 +149,28 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
       <TableCard>
         <thead>
           <tr>
+            <th className='whitespace-nowrap'>p-id</th>
             <th>스터디</th>
             <th className='whitespace-nowrap'>카테고리</th>
-            <th className='whitespace-nowrap'>모집</th>
-            <th className='whitespace-nowrap'>크루</th>
+            <th className='whitespace-nowrap'>종류</th>
+            <th className='whitespace-nowrap'>시간대</th>
+            <th className='whitespace-nowrap'>모집 시작일</th>
+            <th className='whitespace-nowrap'>모집 마감일</th>
+            <th className='whitespace-nowrap'>모집 상태</th>
+            <th className='whitespace-nowrap'>지원 현황</th>
+            <th className='whitespace-nowrap'>스터디 시작일</th>
             <th className='whitespace-nowrap'>출석률</th>
-            <th className='whitespace-nowrap'>공개</th>
+            <th className='whitespace-nowrap'>신청 폼</th>
+            <th className='whitespace-nowrap'>스터디 공개</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((s) => {
             const open = recruitState(s) === 'apply';
-            const deadline = toISODate(s.recruitment?.deadline);
-            const publishAt = toISODate(s.publish_at);
-            const scheduled = publishState(s) === 'scheduled';
+            const publish = publishState(s);
             const crewStat = summarize(s);
+            const capacity = s.recruitment?.capacity ?? s.seats?.total;
+            const applied = crewStat.applied;
             return (
               <tr key={s.id}>
                 <td className='w-[42%] max-w-0'>
@@ -168,35 +181,38 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     {tx(s.title)}
                   </Link>
                 </td>
+                <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
                 <td className='whitespace-nowrap text-fg-secondary'>{s.category ?? '—'}</td>
+                <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
+                <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '—'}</td>
+                <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.publish_at)}</td>
+                <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.recruitment?.deadline)}</td>
                 <td>
-                  <div className='flex items-center gap-2 whitespace-nowrap'>
-                    <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
-                      {open ? '모집중' : '마감'}
-                    </Badge>
-                    <span className='tnum text-xs text-fg-muted'>{deadline ? `~${deadline}` : open ? '상시' : ''}</span>
-                  </div>
+                  <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
+                    {open ? '모집중' : '마감'}
+                  </Badge>
                 </td>
                 <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
-                  {crewStat.active}/{crewStat.capacity}
+                  {applied} / {capacity === undefined ? '제한 없음' : capacity}
                 </td>
+                <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.date)}</td>
                 <td className='tnum whitespace-nowrap text-xs font-semibold text-fg-secondary'>
                   {crewStat.rate === undefined ? <span className='text-fg-muted'>—</span> : `${crewStat.rate}%`}
                 </td>
-                {/* 공개 예정은 사용자 사이트에서 아직 안 보인다는 뜻 — 날짜를 함께 보여준다 */}
-                <td className='tnum whitespace-nowrap text-xs'>
-                  {scheduled ? (
-                    <span className='font-semibold text-warning-700'>{publishAt} 공개</span>
-                  ) : (
-                    <span className='text-fg-secondary'>공개</span>
-                  )}
+                <td className='whitespace-nowrap text-center text-sm' aria-label={applyFormUrl(s) ? '신청 폼 있음' : '신청 폼 없음'}>
+                  {applyFormUrl(s) ? '✓' : '—'}
+                </td>
+                <td className='whitespace-nowrap text-xs'>
+                  <span className={publish === 'live' ? 'text-fg-secondary' : 'text-fg-muted'}>
+                    {publish === 'live' ? '공개' : '비공개'}
+                  </span>
                 </td>
               </tr>
             );
           })}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={5} className='text-center text-fg-muted'>
+              <td colSpan={13} className='text-center text-fg-muted'>
                 조건에 맞는 스터디가 없습니다.
               </td>
             </tr>

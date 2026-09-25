@@ -59,7 +59,7 @@ services:
     container_name: studyclub-frontend
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "if [ ! -x node_modules/.bin/turbo ]; then npm ci; fi; exec npm run dev"
     depends_on:
       - api
     environment:
@@ -67,17 +67,21 @@ services:
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
       # 서버측(Next route handler)이 컨테이너 내부에서 백엔드에 닿는 URL
-      API_BASE_URL: http://api:8080
+      API_BASE_URL: ${API_BASE_URL:-http://api:8080}
       # 브라우저용 (호스트에서 접근)
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:28080}
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       NEXT_PUBLIC_OAUTH_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
     ports:
-      - "${CORE_FRONT_PORT:-24700}:4700"   # core-front
-      - "${BO_FRONT_PORT:-24701}:4701"     # back-office-front
+      - "${CORE_FRONT_PORT:-4700}:4700"   # core-front
+      - "${BO_FRONT_PORT:-4701}:4701"     # back-office-front
+      - "${PLAYGROUND_FRONT_PORT:-4702}:4702"  # playground
     volumes:
       - ./frontend:/app
       - studyclub-frontend-node-modules:/app/node_modules
+      - studyclub-frontend-core-next:/app/apps/core-front/.next
+      - studyclub-frontend-back-office-next:/app/apps/back-office-front/.next
+      - studyclub-frontend-playground-next:/app/apps/playground/.next
 
   discord:
     image: studyclub-discord
@@ -96,3 +100,6 @@ services:
 volumes:
   studyclub-mysql-data:
   studyclub-frontend-node-modules:
+  studyclub-frontend-core-next:
+  studyclub-frontend-back-office-next:
+  studyclub-frontend-playground-next:
