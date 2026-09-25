@@ -17,6 +17,7 @@ export type BadgeTone =
   | 'inprogress'
   | 'closed'
   | 'ended'
+  | 'error'
   // 역할
   | 'captain'
   | 'navigator'
@@ -36,6 +37,7 @@ const TONE: Record<BadgeTone, { chip: string; dot: string }> = {
   inprogress: { chip: 'bg-inprogress-bg text-inprogress-fg', dot: 'bg-inprogress-dot' },
   closed: { chip: 'bg-closed-bg text-closed-fg', dot: 'bg-closed-dot' },
   ended: { chip: 'bg-ended-bg text-ended-fg', dot: 'bg-ended-dot' },
+  error: { chip: 'bg-error-50 text-error-700', dot: 'bg-error-500' },
 
   captain: { chip: 'bg-captain-bg text-captain-fg', dot: 'bg-captain-fg' },
   navigator: { chip: 'bg-navigator-bg text-navigator-fg', dot: 'bg-navigator-fg' },

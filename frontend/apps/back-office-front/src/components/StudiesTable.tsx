@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   STUDY_CATEGORIES,
@@ -13,7 +14,7 @@ import {
   applyFormUrl,
   type Study,
 } from '@studyclub/mock';
-import { Badge } from '@studyclub/ui';
+import { Badge, type BadgeTone } from '@studyclub/ui';
 
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 
@@ -66,6 +67,20 @@ const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
   { value: 'draft', label: '비공개' },
 ];
 
+const STUDY_STATUS_GUIDE = [
+  { label: '작성 중', tone: 'neutral' as const, description: '스터디를 작성·준비하는 단계입니다. 캡틴이 개설하면 모집을 시작합니다.' },
+  { label: '개설', tone: 'recruiting' as const, description: '캡틴이 공개해 모집을 시작한 단계입니다. 네비게이터가 첫 미팅을 등록하면 진행 중이 됩니다.' },
+  { label: '진행 중', tone: 'inprogress' as const, description: '첫 미팅이 등록되어 운영 중인 단계입니다. 네비게이터가 종료 처리하거나 마지막 미팅 이후 종료됩니다.' },
+  { label: '종료', tone: 'error' as const, description: '스터디 활동이 끝난 단계입니다. 캡틴이 채널을 삭제하고 운영 종료 처리합니다.' },
+  { label: '운영 종료', tone: 'closed' as const, description: '채널 삭제와 운영 종료 처리가 끝난 단계입니다.' },
+];
+
+const STATUS_DESCRIPTION: Record<string, string> = {
+  recruiting: STUDY_STATUS_GUIDE[1].description,
+  ongoing: STUDY_STATUS_GUIDE[2].description,
+  closed: STUDY_STATUS_GUIDE[3].description,
+};
+
 /** 필터 셀렉트 — 세 축이 한 줄에 나란히 서므로 생김새를 하나로 맞춘다. */
 function FilterSelect<T extends string>({
   value,
@@ -107,6 +122,30 @@ function summarize(study: Study) {
   };
 }
 
+function StatusTooltip({
+  tone,
+  label,
+  description,
+}: {
+  tone: BadgeTone;
+  label: string;
+  description: string;
+}) {
+  return (
+    <span className='group relative inline-flex'>
+      <Badge tone={tone} dot className='h-6 font-semibold'>
+        {label}
+      </Badge>
+      <span
+        role='tooltip'
+        className='pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-50 w-64 -translate-x-1/2 rounded-control bg-neutral-900 px-3 py-2 text-left text-xs leading-5 text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'
+      >
+        {description}
+      </span>
+    </span>
+  );
+}
+
 function displayDate(value?: string) {
   return toISODate(value) ?? '—';
 }
@@ -119,6 +158,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
   const [publish, setPublish] = useState<PublishFilter>('all');
   const [noFormOnly, setNoFormOnly] = useState(false);
+  const [page, setPage] = useState(1);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
@@ -164,8 +204,28 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
     );
   }, [studies, query, category, studyStatus, kind, recruit, publish, noFormOnly]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [query, category, studyStatus, kind, recruit, publish, noFormOnly]);
+
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div>
+      <div className='mb-2 flex flex-wrap items-center gap-2 text-sm'>
+        <span className='mr-1 font-semibold text-fg-secondary'>스터디 상태</span>
+        {STUDY_STATUS_GUIDE.map((status, index) => (
+          <span key={status.label} className='inline-flex items-center gap-2'>
+            <StatusTooltip tone={status.tone} label={status.label} description={status.description} />
+            {index < STUDY_STATUS_GUIDE.length - 1 && (
+              <ChevronRight size={16} className='text-fg-muted' aria-hidden='true' />
+            )}
+          </span>
+        ))}
+      </div>
       <div className='mb-5 flex flex-wrap items-center gap-2'>
         <input
           type='search'
@@ -224,13 +284,13 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((s) => {
+          {pageRows.map((s) => {
             const open = recruitState(s) === 'apply';
             const publish = publishState(s);
             const crewStat = summarize(s);
             const capacity = s.recruitment?.capacity ?? s.seats?.total;
             const applied = crewStat.applied;
-            const statusTone = s.status === 'recruiting' ? 'recruiting' : s.status === 'ongoing' ? 'inprogress' : 'closed';
+            const statusTone = s.status === 'recruiting' ? 'recruiting' : s.status === 'ongoing' ? 'inprogress' : 'error';
             return (
               <tr key={s.id}>
                 <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
@@ -243,9 +303,11 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                   </Link>
                 </td>
                 <td className='whitespace-nowrap'>
-                  <Badge tone={statusTone} dot className='font-semibold'>
-                    {STATUS_LABEL[s.status] ?? s.status}
-                  </Badge>
+                  <StatusTooltip
+                    tone={statusTone}
+                    label={STATUS_LABEL[s.status] ?? s.status}
+                    description={STATUS_DESCRIPTION[s.status] ?? ''}
+                  />
                 </td>
                 <td className='whitespace-nowrap'>
                   <Badge tone='neutral'>{s.category ?? '—'}</Badge>
@@ -285,6 +347,44 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             </tbody>
           </table>
         </div>
+        {pageCount > 1 && (
+          <div className='flex items-center justify-center gap-1.5 border-t border-border px-4 py-3'>
+            <button
+              type='button'
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={currentPage === 1}
+              aria-label='이전 페이지'
+              className='inline-flex h-8 w-8 items-center justify-center rounded-full text-fg-secondary hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40'
+            >
+              <ChevronLeft size={16} aria-hidden='true' />
+            </button>
+            {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type='button'
+                onClick={() => setPage(pageNumber)}
+                aria-label={pageNumber + '페이지'}
+                aria-current={currentPage === pageNumber ? 'page' : undefined}
+                className={
+                  currentPage === pageNumber
+                    ? 'inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white'
+                    : 'inline-flex h-8 w-8 items-center justify-center rounded-full text-sm text-fg-secondary hover:bg-surface-2'
+                }
+              >
+                {pageNumber}
+              </button>
+            ))}
+            <button
+              type='button'
+              onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+              disabled={currentPage === pageCount}
+              aria-label='다음 페이지'
+              className='inline-flex h-8 w-8 items-center justify-center rounded-full text-fg-secondary hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40'
+            >
+              <ChevronRight size={16} aria-hidden='true' />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
