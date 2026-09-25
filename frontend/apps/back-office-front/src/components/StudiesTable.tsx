@@ -31,14 +31,29 @@ import { STATUS_LABEL, tx } from '@/lib/l10n';
  */
 
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: '카테고리 전체' },
+  { value: 'all', label: '주제 전체' },
   ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
 ];
 
+type StudyStatusFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
+type KindFilter = 'all' | 'study' | 'club';
 type RecruitFilter = 'all' | 'apply' | 'closed';
-type PublishFilter = 'all' | 'live' | 'scheduled';
+type PublishFilter = 'all' | 'live' | 'draft';
 
 // "전체" 항목에 축 이름을 붙인다 — 필터가 한 줄에 나란히 서면 어떤 축인지 라벨 없이 알아야 한다.
+const STATUS_OPTIONS: { value: StudyStatusFilter; label: string }[] = [
+  { value: 'all', label: '상태 전체' },
+  { value: 'recruiting', label: '모집 중' },
+  { value: 'ongoing', label: '진행 중' },
+  { value: 'closed', label: '종료' },
+];
+
+const KIND_OPTIONS: { value: KindFilter; label: string }[] = [
+  { value: 'all', label: '종류 전체' },
+  { value: 'study', label: '스터디' },
+  { value: 'club', label: '클럽' },
+];
+
 const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
   { value: 'all', label: '모집 전체' },
   { value: 'apply', label: '모집중' },
@@ -48,7 +63,7 @@ const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
 const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
   { value: 'all', label: '공개 전체' },
   { value: 'live', label: '공개' },
-  { value: 'scheduled', label: '공개 예정' },
+  { value: 'draft', label: '비공개' },
 ];
 
 /** 필터 셀렉트 — 세 축이 한 줄에 나란히 서므로 생김새를 하나로 맞춘다. */
@@ -99,8 +114,11 @@ function displayDate(value?: string) {
 export function StudiesTable({ studies }: { studies: Study[] }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
+  const [studyStatus, setStudyStatus] = useState<StudyStatusFilter>('all');
+  const [kind, setKind] = useState<KindFilter>('all');
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
   const [publish, setPublish] = useState<PublishFilter>('all');
+  const [noFormOnly, setNoFormOnly] = useState(false);
   const topScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
@@ -122,8 +140,11 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
       studies
         .filter((s) => {
           if (category !== 'all' && s.category !== category) return false;
+          if (studyStatus !== 'all' && s.status !== studyStatus) return false;
+          if (kind !== 'all' && (s.kind ?? 'study') !== kind) return false;
           if (recruit !== 'all' && recruitState(s) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
+          if (noFormOnly && applyFormUrl(s)) return false;
           if (q) {
             const hay = `${tx(s.title)} ${tx(s.summary)} ${s.category ?? ''}`.toLowerCase();
             if (!hay.includes(q)) return false;
@@ -141,7 +162,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           return da.localeCompare(db);
         })
     );
-  }, [studies, query, category, recruit, publish]);
+  }, [studies, query, category, studyStatus, kind, recruit, publish, noFormOnly]);
 
   return (
     <div>
@@ -151,11 +172,25 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='제목 · 한 줄 소개 검색'
-          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-[188px] rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
         />
         <FilterSelect value={category} onChange={setCategory} options={CATEGORY_OPTIONS} />
+        <FilterSelect value={studyStatus} onChange={setStudyStatus} options={STATUS_OPTIONS} />
+        <FilterSelect value={kind} onChange={setKind} options={KIND_OPTIONS} />
         <FilterSelect value={recruit} onChange={setRecruit} options={RECRUIT_OPTIONS} />
         <FilterSelect value={publish} onChange={setPublish} options={PUBLISH_OPTIONS} />
+        <label className='inline-flex h-9 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-surface px-3 text-sm text-fg-secondary'>
+          <input
+            type='checkbox'
+            checked={noFormOnly}
+            onChange={(e) => setNoFormOnly(e.target.checked)}
+            className='peer sr-only'
+          />
+          <span className='relative h-5 w-9 rounded-full bg-surface-3 transition peer-checked:bg-brand'>
+            <span className='absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-4' />
+          </span>
+          신청 폼 없는 것만
+        </label>
         <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
       </div>
 
