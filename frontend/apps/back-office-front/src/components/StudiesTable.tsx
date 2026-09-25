@@ -15,7 +15,7 @@ import {
 } from '@studyclub/mock';
 import { Badge } from '@studyclub/ui';
 
-import { tx } from '@/lib/l10n';
+import { STATUS_LABEL, tx } from '@/lib/l10n';
 
 /**
  * 스터디 관리 목록.
@@ -174,7 +174,8 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           <tr>
             <th className='whitespace-nowrap'>p-id</th>
             <th>스터디명</th>
-            <th className='whitespace-nowrap'>카테고리</th>
+            <th className='whitespace-nowrap'>스터디 상태</th>
+            <th className='whitespace-nowrap'>주제</th>
             <th className='whitespace-nowrap'>종류</th>
             <th className='whitespace-nowrap'>시간대</th>
             <th className='whitespace-nowrap'>모집 시작일</th>
@@ -194,6 +195,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             const crewStat = summarize(s);
             const capacity = s.recruitment?.capacity ?? s.seats?.total;
             const applied = crewStat.applied;
+            const statusTone = s.status === 'recruiting' ? 'recruiting' : s.status === 'ongoing' ? 'inprogress' : 'closed';
             return (
               <tr key={s.id}>
                 <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
@@ -205,7 +207,14 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     {tx(s.title)}
                   </Link>
                 </td>
-                <td className='whitespace-nowrap text-fg-secondary'>{s.category ?? '—'}</td>
+                <td className='whitespace-nowrap'>
+                  <Badge tone={statusTone} dot className='font-semibold'>
+                    {STATUS_LABEL[s.status] ?? s.status}
+                  </Badge>
+                </td>
+                <td className='whitespace-nowrap'>
+                  <Badge tone='neutral'>{s.category ?? '—'}</Badge>
+                </td>
                 <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
                 <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '—'}</td>
                 <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.publish_at)}</td>
@@ -225,17 +234,15 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                 <td className='whitespace-nowrap text-center text-sm' aria-label={applyFormUrl(s) ? '신청 폼 있음' : '신청 폼 없음'}>
                   {applyFormUrl(s) ? '✓' : '—'}
                 </td>
-                <td className='whitespace-nowrap text-xs'>
-                  <span className={publish === 'live' ? 'text-fg-secondary' : 'text-fg-muted'}>
-                    {publish === 'live' ? '공개' : '비공개'}
-                  </span>
+                <td className='whitespace-nowrap'>
+                  <Badge tone='neutral'>{publish === 'live' ? '공개' : '비공개'}</Badge>
                 </td>
               </tr>
             );
           })}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={13} className='text-center text-fg-muted'>
+              <td colSpan={14} className='text-center text-fg-muted'>
                 조건에 맞는 스터디가 없습니다.
               </td>
             </tr>
