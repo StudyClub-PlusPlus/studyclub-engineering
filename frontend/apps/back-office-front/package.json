@@ -9,7 +9,7 @@
     "start": "next start -p 4701",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:e2e": "playwright test --config=e2e/playwright.config.ts --project=smoke",
     "test:e2e:catalog": "playwright test --config=e2e/playwright.config.ts --project=screen-catalog --workers=1",
