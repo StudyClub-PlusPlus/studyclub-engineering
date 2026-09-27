@@ -164,7 +164,7 @@ const screenStates = [
 3. 초기 스냅샷을 생성한다.
 
 ```bash
-npm run test:e2e:catalog:update
+pnpm run test:e2e:catalog:update
 ```
 
 ---

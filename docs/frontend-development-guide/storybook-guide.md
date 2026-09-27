@@ -39,7 +39,7 @@ packages/ui/
 
 ```bash
 # packages/ui 기준
-cd frontend && pnpm run storybook --workspace=@studyclub/ui
+cd frontend && pnpm --filter @studyclub/ui run storybook
 
 # 또는 frontend 루트에서 turbo 태스크
 cd frontend && pnpm dlx turbo run storybook --filter=@studyclub/ui

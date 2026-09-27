@@ -136,9 +136,9 @@ API 교체 지점은 `// TODO(api)` 주석으로 표시되어 있음.
 cd frontend && pnpm install && pnpm run dev
 
 # 개별 앱
-pnpm run dev --workspace=core-front        # :4700
-pnpm run dev --workspace=back-office-front # :4701
+pnpm --filter core-front run dev        # :4700
+pnpm --filter back-office-front run dev # :4701
 
 # Storybook
-pnpm run storybook --workspace=@studyclub/ui  # :6006
+pnpm --filter @studyclub/ui run storybook  # :6006
 ```

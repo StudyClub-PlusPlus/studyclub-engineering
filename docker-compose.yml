@@ -72,7 +72,9 @@ services:
     container_name: studyclub-frontend
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "pnpm install && pnpm run dev"
+    # node 이미지엔 pnpm 이 없다 → corepack 으로 켠다. 볼륨에 npm 시절 node_modules 가 남아 있으면
+    # pnpm 이 재설치 확인을 묻는데(TTY 없음 → 실패) confirmModulesPurge=false 로 묻지 않고 진행.
+    command: sh -c "corepack enable && pnpm install --config.confirmModulesPurge=false && pnpm run dev"
     depends_on:
       - api
     environment:
