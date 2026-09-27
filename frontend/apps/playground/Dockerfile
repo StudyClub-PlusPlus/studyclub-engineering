@@ -1,4 +1,4 @@
-# StudyClub++ playground — Next.js (turbo + npm-workspaces monorepo)
+# StudyClub++ playground — Next.js (turbo + pnpm-workspace monorepo)
 # Build context = repo 의 frontend/ (`docker build -f apps/playground/Dockerfile frontend`)
 #
 # core-front/Dockerfile 과 같은 구조. playground 는 NEXT_PUBLIC_* 를 안 쓰므로
@@ -7,9 +7,11 @@
 # ---- builder ----
 FROM node:20-alpine AS builder
 WORKDIR /app
+# node 이미지엔 pnpm 이 없다 — corepack 이 package.json 의 packageManager(pnpm@9.10.0)를 받아온다.
+RUN corepack enable
 COPY . .
-RUN npm ci
-RUN npm run build --workspace=playground
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter playground run build
 
 # ---- runner ----
 # standalone 만 넣는다 — 소스·node_modules 통째 복사 금지 (이미지가 4배로 뛴다).

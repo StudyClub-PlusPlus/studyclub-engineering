@@ -15,7 +15,7 @@
 ```bash
 git clone git@github.com:StudyClub-PlusPlus/studyclub-engineering.git
 cd studyclub-engineering/frontend
-npm install
+pnpm install
 ```
 
 > `git clone` 이 권한 오류를 내면 GitHub 계정이 `StudyClub-PlusPlus` 조직에 아직 안 들어온 것입니다. 디스코드에서 알려주세요.
@@ -24,7 +24,7 @@ npm install
 
 ```bash
 cd studyclub-engineering/frontend
-npm run dev --workspace=playground
+pnpm --filter playground run dev
 ```
 
 브라우저에서 http://localhost:4702 를 엽니다. 파일을 저장하면 화면이 알아서 새로고침됩니다.

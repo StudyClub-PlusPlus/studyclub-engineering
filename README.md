@@ -36,13 +36,13 @@ backend/                 # Spring Boot 4 멀티모듈 (Gradle Kotlin DSL, Java 2
 
 ```bash
 cd frontend
-npm install
-npm run dev                              # turbo — 모든 앱 동시
+pnpm install
+pnpm run dev                              # turbo — 모든 앱 동시
 # 개별 실행
-npm run dev --workspace=core-front       # http://localhost:4700
-npm run dev --workspace=back-office-front # http://localhost:4701
+pnpm --filter core-front run dev       # http://localhost:4700
+pnpm --filter back-office-front run dev # http://localhost:4701
 # 빌드
-npm run build
+pnpm run build
 ```
 
 - Node 20+ 필요.

@@ -1,12 +1,25 @@
 import Link from 'next/link';
 
 import { ArrowRight } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { EventCard } from '@/components/EventCard';
 import { JoinCta } from '@/components/JoinCta';
 import { StudyCard } from '@/components/StudyCard';
 import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return pageMetadata({
+    locale,
+    path: '',
+    title: m('seo.home_title', locale),
+    description: m('seo.site_description', locale),
+    titleAbsolute: true,
+  });
+}
 
 export default async function Landing({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
