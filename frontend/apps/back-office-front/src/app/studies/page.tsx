@@ -4,9 +4,7 @@
 //
 // ⚠️ 지금은 **사용자 사이트용** 목록 API 를 중계해 쓴다(백오피스 전용 API 는 다른 담당자가 개발 예정).
 // 그래서 공개된 스터디만 보인다 — 숨김·작성 중(DRAFT)은 사용자 API 가 애초에 안 준다.
-import { useMemo, useState } from 'react';
-
-import { studies as mockStudies } from '@studyclub/mock';
+import { useState } from 'react';
 
 import { StudyCreateButton } from '@/components/StudyCreateButton';
 import { PageHeader } from '@/components/ui';
@@ -58,9 +56,6 @@ export default function StudiesAdmin() {
     phase: phase === 'all' ? undefined : phase,
   });
 
-  // 상세(운영 페이지)는 아직 목 데이터 기반이다 — 있는 것만 링크를 건다.
-  const detailSlugs = useMemo(() => new Set(mockStudies.map((s) => s.id)), []);
-
   return (
     <div>
       <PageHeader title='스터디 관리' action={<StudyCreateButton />} />
@@ -98,7 +93,7 @@ export default function StudiesAdmin() {
       {isPending ? (
         <p className='py-10 text-center text-sm text-fg-muted'>불러오는 중…</p>
       ) : (
-        <StudiesTable rows={data?.rows ?? []} detailSlugs={detailSlugs} />
+        <StudiesTable rows={data?.rows ?? []} />
       )}
     </div>
   );

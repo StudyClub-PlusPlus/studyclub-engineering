@@ -116,6 +116,31 @@ public class Study extends BaseEntity {
         if (schedule != null) this.schedule = schedule;
     }
 
+    /** 모집 정원. {@code null} 이면 제한 없음. */
+    public void changeCapacity(Integer capacity) {
+        if (capacity != null && capacity < 1) {
+            throw new IllegalArgumentException("capacity 는 1 이상이어야 합니다.");
+        }
+        this.capacity = capacity;
+    }
+
+    /** 진행 시작일. {@code null} 이면 미정. */
+    public void changeStartAt(Instant startAt) {
+        this.startAt = startAt;
+    }
+
+    public void changeDiscordChannelUrl(String discordChannelUrl) {
+        this.discordChannelUrl = blankToNull(discordChannelUrl);
+    }
+
+    public void changeDriveUrl(String driveUrl) {
+        this.driveUrl = blankToNull(driveUrl);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     public boolean isClosingSoon(Instant recruitDeadlineAt) {
         return status == StudyStatus.OPEN
                 && recruitDeadlineAt != null

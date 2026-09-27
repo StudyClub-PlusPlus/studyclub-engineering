@@ -1,8 +1,11 @@
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  // tsconfig 의 `@/*` 와 같다 — 없으면 앱 코드를 import 하는 테스트가 모듈을 못 찾는다
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],

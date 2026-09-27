@@ -7,6 +7,7 @@
 > 갱신: 2026-09-22 — 스키마 정리 제안 반영(**백엔드 미반영, 제안 단계**): `STUDY_KIND` 를 STUDY_PROGRAM 으로 이동, `SLUG`·`IS_HIDDEN`·`PUBLISH_AT`·`STUDY.CAPACITY`·`STUDY_DELIVERY_FORMAT` 삭제, 공개 = `STUDY_RECRUITMENT.START_AT` 유무, 상태 5단계, 상시 모집 폐지
 > 갱신: 2026-09-22 — PATCH/DELETE 스펙 추가 (#117 을 이 스펙의 스키마 제안에 맞춰 반영: `isHidden` 삭제, `studyKind` 는 STUDY_PROGRAM 소속이라 수정 불가, `recruitDeadline` null 불가, `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 수정 항목 추가)
 > 갱신: 2026-09-23 — `timezone` 필드 추가(**제안 단계, 백엔드 미반영**): 등록 폼에서 운영자가 KST/PST/동시 진행 중 직접 고르는 선택 입력. GET/POST/PATCH 세 곳에 반영. 운영 콘솔 목록에 컬럼 추가. 이 필드가 생기기 전 데이터는 값이 없어 사이트가 일정·킥오프 문구로 추정하거나 「시간대 미정」으로 보인다 — [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md#3-시간대-필터)
+> 갱신: 2026-09-27 — 백오피스 정보 탭 연동. GET 응답에 `programId`·`oneLineSummary`·`schedule`·`discordChannelUrl`·`driveUrl` 추가, PATCH 가 `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 을 받는다(`null` = 비움, 키 생략 = 유지). **정원 저장 위치는 아직 `STUDY.CAPACITY`** 다 — 아래 「스터디 수정」 참고. `timezone` 은 컬럼이 없어 여전히 미구현
 > 갱신: 2026-09-24 — **공개 판정 정정**(PR #129 리뷰): 「공개 = `START_AT` 유무」를 「공개 = `STATUS != DRAFT`」로 바꾼다. `START_AT` 은 `STATUS` 와 별개 필드라 한쪽만 바뀌는 동기화 버그 여지가 있고, 지금 등록 API가 `START_AT=now` 를 채우는 별도 버그와도 얽혀 있었다 — `STATUS` 하나로 판정하면 두 문제 다 공개 여부에는 영향을 주지 않는다. 상세: [ERD](../../docs/erd/STUDY.md#공개-여부) · [POL-0002](../../01-planning/_registry/policies/POL-0002-study-status.md#공개-여부)
 
 ## 엔드포인트 목록
@@ -14,12 +15,12 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/studies | 스터디 목록 | X | 구현완료 |
-| GET | /api/studies/{studyId} | 스터디 상세 조회 | X | 스펙확정 |
+| GET | /api/studies/{studyId} | 스터디 상세 조회 | X | 구현완료 |
 | POST | /api/studies | 스터디 등록 (새 프로그램 · 클럽의 새 기수) | O (ADMIN) | 스펙확정 |
 | POST | /api/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 스펙작성중 |
 | POST | /api/studies/{studyId}/unpublish | 공개 취소 | O (ADMIN) | 스펙작성중 |
-| PATCH | /api/studies/{studyId} | 스터디 수정 | O (캡틴·네비게이터) | 스펙확정 |
-| DELETE | /api/studies/{studyId} | 스터디 삭제 | O (캡틴) | 스펙확정 |
+| PATCH | /api/studies/{studyId} | 스터디 수정 | O (캡틴·네비게이터) | 구현완료 (`timezone` 제외) |
+| DELETE | /api/studies/{studyId} | 스터디 삭제 | O (캡틴) | 구현완료 |
 
 신청 폼 설계 · 신청 제출 · 신청 결과 · 디스코드 연동은 [study-application/spec.md](../study-application/spec.md). 옛 경로 `PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form` 은 폐기.
 
@@ -97,23 +98,27 @@
 
 ### Response — 200
 
+실제 응답(`StudyDetailResponse`). 아래 필드 표의 `recruitDeadline` 은 응답에서 `recruitDeadlineAt` 이고,
+`timezone` 은 아직 응답에 없다(컬럼 미구현). `slug`·`deliveryFormat` 은 스키마 정리 제안이 반영되면 빠진다.
+
 ```json
 {
   "id": 1,
   "programId": 1,
+  "slug": "3f0c…",
   "title": "알고리즘 스터디",
   "oneLineSummary": "매주 알고리즘 문제를 풀고 코드 리뷰합니다.",
   "description": "매주 알고리즘 문제를 풀고 코드 리뷰하는 스터디",
-  "category": "BACKEND",
+  "category": "ALGORITHM",
   "studyKind": "STUDY",
   "thumbnailUrl": "https://example.com/thumb.jpg",
+  "deliveryFormat": "ONLINE",
   "status": "OPEN",
   "recruitStatus": "RECRUITING",
   "curriculum": "[{\"week\":1,\"topic\":\"배열\"}]",
   "capacity": 20,
-  "recruitDeadline": "2026-10-01T00:00:00Z",
   "schedule": "매주 목 20:00 · 8주 과정",
-  "timezone": "KST",
+  "recruitDeadlineAt": "2026-10-01T00:00:00Z",
   "startAt": "2026-10-15T00:00:00Z",
   "endAt": "2026-12-15T00:00:00Z",
   "discordChannelUrl": "https://discord.com/channels/123/456",
@@ -175,6 +180,9 @@
 
 - `frontend/apps/core-front/src/app/[locale]/studies/[id]/page.tsx` — 상세 페이지
 - `frontend/apps/core-front/src/lib/content.ts` — `getStudy(id)` mock 함수
+- `frontend/apps/back-office-front/src/app/studies/[id]/page.tsx` — 운영 콘솔 스터디 운영 페이지 (`useStudyDetail`, `features/studies/queries.ts`)
+  - ⚠️ 운영 콘솔도 이 공개용 GET 을 쓴다. 지금 구현은 숨김만 404 로 막아 DRAFT 도 보인다. 위 「공개 여부」대로 DRAFT 를 404 로
+    막으면 운영 콘솔에서 DRAFT 상세가 안 열린다 — 그 전에 `GET /api/admin/studies/{studyId}` 가 필요하다
 
 ### 미확정
 
@@ -391,6 +399,17 @@ Location: /api/studies/{id}
 | studyProgramId | 프로그램 연결은 변경 불가 — [POL-0003](../../01-planning/_registry/policies/POL-0003-study-fields.md) |
 | studyKind | `STUDY_PROGRAM` 소속이라 이 엔드포인트로 못 고친다. 등록 후 변경 불가 — [ERD](../../docs/erd/STUDY_PROGRAM.md) |
 | status | 별도 API(`/publish`·`/unpublish`, 운영 종료 전환은 미구현)에서만 전환 |
+
+### 구현 메모 (2026-09-27)
+
+- **`null` 과 키 생략을 구분한다.** `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 은 `null`(또는 빈 문자열 주소)을 보내면 비우고,
+  키를 빼면 그대로 둔다. 나머지 필드는 `null` 이면 바꾸지 않는다
+- **정원은 `STUDY.CAPACITY` 에 저장한다.** 위 표의 정본은 `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 지만, 목록 응답·목록 단계 필터(JPQL)·
+  모집 상태 판정이 모두 `STUDY.CAPACITY` 를 읽고 있어 수정만 회차에 쓰면 목록과 상세의 모집 상태가 어긋난다.
+  `RECRUITMENT_CAPACITY` 로 옮기는 일은 읽는 쪽 전부와 함께 한 번에 한다 (스키마 정리 제안의 `STUDY.CAPACITY` 삭제와 같은 작업)
+- `timezone` 은 컬럼이 없어 받지 않는다 — 보내면 무시된다
+- 운영 콘솔(정보 탭)은 **바뀐 칸만** 보낸다. 마감이 지난 스터디의 다른 칸을 고칠 때 지난 `recruitDeadline` 을 다시 보내면 400 이다
+- 프론트엔드 사용처: `frontend/apps/back-office-front/src/components/StudyInfoTab.tsx` (DELETE 도 같은 파일)
 
 ### Response — 204 No Content
 

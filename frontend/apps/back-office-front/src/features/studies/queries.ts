@@ -1,10 +1,17 @@
-// 스터디 조회 — 키·fetcher·훅을 한 파일에 둔다.
+// 스터디 조회·수정·삭제 — 키·fetcher·훅을 한 파일에 둔다.
 //
 // 키를 딕셔너리 하나에 모으지 않는다. 그건 도메인이 수십 개라 이름이 충돌할 때 필요한 장치다.
 // 여기서는 **이 기능을 고치는 사람이 이 파일만 열면 되는 것**이 더 중요하다.
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { toRow, type ApiStudyPage, type StudyFilter, type StudyRow } from '@/features/studies/types';
+import {
+  toRow,
+  type ApiStudyDetail,
+  type ApiStudyPage,
+  type StudyFilter,
+  type StudyRow,
+  type StudyUpdatePayload,
+} from '@/features/studies/types';
 import { http, qs } from '@/lib/http';
 
 /**
@@ -14,6 +21,7 @@ import { http, qs } from '@/lib/http';
 export const studyKeys = {
   all: ['studies'] as const,
   list: (filter: StudyFilter) => [...studyKeys.all, 'list', filter] as const,
+  detail: (studyId: number) => [...studyKeys.all, 'detail', studyId] as const,
 };
 
 /**
@@ -37,5 +45,45 @@ export function useStudies(filter: StudyFilter) {
     }),
     // 타이핑 중 이전 결과를 지우지 않는다 — 목록이 깜빡이면 지금 뭘 보고 있었는지 잃는다.
     placeholderData: (previous) => previous,
+  });
+}
+
+/**
+ * 상세·수정·삭제는 `/api/studies/{id}` 를 그대로 쓴다. 권한은 서버가 나눈다 — 수정은 캡틴·네비게이터,
+ * 삭제는 캡틴만. 같은 로직을 `/api/admin` 에 한 벌 더 두지 않는다.
+ */
+export function useStudyDetail(studyId: number) {
+  return useQuery({
+    queryKey: studyKeys.detail(studyId),
+    queryFn: () => http<ApiStudyDetail>(`/api/studies/${studyId}`),
+    retry: false,
+  });
+}
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+export function useUpdateStudy(studyId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: StudyUpdatePayload) =>
+      http<null>(`/api/studies/${studyId}`, {
+        method: 'PATCH',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(payload),
+      }),
+    // 목록의 정원·마감도 바뀌므로 상세만이 아니라 스터디 전체를 무효화한다
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: studyKeys.all }),
+  });
+}
+
+export function useDeleteStudy(studyId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => http<null>(`/api/studies/${studyId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      // 지워진 상세를 다시 불러오면 404 다 — 무효화하지 않고 캐시에서 뺀다
+      queryClient.removeQueries({ queryKey: studyKeys.detail(studyId) });
+      return queryClient.invalidateQueries({ queryKey: [...studyKeys.all, 'list'] });
+    },
   });
 }
