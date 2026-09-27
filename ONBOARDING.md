@@ -58,7 +58,7 @@ cp .env.example .env     # 이 파일 하나로 docker · 로컬 backend · 로�
 docker compose up -d --build
 ```
 
-첫 실행은 이미지 빌드와 `npm install` 때문에 몇 분 걸린다. 진행 상황은 `docker compose logs -f frontend`.
+첫 실행은 이미지 빌드와 `pnpm install` 때문에 몇 분 걸린다. 진행 상황은 `docker compose logs -f frontend`.
 `core-front:dev: ✓ Ready` 가 보이면 http://localhost:4700 을 연다.
 
 ```bash
@@ -77,11 +77,11 @@ ln -sfn ../../../.env frontend/apps/core-front/.env.local
 ln -sfn ../../../.env frontend/apps/back-office-front/.env.local
 
 cd frontend
-npm install
-npm run dev                                    # core 4700 · back-office 4701 · playground 4702
+pnpm install
+pnpm run dev                                    # core 4700 · back-office 4701 · playground 4702
 ```
 
-- 앱 하나만: `npm run dev --workspace=core-front`
+- 앱 하나만: `pnpm run dev --workspace=core-front`
 - A 로 띄운 `frontend` 컨테이너가 있으면 포트가 겹친다 → `docker compose stop frontend` 먼저
 
 ### C. 백엔드도 로컬
