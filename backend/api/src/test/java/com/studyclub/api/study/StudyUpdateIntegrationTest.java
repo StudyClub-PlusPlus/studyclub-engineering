@@ -13,6 +13,7 @@ import com.studyclub.domain.study.StudyRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -177,6 +178,108 @@ class StudyUpdateIntegrationTest {
         var recruitment = recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId);
         assertThat(recruitment).isPresent();
         assertThat(recruitment.get().getRecruitDeadlineAt()).isEqualTo(Instant.parse(newDeadline));
+    }
+
+    @Test
+    @DisplayName("성공 - 정원·진행 시작일·디스코드·드라이브 주소를 저장한다")
+    void adminUpdatesOperationalFields() {
+        Long studyId = createStudy("운영 필드", "소개", "DATA");
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("capacity", 12);
+        body.put("startAt", "2026-11-02T00:00:00Z");
+        body.put("discordChannelUrl", "https://discord.com/channels/1/2");
+        body.put("driveUrl", "https://drive.google.com/drive/folders/abc");
+
+        var response = patch(studyId, body);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        var study = studyRepository.findById(studyId).orElseThrow();
+        assertThat(study.getCapacity()).isEqualTo(12);
+        assertThat(study.getStartAt()).isEqualTo(Instant.parse("2026-11-02T00:00:00Z"));
+        assertThat(study.getDiscordChannelUrl()).isEqualTo("https://discord.com/channels/1/2");
+        assertThat(study.getDriveUrl()).isEqualTo("https://drive.google.com/drive/folders/abc");
+    }
+
+    @Test
+    @DisplayName("성공 - null 을 보내면 정원·시작일·주소를 비우고, 키를 안 보낸 필드는 유지한다")
+    void explicitNullClearsButMissingKeyKeeps() {
+        Long studyId = createStudy("비우기", "소개", "DATA");
+        Map<String, Object> fill = new HashMap<>();
+        fill.put("capacity", 8);
+        fill.put("startAt", "2026-11-02T00:00:00Z");
+        fill.put("discordChannelUrl", "https://discord.com/channels/1/2");
+        fill.put("driveUrl", "https://drive.google.com/drive/folders/abc");
+        patch(studyId, fill);
+
+        Map<String, Object> clear = new HashMap<>();
+        clear.put("capacity", null);
+        clear.put("discordChannelUrl", null);
+
+        var response = patch(studyId, clear);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        var study = studyRepository.findById(studyId).orElseThrow();
+        assertThat(study.getCapacity()).isNull();
+        assertThat(study.getDiscordChannelUrl()).isNull();
+        assertThat(study.getStartAt()).isEqualTo(Instant.parse("2026-11-02T00:00:00Z"));
+        assertThat(study.getDriveUrl()).isEqualTo("https://drive.google.com/drive/folders/abc");
+    }
+
+    @Test
+    @DisplayName("실패 - 정원이 1 미만이면 400 INVALID_INPUT")
+    void capacityBelowOneIsRejected() {
+        Long studyId = createStudy("정원 0", "소개", "DATA");
+
+        var response = patchForError(studyId, Map.of("capacity", 0));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        assertThat(studyRepository.findById(studyId).orElseThrow().getCapacity()).isNull();
+    }
+
+    @Test
+    @DisplayName("실패 - http(s) 가 아닌 주소면 400 INVALID_INPUT")
+    void nonHttpUrlIsRejected() {
+        Long studyId = createStudy("주소 오류", "소개", "DATA");
+
+        var response = patchForError(studyId, Map.of("driveUrl", "drive.google.com/abc"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
+    @DisplayName("실패 - 네비게이터가 아닌 회원은 403 FORBIDDEN")
+    void memberCannotUpdate() {
+        Long studyId = createStudy("권한 없음", "소개", "DATA");
+
+        var response =
+                rest.exchange(
+                        "/api/studies/" + studyId,
+                        HttpMethod.PATCH,
+                        authenticated(LEADER_ID, Map.of("title", "바꿈")),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    private org.springframework.http.ResponseEntity<Void> patch(
+            Long studyId, Map<String, Object> body) {
+        return rest.exchange(
+                "/api/studies/" + studyId,
+                HttpMethod.PATCH,
+                authenticated(ADMIN_ID, body),
+                Void.class);
+    }
+
+    private org.springframework.http.ResponseEntity<Map> patchForError(
+            Long studyId, Map<String, Object> body) {
+        return rest.exchange(
+                "/api/studies/" + studyId,
+                HttpMethod.PATCH,
+                authenticated(ADMIN_ID, body),
+                Map.class);
     }
 
     private Long createStudy(String title, String oneLineSummary, String category) {

@@ -1,6 +1,7 @@
 package com.studyclub.domain.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -177,6 +178,41 @@ class StudyTest {
         assertThat(scheduled("매주 화 21:00 KST").timezone()).isEqualTo(StudyTimezone.KST);
         assertThat(scheduled("매주 화 21:00").timezone()).isEqualTo(StudyTimezone.BOTH);
         assertThat(scheduled(null).timezone()).isEqualTo(StudyTimezone.BOTH);
+    }
+
+    @Test
+    @DisplayName("정원: null 이면 제한 없음으로 되돌리고, 바뀐 정원이 모집 상태 판정에 바로 쓰인다")
+    void changeCapacity_updatesRecruitStatusBasis() {
+        var study = getStudy(StudyStatus.OPEN, 30);
+
+        study.changeCapacity(5);
+        assertThat(study.recruitStatus(5, days(7))).isEqualTo(RecruitStatus.RECRUIT_CLOSED);
+
+        study.changeCapacity(null);
+        assertThat(study.getCapacity()).isNull();
+        assertThat(study.recruitStatus(9999, days(7))).isEqualTo(RecruitStatus.RECRUITING);
+    }
+
+    @Test
+    @DisplayName("정원: 1 미만은 받지 않는다")
+    void changeCapacity_rejectsBelowOne() {
+        var study = getStudy(StudyStatus.OPEN, 30);
+
+        assertThatThrownBy(() -> study.changeCapacity(0))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(study.getCapacity()).isEqualTo(30);
+    }
+
+    @Test
+    @DisplayName("주소: 빈 문자열·공백은 null 로 저장하고, 앞뒤 공백은 자른다")
+    void changeLinks_blankBecomesNull() {
+        var study = getStudy(StudyStatus.OPEN);
+
+        study.changeDiscordChannelUrl("  https://discord.com/channels/1/2 ");
+        study.changeDriveUrl("   ");
+
+        assertThat(study.getDiscordChannelUrl()).isEqualTo("https://discord.com/channels/1/2");
+        assertThat(study.getDriveUrl()).isNull();
     }
 
     private static Instant days(long days) {
