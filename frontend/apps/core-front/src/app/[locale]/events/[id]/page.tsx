@@ -2,9 +2,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { getEvent, getEvents, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { JsonLd, breadcrumbJsonLd, eventJsonLd } from '@/lib/jsonld';
+import { SITE_URL, pageMetadata } from '@/lib/seo';
 
 export async function generateStaticParams() {
   const events = await getEvents();
@@ -25,6 +28,24 @@ function fullDate(iso: string, locale: Locale) {
   });
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale; id: string }>;
+}): Promise<Metadata> {
+  const { locale, id } = await params;
+  const event = await getEvent(id);
+  if (!event) return {};
+  return pageMetadata({
+    locale,
+    path: `/events/${id}`,
+    title: t(event.title, locale),
+    description: t(event.summary, locale).slice(0, 155),
+    image: event.image,
+    ogType: 'article',
+  });
+}
+
 export default async function EventDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
   const event = await getEvent(id);
@@ -40,8 +61,20 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
     },
   ].filter(Boolean) as { icon: typeof Tag; label: string; value: string }[];
 
+  const url = `${SITE_URL}/${locale}/events/${id}`;
+
   return (
     <div className='mx-auto max-w-4xl px-6 py-12'>
+      <JsonLd
+        data={[
+          eventJsonLd(event, locale, url),
+          breadcrumbJsonLd([
+            { name: m('nav.home', locale), path: `/${locale}` },
+            { name: m('events.title', locale), path: `/${locale}/events` },
+            { name: t(event.title, locale), path: `/${locale}/events/${id}` },
+          ]),
+        ]}
+      />
       <Link
         href={`/${locale}/events`}
         className='inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]'
