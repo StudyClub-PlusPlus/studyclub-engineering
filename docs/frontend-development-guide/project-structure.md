@@ -40,7 +40,7 @@ frontend/
 }
 ```
 
-각 앱/패키지는 자체 `package.json` 을 가짐. 루트에서 `npm run dev` 하면 turbo 가 모든 앱을 병렬 실행.
+각 앱/패키지는 자체 `package.json` 을 가짐. 루트에서 `pnpm run dev` 하면 turbo 가 모든 앱을 병렬 실행.
 
 ## 앱 구성
 
@@ -133,12 +133,12 @@ API 교체 지점은 `// TODO(api)` 주석으로 표시되어 있음.
 
 ```bash
 # 전체 (turbo)
-cd frontend && npm install && npm run dev
+cd frontend && pnpm install && pnpm run dev
 
 # 개별 앱
-npm run dev --workspace=core-front        # :4700
-npm run dev --workspace=back-office-front # :4701
+pnpm run dev --workspace=core-front        # :4700
+pnpm run dev --workspace=back-office-front # :4701
 
 # Storybook
-npm run storybook --workspace=@studyclub/ui  # :6006
+pnpm run storybook --workspace=@studyclub/ui  # :6006
 ```

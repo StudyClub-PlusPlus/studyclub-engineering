@@ -40,16 +40,16 @@
 
 ```bash
 # smoke 테스트
-npm run test:e2e
+pnpm run test:e2e
 
 # 비주얼 회귀 — 스냅샷 비교
-npm run test:e2e:catalog
+pnpm run test:e2e:catalog
 
 # 비주얼 회귀 — 스냅샷 갱신 (UI 변경을 의도적으로 반영할 때)
-npm run test:e2e:catalog:update
+pnpm run test:e2e:catalog:update
 
 # Playwright UI 모드 (디버깅)
-npm run test:e2e:ui
+pnpm run test:e2e:ui
 ```
 
 > `test:e2e:catalog` 는 `--workers=1` 로 강제 직렬 실행된다.
