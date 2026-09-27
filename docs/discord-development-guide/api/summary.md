@@ -75,10 +75,10 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 
 ### [create-study](create-study.md) — `POST /api/v1/studies`
 
-- `{ "studyName": "..." }` (1–100자) 로 **카테고리 + 텍스트 채널 + 음성 채널 + 전용 역할**을 한 번에 만든다.
+- `{ "studyName": "..." }` (1–96자) 로 **카테고리 + 텍스트 채널 + 음성 채널 + 전용 역할**을 한 번에 만든다.
 - 응답 `discordStudyId`(카테고리 ID) · `discordRoleId`(역할 ID) 쌍을 백엔드가 저장해 이후 요청에 그대로 쓴다.
 - 같은 이름의 스터디가 있거나 만드는 중이면 409. **중복 요청을 막는 유일한 장치**다 — `studyName` 을 SQLite 에
-  `PROCESSING` 으로 먼저 INSERT 하고, 넷 다 만들면 `COMPLETED` 로 바꾼다. 실패 후 정리까지 끝나면 행을 지운다.
+  `PROCESSING` 으로 먼저 INSERT 하고, 넷 다 만들면 `COMPLETED` 로 바꾼다. 실패 후 정리까지 끝나면 행을 지우고, 정리가 실패하면 `ERROR` 로 남긴다.
 - 응답을 못 받고 재시도하면 409 를 받고 ID 도 못 받는다 — 처리 방법은 미정.
 - 네 단계 중 하나라도 실패하면 **만든 것을 역순으로 지운다.** 롤백까지 실패하면 502 + 남은 ID 를 로그에 남긴다.
 
@@ -88,7 +88,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
   사이드바 순서(텍스트 먼저, 그 다음 음성)로 돌려준다. `discordChannelType` 은 `TEXT` · `VOICE` 다 (`FORUM` · `STAGE` 는 예약 값, 지금은 안 돌려줌).
 - `send-message` 에 쓸 수 있는 건 `TEXT` 채널뿐이다 (`VOICE` 면 400).
 - 봇이 볼 수 없는 채널과 포럼 · 스테이지 채널은 빠진다 — 호출자는 모르는 타입 값을 건너뛴다. 채널이 없으면 `[]` + 200.
-- 조회라 `Idempotency-Key` 없음, 409 없음. 몇 번이고 다시 불러도 안전하다.
+- 조회라 `Idempotency-Key` 없음, 중복 요청 409 없음(409 는 설정 누락뿐). 몇 번이고 다시 불러도 안전하다.
 
 ## 역할
 

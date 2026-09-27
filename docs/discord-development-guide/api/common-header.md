@@ -3,8 +3,9 @@
 Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 **공통 요청 헤더** 규약.
 호출자는 백엔드(Spring) 같은 내부 서비스다 — 브라우저에서 직접 부르지 않는다.
 
-> ⚠️ **아직 구현 전이다.** 현재 `/api/v1/*` 는 인증 없이 열려 있다 (`discord/README.md` 참고).
-> 이 문서는 앞으로 구현할 계약이고, 구현 전까지 아래 헤더는 무시된다.
+> ⚠️ **일부만 구현됐다.** 헤더 검사는 `discord/app/api/headers.py` 의 FastAPI 의존성이고, 지금은
+> `POST /api/v1/studies` · `GET /api/v1/studies/{discordStudyId}/channels` 에만 걸려 있다. `health` · `ping` 은 여전히 인증 없이 열려 있고,
+> 없는 경로에 401 을 우선하는 동작도 아직 없다 (`discord/README.md` 참고).
 
 ## Table of Contents
 
@@ -38,6 +39,8 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 
 - 키가 없거나 틀리면 **401**. 경로가 존재하지 않아도 401 을 우선한다
   (밖에서 엔드포인트를 훑을 수 없게 — BE 규약과 동일).
+- 키는 환경변수 `DISCORD_API_KEY` 다. 백엔드도 같은 값을 읽어 헤더에 싣는다. 비어 있으면 모든 요청이 401 이다
+  (키가 없다고 열리지 않는다).
 - **키는 레포에 평문 금지.** 환경변수로 주입하고 코드에서는 `os.environ` 으로 참조만 한다
   ([`../../../AGENT.md`](../../../AGENT.md) 의 PUBLIC 레포 규칙).
 
