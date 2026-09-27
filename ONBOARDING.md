@@ -81,7 +81,7 @@ pnpm install
 pnpm run dev                                    # core 4700 · back-office 4701 · playground 4702
 ```
 
-- 앱 하나만: `pnpm run dev --workspace=core-front`
+- 앱 하나만: `pnpm --filter core-front run dev`
 - A 로 띄운 `frontend` 컨테이너가 있으면 포트가 겹친다 → `docker compose stop frontend` 먼저
 
 ### C. 백엔드도 로컬
@@ -96,11 +96,11 @@ SERVER_PORT=28080 ./gradlew :api:bootRun       # 28080 으로 띄우면 .env 의
 
 - JDK 25 필요. Gradle 은 wrapper 가 받아오므로 따로 설치하지 않는다
 - IntelliJ 에서 돌릴 때는 Run Configuration 의 Environment variables 에 `.env` 를 넣고 `SERVER_PORT=28080` 을 추가한다 (EnvFile 플러그인이 편하다)
-- 프론트는 B 의 심링크·`npm run dev` 그대로
+- 프론트는 B 의 심링크·`pnpm run dev` 그대로
 
 ### D. 프론트만 운영 API 에 붙이기
 
-`.env` 의 「(선택) 로컬 frontend 를 운영 API 에 붙이기」 블록 주석을 풀고, 바로 위 Frontend 블록의 같은 이름 줄을 지운다. 그다음 B 의 심링크·`npm run dev` 만 한다 (Docker 불필요).
+`.env` 의 「(선택) 로컬 frontend 를 운영 API 에 붙이기」 블록 주석을 풀고, 바로 위 Frontend 블록의 같은 이름 줄을 지운다. 그다음 B 의 심링크·`pnpm run dev` 만 한다 (Docker 불필요).
 
 > ⚠️ **운영 데이터다.** 신청·등록 같은 쓰기는 실제로 반영된다. 화면 확인용으로만 쓴다.
 > stage API 는 외부 주소가 없다 — stage 로 확인할 일은 담당자에게 문의.
@@ -133,11 +133,11 @@ docker compose exec -T mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_D
 
 | 증상 | 원인 | 해결 |
 |---|---|---|
-| 로그인 버튼을 누르면 "구글 OAuth 클라이언트가 아직 설정되지 않았습니다" | `.env` 에 `GOOGLE_CLIENT_ID` 가 비어 있다 | 담당자에게 받아 채운 뒤 A 는 `docker compose up -d frontend api`, B·C 는 `npm run dev` 재시작 (NEXT_PUBLIC 값은 시작할 때 굳는다) |
+| 로그인 버튼을 누르면 "구글 OAuth 클라이언트가 아직 설정되지 않았습니다" | `.env` 에 `GOOGLE_CLIENT_ID` 가 비어 있다 | 담당자에게 받아 채운 뒤 A 는 `docker compose up -d frontend api`, B·C 는 `pnpm run dev` 재시작 (NEXT_PUBLIC 값은 시작할 때 굳는다) |
 | 구글 팝업에 `redirect_uri_mismatch` · "액세스 차단됨" | 콜백 주소나 포트를 바꿨다 | `GOOGLE_REDIRECT_URI=http://localhost:4700/api/auth/callback`, 프론트 포트 4700 으로 되돌린다 |
 | api 가 계속 재시작되고 로그에 `Migration checksum mismatch` | 내 로컬 DB 를 만든 뒤 마이그레이션 파일(`V*.sql`)이 바뀌었다 | 로컬이면 DB 를 비운다: `docker compose down -v && docker compose up -d --build` |
-| `npm run dev` 가 `Turbopack ... Read-only file system` 으로 죽는다 | 예전 compose 가 남긴 `.next` 캐시 (컨테이너 경로가 박혀 있다) | `rm -rf frontend/apps/*/.next` 후 다시 실행. 지금 compose 는 `.next` 를 컨테이너 전용 볼륨에 둬서 다시 생기지 않는다 |
-| `port is already allocated` · `EADDRINUSE :4700` | A 의 frontend 컨테이너와 로컬 `npm run dev` 를 동시에 띄웠다 | 한쪽만 쓴다 — `docker compose stop frontend` 또는 로컬 dev 종료 |
+| `pnpm run dev` 가 `Turbopack ... Read-only file system` 으로 죽는다 | 예전 compose 가 남긴 `.next` 캐시 (컨테이너 경로가 박혀 있다) | `rm -rf frontend/apps/*/.next` 후 다시 실행. 지금 compose 는 `.next` 를 컨테이너 전용 볼륨에 둬서 다시 생기지 않는다 |
+| `port is already allocated` · `EADDRINUSE :4700` | A 의 frontend 컨테이너와 로컬 `pnpm run dev` 를 동시에 띄웠다 | 한쪽만 쓴다 — `docker compose stop frontend` 또는 로컬 dev 종료 |
 | 운영 콘솔 로그인이 거절된다 | 계정이 ADMIN 이 아니거나, core-front 로 가입한 적이 없다 | [3. 로그인 확인](#운영-콘솔4701에-들어가려면--admin-이-필요하다) |
 | 화면에 스터디가 하나도 없다 | 새 로컬 DB 는 비어 있다 | 운영 콘솔(ADMIN)에서 스터디를 등록하거나 D 로 운영 데이터를 본다 |
 
