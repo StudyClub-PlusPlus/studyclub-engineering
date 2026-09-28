@@ -14,8 +14,18 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     /** 테스트 전용 — 계정 하나가 받은 알림을 뒤져볼 때만 쓴다. 백오피스 조회는 볼륨이 계속 느는 아웃박스라 {@link #findPage} 를 쓴다. */
     List<Notification> findAllByOrderByCreatedAtDesc();
 
-    /** 회원 탈퇴 — 이 계정이 수신자인 알림 이력 비식별화 대상 조회 (specs/user-leave/spec.md). */
-    List<Notification> findByRecipientUserId(Long recipientUserId);
+    /**
+     * 회원 탈퇴 — 이 계정이 수신자인 알림 이력을 잠그고 조회한다(비식별화 대상, specs/user-leave/spec.md).
+     *
+     * <p>{@code FOR UPDATE}(SKIP LOCKED 아님)인 이유: 폴링 스케줄러가 마침 이 행을 클레임·완료 처리 중이면 그 트랜잭션이 끝날 때까지 기다린
+     * 뒤 최신 상태를 읽어야 한다. 일반 조회는 트랜잭션 스냅샷을 읽어, 그 사이 PENDING→PROCESSING 으로 바뀐 행을 여전히 PENDING 으로 보고 취소해
+     * 버리거나 스케줄러의 갱신을 덮어쓸 수 있다. SKIP LOCKED 로 건너뛰면 잠긴 행은 비식별화가 누락돼 PII 가 남는다. 반대로 이 락을 먼저 잡으면 스케줄러의
+     * {@code findClaimableIds}(SKIP LOCKED)는 이 행을 건너뛰어 취소 대상이 발송되지 않는다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select n from Notification n where n.recipientUserId = :recipientUserId")
+    List<Notification> findByRecipientUserIdForUpdate(
+            @Param("recipientUserId") Long recipientUserId);
 
     /**
      * 완료 처리(markSent/markFailed) 전용 — 행을 잠근다({@code AccountRepository.findByEmailForUpdate} 와 같은

@@ -140,7 +140,8 @@ public class AccountDeletionService {
     }
 
     private void redactNotifications(Long accountId) {
-        List<Notification> notifications = notificationRepository.findByRecipientUserId(accountId);
+        List<Notification> notifications =
+                notificationRepository.findByRecipientUserIdForUpdate(accountId);
         for (Notification notification : notifications) {
             notification.redactPii(MASKED_RECIPIENT_VALUE);
             // PENDING 은 아직 발송 시도 전이라 취소한다 — PROCESSING 은 이미 시도 중이라 끼어들지 않는다.

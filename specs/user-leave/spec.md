@@ -82,9 +82,13 @@
 `docs/erd/SESSION.md` 는 "Redis 에 세션을 두고 `REMOVED_AT` 으로 즉시 무효화한다"는 **설계**지만,
 아직 구현되지 않았다 — 백엔드 어디에도 Redis 관련 코드가 없다. 실제로는 `JwtService` 가 발급하는
 access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 stateless JWT 라, 서버가 특정 토큰을
-콕 집어 무효화할 방법이 없다. 즉 **탈퇴 처리 후에도 이미 발급된 토큰은 자연 만료(최장 30일)까지
+콕 집어 무효화할 방법이 없다. 즉 **탈퇴 처리 후에도 이미 발급된 access 토큰은 자연 만료(최장 7일)까지
 서명 검증만으로 계속 통과한다** — `GET /auth/me` 등 계정 조회 API 는 `ACCOUNT` 행이 없으면
 `404`/`401` 로 응답하니 실질적인 오남용 범위는 제한적이지만, 이론적으로는 남는다.
+
+다만 **refresh 는 막는다** — `POST /auth/refresh` 는 refresh 토큰의 서명·만료를 검증한 뒤 `ACCOUNT` 행이
+아직 있는지도 확인하고, 없으면 `401 UNAUTHORIZED` 로 거절한다. 그래서 탈퇴 후 access 토큰(7일)이 만료되면
+30일짜리 refresh 로 새 access 를 받아 세션을 이어 가는 길은 없다.
 
 이는 이 기능만의 문제가 아니라 현재 인증 구조 전체의 특성이라 `DELETE /api/me` 혼자서 새로
 풀지 않는다 — `SESSION`(Redis) 이 실제로 구현되는 시점에 이 엔드포인트도 그 무효화 로직을 같이
@@ -95,6 +99,13 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
   `POST /api/auth/logout` 으로 httpOnly 쿠키 제거)을 탈퇴 성공 콜백에서 그대로 호출한다 — 새 로직을
   만들지 않고 로그아웃과 동일한 정리를 재사용한다. 단, 이건 "이 브라우저의 흔적 정리"일 뿐 다른
   기기에 남아 있는 토큰이나 탈취된 토큰까지 막지는 못한다.
+- **이 브라우저에 남은 회원별 데이터도 지운다**: `logout()` 은 세션(`sc_user`)만 지우므로, 탈퇴 성공 시
+  `lib/me.ts` 의 `clearMyLocalData()` 로 디스코드 핸들·관심·신청·지역·표시 이름·출석 기록(`sc_discord`,
+  `sc_bookmarks`, `sc_applications`, `sc_region`, `sc_display_name`, `sc_my_attendance`)을 함께 지운다.
+  데모 시드 키는 남긴다(지우면 다음 미리보기 진입 때 더미가 다시 채워진다).
+- **이미 탈퇴된 계정(`404 NOT_FOUND`)은 정리 경로로 처리한다**: 서버는 끝났는데 응답만 못 받았거나 다른
+  탭에서 먼저 탈퇴한 경우 토큰이 남은 사용자가 재시도해도 영원히 정리되지 않으므로, 프론트는 이 응답을
+  오류로 막지 않고 성공과 같이 `logout()` + 로컬 데이터 정리 후 홈으로 보낸다.
 
 ### Response — 204
 
@@ -343,7 +354,10 @@ PRD 의 "법령상 보존이 필요한 정보는 그 기간 동안 보관한다"
 시도했다가 거부함"(`SesMailClient.java`)이라는 구체적인 의미로 코드에서 쓰이고 있어 "발송 시도조차
 안 하고 취소"와 섞이면 나중에 진짜 발송 장애를 진단할 때 노이즈가 된다 — `NotificationStatus` 에
 `CANCELLED` 를 신설하기로 리뷰에서 합의했다(`ERROR_TYPE` 은 `FAILED` 전용이라 채우지 않는다). `PROCESSING`
-은 이미 발송 시도 중이라 끼어들지 않고 마스킹만 적용한다. 자세한 상태 전이는
+은 이미 발송 시도 중이라 끼어들지 않고 마스킹만 적용한다. 대상 행은 `SELECT ... FOR UPDATE`(SKIP
+LOCKED 아님)로 잠그고 읽는다 — 폴링 스케줄러가 같은 순간 PENDING→PROCESSING 으로 바꾸는 행을 스냅샷 값으로
+보고 취소하거나 덮어쓰지 않도록, 스케줄러 트랜잭션이 끝나길 기다린 뒤 최신 상태를 읽는다(SKIP LOCKED 로 건너뛰면
+잠긴 행의 PII 가 남는다). 자세한 상태 전이는
 [notification spec](../notification/spec.md#상태-전이) 참고. `NotificationStatus` 에 `CANCELLED` 를
 추가하는 코드(`Notification.cancel()`)는 이 스펙의 구현 PR에 포함했다 — `ERROR_TYPE`·`LOCKED_AT` 등
 `FAILED`/`PROCESSING` 전용 컬럼은 건드리지 않는다.
@@ -406,3 +420,4 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 | 2026-09-24 | `NOTIFICATION` PENDING 취소 처리 확정 — PR #110 리뷰 스레드에서 `NotificationStatus.CANCELLED` 신설로 합의. `specs/notification/spec.md`·`docs/erd/NOTIFICATION.md` 상태도에도 반영 | PR #110 코멘트 스레드 합의 (j00hyun) |
 | 2026-09-27 | 구현 코드 대비 스펙 리뷰 반영 — `NotificationStatus.CANCELLED` 실제 코드 구현(더 이상 "notification 모듈 후속 작업" 아님), `GET /api/me/studies` `@RequireOnboarding` 절을 실제 프론트 동작("무조건 호출 + 에러는 빈 배열")에 맞게 정정 | 구현 PR 코드 리뷰 — 스펙 문서가 이후 합의를 못 따라간 부분 발견 |
 | 2026-09-28 | 구현 PR 코드 리뷰 반영 — 캡틴 신청 결과 조회를 LEFT JOIN 으로 바꿔 탈퇴한 신청자를 `탈퇴한 회원`으로 표시, JSON 객체가 아닌 `FORM_ANSWER` 는 탈퇴를 막지 않고 통째로 비움 | 구현 PR #141 코드 리뷰 |
+| 2026-09-28 | 구현 PR 2차 리뷰 반영 — `NOTIFICATION` 비식별화를 `FOR UPDATE` 락 조회로(스케줄러와 경합 방지), `POST /auth/refresh` 가 탈퇴한 계정은 401 로 거절, 프론트가 이미 탈퇴된 계정(404)을 정리 경로로 처리하고 회원별 localStorage 데이터도 삭제. 마이그레이션 번호를 beta 의 V20 과 겹치지 않게 V21 로 변경 | 구현 PR #141 2차 코드 리뷰 |

@@ -12,7 +12,7 @@ import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
 import { deleteAccount, getUser, type LeaveReason } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
-import { getActiveNavigatorStudies, type ActiveNavigatorStudy } from '@/lib/me';
+import { clearMyLocalData, getActiveNavigatorStudies, type ActiveNavigatorStudy } from '@/lib/me';
 
 const REASON_OPTIONS: { value: LeaveReason; label: string }[] = [
   { value: 'NO_DESIRED_STUDY', label: '원하는 스터디 없음' },
@@ -60,6 +60,9 @@ export default function LeavePage() {
       setError(result.errorMessage);
       return;
     }
+    // 세션(sc_user)은 deleteAccount 안의 logout() 이 지웠다 — 이 브라우저에 남은 회원별 데이터
+    // (디스코드 핸들·관심·신청·출석 등)도 함께 지운다. 공용 기기에서 다음 사람에게 보이면 안 된다.
+    clearMyLocalData();
     // router.replace(SPA 전환)는 안 쓴다 — NavAuth 등 레이아웃에 남아있는 컴포넌트가
     // 리마운트되지 않아 로그인 상태 표시가 (localStorage 는 실제로 지워졌는데도) 그대로
     // 남는다. 계정이 사라졌으니 앱을 완전히 새로 그리는 게 맞기도 하다.

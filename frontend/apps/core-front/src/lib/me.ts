@@ -2,6 +2,8 @@
 
 import type { MemberRegion } from '@studyclub/mock';
 
+import { clearMyAttendance } from './attendance';
+
 /**
  * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청·거주 지역.
  *
@@ -189,6 +191,23 @@ export function seedDemoData() {
   }
   writeJSON(BOOKMARK_KEY, ['daily-leetcode', 'early-bird', 'system-design-interview']);
   writeJSON(DISCORD_KEY, 'jiwon_dev');
+}
+
+/**
+ * 회원 탈퇴 — 이 브라우저에 남은 회원별 데이터(관심·신청·지역·표시 이름·디스코드 핸들·출석)를 지운다.
+ * 로그인 세션(sc_user)은 `logout()` 이 지운다. 데모 시드 키(SEED_KEY)는 일부러 남긴다 — 지우면 다음
+ * 미리보기 진입 때 더미가 다시 채워져 탈퇴한 사람의 데이터처럼 보인다.
+ */
+export function clearMyLocalData() {
+  if (typeof window === 'undefined') return;
+  for (const key of [BOOKMARK_KEY, APPLICATION_KEY, REGION_KEY, NAME_KEY, DISCORD_KEY]) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // 저장소 접근 실패해도 탈퇴 흐름은 막지 않는다
+    }
+  }
+  clearMyAttendance();
 }
 
 /* ── 맡은 진행 중인 스터디 (회원 탈퇴 경고) ──────────────────────────────────── */

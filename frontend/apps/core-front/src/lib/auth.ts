@@ -94,11 +94,15 @@ export async function deleteAccount(reason: LeaveReason | null): Promise<DeleteA
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    return {
-      ok: false,
-      errorCode: data.errorCode ?? 'INTERNAL_ERROR',
-      errorMessage: data.errorMessage ?? '탈퇴 처리 중 오류가 발생했습니다.',
-    };
+    // 이미 탈퇴 처리된 계정(NOT_FOUND) — 서버는 끝났는데 응답만 못 받았거나 다른 탭에서 먼저 탈퇴한 경우다.
+    // 오류로 막아 두면 토큰이 남은 사용자가 재시도해도 영원히 정리되지 않으므로 성공과 같이 세션을 정리한다.
+    if (res.status !== 404 || data.errorCode !== 'NOT_FOUND') {
+      return {
+        ok: false,
+        errorCode: data.errorCode ?? 'INTERNAL_ERROR',
+        errorMessage: data.errorMessage ?? '탈퇴 처리 중 오류가 발생했습니다.',
+      };
+    }
   }
 
   await logout();

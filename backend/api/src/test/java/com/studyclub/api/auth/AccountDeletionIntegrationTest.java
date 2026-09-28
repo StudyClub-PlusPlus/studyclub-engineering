@@ -294,4 +294,23 @@ class AccountDeletionIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
     }
+
+    @Test
+    @DisplayName(
+            "성공/실패 - 탈퇴 전 refresh token 은 access token 을 발급하지만, 탈퇴 후에는 401 + errorCode UNAUTHORIZED")
+    void refreshTokenIsRejectedAfterDeletion() {
+        Account account = seedAccount();
+        String refreshToken = jwt.issueRefresh(String.valueOf(account.getId()), account.getEmail());
+        Map<String, String> body = Map.of("refreshToken", refreshToken);
+
+        var before = rest.postForEntity("/auth/refresh", body, Map.class);
+        assertThat(before.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(before.getBody()).containsKey("accessToken");
+
+        rest.exchange("/api/me", HttpMethod.DELETE, authenticatedBody(account, null), Void.class);
+
+        var after = rest.postForEntity("/auth/refresh", body, Map.class);
+        assertThat(after.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(after.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
 }
