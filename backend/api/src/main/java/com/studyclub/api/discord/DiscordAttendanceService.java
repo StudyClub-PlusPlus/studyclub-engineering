@@ -4,8 +4,6 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.attendance.AttendanceStatus;
-import com.studyclub.domain.attendance.StudyAttendance;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.discord.StudyDiscordLink;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
@@ -18,6 +16,7 @@ import com.studyclub.domain.study.StudyMeetingRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -86,8 +85,10 @@ public class DiscordAttendanceService {
                                         StudyParticipant::getAccountId,
                                         Function.identity(),
                                         // 같은 기수의 두 반에 동시 소속은 앱 레벨 금지라 정상 데이터에서는 안 겹친다.
-                                        // 그래도 겹치면 먼저 나온 행을 쓴다 — 여기서 터뜨릴 일은 아니다.
-                                        (first, second) -> first));
+                                        // 그래도 겹치면 명부에 살아 있는 행을 우선한다 — 조회 순서에 따라
+                                        // 탈퇴 행이 뽑혀서 정상 참가자가 notParticipant 로 빠지거나 리더가
+                                        // 403 을 받는 걸 막는다.
+                                        DiscordAttendanceService::preferAttendable));
 
         Map<String, Long> accountIdByDiscordId =
                 loadAccountIds(request.callerDiscordUserId(), request.discordUserIds());
@@ -158,11 +159,14 @@ public class DiscordAttendanceService {
     private DiscordAttendanceResponse markByGroup(Classified classified, StudyDiscordLink link) {
         List<DiscordAttendanceResponse.MarkedGroup> groups = new ArrayList<>();
         List<String> noMeeting = new ArrayList<>();
-        List<StudyAttendance> toSave = new ArrayList<>();
 
-        for (Map.Entry<Long, List<String>> entry : classified.byGroupId().entrySet()) {
-            Long groupId = entry.getKey();
-            List<String> discordUserIds = entry.getValue();
+        // 반 id 오름차순으로 잠근다. 요청의 discordUserIds 순서를 그대로 따라가면 같은 사람들을
+        // 순서만 바꿔 보낸 두 요청이 서로의 회차 잠금을 기다려 교착한다.
+        List<Long> groupIds = new ArrayList<>(classified.byGroupId().keySet());
+        Collections.sort(groupIds);
+
+        for (Long groupId : groupIds) {
+            List<String> discordUserIds = classified.byGroupId().get(groupId);
 
             Optional<PickedMeeting> picked = pickMeeting(groupId);
             if (picked.isEmpty()) {
@@ -171,39 +175,22 @@ public class DiscordAttendanceService {
                 continue;
             }
             Long meetingId = picked.get().meeting().getId();
-            Map<Long, StudyAttendance> existingByAccountId =
-                    studyAttendanceRepository.findByStudyMeetingIdIn(List.of(meetingId)).stream()
-                            .collect(
-                                    Collectors.toMap(
-                                            StudyAttendance::getAccountId, Function.identity()));
+            Instant now = Instant.now();
 
             List<String> marked = new ArrayList<>();
             for (String discordUserId : discordUserIds) {
                 Long accountId = classified.accountIdByDiscordId().get(discordUserId);
                 marked.add(discordUserId);
-
-                StudyAttendance existing = existingByAccountId.get(accountId);
-                if (existing == null) {
-                    toSave.add(
-                            StudyAttendance.builder()
-                                    .accountId(accountId)
-                                    .studyId(link.getStudyId())
-                                    .studyGroupId(groupId)
-                                    .studyMeetingId(meetingId)
-                                    .status(AttendanceStatus.PRESENT)
-                                    .build());
-                } else if (existing.getStatus() == AttendanceStatus.ABSENT) {
-                    // LATE·EXCUSED 는 반장이 손으로 고쳐 둔 값이다. 스냅샷 한 번에 날리지 않는다.
-                    existing.updateStatus(AttendanceStatus.PRESENT);
-                    toSave.add(existing);
-                }
+                // 조회 없이 한 문장으로 찍는다. 있으면 ABSENT 일 때만 올라가므로 LATE·EXCUSED 가
+                // 살아남고, 겹쳐 들어온 요청도 유니크 제약을 때리지 않는다.
+                studyAttendanceRepository.markPresent(
+                        accountId, link.getStudyId(), groupId, meetingId, now);
             }
             groups.add(
                     new DiscordAttendanceResponse.MarkedGroup(
                             groupId, meetingId, picked.get().started(), marked));
         }
 
-        studyAttendanceRepository.saveAll(toSave);
         return new DiscordAttendanceResponse(
                 groups, classified.unmatched(), classified.notParticipant(), noMeeting);
     }
@@ -248,6 +235,14 @@ public class DiscordAttendanceService {
 
     private boolean withinWindow(Instant scheduledAt, Instant now) {
         return Duration.between(scheduledAt, now).abs().compareTo(MEETING_PICK_WINDOW) <= 0;
+    }
+
+    /** 같은 계정에 명부 행이 둘 이상이면 ACTIVE·PAUSED 를 우선한다. 둘 다 같은 등급이면 먼저 나온 행. */
+    private static StudyParticipant preferAttendable(
+            StudyParticipant first, StudyParticipant second) {
+        boolean firstAlive = ATTENDABLE.contains(first.getStatus());
+        boolean secondAlive = ATTENDABLE.contains(second.getStatus());
+        return (!firstAlive && secondAlive) ? second : first;
     }
 
     private record Classified(

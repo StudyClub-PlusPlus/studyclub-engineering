@@ -3,6 +3,7 @@ package com.studyclub.api.discord;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,7 +31,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -117,7 +117,7 @@ class DiscordAttendanceServiceTest {
         assertThat(response.noMeeting())
                 .containsExactlyInAnyOrder(LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
         assertThat(far.getStartAt()).isNull();
-        verify(studyAttendanceRepository).saveAll(List.of());
+        verify(studyAttendanceRepository, never()).markPresent(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -339,41 +339,21 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
-    @DisplayName("LATE_와_EXCUSED_는_스냅샷으로_덮어쓰지_않는다")
-    void LATE_와_EXCUSED_는_스냅샷으로_덮어쓰지_않는다() {
+    @DisplayName("출석은_조회_없이_반별_회차로_한_문장씩_찍는다")
+    void 출석은_조회_없이_반별_회차로_한_문장씩_찍는다() {
         givenOneGroupStudy();
         givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
         givenAccounts();
-        StudyAttendance late = attendance(MEMBER_ACCOUNT_ID, AttendanceStatus.LATE);
-        StudyAttendance excused = attendance(LEADER_ACCOUNT_ID, AttendanceStatus.EXCUSED);
-        when(studyAttendanceRepository.findByStudyMeetingIdIn(List.of(1L)))
-                .thenReturn(List.of(late, excused));
-
-        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
-
-        assertThat(late.getStatus()).isEqualTo(AttendanceStatus.LATE);
-        assertThat(excused.getStatus()).isEqualTo(AttendanceStatus.EXCUSED);
-        assertThat(response.groups().get(0).marked())
-                .containsExactlyInAnyOrder(LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<StudyAttendance>> saved = ArgumentCaptor.forClass(List.class);
-        verify(studyAttendanceRepository).saveAll(saved.capture());
-        assertThat(saved.getValue()).isEmpty();
-    }
-
-    @Test
-    @DisplayName("ABSENT_는_PRESENT_로_올린다")
-    void ABSENT_는_PRESENT_로_올린다() {
-        givenOneGroupStudy();
-        givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
-        givenAccounts();
-        StudyAttendance absent = attendance(MEMBER_ACCOUNT_ID, AttendanceStatus.ABSENT);
-        when(studyAttendanceRepository.findByStudyMeetingIdIn(List.of(1L)))
-                .thenReturn(List.of(absent));
 
         service.mark(DISCORD_STUDY_ID, request());
 
-        assertThat(absent.getStatus()).isEqualTo(AttendanceStatus.PRESENT);
+        // 기존 상태 보존(LATE·EXCUSED)과 중복 INSERT 방지는 markPresent 의 SQL 한 문장이 진다.
+        // 그 보장은 H2 mock 으로 못 보므로 DiscordAttendanceIntegrationTest 가 검증한다.
+        verify(studyAttendanceRepository)
+                .markPresent(eq(LEADER_ACCOUNT_ID), eq(STUDY_ID), eq(GROUP_A), eq(1L), any());
+        verify(studyAttendanceRepository)
+                .markPresent(eq(MEMBER_ACCOUNT_ID), eq(STUDY_ID), eq(GROUP_A), eq(1L), any());
+        verify(studyAttendanceRepository, never()).saveAll(any());
     }
 
     @Test
