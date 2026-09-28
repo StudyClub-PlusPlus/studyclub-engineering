@@ -143,20 +143,47 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
-    @DisplayName("시작할_수_있는_회차가_2개면_409_아무거나_고르지_않는다")
-    void 시작할_수_있는_회차가_2개면_409_아무거나_고르지_않는다() {
+    @DisplayName("시작할_회차_후보가_2개면_예정_시각이_가장_가까운_것을_고른다")
+    void 시작할_회차_후보가_2개면_예정_시각이_가장_가까운_것을_고른다() {
         givenOneGroupStudy();
         givenMeetings(
                 GROUP_A,
                 List.of(
-                        meeting(4L, GROUP_A, Instant.now().plus(10, ChronoUnit.MINUTES), false),
-                        meeting(5L, GROUP_A, Instant.now().plus(20, ChronoUnit.MINUTES), false)));
+                        meeting(4L, GROUP_A, Instant.now().plus(50, ChronoUnit.MINUTES), false),
+                        meeting(5L, GROUP_A, Instant.now().plus(10, ChronoUnit.MINUTES), false)));
         givenAccounts();
 
-        assertThatThrownBy(() -> service.mark(DISCORD_STUDY_ID, request()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).errorCode())
-                .isEqualTo(ErrorCode.CONFLICT);
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingId()).isEqualTo(5L);
+                            assertThat(g.meetingStarted()).isTrue();
+                        });
+    }
+
+    @Test
+    @DisplayName("진행_중인_회차가_2개여도_거절하지_않고_가장_최근에_시작한_것을_고른다")
+    void 진행_중인_회차가_2개여도_거절하지_않고_가장_최근에_시작한_것을_고른다() {
+        // 한 스터디가 보이스 채널 둘을 쓰고 각각 세션이 열려 있는 정상 운영 상황.
+        StudyMeeting older = meeting(6L, GROUP_A, Instant.now().minus(3, ChronoUnit.HOURS), true);
+        StudyMeeting newer =
+                meeting(7L, GROUP_A, Instant.now().minus(20, ChronoUnit.MINUTES), true);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(older, newer));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingId()).isEqualTo(7L);
+                            assertThat(g.meetingStarted()).isFalse();
+                        });
     }
 
     @Test
