@@ -206,7 +206,7 @@ public class DiscordAttendanceService {
         Instant now = Instant.now();
 
         // 후보가 여럿이어도 거절하지 않는다. 한 스터디가 보이스 채널을 두 개 쓰고 각각 세션이 열려 있는 건
-        // 깨진 데이터가 아니라 정상 운영이다 (2026-09-24 #111 리뷰, 김지야미). 가장 최근에 시작한 회차 =
+        // 깨진 데이터가 아니라 정상 운영이다 (2026-09-24 #111 리뷰, 김민정). 가장 최근에 시작한 회차 =
         // 지금 모이는 중인 세션으로 본다.
         Optional<StudyMeeting> inProgress =
                 meetings.stream()
