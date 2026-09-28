@@ -134,8 +134,6 @@ def register(bot: commands.Bot, settings) -> None:
 
     @bot.command(name=COMMAND_NAME)
     async def attendance(ctx: commands.Context) -> None:
-        """Mark everyone in the captain's voice room present."""
-        # Mentions in a name would ping; the reply is a report, not a call-out.
         silent = discord.AllowedMentions.none()
 
         if not settings.backend_base_url or not settings.api_key:

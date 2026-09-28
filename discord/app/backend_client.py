@@ -19,8 +19,6 @@ REQUEST_TIMEOUT_SECONDS = 10.0
 
 @dataclass(frozen=True)
 class MarkedGroup:
-    """One study group's result: which meeting was used and who was marked."""
-
     study_group_id: int
     study_meeting_id: int
     meeting_started: bool
@@ -55,7 +53,7 @@ class BackendError(Exception):
 
 
 class BackendUnreachable(Exception):
-    """The backend could not be reached at all (DNS, refused, timeout)."""
+    """DNS failure, refused connection, or timeout -- the backend never answered."""
 
 
 async def mark_attendances(
@@ -65,7 +63,6 @@ async def mark_attendances(
     caller_discord_user_id: str,
     discord_user_ids: list[str],
 ) -> AttendanceResult:
-    """POST the voice-channel snapshot and return what the backend made of it."""
     url = f"{base_url}/api/discord/studies/{discord_study_id}/attendances"
     payload = {
         "callerDiscordUserId": caller_discord_user_id,
