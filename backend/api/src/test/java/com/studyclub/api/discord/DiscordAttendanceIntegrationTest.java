@@ -57,8 +57,10 @@ class DiscordAttendanceIntegrationTest {
     private static final String LEADER_DISCORD_ID = "1327394882193880001";
     private static final String MEMBER_DISCORD_ID = "1327394882193880002";
     private static final String STRANGER_DISCORD_ID = "1327394882193880009";
+    private static final String LATE_DISCORD_ID = "1327394882193880003";
     private static final Long LEADER_ACCOUNT_ID = 4001L;
     private static final Long MEMBER_ACCOUNT_ID = 4002L;
+    private static final Long LATE_ACCOUNT_ID = 4003L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JdbcTemplate jdbcTemplate;
@@ -87,6 +89,7 @@ class DiscordAttendanceIntegrationTest {
 
         insertAccount(LEADER_ACCOUNT_ID, "반장", "leader@discord-test.com", LEADER_DISCORD_ID);
         insertAccount(MEMBER_ACCOUNT_ID, "멤버", "member@discord-test.com", MEMBER_DISCORD_ID);
+        insertAccount(LATE_ACCOUNT_ID, "지각", "late@discord-test.com", LATE_DISCORD_ID);
 
         var program = studyProgramRepo.save(StudyProgram.builder().title("디스코드 프로그램").build());
         var study =
@@ -134,6 +137,15 @@ class DiscordAttendanceIntegrationTest {
                         .studyId(study.getId())
                         .status(ParticipantStatus.ACTIVE)
                         .participantRole(ParticipantRole.LEADER)
+                        .joinedAt(joinedAt)
+                        .build());
+        studyParticipantRepo.save(
+                StudyParticipant.builder()
+                        .accountId(LATE_ACCOUNT_ID)
+                        .studyGroupId(group.getId())
+                        .studyId(study.getId())
+                        .status(ParticipantStatus.ACTIVE)
+                        .participantRole(ParticipantRole.MEMBER)
                         .joinedAt(joinedAt)
                         .build());
         studyParticipantRepo.save(
@@ -218,6 +230,7 @@ class DiscordAttendanceIntegrationTest {
     void 보존_LATE_EXCUSED_는_유지되고_ABSENT_만_PRESENT_로_올라간다() {
         studyAttendanceRepo.save(seed(LEADER_ACCOUNT_ID, AttendanceStatus.EXCUSED));
         studyAttendanceRepo.save(seed(MEMBER_ACCOUNT_ID, AttendanceStatus.ABSENT));
+        studyAttendanceRepo.save(seed(LATE_ACCOUNT_ID, AttendanceStatus.LATE));
 
         var response =
                 post(
@@ -226,14 +239,15 @@ class DiscordAttendanceIntegrationTest {
                                 "callerDiscordUserId",
                                 LEADER_DISCORD_ID,
                                 "discordUserIds",
-                                List.of(LEADER_DISCORD_ID, MEMBER_DISCORD_ID)),
+                                List.of(LEADER_DISCORD_ID, MEMBER_DISCORD_ID, LATE_DISCORD_ID)),
                         API_KEY,
                         DiscordAttendanceResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(studyAttendanceRepo.findAll()).hasSize(2);
+        assertThat(studyAttendanceRepo.findAll()).hasSize(3);
         assertThat(statusOf(LEADER_ACCOUNT_ID)).isEqualTo(AttendanceStatus.EXCUSED);
         assertThat(statusOf(MEMBER_ACCOUNT_ID)).isEqualTo(AttendanceStatus.PRESENT);
+        assertThat(statusOf(LATE_ACCOUNT_ID)).isEqualTo(AttendanceStatus.LATE);
     }
 
     private AttendanceStatus statusOf(Long accountId) {
