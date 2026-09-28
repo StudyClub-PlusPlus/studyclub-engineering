@@ -72,6 +72,8 @@ class DiscordAttendanceIntegrationTest {
     @Autowired StudyDiscordLinkRepository studyDiscordLinkRepo;
 
     private StudyMeeting meeting;
+    private Long studyId;
+    private Long studyGroupId;
 
     @BeforeEach
     void setUp() {
@@ -112,6 +114,8 @@ class DiscordAttendanceIntegrationTest {
                                 10));
         studyDiscordLinkRepo.save(
                 new StudyDiscordLink(study.getId(), DISCORD_STUDY_ID, "1327394882193883140"));
+        studyId = study.getId();
+        studyGroupId = group.getId();
 
         // 진행 중인 회차 하나 — 시작했고 끝나지 않았다.
         meeting =
@@ -181,8 +185,8 @@ class DiscordAttendanceIntegrationTest {
     }
 
     @Test
-    @DisplayName("멱등_같은_스냅샷을_두_번_보내도_행이_늘지_않는다")
-    void 멱등_같은_스냅샷을_두_번_보내도_행이_늘지_않는다() {
+    @DisplayName("멱등_같은_스냅샷을_두_번_보내도_둘_다_200_이고_행이_늘지_않는다")
+    void 멱등_같은_스냅샷을_두_번_보내도_둘_다_200_이고_행이_늘지_않는다() {
         var body =
                 Map.of(
                         "callerDiscordUserId",
@@ -190,10 +194,63 @@ class DiscordAttendanceIntegrationTest {
                         "discordUserIds",
                         List.of(LEADER_DISCORD_ID, MEMBER_DISCORD_ID));
 
-        post(DISCORD_STUDY_ID, body, API_KEY, DiscordAttendanceResponse.class);
-        post(DISCORD_STUDY_ID, body, API_KEY, DiscordAttendanceResponse.class);
+        var first = post(DISCORD_STUDY_ID, body, API_KEY, DiscordAttendanceResponse.class);
+        var second = post(DISCORD_STUDY_ID, body, API_KEY, DiscordAttendanceResponse.class);
 
+        // 행 수만 세면 두 번째가 500 이어도 통과한다. 응답과 내용을 같이 본다.
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(second.getBody()).isNotNull();
+        assertThat(second.getBody().groups())
+                .singleElement()
+                .satisfies(
+                        g ->
+                                assertThat(g.marked())
+                                        .containsExactlyInAnyOrder(
+                                                LEADER_DISCORD_ID, MEMBER_DISCORD_ID));
         assertThat(studyAttendanceRepo.findAll()).hasSize(2);
+        assertThat(studyAttendanceRepo.findAll())
+                .allMatch(a -> a.getStatus() == AttendanceStatus.PRESENT);
+    }
+
+    @Test
+    @DisplayName("보존_LATE_EXCUSED_는_유지되고_ABSENT_만_PRESENT_로_올라간다")
+    void 보존_LATE_EXCUSED_는_유지되고_ABSENT_만_PRESENT_로_올라간다() {
+        studyAttendanceRepo.save(seed(LEADER_ACCOUNT_ID, AttendanceStatus.EXCUSED));
+        studyAttendanceRepo.save(seed(MEMBER_ACCOUNT_ID, AttendanceStatus.ABSENT));
+
+        var response =
+                post(
+                        DISCORD_STUDY_ID,
+                        Map.of(
+                                "callerDiscordUserId",
+                                LEADER_DISCORD_ID,
+                                "discordUserIds",
+                                List.of(LEADER_DISCORD_ID, MEMBER_DISCORD_ID)),
+                        API_KEY,
+                        DiscordAttendanceResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyAttendanceRepo.findAll()).hasSize(2);
+        assertThat(statusOf(LEADER_ACCOUNT_ID)).isEqualTo(AttendanceStatus.EXCUSED);
+        assertThat(statusOf(MEMBER_ACCOUNT_ID)).isEqualTo(AttendanceStatus.PRESENT);
+    }
+
+    private AttendanceStatus statusOf(Long accountId) {
+        return studyAttendanceRepo
+                .findByStudyMeetingIdAndAccountId(meeting.getId(), accountId)
+                .orElseThrow()
+                .getStatus();
+    }
+
+    private StudyAttendance seed(Long accountId, AttendanceStatus status) {
+        return StudyAttendance.builder()
+                .accountId(accountId)
+                .studyId(studyId)
+                .studyGroupId(studyGroupId)
+                .studyMeetingId(meeting.getId())
+                .status(status)
+                .build();
     }
 
     @Test
