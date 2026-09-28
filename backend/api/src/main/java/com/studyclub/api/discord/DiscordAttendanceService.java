@@ -18,6 +18,7 @@ import com.studyclub.domain.study.StudyMeetingRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -215,30 +216,32 @@ public class DiscordAttendanceService {
         // 잠금 조회 — 여기부터 출석 쓰기까지가 한 덩어리라 반 단위로 직렬화한다.
         List<StudyMeeting> meetings =
                 studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId);
-
-        List<StudyMeeting> inProgress =
-                meetings.stream().filter(StudyMeeting::isInProgress).toList();
-        if (inProgress.size() > 1) {
-            throw new BusinessException(ErrorCode.CONFLICT, "진행 중인 회차가 여러 개입니다.");
-        }
-        if (inProgress.size() == 1) {
-            return Optional.of(new PickedMeeting(inProgress.get(0), false));
-        }
-
         Instant now = Instant.now();
-        List<StudyMeeting> startable =
+
+        // 후보가 여럿이어도 거절하지 않는다. 한 스터디가 보이스 채널을 두 개 쓰고 각각 세션이 열려 있는 건
+        // 깨진 데이터가 아니라 정상 운영이다 (2026-09-24 #111 리뷰, 김지야미). 가장 최근에 시작한 회차 =
+        // 지금 모이는 중인 세션으로 본다.
+        Optional<StudyMeeting> inProgress =
+                meetings.stream()
+                        .filter(StudyMeeting::isInProgress)
+                        .max(Comparator.comparing(StudyMeeting::getStartAt));
+        if (inProgress.isPresent()) {
+            return Optional.of(new PickedMeeting(inProgress.get(), false));
+        }
+
+        // 시작할 회차도 같은 규칙 — 예정 시각이 지금에 가장 가까운 것.
+        Optional<StudyMeeting> startable =
                 meetings.stream()
                         .filter(StudyMeeting::isNotStarted)
                         .filter(m -> withinWindow(m.getScheduledAt(), now))
-                        .toList();
-        if (startable.size() > 1) {
-            throw new BusinessException(ErrorCode.CONFLICT, "시작할 수 있는 회차가 여러 개입니다.");
-        }
+                        .min(
+                                Comparator.comparing(
+                                        m -> Duration.between(m.getScheduledAt(), now).abs()));
         if (startable.isEmpty()) {
             return Optional.empty();
         }
 
-        StudyMeeting meeting = startable.get(0);
+        StudyMeeting meeting = startable.get();
         meeting.start(now);
         return Optional.of(new PickedMeeting(meeting, true));
     }
