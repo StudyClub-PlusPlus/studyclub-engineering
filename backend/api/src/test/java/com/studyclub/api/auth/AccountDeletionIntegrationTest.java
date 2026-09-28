@@ -211,6 +211,38 @@ class AccountDeletionIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - JSON 객체가 아닌 FORM_ANSWER(배열·깨진 JSON)가 있어도 탈퇴는 막히지 않고, 내용은 남기지 않고 비운다")
+    void deletesAccountEvenWithMalformedFormAnswer() {
+        Account account = seedAccount();
+        StudyApplication arrayAnswer =
+                studyApplicationRepository.save(
+                        StudyApplication.builder()
+                                .accountId(account.getId())
+                                .recruitmentId(9010L)
+                                .formAnswer("[\"홍길동/SWE\"]")
+                                .build());
+        StudyApplication brokenAnswer =
+                studyApplicationRepository.save(
+                        StudyApplication.builder()
+                                .accountId(account.getId())
+                                .recruitmentId(9011L)
+                                .formAnswer("홍길동/SWE {깨진 json")
+                                .build());
+
+        var response =
+                rest.exchange(
+                        "/api/me", HttpMethod.DELETE, authenticatedBody(account, null), Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(accountRepository.findById(account.getId())).isEmpty();
+        for (Long id : List.of(arrayAnswer.getId(), brokenAnswer.getId())) {
+            // 행은 보존하되 어디에 개인정보가 있는지 알 수 없는 값이라 통째로 비운다.
+            String reloaded = studyApplicationRepository.findById(id).orElseThrow().getFormAnswer();
+            assertThat(reloaded).doesNotContain("홍길동").contains("{}");
+        }
+    }
+
+    @Test
     @DisplayName("성공 - 사유를 생략(본문 없음)해도 탈퇴된다")
     void deletesAccountWithoutReason() {
         Account account = seedAccount();

@@ -21,6 +21,7 @@ import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
@@ -37,12 +38,14 @@ import tools.jackson.databind.node.ObjectNode;
  *
  * <p>탈퇴는 회원의 권리라 요청자가 누구인지(네비게이터든 마지막 ADMIN 이든) 따지지 않는다 — 별도 가드를 두지 않는다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AccountDeletionService {
 
     private static final String MASKED_RECIPIENT_VALUE = "[탈퇴한 계정]";
     private static final String MASKED_DISCORD_NICKNAME = "[탈퇴한 계정]";
+    private static final String EMPTY_FORM_ANSWER = "{}";
 
     private final AccountRepository accountRepository;
     private final AccountIdentityRepository accountIdentityRepository;
@@ -106,7 +109,8 @@ public class AccountDeletionService {
     private void maskDiscordNicknameInApplications(Long accountId) {
         List<StudyApplication> applications = studyApplicationRepository.findByAccountId(accountId);
         for (StudyApplication application : applications) {
-            application.applyMaskedFormAnswer(maskDiscordNickname(application.getFormAnswer()));
+            application.applyMaskedFormAnswer(
+                    maskDiscordNickname(application.getId(), application.getFormAnswer()));
         }
     }
 
@@ -115,19 +119,24 @@ public class AccountDeletionService {
      * JSON 문자열로 감싼다({@code BackOfficeApplicationQueryService.jsonNodeOf} 가 이미 같은 이유로 방어적으로 풀어 읽는다)
      * — 그래서 읽을 때 감싸여 있으면 한 겹 벗기고, 쓸 때는 다시 감싸지 않고 (그래야 Hibernate 가 저장 시점에 한 번 더 감싸 원래와 같은 모양이 된다) 안쪽
      * JSON 텍스트만 반환한다.
+     *
+     * <p>JSON 객체로 읽히지 않는 값(배열·스칼라·깨진 JSON)은 {@code discordNickname} 이 어디 있는지 알 수 없다. 원본을 그대로 두면
+     * 개인정보가 남을 수 있고, 예외를 던지면 이 행 하나 때문에 회원이 탈퇴 자체를 못 한다 — 그래서 전체를 빈 객체로 비운다. 어차피 스키마에 맞지 않는 행이라
+     * 백오피스 조회도 이미 못 읽는 값이다. 로그에는 신청서 ID 만 남긴다(내용·예외 메시지에 개인정보가 섞일 수 있다).
      */
-    private String maskDiscordNickname(String formAnswerJson) {
+    private String maskDiscordNickname(Long applicationId, String formAnswerJson) {
         try {
             JsonNode outer = objectMapper.readTree(formAnswerJson);
             JsonNode actual = outer.isTextual() ? objectMapper.readTree(outer.asText()) : outer;
-            if (!(actual instanceof ObjectNode objectNode)) {
-                return formAnswerJson;
+            if (actual instanceof ObjectNode objectNode) {
+                objectNode.put("discordNickname", MASKED_DISCORD_NICKNAME);
+                return objectNode.toString();
             }
-            objectNode.put("discordNickname", MASKED_DISCORD_NICKNAME);
-            return objectNode.toString();
         } catch (JacksonException e) {
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+            // 아래에서 함께 처리한다
         }
+        log.warn("FORM_ANSWER 가 JSON 객체가 아니라 전체를 비웁니다. applicationId={}", applicationId);
+        return EMPTY_FORM_ANSWER;
     }
 
     private void redactNotifications(Long accountId) {

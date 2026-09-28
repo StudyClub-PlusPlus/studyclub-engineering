@@ -94,6 +94,30 @@ class BackOfficeApplicationIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 신청자가 탈퇴해 계정이 없어도 신청서는 목록에 남고 신청자명은 '탈퇴한 회원'이다")
+    void keepsApplicationOfWithdrawnApplicant() {
+        // 탈퇴 후 상태 재현 — ACCOUNT 만 사라지고 STUDY_APPLICATION 은 남는다(FK 없음).
+        jdbcTemplate.update("DELETE FROM ACCOUNT WHERE ID = ?", APPLICANT_ID);
+
+        var response =
+                rest.exchange(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        HttpMethod.GET,
+                        authenticatedRequest(LEADER_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("respondentCount", 1);
+        List<?> applications = (List<?>) response.getBody().get("applications");
+        assertThat(applications).hasSize(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> application = (Map<String, Object>) applications.get(0);
+        assertThat(application).containsEntry("applicantName", "탈퇴한 회원");
+        assertThat(application).containsEntry("email", null);
+        assertThat(application).containsEntry("discordNickname", "홍길동/SWE/서울/백엔드");
+    }
+
+    @Test
     @DisplayName("성공 - 시스템 관리자는 스터디 내부 역할이 없어도 신청 결과를 조회한다")
     void adminReadsApplications() {
         var response =

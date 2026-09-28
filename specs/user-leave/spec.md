@@ -265,6 +265,13 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 `scheduleAgreed`·`answers`)은 개인 식별값이 아니고 모집 회차별 운영 통계에 쓰일 수 있어 그대로
 둔다 — 행 전체를 지우거나 통째로 마스킹하지 않는다.
 
+**`FORM_ANSWER` 가 JSON 객체가 아니면 전체를 비운다.** 배열·스칼라·깨진 JSON 은 `discordNickname` 이 어디 있는지 알 수 없다.
+원본을 두면 개인정보가 남을 수 있고, 예외를 던지면 그 행 하나 때문에 회원이 탈퇴를 못 하므로 `{}` 로 대체하고 로그에는
+신청서 ID 만 남긴다(스키마에 맞지 않는 행이라 백오피스 조회도 이미 못 읽는 값이다).
+
+**캡틴의 신청 결과 조회는 탈퇴한 신청자를 "탈퇴한 회원"으로 보여준다.** 신청서 행이 남으므로 `ACCOUNT` 와 LEFT JOIN 해서
+`applicantName` 은 `탈퇴한 회원`, `email` 은 null 로 내려준다. INNER JOIN 이면 탈퇴한 신청자가 목록에서 사라진다.
+
 이 결정은 [`specs/study-application/spec.md`](../study-application/spec.md#미확정)의
 "[NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간"에 대한 답이기도 하다 —
 행은 보존하고(법정 최소 보관 기간을 신경 쓸 필요가 애초에 없어진다), 그 안의 개인 식별 필드만
@@ -398,3 +405,4 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 | 2026-09-23 | PR #110 리뷰(j00hyun) 반영 — SESSION(Redis) 미구현 사실 정정, `GET /api/me/studies` 를 `isActiveNavigator` 계산 필드로 교체, `STUDY_APPLICATION.FORM_ANSWER.discordNickname` 비식별 추가, `STUDY_PROPOSAL` ERD 상태도에 탈퇴 트리거 반영, 디스코드 role 제거 범위 밖 명시. `NOTIFICATION` PENDING 건 취소 처리는 PR 코멘트 스레드에서 별도 논의 후 반영 예정이라 이 라운드에서는 보류 | PR 리뷰 코멘트 7건 + `beta` 병합으로 새로 생긴 `specs/study-application/spec.md`·`POL-0007` |
 | 2026-09-24 | `NOTIFICATION` PENDING 취소 처리 확정 — PR #110 리뷰 스레드에서 `NotificationStatus.CANCELLED` 신설로 합의. `specs/notification/spec.md`·`docs/erd/NOTIFICATION.md` 상태도에도 반영 | PR #110 코멘트 스레드 합의 (j00hyun) |
 | 2026-09-27 | 구현 코드 대비 스펙 리뷰 반영 — `NotificationStatus.CANCELLED` 실제 코드 구현(더 이상 "notification 모듈 후속 작업" 아님), `GET /api/me/studies` `@RequireOnboarding` 절을 실제 프론트 동작("무조건 호출 + 에러는 빈 배열")에 맞게 정정 | 구현 PR 코드 리뷰 — 스펙 문서가 이후 합의를 못 따라간 부분 발견 |
+| 2026-09-28 | 구현 PR 코드 리뷰 반영 — 캡틴 신청 결과 조회를 LEFT JOIN 으로 바꿔 탈퇴한 신청자를 `탈퇴한 회원`으로 표시, JSON 객체가 아닌 `FORM_ANSWER` 는 탈퇴를 막지 않고 통째로 비움 | 구현 PR #141 코드 리뷰 |

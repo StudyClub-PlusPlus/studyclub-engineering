@@ -444,7 +444,8 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 | applications[].id | Long | N | | STUDY_APPLICATION.ID |
 | applications[].recruitmentId | Long | N | | STUDY_APPLICATION.RECRUITMENT_ID |
 | applications[].discordNickname | String | N | 계정 실명이 아니라 제출 별명 | FORM_ANSWER.discordNickname |
-| applications[].email | String | N | | ACCOUNT.EMAIL |
+| applications[].applicantName | String | N | 신청자가 탈퇴했으면 `탈퇴한 회원` — 신청서는 탈퇴 후에도 보존된다 ([user-leave](../user-leave/spec.md)) | ACCOUNT.NICKNAME |
+| applications[].email | String | Y | 신청자가 탈퇴했으면 null | ACCOUNT.EMAIL |
 | applications[].availableDays | String[] | N | | FORM_ANSWER.availableDays |
 | applications[].scheduleAgreed | Boolean | Y | 일정 없는 기수는 null | FORM_ANSWER.scheduleAgreed |
 | applications[].answers | Object | N | | FORM_ANSWER.answers |
