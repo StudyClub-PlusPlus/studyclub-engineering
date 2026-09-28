@@ -24,6 +24,7 @@ import com.studyclub.domain.proposal.StudyProposalRepository;
 import com.studyclub.domain.proposal.StudyProposalStatus;
 import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationChannel;
+import com.studyclub.notification.NotificationCreationService;
 import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
@@ -62,6 +63,7 @@ class AccountDeletionIntegrationTest {
     @Autowired StudyProposalInterestRepository studyProposalInterestRepository;
     @Autowired StudyApplicationRepository studyApplicationRepository;
     @Autowired NotificationRepository notificationRepository;
+    @Autowired NotificationCreationService notificationCreationService;
 
     @BeforeEach
     void useModernHttpClient() {
@@ -312,5 +314,17 @@ class AccountDeletionIntegrationTest {
         var after = rest.postForEntity("/auth/refresh", body, Map.class);
         assertThat(after.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(after.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("성공 - 탈퇴한 계정에 대해 웰컴메일 리스너가 뒤늦게 실행돼도 알림을 만들지 않는다")
+    void welcomeEmailListenerSkipsDeletedAccount() {
+        Account account = seedAccount();
+        rest.exchange("/api/me", HttpMethod.DELETE, authenticatedBody(account, null), Void.class);
+
+        notificationCreationService.createWelcomeEmailNotification(account.getId());
+
+        assertThat(notificationRepository.findAllByOrderByCreatedAtDesc())
+                .noneMatch(n -> account.getId().equals(n.getRecipientUserId()));
     }
 }

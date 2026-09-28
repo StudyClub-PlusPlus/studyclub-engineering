@@ -26,7 +26,9 @@ public class NotificationCreationService {
     // AFTER_COMMIT 에는 원래 트랜잭션 자원이 남아 있다. 별도 트랜잭션을 열어 INSERT 를 커밋한다.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createWelcomeEmailNotification(Long accountId) {
-        Optional<Account> account = accountRepository.findById(accountId);
+        // 계정 행을 잠그고 읽는다 — 회원 탈퇴(AccountDeletionService)도 같은 행을 잠그므로 둘이 직렬화된다.
+        // 탈퇴가 먼저면 계정이 없어 알림을 만들지 않고, 이 리스너가 먼저면 탈퇴가 기다렸다가 방금 만든 알림까지 비식별화한다.
+        Optional<Account> account = accountRepository.findByIdForUpdate(accountId);
         if (account.isEmpty()) {
             log.warn("UserRegisteredEvent accountId={} 에 해당하는 계정을 찾을 수 없습니다.", accountId);
             return;

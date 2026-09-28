@@ -357,7 +357,7 @@ PRD 의 "법령상 보존이 필요한 정보는 그 기간 동안 보관한다"
 은 이미 발송 시도 중이라 끼어들지 않고 마스킹만 적용한다. 대상 행은 `SELECT ... FOR UPDATE`(SKIP
 LOCKED 아님)로 잠그고 읽는다 — 폴링 스케줄러가 같은 순간 PENDING→PROCESSING 으로 바꾸는 행을 스냅샷 값으로
 보고 취소하거나 덮어쓰지 않도록, 스케줄러 트랜잭션이 끝나길 기다린 뒤 최신 상태를 읽는다(SKIP LOCKED 로 건너뛰면
-잠긴 행의 PII 가 남는다). 자세한 상태 전이는
+잠긴 행의 PII 가 남는다). 반대로 탈퇴 직후 웰컴메일 리스너(`NotificationCreationService`)가 뒤늦게 실행돼 이미 지워진 계정의 알림을 새로 만드는 경합은, 리스너가 `ACCOUNT` 행을 `FOR UPDATE` 로 읽어 탈퇴 트랜잭션과 직렬화하는 것으로 막는다 — 탈퇴가 먼저면 계정이 없어 알림을 만들지 않고, 리스너가 먼저면 탈퇴가 기다렸다가 그 알림까지 비식별화한다. 자세한 상태 전이는
 [notification spec](../notification/spec.md#상태-전이) 참고. `NotificationStatus` 에 `CANCELLED` 를
 추가하는 코드(`Notification.cancel()`)는 이 스펙의 구현 PR에 포함했다 — `ERROR_TYPE`·`LOCKED_AT` 등
 `FAILED`/`PROCESSING` 전용 컬럼은 건드리지 않는다.
@@ -420,4 +420,4 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 | 2026-09-24 | `NOTIFICATION` PENDING 취소 처리 확정 — PR #110 리뷰 스레드에서 `NotificationStatus.CANCELLED` 신설로 합의. `specs/notification/spec.md`·`docs/erd/NOTIFICATION.md` 상태도에도 반영 | PR #110 코멘트 스레드 합의 (j00hyun) |
 | 2026-09-27 | 구현 코드 대비 스펙 리뷰 반영 — `NotificationStatus.CANCELLED` 실제 코드 구현(더 이상 "notification 모듈 후속 작업" 아님), `GET /api/me/studies` `@RequireOnboarding` 절을 실제 프론트 동작("무조건 호출 + 에러는 빈 배열")에 맞게 정정 | 구현 PR 코드 리뷰 — 스펙 문서가 이후 합의를 못 따라간 부분 발견 |
 | 2026-09-28 | 구현 PR 코드 리뷰 반영 — 캡틴 신청 결과 조회를 LEFT JOIN 으로 바꿔 탈퇴한 신청자를 `탈퇴한 회원`으로 표시, JSON 객체가 아닌 `FORM_ANSWER` 는 탈퇴를 막지 않고 통째로 비움 | 구현 PR #141 코드 리뷰 |
-| 2026-09-28 | 구현 PR 2차 리뷰 반영 — `NOTIFICATION` 비식별화를 `FOR UPDATE` 락 조회로(스케줄러와 경합 방지), `POST /auth/refresh` 가 탈퇴한 계정은 401 로 거절, 프론트가 이미 탈퇴된 계정(404)을 정리 경로로 처리하고 회원별 localStorage 데이터도 삭제. 마이그레이션 번호를 beta 의 V20 과 겹치지 않게 V21 로 변경 | 구현 PR #141 2차 코드 리뷰 |
+| 2026-09-28 | 구현 PR 2차 리뷰 반영 — `NOTIFICATION` 비식별화를 `FOR UPDATE` 락 조회로(스케줄러와 경합 방지), `POST /auth/refresh` 가 탈퇴한 계정은 401 로 거절, 프론트가 이미 탈퇴된 계정(404)을 정리 경로로 처리하고 회원별 localStorage 데이터도 삭제, 웰컴메일 리스너를 계정 행 락 조회로 바꿔 탈퇴 직후 알림 생성 경합 차단. 마이그레이션 번호를 beta 의 V20 과 겹치지 않게 V21 로 변경 | 구현 PR #141 2차 코드 리뷰 |
