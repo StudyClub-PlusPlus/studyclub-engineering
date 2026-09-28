@@ -133,7 +133,7 @@ def register(bot: commands.Bot, settings) -> None:
     """Attach ``!출석체크`` to ``bot``."""
 
     @bot.command(name=COMMAND_NAME)
-    async def attendance(ctx: commands.Context) -> None:  # pragma: no cover - thin wrapper
+    async def attendance(ctx: commands.Context) -> None:
         """Mark everyone in the captain's voice room present."""
         # Mentions in a name would ping; the reply is a report, not a call-out.
         silent = discord.AllowedMentions.none()

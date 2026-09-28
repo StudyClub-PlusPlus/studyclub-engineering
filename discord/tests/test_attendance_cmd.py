@@ -1,9 +1,15 @@
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import discord
 import pytest
 
-from app.backend_client import AttendanceResult, MarkedGroup
+from app.backend_client import (
+    AttendanceResult,
+    BackendError,
+    BackendUnreachable,
+    MarkedGroup,
+)
+from app.bot.commands import attendance_cmd
 from app.bot.commands.attendance_cmd import (
     MAX_NAMES_SHOWN,
     SnapshotRefused,
@@ -159,3 +165,170 @@ def test_result_falls_back_to_the_id_for_an_unknown_name():
 def test_backend_errors_say_what_to_do_about_them(status, expected):
     """The backend's own wording is for developers, so it never reaches the channel."""
     assert expected in format_backend_error(status)
+
+
+# ── 커맨드 콜백 ────────────────────────────────────────────────────────────
+# register() 가 붙이는 콜백을 직접 돌린다. 손으로 밟던 시나리오(회차 자동 시작 ·
+# 재시도 · 지금 모이는 중 아님 · 권한 없음)를 백엔드 응답만 갈아끼워 재현하므로,
+# 다음 사람이 같은 수동 절차를 밟지 않아도 회귀가 잡힌다.
+
+
+class _FakeBot:
+    """commands.Bot 대역 — @bot.command 로 등록되는 콜백을 잡아 둔다."""
+
+    def __init__(self):
+        self.callback = None
+
+    def command(self, name):
+        def decorator(func):
+            self.callback = func
+            return func
+
+        return decorator
+
+
+def _ctx(channel=None, author=None) -> Mock:
+    """Return a stand-in context whose ``send`` records what was posted."""
+    ctx = Mock()
+    ctx.channel = channel if channel is not None else _voice_channel([_member(1, "반장")])
+    ctx.author = author if author is not None else _member(1, "반장")
+    ctx.send = AsyncMock()
+    return ctx
+
+
+def _settings(base_url="http://backend:8080", api_key="k") -> Mock:
+    settings = Mock()
+    settings.backend_base_url = base_url
+    settings.api_key = api_key
+    return settings
+
+
+async def _run(monkeypatch, backend, settings=None, ctx=None) -> Mock:
+    """Register the command against ``backend`` and run it once; return the ctx."""
+    monkeypatch.setattr(attendance_cmd, "mark_attendances", backend)
+    bot = _FakeBot()
+    attendance_cmd.register(bot, settings or _settings())
+    ctx = ctx or _ctx()
+    await bot.callback(ctx)
+    return ctx
+
+
+def _sent(ctx) -> str:
+    return ctx.send.await_args.args[0]
+
+
+def _mentions_suppressed(ctx) -> bool:
+    """Every reply must suppress mentions -- a name in a list would ping."""
+    allowed = ctx.send.await_args.kwargs.get("allowed_mentions")
+    return allowed is not None and allowed.everyone is False and allowed.users is False
+
+
+@pytest.mark.asyncio
+async def test_command_reports_a_meeting_it_started(monkeypatch):
+    """The captain ran it before the meeting was open, so the backend opened it."""
+    backend = AsyncMock(
+        return_value=AttendanceResult(groups=[MarkedGroup(70, 9202, True, ["1"])])
+    )
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert "출석 1명" in _sent(ctx)
+    assert "9202번 회차" in _sent(ctx)
+    assert "회차를 시작했습니다" in _sent(ctx)
+    assert _mentions_suppressed(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_on_a_retry_does_not_claim_to_have_started_it(monkeypatch):
+    """Running it twice marks the same people; only the first call opens the meeting."""
+    backend = AsyncMock(
+        return_value=AttendanceResult(groups=[MarkedGroup(70, 9202, False, ["1"])])
+    )
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert "9202번 회차 — 1명" in _sent(ctx)
+    assert "회차를 시작했습니다" not in _sent(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_when_the_group_is_not_meeting_now(monkeypatch):
+    """A room in use outside its scheduled window marks nobody, and says why."""
+    backend = AsyncMock(return_value=AttendanceResult(no_meeting=["1"]))
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert _sent(ctx).startswith("출석을 찍은 사람이 없습니다.")
+    assert "지금 모이는 중이 아닌 반 1명 — 반장" in _sent(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_translates_a_403(monkeypatch):
+    """The backend's own wording is for developers, so it never reaches the channel."""
+    backend = AsyncMock(side_effect=BackendError(403, "권한이 없습니다."))
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert "권한이 없습니다" in _sent(ctx)
+    assert "반장만" in _sent(ctx)
+    assert _mentions_suppressed(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_translates_a_404_to_the_missing_link(monkeypatch):
+    """Before STUDY_DISCORD_LINK has a row, every call lands here."""
+    backend = AsyncMock(side_effect=BackendError(404, "not found"))
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert "백오피스에 연결되지 않았습니다" in _sent(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_reports_an_unreachable_backend(monkeypatch):
+    """A backend that cannot be reached is not a backend that said no."""
+    backend = AsyncMock(side_effect=BackendUnreachable("refused"))
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert "연결하지 못했습니다" in _sent(ctx)
+    assert _mentions_suppressed(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_refuses_a_text_channel_without_calling_the_backend(monkeypatch):
+    """The refusal is ours to make; the backend never hears about it."""
+    backend = AsyncMock()
+
+    ctx = await _run(monkeypatch, backend, ctx=_ctx(channel=_text_channel()))
+
+    assert "채팅에서" in _sent(ctx)
+    backend.assert_not_awaited()
+    assert _mentions_suppressed(ctx)
+
+
+@pytest.mark.asyncio
+async def test_command_refuses_when_the_backend_is_not_configured(monkeypatch):
+    """A deployment without API_BASE_URL answers, rather than failing silently."""
+    backend = AsyncMock()
+
+    ctx = await _run(monkeypatch, backend, settings=_settings(base_url=None))
+
+    assert "백엔드 연결이 설정되지 않았습니다" in _sent(ctx)
+    backend.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_command_sends_the_snapshot_the_backend_contract_expects(monkeypatch):
+    """Study id, caller and member list are all read off the one voice channel."""
+    backend = AsyncMock(return_value=AttendanceResult())
+    captain = _member(1, "반장")
+    channel = _voice_channel([captain, _member(2, "학생"), _member(9, "봇", bot=True)], 900)
+
+    await _run(monkeypatch, backend, ctx=_ctx(channel=channel, author=captain))
+
+    base, key, study_id, caller, user_ids = backend.await_args.args
+    assert (base, key) == ("http://backend:8080", "k")
+    assert study_id == "900"
+    assert caller == "1"
+    assert user_ids == ["1", "2"]
