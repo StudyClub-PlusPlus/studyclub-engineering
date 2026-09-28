@@ -1,7 +1,7 @@
 """The ``!출석체크`` command.
 
-A captain standing in the study's voice room runs this and everyone in the
-room is marked present. The bot only collects and reports -- which meeting,
+A captain runs this in the study's voice-channel chat and everyone connected
+to that room is marked present. The bot only collects and reports -- which meeting,
 which group, and what to overwrite are all decided by the backend
 (``specs/discord-attendance/spec.md``), because the timestamps that decide
 them live there.
@@ -45,19 +45,20 @@ class SnapshotRefused(Exception):
     """The command cannot be answered, and the reason is the captain's to fix."""
 
 
-def collect_snapshot(author: discord.Member) -> Snapshot:
-    """Read the voice room ``author`` is sitting in.
+def collect_snapshot(channel, author: discord.Member) -> Snapshot:
+    """Read the voice room the command was typed in.
 
-    Both the member list and the study id come from the *same* voice channel.
-    Taking the study id from the text channel the command was typed in instead
-    would let a captain standing in study B's room send B's members under A's
-    id: the backend would find none of them on A's roster and answer 200 with
-    everyone in ``notParticipant``, which looks like success.
+    The command is only answered inside a voice channel's own chat, so one
+    channel decides everything: the member list, the study id, and where the
+    reply lands. Accepting it from any text channel instead would let a captain
+    sitting in study B's room run it from study A's lobby -- B's attendance
+    would be marked correctly, but B's roster would be posted where A's members
+    read it.
     """
-    voice_state = author.voice
-    channel = voice_state.channel if voice_state else None
-    if channel is None:
-        raise SnapshotRefused("공부방(음성 채널)에 들어간 뒤에 다시 쳐주세요.")
+    if getattr(channel, "type", None) is not discord.ChannelType.voice:
+        raise SnapshotRefused(
+            "공부방(음성 채널)의 채팅에서 쳐주세요. 공부방을 열면 오른쪽에 채팅창이 있습니다."
+        )
 
     if channel.category_id is None:
         raise SnapshotRefused(
@@ -145,7 +146,7 @@ def register(bot: commands.Bot, settings) -> None:
             return
 
         try:
-            snapshot = collect_snapshot(ctx.author)
+            snapshot = collect_snapshot(ctx.channel, ctx.author)
         except SnapshotRefused as refusal:
             await ctx.send(str(refusal), allowed_mentions=silent)
             return

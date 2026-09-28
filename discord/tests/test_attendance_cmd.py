@@ -1,5 +1,6 @@
 from unittest.mock import Mock
 
+import discord
 import pytest
 
 from app.backend_client import AttendanceResult, MarkedGroup
@@ -24,26 +25,26 @@ def _member(member_id: int, name: str, bot: bool = False) -> Mock:
 def _voice_channel(members, category_id=900) -> Mock:
     """Return a stand-in voice channel holding ``members``."""
     channel = Mock()
+    channel.type = discord.ChannelType.voice
     channel.category_id = category_id
     channel.members = members
     return channel
 
 
-def _author(member_id=1, name="반장", channel=None) -> Mock:
-    """Return a stand-in author sitting in ``channel`` (or in no channel)."""
-    author = _member(member_id, name)
-    author.voice = Mock(channel=channel) if channel is not None else None
-    return author
+def _text_channel(category_id=900) -> Mock:
+    """Return a stand-in text channel -- the lobby the command must NOT accept."""
+    channel = Mock()
+    channel.type = discord.ChannelType.text
+    channel.category_id = category_id
+    return channel
 
 
-def test_snapshot_reads_the_voice_room_the_caller_is_in():
-    """The study id is the voice channel's category, the list its members."""
+def test_snapshot_reads_the_voice_channel_the_command_was_typed_in():
+    """The study id is that channel's category, the list its connected members."""
     captain = _member(1, "반장")
     channel = _voice_channel([captain, _member(2, "학생")], category_id=900)
-    author = _author(channel=channel)
-    author.voice = Mock(channel=channel)
 
-    snapshot = collect_snapshot(author)
+    snapshot = collect_snapshot(channel, captain)
 
     assert snapshot.discord_study_id == "900"
     assert snapshot.caller_discord_user_id == "1"
@@ -51,20 +52,10 @@ def test_snapshot_reads_the_voice_room_the_caller_is_in():
     assert snapshot.names_by_id == {"1": "반장", "2": "학생"}
 
 
-def test_snapshot_ignores_the_text_channel_the_command_was_typed_in():
-    """Only the voice channel decides the study -- see collect_snapshot's docstring."""
-    channel = _voice_channel([_member(1, "반장")], category_id=777)
-    author = _author(channel=channel)
-    # A text channel under a different study would be the wrong source.
-    author.guild = Mock()
-
-    assert collect_snapshot(author).discord_study_id == "777"
-
-
-def test_snapshot_refuses_when_the_caller_is_not_in_a_voice_channel():
-    """Without a room there is no snapshot to take."""
-    with pytest.raises(SnapshotRefused, match="공부방"):
-        collect_snapshot(_author())
+def test_snapshot_refuses_a_text_channel():
+    """Run from a lobby, the reply would land where another study reads it."""
+    with pytest.raises(SnapshotRefused, match="채팅에서"):
+        collect_snapshot(_text_channel(), _member(1, "반장"))
 
 
 def test_snapshot_refuses_a_voice_channel_outside_a_category():
@@ -72,7 +63,7 @@ def test_snapshot_refuses_a_voice_channel_outside_a_category():
     channel = _voice_channel([_member(1, "반장")], category_id=None)
 
     with pytest.raises(SnapshotRefused, match="카테고리"):
-        collect_snapshot(_author(channel=channel))
+        collect_snapshot(channel, _member(1, "반장"))
 
 
 def test_snapshot_drops_bots():
@@ -81,7 +72,7 @@ def test_snapshot_drops_bots():
         [_member(1, "반장"), _member(99, "캡틴 Dev", bot=True), _member(2, "학생")]
     )
 
-    snapshot = collect_snapshot(_author(channel=channel))
+    snapshot = collect_snapshot(channel, _member(1, "반장"))
 
     assert snapshot.discord_user_ids == ["1", "2"]
 
@@ -91,7 +82,7 @@ def test_snapshot_refuses_a_room_with_only_bots():
     channel = _voice_channel([_member(99, "캡틴 Dev", bot=True)])
 
     with pytest.raises(SnapshotRefused, match="사람이 없습니다"):
-        collect_snapshot(_author(channel=channel))
+        collect_snapshot(channel, _member(1, "반장"))
 
 
 def test_result_reports_each_group_and_every_excluded_bucket():
