@@ -1,5 +1,6 @@
 'use client';
 
+import { withAdded, type ProtoMeeting } from '@core/lib/meetings';
 import {
   attendancePoint,
   demoMyAttendance,
@@ -110,7 +111,8 @@ const CHECKIN_OPEN_BEFORE_MIN = 30;
 
 /** 예정 창 (SCHEDULED_AT). 실제 STARTS_AT/ENDS_AT는 반장이 열 때. 프로토는 예정이 곧 창이다. */
 export function meetingWindow(study: Study, meeting: StudyMeeting) {
-  const { h, m } = startHour(study);
+  const own = (meeting as ProtoMeeting).time?.split(':').map(Number);
+  const { h, m } = own ? { h: own[0], m: own[1] } : startHour(study);
   const start = new Date(`${meeting.date}T00:00:00`);
   start.setHours(h, m, 0, 0);
   const end = new Date(start.getTime() + DURATION_MIN * 60_000);
@@ -172,11 +174,12 @@ export function cancelLeave(study: Study, meeting: StudyMeeting, now = new Date(
 
 /** 오늘 회차. 없으면 undefined — 오늘 모이지 않는 스터디다. */
 export function todayMeeting(study: Study, today = new Date().toISOString().slice(0, 10)): StudyMeeting | undefined {
-  return getStudyCrew(study).meetings.find((m) => m.date === today);
+  return meetingsOf(study).find((m) => m.date === today);
 }
 
-export function meetingsOf(study: Study): StudyMeeting[] {
-  return getStudyCrew(study).meetings;
+/** 스터디 회차 + 네비게이터가 추가한 회차. 번호는 날짜순. */
+export function meetingsOf(study: Study): ProtoMeeting[] {
+  return withAdded(getStudyCrew(study).meetings, study.id);
 }
 
 /** 내 출석률(%). (present + late × 0.5) / 대상 회차. 대상은 시작된 회차 중 휴가가 아닌 것. */

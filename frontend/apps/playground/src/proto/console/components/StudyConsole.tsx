@@ -94,6 +94,12 @@ export function StudyConsole({ study }: { study: Study }) {
     if (on && wanted) setTab(wanted);
   }, [on, wanted]);
 
+  // 사용자 사이트의 「백오피스 출석부」 버튼이 `?tab=attendance` 로 연다 — 들어와서 탭을 다시 찾게 하지 않는다.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('tab');
+    if (q && TABS.some((t) => t.key === q)) setTab(q as TabKey);
+  }, []);
+
   const active = crew.filter((c) => c.status === 'active');
   const open = recruitState(study) === 'apply';
   const deadline = toISODate(study.recruitment?.deadline);
