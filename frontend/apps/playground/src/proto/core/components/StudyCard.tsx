@@ -7,12 +7,19 @@ import { CalendarClock, Globe, Rocket } from 'lucide-react';
 
 import { categoryGradient, categoryMeta } from './StudyThumb';
 
-/** `2026-10-05` → `10/05`. 값이 날짜가 아니면(상시 모집·미정 등 자기설명 문구) 그대로 둔다. */
+/** `2026-10-05` → `10/05`. 값이 날짜가 아니면(미정 등 자기설명 문구) 그대로 둔다. */
 function shortDate(value: string): string {
   const m = value.match(/^\d{4}-(\d{2})-(\d{2})$/);
   return m ? `${m[1]}/${m[2]}` : value;
 }
 
+/**
+ * 스터디 카드 — **둘러보기 전용.** 신청하기·찜·인기(HOT) 배지를 두지 않는다. 신청은 상세에서만 한다 —
+ * 둘러보는 화면과 신청하는 화면을 섞으면 목록에서 실수로 신청 버튼을 누르는 일이 생긴다.
+ *
+ * 헤더는 고정 높이 + 글래스 상태 배지(모집중 D-N/마감임박/진행중/모집 마감)로 통일한다. 모집 마감일은
+ * 배지와 항상 겹치므로 본문에는 시작 예정일만 남긴다. 목록·상세가 같은 함수(`@core/lib/recruit`)를 쓴다.
+ */
 export function StudyCard({ study, locale }: { study: Study; locale: Locale; lead?: Operator; index?: number }) {
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
   const badge = recruitBadge(study, locale);
@@ -58,7 +65,7 @@ export function StudyCard({ study, locale }: { study: Study; locale: Locale; lea
 
       {/*
         본문 — 한 줄 소개·일정·시간대·시작 예정일을 한 영역에 모은다. 별도 하단 바로 분리하지 않는다.
-        모집 마감일은 배지의 D-N/모집 마감/상시 모집과 항상 겹치므로 본문에 따로 두지 않는다.
+        모집 마감일은 배지의 D-N/모집 마감과 항상 겹치므로 본문에 따로 두지 않는다.
       */}
       <div className='flex flex-1 flex-col gap-3 p-5'>
         <p className='line-clamp-2 text-sm leading-relaxed text-fg-secondary'>{t(study.summary, locale)}</p>

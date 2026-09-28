@@ -78,7 +78,7 @@ export function meetRegionOf(study: Study): MeetRegion {
 /** 짧은 태그. 주제 문장을 태그에 넣지 않는다 — 한눈에 분류만 한다. */
 export function tagsOf(study: Study, locale: Locale, categoryLabel: string): string[] {
   const tags = [categoryLabel, t(FORMAT_LABEL[study.format], locale), t(MEET_LABEL[meetRegionOf(study)], locale)];
-  if (study.kind === 'club') tags.push(locale === 'en' ? 'Club' : '클럽');
+  if (study.program?.kind === 'club') tags.push(locale === 'en' ? 'Club' : '클럽');
   return tags;
 }
 

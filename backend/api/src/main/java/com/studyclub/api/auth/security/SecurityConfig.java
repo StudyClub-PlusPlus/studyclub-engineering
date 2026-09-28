@@ -75,6 +75,9 @@ public class SecurityConfig {
                                                 "/auth/social-login",
                                                 "/auth/refresh")
                                         .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.GET, "/api/studies/*/application-form")
+                                        .permitAll()
                                         .anyRequest()
                                         .authenticated())
                 // 미인증 → 403(기본) 대신 401 + ErrorResponse 바디. ERROR 디스패치가 막히지 않도록 /error 는 위에서

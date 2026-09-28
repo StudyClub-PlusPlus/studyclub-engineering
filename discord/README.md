@@ -13,6 +13,9 @@ app/
     server.py          # FastAPI app factory (holds the bot + settings)
     routes/health.py   # GET /api/v1/health (liveness + bot state)
     routes/ping.py     # POST /api/v1/ping (bot posts a ping to the output channel)
+    routes/studies.py  # POST /api/v1/studies (create-study)
+    headers.py         # common request headers (X-API-Key, X-Discord-User-ID, Idempotency-Key)
+  study_reservations.py  # SQLite study-name reservations for create-study
   bot/
     client.py            # Discord bot factory
     commands/test_cmd.py   # testCmd command
@@ -70,7 +73,34 @@ curl -X POST http://localhost:4800/api/v1/ping
 Failures are explicit: `503` when the bot is disabled or still connecting,
 `409` when no output channel is configured, `404` when the bot cannot see that
 channel, and `502` when Discord rejects the send (e.g. missing permissions).
-The API is unauthenticated, so do not expose port 4800 beyond a trusted network.
+`health` and `ping` are unauthenticated, so do not expose port 4800 beyond a trusted network.
+
+Create a study (contract: `docs/discord-development-guide/api/create-study.md`).
+Needs `DISCORD_GUILD_ID`, `DISCORD_CAPTAIN_ROLE_ID`, and `DISCORD_API_KEY` set,
+and a caller who has the captain role:
+
+```bash
+curl -X POST http://localhost:4800/api/v1/studies \
+  -H 'Content-Type: application/json' \
+  -H "X-API-Key: $DISCORD_API_KEY" \
+  -H 'X-Discord-User-ID: 327394882193883136' \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"studyName": "알고리즘 스터디"}'
+```
+
+The bot needs `Manage Channels` and `Manage Roles` in that guild. Study names are
+reserved in SQLite at `data/discord.sqlite3` (fixed in `app/config.py`); in
+Docker that directory is the `studyclub-discord-data` volume.
+
+List a study's text and voice channels (contract:
+`docs/discord-development-guide/api/get-study-channels.md`). Also needs
+`DISCORD_NAVIGATOR_ROLE_ID`, and a caller with the captain or navigator role:
+
+```bash
+curl http://localhost:4800/api/v1/studies/1327394882193883136/channels \
+  -H "X-API-Key: $DISCORD_API_KEY" \
+  -H 'X-Discord-User-ID: 327394882193883136'
+```
 
 In Discord: `!testCmd`
 

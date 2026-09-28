@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { ACCESS_COOKIE, REFRESH_COOKIE, PLATFORM } from '@/lib/auth';
+import { accessCookie, refreshCookie } from '@/lib/cookies';
 
 // 서버(컨테이너) 내부에서 백엔드에 닿는 URL. 브라우저용 NEXT_PUBLIC_API_BASE_URL 과 구분.
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -36,19 +37,9 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({ user: data.user });
-  res.cookies.set(ACCESS_COOKIE, data.accessToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7,
-  });
+  res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7));
   if (data.refreshToken) {
-    res.cookies.set(REFRESH_COOKIE, data.refreshToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/api/auth',
-      maxAge: data.refreshTokenExpiresIn ?? 60 * 60 * 24 * 30,
-    });
+    res.cookies.set(REFRESH_COOKIE, data.refreshToken, refreshCookie(data.refreshTokenExpiresIn ?? 60 * 60 * 24 * 30));
   }
   return res;
 }

@@ -8,6 +8,7 @@ import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { CrewTab } from '@console/components/CrewTab';
 import { ResultsTab } from '@console/components/ResultsTab';
+import { StudyCreateDialog } from '@console/components/StudyCreateDialog';
 import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import type { StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
@@ -24,7 +25,7 @@ import {
   type Study,
 } from '@studyclub/mock';
 import { Badge, Button, Modal } from '@studyclub/ui';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 
 import { useAnnotate } from '@/proto/annotate';
 
@@ -74,6 +75,7 @@ export function StudyConsole({ study }: { study: Study }) {
   const [tab, setTab] = useState<TabKey>('info');
   const [attendanceDirty, setAttendanceDirty] = useState(false);
   const [leave, setLeave] = useState<LeaveIntent | null>(null);
+  const [nextOpen, setNextOpen] = useState(false);
 
   // 스토리 칩을 고르면 그 Story 의 요소가 **보이는 탭**으로 옮겨 준다.
   // 「참석자 목록」을 골랐는데 정보 탭이 떠 있으면 명단 번호가 화면에 없어 대조할 수가 없다.
@@ -95,7 +97,7 @@ export function StudyConsole({ study }: { study: Study }) {
   const active = crew.filter((c) => c.status === 'active');
   const open = recruitState(study) === 'apply';
   const deadline = toISODate(study.recruitment?.deadline);
-  // 마감까지 남은 날. 마감일이 없으면(상시 모집) undefined.
+  // 마감까지 남은 날. 마감일은 필수라 늘 있다 — 값이 비어 있는 옛 데이터만 undefined.
   const dday =
     deadline === undefined
       ? undefined
@@ -208,9 +210,15 @@ export function StudyConsole({ study }: { study: Study }) {
           {tx(study.title)}
         </h1>
         <div data-anno='attendee:1-2' className='flex shrink-0 items-center gap-2'>
+          {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
+          {study.program?.kind === 'club' && (
+            <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
+              다음 기수 만들기
+            </Button>
+          )}
           <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
             {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
-            {open ? (dday === undefined ? '상시 모집' : dday === 0 ? '오늘 마감' : `모집중 · D-${dday}`) : '모집 마감'}
+            {open ? (dday === undefined ? '모집중' : dday === 0 ? '오늘 마감' : `모집중 · D-${dday}`) : '모집 마감'}
           </Badge>
           {draft && (
             <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
@@ -279,6 +287,8 @@ export function StudyConsole({ study }: { study: Study }) {
         {tab === 'results' && <ResultsTab study={study} crew={crew} />}
         {tab === 'info' && <StudyInfoTab study={study} />}
       </div>
+
+      <StudyCreateDialog open={nextOpen} onClose={() => setNextOpen(false)} nextOf={study} />
 
       <Modal
         open={leave !== null}

@@ -1,7 +1,7 @@
 'use client';
 
 // Nav 우측 auth 영역 — 서버 컴포넌트 Nav 안에 끼우는 client 아일랜드.
-// 로그아웃 상태: "로그인" 버튼 / 로그인 상태: 아바타+이름 → 드롭다운(마이페이지·로그아웃).
+// 비로그인: 로그인 / 온보딩 미완료: 가입 마무리 / 완료: 아바타+이름 → 드롭다운.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -37,6 +37,17 @@ export function NavAuth({ locale }: { locale: Locale }) {
     startPreview();
     setUser(getUser());
     router.push(`/${locale}/my`);
+  }
+
+  if (user?.onboardingCompletedAt === null) {
+    return (
+      <Link
+        href={`/${locale}/onboarding`}
+        className='rounded-full bg-brand px-4 py-2 text-sm font-semibold text-on-brand'
+      >
+        {locale === 'en' ? 'Finish sign-up' : '가입 마무리'}
+      </Link>
+    );
   }
 
   if (!user) {

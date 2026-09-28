@@ -151,7 +151,6 @@ planning/stories/{story-slug}/PRD.md
 ```json
 {
   "id": 1,
-  "slug": "ai-paper-reading",
   "title": "AI 논문 리딩",
   ...
 }
@@ -160,7 +159,6 @@ planning/stories/{story-slug}/PRD.md
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|
 | id | Long | N | | STUDY.ID |
-| slug | String | N | URL 식별자 | STUDY.SLUG |
 | title | String | N | | STUDY.TITLE |
 
 > **소스 컬럼**: 이 필드가 어느 테이블·컬럼에서 오는지. 계산 필드는 `계산: {로직}` 으로 표기

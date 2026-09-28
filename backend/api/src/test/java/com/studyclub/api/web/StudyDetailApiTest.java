@@ -53,13 +53,16 @@ class StudyDetailApiTest {
                                 .slug("algo-study")
                                 .title("알고리즘 스터디")
                                 .oneLineSummary("알고리즘 문제 풀이 스터디")
-                                .category(StudyCategory.BACKEND)
+                                .category(StudyCategory.SOFTWARE)
                                 .studyKind(StudyKind.STUDY)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
                                 .capacity(20)
+                                .schedule("매주 목 20:00")
                                 .startAt(Instant.parse("2026-10-15T00:00:00Z"))
+                                .discordChannelUrl("https://discord.com/channels/1/2")
+                                .driveUrl("https://drive.google.com/drive/folders/abc")
                                 .build());
         recruitmentRepository.save(
                 StudyRecruitment.builder()
@@ -76,8 +79,14 @@ class StudyDetailApiTest {
         var body = response.getBody();
         assertThat(body).containsEntry("title", "알고리즘 스터디");
         assertThat(body).containsEntry("slug", "algo-study");
-        assertThat(body).containsEntry("category", "BACKEND");
+        assertThat(body).containsEntry("category", "SOFTWARE");
         assertThat(body).containsEntry("status", "OPEN");
+        assertThat(body).containsEntry("programId", studyProgram.getId().intValue());
+        assertThat(body).containsEntry("oneLineSummary", "알고리즘 문제 풀이 스터디");
+        assertThat(body).containsEntry("capacity", 20);
+        assertThat(body).containsEntry("schedule", "매주 목 20:00");
+        assertThat(body).containsEntry("discordChannelUrl", "https://discord.com/channels/1/2");
+        assertThat(body).containsEntry("driveUrl", "https://drive.google.com/drive/folders/abc");
         assertThat(body).doesNotContainKey("success");
     }
 

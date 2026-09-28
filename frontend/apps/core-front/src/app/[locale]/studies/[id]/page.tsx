@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { isHotStudy } from '@studyclub/mock';
 import { ArrowLeft, CalendarClock } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { ApplyButton } from '@/components/ApplyButton';
 import { BookmarkButton } from '@/components/BookmarkButton';
@@ -10,7 +11,9 @@ import { HotBadge } from '@/components/HotBadge';
 import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
 import { getStudy, getStudies, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { JsonLd, breadcrumbJsonLd, courseJsonLd } from '@/lib/jsonld';
 import { toISODate } from '@/lib/recruit';
+import { SITE_URL, pageMetadata } from '@/lib/seo';
 
 export async function generateStaticParams() {
   const studies = await getStudies();
@@ -26,6 +29,33 @@ export async function generateStaticParams() {
  * 레이아웃은 카드 하나로 묶는다. 헤더(색)–본문(흰색)–신청(고정 바)이 한 덩어리로 읽히게 해서
  * 요소가 따로 떠 보이지 않도록 한다.
  */
+/**
+ * 검색 결과에 뜨는 제목·설명. 스터디마다 달라야 한다 —
+ * 예전엔 전부 `StudyClub++` 하나여서 12개 상세가 검색 결과에서 구분이 안 됐다.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale; id: string }>;
+}): Promise<Metadata> {
+  const { locale, id } = await params;
+  const study = await getStudy(id);
+  if (!study) return {};
+
+  const name = t(study.title, locale);
+  const category = study.category ? `${study.category} · ` : '';
+  const summary = t(study.description ?? study.summary, locale);
+  return pageMetadata({
+    locale,
+    path: `/studies/${id}`,
+    // 카테고리를 앞에 둔다 — 「알고리즘 스터디」처럼 사람들이 실제로 치는 형태가 제목에 들어간다.
+    title: `${category}${name}`,
+    description: summary.slice(0, 155),
+    image: study.image,
+    ogType: 'article',
+  });
+}
+
 export default async function StudyDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
   const study = await getStudy(id);
@@ -36,8 +66,20 @@ export default async function StudyDetail({ params }: { params: Promise<{ locale
   // 모집 여부는 목록 카드·탭과 **같은 함수**로 판정한다. 여기서 따로 계산하면 화면 간 표기가 어긋난다.
   const deadline = toISODate(rec?.deadline);
 
+  const url = `${SITE_URL}/${locale}/studies/${id}`;
+
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-8'>
+      <JsonLd
+        data={[
+          courseJsonLd(study, locale, url),
+          breadcrumbJsonLd([
+            { name: m('nav.home', locale), path: `/${locale}` },
+            { name: m('studies.title', locale), path: `/${locale}/studies` },
+            { name: t(study.title, locale), path: `/${locale}/studies/${id}` },
+          ]),
+        ]}
+      />
       <Link
         href={`/${locale}/studies`}
         className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg'

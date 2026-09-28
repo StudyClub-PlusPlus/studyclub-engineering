@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth';
+import { accessCookie, clearAccess, clearRefresh } from '@/lib/cookies';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -26,18 +27,13 @@ export async function POST(req: NextRequest) {
   if (!upstream.ok) {
     // refresh 실패 = 세션 만료. 쿠키 둘 다 제거해 미들웨어가 로그인으로 보내도록 한다.
     const res = NextResponse.json({ message: '세션이 만료됐습니다. 다시 로그인해 주세요.' }, { status: 401 });
-    res.cookies.set(ACCESS_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
-    res.cookies.set(REFRESH_COOKIE, '', { httpOnly: true, path: '/api/auth', maxAge: 0 });
+    res.cookies.set(ACCESS_COOKIE, '', clearAccess);
+    res.cookies.set(REFRESH_COOKIE, '', clearRefresh);
     return res;
   }
 
   const data = await upstream.json().catch(() => ({}));
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(ACCESS_COOKIE, data.accessToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7,
-  });
+  res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7));
   return res;
 }

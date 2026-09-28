@@ -89,7 +89,7 @@ class AttendanceUpsertIntegrationTest {
                                 .slug("upsert-test-study")
                                 .title("Upsert 테스트 스터디")
                                 .oneLineSummary("테스트용")
-                                .category(StudyCategory.CS)
+                                .category(StudyCategory.ALGORITHM)
                                 .studyKind(StudyKind.STUDY)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)

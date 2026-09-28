@@ -26,7 +26,7 @@
 | `ACTIVE` | 참여 중. 기본값 |
 | `PAUSED` | 잠시 쉼 (출석 집계 제외) |
 | `WITHDRAWN` | 중도 하차. 삭제 대신 이 상태 |
-| `COMPLETED` | 완주 (STUDY CLOSED 시 ACTIVE → COMPLETED 일괄) |
+| `COMPLETED` | 완주 (STUDY ENDED 시 ACTIVE → COMPLETED 일괄) |
 
 ```mermaid
 stateDiagram-v2

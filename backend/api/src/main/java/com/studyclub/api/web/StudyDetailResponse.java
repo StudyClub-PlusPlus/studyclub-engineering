@@ -6,8 +6,10 @@ import java.time.Instant;
 
 public record StudyDetailResponse(
         Long id,
+        Long programId,
         String slug,
         String title,
+        String oneLineSummary,
         String description,
         String category,
         String studyKind,
@@ -17,16 +19,21 @@ public record StudyDetailResponse(
         RecruitStatus recruitStatus,
         String curriculum,
         Integer capacity,
+        String schedule,
         Instant recruitDeadlineAt,
         Instant startAt,
-        Instant endAt) {
+        Instant endAt,
+        String discordChannelUrl,
+        String driveUrl) {
 
     public static StudyDetailResponse from(
             Study study, long applicantCount, Instant recruitDeadlineAt) {
         return new StudyDetailResponse(
                 study.getId(),
+                study.getProgramId(),
                 study.getSlug(),
                 study.getTitle(),
+                study.getOneLineSummary(),
                 study.getDescription(),
                 study.getCategory().name(),
                 study.getStudyKind().name(),
@@ -36,8 +43,11 @@ public record StudyDetailResponse(
                 study.recruitStatus(applicantCount, recruitDeadlineAt),
                 study.getCurriculum(),
                 study.getCapacity(),
+                study.getSchedule(),
                 recruitDeadlineAt,
                 study.getStartAt(),
-                study.getEndAt());
+                study.getEndAt(),
+                study.getDiscordChannelUrl(),
+                study.getDriveUrl());
     }
 }

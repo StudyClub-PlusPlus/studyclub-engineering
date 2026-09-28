@@ -1,5 +1,6 @@
 package com.studyclub.api.web;
 
+import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -8,7 +9,6 @@ import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
-import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
@@ -25,6 +25,7 @@ import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudyService {
 
     private static final String DEFAULT_RECRUITMENT_TITLE = "1차 모집";
+    private static final Pattern HTTP_URL =
+            Pattern.compile("^https?://\\S+$", Pattern.CASE_INSENSITIVE);
 
     private final StudyRepository studyRepository;
     private final StudyParticipantRepository studyParticipantRepository;
@@ -43,6 +46,7 @@ public class StudyService {
     private final StudyAttendanceRepository studyAttendanceRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyBookmarkRepository studyBookmarkRepository;
+    private final StudyCaptainGuard studyCaptainGuard;
 
     public StudyService(
             StudyRepository studyRepository,
@@ -54,7 +58,8 @@ public class StudyService {
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository,
             StudyApplicationRepository studyApplicationRepository,
-            StudyBookmarkRepository studyBookmarkRepository) {
+            StudyBookmarkRepository studyBookmarkRepository,
+            StudyCaptainGuard studyCaptainGuard) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
@@ -65,6 +70,7 @@ public class StudyService {
         this.studyAttendanceRepository = studyAttendanceRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyBookmarkRepository = studyBookmarkRepository;
+        this.studyCaptainGuard = studyCaptainGuard;
     }
 
     @Transactional
@@ -127,10 +133,10 @@ public class StudyService {
 
     @Transactional
     public void update(Long accountId, Long studyId, StudyUpdateRequest request) {
-        Account account =
-                accountRepository
-                        .findById(accountId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        // 권한(ADMIN·캡틴) 판정은 StudyCaptainGuard 가 한다. 여기서는 "누구인지 모르는 요청" 만 먼저 막는다
+        if (!accountRepository.existsById(accountId)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
 
         Study study =
                 studyRepository
@@ -140,15 +146,7 @@ public class StudyService {
                                         new BusinessException(
                                                 ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
 
-        boolean isAdmin = account.getSystemRole() == SystemRole.ADMIN;
-        boolean isNavigator =
-                studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        studyId,
-                        accountId,
-                        List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER));
-        if (!isAdmin && !isNavigator) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 수정 권한이 없습니다.");
-        }
+        studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "스터디 수정 권한이 없습니다.");
 
         if (request.title() != null && request.title().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "title: 제목을 입력하세요.");
@@ -161,6 +159,17 @@ public class StudyService {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
         }
+        if (request.capacityPresent() && request.capacity() != null && request.capacity() < 1) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "capacity: 1 이상의 정수여야 합니다.");
+        }
+        if (request.discordChannelUrlPresent() && !isHttpUrlOrBlank(request.discordChannelUrl())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "discordChannelUrl: http(s):// 로 시작하는 주소여야 합니다.");
+        }
+        if (request.driveUrlPresent() && !isHttpUrlOrBlank(request.driveUrl())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "driveUrl: http(s):// 로 시작하는 주소여야 합니다.");
+        }
 
         study.update(
                 request.title(),
@@ -168,6 +177,13 @@ public class StudyService {
                 request.description(),
                 request.category(),
                 request.schedule());
+        // 정원은 STUDY.CAPACITY 에 둔다 — 목록·모집 상태·단계 필터가 모두 이 컬럼을 읽는다
+        if (request.capacityPresent()) study.changeCapacity(request.capacity());
+        if (request.startAtPresent()) study.changeStartAt(request.startAt());
+        if (request.discordChannelUrlPresent()) {
+            study.changeDiscordChannelUrl(request.discordChannelUrl());
+        }
+        if (request.driveUrlPresent()) study.changeDriveUrl(request.driveUrl());
 
         if (request.recruitDeadline() != null) {
             studyRecruitmentRepository
@@ -227,6 +243,10 @@ public class StudyService {
                         .map(StudyRecruitment::getRecruitDeadlineAt)
                         .orElse(null);
         return StudyDetailResponse.from(study, applicantCount(study), recruitDeadlineAt);
+    }
+
+    private static boolean isHttpUrlOrBlank(String value) {
+        return value == null || value.isBlank() || HTTP_URL.matcher(value.trim()).matches();
     }
 
     /** 목록과 같은 쿼리를 쓴다 — 정원을 차지하는 상태 목록이 두 군데로 갈라지면 목록과 상세의 모집 상태가 어긋난다. */

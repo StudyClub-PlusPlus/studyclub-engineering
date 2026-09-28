@@ -146,7 +146,7 @@ function Quadrant<T extends { id: string; title: string }>({
 
 /** 모집 마감 칸. 날짜만으로는 급한지 알 수 없어 남은 일수를 같이 적는다. */
 function DeadlineCell({ deadline }: { deadline?: string }) {
-  if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right text-sm text-fg-muted'>상시</span>;
+  if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right text-sm text-fg-muted'>—</span>;
   const d = daysUntil(deadline);
   const tone = d < 0 || d === 0 ? 'text-error-700' : d <= DEADLINE_SOON_DAYS ? 'text-warning-700' : 'text-fg-secondary';
   const label = d < 0 ? '마감 경과' : d === 0 ? '오늘 마감' : `D-${d}`;

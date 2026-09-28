@@ -48,7 +48,7 @@ class StudyDeleteIntegrationTest {
     @Test
     @DisplayName("성공 - ADMIN 이 삭제하면 204 + STUDY 행이 사라진다")
     void adminDeletesStudy() {
-        Long studyId = createStudy("삭제될 스터디", "소개", "CS");
+        Long studyId = createStudy("삭제될 스터디", "소개", "ALGORITHM");
         assertThat(studyRepository.existsById(studyId)).isTrue();
 
         var response =
@@ -65,7 +65,7 @@ class StudyDeleteIntegrationTest {
     @Test
     @DisplayName("성공 - 삭제 시 STUDY_RECRUITMENT 행도 함께 삭제된다")
     void deleteCascadesToRecruitment() {
-        Long studyId = createStudy("케스케이드 스터디", "소개", "BACKEND");
+        Long studyId = createStudy("케스케이드 스터디", "소개", "SOFTWARE");
         assertThat(recruitmentRepository.findByStudyId(studyId)).isNotEmpty();
 
         var response =

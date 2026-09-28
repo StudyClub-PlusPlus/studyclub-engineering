@@ -106,9 +106,10 @@ class StudyRecruitStatusIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 — 목록: STATUS 가 OPEN 이 아니면 recruitStatus 는 null")
+    @DisplayName(
+            "성공 — 목록: STATUS 가 OPEN 이 아니면 recruitStatus 는 null (DRAFT 는 목록에 안 나오므로 CLOSED 로 본다)")
     void listNoRecruitStatusWhenNotOpen() {
-        createStudy(StudyStatus.DRAFT, 30, Instant.now().plus(7, ChronoUnit.DAYS));
+        createStudy(StudyStatus.CLOSED, 30, Instant.now().plus(7, ChronoUnit.DAYS));
 
         assertThat(firstListItem()).containsEntry("recruitStatus", null);
     }
@@ -153,7 +154,7 @@ class StudyRecruitStatusIntegrationTest {
                                 .slug("recruit-status-" + slugSeq.getAndIncrement())
                                 .title("모집 상태 스터디")
                                 .oneLineSummary("모집 상태 계산 검증용")
-                                .category(StudyCategory.BACKEND)
+                                .category(StudyCategory.SOFTWARE)
                                 .studyKind(StudyKind.STUDY)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
