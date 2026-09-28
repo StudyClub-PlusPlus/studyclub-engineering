@@ -8,7 +8,10 @@ import type { MemberRegion } from '@studyclub/mock';
  * 저장할 서버가 아직 없어 **브라우저에만** 남긴다(기기·브라우저가 바뀌면 사라진다).
  * 서버가 생기면 이 파일의 read/write 만 fetch 로 갈아끼우면 되고, 화면 코드는 그대로 둔다.
  *
- * TODO(api): GET/PUT /api/me/bookmarks · /api/me/applications · /api/me
+ * TODO(api): GET/PUT /api/me/bookmarks · /api/me/applications
+ *
+ * `getActiveNavigatorStudies` 만 예외 — 회원 탈퇴 경고는 로컬로 흉내낼 수 없어 실제
+ * GET /api/me/studies 를 호출한다. 맨 아래 참고.
  */
 
 const BOOKMARK_KEY = 'sc_bookmarks';
@@ -186,4 +189,34 @@ export function seedDemoData() {
   }
   writeJSON(BOOKMARK_KEY, ['daily-leetcode', 'early-bird', 'system-design-interview']);
   writeJSON(DISCORD_KEY, 'jiwon_dev');
+}
+
+/* ── 맡은 진행 중인 스터디 (회원 탈퇴 경고) ──────────────────────────────────── */
+
+/**
+ * 회원 탈퇴 화면의 "맡은 스터디 경고"에 쓰는 목록. 다른 `/my` 기능과 달리 이건 로컬에 흉내낼 수
+ * 없다 — "지금 이 사람이 진행 중인 스터디의 네비게이터인가"는 서버(STUDY_PARTICIPANT · STUDY.STATUS)
+ * 만 판정할 수 있다. GET /api/me/studies (서버 라우트 프록시)를 실제로 호출한다
+ * (specs/user-leave/spec.md "GET /api/me/studies (기존 API 확장)").
+ */
+export type ActiveNavigatorStudy = { studyId: number; title: string };
+
+/**
+ * 실패(네트워크 오류, 401, 403 ONBOARDING_REQUIRED 등)는 전부 "맡은 스터디 없음"과 동일하게
+ * 빈 배열로 처리한다 — 온보딩 미완료 계정은 애초에 참여 자체가 불가능해 맡은 스터디가 있을 수
+ * 없으므로 안전하다(스펙의 `@RequireOnboarding` 과의 관계 절 참고).
+ */
+export async function getActiveNavigatorStudies(): Promise<ActiveNavigatorStudy[]> {
+  try {
+    const res = await fetch('/api/me/studies', { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const activeStudies: Array<{ studyId: number; title: string; isActiveNavigator: boolean }> =
+      data?.activeStudies ?? [];
+    return activeStudies
+      .filter((s) => s.isActiveNavigator)
+      .map((s) => ({ studyId: s.studyId, title: s.title }));
+  } catch {
+    return [];
+  }
 }

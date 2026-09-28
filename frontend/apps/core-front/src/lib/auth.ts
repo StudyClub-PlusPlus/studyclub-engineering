@@ -66,3 +66,40 @@ export async function logout(): Promise<void> {
     // 네트워크 실패해도 클라이언트 세션은 이미 지움
   }
 }
+
+/** 탈퇴 사유 — 정해진 값 셋. 자유 입력은 없다 (specs/user-leave/spec.md). */
+export type LeaveReason = 'NO_DESIRED_STUDY' | 'PARTICIPATION_BURDEN' | 'OTHER';
+
+export type DeleteAccountResult =
+  | { ok: true }
+  | { ok: false; errorCode: string; errorMessage: string };
+
+/**
+ * 회원 탈퇴 — DELETE /api/me. 성공하면 새 정리 로직을 만들지 않고 기존 {@link logout} 을 그대로
+ * 호출한다(localStorage + httpOnly 쿠키 정리 재사용). 서버가 발급한 토큰 자체를 무효화하지는
+ * 못한다(스펙의 "알려진 한계").
+ */
+export async function deleteAccount(reason: LeaveReason | null): Promise<DeleteAccountResult> {
+  let res: Response;
+  try {
+    res = await fetch('/api/me', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+  } catch {
+    return { ok: false, errorCode: 'NETWORK_ERROR', errorMessage: '네트워크에 연결할 수 없습니다.' };
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return {
+      ok: false,
+      errorCode: data.errorCode ?? 'INTERNAL_ERROR',
+      errorMessage: data.errorMessage ?? '탈퇴 처리 중 오류가 발생했습니다.',
+    };
+  }
+
+  await logout();
+  return { ok: true };
+}

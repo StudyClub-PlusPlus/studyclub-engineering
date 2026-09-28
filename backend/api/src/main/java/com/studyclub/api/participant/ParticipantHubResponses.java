@@ -1,6 +1,7 @@
 package com.studyclub.api.participant;
 
 import com.studyclub.domain.attendance.AttendanceStatus;
+import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
@@ -18,6 +19,11 @@ public final class ParticipantHubResponses {
             List<UpcomingStudyMeeting> upcomingMeetings,
             List<BookmarkedStudySummary> bookmarks) {}
 
+    /**
+     * {@code participantRole} · {@code isActiveNavigator} 는 회원 탈퇴 화면의 "맡은 진행 중인 스터디" 경고에
+     * 쓴다(specs/user-leave/spec.md). {@code isActiveNavigator} 는 서버가 이미 판정을 끝낸 값이다 — {@code
+     * participantRole IN (LEADER, CO_LEADER) AND STUDY.STATUS = OPEN} 조합을 프론트가 다시 알 필요가 없게 한다.
+     */
     public record ParticipatingStudySummary(
             Long cohortId,
             Long studyId,
@@ -25,7 +31,9 @@ public final class ParticipantHubResponses {
             ParticipantStatus participantStatus,
             Integer attendanceRate,
             Instant nextMeetingAt,
-            String thumbnailUrl) {}
+            String thumbnailUrl,
+            ParticipantRole participantRole,
+            boolean isActiveNavigator) {}
 
     public record StudyApplicationSummary(
             Long id, Long cohortId, Long studyId, String studyTitle, Instant appliedAt) {}

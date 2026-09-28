@@ -5,12 +5,17 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface StudyParticipantRepository extends JpaRepository<StudyParticipant, Long> {
 
     List<StudyParticipant> findByStudyId(Long studyId);
 
     void deleteByStudyId(Long studyId);
+
+    /** 회원 탈퇴 — 참여 기록 파기. 맡고 있던 네비게이터 자리도 이 삭제로 함께 사라진다 (specs/user-leave/spec.md). */
+    @Transactional
+    void deleteByAccountId(Long accountId);
 
     List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
 

@@ -8,6 +8,7 @@ import com.studyclub.api.participant.ParticipantHubResponses.StudyApplicationSum
 import com.studyclub.api.participant.ParticipantHubResponses.StudyMeetingAttendance;
 import com.studyclub.api.participant.ParticipantHubResponses.UpcomingStudyMeeting;
 import com.studyclub.domain.attendance.AttendanceStatus;
+import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
@@ -38,7 +39,9 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                                 ParticipantStatus.ACTIVE,
                                 100,
                                 Instant.parse("2026-09-08T11:00:00Z"),
-                                "https://example.com/studies/101.png"),
+                                "https://example.com/studies/101.png",
+                                ParticipantRole.LEADER,
+                                true),
                         new ParticipatingStudySummary(
                                 302L,
                                 102L,
@@ -46,7 +49,9 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                                 ParticipantStatus.ACTIVE,
                                 null,
                                 Instant.parse("2026-09-12T10:00:00Z"),
-                                "https://example.com/studies/102.png")),
+                                "https://example.com/studies/102.png",
+                                ParticipantRole.MEMBER,
+                                false)),
                 List.of(
                         new ParticipatingStudySummary(
                                 291L,
@@ -55,7 +60,9 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
                                 ParticipantStatus.COMPLETED,
                                 88,
                                 null,
-                                "https://example.com/studies/91.png")),
+                                "https://example.com/studies/91.png",
+                                ParticipantRole.MEMBER,
+                                false)),
                 List.of(
                         new StudyApplicationSummary(
                                 501L,

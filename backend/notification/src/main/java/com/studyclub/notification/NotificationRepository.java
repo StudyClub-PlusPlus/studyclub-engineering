@@ -14,6 +14,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     /** 테스트 전용 — 계정 하나가 받은 알림을 뒤져볼 때만 쓴다. 백오피스 조회는 볼륨이 계속 느는 아웃박스라 {@link #findPage} 를 쓴다. */
     List<Notification> findAllByOrderByCreatedAtDesc();
 
+    /** 회원 탈퇴 — 이 계정이 수신자인 알림 이력 비식별화 대상 조회 (specs/user-leave/spec.md). */
+    List<Notification> findByRecipientUserId(Long recipientUserId);
+
     /**
      * 완료 처리(markSent/markFailed) 전용 — 행을 잠근다({@code AccountRepository.findByEmailForUpdate} 와 같은
      * 이유). 일반 {@code findById} 는 트랜잭션 시작 시점의 스냅샷을 읽을 뿐이라, 이 값을 읽어 자바에서 상태·lockedAt 을 확인한 뒤 저장하는 사이에

@@ -21,4 +21,7 @@ public interface StudyApplicationRepository extends JpaRepository<StudyApplicati
             @Param("recruitmentId") Long recruitmentId);
 
     void deleteByRecruitmentIdIn(Collection<Long> recruitmentIds);
+
+    /** 회원 탈퇴 — FORM_ANSWER.discordNickname 비식별화 대상 조회 (specs/user-leave/spec.md). */
+    List<StudyApplication> findByAccountId(Long accountId);
 }
