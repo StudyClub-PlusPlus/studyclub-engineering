@@ -3,10 +3,13 @@ package com.studyclub.api.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountConsent;
+import com.studyclub.domain.account.AccountConsentRepository;
 import com.studyclub.domain.account.AccountIdentity;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountLeaveReasonRepository;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.ConsentType;
 import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplication;
@@ -56,6 +59,7 @@ class AccountDeletionIntegrationTest {
     @Autowired JwtService jwt;
     @Autowired AccountRepository accountRepository;
     @Autowired AccountIdentityRepository accountIdentityRepository;
+    @Autowired AccountConsentRepository accountConsentRepository;
     @Autowired AccountLeaveReasonRepository accountLeaveReasonRepository;
     @Autowired StudyParticipantRepository studyParticipantRepository;
     @Autowired StudyBookmarkRepository studyBookmarkRepository;
@@ -100,6 +104,9 @@ class AccountDeletionIntegrationTest {
                         "sub-" + accountId,
                         account.getEmail(),
                         Instant.now()));
+        accountConsentRepository.save(
+                new AccountConsent(
+                        accountId, ConsentType.TERMS_OF_SERVICE, true, Instant.now(), "v1"));
         studyParticipantRepository.save(
                 StudyParticipant.builder()
                         .accountId(accountId)
@@ -170,6 +177,7 @@ class AccountDeletionIntegrationTest {
                         accountIdentityRepository.findByIssuerAndProviderAccountId(
                                 Issuer.GOOGLE, "sub-" + accountId))
                 .isEmpty();
+        assertThat(accountConsentRepository.findByAccountId(accountId)).isEmpty();
         assertThat(studyParticipantRepository.findByStudyId(9001L)).isEmpty();
         assertThat(studyBookmarkRepository.countByAccountId(accountId)).isZero();
 

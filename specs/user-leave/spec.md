@@ -73,7 +73,8 @@
    - `NOTIFICATION` WHERE `RECIPIENT_USER_ID=accountId` 인 행의 `RECIPIENT_VALUE`·`PAYLOAD.nickname` 을 비식별 처리한다(행은 유지, 발송 이력 자체는 지우지 않는다). `STATUS=PENDING` 인 행은 추가로 `CANCELLED` 로 전환한다 — [알림 비식별화](#알림-비식별화) 참고.
    - `STUDY_PROPOSAL` WHERE `PROPOSER_ACCOUNT_ID=accountId` AND `STATUS=OPEN` → `STATUS=CLOSED` 로 전환한다. `CONTENT`·`PROPOSED_AT` 은 그대로 둔다. `ACCEPTED`/`REJECTED`/이미 `CLOSED` 인 행은 이미 종결 상태라 건드리지 않는다 — [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) 참고.
    - `STUDY_APPLICATION` WHERE `ACCOUNT_ID=accountId` 인 행의 `FORM_ANSWER.discordNickname` 을 고정 마스킹 값으로 치환한다(`availableDays`·`scheduleAgreed`·`answers` 는 그대로 둔다). 행 자체는 지우지 않는다 — [STUDY_APPLICATION 의 FORM_ANSWER.discordNickname](#study_application-의-form_answerdiscordnickname) 참고.
-   - `ACCOUNT` 행 삭제. `ACCOUNT_CONSENT` 는 `fk_account_consent_account ... ON DELETE CASCADE` 로 함께 삭제된다 (프로필·동의 파기).
+   - `ACCOUNT_CONSENT` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (동의 이력 파기). Flyway 스키마에는 `fk_account_consent_account ... ON DELETE CASCADE` 가 있지만, stage(Hibernate `ddl-auto: update`)·테스트(H2)는 FK 없이 스키마를 만들어 cascade 에 기댈 수 없으므로 코드가 명시적으로 지운다.
+   - `ACCOUNT` 행 삭제 (프로필 파기).
    - `STUDY_ATTENDANCE`·`STUDY_REVIEW`·(방금 `discordNickname` 만 마스킹한) `STUDY_APPLICATION`·(방금 `CLOSED` 로 바뀐) `STUDY_PROPOSAL` 은 이 이상 **행 자체를 더 건드리지 않는다.** 이들의 `ACCOUNT_ID`/`PROPOSER_ACCOUNT_ID` 는 FK 가 아니라 인덱스뿐이라(`database-guide.md` 외래키 정책) DB 무결성 오류 없이 그대로 남고, 참조할 `ACCOUNT` 행 자체가 없어져 더는 사람으로 되짚을 수 없다 — 이것으로 "개인을 식별할 수 없도록 처리한 뒤 남긴다"가 성립한다. 별도 컬럼 변경(NULL 처리 등)이 필요 없다. 조회 계층은 이 ID 로 `ACCOUNT` 조회가 실패하면 "탈퇴한 회원"으로 표시한다(신규 요구사항 — 기존에 이런 실패 케이스를 다루지 않았다면 이번에 추가).
 5. `204 No Content`.
 
@@ -294,7 +295,7 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 |---|---|---|
 | `ACCOUNT` (프로필 포함) | 물리 삭제 | "계정·프로필 즉시 파기" |
 | `ACCOUNT_IDENTITY` (로그인 수단) | 물리 삭제 | "즉시 파기" + 재가입 가능 조건(UNIQUE 해제) |
-| `ACCOUNT_CONSENT` (약관 동의) | 물리 삭제 (FK CASCADE) | 프로필에 준하는 계정 데이터 |
+| `ACCOUNT_CONSENT` (약관 동의) | 물리 삭제 (서비스가 명시적으로 삭제) | 프로필에 준하는 계정 데이터 |
 | `STUDY_PARTICIPANT` (참여) | 물리 삭제 | "참여 즉시 파기" |
 | `STUDY_BOOKMARK` / `STUDY_PROPOSAL_INTEREST` (관심) | 물리 삭제 | "관심 즉시 파기" |
 | 디스코드 연동 (`ACCOUNT.DISCORD_*`) | `ACCOUNT` 삭제에 포함 | "디스코드 연동 정보 즉시 파기" |
@@ -420,4 +421,4 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 | 2026-09-24 | `NOTIFICATION` PENDING 취소 처리 확정 — PR #110 리뷰 스레드에서 `NotificationStatus.CANCELLED` 신설로 합의. `specs/notification/spec.md`·`docs/erd/NOTIFICATION.md` 상태도에도 반영 | PR #110 코멘트 스레드 합의 (j00hyun) |
 | 2026-09-27 | 구현 코드 대비 스펙 리뷰 반영 — `NotificationStatus.CANCELLED` 실제 코드 구현(더 이상 "notification 모듈 후속 작업" 아님), `GET /api/me/studies` `@RequireOnboarding` 절을 실제 프론트 동작("무조건 호출 + 에러는 빈 배열")에 맞게 정정 | 구현 PR 코드 리뷰 — 스펙 문서가 이후 합의를 못 따라간 부분 발견 |
 | 2026-09-28 | 구현 PR 코드 리뷰 반영 — 캡틴 신청 결과 조회를 LEFT JOIN 으로 바꿔 탈퇴한 신청자를 `탈퇴한 회원`으로 표시, JSON 객체가 아닌 `FORM_ANSWER` 는 탈퇴를 막지 않고 통째로 비움 | 구현 PR #141 코드 리뷰 |
-| 2026-09-28 | 구현 PR 2차 리뷰 반영 — `NOTIFICATION` 비식별화를 `FOR UPDATE` 락 조회로(스케줄러와 경합 방지), `POST /auth/refresh` 가 탈퇴한 계정은 401 로 거절, 프론트가 이미 탈퇴된 계정(404)을 정리 경로로 처리하고 회원별 localStorage 데이터도 삭제, 웰컴메일 리스너를 계정 행 락 조회로 바꿔 탈퇴 직후 알림 생성 경합 차단. 마이그레이션 번호를 beta 의 V20 과 겹치지 않게 V21 로 변경 | 구현 PR #141 2차 코드 리뷰 |
+| 2026-09-28 | 구현 PR 2차 리뷰 반영 — `NOTIFICATION` 비식별화를 `FOR UPDATE` 락 조회로(스케줄러와 경합 방지), `POST /auth/refresh` 가 탈퇴한 계정은 401 로 거절, 프론트가 이미 탈퇴된 계정(404)을 정리 경로로 처리하고 회원별 localStorage 데이터도 삭제, 웰컴메일 리스너를 계정 행 락 조회로 바꿔 탈퇴 직후 알림 생성 경합 차단. `ACCOUNT_CONSENT` 를 DB cascade 대신 명시적 삭제로 변경(stage·H2 에 FK 없음). 마이그레이션 번호를 beta 의 V20 과 겹치지 않게 V21 로 변경 | 구현 PR #141 2차 코드 리뷰 |

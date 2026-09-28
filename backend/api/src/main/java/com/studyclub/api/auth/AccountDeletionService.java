@@ -3,6 +3,7 @@ package com.studyclub.api.auth;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountConsentRepository;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountLeaveReason;
 import com.studyclub.domain.account.AccountLeaveReasonRepository;
@@ -49,6 +50,7 @@ public class AccountDeletionService {
 
     private final AccountRepository accountRepository;
     private final AccountIdentityRepository accountIdentityRepository;
+    private final AccountConsentRepository accountConsentRepository;
     private final AccountLeaveReasonRepository accountLeaveReasonRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyBookmarkRepository studyBookmarkRepository;
@@ -73,6 +75,9 @@ public class AccountDeletionService {
         // 로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID) 에 걸린다.
         accountIdentityRepository.deleteByAccountId(accountId);
 
+        // 동의 이력 파기 — DB cascade 는 Flyway 로 만든 스키마에만 있어서 코드로 명시적으로 지운다.
+        accountConsentRepository.deleteByAccountId(accountId);
+
         // 참여 기록 파기 — 맡고 있던 네비게이터 자리도 이 삭제로 함께 사라진다. 공동 네비게이터가
         // 남아 있는지는 판정하지 않는다(인계 필요 여부는 시스템이 계산하지 않는다는 정책).
         studyParticipantRepository.deleteByAccountId(accountId);
@@ -92,8 +97,7 @@ public class AccountDeletionService {
         // 알림 이력 — 이메일 원문·닉네임 스냅샷만 비식별화하고 행(발송 이력)은 남긴다.
         redactNotifications(accountId);
 
-        // 계정·프로필 삭제. ACCOUNT_CONSENT 는 fk_account_consent_account ... ON DELETE CASCADE
-        // 로 DB 가 함께 지운다.
+        // 계정·프로필 삭제.
         accountRepository.delete(account);
     }
 
