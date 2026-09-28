@@ -14,7 +14,9 @@ app/
     routes/health.py   # GET /api/v1/health (liveness + bot state)
     routes/ping.py     # POST /api/v1/ping (bot posts a ping to the output channel)
     routes/studies.py  # POST /api/v1/studies (create-study)
+    routes/channels.py # POST /api/v1/channels/{id|alert|announcement}/msg (send-message and friends)
     headers.py         # common request headers (X-API-Key, X-Discord-User-ID, Idempotency-Key)
+    guild.py           # resolves the caller in the guild and checks their role
   study_reservations.py  # SQLite study-name reservations for create-study
   bot/
     client.py            # Discord bot factory
@@ -94,13 +96,86 @@ Docker that directory is the `studyclub-discord-data` volume.
 
 List a study's text and voice channels (contract:
 `docs/discord-development-guide/api/get-study-channels.md`). Also needs
-`DISCORD_NAVIGATOR_ROLE_ID`, and a caller with the captain or navigator role:
+`DISCORD_NAVIGATOR_ROLE_ID`, and a caller with the captain or navigator role
+(or `DISCORD_BOT_ID`, see below):
 
 ```bash
 curl http://localhost:4800/api/v1/studies/1327394882193883136/channels \
   -H "X-API-Key: $DISCORD_API_KEY" \
   -H 'X-Discord-User-ID: 327394882193883136'
 ```
+
+Post an operational alert (contract:
+`docs/discord-development-guide/api/send-alert-message.md`). Needs
+`DISCORD_ALERT_CHANNEL_ID`, and a caller with the captain role -- a navigator
+cannot raise one by hand:
+
+```bash
+curl -X POST http://localhost:4800/api/v1/channels/alert/msg \
+  -H 'Content-Type: application/json' \
+  -H "X-API-Key: $DISCORD_API_KEY" \
+  -H 'X-Discord-User-ID: 327394882193883136' \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"msg": "알고리즘 스터디 1기가 완료 처리되었습니다."}'
+```
+
+Answers `204` with no body. The bot needs `Send Messages` in the alert channel --
+without it *every* request fails with `502`, so fix the channel permission rather
+than retry. `@everyone` and `@here` are removed from `msg`, and nothing the
+message contains ever notifies anyone.
+
+The backend also raises alerts on its own behalf rather than a member's. It says
+so by sending `DISCORD_BOT_ID` as `X-Discord-User-ID`, and such a request skips
+the member and role lookup entirely -- `X-API-Key` has already established who
+the caller is. The same goes for listing a study's channels. No other endpoint
+accepts it, and leaving `DISCORD_BOT_ID` unset means no request is ever a system
+call.
+
+Post a guild-wide announcement (contract:
+`docs/discord-development-guide/api/send-announcement-message.md`). Needs
+`DISCORD_ANNOUNCEMENT_CHANNEL_ID`, and a caller with the captain role --
+navigators cannot send one:
+
+```bash
+curl -X POST http://localhost:4800/api/v1/channels/announcement/msg \
+  -H 'Content-Type: application/json' \
+  -H "X-API-Key: $DISCORD_API_KEY" \
+  -H 'X-Discord-User-ID: 327394882193883136' \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"msg": "알고리즘 스터디 2기 모집을 시작합니다."}'
+```
+
+Answers `204` with no body. The message goes up under an `@everyone` line that
+the bot adds; `@everyone` and `@here` inside `msg` are removed, so only that one
+line notifies. The bot needs `Send Messages` and `Mention Everyone` in the
+announcement channel. Without `Mention Everyone` Discord posts the announcement
+anyway with nobody notified, so the answer is still `204` and the bot leaves a
+note in the alert channel.
+
+Post to a channel of a study, mentioning whoever should be notified (contract:
+`docs/discord-development-guide/api/send-message.md`). The caller picks the
+channel, and either the captain or the navigator role may call:
+
+```bash
+curl -X POST http://localhost:4800/api/v1/channels/1327394882193883137/msg \
+  -H 'Content-Type: application/json' \
+  -H "X-API-Key: $DISCORD_API_KEY" \
+  -H 'X-Discord-User-ID: 327394882193883136' \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"discordStudyId": "1327394882193883136",
+       "msg": "이번 주 모임은 목요일 저녁 9시로 옮깁니다.",
+       "discordUserIds": ["427394882193883136"]}'
+```
+
+Answers `204` with no body. The channel must sit directly under the
+`discordStudyId` category, which is what keeps a navigator -- whose role is
+guild-wide -- from having the bot mention people in channels outside a study.
+Only the users in `discordUserIds` (at most 40) are notified; the sender line,
+anything typed into `msg`, and a `@everyone` that somehow survived stripping all
+render as text and ring nobody. A user who has left the guild does not hold the
+message back -- it goes up mentioning everyone still there, and the bot leaves a
+note in the alert channel naming who was left out. Here `Send Messages` is per
+channel, so a `502` means that one channel's permissions, not every request.
 
 In Discord: `!testCmd`
 
