@@ -186,8 +186,15 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 실제로는 문제가 안 된다 — [user-onboarding spec](../user-onboarding/spec.md#회원-전용-api-공통-규칙)의
 "회원 전용 API 공통 규칙"에 따라 신청·참여 자체가 온보딩 완료 계정만 가능하므로, 온보딩 미완료
 계정은 애초에 `STUDY_PARTICIPANT` 행을 가질 수 없다 — "맡은 스터디"가 구조적으로 존재하지 않는다.
-그래서 프론트는 온보딩 미완료 계정에는 이 API 를 아예 호출하지 않고 경고 상자 없이 바로 탈퇴
-버튼을 보여줘도 안전하다. 이 엔드포인트의 `@RequireOnboarding` 은 그대로 둔다.
+이 엔드포인트의 `@RequireOnboarding` 은 그대로 둔다.
+
+**프론트는 이 API 를 조건 없이 호출한다** — "지금 이 계정이 온보딩을 완료했는가"를 먼저 판단해서
+호출 여부를 정하려면, 그 판단에 쓸 데이터를 프론트가 어딘가에서 이미 들고 있어야 하는데
+(예: `/auth/me` 를 별도로 먼저 불러서 `onboardingCompletedAt` 을 확인) 지금 core-front 에는
+그런 온보딩 상태 추적이 전혀 없다 — 없는 것을 추가로 만들 이유가 없다. 대신 **`200` 이외의 모든
+응답(온보딩 미완료의 `403 ONBOARDING_REQUIRED` 포함)을 "맡은 스터디 없음"과 동일하게 처리**한다 —
+빈 배열로 취급하고 경고 상자를 그냥 안 띄운다. 위 문단이 이미 증명하듯 온보딩 미완료 계정은 어차피
+빈 결과와 동치이므로, 에러를 구분하지 않고 뭉뚱그려도 정확성을 잃지 않는다.
 
 ### Error Responses
 
@@ -330,8 +337,9 @@ PRD 의 "법령상 보존이 필요한 정보는 그 기간 동안 보관한다"
 안 하고 취소"와 섞이면 나중에 진짜 발송 장애를 진단할 때 노이즈가 된다 — `NotificationStatus` 에
 `CANCELLED` 를 신설하기로 리뷰에서 합의했다(`ERROR_TYPE` 은 `FAILED` 전용이라 채우지 않는다). `PROCESSING`
 은 이미 발송 시도 중이라 끼어들지 않고 마스킹만 적용한다. 자세한 상태 전이는
-[notification spec](../notification/spec.md#상태-전이) 참고 — `NotificationStatus` enum(코드)에
-`CANCELLED` 를 추가하는 작업은 이 스펙의 구현 PR이 아니라 notification 모듈 쪽 후속 작업이다.
+[notification spec](../notification/spec.md#상태-전이) 참고. `NotificationStatus` 에 `CANCELLED` 를
+추가하는 코드(`Notification.cancel()`)는 이 스펙의 구현 PR에 포함했다 — `ERROR_TYPE`·`LOCKED_AT` 등
+`FAILED`/`PROCESSING` 전용 컬럼은 건드리지 않는다.
 
 - 구체적인 마스킹 값·컬럼 갱신 코드는 notification 모듈 소관이다. 이 스펙은 "무엇을 비식별해야
   하는가"까지만 정의하고, "어떻게(이벤트 vs 직접 리포지토리 호출)"는 plan.md 에서 정한다.
@@ -389,3 +397,4 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 | 2026-09-19 | 최초 작성 — `DELETE /api/me` 스펙 초안 + `GET /api/me/studies` 확장 | 회원 탈퇴 기획 (PRD, 프로토타입 `/proto/core/ko/my/leave`) |
 | 2026-09-23 | PR #110 리뷰(j00hyun) 반영 — SESSION(Redis) 미구현 사실 정정, `GET /api/me/studies` 를 `isActiveNavigator` 계산 필드로 교체, `STUDY_APPLICATION.FORM_ANSWER.discordNickname` 비식별 추가, `STUDY_PROPOSAL` ERD 상태도에 탈퇴 트리거 반영, 디스코드 role 제거 범위 밖 명시. `NOTIFICATION` PENDING 건 취소 처리는 PR 코멘트 스레드에서 별도 논의 후 반영 예정이라 이 라운드에서는 보류 | PR 리뷰 코멘트 7건 + `beta` 병합으로 새로 생긴 `specs/study-application/spec.md`·`POL-0007` |
 | 2026-09-24 | `NOTIFICATION` PENDING 취소 처리 확정 — PR #110 리뷰 스레드에서 `NotificationStatus.CANCELLED` 신설로 합의. `specs/notification/spec.md`·`docs/erd/NOTIFICATION.md` 상태도에도 반영 | PR #110 코멘트 스레드 합의 (j00hyun) |
+| 2026-09-27 | 구현 코드 대비 스펙 리뷰 반영 — `NotificationStatus.CANCELLED` 실제 코드 구현(더 이상 "notification 모듈 후속 작업" 아님), `GET /api/me/studies` `@RequireOnboarding` 절을 실제 프론트 동작("무조건 호출 + 에러는 빈 배열")에 맞게 정정 | 구현 PR 코드 리뷰 — 스펙 문서가 이후 합의를 못 따라간 부분 발견 |
