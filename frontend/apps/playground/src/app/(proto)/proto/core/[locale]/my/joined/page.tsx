@@ -40,6 +40,7 @@ import {
   type WeekDay,
 } from '@core/lib/joined';
 import { getApplications, getRegion } from '@core/lib/me';
+import { MANAGE_ROLE_LABEL, manageAccessOf } from '@core/lib/meetings';
 import { studies as allStudies, type Study, type StudyMeeting } from '@studyclub/mock';
 import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
 import {
@@ -51,9 +52,10 @@ import {
   ClipboardList,
   FolderOpen,
   Heart,
+  Settings2,
 } from 'lucide-react';
 
-import { SPEC } from './spec';
+import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 type Filter = 'all' | LifeStatus;
@@ -466,6 +468,7 @@ export default function MyJoinedPage() {
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
       <ScreenSpecRegistrar spec={SPEC} />
+      <ScreenSpecRegistrar spec={MEETING_SPEC} />
       <h1 data-anno='1' className='text-2xl font-extrabold tracking-tight'>
         내 스터디
       </h1>
@@ -571,6 +574,7 @@ function StudyItem({
   bookOpen: boolean;
   onToggleBook: () => void;
 }) {
+  const router = useRouter();
   const { icon: Icon } = categoryMeta(study.category);
   const life = lifeStatus(study);
   const completed = isCompleted(study);
@@ -583,6 +587,9 @@ function StudyItem({
   const panelId = `attendance-${study.id}`;
   const ended = life === 'ended' && !completed;
   const showRate = !completed && book.rate !== undefined;
+  const access = manageAccessOf(study.id);
+  // 관계가 끝난 스터디는 관리할 일이 없다.
+  const canManage = access !== undefined && life !== 'ended';
 
   return (
     <li>
@@ -614,13 +621,20 @@ function StudyItem({
         <div className='min-w-0 flex-1'>
           <div className='flex items-start justify-between gap-3'>
             <div className='min-w-0'>
-              <Link
-                data-anno='4-2'
-                href={userStudyPath(locale, study)}
-                className='block truncate text-[17px] font-bold text-fg underline-offset-4 hover:underline'
-              >
-                {t(study.title, locale)}
-              </Link>
+              <div className='flex min-w-0 items-center gap-2'>
+                <Link
+                  data-anno='4-2'
+                  href={userStudyPath(locale, study)}
+                  className='min-w-0 truncate text-[17px] font-bold text-fg underline-offset-4 hover:underline'
+                >
+                  {t(study.title, locale)}
+                </Link>
+                {access && (
+                  <span data-anno='meeting:1' className='shrink-0'>
+                    <Badge tone={access.role}>{MANAGE_ROLE_LABEL[access.role]}</Badge>
+                  </span>
+                )}
+              </div>
               <p data-anno='4-5' className='mt-0.5 text-[13px] text-fg-muted'>
                 {durationOf(study, locale, wallTz)}
               </p>
@@ -662,15 +676,29 @@ function StudyItem({
           {completed ? (
             <MissionClear book={book} />
           ) : (
-            <p
-              data-anno='4-4'
-              className={cx(
-                'mt-3 tracking-tight',
-                ended ? 'text-sm font-semibold text-fg-muted' : 'text-lg font-extrabold text-fg',
+            <div className='mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
+              <p
+                data-anno='4-4'
+                className={cx(
+                  'min-w-0 tracking-tight',
+                  ended ? 'text-sm font-semibold text-fg-muted' : 'text-lg font-extrabold text-fg',
+                )}
+              >
+                {upcomingOf(study, locale, wallTz)}
+              </p>
+              {canManage && (
+                <span data-anno='meeting:2' className='shrink-0'>
+                  <Button
+                    variant='secondary'
+                    size='sm'
+                    leadingIcon={<Settings2 size={14} />}
+                    onClick={() => router.push(`/proto/core/${locale}/my/joined/${study.id}/manage/schedule`)}
+                  >
+                    스터디 관리
+                  </Button>
+                </span>
               )}
-            >
-              {upcomingOf(study, locale, wallTz)}
-            </p>
+            </div>
           )}
 
           <div
