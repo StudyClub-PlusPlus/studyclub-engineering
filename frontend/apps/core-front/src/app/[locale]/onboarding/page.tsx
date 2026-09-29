@@ -19,12 +19,15 @@ import {
 import type { Locale } from '@/lib/content';
 import {
   clearDraft,
+  hasOnboardingFieldErrors,
   initialDraft,
   isOnboardingTimeZone,
   nicknameError,
+  parseOnboardingFieldErrors,
   returnPath,
   saveDraft,
   type OnboardingDraft,
+  type OnboardingFieldErrors,
 } from '@/lib/onboarding';
 import { Button, Input } from '@studyclub/ui';
 import { AlertCircle, ArrowRight, Check } from 'lucide-react';
@@ -105,8 +108,9 @@ function OnboardingForm({
   const [touched, setTouched] = useState(false);
   const [composing, setComposing] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
-  const [problem, setProblem] = useState<'expired' | 'server' | null>(null);
-  const [problemDetail, setProblemDetail] = useState<string | null>(null);
+  /** expired | input(400) | server(500 등) */
+  const [problem, setProblem] = useState<'expired' | 'input' | 'server' | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<OnboardingFieldErrors>({});
   const [pending, setPending] = useState(false);
   const submitting = useRef(false);
 
@@ -116,6 +120,17 @@ function OnboardingForm({
 
   function update<K extends keyof OnboardingDraft>(field: K, value: OnboardingDraft[K]) {
     setDraft((previous) => ({ ...previous, [field]: value }));
+    if (field === 'nickname') {
+      setFieldErrors((previous) => ({ ...previous, nickname: undefined }));
+    } else if (field === 'timeZone') {
+      setFieldErrors((previous) => ({ ...previous, timeZone: undefined }));
+    } else if (
+      field === 'termsOfServiceAgreed' ||
+      field === 'privacyPolicyAgreed' ||
+      field === 'marketingAgreed'
+    ) {
+      setFieldErrors((previous) => ({ ...previous, consent: undefined }));
+    }
   }
 
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
@@ -139,7 +154,6 @@ function OnboardingForm({
           if (err instanceof DOMException && err.name === 'AbortError') return;
           if (err instanceof ApiError && err.status === 401) {
             setProblem('expired');
-            setProblemDetail(null);
             return;
           }
           setNickStatus('error');
@@ -158,32 +172,53 @@ function OnboardingForm({
     isOnboardingTimeZone(draft.timeZone) &&
     requiredAgreed;
 
-  const nickLine: { text: string; tone: 'muted' | 'error' | 'ok' } = !trimmedNick
-    ? touched
-      ? { text: ko ? '닉네임을 입력해 주세요' : 'Enter a nickname.', tone: 'error' }
-      : {
-          text: ko ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)' : '2–20 characters · Korean, letters, numbers, underscore (_)',
-          tone: 'muted',
-        }
-    : nickFormatError
-      ? { text: nickFormatError, tone: 'error' }
-      : nickStatus === 'checking'
-        ? { text: ko ? '확인 중입니다' : 'Checking…', tone: 'muted' }
-        : nickStatus === 'available'
-          ? { text: ko ? '사용할 수 있는 닉네임입니다' : 'This nickname is available', tone: 'ok' }
-          : nickStatus === 'taken'
-            ? { text: ko ? '이미 사용중인 닉네임입니다' : 'This nickname is taken', tone: 'error' }
-            : nickStatus === 'error'
-              ? {
-                  text: ko ? '확인하지 못했습니다. 다시 시도해 주세요' : 'Could not check. Try again',
-                  tone: 'muted',
-                }
-              : {
-                  text: ko
-                    ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
-                    : '2–20 characters · Korean, letters, numbers, underscore (_)',
-                  tone: 'muted',
-                };
+  /** 서버 닉네임 오류가 있으면 초록「사용 가능」을 빨간 오류로 교체한다. */
+  const nickLine: { text: string; tone: 'muted' | 'error' | 'ok' } = fieldErrors.nickname
+    ? { text: fieldErrors.nickname, tone: 'error' }
+    : !trimmedNick
+      ? touched
+        ? { text: ko ? '닉네임을 입력해 주세요' : 'Enter a nickname.', tone: 'error' }
+        : {
+            text: ko
+              ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
+              : '2–20 characters · Korean, letters, numbers, underscore (_)',
+            tone: 'muted',
+          }
+      : nickFormatError
+        ? { text: nickFormatError, tone: 'error' }
+        : nickStatus === 'checking'
+          ? { text: ko ? '확인 중입니다' : 'Checking…', tone: 'muted' }
+          : nickStatus === 'available'
+            ? { text: ko ? '사용할 수 있는 닉네임입니다' : 'This nickname is available', tone: 'ok' }
+            : nickStatus === 'taken'
+              ? { text: ko ? '이미 사용중인 닉네임입니다' : 'This nickname is taken', tone: 'error' }
+              : nickStatus === 'error'
+                ? {
+                    text: ko ? '확인하지 못했습니다. 다시 시도해 주세요' : 'Could not check. Try again',
+                    tone: 'muted',
+                  }
+                : {
+                    text: ko
+                      ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
+                      : '2–20 characters · Korean, letters, numbers, underscore (_)',
+                    tone: 'muted',
+                  };
+
+  const timeZoneError =
+    fieldErrors.timeZone ??
+    (touched && !isOnboardingTimeZone(draft.timeZone)
+      ? ko
+        ? '시간대를 다시 선택해 주세요'
+        : 'Choose a time zone again.'
+      : undefined);
+
+  const consentError =
+    fieldErrors.consent ??
+    (touched && !requiredAgreed
+      ? ko
+        ? '필수 항목을 확인해 주세요.'
+        : 'Confirm the required items to join.'
+      : undefined);
 
   const [awaitingCheck, setAwaitingCheck] = useState(false);
   const disabled = pending || problem === 'expired';
@@ -219,7 +254,7 @@ function OnboardingForm({
     submitting.current = true;
     setPending(true);
     setProblem(null);
-    setProblemDetail(null);
+    setFieldErrors({});
     try {
       const account = await completeOnboarding({
         age14Confirmed: ageConfirmed,
@@ -245,26 +280,47 @@ function OnboardingForm({
       if (err instanceof ApiError) {
         if (err.status === 401) {
           setProblem('expired');
-          setProblemDetail(null);
+          setFieldErrors({});
         } else if (err.status === 409) {
           setNickStatus('taken');
+          setFieldErrors({ nickname: ko ? '이미 사용중인 닉네임입니다' : 'This nickname is taken' });
           document.getElementById('onboarding-nickname')?.focus();
         } else if (err.status === 400) {
-          setProblem('server');
-          setProblemDetail(err.message);
+          const parsed = parseOnboardingFieldErrors(err.message, locale);
+          setFieldErrors(parsed);
+          setProblem('input');
+          if (parsed.nickname) {
+            setNickStatus('idle');
+            document.getElementById('onboarding-nickname')?.focus();
+          }
         } else {
           setProblem('server');
-          setProblemDetail(null);
+          setFieldErrors({});
         }
       } else {
         setProblem('server');
-        setProblemDetail(null);
+        setFieldErrors({});
       }
     } finally {
       submitting.current = false;
       setPending(false);
     }
   }
+
+  const topAlertText =
+    problem === 'expired'
+      ? ko
+        ? '로그인 시간이 만료됐어요. 다시 로그인하면 입력하던 내용을 이어서 작성할 수 있어요.'
+        : 'Your session has expired. Log in again to continue where you left off.'
+      : problem === 'input'
+        ? ko
+          ? '입력한 내용을 확인해 주세요.'
+          : 'Please check what you entered.'
+        : problem === 'server'
+          ? ko
+            ? '저장하지 못했어요. 입력한 내용은 유지됐으니 다시 시도해 주세요.'
+            : 'We couldn’t save your details. Your entries are still here. Please try again.'
+          : null;
 
   return (
     <form
@@ -273,24 +329,14 @@ function OnboardingForm({
       aria-label={ko ? '회원가입 정보' : 'Complete your profile'}
       className='rounded-card border border-border bg-bg p-5 shadow-xs sm:p-8'
     >
-      {problem && (
+      {topAlertText && (
         <div
           role='alert'
           className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 text-sm text-error-700'
         >
           <div className='flex items-start gap-2'>
             <AlertCircle size={17} className='mt-0.5 shrink-0' />
-            <p className='leading-relaxed'>
-              {problem === 'expired'
-                ? ko
-                  ? '로그인 시간이 만료됐어요. 다시 로그인하면 입력하던 내용을 이어서 작성할 수 있어요.'
-                  : 'Your session has expired. Log in again to continue where you left off.'
-                : problemDetail
-                  ? problemDetail
-                  : ko
-                    ? '저장하지 못했어요. 입력한 내용은 유지됐으니 다시 시도해 주세요.'
-                    : 'We couldn’t save your details. Your entries are still here. Please try again.'}
-            </p>
+            <p className='leading-relaxed'>{topAlertText}</p>
           </div>
           {problem === 'expired' && (
             <Link
@@ -348,13 +394,7 @@ function OnboardingForm({
           onChange={(value) => update('timeZone', value)}
           locale={locale}
           disabled={disabled}
-          error={
-            touched && !isOnboardingTimeZone(draft.timeZone)
-              ? ko
-                ? '나의 시간대를 선택해 주세요.'
-                : 'Choose your time zone.'
-              : undefined
-          }
+          error={timeZoneError}
         />
 
         <section className='border-t border-border pt-6'>
@@ -379,6 +419,7 @@ function OnboardingForm({
             onChange={(key, value) => {
               if (key === 'age') {
                 setAgeConfirmed(value);
+                setFieldErrors((previous) => ({ ...previous, consent: undefined }));
                 return;
               }
               update(
@@ -390,13 +431,7 @@ function OnboardingForm({
                 value,
               );
             }}
-            error={
-              touched && !requiredAgreed
-                ? ko
-                  ? '필수 항목을 확인해 주세요.'
-                  : 'Confirm the required items to join.'
-                : undefined
-            }
+            error={consentError}
           />
         </section>
       </fieldset>
@@ -414,7 +449,7 @@ function OnboardingForm({
             ? ko
               ? '가입 처리 중…'
               : 'Joining…'
-            : problem === 'server'
+            : problem === 'input' || problem === 'server' || hasOnboardingFieldErrors(fieldErrors)
               ? ko
                 ? '다시 시도'
                 : 'Try again'

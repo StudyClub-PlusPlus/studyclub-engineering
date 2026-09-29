@@ -193,3 +193,64 @@ export function zoneOffset(zone: string, now: Date): string {
     return '';
   }
 }
+
+/** 서버 400 `필드명: 사유` 콤마 join 을 파싱한 뒤, 리뷰 합의 문구로 필드별 안내를 만든다. */
+export type OnboardingFieldErrors = {
+  nickname?: string;
+  timeZone?: string;
+  consent?: string;
+};
+
+const CONSENT_FIELDS = new Set(['age14Confirmed', 'termsOfServiceAgreed', 'privacyPolicyAgreed']);
+
+/** `"nickname: 2~20자여야 합니다, timeZone: …"` → 필드별 사용자 문구. */
+export function parseOnboardingFieldErrors(errorMessage: string, locale: Locale): OnboardingFieldErrors {
+  const ko = locale === 'ko';
+  const result: OnboardingFieldErrors = {};
+  const parts = errorMessage
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  for (const part of parts) {
+    const colon = part.indexOf(':');
+    if (colon < 0) continue;
+    const field = part.slice(0, colon).trim();
+    const reason = part.slice(colon + 1).trim();
+
+    if (field === 'nickname' && !result.nickname) {
+      result.nickname = mapNicknameServerReason(reason, ko);
+    } else if (field === 'timeZone' && !result.timeZone) {
+      result.timeZone = ko ? '시간대를 다시 선택해 주세요' : 'Choose a time zone again.';
+    } else if (CONSENT_FIELDS.has(field) && !result.consent) {
+      // 약관·연령 오류가 여러 개여도 하단 안내는 한 번만.
+      result.consent = ko ? '필수 항목을 확인해 주세요.' : 'Confirm the required items to join.';
+    }
+  }
+  return result;
+}
+
+function mapNicknameServerReason(reason: string, ko: boolean): string {
+  const lower = reason.toLowerCase();
+  if (!reason || /필수|required|empty|blank/i.test(reason)) {
+    return ko ? '닉네임을 입력해 주세요' : 'Enter a nickname.';
+  }
+  if (/2\s*~\s*20|2~20|길이|length|자여야|characters?/i.test(reason)) {
+    return ko ? '닉네임은 2~20자로 입력해 주세요' : 'Use 2–20 characters for your nickname.';
+  }
+  // 「밑줄만으로…」는 문자 규칙보다 먼저 — reason 에 '밑줄'이 들어 있어도 예약/불가 쪽으로 보낸다.
+  if (
+    /사용할 수 없는|예약|reserved|밑줄만|only[_ ]?underscore/i.test(reason) ||
+    lower.includes('account_')
+  ) {
+    return ko ? '사용할 수 없는 닉네임입니다' : 'This nickname is reserved.';
+  }
+  if (/글자|숫자|밑줄|특수|문자|character|letter|underscore|emoji|공백|space/i.test(reason)) {
+    return ko ? '글자·숫자·밑줄(_)만 사용할 수 있습니다' : 'Use only letters, numbers, and underscores (_).';
+  }
+  return ko ? '사용할 수 없는 닉네임입니다' : 'This nickname is reserved.';
+}
+
+export function hasOnboardingFieldErrors(errors: OnboardingFieldErrors): boolean {
+  return Boolean(errors.nickname || errors.timeZone || errors.consent);
+}
