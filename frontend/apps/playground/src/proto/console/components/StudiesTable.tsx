@@ -658,7 +658,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     </td>
                     <td className='min-w-[24rem] max-w-[32rem]'>
                       <Link
-                        href={`/proto/console/studies/${s.id}`}
+                        href={`/proto/console/studies/${s.study_id}`}
                         className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
                       >
                         {tx(s.title)}

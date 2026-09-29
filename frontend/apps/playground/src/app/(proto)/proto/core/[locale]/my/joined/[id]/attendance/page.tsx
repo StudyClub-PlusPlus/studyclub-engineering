@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 
 /**
  * 옛 출석 기록 주소. 내 스터디 카드의 출석 기록에서 연다.
+ * 경로 값은 study_id 다 — 같은 자리의 스터디 관리(`[id]/manage`)와 맞춘다.
  */
 export default function AttendanceRedirectPage() {
   const params = useParams();

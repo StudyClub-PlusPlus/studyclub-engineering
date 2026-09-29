@@ -33,6 +33,8 @@ export const BOARD_PREVIEW = 4;
 
 export type BoardStudy = {
   id: string;
+  /** 상세 링크 키 (STUDY.ID). 슬러그(id)는 URL 에 쓰지 않는다. */
+  study_id: number;
   title: string;
   /** 모집중 — 모집 마감일. 상시 모집은 없다 — 옛 데이터만 undefined */
   deadline?: string;
@@ -131,11 +133,11 @@ export function aggregate(today = todayISO()) {
       }
     }
     if (running) {
-      ongoing.push({ id: study.id, title: tx(study.title) });
+      ongoing.push({ id: study.id, study_id: study.study_id, title: tx(study.title) });
     }
 
     if (recruitState(study) === 'apply') {
-      recruiting.push({ id: study.id, title: tx(study.title), deadline: toISODate(study.recruitment?.deadline) });
+      recruiting.push({ id: study.id, study_id: study.study_id, title: tx(study.title), deadline: toISODate(study.recruitment?.deadline) });
     }
   }
 

@@ -6,14 +6,15 @@ import { studies } from '@studyclub/mock';
 import { SPECS } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
+// 경로 값은 study_id(STUDY.ID) — 사용자 사이트 상세와 같은 키. 슬러그는 URL 에 쓰지 않는다.
 export function generateStaticParams() {
-  return studies.map((s) => ({ id: s.id }));
+  return studies.map((s) => ({ id: String(s.study_id) }));
 }
 
 /** 스터디 운영 페이지 — 크루·출석·정보를 한 스터디 안에서 처리한다. */
 export default async function StudyAdminDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const study = studies.find((s) => s.id === id);
+  const study = studies.find((s) => String(s.study_id) === id);
   if (!study) notFound();
 
   return (
