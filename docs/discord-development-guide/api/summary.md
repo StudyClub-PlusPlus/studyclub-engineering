@@ -24,10 +24,10 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 |--------|------|------|-----------|------|
 | `POST` | `/api/v1/studies` | [create-study](create-study.md) | captain | 201 + `{discordStudyId, discordRoleId}` |
 | `GET` | `/api/v1/studies/{discordStudyId}/channels` | [get-study-channels](get-study-channels.md) | captain · navigator · 시스템 | 200 + 채널 배열 |
-| `POST` | `/api/v1/roles/{discordRoleId}/users` | [assign-role](assign-role.md) | captain | 204 |
-| `DELETE` | `/api/v1/roles/{discordRoleId}/users/{discordUserId}?discordStudyId=` | [remove-role](remove-role.md) | captain | 204 |
-| `POST` | `/api/v1/roles/navigator/users` | [assign-navigator-role](assign-navigator-role.md) | captain | 204 |
-| `DELETE` | `/api/v1/roles/navigator/users/{discordUserId}?discordStudyId=` | [remove-navigator-role](remove-navigator-role.md) | captain | 204 |
+| `POST` | `/api/v1/roles/{discordRoleId}/users` | [assign-role](assign-role.md) | captain | 200 + `{succeededCount, failed}` |
+| `DELETE` | `/api/v1/roles/{discordRoleId}/users` | [remove-role](remove-role.md) | captain | 200 + `{succeededCount, failed}` |
+| `POST` | `/api/v1/roles/navigator/users` | [assign-navigator-role](assign-navigator-role.md) | captain | 200 + `{succeededCount, failed}` |
+| `DELETE` | `/api/v1/roles/navigator/users` | [remove-navigator-role](remove-navigator-role.md) | captain | 200 + `{succeededCount, failed}` |
 | `POST` | `/api/v1/channels/{discordChannelId}/msg` | [send-message](send-message.md) | captain · navigator | 204 |
 | `POST` | `/api/v1/channels/alert/msg` | [send-alert-message](send-alert-message.md) | captain · 시스템 | 204 |
 | `POST` | `/api/v1/channels/announcement/msg` | [send-announcement-message](send-announcement-message.md) | captain | 204 |
@@ -100,11 +100,11 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 |------|--------|------|
 | 아무 역할 | [assign-role](assign-role.md) | [remove-role](remove-role.md) |
 | navigator 고정 | [assign-navigator-role](assign-navigator-role.md) | [remove-navigator-role](remove-navigator-role.md) |
-| 대상 | 바디의 `discordUserIds` 배열 (여러 명) | 경로의 `discordUserId` (한 명) |
-| 길드에 없는 대상 유저 | **404**, 아무도 건드리지 않음 | **204** (이미 원하는 상태) |
+| 대상 | 바디의 `discordUserIds` 배열 | 바디의 `discordUserIds` 배열 |
+| 길드에 없는 대상 유저 | `failed` 에 `NOT_IN_GUILD` | **성공으로 센다** (이미 원하는 상태) |
 | 역할이 없음 | 404 | 404 |
-| 도중 실패 | 되돌리지 않고 502 — 같은 요청을 그대로 재시도 | 요청당 Discord 호출 1번이라 부분 실패 없음 |
-| 여러 명 | 한 요청에 배열 | 호출자가 유저 수만큼 호출, **유저마다 다른 `Idempotency-Key`** |
+| 도중 실패 | 되돌리지 않고 그 유저만 `failed` — 나머지는 계속 | 같음 |
+| 재시도 | 전체 재전송도, `failed` 만 재전송도 안전 (멱등) | 같음 |
 
 - 붙이기·떼기 모두 **멱등**이다. 204 는 "지금 그 상태다" 라는 뜻이고, 이번에 바뀌었는지는 구분하지 않는다.
 - `discordRoleId` 는 제한하지 않는다 — 올바른 스터디↔역할 쌍을 보내는 건 백엔드 책임이다.

@@ -52,10 +52,19 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 
 ## 성공 응답
 
-**204 No Content** — 바디가 없다.
+**200 OK** — [assign-role 과 같은 모양](assign-role.md#성공-응답)이다.
 
-**204 는 "요청한 유저 전부가 지금 navigator 역할을 갖고 있다" 는 뜻이다.** 이번 요청이 실제로
-붙였는지, 이미 갖고 있었는지는 구분하지 않는다 ([assign-role](assign-role.md#성공-응답) 과 같다).
+```jsonc
+{
+  "succeededCount": 2,
+  "failed": [
+    { "discordUserId": "998234871293847123", "reason": "NOT_IN_GUILD" }
+  ]
+}
+```
+
+`succeededCount` 는 지금 navigator 역할을 갖고 있는 요청 유저 수다. 이번에 붙였는지 이미
+갖고 있었는지는 구분하지 않는다. `reason` 값도 assign-role 과 같다.
 
 ## 실패 응답
 
@@ -78,7 +87,7 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 |------|------|------|
 | **400** | `discordStudyId` · `discordUserIds` 의 원소가 snowflake 형식이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
 | **400** | `discordStudyId` 가 없음 | 위와 같음 |
-| **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 204 로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
+| **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
 | **400** | `discordUserIds` 가 상한 초과 | 상한은 [미정](#미정-사항) |
 | **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
 | **404** | navigator 역할을 길드에서 찾지 못함 | captain 404 와 같은 **서버·길드 설정 문제**다. 호출자가 보낸 값이 아니므로 호출자가 고칠 수 없다. `detail` 로 다른 404 와 구분한다 |
