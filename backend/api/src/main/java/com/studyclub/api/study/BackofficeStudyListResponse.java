@@ -19,5 +19,6 @@ public record BackofficeStudyListResponse(List<StudySummary> items) {
             Instant recruitmentStartAt,
             Instant recruitDeadlineAt,
             Instant startAt,
-            StudyTimezone timezone) {}
+            StudyTimezone timezone,
+            boolean hasApplicationForm) {}
 }

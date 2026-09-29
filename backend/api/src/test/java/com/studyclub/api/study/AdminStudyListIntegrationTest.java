@@ -52,9 +52,33 @@ class AdminStudyListIntegrationTest {
         cleanSeedRows();
         insertAccount(ADMIN_ID, "admin-studylist@example.com", SystemRole.ADMIN, now);
         insertAccount(MEMBER_ID, "member-studylist@example.com", SystemRole.MEMBER, now);
-        insertStudy(STUDY_ID, "al-open-algo", "알고리즘 스터디", "ALGORITHM", "STUDY", "OPEN", now);
-        insertStudy(DRAFT_STUDY_ID, "al-draft-sw", "드래프트 스터디", "SOFTWARE", "STUDY", "DRAFT", now);
-        insertStudy(CLUB_STUDY_ID, "al-open-club", "클럽 스터디", "LANGUAGE", "CLUB", "OPEN", now);
+        insertStudy(
+                STUDY_ID,
+                "al-open-algo",
+                "알고리즘 스터디",
+                "ALGORITHM",
+                "STUDY",
+                "OPEN",
+                "{\"questions\":[{\"id\":\"reason\",\"label\":\"지원 사유\",\"type\":\"TEXT\",\"required\":true}]}",
+                now);
+        insertStudy(
+                DRAFT_STUDY_ID,
+                "al-draft-sw",
+                "드래프트 스터디",
+                "SOFTWARE",
+                "STUDY",
+                "DRAFT",
+                "{\"questions\":[]}",
+                now);
+        insertStudy(
+                CLUB_STUDY_ID,
+                "al-open-club",
+                "클럽 스터디",
+                "LANGUAGE",
+                "CLUB",
+                "OPEN",
+                "{\"questions\":[]}",
+                now);
         insertRecruitment(STUDY_ID, 20, now);
         insertRecruitment(DRAFT_STUDY_ID, null, now);
         insertRecruitment(CLUB_STUDY_ID, 15, now);
@@ -93,8 +117,12 @@ class AdminStudyListIntegrationTest {
                 .containsEntry("category", "ALGORITHM")
                 .containsEntry("studyKind", "STUDY")
                 .containsEntry("recruitmentCapacity", 20)
+                .containsEntry("hasApplicationForm", true)
                 .containsKeys("recruitmentStartAt", "recruitDeadlineAt")
                 .doesNotContainKey("leaderNickname");
+
+        Map<String, Object> draft = itemById(response.getBody(), DRAFT_STUDY_ID);
+        assertThat(draft).containsEntry("hasApplicationForm", false);
     }
 
     @Test
@@ -213,6 +241,7 @@ class AdminStudyListIntegrationTest {
             String category,
             String kind,
             String status,
+            String applicationForm,
             Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
@@ -229,7 +258,7 @@ class AdminStudyListIntegrationTest {
                 false,
                 "ONLINE",
                 status,
-                "{\"questions\":[]}",
+                applicationForm,
                 now,
                 now);
     }
