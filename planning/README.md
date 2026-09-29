@@ -3,10 +3,10 @@
 화면·동작·권한의 기획 정본. **새 `PRD.md` 는 여기만 만든다.**
 
 ```
-planning/stories/{story-slug}/PRD.md
+planning/stories/{story-name}/PRD.md
 ```
 
-- slug 는 kebab-case. 한 스토리 = 폴더 하나 = `PRD.md` 하나
+- 폴더 이름(`{story-name}`)은 kebab-case. 한 스토리 = 폴더 하나 = `PRD.md` 하나
 - `specs/{도메인}/spec.md` 와 합치지 않는다. API 계약은   `[specs/](../specs/README.md)의 spec.md`.
 - 파일을 만들면 아래 표의 해당 스토리 PRD 칸에 링크를 건다 (표에 없는 스토리면 한 줄 추가). 해당 `spec.md` 헤더에도 링크를 건다
 

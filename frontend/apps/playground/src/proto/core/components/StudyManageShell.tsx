@@ -74,8 +74,9 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [dirty]);
 
-  const study = studies.find((s) => s.id === id);
-  const access = manageAccessOf(id);
+  // 주소 값은 study_id(STUDY.ID) 다. 역할 판정은 내부 키(`id`)로 한다.
+  const study = studies.find((s) => String(s.study_id) === id);
+  const access = study ? manageAccessOf(study.id) : undefined;
 
   if (!ready) return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
 

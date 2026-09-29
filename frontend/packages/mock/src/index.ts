@@ -158,7 +158,7 @@ export type StudyStats = {
 };
 
 export type Study = {
-  /** 슬러그. 북마크·신청·출석의 내부 키. 사용자 사이트 상세 URL에는 쓰지 않는다 — 그건 `study_id`. */
+  /** 내부 키(문자열). 북마크·신청·출석 저장용. URL 에는 쓰지 않는다 — 주소는 `study_id`. */
   id: string;
   /** STUDY.ID. 사용자 사이트 상세 조회 키. 시드에는 없고 `studies` export 에서 순번으로 붙인다. */
   study_id: number;
@@ -2206,7 +2206,7 @@ function deriveStartAt(s: StudyDraft): string | undefined {
 export const studies: Study[] = STUDIES_SEED.map(
   (s, i) => ({
     ...s,
-    /** STUDY.ID. 사용자 사이트 상세 조회 키 — 슬러그(`id`)는 URL에 쓰지 않는다. 시드에는 없고 여기서 순번으로 붙인다. */
+    /** STUDY.ID. 사용자 사이트 상세 조회 키 — 내부 키(`id`)는 URL 에 쓰지 않는다. 시드에는 없고 여기서 순번으로 붙인다. */
     study_id: i + 1,
     startAt: s.startAt ?? deriveStartAt(s),
     program: (() => {

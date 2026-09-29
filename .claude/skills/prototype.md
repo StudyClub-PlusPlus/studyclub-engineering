@@ -24,7 +24,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 ## 전제
 
 - **단건 모드**로 동작한다. 이 레포에는 `01-planning/_registry/` 가 없다 — `ST-###`·`IA-###`·`SRC-####` 를 쓰지 않는다
-- slug 는 kebab-case, `{actor}-{행동}` (예: `crew-edit-profile`, `captain-publish-study`)
+- Story 폴더 이름(`{story-name}`)은 kebab-case, `{actor}-{행동}` (예: `crew-edit-profile`, `captain-publish-study`)
 - 표에 이미 PRD 가 걸린 Story 면 **수정**, `—` 면 **생성**이다
 
 ## 1. 프로토타입 생성·수정
@@ -35,10 +35,12 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 | --- | --- | --- |
 | 크루 (사용자 사이트) | `app/(proto)/proto/core/[locale]/…/page.tsx` | `proto/core/` |
 | 캡틴 (운영 콘솔) | `app/(proto)/proto/console/…/page.tsx` | `proto/console/` |
-| 네비게이터 | `app/(proto)/proto/core/[locale]/my/joined/[id]/manage/…` | `proto/core/` |
+| 네비게이터 · 캡틴 (사용자 사이트 스터디 관리) | `app/(proto)/proto/core/[locale]/my/joined/[id]/manage/…` | `proto/core/` |
 
 1. 기존 화면이 이 Story 를 담을 수 있으면 그 화면을 고친다. 새 지면은 기존 지면에 자리가 없을 때만 만든다
 2. 데이터는 `@studyclub/mock` 을 쓴다. 실 API 교체 지점에 `// TODO(api): {METHOD} {path}` 를 단다
+   - **스터디를 가리키는 주소 값은 `study_id`(STUDY.ID) 다** — 경로의 `[id]` 도 `study_id` 다.
+     mock 스터디의 문자열 `id` 는 신청·북마크·출석 저장용 내부 키라 URL 에 넣지 않는다
 3. **번호별 명세를 `spec.ts` 로 같은 폴더에 둔다** — 프로토타입의 필수 산출물이다
    - `ScreenSpec` 하나 = Story 하나. `chip` 은 Story 짧은 이름, `scope` 는 번호 이름공간
    - 번호는 **Story 마다 1 부터**. 큰 영역 `1`, 그 안의 요소 `1-1`
@@ -52,7 +54,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 프로토타입이 **정본**이다. 문서는 프로토타입과 `spec.ts` 를 근거로 쓰고, 프로토에 없는 것은 창작하지 않는다.
 
-### PRD.md — `planning/stories/{slug}/PRD.md`
+### PRD.md — `planning/stories/{story-name}/PRD.md`
 
 - prototype-agent `references/prd-guide.md` 의 Story PRD 구성을 따른다
   - 제목 = 정규문장 · `기준 프로토타입:` 한 줄
