@@ -21,7 +21,7 @@ export const authScreenStates: ScreenStateDef[] = [
     rationale: '로컬스토리지에 북마크가 있을 때 마이페이지 목록이 올바르게 렌더되는지 확인한다.',
     recipe: {
       storage: [
-        { key: 'sc_bookmarks', value: ['ai-paper-study', 'daily-leetcode'] },
+        { key: 'sc_bookmarks', value: ['ai-paper-study', 'pytorch-ai-coding'] },
         { key: 'sc_display_name', value: '테스트 유저' },
         { key: 'sc_region', value: 'KR' },
       ],
