@@ -1,5 +1,7 @@
 # 회원가입·온보딩 흐름
 
+> Story PRD: [Google 로그인·온보딩](../../planning/stories/crew-google-login-onboarding/PRD.md) · [프로필 수정](../../planning/stories/crew-edit-profile/PRD.md)
+
 소셜 로그인 **첫 성공이 곧 가입**이다. 로그인 직후 ACCOUNT·ACCOUNT_IDENTITY 를 만들고, 온보딩(필수 약관 + 닉네임 + 타임존)을 마쳐야 가입 완료. 완료 시점에 `UserRegisteredEvent` 를 **ACCOUNT 당 1회** 발행하고 웰컴메일은 알림팀이 받아서 보낸다.
 
 MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있게만 해 두고 구현하지 않는다 — [애플 붙일 때](#애플-붙일-때).

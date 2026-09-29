@@ -1,6 +1,7 @@
 # 명부 · 출석 API Spec
 
 > ERD: [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md)
+> Story PRD: [출석명부](../../planning/stories/captain-view-attendance-roster/PRD.md) · [네비게이터 출석 수정](../../planning/stories/navigator-edit-attendance/PRD.md) · [대시보드 출석률](../../planning/stories/captain-view-dashboard/PRD.md)
 > 생성일: 2026-09-15
 > 상태: 스펙확정
 

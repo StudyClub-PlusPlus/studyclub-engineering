@@ -1,6 +1,7 @@
 # 회원 탈퇴 API Spec
 
 > ERD: [ACCOUNT](../../docs/erd/ACCOUNT.md), [ACCOUNT_IDENTITY](../../docs/erd/ACCOUNT_IDENTITY.md), [ACCOUNT_CONSENT](../../docs/erd/ACCOUNT_CONSENT.md), [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md), [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md), [STUDY_REVIEW](../../docs/erd/STUDY_REVIEW.md), [STUDY_PROPOSAL](../../docs/erd/STUDY_PROPOSAL.md), [STUDY_PROPOSAL_INTEREST](../../docs/erd/STUDY_PROPOSAL_INTEREST.md), [STUDY_BOOKMARK](../../docs/erd/STUDY_BOOKMARK.md), [NOTIFICATION](../../docs/erd/NOTIFICATION.md)
+> Story PRD: [회원 탈퇴](../../planning/stories/crew-leave/PRD.md)
 > 프로토타입: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/leave` (`/proto/core/ko/my/leave`)
 > 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) — 완료 뒤 같은 계정 재가입은 온보딩 흐름 그대로 탄다. [notification/spec.md](../notification/spec.md) — NOTIFICATION 스냅샷 비식별화가 이 스펙과 맞물린다. [study-application/spec.md](../study-application/spec.md) — FORM_ANSWER.discordNickname 비식별화가 이 스펙과 맞물린다. `frontend/apps/playground/src/proto/core/lib/legal.ts` — 이용약관 제11조·개인정보처리방침 제4·9조 (법령상 보존 근거). [POL-0007](../../planning/_registry/policies/POL-0007-account-data.md) — 회원 데이터와 탈퇴 정책 (이 스펙과 같은 내용의 기획 정본).
 > 생성일: 2026-09-19
