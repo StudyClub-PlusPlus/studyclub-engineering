@@ -118,6 +118,7 @@ erDiagram
         datetime CLOSES_AT "창 닫힘"
         datetime ORIGINAL_AT "변경 전 원래 시각"
         datetime CANCELED_AT "휴강"
+        datetime SYNCED_AT "STREAK 반 동기화 완료"
         string CHANGE_NOTE "변경 사유"
         datetime START_AT "실제 시작 (선택)"
     }

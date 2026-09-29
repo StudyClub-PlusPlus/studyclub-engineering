@@ -25,7 +25,7 @@ document.getElementById('f').innerHTML = WF.shell() + WF.toolbar() +
     '<span style="color:var(--fg-ph)">날짜 변경·미루기·삭제는 열린 회차에 안 된다</span>', ['chg', '열림']) +
   pop(644, 150, '10/22(목) 20:00 · 휴강', '사유: 강사 사정 · 크루에게 휴강으로 보인다',
     '<div><span>출석률</span><b>집계에서 빠짐</b></div>',
-    '<span class="btn pri">휴강 되돌리기</span>', '<span style="color:var(--fg-ph)">열리기 전까지만 되돌릴 수 있다</span>', ['cx', '휴강']) +
+    '<span class="btn pri">휴강 되돌리기</span>', '<span style="color:var(--fg-ph)">되돌리면 다시 센다 — 이미 지난 회차면 빈칸이 결석으로 잡힌다</span>', ['cx', '휴강']) +
   pop(24, 420, '4회차 · 10/29(목) 20:00 ~ 22:00', '↻ 매주 목 · <b>원래 10/22</b> 에서 옮김 (강사 사정)',
     '<div><span>출석 기록</span><b>없음</b></div>',
     '<span class="btn">일정 변경</span><span class="btn">휴강</span><span class="btn">여기서부터 미루기</span>',

@@ -48,6 +48,7 @@ STUDY_MEETING {
   id, study_group_id, series_id?,               // series_id 추가 — 단건 회차는 NULL
   scheduled_at, closes_at,                      // closes_at 추가
   original_at?, canceled_at?, change_note?,     // 추가
+  synced_at?,                                   // 추가 — STREAK 반만. 동기화 전엔 닫히지 않은 회차
   start_at?, end_at?                            // 기존 — 디스코드 실제 시작·종료
 }
 ```
@@ -268,7 +269,7 @@ Response — **201** `Location`. `series_id = NULL`. 크루 알림 1건.
 | 필드 | 필수 | 설명 |
 |------|------|------|
 | meetingIds | Y | 1개 이상, 모두 이 반 소속 |
-| canceled | 셋 중 하나 | `true` 휴강 · `false` 휴강 되돌리기 (열리기 전만) |
+| canceled | 셋 중 하나 | `true` 휴강 · `false` 휴강 되돌리기 (언제든. 닫힌 회차면 영향 요약에 결석으로 잡히는 인원) |
 | startTime | 셋 중 하나 | 시각만 변경 — 모두 예정 회차 |
 | note | N | |
 
