@@ -18,9 +18,11 @@ app/
     headers.py         # common request headers (X-API-Key, X-Discord-User-ID, Idempotency-Key)
     guild.py           # resolves the caller in the guild and checks their role
   study_reservations.py  # SQLite study-name reservations for create-study
+  backend_client.py      # the one place that calls OUT, to the StudyClub backend
   bot/
     client.py            # Discord bot factory
-    commands/test_cmd.py   # testCmd command
+    commands/test_cmd.py        # testCmd command
+    commands/attendance_cmd.py  # !출석체크 command
 tests/                 # pytest unit tests
 ```
 
@@ -37,6 +39,12 @@ tests/                 # pytest unit tests
   startup, which lands in that same `409` — the service always starts. It is
   read once at startup, so changing it means `docker compose up -d discord`
   (a restart alone will not re-read `.env`).
+- **Calling the backend** — `!출석체크` is the only thing here that calls *out*.
+  It reads `API_BASE_URL` (the same key the frontends use; `docker-compose.yml`
+  overrides it to the internal `http://api:8080` for this service too) and
+  sends `DISCORD_API_KEY` as `X-API-Key`. That one key serves both directions:
+  Spring reads it as `discord.api-key` for the calls coming the other way.
+  With either unset the command refuses and says so; nothing else is affected.
   `command_prefix` and `log_level` are fixed per deployment — change
   their defaults in `app/config.py`. The API binds `0.0.0.0:4800` (fixed to
   match the container).
@@ -180,7 +188,25 @@ message back -- it goes up mentioning everyone still there, and the bot leaves a
 note in the alert channel naming who was left out. Here `Send Messages` is per
 channel, so a `502` means that one channel's permissions, not every request.
 
-In Discord: `!testCmd`
+### Commands
+
+`!testCmd` — canned reply, for checking the bot is alive.
+
+`!출석체크` — mark everyone in the study's voice room present (contract:
+`specs/discord-attendance/spec.md`). It is answered **only inside a voice
+channel's own chat**, so one channel decides everything: its connected members
+are the snapshot, its category is the study id, and the reply lands where those
+same people read it. Run from a lobby instead, a captain sitting in another
+study's room would have that study's roster posted here. Bots in the room are
+dropped, and the reply names people without mentioning them.
+
+The bot only collects and reports. Which meeting, which group, and what not to
+overwrite are decided by the backend, because the timestamps that decide them
+live there.
+
+Needs `API_BASE_URL` and `DISCORD_API_KEY`, and a `STUDY_DISCORD_LINK` row for
+the category — study registration creates it (#145); without it the backend
+answers `404` and the bot says the study is not connected yet.
 
 ## Docker
 

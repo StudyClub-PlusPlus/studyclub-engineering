@@ -102,3 +102,22 @@ def test_load_settings_study_settings_default_to_unset(caplog):
     assert settings.api_key is None
     assert settings.db_path == "data/discord.sqlite3"
     assert "not-an-id" in caplog.text
+
+
+def test_backend_base_url_is_read_from_api_base_url():
+    """The bot calls the backend for !출석체크, reusing the key the rest of the stack uses."""
+    settings = load_settings({"API_BASE_URL": "http://api:8080"}, load_dotenv_file=False)
+
+    assert settings.backend_base_url == "http://api:8080"
+
+
+def test_backend_base_url_loses_its_trailing_slash():
+    """The path is appended, so a trailing slash would double up."""
+    settings = load_settings({"API_BASE_URL": "http://api:8080/"}, load_dotenv_file=False)
+
+    assert settings.backend_base_url == "http://api:8080"
+
+
+def test_backend_base_url_unset_is_none():
+    """Missing means the attendance command refuses, not that it posts to nowhere."""
+    assert load_settings({}, load_dotenv_file=False).backend_base_url is None

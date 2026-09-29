@@ -51,6 +51,11 @@ class Settings:
     # DISCORD_API_KEY: the X-API-Key callers must send. ``None`` rejects every
     # request to a protected route, so a missing key never means "open".
     api_key: str | None = None
+    # API_BASE_URL: the StudyClub backend this bot calls for attendance. Note
+    # the direction -- every other setting here is about calls coming *in*.
+    # ``None`` makes the attendance command refuse with a clear message rather
+    # than posting to nowhere.
+    backend_base_url: str | None = None
     # The SQLite file holding study-name reservations. Relative to the working
     # directory, so /app/data in the container -- docker-compose.yml mounts a
     # volume there. If you change this, update that mount too.
@@ -106,6 +111,8 @@ def load_settings(
             )
 
     api_key = env.get("DISCORD_API_KEY", "").strip()
+    # Trailing slashes would double up when the path is appended.
+    backend_base_url = env.get("API_BASE_URL", "").strip().rstrip("/")
 
     return Settings(
         discord_token=token or None,
@@ -117,4 +124,5 @@ def load_settings(
         alert_channel_id=_parse_id(env, "DISCORD_ALERT_CHANNEL_ID"),
         announcement_channel_id=_parse_id(env, "DISCORD_ANNOUNCEMENT_CHANNEL_ID"),
         api_key=api_key or None,
+        backend_base_url=backend_base_url or None,
     )
