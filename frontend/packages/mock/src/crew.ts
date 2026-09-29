@@ -202,9 +202,9 @@ function addWeeks(iso: string, weeks: number): string {
  */
 export type DemoCrewRelation = "upcoming" | "active" | "completed" | "left";
 
-const LEFT_EARLY_IDS = new Set(["renaissance-club", "system-design-interview-ongoing"]);
+const LEFT_EARLY_IDS = new Set(["system-design-interview-ongoing"]);
 const FORCE_ACTIVE_IDS = new Set(["ai-paper-study"]);
-const MISS_ONE_IDS = new Set(["weeklyx-g2", "daily-leetcode-g2"]);
+const MISS_ONE_IDS = new Set<string>();
 const PARTIAL_COMPLETE_IDS = new Set(["sql-for-data-analysis"]);
 
 export function demoCrewRelation(study: Study): DemoCrewRelation {
@@ -254,7 +254,7 @@ const LEFT_CYCLE: AttendanceStatus[] = ["present", "late", "absent", "excused", 
  *
  * - 시작전: 비움
  * - 참여중: 지난 회차에 출석·지각·결석·휴가 순환. 미래는 비움
- * - 완주: 전회(LeetCode 등) 또는 일부 결석(SQL · g2 일부)
+ * - 완주: 전회(LeetCode 등) 또는 일부 결석(SQL)
  * - 참여 중단: 지난 회차만 섞어서 채움
  */
 export function demoMyAttendance(
