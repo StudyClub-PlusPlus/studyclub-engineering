@@ -247,9 +247,10 @@ CREATE TABLE STUDY_DISCORD_LINK (
 
 ## 미확정
 
-- **`STUDY_DISCORD_LINK` 행을 누가 만드는가.** 스터디 등록 시 백엔드가 봇의 `create-study` 를
-  호출하고 응답을 저장하는 흐름인데, 그 등록 API(Notion 110) 는 아직 없다. 이 스펙 범위는
-  테이블과 조회까지고, 쓰기는 110 과 같이 붙인다.
+- ~~**`STUDY_DISCORD_LINK` 행을 누가 만드는가.**~~ 해소됐다 — 스터디 등록이 봇의
+  `create-study` 를 부르고 응답을 저장한다 (#145). 봇이 실패해도 스터디 등록은 되고, 연결은
+  `POST /api/admin/studies/{id}/discord-link` 로 다시 붙인다. 계약은
+  [discord-study-link/spec.md](../discord-study-link/spec.md).
 - **재시도 중 회차가 바뀌면 멱등하지 않다.** 첫 요청이 M1 에 찍고 응답이 유실된 뒤 M1 이 끝나고
   M2 가 ±2h 안으로 들어오면, 같은 스냅샷을 재전송했을 때 M2 에도 찍힌다. 유니크 키가 달라 DB 가
   막지 못한다. 멱등 보장은 **"고른 회차가 그대로인 동안"** 으로 좁혀 읽어야 한다. 넓히려면 봇이
