@@ -185,8 +185,11 @@ async def warn_mention_everyone_missing(
             "@everyone 알림이 울리지 않았습니다. 채널 권한을 확인해 주세요.",
             allowed_mentions=discord.AllowedMentions.none(),
         )
-    except (HTTPException, discord.HTTPException) as exc:
-        logger.error(
+    except Exception as exc:
+        # Anything at all: a connection error comes up as OSError, not
+        # discord.HTTPException, and a 500 now would ring @everyone twice on
+        # the retry. CancelledError is a BaseException and still propagates.
+        logger.exception(
             "send-announcement-message %s: could not warn the alert channel: %s", key, exc
         )
 
@@ -276,15 +279,20 @@ class SendChannelMessageRequest(BaseModel):
 def resolve_study_channel(
     guild: discord.Guild, channel_id: int, study_id: int
 ) -> discord.TextChannel:
-    """Return the caller's channel, once it is known to sit under their study.
+    """Return the caller's channel, once it sits under the category they named.
 
     Unlike the configured channels, these IDs come from the caller, so a
     channel that is not a text channel is their mistake (400) rather than a
     server setup problem. A channel the bot cannot see is a 404 either way.
 
-    The category check is what keeps this endpoint inside study channels: the
-    navigator role is guild-wide, so without it a navigator could have the bot
-    mention people in any channel, including the operational ones.
+    The category check only ties the channel to the category the *request*
+    names; it does not check that the category is a study one. Passing an
+    operational category as ``study_id`` together with one of its channels
+    therefore passes, so this is not a defense against a navigator -- whose role
+    is guild-wide -- reaching a channel outside their study. What keeps the
+    endpoint inside study channels is the backend sending a (study category,
+    channel) pair from its own records; the check only catches a pair that no
+    longer matches the guild, such as a channel moved to another category.
     """
     channel = guild.get_channel(channel_id)
     if channel is None or not channel.permissions_for(guild.me).view_channel:
@@ -358,8 +366,11 @@ async def warn_unknown_mention_targets(
             f"길드 멤버가 아니라 멘션하지 못한 유저가 있습니다: {ids}",
             allowed_mentions=discord.AllowedMentions.none(),
         )
-    except (HTTPException, discord.HTTPException) as exc:
-        logger.error("send-message %s: could not warn the alert channel: %s", key, exc)
+    except Exception as exc:
+        # Anything at all: a connection error comes up as OSError, not
+        # discord.HTTPException, and a 500 now would have the caller post the
+        # message twice. CancelledError is a BaseException and still propagates.
+        logger.exception("send-message %s: could not warn the alert channel: %s", key, exc)
 
 
 def compose_message(user_id: int, mentioned: list[str], msg: str) -> str:

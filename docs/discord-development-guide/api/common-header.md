@@ -5,7 +5,8 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 
 > ⚠️ **일부만 구현됐다.** 헤더 검사는 `discord/app/api/headers.py` 의 FastAPI 의존성이고, 지금은
 > `POST /api/v1/studies` · `GET /api/v1/studies/{discordStudyId}/channels` ·
-> `POST /api/v1/channels/alert/msg` · `POST /api/v1/channels/announcement/msg` 에만 걸려 있다. `health` · `ping` 은 여전히 인증 없이 열려 있고,
+> `POST /api/v1/channels/alert/msg` · `POST /api/v1/channels/announcement/msg` ·
+> `POST /api/v1/channels/{discordChannelId}/msg` 에만 걸려 있다. `health` · `ping` 은 여전히 인증 없이 열려 있고,
 > 없는 경로에 401 을 우선하는 동작도 아직 없다 (`discord/README.md` 참고).
 
 ## Table of Contents

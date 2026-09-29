@@ -470,6 +470,22 @@ def test_send_message_is_posted_even_when_the_alert_fails(tmp_path):
     guild.channel.send.assert_awaited_once()
 
 
+def test_send_message_is_posted_even_when_the_alert_connection_drops(tmp_path, caplog):
+    """A connection error is an OSError, not a discord.HTTPException -- still no 500.
+
+    A 500 here would have the caller retry a message that is already up.
+    """
+    guild = FakeGuild(members=[])
+    guild.alert_channel.send.side_effect = OSError(104, "Connection reset by peer")
+
+    with caplog.at_level("ERROR"):
+        response = _post(_client(_bot(guild), tmp_path))
+
+    assert response.status_code == 204
+    guild.channel.send.assert_awaited_once()
+    assert "could not warn the alert channel" in caplog.text
+
+
 def test_send_message_does_not_warn_when_every_target_is_a_member(tmp_path):
     guild = FakeGuild()
 

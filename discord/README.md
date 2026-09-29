@@ -168,8 +168,11 @@ curl -X POST http://localhost:4800/api/v1/channels/1327394882193883137/msg \
 ```
 
 Answers `204` with no body. The channel must sit directly under the
-`discordStudyId` category, which is what keeps a navigator -- whose role is
-guild-wide -- from having the bot mention people in channels outside a study.
+`discordStudyId` category, but that check only compares the two IDs in the
+request: it does not check that the category belongs to a study, so it is no
+defense against a navigator -- whose role is guild-wide -- reaching a channel
+outside their study. Staying inside study channels rests on the backend sending
+a pair from its own records.
 Only the users in `discordUserIds` (at most 40) are notified; the sender line,
 anything typed into `msg`, and a `@everyone` that somehow survived stripping all
 render as text and ring nobody. A user who has left the guild does not hold the

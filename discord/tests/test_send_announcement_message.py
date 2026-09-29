@@ -396,6 +396,22 @@ def test_send_announcement_message_survives_a_failed_warning(tmp_path, caplog):
     assert "Mention Everyone" in caplog.text
 
 
+def test_send_announcement_message_survives_a_dropped_warning_connection(tmp_path, caplog):
+    """A connection error is an OSError, not a discord.HTTPException -- still no 500.
+
+    A 500 here would have the caller retry and ring @everyone twice.
+    """
+    guild = FakeGuild(mention_everyone=False)
+    guild.alert.send.side_effect = OSError(104, "Connection reset by peer")
+
+    with caplog.at_level("ERROR"):
+        response = _post(_client(_bot(guild), tmp_path))
+
+    assert response.status_code == 204
+    assert _sent(guild) == f"@everyone\n{MSG}"
+    assert "could not warn the alert channel" in caplog.text
+
+
 def test_send_announcement_message_as_the_bot_is_forbidden(tmp_path):
     """An announcement rings the whole guild, so only a captain sends one -- not the system."""
     guild = FakeGuild(member_roles=())

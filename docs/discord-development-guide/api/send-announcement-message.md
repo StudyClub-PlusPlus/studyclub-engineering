@@ -4,6 +4,7 @@
 모두에게 알림을 울린다.** [`send-alert-message`](send-alert-message.md) 와 모양이 같고, **다른 곳만**
 [아래](#send-alert-message-와-다른-점)에 모아 적는다.
 
+> ✅ **구현됨** — `discord/app/api/routes/channels.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
 > **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다.
 
