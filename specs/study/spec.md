@@ -1,6 +1,7 @@
 # 스터디 API Spec
 
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md)
+> Story PRD: [등록](../../planning/stories/captain-create-study/PRD.md) · [수정·삭제](../../planning/stories/captain-edit-delete-study/PRD.md) · [공개](../../planning/stories/captain-publish-study/PRD.md) · [다음 기수](../../planning/stories/captain-reregister-cohort/PRD.md) · [운영 콘솔 목록](../../planning/stories/captain-list-all-studies/PRD.md)
 > 생성일: 2026-09-08 (GET) · 2026-09-11 (POST 절 추가)
 > 갱신: 2026-09-19 — 신청 폼·제출·결과 API 는 [study-application/spec.md](../study-application/spec.md) 로 분리
 > 갱신: 2026-09-20 — STUDY_COHORT 테이블 폐기. 코호트 필드는 STUDY 로 통합, 모집 마감은 STUDY_RECRUITMENT 로 분리. 응답·요청 구조 반영
@@ -9,6 +10,7 @@
 > 갱신: 2026-09-23 — `timezone` 필드 추가(**제안 단계, 백엔드 미반영**): 등록 폼에서 운영자가 KST/PST/동시 진행 중 직접 고르는 선택 입력. GET/POST/PATCH 세 곳에 반영. 운영 콘솔 목록에 컬럼 추가. 이 필드가 생기기 전 데이터는 값이 없어 사이트가 일정·킥오프 문구로 추정하거나 「시간대 미정」으로 보인다 — [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md#3-시간대-필터)
 > 갱신: 2026-09-27 — 백오피스 정보 탭 연동. GET 응답에 `programId`·`oneLineSummary`·`schedule`·`discordChannelUrl`·`driveUrl` 추가, PATCH 가 `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 을 받는다(`null` = 비움, 키 생략 = 유지). **정원 저장 위치는 아직 `STUDY.CAPACITY`** 다 — 아래 「스터디 수정」 참고. `timezone` 은 컬럼이 없어 여전히 미구현
 > 갱신: 2026-09-24 — **공개 판정 정정**(PR #129 리뷰): 「공개 = `START_AT` 유무」를 「공개 = `STATUS != DRAFT`」로 바꾼다. `START_AT` 은 `STATUS` 와 별개 필드라 한쪽만 바뀌는 동기화 버그 여지가 있고, 지금 등록 API가 `START_AT=now` 를 채우는 별도 버그와도 얽혀 있었다 — `STATUS` 하나로 판정하면 두 문제 다 공개 여부에는 영향을 주지 않는다. 상세: [ERD](../../docs/erd/STUDY.md#공개-여부) · [POL-0002](../../01-planning/_registry/policies/POL-0002-study-status.md#공개-여부)
+> 갱신: 2026-09-29 — **작성자(`CREATED_BY`) 추가 (제안 단계, 백엔드 미반영)**: 스터디를 등록한 계정을 서버가 기록한다. 운영 콘솔 목록에 「작성자」 열을 넣고 「출석률」 열을 뺐다 — [captain-list-all-studies PRD](../../planning/stories/captain-list-all-studies/PRD.md)
 
 ## 엔드포인트 목록
 
@@ -70,6 +72,11 @@
 > 워크스페이스에 있다(PUBLIC 레포라 링크 생략 — [AGENT.md](../../AGENT.md)); 이 repo 안의 정본은
 > playground 화면 명세다:
 > [studies/spec.ts](../../frontend/apps/playground/src/app/(proto)/proto/console/studies/spec.ts).
+>
+> **운영 콘솔 목록 갱신(2026-09-29)**: **작성자** 열을 추가하고 **출석률** 열을 뺐다. 작성자는 등록한
+> 캡틴의 닉네임(`ACCOUNT.NICKNAME`)이고 `STUDY.CREATED_BY` 로 찾는다 — 컬럼이 없던 시절
+> 등록된 스터디는 비어 있어 「—」로 보인다. 출석률은 기수 운영 화면의 출석 탭에서만 본다 — 목록 응답에
+> 넣지 않는다. 정본: [captain-list-all-studies PRD](../../planning/stories/captain-list-all-studies/PRD.md)
 
 ---
 
@@ -259,6 +266,7 @@
 | STUDY.STATUS | `DRAFT` | 등록 후 ADMIN이 [공개(모집 시작)](#스터디-공개--공개-취소)로 OPEN 으로 전환 |
 | STUDY_RECRUITMENT.START_AT | `null` | 등록 시 채우지 않는다 — 공개할 때(`STATUS: DRAFT → OPEN`) 함께 채운다. 공개 판정 자체는 `STATUS` 로 한다 |
 | STUDY_PROGRAM.TITLE | 요청의 `title` | 새 프로그램일 때만. 프로그램 제목은 첫 기수 제목을 따른다 |
+| STUDY.CREATED_BY | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. **제안 단계, 컬럼 미구현** |
 
 ### Response — 201 No Content
 

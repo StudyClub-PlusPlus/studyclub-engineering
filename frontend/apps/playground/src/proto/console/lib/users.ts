@@ -7,7 +7,7 @@
 // TODO(api): GET /api/users — role 포함한 유저 목록으로 교체.
 
 import { getStudyCrew, studies } from '@studyclub/mock';
-import type { MemberRegion } from '@studyclub/mock';
+import type { MemberRegion, Study } from '@studyclub/mock';
 
 import type { AccountRole } from './roles';
 
@@ -117,3 +117,14 @@ export const consoleUsers: ConsoleUser[] = buildRoster();
 
 /** 스터디 id → 제목(ko). 참여 스터디를 이름으로 보여주기 위한 표. */
 export const studyTitleById: Record<string, string> = Object.fromEntries(studies.map((s) => [s.id, s.title.ko]));
+
+/**
+ * 스터디 작성자 — 그 스터디를 등록한 캡틴. 등록 요청을 보낸 계정이 곧 작성자다.
+ * mock 스터디에는 작성자가 없어 스터디 id 로 캡틴 중 한 명을 결정적으로 고른다.
+ *
+ * TODO(api): 목록 응답의 작성자(STUDY.CREATED_BY)로 교체. 컬럼이 생기기 전 스터디는 작성자가 없다.
+ */
+export function studyAuthor(study: Study): { id: string; name: string } {
+  const { id, name } = CAPTAINS[hash(study.id) % CAPTAINS.length];
+  return { id, name };
+}

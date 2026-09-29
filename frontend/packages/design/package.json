@@ -8,6 +8,9 @@
     "./compat.css": "./compat.css",
     "./console.overrides.css": "./console.overrides.css"
   },
+  "peerDependencies": {
+    "tailwindcss": "^4"
+  },
   "files": [
     "tokens.css",
     "compat.css",

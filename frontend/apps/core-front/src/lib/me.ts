@@ -142,7 +142,7 @@ export function setDiscord(handle: string | null) {
  */
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 export function seedDemoData() {
   if (readJSON<number>(SEED_KEY, 0) >= SEED_VERSION) return;
@@ -184,6 +184,6 @@ export function seedDemoData() {
       },
     ] satisfies Application[]);
   }
-  writeJSON(BOOKMARK_KEY, ['daily-leetcode', 'early-bird', 'system-design-interview']);
+  writeJSON(BOOKMARK_KEY, ['pytorch-ai-coding', 'system-design-interview']);
   writeJSON(DISCORD_KEY, 'jiwon_dev');
 }
