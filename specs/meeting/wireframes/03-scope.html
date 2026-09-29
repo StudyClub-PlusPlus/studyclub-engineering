@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>03 범위 묻기</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>03 · 반복 일정 회차를 고치거나 지울 때 — 범위 묻기</b>구글 캘린더와 같은 3지선다. 다른 점은 "모든 회차" 에서도 지난 회차는 안 바뀐다는 것.</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:1240px;margin:0 auto">
+  <div class="frame" style="height:470px;width:100%" id="a"></div>
+  <div class="frame" style="height:470px;width:100%" id="b"></div>
+</div>
+<ul class="notes">
+  <li>드래그로 옮길 때는 묻지 않는다 — 항상 "이 회차만". 휴강·미루기·되돌리기도 정의부터 이 회차(들)만이라 묻지 않는다.</li>
+  <li>오른쪽 패널 「수정」은 반복 일정 자체를 연 것이라 묻지 않고 "모든 회차".</li>
+</ul>
+<script>
+const radio = (on, t, d) => `<div class="radio ${on ? 'on' : ''}"><span class="o"></span><div><div class="t">${t}</div><div class="d">${d}</div></div></div>`;
+document.getElementById('a').innerHTML = `<div class="dimmer"></div><div class="modal">
+  <div class="hd">반복 일정을 수정합니다</div>
+  <div class="bd"><div class="note" style="margin-bottom:10px">7회차 11/5(목) 20:00 → <b>금 20:00</b></div>
+   ${radio(false, '이 회차만', '11/5 만 금요일(11/6)로. 나머지는 목요일 그대로')}
+   ${radio(true, '이 회차 및 이후', '11/5 부터 금요일. 반복 일정이 둘로 나뉜다 — 목 10/1~10/29 · 금 11/6~')}
+   ${radio(false, '모든 회차', '앞으로의 회차 전부 금요일. <b>지난 회차는 그대로</b>')}
+  </div><div class="ft"><span class="btn">취소</span><span class="btn pri">다음 — 영향 보기</span></div></div>`;
+document.getElementById('b').innerHTML = `<div class="dimmer"></div><div class="modal">
+  <div class="hd">반복 일정 회차를 지웁니다</div>
+  <div class="bd"><div class="note" style="margin-bottom:10px">7회차 11/5(목)</div>
+   ${radio(true, '이 회차만 — 휴강', '크루에게 휴강으로 보인다. 되돌릴 수 있다')}
+   ${radio(false, '이 회차 및 이후 — 조기 종료', '11/5 부터 없음. 반복 일정이 11/4 에 끝난다')}
+   ${radio(false, '모든 회차', '앞으로의 회차 전부. 지난 회차는 기록으로 남는다')}
+   <div class="note" style="margin-top:6px">☐ 휴강이 아니라 흔적 없이 삭제 <span style="color:var(--fg-ph)">(출석·휴가 기록이 없는 회차만)</span></div>
+  </div><div class="ft"><span class="btn">취소</span><span class="btn pri">다음 — 영향 보기</span></div></div>`;
+</script>
+</div></body></html>

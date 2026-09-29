@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>15 클럽 다음 기수</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>15 · 클럽 다음 기수 — 복사 · 이월 · 펼치기를 한 화면에서</b>조합 E9. WEEKLY X 10월 → 11월. 캡틴(도윤)이 10/25 에 연다.</div>
+<div class="frame" id="f"></div>
+<ul class="notes">
+  <li>클럽은 이전 기수 참여자가 <b>다시 신청하지 않는다</b>(ERD STUDY §참여 신청). 그래서 이월 대상을 여기서 확인한다 — 기본은 ACTIVE 전원.</li>
+  <li>반·반복 일정·출석 방식은 직전 기수에서 복사하고, 반복 일정의 첫 회차·끝만 새 기수 기간으로 바꾼다. 회차 30개는 확정과 함께 펼쳐진다.</li>
+  <li>새 기수도 모집 마감이 필수다(상시 모집 없음 — study spec). 신규 참여자만 신청한다.</li>
+  <li>출석률 기준 자동 제외는 MVP 밖 — 대신 낮은 사람을 보여주고 캡틴이 고른다.</li>
+</ul>
+<script>
+const row = (c, n, s, note) => `<div class="li"><span class="check"><i class="${c ? 'on' : ''}"></i></span><span style="min-width:60px;font-weight:600">${n}</span><span class="bdg ${s[0]}">${s[1]}</span><span class="note">${note}</span></div>`;
+document.getElementById('f').innerHTML = WF.shell('정보').replace('시스템 디자인 1기', 'WEEKLY X') +
+ `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+  <div style="padding:20px;border-right:1px solid var(--border)">
+   <div style="font-weight:700;font-size:17px">11월 기수 만들기</div><div class="note">직전 기수 · 10월 (10/1 ~ 10/31 · 크루 23)</div>
+   <div class="sec">기간</div>
+   <div class="kv" style="grid-template-columns:90px 1fr"><span class="k">진행</span><span><span class="field">2026-11-01</span> ~ <span class="field">2026-11-30</span></span>
+    <span class="k">신규 모집 마감</span><span class="field">2026-10-31</span></div>
+   <div class="sec">직전 기수에서 복사</div>
+   <div class="card"><div class="t">기본반 · 매일 00:00~24:00</div><div class="m">반복 일정 → 11/1 ~ 11/30 · <b>30회</b> 로 펼침</div></div>
+   <div class="card"><div class="t">출석 방식 · 공부 시간 · 목표 60분</div><div class="m">바꾸면 11월부터 적용. 10월 기록은 10월 방식 그대로</div></div>
+   <div class="card"><div class="t">신청 폼 · 디스코드 채널 · 자료 링크</div><div class="m">직전 값 그대로 (채널 재사용)</div></div>
+  </div>
+  <div style="padding:20px;background:var(--s1)">
+   <div class="sec" style="margin-top:0">명부 이월 <span class="note">— 선택한 사람이 11월 명부에 ACTIVE 로 들어간다</span></div>
+   <div class="card">
+    <div class="li" style="font-weight:700"><span class="check"><i class="on"></i></span>참여 중 20명 <span class="note">기본 전원 이월 · 1명 뺌</span></div>
+    <div class="note" style="margin:8px 0 2px">출석률 50% 미만 — 이월할지 확인</div>
+    ${row(true, '태오', ['cx', '42%'], '10월 13/31')}
+    ${row(false, '나은', ['cx', '18%'], '10/9 이후 기록 없음')}
+    ${row(true, '준서', ['cx', '47%'], '')}
+    <div class="note" style="margin:10px 0 2px">잠시 쉼 2명</div>
+    ${row(false, '하린', ['lv', '쉼'], '11/15 까지 쉼 — 11/16 부터 합류로 이월')}
+    ${row(true, '유나', ['lv', '쉼'], '10월 말 복귀 예정')}
+    <div class="note" style="margin:10px 0 2px">하차 1명 — 이월 안 함</div>
+   </div>
+   <div class="info"><b>11월 기수 미리보기</b><br/>회차 30 · 이월 20명(참여 중 19 + 쉼에서 복귀 1) + 신규 신청 · 알림: 이월된 20명에게 「11월 기수에 자동 참여」</div>
+   <div style="display:flex;gap:8px;justify-content:flex-end"><span class="btn">취소</span><span class="btn pri">11월 기수 만들기</span></div>
+  </div></div>`;
+</script>
+</div></body></html>

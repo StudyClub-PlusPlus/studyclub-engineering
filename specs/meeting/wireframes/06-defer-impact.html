@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>06 미루기 — 영향 요약</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>06 · 미루기 — 확정 전 영향 요약</b>10/22 하나를 골라 「여기서부터 미루기」. 달력에는 옮겨질 자리가 미리보기로, 가운데에는 무엇이 바뀌는지.</div>
+<div class="frame" id="f"></div>
+<ul class="notes">
+  <li>이 박스는 서버 dryRun 응답(<code>moved · end · leavesReleased · notifyCount</code>)을 그대로 그린다.</li>
+  <li>여러 회차가 바뀌거나 날짜가 옮겨지는 액션은 모두 여기서 한 번 멈춘다. 회차 하나 휴강은 사유만 받는다.</li>
+</ul>
+<script>
+const c = WF.base();
+c['2026-10-22'] = [{ cls: 'ghost', text: '4회 → 10/29' }];
+c['2026-10-29'] = [{ cls: 'ghost', text: '5회 → 11/5' }, { cls: 'preview', text: '4회 20:00' }];
+document.getElementById('f').innerHTML = WF.shell() + WF.toolbar() +
+  `<div class="body"><div>${WF.cal(2026, 10, { chips: c })}</div>${WF.side()}</div>` +
+  `<div class="dimmer"></div><div class="modal" style="width:540px">
+    <div class="hd">이렇게 바뀝니다</div>
+    <div class="bd"><div class="kv">
+      <span class="k">옮겨지는 회차</span><span><b>5개</b>가 한 칸씩 뒤로<br/><span class="note">10/22 → 10/29 · 10/29 → 11/5 · 11/5 → 11/12 · 11/12 → 11/19 · 11/19 → 11/26</span></span>
+      <span class="k">끝</span><span>11/19 → <b>11/26</b> <span class="note">· 회수는 8회 그대로</span><br/>
+        <span class="check" style="margin-top:4px"><i class="on"></i> 기수 종료일도 11/26 으로 늘리기</span></span>
+      <span class="k">풀리는 휴가</span><span class="warn">1건 · 수아 (10/22)<br/><span class="note" style="font-weight:400">날짜가 바뀌어 본인에게 "휴가가 취소됐어요" 알림</span></span>
+      <span class="k">안 바뀌는 회차</span><span class="note">10/31 특강 (단건) · 지난 3회</span>
+      <span class="k">알림</span><span>크루 7명에게 「일정 변경」 1건</span>
+      <span class="k">사유</span><span class="field" style="min-width:260px">강사 사정</span>
+    </div></div>
+    <div class="ft"><span class="btn">취소</span><span class="btn pri">미루기 확정</span></div></div>`;
+</script>
+</div></body></html>

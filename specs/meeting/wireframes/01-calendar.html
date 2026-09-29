@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>01 회차 탭 — 달력</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>01 · 회차 탭 — 달력 (기본 화면)</b>스터디 상세에 새로 생기는 탭. 캘린더처럼 한 달을 보고, 칩을 눌러 고친다. 오늘 = 10/20(화)</div>
+<div class="frame" id="f"></div>
+<ul class="notes">
+  <li><b>①</b> 반복 일정에서 나온 회차는 ↻ 아이콘. 특강처럼 따로 추가한 회차는 노란 칩(단건).</li>
+  <li><b>②</b> 칩 안 배지 — 휴가 낸 사람 수. 누르면 팝오버에서 누구인지 보인다.</li>
+  <li><b>③</b> 빈 날짜를 누르면 그 날에 회차 추가. 칩을 끌면 그 날로 옮긴다(이 회차만).</li>
+  <li><b>④</b> 오른쪽 패널 — 이 반의 반복 일정 목록. 「수정」은 범위 "모든 회차", 「끝내기」는 조기 종료.</li>
+</ul>
+<script>
+document.getElementById('f').innerHTML = WF.shell() + WF.toolbar() +
+  `<div class="body"><div>${WF.cal(2026, 10, { chips: WF.base() })}</div>${WF.side()}</div>` + WF.legend() +
+  `<div class="anno" style="left:590px;top:520px"><b>①</b>↻ = 반복 일정 회차</div>
+   <div class="anno" style="left:590px;top:560px"><b>②</b>배지 = 휴가 낸 사람 수</div>
+   <div class="anno" style="left:600px;top:300px"><b>③</b>빈 날짜 클릭 = 추가<br/>칩 끌기 = 이 회차만 옮기기</div>
+   <div class="anno" style="right:24px;top:590px"><b>④</b>반복 일정은 여러 개일 수 있다</div>`;
+</script>
+</div></body></html>

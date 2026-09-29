@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>05 여러 개 선택</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>05 · 여러 개 선택 → 한 번에</b>「선택」 또는 Shift+클릭. 조건이 안 맞는 버튼은 흐리게 두고, 누르면 이유를 한 줄로 알려준다.</div>
+<div class="frame" id="f"></div>
+<ul class="notes">
+  <li>휴강 — 아무 상태나 / 미루기 — 모두 예정 + 같은 반복 일정 / 시각 변경 — 모두 예정 / 삭제 — 출석·휴가 기록 없음.</li>
+  <li>예: 10/22 · 10/29 두 주 쉬고 뒤로 → 「미루기」 → 06 영향 요약.</li>
+</ul>
+<script>
+const c = WF.base();
+c['2026-10-22'] = [{ cls: 'sel', text: '4회 20:00', badges: [['lv', '휴가 1']] }];
+c['2026-10-29'] = [{ cls: 'sel', text: '5회 20:00' }];
+c['2026-10-01'][0].cls = 'closed dim'; c['2026-10-08'][0].cls = 'closed dim'; c['2026-10-15'][0].cls = 'closed dim';
+document.getElementById('f').innerHTML = WF.shell() + WF.toolbar('2026년 10월', '<span class="btn" style="background:var(--brand-subtle);color:var(--brand);border-color:var(--brand-300)">선택 중 · 완료</span>') +
+  `<div class="body"><div style="padding-bottom:70px">${WF.cal(2026, 10, { chips: c })}</div>${WF.side()}</div>` +
+  `<div class="actionbar"><span class="cnt">2개 선택</span><span class="note" style="color:#A6A9B2;margin-right:6px">10/22 · 10/29</span>
+     <span class="btn">휴강</span><span class="btn" style="background:#fff;color:var(--fg);border-color:#fff;font-weight:700">미루기</span><span class="btn">시각 변경</span><span class="btn dis">삭제</span><span class="btn" style="border:0">✕</span></div>
+   <div class="tip" style="left:calc(50% + 150px);bottom:78px">10/22 에 휴가 기록이 있어 삭제할 수 없어요 — 휴강을 쓰세요</div>`;
+</script>
+</div></body></html>

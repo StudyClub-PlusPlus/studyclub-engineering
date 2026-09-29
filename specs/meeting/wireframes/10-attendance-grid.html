@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>10 운영자 출석 탭</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<style>
+  .grid { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .grid th, .grid td { border-bottom: 1px solid var(--border); padding: 6px 4px; text-align: center; }
+  .grid th { font-size: 11.5px; color: var(--fg-2); font-weight: 600; vertical-align: bottom; }
+  .grid th .d { display: block; font-size: 10.5px; color: var(--fg-muted); font-weight: 500; }
+  .grid th .o { display: block; font-size: 10px; color: var(--warn-700); font-weight: 600; }
+  .grid td:first-child, .grid th:first-child { text-align: left; padding-left: 20px; font-weight: 600; width: 110px; }
+  .grid .open { background: var(--brand-subtle); }
+  .grid .cx { background: repeating-linear-gradient(135deg, var(--s1), var(--s1) 5px, #fff 5px, #fff 10px); color: var(--fg-ph); }
+  .grid .fut { color: var(--border-i); }
+  .c { display: inline-block; min-width: 46px; border-radius: 4px; padding: 3px 4px; font-size: 11px; font-weight: 700; position: relative; }
+  .c.P { background: var(--ok-100); color: var(--ok-700); } .c.L { background: var(--warn-100); color: var(--warn-700); }
+  .c.A { background: var(--err-50); color: var(--err-700); } .c.E { background: var(--s2); color: var(--fg-2); }
+  .c.N { border: 1px dashed var(--border-strong); color: var(--fg-ph); font-weight: 500; }
+  .c .t { display: block; font-size: 9.5px; font-weight: 500; opacity: .85; }
+  .c.op::after { content: "✎"; position: absolute; right: -6px; top: -6px; font-size: 10px; background: #fff; border: 1px solid var(--border-strong); border-radius: 99px; width: 14px; height: 14px; line-height: 12px; color: var(--fg-2); }
+  .rate { font-weight: 700; } .rate.lo { color: var(--err-700); }
+</style>
+<div class="cap"><b>10 · 운영자 출석 탭 — 새 모델로</b>크루 × 회차 격자는 그대로(구글시트와 같은 모양). 회차 열이 회차 탭과 같은 데이터라 휴강·옮긴 회차·진행 중이 열에 드러난다. 오늘 = 10/29(목) 21:05, 4회 진행 중.</div>
+<div class="frame" id="f"></div>
+<ul class="notes">
+  <li><b>①</b> 진행 중 회차 열은 강조, 체크인이 실시간으로 들어온다. 칸 아래 작은 글씨 = 체크인 시각.</li>
+  <li><b>②</b> 열 머리를 누르면 02 회차 팝오버(휴강·미루기·일정 변경). 옮긴 회차는 "원래 10/22".</li>
+  <li><b>③</b> 휴강 열은 빗금 — 칸을 누를 수 없고 출석률에서 빠진다.</li>
+  <li><b>④</b> 칸을 누르면 정정 메뉴. 운영자가 고친 칸에는 ✎ — 자동 동기화·디스코드가 덮지 않는다.</li>
+  <li><b>⑤</b> 출석률 분모 = <b>닫힌</b> 회차만. 진행 중인 4회는 아직 안 센다. 예린은 10/10 합류라 1회가 "합류 전".</li>
+</ul>
+<script>
+const M = [
+  ['1회', '10/1', '', 'closed'], ['2회', '10/8', '', 'closed'], ['3회', '10/15', '', 'closed'],
+  ['4회', '10/29', '원래 10/22', 'open'], ['5회', '10/31 특강', '', 'fut'], ['6회', '11/5', '원래 10/29', 'fut'],
+  ['휴강', '11/12', '추석 대체', 'cx'], ['7회', '11/19', '', 'fut'], ['8회', '11/26', '', 'fut'],
+];
+const cell = (v) => {
+  if (!v) return '<span class="c N">&nbsp;</span>';
+  if (v === '-') return '<span class="note">합류 전</span>';
+  const [s, t, op] = v.split('|');
+  const lab = { P: '출석', L: '지각', A: '결석', E: '휴가' }[s];
+  return `<span class="c ${s} ${op ? 'op' : ''}">${lab}${t ? `<span class="t">${t}</span>` : ''}</span>`;
+};
+const R = [
+  ['수아', ['P', 'L', 'P', 'P|20:07', '', 'E'], '83%'],
+  ['시우', ['P', 'P', 'P', 'L|20:22'], '100%'],
+  ['지민', ['P', 'A', 'P', ''], '67%', 1],
+  ['하준', ['L', 'L', 'P', 'P|20:03'], '67%', 1],
+  ['서연', ['P', 'E', 'P', 'E'], '100%'],
+  ['도윤', ['A||op', 'P', 'P', ''], '67%', 1],
+  ['예린', ['-', 'P', 'P', 'P|19:58'], '100%'],
+];
+const head = M.map(([n, d, o, st], i) => `<th class="${st === 'open' ? 'open' : st === 'cx' ? 'cx' : ''}" ${i === 3 ? 'id="h4"' : ''}>${n}<span class="d">${d}</span>${o ? `<span class="o">${o}</span>` : ''}${st === 'open' ? '<span class="bdg chg" style="margin:2px 0 0">체크인 4 · 휴가 1</span>' : ''}</th>`).join('');
+const body = R.map(([name, cs, rate, lo]) => `<tr><td>${name}</td>${M.map(([, , , st], i) =>
+  `<td class="${st === 'open' ? 'open' : st === 'cx' ? 'cx' : st === 'fut' ? 'fut' : ''}">${st === 'cx' ? '—' : st === 'fut' && !cs[i] ? '·' : cell(cs[i])}</td>`).join('')}
+  <td class="rate ${lo ? 'lo' : ''}" style="text-align:right;padding-right:20px">${rate}</td></tr>`).join('');
+document.getElementById('f').innerHTML = WF.shell('출석') +
+  `<div class="toolbar"><span class="sel">반: 목요일반 ▾</span><b style="margin-left:8px">출석부</b><span class="note">크루 7 · 회차 8 (+휴강 1) · 반 평균 <b style="color:var(--fg)">82%</b></span>
+    <span class="sp"></span><span class="btn">회차 탭에서 일정 관리 →</span></div>
+   <table class="grid"><thead><tr><th>크루</th>${head}<th style="text-align:right;padding-right:20px">출석률</th></tr></thead><tbody>${body}</tbody></table>
+   <div style="height:230px"></div>
+   <div class="pop" style="left:560px;top:420px;width:270px">
+     <h4>지민 · 4회 10/29</h4><div class="sub">진행 중 · 아직 체크인 없음</div>
+     <div class="row"><span class="c P" style="padding:6px 10px">출석</span><span class="c L" style="padding:6px 10px">지각</span><span class="c A" style="padding:6px 10px">결석</span><span class="c E" style="padding:6px 10px">휴가</span></div>
+     <div class="more"><span>비우기</span><span style="color:var(--fg-ph)">운영자가 고치면 ✎ 표시</span></div>
+   </div>
+   <div class="anno" style="left:440px;top:140px"><b>①</b>진행 중 열</div>
+   <div class="anno" style="left:560px;top:140px"><b>②</b>열 머리 = 회차 팝오버</div>
+   <div class="anno" style="left:760px;top:140px"><b>③</b>휴강 열 (빗금)</div>
+   <div class="anno" style="left:30px;top:600px"><b>④</b>✎ = 운영자가 정정한 칸 (도윤 1회)</div>
+   <div class="anno" style="right:24px;top:600px"><b>⑤</b>출석률 = 닫힌 회차만 (4회는 아직)</div>`;
+</script>
+</div></body></html>

@@ -12,6 +12,7 @@
 | 스터디 신청 | [study-application/](./study-application/) | 스펙작성중 | 신청 폼 설계·제출·결과·디스코드 연동. 기획: [폼 제작](../planning/stories/captain-application-form/PRD.md) · [제출](../planning/stories/crew-submit-application/PRD.md) · [결과](../planning/stories/captain-application-results/PRD.md) |
 | 회원 | [account/](./account/) | — | 인증·프로필·온보딩 |
 | 제안 | [proposal/](./proposal/) | — | 스터디 제안·관심 표시 |
+| 회차 | [meeting/](./meeting/) | 스펙작성중 | 반복 일정·회차 추가·휴강·미루기·일정 변경. 흐름: [회차](../docs/flows/meeting.md) · 화면: [와이어프레임](./meeting/wireframes/index.html) |
 | 알림 | [notification/](./notification/) | 스펙작성중 | 이벤트 기반 알림 발송 (첫 구현: 회원가입 웰컴메일) |
 | 회원 탈퇴 | [user-leave/](./user-leave/) | 스펙작성중 | `DELETE /api/me` — 계정 즉시 삭제, 데이터 파기·보존 정책 |
 

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>14 여러 주 쉬기</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>14 · 여러 주 쉬기 — 기간으로 고른다</b>조합 A5 · B5 · E5. WEEKLY X 12월 기수의 연말 방학 12/21 ~ 12/31. 칩 11개를 하나씩 누르지 않고 날짜 두 번(시작·끝)으로 고른다.</div>
+<div class="frame" id="f"></div>
+<ul class="notes">
+  <li>「기간 선택」 을 켜고 시작 날짜 → 끝 날짜를 누르거나, 달력에서 끌어서 고른다. 고른 기간의 회차가 모두 선택된 상태가 된다 — 이후는 05 여러 개 선택과 같다.</li>
+  <li><b>API 변경 없음</b> — 화면이 기간 안 회차 id 를 모아 휴강(<code>PATCH …/meetings</code>) 또는 미루기로 보낸다.</li>
+  <li>월 기수(끝이 날짜)는 미루면 기수 밖으로 밀려 <b>삭제</b>된다 — 그래서 미루기를 흐리게 두고 이유를 적는다. 스터디(끝이 회수)면 미루기가 켜진다.</li>
+  <li>여러 스터디·클럽을 한꺼번에 방학시키는 건(캡틴) 이 화면 범위 밖 — 결정 필요.</li>
+</ul>
+<script>
+const chips = {}, cellClass = {};
+for (let d = 1; d <= 31; d++) {
+  const k = `2026-12-${String(d).padStart(2, '0')}`;
+  const inR = d >= 21;
+  chips[k] = [{ cls: inR ? 'sel' : '', text: inR ? '' : '<span class="ic">↻</span>' }];
+  if (inR) cellClass[k] = d === 21 ? 'rng-s' : d === 31 ? 'rng-e' : 'rng';
+}
+const radio = (on, t, d, dis) => `<div class="radio ${on ? 'on' : ''}" style="${dis ? 'opacity:.5' : ''}"><span class="o"></span><div><div class="t">${t}</div><div class="d">${d}</div></div></div>`;
+document.getElementById('f').innerHTML = WF.shell().replace('시스템 디자인 1기', 'WEEKLY X · 12월 기수') +
+  WF.toolbar('2026년 12월', '<span class="btn" style="background:var(--brand-subtle);color:var(--brand);border-color:var(--brand-300)">▭ 기간 선택 중</span>').replace('반: 목요일반', '반: 기본반') +
+  `<div class="body" style="grid-template-columns:1fr 400px"><div>${WF.cal(2026, 12, { today: '2026-12-08', chips, cellClass }).replace('<table class="cal">', '<table class="cal mini">')}</div>
+   <aside class="side" style="background:#fff;padding:18px"><b style="font-size:15px">기간으로 쉬기</b>
+    <div class="kv" style="grid-template-columns:60px 1fr;margin-top:14px">
+      <span class="k">시작</span><span class="field">2026-12-21 (월)</span>
+      <span class="k">끝</span><span class="field">2026-12-31 (목)</span>
+      <span class="k">회차</span><span><b>11개</b> <span class="note">· 휴강된 회차 없음</span></span>
+    </div>
+    <div class="sec">어떻게 쉴까요?</div>
+    ${radio(true, '휴강', '11회를 열지 않는다. 기수는 31회 → <b>20회</b>. 크루 화면에 "연말 방학" 으로 보인다')}
+    ${radio(false, '미루기', '월 기수라 미루면 12/31 밖으로 나가 <b>11회가 삭제</b>된다 — 휴강과 결과가 같아 쓸 수 없음', true)}
+    <div class="sec">어느 반에</div>
+    <div class="check"><i class="on"></i> 이 반 (기본반)</div>
+    <div class="note" style="margin-top:4px">분반이 있으면 「이 스터디의 모든 반」 이 여기 뜬다 (11)</div>
+    <div class="kv" style="grid-template-columns:60px 1fr;margin-top:14px"><span class="k">사유</span><span class="field" style="min-width:250px">연말 방학</span></div>
+    <div class="info" style="margin-top:14px">알림 · 크루 23명에게 「12/21 ~ 12/31 휴강」 1건<br/><span class="note">이미 낸 휴가 2건은 칸이 남고 출석률에서 빠진다</span></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><span class="btn">취소</span><span class="btn pri">11회 휴강</span></div>
+   </aside></div>`;
+</script>
+</div></body></html>

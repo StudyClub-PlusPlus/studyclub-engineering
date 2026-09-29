@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>08 크루에게 보이는 것</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>08 · 크루 화면 (core-front 내 스터디)</b>운영자가 휴강·미루기·일정 변경을 하면 크루는 이렇게 본다. 모바일 폭 기준.</div>
+<div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap">
+  <div class="frame" style="width:390px;margin:0" id="a"></div>
+  <div class="frame" style="width:390px;margin:0" id="b"></div>
+</div>
+<ul class="notes" style="max-width:820px">
+  <li>휴강은 목록에서 지우지 않고 취소선으로 남긴다. 옮긴 회차는 "원래 10/22" 를 같이 보여준다.</li>
+  <li>알림은 요청당 1건으로 묶는다 — 5개 회차가 옮겨져도 알림은 하나.</li>
+</ul>
+<script>
+const row = (no, date, st, extra = '') => `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13.5px">
+  <span>${no ? `<b>${no}회</b> ` : ''}${date}${extra}</span><span>${st}</span></div>`;
+document.getElementById('a').innerHTML = `<div style="padding:16px">
+  <div class="note">내 스터디 · 참여중</div><div style="font-weight:700;font-size:16px;margin:2px 0 12px">시스템 디자인 1기</div>
+  <div class="card" style="background:var(--brand-subtle);border-color:var(--brand-100)">
+    <div class="note">다음 회차</div>
+    <div style="font-weight:700;font-size:17px">4회 · 10/29(목) 20:00 <span class="bdg chg">일정 변경</span></div>
+    <div class="note">원래 10/22 · 사유: 강사 사정</div>
+    <div class="acts"><span class="btn pri">디스코드 채널</span><span class="btn">휴가 신청</span></div>
+  </div>
+  <div style="font-weight:700;margin:14px 0 4px">회차</div>
+  ${row(1, '10/1(목)', '<span class="bdg new">출석</span>')}
+  ${row(2, '10/8(목)', '<span class="bdg chg">지각</span>')}
+  ${row(3, '10/15(목)', '<span class="bdg new">출석</span>')}
+  ${row(4, '10/29(목) 20:00', '', ' <span class="note">원래 10/22</span>')}
+  ${row(5, '10/31(토) 14:00 특강', '')}
+  ${row(6, '11/5(목) 20:00', '', ' <span class="note">원래 10/29</span>')}
+  <div class="note" style="margin-top:8px">… 8회 · 11/26 까지</div></div>`;
+document.getElementById('b').innerHTML = `<div style="padding:16px">
+  <div class="note">알림</div>
+  <div class="card"><div class="t">📅 시스템 디자인 1기 일정이 바뀌었어요</div>
+    <div class="m">강사 사정으로 4회차부터 한 주씩 미뤄졌어요.<br/>4회 10/22 → <b>10/29</b> · 마지막 회차 11/26</div></div>
+  <div class="card"><div class="t">🏖 휴가가 취소됐어요</div>
+    <div class="m">10/22 회차가 10/29 로 옮겨져서 내 휴가가 풀렸어요. 10/29 에도 못 오면 다시 신청해 주세요.</div>
+    <div class="acts"><span class="btn">10/29 휴가 신청</span></div></div>
+  <div class="card"><div class="t">🚫 11/12 휴강</div><div class="m">사유: 추석 대체 · 출석률에서 빠져요</div></div>
+  <div style="font-weight:700;margin:14px 0 4px">휴강이 있을 때 회차 목록</div>
+  ${row(6, '11/5(목)', '')}
+  ${row(null, '<s style="color:var(--fg-ph)">11/12(목)</s>', '<span class="bdg cx">휴강</span>')}
+  ${row(7, '11/19(목)', '', ' <span class="note">번호가 당겨짐</span>')}
+</div>`;
+</script>
+</div></body></html>

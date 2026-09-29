@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>11 분반 2개</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>11 · 분반 2개 — 반 전환 · 두 반 모두 보기 · 공동 휴강 · 이번만 다른 반</b>조합 B1 · B3 · B7. 알고리즘 스터디 = 목요일반(KST 목 20:00) + 미주반(PT 수 19:00). 11/25~26 주를 두 반 모두 쉰다(미국 추수감사절).</div>
+<div class="frame" id="f"></div>
+<div style="display:grid;grid-template-columns:380px 1fr;gap:20px;max-width:1240px;margin:20px auto 0">
+  <div class="ph" id="crew"></div>
+  <div class="frame" id="grid" style="margin:0;width:100%"></div>
+</div>
+<ul class="notes">
+  <li><b>반 전환</b> — 「두 반 모두」 에서는 칩에 반 이름을 붙이고 색을 나눈다. 각 칩은 <b>자기 반 시간대</b>로 적는다(미주반 = PT).</li>
+  <li><b>공동 휴강</b> — 두 반의 회차를 함께 고르면 액션 바가 "두 반" 을 알려준다. 한 트랜잭션 → 스펙에 스터디 범위 일괄 수정 추가 필요 (<a href="../../../docs/journeys/combinations.md#조합에서-나온-것--스펙결정">조합표 §스펙·결정 1</a>).</li>
+  <li><b>반복 일정 만들기는 반마다</b> — 반을 고른 상태에서 「+ 반복 일정」. 두 반 모두 보기에서는 어느 반인지 먼저 묻는다.</li>
+  <li><b>이번만 다른 반</b> — 크루가 신청하면 그 회차 칸이 원래 반 격자에 "→ 목요일반" 으로 보인다. 출석률은 원래 반에서 센다. 할지 말지는 결정 11.</li>
+</ul>
+<script>
+const T = (t) => ({ cls: '', text: `<span class="ic">↻</span>목 ${t}` });
+const U = (t) => ({ cls: 'g2', text: `<span class="ic">↻</span>미 ${t} PT` });
+const c = {
+  '2026-11-04': [U('수 19:00')], '2026-11-05': [T('20:00')],
+  '2026-11-11': [U('수 19:00')], '2026-11-12': [T('20:00')],
+  '2026-11-18': [U('수 19:00')], '2026-11-19': [T('20:00')],
+  '2026-11-25': [{ cls: 'g2 sel', text: '미 수 19:00 PT' }], '2026-11-26': [{ cls: 'sel', text: '목 20:00' }],
+};
+document.getElementById('f').innerHTML = WF.shell().replace('시스템 디자인 1기', '알고리즘 스터디 2기') +
+  `<div class="toolbar"><span class="seg"><span>목요일반 · KST</span><span>미주반 · PT</span><span class="on">두 반 모두</span></span>
+    <span class="btn ghost">◀</span><span class="month">2026년 11월</span><span class="btn ghost">▶</span><span class="sp"></span>
+    <span class="btn" style="background:var(--brand-subtle);color:var(--brand);border-color:var(--brand-300)">선택 중 · 완료</span></div>
+   <div class="body"><div style="padding-bottom:70px">${WF.cal(2026, 11, { today: '2026-11-10', chips: c })}</div>
+   <aside class="side"><h3>반복 일정</h3>
+     <div class="card"><div class="t">↻ 목요일반 · 매주 목 20:00</div><div class="m">KST · 10/1 ~ 12/3 · 10회 · 크루 10</div></div>
+     <div class="card" style="border-color:#BFE6D3"><div class="t" style="color:#1F7A57">↻ 미주반 · 매주 수 19:00</div><div class="m">America/Los_Angeles · 9/30 ~ 12/2 · 10회 · 크루 8</div>
+       <div class="m" style="margin-top:4px">11/1 서머타임 해제 → KST 로는 목 11:00 → 12:00</div></div>
+     <h3>이번만 다른 반</h3><div class="card"><div class="t">시우 · 11/12</div><div class="m">미주반 → 목요일반 11/12 20:00 참석</div></div>
+   </aside></div>
+   <div class="actionbar"><span class="cnt">2개 선택</span><span class="bdg g2" style="background:#F1FAF6;color:#1F7A57">미주반 1</span><span class="bdg lv">목요일반 1</span>
+     <span class="btn" style="background:#fff;color:var(--fg);border-color:#fff;font-weight:700">휴강 · 두 반</span><span class="btn">미루기</span><span class="btn">시각 변경</span><span class="btn" style="border:0">✕</span></div>
+   <div class="tip" style="left:calc(50% + 40px);bottom:78px">미루기는 반마다 따로 — 반복 일정이 다른 회차가 섞였어요</div>`;
+document.getElementById('crew').innerHTML = `<div class="lbl">크루 화면 · 시우 (미주반 · PT)</div>
+  <div class="note">알고리즘 스터디 2기 · 미주반</div>
+  <div class="nx" style="border-radius:8px;padding:14px;border:1px solid #BFE6D3;background:#F1FAF6;margin-top:6px">
+    <div class="note">다음 회차</div><div style="font-weight:700;font-size:17px">7회 · 11/11(수) 19:00 <span class="note">PT</span></div>
+    <div class="note">한국 시각 11/12(목) 12:00</div>
+    <div style="display:flex;gap:6px;margin-top:10px"><span class="btn">휴가 신청</span><span class="btn">이번만 다른 반으로 ▾</span></div>
+  </div>
+  <div class="card" style="margin-top:10px"><div class="t">이번만 다른 반으로</div>
+    <div class="li"><span>목요일반 · 11/12(목) 20:00 KST</span><span class="sp"></span><span class="note">PT 11/12 03:00</span></div>
+    <div class="note" style="margin-top:6px">그 회차에서 체크인하면 내 출석으로 센다. 미주반 7회는 휴가 처리.</div>
+    <div class="acts"><span class="btn pri">신청</span></div></div>`;
+document.getElementById('grid').innerHTML = `<div style="padding:14px 18px;font-weight:700">목요일반 출석 탭 — 다른 반에서 온 사람</div>
+  <table class="heat" style="margin:0 18px 18px;border-spacing:6px 4px">
+    <tr><th></th><th>5회 10/29</th><th>6회 11/5</th><th>7회 11/12</th></tr>
+    <tr><td class="n">수아</td><td class="P" style="width:60px">출석</td><td class="P">출석</td><td class="F"></td></tr>
+    <tr><td class="n">하준</td><td class="L">지각</td><td class="P">출석</td><td class="F"></td></tr>
+    <tr><td class="n" style="color:#1F7A57">+ 시우 <span class="note">(미주반)</span></td><td></td><td></td><td class="F" style="width:60px">방문</td></tr>
+  </table>
+  <div class="note" style="padding:0 18px 16px">다른 반 크루는 그 회차 열에만 한 줄로 붙는다. 출석률은 원래 반(미주반)에서 센다.</div>`;
+</script>
+</div></body></html>

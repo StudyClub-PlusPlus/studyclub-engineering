@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>09 크루 체크인</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<style>
+  .phones { display: grid; grid-template-columns: repeat(3, 360px); gap: 20px; justify-content: center; }
+  .ph { background: #fff; border: 1px solid var(--border); border-radius: 18px; padding: 16px; }
+  .ph .lbl { font-size: 11.5px; font-weight: 700; color: var(--fg-muted); margin-bottom: 8px; letter-spacing: .02em; }
+  .nx { border-radius: var(--r-md); padding: 14px; border: 1px solid var(--brand-100); background: var(--brand-subtle); }
+  .nx .when { font-weight: 700; font-size: 17px; }
+  .big { display: block; text-align: center; padding: 12px; border-radius: var(--r-md); font-weight: 700; font-size: 15px; margin: 12px 0 8px; }
+  .big.go { background: var(--brand); color: #fff; }
+  .big.late { background: #F4B64A; color: var(--fg); }
+  .big.off { background: var(--s2); color: var(--fg-ph); }
+  .done { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; padding: 12px; border-radius: var(--r-md); font-weight: 700; }
+  .done.ok { background: var(--ok-50); color: var(--ok-700); }
+  .done.lv { background: var(--s2); color: var(--fg-2); }
+  .done.ab { background: var(--err-50); color: var(--err-700); }
+  .bar { height: 6px; background: var(--s3); border-radius: 99px; position: relative; margin: 10px 0 4px; }
+  .bar i { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--fg-2); }
+  .bar b { position: absolute; left: 0; top: 0; height: 6px; border-radius: 99px; }
+  .scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--fg-muted); }
+  h2 { max-width: 1120px; margin: 28px auto 10px; font-size: 15px; }
+</style>
+<div class="cap"><b>09 · 크루 체크인 — 내 스터디 「다음 회차」 카드</b>core-front 내 스터디 카드 안. 회차 창(20:00~22:00)에 따라 카드가 바뀐다. 판정은 누른 순간의 <strong>서버 시각</strong>. 지각 기준 = 열림 + 15분.</div>
+<h2>체크인 방식 (스터디) — 한 회차의 하루</h2>
+<div class="phones" id="p1"></div>
+<h2>클럽 — 출석 방식이 다른 반</h2>
+<div class="phones" id="p2"></div>
+<ul class="notes" style="max-width:1120px">
+  <li>체크인은 한 번만 — 다시 눌러도 처음 값 유지. 출석 뒤에 눌러 지각으로 바뀌지 않는다.</li>
+  <li>결석은 저장하지 않는다. 창이 닫혔는데 기록이 없으면 결석으로 보일 뿐. 사유가 있으면 네비게이터가 정정한다(→ 10).</li>
+  <li>회차가 옮겨지면 낸 휴가는 풀린다 — 08 알림 참고.</li>
+</ul>
+<script>
+const bar = (pct, color) => `<div class="bar"><b style="width:${pct}%;background:${color}"></b><i style="left:12.5%"></i></div>
+  <div class="scale"><span>20:00 열림</span><span style="margin-left:-40px">20:15 지각 기준</span><span>22:00 마감</span></div>`;
+const card = (lbl, when, sub, body) => `<div class="ph"><div class="lbl">${lbl}</div>
+  <div class="note">시스템 디자인 1기 · 목요일반</div>
+  <div class="nx" style="margin-top:6px"><div class="note">다음 회차</div><div class="when">${when}</div><div class="note">${sub}</div>${body}</div>
+  <div class="acts" style="display:flex;gap:6px;margin-top:10px"><span class="btn">디스코드 채널</span><span class="btn">출석 기록 · 83%</span></div></div>`;
+document.getElementById('p1').innerHTML = [
+  card('① 시작 전 · 17:47', '4회 · 오늘 20:00', '2시간 13분 뒤 열려요',
+    `<span class="big off">체크인은 20:00 에 열려요</span><div style="text-align:center"><span class="btn">이번 회차 휴가 신청</span></div>`),
+  card('② 열림 · 20:06', '4회 · 지금 진행 중', '20:15 까지 체크인하면 출석',
+    `${bar(5, 'var(--brand)')}<span class="big go">체크인</span><div class="note" style="text-align:center">9분 남음 · 그 뒤는 지각으로 기록돼요</div>`),
+  card('③ 체크인 완료', '4회 · 지금 진행 중', '22:00 마감',
+    `<div class="done ok">✓ 출석 <span style="font-weight:400;font-size:13px">20:07 체크인</span></div><div class="note" style="text-align:center">다시 눌러도 바뀌지 않아요</div>`),
+  card('④ 지각 구간 · 20:31', '4회 · 지금 진행 중', '20:15 가 지났어요',
+    `${bar(26, '#F4B64A')}<span class="big late">체크인 (지각)</span><div class="note" style="text-align:center">22:00 까지 체크인할 수 있어요</div>`),
+  card('⑤ 휴가 낸 회차', '4회 · 오늘 20:00', '휴가 · 이 회차는 출석률에서 빠져요',
+    `<div class="done lv">🏖 휴가</div><div style="text-align:center"><span class="btn">휴가 취소 <span class="note">(20:00 전까지)</span></span></div>`),
+  card('⑥ 닫힘 · 체크인 없음', '4회 · 끝남', '10/29 20:00 ~ 22:00',
+    `<div class="done ab">결석</div><div class="note" style="text-align:center">사유가 있으면 네비게이터에게 알려 주세요</div>`),
+].join('');
+const club = (lbl, title, mode, body) => `<div class="ph"><div class="lbl">${lbl}</div><div class="note">${title}</div>
+  <div class="nx" style="margin-top:6px"><div class="note">오늘 · ${mode}</div>${body}</div></div>`;
+document.getElementById('p2').innerHTML = [
+  club('공부 시간 · WEEKLY X', 'WEEKLY X 10월', '00:00 ~ 24:00 · 목표 60분',
+    `<div style="display:flex;align-items:center;gap:8px;margin:12px 0 6px"><span class="field" style="min-width:80px;font-size:17px;font-weight:700">45</span> 분 <span class="btn pri">저장</span></div>
+     <div class="bar"><b style="width:75%;background:#F4B64A"></b><i style="left:100%;display:none"></i></div>
+     <div class="scale"><span>45 / 60분</span><span>지금은 지각(부분) · 60분 넘기면 출석</span></div>
+     <div class="note" style="margin-top:8px">자정 전까지 몇 번이든 고칠 수 있어요</div>`),
+  club('인증 사진 · 얼리버드', '얼리버드 10월', '05:00 ~ 08:00 · 인증 2장',
+    `<div style="display:flex;gap:8px;margin:12px 0 8px"><div style="width:84px;height:84px;border-radius:8px;background:var(--s3);display:grid;place-items:center;font-size:11px;color:var(--fg-muted)">06:12 사진</div>
+     <div style="width:84px;height:84px;border-radius:8px;border:1.5px dashed var(--border-i);display:grid;place-items:center;color:var(--fg-muted)">+ 사진</div></div>
+     <div class="note">1 / 2장 · 지금은 지각(부분)</div><div class="note">또는 <u>디스코드 인증 메시지 링크 붙여넣기</u></div>`),
+  club('스트릭 · Daily LeetCode', 'Daily LeetCode 10월', '00:00 ~ 24:00 · 자동',
+    `<div class="done ok" style="font-size:13.5px">🔗 LeetCode 계정 연결됨</div>
+     <div class="note">오늘 풀면 <b>자정 뒤</b> 자동으로 출석이 찍혀요. 따로 누를 것 없음.</div>
+     <div class="note" style="margin-top:6px">어제 · ✓ 출석 (자동)</div>
+     <div class="note" style="color:var(--warn-700);margin-top:6px">동기화가 실패하면 결석으로 찍지 않고 운영자에게 알려요</div>`),
+].join('');
+</script>
+</div></body></html>

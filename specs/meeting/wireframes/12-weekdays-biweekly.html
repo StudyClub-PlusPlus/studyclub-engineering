@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>12 여러 요일 · 격주</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>12 · 여러 요일 · 격주 — "한 칸" 이 한 주가 아니다</b>조합 C4 · D1 · D4. 위: 예린의 격주 토 북클럽 만들기. 아래: 민호의 월·수·금 영어 회화에서 11/4 를 미룰 때.</div>
+<div class="frame" id="a"></div>
+<div class="frame" id="b" style="margin-top:20px;height:640px"></div>
+<ul class="notes">
+  <li><b>격주의 기준 주</b> — 첫 회차가 있는 주가 모이는 주. 쉬는 주는 달력에 빗금으로 보여서 "이번 주야 다음 주야?" 가 화면에서 풀린다.</li>
+  <li><b>여러 요일 미루기</b> — 회차 하나를 골라 「미루기」를 누르면 <b>그 회차만 한 칸</b>인지 <b>그 주 전체</b>인지 묻는다. 그 주 전체를 고르면 월·수·금 3개를 선택한 것과 같다 — API 는 같다(<code>meetingIds</code> 3개).</li>
+  <li><b>격주 미루기</b> — 한 칸 = 규칙의 다음 자리 = 2주 뒤. 영향 요약에 "격주라 2주씩" 을 적는다.</li>
+</ul>
+<script>
+const off = {};
+['2026-10-05','2026-10-06','2026-10-07','2026-10-08','2026-10-09','2026-10-10','2026-10-11','2026-10-19','2026-10-20','2026-10-21','2026-10-22','2026-10-23','2026-10-24','2026-10-25'].forEach((d) => off[d] = 'offwk');
+const pv = { '2026-10-03': [{ cls: 'preview', text: '1회 10:00' }], '2026-10-17': [{ cls: 'preview', text: '2회 10:00' }], '2026-10-31': [{ cls: 'preview', text: '3회 10:00' }] };
+const day = (d, on) => `<span class="btn" style="padding:5px 9px;${on ? 'background:var(--brand);color:#fff;border-color:var(--brand)' : ''}">${d}</span>`;
+document.getElementById('a').innerHTML = WF.shell().replace('시스템 디자인 1기', '북클럽 3기') + WF.toolbar('2026년 10월', '<span class="btn pri">+ 반복 일정</span>').replace('반: 목요일반', '반: 기본반') +
+ `<div class="body" style="grid-template-columns:1fr 380px"><div>${WF.cal(2026, 10, { today: '2026-09-28', chips: pv, cellClass: off })}</div>
+  <aside class="side" style="background:#fff;padding:18px"><b style="font-size:15px">반복 일정 만들기</b>
+   <div class="kv" style="grid-template-columns:70px 1fr;margin-top:14px">
+    <span class="k">반복</span><span class="seg"><span>매주</span><span class="on">격주</span><span>매일</span></span>
+    <span class="k">요일</span><span style="display:flex;gap:3px">${['월','화','수','목','금'].map(d=>day(d)).join('')}${day('토',1)}${day('일')}</span>
+    <span class="k">첫 회차</span><span class="field">2026-10-03 (토)</span>
+    <span class="k">끝</span><span><span class="field" style="min-width:50px">6</span> 회</span>
+    <span class="k">시각</span><span><span class="field" style="min-width:70px">10:00</span> ~ <span class="field" style="min-width:70px">12:00</span></span>
+   </div>
+   <div class="info" style="margin-top:16px"><b>6회 · 10/3 ~ 12/12 · 격주 토</b><br/><span class="note">10/3 · 17 · 31 · 11/14 · 28 · 12/12</span></div>
+   <div class="note">▨ 빗금 = 쉬는 주. <b>첫 회차(10/3)가 있는 주</b>부터 2주마다 모인다. 쉬는 주로 바꾸려면 첫 회차를 10/10 으로.</div>
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><span class="btn">취소</span><span class="btn pri">6회 만들기</span></div>
+  </aside></div>`;
+const c = {};
+[['2026-11-02', '7회 07:00'], ['2026-11-06', '9회 07:00'], ['2026-11-09', '10회'], ['2026-11-11', '11회'], ['2026-11-13', '12회']].forEach(([d, t]) => c[d] = [{ text: `<span class="ic">↻</span>${t}` }]);
+c['2026-11-04'] = [{ cls: 'sel', text: '8회 07:00' }];
+const radio = (on, t, d) => `<div class="radio ${on ? 'on' : ''}"><span class="o"></span><div><div class="t">${t}</div><div class="d">${d}</div></div></div>`;
+document.getElementById('b').innerHTML = WF.shell().replace('시스템 디자인 1기', '영어 회화 1기') + WF.toolbar('2026년 11월').replace('반: 목요일반', '반: 기본반') +
+ `<div class="body"><div>${WF.cal(2026, 11, { today: '2026-10-30', chips: c })}</div>${WF.side().replace('매주 목 20:00~22:00', '매주 월·수·금 07:00~08:00').replace('10/1 ~ 11/19 · 8회 · 남은 5회', '10/19 ~ 11/13 · 12회').replace(/<h3>단건 회차<\/h3>[\s\S]*?반복 없음<\/div><\/div>/, '').replace('크루 7명', '크루 9명')}</div>
+  <div class="dimmer"></div><div class="modal" style="width:560px">
+   <div class="hd">어디까지 미룰까요?</div>
+   <div class="bd"><div class="note" style="margin-bottom:10px">8회 11/4(수) · 월·수·금 반복 일정</div>
+    ${radio(false, '이 회차만 한 칸', '11/4 → 11/6(금). 뒤 회차도 한 칸씩 — 끝 11/13 → <b>11/16</b>')}
+    ${radio(true, '이 주 전체 (11/2 · 4 · 6)', '그 주를 통째로 비운다. 7회부터 한 주 뒤로 — 끝 11/13 → <b>11/20</b>')}
+    <div class="note">격주 반복 일정이면 한 칸 = 2주 뒤. 예) 북클럽 10/31 미루기 → 11/14 · 28 · 12/12 · <b>12/26</b></div>
+   </div>
+   <div class="ft"><span class="btn">취소</span><span class="btn pri">다음 — 영향 보기</span></div></div>`;
+</script>
+</div></body></html>
