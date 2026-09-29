@@ -135,7 +135,7 @@ flowchart LR
   - 등록 폼에서 작성자를 고르지 않는다
   - 등록 뒤에는 바뀌지 않는다. 스터디를 수정한 사람이 달라도 작성자는 그대로다
   - 닉네임만 보인다. 이메일은 목록에 두지 않는다
-- **데이터**: `STUDY.CREATED_BY_ACCOUNT_ID` → `ACCOUNT.NICKNAME`
+- **데이터**: `STUDY.CREATED_BY` → `ACCOUNT.NICKNAME`
 
 ### 상태별 화면
 
@@ -152,7 +152,7 @@ erDiagram
   STUDY ||--o{ STUDY_RECRUITMENT : "모집 회차"
   ACCOUNT ||--o{ STUDY : "작성"
   STUDY {
-    bigint CREATED_BY_ACCOUNT_ID "null이면 작성자 미기록"
+    bigint CREATED_BY "null이면 작성자 미기록"
     varchar TIMEZONE "null이면 미정"
     datetime START_AT "null이면 미정"
   }
@@ -170,7 +170,7 @@ erDiagram
 
 - **범위 밖**: 공개 설정·신청 폼 열·공개 필터 · 스터디 상태 열·안내·필터 · P-ID 열 · 등록·수정·삭제 · 출석 기록
 - **미구현**
-  - `STUDY.CREATED_BY_ACCOUNT_ID` 컬럼이 없다. 등록 API 가 작성자를 기록하지 않는다
+  - `STUDY.CREATED_BY` 컬럼이 없다. 등록 API 가 작성자를 기록하지 않는다
   - 운영 콘솔 전용 목록 API 가 없다. 프로토는 mock 데이터로 그린다
   - 프로토의 작성자는 mock 캡틴 중 한 명을 스터디마다 고정으로 배정한 값이다
 
@@ -180,10 +180,10 @@ erDiagram
 
 | 필드 | 타입 | 필수 | 뜻 |
 |---|---|---|---|
-| `STUDY.CREATED_BY_ACCOUNT_ID` | BIGINT | N | 작성자. ACCOUNT 참조(인덱스만, 외래키 없음). null = 컬럼이 생기기 전에 등록된 스터디 |
+| `STUDY.CREATED_BY` | BIGINT | N | 작성자. ACCOUNT 참조(인덱스만, 외래키 없음). null = 컬럼이 생기기 전에 등록된 스터디 |
 
 · **처리**
-- 스터디 등록(`POST /api/studies`) 시 서버가 인증된 계정의 ID 로 `CREATED_BY_ACCOUNT_ID` 를 채운다
+- 스터디 등록(`POST /api/studies`) 시 서버가 인증된 계정의 ID 로 `CREATED_BY` 를 채운다
 - 요청 바디로 작성자를 받지 않는다
 - 스터디 수정(`PATCH /api/studies/{studyId}`)은 작성자를 바꾸지 않는다
 - 기존 스터디는 백필하지 않는다. null 로 둔다

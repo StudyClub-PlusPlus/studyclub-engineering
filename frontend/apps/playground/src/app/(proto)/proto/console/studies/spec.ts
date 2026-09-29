@@ -202,7 +202,7 @@ export const LIST_SPEC: ScreenSpec = {
         '등록 뒤에는 바뀌지 않는다. 수정한 사람이 달라도 작성자는 그대로다',
         '이름만 보인다. 이메일은 목록에 두지 않는다',
       ],
-      data: ['STUDY.CREATED_BY_ACCOUNT_ID → ACCOUNT.NICKNAME'],
+      data: ['STUDY.CREATED_BY → ACCOUNT.NICKNAME'],
     },
   ],
 };

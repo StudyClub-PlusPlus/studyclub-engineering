@@ -122,7 +122,7 @@ export const studyTitleById: Record<string, string> = Object.fromEntries(studies
  * 스터디 작성자 — 그 스터디를 등록한 캡틴. 등록 요청을 보낸 계정이 곧 작성자다.
  * mock 스터디에는 작성자가 없어 스터디 id 로 캡틴 중 한 명을 결정적으로 고른다.
  *
- * TODO(api): 목록 응답의 작성자(STUDY.CREATED_BY_ACCOUNT_ID)로 교체. 컬럼이 생기기 전 스터디는 작성자가 없다.
+ * TODO(api): 목록 응답의 작성자(STUDY.CREATED_BY)로 교체. 컬럼이 생기기 전 스터디는 작성자가 없다.
  */
 export function studyAuthor(study: Study): { id: string; name: string } {
   const { id, name } = CAPTAINS[hash(study.id) % CAPTAINS.length];
