@@ -40,9 +40,11 @@ class AttendanceResult:
 
 
 class BackendError(Exception):
-    """The backend answered, but not with a 200.
+    """The backend answered with something we cannot act on.
 
-    ``status`` is what the caller branches on -- the body's wording is for the
+    Either a non-200, or a 200 whose body we could not read -- from the
+    captain's side those are the same thing, so they take the same path.
+    ``status`` is what the caller branches on; the body's wording is for the
     logs, not for the channel, because it is written for developers.
     """
 
@@ -63,7 +65,9 @@ async def mark_attendances(
     caller_discord_user_id: str,
     discord_user_ids: list[str],
 ) -> AttendanceResult:
-    url = f"{base_url}/api/discord/studies/{discord_study_id}/attendances"
+    # Settings already strips it, but a caller passing one straight in would
+    # otherwise build "//api/..." and get a 404 that looks like a missing link.
+    url = f"{base_url.rstrip('/')}/api/discord/studies/{discord_study_id}/attendances"
     payload = {
         "callerDiscordUserId": caller_discord_user_id,
         "discordUserIds": discord_user_ids,
@@ -76,7 +80,13 @@ async def mark_attendances(
 
     if response.status_code != 200:
         raise BackendError(response.status_code, _detail_of(response))
-    return _parse(response.json())
+    # A 200 does not guarantee a body we can read -- a proxy's HTML page, or a
+    # contract that moved under us. Letting ValueError/KeyError escape would
+    # leave the captain with no reply at all, which is the worst outcome.
+    try:
+        return _parse(response.json())
+    except (ValueError, TypeError, KeyError, AttributeError) as exc:
+        raise BackendError(response.status_code, f"unreadable 200 body: {exc}") from exc
 
 
 def _detail_of(response: httpx.Response) -> str:

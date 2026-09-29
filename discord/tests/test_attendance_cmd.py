@@ -11,6 +11,8 @@ from app.backend_client import (
 )
 from app.bot.commands import attendance_cmd
 from app.bot.commands.attendance_cmd import (
+    DISCORD_MESSAGE_LIMIT,
+    MAX_GROUPS_SHOWN,
     MAX_NAMES_SHOWN,
     SnapshotRefused,
     collect_snapshot,
@@ -332,3 +334,38 @@ async def test_command_sends_the_snapshot_the_backend_contract_expects(monkeypat
     assert study_id == "900"
     assert caller == "1"
     assert user_ids == ["1", "2"]
+
+
+def test_result_caps_the_number_of_group_lines():
+    """A study's 반 share one voice room, so many groups can come back at once."""
+    groups = [MarkedGroup(i, 1000 + i, False, [str(i)]) for i in range(MAX_GROUPS_SHOWN + 4)]
+
+    message = format_result(AttendanceResult(groups=groups), {})
+
+    assert message.count("번 회차 —") == MAX_GROUPS_SHOWN
+    assert "외 4개 반" in message
+
+
+def test_result_stays_inside_discords_message_limit():
+    """Overflowing would fail the reply *after* attendance was already written."""
+    groups = [MarkedGroup(i, i, False, [str(i)]) for i in range(100)]
+    ids = [str(i) for i in range(100)]
+    names = {i: "아주아주긴닉네임" * 5 for i in ids}
+
+    message = format_result(
+        AttendanceResult(groups=groups, unmatched=ids, not_participant=ids, no_meeting=ids),
+        names,
+    )
+
+    assert len(message) <= DISCORD_MESSAGE_LIMIT
+
+
+@pytest.mark.asyncio
+async def test_command_reports_an_unreadable_200_as_a_backend_problem(monkeypatch):
+    """A 200 we cannot parse must still get the captain a reply."""
+    backend = AsyncMock(side_effect=BackendError(200, "unreadable 200 body: KeyError"))
+
+    ctx = await _run(monkeypatch, backend)
+
+    assert "백엔드에 문제가 있습니다" in _sent(ctx)
+    assert _mentions_suppressed(ctx)

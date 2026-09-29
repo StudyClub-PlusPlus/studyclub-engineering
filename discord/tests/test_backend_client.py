@@ -132,6 +132,37 @@ async def test_transport_failure_is_its_own_error(monkeypatch):
 @pytest.mark.asyncio
 async def test_trailing_slash_in_the_base_url_does_not_double(capture):
     """Settings strips it, but the client must not depend on that."""
-    await mark_attendances(BASE, "k", "900", "1", ["1"])
+    await mark_attendances(BASE + "/", "k", "900", "1", ["1"])
 
-    assert "//api/" not in str(capture["request"].url)
+    assert str(capture["request"].url) == f"{BASE}/api/discord/studies/900/attendances"
+
+
+@pytest.mark.asyncio
+async def test_a_200_that_is_not_json_is_a_backend_error(capture):
+    """A proxy answering 200 with an HTML page must not crash the command."""
+    capture["response"] = httpx.Response(200, text="<html>hello</html>")
+
+    with pytest.raises(BackendError) as exc:
+        await mark_attendances(BASE, "k", "900", "1", ["1"])
+
+    assert exc.value.status == 200
+
+
+@pytest.mark.asyncio
+async def test_a_200_missing_contract_fields_is_a_backend_error(capture):
+    """If the contract moves under us, the captain gets a message, not silence."""
+    capture["response"] = httpx.Response(200, json={"groups": [{"marked": ["1"]}]})
+
+    with pytest.raises(BackendError) as exc:
+        await mark_attendances(BASE, "k", "900", "1", ["1"])
+
+    assert exc.value.status == 200
+
+
+@pytest.mark.asyncio
+async def test_a_200_shaped_wrongly_is_a_backend_error(capture):
+    """A JSON list where an object was promised is the same class of problem."""
+    capture["response"] = httpx.Response(200, json=["nope"])
+
+    with pytest.raises(BackendError):
+        await mark_attendances(BASE, "k", "900", "1", ["1"])

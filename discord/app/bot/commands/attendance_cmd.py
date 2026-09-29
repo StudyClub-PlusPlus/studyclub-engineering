@@ -28,6 +28,12 @@ COMMAND_NAME = "출석체크"
 # Long member lists would push the message past Discord's 2000-character cap,
 # and a wall of names is not read anyway.
 MAX_NAMES_SHOWN = 10
+# One line per group. A study's 반 share one voice room, so a handful is normal
+# and a hundred is not -- but the reply must fit whatever comes back.
+MAX_GROUPS_SHOWN = 10
+# Discord rejects anything longer. Hitting it would fail the reply *after* the
+# attendance was already written, so the message is clipped rather than sent raw.
+DISCORD_MESSAGE_LIMIT = 2000
 
 
 @dataclass(frozen=True)
@@ -67,6 +73,10 @@ def collect_snapshot(channel, author: discord.Member) -> Snapshot:
 
     # Bots sitting in the room would come back as "not linked" and inflate that
     # count, so they never go out.
+    #
+    # The backend caps discordUserIds at 100 and we do not check it here:
+    # Discord itself caps a voice channel at 99, so the snapshot cannot reach
+    # the limit (2026-09-29 #144 review, 황준희).
     members = [member for member in channel.members if not member.bot]
     if not members:
         raise SnapshotRefused("공부방에 사람이 없습니다.")
@@ -86,9 +96,12 @@ def format_result(result: AttendanceResult, names_by_id: dict[str, str]) -> str:
     if result.marked_count:
         group_word = f" ({len(result.groups)}개 반)" if len(result.groups) > 1 else ""
         lines.append(f"✅ 출석 {result.marked_count}명 체크했습니다.{group_word}")
-        for group in result.groups:
+        for group in result.groups[:MAX_GROUPS_SHOWN]:
             started = " · 회차를 시작했습니다" if group.meeting_started else ""
             lines.append(f"· {group.study_meeting_id}번 회차 — {len(group.marked)}명{started}")
+        hidden = len(result.groups) - MAX_GROUPS_SHOWN
+        if hidden > 0:
+            lines.append(f"· 외 {hidden}개 반")
     else:
         lines.append("출석을 찍은 사람이 없습니다.")
 
@@ -100,7 +113,15 @@ def format_result(result: AttendanceResult, names_by_id: dict[str, str]) -> str:
         if ids:
             lines.append(f"⚠️ {label} {len(ids)}명 — {_names(ids, names_by_id)}")
 
-    return "\n".join(lines)
+    return _clip("\n".join(lines))
+
+
+def _clip(message: str) -> str:
+    """Keep the reply inside Discord's limit; the head matters most."""
+    if len(message) <= DISCORD_MESSAGE_LIMIT:
+        return message
+    suffix = "\n…(생략)"
+    return message[: DISCORD_MESSAGE_LIMIT - len(suffix)] + suffix
 
 
 def format_backend_error(status: int) -> str:
