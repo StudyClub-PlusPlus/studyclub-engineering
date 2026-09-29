@@ -4,7 +4,7 @@ import { StudyDetailView } from '@/proto/core/components/StudyDetailView';
 
 export async function generateStaticParams() {
   const studies = await getStudies();
-  // 조회 키는 study_id(STUDY.ID) — 슬러그(s.id)는 내부 키일 뿐 URL에 쓰지 않는다. getStudy()와 짝이 맞아야 한다.
+  // 조회 키는 study_id(STUDY.ID) — 내부 키(s.id)는 URL 에 쓰지 않는다. getStudy()와 짝이 맞아야 한다.
   return studies.map((s) => ({ id: String(s.study_id) }));
 }
 

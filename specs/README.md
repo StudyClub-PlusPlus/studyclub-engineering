@@ -2,7 +2,7 @@
 
 > 가이드: [spec-driven-development.md](../docs/backend-development-guide/spec-driven-development.md)
 >
-> **Story PRD** 는 [`planning/stories/{slug}/PRD.md`](../planning/README.md) 에 둔다. `specs/` 안에 만들지 않는다.
+> **Story PRD** 는 [`planning/stories/{story-name}/PRD.md`](../planning/README.md) 에 둔다. `specs/` 안에 만들지 않는다.
 
 ## 도메인 목록
 
@@ -29,7 +29,7 @@ API 도메인이 아닌 것(인프라·운영). 구조는 같되 엔드포인트
 
 ```bash
 # 새 Story PRD
-mkdir -p planning/stories/{story-slug}
+mkdir -p planning/stories/{story-name}
 # 그 폴더에 PRD.md 작성 후 planning/README.md 표에 한 줄 추가
 
 # 새 도메인 스펙 시작

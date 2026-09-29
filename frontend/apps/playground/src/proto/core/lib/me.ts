@@ -188,7 +188,7 @@ export function setDiscordNickname(nickname: string) {
  */
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 10;
+const SEED_VERSION = 11;
 
 function accepted(studyId: string, appliedAt: string): Application {
   return { studyId, appliedAt, status: 'accepted', region: 'KR' };
@@ -203,19 +203,9 @@ export function seedDemoData() {
       accepted('ai-paper-study', '2026-08-11'),
       accepted('claude-code-source-study', '2026-07-20'),
       accepted('python-pandas-ml-coding', '2026-08-20'),
-      accepted('early-bird-g1', '2026-06-28'),
-      accepted('early-bird-g2', '2026-07-28'),
-      accepted('early-bird-g3', '2026-08-28'),
-      accepted('weeklyx-g1', '2026-06-28'),
-      accepted('weeklyx-g2', '2026-07-28'),
-      accepted('weeklyx-g3', '2026-08-28'),
-      accepted('daily-leetcode-g1', '2026-06-28'),
-      accepted('daily-leetcode-g2', '2026-07-28'),
-      accepted('daily-leetcode-g3', '2026-08-28'),
       // 참여 종료 — 완주 / 참여 중단(배지는 "참여 종료")
       accepted('leetcode150-2026', '2026-02-03'),
       accepted('sql-for-data-analysis', '2025-11-12'),
-      accepted('renaissance-club', '2026-06-02'),
       accepted('system-design-interview-ongoing', '2026-07-15'),
       accepted('db1-db2', '2025-10-01'),
       accepted('aws-cpc', '2025-09-12'),
@@ -240,7 +230,7 @@ export function seedDemoData() {
       .filter((a) => a.status === 'accepted')
       .map((a) => a.studyId),
   );
-  writeJSON(BOOKMARK_KEY, ['daily-leetcode', 'early-bird', 'system-design-interview']);
+  writeJSON(BOOKMARK_KEY, ['pytorch-ai-coding', 'system-design-interview']);
   writeJSON(DISCORD_KEY, 'jiwon_dev');
   writeJSON(DISCORD_NICK_KEY, DISCORD_NICKNAME_EXAMPLE);
 }

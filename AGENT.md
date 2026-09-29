@@ -27,7 +27,7 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
     core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
     back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
   packages/mock          # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티
-planning/stories/        # Story PRD — planning/stories/{slug}/PRD.md
+planning/stories/        # Story PRD — planning/stories/{story-name}/PRD.md
 specs/                   # API 스펙 — specs/{도메인}/spec.md
 backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
@@ -107,7 +107,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
   **playground 를 고쳤으면 커밋 전에 `pnpm --filter playground run build` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에서 바로 배포되는 유일한 앱이라(`playground-beta.yaml`) 다른 앱의 CI 게이트를 안 거친다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
-- **Story PRD** — 화면 기획은 `planning/stories/{slug}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`planning/README.md`](planning/README.md)
+- **Story PRD** — 화면 기획은 `planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`planning/README.md`](planning/README.md)
 - **팀에 물을 것·정해진 것은 `share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`share/README.md`](share/README.md) 목록에 한 줄 추가한다.
   PR 설명이나 코드 주석에만 있으면 머지되는 순간 안 읽힌다. 규칙이 굳으면 `docs/` 로 올린다.

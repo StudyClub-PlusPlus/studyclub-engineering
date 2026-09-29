@@ -5,7 +5,7 @@
 > 상태: 스펙작성중
 >
 > Story PRD:
-> - [{Actor}로서, …할 수 있다](../../planning/stories/{story-slug}/PRD.md)
+> - [{Actor}로서, …할 수 있다](../../planning/stories/{story-name}/PRD.md)
 
 ## 엔드포인트 목록
 
