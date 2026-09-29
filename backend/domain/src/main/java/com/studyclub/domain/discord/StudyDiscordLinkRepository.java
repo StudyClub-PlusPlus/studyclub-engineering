@@ -6,4 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface StudyDiscordLinkRepository extends JpaRepository<StudyDiscordLink, Long> {
 
     Optional<StudyDiscordLink> findByDiscordStudyId(String discordStudyId);
+
+    boolean existsByStudyId(Long studyId);
+
+    void deleteByStudyId(Long studyId);
 }
