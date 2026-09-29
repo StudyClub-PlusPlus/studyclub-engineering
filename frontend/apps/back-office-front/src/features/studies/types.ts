@@ -53,6 +53,56 @@ export type StudyRow = {
   closingSoon: boolean;
 };
 
+/** 상세 응답. 백엔드 StudyDetailResponse 와 1:1 이다. 날짜는 ISO 8601 UTC. */
+export type ApiStudyDetail = {
+  id: number;
+  programId: number;
+  slug: string;
+  title: string;
+  oneLineSummary: string;
+  description: string | null;
+  category: string;
+  studyKind: 'STUDY' | 'CLUB';
+  thumbnailUrl: string | null;
+  deliveryFormat: string;
+  status: 'DRAFT' | 'OPEN' | 'ONGOING' | 'ENDED' | 'CLOSED';
+  /** `status != OPEN` 이면 null — 모집 상태가 "없는" 것이지 마감이 아니다. */
+  recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED' | null;
+  curriculum: string | null;
+  capacity: number | null;
+  schedule: string | null;
+  recruitDeadlineAt: string | null;
+  startAt: string | null;
+  endAt: string | null;
+  discordChannelUrl: string | null;
+  driveUrl: string | null;
+};
+
+/**
+ * PATCH 바디. 키를 빼면 그 값은 그대로 두고, `null` 을 보내면 비운다(정원 제한 없음 · 시작일 미정 · 주소 없음).
+ * 정보 탭은 폼 전체를 보내므로 모든 키를 채운다.
+ */
+export type StudyUpdatePayload = {
+  title?: string;
+  oneLineSummary?: string;
+  description?: string;
+  category?: string;
+  recruitDeadline?: string;
+  schedule?: string;
+  capacity?: number | null;
+  startAt?: string | null;
+  discordChannelUrl?: string | null;
+  driveUrl?: string | null;
+};
+
+export const STATUS_LABEL: Record<ApiStudyDetail['status'], string> = {
+  DRAFT: '비공개',
+  OPEN: '모집',
+  ONGOING: '진행중',
+  ENDED: '종료',
+  CLOSED: '운영 종료',
+};
+
 export const PHASE_LABEL: Record<StudyPhase, string> = {
   RECRUITING: '모집중',
   ONGOING: '진행중',

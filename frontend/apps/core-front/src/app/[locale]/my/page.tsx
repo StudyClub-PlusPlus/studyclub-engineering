@@ -6,11 +6,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import { MEMBER_REGIONS, studies as allStudies, type MemberRegion, type Study } from '@studyclub/mock';
+import { MEMBER_REGIONS, type MemberRegion, type Study } from '@studyclub/mock';
 import { CalendarClock, Heart } from 'lucide-react';
 
 import { ProfileDialog } from '@/components/ProfileDialog';
 import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
+import { useStudies } from '@/features/studies/queries';
 import { getUser, logout, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
@@ -182,7 +183,8 @@ export default function MyPage() {
     setReady(true);
   }, [locale, router]);
 
-  const byId = useMemo(() => new Map(allStudies.map((s) => [s.id, s])), []);
+  const { data: studies = [] } = useStudies({});
+  const byId = useMemo(() => new Map(studies.map((s) => [s.id, s])), [studies]);
   const joined = applications
     .map((a) => ({ app: a, study: byId.get(a.studyId) }))
     .filter((x): x is { app: Application; study: Study } => Boolean(x.study))

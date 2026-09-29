@@ -57,12 +57,15 @@ def test_load_settings_defaults():
 
 
 def test_load_settings_reads_study_settings():
-    """The guild, captain and navigator roles, and API key come from the environment."""
+    """The guild, roles, channels, and API key come from the environment."""
     settings = load_settings(
         environ={
             "DISCORD_GUILD_ID": "123456789012345678",
             "DISCORD_CAPTAIN_ROLE_ID": "223456789012345678",
             "DISCORD_NAVIGATOR_ROLE_ID": "323456789012345678",
+            "DISCORD_BOT_ID": "623456789012345678",
+            "DISCORD_ALERT_CHANNEL_ID": "423456789012345678",
+            "DISCORD_ANNOUNCEMENT_CHANNEL_ID": "523456789012345678",
             "DISCORD_API_KEY": " key ",
         },
         load_dotenv_file=False,
@@ -71,6 +74,9 @@ def test_load_settings_reads_study_settings():
     assert settings.guild_id == 123456789012345678
     assert settings.captain_role_id == 223456789012345678
     assert settings.navigator_role_id == 323456789012345678
+    assert settings.bot_id == 623456789012345678
+    assert settings.alert_channel_id == 423456789012345678
+    assert settings.announcement_channel_id == 523456789012345678
     assert settings.api_key == "key"
 
 
@@ -78,13 +84,21 @@ def test_load_settings_study_settings_default_to_unset(caplog):
     """Blank values leave the settings unset; a non-numeric ID is logged and dropped."""
     with caplog.at_level("WARNING"):
         settings = load_settings(
-            environ={"DISCORD_GUILD_ID": "not-an-id", "DISCORD_API_KEY": "  "},
+            environ={
+                "DISCORD_GUILD_ID": "not-an-id",
+                "DISCORD_ALERT_CHANNEL_ID": "also-not-an-id",
+                "DISCORD_ANNOUNCEMENT_CHANNEL_ID": "",
+                "DISCORD_API_KEY": "  ",
+            },
             load_dotenv_file=False,
         )
 
     assert settings.guild_id is None
     assert settings.captain_role_id is None
     assert settings.navigator_role_id is None
+    assert settings.bot_id is None
+    assert settings.alert_channel_id is None
+    assert settings.announcement_channel_id is None
     assert settings.api_key is None
     assert settings.db_path == "data/discord.sqlite3"
     assert "not-an-id" in caplog.text

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
@@ -19,15 +19,23 @@ const RECRUITMENT_OPTIONS: { value: RecruitmentFilter; label: string }[] = [
   { value: 'closed', label: '종료' },
 ];
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: '전체' }, { value: 'AI&ML', label: 'AI · ML' },
-  { value: '알고리즘', label: '알고리즘' }, { value: '데이터', label: '데이터' },
-  { value: '소프트웨어 개발', label: '소프트웨어 개발' }, { value: '커리어', label: '커리어' },
-  { value: '북클럽', label: '북클럽' }, { value: '어학', label: '어학' },
-  { value: '라이프스타일', label: '라이프스타일' }, { value: '기획 · PM', label: '기획 · PM' },
-  { value: '비즈니스', label: '비즈니스' }, { value: '기타', label: '기타' },
+  { value: 'all', label: '전체' },
+  { value: 'AI&ML', label: 'AI · ML' },
+  { value: '알고리즘', label: '알고리즘' },
+  { value: '데이터', label: '데이터' },
+  { value: '소프트웨어 개발', label: '소프트웨어 개발' },
+  { value: '커리어', label: '커리어' },
+  { value: '북클럽', label: '북클럽' },
+  { value: '어학', label: '어학' },
+  { value: '라이프스타일', label: '라이프스타일' },
+  { value: '기획 · PM', label: '기획 · PM' },
+  { value: '비즈니스', label: '비즈니스' },
+  { value: '기타', label: '기타' },
 ];
 const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
-  { value: 'KST', label: 'KST' }, { value: 'PST', label: 'PST' }, { value: 'both', label: '동시 모집' },
+  { value: 'KST', label: 'KST' },
+  { value: 'PST', label: 'PST' },
+  { value: 'both', label: '동시 모집' },
 ];
 
 function statusOf(study: Study): Exclude<RecruitmentFilter, 'all'> {
@@ -93,7 +101,9 @@ function FilterSelect<T extends string>({
       className='h-9 w-fit min-w-0 rounded-lg border border-border-strong bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
     >
       {options.map((option) => (
-        <option key={option.value} value={option.value}>{option.label}</option>
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
       ))}
     </select>
   );
@@ -108,7 +118,7 @@ function FilterRow({ children, ...rest }: React.ComponentPropsWithoutRef<'div'>)
 }
 
 export function StudyBrowser({
-  studies,
+  studies: initialStudies,
   locale,
   leads,
 }: {
@@ -116,11 +126,49 @@ export function StudyBrowser({
   locale: Locale;
   leads: Record<string, Operator>;
 }) {
+  const [studies, setStudies] = useState<Study[]>(initialStudies);
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [recruitment, setRecruitment] = useState<RecruitmentFilter>('all');
   const [category, setCategory] = useState<string>('all');
   const [timezone, setTimezone] = useState<TimezoneFilter>('all');
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const syncFromMsw = () => {
+      fetch('/api/studies')
+        .then((res) => {
+          if (!res.ok) {
+            if (!isCancelled) setStudies([]);
+            return;
+          }
+          return res.json();
+        })
+        .then((page) => {
+          if (isCancelled || !page) return;
+          if (Array.isArray(page.items)) {
+            if (page.items.length === 0) {
+              setStudies([]);
+            } else {
+              const ids = new Set(page.items.map((item: { studyId: number }) => item.studyId));
+              setStudies(initialStudies.filter((s) => ids.has(s.study_id)));
+            }
+          }
+        })
+        .catch(() => {
+          if (!isCancelled) setStudies([]);
+        });
+    };
+
+    syncFromMsw();
+    window.addEventListener('msw:config-change', syncFromMsw);
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('msw:config-change', syncFromMsw);
+    };
+  }, [initialStudies]);
+
   const base = useMemo(() => {
     const q = query.trim().toLowerCase();
     return studies.filter((s) => {
@@ -155,75 +203,77 @@ export function StudyBrowser({
       */}
       <div className='mb-6 flex flex-col gap-4'>
         <div className='flex flex-wrap items-center justify-start gap-3'>
-        <div
-          data-anno='2'
-          role='tablist'
-          aria-label='모집 상태'
-          className='inline-flex w-fit shrink-0 rounded-pill bg-surface-2 p-1'
-        >
-          {RECRUITMENT_OPTIONS.map((option) => {
-            const active = recruitment === option.value;
-            return (
+          <div
+            data-anno='2'
+            role='tablist'
+            aria-label='모집 상태'
+            className='inline-flex w-fit shrink-0 rounded-pill bg-surface-2 p-1'
+          >
+            {RECRUITMENT_OPTIONS.map((option) => {
+              const active = recruitment === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type='button'
+                  role='tab'
+                  aria-selected={active}
+                  onClick={() => setRecruitment(option.value)}
+                  className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <div data-anno='3'>
+            <FilterSelect
+              value={timezone}
+              options={[{ value: 'all' as const, label: '시간대 전체' }, ...TIMEZONE_OPTIONS]}
+              onChange={setTimezone}
+            />
+          </div>
+          <div
+            data-anno='1'
+            className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 transition-[width] duration-200 sm:ml-auto sm:w-50 sm:focus-within:w-78'
+          >
+            <input
+              type='text'
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
+              placeholder={m('filter.search_studies', locale)}
+              className='h-9 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none'
+            />
+            {(input || hasQuery) && (
               <button
-                key={option.value}
                 type='button'
-                role='tab'
-                aria-selected={active}
-                onClick={() => setRecruitment(option.value)}
-                className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
+                onClick={clearSearch}
+                aria-label='검색어 지우기'
+                className='shrink-0 rounded-full p-1 text-fg-muted hover:text-fg'
               >
-                {option.label}
+                <X size={14} />
               </button>
-            );
-          })}
-        </div>
-        <div data-anno='3'>
-          <FilterSelect
-            value={timezone}
-            options={[{ value: 'all' as const, label: '시간대 전체' }, ...TIMEZONE_OPTIONS]}
-            onChange={setTimezone}
-          />
-        </div>
-        <div
-          data-anno='1'
-          className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 sm:ml-auto sm:w-[312px]'
-        >
-          <Search
-            size={15}
-            className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder'
-          />
-          <input
-            type='text'
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
-            placeholder={m('filter.search_studies', locale)}
-            className='h-9 min-w-0 flex-1 bg-transparent pl-9 pr-2 text-sm outline-none'
-          />
-          {(input || hasQuery) && (
+            )}
+            <div className='mx-1 h-5 w-px shrink-0 bg-border-strong' />
             <button
               type='button'
-              onClick={clearSearch}
-              aria-label='검색어 지우기'
-              className='shrink-0 rounded-full p-1 text-fg-muted hover:text-fg'
+              onClick={commitSearch}
+              aria-label='검색'
+              className='shrink-0 rounded-lg px-3 py-2 text-fg-secondary hover:text-fg'
             >
-              <X size={14} />
+              <Search size={16} />
             </button>
-          )}
-          <div className='mx-1 h-5 w-px shrink-0 bg-border-strong' />
-          <button
-            type='button'
-            onClick={commitSearch}
-            aria-label='검색'
-            className='shrink-0 rounded-lg px-3 py-2 text-fg-secondary hover:text-fg'
-          >
-            <Search size={16} />
-          </button>
-        </div>
+          </div>
         </div>
         <FilterRow data-anno='4'>
           {CATEGORY_OPTIONS.map((option) => (
-            <FilterOption key={option.value} active={category === option.value} onClick={() => setCategory(option.value)}>{option.label}</FilterOption>
+            <FilterOption
+              key={option.value}
+              active={category === option.value}
+              onClick={() => setCategory(option.value)}
+            >
+              {option.label}
+            </FilterOption>
           ))}
         </FilterRow>
       </div>

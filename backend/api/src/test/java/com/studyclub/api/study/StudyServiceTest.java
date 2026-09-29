@@ -258,7 +258,7 @@ class StudyServiceTest {
     void deleteStudyNotFound() {
         Account admin = mockAccount(SystemRole.ADMIN);
         when(accountRepository.findById(1L)).thenReturn(Optional.of(admin));
-        when(studyRepository.existsById(10L)).thenReturn(false);
+        when(studyRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> studyService.delete(1L, 10L))
                 .isInstanceOf(BusinessException.class)
