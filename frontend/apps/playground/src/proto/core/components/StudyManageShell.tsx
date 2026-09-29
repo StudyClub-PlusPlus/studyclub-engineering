@@ -7,9 +7,11 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { getUser } from '@core/lib/auth';
 import { t } from '@core/lib/i18n';
 import { MANAGE_ROLE_LABEL, manageAccessOf, type NavigatorGroup } from '@core/lib/meetings';
-import { studies, type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/mock';
 import { Badge, Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
+
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 /**
  * 스터디 관리 — 네비게이터가 맡은 분반을 사용자 사이트에서 굴리는 곳.
@@ -74,6 +76,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [dirty]);
 
+  const studies = useMswStudies();
   const study = studies.find((s) => s.id === id);
   const access = manageAccessOf(id);
 

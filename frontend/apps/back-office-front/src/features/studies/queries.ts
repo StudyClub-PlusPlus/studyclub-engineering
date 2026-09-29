@@ -25,9 +25,11 @@ export const studyKeys = {
 };
 
 /**
- * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 백오피스 전용 목록 API 는
- * 다른 담당자가 개발 예정이라 **사용자 사이트용 목록 API** 를 그대로 쓴다.
- * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외). 전용 API 가 생기면 이 경로만 바꾼다.
+ * ⚠️ TODO(api): GET /api/admin/studies 로 전환 필요 (PR #146 로 구현 완료).
+ * 현재는 사용자용 `/api/studies` 를 임시 사용 중 — DRAFT 스터디가 목록에 안 나온다.
+ * 전환 시 ApiStudySummary 타입도 BackofficeStudyListResponse.StudySummary 에 맞게 교체할 것:
+ * status(5단계), recruitmentCapacity, recruitmentStartAt, hasApplicationForm 필드 추가,
+ * slug·phase·currentApplicants·closingSoon 제거.
  */
 function fetchStudies(filter: StudyFilter): Promise<ApiStudyPage> {
   return http<ApiStudyPage>(
@@ -51,6 +53,7 @@ export function useStudies(filter: StudyFilter) {
 /**
  * 상세·수정·삭제는 `/api/studies/{id}` 를 그대로 쓴다. 권한은 서버가 나눈다 — 수정은 캡틴·네비게이터,
  * 삭제는 캡틴만. 같은 로직을 `/api/admin` 에 한 벌 더 두지 않는다.
+ * TODO(api): GET /api/studies/{studyId}
  */
 export function useStudyDetail(studyId: number) {
   return useQuery({
@@ -62,6 +65,7 @@ export function useStudyDetail(studyId: number) {
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+/** TODO(api): PATCH /api/studies/{studyId} */
 export function useUpdateStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -76,6 +80,7 @@ export function useUpdateStudy(studyId: number) {
   });
 }
 
+/** TODO(api): DELETE /api/studies/{studyId} */
 export function useDeleteStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
