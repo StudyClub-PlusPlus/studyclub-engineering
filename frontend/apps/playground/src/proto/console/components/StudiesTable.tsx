@@ -8,10 +8,10 @@ import { LifecycleBadge } from '@console/components/LifecycleBadge';
 import { Pagination } from '@console/components/Pagination';
 import { KIND_LABEL, TIMEZONE_LABEL } from '@console/components/StudyForm';
 import { tx } from '@console/lib/l10n';
+import { studyAuthor } from '@console/lib/users';
 import {
   STUDY_CATEGORIES,
   applyFormUrl,
-  attendanceRate,
   categoriesOf,
   getStudyCrew,
   lifecycleState,
@@ -138,14 +138,8 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
 
 /** 목록에 필요한 만큼만 뽑는다 — 어느 스터디를 열어야 하는지 고르기 위한 숫자. */
 function summarize(study: Study) {
-  const { crew, capacity, attendance } = getStudyCrew(study);
-  const active = crew.filter((c) => c.status === 'active');
-  const rows = active.map((c) => attendanceRate(attendance[c.id])).filter((r): r is number => r !== undefined);
-  return {
-    capacity,
-    active: active.length,
-    rate: rows.length === 0 ? undefined : Math.round(rows.reduce((a, b) => a + b, 0) / rows.length),
-  };
+  const { crew, capacity } = getStudyCrew(study);
+  return { capacity, active: crew.filter((c) => c.status === 'active').length };
 }
 
 /** 화면에서 바꾼 공개 상태. TODO(api): 저장 API 를 붙이면 서버 값으로 대체한다. */
@@ -167,9 +161,9 @@ type ColumnKey =
   | 'recruit'
   | 'crew'
   | 'startAt'
-  | 'rate'
   | 'form'
-  | 'publish';
+  | 'publish'
+  | 'author';
 
 type Row = { s: Study; open: boolean; crewStat: ReturnType<typeof summarize> };
 
@@ -255,13 +249,6 @@ const COLUMNS: Column[] = [
     render: ({ s }) => toISODate(s.startAt) ?? <span className='text-fg-muted'>미정</span>,
   },
   {
-    key: 'rate',
-    label: '출석률',
-    cellClass: 'tnum whitespace-nowrap text-xs font-semibold text-fg-secondary',
-    render: ({ crewStat }) =>
-      crewStat.rate === undefined ? <span className='text-fg-muted'>—</span> : `${crewStat.rate}%`,
-  },
-  {
     key: 'form',
     label: '신청 폼',
     cellClass: 'whitespace-nowrap text-xs',
@@ -280,6 +267,13 @@ const COLUMNS: Column[] = [
         onToggle={(next) => requestPublish(s, next)}
       />
     ),
+  },
+  {
+    key: 'author',
+    label: '작성자',
+    cellClass: 'whitespace-nowrap text-xs text-fg-secondary',
+    anno: 'list:10',
+    render: ({ s }) => studyAuthor(s).name,
   },
 ];
 
@@ -301,9 +295,9 @@ const SORT_VALUE: Record<SortKey, (s: Study) => string | number | undefined> = {
   recruit: (s) => (recruitState(s) === 'apply' ? 0 : 1),
   crew: (s) => summarize(s).active,
   startAt: (s) => toISODate(s.startAt),
-  rate: (s) => summarize(s).rate,
   form: (s) => (applyFormUrl(s) ? 1 : 0),
   publish: (s) => (publishState(s) === 'live' ? 1 : 0),
+  author: (s) => studyAuthor(s).name,
 };
 
 function compareBy(sort: NonNullable<SortState>, a: Study, b: Study): number {

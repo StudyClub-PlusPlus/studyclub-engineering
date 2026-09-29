@@ -20,3 +20,4 @@ API 계약은 [`specs/`](../specs/README.md) 의 `spec.md`.
 | 크루로서, 스터디 신청 폼을 제출할 수 있다 | [crew-submit-application](./stories/crew-submit-application/PRD.md) |
 | 캡틴으로서, 스터디 신청서 결과를 모아볼 수 있다 | [captain-application-results](./stories/captain-application-results/PRD.md) |
 | 크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다 | [crew-joined-studies](./stories/crew-joined-studies/PRD.md) |
+| 캡틴으로서, 운영 콘솔에서 스터디 목록을 훑어보고 손댈 스터디를 찾을 수 있다 | [captain-manage-study-list](./stories/captain-manage-study-list/PRD.md) |
