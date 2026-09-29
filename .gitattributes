@@ -2,3 +2,6 @@
 gradlew text eol=lf
 *.sh text eol=lf
 *.bat text eol=crlf
+
+# JAR 바이너리 파일은 줄바꿈 변환 없이 그대로 유지한다.
+*.jar binary
