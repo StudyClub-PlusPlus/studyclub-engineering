@@ -1,64 +1,25 @@
-import type { ApplicationQuestion, MemberRegion, Study } from "./index";
+import type {
+  ApplicationQuestion,
+  AttendanceStatus,
+  Crew,
+  CrewStatus,
+  DemoCrewRelation,
+  MemberRegion,
+  Study,
+  StudyCrewData,
+  StudyMeeting,
+} from "../types";
+import { attendancePoint, attendanceRate, LATE_WEIGHT } from "../utils";
 
-/**
- * 크루(참여자)·회차·출석 mock.
- *
- * 실제 데이터는 백엔드에 없으므로 **스터디 id 로부터 결정적으로 생성**한다. 난수를 쓰면 서버 렌더와
- * 클라이언트 렌더 결과가 달라지고, 새로고침마다 명단이 바뀌어 화면을 판단할 수 없다.
- *
- * TODO(api): GET /api/studies/{id}/crew · /meetings · /attendance
- */
-
-/** 출석 상태. 값이 없으면 미체크. */
-export type AttendanceStatus = "present" | "late" | "absent" | "excused";
-
-/**
- * 크루 상태.
- * - pending  : 승인 대기
- * - active   : 승인됨 — 출석부에 오른다
- * - waitlist : 정원이 차서 대기
- * - rejected : 거절
- */
-export type CrewStatus = "pending" | "active" | "waitlist" | "rejected";
-
-export type Crew = {
-  id: string;
-  name: string;
-  email: string;
-  region: MemberRegion;
-  status: CrewStatus;
-  appliedAt: string;
-  /** 지난 스터디 참여 횟수 */
-  pastStudies: number;
-  /** 지난 스터디 완주율(%). 참여 이력이 없으면 undefined — 0% 로 표기하면 성실하지 않은 사람으로 오독된다. */
-  completionRate?: number;
-  /** 일정 미정 스터디에서 고른 가능 시간 */
-  cells?: string[];
-  motivation?: string;
-  /** 신청 폼 추가 질문(`Study.applicationForm`)에 대한 답변. questionId → 답. 체크박스는 배열. */
-  answers?: Record<string, string | string[]>;
-  /**
-   * 신청 시 받은 디스코드 서버 별명. 모든 신청서에 항상 있는 기본 질문의 답이라, 신청
-   * 결과 화면에서는 계정 실명 대신 이걸로 응답자를 가리킨다 (`ApplicationFormTab` 참고).
-   */
-  discordNickname: string;
+export type {
+  AttendanceStatus,
+  CrewStatus,
+  Crew,
+  StudyMeeting,
+  StudyCrewData,
+  DemoCrewRelation,
 };
-
-/** 회차. ERD `STUDY_MEETING`. 영어는 meeting (로그인 SESSION과 구분). */
-export type StudyMeeting = {
-  id: string;
-  no: number;
-  /** 예정일 (ERD STUDY_MEETING.SCHEDULED_AT 의 날짜). 실제 시작·종료는 반장이 열 때. */
-  date: string; // yyyy-mm-dd
-};
-
-export type StudyCrewData = {
-  capacity: number;
-  crew: Crew[];
-  meetings: StudyMeeting[];
-  /** crewId → meetingId → 상태. 값이 없으면 아직 체크하지 않은 것. */
-  attendance: Record<string, Record<string, AttendanceStatus>>;
-};
+export { LATE_WEIGHT, attendancePoint, attendanceRate };
 
 const CLEAN_NAMES = [
   "지원", "민서", "도윤", "서연", "하준", "예린", "시우", "수아", "지호", "채원",
@@ -124,7 +85,7 @@ function answersFor(questions: ApplicationQuestion[], seed: number): Record<stri
       return;
     }
     // checkbox — 최소 1개, 옵션마다 절반 확률로 포함. 전부 빠지면 하나는 채운다.
-    const chosen = options.filter((_, i) => pick(s + i * 31, 2) === 0);
+    const chosen = options.filter((_: string, i: number) => pick(s + i * 31, 2) === 0);
     answers[q.id] = chosen.length ? chosen : [options[pick(s, options.length)]];
   });
   return answers;
@@ -193,14 +154,7 @@ function addWeeks(iso: string, weeks: number): string {
   return addDays(iso, weeks * 7);
 }
 
-/**
- * 프로토 크루 화면의 나와의 관계. `joined.ts` lifeStatus 와 같은 스터디 id 를 쓴다.
- * - upcoming  : 시작전 — 회차는 전부 미래, 출석 칸은 비움
- * - active    : 참여중 — 지난 회차만 채움
- * - completed : 완주 — 회차는 전부 과거, 칸을 다 채움
- * - left      : 참여 중단 — 지난 회차만 채움, 완주 아님
- */
-export type DemoCrewRelation = "upcoming" | "active" | "completed" | "left";
+
 
 const LEFT_EARLY_IDS = new Set(["renaissance-club", "system-design-interview-ongoing"]);
 const FORCE_ACTIVE_IDS = new Set(["ai-paper-study"]);
@@ -377,30 +331,7 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
   return { capacity, crew, meetings, attendance };
 }
 
-/** 지각 가중치. 출석률 = (present + late × W) / 대상 회차. */
-export const LATE_WEIGHT = 0.5;
 
-/**
- * 출석률 분자에 넣는 점수. 출석 = 1, 지각 = W, 결석 = 0. 휴가는 분모에서 뺀다.
- */
-export function attendancePoint(status: AttendanceStatus): number {
-  if (status === "present") return 1;
-  if (status === "late") return LATE_WEIGHT;
-  return 0;
-}
-
-/**
- * 출석률(%).
- * - 분모: 대상 회차 — 휴가 제외. 아직 시작하지 않은 회차(키 없음)는 넣지 않는다
- * - 분자: present + late × W. W = 0.5
- */
-export function attendanceRate(row: Record<string, AttendanceStatus> | undefined): number | undefined {
-  if (!row) return undefined;
-  const target = Object.values(row).filter((v) => v !== "excused");
-  if (target.length === 0) return undefined;
-  const score = target.reduce((sum, v) => sum + attendancePoint(v), 0);
-  return Math.round((score / target.length) * 100);
-}
 
 /**
  * 인기 스터디 여부.

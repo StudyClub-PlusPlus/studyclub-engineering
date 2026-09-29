@@ -10,6 +10,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:core-front": "pnpm --filter core-front run dev",
+    "dev:back-office-front": "pnpm --filter back-office-front run dev",
+    "dev:playground": "pnpm --filter playground run dev",
     "lint": "turbo run lint"
   },
   "devDependencies": {
