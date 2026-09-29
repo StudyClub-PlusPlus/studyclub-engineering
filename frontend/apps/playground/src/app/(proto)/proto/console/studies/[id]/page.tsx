@@ -6,7 +6,7 @@ import { studies } from '@studyclub/mock';
 import { SPECS } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
-// 경로 값은 study_id(STUDY.ID) — 사용자 사이트 상세와 같은 키. 슬러그는 URL 에 쓰지 않는다.
+// 경로 값은 study_id(STUDY.ID) — 사용자 사이트 상세와 같은 키. 내부 키(`id`)는 URL 에 쓰지 않는다.
 export function generateStaticParams() {
   return studies.map((s) => ({ id: String(s.study_id) }));
 }

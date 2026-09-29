@@ -74,7 +74,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [dirty]);
 
-  // 주소 값은 study_id(STUDY.ID) 다. 역할 판정은 내부 키(슬러그)로 한다.
+  // 주소 값은 study_id(STUDY.ID) 다. 역할 판정은 내부 키(`id`)로 한다.
   const study = studies.find((s) => String(s.study_id) === id);
   const access = study ? manageAccessOf(study.id) : undefined;
 

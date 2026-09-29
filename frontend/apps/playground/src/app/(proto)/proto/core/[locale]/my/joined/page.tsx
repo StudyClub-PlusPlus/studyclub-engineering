@@ -431,7 +431,7 @@ export default function MyJoinedPage() {
       appliedOpen.current = true;
       return;
     }
-    // 주소 값은 study_id 다. 펼침 상태(openIds)는 내부 키(슬러그)로 들고 있는다.
+    // 주소 값은 study_id 다. 펼침 상태(openIds)는 내부 키(`id`)로 들고 있는다.
     const study = mine.find((s) => String(s.study_id) === open);
     if (!study) {
       appliedOpen.current = true;

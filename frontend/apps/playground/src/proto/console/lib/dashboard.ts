@@ -33,7 +33,7 @@ export const BOARD_PREVIEW = 4;
 
 export type BoardStudy = {
   id: string;
-  /** 상세 링크 키 (STUDY.ID). 슬러그(id)는 URL 에 쓰지 않는다. */
+  /** 상세 링크 키 (STUDY.ID). 내부 키(id)는 URL 에 쓰지 않는다. */
   study_id: number;
   title: string;
   /** 모집중 — 모집 마감일. 상시 모집은 없다 — 옛 데이터만 undefined */
