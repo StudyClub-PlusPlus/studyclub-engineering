@@ -331,18 +331,27 @@ MySQL 데이터소스에는 **읽기 전용 계정**만 준다.
 #### 설계에서 정한 것
 
 **내장 `discord` 타입을 쓰지 않고 `webhook` 을 직접 붙였다.** Grafana 에 Discord 전용 contact
-point 가 있긴 하다. 다만 설정이 **채널 webhook URL 하나뿐**이다 — `url` 이 유일한 필수 필드이고
-(`errors.New("could not find webhook url property in settings")`), 봇 토큰을 넣을 자리가 없다.
+point 가 있긴 하다. 쓰지 않은 이유는 **메시지를 우리가 고칠 수 없어서**다. 내장 타입은 Grafana
+기본 템플릿(`default.title` · `default.message`)을 그대로 렌더해 라벨과 주석을 전부 나열한다
+(본문 625자). 값의 단위도, 색도, 작성자 이름도 손댈 자리가 없다.
 
-그 URL 은 채널마다 따로 만들어야 하고, **URL 자체가 인증**이라 유출되면 누구나 그 채널에 글을
-쓸 수 있다. 반면 봇은 이미 길드에 들어가 있고 권한을 역할로 회수할 수 있다. 그래서 `webhook`
-타입을 Discord REST API(`POST /channels/{id}/messages`)에 직접 붙이고 `Authorization: Bot <token>`
-으로 인증한다.
+`webhook` 타입은 `payload.template` 로 바디를 직접 쓸 수 있다(Grafana 11.1+). 그러려면 Discord
+REST API(`POST /channels/{id}/messages`)로 가야 하고, 그건 봇 토큰을 요구한다. 내장 타입은 설정이
+**채널 webhook URL 하나뿐**이라(`url` 이 유일한 필수 필드,
+`errors.New("could not find webhook url property in settings")`) 토큰을 넣을 자리가 없다.
+
+부수 효과로 관리 대상이 늘지 않는다 — 봇은 이미 길드에 들어가 있고 권한을 역할로 회수할 수
+있다. 채널 webhook 이면 채널마다 URL 을 만들어 따로 관리해야 한다.
 
 대가는 **바디를 직접 만들어야 하는 것**이다 — `webhook` 의 기본 바디는 Grafana 고유 JSON 이라
-Discord 가 400 으로 거절한다. `payload.template` 로 Discord 스키마를 렌더한다(Grafana 11.1+).
+Discord 가 400 으로 거절한다. `payload.template` 로 Discord 스키마를 렌더한다.
 
-> **webhook URL 을 못 만들어서가 아니다.** `캡틴 Dev` 는 길드에서 ADMINISTRATOR 라
+> **보안이 이유는 아니다.** 채널 webhook URL 이 `.../webhooks/<id>/<token>` 이라 **URL 자체가
+> 인증**인 건 맞다(실행 엔드포인트는 `Authorization` 헤더를 받지 않는다). 다만 그 URL 로는 **그
+> 채널에만** 글을 쓸 수 있고, 봇 토큰은 길드 전체 권한이다 — `캡틴 Dev` 는 ADMINISTRATOR 다.
+> 유출 시 피해 범위는 오히려 봇 쪽이 넓다.
+
+> **webhook URL 을 못 만들어서도 아니다.** `캡틴 Dev` 는 ADMINISTRATOR 라
 > `GET /channels/{id}/webhooks` 가 200 으로 통과한다(이 API 는 `MANAGE_WEBHOOKS` 없으면 403).
 > 만들 수 있었지만 안 만들기로 한 것이다.
 
@@ -620,7 +629,7 @@ Spring Boot 4.1.1 / Java 25 에서 재확인한 것: ECS 의 `log.level` 중첩 
 | 2026-09-06 | 로그 저장 계층(버퍼 2 + 아카이브 1)을 명시하고 앱 JSON 파일 상한을 `50MB×3` → `10MB×1` 로 축소. 콘솔은 INFO 유지 | 인계 버퍼에 아카이브 크기를 잡아 약 200MB 를 낭비하고 있었다 |
 | 2026-09-06 | Alloy 의 level 추출 표현식 정정 — ECS 는 level 을 `{"log":{"level":…}}` 로 nest 하므로 따옴표를 씌운 flat 키 탐색이 아니라 중첩 순회여야 한다 | 구현 중 실제 출력과 포매터 소스로 확인. 틀리면 에러 없이 레이블만 빈 값이 되어, 로그 조회가 안 잡히고서야 드러난다 |
 | 2026-09-06 | 로그 유실 함정 3건 보강 — `total-size-cap` 추가(`max-history` 는 일수라 상한이 아니었음), 롤링 압축 해제 + glob 확장, Alloy positions 볼륨 신설 | 셋 다 기본값이 위험한 쪽이고, 조용히 로그를 잃거나 중복시킨다 |
-| 2026-09-28 | 내장 `discord` contact point 대신 **`webhook` + 봇 토큰**, 설정은 파일 provisioning 대신 **Provisioning HTTP API** | 내장 타입은 채널 webhook URL 만 받아 봇 토큰을 못 넣는다. 그 URL 은 자체가 인증이라 유출되면 채널이 열린다. Grafana 는 인프라 레포 소유라 디스크에 파일을 놓을 자리도 없다 |
+| 2026-09-28 | 내장 `discord` contact point 대신 **`webhook` + 봇 토큰**, 설정은 파일 provisioning 대신 **Provisioning HTTP API** | 내장 타입은 메시지가 Grafana 기본 형식으로 고정돼 본문이 625자가 된다. 바디를 직접 쓰려면 Discord REST API 가 필요하고 그건 봇 토큰을 요구한다. Grafana 는 인프라 레포 소유라 디스크에 파일을 놓을 자리도 없다 |
 | 2026-09-28 | 알림을 **4종 → 11종**으로 확대하고 요청 관련 알림을 **uri 별**로 쪼갬. 쿼리가 사람이 읽는 단위를 뱉게 변경 | 수집 중인 지표 142개를 훑어 "놓치면 조용히 죽는" 것들을 골랐다. 전체 집계는 느린 엔드포인트를 희석시키고, 메시지에서만 환산하면 Grafana 화면과 값이 어긋난다 |
 | 2026-09-29 | ERROR 로그 트리거를 **Prometheus → Loki** 로 전환하고 **로그 수집 중단** 규칙 신설 | 알림 건수와 링크로 열어 볼 로그 건수가 어긋나지 않는다. 대신 수집이 끊기면 그 알림까지 조용해지므로 그 침묵을 따로 감시한다 |
 | 2026-09-29 | **알림 메시지 서식 확정** — 주석 4개(summary·description·metric·unit), critical 발화에만 멘션, 해소는 카드 없이 한 줄 | 받는 사람이 "무슨 일인지, 뭘 볼지" 를 한눈에 읽어야 한다. 설계 근거는 알림이 아니라 이 스펙에 쓴다 |
