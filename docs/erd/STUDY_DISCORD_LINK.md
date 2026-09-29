@@ -16,7 +16,7 @@
 snowflake 는 **문자열**이다 (`^[0-9]{17,20}$`). `BIGINT` 로 받으면 프론트·봇의 JS 정밀도에서 깨진다.
 
 ## 관계
-- 1 : 0..1 [STUDY](./STUDY.md) — 디스코드를 아직 연결하지 않은 스터디가 정상이다 (행을 만드는 Notion 110 이 미구현)
+- 1 : 0..1 [STUDY](./STUDY.md) — 디스코드를 아직 연결하지 않은 스터디가 정상이다 (봇이 없거나 호출이 실패하면 연결 없이 등록된다)
 
 ## 상태
 없음. 연결/해제는 행 존재 여부.
@@ -35,6 +35,7 @@ snowflake 는 **문자열**이다 (`^[0-9]{17,20}$`). `BIGINT` 로 받으면 프
 [STUDY.DISCORD_CHANNEL_URL](./STUDY.md) 과는 역할이 다르다. 그건 사람이 누르는 링크 한 개고
 이 테이블은 API 호출용 식별자다.
 
-## 미확정
-- 행을 만드는 주체 — 스터디 등록(Notion 110)이 봇의 `create-study` 를 호출하고 응답을 저장하는
-  흐름인데, 그 API 가 아직 없다. 현재는 조회만 쓴다.
+## 행을 만드는 주체
+스터디 등록(`POST /api/studies`)이 커밋된 뒤 봇의 `create-study` 를 부르고 응답을 저장한다.
+실패하면 `POST /api/admin/studies/{studyId}/discord-link` 로 다시 붙인다. 스터디를 삭제하면 행도 지운다.
+→ [specs/discord-study-link/spec.md](../../specs/discord-study-link/spec.md)
