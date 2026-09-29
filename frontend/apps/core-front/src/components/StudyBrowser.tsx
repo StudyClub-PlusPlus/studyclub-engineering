@@ -169,6 +169,7 @@ export function StudyBrowser({
           </div>
           <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 transition-[width] duration-200 sm:ml-auto sm:w-[200px] sm:focus-within:w-[312px]'>
             <input
+              role='searchbox'
               type='text'
               value={input}
               onChange={(e) => setInput(e.target.value)}
