@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api.routes import health, ping, studies
+from app.api.routes import channels, health, ping, studies
 from app.config import Settings
 from app.study_reservations import StudyReservations
 
@@ -72,4 +72,7 @@ def create_app(settings: Settings, bot: commands.Bot | None = None) -> FastAPI:
     app.include_router(health.router, prefix=API_PREFIX)
     app.include_router(ping.router, prefix=API_PREFIX)
     app.include_router(studies.router, prefix=API_PREFIX)
+    # Fixed channel paths are registered before any dynamic /channels/{id} route,
+    # so "alert" and "announcement" are never matched as channel IDs.
+    app.include_router(channels.router, prefix=API_PREFIX)
     return app

@@ -4,7 +4,9 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 호출자는 백엔드(Spring) 같은 내부 서비스다 — 브라우저에서 직접 부르지 않는다.
 
 > ⚠️ **일부만 구현됐다.** 헤더 검사는 `discord/app/api/headers.py` 의 FastAPI 의존성이고, 지금은
-> `POST /api/v1/studies` · `GET /api/v1/studies/{discordStudyId}/channels` 에만 걸려 있다. `health` · `ping` 은 여전히 인증 없이 열려 있고,
+> `POST /api/v1/studies` · `GET /api/v1/studies/{discordStudyId}/channels` ·
+> `POST /api/v1/channels/alert/msg` · `POST /api/v1/channels/announcement/msg` ·
+> `POST /api/v1/channels/{discordChannelId}/msg` 에만 걸려 있다. `health` · `ping` 은 여전히 인증 없이 열려 있고,
 > 없는 경로에 401 을 우선하는 동작도 아직 없다 (`discord/README.md` 참고).
 
 ## Table of Contents
@@ -13,6 +15,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 - [Content-Type](#content-type)
 - [X-API-Key](#x-api-key)
 - [X-Discord-User-ID](#x-discord-user-id)
+  - [시스템 호출](#시스템-호출)
 - [Idempotency-Key](#idempotency-key)
 - [요청 예시](#요청-예시)
 
@@ -58,7 +61,8 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 즉 **인증은 `X-API-Key`, 길드 내 인가는 `X-Discord-User-ID` 로 봇이** 한다. 이 헤더 자체는
 호출자가 주장하는 값이라 인증 수단이 아니다 — 신뢰 경계는 `X-API-Key` 가 긋는다.
 
-- 길드 내 자격 검사가 필요한 요청에는 필수. 시스템·스케줄러 발 요청은 생략한다.
+- 길드 내 자격 검사가 필요한 요청에는 **항상 필수**다. 사람이 시킨 요청이 아니어도 생략하지 않는다 —
+  [시스템 호출](#시스템-호출) 참고.
 - **엔드포인트 경계에서 snowflake 는 항상 문자열이다** — 요청 헤더도, 응답 바디에 실어 보낼 때도.
   64비트라 JS `number` 로 담으면 정밀도가 깨진다 (2^53 초과).
 - 숫자가 아니면 **400**, 필요한데 없으면 **400**. 검증은 `^[0-9]{17,20}$` 로 한다 —
@@ -71,6 +75,27 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 - 그 유저가 길드에 없으면 **404**, 있지만 자격이 없으면 **403**
   (봇이 채널을 못 찾을 때 404 를 쓰는 `POST /api/v1/ping` 과 같은 결).
 - **넘기는 건 이 ID 까지다** — 이름·이메일 같은 개인정보는 헤더로도 로그로도 넘기지 않는다.
+
+### 시스템 호출
+
+백엔드가 **사람 대신 자기 이름으로** 부르는 요청이 있다. 예를 들어 navigator 가 스터디를 완료 처리하면
+그 알림은 navigator 가 직접 올리는 게 아니라 **백엔드가** [`send-alert-message`](send-alert-message.md)
+로 올린다.
+
+이때 백엔드는 `X-Discord-User-ID` 에 **봇 자신의 유저 ID** 를 싣는다. 환경변수 `DISCORD_BOT_ID` 이고,
+백엔드와 Discord 서비스가 같은 값을 읽는다.
+
+- 이 ID 로 온 요청은 **멤버 조회도 역할 검사도 하지 않는다.** 봇은 역할을 가질 멤버가 아니고,
+  호출자가 백엔드라는 건 `X-API-Key` 가 이미 보장했다. 신뢰 경계는 그대로 `X-API-Key` 다.
+- **아무 엔드포인트나 되는 건 아니다.** 시스템 호출을 받는 곳은
+  [`send-alert-message`](send-alert-message.md#요청) 와
+  [`get-study-channels`](get-study-channels.md#요청) 둘뿐이다. 나머지는 봇 ID 로 불러도 **403** 이다 —
+  스터디 생성이나 공지처럼 사람이 책임질 액션은 captain 이 부른다.
+- **`DISCORD_BOT_ID` 가 비어 있으면 시스템 호출은 없다.** 봇 ID 로 와도 평범한 멤버처럼 역할을 따지므로,
+  설정이 비었다고 문이 열리지 않는다 (`DISCORD_API_KEY` 와 같은 결).
+
+> **넘어가는 건 로그와 발신자 줄이다.** alert 채널에는 `발신: <@봇 ID>` 가 찍혀 봇 이름으로 보인다 —
+> 사람이 올린 것과 구분된다.
 
 > **나중에:** Discord 로그인 연동과 StudyClub++ 계정 ↔ Discord 유저 ID 매핑은 추후 추가한다.
 > 현재 [`ACCOUNT_IDENTITY`](../../erd/ACCOUNT_IDENTITY.md) 의 `ISSUER` 는 `GOOGLE` / `APPLE`

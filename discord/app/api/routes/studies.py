@@ -13,6 +13,7 @@ import discord
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.api.guild import caller_guild
 from app.api.headers import discord_user_id, idempotency_key, require_api_key
 
 logger = logging.getLogger(__name__)
@@ -49,38 +50,7 @@ async def create_study(
     Everything that can be checked is checked before the name is reserved, and
     the name is reserved before anything is sent to Discord.
     """
-    bot = request.app.state.bot
-    if bot is None:
-        raise HTTPException(status_code=503, detail="discord bot is disabled: no DISCORD_TOKEN set")
-    if not bot.is_ready():
-        raise HTTPException(status_code=503, detail="discord bot is not connected yet")
-
-    settings = request.app.state.settings
-    if settings.guild_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_GUILD_ID configured")
-    if settings.captain_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_CAPTAIN_ROLE_ID configured")
-
-    guild = bot.get_guild(settings.guild_id)
-    if guild is None:
-        raise HTTPException(status_code=404, detail=f"guild {settings.guild_id} not found by the bot")
-
-    try:
-        member = await guild.fetch_member(user_id)
-    except discord.NotFound as exc:
-        raise HTTPException(
-            status_code=404, detail=f"user {user_id} is not a member of the guild"
-        ) from exc
-    except discord.HTTPException as exc:
-        raise HTTPException(status_code=502, detail=f"discord rejected the member lookup: {exc}") from exc
-
-    captain_role = guild.get_role(settings.captain_role_id)
-    if captain_role is None:
-        raise HTTPException(
-            status_code=404, detail=f"captain role {settings.captain_role_id} not found in the guild"
-        )
-    if member.get_role(captain_role.id) is None:
-        raise HTTPException(status_code=403, detail=f"user {user_id} does not have the captain role")
+    guild = await caller_guild(request, user_id, allow_navigator=False, allow_system=False)
 
     # guild.categories is sorted by position, so a duplicated name resolves to the topmost.
     anchor_name = request.app.state.new_study_anchor_name
@@ -162,51 +132,7 @@ async def get_study_channels(
     user_id: int = Depends(discord_user_id),
 ) -> list[dict]:
     """List the text and voice channels the bot can see under the study's category."""
-    bot = request.app.state.bot
-    if bot is None:
-        raise HTTPException(status_code=503, detail="discord bot is disabled: no DISCORD_TOKEN set")
-    # Before ready the cache is empty, and an empty list would pass as a success.
-    if not bot.is_ready():
-        raise HTTPException(status_code=503, detail="discord bot is not connected yet")
-
-    settings = request.app.state.settings
-    if settings.guild_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_GUILD_ID configured")
-    if settings.captain_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_CAPTAIN_ROLE_ID configured")
-    if settings.navigator_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_NAVIGATOR_ROLE_ID configured")
-
-    guild = bot.get_guild(settings.guild_id)
-    if guild is None:
-        raise HTTPException(status_code=404, detail=f"guild {settings.guild_id} not found by the bot")
-
-    try:
-        member = await guild.fetch_member(user_id)
-    except discord.NotFound as exc:
-        raise HTTPException(
-            status_code=404, detail=f"user {user_id} is not a member of the guild"
-        ) from exc
-    except discord.HTTPException as exc:
-        raise HTTPException(status_code=502, detail=f"discord rejected the member lookup: {exc}") from exc
-
-    # Both roles must exist even when the member has the other one, so a broken
-    # configuration is never half-checked.
-    captain_role = guild.get_role(settings.captain_role_id)
-    if captain_role is None:
-        raise HTTPException(
-            status_code=404, detail=f"captain role {settings.captain_role_id} not found in the guild"
-        )
-    navigator_role = guild.get_role(settings.navigator_role_id)
-    if navigator_role is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"navigator role {settings.navigator_role_id} not found in the guild",
-        )
-    if member.get_role(captain_role.id) is None and member.get_role(navigator_role.id) is None:
-        raise HTTPException(
-            status_code=403, detail=f"user {user_id} has neither the captain nor the navigator role"
-        )
+    guild = await caller_guild(request, user_id, allow_navigator=True, allow_system=True)
 
     channel = guild.get_channel(int(discordStudyId))
     if channel is None or not channel.permissions_for(guild.me).view_channel:
