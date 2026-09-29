@@ -164,12 +164,11 @@ STUDY_ATTENDANCE {
   분모 = 0이면 null ("–")
   else Σ(가중치) / countable_meetings
 
-가중치: PRESENT=1.0, LATE=0.5, ABSENT=0
+가중치: PRESENT=1.0, EXCUSED=1.0, LATE=0.5, ABSENT=0
 countable_meetings = 스터디의 미팅 중
   scheduled_at <= now()
   AND scheduled_at >= participant.joined_at
   AND participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED')
-  AND 해당 미팅의 STUDY_ATTENDANCE.status != 'EXCUSED'   // 분모에서도 제외
 
 스터디 평균 = 분모 0인 참가자는 제외하고 Σ(개인 분자) / Σ(개인 분모)   // 가중평균
 ```

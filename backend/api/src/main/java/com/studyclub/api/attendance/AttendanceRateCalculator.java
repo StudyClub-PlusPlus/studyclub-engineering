@@ -37,10 +37,10 @@ class AttendanceRateCalculator {
             if (meeting.getScheduledAt().isAfter(now)) continue;
             if (meeting.getScheduledAt().isBefore(participant.getJoinedAt())) continue;
             StudyAttendance att = attByMeetingId.get(meeting.getId());
-            if (att != null && att.getStatus() == AttendanceStatus.EXCUSED) continue;
             denominator++;
             if (att != null) {
-                if (att.getStatus() == AttendanceStatus.PRESENT) {
+                if (att.getStatus() == AttendanceStatus.PRESENT
+                        || att.getStatus() == AttendanceStatus.EXCUSED) {
                     numerator += 1.0;
                 } else if (att.getStatus() == AttendanceStatus.LATE) {
                     numerator += LATE_WEIGHT;
