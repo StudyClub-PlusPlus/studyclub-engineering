@@ -305,7 +305,8 @@ MySQL 데이터소스에는 **읽기 전용 계정**만 준다.
 ### 알림 (Grafana Unified Alerting → Discord 봇)
 
 > **PUBLIC 레포라 환경값을 적지 않는다.** Grafana 주소 · Org id · 데이터소스 uid · 채널 id 는
-> **Notion 이슈 144** 에 있다. 규칙을 추가하는 절차는
+> Notion 「인프라 문서 → 알림 시스템 — 구조와 사용법」 의 「환경값」 표에 있다.
+> 규칙을 추가하는 절차는
 > [`docs/observability/adding-alerts.md`](../../docs/observability/adding-alerts.md).
 
 **설정은 이 레포가 아니라 Grafana 안에 있다.** 파일 provisioning 을 쓸 수 없어서다 — Grafana 는
