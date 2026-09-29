@@ -28,6 +28,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** 봇을 언제 부르고 언제 안 부르는지. HTTP 표면은 {@link StudyDiscordLinkIntegrationTest} 가 본다. */
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +46,7 @@ class StudyDiscordLinkServiceTest {
     @Mock StudyRepository studyRepository;
     @Mock AccountRepository accountRepository;
     @Mock StudyCaptainGuard studyCaptainGuard;
+    @Mock TransactionTemplate transactionTemplate;
 
     @InjectMocks StudyDiscordLinkService service;
 
@@ -117,6 +120,7 @@ class StudyDiscordLinkServiceTest {
         givenStudy("알고리즘 스터디");
         givenAccount(DISCORD_USER_ID);
         when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
+        givenStudyStillExists(true);
 
         service.link(ADMIN_ID, STUDY_ID, null);
 
@@ -137,10 +141,34 @@ class StudyDiscordLinkServiceTest {
         givenStudy("알고리즘 스터디");
         givenAccount(DISCORD_USER_ID);
         when(discordBotClient.createStudy("알고리즘 스터디 2기", DISCORD_USER_ID)).thenReturn(CREATED);
+        givenStudyStillExists(true);
 
         service.link(ADMIN_ID, STUDY_ID, "  알고리즘 스터디 2기 ");
 
         verify(discordBotClient).createStudy("알고리즘 스터디 2기", DISCORD_USER_ID);
+    }
+
+    @Test
+    @DisplayName("봇을_기다리는_사이_스터디가_삭제되면_연결을_만들지_않는다")
+    void 봇을_기다리는_사이_스터디가_삭제되면_연결을_만들지_않는다() {
+        givenStudy("알고리즘 스터디");
+        givenAccount(DISCORD_USER_ID);
+        when(discordBotClient.createStudy("알고리즘 스터디", DISCORD_USER_ID)).thenReturn(CREATED);
+        givenStudyStillExists(false);
+
+        assertThatThrownBy(() -> service.link(ADMIN_ID, STUDY_ID, null))
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.NOT_FOUND);
+        verify(studyDiscordLinkRepository, never()).save(any());
+    }
+
+    /** 저장 직전 잠금 재확인. 트랜잭션 템플릿은 콜백을 그대로 실행한다. */
+    private void givenStudyStillExists(boolean exists) {
+        when(transactionTemplate.execute(any()))
+                .thenAnswer(
+                        inv -> inv.<TransactionCallback<?>>getArgument(0).doInTransaction(null));
+        when(studyRepository.findByIdForUpdate(STUDY_ID))
+                .thenReturn(exists ? Optional.of(mock(Study.class)) : Optional.empty());
     }
 
     private void givenStudy(String title) {

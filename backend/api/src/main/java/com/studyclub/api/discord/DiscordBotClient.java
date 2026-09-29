@@ -76,7 +76,14 @@ public class DiscordBotClient {
                             .retrieve()
                             .body(CreatedStudy.class);
         } catch (HttpClientErrorException.Conflict e) {
-            log.warn("create-study {}: 봇 409 {}", idempotencyKey, e.getResponseBodyAsString());
+            String detail = e.getResponseBodyAsString();
+            log.warn("create-study {}: 봇 409 {}", idempotencyKey, detail);
+            // 봇의 409 는 이름 중복만이 아니다 — 길드·captain 역할 설정이 없어도 409 다 (detail 로 구분, create-study.md).
+            // 설정 문제에 "이름을 바꾸라" 고 안내하면 고칠 수 없는 걸 고치라는 말이 된다
+            if (!detail.contains("with this name")) {
+                throw new BusinessException(
+                        ErrorCode.EXTERNAL_SERVICE_ERROR, "디스코드 봇 설정 문제로 스터디를 만들지 못했습니다 (409).");
+            }
             throw new BusinessException(
                     ErrorCode.CONFLICT, "디스코드에 같은 이름의 스터디가 이미 있습니다. studyName 을 바꿔 다시 요청하세요.");
         } catch (RestClientResponseException e) {
@@ -92,6 +99,12 @@ public class DiscordBotClient {
         } catch (RestClientException e) {
             log.warn("create-study {}: 봇 호출 실패 {}", idempotencyKey, e.getMessage());
             throw new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR, "디스코드 봇과 통신하지 못했습니다.");
+        } catch (IllegalArgumentException e) {
+            // 헤더 값이 잘못되면(키 끝의 개행 등) JDK 가 값을 통째로 메시지에 실어 던진다. 메시지를 버려야 키가 로그에 남지 않는다
+            log.warn("create-study {}: 요청을 만들지 못했다 ({})", idempotencyKey, e.getClass().getName());
+            throw new BusinessException(
+                    ErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "디스코드 봇 요청을 만들지 못했습니다 (DISCORD_API_KEY 형식 확인).");
         }
 
         if (created == null

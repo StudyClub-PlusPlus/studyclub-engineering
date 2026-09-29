@@ -11,6 +11,7 @@ import com.studyclub.domain.study.StudyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 봇 create-study 를 불러 STUDY_DISCORD_LINK 를 만든다 (specs/discord-study-link/spec.md).
@@ -28,18 +29,21 @@ public class StudyDiscordLinkService {
     private final StudyRepository studyRepository;
     private final AccountRepository accountRepository;
     private final StudyCaptainGuard studyCaptainGuard;
+    private final TransactionTemplate transactionTemplate;
 
     public StudyDiscordLinkService(
             DiscordBotClient discordBotClient,
             StudyDiscordLinkRepository studyDiscordLinkRepository,
             StudyRepository studyRepository,
             AccountRepository accountRepository,
-            StudyCaptainGuard studyCaptainGuard) {
+            StudyCaptainGuard studyCaptainGuard,
+            TransactionTemplate transactionTemplate) {
         this.discordBotClient = discordBotClient;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
         this.studyRepository = studyRepository;
         this.accountRepository = accountRepository;
         this.studyCaptainGuard = studyCaptainGuard;
+        this.transactionTemplate = transactionTemplate;
     }
 
     /**
@@ -53,12 +57,19 @@ public class StudyDiscordLinkService {
         }
         try {
             link(accountId, studyId, null);
-        } catch (RuntimeException e) {
+        } catch (BusinessException e) {
             log.warn(
                     "스터디 {} 디스코드 연결 실패, POST /api/admin/studies/{}/discord-link 로 다시 붙인다: {}",
                     studyId,
                     studyId,
                     e.getMessage());
+        } catch (RuntimeException e) {
+            // 메시지는 남기지 않는다 — HTTP 클라이언트 예외 메시지에 헤더 값(API 키)이 실릴 수 있다
+            log.warn(
+                    "스터디 {} 디스코드 연결 실패 ({}), POST /api/admin/studies/{}/discord-link 로 다시 붙인다",
+                    studyId,
+                    e.getClass().getName(),
+                    studyId);
         }
     }
 
@@ -88,11 +99,7 @@ public class StudyDiscordLinkService {
         DiscordBotClient.CreatedStudy created = discordBotClient.createStudy(name, discordUserId);
 
         try {
-            // ponytail: 두 재시도가 동시에 다른 이름으로 들어오면 둘 다 봇을 통과하고 하나는 여기서 UNIQUE 에 막힌다.
-            // 드물어서 잠그지 않는다 — 막힌 쪽 ID 는 아래 로그로 손으로 정리한다
-            studyDiscordLinkRepository.save(
-                    new StudyDiscordLink(
-                            studyId, created.discordStudyId(), created.discordRoleId()));
+            saveLink(studyId, created);
         } catch (RuntimeException e) {
             log.error(
                     "스터디 {} 디스코드는 만들어졌는데 연결 저장 실패, 손으로 붙이거나 정리: category {}, role {}",
@@ -108,5 +115,26 @@ public class StudyDiscordLinkService {
                 created.discordStudyId(),
                 created.discordRoleId());
         return new StudyDiscordLinkResponse(created.discordStudyId(), created.discordRoleId());
+    }
+
+    /**
+     * 봇을 기다리는 동안 스터디가 지워졌거나 다른 요청이 먼저 연결했을 수 있다. 스터디 행을 잠그고 다시 확인한 뒤 저장한다 — 삭제({@code
+     * StudyService.delete})도 같은 행을 먼저 잠그므로 둘이 엇갈리지 않는다. 트랜잭션은 이 저장만 감싸고 봇 호출은 밖에 둔다.
+     */
+    private void saveLink(Long studyId, DiscordBotClient.CreatedStudy created) {
+        transactionTemplate.execute(
+                status -> {
+                    if (studyRepository.findByIdForUpdate(studyId).isEmpty()) {
+                        throw new BusinessException(
+                                ErrorCode.NOT_FOUND, "디스코드를 만드는 사이 스터디가 삭제되었습니다.");
+                    }
+                    if (studyDiscordLinkRepository.existsByStudyId(studyId)) {
+                        throw new BusinessException(
+                                ErrorCode.CONFLICT, "디스코드를 만드는 사이 다른 요청이 먼저 연결했습니다.");
+                    }
+                    return studyDiscordLinkRepository.save(
+                            new StudyDiscordLink(
+                                    studyId, created.discordStudyId(), created.discordRoleId()));
+                });
     }
 }

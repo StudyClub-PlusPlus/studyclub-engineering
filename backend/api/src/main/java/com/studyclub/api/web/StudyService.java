@@ -205,7 +205,8 @@ public class StudyService {
         if (account.getSystemRole() != SystemRole.ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 삭제 권한이 없습니다.");
         }
-        if (!studyRepository.existsById(studyId)) {
+        // 잠가서 조회한다 — 봇 응답을 기다리던 디스코드 연결 저장과 엇갈려 지운 스터디에 연결이 남지 않게
+        if (studyRepository.findByIdForUpdate(studyId).isEmpty()) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
         }
 

@@ -51,6 +51,10 @@ class StudyDiscordLinkIntegrationTest {
     private static final String CATEGORY_ID = "1327394882193883136";
     private static final String ROLE_ID = "1327394882193883140";
 
+    /** 봇이 실제로 돌려주는 이름 중복 409 (discord/app/api/routes/studies.py). */
+    private static final String DUPLICATE_NAME =
+            "{\"detail\":\"a study with this name exists or is being created\"}";
+
     private static final FakeDiscordBot bot = FakeDiscordBot.start();
 
     @DynamicPropertySource
@@ -127,7 +131,7 @@ class StudyDiscordLinkIntegrationTest {
     @Test
     @DisplayName("성공_재시도는_바꾼_이름으로_봇을_부르고_201_과_연결을_돌려준다")
     void 성공_재시도는_바꾼_이름으로_봇을_부르고_201_과_연결을_돌려준다() {
-        bot.respond(409, "{\"detail\":\"exists\"}");
+        bot.respond(409, DUPLICATE_NAME);
         Long studyId = createStudy("알고리즘 스터디");
         bot.reset();
         bot.respond(201, created());
@@ -164,7 +168,7 @@ class StudyDiscordLinkIntegrationTest {
     @Test
     @DisplayName("실패_재시도에서_봇이_409_를_주면_409")
     void 실패_재시도에서_봇이_409_를_주면_409() {
-        bot.respond(409, "{\"detail\":\"exists\"}");
+        bot.respond(409, DUPLICATE_NAME);
         Long studyId = createStudy("알고리즘 스터디");
 
         var response =
@@ -175,9 +179,22 @@ class StudyDiscordLinkIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패_봇_설정이_없어서_난_409_는_이름_충돌이_아니라_503")
+    void 실패_봇_설정이_없어서_난_409_는_이름_충돌이_아니라_503() {
+        bot.respond(409, "{\"detail\":\"no DISCORD_GUILD_ID configured\"}");
+        Long studyId = createStudy("알고리즘 스터디");
+
+        var response =
+                rest.postForEntity(linkPath(studyId), authenticated(ADMIN_ID, null), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody()).containsEntry("errorCode", "EXTERNAL_SERVICE_ERROR");
+    }
+
+    @Test
     @DisplayName("실패_봇_응답의_ID_가_snowflake_가_아니면_저장하지_않고_503")
     void 실패_봇_응답의_ID_가_snowflake_가_아니면_저장하지_않고_503() {
-        bot.respond(409, "{\"detail\":\"exists\"}");
+        bot.respond(409, DUPLICATE_NAME);
         Long studyId = createStudy("알고리즘 스터디");
         bot.respond(201, "{\"discordStudyId\":\"12\",\"discordRoleId\":\"" + ROLE_ID + "\"}");
 
@@ -199,7 +216,7 @@ class StudyDiscordLinkIntegrationTest {
     @Test
     @DisplayName("실패_ADMIN_이_아니면_403")
     void 실패_ADMIN_이_아니면_403() {
-        bot.respond(409, "{\"detail\":\"exists\"}");
+        bot.respond(409, DUPLICATE_NAME);
         Long studyId = createStudy("알고리즘 스터디");
         bot.reset();
 
