@@ -2,6 +2,8 @@
 // 세션키 prefix 는 앱별 상수(core=sc_) — BO(bo_)와 격리해 localhost 쿠키 domain 공유 오염 방지.
 // (zapp back-office-google-login spec 의 세션키 격리 함정 이식)
 
+import { API_BASE } from './http';
+
 export const STORAGE_PREFIX = 'sc_';
 export const PLATFORM = 'CORE';
 
@@ -76,15 +78,18 @@ export type DeleteAccountResult =
   | { ok: false; errorCode: string; errorMessage: string };
 
 /**
- * 회원 탈퇴 — DELETE /api/me. 성공하면 새 정리 로직을 만들지 않고 기존 {@link logout} 을 그대로
+ * 회원 탈퇴 — DELETE /api/me. 백엔드를 직접 호출한다(`lib/http.ts` 와 같은 이유 — access 쿠키가
+ * httpOnly 라도 `credentials: 'include'` 로 브라우저가 자동으로 싣고, API 가 쿠키에서 꺼내 쓴다.
+ * 중계 라우트가 필요 없다). 성공하면 새 정리 로직을 만들지 않고 기존 {@link logout} 을 그대로
  * 호출한다(localStorage + httpOnly 쿠키 정리 재사용). 서버가 발급한 토큰 자체를 무효화하지는
  * 못한다(스펙의 "알려진 한계").
  */
 export async function deleteAccount(reason: LeaveReason | null): Promise<DeleteAccountResult> {
   let res: Response;
   try {
-    res = await fetch('/api/me', {
+    res = await fetch(`${API_BASE}/api/me`, {
       method: 'DELETE',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason }),
     });

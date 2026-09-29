@@ -3,6 +3,7 @@
 import type { MemberRegion } from '@studyclub/mock';
 
 import { clearMyAttendance } from './attendance';
+import { API_BASE } from './http';
 
 /**
  * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청·거주 지역.
@@ -227,7 +228,9 @@ export type ActiveNavigatorStudy = { studyId: number; title: string };
  */
 export async function getActiveNavigatorStudies(): Promise<ActiveNavigatorStudy[]> {
   try {
-    const res = await fetch('/api/me/studies', { cache: 'no-store' });
+    // 백엔드를 직접 호출한다 — access 쿠키가 httpOnly 라도 credentials: 'include' 로 자동으로
+    // 실리므로 중계 라우트가 필요 없다 (lib/http.ts 와 같은 이유).
+    const res = await fetch(`${API_BASE}/api/me/studies`, { credentials: 'include', cache: 'no-store' });
     if (!res.ok) return [];
     const data = await res.json();
     const activeStudies: Array<{ studyId: number; title: string; isActiveNavigator: boolean }> =
