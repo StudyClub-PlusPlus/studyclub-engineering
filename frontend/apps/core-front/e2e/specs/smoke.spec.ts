@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 test.describe('홈', () => {
   test('페이지 로드', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveTitle(/StudyClub/i);
+    await expect(page).toHaveTitle(/StudyClub|스터디클럽/i);
   });
 
   test('/ → /ko 로케일 리다이렉트', async ({ page }) => {
@@ -45,14 +45,21 @@ test.describe('기타 페이지', () => {
 // ─── 스터디 상세 ───────────────────────────────────────────────────────────────
 
 test.describe('스터디 상세', () => {
-  test('모집 중인 스터디 상세 페이지 로드', async ({ page }) => {
-    await page.goto('/ko/studies/ai-paper-study');
+  test('모집 중인 스터디 상세 페이지 로드 (study_id=1)', async ({ page }) => {
+    await page.goto('/ko/studies/1');
     await expect(page.locator('main')).toBeVisible();
   });
 
-  test('존재하지 않는 스터디 → 404', async ({ page }) => {
-    const res = await page.goto('/ko/studies/not-exist-study-id-xyz');
-    expect(res?.status()).toBe(404);
+  test('진행 중인 스터디 상세 페이지 로드 (study_id=19)', async ({ page }) => {
+    // status=ONGOING → recruitStatus=null (spec: study-recruit-status)
+    await page.goto('/ko/studies/19');
+    await expect(page.locator('main')).toBeVisible();
+  });
+
+  test('존재하지 않는 스터디 → 404 안내 화면', async ({ page }) => {
+    await page.goto('/ko/studies/9999');
+    await expect(page.locator('main')).toBeVisible();
+    await expect(page.getByText(/스터디를 찾을 수 없어요|Study not found/i)).toBeVisible();
   });
 });
 
@@ -78,27 +85,40 @@ test.describe('인증 미들웨어', () => {
 test.describe('로그인 페이지', () => {
   test('페이지 로드', async ({ page }) => {
     await page.goto('/ko/login');
-    await expect(page.locator('h1')).toContainText('로그인');
+    // 로그인 폼은 'use client' + Suspense — 하이드레이션 완료까지 대기
+    await expect(page.locator('h1')).toContainText('로그인', { timeout: 15000 });
   });
 
   test('Google 로그인 버튼 표시', async ({ page }) => {
     await page.goto('/ko/login');
-    await expect(page.getByText(/Google 계정으로 로그인/i)).toBeVisible();
+    await expect(page.getByText(/Google 계정으로 로그인/i)).toBeVisible({ timeout: 15000 });
   });
 });
 
 // ─── 스터디 신청 폼 ───────────────────────────────────────────────────────────
 
 test.describe('스터디 신청 폼 (ApplyDialog)', () => {
+  // spec: 신청하기는 상세에서만 — study-application/spec.md
+  test('모집 중인 스터디 — 신청하기 버튼 표시 (study_id=1)', async ({ page }) => {
+    await page.goto('/ko/studies/1');
+    await expect(page.getByRole('button', { name: /신청하기|Apply/i }).first()).toBeVisible();
+  });
+
+  // spec: status=ONGOING → recruitStatus=null → 신청 불가 — study-recruit-status/spec.md
+  test('진행 중인 스터디 — 신청하기 버튼 없음 (study_id=19)', async ({ page }) => {
+    await page.goto('/ko/studies/19');
+    await expect(page.getByRole('button', { name: /신청하기|Apply/i })).not.toBeVisible();
+  });
+
   test('신청 버튼 클릭 시 다이얼로그 열림', async ({ page }) => {
-    await page.goto('/ko/studies/python-pandas-ml-coding');
+    await page.goto('/ko/studies/3');
     const applyBtn = page.getByRole('button', { name: /신청하기|Apply/i }).first();
     await applyBtn.click();
     await expect(page.getByRole('dialog')).toBeVisible();
   });
 
   test('폼 미제출 시 에러 메시지 표시', async ({ page }) => {
-    await page.goto('/ko/studies/python-pandas-ml-coding');
+    await page.goto('/ko/studies/3');
     await page.getByRole('button', { name: /신청하기|Apply/i }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -109,7 +129,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
   });
 
   test('Esc 키로 다이얼로그 닫힘', async ({ page }) => {
-    await page.goto('/ko/studies/python-pandas-ml-coding');
+    await page.goto('/ko/studies/3');
     await page.getByRole('button', { name: /신청하기|Apply/i }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.keyboard.press('Escape');
