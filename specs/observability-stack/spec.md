@@ -302,21 +302,176 @@ DB 내용까지 샌다.** allowlist 가 실제로 막는 것을 확인하기 전
 
 MySQL 데이터소스에는 **읽기 전용 계정**만 준다.
 
-### 알림 (Grafana Unified Alerting → Discord)
+### 알림 (Grafana Unified Alerting → Discord 봇)
 
-| 알림 | 조건 |
-|---|---|
-| api 다운 | 스크랩 2분 연속 실패 |
-| 5xx 급증 | 5분간 5xx 비율 5% 초과 |
-| 응답 지연 | 5분간 p95 > 2s |
-| 디스크 부족 | 남은 용량 15% 미만 |
-| **DB 연결 이상** | 커넥션 획득 실패 / pending 급증이 2분 지속 |
+> **PUBLIC 레포라 환경값을 적지 않는다.** Grafana 주소 · Org id · 데이터소스 uid · 채널 id 는
+> **Notion 이슈 144** 에 있다. 규칙을 추가하는 절차는
+> [`docs/observability/adding-alerts.md`](../../docs/observability/adding-alerts.md).
 
-마지막 항목은 헬스체크를 `/api/health` 로 이관하며 잃는 신호를 대체한다. Hikari 커넥션풀 메트릭
-(`hikaricp_connections_*`)으로 판단하며, 정확한 PromQL 은 구현 시 실제 지표를 보고 확정한다.
-DB 장애는 5xx 급증으로도 드러나지만, 그건 사용자가 이미 에러를 맞은 뒤다 — 풀 지표가 더 빠르다.
+**설정은 이 레포가 아니라 Grafana 안에 있다.** 파일 provisioning 을 쓸 수 없어서다 — Grafana 는
+인프라 레포가 띄우고 프로젝트 60여 개가 공용이라 우리가 `/etc/grafana/provisioning/` 에 파일을
+놓을 자리가 없다. 대시보드도 같은 이유로 Provisioning HTTP API 로 들어가 있다. stage 에
+2026-09-28 등록 완료, prod 는 아직이다.
 
-Discord webhook URL 은 env 로 주입한다(PUBLIC 레포 — 평문 금지).
+| 알림 | 조건 | for | 등급 | 값 |
+|---|---|---|---|---|
+| api 다운 | `max(up) < 1` | 3m | critical | 타깃 수 · `대` |
+| **ERROR 로그 발생** | Loki `count_over_time({level=~"(?i)error"}[2m]) > 0` | 0s | critical | 건수 (2분) · `건` |
+| **로그 수집 중단** | 앱은 로그를 내는데 Loki 에 안 들어옴 | 15m | critical | 로그 건수 (10분) · `건` |
+| 5xx 급증 | **uri 별** 비율 5% 초과 (그 uri 요청 20건 이상일 때만) | 5m | critical | 비율 (5분) · `%` |
+| **5xx 발생(건수)** | **uri 별** 5분간 3건 초과 | 0s | critical | 건수 (5분) · `건` |
+| DB 연결 이상 | pending 또는 획득 타임아웃 | 2m | critical | 대기+타임아웃 (5분) |
+| 디스크 부족 | 여유 15% 미만 | 5m | critical | 여유 비율 · `% 남음` |
+| 응답 지연 | **uri 별** 5분간 p95 > 2초 | 5m | warning | p95 (5분) · `ms` |
+| JVM 힙 고갈 임박 | 사용률 90% 초과 | 10m | warning | 사용률 · `%` |
+| GC 과부하 | 점유율 50% 초과 | 5m | warning | 점유율 · `%` |
+| 파일 디스크립터 고갈 임박 | 한도의 80% 초과 | 5m | warning | 사용률 · `%` |
+
+#### 설계에서 정한 것
+
+**내장 `discord` 타입을 쓰지 않고 `webhook` 을 직접 붙였다.** Grafana 에 Discord 전용 contact
+point 가 있긴 하다. 다만 설정이 **채널 webhook URL 하나뿐**이다 — `url` 이 유일한 필수 필드이고
+(`errors.New("could not find webhook url property in settings")`), 봇 토큰을 넣을 자리가 없다.
+
+그 URL 은 채널마다 따로 만들어야 하고, **URL 자체가 인증**이라 유출되면 누구나 그 채널에 글을
+쓸 수 있다. 반면 봇은 이미 길드에 들어가 있고 권한을 역할로 회수할 수 있다. 그래서 `webhook`
+타입을 Discord REST API(`POST /channels/{id}/messages`)에 직접 붙이고 `Authorization: Bot <token>`
+으로 인증한다.
+
+대가는 **바디를 직접 만들어야 하는 것**이다 — `webhook` 의 기본 바디는 Grafana 고유 JSON 이라
+Discord 가 400 으로 거절한다. `payload.template` 로 Discord 스키마를 렌더한다(Grafana 11.1+).
+
+> **webhook URL 을 못 만들어서가 아니다.** `캡틴 Dev` 는 길드에서 ADMINISTRATOR 라
+> `GET /channels/{id}/webhooks` 가 200 으로 통과한다(이 API 는 `MANAGE_WEBHOOKS` 없으면 403).
+> 만들 수 있었지만 안 만들기로 한 것이다.
+
+**내장 타입이었으면 이렇게 온다.** 기본 템플릿(`default.title` · `default.message`)으로 실제
+모양을 재현해 봤다.
+
+```
+Grafana                                   ← 작성자 이름이 "Grafana" 로 덮인다
+**Firing**
+Value: A=100, B=1
+Labels:
+ - alertname = [studyclub] 5xx 급증
+ - grafana_folder = studyclub
+ - project = studyclub
+ - severity = critical
+ - uri = /api/studies
+Annotations:
+ - description = 응답 코드별 그래프를 본 뒤 …
+ - metric = 5xx 비율 (5분)
+ - summary = 5xx 비율이 5% 를 넘었다
+ - unit = %
+Source: …   Silence: …
+┌ [FIRING:1] [studyclub] 5xx 급증 studyclub     ← embed 는 제목 한 줄뿐
+│ Grafana v12.3.1                                  fields 0개
+└
+```
+
+| | 내장 `discord` | 지금 (`webhook` + 봇 토큰) |
+|---|---|---|
+| 본문 길이 | **625자** 평문 덤프 | **약 200자** |
+| 구성 | 라벨·주석이 전부 본문에 쏟아진다 | 요약 한 줄 + 조치 한 줄 + 값 한 줄 |
+| 값 | `Value: A=100, B=1` | `5xx 비율 (5분) : 100 %` |
+| 주석 | `metric`·`unit` 이 라벨 목록에 섞여 노출 | 사람이 읽는 형태로 조합 |
+| 색 | firing 빨강 / resolved 초록 (2색) | + warning 주황 |
+| 시각 | 없음 | Discord 가 보는 사람의 로컬 시간으로 |
+| 해소 | 같은 크기 카드 | 이름만 한 줄 |
+| 작성자 | `Grafana` 로 덮인다 | 우리 봇 이름 |
+
+`title` 과 `message` 는 템플릿으로 바꿀 수 있지만 **embed 구조 자체는 못 바꾼다** — `fields` 를
+넣을 방법이 없어서 `메트릭명 : 값` 같은 배치가 안 된다. 그게 내장 타입을 포기한 결정적인 이유다.
+
+실제 Discord 에서 두 형식을 나란히 받아 본 캡처는 **Notion 「알림 시스템 — 구조와 사용법」** 에 있다.
+
+**쿼리가 사람이 읽는 단위를 뱉게 한다.** 비율은 `* 100`, 응답시간은 `* 1000` 을 식에 넣고 임계값도
+같이 올린다. 메시지에서만 환산하면 Grafana 화면과 값이 어긋나 헷갈린다.
+
+**요청 관련 알림은 uri 별로 잰다.** 전체를 뭉뚱그리면 느린 엔드포인트 하나가 빠른 것들에 희석된다.
+uri 별로 쪼개면 5xx 가 없는 uri 는 시리즈가 안 생기므로 `or vector(0)` 이 필요 없고, 대신
+트래픽 없는 uri 에서 `histogram_quantile` 이 NaN 을 주므로 `and on(uri) (rate(...) > 0)` 로 거른다.
+
+**5xx 알림이 둘인 이유.** 비율만 쓰면 요청 2건 중 1건 실패가 50% 로 읽혀 사람을 깨운다. 그래서
+비율 규칙에 트래픽 하한을 걸고, 그 아래는 건수 규칙이 맡는다. stage 실사용 트래픽은 시간당
+54건(전체 487건 중 433건이 `/api/health`)이라 **비율 규칙은 사실상 잠들어 있고** prod 에서 깨어난다.
+
+**ERROR 로그는 Loki 에서 직접 센다.** 알림에 찍힌 건수가 곧 링크를 눌러 보게 될 로그 건수라 둘이
+어긋나지 않고, Logback 을 거치지 않은 출력도 잡힌다. 대신 **수집이 끊기면 이 알림까지 조용해지므로**
+`로그 수집 중단` 규칙이 그 침묵을 감시한다 — Prometheus 의 `logback_events_total`(앱이 찍은 수)과
+Loki 수신량을 교차 비교해서, 트래픽이 없어 로그가 0 인 경우와 구분한다.
+
+#### 메시지 모양
+
+```
+🔴 stage · 발생 1건 · 해소 2건
+✅ 5xx 급증(/), 디스크 부족                   ← 해소는 카드 없이 한 줄
+┌ 🔴 5xx 급증 · /api/studies
+│ **5xx 비율이 5% 를 넘었다**                 ← summary
+│ 응답 코드별 그래프를 본 뒤 같은 시각 로그를 본다.  ← description + 링크
+│ 5xx 비율 (5분) : 100 %                      ← metric : 값
+│ studyclub · stage · critical   (로컬 시각)
+└
+```
+
+규칙은 주석 네 개만 채운다 — `summary`(무슨 일) · `description`(뭘 볼지 + 링크) ·
+`metric`(값의 이름, 집계 구간 포함) · `unit`. **설명에 설계 근거를 쓰지 않는다**: 새벽에 알림을
+받은 사람이 읽는 자리고, 근거는 이 스펙에 있다. 한때 878자까지 갔다가 190자로 줄였다.
+
+색은 🔴 critical · 🟠 warning, 해소는 카드를 만들지 않는다. 시각은 embed 의 `timestamp` 필드로
+넣어 **Discord 가 보는 사람의 로컬 시간으로** 렌더하게 한다. 링크는 Grafana 짧은 링크
+(`POST /api/short-urls`)를 쓴다 — Explore URL 원본은 600자라 본문을 혼자 다 먹는다.
+
+**멘션은 critical 이 발화 중일 때만** 붙인다. 판정은 `.Alerts` 전체가 아니라 `.Alerts.Firing`
+으로 한다 — 안 그러면 **이미 해소된 critical 로 사람을 깨운다.** `@everyone` 은 어느 경우에도
+울리지 않게 허용 목록에 대상만 넣는다. (현재 팀 역할 멘션 대상 미정이라 멘션 없음)
+
+#### 조용히 실패하는 것들
+
+| 함정 | 증상 | 대응 |
+|---|---|---|
+| Loki `level` 은 **대문자**, Prometheus 는 소문자 | `{level="error"}` 가 에러 없이 **영원히 0** | `level=~"(?i)error"` |
+| LogQL 에 `or vector(0)` 없음 | "에러 0건" 과 "Loki 장애" 가 똑같이 NoData | 붙이면 NoData 가 진짜 이상 신호가 된다 |
+| Discord embed **총합 6000자** | 10건이면 8,830자 → **400**, 알림이 통째로 사라짐(실측) | 템플릿에서 앞 8건만 렌더 |
+| `min(up)` | 롤링 배포마다 오탐 — 새 파드가 뜨는 동안 옛 파드가 멀쩡해도 0 | `max(up)`("전부 죽었을 때") |
+| 비율 알림의 분자 | 5xx 0건이면 시리즈가 사라져 "에러 없음" 과 "규칙 고장" 이 안 구분됨 | 분자 `or vector(0)` + 분모 `clamp_min` |
+| 템플릿에 **산술 함수 없음** | `sub` 쓰면 저장이 400 | 등록된 건 `coll`·`data`·`tmpl`·`time` 뿐 |
+| 값은 `Values.A` | `ValueString` 은 `[ var='A' labels={…} value=0.0218… ]` | `A`=쿼리 값, `B`=임계 판정(0/1). 해소엔 `Values` 자체가 없다 |
+| `__dashboardUid__` | `__panelId__` 도 **둘 다** 요구(하나만 주면 400) | 대시보드 패널에 `id` 가 없어 포기, 본문에 명시적 링크 |
+| 규칙 복제 시 409 | `UNIQUE constraint failed: alert_rule.id` | 복사본에서 `id`·`version`·`updated`·`provenance` 제거 |
+
+> **알림 모양을 시험할 때 라벨을 바꾸지 않는다.** 라벨이 바뀌면 Grafana 가 이전 조합을 **별개
+> 인스턴스로 보고 해소 처리**해서, 같은 대상이 해소 목록에 여러 번 쌓인다. 실제로는 없는 문제처럼
+> 보인다. **일시정지 → 해제**로 재발화시킨다.
+
+> **테스트는 개인 채널로 돌리되 토큰과 채널을 짝으로 바꾼다.** 봇마다 들어가 있는 서버가 달라
+> 한쪽만 바꾸면 `403 Forbidden` 이다. 토큰 교체는 Grafana UI 에서 **`Reset` 을 먼저** 누른다.
+
+#### `uri=UNKNOWN` — 인증 실패는 엔드포인트를 알 수 없다 (TBD)
+
+Micrometer 는 URI 라벨을 MVC 핸들러의 경로 패턴에서 가져오는데, **인증 실패는 `SecurityConfig` 의
+필터 체인에서 잘려 나가** 핸들러 매핑까지 가지 못한다. 그래서 401 이 전부 `uri="UNKNOWN"` 으로
+뭉치고, **어느 API 에서 인증이 깨지는지 메트릭으로 볼 수 없다.**
+
+`ServerHttpObservationFilter` 를 시큐리티 필터보다 앞에 두면 해결되지만 필터 순서를 건드리는
+일이라 회귀 위험이 있다(`ActuatorMergedPortRegressionTest` 가 그때 데인 흔적). **Notion 이슈 144**
+로 분리했고, 백엔드 로깅·메트릭 전역설정을 손볼 때 같이 본다. 그때까지 `UNKNOWN` 은 알림 대상에
+그대로 둔다 — 거기서 5xx 가 터지면 그것도 장애다.
+
+#### git 이 정본이 되려면 — 3단계
+
+UI 에서 굳히고, 굳은 뒤에 파일로 내린다. 순서를 뒤집으면 흔들리는 임계값을 고정했다가 매번 고친다.
+
+1. **Grafana UI 에서 규칙을 다듬는다.** 지금 규칙은 `X-Disable-Provenance` 로 넣어 UI 편집이 된다
+2. **그 상태를 YAML 로 내보낸다.** 손으로 옮기지 않는다 —
+   `GET /api/v1/provisioning/alert-rules/export?format=yaml` 이 파일 provisioning 형식 그대로
+   돌려준다(확인함). ⚠️ contact point 내보내기에는 **봇 토큰이 들어간다** — `$DISCORD_TOKEN` 으로
+   바꿔 커밋한다
+3. **k8s 관리자에게 볼륨 마운트를 요청한다.** 이때부터 git 이 정본이고 **UI 편집은 막힌다** —
+   1단계를 먼저 끝내야 하는 이유다
+
+> **Org 를 확인하고 내보낸다.** 활성 Org 가 바뀌면 규칙이 **하나도 없는 것처럼 보인다.**
+> 지워진 게 아니라 다른 Org 를 보고 있는 것이다.
 
 ### 디스크 상한 — 모든 저장 지점에
 
@@ -450,6 +605,9 @@ Spring Boot 4.1.1 / Java 25 에서 재확인한 것: ECS 의 `log.level` 중첩 
 - **`docker logs` 는 배포마다 리셋된다** — 컨테이너가 재생성되기 때문이다. 배포 직전의 로그를
   나중에 보려면 Loki 를 봐야 한다. 관측 스택이 뜨기 전까지는 그 구간이 사실상 사각지대다
 - **알림 채널이 Discord 하나** — Discord 가 죽으면 알림도 죽는다
+- **알림 설정이 아직 git 에 없다** — 규칙 4개는 지금 **그 Grafana 안에만** 있다. 인프라가
+  Grafana 를 다시 세우면 조용히 사라지고, **사고가 나서 알림이 안 왔을 때에야** 알게 된다.
+  대시보드도 같은 상태다. 아래 3단계로 되돌린다
 - **운영 compose 가 레포 밖** — 이 스펙의 절반은 레포 밖 파일 수정에 의존한다
 
 ## 변경이력
@@ -461,3 +619,8 @@ Spring Boot 4.1.1 / Java 25 에서 재확인한 것: ECS 의 `log.level` 중첩 
 | 2026-09-06 | 로그 저장 계층(버퍼 2 + 아카이브 1)을 명시하고 앱 JSON 파일 상한을 `50MB×3` → `10MB×1` 로 축소. 콘솔은 INFO 유지 | 인계 버퍼에 아카이브 크기를 잡아 약 200MB 를 낭비하고 있었다 |
 | 2026-09-06 | Alloy 의 level 추출 표현식 정정 — ECS 는 level 을 `{"log":{"level":…}}` 로 nest 하므로 따옴표를 씌운 flat 키 탐색이 아니라 중첩 순회여야 한다 | 구현 중 실제 출력과 포매터 소스로 확인. 틀리면 에러 없이 레이블만 빈 값이 되어, 로그 조회가 안 잡히고서야 드러난다 |
 | 2026-09-06 | 로그 유실 함정 3건 보강 — `total-size-cap` 추가(`max-history` 는 일수라 상한이 아니었음), 롤링 압축 해제 + glob 확장, Alloy positions 볼륨 신설 | 셋 다 기본값이 위험한 쪽이고, 조용히 로그를 잃거나 중복시킨다 |
+| 2026-09-28 | 내장 `discord` contact point 대신 **`webhook` + 봇 토큰**, 설정은 파일 provisioning 대신 **Provisioning HTTP API** | 내장 타입은 채널 webhook URL 만 받아 봇 토큰을 못 넣는다. 그 URL 은 자체가 인증이라 유출되면 채널이 열린다. Grafana 는 인프라 레포 소유라 디스크에 파일을 놓을 자리도 없다 |
+| 2026-09-28 | 알림을 **4종 → 11종**으로 확대하고 요청 관련 알림을 **uri 별**로 쪼갬. 쿼리가 사람이 읽는 단위를 뱉게 변경 | 수집 중인 지표 142개를 훑어 "놓치면 조용히 죽는" 것들을 골랐다. 전체 집계는 느린 엔드포인트를 희석시키고, 메시지에서만 환산하면 Grafana 화면과 값이 어긋난다 |
+| 2026-09-29 | ERROR 로그 트리거를 **Prometheus → Loki** 로 전환하고 **로그 수집 중단** 규칙 신설 | 알림 건수와 링크로 열어 볼 로그 건수가 어긋나지 않는다. 대신 수집이 끊기면 그 알림까지 조용해지므로 그 침묵을 따로 감시한다 |
+| 2026-09-29 | **알림 메시지 서식 확정** — 주석 4개(summary·description·metric·unit), critical 발화에만 멘션, 해소는 카드 없이 한 줄 | 받는 사람이 "무슨 일인지, 뭘 볼지" 를 한눈에 읽어야 한다. 설계 근거는 알림이 아니라 이 스펙에 쓴다 |
+| 2026-09-29 | `uri=UNKNOWN`(인증 실패가 엔드포인트별로 안 잡힘)을 **Notion 이슈 144** 로 분리 | 필터 순서를 건드리는 수정이라 알림 작업과 함께 하면 회귀 원인을 못 가린다 |
