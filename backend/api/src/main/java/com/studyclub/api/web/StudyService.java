@@ -9,6 +9,7 @@ import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
@@ -47,6 +48,7 @@ public class StudyService {
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyCaptainGuard studyCaptainGuard;
+    private final StudyDiscordLinkRepository studyDiscordLinkRepository;
 
     public StudyService(
             StudyRepository studyRepository,
@@ -59,7 +61,8 @@ public class StudyService {
             StudyAttendanceRepository studyAttendanceRepository,
             StudyApplicationRepository studyApplicationRepository,
             StudyBookmarkRepository studyBookmarkRepository,
-            StudyCaptainGuard studyCaptainGuard) {
+            StudyCaptainGuard studyCaptainGuard,
+            StudyDiscordLinkRepository studyDiscordLinkRepository) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
@@ -71,6 +74,7 @@ public class StudyService {
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyBookmarkRepository = studyBookmarkRepository;
         this.studyCaptainGuard = studyCaptainGuard;
+        this.studyDiscordLinkRepository = studyDiscordLinkRepository;
     }
 
     @Transactional
@@ -201,7 +205,8 @@ public class StudyService {
         if (account.getSystemRole() != SystemRole.ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 삭제 권한이 없습니다.");
         }
-        if (!studyRepository.existsById(studyId)) {
+        // 잠가서 조회한다 — 봇 응답을 기다리던 디스코드 연결 저장과 엇갈려 지운 스터디에 연결이 남지 않게
+        if (studyRepository.findByIdForUpdate(studyId).isEmpty()) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
         }
 
@@ -225,6 +230,8 @@ public class StudyService {
         }
         studyRecruitmentRepository.deleteByStudyId(studyId);
         studyBookmarkRepository.deleteByStudyId(studyId);
+        // 디스코드 카테고리·역할은 남는다 — 봇에 삭제 API 가 없다
+        studyDiscordLinkRepository.deleteByStudyId(studyId);
         studyRepository.deleteById(studyId);
     }
 

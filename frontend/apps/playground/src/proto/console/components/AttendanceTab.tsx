@@ -112,6 +112,7 @@ export function AttendanceTab({
   onSave,
   onGoCrew,
   onDirtyChange,
+  onAddMeeting,
 }: {
   study: Study;
   crew: Crew[];
@@ -123,6 +124,8 @@ export function AttendanceTab({
   onSave: (next: AttendanceBook) => Promise<void>;
   onGoCrew: () => void;
   onDirtyChange?: (dirty: boolean) => void;
+  /** 있으면 「회차 추가」가 켜진다. 사용자 사이트는 일정 관리로 보낸다. */
+  onAddMeeting?: () => void;
 }) {
   const [draft, setDraft] = useState(() => cloneBook(attendance));
   const [saving, setSaving] = useState(false);
@@ -239,8 +242,9 @@ export function AttendanceTab({
           size='sm'
           variant='secondary'
           leadingIcon={<Plus size={15} />}
-          disabled
-          title='미구현'
+          disabled={!onAddMeeting}
+          title={onAddMeeting ? undefined : '미구현'}
+          onClick={onAddMeeting}
         >
           회차 추가
         </Button>
