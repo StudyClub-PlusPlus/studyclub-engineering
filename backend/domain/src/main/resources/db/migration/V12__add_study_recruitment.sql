@@ -1,0 +1,32 @@
+-- V12 — STUDY_RECRUITMENT 테이블 신설 + STUDY_APPLICATION 참조 변경.
+--   * STUDY_RECRUITMENT: 기수(STUDY_COHORT)의 모집 회차. 기수 하나에 여러 모집 가능.
+--   * STUDY_APPLICATION: STUDY_COHORT_ID → RECRUITMENT_ID 로 교체.
+
+CREATE TABLE STUDY_RECRUITMENT (
+    ID                   BIGINT        NOT NULL AUTO_INCREMENT,
+    COHORT_ID            BIGINT        NOT NULL,
+    TITLE                VARCHAR(255)  NOT NULL,
+    DESCRIPTION          TEXT          NOT NULL,
+    START_AT             DATETIME      NOT NULL,
+    CLOSE_AT             DATETIME      NOT NULL,
+    RECRUITMENT_CAPACITY INT               NULL,
+    CREATED_AT           DATETIME      NOT NULL,
+    UPDATED_AT           DATETIME      NOT NULL,
+    PRIMARY KEY (ID),
+    INDEX idx_study_recruitment_cohort (COHORT_ID)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+ALTER TABLE STUDY_MEETING
+    RENAME COLUMN STARTS_AT TO START_AT,
+    RENAME COLUMN ENDS_AT TO END_AT;
+
+ALTER TABLE STUDY_CLASS
+    RENAME COLUMN STARTS_AT TO START_AT;
+
+ALTER TABLE STUDY_APPLICATION
+    DROP INDEX uk_study_application_cohort_account,
+    DROP INDEX idx_study_application_cohort_status,
+    DROP COLUMN STUDY_COHORT_ID,
+    ADD COLUMN RECRUITMENT_ID BIGINT NOT NULL AFTER ACCOUNT_ID,
+    ADD CONSTRAINT uk_study_application_recruitment_account UNIQUE (RECRUITMENT_ID, ACCOUNT_ID),
+    ADD INDEX idx_study_application_recruitment_status (RECRUITMENT_ID, STATUS);

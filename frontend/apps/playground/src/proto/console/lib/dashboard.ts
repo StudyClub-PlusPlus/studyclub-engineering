@@ -33,8 +33,10 @@ export const BOARD_PREVIEW = 4;
 
 export type BoardStudy = {
   id: string;
+  /** 상세 링크 키 (STUDY.ID). 내부 키(id)는 URL 에 쓰지 않는다. */
+  study_id: number;
   title: string;
-  /** 모집중 — 모집 마감일. 상시 모집이면 undefined */
+  /** 모집중 — 모집 마감일. 상시 모집은 없다 — 옛 데이터만 undefined */
   deadline?: string;
 };
 
@@ -131,11 +133,11 @@ export function aggregate(today = todayISO()) {
       }
     }
     if (running) {
-      ongoing.push({ id: study.id, title: tx(study.title) });
+      ongoing.push({ id: study.id, study_id: study.study_id, title: tx(study.title) });
     }
 
     if (recruitState(study) === 'apply') {
-      recruiting.push({ id: study.id, title: tx(study.title), deadline: toISODate(study.recruitment?.deadline) });
+      recruiting.push({ id: study.id, study_id: study.study_id, title: tx(study.title), deadline: toISODate(study.recruitment?.deadline) });
     }
   }
 
@@ -171,7 +173,7 @@ export function aggregate(today = todayISO()) {
     board: {
       // 이름순. 순서에 뜻을 담으려면 그 기준이 화면에 보여야 하는데, 여기는 이름만 있다.
       ongoing: ongoing.sort((a, b) => a.title.localeCompare(b.title, 'ko')),
-      // 마감이 가까운 것부터. 상시 모집(마감일 없음)은 급할 게 없으므로 끝으로.
+      // 마감이 가까운 것부터. 마감일이 비어 있는 옛 데이터는 급할 게 없으므로 끝으로.
       recruiting: recruiting.sort(
         (a, b) =>
           (a.deadline ? daysUntil(a.deadline, today) : 9999) - (b.deadline ? daysUntil(b.deadline, today) : 9999),

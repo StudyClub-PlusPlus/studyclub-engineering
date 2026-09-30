@@ -8,6 +8,7 @@ import {
   allowsOther,
   formCardClass,
   FormHeaderCard,
+  MARKDOWN_HINT,
   needsOptions,
   OptionEditor,
   QUESTION_TYPES,
@@ -20,7 +21,7 @@ import { getUser } from '@core/lib/auth';
 import { DISCORD_NICKNAME_EXAMPLE, getDiscordNickname, getDisplayName } from '@core/lib/me';
 import { PREVIEW_USER } from '@core/lib/preview';
 import type { ApplicationQuestion, ApplicationQuestionType, Study } from '@studyclub/mock';
-import { Button, Checkbox, Input, Select } from '@studyclub/ui';
+import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 
 /**
@@ -54,7 +55,7 @@ function extrasOf(study: Study): ApplicationQuestion[] {
 function readApplicantAccount() {
   const user = getUser() ?? PREVIEW_USER;
   return {
-    name: getDisplayName() ?? user.name ?? user.email,
+    name: getDisplayName() ?? user.nickname ?? user.email,
     email: user.email,
     discordNickname: getDiscordNickname(),
   };
@@ -73,7 +74,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [account, setAccount] = useState(() => ({
-    name: PREVIEW_USER.name ?? '홍길동',
+    name: PREVIEW_USER.nickname ?? '홍길동',
     email: PREVIEW_USER.email,
     discordNickname: undefined as string | undefined,
   }));
@@ -82,7 +83,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
   useEffect(() => {
     const live = readApplicantAccount();
     setAccount({
-      name: PREVIEW_USER.name ?? live.name,
+      name: PREVIEW_USER.nickname ?? live.name,
       email: PREVIEW_USER.email,
       discordNickname: live.discordNickname,
     });
@@ -207,7 +208,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
       </div>
 
       <section data-anno='form:2' className={formCardClass()}>
-        <DiscordNicknameField stored={account.discordNickname} disabled />
+        <DiscordNicknameField value={account.discordNickname} disabled />
       </section>
 
       <div data-anno='form:3' className='flex justify-end'>
@@ -263,10 +264,12 @@ export function ApplicationFormTab({ study }: { study: Study }) {
                   </Select>
                 </div>
 
-                <Input
+                <Textarea
                   value={q.description ?? ''}
                   onChange={(ev) => update(q.id, { description: ev.target.value })}
                   placeholder='설명 (선택)'
+                  helper={MARKDOWN_HINT}
+                  rows={3}
                 />
 
                 {needsOptions(q.type) ? (

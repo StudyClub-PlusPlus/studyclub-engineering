@@ -164,44 +164,47 @@ public record Capacity(int min, int max) {
 
 1. **어느 엔티티의 규칙도 아니다.** "이 판단의 주인이 누구냐"에 답이 안 나온다
    (여러 애그리거트를 동시에 봐야 하거나, 어느 쪽에 넣어도 그 엔티티가 남의 일을 하게 된다)
-2. **도메인 언어로 이름이 붙는다.** `StudyEnrollment`, `WaitlistPromotion` — 회의에서 쓰는 말이다.
+2. **도메인 언어로 이름이 붙는다.** `StudyEnrollment` — 회의에서 쓰는 말이다.
    `StudyHelper`·`StudyManager`·`StudyUtil` 이 나오면 그건 도메인 서비스가 아니다
 3. **상태를 갖지 않는다.** 필드는 리포지토리·다른 도메인 서비스뿐. 요청 데이터를 담아 두지 않는다
 
-### 예시 — 신청 승인 (두 애그리거트를 걸친다)
+### 예시 — 신청 제출 (두 애그리거트를 걸친다)
 
 신청서는 `STUDY_APPLICATION` 애그리거트, 명부는 `STUDY_PARTICIPANT` 애그리거트다.
-"승인하면 명부에 편입된다"는 **어느 한쪽의 규칙이 아니다** — 양쪽을 다 알아야 판단이 선다.
+"제출하면 명부에 편입된다"는 **어느 한쪽의 규칙이 아니다** — 양쪽을 다 알아야 판단이 선다.
 
 ```java
 // domain/.../study/StudyEnrollment.java — 스프링 어노테이션 없는 순수 클래스
 public class StudyEnrollment {
 
+    private final StudyApplicationRepository applications;
     private final StudyParticipantRepository participants;
 
-    public StudyEnrollment(StudyParticipantRepository participants) {
+    public StudyEnrollment(
+            StudyApplicationRepository applications, StudyParticipantRepository participants) {
+        this.applications = applications;
         this.participants = participants;
     }
 
-    /** 승인 = 신청서 상태 전이 + 명부 편입. 둘 중 하나만 일어나면 안 된다. */
-    public StudyParticipant approve(StudyApplication application, StudySection section) {
-        if (participants.existsBySectionAndUser(section.getId(), application.getUserId())) {
+    /** 제출 = 신청서 행 + 명부 편입. 기수 정원 초과면 둘 다 만들지 않는다. 반은 신청 이후에 정한다. */
+    public StudyParticipant enroll(StudyApplication application, StudyCohort cohort) {
+        if (participants.existsByCohortAndUser(cohort.getId(), application.getUserId())) {
             throw new BusinessException(ErrorCode.CONFLICT, "이미 명부에 있는 사람입니다.");
         }
-        if (section.isFull(participants.countActive(section.getId()))) {
-            throw new BusinessException(ErrorCode.CONFLICT, "반 정원이 찼습니다.");
+        if (cohort.isFull(participants.countActiveByCohort(cohort.getId()))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "정원이 찼습니다.");
         }
-        application.approve();                       // 상태 전이는 여전히 엔티티가 한다
-        return participants.save(StudyParticipant.of(section.getId(), application.getUserId()));
+        applications.save(application);
+        return participants.save(StudyParticipant.of(cohort.getId(), application.getUserId()));
     }
 }
 ```
 
-**엔티티가 할 일을 뺏지 않았다** — `application.approve()` 는 그대로 신청서가 한다.
-도메인 서비스는 **두 애그리거트를 잇는 규칙**(중복·정원)만 갖는다.
+**엔티티가 할 일을 뺏지 않았다** — 신청서는 폼 답을 들고, 명부는 소속을 든다.
+도메인 서비스는 **두 애그리거트를 잇는 규칙**(중복·정원)만 갖는다. 대기열은 두지 않는다.
 
 > ⚠️ 이 예시는 [애그리거트 규칙 2번](#애그리거트--경계가-트랜잭션이다)("한 트랜잭션 = 한 애그리거트")과
-> 부딪친다. 신청 승인은 **부분 성공이 곧 데이터 깨짐**이라 예외로 한 트랜잭션에 묶는다.
+> 부딪친다. 신청 제출은 **부분 성공이 곧 데이터 깨짐**이라 예외로 한 트랜잭션에 묶는다.
 > 이런 예외를 만들 때는 **왜 나눌 수 없는지**를 코드 주석에 남긴다. 남기지 않으면 다음 사람이
 > "규칙이 안 지켜지네" 하고 아무 데서나 따라 한다.
 
@@ -221,13 +224,13 @@ public class StudyEnrollment {
 ```java
 // 애플리케이션 서비스 — 조립만
 @Transactional
-public StudyParticipantResponse approve(Long applicationId, Long sectionId) {
+public StudyParticipantResponse enroll(Long applicationId, Long cohortId) {
     StudyApplication application = applications.findById(applicationId)
             .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "신청서를 찾을 수 없습니다."));
-    StudySection section = sections.findById(sectionId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "반을 찾을 수 없습니다."));
+    StudyCohort cohort = cohorts.findById(cohortId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "기수를 찾을 수 없습니다."));
 
-    StudyParticipant participant = enrollment.approve(application, section);   // ← 규칙은 전부 저 안
+    StudyParticipant participant = enrollment.enroll(application, cohort);   // ← 규칙은 전부 저 안
 
     return StudyParticipantResponse.from(participant);
 }

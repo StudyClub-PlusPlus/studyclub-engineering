@@ -8,9 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -45,6 +47,15 @@ public class GlobalExceptionHandler {
                         .map(f -> f.getField() + ": " + f.getDefaultMessage())
                         .collect(Collectors.joining(", "));
         return respond(ErrorCode.INVALID_INPUT, detail.isBlank() ? null : detail);
+    }
+
+    // 컨트롤러 검증 전에 실패하는 본문·파라미터 변환도 입력 오류다. 원본 예외 메시지에는 입력값이 섞일 수 있어 노출하지 않는다.
+    @ExceptionHandler({
+        HttpMessageNotReadableException.class,
+        MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ErrorResponse> handleInvalidRequest() {
+        return respond(ErrorCode.INVALID_INPUT, null);
     }
 
     /**

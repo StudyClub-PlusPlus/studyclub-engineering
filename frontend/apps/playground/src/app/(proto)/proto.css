@@ -65,6 +65,34 @@
   }
 }
 
+/* 신청 폼 — 필수 미입력 카드를 한 번 깜빡이며 가리킨다. */
+@keyframes apply-attention {
+  0% {
+    box-shadow: var(--ring-error);
+  }
+  40% {
+    box-shadow: 0 0 0 8px color-mix(in oklab, var(--color-error-500) 28%, transparent);
+  }
+  100% {
+    box-shadow: var(--ring-error);
+  }
+}
+.apply-invalid {
+  scroll-margin: 1.5rem;
+  animation: apply-attention 0.7s var(--ease-out);
+}
+.apply-invalid input:not([type='checkbox']):not([type='radio']),
+.apply-invalid textarea,
+.apply-invalid select {
+  border-color: var(--color-error-600);
+}
+.apply-invalid input:not([type='checkbox']):not([type='radio']):focus,
+.apply-invalid textarea:focus,
+.apply-invalid select:focus {
+  border-color: var(--color-error-600);
+  box-shadow: var(--ring-error);
+}
+
 /* ── 운영 콘솔 (back-office-front/src/app/globals.css) ─────────────────────── */
 
 .bo-table {

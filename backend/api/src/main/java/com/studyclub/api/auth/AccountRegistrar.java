@@ -77,6 +77,33 @@ public class AccountRegistrar {
         return account;
     }
 
+    /** 백오피스 로그인 — 조회 전용 */
+    @Transactional
+    public Account findAdmin(GoogleUser g) {
+        AccountIdentity identity =
+                accountIdentityRepository
+                        .findByIssuerAndProviderAccountId(Issuer.GOOGLE, g.sub())
+                        // 부트스트랩이 "core-front 로그인 → SQL 승격" 순서라 계정부터 만들라고 알려준다.
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.SIGNUP_REQUIRED,
+                                                "먼저 서비스에서 로그인해 계정을 만들어 주세요."));
+        Account account =
+                accountRepository
+                        .findById(identity.getAccountId())
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "ACCOUNT_IDENTITY 는 있는데 ACCOUNT 가 없음: "
+                                                        + identity.getAccountId()));
+        if (account.getSystemRole() != SystemRole.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "백오피스 운영 권한이 없는 계정입니다.");
+        }
+        identity.recordLogin(Instant.now());
+        return account;
+    }
+
     /** {@code account_}(8) + 12 hex = 20자. 충돌 시 재생성. */
     String uniqueTemporaryNickname() {
         for (int i = 0; i < 5; i++) {

@@ -8,8 +8,18 @@ export type L10n = { ko: string; en: string };
 export type StudyStatus = "recruiting" | "ongoing" | "closed";
 export type StudyFormat = "online" | "offline" | "hybrid";
 
-// 스터디는 하나의 개념. 모집 마감일이 있으면 기한 모집, 없으면 상시 모집으로만 구분한다.
+// 스터디는 하나의 개념. 상시 모집은 없다 — 모집은 항상 마감일이 있다.
+// 종류: study 는 새 공고마다 참여 신청이 필요하고, club 은 같은 프로그램의 새 기수 공고에서 참여가 자동 유지된다.
 export type StudyKind = "study" | "club";
+
+/**
+ * 스터디가 도는 시간대. `both` = 한국·미국 서부 동시 진행(교차 시간대 모임).
+ *
+ * 등록 폼에서 운영자가 직접 고르는 값이다(STUDY.TIMEZONE). 이 필드가 생기기 전 시드 데이터는
+ * 값이 없고, 그런 행은 사이트에서 "시간대 미정"으로 정직하게 표시한다 — 일정·킥오프 문구에
+ * KST/PST 표기가 있으면 그걸로 추정하기는 하지만, 표기가 없다고 "동시 진행"이라 단정하지 않는다.
+ */
+export type StudyTimezone = "KST" | "PST" | "both";
 
 /**
  * 스터디 주제 (canonical 11종).
@@ -22,7 +32,7 @@ export type StudyKind = "study" | "club";
  * (거기서는 포괄 항목인 "소프트웨어 개발"·"기타"가 반드시 맨 아래여야 구체 분야를 안 삼킨다).
  *
  * 등록 폼은 이 목록만 선택지로 제공한다. 자유 입력이면 표기 흔들림(AI/ML vs AI·ML)으로
- * 카드 색·아이콘 매칭이 깨진다. 한 스터디가 여러 주제에 걸치면 `categories` 로 더 단다.
+ * 카드 색·아이콘 매칭이 깨진다. **다중 카테고리는 지원하지 않는다** — `STUDY.CATEGORY` 단일 값이다.
  *
  * TODO(api): 백엔드 StudyCategory enum 에 ALGORITHM · SOFTWARE · BOOK_CLUB 추가 필요.
  * 현재 enum 은 CS·BACKEND·FRONTEND·MOBILE·PLANNING·PM·DESIGN 을 갖고 있으나 해당 스터디가 0건이다.
@@ -64,6 +74,7 @@ export type Recruitment = {
   status: RecruitmentStatus; // open=마감기한 있는 모집, monthly=매달 정기, always=상시, closed=마감
   cadence?: "one-time" | "monthly" | "weekly" | "rolling";
   form_url?: string; // 모집 구글폼
+  start?: string; // 모집 시작 일자 — 있으면 공개로 본다 (STUDY_RECRUITMENT.START_AT)
   deadline?: string; // 모집 기한 (예: "2026/03/21")
   kickoff?: string; // 킥오프 일시 (예: "2026/03/23 (월) 6:00 PM PDT")
   capacity?: number; // 모집 인원
@@ -71,7 +82,8 @@ export type Recruitment = {
 };
 
 // 신청 폼 — 캡틴이 설계하는 질문 목록. 이름·이메일은 계정에서 읽고, 디스코드 서버 별명은 계정에 없으면 필수로 받는다.
-export type ApplicationQuestionType = "text" | "textarea" | "radio" | "checkbox" | "select";
+export type ApplicationQuestionType =
+  "text" | "textarea" | "radio" | "checkbox" | "select";
 export type ApplicationQuestion = {
   id: string;
   label: string;
@@ -82,6 +94,55 @@ export type ApplicationQuestion = {
   placeholder?: string; // text · textarea 안내 예시
   description?: string; // 지원자에게 보여줄 부가 설명 (선택)
 };
+
+/**
+ * 백오피스 「신청 폼」 탭과 같은 목데이터.
+ * 캡틴이 설계할 수 있는 타입·옵션을 한 폼에 넣는다 — 지원자 화면과 콘솔이 같은 목록을 본다.
+ *
+ * 원본(ai-paper-study): 지원 사유 · 참여 가능 시간 · 희망 난이도 · 킥오프 확인
+ * 보강: 장문형, 객관식·체크박스 「기타」
+ */
+export const DEMO_APPLICATION_FORM: ApplicationQuestion[] = [
+  {
+    id: "reason",
+    label: "지원 사유",
+    type: "text",
+    required: true,
+    placeholder: "내 답변",
+  },
+  {
+    id: "intro",
+    label: "하고 싶은 말",
+    type: "textarea",
+    required: false,
+    placeholder: "내 답변",
+    description: "선택 입력입니다.\n\n**자유롭게** 적어도 됩니다.",
+  },
+  {
+    id: "time",
+    label: "참여 가능 시간을 모두 선택하세요",
+    type: "checkbox",
+    required: true,
+    options: ["평일 오전", "평일 오후", "주말 오전", "주말 오후"],
+    allowOther: true,
+  },
+  {
+    id: "level",
+    label: "희망 난이도를 선택하세요",
+    type: "radio",
+    required: true,
+    options: ["입문", "초급", "중급", "고급", "심화"],
+    allowOther: true,
+  },
+  {
+    id: "kickoff",
+    label:
+      "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
+    type: "select",
+    required: true,
+    options: ["예", "아니오"],
+  },
+];
 
 // 주차별 커리큘럼.
 export type StudyWeek = { label: L10n; title: L10n };
@@ -97,18 +158,32 @@ export type StudyStats = {
 };
 
 export type Study = {
+  /** 내부 키(문자열). 북마크·신청·출석 저장용. URL 에는 쓰지 않는다 — 주소는 `study_id`. */
   id: string;
+  /** STUDY.ID. 사용자 사이트 상세 조회 키. 시드에는 없고 `studies` export 에서 순번으로 붙인다. */
+  study_id: number;
   title: L10n;
   summary: L10n;
   description?: L10n;
   status: StudyStatus;
   format: StudyFormat;
   schedule?: L10n;
+  /** STUDY.TIMEZONE — 운영자가 등록 폼에서 직접 고른 값. 없으면(레거시) 일정·킥오프 문구로 추정하거나 「시간대 미정」. */
+  timezone?: StudyTimezone;
   lead?: string;
   seats?: { total: number; taken: number };
-  /** API 목록에서 받은 현재 지원 인원. */
-  applicantCount?: number;
+  /**
+   * STUDY.DISCORD_CHANNEL_URL — 참고용 링크 하나(주로 로비/공지 채널). 참여 안내에서 site 기본 초대 링크 대신 우선 쓴다.
+   * **클럽은 기수가 바뀌어도 보통 같은 채널을 쓴다** — 새 기수 등록 시 최신 기수 값을 그대로 물려받는다
+   * (`cohortDefaults()`). 실제로 여러 채널(공지·잡담·인증 등)을 운영해도 여기엔 하나만 담는다 — 자동화(채널
+   * 목록 조회, 삭제 감지)의 근거로 쓰지 않는다. 운영 종료(`CLOSED`)는 캡틴이 직접 확인하고 전환하는 수동
+   * 조작이다.
+   */
   discord_url?: string;
+  /** STUDY.DRIVE_URL — 이 기수 자료 드라이브 링크. discord_url 과 같은 이유로 클럽은 보통 기수마다 같은 값이다. */
+  driveUrl?: string;
+  /** STUDY.START_AT — 진행 시작 일시(날짜만 다룬다). 모집 마감일·「진행 일정」 자유 텍스트와는 다른 값이다. */
+  startAt?: string; // ISO date
   recruit_url?: string;
   order?: number;
   year?: string;
@@ -119,17 +194,23 @@ export type Study = {
    * 공개는 목록에서 캡틴이 켠다. 값이 없으면 공개로 본다(레거시).
    */
   published?: boolean;
+  /**
+   * 스터디 프로그램(STUDY_PROGRAM) — 같은 프로그램의 기수(STUDY)끼리 묶는 정체성. 클럽은 기수가 여러 개 쌓인다.
+   * **종류(`kind`)는 프로그램이 갖는다** — STUDY_PROGRAM.STUDY_KIND. 기수마다 달라지는 값이 아니다.
+   */
+  program?: { id: string; title: L10n; kind: StudyKind };
+  /** 종료된 스터디의 채널을 캡틴이 삭제하고 운영을 끝냈는가 (`CLOSED`). 없으면 종료(`ENDED`)까지만 간 것이다. */
+  channelDeleted?: boolean;
   image?: string; // 썸네일 URL(옵션). 없으면 카테고리 기반 기본 이미지 생성.
   host?: { name: L10n; credential?: L10n; avatar?: string }; // 클럽장/진행자 (동행클럽 host 패턴)
   // ── 확장 (전부 옵션) ──
-  kind?: StudyKind; // 기본 study
+  /** @deprecated 종류는 프로그램이 갖는다(`program.kind`). 시드에서 프로그램 종류를 정할 때만 읽는다. */
+  kind?: StudyKind;
   /**
-   * 대표 카테고리. 한 스터디가 여러 분야에 걸치면 `categories` 에 나머지를 둔다.
-   * 목록·필터·집계는 전부 `categoriesOf()` 로 읽는다 — 두 필드를 직접 보면 한쪽을 빠뜨린다.
+   * 주제. **STUDY.CATEGORY 는 단일 값이다** — 다중 카테고리는 지원하지 않는다(등록 폼도 단일 선택).
+   * 목록·필터·집계는 `categoriesOf()` 로 읽는다 — 값이 없는 레거시 행을 함께 처리하기 위한 얇은 래퍼다.
    */
   category?: string;
-  /** 추가 카테고리. 대표 카테고리는 여기 다시 적지 않는다. */
-  categories?: string[];
   goal?: L10n; // 목표
   topics?: L10n[]; // 예시 주제
   how_it_works?: L10n[]; // 진행 방식 (단계별)
@@ -160,16 +241,13 @@ export function toISODate(raw?: string): string | undefined {
 }
 
 /**
- * 스터디가 단 카테고리 전부 (대표 + 추가).
+ * 스터디가 단 카테고리 — 단일 값을 배열로 감싸서 돌려준다.
  *
- * 주제는 **중복해서 달 수 있다.** 한 스터디가 「AI · ML」이면서 「북클럽」일 수 있다.
- * 세는 쪽에서는 합계가 총 스터디 수를 넘는 것이 정상이다.
+ * `study.category` 를 직접 읽지 않고 이 함수를 거치는 이유는 값이 없는 레거시 행(빈 문자열) 때문이다.
+ * 목록·필터·집계가 전부 이 함수 하나를 쓰면, 나중에 "카테고리 없음" 처리 방식이 바뀌어도 한 곳만 고치면 된다.
  */
 export function categoriesOf(study: Study): string[] {
-  const all = [study.category, ...(study.categories ?? [])].filter(
-    (c): c is string => typeof c === "string" && c.length > 0,
-  );
-  return [...new Set(all)];
+  return study.category ? [study.category] : [];
 }
 
 /**
@@ -188,7 +266,7 @@ export function todayISO(): string {
 
 /**
  * 모집 상태. 판정 축은 **모집 마감일 하나**.
- * 마감일을 비우면 마감 없이 계속 모집하는 것으로 본다(= 모집중).
+ * 마감일은 필수다. 값이 없는 옛 데이터만 마감 없는 것으로 읽는다(= 모집중).
  */
 export type RecruitState = "apply" | "closed";
 
@@ -213,6 +291,22 @@ export function publishState(study: Study): PublishState {
   if (study.published === false) return "draft";
   const at = toISODate(study.publish_at);
   return at && at > todayISO() ? "draft" : "live";
+}
+
+/**
+ * 스터디 상태 — 백엔드 `STUDY.STATUS` 5단계.
+ * DRAFT(작성 중·모집 전) → OPEN(개설 — 공개하며 모집 시작) → ONGOING((미팅) 진행 중) → ENDED((미팅) 종료) → CLOSED(채널 삭제 완료).
+ *
+ * 모집중/마감은 상태가 아니라 모집 마감일·정원에서 계산하는 값이라 `recruitState()` 가 따로 답한다.
+ * mock 은 옛 3단계(`status`)라서 공개 여부와 `channelDeleted` 를 겹쳐 5단계로 읽는다.
+ */
+export type LifecycleState = "DRAFT" | "OPEN" | "ONGOING" | "ENDED" | "CLOSED";
+
+export function lifecycleState(study: Study): LifecycleState {
+  if (publishState(study) === "draft") return "DRAFT";
+  if (study.status === "recruiting") return "OPEN";
+  if (study.status === "ongoing") return "ONGOING";
+  return study.channelDeleted ? "CLOSED" : "ENDED";
 }
 
 export type StudyclubEvent = {
@@ -310,60 +404,10 @@ export const site: Site = {
   },
 };
 
-/** 매달 기수를 여는 클럽 — 1기(7월) · 2기(8월) · 3기(9월). */
-const MONTHLY_CLUB_GENS = [
-  {
-    g: 1,
-    month: 7,
-    monthEn: "Jul",
-    status: "closed" as const,
-    date: "2026-07-01",
-    deadline: "2026-06-28",
-  },
-  {
-    g: 2,
-    month: 8,
-    monthEn: "Aug",
-    status: "closed" as const,
-    date: "2026-08-01",
-    deadline: "2026-07-28",
-  },
-  {
-    g: 3,
-    month: 9,
-    monthEn: "Sep",
-    status: "ongoing" as const,
-    date: "2026-09-01",
-    deadline: "2026-08-28",
-  },
-] as const;
-
-function monthlyClubCohorts(
-  id: string,
-  title: L10n,
-  shared: Omit<Study, "id" | "title" | "status" | "date" | "year">,
-): Study[] {
-  return MONTHLY_CLUB_GENS.map((c) => ({
-    ...shared,
-    id: `${id}-g${c.g}`,
-    title: {
-      ko: `${title.ko} ${c.g}기 (${c.month}월)`,
-      en: `${title.en} ${c.g} (${c.monthEn})`,
-    },
-    status: c.status,
-    date: c.date,
-    year: "2026",
-    recruitment: {
-      ...(shared.recruitment ?? {}),
-      status: c.status === "closed" ? "closed" : "monthly",
-      cadence: "monthly" as const,
-      deadline: c.deadline,
-    },
-  }));
-}
-
 // ── studies ───────────────────────────────────────────────────────────
-export const studies: Study[] = [
+/** 시드 한 건. `study_id` 는 export 때(`studies`) 순번으로 붙인다 — 시드에서 직접 정하지 않는다. */
+type StudyDraft = Omit<Study, "study_id">;
+const STUDIES_SEED: StudyDraft[] = [
   // ── 예정(모집중) ────────────────────────────────────────────────────
   {
     id: "ai-paper-study",
@@ -383,7 +427,6 @@ export const studies: Study[] = [
     status: "recruiting",
     format: "online",
     category: "AI · ML",
-    categories: ["북클럽"],
     schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
     description: {
       ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
@@ -396,30 +439,6 @@ export const studies: Study[] = [
       cadence: "one-time",
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
-    applicationForm: [
-      { id: "reason", label: "지원 사유", type: "text", required: true, placeholder: "내 답변" },
-      {
-        id: "time",
-        label: "참여 가능 시간을 모두 선택하세요",
-        type: "checkbox",
-        required: true,
-        options: ["평일 오전", "평일 오후", "주말 오전", "주말 오후"],
-      },
-      {
-        id: "level",
-        label: "희망 난이도를 선택하세요",
-        type: "radio",
-        required: true,
-        options: ["입문", "초급", "중급", "고급", "심화"],
-      },
-      {
-        id: "kickoff",
-        label: "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
-        type: "select",
-        required: true,
-        options: ["예", "아니오"],
-      },
-    ],
     order: 1,
     year: "2026",
   },
@@ -490,77 +509,6 @@ export const studies: Study[] = [
     year: "2026",
   },
   {
-    id: "early-bird",
-    kind: "club",
-    title: { ko: "얼리버드", en: "Early Bird" },
-    host: {
-      name: { ko: "M. 박", en: "M. Park" },
-      credential: {
-        ko: "얼리버드 클럽장 · 3년째 운영",
-        en: "Early Bird host · 3rd year",
-      },
-    },
-    summary: {
-      ko: "아침에 일찍 일어나 공부·자기개발 (매월 추가모집).",
-      en: "Wake up early to study and grow yourself (new members monthly).",
-    },
-    status: "recruiting",
-    format: "online",
-    category: "라이프스타일",
-    schedule: {
-      ko: "매일 인증 · 주 1회 회고",
-      en: "Daily check-in · weekly retro",
-    },
-    description: {
-      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
-      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
-    },
-    recruit_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
-    recruitment: {
-      status: "monthly",
-      deadline: "2026-09-30",
-      cadence: "monthly",
-      form_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
-      note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
-    },
-    order: 4,
-    year: "2026",
-  },
-  {
-    id: "weeklyx",
-    kind: "club",
-    title: { ko: "WeeklyX", en: "WeeklyX" },
-    host: {
-      name: { ko: "Y. 정", en: "Y. Jung" },
-      credential: { ko: "WeeklyX 클럽장", en: "WeeklyX host" },
-    },
-    summary: {
-      ko: "일주일 X시간, 꾸준히 공부하기 (매월 추가모집).",
-      en: "Study X hours a week, consistently (new members monthly).",
-    },
-    status: "recruiting",
-    format: "online",
-    category: "라이프스타일",
-    schedule: {
-      ko: "매일 인증 · 주 1회 회고",
-      en: "Daily check-in · weekly retro",
-    },
-    description: {
-      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
-      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
-    },
-    recruit_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
-    recruitment: {
-      status: "monthly",
-      deadline: "2026-09-30",
-      cadence: "monthly",
-      form_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
-      note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
-    },
-    order: 5,
-    year: "2026",
-  },
-  {
     id: "past-project-review",
     // 공개일이 미래 = 사용자 사이트에 아직 안 보임. 운영자 콘솔에서만 보인다.
     publish_at: "2026-09-15",
@@ -615,7 +563,6 @@ export const studies: Study[] = [
     status: "recruiting",
     format: "online",
     category: "커리어",
-    categories: ["소프트웨어 개발"],
     description: {
       ko: "이력서와 포트폴리오를 실제로 고쳐가며 진행합니다. 각자 초안을 가져오면 함께 읽고 고칠 부분을 짚습니다. 모의 면접도 포함되며, 피드백은 구체적으로 남깁니다. 지원 중인 분과 준비 단계인 분 모두 참여할 수 있습니다.",
       en: "We revise resumes and portfolios for real. Bring a draft; we read it together and mark what to fix. Mock interviews are included, with concrete feedback. Open to both active applicants and those still preparing.",
@@ -630,123 +577,6 @@ export const studies: Study[] = [
     order: 7,
     year: "2026",
   },
-  {
-    id: "daily-leetcode",
-    kind: "club",
-    title: { ko: "Daily LeetCode", en: "Daily LeetCode" },
-    host: {
-      name: { ko: "R. 오", en: "R. Oh" },
-      credential: {
-        ko: "알고리즘 코치 · ICPC 출신",
-        en: "Algorithm coach · ex-ICPC",
-      },
-    },
-    summary: {
-      ko: "리트코드 1일 1문제 챌린지.",
-      en: "One LeetCode problem a day challenge.",
-    },
-    status: "recruiting",
-    format: "online",
-    category: "AI · ML",
-    schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
-    description: {
-      ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
-      en: "Each week we read the assigned paper or material on our own, then meet to share what we took away. Presenters rotate, and everyone comes with questions prepared. We go beyond theory by checking ideas against code or real cases. The first week covers fundamentals so newcomers can keep up.",
-    },
-    recruit_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
-    recruitment: {
-      status: "monthly",
-      deadline: "2026-09-30",
-      cadence: "monthly",
-      form_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
-      note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
-    },
-    order: 8,
-    year: "2026",
-  },
-
-  // ── 월별 클럽 기수 (7·8·9월). 모집중 카드는 위에 그대로 두고, 기수는 참여 이력·출석부용.
-  ...monthlyClubCohorts(
-    "early-bird",
-    { ko: "얼리버드", en: "Early Bird" },
-    {
-      kind: "club",
-      host: {
-        name: { ko: "M. 박", en: "M. Park" },
-        credential: {
-          ko: "얼리버드 클럽장 · 3년째 운영",
-          en: "Early Bird host · 3rd year",
-        },
-      },
-      summary: {
-        ko: "아침에 일찍 일어나 공부·자기개발.",
-        en: "Wake up early to study and grow yourself.",
-      },
-      format: "online",
-      category: "라이프스타일",
-      schedule: {
-        ko: "매일 인증 · 주 1회 회고",
-        en: "Daily check-in · weekly retro",
-      },
-      description: {
-        ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다.",
-        en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back.",
-      },
-      recruit_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
-    },
-  ),
-  ...monthlyClubCohorts(
-    "weeklyx",
-    { ko: "WeeklyX", en: "WeeklyX" },
-    {
-      kind: "club",
-      host: {
-        name: { ko: "Y. 정", en: "Y. Jung" },
-        credential: { ko: "WeeklyX 클럽장", en: "WeeklyX host" },
-      },
-      summary: {
-        ko: "일주일 X시간, 꾸준히 공부하기.",
-        en: "Study X hours a week, consistently.",
-      },
-      format: "online",
-      category: "라이프스타일",
-      schedule: {
-        ko: "매일 인증 · 주 1회 회고",
-        en: "Daily check-in · weekly retro",
-      },
-      description: {
-        ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다.",
-        en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back.",
-      },
-      recruit_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
-    },
-  ),
-  ...monthlyClubCohorts(
-    "daily-leetcode",
-    { ko: "Daily LeetCode", en: "Daily LeetCode" },
-    {
-      kind: "club",
-      host: {
-        name: { ko: "R. 오", en: "R. Oh" },
-        credential: {
-          ko: "알고리즘 코치 · ICPC 출신",
-          en: "Algorithm coach · ex-ICPC",
-        },
-      },
-      summary: {
-        ko: "리트코드 1일 1문제 챌린지.",
-        en: "One LeetCode problem a day challenge.",
-      },
-      format: "online",
-      category: "AI · ML",
-      schedule: { ko: "매주 목 20:00 · 4주 과정", en: "Thu 8:00 PM · 4 weeks" },
-      description: {
-        ko: "매일 리트코드 한 문제를 풀고 주 1회 모여 풀이를 나눕니다.",
-        en: "Solve one LeetCode problem a day and meet weekly to share solutions.",
-      },
-      recruit_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
-    },
-  ),
 
   // ── 진행중 ──────────────────────────────────────────────────────────
   {
@@ -770,7 +600,6 @@ export const studies: Study[] = [
     status: "ongoing",
     format: "hybrid",
     category: "소프트웨어 개발",
-    categories: ["AI · ML"],
     schedule: {
       ko: "매주 토 10:00 · 10주 과정",
       en: "Sat 10:00 AM · 10 weeks",
@@ -828,7 +657,6 @@ export const studies: Study[] = [
     status: "ongoing",
     format: "online",
     category: "데이터",
-    categories: ["소프트웨어 개발", "북클럽"],
     schedule: { ko: "매주 수 20:30 · 6주 과정", en: "Wed 8:30 PM · 6 weeks" },
     description: {
       ko: "실제 데이터셋을 놓고 쿼리와 분석을 직접 해보는 방식으로 진행합니다. 이론 설명은 짧게 하고 대부분의 시간을 손으로 만지는 데 씁니다. 매주 과제가 있고, 각자 결과를 공유하며 다른 접근을 배웁니다. 도구 설치와 환경 설정은 첫 주에 함께 끝냅니다.",
@@ -875,32 +703,6 @@ export const studies: Study[] = [
       { ko: "한OO / MLE / NYC", en: "Han** / MLE / NYC" },
     ],
     order: 11,
-    year: "2026",
-  },
-  {
-    id: "renaissance-club",
-    kind: "club",
-    title: { ko: "르네상스 클럽", en: "Renaissance Club" },
-    summary: {
-      ko: "상시 운영하는 회고 모임.",
-      en: "An always-on retrospective club.",
-    },
-    status: "ongoing",
-    format: "online",
-    category: "라이프스타일",
-    schedule: {
-      ko: "매일 인증 · 주 1회 회고",
-      en: "Daily check-in · weekly retro",
-    },
-    description: {
-      ko: "혼자서는 이어가기 어려운 습관을 함께 만들어 갑니다. 각자 목표를 정하고 매일 인증하며, 주 1회 모여 지난 한 주를 돌아봅니다. 잘 안 된 주도 그대로 이야기하는 것이 규칙입니다. 부담 없이 오래 가는 것을 목표로 합니다.",
-      en: "We build habits that are hard to keep alone. Everyone sets a goal, checks in daily, and we meet weekly to look back. Talking about the weeks that didn't go well is part of the rule. The aim is to last, not to be intense.",
-    },
-    recruitment: {
-      status: "always",
-      cadence: "rolling",
-    },
-    order: 12,
     year: "2026",
   },
 
@@ -954,7 +756,6 @@ export const studies: Study[] = [
     status: "closed",
     format: "online",
     category: "데이터",
-    categories: ["소프트웨어 개발"],
     schedule: { ko: "매주 수 20:30 · 6주 과정", en: "Wed 8:30 PM · 6 weeks" },
     description: {
       ko: "실제 데이터셋을 놓고 쿼리와 분석을 직접 해보는 방식으로 진행합니다. 이론 설명은 짧게 하고 대부분의 시간을 손으로 만지는 데 씁니다. 매주 과제가 있고, 각자 결과를 공유하며 다른 접근을 배웁니다. 도구 설치와 환경 설정은 첫 주에 함께 끝냅니다.",
@@ -1135,6 +936,7 @@ export const studies: Study[] = [
       ko: "매주 토 10:00 · 10주 과정",
       en: "Sat 10:00 AM · 10 weeks",
     },
+    timezone: "PST",
     description: {
       ko: "직접 만들어 보면서 배우는 방식입니다. 매주 목표를 정하고 각자 구현한 뒤 코드를 서로 리뷰합니다. 정답을 알려주기보다 왜 그렇게 했는지 설명하는 데 시간을 씁니다. 완성보다 꾸준히 이어가는 것을 우선합니다.",
       en: "We learn by building. Each week has a goal; we implement on our own and review each other's code. More time goes to explaining why than to giving answers. Consistency matters more than finishing.",
@@ -1287,7 +1089,6 @@ export const studies: Study[] = [
     status: "closed",
     format: "online",
     category: "AI · ML",
-    categories: ["소프트웨어 개발", "커리어"],
     schedule: { ko: "매주 목 20:00 · 8주 과정", en: "Thu 8:00 PM · 8 weeks" },
     description: {
       ko: "매주 정해진 논문이나 자료를 각자 읽고 모여서 정리한 내용을 나눕니다. 발표자는 돌아가며 맡고, 나머지는 미리 읽어 온 뒤 질문을 준비합니다. 이론만 훑지 않고 코드나 실제 사례로 확인하는 시간을 함께 가집니다. 배경 지식이 부족해도 따라올 수 있도록 첫 주에 기초를 정리하고 시작합니다.",
@@ -1431,7 +1232,6 @@ export const studies: Study[] = [
     status: "closed",
     format: "online",
     category: "알고리즘",
-    categories: ["커리어"],
     schedule: {
       ko: "매주 화·목 21:00 · 상시",
       en: "Tue & Thu 9:00 PM · ongoing",
@@ -2335,6 +2135,123 @@ export const studies: Study[] = [
   },
 ];
 
+/**
+ * 데모용 스터디 프로그램 — 시드에는 프로그램이 없어 **제목에서 기수 표기를 뗀 것**을 프로그램으로 본다.
+ * 프로그램 id 는 처음 나온 순서대로 1부터 매긴다. 실제 값이 아니라 목록의 그룹 보기를 보이려는 것이다.
+ *
+ * 제목에서 "N기"를 떼어내는 이 편법은 데모용이다. 실제 스키마는 기수 순서를 별도 컬럼으로 저장하지 않고
+ * `STUDY.ID`(생성 순서)로 판정한다 — `START_AT` 은 쓰지 않는다(이유: docs/erd/STUDY.md#채널-삭제와-closed).
+ */
+function programStem(title: L10n): L10n {
+  const strip = (t: string) =>
+    t
+      .replace(/\s*\d+기\s*(\([^)]*\))?\s*$/, "")
+      .replace(/\s*Cohort\s*\d+\s*(\([^)]*\))?\s*$/, "")
+      .replace(/\s*\(?\d{4}년.*$/, "")
+      .replace(/\s*\d+월.*$/, "")
+      .replace(/\s*(\d+기|시즌\s*\d+)\s*$/, "")
+      .trim() || t;
+  return { ko: strip(title.ko), en: strip(title.en) };
+}
+
+/**
+ * 데모용 모집 시작일 — 시드에는 시작일이 없어 마감 14일 전으로 채운다.
+ * 목록의 「모집 시작일」이 비지 않게 하려는 것뿐이며 실제 값이 아니다.
+ */
+function withDemoStart(rec: Recruitment | undefined): Recruitment | undefined {
+  if (!rec || rec.start) return rec;
+  const end = toISODate(rec.deadline);
+  if (!end || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return rec;
+  const start = new Date(Date.parse(`${end}T00:00:00Z`) - 14 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  return { ...rec, start };
+}
+
+/** 백오피스 신청 폼 탭과 지원자 화면이 같은 질문 목록을 본다. */
+const DEMO_PROGRAM_IDS = new Map<string, string>();
+
+/** 시드의 기수 중 하나라도 클럽이면 그 프로그램은 클럽이다 — 종류는 기수가 아니라 프로그램의 것이다. */
+const DEMO_PROGRAM_KINDS = new Map<string, StudyKind>();
+for (const s of STUDIES_SEED) {
+  const stem = programStem(s.title).ko;
+  if (s.kind === "club" || !DEMO_PROGRAM_KINDS.has(stem))
+    DEMO_PROGRAM_KINDS.set(stem, s.kind === "club" ? "club" : "study");
+}
+
+/**
+ * 시작일(STUDY.START_AT) 추정 — 등록 폼이 이 값을 받게 된 건 최근이라 옛 시드에는 비어 있는 게 많다.
+ * 우선순위: 코호트 대표 날짜(`date`) → 킥오프 문구의 날짜 → 모집 마감 + 1주.
+ * TODO(mock): 시드에 실제 startAt 을 채우면 이 추정 로직은 걷어낸다.
+ */
+function deriveStartAt(s: StudyDraft): string | undefined {
+  if (s.date) return toISODate(s.date);
+
+  const kickoff = s.recruitment?.kickoff;
+  const fullDate = kickoff?.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (fullDate) return `${fullDate[1]}-${fullDate[2].padStart(2, "0")}-${fullDate[3].padStart(2, "0")}`;
+
+  const deadline = toISODate(s.recruitment?.deadline);
+  const shortDate = kickoff?.match(/^(\d{1,2})\/(\d{1,2})/);
+  if (shortDate && deadline) {
+    return `${deadline.slice(0, 4)}-${shortDate[1].padStart(2, "0")}-${shortDate[2].padStart(2, "0")}`;
+  }
+
+  if (!deadline) return undefined;
+  const started = new Date(`${deadline}T00:00:00Z`);
+  started.setUTCDate(started.getUTCDate() + 7);
+  return started.toISOString().slice(0, 10);
+}
+
+export const studies: Study[] = STUDIES_SEED.map(
+  (s, i) => ({
+    ...s,
+    /** STUDY.ID. 사용자 사이트 상세 조회 키 — 내부 키(`id`)는 URL 에 쓰지 않는다. 시드에는 없고 여기서 순번으로 붙인다. */
+    study_id: i + 1,
+    startAt: s.startAt ?? deriveStartAt(s),
+    program: (() => {
+      const title = programStem(s.title);
+      if (!DEMO_PROGRAM_IDS.has(title.ko))
+        DEMO_PROGRAM_IDS.set(title.ko, String(DEMO_PROGRAM_IDS.size + 1));
+      return {
+        id: DEMO_PROGRAM_IDS.get(title.ko)!,
+        title,
+        kind: DEMO_PROGRAM_KINDS.get(title.ko) ?? "study",
+      };
+    })(),
+    recruitment: withDemoStart(s.recruitment),
+    // 데모: 지난해 이전에 끝난 스터디는 채널까지 정리된 것으로 본다
+    channelDeleted:
+      s.channelDeleted ??
+      (s.status === "closed" && Boolean(s.year) && Number(s.year) < 2026
+        ? true
+        : undefined),
+    applicationForm: DEMO_APPLICATION_FORM,
+  }),
+);
+
+/** 스터디 프로그램 목록 — 기수(스터디)가 하나라도 있는 프로그램. 프로그램만 따로 만들지 않는다. */
+export type StudyProgram = NonNullable<Study["program"]> & { cohorts: number };
+export const programs: StudyProgram[] = (() => {
+  const map = new Map<string, StudyProgram>();
+  for (const s of studies) {
+    if (!s.program) continue;
+    const cur = map.get(s.program.id);
+    if (cur) cur.cohorts += 1;
+    else map.set(s.program.id, { ...s.program, cohorts: 1 });
+  }
+  return [...map.values()];
+})();
+
+/** 프로그램의 최신 기수 — 모집 마감일이 가장 늦은 기수. 새 기수의 기본값을 가져올 때 쓴다. */
+export function latestCohort(programId: string): Study | undefined {
+  const key = (s: Study) =>
+    toISODate(s.recruitment?.deadline) ?? toISODate(s.recruitment?.start) ?? "";
+  return studies
+    .filter((s) => s.program?.id === programId)
+    .sort((a, b) => key(b).localeCompare(key(a)))[0];
+}
+
 // ── announcements (공지사항) ──────────────────────────────────────────
 export const announcements: Announcement[] = [
   {
@@ -2643,6 +2560,7 @@ export const members: Member[] = [
 
 export {
   getStudyCrew,
+  recruitCapacity,
   attendanceRate,
   attendancePoint,
   LATE_WEIGHT,

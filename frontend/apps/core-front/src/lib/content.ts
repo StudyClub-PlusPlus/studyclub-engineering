@@ -10,6 +10,7 @@ import {
   site as siteData,
   announcements as announcementsData,
 } from '@studyclub/mock';
+
 import { fetchStudies } from './api';
 
 export type {

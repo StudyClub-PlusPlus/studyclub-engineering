@@ -26,14 +26,13 @@ import lombok.NoArgsConstructor;
                         columnNames = {"STUDY_MEETING_ID", "ACCOUNT_ID"}),
         indexes = {
             @Index(
-                    name = "idx_study_attendance_account_cohort",
-                    columnList = "ACCOUNT_ID, STUDY_COHORT_ID"),
+                    name = "idx_study_attendance_account_study",
+                    columnList = "ACCOUNT_ID, STUDY_ID"),
             @Index(
-                    name = "idx_study_attendance_account_class",
-                    columnList = "ACCOUNT_ID, STUDY_CLASS_ID"),
-            @Index(
-                    name = "idx_study_attendance_cohort_status",
-                    columnList = "STUDY_COHORT_ID, STATUS")
+                    name = "idx_study_attendance_account_group",
+                    columnList = "ACCOUNT_ID, STUDY_GROUP_ID"),
+            @Index(name = "idx_study_attendance_study_status", columnList = "STUDY_ID, STATUS"),
+            @Index(name = "idx_study_attendance_study_account", columnList = "STUDY_ID, ACCOUNT_ID")
         })
 @Getter
 @Builder
@@ -48,11 +47,11 @@ public class StudyAttendance extends BaseEntity {
     @Column(name = "ACCOUNT_ID", nullable = false)
     private Long accountId;
 
-    @Column(name = "STUDY_COHORT_ID", nullable = false)
-    private Long studyCohortId;
+    @Column(name = "STUDY_ID", nullable = false)
+    private Long studyId;
 
-    @Column(name = "STUDY_CLASS_ID", nullable = false)
-    private Long studyClassId;
+    @Column(name = "STUDY_GROUP_ID", nullable = false)
+    private Long studyGroupId;
 
     @Column(name = "STUDY_MEETING_ID", nullable = false)
     private Long studyMeetingId;
@@ -60,4 +59,8 @@ public class StudyAttendance extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AttendanceStatus status;
+
+    public void updateStatus(AttendanceStatus status) {
+        this.status = status;
+    }
 }

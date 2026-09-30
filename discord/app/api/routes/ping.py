@@ -37,4 +37,6 @@ async def ping(request: Request) -> dict:
     except discord.HTTPException as exc:
         raise HTTPException(status_code=502, detail=f"discord rejected the send: {exc}") from exc
 
-    return {"status": "sent", "channel_id": channel_id, "message_id": message.id}
+    # Snowflakes go out as strings: they are 64-bit, so a JSON number silently
+    # loses precision in JS callers (2**53 ceiling).
+    return {"status": "sent", "channel_id": str(channel_id), "message_id": str(message.id)}

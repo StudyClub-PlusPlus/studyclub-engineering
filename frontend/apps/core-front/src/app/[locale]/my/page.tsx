@@ -173,8 +173,12 @@ export default function MyPage() {
       router.replace(`/${locale}/login?next=/${locale}/my`);
       return;
     }
+    if (!u.onboardingCompletedAt) {
+      router.replace(`/${locale}/onboarding?next=${encodeURIComponent(`/${locale}/my`)}`);
+      return;
+    }
     setUser(u);
-    setName(getDisplayName() ?? u.name ?? u.email);
+    setName(getDisplayName() ?? u.nickname ?? u.email);
     setRegionState(getRegion());
     setApplications(getApplications());
     setBookmarks(getBookmarks());

@@ -2,7 +2,7 @@ package com.studyclub.api.participant;
 
 import com.studyclub.api.auth.security.RequireOnboarding;
 import com.studyclub.api.participant.ParticipantHubResponses.ParticipantHubOverviewResponse;
-import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyCohortDetailResponse;
+import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyDetailResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,11 +36,11 @@ public class ParticipantHubController {
     }
 
     @Operation(summary = "내 수강 스터디 상세 조회")
-    @GetMapping("/study-cohorts/{cohortId}")
-    public ParticipatingStudyCohortDetailResponse getParticipatingStudyCohortDetail(
-            @PathVariable Long cohortId, Authentication authentication) {
-        return participantHubQueryService.getParticipatingStudyCohortDetail(
-                authenticatedAccountId(authentication), cohortId);
+    @GetMapping("/studies/{studyId}")
+    public ParticipatingStudyDetailResponse getParticipatingStudyDetail(
+            @PathVariable Long studyId, Authentication authentication) {
+        return participantHubQueryService.getParticipatingStudyDetail(
+                authenticatedAccountId(authentication), studyId);
     }
 
     private Long authenticatedAccountId(Authentication authentication) {

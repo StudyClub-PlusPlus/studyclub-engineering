@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import './globals.css';
+import { Providers } from '@/app/providers';
 import { AppShell } from '@/components/AppShell';
 
 export const metadata: Metadata = {
@@ -22,7 +23,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       {/* data-app="console" — console.overrides.css 의 본문 밀도(15px) 스코프 앵커 */}
       <body className='min-h-full' data-app='console'>
-        <AppShell>{children}</AppShell>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );
