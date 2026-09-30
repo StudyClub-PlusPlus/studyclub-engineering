@@ -20,7 +20,7 @@
 ### 기존 목업과의 관계
 
 `GET /api/me/studies` 는 원래 목업(`MockParticipantHubDataProvider`)이었고 부르는 화면이 없었다.
-이 스펙이 그 응답 shape(`activeStudies`·`pastStudies`·`applications`·`upcomingMeetings`·`bookmarks`)을 **대체**했다.
+이 스펙이 그 응답 형태(`activeStudies`·`pastStudies`·`applications`·`upcomingMeetings`·`bookmarks`)을 **대체**했다.
 같은 컨트롤러의 `GET /api/me/studies/{studyId}`(수강 상세)는 **아직 목업**이다 — 이 화면은 쓰지 않는다.
 신청 목록·찜 목록은 이 화면 범위 밖이다(PRD §비고).
 
@@ -42,7 +42,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 
 없음. 탭 필터·10개 페이징은 화면이 한다 (PRD §2 · §5 — 주소에 남기지 않음).
 
-> 응답 크기는 명부 행 수가 아니라 **누적 회차 수**가 정한다(스터디 × 회차). 8~10회차 스터디 수십 개면 회차 수백 개로 작다. 한 응답의 회차가 1,000개를 넘기면 서버 페이징이나 종료 스터디의 회차 생략을 검토한다.
+> 응답 크기는 참여한 스터디 수가 아니라 **누적 회차 수**가 정한다(스터디 × 회차). 8~10회차 스터디 수십 개면 회차 수백 개로 작다. 한 응답의 회차가 1,000개를 넘기면 서버 페이징이나 종료 스터디의 회차 생략을 검토한다.
 
 ### Response — 200
 
@@ -89,7 +89,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|
-| items | Array | N | 명부 행마다 하나. `startAt` 내림차순. 없으면 `[]` | STUDY_PARTICIPANT (`ACCOUNT_ID` = 나) |
+| items | Array | N | 내가 참여한 스터디(명부) 하나당 한 개. `startAt` 내림차순. 없으면 `[]` | STUDY_PARTICIPANT (`ACCOUNT_ID` = 나) |
 | items[].studyId | Long | N | 상세 링크용 | STUDY.ID |
 | items[].title | String | N | | STUDY.TITLE |
 | items[].category | String | N | 카드 아이콘·주간 칸 색 | STUDY.CATEGORY |
@@ -108,7 +108,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].meetings[].scheduledAt | String (ISO 8601 UTC) | N | 예정 시각. 주간 칸·다음 회차·격자 머리 | STUDY_MEETING.SCHEDULED_AT |
 | items[].meetings[].startAt | String (ISO 8601 UTC) | Y | 실제 시작 | STUDY_MEETING.START_AT |
 | items[].meetings[].endAt | String (ISO 8601 UTC) | Y | 실제 종료 | STUDY_MEETING.END_AT |
-| items[].meetings[].attendanceStatus | String | Y | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT`. 출석 행이 없으면 null. **시작 전 회차**(`startAt` null 이고 `scheduledAt` > now)의 `ABSENT` 도 null — 회차 생성 때 깔린 기본값이라 화면에 결석으로 그리지 않는다. 시작 전이라도 `EXCUSED` 는 그대로 준다(사전 휴가 배지) | STUDY_ATTENDANCE.STATUS (내 계정) |
+| items[].meetings[].attendanceStatus | String | Y | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT`. 출석 행이 없으면 null. **시작 전 회차**(`startAt` null 이고 `scheduledAt` > now)의 `ABSENT` 도 null — 회차를 만들 때 참여자 전원에게 기본으로 들어가는 값이라 화면에 결석으로 그리지 않는다. 시작 전이라도 `EXCUSED` 는 그대로 준다(사전 휴가 배지) | STUDY_ATTENDANCE.STATUS (내 계정) |
 | items[].meetings[].countedInRate | Boolean | N | 이 회차가 `attendanceRate` 분모에 들어갔는지. `scheduledAt` ≤ now 이고 `scheduledAt` ≥ 편입 시각(`JOINED_AT`)이며 명부가 `WITHDRAWN` 이 아닐 때 true. 편입 전 회차는 격자에는 보이지만 false | 계산: `AttendanceRateCalculator` 와 같은 조건 |
 
 #### relation — 나와의 관계
@@ -163,7 +163,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 
 ### 미확정
 
-- 휴가(`EXCUSED`) 산식은 **출석과 같이 1.0** — #146(2026-09-30 머지)이 계산기·출석 스펙·ERD 를 이 값으로 맞췄다. PRD §4-8 의 "분모에서 뺀다" 와 열린 #147 문서는 그 전 값이다. 휴가 신청 자체는 MVP 이후(디스코드 09-08)라 `EXCUSED` 는 반장 정정으로만 생긴다
+- 출석률에서 휴가(`EXCUSED`)는 **출석과 똑같이 센다**(1회 = 1.0) — #146(2026-09-30 머지)이 계산기·출석 스펙·ERD 를 이렇게 맞췄다. PRD §4-8 의 "휴가 회차는 계산에서 뺀다" 와 열린 #147 문서는 바뀌기 전 기준이다. 휴가 신청 자체는 MVP 이후(디스코드 09-08)라 `EXCUSED` 는 반장 정정으로만 생긴다
 - [NEEDS CLARIFICATION] 명부 `PAUSED` 의 탭·배지 (PRD §4 미확정과 같음)
 - [NEEDS CLARIFICATION] 클럽 디스코드 초대(로비) URL 은 지금 프론트 mock `site.discord_invite`(`frontend/packages/mock/src/index.ts`)에 있다. 서버 설정으로 옮길지만 미정 — 옮기기 전까지 이 응답에 넣지 않는다
 - [NEEDS CLARIFICATION] 회차 예정 길이. 컬럼이 없어 120분으로 본다(프로토 가정). 반·스터디마다 다르면 예정 종료 컬럼이 필요하다
