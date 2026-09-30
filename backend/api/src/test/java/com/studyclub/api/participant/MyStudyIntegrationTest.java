@@ -110,12 +110,12 @@ class MyStudyIntegrationTest {
     void attachesMyAttendancePerMeeting() {
         Long studyId = enroll("출석 격자", now.minus(DAY.multipliedBy(14)), ParticipantStatus.ACTIVE);
         StudyParticipant me = participant(MEMBER_ID, studyId);
-        // me 는 10일 전에 편입했다
-        Long beforeJoin = meeting(me, now.minus(DAY.multipliedBy(12)), true);
-        Long present = meeting(me, now.minus(DAY.multipliedBy(7)), true);
+        // me 는 10일 전에 편입했다. 회차 번호가 저장 순서가 아니라 예정 시각 순서인지 보려고 섞어서 만든다
         Long late = meeting(me, now.minus(DAY), true);
-        Long nextAbsent = meeting(me, now.plus(DAY), false);
         Long laterExcused = meeting(me, now.plus(DAY.multipliedBy(8)), false);
+        Long beforeJoin = meeting(me, now.minus(DAY.multipliedBy(12)), true);
+        Long nextAbsent = meeting(me, now.plus(DAY), false);
+        Long present = meeting(me, now.minus(DAY.multipliedBy(7)), true);
         attend(me, present, AttendanceStatus.PRESENT);
         attend(me, late, AttendanceStatus.LATE);
         attend(me, nextAbsent, AttendanceStatus.ABSENT);
@@ -124,6 +124,9 @@ class MyStudyIntegrationTest {
         Map<String, Object> study = item(items(MEMBER_ID), studyId);
         List<Map<String, Object>> meetings = meetings(study);
 
+        assertThat(meetings)
+                .extracting(m -> ((Number) m.get("meetingId")).longValue())
+                .containsExactly(beforeJoin, present, late, nextAbsent, laterExcused);
         assertThat(meetings).extracting(m -> m.get("sequence")).containsExactly(1, 2, 3, 4, 5);
         assertThat(meeting(meetings, beforeJoin))
                 .containsEntry("attendanceStatus", null)
@@ -143,13 +146,32 @@ class MyStudyIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 같은 반 다른 회원의 명부·출석은 내 목록에 나오지 않는다")
-    void excludesOtherMembers() {
-        Long studyId = enroll("남의 스터디", now.minus(DAY.multipliedBy(7)), ParticipantStatus.ACTIVE);
-        StudyParticipant owner = participant(MEMBER_ID, studyId);
-        attend(owner, meeting(owner, now.minus(DAY), true), AttendanceStatus.PRESENT);
+    @DisplayName("성공 - 같은 반 다른 회원의 출석은 내 회차 칸에 섞이지 않는다")
+    void excludesOtherMembersAttendance() {
+        Long studyId = enroll("같은 반", now.minus(DAY.multipliedBy(7)), ParticipantStatus.ACTIVE);
+        StudyParticipant me = participant(MEMBER_ID, studyId);
+        StudyParticipant other =
+                studyParticipantRepository.save(
+                        StudyParticipant.builder()
+                                .accountId(OTHER_ID)
+                                .studyId(studyId)
+                                .studyGroupId(me.getStudyGroupId())
+                                .status(ParticipantStatus.ACTIVE)
+                                .participantRole(ParticipantRole.MEMBER)
+                                .joinedAt(now.minus(DAY.multipliedBy(10)))
+                                .build());
+        Long meetingId = meeting(me, now.minus(DAY), true);
+        attend(me, meetingId, AttendanceStatus.ABSENT);
+        attend(other, meetingId, AttendanceStatus.PRESENT);
 
-        assertThat(items(OTHER_ID)).isEmpty();
+        List<Map<String, Object>> mine = items(MEMBER_ID);
+        List<Map<String, Object>> others = items(OTHER_ID);
+
+        assertThat(mine).hasSize(1);
+        assertThat(meeting(meetings(item(mine, studyId)), meetingId))
+                .containsEntry("attendanceStatus", "ABSENT");
+        assertThat(meeting(meetings(item(others, studyId)), meetingId))
+                .containsEntry("attendanceStatus", "PRESENT");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

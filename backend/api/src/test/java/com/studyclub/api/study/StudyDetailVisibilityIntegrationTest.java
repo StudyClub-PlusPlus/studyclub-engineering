@@ -151,6 +151,30 @@ class StudyDetailVisibilityIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - 참여 중단한 네비게이터에게도 디스코드·자료실 링크가 비어 있다")
+    void withdrawnNavigatorGetsNoLinks() {
+        Long studyId = createOpenStudyWithLinks("하차한 네비게이터에게 안 보이는 링크");
+        insertParticipantIfAbsent(
+                studyId, NAVIGATOR_ID, ParticipantRole.LEADER, ParticipantStatus.WITHDRAWN);
+
+        var response = get(studyId, NAVIGATOR_ID);
+
+        assertThat(response.getBody())
+                .containsEntry("discordChannelUrl", null)
+                .containsEntry("driveUrl", null);
+    }
+
+    @Test
+    @DisplayName("성공 - 캡틴은 명부에 없어도 디스코드·자료실 링크를 받는다")
+    void captainSeesLinks() {
+        Long studyId = createOpenStudyWithLinks("캡틴이 보는 링크");
+
+        var response = get(studyId, ADMIN_ID);
+
+        assertThat(response.getBody()).containsEntry("driveUrl", DRIVE_URL);
+    }
+
+    @Test
     @DisplayName("실패 - 비로그인에게는 공개 스터디라도 디스코드·자료실 링크가 비어 있다")
     void anonymousGetsNoLinks() {
         Long studyId = createOpenStudyWithLinks("비로그인에게 안 보이는 링크");

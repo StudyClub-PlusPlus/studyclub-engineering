@@ -83,16 +83,20 @@ public class StudyCaptainGuard {
     }
 
     /**
-     * 디스코드 채널·자료실 링크를 볼 수 있는지 — 캡틴, 그 스터디의 네비게이터, 참여 중단이 아닌 참여자. 링크가 곧 입장권이라 공개 상세에서도 이 사람들에게만 채운다
-     * (share/2026-09-30-study-detail-private-urls.md). 비로그인은 {@code false}.
+     * 디스코드 채널·자료실 링크를 볼 수 있는지 — 캡틴이거나, 참여 중단이 아닌 참여자. 네비게이터도 명부 행이라 참여 상태로 함께 걸러진다 — 하차한 네비게이터는 못
+     * 본다. 링크가 곧 입장권이라 공개 상세에서도 이 사람들에게만 채운다 (share/2026-09-30-study-detail-private-urls.md). 비로그인은
+     * {@code false}.
      */
     public boolean canSeePrivateLinks(Long accountId, Long studyId) {
         if (accountId == null) {
             return false;
         }
-        return isCaptainOrNavigator(accountId, studyId)
-                || studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
-                        studyId, accountId, LINK_VIEWER_STATUSES);
+        return studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
+                        studyId, accountId, LINK_VIEWER_STATUSES)
+                || accountRepository
+                        .findById(accountId)
+                        .map(account -> account.getSystemRole() == SystemRole.ADMIN)
+                        .orElse(false);
     }
 
     private Account account(Long accountId) {
