@@ -11,6 +11,7 @@
 > 갱신: 2026-09-24 — **공개 판정 정정**(PR #129 리뷰): 「공개 = `START_AT` 유무」를 「공개 = `STATUS != DRAFT`」로 바꾼다. `START_AT` 은 `STATUS` 와 별개 필드라 한쪽만 바뀌는 동기화 버그 여지가 있고, 지금 등록 API가 `START_AT=now` 를 채우는 별도 버그와도 얽혀 있었다 — `STATUS` 하나로 판정하면 두 문제 다 공개 여부에는 영향을 주지 않는다. 상세: [ERD](../../docs/erd/STUDY.md#공개-여부) · [POL-0002](../../01-planning/_registry/policies/POL-0002-study-status.md#공개-여부)
 > 갱신: 2026-09-27 — 백오피스 정보 탭 연동. GET 응답에 `programId`·`oneLineSummary`·`schedule`·`discordChannelUrl`·`driveUrl` 추가, PATCH 가 `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 을 받는다(`null` = 비움, 키 생략 = 유지). **정원 저장 위치는 아직 `STUDY.CAPACITY`** 다 — 아래 「스터디 수정」 참고. `timezone` 은 컬럼이 없어 여전히 미구현
 > 갱신: 2026-09-28 — category 유효값 표를 11종(`StudyCategory` enum)으로 정정
+> 갱신: 2026-09-29 — 팀 결정: 스터디 상세도 백오피스용 `GET /api/admin/studies/{studyId}` 를 따로 둔다. 운영 콘솔은 이 경로를, 사용자 사이트 상세는 캡틴·네비게이터에게만 DRAFT 를 보여 준다
 > 갱신: 2026-09-29 — **관객별 엔드포인트로 나눈다**: 백오피스가 부르는 것은 `/api/admin/studies`(`AdminStudyController`, 캡틴만), 사용자 사이트는 `/api/studies`. 두 관객이 다 하는 일(목록·상세·수정)만 경로가 둘이고 로직은 `StudyService` 를 공유한다. 등록·삭제·공개는 `/api/admin` 으로 옮긴다. 근거·순서: 아래 「관객별 엔드포인트」
 > 갱신: 2026-09-29 — **작성자(`CREATED_BY`) 추가 (제안 단계, 백엔드 미반영)**: 스터디를 등록한 계정을 서버가 기록한다. 운영 콘솔 목록에 「작성자」 열을 넣고 「출석률」 열을 뺐다 — [captain-list-all-studies PRD](../../planning/stories/captain-list-all-studies/PRD.md)
 
@@ -21,7 +22,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/studies | 스터디 목록 (DRAFT 제외) | X | 구현완료 |
-| GET | /api/studies/{studyId} | 스터디 상세 조회 — **운영 콘솔도 이 경로를 쓴다**. DRAFT 는 캡틴·그 스터디 네비게이터에게만, 그 밖엔 404 | 선택 | 구현완료 |
+| GET | /api/studies/{studyId} | 스터디 상세 조회 — DRAFT 는 캡틴·그 스터디 네비게이터에게만, 그 밖엔 404 | 선택 | 구현완료 |
 | PATCH | /api/studies/{studyId} | 스터디 수정 (네비게이터가 맡은 스터디를) | O (캡틴·네비게이터) | 구현완료 (`timezone` 제외). 부르는 사이트 화면은 아직 없다 |
 
 **백오피스 — `/api/admin/studies` (`AdminStudyController`, 캡틴만)**
@@ -29,6 +30,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/admin/studies | 스터디 목록 (DRAFT 포함, `status`·`offset`·`limit`) | O (ADMIN) | 구현완료 — 콘솔 목록은 아직 `/api/studies` 를 부른다 (교체 여부 팀 확인 중) |
+| GET | /api/admin/studies/{studyId} | 스터디 상세 (DRAFT 포함) | O (ADMIN) | 구현완료 — 콘솔 상세가 부른다 |
 | POST | /api/admin/studies | 스터디 등록 (새 프로그램 · 클럽의 새 기수) | O (ADMIN) | 구현완료 — 옛 `POST /api/studies` 는 없앴다 |
 | PATCH | /api/admin/studies/{studyId} | 스터디 수정 | O (ADMIN) | 구현완료 (`timezone` 제외) — 사이트용과 로직 공유, 콘솔 정보 탭이 부른다 |
 | DELETE | /api/admin/studies/{studyId} | 스터디 삭제 | O (ADMIN) | 구현완료 — 옛 `DELETE /api/studies/{studyId}` 는 없앴다 |
@@ -51,12 +53,11 @@
 
 **백오피스가 부르는 API 는 `/api/admin` 아래 둔다.** 백오피스에는 캡틴만 들어온다(POL-0001).
 **같은 일을 사용자 사이트에서도 하면 그 일만 경로를 하나 더 둔다** — 권한 판정이 다르기 때문이다.
-**예외는 상세 조회 하나** — 읽기만 하고 응답이 같아서, 경로 하나에서 호출자의 권한으로 보이는 범위를 가른다(아래).
 
 | 하는 일 | 백오피스 (캡틴) | 사용자 사이트 | 경로가 둘인 이유 / 하나인 이유 |
 |---|---|---|---|
 | 목록 | DRAFT 포함 | DRAFT 제외 | 보이는 범위와 조건·응답 모양이 다르다 |
-| 상세 | `GET /api/studies/{id}` 하나 | ← 같은 경로 | 응답이 같다. DRAFT 는 캡틴·그 스터디 네비게이터에게만 보이고 그 밖엔 404 — `StudyApplicationFormService#getForm` 과 같은 방식 |
+| 상세 | DRAFT 포함 | DRAFT 는 캡틴·그 스터디 네비게이터에게만 | 네비게이터는 백오피스에 못 들어와 사이트에서 맡은 스터디를 읽고 고친다. 그 밖의 사람에게 DRAFT 는 404 — `StudyApplicationFormService#getForm` 과 같은 방식 |
 | 수정 | 캡틴 | 캡틴 · 맡은 스터디의 네비게이터 | POL-0001 — 네비게이터도 「스터디 정보 수정」 권한이 있지만 백오피스엔 못 들어온다 |
 | 등록 · 삭제 · 공개 | 캡틴 | — | 캡틴만 하는 일(POL-0001 「사이트 전체」). 쓰지 않을 사이트 경로를 만들지 않는다 |
 
@@ -64,9 +65,10 @@
 「캡틴만」과 「캡틴·네비게이터」 두 판정이 섞이면 호출 화면으로 분기해야 한다 — 규약이 금지하는 권한 우회 지점이다.
 등록·삭제는 캡틴만 하는 일이라 백오피스 경로에만 둔다.
 
-**상세를 하나로 두는 이유**: 읽기 전용이고 두 화면이 같은 응답을 쓴다. 가르는 기준이 「어느 화면에서 불렀나」가 아니라
-**「호출자가 누구인가」**(토큰의 계정)라서 규약이 금지하는 분기가 아니다. 공개 경로에도 JWT 필터가 돌아 토큰이 있으면 계정을 안다.
-권한이 없으면 403 이 아니라 **404** — 공개 전 스터디가 있다는 사실도 드러내지 않는다.
+**사이트 상세가 권한을 보는 이유**: 사이트 상세는 원래 공개 경로지만, 네비게이터가 맡은 DRAFT 스터디를 사이트에서 읽어야
+고칠 수 있다. 가르는 기준이 「어느 화면에서 불렀나」가 아니라 **「호출자가 누구인가」**(토큰의 계정)라서 규약이 금지하는
+분기가 아니다. 공개 경로에도 JWT 필터가 돌아 토큰이 있으면 계정을 안다. 권한이 없으면 403 이 아니라 **404** — 공개 전
+스터디가 있다는 사실도 드러내지 않는다.
 
 #### 구현 모양 — 로직은 공유, 권한 검사는 관객마다
 
@@ -76,7 +78,7 @@
 ```java
 // StudyService (api.study) — 관객별 진입 메서드: 권한 검사 → 공유 본문
 
-// 상세 — 경로 하나. DRAFT 가 아니면 누구나, DRAFT 는 캡틴·그 스터디 네비게이터만. 그 밖엔 404
+// 사이트 — DRAFT 가 아니면 누구나, DRAFT 는 캡틴·그 스터디 네비게이터만. 그 밖엔 404
 @Transactional(readOnly = true)
 public StudyDetailResponse getDetail(Long studyId, Long accountId) { // accountId: 비로그인이면 null
     Study study = findAny(studyId);
@@ -85,6 +87,13 @@ public StudyDetailResponse getDetail(Long studyId, Long accountId) { // accountI
         throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
     }
     return toDetail(study);
+}
+
+// 백오피스 — 캡틴만. DRAFT 포함
+@Transactional(readOnly = true)
+public StudyDetailResponse getDetailForBackOffice(Long accountId, Long studyId) {
+    studyCaptainGuard.assertCaptain(accountId, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
+    return toDetail(findAny(studyId));
 }
 
 // 사이트 — 캡틴 또는 맡은 스터디의 네비게이터
@@ -118,7 +127,7 @@ private StudyDetailResponse toDetail(Study study) {
 - **공유 본문 안에 한쪽 관객의 규칙을 넣지 않는다.** 지금 `update` 는 안에서 `assertCaptainOrNavigator` 를 부른다 —
   백오피스 경로가 이걸 그대로 부르면 네비게이터가 `/api/admin` 을 통과한다
 - 권한 검사는 전부 `StudyCaptainGuard` 로. 지금 `create`·`delete` 의 `SystemRole.ADMIN` 직접 비교는 `assertCaptain` 으로 바꾼다
-- 이름 접미사(`FromSite`·`FromBackOffice`)는 **경로가 둘인 일에만** 붙인다. 캡틴 전용인 `create`·`delete`, 경로가 하나인 `getDetail` 은 그대로
+- 이름 접미사(`FromSite`·`FromBackOffice`·`ForBackOffice`)는 **경로가 둘인 일에만** 붙인다. 캡틴 전용인 `create`·`delete` 는 그대로
 - 요청 DTO(`StudyCreateRequest`·`StudyUpdateRequest`)와 상세 응답(`StudyDetailResponse`)은 두 경로가 같이 쓴다.
   백오피스에만 필요한 필드가 생기면 그때 백오피스 응답을 따로 둔다 (목록은 이미 `BackofficeStudyListResponse` 로 따로다)
 - 컨트롤러·DTO·서비스는 모두 `api.study` 패키지 — [module-structure](../../docs/backend-development-guide/module-structure.md#package-convention)
@@ -128,15 +137,14 @@ private StudyDetailResponse toDetail(Study study) {
 
 스테이지가 중간에 깨지지 않게 **새 경로를 먼저 열고 → 화면을 옮기고 → 옛 경로를 닫는다.**
 
-1. ✅ **백엔드 — 추가**: `AdminStudyController` 에 `POST` · `PATCH /{studyId}` · `DELETE /{studyId}`. 옛 경로는 그대로 둔다
-2. **백오피스 프론트**: `features/studies/queries.ts` 의 수정·삭제를 `/api/admin/studies/{id}` 로 바꾼다.
-   ✅ 수정·삭제는 옮겼다. 상세는 `GET /api/studies/{id}` 를 그대로 쓴다(위 「상세를 하나로 두는 이유」).
-   **목록은 남았다** — `GET /api/admin/studies` 가 `status`·페이지를 지원하지만 교체 여부는 팀 확인 중이다.
+1. ✅ **백엔드 — 추가**: `AdminStudyController` 에 `GET /{studyId}` · `POST` · `PATCH /{studyId}` · `DELETE /{studyId}`. 옛 경로는 그대로 둔다
+2. **백오피스 프론트**: `features/studies/queries.ts` 의 상세·수정·삭제를 `/api/admin/studies/{id}` 로 바꾼다.
+   ✅ 상세·수정·삭제는 옮겼다. **목록은 남았다** — `GET /api/admin/studies` 가 `status`·페이지를 지원하지만 교체 여부는 팀 확인 중이다.
    등록 모달(`StudyCreateDialog`, `TODO(api)`)은 처음부터 `POST /api/admin/studies`
 3. ✅ **백엔드 — 제거**: `StudyController` 의 `POST` · `DELETE` 를 없앤다. `PATCH` 는 `updateFromSite` 로 연결.
    옛 `POST` 는 부르는 화면이 없었고 옛 `DELETE` 를 부르던 콘솔은 2단계에서 같이 옮겨서, 과도기 없이 한 번에 뺐다
-4. ✅ **백엔드 — 상세 권한별 공개 범위**: DRAFT 는 캡틴·그 스터디 네비게이터에게만. 숨김(`IS_HIDDEN`)은 폐기 예정이라 보지 않는다. 한때 두었던 `GET /api/admin/studies/{studyId}` 는
-   상세를 하나로 합치면서 없앴다
+4. ✅ **백엔드 — 사이트 상세 권한별 공개 범위**: DRAFT 는 캡틴·그 스터디 네비게이터에게만. 숨김(`IS_HIDDEN`)은 폐기 예정이라 보지 않는다.
+   (한때 상세를 사이트 경로 하나로 합쳤다가, 팀 결정으로 백오피스 상세를 다시 뒀다 — 2026-09-29)
 
 #### 테스트
 
@@ -144,6 +152,7 @@ private StudyDetailResponse toDetail(Study study) {
 
 | 엔드포인트 | 성공 | 401 | 400 | 403 | 404 |
 |---|---|---|---|---|---|
+| `GET /api/admin/studies/{id}` | DRAFT 도 200 | 토큰 없음 | — | 크루 · **네비게이터** | 없는 id |
 | `POST /api/admin/studies` | 201 + `Location` | 토큰 없음 | 필수 누락 | 크루 · 네비게이터 | — |
 | `PATCH /api/admin/studies/{id}` | 204 | 토큰 없음 | 검증 실패 | 크루 · **네비게이터** | 없는 id |
 | `DELETE /api/admin/studies/{id}` | 204 | 토큰 없음 | — | 크루 · 네비게이터 | 없는 id |
@@ -151,7 +160,7 @@ private StudyDetailResponse toDetail(Study study) {
 | `GET /api/studies/{id}` | 공개 200 · DRAFT 는 캡틴·그 스터디 네비게이터 200 | — | — | — (403 대신 404) | 없는 id · DRAFT 를 크루·다른 스터디 네비게이터·비로그인이 조회 |
 
 굵게 표시한 칸이 이번 분리의 핵심이다 — **네비게이터가 `/api/admin` 에서는 403** 이어야 한다.
-상세의 권한별 공개 범위는 `StudyDetailVisibilityIntegrationTest` 가 덮는다.
+사이트 상세의 권한별 공개 범위는 `StudyDetailVisibilityIntegrationTest` 가 덮는다.
 진입 메서드별 역할 조합(캡틴·네비게이터·크루·비로그인)은 `StudyServiceTest` 단위 테스트로 덮는다.
 
 ---
@@ -219,7 +228,7 @@ private StudyDetailResponse toDetail(Study study) {
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}`
 - **인증**: 선택 — 없어도 공개 스터디는 보인다. 토큰(헤더 또는 쿠키)이 있으면 캡틴·그 스터디 네비게이터인지 보고 DRAFT 도 보여 준다
-- **설명**: 스터디 ID 로 스터디 정보를 조회한다. 사용자 사이트와 운영 콘솔이 같이 쓴다 ([상세를 하나로 두는 이유](#관객별-엔드포인트))
+- **설명**: 스터디 ID 로 스터디 정보를 조회한다. 운영 콘솔은 아래 「스터디 상세 조회 (백오피스)」를 쓴다 ([사이트 상세가 권한을 보는 이유](#관객별-엔드포인트))
 
 ### Path Parameters
 
@@ -318,7 +327,7 @@ private StudyDetailResponse toDetail(Study study) {
 
 - `frontend/apps/core-front/src/app/[locale]/studies/[id]/page.tsx` — 상세 페이지
 - `frontend/apps/core-front/src/lib/content.ts` — `getStudy(id)` mock 함수
-- `back-office-front` `features/studies/queries.ts` 의 `useStudyDetail` — 운영 콘솔도 이 경로를 쓴다. 쿠키(`bo_access_token`)로 캡틴임이 전달돼 DRAFT 가 열린다
+- 운영 콘솔은 이 경로를 쓰지 않는다 — 아래 `GET /api/admin/studies/{studyId}` 를 쓴다
 - 구현: `StudyService#getDetail(studyId, accountId)`. 공개 판정은 `STATUS != DRAFT` 하나 — `Study#isPubliclyVisible`(OPEN 만)과 다르다.
   숨김(`IS_HIDDEN`)은 폐기 예정이라 상세에서는 보지 않는다. 목록(`StudyListJpqlDao`)은 아직 `isHidden = false` 를 걸어 두었다 — 컬럼을 없앨 때 함께 뺀다
 
@@ -327,6 +336,25 @@ private StudyDetailResponse toDetail(Study study) {
 - [NEEDS CLARIFICATION] CLUB 에서 같은 STUDY_PROGRAM 아래 여러 STUDY 가 있을 때 어떤 기수를 기본으로 보여줄지 (현재는 studyId 직접 지정)
 - [NEEDS CLARIFICATION] `startAt` 이 비어 있는 기존 데이터의 처리 — 등록·수정 요청에는 필드가 생겼지만(위 참고), 이 필드가 생기기 전 데이터는 여전히 비어 있을 수 있다. playground mock 은 대표 날짜·킥오프 문구·모집 마감일로 값을 추정해 채운다(FE 전용 임시 처리) — 실제 데이터 백필 여부와 방법 미정. [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md) 참고
 - 공개 여부는 `STATUS != DRAFT` 로 정한다 — `DRAFT` 면 404, 아니면 조회 가능. 별도 숨김 플래그(`IS_HIDDEN`)는 없다. 모집 시작 일자(`START_AT`)는 판정에 쓰지 않는다 — [ERD](../../docs/erd/STUDY.md#공개-여부) 참고.
+
+---
+
+## 스터디 상세 조회 (백오피스)
+
+- **Method / Path**: `GET /api/admin/studies/{studyId}` — `AdminStudyController` · 구현완료
+- **인증**: `ACCOUNT.SYSTEM_ROLE=ADMIN` (`assertCaptain`)
+- **설명**: 사이트 상세와 같은 응답이되 **DRAFT 도 보여 준다.** 서비스 `getDetailForBackOffice` → 공유 본문 `toDetail`.
+  등록 응답의 `Location` 이 가리키는 곳
+- **Response — 200**: `StudyDetailResponse` (사이트 상세와 같다)
+- **Error Responses**
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 로그인 필요 |
+| 403 | FORBIDDEN | ADMIN 아님 (네비게이터 포함) |
+| 404 | NOT_FOUND | studyId 에 해당하는 스터디 없음 |
+
+- **프론트엔드 사용처**: `back-office-front` `features/studies/queries.ts` 의 `useStudyDetail`
 
 ---
 

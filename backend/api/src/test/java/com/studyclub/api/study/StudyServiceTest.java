@@ -283,6 +283,34 @@ class StudyServiceTest {
                                         .isEqualTo(ErrorCode.NOT_FOUND));
     }
 
+    @Test
+    @DisplayName("실패(백오피스 상세) - 캡틴이 아니면 FORBIDDEN")
+    void backOfficeDetailForbidden() {
+        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다."))
+                .when(studyCaptainGuard)
+                .assertCaptain(1L, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
+
+        assertThatThrownBy(() -> studyService.getDetailForBackOffice(1L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("실패(백오피스 상세) - 존재하지 않는 studyId → NOT_FOUND")
+    void backOfficeDetailNotFound() {
+        when(studyRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studyService.getDetailForBackOffice(1L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
     // ── delete ────────────────────────────────────────────────────────────────
 
     @Test

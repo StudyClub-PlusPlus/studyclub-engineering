@@ -96,6 +96,6 @@ B 라면 「추가 모집 때 정원을 어떻게 입력받나」도 화면에�
 | 누가 | 무엇을 |
 |---|---|
 | **기획** | 위 A·B 중 하나를 정해 이 문서에 답을 남겨 주세요 |
-| **백엔드** | 답이 나오면 한쪽으로 모읍니다. **B 라면** 읽는 곳을 한 번에 옮깁니다 — 목록 응답(`StudyListResponse`), 목록 단계 필터(`StudyListJpqlDao` 의 정원 조건), 모집 마감 판정(`Study.recruitStatus`), 상세 응답(`StudyDetailResponse`), 수정(`StudyService.update`). 기존 값 옮기는 마이그레이션도 같은 PR 에 넣습니다 |
+| **백엔드** | 답이 나오면 한쪽으로 모읍니다. **B 라면** 읽는 곳을 한 번에 옮깁니다 — 목록 응답(`StudyListResponse`), 목록 단계 필터(`StudyListJpqlDao` 의 정원 조건), 모집 마감 판정(`Study.recruitStatus`), 상세 응답(`StudyDetailResponse`), 수정(`StudyService.applyUpdate` — 사이트·백오피스 수정이 같이 쓰는 본문). 기존 값 옮기는 마이그레이션도 같은 PR 에 넣습니다 |
 | **새로 정원을 건드리는 사람** | 답이 나오기 전까지는 **`STUDY.CAPACITY` 를 쓰세요.** `RECRUITMENT_CAPACITY` 에만 쓰면 목록에 반영되지 않습니다 |
 | **ERD 를 읽는 사람** | `docs/erd/STUDY.md` 의 "정원은 STUDY 에 두지 않는다"는 **아직 코드와 다릅니다.** 결정 뒤 문서를 고칩니다 |

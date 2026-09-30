@@ -55,7 +55,7 @@ flowchart LR
   - 채운 값은 시작점일 뿐이다. 새 기수를 고쳐도 지난 기수는 그대로다
   - 「최신 기수」는 같은 프로그램에서 `STUDY.ID` 가 가장 큰 기수다
   - 클럽은 기수가 바뀌어도 같은 채널·드라이브·시간대를 이어 쓴다
-- **데이터**: `POST /api/studies` 에 `studyProgramId` 를 담는다
+- **데이터**: `POST /api/admin/studies` 에 `studyProgramId` 를 담는다
 
 ### 상태별 화면
 
@@ -104,8 +104,8 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/studies/{studyId}` — 최신 기수 값 채우기 | 캡틴 |
-| POST | `/api/studies` (`studyProgramId` 포함) | 캡틴 |
+| GET | `/api/admin/studies/{studyId}` — 최신 기수 값 채우기 | 캡틴 |
+| POST | `/api/admin/studies` (`studyProgramId` 포함) | 캡틴 |
 
 계약은 [study/spec.md 스터디 등록](../../../specs/study/spec.md#스터디-등록) AC-7.
 

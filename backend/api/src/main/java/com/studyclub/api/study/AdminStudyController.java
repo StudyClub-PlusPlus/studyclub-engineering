@@ -22,10 +22,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 백오피스의 스터디 — 목록·등록·수정·삭제. 캡틴만. DRAFT 도 다룬다.
+ * 백오피스의 스터디 — 목록·상세·등록·수정·삭제. 캡틴만. DRAFT 도 다룬다.
  *
- * <p>상세는 따로 두지 않는다 — {@link StudyController} 의 {@code GET /api/studies/{studyId}} 가 캡틴에게 DRAFT 도 보여
- * 준다. 로직은 {@link StudyService} 를 같이 쓰고 권한 검사만 관객별 진입 메서드에서 따로 한다 — specs/study/spec.md 「관객별 엔드포인트」
+ * <p>사용자 사이트는 {@link StudyController}({@code /api/studies})를 쓴다. 로직은 {@link StudyService} 를 같이 쓰고
+ * 권한 검사만 관객별 진입 메서드에서 따로 한다 — specs/study/spec.md 「관객별 엔드포인트」
  */
 @Tag(name = "백오피스 스터디", description = "캡틴이 스터디를 조회·등록·수정·삭제한다")
 @SecurityRequirement(name = "bearerAuth")
@@ -62,6 +62,13 @@ public class AdminStudyController {
         studyCaptainGuard.assertCaptain(accountId, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
         return backofficeStudyListService.getStudies(
                 new BackofficeStudyListFilter(category, studyKind, status), offset, limit);
+    }
+
+    @Operation(summary = "백오피스 스터디 상세 조회", description = "ADMIN만 호출 가능. DRAFT 도 조회된다.")
+    @GetMapping("/{studyId}")
+    public StudyDetailResponse detail(@PathVariable Long studyId, Authentication authentication) {
+        Long accountId = (Long) authentication.getPrincipal();
+        return studyService.getDetailForBackOffice(accountId, studyId);
     }
 
     @Operation(

@@ -20,7 +20,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| POST | /api/studies | 스터디 등록 — **바뀐 점: 커밋 뒤 봇 호출** | ADMIN | 구현완료 |
+| POST | /api/admin/studies | 스터디 등록 — **바뀐 점: 커밋 뒤 봇 호출** (옛 `POST /api/studies` 에서 옮김) | ADMIN | 구현완료 |
 | POST | /api/admin/studies/{studyId}/discord-link | 디스코드 연결 (재시도) | ADMIN | 구현완료 |
 
 ## 결정
@@ -89,7 +89,7 @@
 스터디를 등록한 사람의 디스코드 ID 를 보낸다 — 누가 만들었는지가 봇 로그에 남는다.
 그 계정에 `DISCORD_ID` 가 없으면 봇을 부르지 않는다 (등록 경로: WARN 로그 / 재시도: `409`).
 
-## 스터디 등록 — `POST /api/studies` 의 바뀐 점
+## 스터디 등록 — `POST /api/admin/studies` 의 바뀐 점
 
 요청·응답·에러는 [study/spec.md](../study/spec.md) 그대로다. 201 을 돌려주기 직전에 봇을 한 번 부른다.
 

@@ -49,13 +49,13 @@ export function useStudies(filter: StudyFilter) {
 }
 
 /**
- * 상세는 `/api/studies/{id}` 를 쓴다. 권한은 서버가 나눈다.
- * 수정·삭제는 캡틴만이므로 `/api/admin/studies/{id}` 를 쓴다.
+ * 상세·수정·삭제는 백오피스 경로(`/api/admin/studies/{id}`)를 쓴다 — 캡틴만 통과하고, 상세는 DRAFT 도 보인다.
+ * 사용자 사이트(`/api/studies/{id}`)는 네비게이터용 상세·수정을 따로 받는다. 서버 로직은 같다.
  */
 export function useStudyDetail(studyId: number) {
   return useQuery({
     queryKey: studyKeys.detail(studyId),
-    queryFn: () => http<ApiStudyDetail>(`/api/studies/${studyId}`),
+    queryFn: () => http<ApiStudyDetail>(`/api/admin/studies/${studyId}`),
     retry: false,
   });
 }

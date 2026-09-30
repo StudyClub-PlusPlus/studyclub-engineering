@@ -27,8 +27,9 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * 스터디 상세({@code GET /api/studies/{id}})가 호출자에 따라 공개 전(DRAFT) 스터디를 보여 주는지. 사용자 사이트와 운영 콘솔이 같은 경로를
- * 쓰므로, 캡틴·그 스터디의 네비게이터에게는 DRAFT 가 보이고 그 밖에는 없는 것처럼 404 여야 한다.
+ * 사용자 사이트 스터디 상세({@code GET /api/studies/{id}})가 호출자에 따라 공개 전(DRAFT) 스터디를 보여 주는지. 캡틴·그 스터디의
+ * 네비게이터에게는 DRAFT 가 보이고 그 밖에는 없는 것처럼 404 여야 한다. 운영 콘솔의 상세({@code GET /api/admin/studies/{id}})는
+ * {@link AdminStudyCrudIntegrationTest} 가 덮는다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -57,7 +58,7 @@ class StudyDetailVisibilityIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 캡틴은 DRAFT 스터디를 200 으로 본다 (운영 콘솔)")
+    @DisplayName("성공 - 캡틴은 사이트에서도 DRAFT 스터디를 200 으로 본다")
     void captainSeesDraft() {
         Long studyId = createDraftStudy("캡틴이 보는 DRAFT");
 

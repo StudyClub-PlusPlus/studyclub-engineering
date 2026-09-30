@@ -183,9 +183,9 @@ erDiagram
 | `STUDY.CREATED_BY` | BIGINT | N | 작성자. ACCOUNT 참조(인덱스만, 외래키 없음). null = 컬럼이 생기기 전에 등록된 스터디 |
 
 · **처리**
-- 스터디 등록(`POST /api/studies`) 시 서버가 인증된 계정의 ID 로 `CREATED_BY` 를 채운다
+- 스터디 등록(`POST /api/admin/studies`) 시 서버가 인증된 계정의 ID 로 `CREATED_BY` 를 채운다
 - 요청 바디로 작성자를 받지 않는다
-- 스터디 수정(`PATCH /api/studies/{studyId}`)은 작성자를 바꾸지 않는다
+- 스터디 수정(`PATCH /api/admin/studies/{studyId}` · 네비게이터용 `PATCH /api/studies/{studyId}`)은 작성자를 바꾸지 않는다
 - 기존 스터디는 백필하지 않는다. null 로 둔다
 
 · **API**
