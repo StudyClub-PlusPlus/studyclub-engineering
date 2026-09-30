@@ -36,7 +36,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data, { status: upstream.status });
   }
 
-  const res = NextResponse.json({ user: data.user });
+  // TODO(api): 백엔드 필드명 정합(user→account) 후 account 로 교체.
+  const res = NextResponse.json({
+    user: data.user,
+    suggestedNickname: data.suggestedNickname ?? null,
+  });
   res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7));
   if (data.refreshToken) {
     res.cookies.set(REFRESH_COOKIE, data.refreshToken, refreshCookie(data.refreshTokenExpiresIn ?? 60 * 60 * 24 * 30));

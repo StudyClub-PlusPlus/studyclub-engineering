@@ -3,7 +3,14 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { buildGoogleAuthUrl, isConfigured, setUser } from '@/lib/auth';
+import { buildGoogleAuthUrl, isConfigured, setSuggestedNickname, setUser } from '@/lib/auth';
+import type { SessionUser } from '@/lib/auth';
+import {
+  LOGIN_NOT_CONFIGURED_MESSAGE,
+  loginErrorFromCaught,
+  loginErrorFromExchange,
+  loginErrorFromOAuthPopup,
+} from '@/lib/login-errors';
 
 // useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.
 export default function LoginPage() {
@@ -37,17 +44,29 @@ function LoginForm() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
+          throw new Error(loginErrorFromExchange(res.status, data));
         }
-        if (data.user) setUser(data.user);
+        if (data.user) {
+          const user = data.user as SessionUser;
+          setUser(user);
+          if (typeof data.suggestedNickname === 'string' && data.suggestedNickname.trim()) {
+            setSuggestedNickname(data.suggestedNickname.trim());
+          } else {
+            setSuggestedNickname(null);
+          }
+          if (!user.onboardingCompletedAt) {
+            router.replace(`/${locale}/onboarding?next=${encodeURIComponent(next)}`);
+            return;
+          }
+        }
         router.replace(next);
       } catch (e) {
-        setError(e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.');
+        setError(loginErrorFromCaught(e));
       } finally {
         setLoading(false);
       }
     },
-    [next, router],
+    [locale, next, router],
   );
 
   useEffect(() => {
@@ -56,7 +75,7 @@ function LoginForm() {
       if (!data || data.source !== 'studyclub-oauth') return;
       popupRef.current?.close();
       if (data.error) {
-        setError(`구글 인증이 취소되었습니다 (${data.error}).`);
+        setError(loginErrorFromOAuthPopup(String(data.error)));
         return;
       }
       if (data.code) void exchange(data.code);
@@ -68,9 +87,7 @@ function LoginForm() {
   function startLogin() {
     setError(null);
     if (!isConfigured()) {
-      setError(
-        '구글 OAuth 클라이언트가 아직 설정되지 않았습니다 (NEXT_PUBLIC_GOOGLE_CLIENT_ID). GCP 콘솔에서 등록 후 사용하세요.',
-      );
+      setError(LOGIN_NOT_CONFIGURED_MESSAGE);
       return;
     }
     const w = 480;
@@ -115,7 +132,11 @@ function LoginForm() {
         {loading ? '로그인 처리 중…' : 'Google 계정으로 로그인'}
       </button>
 
-      {error && <p className='mt-4 text-sm text-red-600'>{error}</p>}
+      {error && (
+        <p role='alert' className='mt-4 text-sm text-red-600'>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
