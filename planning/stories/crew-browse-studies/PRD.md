@@ -43,7 +43,7 @@ flowchart LR
 5. 카드 상단에는 모집 상태 배지가 항상 있다 — 모집 중이면 `모집중 (D-N)`(마감 3일 이내는 배지 색이 바뀐다), 마감일이 없으면 `모집중 (미정)`(상시 모집은 폐지했다 — 마감일이 필수라 이 경우는 옛 데이터뿐이다), 진행 중이면 `진행중`, 끝났으면 `모집 마감`
 6. 카드 본문에는 시작 예정일을 항상 보여준다 — 값이 없으면 `미정`으로 명시하고 빈 칸으로 두지 않는다. 모집 마감일은 상단 배지와 겹치므로 본문에 따로 두지 않는다
 7. 카드는 스터디가 도는 시간대(KST·PST·동시 모집)를 항상 보여준다
-8. 결과 목록에는 정렬 컨트롤을 두지 않는다 — 항상 등록 순서(스터디 순번)로 고정 표시한다
+8. 결과 목록에는 정렬 컨트롤을 두지 않는다 — 항상 최신순(등록 순번)으로 고정 표시한다
 9. 카드를 누르면 해당 스터디 상세로 이동한다
 
 ## 2. 화면명세
@@ -98,7 +98,7 @@ flowchart LR
 - **표시**: 조건에 맞는 스터디 카드 그리드(2~3열)
 - **정책**
   - 검색어·모집 상태·시간대·카테고리 조건을 모두 만족하는 카드만 표시한다
-  - 정렬 옵션은 두지 않는다 — 항상 스터디 순번(`order`) 오름차순으로 고정 표시한다
+  - 정렬 옵션은 두지 않는다 — 항상 최신순(등록 순번) 고정 표시한다
 - **데이터**: `filtered studies`
 
 ### 5-1. 스터디 카드
@@ -144,10 +144,8 @@ erDiagram
     string TITLE
     string CATEGORY
     string SCHEDULE
-    string STATUS "DRAFT OPEN CLOSED"
+    string STATUS "DRAFT OPEN ONGOING ENDED CLOSED"
     datetime START_AT
-    boolean IS_HIDDEN
-    datetime PUBLISH_AT
   }
   STUDY_RECRUITMENT {
     datetime RECRUIT_DEADLINE_AT
@@ -171,14 +169,14 @@ erDiagram
 | --- | --- | --- | --- |
 | 스터디 | TITLE, CATEGORY, SCHEDULE, STATUS | `STUDY` | 목록 카드의 기본 정보 |
 | 스터디 | START_AT | `STUDY` | 카드 "시작일". 등록 API 입력 없음 — [study/spec.md](../../../specs/study/spec.md) 미확정 |
-| 스터디 | IS_HIDDEN, PUBLISH_AT | `STUDY` | 목록 노출 여부 — 숨김·미도래 공개일은 제외 |
+| 스터디 | STATUS | `STUDY` | 목록 노출 여부 — `STATUS != DRAFT` 인 스터디만 노출 |
 | 모집 | RECRUIT_DEADLINE_AT | `STUDY_RECRUITMENT` | 카드 상태 배지(D-N·마감임박)와 `recruitState` 판정 축 |
 
 ### 처리
 
-- 목록 조회: 인증 불필요. 공개 상태(`STATUS=OPEN`, `IS_HIDDEN=false`, 공개일 도래)만 노출
+- 목록 조회: 인증 불필요. `STATUS != DRAFT` 인 스터디만 노출
 - 검색·모집 상태·시간대·카테고리 필터는 지금은 클라이언트 계산이다(프로토). 실 API 로 옮길 때는 `GET /api/studies` 쿼리 파라미터로 받는다 — [study/spec.md](../../../specs/study/spec.md) 참고
-- 정렬은 없다 — 항상 `STUDY` 의 등록 순번(`order`) 고정
+- 정렬은 없다 — 항상 최신순(등록 순번) 고정
 
 ### 계산 규칙 (단일 정의)
 

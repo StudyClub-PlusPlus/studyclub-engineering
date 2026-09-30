@@ -130,9 +130,8 @@ erDiagram
     string DESCRIPTION
     string CATEGORY
     string SCHEDULE
-    string STATUS
+    string STATUS "DRAFT OPEN ONGOING ENDED CLOSED"
     datetime START_AT
-    boolean IS_HIDDEN
   }
   STUDY_RECRUITMENT {
     datetime RECRUIT_DEADLINE_AT "필수 (상시 모집 없음)"
@@ -142,7 +141,7 @@ erDiagram
 ### 비고
 
 - 범위 밖: 신청 폼 작성·제출, 찜, 목표·주제·대상·주차 커리큘럼·멤버·후기·통계·정원
-- 미구현: 프로토 조회는 목 데이터다. 화면은 아직 `GET /api/studies/{studyId}`를 호출하지 않는다
+- 구현완료(2026-09-30): `StudyDetailView` 클라이언트 컴포넌트가 `useStudyDetail` 훅을 통해 `GET /api/studies/{studyId}`를 직접 호출한다. 개발 환경은 MSW가 인터셉트, 프로덕션은 실 API로 동작. 404·500 상태에 대응하는 오류 화면도 클라이언트 단에서 처리한다
 
 ## 3. 시스템 요건
 
@@ -160,7 +159,7 @@ erDiagram
 
 - 조회 키는 `STUDY.ID`다. `SLUG`와 비교하지 않는다
 - 키가 정수가 아니면 상세를 열지 않는다
-- 그 ID의 스터디가 없거나, 숨김이거나, 공개 전(`STATUS=DRAFT` 또는 공개일 미도래)이면 상세를 열지 않는다
+- 그 ID의 스터디가 없거나 `STATUS = DRAFT`이면 상세를 열지 않는다
 - 목록·내 스터디·참여 중·찜의 상세 링크도 같은 ID를 쓴다
 
 ### 계산 규칙 (단일 정의)

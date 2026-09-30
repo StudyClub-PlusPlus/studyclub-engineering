@@ -27,7 +27,11 @@ export const studyKeys = {
 /**
  * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 목록은 아직 **사용자 사이트용 목록 API** 를 쓴다.
  * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외).
- * `GET /api/admin/studies` 가 status·페이지·total 을 지원하므로, `fetchStudies` 와 `toRow` 를 맞추면 교체할 수 있다.
+ * `GET /api/admin/studies` 가 status·페이지·total 을 지원하므로 교체할 수 있다 (PR #146 로 구현 완료).
+ * 전환 시 `fetchStudies`·`toRow` 와 함께 ApiStudySummary 타입도
+ * BackofficeStudyListResponse.StudySummary 에 맞게 바꾼다:
+ * status(5단계)·recruitmentCapacity·recruitmentStartAt·hasApplicationForm 추가,
+ * slug·phase·currentApplicants·closingSoon 제거.
  */
 function fetchStudies(filter: StudyFilter): Promise<ApiStudyPage> {
   return http<ApiStudyPage>(
@@ -62,6 +66,7 @@ export function useStudyDetail(studyId: number) {
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+/** TODO(api): PATCH /api/studies/{studyId} */
 export function useUpdateStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -76,6 +81,7 @@ export function useUpdateStudy(studyId: number) {
   });
 }
 
+/** TODO(api): DELETE /api/studies/{studyId} */
 export function useDeleteStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({

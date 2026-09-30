@@ -24,8 +24,7 @@ export function StudyCard({ study, locale }: { study: Study; locale: Locale; lea
     <div className='card card-hover relative flex flex-col overflow-hidden'>
       {/* Stretched link — covers the whole card without nesting anchors */}
       <Link
-        // 상세 경로는 아직 슬러그다 — playground 는 study_id 로 갔고, 상세 API 를 붙일 때 맞춘다
-        href={`/${locale}/studies/${study.id}`}
+        href={`/${locale}/studies/${study.study_id}`}
         className='absolute inset-0 z-[1] rounded-[inherit]'
         aria-label={t(study.title, locale)}
       />

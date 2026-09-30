@@ -2,10 +2,28 @@
   "name": "@studyclub/mock",
   "version": "0.0.1",
   "private": true,
-  "description": "StudyClub++ 공유 하드코딩 mock 데이터 + 타입 (백엔드 붙기 전 임시)",
+  "description": "StudyClub++ MSW (Mock Service Worker) Mock API 계층 + 공유 mock 데이터 + 도메인 타입 및 유틸리티",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./constants": "./src/constants/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./data": "./src/data/index.ts",
+    "./msw": "./src/msw/index.ts",
+    "./msw/handlers": "./src/msw/handlers/index.ts",
+    "./msw/utils": "./src/msw/utils.ts"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "msw": "^2.15.0"
   }
 }

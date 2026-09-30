@@ -41,7 +41,7 @@ import {
 } from '@core/lib/joined';
 import { getApplications, getRegion } from '@core/lib/me';
 import { MANAGE_ROLE_LABEL, manageAccessOf } from '@core/lib/meetings';
-import { studies as allStudies, type Study, type StudyMeeting } from '@studyclub/mock';
+import { type Study, type StudyMeeting } from '@studyclub/mock';
 import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
 import {
   Award,
@@ -57,6 +57,7 @@ import {
 
 import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 type Filter = 'all' | LifeStatus;
 
@@ -414,10 +415,12 @@ export default function MyJoinedPage() {
     setReady(true);
   }, [locale, router]);
 
+  const allStudies = useMswStudies();
+
   const mine = useMemo<Study[]>(() => {
     const byId = new Map(allStudies.map((s) => [s.id, s]));
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => Boolean(s));
-  }, [mineIds]);
+  }, [mineIds, allStudies]);
 
   const days = useMemo(() => weekDays(mine, locale, wallTz, weekStart), [mine, locale, wallTz, weekStart]);
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));

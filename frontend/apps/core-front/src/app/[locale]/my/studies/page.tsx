@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import { studies as allStudies, type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/mock';
 import { CalendarClock } from 'lucide-react';
 
 import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
+import { useStudies } from '@/features/studies/queries';
 import {
   STATUS_LABEL,
   STATUS_STYLE,
@@ -71,11 +72,13 @@ export default function MyStudiesPage() {
     setReady(true);
   }, [locale, router]);
 
+  const { data: studies = [] } = useStudies({});
+
   /** 승인되어 참여 중인 스터디만. 신청 대기·종료된 스터디는 출석할 일이 없다. */
   const mine = useMemo<Study[]>(() => {
-    const byId = new Map(allStudies.map((s) => [s.id, s]));
+    const byId = new Map(studies.map((s) => [s.id, s]));
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => s !== undefined && s.status !== 'closed');
-  }, [mineIds]);
+  }, [mineIds, studies]);
 
   if (!ready) {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;

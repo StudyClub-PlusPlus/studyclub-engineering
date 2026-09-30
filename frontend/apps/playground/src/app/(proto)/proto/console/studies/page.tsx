@@ -1,9 +1,8 @@
 
-import { StudiesTable } from '@console/components/StudiesTable';
+import { StudiesTableContainer } from '@console/components/StudiesTableContainer';
 import { StudyCreateButton } from '@console/components/StudyCreateButton';
 import { StudyStatusGuide } from '@console/components/StudyStatusGuide';
 import { PageHeader } from '@console/components/ui';
-import { studies } from '@studyclub/mock';
 
 import { SPECS } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -18,7 +17,7 @@ export default function StudiesAdmin() {
       ))}
       <PageHeader title='스터디 관리' action={<StudyCreateButton />} />
       <StudyStatusGuide />
-      <StudiesTable studies={studies} />
+      <StudiesTableContainer />
     </div>
   );
 }

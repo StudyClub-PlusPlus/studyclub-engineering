@@ -58,12 +58,17 @@ export async function getStudies(): Promise<Study[]> {
   }));
   return sortByOrder(withDate);
 }
+// TODO(api): GET /api/events — 행사 목록 연동
 export async function getEvents(): Promise<StudyclubEvent[]> {
   return sortByOrder(eventsData);
 }
+
+// TODO(api): GET /api/operators — 운영진 목록 연동
 export async function getOperators(): Promise<Operator[]> {
   return sortByOrder(operatorsData);
 }
+
+// TODO(api): GET /api/members — 멤버 목록 연동
 export async function getMembers(): Promise<Member[]> {
   return sortByOrder(membersData);
 }
@@ -88,6 +93,7 @@ export async function getStudy(studyId: string): Promise<Study | null> {
   return (await getStudies()).find((s) => s.study_id === id) ?? null;
 }
 
+// TODO(api): GET /api/events/{id} 연동
 export async function getEvent(id: string): Promise<StudyclubEvent | null> {
   return (await getEvents()).find((e) => e.id === id) ?? null;
 }
@@ -97,6 +103,7 @@ export async function getMembersByStudy(studyId: string): Promise<Member[]> {
   return (await getMembers()).filter((mem) => (mem.studies ?? []).includes(studyId));
 }
 
+// TODO(api): GET /api/site 연동
 export async function getSite(): Promise<Site> {
   return siteData;
 }
@@ -106,7 +113,7 @@ export async function getOperatorMap(): Promise<Record<string, Operator>> {
   return Object.fromEntries(ops.map((o) => [o.id, o]));
 }
 
-/** 공지사항 — 고정(pinned) 먼저, 그다음 날짜 내림차순. */
+/** 공지사항 — TODO(api): GET /api/announcements 연동 — 고정(pinned) 먼저, 그다음 날짜 내림차순. */
 export async function getNotices(): Promise<Announcement[]> {
   return [...announcementsData].sort(
     (a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false) || b.date.localeCompare(a.date),

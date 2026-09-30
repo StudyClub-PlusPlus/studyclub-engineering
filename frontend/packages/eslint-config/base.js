@@ -74,6 +74,6 @@ export const config = [
     },
   },
   {
-    ignores: ['dist/**/*', 'node_modules/**/*', '.next/**/*', '.github/**/*'],
+    ignores: ['dist/**/*', 'node_modules/**/*', '.next/**/*', '.github/**/*', 'public/**/*'],
   },
 ];

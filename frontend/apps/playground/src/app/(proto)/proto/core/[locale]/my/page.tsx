@@ -31,12 +31,13 @@ import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname
 import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
 import { recruitState } from '@core/lib/recruit';
-import { studies as allStudies, type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/mock';
 import { Button, Input } from '@studyclub/ui';
 import { CalendarClock, Heart, Pencil } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 /**
  * 마이페이지.
@@ -192,7 +193,8 @@ export default function MyPage() {
     setReady(true);
   }, [locale, router]);
 
-  const byId = useMemo(() => new Map(allStudies.map((s) => [s.id, s])), []);
+  const allStudies = useMswStudies();
+  const byId = useMemo(() => new Map(allStudies.map((s) => [s.id, s])), [allStudies]);
   const joined = applications
     .map((a) => ({ app: a, study: byId.get(a.studyId) }))
     .filter((x): x is { app: Application; study: Study } => Boolean(x.study))
