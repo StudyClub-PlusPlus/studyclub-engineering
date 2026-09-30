@@ -10,6 +10,8 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByStudyId(Long studyId);
 
+    List<StudyParticipant> findByAccountId(Long accountId);
+
     void deleteByStudyId(Long studyId);
 
     List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
