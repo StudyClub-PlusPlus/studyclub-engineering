@@ -30,8 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 스터디 등록·조회·수정·삭제. 백오피스({@code /api/admin/studies})와 사용자 사이트({@code /api/studies})가 같이 쓴다.
  *
- * <p>두 관객이 다 하는 일(상세·수정)은 관객별 진입 메서드가 권한을 검사하고, 본문은 권한을 모르는 private 메서드로 공유한다. 공유 본문에 한쪽 관객의 규칙을
- * 넣으면 다른 쪽 경로로 새어 든다 — specs/study/spec.md 「관객별 엔드포인트」
+ * <p>두 관객이 다 하는 수정은 관객별 진입 메서드가 권한을 검사하고, 본문은 권한을 모르는 private 메서드로 공유한다. 공유 본문에 한쪽 관객의 규칙을 넣으면 다른 쪽
+ * 경로로 새어 든다. 상세는 경로 하나에서 호출자의 권한으로 보이는 범위를 가른다 — specs/study/spec.md 「관객별 엔드포인트」
  */
 @Service
 public class StudyService {
@@ -230,25 +230,21 @@ public class StudyService {
         studyRepository.deleteById(studyId);
     }
 
-    /** 사용자 사이트 — 공개 상세. */
+    /**
+     * 스터디 상세 — 사용자 사이트와 운영 콘솔이 같이 쓴다. 공개된 스터디는 누구나, 공개 전(DRAFT)은 캡틴과 그 스터디의 네비게이터만 본다. 숨김
+     * 플래그(IS_HIDDEN)는 폐기 예정이라 보지 않는다. 그 밖의 사람에게는 없는 것처럼 404 — 공개 전 스터디가 있다는 사실도 드러내지 않는다.
+     *
+     * @param accountId 비로그인이면 {@code null}
+     */
     @Transactional(readOnly = true)
-    public StudyDetailResponse getDetail(Long studyId) {
-        // DRAFT 는 공개 전이라 404 — 운영 콘솔은 getDetailForBackOffice 로 DRAFT 를 연다
-        Study study =
-                studyRepository
-                        .findByIdAndIsHiddenFalseAndStatusNot(studyId, StudyStatus.DRAFT)
-                        .orElseThrow(
-                                () ->
-                                        new BusinessException(
-                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+    public StudyDetailResponse getDetail(Long studyId, Long accountId) {
+        Study study = findStudy(studyId);
+        // 공개 판정은 STATUS != DRAFT (POL-0002). 상태를 먼저 봐서 공개 스터디에는 권한 조회를 하지 않는다
+        if (study.getStatus() == StudyStatus.DRAFT
+                && !studyCaptainGuard.isCaptainOrNavigator(accountId, studyId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
+        }
         return toDetail(study);
-    }
-
-    /** 백오피스 — 캡틴만. DRAFT·숨김도 보여 준다. */
-    @Transactional(readOnly = true)
-    public StudyDetailResponse getDetailForBackOffice(Long accountId, Long studyId) {
-        studyCaptainGuard.assertCaptain(accountId, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
-        return toDetail(findStudy(studyId));
     }
 
     // 상세 본문 — 권한을 검사하지 않는다

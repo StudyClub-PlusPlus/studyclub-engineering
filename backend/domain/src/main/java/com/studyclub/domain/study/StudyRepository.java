@@ -14,9 +14,6 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
 
     Optional<Study> findFirstByProgramIdOrderByIdDesc(Long programId);
 
-    /** 사용자 사이트 공개 상세 — 숨김이 아니고 {@code status} 가 아닌 것. 공개 판정은 {@code STATUS != DRAFT} (POL-0002). */
-    Optional<Study> findByIdAndIsHiddenFalseAndStatusNot(Long id, StudyStatus status);
-
     /**
      * 스터디 삭제와 디스코드 연결 저장을 직렬화한다. 둘 다 이 행을 먼저 잠가야, 봇을 기다리던 연결 저장이 이미 지워진 스터디에 행을 만들지 않는다
      * (specs/discord-study-link/spec.md).

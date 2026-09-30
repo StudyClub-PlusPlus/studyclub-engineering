@@ -5,5 +5,7 @@ import java.util.List;
 
 interface BackofficeStudyDao {
 
-    List<Study> getStudies(BackofficeStudyListFilter filter);
+    List<Study> getStudies(BackofficeStudyListFilter filter, int offset, int limit);
+
+    long count(BackofficeStudyListFilter filter);
 }

@@ -27,8 +27,7 @@ export const studyKeys = {
 /**
  * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 목록은 아직 **사용자 사이트용 목록 API** 를 쓴다.
  * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외).
- * 백오피스 목록 `GET /api/admin/studies` 는 있지만 검색어·상태·페이지 조건이 없고 응답 모양(`items` 만)이 달라,
- * 옮기려면 그쪽 조건과 `toRow` 를 함께 맞춰야 한다 — specs/study/spec.md 「관객별 엔드포인트」
+ * `GET /api/admin/studies` 가 status·페이지·total 을 지원하므로, `fetchStudies` 와 `toRow` 를 맞추면 교체할 수 있다.
  */
 function fetchStudies(filter: StudyFilter): Promise<ApiStudyPage> {
   return http<ApiStudyPage>(
@@ -50,13 +49,13 @@ export function useStudies(filter: StudyFilter) {
 }
 
 /**
- * 상세·수정·삭제는 백오피스 경로(`/api/admin/studies/{id}`)를 쓴다 — 캡틴만 통과하고, 상세는 DRAFT 도 보인다.
- * 네비게이터의 수정은 사용자 사이트 경로(`PATCH /api/studies/{id}`)가 따로 받는다. 서버 로직은 같다.
+ * 상세는 `/api/studies/{id}` 를 쓴다. 권한은 서버가 나눈다.
+ * 수정·삭제는 캡틴만이므로 `/api/admin/studies/{id}` 를 쓴다.
  */
 export function useStudyDetail(studyId: number) {
   return useQuery({
     queryKey: studyKeys.detail(studyId),
-    queryFn: () => http<ApiStudyDetail>(`/api/admin/studies/${studyId}`),
+    queryFn: () => http<ApiStudyDetail>(`/api/studies/${studyId}`),
     retry: false,
   });
 }

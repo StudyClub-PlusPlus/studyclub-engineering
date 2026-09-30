@@ -19,10 +19,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 사용자 사이트의 스터디 — 공개 목록·상세, 네비게이터의 수정.
+ * 사용자 사이트의 스터디 — 공개 목록, 상세, 네비게이터의 수정.
  *
- * <p>백오피스 화면은 {@link AdminStudyController}({@code /api/admin/studies})를 쓰고 캡틴만 통과한다. 수정은 두 관객이 다 해서
- * 경로가 둘이다 — specs/study/spec.md 「관객별 엔드포인트」
+ * <p>상세는 운영 콘솔도 이 경로를 쓰고, 호출자의 권한으로 보이는 범위가 갈린다. 그 밖의 백오피스 일은 {@link AdminStudyController}({@code
+ * /api/admin/studies})가 하고 캡틴만 통과한다 — specs/study/spec.md 「관객별 엔드포인트」
  */
 @Tag(name = "스터디", description = "스터디 목록·상세")
 @RestController
@@ -57,9 +57,14 @@ public class StudyController {
                 limit);
     }
 
+    @Operation(
+            summary = "스터디 상세 조회",
+            description =
+                    "공개된 스터디는 누구나 본다. 공개 전(DRAFT) 스터디는 캡틴과 그 스터디의 네비게이터만 보고,"
+                            + " 그 밖에는 404. 운영 콘솔도 이 경로를 쓴다.")
     @GetMapping("/{studyId}")
-    public StudyDetailResponse detail(@PathVariable Long studyId) {
-        return studyService.getDetail(studyId);
+    public StudyDetailResponse detail(@PathVariable Long studyId, Authentication authentication) {
+        return studyService.getDetail(studyId, optionalAccountId(authentication));
     }
 
     @Operation(
@@ -76,5 +81,13 @@ public class StudyController {
         Long accountId = (Long) authentication.getPrincipal();
         studyService.updateFromSite(accountId, studyId, request);
         return ResponseEntity.noContent().build();
+    }
+
+    // 공개 경로라 비로그인이면 principal 이 없거나 익명 사용자다
+    private static Long optionalAccountId(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
+            return null;
+        }
+        return accountId;
     }
 }

@@ -24,6 +24,7 @@ import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -251,29 +252,30 @@ class StudyServiceTest {
                                         .isEqualTo(ErrorCode.INVALID_INPUT));
     }
 
-    // ── detail (백오피스) ─────────────────────────────────────────────────────
+    // ── detail ────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("실패(백오피스 상세) - 캡틴이 아니면 FORBIDDEN")
-    void backOfficeDetailForbidden() {
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다."))
-                .when(studyCaptainGuard)
-                .assertCaptain(1L, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
+    @DisplayName("실패(상세) - 존재하지 않는 studyId → NOT_FOUND")
+    void detailNotFound() {
+        when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.getDetailForBackOffice(1L, 10L))
+        assertThatThrownBy(() -> studyService.getDetail(10L, null))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
                                 assertThat(((BusinessException) e).errorCode())
-                                        .isEqualTo(ErrorCode.FORBIDDEN));
+                                        .isEqualTo(ErrorCode.NOT_FOUND));
     }
 
     @Test
-    @DisplayName("실패(백오피스 상세) - 존재하지 않는 studyId → NOT_FOUND")
-    void backOfficeDetailNotFound() {
-        when(studyRepository.findById(10L)).thenReturn(Optional.empty());
+    @DisplayName("실패(상세) - DRAFT 는 캡틴·네비게이터가 아니면 FORBIDDEN 이 아니라 NOT_FOUND")
+    void draftDetailHiddenFromOthers() {
+        Study draft = mock(Study.class);
+        when(draft.getStatus()).thenReturn(StudyStatus.DRAFT);
+        when(studyRepository.findById(10L)).thenReturn(Optional.of(draft));
+        when(studyCaptainGuard.isCaptainOrNavigator(1L, 10L)).thenReturn(false);
 
-        assertThatThrownBy(() -> studyService.getDetailForBackOffice(1L, 10L))
+        assertThatThrownBy(() -> studyService.getDetail(10L, 1L))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->

@@ -28,8 +28,9 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * 백오피스 스터디 상세·등록·수정·삭제({@code /api/admin/studies}). 핵심은 <b>네비게이터가 이 경로에서는 403</b> 이라는 것 — 네비게이터는
- * 사용자 사이트 경로({@code PATCH /api/studies/{id}}, {@link StudyUpdateIntegrationTest})로만 수정한다.
+ * 백오피스 스터디 등록·수정·삭제({@code /api/admin/studies}). 핵심은 <b>네비게이터가 이 경로에서는 403</b> 이라는 것 — 네비게이터는 사용자
+ * 사이트 경로({@code PATCH /api/studies/{id}}, {@link StudyUpdateIntegrationTest})로만 수정한다. 상세는 경로가 하나라
+ * {@link StudyDetailVisibilityIntegrationTest} 가 덮는다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -59,64 +60,10 @@ class AdminStudyCrudIntegrationTest {
         jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE ACCOUNT_ID = ?", NAVIGATOR_ID);
     }
 
-    // ── 상세 ─────────────────────────────────────────────────────────────────
-
-    @Test
-    @DisplayName("성공(상세) - ADMIN 은 DRAFT 스터디도 200 으로 조회한다")
-    void adminGetsDraftDetail() {
-        Long studyId = createStudy("백오피스 상세");
-
-        var response = exchange(HttpMethod.GET, "/api/admin/studies/" + studyId, ADMIN_ID, null);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody())
-                .containsEntry("title", "백오피스 상세")
-                .containsEntry("status", "DRAFT");
-    }
-
-    @Test
-    @DisplayName("실패(상세) - 토큰 없이 조회하면 401 + errorCode UNAUTHORIZED")
-    void detailRejectsUnauthenticated() {
-        Long studyId = createStudy("상세 401");
-
-        var response =
-                rest.exchange(
-                        "/api/admin/studies/" + studyId,
-                        HttpMethod.GET,
-                        HttpEntity.EMPTY,
-                        Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
-    }
-
-    @Test
-    @DisplayName("실패(상세) - 그 스터디의 네비게이터도 백오피스 경로에서는 403")
-    void detailRejectsNavigator() {
-        Long studyId = createStudy("상세 네비게이터");
-        insertParticipantIfAbsent(studyId, NAVIGATOR_ID, ParticipantRole.LEADER);
-
-        var response =
-                exchange(HttpMethod.GET, "/api/admin/studies/" + studyId, NAVIGATOR_ID, null);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
-    }
-
-    @Test
-    @DisplayName("실패(상세) - 없는 스터디는 404 + errorCode NOT_FOUND")
-    void detailNotFound() {
-        var response =
-                exchange(HttpMethod.GET, "/api/admin/studies/" + MISSING_STUDY_ID, ADMIN_ID, null);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
-    }
-
     // ── 등록 ─────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("성공(등록) - ADMIN 이 등록하면 201 + Location 이 백오피스 상세 경로다")
+    @DisplayName("성공(등록) - ADMIN 이 등록하면 201 + Location 헤더")
     void adminCreates() {
         var response =
                 rest.postForEntity(
