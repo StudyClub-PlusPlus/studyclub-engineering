@@ -58,6 +58,22 @@ public class StudyCaptainGuard {
         }
     }
 
+    /** 예외 대신 참·거짓 — 비공개 스터디를 권한 없는 사람에게 404 로 숨길 때 쓴다. 비로그인·없는 계정은 {@code false}. */
+    public boolean isCaptainOrNavigator(Long accountId, Long studyId) {
+        if (accountId == null) {
+            return false;
+        }
+        return accountRepository
+                .findById(accountId)
+                .map(
+                        account ->
+                                account.getSystemRole() == SystemRole.ADMIN
+                                        || studyParticipantRepository
+                                                .existsByStudyIdAndAccountIdAndParticipantRoleIn(
+                                                        studyId, accountId, NAVIGATOR_ROLES))
+                .orElse(false);
+    }
+
     private Account account(Long accountId) {
         if (accountId == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);

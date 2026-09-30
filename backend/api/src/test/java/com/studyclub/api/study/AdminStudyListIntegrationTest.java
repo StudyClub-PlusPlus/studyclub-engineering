@@ -158,6 +158,91 @@ class AdminStudyListIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - status 필터를 주면 해당 상태의 스터디만 반환한다")
+    void filterByStatus() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?status=DRAFT",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Long> ids = studyIds(response.getBody());
+        // 다른 테스트 클래스가 같은 DB 에 DRAFT 스터디를 남길 수 있다 — 픽스처 포함 여부와 상태만 본다
+        assertThat(ids).contains(DRAFT_STUDY_ID).doesNotContain(STUDY_ID, CLUB_STUDY_ID);
+        assertThat(items(response.getBody()))
+                .allSatisfy(item -> assertThat(item.get("status")).isEqualTo("DRAFT"));
+    }
+
+    @Test
+    @DisplayName("성공 - 첫 번째 페이지 조회 시 limit 개수만큼 반환되고 total은 전체 수다")
+    void paginationFirstPage() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?limit=2&offset=0",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> body = response.getBody();
+        assertThat(items(body)).hasSize(2);
+        assertThat(((Number) body.get("total")).longValue()).isEqualTo(studyRowCount());
+    }
+
+    @Test
+    @DisplayName("성공 - 마지막 페이지 조회 시 남은 1건만 반환된다")
+    void paginationLastPage() {
+        long total = studyRowCount();
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?limit=2&offset=" + (total - 1),
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> body = response.getBody();
+        assertThat(items(body)).hasSize(1);
+        assertThat(((Number) body.get("total")).longValue()).isEqualTo(total);
+    }
+
+    @Test
+    @DisplayName("성공 - 마지막 페이지를 넘긴 offset 은 빈 목록과 전체 수를 준다")
+    void paginationPastLastPage() {
+        long total = studyRowCount();
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?limit=2&offset=" + (total + 10),
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> body = response.getBody();
+        assertThat(items(body)).isEmpty();
+        assertThat(((Number) body.get("total")).longValue()).isEqualTo(total);
+    }
+
+    @Test
+    @DisplayName("성공 - 필터 없이 조회하면 응답에 total·offset·limit이 포함된다")
+    void responseIncludesTotalOffsetLimit() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<?, ?> body = response.getBody();
+        assertThat(((Number) body.get("total")).longValue()).isEqualTo(studyRowCount());
+        assertThat(((Number) body.get("offset")).intValue()).isEqualTo(0);
+        assertThat(((Number) body.get("limit")).intValue()).isEqualTo(20);
+    }
+
+    @Test
     @DisplayName("실패 - 토큰 없이 조회하면 401 + errorCode UNAUTHORIZED")
     void rejectsUnauthenticatedRequest() {
         var response =
@@ -206,6 +291,11 @@ class AdminStudyListIntegrationTest {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(jwtService.issueAccess(String.valueOf(accountId), email));
         return new HttpEntity<>(headers);
+    }
+
+    // 같은 DB 를 다른 테스트 클래스와 같이 쓴다 — 전체 수는 픽스처 3건이 아니라 실제 행 수와 비교한다
+    private long studyRowCount() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM STUDY", Long.class);
     }
 
     private void cleanSeedRows() {

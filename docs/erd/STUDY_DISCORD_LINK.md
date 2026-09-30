@@ -36,6 +36,6 @@ snowflake 는 **문자열**이다 (`^[0-9]{17,20}$`). `BIGINT` 로 받으면 프
 이 테이블은 API 호출용 식별자다.
 
 ## 행을 만드는 주체
-스터디 등록(`POST /api/studies`)이 커밋된 뒤 봇의 `create-study` 를 부르고 응답을 저장한다.
+스터디 등록(`POST /api/admin/studies`)이 커밋된 뒤 봇의 `create-study` 를 부르고 응답을 저장한다.
 실패하면 `POST /api/admin/studies/{studyId}/discord-link` 로 다시 붙인다. 스터디를 삭제하면 행도 지운다.
 → [specs/discord-study-link/spec.md](../../specs/discord-study-link/spec.md)

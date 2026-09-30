@@ -7,7 +7,8 @@ import com.studyclub.domain.study.StudyTimezone;
 import java.time.Instant;
 import java.util.List;
 
-public record BackofficeStudyListResponse(List<StudySummary> items) {
+public record BackofficeStudyListResponse(
+        List<StudySummary> items, long total, int offset, int limit) {
 
     public record StudySummary(
             Long studyId,

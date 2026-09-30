@@ -17,12 +17,23 @@ class BackofficeStudyJpqlDao implements BackofficeStudyDao {
     @PersistenceContext private EntityManager em;
 
     @Override
-    public List<Study> getStudies(BackofficeStudyListFilter filter) {
+    public List<Study> getStudies(BackofficeStudyListFilter filter, int offset, int limit) {
         Assembled where = assemble(filter);
         String jpql = "SELECT s FROM Study s" + where.jpql() + " ORDER BY s.id DESC";
         TypedQuery<Study> query = em.createQuery(jpql, Study.class);
         where.params().forEach(query::setParameter);
+        query.setFirstResult(Math.max(offset, 0));
+        query.setMaxResults(limit);
         return query.getResultList();
+    }
+
+    @Override
+    public long count(BackofficeStudyListFilter filter) {
+        Assembled where = assemble(filter);
+        String jpql = "SELECT COUNT(s) FROM Study s" + where.jpql();
+        TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+        where.params().forEach(query::setParameter);
+        return query.getSingleResult();
     }
 
     private record Assembled(String jpql, Map<String, Object> params) {}
@@ -38,6 +49,10 @@ class BackofficeStudyJpqlDao implements BackofficeStudyDao {
         if (filter.studyKind() != null) {
             conditions.add("s.studyKind = :studyKind");
             params.put("studyKind", filter.studyKind());
+        }
+        if (filter.status() != null) {
+            conditions.add("s.status = :status");
+            params.put("status", filter.status());
         }
 
         String jpql = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);

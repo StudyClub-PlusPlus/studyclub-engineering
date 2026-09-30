@@ -1,4 +1,4 @@
-package com.studyclub.api.web;
+package com.studyclub.api.study;
 
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;

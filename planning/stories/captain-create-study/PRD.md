@@ -128,7 +128,7 @@ flowchart LR
   - 검증 실패 → 해당 칸에 오류, 저장하지 않는다
   - 처리 중 → 다시 누를 수 없다
 - **정책**: 검토 단계는 없다. 등록 결과는 늘 미공개다
-- **데이터**: `POST /api/studies`
+- **데이터**: `POST /api/admin/studies`
 
 ### 10. 모집 정원
 
@@ -277,13 +277,13 @@ erDiagram
 - `studyProgramId` 가 있으면 존재하고 `CLUB` 이어야 한다. `studyKind` 와 함께 오면 400
 - capacity 는 null 또는 1 이상
 - 실패하면 400 `INVALID_INPUT` 에 실패한 필드를 모두 `필드명: 사유` 로 담는다
-- 성공하면 201, `Location: /api/studies/{id}`
+- 성공하면 201, `Location: /api/admin/studies/{id}`
 
 ### API
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| POST | `/api/studies` | 캡틴 (`SYSTEM_ROLE = ADMIN`) |
+| POST | `/api/admin/studies` | 캡틴 (`SYSTEM_ROLE = ADMIN`) |
 
 ### 권한
 

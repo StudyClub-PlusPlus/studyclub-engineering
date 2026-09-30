@@ -56,7 +56,7 @@ class StudyDeleteIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/api/studies/" + studyId,
+                        "/api/admin/studies/" + studyId,
                         HttpMethod.DELETE,
                         authenticatedNoBody(ADMIN_ID),
                         Void.class);
@@ -73,7 +73,7 @@ class StudyDeleteIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/api/studies/" + studyId,
+                        "/api/admin/studies/" + studyId,
                         HttpMethod.DELETE,
                         authenticatedNoBody(ADMIN_ID),
                         Void.class);
@@ -91,7 +91,7 @@ class StudyDeleteIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/api/studies/" + studyId,
+                        "/api/admin/studies/" + studyId,
                         HttpMethod.DELETE,
                         authenticatedNoBody(ADMIN_ID),
                         Void.class);
@@ -107,7 +107,8 @@ class StudyDeleteIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(tokenFor(ADMIN_ID));
         var response =
-                rest.postForEntity("/api/studies", new HttpEntity<>(body, headers), Void.class);
+                rest.postForEntity(
+                        "/api/admin/studies", new HttpEntity<>(body, headers), Void.class);
         String path = response.getHeaders().getLocation().getPath();
         return Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
     }

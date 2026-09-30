@@ -113,20 +113,20 @@ class StudyDetailApiTest {
     }
 
     @Test
-    @DisplayName("실패 — 숨김 스터디 → 404 NOT_FOUND")
-    void hiddenStudyReturns404() {
+    @DisplayName("실패 — 공개 전(DRAFT) 스터디는 숨김이 아니어도 404 NOT_FOUND")
+    void draftStudyReturns404() {
         var studyProgram =
-                studyProgramRepository.save(StudyProgram.builder().title("숨김 스터디").build());
+                studyProgramRepository.save(StudyProgram.builder().title("공개 전 스터디").build());
         var study =
                 studyRepository.save(
                         Study.builder()
                                 .programId(studyProgram.getId())
-                                .slug("hidden")
-                                .title("숨김 스터디")
-                                .oneLineSummary("숨김 처리된 스터디")
+                                .slug("draft")
+                                .title("공개 전 스터디")
+                                .oneLineSummary("아직 공개하지 않은 스터디")
                                 .category(StudyCategory.OTHER)
                                 .studyKind(StudyKind.STUDY)
-                                .isHidden(true)
+                                .isHidden(false)
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)
                                 .build());

@@ -33,11 +33,16 @@ public class BackofficeStudyListService {
         this.objectMapper = objectMapper;
     }
 
-    public BackofficeStudyListResponse getStudies(BackofficeStudyListFilter filter) {
-        List<Study> studies = backofficeStudyDao.getStudies(filter);
-
+    public BackofficeStudyListResponse getStudies(
+            BackofficeStudyListFilter filter, int offset, int limit) {
+        long total = backofficeStudyDao.count(filter);
+        if (total == 0) {
+            return new BackofficeStudyListResponse(List.of(), 0, offset, limit);
+        }
+        List<Study> studies = backofficeStudyDao.getStudies(filter, offset, limit);
+        // offset 이 마지막 페이지를 넘으면 빈 페이지다 — 빈 IN () 조회로 넘기지 않는다
         if (studies.isEmpty()) {
-            return new BackofficeStudyListResponse(List.of());
+            return new BackofficeStudyListResponse(List.of(), total, offset, limit);
         }
 
         List<Long> studyIds = studies.stream().map(Study::getId).toList();
@@ -73,7 +78,7 @@ public class BackofficeStudyListService {
                                 })
                         .toList();
 
-        return new BackofficeStudyListResponse(items);
+        return new BackofficeStudyListResponse(items, total, offset, limit);
     }
 
     private boolean hasQuestions(String applicationForm) {

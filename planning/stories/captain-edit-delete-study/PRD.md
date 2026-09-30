@@ -61,7 +61,7 @@ flowchart LR
 - **정책**
   - 검증 규칙은 등록과 같다
   - 바뀐 칸만 보낸다. 마감이 지난 스터디에서 지난 마감일을 다시 보내지 않는다
-- **데이터**: `PATCH /api/studies/{studyId}`
+- **데이터**: `PATCH /api/admin/studies/{studyId}`
 
 ### 3. 스터디 삭제
 
@@ -76,7 +76,7 @@ flowchart LR
 - **동작**
   - 삭제 → 지우고 스터디 목록으로 간다
   - 취소 · 배경 클릭 · Esc → 아무것도 지우지 않고 닫힌다
-- **데이터**: `DELETE /api/studies/{studyId}`
+- **데이터**: `DELETE /api/admin/studies/{studyId}`
 - **조건**: 「스터디 삭제」를 눌렀을 때
 
 ### 상태별 화면
@@ -133,8 +133,10 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| PATCH | `/api/studies/{studyId}` | 캡틴 · 네비게이터 |
-| DELETE | `/api/studies/{studyId}` | 캡틴 |
+| PATCH | `/api/admin/studies/{studyId}` | 캡틴 (운영 콘솔) |
+| DELETE | `/api/admin/studies/{studyId}` | 캡틴 |
+
+네비게이터의 수정은 사용자 사이트 경로(`PATCH /api/studies/{studyId}`)가 따로 받는다 — 로직은 같고 권한만 다르다.
 
 계약은 [study/spec.md](../../../specs/study/spec.md#스터디-수정).
 
