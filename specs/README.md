@@ -22,6 +22,7 @@ API 도메인이 아닌 것(인프라·운영). 구조는 같되 엔드포인트
 | 스펙 | 폴더 | 상태 | 설명 |
 |------|------|------|------|
 | 관측 스택 | [observability-stack/](./observability-stack/) | 1단계 구현 | 로그(Grafana+Loki+Alloy) → 메트릭·알림은 후속 |
+| 요청 인가 가드 | [authz-guards/](./authz-guards/) | 스펙작성중 | `@RequireAdmin` · `@RequireOnboarding` 적용 범위. [back-office-login](./back-office-login/spec.md) 후속 |
 
 > `—` = 아직 스펙 없음. 필요할 때 `_templates/` 에서 복사해서 시작한다.
 
