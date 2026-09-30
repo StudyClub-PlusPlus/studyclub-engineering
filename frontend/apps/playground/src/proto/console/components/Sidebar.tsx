@@ -76,11 +76,11 @@ export function Sidebar() {
               <img src={user.picture} alt='' className='h-8 w-8 shrink-0 rounded-full' />
             ) : (
               <span className='grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-[var(--color-accent)]'>
-                {(user.name ?? user.email).slice(0, 1).toUpperCase()}
+                {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
               </span>
             )}
             <div className='min-w-0 flex-1'>
-              <div className='truncate text-sm font-semibold'>{user.name ?? '운영자'}</div>
+              <div className='truncate text-sm font-semibold'>{user.nickname ?? '운영자'}</div>
               <div className='truncate text-xs text-[var(--color-fg-subtle)]'>{user.email}</div>
             </div>
             <button

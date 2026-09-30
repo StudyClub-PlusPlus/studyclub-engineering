@@ -57,12 +57,12 @@ class StudyCreateIntegrationTest {
                         "category", "AI_ML");
 
         var response =
-                rest.postForEntity("/api/studies", authenticated(ADMIN_ID, body), Void.class);
+                rest.postForEntity("/api/admin/studies", authenticated(ADMIN_ID, body), Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getHeaders().getLocation()).isNotNull();
         String path = response.getHeaders().getLocation().getPath();
-        assertThat(path).startsWith("/api/studies/");
+        assertThat(path).startsWith("/api/admin/studies/");
 
         Long studyId = Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
         var study = studyRepository.findById(studyId);
@@ -89,7 +89,7 @@ class StudyCreateIntegrationTest {
                         "recruitDeadline", futureDeadline);
 
         var response =
-                rest.postForEntity("/api/studies", authenticated(ADMIN_ID, body), Void.class);
+                rest.postForEntity("/api/admin/studies", authenticated(ADMIN_ID, body), Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String path = response.getHeaders().getLocation().getPath();
@@ -109,7 +109,7 @@ class StudyCreateIntegrationTest {
                         "category", "ALGORITHM");
 
         var response =
-                rest.postForEntity("/api/studies", authenticated(ADMIN_ID, body), Void.class);
+                rest.postForEntity("/api/admin/studies", authenticated(ADMIN_ID, body), Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String path = response.getHeaders().getLocation().getPath();
@@ -132,7 +132,7 @@ class StudyCreateIntegrationTest {
                         "category", "SOFTWARE");
 
         var response =
-                rest.postForEntity("/api/studies", authenticated(ADMIN_ID, body), Void.class);
+                rest.postForEntity("/api/admin/studies", authenticated(ADMIN_ID, body), Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String path = response.getHeaders().getLocation().getPath();
