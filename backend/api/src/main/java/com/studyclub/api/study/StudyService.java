@@ -232,7 +232,8 @@ public class StudyService {
 
     /**
      * 사용자 사이트 상세. 공개된 스터디는 누구나, 공개 전(DRAFT)은 캡틴과 그 스터디의 네비게이터만 본다 — 네비게이터는 백오피스에 못 들어와 사이트에서 맡은
-     * 스터디를 읽고 고친다. 그 밖의 사람에게는 없는 것처럼 404. 숨김 플래그(IS_HIDDEN)는 폐기 예정이라 보지 않는다.
+     * 스터디를 읽고 고친다. 그 밖의 사람에게는 없는 것처럼 404. 숨김 플래그(IS_HIDDEN)는 폐기 예정이라 보지 않는다. 디스코드 채널·자료실 링크는 {@link
+     * StudyCaptainGuard#canSeePrivateLinks} 인 사람에게만 채운다.
      *
      * @param accountId 비로그인이면 {@code null}
      */
@@ -244,7 +245,10 @@ public class StudyService {
                 && !studyCaptainGuard.isCaptainOrNavigator(accountId, studyId)) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
         }
-        return toDetail(study);
+        StudyDetailResponse detail = toDetail(study);
+        return studyCaptainGuard.canSeePrivateLinks(accountId, studyId)
+                ? detail
+                : detail.withoutPrivateLinks();
     }
 
     /** 백오피스 상세 — 캡틴만. DRAFT 도 보여 준다. */

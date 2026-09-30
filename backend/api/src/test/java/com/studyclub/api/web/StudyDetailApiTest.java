@@ -85,8 +85,9 @@ class StudyDetailApiTest {
         assertThat(body).containsEntry("oneLineSummary", "알고리즘 문제 풀이 스터디");
         assertThat(body).containsEntry("capacity", 20);
         assertThat(body).containsEntry("schedule", "매주 목 20:00");
-        assertThat(body).containsEntry("discordChannelUrl", "https://discord.com/channels/1/2");
-        assertThat(body).containsEntry("driveUrl", "https://drive.google.com/drive/folders/abc");
+        // 비로그인에게는 링크를 비운다 — 채우는 조건은 StudyDetailVisibilityIntegrationTest
+        assertThat(body).containsEntry("discordChannelUrl", null);
+        assertThat(body).containsEntry("driveUrl", null);
         assertThat(body).doesNotContainKey("success");
     }
 

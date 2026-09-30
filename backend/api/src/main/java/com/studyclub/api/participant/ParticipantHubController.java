@@ -1,7 +1,7 @@
 package com.studyclub.api.participant;
 
 import com.studyclub.api.auth.security.RequireOnboarding;
-import com.studyclub.api.participant.ParticipantHubResponses.ParticipantHubOverviewResponse;
+import com.studyclub.api.participant.ParticipantHubResponses.MyStudyListResponse;
 import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyDetailResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
@@ -23,16 +23,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class ParticipantHubController {
 
     private final ParticipantHubQueryService participantHubQueryService;
+    private final MyStudyQueryService myStudyQueryService;
 
-    public ParticipantHubController(ParticipantHubQueryService participantHubQueryService) {
+    public ParticipantHubController(
+            ParticipantHubQueryService participantHubQueryService,
+            MyStudyQueryService myStudyQueryService) {
         this.participantHubQueryService = participantHubQueryService;
+        this.myStudyQueryService = myStudyQueryService;
     }
 
-    @Operation(summary = "내 참가자 허브 조회")
+    @Operation(summary = "내 스터디 목록 — 명부 스터디 + 회차별 내 출석")
     @GetMapping("/studies")
-    public ParticipantHubOverviewResponse getParticipantHubOverview(Authentication authentication) {
-        return participantHubQueryService.getParticipantHubOverview(
-                authenticatedAccountId(authentication));
+    public MyStudyListResponse getMyStudies(Authentication authentication) {
+        return myStudyQueryService.getMyStudies(authenticatedAccountId(authentication));
     }
 
     @Operation(summary = "내 수강 스터디 상세 조회")
