@@ -106,6 +106,8 @@ export type Study = {
   schedule?: L10n;
   lead?: string;
   seats?: { total: number; taken: number };
+  /** API 목록에서 받은 현재 지원 인원. */
+  applicantCount?: number;
   discord_url?: string;
   recruit_url?: string;
   order?: number;

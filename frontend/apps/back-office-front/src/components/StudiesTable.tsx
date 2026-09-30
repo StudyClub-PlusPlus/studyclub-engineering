@@ -110,6 +110,26 @@ function FilterSelect<T extends string>({
 
 /** 목록에 필요한 만큼만 뽑는다 — 어느 스터디를 열어야 하는지 고르기 위한 숫자. */
 function summarize(study: Study) {
+  if (study.applicantCount !== undefined) {
+    return {
+      capacity: study.recruitment?.capacity ?? study.seats?.total ?? 0,
+      active: study.applicantCount,
+      applied: study.applicantCount,
+      pending: 0,
+      rate: undefined,
+    };
+  }
+
+  if (study.seats) {
+    return {
+      capacity: study.seats.total,
+      active: study.seats.taken,
+      applied: study.seats.taken,
+      pending: 0,
+      rate: undefined,
+    };
+  }
+
   const { crew, capacity, attendance } = getStudyCrew(study);
   const active = crew.filter((c) => c.status === 'active');
   const rows = active.map((c) => attendanceRate(attendance[c.id])).filter((r): r is number => r !== undefined);
