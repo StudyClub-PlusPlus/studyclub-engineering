@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { getUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { getBookmarks, setBookmarked } from '@core/lib/me';
 import { studies as allStudies, type Study } from '@studyclub/mock';
@@ -76,7 +76,7 @@ export default function SavedStudiesPage() {
                   </span>
                   <div className='min-w-0 flex-1'>
                     <Link
-                      href={`/proto/core/${locale}/studies/${study.id}`}
+                      href={userStudyPath(locale, study)}
                       className='block truncate font-bold underline-offset-4 hover:underline'
                     >
                       {t(study.title, locale)}

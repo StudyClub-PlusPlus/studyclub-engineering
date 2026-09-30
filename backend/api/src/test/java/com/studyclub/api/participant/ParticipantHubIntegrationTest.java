@@ -92,7 +92,7 @@ class ParticipantHubIntegrationTest {
     void returnsParticipantStudyDetail() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/301",
+                        "/api/me/studies/301",
                         HttpMethod.GET,
                         authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
@@ -107,7 +107,7 @@ class ParticipantHubIntegrationTest {
     void returnsConsistentCompletedStudyAttendance() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/291",
+                        "/api/me/studies/291",
                         HttpMethod.GET,
                         authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
@@ -131,7 +131,7 @@ class ParticipantHubIntegrationTest {
     void rejectsNonParticipant() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/303",
+                        "/api/me/studies/303",
                         HttpMethod.GET,
                         authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
@@ -145,7 +145,7 @@ class ParticipantHubIntegrationTest {
     void rejectsUnknownStudy() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/999",
+                        "/api/me/studies/999",
                         HttpMethod.GET,
                         authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
@@ -173,7 +173,7 @@ class ParticipantHubIntegrationTest {
     void rejectsAnotherAccountFromParticipantDetail() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/301",
+                        "/api/me/studies/301",
                         HttpMethod.GET,
                         authenticatedRequest(ANOTHER_ACCOUNT_ID),
                         Map.class);

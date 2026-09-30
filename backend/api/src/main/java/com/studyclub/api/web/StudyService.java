@@ -1,36 +1,269 @@
 package com.studyclub.api.web;
 
+import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.attendance.StudyAttendanceRepository;
+import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.discord.StudyDiscordLinkRepository;
+import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
-import com.studyclub.domain.study.StudyCohortRepository;
+import com.studyclub.domain.study.StudyGroup;
+import com.studyclub.domain.study.StudyGroupRepository;
+import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
+import com.studyclub.domain.study.StudyRecruitment;
+import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StudyService {
 
+    private static final String DEFAULT_RECRUITMENT_TITLE = "1차 모집";
+    private static final Pattern HTTP_URL =
+            Pattern.compile("^https?://\\S+$", Pattern.CASE_INSENSITIVE);
+
     private final StudyRepository studyRepository;
-    private final StudyCohortRepository studyCohortRepository;
+    private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyRecruitmentRepository studyRecruitmentRepository;
+    private final StudyProgramRepository studyProgramRepository;
+    private final AccountRepository accountRepository;
+    private final StudyGroupRepository studyGroupRepository;
+    private final StudyMeetingRepository studyMeetingRepository;
+    private final StudyAttendanceRepository studyAttendanceRepository;
+    private final StudyApplicationRepository studyApplicationRepository;
+    private final StudyBookmarkRepository studyBookmarkRepository;
+    private final StudyCaptainGuard studyCaptainGuard;
+    private final StudyDiscordLinkRepository studyDiscordLinkRepository;
 
     public StudyService(
-            StudyRepository studyRepository, StudyCohortRepository studyCohortRepository) {
+            StudyRepository studyRepository,
+            StudyParticipantRepository studyParticipantRepository,
+            StudyRecruitmentRepository studyRecruitmentRepository,
+            StudyProgramRepository studyProgramRepository,
+            AccountRepository accountRepository,
+            StudyGroupRepository studyGroupRepository,
+            StudyMeetingRepository studyMeetingRepository,
+            StudyAttendanceRepository studyAttendanceRepository,
+            StudyApplicationRepository studyApplicationRepository,
+            StudyBookmarkRepository studyBookmarkRepository,
+            StudyCaptainGuard studyCaptainGuard,
+            StudyDiscordLinkRepository studyDiscordLinkRepository) {
         this.studyRepository = studyRepository;
-        this.studyCohortRepository = studyCohortRepository;
+        this.studyParticipantRepository = studyParticipantRepository;
+        this.studyRecruitmentRepository = studyRecruitmentRepository;
+        this.studyProgramRepository = studyProgramRepository;
+        this.accountRepository = accountRepository;
+        this.studyGroupRepository = studyGroupRepository;
+        this.studyMeetingRepository = studyMeetingRepository;
+        this.studyAttendanceRepository = studyAttendanceRepository;
+        this.studyApplicationRepository = studyApplicationRepository;
+        this.studyBookmarkRepository = studyBookmarkRepository;
+        this.studyCaptainGuard = studyCaptainGuard;
+        this.studyDiscordLinkRepository = studyDiscordLinkRepository;
+    }
+
+    @Transactional
+    public Long create(Long accountId, StudyCreateRequest request) {
+        Instant now = Instant.now();
+        Account account =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        if (account.getSystemRole() != SystemRole.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 등록 권한이 없습니다.");
+        }
+        if (request.recruitDeadline() != null && !now.isBefore(request.recruitDeadline())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
+        }
+
+        String trimmedTitle = request.title().trim();
+
+        StudyProgram program =
+                request.studyProgramId() != null
+                        ? studyProgramRepository
+                                .findById(request.studyProgramId())
+                                .orElseThrow(
+                                        () ->
+                                                new BusinessException(
+                                                        ErrorCode.INVALID_INPUT,
+                                                        "studyProgramId: 존재하지 않는 스터디 프로그램입니다."))
+                        : studyProgramRepository.save(
+                                StudyProgram.builder().title(trimmedTitle).build());
+
+        Study study =
+                studyRepository.save(
+                        Study.builder()
+                                .programId(program.getId())
+                                .title(trimmedTitle)
+                                .slug(UUID.randomUUID().toString())
+                                .oneLineSummary(request.oneLineSummary())
+                                .description(request.description())
+                                .category(request.category())
+                                .studyKind(StudyKind.STUDY)
+                                .isHidden(false)
+                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
+                                .status(StudyStatus.DRAFT)
+                                .thumbnailUrl(request.thumbnailUrl())
+                                .schedule(request.schedule())
+                                .build());
+
+        studyRecruitmentRepository.save(
+                StudyRecruitment.builder()
+                        .studyId(study.getId())
+                        .title(DEFAULT_RECRUITMENT_TITLE)
+                        .description("")
+                        .startAt(now)
+                        .recruitDeadlineAt(request.recruitDeadline())
+                        .build());
+
+        return study.getId();
+    }
+
+    @Transactional
+    public void update(Long accountId, Long studyId, StudyUpdateRequest request) {
+        // 권한(ADMIN·캡틴) 판정은 StudyCaptainGuard 가 한다. 여기서는 "누구인지 모르는 요청" 만 먼저 막는다
+        if (!accountRepository.existsById(accountId)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Study study =
+                studyRepository
+                        .findById(studyId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+
+        studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "스터디 수정 권한이 없습니다.");
+
+        if (request.title() != null && request.title().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "title: 제목을 입력하세요.");
+        }
+        if (request.oneLineSummary() != null && request.oneLineSummary().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "oneLineSummary: 한 줄 소개를 입력하세요.");
+        }
+        if (request.recruitDeadline() != null
+                && !Instant.now().isBefore(request.recruitDeadline())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
+        }
+        if (request.capacityPresent() && request.capacity() != null && request.capacity() < 1) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "capacity: 1 이상의 정수여야 합니다.");
+        }
+        if (request.discordChannelUrlPresent() && !isHttpUrlOrBlank(request.discordChannelUrl())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "discordChannelUrl: http(s):// 로 시작하는 주소여야 합니다.");
+        }
+        if (request.driveUrlPresent() && !isHttpUrlOrBlank(request.driveUrl())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "driveUrl: http(s):// 로 시작하는 주소여야 합니다.");
+        }
+
+        study.update(
+                request.title(),
+                request.oneLineSummary(),
+                request.description(),
+                request.category(),
+                request.schedule());
+        // 정원은 STUDY.CAPACITY 에 둔다 — 목록·모집 상태·단계 필터가 모두 이 컬럼을 읽는다
+        if (request.capacityPresent()) study.changeCapacity(request.capacity());
+        if (request.startAtPresent()) study.changeStartAt(request.startAt());
+        if (request.discordChannelUrlPresent()) {
+            study.changeDiscordChannelUrl(request.discordChannelUrl());
+        }
+        if (request.driveUrlPresent()) study.changeDriveUrl(request.driveUrl());
+
+        if (request.recruitDeadline() != null) {
+            studyRecruitmentRepository
+                    .findFirstByStudyIdOrderByIdDesc(studyId)
+                    .ifPresent(r -> r.updateDeadline(request.recruitDeadline()));
+        }
+    }
+
+    @Transactional
+    public void delete(Long accountId, Long studyId) {
+        Account account =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+        if (account.getSystemRole() != SystemRole.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 삭제 권한이 없습니다.");
+        }
+        // 잠가서 조회한다 — 봇 응답을 기다리던 디스코드 연결 저장과 엇갈려 지운 스터디에 연결이 남지 않게
+        if (studyRepository.findByIdForUpdate(studyId).isEmpty()) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
+        }
+
+        List<Long> groupIds =
+                studyGroupRepository.findByStudyId(studyId).stream()
+                        .map(StudyGroup::getId)
+                        .toList();
+        List<Long> recruitmentIds =
+                studyRecruitmentRepository.findByStudyId(studyId).stream()
+                        .map(StudyRecruitment::getId)
+                        .toList();
+
+        if (!groupIds.isEmpty()) {
+            studyMeetingRepository.deleteByStudyGroupIdIn(groupIds);
+        }
+        studyAttendanceRepository.deleteByStudyId(studyId);
+        studyGroupRepository.deleteByStudyId(studyId);
+        studyParticipantRepository.deleteByStudyId(studyId);
+        if (!recruitmentIds.isEmpty()) {
+            studyApplicationRepository.deleteByRecruitmentIdIn(recruitmentIds);
+        }
+        studyRecruitmentRepository.deleteByStudyId(studyId);
+        studyBookmarkRepository.deleteByStudyId(studyId);
+        // 디스코드 카테고리·역할은 남는다 — 봇에 삭제 API 가 없다
+        studyDiscordLinkRepository.deleteByStudyId(studyId);
+        studyRepository.deleteById(studyId);
     }
 
     @Transactional(readOnly = true)
     public StudyDetailResponse getDetail(Long studyId) {
-        Study study =
+        var study =
                 studyRepository
                         .findByIdAndIsHiddenFalse(studyId)
                         .orElseThrow(
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+        Instant recruitDeadlineAt =
+                studyRecruitmentRepository
+                        .findFirstByStudyIdOrderByIdDesc(study.getId())
+                        .map(StudyRecruitment::getRecruitDeadlineAt)
+                        .orElse(null);
+        return StudyDetailResponse.from(study, applicantCount(study), recruitDeadlineAt);
+    }
 
-        var cohort = studyCohortRepository.findFirstByStudyIdOrderByIdDesc(studyId).orElse(null);
-        return StudyDetailResponse.from(study, cohort);
+    private static boolean isHttpUrlOrBlank(String value) {
+        return value == null || value.isBlank() || HTTP_URL.matcher(value.trim()).matches();
+    }
+
+    /** 목록과 같은 쿼리를 쓴다 — 정원을 차지하는 상태 목록이 두 군데로 갈라지면 목록과 상세의 모집 상태가 어긋난다. */
+    private long applicantCount(Study study) {
+        if (study == null) {
+            return 0;
+        }
+        return studyParticipantRepository.countByStudyIds(List.of(study.getId())).stream()
+                .findFirst()
+                .map(row -> (Long) row[1])
+                .orElse(0L);
     }
 }

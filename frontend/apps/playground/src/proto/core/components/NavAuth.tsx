@@ -79,14 +79,10 @@ export function NavAuth({ locale }: { locale: Locale }) {
         onClick={() => setOpen((v) => !v)}
         className='flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-[var(--color-surface-subtle)]'
       >
-        {user.picture ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.picture} alt='' className='h-8 w-8 rounded-full' />
-        ) : (
-          <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-[var(--color-accent)]'>
-            {(user.name ?? user.email).slice(0, 1).toUpperCase()}
-          </span>
-        )}
+        {/* 프로필 사진은 받지 않는다 — 이름 첫 글자로 자리만 만든다 */}
+        <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-[var(--color-accent)]'>
+          {(user.name ?? user.email).slice(0, 1).toUpperCase()}
+        </span>
         <span className='hidden max-w-[8rem] truncate text-sm font-semibold sm:block'>{user.name ?? user.email}</span>
         <ChevronDown size={14} className='text-[var(--color-fg-subtle)]' />
       </button>

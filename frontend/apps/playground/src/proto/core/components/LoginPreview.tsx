@@ -78,7 +78,6 @@ function LoginForm({
         id: -1001,
         email: 'crew@example.com',
         name: existing ? 'Journey' : null,
-        picture: null,
         role: 'MEMBER',
         timeZone: existing ? 'Asia/Seoul' : null,
         onboardingCompletedAt: existing ? '2026-09-01T00:00:00Z' : null,

@@ -1,10 +1,12 @@
 import Link from 'next/link';
 
 import { BookOpen, Compass, UserPlus, Sparkles, HelpCircle } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
 import { getSite, type Locale, type L10n } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 type Section = { id: string; icon: typeof BookOpen; title: L10n };
 
@@ -19,6 +21,16 @@ const SECTIONS: Section[] = [
   },
   { id: 'faq', icon: HelpCircle, title: { ko: '자주 묻는 질문', en: 'FAQ' } },
 ];
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return pageMetadata({
+    locale,
+    path: '/guide',
+    title: m('guide.title', locale),
+    description: m('seo.guide_description', locale),
+  });
+}
 
 export default async function GuidePage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;

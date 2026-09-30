@@ -78,21 +78,34 @@ export default function StudyCard({ study, onJoin }: StudyCardProps) {
 }
 ```
 
-### lib/ (로직, API)
+### features/ (그 기능의 데이터)
 
-- API 호출 함수
-- 데이터 변환/포맷 유틸
-- 인증 헬퍼
+한 기능의 **타입·fetcher·쿼리 훅·전용 컴포넌트**가 한 폴더에 산다. 기능이 없어지면 폴더째 지운다.
 
-```tsx
-// lib/api/studies.ts
-export async function fetchStudies(): Promise<Study[]> {
-  const res = await fetch(`${API_BASE_URL}/studies`);
-  if (!res.ok) throw new Error('Failed to fetch studies');
-  const json = await res.json();
-  return json.data;
+```ts
+// features/studies/queries.ts — 키·fetcher·훅을 같이 둔다
+export const studyKeys = {
+  all: ['studies'] as const,
+  list: (filter: StudyFilter) => [...studyKeys.all, 'list', filter] as const,
+};
+
+export function useStudies(filter: StudyFilter) {
+  return useQuery({
+    queryKey: studyKeys.list(filter),
+    queryFn: () => http<ApiStudyPage>(`/api/studies${qs(filter)}`),
+    select: (page) => ({ rows: page.items.map(toRow), total: page.total }),
+  });
 }
 ```
+
+### lib/ (기능을 모르는 유틸)
+
+- `http.ts` — BFF 호출 래퍼, `ApiError`
+- `query-client.ts` — QueryClient 생성
+- `auth.ts` · 날짜·포맷 유틸
+
+**기능 이름이 등장하면 `lib/` 이 아니다.** `lib/api/studies.ts` 같은 파일을 만들지 않는다 —
+그건 `features/studies/` 로 간다.
 
 ## 컴포넌트 분리 기준
 
@@ -107,14 +120,24 @@ export async function fetchStudies(): Promise<Study[]> {
 
 ## 데이터 흐름
 
+읽기 전용 화면(랜딩·공개 목록):
+
 ```
-Server Component (page.tsx)
-  → fetch data
-  → pass as props
-    → Client Component (interactive parts only)
-      → local UI state (useState)
-      → callbacks for mutations
+Server Component (page.tsx) → fetch → props → Client Component (인터랙션만)
 ```
+
+필터·저장이 있는 화면(운영 콘솔 대부분):
+
+```
+Client Component (page.tsx)
+  → useXxx() 훅            (features/<기능>/queries.ts)
+    → http()               (lib/http.ts)
+      → /api/* BFF         (app/api/*)
+        → 백엔드
+```
+
+**페이지에서 `fetch` 를 직접 부르지 않는다.** 훅을 거친다 — 그래야 로딩·에러·캐시를 매 화면에서
+다시 짜지 않는다. 서버 상태는 `useState` 로 들고 있지 않는다(그건 캐시를 손으로 만드는 것이다).
 
 - **단방향 데이터 흐름**: 위에서 아래로 props 전달
 - **이벤트는 위로**: 콜백 함수를 props 로 전달, 자식이 호출

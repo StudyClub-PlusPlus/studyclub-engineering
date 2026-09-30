@@ -35,6 +35,13 @@ function BackOfficeLoginForm() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
+          // errorCode 로 가른다. 문구는 PRD 01 인증 BO-05.
+          if (data?.errorCode === 'FORBIDDEN') {
+            throw new Error('운영 권한이 없어요. 캡틴에게 요청하세요.');
+          }
+          if (data?.errorCode === 'SIGNUP_REQUIRED') {
+            throw new Error('먼저 스터디클럽 사이트에서 로그인해 주세요.');
+          }
           throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
         }
         if (data.user) setUser(data.user);

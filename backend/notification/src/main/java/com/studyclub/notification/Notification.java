@@ -1,0 +1,161 @@
+package com.studyclub.notification;
+
+import com.studyclub.domain.support.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Objects;
+import lombok.Getter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+/**
+ * "이벤트가 발생했다는 사실"과 "실제로 언제·누구에게·어떻게 보냈는지"를 기록하는 아웃박스(outbox) 레코드 (specs/notification/spec.md).
+ *
+ * <p>재시도 체인(root_notification_id·final_status·retry_count 등)은 이번 구현에 없다 — 자동/수동 재시도 자체를 아직 만들지 않았기
+ * 때문이다. 그 기능이 실제로 생길 때 컬럼을 추가한다.
+ */
+@Entity
+@Table(
+        name = "NOTIFICATION",
+        indexes = {
+            @Index(name = "idx_notification_status_created", columnList = "STATUS, CREATED_AT")
+        })
+@Getter
+public class Notification extends BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "EVENT_TYPE", nullable = false, length = 40)
+    private NotificationEventType eventType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "RECIPIENT_TYPE", nullable = false, length = 20)
+    private NotificationChannel recipientType;
+
+    @Column(name = "RECIPIENT_VALUE", nullable = false, length = 255)
+    private String recipientValue;
+
+    /** ID 참조 — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 null 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비). */
+    @Column(name = "RECIPIENT_USER_ID")
+    private Long recipientUserId;
+
+    /** ID 참조 — {@code NotificationTemplate} 은 별도 애그리거트라 객체 참조(@ManyToOne)로 물지 않는다. */
+    @Column(name = "TEMPLATE_ID", nullable = false)
+    private Long templateId;
+
+    /** Hibernate 7 이 Jackson 3(이 프로젝트가 쓰는 버전)을 자동 인식해 직렬화한다 — 커스텀 컨버터 불필요. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "PAYLOAD", nullable = false)
+    private Map<String, Object> payload;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "STATUS", nullable = false, length = 20)
+    private NotificationStatus status;
+
+    @Column(name = "LOCKED_AT")
+    private Instant lockedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ERROR_TYPE", length = 30)
+    private NotificationErrorType errorType;
+
+    /** nullable — null 이면 즉시 발송(웰컴메일 등). 이번 구현은 항상 null. */
+    @Column(name = "SCHEDULED_AT")
+    private Instant scheduledAt;
+
+    @Column(name = "SENT_AT")
+    private Instant sentAt;
+
+    protected Notification() {}
+
+    private Notification(
+            NotificationEventType eventType,
+            NotificationChannel recipientType,
+            String recipientValue,
+            Long recipientUserId,
+            Long templateId,
+            Map<String, Object> payload) {
+        this.eventType = eventType;
+        this.recipientType = recipientType;
+        this.recipientValue = recipientValue;
+        this.recipientUserId = recipientUserId;
+        this.templateId = templateId;
+        this.payload = payload;
+        this.status = NotificationStatus.PENDING;
+    }
+
+    /** 즉시 발송 대상(scheduledAt = null)으로 PENDING 행을 만든다. 웰컴메일 등 시간 트리거가 없는 이벤트가 쓴다. */
+    public static Notification pendingImmediate(
+            NotificationEventType eventType,
+            NotificationChannel recipientType,
+            String recipientValue,
+            Long recipientUserId,
+            Long templateId,
+            Map<String, Object> payload) {
+        return new Notification(
+                eventType, recipientType, recipientValue, recipientUserId, templateId, payload);
+    }
+
+    /** 폴링 스케줄러가 클레임(SELECT ... FOR UPDATE SKIP LOCKED + UPDATE)한 직후 반영하는 상태. */
+    public void markProcessing(Instant lockedAt) {
+        requireStatus(NotificationStatus.PENDING, "PROCESSING");
+        this.status = NotificationStatus.PROCESSING;
+        this.lockedAt = lockedAt;
+    }
+
+    /**
+     * {@code expectedLockedAt} 은 이 알림을 클레임할 때 발급된 토큰이다 — 발송(SES 호출)이 재수거 타임아웃보다 오래 걸려 그 사이에 다른
+     * 인스턴스가 재수거({@link #reclaim()})해 갔다면 현재 {@code lockedAt} 과 더 이상 일치하지 않는다. 그 경우 이미 소유권을 잃은 뒤이므로
+     * 상태를 덮어쓰지 않고 {@link NotificationClaimLostException} 을 던진다 — 호출자(폴링 스케줄러)가 이를 크래시가 아니라 "예상된 경쟁
+     * 결과"로 다뤄야 한다.
+     */
+    public void markSent(Instant sentAt, Instant expectedLockedAt) {
+        verifyClaim(expectedLockedAt, "SENT");
+        this.status = NotificationStatus.SENT;
+        this.sentAt = sentAt;
+        this.lockedAt = null;
+    }
+
+    /** {@link #markSent} 와 같은 이유로 {@code expectedLockedAt} 을 받는다. */
+    public void markFailed(NotificationErrorType errorType, Instant expectedLockedAt) {
+        verifyClaim(expectedLockedAt, "FAILED");
+        this.status = NotificationStatus.FAILED;
+        this.errorType = errorType;
+        this.lockedAt = null;
+    }
+
+    private void verifyClaim(Instant expectedLockedAt, String targetDescription) {
+        if (this.status != NotificationStatus.PROCESSING
+                || !Objects.equals(this.lockedAt, expectedLockedAt)) {
+            throw new NotificationClaimLostException(
+                    "id=%s status=%s lockedAt=%s 로 %s 전이할 수 없습니다 (재수거되어 클레임 소유권을 잃음, expected lockedAt=%s)."
+                            .formatted(id, status, lockedAt, targetDescription, expectedLockedAt));
+        }
+    }
+
+    /** 재수거 — {@code locked_at} 타임아웃을 넘겨 멈춰버린 PROCESSING 행을 다시 PENDING 으로 되돌린다. */
+    public void reclaim() {
+        requireStatus(NotificationStatus.PROCESSING, "PENDING(재수거)");
+        this.status = NotificationStatus.PENDING;
+        this.lockedAt = null;
+    }
+
+    private void requireStatus(NotificationStatus expected, String targetDescription) {
+        if (this.status != expected) {
+            throw new IllegalStateException(
+                    "status=" + this.status + " 에서 " + targetDescription + " 로 전이할 수 없습니다.");
+        }
+    }
+}

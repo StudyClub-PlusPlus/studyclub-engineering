@@ -8,6 +8,10 @@ import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.ConsentType;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.account.UserRegisteredEvent;
+import com.studyclub.notification.NotificationChannel;
+import com.studyclub.notification.NotificationEventType;
+import com.studyclub.notification.NotificationTemplate;
+import com.studyclub.notification.NotificationTemplateRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,6 +68,8 @@ class AccountOnboardingIntegrationTest {
 
     @Autowired RecordingUserRegisteredEventListener eventRecorder;
 
+    @Autowired NotificationTemplateRepository notificationTemplateRepository;
+
     @TestConfiguration
     static class RecordingConfig {
         @Bean
@@ -89,6 +95,29 @@ class AccountOnboardingIntegrationTest {
     void useModernHttpClient() {
         // ApiIntegrationTest 의 이유와 동일 — 바디 있는 POST 에 4xx 가 오면 레거시 클라이언트가 못 읽는다.
         rest.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
+    }
+
+    /**
+     * Flyway 가 꺼진 테스트 환경(H2, ddl-auto=create-drop)이라 마이그레이션이 시딩하는 웰컴메일 템플릿이 없다 — 직접 심는다 ({@code
+     * WelcomeEmailNotificationIntegrationTest} 와 동일). 없으면 온보딩 완료마다 {@code
+     * NotificationCreationService} 가 "템플릿을 찾을 수 없다" ERROR 로그를 남긴다 — 이 테스트는 알림 생성 자체를 검증하지 않지만, 온보딩
+     * 완료 이벤트가 실제로 그 리스너를 거치므로 시딩이 필요하다.
+     */
+    @BeforeEach
+    void seedWelcomeEmailTemplateIfMissing() {
+        boolean exists =
+                notificationTemplateRepository
+                        .findByEventTypeAndChannel(
+                                NotificationEventType.USER_REGISTERED, NotificationChannel.EMAIL)
+                        .isPresent();
+        if (!exists) {
+            notificationTemplateRepository.save(
+                    new NotificationTemplate(
+                            NotificationEventType.USER_REGISTERED,
+                            NotificationChannel.EMAIL,
+                            "StudyClub++에 오신 걸 환영합니다",
+                            "안녕하세요, {{nickname}}님."));
+        }
     }
 
     private Account seedUnonboardedAccount() {
@@ -188,6 +217,33 @@ class AccountOnboardingIntegrationTest {
         assertThat(response.getBody().get("errorMessage"))
                 .asString()
                 .contains("termsOfServiceAgreed");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"termsOfServiceAgreed", "privacyPolicyAgreed"})
+    @DisplayName("필수 boolean 동의값 누락은 400 — 본문 변환 실패로 500 을 내거나 가입을 완료하지 않는다")
+    void rejectsMissingConsentWithoutSideEffects(String missingField) {
+        Account account = seedUnonboardedAccount();
+        Map<String, Object> body = new HashMap<>(validRequest(uniqueNickname()));
+        body.remove(missingField);
+
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, body),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        Account saved = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(saved.getNickname()).isEqualTo(account.getNickname());
+        assertThat(saved.getOnboardingCompletedAt()).isNull();
+        assertThat(accountConsentRepository.findByAccountId(account.getId())).isEmpty();
+        assertThat(
+                        eventRecorder.received().stream()
+                                .filter(e -> e.accountId().equals(account.getId())))
+                .isEmpty();
     }
 
     @ParameterizedTest

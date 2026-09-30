@@ -1,9 +1,8 @@
 package com.studyclub.api.participant;
 
-import com.studyclub.domain.application.ApplicationStatus;
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.participant.ParticipantStatus;
-import com.studyclub.domain.study.StudyCohortStatus;
+import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -29,12 +28,7 @@ public final class ParticipantHubResponses {
             String thumbnailUrl) {}
 
     public record StudyApplicationSummary(
-            Long id,
-            Long cohortId,
-            Long studyId,
-            String studyTitle,
-            ApplicationStatus status,
-            Instant appliedAt) {}
+            Long id, Long cohortId, Long studyId, String studyTitle, Instant appliedAt) {}
 
     public record UpcomingStudyMeeting(
             Long id, Long cohortId, Long studyId, String studyTitle, Instant scheduledAt) {}
@@ -42,11 +36,11 @@ public final class ParticipantHubResponses {
     public record BookmarkedStudySummary(
             Long id, Long studyId, String studyTitle, String thumbnailUrl) {}
 
-    public record ParticipatingStudyCohortDetailResponse(
+    public record ParticipatingStudyDetailResponse(
             Long cohortId,
             Long studyId,
             String title,
-            StudyCohortStatus cohortStatus,
+            StudyStatus studyStatus,
             ParticipantStatus participantStatus,
             String className,
             String timezone,

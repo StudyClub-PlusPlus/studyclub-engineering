@@ -172,11 +172,6 @@ export function CategoryStudyCard({ data }: { data: CategoryCount[] }) {
           ))}
         </ul>
       )}
-
-      {/* 주제는 중복해서 달 수 있다 — 합계가 총 스터디 수를 넘는 것이 정상이다 */}
-      <p data-anno='6-2' className='mt-3 text-xs text-fg-muted'>
-        한 스터디가 여러 주제에 속할 수 있습니다.
-      </p>
     </Card>
   );
 }

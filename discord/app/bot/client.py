@@ -5,7 +5,7 @@ from __future__ import annotations
 import discord
 from discord.ext import commands
 
-from app.bot.commands import test_cmd
+from app.bot.commands import attendance_cmd, test_cmd
 from app.config import Settings
 
 
@@ -16,4 +16,5 @@ def create_bot(settings: Settings) -> commands.Bot:
 
     bot = commands.Bot(command_prefix=settings.command_prefix, intents=intents)
     test_cmd.register(bot)
+    attendance_cmd.register(bot, settings)
     return bot

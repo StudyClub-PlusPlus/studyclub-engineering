@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { LayoutDashboard, BookOpen, CalendarDays, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, CalendarDays, Users, Mail, LogOut } from 'lucide-react';
 
 import { getUser, logout, type SessionUser } from '@/lib/auth';
 
@@ -14,6 +14,7 @@ const NAV = [
   { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },
+  { href: '/notification-templates', label: '알림 템플릿', icon: Mail },
 ];
 
 export function Sidebar() {

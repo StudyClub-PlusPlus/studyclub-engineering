@@ -8,6 +8,8 @@ StudyClub++ 코드 모노레포 (**public**). 미국·캐나다·한국의 개�
 
 > ⚠️ **PUBLIC 레포** — `.env`·토큰·키·개인정보 등 민감정보 커밋 금지. 자세한 규칙은 [`CLAUDE.md`](./CLAUDE.md).
 
+> 🚀 **처음이면 [`ONBOARDING.md`](./ONBOARDING.md) 부터** — 클론 → `.env` → 실행 방식 고르기(전부 Docker / 프론트만 로컬 / 백엔드도 로컬 / 운영 API) → 구글 로그인까지 한 장에 있다.
+
 ## 구조
 
 ```
@@ -28,17 +30,19 @@ backend/                 # Spring Boot 4 멀티모듈 (Gradle Kotlin DSL, Java 2
 
 ## 실행
 
+> 로컬 전체 셋업(구글 로그인 · docker compose 포함)은 [`ONBOARDING.md`](./ONBOARDING.md). 아래는 앱 단위 명령 요약이다.
+
 ### Frontend
 
 ```bash
 cd frontend
-npm install
-npm run dev                              # turbo — 모든 앱 동시
+pnpm install
+pnpm run dev                              # turbo — 모든 앱 동시
 # 개별 실행
-npm run dev --workspace=core-front       # http://localhost:4700
-npm run dev --workspace=back-office-front # http://localhost:4701
+pnpm --filter core-front run dev       # http://localhost:4700
+pnpm --filter back-office-front run dev # http://localhost:4701
 # 빌드
-npm run build
+pnpm run build
 ```
 
 - Node 20+ 필요.
