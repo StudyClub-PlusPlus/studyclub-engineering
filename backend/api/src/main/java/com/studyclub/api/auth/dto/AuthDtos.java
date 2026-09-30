@@ -14,8 +14,7 @@ public final class AuthDtos {
     public record RefreshRequest(String refreshToken) {}
 
     /**
-     * 로그인·me·백오피스 목록·온보딩 완료 공용 회원 View. {@code onboardingCompletedAt == null} 이면 프론트가 온보딩
-     * 화면으로 보낸다.
+     * 로그인·me·백오피스 목록·온보딩 완료 공용 회원 View. {@code onboardingCompletedAt == null} 이면 프론트가 온보딩 화면으로 보낸다.
      */
     public record AccountView(
             Long id,
