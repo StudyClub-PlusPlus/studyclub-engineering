@@ -1,6 +1,5 @@
 package com.studyclub.api.study;
 
-import com.studyclub.api.discord.StudyDiscordLinkService;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyPhase;
 import com.studyclub.domain.study.StudyTimezone;
@@ -8,15 +7,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.net.URI;
 import java.time.Instant;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,15 +31,10 @@ public class StudyController {
 
     private final StudyListService studyListService;
     private final StudyService studyService;
-    private final StudyDiscordLinkService studyDiscordLinkService;
 
-    public StudyController(
-            StudyListService studyListService,
-            StudyService studyService,
-            StudyDiscordLinkService studyDiscordLinkService) {
+    public StudyController(StudyListService studyListService, StudyService studyService) {
         this.studyListService = studyListService;
         this.studyService = studyService;
-        this.studyDiscordLinkService = studyDiscordLinkService;
     }
 
     @Operation(
@@ -71,24 +62,6 @@ public class StudyController {
         return studyService.getDetail(studyId);
     }
 
-    // 옮기는 중 — POST /api/admin/studies 로 대체. 백오피스가 옮긴 뒤 없앤다 (spec 「이전 순서」 3단계)
-    @Operation(
-            summary = "스터디 등록 (옛 경로)",
-            description =
-                    "POST /api/admin/studies 를 쓴다. ADMIN 만. 등록 후 STATUS=DRAFT. 디스코드 봇이 설정돼 있으면"
-                            + " 등록 뒤 디스코드 스터디를 만들어 연결한다 (실패해도 201).",
-            deprecated = true)
-    @SecurityRequirement(name = "bearerAuth")
-    @PostMapping
-    public ResponseEntity<Void> create(
-            @Valid @RequestBody StudyCreateRequest request, Authentication authentication) {
-        Long accountId = (Long) authentication.getPrincipal();
-        Long studyId = studyService.create(accountId, request);
-        // 등록 트랜잭션이 커밋된 뒤에 봇을 부른다. 실패해도 등록은 성공이다 (specs/discord-study-link/spec.md)
-        studyDiscordLinkService.linkAfterCreate(accountId, studyId);
-        return ResponseEntity.created(URI.create("/api/studies/" + studyId)).build();
-    }
-
     @Operation(
             summary = "스터디 수정 (사용자 사이트)",
             description =
@@ -102,19 +75,6 @@ public class StudyController {
             Authentication authentication) {
         Long accountId = (Long) authentication.getPrincipal();
         studyService.updateFromSite(accountId, studyId, request);
-        return ResponseEntity.noContent().build();
-    }
-
-    // 옮기는 중 — DELETE /api/admin/studies/{studyId} 로 대체. 백오피스가 옮긴 뒤 없앤다 (spec 「이전 순서」 3단계)
-    @Operation(
-            summary = "스터디 삭제 (옛 경로)",
-            description = "DELETE /api/admin/studies/{studyId} 를 쓴다. ADMIN 만 호출 가능.",
-            deprecated = true)
-    @SecurityRequirement(name = "bearerAuth")
-    @DeleteMapping("/{studyId}")
-    public ResponseEntity<Void> delete(@PathVariable Long studyId, Authentication authentication) {
-        Long accountId = (Long) authentication.getPrincipal();
-        studyService.delete(accountId, studyId);
         return ResponseEntity.noContent().build();
     }
 }

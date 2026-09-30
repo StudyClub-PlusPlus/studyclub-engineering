@@ -233,10 +233,10 @@ public class StudyService {
     /** 사용자 사이트 — 공개 상세. */
     @Transactional(readOnly = true)
     public StudyDetailResponse getDetail(Long studyId) {
-        // TODO: DRAFT 도 404 로 — 백오피스가 getDetailForBackOffice 로 옮긴 뒤에 (spec 「이전 순서」 4단계)
+        // DRAFT 는 공개 전이라 404 — 운영 콘솔은 getDetailForBackOffice 로 DRAFT 를 연다
         Study study =
                 studyRepository
-                        .findByIdAndIsHiddenFalse(studyId)
+                        .findByIdAndIsHiddenFalseAndStatusNot(studyId, StudyStatus.DRAFT)
                         .orElseThrow(
                                 () ->
                                         new BusinessException(

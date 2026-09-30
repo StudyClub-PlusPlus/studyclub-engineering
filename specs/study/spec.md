@@ -21,7 +21,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/studies | 스터디 목록 (DRAFT 제외) | X | 구현완료 |
-| GET | /api/studies/{studyId} | 스터디 상세 조회 (DRAFT 면 404) | X | 구현완료 — DRAFT 404 는 [순서](#이전-순서) 4단계에서 |
+| GET | /api/studies/{studyId} | 스터디 상세 조회 (DRAFT 면 404) | X | 구현완료 |
 | PATCH | /api/studies/{studyId} | 스터디 수정 (네비게이터가 맡은 스터디를) | O (캡틴·네비게이터) | 구현완료 (`timezone` 제외). 부르는 사이트 화면은 아직 없다 |
 
 **백오피스 — `/api/admin/studies` (`AdminStudyController`, 캡틴만)**
@@ -30,9 +30,9 @@
 |--------|------|------|------|------|
 | GET | /api/admin/studies | 스터디 목록 (DRAFT 포함) | O (ADMIN) | 구현완료 — 콘솔 목록은 아직 `/api/studies` 를 부른다 (검색어·상태·페이지 조건이 없어서) |
 | GET | /api/admin/studies/{studyId} | 스터디 상세 (DRAFT 포함) | O (ADMIN) | 구현완료 — 콘솔 상세가 부른다 |
-| POST | /api/admin/studies | 스터디 등록 (새 프로그램 · 클럽의 새 기수) | O (ADMIN) | 구현완료 — 옛 `POST /api/studies` 는 3단계까지 남는다(deprecated) |
+| POST | /api/admin/studies | 스터디 등록 (새 프로그램 · 클럽의 새 기수) | O (ADMIN) | 구현완료 — 옛 `POST /api/studies` 는 없앴다 |
 | PATCH | /api/admin/studies/{studyId} | 스터디 수정 | O (ADMIN) | 구현완료 (`timezone` 제외) — 사이트용과 로직 공유, 콘솔 정보 탭이 부른다 |
-| DELETE | /api/admin/studies/{studyId} | 스터디 삭제 | O (ADMIN) | 구현완료 — 옛 `DELETE /api/studies/{studyId}` 는 3단계까지 남는다(deprecated) |
+| DELETE | /api/admin/studies/{studyId} | 스터디 삭제 | O (ADMIN) | 구현완료 — 옛 `DELETE /api/studies/{studyId}` 는 없앴다 |
 | POST | /api/admin/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/unpublish | 공개 취소 | O (ADMIN) | 스펙작성중 |
 
@@ -129,8 +129,9 @@ private StudyDetailResponse toDetail(Study study) {
 2. **백오피스 프론트**: `features/studies/queries.ts` 의 목록·상세·수정·삭제를 `/api/admin/studies…` 로 바꾸고 「규약 예외」 주석을 지운다.
    ✅ 상세·수정·삭제는 옮겼다. **목록은 남았다** — `GET /api/admin/studies` 에 검색어·상태·페이지 조건이 없고 응답 모양이 달라 조건과 `toRow` 를 함께 맞춰야 한다.
    등록 모달(`StudyCreateDialog`, `TODO(api)`)은 처음부터 `POST /api/admin/studies`
-3. **백엔드 — 제거**: `StudyController` 의 `POST` · `DELETE` 를 없앤다. `PATCH` 는 `updateFromSite` 로 연결
-4. **백엔드 — 공개 상세 DRAFT 404**: 2 가 스테이지·운영에 나간 **뒤에만**. 먼저 하면 콘솔이 DRAFT 상세를 못 연다
+3. ✅ **백엔드 — 제거**: `StudyController` 의 `POST` · `DELETE` 를 없앤다. `PATCH` 는 `updateFromSite` 로 연결.
+   옛 `POST` 는 부르는 화면이 없었고 옛 `DELETE` 를 부르던 콘솔은 2단계에서 같이 옮겨서, 과도기 없이 한 번에 뺐다
+4. ✅ **백엔드 — 공개 상세 DRAFT 404**: 콘솔이 `GET /api/admin/studies/{studyId}` 로 옮긴 뒤라 막아도 콘솔이 깨지지 않는다
 
 #### 테스트
 
@@ -143,7 +144,7 @@ private StudyDetailResponse toDetail(Study study) {
 | `PATCH /api/admin/studies/{id}` | 204 | 토큰 없음 | 검증 실패 | 크루 · **네비게이터** | 없는 id |
 | `DELETE /api/admin/studies/{id}` | 204 | 토큰 없음 | — | 크루 · 네비게이터 | 없는 id |
 | `PATCH /api/studies/{id}` | 네비게이터 204 | 토큰 없음 | 검증 실패 | 크루 · 다른 스터디 네비게이터 | 없는 id |
-| `GET /api/studies/{id}` | 공개 200 | — | — | — | 없는 id · **DRAFT** (4단계 후) |
+| `GET /api/studies/{id}` | 공개 200 | — | — | — | 없는 id · **DRAFT** |
 
 굵게 표시한 칸이 이번 분리의 핵심이다 — **네비게이터가 `/api/admin` 에서는 403** 이어야 한다.
 진입 메서드별 역할 조합(캡틴·네비게이터·크루·비로그인)은 `StudyServiceTest` 단위 테스트로 덮는다.
@@ -312,9 +313,8 @@ private StudyDetailResponse toDetail(Study study) {
 
 - `frontend/apps/core-front/src/app/[locale]/studies/[id]/page.tsx` — 상세 페이지
 - `frontend/apps/core-front/src/lib/content.ts` — `getStudy(id)` mock 함수
-- `frontend/apps/back-office-front/src/app/studies/[id]/page.tsx` — 운영 콘솔 스터디 운영 페이지 (`useStudyDetail`, `features/studies/queries.ts`)
-  - ⚠️ 운영 콘솔이 **지금은** 이 공개용 GET 을 쓴다. 지금 구현은 숨김만 404 로 막아 DRAFT 도 보인다. 위 「공개 여부」대로 DRAFT 를 404 로
-    막으면 운영 콘솔에서 DRAFT 상세가 안 열린다 — 콘솔을 아래 `GET /api/admin/studies/{studyId}` 로 옮긴 **뒤에** 막는다 ([이전 순서](#이전-순서))
+- 운영 콘솔은 이 공개용 GET 을 쓰지 않는다 — DRAFT 도 열어야 해서 아래 `GET /api/admin/studies/{studyId}` 를 쓴다
+- 구현: 숨김(`IS_HIDDEN`)이거나 `STATUS = DRAFT` 면 404 (`findByIdAndIsHiddenFalseAndStatusNot`). `IS_HIDDEN` 은 스키마 정리 제안이 반영되면 빠진다
 
 ### 미확정
 
@@ -362,7 +362,7 @@ private StudyDetailResponse toDetail(Study study) {
 ### 기본 정보
 
 - **Method**: POST
-- **Path**: `/api/admin/studies` — `AdminStudyController`. 지금 코드는 `POST /api/studies`(`StudyController`) — [이전 순서](#이전-순서) 3단계에서 없앤다
+- **Path**: `/api/admin/studies` — `AdminStudyController`. 옛 `POST /api/studies` 는 없앴다
 - **인증**: 필요 — `ACCOUNT.SYSTEM_ROLE=ADMIN` 만 (`assertCaptain`) (지금 단계에서는 **캡틴 = 운영자**. 일반 회원에게 셀프서비스로 캡틴 자격을 여는 건 이후 Story)
 - **설명**: 캡틴(=ADMIN)이 새 스터디(`STUDY_PROGRAM.STUDY_KIND` 는 요청의 `studyKind`, 기본 `STUDY`, `STATUS=DRAFT`)를 등록한다. 프로그램은 따로 등록하지 않는다 — 새 프로그램이면 첫 기수와 함께 만들고, 클럽의 새 기수는 `studyProgramId` 로 붙인다. `STUDY_RECRUITMENT` 행 1개를 항상 함께 생성한다. `recruitDeadline` 은 필수다 — 상시 모집은 없다.
 
@@ -605,7 +605,7 @@ Location: /api/admin/studies/{id}
 ### 기본 정보
 
 - **Method**: DELETE
-- **Path**: `/api/admin/studies/{studyId}` — `AdminStudyController`. 캡틴 전용이라 사이트 경로는 두지 않는다. 지금 코드는 `DELETE /api/studies/{studyId}` — [이전 순서](#이전-순서) 3단계에서 없앤다
+- **Path**: `/api/admin/studies/{studyId}` — `AdminStudyController`. 캡틴 전용이라 사이트 경로는 두지 않는다. 옛 `DELETE /api/studies/{studyId}` 는 없앴다
 - **인증**: 필요 — 캡틴(ADMIN) 만 (`assertCaptain`). 크루 명단·출석 기록까지 함께 사라지므로 네비게이터는 불가
 - **설명**: 스터디와 그에 달린 모든 모집·참여·출석 기록을 영구 삭제한다. 소프트 삭제가 아닌 물리 삭제다. 클럽의 다른 기수(형제 `STUDY` 행)는 영향받지 않는다 — `STUDY_PROGRAM` 은 그대로 남는다.
 
