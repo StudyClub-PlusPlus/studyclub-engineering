@@ -1,11 +1,8 @@
-package com.studyclub.api.web;
+package com.studyclub.api.study;
 
-import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
-import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
@@ -30,6 +27,12 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 스터디 등록·조회·수정·삭제. 백오피스({@code /api/admin/studies})와 사용자 사이트({@code /api/studies})가 같이 쓴다.
+ *
+ * <p>두 관객이 다 하는 일(상세·수정)은 관객별 진입 메서드가 권한을 검사하고, 본문은 권한을 모르는 private 메서드로 공유한다. 공유 본문에 한쪽 관객의 규칙을
+ * 넣으면 다른 쪽 경로로 새어 든다 — specs/study/spec.md 「관객별 엔드포인트」
+ */
 @Service
 public class StudyService {
 
@@ -79,14 +82,8 @@ public class StudyService {
 
     @Transactional
     public Long create(Long accountId, StudyCreateRequest request) {
+        studyCaptainGuard.assertCaptain(accountId, "스터디 등록 권한이 없습니다.");
         Instant now = Instant.now();
-        Account account =
-                accountRepository
-                        .findById(accountId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
-        if (account.getSystemRole() != SystemRole.ADMIN) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 등록 권한이 없습니다.");
-        }
         if (request.recruitDeadline() != null && !now.isBefore(request.recruitDeadline())) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "recruitDeadline: 모집 마감일은 미래여야 합니다.");
@@ -135,23 +132,27 @@ public class StudyService {
         return study.getId();
     }
 
+    /** 사용자 사이트 — 캡틴 또는 그 스터디의 네비게이터. */
     @Transactional
-    public void update(Long accountId, Long studyId, StudyUpdateRequest request) {
-        // 권한(ADMIN·캡틴) 판정은 StudyCaptainGuard 가 한다. 여기서는 "누구인지 모르는 요청" 만 먼저 막는다
+    public void updateFromSite(Long accountId, Long studyId, StudyUpdateRequest request) {
+        // 인증 → 존재 → 권한 순서. 없는 스터디에 네비게이터 판정을 먼저 돌리면 404 대신 403 이 나간다
         if (!accountRepository.existsById(accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-
-        Study study =
-                studyRepository
-                        .findById(studyId)
-                        .orElseThrow(
-                                () ->
-                                        new BusinessException(
-                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
-
+        Study study = findStudy(studyId);
         studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "스터디 수정 권한이 없습니다.");
+        applyUpdate(study, request);
+    }
 
+    /** 백오피스 — 캡틴만. 네비게이터는 사용자 사이트 경로를 쓴다 (POL-0001). */
+    @Transactional
+    public void updateFromBackOffice(Long accountId, Long studyId, StudyUpdateRequest request) {
+        studyCaptainGuard.assertCaptain(accountId, "스터디 수정 권한이 없습니다.");
+        applyUpdate(findStudy(studyId), request);
+    }
+
+    // 수정 본문 — 권한을 검사하지 않는다. 진입 메서드가 검사한 뒤에만 부른다
+    private void applyUpdate(Study study, StudyUpdateRequest request) {
         if (request.title() != null && request.title().isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "title: 제목을 입력하세요.");
         }
@@ -191,20 +192,14 @@ public class StudyService {
 
         if (request.recruitDeadline() != null) {
             studyRecruitmentRepository
-                    .findFirstByStudyIdOrderByIdDesc(studyId)
+                    .findFirstByStudyIdOrderByIdDesc(study.getId())
                     .ifPresent(r -> r.updateDeadline(request.recruitDeadline()));
         }
     }
 
     @Transactional
     public void delete(Long accountId, Long studyId) {
-        Account account =
-                accountRepository
-                        .findById(accountId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
-        if (account.getSystemRole() != SystemRole.ADMIN) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "스터디 삭제 권한이 없습니다.");
-        }
+        studyCaptainGuard.assertCaptain(accountId, "스터디 삭제 권한이 없습니다.");
         // 잠가서 조회한다 — 봇 응답을 기다리던 디스코드 연결 저장과 엇갈려 지운 스터디에 연결이 남지 않게
         if (studyRepository.findByIdForUpdate(studyId).isEmpty()) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
@@ -235,21 +230,41 @@ public class StudyService {
         studyRepository.deleteById(studyId);
     }
 
+    /** 사용자 사이트 — 공개 상세. */
     @Transactional(readOnly = true)
     public StudyDetailResponse getDetail(Long studyId) {
-        var study =
+        // TODO: DRAFT 도 404 로 — 백오피스가 getDetailForBackOffice 로 옮긴 뒤에 (spec 「이전 순서」 4단계)
+        Study study =
                 studyRepository
                         .findByIdAndIsHiddenFalse(studyId)
                         .orElseThrow(
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+        return toDetail(study);
+    }
+
+    /** 백오피스 — 캡틴만. DRAFT·숨김도 보여 준다. */
+    @Transactional(readOnly = true)
+    public StudyDetailResponse getDetailForBackOffice(Long accountId, Long studyId) {
+        studyCaptainGuard.assertCaptain(accountId, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
+        return toDetail(findStudy(studyId));
+    }
+
+    // 상세 본문 — 권한을 검사하지 않는다
+    private StudyDetailResponse toDetail(Study study) {
         Instant recruitDeadlineAt =
                 studyRecruitmentRepository
                         .findFirstByStudyIdOrderByIdDesc(study.getId())
                         .map(StudyRecruitment::getRecruitDeadlineAt)
                         .orElse(null);
         return StudyDetailResponse.from(study, applicantCount(study), recruitDeadlineAt);
+    }
+
+    private Study findStudy(Long studyId) {
+        return studyRepository
+                .findById(studyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
     }
 
     private static boolean isHttpUrlOrBlank(String value) {

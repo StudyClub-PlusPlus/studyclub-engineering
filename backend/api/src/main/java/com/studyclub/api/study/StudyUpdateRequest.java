@@ -1,4 +1,4 @@
-package com.studyclub.api.web;
+package com.studyclub.api.study;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.studyclub.domain.study.StudyCategory;

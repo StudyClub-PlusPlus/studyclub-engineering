@@ -43,7 +43,7 @@ flowchart LR
 
 - **내용**
   - 모집 중이고 마감일이 있으면 `모집중 (D-N)`. 마감 당일은 `모집중 (D-DAY)`
-  - 마감일이 없으면 `상시 모집`
+  - 마감일이 없으면 `모집중 (미정)` — 상시 모집은 폐지했다. 마감일이 필수라 이 경우는 옛 데이터뿐이다 ([crew-browse-studies](../crew-browse-studies/PRD.md)와 같은 문구)
   - 진행 중이면 `진행중`
   - 모집이 끝났으면 `모집 마감`
 - **정책**
@@ -89,7 +89,7 @@ flowchart LR
 - **내용**: `시작 예정일 {날짜}`. 값이 없으면 `시작 예정일 미정`
 - **정책**
   - 표시 값은 `studyStartValue(study, locale)` 한 곳이다. 목록과 여기서 따로 계산하지 않는다
-  - 모집 마감일은 여기 두지 않는다. 모집 상태(2)가 이미 `D-N`·`상시 모집`·`모집 마감`으로 말한다
+  - 모집 마감일은 여기 두지 않는다. 모집 상태(2)가 이미 `D-N`·`모집 마감`으로 말한다
 - **데이터**: `study.start_at`
 
 ### 9. 신청
@@ -101,7 +101,7 @@ flowchart LR
 - **동작**: `신청하기`만 누를 수 있다. 누르면 신청 흐름이 시작된다
 - **정책**
   - 마감일 판정은 `recruitState(study)`다. `status`가 모집 중이 아니거나, 마감일이 지났거나, 모집을 닫았으면 마감이다
-  - 마감일이 없으면 상시 모집이다. `신청하기`를 보여 준다
+  - 마감일이 없는 옛 데이터는 모집 중으로 본다. `신청하기`를 보여 준다 (상시 모집은 폐지 — 새 스터디는 마감일이 필수다)
   - `신청 완료`와 `모집 마감`은 누르지 못한다
   - 누른 뒤의 로그인·디스코드·폼은 [crew-submit-application](../crew-submit-application/PRD.md)이 정한다
 - **데이터**: `recruitState(study)`, 이 스터디의 신청 여부
@@ -135,7 +135,7 @@ erDiagram
     boolean IS_HIDDEN
   }
   STUDY_RECRUITMENT {
-    datetime RECRUIT_DEADLINE_AT "null이면 상시 모집"
+    datetime RECRUIT_DEADLINE_AT "필수 (상시 모집 없음)"
   }
 ```
 
@@ -154,7 +154,7 @@ erDiagram
 | 스터디 | SLUG | 저장용 식별자. 상세 경로·조회 키로 쓰지 않는다 |
 | 스터디 | TITLE, ONE_LINE_SUMMARY, DESCRIPTION, CATEGORY, SCHEDULE, STATUS, START_AT | 화면에 읽는 값 |
 | 스터디 | IS_HIDDEN, PUBLISH_AT, STATUS | 공개가 아니면 상세를 열지 않는다 |
-| 모집 | RECRUIT_DEADLINE_AT | null이면 상시 모집. 지나면 마감 |
+| 모집 | RECRUIT_DEADLINE_AT | 필수 — 상시 모집은 없다. 지나면 마감. null 은 옛 데이터뿐이며 모집 중으로 본다 |
 
 ### 처리
 
