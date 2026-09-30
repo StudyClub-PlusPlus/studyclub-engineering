@@ -50,4 +50,29 @@ public record StudyDetailResponse(
                 study.getDiscordChannelUrl(),
                 study.getDriveUrl());
     }
+
+    /** 디스코드 채널·자료실 링크를 비운 사본 — 볼 권한이 없는 사람에게 준다. */
+    public StudyDetailResponse withoutPrivateLinks() {
+        return new StudyDetailResponse(
+                id,
+                programId,
+                slug,
+                title,
+                oneLineSummary,
+                description,
+                category,
+                studyKind,
+                thumbnailUrl,
+                deliveryFormat,
+                status,
+                recruitStatus,
+                curriculum,
+                capacity,
+                schedule,
+                recruitDeadlineAt,
+                startAt,
+                endAt,
+                null,
+                null);
+    }
 }

@@ -32,6 +32,9 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     boolean existsByStudyIdAndAccountIdAndParticipantRoleIn(
             Long studyId, Long accountId, Collection<ParticipantRole> participantRoles);
 
+    boolean existsByStudyIdAndAccountIdAndStatusIn(
+            Long studyId, Long accountId, Collection<ParticipantStatus> statuses);
+
     /** 스터디별 스터디장(LEADER) 목록. 분반이 여럿이면 복수 반환될 수 있으며, 호출부에서 첫 번째를 사용한다. 백오피스 목록 조회 전용. */
     @Query(
             "SELECT p FROM StudyParticipant p"
