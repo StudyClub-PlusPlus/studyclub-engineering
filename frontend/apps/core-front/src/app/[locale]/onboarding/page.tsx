@@ -267,7 +267,7 @@ function OnboardingForm({
       setUser({
         id: account.id,
         email: account.email,
-        name: account.name,
+        nickname: account.nickname,
         picture: account.picture,
         role: account.role,
         timeZone: account.timeZone,

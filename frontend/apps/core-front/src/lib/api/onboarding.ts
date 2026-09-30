@@ -10,14 +10,11 @@ export type OnboardingPayload = {
   timeZone: string;
 };
 
-/**
- * 온보딩 완료 응답.
- * TODO(api): 백엔드 필드명 정합(user→account, name→nickname) 후 nickname 으로 교체.
- */
+/** 온보딩 완료 응답 — AccountView. */
 export type OnboardingAccount = {
   id: number;
   email: string;
-  name: string | null;
+  nickname: string | null;
   picture: string | null;
   role: string;
   createdAt?: string;

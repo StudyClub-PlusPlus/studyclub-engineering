@@ -21,7 +21,7 @@ export const SPEC: ScreenSpec = {
       display: ['로그인 버튼. 이 화면의 유일한 주액션이다'],
       behavior: ['처리 중 버튼 잠금. 신규/미완료는 온보딩, 완료 회원은 원래 화면 또는 홈'],
       data: [
-        '실서비스 POST /auth/social-login. user.onboardingCompletedAt으로 분기, suggestedNickname은 온보딩 제안값',
+        '실서비스 POST /auth/social-login. account.onboardingCompletedAt으로 분기, suggestedNickname은 온보딩 제안값',
       ],
     },
     {
