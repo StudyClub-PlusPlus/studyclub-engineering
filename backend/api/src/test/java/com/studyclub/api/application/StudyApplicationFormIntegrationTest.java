@@ -232,6 +232,36 @@ class StudyApplicationFormIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
     }
 
+    @Test
+    @DisplayName("실패 - 기타 입력을 지원하지 않는 타입은 allowOther=false도 보내지 않는다")
+    void rejectsAllowOtherOnUnsupportedType() {
+        Map<String, Object> request =
+                Map.of(
+                        "questions",
+                        List.of(
+                                Map.of(
+                                        "id",
+                                        "motivation",
+                                        "label",
+                                        "지원 동기",
+                                        "type",
+                                        "TEXT",
+                                        "required",
+                                        true,
+                                        "allowOther",
+                                        false)));
+
+        var response =
+                rest.exchange(
+                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        HttpMethod.PUT,
+                        authenticatedJsonRequest(CAPTAIN_ID, request),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
     private Map<String, Object> validRequest() {
         return Map.of(
                 "title",
