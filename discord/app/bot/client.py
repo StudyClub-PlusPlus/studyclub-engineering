@@ -25,8 +25,8 @@ def create_bot(settings: Settings) -> commands.Bot:
             command_attrs={"help": "이 도움말을 보여줍니다."},
         ),
     )
-    # Every command below gates itself on DISCORD_BOT_CHANNEL_ID through
-    # app.bot.commands.command_channel; none of them is an exception.
+    # testCmd, updateBulletin, and checkVoiceChannels gate themselves on
+    # DISCORD_BOT_CHANNEL_ID; attendance is the documented voice-chat exception.
     test_cmd.register(bot, settings)
     # Hooks the bulletin refresh onto ``setup_hook``; it starts once the bot has
     # logged in, not here.
