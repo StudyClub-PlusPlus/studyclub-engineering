@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface StudyParticipantRepository extends JpaRepository<StudyParticipant, Long> {
 
@@ -13,9 +12,8 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     void deleteByStudyId(Long studyId);
 
-    /** 회원 탈퇴 — 참여 기록 파기. 맡고 있던 네비게이터 자리도 이 삭제로 함께 사라진다 (specs/user-leave/spec.md). */
-    @Transactional
-    void deleteByAccountId(Long accountId);
+    /** 회원 탈퇴 — 익명화 대상 조회. 행을 지우지 않고 상태만 바꾸므로 삭제가 아니라 조회다 (specs/user-leave/spec.md). */
+    List<StudyParticipant> findByAccountId(Long accountId);
 
     List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
 

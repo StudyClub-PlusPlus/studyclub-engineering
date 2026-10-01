@@ -12,6 +12,7 @@ import com.studyclub.domain.account.LeaveReason;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.proposal.StudyProposal;
 import com.studyclub.domain.proposal.StudyProposalInterestRepository;
@@ -20,6 +21,7 @@ import com.studyclub.domain.proposal.StudyProposalStatus;
 import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,9 +80,12 @@ public class AccountDeletionService {
         // 동의 이력 파기 — DB cascade 는 Flyway 로 만든 스키마에만 있어서 코드로 명시적으로 지운다.
         accountConsentRepository.deleteByAccountId(accountId);
 
-        // 참여 기록 파기 — 맡고 있던 네비게이터 자리도 이 삭제로 함께 사라진다. 공동 네비게이터가
-        // 남아 있는지는 판정하지 않는다(인계 필요 여부는 시스템이 계산하지 않는다는 정책).
-        studyParticipantRepository.deleteByAccountId(accountId);
+        // 참여 기록 — 지우지 않고 DELETED 로 표시한다. 행을 지우면 이미 쌓인 STUDY_ATTENDANCE(ACCOUNT_ID 로만
+        // 연결, FK 없음)가 갈 곳을 잃어 출석률 집계에서 전체 이력이 통째로 빠진다 — "하차"와 "결석"이 같은 숫자로
+        // 섞이는 것을 막기 위해 이 시각 이전 회차는 집계에 남기고 이후 회차만 제외한다(AttendanceRateCalculator).
+        // 맡고 있던 네비게이터 자리도 이걸로 함께 사라진다. 공동 네비게이터가 남아 있는지는 판정하지 않는다
+        // (인계 필요 여부는 시스템이 계산하지 않는다는 정책).
+        anonymizeParticipations(accountId);
 
         // 관심 표시 파기.
         studyBookmarkRepository.deleteByAccountId(accountId);
@@ -99,6 +104,14 @@ public class AccountDeletionService {
 
         // 계정·프로필 삭제.
         accountRepository.delete(account);
+    }
+
+    private void anonymizeParticipations(Long accountId) {
+        Instant deletedAt = Instant.now();
+        List<StudyParticipant> participations = studyParticipantRepository.findByAccountId(accountId);
+        for (StudyParticipant participation : participations) {
+            participation.markDeletedDueToAccountDeletion(deletedAt);
+        }
     }
 
     private void closeOpenProposals(Long accountId) {
