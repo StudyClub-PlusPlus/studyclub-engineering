@@ -306,6 +306,11 @@ class AdminStudyListIntegrationTest {
                 CLUB_STUDY_ID);
         jdbcTemplate.update(
                 "DELETE FROM STUDY WHERE ID IN (?, ?, ?)", STUDY_ID, DRAFT_STUDY_ID, CLUB_STUDY_ID);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?, ?)",
+                STUDY_ID,
+                DRAFT_STUDY_ID,
+                CLUB_STUDY_ID);
         jdbcTemplate.update("DELETE FROM ACCOUNT WHERE ID IN (?, ?)", ADMIN_ID, MEMBER_ID);
     }
 
@@ -324,6 +329,10 @@ class AdminStudyListIntegrationTest {
                 now);
     }
 
+    /**
+     * 기수 하나와 그 프로그램을 같이 넣는다. 종류는 기수가 아니라 <b>프로그램</b>이 갖는다 — 목록 응답의 {@code studyKind} 와 필터가 이 행을
+     * 읽는다. 프로그램 ID 는 기수 ID 와 같게 둔다(이 테스트 한정 규칙).
+     */
     private void insertStudy(
             Long id,
             String slug,
@@ -334,17 +343,24 @@ class AdminStudyListIntegrationTest {
             String applicationForm,
             Timestamp now) {
         jdbcTemplate.update(
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?)",
+                id,
+                title,
+                kind,
+                now,
+                now);
+        jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                        + " IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 title,
                 slug,
                 "한 줄 소개",
                 category,
-                kind,
                 false,
                 "ONLINE",
                 status,

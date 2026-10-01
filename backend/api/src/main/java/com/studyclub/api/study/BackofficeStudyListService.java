@@ -1,6 +1,7 @@
 package com.studyclub.api.study;
 
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import java.util.List;
@@ -22,14 +23,17 @@ public class BackofficeStudyListService {
 
     private final BackofficeStudyDao backofficeStudyDao;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
+    private final StudyProgramLookup studyProgramLookup;
     private final ObjectMapper objectMapper;
 
     public BackofficeStudyListService(
             BackofficeStudyDao backofficeStudyDao,
             StudyRecruitmentRepository studyRecruitmentRepository,
+            StudyProgramLookup studyProgramLookup,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
+        this.studyProgramLookup = studyProgramLookup;
         this.objectMapper = objectMapper;
     }
 
@@ -53,6 +57,8 @@ public class BackofficeStudyListService {
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId, r -> r, (a, b) -> a));
 
+        Map<Long, StudyProgram> programs = studyProgramLookup.forStudies(studies);
+
         List<BackofficeStudyListResponse.StudySummary> items =
                 studies.stream()
                         .map(
@@ -64,7 +70,7 @@ public class BackofficeStudyListService {
                                             study.getTitle(),
                                             study.getStatus(),
                                             study.getCategory(),
-                                            study.getStudyKind(),
+                                            StudyProgramLookup.kindOf(programs, study),
                                             recruitment != null
                                                     ? recruitment.getRecruitmentCapacity()
                                                     : null,

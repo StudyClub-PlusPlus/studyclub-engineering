@@ -2,6 +2,7 @@ package com.studyclub.api.study;
 
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import java.time.Instant;
@@ -22,14 +23,17 @@ public class StudyListService {
     private final StudyListDao studyListDao;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
+    private final StudyProgramLookup studyProgramLookup;
 
     public StudyListService(
             StudyListDao studyListDao,
             StudyParticipantRepository studyParticipantRepository,
-            StudyRecruitmentRepository studyRecruitmentRepository) {
+            StudyRecruitmentRepository studyRecruitmentRepository,
+            StudyProgramLookup studyProgramLookup) {
         this.studyListDao = studyListDao;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
+        this.studyProgramLookup = studyProgramLookup;
     }
 
     public StudyListResponse list(StudyListFilter filter, int offset, int limit) {
@@ -53,12 +57,15 @@ public class StudyListService {
                                         StudyRecruitment::getStudyId,
                                         StudyRecruitment::getRecruitDeadlineAt));
 
+        Map<Long, StudyProgram> programs = studyProgramLookup.forStudies(studies);
+
         List<StudyListResponse.StudySummary> items =
                 studies.stream()
                         .map(
                                 study ->
                                         StudyListResponse.StudySummary.from(
                                                 study,
+                                                StudyProgramLookup.kindOf(programs, study),
                                                 applicants.getOrDefault(study.getId(), 0L),
                                                 deadlines.get(study.getId())))
                         .toList();

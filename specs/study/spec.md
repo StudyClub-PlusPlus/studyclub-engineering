@@ -33,12 +33,15 @@
 | GET | /api/admin/studies | 스터디 목록 (DRAFT 포함, `status`·`offset`·`limit`) | O (ADMIN) | 구현완료 — 콘솔 목록은 아직 `/api/studies` 를 부른다 (교체 여부 팀 확인 중) |
 | GET | /api/admin/studies/{studyId} | 스터디 상세 (DRAFT 포함) | O (ADMIN) | 구현완료 — 콘솔 상세가 부른다 |
 | POST | /api/admin/studies | 스터디 등록 (새 프로그램 · 클럽의 새 기수) | O (ADMIN) | 구현완료 — 옛 `POST /api/studies` 는 없앴다 |
+| GET | /api/admin/study-programs | 프로그램 목록 (`studyKind` 필수). 등록 모달의 「기존 클럽의 새 기수」 드롭다운이 `CLUB` 으로 부른다 — `programId`·`title`·`latestStudyId` 만 준다 | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId} | 스터디 수정 | O (ADMIN) | 구현완료 (`timezone` 제외) — 사이트용과 로직 공유, 콘솔 정보 탭이 부른다 |
 | DELETE | /api/admin/studies/{studyId} | 스터디 삭제 | O (ADMIN) | 구현완료 — 옛 `DELETE /api/studies/{studyId}` 는 없앴다 |
 | POST | /api/admin/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/unpublish | 공개 취소 | O (ADMIN) | 스펙작성중 |
 
 신청 폼 설계 · 신청 제출 · 신청 결과 · 디스코드 연동은 [study-application/spec.md](../study-application/spec.md). 옛 경로 `PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form` 은 폐기.
+
+> 프로그램을 따로 등록·수정하는 길은 없다 — 프로그램은 제목·종류뿐이고 기수 없는 프로그램은 의미가 없어 생성은 스터디 등록이 함께 한다 ([STUDY_PROGRAM](../../docs/erd/STUDY_PROGRAM.md)). 위 목록 하나만 둔 이유다.
 
 > **STUDY_COHORT 폐기**: 이 스펙은 초기에 `STUDY_COHORT` 테이블을 별도로 두었으나, 실제 도메인 모델은 코호트 필드를 `STUDY` 에 통합했다. 모집 마감·정원은 `STUDY_RECRUITMENT` 가 담당한다.
 

@@ -20,6 +20,7 @@ import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroupRepository;
+import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
@@ -75,7 +76,7 @@ class StudyServiceTest {
 
         StudyCreateRequest request =
                 new StudyCreateRequest(
-                        999L, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+                        999L, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
 
         assertThatThrownBy(() -> studyService.create(1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -91,6 +92,7 @@ class StudyServiceTest {
         StudyCreateRequest request =
                 new StudyCreateRequest(
                         null,
+                        StudyKind.STUDY,
                         "스터디",
                         "소개",
                         null,
@@ -99,6 +101,7 @@ class StudyServiceTest {
                         Instant.now().minusSeconds(3600),
                         null);
 
+        assertThat(request.studyKind()).isEqualTo(StudyKind.STUDY);
         assertThatThrownBy(() -> studyService.create(1L, request))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
@@ -376,7 +379,7 @@ class StudyServiceTest {
 
     private StudyCreateRequest validCreateRequest() {
         return new StudyCreateRequest(
-                null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+                null, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
     }
 
     private StudyUpdateRequest validUpdateRequest() {

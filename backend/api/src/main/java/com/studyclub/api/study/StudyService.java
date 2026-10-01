@@ -52,6 +52,7 @@ public class StudyService {
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyCaptainGuard studyCaptainGuard;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
+    private final StudyProgramLookup studyProgramLookup;
 
     public StudyService(
             StudyRepository studyRepository,
@@ -65,7 +66,8 @@ public class StudyService {
             StudyApplicationRepository studyApplicationRepository,
             StudyBookmarkRepository studyBookmarkRepository,
             StudyCaptainGuard studyCaptainGuard,
-            StudyDiscordLinkRepository studyDiscordLinkRepository) {
+            StudyDiscordLinkRepository studyDiscordLinkRepository,
+            StudyProgramLookup studyProgramLookup) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
@@ -78,6 +80,7 @@ public class StudyService {
         this.studyBookmarkRepository = studyBookmarkRepository;
         this.studyCaptainGuard = studyCaptainGuard;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
+        this.studyProgramLookup = studyProgramLookup;
     }
 
     @Transactional
@@ -90,18 +93,7 @@ public class StudyService {
         }
 
         String trimmedTitle = request.title().trim();
-
-        StudyProgram program =
-                request.studyProgramId() != null
-                        ? studyProgramRepository
-                                .findById(request.studyProgramId())
-                                .orElseThrow(
-                                        () ->
-                                                new BusinessException(
-                                                        ErrorCode.INVALID_INPUT,
-                                                        "studyProgramId: 존재하지 않는 스터디 프로그램입니다."))
-                        : studyProgramRepository.save(
-                                StudyProgram.builder().title(trimmedTitle).build());
+        StudyProgram program = resolveProgram(request, trimmedTitle);
 
         Study study =
                 studyRepository.save(
@@ -112,7 +104,6 @@ public class StudyService {
                                 .oneLineSummary(request.oneLineSummary())
                                 .description(request.description())
                                 .category(request.category())
-                                .studyKind(StudyKind.STUDY)
                                 .isHidden(false)
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)
@@ -130,6 +121,42 @@ public class StudyService {
                         .build());
 
         return study.getId();
+    }
+
+    /**
+     * 기수를 붙일 프로그램을 정한다 — specs/study/spec.md AC-6 · AC-7.
+     *
+     * <p>「새 프로그램」이면 여기서 프로그램을 만들고(제목은 첫 기수 제목을 따른다), 「기존 클럽의 새 기수」면 고른 프로그램을 쓴다. 종류는 프로그램의 속성이고 한 번
+     * 정하면 바꾸지 못하므로, 기존 프로그램에 {@code studyKind} 를 함께 보내면 <b>조용히 무시하지 않고 거절한다</b> — 무시하면 호출자는 종류가 바뀐
+     * 줄 알고 넘어간다.
+     */
+    private StudyProgram resolveProgram(StudyCreateRequest request, String trimmedTitle) {
+        if (request.studyProgramId() == null) {
+            StudyKind kind = request.studyKind() != null ? request.studyKind() : StudyKind.STUDY;
+            return studyProgramRepository.save(
+                    StudyProgram.builder().title(trimmedTitle).studyKind(kind).build());
+        }
+
+        if (request.studyKind() != null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "studyKind: 기존 프로그램의 종류는 바꿀 수 없습니다.");
+        }
+
+        StudyProgram program =
+                studyProgramRepository
+                        .findById(request.studyProgramId())
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.INVALID_INPUT,
+                                                "studyProgramId: 존재하지 않는 스터디 프로그램입니다."));
+
+        // 스터디는 기수가 1개다 — 새 기수를 붙일 수 있는 것은 클럽뿐이다
+        if (program.getStudyKind() != StudyKind.CLUB) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "studyProgramId: 새 기수는 클럽에만 붙일 수 있습니다.");
+        }
+        return program;
     }
 
     /** 사용자 사이트 — 캡틴 또는 그 스터디의 네비게이터. */
@@ -265,7 +292,8 @@ public class StudyService {
                         .findFirstByStudyIdOrderByIdDesc(study.getId())
                         .map(StudyRecruitment::getRecruitDeadlineAt)
                         .orElse(null);
-        return StudyDetailResponse.from(study, applicantCount(study), recruitDeadlineAt);
+        return StudyDetailResponse.from(
+                study, studyProgramLookup.of(study), applicantCount(study), recruitDeadlineAt);
     }
 
     private Study findStudy(Long studyId) {

@@ -55,10 +55,6 @@ public class Study extends BaseEntity {
     @Column(nullable = false, length = 50)
     private StudyCategory category;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "STUDY_KIND", nullable = false, length = 20)
-    private StudyKind studyKind;
-
     @Column(name = "THUMBNAIL_URL", length = 2048)
     private String thumbnailUrl;
 

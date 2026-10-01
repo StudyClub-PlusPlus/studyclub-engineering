@@ -80,7 +80,12 @@ class AttendanceUpsertIntegrationTest {
         insertAccountIfAbsent(LEADER_ACCOUNT_ID, "리더", "leader@upsert-test.com");
         insertAccountIfAbsent(MEMBER_ACCOUNT_ID, "멤버", "member@upsert-test.com");
 
-        var program = studyProgramRepo.save(StudyProgram.builder().title("테스트 프로그램").build());
+        var program =
+                studyProgramRepo.save(
+                        StudyProgram.builder()
+                                .title("테스트 프로그램")
+                                .studyKind(StudyKind.STUDY)
+                                .build());
 
         study =
                 studyRepo.save(
@@ -90,7 +95,6 @@ class AttendanceUpsertIntegrationTest {
                                 .title("Upsert 테스트 스터디")
                                 .oneLineSummary("테스트용")
                                 .category(StudyCategory.ALGORITHM)
-                                .studyKind(StudyKind.STUDY)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
