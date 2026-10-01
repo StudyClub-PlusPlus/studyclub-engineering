@@ -49,8 +49,8 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 신청 제출은 신청서·계정 별명·기본 분반 명부를 한 번에 저장한다")
-    void submitsApplicationAndEnrollsApplicant() {
+    @DisplayName("성공 - 신청 제출은 신청서와 계정 별명을 저장하고 명부는 만들지 않는다")
+    void submitsApplicationWithoutAssigningGroup() {
         var response =
                 rest.postForEntity(
                         "/api/studies/" + STUDY_ID + "/applications",
@@ -74,13 +74,12 @@ class StudyApplicationSubmissionIntegrationTest {
                                 LINKED_ACCOUNT_ID))
                 .isEqualTo("새 별명");
         assertThat(
-                        jdbcTemplate.queryForMap(
-                                "SELECT STUDY_GROUP_ID, STATUS, PARTICIPANT_ROLE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                        jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                                Long.class,
                                 STUDY_ID,
                                 LINKED_ACCOUNT_ID))
-                .containsEntry("STUDY_GROUP_ID", GROUP_ID)
-                .containsEntry("STATUS", "ACTIVE")
-                .containsEntry("PARTICIPANT_ROLE", "MEMBER");
+                .isZero();
         assertThat(
                         jdbcTemplate.queryForObject(
                                 "SELECT FORM_ANSWER FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ? AND ACCOUNT_ID = ?",
@@ -180,7 +179,7 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 모집 정원이 찼으면 신청서·별명·명부를 하나도 바꾸지 않는다")
+    @DisplayName("실패 - 모집 정원이 찼으면 신청서와 별명을 바꾸지 않는다")
     void rejectsFullRecruitmentWithoutSideEffects() {
         Timestamp now = Timestamp.from(Instant.now());
         jdbcTemplate.update(

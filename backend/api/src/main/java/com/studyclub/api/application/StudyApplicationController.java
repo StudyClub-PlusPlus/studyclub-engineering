@@ -33,7 +33,7 @@ public class StudyApplicationController {
             summary = "스터디 신청 제출",
             description =
                     """
-                    열려 있는 모집 회차에 신청서를 한 번 저장하고 기본 분반 명부에 편입합니다.
+                    열려 있는 모집 회차에 신청서를 한 번 저장합니다.
                     디스코드 연동 회원만 신청할 수 있으며, 제출한 서버 별명은 계정에도 저장합니다.
                     이미 신청했거나 모집이 마감됐거나 정원이 가득 차면 CONFLICT입니다.""")
     @PostMapping

@@ -9,15 +9,12 @@ import com.studyclub.domain.application.ApplicationFormQuestion;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationAnswer;
 import com.studyclub.domain.application.StudyApplicationRepository;
-import com.studyclub.domain.application.StudyEnrollment;
+import com.studyclub.domain.application.StudyApplicationSubmission;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
-import com.studyclub.domain.study.StudyGroup;
-import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,26 +34,24 @@ public class StudyApplicationService {
 
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
-    private final StudyGroupRepository studyGroupRepository;
     private final AccountRepository accountRepository;
     private final ObjectMapper objectMapper;
-    private final StudyEnrollment studyEnrollment;
+    private final StudyApplicationSubmission studyApplicationSubmission;
 
     public StudyApplicationService(
             StudyRepository studyRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyApplicationRepository studyApplicationRepository,
-            StudyGroupRepository studyGroupRepository,
             StudyParticipantRepository studyParticipantRepository,
             AccountRepository accountRepository,
             ObjectMapper objectMapper) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
-        this.studyGroupRepository = studyGroupRepository;
         this.accountRepository = accountRepository;
         this.objectMapper = objectMapper;
-        this.studyEnrollment =
-                new StudyEnrollment(studyApplicationRepository, studyParticipantRepository);
+        this.studyApplicationSubmission =
+                new StudyApplicationSubmission(
+                        studyApplicationRepository, studyParticipantRepository);
     }
 
     @Transactional
@@ -79,7 +74,6 @@ public class StudyApplicationService {
 
         StudyRecruitment recruitment = openRecruitmentForUpdate(studyId);
         StudyApplicationAnswer answer = normalizeAnswer(study, request);
-        StudyGroup group = defaultGroupOf(studyId);
         StudyApplication application =
                 StudyApplication.builder()
                         .accountId(accountId)
@@ -88,8 +82,7 @@ public class StudyApplicationService {
                         .build();
 
         StudyApplication saved =
-                studyEnrollment.enroll(
-                        application, recruitment, study, accountId, group.getId(), Instant.now());
+                studyApplicationSubmission.submit(application, recruitment, study, accountId);
         account.changeDiscordNickname(answer.discordNickname());
         return saved.getId();
     }
@@ -98,12 +91,6 @@ public class StudyApplicationService {
         return studyRecruitmentRepository.findOpenForUpdateByStudyId(studyId).stream()
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "모집이 마감되었습니다."));
-    }
-
-    private StudyGroup defaultGroupOf(Long studyId) {
-        return studyGroupRepository
-                .findFirstByStudyIdOrderByIdAsc(studyId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "참여할 기본 분반이 없습니다."));
     }
 
     private StudyApplicationAnswer normalizeAnswer(
