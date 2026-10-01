@@ -285,7 +285,7 @@ GET 신청 폼 조회와 같은 shape.
 - **Method**: POST
 - **Path**: `/api/studies/{studyId}/applications`
 - **인증**: 필요 — 로그인 회원. `ACCOUNT.DISCORD_ID` 가 있어야 한다 (화면 게이트만으로 끝내지 않는다)
-- **설명**: 열려 있는 모집 회차에 신청 1건을 만든다. 별명이 바뀌었으면 계정도 갱신한다. 같은 트랜잭션에서 기본 분반 명부에 편입한다.
+- **설명**: 열려 있는 모집 회차에 신청 1건을 만든다. 별명이 바뀌었으면 계정도 갱신한다. 분반과 명부는 캡틴이 신청 결과를 확인한 뒤 별도로 만든다.
 
 ### Request Body
 
@@ -312,10 +312,9 @@ GET 신청 폼 조회와 같은 shape.
 2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. `fields` 에는 실패한 필드만 (화면은 검사 순서대로 하나 표시)
 3. `STUDY_APPLICATION` insert. `FORM_ANSWER` 저장
 4. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
-5. 이 기수의 기본 분반(`STUDY_GROUP` — 기수당 최소 1개)에 `STUDY_PARTICIPANT` (`STATUS=ACTIVE`, `PARTICIPANT_ROLE=MEMBER`) insert
-6. 커밋. 이후 같은 회차 POST 는 `409`
+5. 커밋. 이후 같은 회차 POST 는 `409`
 
-덮어쓰기 없음. 승인·거절 상태값 없음. 신청을 없앨 때는 행 삭제 + 제출 때 만든 명부 행 삭제 (이 API 범위 밖).
+덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않으며 신청 제출 시 명부를 만들지 않는다. 캡틴이 신청 결과를 보고 분반을 만든 뒤 참가자를 한 분반에 배정한다.
 
 ### Response — 201 Created (본문 없음)
 
@@ -564,7 +563,6 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 ## 미확정
 
 - [NEEDS CLARIFICATION] `FORM_ANSWER` JSON 유지 vs `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 정규화 — ERD README 와 같음. 이 스펙은 JSON 으로 구현한다
-- [NEEDS CLARIFICATION] 신청 생성 시 자동 배정할 분반 — 현재는 가장 작은 `STUDY_GROUP.ID`를 사용한다. [`share/2026-09-30-application-default-group.md`](../../share/2026-09-30-application-default-group.md)
 - [NEEDS CLARIFICATION] 유효값 오류의 필드별 `fields` 응답 계약 — 현재는 공통 `{ errorCode, errorMessage }` 형식을 유지한다. [`share/2026-09-30-application-validation-error-fields.md`](../../share/2026-09-30-application-validation-error-fields.md)
 - [NEEDS CLARIFICATION] `RECRUIT_DEADLINE`이 null인 모집을 열림으로 볼지 — 현재는 마감일 없는 상시 모집으로 취급한다. [`share/2026-09-30-null-recruit-deadline.md`](../../share/2026-09-30-null-recruit-deadline.md)
 - [NEEDS CLARIFICATION] 정원의 저장 위치와 집계 기준 — 현재는 `STUDY.CAPACITY`와 활성·일시중지 명부 인원을 사용한다. [`share/2026-09-27-study-capacity-column.md`](../../share/2026-09-27-study-capacity-column.md)
