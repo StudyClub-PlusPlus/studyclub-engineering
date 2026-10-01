@@ -1,0 +1,3 @@
+-- 신청 때 확정한 스터디클럽++ 서버 별명을 다음 신청의 기본값으로 보관한다.
+ALTER TABLE ACCOUNT
+    ADD COLUMN DISCORD_NICKNAME VARCHAR(100) NULL AFTER DISCORD_HANDLE;

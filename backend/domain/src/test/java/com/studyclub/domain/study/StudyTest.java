@@ -204,6 +204,16 @@ class StudyTest {
     }
 
     @Test
+    @DisplayName("활성 명부 인원이 기수 정원에 닿으면 가득 찬다")
+    void fullWhenActiveParticipantCountReachesCapacity() {
+        var study = getStudy(StudyStatus.OPEN, 2);
+
+        assertThat(study.isFull(1)).isFalse();
+        assertThat(study.isFull(2)).isTrue();
+        assertThat(study.isFull(3)).isTrue();
+    }
+
+    @Test
     @DisplayName("주소: 빈 문자열·공백은 null 로 저장하고, 앞뒤 공백은 자른다")
     void changeLinks_blankBecomesNull() {
         var study = getStudy(StudyStatus.OPEN);
