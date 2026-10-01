@@ -100,7 +100,7 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
 
   for (const study of studyList) {
     const { crew, attendance, meetings } = getStudyCrew(study);
-    const active = crew.filter((c) => c.status === 'active');
+    const active = crew;
     const running = study.status !== 'closed';
     const categories = categoriesOf(study);
     // 카테고리는 스터디마다 하나다 — 첫 값만 센다.
