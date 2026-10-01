@@ -15,7 +15,7 @@
 | RECIPIENT_USER_ID | BIGINT | Y | ID 참조([ACCOUNT](./ACCOUNT.md), FK 없음) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
 | TEMPLATE_ID | BIGINT | N | ID 참조([NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md), FK 없음) |
 | PAYLOAD | JSON | N | `{"nickname": "..."}`. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
-| STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED` |
+| STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED`/`CANCELLED` |
 | LOCKED_AT | DATETIME(6) | Y | PROCESSING 전환 시각. 재수거 판단 기준이자 클레임 토큰(재수거로 값이 달라지면 이전 클레임의 완료 처리를 무시한다) |
 | ERROR_TYPE | VARCHAR(30) | Y | FAILED 일 때만. `TEMPLATE_MISSING`/`INVALID_RECIPIENT`/`PROVIDER_ERROR`/`UNKNOWN`. 자동 재시도 판단에는 안 쓴다(이번 구현엔 자동 재시도가 없음) — 실패 원인을 나중에 사람이 보기 위한 값 |
 | SCHEDULED_AT | DATETIME(6) | Y | 이번 구현에서는 항상 NULL(즉시 발송). 시간 트리거형 이벤트를 위해 컬럼만 미리 둔다 |
@@ -36,9 +36,16 @@ stateDiagram-v2
     PROCESSING --> SENT : SES 발송 성공
     PROCESSING --> FAILED : SES 발송 실패 (error_type 기록)
     PROCESSING --> PENDING : 재수거 (locked_at 타임아웃 — 인스턴스 재시작 등)
+    PENDING --> CANCELLED : 수신 계정 탈퇴 — 발송 시도 전에 취소
     SENT --> [*]
     FAILED --> [*] : 자동/수동 재시도 없음 — 그대로 남는다
+    CANCELLED --> [*]
 ```
+
+`CANCELLED` 는 `FAILED` 와 구분한다 — `FAILED` 는 발송을 시도했다가 실패한 것(`ERROR_TYPE` 기록),
+`CANCELLED` 는 발송 시도 전에 수신자가 탈퇴해 더 보낼 이유가 없어진 것이다. `ERROR_TYPE` 은 `FAILED`
+전용이라 `CANCELLED` 에는 채우지 않는다. 트리거는 [user-leave spec](../../specs/user-leave/spec.md#알림-비식별화)
+의 `DELETE /api/me` 뿐이다.
 
 ## 제약
 

@@ -8,6 +8,19 @@ import org.springframework.data.repository.query.Param;
 
 public interface StudyParticipantRepository extends JpaRepository<StudyParticipant, Long> {
 
+    List<StudyParticipant> findByStudyId(Long studyId);
+
+    List<StudyParticipant> findByAccountId(Long accountId);
+
+    void deleteByStudyId(Long studyId);
+
+    List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
+
+    List<StudyParticipant> findByIdInAndStudyId(Collection<Long> ids, Long studyId);
+
+    boolean existsByAccountIdAndStudyIdAndParticipantRoleIn(
+            Long accountId, Long studyId, Collection<ParticipantRole> roles);
+
     /** 코호트별 정원을 차지하는 참여자 수 (ACTIVE + PAUSED). 정원 도달 판정에 사용한다. */
     @Query(
             "SELECT participant.studyId, COUNT(participant) FROM StudyParticipant participant "
@@ -20,6 +33,16 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     boolean existsByStudyIdAndAccountIdAndParticipantRoleIn(
             Long studyId, Long accountId, Collection<ParticipantRole> participantRoles);
+
+    boolean existsByStudyIdAndAccountIdAndStatusIn(
+            Long studyId, Long accountId, Collection<ParticipantStatus> statuses);
+
+    /** 스터디별 스터디장(LEADER) 목록. 분반이 여럿이면 복수 반환될 수 있으며, 호출부에서 첫 번째를 사용한다. 백오피스 목록 조회 전용. */
+    @Query(
+            "SELECT p FROM StudyParticipant p"
+                    + " WHERE p.studyId IN :studyIds"
+                    + " AND p.participantRole = com.studyclub.domain.participant.ParticipantRole.LEADER")
+    List<StudyParticipant> findLeadersByStudyIdIn(@Param("studyIds") Collection<Long> studyIds);
 
     @Query(
             "SELECT new com.studyclub.domain.participant.StudyParticipantHistory("

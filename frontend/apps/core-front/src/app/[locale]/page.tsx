@@ -1,12 +1,25 @@
 import Link from 'next/link';
 
 import { ArrowRight } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { EventCard } from '@/components/EventCard';
+import { FeaturedStudies } from '@/components/FeaturedStudies';
 import { JoinCta } from '@/components/JoinCta';
-import { StudyCard } from '@/components/StudyCard';
 import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return pageMetadata({
+    locale,
+    path: '',
+    title: m('seo.home_title', locale),
+    description: m('seo.site_description', locale),
+    titleAbsolute: true,
+  });
+}
 
 export default async function Landing({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -17,13 +30,6 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
     getMembers(),
     getSite(),
   ]);
-  const featured = studies
-    .filter((s) => s.status === 'recruiting' || s.status === 'ongoing')
-    .sort(
-      (a, b) =>
-        (a.status === 'recruiting' ? 0 : 1) - (b.status === 'recruiting' ? 0 : 1) || (a.order ?? 99) - (b.order ?? 99),
-    )
-    .slice(0, 6);
   const upcoming = [...events].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   const stats = [
@@ -77,21 +83,8 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
         </div>
       </section>
 
-      {/* Featured studies */}
-      {featured.length > 0 && (
-        <section className='pb-14'>
-          <SectionHead
-            title={m('studies.title', locale)}
-            href={`/${locale}/studies`}
-            more={t({ ko: '전체 보기', en: 'View all' }, locale)}
-          />
-          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-            {featured.map((s) => (
-              <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Featured studies (MSW / API 반응형) */}
+      <FeaturedStudies locale={locale} leads={leads} />
 
       {/* Upcoming events */}
       {upcoming.length > 0 && (

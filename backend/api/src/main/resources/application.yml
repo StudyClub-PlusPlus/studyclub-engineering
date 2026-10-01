@@ -6,11 +6,13 @@ spring:
     import: classpath:notification.yml
   application:
     name: studyclub-api
-  # PUBLIC 레포 — 비밀번호/호스트는 env 로만 주입 (docker-compose → .env, 로컬 host 는 `set -a; source .env`).
+  # PUBLIC 레포 — 비밀번호/호스트는 env 로만 주입 (docker-compose → .env, 로컬 host 는 `set -a; source ../.env`).
+  # DB_* 가 없으면 루트 .env 의 MYSQL_* 로 compose 의 mysql(호스트 포트)에 붙는다 — 로컬 bootRun 이 .env 하나로 뜨게.
+  # 운영·stage 는 DB_* 를 명시 주입하므로 이 기본값을 타지 않는다.
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:23310/studyclub?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8}
-    username: ${DB_USERNAME:studyclub}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL:jdbc:mysql://localhost:${MYSQL_PORT:23310}/${MYSQL_DATABASE:studyclub}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:${MYSQL_USER:studyclub}}
+    password: ${DB_PASSWORD:${MYSQL_PASSWORD:}}
     driver-class-name: com.mysql.cj.jdbc.Driver
   # 스키마의 정본은 db/migration/*.sql (Flyway) 하나다.
   # ddl-auto 기본값 validate — 엔티티가 운영 DB 를 조용히 바꾸지 못하게 막고, 매핑과 실제 스키마가

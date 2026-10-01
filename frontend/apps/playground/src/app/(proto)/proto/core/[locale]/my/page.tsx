@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
 import { getUser, type SessionUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import {
   cancelApplication,
@@ -31,12 +31,13 @@ import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname
 import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
 import { recruitState } from '@core/lib/recruit';
-import { studies as allStudies, type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/mock';
 import { Button, Input } from '@studyclub/ui';
 import { CalendarClock, Heart, Pencil } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 /**
  * 마이페이지.
@@ -65,7 +66,7 @@ function StudyRow({ study, locale, right }: { study: Study; locale: Locale; righ
       </span>
       <div className='min-w-0 flex-1'>
         <Link
-          href={`/proto/core/${locale}/studies/${study.id}`}
+          href={userStudyPath(locale, study)}
           className='block truncate font-bold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}
@@ -184,7 +185,7 @@ export default function MyPage() {
       return;
     }
     setUser(u);
-    setName(getDisplayName() ?? u.name ?? u.email);
+    setName(getDisplayName() ?? u.nickname ?? u.email);
     setTimeZoneState(getTimeZone());
     setApplications(getApplications());
     setBookmarks(getBookmarks());
@@ -192,7 +193,8 @@ export default function MyPage() {
     setReady(true);
   }, [locale, router]);
 
-  const byId = useMemo(() => new Map(allStudies.map((s) => [s.id, s])), []);
+  const allStudies = useMswStudies();
+  const byId = useMemo(() => new Map(allStudies.map((s) => [s.id, s])), [allStudies]);
   const joined = applications
     .map((a) => ({ app: a, study: byId.get(a.studyId) }))
     .filter((x): x is { app: Application; study: Study } => Boolean(x.study))

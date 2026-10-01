@@ -53,13 +53,16 @@ class StudyDetailApiTest {
                                 .slug("algo-study")
                                 .title("알고리즘 스터디")
                                 .oneLineSummary("알고리즘 문제 풀이 스터디")
-                                .category(StudyCategory.BACKEND)
+                                .category(StudyCategory.SOFTWARE)
                                 .studyKind(StudyKind.STUDY)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
                                 .capacity(20)
+                                .schedule("매주 목 20:00")
                                 .startAt(Instant.parse("2026-10-15T00:00:00Z"))
+                                .discordChannelUrl("https://discord.com/channels/1/2")
+                                .driveUrl("https://drive.google.com/drive/folders/abc")
                                 .build());
         recruitmentRepository.save(
                 StudyRecruitment.builder()
@@ -76,8 +79,15 @@ class StudyDetailApiTest {
         var body = response.getBody();
         assertThat(body).containsEntry("title", "알고리즘 스터디");
         assertThat(body).containsEntry("slug", "algo-study");
-        assertThat(body).containsEntry("category", "BACKEND");
+        assertThat(body).containsEntry("category", "SOFTWARE");
         assertThat(body).containsEntry("status", "OPEN");
+        assertThat(body).containsEntry("programId", studyProgram.getId().intValue());
+        assertThat(body).containsEntry("oneLineSummary", "알고리즘 문제 풀이 스터디");
+        assertThat(body).containsEntry("capacity", 20);
+        assertThat(body).containsEntry("schedule", "매주 목 20:00");
+        // 비로그인에게는 링크를 비운다 — 채우는 조건은 StudyDetailVisibilityIntegrationTest
+        assertThat(body).containsEntry("discordChannelUrl", null);
+        assertThat(body).containsEntry("driveUrl", null);
         assertThat(body).doesNotContainKey("success");
     }
 
@@ -104,20 +114,20 @@ class StudyDetailApiTest {
     }
 
     @Test
-    @DisplayName("실패 — 숨김 스터디 → 404 NOT_FOUND")
-    void hiddenStudyReturns404() {
+    @DisplayName("실패 — 공개 전(DRAFT) 스터디는 숨김이 아니어도 404 NOT_FOUND")
+    void draftStudyReturns404() {
         var studyProgram =
-                studyProgramRepository.save(StudyProgram.builder().title("숨김 스터디").build());
+                studyProgramRepository.save(StudyProgram.builder().title("공개 전 스터디").build());
         var study =
                 studyRepository.save(
                         Study.builder()
                                 .programId(studyProgram.getId())
-                                .slug("hidden")
-                                .title("숨김 스터디")
-                                .oneLineSummary("숨김 처리된 스터디")
+                                .slug("draft")
+                                .title("공개 전 스터디")
+                                .oneLineSummary("아직 공개하지 않은 스터디")
                                 .category(StudyCategory.OTHER)
                                 .studyKind(StudyKind.STUDY)
-                                .isHidden(true)
+                                .isHidden(false)
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)
                                 .build());

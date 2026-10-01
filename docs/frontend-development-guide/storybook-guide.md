@@ -39,10 +39,10 @@ packages/ui/
 
 ```bash
 # packages/ui 기준
-cd frontend && npm run storybook --workspace=@studyclub/ui
+cd frontend && pnpm --filter @studyclub/ui run storybook
 
 # 또는 frontend 루트에서 turbo 태스크
-cd frontend && npx turbo run storybook --filter=@studyclub/ui
+cd frontend && pnpm dlx turbo run storybook --filter=@studyclub/ui
 ```
 
 브라우저: `http://localhost:6006`
@@ -394,4 +394,4 @@ export const Controlled: Story = {
 - [ ] `tags: ['autodocs']` 포함
 - [ ] 주요 variant / 상태별 스토리 추가 (Default 포함 최소 2개)
 - [ ] 너비가 중요한 컴포넌트는 decorator로 너비 고정
-- [ ] `npm run storybook` 으로 로컬 확인 후 PR
+- [ ] `pnpm run storybook` 으로 로컬 확인 후 PR

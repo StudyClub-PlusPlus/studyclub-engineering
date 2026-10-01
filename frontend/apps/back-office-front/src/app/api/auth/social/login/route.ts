@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { ACCESS_COOKIE } from '@/lib/auth';
+import { accessCookie } from '@/lib/cookies';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -45,11 +46,6 @@ export async function POST(req: NextRequest) {
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
   });
-  res.cookies.set(ACCESS_COOKIE, data.accessToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7,
-  });
+  res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7));
   return res;
 }

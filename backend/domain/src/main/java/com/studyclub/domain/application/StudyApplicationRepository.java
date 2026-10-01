@@ -1,5 +1,6 @@
 package com.studyclub.domain.application;
 
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -18,4 +19,14 @@ public interface StudyApplicationRepository extends JpaRepository<StudyApplicati
                     + "ORDER BY application.id ASC")
     List<StudyApplicationWithAccount> findAllWithAccountByRecruitmentId(
             @Param("recruitmentId") Long recruitmentId);
+
+    @Query(
+            "SELECT COUNT(application) > 0 "
+                    + "FROM StudyApplication application "
+                    + "JOIN StudyRecruitment recruitment "
+                    + "ON recruitment.id = application.recruitmentId "
+                    + "WHERE recruitment.studyId = :studyId")
+    boolean existsByStudyId(@Param("studyId") Long studyId);
+
+    void deleteByRecruitmentIdIn(Collection<Long> recruitmentIds);
 }

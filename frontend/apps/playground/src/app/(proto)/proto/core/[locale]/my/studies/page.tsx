@@ -21,15 +21,15 @@ import {
   type MyStatus,
 } from '@core/lib/attendance';
 import { getUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { getApplications } from '@core/lib/me';
-import { studies as allStudies, type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/mock';
 import { CalendarClock } from 'lucide-react';
-
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 /**
  * 내 스터디.
@@ -71,11 +71,13 @@ export default function MyStudiesPage() {
     setReady(true);
   }, [locale, router]);
 
+  const allStudies = useMswStudies();
+
   /** 승인되어 참여 중인 스터디만. 신청 대기·종료된 스터디는 출석할 일이 없다. */
   const mine = useMemo<Study[]>(() => {
     const byId = new Map(allStudies.map((s) => [s.id, s]));
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => s !== undefined && s.status !== 'closed');
-  }, [mineIds]);
+  }, [mineIds, allStudies]);
 
   if (!ready) {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
@@ -163,7 +165,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
       <div className='min-w-0 flex-1'>
         <Link
           data-anno='3-1'
-          href={`/proto/core/${locale}/studies/${study.id}`}
+          href={userStudyPath(locale, study)}
           className='block truncate font-bold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}
@@ -230,7 +232,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
     <section data-anno='4' className='card px-5 py-4'>
       <div className='flex items-baseline justify-between gap-3'>
         <Link
-          href={`/proto/core/${locale}/studies/${study.id}`}
+          href={userStudyPath(locale, study)}
           className='min-w-0 truncate font-bold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}

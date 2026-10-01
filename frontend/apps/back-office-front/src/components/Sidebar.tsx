@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { LayoutDashboard, BookOpen, CalendarDays, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, CalendarDays, Users, Mail, LogOut } from 'lucide-react';
 
 import { getUser, logout, type SessionUser } from '@/lib/auth';
 
@@ -14,6 +14,7 @@ const NAV = [
   { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },
+  { href: '/notification-templates', label: '알림 템플릿', icon: Mail },
 ];
 
 export function Sidebar() {
@@ -73,11 +74,11 @@ export function Sidebar() {
               <img src={user.picture} alt='' className='h-8 w-8 shrink-0 rounded-full' />
             ) : (
               <span className='grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-[var(--color-accent)]'>
-                {(user.name ?? user.email).slice(0, 1).toUpperCase()}
+                {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
               </span>
             )}
             <div className='min-w-0 flex-1'>
-              <div className='truncate text-sm font-semibold'>{user.name ?? '운영자'}</div>
+              <div className='truncate text-sm font-semibold'>{user.nickname ?? '운영자'}</div>
               <div className='truncate text-xs text-[var(--color-fg-subtle)]'>{user.email}</div>
             </div>
             <button

@@ -4,8 +4,8 @@
 
 ## 대상 엔드포인트
 
-- `GET /back-office/notification-templates`
-- `GET /back-office/notifications`
+- `GET /api/admin/notification-templates`
+- `GET /api/admin/notifications`
 - 기존 `POST /accounts/onboarding` 의 UserRegisteredEvent 구독
 
 ## 기술 결정

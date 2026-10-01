@@ -1,6 +1,7 @@
 import { meetingsOf } from '@core/lib/attendance';
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
+import type { ProtoMeeting } from '@core/lib/meetings';
 import { site, type MemberRegion, type Study, type StudyMeeting } from '@studyclub/mock';
 
 export type WallTz = 'KST' | 'PDT';
@@ -30,7 +31,6 @@ export const LIFE_LABEL: Record<LifeStatus, string> = {
 
 /** 프로토용 명부. 서버가 생기면 STUDY_PARTICIPANT.STATUS 로 교체한다. */
 const END_KIND: Record<string, EndKind> = {
-  'renaissance-club': 'withdrawn',
   'system-design-interview-ongoing': 'withdrawn',
 };
 
@@ -78,7 +78,7 @@ export function meetRegionOf(study: Study): MeetRegion {
 /** 짧은 태그. 주제 문장을 태그에 넣지 않는다 — 한눈에 분류만 한다. */
 export function tagsOf(study: Study, locale: Locale, categoryLabel: string): string[] {
   const tags = [categoryLabel, t(FORMAT_LABEL[study.format], locale), t(MEET_LABEL[meetRegionOf(study)], locale)];
-  if (study.kind === 'club') tags.push(locale === 'en' ? 'Club' : '클럽');
+  if (study.program?.kind === 'club') tags.push(locale === 'en' ? 'Club' : '클럽');
   return tags;
 }
 
@@ -91,13 +91,17 @@ export function userWallTz(region: MemberRegion): WallTz {
 export function durationOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
   const meetings = meetingsOf(study);
   if (meetings.length === 0) return locale === 'en' ? 'Dates TBD' : '기간 미정';
-  const clock = meetingClock(study);
-  const start = formatInTz(asKstInstant(meetings[0].date, clock), tz).date;
-  const end = formatInTz(asKstInstant(meetings[meetings.length - 1].date, clock), tz).date;
+  const first = meetings[0];
+  const last = meetings[meetings.length - 1];
+  const start = formatInTz(asKstInstant(first.date, meetingClock(study, first)), tz).date;
+  const end = formatInTz(asKstInstant(last.date, meetingClock(study, last)), tz).date;
   return `${start} ~ ${end}`;
 }
 
-function meetingClock(study: Study): string {
+/** 네비게이터가 시각을 정해 추가한 회차는 그 시각. 나머지는 스터디 일정 문구에서 뽑는다. */
+function meetingClock(study: Study, meeting: StudyMeeting): string {
+  const own = (meeting as ProtoMeeting).time;
+  if (own) return own;
   const raw = study.schedule?.ko ?? '';
   const m = raw.match(/(\d{1,2}):(\d{2})/);
   return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '20:00';
@@ -167,7 +171,7 @@ export function weekDays(studies: Study[], locale: Locale, tz: WallTz, monday: s
   for (const study of studies) {
     if (lifeStatus(study) === 'ended') continue;
     for (const m of meetingsOf(study)) {
-      const { date, time } = formatInTz(asKstInstant(m.date, meetingClock(study)), tz);
+      const { date, time } = formatInTz(asKstInstant(m.date, meetingClock(study, m)), tz);
       if (date < monday || date > end) continue;
       const hits = byDate.get(date) ?? [];
       hits.push({ studyId: study.id, meetingId: m.id, title: t(study.title, locale), no: m.no, time });
@@ -218,7 +222,7 @@ function formatInTz(instant: Date, tz: WallTz): { date: string; time: string } {
 
 /** 회차 예정일(SCHEDULED_AT)을 고른 타임존 날짜(yyyy-mm-dd)로. */
 export function meetingWallDate(study: Study, meeting: StudyMeeting, tz: WallTz): string {
-  return formatInTz(asKstInstant(meeting.date, meetingClock(study)), tz).date;
+  return formatInTz(asKstInstant(meeting.date, meetingClock(study, meeting)), tz).date;
 }
 
 /** 다가오는 회차. 참여 종료·완주는 없다. */
@@ -234,8 +238,9 @@ export function upcomingMeeting(study: Study, tz: WallTz = 'KST'): StudyMeeting 
 export function upcomingOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
   const next = upcomingMeeting(study, tz);
   if (next) {
-    const { date, time } = formatInTz(asKstInstant(next.date, meetingClock(study)), tz);
-    return `${next.no}회차 · ${date} ${time}`;
+    const { date, time } = formatInTz(asKstInstant(next.date, meetingClock(study, next)), tz);
+    const title = (next as ProtoMeeting).title;
+    return `${next.no}회차 · ${date} ${time}${title ? ` · ${title}` : ''}`;
   }
   if (lifeStatus(study) === 'ended') return locale === 'en' ? 'No upcoming meeting' : '다음 일정 없음';
   return study.schedule ? t(study.schedule, locale) : locale === 'en' ? 'No upcoming meeting' : '오늘 이후 회차 없음';

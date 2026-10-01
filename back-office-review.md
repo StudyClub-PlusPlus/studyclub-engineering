@@ -79,7 +79,7 @@ OAuth 시작 시 state/nonce를 생성하고 콜백에서 검증해야 로그인
 - `middleware`는 쿠키 존재 여부만 확인한다. 만료 여부와 역할 검증은 백엔드가 담당해야 한다.
 - 로그아웃 쿠키에 `secure: true`가 명시되어 있지 않다. 운영 HTTPS 환경에서는 secure 쿠키 정책을 명시하는 것이 좋다.
 - back-office 전용 테스트 파일은 확인되지 않았다.
-- lint/typecheck/build는 코드 오류 이전에 WSL UNC 경로와 Windows npm 실행 환경 충돌로 완료하지 못했다.
+- lint/typecheck/build는 코드 오류 이전에 WSL UNC 경로와 Windows pnpm 실행 환경 충돌로 완료하지 못했다.
 
 ## 권장 작업 순서
 

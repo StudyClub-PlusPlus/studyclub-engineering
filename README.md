@@ -8,6 +8,8 @@ StudyClub++ 코드 모노레포 (**public**). 미국·캐나다·한국의 개�
 
 > ⚠️ **PUBLIC 레포** — `.env`·토큰·키·개인정보 등 민감정보 커밋 금지. 자세한 규칙은 [`CLAUDE.md`](./CLAUDE.md).
 
+> 🚀 **처음이면 [`ONBOARDING.md`](./ONBOARDING.md) 부터** — 클론 → `.env` → 실행 방식 고르기(전부 Docker / 프론트만 로컬 / 백엔드도 로컬 / 운영 API) → 구글 로그인까지 한 장에 있다.
+
 ## 구조
 
 ```
@@ -16,33 +18,36 @@ frontend/                # Node 워크스페이스 (npm + turbo)
     core-front/          # 사용자향 (Next.js 16, ko/en) — 랜딩·스터디·행사·가이드·공지·소개
     back-office-front/   # 운영자향 (Next.js 16) — 스터디/행사/멤버/캡틴 관리 콘솔
   packages/
-    mock/                # 하드코딩 mock 데이터 + 공유 타입 (@studyclub/mock)
+    mock/                # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티 (@studyclub/mock)
 backend/                 # Spring Boot 4 멀티모듈 (Gradle Kotlin DSL, Java 25)
   api/                   # 실행 모듈 — REST API (:8080)
   domain/                # 도메인 모델
   common/                # 공통 (ApiResponse 등)
 ```
 
-현재 프론트는 `@studyclub/mock` 하드코딩 데이터로 동작하고, 백엔드는 기본 스캐폴드 단계입니다.
+현재 프론트는 `@studyclub/mock` 패키지의 MSW(Mock Service Worker) 계층을 통해 Mock API와 연동되어 동작하며(DevTool UI를 통해 정상/404/500/빈 목록 등 시나리오 제어 가능), 백엔드는 기본 스캐폴드 단계입니다.
 실 API 연동 지점은 코드에 `// TODO(api)` 로 표시돼 있습니다.
 
 ## 실행
+
+> 로컬 전체 셋업(구글 로그인 · docker compose 포함)은 [`ONBOARDING.md`](./ONBOARDING.md). 아래는 앱 단위 명령 요약이다.
 
 ### Frontend
 
 ```bash
 cd frontend
-npm install
-npm run dev                              # turbo — 모든 앱 동시
-# 개별 실행
-npm run dev --workspace=core-front       # http://localhost:4700
-npm run dev --workspace=back-office-front # http://localhost:4701
+pnpm install
+pnpm run dev                       # turbo — 모든 앱 동시
+# 개별 실행 (단축키)
+pnpm run dev:core-front            # http://localhost:4700
+pnpm run dev:back-office-front     # http://localhost:4701
+pnpm run dev:playground            # http://localhost:4702
 # 빌드
-npm run build
+pnpm run build
 ```
 
 - Node 20+ 필요.
-- 데이터 수정: `frontend/packages/mock/src/index.ts` (스터디/행사/멤버/캡틴/공지).
+- 데이터 수정: 스터디는 `frontend/packages/mock/src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`.
 
 ### Backend
 
@@ -57,11 +62,11 @@ cd backend
 
 주요 엔드포인트:
 
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| GET | `/` | `StudyClub++ API` |
-| GET | `/api/health` | `{ "status": "UP" }` |
-| GET | `/api/studies` | 스터디 목록 (현재 더미) |
+| 메서드 | 경로           | 설명                    |
+| ------ | -------------- | ----------------------- |
+| GET    | `/`            | `StudyClub++ API`       |
+| GET    | `/api/health`  | `{ "status": "UP" }`    |
+| GET    | `/api/studies` | 스터디 목록 (현재 더미) |
 
 Docker:
 
@@ -74,24 +79,24 @@ docker run -p 8080:8080 studyclub-api
 
 `main` push → 프로덕션, `develop` push → 스테이지. GitHub Actions 가 도커 이미지 빌드·푸시 후 K8s 롤아웃.
 
-| 워크플로 | 대상 | 이미지 |
-|---|---|---|
-| `core-front-{main,develop}` | core-front | `hyperrealitycorp/studyclub-core-front-{production,stage}` |
-| `back-office-front-{main,develop}` | back-office-front | `…-back-office-front-{production,stage}` |
-| `backend-{main,develop}` | api | `…-studyclub-api-{production,stage}` |
+| 워크플로                           | 대상              | 이미지                                                     |
+| ---------------------------------- | ----------------- | ---------------------------------------------------------- |
+| `core-front-{main,develop}`        | core-front        | `hyperrealitycorp/studyclub-core-front-{production,stage}` |
+| `back-office-front-{main,develop}` | back-office-front | `…-back-office-front-{production,stage}`                   |
+| `backend-{main,develop}`           | api               | `…-studyclub-api-{production,stage}`                       |
 
 - 프론트 워크플로 docker context = `frontend/`, 백엔드 = `backend/`.
 - 시크릿(도커·SSH·슬랙)은 레포 GitHub Actions Secret 으로 주입 (코드에 평문 금지).
 
 ## 도메인
 
-| 도메인 | 서비스 |
-|---|---|
-| studyclub-plusplus.com | core-front (prod) |
-| stage.studyclub-plusplus.com | core-front (stage) |
-| back-office.studyclub-plusplus.com | back-office-front (prod) |
+| 도메인                                   | 서비스                    |
+| ---------------------------------------- | ------------------------- |
+| studyclub-plusplus.com                   | core-front (prod)         |
+| stage.studyclub-plusplus.com             | core-front (stage)        |
+| back-office.studyclub-plusplus.com       | back-office-front (prod)  |
 | back-office-stage.studyclub-plusplus.com | back-office-front (stage) |
-| api.studyclub-plusplus.com | api (prod) |
+| api.studyclub-plusplus.com               | api (prod)                |
 
 ## 기여
 

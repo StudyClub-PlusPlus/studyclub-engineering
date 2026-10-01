@@ -30,7 +30,7 @@ drawio 의 `NUMBER`/`DATE` 는 도구 기본 타입이라 여기서는 **MySQL 8
 
 ## 설계 원칙 (요구사항 정의에서)
 
-1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/모집예정/마감은 `STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT`·`STUDY.START_AT` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
+1. **상태는 최대한 저장하지 않고 날짜·관계로 계산한다.** 모집중/마감은 `STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT`·`RECRUITMENT_CAPACITY` 로 판정. 저장하는 상태는 사람이 결정하는 것(승인/거절, 출석)만.
 2. **삭제 대신 종료.** 스터디는 `CLOSED`, 참가자는 `WITHDRAWN`.
 3. **한 사람 · 한 스터디 기준으로 전부 연결된다.** 신청 → 명부(참가자) → 회차 → 출석 → 마이페이지가 같은 `ACCOUNT_ID`·`STUDY_ID` 를 따라간다.
 4. 비회원 공개 범위(목록·상세)와 로그인 사용자 범위(신청·출석·마이페이지)를 분리한다.
@@ -51,6 +51,7 @@ erDiagram
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
   ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
+  STUDY ||--o| STUDY_DISCORD_LINK : "디스코드 연결 (없을 수 있음)"
   STUDY ||--o{ STUDY_RECRUITMENT : "모집"
   STUDY_RECRUITMENT ||--o{ STUDY_APPLICATION : "신청서"
   ACCOUNT ||--o{ STUDY_APPLICATION : ""
@@ -141,30 +142,25 @@ erDiagram
   STUDY_PROGRAM {
     bigint   ID                PK
     varchar  TITLE
+    varchar  STUDY_KIND           "STUDY / CLUB"
   }
 
   STUDY {
     bigint   ID                 PK
     bigint   PROGRAM_ID            "→ STUDY_PROGRAM 참조"
     varchar  TITLE
-    varchar  SLUG              UK "URL 식별자"
     varchar  ONE_LINE_SUMMARY     "한 줄 소개"
     text     DESCRIPTION
     varchar  CATEGORY             "AI, BACKEND, PAPER …"
-    varchar  STUDY_KIND           "STUDY / CLUB"
     varchar  THUMBNAIL_URL
-    boolean  IS_HIDDEN            "목록 노출 제어"
-    varchar  STUDY_DELIVERY_FORMAT "ONLINE / OFFLINE / HYBRID"
-    varchar  STATUS               "DRAFT / OPEN / CLOSED"
+    varchar  STATUS               "DRAFT / OPEN / ONGOING / ENDED / CLOSED"
     json     APPLICATION_FORM     "이 기수 신청 폼 질문 정의"
     json     CURRICULUM           "주차별 커리큘럼"
-    int      CAPACITY             "이 기수 전체 정원"
     datetime START_AT
     datetime END_AT               "고정 종료 없는 클럽은 NULL"
     varchar  DISCORD_CHANNEL_URL
     varchar  DRIVE_URL
     varchar  SCHEDULE              "운영 일정 요약"
-    datetime PUBLISH_AT           "공개 예정 일시"
   }
 
   STUDY_GROUP {
@@ -220,6 +216,13 @@ erDiagram
     varchar  STATUS                "PRESENT / LATE / EXCUSED / ABSENT"
   }
 
+  STUDY_DISCORD_LINK {
+    bigint   ID                 PK
+    bigint   STUDY_ID           FK "→ STUDY"
+    varchar  DISCORD_STUDY_ID      "카테고리 snowflake (문자열)"
+    varchar  DISCORD_ROLE_ID       "역할 snowflake (문자열)"
+  }
+
   STUDY_REVIEW {
     bigint   ID                 PK
     bigint   ACCOUNT_ID            FK
@@ -263,6 +266,7 @@ erDiagram
   STUDY_PROGRAM         ||--o{ STUDY_REVIEW         : "전체 후기 조회 (비정규화)"
 
   STUDY                 ||--o{ STUDY_GROUP           : "분반"
+  STUDY                 ||--o| STUDY_DISCORD_LINK    : "디스코드 연결 (없을 수 있음)"
   STUDY                 ||--o{ STUDY_RECRUITMENT     : "모집"
   STUDY_RECRUITMENT     ||--o{ STUDY_APPLICATION     : "신청서"
   STUDY                 ||--o{ STUDY_REVIEW          : "후기"
@@ -287,14 +291,15 @@ erDiagram
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
 | 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
-| 스터디 | [STUDY_PROGRAM](./STUDY_PROGRAM.md)                     | 스터디/클럽 정체성             | —                                    |
-| 스터디 | [STUDY](./STUDY.md)                                     | 기수/회차 — 실제 운영 인스턴스     | `STATUS`, `STUDY_DELIVERY_FORMAT`, `STUDY_KIND` |
+| 스터디 | [STUDY_PROGRAM](./STUDY_PROGRAM.md)                     | 스터디/클럽 정체성             | `STUDY_KIND`                                    |
+| 스터디 | [STUDY](./STUDY.md)                                     | 기수/회차 — 실제 운영 인스턴스     | `STATUS` |
 | 스터디 | [STUDY_GROUP](./STUDY_GROUP.md)                         | 분반 (요일·시간대별)           | —                                    |
 | 스터디 | [STUDY_MEETING](./STUDY_MEETING.md)                     | 회차 (분반의 N번째 모임)        | —                                    |
 | 모집  | [STUDY_RECRUITMENT](./STUDY_RECRUITMENT.md)             | 모집 회차 — 기수의 모집 기간/조건   | —                                    |
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 분반에 소속된 사람        | `STATUS`, `PARTICIPANT_ROLE`         |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
+| 운영  | [STUDY_DISCORD_LINK](./STUDY_DISCORD_LINK.md)           | 스터디 ↔ 디스코드 카테고리·역할 ID  | —                                    |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
 | 반응  | [STUDY_BOOKMARK](./STUDY_BOOKMARK.md)                   | 북마크                    | —                                    |
 | 제안  | [STUDY_PROPOSAL](./STUDY_PROPOSAL.md)                   | "이런 스터디 열어주세요"         | `STATUS`                             |
@@ -386,8 +391,8 @@ ERD 를 바꿨다고 스키마가 바뀌지 않는다 — 구현할 때 마이�
 - **회차 알림 자동화·디스코드 명령어 출석** — 스키마 영향 없음. 봇 쪽 결정.
 
 **해결됨 — 기수(기수)**: 클럽 N기는 새 STUDY_PROGRAM 행이 아니라 별도 테이블
-[STUDY](./STUDY.md) 로 낸다. `STUDY_PROGRAM` 은 `ID`·`TITLE` 만 갖는 identity anchor 이고,
-기수마다 달라지는 모든 속성(`SLUG`·`TITLE`·`ONE_LINE_SUMMARY`·`DESCRIPTION`·`CATEGORY`·
-`STUDY_KIND`·`THUMBNAIL_URL`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT`·`STATUS`·`CURRICULUM`·
-`CAPACITY`·`START_AT`/`END_AT`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`)은
+[STUDY](./STUDY.md) 로 낸다. `STUDY_PROGRAM` 은 `ID`·`TITLE`·`STUDY_KIND` 만 갖는 identity anchor 이고,
+기수마다 달라지는 모든 속성(`TITLE`·`ONE_LINE_SUMMARY`·`DESCRIPTION`·`CATEGORY`·
+`THUMBNAIL_URL`·`STATUS`·`CURRICULUM`·
+`START_AT`/`END_AT`·`DISCORD_CHANNEL_URL`·`DRIVE_URL`)은
 전부 STUDY 로 이동했다.
