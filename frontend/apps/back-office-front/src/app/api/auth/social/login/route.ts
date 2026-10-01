@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 백엔드가 뚫려도 쿠키를 안 심는다. 응답은 백엔드 403 과 같은 모양이라 로그인 화면이 구분 없이 처리한다.
-  if (data.user?.role !== 'ADMIN') {
+  if (data.account?.role !== 'ADMIN') {
     return NextResponse.json(
       { errorCode: 'FORBIDDEN', errorMessage: '백오피스 운영 권한이 없는 계정입니다.' },
       { status: 403 },
