@@ -24,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class AttendanceService {
 
     private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
-    private static final String WITHDRAWN_PARTICIPANT_NAME = "탈퇴한 회원";
+    // WITHDRAWN(중도 하차)은 계정이 멀쩡히 남아 있어 닉네임이 정상 조회된다. 이 기본값은 계정 조회
+    // 자체가 실패할 때만 쓰인다 — 즉 DELETED(회원 탈퇴)인 참가자.
+    private static final String DELETED_ACCOUNT_NICKNAME = "탈퇴한 회원";
 
     private final StudyRepository studyRepository;
     private final StudyGroupRepository studyGroupRepository;
@@ -136,7 +138,7 @@ public class AttendanceService {
             participantAttendances.add(
                     new AttendanceResponse.ParticipantAttendance(
                             p.getId(),
-                            nicknames.getOrDefault(p.getAccountId(), WITHDRAWN_PARTICIPANT_NAME),
+                            nicknames.getOrDefault(p.getAccountId(), DELETED_ACCOUNT_NICKNAME),
                             participantAttendancePerMeeting,
                             AttendanceRateCalculator.rate(numeratorDenominatorPair)));
         }

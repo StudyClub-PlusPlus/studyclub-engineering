@@ -46,8 +46,10 @@ import tools.jackson.databind.node.ObjectNode;
 @RequiredArgsConstructor
 public class AccountDeletionService {
 
-    private static final String MASKED_RECIPIENT_VALUE = "[탈퇴한 계정]";
-    private static final String MASKED_DISCORD_NICKNAME = "[탈퇴한 계정]";
+    // 알림 수신값·신청서 discordNickname 비식별화에 공용으로 쓰는 마스킹 값 — 용도는 다르지만 "탈퇴한
+    // 계정이라 원본을 더는 알 수 없다"는 같은 의미라 하나로 둔다. 따로 선언하면 나중에 문구를 바꿀 때
+    // 한쪽만 고칠 위험이 있다.
+    private static final String MASKED_PLACEHOLDER = "[탈퇴한 계정]";
     private static final String EMPTY_FORM_ANSWER = "{}";
 
     private final AccountRepository accountRepository;
@@ -147,7 +149,7 @@ public class AccountDeletionService {
             JsonNode outer = objectMapper.readTree(formAnswerJson);
             JsonNode actual = outer.isTextual() ? objectMapper.readTree(outer.asText()) : outer;
             if (actual instanceof ObjectNode objectNode) {
-                objectNode.put("discordNickname", MASKED_DISCORD_NICKNAME);
+                objectNode.put("discordNickname", MASKED_PLACEHOLDER);
                 return objectNode.toString();
             }
         } catch (JacksonException e) {
@@ -161,7 +163,7 @@ public class AccountDeletionService {
         List<Notification> notifications =
                 notificationRepository.findByRecipientUserIdForUpdate(accountId);
         for (Notification notification : notifications) {
-            notification.redactPii(MASKED_RECIPIENT_VALUE);
+            notification.redactPii(MASKED_PLACEHOLDER);
             // PENDING 은 아직 발송 시도 전이라 취소한다 — PROCESSING 은 이미 시도 중이라 끼어들지 않는다.
             if (notification.getStatus() == NotificationStatus.PENDING) {
                 notification.cancel();
