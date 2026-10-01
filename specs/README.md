@@ -15,6 +15,7 @@
 | 알림 | [notification/](./notification/) | 스펙작성중 | 이벤트 기반 알림 발송 (첫 구현: 회원가입 웰컴메일) |
 | 내 스터디 | [my-studies/](./my-studies/) | 구현완료 | `GET /api/me/studies` — 명부 스터디 + 회차별 내 출석. 기획: [내 스터디](../planning/stories/crew-joined-studies/PRD.md) |
 | 회원 탈퇴 | [user-leave/](./user-leave/) | 스펙작성중 | `DELETE /api/me` — 계정 즉시 삭제, 데이터 파기·보존 정책 |
+| 백오피스 회원 | [admin-accounts/](./admin-accounts/) | 스펙작성중 | `GET /api/admin/accounts` 회원 목록 · `PATCH /api/admin/accounts/{id}/role` 계정 권한 변경 · `GET /api/admin/role-permissions` 권한표. 기획: [회원 목록](../planning/stories/captain-list-users/PRD.md) · [역할 부여](../planning/stories/captain-grant-roles/PRD.md) |
 
 ## 도메인 외 스펙
 
