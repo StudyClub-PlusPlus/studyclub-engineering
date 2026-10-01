@@ -14,6 +14,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(
@@ -40,5 +42,6 @@ public class StudyApplication extends BaseEntity {
     private Long recruitmentId;
 
     @Column(name = "FORM_ANSWER", nullable = false, columnDefinition = "json")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String formAnswer;
 }

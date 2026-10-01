@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface StudyApplicationRepository extends JpaRepository<StudyApplication, Long> {
 
+    boolean existsByRecruitmentIdAndAccountId(Long recruitmentId, Long accountId);
+
     @Query(
             "SELECT new com.studyclub.domain.application.StudyApplicationWithAccount("
                     + "application.id, application.recruitmentId, application.accountId, "

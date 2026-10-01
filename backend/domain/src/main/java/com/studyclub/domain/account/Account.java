@@ -1,5 +1,7 @@
 package com.studyclub.domain.account;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -70,6 +72,9 @@ public class Account extends BaseEntity {
     @Column(name = "DISCORD_HANDLE", length = 64)
     private String discordHandle;
 
+    @Column(name = "DISCORD_NICKNAME", length = 100)
+    private String discordNickname;
+
     /** NULL 이면 온보딩 미완료. */
     @Column(name = "ONBOARDING_COMPLETED_AT")
     private Instant onboardingCompletedAt;
@@ -129,6 +134,19 @@ public class Account extends BaseEntity {
 
     public String getDiscordHandle() {
         return discordHandle;
+    }
+
+    public String getDiscordNickname() {
+        return discordNickname;
+    }
+
+    public void changeDiscordNickname(String discordNickname) {
+        if (discordNickname == null
+                || discordNickname.isBlank()
+                || discordNickname.length() > 100) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "discordNickname: invalid");
+        }
+        this.discordNickname = discordNickname;
     }
 
     public Instant getOnboardingCompletedAt() {
