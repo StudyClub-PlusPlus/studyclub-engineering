@@ -33,7 +33,7 @@ flowchart LR
 **무엇을 만드는지부터 받고 날짜를 마지막에 받는다** — 제목을 쓰기 전에 마감일을 묻는 것은 아직
 정하지 않은 것을 먼저 묻는 일이다.
 
-![스터디 등록 모달](assets/study-create-form.png)
+![스터디 등록 모달](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/study-create/assets/study-create-form.png)
 
 ### 1 — 모달 전체
 - **내용**: 제목 「스터디 등록」. 부제 없음
@@ -119,7 +119,7 @@ flowchart LR
 
 ### 목록에서 보이는 모습
 
-![스터디 목록 — 카테고리 열](assets/study-list-category.png)
+![스터디 목록 — 카테고리 열](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/study-create/assets/study-list-category.png)
 
 ### 상태별 화면
 
