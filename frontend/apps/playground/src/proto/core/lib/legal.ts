@@ -75,7 +75,7 @@ const CH4 = { ko: '제4장 책임 및 기타' };
 
 export const TERMS: LegalDocument = {
   title: { ko: '이용약관', en: 'Terms of Service' },
-  updatedAt: '2026-09-10',
+  updatedAt: '2026-10-01',
   intro: [p('스터디클럽++ 서비스 이용약관'), ul('시행일: 2026년 9월 1일')],
   sections: [
     {
@@ -335,7 +335,7 @@ export const TERMS: LegalDocument = {
 
 export const PRIVACY: LegalDocument = {
   title: { ko: '개인정보 처리방침', en: 'Privacy Policy' },
-  updatedAt: '2026-09-10',
+  updatedAt: '2026-10-01',
   intro: [
     p(
       '스터디클럽++(이하 "클럽")은 「개인정보 보호법」 제30조에 따라 정보주체의 개인정보를 보호하고 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 하기 위하여 다음과 같이 개인정보 처리방침을 수립·공개합니다.',
@@ -501,7 +501,7 @@ export const PRIVACY: LegalDocument = {
               'The Constant Company, LLC (Vultr) / legal@vultr.com',
               '일본',
               '서비스 이용 시점에 정보통신망을 통한 전송',
-              '제2조의 수집 항목 전체 (구글 계정 고유식별자·이메일 주소·이름·프로필 이미지, 거주 지역, 디스코드 계정 식별자 및 사용자명, 스터디 참여·참석 기록, 접속 기록)',
+              '제2조의 수집 항목 전체 (구글 계정 고유식별자·이메일 주소·이름, 거주 지역, 디스코드 계정 식별자 및 사용자명, 스터디 참여·참석 기록, 접속 기록)',
               '서버 운영 및 데이터 보관',
               '위탁계약 종료 시까지',
               '「개인정보 보호법」 제28조의8 제1항 제3호 가목 (계약의 이행을 위한 처리위탁·보관)',
