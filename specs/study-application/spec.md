@@ -563,7 +563,6 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 - [NEEDS CLARIFICATION] `FORM_ANSWER` JSON 유지 vs `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 정규화 — ERD README 와 같음. 이 스펙은 JSON 으로 구현한다
 - [NEEDS CLARIFICATION] 유효값 오류의 필드별 `fields` 응답 계약 — 현재는 공통 `{ errorCode, errorMessage }` 형식을 유지한다. [`share/2026-09-30-application-validation-error-fields.md`](../../share/2026-09-30-application-validation-error-fields.md)
-- [NEEDS CLARIFICATION] `RECRUIT_DEADLINE`이 null인 모집을 열림으로 볼지 — 현재는 마감일 없는 상시 모집으로 취급한다. [`share/2026-09-30-null-recruit-deadline.md`](../../share/2026-09-30-null-recruit-deadline.md)
 - [NEEDS CLARIFICATION] 정원의 저장 위치와 집계 기준 — 현재는 `STUDY.CAPACITY`와 활성·일시중지 명부 인원을 사용한다. [`share/2026-09-27-study-capacity-column.md`](../../share/2026-09-27-study-capacity-column.md)
 - [NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간
 - [NEEDS CLARIFICATION] `STUDY_APPLICATION` 생성시각 컬럼. 없으면 `applications/me.submittedAt` 은 null

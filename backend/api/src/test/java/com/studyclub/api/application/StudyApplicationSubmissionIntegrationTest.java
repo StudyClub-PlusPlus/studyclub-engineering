@@ -247,6 +247,24 @@ class StudyApplicationSubmissionIntegrationTest {
         assertThat(applicationCount()).isZero();
     }
 
+    @Test
+    @DisplayName("실패 - 모집 마감일이 없는 옛 데이터에는 신청할 수 없다")
+    void rejectsRecruitmentWithoutDeadline() {
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = NULL WHERE ID = ?",
+                RECRUITMENT_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorMessage", "모집이 마감되었습니다.");
+        assertThat(applicationCount()).isZero();
+    }
+
     private Map<String, Object> validRequest() {
         return Map.of(
                 "discordNickname",
