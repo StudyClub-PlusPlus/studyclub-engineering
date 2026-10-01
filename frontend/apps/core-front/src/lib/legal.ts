@@ -75,7 +75,7 @@ const CH4 = { ko: '제4장 책임 및 기타' };
 
 export const TERMS: LegalDocument = {
   title: { ko: '이용약관', en: 'Terms of Service' },
-  updatedAt: '2026-10-01',
+  updatedAt: '2026-09-10',
   intro: [p('스터디클럽++ 서비스 이용약관'), ul('시행일: 2026년 9월 1일')],
   sections: [
     {
@@ -335,7 +335,7 @@ export const TERMS: LegalDocument = {
 
 export const PRIVACY: LegalDocument = {
   title: { ko: '개인정보 처리방침', en: 'Privacy Policy' },
-  updatedAt: '2026-10-01',
+  updatedAt: '2026-09-10',
   intro: [
     p(
       '스터디클럽++(이하 "클럽")은 「개인정보 보호법」 제30조에 따라 정보주체의 개인정보를 보호하고 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 하기 위하여 다음과 같이 개인정보 처리방침을 수립·공개합니다.',
