@@ -124,7 +124,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| PATCH | `/api/admin/accounts/{accountId}/role` — [spec](../../../specs/admin-accounts/spec.md#계정-권한-변경) | 캡틴 |
+| PATCH | 계정 권한 변경 — `/api/admin` 아래, 미정 | 캡틴 |
 
 ### 권한
 
@@ -136,6 +136,6 @@ erDiagram
 
 ## 4. 미확정
 
-- ~~권한 변경 API 경로와 스펙 위치~~ → [specs/admin-accounts](../../../specs/admin-accounts/spec.md)
-- ~~백엔드 Role 이름과 화면 이름의 매핑~~ → 코드·ERD 모두 `SystemRole { MEMBER, ADMIN }`. 매핑은 [spec 「먼저 읽을 것」](../../../specs/admin-accounts/spec.md#먼저-읽을-것--용어와-저장-값)
+- 권한 변경 API 경로와 스펙 위치
+- 백엔드 Role 이름과 화면 이름의 매핑 — 코드의 `STUDENT/OPERATOR/ADMIN` 과 ERD 의 `MEMBER/ADMIN` 이 다르다
 - 권한 변경 이력(누가 언제 바꿨는지)을 남길지

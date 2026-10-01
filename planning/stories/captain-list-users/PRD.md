@@ -112,7 +112,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/admin/accounts` — [spec](../../../specs/admin-accounts/spec.md#회원-목록-조회) | 캡틴 |
+| GET | 회원 목록 — `/api/admin` 아래, 미정 | 캡틴 |
 
 ### 권한
 
@@ -129,5 +129,5 @@ erDiagram
 
 ## 4. 미확정
 
-- ~~회원 목록 API 경로와 스펙 위치~~ → [specs/admin-accounts](../../../specs/admin-accounts/spec.md)
+- 회원 목록 API 경로와 스펙 위치
 - 이름 칸에 닉네임을 쓸지 Google 이름을 쓸지
