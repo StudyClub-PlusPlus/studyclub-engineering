@@ -6,7 +6,7 @@
 <!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
 | prefix | next |
 |---|---|
-| ST | 1 |
+| ST | 2 |
 | EP | 1 |
 | FN | 1 |
 | IA | 1 |
@@ -27,3 +27,4 @@
 
 | ID | 정규문장 | Actor | PRD | 프로토 | 상태 | 비고 |
 |---|---|---|---|---|---|---|
+| ST-001 | 캡틴은 스터디를 등록할 수 있다. | 캡틴 | [PRD](../stories/study-create/PRD.md) | [콘솔 › 스터디](https://playground.studyclub-plusplus.com/proto/console/studies) | | |
