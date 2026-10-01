@@ -153,7 +153,11 @@ def _names(ids: list[str], names_by_id: dict[str, str]) -> str:
 def register(bot: commands.Bot, settings) -> None:
     """Attach ``!출석체크`` to ``bot``."""
 
-    @bot.command(name=COMMAND_NAME)
+    @bot.command(
+        name=COMMAND_NAME,
+        help="지금 공부방에 들어와 있는 사람 전원의 출석을 찍습니다. 반장 전용.\n"
+        "공부방(음성 채널)의 채팅에서 쳐야 합니다 — 공부방을 열면 오른쪽에 채팅창이 있습니다.",
+    )
     async def attendance(ctx: commands.Context) -> None:
         silent = discord.AllowedMentions.none()
 

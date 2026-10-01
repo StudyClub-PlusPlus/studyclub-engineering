@@ -115,7 +115,11 @@ def register(bot: commands.Bot, settings: Settings) -> None:
     """
     log = VoiceActivityLog(settings.db_path)
 
-    @bot.command(name="checkVoiceChannels")
+    @bot.command(
+        name="checkVoiceChannels",
+        help="공부방마다 마지막으로 사람이 있었던 날짜를 보여줍니다. captain 전용.\n"
+        "3주 넘게 조용한 공부방은 봇이 알아서 알려주니, 이건 전체를 한눈에 볼 때 씁니다.",
+    )
     async def check_voice_channels_command(
         ctx: commands.Context,
     ) -> None:  # pragma: no cover - thin wrapper

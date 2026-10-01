@@ -181,7 +181,7 @@ class _FakeBot:
     def __init__(self):
         self.callback = None
 
-    def command(self, name):
+    def command(self, name, **kwargs):
         def decorator(func):
             self.callback = func
             return func

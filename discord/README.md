@@ -205,8 +205,11 @@ here, or the rule is only true by accident.
 | Exception | Why | To close it |
 |-----------|-----|-------------|
 | `!help` | discord.py registers it, not us, so the gate never runs for it. It answers in any channel, listing only the commands above — it leaks nothing. | pass `help_command=None` to `commands.Bot(...)` in `app/bot/client.py` |
+| `!출석체크` | the voice channel it is typed in *is* the input — members, study id, and audience all come from it. See [출석체크](#출석체크). | by design; not closable |
 
-`!출석체크` — mark everyone in the study's voice room present (contract:
+### 출석체크
+
+Mark everyone in the study's voice room present (contract:
 `specs/discord-attendance/spec.md`). It is answered **only inside a voice
 channel's own chat**, so one channel decides everything: its connected members
 are the snapshot, its category is the study id, and the reply lands where those

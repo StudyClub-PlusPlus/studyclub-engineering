@@ -15,7 +15,16 @@ def create_bot(settings: Settings) -> commands.Bot:
     intents = discord.Intents.default()
     intents.message_content = True
 
-    bot = commands.Bot(command_prefix=settings.command_prefix, intents=intents)
+    # Without ``help_command`` discord.py files every command under "No
+    # Category" and describes ``!help`` in English, which is what members read.
+    bot = commands.Bot(
+        command_prefix=settings.command_prefix,
+        intents=intents,
+        help_command=commands.DefaultHelpCommand(
+            no_category="명령어",
+            command_attrs={"help": "이 도움말을 보여줍니다."},
+        ),
+    )
     # Every command below gates itself on DISCORD_BOT_CHANNEL_ID through
     # app.bot.commands.command_channel; none of them is an exception.
     test_cmd.register(bot, settings)
