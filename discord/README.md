@@ -17,6 +17,7 @@ app/
     headers.py         # common request headers (X-API-Key, X-Discord-User-ID, Idempotency-Key)
     guild.py           # resolves the caller in the guild and checks their role
   study_reservations.py  # SQLite study-name reservations for create-study
+  backend_client.py      # the one place that calls OUT, to the StudyClub backend
   voice_activity_log.py  # SQLite last join/leave date per voice channel
   bot/
     client.py            # Discord bot factory
@@ -26,6 +27,7 @@ app/
     commands/test_cmd.py           # testCmd command
     commands/bulletin_cmd.py       # updateBulletin command
     commands/voice_monitor_cmd.py  # checkVoiceChannels command
+    commands/attendance_cmd.py  # !출석체크 command
 tests/                 # pytest unit tests
 ```
 
@@ -43,6 +45,12 @@ tests/                 # pytest unit tests
   that same refusal; the service always starts either way. It is read once at
   startup, so changing it means `docker compose up -d discord`
   (a restart alone will not re-read `.env`).
+- **Calling the backend** — `!출석체크` is the only thing here that calls *out*.
+  It reads `API_BASE_URL` (the same key the frontends use; `docker-compose.yml`
+  overrides it to the internal `http://api:8080` for this service too) and
+  sends `DISCORD_API_KEY` as `X-API-Key`. That one key serves both directions:
+  Spring reads it as `discord.api-key` for the calls coming the other way.
+  With either unset the command refuses and says so; nothing else is affected.
   `command_prefix` and `log_level` are fixed per deployment — change
   their defaults in `app/config.py`. The API binds `0.0.0.0:4800` (fixed to
   match the container).
@@ -198,6 +206,21 @@ here, or the rule is only true by accident.
 |-----------|-----|-------------|
 | `!help` | discord.py registers it, not us, so the gate never runs for it. It answers in any channel, listing only the commands above — it leaks nothing. | pass `help_command=None` to `commands.Bot(...)` in `app/bot/client.py` |
 
+`!출석체크` — mark everyone in the study's voice room present (contract:
+`specs/discord-attendance/spec.md`). It is answered **only inside a voice
+channel's own chat**, so one channel decides everything: its connected members
+are the snapshot, its category is the study id, and the reply lands where those
+same people read it. Run from a lobby instead, a captain sitting in another
+study's room would have that study's roster posted here. Bots in the room are
+dropped, and the reply names people without mentioning them.
+
+The bot only collects and reports. Which meeting, which group, and what not to
+overwrite are decided by the backend, because the timestamps that decide them
+live there.
+
+Needs `API_BASE_URL` and `DISCORD_API_KEY`, and a `STUDY_DISCORD_LINK` row for
+the category — study registration creates it (#145); without it the backend
+answers `404` and the bot says the study is not connected yet.
 
 ## Voice channel bulletin
 

@@ -286,7 +286,7 @@ class StudyUpdateIntegrationTest {
         Map<String, Object> body =
                 Map.of("title", title, "oneLineSummary", oneLineSummary, "category", category);
         var response =
-                rest.postForEntity("/api/studies", authenticated(ADMIN_ID, body), Void.class);
+                rest.postForEntity("/api/admin/studies", authenticated(ADMIN_ID, body), Void.class);
         String path = response.getHeaders().getLocation().getPath();
         return Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
     }

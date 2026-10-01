@@ -1,6 +1,7 @@
 # 명부 · 출석 API Spec
 
 > ERD: [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md)
+> Story PRD: [출석명부](../../planning/stories/captain-view-attendance-roster/PRD.md) · [네비게이터 출석 수정](../../planning/stories/navigator-edit-attendance/PRD.md) · [대시보드 출석률](../../planning/stories/captain-view-dashboard/PRD.md)
 > 생성일: 2026-09-15
 > 상태: 스펙확정
 
@@ -164,12 +165,11 @@ STUDY_ATTENDANCE {
   분모 = 0이면 null ("–")
   else Σ(가중치) / countable_meetings
 
-가중치: PRESENT=1.0, LATE=0.5, ABSENT=0
+가중치: PRESENT=1.0, EXCUSED=1.0, LATE=0.5, ABSENT=0
 countable_meetings = 스터디의 미팅 중
   scheduled_at <= now()
   AND scheduled_at >= participant.joined_at
   AND participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED')
-  AND 해당 미팅의 STUDY_ATTENDANCE.status != 'EXCUSED'   // 분모에서도 제외
 
 스터디 평균 = 분모 0인 참가자는 제외하고 Σ(개인 분자) / Σ(개인 분모)   // 가중평균
 ```

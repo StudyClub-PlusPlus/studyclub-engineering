@@ -202,8 +202,8 @@ class AttendanceRateCalculatorTest {
         }
 
         @Test
-        @DisplayName("EXCUSED_출석은_분자와_분모_모두_제외된다")
-        void EXCUSED_출석은_분자와_분모_모두_제외된다() {
+        @DisplayName("EXCUSED_출석은_분자1_분모1로_출석처리된다")
+        void EXCUSED_출석은_분자1_분모1로_출석처리된다() {
             var participant = participant(ParticipantStatus.ACTIVE);
             var meeting = pastMeeting(1L);
             var att = attendance(AttendanceStatus.EXCUSED);
@@ -212,8 +212,8 @@ class AttendanceRateCalculatorTest {
                     AttendanceRateCalculator.components(
                             participant, List.of(meeting), Map.of(1L, att), NOW);
 
-            assertThat(result[0]).isZero();
-            assertThat(result[1]).isZero();
+            assertThat(result[0]).isEqualTo(1.0);
+            assertThat(result[1]).isEqualTo(1);
         }
 
         @Test
@@ -229,8 +229,8 @@ class AttendanceRateCalculatorTest {
         }
 
         @Test
-        @DisplayName("모든_미팅이_EXCUSED이면_분모0_율null")
-        void 모든_미팅이_EXCUSED이면_분모0_율null() {
+        @DisplayName("모든_미팅이_EXCUSED이면_분모2_분자2_율1점0")
+        void 모든_미팅이_EXCUSED이면_분모2_분자2_율1점0() {
             var participant = participant(ParticipantStatus.ACTIVE);
             var m1 = pastMeeting(1L);
             var m2 = pastMeeting(2L);
@@ -244,8 +244,8 @@ class AttendanceRateCalculatorTest {
                                     2L, attendance(AttendanceStatus.EXCUSED)),
                             NOW);
 
-            assertThat(result[0]).isZero();
-            assertThat(result[1]).isZero();
+            assertThat(result[0]).isEqualTo(2.0);
+            assertThat(result[1]).isEqualTo(2);
         }
 
         @Test

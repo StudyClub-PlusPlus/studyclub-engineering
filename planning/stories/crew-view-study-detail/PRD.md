@@ -43,7 +43,7 @@ flowchart LR
 
 - **내용**
   - 모집 중이고 마감일이 있으면 `모집중 (D-N)`. 마감 당일은 `모집중 (D-DAY)`
-  - 마감일이 없으면 `상시 모집`
+  - 마감일이 없으면 `모집중 (미정)` — 상시 모집은 폐지했다. 마감일이 필수라 이 경우는 옛 데이터뿐이다 ([crew-browse-studies](../crew-browse-studies/PRD.md)와 같은 문구)
   - 진행 중이면 `진행중`
   - 모집이 끝났으면 `모집 마감`
 - **정책**
@@ -89,7 +89,7 @@ flowchart LR
 - **내용**: `시작 예정일 {날짜}`. 값이 없으면 `시작 예정일 미정`
 - **정책**
   - 표시 값은 `studyStartValue(study, locale)` 한 곳이다. 목록과 여기서 따로 계산하지 않는다
-  - 모집 마감일은 여기 두지 않는다. 모집 상태(2)가 이미 `D-N`·`상시 모집`·`모집 마감`으로 말한다
+  - 모집 마감일은 여기 두지 않는다. 모집 상태(2)가 이미 `D-N`·`모집 마감`으로 말한다
 - **데이터**: `study.start_at`
 
 ### 9. 신청
@@ -101,7 +101,7 @@ flowchart LR
 - **동작**: `신청하기`만 누를 수 있다. 누르면 신청 흐름이 시작된다
 - **정책**
   - 마감일 판정은 `recruitState(study)`다. `status`가 모집 중이 아니거나, 마감일이 지났거나, 모집을 닫았으면 마감이다
-  - 마감일이 없으면 상시 모집이다. `신청하기`를 보여 준다
+  - 마감일이 없는 옛 데이터는 모집 중으로 본다. `신청하기`를 보여 준다 (상시 모집은 폐지 — 새 스터디는 마감일이 필수다)
   - `신청 완료`와 `모집 마감`은 누르지 못한다
   - 누른 뒤의 로그인·디스코드·폼은 [crew-submit-application](../crew-submit-application/PRD.md)이 정한다
 - **데이터**: `recruitState(study)`, 이 스터디의 신청 여부
@@ -130,19 +130,18 @@ erDiagram
     string DESCRIPTION
     string CATEGORY
     string SCHEDULE
-    string STATUS
+    string STATUS "DRAFT OPEN ONGOING ENDED CLOSED"
     datetime START_AT
-    boolean IS_HIDDEN
   }
   STUDY_RECRUITMENT {
-    datetime RECRUIT_DEADLINE_AT "null이면 상시 모집"
+    datetime RECRUIT_DEADLINE_AT "필수 (상시 모집 없음)"
   }
 ```
 
 ### 비고
 
 - 범위 밖: 신청 폼 작성·제출, 찜, 목표·주제·대상·주차 커리큘럼·멤버·후기·통계·정원
-- 미구현: 프로토 조회는 목 데이터다. 화면은 아직 `GET /api/studies/{studyId}`를 호출하지 않는다
+- 구현완료(2026-09-30): `StudyDetailView` 클라이언트 컴포넌트가 `useStudyDetail` 훅을 통해 `GET /api/studies/{studyId}`를 직접 호출한다. 개발 환경은 MSW가 인터셉트, 프로덕션은 실 API로 동작. 404·500 상태에 대응하는 오류 화면도 클라이언트 단에서 처리한다
 
 ## 3. 시스템 요건
 
@@ -154,13 +153,13 @@ erDiagram
 | 스터디 | SLUG | 저장용 식별자. 상세 경로·조회 키로 쓰지 않는다 |
 | 스터디 | TITLE, ONE_LINE_SUMMARY, DESCRIPTION, CATEGORY, SCHEDULE, STATUS, START_AT | 화면에 읽는 값 |
 | 스터디 | IS_HIDDEN, PUBLISH_AT, STATUS | 공개가 아니면 상세를 열지 않는다 |
-| 모집 | RECRUIT_DEADLINE_AT | null이면 상시 모집. 지나면 마감 |
+| 모집 | RECRUIT_DEADLINE_AT | 필수 — 상시 모집은 없다. 지나면 마감. null 은 옛 데이터뿐이며 모집 중으로 본다 |
 
 ### 처리
 
 - 조회 키는 `STUDY.ID`다. `SLUG`와 비교하지 않는다
 - 키가 정수가 아니면 상세를 열지 않는다
-- 그 ID의 스터디가 없거나, 숨김이거나, 공개 전(`STATUS=DRAFT` 또는 공개일 미도래)이면 상세를 열지 않는다
+- 그 ID의 스터디가 없거나 `STATUS = DRAFT`이면 상세를 열지 않는다
 - 목록·내 스터디·참여 중·찜의 상세 링크도 같은 ID를 쓴다
 
 ### 계산 규칙 (단일 정의)

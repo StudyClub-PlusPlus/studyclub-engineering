@@ -30,6 +30,6 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // /login, /api/*, _next 정적, 파비콘 등은 게이트 제외
-  matcher: ['/((?!login|api|_next/static|_next/image|favicon.ico|icon.svg).*)'],
+  // login, api, _next 정적 자원, 그리고 확장자가 있는 모든 정적 파일(mockServiceWorker.js, favicon.ico 등)은 게이트 제외
+  matcher: ['/((?!login|api|_next/|.*\\..*).*)'],
 };

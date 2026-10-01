@@ -65,6 +65,7 @@ jobs:
             source ~/.bashrc
             bash ./deployment/studyclub/storybook-stage.sh
       - uses: act10ns/slack@v1
+        continue-on-error: true
         with:
           status: ${{ job.status }}
           steps: ${{ toJson(steps) }}

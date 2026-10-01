@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 
 from app.bot import bulletin, voice_monitor
-from app.bot.commands import bulletin_cmd, test_cmd, voice_monitor_cmd
+from app.bot.commands import attendance_cmd, bulletin_cmd, test_cmd, voice_monitor_cmd
 from app.config import Settings
 
 
@@ -27,4 +27,5 @@ def create_bot(settings: Settings) -> commands.Bot:
     # hooked onto ``setup_hook`` the same way the bulletin refresh is.
     voice_monitor.register(bot, settings)
     voice_monitor_cmd.register(bot, settings)
+    attendance_cmd.register(bot, settings)
     return bot

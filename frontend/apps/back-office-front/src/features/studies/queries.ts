@@ -25,9 +25,13 @@ export const studyKeys = {
 };
 
 /**
- * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 백오피스 전용 목록 API 는
- * 다른 담당자가 개발 예정이라 **사용자 사이트용 목록 API** 를 그대로 쓴다.
- * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외). 전용 API 가 생기면 이 경로만 바꾼다.
+ * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 목록은 아직 **사용자 사이트용 목록 API** 를 쓴다.
+ * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외).
+ * `GET /api/admin/studies` 가 status·페이지·total 을 지원하므로 교체할 수 있다 (PR #146 로 구현 완료).
+ * 전환 시 `fetchStudies`·`toRow` 와 함께 ApiStudySummary 타입도
+ * BackofficeStudyListResponse.StudySummary 에 맞게 바꾼다:
+ * status(5단계)·recruitmentCapacity·recruitmentStartAt·hasApplicationForm 추가,
+ * slug·phase·currentApplicants·closingSoon 제거.
  */
 function fetchStudies(filter: StudyFilter): Promise<ApiStudyPage> {
   return http<ApiStudyPage>(
@@ -49,24 +53,25 @@ export function useStudies(filter: StudyFilter) {
 }
 
 /**
- * 상세·수정·삭제는 `/api/studies/{id}` 를 그대로 쓴다. 권한은 서버가 나눈다 — 수정은 캡틴·네비게이터,
- * 삭제는 캡틴만. 같은 로직을 `/api/admin` 에 한 벌 더 두지 않는다.
+ * 상세·수정·삭제는 백오피스 경로(`/api/admin/studies/{id}`)를 쓴다 — 캡틴만 통과하고, 상세는 DRAFT 도 보인다.
+ * 사용자 사이트(`/api/studies/{id}`)는 네비게이터용 상세·수정을 따로 받는다. 서버 로직은 같다.
  */
 export function useStudyDetail(studyId: number) {
   return useQuery({
     queryKey: studyKeys.detail(studyId),
-    queryFn: () => http<ApiStudyDetail>(`/api/studies/${studyId}`),
+    queryFn: () => http<ApiStudyDetail>(`/api/admin/studies/${studyId}`),
     retry: false,
   });
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+/** TODO(api): PATCH /api/studies/{studyId} */
 export function useUpdateStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: StudyUpdatePayload) =>
-      http<null>(`/api/studies/${studyId}`, {
+      http<null>(`/api/admin/studies/${studyId}`, {
         method: 'PATCH',
         headers: JSON_HEADERS,
         body: JSON.stringify(payload),
@@ -76,10 +81,11 @@ export function useUpdateStudy(studyId: number) {
   });
 }
 
+/** TODO(api): DELETE /api/studies/{studyId} */
 export function useDeleteStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => http<null>(`/api/studies/${studyId}`, { method: 'DELETE' }),
+    mutationFn: () => http<null>(`/api/admin/studies/${studyId}`, { method: 'DELETE' }),
     onSuccess: () => {
       // 지워진 상세를 다시 불러오면 404 다 — 무효화하지 않고 캐시에서 뺀다
       queryClient.removeQueries({ queryKey: studyKeys.detail(studyId) });

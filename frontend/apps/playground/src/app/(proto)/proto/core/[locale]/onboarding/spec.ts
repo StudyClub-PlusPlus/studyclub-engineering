@@ -7,7 +7,7 @@ export const SPEC: ScreenSpec = {
     '개발 계약: specs/user-onboarding/spec.md. 실제 코드 확인 기준: beta 3622c4c.',
     '이 화면은 playground 전용이다. 실제 Google 인증·회원 저장·동의 저장·메일 발송은 하지 않는다. 작성 중 입력은 sessionStorage에 보관하고 완료/초기화 시 지운다. 완료한 예시 프로필은 기존 미리보기 세션처럼 localStorage에 저장한다.',
     '한국어·영어 UI를 제공한다. 약관 원문은 기존 lib/legal.ts의 한국어 문안을 공유한다. 영문 약관은 아직 없어 별도 안내하며 임의 번역하지 않는다.',
-    '현재 로그인 응답은 user.name과 최상위 suggestedNickname. 명세의 account.nickname으로 바꾸는 작업은 별도 연동 사항. core-front의 로그인 중계에서도 suggestedNickname 전달이 필요하다.',
+    '로그인 응답은 account.nickname과 최상위 suggestedNickname. core-front 로그인 중계도 suggestedNickname을 전달한다.',
     '상단 검토 도구에서 빈 값·닉네임 형식·중복·서버 오류·세션 만료·제출 중을 볼 수 있다. 중복 예시 닉네임은 studyclub. 오류 예시는 이전 제출이 실패한 상태에서 시작한다.',
     '실서비스에서는 기존 회원이 온보딩을 건너뛴다. 이 미리보기에서 ?scenario=default를 붙이면 완료 여부와 관계없이 새 가입 화면을 검토한다.',
   ],

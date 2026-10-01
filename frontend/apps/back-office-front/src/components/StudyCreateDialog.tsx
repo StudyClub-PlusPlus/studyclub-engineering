@@ -18,7 +18,7 @@ import {
  * 폼 본체는 `StudyForm` 이며 **정보 탭이 같은 것을 쓴다.** 등록과 수정에서 보이는 칸이 달라지면
  * 운영자가 화면마다 다른 것을 외워야 한다.
  *
- * TODO(api): POST /api/studies — 아직 화면 상태로만 처리한다.
+ * TODO(api): POST /api/admin/studies — 아직 화면 상태로만 처리한다.
  */
 export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [form, setForm] = useState<StudyFormValues>(EMPTY_FORM);

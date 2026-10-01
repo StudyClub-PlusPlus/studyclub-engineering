@@ -119,6 +119,9 @@ services:
     container_name: studyclub-discord
     build: ./discord
     env_file: ./.env
+    environment:
+      # 컨테이너 안에서는 호스트 포트가 아니라 내부 주소다 (frontend 와 같은 이유).
+      API_BASE_URL: http://api:8080
     ports:
       - "${DISCORD_PORT:-24800}:4800"
     # create-study 의 스터디 이름 예약(SQLite, /app/data/discord.sqlite3)이 컨테이너 재생성 후에도 남도록.

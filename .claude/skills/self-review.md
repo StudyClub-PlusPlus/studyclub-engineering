@@ -145,7 +145,7 @@ Codex 가 있으면:
 | 도메인 | 항목 | 상태 | 조치 |
 |--------|------|------|------|
 | study | URL 일치 | ✅ | — |
-| study | DTO 필드 | ⚠️ slug 누락 | spec.md 에서 slug 제거 (FE 미사용) |
+| study | DTO 필드 | ⚠️ thumbnailUrl 누락 | spec.md 에서 thumbnailUrl 제거 (FE 미사용) |
 ```
 
 ### 5단계: 리뷰 파일 합산

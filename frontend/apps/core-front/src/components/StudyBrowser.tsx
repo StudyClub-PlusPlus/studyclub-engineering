@@ -98,7 +98,7 @@ export function StudyBrowser({
   locale,
   leads,
 }: {
-  studies: Study[];
+  studies?: Study[];
   locale: Locale;
   leads: Record<string, Operator>;
 }) {
@@ -117,7 +117,7 @@ export function StudyBrowser({
   // 첫 화면은 서버가 기본 조건으로 받아 뒀다(initial) — 같은 조건이면 다시 부르지 않는다.
   // 늦게 온 이전 응답이 새 결과를 덮는 문제는 쿼리 키가 조건별로 갈려 생기지 않는다.
   const { data, isFetching, isError } = useStudies(search, initial);
-  const studies = data ?? initial;
+  const studies = data ?? initial ?? [];
   const loading = isFetching;
   const failed = isError;
 
@@ -167,18 +167,15 @@ export function StudyBrowser({
               onChange={setTimezone}
             />
           </div>
-          <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 sm:ml-auto sm:w-[312px]'>
-            <Search
-              size={15}
-              className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder'
-            />
+          <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 transition-[width] duration-200 sm:ml-auto sm:w-[200px] sm:focus-within:w-[312px]'>
             <input
+              role='searchbox'
               type='text'
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
               placeholder={m('filter.search_studies', locale)}
-              className='h-9 min-w-0 flex-1 bg-transparent pl-9 pr-2 text-sm outline-none'
+              className='h-9 min-w-0 flex-1 bg-transparent pl-3 pr-2 text-sm outline-none'
             />
             {(input || hasQuery) && (
               <button

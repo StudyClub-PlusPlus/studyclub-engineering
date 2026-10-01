@@ -17,7 +17,7 @@
 ## 이게 뭐
 
 StudyClub++ 스터디 클럽 서비스. **frontend**(사용자향 core-front + 운영자향 back-office-front) + **backend**(Spring Boot 멀티모듈).
-프론트는 현재 **하드코딩/mock 데이터**로 동작 (백엔드 API 붙으면 교체). 백엔드는 기본 스캐폴드 단계.
+프론트는 현재 **MSW Mock API 및 mock 데이터**로 동작 (백엔드 API 붙으면 교체). 백엔드는 기본 스캐폴드 단계.
 
 ## 구조 (monorepo)
 
@@ -26,11 +26,64 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
   apps/
     core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
     back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
-  packages/mock          # 하드코딩 mock 데이터 + 공유 타입
-planning/stories/        # Story PRD — planning/stories/{slug}/PRD.md
+  packages/mock          # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티
+planning/stories/        # Story PRD — planning/stories/{story-name}/PRD.md
 specs/                   # API 스펙 — specs/{도메인}/spec.md
 backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
+```
+
+### packages/mock 상세 구조
+
+```
+frontend/packages/mock/
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── index.ts                     # 패키지 최상위 진입점 (types, data re-export)
+    ├── types.ts                     # 하위 호환성을 위한 types, constants, utils 통합 export
+    │
+    ├── constants/                   # 상수 정의
+    │   ├── study.ts                 # 카테고리 표시명, 신청 폼 템플릿 등
+    │   ├── community.ts
+    │   └── index.ts
+    │
+    ├── types/                       # 도메인 모델 인터페이스/타입 정의
+    │   ├── study.ts                 # Study, StudyProgram, Recruitment 등
+    │   ├── crew.ts
+    │   ├── community.ts
+    │   └── index.ts
+    │
+    ├── utils/                       # 날짜/텍스트 포맷팅 등 유틸 함수
+    │   ├── study.ts
+    │   ├── crew.ts
+    │   └── index.ts
+    │
+    ├── data/                        # 순수 Mock 데이터 소스
+    │   ├── index.ts                 # studies, crew, community re-export
+    │   ├── crew.ts
+    │   ├── community.ts
+    │   └── studies/                 # 스터디 도메인 원본 데이터
+    │       ├── helpers.ts           # StudyDraft 타입 및 데이터 빌더 헬퍼
+    │       ├── recruiting.ts        # 모집 중 데이터
+    │       ├── ongoing.ts           # 진행 중 데이터
+    │       ├── closed-2026.ts       # 2026년 마감 데이터
+    │       ├── closed-2025.ts       # 2025년 마감 데이터
+    │       ├── closed-2024.ts       # 2024년 마감 데이터
+    │       └── index.ts             # 시드 병합 및 Study[] export
+    │
+    └── msw/                         # MSW (Mock Service Worker) 계층
+        ├── index.ts                 # MSW 초기화 및 통합 진입점
+        ├── context.ts               # 핸들러 프리셋/오버라이드 컨텍스트
+        ├── utils.ts                 # mockClient 및 핸들러 그룹 생성기
+        ├── provider.tsx             # React용 MSW Provider
+        ├── devtool.tsx              # MSW 시나리오 변경 DevTool UI
+        ├── data.ts                  # 도메인 모델(Study) -> 백엔드 API DTO(ApiStudy) 변환 매퍼
+        └── handlers/                # API 엔드포인트별 핸들러
+            ├── index.ts             # 전체 핸들러 취합
+            ├── accounts.ts          # 계정 관련 엔드포인트 (/api/accounts/*)
+            ├── notification-templates.ts
+            └── studies.ts           # 스터디 관련 엔드포인트 (/api/studies/*)
 ```
 
 ## 실행
@@ -41,7 +94,7 @@ backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain 
 # frontend
 docker compose up -d --build                   # 전부 Docker (기본) — cp .env.example .env 먼저
 cd frontend && pnpm install && pnpm run dev    # turbo (모든 앱)
-#   개별: pnpm --filter core-front run dev
+#   개별: pnpm run dev:core-front / dev:back-office-front / dev:playground
 
 # backend
 cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapper 가 받아온다
@@ -54,7 +107,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
   **playground 를 고쳤으면 커밋 전에 `pnpm --filter playground run build` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에서 바로 배포되는 유일한 앱이라(`playground-beta.yaml`) 다른 앱의 CI 게이트를 안 거친다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
-- **Story PRD** — 화면 기획은 `planning/stories/{slug}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`planning/README.md`](planning/README.md)
+- **Story PRD** — 화면 기획은 `planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`planning/README.md`](planning/README.md)
 - **팀에 물을 것·정해진 것은 `share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`share/README.md`](share/README.md) 목록에 한 줄 추가한다.
   PR 설명이나 코드 주석에만 있으면 머지되는 순간 안 읽힌다. 규칙이 굳으면 `docs/` 로 올린다.
@@ -71,7 +124,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   시키기를 기다리지 않는다. 확인 주소는 `stage.studyclub-plusplus.com`.
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
-- 프론트 데이터는 지금 `frontend/packages/mock` 에 하드코딩. 실 API 교체 지점은 `// TODO(api)` 주석.
+- 프론트 데이터는 지금 `frontend/packages/mock` 의 MSW 및 목 데이터로 동작. 데이터 수정: 스터디는 `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`. 실 API 교체 지점은 `// TODO(api)` 주석.
 - PR 은 CODEOWNERS(@titaniper) 승인 후에만 main 머지 (외부 기여자 포함).
 - CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
   **playground 만 `beta` 브랜치에서 배포된다** (`playground-beta.yaml`) — 프로토타입이라 main 을 기다리지 않는다.

@@ -2,8 +2,8 @@ import Link from 'next/link';
 
 
 import { EventCard } from '@core/components/EventCard';
+import { FeaturedStudies } from '@core/components/FeaturedStudies';
 import { JoinCta } from '@core/components/JoinCta';
-import { StudyCard } from '@core/components/StudyCard';
 import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { ArrowRight } from 'lucide-react';
@@ -17,13 +17,6 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
     getMembers(),
     getSite(),
   ]);
-  const featured = studies
-    .filter((s) => s.status === 'recruiting' || s.status === 'ongoing')
-    .sort(
-      (a, b) =>
-        (a.status === 'recruiting' ? 0 : 1) - (b.status === 'recruiting' ? 0 : 1) || (a.order ?? 99) - (b.order ?? 99),
-    )
-    .slice(0, 6);
   const upcoming = [...events].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   const stats = [
@@ -77,21 +70,8 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
         </div>
       </section>
 
-      {/* Featured studies */}
-      {featured.length > 0 && (
-        <section className='pb-14'>
-          <SectionHead
-            title={m('studies.title', locale)}
-            href={`/proto/core/${locale}/studies`}
-            more={t({ ko: '전체 보기', en: 'View all' }, locale)}
-          />
-          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-            {featured.map((s) => (
-              <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Featured studies (MSW 반응형) */}
+      <FeaturedStudies locale={locale} leads={leads} />
 
       {/* Upcoming events */}
       {upcoming.length > 0 && (

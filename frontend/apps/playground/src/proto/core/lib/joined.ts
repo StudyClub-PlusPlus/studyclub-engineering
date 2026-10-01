@@ -31,7 +31,6 @@ export const LIFE_LABEL: Record<LifeStatus, string> = {
 
 /** 프로토용 명부. 서버가 생기면 STUDY_PARTICIPANT.STATUS 로 교체한다. */
 const END_KIND: Record<string, EndKind> = {
-  'renaissance-club': 'withdrawn',
   'system-design-interview-ongoing': 'withdrawn',
 };
 

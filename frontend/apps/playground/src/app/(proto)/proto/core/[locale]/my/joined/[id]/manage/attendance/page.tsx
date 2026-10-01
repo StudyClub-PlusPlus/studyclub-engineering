@@ -32,7 +32,7 @@ export default function StudyManageAttendancePage() {
 
   const meetings = meetingsOf(study);
   const crew = myGroupCrew(study);
-  const schedulePath = `/proto/core/${locale}/my/joined/${study.id}/manage/schedule`;
+  const schedulePath = `/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`;
 
   async function save(next: AttendanceBook) {
     // TODO(api): POST /api/studies/{id}/groups/{groupId}/attendances — 바뀐 칸만 updates[] 로 한 번에.
@@ -56,7 +56,7 @@ export default function StudyManageAttendancePage() {
               size='sm'
               variant='secondary'
               trailingIcon={<ExternalLink size={14} />}
-              onClick={() => router.push(`/proto/console/studies/${study.id}?tab=attendance`)}
+              onClick={() => router.push(`/proto/console/studies/${study.study_id}?tab=attendance`)}
             >
               백오피스 출석부 (전체 참여자)
             </Button>
