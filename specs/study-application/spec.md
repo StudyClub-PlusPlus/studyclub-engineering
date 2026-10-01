@@ -27,8 +27,8 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | GET | /api/studies/{studyId}/application-form | 신청 폼 조회 | 공개 (OPEN 기수) | 캡틴 설계 · 크루 제출 | 스펙작성중 |
 | PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | O (그 스터디 네비게이터 또는 캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
 | GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
-| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
-| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
+| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
+| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현중 |
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 스펙작성중 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
@@ -304,6 +304,10 @@ GET 신청 폼 조회와 같은 shape.
 
 ### 처리
 
+> 구현 메모: 정원 기준은 아직 팀 결정 전이다. 현재 코드는
+> [`share/2026-09-27-study-capacity-column.md`](../../share/2026-09-27-study-capacity-column.md)의
+> 임시 원칙대로 `STUDY.CAPACITY`와 활성 명부 인원을 사용한다. 아래 모집 회차 정원 규칙은 결정 후 코드 또는 문서를 한쪽으로 맞춘다.
+
 1. 로그인 · `DISCORD_ID` 존재 · 열려 있는 모집 회차 · 정원 · `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)` 검사
 2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. `fields` 에는 실패한 필드만 (화면은 검사 순서대로 하나 표시)
 3. `STUDY_APPLICATION` insert. `FORM_ANSWER` 저장
@@ -313,7 +317,7 @@ GET 신청 폼 조회와 같은 shape.
 
 덮어쓰기 없음. 승인·거절 상태값 없음. 신청을 없앨 때는 행 삭제 + 제출 때 만든 명부 행 삭제 (이 API 범위 밖).
 
-### Response — 201 No Content
+### Response — 201 Created (본문 없음)
 
 ```
 Location: /api/studies/{studyId}/applications/{applicationId}
@@ -560,6 +564,10 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 ## 미확정
 
 - [NEEDS CLARIFICATION] `FORM_ANSWER` JSON 유지 vs `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 정규화 — ERD README 와 같음. 이 스펙은 JSON 으로 구현한다
+- [NEEDS CLARIFICATION] 신청 생성 시 자동 배정할 분반 — 현재는 가장 작은 `STUDY_GROUP.ID`를 사용한다. [`share/2026-09-30-application-default-group.md`](../../share/2026-09-30-application-default-group.md)
+- [NEEDS CLARIFICATION] 유효값 오류의 필드별 `fields` 응답 계약 — 현재는 공통 `{ errorCode, errorMessage }` 형식을 유지한다. [`share/2026-09-30-application-validation-error-fields.md`](../../share/2026-09-30-application-validation-error-fields.md)
+- [NEEDS CLARIFICATION] `RECRUIT_DEADLINE`이 null인 모집을 열림으로 볼지 — 현재는 마감일 없는 상시 모집으로 취급한다. [`share/2026-09-30-null-recruit-deadline.md`](../../share/2026-09-30-null-recruit-deadline.md)
+- [NEEDS CLARIFICATION] 정원의 저장 위치와 집계 기준 — 현재는 `STUDY.CAPACITY`와 활성·일시중지 명부 인원을 사용한다. [`share/2026-09-27-study-capacity-column.md`](../../share/2026-09-27-study-capacity-column.md)
 - [NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간
 - [NEEDS CLARIFICATION] `STUDY_APPLICATION` 생성시각 컬럼. 없으면 `applications/me.submittedAt` 은 null
 - [NEEDS CLARIFICATION] 열려 있는 모집 회차가 동시에 둘이면 어느 회차에 붙일지. 지금은 1건이라고 가정

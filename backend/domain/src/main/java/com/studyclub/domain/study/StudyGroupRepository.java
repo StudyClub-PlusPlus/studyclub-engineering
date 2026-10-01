@@ -12,6 +12,8 @@ public interface StudyGroupRepository extends JpaRepository<StudyGroup, Long> {
 
     List<StudyGroup> findByStudyId(Long studyId);
 
+    Optional<StudyGroup> findFirstByStudyIdOrderByIdAsc(Long studyId);
+
     void deleteByStudyId(Long studyId);
 
     /**

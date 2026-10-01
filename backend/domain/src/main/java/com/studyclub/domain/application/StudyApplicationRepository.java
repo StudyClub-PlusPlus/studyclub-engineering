@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface StudyApplicationRepository extends JpaRepository<StudyApplication, Long> {
 
+    boolean existsByRecruitmentIdAndAccountId(Long recruitmentId, Long accountId);
+
     /**
      * LEFT JOIN — 신청서는 신청자가 탈퇴해도 보존된다(specs/user-leave/spec.md). INNER JOIN 이면 탈퇴한 신청자의 행이 결과에서 통째로
      * 사라지므로, 계정이 없으면 {@code nickname}·{@code email} 이 null 로 오고 호출자가 "탈퇴한 회원"으로 표시한다.
