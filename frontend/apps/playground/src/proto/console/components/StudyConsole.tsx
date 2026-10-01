@@ -224,7 +224,8 @@ export function StudyConsole({ study }: { study: Study }) {
           )}
           <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
             {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
-            {open ? (dday === undefined ? '모집중' : dday === 0 ? '오늘 마감' : `모집중 · D-${dday}`) : '모집 마감'}
+            {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
+            {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
           </Badge>
           {draft && (
             <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
