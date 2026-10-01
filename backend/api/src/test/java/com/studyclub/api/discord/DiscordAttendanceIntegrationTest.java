@@ -104,7 +104,6 @@ class DiscordAttendanceIntegrationTest {
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(10)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());
         var group =

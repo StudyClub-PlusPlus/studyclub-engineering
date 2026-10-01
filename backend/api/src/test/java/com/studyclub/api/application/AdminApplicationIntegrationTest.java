@@ -191,9 +191,9 @@ class AdminApplicationIntegrationTest {
     private void insertStudy(Long id, String slug, Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                        + " STUDY_KIND, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 "신청 조회 스터디",
@@ -201,7 +201,6 @@ class AdminApplicationIntegrationTest {
                 "한 줄 소개",
                 "SOFTWARE",
                 "STUDY",
-                false,
                 "ONLINE",
                 "OPEN",
                 "{\"questions\":[{\"id\":\"reason\",\"label\":\"지원 사유\",\"type\":\"TEXT\",\"required\":true}]}",

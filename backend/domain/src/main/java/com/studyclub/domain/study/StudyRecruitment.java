@@ -50,4 +50,16 @@ public class StudyRecruitment extends BaseEntity {
     public void updateDeadline(Instant recruitDeadlineAt) {
         this.recruitDeadlineAt = recruitDeadlineAt;
     }
+
+    /**
+     * 이 회차 모집 정원. {@code null} 이면 제한 없음.
+     *
+     * <p>정원은 STUDY 가 아니라 모집 회차가 갖는다 — docs/erd/STUDY.md 「정원은 STUDY 에 두지 않는다」.
+     */
+    public void changeRecruitmentCapacity(Integer recruitmentCapacity) {
+        if (recruitmentCapacity != null && recruitmentCapacity < 1) {
+            throw new IllegalArgumentException("recruitmentCapacity 는 1 이상이어야 합니다.");
+        }
+        this.recruitmentCapacity = recruitmentCapacity;
+    }
 }

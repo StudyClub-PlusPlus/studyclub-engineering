@@ -1,10 +1,13 @@
 package com.studyclub.api.study;
 
+import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +25,17 @@ public class BackofficeStudyListService {
 
     private final BackofficeStudyDao backofficeStudyDao;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
+    private final AccountRepository accountRepository;
     private final ObjectMapper objectMapper;
 
     public BackofficeStudyListService(
             BackofficeStudyDao backofficeStudyDao,
             StudyRecruitmentRepository studyRecruitmentRepository,
+            AccountRepository accountRepository,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
+        this.accountRepository = accountRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -53,6 +59,15 @@ public class BackofficeStudyListService {
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId, r -> r, (a, b) -> a));
 
+        Set<Long> creatorIds =
+                studies.stream()
+                        .map(Study::getCreatedBy)
+                        .filter(id -> id != null)
+                        .collect(Collectors.toSet());
+        Map<Long, String> nicknameByAccountId =
+                accountRepository.findAllById(creatorIds).stream()
+                        .collect(Collectors.toMap(Account::getId, Account::getNickname));
+
         List<BackofficeStudyListResponse.StudySummary> items =
                 studies.stream()
                         .map(
@@ -74,7 +89,10 @@ public class BackofficeStudyListService {
                                                     : null,
                                             study.getStartAt(),
                                             study.timezone(),
-                                            hasQuestions(study.getApplicationForm()));
+                                            hasQuestions(study.getApplicationForm()),
+                                            study.getCreatedBy() != null
+                                                    ? nicknameByAccountId.get(study.getCreatedBy())
+                                                    : null);
                                 })
                         .toList();
 

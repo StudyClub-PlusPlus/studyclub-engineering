@@ -195,7 +195,8 @@ class StudyUpdateIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         var study = studyRepository.findById(studyId).orElseThrow();
-        assertThat(study.getCapacity()).isEqualTo(12);
+        // 정원은 모집 회차에 저장된다 — docs/erd/STUDY.md 「정원은 STUDY 에 두지 않는다」
+        assertThat(recruitmentCapacityOf(studyId)).isEqualTo(12);
         assertThat(study.getStartAt()).isEqualTo(Instant.parse("2026-11-02T00:00:00Z"));
         assertThat(study.getDiscordChannelUrl()).isEqualTo("https://discord.com/channels/1/2");
         assertThat(study.getDriveUrl()).isEqualTo("https://drive.google.com/drive/folders/abc");
@@ -220,7 +221,7 @@ class StudyUpdateIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         var study = studyRepository.findById(studyId).orElseThrow();
-        assertThat(study.getCapacity()).isNull();
+        assertThat(recruitmentCapacityOf(studyId)).isNull();
         assertThat(study.getDiscordChannelUrl()).isNull();
         assertThat(study.getStartAt()).isEqualTo(Instant.parse("2026-11-02T00:00:00Z"));
         assertThat(study.getDriveUrl()).isEqualTo("https://drive.google.com/drive/folders/abc");
@@ -235,7 +236,7 @@ class StudyUpdateIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
-        assertThat(studyRepository.findById(studyId).orElseThrow().getCapacity()).isNull();
+        assertThat(recruitmentCapacityOf(studyId)).isNull();
     }
 
     @Test
@@ -280,6 +281,14 @@ class StudyUpdateIntegrationTest {
                 HttpMethod.PATCH,
                 authenticated(ADMIN_ID, body),
                 Map.class);
+    }
+
+    /** 현재 정원 — 가장 최근 모집 회차의 값. 정원은 STUDY 가 아니라 모집 회차가 갖는다. */
+    private Integer recruitmentCapacityOf(Long studyId) {
+        return recruitmentRepository
+                .findFirstByStudyIdOrderByIdDesc(studyId)
+                .orElseThrow()
+                .getRecruitmentCapacity();
     }
 
     private Long createStudy(String title, String oneLineSummary, String category) {

@@ -159,7 +159,6 @@ class StudyRecruitStatusIntegrationTest {
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(status)
-                                .capacity(capacity)
                                 .startAt(Instant.now().plus(30, ChronoUnit.DAYS))
                                 .build());
         recruitmentRepo.save(
@@ -169,6 +168,7 @@ class StudyRecruitStatusIntegrationTest {
                         .description("모집 설명")
                         .startAt(Instant.now().minus(7, ChronoUnit.DAYS))
                         .recruitDeadlineAt(recruitDeadline)
+                        .recruitmentCapacity(capacity)
                         .build());
         return study;
     }

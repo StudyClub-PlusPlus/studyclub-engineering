@@ -42,6 +42,8 @@ public class Study extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String title;
 
+    // ponytail: docs/erd/STUDY.md 는 SLUG 를 두지 않는다 — 주소는 STUDY.ID 다. 지금은 core-front 가 이 값을
+    // 공개 상세 주소로 쓰고 있어 같이 걷어내야 하고, 그러면 사용자에게 보이는 URL 이 바뀐다. 별도 작업으로 뺀다
     @Column(nullable = false, unique = true, length = 100)
     private String slug;
 
@@ -55,6 +57,8 @@ public class Study extends BaseEntity {
     @Column(nullable = false, length = 50)
     private StudyCategory category;
 
+    // ponytail: STUDY.md 기준 STUDY_KIND 는 STUDY_PROGRAM 소속이다(기수마다 다를 수 없다). 응답·프론트가
+    // 이 값을 읽고 있어 프로그램 쪽으로 옮기는 건 별도 작업으로 둔다
     @Enumerated(EnumType.STRING)
     @Column(name = "STUDY_KIND", nullable = false, length = 20)
     private StudyKind studyKind;
@@ -62,9 +66,7 @@ public class Study extends BaseEntity {
     @Column(name = "THUMBNAIL_URL", length = 2048)
     private String thumbnailUrl;
 
-    @Column(name = "IS_HIDDEN", nullable = false)
-    private boolean isHidden;
-
+    // ponytail: STUDY.md 에 없는 컬럼이다. 응답·프론트가 읽고 있어 제거는 별도 작업으로 둔다
     @Enumerated(EnumType.STRING)
     @Column(name = "STUDY_DELIVERY_FORMAT", nullable = false, length = 20)
     private DeliveryFormat studyDeliveryFormat;
@@ -78,8 +80,6 @@ public class Study extends BaseEntity {
 
     @Column(columnDefinition = "json")
     private String curriculum;
-
-    private Integer capacity;
 
     @Column(name = "START_AT")
     private Instant startAt;
@@ -96,8 +96,9 @@ public class Study extends BaseEntity {
     @Column(length = 255)
     private String schedule;
 
-    @Column(name = "PUBLISH_AT")
-    private Instant publishAt;
+    /** 이 기수를 등록한 계정 ID. ACCOUNT 참조(인덱스만, 외래키 없음 — 애그리거트 밖). NULL = 이 컬럼이 생기기 전 데이터. */
+    @Column(name = "CREATED_BY")
+    private Long createdBy;
 
     private static final long CLOSING_SOON_DAYS = 3;
     private static final Pattern PST_PATTERN = Pattern.compile("PST|PDT", Pattern.CASE_INSENSITIVE);
@@ -114,14 +115,6 @@ public class Study extends BaseEntity {
         if (description != null) this.description = description;
         if (category != null) this.category = category;
         if (schedule != null) this.schedule = schedule;
-    }
-
-    /** 모집 정원. {@code null} 이면 제한 없음. */
-    public void changeCapacity(Integer capacity) {
-        if (capacity != null && capacity < 1) {
-            throw new IllegalArgumentException("capacity 는 1 이상이어야 합니다.");
-        }
-        this.capacity = capacity;
     }
 
     /** 진행 시작일. {@code null} 이면 미정. */
@@ -152,21 +145,22 @@ public class Study extends BaseEntity {
      * 모집 상태를 계산한다. {@code STATUS = OPEN} 일 때만 의미가 있어 그 밖에서는 {@code null} 을 돌려준다 — 모집 상태가 "없는" 것이지
      * 마감된 것이 아니다.
      *
-     * <p>{@code recruitDeadlineAt == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code capacity == null} 은
+     * <p>{@code recruitDeadlineAt == null} 은 시각으로 마감되지 않고, {@code recruitmentCapacity == null} 은
      * 무제한이라 정원으로도 마감되지 않는다.
      *
-     * <p>참여자 수는 STUDY_PARTICIPANT 애그리거트 소관이라 밖에서 받는다. 정원을 차지하는 참여자(ACTIVE·PAUSED)만 세야 하므로 {@code
+     * <p>마감 시각과 정원은 둘 다 STUDY_RECRUITMENT(모집 회차) 소관이라 밖에서 받는다 — docs/erd/STUDY.md 는 정원을 STUDY 에 두지
+     * 않는다. 참여자 수도 STUDY_PARTICIPANT 애그리거트 소관이라, 정원을 차지하는 참여자(ACTIVE·PAUSED)만 세는 {@code
      * StudyParticipantRepository.countByStudyIds} 가 주는 값을 그대로 넘긴다.
-     *
-     * <p>{@code recruitDeadlineAt} 은 STUDY_RECRUITMENT 에서 가져온 계획된 마감 시각이다.
      */
-    public RecruitStatus recruitStatus(long applicantCount, Instant recruitDeadlineAt) {
+    public RecruitStatus recruitStatus(
+            long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
         if (status != StudyStatus.OPEN) {
             return null;
         }
         boolean deadlinePassed =
                 recruitDeadlineAt != null && !Instant.now().isBefore(recruitDeadlineAt);
-        boolean capacityReached = capacity != null && applicantCount >= capacity;
+        boolean capacityReached =
+                recruitmentCapacity != null && applicantCount >= recruitmentCapacity;
         return (deadlinePassed || capacityReached)
                 ? RecruitStatus.RECRUIT_CLOSED
                 : RecruitStatus.RECRUITING;
@@ -175,30 +169,27 @@ public class Study extends BaseEntity {
     /**
      * 목록 탭 단계를 계산한다. {@code DRAFT} 는 공개 목록에 나오지 않아 {@code null} 이다.
      *
-     * <p>판정 순서: 종료(운영자 종료 또는 {@code END_AT} 경과) → 진행 중({@code START_AT} 경과) → 모집 중(모집 상태가 {@code
-     * RECRUITING}) → 나머지는 종료. 시작 전인데 모집이 마감된 스터디는 신청할 수 없으니 종료로 본다.
+     * <p><b>{@code STATUS} 하나만 읽는다</b> — docs/erd/STUDY.md 「사용자 사이트 표기」. {@code START_AT} / {@code
+     * END_AT} 은 화면에 보이는 값일 뿐 상태를 바꾸지 않으므로 여기서도 보지 않는다. 날짜를 같이 보던 이전 구현은 {@code START_AT} 이 비어 있는
+     * {@code ONGOING} 기수를 종료로 내보냈다.
+     *
+     * <p>{@code OPEN} 안에서 모집 중·마감을 다시 가르는 건 {@link #recruitStatus} 쪽이다 — 이 메서드는 "어디까지 진행됐는가"만 말한다.
      */
-    public StudyPhase phase(long applicantCount, Instant recruitDeadlineAt) {
-        if (status == StudyStatus.DRAFT) {
-            return null;
-        }
-        Instant now = Instant.now();
-        if (status == StudyStatus.CLOSED || (endAt != null && !now.isBefore(endAt))) {
-            return StudyPhase.CLOSED;
-        }
-        if (startAt != null && !now.isBefore(startAt)) {
-            return StudyPhase.ONGOING;
-        }
-        return recruitStatus(applicantCount, recruitDeadlineAt) == RecruitStatus.RECRUITING
-                ? StudyPhase.RECRUITING
-                : StudyPhase.CLOSED;
+    public StudyPhase phase() {
+        return switch (status) {
+            case DRAFT -> null;
+            case OPEN -> StudyPhase.RECRUITING;
+            case ONGOING -> StudyPhase.ONGOING;
+            case ENDED, CLOSED -> StudyPhase.CLOSED;
+        };
     }
 
     /**
      * 진행 시간대를 일정 문구({@code SCHEDULE})의 표기로 판정한다. PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시
      * 모집이다.
      */
-    // ponytail: 자유 텍스트 판정 — 표기가 흔들리면 틀린다. 운영에서 문제가 되면 TIMEZONE 컬럼으로 올린다
+    // ponytail: 자유 텍스트 판정 — 표기가 흔들리면 틀린다. STUDY.md 는 TIMEZONE 컬럼을 두기로 했다(등록 폼에서 직접 고른다).
+    // 컬럼 추가는 등록·수정 폼까지 걸려 별도 작업으로 둔다
     public StudyTimezone timezone() {
         if (schedule == null) {
             return StudyTimezone.BOTH;
@@ -212,8 +203,12 @@ public class Study extends BaseEntity {
         return StudyTimezone.BOTH;
     }
 
+    /**
+     * 공개 여부 — {@code DRAFT} 만 비공개다. docs/erd/STUDY.md 「공개 여부」: 판정은 {@code STATUS != DRAFT} 하나이고 별도
+     * 숨김 플래그는 두지 않는다. {@code OPEN} 만 공개로 보던 이전 구현은 진행 중·종료된 기수를 비공개로 취급했다.
+     */
     public boolean isPubliclyVisible() {
-        return status == StudyStatus.OPEN && !isHidden;
+        return status != StudyStatus.DRAFT;
     }
 
     public void replaceApplicationForm(String applicationForm) {

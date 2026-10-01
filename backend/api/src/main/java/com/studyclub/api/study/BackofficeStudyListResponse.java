@@ -21,5 +21,6 @@ public record BackofficeStudyListResponse(
             Instant recruitDeadlineAt,
             Instant startAt,
             StudyTimezone timezone,
-            boolean hasApplicationForm) {}
+            boolean hasApplicationForm,
+            String createdByNickname) {}
 }

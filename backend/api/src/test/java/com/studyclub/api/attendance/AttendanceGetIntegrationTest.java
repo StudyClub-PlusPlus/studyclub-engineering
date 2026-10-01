@@ -95,7 +95,6 @@ class AttendanceGetIntegrationTest {
                                 .description("시스템 디자인 스터디 설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(10)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());
 

@@ -59,14 +59,13 @@ class StudyApplicationFormIntegrationTest {
                 PUBLIC_STUDY_ID,
                 "application-form-public",
                 "OPEN",
-                false,
                 """
                 {"title":"저장된 신청 제목","description":"저장된 설명","questions":[{"id":"reason","label":"지원 사유","type":"TEXT","required":true,"placeholder":"내 답변","description":null}]}
                 """,
                 now);
-        insertStudy(EDITABLE_STUDY_ID, "application-form-editable", "OPEN", false, null, now);
-        insertStudy(DRAFT_STUDY_ID, "application-form-draft", "DRAFT", false, null, now);
-        insertStudy(LOCKED_STUDY_ID, "application-form-locked", "OPEN", false, null, now);
+        insertStudy(EDITABLE_STUDY_ID, "application-form-editable", "OPEN", null, now);
+        insertStudy(DRAFT_STUDY_ID, "application-form-draft", "DRAFT", null, now);
+        insertStudy(LOCKED_STUDY_ID, "application-form-locked", "OPEN", null, now);
         insertRecruitment(
                 PUBLIC_RECRUITMENT_ID,
                 PUBLIC_STUDY_ID,
@@ -307,17 +306,12 @@ class StudyApplicationFormIntegrationTest {
     }
 
     private void insertStudy(
-            Long id,
-            String slug,
-            String status,
-            boolean hidden,
-            String applicationForm,
-            Timestamp now) {
+            Long id, String slug, String status, String applicationForm, Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, DESCRIPTION,"
-                        + " CATEGORY, STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS,"
+                        + " CATEGORY, STUDY_KIND, STUDY_DELIVERY_FORMAT, STATUS,"
                         + " APPLICATION_FORM, SCHEDULE, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
                 id,
                 id,
                 "신청 폼 스터디",
@@ -326,7 +320,6 @@ class StudyApplicationFormIntegrationTest {
                 "신청 폼 상세 소개",
                 "SOFTWARE",
                 "STUDY",
-                hidden,
                 "ONLINE",
                 status,
                 applicationForm,

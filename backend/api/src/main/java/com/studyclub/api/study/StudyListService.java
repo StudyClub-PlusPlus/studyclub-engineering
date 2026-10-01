@@ -4,7 +4,6 @@ import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,22 +44,29 @@ public class StudyListService {
                 studyParticipantRepository.countByStudyIds(studyIds).stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
 
-        Map<Long, Instant> deadlines =
+        // 회차를 통째로 담는다 — 마감 시각과 정원이 둘 다 이 회차 소관이라, 둘을 따로 모으면 서로 다른 회차의 값이 섞일 수 있다
+        Map<Long, StudyRecruitment> latestRecruitments =
                 studyRecruitmentRepository.findLatestByStudyIdIn(studyIds).stream()
-                        .filter(recruitment -> recruitment.getRecruitDeadlineAt() != null)
                         .collect(
                                 Collectors.toMap(
-                                        StudyRecruitment::getStudyId,
-                                        StudyRecruitment::getRecruitDeadlineAt));
+                                        StudyRecruitment::getStudyId, r -> r, (a, b) -> a));
 
         List<StudyListResponse.StudySummary> items =
                 studies.stream()
                         .map(
-                                study ->
-                                        StudyListResponse.StudySummary.from(
-                                                study,
-                                                applicants.getOrDefault(study.getId(), 0L),
-                                                deadlines.get(study.getId())))
+                                study -> {
+                                    StudyRecruitment recruitment =
+                                            latestRecruitments.get(study.getId());
+                                    return StudyListResponse.StudySummary.from(
+                                            study,
+                                            applicants.getOrDefault(study.getId(), 0L),
+                                            recruitment != null
+                                                    ? recruitment.getRecruitDeadlineAt()
+                                                    : null,
+                                            recruitment != null
+                                                    ? recruitment.getRecruitmentCapacity()
+                                                    : null);
+                                })
                         .toList();
 
         return new StudyListResponse(items, total, offset, limit);

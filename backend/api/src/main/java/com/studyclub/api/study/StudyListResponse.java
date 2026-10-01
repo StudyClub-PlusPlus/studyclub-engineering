@@ -33,8 +33,15 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
             Instant startAt,
             Instant endAt,
             boolean closingSoon) {
+        /**
+         * {@code recruitDeadlineAt} · {@code recruitmentCapacity} 는 최근 모집 회차의 값이다 — 정원은 모집 회차
+         * 소관(docs/erd/STUDY.md). 응답 필드 이름은 프론트가 읽는 {@code capacity} 를 유지한다.
+         */
         public static StudySummary from(
-                Study study, long applicantCount, Instant recruitDeadlineAt) {
+                Study study,
+                long applicantCount,
+                Instant recruitDeadlineAt,
+                Integer recruitmentCapacity) {
             return new StudySummary(
                     study.getId(),
                     study.getSlug(),
@@ -46,10 +53,10 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
                     study.getSchedule(),
                     study.timezone(),
                     study.getStatus(),
-                    study.phase(applicantCount, recruitDeadlineAt),
-                    study.recruitStatus(applicantCount, recruitDeadlineAt),
+                    study.phase(),
+                    study.recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity),
                     study.getStudyDeliveryFormat(),
-                    study.getCapacity(),
+                    recruitmentCapacity,
                     applicantCount,
                     recruitDeadlineAt,
                     study.getStartAt(),

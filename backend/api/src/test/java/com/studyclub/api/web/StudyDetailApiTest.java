@@ -58,7 +58,6 @@ class StudyDetailApiTest {
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(20)
                                 .schedule("매주 목 20:00")
                                 .startAt(Instant.parse("2026-10-15T00:00:00Z"))
                                 .discordChannelUrl("https://discord.com/channels/1/2")
@@ -71,6 +70,7 @@ class StudyDetailApiTest {
                         .description("모집 설명")
                         .startAt(Instant.parse("2026-09-01T00:00:00Z"))
                         .recruitDeadlineAt(Instant.parse("2026-10-01T00:00:00Z"))
+                        .recruitmentCapacity(20)
                         .build());
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
@@ -114,7 +114,7 @@ class StudyDetailApiTest {
     }
 
     @Test
-    @DisplayName("실패 — 공개 전(DRAFT) 스터디는 숨김이 아니어도 404 NOT_FOUND")
+    @DisplayName("실패 — 공개 전(DRAFT) 스터디는 404 NOT_FOUND")
     void draftStudyReturns404() {
         var studyProgram =
                 studyProgramRepository.save(StudyProgram.builder().title("공개 전 스터디").build());
@@ -127,7 +127,6 @@ class StudyDetailApiTest {
                                 .oneLineSummary("아직 공개하지 않은 스터디")
                                 .category(StudyCategory.OTHER)
                                 .studyKind(StudyKind.STUDY)
-                                .isHidden(false)
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)
                                 .build());

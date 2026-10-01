@@ -38,21 +38,42 @@ class StudyListJpqlDao implements StudyListDao {
             "(SELECT COUNT(p) FROM StudyParticipant p WHERE p.studyId = s.id"
                     + " AND p.status IN :occupying)";
 
-    /** 단계 등수 — 0 모집 중 · 1 진행 중 · 2 종료. {@link StudyPhase} 선언 순서와 같다. */
+    /** 현재 모집 정원 — 가장 최근(id 최대) 회차의 값. 없으면 null(제한 없음). */
+    private static final String CURRENT_CAPACITY =
+            "(SELECT r.recruitmentCapacity FROM StudyRecruitment r WHERE r.id ="
+                    + " (SELECT MAX(r2.id) FROM StudyRecruitment r2 WHERE r2.studyId = s.id))";
+
+    /**
+     * 단계 등수 — 0 모집 중 · 1 진행 중 · 2 종료. {@link StudyPhase} 선언 순서와 같다.
+     *
+     * <p>{@link Study#phase} 와 같이 <b>{@code STATUS} 만</b> 읽는다 — docs/erd/STUDY.md 「사용자 사이트 표기」.
+     * {@code START_AT} · {@code END_AT} · 정원은 단계를 바꾸지 않는다. 날짜를 보지 않으니 {@code :now} 도 쓰지 않는다.
+     */
     private static final String PHASE_RANK =
             "CASE"
-                    + " WHEN s.status = com.studyclub.domain.study.StudyStatus.CLOSED"
-                    + "   OR (s.endAt IS NOT NULL AND s.endAt <= :now) THEN 2"
-                    + " WHEN s.startAt IS NOT NULL AND s.startAt <= :now THEN 1"
-                    + " WHEN ("
+                    + " WHEN s.status = com.studyclub.domain.study.StudyStatus.OPEN THEN 0"
+                    + " WHEN s.status = com.studyclub.domain.study.StudyStatus.ONGOING THEN 1"
+                    + " ELSE 2 END";
+
+    /**
+     * 지금 신청할 수 있는가 — {@code OPEN} 이고 마감 전이며 정원이 남았다. {@link Study#recruitStatus} 의 {@code
+     * RECRUITING} 과 같은 규칙이다. 단계({@link #PHASE_RANK})가 {@code STATUS} 만 보게 되면서 정원·마감 판정이 단계에서 빠졌기
+     * 때문에, 그 판정이 필요한 「마감 임박」 필터가 이 절을 쓴다.
+     */
+    private static final String RECRUITING_NOW =
+            "s.status = com.studyclub.domain.study.StudyStatus.OPEN"
+                    + " AND ("
                     + CURRENT_DEADLINE
                     + " IS NULL OR "
                     + CURRENT_DEADLINE
                     + " > :now)"
-                    + "   AND (s.capacity IS NULL OR "
+                    + " AND ("
+                    + CURRENT_CAPACITY
+                    + " IS NULL OR "
                     + OCCUPYING_COUNT
-                    + " < s.capacity) THEN 0"
-                    + " ELSE 2 END";
+                    + " < "
+                    + CURRENT_CAPACITY
+                    + ")";
 
     private static final String TIMEZONE =
             "CASE"
@@ -62,13 +83,14 @@ class StudyListJpqlDao implements StudyListDao {
                     + " ELSE 'BOTH' END";
 
     /**
-     * 공개 대상 — 숨김·작성 중(DRAFT)은 뺀다. 필터와 무관하게 항상 걸린다.
+     * 공개 대상 — 작성 중(DRAFT)만 뺀다. 필터와 무관하게 항상 걸린다. 판정이 {@code STATUS != DRAFT} 하나인 것은
+     * docs/erd/STUDY.md 「공개 여부」 — 숨김 플래그는 두지 않는다.
      *
      * <p>기수를 묶지 않는다. 같은 프로그램의 3기가 진행 중이고 4기가 모집 중이면 <b>둘 다</b> 나와야 한다 — 기획도 스터디 단위로
      * 나열한다(planning/stories/crew-browse-studies). 묶어서 최신 1건만 주면 진행 중인 기수가 목록에서 사라진다.
      */
     private static final String VISIBLE =
-            "s.isHidden = false" + " AND s.status <> com.studyclub.domain.study.StudyStatus.DRAFT";
+            "s.status <> com.studyclub.domain.study.StudyStatus.DRAFT";
 
     /** 모집 중 → 진행 중 → 종료, 같은 단계에서는 최근 등록 순. 사용자가 고르는 정렬은 없다. */
     private static final String ORDER_BY = " ORDER BY " + PHASE_RANK + " ASC, s.id DESC";
@@ -123,8 +145,8 @@ class StudyListJpqlDao implements StudyListDao {
         if (filter.recruitDeadlineBefore() != null) {
             conditions.add(
                     "("
-                            + PHASE_RANK
-                            + " = 0 AND "
+                            + RECRUITING_NOW
+                            + " AND "
                             + CURRENT_DEADLINE
                             + " IS NOT NULL AND "
                             + CURRENT_DEADLINE
@@ -136,8 +158,8 @@ class StudyListJpqlDao implements StudyListDao {
     }
 
     /**
-     * 조립된 값과, 단계 판정이 쓰는 {@code :now}·{@code :occupying} 을 바인딩한다. 단계 판정은 필터로도 정렬로도 들어올 수 있어, 최종 JPQL
-     * 에 그 이름이 실제로 남았을 때만 넣는다 (없는 파라미터를 넣으면 Hibernate 가 예외를 던진다).
+     * 조립된 값과, {@link #RECRUITING_NOW} 가 쓰는 {@code :now}·{@code :occupying} 을 바인딩한다. 그 절은 「마감 임박」
+     * 필터에서만 쓰여 최종 JPQL 에 없을 수 있으니, 이름이 실제로 남았을 때만 넣는다 (없는 파라미터를 넣으면 Hibernate 가 예외를 던진다).
      */
     private <T> TypedQuery<T> bind(TypedQuery<T> query, String jpql, Assembled where) {
         where.params().forEach(query::setParameter);

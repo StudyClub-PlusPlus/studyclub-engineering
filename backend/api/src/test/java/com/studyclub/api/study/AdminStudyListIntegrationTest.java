@@ -335,9 +335,9 @@ class AdminStudyListIntegrationTest {
             Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                        + " STUDY_KIND, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 title,
@@ -345,7 +345,6 @@ class AdminStudyListIntegrationTest {
                 "한 줄 소개",
                 category,
                 kind,
-                false,
                 "ONLINE",
                 status,
                 applicationForm,

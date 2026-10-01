@@ -70,7 +70,8 @@ class StudyCreateIntegrationTest {
         assertThat(study.get().getTitle()).isEqualTo("AI 논문 스터디");
         assertThat(study.get().getCategory().name()).isEqualTo("AI_ML");
         assertThat(study.get().getStatus().name()).isEqualTo("DRAFT");
-        assertThat(study.get().isHidden()).isFalse();
+        // 등록 직후는 DRAFT 라 비공개다 — 판정은 STATUS != DRAFT 하나다 (docs/erd/STUDY.md)
+        assertThat(study.get().isPubliclyVisible()).isFalse();
 
         var recruitment = recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId);
         assertThat(recruitment).isPresent();

@@ -113,11 +113,11 @@ public class StudyService {
                                 .description(request.description())
                                 .category(request.category())
                                 .studyKind(StudyKind.STUDY)
-                                .isHidden(false)
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)
                                 .thumbnailUrl(request.thumbnailUrl())
                                 .schedule(request.schedule())
+                                .createdBy(accountId)
                                 .build());
 
         studyRecruitmentRepository.save(
@@ -182,18 +182,27 @@ public class StudyService {
                 request.description(),
                 request.category(),
                 request.schedule());
-        // 정원은 STUDY.CAPACITY 에 둔다 — 목록·모집 상태·단계 필터가 모두 이 컬럼을 읽는다
-        if (request.capacityPresent()) study.changeCapacity(request.capacity());
         if (request.startAtPresent()) study.changeStartAt(request.startAt());
         if (request.discordChannelUrlPresent()) {
             study.changeDiscordChannelUrl(request.discordChannelUrl());
         }
         if (request.driveUrlPresent()) study.changeDriveUrl(request.driveUrl());
 
-        if (request.recruitDeadline() != null) {
-            studyRecruitmentRepository
-                    .findFirstByStudyIdOrderByIdDesc(study.getId())
-                    .ifPresent(r -> r.updateDeadline(request.recruitDeadline()));
+        // 정원과 모집 마감은 둘 다 모집 회차(STUDY_RECRUITMENT)가 갖는다 — docs/erd/STUDY.md 「정원은 STUDY 에 두지
+        // 않는다」. 같은 회차를 한 번만 찾아 둘 다 반영한다
+        if (request.capacityPresent() || request.recruitDeadline() != null) {
+            StudyRecruitment recruitment =
+                    studyRecruitmentRepository
+                            .findFirstByStudyIdOrderByIdDesc(study.getId())
+                            .orElse(null);
+            if (recruitment != null) {
+                if (request.capacityPresent()) {
+                    recruitment.changeRecruitmentCapacity(request.capacity());
+                }
+                if (request.recruitDeadline() != null) {
+                    recruitment.updateDeadline(request.recruitDeadline());
+                }
+            }
         }
     }
 
@@ -232,7 +241,7 @@ public class StudyService {
 
     /**
      * 사용자 사이트 상세. 공개된 스터디는 누구나, 공개 전(DRAFT)은 캡틴과 그 스터디의 네비게이터만 본다 — 네비게이터는 백오피스에 못 들어와 사이트에서 맡은
-     * 스터디를 읽고 고친다. 그 밖의 사람에게는 없는 것처럼 404. 숨김 플래그(IS_HIDDEN)는 폐기 예정이라 보지 않는다. 디스코드 채널·자료실 링크는 {@link
+     * 스터디를 읽고 고친다. 그 밖의 사람에게는 없는 것처럼 404. 디스코드 채널·자료실 링크는 {@link
      * StudyCaptainGuard#canSeePrivateLinks} 인 사람에게만 채운다.
      *
      * @param accountId 비로그인이면 {@code null}
@@ -260,12 +269,15 @@ public class StudyService {
 
     // 상세 본문 — 권한을 검사하지 않는다
     private StudyDetailResponse toDetail(Study study) {
-        Instant recruitDeadlineAt =
+        StudyRecruitment recruitment =
                 studyRecruitmentRepository
                         .findFirstByStudyIdOrderByIdDesc(study.getId())
-                        .map(StudyRecruitment::getRecruitDeadlineAt)
                         .orElse(null);
-        return StudyDetailResponse.from(study, applicantCount(study), recruitDeadlineAt);
+        return StudyDetailResponse.from(
+                study,
+                applicantCount(study),
+                recruitment != null ? recruitment.getRecruitDeadlineAt() : null,
+                recruitment != null ? recruitment.getRecruitmentCapacity() : null);
     }
 
     private Study findStudy(Long studyId) {

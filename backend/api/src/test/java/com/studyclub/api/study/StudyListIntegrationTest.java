@@ -33,9 +33,12 @@ import org.springframework.http.HttpStatus;
 /**
  * 픽스처 — 공개 목록에 나오는 4건 + 나오지 않는 DRAFT 1건.
  *
+ * <p>단계는 {@code STATUS} 로만 표현한다 — docs/erd/STUDY.md 「사용자 사이트 표기」. 날짜는 화면에 보이는 값일 뿐 단계를 바꾸지 않으므로, 진행
+ * 중인 기수는 {@code START_AT} 이 과거인 것이 아니라 {@code STATUS=ONGOING} 인 기수다.
+ *
  * <ul>
  *   <li>데일리 리트코드: ALGORITHM · 모집 중 · 마감 2일 후(종료 임박) · KST · 참여 2
- *   <li>Spring 딥다이브: SOFTWARE · 진행 중 · PDT · 참여 5
+ *   <li>Spring 딥다이브: SOFTWARE · 진행 중(STATUS=ONGOING) · PDT · 참여 5
  *   <li>지난 알고리즘: ALGORITHM · 종료 · 시간대 표기 없음
  *   <li>북클럽: BOOK_CLUB · 모집 중 · 상시 모집(마감 없음) · 소개에 "독서"
  *   <li>준비 중 스터디: DRAFT — 목록 제외
@@ -71,7 +74,7 @@ class StudyListIntegrationTest {
         participants(leetcode, ParticipantStatus.ACTIVE, 2);
 
         var spring =
-                study("Spring 딥다이브", "스프링 심화 학습", StudyCategory.SOFTWARE, StudyStatus.OPEN)
+                study("Spring 딥다이브", "스프링 심화 학습", StudyCategory.SOFTWARE, StudyStatus.ONGOING)
                         .schedule("Thu 6:00 PM PDT")
                         .startAt(now.minus(5, ChronoUnit.DAYS))
                         .endAt(now.plus(30, ChronoUnit.DAYS))
@@ -98,6 +101,7 @@ class StudyListIntegrationTest {
         var program = studyProgramRepo.save(StudyProgram.builder().title("영어 회화 클럽").build());
         var season3 =
                 seasonOf(program.getId(), "영어 회화 3기", StudyCategory.LANGUAGE)
+                        .status(StudyStatus.ONGOING)
                         .startAt(now.minus(3, ChronoUnit.DAYS))
                         .endAt(now.plus(30, ChronoUnit.DAYS))
                         .build();
@@ -119,8 +123,7 @@ class StudyListIntegrationTest {
                 .category(category)
                 .studyKind(StudyKind.CLUB)
                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                .status(StudyStatus.OPEN)
-                .capacity(30);
+                .status(StudyStatus.OPEN);
     }
 
     private Study.StudyBuilder study(
@@ -134,8 +137,7 @@ class StudyListIntegrationTest {
                 .category(category)
                 .studyKind(StudyKind.STUDY)
                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                .status(status)
-                .capacity(30);
+                .status(status);
     }
 
     private void save(Study study, Instant deadline) {
@@ -147,6 +149,7 @@ class StudyListIntegrationTest {
                         .description("모집 설명")
                         .startAt(Instant.now().minus(80, ChronoUnit.DAYS))
                         .recruitDeadlineAt(deadline)
+                        .recruitmentCapacity(30)
                         .build());
     }
 

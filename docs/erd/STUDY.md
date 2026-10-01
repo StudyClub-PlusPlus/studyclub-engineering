@@ -29,7 +29,7 @@
 | DRIVE_URL | VARCHAR(2048) | Y | 자료 드라이브 링크. DISCORD_CHANNEL_URL 과 같은 이유로 참고용이다 |
 | SCHEDULE | VARCHAR(255) | Y | 운영 일정 요약 |
 | TIMEZONE | VARCHAR(10) | Y | 기준 시간대 — `KST` / `PST` / `BOTH`(동시 진행). 등록 폼에서 운영자가 직접 고른다. NULL = 미정(이 컬럼이 생기기 전 데이터가 여기 해당) |
-| CREATED_BY | BIGINT | Y | 작성자 — 이 기수를 등록한 계정. ACCOUNT 참조(인덱스만, 외래키 없음 — 애그리거트 밖). 등록 시 서버가 요청 계정으로 채우고 이후 바꾸지 않는다. NULL = 이 컬럼이 생기기 전 데이터. **제안 단계, 미구현**
+| CREATED_BY | BIGINT | Y | 작성자 — 이 기수를 등록한 계정. ACCOUNT 참조(인덱스만, 외래키 없음 — 애그리거트 밖). 등록 시 서버가 요청 계정으로 채우고 이후 바꾸지 않는다. NULL = 이 컬럼이 생기기 전 데이터
 
 > URL 식별자(`SLUG`)는 두지 않는다 — 주소에는 `STUDY.ID` 를 쓴다. 이름은 운영 규칙으로 겹치지 않게 관리하지만(드라이브 정리·사용자 식별 목적) URL 의 근거로 삼지 않는다 — 이름을 바꾸면 주소가 깨진다.
 > 정원은 STUDY 에 두지 않는다 — 모집 정원은 [STUDY_RECRUITMENT.RECRUITMENT_CAPACITY](./STUDY_RECRUITMENT.md),
@@ -203,6 +203,22 @@ stateDiagram-v2
 ## 제약
 - 인덱스 `(PROGRAM_ID, STATUS)` — `idx_study_program_study_status`
 - `ENDED → CLOSED` 전이는 `PROGRAM_ID` 안에서 `ID` 가 가장 큰 행에서만 허용한다 — [채널 삭제와 CLOSED](#채널-삭제와-closed) 참고. DB 제약이 아니라 애플리케이션 규칙이다(여러 기수를 동시에 저장하는 테이블이라 DB CHECK 로 표현하기 어렵다)
+
+## 구현 현황 — 이 문서와 아직 어긋나는 것
+
+정원·숨김 플래그·예약 공개는 걷어냈다(`V23`). 아래 네 가지는 **코드에만 남아 있고 이 문서가 정본이다** —
+각각 응답 필드나 화면을 같이 고쳐야 해서 따로 처리한다.
+
+| 코드에 있는 것 | 이 문서 기준 | 같이 고쳐야 하는 것 |
+|---|---|---|
+| `STUDY.SLUG` (+ `uk_study_slug`) | 두지 않는다 — 주소는 `STUDY.ID` | 사용자 사이트가 이 값을 상세 주소로 쓴다(`core-front` 가 `slug` 를 `id` 로 매핑). 빼면 **공개 URL 이 바뀐다** |
+| `STUDY.STUDY_KIND` | STUDY_PROGRAM 소속 — 기수마다 다를 수 없다 | 목록·상세 응답과 프론트 타입. 지금 스키마로는 한 프로그램의 두 기수가 서로 다른 종류를 가질 수 있다 |
+| `STUDY.STUDY_DELIVERY_FORMAT` | 이 문서에 없는 컬럼 | 목록·상세 응답과 프론트 타입이 읽는다 |
+| `TIMEZONE` 컬럼이 없다 | 운영자가 등록 폼에서 고르는 컬럼 | 지금은 `SCHEDULE` 자유 텍스트를 정규식으로 판정한다 — 표기가 흔들리면 틀린다. 등록·수정 폼에 입력을 추가해야 한다 |
+
+모집 상태의 `STUDY_RECRUITMENT.START_AT <= now()` 조건도 아직 계산에 들어가지 않는다 — 등록 API 가
+`START_AT` 을 `now()` 로 채우는 동안에는 늘 참이라 결과가 같지만, 그 등록 버그([공개 여부](#공개-여부) 참고)를
+고칠 때 같이 넣어야 한다.
 
 ## 미확정
 - `PARENT_STUDY_ID` — 기수 포크가 필요하다는 요구가 생기기 전까지는 추가하지 않는다.
