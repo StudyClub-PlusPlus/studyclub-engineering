@@ -2,6 +2,7 @@ package com.studyclub.api.study;
 
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import java.util.List;
@@ -23,17 +24,17 @@ public class BackofficeStudyListService {
 
     private final BackofficeStudyDao backofficeStudyDao;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
-    private final StudyProgramLookup studyProgramLookup;
+    private final StudyProgramRepository studyProgramRepository;
     private final ObjectMapper objectMapper;
 
     public BackofficeStudyListService(
             BackofficeStudyDao backofficeStudyDao,
             StudyRecruitmentRepository studyRecruitmentRepository,
-            StudyProgramLookup studyProgramLookup,
+            StudyProgramRepository studyProgramRepository,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
-        this.studyProgramLookup = studyProgramLookup;
+        this.studyProgramRepository = studyProgramRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -57,7 +58,12 @@ public class BackofficeStudyListService {
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId, r -> r, (a, b) -> a));
 
-        Map<Long, StudyProgram> programs = studyProgramLookup.forStudies(studies);
+        Map<Long, StudyProgram> programs =
+                studyProgramRepository
+                        .findAllByIdIn(
+                                studies.stream().map(Study::getProgramId).distinct().toList())
+                        .stream()
+                        .collect(Collectors.toMap(StudyProgram::getId, p -> p));
 
         List<BackofficeStudyListResponse.StudySummary> items =
                 studies.stream()
@@ -70,7 +76,7 @@ public class BackofficeStudyListService {
                                             study.getTitle(),
                                             study.getStatus(),
                                             study.getCategory(),
-                                            StudyProgramLookup.kindOf(programs, study),
+                                            programs.get(study.getProgramId()).getStudyKind(),
                                             recruitment != null
                                                     ? recruitment.getRecruitmentCapacity()
                                                     : null,

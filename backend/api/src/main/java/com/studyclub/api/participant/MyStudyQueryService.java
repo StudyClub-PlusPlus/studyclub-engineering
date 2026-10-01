@@ -5,7 +5,6 @@ import com.studyclub.api.participant.ParticipantHubResponses.MyStudy;
 import com.studyclub.api.participant.ParticipantHubResponses.MyStudyListResponse;
 import com.studyclub.api.participant.ParticipantHubResponses.MyStudyMeeting;
 import com.studyclub.api.participant.ParticipantHubResponses.MyStudyRelation;
-import com.studyclub.api.study.StudyProgramLookup;
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.attendance.StudyAttendance;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
@@ -17,6 +16,7 @@ import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRepository;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,19 +40,19 @@ public class MyStudyQueryService {
     private final StudyRepository studyRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
-    private final StudyProgramLookup studyProgramLookup;
+    private final StudyProgramRepository studyProgramRepository;
 
     public MyStudyQueryService(
             StudyParticipantRepository studyParticipantRepository,
             StudyRepository studyRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository,
-            StudyProgramLookup studyProgramLookup) {
+            StudyProgramRepository studyProgramRepository) {
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRepository = studyRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
-        this.studyProgramLookup = studyProgramLookup;
+        this.studyProgramRepository = studyProgramRepository;
     }
 
     @Transactional(readOnly = true)
@@ -76,8 +76,15 @@ public class MyStudyQueryService {
                                 Collectors.toMap(
                                         StudyAttendance::getStudyMeetingId, Function.identity()));
 
-        // 종류는 프로그램이 갖는다 — 행마다 따로 읽지 않고 한 번에 묶는다
-        Map<Long, StudyProgram> programs = studyProgramLookup.forStudies(studyById.values());
+        Map<Long, StudyProgram> programs =
+                studyProgramRepository
+                        .findAllByIdIn(
+                                studyById.values().stream()
+                                        .map(Study::getProgramId)
+                                        .distinct()
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(StudyProgram::getId, p -> p));
 
         Instant now = Instant.now();
         List<MyStudy> items = new ArrayList<>();
@@ -92,7 +99,7 @@ public class MyStudyQueryService {
                     toMyStudy(
                             participant,
                             study,
-                            StudyProgramLookup.kindOf(programs, study),
+                            programs.get(study.getProgramId()).getStudyKind(),
                             meetings,
                             attendanceByMeetingId,
                             now));

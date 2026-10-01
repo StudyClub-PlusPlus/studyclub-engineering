@@ -52,7 +52,6 @@ public class StudyService {
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyCaptainGuard studyCaptainGuard;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
-    private final StudyProgramLookup studyProgramLookup;
 
     public StudyService(
             StudyRepository studyRepository,
@@ -66,8 +65,7 @@ public class StudyService {
             StudyApplicationRepository studyApplicationRepository,
             StudyBookmarkRepository studyBookmarkRepository,
             StudyCaptainGuard studyCaptainGuard,
-            StudyDiscordLinkRepository studyDiscordLinkRepository,
-            StudyProgramLookup studyProgramLookup) {
+            StudyDiscordLinkRepository studyDiscordLinkRepository) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
@@ -80,7 +78,6 @@ public class StudyService {
         this.studyBookmarkRepository = studyBookmarkRepository;
         this.studyCaptainGuard = studyCaptainGuard;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
-        this.studyProgramLookup = studyProgramLookup;
     }
 
     @Transactional
@@ -293,7 +290,10 @@ public class StudyService {
                         .map(StudyRecruitment::getRecruitDeadlineAt)
                         .orElse(null);
         return StudyDetailResponse.from(
-                study, studyProgramLookup.of(study), applicantCount(study), recruitDeadlineAt);
+                study,
+                studyProgramRepository.findById(study.getProgramId()).orElseThrow(),
+                applicantCount(study),
+                recruitDeadlineAt);
     }
 
     private Study findStudy(Long studyId) {

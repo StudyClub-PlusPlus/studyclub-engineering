@@ -22,6 +22,7 @@ import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
@@ -102,6 +103,48 @@ class StudyServiceTest {
                         null);
 
         assertThat(request.studyKind()).isEqualTo(StudyKind.STUDY);
+        assertThatThrownBy(() -> studyService.create(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패 - 기존 프로그램에 studyKind 를 함께 보내면 INVALID_INPUT")
+    void existingProgramWithKindThrowsInvalidInput() {
+        StudyCreateRequest request =
+                new StudyCreateRequest(
+                        999L,
+                        StudyKind.STUDY,
+                        "스터디",
+                        "소개",
+                        null,
+                        StudyCategory.ALGORITHM,
+                        null,
+                        null,
+                        null);
+
+        assertThatThrownBy(() -> studyService.create(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패 - STUDY 종류 프로그램에 새 기수를 붙이면 INVALID_INPUT")
+    void studyKindProgramRejectsNewCohort() {
+        StudyProgram studyProgram = mock(StudyProgram.class);
+        when(studyProgram.getStudyKind()).thenReturn(StudyKind.STUDY);
+        when(studyProgramRepository.findById(999L)).thenReturn(Optional.of(studyProgram));
+
+        StudyCreateRequest request =
+                new StudyCreateRequest(
+                        999L, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+
         assertThatThrownBy(() -> studyService.create(1L, request))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
