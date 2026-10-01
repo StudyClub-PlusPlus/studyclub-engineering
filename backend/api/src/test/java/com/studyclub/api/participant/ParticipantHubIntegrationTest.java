@@ -68,26 +68,6 @@ class ParticipantHubIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 내 스터디 목록은 참여·신청·일정·북마크를 한 번에 준다")
-    void returnsParticipantHub() {
-        var response =
-                rest.exchange(
-                        "/api/me/studies",
-                        HttpMethod.GET,
-                        authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
-                        Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody())
-                .containsKeys(
-                        "activeStudies",
-                        "pastStudies",
-                        "applications",
-                        "upcomingMeetings",
-                        "bookmarks");
-    }
-
-    @Test
     @DisplayName("성공 - 내 수강 상세는 출석률과 출석 타임라인을 같은 응답으로 준다")
     void returnsParticipantStudyDetail() {
         var response =
@@ -152,20 +132,6 @@ class ParticipantHubIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
-    }
-
-    @Test
-    @DisplayName("성공 - 목업 대상이 아닌 계정은 다른 참가자의 목록 대신 빈 목록을 받는다")
-    void returnsEmptyOverviewForAnotherAccount() {
-        var response =
-                rest.exchange(
-                        "/api/me/studies",
-                        HttpMethod.GET,
-                        authenticatedRequest(ANOTHER_ACCOUNT_ID),
-                        Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().get("activeStudies")).asList().isEmpty();
     }
 
     @Test

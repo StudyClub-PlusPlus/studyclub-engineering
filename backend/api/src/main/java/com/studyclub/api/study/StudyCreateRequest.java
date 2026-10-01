@@ -1,4 +1,4 @@
-package com.studyclub.api.web;
+package com.studyclub.api.study;
 
 import com.studyclub.domain.study.StudyCategory;
 import jakarta.validation.constraints.NotBlank;

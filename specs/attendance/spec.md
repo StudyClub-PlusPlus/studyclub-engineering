@@ -1,6 +1,7 @@
 # 명부 · 출석 API Spec
 
 > ERD: [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md)
+> Story PRD: [출석명부](../../planning/stories/captain-view-attendance-roster/PRD.md) · [네비게이터 출석 수정](../../planning/stories/navigator-edit-attendance/PRD.md) · [대시보드 출석률](../../planning/stories/captain-view-dashboard/PRD.md)
 > 생성일: 2026-09-15
 > 상태: 스펙확정
 
@@ -37,7 +38,8 @@ STUDY_MEETING {
 
 STUDY_PARTICIPANT {
   id: long, account_id: long, study_group_id: long, study_id: long (비정규화),
-  joined_at, status: 'ACTIVE' | 'PAUSED' | 'WITHDRAWN' | 'COMPLETED'
+  joined_at, left_at (WITHDRAWN·DELETED 일 때만),
+  status: 'ACTIVE' | 'PAUSED' | 'WITHDRAWN' | 'COMPLETED' | 'DELETED'
 }
 
 STUDY_ATTENDANCE {
@@ -164,17 +166,24 @@ STUDY_ATTENDANCE {
   분모 = 0이면 null ("–")
   else Σ(가중치) / countable_meetings
 
-가중치: PRESENT=1.0, LATE=0.5, ABSENT=0
+가중치: PRESENT=1.0, EXCUSED=1.0, LATE=0.5, ABSENT=0
+upper_bound = participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED') ? now() : participant.left_at
 countable_meetings = 스터디의 미팅 중
-  scheduled_at <= now()
+  scheduled_at <= upper_bound
   AND scheduled_at >= participant.joined_at
-  AND participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED')
-  AND 해당 미팅의 STUDY_ATTENDANCE.status != 'EXCUSED'   // 분모에서도 제외
 
 스터디 평균 = 분모 0인 참가자는 제외하고 Σ(개인 분자) / Σ(개인 분모)   // 가중평균
 ```
 
+`upper_bound` 가 `left_at`([user-leave spec](../user-leave/spec.md) "WITHDRAWN·DELETED")인 경우
+`left_at` 이 없으면(하차 시각을 모르는 과거 데이터) `countable_meetings` 는 항상 0 — 안전하게 전체
+제외한다. **하차·회원 탈퇴 이전 회차의 출석·결석은 그대로 집계에 남고, 이후 회차는 결석(0점)이 아니라
+분모에서 아예 제외된다** — 하차 이후까지 결석으로 깔면 "하차"와 "결석"이라는 서로 다른 사실이 같은
+숫자로 섞인다(2026-10-01, 회원 탈퇴 구현 중 수정).
+
 검증: 수아(출석·지각) = (1+0.5)/2 = 75%, 시우(출석만) = 1/1 = 100%.
+추가 검증(하차): 10회차 중 1~3회 출석 후 하차 → upper_bound=3회차 → 3/3=100%. 1~5회 중 3회 출석 후
+하차 → 3/5=60%. (하차 이후 회차를 결석으로 깔면 3/10=30%가 되어 결석과 하차가 섞인다.)
 
 ### Error Responses
 

@@ -41,7 +41,7 @@ import {
 } from '@core/lib/joined';
 import { getApplications, getRegion } from '@core/lib/me';
 import { MANAGE_ROLE_LABEL, manageAccessOf } from '@core/lib/meetings';
-import { studies as allStudies, type Study, type StudyMeeting } from '@studyclub/mock';
+import { type Study, type StudyMeeting } from '@studyclub/mock';
 import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
 import {
   Award,
@@ -57,6 +57,7 @@ import {
 
 import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 type Filter = 'all' | LifeStatus;
 
@@ -414,10 +415,12 @@ export default function MyJoinedPage() {
     setReady(true);
   }, [locale, router]);
 
+  const allStudies = useMswStudies();
+
   const mine = useMemo<Study[]>(() => {
     const byId = new Map(allStudies.map((s) => [s.id, s]));
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => Boolean(s));
-  }, [mineIds]);
+  }, [mineIds, allStudies]);
 
   const days = useMemo(() => weekDays(mine, locale, wallTz, weekStart), [mine, locale, wallTz, weekStart]);
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
@@ -431,18 +434,19 @@ export default function MyJoinedPage() {
       appliedOpen.current = true;
       return;
     }
-    const study = mine.find((s) => s.id === open);
+    // 주소 값은 study_id 다. 펼침 상태(openIds)는 내부 키(`id`)로 들고 있는다.
+    const study = mine.find((s) => String(s.study_id) === open);
     if (!study) {
       appliedOpen.current = true;
       return;
     }
     const nextFilter = lifeStatus(study);
     const list = studiesIn(mine, nextFilter);
-    const idx = list.findIndex((s) => s.id === open);
+    const idx = list.findIndex((s) => s.id === study.id);
     appliedOpen.current = true;
     setFilter(nextFilter);
     if (idx >= 0) setPage(Math.floor(idx / PAGE_SIZE) + 1);
-    setOpenIds([open]);
+    setOpenIds([study.id]);
   }, [ready, mine]);
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
@@ -692,7 +696,7 @@ function StudyItem({
                     variant='secondary'
                     size='sm'
                     leadingIcon={<Settings2 size={14} />}
-                    onClick={() => router.push(`/proto/core/${locale}/my/joined/${study.id}/manage/schedule`)}
+                    onClick={() => router.push(`/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`)}
                   >
                     스터디 관리
                   </Button>

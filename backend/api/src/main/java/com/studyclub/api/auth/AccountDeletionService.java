@@ -108,7 +108,8 @@ public class AccountDeletionService {
 
     private void anonymizeParticipations(Long accountId) {
         Instant deletedAt = Instant.now();
-        List<StudyParticipant> participations = studyParticipantRepository.findByAccountId(accountId);
+        List<StudyParticipant> participations =
+                studyParticipantRepository.findByAccountId(accountId);
         for (StudyParticipant participation : participations) {
             participation.markDeletedDueToAccountDeletion(deletedAt);
         }

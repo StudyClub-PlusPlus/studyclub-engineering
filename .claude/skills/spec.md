@@ -221,7 +221,7 @@ spec.md 를 아래 6개 축으로 검증한다. 구현 코드가 있으면 코�
 ❌ [URL] GET /api/getStudies → 동사 포함. GET /api/studies 로 변경
 ⚠️ [ERD] cohort.curriculum — ERD 는 JSON, 스펙에 String
 ✅ [인증] permitAll 목록 일치
-❌ [Converge] DTO 에 slug 필드 누락 — spec.md 에는 있음
+❌ [Converge] DTO 에 thumbnailUrl 필드 누락 — spec.md 에는 있음
 ...
 
 {converge 결과가 모두 통과면}

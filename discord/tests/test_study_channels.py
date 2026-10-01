@@ -12,6 +12,7 @@ CAPTAIN_ROLE_ID = 100000000000000002
 NAVIGATOR_ROLE_ID = 100000000000000003
 STUDY_ID = "1327394882193883136"
 USER_ID = "327394882193883136"
+BOT_ID = "427394882193883136"
 API_KEY = "test-api-key"
 HEADERS = {"X-API-Key": API_KEY, "X-Discord-User-ID": USER_ID}
 
@@ -91,6 +92,27 @@ def test_get_study_channels_allows_a_navigator(tmp_path):
     response = _get(_client(_bot(FakeGuild(member_roles=(NAVIGATOR_ROLE_ID,))), tmp_path))
 
     assert response.status_code == 200
+
+
+def test_get_study_channels_as_the_system_needs_no_role(tmp_path):
+    """The backend reads a study's channels on its own behalf, as the bot."""
+    guild = FakeGuild(member_roles=())
+    headers = {**HEADERS, "X-Discord-User-ID": BOT_ID}
+
+    response = _get(_client(_bot(guild), tmp_path, bot_id=int(BOT_ID)), headers=headers)
+
+    assert response.status_code == 200
+    assert [c["discordChannelName"] for c in response.json()] == ["일반", "자료실", "스터디룸"]
+    guild.fetch_member.assert_not_awaited()
+
+
+def test_get_study_channels_as_the_bot_without_bot_id_configured_is_forbidden(tmp_path):
+    """Unset DISCORD_BOT_ID shuts the door rather than opening it to everyone."""
+    headers = {**HEADERS, "X-Discord-User-ID": BOT_ID}
+
+    response = _get(_client(_bot(FakeGuild(member_roles=())), tmp_path, bot_id=None), headers=headers)
+
+    assert response.status_code == 403
 
 
 def test_get_study_channels_leaves_out_channels_the_bot_cannot_view(tmp_path):

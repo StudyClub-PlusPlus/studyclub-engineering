@@ -7,9 +7,11 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { getUser } from '@core/lib/auth';
 import { t } from '@core/lib/i18n';
 import { MANAGE_ROLE_LABEL, manageAccessOf, type NavigatorGroup } from '@core/lib/meetings';
-import { studies, type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/mock';
 import { Badge, Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
+
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 /**
  * 스터디 관리 — 네비게이터가 맡은 분반을 사용자 사이트에서 굴리는 곳.
@@ -74,8 +76,10 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [dirty]);
 
-  const study = studies.find((s) => s.id === id);
-  const access = manageAccessOf(id);
+  const studies = useMswStudies();
+  // 주소 값은 study_id(STUDY.ID) 다. 역할 판정은 내부 키(`id`)로 한다.
+  const study = studies.find((s) => String(s.study_id) === id);
+  const access = study ? manageAccessOf(study.id) : undefined;
 
   if (!ready) return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
 

@@ -4,7 +4,7 @@
 모두에게 알림을 울린다.** [`send-alert-message`](send-alert-message.md) 와 모양이 같고, **다른 곳만**
 [아래](#send-alert-message-와-다른-점)에 모아 적는다.
 
-> ⚠️ **아직 구현 전이다.** 이 문서는 구현할 계약이다.
+> ✅ **구현됨** — `discord/app/api/routes/channels.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
 > **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다.
 
@@ -28,8 +28,8 @@ POST /api/v1/channels/announcement/msg
 
 **captain 역할을 가진 멤버만 호출할 수 있다.** [`create-study`](create-study.md#요청) ·
 [`assign-role`](assign-role.md#요청) 과 같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를 조회해
-captain 역할 보유 여부를 확인하고, 없으면 **403** 이다. navigator 는 호출할 수 없다
-([`send-alert-message`](send-alert-message.md#요청) 와 다르다).
+captain 역할 보유 여부를 확인하고, 없으면 **403** 이다. navigator 도, 시스템(백엔드)도 호출할 수 없다 —
+길드 전체에 울리는 공지는 사람이 책임지고 보낸다 ([시스템 호출](common-header.md#시스템-호출)).
 
 captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는** 것이다. 이 엔드포인트는 어느 것도
 만들지 않고, 찾지 못하면 보내지 말고 실패한다. 둘 다 **설정값으로 ID 를 받는다**
@@ -166,13 +166,13 @@ alert 보다 중복의 비용이 크다.
 | | [send-alert-message](send-alert-message.md) | send-announcement-message |
 |------|------|------|
 | 경로 | `/channels/alert/msg` | `/channels/announcement/msg` |
-| 호출 권한 | captain **또는** navigator | captain 만 |
+| 호출 권한 | captain **또는** 시스템(백엔드) | captain 만 — 시스템도 안 된다 |
 | 발신자 줄 | `발신: <@id>` 를 맨 위에 붙임 | **붙이지 않음** |
 | 맨 위 줄 | 발신자 줄 | `@everyone` |
 | 알림 | `AllowedMentions.none()` — 아무것도 안 울림 | `@everyone` 만 울림 |
 | `msg` 상한 | 1900자 | 1990자 |
 | 추가 권한 | 없음 | `Mention Everyone` (없으면 공지는 올리고 alert 채널에 알림) |
-| 설정값 | `DISCORD_ALERT_CHANNEL_ID` · captain · navigator 역할 | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` · captain 역할 · (권한 알림용) `DISCORD_ALERT_CHANNEL_ID` |
+| 설정값 | `DISCORD_ALERT_CHANNEL_ID` · captain 역할 · `DISCORD_BOT_ID` | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` · captain 역할 · (권한 알림용) `DISCORD_ALERT_CHANNEL_ID` |
 
 ## 미정 사항
 

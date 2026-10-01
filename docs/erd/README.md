@@ -210,9 +210,10 @@ erDiagram
     bigint   ACCOUNT_ID            FK
     bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조"
     bigint   STUDY_ID              "→ STUDY 참조 (비정규화)"
-    varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED"
+    varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED / DELETED"
     varchar  PARTICIPANT_ROLE      "MEMBER / LEADER / CO_LEADER"
     datetime JOINED_AT             "편입 시각"
+    datetime LEFT_AT               "참여 종료 시각. WITHDRAWN·DELETED 일 때만"
   }
 
   STUDY_ATTENDANCE {

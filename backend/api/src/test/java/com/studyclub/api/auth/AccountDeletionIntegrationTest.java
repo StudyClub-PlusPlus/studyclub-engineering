@@ -162,6 +162,7 @@ class AccountDeletionIntegrationTest {
                                 1L,
                                 Map.of("nickname", account.getNickname())));
 
+        Instant beforeDelete = Instant.now();
         var response =
                 rest.exchange(
                         "/api/me",
@@ -171,15 +172,23 @@ class AccountDeletionIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-        // 계정 · 로그인 수단 · 참여 · 관심 — 물리 삭제.
+        // 계정 · 로그인 수단 · 관심 — 물리 삭제.
         assertThat(accountRepository.findById(accountId)).isEmpty();
         assertThat(
                         accountIdentityRepository.findByIssuerAndProviderAccountId(
                                 Issuer.GOOGLE, "sub-" + accountId))
                 .isEmpty();
         assertThat(accountConsentRepository.findByAccountId(accountId)).isEmpty();
-        assertThat(studyParticipantRepository.findByStudyId(9001L)).isEmpty();
         assertThat(studyBookmarkRepository.countByAccountId(accountId)).isZero();
+
+        // 참여 — 지우지 않고 DELETED 로 익명화한다. 지우면 STUDY_ATTENDANCE 가 출석률 집계에서
+        // 통째로 빠지기 때문이다(specs/user-leave/spec.md).
+        List<StudyParticipant> participations = studyParticipantRepository.findByStudyId(9001L);
+        assertThat(participations).hasSize(1);
+        StudyParticipant participation = participations.get(0);
+        assertThat(participation.getAccountId()).isEqualTo(accountId);
+        assertThat(participation.getStatus()).isEqualTo(ParticipantStatus.DELETED);
+        assertThat(participation.getLeftAt()).isNotNull().isAfterOrEqualTo(beforeDelete);
 
         // 탈퇴 사유 — 계정과 연결하지 않고 값만 쌓는다.
         assertThat(accountLeaveReasonRepository.findAll())

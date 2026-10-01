@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AttendanceService {
 
     private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
+    private static final String WITHDRAWN_PARTICIPANT_NAME = "탈퇴한 회원";
 
     private final StudyRepository studyRepository;
     private final StudyGroupRepository studyGroupRepository;
@@ -135,7 +136,7 @@ public class AttendanceService {
             participantAttendances.add(
                     new AttendanceResponse.ParticipantAttendance(
                             p.getId(),
-                            nicknames.getOrDefault(p.getAccountId(), ""),
+                            nicknames.getOrDefault(p.getAccountId(), WITHDRAWN_PARTICIPANT_NAME),
                             participantAttendancePerMeeting,
                             AttendanceRateCalculator.rate(numeratorDenominatorPair)));
         }

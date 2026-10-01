@@ -50,5 +50,8 @@ public interface StudyAttendanceRepository extends JpaRepository<StudyAttendance
     /** 스터디 내 특정 계정들의 전체 출석 이력. idx_study_attendance_study_account 인덱스 활용. */
     List<StudyAttendance> findByStudyIdAndAccountIdIn(Long studyId, Collection<Long> accountIds);
 
+    /** 한 계정의 여러 스터디 출석. idx_study_attendance_account_study 인덱스 활용. */
+    List<StudyAttendance> findByAccountIdAndStudyIdIn(Long accountId, Collection<Long> studyIds);
+
     void deleteByStudyId(Long studyId);
 }

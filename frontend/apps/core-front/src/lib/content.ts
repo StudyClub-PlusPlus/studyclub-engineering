@@ -11,7 +11,7 @@ import {
   announcements as announcementsData,
 } from '@studyclub/mock';
 
-import { fetchStudies } from './api';
+import { fetchStudies, fetchStudy } from './api';
 
 export type {
   Locale,
@@ -51,8 +51,7 @@ function isPublished(s: { publish_at?: string }): boolean {
 /** 사용자 사이트용 스터디 목록 — API 우선, 실패 시 mock fallback. */
 export async function getStudies(): Promise<Study[]> {
   try {
-    const apiStudies = await fetchStudies();
-    if (apiStudies.length > 0) return apiStudies;
+    return await fetchStudies();
   } catch (e) {
     console.warn('[content] API fetch failed, falling back to mock:', e);
   }
@@ -63,25 +62,32 @@ export async function getStudies(): Promise<Study[]> {
   }));
   return sortByOrder(withDate);
 }
+// TODO(api): GET /api/events — 행사 목록 연동
 export async function getEvents(): Promise<StudyclubEvent[]> {
   return sortByOrder(eventsData);
 }
+
+// TODO(api): GET /api/operators — 운영진 목록 연동
 export async function getOperators(): Promise<Operator[]> {
   return sortByOrder(operatorsData);
 }
+
+// TODO(api): GET /api/members — 멤버 목록 연동
 export async function getMembers(): Promise<Member[]> {
   return sortByOrder(membersData);
 }
 
-export async function getStudyMap(): Promise<Record<string, Study>> {
-  const studies = await getStudies();
-  return Object.fromEntries(studies.map((s) => [s.id, s]));
+// TODO(api): GET /api/studies/{studyId} — 스터디 단건 조회 연동
+export async function getStudy(studyId: number): Promise<Study | null> {
+  try {
+    return await fetchStudy(studyId);
+  } catch (e) {
+    console.warn('[content] getStudy API failed, falling back to mock:', e);
+  }
+  return (await getStudies()).find((s) => s.study_id === studyId) ?? null;
 }
 
-export async function getStudy(id: string): Promise<Study | null> {
-  return (await getStudies()).find((s) => s.id === id) ?? null;
-}
-
+// TODO(api): GET /api/events/{id} — 행사 단건 조회 연동
 export async function getEvent(id: string): Promise<StudyclubEvent | null> {
   return (await getEvents()).find((e) => e.id === id) ?? null;
 }
@@ -91,6 +97,7 @@ export async function getMembersByStudy(studyId: string): Promise<Member[]> {
   return (await getMembers()).filter((mem) => (mem.studies ?? []).includes(studyId));
 }
 
+// TODO(api): GET /api/site — 사이트 메타데이터 연동
 export async function getSite(): Promise<Site> {
   return siteData;
 }
@@ -100,7 +107,7 @@ export async function getOperatorMap(): Promise<Record<string, Operator>> {
   return Object.fromEntries(ops.map((o) => [o.id, o]));
 }
 
-/** 공지사항 — 고정(pinned) 먼저, 그다음 날짜 내림차순. */
+/** 공지사항 — TODO(api): GET /api/announcements — 고정(pinned) 먼저, 그다음 날짜 내림차순. */
 export async function getNotices(): Promise<Announcement[]> {
   return [...announcementsData].sort(
     (a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false) || b.date.localeCompare(a.date),

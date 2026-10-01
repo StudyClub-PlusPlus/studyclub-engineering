@@ -72,8 +72,8 @@ public class StudyParticipant extends BaseEntity {
     private Instant leftAt;
 
     /**
-     * 회원 탈퇴 — 명부 행을 지우지 않고 표시만 바꾼다. 행을 지우면 이미 쌓인 STUDY_ATTENDANCE(ACCOUNT_ID 로만 연결, FK 없음)가 갈 곳을
-     * 잃어 집계에서 통째로 빠진다(specs/user-leave/spec.md). ACCOUNT_ID 는 그대로 둔다 — 참조할 ACCOUNT 행 자체가 없어져 더는 사람으로
+     * 회원 탈퇴 — 명부 행을 지우지 않고 표시만 바꾼다. 행을 지우면 이미 쌓인 STUDY_ATTENDANCE(ACCOUNT_ID 로만 연결, FK 없음)가 갈 곳을 잃어
+     * 집계에서 통째로 빠진다(specs/user-leave/spec.md). ACCOUNT_ID 는 그대로 둔다 — 참조할 ACCOUNT 행 자체가 없어져 더는 사람으로
      * 되짚을 수 없으므로 이 값 자체가 개인정보가 아니다(다른 탈퇴 보존 데이터와 같은 논리).
      */
     public void markDeletedDueToAccountDeletion(Instant deletedAt) {

@@ -18,6 +18,8 @@ const apiStudy = {
   deliveryFormat: 'ONLINE' as const,
   capacity: 30,
   currentApplicants: 12,
+  participantCount: 12,
+  completionRate: null,
   recruitDeadlineAt: '2026-09-30T15:00:00Z',
   startAt: '2026-10-01T00:00:00Z',
   endAt: null,

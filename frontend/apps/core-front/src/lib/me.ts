@@ -148,7 +148,7 @@ export function setDiscord(handle: string | null) {
  */
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 export function seedDemoData() {
   if (readJSON<number>(SEED_KEY, 0) >= SEED_VERSION) return;
@@ -190,7 +190,7 @@ export function seedDemoData() {
       },
     ] satisfies Application[]);
   }
-  writeJSON(BOOKMARK_KEY, ['daily-leetcode', 'early-bird', 'system-design-interview']);
+  writeJSON(BOOKMARK_KEY, ['pytorch-ai-coding', 'system-design-interview']);
   writeJSON(DISCORD_KEY, 'jiwon_dev');
 }
 
@@ -215,13 +215,23 @@ export function clearMyLocalData() {
 
 /**
  * 회원 탈퇴 화면의 "맡은 스터디 경고"에 쓰는 목록. 다른 `/my` 기능과 달리 이건 로컬에 흉내낼 수
- * 없다 — "지금 이 사람이 진행 중인 스터디의 네비게이터인가"는 서버(STUDY_PARTICIPANT · STUDY.STATUS)
- * 만 판정할 수 있다. GET /api/me/studies (서버 라우트 프록시)를 실제로 호출한다
- * (specs/user-leave/spec.md "GET /api/me/studies (기존 API 확장)").
+ * 없다 — "지금 이 사람이 진행 중인 스터디의 네비게이터인가"는 서버(STUDY_PARTICIPANT · 회차 일정)
+ * 만 판정할 수 있다. GET /api/me/studies 를 실제로 호출한다(specs/my-studies/spec.md).
  */
 export type ActiveNavigatorStudy = { studyId: number; title: string };
 
+type MyStudyItem = {
+  studyId: number;
+  title: string;
+  relation: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'WITHDRAWN';
+  participantRole: 'MEMBER' | 'LEADER' | 'CO_LEADER';
+};
+
 /**
+ * "맡은 진행 중인 스터디" = 네비게이터(LEADER·CO_LEADER)이고 relation 이 ONGOING(회차가 시작돼
+ * 실제로 도는 중)인 것. 이 사람이 빠지면 자리가 비는 경우만 경고한다 — UPCOMING(시작 전)은 빠져도
+ * 멈출 게 없고, COMPLETED·WITHDRAWN 은 이미 끝났다(specs/user-leave/spec.md "네비게이터 경고").
+ *
  * 실패(네트워크 오류, 401, 403 ONBOARDING_REQUIRED 등)는 전부 "맡은 스터디 없음"과 동일하게
  * 빈 배열로 처리한다 — 온보딩 미완료 계정은 애초에 참여 자체가 불가능해 맡은 스터디가 있을 수
  * 없으므로 안전하다(스펙의 `@RequireOnboarding` 과의 관계 절 참고).
@@ -233,10 +243,13 @@ export async function getActiveNavigatorStudies(): Promise<ActiveNavigatorStudy[
     const res = await fetch(`${API_BASE}/api/me/studies`, { credentials: 'include', cache: 'no-store' });
     if (!res.ok) return [];
     const data = await res.json();
-    const activeStudies: Array<{ studyId: number; title: string; isActiveNavigator: boolean }> =
-      data?.activeStudies ?? [];
-    return activeStudies
-      .filter((s) => s.isActiveNavigator)
+    const items: MyStudyItem[] = data?.items ?? [];
+    return items
+      .filter(
+        (s) =>
+          s.relation === 'ONGOING' &&
+          (s.participantRole === 'LEADER' || s.participantRole === 'CO_LEADER'),
+      )
       .map((s) => ({ studyId: s.studyId, title: s.title }));
   } catch {
     return [];

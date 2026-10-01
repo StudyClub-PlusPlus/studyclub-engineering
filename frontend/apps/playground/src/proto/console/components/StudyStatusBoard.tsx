@@ -39,7 +39,7 @@ export function StudyStatusBoard({
         count={ongoing.length}
         href={`${BASE}/studies`}
         items={ongoing}
-        rowHref={(s) => `${BASE}/studies/${s.id}`}
+        rowHref={(s) => `${BASE}/studies/${s.study_id}`}
         empty='진행중 스터디가 없습니다'
         className='border-b border-border lg:border-b-0 lg:border-r'
         // 이름만 둔다. 출석률·회차를 여기 적으면 기준을 설명할 자리가 없어 숫자만 남는다.
@@ -51,7 +51,7 @@ export function StudyStatusBoard({
         count={recruiting.length}
         href={`${BASE}/studies`}
         items={recruiting}
-        rowHref={(s) => `${BASE}/studies/${s.id}`}
+        rowHref={(s) => `${BASE}/studies/${s.study_id}`}
         empty='모집중 스터디가 없습니다'
         className='border-b border-border lg:border-b-0 lg:border-r'
         row={(s) => <DeadlineCell deadline={s.deadline} />}

@@ -77,10 +77,12 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
     return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [active, attendance]);
 
+  // TODO(api): PATCH /api/studies/{id}/participants/{crewId}/status — 크루 승인/반려/상태 변경
   function setStatus(crewId: string, status: CrewStatus) {
     setCrew((list) => list.map((c) => (c.id === crewId ? { ...c, status } : c)));
   }
 
+  // TODO(api): POST /api/studies/{id}/attendances — 출석 체크 저장
   function toggleAttendance(crewId: string, meetingId: string) {
     setAttendance((a) => {
       const row = { ...(a[crewId] ?? {}) };
