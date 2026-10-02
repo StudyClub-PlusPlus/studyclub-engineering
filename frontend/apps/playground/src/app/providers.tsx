@@ -14,7 +14,8 @@ const loadWorker = () => import('msw/browser').then(({ setupWorker }) => setupWo
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <MSWProvider mockHandlerGroups={mockHandlerGroups} loadWorker={loadWorker} fallback={null}>
+    // playground 는 백엔드 없이 배포된다 — 배포 빌드에서도 MSW 가 /api/* 를 받아야 화면이 채워진다.
+    <MSWProvider mockHandlerGroups={mockHandlerGroups} loadWorker={loadWorker} fallback={null} enabled>
       {children}
     </MSWProvider>
   );
