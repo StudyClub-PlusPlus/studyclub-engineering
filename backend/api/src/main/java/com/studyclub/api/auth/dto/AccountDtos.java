@@ -2,10 +2,12 @@ package com.studyclub.api.auth.dto;
 
 import com.studyclub.api.auth.validation.ValidNickname;
 import com.studyclub.api.auth.validation.ValidTimeZone;
+import com.studyclub.domain.account.AccountConsent;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
 
 /**
  * ACCOUNT 리소스(/accounts/**, /api/me) DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 달라 분리한다 — 여긴
@@ -38,4 +40,20 @@ public final class AccountDtos {
     public record UpdateProfileRequest(
             @NotBlank(message = "닉네임은 필수입니다") @ValidNickname String nickname,
             @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {}
+
+    /** 마케팅 수신 동의 변경 요청 (PUT /api/me/marketing-consent). false 도 정상값이라 누락만 막는다. */
+    public record UpdateMarketingConsentRequest(
+            @NotNull(message = "마케팅 수신 동의 여부는 필수입니다") Boolean agreed) {}
+
+    /** 마케팅 수신 동의 현재 값. {@code agreedAt} 은 지금 값으로 정한 시각이고, 동의 행이 없으면 null 이다. */
+    public record MarketingConsentView(boolean agreed, Instant agreedAt) {
+
+        public static MarketingConsentView from(AccountConsent consent) {
+            return new MarketingConsentView(consent.isAgreed(), consent.getAgreedAt());
+        }
+
+        public static MarketingConsentView notAgreed() {
+            return new MarketingConsentView(false, null);
+        }
+    }
 }
