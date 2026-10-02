@@ -15,7 +15,6 @@ const detail: ApiStudyDetail = {
   id: 7,
   programId: 3,
   programTitle: 'AI 논문 스터디',
-  slug: 'uuid',
   title: 'AI 논문 스터디',
   oneLineSummary: '논문을 함께 읽습니다.',
   description: null,

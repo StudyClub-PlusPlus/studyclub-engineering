@@ -33,6 +33,11 @@ class StudyListJpqlDao implements StudyListDao {
             "(SELECT r.recruitDeadlineAt FROM StudyRecruitment r WHERE r.id ="
                     + " (SELECT MAX(r2.id) FROM StudyRecruitment r2 WHERE r2.studyId = s.id))";
 
+    /** 현재 모집 정원 — 가장 최근(id 최대) 회차의 값. 없으면 null(무제한). */
+    private static final String CURRENT_CAPACITY =
+            "(SELECT r.recruitmentCapacity FROM StudyRecruitment r WHERE r.id ="
+                    + " (SELECT MAX(r2.id) FROM StudyRecruitment r2 WHERE r2.studyId = s.id))";
+
     /** 정원을 차지하는 참여자 수 — ACTIVE·PAUSED 만. */
     private static final String OCCUPYING_COUNT =
             "(SELECT COUNT(p) FROM StudyParticipant p WHERE p.studyId = s.id"
@@ -49,9 +54,13 @@ class StudyListJpqlDao implements StudyListDao {
                     + " IS NULL OR "
                     + CURRENT_DEADLINE
                     + " > :now)"
-                    + "   AND (s.capacity IS NULL OR "
+                    + "   AND ("
+                    + CURRENT_CAPACITY
+                    + " IS NULL OR "
                     + OCCUPYING_COUNT
-                    + " < s.capacity) THEN 0"
+                    + " < "
+                    + CURRENT_CAPACITY
+                    + ") THEN 0"
                     + " ELSE 2 END";
 
     private static final String TIMEZONE =
@@ -68,7 +77,7 @@ class StudyListJpqlDao implements StudyListDao {
      * 나열한다(planning/stories/crew-browse-studies). 묶어서 최신 1건만 주면 진행 중인 기수가 목록에서 사라진다.
      */
     private static final String VISIBLE =
-            "s.isHidden = false" + " AND s.status <> com.studyclub.domain.study.StudyStatus.DRAFT";
+            "s.status <> com.studyclub.domain.study.StudyStatus.DRAFT";
 
     /** 모집 중 → 진행 중 → 종료, 같은 단계에서는 최근 등록 순. 사용자가 고르는 정렬은 없다. */
     private static final String ORDER_BY = " ORDER BY " + PHASE_RANK + " ASC, s.id DESC";

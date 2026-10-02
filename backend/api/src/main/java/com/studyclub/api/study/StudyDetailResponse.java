@@ -9,7 +9,6 @@ public record StudyDetailResponse(
         Long id,
         Long programId,
         String programTitle,
-        String slug,
         String title,
         String oneLineSummary,
         String description,
@@ -33,12 +32,15 @@ public record StudyDetailResponse(
      * 정보 탭이 「프로그램 제목 · 종류 · 변경할 수 없음」을 읽기 전용으로 보여 주는 데 쓴다.
      */
     public static StudyDetailResponse from(
-            Study study, StudyProgram program, long applicantCount, Instant recruitDeadlineAt) {
+            Study study,
+            StudyProgram program,
+            long applicantCount,
+            Instant recruitDeadlineAt,
+            Integer recruitmentCapacity) {
         return new StudyDetailResponse(
                 study.getId(),
                 study.getProgramId(),
                 program.getTitle(),
-                study.getSlug(),
                 study.getTitle(),
                 study.getOneLineSummary(),
                 study.getDescription(),
@@ -47,9 +49,9 @@ public record StudyDetailResponse(
                 study.getThumbnailUrl(),
                 study.getStudyDeliveryFormat().name(),
                 study.getStatus().name(),
-                study.recruitStatus(applicantCount, recruitDeadlineAt),
+                study.recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity),
                 study.getCurriculum(),
-                study.getCapacity(),
+                recruitmentCapacity,
                 study.getSchedule(),
                 recruitDeadlineAt,
                 study.getStartAt(),
@@ -64,7 +66,6 @@ public record StudyDetailResponse(
                 id,
                 programId,
                 programTitle,
-                slug,
                 title,
                 oneLineSummary,
                 description,

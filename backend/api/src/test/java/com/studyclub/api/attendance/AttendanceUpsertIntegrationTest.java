@@ -91,14 +91,12 @@ class AttendanceUpsertIntegrationTest {
                 studyRepo.save(
                         Study.builder()
                                 .programId(program.getId())
-                                .slug("upsert-test-study")
                                 .title("Upsert 테스트 스터디")
                                 .oneLineSummary("테스트용")
                                 .category(StudyCategory.ALGORITHM)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(10)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());
 

@@ -40,7 +40,6 @@ class StudyRecruitStatusIntegrationTest {
     @Autowired StudyRecruitmentRepository recruitmentRepo;
 
     private final AtomicLong accountIdSeq = new AtomicLong(1);
-    private final AtomicLong slugSeq = new AtomicLong(1);
 
     @BeforeEach
     void setUp() {
@@ -49,7 +48,6 @@ class StudyRecruitStatusIntegrationTest {
         studyRepo.deleteAll();
         studyProgramRepo.deleteAll();
         accountIdSeq.set(1);
-        slugSeq.set(1);
     }
 
     @Test
@@ -156,14 +154,12 @@ class StudyRecruitStatusIntegrationTest {
                 studyRepo.save(
                         Study.builder()
                                 .programId(program.getId())
-                                .slug("recruit-status-" + slugSeq.getAndIncrement())
                                 .title("모집 상태 스터디")
                                 .oneLineSummary("모집 상태 계산 검증용")
                                 .category(StudyCategory.SOFTWARE)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(status)
-                                .capacity(capacity)
                                 .startAt(Instant.now().plus(30, ChronoUnit.DAYS))
                                 .build());
         recruitmentRepo.save(
@@ -173,6 +169,7 @@ class StudyRecruitStatusIntegrationTest {
                         .description("모집 설명")
                         .startAt(Instant.now().minus(7, ChronoUnit.DAYS))
                         .recruitDeadlineAt(recruitDeadline)
+                        .recruitmentCapacity(capacity)
                         .build());
         return study;
     }

@@ -4,7 +4,6 @@ import type { Study } from '..';
 // ── 스터디 목록/상세 API 타입 ───────────────────────────────────────────
 export type ApiStudy = {
   studyId: number;
-  slug: string;
   title: string;
   oneLineSummary: string;
   category: string;
@@ -27,7 +26,6 @@ export type ApiStudy = {
 export type ApiStudyDetail = {
   id: number;
   programId: number;
-  slug: string;
   title: string;
   oneLineSummary: string;
   description: string | null;
@@ -94,7 +92,6 @@ export function studyToApiStudy(s: Study): ApiStudy {
   const recruitClosed = s.recruitment?.status === 'closed';
   return {
     studyId: s.study_id,
-    slug: s.id,
     title: s.title.ko,
     oneLineSummary: s.summary.ko,
     category: categoryEnum(s.category ?? ''),
@@ -120,7 +117,6 @@ export function studyToApiStudyDetail(s: Study): ApiStudyDetail {
   return {
     id: s.study_id,
     programId: s.study_id,
-    slug: s.id,
     title: s.title.ko,
     oneLineSummary: s.summary.ko,
     description: s.description?.ko ?? null,

@@ -101,14 +101,12 @@ class DiscordAttendanceIntegrationTest {
                 studyRepo.save(
                         Study.builder()
                                 .programId(program.getId())
-                                .slug("discord-test-study")
                                 .title("디스코드 테스트 스터디")
                                 .oneLineSummary("테스트용")
                                 .category(StudyCategory.ALGORITHM)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(10)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());
         var group =

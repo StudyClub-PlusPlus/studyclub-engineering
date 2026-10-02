@@ -92,14 +92,12 @@ class AttendanceGetIntegrationTest {
                 studyRepo.save(
                         Study.builder()
                                 .programId(program.getId())
-                                .slug("system-design-study")
                                 .title("시스템 디자인 스터디")
                                 .oneLineSummary("시스템 디자인 심화")
                                 .category(StudyCategory.ALGORITHM)
                                 .description("시스템 디자인 스터디 설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(10)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());
 

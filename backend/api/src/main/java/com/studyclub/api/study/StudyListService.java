@@ -50,13 +50,24 @@ public class StudyListService {
                 studyParticipantRepository.countByStudyIds(studyIds).stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
 
+        List<StudyRecruitment> latestRecruitments =
+                studyRecruitmentRepository.findLatestByStudyIdIn(studyIds);
+
         Map<Long, Instant> deadlines =
-                studyRecruitmentRepository.findLatestByStudyIdIn(studyIds).stream()
+                latestRecruitments.stream()
                         .filter(recruitment -> recruitment.getRecruitDeadlineAt() != null)
                         .collect(
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId,
                                         StudyRecruitment::getRecruitDeadlineAt));
+
+        Map<Long, Integer> capacities =
+                latestRecruitments.stream()
+                        .filter(recruitment -> recruitment.getRecruitmentCapacity() != null)
+                        .collect(
+                                Collectors.toMap(
+                                        StudyRecruitment::getStudyId,
+                                        StudyRecruitment::getRecruitmentCapacity));
 
         Map<Long, StudyProgram> programs =
                 studyProgramRepository
@@ -73,7 +84,8 @@ public class StudyListService {
                                                 study,
                                                 programs.get(study.getProgramId()).getStudyKind(),
                                                 applicants.getOrDefault(study.getId(), 0L),
-                                                deadlines.get(study.getId())))
+                                                deadlines.get(study.getId()),
+                                                capacities.get(study.getId())))
                         .toList();
 
         return new StudyListResponse(items, total, offset, limit);

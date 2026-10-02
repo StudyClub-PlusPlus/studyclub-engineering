@@ -30,7 +30,7 @@ function l10n(text: string): { ko: string; en: string } {
 
 export function toStudy(api: ApiStudy): Study {
   return {
-    id: api.slug,
+    id: String(api.studyId),
     study_id: api.studyId,
     title: l10n(api.title),
     summary: l10n(api.oneLineSummary),

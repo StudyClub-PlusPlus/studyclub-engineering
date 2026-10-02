@@ -115,13 +115,11 @@ class StudyListIntegrationTest {
     private Study.StudyBuilder seasonOf(Long programId, String title, StudyCategory category) {
         return Study.builder()
                 .programId(programId)
-                .slug("season-" + title.hashCode())
                 .title(title)
                 .oneLineSummary("기수별로 따로 모집한다")
                 .category(category)
                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                .status(StudyStatus.OPEN)
-                .capacity(30);
+                .status(StudyStatus.OPEN);
     }
 
     private Study.StudyBuilder study(
@@ -131,13 +129,11 @@ class StudyListIntegrationTest {
                         StudyProgram.builder().title(title).studyKind(StudyKind.STUDY).build());
         return Study.builder()
                 .programId(program.getId())
-                .slug("study-" + program.getId())
                 .title(title)
                 .oneLineSummary(summary)
                 .category(category)
                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                .status(status)
-                .capacity(30);
+                .status(status);
     }
 
     private void save(Study study, Instant deadline) {
@@ -255,7 +251,7 @@ class StudyListIntegrationTest {
                 .containsEntry("studyKind", "STUDY")
                 .containsEntry("phase", "CLOSED")
                 .containsEntry("timezone", "BOTH")
-                .containsKeys("slug", "thumbnailUrl", "schedule", "endAt", "closingSoon");
+                .containsKeys("thumbnailUrl", "schedule", "endAt", "closingSoon");
     }
 
     @Test

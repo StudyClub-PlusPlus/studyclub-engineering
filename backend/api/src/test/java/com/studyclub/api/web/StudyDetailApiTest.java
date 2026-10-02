@@ -54,14 +54,12 @@ class StudyDetailApiTest {
                 studyRepository.save(
                         Study.builder()
                                 .programId(studyProgram.getId())
-                                .slug("algo-study")
                                 .title("알고리즘 스터디")
                                 .oneLineSummary("알고리즘 문제 풀이 스터디")
                                 .category(StudyCategory.SOFTWARE)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(20)
                                 .schedule("매주 목 20:00")
                                 .startAt(Instant.parse("2026-10-15T00:00:00Z"))
                                 .discordChannelUrl("https://discord.com/channels/1/2")
@@ -74,6 +72,7 @@ class StudyDetailApiTest {
                         .description("모집 설명")
                         .startAt(Instant.parse("2026-09-01T00:00:00Z"))
                         .recruitDeadlineAt(Instant.parse("2026-10-01T00:00:00Z"))
+                        .recruitmentCapacity(20)
                         .build());
 
         var response = rest.getForEntity("/api/studies/" + study.getId(), Map.class);
@@ -81,7 +80,6 @@ class StudyDetailApiTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         var body = response.getBody();
         assertThat(body).containsEntry("title", "알고리즘 스터디");
-        assertThat(body).containsEntry("slug", "algo-study");
         assertThat(body).containsEntry("category", "SOFTWARE");
         assertThat(body).containsEntry("status", "OPEN");
         assertThat(body).containsEntry("programId", studyProgram.getId().intValue());
@@ -130,11 +128,9 @@ class StudyDetailApiTest {
                 studyRepository.save(
                         Study.builder()
                                 .programId(studyProgram.getId())
-                                .slug("draft")
                                 .title("공개 전 스터디")
                                 .oneLineSummary("아직 공개하지 않은 스터디")
                                 .category(StudyCategory.OTHER)
-                                .isHidden(false)
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)
                                 .build());
