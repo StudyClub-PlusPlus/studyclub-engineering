@@ -334,6 +334,12 @@ class StudyApplicationFormIntegrationTest {
                 EDITABLE_STUDY_ID,
                 DRAFT_STUDY_ID,
                 LOCKED_STUDY_ID);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?, ?, ?)",
+                PUBLIC_STUDY_ID,
+                EDITABLE_STUDY_ID,
+                DRAFT_STUDY_ID,
+                LOCKED_STUDY_ID);
     }
 
     private void insertStudy(
@@ -343,11 +349,19 @@ class StudyApplicationFormIntegrationTest {
             boolean hidden,
             String applicationForm,
             Timestamp now) {
+        // 종류는 프로그램이 갖는다 — 기수에는 컬럼이 없다. 프로그램 ID 는 기수 ID 와 같게 둔다
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, 'STUDY', ?, ?)",
+                id,
+                "프로그램",
+                now,
+                now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, DESCRIPTION,"
-                        + " CATEGORY, STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS,"
+                        + " CATEGORY, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS,"
                         + " APPLICATION_FORM, SCHEDULE, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
                 id,
                 id,
                 "신청 폼 스터디",
@@ -355,7 +369,6 @@ class StudyApplicationFormIntegrationTest {
                 "신청 폼 한 줄 소개",
                 "신청 폼 상세 소개",
                 "SOFTWARE",
-                "STUDY",
                 hidden,
                 "ONLINE",
                 status,

@@ -46,8 +46,11 @@ class BackofficeStudyJpqlDao implements BackofficeStudyDao {
             conditions.add("s.category = :category");
             params.put("category", filter.category());
         }
+        // 종류는 프로그램이 갖는다 — 기수에는 컬럼이 없어 프로그램을 거쳐 거른다
         if (filter.studyKind() != null) {
-            conditions.add("s.studyKind = :studyKind");
+            conditions.add(
+                    "s.programId IN (SELECT p.id FROM StudyProgram p WHERE p.studyKind ="
+                            + " :studyKind)");
             params.put("studyKind", filter.studyKind());
         }
         if (filter.status() != null) {
