@@ -348,6 +348,12 @@ class StudyApplicationSubmissionIntegrationTest {
                 "신청 저장 프로그램",
                 now,
                 now);
+
+        if (hasStudyColumn("IS_HIDDEN")) {
+            insertStudyWithLegacyColumns(now);
+            return;
+        }
+
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, DESCRIPTION,"
                         + " CATEGORY, STATUS,"
@@ -359,6 +365,40 @@ class StudyApplicationSubmissionIntegrationTest {
                 "한 줄 소개",
                 "상세 소개",
                 "SOFTWARE",
+                "OPEN",
+                """
+                {"title":"신청","description":null,"questions":[{"id":"reason","label":"지원 사유","type":"TEXTAREA","required":true,"options":null,"allowOther":null}]}
+                """,
+                "매주 수 20:00",
+                now,
+                now);
+    }
+
+    private boolean hasStudyColumn(String columnName) {
+        Integer count =
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS"
+                                + " WHERE TABLE_NAME = 'STUDY' AND COLUMN_NAME = ?",
+                        Integer.class,
+                        columnName);
+        return count != null && count > 0;
+    }
+
+    private void insertStudyWithLegacyColumns(Timestamp now) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, DESCRIPTION,"
+                        + " CATEGORY, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS,"
+                        + " APPLICATION_FORM, SCHEDULE, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
+                STUDY_ID,
+                STUDY_ID,
+                "신청 저장 스터디",
+                "application-submission-test",
+                "한 줄 소개",
+                "상세 소개",
+                "SOFTWARE",
+                false,
+                "ONLINE",
                 "OPEN",
                 """
                 {"title":"신청","description":null,"questions":[{"id":"reason","label":"지원 사유","type":"TEXTAREA","required":true,"options":null,"allowOther":null}]}

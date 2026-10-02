@@ -10,8 +10,7 @@ class StudyRecruitmentTest {
     @Test
     @DisplayName("활성 인원이 모집 회차 정원에 도달하면 가득 찬 것으로 본다")
     void fullWhenActiveParticipantCountReachesRecruitmentCapacity() {
-        StudyRecruitment recruitment =
-                StudyRecruitment.builder().recruitmentCapacity(2).build();
+        StudyRecruitment recruitment = StudyRecruitment.builder().recruitmentCapacity(2).build();
 
         assertThat(recruitment.isFull(1)).isFalse();
         assertThat(recruitment.isFull(2)).isTrue();
