@@ -28,5 +28,12 @@ public interface StudyApplicationRepository extends JpaRepository<StudyApplicati
                     + "WHERE recruitment.studyId = :studyId")
     boolean existsByStudyId(@Param("studyId") Long studyId);
 
+    @Query(
+            "SELECT application.recruitmentId, COUNT(application) "
+                    + "FROM StudyApplication application "
+                    + "WHERE application.recruitmentId IN :recruitmentIds "
+                    + "GROUP BY application.recruitmentId")
+    List<Object[]> countByRecruitmentIdIn(@Param("recruitmentIds") Collection<Long> recruitmentIds);
+
     void deleteByRecruitmentIdIn(Collection<Long> recruitmentIds);
 }

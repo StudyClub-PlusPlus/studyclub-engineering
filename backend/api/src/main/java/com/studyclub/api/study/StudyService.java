@@ -39,40 +39,40 @@ public class StudyService {
             Pattern.compile("^https?://\\S+$", Pattern.CASE_INSENSITIVE);
 
     private final StudyRepository studyRepository;
-    private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyApplicationRepository studyApplicationRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyProgramRepository studyProgramRepository;
     private final AccountRepository accountRepository;
     private final StudyGroupRepository studyGroupRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
-    private final StudyApplicationRepository studyApplicationRepository;
+    private final StudyParticipantRepository studyParticipantRepository;
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyCaptainGuard studyCaptainGuard;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
 
     public StudyService(
             StudyRepository studyRepository,
-            StudyParticipantRepository studyParticipantRepository,
+            StudyApplicationRepository studyApplicationRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyProgramRepository studyProgramRepository,
             AccountRepository accountRepository,
             StudyGroupRepository studyGroupRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository,
-            StudyApplicationRepository studyApplicationRepository,
+            StudyParticipantRepository studyParticipantRepository,
             StudyBookmarkRepository studyBookmarkRepository,
             StudyCaptainGuard studyCaptainGuard,
             StudyDiscordLinkRepository studyDiscordLinkRepository) {
         this.studyRepository = studyRepository;
-        this.studyParticipantRepository = studyParticipantRepository;
+        this.studyApplicationRepository = studyApplicationRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyProgramRepository = studyProgramRepository;
         this.accountRepository = accountRepository;
         this.studyGroupRepository = studyGroupRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
-        this.studyApplicationRepository = studyApplicationRepository;
+        this.studyParticipantRepository = studyParticipantRepository;
         this.studyBookmarkRepository = studyBookmarkRepository;
         this.studyCaptainGuard = studyCaptainGuard;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
@@ -209,14 +209,16 @@ public class StudyService {
         if (request.driveUrlPresent()) study.changeDriveUrl(request.driveUrl());
 
         if (request.capacityPresent() || request.recruitDeadline() != null) {
-            studyRecruitmentRepository
-                    .findFirstByStudyIdOrderByIdDesc(study.getId())
-                    .ifPresent(
-                            r -> {
-                                if (request.capacityPresent()) r.updateCapacity(request.capacity());
-                                if (request.recruitDeadline() != null)
-                                    r.updateDeadline(request.recruitDeadline());
-                            });
+            StudyRecruitment recruitment =
+                    studyRecruitmentRepository
+                            .findFirstByStudyIdOrderByIdDesc(study.getId())
+                            .orElseThrow(
+                                    () ->
+                                            new BusinessException(
+                                                    ErrorCode.NOT_FOUND, "모집 회차를 찾을 수 없습니다."));
+            if (request.capacityPresent()) recruitment.updateCapacity(request.capacity());
+            if (request.recruitDeadline() != null)
+                recruitment.updateDeadline(request.recruitDeadline());
         }
     }
 
@@ -299,7 +301,7 @@ public class StudyService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.NOT_FOUND, "스터디 프로그램을 찾을 수 없습니다.")),
-                applicantCount(study),
+                applicantCount(latestRecruitment),
                 recruitDeadlineAt,
                 recruitmentCapacity);
     }
@@ -314,12 +316,14 @@ public class StudyService {
         return value == null || value.isBlank() || HTTP_URL.matcher(value.trim()).matches();
     }
 
-    /** 목록과 같은 쿼리를 쓴다 — 정원을 차지하는 상태 목록이 두 군데로 갈라지면 목록과 상세의 모집 상태가 어긋난다. */
-    private long applicantCount(Study study) {
-        if (study == null) {
+    /** 최신 모집 회차의 STUDY_APPLICATION 수 — 목록과 동일한 기준 (study-recruit-status/spec.md:46). */
+    private long applicantCount(StudyRecruitment latestRecruitment) {
+        if (latestRecruitment == null) {
             return 0;
         }
-        return studyParticipantRepository.countByStudyIds(List.of(study.getId())).stream()
+        return studyApplicationRepository
+                .countByRecruitmentIdIn(List.of(latestRecruitment.getId()))
+                .stream()
                 .findFirst()
                 .map(row -> (Long) row[1])
                 .orElse(0L);

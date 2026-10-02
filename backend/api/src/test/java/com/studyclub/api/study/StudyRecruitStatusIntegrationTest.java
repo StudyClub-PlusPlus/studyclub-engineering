@@ -2,10 +2,8 @@ package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.studyclub.domain.participant.ParticipantRole;
-import com.studyclub.domain.participant.ParticipantStatus;
-import com.studyclub.domain.participant.StudyParticipant;
-import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.application.StudyApplication;
+import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -35,14 +33,14 @@ class StudyRecruitStatusIntegrationTest {
     @Autowired TestRestTemplate rest;
     @Autowired StudyProgramRepository studyProgramRepo;
     @Autowired StudyRepository studyRepo;
-    @Autowired StudyParticipantRepository participantRepo;
+    @Autowired StudyApplicationRepository applicationRepo;
     @Autowired StudyRecruitmentRepository recruitmentRepo;
 
     private final AtomicLong accountIdSeq = new AtomicLong(1);
 
     @BeforeEach
     void setUp() {
-        participantRepo.deleteAll();
+        applicationRepo.deleteAll();
         recruitmentRepo.deleteAll();
         studyRepo.deleteAll();
         studyProgramRepo.deleteAll();
@@ -69,8 +67,8 @@ class StudyRecruitStatusIntegrationTest {
     @DisplayName("성공 — 목록: 정원이 차면 마감 전이어도 recruitStatus=RECRUIT_CLOSED")
     void listRecruitClosedByCapacity() {
         var study = openStudy(2, Instant.now().plus(7, ChronoUnit.DAYS));
-        enroll(study, ParticipantStatus.ACTIVE);
-        enroll(study, ParticipantStatus.PAUSED);
+        enroll(study);
+        enroll(study);
 
         var body = firstListItem();
         assertThat(body).containsEntry("recruitStatus", "RECRUIT_CLOSED");
@@ -78,12 +76,12 @@ class StudyRecruitStatusIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 — 목록: 정원 null(무제한)이면 참여자가 아무리 많아도 RECRUITING")
+    @DisplayName("성공 — 목록: 정원 null(무제한)이면 신청자가 아무리 많아도 RECRUITING")
     void listNullCapacityNeverFills() {
         var study = openStudy(null, Instant.now().plus(7, ChronoUnit.DAYS));
-        enroll(study, ParticipantStatus.ACTIVE);
-        enroll(study, ParticipantStatus.ACTIVE);
-        enroll(study, ParticipantStatus.PAUSED);
+        enroll(study);
+        enroll(study);
+        enroll(study);
 
         var body = firstListItem();
         assertThat(body).containsEntry("recruitStatus", "RECRUITING");
@@ -91,11 +89,10 @@ class StudyRecruitStatusIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 — 목록: 탈퇴 참여자는 정원을 차지하지 않는다")
-    void listWithdrawnDoesNotTakeSeat() {
+    @DisplayName("성공 — 목록: 정원이 남아 있으면 신청자가 있어도 RECRUITING")
+    void listNotFullWhenBelowCapacity() {
         var study = openStudy(2, Instant.now().plus(7, ChronoUnit.DAYS));
-        enroll(study, ParticipantStatus.ACTIVE);
-        enroll(study, ParticipantStatus.WITHDRAWN);
+        enroll(study);
 
         var body = firstListItem();
         assertThat(body).containsEntry("currentApplicants", 1);
@@ -115,7 +112,7 @@ class StudyRecruitStatusIntegrationTest {
     @DisplayName("성공 — 상세: 정원이 차면 recruitStatus=RECRUIT_CLOSED")
     void detailRecruitClosedByCapacity() {
         var study = openStudy(1, Instant.now().plus(7, ChronoUnit.DAYS));
-        enroll(study, ParticipantStatus.ACTIVE);
+        enroll(study);
 
         assertThat(detailBody(study.getId())).containsEntry("recruitStatus", "RECRUIT_CLOSED");
     }
@@ -172,15 +169,13 @@ class StudyRecruitStatusIntegrationTest {
         return study;
     }
 
-    private void enroll(Study study, ParticipantStatus status) {
-        participantRepo.save(
-                StudyParticipant.builder()
+    private void enroll(Study study) {
+        var recruitment = recruitmentRepo.findByStudyId(study.getId()).get(0);
+        applicationRepo.save(
+                StudyApplication.builder()
                         .accountId(accountIdSeq.getAndIncrement())
-                        .studyGroupId(1L)
-                        .studyId(study.getId())
-                        .status(status)
-                        .participantRole(ParticipantRole.MEMBER)
-                        .joinedAt(Instant.now())
+                        .recruitmentId(recruitment.getId())
+                        .formAnswer("{}")
                         .build());
     }
 

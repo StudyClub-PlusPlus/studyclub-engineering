@@ -142,7 +142,7 @@ export function setDiscord(handle: string | null) {
  */
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 4;
+const SEED_VERSION = 5;
 
 export function seedDemoData() {
   if (readJSON<number>(SEED_KEY, 0) >= SEED_VERSION) return;
@@ -150,32 +150,32 @@ export function seedDemoData() {
   {
     writeJSON(APPLICATION_KEY, [
       {
-        studyId: 'ddia-2nd',
+        studyId: '11', // ddia-2nd
         appliedAt: '2026-07-28',
         status: 'accepted',
         region: 'KR',
       },
       {
-        studyId: 'ai-paper-study',
+        studyId: '1', // ai-paper-study
         appliedAt: '2026-08-11',
         status: 'accepted',
         region: 'KR',
       },
       // 끝난 스터디 — 참여 이력으로 내려간다
       {
-        studyId: 'leetcode150-2026',
+        studyId: '19', // leetcode150-2026
         appliedAt: '2026-02-03',
         status: 'accepted',
         region: 'KR',
       },
       {
-        studyId: 'sql-for-data-analysis',
+        studyId: '15', // sql-for-data-analysis
         appliedAt: '2025-11-12',
         status: 'accepted',
         region: 'KR',
       },
       {
-        studyId: 'pytorch-ai-coding',
+        studyId: '2', // pytorch-ai-coding
         appliedAt: '2026-08-14',
         status: 'pending',
         region: 'KR',
@@ -184,6 +184,6 @@ export function seedDemoData() {
       },
     ] satisfies Application[]);
   }
-  writeJSON(BOOKMARK_KEY, ['pytorch-ai-coding', 'system-design-interview']);
+  writeJSON(BOOKMARK_KEY, ['2', '7']); // pytorch-ai-coding, system-design-interview
   writeJSON(DISCORD_KEY, 'jiwon_dev');
 }
