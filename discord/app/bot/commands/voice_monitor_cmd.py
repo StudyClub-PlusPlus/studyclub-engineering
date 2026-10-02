@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
+import discord
 from discord.ext import commands
 
 from app.api.routes.studies import DEFAULT_NEW_STUDY_ANCHOR_NAME
@@ -102,9 +103,11 @@ async def check_voice_channels(
         return
 
     # Several messages when the list is long: this is the full picture the caller
-    # asked for, so it is split rather than cut.
+    # asked for, so it is split rather than cut. No mentions, for the same reason
+    # as the alert: the lines are category and channel names, so a study named
+    # ``@everyone`` would ring the whole guild.
     for message in voice_monitor.build_activity_report(voice_monitor.build_entries(categories, rows)):
-        await ctx.send(message)
+        await ctx.send(message, allowed_mentions=discord.AllowedMentions.none())
 
 
 def register(bot: commands.Bot, settings: Settings) -> None:
@@ -119,6 +122,7 @@ def register(bot: commands.Bot, settings: Settings) -> None:
         name="checkVoiceChannels",
         help="공부방마다 마지막으로 사람이 있었던 날짜를 보여줍니다. captain 전용.\n"
         "3주 넘게 조용한 공부방은 봇이 알아서 알려주니, 이건 전체를 한눈에 볼 때 씁니다.",
+        extras={"category": "Captain"},
     )
     async def check_voice_channels_command(
         ctx: commands.Context,

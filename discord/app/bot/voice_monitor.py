@@ -339,6 +339,11 @@ async def check_inactivity(
     The snapshot is taken before anything is judged, so a room someone is sitting
     in right now cannot be reported as silent.
 
+    Only the report needs the alert channel. With the channel unset or broken
+    the snapshot is still taken: joins and leaves only give a row to a room
+    somebody uses, so a room nobody enters would otherwise be first seen on the
+    day the channel is fixed and wait three weeks from then.
+
     The anchor name is read from the constant rather than from
     ``app.state.new_study_anchor_name``, as the bulletin does and for the same
     reason: the two are always equal today, and the command that will change the
@@ -353,14 +358,17 @@ async def check_inactivity(
         logger.error("voice monitor: guild %s not found by the bot, skipping the check", settings.guild_id)
         return
 
-    try:
-        alert_channel, _ = resolve_configured_channel(guild, settings.alert_channel_id, "alert")
-    except HTTPException as exc:
-        # resolve_configured_channel answers API callers, so it reports a broken
-        # channel setting as an HTTP error. The wording is what we would write
-        # here anyway, so it is reused rather than duplicated.
-        logger.error("voice monitor: %s", exc.detail)
-        return
+    # An unset channel is not logged here: ``register`` warned about it once,
+    # and this runs every day.
+    alert_channel = None
+    if settings.alert_channel_id is not None:
+        try:
+            alert_channel, _ = resolve_configured_channel(guild, settings.alert_channel_id, "alert")
+        except HTTPException as exc:
+            # resolve_configured_channel answers API callers, so it reports a broken
+            # channel setting as an HTTP error. The wording is what we would write
+            # here anyway, so it is reused rather than duplicated.
+            logger.error("voice monitor: %s", exc.detail)
 
     categories = collect_study_voice_channels(guild, DEFAULT_NEW_STUDY_ANCHOR_NAME)
     if categories is None:
@@ -368,11 +376,12 @@ async def check_inactivity(
             "voice monitor: reference category %r not found, judging nothing",
             DEFAULT_NEW_STUDY_ANCHOR_NAME,
         )
-        await send_to_alert(
-            alert_channel,
-            f"기준 카테고리 `{DEFAULT_NEW_STUDY_ANCHOR_NAME}` 를 찾지 못해 공부방 활동을 "
-            "점검하지 않았습니다. 카테고리가 지워졌거나 이름이 바뀌었는지 확인해 주세요.",
-        )
+        if alert_channel is not None:
+            await send_to_alert(
+                alert_channel,
+                f"기준 카테고리 `{DEFAULT_NEW_STUDY_ANCHOR_NAME}` 를 찾지 못해 공부방 활동을 "
+                "점검하지 않았습니다. 카테고리가 지워졌거나 이름이 바뀌었는지 확인해 주세요.",
+            )
         return
 
     voice_channels = [voice for _, voices in categories for voice in voices]
@@ -384,7 +393,12 @@ async def check_inactivity(
         logger.exception("voice monitor: could not read the activity table, skipping the check")
         return
 
-    stale = inactive_channel_ids(rows, [voice.id for voice in voice_channels], now)
+    if alert_channel is None:
+        # Recorded, with nowhere to report. Nothing is marked, so the rooms
+        # already quiet are reported on the first check that has a channel.
+        return
+
+    stale =inactive_channel_ids(rows, [voice.id for voice in voice_channels], now)
     if not stale:
         logger.info(
             "voice monitor: %d voice channels checked, none quiet for %d days",
@@ -407,12 +421,13 @@ async def check_inactivity(
 
 
 def register(bot: commands.Bot, settings: Settings) -> tasks.Loop | None:
-    """Start recording activity, and build the daily check loop if it can report.
+    """Start recording activity and build the daily check loop.
 
     Recording and reporting are enabled separately on purpose. Without an alert
     channel there is nowhere to send the report, but the table must still fill:
     switching the channel on later would otherwise mean waiting three weeks
-    before anything could be said.
+    before anything could be said. So the loop runs either way, and
+    ``check_inactivity`` skips only the report.
 
     The loop is started from ``setup_hook``, which runs after the bot has logged
     in. Not here: ``create_bot`` is called before ``bot.start``, and the loop's
@@ -447,7 +462,6 @@ def register(bot: commands.Bot, settings: Settings) -> tasks.Loop | None:
             "DISCORD_ALERT_CHANNEL_ID is not set - voice channel activity is recorded "
             "but never reported"
         )
-        return None
 
     @tasks.loop(time=CHECK_TIME)
     async def check() -> None:  # pragma: no cover - thin wrapper

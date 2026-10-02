@@ -144,8 +144,9 @@ async def find_own_message(bot: commands.Bot, channel: discord.TextChannel) -> d
     The message ID is looked up rather than stored: the channel holds one
     message, so finding it is a single API call, and a stored ID rots the moment
     someone deletes the message or the volume is replaced. This needs Read
-    Message History -- without it the search raises and the bot posts a second
-    message every refresh.
+    Message History -- without it Discord answers with an empty history rather
+    than an error, so the caller checks the permission first; otherwise the bot
+    would find nothing and post a second message every refresh.
 
     More than one of the bot's messages is already an unexpected state, so the
     oldest is edited and the rest are left alone: deleting cannot be undone, and
@@ -165,6 +166,24 @@ async def find_own_message(bot: commands.Bot, channel: discord.TextChannel) -> d
             own[0].id,
         )
     return own[0] if own else None
+
+
+async def report_missing_permissions(
+    guild: discord.Guild, settings: Settings, channel: discord.TextChannel, detail: object
+) -> None:
+    """Log and tell the alert channel that the bot may not write the board. Never raises."""
+    logger.error(
+        "bulletin: the bot lacks permissions in channel %s -- it needs View Channel, "
+        "Send Messages, and Read Message History there: %s",
+        channel.id,
+        detail,
+    )
+    await notify_alert_channel(
+        guild,
+        settings,
+        f"봇에게 <#{channel.id}> 채널의 권한이 없어 공부방 게시판을 갱신하지 못했습니다. "
+        "`View Channel` · `Send Messages` · `Read Message History` 를 확인해 주세요.",
+    )
 
 
 async def refresh(bot: commands.Bot, settings: Settings) -> bool:
@@ -190,7 +209,9 @@ async def refresh(bot: commands.Bot, settings: Settings) -> bool:
         return False
 
     try:
-        channel, _ = resolve_configured_channel(guild, settings.bulletin_channel_id, "bulletin")
+        channel, permissions = resolve_configured_channel(
+            guild, settings.bulletin_channel_id, "bulletin"
+        )
     except HTTPException as exc:
         # resolve_configured_channel answers API callers, so it reports a broken
         # channel setting as an HTTP error. The wording is what we would write
@@ -217,6 +238,15 @@ async def refresh(bot: commands.Bot, settings: Settings) -> bool:
 
     content, omitted = build_bulletin(categories)
 
+    # Checked rather than left to the search: Discord answers a history request
+    # without this permission with an empty list, not a 403, so the board would
+    # look absent and a new message would be posted on every refresh.
+    if not permissions.read_message_history:
+        await report_missing_permissions(
+            guild, settings, channel, "Read Message History is denied"
+        )
+        return False
+
     # The bot writes every character here, so there is no mass mention to strip
     # -- but a category named @everyone would ring the guild, and a board nobody
     # is notified by is the whole point.
@@ -227,18 +257,7 @@ async def refresh(bot: commands.Bot, settings: Settings) -> bool:
         else:
             await message.edit(content=content, allowed_mentions=discord.AllowedMentions.none())
     except discord.Forbidden as exc:
-        logger.error(
-            "bulletin: the bot lacks permissions in channel %s -- it needs View Channel, "
-            "Send Messages, and Read Message History there: %s",
-            channel.id,
-            exc,
-        )
-        await notify_alert_channel(
-            guild,
-            settings,
-            f"봇에게 <#{channel.id}> 채널의 권한이 없어 공부방 게시판을 갱신하지 못했습니다. "
-            "`View Channel` · `Send Messages` · `Read Message History` 를 확인해 주세요.",
-        )
+        await report_missing_permissions(guild, settings, channel, exc)
         return False
     except discord.HTTPException as exc:
         logger.error("bulletin: discord rejected the update of channel %s: %s", channel.id, exc)

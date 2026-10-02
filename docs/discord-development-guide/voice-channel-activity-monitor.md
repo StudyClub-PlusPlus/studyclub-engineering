@@ -122,11 +122,16 @@ CS 전공 스터디 - 공부방-CS 전공 스터디 : 2026-09-30
 | 기존 환경변수 | 이 기능에서의 뜻 | 비우면 |
 |----------------|------------------|--------|
 | `DISCORD_GUILD_ID` | 기록·점검 대상 길드 | 기록도 점검도 안 한다 (경고 로그 1회) |
-| `DISCORD_ALERT_CHANNEL_ID` | 알림이 가는 채널 | **기록은 계속하고 점검 루프만 시작하지 않는다** (경고 로그 1회) |
+| `DISCORD_ALERT_CHANNEL_ID` | 알림이 가는 채널 | **기록은 계속한다 — 점검 루프도 돌지만 스냅샷만 찍고 보고는 하지 않는다** (경고 로그 1회) |
 | `DISCORD_CAPTAIN_ROLE_ID` | `!checkVoiceChannels` 를 쓸 수 있는 역할 | 명령을 **거부**한다 (`may_update` 와 같은 태도) |
 
 - **"기록" 과 "알림" 의 켜짐 조건이 다르다.** alert 채널이 없다고 기록까지 멈추면, 나중에 채널을 설정한
   날부터 다시 3주를 기다려야 한다. 기록은 값이 싸고 되돌릴 수 없는 손실을 막는다.
+- **alert 채널에 걸리는 것은 보고 단계뿐이다.** 점검 루프는 채널이 없어도(또는 ID 가 틀려 못 찾아도)
+  똑같이 돌면서 스냅샷(`observe` + 재실 중 `touch`)을 찍고, 판정·알림만 건너뛴다. 입·퇴장 이벤트만으로는
+  **아무도 안 들어간 방에 행이 생기지 않아서**, 스냅샷이 없으면 그 방들은 결국 채널을 설정한 날부터
+  3주를 기다리게 된다 — 위 문단이 막으려던 바로 그 대기다. 알리지 못한 방은 `last_alerted_at` 을
+  채우지 않으므로, **채널이 생긴 뒤 첫 점검에서 그동안 조용했던 방이 한꺼번에 보고된다.**
 - Discord 인텐트는 **고칠 것이 없다.** `discord.Intents.default()` 에 `voice_states` 가 이미 켜져 있고
   (`discord.py==2.4.0` 에서 확인), `on_voice_state_update` 의 `member` 는 이벤트 payload 로 만들어지므로
   **`members` 인텐트 없이도 온다.** 라이브러리 소스에서 확인한 사실이라 [한계](#구조적-한계-미리-인정하는-것)에
@@ -197,7 +202,7 @@ CREATE TABLE IF NOT EXISTS voice_channel_activity (
 | `observe(channel_ids, now)` | 없는 채널만 `INSERT OR IGNORE` 로 넣는다 (`first_seen_at = now`). 이미 있으면 **아무것도 안 건드린다** |
 | `touch(channel_id, now)` | UPSERT: `last_activity_at = now`, **`last_alerted_at = NULL`**. 그 NULL 이 다음 3주 뒤의 알림을 다시 무장시킨다 (#5) |
 | `rows()` | `{channel_id: (first_seen_at, last_activity_at, last_alerted_at)}` 전체를 준다. 길드의 채널 수만큼이라 통째로 읽어도 된다 |
-| `mark_alerted(channel_ids, now)` | 방금 알린 채널들의 `last_alerted_at` 을 채운다 |
+| `mark_alerted(channel_ids, now)` | 방금 알린 채널들의 `last_alerted_at` 을 채운다. `now`(점검 시각) 이후에 입·퇴장이 있었던 채널은 **건너뛴다** — 알림을 보내는 사이의 입장이 지운 표시를 다시 채우면 다음 침묵이 묻힌다 |
 | `forget(channel_id)` | 그 채널의 행을 지운다 (#10). 행이 없어도 조용히 끝난다 — 텍스트 채널이 지워져도 같은 코드가 불린다 |
 
 - **채널 이름·카테고리 이름은 저장하지 않는다.** 이름은 바뀌고, 바뀐 이름은 길드가 이미 알고 있다.
@@ -245,12 +250,13 @@ INACTIVITY = datetime.timedelta(weeks=3)                                        
 
 한 번 돌 때 하는 일, 순서대로:
 
-1. 길드와 alert 채널을 확인한다. 없으면 로그만 남기고 끝낸다.
+1. 길드를 확인한다. 없으면 로그만 남기고 끝낸다. alert 채널도 여기서 찾아 두지만,
+   **없거나 못 찾아도 끝내지 않는다** — 4번까지는 그대로 간다 ([설정값](#설정값)).
 2. 앵커 아래 (카테고리, 음성채널들) 을 모은다. 앵커가 없으면 **로그 + alert 통지 후 끝** (판단하지 않는다).
 3. 보이는 채널 전부를 `observe()` 로 등록한다 (새 방의 관찰 시작일).
 4. **지금 사람이 있는 방을 `touch()`** 한다 (#8) — 판정 **전에** 해서, 계속 켜 둔 방이 오탐되지 않게 한다.
    판정은 `bool(channel.voice_states)` 로 한다. **`channel.members` 를 쓰면 안 된다** —
-   [한계](#구조적-한계-미리-인정하는-것) 참고.
+   [한계](#구조적-한계-미리-인정하는-것) 참고. **alert 채널이 없으면 여기서 끝낸다.**
 5. `rows()` 를 읽고, `now - (last_activity_at or first_seen_at) >= INACTIVITY` 인 채널을 고른다.
 6. 그중 `last_alerted_at is None` 인 것만 알린다 (#5). 하나도 없으면 **메시지를 보내지 않는다** —
    "이상 없음" 을 매일 올리면 알림을 읽지 않게 된다.
@@ -262,7 +268,7 @@ INACTIVITY = datetime.timedelta(weeks=3)                                        
   기존 `setup_hook` 은 덮지 않고 이어 붙인다.
 - `before_loop` 에서 `wait_until_ready()` 뒤 **한 번 즉시** 돌린다. 배포 직후 관찰 시작일이 찍혀야
   3주 시계가 돌기 시작하고, 재시작 시점에 사람이 있던 방도 그때 건진다 (#9).
-- **이벤트 리스너는 루프와 별개로 항상 등록한다** ([설정값](#설정값)).
+- **이벤트 리스너도 루프도 alert 채널과 무관하게 항상 등록한다** ([설정값](#설정값)).
 
 ### 알림 메시지
 
@@ -321,9 +327,9 @@ INACTIVITY = datetime.timedelta(weeks=3)                                        
 | 상황 | 하는 일 |
 |------|---------|
 | `DISCORD_GUILD_ID` 없음 | 경고 로그 1회, 리스너·루프 모두 미동작 |
-| `DISCORD_ALERT_CHANNEL_ID` 없음 | 경고 로그 1회, **기록은 계속**, 루프 미시작 |
+| `DISCORD_ALERT_CHANNEL_ID` 없음 | 경고 로그 1회, **기록은 계속** (매일 스냅샷 포함), 보고만 생략 |
 | 앵커 카테고리 없음 | 에러 로그 + alert 통지, **판정하지 않음** |
-| alert 채널을 못 찾음 / 권한 없음 | 에러 로그 (통지할 곳이 그 채널이므로 로그가 전부다) |
+| alert 채널을 못 찾음 / 권한 없음 | 에러 로그 (통지할 곳이 그 채널이므로 로그가 전부다). 못 찾은 경우에도 **스냅샷은 찍는다** |
 | 삭제 이벤트 처리 중 sqlite 오류 | `logger.exception` 으로 삼킨다. 남은 행은 보고에 섞이지 않으므로 **지우지 못한 것이 오류로 이어지지 않는다** |
 | 입·퇴장 이벤트 처리 중 sqlite 오류 | `logger.exception` 으로 삼킨다 — 리스너에서 예외가 새면 discord.py 가 로그만 남기지만, 입·퇴장 하나 때문에 시끄러워질 이유가 없다 |
 | 점검 루프 안의 그 밖의 예외 | `logger.exception` 으로 삼켜 **다음 날에도 루프가 계속 돌게 한다** |
@@ -378,7 +384,7 @@ INACTIVITY = datetime.timedelta(weeks=3)                                        
              대상 없으면 send 미호출 / Forbidden·채널 없음에서 예외 미전파"
 
 6. 같은 파일 -- register(bot, settings) : 리스너 등록 + tasks.loop(time=...) + setup_hook 시작
-   → verify: alert 채널 ID 없으면 루프 미시작(리스너는 등록됨), 있으면 setup_hook 에서 시작,
+   → verify: alert 채널 ID 가 없어도 루프와 리스너가 등록됨, setup_hook 에서 시작,
              loop.time 이 20:00 America/Los_Angeles, 기존 setup_hook 도 여전히 불림
 
 7. app/bot/commands/voice_monitor_cmd.py -- may_check + check_voice_channels + register
@@ -418,8 +424,8 @@ sqlite 는 `tmp_path`). 새 파일 `tests/test_voice_activity_log.py` · `tests/
 | `build_inactivity_alert` | 개수·기준일 머리줄 · 2000자 절단 + 안내 줄 · 대상이 없으면 빈 결과 |
 | 입·퇴장 리스너 | 입장·퇴장·이동에서 `touch` 호출 대상 · `before==after`(음소거) 미호출 · `member.bot` 미호출 · 다른 길드 미호출 |
 | 삭제 리스너 | 음성 채널 삭제에서 `forget` · 텍스트 채널·카테고리 삭제에서 미호출 · 다른 길드 미호출 · sqlite 오류 미전파 |
-| `check_inactivity` | 사람이 있는 방을 **판정 전에** touch · 앵커 없으면 판정 없이 alert 통지 · 대상 없으면 `send` 미호출 · 알린 뒤 `mark_alerted` · `Forbidden`/채널 미설정에서 **예외 미전파** |
-| `register` | alert 채널 없으면 루프 미시작이지만 리스너는 등록 · `setup_hook` 에서 시작(그 전엔 아님) · 기존 `setup_hook` 유지 · `loop.time == [20:00 America/Los_Angeles]` |
+| `check_inactivity` | 사람이 있는 방을 **판정 전에** touch · 앵커 없으면 판정 없이 alert 통지 · 대상 없으면 `send` 미호출 · 알린 뒤 `mark_alerted` · `Forbidden`/채널 미설정에서 **예외 미전파** · alert 채널이 없거나 못 찾아도 **스냅샷은 기록**(보고·mark 는 없음) |
+| `register` | alert 채널이 없어도 루프와 리스너를 등록 · `setup_hook` 에서 시작(그 전엔 아님) · 기존 `setup_hook` 유지 · `loop.time == [20:00 America/Los_Angeles]` |
 | `may_check` / 명령 | captain 통과 · 비captain·DM·역할 미설정 거부(그때 DB 미접근) · 앵커 없음/공부방 없음 답장 · 여러 메시지 분할 |
 | 무회귀 | `test_bulletin.py`·`test_study_channels.py` 를 **수정 없이** 통과, 그리고 `app/bot/bulletin.py` 가 diff 에 없다 |
 

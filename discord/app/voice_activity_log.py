@@ -115,11 +115,18 @@ class VoiceActivityLog:
 
         Called after the alert is posted, never before: a send that fails leaves
         the rows unmarked so tomorrow's check reports them again.
+
+        ``now`` is the check's own clock, and a channel used since then is left
+        unmarked: a join that lands while the alert is being posted has already
+        cleared the mark, and setting it again would hide the next quiet streak.
+        The comparison is on the stored text, which sorts by time because every
+        timestamp is written as ISO8601 UTC.
         """
         with closing(self._connect()) as conn, conn:
             conn.executemany(
-                "UPDATE voice_channel_activity SET last_alerted_at = ? WHERE channel_id = ?",
-                [(now.isoformat(), channel_id) for channel_id in channel_ids],
+                "UPDATE voice_channel_activity SET last_alerted_at = ?"
+                " WHERE channel_id = ? AND (last_activity_at IS NULL OR last_activity_at < ?)",
+                [(now.isoformat(), channel_id, now.isoformat()) for channel_id in channel_ids],
             )
 
     def forget(self, channel_id: int) -> None:

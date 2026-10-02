@@ -192,7 +192,8 @@ async def test_check_voice_channels_with_no_rooms_below_the_anchor(log):
         ctx, _bot(categories=[_category(ANCHOR)]), _settings(), log
     )
 
-    ctx.send.assert_awaited_once_with(voice_monitor.EMPTY_REPORT)
+    ctx.send.assert_awaited_once()
+    assert ctx.send.await_args[0][0] == voice_monitor.EMPTY_REPORT
 
 
 async def test_check_voice_channels_splits_a_long_list_over_several_messages(log):
@@ -205,6 +206,10 @@ async def test_check_voice_channels_splits_a_long_list_over_several_messages(log
 
     assert ctx.send.await_count > 1
     assert all(len(call[0][0]) <= voice_monitor.MAX_MSG for call in ctx.send.await_args_list)
+    # Nobody is notified, not even by a study named @everyone -- in any of the messages.
+    assert all(
+        call.kwargs["allowed_mentions"].everyone is False for call in ctx.send.await_args_list
+    )
 
 
 async def test_check_voice_channels_reports_a_broken_table(log):

@@ -28,6 +28,7 @@ app/
     commands/bulletin_cmd.py       # updateBulletin command
     commands/voice_monitor_cmd.py  # checkVoiceChannels command
     commands/attendance_cmd.py  # !출석체크 command
+    commands/help_cmd.py           # the !help menu, grouped by category
 tests/                 # pytest unit tests
 ```
 
@@ -187,11 +188,20 @@ Every command is read from **one channel only**, the one in
 one place means the rest of the guild never has to read it and whoever runs the
 guild has one scrollback to check when something went wrong.
 
-| Command | Who | What |
-|---------|-----|------|
-| `!testCmd` | anyone in the command channel | replies `testCmd OK ✅` — proves the bot hears and answers |
-| `!updateBulletin` | captain | rewrites the [bulletin](#voice-channel-bulletin) now instead of waiting for 8PM |
-| `!checkVoiceChannels` | captain | prints every 공부방's last activity date ([monitor](#voice-channel-activity-monitor)) |
+| Command | Category | Who | What |
+|---------|----------|-----|------|
+| `!updateBulletin` | Captain | captain | rewrites the [bulletin](#voice-channel-bulletin) now instead of waiting for 8PM |
+| `!checkVoiceChannels` | Captain | captain | prints every 공부방's last activity date ([monitor](#voice-channel-activity-monitor)) |
+| `!출석체크` | Navigator | the 반's 반장(navigator) — the backend checks, not the bot | marks everyone in the 공부방 present ([출석체크](#출석체크)) |
+| `!help` | ETC | anyone | lists the commands above, grouped by this Category column |
+| `!testCmd` | ETC | anyone in the command channel | replies `testCmd OK ✅` — proves the bot hears and answers |
+
+**Category** is the heading `!help` files the command under, narrowest audience
+first. It is a label for whoever reads the menu, not a permission check: each
+command enforces its own, and `!출석체크` is checked by the backend per study
+(see [출석체크](#출석체크)). A new command declares its category in `extras` where
+it is registered; `app/bot/commands/help_cmd.py` groups on that, and a command
+naming none lands under `ETC`.
 
 Used anywhere else, a command replies with a link to the right channel and does
 nothing. With `DISCORD_BOT_CHANNEL_ID` unset every command is refused in every
@@ -204,7 +214,7 @@ here, or the rule is only true by accident.
 
 | Exception | Why | To close it |
 |-----------|-----|-------------|
-| `!help` | discord.py registers it, not us, so the gate never runs for it. It answers in any channel, listing only the commands above — it leaks nothing. | pass `help_command=None` to `commands.Bot(...)` in `app/bot/client.py` |
+| `!help` | discord.py registers it, not us, so the gate never runs for it. It answers in any channel, listing only the commands above — it leaks nothing. | pass `help_command=None` to `commands.Bot(...)` in `app/bot/client.py`, dropping `help_cmd.CategorizedHelpCommand` |
 | `!출석체크` | the voice channel it is typed in *is* the input — members, study id, and audience all come from it. See [출석체크](#출석체크). | by design; not closable |
 
 ### 출석체크
@@ -213,7 +223,7 @@ Mark everyone in the study's voice room present (contract:
 `specs/discord-attendance/spec.md`). It is answered **only inside a voice
 channel's own chat**, so one channel decides everything: its connected members
 are the snapshot, its category is the study id, and the reply lands where those
-same people read it. Run from a lobby instead, a captain sitting in another
+same people read it. Run from a lobby instead, a 반장(navigator) sitting in another
 study's room would have that study's roster posted here. Bots in the room are
 dropped, and the reply names people without mentioning them.
 
@@ -305,8 +315,9 @@ first saw it -- a 공부방 created yesterday is never reported.
 **Recording and reporting are switched on separately.** With no
 `DISCORD_GUILD_ID` nothing is recorded; with no `DISCORD_ALERT_CHANNEL_ID`
 activity is still recorded but never reported, so turning the channel on later
-does not mean waiting three weeks for the first report. No new environment
-variable belongs to this feature.
+does not mean waiting three weeks for the first report -- the daily check still
+runs and registers the rooms nobody has joined, and skips only the report. No
+new environment variable belongs to this feature.
 
 Two limits are worth knowing: activity that happens while the bot is **offline**
 is lost (gateway events are not replayed, and Discord has no "last join" API),

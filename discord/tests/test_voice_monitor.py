@@ -452,11 +452,38 @@ async def test_check_inactivity_judges_nothing_without_the_anchor(log):
     assert log.rows() == {}
 
 
-@pytest.mark.parametrize("settings_kwargs", [{"guild_id": None}, {"alert_channel_id": None}])
-async def test_check_inactivity_without_the_configuration_does_nothing(log, settings_kwargs):
+async def test_check_inactivity_without_a_guild_id_does_nothing(log):
     guild = FakeGuild()
 
-    await voice_monitor.check_inactivity(_bot(guild), _settings(**settings_kwargs), log)
+    await voice_monitor.check_inactivity(_bot(guild), _settings(guild_id=None), log)
+
+    guild.alert_channel.send.assert_not_awaited()
+    assert log.rows() == {}
+
+
+async def test_check_inactivity_without_an_alert_channel_id_still_takes_the_snapshot(log):
+    """A room nobody joins gets its row now, not on the day the channel is configured."""
+    guild = FakeGuild(
+        categories=[
+            _category(ANCHOR),
+            _category("알고리즘 스터디", [_voice(2, occupied=True), _voice(3, "공부방-2조")]),
+        ]
+    )
+    log.touch(3, NOW - datetime.timedelta(days=40))
+
+    await voice_monitor.check_inactivity(_bot(guild), _settings(alert_channel_id=None), log)
+
+    guild.alert_channel.send.assert_not_awaited()
+    rows = log.rows()
+    assert rows[2].last_activity_at is not None
+    # Unmarked, so the first check with a channel still reports it.
+    assert rows[3].last_alerted_at is None
+
+
+async def test_check_inactivity_without_an_alert_channel_id_or_the_anchor_does_nothing(log):
+    guild = FakeGuild(categories=[_category("운영진 전용", [_voice(1)])])
+
+    await voice_monitor.check_inactivity(_bot(guild), _settings(alert_channel_id=None), log)
 
     guild.alert_channel.send.assert_not_awaited()
     assert log.rows() == {}
@@ -470,13 +497,15 @@ async def test_check_inactivity_without_the_guild_does_nothing(log):
     await voice_monitor.check_inactivity(bot, _settings(), log)  # must not raise
 
 
-async def test_check_inactivity_without_the_alert_channel_does_nothing(log):
-    """A broken channel setting is a server problem, reported to the log."""
+async def test_check_inactivity_without_the_alert_channel_still_takes_the_snapshot(log, caplog):
+    """A broken channel setting is a server problem, reported to the log -- not a reason to stop recording."""
     guild = FakeGuild(channels={})
 
-    await voice_monitor.check_inactivity(_bot(guild), _settings(), log)  # must not raise
+    with caplog.at_level("ERROR"):
+        await voice_monitor.check_inactivity(_bot(guild), _settings(), log)  # must not raise
 
-    assert log.rows() == {}
+    assert "voice monitor:" in caplog.text
+    assert set(log.rows()) == {2, 3, 4}
 
 
 async def test_check_inactivity_leaves_the_rows_unmarked_when_the_send_fails(log):
@@ -488,6 +517,25 @@ async def test_check_inactivity_leaves_the_rows_unmarked_when_the_send_fails(log
     await voice_monitor.check_inactivity(_bot(guild), _settings(), log)  # must not raise
 
     assert log.rows()[2].last_alerted_at is None
+
+
+async def test_check_inactivity_does_not_mark_a_room_joined_during_the_send(log):
+    """The mark would outlive the join that should have cleared it, hiding the next quiet streak."""
+    guild = FakeGuild()
+    long_ago = NOW - datetime.timedelta(days=40)
+    log.touch(2, long_ago)
+    log.touch(4, long_ago)
+
+    async def join_while_sending(*args, **kwargs):
+        log.touch(2, voice_monitor.now_utc())
+
+    guild.alert_channel.send = AsyncMock(side_effect=join_while_sending)
+
+    await voice_monitor.check_inactivity(_bot(guild), _settings(), log)
+
+    rows = log.rows()
+    assert rows[2].last_alerted_at is None
+    assert rows[4].last_alerted_at is not None
 
 
 async def test_check_inactivity_survives_a_rejected_send(log):
@@ -561,11 +609,13 @@ async def test_register_defers_the_start_to_setup_hook():
 async def test_register_without_an_alert_channel_still_records(caplog):
     """The table must fill now, or switching the channel on means waiting 3 weeks."""
     bot = Mock()
+    bot.setup_hook = AsyncMock()
 
     with caplog.at_level("WARNING"):
         loop = voice_monitor.register(bot, _settings(alert_channel_id=None))
 
-    assert loop is None
+    # The loop is what takes the daily snapshot, so it is built all the same.
+    assert loop is not None
     assert "DISCORD_ALERT_CHANNEL_ID" in caplog.text
     assert len(bot.add_listener.call_args_list) == 2
 

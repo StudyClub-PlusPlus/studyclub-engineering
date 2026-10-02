@@ -6,7 +6,13 @@ import discord
 from discord.ext import commands
 
 from app.bot import bulletin, voice_monitor
-from app.bot.commands import attendance_cmd, bulletin_cmd, test_cmd, voice_monitor_cmd
+from app.bot.commands import (
+    attendance_cmd,
+    bulletin_cmd,
+    help_cmd,
+    test_cmd,
+    voice_monitor_cmd,
+)
 from app.config import Settings
 
 
@@ -17,11 +23,11 @@ def create_bot(settings: Settings) -> commands.Bot:
 
     # Without ``help_command`` discord.py files every command under "No
     # Category" and describes ``!help`` in English, which is what members read.
+    # ``CategorizedHelpCommand`` groups them by who may run each one instead.
     bot = commands.Bot(
         command_prefix=settings.command_prefix,
         intents=intents,
-        help_command=commands.DefaultHelpCommand(
-            no_category="명령어",
+        help_command=help_cmd.CategorizedHelpCommand(
             command_attrs={"help": "이 도움말을 보여줍니다."},
         ),
     )

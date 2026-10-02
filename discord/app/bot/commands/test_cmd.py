@@ -30,6 +30,10 @@ async def respond(ctx: commands.Context, settings: Settings) -> None:
 
 def register(bot: commands.Bot, settings: Settings) -> None:
     """Attach the ``testCmd`` command to ``bot``."""
-    @bot.command(name="testCmd", help="봇이 살아있는지 확인합니다. 아무나 쓸 수 있습니다.")
+    @bot.command(
+        name="testCmd",
+        help="봇이 살아있는지 확인합니다. 아무나 쓸 수 있습니다.",
+        extras={"category": "ETC"},
+    )
     async def test_cmd(ctx: commands.Context) -> None:  # pragma: no cover - thin wrapper
         await respond(ctx, settings)

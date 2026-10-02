@@ -69,6 +69,15 @@ def test_mark_alerted_marks_only_what_it_was_given(log):
     assert rows[OTHER_CHANNEL_ID].last_alerted_at is None
 
 
+def test_mark_alerted_skips_a_channel_used_since_the_check(log):
+    """A join that lands while the alert is being posted must not be buried under the mark."""
+    log.touch(CHANNEL_ID, TUESDAY)
+
+    log.mark_alerted([CHANNEL_ID], MONDAY)
+
+    assert log.rows()[CHANNEL_ID].last_alerted_at is None
+
+
 def test_forget_removes_the_row(log):
     """A deleted channel leaves the table, so the table follows the guild."""
     log.observe([CHANNEL_ID, OTHER_CHANNEL_ID], MONDAY)

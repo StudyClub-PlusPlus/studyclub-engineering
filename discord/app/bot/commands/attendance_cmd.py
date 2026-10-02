@@ -1,6 +1,6 @@
 """The ``!출석체크`` command.
 
-A captain runs this in the study's voice-channel chat and everyone connected
+A navigator (반장) runs this in the study's voice-channel chat and everyone connected
 to that room is marked present. The bot only collects and reports -- which meeting,
 which group, and what to overwrite are all decided by the backend
 (``specs/discord-attendance/spec.md``), because the timestamps that decide
@@ -48,7 +48,7 @@ class Snapshot:
 
 
 class SnapshotRefused(Exception):
-    """The command cannot be answered, and the reason is the captain's to fix."""
+    """The command cannot be answered, and the reason is the navigator's to fix."""
 
 
 def collect_snapshot(channel, author: discord.Member) -> Snapshot:
@@ -56,7 +56,7 @@ def collect_snapshot(channel, author: discord.Member) -> Snapshot:
 
     The command is only answered inside a voice channel's own chat, so one
     channel decides everything: the member list, the study id, and where the
-    reply lands. Accepting it from any text channel instead would let a captain
+    reply lands. Accepting it from any text channel instead would let a navigator
     sitting in study B's room run it from study A's lobby -- B's attendance
     would be marked correctly, but B's roster would be posted where A's members
     read it.
@@ -125,21 +125,21 @@ def _clip(message: str) -> str:
 
 
 def format_backend_error(status: int) -> str:
-    """Say what the captain can do about ``status``, in their words."""
+    """Say what the navigator can do about ``status``, in their words."""
     if status == 400:
         return "⚠️ 요청이 올바르지 않습니다. 봇 문제일 수 있으니 운영자에게 알려주세요."
     if status == 401:
         return "⚠️ 봇과 백엔드의 API 키가 맞지 않습니다. 운영자에게 알려주세요."
     if status == 403:
         return (
-            "⚠️ 출석을 찍을 권한이 없습니다. 이 스터디의 반장만 쓸 수 있고, "
+            "⚠️ 출석을 찍을 권한이 없습니다. 이 스터디의 반장(navigator)만 쓸 수 있고, "
             "디스코드 계정 연동이 되어 있어야 합니다."
         )
     if status == 404:
         return "⚠️ 이 스터디는 아직 백오피스에 연결되지 않았습니다. 운영자에게 알려주세요."
     # No 409 branch: the backend no longer refuses when several meetings are
     # candidates -- it picks the nearest one (#111 review). Anything else is
-    # ours to fix, not the captain's, so one message covers it.
+    # ours to fix, not the navigator's, so one message covers it.
     return "⚠️ 백엔드에 문제가 있습니다. 잠시 후 다시 시도해주세요."
 
 
@@ -155,8 +155,9 @@ def register(bot: commands.Bot, settings) -> None:
 
     @bot.command(
         name=COMMAND_NAME,
-        help="지금 공부방에 들어와 있는 사람 전원의 출석을 찍습니다. 반장 전용.\n"
+        help="지금 공부방에 들어와 있는 사람 전원의 출석을 찍습니다. 반장(navigator) 전용.\n"
         "공부방(음성 채널)의 채팅에서 쳐야 합니다 — 공부방을 열면 오른쪽에 채팅창이 있습니다.",
+        extras={"category": "Navigator"},
     )
     async def attendance(ctx: commands.Context) -> None:
         silent = discord.AllowedMentions.none()

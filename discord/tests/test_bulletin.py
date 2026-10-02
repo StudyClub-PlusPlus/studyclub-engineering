@@ -337,8 +337,30 @@ async def test_refresh_survives_a_rejected_send():
     guild.alert_channel.send.assert_awaited_once()
 
 
+async def test_refresh_without_read_message_history_does_not_post_a_second_board():
+    """Discord returns an empty history instead of a 403, so the permission is checked.
+
+    Left to the search, the board would look absent and every refresh would add
+    another message.
+    """
+    guild = FakeGuild()
+    existing = _message(1, author_id=BOT_USER_ID)
+    guild.bulletin_channel = _text_channel(BULLETIN_CHANNEL_ID, [existing])
+    guild.bulletin_channel.permissions_for.return_value = Mock(
+        view_channel=True, read_message_history=False
+    )
+    guild.channels[BULLETIN_CHANNEL_ID] = guild.bulletin_channel
+
+    assert await bulletin.refresh(_bot(guild), _settings()) is False
+
+    guild.bulletin_channel.send.assert_not_awaited()
+    existing.edit.assert_not_awaited()
+    guild.alert_channel.send.assert_awaited_once()
+    assert "Read Message History" in guild.alert_channel.send.await_args[0][0]
+
+
 async def test_refresh_survives_an_unreadable_history():
-    """No Read Message History raises on the search, before anything is posted."""
+    """A Forbidden raised by the search itself is reported, before anything is posted."""
     guild = FakeGuild()
 
     def history(limit, oldest_first):

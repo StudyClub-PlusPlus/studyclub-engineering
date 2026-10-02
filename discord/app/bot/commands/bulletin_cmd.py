@@ -75,6 +75,7 @@ def register(bot: commands.Bot, settings: Settings) -> None:
         name="updateBulletin",
         help="공부방 게시판을 지금 다시 씁니다. captain 전용.\n"
         "게시판은 매일 저녁 8시에 저절로 갱신되니, 그때까지 기다릴 수 없을 때만 쓰면 됩니다.",
+        extras={"category": "Captain"},
     )
     async def update_bulletin_command(ctx: commands.Context) -> None:  # pragma: no cover - thin wrapper
         await update_bulletin(ctx, bot, settings)
