@@ -5,13 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.attendance.AttendanceStatus;
-import com.studyclub.domain.attendance.StudyAttendance;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
@@ -27,7 +27,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -118,6 +117,33 @@ class AttendanceUpsertServiceTest {
                                         .isEqualTo(ErrorCode.INVALID_INPUT));
     }
 
+    @Test
+    @DisplayName("잠금을 기다리는 사이 회차가 지워졌으면 INVALID_INPUT — 지운 회차에 출석을 다시 만들지 않는다")
+    void 잠금_대기_중_회차가_지워지면_INVALID_INPUT() {
+        givenStudyExists();
+        givenCallerIsCaptain();
+        StudyMeeting meeting = mock(StudyMeeting.class);
+        when(meeting.getStudyGroupId()).thenReturn(GROUP_ID);
+        when(studyMeetingRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
+                .thenReturn(List.of(meeting));
+        when(studyMeetingRepository.findByStudyGroupIdForUpdate(GROUP_ID)).thenReturn(List.of());
+
+        var request =
+                new AttendanceUpsertRequest(
+                        List.of(
+                                new AttendanceUpsertRequest.AttendanceUpsertItem(
+                                        MEETING_ID, PARTICIPANT_ID, "PRESENT")));
+
+        assertThatThrownBy(() -> service.upsert(STUDY_ID, CALLER_ACCOUNT_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+        verify(attendanceRepository, never())
+                .upsertStatus(any(), any(), any(), any(), any(), any());
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // loadAndValidateParticipants()
     // ─────────────────────────────────────────────────────────────────────────
@@ -127,8 +153,7 @@ class AttendanceUpsertServiceTest {
     void 스터디에_속하지_않는_participantId이면_INVALID_INPUT() {
         givenStudyExists();
         givenCallerIsCaptain();
-        when(studyMeetingRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
-                .thenReturn(List.of(mock(StudyMeeting.class)));
+        givenMeetingInStudy();
         when(participantRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
                 .thenReturn(List.of()); // size(0) < requested(1)
 
@@ -147,14 +172,13 @@ class AttendanceUpsertServiceTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // buildToSave() — 기존 출석 없음 → 새 레코드
+    // 저장 — 한 문장 upsert
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName(
-            "기존 출석 없으면 올바른 필드로 새 레코드를 생성한다 — accountId·studyId·studyGroupId·studyMeetingId·status 모두 채워진다")
-    void 기존_출석_없으면_올바른_필드로_새_레코드를_생성한다() {
-        givenHappyPath(List.of());
+    @DisplayName("항목마다 참여자의 계정·분반으로 한 문장 upsert 를 부른다 — 기존 행을 먼저 읽지 않아 스냅샷이 낡아도 중복 INSERT 가 없다")
+    void 항목마다_한_문장_upsert를_부른다() {
+        givenHappyPath();
 
         service.upsert(
                 STUDY_ID,
@@ -162,48 +186,17 @@ class AttendanceUpsertServiceTest {
                 new AttendanceUpsertRequest(
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
-                                        MEETING_ID, PARTICIPANT_ID, "PRESENT"))));
+                                        MEETING_ID, PARTICIPANT_ID, "late"))));
 
-        List<StudyAttendance> saved = captureSaveAll();
-        assertThat(saved).hasSize(1);
-        StudyAttendance record = saved.get(0);
-        assertThat(record.getAccountId()).isEqualTo(ACCOUNT_ID);
-        assertThat(record.getStudyId()).isEqualTo(STUDY_ID);
-        assertThat(record.getStudyGroupId()).isEqualTo(GROUP_ID);
-        assertThat(record.getStudyMeetingId()).isEqualTo(MEETING_ID);
-        assertThat(record.getStatus()).isEqualTo(AttendanceStatus.PRESENT);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // buildToSave() — 기존 출석 있음 → status 만 교체
-    // ─────────────────────────────────────────────────────────────────────────
-
-    @Test
-    @DisplayName("기존 출석 있으면 status만 업데이트한다 — 같은 엔티티 인스턴스가 saveAll 에 전달된다")
-    void 기존_출석_있으면_status만_업데이트한다() {
-        StudyAttendance existing =
-                StudyAttendance.builder()
-                        .accountId(ACCOUNT_ID)
-                        .studyId(STUDY_ID)
-                        .studyGroupId(GROUP_ID)
-                        .studyMeetingId(MEETING_ID)
-                        .status(AttendanceStatus.PRESENT)
-                        .build();
-
-        givenHappyPath(List.of(existing));
-
-        service.upsert(
-                STUDY_ID,
-                CALLER_ACCOUNT_ID,
-                new AttendanceUpsertRequest(
-                        List.of(
-                                new AttendanceUpsertRequest.AttendanceUpsertItem(
-                                        MEETING_ID, PARTICIPANT_ID, "ABSENT"))));
-
-        List<StudyAttendance> saved = captureSaveAll();
-        assertThat(saved).hasSize(1);
-        assertThat(saved.get(0)).isSameAs(existing);
-        assertThat(saved.get(0).getStatus()).isEqualTo(AttendanceStatus.ABSENT);
+        verify(attendanceRepository)
+                .upsertStatus(
+                        eq(ACCOUNT_ID),
+                        eq(STUDY_ID),
+                        eq(GROUP_ID),
+                        eq(MEETING_ID),
+                        eq(AttendanceStatus.LATE.name()),
+                        any());
+        verify(attendanceRepository, never()).saveAll(any());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -232,21 +225,22 @@ class AttendanceUpsertServiceTest {
                 .build();
     }
 
-    private void givenHappyPath(List<StudyAttendance> existingAttendances) {
+    private void givenHappyPath() {
         givenStudyExists();
         givenCallerIsCaptain();
-        when(studyMeetingRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
-                .thenReturn(List.of(mock(StudyMeeting.class)));
+        givenMeetingInStudy();
         when(participantRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
                 .thenReturn(List.of(stubParticipant()));
-        when(attendanceRepository.findByStudyMeetingIdIn(any())).thenReturn(existingAttendances);
-        when(attendanceRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
-    @SuppressWarnings("unchecked")
-    private List<StudyAttendance> captureSaveAll() {
-        ArgumentCaptor<List<StudyAttendance>> captor = ArgumentCaptor.forClass(List.class);
-        verify(attendanceRepository).saveAll(captor.capture());
-        return captor.getValue();
+    // 존재 확인 후 분반 회차를 잠그고 다시 본다 — 잠금 조회에도 같은 회차가 있어야 통과한다
+    private void givenMeetingInStudy() {
+        StudyMeeting meeting = mock(StudyMeeting.class);
+        when(meeting.getId()).thenReturn(MEETING_ID);
+        when(meeting.getStudyGroupId()).thenReturn(GROUP_ID);
+        when(studyMeetingRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
+                .thenReturn(List.of(meeting));
+        when(studyMeetingRepository.findByStudyGroupIdForUpdate(GROUP_ID))
+                .thenReturn(List.of(meeting));
     }
 }
