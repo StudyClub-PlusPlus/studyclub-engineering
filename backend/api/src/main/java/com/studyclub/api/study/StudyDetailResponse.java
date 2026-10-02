@@ -2,11 +2,13 @@ package com.studyclub.api.study;
 
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyProgram;
 import java.time.Instant;
 
 public record StudyDetailResponse(
         Long id,
         Long programId,
+        String programTitle,
         String slug,
         String title,
         String oneLineSummary,
@@ -26,17 +28,22 @@ public record StudyDetailResponse(
         String discordChannelUrl,
         String driveUrl) {
 
+    /**
+     * {@code studyKind} · {@code programTitle} 은 기수가 아니라 프로그램의 값이다 — docs/erd/STUDY_PROGRAM.md. 콘솔
+     * 정보 탭이 「프로그램 제목 · 종류 · 변경할 수 없음」을 읽기 전용으로 보여 주는 데 쓴다.
+     */
     public static StudyDetailResponse from(
-            Study study, long applicantCount, Instant recruitDeadlineAt) {
+            Study study, StudyProgram program, long applicantCount, Instant recruitDeadlineAt) {
         return new StudyDetailResponse(
                 study.getId(),
                 study.getProgramId(),
+                program.getTitle(),
                 study.getSlug(),
                 study.getTitle(),
                 study.getOneLineSummary(),
                 study.getDescription(),
                 study.getCategory().name(),
-                study.getStudyKind().name(),
+                program.getStudyKind().name(),
                 study.getThumbnailUrl(),
                 study.getStudyDeliveryFormat().name(),
                 study.getStatus().name(),
@@ -56,6 +63,7 @@ public record StudyDetailResponse(
         return new StudyDetailResponse(
                 id,
                 programId,
+                programTitle,
                 slug,
                 title,
                 oneLineSummary,

@@ -33,15 +33,16 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
             Instant startAt,
             Instant endAt,
             boolean closingSoon) {
+        /** {@code studyKind} 는 프로그램의 값이라 밖에서 받는다 — docs/erd/STUDY_PROGRAM.md. */
         public static StudySummary from(
-                Study study, long applicantCount, Instant recruitDeadlineAt) {
+                Study study, StudyKind studyKind, long applicantCount, Instant recruitDeadlineAt) {
             return new StudySummary(
                     study.getId(),
                     study.getSlug(),
                     study.getTitle(),
                     study.getOneLineSummary(),
                     study.getCategory(),
-                    study.getStudyKind(),
+                    studyKind,
                     study.getThumbnailUrl(),
                     study.getSchedule(),
                     study.timezone(),

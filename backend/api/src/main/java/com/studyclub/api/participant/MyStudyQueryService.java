@@ -12,8 +12,11 @@ import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRepository;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -37,16 +40,19 @@ public class MyStudyQueryService {
     private final StudyRepository studyRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
+    private final StudyProgramRepository studyProgramRepository;
 
     public MyStudyQueryService(
             StudyParticipantRepository studyParticipantRepository,
             StudyRepository studyRepository,
             StudyMeetingRepository studyMeetingRepository,
-            StudyAttendanceRepository studyAttendanceRepository) {
+            StudyAttendanceRepository studyAttendanceRepository,
+            StudyProgramRepository studyProgramRepository) {
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRepository = studyRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
+        this.studyProgramRepository = studyProgramRepository;
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +76,16 @@ public class MyStudyQueryService {
                                 Collectors.toMap(
                                         StudyAttendance::getStudyMeetingId, Function.identity()));
 
+        Map<Long, StudyProgram> programs =
+                studyProgramRepository
+                        .findAllByIdIn(
+                                studyById.values().stream()
+                                        .map(Study::getProgramId)
+                                        .distinct()
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(StudyProgram::getId, p -> p));
+
         Instant now = Instant.now();
         List<MyStudy> items = new ArrayList<>();
         for (StudyParticipant participant : participants) {
@@ -79,7 +95,14 @@ public class MyStudyQueryService {
             }
             List<StudyMeeting> meetings =
                     meetingsByGroupId.getOrDefault(participant.getStudyGroupId(), List.of());
-            items.add(toMyStudy(participant, study, meetings, attendanceByMeetingId, now));
+            items.add(
+                    toMyStudy(
+                            participant,
+                            study,
+                            programs.get(study.getProgramId()).getStudyKind(),
+                            meetings,
+                            attendanceByMeetingId,
+                            now));
         }
         items.sort(
                 Comparator.comparing(
@@ -90,6 +113,7 @@ public class MyStudyQueryService {
     private MyStudy toMyStudy(
             StudyParticipant participant,
             Study study,
+            StudyKind studyKind,
             List<StudyMeeting> meetings,
             Map<Long, StudyAttendance> attendanceByMeetingId,
             Instant now) {
@@ -114,7 +138,7 @@ public class MyStudyQueryService {
                 study.getId(),
                 study.getTitle(),
                 study.getCategory(),
-                study.getStudyKind(),
+                studyKind,
                 study.getStartAt(),
                 study.getEndAt(),
                 relation,

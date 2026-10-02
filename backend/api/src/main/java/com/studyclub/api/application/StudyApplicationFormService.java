@@ -7,6 +7,7 @@ import com.studyclub.api.application.StudyApplicationFormResponses.StudyApplicat
 import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.application.ApplicationFormQuestionType;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
@@ -197,10 +198,10 @@ public class StudyApplicationFormService {
         if (allowOther == null) {
             return null;
         }
-        if (!type.supportsOther() && allowOther) {
+        if (!type.supportsOther()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "allowOther를 사용할 수 없는 질문 타입입니다.");
         }
-        return type.supportsOther() ? allowOther : null;
+        return allowOther;
     }
 
     private String normalizeOptionalSingleLine(String value, int max, String field) {

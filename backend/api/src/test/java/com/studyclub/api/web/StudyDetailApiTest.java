@@ -45,7 +45,11 @@ class StudyDetailApiTest {
     @DisplayName("성공 — 스터디 상세 조회")
     void detailWithStudy() {
         var studyProgram =
-                studyProgramRepository.save(StudyProgram.builder().title("알고리즘 스터디").build());
+                studyProgramRepository.save(
+                        StudyProgram.builder()
+                                .title("알고리즘 스터디")
+                                .studyKind(StudyKind.STUDY)
+                                .build());
         var study =
                 studyRepository.save(
                         Study.builder()
@@ -54,7 +58,6 @@ class StudyDetailApiTest {
                                 .title("알고리즘 스터디")
                                 .oneLineSummary("알고리즘 문제 풀이 스터디")
                                 .category(StudyCategory.SOFTWARE)
-                                .studyKind(StudyKind.STUDY)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
@@ -95,7 +98,8 @@ class StudyDetailApiTest {
     @DisplayName("실패 — 존재하지 않는 studyId → 404 NOT_FOUND")
     void detailWithoutStudy() {
         var studyProgram =
-                studyProgramRepository.save(StudyProgram.builder().title("코호트 없음").build());
+                studyProgramRepository.save(
+                        StudyProgram.builder().title("코호트 없음").studyKind(StudyKind.STUDY).build());
 
         // studyProgram.getId() is a valid program ID but no study has been created with that ID
         var response = rest.getForEntity("/api/studies/" + studyProgram.getId(), Map.class);
@@ -117,7 +121,11 @@ class StudyDetailApiTest {
     @DisplayName("실패 — 공개 전(DRAFT) 스터디는 숨김이 아니어도 404 NOT_FOUND")
     void draftStudyReturns404() {
         var studyProgram =
-                studyProgramRepository.save(StudyProgram.builder().title("공개 전 스터디").build());
+                studyProgramRepository.save(
+                        StudyProgram.builder()
+                                .title("공개 전 스터디")
+                                .studyKind(StudyKind.STUDY)
+                                .build());
         var study =
                 studyRepository.save(
                         Study.builder()
@@ -126,7 +134,6 @@ class StudyDetailApiTest {
                                 .title("공개 전 스터디")
                                 .oneLineSummary("아직 공개하지 않은 스터디")
                                 .category(StudyCategory.OTHER)
-                                .studyKind(StudyKind.STUDY)
                                 .isHidden(false)
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)

@@ -20,6 +20,8 @@ import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.sql.Timestamp;
@@ -60,6 +62,7 @@ class MyStudyIntegrationTest {
     @Autowired JwtService jwtService;
     @Autowired AccountRepository accountRepository;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired StudyProgramRepository studyProgramRepository;
     @Autowired StudyRepository studyRepository;
     @Autowired StudyGroupRepository studyGroupRepository;
     @Autowired StudyMeetingRepository studyMeetingRepository;
@@ -178,15 +181,18 @@ class MyStudyIntegrationTest {
 
     /** 스터디 · 반 · MEMBER_ID 명부 한 줄. 명부 편입은 10일 전. */
     private Long enroll(String title, Instant startAt, ParticipantStatus status) {
+        // 종류는 프로그램이 갖는다 — 응답의 studyKind 가 여기서 온다
+        StudyProgram program =
+                studyProgramRepository.save(
+                        StudyProgram.builder().title(title).studyKind(StudyKind.STUDY).build());
         Study study =
                 studyRepository.save(
                         Study.builder()
-                                .programId(1L)
+                                .programId(program.getId())
                                 .slug("my-studies-" + UUID.randomUUID())
                                 .title(title)
                                 .oneLineSummary("소개")
                                 .category(StudyCategory.SOFTWARE)
-                                .studyKind(StudyKind.STUDY)
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.ONGOING)
                                 .startAt(startAt)

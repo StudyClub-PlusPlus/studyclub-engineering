@@ -57,6 +57,8 @@ export type StudyRow = {
 export type ApiStudyDetail = {
   id: number;
   programId: number;
+  /** 프로그램 제목. 정보 탭이 프로그램을 읽기 전용으로 보여 주는 데 쓴다. */
+  programTitle: string;
   slug: string;
   title: string;
   oneLineSummary: string;
@@ -76,6 +78,35 @@ export type ApiStudyDetail = {
   endAt: string | null;
   discordChannelUrl: string | null;
   driveUrl: string | null;
+};
+
+/**
+ * 등록 모달의 「기존 클럽의 새 기수」 드롭다운 항목 — `GET /api/admin/study-programs?studyKind=CLUB`.
+ * `latestStudyId` 로 그 클럽의 최신 기수 상세를 다시 불러 폼을 채운다.
+ */
+export type ApiStudyProgram = {
+  programId: number;
+  title: string;
+  latestStudyId: number | null;
+};
+
+/**
+ * POST 바디. 프로그램은 둘 중 하나만 보낸다 — 새 프로그램이면 `studyKind`, 기존 클럽의 새 기수면
+ * `studyProgramId`. 둘을 함께 보내면 서버가 400 으로 거절한다(종류는 한 번 정하면 못 바꾼다).
+ */
+export type StudyCreatePayload = {
+  studyProgramId?: number;
+  studyKind?: 'STUDY' | 'CLUB';
+  title: string;
+  oneLineSummary: string;
+  description?: string;
+  category: string;
+  recruitDeadline: string;
+  schedule?: string;
+  capacity?: number | null;
+  startAt?: string | null;
+  discordChannelUrl?: string | null;
+  driveUrl?: string | null;
 };
 
 /**

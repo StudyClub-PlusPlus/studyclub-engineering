@@ -31,7 +31,7 @@ import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'l
  * 스터디 관리 목록.
  *
  * **칼럼은 등록 폼에 있는 항목으로만 짠다.** 운영자가 입력할 수 없는 값(연도)은
- * 영원히 비거나 더미로 남으므로 목록에 두지 않는다. 제목·주제·종류·시간대·모집 상태·참여 인원·공개 상태·스터디 시작일·
+ * 영원히 비거나 더미로 남으므로 목록에 두지 않는다. 제목·카테고리·종류·시간대·모집 상태·참여 인원·공개 상태·스터디 시작일·
  * 모집 마감일이 보이고, 여기에 스터디 상태(5단계)가 더해진다. 한 줄 소개·진행 일정(자유 텍스트)은 목록에 두지
  * 않는다 — 진행 일정은 신청 화면에 알리는 문구일 뿐 운영자가 목록에서 훑어볼 값이 아니고, 정렬·필터도 못 건다.
  * 언제 시작하는지가 궁금하면 **스터디 시작일**(`STUDY.START_AT`, 정렬 가능한 날짜)을 본다.
@@ -44,7 +44,7 @@ import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'l
  * 판정 함수는 사용자 사이트와 공유한다(`@studyclub/mock`) — 콘솔에만 "마감"으로 보이는 사고 방지.
  *
  * 필터는 **사용자 사이트 목록과 같은 모양**이다 — 선택지가 적은 축은 드롭다운이 아니라 세그먼트 탭으로,
- * 눌러 보기 전에 무엇이 걸려 있는지 보이게 한다. 주제는 `STUDY.CATEGORY` 가 단일 값이라 드롭다운 단일 선택이다.
+ * 눌러 보기 전에 무엇이 걸려 있는지 보이게 한다. 카테고리는 `STUDY.CATEGORY` 가 단일 값이라 드롭다운 단일 선택이다.
  *
  * 컬럼 순서는 운영자가 바꿀 수 있다. **프로그램 ID › 스터디(제목) 두 칸은 맨 앞에 고정**한다 — 행이 어느 스터디인지 잃으면
  * 나머지 칸을 읽을 수 없고, 프로그램이 스터디를 묶는 위계라 그 앞에 온다.
@@ -54,7 +54,7 @@ import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'l
  */
 
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: '주제 전체' },
+  { value: 'all', label: '카테고리 전체' },
   ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
 ];
 
@@ -117,7 +117,7 @@ function FilterSelect<T extends string>({
   );
 }
 
-/** 주제 셀렉트. `STUDY.CATEGORY` 가 단일 값이라 단일 선택 드롭다운으로 고정한다. */
+/** 카테고리 셀렉트. `STUDY.CATEGORY` 가 단일 값이라 단일 선택 드롭다운으로 고정한다. */
 function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <select
@@ -187,7 +187,7 @@ const COLUMNS: Column[] = [
   },
   {
     key: 'category',
-    label: '주제',
+    label: '카테고리',
     cellClass: 'whitespace-nowrap text-fg-secondary',
     render: ({ s }) => <CategoryCell categories={categoriesOf(s)} />,
   },
@@ -778,13 +778,13 @@ function FormCell({ url, recruiting }: { url?: string; recruiting: boolean }) {
   );
 }
 
-/** 목록에서 보여줄 주제 수. 셋을 넘기면 제목 칸이 밀려 스터디를 못 읽는다. */
+/** 목록에서 보여줄 카테고리 수. 셋을 넘기면 제목 칸이 밀려 스터디를 못 읽는다. */
 const CATEGORY_PREVIEW = 2;
 
 /**
- * 주제 칸.
+ * 카테고리 칸.
  *
- * 주제는 여러 개 붙는다. 전부 늘어놓으면 이 칸이 제목보다 넓어지므로 **두 개까지만** 적고
+ * 카테고리는 여러 개 붙는다. 전부 늘어놓으면 이 칸이 제목보다 넓어지므로 **두 개까지만** 적고
  * 나머지는 개수로 접는다. 접힌 이름은 마우스를 올리면 볼 수 있다.
  */
 function CategoryCell({ categories }: { categories: string[] }) {

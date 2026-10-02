@@ -65,7 +65,7 @@ export function StudyDetailView({
     };
   }, [id, initialStudy]);
 
-  if (errorStatus === 404 || (!study && errorStatus !== null)) {
+  if (errorStatus === 404) {
     return (
       <div className='mx-auto max-w-3xl px-6 py-20 text-center'>
         <p className='text-lg font-bold text-fg-secondary'>
@@ -81,7 +81,7 @@ export function StudyDetailView({
     );
   }
 
-  if (errorStatus === 500) {
+  if (errorStatus !== null) {
     return (
       <div className='mx-auto max-w-3xl px-6 py-20 text-center'>
         <p className='text-lg font-bold text-fg-secondary'>

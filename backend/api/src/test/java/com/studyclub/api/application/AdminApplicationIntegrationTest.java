@@ -210,21 +210,30 @@ class AdminApplicationIntegrationTest {
                 RECRUITMENT_ID,
                 OTHER_RECRUITMENT_ID);
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID IN (?, ?)", STUDY_ID, OTHER_STUDY_ID);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?)", STUDY_ID, OTHER_STUDY_ID);
     }
 
     private void insertStudy(Long id, String slug, Timestamp now) {
+        // 종류는 프로그램이 갖는다 — 기수에는 컬럼이 없다. 프로그램 ID 는 기수 ID 와 같게 둔다
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, 'STUDY', ?, ?)",
+                id,
+                "프로그램",
+                now,
+                now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                        + " IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 "신청 조회 스터디",
                 slug,
                 "한 줄 소개",
                 "SOFTWARE",
-                "STUDY",
                 false,
                 "ONLINE",
                 "OPEN",

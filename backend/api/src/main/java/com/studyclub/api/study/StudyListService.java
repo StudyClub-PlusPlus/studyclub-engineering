@@ -2,6 +2,8 @@ package com.studyclub.api.study;
 
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import java.time.Instant;
@@ -22,14 +24,17 @@ public class StudyListService {
     private final StudyListDao studyListDao;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
+    private final StudyProgramRepository studyProgramRepository;
 
     public StudyListService(
             StudyListDao studyListDao,
             StudyParticipantRepository studyParticipantRepository,
-            StudyRecruitmentRepository studyRecruitmentRepository) {
+            StudyRecruitmentRepository studyRecruitmentRepository,
+            StudyProgramRepository studyProgramRepository) {
         this.studyListDao = studyListDao;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
+        this.studyProgramRepository = studyProgramRepository;
     }
 
     public StudyListResponse list(StudyListFilter filter, int offset, int limit) {
@@ -53,12 +58,20 @@ public class StudyListService {
                                         StudyRecruitment::getStudyId,
                                         StudyRecruitment::getRecruitDeadlineAt));
 
+        Map<Long, StudyProgram> programs =
+                studyProgramRepository
+                        .findAllByIdIn(
+                                studies.stream().map(Study::getProgramId).distinct().toList())
+                        .stream()
+                        .collect(Collectors.toMap(StudyProgram::getId, p -> p));
+
         List<StudyListResponse.StudySummary> items =
                 studies.stream()
                         .map(
                                 study ->
                                         StudyListResponse.StudySummary.from(
                                                 study,
+                                                programs.get(study.getProgramId()).getStudyKind(),
                                                 applicants.getOrDefault(study.getId(), 0L),
                                                 deadlines.get(study.getId())))
                         .toList();
