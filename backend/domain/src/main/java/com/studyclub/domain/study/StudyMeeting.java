@@ -53,7 +53,8 @@ public class StudyMeeting extends BaseEntity {
 
     /** 네비게이터가 화면에서 회차를 잡는다. 실제 시작·종료는 디스코드가 기록하므로 비워 둔다 (specs/study-meeting/spec.md). */
     public static StudyMeeting schedule(Long studyGroupId, Instant scheduledAt, String title) {
-        StudyMeeting meeting = new StudyMeeting(studyGroupId, scheduledAt, null, null);
+        StudyMeeting meeting =
+                new StudyMeeting(studyGroupId, MeetingSchedule.storable(scheduledAt), null, null);
         meeting.title = normalizeTitle(title);
         return meeting;
     }
@@ -76,7 +77,7 @@ public class StudyMeeting extends BaseEntity {
     public void reschedule(Instant scheduledAt, String title, Instant now) {
         assertNotStarted(now);
         MeetingSchedule.assertFuture(scheduledAt, now);
-        this.scheduledAt = scheduledAt;
+        this.scheduledAt = MeetingSchedule.storable(scheduledAt);
         this.title = normalizeTitle(title);
     }
 
@@ -85,12 +86,11 @@ public class StudyMeeting extends BaseEntity {
         if (title == null || title.isBlank()) {
             return null;
         }
-        String trimmed = title.strip();
-        if (trimmed.length() > TITLE_MAX_LENGTH) {
+        if (title.length() > TITLE_MAX_LENGTH) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "회차 제목은 " + TITLE_MAX_LENGTH + "자까지입니다.");
         }
-        return trimmed;
+        return title.strip();
     }
 
     /** 회차가 진행 중인지 — 시작했고 아직 끝나지 않았다. 상태를 저장하지 않으므로 시각으로 판정한다. */

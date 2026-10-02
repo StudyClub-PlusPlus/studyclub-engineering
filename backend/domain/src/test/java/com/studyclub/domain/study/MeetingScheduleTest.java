@@ -151,6 +151,19 @@ class MeetingScheduleTest {
                 .satisfies(e -> assertCode(e, ErrorCode.MEETING_DATE_CONFLICT));
     }
 
+    @Test
+    @DisplayName("날짜는 초로 자른 시각으로 본다 — 서울 자정 0.9초 전은 반올림 없이 그날이다")
+    void judgesDayOnTruncatedInstant() {
+        // KST 10/8 23:59:59.9 → 저장값 23:59:59 → 10/8. 10/9 회차와 겹치지 않아야 한다
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(meeting("2026-10-09T11:00:00Z")));
+
+        assertThatCode(
+                        () ->
+                                schedule.checkAdd(
+                                        List.of(Instant.parse("2026-10-08T14:59:59.900Z")), NOW))
+                .doesNotThrowAnyException();
+    }
+
     private static StudyMeeting meeting(String scheduledAt) {
         return StudyMeeting.schedule(1L, Instant.parse(scheduledAt), null);
     }

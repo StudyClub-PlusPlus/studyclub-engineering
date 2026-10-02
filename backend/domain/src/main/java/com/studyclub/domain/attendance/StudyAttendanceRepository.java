@@ -55,5 +55,11 @@ public interface StudyAttendanceRepository extends JpaRepository<StudyAttendance
 
     void deleteByStudyId(Long studyId);
 
-    void deleteByStudyMeetingId(Long studyMeetingId);
+    /**
+     * 회차의 출석을 한 문장으로 지운다. 파생 deleteBy 는 SELECT 뒤 한 건씩 지우는데, 그 SELECT 는 트랜잭션 스냅샷을 읽어 잠금 대기 중에 다른 요청이
+     * 넣은 출석을 빠뜨린다. DELETE 문은 커밋된 최신 행을 본다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM StudyAttendance a WHERE a.studyMeetingId = :studyMeetingId")
+    int deleteByStudyMeetingId(@Param("studyMeetingId") Long studyMeetingId);
 }

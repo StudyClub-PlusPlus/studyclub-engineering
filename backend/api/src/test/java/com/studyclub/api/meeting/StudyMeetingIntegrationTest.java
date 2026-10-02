@@ -55,6 +55,9 @@ class StudyMeetingIntegrationTest {
     private static final Long MEMBER_ID = 5102L;
     private static final Long WITHDRAWN_ID = 5103L;
     private static final Long OTHER_GROUP_LEADER_ID = 5104L;
+    private static final Long PAUSED_ID = 5105L;
+    private static final Long COMPLETED_ID = 5106L;
+    private static final Long CAPTAIN_ID = 5107L;
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     @Autowired TestRestTemplate rest;
@@ -90,6 +93,13 @@ class StudyMeetingIntegrationTest {
         insertAccountIfAbsent(MEMBER_ID, "크루", "member@meeting-test.com");
         insertAccountIfAbsent(WITHDRAWN_ID, "하차", "withdrawn@meeting-test.com");
         insertAccountIfAbsent(OTHER_GROUP_LEADER_ID, "옆반", "other@meeting-test.com");
+        insertAccountIfAbsent(PAUSED_ID, "쉼", "paused@meeting-test.com");
+        insertAccountIfAbsent(COMPLETED_ID, "완주", "completed@meeting-test.com");
+        insertAccountIfAbsent(CAPTAIN_ID, "캡틴", "captain@meeting-test.com");
+        jdbcTemplate.update(
+                "UPDATE ACCOUNT SET SYSTEM_ROLE = ? WHERE ID = ?",
+                SystemRole.ADMIN.name(),
+                CAPTAIN_ID);
 
         var program =
                 studyProgramRepo.save(
@@ -129,6 +139,8 @@ class StudyMeetingIntegrationTest {
         participant(LEADER_ID, group, ParticipantRole.LEADER, ParticipantStatus.ACTIVE);
         participant(MEMBER_ID, group, ParticipantRole.MEMBER, ParticipantStatus.ACTIVE);
         participant(WITHDRAWN_ID, group, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN);
+        participant(PAUSED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.PAUSED);
+        participant(COMPLETED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED);
         participant(
                 OTHER_GROUP_LEADER_ID,
                 otherGroup,
@@ -161,7 +173,7 @@ class StudyMeetingIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 반복 추가는 날짜마다 회차를 만들고, 하차자를 뺀 분반 참여자 출석을 ABSENT 로 깐다")
+    @DisplayName("성공 - 반복 추가는 날짜마다 회차를 만들고, ACTIVE·PAUSED 참여자 출석만 ABSENT 로 깐다 (하차·완주는 앞으로 오지 않는다)")
     void createsMeetingsWithAbsentAttendance() {
         var body =
                 Map.of(
@@ -189,11 +201,14 @@ class StudyMeetingIntegrationTest {
         List<StudyAttendance> attendances =
                 studyAttendanceRepo.findByStudyMeetingIdIn(
                         created.stream().map(StudyMeeting::getId).toList());
-        assertThat(attendances).hasSize(4);
+        assertThat(attendances).hasSize(6);
         assertThat(attendances)
                 .allSatisfy(a -> assertThat(a.getStatus()).isEqualTo(AttendanceStatus.ABSENT))
                 .extracting(StudyAttendance::getAccountId)
-                .containsOnly(LEADER_ID, MEMBER_ID);
+                .containsOnly(LEADER_ID, MEMBER_ID, PAUSED_ID);
+        // 첫 회차를 깔아도 모집이 닫히지 않게 STATUS 는 그대로 둔다 (스펙 결정 5)
+        assertThat(studyRepo.findById(study.getId()).orElseThrow().getStatus())
+                .isEqualTo(StudyStatus.OPEN);
     }
 
     @Test
@@ -239,6 +254,36 @@ class StudyMeetingIntegrationTest {
         assertThat(studyMeetingRepo.findById(futureMeeting.getId())).isEmpty();
         assertThat(studyAttendanceRepo.findByStudyMeetingIdIn(List.of(futureMeeting.getId())))
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("성공 - 명부에 없는 캡틴도 분반을 골라 오면 관리할 수 있다")
+    void captainManagesAnyGroup() {
+        var response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings?studyGroupId={groupId}",
+                        null,
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("실패 - 명부에 없는 캡틴이 분반을 안 주면 400 — 고를 내 분반이 없다")
+    void captainWithoutGroupId() {
+        var response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings",
+                        null,
+                        CAPTAIN_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
     }
 
     @Test

@@ -98,17 +98,23 @@ public class StudyMeetingService {
 
     @Transactional
     public void create(Long accountId, Long studyId, StudyMeetingRequests.Create request) {
-        assertStudyExists(studyId);
+        // 분반 잠금을 트랜잭션의 첫 조회로 둔다. REPEATABLE READ 스냅샷은 첫 일반 조회 때 잡히므로, 잠금을 쥔 뒤에 읽어야 먼저 끝난 같은 분반 추가가
+        // 보인다
         StudyGroup group = lockGroup(request.studyGroupId());
+        assertStudyExists(studyId);
         if (!group.getStudyId().equals(studyId)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "이 스터디의 분반이 아닙니다.");
         }
         studyCaptainGuard.assertCaptainOrGroupNavigator(
                 accountId, group.getId(), FORBIDDEN_MESSAGE);
 
-        Instant now = Instant.now();
-        new MeetingSchedule(group.getTimezone(), lockMeetings(group.getId()))
-                .checkAdd(request.scheduledAts(), now);
+        // 회차 행은 잠그지 않는다 — 분반 잠금이 이미 줄을 세운다. 회차 범위를 FOR UPDATE 로 잡으면 회차 없는 두 분반이 같은 인덱스 끝 gap 을 함께
+        // 잡고
+        // 서로의 INSERT 를 기다리다 교착한다. 추가는 시작 판정이 없어 디스코드 잠금과 맞출 일도 없다
+        List<StudyMeeting> existing =
+                studyMeetingRepository.findByStudyGroupIdOrderByScheduledAt(group.getId());
+        new MeetingSchedule(group.getTimezone(), existing)
+                .checkAdd(request.scheduledAts(), Instant.now());
 
         List<StudyMeeting> created =
                 studyMeetingRepository.saveAll(
@@ -141,9 +147,9 @@ public class StudyMeetingService {
     @Transactional
     public void update(
             Long accountId, Long studyId, Long meetingId, StudyMeetingRequests.Update request) {
-        Instant now = Instant.now();
         LockedMeeting locked = lockMeeting(accountId, studyId, meetingId);
-        locked.meeting().reschedule(request.scheduledAt(), request.title(), now);
+        // 잠금을 기다리는 동안 예정 시각이 지날 수 있어 잠근 뒤에 잰다
+        locked.meeting().reschedule(request.scheduledAt(), request.title(), Instant.now());
         locked.schedule().checkReschedule(locked.meeting(), request.scheduledAt());
     }
 
@@ -152,8 +158,9 @@ public class StudyMeetingService {
         LockedMeeting locked = lockMeeting(accountId, studyId, meetingId);
         locked.meeting().assertNotStarted(Instant.now());
         // 출석 → 회차 외래키가 없어 DB 가 지워 주지 않는다. 휴가는 출석 행의 EXCUSED 라 함께 사라진다
-        studyAttendanceRepository.deleteByStudyMeetingId(meetingId);
+        // 일괄 DELETE 가 영속성 컨텍스트를 비우므로 회차를 먼저 지운다 (DELETE 전에 flush 된다)
         studyMeetingRepository.delete(locked.meeting());
+        studyAttendanceRepository.deleteByStudyMeetingId(meetingId);
     }
 
     /**

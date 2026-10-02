@@ -81,6 +81,22 @@ class StudyMeetingTest {
                 .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
     }
 
+    @Test
+    @DisplayName("길이는 공백을 떼기 전 입력으로 잰다 — 50자 뒤 공백 한 칸도 51자 입력이다")
+    void titleLengthCountsRawInput() {
+        assertThatThrownBy(() -> StudyMeeting.schedule(1L, FUTURE, "가".repeat(50) + " "))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("예정 시각은 초 단위로 잘라 저장한다 — 소수초 없는 DATETIME 이 반올림해 날짜가 바뀌지 않게")
+    void truncatesToSeconds() {
+        assertThat(
+                        StudyMeeting.schedule(1L, Instant.parse("2026-10-08T14:59:59.900Z"), null)
+                                .getScheduledAt())
+                .isEqualTo(Instant.parse("2026-10-08T14:59:59Z"));
+    }
+
     private static void assertCode(Throwable e, ErrorCode code) {
         assertThat(((BusinessException) e).errorCode()).isEqualTo(code);
     }

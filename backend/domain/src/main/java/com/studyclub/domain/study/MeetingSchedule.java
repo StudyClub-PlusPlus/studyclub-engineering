@@ -70,8 +70,16 @@ public class MeetingSchedule {
         assertDayFree(localDate(scheduledAt), target);
     }
 
+    /**
+     * 저장 정밀도(초)로 자른다. 운영 컬럼은 소수초 없는 DATETIME 이라 MySQL 이 반올림한다 — 자정 0.9초 전 회차가 다음 날로 저장되어, 검증한 날짜와
+     * 저장된 날짜가 달라진다. 검증과 저장이 같은 값을 쓰게 한다.
+     */
+    static Instant storable(Instant instant) {
+        return instant.truncatedTo(ChronoUnit.SECONDS);
+    }
+
     static void assertFuture(Instant scheduledAt, Instant now) {
-        if (!scheduledAt.isAfter(now)) {
+        if (!storable(scheduledAt).isAfter(now)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "지난 시각에는 회차를 잡을 수 없습니다.");
         }
     }
@@ -86,6 +94,6 @@ public class MeetingSchedule {
     }
 
     private LocalDate localDate(Instant instant) {
-        return instant.atZone(zone).toLocalDate();
+        return storable(instant).atZone(zone).toLocalDate();
     }
 }
