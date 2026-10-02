@@ -11,6 +11,11 @@
 | SCHEDULED_AT | DATETIME | N | 예정 시각 (UTC) |
 | START_AT | DATETIME | Y | 실제 시작 — 반장이 시작 명령 시 기록 |
 | END_AT | DATETIME | Y | 실제 종료 |
+| TITLE | VARCHAR(50) | Y | 표시용 제목 (`3주차 논문 읽기`). 반복으로 만들면 묶음 전체에 같은 제목 |
+| SERIES_ID | VARCHAR(36) | Y | 반복 묶음 ID (UUID). 한 번에 여러 회차를 만들 때 같은 값을 붙인다. 「이후 반복 모두」 삭제가 이 값으로 묶음을 찾는다 |
+
+**회차 번호는 저장하지 않는다** — 분반 회차를 `SCHEDULED_AT` 오름차순으로 센 순번으로 계산한다. 저장하면 추가·삭제·수정 때마다 뒤 회차를 전부 다시 써야 한다.
+쓰기 규칙(같은 날 중복 금지 · 31일 상한 · 시작한 회차 수정·삭제 금지)은 [study-meeting 스펙](../../specs/study-meeting/spec.md).
 
 ## 관계
 - N : 1 [STUDY_GROUP](./STUDY_GROUP.md)
@@ -29,5 +34,4 @@
 - 인덱스 `(STUDY_GROUP_ID, SCHEDULED_AT)` — `idx_study_meeting_group_scheduled`
 
 ## 미확정
-- 회차 번호(`MEETING_NO`)·제목(`TITLE`) — 표 설계에 있음. "3주차 논문 읽기" 같은 표시용.
 - 취소된 회차 표현 — `CANCELED_AT` 추가할지.

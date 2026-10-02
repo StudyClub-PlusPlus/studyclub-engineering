@@ -14,6 +14,7 @@
 | 제안 | [proposal/](./proposal/) | — | 스터디 제안·관심 표시 |
 | 알림 | [notification/](./notification/) | 스펙작성중 | 이벤트 기반 알림 발송 (첫 구현: 회원가입 웰컴메일) |
 | 내 스터디 | [my-studies/](./my-studies/) | 구현완료 | `GET /api/me/studies` — 명부 스터디 + 회차별 내 출석. 기획: [내 스터디](../planning/stories/crew-joined-studies/PRD.md) |
+| 스터디 회차 | [study-meeting/](./study-meeting/) | 스펙작성중 | `/api/studies/{studyId}/meetings` — 네비게이터의 분반 회차 조회·추가(반복)·수정·삭제. 기획: [회차 등록](../planning/stories/navigator-register-sessions/PRD.md) |
 | 회원 탈퇴 | [user-leave/](./user-leave/) | 스펙작성중 | `DELETE /api/me` — 계정 즉시 삭제, 데이터 파기·보존 정책 |
 
 ## 도메인 외 스펙

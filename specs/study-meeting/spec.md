@@ -1,0 +1,375 @@
+# 스터디 회차(미팅) API Spec
+
+> ERD: [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
+> 생성일: 2026-10-02
+> 상태: 스펙작성중
+>
+> Story PRD:
+> - [네비게이터로서, 스터디 회차를 등록할 수 있다](../../planning/stories/navigator-register-sessions/PRD.md)
+>
+> 관련 스펙: [명부·출석](../attendance/spec.md) — 출석 조회·upsert 만 다루고 범위를 닫아 둔 스펙이라 여기서 고치지 않는다. 이 스펙이 만들고 지운 회차·출석 행은 그 스펙의 `GET /api/studies/{studyId}/attendances` 와 [내 스터디](../my-studies/spec.md) 에 그대로 보인다.
+
+## 엔드포인트 목록
+
+| Method | Path | 설명 | 인증 | 상태 |
+|--------|------|------|------|------|
+| GET | /api/studies/{studyId}/meetings | 분반 회차 목록 | O (그 분반 네비게이터 · 캡틴) | 스펙작성중 |
+| POST | /api/studies/{studyId}/meetings | 회차 추가 (한 번 · 반복) | O (그 분반 네비게이터 · 캡틴) | 스펙작성중 |
+| PUT | /api/studies/{studyId}/meetings/{meetingId} | 회차 수정 (시각 · 제목) | O (그 분반 네비게이터 · 캡틴) | 스펙작성중 |
+| DELETE | /api/studies/{studyId}/meetings/{meetingId} | 회차 삭제 (이 회차만 · 이후 반복 모두) | O (그 분반 네비게이터 · 캡틴) | 스펙작성중 |
+
+상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
+
+---
+
+## 결정 사항
+
+PRD 「4. 미확정」 을 아래로 닫는다. 1~6 은 기획(세은님)과 합의, 7~8 은 이 스펙에서 정했다.
+
+| # | 항목 | 결정 | 근거 |
+|---|---|---|---|
+| 1 | 제목 · 회차 번호 | `STUDY_MEETING.TITLE` VARCHAR(50) NULL 추가. 회차 번호는 저장하지 않고 분반 회차를 `SCHEDULED_AT` 오름차순으로 센 순번으로 계산 | 번호를 저장하면 추가·삭제·수정 때마다 뒤 회차를 전부 다시 써야 한다. PRD 계산 규칙과 같다 |
+| 2 | 반복 묶음 | `STUDY_MEETING.SERIES_ID` VARCHAR(36) NULL 추가. 「이후 반복 모두」 삭제 = 같은 묶음의 이 회차 + 그 뒤 **예정** 회차 | 묶음 ID 없이는 서버가 「같은 반복」 을 알 수 없다 (날짜 간격으로 추측하면 수정한 회차에서 깨진다) |
+| 3 | 권한 | 그 분반의 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` 또는 `ACCOUNT.SYSTEM_ROLE = ADMIN`. 서버에서 검증 | PRD 권한 절. 관리 입구를 숨기는 건 편의일 뿐이다 |
+| 4 | 회차 변경 알림 | 범위 밖 | 알림 스펙([notification](../notification/spec.md))에 이벤트가 생기면 따로 붙인다 |
+| 5 | 첫 회차 등록 시 `STUDY.STATUS` | **`OPEN → ONGOING` 으로 바꾸지 않는다** | `Study.isPubliclyVisible()` · `Study.recruitStatus()` 가 `status == OPEN` 에 묶여 있어, 모집 중에 회차를 미리 깔면 공개 목록에서 사라지고 모집이 닫힌다. 「진행 중」 은 지금처럼 `Study.phase()` 가 `STUDY.START_AT` 경과로 판정한다. [STUDY ERD 전이표](../../docs/erd/STUDY.md)와 어긋나 ERD 에 메모를 남겼다 |
+| 6 | 클럽(모임형이 아닌 출석) | 범위 밖. 이 API 는 분반에 회차를 까는 스터디만 다룬다 | 클럽의 출석 단위가 회차인지부터 정해지지 않았다 |
+| 7 | API 경로 | `/api/studies/{studyId}/meetings` (+ `/{meetingId}`) | 아래 「경로」 |
+| 8 | 반복 전달 방식 | **날짜 목록**(`scheduledAts[]`, UTC)으로 보낸다. 규칙(매일·매주·요일·종료일)은 보내지 않는다 | 아래 「반복을 날짜 목록으로 보내는 이유」 |
+
+### 경로
+
+- 사용자 사이트(내 스터디 → 스터디 관리)가 부르므로 `/api` 아래, `/api/admin` 이 아니다 ([endpoint-convention](../../docs/backend-development-guide/api/endpoint-convention.md#관객으로-경로를-가른다--apiadmin)). 캡틴(ADMIN)도 같은 경로로 통과한다. 백오피스 화면이 회차를 다루게 되면 그때 `/api/admin/...` 를 따로 만든다.
+- 출석과 같은 모양을 따른다 — `/api/studies/{studyId}/attendances` 처럼 스터디 아래 하위 리소스, 분반은 `studyGroupId` 로 지정. 회차 ID 가 전역 고유라 `/study-groups/{groupId}` 를 경로에 끼우지 않는다.
+- 수정은 `PUT` — 고칠 수 있는 필드가 시각·제목 둘뿐이고 화면이 둘을 함께 보낸다(PRD 6). 전체 교체가 의미상 맞고, `PATCH` 의 「빠진 필드 vs null」 구분(제목 지우기)이 필요 없다.
+
+### 반복을 날짜 목록으로 보내는 이유
+
+서버는 어느 쪽이든 같은 날 중복 · 31일 상한 · 지난 시각을 다시 검증해야 한다(PRD 3. 처리). 차이는 **반복 전개를 누가 하느냐**다.
+
+| | 규칙으로 보냄 | 날짜 목록으로 보냄 (채택) |
+|---|---|---|
+| 서버 | 매일·매주·요일 전개 + 시간대·서머타임 계산 + 겹치는 날 건너뛰기를 새로 구현 | 받은 시각 하나하나를 검증만 한다 |
+| 미리보기(PRD 7-6) | 화면도 같은 전개를 해야 한다 → **같은 규칙을 두 곳에서 구현**, 어긋나면 미리보기와 실제 결과가 다르다 | 화면이 전개한 결과를 그대로 보낸다 → 미리보기 = 저장 결과 |
+| 서머타임 | 서버가 분반 시간대로 계산 | 화면이 현지 시각 → UTC 로 바꿔 보낸다 (PRD 7-2 「서버에는 UTC 로 보낸다」 와 같다) |
+| 검증 강도 | 같음 — 서버는 결과 날짜들로 판정한다 | 같음 |
+
+전개 규칙(시작 날짜 이후 첫 해당 요일, 종료일 포함 등)은 화면의 일이고, 서버가 지켜야 할 불변식(중복·상한·과거)은 목록만으로 다 검사된다. 서버에 규칙 엔진을 둘 이유가 없다.
+
+### 권한 판정
+
+1. `ACCOUNT.SYSTEM_ROLE = ADMIN` → 통과
+2. `STUDY_PARTICIPANT` 에 `(STUDY_GROUP_ID = 대상 분반, ACCOUNT_ID = 나, PARTICIPANT_ROLE = LEADER)` 행이 있으면 통과
+3. 그 밖 → 403
+
+> 기존 `StudyCaptainGuard.assertCaptainOrNavigator` 는 **스터디** 범위로 본다. 회차는 **분반** 범위라 같은 스터디의 다른 분반 네비게이터는 통과하면 안 된다 — 분반 범위 판정이 따로 필요하다.
+>
+> 메모: [POL-0001](../../share/2026-09-24-admin-api-path.md) 역할 표에 「회차 관리」 행이 없다. 문서 구멍이라 이 스펙의 판정을 기준으로 삼고, 정책 표 보강은 별도로 한다.
+
+### 「시작한 회차」 판정
+
+`now >= SCHEDULED_AT` **또는** `START_AT IS NOT NULL` 이면 시작한 회차다. 수정·삭제를 거절한다(409).
+
+PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예정 시각 전에 회차를 열 수 있다(`StudyMeeting.start`, [discord-attendance](../discord-attendance/spec.md)). 그때는 출석이 이미 찍혀 있어 PRD 3-2 의 「시작함 회차는 고치거나 지울 수 없다 — 출석이 기록돼 있다」 와 같은 이유로 막는다.
+
+### 「같은 날」 판정
+
+분반 시간대(`STUDY_GROUP.TIMEZONE`)의 현지 날짜로 본다. `TIMEZONE` 이 비어 있으면 `Asia/Seoul`.
+
+---
+
+## 분반 회차 목록
+
+### 기본 정보
+
+- **Method**: GET
+- **Path**: `/api/studies/{studyId}/meetings`
+- **인증**: 필요 — 그 분반 네비게이터 · 캡틴
+- **설명**: 한 분반의 회차를 지난 회차까지 날짜순으로 돌려준다. 관리 화면 머리(분반 이름 · 시간대 · 정규 시작 시각)도 함께.
+
+### Path Parameters
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| studyId | Long | 스터디 ID |
+
+### Query Parameters
+
+| 이름 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| studyGroupId | Long | N | 분반 ID. 없으면 내가 `LEADER` 인 이 스터디의 분반 (한 기수 안 여러 반 동시 소속은 금지라 하나로 정해진다). 캡틴처럼 맡은 분반이 없으면 필수 → 없으면 400 |
+
+### Request Body
+
+없음
+
+### Response — 200
+
+```json
+{
+  "studyGroup": {
+    "id": 3,
+    "name": "목요일반",
+    "timezone": "Asia/Seoul",
+    "startAt": "2026-10-01T11:00:00Z"
+  },
+  "meetings": [
+    {
+      "id": 41,
+      "number": 1,
+      "scheduledAt": "2026-10-01T11:00:00Z",
+      "title": "오리엔테이션",
+      "seriesId": null,
+      "started": true
+    },
+    {
+      "id": 42,
+      "number": 2,
+      "scheduledAt": "2026-10-08T11:00:00Z",
+      "title": null,
+      "seriesId": "7f2c1e0a-5b8e-4c1d-9a3f-2e6b0d4c8a11",
+      "started": false
+    }
+  ]
+}
+```
+
+| 필드 | 타입 | NULL | 설명 | 소스 |
+|------|------|------|------|------|
+| studyGroup.id | Long | N | 분반 ID. 추가 요청에 그대로 쓴다 | STUDY_GROUP.ID |
+| studyGroup.name | String | N | | STUDY_GROUP.NAME |
+| studyGroup.timezone | String | N | IANA. 화면 시각 기준. 비어 있으면 `Asia/Seoul` | STUDY_GROUP.TIMEZONE |
+| studyGroup.startAt | String | Y | 분반 정규 시작 시각 — 추가 창 시작 시각 기본값(PRD 7-2) | STUDY_GROUP.START_AT |
+| meetings | Array | N | `scheduledAt` 오름차순. 없으면 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 분반) |
+| meetings[].id | Long | N | | STUDY_MEETING.ID |
+| meetings[].number | Int | N | 회차 번호 | 계산: 분반 회차를 `SCHEDULED_AT` 오름차순으로 센 순번 (1부터) |
+| meetings[].scheduledAt | String | N | UTC ISO 8601 | STUDY_MEETING.SCHEDULED_AT |
+| meetings[].title | String | Y | 없으면 null — 화면은 「—」 | STUDY_MEETING.TITLE |
+| meetings[].seriesId | String | Y | 반복으로 함께 만든 회차끼리 같다. 한 번만 만든 회차는 null | STUDY_MEETING.SERIES_ID |
+| meetings[].started | Boolean | N | true 면 「시작함」 — 수정·삭제 불가 | 계산: `now >= SCHEDULED_AT OR START_AT IS NOT NULL` |
+
+> 삭제 확인의 「이후 반복 모두 (n개)」 개수는 화면이 이 목록에서 센다 — 같은 `seriesId` 이고 `scheduledAt` 이 이 회차 이상이며 `started = false` 인 회차 수.
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 토큰 없음 |
+| 400 | INVALID_INPUT | `studyGroupId` 가 없는데 내가 `LEADER` 인 분반이 이 스터디에 없음 (캡틴 등) |
+| 400 | INVALID_INPUT | `studyGroupId` 가 이 스터디 소속이 아님 |
+| 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
+| 404 | NOT_FOUND | 없는 `studyId` · 없는 `studyGroupId` |
+
+### 프론트엔드 사용처
+
+- 프로토타입: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/joined/[id]/manage/schedule/page.tsx` (지금은 브라우저 저장)
+- core-front 스터디 관리 → 일정 탭 (미구현)
+
+---
+
+## 회차 추가
+
+### 기본 정보
+
+- **Method**: POST
+- **Path**: `/api/studies/{studyId}/meetings`
+- **인증**: 필요 — 그 분반 네비게이터 · 캡틴
+- **설명**: 한 분반에 회차를 하나 또는 여럿 만든다. 반복은 화면이 날짜로 펼쳐 보낸다. 새 회차마다 분반 참여자 출석을 `ABSENT` 로 만든다.
+
+### Path Parameters
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| studyId | Long | 스터디 ID |
+
+### Query Parameters
+
+없음
+
+### Request Body
+
+```json
+{
+  "studyGroupId": 3,
+  "scheduledAts": ["2026-10-15T11:00:00Z", "2026-10-22T11:00:00Z", "2026-10-29T11:00:00Z"],
+  "title": "논문 읽기"
+}
+```
+
+| 필드 | 타입 | 필수 | 검증 |
+|------|------|------|------|
+| studyGroupId | Long | Y | 이 스터디 소속 분반 → 아니면 400 |
+| scheduledAts | String[] (UTC ISO 8601) | Y | 1~31개. 모두 `now` 이후 (지난 시각 → 400). 분반 현지 날짜가 서로 겹치면 400. 첫 날짜와 마지막 날짜가 시작일 포함 31일 안 (`마지막 − 첫 ≤ 30일`) → 넘으면 400 |
+| title | String | N | 50자 이하 → 넘으면 400. 공백뿐이면 null 로 저장. 반복이면 모든 회차에 같은 제목 |
+
+- `scheduledAts` 가 2개 이상이면 새 `SERIES_ID` (UUID) 하나를 모든 회차에 붙인다. 1개면 null.
+- 반복 중 이미 회차가 있는 날은 **화면이 미리보기에서 빼고 보낸다**(PRD 7-6). 서버로 온 목록에 기존 회차와 같은 날이 있으면 건너뛰지 않고 409 로 거절한다 — 미리보기 뒤 다른 사람이 그 날에 회차를 만든 경우라, 조용히 빼면 화면이 보여 준 개수와 결과가 달라진다.
+
+### 서버 동작
+
+한 트랜잭션:
+
+1. 권한 판정 (위 「권한 판정」).
+2. 분반 회차를 잠그고 읽는다 (`StudyMeetingRepository.findByStudyGroupIdForUpdate` — 동시 추가로 같은 날 회차가 둘 생기는 걸 막는다).
+3. 위 검증 + 기존 회차와 같은 날 → 409.
+4. `STUDY_MEETING` INSERT (`START_AT`·`END_AT` 은 비운다 — 보이스룸·디스코드가 기록).
+5. 분반 참여자 중 `STATUS IN (ACTIVE, PAUSED)` 인 사람마다 새 회차 × 참여자 `STUDY_ATTENDANCE(STATUS = ABSENT)` INSERT. `STUDY_ID`·`STUDY_GROUP_ID` 는 비정규화 값으로 채운다.
+6. `STUDY.STATUS` 는 건드리지 않는다 (결정 5).
+
+> 시작 전 회차의 `ABSENT` 는 결석이 아니다 — 내 스터디는 시작 전 `ABSENT` 를 빈칸으로 보여 주고(`MyStudyQueryService.visibleStatus`), 출석률 분모는 `scheduled_at <= now()` 회차만 센다.
+>
+> 회차를 만든 **뒤** 합류한 참여자의 출석 행은 이 API 가 만들지 않는다. 명부 GET 은 행이 없으면 `status: null` 로 보여 준다.
+
+### Response — 204 No Content
+
+응답 바디 없음. 회차 번호가 앞뒤로 다시 매겨지므로 화면은 목록을 다시 조회한다.
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 토큰 없음 |
+| 400 | INVALID_INPUT | `scheduledAts` 가 비었거나 31개 초과 |
+| 400 | INVALID_INPUT | 지난 시각이 섞임 |
+| 400 | INVALID_INPUT | 요청 안에서 같은 날이 둘 이상 |
+| 400 | INVALID_INPUT | 첫 날 ~ 마지막 날이 31일을 넘음 |
+| 400 | INVALID_INPUT | `title` 50자 초과 |
+| 400 | INVALID_INPUT | `studyGroupId` 가 이 스터디 소속이 아님 |
+| 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
+| 404 | NOT_FOUND | 없는 `studyId` · 없는 `studyGroupId` |
+| 409 | CONFLICT | 기존 회차와 같은 날 |
+
+### 프론트엔드 사용처
+
+- 프로토타입: 위와 같음 (회차 추가 창)
+- core-front 스터디 관리 → 일정 탭 → 회차 추가 (미구현)
+
+---
+
+## 회차 수정
+
+### 기본 정보
+
+- **Method**: PUT
+- **Path**: `/api/studies/{studyId}/meetings/{meetingId}`
+- **인증**: 필요 — 그 분반 네비게이터 · 캡틴
+- **설명**: 시작 전 회차 하나의 시각·제목을 고친다. 회차 ID 는 그대로라 그 회차의 출석(휴가 포함)이 따라온다. 반복 묶음(`SERIES_ID`)은 유지한다.
+
+### Path Parameters
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| studyId | Long | 스터디 ID |
+| meetingId | Long | 회차 ID |
+
+### Query Parameters
+
+없음
+
+### Request Body
+
+```json
+{
+  "scheduledAt": "2026-10-16T11:00:00Z",
+  "title": null
+}
+```
+
+| 필드 | 타입 | 필수 | 검증 |
+|------|------|------|------|
+| scheduledAt | String (UTC ISO 8601) | Y | `now` 이후 → 아니면 400. 이 회차를 뺀 분반 회차와 같은 날 → 409 |
+| title | String | N | 50자 이하 → 넘으면 400. null·공백이면 제목을 지운다 |
+
+### 서버 동작
+
+1. 권한 판정 → 분반 회차를 잠그고 읽는다 (추가와 같은 잠금).
+2. 대상 회차가 시작했으면 409.
+3. 검증 후 `SCHEDULED_AT`·`TITLE` 갱신.
+
+### Response — 204 No Content
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 토큰 없음 |
+| 400 | INVALID_INPUT | `scheduledAt` 이 지난 시각 |
+| 400 | INVALID_INPUT | `title` 50자 초과 |
+| 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
+| 404 | NOT_FOUND | 없는 `studyId` · `meetingId` 가 이 스터디 소속이 아님 |
+| 409 | CONFLICT | 이미 시작한 회차 |
+| 409 | CONFLICT | 다른 회차와 같은 날 |
+
+### 프론트엔드 사용처
+
+- core-front 스터디 관리 → 일정 탭 → 수정 칸 (미구현)
+
+---
+
+## 회차 삭제
+
+### 기본 정보
+
+- **Method**: DELETE
+- **Path**: `/api/studies/{studyId}/meetings/{meetingId}`
+- **인증**: 필요 — 그 분반 네비게이터 · 캡틴
+- **설명**: 시작 전 회차를 지운다. 반복 회차는 「이 회차만」 또는 「이후 반복 모두」. 지운 회차의 출석·휴가 행도 함께 지운다.
+
+### Path Parameters
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| studyId | Long | 스터디 ID |
+| meetingId | Long | 회차 ID |
+
+### Query Parameters
+
+| 이름 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| scope | String | N | `THIS`(기본) · `FOLLOWING`. 허용값 외 → 400 |
+
+- `THIS`: 이 회차만.
+- `FOLLOWING`: 같은 `SERIES_ID` 이고 `SCHEDULED_AT >= 이 회차` 이며 **시작 전**인 회차 전부(이 회차 포함). 묶음 중간에 수정해서 날짜가 바뀐 회차도 묶음 ID 로 따라온다. `SERIES_ID` 가 null 이면 `THIS` 와 같다.
+
+### Request Body
+
+없음
+
+### 서버 동작
+
+1. 권한 판정 → 분반 회차를 잠그고 읽는다.
+2. 대상 회차가 시작했으면 409.
+3. 지울 회차들의 `STUDY_ATTENDANCE` 를 먼저 지우고 `STUDY_MEETING` 을 지운다 (FK 순서).
+
+> **휴가 신청** — 별도 테이블이 없다. 크루가 낸 휴가는 출석 행 `STATUS = EXCUSED` 다(명부 스펙 「EXCUSED 는 POST 로 직접 세팅」, `MyStudyQueryService` 「사전 휴가(EXCUSED)」). 출석 행을 지우면 휴가도 함께 사라진다. 휴가 신청 테이블이 생기면 이 절에 삭제 대상을 더한다.
+
+### Response — 204 No Content
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 토큰 없음 |
+| 400 | INVALID_INPUT | `scope` 허용값 외 |
+| 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
+| 404 | NOT_FOUND | 없는 `studyId` · `meetingId` 가 이 스터디 소속이 아님 |
+| 409 | CONFLICT | 이미 시작한 회차 |
+
+### 프론트엔드 사용처
+
+- core-front 스터디 관리 → 일정 탭 → 삭제 확인 (미구현)
+
+---
+
+## 범위 밖
+
+- 회차 변경 알림 (결정 4)
+- 클럽(비모임형 출석) 회차 (결정 6)
+- 반복 묶음 전체 수정 (PRD 비고)
+- 출석부 편집 — [명부·출석](../attendance/spec.md)
+- 회차 취소 표현(`CANCELED_AT`) — 지금은 삭제만 있다
+- 백오피스 회차 관리 (`/api/admin/...`)
+
+## 미확정
+
+없음. 409 를 화면이 칸별 문구로 나눠야 하면(시작한 회차 vs 같은 날) 그때 전용 errorCode 를 더한다 — 지금은 화면이 같은 검증을 먼저 하고, 서버 409 는 경합 안전망이라 `errorMessage` 표시로 충분하다.
