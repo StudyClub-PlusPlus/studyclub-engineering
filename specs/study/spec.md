@@ -262,21 +262,19 @@ private StudyDetailResponse toDetail(Study study) {
 ### Response — 200
 
 실제 응답(`StudyDetailResponse`). 아래 필드 표의 `recruitDeadline` 은 응답에서 `recruitDeadlineAt` 이고,
-`timezone` 은 아직 응답에 없다(컬럼 미구현). `slug`·`deliveryFormat` 은 스키마 정리 제안이 반영되면 빠진다.
+`timezone` 은 아직 응답에 없다(컬럼 미구현). `deliveryFormat` 은 스키마 정리로 제거되었다 — 프론트엔드 타입과 이 스펙 응답 예시 모두 포함하지 않는다.
 
 ```json
 {
   "id": 1,
   "programId": 1,
   "programTitle": "알고리즘 스터디",
-  "slug": "3f0c…",
   "title": "알고리즘 스터디",
   "oneLineSummary": "매주 알고리즘 문제를 풀고 코드 리뷰합니다.",
   "description": "매주 알고리즘 문제를 풀고 코드 리뷰하는 스터디",
   "category": "ALGORITHM",
   "studyKind": "STUDY",
   "thumbnailUrl": "https://example.com/thumb.jpg",
-  "deliveryFormat": "ONLINE",
   "status": "OPEN",
   "recruitStatus": "RECRUITING",
   "curriculum": "[{\"week\":1,\"topic\":\"배열\"}]",

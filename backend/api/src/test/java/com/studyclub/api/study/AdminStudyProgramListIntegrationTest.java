@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -119,7 +118,6 @@ class AdminStudyProgramListIntegrationTest {
                         .title(title)
                         .oneLineSummary("소개")
                         .category(StudyCategory.OTHER)
-                        .studyDeliveryFormat(DeliveryFormat.ONLINE)
                         .status(StudyStatus.DRAFT)
                         .build());
     }

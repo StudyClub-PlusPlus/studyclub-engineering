@@ -6,7 +6,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -118,7 +117,6 @@ class StudyListIntegrationTest {
                 .title(title)
                 .oneLineSummary("기수별로 따로 모집한다")
                 .category(category)
-                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                 .status(StudyStatus.OPEN);
     }
 
@@ -132,7 +130,6 @@ class StudyListIntegrationTest {
                 .title(title)
                 .oneLineSummary(summary)
                 .category(category)
-                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                 .status(status);
     }
 

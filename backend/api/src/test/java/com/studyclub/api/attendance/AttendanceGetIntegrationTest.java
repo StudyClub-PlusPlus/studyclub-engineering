@@ -13,7 +13,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -96,7 +95,6 @@ class AttendanceGetIntegrationTest {
                                 .oneLineSummary("시스템 디자인 심화")
                                 .category(StudyCategory.ALGORITHM)
                                 .description("시스템 디자인 스터디 설명")
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());

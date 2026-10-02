@@ -341,15 +341,14 @@ class AdminStudyListIntegrationTest {
                 now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                        + " STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 title,
                 "한 줄 소개",
                 category,
-                "ONLINE",
                 status,
                 applicationForm,
                 now,

@@ -1,6 +1,5 @@
 package com.studyclub.api.study;
 
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
@@ -25,7 +24,6 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
             StudyStatus status,
             StudyPhase phase,
             RecruitStatus recruitStatus,
-            DeliveryFormat deliveryFormat,
             Integer capacity,
             long currentApplicants,
             Instant recruitDeadlineAt,
@@ -51,7 +49,6 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
                     study.getStatus(),
                     study.phase(applicantCount, recruitDeadlineAt, recruitmentCapacity),
                     study.recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity),
-                    study.getStudyDeliveryFormat(),
                     recruitmentCapacity,
                     applicantCount,
                     recruitDeadlineAt,

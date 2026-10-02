@@ -6,7 +6,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -158,7 +157,6 @@ class StudyRecruitStatusIntegrationTest {
                                 .oneLineSummary("모집 상태 계산 검증용")
                                 .category(StudyCategory.SOFTWARE)
                                 .description("설명")
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(status)
                                 .startAt(Instant.now().plus(30, ChronoUnit.DAYS))
                                 .build());

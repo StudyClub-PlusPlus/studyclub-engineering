@@ -8,7 +8,6 @@ import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
@@ -99,7 +98,6 @@ public class StudyService {
                                 .oneLineSummary(request.oneLineSummary())
                                 .description(request.description())
                                 .category(request.category())
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)
                                 .thumbnailUrl(request.thumbnailUrl())
                                 .schedule(request.schedule())
@@ -295,7 +293,12 @@ public class StudyService {
                 latestRecruitment != null ? latestRecruitment.getRecruitmentCapacity() : null;
         return StudyDetailResponse.from(
                 study,
-                studyProgramRepository.findById(study.getProgramId()).orElseThrow(),
+                studyProgramRepository
+                        .findById(study.getProgramId())
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "스터디 프로그램을 찾을 수 없습니다.")),
                 applicantCount(study),
                 recruitDeadlineAt,
                 recruitmentCapacity);

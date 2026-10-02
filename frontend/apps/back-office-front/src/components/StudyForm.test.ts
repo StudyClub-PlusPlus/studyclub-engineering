@@ -21,7 +21,6 @@ const detail: ApiStudyDetail = {
   category: 'AI_ML',
   studyKind: 'STUDY',
   thumbnailUrl: null,
-  deliveryFormat: 'ONLINE',
   status: 'OPEN',
   recruitStatus: 'RECRUITING',
   curriculum: null,

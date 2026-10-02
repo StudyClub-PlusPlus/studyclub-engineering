@@ -63,7 +63,6 @@ export type ApiStudyDetail = {
   category: string;
   studyKind: 'STUDY' | 'CLUB';
   thumbnailUrl: string | null;
-  deliveryFormat: string;
   status: 'DRAFT' | 'OPEN' | 'ONGOING' | 'ENDED' | 'CLOSED';
   /** `status != OPEN` 이면 null — 모집 상태가 "없는" 것이지 마감이 아니다. */
   recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED' | null;

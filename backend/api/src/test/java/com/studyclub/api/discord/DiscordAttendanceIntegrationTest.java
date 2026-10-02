@@ -13,7 +13,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -105,7 +104,6 @@ class DiscordAttendanceIntegrationTest {
                                 .oneLineSummary("테스트용")
                                 .category(StudyCategory.ALGORITHM)
                                 .description("설명")
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());

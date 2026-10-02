@@ -201,15 +201,14 @@ class AdminApplicationIntegrationTest {
                 now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                        + " STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 "신청 조회 스터디",
                 "한 줄 소개",
                 "SOFTWARE",
-                "ONLINE",
                 "OPEN",
                 "{\"questions\":[{\"id\":\"reason\",\"label\":\"지원 사유\",\"type\":\"TEXT\",\"required\":true}]}",
                 now,

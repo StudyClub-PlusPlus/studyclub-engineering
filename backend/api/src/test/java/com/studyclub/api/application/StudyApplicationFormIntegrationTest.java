@@ -351,16 +351,15 @@ class StudyApplicationFormIntegrationTest {
                 now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, DESCRIPTION,"
-                        + " CATEGORY, STUDY_DELIVERY_FORMAT, STATUS,"
+                        + " CATEGORY, STATUS,"
                         + " APPLICATION_FORM, SCHEDULE, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
                 id,
                 id,
                 "신청 폼 스터디",
                 "신청 폼 한 줄 소개",
                 "신청 폼 상세 소개",
                 "SOFTWARE",
-                "ONLINE",
                 status,
                 applicationForm,
                 "매주 목 20:00",

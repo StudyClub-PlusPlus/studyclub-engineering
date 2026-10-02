@@ -56,10 +56,6 @@ public class Study extends BaseEntity {
     private String thumbnailUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "STUDY_DELIVERY_FORMAT", nullable = false, length = 20)
-    private DeliveryFormat studyDeliveryFormat;
-
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StudyStatus status;
 
@@ -126,10 +122,11 @@ public class Study extends BaseEntity {
     }
 
     public boolean isClosingSoon(Instant recruitDeadlineAt) {
+        Instant now = Instant.now();
         return status == StudyStatus.OPEN
                 && recruitDeadlineAt != null
-                && recruitDeadlineAt.isBefore(
-                        Instant.now().plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
+                && recruitDeadlineAt.isAfter(now)
+                && recruitDeadlineAt.isBefore(now.plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
     }
 
     /**

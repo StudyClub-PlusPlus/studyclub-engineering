@@ -197,13 +197,7 @@ class StudyTest {
     }
 
     private Study phased(StudyStatus status, Instant startAt, Instant endAt) {
-        return Study.builder()
-                .programId(1L)
-                .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                .status(status)
-                .startAt(startAt)
-                .endAt(endAt)
-                .build();
+        return Study.builder().programId(1L).status(status).startAt(startAt).endAt(endAt).build();
     }
 
     private Study scheduled(String schedule) {
@@ -215,10 +209,6 @@ class StudyTest {
     }
 
     private Study getStudy(StudyStatus status, Integer capacity) {
-        return Study.builder()
-                .programId(1L)
-                .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                .status(status)
-                .build();
+        return Study.builder().programId(1L).status(status).build();
     }
 }

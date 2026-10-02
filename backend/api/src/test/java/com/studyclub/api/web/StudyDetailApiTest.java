@@ -2,7 +2,6 @@ package com.studyclub.api.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -58,7 +57,6 @@ class StudyDetailApiTest {
                                 .oneLineSummary("알고리즘 문제 풀이 스터디")
                                 .category(StudyCategory.SOFTWARE)
                                 .description("설명")
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
                                 .schedule("매주 목 20:00")
                                 .startAt(Instant.parse("2026-10-15T00:00:00Z"))
@@ -131,7 +129,6 @@ class StudyDetailApiTest {
                                 .title("공개 전 스터디")
                                 .oneLineSummary("아직 공개하지 않은 스터디")
                                 .category(StudyCategory.OTHER)
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.DRAFT)
                                 .build());
 

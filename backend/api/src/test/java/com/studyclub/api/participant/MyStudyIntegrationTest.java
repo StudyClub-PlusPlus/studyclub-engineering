@@ -12,7 +12,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -191,7 +190,6 @@ class MyStudyIntegrationTest {
                                 .title(title)
                                 .oneLineSummary("소개")
                                 .category(StudyCategory.SOFTWARE)
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.ONGOING)
                                 .startAt(startAt)
                                 .discordChannelUrl(DISCORD_URL)

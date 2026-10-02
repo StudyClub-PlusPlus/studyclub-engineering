@@ -1,5 +1,7 @@
 package com.studyclub.api.study;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
@@ -9,6 +11,7 @@ import com.studyclub.domain.study.StudyRecruitmentRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,7 +85,16 @@ public class StudyListService {
                                 study ->
                                         StudyListResponse.StudySummary.from(
                                                 study,
-                                                programs.get(study.getProgramId()).getStudyKind(),
+                                                Optional.ofNullable(
+                                                                programs.get(study.getProgramId()))
+                                                        .orElseThrow(
+                                                                () ->
+                                                                        new BusinessException(
+                                                                                ErrorCode.NOT_FOUND,
+                                                                                "스터디 프로그램을 찾을 수 없습니다: "
+                                                                                        + study
+                                                                                                .getProgramId()))
+                                                        .getStudyKind(),
                                                 applicants.getOrDefault(study.getId(), 0L),
                                                 deadlines.get(study.getId()),
                                                 capacities.get(study.getId())))
