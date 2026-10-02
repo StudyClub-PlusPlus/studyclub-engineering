@@ -54,4 +54,6 @@ public interface StudyAttendanceRepository extends JpaRepository<StudyAttendance
     List<StudyAttendance> findByAccountIdAndStudyIdIn(Long accountId, Collection<Long> studyIds);
 
     void deleteByStudyId(Long studyId);
+
+    void deleteByStudyMeetingId(Long studyMeetingId);
 }

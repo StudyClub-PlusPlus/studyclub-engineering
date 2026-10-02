@@ -3,6 +3,7 @@ package com.studyclub.domain.study;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -27,6 +28,10 @@ public interface StudyMeetingRepository extends JpaRepository<StudyMeeting, Long
             "SELECT m FROM StudyMeeting m JOIN StudyGroup g ON m.studyGroupId = g.id WHERE m.id IN :ids AND g.studyId = :studyId")
     List<StudyMeeting> findByIdInAndStudyId(
             @Param("ids") Collection<Long> ids, @Param("studyId") Long studyId);
+
+    /** 회차를 엔티티로 올리지 않고 분반만 본다 — 잠그기 전에 엔티티를 읽어 두면 잠근 뒤에도 그 낡은 값이 영속성 컨텍스트에 남는다. */
+    @Query("SELECT m.studyGroupId FROM StudyMeeting m WHERE m.id = :id")
+    Optional<Long> findStudyGroupIdById(@Param("id") Long id);
 
     void deleteByStudyGroupIdIn(Collection<Long> studyGroupIds);
 }

@@ -8,6 +8,7 @@ import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyRepository;
 import java.util.ArrayList;
@@ -104,11 +105,33 @@ public class AttendanceUpsertService {
     }
 
     private void validateMeetingsBelongToStudy(Set<Long> meetingIds, Long studyId) {
-        int found = studyMeetingRepository.findByIdInAndStudyId(meetingIds, studyId).size();
-        if (found != meetingIds.size()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT, "meetingId가 존재하지 않거나 이 스터디에 속하지 않습니다.");
+        List<StudyMeeting> meetings =
+                studyMeetingRepository.findByIdInAndStudyId(meetingIds, studyId);
+        if (meetings.size() != meetingIds.size()) {
+            throw meetingNotInStudy();
         }
+        // 회차 삭제와 겹치면 검증과 저장 사이에 회차가 사라져, 지운 회차의 출석이 다시 생긴다 (출석 → 회차 외래키가 없다).
+        // 회차 관리·디스코드 출석과 같은 분반 회차 잠금을 잡고 다시 본다 — 잠금 조회는 스냅샷이 아니라 커밋된 최신 행을 읽는다
+        Set<Long> lockedIds =
+                meetings.stream()
+                        .map(StudyMeeting::getStudyGroupId)
+                        .distinct()
+                        .sorted()
+                        .flatMap(
+                                groupId ->
+                                        studyMeetingRepository
+                                                .findByStudyGroupIdForUpdate(groupId)
+                                                .stream())
+                        .map(StudyMeeting::getId)
+                        .collect(Collectors.toSet());
+        if (!lockedIds.containsAll(meetingIds)) {
+            throw meetingNotInStudy();
+        }
+    }
+
+    private static BusinessException meetingNotInStudy() {
+        return new BusinessException(
+                ErrorCode.INVALID_INPUT, "meetingId가 존재하지 않거나 이 스터디에 속하지 않습니다.");
     }
 
     private Map<Long, StudyParticipant> loadAndValidateParticipants(

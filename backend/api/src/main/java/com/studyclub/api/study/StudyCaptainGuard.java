@@ -66,6 +66,22 @@ public class StudyCaptainGuard {
         }
     }
 
+    /**
+     * 사용자 사이트 회차 관리 — 캡틴이거나 <b>그 분반</b>의 네비게이터(LEADER). 회차는 분반에 붙어 있어 같은 스터디의 다른 분반 네비게이터는 막는다.
+     * POL-0001 이 부반장을 없앴으므로 CO_LEADER 는 보지 않는다 (specs/study-meeting/spec.md 「권한 판정」).
+     */
+    public void assertCaptainOrGroupNavigator(Long accountId, Long studyGroupId, String message) {
+        if (account(accountId).getSystemRole() == SystemRole.ADMIN) {
+            return;
+        }
+        boolean navigator =
+                studyParticipantRepository.existsByStudyGroupIdAndAccountIdAndParticipantRole(
+                        studyGroupId, accountId, ParticipantRole.LEADER);
+        if (!navigator) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, message);
+        }
+    }
+
     /** 예외 대신 참·거짓 — 비공개 스터디를 권한 없는 사람에게 404 로 숨길 때 쓴다. 비로그인·없는 계정은 {@code false}. */
     public boolean isCaptainOrNavigator(Long accountId, Long studyId) {
         if (accountId == null) {

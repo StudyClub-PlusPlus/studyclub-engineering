@@ -127,8 +127,7 @@ class AttendanceUpsertServiceTest {
     void 스터디에_속하지_않는_participantId이면_INVALID_INPUT() {
         givenStudyExists();
         givenCallerIsCaptain();
-        when(studyMeetingRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
-                .thenReturn(List.of(mock(StudyMeeting.class)));
+        givenMeetingInStudy();
         when(participantRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
                 .thenReturn(List.of()); // size(0) < requested(1)
 
@@ -235,12 +234,22 @@ class AttendanceUpsertServiceTest {
     private void givenHappyPath(List<StudyAttendance> existingAttendances) {
         givenStudyExists();
         givenCallerIsCaptain();
-        when(studyMeetingRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
-                .thenReturn(List.of(mock(StudyMeeting.class)));
+        givenMeetingInStudy();
         when(participantRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
                 .thenReturn(List.of(stubParticipant()));
         when(attendanceRepository.findByStudyMeetingIdIn(any())).thenReturn(existingAttendances);
         when(attendanceRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    // 존재 확인 후 분반 회차를 잠그고 다시 본다 — 잠금 조회에도 같은 회차가 있어야 통과한다
+    private void givenMeetingInStudy() {
+        StudyMeeting meeting = mock(StudyMeeting.class);
+        when(meeting.getId()).thenReturn(MEETING_ID);
+        when(meeting.getStudyGroupId()).thenReturn(GROUP_ID);
+        when(studyMeetingRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
+                .thenReturn(List.of(meeting));
+        when(studyMeetingRepository.findByStudyGroupIdForUpdate(GROUP_ID))
+                .thenReturn(List.of(meeting));
     }
 
     @SuppressWarnings("unchecked")
