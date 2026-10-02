@@ -11,7 +11,7 @@
 | ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
 | STUDY_ID | BIGINT FK → STUDY | N | 비정규화 — 스터디별 전체 출석 집계용 |
 | STUDY_GROUP_ID | BIGINT FK → STUDY_GROUP | N | 비정규화 — 반별 출석 집계용. 실제 참석한 반 (cross-group 출석 시 home group 이 아닐 수 있음) |
-| STUDY_MEETING_ID | BIGINT FK → STUDY_MEETING | N | |
+| STUDY_MEETING_ID | BIGINT → STUDY_MEETING | N | DB 외래키 없음 — 회차를 지울 때 앱이 이 행도 지운다 |
 | STATUS | VARCHAR(20) | N | 아래 |
 
 ## 관계

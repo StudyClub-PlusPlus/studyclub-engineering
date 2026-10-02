@@ -15,7 +15,7 @@
 > 이번 스코프는 명부 화면을 띄우는 데 필요한 **조회 1개 + 생성 1개** API만 다룬다. 세션 취소, 휴가 신청·승인, 정정 이력 조회 등 나머지 CRUD는 별도 스펙.
 > `[OPEN]` = 캡틴 확정 전 제안 기본값 / 팀 확인 필요.
 
-**GET과 POST는 같은 경로를 쓴다** — `/api/studies/{studyId}/attendances`. 같은 리소스(스터디의 출석 컬렉션)를 메서드로만 구분: GET은 읽고, POST는 upsert한다. 별도의 "미팅 목록" 엔드포인트는 없다 — 미팅 목록도 GET 응답 안의 `meetings[]`로 함께 내려간다.
+**GET과 POST는 같은 경로를 쓴다** — `/api/studies/{studyId}/attendances`. 같은 리소스(스터디의 출석 컬렉션)를 메서드로만 구분: GET은 읽고, POST는 upsert한다. 명부 화면은 따로 미팅 목록을 부르지 않는다 — 미팅 목록도 GET 응답 안의 `meetings[]`로 함께 내려간다. 회차를 관리(추가·수정·삭제)하는 화면의 목록은 [`GET /api/studies/{studyId}/meetings`](../study-meeting/spec.md)다.
 
 ### 관련 데이터 모델
 

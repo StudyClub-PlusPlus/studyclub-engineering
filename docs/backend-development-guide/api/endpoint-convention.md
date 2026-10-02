@@ -162,6 +162,8 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 | GET | `/api/studies` | 스터디 목록 (현재 하드코딩 픽스처) | X |
 | GET | `/api/me/studies` | 내 스터디 — 명부 스터디 + 회차별 내 출석 ([스펙](../../../specs/my-studies/spec.md)) | O |
 | GET | `/api/me/study-cohorts/{cohortId}` | 내 수강 기수·출석 상세 (목업) | O |
+| GET · POST | `/api/studies/{studyId}/meetings` | 분반 회차 목록 · 추가 ([스펙](../../../specs/study-meeting/spec.md)) | O |
+| PUT · DELETE | `/api/studies/{studyId}/meetings/{meetingId}` | 회차 수정 · 삭제 | O |
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
 | POST | `/auth/refresh` | access token 재발급 | X |
 | GET | `/auth/me` | 내 정보 조회 | O |
