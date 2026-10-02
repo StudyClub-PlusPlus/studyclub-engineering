@@ -36,7 +36,7 @@ POST /api/v1/channels/alert/msg
 captain 역할과 alert 채널은 둘 다 길드에 **이미 존재하는** 것이다. 이 엔드포인트는 어느 것도 만들지 않고,
 찾지 못하면 보내지 말고 실패한다. 둘 다 **설정값으로 ID 를 받는다**
 (`DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_ALERT_CHANNEL_ID`) — 이름으로 찾지 않는다.
-`DISCORD_BOT_OUTPUT_CHANNEL` 과 같은 방식이다. **`DISCORD_NAVIGATOR_ROLE_ID` 는 여기서 읽지 않는다.**
+`DISCORD_BULLETIN_CHANNEL_ID` 과 같은 방식이다. **`DISCORD_NAVIGATOR_ROLE_ID` 는 여기서 읽지 않는다.**
 
 ```jsonc
 { "msg": "알고리즘 스터디 1기가 완료 처리되었습니다. 역할 정리가 필요합니다." }
@@ -103,8 +103,8 @@ captain 역할과 alert 채널은 둘 다 길드에 **이미 존재하는** 것�
 | **400** | `@everyone` · `@here` 를 지우고 나니 비었거나 공백만 남음 | 위와 같음 |
 | **400** | `msg` 가 1900자 초과 | 위와 같음. 잘라서 보내지 않는다 — 알림의 뒷부분이 조용히 사라지면 조치가 빠진다. 길이는 **가공 전** 값으로 잰다 |
 | **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다. **시스템 호출은 역할을 보지 않으므로 이 404 도 없다** |
-| **404** | alert 채널을 봇이 찾지 못함, 또는 그 ID 가 텍스트 채널이 아님 | 위와 같은 **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨. `POST /api/v1/ping` 의 채널 404 와 같은 결 |
-| **409** | `DISCORD_ALERT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. `POST /api/v1/ping` 이 `DISCORD_BOT_OUTPUT_CHANNEL` 미설정을 409 로 돌려주는 것과 같은 결. |
+| **404** | alert 채널을 봇이 찾지 못함, 또는 그 ID 가 텍스트 채널이 아님 | 위와 같은 **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨 |
+| **409** | `DISCORD_ALERT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
 | **502** | Discord 가 전송을 거부 | 봇 권한 부족(alert 채널의 `Send Messages`), 그 밖의 Discord 5xx |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 

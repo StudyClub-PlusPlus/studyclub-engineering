@@ -10,39 +10,39 @@ def test_load_settings_without_token_yields_none(environ):
     assert settings.discord_token is None
 
 
-def test_load_settings_reads_output_channel():
-    """The output channel comes from the environment as an int."""
+def test_load_settings_reads_command_channel():
+    """The command channel comes from the environment as an int."""
     settings = load_settings(
         environ={
             "DISCORD_TOKEN": "secret-token",
-            "DISCORD_BOT_OUTPUT_CHANNEL": "123456789012345678",
+            "DISCORD_BOT_CHANNEL_ID": "123456789012345678",
         },
         load_dotenv_file=False,
     )
 
     assert settings.discord_token == "secret-token"
-    assert settings.output_channel_id == 123456789012345678
+    assert settings.command_channel_id == 123456789012345678
 
 
 @pytest.mark.parametrize("raw", ["", "   "])
-def test_load_settings_blank_output_channel_is_none(raw):
-    """An unset or blank channel var means "no output channel", not an error."""
+def test_load_settings_blank_command_channel_is_none(raw):
+    """An unset or blank channel var means "no channel takes commands", not an error."""
     settings = load_settings(
-        environ={"DISCORD_TOKEN": "t", "DISCORD_BOT_OUTPUT_CHANNEL": raw},
+        environ={"DISCORD_TOKEN": "t", "DISCORD_BOT_CHANNEL_ID": raw},
         load_dotenv_file=False,
     )
-    assert settings.output_channel_id is None
+    assert settings.command_channel_id is None
 
 
-def test_load_settings_drops_non_numeric_output_channel_with_a_warning(caplog):
+def test_load_settings_drops_non_numeric_command_channel_with_a_warning(caplog):
     """A typo'd ID neither stops startup nor passes silently: it is logged and dropped."""
     with caplog.at_level("WARNING"):
         settings = load_settings(
-            environ={"DISCORD_TOKEN": "t", "DISCORD_BOT_OUTPUT_CHANNEL": "not-an-id"},
+            environ={"DISCORD_TOKEN": "t", "DISCORD_BOT_CHANNEL_ID": "not-an-id"},
             load_dotenv_file=False,
         )
 
-    assert settings.output_channel_id is None
+    assert settings.command_channel_id is None
     assert "not-an-id" in caplog.text
 
 
@@ -53,7 +53,7 @@ def test_load_settings_defaults():
     assert settings.command_prefix == "!"
     assert settings.api_port == 4800
     assert settings.log_level == "INFO"
-    assert settings.output_channel_id is None
+    assert settings.command_channel_id is None
 
 
 def test_load_settings_reads_study_settings():
@@ -66,6 +66,7 @@ def test_load_settings_reads_study_settings():
             "DISCORD_BOT_ID": "623456789012345678",
             "DISCORD_ALERT_CHANNEL_ID": "423456789012345678",
             "DISCORD_ANNOUNCEMENT_CHANNEL_ID": "523456789012345678",
+            "DISCORD_BULLETIN_CHANNEL_ID": "723456789012345678",
             "DISCORD_API_KEY": " key ",
         },
         load_dotenv_file=False,
@@ -77,6 +78,7 @@ def test_load_settings_reads_study_settings():
     assert settings.bot_id == 623456789012345678
     assert settings.alert_channel_id == 423456789012345678
     assert settings.announcement_channel_id == 523456789012345678
+    assert settings.bulletin_channel_id == 723456789012345678
     assert settings.api_key == "key"
 
 
@@ -88,6 +90,7 @@ def test_load_settings_study_settings_default_to_unset(caplog):
                 "DISCORD_GUILD_ID": "not-an-id",
                 "DISCORD_ALERT_CHANNEL_ID": "also-not-an-id",
                 "DISCORD_ANNOUNCEMENT_CHANNEL_ID": "",
+                "DISCORD_BULLETIN_CHANNEL_ID": "nor-this",
                 "DISCORD_API_KEY": "  ",
             },
             load_dotenv_file=False,
@@ -99,9 +102,11 @@ def test_load_settings_study_settings_default_to_unset(caplog):
     assert settings.bot_id is None
     assert settings.alert_channel_id is None
     assert settings.announcement_channel_id is None
+    assert settings.bulletin_channel_id is None
     assert settings.api_key is None
     assert settings.db_path == "data/discord.sqlite3"
     assert "not-an-id" in caplog.text
+    assert "nor-this" in caplog.text
 
 
 def test_backend_base_url_is_read_from_api_base_url():
