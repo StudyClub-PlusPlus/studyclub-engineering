@@ -363,7 +363,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ## 구현 메모
 
-- 마이그레이션은 `V28__add_study_meeting_title_series.sql`. #174(schema-cleanup, beta 대상)가 V23~V27 을 쓴다 (2026-10-02 `cfab32c` 기준). #174 리뷰 반영으로 더 밀릴 수 있어 rebase 때 번호를 다시 확인한다.
+- 마이그레이션은 `V29__add_study_meeting_title_series.sql`. 열린 PR 이 V28 까지 쓴다 — #174(schema-cleanup) V23~V27 (`cfab32c` 기준), 그 위에 쌓인 #176 V28 (2026-10-02). 머지 순서·리뷰 반영으로 밀릴 수 있어 rebase 때 번호를 다시 확인한다.
 - #174 가 `Study` 에서 `slug`·`capacity`·`isHidden`·`studyDeliveryFormat` 을 지우고 `phase()`·`recruitStatus()` 에 `recruitmentCapacity` 인자를 더한다. 구현 전에 머지 여부를 확인하고 rebase 한 뒤 테스트 픽스처를 맞춘다.
 
 ## 범위 밖
