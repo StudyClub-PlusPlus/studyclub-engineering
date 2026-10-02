@@ -47,6 +47,29 @@ public interface StudyAttendanceRepository extends JpaRepository<StudyAttendance
             @Param("studyMeetingId") Long studyMeetingId,
             @Param("now") Instant now);
 
+    /**
+     * 화면의 출석 수정을 한 문장으로 쓴다 — 없으면 만들고, 있으면 STATUS 만 바꾼다. {@link #markPresent} 와 같은 이유로 조회 후 저장으로 나누지
+     * 않는다: 비잠금 조회는 트랜잭션 스냅샷을 읽어 그 사이 다른 요청이 만든 행을 못 보고, 다시 INSERT 하다 unique 위반으로 500 이 된다
+     * (specs/attendance/spec.md).
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+            value =
+                    """
+                    INSERT INTO STUDY_ATTENDANCE
+                        (ACCOUNT_ID, STUDY_ID, STUDY_GROUP_ID, STUDY_MEETING_ID, STATUS, CREATED_AT, UPDATED_AT)
+                    VALUES (:accountId, :studyId, :studyGroupId, :studyMeetingId, :status, :now, :now)
+                    ON DUPLICATE KEY UPDATE UPDATED_AT = :now, STATUS = :status
+                    """,
+            nativeQuery = true)
+    int upsertStatus(
+            @Param("accountId") Long accountId,
+            @Param("studyId") Long studyId,
+            @Param("studyGroupId") Long studyGroupId,
+            @Param("studyMeetingId") Long studyMeetingId,
+            @Param("status") String status,
+            @Param("now") Instant now);
+
     /** 스터디 내 특정 계정들의 전체 출석 이력. idx_study_attendance_study_account 인덱스 활용. */
     List<StudyAttendance> findByStudyIdAndAccountIdIn(Long studyId, Collection<Long> accountIds);
 
