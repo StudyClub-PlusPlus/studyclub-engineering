@@ -3,7 +3,6 @@ package com.studyclub.api.application;
 import com.studyclub.api.application.AdminApplicationResponses.ApplicationQuestionResponse;
 import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationResponse;
 import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationsResponse;
-import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.application.StudyApplicationRepository;
@@ -34,7 +33,6 @@ public class AdminApplicationQueryService {
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyParticipantRepository studyParticipantRepository;
-    private final StudyCaptainGuard studyCaptainGuard;
     private final ObjectMapper objectMapper;
 
     public AdminApplicationQueryService(
@@ -42,13 +40,11 @@ public class AdminApplicationQueryService {
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyApplicationRepository studyApplicationRepository,
             StudyParticipantRepository studyParticipantRepository,
-            StudyCaptainGuard studyCaptainGuard,
             ObjectMapper objectMapper) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyParticipantRepository = studyParticipantRepository;
-        this.studyCaptainGuard = studyCaptainGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -58,7 +54,6 @@ public class AdminApplicationQueryService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 결과를 볼 권한이 없습니다.");
 
         StudyRecruitment recruitment = resolveRecruitment(studyId, requestedRecruitmentId);
         if (recruitment == null) {

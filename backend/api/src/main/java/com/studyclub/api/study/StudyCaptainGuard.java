@@ -8,6 +8,8 @@ import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.StudyGroup;
+import com.studyclub.domain.study.StudyGroupRepository;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -38,12 +40,15 @@ public class StudyCaptainGuard {
 
     private final AccountRepository accountRepository;
     private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyGroupRepository studyGroupRepository;
 
     public StudyCaptainGuard(
             AccountRepository accountRepository,
-            StudyParticipantRepository studyParticipantRepository) {
+            StudyParticipantRepository studyParticipantRepository,
+            StudyGroupRepository studyGroupRepository) {
         this.accountRepository = accountRepository;
         this.studyParticipantRepository = studyParticipantRepository;
+        this.studyGroupRepository = studyGroupRepository;
     }
 
     /** 백오피스 전용 — 캡틴(ADMIN)만. 네비게이터는 통과하지 못한다. */
@@ -77,6 +82,34 @@ public class StudyCaptainGuard {
         boolean navigator =
                 studyParticipantRepository.existsByStudyGroupIdAndAccountIdAndParticipantRole(
                         studyGroupId, accountId, ParticipantRole.LEADER);
+        if (!navigator) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, message);
+        }
+    }
+
+    /**
+     * 출석 등 authz-guards 분반 단위 가드 — 캡틴이거나 <b>그 분반</b> 네비게이터(LEADER/CO_LEADER). 분반이 스터디에 속하는지
+     * 먼저 확인하고, 타 분반 네비게이터는 막는다.
+     */
+    public void assertCaptainOrNavigatorOfGroup(
+            Long accountId, Long studyId, Long studyGroupId, String message) {
+        StudyGroup group =
+                studyGroupRepository
+                        .findById(studyGroupId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
+        if (!studyId.equals(group.getStudyId())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
+        }
+        if (account(accountId).getSystemRole() == SystemRole.ADMIN) {
+            return;
+        }
+        boolean navigator =
+                studyParticipantRepository.existsByStudyGroupIdAndAccountIdAndParticipantRoleIn(
+                        studyGroupId, accountId, NAVIGATOR_ROLES);
         if (!navigator) {
             throw new BusinessException(ErrorCode.FORBIDDEN, message);
         }

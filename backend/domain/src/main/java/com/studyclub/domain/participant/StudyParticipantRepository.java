@@ -26,6 +26,9 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     boolean existsByStudyGroupIdAndAccountIdAndParticipantRole(
             Long studyGroupId, Long accountId, ParticipantRole participantRole);
 
+    boolean existsByStudyGroupIdAndAccountIdAndParticipantRoleIn(
+            Long studyGroupId, Long accountId, Collection<ParticipantRole> participantRoles);
+
     List<StudyParticipant> findByIdInAndStudyId(Collection<Long> ids, Long studyId);
 
     boolean existsByAccountIdAndStudyIdAndParticipantRoleIn(

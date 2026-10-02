@@ -55,10 +55,9 @@ public class StudyApplicationFormService {
         this.objectMapper = objectMapper;
     }
 
-    /** 백오피스 조회 — 캡틴만. 판정만 다르고 본문은 사용자 사이트 조회와 같다. */
+    /** 백오피스 조회 — 권한은 {@code @RequireAdmin}. 본문은 사용자 사이트 조회와 같다. */
     @Transactional(readOnly = true)
     public StudyApplicationFormResponse getFormForBackOffice(Long studyId, Long accountId) {
-        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 폼을 볼 권한이 없습니다.");
         return getForm(studyId, accountId);
     }
 
@@ -76,19 +75,17 @@ public class StudyApplicationFormService {
         return toResponse(study);
     }
 
-    /** 사용자 사이트에서 저장한다 — 캡틴이거나 그 스터디의 네비게이터 (POL-0001). */
+    /** 사용자 사이트 저장 — 권한은 {@code @RequireCaptainOrNavigator}. */
     @Transactional
     public StudyApplicationFormResponse replaceFormFromSite(
             Long studyId, Long accountId, StudyApplicationFormRequest request) {
-        studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
         return replace(studyId, request);
     }
 
-    /** 백오피스에서 저장한다 — 캡틴만. 네비게이터는 백오피스에 들어오지 못한다 (POL-0001). */
+    /** 백오피스 저장 — 권한은 {@code @RequireAdmin}. */
     @Transactional
     public StudyApplicationFormResponse replaceFormFromBackOffice(
             Long studyId, Long accountId, StudyApplicationFormRequest request) {
-        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 폼을 고칠 권한이 없습니다.");
         return replace(studyId, request);
     }
 

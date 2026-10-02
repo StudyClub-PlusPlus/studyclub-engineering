@@ -1,6 +1,7 @@
 package com.studyclub.api.application;
 
 import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationsResponse;
+import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "백오피스 신청", description = "운영자가 스터디 신청서 결과를 조회한다")
+@RequireAdmin
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/admin/studies/{studyId}/applications")
