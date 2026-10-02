@@ -85,6 +85,12 @@ def log(tmp_path) -> VoiceActivityLog:
     return VoiceActivityLog(str(tmp_path / "discord.sqlite3"))
 
 
+@pytest.fixture(autouse=True)
+def frozen_clock(monkeypatch) -> None:
+    """The rows are built from NOW, so the code under test must read NOW too."""
+    monkeypatch.setattr(voice_monitor, "now_utc", lambda: NOW)
+
+
 # --- collect_study_voice_channels ------------------------------------------
 
 
@@ -544,6 +550,24 @@ async def test_check_inactivity_survives_a_rejected_send(log):
     log.touch(2, NOW - datetime.timedelta(days=40))
 
     await voice_monitor.check_inactivity(_bot(guild), _settings(), log)  # must not raise
+
+
+async def test_check_inactivity_survives_a_connection_error(log, caplog):
+    """A dropped connection is an ``OSError``, not a ``discord.HTTPException``.
+
+    Raised from the check that runs in ``before_loop``, it would end the loop
+    for the life of the process without a line in the log.
+    """
+    guild = FakeGuild()
+    guild.alert_channel.send = AsyncMock(side_effect=OSError("connection lost"))
+    log.touch(2, NOW - datetime.timedelta(days=40))
+
+    with caplog.at_level("ERROR"):
+        await voice_monitor.check_inactivity(_bot(guild), _settings(), log)  # must not raise
+
+    assert "voice monitor:" in caplog.text
+    # Unmarked, so tomorrow's check reports the room again.
+    assert log.rows()[2].last_alerted_at is None
 
 
 async def test_check_inactivity_survives_a_broken_table(log, caplog):

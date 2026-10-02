@@ -337,6 +337,21 @@ async def test_refresh_survives_a_rejected_send():
     guild.alert_channel.send.assert_awaited_once()
 
 
+async def test_refresh_survives_a_connection_error(caplog):
+    """A dropped connection is an ``OSError``, not a ``discord.HTTPException``.
+
+    Raised from the refresh that runs in ``before_loop``, it would end the loop
+    for the life of the process without a line in the log.
+    """
+    guild = FakeGuild()
+    guild.bulletin_channel.send = AsyncMock(side_effect=OSError("connection lost"))
+
+    with caplog.at_level("ERROR"):
+        assert await bulletin.refresh(_bot(guild), _settings()) is False
+
+    assert "bulletin:" in caplog.text
+
+
 async def test_refresh_without_read_message_history_does_not_post_a_second_board():
     """Discord returns an empty history instead of a 403, so the permission is checked.
 

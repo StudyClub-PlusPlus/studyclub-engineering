@@ -349,6 +349,20 @@ async def check_inactivity(
     reason: the two are always equal today, and the command that will change the
     anchor at runtime has to give both readers one source when it lands.
     """
+    try:
+        await _check_inactivity(bot, settings, log)
+    except Exception:
+        # Whatever the paths below did not expect -- a dropped connection arrives
+        # as ``OSError``, not ``discord.HTTPException``. It has to stop here: the
+        # check in ``before_loop`` runs outside the loop's own retry, so an
+        # exception there ends the loop for the life of the process, unlogged.
+        logger.exception("voice monitor: the check failed unexpectedly, tomorrow's will try again")
+
+
+async def _check_inactivity(
+    bot: commands.Bot, settings: Settings, log: VoiceActivityLog
+) -> None:
+    """:func:`check_inactivity` without the catch-all. Handles the failures it expects."""
     if settings.guild_id is None:
         logger.error("voice monitor: no DISCORD_GUILD_ID configured, skipping the check")
         return

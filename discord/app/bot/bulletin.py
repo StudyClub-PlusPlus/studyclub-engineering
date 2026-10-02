@@ -199,6 +199,19 @@ async def refresh(bot: commands.Bot, settings: Settings) -> bool:
     command that will change the anchor at runtime has to give both readers one
     source when it lands (see the plan's 미정 사항 2).
     """
+    try:
+        return await _refresh(bot, settings)
+    except Exception:
+        # Whatever the paths below did not expect -- a dropped connection arrives
+        # as ``OSError``, not ``discord.HTTPException``. It has to stop here: the
+        # refresh in ``before_loop`` runs outside the loop's own retry, so an
+        # exception there ends the loop for the life of the process, unlogged.
+        logger.exception("bulletin: the refresh failed unexpectedly, leaving the board as it was")
+        return False
+
+
+async def _refresh(bot: commands.Bot, settings: Settings) -> bool:
+    """:func:`refresh` without the catch-all. Handles the failures it expects."""
     if settings.guild_id is None:
         logger.error("bulletin: no DISCORD_GUILD_ID configured, skipping the refresh")
         return False
