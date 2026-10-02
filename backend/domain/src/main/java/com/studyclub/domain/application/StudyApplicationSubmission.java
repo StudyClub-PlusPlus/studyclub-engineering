@@ -29,8 +29,8 @@ public class StudyApplicationSubmission {
         }
         long activeParticipantCount =
                 participants.countByStudyIdAndStatusIn(
-                        study.getId(), List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED));
-        if (study.isFull(activeParticipantCount)) {
+                        study.getId(), List.of(ParticipantStatus.ACTIVE));
+        if (recruitment.isFull(activeParticipantCount)) {
             throw new BusinessException(ErrorCode.CONFLICT, "정원이 가득 찼습니다.");
         }
         return applications.save(application);
