@@ -32,7 +32,7 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 은 기획(세은님)과 합
 | 2 | 반복 묶음 | `STUDY_MEETING.SERIES_ID` VARCHAR(36) NULL 추가. 「이후 반복 모두」 삭제 = 같은 묶음의 이 회차 + 그 뒤 **예정** 회차 | 묶음 ID 없이는 서버가 「같은 반복」 을 알 수 없다 (날짜 간격으로 추측하면 수정한 회차에서 깨진다) |
 | 3 | 권한 | 그 분반의 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` 또는 `ACCOUNT.SYSTEM_ROLE = ADMIN`. 서버에서 검증 | PRD 권한 절. 관리 입구를 숨기는 건 편의일 뿐이다 |
 | 4 | 회차 변경 알림 | 범위 밖 | 알림 스펙([notification](../notification/spec.md))에 이벤트가 생기면 따로 붙인다 |
-| 5 | 첫 회차 등록 시 `STUDY.STATUS` | **`OPEN → ONGOING` 으로 바꾸지 않는다** | `Study.isPubliclyVisible()` · `Study.recruitStatus()` 가 `status == OPEN` 에 묶여 있어, 모집 중에 회차를 미리 깔면 공개 목록에서 사라지고 모집이 닫힌다. 「진행 중」 은 지금처럼 `Study.phase()` 가 `STUDY.START_AT` 경과로 판정한다. [STUDY ERD 전이표](../../docs/erd/STUDY.md)와 어긋나 ERD 에 메모를 남겼다 |
+| 5 | 첫 회차 등록 시 `STUDY.STATUS` | **`OPEN → ONGOING` 으로 바꾸지 않는다** | `Study.recruitStatus()` 가 `status == OPEN` 일 때만 값을 주고 그 밖엔 null 이라, 모집 중에 회차를 미리 깔면 모집이 닫힌다 (`phase()` 도 시작 전 ONGOING 을 「종료」 로 판정한다). 공개 여부는 #174 이후 `isPubliclyVisible()` 이 `status != DRAFT` 라 영향이 없다. 「진행 중」 은 지금처럼 `Study.phase()` 가 `STUDY.START_AT` 경과로 판정한다. [STUDY ERD 전이표](../../docs/erd/STUDY.md)와 어긋나 ERD 에 메모를 남겼다 |
 | 6 | 클럽(모임형이 아닌 출석) | 범위 밖. 이 API 는 분반에 회차를 까는 스터디만 다룬다 | 클럽의 출석 단위가 회차인지부터 정해지지 않았다 |
 | 7 | API 경로 | `/api/studies/{studyId}/meetings` (+ `/{meetingId}`) | 아래 「경로」 |
 | 8 | 반복 전달 방식 | **날짜 목록**(`scheduledAts[]`, UTC)으로 보낸다. 규칙(매일·매주·요일·종료일)은 보내지 않는다 | 아래 「반복을 날짜 목록으로 보내는 이유」 |
@@ -360,6 +360,11 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - core-front 스터디 관리 → 일정 탭 → 삭제 확인 (미구현)
 
 ---
+
+## 구현 메모
+
+- 마이그레이션은 `V27__add_study_meeting_title_series.sql`. #174(schema-cleanup, beta 대상)가 V23~V26 을 쓴다.
+- #174 가 `Study` 에서 `slug`·`capacity`·`isHidden` 을 지우고 `phase()`·`recruitStatus()` 에 `recruitmentCapacity` 인자를 더한다. 구현 전에 머지 여부를 확인하고 rebase 한 뒤 테스트 픽스처를 맞춘다.
 
 ## 범위 밖
 

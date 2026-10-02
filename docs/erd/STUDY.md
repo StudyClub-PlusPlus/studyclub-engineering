@@ -83,9 +83,9 @@ stateDiagram-v2
 `START_AT` / `END_AT`(진행 일정)은 화면에 보이는 값일 뿐 **상태를 바꾸지 않는다** — 상태는 위 전이로만 바뀐다.
 
 > **메모 (2026-10-02) — `OPEN → ONGOING` 은 아직 아무도 일으키지 않는다.** 회차 등록 API([study-meeting 스펙](../../specs/study-meeting/spec.md#결정-사항) 결정 5)는
-> 첫 회차를 등록해도 `STATUS` 를 바꾸지 않기로 했다. `Study.isPubliclyVisible()` · `Study.recruitStatus()` 가 `STATUS = OPEN` 에 묶여 있어,
-> 모집 중에 회차를 미리 깔면 공개 목록에서 사라지고 모집이 닫히기 때문이다. 화면의 「진행 중」 은 지금처럼 `Study.phase()` 가 `START_AT` 경과로 판정한다.
-> 위 전이표의 `OPEN → ONGOING` 행은 그래서 지금 코드와 어긋난다 — 공개·모집 판정을 `STATUS` 에서 떼어 낼 때 함께 다시 정한다.
+> 첫 회차를 등록해도 `STATUS` 를 바꾸지 않기로 했다. `Study.recruitStatus()` 가 `STATUS = OPEN` 일 때만 값을 주고 그 밖엔 null 이라,
+> 모집 중에 회차를 미리 깔면 모집이 닫히기 때문이다. 화면의 「진행 중」 은 지금처럼 `Study.phase()` 가 `START_AT` 경과로 판정한다.
+> 위 전이표의 `OPEN → ONGOING` 행은 그래서 지금 코드와 어긋난다 — 모집 판정을 `STATUS` 에서 떼어 낼 때 함께 다시 정한다.
 
 ### 채널 삭제와 CLOSED
 
