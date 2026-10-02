@@ -268,6 +268,7 @@ private StudyDetailResponse toDetail(Study study) {
 {
   "id": 1,
   "programId": 1,
+  "programTitle": "알고리즘 스터디",
   "slug": "3f0c…",
   "title": "알고리즘 스터디",
   "oneLineSummary": "매주 알고리즘 문제를 풀고 코드 리뷰합니다.",
@@ -293,6 +294,7 @@ private StudyDetailResponse toDetail(Study study) {
 |------|------|------|------|------|
 | id | Long | N | 스터디 ID | STUDY.ID |
 | programId | Long | N | 스터디 프로그램 ID | STUDY.PROGRAM_ID |
+| programTitle | String | N | 프로그램 제목. 콘솔 정보 탭이 읽기 전용으로 표시 | STUDY_PROGRAM.TITLE (PROGRAM_ID 로 조인) |
 | title | String | N | 스터디 제목 | STUDY.TITLE |
 | oneLineSummary | String | N | 한 줄 소개 | STUDY.ONE_LINE_SUMMARY |
 | description | String | Y | 상세 소개 (마크다운 허용. 등록 시 「목표 / 진행 방식 / 참가 대상 / 특이사항」 기본 템플릿) | STUDY.DESCRIPTION |

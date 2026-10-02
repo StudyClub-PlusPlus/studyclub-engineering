@@ -264,6 +264,9 @@ function ProgramField({
   // 등록 모달에서만 부른다 — 정보 탭에서는 고를 일이 없어 요청하지 않는다
   const { data: clubs = [], isLoading } = useClubPrograms(mode === 'create');
 
+  // MVP: 클럽 미지원 — create 모드에서는 프로그램/종류 선택 불필요 (EMPTY_FORM 기본값 사용)
+  if (mode === 'create') return null;
+
   if (mode === 'edit') {
     return (
       <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-control border border-border bg-surface-2 px-3 py-2.5 text-sm'>
