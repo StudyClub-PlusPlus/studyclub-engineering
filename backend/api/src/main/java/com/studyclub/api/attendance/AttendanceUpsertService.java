@@ -83,8 +83,7 @@ public class AttendanceUpsertService {
                         .findById(studyGroupId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (!studyId.equals(group.getStudyId())) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
         }
     }
 

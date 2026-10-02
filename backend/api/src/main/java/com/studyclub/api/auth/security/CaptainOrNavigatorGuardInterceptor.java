@@ -14,8 +14,8 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
 
 /**
- * {@link RequireCaptainOrNavigator} 이 붙은 핸들러 앞에서 캡틴·네비게이터를 확인한다. 스터디/분반 범위는 어노테이션 {@code
- * scope} 로 고른다 (specs/authz-guards/spec.md).
+ * {@link RequireCaptainOrNavigator} 이 붙은 핸들러 앞에서 캡틴·네비게이터를 확인한다. 스터디/분반 범위는 어노테이션 {@code scope} 로
+ * 고른다 (specs/authz-guards/spec.md).
  */
 @Component
 public class CaptainOrNavigatorGuardInterceptor implements HandlerInterceptor {

@@ -12,8 +12,8 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * {@link RequireAdmin} 이 붙은 핸들러 앞에서 캡틴({@code SYSTEM_ROLE=ADMIN}) 여부를 확인한다. JWT 에 role claim 을
- * 넣지 않으므로 요청마다 DB 를 본다 (specs/authz-guards/spec.md).
+ * {@link RequireAdmin} 이 붙은 핸들러 앞에서 캡틴({@code SYSTEM_ROLE=ADMIN}) 여부를 확인한다. JWT 에 role claim 을 넣지
+ * 않으므로 요청마다 DB 를 본다 (specs/authz-guards/spec.md).
  */
 @Component
 public class AdminGuardInterceptor implements HandlerInterceptor {

@@ -46,8 +46,7 @@ public class AttendanceController {
 
     @Operation(
             summary = "출석 생성/수정 (upsert)",
-            description =
-                    "캡틴 또는 그 분반 네비게이터. studyGroupId 쿼리로 분반을 지정하고, body 회차는 모두 그 분반이어야 한다.")
+            description = "캡틴 또는 그 분반 네비게이터. studyGroupId 쿼리로 분반을 지정하고, body 회차는 모두 그 분반이어야 한다.")
     @SecurityRequirement(name = "bearerAuth")
     @RequireOnboarding
     @RequireCaptainOrNavigator(scope = RequireCaptainOrNavigator.Scope.GROUP)

@@ -88,8 +88,8 @@ public class StudyCaptainGuard {
     }
 
     /**
-     * 출석 등 authz-guards 분반 단위 가드 — 캡틴이거나 <b>그 분반</b> 네비게이터(LEADER/CO_LEADER). 분반이 스터디에 속하는지
-     * 먼저 확인하고, 타 분반 네비게이터는 막는다.
+     * 출석 등 authz-guards 분반 단위 가드 — 캡틴이거나 <b>그 분반</b> 네비게이터(LEADER/CO_LEADER). 분반이 스터디에 속하는지 먼저
+     * 확인하고, 타 분반 네비게이터는 막는다.
      */
     public void assertCaptainOrNavigatorOfGroup(
             Long accountId, Long studyId, Long studyGroupId, String message) {
@@ -97,12 +97,9 @@ public class StudyCaptainGuard {
                 studyGroupRepository
                         .findById(studyGroupId)
                         .orElseThrow(
-                                () ->
-                                        new BusinessException(
-                                                ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
+                                () -> new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
         if (!studyId.equals(group.getStudyId())) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
         }
         if (account(accountId).getSystemRole() == SystemRole.ADMIN) {
             return;
