@@ -15,6 +15,7 @@ import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +71,9 @@ public class StudyApplicationService {
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (!study.isPubliclyVisible()) {
             throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        if (study.getStatus() != StudyStatus.OPEN) {
+            throw new BusinessException(ErrorCode.CONFLICT, "모집이 마감되었습니다.");
         }
 
         StudyRecruitment recruitment = openRecruitmentForUpdate(studyId);
