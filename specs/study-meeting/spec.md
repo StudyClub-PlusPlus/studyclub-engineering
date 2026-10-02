@@ -83,7 +83,9 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 추가·수정·삭제는 한 트랜잭션에서 아래 순서로 잠근 뒤 검증한다.
 
 1. `STUDY_GROUP` 행 `FOR UPDATE` — 회차가 하나도 없는 분반에서도 동시 추가를 줄 세운다. 회차 행만 잠그면 잠글 행이 없어 두 요청이 함께 INSERT 까지 가다 교착할 수 있다.
-2. 분반 회차 `FOR UPDATE` (`StudyMeetingRepository.findByStudyGroupIdForUpdate`) — 디스코드 출석이 같은 잠금으로 회차를 자동 시작한다. 이 잠금을 쥔 뒤에 「시작한 회차」 를 판정해야, 판정 직후 디스코드가 그 회차를 여는 일이 없다.
+2. **수정·삭제만** 분반 회차 `FOR UPDATE` (`StudyMeetingRepository.findByStudyGroupIdForUpdate`) — 디스코드 출석이 같은 잠금으로 회차를 자동 시작한다. 이 잠금을 쥔 뒤에 「시작한 회차」 를 판정해야, 판정 직후 디스코드가 그 회차를 여는 일이 없다. 추가는 회차 행을 잠그지 않는다 — 시작 판정이 없고, 회차 범위를 `FOR UPDATE` 로 잡으면 회차 없는 두 분반이 인덱스 끝 gap 을 함께 잡고 서로의 INSERT 를 기다리다 교착한다. 대신 분반 잠금을 트랜잭션의 첫 조회로 둬서, 그 뒤의 일반 조회가 먼저 끝난 같은 분반 추가를 보게 한다 (REPEATABLE READ 스냅샷은 첫 일반 조회 때 잡힌다).
+3. 「시작한 회차」·「지난 시각」 은 잠금을 얻은 **뒤** 의 시각으로 잰다 — 잠금을 기다리는 동안 예정 시각이 지날 수 있다.
+4. 예정 시각은 초로 잘라 검증·저장한다. `SCHEDULED_AT` 은 소수초 없는 `DATETIME` 이라 MySQL 이 반올림하면 검증한 날짜와 저장된 날짜가 갈린다.
 
 **출석 upsert 도 회차를 잠그고 읽는다.** `POST /api/studies/{studyId}/attendances` 는 스터디 단위 권한이라 다른 분반 네비게이터도 이 분반 출석을 쓸 수 있다. 회차 검증을 잠금 없이 하면, 검증과 저장 사이에 회차가 지워져 지운 회차의 출석 행이 다시 생긴다 (`STUDY_ATTENDANCE → STUDY_MEETING` 외래키는 없다). upsert 가 대상 회차를 잠그고 읽게 바꾸면 삭제가 먼저 커밋된 경우 회차를 못 찾아 기존 계약대로 400 이 나간다 — [명부·출석 스펙](../attendance/spec.md)의 계약은 그대로다.
 
@@ -215,7 +217,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 한 트랜잭션:
 
 1. 권한 판정 (위 「권한 판정」).
-2. 분반 → 분반 회차 순으로 잠그고 읽는다 (위 「잠금」).
+2. 분반을 잠그고 분반 회차를 읽는다 (위 「잠금」).
 3. 위 검증 + 기존 회차와 같은 날 → 409 `MEETING_DATE_CONFLICT`.
 4. `STUDY_MEETING` INSERT (`START_AT`·`END_AT` 은 비운다 — 보이스룸·디스코드가 기록).
 5. 분반 참여자 중 `STATUS IN (ACTIVE, PAUSED)` 인 사람마다 새 회차 × 참여자 `STUDY_ATTENDANCE(STATUS = ABSENT)` INSERT. `STUDY_ID`·`STUDY_GROUP_ID` 는 비정규화 값으로 채운다.
