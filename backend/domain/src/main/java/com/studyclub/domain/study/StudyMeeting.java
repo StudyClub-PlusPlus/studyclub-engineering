@@ -83,14 +83,15 @@ public class StudyMeeting extends BaseEntity {
 
     // 공백뿐인 제목은 없는 제목이다 — 화면은 둘 다 「—」 로 보인다
     static String normalizeTitle(String title) {
-        if (title == null || title.isBlank()) {
+        if (title == null) {
             return null;
         }
+        // 길이는 공백을 떼기 전 입력으로 잰다 — 스펙은 입력 50자 초과를 400 으로 정했다
         if (title.length() > TITLE_MAX_LENGTH) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "회차 제목은 " + TITLE_MAX_LENGTH + "자까지입니다.");
         }
-        return title.strip();
+        return title.isBlank() ? null : title.strip();
     }
 
     /** 회차가 진행 중인지 — 시작했고 아직 끝나지 않았다. 상태를 저장하지 않으므로 시각으로 판정한다. */

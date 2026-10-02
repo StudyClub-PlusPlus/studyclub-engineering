@@ -117,6 +117,33 @@ class AttendanceUpsertServiceTest {
                                         .isEqualTo(ErrorCode.INVALID_INPUT));
     }
 
+    @Test
+    @DisplayName("잠금을 기다리는 사이 회차가 지워졌으면 INVALID_INPUT — 지운 회차에 출석을 다시 만들지 않는다")
+    void 잠금_대기_중_회차가_지워지면_INVALID_INPUT() {
+        givenStudyExists();
+        givenCallerIsCaptain();
+        StudyMeeting meeting = mock(StudyMeeting.class);
+        when(meeting.getStudyGroupId()).thenReturn(GROUP_ID);
+        when(studyMeetingRepository.findByIdInAndStudyId(any(), eq(STUDY_ID)))
+                .thenReturn(List.of(meeting));
+        when(studyMeetingRepository.findByStudyGroupIdForUpdate(GROUP_ID)).thenReturn(List.of());
+
+        var request =
+                new AttendanceUpsertRequest(
+                        List.of(
+                                new AttendanceUpsertRequest.AttendanceUpsertItem(
+                                        MEETING_ID, PARTICIPANT_ID, "PRESENT")));
+
+        assertThatThrownBy(() -> service.upsert(STUDY_ID, CALLER_ACCOUNT_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+        verify(attendanceRepository, never())
+                .upsertStatus(any(), any(), any(), any(), any(), any());
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // loadAndValidateParticipants()
     // ─────────────────────────────────────────────────────────────────────────

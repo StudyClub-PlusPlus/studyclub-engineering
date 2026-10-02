@@ -86,6 +86,8 @@ class StudyMeetingTest {
     void titleLengthCountsRawInput() {
         assertThatThrownBy(() -> StudyMeeting.schedule(1L, FUTURE, "가".repeat(50) + " "))
                 .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+        assertThatThrownBy(() -> StudyMeeting.schedule(1L, FUTURE, " ".repeat(51)))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
     }
 
     @Test

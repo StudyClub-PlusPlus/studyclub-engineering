@@ -364,7 +364,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ## 구현 메모
 
-- 마이그레이션은 `V29__add_study_meeting_title.sql`. 열린 PR 이 V28 까지 쓴다 — #174(schema-cleanup) V23~V27 (`cfab32c` 기준), 그 위에 쌓인 #176 V28 (2026-10-02). 머지 순서·리뷰 반영으로 밀릴 수 있어 rebase 때 번호를 다시 확인한다.
+- 마이그레이션은 `V29__add_study_meeting_title.sql`. 열린 PR 이 V28 까지 쓴다 — #174(schema-cleanup) V23~V27 (`cfab32c` 기준), 그 위에 쌓였다 닫힌 #176 이 V28 을 썼다 (2026-10-02, 후속 PR 로 다시 올 수 있다). 머지 순서·리뷰 반영으로 밀릴 수 있어 rebase 때 번호를 다시 확인한다.
 - `ErrorCode` 에 `MEETING_ALREADY_STARTED(409)` · `MEETING_DATE_CONFLICT(409)` 를 더한다. 화면은 이 코드로 어느 칸 아래 이유를 적을지 가른다 — 디스코드 조기 시작이나 다른 사람의 추가는 화면 사전 검증으로 알 수 없다.
 - #174 가 `Study` 에서 `slug`·`capacity`·`isHidden`·`studyDeliveryFormat` 을 지우고 `phase()`·`recruitStatus()` 에 `recruitmentCapacity` 인자를 더한다. 구현 전에 머지 여부를 확인하고 rebase 한 뒤 테스트 픽스처를 맞춘다.
 

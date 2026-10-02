@@ -118,7 +118,11 @@ public class StudyMeetingService {
 
         List<StudyMeeting> created =
                 studyMeetingRepository.saveAll(
+                        // 예정 시각 오름차순으로 넣는다. 디스코드 출석은 여러 분반의 회차를 차례로 잠그는데, 그 잠금이 이 분반 앞 gap 을 쥔 상태에서
+                        // 뒤쪽 회차를 먼저 넣어 두면 디스코드는 그 미커밋 행을, 이쪽은 앞쪽 gap 을 서로 기다려 교착한다. 앞에서부터 넣으면 아무 행도
+                        // 넣기 전에 기다린다
                         request.scheduledAts().stream()
+                                .sorted()
                                 .map(
                                         at ->
                                                 StudyMeeting.schedule(
