@@ -162,6 +162,9 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 | GET | `/api/studies` | 스터디 목록 (현재 하드코딩 픽스처) | X |
 | GET | `/api/me/studies` | 내 스터디 — 명부 스터디 + 회차별 내 출석 ([스펙](../../../specs/my-studies/spec.md)) | O |
 | GET | `/api/me/study-cohorts/{cohortId}` | 내 수강 기수·출석 상세 (목업) | O |
+| PATCH | `/api/me` | 프로필 수정 — 닉네임·시간대를 한 번에 저장, 온보딩 완료 필요 | O |
+| GET | `/api/me/marketing-consent` | 마케팅 수신 동의 조회 (`{agreed, agreedAt}`), 온보딩 완료 필요 | O |
+| PUT | `/api/me/marketing-consent` | 마케팅 수신 동의 변경, 온보딩 완료 필요 | O |
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
 | POST | `/auth/refresh` | access token 재발급 | X |
 | GET | `/auth/me` | 내 정보 조회 | O |
