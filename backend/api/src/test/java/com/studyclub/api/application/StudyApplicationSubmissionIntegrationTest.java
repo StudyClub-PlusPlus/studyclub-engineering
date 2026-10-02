@@ -342,20 +342,23 @@ class StudyApplicationSubmissionIntegrationTest {
 
     private void insertStudy(Timestamp now) {
         jdbcTemplate.update(
-                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, DESCRIPTION,"
-                        + " CATEGORY, STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS,"
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, 'STUDY', ?, ?)",
+                STUDY_ID,
+                "신청 저장 프로그램",
+                now,
+                now);
+        jdbcTemplate.update(
+                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, DESCRIPTION,"
+                        + " CATEGORY, STATUS,"
                         + " APPLICATION_FORM, SCHEDULE, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
                 STUDY_ID,
                 STUDY_ID,
                 "신청 저장 스터디",
-                "application-submit-study",
                 "한 줄 소개",
                 "상세 소개",
                 "SOFTWARE",
-                "STUDY",
-                false,
-                "ONLINE",
                 "OPEN",
                 """
                 {"title":"신청","description":null,"questions":[{"id":"reason","label":"지원 사유","type":"TEXTAREA","required":true,"options":null,"allowOther":null}]}
@@ -402,6 +405,7 @@ class StudyApplicationSubmissionIntegrationTest {
         jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID = ?", STUDY_ID);
+        jdbcTemplate.update("DELETE FROM STUDY_PROGRAM WHERE ID = ?", STUDY_ID);
         jdbcTemplate.update(
                 "DELETE FROM ACCOUNT WHERE ID IN (?, ?)", LINKED_ACCOUNT_ID, UNLINKED_ACCOUNT_ID);
     }
