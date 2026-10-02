@@ -56,6 +56,8 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 은 기획(세은님)과 합
 
 전개 규칙(시작 날짜 이후 첫 해당 요일, 종료일 포함 등)은 화면의 일이고, 서버가 지켜야 할 불변식(중복·상한·과거)은 목록만으로 다 검사된다. 서버에 규칙 엔진을 둘 이유가 없다.
 
+**31일 상한은 두 겹이다.** PRD 7-4 의 「시작 날짜 ~ 종료일 31일」 은 화면이 **고른 기간**을 막는다. 서버는 고른 기간을 받지 않으므로 **만들어지는 회차들**이 31일 안에 드는지만 다시 본다 (아래 회차 추가 검증). 고른 기간이 31일 안이면 결과도 반드시 그 안이라 서버 검사가 화면 검사보다 느슨할 뿐 어긋나지 않는다.
+
 ### 권한 판정
 
 1. `ACCOUNT.SYSTEM_ROLE = ADMIN` → 통과
@@ -64,17 +66,26 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 은 기획(세은님)과 합
 
 > 기존 `StudyCaptainGuard.assertCaptainOrNavigator` 는 **스터디** 범위로 본다. 회차는 **분반** 범위라 같은 스터디의 다른 분반 네비게이터는 통과하면 안 된다 — 분반 범위 판정이 따로 필요하다.
 >
-> POL-0001 스터디 단위 표에 「회차 관리」 행이 들어갔다 — 「담당 반에 한해 캡틴, 네비게이터」 (기획 답변 2026-10-02).
+> [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md) 스터디 단위 표에 「회차 관리」 행을 더했다 — 「담당 반에 한해 캡틴, 네비게이터」 (기획 답변 2026-10-02).
 
 ### 「시작한 회차」 판정
 
-`now >= SCHEDULED_AT` **또는** `START_AT IS NOT NULL` 이면 시작한 회차다. 수정·삭제를 거절한다(409).
+`now >= SCHEDULED_AT` **또는** `START_AT IS NOT NULL` 이면 시작한 회차다. 수정·삭제를 거절한다(409 `MEETING_ALREADY_STARTED`).
 
 PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예정 시각 전에 회차를 열 수 있다(`StudyMeeting.start`, [discord-attendance](../discord-attendance/spec.md)). 그때는 출석이 이미 찍혀 있어 PRD 3-2 의 「시작함 회차는 고치거나 지울 수 없다 — 출석이 기록돼 있다」 와 같은 이유로 막는다.
 
 ### 「같은 날」 판정
 
-분반 시간대(`STUDY_GROUP.TIMEZONE`)의 현지 날짜로 본다. `TIMEZONE` 이 비어 있으면 `Asia/Seoul`.
+분반 시간대(`STUDY_GROUP.TIMEZONE`)의 현지 날짜(`LocalDate`)로 본다. `TIMEZONE` 이 비어 있으면 `Asia/Seoul`. 31일 상한도 같은 현지 날짜로 잰다 — `max(날짜) − min(날짜) ≤ 30일`. 배열 순서는 상관없고, UTC 경과 시간으로 재지 않는다 (서머타임이 낀 30일이 30일 1시간이 되어 정상 요청이 걸린다).
+
+### 잠금
+
+추가·수정·삭제는 한 트랜잭션에서 아래 순서로 잠근 뒤 검증한다.
+
+1. `STUDY_GROUP` 행 `FOR UPDATE` — 회차가 하나도 없는 분반에서도 동시 추가를 줄 세운다. 회차 행만 잠그면 잠글 행이 없어 두 요청이 함께 INSERT 까지 가다 교착할 수 있다.
+2. 분반 회차 `FOR UPDATE` (`StudyMeetingRepository.findByStudyGroupIdForUpdate`) — 디스코드 출석이 같은 잠금으로 회차를 자동 시작한다. 이 잠금을 쥔 뒤에 「시작한 회차」 를 판정해야, 판정 직후 디스코드가 그 회차를 여는 일이 없다.
+
+**출석 upsert 도 회차를 잠그고 읽는다.** `POST /api/studies/{studyId}/attendances` 는 스터디 단위 권한이라 다른 분반 네비게이터도 이 분반 출석을 쓸 수 있다. 회차 검증을 잠금 없이 하면, 검증과 저장 사이에 회차가 지워져 지운 회차의 출석 행이 다시 생긴다 (`STUDY_ATTENDANCE → STUDY_MEETING` 외래키는 없다). upsert 가 대상 회차를 잠그고 읽게 바꾸면 삭제가 먼저 커밋된 경우 회차를 못 찾아 기존 계약대로 400 이 나간다 — [명부·출석 스펙](../attendance/spec.md)의 계약은 그대로다.
 
 ---
 
@@ -97,7 +108,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 | 이름 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| studyGroupId | Long | N | 분반 ID. 없으면 내가 `LEADER` 인 이 스터디의 분반 (한 기수 안 여러 반 동시 소속은 금지라 하나로 정해진다). 캡틴처럼 맡은 분반이 없으면 필수 → 없으면 400 |
+| studyGroupId | Long | N | 분반 ID. 없으면 이 스터디에서 내 명부 행(`STUDY_PARTICIPANT`, 역할 무관)이 속한 분반 — 한 기수 안 여러 반 동시 소속은 금지라 하나로 정해진다. 명부에 없는 캡틴은 필수 → 없으면 400. 정한 분반에 대해 권한 판정은 그대로 한다 |
 
 ### Request Body
 
@@ -111,7 +122,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
     "id": 3,
     "name": "목요일반",
     "timezone": "Asia/Seoul",
-    "startAt": "2026-10-01T11:00:00Z"
+    "startTime": "20:00"
   },
   "meetings": [
     {
@@ -137,7 +148,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | studyGroup.id | Long | N | 분반 ID. 추가 요청에 그대로 쓴다 | STUDY_GROUP.ID |
 | studyGroup.name | String | N | | STUDY_GROUP.NAME |
 | studyGroup.timezone | String | N | IANA. 화면 시각 기준. 비어 있으면 `Asia/Seoul` | STUDY_GROUP.TIMEZONE |
-| studyGroup.startAt | String | Y | 분반 정규 시작 시각 — 추가 창 시작 시각 기본값(PRD 7-2) | STUDY_GROUP.START_AT |
+| studyGroup.startTime | String | Y | 분반 정규 시작 시각, 분반 시간대의 현지 `HH:mm`. 추가 창 시작 시각 기본값(PRD 7-2). `START_AT` 이 비어 있으면 null | 계산: `STUDY_GROUP.START_AT` 을 분반 시간대로 바꾼 시각 |
 | meetings | Array | N | `scheduledAt` 오름차순. 없으면 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 분반) |
 | meetings[].id | Long | N | | STUDY_MEETING.ID |
 | meetings[].number | Int | N | 회차 번호 | 계산: 분반 회차를 `SCHEDULED_AT` 오름차순으로 센 순번 (1부터) |
@@ -150,7 +161,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 401 | UNAUTHORIZED | 토큰 없음 |
-| 400 | INVALID_INPUT | `studyGroupId` 가 없는데 내가 `LEADER` 인 분반이 이 스터디에 없음 (캡틴 등) |
+| 400 | INVALID_INPUT | `studyGroupId` 가 없는데 이 스터디 명부에 내가 없음 (캡틴 등) |
 | 400 | INVALID_INPUT | `studyGroupId` 가 이 스터디 소속이 아님 |
 | 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
 | 404 | NOT_FOUND | 없는 `studyId` · 없는 `studyGroupId` |
@@ -194,7 +205,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | 필드 | 타입 | 필수 | 검증 |
 |------|------|------|------|
 | studyGroupId | Long | Y | 이 스터디 소속 분반 → 아니면 400 |
-| scheduledAts | String[] (UTC ISO 8601) | Y | 1~31개. 모두 `now` 이후 (지난 시각 → 400). 분반 현지 날짜가 서로 겹치면 400. 첫 날짜와 마지막 날짜가 시작일 포함 31일 안 (`마지막 − 첫 ≤ 30일`) → 넘으면 400 |
+| scheduledAts | String[] (UTC ISO 8601) | Y | 1~31개. 모두 `now` 이후 (지난 시각 → 400). 분반 현지 날짜가 서로 겹치면 400. 현지 날짜 `max − min ≤ 30일` (위 「같은 날」 판정) → 넘으면 400. 순서 무관 |
 | title | String | N | 50자 이하 → 넘으면 400. 공백뿐이면 null 로 저장. 반복이면 모든 회차에 같은 제목 |
 
 - 반복 중 이미 회차가 있는 날은 **화면이 미리보기에서 빼고 보낸다**(PRD 7-6). 서버로 온 목록에 기존 회차와 같은 날이 있으면 건너뛰지 않고 409 로 거절한다 — 미리보기 뒤 다른 사람이 그 날에 회차를 만든 경우라, 조용히 빼면 화면이 보여 준 개수와 결과가 달라진다.
@@ -204,8 +215,8 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 한 트랜잭션:
 
 1. 권한 판정 (위 「권한 판정」).
-2. 분반 회차를 잠그고 읽는다 (`StudyMeetingRepository.findByStudyGroupIdForUpdate` — 동시 추가로 같은 날 회차가 둘 생기는 걸 막는다).
-3. 위 검증 + 기존 회차와 같은 날 → 409.
+2. 분반 → 분반 회차 순으로 잠그고 읽는다 (위 「잠금」).
+3. 위 검증 + 기존 회차와 같은 날 → 409 `MEETING_DATE_CONFLICT`.
 4. `STUDY_MEETING` INSERT (`START_AT`·`END_AT` 은 비운다 — 보이스룸·디스코드가 기록).
 5. 분반 참여자 중 `STATUS IN (ACTIVE, PAUSED)` 인 사람마다 새 회차 × 참여자 `STUDY_ATTENDANCE(STATUS = ABSENT)` INSERT. `STUDY_ID`·`STUDY_GROUP_ID` 는 비정규화 값으로 채운다.
 6. `STUDY.STATUS` 는 건드리지 않는다 (결정 5).
@@ -231,7 +242,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | 400 | INVALID_INPUT | `studyGroupId` 가 이 스터디 소속이 아님 |
 | 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
 | 404 | NOT_FOUND | 없는 `studyId` · 없는 `studyGroupId` |
-| 409 | CONFLICT | 기존 회차와 같은 날 |
+| 409 | MEETING_DATE_CONFLICT | 기존 회차와 같은 날 |
 
 ### 프론트엔드 사용처
 
@@ -271,12 +282,12 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 | 필드 | 타입 | 필수 | 검증 |
 |------|------|------|------|
-| scheduledAt | String (UTC ISO 8601) | Y | `now` 이후 → 아니면 400. 이 회차를 뺀 분반 회차와 같은 날 → 409 |
+| scheduledAt | String (UTC ISO 8601) | Y | `now` 이후 → 아니면 400. 이 회차를 뺀 분반 회차와 같은 날 → 409 `MEETING_DATE_CONFLICT` |
 | title | String | N | 50자 이하 → 넘으면 400. null·공백이면 제목을 지운다 |
 
 ### 서버 동작
 
-1. 권한 판정 → 분반 회차를 잠그고 읽는다 (추가와 같은 잠금).
+1. 권한 판정 → 분반 → 분반 회차 순으로 잠그고 읽는다 (위 「잠금」).
 2. 대상 회차가 시작했으면 409.
 3. 검증 후 `SCHEDULED_AT`·`TITLE` 갱신.
 
@@ -291,8 +302,8 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | 400 | INVALID_INPUT | `title` 50자 초과 |
 | 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
 | 404 | NOT_FOUND | 없는 `studyId` · `meetingId` 가 이 스터디 소속이 아님 |
-| 409 | CONFLICT | 이미 시작한 회차 |
-| 409 | CONFLICT | 다른 회차와 같은 날 |
+| 409 | MEETING_ALREADY_STARTED | 이미 시작한 회차 |
+| 409 | MEETING_DATE_CONFLICT | 다른 회차와 같은 날 |
 
 ### 프론트엔드 사용처
 
@@ -326,9 +337,9 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ### 서버 동작
 
-1. 권한 판정 → 분반 회차를 잠그고 읽는다.
+1. 권한 판정 → 분반 → 분반 회차 순으로 잠그고 읽는다 (위 「잠금」).
 2. 대상 회차가 시작했으면 409.
-3. 그 회차의 `STUDY_ATTENDANCE` 를 먼저 지우고 `STUDY_MEETING` 을 지운다 (FK 순서).
+3. 그 회차의 `STUDY_ATTENDANCE` 와 `STUDY_MEETING` 을 지운다. 둘 사이 외래키는 없어 DB 가 지워 주지 않는다 — 출석 행을 빠뜨리면 고아로 남는다.
 
 > **휴가 신청** — 별도 테이블이 없다. 크루가 낸 휴가는 출석 행 `STATUS = EXCUSED` 다(명부 스펙 「EXCUSED 는 POST 로 직접 세팅」, `MyStudyQueryService` 「사전 휴가(EXCUSED)」). 출석 행을 지우면 휴가도 함께 사라진다. 휴가 신청 테이블이 생기면 이 절에 삭제 대상을 더한다.
 
@@ -341,7 +352,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | 401 | UNAUTHORIZED | 토큰 없음 |
 | 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
 | 404 | NOT_FOUND | 없는 `studyId` · `meetingId` 가 이 스터디 소속이 아님 |
-| 409 | CONFLICT | 이미 시작한 회차 |
+| 409 | MEETING_ALREADY_STARTED | 이미 시작한 회차 |
 
 ### 프론트엔드 사용처
 
@@ -352,6 +363,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 ## 구현 메모
 
 - 마이그레이션은 `V29__add_study_meeting_title.sql`. 열린 PR 이 V28 까지 쓴다 — #174(schema-cleanup) V23~V27 (`cfab32c` 기준), 그 위에 쌓인 #176 V28 (2026-10-02). 머지 순서·리뷰 반영으로 밀릴 수 있어 rebase 때 번호를 다시 확인한다.
+- `ErrorCode` 에 `MEETING_ALREADY_STARTED(409)` · `MEETING_DATE_CONFLICT(409)` 를 더한다. 화면은 이 코드로 어느 칸 아래 이유를 적을지 가른다 — 디스코드 조기 시작이나 다른 사람의 추가는 화면 사전 검증으로 알 수 없다.
 - #174 가 `Study` 에서 `slug`·`capacity`·`isHidden`·`studyDeliveryFormat` 을 지우고 `phase()`·`recruitStatus()` 에 `recruitmentCapacity` 인자를 더한다. 구현 전에 머지 여부를 확인하고 rebase 한 뒤 테스트 픽스처를 맞춘다.
 
 ## 범위 밖
@@ -367,5 +379,3 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 - [NEEDS CLARIFICATION] PRD 3-1 반복 표시 — 묶음을 저장하지 않아(결정 2) 지금은 뺀다. 반복 표시가 꼭 필요하면 묶음 컬럼을 다시 들여야 한다.
 - [NEEDS CLARIFICATION] 캡틴(ADMIN)에게도 「담당 반에 한해」 가 걸리는가 — POL-0001 문구가 캡틴·네비게이터를 함께 묶는다. 캡틴의 담당 반을 어떻게 아는지(명부 행?)도 같이 정해야 한다. 지금은 PRD 대로 ADMIN 은 모든 분반 허용.
-
-참고: 409 를 화면이 칸별 문구로 나눠야 하면(시작한 회차 vs 같은 날) 그때 전용 errorCode 를 더한다 — 지금은 화면이 같은 검증을 먼저 하고, 서버 409 는 경합 안전망이라 `errorMessage` 표시로 충분하다.
