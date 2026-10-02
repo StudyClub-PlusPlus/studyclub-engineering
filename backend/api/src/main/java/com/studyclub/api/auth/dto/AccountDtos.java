@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * ACCOUNT 리소스(POST/GET /accounts/**) 요청 DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 달라 분리한다 — 여긴
+ * ACCOUNT 리소스(/accounts/**, /api/me) DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 달라 분리한다 — 여긴
  * "가입 완료 이후의 계정 관리" 쪽이다.
  */
 public final class AccountDtos {
@@ -28,6 +28,14 @@ public final class AccountDtos {
             @AssertTrue(message = "약관에 동의해야 합니다") boolean termsOfServiceAgreed,
             @AssertTrue(message = "개인정보 수집·이용에 동의해야 합니다") boolean privacyPolicyAgreed,
             @NotNull(message = "마케팅 수신 동의 여부는 필수입니다") Boolean marketingAgreed,
+            @NotBlank(message = "닉네임은 필수입니다") @ValidNickname String nickname,
+            @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {}
+
+    /**
+     * 프로필 수정 요청 (PATCH /api/me). 닉네임·타임존 둘 다 필수 — 부분 갱신이 없다. 온보딩과 같은 검증기를 써야 두 화면이 같은 닉네임을 두고 다른 말을
+     * 하지 않는다.
+     */
+    public record UpdateProfileRequest(
             @NotBlank(message = "닉네임은 필수입니다") @ValidNickname String nickname,
             @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {}
 }
