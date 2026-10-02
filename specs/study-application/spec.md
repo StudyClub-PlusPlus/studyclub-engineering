@@ -59,7 +59,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 비교 대상은 **분반 정원이 아니다.** 반은 신청 이후에 정한다. 대기열 없음.
 
-1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 그 회차의 `STUDY_APPLICATION` 행 수와 비교. 모집 회차가 여러 개여도 회차마다 독립적으로 판단한다
+1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 기수 명부의 `ACTIVE` 인원과 비교한다. `PAUSED`·`WITHDRAWN`·`COMPLETED`는 제외한다
 2. 없으면 인원 제한 없음
 
 기수 단위 정원(`STUDY.CAPACITY`)은 없다.
@@ -303,10 +303,6 @@ GET 신청 폼 조회와 같은 shape.
 `FORM_ANSWER` 스키마와 같다. `recruitmentId` 는 클라이언트가 보내지 않는다 — 서버가 열려 있는 회차를 고른다.
 
 ### 처리
-
-> 구현 메모: 정원 기준은 아직 팀 결정 전이다. 현재 코드는
-> [`share/2026-09-27-study-capacity-column.md`](../../share/2026-09-27-study-capacity-column.md)의
-> 임시 원칙대로 `STUDY.CAPACITY`와 활성 명부 인원을 사용한다. 아래 모집 회차 정원 규칙은 결정 후 코드 또는 문서를 한쪽으로 맞춘다.
 
 1. 로그인 · `DISCORD_ID` 존재 · 열려 있는 모집 회차 · 정원 · `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)` 검사
 2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. `fields` 에는 실패한 필드만 (화면은 검사 순서대로 하나 표시)
@@ -563,7 +559,6 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 - [NEEDS CLARIFICATION] `FORM_ANSWER` JSON 유지 vs `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 정규화 — ERD README 와 같음. 이 스펙은 JSON 으로 구현한다
 - [NEEDS CLARIFICATION] 유효값 오류의 필드별 `fields` 응답 계약 — 현재는 공통 `{ errorCode, errorMessage }` 형식을 유지한다. [`share/2026-09-30-application-validation-error-fields.md`](../../share/2026-09-30-application-validation-error-fields.md)
-- [NEEDS CLARIFICATION] 정원의 저장 위치와 집계 기준 — 현재는 `STUDY.CAPACITY`와 활성·일시중지 명부 인원을 사용한다. [`share/2026-09-27-study-capacity-column.md`](../../share/2026-09-27-study-capacity-column.md)
 - [NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간
 - [NEEDS CLARIFICATION] `STUDY_APPLICATION` 생성시각 컬럼. 없으면 `applications/me.submittedAt` 은 null
 - [NEEDS CLARIFICATION] 열려 있는 모집 회차가 동시에 둘이면 어느 회차에 붙일지. 지금은 1건이라고 가정

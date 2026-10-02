@@ -190,7 +190,9 @@ class StudyApplicationSubmissionIntegrationTest {
                 "{\"discordNickname\":\"기존 신청자\",\"availableDays\":[\"mon\"],\"scheduleAgreed\":true,\"answers\":{\"reason\":\"기존\"}}",
                 now,
                 now);
-        jdbcTemplate.update("UPDATE STUDY SET CAPACITY = 1 WHERE ID = ?", STUDY_ID);
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUITMENT_CAPACITY = 1 WHERE ID = ?",
+                RECRUITMENT_ID);
         jdbcTemplate.update(
                 "INSERT INTO STUDY_PARTICIPANT (ACCOUNT_ID, STUDY_GROUP_ID, STUDY_ID, STATUS,"
                         + " PARTICIPANT_ROLE, JOINED_AT, CREATED_AT, UPDATED_AT)"
@@ -226,6 +228,36 @@ class StudyApplicationSubmissionIntegrationTest {
                                 STUDY_ID,
                                 LINKED_ACCOUNT_ID))
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("성공 - 일시중지 명부는 모집 정원 인원에 포함하지 않는다")
+    void excludesPausedParticipantFromCapacity() {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUITMENT_CAPACITY = 1 WHERE ID = ?",
+                RECRUITMENT_ID);
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PARTICIPANT (ACCOUNT_ID, STUDY_GROUP_ID, STUDY_ID, STATUS,"
+                        + " PARTICIPANT_ROLE, JOINED_AT, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                UNLINKED_ACCOUNT_ID,
+                GROUP_ID,
+                STUDY_ID,
+                "PAUSED",
+                "MEMBER",
+                now,
+                now,
+                now);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(applicationCount()).isEqualTo(1L);
     }
 
     @Test

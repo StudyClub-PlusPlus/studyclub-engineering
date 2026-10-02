@@ -58,4 +58,8 @@ public class StudyRecruitment extends BaseEntity {
         }
         this.recruitmentCapacity = recruitmentCapacity;
     }
+
+    public boolean isFull(long activeParticipantCount) {
+        return recruitmentCapacity != null && activeParticipantCount >= recruitmentCapacity;
+    }
 }
