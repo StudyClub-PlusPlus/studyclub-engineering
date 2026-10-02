@@ -25,7 +25,8 @@ const ZONES = [
   },
 ] as const;
 
-function label(zone: string, locale: Locale): string | undefined {
+/** 고른 지역의 이름. 목록에 없는 값이면 비운다. */
+export function zoneName(zone: string, locale: Locale): string | undefined {
   const found = ZONES.find((z) => z.zone === zone);
   return found ? (locale === 'ko' ? found.ko : found.en) : undefined;
 }
@@ -36,12 +37,15 @@ export function TimeZonePicker({
   locale,
   disabled,
   error,
+  hideLabel,
 }: {
   value: string;
   onChange: (zone: string) => void;
   locale: Locale;
   disabled?: boolean;
   error?: string;
+  /** 이미 라벨이 있는 자리(카드 칸 안)에서는 제 라벨을 숨긴다 — 같은 말이 두 번 나온다. */
+  hideLabel?: boolean;
 }) {
   const ko = locale === 'ko';
   const id = useId();
@@ -50,7 +54,7 @@ export function TimeZonePicker({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [now, setNow] = useState(() => new Date());
-  const selected = label(value, locale);
+  const selected = zoneName(value, locale);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 30_000);
@@ -72,14 +76,24 @@ export function TimeZonePicker({
     trigger.current?.focus();
   }
 
+  // 라벨이 없으면 버튼 위 간격이 필요 없고, 메뉴도 그만큼 위에서 열린다
+  let triggerGap = 'mt-1.5';
+  let listTop = 'top-[76px]';
+  if (hideLabel) {
+    triggerGap = '';
+    listTop = 'top-[56px]';
+  }
+
   return (
     <div ref={root} className='relative'>
-      <label htmlFor={`${id}-trigger`} className='text-sm font-medium text-neutral-800'>
-        {ko ? '나의 시간대' : 'My time zone'}{' '}
-        <span className='text-error-600' aria-hidden='true'>
-          *
-        </span>
-      </label>
+      {!hideLabel && (
+        <label htmlFor={`${id}-trigger`} className='text-sm font-medium text-neutral-800'>
+          {ko ? '나의 시간대' : 'My time zone'}{' '}
+          <span className='text-error-600' aria-hidden='true'>
+            *
+          </span>
+        </label>
+      )}
       <button
         ref={trigger}
         id={`${id}-trigger`}
@@ -110,7 +124,7 @@ export function TimeZonePicker({
             select(ZONES[active]!.zone);
           }
         }}
-        className={`mt-1.5 flex min-h-12 w-full items-center justify-between gap-3 rounded-control border bg-bg px-3.5 py-2.5 text-left text-sm outline-none transition focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border-strong hover:border-brand'}`}
+        className={`${triggerGap} flex min-h-12 w-full items-center justify-between gap-3 rounded-control border bg-bg px-3.5 py-2.5 text-left text-sm outline-none transition focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border-strong hover:border-brand'}`}
       >
         <span className={selected ? 'font-medium text-fg' : 'text-fg-muted'}>
           {selected ?? (ko ? '지역을 선택해 주세요' : 'Select your region')}
@@ -130,7 +144,7 @@ export function TimeZonePicker({
           id={`${id}-list`}
           role='listbox'
           aria-label={ko ? '지역' : 'Region'}
-          className='absolute left-0 right-0 top-[76px] z-40 overflow-hidden rounded-card border border-border bg-bg p-1.5 shadow-lg'
+          className={`absolute left-0 right-0 ${listTop} z-40 overflow-hidden rounded-card border border-border bg-bg p-1.5 shadow-lg`}
         >
           {ZONES.map((z, index) => (
             <button

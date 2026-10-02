@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
-import { getUser, logout, type SessionUser } from '@/lib/auth';
+import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
@@ -23,6 +23,10 @@ export function NavAuth({ locale }: { locale: Locale }) {
   useEffect(() => {
     // 미리보기 세션은 정의가 바뀌었을 수 있어 맞춰서 읽는다
     setUser(syncPreview());
+    // 마이페이지에서 닉네임을 고치면 헤더의 이름도 바로 따라간다
+    const onUserChanged = () => setUser(getUser());
+    window.addEventListener(USER_CHANGED_EVENT, onUserChanged);
+    return () => window.removeEventListener(USER_CHANGED_EVENT, onUserChanged);
   }, []);
 
   useEffect(() => {

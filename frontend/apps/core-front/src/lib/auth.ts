@@ -51,9 +51,13 @@ export function getUser(): SessionUser | null {
   }
 }
 
+/** 세션 user 가 바뀌면 쏜다 — 헤더처럼 이미 떠 있는 화면이 다시 읽게 한다. */
+export const USER_CHANGED_EVENT = 'sc:user-changed';
+
 export function setUser(user: SessionUser): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  window.dispatchEvent(new Event(USER_CHANGED_EVENT));
 }
 
 /** 구글 name — 온보딩 닉네임 칸 초기값. DB 에 저장하지 않는다. */

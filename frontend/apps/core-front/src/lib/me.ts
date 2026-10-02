@@ -2,20 +2,19 @@
 
 import type { MemberRegion } from '@studyclub/mock';
 
+import { getUser } from './auth';
+
 /**
- * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청·거주 지역.
+ * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청.
  *
  * 저장할 서버가 아직 없어 **브라우저에만** 남긴다(기기·브라우저가 바뀌면 사라진다).
  * 서버가 생기면 이 파일의 read/write 만 fetch 로 갈아끼우면 되고, 화면 코드는 그대로 둔다.
  *
- * TODO(api): GET/PUT /api/me/bookmarks · /api/me/applications · /api/me
+ * TODO(api): GET/PUT /api/me/bookmarks · /api/me/applications
  */
 
 const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
-const REGION_KEY = 'sc_region';
-const NAME_KEY = 'sc_display_name';
-const DISCORD_KEY = 'sc_discord';
 
 function readJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -86,52 +85,20 @@ export function cancelApplication(studyId: string) {
 /* ── 거주 지역 ───────────────────────────────────────────────────────────── */
 
 /**
- * 회원 거주 지역. 신청 폼이 "가능한 시간"을 어느 시간대 기준으로 받을지 정하는 값이라
- * 회원이 직접 고칠 수 있어야 한다(마이페이지).
+ * 시간대에서 거주 지역을 정한다 — 서울이면 한국, 그 밖이면 북미.
+ * 지역을 따로 저장하지 않는다. 값이 둘이면 시간대만 고친 회원의 지역이 옛 값으로 남는다.
+ */
+export function regionOfTimeZone(timeZone: string | null | undefined): MemberRegion {
+  if (!timeZone || timeZone === 'Asia/Seoul') return 'KR';
+  return 'NA';
+}
+
+/**
+ * 회원 거주 지역. 신청 폼이 "가능한 시간"을 어느 시간대 기준으로 받을지 정하는 값이다.
+ * 회원이 마이페이지에서 고친 시간대를 따라간다.
  */
 export function getRegion(): MemberRegion {
-  const v = readJSON<string>(REGION_KEY, 'KR');
-  return v === 'NA' || v === 'ETC' ? v : 'KR';
-}
-
-export function setRegion(region: MemberRegion) {
-  writeJSON(REGION_KEY, region);
-}
-
-/* ── 표시 이름 ───────────────────────────────────────────────────────────── */
-
-/**
- * 회원이 고친 표시 이름. 구글 계정 이름을 그대로 쓰기 싫은 경우가 있어 따로 둔다.
- * 고친 적이 없으면 undefined — 그때는 로그인 계정 이름을 쓴다.
- */
-export function getDisplayName(): string | undefined {
-  const v = readJSON<string>(NAME_KEY, '');
-  return v || undefined;
-}
-
-export function setDisplayName(name: string) {
-  writeJSON(NAME_KEY, name.trim());
-}
-
-/* ── 디스코드 연결 ───────────────────────────────────────────────────────── */
-
-/**
- * 디스코드 계정 연결.
- *
- * 스터디 진행이 디스코드에서 이뤄지므로, 연결이 안 된 회원은 승인해도 합류할 수 없다.
- * 회원 본인이 지금 연결돼 있는지 알 수 있어야 한다.
- *
- * TODO(api): OAuth 연동 — GET /api/me/discord · POST /api/me/discord/link
- */
-export type DiscordLink = { handle: string } | null;
-
-export function getDiscord(): DiscordLink {
-  const v = readJSON<string>(DISCORD_KEY, '');
-  return v ? { handle: v } : null;
-}
-
-export function setDiscord(handle: string | null) {
-  writeJSON(DISCORD_KEY, handle ?? '');
+  return regionOfTimeZone(getUser()?.timeZone);
 }
 
 /* ── 데모 데이터 ─────────────────────────────────────────────────────────── */
@@ -185,5 +152,4 @@ export function seedDemoData() {
     ] satisfies Application[]);
   }
   writeJSON(BOOKMARK_KEY, ['pytorch-ai-coding', 'system-design-interview']);
-  writeJSON(DISCORD_KEY, 'jiwon_dev');
 }
