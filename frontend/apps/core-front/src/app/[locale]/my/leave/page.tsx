@@ -14,6 +14,10 @@ import { deleteAccount, getUser, type LeaveReason } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { clearMyLocalData, getActiveNavigatorStudies, type ActiveNavigatorStudy } from '@/lib/me';
 
+const UNKNOWN_WARNING_TITLE = '담당 스터디 여부를 확인하지 못했습니다';
+const UNKNOWN_WARNING_BODY =
+  '네트워크 오류 등으로 맡고 있는 스터디가 있는지 확인하지 못했습니다. 진행 중인 스터디를 맡고 계시다면 그 스터디는 담당자가 사라집니다.';
+
 const REASON_OPTIONS: { value: LeaveReason; label: string }[] = [
   { value: 'NO_DESIRED_STUDY', label: '원하는 스터디 없음' },
   { value: 'PARTICIPATION_BURDEN', label: '스터디 참여가 부담됨' },
@@ -27,6 +31,10 @@ export default function LeavePage() {
 
   const [ready, setReady] = useState(false);
   const [navigatorStudies, setNavigatorStudies] = useState<ActiveNavigatorStudy[]>([]);
+  // 조회 자체가 실패해 "맡은 스터디가 없다"고 확정할 수 없는 경우 — 빈 배열과 구분해야 한다
+  // (lib/me.ts: NavigatorStudiesResult 참고). 조용히 빈 경고로 처리하면 네트워크가 불안정한
+  // 순간에 네비게이터가 경고 없이 탈퇴해버릴 수 있다.
+  const [navigatorCheckFailed, setNavigatorCheckFailed] = useState(false);
   const [reason, setReason] = useState<LeaveReason | ''>('');
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
@@ -38,16 +46,21 @@ export default function LeavePage() {
       router.replace(`/${locale}/login?next=/${locale}/my/leave`);
       return;
     }
-    getActiveNavigatorStudies().then((studies) => {
-      setNavigatorStudies(studies);
+    getActiveNavigatorStudies().then((result) => {
+      if (result.status === 'ok') {
+        setNavigatorStudies(result.studies);
+      } else {
+        setNavigatorCheckFailed(true);
+      }
       setReady(true);
     });
   }, [locale, router]);
 
   const hasNavigatorWarning = navigatorStudies.length > 0;
+  const requiresConfirmation = hasNavigatorWarning || navigatorCheckFailed;
 
   async function handleLeaveClick() {
-    if (hasNavigatorWarning && !confirming) {
+    if (requiresConfirmation && !confirming) {
       // 첫 클릭 — 아직 지우지 않는다. 경고 상자 안에서 한 번 더 확인받는다.
       setConfirming(true);
       return;
@@ -108,18 +121,31 @@ export default function LeavePage() {
         </Select>
       </div>
 
-      {hasNavigatorWarning && (
+      {requiresConfirmation && (
         <section className='mt-6 rounded-card border border-warning-300 bg-warning-50 px-5 py-4 text-sm'>
-          <p className='flex items-center gap-2 font-bold text-fg'>
-            <AlertTriangle size={16} className='shrink-0 text-warning-700' /> 맡고 있는 스터디가{' '}
-            {navigatorStudies.length}개 있습니다
-          </p>
-          <ul className='mt-2 flex flex-col gap-1 text-fg'>
-            {navigatorStudies.map((s) => (
-              <li key={s.studyId}>· {s.title}</li>
-            ))}
-          </ul>
-          <p className='mt-2 leading-relaxed text-fg'>캡틴에게 탈퇴 사실을 꼭 공유해 주시길 바랍니다.</p>
+          {hasNavigatorWarning ? (
+            <>
+              <p className='flex items-center gap-2 font-bold text-fg'>
+                <AlertTriangle size={16} className='shrink-0 text-warning-700' /> 맡고 있는 스터디가{' '}
+                {navigatorStudies.length}개 있습니다
+              </p>
+              <ul className='mt-2 flex flex-col gap-1 text-fg'>
+                {navigatorStudies.map((s) => (
+                  <li key={s.studyId}>· {s.title}</li>
+                ))}
+              </ul>
+              <p className='mt-2 leading-relaxed text-fg'>
+                캡틴에게 탈퇴 사실을 꼭 공유해 주시길 바랍니다.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className='flex items-center gap-2 font-bold text-fg'>
+                <AlertTriangle size={16} className='shrink-0 text-warning-700' /> {UNKNOWN_WARNING_TITLE}
+              </p>
+              <p className='mt-2 leading-relaxed text-fg'>{UNKNOWN_WARNING_BODY}</p>
+            </>
+          )}
 
           {confirming && (
             <div className='mt-4 border-t border-warning-300 pt-4'>
@@ -139,7 +165,7 @@ export default function LeavePage() {
 
       {error && <p className='mt-4 text-sm text-error-700'>{error}</p>}
 
-      {!(hasNavigatorWarning && confirming) && (
+      {!(requiresConfirmation && confirming) && (
         <div className='mt-7 flex flex-wrap items-center justify-end gap-x-3 gap-y-2'>
           <p className='mr-auto text-xs text-fg-muted'>탈퇴는 즉시 처리되며 되돌릴 수 없습니다.</p>
           <Button variant='secondary' onClick={() => router.push(`/${locale}/my`)}>
