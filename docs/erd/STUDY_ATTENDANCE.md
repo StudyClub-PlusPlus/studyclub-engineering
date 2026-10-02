@@ -24,7 +24,7 @@
 | `PRESENT` | 출석 | 출석 |
 | `LATE` | 지각 (기준 시간은 운영 정책) | 출석 |
 | `EXCUSED` | 사전 양해 결석 | 출석 |
-| `ABSENT` | 결석. 기본값 (회차 종료 시 미체크 인원 자동 ABSENT) | 결석 |
+| `ABSENT` | 결석. 기본값 — 회차를 추가할 때 분반의 ACTIVE·PAUSED 참여자 행을 미리 ABSENT 로 만든다 ([회차 스펙](../../specs/study-meeting/spec.md)). 시작 전 ABSENT 는 화면에서 빈칸이다 | 결석 |
 
 전이 제한 없음 — 반장/운영자가 사후 수정 가능.
 
@@ -53,8 +53,9 @@ stateDiagram-v2
 - 인덱스 `(STUDY_ID, STATUS)` — 스터디별 출석 현황 집계
 
 ## 미확정
-- 행 생성 시점 — 회차 시작 시 참가자 전원 `ABSENT` 로 미리 만들지(집계 단순), 체크된 사람만 만들지(행 적음). 전자 제안.
 - 지각 기준(분) — 운영 정책. 스키마 무관.
 
 ## 확정
+- 행 생성 시점 — 회차를 **추가할 때** 분반의 ACTIVE·PAUSED 참여자 행을 `ABSENT` 로 만든다 (2026-10-02, [회차 스펙](../../specs/study-meeting/spec.md)). 회차 뒤에 합류한 사람은 행이 없을 수 있다 — 명부는 `status: null` 로 보인다.
+- 쓰기는 한 문장 upsert(`INSERT ... ON DUPLICATE KEY UPDATE`) — 조회 후 저장으로 나누면 스냅샷 읽기로 중복 INSERT 가 난다. 회차를 지우면 그 회차 행도 지운다 (`STUDY_MEETING` 으로 가는 외래키는 없다).
 - 완주율 공식 — `(PRESENT×1.0 + EXCUSED×1.0 + LATE×0.5) / 전체 과거 미팅`. 분모 0이면 null("–"). 상세 산식은 `specs/attendance/spec.md` 참조.
