@@ -16,7 +16,7 @@ import { clearMyLocalData, getActiveNavigatorStudies, type ActiveNavigatorStudy 
 
 const UNKNOWN_WARNING_TITLE = '담당 스터디 여부를 확인하지 못했습니다';
 const UNKNOWN_WARNING_BODY =
-  '네트워크 오류 등으로 맡고 있는 스터디가 있는지 확인하지 못했습니다. 진행 중인 스터디를 맡고 계시다면 그 스터디는 담당자가 사라집니다.';
+  '네트워크 오류 등으로 맡고 있는 스터디가 있는지 확인하지 못했습니다. 확인되기 전에는 탈퇴할 수 없습니다 — 다시 확인해 주세요.';
 
 const REASON_OPTIONS: { value: LeaveReason; label: string }[] = [
   { value: 'NO_DESIRED_STUDY', label: '원하는 스터디 없음' },
@@ -35,10 +35,24 @@ export default function LeavePage() {
   // (lib/me.ts: NavigatorStudiesResult 참고). 조용히 빈 경고로 처리하면 네트워크가 불안정한
   // 순간에 네비게이터가 경고 없이 탈퇴해버릴 수 있다.
   const [navigatorCheckFailed, setNavigatorCheckFailed] = useState(false);
+  // "다시 확인" 버튼 전용 로딩 — 최초 조회(ready 이전)와는 별개다.
+  const [checking, setChecking] = useState(false);
   const [reason, setReason] = useState<LeaveReason | ''>('');
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function checkNavigatorStudies() {
+    setChecking(true);
+    const result = await getActiveNavigatorStudies();
+    if (result.status === 'ok') {
+      setNavigatorStudies(result.studies);
+      setNavigatorCheckFailed(false);
+    } else {
+      setNavigatorCheckFailed(true);
+    }
+    setChecking(false);
+  }
 
   useEffect(() => {
     const user = getUser();
@@ -46,20 +60,19 @@ export default function LeavePage() {
       router.replace(`/${locale}/login?next=/${locale}/my/leave`);
       return;
     }
-    getActiveNavigatorStudies().then((result) => {
-      if (result.status === 'ok') {
-        setNavigatorStudies(result.studies);
-      } else {
-        setNavigatorCheckFailed(true);
-      }
-      setReady(true);
-    });
+    checkNavigatorStudies().then(() => setReady(true));
   }, [locale, router]);
 
   const hasNavigatorWarning = navigatorStudies.length > 0;
-  const requiresConfirmation = hasNavigatorWarning || navigatorCheckFailed;
+  // 확인 자체가 안 된 상태에서는 탈퇴를 아예 막는다 — "네트워크 오류로 확인 못 하고 그냥 탈퇴되는"
+  // 경우를 만들지 않기 위해 재확인(다시 확인)만 제공하고 "그래도 탈퇴" 우회는 두지 않는다.
+  const blockedByCheckFailure = navigatorCheckFailed;
+  const requiresConfirmation = hasNavigatorWarning;
 
   async function handleLeaveClick() {
+    if (blockedByCheckFailure) {
+      return;
+    }
     if (requiresConfirmation && !confirming) {
       // 첫 클릭 — 아직 지우지 않는다. 경고 상자 안에서 한 번 더 확인받는다.
       setConfirming(true);
@@ -121,7 +134,7 @@ export default function LeavePage() {
         </Select>
       </div>
 
-      {requiresConfirmation && (
+      {(requiresConfirmation || blockedByCheckFailure) && (
         <section className='mt-6 rounded-card border border-warning-300 bg-warning-50 px-5 py-4 text-sm'>
           {hasNavigatorWarning ? (
             <>
@@ -144,6 +157,16 @@ export default function LeavePage() {
                 <AlertTriangle size={16} className='shrink-0 text-warning-700' /> {UNKNOWN_WARNING_TITLE}
               </p>
               <p className='mt-2 leading-relaxed text-fg'>{UNKNOWN_WARNING_BODY}</p>
+              <div className='mt-3 flex justify-end'>
+                <Button
+                  variant='secondary'
+                  size='sm'
+                  loading={checking}
+                  onClick={checkNavigatorStudies}
+                >
+                  다시 확인
+                </Button>
+              </div>
             </>
           )}
 
@@ -167,11 +190,20 @@ export default function LeavePage() {
 
       {!(requiresConfirmation && confirming) && (
         <div className='mt-7 flex flex-wrap items-center justify-end gap-x-3 gap-y-2'>
-          <p className='mr-auto text-xs text-fg-muted'>탈퇴는 즉시 처리되며 되돌릴 수 없습니다.</p>
+          <p className='mr-auto text-xs text-fg-muted'>
+            {blockedByCheckFailure
+              ? '담당 스터디 확인이 끝나야 탈퇴할 수 있습니다.'
+              : '탈퇴는 즉시 처리되며 되돌릴 수 없습니다.'}
+          </p>
           <Button variant='secondary' onClick={() => router.push(`/${locale}/my`)}>
             취소
           </Button>
-          <Button variant='destructive' loading={pending} onClick={handleLeaveClick}>
+          <Button
+            variant='destructive'
+            loading={pending}
+            disabled={blockedByCheckFailure}
+            onClick={handleLeaveClick}
+          >
             탈퇴하기
           </Button>
         </div>
