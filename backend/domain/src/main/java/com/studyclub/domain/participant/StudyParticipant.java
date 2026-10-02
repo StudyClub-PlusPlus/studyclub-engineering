@@ -75,9 +75,14 @@ public class StudyParticipant extends BaseEntity {
      * 회원 탈퇴 — 명부 행을 지우지 않고 표시만 바꾼다. 행을 지우면 이미 쌓인 STUDY_ATTENDANCE(ACCOUNT_ID 로만 연결, FK 없음)가 갈 곳을 잃어
      * 집계에서 통째로 빠진다(specs/user-leave/spec.md). ACCOUNT_ID 는 그대로 둔다 — 참조할 ACCOUNT 행 자체가 없어져 더는 사람으로
      * 되짚을 수 없으므로 이 값 자체가 개인정보가 아니다(다른 탈퇴 보존 데이터와 같은 논리).
+     *
+     * <p>{@code leftAt} 이 이미 있으면(계정 탈퇴 전에 이미 WITHDRAWN 이었던 경우) 덮어쓰지 않는다 — 덮어쓰면 그 사이(하차~계정 탈퇴)에 열린
+     * 회차까지 출석률 분모에 다시 들어와 집계가 오염된다.
      */
     public void markDeletedDueToAccountDeletion(Instant deletedAt) {
         this.status = ParticipantStatus.DELETED;
-        this.leftAt = deletedAt;
+        if (this.leftAt == null) {
+            this.leftAt = deletedAt;
+        }
     }
 }
