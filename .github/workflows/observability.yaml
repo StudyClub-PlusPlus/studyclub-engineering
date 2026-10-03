@@ -1,4 +1,4 @@
-# Grafana 설정(지금은 대시보드)의 정본을 레포로 두고, 머지되면 Grafana 에 반영한다.
+# Grafana 설정(대시보드·알림)의 정본을 레포로 두고, 머지되면 Grafana 에 반영한다.
 #
 # 두 갈래로 가른 이유
 #   - PR  : lint 만. **토큰을 주지 않는다.** 이 레포는 PUBLIC 이라 누구나 PR 을 열 수 있고,
@@ -8,7 +8,7 @@
 #           backend-main → prod). beta 에서 먼저 나가면 앱이 아직 내보내지 않는 메트릭을
 #           알림이 참조해 NoData 로 뜬다
 #
-# 환경값(주소·토큰)은 레포에 없다. Environment(`stage`/`production`) 시크릿으로 주입한다.
+# 환경값은 레포에 없다. Environment(`stage`/`production`) 시크릿으로 주입한다.
 # **워크플로 로그도 공개**되므로 GRAFANA_URL 까지 시크릿으로 둔다(로그에서 마스킹된다).
 
 name: observability
@@ -41,6 +41,8 @@ jobs:
           node-version: '22'
       - name: 대시보드 JSON 검사
         run: node observability/dashboard-tool.mjs --lint observability/dashboards/*.json
+      - name: 알림 설정 검사
+        run: node observability/alerting-tool.mjs --lint
 
   provision:
     # PR 에서는 돌지 않는다(토큰이 닿지 않게). beta push 도 제외 — 앱이 develop 에서 나간다.
@@ -54,34 +56,49 @@ jobs:
     env:
       GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
       GRAFANA_TOKEN: ${{ secrets.GRAFANA_SA_TOKEN }}
+      # 알림 설정의 `${VAR}` 자리를 채운다. 하나라도 비면 도구가 실패시킨다 —
+      # Grafana 는 치환 안 된 문자열도 그냥 저장하고, 알림이 안 오기 시작할 때까지
+      # 아무 신호도 주지 않는다. (대시보드는 치환이 없다 — Grafana 자체 변수 문법과
+      # 충돌해서 `${VAR}` 를 쓸 수 없고, 대신 datasource 변수로 푼다)
+      DS_PROMETHEUS_UID: ${{ secrets.DS_PROMETHEUS_UID }}
+      DS_LOKI_UID: ${{ secrets.DS_LOKI_UID }}
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      # 토큰이 아직 없는 환경(= prod)에서 빨간 체크를 만들지 않는다.
+      # 시크릿이 아직 없는 환경(= prod)에서 빨간 체크를 만들지 않는다.
       # "설정이 안 됐다" 와 "반영이 실패했다" 는 구분되어야 한다.
       - name: 자격증명 있나
         id: guard
         run: |
-          if [ -z "$GRAFANA_TOKEN" ] || [ -z "$GRAFANA_URL" ]; then
+          missing=""
+          for v in GRAFANA_URL GRAFANA_TOKEN DS_PROMETHEUS_UID DS_LOKI_UID DISCORD_BOT_TOKEN DISCORD_CHANNEL_ID; do
+            eval "val=\$$v"
+            if [ -z "$val" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
             {
               echo "### Grafana 반영 건너뜀"
               echo
-              echo "이 Environment 에 \`GRAFANA_URL\` · \`GRAFANA_SA_TOKEN\` 이 없다."
-              echo "서비스 계정 토큰을 발급해 Environment 시크릿에 넣으면 이 단계부터 돈다."
+              echo "이 Environment 에 없는 시크릿:$missing"
+              echo
+              echo "Environment 시크릿을 채우면 이 단계부터 돈다 (값 SoT 는 인프라 레포의 secret)."
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # ---------------- 대시보드 ----------------
       # 덮기 **전에** 본다. 누가 Grafana 화면에서 고치고 PR 을 안 올렸으면 여기서 드러난다.
       # exit 3 = 어긋남(실패 1 과 구분). 지금은 경고만 하고 덮는다 — 대시보드가 2개라
       # 사고 규모가 작고, 막으면 남의 미처리 변경 때문에 내 배포가 멈춘다.
       # 한 번이라도 실제로 날아가면 아래 `exit 1` 로 바꾼다 (share/2026-10-03 질문 1번).
-      - name: 정본과 실물 비교 (drift)
+      - name: 대시보드 — 정본과 실물 비교 (drift)
         if: steps.guard.outputs.ready == 'true'
         run: |
           set +e
@@ -91,7 +108,7 @@ jobs:
           echo "$out"
           if [ "$code" = "3" ]; then
             {
-              echo "### ⚠️ Grafana 쪽에 레포에 없는 변경이 있다 — 이번 반영으로 덮인다"
+              echo "### ⚠️ Grafana 쪽에 레포에 없는 대시보드 변경이 있다 — 이번 반영으로 덮인다"
               echo
               echo '```'
               echo "$out"
@@ -103,12 +120,48 @@ jobs:
             exit "$code"
           fi
 
-      - name: Grafana 에 반영
+      - name: 대시보드 — Grafana 에 반영
         if: steps.guard.outputs.ready == 'true'
         run: node observability/dashboard-tool.mjs --push observability/dashboards/*.json
 
       # 반영이 실제로 먹었는지 같은 도구로 되읽어 확인한다.
       # "POST 가 200 이었다" 는 반영됐다는 뜻이 아니다 — Grafana 는 잘못된 설정도 200 으로 받는다.
-      - name: 반영 확인 (다시 drift)
+      - name: 대시보드 — 반영 확인
         if: steps.guard.outputs.ready == 'true'
         run: node observability/dashboard-tool.mjs --drift observability/dashboards/*.json
+
+      # ---------------- 알림 ----------------
+      # 대시보드와 두 가지가 다르다.
+      #   ① `${VAR}` 치환이 필요하다 (봇 토큰 · 채널 ID · 데이터소스 uid · Grafana 주소)
+      #   ② 레포에서 지운 규칙을 **Grafana 에서도 지운다** — 남겨 두면 NoData 로 영구히
+      #      떠서 쓰이지 않는 경고가 진짜 경고를 묻는다. 대시보드에는 자동 삭제를 넣지
+      #      않았다(사람이 「Save as copy」로 만든 사본을 지울 위험 때문)
+      - name: 알림 — 정본과 실물 비교 (drift)
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          set +e
+          out=$(node observability/alerting-tool.mjs --drift 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" = "3" ]; then
+            {
+              echo "### ⚠️ 알림 설정이 Grafana 쪽과 어긋난다 — 이번 반영으로 덮인다"
+              echo
+              echo '```'
+              echo "$out"
+              echo '```'
+              echo
+              echo "레포에 없는 규칙은 **삭제된다.** 살려야 하면 먼저 PR 로 올린다."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$code" != "0" ]; then
+            exit "$code"
+          fi
+
+      - name: 알림 — Grafana 에 반영
+        if: steps.guard.outputs.ready == 'true'
+        run: node observability/alerting-tool.mjs --push
+
+      - name: 알림 — 반영 확인
+        if: steps.guard.outputs.ready == 'true'
+        run: node observability/alerting-tool.mjs --drift

@@ -7,6 +7,8 @@
 //   node observability/dashboard-tool.mjs --drift observability/dashboards/*.json   (네트워크)
 //   node observability/dashboard-tool.mjs --push  observability/dashboards/*.json   (네트워크)
 //
+// 알림 쪽은 alerting-tool.mjs. 공용 플럼빙(fetch 래퍼·키 정렬·치환)은 grafana.mjs.
+//
 // 네트워크 모드는 GRAFANA_URL · GRAFANA_TOKEN 을 환경변수로 받는다. 값은 레포에 없다
 // (이 레포는 PUBLIC 이다 — 워크플로 로그도 공개되므로 둘 다 Actions Secret 으로 넣는다).
 //
@@ -26,6 +28,7 @@
 
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
+import { grafana, deepSort, render } from './grafana.mjs'
 
 const DS_VAR = 'datasource'
 const DS_REF = `\${${DS_VAR}}`
@@ -39,14 +42,6 @@ const BUILTIN_VARS = new Set([
 
 // text 패널은 쿼리를 안 돌리므로 datasource 를 요구하지 않는다.
 const DATASOURCE_FREE_PANELS = new Set(['text', 'dashlist', 'news', 'row'])
-
-const deepSort = (v) =>
-  Array.isArray(v) ? v.map(deepSort)
-  : v && typeof v === 'object'
-    ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, deepSort(v[k])]))
-    : v
-
-const render = (d) => JSON.stringify(deepSort(d), null, 2) + '\n'
 
 /** 패널 트리를 순회한다. 중첩 row 안의 패널까지 본다. */
 function* eachPanel(dash) {
@@ -201,29 +196,6 @@ function lint(path) {
 // ------------------------------------------------------------------ network
 
 const uidOf = (p) => basename(p).replace(/\.json$/, '')
-
-function grafana() {
-  const url = (process.env.GRAFANA_URL ?? '').replace(/\/$/, '')
-  const token = process.env.GRAFANA_TOKEN ?? ''
-  if (!url || !token) {
-    console.error('GRAFANA_URL · GRAFANA_TOKEN 이 필요하다 (값은 레포에 없다 — Actions Secret)')
-    process.exit(1)
-  }
-  // 주소를 로그에 찍지 않는다. 공개 레포의 워크플로 로그는 누구나 본다.
-  return async (path, init = {}) => {
-    const res = await fetch(url + path, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-      },
-    })
-    const body = await res.text()
-    if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${path} → ${res.status}: ${body.slice(0, 300)}`)
-    return body ? JSON.parse(body) : null
-  }
-}
 
 /** 정본과 실물이 같은가. 다르면 왜 다른지까지 말해 준다. */
 async function drift(paths) {
