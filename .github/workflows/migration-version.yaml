@@ -1,0 +1,41 @@
+# Flyway 버전 번호 충돌을 **머지 전에** 터뜨린다.
+#
+# 이 체크 하나만 브랜치 보호의 필수 조건으로 쓴다. 무거운 `backend-migration-check`
+# (gradle test + bootJar + 빈 MySQL 부팅 ≈ 2분)는 필수로 올리지 않는다 —
+# "Require branches to be up to date" 를 켜면 누가 머지할 때마다 다른 PR 들이
+# out-of-date 가 되어 **필수 체크 전부가 다시 돈다.** 그 비용이 2분이면 사람이
+# 기다리기를 포기하고, 20초면 안 포기한다.
+#
+# ## paths 필터를 일부러 안 걸었다
+#
+# **필수 상태 체크에 `paths` 를 걸면 PR 이 영구 pending 이 된다.** 조건에 안 맞아
+# 워크플로가 안 돌면 GitHub 은 그걸 "통과" 로 보지 않고 "아직 안 옴" 으로 본다.
+# 마이그레이션을 안 건드린 PR 은 전부 거기서 멈춘다.
+# 이 잡은 checkout + 파일명 스캔뿐이라 수 초다. 매 PR 에 도는 편이 싸다.
+#
+# ## 왜 이게 머지 전에 잡히나
+#
+# `actions/checkout` 은 `pull_request` 에서 기본으로 **머지 커밋**(PR 을 현재 base 에
+# 합친 가상 커밋)을 체크아웃한다. 그래서 이미 base 에 들어간 V26 이 이 PR 의 CI 에서
+# 보인다. 다만 base 가 움직여도 워크플로가 **자동 재실행되지 않아 결과가 낡는다** —
+# 브랜치 보호의 `strict`(up to date 요구)가 그 구멍을 막는다. 둘이 한 쌍이다.
+
+name: migration-version
+
+on:
+  pull_request:
+    branches: [beta, develop, main]
+  push:
+    branches: [beta, develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  version-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Flyway 버전 번호 중복 검사
+        run: bash backend/scripts/check-migration-versions.sh
