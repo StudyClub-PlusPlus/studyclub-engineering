@@ -94,6 +94,30 @@ class AdminApplicationIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 신청자가 탈퇴해 계정이 없어도 신청서는 목록에 남고 신청자명은 '탈퇴한 회원'이다")
+    void keepsApplicationOfWithdrawnApplicant() {
+        // 탈퇴 후 상태 재현 — ACCOUNT 만 사라지고 STUDY_APPLICATION 은 남는다(FK 없음).
+        jdbcTemplate.update("DELETE FROM ACCOUNT WHERE ID = ?", APPLICANT_ID);
+
+        var response =
+                rest.exchange(
+                        "/api/admin/studies/" + STUDY_ID + "/applications",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("respondentCount", 1);
+        List<?> applications = (List<?>) response.getBody().get("applications");
+        assertThat(applications).hasSize(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> application = (Map<String, Object>) applications.get(0);
+        assertThat(application).containsEntry("applicantName", "탈퇴한 회원");
+        assertThat(application).containsEntry("email", null);
+        assertThat(application).containsEntry("discordNickname", "홍길동/SWE/서울/백엔드");
+    }
+
+    @Test
     @DisplayName("실패 - 네비게이터라도 백오피스 신청자 목록은 볼 수 없다 (POL-0001)")
     void rejectsNavigator() {
         var response =
@@ -186,21 +210,30 @@ class AdminApplicationIntegrationTest {
                 RECRUITMENT_ID,
                 OTHER_RECRUITMENT_ID);
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID IN (?, ?)", STUDY_ID, OTHER_STUDY_ID);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?)", STUDY_ID, OTHER_STUDY_ID);
     }
 
     private void insertStudy(Long id, String slug, Timestamp now) {
+        // 종류는 프로그램이 갖는다 — 기수에는 컬럼이 없다. 프로그램 ID 는 기수 ID 와 같게 둔다
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, 'STUDY', ?, ?)",
+                id,
+                "프로그램",
+                now,
+                now);
         jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                        + " IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 "신청 조회 스터디",
                 slug,
                 "한 줄 소개",
                 "SOFTWARE",
-                "STUDY",
                 false,
                 "ONLINE",
                 "OPEN",

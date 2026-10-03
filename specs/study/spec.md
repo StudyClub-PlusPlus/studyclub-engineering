@@ -8,25 +8,40 @@
 > 갱신: 2026-09-22 — 스키마 정리 제안 반영(**백엔드 미반영, 제안 단계**): `STUDY_KIND` 를 STUDY_PROGRAM 으로 이동, `SLUG`·`IS_HIDDEN`·`PUBLISH_AT`·`STUDY.CAPACITY`·`STUDY_DELIVERY_FORMAT` 삭제, 공개 = `STUDY_RECRUITMENT.START_AT` 유무, 상태 5단계, 상시 모집 폐지
 > 갱신: 2026-09-22 — PATCH/DELETE 스펙 추가 (#117 을 이 스펙의 스키마 제안에 맞춰 반영: `isHidden` 삭제, `studyKind` 는 STUDY_PROGRAM 소속이라 수정 불가, `recruitDeadline` null 불가, `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 수정 항목 추가)
 > 갱신: 2026-09-23 — `timezone` 필드 추가(**제안 단계, 백엔드 미반영**): 등록 폼에서 운영자가 KST/PST/동시 진행 중 직접 고르는 선택 입력. GET/POST/PATCH 세 곳에 반영. 운영 콘솔 목록에 컬럼 추가. 이 필드가 생기기 전 데이터는 값이 없어 사이트가 일정·킥오프 문구로 추정하거나 「시간대 미정」으로 보인다 — [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md#3-시간대-필터)
-> 갱신: 2026-09-27 — 백오피스 정보 탭 연동. GET 응답에 `programId`·`oneLineSummary`·`schedule`·`discordChannelUrl`·`driveUrl` 추가, PATCH 가 `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 을 받는다(`null` = 비움, 키 생략 = 유지). **정원 저장 위치는 아직 `STUDY.CAPACITY`** 다 — 아래 「스터디 수정」 참고. `timezone` 은 컬럼이 없어 여전히 미구현
 > 갱신: 2026-09-24 — **공개 판정 정정**(PR #129 리뷰): 「공개 = `START_AT` 유무」를 「공개 = `STATUS != DRAFT`」로 바꾼다. `START_AT` 은 `STATUS` 와 별개 필드라 한쪽만 바뀌는 동기화 버그 여지가 있고, 지금 등록 API가 `START_AT=now` 를 채우는 별도 버그와도 얽혀 있었다 — `STATUS` 하나로 판정하면 두 문제 다 공개 여부에는 영향을 주지 않는다. 상세: [ERD](../../docs/erd/STUDY.md#공개-여부) · [POL-0002](../../01-planning/_registry/policies/POL-0002-study-status.md#공개-여부)
+> 갱신: 2026-09-27 — 백오피스 정보 탭 연동. GET 응답에 `programId`·`oneLineSummary`·`schedule`·`discordChannelUrl`·`driveUrl` 추가, PATCH 가 `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 을 받는다(`null` = 비움, 키 생략 = 유지). **정원 저장 위치는 아직 `STUDY.CAPACITY`** 다 — 아래 「스터디 수정」 참고. `timezone` 은 컬럼이 없어 여전히 미구현
+> 갱신: 2026-09-28 — category 유효값 표를 11종(`StudyCategory` enum)으로 정정
+> 갱신: 2026-09-29 — 팀 결정: 스터디 상세도 백오피스용 `GET /api/admin/studies/{studyId}` 를 따로 둔다. 운영 콘솔은 이 경로를, 사용자 사이트 상세는 캡틴·네비게이터에게만 DRAFT 를 보여 준다
+> 갱신: 2026-09-29 — **관객별 엔드포인트로 나눈다**: 백오피스가 부르는 것은 `/api/admin/studies`(`AdminStudyController`, 캡틴만), 사용자 사이트는 `/api/studies`. 두 관객이 다 하는 일(목록·상세·수정)만 경로가 둘이고 로직은 `StudyService` 를 공유한다. 등록·삭제·공개는 `/api/admin` 으로 옮긴다. 근거·순서: 아래 「관객별 엔드포인트」
 > 갱신: 2026-09-29 — **작성자(`CREATED_BY`) 추가 (제안 단계, 백엔드 미반영)**: 스터디를 등록한 계정을 서버가 기록한다. 운영 콘솔 목록에 「작성자」 열을 넣고 「출석률」 열을 뺐다 — [captain-list-all-studies PRD](../../planning/stories/captain-list-all-studies/PRD.md)
 > 갱신: 2026-09-30 — 스터디 상세 FE 구현 완료(`StudyDetailView` + `useStudyDetail` 훅이 `GET /api/studies/{studyId}` 를 직접 호출). `sort` 파라미터 없음 확정 — 목록은 항상 최신순 고정.
 
 ## 엔드포인트 목록
 
-| Method | Path                             | 설명                                       | 인증                | 상태                       |
-| ------ | -------------------------------- | ------------------------------------------ | ------------------- | -------------------------- |
-| GET    | /api/studies                     | 스터디 목록                                | X                   | 구현완료                   |
-| GET    | /api/studies/{studyId}           | 스터디 상세 조회                           | X                   | 구현완료                   |
-| GET    | /api/admin/studies               | 백오피스 스터디 목록 (DRAFT 포함)          | O (ADMIN)           | 구현완료                   |
-| POST   | /api/studies                     | 스터디 등록 (새 프로그램 · 클럽의 새 기수) | O (ADMIN)           | 스펙확정                   |
-| POST   | /api/studies/{studyId}/publish   | 스터디 공개 (= 모집 시작)                  | O (ADMIN)           | 스펙작성중                 |
-| POST   | /api/studies/{studyId}/unpublish | 공개 취소                                  | O (ADMIN)           | 스펙작성중                 |
-| PATCH  | /api/studies/{studyId}           | 스터디 수정                                | O (캡틴·네비게이터) | 구현완료 (`timezone` 제외) |
-| DELETE | /api/studies/{studyId}           | 스터디 삭제                                | O (캡틴)            | 구현완료                   |
+**사용자 사이트 — `/api/studies` (`StudyController`)**
+
+| Method | Path | 설명 | 인증 | 상태 |
+|--------|------|------|------|------|
+| GET | /api/studies | 스터디 목록 (DRAFT 제외) | X | 구현완료 |
+| GET | /api/studies/{studyId} | 스터디 상세 조회 — DRAFT 는 캡틴·그 스터디 네비게이터에게만, 그 밖엔 404 | 선택 | 구현완료 |
+| PATCH | /api/studies/{studyId} | 스터디 수정 (네비게이터가 맡은 스터디를) | O (캡틴·네비게이터) | 구현완료 (`timezone` 제외). 부르는 사이트 화면은 아직 없다 |
+
+**백오피스 — `/api/admin/studies` (`AdminStudyController`, 캡틴만)**
+
+| Method | Path | 설명 | 인증 | 상태 |
+|--------|------|------|------|------|
+| GET | /api/admin/studies | 스터디 목록 (DRAFT 포함, `status`·`offset`·`limit`) | O (ADMIN) | 구현완료 — 콘솔 목록은 아직 `/api/studies` 를 부른다 (교체 여부 팀 확인 중) |
+| GET | /api/admin/studies/{studyId} | 스터디 상세 (DRAFT 포함) | O (ADMIN) | 구현완료 — 콘솔 상세가 부른다 |
+| POST | /api/admin/studies | 스터디 등록 (새 프로그램 · 클럽의 새 기수) | O (ADMIN) | 구현완료 — 옛 `POST /api/studies` 는 없앴다 |
+| GET | /api/admin/study-programs | 프로그램 목록 (`studyKind` 필수). 등록 모달의 「기존 클럽의 새 기수」 드롭다운이 `CLUB` 으로 부른다 — `programId`·`title`·`latestStudyId` 만 준다 | O (ADMIN) | 구현완료 |
+| PATCH | /api/admin/studies/{studyId} | 스터디 수정 | O (ADMIN) | 구현완료 (`timezone` 제외) — 사이트용과 로직 공유, 콘솔 정보 탭이 부른다 |
+| DELETE | /api/admin/studies/{studyId} | 스터디 삭제 | O (ADMIN) | 구현완료 — 옛 `DELETE /api/studies/{studyId}` 는 없앴다 |
+| POST | /api/admin/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 스펙작성중 |
+| POST | /api/admin/studies/{studyId}/unpublish | 공개 취소 | O (ADMIN) | 스펙작성중 |
 
 신청 폼 설계 · 신청 제출 · 신청 결과 · 디스코드 연동은 [study-application/spec.md](../study-application/spec.md). 옛 경로 `PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form` 은 폐기.
+
+> 프로그램을 따로 등록·수정하는 길은 없다 — 프로그램은 제목·종류뿐이고 기수 없는 프로그램은 의미가 없어 생성은 스터디 등록이 함께 한다 ([STUDY_PROGRAM](../../docs/erd/STUDY_PROGRAM.md)). 위 목록 하나만 둔 이유다.
 
 > **STUDY_COHORT 폐기**: 이 스펙은 초기에 `STUDY_COHORT` 테이블을 별도로 두었으나, 실제 도메인 모델은 코호트 필드를 `STUDY` 에 통합했다. 모집 마감·정원은 `STUDY_RECRUITMENT` 가 담당한다.
 
@@ -34,6 +49,123 @@
 
 > 목록·상세 응답의 `recruitStatus`(모집중/모집마감 파생 판정)와 `currentApplicants`
 > 의 집계 기준은 [study-recruit-status/spec.md](../study-recruit-status/spec.md) 가 정본이다.
+
+### 관객별 엔드포인트
+
+> 규칙: [endpoint-convention](../../docs/backend-development-guide/api/endpoint-convention.md#관객으로-경로를-가른다--apiadmin) ·
+> [share/2026-09-24](../../share/2026-09-24-admin-api-path.md) · 권한: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
+
+**백오피스가 부르는 API 는 `/api/admin` 아래 둔다.** 백오피스에는 캡틴만 들어온다(POL-0001).
+**같은 일을 사용자 사이트에서도 하면 그 일만 경로를 하나 더 둔다** — 권한 판정이 다르기 때문이다.
+
+| 하는 일 | 백오피스 (캡틴) | 사용자 사이트 | 경로가 둘인 이유 / 하나인 이유 |
+|---|---|---|---|
+| 목록 | DRAFT 포함 | DRAFT 제외 | 보이는 범위와 조건·응답 모양이 다르다 |
+| 상세 | DRAFT 포함 | DRAFT 는 캡틴·그 스터디 네비게이터에게만 | 네비게이터는 백오피스에 못 들어와 사이트에서 맡은 스터디를 읽고 고친다. 그 밖의 사람에게 DRAFT 는 404 — `StudyApplicationFormService#getForm` 과 같은 방식 |
+| 수정 | 캡틴 | 캡틴 · 맡은 스터디의 네비게이터 | POL-0001 — 네비게이터도 「스터디 정보 수정」 권한이 있지만 백오피스엔 못 들어온다 |
+| 등록 · 삭제 · 공개 | 캡틴 | — | 캡틴만 하는 일(POL-0001 「사이트 전체」). 쓰지 않을 사이트 경로를 만들지 않는다 |
+
+**새 엔드포인트가 필요한 이유** ([common-guide](../../docs/common-guide.md) — 기존 API 로 안 되는 이유): 수정 경로 하나에
+「캡틴만」과 「캡틴·네비게이터」 두 판정이 섞이면 호출 화면으로 분기해야 한다 — 규약이 금지하는 권한 우회 지점이다.
+등록·삭제는 캡틴만 하는 일이라 백오피스 경로에만 둔다.
+
+**사이트 상세가 권한을 보는 이유**: 사이트 상세는 원래 공개 경로지만, 네비게이터가 맡은 DRAFT 스터디를 사이트에서 읽어야
+고칠 수 있다. 가르는 기준이 「어느 화면에서 불렀나」가 아니라 **「호출자가 누구인가」**(토큰의 계정)라서 규약이 금지하는
+분기가 아니다. 공개 경로에도 JWT 필터가 돌아 토큰이 있으면 계정을 안다. 권한이 없으면 403 이 아니라 **404** — 공개 전
+스터디가 있다는 사실도 드러내지 않는다.
+
+#### 구현 모양 — 로직은 공유, 권한 검사는 관객마다
+
+`StudyApplicationFormService` 와 같은 모양이다. 컨트롤러는 인증 주체를 꺼내 서비스의 **관객별 진입 메서드**를 부른다.
+진입 메서드가 권한을 검사하고, 본문은 **권한을 모르는 private 메서드**로 공유한다.
+
+```java
+// StudyService (api.study) — 관객별 진입 메서드: 권한 검사 → 공유 본문
+
+// 사이트 — DRAFT 가 아니면 누구나, DRAFT 는 캡틴·그 스터디 네비게이터만. 그 밖엔 404
+@Transactional(readOnly = true)
+public StudyDetailResponse getDetail(Long studyId, Long accountId) { // accountId: 비로그인이면 null
+    Study study = findAny(studyId);
+    if (study.getStatus() == StudyStatus.DRAFT
+            && !studyCaptainGuard.isCaptainOrNavigator(accountId, studyId)) {
+        throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
+    }
+    return toDetail(study);
+}
+
+// 백오피스 — 캡틴만. DRAFT 포함
+@Transactional(readOnly = true)
+public StudyDetailResponse getDetailForBackOffice(Long accountId, Long studyId) {
+    studyCaptainGuard.assertCaptain(accountId, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
+    return toDetail(findAny(studyId));
+}
+
+// 사이트 — 캡틴 또는 맡은 스터디의 네비게이터
+@Transactional
+public void updateFromSite(Long accountId, Long studyId, StudyUpdateRequest request) {
+    studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "스터디 수정 권한이 없습니다.");
+    applyUpdate(findAny(studyId), request);
+}
+
+// 백오피스 — 캡틴만
+@Transactional
+public void updateFromBackOffice(Long accountId, Long studyId, StudyUpdateRequest request) {
+    studyCaptainGuard.assertCaptain(accountId, "스터디 수정 권한이 없습니다.");
+    applyUpdate(findAny(studyId), request);
+}
+
+// create(accountId, request) · delete(accountId, studyId) — 캡틴 전용이라 진입 메서드 하나. 첫 줄이 assertCaptain
+
+// 공유 본문 — 권한 검사를 하지 않는다
+private void applyUpdate(Study study, StudyUpdateRequest request) {
+    // 검증 · 필드 반영 · 최신 모집 회차 UPDATE (지금 update 의 본문)
+}
+
+private StudyDetailResponse toDetail(Study study) {
+    return StudyDetailResponse.from(study, applicantCount(study), latestRecruitDeadlineAt(study));
+}
+```
+
+`findAny` 는 없으면 404 인 조회 헬퍼다. 상태를 먼저 봐서 공개 스터디에는 권한 조회를 하지 않는다. `isCaptainOrNavigator` 는 예외 대신 참·거짓을 돌려주는 `StudyCaptainGuard` 메서드다.
+
+- **공유 본문 안에 한쪽 관객의 규칙을 넣지 않는다.** 지금 `update` 는 안에서 `assertCaptainOrNavigator` 를 부른다 —
+  백오피스 경로가 이걸 그대로 부르면 네비게이터가 `/api/admin` 을 통과한다
+- 권한 검사는 전부 `StudyCaptainGuard` 로. 지금 `create`·`delete` 의 `SystemRole.ADMIN` 직접 비교는 `assertCaptain` 으로 바꾼다
+- 이름 접미사(`FromSite`·`FromBackOffice`·`ForBackOffice`)는 **경로가 둘인 일에만** 붙인다. 캡틴 전용인 `create`·`delete` 는 그대로
+- 요청 DTO(`StudyCreateRequest`·`StudyUpdateRequest`)와 상세 응답(`StudyDetailResponse`)은 두 경로가 같이 쓴다.
+  백오피스에만 필요한 필드가 생기면 그때 백오피스 응답을 따로 둔다 (목록은 이미 `BackofficeStudyListResponse` 로 따로다)
+- 컨트롤러·DTO·서비스는 모두 `api.study` 패키지 — [module-structure](../../docs/backend-development-guide/module-structure.md#package-convention)
+- 권한은 `@PreAuthorize(hasRole)` 가 아니라 `StudyCaptainGuard` 로 본다 — `hasRole` 로 올리는 건 [share/2026-09-24](../../share/2026-09-24-admin-api-path.md)에서 다음 작업으로 미뤘다
+
+#### 이전 순서
+
+스테이지가 중간에 깨지지 않게 **새 경로를 먼저 열고 → 화면을 옮기고 → 옛 경로를 닫는다.**
+
+1. ✅ **백엔드 — 추가**: `AdminStudyController` 에 `GET /{studyId}` · `POST` · `PATCH /{studyId}` · `DELETE /{studyId}`. 옛 경로는 그대로 둔다
+2. **백오피스 프론트**: `features/studies/queries.ts` 의 상세·수정·삭제를 `/api/admin/studies/{id}` 로 바꾼다.
+   ✅ 상세·수정·삭제는 옮겼다. **목록은 남았다** — `GET /api/admin/studies` 가 `status`·페이지를 지원하지만 교체 여부는 팀 확인 중이다.
+   등록 모달(`StudyCreateDialog`, `TODO(api)`)은 처음부터 `POST /api/admin/studies`
+3. ✅ **백엔드 — 제거**: `StudyController` 의 `POST` · `DELETE` 를 없앤다. `PATCH` 는 `updateFromSite` 로 연결.
+   옛 `POST` 는 부르는 화면이 없었고 옛 `DELETE` 를 부르던 콘솔은 2단계에서 같이 옮겨서, 과도기 없이 한 번에 뺐다
+4. ✅ **백엔드 — 사이트 상세 권한별 공개 범위**: DRAFT 는 캡틴·그 스터디 네비게이터에게만. 숨김(`IS_HIDDEN`)은 폐기 예정이라 보지 않는다.
+   (한때 상세를 사이트 경로 하나로 합쳤다가, 팀 결정으로 백오피스 상세를 다시 뒀다 — 2026-09-29)
+
+#### 테스트
+
+[testing-guide](../../docs/backend-development-guide/testing-guide.md) 대로 **엔드포인트마다** 통합 테스트 = 성공 1건 + 실패 코어.
+
+| 엔드포인트 | 성공 | 401 | 400 | 403 | 404 |
+|---|---|---|---|---|---|
+| `GET /api/admin/studies/{id}` | DRAFT 도 200 | 토큰 없음 | — | 크루 · **네비게이터** | 없는 id |
+| `POST /api/admin/studies` | 201 + `Location` | 토큰 없음 | 필수 누락 | 크루 · 네비게이터 | — |
+| `PATCH /api/admin/studies/{id}` | 204 | 토큰 없음 | 검증 실패 | 크루 · **네비게이터** | 없는 id |
+| `DELETE /api/admin/studies/{id}` | 204 | 토큰 없음 | — | 크루 · 네비게이터 | 없는 id |
+| `PATCH /api/studies/{id}` | 네비게이터 204 | 토큰 없음 | 검증 실패 | 크루 · 다른 스터디 네비게이터 | 없는 id |
+| `GET /api/studies/{id}` | 공개 200 · DRAFT 는 캡틴·그 스터디 네비게이터 200 | — | — | — (403 대신 404) | 없는 id · DRAFT 를 크루·다른 스터디 네비게이터·비로그인이 조회 |
+
+굵게 표시한 칸이 이번 분리의 핵심이다 — **네비게이터가 `/api/admin` 에서는 403** 이어야 한다.
+사이트 상세의 권한별 공개 범위는 `StudyDetailVisibilityIntegrationTest` 가 덮는다.
+진입 메서드별 역할 조합(캡틴·네비게이터·크루·비로그인)은 `StudyServiceTest` 단위 테스트로 덮는다.
 
 ---
 
@@ -93,14 +225,25 @@
 
 ---
 
+## 스터디 목록 조회 (백오피스)
+
+- **Method / Path**: `GET /api/admin/studies` — `AdminStudyController` · 구현완료
+- **인증**: `ACCOUNT.SYSTEM_ROLE=ADMIN` (`assertCaptain`)
+- **Query**: `category`(StudyCategory) · `studyKind`(STUDY/CLUB) · `status`(StudyStatus) — 모두 선택. `offset`(기본 0) · `limit`(기본 20) 페이지네이션 지원
+- **설명**: DRAFT 포함 전 상태. 등록 직후 스터디가 여기 나온다
+- **Response — 200**: `{ items: [{ studyId, title, status, category, studyKind, recruitmentCapacity, recruitmentStartAt, recruitDeadlineAt, startAt, timezone, hasApplicationForm }], total, offset, limit }` (`BackofficeStudyListResponse`)
+- **프론트엔드 사용처**: 아직 없음 — 콘솔 목록(`features/studies/queries.ts` `useStudies`)은 공개 `/api/studies` 를 부른다. 교체 여부는 팀 확인 중
+
+---
+
 ## 스터디 상세 조회
 
 ### 기본 정보
 
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}`
-- **인증**: 불필요 (공개)
-- **설명**: 스터디 ID 로 스터디 정보를 조회한다
+- **인증**: 선택 — 없어도 공개 스터디는 보인다. 토큰(헤더 또는 쿠키)이 있으면 캡틴·그 스터디 네비게이터인지 보고 DRAFT 도 보여 준다
+- **설명**: 스터디 ID 로 스터디 정보를 조회한다. 운영 콘솔은 아래 「스터디 상세 조회 (백오피스)」를 쓴다 ([사이트 상세가 권한을 보는 이유](#관객별-엔드포인트))
 
 ### Path Parameters
 
@@ -125,6 +268,7 @@
 {
   "id": 1,
   "programId": 1,
+  "programTitle": "알고리즘 스터디",
   "slug": "3f0c…",
   "title": "알고리즘 스터디",
   "oneLineSummary": "매주 알고리즘 문제를 풀고 코드 리뷰합니다.",
@@ -146,69 +290,88 @@
 }
 ```
 
-| 필드              | 타입    | NULL | 설명                                                                                                                                                                         | 소스                                                                                                                                                      |
-| ----------------- | ------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id                | Long    | N    | 스터디 ID                                                                                                                                                                    | STUDY.ID                                                                                                                                                  |
-| programId         | Long    | N    | 스터디 프로그램 ID                                                                                                                                                           | STUDY.PROGRAM_ID                                                                                                                                          |
-| title             | String  | N    | 스터디 제목                                                                                                                                                                  | STUDY.TITLE                                                                                                                                               |
-| oneLineSummary    | String  | N    | 한 줄 소개                                                                                                                                                                   | STUDY.ONE_LINE_SUMMARY                                                                                                                                    |
-| description       | String  | Y    | 상세 소개 (마크다운 허용. 등록 시 「목표 / 진행 방식 / 참가 대상 / 특이사항」 기본 템플릿)                                                                                   | STUDY.DESCRIPTION                                                                                                                                         |
-| category          | String  | N    | 분야 (enum). 유효값은 아래 표 참조                                                                                                                                           | STUDY.CATEGORY                                                                                                                                            |
-| studyKind         | String  | N    | STUDY / CLUB. 프로그램의 종류                                                                                                                                                | STUDY_PROGRAM.STUDY_KIND (PROGRAM_ID 로 조인)                                                                                                             |
-| thumbnailUrl      | String  | Y    | 썸네일                                                                                                                                                                       | STUDY.THUMBNAIL_URL                                                                                                                                       |
-| status            | String  | N    | 라이프사이클 (enum). DRAFT / OPEN / ONGOING / ENDED / CLOSED — [전이 규칙](../../docs/erd/STUDY.md#상태--status-운영진행-라이프사이클)                                       | STUDY.STATUS                                                                                                                                              |
-| recruitStatus     | String  | Y    | 모집 상태 (enum). `status != OPEN` 이면 null                                                                                                                                 | 계산: STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT 경과 또는 RECRUITMENT_CAPACITY 도달 (id 최대인 회차 기준) → [상세](../study-recruit-status/spec.md#판정-규칙) |
-| curriculum        | String  | Y    | 커리큘럼 JSON                                                                                                                                                                | STUDY.CURRICULUM                                                                                                                                          |
-| capacity          | Integer | Y    | 모집 정원. null = 제한 없음                                                                                                                                                  | STUDY_RECRUITMENT.RECRUITMENT_CAPACITY — id 최대인 회차 1건                                                                                               |
-| recruitDeadline   | String  | N    | 모집 마감 (ISO 8601 UTC). 상시 모집은 없다                                                                                                                                   | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — id 최대인 회차 1건                                                                                                |
-| schedule          | String  | Y    | 진행 일정 (자유 텍스트)                                                                                                                                                      | STUDY.SCHEDULE                                                                                                                                            |
-| timezone          | String  | Y    | 기준 시간대 (enum). `KST` / `PST` / `BOTH`(동시 진행). 운영자가 등록 폼에서 직접 고른다 — null 이면 사이트가 `schedule`/킥오프 문구로 추정하거나 「시간대 미정」으로 표시    | STUDY.TIMEZONE                                                                                                                                            |
-| startAt           | String  | Y    | 진행 시작 일시 (ISO 8601 UTC). `recruitDeadline`·`schedule` 과는 다른 값                                                                                                     | STUDY.START_AT                                                                                                                                            |
-| endAt             | String  | Y    | 종료일 (ISO 8601 UTC)                                                                                                                                                        | STUDY.END_AT                                                                                                                                              |
-| discordChannelUrl | String  | Y    | 참고용 채널 링크 하나(주로 로비). 없으면 사이트 기본 초대 링크로 안내. 자동화(채널 조회·삭제 감지)의 근거로 쓰지 않는다 — [상세](../../docs/erd/STUDY.md#채널-삭제와-closed) | STUDY.DISCORD_CHANNEL_URL                                                                                                                                 |
-| driveUrl          | String  | Y    | 참고용 자료 드라이브 링크                                                                                                                                                    | STUDY.DRIVE_URL                                                                                                                                           |
+| 필드 | 타입 | NULL | 설명 | 소스 |
+|------|------|------|------|------|
+| id | Long | N | 스터디 ID | STUDY.ID |
+| programId | Long | N | 스터디 프로그램 ID | STUDY.PROGRAM_ID |
+| programTitle | String | N | 프로그램 제목. 콘솔 정보 탭이 읽기 전용으로 표시 | STUDY_PROGRAM.TITLE (PROGRAM_ID 로 조인) |
+| title | String | N | 스터디 제목 | STUDY.TITLE |
+| oneLineSummary | String | N | 한 줄 소개 | STUDY.ONE_LINE_SUMMARY |
+| description | String | Y | 상세 소개 (마크다운 허용. 등록 시 「목표 / 진행 방식 / 참가 대상 / 특이사항」 기본 템플릿) | STUDY.DESCRIPTION |
+| category | String | N | 분야 (enum). 유효값은 아래 표 참조 | STUDY.CATEGORY |
+| studyKind | String | N | STUDY / CLUB. 프로그램의 종류 | STUDY_PROGRAM.STUDY_KIND (PROGRAM_ID 로 조인) |
+| thumbnailUrl | String | Y | 썸네일 | STUDY.THUMBNAIL_URL |
+| status | String | N | 라이프사이클 (enum). DRAFT / OPEN / ONGOING / ENDED / CLOSED — [전이 규칙](../../docs/erd/STUDY.md#상태--status-운영진행-라이프사이클) | STUDY.STATUS |
+| recruitStatus | String | Y | 모집 상태 (enum). `status != OPEN` 이면 null | 계산: STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT 경과 또는 RECRUITMENT_CAPACITY 도달 (id 최대인 회차 기준) → [상세](../study-recruit-status/spec.md#판정-규칙) |
+| curriculum | String | Y | 커리큘럼 JSON | STUDY.CURRICULUM |
+| capacity | Integer | Y | 모집 정원. null = 제한 없음 | STUDY_RECRUITMENT.RECRUITMENT_CAPACITY — id 최대인 회차 1건 |
+| recruitDeadline | String | N | 모집 마감 (ISO 8601 UTC). 상시 모집은 없다 | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT — id 최대인 회차 1건 |
+| schedule | String | Y | 진행 일정 (자유 텍스트) | STUDY.SCHEDULE |
+| timezone | String | Y | 기준 시간대 (enum). `KST` / `PST` / `BOTH`(동시 진행). 운영자가 등록 폼에서 직접 고른다 — null 이면 사이트가 `schedule`/킥오프 문구로 추정하거나 「시간대 미정」으로 표시 | STUDY.TIMEZONE |
+| startAt | String | Y | 진행 시작 일시 (ISO 8601 UTC). `recruitDeadline`·`schedule` 과는 다른 값 | STUDY.START_AT |
+| endAt | String | Y | 종료일 (ISO 8601 UTC) | STUDY.END_AT |
+| discordChannelUrl | String | Y | 참고용 채널 링크 하나(주로 로비). 없으면 사이트 기본 초대 링크로 안내. **사이트 상세는 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 채우고 그 밖엔 null** ([share](../../share/2026-09-30-study-detail-private-urls.md)). 자동화(채널 조회·삭제 감지)의 근거로 쓰지 않는다 — [상세](../../docs/erd/STUDY.md#채널-삭제와-closed) | STUDY.DISCORD_CHANNEL_URL |
+| driveUrl | String | Y | 참고용 자료 드라이브 링크. 사이트 상세의 채움 조건은 `discordChannelUrl` 과 같다 | STUDY.DRIVE_URL |
 
 > **소스**: 이 필드가 어느 테이블·컬럼에서 오는지. 계산 필드는 `계산: {로직}`
 
 #### category 유효값 (StudyCategory enum)
 
-| 코드        | 라벨          |
-| ----------- | ------------- |
-| `AI_ML`     | AI · ML       |
-| `CS`        | CS · 알고리즘 |
-| `DATA`      | 데이터        |
-| `BACKEND`   | 백엔드        |
-| `FRONTEND`  | 프론트엔드    |
-| `MOBILE`    | 모바일        |
-| `PLANNING`  | 기획          |
-| `PM`        | PM            |
-| `DESIGN`    | 디자인        |
-| `CAREER`    | 커리어        |
-| `LANGUAGE`  | 어학          |
-| `LIFESTYLE` | 라이프스타일  |
-| `BUSINESS`  | 비즈니스      |
-| `OTHER`     | 기타          |
+| 코드 | 라벨 |
+|------|------|
+| `AI_ML` | AI · ML |
+| `ALGORITHM` | 알고리즘 |
+| `DATA` | 데이터 |
+| `SOFTWARE` | 소프트웨어 개발 |
+| `CAREER` | 커리어 |
+| `BOOK_CLUB` | 북클럽 |
+| `LANGUAGE` | 어학 |
+| `LIFESTYLE` | 라이프스타일 |
+| `PRODUCT` | 기획 · PM |
+| `BUSINESS` | 비즈니스 |
+| `OTHER` | 기타 |
+
+> 2026-09-21 14종 → 11종으로 합쳤다 (CS → ALGORITHM, BACKEND·FRONTEND·MOBILE → SOFTWARE, PLANNING·PM → PRODUCT, DESIGN → OTHER). 정본은 `StudyCategory` enum. **단일 값** — 다중 주제는 지원하지 않는다.
 
 ### Error Responses
 
-| 상태 | errorCode | 조건                                    |
-| ---- | --------- | --------------------------------------- |
-| 404  | NOT_FOUND | studyId 에 해당하는 스터디 없음         |
-| 404  | NOT_FOUND | 스터디가 비공개 상태 (`STATUS = DRAFT`) |
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 404 | NOT_FOUND | studyId 에 해당하는 스터디 없음 |
+| 404 | NOT_FOUND | 공개 전(`STATUS = DRAFT`)인데 호출자가 캡틴도 그 스터디 네비게이터도 아님 (비로그인 포함). 403 이 아니다 |
 
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/studies/[id]/page.tsx` — 상세 페이지
 - `frontend/apps/core-front/src/lib/content.ts` — `getStudy(id)` mock 함수
-- `frontend/apps/back-office-front/src/app/studies/[id]/page.tsx` — 운영 콘솔 스터디 운영 페이지 (`useStudyDetail`, `features/studies/queries.ts`)
-  - ⚠️ 운영 콘솔도 이 공개용 GET 을 쓴다. 지금 구현은 숨김만 404 로 막아 DRAFT 도 보인다. 위 「공개 여부」대로 DRAFT 를 404 로
-    막으면 운영 콘솔에서 DRAFT 상세가 안 열린다 — 그 전에 `GET /api/admin/studies/{studyId}` 가 필요하다
+- 운영 콘솔은 이 경로를 쓰지 않는다 — 아래 `GET /api/admin/studies/{studyId}` 를 쓴다
+- 구현: `StudyService#getDetail(studyId, accountId)`. 공개 판정은 `STATUS != DRAFT` 하나 — `Study#isPubliclyVisible`(OPEN 만)과 다르다.
+  숨김(`IS_HIDDEN`)은 폐기 예정이라 상세에서는 보지 않는다. 목록(`StudyListJpqlDao`)은 아직 `isHidden = false` 를 걸어 두었다 — 컬럼을 없앨 때 함께 뺀다
 
 ### 미확정
 
 - [NEEDS CLARIFICATION] CLUB 에서 같은 STUDY_PROGRAM 아래 여러 STUDY 가 있을 때 어떤 기수를 기본으로 보여줄지 (현재는 studyId 직접 지정)
 - [NEEDS CLARIFICATION] `startAt` 이 비어 있는 기존 데이터의 처리 — 등록·수정 요청에는 필드가 생겼지만(위 참고), 이 필드가 생기기 전 데이터는 여전히 비어 있을 수 있다. playground mock 은 대표 날짜·킥오프 문구·모집 마감일로 값을 추정해 채운다(FE 전용 임시 처리) — 실제 데이터 백필 여부와 방법 미정. [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md) 참고
 - 공개 여부는 `STATUS != DRAFT` 로 정한다 — `DRAFT` 면 404, 아니면 조회 가능. 별도 숨김 플래그(`IS_HIDDEN`)는 없다. 모집 시작 일자(`START_AT`)는 판정에 쓰지 않는다 — [ERD](../../docs/erd/STUDY.md#공개-여부) 참고.
+
+---
+
+## 스터디 상세 조회 (백오피스)
+
+- **Method / Path**: `GET /api/admin/studies/{studyId}` — `AdminStudyController` · 구현완료
+- **인증**: `ACCOUNT.SYSTEM_ROLE=ADMIN` (`assertCaptain`)
+- **설명**: 사이트 상세와 같은 응답이되 **DRAFT 도 보여 준다.** 서비스 `getDetailForBackOffice` → 공유 본문 `toDetail`.
+  등록 응답의 `Location` 이 가리키는 곳
+- **Response — 200**: `StudyDetailResponse` (사이트 상세와 같다)
+- **Error Responses**
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 로그인 필요 |
+| 403 | FORBIDDEN | ADMIN 아님 (네비게이터 포함) |
+| 404 | NOT_FOUND | studyId 에 해당하는 스터디 없음 |
+
+- **프론트엔드 사용처**: `back-office-front` `features/studies/queries.ts` 의 `useStudyDetail`
 
 ---
 
@@ -232,8 +395,8 @@
 ### 기본 정보
 
 - **Method**: POST
-- **Path**: `/api/studies`
-- **인증**: 필요 — `ACCOUNT.SYSTEM_ROLE=ADMIN` 만 (지금 단계에서는 **캡틴 = 운영자**. 일반 회원에게 셀프서비스로 캡틴 자격을 여는 건 이후 Story)
+- **Path**: `/api/admin/studies` — `AdminStudyController`. 옛 `POST /api/studies` 는 없앴다
+- **인증**: 필요 — `ACCOUNT.SYSTEM_ROLE=ADMIN` 만 (`assertCaptain`) (지금 단계에서는 **캡틴 = 운영자**. 일반 회원에게 셀프서비스로 캡틴 자격을 여는 건 이후 Story)
 - **설명**: 캡틴(=ADMIN)이 새 스터디(`STUDY_PROGRAM.STUDY_KIND` 는 요청의 `studyKind`, 기본 `STUDY`, `STATUS=DRAFT`)를 등록한다. 프로그램은 따로 등록하지 않는다 — 새 프로그램이면 첫 기수와 함께 만들고, 클럽의 새 기수는 `studyProgramId` 로 붙인다. `STUDY_RECRUITMENT` 행 1개를 항상 함께 생성한다. `recruitDeadline` 은 필수다 — 상시 모집은 없다.
 
 ### Request Body
@@ -286,7 +449,7 @@
 응답 바디 없음. `Location` 헤더에 생성된 스터디 URI를 담는다.
 
 ```
-Location: /api/studies/{id}
+Location: /api/admin/studies/{id}
 ```
 
 ### Error Responses
@@ -301,7 +464,7 @@ Location: /api/studies/{id}
 
 ### 프론트엔드 사용처
 
-미확인 — 콘솔 프론트의 등록 모달 경로 확인 필요. 프로토타입: `frontend/apps/playground/src/proto/console/components/StudyCreateDialog.tsx`(등록 · 다음 기수 만들기), `StudyForm.tsx`
+`back-office-front` `components/StudyCreateDialog.tsx` — 아직 `TODO(api)`, 연결 시 `POST /api/admin/studies`. 프로토타입: `frontend/apps/playground/src/proto/console/components/StudyCreateDialog.tsx`(등록 · 다음 기수 만들기), `StudyForm.tsx`
 
 ### 미확정
 
@@ -324,7 +487,7 @@ Location: /api/studies/{id}
 
 ### 기본 정보
 
-- **Method / Path**: `POST /api/studies/{studyId}/publish` · `POST /api/studies/{studyId}/unpublish` (경로 형태는 미확정)
+- **Method / Path**: `POST /api/admin/studies/{studyId}/publish` · `POST /api/admin/studies/{studyId}/unpublish` — 캡틴 전용이라 `/api/admin` 만 (액션 경로 vs `PATCH` 상태 변경은 미확정)
 - **인증**: `ACCOUNT.SYSTEM_ROLE=ADMIN`
 - **Request Body**: 없음 · **Response**: 204
 
@@ -371,8 +534,14 @@ Location: /api/studies/{id}
 ### 기본 정보
 
 - **Method**: PATCH
-- **Path**: `/api/studies/{studyId}`
-- **인증**: 필요 — 캡틴(ADMIN) 또는 네비게이터 (미확정: 네비게이터의 맡은 스터디 범위 정의 필요)
+- **Path**: 관객마다 하나 — 요청·응답·검증은 같고 권한만 다르다 ([관객별 엔드포인트](#관객별-엔드포인트))
+
+| Path | 누가 | 서비스 진입 메서드 |
+|---|---|---|
+| `/api/admin/studies/{studyId}` | 캡틴만 (**신설**) — 운영 콘솔 정보 탭 | `updateFromBackOffice` → `assertCaptain` |
+| `/api/studies/{studyId}` | 캡틴 또는 맡은 스터디의 네비게이터 — 사용자 사이트 | `updateFromSite` → `assertCaptainOrNavigator` |
+
+- **인증**: 필요 — 위 표 (미확정: 네비게이터의 맡은 스터디 범위 정의 필요)
 - **설명**: 스터디 정보를 부분 수정한다. 전송한 필드만 반영하며, 누락한 필드는 기존 값을 유지한다. `recruitDeadline`·`capacity` 수정 시 **id 최대인(최신) `STUDY_RECRUITMENT`** 행을 UPDATE 한다 — 모집 회차가 여러 개(추가 모집)여도 지난 회차는 손대지 않는다.
 
 ### Path Parameters
@@ -430,7 +599,7 @@ Location: /api/studies/{id}
   `RECRUITMENT_CAPACITY` 로 옮기는 일은 읽는 쪽 전부와 함께 한 번에 한다 (스키마 정리 제안의 `STUDY.CAPACITY` 삭제와 같은 작업)
 - `timezone` 은 컬럼이 없어 받지 않는다 — 보내면 무시된다
 - 운영 콘솔(정보 탭)은 **바뀐 칸만** 보낸다. 마감이 지난 스터디의 다른 칸을 고칠 때 지난 `recruitDeadline` 을 다시 보내면 400 이다
-- 프론트엔드 사용처: `frontend/apps/back-office-front/src/components/StudyInfoTab.tsx` (DELETE 도 같은 파일)
+- 프론트엔드 사용처: `frontend/apps/back-office-front/src/components/StudyInfoTab.tsx` (DELETE 도 같은 파일) — 호출은 `features/studies/queries.ts` `useUpdateStudy`. `/api/admin/studies/{studyId}` 로 옮긴다
 
 ### Response — 204 No Content
 
@@ -438,12 +607,12 @@ Location: /api/studies/{id}
 
 ### Error Responses
 
-| 상태 | errorCode     | 조건                                                                                                                                                                                                                                                                    |
-| ---- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400  | INVALID_INPUT | 검증 실패 — title 60자 초과, oneLineSummary 빈 값, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거이거나 null, capacity 가 1 미만, timezone 이 유효하지 않은 enum 값, startAt·discordChannelUrl·driveUrl 형식 오류. 실패한 필드를 `필드명: 사유` 형태로 응답 |
-| 401  | UNAUTHORIZED  | 로그인 필요                                                                                                                                                                                                                                                             |
-| 403  | FORBIDDEN     | 권한 없음 (캡틴·네비게이터 아님)                                                                                                                                                                                                                                        |
-| 404  | NOT_FOUND     | studyId 에 해당하는 스터디 없음                                                                                                                                                                                                                                         |
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 400 | INVALID_INPUT | 검증 실패 — title 60자 초과, oneLineSummary 빈 값, category 가 유효하지 않은 enum 값, recruitDeadline 이 과거이거나 null, capacity 가 1 미만, timezone 이 유효하지 않은 enum 값, startAt·discordChannelUrl·driveUrl 형식 오류. 실패한 필드를 `필드명: 사유` 형태로 응답 |
+| 401 | UNAUTHORIZED | 로그인 필요 |
+| 403 | FORBIDDEN | `/api/admin` — ADMIN 아님(네비게이터 포함). `/api/studies` — 캡틴도 그 스터디 네비게이터도 아님 |
+| 404 | NOT_FOUND | studyId 에 해당하는 스터디 없음 |
 
 500(저장 실패)은 별도 errorCode 없이 처리.
 
@@ -469,8 +638,8 @@ Location: /api/studies/{id}
 ### 기본 정보
 
 - **Method**: DELETE
-- **Path**: `/api/studies/{studyId}`
-- **인증**: 필요 — 캡틴(ADMIN) 만. 크루 명단·출석 기록까지 함께 사라지므로 네비게이터는 불가
+- **Path**: `/api/admin/studies/{studyId}` — `AdminStudyController`. 캡틴 전용이라 사이트 경로는 두지 않는다. 옛 `DELETE /api/studies/{studyId}` 는 없앴다
+- **인증**: 필요 — 캡틴(ADMIN) 만 (`assertCaptain`). 크루 명단·출석 기록까지 함께 사라지므로 네비게이터는 불가
 - **설명**: 스터디와 그에 달린 모든 모집·참여·출석 기록을 영구 삭제한다. 소프트 삭제가 아닌 물리 삭제다. 클럽의 다른 기수(형제 `STUDY` 행)는 영향받지 않는다 — `STUDY_PROGRAM` 은 그대로 남는다.
 
 ### Path Parameters

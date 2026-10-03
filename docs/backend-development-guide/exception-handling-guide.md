@@ -56,6 +56,8 @@
 | `SIGNUP_REQUIRED` | 403 | 백오피스 로그인인데 계정이 없음. 만들지 않고 "먼저 서비스에서 로그인" 안내 |
 | `NOT_FOUND` | 404 | 리소스 없음 |
 | `CONFLICT` | 409 | 비즈니스 규칙 위반 (중복 신청, 마감된 스터디 등) |
+| `MEETING_ALREADY_STARTED` | 409 | 시작한 회차를 고치거나 지우려 함 ([회차 스펙](../../specs/study-meeting/spec.md)) |
+| `MEETING_DATE_CONFLICT` | 409 | 분반의 다른 회차와 같은 날 |
 | `EXTERNAL_SERVICE_ERROR` | 503 | 외부 연동 실패 (구글 OAuth 등) |
 | `INTERNAL_ERROR` | 500 | 예상하지 못한 오류 |
 

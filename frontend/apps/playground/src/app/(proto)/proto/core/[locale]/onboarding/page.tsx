@@ -244,7 +244,8 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
       setUser({
         id: -1001,
         email: 'crew@example.com',
-        name: draft.nickname.trim(),
+        nickname: draft.nickname.trim(),
+        picture: null,
         role: 'MEMBER',
         timeZone: draft.timeZone,
         onboardingCompletedAt: new Date().toISOString(),

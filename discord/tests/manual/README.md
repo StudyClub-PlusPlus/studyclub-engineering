@@ -7,9 +7,19 @@
 2. **Discord 서비스 API** ([`docs/discord-development-guide/api/`](../../../docs/discord-development-guide/api/))
    9개 엔드포인트를 호출하고 요청·응답 원문을 보여 준다.
 
-> ⚠️ 그 9개는 **아직 구현 전이다** (`app/api/routes/` 에는 `health` · `ping` 뿐).
-> 지금 보내면 전부 404 다 — 구현되는 대로 여기서 바로 확인하라고 만든 도구다.
-> `X-API-Key` 인증도 아직 서버에 없어서 관련 토글은 당분간 아무 차이를 만들지 않는다.
+> ⚠️ **9개 중 5개가 구현됐다.** `create-study` · `get-study-channels` · `send-message` ·
+> `send-alert-message` · `send-announcement-message` 는 실제로 응답한다
+> (`app/api/routes/studies.py` · `channels.py`).
+>
+> **역할 4개**(`assign-role` · `remove-role` · `assign-navigator-role` ·
+> `remove-navigator-role`)는 아직 없다 — 보내면 **404** 다. 구현되는 대로 여기서 바로
+> 확인하라고 만든 도구다.
+>
+> `X-API-Key` 검사는 구현된 5개에 전부 걸려 있다 (`app/api/headers.py` 의
+> `require_api_key`), 그래서 상단 토글은 실제로 **401** 을 만든다. 단 **없는 경로에는
+> 401 보다 404 가 먼저** 나간다 — 라우트가 없으면 의존성이 돌기 전에 끝난다
+> ([common-header.md](../../../docs/discord-development-guide/api/common-header.md) 참고).
+> `health` 만 키 없이 열려 있다.
 
 **pytest 대상이 아니다.** `pytest.ini` 의 `norecursedirs` 로 수집에서 빠져 있다.
 
@@ -37,7 +47,7 @@ Discord 가 `invalid_redirect_uri` 로 막는다.
 
 값은 요청마다 다시 읽는다 — `.env` 를 고쳤으면 페이지만 새로고침하면 된다 (파일 값이 우선한다).
 
-> `DISCORD_TOKEN` · `DISCORD_PORT` · `DISCORD_BOT_OUTPUT_CHANNEL` 은 **서비스** 설정이라 계속
+> `DISCORD_TOKEN` · `DISCORD_PORT` · `DISCORD_BOT_CHANNEL_ID` 은 **서비스** 설정이라 계속
 > 루트 `.env` 에 있다. 여기 것과 섞지 않는다.
 
 ## 실행
@@ -52,7 +62,8 @@ python tests/manual/server.py
 서버는 `tests/manual/.env` 를 읽는다 — 어디서 실행하든 파일 위치 기준이다.
 
 `http://localhost:8900` 을 연다. 테스트 대상(`python -m app.main` 또는 `docker compose up discord`)은
-따로 띄워 둔다 — 페이지 상단 `target` 에서 `4800`(직접 실행) / `24800`(도커) 를 고른다.
+따로 띄워 둔다 — 페이지 상단 `target` 칸이 그 주소다. `.env` 의 `DISCORD_API_BASE_URL` 로
+채워지고 그 자리에서 고쳐 쓸 수 있다 (`4800` = 직접 실행, `24800` = 도커).
 
 ## OAuth2 flow
 
@@ -114,5 +125,6 @@ Next 가 `code` 를 Spring 에 넘기고 **Spring 이** 교환·계정 매핑·�
 ## 나중에
 
 시나리오 체인(`create-study` → `get-study-channels` → `send-message` 로 ID 를 이어서 넘기는 버튼)은
-엔드포인트가 구현되면 추가한다. `app.js` 의 `ENDPOINTS` 배열이 패널을 만들고,
-`call()` 이 한 번의 호출을 담당한다 — 체인은 `call()` 을 순서대로 부르면 된다.
+아직 없다. **그 세 엔드포인트는 이제 다 구현돼 있으니 막는 것은 없다** — 손이 가면 만든다.
+`app.js` 의 `ENDPOINTS` 배열이 패널을 만들고, `call()` 이 한 번의 호출을 담당한다 —
+체인은 `call()` 을 순서대로 부르면 된다.

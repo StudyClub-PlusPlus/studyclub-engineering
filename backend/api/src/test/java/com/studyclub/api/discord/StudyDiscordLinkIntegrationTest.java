@@ -251,7 +251,7 @@ class StudyDiscordLinkIntegrationTest {
     private Long createStudy(String title) {
         var response =
                 rest.postForEntity(
-                        "/api/studies",
+                        "/api/admin/studies",
                         authenticated(
                                 ADMIN_ID,
                                 Map.of(

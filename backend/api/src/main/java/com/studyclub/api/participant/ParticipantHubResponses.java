@@ -1,7 +1,10 @@
 package com.studyclub.api.participant;
 
 import com.studyclub.domain.attendance.AttendanceStatus;
+import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.study.StudyCategory;
+import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -11,30 +14,48 @@ public final class ParticipantHubResponses {
 
     private ParticipantHubResponses() {}
 
-    public record ParticipantHubOverviewResponse(
-            List<ParticipatingStudySummary> activeStudies,
-            List<ParticipatingStudySummary> pastStudies,
-            List<StudyApplicationSummary> applications,
-            List<UpcomingStudyMeeting> upcomingMeetings,
-            List<BookmarkedStudySummary> bookmarks) {}
+    /** 내 스터디 목록 — specs/my-studies/spec.md. */
+    public record MyStudyListResponse(List<MyStudy> items) {}
 
-    public record ParticipatingStudySummary(
-            Long cohortId,
+    /**
+     * 회원 탈퇴 화면의 "맡은 진행 중인 스터디" 경고(specs/user-leave/spec.md)도 이 목록을 그대로 쓴다 — {@code participantRole
+     * IN (LEADER, CO_LEADER)} 이고 {@code relation == ONGOING} 인 행이 있으면 경고를 띄운다 (판정 로직은 프론트, {@code
+     * lib/me.ts: getActiveNavigatorStudies}).
+     */
+    public record MyStudy(
             Long studyId,
             String title,
+            StudyCategory category,
+            StudyKind studyKind,
+            Instant startAt,
+            Instant endAt,
+            MyStudyRelation relation,
             ParticipantStatus participantStatus,
-            Integer attendanceRate,
-            Instant nextMeetingAt,
-            String thumbnailUrl) {}
+            ParticipantRole participantRole,
+            String discordChannelUrl,
+            String driveUrl,
+            Double attendanceRate,
+            List<MyStudyMeeting> meetings) {}
 
-    public record StudyApplicationSummary(
-            Long id, Long cohortId, Long studyId, String studyTitle, Instant appliedAt) {}
+    public record MyStudyMeeting(
+            Long meetingId,
+            int sequence,
+            Instant scheduledAt,
+            Instant startAt,
+            Instant endAt,
+            AttendanceStatus attendanceStatus,
+            boolean countedInRate) {}
+
+    /** 나와의 관계 — 화면의 참여 상태 탭·배지. */
+    public enum MyStudyRelation {
+        UPCOMING,
+        ONGOING,
+        COMPLETED,
+        WITHDRAWN
+    }
 
     public record UpcomingStudyMeeting(
             Long id, Long cohortId, Long studyId, String studyTitle, Instant scheduledAt) {}
-
-    public record BookmarkedStudySummary(
-            Long id, Long studyId, String studyTitle, String thumbnailUrl) {}
 
     public record ParticipatingStudyDetailResponse(
             Long cohortId,

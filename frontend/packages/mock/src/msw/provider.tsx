@@ -47,6 +47,8 @@ interface MSWProviderProps {
   loadWorker: () => Promise<SetupWorker>;
   children: React.ReactNode;
   fallback?: React.ReactNode;
+  /** 기본은 개발 서버에서만 켠다. 백엔드 없이 배포되는 앱(playground)은 true 로 넘긴다. */
+  enabled?: boolean;
 }
 
 export function MSWProvider({
@@ -54,16 +56,16 @@ export function MSWProvider({
   loadWorker,
   children,
   fallback = null,
+  enabled = process.env.NODE_ENV === 'development',
 }: MSWProviderProps) {
-  const isDev = process.env.NODE_ENV === 'development';
-  const [ready, setReady] = useState(!isDev);
+  const [ready, setReady] = useState(!enabled);
   const [handlerConfig, setHandlerConfig] = useState<HandlerConfig>(() =>
-    isDev ? defaultConfig(mockHandlerGroups) : {},
+    enabled ? defaultConfig(mockHandlerGroups) : {},
   );
   const workerRef = useRef<SetupWorker | null>(null);
 
   useEffect(() => {
-    if (!isDev) return;
+    if (!enabled) return;
     const config = loadConfig(mockHandlerGroups);
     setHandlerConfig(config);
 
@@ -83,7 +85,7 @@ export function MSWProvider({
       isSubscribed = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDev]);
+  }, [enabled]);
 
   const applyConfig = (next: HandlerConfig) => {
     setHandlerConfig(next);
@@ -116,7 +118,7 @@ export function MSWProvider({
   return (
     <MSWContext.Provider value={{ mockHandlerGroups, handlerConfig, setPreset, toggleHandler }}>
       {children}
-      {isDev && <MSWDevtool />}
+      {enabled && <MSWDevtool />}
     </MSWContext.Provider>
   );
 }

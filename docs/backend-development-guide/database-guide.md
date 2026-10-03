@@ -4,6 +4,7 @@
 
 - [스키마의 정본은 마이그레이션이다](#스키마의-정본은-마이그레이션이다)
 - [마이그레이션 작성 규칙](#마이그레이션-작성-규칙)
+  - [번호 충돌은 git 이 안 막아준다](#번호-충돌은-git-이-안-막아준다)
 - [테이블·컬럼 이름 규칙](#테이블컬럼-이름-규칙)
 - [외래키 정책](#외래키-정책)
 - [로컬 개발](#로컬-개발)
@@ -72,18 +73,57 @@ stage DB 는 누적된 상태라 "우연히 되는" 경우가 생긴다.
 ## 마이그레이션 작성 규칙
 
 ```
-backend/api/src/main/resources/db/migration/
+backend/domain/src/main/resources/db/migration/        ← 대부분 여기
   V1__init.sql
-  V2__add_study.sql
+  V2__domain_tables.sql
+backend/notification/src/main/resources/db/migration/  ← 알림 모듈도 쓴다
+  V14__notification_schema.sql
 ```
 
+⚠️ **모듈이 둘인데 버전 공간은 하나다.** `application.yml` 의 `flyway.locations` 가
+`classpath:db/migration` **하나**이고 두 모듈이 거기에 기여한다. 즉 **디렉토리가 달라도
+번호가 겹치면 터진다.** (2026-10-03 기준 domain `V1~V13`·`V15~V25` + notification `V14`)
+
 1. **이름은 `V{번호}__{스네이크_설명}.sql`.** 번호는 이어서 증가. 밑줄 두 개(`__`)다.
+   정수만 쓴다 — 소수 버전(`V22.1`)도 접두 0(`V026`)도 안 된다.
+   Flyway 는 `V026` 과 `V26` 을 **같은 26** 으로 본다.
 2. **적용된 마이그레이션은 절대 수정하지 않는다.** Flyway 는 체크섬을 저장하므로
    고치면 다음 배포가 `Migration checksum mismatch` 로 실패한다. 고칠 게 있으면 **다음 번호**를 추가한다.
 3. **엔티티와 마이그레이션을 같은 PR 에 넣는다.** 둘이 갈리면 `validate` 가 배포 시점에 터진다.
 4. **되돌리는 마이그레이션은 쓰지 않는다** (`undo` 미사용). 실수는 앞으로 가는 마이그레이션으로 고친다.
 5. **데이터가 있는 테이블에 `NOT NULL` 컬럼을 한 번에 추가하지 않는다.**
    `nullable 추가 → 백필 → NOT NULL 로 변경` 세 단계로 나눈다.
+6. **번호가 겹치면 늦게 머지하는 쪽이 올린다.** 먼저 양보할 필요 없다 — CI 가 알려준다.
+
+### 번호 충돌은 git 이 안 막아준다
+
+Flyway 는 파일 **이름**이 아니라 `V` 뒤의 **숫자**로 구분한다. 두 PR 이 각각
+`V26__a.sql` · `V26__b.sql` 을 추가하면
+
+1. 서로 다른 파일이라 **git 충돌이 안 난다**
+2. 각 PR 의 CI 는 자기 브랜치 기준이라 **둘 다 통과한다**
+3. 둘 다 머지되고 나서 **부팅에서 처음 터진다**
+   (`Found more than one migration with version 26`)
+
+터지는 지점이 "머지 후" 라서, 발견하는 사람은 그 충돌을 만든 사람이 아니다.
+
+**푸시 전에 직접 돌려 보면 된다** (수 초, 다음 쓸 번호도 알려준다):
+
+```bash
+bash backend/scripts/check-migration-versions.sh
+# ✓ 마이그레이션 25개 · 번호 중복 없음 · 최신 V25 → 다음은 V26
+```
+
+CI 는 같은 스크립트를 PR 마다 돌린다(`migration-version` 워크플로). 이 체크는
+`beta` 브랜치 보호의 **필수 조건**이고 "Require branches to be up to date" 가 켜져 있다 —
+그래서 머지 버튼을 누르기 전에 **최신 base 기준으로 다시 검사**된다. 둘이 한 쌍이어야
+작동한다. base 가 움직여도 워크플로가 자동 재실행되지는 않아서, up-to-date 요구가
+없으면 검사 결과가 낡는다.
+
+무거운 `backend-migration-check`(빈 MySQL 부팅 ≈ 2분)는 **필수로 올리지 않았다.**
+up-to-date 를 요구하면 누가 머지할 때마다 다른 PR 들의 필수 체크가 전부 다시 도는데,
+그 비용이 2분이면 사람이 기다리기를 포기한다. 번호 충돌은 가벼운 검사가 다 잡고,
+SQL 자체 오류는 `beta` push 에서 잡는다.
 
 ## 테이블·컬럼 이름 규칙
 

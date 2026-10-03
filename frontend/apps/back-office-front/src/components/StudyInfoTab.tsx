@@ -74,7 +74,7 @@ export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
 
   return (
     <div className='card px-6 py-5'>
-      <StudyForm value={form} errors={errors} onChange={change} />
+      <StudyForm mode='edit' value={form} errors={errors} onChange={change} />
 
       <div className='mt-6 flex items-center gap-3 border-t border-border pt-4'>
         {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}

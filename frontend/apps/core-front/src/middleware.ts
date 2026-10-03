@@ -2,7 +2,8 @@
 //  1. 로케일 없는 경로(`/`, `/studies`)를 기본 로케일로 리다이렉트
 //     — 루트 레이아웃이 `app/[locale]/layout.tsx` 라서 로케일 없는 경로는 렌더할 레이아웃이 없다.
 //       덤으로 `/studies` 같은 외부 링크가 404 대신 정상 페이지로 착지한다(SEO).
-//  2. 수강생 영역(/:locale/my) 로그인 게이팅 — access 쿠키(sc_access_token)가 없으면 /login 으로.
+//  2. 수강생 영역(/:locale/my) · 온보딩 로그인 게이팅 — access 쿠키(sc_access_token)가 없으면 /login 으로.
+//     온보딩 완료 여부는 쿠키만으로 알 수 없어, 미완료 분기는 로그인 응답·온보딩 페이지에서 처리한다.
 import { NextRequest, NextResponse } from 'next/server';
 
 import { DEFAULT_LOCALE, isLocale } from '@/lib/i18n';
@@ -19,15 +20,20 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // /:locale/my 이하만 게이트
+  // /:locale/my · /:locale/onboarding 게이트
   const rest = pathname.slice(first.length + 1);
-  if (!(rest === '/my' || rest.startsWith('/my/'))) return NextResponse.next();
+  const gated =
+    rest === '/my' ||
+    rest.startsWith('/my/') ||
+    rest === '/onboarding' ||
+    rest.startsWith('/onboarding/');
+  if (!gated) return NextResponse.next();
 
   if (req.cookies.get(ACCESS_COOKIE)?.value) return NextResponse.next();
 
   const url = req.nextUrl.clone();
   url.pathname = `/${first}/login`;
-  url.search = `?next=${encodeURIComponent(pathname)}`;
+  url.search = `?next=${encodeURIComponent(pathname + (req.nextUrl.search || ''))}`;
   return NextResponse.redirect(url);
 }
 

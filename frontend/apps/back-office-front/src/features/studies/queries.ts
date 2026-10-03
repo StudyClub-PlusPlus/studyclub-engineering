@@ -8,6 +8,8 @@ import {
   toRow,
   type ApiStudyDetail,
   type ApiStudyPage,
+  type ApiStudyProgram,
+  type StudyCreatePayload,
   type StudyFilter,
   type StudyRow,
   type StudyUpdatePayload,
@@ -24,11 +26,33 @@ export const studyKeys = {
   detail: (studyId: number) => [...studyKeys.all, 'detail', studyId] as const,
 };
 
+/** 프로그램 목록은 스터디 목록과 따로 무효화된다 — 등록으로 늘어나는 건 같지만 필터·페이지가 없다. */
+export const programKeys = {
+  all: ['study-programs'] as const,
+  clubs: () => [...programKeys.all, 'CLUB'] as const,
+};
+
 /**
- * ⚠️ TODO(api): GET /api/admin/studies 로 전환 필요 (PR #146 로 구현 완료).
- * 현재는 사용자용 `/api/studies` 를 임시 사용 중 — DRAFT 스터디가 목록에 안 나온다.
- * 전환 시 ApiStudySummary 타입도 BackofficeStudyListResponse.StudySummary 에 맞게 교체할 것:
- * status(5단계), recruitmentCapacity, recruitmentStartAt, hasApplicationForm 필드 추가,
+ * 기수를 붙일 수 있는 클럽 목록. 등록 모달이 열려 있을 때만 쓰므로 `enabled` 로 꺼 둔다 —
+ * 정보 탭에서는 부를 이유가 없다.
+ */
+export function useClubPrograms(enabled: boolean) {
+  return useQuery({
+    queryKey: programKeys.clubs(),
+    queryFn: () =>
+      http<{ items: ApiStudyProgram[] }>('/api/admin/study-programs?studyKind=CLUB'),
+    select: (page) => page.items,
+    enabled,
+  });
+}
+
+/**
+ * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 목록은 아직 **사용자 사이트용 목록 API** 를 쓴다.
+ * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외).
+ * `GET /api/admin/studies` 가 status·페이지·total 을 지원하므로 교체할 수 있다 (PR #146 로 구현 완료).
+ * 전환 시 `fetchStudies`·`toRow` 와 함께 ApiStudySummary 타입도
+ * BackofficeStudyListResponse.StudySummary 에 맞게 바꾼다:
+ * status(5단계)·recruitmentCapacity·recruitmentStartAt·hasApplicationForm 추가,
  * slug·phase·currentApplicants·closingSoon 제거.
  */
 function fetchStudies(filter: StudyFilter): Promise<ApiStudyPage> {
@@ -51,26 +75,45 @@ export function useStudies(filter: StudyFilter) {
 }
 
 /**
- * 상세·수정·삭제는 `/api/studies/{id}` 를 그대로 쓴다. 권한은 서버가 나눈다 — 수정은 캡틴·네비게이터,
- * 삭제는 캡틴만. 같은 로직을 `/api/admin` 에 한 벌 더 두지 않는다.
- * TODO(api): GET /api/studies/{studyId}
+ * 상세·수정·삭제는 백오피스 경로(`/api/admin/studies/{id}`)를 쓴다 — 캡틴만 통과하고, 상세는 DRAFT 도 보인다.
+ * 사용자 사이트(`/api/studies/{id}`)는 네비게이터용 상세·수정을 따로 받는다. 서버 로직은 같다.
  */
 export function useStudyDetail(studyId: number) {
   return useQuery({
     queryKey: studyKeys.detail(studyId),
-    queryFn: () => http<ApiStudyDetail>(`/api/studies/${studyId}`),
+    queryFn: () => http<ApiStudyDetail>(`/api/admin/studies/${studyId}`),
     retry: false,
   });
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+/**
+ * 스터디 등록. 201 은 바디가 없고 `Location` 헤더만 온다 — 만들어진 id 가 필요하면 거기서 읽는다.
+ * 새 프로그램을 만들었을 수도 있어 클럽 목록도 함께 무효화한다.
+ */
+export function useCreateStudy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: StudyCreatePayload) =>
+      http<null>('/api/admin/studies', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: programKeys.all });
+      return queryClient.invalidateQueries({ queryKey: studyKeys.all });
+    },
+  });
+}
+
 /** TODO(api): PATCH /api/studies/{studyId} */
 export function useUpdateStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: StudyUpdatePayload) =>
-      http<null>(`/api/studies/${studyId}`, {
+      http<null>(`/api/admin/studies/${studyId}`, {
         method: 'PATCH',
         headers: JSON_HEADERS,
         body: JSON.stringify(payload),
@@ -84,7 +127,7 @@ export function useUpdateStudy(studyId: number) {
 export function useDeleteStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => http<null>(`/api/studies/${studyId}`, { method: 'DELETE' }),
+    mutationFn: () => http<null>(`/api/admin/studies/${studyId}`, { method: 'DELETE' }),
     onSuccess: () => {
       // 지워진 상세를 다시 불러오면 404 다 — 무효화하지 않고 캐시에서 뺀다
       queryClient.removeQueries({ queryKey: studyKeys.detail(studyId) });
