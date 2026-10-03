@@ -180,21 +180,34 @@ GRAFANA_URL=... GRAFANA_TOKEN=... \
 
 ## 배포
 
-[`.github/workflows/observability.yaml`](../.github/workflows/observability.yaml)
+워크플로는 **둘이다** —
+[`observability-dashboards.yaml`](../.github/workflows/observability-dashboards.yaml) ·
+[`observability-alerting.yaml`](../.github/workflows/observability-alerting.yaml)
+
+왜 갈랐나 — 하나에 묶여 있을 때 가드가 시크릿 6개를 전부 요구했다. **알림용 토큰
+하나가 없으면 대시보드 반영까지 같이 건너뛰었다.** 대시보드는 그 토큰이 필요 없다.
+`needs: lint` 도 같은 결합이었다(알림 lint 가 깨지면 대시보드 반영이 통째로 막힌다).
+갈라 두면 필요한 시크릿도(대시보드 2개 / 알림 6개) 실패 반경도 따로 간다.
 
 | 트리거 | 하는 일 | 토큰 |
 |---|---|---|
-| `beta`·`develop`·`main` 으로의 PR | lint 만 (대시보드 + 알림) | **없음** |
-| `beta` push | lint 만 | **없음** |
-| `develop` push | lint → 대시보드(drift→push→확인) → 알림(drift→push→확인) | Environment `stage` |
-| `main` push | 〃 | Environment `production` |
+| 트리거 | 대시보드 워크플로 | 알림 워크플로 |
+|---|---|---|
+| PR (`beta`·`develop`·`main`) | lint 만, 토큰 없음 | lint 만, 토큰 없음 |
+| `beta` push | lint 만 | lint 만 |
+| `develop` push | drift → push → 확인 (`stage`) | 〃 (`stage`) |
+| `main` push | 〃 (`production`) | 〃 (`production`) |
+
+`paths` 가 갈려 있어서 **대시보드만 고치면 알림 워크플로는 아예 안 돈다.**
+공용 `grafana.mjs` 를 고치면 둘 다 돈다.
 
 반영 잡은 네 단계다 — **덮기 전에 drift 를 먼저 보고**, 반영한 뒤 **같은 도구로 되읽어
 확인한다.** `POST` 가 200 이었다는 것은 반영됐다는 뜻이 아니다(Grafana 는 잘못된 설정도
 200 으로 받는다).
 
-Environment 시크릿 여섯 개가 필요하다 — `GRAFANA_URL` · `GRAFANA_SA_TOKEN` ·
-`DS_PROMETHEUS_UID` · `DS_LOKI_UID` · `DISCORD_BOT_TOKEN` · `DISCORD_CHANNEL_ID`.
+Environment 시크릿 — **대시보드는 2개**(`GRAFANA_URL` · `GRAFANA_SA_TOKEN`),
+**알림은 거기에 4개 더**(`DS_PROMETHEUS_UID` · `DS_LOKI_UID` · `DISCORD_BOT_TOKEN` ·
+`DISCORD_CHANNEL_ID`). `GRAFANA_ENV` 는 시크릿이 아니라 브랜치에서 도출한다.
 **주소까지 시크릿으로 둔다**: 워크플로 로그도 공개되므로 시크릿이어야 마스킹된다.
 시크릿이 없는 환경에서는 **빨간 체크 대신 "건너뜀" 요약**을 남긴다 — "설정이 안 됐다" 와
 "반영이 실패했다" 는 구분되어야 한다.
