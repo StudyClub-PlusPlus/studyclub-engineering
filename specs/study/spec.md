@@ -36,8 +36,8 @@
 | GET | /api/admin/study-programs | 프로그램 목록 (`studyKind` 필수). 등록 모달의 「기존 클럽의 새 기수」 드롭다운이 `CLUB` 으로 부른다 — `programId`·`title`·`latestStudyId` 만 준다 | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId} | 스터디 수정 | O (ADMIN) | 구현완료 (`timezone` 제외) — 사이트용과 로직 공유, 콘솔 정보 탭이 부른다 |
 | DELETE | /api/admin/studies/{studyId} | 스터디 삭제 | O (ADMIN) | 구현완료 — 옛 `DELETE /api/studies/{studyId}` 는 없앴다 |
-| POST | /api/admin/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 스펙작성중 |
-| POST | /api/admin/studies/{studyId}/unpublish | 공개 취소 | O (ADMIN) | 스펙작성중 |
+| POST | /api/admin/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 스펙확정 |
+| POST | /api/admin/studies/{studyId}/unpublish | 공개 취소 | O (ADMIN) | 스펙확정 |
 
 신청 폼 설계 · 신청 제출 · 신청 결과 · 디스코드 연동은 [study-application/spec.md](../study-application/spec.md). 옛 경로 `PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form` 은 폐기.
 
@@ -483,38 +483,87 @@ Location: /api/admin/studies/{id}
 
 ## 스터디 공개 · 공개 취소
 
-> 유저스토리: 운영자(ADMIN)가 등록해 둔 스터디를 공개(= 모집 시작)하거나 내린다. **스펙작성중 — 제안 단계.**
+> 유저스토리: 운영자(ADMIN)가 등록해 둔 스터디를 공개(= 모집 시작)하거나 내린다.
 
 ### 기본 정보
 
-- **Method / Path**: `POST /api/admin/studies/{studyId}/publish` · `POST /api/admin/studies/{studyId}/unpublish` — 캡틴 전용이라 `/api/admin` 만 (액션 경로 vs `PATCH` 상태 변경은 미확정)
-- **인증**: `ACCOUNT.SYSTEM_ROLE=ADMIN`
-- **Request Body**: 없음 · **Response**: 204
+| | publish | unpublish |
+|---|---|---|
+| Method | POST | POST |
+| Path | `/api/admin/studies/{studyId}/publish` | `/api/admin/studies/{studyId}/unpublish` |
+| 인증 | `ACCOUNT.SYSTEM_ROLE=ADMIN` | `ACCOUNT.SYSTEM_ROLE=ADMIN` |
+| Request Body | 없음 | 없음 |
+| Response | 204 No Content | 204 No Content |
+
+캡틴 전용이라 `/api/admin` 만 둔다. 네비게이터 불가. 서버에 확인 단계 없음 (확인 팝업은 FE 절차).
 
 ### 동작
 
-| 동작      | 조건                                               | 결과                                                               |
-| --------- | -------------------------------------------------- | ------------------------------------------------------------------ |
-| 공개      | `STATUS=DRAFT`, 신청 폼(`APPLICATION_FORM`)이 있음 | `STATUS=OPEN`, 최신 모집 회차의 `START_AT` = now. 예약 공개는 없다 |
-| 공개 취소 | `STATUS=OPEN`                                      | `STATUS=DRAFT`, `START_AT` = null                                  |
+| 동작 | 선행 조건 | 결과 |
+|------|-----------|------|
+| publish (공개) | `STATUS=DRAFT` AND `APPLICATION_FORM.questions` ≥ 1 | `STATUS=OPEN`, 최신 회차(id MAX) `STUDY_RECRUITMENT.START_AT = now()` |
+| unpublish (공개 취소) | `STATUS=OPEN` | `STATUS=DRAFT`, 최신 회차 `STUDY_RECRUITMENT.START_AT = null`. 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
 
-- 공개 = 모집 시작. 사이트 노출 여부는 `STATUS != DRAFT` 하나로 정한다 — `START_AT` 은 이 액션이 함께
-  채우는 사실 데이터일 뿐, 노출 판정의 근거는 아니다 ([ERD](../../docs/erd/STUDY.md#공개-여부)).
-- 프로토타입은 공개·공개 취소 모두 확인 팝업을 거친다. 서버는 별도 확인 절차를 두지 않는다.
+- 공개 = 모집 시작. 사이트 노출 여부는 `STATUS != DRAFT` 단일 판정.
+- `START_AT` 은 "모집이 언제 시작됐는가"라는 사실 데이터 — 노출 판정의 근거가 아님 ([ERD](../../docs/erd/STUDY.md#공개-여부)).
+- `ONGOING`·`ENDED`·`CLOSED` 에서 unpublish 는 불가 (409).
+- 프로토타입은 공개·공개 취소 모두 확인 팝업을 거친다. 서버에 확인 단계는 없다.
 
 ### Error Responses
 
-| 상태      | errorCode                | 조건                                                                               |
-| --------- | ------------------------ | ---------------------------------------------------------------------------------- |
-| 401 · 403 | UNAUTHORIZED · FORBIDDEN | 등록과 같다                                                                        |
-| 404       | NOT_FOUND                | studyId 없음                                                                       |
-| 409       | CONFLICT                 | 이미 공개 상태에서 공개, `DRAFT` 에서 공개 취소, `ONGOING` 이후 단계에서 공개 취소 |
-| 422       | (미정)                   | 신청 폼이 없어 공개할 수 없음 — 코드 값은 신청 스펙의 규칙을 따른다                |
+**publish**
 
-### 미확정
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 로그인 필요 |
+| 403 | FORBIDDEN | ADMIN 아님 (네비게이터 포함) |
+| 404 | NOT_FOUND | studyId 없음 |
+| 409 | CONFLICT | 이미 `OPEN`·`ONGOING`·`ENDED`·`CLOSED` 상태 |
+| 409 | APPLICATION_FORM_REQUIRED | `APPLICATION_FORM` 없거나 `questions` 0개 |
 
-- [NEEDS CLARIFICATION] **공개 취소 조건.** ERD 다이어그램은 「신청 0건일 때만」이고, 프로토타입은 조건 없이 언제나 허용한다. 신청이 있는 스터디를 내리면 신청자는 어떻게 되는가.
-- [NEEDS CLARIFICATION] 경로 형태(`/publish` vs `PATCH` 상태 변경)와 신청 폼 없음의 응답 코드.
+**unpublish**
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 로그인 필요 |
+| 403 | FORBIDDEN | ADMIN 아님 (네비게이터 포함) |
+| 404 | NOT_FOUND | studyId 없음 |
+| 409 | CONFLICT | `DRAFT` 상태에서 unpublish, 또는 `ONGOING`·`ENDED`·`CLOSED` 에서 unpublish |
+
+### 신규 ErrorCode
+
+```java
+APPLICATION_FORM_REQUIRED(409, "신청 폼을 먼저 연결하세요.")
+```
+
+FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 하므로 전용 코드 추가. 신청 폼 판정 기준: `APPLICATION_FORM.questions` 배열 길이 ≥ 1 (NOT NULL 만으로 불충분).
+
+### 구현 메모
+
+- `publish(accountId, studyId)` · `unpublish(accountId, studyId)` — 캡틴 전용이라 진입 메서드 각각 하나. 첫 줄 `assertCaptain`. `create`·`delete` 패턴과 동일. `FromSite`/`ForBackOffice` 접미사 없음.
+- 신청 폼 판정: `study.getApplicationForm()` null 이거나 `questions` 배열 길이 0 → `APPLICATION_FORM_REQUIRED`. APPLICATION_FORM JSON 구조 정본: [study-application/spec.md §APPLICATION_FORM](../study-application/spec.md)
+- 상태 전이는 `Study` 엔티티의 의미 있는 메서드(`Study#publish()` · `Study#unpublish()`)로. setter 금지.
+- 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. publish 시 `START_AT = now()`, unpublish 시 `START_AT = null`.
+
+### 테스트 요구사항
+
+| 엔드포인트 | 성공 | 401 | 403 | 404 | 409-CONFLICT | 409-APP_FORM |
+|---|---|---|---|---|---|---|
+| `POST /api/admin/studies/{id}/publish` | DRAFT+폼 있음 → 204, STATUS=OPEN, 최신 회차 START_AT 채워짐 | 토큰 없음 | 네비게이터 | 없는 id | 이미 OPEN | 폼 없음/questions 0개 |
+| `POST /api/admin/studies/{id}/unpublish` | OPEN → 204, STATUS=DRAFT, 최신 회차 START_AT=null | 토큰 없음 | 네비게이터 | 없는 id | DRAFT·ONGOING·ENDED·CLOSED | — |
+
+### 프론트엔드 사용처
+
+- `back-office-front` 운영 콘솔 스터디 목록 — 공개 설정 토글 ([captain-publish-study PRD](../../planning/stories/captain-publish-study/PRD.md))
+- 아직 미구현 (`TODO(api)`)
+
+### 미확정 → 해소
+
+| 항목 | 이전 상태 | 결정 |
+|------|-----------|------|
+| 공개 취소 조건 | 신청 0건일 때만 vs 언제나 | **언제나 허용** (신청 기록 유지) |
+| 경로 형태 | `/publish` vs `PATCH` | **POST `/publish`·`/unpublish`** |
+| 신청 폼 없음 응답 코드 | 미정 | **409 APPLICATION_FORM_REQUIRED** |
 
 ---
 
