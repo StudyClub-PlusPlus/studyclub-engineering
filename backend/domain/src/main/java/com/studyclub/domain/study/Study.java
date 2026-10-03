@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.regex.Pattern;
@@ -25,7 +24,6 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Table(
         name = "STUDY",
-        uniqueConstraints = @UniqueConstraint(name = "uk_study_slug", columnNames = "SLUG"),
         indexes =
                 @Index(name = "idx_study_program_study_status", columnList = "PROGRAM_ID, STATUS"))
 @Getter
@@ -44,9 +42,6 @@ public class Study extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(nullable = false, unique = true, length = 100)
-    private String slug;
-
     @Column(name = "ONE_LINE_SUMMARY", nullable = false, length = 255)
     private String oneLineSummary;
 
@@ -60,13 +55,6 @@ public class Study extends BaseEntity {
     @Column(name = "THUMBNAIL_URL", length = 2048)
     private String thumbnailUrl;
 
-    @Column(name = "IS_HIDDEN", nullable = false)
-    private boolean isHidden;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "STUDY_DELIVERY_FORMAT", nullable = false, length = 20)
-    private DeliveryFormat studyDeliveryFormat;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StudyStatus status;
@@ -77,8 +65,6 @@ public class Study extends BaseEntity {
 
     @Column(columnDefinition = "json")
     private String curriculum;
-
-    private Integer capacity;
 
     @Column(name = "START_AT")
     private Instant startAt;
@@ -98,6 +84,9 @@ public class Study extends BaseEntity {
     @Column(name = "PUBLISH_AT")
     private Instant publishAt;
 
+    @Column(name = "CREATED_BY")
+    private Long createdBy;
+
     private static final long CLOSING_SOON_DAYS = 3;
     private static final Pattern PST_PATTERN = Pattern.compile("PST|PDT", Pattern.CASE_INSENSITIVE);
     private static final Pattern KST_PATTERN = Pattern.compile("KST", Pattern.CASE_INSENSITIVE);
@@ -113,18 +102,6 @@ public class Study extends BaseEntity {
         if (description != null) this.description = description;
         if (category != null) this.category = category;
         if (schedule != null) this.schedule = schedule;
-    }
-
-    /** 모집 정원. {@code null} 이면 제한 없음. */
-    public void changeCapacity(Integer capacity) {
-        if (capacity != null && capacity < 1) {
-            throw new IllegalArgumentException("capacity 는 1 이상이어야 합니다.");
-        }
-        this.capacity = capacity;
-    }
-
-    public boolean isFull(long activeParticipantCount) {
-        return capacity != null && activeParticipantCount >= capacity;
     }
 
     /** 진행 시작일. {@code null} 이면 미정. */
@@ -145,31 +122,34 @@ public class Study extends BaseEntity {
     }
 
     public boolean isClosingSoon(Instant recruitDeadlineAt) {
+        Instant now = Instant.now();
         return status == StudyStatus.OPEN
                 && recruitDeadlineAt != null
-                && recruitDeadlineAt.isBefore(
-                        Instant.now().plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
+                && recruitDeadlineAt.isAfter(now)
+                && recruitDeadlineAt.isBefore(now.plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
     }
 
     /**
      * 모집 상태를 계산한다. {@code STATUS = OPEN} 일 때만 의미가 있어 그 밖에서는 {@code null} 을 돌려준다 — 모집 상태가 "없는" 것이지
      * 마감된 것이 아니다.
      *
-     * <p>{@code recruitDeadlineAt == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code capacity == null} 은
-     * 무제한이라 정원으로도 마감되지 않는다.
+     * <p>{@code recruitDeadlineAt == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code recruitmentCapacity ==
+     * null} 은 무제한이라 정원으로도 마감되지 않는다.
      *
      * <p>참여자 수는 STUDY_PARTICIPANT 애그리거트 소관이라 밖에서 받는다. 정원을 차지하는 참여자(ACTIVE·PAUSED)만 세야 하므로 {@code
      * StudyParticipantRepository.countByStudyIds} 가 주는 값을 그대로 넘긴다.
      *
-     * <p>{@code recruitDeadlineAt} 은 STUDY_RECRUITMENT 에서 가져온 계획된 마감 시각이다.
+     * <p>{@code recruitDeadlineAt} · {@code recruitmentCapacity} 는 STUDY_RECRUITMENT 에서 가져온 값이다.
      */
-    public RecruitStatus recruitStatus(long applicantCount, Instant recruitDeadlineAt) {
+    public RecruitStatus recruitStatus(
+            long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
         if (status != StudyStatus.OPEN) {
             return null;
         }
         boolean deadlinePassed =
                 recruitDeadlineAt != null && !Instant.now().isBefore(recruitDeadlineAt);
-        boolean capacityReached = capacity != null && applicantCount >= capacity;
+        boolean capacityReached =
+                recruitmentCapacity != null && applicantCount >= recruitmentCapacity;
         return (deadlinePassed || capacityReached)
                 ? RecruitStatus.RECRUIT_CLOSED
                 : RecruitStatus.RECRUITING;
@@ -181,7 +161,8 @@ public class Study extends BaseEntity {
      * <p>판정 순서: 종료(운영자 종료 또는 {@code END_AT} 경과) → 진행 중({@code START_AT} 경과) → 모집 중(모집 상태가 {@code
      * RECRUITING}) → 나머지는 종료. 시작 전인데 모집이 마감된 스터디는 신청할 수 없으니 종료로 본다.
      */
-    public StudyPhase phase(long applicantCount, Instant recruitDeadlineAt) {
+    public StudyPhase phase(
+            long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
         if (status == StudyStatus.DRAFT) {
             return null;
         }
@@ -192,7 +173,8 @@ public class Study extends BaseEntity {
         if (startAt != null && !now.isBefore(startAt)) {
             return StudyPhase.ONGOING;
         }
-        return recruitStatus(applicantCount, recruitDeadlineAt) == RecruitStatus.RECRUITING
+        return recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity)
+                        == RecruitStatus.RECRUITING
                 ? StudyPhase.RECRUITING
                 : StudyPhase.CLOSED;
     }
@@ -216,7 +198,7 @@ public class Study extends BaseEntity {
     }
 
     public boolean isPubliclyVisible() {
-        return status == StudyStatus.OPEN && !isHidden;
+        return status != StudyStatus.DRAFT;
     }
 
     public void replaceApplicationForm(String applicationForm) {
