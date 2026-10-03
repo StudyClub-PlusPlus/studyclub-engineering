@@ -9,8 +9,14 @@ observability/
 ├── dashboards/
 │   ├── studyclub-logs.json       Loki — 로그 조회 (3 패널)
 │   └── studyclub-metrics.json    Prometheus — RED·JVM·DB·디스크 (16 패널)
-├── dashboard-tool.mjs      ← lint · normalize · drift · push. 불변식이 한 파일에 있다
-└── alerting/               ← 아직 없음. 규칙 11종이 Grafana 안에만 있다
+├── alerting/
+│   ├── rules.json                규칙 11개
+│   ├── contact-points.json       discord-studyclub (내장 기본은 레포가 관리하지 않는다)
+│   ├── policies.json             project=studyclub → discord-studyclub 라우팅
+│   └── templates.json            Discord 메시지 템플릿
+├── grafana.mjs             ← 공용: fetch 래퍼 · 키 정렬 · ${VAR} 치환
+├── dashboard-tool.mjs      ← 대시보드: lint · normalize · drift · push
+└── alerting-tool.mjs       ← 알림:   lint · capture  · drift · push
 ```
 
 ## 왜 레포에 두나
@@ -46,6 +52,45 @@ observability/
   우연히** 돌고 있었고, 기본이 Prometheus 인 Grafana 에서는 LogQL 을 Prometheus 에 던진다
 - 두 대시보드 모두 숫자 `id`(1·2)가 남아 있었다
 - `uid` 는 이미 읽을 수 있는 slug 였다(`studyclub-logs` · `studyclub-metrics`) — 바꿀 필요가 없었다
+
+## 알림 — 대시보드와 갈리는 세 가지
+
+| | 대시보드 | 알림 |
+|---|---|---|
+| 환경차 값 | `${VAR}` 를 **못 쓴다** (Grafana 변수 문법과 충돌) → datasource 템플릿 변수로 푼다 | **`${VAR}` 치환을 쓴다** (`$var` 문법이 없다) |
+| 자격증명 | 없다 | 봇 토큰이 들어간다. **Grafana 에서 되읽을 수 없다** — provisioning API 가 `[REDACTED]` 로 내려준다 |
+| 레포에서 지운 것 | 삭제하지 않는다 (사람이 만든 사본을 지울 위험) | **삭제한다** — 남으면 `NoData` 로 영구히 떠서 진짜 경고를 묻는다 |
+
+치환되는 값 다섯: `GRAFANA_URL` · `DS_PROMETHEUS_UID` · `DS_LOKI_UID` ·
+`DISCORD_BOT_TOKEN` · `DISCORD_CHANNEL_ID`. **하나라도 비면 도구가 실패시킨다** —
+Grafana 는 치환 안 된 `${DISCORD_BOT_TOKEN}` 이라는 문자열도 그냥 저장하고,
+알림이 안 오기 시작할 때까지 아무 신호도 주지 않는다.
+
+```bash
+node observability/alerting-tool.mjs --lint      # 오프라인
+node observability/alerting-tool.mjs --capture   # Grafana → 레포 (placeholder 로)
+node observability/alerting-tool.mjs --drift     # 정본 ↔ 실물
+node observability/alerting-tool.mjs --push      # 치환 + 반영 + 레포에 없는 규칙 삭제
+```
+
+### 알림 쪽에서 실측으로 드러난 함정 네 개
+
+1. **`datasourceUid` 가 규칙마다 두 곳에 있다** — 쿼리 레벨과 `model.datasource.uid`.
+   앞쪽만 치환했다가 뒤쪽 10곳이 그대로 남았고, lint 도 같은 키만 봐서 통과시켰다.
+2. **내장 기본 수신처를 우리 것으로 알면 중복이 생긴다** — `grafana-default-email` 안의
+   `email receiver` 를 레포에 담았다가 push 가 같은 이름의 수신처를 하나 더 만들었다.
+   구분 신호는 **`uid` 가 빈 값**인 것(내장은 provisioning 산물이 아니다).
+3. **목록 순서가 안정적이지 않다** — 규칙을 지우고 다시 만들면 그룹 끝으로 밀린다.
+   내용이 같은데 drift 가 떴다고 한다. `uid` 순으로 정렬해 저장한다.
+   **상시 시끄러운 검사는 결국 무시되고, 그러면 검사를 둔 이유가 사라진다.**
+4. **없는 수신처 검사는 오프라인에서 못 한다** — 정책의 `receiver` 는 alertmanager 의
+   receiver **그룹** 이름이고 provisioning contact-points 가 주는 건 그 안의 integration
+   이름이다. 층위가 달라서 둘로 대조하면 영구 오탐이 난다(`grafana-default-email`).
+   권위 있는 목록은 서버에만 있어서 `--drift` 가 본다.
+
+> **`X-Disable-Provenance: true` 를 꼭 보낸다**(`grafana.mjs` 가 모든 요청에 붙인다).
+> 안 보내면 API 로 올린 규칙·수신처가 `provisioned` 로 **잠겨서 UI 에서 수정도 삭제도
+> 안 된다.** 대시보드와 같은 방침(보면서 고친다)을 알림에도 적용하려면 필요하다.
 
 ## 변수 규약
 
@@ -133,16 +178,17 @@ GRAFANA_URL=... GRAFANA_TOKEN=... \
 
 | 트리거 | 하는 일 | 토큰 |
 |---|---|---|
-| `beta`·`develop`·`main` 으로의 PR | lint 만 | **없음** |
+| `beta`·`develop`·`main` 으로의 PR | lint 만 (대시보드 + 알림) | **없음** |
 | `beta` push | lint 만 | **없음** |
-| `develop` push | lint → drift → push → 재확인 | Environment `stage` |
+| `develop` push | lint → 대시보드(drift→push→확인) → 알림(drift→push→확인) | Environment `stage` |
 | `main` push | 〃 | Environment `production` |
 
 반영 잡은 네 단계다 — **덮기 전에 drift 를 먼저 보고**, 반영한 뒤 **같은 도구로 되읽어
 확인한다.** `POST` 가 200 이었다는 것은 반영됐다는 뜻이 아니다(Grafana 는 잘못된 설정도
 200 으로 받는다).
 
-Environment 시크릿 두 개가 필요하다 — `GRAFANA_URL` · `GRAFANA_SA_TOKEN`.
+Environment 시크릿 여섯 개가 필요하다 — `GRAFANA_URL` · `GRAFANA_SA_TOKEN` ·
+`DS_PROMETHEUS_UID` · `DS_LOKI_UID` · `DISCORD_BOT_TOKEN` · `DISCORD_CHANNEL_ID`.
 **주소까지 시크릿으로 둔다**: 워크플로 로그도 공개되므로 시크릿이어야 마스킹된다.
 시크릿이 없는 환경에서는 **빨간 체크 대신 "건너뜀" 요약**을 남긴다 — "설정이 안 됐다" 와
 "반영이 실패했다" 는 구분되어야 한다.
@@ -157,7 +203,7 @@ provisioning 을 `beta` 가 아니라 `develop`·`main` 에 묶는 이유 — �
 Grafana 는 브랜치가 아니라 **환경(클러스터)당 한 벌**이다. 즉 같은 JSON 을 stage·prod 두
 Grafana 에 각각 올리는 구조이고, 환경 주소는 워크플로의 Environment 변수로 주입한다.
 
-## 삭제 동기화 — 대시보드는 자동 삭제하지 않는다
+## 삭제 동기화 — 대시보드는 안 하고, 알림은 한다
 
 provisioning API 는 **upsert 만** 한다. 레포에서 지워도 Grafana 에는 남는다.
 
@@ -170,7 +216,9 @@ provisioning API 는 **upsert 만** 한다. 레포에서 지워도 Grafana 에�
 "안 보는 화면이 하나 더" 수준이라 자동화할 값이 아니다.
 
 **알림 규칙은 사정이 다르다** — 레포에서 지운 규칙이 `NoData` 로 영구히 떠 있으면
-**쓰이지 않는 경고가 쌓여 진짜 경고를 묻는다.** 그쪽은 자동 삭제를 넣는다(알림 작업에서).
+**쓰이지 않는 경고가 쌓여 진짜 경고를 묻는다.** 그래서 `alerting-tool.mjs --push` 는
+레포에 없는 규칙을 지운다. 규칙에는 "사본 문화" 가 없어서 지울 대상이 모호하지 않다.
+2026-10-03 왕복 실측 — 레포에서 1개 제거 → Grafana 11→10, 원복 → 11, drift 0.
 
 > 실험은 「Save as copy」로. 사본은 레포가 관리하지 않으니 덮이지도 지워지지도 않는다.
 
