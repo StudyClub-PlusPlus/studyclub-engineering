@@ -11,9 +11,10 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByStudyId(Long studyId);
 
-    List<StudyParticipant> findByAccountId(Long accountId);
-
     void deleteByStudyId(Long studyId);
+
+    /** 내 스터디 목록(MyStudyQueryService)과 회원 탈퇴 익명화(AccountDeletionService) 공용 조회. */
+    List<StudyParticipant> findByAccountId(Long accountId);
 
     List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
 

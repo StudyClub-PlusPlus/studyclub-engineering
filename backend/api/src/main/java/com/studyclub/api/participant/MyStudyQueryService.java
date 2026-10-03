@@ -156,7 +156,10 @@ public class MyStudyQueryService {
     static MyStudyRelation relation(ParticipantStatus status, Instant studyStartAt, Instant now) {
         return switch (status) {
             case COMPLETED -> MyStudyRelation.COMPLETED;
-            case WITHDRAWN -> MyStudyRelation.WITHDRAWN;
+            // 이 쿼리는 호출자 본인(accountId=me)의 명부만 보므로 DELETED(회원 탈퇴)는 실제로는 나올 수
+            // 없다 — 탈퇴한 계정은 로그인 자체가 안 된다. 그래도 switch 를 완전하게 두기 위해 WITHDRAWN 과
+            // 같은 화면 표시로 묶어 둔다.
+            case WITHDRAWN, DELETED -> MyStudyRelation.WITHDRAWN;
             case ACTIVE, PAUSED ->
                     studyStartAt != null && now.isBefore(studyStartAt)
                             ? MyStudyRelation.UPCOMING

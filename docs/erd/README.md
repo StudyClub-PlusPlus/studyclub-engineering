@@ -46,6 +46,7 @@ erDiagram
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
   ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
   ACCOUNT ||--o{ ACCOUNT_CONSENT : "동의"
+  ACCOUNT_LEAVE_REASON
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
@@ -139,6 +140,13 @@ erDiagram
     varchar  CONSENT_VERSION      "동의한 약관 버전"
   }
 
+  ACCOUNT_LEAVE_REASON {
+    bigint   ID                PK
+    varchar  REASON               "NO_DESIRED_STUDY / PARTICIPATION_BURDEN / OTHER. NULL 이면 사유 미선택. ACCOUNT 와 잇지 않는다"
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
   STUDY_PROGRAM {
     bigint   ID                PK
     varchar  TITLE
@@ -203,9 +211,10 @@ erDiagram
     bigint   ACCOUNT_ID            FK
     bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조"
     bigint   STUDY_ID              "→ STUDY 참조 (비정규화)"
-    varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED"
+    varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED / DELETED"
     varchar  PARTICIPANT_ROLE      "MEMBER / LEADER / CO_LEADER"
     datetime JOINED_AT             "편입 시각"
+    datetime LEFT_AT               "참여 종료 시각. WITHDRAWN·DELETED 일 때만"
   }
 
   STUDY_ATTENDANCE {
@@ -291,6 +300,7 @@ erDiagram
 | 회원  | [ACCOUNT](./ACCOUNT.md)                                    | 회원 프로필                 | `SYSTEM_ROLE`                        |
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
 | 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
+| 회원  | [ACCOUNT_LEAVE_REASON](./ACCOUNT_LEAVE_REASON.md)                        | 탈퇴 사유 집계 (계정과 잇지 않음) | —                              |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
 | 스터디 | [STUDY_PROGRAM](./STUDY_PROGRAM.md)                     | 스터디/클럽 정체성             | `STUDY_KIND`                                    |
 | 스터디 | [STUDY](./STUDY.md)                                     | 기수/회차 — 실제 운영 인스턴스     | `STATUS` |
