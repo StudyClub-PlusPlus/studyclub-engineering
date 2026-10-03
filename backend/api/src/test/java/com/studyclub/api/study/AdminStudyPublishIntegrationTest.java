@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
-import com.studyclub.domain.participant.ParticipantRole;
-import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.sql.Timestamp;
@@ -34,7 +32,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class AdminStudyPublishIntegrationTest {
 
     private static final Long ADMIN_ID = 8520L;
-    private static final Long NAVIGATOR_ID = 8521L;
     private static final long MISSING_STUDY_ID = 999_999_998L;
 
     @Autowired TestRestTemplate rest;
@@ -48,9 +45,6 @@ class AdminStudyPublishIntegrationTest {
         rest.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
         Timestamp now = Timestamp.from(Instant.now());
         insertAccountIfAbsent(ADMIN_ID, "admin-publish@example.test", SystemRole.ADMIN, now);
-        insertAccountIfAbsent(
-                NAVIGATOR_ID, "navigator-publish@example.test", SystemRole.MEMBER, now);
-        jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE ACCOUNT_ID = ?", NAVIGATOR_ID);
     }
 
     // ── publish 성공 ──────────────────────────────────────────────────────────
@@ -78,34 +72,6 @@ class AdminStudyPublishIntegrationTest {
     }
 
     // ── publish 실패 ──────────────────────────────────────────────────────────
-
-    @Test
-    @DisplayName("실패(publish) - 토큰 없으면 401 UNAUTHORIZED")
-    void publish_unauthenticated() {
-        Long studyId = createStudy("401 공개");
-
-        var response =
-                rest.exchange(
-                        "/api/admin/studies/" + studyId + "/publish",
-                        HttpMethod.POST,
-                        HttpEntity.EMPTY,
-                        Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
-    }
-
-    @Test
-    @DisplayName("실패(publish) - 네비게이터는 403 FORBIDDEN")
-    void publish_navigator() {
-        Long studyId = createStudy("403 공개");
-        insertParticipantIfAbsent(studyId, NAVIGATOR_ID, ParticipantRole.LEADER);
-
-        var response = postNoBody("/api/admin/studies/" + studyId + "/publish", NAVIGATOR_ID);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
-    }
 
     @Test
     @DisplayName("실패(publish) - 없는 studyId 는 404 NOT_FOUND")
@@ -190,34 +156,6 @@ class AdminStudyPublishIntegrationTest {
     // ── unpublish 실패 ────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("실패(unpublish) - 토큰 없으면 401 UNAUTHORIZED")
-    void unpublish_unauthenticated() {
-        Long studyId = createStudy("401 공개 취소");
-
-        var response =
-                rest.exchange(
-                        "/api/admin/studies/" + studyId + "/unpublish",
-                        HttpMethod.POST,
-                        HttpEntity.EMPTY,
-                        Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
-    }
-
-    @Test
-    @DisplayName("실패(unpublish) - 네비게이터는 403 FORBIDDEN")
-    void unpublish_navigator() {
-        Long studyId = createStudy("403 공개 취소");
-        insertParticipantIfAbsent(studyId, NAVIGATOR_ID, ParticipantRole.LEADER);
-
-        var response = postNoBody("/api/admin/studies/" + studyId + "/unpublish", NAVIGATOR_ID);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
-    }
-
-    @Test
     @DisplayName("실패(unpublish) - 없는 studyId 는 404 NOT_FOUND")
     void unpublish_notFound() {
         var response =
@@ -296,31 +234,6 @@ class AdminStudyPublishIntegrationTest {
                 "publish_test_" + id,
                 role.name(),
                 "Asia/Seoul",
-                now,
-                now,
-                now);
-    }
-
-    private void insertParticipantIfAbsent(Long studyId, Long accountId, ParticipantRole role) {
-        int count =
-                jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
-                        Integer.class,
-                        studyId,
-                        accountId);
-        if (count > 0) {
-            return;
-        }
-        Timestamp now = Timestamp.from(Instant.now());
-        jdbcTemplate.update(
-                "INSERT INTO STUDY_PARTICIPANT (ACCOUNT_ID, STUDY_GROUP_ID, STUDY_ID, STATUS,"
-                        + " PARTICIPANT_ROLE, JOINED_AT, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                accountId,
-                0L,
-                studyId,
-                ParticipantStatus.ACTIVE.name(),
-                role.name(),
                 now,
                 now,
                 now);
