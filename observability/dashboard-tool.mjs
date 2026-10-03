@@ -268,6 +268,7 @@ async function drift(paths) {
 async function push(paths) {
   const api = grafana()
   for (const p of paths) {
+    const uid = uidOf(p)
     const dash = JSON.parse(readFileSync(p, 'utf8'))
     const r = await api('/api/dashboards/db', {
       method: 'POST',
@@ -278,7 +279,12 @@ async function push(paths) {
         message: `as-code: ${process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'}`,
       }),
     })
-    console.log(`→ ${uidOf(p)} v${r.version} ${r.status}`)
+    // 응답의 version 은 **쓰기 전** 버전이다 (2026-10-03 실측: 저장 10 → 응답 10 →
+    // 저장 11). 그걸 그대로 찍으면 CI 로그가 Grafana 이력과 1씩 어긋나서, 나중에
+    // "이 버전을 만든 커밋" 을 추적할 때 엉뚱한 줄을 본다. 계산해서 맞추지 않고
+    // 되읽는다 — 서버가 실제로 뭘 저장했는지는 서버만 안다.
+    const stored = (await api(`/api/dashboards/uid/${uid}`)).dashboard?.version
+    console.log(`→ ${uid} v${stored} ${r.status}`)
   }
 }
 
