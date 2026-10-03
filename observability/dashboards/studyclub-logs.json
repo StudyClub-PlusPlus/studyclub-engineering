@@ -1,0 +1,189 @@
+{
+  "editable": true,
+  "id": null,
+  "panels": [
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "content": "### 스터디클럽 로그\n아래 표에 최근 로그가 **자동으로** 뜹니다 (30초마다 갱신). 위쪽 시간 범위를 바꾸면 그 구간을 봅니다.\n\n- **특정 요청만 보기** — 로그 한 줄을 클릭하면 `requestId` 가 보입니다. 위 `requestId` 칸에 넣으면 그 요청이 남긴 모든 줄만 걸러집니다\n- **에러만 보기** — `level` 칸을 `ERROR` 로 바꿉니다\n- 다른 프로젝트 로그는 여기서 보이지 않습니다 (스터디클럽 전용)",
+        "mode": "markdown"
+      },
+      "title": "",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "description": "level 은 Alloy 가 붙인 스트림 라벨을 그대로 쓴다 (json 파서를 태우면 충돌한다)",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (level) (count_over_time({project=\"studyclub\", app=~\"$app\"} [$__interval]))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "로그 양 (레벨별)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 22,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${datasource}"
+          },
+          "direction": "backward",
+          "expr": "{project=\"studyclub\", app=~\"$app\"} | json | level=~\"$level\" |~ \"$requestId\" | line_format \"{{.message}}   [requestId={{.requestId}}]\"",
+          "maxLines": 1000,
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "로그 (최신순)",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "studyclub",
+    "logs"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "label": "데이터소스",
+        "name": "datasource",
+        "query": "loki",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "${datasource}"
+        },
+        "includeAll": true,
+        "label": "서비스",
+        "multi": true,
+        "name": "app",
+        "query": {
+          "label": "app",
+          "stream": "{project=\"studyclub\"}",
+          "type": 1
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "전체",
+          "value": ".*"
+        },
+        "includeAll": false,
+        "label": "레벨",
+        "multi": false,
+        "name": "level",
+        "options": [
+          {
+            "selected": true,
+            "text": "전체",
+            "value": ".*"
+          },
+          {
+            "selected": false,
+            "text": "INFO",
+            "value": "INFO"
+          },
+          {
+            "selected": false,
+            "text": "WARN",
+            "value": "WARN"
+          },
+          {
+            "selected": false,
+            "text": "ERROR",
+            "value": "ERROR"
+          }
+        ],
+        "query": ".*,INFO,WARN,ERROR",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "label": "requestId (비우면 전체)",
+        "name": "requestId",
+        "query": "",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "스터디클럽 로그 (stage)",
+  "uid": "studyclub-logs"
+}

@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
+import { Button, Input } from '@studyclub/ui';
+import { AlertCircle, ArrowRight, Check } from 'lucide-react';
+
 import { OnboardingConsent } from '@/components/OnboardingConsent';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
 import { ApiError } from '@/lib/api/client';
@@ -29,8 +32,6 @@ import {
   type OnboardingDraft,
   type OnboardingFieldErrors,
 } from '@/lib/onboarding';
-import { Button, Input } from '@studyclub/ui';
-import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 
 export default function OnboardingPage() {
   return (
