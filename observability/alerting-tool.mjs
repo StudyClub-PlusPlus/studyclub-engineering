@@ -50,6 +50,13 @@ const CHANNEL_REF = '${DISCORD_CHANNEL_ID}'
 const ENV_REF = '${GRAFANA_ENV}'
 
 const read = (p) => JSON.parse(readFileSync(p, 'utf8'))
+
+/**
+ * Grafana provisioning API 는 **비어 있을 때 `[]` 가 아니라 `null`** 을 준다.
+ * stage 에는 전부 값이 있어서 안 드러났고, **아무것도 없는 prod 에 처음 올리는 날**
+ * `.map()` 에서 터졌다(2026-10-03). 빈 환경이 아니면 영원히 안 보이는 버그다.
+ */
+const asList = (v) => (Array.isArray(v) ? v : [])
 const strip = (o) => { for (const k of INSTANCE_LOCAL) delete o[k]; return o }
 
 /**
@@ -109,6 +116,7 @@ function placeholderize(node, { dsVars, base }) {
  * 아니라서 uid 가 없다. 이름으로 가리지 않는다 — 이름은 바뀔 수 있다.
  */
 function ownContactPoints(list) {
+  list = asList(list)
   const builtin = list.filter((c) => !c.uid)
   if (builtin.length) {
     console.log(`내장 수신처 ${builtin.length}개는 레포가 관리하지 않는다: ${builtin.map((c) => c.name).join(' · ')}`)
@@ -122,10 +130,10 @@ async function capture() {
   const base = (process.env.GRAFANA_URL ?? '').replace(/\/$/, '')
 
   const got = {
-    rules: await api('/api/v1/provisioning/alert-rules'),
-    contactPoints: ownContactPoints(await api('/api/v1/provisioning/contact-points')),
-    policies: await api('/api/v1/provisioning/policies'),
-    templates: await api('/api/v1/provisioning/templates'),
+    rules: asList(await api('/api/v1/provisioning/alert-rules')),
+    contactPoints: ownContactPoints(asList(await api('/api/v1/provisioning/contact-points'))),
+    policies: (await api('/api/v1/provisioning/policies')) ?? {},
+    templates: asList(await api('/api/v1/provisioning/templates')),
   }
   const shaped = {
     rules: sortById(got.rules.map((r) => placeholderize(strip({ ...r }), { dsVars, base }))),
@@ -289,10 +297,10 @@ async function live(api) {
   const base = (process.env.GRAFANA_URL ?? '').replace(/\/$/, '')
   const shape = (v) => placeholderize(strip(structuredClone(v)), { dsVars, base })
   return {
-    rules: sortById((await api('/api/v1/provisioning/alert-rules')).map(shape)),
-    contactPoints: sortById(ownContactPoints(await api('/api/v1/provisioning/contact-points')).map(shape)),
-    policies: shape(await api('/api/v1/provisioning/policies')),
-    templates: sortById((await api('/api/v1/provisioning/templates')).map(shape)),
+    rules: sortById(asList(await api('/api/v1/provisioning/alert-rules')).map(shape)),
+    contactPoints: sortById(ownContactPoints(asList(await api('/api/v1/provisioning/contact-points'))).map(shape)),
+    policies: shape((await api('/api/v1/provisioning/policies')) ?? {}),
+    templates: sortById(asList(await api('/api/v1/provisioning/templates')).map(shape)),
   }
 }
 
@@ -302,7 +310,7 @@ async function live(api) {
  */
 async function checkReceivers(api) {
   const cfg = await api('/api/alertmanager/grafana/config/api/v1/alerts')
-  const have = new Set((cfg?.alertmanager_config?.receivers ?? []).map((r) => r.name))
+  const have = new Set(asList(cfg?.alertmanager_config?.receivers).map((r) => r.name))
   const bad = []
   const walk = (node, where) => {
     if (!node || typeof node !== 'object') return
@@ -352,7 +360,7 @@ async function push() {
   // 순서가 중요하다 — 수신처·템플릿이 먼저 있어야 라우팅과 규칙이 걸린다.
   for (const c of body('contactPoints')) {
     // uid 로 찾는다. 이름으로 찾으면 내장 기본(uid 없음)과 헷갈려 중복을 만든다.
-    const existing = (await api('/api/v1/provisioning/contact-points')).find((x) => x.uid && (x.uid === c.uid || x.name === c.name))
+    const existing = asList(await api('/api/v1/provisioning/contact-points')).find((x) => x.uid && (x.uid === c.uid || x.name === c.name))
     if (existing?.uid) {
       await api(`/api/v1/provisioning/contact-points/${existing.uid}`, { method: 'PUT', body: JSON.stringify({ ...c, uid: existing.uid }) })
       console.log(`→ contact-point ${c.name} (갱신)`)
@@ -386,7 +394,7 @@ async function push() {
   // 레포에서 지운 규칙을 Grafana 에서도 지운다. 남겨 두면 NoData 로 영구히 떠서
   // 쓰이지 않는 경고가 쌓이고, 쌓이면 진짜 경고가 안 읽힌다.
   const keep = new Set(rules.map((r) => r.uid))
-  for (const r of await api('/api/v1/provisioning/alert-rules')) {
+  for (const r of asList(await api('/api/v1/provisioning/alert-rules'))) {
     if (!keep.has(r.uid)) {
       await api(`/api/v1/provisioning/alert-rules/${r.uid}`, { method: 'DELETE' })
       console.log(`✕ rule ${r.uid} 삭제 (레포에 없다)`)
