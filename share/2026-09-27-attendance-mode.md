@@ -71,7 +71,7 @@
 | 시트 칸 | 시스템에서 | 상태 |
 |---|---|---|
 | 반 제목 · 반별 참석자 이름 · 네비게이터 이름 | `STUDY_GROUP.NAME` · `STUDY_PARTICIPANT`(역할 `LEADER` = 네비게이터) | 있음 |
-| 스케줄: 주차 · 날짜 · 제목 | `STUDY_MEETING` — 날짜 = `SCHEDULED_AT`, 주차 = `MEETING_NO`, 제목 = `TITLE` | 주차·제목은 ERD 에 **미확정**으로 남아 있다 |
+| 스케줄: 주차 · 날짜 · 제목 | `STUDY_MEETING` — 날짜 = `SCHEDULED_AT`, 제목 = `TITLE`, 주차 = 날짜순 계산 | 있음 (2026-10-02: `TITLE` 추가, 주차는 저장하지 않는다 — [회차 스펙](../specs/study-meeting/spec.md)) |
 | 출석부: 참석 여부 | `STUDY_ATTENDANCE.STATUS` | 있음 |
 | 출석부: 반 이동 여부 | `STUDY_ATTENDANCE.STUDY_CLASS_ID` (실제로 참석한 반을 적는다) | 있음 |
 | 스케줄: 발표자1 · 발표자2 / 출석부: 발표 여부 · 발표 예정 여부 · 발표 펑크 여부 | **없음** | **새 개념.** 예: 회차별 발표자 표 + 상태(예정 · 완료 · 펑크) |

@@ -186,6 +186,7 @@ erDiagram
     datetime SCHEDULED_AT          "예정 시각 (UTC)"
     datetime START_AT              "실제 시작"
     datetime END_AT                "실제 종료"
+    varchar  TITLE                 "표시용 제목 (50자)"
   }
 
   STUDY_RECRUITMENT {
@@ -221,7 +222,7 @@ erDiagram
     bigint   ACCOUNT_ID            FK
     bigint   STUDY_ID              "→ STUDY 참조 (비정규화 — 기수별 집계용)"
     bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조 (비정규화 — 분반별 집계용)"
-    bigint   STUDY_MEETING_ID   FK
+    bigint   STUDY_MEETING_ID      "→ STUDY_MEETING 참조 (FK 없음 — 회차 삭제 시 앱이 지운다)"
     varchar  STATUS                "PRESENT / LATE / EXCUSED / ABSENT"
   }
 

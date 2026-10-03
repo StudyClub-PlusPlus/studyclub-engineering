@@ -15,7 +15,7 @@
 > 이번 스코프는 명부 화면을 띄우는 데 필요한 **조회 1개 + 생성 1개** API만 다룬다. 세션 취소, 휴가 신청·승인, 정정 이력 조회 등 나머지 CRUD는 별도 스펙.
 > `[OPEN]` = 캡틴 확정 전 제안 기본값 / 팀 확인 필요.
 
-**GET과 POST는 같은 경로를 쓴다** — `/api/studies/{studyId}/attendances`. 같은 리소스(스터디의 출석 컬렉션)를 메서드로만 구분: GET은 읽고, POST는 upsert한다. 별도의 "미팅 목록" 엔드포인트는 없다 — 미팅 목록도 GET 응답 안의 `meetings[]`로 함께 내려간다.
+**GET과 POST는 같은 경로를 쓴다** — `/api/studies/{studyId}/attendances`. 같은 리소스(스터디의 출석 컬렉션)를 메서드로만 구분: GET은 읽고, POST는 upsert한다. 명부 화면은 따로 미팅 목록을 부르지 않는다 — 미팅 목록도 GET 응답 안의 `meetings[]`로 함께 내려간다. 회차를 관리(추가·수정·삭제)하는 화면의 목록은 [`GET /api/studies/{studyId}/meetings`](../study-meeting/spec.md)다.
 
 ### 관련 데이터 모델
 
@@ -245,14 +245,15 @@ countable_meetings = 스터디의 미팅 중
 
 각 `updates[]` 항목마다:
 
-1. `participantId`로 `account_id`를 조회한 뒤 `(study_meeting_id, account_id)`로 기존 row 조회.
-2. 있으면 status update, 없으면 생성.
+1. `participantId`로 `account_id`를 조회한다.
+2. `(study_meeting_id, account_id)` 에 `INSERT ... ON DUPLICATE KEY UPDATE STATUS` 한 문장으로 쓴다 — 없으면 생성, 있으면 status 만 교체.
 3. 배치 전체를 하나의 트랜잭션으로 묶음 (all-or-nothing).
-4. `(study_meeting_id, account_id)` unique 제약으로 동시 insert race를 409로 전환.
+
+> 갱신: 2026-10-02 — 「기존 row 조회 → 있으면 update, 없으면 insert」 를 한 문장 upsert 로 바꿨다. 조회와 저장을 나누면 MySQL REPEATABLE READ 에서 조회가 트랜잭션 스냅샷을 읽어, 그 사이 다른 요청(디스코드 출석·다른 upsert)이 만든 행을 못 보고 다시 INSERT 하다 unique 위반 → 500 이 났다. 한 문장이면 DB 가 최신 행으로 판정해 충돌 자체가 없다 (디스코드 출석 `markPresent` 와 같은 방식). 회차 삭제와의 경합은 [회차 스펙 「잠금」](../study-meeting/spec.md#잠금).
 
 ### 동시성
 
-스터디당 담당 네비게이터 1인이라 동시 충돌 가능성 낮음 — 1차는 last-write-wins, 낙관적 잠금 없음. unique 제약 위반은 409로 매핑. `[OPEN]` — 필요시 버전 체크 추가.
+last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나중 요청의 값이 남는다. unique 위반은 한 문장 upsert 라 생기지 않는다. `[OPEN]` — 필요시 버전 체크 추가.
 
 ### Error Responses
 
@@ -261,7 +262,6 @@ countable_meetings = 스터디의 미팅 중
 | 400 | INVALID_INPUT | updates가 빈 배열 |
 | 403 | FORBIDDEN | LEADER·CO_LEADER 역할 없음 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
-| 409 | CONFLICT | 동시 쓰기로 unique 제약 위반 |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
 | 400 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |
 | 400 | INVALID_INPUT | updates[].status 허용값 외 |
