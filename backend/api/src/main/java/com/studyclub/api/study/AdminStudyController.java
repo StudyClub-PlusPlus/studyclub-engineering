@@ -108,4 +108,21 @@ public class AdminStudyController {
         studyService.delete(accountId, studyId);
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(
+            summary = "스터디 공개",
+            description = "ADMIN만 호출 가능. DRAFT + 신청 폼 필수. STATUS=OPEN, 최신 모집 회차 START_AT=now.")
+    @PostMapping("/{studyId}/publish")
+    public ResponseEntity<Void> publish(@PathVariable Long studyId, Authentication authentication) {
+        studyService.publish((Long) authentication.getPrincipal(), studyId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "스터디 공개 취소", description = "ADMIN만 호출 가능. OPEN → DRAFT. 신청·크루·출석 기록 유지.")
+    @PostMapping("/{studyId}/unpublish")
+    public ResponseEntity<Void> unpublish(
+            @PathVariable Long studyId, Authentication authentication) {
+        studyService.unpublish((Long) authentication.getPrincipal(), studyId);
+        return ResponseEntity.noContent().build();
+    }
 }

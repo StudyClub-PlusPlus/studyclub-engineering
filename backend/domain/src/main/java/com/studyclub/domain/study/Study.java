@@ -222,4 +222,14 @@ public class Study extends BaseEntity {
     public void replaceApplicationForm(String applicationForm) {
         this.applicationForm = applicationForm;
     }
+
+    /** DRAFT → OPEN. 선행 조건(폼·상태) 검사는 서비스에서 한다. */
+    public void publish() {
+        this.status = StudyStatus.OPEN;
+    }
+
+    /** OPEN → DRAFT. 선행 조건 검사는 서비스에서 한다. */
+    public void unpublish() {
+        this.status = StudyStatus.DRAFT;
+    }
 }

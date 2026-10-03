@@ -268,7 +268,7 @@ erDiagram
 ### 데이터
 
 - 요청 필드와 검증은 [study/spec.md 스터디 등록](../../../specs/study/spec.md#스터디-등록) 이 정본이다
-- 서버가 채우는 값: `STUDY.STATUS = DRAFT`, `STUDY_RECRUITMENT.START_AT = null`, 새 프로그램이면 `STUDY_PROGRAM.TITLE = title`
+- 서버가 채우는 값: `STUDY.STATUS = DRAFT`, `STUDY_RECRUITMENT.START_AT = now()` (NOT NULL), 새 프로그램이면 `STUDY_PROGRAM.TITLE = title`
 - 모집 회차(`STUDY_RECRUITMENT`) 1행을 늘 함께 만든다
 
 ### 처리

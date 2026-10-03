@@ -50,4 +50,8 @@ public class StudyRecruitment extends BaseEntity {
     public void updateDeadline(Instant recruitDeadlineAt) {
         this.recruitDeadlineAt = recruitDeadlineAt;
     }
+
+    public void updateStartAt(Instant startAt) {
+        this.startAt = startAt;
+    }
 }

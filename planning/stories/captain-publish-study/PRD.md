@@ -98,7 +98,7 @@ erDiagram
     json APPLICATION_FORM "없으면 공개 불가"
   }
   STUDY_RECRUITMENT {
-    datetime START_AT "공개 시각. 미공개면 null"
+    datetime START_AT "등록/공개 시각. NOT NULL"
   }
 ```
 
@@ -114,7 +114,7 @@ erDiagram
 | 동작 | 조건 | 결과 |
 | --- | --- | --- |
 | 공개 | `STATUS = DRAFT` 이고 신청 폼이 있음 | `STATUS = OPEN`, 최신 모집 회차 `START_AT = now` |
-| 공개 취소 | `STATUS = OPEN` | `STATUS = DRAFT`, `START_AT = null` |
+| 공개 취소 | `STATUS = OPEN` | `STATUS = DRAFT` (`START_AT` 유지 — 공개됐던 시각 보존) |
 
 ### 처리
 

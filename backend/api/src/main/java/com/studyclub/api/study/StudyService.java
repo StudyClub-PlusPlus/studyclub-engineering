@@ -1,5 +1,6 @@
 package com.studyclub.api.study;
 
+import com.studyclub.api.application.StudyApplicationFormService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.AccountRepository;
@@ -52,6 +53,7 @@ public class StudyService {
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyCaptainGuard studyCaptainGuard;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
+    private final StudyApplicationFormService studyApplicationFormService;
 
     public StudyService(
             StudyRepository studyRepository,
@@ -65,7 +67,8 @@ public class StudyService {
             StudyApplicationRepository studyApplicationRepository,
             StudyBookmarkRepository studyBookmarkRepository,
             StudyCaptainGuard studyCaptainGuard,
-            StudyDiscordLinkRepository studyDiscordLinkRepository) {
+            StudyDiscordLinkRepository studyDiscordLinkRepository,
+            StudyApplicationFormService studyApplicationFormService) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
@@ -78,6 +81,7 @@ public class StudyService {
         this.studyBookmarkRepository = studyBookmarkRepository;
         this.studyCaptainGuard = studyCaptainGuard;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
+        this.studyApplicationFormService = studyApplicationFormService;
     }
 
     @Transactional
@@ -291,9 +295,45 @@ public class StudyService {
                         .orElse(null);
         return StudyDetailResponse.from(
                 study,
-                studyProgramRepository.findById(study.getProgramId()).orElseThrow(),
+                studyProgramRepository
+                        .findById(study.getProgramId())
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "스터디 프로그램을 찾을 수 없습니다.")),
                 applicantCount(study),
                 recruitDeadlineAt);
+    }
+
+    @Transactional
+    public void publish(Long accountId, Long studyId) {
+        studyCaptainGuard.assertCaptain(accountId, "스터디 공개 권한이 없습니다.");
+        Study study = findStudy(studyId);
+        if (study.getStatus() != StudyStatus.DRAFT) {
+            throw new BusinessException(ErrorCode.CONFLICT, "DRAFT 상태인 스터디만 공개할 수 있습니다.");
+        }
+        validateApplicationFormHasQuestions(study.getApplicationForm());
+        study.publish();
+        studyRecruitmentRepository
+                .findFirstByStudyIdOrderByIdDesc(studyId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "모집 회차를 찾을 수 없습니다."))
+                .updateStartAt(Instant.now());
+    }
+
+    @Transactional
+    public void unpublish(Long accountId, Long studyId) {
+        studyCaptainGuard.assertCaptain(accountId, "스터디 공개 취소 권한이 없습니다.");
+        Study study = findStudy(studyId);
+        if (study.getStatus() != StudyStatus.OPEN) {
+            throw new BusinessException(ErrorCode.CONFLICT, "공개 중인 스터디만 공개 취소할 수 있습니다.");
+        }
+        study.unpublish();
+    }
+
+    private void validateApplicationFormHasQuestions(String applicationForm) {
+        if (!studyApplicationFormService.hasAtLeastOneQuestion(applicationForm)) {
+            throw new BusinessException(ErrorCode.APPLICATION_FORM_REQUIRED, "신청 폼을 먼저 연결하세요.");
+        }
     }
 
     private Study findStudy(Long studyId) {
