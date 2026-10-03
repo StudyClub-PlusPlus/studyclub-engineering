@@ -165,6 +165,28 @@ items.filter(
   중복이다. "서버가 판정을 끝낸 불린 하나만 본다"는 원래 설계 의도보다, 이미 있는 필드를 재사용해
   엔드포인트 하나로 두 PR 의 요구를 다 만족시키는 쪽을 택했다.
 
+### 후속 — `STUDY.STATUS` 전환 기능이 생기면 (PR #141 리뷰, 2026-10-02)
+
+지금 `relation` 을 쓰는 건 `STUDY.STATUS` 가 아직 생성 시점의 `DRAFT` 에서 바뀌는 기능이 없어서다
+(`Study.java` 에 이 값을 바꾸는 메서드 자체가 없다) — `STUDY.STATUS=OPEN` 을 조건으로 쓰면 지금은
+어떤 스터디도 통과하지 못해 경고가 영원히 안 뜬다.
+
+`relation` 은 "개인 참여 상태 + 시작일"로 **내 스터디 화면의 탭**(시작 전·참여 중·완주·하차)을
+분류하는 값이라, **스터디 자체의 운영 상태**와는 의미가 다르다 — 운영자가 스터디를 명시적으로
+종료 처리해도 `relation` 은 그걸 모른다(날짜만 본다).
+
+**`STUDY.STATUS` 가 실제로 전환되는 기능이 구현되면**, 탈퇴 경고 조건을 아래로 바꾼다:
+
+```
+STUDY.STATUS = ONGOING
+  AND STUDY_PARTICIPANT.STATUS IN (ACTIVE, PAUSED)
+  AND STUDY_PARTICIPANT.PARTICIPANT_ROLE IN (LEADER, CO_LEADER)
+```
+
+`relation` 하나만 보는 지금 방식과 달리, 스터디 운영 상태(`STUDY.STATUS`)와 개인 참여 상태를
+둘 다 확인해야 정확하다 — `STUDY.STATUS` 는 스터디 하나에 값이 하나뿐이라 특정 참가자가 이미
+`WITHDRAWN`/`COMPLETED` 로 빠졌는지 혼자서는 구분하지 못하기 때문이다.
+
 ### `@RequireOnboarding` 과의 관계
 
 `ParticipantHubController` 는 클래스 전체에 `@RequireOnboarding` 이 걸려 있어, 온보딩 미완료
@@ -401,3 +423,4 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 | 2026-09-28 | 구현 PR 2차 리뷰 반영 — `NOTIFICATION` 비식별화를 `FOR UPDATE` 락 조회로(스케줄러와 경합 방지), `POST /auth/refresh` 가 탈퇴한 계정은 401 로 거절, 프론트가 이미 탈퇴된 계정(404)을 정리 경로로 처리하고 회원별 localStorage 데이터도 삭제, 웰컴메일 리스너를 계정 행 락 조회로 바꿔 탈퇴 직후 알림 생성 경합 차단. `ACCOUNT_CONSENT` 를 DB cascade 대신 명시적 삭제로 변경(stage·H2 에 FK 없음). 마이그레이션 번호를 beta 의 V20 과 겹치지 않게 V21 로 변경(이후 beta 에 V21__add_study_discord_link 가 추가돼 V22 로 재조정) | 구현 PR #141 2차 코드 리뷰 |
 | 2026-10-01 | `STUDY_PARTICIPANT` 를 물리 삭제 대신 `STATUS=DELETED` + `LEFT_AT`(탈퇴 시각)으로 익명화하도록 변경 — 행을 지우면 `STUDY_ATTENDANCE`(ACCOUNT_ID 로만 연결, FK 없음)가 갈 곳을 잃어 출석률 집계에서 전체 이력이 통째로 빠지는 문제 발견. `AttendanceRateCalculator.countsToward` 가 `WITHDRAWN`·`DELETED` 도 `LEFT_AT` 이전 회차는 집계에 포함하고(결석 처리 아님) 이후 회차만 제외하도록 변경(`specs/attendance/spec.md`·`specs/my-studies/spec.md` 동반 수정, ERD `STUDY_PARTICIPANT` 갱신). 겸사겸사 beta 에 독립적으로 머지된 "내 스터디" 실데이터 API(`specs/my-studies/spec.md`, PR #157/#159)가 이 스펙의 목업 기반 `GET /api/me/studies` 확장(`isActiveNavigator` 필드)을 완전히 대체한 것을 반영 — "맡은 진행 중인 스터디" 판정을 서버 필드 대신 프론트가 `relation`·`participantRole` 로 계산하도록 정정, 프론트 `getActiveNavigatorStudies()` 도 새 응답 모양에 맞게 재작성 | 회원 탈퇴 집계 정책 재검토 — WITHDRAWN·회원탈퇴 이전 출석은 보존, 이후는 결석이 아니라 제외 |
 | 2026-10-02 | 3차 리뷰 반영 — 이미 WITHDRAWN 이었던 명부의 `LEFT_AT` 을 회원 탈퇴 시각으로 덮어써 출석률이 오염되던 버그 수정(이미 값이 있으면 보존). `getActiveNavigatorStudies()` 가 조회 실패(네트워크·5xx 등)와 "맡은 스터디 없음"을 구분하도록 변경 — 403 만 확정된 빈 결과로 두고 그 외는 재확인 경고를 띄운다. 마이그레이션 번호를 beta 의 V22 와 겹치지 않게 V24 로 재조정(beta 에 V22\_\_move_study_kind_to_program 추가) | 구현 PR #141 3차 코드 리뷰 |
+| 2026-10-02 | 확인 실패(unknown) 상태에서 탈퇴를 하드 블록하도록 변경 — "그래도 탈퇴" 우회 경로를 없애고, 확인(ok)이 성공할 때까지 탈퇴하기 버튼을 비활성화·재시도 버튼만 제공. "맡은 진행 중인 스터디" 판정에 `relation` 대신 `STUDY.STATUS` 를 쓰는 안을 리뷰에서 재검토 — `STUDY.STATUS` 전환 기능이 아직 없어 지금은 `relation` 을 유지하고, 그 기능이 생기면 `STUDY.STATUS=ONGOING` + 참여 상태 + 역할을 같이 보는 조건으로 바꾸기로 하고 후속 작업으로 메모 | 구현 PR #141 3차 리뷰 후속 논의 (j00hyun) |
