@@ -1,0 +1,114 @@
+# Grafana 설정(지금은 대시보드)의 정본을 레포로 두고, 머지되면 Grafana 에 반영한다.
+#
+# 두 갈래로 가른 이유
+#   - PR  : lint 만. **토큰을 주지 않는다.** 이 레포는 PUBLIC 이라 누구나 PR 을 열 수 있고,
+#           PR 에서 도는 워크플로에 시크릿이 닿으면 그 PR 의 코드가 시크릿을 읽는다
+#   - push: develop → stage Grafana / main → prod Grafana.
+#           관측 대상 앱과 **같은 브랜치**에서 나가야 한다(backend-develop → stage,
+#           backend-main → prod). beta 에서 먼저 나가면 앱이 아직 내보내지 않는 메트릭을
+#           알림이 참조해 NoData 로 뜬다
+#
+# 환경값(주소·토큰)은 레포에 없다. Environment(`stage`/`production`) 시크릿으로 주입한다.
+# **워크플로 로그도 공개**되므로 GRAFANA_URL 까지 시크릿으로 둔다(로그에서 마스킹된다).
+
+name: observability
+
+on:
+  pull_request:
+    branches: [beta, develop, main]
+    paths:
+      - 'observability/**'
+      - '.github/workflows/observability.yaml'
+  push:
+    branches: [beta, develop, main]
+    paths:
+      - 'observability/**'
+      - '.github/workflows/observability.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # 네트워크도 시크릿도 필요 없다. 여기서 막는 것들은 전부
+  # "Grafana 가 에러 없이 받아주는" 종류다 — 통과하면 조용히 깨진 채로 배포된다.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 대시보드 JSON 검사
+        run: node observability/dashboard-tool.mjs --lint observability/dashboards/*.json
+
+  provision:
+    # PR 에서는 돌지 않는다(토큰이 닿지 않게). beta push 도 제외 — 앱이 develop 에서 나간다.
+    if: >-
+      github.event_name != 'pull_request'
+      && (github.ref_name == 'develop' || github.ref_name == 'main')
+    needs: lint
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'stage' }}
+    env:
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      GRAFANA_TOKEN: ${{ secrets.GRAFANA_SA_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 토큰이 아직 없는 환경(= prod)에서 빨간 체크를 만들지 않는다.
+      # "설정이 안 됐다" 와 "반영이 실패했다" 는 구분되어야 한다.
+      - name: 자격증명 있나
+        id: guard
+        run: |
+          if [ -z "$GRAFANA_TOKEN" ] || [ -z "$GRAFANA_URL" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Grafana 반영 건너뜀"
+              echo
+              echo "이 Environment 에 \`GRAFANA_URL\` · \`GRAFANA_SA_TOKEN\` 이 없다."
+              echo "서비스 계정 토큰을 발급해 Environment 시크릿에 넣으면 이 단계부터 돈다."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 덮기 **전에** 본다. 누가 Grafana 화면에서 고치고 PR 을 안 올렸으면 여기서 드러난다.
+      # exit 3 = 어긋남(실패 1 과 구분). 지금은 경고만 하고 덮는다 — 대시보드가 2개라
+      # 사고 규모가 작고, 막으면 남의 미처리 변경 때문에 내 배포가 멈춘다.
+      # 한 번이라도 실제로 날아가면 아래 `exit 1` 로 바꾼다 (share/2026-10-03 질문 1번).
+      - name: 정본과 실물 비교 (drift)
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          set +e
+          out=$(node observability/dashboard-tool.mjs --drift observability/dashboards/*.json 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" = "3" ]; then
+            {
+              echo "### ⚠️ Grafana 쪽에 레포에 없는 변경이 있다 — 이번 반영으로 덮인다"
+              echo
+              echo '```'
+              echo "$out"
+              echo '```'
+              echo
+              echo "살려야 하는 변경이면 Grafana 에서 export 해서 PR 로 올린 뒤 다시 배포한다."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$code" != "0" ]; then
+            exit "$code"
+          fi
+
+      - name: Grafana 에 반영
+        if: steps.guard.outputs.ready == 'true'
+        run: node observability/dashboard-tool.mjs --push observability/dashboards/*.json
+
+      # 반영이 실제로 먹었는지 같은 도구로 되읽어 확인한다.
+      # "POST 가 200 이었다" 는 반영됐다는 뜻이 아니다 — Grafana 는 잘못된 설정도 200 으로 받는다.
+      - name: 반영 확인 (다시 drift)
+        if: steps.guard.outputs.ready == 'true'
+        run: node observability/dashboard-tool.mjs --drift observability/dashboards/*.json

@@ -4,6 +4,11 @@
 //
 //   node observability/dashboard-tool.mjs --lint observability/dashboards/*.json
 //   node observability/dashboard-tool.mjs --normalize < raw-export.json > committed.json
+//   node observability/dashboard-tool.mjs --drift observability/dashboards/*.json   (네트워크)
+//   node observability/dashboard-tool.mjs --push  observability/dashboards/*.json   (네트워크)
+//
+// 네트워크 모드는 GRAFANA_URL · GRAFANA_TOKEN 을 환경변수로 받는다. 값은 레포에 없다
+// (이 레포는 PUBLIC 이다 — 워크플로 로그도 공개되므로 둘 다 Actions Secret 으로 넣는다).
 //
 // 왜 필요한가 — Grafana 에서 export 한 JSON 을 그냥 커밋하면 다음이 조용히 깨진다.
 // import 는 200 으로 성공하고 대시보드도 목록에 보이는데 패널만 비어서, 필요한 날 처음 안다.
@@ -20,6 +25,7 @@
 // 그 안전장치다. editable 값 자체는 true 로 고정한다 — 환경마다 달라지면 왕복 diff 가 흔들린다.
 
 import { readFileSync } from 'node:fs'
+import { basename } from 'node:path'
 
 const DS_VAR = 'datasource'
 const DS_REF = `\${${DS_VAR}}`
@@ -192,17 +198,111 @@ function lint(path) {
   return fail
 }
 
+// ------------------------------------------------------------------ network
+
+const uidOf = (p) => basename(p).replace(/\.json$/, '')
+
+function grafana() {
+  const url = (process.env.GRAFANA_URL ?? '').replace(/\/$/, '')
+  const token = process.env.GRAFANA_TOKEN ?? ''
+  if (!url || !token) {
+    console.error('GRAFANA_URL · GRAFANA_TOKEN 이 필요하다 (값은 레포에 없다 — Actions Secret)')
+    process.exit(1)
+  }
+  // 주소를 로그에 찍지 않는다. 공개 레포의 워크플로 로그는 누구나 본다.
+  return async (path, init = {}) => {
+    const res = await fetch(url + path, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(init.headers ?? {}),
+      },
+    })
+    const body = await res.text()
+    if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${path} → ${res.status}: ${body.slice(0, 300)}`)
+    return body ? JSON.parse(body) : null
+  }
+}
+
+/** 정본과 실물이 같은가. 다르면 왜 다른지까지 말해 준다. */
+async function drift(paths) {
+  const api = grafana()
+  let differs = 0
+
+  for (const p of paths) {
+    const uid = uidOf(p)
+    let live
+    try {
+      live = await api(`/api/dashboards/uid/${uid}`)
+    } catch (e) {
+      console.log(`! ${uid} — Grafana 에 없다 (배포가 아직 안 돌았다)`)
+      differs++
+      continue
+    }
+    const same = render(normalize(live)) === readFileSync(p, 'utf8')
+    console.log(same ? `✓ ${uid} — 같다` : `✕ ${uid} — 다르다`)
+    if (!same) {
+      differs++
+      const by = live.meta?.updatedBy ?? '?'
+      const at = live.meta?.updated ?? '?'
+      console.log(`   Grafana 쪽 마지막 수정: ${by} · ${at}`)
+      console.log(`   → 누가 화면에서 고치고 PR 을 안 올렸거나, 레포가 앞서 있고 배포 전이다`)
+    }
+  }
+
+  // 레포에 없는 대시보드. **지우지 않는다** — 아래 주석 참고.
+  const repo = new Set(paths.map(uidOf))
+  const all = await api('/api/search?type=dash-db&limit=500')
+  const extra = all.filter((d) => !repo.has(d.uid))
+  if (extra.length) {
+    console.log(`\n레포에 없는 대시보드 ${extra.length}개 (삭제하지 않는다):`)
+    for (const d of extra) console.log(`   · ${d.uid}  ${d.title}`)
+    console.log('   사람이 만든 사본일 수 있다. 정본으로 올릴 것이면 export → PR,')
+    console.log('   버릴 것이면 Grafana 에서 직접 지운다.')
+  }
+  return differs
+}
+
+/** 정본을 Grafana 에 밀어넣는다. */
+async function push(paths) {
+  const api = grafana()
+  for (const p of paths) {
+    const dash = JSON.parse(readFileSync(p, 'utf8'))
+    const r = await api('/api/dashboards/db', {
+      method: 'POST',
+      body: JSON.stringify({
+        dashboard: dash,
+        overwrite: true,              // version 비교를 쓰지 않으므로 필수
+        folderUid: process.env.GRAFANA_FOLDER_UID ?? '',
+        message: `as-code: ${process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'}`,
+      }),
+    })
+    console.log(`→ ${uidOf(p)} v${r.version} ${r.status}`)
+  }
+}
+
+// ponytail: 레포에서 지운 대시보드를 Grafana 에서도 지우는 자동 삭제는 **넣지 않았다.**
+// 지울 대상을 "레포에 없는 것" 으로 잡으면 사람이 「Save as copy」로 만든 실험 사본까지
+// 지운다(사본은 uid 가 새로 생기고 태그는 그대로 따라온다 — 표식으로 가릴 수 없다).
+// 대시보드가 남아 있는 것은 화면이 하나 더 보이는 정도의 비용이라, --drift 가 목록만
+// 보여 주고 삭제는 사람이 한다. 알림 규칙은 사정이 다르다(지운 규칙이 NoData 로 영구
+// 잔류해 진짜 경고를 묻는다) — 그쪽은 자동 삭제를 넣는다.
+
 // --------------------------------------------------------------------- main
 
 const [mode, ...rest] = process.argv.slice(2)
+const need = (what) => {
+  if (!rest.length) {
+    console.error(`대상 파일이 없다 (${what}). observability/dashboards/*.json 이 비어 있나?`)
+    process.exit(1)
+  }
+}
 
 if (mode === '--normalize') {
   process.stdout.write(render(normalize(JSON.parse(readFileSync(0, 'utf8')))))
 } else if (mode === '--lint') {
-  if (!rest.length) {
-    console.error('대상 파일이 없다. observability/dashboards/*.json 이 비어 있나?')
-    process.exit(1)
-  }
+  need('lint')
   let bad = 0
   for (const p of rest) {
     const fail = lint(p)
@@ -219,9 +319,22 @@ if (mode === '--normalize') {
     process.exit(1)
   }
   console.log(`\n${rest.length}개 파일 통과`)
+} else if (mode === '--drift') {
+  need('drift')
+  const n = await drift(rest)
+  if (n) {
+    console.log(`\n${n}개가 어긋났다. 덮기 전에 봐야 한다 — 위 사유를 확인할 것.`)
+    process.exit(3)   // 3 = drift. 워크플로가 실패(1)와 구분해 경고로 처리한다
+  }
+  console.log('\n정본과 실물이 같다')
+} else if (mode === '--push') {
+  need('push')
+  await push(rest)
 } else {
   console.error(`사용법:
-  node observability/dashboard-tool.mjs --lint observability/dashboards/*.json
-  node observability/dashboard-tool.mjs --normalize < raw-export.json > dashboards/<uid>.json`)
+  --lint      <files>   파일 검사 (네트워크 없음)
+  --normalize           stdin 의 raw export 를 커밋 형태로
+  --drift     <files>   정본과 Grafana 실물 비교 (GRAFANA_URL · GRAFANA_TOKEN)
+  --push      <files>   정본을 Grafana 에 반영   (GRAFANA_URL · GRAFANA_TOKEN)`)
   process.exit(2)
 }

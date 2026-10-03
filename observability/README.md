@@ -9,7 +9,7 @@ observability/
 ├── dashboards/
 │   ├── studyclub-logs.json       Loki — 로그 조회 (3 패널)
 │   └── studyclub-metrics.json    Prometheus — RED·JVM·DB·디스크 (16 패널)
-├── dashboard-tool.mjs      ← lint + normalize. 불변식이 한 파일에 있다
+├── dashboard-tool.mjs      ← lint · normalize · drift · push. 불변식이 한 파일에 있다
 └── alerting/               ← 아직 없음. 규칙 11종이 Grafana 안에만 있다
 ```
 
@@ -99,12 +99,18 @@ node observability/dashboard-tool.mjs --lint observability/dashboards/*.json
 ### 정본과 실물이 같은지 확인 (drift 검사)
 
 ```bash
-for uid in studyclub-logs studyclub-metrics; do
-  curl -s -u "$GF_USER:$GF_PASS" "$GRAFANA_URL/api/dashboards/uid/$uid" \
-    | node observability/dashboard-tool.mjs --normalize \
-    | diff - "observability/dashboards/$uid.json" \
-    && echo "$uid: 같다"
-done
+GRAFANA_URL=... GRAFANA_TOKEN=... \
+  node observability/dashboard-tool.mjs --drift observability/dashboards/*.json
+```
+
+어긋나면 **누가 언제 Grafana 쪽을 고쳤는지**까지 찍고 `exit 3` 으로 끝난다
+(실패 `1` 과 구분하려고 3을 쓴다 — CI 가 "설정 오류" 와 "어긋남" 을 다르게 다룬다).
+
+수동 반영이 필요하면:
+
+```bash
+GRAFANA_URL=... GRAFANA_TOKEN=... \
+  node observability/dashboard-tool.mjs --push observability/dashboards/*.json
 ```
 
 > **재export 하면 `id` 가 숫자로 돌아온다** — Grafana 가 서버에서 부여하는 값이라 정상이다.
@@ -115,13 +121,25 @@ done
 아직 배포가 안 됐거나(→ merge 를 기다린다). **덮기 전에 알아야 하므로 provisioning
 워크플로에서 먼저 돌린다.**
 
-## 배포 (예정)
+## 배포
+
+[`.github/workflows/observability.yaml`](../.github/workflows/observability.yaml)
 
 | 트리거 | 하는 일 | 토큰 |
 |---|---|---|
 | `beta`·`develop`·`main` 으로의 PR | lint 만 | **없음** |
-| `develop` push | lint + stage Grafana provisioning | Environment `stage` |
-| `main` push | lint + prod Grafana provisioning | Environment `production` |
+| `beta` push | lint 만 | **없음** |
+| `develop` push | lint → drift → push → 재확인 | Environment `stage` |
+| `main` push | 〃 | Environment `production` |
+
+반영 잡은 네 단계다 — **덮기 전에 drift 를 먼저 보고**, 반영한 뒤 **같은 도구로 되읽어
+확인한다.** `POST` 가 200 이었다는 것은 반영됐다는 뜻이 아니다(Grafana 는 잘못된 설정도
+200 으로 받는다).
+
+Environment 시크릿 두 개가 필요하다 — `GRAFANA_URL` · `GRAFANA_SA_TOKEN`.
+**주소까지 시크릿으로 둔다**: 워크플로 로그도 공개되므로 시크릿이어야 마스킹된다.
+시크릿이 없는 환경에서는 **빨간 체크 대신 "건너뜀" 요약**을 남긴다 — "설정이 안 됐다" 와
+"반영이 실패했다" 는 구분되어야 한다.
 
 **PR 워크플로에 토큰을 주지 않는다.** 이 레포는 public 이라 누구나 PR 을 열 수 있고,
 PR 에서 도는 워크플로에 토큰이 닿으면 그 PR 의 코드가 토큰을 읽는다.
@@ -133,17 +151,22 @@ provisioning 을 `beta` 가 아니라 `develop`·`main` 에 묶는 이유 — �
 Grafana 는 브랜치가 아니라 **환경(클러스터)당 한 벌**이다. 즉 같은 JSON 을 stage·prod 두
 Grafana 에 각각 올리는 구조이고, 환경 주소는 워크플로의 Environment 변수로 주입한다.
 
-## 미결 — 삭제 동기화
+## 삭제 동기화 — 대시보드는 자동 삭제하지 않는다
 
-provisioning API 는 **upsert 만** 한다. 레포에서 지워도 Grafana 에는 남아서, 알림이면
-`NoData` 로 계속 떠 있고 대시보드면 아무도 안 보는 화면이 쌓인다. **쓰이지 않는 경고가
-쌓이면 진짜 경고가 안 읽힌다.**
+provisioning API 는 **upsert 만** 한다. 레포에서 지워도 Grafana 에는 남는다.
 
-- **전량 교체** — 단순하지만 매 배포마다 설정이 잠깐 사라지는 창이 생긴다
-- **diff 후 DELETE** — 안전하지만 코드가 늘어난다
+자동 삭제를 넣으려면 지울 대상을 "레포에 없는 것" 으로 잡아야 하는데, **그러면 사람이
+「Save as copy」로 만든 실험 사본까지 지운다.** 사본은 uid 가 새로 생기고 태그는 그대로
+따라오기 때문에, 표식으로 "우리 것" 과 "남의 사본" 을 가릴 수가 없다. 그리고 우리는
+실험용 사본을 **권장**하고 있다(위 §절차).
 
-지금 2개(대시보드) + 11개(알림) 규모면 전량 교체도 수 초라, 실측 보고 정한다.
-다만 "잠깐 사라지는 창" 은 조용한 실패를 우리 손으로 만드는 것이라 **diff 후 삭제로 기운다.**
+그래서 **대시보드는 `--drift` 가 목록만 보여 주고 삭제는 사람이 한다.** 남아 있는 비용이
+"안 보는 화면이 하나 더" 수준이라 자동화할 값이 아니다.
+
+**알림 규칙은 사정이 다르다** — 레포에서 지운 규칙이 `NoData` 로 영구히 떠 있으면
+**쓰이지 않는 경고가 쌓여 진짜 경고를 묻는다.** 그쪽은 자동 삭제를 넣는다(알림 작업에서).
+
+> 실험은 「Save as copy」로. 사본은 레포가 관리하지 않으니 덮이지도 지워지지도 않는다.
 
 ## 참고
 
