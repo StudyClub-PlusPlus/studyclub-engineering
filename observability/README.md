@@ -61,8 +61,14 @@ observability/
 | 자격증명 | 없다 | 봇 토큰이 들어간다. **Grafana 에서 되읽을 수 없다** — provisioning API 가 `[REDACTED]` 로 내려준다 |
 | 레포에서 지운 것 | 삭제하지 않는다 (사람이 만든 사본을 지울 위험) | **삭제한다** — 남으면 `NoData` 로 영구히 떠서 진짜 경고를 묻는다 |
 
-치환되는 값 다섯: `GRAFANA_URL` · `DS_PROMETHEUS_UID` · `DS_LOKI_UID` ·
-`DISCORD_BOT_TOKEN` · `DISCORD_CHANNEL_ID`. **하나라도 비면 도구가 실패시킨다** —
+치환되는 값 여섯: `GRAFANA_URL` · **`GRAFANA_ENV`** · `DS_PROMETHEUS_UID` · `DS_LOKI_UID` ·
+`DISCORD_BOT_TOKEN` · `DISCORD_CHANNEL_ID`.
+
+`GRAFANA_ENV` 는 알림 메시지에 찍히는 환경 이름이다(템플릿이 `.Vars.env` 로 읽는다).
+**시크릿이 아니라 브랜치에서 도출한다** — `main`→`production`, 그 외→`stage`.
+설정값으로 두면 환경과 어긋날 수 있고, 어긋나도 알림은 그냥 나가서 아무 신호가 없다.
+(레포에 `"env": "stage"` 로 박혀 있었다. 그대로 prod 에 올리면 **운영 알림이 stage 라고
+찍힌다** — 2026-10-03 prod 준비 중에 발견.) **하나라도 비면 도구가 실패시킨다** —
 Grafana 는 치환 안 된 `${DISCORD_BOT_TOKEN}` 이라는 문자열도 그냥 저장하고,
 알림이 안 오기 시작할 때까지 아무 신호도 주지 않는다.
 

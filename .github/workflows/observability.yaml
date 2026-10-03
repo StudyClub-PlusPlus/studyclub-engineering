@@ -60,6 +60,9 @@ jobs:
       # Grafana 는 치환 안 된 문자열도 그냥 저장하고, 알림이 안 오기 시작할 때까지
       # 아무 신호도 주지 않는다. (대시보드는 치환이 없다 — Grafana 자체 변수 문법과
       # 충돌해서 `${VAR}` 를 쓸 수 없고, 대신 datasource 변수로 푼다)
+      # 알림 메시지에 찍히는 환경 이름. 시크릿이 아니라 **브랜치에서 도출**한다 —
+      # 설정으로 두면 환경과 어긋날 수 있고, 어긋나도 알림이 그냥 나가서 아무 신호가 없다.
+      GRAFANA_ENV: ${{ github.ref_name == 'main' && 'production' || 'stage' }}
       DS_PROMETHEUS_UID: ${{ secrets.DS_PROMETHEUS_UID }}
       DS_LOKI_UID: ${{ secrets.DS_LOKI_UID }}
       DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
@@ -76,7 +79,7 @@ jobs:
         id: guard
         run: |
           missing=""
-          for v in GRAFANA_URL GRAFANA_TOKEN DS_PROMETHEUS_UID DS_LOKI_UID DISCORD_BOT_TOKEN DISCORD_CHANNEL_ID; do
+          for v in GRAFANA_URL GRAFANA_TOKEN GRAFANA_ENV DS_PROMETHEUS_UID DS_LOKI_UID DISCORD_BOT_TOKEN DISCORD_CHANNEL_ID; do
             eval "val=\$$v"
             if [ -z "$val" ]; then missing="$missing $v"; fi
           done
