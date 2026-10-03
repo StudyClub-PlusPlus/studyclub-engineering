@@ -36,7 +36,7 @@ const FILES = {
 }
 
 // 치환으로 채워지는 값들. lint 가 이 목록 밖의 placeholder 를 거부한다.
-const DECLARED = ['GRAFANA_URL', 'DS_PROMETHEUS_UID', 'DS_LOKI_UID', 'DISCORD_BOT_TOKEN', 'DISCORD_CHANNEL_ID']
+const DECLARED = ['GRAFANA_URL', 'GRAFANA_ENV', 'DS_PROMETHEUS_UID', 'DS_LOKI_UID', 'DISCORD_BOT_TOKEN', 'DISCORD_CHANNEL_ID']
 
 // 인스턴스마다 달라지는 값. 커밋하면 다른 Grafana 에서 엉뚱한 걸 덮는다.
 const INSTANCE_LOCAL = ['id', 'orgID', 'updated', 'provenance']
@@ -44,6 +44,10 @@ const INSTANCE_LOCAL = ['id', 'orgID', 'updated', 'provenance']
 const SEVERITIES = new Set(['critical', 'warning', 'info'])
 const TOKEN_REF = '${DISCORD_BOT_TOKEN}'
 const CHANNEL_REF = '${DISCORD_CHANNEL_ID}'
+// 알림 메시지에 찍히는 환경 이름. 템플릿이 `.Vars.env` 로 읽는다.
+// 레포에 "stage" 로 박혀 있었다 — 그대로 prod 에 올리면 **운영 알림이 stage 라고
+// 찍힌다.** 값은 브랜치에서 도출하므로(워크플로) 시크릿이 아니다.
+const ENV_REF = '${GRAFANA_ENV}'
 
 const read = (p) => JSON.parse(readFileSync(p, 'utf8'))
 const strip = (o) => { for (const k of INSTANCE_LOCAL) delete o[k]; return o }
@@ -82,6 +86,7 @@ function placeholderize(node, { dsVars, base }) {
       if (k === 'datasourceUid' && typeof v === 'string' && dsVars.has(v)) out[k] = dsVars.get(v)
       else if (k === 'uid' && typeof v === 'string' && dsVars.has(v)) out[k] = dsVars.get(v)
       else if (k === 'authorization_credentials') out[k] = TOKEN_REF
+      else if (k === 'env' && typeof v === 'string') out[k] = ENV_REF
       else out[k] = placeholderize(v, { dsVars, base })
     }
     return out
@@ -241,6 +246,10 @@ function lint() {
     const s = c.settings ?? {}
     if ('authorization_credentials' in s && s.authorization_credentials !== TOKEN_REF) {
       fail.push(`contact-points "${c.name}": authorization_credentials 가 ${TOKEN_REF} 가 아니다 — 공개 레포에 자격증명이 올라간다`)
+    }
+    const envVar = s.payload?.vars?.env
+    if (envVar !== undefined && envVar !== ENV_REF) {
+      fail.push(`contact-points "${c.name}": payload.vars.env 가 ${ENV_REF} 가 아니다 (${envVar}) — 환경 이름이 박히면 운영 알림이 다른 환경 이름으로 찍힌다`)
     }
     if (typeof s.url === 'string') {
       if (/\d{15,}/.test(s.url)) fail.push(`contact-points "${c.name}": url 에 긴 숫자 id 가 박혀 있다 — ${CHANNEL_REF} 로 뺄 것`)

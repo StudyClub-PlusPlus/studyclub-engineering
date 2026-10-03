@@ -13,7 +13,7 @@
       "payload": {
         "template": "{{ template \"studyclub.discord\" . }}",
         "vars": {
-          "env": "stage"
+          "env": "${GRAFANA_ENV}"
         }
       },
       "url": "https://discord.com/api/v10/channels/${DISCORD_CHANNEL_ID}/messages"
