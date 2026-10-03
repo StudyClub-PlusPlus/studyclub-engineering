@@ -204,6 +204,22 @@ class StudyTest {
     }
 
     @Test
+    @DisplayName("publish() 호출 후 status 가 OPEN")
+    void publish_setsStatusToOpen() {
+        var study = getStudy(StudyStatus.DRAFT);
+        study.publish();
+        assertThat(study.getStatus()).isEqualTo(StudyStatus.OPEN);
+    }
+
+    @Test
+    @DisplayName("unpublish() 호출 후 status 가 DRAFT")
+    void unpublish_setsStatusToDraft() {
+        var study = getStudy(StudyStatus.OPEN);
+        study.unpublish();
+        assertThat(study.getStatus()).isEqualTo(StudyStatus.DRAFT);
+    }
+
+    @Test
     @DisplayName("주소: 빈 문자열·공백은 null 로 저장하고, 앞뒤 공백은 자른다")
     void changeLinks_blankBecomesNull() {
         var study = getStudy(StudyStatus.OPEN);
