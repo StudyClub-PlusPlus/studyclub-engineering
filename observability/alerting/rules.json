@@ -1,0 +1,900 @@
+[
+  {
+    "annotations": {
+      "description": "같은 시각 로그를 본다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)  ·  [🔎 쿼리](${GRAFANA_URL}/goto/efzmv9922zxtsb?orgId=2)",
+      "metric": "5xx 건수 (5분)",
+      "summary": "5xx 가 3건을 넘었다",
+      "unit": "건"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (uri) (increase(http_server_requests_seconds_count{status=~\"5..\",uri!=\"/api/health\"}[5m]))",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  3
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "0s",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "critical"
+    },
+    "noDataState": "OK",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] 5xx 발생(건수)",
+    "uid": "studyclub-5xx-count"
+  },
+  {
+    "annotations": {
+      "description": "응답 코드별 그래프를 본 뒤 같은 시각 로그를 본다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)  ·  [🔎 쿼리](${GRAFANA_URL}/goto/dfzmv98zq3e2oa?orgId=2)",
+      "metric": "5xx 비율 (5분)",
+      "summary": "5xx 비율이 5% 를 넘었다",
+      "unit": "%"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (uri) (rate(http_server_requests_seconds_count{status=~\"5..\",uri!=\"/api/health\"}[5m])) / sum by (uri) (rate(http_server_requests_seconds_count{uri!=\"/api/health\"}[5m]))) * 100 and on(uri) (sum by (uri) (increase(http_server_requests_seconds_count{uri!=\"/api/health\"}[5m])) >= 20)",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  5
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "5m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "critical"
+    },
+    "noDataState": "OK",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] 5xx 급증",
+    "uid": "studyclub-5xx-surge"
+  },
+  {
+    "annotations": {
+      "description": "앱이 죽었거나 메트릭 포트가 막혔다. 파드 상태부터 본다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)",
+      "metric": "스크랩 성공 타깃 수",
+      "summary": "모든 스크랩 대상이 3분째 응답 없다",
+      "unit": "대"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "max(up)",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  1
+                ],
+                "type": "lt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "3m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "critical"
+    },
+    "noDataState": "Alerting",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] api 다운",
+    "uid": "studyclub-api-down"
+  },
+  {
+    "annotations": {
+      "description": "앱보다 DB 를 먼저 의심한다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)",
+      "metric": "커넥션 대기 + 획득 타임아웃 (5분)",
+      "summary": "DB 커넥션 대기·획득 실패가 2분째다",
+      "unit": ""
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "(max(hikaricp_connections_pending) or vector(0)) + (sum(rate(hikaricp_connections_timeout_total[5m])) * 60 or vector(0))",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  0
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "2m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "critical"
+    },
+    "noDataState": "OK",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] DB 연결 이상",
+    "uid": "studyclub-db-pool"
+  },
+  {
+    "annotations": {
+      "description": "로그 파일이 쌓였는지 본다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)  ·  [🔎 쿼리](${GRAFANA_URL}/goto/afzmv994awow0f?orgId=2)",
+      "metric": "디스크 여유 비율",
+      "summary": "앱 디스크 여유가 15% 미만이다",
+      "unit": "% 남음"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "min(disk_free_bytes / disk_total_bytes) * 100",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  15
+                ],
+                "type": "lt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "5m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "critical"
+    },
+    "noDataState": "OK",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] 디스크 부족",
+    "uid": "studyclub-disk-low"
+  },
+  {
+    "annotations": {
+      "description": "로그를 열어 내용을 본다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-logs?orgId=2&var-level=ERROR&var-app=%24__all&from=now-1h&to=now)",
+      "metric": "ERROR 로그 건수 (2분)",
+      "summary": "ERROR 로그가 찍혔다",
+      "unit": "건"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_LOKI_UID}",
+        "model": {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI_UID}"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({project=\"studyclub\", level=~\"(?i)error\"}[2m])) or vector(0)",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "queryType": "instant",
+          "refId": "A"
+        },
+        "queryType": "instant",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  0
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "0s",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "critical"
+    },
+    "noDataState": "Alerting",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] ERROR 로그 발생",
+    "uid": "studyclub-error-log"
+  },
+  {
+    "annotations": {
+      "description": "커넥션·파일 누수를 의심한다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)  ·  [🔎 쿼리](${GRAFANA_URL}/goto/dfzmv9961c5j4b?orgId=2)",
+      "metric": "파일 디스크립터 사용률",
+      "summary": "열린 파일 디스크립터가 한도의 80% 를 넘었다",
+      "unit": "%"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "max(process_files_open_files / process_files_max_files) * 100",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  80
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "5m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "warning"
+    },
+    "noDataState": "OK",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] 파일 디스크립터 고갈 임박",
+    "uid": "studyclub-fd-high"
+  },
+  {
+    "annotations": {
+      "description": "힙 사용률을 같이 본다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)",
+      "metric": "GC 점유율",
+      "summary": "CPU 시간의 절반 이상을 GC 에 쓰고 있다",
+      "unit": "%"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "max(jvm_gc_overhead) * 100",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  50
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "5m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "warning"
+    },
+    "noDataState": "OK",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] GC 과부하",
+    "uid": "studyclub-gc-overhead"
+  },
+  {
+    "annotations": {
+      "description": "OOM 전조다. GC 일시정지를 같이 본다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)",
+      "metric": "힙 사용률",
+      "summary": "힙 사용률이 10분째 90% 를 넘었다",
+      "unit": "%"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "sum(jvm_memory_used_bytes{area=\"heap\"}) / sum(jvm_memory_max_bytes{area=\"heap\"}) * 100",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  90
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "10m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "warning"
+    },
+    "noDataState": "OK",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] JVM 힙 고갈 임박",
+    "uid": "studyclub-heap-high"
+  },
+  {
+    "annotations": {
+      "description": "어느 API 가 느린지는 제목에 있다. DB 커넥션 풀을 본다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-metrics?orgId=2&from=now-3h&to=now)  ·  [🔎 쿼리](${GRAFANA_URL}/goto/bfzmv98xs68e8a?orgId=2)",
+      "metric": "p95 응답시간 (5분)",
+      "summary": "p95 응답시간이 2초를 넘었다",
+      "unit": "ms"
+    },
+    "condition": "B",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{uri!=\"/api/health\"}[5m]))) * 1000 and on(uri) (sum by (uri) (rate(http_server_requests_seconds_count{uri!=\"/api/health\"}[5m])) > 0)",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  2000
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "B",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "5m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "warning"
+    },
+    "noDataState": "OK",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] 응답 지연",
+    "uid": "studyclub-latency-p95"
+  },
+  {
+    "annotations": {
+      "description": "Alloy 와 Loki 를 본다. 이 상태면 ERROR 알림도 오지 않는다.\n\n[📊 대시보드](${GRAFANA_URL}/d/studyclub-logs?orgId=2&from=now-3h&to=now)",
+      "metric": "앱이 찍은 로그 건수 (10분)",
+      "summary": "앱은 로그를 내는데 Loki 에 안 들어온다",
+      "unit": "건"
+    },
+    "condition": "D",
+    "data": [
+      {
+        "datasourceUid": "${DS_PROMETHEUS_UID}",
+        "model": {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS_UID}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(logback_events_total[10m])) or vector(0)",
+          "instant": true,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "range": false,
+          "refId": "A"
+        },
+        "queryType": "",
+        "refId": "A",
+        "relativeTimeRange": {
+          "from": 900,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "${DS_LOKI_UID}",
+        "model": {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI_UID}"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({project=\"studyclub\"}[10m])) or vector(0)",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "queryType": "instant",
+          "refId": "B"
+        },
+        "queryType": "instant",
+        "refId": "B",
+        "relativeTimeRange": {
+          "from": 900,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "($A > 5) && ($B < 1)",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "C",
+          "type": "math"
+        },
+        "queryType": "",
+        "refId": "C",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      },
+      {
+        "datasourceUid": "__expr__",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [
+                  0
+                ],
+                "type": "gt"
+              }
+            }
+          ],
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "C",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "D",
+          "type": "threshold"
+        },
+        "queryType": "",
+        "refId": "D",
+        "relativeTimeRange": {
+          "from": 0,
+          "to": 0
+        }
+      }
+    ],
+    "execErrState": "Alerting",
+    "folderUID": "studyclub",
+    "for": "15m",
+    "isPaused": false,
+    "keep_firing_for": "0s",
+    "labels": {
+      "project": "studyclub",
+      "severity": "critical"
+    },
+    "noDataState": "Alerting",
+    "notification_settings": null,
+    "record": null,
+    "ruleGroup": "studyclub-api",
+    "title": "[studyclub] 로그 수집 중단",
+    "uid": "studyclub-logs-stalled"
+  }
+]

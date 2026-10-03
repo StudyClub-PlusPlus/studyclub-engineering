@@ -1,0 +1,24 @@
+[
+  {
+    "disableResolveMessage": false,
+    "name": "discord-studyclub",
+    "settings": {
+      "authorization_credentials": "${DISCORD_BOT_TOKEN}",
+      "authorization_scheme": "Bot",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "httpMethod": "POST",
+      "maxAlerts": 10,
+      "payload": {
+        "template": "{{ template \"studyclub.discord\" . }}",
+        "vars": {
+          "env": "stage"
+        }
+      },
+      "url": "https://discord.com/api/v10/channels/${DISCORD_CHANNEL_ID}/messages"
+    },
+    "type": "webhook",
+    "uid": "cfzmh3knj5z40b"
+  }
+]
