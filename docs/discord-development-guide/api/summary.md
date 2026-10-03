@@ -3,7 +3,9 @@
 Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 보기**. 자세한 계약은 각 문서가 원본이고,
 이 문서는 무엇이 있는지와 공통 규칙만 모은다.
 
-> ⚠️ **전부 아직 구현 전이다.** 아래는 구현할 계약의 요약이다.
+> ⚠️ **일부만 구현됐다** — create-study · get-study-channels · send-message ·
+> send-alert-message · send-announcement-message 다섯 개다.
+> 나머지는 아래가 구현할 계약의 요약이다.
 > **대상 길드는 하나로 고정**이라 어떤 요청에도 길드를 넘기지 않는다.
 
 ## Table of Contents
@@ -21,13 +23,13 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 | 메서드 | 경로 | 문서 | 호출 권한 | 성공 |
 |--------|------|------|-----------|------|
 | `POST` | `/api/v1/studies` | [create-study](create-study.md) | captain | 201 + `{discordStudyId, discordRoleId}` |
-| `GET` | `/api/v1/studies/{discordStudyId}/channels` | [get-study-channels](get-study-channels.md) | captain · navigator | 200 + 채널 배열 |
+| `GET` | `/api/v1/studies/{discordStudyId}/channels` | [get-study-channels](get-study-channels.md) | captain · navigator · 시스템 | 200 + 채널 배열 |
 | `POST` | `/api/v1/roles/{discordRoleId}/users` | [assign-role](assign-role.md) | captain | 204 |
 | `DELETE` | `/api/v1/roles/{discordRoleId}/users/{discordUserId}?discordStudyId=` | [remove-role](remove-role.md) | captain | 204 |
 | `POST` | `/api/v1/roles/navigator/users` | [assign-navigator-role](assign-navigator-role.md) | captain | 204 |
 | `DELETE` | `/api/v1/roles/navigator/users/{discordUserId}?discordStudyId=` | [remove-navigator-role](remove-navigator-role.md) | captain | 204 |
 | `POST` | `/api/v1/channels/{discordChannelId}/msg` | [send-message](send-message.md) | captain · navigator | 204 |
-| `POST` | `/api/v1/channels/alert/msg` | [send-alert-message](send-alert-message.md) | captain · navigator | 204 |
+| `POST` | `/api/v1/channels/alert/msg` | [send-alert-message](send-alert-message.md) | captain · 시스템 | 204 |
 | `POST` | `/api/v1/channels/announcement/msg` | [send-announcement-message](send-announcement-message.md) | captain | 204 |
 
 ## 공통 규칙
@@ -40,7 +42,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 |------|------|---------------|
 | `Content-Type: application/json` | 바디가 있을 때만 | — |
 | `X-API-Key` | 항상 — 서비스 간 인증 | 401 (경로가 없어도 401 우선) |
-| `X-Discord-User-ID` | 역할 확인이 필요한 요청 — **현재 모든 엔드포인트** | 400, 길드 멤버 아님 404, 자격 없음 403 |
+| `X-Discord-User-ID` | 역할 확인이 필요한 요청 — **현재 모든 엔드포인트**. 시스템 호출은 `DISCORD_BOT_ID` | 400, 길드 멤버 아님 404, 자격 없음 403 |
 | `Idempotency-Key` | 상태를 바꾸는 요청 (`GET` 제외 전부) — 로그 추적용 요청 ID | 없으면 400 |
 
 **ID 와 설정**
@@ -129,8 +131,12 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 
 - 세 곳 모두 `msg` 안의 `@everyone` · `@here` 를 **남지 않을 때까지 지우고**, 지운 뒤 비면 400 이다. 길이는 **가공 전** 값으로 재고, 잘라서 보내지 않는다.
 - 본문에는 **ID 까지만** 넣는다 — 닉네임 같은 개인정보는 풀어 쓰지 않는다.
-- **send-message** 는 채널이 `discordStudyId` 카테고리 **바로 아래인지** 확인한다 (아니면 404). navigator 가
-  스터디와 무관한 채널에 메시지를 뿌리지 못하게 막는 장치다. 길드에 없는 멘션 대상이 있으면 404 로 보내지 않는다.
+- **send-message** 는 채널이 `discordStudyId` 카테고리 **바로 아래인지** 확인한다 (아니면 404).
+  **요청에 들어온 두 ID 가 서로 맞는지만** 보는 검증이라 그 카테고리가 스터디 카테고리인지는 보지 않는다 —
+  메시지가 스터디 채널 밖으로 나가지 않는 것은 **백엔드가 올바른 `(discordStudyId, 채널)` 쌍을 보낸다는 전제**이고,
+  navigator 를 막는 방어선은 아니다 ([send-message](send-message.md#discordstudyid-의-역할)).
+  길드에 없는 멘션 대상은 **빼고 올린 뒤**(204)
+  alert 채널에 어떤 작업에서 누가 빠졌는지 알린다 (그 알림이 실패해도 204).
 - **alert · announcement** 는 채널 ID 설정이 없으면 409, 채널을 못 찾으면 404 다. 봇에게 `Send Messages` 권한이 없으면 **모든 요청이** 502 다.
 - **announcement** 에서 봇에게 `Mention Everyone` 권한이 없으면 공지는 알림 없이 올리고 **204** 를 돌려준 뒤,
   alert 채널에 권한 문제를 따로 알린다 (그 알림이 실패해도 204).

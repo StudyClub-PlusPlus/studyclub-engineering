@@ -31,7 +31,7 @@ export const LIFECYCLE_ORDER: LifecycleState[] = ['DRAFT', 'OPEN', 'ONGOING', 'E
  */
 export const LIFECYCLE_HINT: Record<LifecycleState, { meaning: string; next?: string; clubNote?: string }> = {
   DRAFT: { meaning: '작성 중 · 모집 전. 사이트에 보이지 않는다.', next: '캡틴이 공개하며 모집을 시작하면 「개설」로 넘어간다.' },
-  OPEN: { meaning: '스터디 개설 — 공개하면서 모집을 시작한 단계. 사이트에 노출된다.', next: '네비게이터가 첫 미팅을 등록하면 「진행 중」으로 넘어간다.' },
+  OPEN: { meaning: '스터디 개설 — 공개하면서 모집을 시작한 단계. 사이트에 노출된다.', next: '첫 미팅을 등록해도 지금은 그대로다 — 모집이 닫히지 않게 상태를 바꾸지 않고, 「진행 중」 표시는 시작일로 계산한다 (POL-0002).' },
   ONGOING: {
     meaning: '(미팅) 진행 중.',
     next: '네비게이터가 종료 처리하거나 마지막 미팅으로부터 N주가 지나면 「종료」로 넘어간다.',

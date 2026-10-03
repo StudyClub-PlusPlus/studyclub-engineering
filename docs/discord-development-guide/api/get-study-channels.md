@@ -29,9 +29,12 @@ GET /api/v1/studies/{discordStudyId}/channels
 바디는 없다. 헤더는 `X-API-Key` 와 `X-Discord-User-ID` 다 — 조회라서 `Idempotency-Key` 와
 `Content-Type` 은 붙이지 않는다 ([공통 헤더](common-header.md#idempotency-key)).
 
-**captain 역할 또는 navigator 역할을 가진 멤버만 호출할 수 있다.** [`send-message`](send-message.md#요청) 와
-같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를 조회해 둘 중 **하나라도** 갖고 있는지 확인하고,
-둘 다 없으면 **403** 이다.
+**captain 역할 또는 navigator 역할을 가진 멤버, 또는 시스템(백엔드)만 호출할 수 있다.**
+[`send-message`](send-message.md#요청) 와 같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를
+조회해 둘 중 **하나라도** 갖고 있는지 확인하고, 둘 다 없으면 **403** 이다.
+
+백엔드가 자기 이름으로 채널 목록을 읽을 때는 `DISCORD_BOT_ID` 를 싣는다. 그 요청은 멤버 조회도
+역할 검사도 거치지 않는다 ([시스템 호출](common-header.md#시스템-호출)).
 
 captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 역할이다. 이 엔드포인트는 어느 것도 만들지 않고,
 찾지 못하면 목록을 돌려주지 말고 실패한다. 둘 다 **설정값으로 ID 를 받는다**
@@ -101,7 +104,7 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 |------|------|
 | **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 — 이 엔드포인트는 역할 확인 때문에 필수다 |
 | **401** | `X-API-Key` 없음 또는 불일치 |
-| **403** | 요청자에게 captain 역할도 navigator 역할도 없음 |
+| **403** | 요청자에게 captain 역할도 navigator 역할도 없고, 시스템 호출도 아님 |
 | **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
 
 `Idempotency-Key` 를 쓰지 않으므로 중복 요청 409 는 없다. 409 는 아래의 설정 누락 하나뿐이다.

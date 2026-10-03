@@ -62,6 +62,9 @@ services:
       MAIL_NOTIFY_FROM_ADDRESS: ${MAIL_NOTIFY_FROM_ADDRESS}
       MAIL_NOTIFY_ACCESS_KEY_ID: ${MAIL_NOTIFY_ACCESS_KEY_ID}
       MAIL_NOTIFY_SECRET_ACCESS_KEY: ${MAIL_NOTIFY_SECRET_ACCESS_KEY}
+      # 봇 ↔ 백엔드 양방향 서비스 키 (같은 값). 비어 있으면 백엔드는 봇을 부르지 않는다 (specs/discord-study-link)
+      DISCORD_API_KEY: ${DISCORD_API_KEY:-}
+      DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
     ports:
       - "${API_PORT:-28080}:8080"
 
@@ -116,6 +119,9 @@ services:
     container_name: studyclub-discord
     build: ./discord
     env_file: ./.env
+    environment:
+      # 컨테이너 안에서는 호스트 포트가 아니라 내부 주소다 (frontend 와 같은 이유).
+      API_BASE_URL: http://api:8080
     ports:
       - "${DISCORD_PORT:-24800}:4800"
     # create-study 의 스터디 이름 예약(SQLite, /app/data/discord.sqlite3)이 컨테이너 재생성 후에도 남도록.

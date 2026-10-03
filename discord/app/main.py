@@ -50,10 +50,11 @@ async def run_bot(bot: commands.Bot, token: str) -> None:
 
     A crash here aborts the TaskGroup, which cancels the API mid-serve rather
     than draining it: the lifespan shutdown is skipped and a request in flight
-    ends as a 500. That is deliberate -- with the bot dead ``/ping`` answers
-    503 anyway. To drain the API on a bot crash instead, the exception has to
-    be caught here (set the shutdown event, re-raise it after the TaskGroup)
-    so it never reaches the group; signals already take that cooperative path.
+    ends as a 500. That is deliberate -- with the bot dead every route that
+    needs it answers 503 anyway. To drain the API on a bot crash instead, the
+    exception has to be caught here (set the shutdown event, re-raise it after
+    the TaskGroup) so it never reaches the group; signals already take that
+    cooperative path.
     """
     async with bot:
         await bot.start(token)

@@ -1,10 +1,6 @@
 package com.studyclub.api.participant;
 
-import com.studyclub.api.participant.ParticipantHubResponses.BookmarkedStudySummary;
-import com.studyclub.api.participant.ParticipantHubResponses.ParticipantHubOverviewResponse;
 import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyDetailResponse;
-import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudySummary;
-import com.studyclub.api.participant.ParticipantHubResponses.StudyApplicationSummary;
 import com.studyclub.api.participant.ParticipantHubResponses.StudyMeetingAttendance;
 import com.studyclub.api.participant.ParticipantHubResponses.UpcomingStudyMeeting;
 import com.studyclub.domain.attendance.AttendanceStatus;
@@ -22,70 +18,6 @@ public class MockParticipantHubDataProvider implements ParticipantHubDataProvide
     // 테스트가 같은 id 로 계정을 심어야 해서 package-private
     static final Long MOCK_ACCOUNT_ID = 1000L;
     private static final Set<Long> KNOWN_STUDY_IDS = Set.of(291L, 301L, 302L, 303L, 304L);
-
-    @Override
-    public ParticipantHubOverviewResponse getParticipantHubOverview(Long accountId) {
-        if (!MOCK_ACCOUNT_ID.equals(accountId)) {
-            return new ParticipantHubOverviewResponse(
-                    List.of(), List.of(), List.of(), List.of(), List.of());
-        }
-        return new ParticipantHubOverviewResponse(
-                List.of(
-                        new ParticipatingStudySummary(
-                                301L,
-                                101L,
-                                "AI 논문 읽기",
-                                ParticipantStatus.ACTIVE,
-                                100,
-                                Instant.parse("2026-09-08T11:00:00Z"),
-                                "https://example.com/studies/101.png"),
-                        new ParticipatingStudySummary(
-                                302L,
-                                102L,
-                                "Spring Boot 딥다이브",
-                                ParticipantStatus.ACTIVE,
-                                null,
-                                Instant.parse("2026-09-12T10:00:00Z"),
-                                "https://example.com/studies/102.png")),
-                List.of(
-                        new ParticipatingStudySummary(
-                                291L,
-                                91L,
-                                "개발자 글쓰기",
-                                ParticipantStatus.COMPLETED,
-                                88,
-                                null,
-                                "https://example.com/studies/91.png")),
-                List.of(
-                        new StudyApplicationSummary(
-                                501L,
-                                303L,
-                                103L,
-                                "오픈소스 첫 기여",
-                                Instant.parse("2026-09-05T04:30:00Z")),
-                        new StudyApplicationSummary(
-                                502L,
-                                304L,
-                                104L,
-                                "데이터 시각화",
-                                Instant.parse("2026-08-20T02:00:00Z"))),
-                List.of(
-                        new UpcomingStudyMeeting(
-                                1004L,
-                                301L,
-                                101L,
-                                "AI 논문 읽기",
-                                Instant.parse("2026-09-08T11:00:00Z")),
-                        new UpcomingStudyMeeting(
-                                1101L,
-                                302L,
-                                102L,
-                                "Spring Boot 딥다이브",
-                                Instant.parse("2026-09-12T10:00:00Z"))),
-                List.of(
-                        new BookmarkedStudySummary(
-                                701L, 105L, "UX 리서치 북클럽", "https://example.com/studies/105.png")));
-    }
 
     @Override
     public Optional<ParticipatingStudyDetailResponse> findParticipatingStudyDetail(

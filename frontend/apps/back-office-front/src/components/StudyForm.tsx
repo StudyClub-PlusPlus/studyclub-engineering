@@ -1,8 +1,17 @@
 'use client';
 
+import { useState } from 'react';
+
 import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 
-import { CATEGORY_OPTIONS, type ApiStudyDetail, type StudyUpdatePayload } from '@/features/studies/types';
+import { useClubPrograms } from '@/features/studies/queries';
+import {
+  CATEGORY_OPTIONS,
+  type ApiStudyDetail,
+  type StudyCreatePayload,
+  type StudyUpdatePayload,
+} from '@/features/studies/types';
+import { http } from '@/lib/http';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -16,7 +25,18 @@ import { CATEGORY_OPTIONS, type ApiStudyDetail, type StudyUpdatePayload } from '
  * - 모집 시작일: 마감일만 관리 (모집 상태 판정 축이 마감일 하나) — 진행 시작일과는 다른 값이다
  * - 상시 모집·공개일: 없다. 마감일은 필수이고, 공개는 운영자가 직접 켠다
  * - 시간대·썸네일: 저장할 컬럼·업로드 API 가 아직 없다
+ *
+ * **프로그램은 따로 등록하지 않고 이 폼에서 함께 다룬다.** 프로그램은 제목·종류뿐이고 기수 없는 프로그램은
+ * 의미가 없다(docs/erd/STUDY_PROGRAM.md). 등록 모드에서는 「새 프로그램」(첫 기수와 함께 만든다) 또는
+ * 「기존 클럽의 새 기수」를 고르고, 수정 모드에서는 프로그램과 종류를 읽기 전용으로 보인다 —
+ * **종류는 한 번 정하면 바꾸지 못한다.**
  */
+
+export type FormMode = 'create' | 'edit';
+
+export type StudyKind = 'STUDY' | 'CLUB';
+
+export const KIND_LABEL: Record<StudyKind, string> = { STUDY: '스터디', CLUB: '클럽' };
 
 /**
  * 카드 제목 권장 길이 = **말줄임이 나지 않는 최대 글자수**.
@@ -30,6 +50,14 @@ export const TITLE_RECOMMENDED = 24;
 export const SUMMARY_RECOMMENDED = 25;
 
 export type StudyFormValues = {
+  /** 등록에서만 고른다. 수정 모드는 늘 `existing` — 프로그램은 바꾸지 않는다. */
+  programMode: 'new' | 'existing';
+  /** `existing` 일 때 붙일 프로그램. 빈 문자열이면 아직 안 골랐다. */
+  programId: string;
+  /** 프로그램 종류. 새 프로그램을 만들 때만 정하고, 그 뒤로는 바꾸지 못한다. */
+  kind: StudyKind;
+  /** 표시 전용 — 수정 모드에서 어떤 프로그램에 속한 기수인지 보여 준다. 입력 칸이 아니다. */
+  programTitle: string;
   title: string;
   summary: string;
   description: string;
@@ -48,6 +76,10 @@ export type StudyFormValues = {
 };
 
 export const EMPTY_FORM: StudyFormValues = {
+  programMode: 'new',
+  programId: '',
+  kind: 'STUDY',
+  programTitle: '',
   title: '',
   summary: '',
   description: '',
@@ -82,6 +114,10 @@ function startDateToIso(date: string): string {
 /** 기존 스터디를 폼 값으로 되돌린다. 화면에 보이는 값과 폼 값이 같아야 편집이 성립한다. */
 export function detailToForm(d: ApiStudyDetail): StudyFormValues {
   return {
+    programMode: 'existing',
+    programId: String(d.programId),
+    kind: d.studyKind,
+    programTitle: d.programTitle,
     title: d.title,
     summary: d.oneLineSummary,
     description: d.description ?? '',
@@ -121,6 +157,28 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
   return p;
 }
 
+/**
+ * 등록 바디. 프로그램은 **둘 중 하나만** 보낸다 — 새 프로그램이면 `studyKind`, 기존 클럽의 새 기수면
+ * `studyProgramId`. 둘을 함께 보내면 서버가 400 으로 거절한다(종류는 한 번 정하면 못 바꾼다).
+ *
+ * ⚠️ 등록 API 는 아직 정원·진행 시작일·채널/드라이브 주소를 받지 않는다(`StudyCreateRequest`). 그래서 그
+ * 칸들은 **등록 요청에 실리지 않고**, 등록 뒤 정보 탭에서 저장해야 한다 — specs/study-registration-spec.md
+ * 10절의 남은 항목이다. 보내도 서버가 조용히 버리므로 아예 싣지 않는다.
+ */
+export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
+  const payload: StudyCreatePayload = {
+    title: form.title.trim(),
+    oneLineSummary: form.summary.trim(),
+    category: form.category,
+    recruitDeadline: deadlineToIso(form.deadline),
+  };
+  if (form.programMode === 'existing') payload.studyProgramId = Number(form.programId);
+  else payload.studyKind = form.kind;
+  if (form.description.trim()) payload.description = form.description;
+  if (form.schedule.trim()) payload.schedule = form.schedule.trim();
+  return payload;
+}
+
 export type StudyFormErrors = Partial<Record<keyof StudyFormValues, string>>;
 
 /** 서버 오류 `필드: 사유` 를 어느 칸에 붙일지. 서버 필드 이름과 폼 필드 이름이 다른 것만 적는다. */
@@ -128,6 +186,8 @@ const SERVER_FIELD: Record<string, keyof StudyFormValues> = {
   oneLineSummary: 'summary',
   recruitDeadline: 'deadline',
   discordChannelUrl: 'discordUrl',
+  studyProgramId: 'programId',
+  studyKind: 'kind',
 };
 
 /** 서버 검증 메시지(`capacity: 1 이상의 정수여야 합니다.`)를 칸 오류로 바꾼다. 못 바꾸면 null. */
@@ -143,6 +203,7 @@ const isHttpUrl = (v: string) => /^https?:\/\/\S+$/i.test(v.trim());
 
 export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   const e: StudyFormErrors = {};
+  if (f.programMode === 'existing' && !f.programId) e.programId = '기수를 추가할 프로그램을 고르세요.';
   if (!f.title.trim()) e.title = '제목을 입력하세요.';
   else if (f.title.trim().length > 60) e.title = '60자 이내로 입력하세요.';
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
@@ -165,6 +226,179 @@ function CharCount({ len, max }: { len: number; max: number }) {
   );
 }
 
+/**
+ * 기존 클럽을 고르면 물려받는 값 — 제목은 **프로그램 제목**, 소개·설명·주제는 **최신 기수**의 것이다.
+ *
+ * 마감일·진행 일정·정원·진행 시작일은 기수마다 달라 비운다. 반대로 **디스코드 채널·드라이브 주소는 물려받는다**
+ * — 클럽은 기수가 바뀌어도 채널을 새로 파지 않고 같은 채널을 계속 쓴다(채널은 사실 기수가 아니라 프로그램
+ * 단위 자원이다). 새 채널로 바꿨다면 그 칸만 고치면 된다.
+ */
+function cohortDefaults(latest: ApiStudyDetail): Partial<StudyFormValues> {
+  return {
+    summary: latest.oneLineSummary,
+    description: latest.description ?? '',
+    category: latest.category,
+    discordUrl: latest.discordChannelUrl ?? '',
+    driveUrl: latest.driveUrl ?? '',
+  };
+}
+
+/**
+ * 프로그램 — 등록이면 「새 프로그램 / 기존 클럽의 새 기수」, 수정이면 읽기 전용.
+ *
+ * 종류는 기수마다 다른 값이 아니라 프로그램의 속성이고, **한 번 정하면 바꾸지 못한다.**
+ * 새 기수를 붙일 수 있는 것은 클럽뿐이다 — 스터디는 기수가 1개다.
+ */
+function ProgramField({
+  mode,
+  value,
+  errors,
+  onChange,
+}: {
+  mode: FormMode;
+  value: StudyFormValues;
+  errors: StudyFormErrors;
+  onChange: (next: StudyFormValues) => void;
+}) {
+  const [prefilling, setPrefilling] = useState(false);
+  // 등록 모달에서만 부른다 — 정보 탭에서는 고를 일이 없어 요청하지 않는다
+  const { data: clubs = [], isLoading } = useClubPrograms(mode === 'create');
+
+  // MVP: 클럽 미지원 — create 모드에서는 프로그램/종류 선택 불필요 (EMPTY_FORM 기본값 사용)
+  if (mode === 'create') return null;
+
+  if (mode === 'edit') {
+    return (
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-control border border-border bg-surface-2 px-3 py-2.5 text-sm'>
+        <span className='font-medium text-neutral-800'>프로그램</span>
+        <span className='min-w-0 truncate text-fg-secondary'>{value.programTitle}</span>
+        {/* 종류는 정하면 바꾸지 못한다 — 읽기 전용 */}
+        <span className='ml-auto text-xs text-fg-muted'>{KIND_LABEL[value.kind]} · 변경할 수 없음</span>
+      </div>
+    );
+  }
+
+  /**
+   * 클럽을 고르면 최신 기수를 읽어 폼을 채운다. 프로그램 선택 자체는 먼저 반영해 두고 — 응답을 기다리는
+   * 동안에도 고른 것이 보여야 한다 — 값이 오면 덮어쓴다. 최신 기수를 못 읽어도 선택은 유효하다.
+   */
+  async function selectProgram(programId: string) {
+    if (!programId) {
+      onChange({ ...value, programId: '', programTitle: '' });
+      return;
+    }
+    const club = clubs.find((c) => String(c.programId) === programId);
+    const base: StudyFormValues = {
+      ...value,
+      programMode: 'existing',
+      programId,
+      kind: 'CLUB',
+      programTitle: club?.title ?? '',
+      title: club?.title ?? value.title,
+    };
+    onChange(base);
+    if (!club?.latestStudyId) return;
+
+    setPrefilling(true);
+    try {
+      const latest = await http<ApiStudyDetail>(`/api/admin/studies/${club.latestStudyId}`);
+      onChange({ ...base, ...cohortDefaults(latest) });
+    } catch {
+      // 못 읽으면 빈 칸으로 둔다 — 운영자가 직접 적으면 되고, 등록을 막을 이유는 없다
+    } finally {
+      setPrefilling(false);
+    }
+  }
+
+  const modeBtn = (m: StudyFormValues['programMode'], label: string) => (
+    <button
+      type='button'
+      role='radio'
+      aria-checked={value.programMode === m}
+      onClick={() =>
+        // 모드를 옮기면 이전 모드의 선택을 들고 가지 않는다
+        onChange({
+          ...value,
+          programMode: m,
+          programId: '',
+          programTitle: '',
+          kind: m === 'existing' ? 'CLUB' : 'STUDY',
+        })
+      }
+      className={`h-9 flex-1 rounded-control border px-3 text-sm transition-colors ${
+        value.programMode === m
+          ? 'border-brand bg-brand/5 font-semibold text-fg'
+          : 'border-border-strong text-fg-secondary hover:bg-surface-2'
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className='flex flex-col gap-2'>
+      <span className='text-sm font-medium text-neutral-800'>
+        프로그램
+        <span className='ml-0.5 text-error-600'>*</span>
+      </span>
+      <div role='radiogroup' aria-label='프로그램' className='flex gap-2'>
+        {modeBtn('new', '새 프로그램')}
+        {modeBtn('existing', '기존 클럽의 새 기수')}
+      </div>
+
+      {value.programMode === 'new' ? (
+        <div className='flex flex-wrap items-center gap-2 text-sm'>
+          <span className='text-xs text-fg-muted'>종류</span>
+          <div role='radiogroup' aria-label='종류' className='inline-flex gap-1'>
+            {(['STUDY', 'CLUB'] as StudyKind[]).map((k) => (
+              <button
+                key={k}
+                type='button'
+                role='radio'
+                aria-checked={value.kind === k}
+                onClick={() => onChange({ ...value, kind: k })}
+                className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
+                  value.kind === k
+                    ? 'border-brand bg-brand text-white'
+                    : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+                }`}
+              >
+                {KIND_LABEL[k]}
+              </button>
+            ))}
+          </div>
+          <span className='text-xs text-fg-muted'>
+            {value.kind === 'CLUB' ? '이전 기수 참여자가 다음 기수에 이어집니다' : '한 번 모집해 한 번 진행'}
+          </span>
+        </div>
+      ) : (
+        <div className='flex flex-col gap-1.5'>
+          <select
+            aria-label='프로그램 선택'
+            value={value.programId}
+            onChange={(ev) => void selectProgram(ev.target.value)}
+            disabled={isLoading || prefilling}
+            className='h-10 rounded-control border border-border-strong bg-bg px-3 text-sm outline-none focus:border-brand'
+          >
+            <option value=''>{isLoading ? '불러오는 중…' : '클럽을 고르세요'}</option>
+            {clubs.map((c) => (
+              <option key={c.programId} value={c.programId}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+          <p className='text-xs text-fg-muted'>
+            {prefilling
+              ? '최신 기수의 내용을 불러오는 중…'
+              : '새 기수를 붙일 수 있는 것은 클럽뿐입니다. 스터디는 기수가 1개이고, 종류는 한 번 정하면 바꿀 수 없습니다.'}
+          </p>
+          {errors.programId && <p className='text-xs font-medium text-error-600'>{errors.programId}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DATE_INPUT =
   'h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]';
 
@@ -172,15 +406,21 @@ export function StudyForm({
   value,
   errors,
   onChange,
+  mode = 'create',
 }: {
   value: StudyFormValues;
   errors: StudyFormErrors;
   onChange: (next: StudyFormValues) => void;
+  /** 등록이면 프로그램을 고르고, 수정이면 읽기 전용으로 보인다. */
+  mode?: FormMode;
 }) {
   const set = <K extends keyof StudyFormValues>(key: K, v: StudyFormValues[K]) => onChange({ ...value, [key]: v });
 
   return (
     <div className='flex flex-col gap-3'>
+      {/* 어느 프로그램의 기수인지부터 정한다 — 기존 클럽을 고르면 아래 칸들이 채워진다 */}
+      <ProgramField mode={mode} value={value} errors={errors} onChange={onChange} />
+
       {/* 무엇을 만드는지부터 적고 날짜는 뒤에 받는다 */}
       <Input
         label='제목'

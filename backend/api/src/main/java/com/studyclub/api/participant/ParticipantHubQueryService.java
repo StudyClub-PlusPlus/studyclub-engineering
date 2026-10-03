@@ -1,6 +1,5 @@
 package com.studyclub.api.participant;
 
-import com.studyclub.api.participant.ParticipantHubResponses.ParticipantHubOverviewResponse;
 import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyDetailResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
@@ -13,10 +12,6 @@ public class ParticipantHubQueryService {
 
     public ParticipantHubQueryService(ParticipantHubDataProvider participantHubDataProvider) {
         this.participantHubDataProvider = participantHubDataProvider;
-    }
-
-    public ParticipantHubOverviewResponse getParticipantHubOverview(Long accountId) {
-        return participantHubDataProvider.getParticipantHubOverview(accountId);
     }
 
     public ParticipatingStudyDetailResponse getParticipatingStudyDetail(

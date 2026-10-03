@@ -29,6 +29,7 @@
 | DRIVE_URL | VARCHAR(2048) | Y | 자료 드라이브 링크. DISCORD_CHANNEL_URL 과 같은 이유로 참고용이다 |
 | SCHEDULE | VARCHAR(255) | Y | 운영 일정 요약 |
 | TIMEZONE | VARCHAR(10) | Y | 기준 시간대 — `KST` / `PST` / `BOTH`(동시 진행). 등록 폼에서 운영자가 직접 고른다. NULL = 미정(이 컬럼이 생기기 전 데이터가 여기 해당) |
+| CREATED_BY | BIGINT | Y | 작성자 — 이 기수를 등록한 계정. ACCOUNT 참조(인덱스만, 외래키 없음 — 애그리거트 밖). 등록 시 서버가 요청 계정으로 채우고 이후 바꾸지 않는다. NULL = 이 컬럼이 생기기 전 데이터. **제안 단계, 미구현**
 
 > URL 식별자(`SLUG`)는 두지 않는다 — 주소에는 `STUDY.ID` 를 쓴다. 이름은 운영 규칙으로 겹치지 않게 관리하지만(드라이브 정리·사용자 식별 목적) URL 의 근거로 삼지 않는다 — 이름을 바꾸면 주소가 깨진다.
 > 정원은 STUDY 에 두지 않는다 — 모집 정원은 [STUDY_RECRUITMENT.RECRUITMENT_CAPACITY](./STUDY_RECRUITMENT.md),
@@ -75,11 +76,16 @@ stateDiagram-v2
 |---|---|---|
 | 생성 → `DRAFT` | 캡틴 | |
 | `DRAFT` → `OPEN` | 캡틴이 공개하며 모집 시작 | `STUDY_RECRUITMENT.START_AT` 를 채운다 — **공개가 된다** |
-| `OPEN` → `ONGOING` | 네비게이터가 첫 미팅([STUDY_MEETING](./STUDY_MEETING.md))을 등록 | |
+| `OPEN` → `ONGOING` | 네비게이터가 첫 미팅([STUDY_MEETING](./STUDY_MEETING.md))을 등록 — **지금은 일으키지 않는다** (아래 메모) | |
 | `ONGOING` → `ENDED` | 네비게이터가 종료 처리, 또는 마지막 미팅으로부터 N주 경과 (시스템) | |
 | `ENDED` → `CLOSED` | 캡틴이 채널을 삭제하고 운영을 종료 | |
 
 `START_AT` / `END_AT`(진행 일정)은 화면에 보이는 값일 뿐 **상태를 바꾸지 않는다** — 상태는 위 전이로만 바뀐다.
+
+> **메모 (2026-10-02) — `OPEN → ONGOING` 은 아직 아무도 일으키지 않는다.** 회차 등록 API([study-meeting 스펙](../../specs/study-meeting/spec.md#결정-사항) 결정 5)는
+> 첫 회차를 등록해도 `STATUS` 를 바꾸지 않기로 했다. `Study.recruitStatus()` 가 `STATUS = OPEN` 일 때만 값을 주고 그 밖엔 null 이라,
+> 모집 중에 회차를 미리 깔면 모집이 닫히기 때문이다. 화면의 「진행 중」 은 지금처럼 `Study.phase()` 가 `START_AT` 경과로 판정한다.
+> 위 전이표의 `OPEN → ONGOING` 행은 그래서 지금 코드와 어긋난다 — 모집 판정을 `STATUS` 에서 떼어 낼 때 함께 다시 정한다.
 
 ### 채널 삭제와 CLOSED
 

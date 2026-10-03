@@ -19,6 +19,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(
@@ -55,10 +57,6 @@ public class Study extends BaseEntity {
     @Column(nullable = false, length = 50)
     private StudyCategory category;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "STUDY_KIND", nullable = false, length = 20)
-    private StudyKind studyKind;
-
     @Column(name = "THUMBNAIL_URL", length = 2048)
     private String thumbnailUrl;
 
@@ -74,6 +72,7 @@ public class Study extends BaseEntity {
     private StudyStatus status;
 
     @Column(name = "APPLICATION_FORM", columnDefinition = "json")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String applicationForm;
 
     @Column(columnDefinition = "json")
@@ -122,6 +121,10 @@ public class Study extends BaseEntity {
             throw new IllegalArgumentException("capacity 는 1 이상이어야 합니다.");
         }
         this.capacity = capacity;
+    }
+
+    public boolean isFull(long activeParticipantCount) {
+        return capacity != null && activeParticipantCount >= capacity;
     }
 
     /** 진행 시작일. {@code null} 이면 미정. */

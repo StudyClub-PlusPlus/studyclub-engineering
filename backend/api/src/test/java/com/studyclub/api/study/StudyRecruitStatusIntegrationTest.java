@@ -146,7 +146,12 @@ class StudyRecruitStatusIntegrationTest {
     }
 
     private Study createStudy(StudyStatus status, Integer capacity, Instant recruitDeadline) {
-        var program = studyProgramRepo.save(StudyProgram.builder().title("모집 상태 스터디").build());
+        var program =
+                studyProgramRepo.save(
+                        StudyProgram.builder()
+                                .title("모집 상태 스터디")
+                                .studyKind(StudyKind.STUDY)
+                                .build());
         var study =
                 studyRepo.save(
                         Study.builder()
@@ -155,7 +160,6 @@ class StudyRecruitStatusIntegrationTest {
                                 .title("모집 상태 스터디")
                                 .oneLineSummary("모집 상태 계산 검증용")
                                 .category(StudyCategory.SOFTWARE)
-                                .studyKind(StudyKind.STUDY)
                                 .description("설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(status)
