@@ -57,6 +57,10 @@ class BackofficeStudyJpqlDao implements BackofficeStudyDao {
             conditions.add("s.status = :status");
             params.put("status", filter.status());
         }
+        if (filter.studyId() != null) {
+            conditions.add("s.id = :studyId");
+            params.put("studyId", filter.studyId());
+        }
 
         String jpql = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
         return new Assembled(jpql, params);

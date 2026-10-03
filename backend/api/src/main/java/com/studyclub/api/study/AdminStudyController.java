@@ -55,13 +55,14 @@ public class AdminStudyController {
             @RequestParam(required = false) StudyCategory category,
             @RequestParam(required = false) StudyKind studyKind,
             @RequestParam(required = false) StudyStatus status,
+            @RequestParam(required = false) Long studyId,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit,
             Authentication authentication) {
         Long accountId = (Long) authentication.getPrincipal();
         studyCaptainGuard.assertCaptain(accountId, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
         return backofficeStudyListService.getStudies(
-                new BackofficeStudyListFilter(category, studyKind, status), offset, limit);
+                new BackofficeStudyListFilter(category, studyKind, status, studyId), offset, limit);
     }
 
     @Operation(summary = "백오피스 스터디 상세 조회", description = "ADMIN만 호출 가능. DRAFT 도 조회된다.")
