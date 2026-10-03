@@ -30,7 +30,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/admin/studies | 스터디 목록 (DRAFT 포함, `status`·`offset`·`limit`) | O (ADMIN) | 구현완료 — 콘솔 목록은 아직 `/api/studies` 를 부른다 (교체 여부 팀 확인 중) |
+| GET | /api/admin/studies | 스터디 목록 (DRAFT 포함, `category`·`studyKind`·`status`·`studyId`·`offset`·`limit`) | O (ADMIN) | 구현완료 — 콘솔 목록은 아직 `/api/studies` 를 부른다 (교체 여부 팀 확인 중) |
 | GET | /api/admin/studies/{studyId} | 스터디 상세 (DRAFT 포함) | O (ADMIN) | 구현완료 — 콘솔 상세가 부른다 |
 | POST | /api/admin/studies | 스터디 등록 (새 프로그램 · 클럽의 새 기수) | O (ADMIN) | 구현완료 — 옛 `POST /api/studies` 는 없앴다 |
 | GET | /api/admin/study-programs | 프로그램 목록 (`studyKind` 필수). 등록 모달의 「기존 클럽의 새 기수」 드롭다운이 `CLUB` 으로 부른다 — `programId`·`title`·`latestStudyId` 만 준다 | O (ADMIN) | 구현완료 |
@@ -229,7 +229,7 @@ private StudyDetailResponse toDetail(Study study) {
 
 - **Method / Path**: `GET /api/admin/studies` — `AdminStudyController` · 구현완료
 - **인증**: `ACCOUNT.SYSTEM_ROLE=ADMIN` (`assertCaptain`)
-- **Query**: `category`(StudyCategory) · `studyKind`(STUDY/CLUB) · `status`(StudyStatus) — 모두 선택. `offset`(기본 0) · `limit`(기본 20) 페이지네이션 지원
+- **Query**: `category`(StudyCategory) · `studyKind`(STUDY/CLUB) · `status`(StudyStatus) · `studyId`(Long) — 모두 선택. `offset`(기본 0) · `limit`(기본 20) 페이지네이션 지원
 - **설명**: DRAFT 포함 전 상태. 등록 직후 스터디가 여기 나온다
 - **Response — 200**: `{ items: [{ studyId, title, status, category, studyKind, recruitmentCapacity, recruitmentStartAt, recruitDeadlineAt, startAt, timezone, hasApplicationForm }], total, offset, limit }` (`BackofficeStudyListResponse`)
 - **프론트엔드 사용처**: 아직 없음 — 콘솔 목록(`features/studies/queries.ts` `useStudies`)은 공개 `/api/studies` 를 부른다. 교체 여부는 팀 확인 중
