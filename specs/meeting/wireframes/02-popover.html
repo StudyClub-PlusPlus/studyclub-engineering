@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>02 회차 팝오버 — 상태별</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>02 · 회차를 누르면 — 팝오버 (상태마다 버튼이 다르다)</b>출석 탭의 격자 열 머리(회차)를 눌러도 같은 팝오버가 뜬다.</div>
+<div class="frame" id="f" style="height:720px"></div>
+<script>
+const pop = (x, y, title, sub, info, btns, more, tag) => `
+  <div class="pop" style="left:${x}px;top:${y}px">
+    <div class="note" style="margin-bottom:6px"><span class="bdg ${tag[0]}">${tag[1]}</span></div>
+    <h4>${title}</h4><div class="sub">${sub}</div>
+    ${info ? `<div class="info">${info}</div>` : ''}
+    <div class="row">${btns}</div>
+    ${more ? `<div class="more">${more}</div>` : ''}
+  </div>`;
+document.getElementById('f').innerHTML = WF.shell() + WF.toolbar() +
+  `<div style="height:600px;background:var(--s1)"></div>` +
+  pop(24, 150, '4회차 · 10/22(목) 20:00 ~ 22:00', '↻ 매주 목 반복 일정',
+    '<div><span>출석 기록</span><b>없음</b></div><div><span>휴가</span><b>1명 · 수아</b></div>',
+    '<span class="btn">일정 변경</span><span class="btn">휴강</span><span class="btn pri">여기서부터 미루기</span>',
+    '<span>완전히 삭제</span>', ['lv', '예정']) +
+  pop(334, 150, '3회차 · 10/15(목) 20:00 ~ 22:00', '지금 진행 중 · 21:05',
+    '<div><span>체크인</span><b>5 / 7명</b></div>',
+    '<span class="btn">늦게 시작 (시각만)</span><span class="btn">휴강</span>',
+    '<span style="color:var(--fg-ph)">날짜 변경·미루기·삭제는 열린 회차에 안 된다</span>', ['chg', '열림']) +
+  pop(644, 150, '10/22(목) 20:00 · 휴강', '사유: 강사 사정 · 크루에게 휴강으로 보인다',
+    '<div><span>출석률</span><b>집계에서 빠짐</b></div>',
+    '<span class="btn pri">휴강 되돌리기</span>', '<span style="color:var(--fg-ph)">되돌리면 다시 센다 — 이미 지난 회차면 빈칸이 결석으로 잡힌다</span>', ['cx', '휴강']) +
+  pop(24, 420, '4회차 · 10/29(목) 20:00 ~ 22:00', '↻ 매주 목 · <b>원래 10/22</b> 에서 옮김 (강사 사정)',
+    '<div><span>출석 기록</span><b>없음</b></div>',
+    '<span class="btn">일정 변경</span><span class="btn">휴강</span><span class="btn">여기서부터 미루기</span>',
+    '<span>원래 일정으로</span><span>완전히 삭제</span>', ['chg', '예외 (옮긴 회차)']) +
+  pop(334, 420, '1회차 · 10/1(목) 20:00 ~ 22:00', '닫힘',
+    '<div><span>출석</span><b>6 / 7명</b></div>',
+    '<span class="btn">휴강 (사후)</span><span class="btn">출석 보기 →</span>', '', ['lv', '닫힘']) +
+  pop(644, 420, '6회차 · 10/31(토) 14:00 ~ 16:00', '단건 회차 · 특강',
+    '',
+    '<span class="btn">일정 변경</span><span class="btn">휴강</span>',
+    '<span>완전히 삭제</span><span style="color:var(--fg-ph)">미루기는 반복 일정 회차만</span>', ['lv', '예정 · 단건']) +
+  `<div class="anno" style="left:960px;top:170px;max-width:260px"><b>!</b>「완전히 삭제」는 출석·휴가 기록이 없을 때만 보인다. 기본 동작은 휴강 — 크루가 알아야 하니까.</div>
+   <div class="anno" style="left:960px;top:290px;max-width:260px"><b>!</b>반복 일정 회차의 요일·시각을 바꾸면 범위를 묻는다 → 03</div>`;
+</script>
+</div></body></html>

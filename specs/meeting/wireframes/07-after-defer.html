@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>07 미룬 뒤 — 달력</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>07 · 미룬 뒤</b>옮긴 회차에는 <span class="bdg chg">변경</span> 배지, 원래 자리에는 점선 유령 칩. 끌어서 옮긴 경우엔 되돌리기 토스트가 10초 뜨고 크루 알림은 그 뒤에 나간다.</div>
+<div class="frame" id="f"></div>
+<ul class="notes">
+  <li>번호는 저장하지 않고 날짜순으로 센다 — 10/29 가 다시 4회차, 10/31 특강은 6회에서 5회가 된다.</li>
+  <li>유령 칩(10/22)은 운영자 화면에만. 누르면 "원래 일정으로" 되돌리기를 제안한다.</li>
+</ul>
+<script>
+const c = WF.base();
+c['2026-10-22'] = [{ cls: 'ghost', text: '원래 4회 자리' }];
+c['2026-10-29'] = [{ text: '<span class="ic">↻</span>4회 20:00', badges: [['chg', '변경']] }];
+c['2026-10-31'] = [{ cls: 'single', text: '5회 14:00 특강' }];
+document.getElementById('f').innerHTML = WF.shell() + WF.toolbar() +
+  `<div class="body"><div style="padding-bottom:60px">${WF.cal(2026, 10, { chips: c })}</div>${WF.side().replace('10/1 ~ 11/19 · 8회 · 남은 5회', '10/1 ~ <b>11/26</b> · 8회 · 남은 5회 · 예외 5')}</div>` +
+  `<div class="toast">미루기 완료 · 5개 회차가 옮겨졌어요 · 크루 7명에게 알림을 보냈어요</div>`;
+</script>
+</div></body></html>

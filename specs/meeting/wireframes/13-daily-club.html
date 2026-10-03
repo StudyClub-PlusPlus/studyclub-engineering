@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>13 매일 클럽</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>13 · 매일 클럽 — 칩 대신 하루 요약, 격자 대신 히트맵</b>조합 E2. WEEKLY X 10월 기수 · 매일 00:00~24:00 · 공부 시간 목표 60분 · 크루 23명 · 오늘 10/20.</div>
+<div class="frame" id="a"></div>
+<div class="frame" id="b" style="margin-top:20px"></div>
+<ul class="notes">
+  <li><b>회차 탭</b> — 매일이면 칩 31개가 달력을 덮는다. 하루 칸에 <b>그날 출석 수</b>만 보이고, 누르면 02 팝오버(휴강·일정 변경). 반복 일정은 오른쪽 패널에 하나.</li>
+  <li><b>출석 탭</b> — 31열을 칸 22px 히트맵으로. 칸 안 숫자 = 공부한 분. 초록 ≥ 60 · 주황 1~59 · 빨강 기록 없음(닫힌 날) · 회색 휴가 · 점선 아직. 누르면 10 의 정정 메뉴.</li>
+  <li>출석 방식이 인증이면 칸 숫자 = 인증 수(0~2), 스트릭이면 ✓ 만. 격자 모양은 같다.</li>
+</ul>
+<script>
+const rnd = (() => { let s = 7; return () => (s = (s * 9301 + 49297) % 233280) / 233280; })();
+const chips = {};
+for (let d = 1; d <= 31; d++) {
+  const k = `2026-10-${String(d).padStart(2, '0')}`;
+  if (d === 10) chips[k] = [{ cls: 'canceled', text: '휴강 (워크숍)' }];
+  else if (d < 20) { const n = 14 + Math.floor(rnd() * 8); chips[k] = [{ cls: 'closed', text: `${n}/23 출석` }]; }
+  else if (d === 20) chips[k] = [{ cls: 'open', text: '진행 중 · 9/23' }];
+  else chips[k] = [{ text: '<span class="ic">↻</span>' }];
+}
+document.getElementById('a').innerHTML = WF.shell().replace('시스템 디자인 1기', 'WEEKLY X · 10월 기수') + WF.toolbar().replace('반: 목요일반', '반: 기본반') +
+  `<div class="body"><div>${WF.cal(2026, 10, { chips }).replace('<table class="cal">', '<table class="cal mini">')}</div>
+   <aside class="side"><h3>반복 일정</h3><div class="card"><div class="t">↻ 매일 00:00~24:00</div><div class="m">10/1 ~ 10/31 (월 기수) · 31회 · 휴강 1</div>
+   <div class="acts"><span class="btn">수정</span><span class="btn">끝내기</span></div></div>
+   <h3>반 설정</h3><div class="note">출석 방식 <b>공부 시간</b> · 목표 <b>60분</b><br/>시간대 Asia/Seoul · 크루 23명</div>
+   <h3 style="margin-top:14px">다음 기수</h3><div class="card"><div class="t">11월 기수</div><div class="m">아직 없음 · 10/25 부터 만들 수 있음</div><div class="acts"><span class="btn pri">다음 기수 만들기 → 15</span></div></div>
+   </aside></div>`;
+const names = ['지민', '수빈', '태오', '하린', '도현', '유나', '준서', '나은'];
+let head = '<tr><th></th>' + Array.from({ length: 31 }, (_, i) => `<th>${i + 1}</th>`).join('') + '<th style="padding-left:10px">출석률</th></tr>';
+let rows = names.map((n, r) => {
+  let num = 0, den = 0;
+  const cells = Array.from({ length: 31 }, (_, i) => {
+    const d = i + 1;
+    if (d === 10) return '<td class="X"></td>';
+    if (d > 20) return '<td class="F"></td>';
+    if (d === 20) { const v = r % 3 === 0 ? 45 : r % 3 === 1 ? 0 : 70; return v ? `<td class="${v >= 60 ? 'P' : 'L'} T">${v}</td>` : '<td class="F T"></td>'; }
+    if (r === 3 && d >= 12 && d <= 14) return '<td class="E">휴</td>';
+    const x = rnd();
+    den++;
+    if (x < 0.12) return '<td class="A"></td>';
+    if (x < 0.3) { num += 0.5; return `<td class="L">${20 + Math.floor(rnd() * 39)}</td>`; }
+    num += 1; return `<td class="P">${60 + Math.floor(rnd() * 90)}</td>`;
+  }).join('');
+  const rate = Math.round((num / den) * 100);
+  return `<tr><td class="n">${n}</td>${cells}<td class="n" style="padding-left:10px;${rate < 70 ? 'color:var(--err-700)' : ''}">${rate}%</td></tr>`;
+}).join('');
+document.getElementById('b').innerHTML = WF.shell('출석').replace('시스템 디자인 1기', 'WEEKLY X · 10월 기수') +
+  `<div class="toolbar"><b>출석부</b><span class="note">크루 23 · 회차 31 (휴강 1) · 방식: 공부 시간 목표 60분</span><span class="sp"></span>
+   <span class="seg"><span class="on">분 보기</span><span>상태만</span></span><span class="btn">CSV</span></div>
+   <div style="padding:6px 20px 18px;overflow:hidden"><table class="heat">${head}${rows}</table>
+   <div class="note" style="margin-top:10px">… 15명 더 · <span class="bdg new">■</span> 60분 이상 <span class="bdg chg">■</span> 1~59분 <span class="bdg cx">■</span> 기록 없음 <span class="bdg lv">휴</span> 휴가 · ▨ 휴강 · 파란 테두리 = 오늘(진행 중, 출석률에 아직 안 셈)</div></div>`;
+</script>
+</div></body></html>

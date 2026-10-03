@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>04 반복 일정 만들기</title><link rel="stylesheet" href="wf.css"><script src="wf.js"></script></head>
+<body><div class="page">
+<div class="cap"><b>04 · 반복 일정 만들기 — 입력하는 즉시 달력에 미리보기</b>반 편성 직후, 아직 회차가 없는 반. 「+ 반복 일정」을 누르면 오른쪽 패널이 입력 폼이 된다.</div>
+<div class="frame" id="f"></div>
+<ul class="notes">
+  <li>미리보기 칩(빗금)은 서버 <code>?dryRun=true</code> 결과를 그대로 그린다 — 화면이 따로 계산하지 않는다.</li>
+  <li>「매일」은 요일 7개를 한 번에 켜는 단축. 「격주」는 첫 회차가 있는 주부터 2주마다.</li>
+  <li>시간대는 여기서 고르지 않는다 — 반 설정. 끝은 회수 또는 날짜 중 하나 (클럽 월 기수는 날짜가 미리 채워짐).</li>
+</ul>
+<script>
+const chips = {};
+['2026-10-01','2026-10-08','2026-10-15','2026-10-22','2026-10-29'].forEach((d, i) => chips[d] = [{ cls: 'preview', text: `${i + 1}회 20:00` }]);
+const day = (d, on) => `<span class="btn" style="padding:5px 9px;${on ? 'background:var(--brand);color:#fff;border-color:var(--brand)' : ''}">${d}</span>`;
+const form = `
+  <aside class="side" style="background:#fff;padding:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><b style="font-size:15px">반복 일정 만들기</b><span class="note">✕</span></div>
+    <div class="kv" style="grid-template-columns:70px 1fr">
+      <span class="k">반복</span><span class="seg"><span class="on">매주</span><span>격주</span><span>매일</span></span>
+      <span class="k">요일</span><span style="display:flex;gap:3px">${['월','화','수'].map(d=>day(d)).join('')}${day('목',1)}${['금','토','일'].map(d=>day(d)).join('')}</span>
+      <span class="k">첫 회차</span><span class="field">2026-10-01 (목)</span>
+      <span class="k">끝</span><span><span class="check"><i class="on" style="border-radius:999px"></i> <span class="field" style="min-width:50px">8</span> 회</span><br/>
+        <span class="check" style="margin-top:6px"><i style="border-radius:999px"></i> 날짜까지 <span class="field" style="color:var(--fg-ph)">YYYY-MM-DD</span></span></span>
+      <span class="k">시각</span><span><span class="field" style="min-width:70px">20:00</span> ~ <span class="field" style="min-width:70px">22:00</span></span>
+      <span class="k"></span><span class="note">반 시간대 Asia/Seoul · 체크인 창 120분</span>
+    </div>
+    <div class="info" style="margin-top:16px"><b>8회 · 10/1 ~ 11/19 · 목 20:00~22:00</b><br/>
+      <span class="note">10/1 · 8 · 15 · 22 · 29 · 11/5 · 12 · 19</span></div>
+    <div class="note">✓ 이 반의 다른 회차와 겹치는 날 없음</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><span class="btn">취소</span><span class="btn pri">8회 만들기</span></div>
+  </aside>`;
+document.getElementById('f').innerHTML = WF.shell() + WF.toolbar('2026년 10월', '<span class="btn pri">+ 반복 일정</span>') +
+  `<div class="body" style="grid-template-columns:1fr 380px"><div>${WF.cal(2026, 10, { today: '2026-09-28', chips })}</div>${form}</div>` +
+  `<div class="anno" style="left:420px;top:250px"><b>!</b>빗금 = 미리보기. 11월 3회는 다음 달</div>`;
+</script>
+</div></body></html>
