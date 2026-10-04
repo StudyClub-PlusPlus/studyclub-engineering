@@ -12,6 +12,42 @@ import org.junit.jupiter.api.Test;
 class StudyApplicationAnswerTest {
 
     @Test
+    @DisplayName("추가 답변은 요청 키 순서와 무관하게 질문 순서로 보관하고 변경을 막는다")
+    void keepsQuestionOrderInImmutableAnswers() {
+        List<ApplicationFormQuestion> questions =
+                List.of(
+                        new ApplicationFormQuestion(
+                                "second",
+                                "둘",
+                                ApplicationFormQuestionType.TEXT,
+                                true,
+                                null,
+                                null,
+                                List.of(),
+                                false),
+                        new ApplicationFormQuestion(
+                                "first",
+                                "하나",
+                                ApplicationFormQuestionType.TEXT,
+                                true,
+                                null,
+                                null,
+                                List.of(),
+                                false));
+        StudyApplicationAnswer answer =
+                StudyApplicationAnswer.create(
+                        "별명",
+                        List.of("mon"),
+                        null,
+                        Map.of("first", "하나", "second", "둘"),
+                        false,
+                        questions);
+        assertThat(answer.answers().keySet()).containsExactly("second", "first");
+        assertThatThrownBy(() -> answer.answers().put("third", "셋"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
     @DisplayName("한 줄 값은 줄바꿈·탭을 공백으로 바꾼 뒤 길이를 검사하고 저장한다")
     void normalizesSingleLineBeforeCheckingLength() {
         String nickname = "가".repeat(49) + "\n\t" + "나".repeat(49);

@@ -3,6 +3,7 @@ package com.studyclub.domain.application;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -28,7 +29,10 @@ public record StudyApplicationAnswer(
         Map<String, Object> answers = normalizeExtraAnswers(questions, rawAnswers);
         Boolean scheduleAgreed = normalizeScheduleAgreement(hasSchedule, rawScheduleAgreed);
         return new StudyApplicationAnswer(
-                discordNickname, List.copyOf(availableDays), scheduleAgreed, Map.copyOf(answers));
+                discordNickname,
+                List.copyOf(availableDays),
+                scheduleAgreed,
+                Collections.unmodifiableMap(new LinkedHashMap<>(answers)));
     }
 
     private static List<ApplicationDay> normalizeDays(List<String> rawDays) {
