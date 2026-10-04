@@ -13,11 +13,14 @@ StudyClub++ 코드 모노레포 (**public**). 미국·캐나다·한국의 개�
 ## 구조
 
 ```
-frontend/                # Node 워크스페이스 (npm + turbo)
+frontend/                # Node 워크스페이스 (pnpm + turbo)
   apps/
     core-front/          # 사용자향 (Next.js 16, ko/en) — 랜딩·스터디·행사·가이드·공지·소개
     back-office-front/   # 운영자향 (Next.js 16) — 스터디/행사/멤버/캡틴 관리 콘솔
+    playground/          # 디자인 컴포넌트 & 프로토타입 샌드박스
   packages/
+    design/              # 디자인 토큰 & 정본 CSS (@studyclub/design — base.css, core.css, console.css)
+    ui/                  # 공용 UI 컴포넌트 (@studyclub/ui — Storybook 포함)
     mock/                # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티 (@studyclub/mock)
 backend/                 # Spring Boot 4 멀티모듈 (Gradle Kotlin DSL, Java 25)
   api/                   # 실행 모듈 — REST API (:8080)
@@ -35,6 +38,11 @@ backend/                 # Spring Boot 4 멀티모듈 (Gradle Kotlin DSL, Java 2
 ### Frontend
 
 ```bash
+# 프로젝트 루트에서 바로 실행할 때
+pnpm --prefix frontend storybook       # Storybook (:6006)
+pnpm --prefix frontend run dev         # 모든 앱 동시 실행
+
+# 또는 frontend 디렉토리에서 실행할 때
 cd frontend
 pnpm install
 pnpm run dev                       # turbo — 모든 앱 동시
@@ -42,8 +50,10 @@ pnpm run dev                       # turbo — 모든 앱 동시
 pnpm run dev:core-front            # http://localhost:4700
 pnpm run dev:back-office-front     # http://localhost:4701
 pnpm run dev:playground            # http://localhost:4702
+pnpm run storybook                 # http://localhost:6006 (Storybook)
 # 빌드
 pnpm run build
+pnpm run build-storybook           # Storybook 정적 빌드
 ```
 
 - Node 20+ 필요.

@@ -65,7 +65,7 @@
 stateDiagram-v2
   [*] --> DRAFT : 캡틴이 스터디 생성
   DRAFT --> OPEN : 캡틴이 모집 시작
-  OPEN --> DRAFT : 공개 취소 (신청 0건일 때만)
+  OPEN --> DRAFT : 공개 취소
   OPEN --> ONGOING : 네비게이터가 첫 미팅 등록
   ONGOING --> ENDED : 네비게이터 종료 처리 / 마지막 미팅으로부터 N주 경과
   ENDED --> CLOSED : 캡틴이 채널 삭제 후 운영 종료

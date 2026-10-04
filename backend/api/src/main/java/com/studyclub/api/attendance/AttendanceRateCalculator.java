@@ -2,7 +2,6 @@ package com.studyclub.api.attendance;
 
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.attendance.StudyAttendance;
-import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.study.StudyMeeting;
 import java.time.Instant;
@@ -44,15 +43,25 @@ public class AttendanceRateCalculator {
         return new double[] {numerator, denominator};
     }
 
-    /** 이 회차가 그 참여자의 출석률 분모에 들어가는지 — 참여 중단이 아니고, 예정 시각이 지났고, 편입 뒤의 회차. */
+    /**
+     * 이 회차가 그 참여자의 출석률 분모에 들어가는지 — 편입 뒤의 회차이고, 예정 시각이 상한을 넘지 않을 때.
+     *
+     * <p>상한은 ACTIVE/PAUSED/COMPLETED 면 지금(now), WITHDRAWN·DELETED(하차·회원 탈퇴)면 떠난 시각({@code
+     * leftAt})이다 — 하차 이후 회차까지 결석(0점)으로 깔면 "하차"와 "결석"이라는 서로 다른 사실이 같은 숫자로 섞인다. {@code leftAt} 이 없는
+     * WITHDRAWN·DELETED(떠난 시각을 모르는 과거 데이터)는 안전하게 전체를 제외한다 — 어디까지가 "떠나기 전"인지 알 수 없기
+     * 때문이다(specs/user-leave/spec.md).
+     */
     public static boolean countsToward(
             StudyParticipant participant, StudyMeeting meeting, Instant now) {
-        if (participant.getStatus() != ParticipantStatus.ACTIVE
-                && participant.getStatus() != ParticipantStatus.PAUSED
-                && participant.getStatus() != ParticipantStatus.COMPLETED) {
+        Instant upperBound =
+                switch (participant.getStatus()) {
+                    case ACTIVE, PAUSED, COMPLETED -> now;
+                    case WITHDRAWN, DELETED -> participant.getLeftAt();
+                };
+        if (upperBound == null) {
             return false;
         }
-        return !meeting.getScheduledAt().isAfter(now)
+        return !meeting.getScheduledAt().isAfter(upperBound)
                 && !meeting.getScheduledAt().isBefore(participant.getJoinedAt());
     }
 

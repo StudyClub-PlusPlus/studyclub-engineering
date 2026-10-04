@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -112,6 +113,18 @@ export function ProfileDialog({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* 들어오는 길은 여기 한 곳뿐이다 — 헤더·로그아웃 옆에 두면 잘못 눌린다
+            (specs/user-leave/spec.md "프론트엔드 사용처"). */}
+        <div className='border-t border-border pt-4 text-right'>
+          <Link
+            href={`/${locale}/my/leave`}
+            onClick={onClose}
+            className='text-xs font-semibold text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
+          >
+            회원 탈퇴
+          </Link>
         </div>
       </div>
     </Modal>

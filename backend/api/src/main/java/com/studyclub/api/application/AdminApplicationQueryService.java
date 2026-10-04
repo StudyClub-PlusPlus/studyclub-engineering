@@ -29,6 +29,9 @@ import tools.jackson.databind.ObjectMapper;
 @Transactional(readOnly = true)
 public class AdminApplicationQueryService {
 
+    /** 신청자가 탈퇴해 계정이 없을 때 신청자명 자리에 표시한다 (specs/user-leave/spec.md). */
+    private static final String WITHDRAWN_APPLICANT_NAME = "탈퇴한 회원";
+
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyApplicationRepository studyApplicationRepository;
@@ -116,7 +119,7 @@ public class AdminApplicationQueryService {
         return new StudyApplicationResponse(
                 application.id(),
                 application.recruitmentId(),
-                application.nickname(),
+                application.nickname() != null ? application.nickname() : WITHDRAWN_APPLICANT_NAME,
                 answer.discordNickname(),
                 application.email(),
                 application.createdAt(),

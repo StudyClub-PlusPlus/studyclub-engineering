@@ -15,9 +15,8 @@
 
 @theme inline {
   /* ---- Surfaces ----
-     구 --color-bg(#fbfbfd)는 "페이지 바닥", --color-surface(#fff)는 "카드"였다.
-     신규는 --color-bg 가 흰색이므로 이름이 뒤집힌다. 역할 기준으로 매핑한다. */
-  --color-bg: var(--color-neutral-50); /* was #fbfbfd */
+     구 --color-surface(#fff)는 "카드"였다. 신규 semantic 토큰은 --color-bg(흰색).
+     ⚠️ --color-bg 는 tokens.css 의 neutral-0(흰색)을 그대로 유지해야 하므로 여기서 덮어쓰지 않는다. */
   --color-surface: var(--color-neutral-0); /* was #ffffff */
   --color-surface-subtle: var(--color-neutral-100); /* was #f4f4f7 */
 
@@ -25,9 +24,9 @@
   --color-border: var(--color-neutral-200); /* was #ececef */
   --color-border-strong: var(--color-neutral-300); /* was #e0e0e6 */
 
-  /* ---- Text ---- */
+  /* ---- Text ----
+     ⚠️ --color-fg-muted 는 tokens.css 의 neutral-600 을 그대로 유지해야 하므로 여기서 덮어쓰지 않는다. */
   --color-fg: var(--color-neutral-900); /* was #18181b */
-  --color-fg-muted: var(--color-neutral-700); /* was #52525b */
   --color-fg-subtle: var(--color-neutral-600); /* was #71717a */
   --color-fg-faint: var(--color-neutral-400); /* was #a1a1aa */
 

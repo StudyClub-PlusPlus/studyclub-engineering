@@ -1,15 +1,25 @@
 import { registerHandlers, type MockHandlerGroup } from '../utils';
 import { accountsHandlers } from './accounts';
 import { notificationTemplatesHandlers } from './notification-templates';
-import { studiesHandlers } from './studies';
+import {
+  studiesHandlers,
+  adminStudiesHandlers,
+  adminStudyProgramsHandlers,
+} from './studies';
 
 export { registerHandlers, type MockHandlerGroup } from '../utils';
-export { studiesHandlers } from './studies';
+export {
+  studiesHandlers,
+  adminStudiesHandlers,
+  adminStudyProgramsHandlers,
+} from './studies';
 export { accountsHandlers, mockUsers } from './accounts';
 export { notificationTemplatesHandlers, mockNotificationTemplates } from './notification-templates';
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
   studiesHandlers,
+  adminStudiesHandlers,
+  adminStudyProgramsHandlers,
   accountsHandlers,
   notificationTemplatesHandlers,
 ];

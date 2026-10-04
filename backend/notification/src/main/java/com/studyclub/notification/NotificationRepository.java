@@ -15,6 +15,19 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findAllByOrderByCreatedAtDesc();
 
     /**
+     * 회원 탈퇴 — 이 계정이 수신자인 알림 이력을 잠그고 조회한다(비식별화 대상, specs/user-leave/spec.md).
+     *
+     * <p>{@code FOR UPDATE}(SKIP LOCKED 아님)인 이유: 폴링 스케줄러가 마침 이 행을 클레임·완료 처리 중이면 그 트랜잭션이 끝날 때까지 기다린
+     * 뒤 최신 상태를 읽어야 한다. 일반 조회는 트랜잭션 스냅샷을 읽어, 그 사이 PENDING→PROCESSING 으로 바뀐 행을 여전히 PENDING 으로 보고 취소해
+     * 버리거나 스케줄러의 갱신을 덮어쓸 수 있다. SKIP LOCKED 로 건너뛰면 잠긴 행은 비식별화가 누락돼 PII 가 남는다. 반대로 이 락을 먼저 잡으면 스케줄러의
+     * {@code findClaimableIds}(SKIP LOCKED)는 이 행을 건너뛰어 취소 대상이 발송되지 않는다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select n from Notification n where n.recipientUserId = :recipientUserId")
+    List<Notification> findByRecipientUserIdForUpdate(
+            @Param("recipientUserId") Long recipientUserId);
+
+    /**
      * 완료 처리(markSent/markFailed) 전용 — 행을 잠근다({@code AccountRepository.findByEmailForUpdate} 와 같은
      * 이유). 일반 {@code findById} 는 트랜잭션 시작 시점의 스냅샷을 읽을 뿐이라, 이 값을 읽어 자바에서 상태·lockedAt 을 확인한 뒤 저장하는 사이에
      * 다른 트랜잭션(재수거 등)이 같은 행을 먼저 바꿔도 알아채지 못하고 덮어쓸 수 있다 — 확인과 갱신이 원자적이지 않다는 리뷰 지적. {@code FOR UPDATE}

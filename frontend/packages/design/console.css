@@ -1,0 +1,68 @@
+/* =============================================================================
+   @studyclub/design — console.css (운영자 콘솔 console 스타일 정본)
+   back-office-front, playground proto/console 공용.
+   색은 사용자 사이트와 100% 동일한 소스를 쓰며 밀도(radius/행높이) 오버라이드 포함.
+   ============================================================================= */
+
+@import "./base.css";
+
+/* ── 밀도 오버라이드 (정보 밀도↑, 전문적 인상) ──────────────────────────────
+   색(color) 토큰은 절대 재정의하지 않고, 밀도(radius / row-height / font-size)만 덮어씁니다. */
+:root {
+  --radius-control: 6px;   /* 사이트 8 → 콘솔 6  (버튼·입력·셀렉트) */
+  --radius-chip:    6px;   /* 사이트 8 → 콘솔 6  (필터칩·태그) */
+  --radius-card:    12px;  /* 사이트 16 → 콘솔 12 */
+  --radius-modal:   16px;  /* 사이트 24 → 콘솔 16 */
+  --row-height:     44px;  /* 사이트 52 → 콘솔 44 (출석부/데이터 테이블) */
+}
+
+/* 본문 밀도(선택): 한글 광학 보정 기준 콘솔은 15px.
+   콘솔 앱 루트에 class="console" 또는 data-app="console" 를 부여해 스코프. */
+.console,
+[data-app="console"] {
+  font-size: 15px;
+}
+
+/* ── Table shell ──────────────────────────────────────────────────────────── */
+.bo-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+.bo-table thead tr {
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  color: var(--color-fg-muted);
+  font-size: 0.75rem;
+}
+.bo-table th {
+  padding: 0.625rem 1rem;
+  font-weight: 500;
+}
+.bo-table td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--color-border);
+  height: var(--row-height);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+.btn-primary {
+  color: var(--color-on-brand);
+  background: var(--color-brand);
+}
+.btn-ghost {
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-fg-muted);
+  padding: 0.375rem 0.75rem;
+}

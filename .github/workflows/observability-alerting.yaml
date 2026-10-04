@@ -1,0 +1,117 @@
+# Grafana **알림**(규칙·수신처·라우팅·템플릿)의 정본은 레포다.
+# 대시보드는 observability-dashboards.yaml — 분리 이유는 그 파일 머리말에 있다.
+#
+# 대시보드와 다른 점 셋
+#   ① `${VAR}` 치환이 필요하다. 하나라도 비면 도구가 실패시킨다 — Grafana 는 치환 안 된
+#      문자열도 그냥 저장하고, 알림이 안 오기 시작할 때까지 아무 신호도 주지 않는다
+#   ② 봇 토큰은 Grafana 에서 되읽을 수 없다(`[REDACTED]`) — 반드시 공급돼야 한다
+#   ③ 레포에서 지운 규칙을 **Grafana 에서도 지운다** — 남으면 NoData 로 영구히 떠서
+#      쓰이지 않는 경고가 진짜 경고를 묻는다
+
+name: observability-alerting
+
+on:
+  pull_request:
+    branches: [beta, develop, main]
+    paths:
+      - 'observability/alerting/**'
+      - 'observability/alerting-tool.mjs'
+      - 'observability/grafana.mjs'
+      - '.github/workflows/observability-alerting.yaml'
+  push:
+    branches: [beta, develop, main]
+    paths:
+      - 'observability/alerting/**'
+      - 'observability/alerting-tool.mjs'
+      - 'observability/grafana.mjs'
+      - '.github/workflows/observability-alerting.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node observability/alerting-tool.mjs --lint
+
+  provision:
+    if: >-
+      github.event_name != 'pull_request'
+      && (github.ref_name == 'develop' || github.ref_name == 'main')
+    needs: lint
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'stage' }}
+    env:
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      GRAFANA_TOKEN: ${{ secrets.GRAFANA_SA_TOKEN }}
+      # 알림 메시지에 찍히는 환경 이름. 시크릿이 아니라 **브랜치에서 도출**한다 —
+      # 설정으로 두면 환경과 어긋날 수 있고, 어긋나도 알림은 그냥 나가서 신호가 없다.
+      # (레포에 "stage" 로 박혀 있었다. 그대로 prod 에 올리면 운영 알림이 stage 로 찍힌다)
+      GRAFANA_ENV: ${{ github.ref_name == 'main' && 'production' || 'stage' }}
+      DS_PROMETHEUS_UID: ${{ secrets.DS_PROMETHEUS_UID }}
+      DS_LOKI_UID: ${{ secrets.DS_LOKI_UID }}
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 자격증명 있나
+        id: guard
+        run: |
+          missing=""
+          for v in GRAFANA_URL GRAFANA_TOKEN GRAFANA_ENV DS_PROMETHEUS_UID DS_LOKI_UID DISCORD_BOT_TOKEN DISCORD_CHANNEL_ID; do
+            eval "val=\$$v"
+            if [ -z "$val" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### 알림 반영 건너뜀"
+              echo
+              echo "이 Environment 에 없는 시크릿:$missing"
+              echo
+              echo "값 SoT 는 인프라 저장소의 secret 이다."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 정본과 실물 비교 (drift)
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          set +e
+          out=$(node observability/alerting-tool.mjs --drift 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" = "3" ]; then
+            {
+              echo "### ⚠️ 알림 설정이 Grafana 쪽과 어긋난다 — 이번 반영으로 덮인다"
+              echo
+              echo '```'
+              echo "$out"
+              echo '```'
+              echo
+              echo "레포에 없는 규칙은 **삭제된다.** 살려야 하면 먼저 PR 로 올린다."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$code" != "0" ]; then
+            exit "$code"
+          fi
+
+      - name: Grafana 에 반영
+        if: steps.guard.outputs.ready == 'true'
+        run: node observability/alerting-tool.mjs --push
+
+      - name: 반영 확인
+        if: steps.guard.outputs.ready == 'true'
+        run: node observability/alerting-tool.mjs --drift

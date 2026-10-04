@@ -37,12 +37,14 @@ public final class AdminApplicationResponses {
     public record StudyApplicationResponse(
             @Schema(description = "신청서 ID", example = "10") Long id,
             @Schema(description = "신청한 모집 회차 ID", example = "3") Long recruitmentId,
-            @Schema(description = "신청자 계정 닉네임", example = "홍길동") String applicantName,
+            @Schema(description = "신청자 계정 닉네임. 신청자가 탈퇴했으면 \"탈퇴한 회원\"", example = "홍길동")
+                    String applicantName,
             @Schema(
                             description = "제출 시점의 디스코드 서버 별명. 응답자별 표의 식별 컬럼으로 사용합니다.",
                             example = "홍길동/SWE/서울/백엔드")
                     String discordNickname,
-            @Schema(description = "신청자 계정 이메일", example = "gildong@example.com") String email,
+            @Schema(description = "신청자 계정 이메일. 신청자가 탈퇴했으면 null", example = "gildong@example.com")
+                    String email,
             @Schema(description = "신청서 제출 시각", example = "2026-09-20T12:00:00Z")
                     Instant submittedAt,
             @Schema(description = "현재 스터디를 제외한 이전 참여 횟수", example = "2")

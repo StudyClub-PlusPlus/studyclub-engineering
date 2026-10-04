@@ -105,7 +105,7 @@ export function StudyDetailView({
   const startText = `${t({ ko: '시작 예정일', en: 'Starts' }, locale)} ${startValue}`;
   const timezoneLabel = studyTimezoneLabel(study, locale);
   const deadline = toISODate(study.recruitment?.deadline);
-  const joined = getStudyCrew(study).crew.filter((c) => c.status === 'active').length;
+  const joined = getStudyCrew(study).crew.length;
   const cap = recruitCapacity(study);
 
   return (
