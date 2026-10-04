@@ -98,7 +98,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].endAt | String (ISO 8601 UTC) | Y | | STUDY.END_AT |
 | items[].relation | String | N | 나와의 관계 — 탭·배지. 아래 표 | 계산: `participantStatus` + `startAt` |
 | items[].participantStatus | String | N | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | STUDY_PARTICIPANT.STATUS |
-| items[].participantRole | String | N | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼 | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| items[].participantRole | String | N | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼. **담당 캡틴**(스터디를 생성한 캡틴)도 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다 — 담당 캡틴의 명부 편입과 역할 값은 후속 작업 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
 | items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |

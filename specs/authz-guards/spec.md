@@ -127,6 +127,8 @@
 | 출석 upsert | POST | `/api/studies/{studyId}/attendances` | **분반** | LEADER/CO_LEADER(스터디 전체, 캡틴 미포함) | **분반 단위** + `@RequireOnboarding`, 인라인 검사 **제거**. 캡틴 통과 · **타 분반 네비게이터 403** |
 | 출석 명부 | GET | 동일 (`studyGroupId` query) | **분반** | 인증만 | **분반 단위** + `@RequireOnboarding` — 캡틴 또는 **그 `studyGroupId` 네비게이터만** |
 
+> **후속 (2026-10-04 기획 확정)** — 네비게이터는 신청 폼을 고치지 못하고 백오피스에도 들어오지 못한다. 그래서 위 `PUT /api/studies/{studyId}/application-form`(네비게이터용 사용자 사이트 경로)은 폐기 예정이고, 백오피스 `PUT /api/admin/studies/{studyId}/application-form` 은 `@RequireAdmin` 에 더해 **이 기수 담당 캡틴**(스터디를 생성한 캡틴)만 통과시켜야 한다. 백오피스 신청 폼 조회·신청 결과 조회는 지금처럼 캡틴 누구나. 근거: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md) · [신청 스펙](../study-application/spec.md)
+
 ### C. 회원 전용 · 온보딩
 
 | 화면 | Method | Path | 지금 | 이번 |
