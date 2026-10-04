@@ -135,7 +135,7 @@ class AttendanceGetIntegrationTest {
                                 .studyGroupId(group.getId())
                                 .studyId(study.getId())
                                 .status(ParticipantStatus.ACTIVE)
-                                .participantRole(ParticipantRole.MEMBER)
+                                .participantRole(ParticipantRole.LEADER)
                                 .joinedAt(joinedAt)
                                 .build());
         participantB =

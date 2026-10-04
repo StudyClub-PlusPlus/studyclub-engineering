@@ -2,6 +2,7 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AccountDtos.OnboardingRequest;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
+import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.AccountRepository;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 유저 목록 (백오피스 "유저" 탭 — 스터디원/운영진 통합) + 온보딩 완료. 인증 필요. (역할별 접근 가드는 후속 — 현재는 로그인 유저면 조회 가능) */
+/** 유저 목록 (백오피스 "유저" 탭) + 온보딩 완료. 목록은 캡틴만 ({@code @RequireAdmin}). */
 @Tag(name = "유저", description = "백오피스 유저 목록 · 온보딩 완료")
 @RestController
 @RequestMapping("/accounts")
@@ -33,6 +34,7 @@ public class AccountController {
         this.accountOnboardingService = accountOnboardingService;
     }
 
+    @RequireAdmin
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping
     public List<AccountView> list() {
