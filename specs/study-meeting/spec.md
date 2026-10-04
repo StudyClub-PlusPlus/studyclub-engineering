@@ -70,9 +70,9 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 은 기획(세은님)과 합
 
 ### 「시작한 회차」 판정
 
-`now >= SCHEDULED_AT` **또는** `START_AT IS NOT NULL` 이면 시작한 회차다. 수정·삭제를 거절한다(409 `MEETING_ALREADY_STARTED`).
+`now >= SCHEDULED_AT` **또는** `START_AT IS NOT NULL` 이면 시작한 회차다. 수정·삭제를 거절한다(409 `MEETING_ALREADY_STARTED`). 관리 화면은 이 회차를 「종료」로 표시한다 (PRD 3-2).
 
-PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예정 시각 전에 회차를 열 수 있다(`StudyMeeting.start`, [discord-attendance](../discord-attendance/spec.md)). 그때는 출석이 이미 찍혀 있어 PRD 3-2 의 「시작함 회차는 고치거나 지울 수 없다 — 출석이 기록돼 있다」 와 같은 이유로 막는다.
+PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예정 시각 전에 회차를 열 수 있다(`StudyMeeting.start`, [discord-attendance](../discord-attendance/spec.md)). 그때는 출석이 이미 찍혀 있어 PRD 3-2 의 「종료 회차는 고치거나 지울 수 없다 — 출석이 기록돼 있다」 와 같은 이유로 막는다.
 
 ### 「같은 날」 판정
 
@@ -99,7 +99,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/meetings`
 - **인증**: 필요 — 그 분반 네비게이터 · 캡틴
-- **설명**: 한 분반의 회차를 지난 회차까지 날짜순으로 돌려준다. 관리 화면 머리(분반 이름 · 시간대 · 정규 시작 시각)도 함께.
+- **설명**: 한 분반의 회차를 지난 회차까지 일정순으로 돌려준다. 관리 화면 머리(분반 이름 · 시간대 · 정규 시작 시각)도 함께.
 
 ### Path Parameters
 
@@ -157,7 +157,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | meetings[].number | Int | N | 회차 번호 | 계산: 분반 회차를 `SCHEDULED_AT` 오름차순으로 센 순번 (1부터) |
 | meetings[].scheduledAt | String | N | UTC ISO 8601 | STUDY_MEETING.SCHEDULED_AT |
 | meetings[].title | String | Y | 없으면 null — 화면은 「—」 | STUDY_MEETING.TITLE |
-| meetings[].started | Boolean | N | true 면 「시작함」 — 수정·삭제 불가 | 계산: `now >= SCHEDULED_AT OR START_AT IS NOT NULL` |
+| meetings[].started | Boolean | N | true 면 「종료」 — 수정·삭제 불가 | 계산: `now >= SCHEDULED_AT OR START_AT IS NOT NULL` |
 
 ### Error Responses
 

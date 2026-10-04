@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 
+import { SegmentTabs } from '@core/components/SegmentTabs';
 import { meetingWindow, meetingsOf } from '@core/lib/attendance';
 import {
+  DISPLAY_ZONES,
   DOW_LABEL,
   REPEAT_SPAN_DAYS,
   TITLE_MAX,
@@ -17,8 +19,10 @@ import {
   maxUntil,
   planDraft,
   previewOf,
+  scheduleLabel,
   updateMeeting,
   validateEdit,
+  zoneLabel,
   wallLabel,
   type DraftErrors,
   type MeetingDraft,
@@ -35,13 +39,17 @@ import { Pencil, Plus, Repeat as RepeatIcon, Trash2 } from 'lucide-react';
  *
  * 받는 것은 예정 시각(SCHEDULED_AT)과 표시용 제목뿐이다. 실제 시작·종료(START_AT·END_AT)는
  * 보이스룸에서 `/StudyStart` 로 열 때 기록된다.
- * 이미 시작한 회차는 고치거나 지우지 않는다 — 출석이 찍혀 있다.
+ * 이미 시작한 회차(화면에선 「종료」)는 고치거나 지우지 않는다 — 출석이 찍혀 있다.
  */
 export function ScheduleManager({ study, group }: { study: Study; group: NavigatorGroup }) {
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  /** 목록의 일정을 어느 시간대로 보일지. 처음엔 분반 시간대 — 탭에 없는 시간대면 KST. */
+  const [zone, setZone] = useState<string>(
+    DISPLAY_ZONES.some((z) => z.iana === group.timeZone) ? group.timeZone : DISPLAY_ZONES[0].iana,
+  );
   /** 저장소가 localStorage 라 렌더 트리거가 없다 — 바꿀 때마다 올려 다시 읽는다. */
   const [, setRev] = useState(0);
   const refresh = () => setRev((n) => n + 1);
@@ -77,20 +85,29 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
             전체 {meetings.length} · 예정 {upcomingCount}
           </span>
         </h2>
-        <span data-anno='schedule:2'>
-          <Button
-            size='sm'
-            leadingIcon={<Plus size={15} />}
-            onClick={() => {
-              setAdding(true);
-              setEditId(null);
-              setConfirmId(null);
-              setDone(null);
-            }}
-          >
-            회차 추가
-          </Button>
-        </span>
+        <div className='flex items-center gap-2'>
+          <SegmentTabs
+            anno='schedule:8'
+            label='일정 표시 시간대'
+            value={zone}
+            options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
+            onChange={setZone}
+          />
+          <span data-anno='schedule:2'>
+            <Button
+              size='sm'
+              leadingIcon={<Plus size={15} />}
+              onClick={() => {
+                setAdding(true);
+                setEditId(null);
+                setConfirmId(null);
+                setDone(null);
+              }}
+            >
+              회차 추가
+            </Button>
+          </span>
+        </div>
       </div>
 
       {done && (
@@ -126,7 +143,7 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
             <thead>
               <tr className='text-left text-xs font-semibold text-fg-muted'>
                 <th className='w-16 px-4 py-3'>회차</th>
-                <th className='px-3 py-3'>날짜 · 시각 (KST)</th>
+                <th className='px-3 py-3'>일정</th>
                 <th className='px-3 py-3'>제목</th>
                 <th className='w-24 px-3 py-3'>상태</th>
                 <th className='w-24 px-3 py-3 text-right'>관리</th>
@@ -143,6 +160,7 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
                         <td colSpan={5} className='border-t border-border bg-surface-1 px-4 py-3'>
                           <EditRow
                             study={study}
+                            group={group}
                             meeting={m}
                             existing={meetings}
                             onCancel={() => setEditId(null)}
@@ -161,7 +179,7 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
                       <td className='tnum border-t border-border px-4 py-2.5 font-bold'>{m.no}</td>
                       <td className='tnum border-t border-border px-3 py-2.5'>
                         <span className='inline-flex items-center gap-1.5'>
-                          {wallLabel(start, group.timeZone)}
+                          {scheduleLabel(start, zone)}
                           {m.seriesId && (
                             <span data-anno='schedule:3-1' title='반복으로 만든 회차' className='text-fg-muted'>
                               <RepeatIcon size={13} aria-label='반복' />
@@ -180,7 +198,7 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
                             past ? 'bg-surface-2 text-fg-muted' : 'bg-brand-subtle text-brand',
                           )}
                         >
-                          {past ? '시작함' : '예정'}
+                          {past ? '종료' : '예정'}
                         </span>
                       </td>
                       <td className='border-t border-border px-3 py-2.5 text-right'>
@@ -231,8 +249,7 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
                       <td colSpan={5} className='px-4 pb-3'>
                         <div data-anno='schedule:3-5' className='flex flex-wrap items-center justify-between gap-2'>
                           <p className='text-[13px] text-error-700'>
-                            {m.no}회차를 지울까요? 크루가 이 회차에 낸 휴가 신청도 함께 사라집니다. 뒤 회차 번호는
-                            하나씩 당겨집니다.
+                            {m.no}회차를 지울까요? 뒤 회차 번호는 하나씩 당겨집니다.
                           </p>
                           <span className='flex flex-wrap gap-1.5'>
                             <Button variant='ghost' size='sm' onClick={() => setConfirmId(null)}>
@@ -264,8 +281,8 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
       )}
 
       <p data-anno='schedule:4' className='text-xs text-fg-muted'>
-        이미 시작한 회차는 출석 기록이 있어 고치거나 지울 수 없습니다. 회차 번호는 날짜순으로 매겨져, 더하거나 지우면
-        다시 매겨집니다.
+        종료된 회차는 출석 기록이 있어 고치거나 지울 수 없습니다. 회차 번호는 일정순으로 매겨져, 더하거나 지우면 다시
+        매겨집니다.
       </p>
     </div>
   );
@@ -275,12 +292,14 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
 
 function EditRow({
   study,
+  group,
   meeting,
   existing,
   onCancel,
   onSaved,
 }: {
   study: Study;
+  group: NavigatorGroup;
   meeting: ProtoMeeting;
   existing: ProtoMeeting[];
   onCancel: () => void;
@@ -315,7 +334,7 @@ function EditRow({
       <div className='grid gap-3 sm:grid-cols-[10rem_8rem_1fr]'>
         <Input
           type='date'
-          label='날짜'
+          label='일자'
           required
           value={edit.date}
           error={errors.date}
@@ -323,7 +342,7 @@ function EditRow({
         />
         <Input
           type='time'
-          label='시작 시각'
+          label={`시작 시각 (${zoneLabel(group.timeZone)})`}
           required
           value={edit.time}
           error={errors.time}
@@ -338,7 +357,7 @@ function EditRow({
         />
       </div>
       <p className='text-xs text-fg-muted'>
-        회차의 식별자는 그대로라 크루가 낸 휴가 신청이 따라옵니다. 날짜를 옮기면 번호가 다시 매겨질 수 있습니다.
+        일자 및 시작 시간을 수정하면 일정 순서대로 회차가 다시 매겨질 수 있습니다.
       </p>
       <div className='flex justify-end gap-2'>
         <Button variant='secondary' size='sm' onClick={onCancel}>
@@ -447,7 +466,7 @@ function AddForm({
           <div data-anno='schedule:7-1'>
             <Input
               type='date'
-              label={draft.repeat === 'none' ? '날짜' : '시작 날짜'}
+              label={draft.repeat === 'none' ? '일자' : '시작 일자'}
               required
               value={draft.date}
               error={errors.date}
@@ -457,7 +476,7 @@ function AddForm({
           <div data-anno='schedule:7-2'>
             <Input
               type='time'
-              label='시작 시각'
+              label={`시작 시각 (${zoneLabel(group.timeZone)})`}
               required
               value={draft.time}
               error={errors.time}
@@ -572,8 +591,9 @@ function AddForm({
                   </li>
                 )}
                 <li className='tnum'>
-                  {plan.dates.length > 1 ? '첫 회차 ' : ''}KST {wallLabel(kstInstant(first, draft.time), 'Asia/Seoul')}{' '}
-                  · PDT {wallLabel(kstInstant(first, draft.time), 'America/Los_Angeles')}
+                  {plan.dates.length > 1 ? '첫 회차 ' : ''}KST{' '}
+                  {scheduleLabel(kstInstant(first, draft.time), 'Asia/Seoul')} · PDT{' '}
+                  {scheduleLabel(kstInstant(first, draft.time), 'America/Los_Angeles')}
                 </li>
                 {plan.skipped.length > 0 && (
                   <li className='text-warning-700'>
@@ -593,7 +613,7 @@ function AddForm({
             <p className='font-medium text-error-700'>{errors.form}</p>
           ) : (
             <p className='text-fg-muted'>
-              날짜와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.
+              일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.
             </p>
           )}
         </div>

@@ -189,6 +189,35 @@ export function wallLabel(instant: Date, iana: string): string {
   return `${parts.month}/${parts.day}(${dow}) ${parts.hour}:${parts.minute}`;
 }
 
+/** `2026-09-30 20:30` — 고른 시간대의 벽시계로. 회차 목록·미리보기의 일정 형식. */
+export function scheduleLabel(instant: Date, iana: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: iana,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(instant)
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+}
+
+/** 회차 목록에서 고를 수 있는 표시 시간대. 입력은 언제나 분반 시간대로 받는다. */
+export const DISPLAY_ZONES = [
+  { iana: 'Asia/Seoul', label: 'KST' },
+  { iana: 'America/Los_Angeles', label: 'PDT' },
+] as const;
+
+/** 시간대 약칭. 표시 목록에 없으면 IANA 이름 그대로. */
+export function zoneLabel(iana: string): string {
+  return DISPLAY_ZONES.find((z) => z.iana === iana)?.label ?? iana;
+}
+
 /** `9/30(수)` */
 export function dayLabel(ymd: string): string {
   const [, m, d] = ymd.split('-').map(Number);
@@ -255,15 +284,15 @@ export function planDraft(
   now = new Date(),
 ): { errors: DraftErrors; plan?: MeetingPlan } {
   const errors: DraftErrors = {};
-  if (!draft.date) errors.date = '날짜를 정해 주세요.';
+  if (!draft.date) errors.date = '일자를 정해 주세요.';
   if (!draft.time) errors.time = '시작 시각을 정해 주세요.';
   if (draft.title.trim().length > TITLE_MAX) errors.title = `제목은 ${TITLE_MAX}자까지 쓸 수 있습니다.`;
   if (draft.repeat === 'weekly' && draft.weekdays.length === 0) errors.weekdays = '반복할 요일을 하나 이상 골라 주세요.';
   if (draft.repeat !== 'none') {
     if (!draft.until) errors.until = '반복 종료일을 정해 주세요.';
-    else if (draft.date && draft.until < draft.date) errors.until = '종료일은 시작 날짜보다 뒤여야 합니다.';
+    else if (draft.date && draft.until < draft.date) errors.until = '종료일은 시작 일자보다 뒤여야 합니다.';
     else if (draft.date && draft.until > maxUntil(draft.date))
-      errors.until = `반복은 시작 날짜부터 ${REPEAT_SPAN_DAYS}일 안에서만 만들 수 있습니다 (${dayLabel(maxUntil(draft.date))}까지).`;
+      errors.until = `반복은 시작 일자부터 ${REPEAT_SPAN_DAYS}일 안에서만 만들 수 있습니다 (${dayLabel(maxUntil(draft.date))}까지).`;
   }
   if (errors.date || errors.time || errors.until || errors.weekdays) return { errors };
 
@@ -286,7 +315,7 @@ export function planDraft(
   }
 
   if (past(dates[0])) {
-    errors.time = '첫 회차가 지난 시각입니다. 시작 날짜나 시각을 바꿔 주세요.';
+    errors.time = '첫 회차가 지난 시각입니다. 시작 일자나 시각을 바꿔 주세요.';
     return { errors };
   }
   const skipped: Skip[] = [];

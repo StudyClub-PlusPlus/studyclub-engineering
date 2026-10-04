@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { AttendanceGrid } from '@core/components/AttendanceGrid';
+import { SegmentTabs } from '@core/components/SegmentTabs';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import {
   STATUS_LABEL,
@@ -292,40 +293,6 @@ function WeekStrip({
         </ol>
       </div>
     </section>
-  );
-}
-
-function SegmentTabs<T extends string>({
-  value,
-  options,
-  onChange,
-  anno,
-}: {
-  value: T;
-  options: { key: T; label: string }[];
-  onChange: (key: T) => void;
-  anno?: string;
-}) {
-  return (
-    <div role='tablist' data-anno={anno} className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
-      {options.map((o) => {
-        const on = value === o.key;
-        return (
-          <button
-            key={o.key}
-            type='button'
-            role='tab'
-            aria-selected={on}
-            onClick={() => onChange(o.key)}
-            className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
-              on ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
-            }`}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
