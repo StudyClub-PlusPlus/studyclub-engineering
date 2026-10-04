@@ -17,6 +17,7 @@ public record BackofficeStudyListResponse(
             StudyCategory category,
             StudyKind studyKind,
             Integer recruitmentCapacity,
+            long currentApplicants,
             Instant recruitmentStartAt,
             Instant recruitDeadlineAt,
             Instant startAt,

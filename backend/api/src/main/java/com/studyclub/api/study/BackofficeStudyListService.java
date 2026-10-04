@@ -3,6 +3,7 @@ package com.studyclub.api.study;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,14 +22,17 @@ public class BackofficeStudyListService {
     private static final Logger log = LoggerFactory.getLogger(BackofficeStudyListService.class);
 
     private final BackofficeStudyDao backofficeStudyDao;
+    private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final ObjectMapper objectMapper;
 
     public BackofficeStudyListService(
             BackofficeStudyDao backofficeStudyDao,
+            StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
+        this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.objectMapper = objectMapper;
     }
@@ -46,6 +50,10 @@ public class BackofficeStudyListService {
         }
 
         List<Long> studyIds = studies.stream().map(Study::getId).toList();
+
+        Map<Long, Long> applicantCounts =
+                studyParticipantRepository.countByStudyIds(studyIds).stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
 
         Map<Long, StudyRecruitment> latestRecruitments =
                 studyRecruitmentRepository.findLatestByStudyIdIn(studyIds).stream()
@@ -68,6 +76,7 @@ public class BackofficeStudyListService {
                                             recruitment != null
                                                     ? recruitment.getRecruitmentCapacity()
                                                     : null,
+                                            applicantCounts.getOrDefault(study.getId(), 0L),
                                             recruitment != null ? recruitment.getStartAt() : null,
                                             recruitment != null
                                                     ? recruitment.getRecruitDeadlineAt()
