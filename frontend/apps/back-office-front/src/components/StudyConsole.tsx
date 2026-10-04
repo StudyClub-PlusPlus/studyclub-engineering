@@ -9,7 +9,6 @@ import {
   getStudyCrew,
   type AttendanceStatus,
   type Crew,
-  type CrewStatus,
   type Study,
   type StudyCrewData,
 } from '@studyclub/mock';
@@ -53,8 +52,8 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
   const [attendance, setAttendance] = useState(initial.attendance);
   const [tab, setTab] = useState<TabKey>(mockStudy ? 'crew' : 'info');
 
-  const active = crew.filter((c) => c.status === 'active');
-  const pending = crew.filter((c) => c.status === 'pending');
+  const active = crew;
+  const pending: Crew[] = [];
   const open = detail.recruitStatus === 'RECRUITING';
   const deadline = detail.recruitDeadlineAt
     ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
@@ -76,11 +75,6 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
     }
     return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [active, attendance]);
-
-  // TODO(api): PATCH /api/studies/{id}/participants/{crewId}/status — 크루 승인/반려/상태 변경
-  function setStatus(crewId: string, status: CrewStatus) {
-    setCrew((list) => list.map((c) => (c.id === crewId ? { ...c, status } : c)));
-  }
 
   // TODO(api): POST /api/studies/{id}/attendances — 출석 체크 저장
   function toggleAttendance(crewId: string, meetingId: string) {
@@ -182,7 +176,7 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
             {tab === 'crew' ? '신청자' : '출석'} 관리는 준비 중입니다.
           </div>
         )}
-        {tab === 'crew' && mockStudy && <CrewTab crew={crew} capacity={initial.capacity} onStatus={setStatus} />}
+        {tab === 'crew' && mockStudy && <CrewTab crew={crew} capacity={initial.capacity} />}
         {tab === 'attendance' && mockStudy && (
           <AttendanceTab
             study={mockStudy}
