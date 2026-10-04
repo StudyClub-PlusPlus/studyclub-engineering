@@ -146,6 +146,8 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 
 공백만이면 빈 값이다. 오류 필드명은 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
 
+CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 안의 빈 문자열·공백 항목은 제거하지 않고 거절한다. 기타 허용 질문은 `other-empty`, 그 밖에는 `enum` 사유를 사용한다. 정상 선택지와 빈 기타를 함께 보내도 제출할 수 없다.
+
 ### 플랫폼 기본 문항 (캡틴이 빼지 못함)
 
 | 문항 | 저장 위치 | 화면 |

@@ -147,9 +147,12 @@ public record StudyApplicationAnswer(
                 throw invalid(answerField(question), "type");
             }
             String choice = singleLine(stringValue);
-            if (!choice.isEmpty()) {
-                normalized.add(choice);
+            if (choice.isEmpty()) {
+                throw invalid(
+                        answerField(question),
+                        Boolean.TRUE.equals(question.allowOther()) ? "other-empty" : "enum");
             }
+            normalized.add(choice);
         }
         if (normalized.isEmpty()) {
             return requiredListOrNull(question);

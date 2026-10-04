@@ -156,4 +156,49 @@ class StudyApplicationAnswerTest {
                 options,
                 allowOther);
     }
+
+    @Test
+    @DisplayName("체크박스 빈 기타 항목은 선택지와 함께 보내도 거절한다")
+    void rejectsEmptyCheckboxChoice() {
+        for (boolean required : List.of(true, false)) {
+            ApplicationFormQuestion question = question("CHECKBOX", required, List.of("백엔드"), true);
+            assertThatThrownBy(
+                            () ->
+                                    StudyApplicationAnswer.create(
+                                            "별명",
+                                            List.of("mon"),
+                                            null,
+                                            Map.of("question", List.of("백엔드", " \n\t ")),
+                                            false,
+                                            List.of(question)))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("answers.question: other-empty");
+        }
+    }
+
+    @Test
+    @DisplayName("선택적 체크박스는 빈 목록을 허용하지만 빈 문자열 항목은 거절한다")
+    void distinguishesUnselectedCheckboxFromBlankEntry() {
+        ApplicationFormQuestion question = question("CHECKBOX", false, List.of("백엔드"), false);
+        StudyApplicationAnswer empty =
+                StudyApplicationAnswer.create(
+                        "별명",
+                        List.of("mon"),
+                        null,
+                        Map.of("question", List.of()),
+                        false,
+                        List.of(question));
+        assertThat(empty.answers()).isEmpty();
+        assertThatThrownBy(
+                        () ->
+                                StudyApplicationAnswer.create(
+                                        "별명",
+                                        List.of("mon"),
+                                        null,
+                                        Map.of("question", List.of(" ")),
+                                        false,
+                                        List.of(question)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("answers.question: enum");
+    }
 }
