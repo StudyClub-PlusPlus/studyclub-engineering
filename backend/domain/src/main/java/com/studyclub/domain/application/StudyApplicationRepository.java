@@ -8,8 +8,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface StudyApplicationRepository extends JpaRepository<StudyApplication, Long> {
 
-    boolean existsByRecruitmentIdAndAccountId(Long recruitmentId, Long accountId);
-
     @Query(
             "SELECT COUNT(application) > 0 FROM StudyApplication application "
                     + "JOIN StudyRecruitment recruitment ON recruitment.id = application.recruitmentId "

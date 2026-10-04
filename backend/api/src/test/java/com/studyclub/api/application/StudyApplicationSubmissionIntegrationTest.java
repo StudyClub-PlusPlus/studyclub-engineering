@@ -347,6 +347,205 @@ class StudyApplicationSubmissionIntegrationTest {
         assertThat(applicationCount()).isZero();
     }
 
+    @Test
+    @DisplayName("실패 - 모든 비공개 상태는 404로 응답하고 신청을 저장하지 않는다")
+    void rejectsNonOpenStudies() {
+        for (String status : List.of("DRAFT", "ONGOING", "ENDED", "CLOSED")) {
+            jdbcTemplate.update("UPDATE STUDY SET STATUS = ? WHERE ID = ?", status, STUDY_ID);
+            var response =
+                    rest.postForEntity(
+                            "/api/studies/" + STUDY_ID + "/applications",
+                            authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                            Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(applicationCount()).isZero();
+        }
+    }
+
+    @Test
+    @DisplayName("실패 - ACTIVE와 PAUSED 명부 참여자는 마감 후에도 참여 중으로 응답한다")
+    void rejectsExistingRosterBeforeDeadlineCheck() {
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = ? WHERE ID = ?",
+                Timestamp.from(Instant.now().minusSeconds(60)),
+                RECRUITMENT_ID);
+        for (String status : List.of("ACTIVE", "PAUSED")) {
+            jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
+            insertParticipant(LINKED_ACCOUNT_ID, status, "MEMBER");
+            var response =
+                    rest.postForEntity(
+                            "/api/studies/" + STUDY_ID + "/applications",
+                            authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                            Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).containsEntry("errorMessage", "이미 참여 중인 스터디입니다.");
+            assertThat(applicationCount()).isZero();
+            assertThat(
+                            accountRepository
+                                    .findById(LINKED_ACCOUNT_ID)
+                                    .orElseThrow()
+                                    .getDiscordNickname())
+                    .isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("성공 - 명부에서 빠진 참여자는 기존 신청이 없으면 제출할 수 있다")
+    void acceptsFormerParticipantWithoutApplication() {
+        for (String status : List.of("WITHDRAWN", "COMPLETED", "DELETED")) {
+            jdbcTemplate.update(
+                    "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ?", RECRUITMENT_ID);
+            jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
+            insertParticipant(LINKED_ACCOUNT_ID, status, "MEMBER");
+            var response =
+                    rest.postForEntity(
+                            "/api/studies/" + STUDY_ID + "/applications",
+                            authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                            Void.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(applicationCount()).isEqualTo(1L);
+        }
+    }
+
+    @Test
+    @DisplayName("실패 - 정원 집계에는 ACTIVE MEMBER와 네비게이터를 포함한다")
+    void countsNavigatorsInCapacity() {
+        for (String role : List.of("LEADER", "CO_LEADER")) {
+            jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
+            insertParticipant(UNLINKED_ACCOUNT_ID, "ACTIVE", "MEMBER");
+            insertParticipant(10650L, "ACTIVE", role);
+            var response =
+                    rest.postForEntity(
+                            "/api/studies/" + STUDY_ID + "/applications",
+                            authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                            Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).containsEntry("errorMessage", "정원이 가득 찼습니다.");
+            assertThat(applicationCount()).isZero();
+        }
+    }
+
+    @Test
+    @DisplayName("실패 - 과거 모집 회차에 신청했으면 현재 회차에도 신청할 수 없다")
+    void rejectsApplicationFromEarlierRecruitment() {
+        var first =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long currentRecruitmentId = RECRUITMENT_ID + 1;
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = ? WHERE ID = ?",
+                Timestamp.from(Instant.now().minusSeconds(60)),
+                RECRUITMENT_ID);
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_RECRUITMENT (ID, STUDY_ID, TITLE, DESCRIPTION, START_AT, RECRUIT_DEADLINE_AT, RECRUITMENT_CAPACITY, CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                currentRecruitmentId,
+                STUDY_ID,
+                "추가 모집",
+                "모집 설명",
+                now,
+                Timestamp.from(Instant.now().plusSeconds(3600)),
+                2,
+                now,
+                now);
+        try {
+            var response =
+                    rest.postForEntity(
+                            "/api/studies/" + STUDY_ID + "/applications",
+                            authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                            Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).containsEntry("errorMessage", "이미 신청한 스터디입니다.");
+            assertThat(applicationCount()).isEqualTo(1L);
+            assertThat(
+                            jdbcTemplate.queryForObject(
+                                    "SELECT COUNT(*) FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ?",
+                                    Long.class,
+                                    currentRecruitmentId))
+                    .isZero();
+        } finally {
+            jdbcTemplate.update("DELETE FROM STUDY_RECRUITMENT WHERE ID = ?", currentRecruitmentId);
+        }
+    }
+
+    @Test
+    @DisplayName("성공 - 두 질문 답변은 질문 순서로 직렬화한다")
+    void serializesAnswersInQuestionOrder() {
+        jdbcTemplate.update(
+                "UPDATE STUDY SET APPLICATION_FORM = CAST(? AS JSON) WHERE ID = ?",
+                "{\"questions\":[{\"id\":\"second\",\"type\":\"TEXT\",\"required\":true},{\"id\":\"first\",\"type\":\"TEXT\",\"required\":true}]}",
+                STUDY_ID);
+        Map<String, Object> body = new java.util.HashMap<>(validRequest());
+        body.put("answers", Map.of("first", "하나", "second", "둘"));
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, body),
+                        Void.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String stored =
+                jdbcTemplate.queryForObject(
+                        "SELECT FORM_ANSWER FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ?",
+                        String.class,
+                        RECRUITMENT_ID);
+        assertThat(stored.indexOf("\"second\""))
+                .isGreaterThanOrEqualTo(0)
+                .isLessThan(stored.indexOf("\"first\""));
+    }
+
+    @Test
+    @DisplayName("동일 계정의 동시 제출은 하나만 저장하고 나머지는 이미 신청으로 응답한다")
+    void serializesConcurrentSubmissionsForAccount() throws Exception {
+        var request = authenticatedRequest(LINKED_ACCOUNT_ID, validRequest());
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<org.springframework.http.ResponseEntity<Map>> submit =
+                    () -> {
+                        start.await();
+                        return rest.postForEntity(
+                                "/api/studies/" + STUDY_ID + "/applications", request, Map.class);
+                    };
+            var first = executor.submit(submit);
+            var second = executor.submit(submit);
+            start.countDown();
+            var responses =
+                    List.of(
+                            first.get(15, java.util.concurrent.TimeUnit.SECONDS),
+                            second.get(15, java.util.concurrent.TimeUnit.SECONDS));
+            assertThat(
+                            responses.stream()
+                                    .map(org.springframework.http.ResponseEntity::getStatusCode)
+                                    .toList())
+                    .containsExactlyInAnyOrder(HttpStatus.CREATED, HttpStatus.CONFLICT);
+            var rejected =
+                    responses.stream()
+                            .filter(
+                                    response ->
+                                            response.getStatusCode().equals(HttpStatus.CONFLICT))
+                            .findFirst()
+                            .orElseThrow();
+            assertThat(rejected.getBody()).containsEntry("errorMessage", "이미 신청한 스터디입니다.");
+            assertThat(applicationCount()).isEqualTo(1L);
+        }
+    }
+
+    private void insertParticipant(Long accountId, String status, String role) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PARTICIPANT (ACCOUNT_ID, STUDY_GROUP_ID, STUDY_ID, STATUS, PARTICIPANT_ROLE, JOINED_AT, CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                accountId,
+                GROUP_ID,
+                STUDY_ID,
+                status,
+                role,
+                now,
+                now,
+                now);
+    }
+
     private Map<String, Object> validRequest() {
         return Map.of(
                 "discordNickname",

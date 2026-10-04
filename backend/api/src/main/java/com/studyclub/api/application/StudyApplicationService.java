@@ -10,13 +10,13 @@ import com.studyclub.domain.application.ApplicationFormQuestion;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationAnswer;
 import com.studyclub.domain.application.StudyApplicationRepository;
-import com.studyclub.domain.application.StudyApplicationSubmission;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
-import com.studyclub.domain.study.StudyStatus;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,13 +33,15 @@ import tools.jackson.databind.ObjectMapper;
 public class StudyApplicationService {
 
     private static final Logger log = LoggerFactory.getLogger(StudyApplicationService.class);
+    private static final List<ParticipantRole> CAPACITY_ROLES =
+            List.of(ParticipantRole.MEMBER, ParticipantRole.LEADER, ParticipantRole.CO_LEADER);
 
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final AccountRepository accountRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final ObjectMapper objectMapper;
-    private final StudyApplicationSubmission studyApplicationSubmission;
+    private final StudyParticipantRepository studyParticipantRepository;
 
     public StudyApplicationService(
             StudyRepository studyRepository,
@@ -53,9 +55,7 @@ public class StudyApplicationService {
         this.accountRepository = accountRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.objectMapper = objectMapper;
-        this.studyApplicationSubmission =
-                new StudyApplicationSubmission(
-                        studyApplicationRepository, studyParticipantRepository);
+        this.studyParticipantRepository = studyParticipantRepository;
     }
 
     @Transactional
@@ -75,14 +75,15 @@ public class StudyApplicationService {
         if (studyApplicationRepository.existsByStudyIdAndAccountId(studyId, accountId)) {
             throw new BusinessException(ErrorCode.CONFLICT, "이미 신청한 스터디입니다.");
         }
+        if (studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
+                studyId, accountId, List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "이미 참여 중인 스터디입니다.");
+        }
         if (!study.isPubliclyVisible()) {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
-        if (study.getStatus() != StudyStatus.OPEN) {
-            throw new BusinessException(ErrorCode.CONFLICT, "모집이 마감되었습니다.");
-        }
-
-        StudyRecruitment recruitment = openRecruitmentForUpdate(studyId);
+        StudyRecruitment recruitment = openRecruitment(studyId);
+        checkCapacity(recruitment, studyId);
         StudyApplicationAnswer answer = normalizeAnswer(study, request);
         StudyApplication application =
                 StudyApplication.builder()
@@ -91,14 +92,22 @@ public class StudyApplicationService {
                         .formAnswer(writeAnswer(answer, studyId))
                         .build();
 
-        StudyApplication saved =
-                studyApplicationSubmission.submit(application, recruitment, study, accountId);
+        StudyApplication saved = studyApplicationRepository.save(application);
         account.changeDiscordNickname(answer.discordNickname());
         return saved.getId();
     }
 
-    private StudyRecruitment openRecruitmentForUpdate(Long studyId) {
-        return studyRecruitmentRepository.findOpenForUpdateByStudyId(studyId).stream()
+    private void checkCapacity(StudyRecruitment recruitment, Long studyId) {
+        long activeCrewCount =
+                studyParticipantRepository.countByStudyIdAndStatusAndParticipantRoleIn(
+                        studyId, ParticipantStatus.ACTIVE, CAPACITY_ROLES);
+        if (recruitment.isFull(activeCrewCount)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "정원이 가득 찼습니다.");
+        }
+    }
+
+    private StudyRecruitment openRecruitment(Long studyId) {
+        return studyRecruitmentRepository.findOpenByStudyIdOrderByStartAtDesc(studyId).stream()
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "모집이 마감되었습니다."));
     }

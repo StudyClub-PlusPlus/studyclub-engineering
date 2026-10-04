@@ -61,7 +61,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 비교 대상은 **분반 정원이 아니다.** 반은 신청 이후에 정한다. 대기열 없음.
 
-1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 기수 명부의 `ACTIVE` 인원과 비교한다. `PAUSED`·`WITHDRAWN`·`COMPLETED`는 제외한다
+1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 기수 명부에서 `STATUS = ACTIVE`인 크루(`MEMBER`·`LEADER`·`CO_LEADER`)와 비교한다. 네비게이터는 포함하고 담당 캡틴은 포함하지 않는다. `PAUSED`·`WITHDRAWN`·`COMPLETED`·`DELETED`는 제외한다
 2. 없으면 인원 제한 없음
 
 기수 단위 정원(`STUDY.CAPACITY`)은 없다.
@@ -312,15 +312,17 @@ GET 신청 폼 조회와 같은 shape.
 
 ### 처리
 
-1. 로그인 · `DISCORD_ID` 존재 · 열려 있는 모집 회차 · 정원 · `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)` 검사
+1. 로그인 · `DISCORD_ID` 존재 · 같은 기수(모든 모집 회차)에 기존 신청이 없는지 · 기존 명부 · 열려 있는 모집 회차 · 정원 검사
 
    기존 기수 신청 여부는 모집 기간과 답변 검사보다 먼저 확인한다. 저장 후 마감된 요청의 재시도도 `409` 이미 신청으로 응답하며 새 행을 만들지 않는다.
+   이 기수 명부에 `ACTIVE`·`PAUSED`로 있으면 신청할 수 없다. 기존 신청 확인 다음, 모집 기간 검사 전에 확인한다. 담당 캡틴은 생성 시 명부에 등록되면 이 규칙으로 신청이 차단된다. 생성 시 명부 등록은 별도 작업이다.
+   DB의 `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)`는 회차 안의 중복만 막는다. 기수 전체 중복을 막기 위해 계정 행을 잠근 상태에서 기존 신청 확인과 저장을 같은 트랜잭션으로 처리한다. 신청은 명부를 늘리지 않으므로 모집 회차 행은 잠그지 않는다.
 2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. 공통 오류 응답의 `errorMessage`로 사유를 전달한다.
 3. `STUDY_APPLICATION` insert. `FORM_ANSWER` 저장
 
    저장된 신청 폼이 없거나 `questions`가 배열이 아닌 손상된 폼은 서버 오류로 차단한다. 정상적인 `questions: []`는 기본 문항만 제출할 수 있다.
 4. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
-5. 커밋. 이후 같은 회차 POST 는 `409`
+5. 커밋. 이후 같은 기수 POST 는 `409`
 
 덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않으며 신청 제출 시 명부를 만들지 않는다. 캡틴이 신청 결과를 보고 분반을 만든 뒤 참가자를 한 분반에 배정한다.
 
@@ -337,14 +339,15 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 | 400 | INVALID_INPUT | 유효값 표 위반. `errorMessage`에 필드명과 사유 코드. 답 원문 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
 | 403 | FORBIDDEN | `DISCORD_ID` 없음. 화면은 연동 팝업을 연다 |
-| 404 | NOT_FOUND | studyId 없음 또는 비공개(`STATUS = DRAFT`) |
-| 409 | CONFLICT | 이미 이 모집 회차에 신청함 · 모집 마감 · 정원 초과. `errorMessage` 로 구분 |
+| 404 | NOT_FOUND | studyId 없음 또는 공개 상태가 아님(`STATUS != OPEN` 또는 숨김) |
+| 409 | CONFLICT | 이미 이 기수에 신청함 · 이미 참여 중 · 모집 마감 · 정원 초과. `errorMessage` 로 구분 |
 
 `errorMessage` (409):
 
 | 조건 | errorMessage |
 |------|----------------|
 | 이미 신청 | `이미 신청한 스터디입니다.` |
+| 이미 참여 중 | `이미 참여 중인 스터디입니다.` |
 | 모집 마감 | `모집이 마감되었습니다.` |
 | 정원 초과 | `정원이 가득 찼습니다.` |
 

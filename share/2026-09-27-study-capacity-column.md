@@ -34,8 +34,8 @@
 ## 결정
 
 - 저장 위치: 모집 회차의 `RECRUITMENT_CAPACITY`. null이면 제한 없음
-- 집계 대상: 같은 기수의 `STUDY_PARTICIPANT.STATUS=ACTIVE` 인원
-- 제외 대상: `PAUSED`·`WITHDRAWN`·`COMPLETED`
+- 집계 대상: 같은 기수의 `STUDY_PARTICIPANT.STATUS=ACTIVE` 크루(`MEMBER`·`LEADER`·`CO_LEADER`). 참여자 중 선정되는 네비게이터(`LEADER`·`CO_LEADER`)도 정원에 포함한다.
+- 제외 대상: 담당 캡틴과 `PAUSED`·`WITHDRAWN`·`COMPLETED`·`DELETED` 인원. 담당 캡틴은 스터디를 생성한 운영자이며, 참여자 역할의 `LEADER`와 다르다.
 - 분반 정원: 신청 검사와 무관
 - 신청 API는 이 기준을 적용한다. 나머지 목록·상세·수정 코드와 기존 데이터 이동은 별도 정리 대상이다.
 
