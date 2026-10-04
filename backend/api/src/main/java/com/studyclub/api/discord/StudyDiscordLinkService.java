@@ -1,6 +1,5 @@
 package com.studyclub.api.discord;
 
-import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.AccountRepository;
@@ -28,7 +27,6 @@ public class StudyDiscordLinkService {
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
     private final StudyRepository studyRepository;
     private final AccountRepository accountRepository;
-    private final StudyCaptainGuard studyCaptainGuard;
     private final TransactionTemplate transactionTemplate;
 
     public StudyDiscordLinkService(
@@ -36,13 +34,11 @@ public class StudyDiscordLinkService {
             StudyDiscordLinkRepository studyDiscordLinkRepository,
             StudyRepository studyRepository,
             AccountRepository accountRepository,
-            StudyCaptainGuard studyCaptainGuard,
             TransactionTemplate transactionTemplate) {
         this.discordBotClient = discordBotClient;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
         this.studyRepository = studyRepository;
         this.accountRepository = accountRepository;
-        this.studyCaptainGuard = studyCaptainGuard;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -77,7 +73,6 @@ public class StudyDiscordLinkService {
      * @param studyName 디스코드에 만들 이름. null 이면 스터디 제목
      */
     public StudyDiscordLinkResponse link(Long accountId, Long studyId, String studyName) {
-        studyCaptainGuard.assertCaptain(accountId, "디스코드 연결 권한이 없습니다.");
         Study study =
                 studyRepository
                         .findById(studyId)

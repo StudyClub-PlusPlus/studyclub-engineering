@@ -14,6 +14,7 @@ import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.StudyGroupRepository;
 import java.util.Collection;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,7 @@ class StudyCaptainGuardTest {
 
     @Mock AccountRepository accountRepository;
     @Mock StudyParticipantRepository studyParticipantRepository;
+    @Mock StudyGroupRepository studyGroupRepository;
 
     @InjectMocks StudyCaptainGuard guard;
 

@@ -1,5 +1,6 @@
 package com.studyclub.api.discord;
 
+import com.studyclub.api.auth.security.RequireAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "스터디 디스코드 연결 (백오피스)")
+@RequireAdmin
 @RestController
 @RequestMapping("/api/admin/studies/{studyId}/discord-link")
 public class AdminStudyDiscordLinkController {
