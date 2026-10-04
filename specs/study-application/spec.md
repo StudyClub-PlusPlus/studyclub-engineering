@@ -133,6 +133,8 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API `errorMessage`에는 필드명과 사유 코드를 담는다.
 
+신청 제출 Request에는 Bean Validation을 적용하지 않는다. 필수값 누락·요일 개수 초과·null 요일 항목은 도메인에서 검사해 각각 `필드명: empty`·`availableDays: max`·`availableDays: enum`으로 응답한다.
+
 | 필드 | Empty | MIN | MAX | ENUM | 기본값 | 사유 코드 | 실패 카피 |
 |------|-------|-----|-----|------|--------|-----------|-----------|
 | discordNickname | 불가 | 1자 | 100자 | — | 계정 `DISCORD_NICKNAME`. 없으면 빈 칸 | `empty` / `max` | `디스코드 서버 별명을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |

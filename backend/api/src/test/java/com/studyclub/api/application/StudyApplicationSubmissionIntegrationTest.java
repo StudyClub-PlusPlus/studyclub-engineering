@@ -375,6 +375,63 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - 필수값 누락과 요일 상한 및 null 항목도 도메인 사유 코드로 응답한다")
+    void usesConsistentDomainValidationMessages() {
+        List<Map<String, Object>> invalidBodies = new java.util.ArrayList<>();
+        List<String> errors =
+                List.of(
+                        "discordNickname: empty",
+                        "availableDays: empty",
+                        "answers: empty",
+                        "availableDays: max",
+                        "availableDays: enum");
+        for (String missing : List.of("discordNickname", "availableDays", "answers")) {
+            Map<String, Object> body = new java.util.HashMap<>(validRequest());
+            body.remove(missing);
+            invalidBodies.add(body);
+        }
+        Map<String, Object> tooMany = new java.util.HashMap<>(validRequest());
+        tooMany.put("availableDays", java.util.Collections.nCopies(8, "mon"));
+        invalidBodies.add(tooMany);
+        Map<String, Object> nullDay = new java.util.HashMap<>(validRequest());
+        nullDay.put("availableDays", java.util.Arrays.asList("mon", null));
+        invalidBodies.add(nullDay);
+        for (int i = 0; i < invalidBodies.size(); i++) {
+            var response =
+                    rest.postForEntity(
+                            "/api/studies/" + STUDY_ID + "/applications",
+                            authenticatedRequest(LINKED_ACCOUNT_ID, invalidBodies.get(i)),
+                            Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody())
+                    .containsEntry("errorCode", "INVALID_INPUT")
+                    .containsEntry("errorMessage", errors.get(i));
+        }
+        assertThat(applicationCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("성공 - 일정 없는 폼의 false 동의값은 답변 JSON에 저장하지 않는다")
+    void omitsFalseAgreementWithoutSchedule() {
+        jdbcTemplate.update("UPDATE STUDY SET SCHEDULE = NULL WHERE ID = ?", STUDY_ID);
+        Map<String, Object> body = new java.util.HashMap<>(validRequest());
+        body.put("scheduleAgreed", false);
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, body),
+                        Void.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String stored =
+                jdbcTemplate.queryForObject(
+                        "SELECT FORM_ANSWER FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ? AND ACCOUNT_ID = ?",
+                        String.class,
+                        RECRUITMENT_ID,
+                        LINKED_ACCOUNT_ID);
+        assertThat(stored).doesNotContain("scheduleAgreed");
+    }
+
+    @Test
     @DisplayName("성공 - 본인 계정 조회는 제출한 서버 별명을 반환한다")
     void ownAccountReturnsSubmittedNickname() {
         var submitted =

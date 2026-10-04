@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -39,7 +38,7 @@ public class StudyApplicationController {
     @PostMapping
     public ResponseEntity<Void> submit(
             @Parameter(description = "신청할 스터디 ID", example = "1") @PathVariable Long studyId,
-            @Valid @RequestBody SubmitStudyApplicationRequest request,
+            @RequestBody SubmitStudyApplicationRequest request,
             Authentication authentication) {
         Long applicationId =
                 studyApplicationService.submit(

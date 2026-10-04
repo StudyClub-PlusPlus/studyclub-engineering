@@ -35,6 +35,9 @@ public record StudyApplicationAnswer(
         if (rawDays == null || rawDays.isEmpty()) {
             throw invalid("availableDays", "empty");
         }
+        if (rawDays.size() > ApplicationDay.values().length) {
+            throw invalid("availableDays", "max");
+        }
         LinkedHashSet<ApplicationDay> days = new LinkedHashSet<>();
         try {
             for (String rawDay : rawDays) {
