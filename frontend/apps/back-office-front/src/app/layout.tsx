@@ -21,7 +21,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable.min.css'
         />
       </head>
-      {/* data-app="console" — console.overrides.css 의 본문 밀도(15px) 스코프 앵커 */}
+      {/* data-app="console" — console.css 의 본문 밀도(15px) 스코프 앵커 */}
       <body className='min-h-full' data-app='console'>
         <Providers>
           <AppShell>{children}</AppShell>
