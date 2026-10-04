@@ -48,7 +48,7 @@ const categoryLabel = (code: string) => CATEGORY_OPTIONS.find((c) => c.value ===
 
 export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mockStudy?: Study }) {
   const initial = useMemo(() => (mockStudy ? getStudyCrew(mockStudy) : EMPTY_CREW), [mockStudy]);
-  const [crew, setCrew] = useState<Crew[]>(initial.crew);
+  const crew = initial.crew;
   const [attendance, setAttendance] = useState(initial.attendance);
   const [tab, setTab] = useState<TabKey>(mockStudy ? 'crew' : 'info');
 
