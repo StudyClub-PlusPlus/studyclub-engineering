@@ -2,6 +2,8 @@ package com.studyclub.api.application;
 
 import com.studyclub.api.application.StudyApplicationFormRequests.StudyApplicationFormRequest;
 import com.studyclub.api.application.StudyApplicationFormResponses.StudyApplicationFormResponse;
+import com.studyclub.api.auth.security.RequireCaptainOrNavigator;
+import com.studyclub.api.auth.security.RequireOnboarding;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,6 +59,8 @@ public class StudyApplicationFormController {
                     그쪽은 캡틴만 통과합니다 (POL-0001).
                     이미 신청서가 있거나 모집이 시작됐으면 CONFLICT입니다.""")
     @SecurityRequirement(name = "bearerAuth")
+    @RequireOnboarding
+    @RequireCaptainOrNavigator
     @PutMapping
     public StudyApplicationFormResponse replaceForm(
             @Parameter(description = "신청 폼을 저장할 스터디 ID", example = "1") @PathVariable Long studyId,

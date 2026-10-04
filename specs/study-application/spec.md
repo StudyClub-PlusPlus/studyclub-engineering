@@ -153,7 +153,7 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 | 문항 | 저장 위치 | 화면 |
 |------|-----------|------|
 | 디스코드 서버 별명 | `FORM_ANSWER.discordNickname` + `ACCOUNT.DISCORD_NICKNAME` | 모든 신청 폼. 계정 값으로 채우고 지원자가 고칠 수 있다 |
-| 참여 가능한 요일 | `FORM_ANSWER.availableDays` | 모든 신청 폼. 진행 일정 유무와 무관 |
+| 참여 가능한 요일 | `FORM_ANSWER.availableDays` | 모든 신청 폼. 진행 일정 유무와 무관. 단, 클럽형(`StudyKind.CLUB`)은 받지 않을 예정 — MVP 이후 클럽 신청 설계 때 확정 |
 | 일정 참여 확인 | `FORM_ANSWER.scheduleAgreed` | `STUDY.SCHEDULE` 이 있을 때만. 없으면 화면에 `일정 미정`이고 이 문항은 없음 |
 
 이름·이메일은 신청 폼에 두지 않는다. 계정에서 읽기만 한다.

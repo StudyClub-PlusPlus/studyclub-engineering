@@ -2,6 +2,7 @@ package com.studyclub.api.application;
 
 import com.studyclub.api.application.StudyApplicationFormRequests.StudyApplicationFormRequest;
 import com.studyclub.api.application.StudyApplicationFormResponses.StudyApplicationFormResponse;
+import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,8 +18,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 캡틴·운영자가 쓰는 신청 폼 저장. 운영 화면용이라 {@code /api/admin} 아래 산다 — api/endpoint-convention.md */
+/** 캡틴이 쓰는 신청 폼. {@code @RequireAdmin} — specs/authz-guards/spec.md */
 @Tag(name = "운영 · 스터디 신청 폼", description = "캡틴이 스터디 신청 폼을 저장한다")
+@RequireAdmin
 @RestController
 @RequestMapping("/api/admin/studies/{studyId}/application-form")
 public class AdminApplicationFormController {
