@@ -1,26 +1,21 @@
-import { CATEGORY_DISPLAY, type Study, type StudyFormat, type StudyStatus } from '@studyclub/mock';
+import { CATEGORY_DISPLAY, type Study, type StudyStatus } from '@studyclub/mock';
+
+import { cookies } from 'next/headers';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
-type ApiCohort = {
-  cohortId: number;
-  status: 'DRAFT' | 'OPEN' | 'CLOSED' | string;
-  deliveryFormat: 'ONLINE' | 'OFFLINE' | 'HYBRID' | string;
-  capacity: number | null;
-  currentApplicants: number;
-  recruitDeadline: string | null;
-  startDate: string | null;
-  closingSoon: boolean;
-};
-
 type ApiStudy = {
   studyId: number;
-  slug: string;
   title: string;
   category: string;
-  thumbnailUrl: string | null;
   studyKind: string;
-  cohort: ApiCohort;
+  status: string;
+  recruitmentCapacity: number | null;
+  currentApplicants: number;
+  recruitmentStartAt: string | null;
+  recruitDeadlineAt: string | null;
+  startAt: string | null;
+  hasApplicationForm: boolean;
 };
 
 type ApiPage = {
@@ -31,43 +26,35 @@ type ApiPage = {
 };
 
 function mapStatus(status: string): StudyStatus {
-  if (status === 'OPEN') return 'recruiting';
-  if (status === 'CLOSED') return 'closed';
+  if (status === 'ONGOING') return 'ongoing';
+  if (status === 'ENDED' || status === 'CLOSED') return 'closed';
   return 'recruiting';
 }
 
-function mapFormat(format: string): StudyFormat {
-  const normalized = format.toLowerCase();
-  if (normalized === 'offline') return 'offline';
-  if (normalized === 'hybrid') return 'hybrid';
-  return 'online';
-}
-
 function mapToStudy(api: ApiStudy): Study {
-  const cohort = api.cohort;
   const category = CATEGORY_DISPLAY[api.category] ?? api.category;
-  const isClosed = cohort.status === 'CLOSED';
+  const isClosed = api.status === 'ENDED' || api.status === 'CLOSED';
 
   return {
     id: String(api.studyId),
     title: { ko: api.title, en: api.title },
     summary: { ko: '', en: '' },
-    status: mapStatus(cohort.status),
-    format: mapFormat(cohort.deliveryFormat),
+    status: mapStatus(api.status),
+    format: 'online',
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     category,
-    image: api.thumbnailUrl ?? undefined,
-    date: cohort.startDate?.slice(0, 10),
-    published: cohort.status !== 'DRAFT',
-    applicantCount: cohort.currentApplicants,
+    date: api.startAt?.slice(0, 10),
+    published: api.status !== 'DRAFT',
+    applicantCount: api.currentApplicants,
     seats:
-      cohort.capacity === null
+      api.recruitmentCapacity === null
         ? undefined
-        : { total: cohort.capacity, taken: cohort.currentApplicants },
+        : { total: api.recruitmentCapacity, taken: api.currentApplicants },
     recruitment: {
       status: isClosed ? 'closed' : 'open',
-      deadline: cohort.recruitDeadline?.slice(0, 10),
-      capacity: cohort.capacity ?? undefined,
+      form_url: api.hasApplicationForm ? '#' : undefined,
+      deadline: api.recruitDeadlineAt?.slice(0, 10),
+      capacity: api.recruitmentCapacity ?? undefined,
     },
   };
 }
@@ -77,8 +64,10 @@ export async function fetchStudies(): Promise<Study[]> {
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
-      const response = await fetch(API_BASE + '/api/studies?offset=0&limit=1000', {
+      const cookieHeader = (await cookies()).toString();
+      const response = await fetch(API_BASE + '/api/admin/studies?offset=0&limit=1000', {
         cache: 'no-store',
+        headers: cookieHeader ? { cookie: cookieHeader } : undefined,
       });
 
       if (!response.ok) {
