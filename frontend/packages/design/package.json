@@ -6,7 +6,12 @@
   "exports": {
     "./tokens.css": "./tokens.css",
     "./compat.css": "./compat.css",
-    "./console.overrides.css": "./console.overrides.css"
+    "./base.css": "./base.css",
+    "./core.css": "./core.css",
+    "./console.css": "./console.css",
+    "./console.overrides.css": "./console.css",
+    "./core-front.css": "./core.css",
+    "./back-office-front.css": "./console.css"
   },
   "peerDependencies": {
     "tailwindcss": "^4"
@@ -14,7 +19,9 @@
   "files": [
     "tokens.css",
     "compat.css",
-    "console.overrides.css",
+    "base.css",
+    "core.css",
+    "console.css",
     "docs"
   ]
 }

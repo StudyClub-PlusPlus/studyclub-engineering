@@ -118,8 +118,8 @@ export function CrewTab({
                           style={{
                             background:
                               n === 0
-                                ? 'var(--color-surface)'
-                                : `color-mix(in oklab, var(--color-brand) ${Math.round((n / most) * 60)}%, var(--color-surface))`,
+                                ? 'var(--color-bg)'
+                                : `color-mix(in oklab, var(--color-brand) ${Math.round((n / most) * 60)}%, var(--color-bg))`,
                           }}
                         >
                           {n === 0 ? '' : n}

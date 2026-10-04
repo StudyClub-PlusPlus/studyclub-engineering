@@ -12,7 +12,7 @@ import { CHANNEL_LABEL, EVENT_LABEL, fmtDateTime } from '@/features/notification
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className='border-b border-[var(--color-border)] px-5 py-4 last:border-b-0'>
-      <div className='mb-1.5 text-xs font-semibold text-[var(--color-fg-subtle)]'>{label}</div>
+      <div className='mb-1.5 text-xs font-semibold text-[var(--color-fg-muted)]'>{label}</div>
       <div className='text-sm'>{children}</div>
     </div>
   );
@@ -29,19 +29,19 @@ export default function NotificationTemplateDetail() {
       </Link>
 
       {error && (
-        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-sm text-red-600'>
+        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-red-600'>
           {error.message}
         </div>
       )}
 
       {isPending && (
-        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-subtle)]'>
+        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-muted)]'>
           불러오는 중…
         </div>
       )}
 
       {!isPending && !error && !template && (
-        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-subtle)]'>
+        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-muted)]'>
           템플릿을 찾을 수 없습니다.
         </div>
       )}

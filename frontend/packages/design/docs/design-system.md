@@ -111,12 +111,12 @@
 | Semantic 토큰 | 값(참조) | 용도 |
 |---|---|---|
 | `--color-bg` | neutral-0 `#FFFFFF` | 카드·모달 바닥, 기본 콘텐츠 배경 |
-| `--surface-1` | neutral-50 `#F9FAFC` | 앱 전체 배경(카드가 뜨는 바닥) |
-| `--surface-2` | neutral-100 `#F4F5F9` | 테이블 헤더, 코드블록, 입력 disabled |
-| `--surface-3` | neutral-200 `#E6E8ED` | 강조 구획, 진행바 트랙 |
-| `--border` | neutral-200 `#E6E8ED` | 카드/구분선(장식적) |
-| `--border-strong` | neutral-300 `#D4D7DE` | 입력 resting 보더 |
-| `--border-interactive` | neutral-400 `#A6A9B2` | 3:1이 필요한 상호작용 경계(강조 시) |
+| `--color-surface-1` | neutral-50 `#F9FAFC` | 앱 전체 배경(카드가 뜨는 바닥) |
+| `--color-surface-2` | neutral-100 `#F4F5F9` | 테이블 헤더, 코드블록, 입력 disabled |
+| `--color-surface-3` | neutral-200 `#E6E8ED` | 강조 구획, 진행바 트랙 |
+| `--color-border` | neutral-200 `#E6E8ED` | 카드/구분선(장식적) |
+| `--color-border-strong` | neutral-300 `#D4D7DE` | 입력 resting 보더 |
+| `--color-border-interactive` | neutral-400 `#A6A9B2` | 3:1이 필요한 상호작용 경계(강조 시) |
 
 ### 2-5. 도메인 매핑 — 스터디 상태 / 역할 / 출석
 
@@ -305,7 +305,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 ```
 [1] Primitive 팔레트   → primary-600, neutral-200 ...  (진실의 원천, 한 곳)
         ↓ 별칭
-[2] Semantic 토큰      → --color-brand, --color-text, --surface-1, --border ...
+[2] Semantic 토큰      → --color-brand, --color-fg, --color-surface-1, --color-border ...
         ↓ 참조
 [3] 컴포넌트           → .btn { background: var(--color-brand) }  ← HEX 금지
 ```
@@ -317,20 +317,20 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 | `--color-brand` | primary-600 | 브랜드 기준 액션 |
 | `--color-brand-hover` | primary-700 | hover/pressed |
 | `--color-brand-subtle` | primary-50 | tonal 배경 |
-| `--color-text` | neutral-900 | 본문·헤딩 |
-| `--color-text-secondary` | neutral-700 | 보조 |
-| `--color-text-muted` | neutral-600 | 약한 텍스트(최소 AA) |
-| `--color-text-placeholder` | neutral-500 | placeholder/disabled 전용 |
+| `--color-fg` | neutral-900 | 본문·헤딩 |
+| `--color-fg-secondary` | neutral-700 | 보조 |
+| `--color-fg-muted` | neutral-600 | 약한 텍스트(최소 AA) |
+| `--color-fg-placeholder` | neutral-500 | placeholder/disabled 전용 |
 | `--color-bg` | neutral-0 | 카드/모달 바닥 |
-| `--surface-1/2/3` | neutral-50/100/200 | 표면 위계 |
-| `--border` / `--border-strong` | neutral-200 / 300 | 구분선 / 입력 보더 |
+| `--color-surface-1/2/3` | neutral-50/100/200 | 표면 위계 |
+| `--color-border` / `--color-border-strong` | neutral-200 / 300 | 구분선 / 입력 보더 |
 | `--ring` | primary-600 @35% | 포커스 링 |
-| `--status-recruiting-*` 등 | 2-5 도메인 색 | 상태/역할/출석 |
+| `--color-recruiting-*` 등 | 2-5 도메인 색 | 상태/역할/출석 |
 
 **두 앱의 허용 차이 = 밀도 뿐(색 아님).** 콘솔이 더 촘촘해야 하면 아래처럼 **밀도 토큰만** override 하고 색 토큰은 건드리지 않습니다.
 
 ```css
-/* console.overrides.css — 색은 절대 재정의하지 않음 */
+/* console.css — 색은 절대 재정의하지 않음 */
 :root {
   --radius-control: 6px;   /* 사이트 8 → 콘솔 6 */
   --radius-card: 12px;     /* 사이트 16 → 콘솔 12 */
@@ -343,8 +343,31 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 1. 두 파일의 색 값을 뽑아 이 시스템의 가장 가까운 토큰에 매핑(예: 기존 `--main:#4a5cf2` → `--color-brand`).
 2. 컴포넌트에서 HEX 리터럴을 전부 semantic 토큰 참조로 치환.
 3. 두 앱의 색 정의 파일을 삭제하고 공용 `tokens.css` 하나를 import.
-4. 콘솔에만 필요한 밀도 차이는 `console.overrides.css`(색 없음)로 분리.
+4. 콘솔에만 필요한 밀도 차이는 `console.css`(색 없음)로 통합 관리.
 > 실제 두 파일을 공유해 주시면 "기존 변수 → 새 토큰" 1:1 매핑 표를 만들어 드립니다.
+
+### 8-1. CSS 진입점 파일 구조 (`@studyclub/design`)
+
+개별 앱에서 토큰과 공통 셸 클래스(`.card`, `html`, 기본 앵커 등)를 중복 정의하지 않도록 `@studyclub/design`에서 정본 CSS를 제공합니다.
+
+| 파일 | 내용 | 사용처 |
+|---|---|---|
+| `tokens.css` | 1계층 Primitive + 2계층 Semantic 토큰 원천 (Tailwind v4 `@theme`) | 공용 원천 |
+| `compat.css` | 구 토큰 점진적 마이그레이션 별칭 브리지 | 공용 |
+| `base.css` | `tokens` + `compat` + `html`/`body`/`.card`/`.card-hover`/`.no-scrollbar` | 공통 베이스 (Storybook 등) |
+| `core.css` | `base.css` + `.hero-glow` | `core-front`, `playground proto/core` |
+| `console.css` | `base.css` + 콘솔 밀도 오버라이드 + `.bo-table` / `.btn` | `back-office-front`, `playground proto/console` |
+
+**앱별 `globals.css` 적용 형태**:
+```css
+/* core-front / playground */
+@import '@studyclub/design/core.css';
+@source "../../../../packages/ui/src";
+
+/* back-office-front */
+@import '@studyclub/design/console.css';
+@source "../../../../packages/ui/src";
+```
 
 ---
 
@@ -366,14 +389,14 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 
 ### 9-2. Input / Select / Textarea
 
-- 기본: h40, px14, radius `--radius-control`, bg 흰색, border `--border-strong`(neutral-300), text neutral-900, placeholder neutral-500.
+- 기본: h40, px14, radius `--radius-control`, bg 흰색, border `--color-border-strong`(neutral-300), text neutral-900, placeholder neutral-500.
 - 포커스: border **brand(600)** + `--ring`. 에러: border error-600 + error 링 + helper error-700.
 - disabled: bg surface-2(neutral-100), text neutral-400.
 - 라벨 text-sm/500 neutral-800 · helper text-xs neutral-600 · 필수표시 error-600 `*`.
 
 ### 9-3. Card
 
-- bg `--color-bg`(흰색), border `--border`(neutral-200) 1px, radius `--radius-card`(16), 패딩 20~24, `shadow-sm` resting.
+- bg `--color-bg`(흰색), border `--color-border`(neutral-200) 1px, radius `--radius-card`(16), 패딩 20~24, `shadow-sm` resting.
 - **인터랙티브 카드**(스터디 카드 등): hover 시 `shadow-md` + `translateY(-2px)`(base/ease-out). 포커스 가능하면 `--ring`.
 - 구조: (선택)썸네일/컬러 스트립 → 헤더(태그+상태) → 타이틀 → 본문 → 메타 → 푸터(CTA).
 
@@ -467,7 +490,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 - **warning에 흰글씨 절대 금지.** 앰버는 항상 어두운 텍스트(neutral-900). 이는 이 계열의 물리적 한계.
 - **장식 보더의 낮은 대비는 의도된 것.** 미니멀한 인상을 위해 resting 보더는 연하게, 대신 포커스/에러/선택 등 **상태를 전달하는 경계는 반드시 3:1↑**.
 - **라이트 전용이지만 구조는 다크 확장 대비 완료.** 확장 시 단순 invert 금지 — surface는 순수 검정 대신 `#0D0E13`/`#16181F` 계열, primary는 채도 낮추고 명도 올린 버전으로 **재설계**. semantic 레이어 덕에 컴포넌트 수정 없이 토큰만 교체하면 됨.
-- **밀도 차이는 밀도 토큰으로만.** 콘솔을 촘촘하게 만들 때 색을 새로 정의하지 말 것 — `console.overrides.css`에서 radius/폰트/행높이만 조정.
+- **밀도 차이는 밀도 토큰으로만.** 콘솔을 촘촘하게 만들 때 색을 새로 정의하지 말 것 — `console.css`에서 radius/폰트/행높이만 조정.
 - **한글 우선 검수.** 자간·line-height는 라틴 기준으로 짜면 한글에서 답답해 보임. 실제 한글 문장으로 QA 필수.
 
 ---
