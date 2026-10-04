@@ -15,19 +15,19 @@ export default function NotificationTemplatesPage() {
       <PageHeader title='알림 템플릿' subtitle='가입·신청 등 이벤트마다 나가는 메일·디스코드 문구' />
 
       {error && (
-        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-sm text-red-600'>
+        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-red-600'>
           {error.message}
         </div>
       )}
 
       {isPending && (
-        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-subtle)]'>
+        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-muted)]'>
           불러오는 중…
         </div>
       )}
 
       {templates?.length === 0 && (
-        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-subtle)]'>
+        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-muted)]'>
           등록된 템플릿이 없습니다.
         </div>
       )}

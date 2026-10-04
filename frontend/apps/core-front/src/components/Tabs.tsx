@@ -19,7 +19,7 @@ export function Tabs({ tabs }: { tabs: TabItem[] }) {
               aria-selected={on}
               onClick={() => setActive(tb.key)}
               className='relative -mb-px whitespace-nowrap px-4 py-2.5 text-sm font-semibold transition-colors'
-              style={{ color: on ? 'var(--color-accent)' : 'var(--color-fg-subtle)' }}
+              style={{ color: on ? 'var(--color-brand)' : 'var(--color-fg-muted)' }}
             >
               {tb.label}
               {typeof tb.badge === 'number' && (
@@ -28,7 +28,7 @@ export function Tabs({ tabs }: { tabs: TabItem[] }) {
               {on && (
                 <span
                   className='absolute inset-x-0 -bottom-px h-0.5 rounded-full'
-                  style={{ background: 'var(--color-accent)' }}
+                  style={{ background: 'var(--color-brand)' }}
                 />
               )}
             </button>

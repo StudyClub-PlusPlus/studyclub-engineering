@@ -30,7 +30,7 @@ export function Nav({
         <Link href={`/${locale}`} className='flex items-center gap-2 text-lg font-bold tracking-tight'>
           <span
             className='grid h-7 w-7 place-items-center rounded-lg text-sm font-extrabold text-white'
-            style={{ background: 'var(--color-accent)' }}
+            style={{ background: 'var(--color-brand)' }}
           >
             S
           </span>
@@ -45,7 +45,7 @@ export function Nav({
         <div className='ml-auto flex items-center gap-3'>
           <Link
             href={`/${other}`}
-            className='rounded-full px-2 py-1 text-xs font-semibold text-(--color-fg-subtle) transition-colors hover:bg-(--color-surface-subtle) hover:text-(--color-fg)'
+            className='rounded-full px-2 py-1 text-xs font-semibold text-(--color-fg-muted) transition-colors hover:bg-(--color-surface-subtle) hover:text-(--color-fg)'
           >
             {other.toUpperCase()}
           </Link>
@@ -55,7 +55,7 @@ export function Nav({
             target='_blank'
             rel='noreferrer'
             className='hidden rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors sm:block'
-            style={{ background: 'var(--color-accent)' }}
+            style={{ background: 'var(--color-brand)' }}
           >
             {m('nav.join', locale)}
           </a>

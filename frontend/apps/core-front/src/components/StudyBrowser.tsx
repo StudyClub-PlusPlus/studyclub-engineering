@@ -249,7 +249,7 @@ export function StudyBrowser({
         </div>
       ) : (
         <div className='flex min-h-[240px] items-center justify-center'>
-          <p className='text-base font-bold text-[var(--color-fg-subtle)]'>{m('filter.none', locale)}</p>
+          <p className='text-base font-bold text-[var(--color-fg-muted)]'>{m('filter.none', locale)}</p>
         </div>
       )}
     </div>
