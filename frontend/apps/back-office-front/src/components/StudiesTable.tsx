@@ -18,6 +18,8 @@ import { Badge, type BadgeTone } from '@studyclub/ui';
 
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 
+import './studies-table.css';
+
 /**
  * 스터디 관리 목록.
  *
@@ -68,11 +70,36 @@ const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
 ];
 
 const STUDY_STATUS_GUIDE = [
-  { label: '작성 중', tone: 'neutral' as const, description: '스터디를 작성·준비하는 단계입니다. 캡틴이 개설하면 모집을 시작합니다.' },
-  { label: '개설', tone: 'recruiting' as const, description: '캡틴이 공개해 모집을 시작한 단계입니다. 네비게이터가 첫 미팅을 등록하면 진행 중이 됩니다.' },
-  { label: '진행 중', tone: 'inprogress' as const, description: '첫 미팅이 등록되어 운영 중인 단계입니다. 네비게이터가 종료 처리하거나 마지막 미팅 이후 종료됩니다.' },
-  { label: '종료', tone: 'error' as const, description: '스터디 활동이 끝난 단계입니다. 캡틴이 채널을 삭제하고 운영 종료 처리합니다.' },
-  { label: '운영 종료', tone: 'closed' as const, description: '채널 삭제와 운영 종료 처리가 끝난 단계입니다.' },
+  {
+    label: '작성 중',
+    tone: 'neutral' as const,
+    description: '작성 중 · 모집 전. 사이트에 보이지 않는다.',
+    nextStep: '캡틴이 공개하며 모집을 시작하면 ‘개설’로 넘어간다.',
+  },
+  {
+    label: '개설',
+    tone: 'recruiting' as const,
+    description: '개설 · 모집을 시작한 상태다.',
+    nextStep: '네비게이터가 첫 미팅을 등록하면 ‘진행 중’으로 넘어간다.',
+  },
+  {
+    label: '진행 중',
+    tone: 'inprogress' as const,
+    description: '첫 미팅이 등록되어 운영 중인 상태다.',
+    nextStep: '네비게이터가 종료 처리하거나 마지막 미팅에서 N주가 지나면 ‘종료’로 넘어간다.',
+  },
+  {
+    label: '종료',
+    tone: 'error' as const,
+    description: '스터디 활동이 끝난 상태다.',
+    nextStep: '캡틴이 채널을 삭제하고 운영 종료 처리하면 ‘운영 종료’로 넘어간다.',
+  },
+  {
+    label: '운영 종료',
+    tone: 'closed' as const,
+    description: '채널 삭제와 운영 종료 처리가 끝난 상태다.',
+    nextStep: '더 이상 다음 단계로 넘어가지 않는다.',
+  },
 ];
 
 const STATUS_DESCRIPTION: Record<string, string> = {
@@ -146,22 +173,58 @@ function StatusTooltip({
   tone,
   label,
   description,
+  nextStep,
 }: {
   tone: BadgeTone;
   label: string;
   description: string;
+  nextStep: string;
 }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const width = 256;
+
+  function show() {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.min(Math.max(rect.left + rect.width / 2, width / 2 + 8), window.innerWidth - width / 2 - 8);
+    setPos({ x, y: rect.bottom + 6 });
+  }
+
   return (
-    <span className='group relative inline-flex'>
+    <span
+      ref={ref}
+      tabIndex={0}
+      onMouseEnter={show}
+      onMouseLeave={() => setPos(null)}
+      onFocus={show}
+      onBlur={() => setPos(null)}
+      className='inline-flex rounded-pill outline-none focus-visible:shadow-[var(--ring)]'
+    >
       <Badge tone={tone} dot className='h-6 font-semibold'>
         {label}
       </Badge>
-      <span
-        role='tooltip'
-        className='pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-50 w-64 -translate-x-1/2 rounded-control bg-neutral-900 px-3 py-2 text-left text-xs leading-5 text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'
-      >
-        {description}
-      </span>
+      {pos && (
+        <span
+          role='tooltip'
+          style={{ position: 'fixed', left: pos.x, top: pos.y, width, transform: 'translateX(-50%)' }}
+          className='pointer-events-none z-50 whitespace-normal rounded-control bg-neutral-900 px-3 py-2 text-left text-xs font-normal leading-relaxed text-white shadow-lg'
+        >
+          <span className='block font-semibold'>{label}</span>
+          <span className='block'>{description}</span>
+          {nextStep && <span className='mt-1 block text-neutral-300'>{nextStep}</span>}
+          {label === '종료' && (
+            <span className='mt-1 block border-t border-white/15 pt-1 text-amber-300'>
+              클럽: 채널을 다음 기수가 그대로 물려받아 지우지 않는다 — 지나간 기수는 여기 영구히 남고, 운영 종료로 넘어갈 수 있는 건 이 프로그램의 최신 기수뿐이다.
+            </span>
+          )}
+          {label === '운영 종료' && (
+            <span className='mt-1 block border-t border-white/15 pt-1 text-amber-300'>
+              클럽: 이 프로그램의 최신 기수만 여기로 올 수 있다 — 지나간 기수는 채널을 물려주고 「종료」에 머무른다.
+            </span>
+          )}
+        </span>
+      )}
     </span>
   );
 }
@@ -235,11 +298,16 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
 
   return (
     <div>
-      <div className='mb-2 flex flex-wrap items-center gap-2 text-sm'>
+      <div className='studies-status-guide mb-[14px] flex flex-wrap items-center gap-2 text-sm'>
         <span className='mr-1 font-semibold text-fg-secondary'>스터디 상태</span>
         {STUDY_STATUS_GUIDE.map((status, index) => (
           <span key={status.label} className='inline-flex items-center gap-2'>
-            <StatusTooltip tone={status.tone} label={status.label} description={status.description} />
+            <StatusTooltip
+              tone={status.tone}
+              label={status.label}
+              description={status.description}
+              nextStep={status.nextStep}
+            />
             {index < STUDY_STATUS_GUIDE.length - 1 && (
               <ChevronRight size={16} className='text-fg-muted' aria-hidden='true' />
             )}
@@ -266,8 +334,16 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             onChange={(e) => setNoFormOnly(e.target.checked)}
             className='peer sr-only'
           />
-          <span className='relative h-5 w-9 rounded-full bg-surface-3 transition peer-checked:bg-brand'>
-            <span className='absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-4' />
+          <span
+            className={`relative h-5 w-9 rounded-full transition-colors duration-300 ease-in-out ${
+              noFormOnly ? 'bg-brand' : 'bg-surface-3'
+            }`}
+          >
+            <span
+              className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                noFormOnly ? 'translate-x-4 shadow' : ''
+              }`}
+            />
           </span>
           신청 폼 없는 것만
         </label>
@@ -327,6 +403,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     tone={statusTone}
                     label={STATUS_LABEL[s.status] ?? s.status}
                     description={STATUS_DESCRIPTION[s.status] ?? ''}
+                    nextStep={
+                      STUDY_STATUS_GUIDE.find((guide) => guide.label === STATUS_LABEL[s.status])?.nextStep ?? ''
+                    }
                   />
                 </td>
                 <td className='whitespace-nowrap'>
