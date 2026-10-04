@@ -28,7 +28,7 @@ function read(): Record<string, AttendanceBook> {
 
 /** 프로토는 분반이 하나라 스터디의 활성 크루 전원이 곧 내 분반이다. */
 export function myGroupCrew(study: Study): Crew[] {
-  return getStudyCrew(study).crew.filter((c) => c.status === 'active');
+  return getStudyCrew(study).crew;
 }
 
 export function getGroupAttendance(study: Study): AttendanceBook {
