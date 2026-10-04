@@ -118,7 +118,7 @@ public class StudyApplicationService {
     private List<ApplicationFormQuestion> questionsOf(Study study) {
         String raw = study.getApplicationForm();
         if (raw == null || raw.isBlank()) {
-            return List.of();
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
         try {
             JsonNode form = objectMapper.readTree(raw);
@@ -127,10 +127,22 @@ public class StudyApplicationService {
             }
             JsonNode questions = form.isArray() ? form : form.get("questions");
             if (questions == null || !questions.isArray()) {
-                return List.of();
+                throw new BusinessException(ErrorCode.INTERNAL_ERROR);
             }
-            return objectMapper.convertValue(
-                    questions, new TypeReference<List<ApplicationFormQuestion>>() {});
+            List<ApplicationFormQuestion> parsed =
+                    objectMapper.convertValue(
+                            questions, new TypeReference<List<ApplicationFormQuestion>>() {});
+            if (parsed.stream()
+                    .anyMatch(
+                            question ->
+                                    question == null
+                                            || question.id() == null
+                                            || question.id().isBlank()
+                                            || question.type() == null
+                                            || question.required() == null)) {
+                throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+            }
+            return parsed;
         } catch (IllegalArgumentException | JacksonException e) {
             log.error("저장된 신청 폼을 읽지 못했다 — studyId={}", study.getId());
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);

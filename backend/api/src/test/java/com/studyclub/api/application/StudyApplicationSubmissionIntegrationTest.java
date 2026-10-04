@@ -374,6 +374,43 @@ class StudyApplicationSubmissionIntegrationTest {
                 RECRUITMENT_ID);
     }
 
+    @Test
+    @DisplayName("실패 - 잘못 저장된 질문 배열은 질문 없는 폼으로 취급하지 않는다")
+    void rejectsMalformedStoredForm() {
+        jdbcTemplate.update(
+                "UPDATE STUDY SET APPLICATION_FORM = CAST(? AS JSON) WHERE ID = ?",
+                "{\"questions\":\"invalid\"}",
+                STUDY_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(applicationCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("성공 - 정상적으로 비어 있는 질문 배열에는 기본 답변만 제출한다")
+    void acceptsEmptyQuestionArray() {
+        jdbcTemplate.update(
+                "UPDATE STUDY SET APPLICATION_FORM = CAST(? AS JSON) WHERE ID = ?",
+                "{\"questions\":[]}",
+                STUDY_ID);
+        Map<String, Object> body = new java.util.HashMap<>(validRequest());
+        body.put("answers", Map.of());
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, body),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
     private void insertAccount(Long id, String email, String discordId, Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO ACCOUNT (ID, EMAIL, NICKNAME, SYSTEM_ROLE, TIME_ZONE, DISCORD_ID,"
