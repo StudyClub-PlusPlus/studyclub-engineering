@@ -375,6 +375,36 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 본인 계정 조회는 제출한 서버 별명을 반환한다")
+    void ownAccountReturnsSubmittedNickname() {
+        var submitted =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+        assertThat(submitted.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        var response =
+                rest.exchange(
+                        "/auth/me",
+                        org.springframework.http.HttpMethod.GET,
+                        authenticatedRequest(LINKED_ACCOUNT_ID, Map.of()),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("discordNickname", "새 별명");
+
+        var other =
+                rest.exchange(
+                        "/auth/me",
+                        org.springframework.http.HttpMethod.GET,
+                        authenticatedRequest(UNLINKED_ACCOUNT_ID, Map.of()),
+                        Map.class);
+        assertThat(other.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(other.getBody()).containsEntry("discordNickname", null);
+    }
+
+    @Test
     @DisplayName("실패 - 잘못 저장된 질문 배열은 질문 없는 폼으로 취급하지 않는다")
     void rejectsMalformedStoredForm() {
         jdbcTemplate.update(
