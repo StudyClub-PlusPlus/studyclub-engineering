@@ -52,7 +52,7 @@ public record StudyApplicationAnswer(
         if (hasSchedule && !Boolean.TRUE.equals(agreed)) {
             throw invalid("scheduleAgreed", "empty");
         }
-        if (!hasSchedule && agreed != null) {
+        if (!hasSchedule && Boolean.TRUE.equals(agreed)) {
             throw invalid("scheduleAgreed", "unexpected");
         }
         return hasSchedule ? Boolean.TRUE : null;

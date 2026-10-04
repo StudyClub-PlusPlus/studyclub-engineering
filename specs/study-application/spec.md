@@ -124,7 +124,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 |------|------|------|------|
 | discordNickname | String | Y | 제출 시점 서버 별명. 계정 `DISCORD_NICKNAME` 에도 같은 값으로 갱신 |
 | availableDays | String[] | Y | `mon` `tue` `wed` `thu` `fri` `sat` `sun`. 화면 라벨이 아니라 이 키 |
-| scheduleAgreed | Boolean | 기수 `STUDY.SCHEDULE` 이 있을 때만 Y | `true` 만 허용. 일정 문구가 없으면 이 키를 보내지 않는다 |
+| scheduleAgreed | Boolean | 기수 `STUDY.SCHEDULE` 이 있을 때만 Y | 일정이 있으면 `true`만 허용. 일정이 없으면 생략·null·false는 무시하고 저장하지 않으며 true는 거절 |
 | answers | Object | Y | `questions[].id` → 문자열 또는 문자열 배열. 추가 질문이 없으면 `{}` |
 
 행이 있으면 제출 완료다. 대기·취소·검토 상태값을 두지 않는다. 이미 낸 신청은 덮어쓰지 않는다.
@@ -137,7 +137,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 |------|-------|-----|-----|------|--------|-----------|-----------|
 | discordNickname | 불가 | 1자 | 100자 | — | 계정 `DISCORD_NICKNAME`. 없으면 빈 칸 | `empty` / `max` | `디스코드 서버 별명을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
 | availableDays | 불가 | 1개 | 7개 | 요일 키 7종 | 없음 | `empty` / `max` / `enum` | `참여 가능한 요일을 하나 이상 선택해 주세요.` / `참여 가능한 요일을 다시 선택해 주세요.` |
-| scheduleAgreed | 일정 있으면 불가 | — | — | `true` | `false` | `empty` | `일정 참여 가능 여부를 확인해 주세요.` |
+| scheduleAgreed | 일정 있으면 불가 | — | — | `true` | `false` | `empty` / `unexpected` | `일정 참여 가능 여부를 확인해 주세요.` |
 | 추가 질문 TEXT | 필수면 불가 | 1자 | 200자 | — | 빈 칸 | `empty` / `max` | `필수 질문에 답해 주세요.` / `{N}자 이내로 입력해 주세요.` |
 | 추가 질문 TEXTAREA | 필수면 불가 | 1자 | 2000자 | — | 빈 칸 | `empty` / `max` | 동일 |
 | 추가 질문 RADIO·SELECT | 필수면 불가 | 1개 | 1개 | 그 질문 `options`. 기타면 자유 입력 | 미선택 | `empty` / `enum` / `other-empty` / `other-max` | `필수 질문에 답해 주세요.` / `선택지를 다시 골라 주세요.` / `기타 내용을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |

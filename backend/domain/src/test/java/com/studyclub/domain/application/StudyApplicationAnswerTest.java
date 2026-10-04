@@ -158,6 +158,23 @@ class StudyApplicationAnswerTest {
     }
 
     @Test
+    @DisplayName("일정이 없으면 false와 null은 무시하고 true는 거절한다")
+    void ignoresInactiveScheduleAgreement() {
+        for (Boolean value : java.util.Arrays.asList(false, null)) {
+            StudyApplicationAnswer answer =
+                    StudyApplicationAnswer.create(
+                            "별명", List.of("mon"), value, Map.of(), false, List.of());
+            assertThat(answer.scheduleAgreed()).isNull();
+        }
+        assertThatThrownBy(
+                        () ->
+                                StudyApplicationAnswer.create(
+                                        "별명", List.of("mon"), true, Map.of(), false, List.of()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("scheduleAgreed: unexpected");
+    }
+
+    @Test
     @DisplayName("체크박스 빈 기타 항목은 선택지와 함께 보내도 거절한다")
     void rejectsEmptyCheckboxChoice() {
         for (boolean required : List.of(true, false)) {
