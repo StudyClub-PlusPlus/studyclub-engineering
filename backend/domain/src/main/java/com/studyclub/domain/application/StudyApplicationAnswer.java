@@ -12,12 +12,9 @@ import java.util.Set;
 
 public record StudyApplicationAnswer(
         String discordNickname,
-        List<String> availableDays,
+        List<ApplicationDay> availableDays,
         Boolean scheduleAgreed,
         Map<String, Object> answers) {
-
-    private static final Set<String> AVAILABLE_DAYS =
-            Set.of("mon", "tue", "wed", "thu", "fri", "sat", "sun");
 
     public static StudyApplicationAnswer create(
             String rawDiscordNickname,
@@ -27,19 +24,25 @@ public record StudyApplicationAnswer(
             boolean hasSchedule,
             List<ApplicationFormQuestion> questions) {
         String discordNickname = requiredSingleLine(rawDiscordNickname, 100, "discordNickname");
-        List<String> availableDays = normalizeDays(rawAvailableDays);
+        List<ApplicationDay> availableDays = normalizeDays(rawAvailableDays);
         Map<String, Object> answers = normalizeExtraAnswers(questions, rawAnswers);
         Boolean scheduleAgreed = normalizeScheduleAgreement(hasSchedule, rawScheduleAgreed);
         return new StudyApplicationAnswer(
                 discordNickname, List.copyOf(availableDays), scheduleAgreed, Map.copyOf(answers));
     }
 
-    private static List<String> normalizeDays(List<String> rawDays) {
+    private static List<ApplicationDay> normalizeDays(List<String> rawDays) {
         if (rawDays == null || rawDays.isEmpty()) {
             throw invalid("availableDays", "empty");
         }
-        LinkedHashSet<String> days = new LinkedHashSet<>(rawDays);
-        if (days.size() != rawDays.size() || !AVAILABLE_DAYS.containsAll(days)) {
+        LinkedHashSet<ApplicationDay> days = new LinkedHashSet<>();
+        try {
+            for (String rawDay : rawDays) {
+                if (!days.add(ApplicationDay.fromKey(rawDay))) {
+                    throw invalid("availableDays", "enum");
+                }
+            }
+        } catch (IllegalArgumentException e) {
             throw invalid("availableDays", "enum");
         }
         return List.copyOf(days);
@@ -77,10 +80,8 @@ public record StudyApplicationAnswer(
     }
 
     private static Object normalizeExtraAnswer(ApplicationFormQuestion question, Object raw) {
-        ApplicationFormQuestionType type;
-        try {
-            type = question.questionType();
-        } catch (IllegalArgumentException | NullPointerException e) {
+        ApplicationFormQuestionType type = question.type();
+        if (type == null) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
         return switch (type) {

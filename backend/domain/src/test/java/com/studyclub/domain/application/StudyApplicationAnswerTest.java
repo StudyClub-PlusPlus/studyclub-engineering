@@ -21,6 +21,7 @@ class StudyApplicationAnswerTest {
                         nickname, List.of("mon"), null, Map.of(), false, List.of());
 
         assertThat(answer.discordNickname()).isEqualTo("가".repeat(49) + " " + "나".repeat(49));
+        assertThat(answer.availableDays()).containsExactly(ApplicationDay.MON);
     }
 
     @Test
@@ -37,6 +38,25 @@ class StudyApplicationAnswerTest {
                                         List.of()))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("availableDays: enum");
+        for (String value : List.of("MON", "monday", " mon", "")) {
+            assertThatThrownBy(
+                            () ->
+                                    StudyApplicationAnswer.create(
+                                            "별명", List.of(value), null, Map.of(), false, List.of()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("availableDays: enum");
+        }
+    }
+
+    @Test
+    @DisplayName("참여 가능 요일은 enum으로 보관하고 제출 순서를 유지한다")
+    void keepsSelectedDayOrder() {
+        StudyApplicationAnswer answer =
+                StudyApplicationAnswer.create(
+                        "별명", List.of("sun", "mon", "wed"), null, Map.of(), false, List.of());
+
+        assertThat(answer.availableDays())
+                .containsExactly(ApplicationDay.SUN, ApplicationDay.MON, ApplicationDay.WED);
     }
 
     @Test
@@ -127,6 +147,13 @@ class StudyApplicationAnswerTest {
     private ApplicationFormQuestion question(
             String type, boolean required, List<String> options, boolean allowOther) {
         return new ApplicationFormQuestion(
-                "question", "질문", type, required, null, null, options, allowOther);
+                "question",
+                "질문",
+                ApplicationFormQuestionType.valueOf(type),
+                required,
+                null,
+                null,
+                options,
+                allowOther);
     }
 }

@@ -5,6 +5,7 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.application.ApplicationDay;
 import com.studyclub.domain.application.ApplicationFormQuestion;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationAnswer;
@@ -134,7 +135,8 @@ public class StudyApplicationService {
     private String writeAnswer(StudyApplicationAnswer answer, Long studyId) {
         Map<String, Object> value = new LinkedHashMap<>();
         value.put("discordNickname", answer.discordNickname());
-        value.put("availableDays", answer.availableDays());
+        value.put(
+                "availableDays", answer.availableDays().stream().map(ApplicationDay::key).toList());
         if (answer.scheduleAgreed() != null) {
             value.put("scheduleAgreed", answer.scheduleAgreed());
         }
