@@ -26,7 +26,11 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
   apps/
     core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
     back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
-  packages/mock          # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티
+    playground/          # 디자인 컴포넌트 & 프로토타입 샌드박스
+  packages/
+    design/              # 디자인 토큰 & 정본 CSS (@studyclub/design — base, core, console)
+    ui/                  # 공용 UI 컴포넌트 (@studyclub/ui — Storybook 포함)
+    mock/                # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티 (@studyclub/mock)
 planning/stories/        # Story PRD — planning/stories/{story-name}/PRD.md
 specs/                   # API 스펙 — specs/{도메인}/spec.md
 backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
@@ -94,7 +98,8 @@ frontend/packages/mock/
 # frontend
 docker compose up -d --build                   # 전부 Docker (기본) — cp .env.example .env 먼저
 cd frontend && pnpm install && pnpm run dev    # turbo (모든 앱)
-#   개별: pnpm run dev:core-front / dev:back-office-front / dev:playground
+#   개별: pnpm run dev:core-front / dev:back-office-front / dev:playground / storybook
+#   루트 실행: pnpm --prefix frontend storybook (Storybook) / pnpm --prefix frontend run dev
 
 # backend
 cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapper 가 받아온다
@@ -188,8 +193,10 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 | 상황 | 참고 문서 |
 |------|----------|
 | 프로젝트 구조·Turbo·Mock | [`docs/frontend-development-guide/project-structure.md`](docs/frontend-development-guide/project-structure.md) |
+| 디자인 시스템·토큰·정본 CSS | [`frontend/packages/design/docs/design-system.md`](frontend/packages/design/docs/design-system.md) |
+| 컴포넌트 작성 패턴 & UI 라이브러리 | [`docs/frontend-development-guide/component-guide.md`](docs/frontend-development-guide/component-guide.md) |
+| Storybook 컴포넌트 개발 가이드 | [`docs/frontend-development-guide/storybook-guide.md`](docs/frontend-development-guide/storybook-guide.md) |
 | 인증 흐름 (OAuth·BFF) | [`docs/frontend-development-guide/auth-flow.md`](docs/frontend-development-guide/auth-flow.md) |
-| 컴포넌트 작성 패턴 | [`docs/frontend-development-guide/component-guide.md`](docs/frontend-development-guide/component-guide.md) |
 | 관심사 분리 | [`docs/frontend-development-guide/separation-of-concerns.md`](docs/frontend-development-guide/separation-of-concerns.md) |
 | API 연동·에러/로딩 처리 | [`docs/frontend-development-guide/api-integration.md`](docs/frontend-development-guide/api-integration.md) |
 

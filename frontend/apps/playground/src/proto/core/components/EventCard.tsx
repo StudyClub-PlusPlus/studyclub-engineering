@@ -27,7 +27,7 @@ export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Loc
       {/* 날짜 박스 */}
       <div
         className='flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 text-center'
-        style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}
+        style={{ background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }}
       >
         <span className='text-[10px] font-semibold uppercase tracking-wide'>{mon}</span>
         <span className='text-lg font-bold leading-none'>{day}</span>
@@ -39,7 +39,7 @@ export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Loc
         <div className='flex items-center gap-2 text-[11px] text-(--color-fg-faint)'>
           <span
             className='rounded-full px-2 py-0.5 font-semibold'
-            style={{ color: 'var(--color-accent)', background: 'var(--color-accent-soft)' }}
+            style={{ color: 'var(--color-brand)', background: 'var(--color-brand-subtle)' }}
           >
             {m(`event_type.${event.type}`, locale)}
           </span>

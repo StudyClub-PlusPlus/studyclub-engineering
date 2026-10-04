@@ -11,7 +11,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const ROLE_STYLE: Record<string, { fg: string; bg: string }> = {
-  STUDENT: { fg: 'var(--color-accent)', bg: 'var(--color-accent-soft)' },
+  STUDENT: { fg: 'var(--color-brand)', bg: 'var(--color-brand-subtle)' },
   OPERATOR: { fg: 'var(--color-ongoing)', bg: 'var(--color-ongoing-soft)' },
   ADMIN: { fg: 'var(--color-recruiting)', bg: 'var(--color-recruiting-soft)' },
 };
@@ -43,28 +43,28 @@ export default function UsersAdmin() {
       <PageHeader title='유저' subtitle='스터디원 · 운영진 (실제 가입 계정)' />
 
       {error && (
-        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-sm text-red-600'>
+        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-red-600'>
           {error.message}
         </div>
       )}
 
       {isPending && (
-        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-subtle)]'>
+        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-muted)]'>
           불러오는 중…
         </div>
       )}
 
       {users?.length === 0 && (
-        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-subtle)]'>
+        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-muted)]'>
           아직 가입한 유저가 없어요. 구글 로그인으로 첫 유저가 생기면 여기 표시됩니다.
         </div>
       )}
 
       {users && users.length > 0 && (
-        <div className='overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]'>
+        <div className='overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)]'>
           <table className='w-full text-sm'>
             <thead>
-              <tr className='border-b border-[var(--color-border)] text-left text-xs text-[var(--color-fg-subtle)]'>
+              <tr className='border-b border-[var(--color-border)] text-left text-xs text-[var(--color-fg-muted)]'>
                 <th className='px-4 py-3 font-medium'>유저</th>
                 <th className='px-4 py-3 font-medium'>이메일</th>
                 <th className='px-4 py-3 font-medium'>역할</th>
@@ -91,7 +91,7 @@ export default function UsersAdmin() {
                   <td className='px-4 py-3'>
                     <RoleBadge role={u.role} />
                   </td>
-                  <td className='px-4 py-3 tabular-nums text-[var(--color-fg-subtle)]'>{fmtDate(u.createdAt)}</td>
+                  <td className='px-4 py-3 tabular-nums text-[var(--color-fg-muted)]'>{fmtDate(u.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

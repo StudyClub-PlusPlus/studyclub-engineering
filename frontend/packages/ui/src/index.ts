@@ -42,3 +42,27 @@ export type { EmptyStateProps } from './EmptyState';
 
 export { Toaster, toast } from './Toast';
 export type { Toast, ToasterProps } from './Toast';
+
+export { StudyCard } from './StudyCard';
+export type { StudyCardProps } from './StudyCard';
+
+export { AttendanceTable, calculateAttendanceRate, attendanceRateColorClass } from './AttendanceTable';
+export type {
+  AttendanceTableProps,
+  AttendanceMember,
+  AttendanceSession,
+  AttendanceStatus,
+} from './AttendanceTable';
+
+export { Tabs } from './Tabs';
+export type { TabsProps, TabItem } from './Tabs';
+
+export { Nav } from './Nav';
+export type { NavProps, NavItem } from './Nav';
+
+export { Segmented } from './Segmented';
+export type { SegmentedProps, SegmentedOption } from './Segmented';
+
+export { Pagination } from './Pagination';
+export type { PaginationProps } from './Pagination';
+

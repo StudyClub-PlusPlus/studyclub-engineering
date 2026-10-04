@@ -37,12 +37,31 @@ packages/ui/
 
 ## 실행
 
+### 1. 프로젝트 최상위 루트에서 실행할 때
 ```bash
-# packages/ui 기준
-cd frontend && pnpm --filter @studyclub/ui run storybook
+# Storybook 개발 서버 실행 (:6006)
+pnpm --prefix frontend storybook
 
-# 또는 frontend 루트에서 turbo 태스크
-cd frontend && pnpm dlx turbo run storybook --filter=@studyclub/ui
+# 또는 패키지 필터 명시
+pnpm --prefix frontend --filter @studyclub/ui run storybook
+
+# Storybook 정적 빌드
+pnpm --prefix frontend run build-storybook
+```
+
+### 2. `frontend/` 디렉토리에서 실행할 때
+```bash
+cd frontend
+
+# 단축 명령어
+pnpm storybook
+# 또는
+pnpm run dev:storybook
+# 또는 패키지 필터 명시
+pnpm --filter @studyclub/ui run storybook
+
+# Storybook 정적 빌드
+pnpm run build-storybook
 ```
 
 브라우저: `http://localhost:6006`
