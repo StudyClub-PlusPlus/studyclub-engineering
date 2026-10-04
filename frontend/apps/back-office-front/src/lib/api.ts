@@ -60,28 +60,36 @@ function mapToStudy(api: ApiStudy): Study {
 }
 
 export async function fetchStudies(): Promise<Study[]> {
-  let lastError: unknown;
+  const cookieHeader = (await cookies()).toString();
+  const maxRetries = 2;
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    let response: Response;
     try {
-      const cookieHeader = (await cookies()).toString();
-      const response = await fetch(API_BASE + '/api/admin/studies?offset=0&limit=1000', {
+      response = await fetch(API_BASE + '/api/admin/studies?offset=0&limit=1000', {
         cache: 'no-store',
         headers: cookieHeader ? { cookie: cookieHeader } : undefined,
       });
-
-      if (!response.ok) {
-        throw new Error('스터디 목록을 불러오지 못했습니다. (' + response.status + ')');
-      }
-
-      const page = (await response.json()) as ApiPage;
-      return page.items.map(mapToStudy);
     } catch (error) {
-      lastError = error;
-      if (attempt === 4) break;
-      await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 1000));
+      // Only retry connection failures from fetch, never parsing or mapping errors.
+      if (!(error instanceof TypeError) || attempt === maxRetries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+      continue;
     }
+
+    if (!response.ok) {
+      const retryable = [502, 503, 504].includes(response.status);
+      if (retryable && attempt < maxRetries) {
+        await response.body?.cancel();
+        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+        continue;
+      }
+      throw new Error('스터디 목록을 불러오지 못했습니다. (' + response.status + ')');
+    }
+
+    const page = (await response.json()) as ApiPage;
+    return page.items.map(mapToStudy);
   }
 
-  throw lastError instanceof Error ? lastError : new Error('스터디 목록을 불러오지 못했습니다.');
+  throw new Error('스터디 목록을 불러오지 못했습니다.');
 }
