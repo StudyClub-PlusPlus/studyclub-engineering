@@ -50,4 +50,8 @@ public class StudyRecruitment extends BaseEntity {
     public void updateDeadline(Instant recruitDeadlineAt) {
         this.recruitDeadlineAt = recruitDeadlineAt;
     }
+
+    public boolean isFull(long activeParticipantCount) {
+        return recruitmentCapacity != null && activeParticipantCount >= recruitmentCapacity;
+    }
 }

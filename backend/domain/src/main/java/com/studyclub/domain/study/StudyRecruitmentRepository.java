@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,6 +27,15 @@ public interface StudyRecruitmentRepository extends JpaRepository<StudyRecruitme
                     + "AND recruitment.recruitDeadlineAt > CURRENT_TIMESTAMP "
                     + "ORDER BY recruitment.startAt DESC, recruitment.id DESC")
     List<StudyRecruitment> findOpenByStudyIdOrderByStartAtDesc(@Param("studyId") Long studyId);
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "SELECT recruitment FROM StudyRecruitment recruitment "
+                    + "WHERE recruitment.studyId = :studyId "
+                    + "AND recruitment.startAt <= CURRENT_TIMESTAMP "
+                    + "AND recruitment.recruitDeadlineAt > CURRENT_TIMESTAMP "
+                    + "ORDER BY recruitment.startAt DESC, recruitment.id DESC")
+    List<StudyRecruitment> findOpenForUpdateByStudyId(@Param("studyId") Long studyId);
 
     Optional<StudyRecruitment> findFirstByStudyIdOrderByStartAtDescIdDesc(Long studyId);
 

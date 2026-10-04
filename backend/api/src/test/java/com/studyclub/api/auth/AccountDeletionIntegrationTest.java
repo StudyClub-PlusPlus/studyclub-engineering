@@ -245,7 +245,7 @@ class AccountDeletionIntegrationTest {
                         StudyApplication.builder()
                                 .accountId(account.getId())
                                 .recruitmentId(9011L)
-                                .formAnswer("홍길동/SWE {깨진 json")
+                                .formAnswer("\"홍길동/SWE {깨진 json\"")
                                 .build());
 
         var response =

@@ -27,8 +27,8 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | GET | /api/studies/{studyId}/application-form | 신청 폼 조회 | 공개 (OPEN 기수) | 캡틴 설계 · 크루 제출 | 스펙작성중 |
 | PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | O (그 스터디 네비게이터 또는 캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
 | GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
-| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
-| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
+| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
+| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현중 |
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 스펙작성중 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
@@ -40,7 +40,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 - **accountId**: JWT `authentication.getPrincipal()`. 바디로 받지 않는다.
 - **캡틴**: 이 기수 `STUDY_PARTICIPANT` 의 `PARTICIPANT_ROLE` 이 `LEADER` 또는 `CO_LEADER` 이거나, `ACCOUNT.SYSTEM_ROLE=ADMIN`.
 - **날짜**: UTC ISO 8601.
-- **에러 바디**: `{ "errorCode", "errorMessage" }`. 유효값 실패는 `fields` 를 추가한다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
+- **에러 바디**: `{ "errorCode", "errorMessage" }`. `fields` 객체는 추가하지 않는다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
 - **500**: 예기치 않은 서버 오류 시 `INTERNAL_ERROR`.
 
 ### 열려 있는 모집 회차
@@ -57,9 +57,11 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 ### 정원
 
+신청은 선착순이 아니다. 분반 배정 전에는 신청서 수가 모집 정원을 초과해도 허용한다. 신청서 수 자체는 정원 검사에 사용하지 않는다.
+
 비교 대상은 **분반 정원이 아니다.** 반은 신청 이후에 정한다. 대기열 없음.
 
-1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 그 회차의 `STUDY_APPLICATION` 행 수와 비교. 모집 회차가 여러 개여도 회차마다 독립적으로 판단한다
+1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 기수 명부의 `ACTIVE` 인원과 비교한다. `PAUSED`·`WITHDRAWN`·`COMPLETED`는 제외한다
 2. 없으면 인원 제한 없음
 
 기수 단위 정원(`STUDY.CAPACITY`)은 없다.
@@ -129,7 +131,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 ### 유효값 표
 
-trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API `fields` 값은 사유 코드.
+trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API `errorMessage`에는 필드명과 사유 코드를 담는다.
 
 | 필드 | Empty | MIN | MAX | ENUM | 기본값 | 사유 코드 | 실패 카피 |
 |------|-------|-----|-----|------|--------|-----------|-----------|
@@ -142,7 +144,9 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 | 추가 질문 CHECKBOX | 필수면 불가 | 1개 | 옵션 수(+기타 1) | `options` + (기타 시) 자유 입력 | 없음 | 동일 | 동일 |
 | 기타 자유 입력 | 기타를 고르면 불가 | 1자 | 100자 | — | 빈 칸 | `other-empty` / `other-max` | `기타 내용을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
 
-공백만이면 빈 값이다. `fields` 키는 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
+공백만이면 빈 값이다. 오류 필드명은 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
+
+CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 안의 빈 문자열·공백 항목은 제거하지 않고 거절한다. 기타 허용 질문은 `other-empty`, 그 밖에는 `enum` 사유를 사용한다. 정상 선택지와 빈 기타를 함께 보내도 제출할 수 없다.
 
 ### 플랫폼 기본 문항 (캡틴이 빼지 못함)
 
@@ -153,6 +157,8 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 | 일정 참여 확인 | `FORM_ANSWER.scheduleAgreed` | `STUDY.SCHEDULE` 이 있을 때만. 없으면 화면에 `일정 미정`이고 이 문항은 없음 |
 
 이름·이메일은 신청 폼에 두지 않는다. 계정에서 읽기만 한다.
+
+별명 기본값은 로그인 본인의 `GET /auth/me` 응답에 있는 `discordNickname`에서 읽는다. null이면 빈 칸으로 표시한다. 공개 신청 폼 조회 응답에 계정별 별명을 포함하지 않는다.
 
 ---
 
@@ -264,7 +270,7 @@ GET 신청 폼 조회와 같은 shape.
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 스키마 위반 (타입, 옵션 누락, 허용되지 않은 `allowOther`, 중복 id, 플랫폼 기본 문항 id 혼입). `fields` 에 위치 |
+| 400 | INVALID_INPUT | 스키마 위반 (타입, 옵션 누락, 허용되지 않은 `allowOther`, 중복 id, 플랫폼 기본 문항 id 혼입). `errorMessage`에 위치와 사유 |
 | 401 | UNAUTHORIZED | 로그인 필요 |
 | 403 | FORBIDDEN | 이 기수 캡틴이 아님 |
 | 404 | NOT_FOUND | studyId 없음 |
@@ -285,7 +291,7 @@ GET 신청 폼 조회와 같은 shape.
 - **Method**: POST
 - **Path**: `/api/studies/{studyId}/applications`
 - **인증**: 필요 — 로그인 회원. `ACCOUNT.DISCORD_ID` 가 있어야 한다 (화면 게이트만으로 끝내지 않는다)
-- **설명**: 열려 있는 모집 회차에 신청 1건을 만든다. 별명이 바뀌었으면 계정도 갱신한다. 같은 트랜잭션에서 기본 분반 명부에 편입한다.
+- **설명**: 열려 있는 모집 회차에 신청 1건을 만든다. 별명이 바뀌었으면 계정도 갱신한다. 분반과 명부는 캡틴이 신청 결과를 확인한 뒤 별도로 만든다.
 
 ### Request Body
 
@@ -305,15 +311,18 @@ GET 신청 폼 조회와 같은 shape.
 ### 처리
 
 1. 로그인 · `DISCORD_ID` 존재 · 열려 있는 모집 회차 · 정원 · `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)` 검사
-2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. `fields` 에는 실패한 필드만 (화면은 검사 순서대로 하나 표시)
+
+   기존 기수 신청 여부는 모집 기간과 답변 검사보다 먼저 확인한다. 저장 후 마감된 요청의 재시도도 `409` 이미 신청으로 응답하며 새 행을 만들지 않는다.
+2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. 공통 오류 응답의 `errorMessage`로 사유를 전달한다.
 3. `STUDY_APPLICATION` insert. `FORM_ANSWER` 저장
+
+   저장된 신청 폼이 없거나 `questions`가 배열이 아닌 손상된 폼은 서버 오류로 차단한다. 정상적인 `questions: []`는 기본 문항만 제출할 수 있다.
 4. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
-5. 이 기수의 기본 분반(`STUDY_GROUP` — 기수당 최소 1개)에 `STUDY_PARTICIPANT` (`STATUS=ACTIVE`, `PARTICIPANT_ROLE=MEMBER`) insert
-6. 커밋. 이후 같은 회차 POST 는 `409`
+5. 커밋. 이후 같은 회차 POST 는 `409`
 
-덮어쓰기 없음. 승인·거절 상태값 없음. 신청을 없앨 때는 행 삭제 + 제출 때 만든 명부 행 삭제 (이 API 범위 밖).
+덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않으며 신청 제출 시 명부를 만들지 않는다. 캡틴이 신청 결과를 보고 분반을 만든 뒤 참가자를 한 분반에 배정한다.
 
-### Response — 201 No Content
+### Response — 201 Created (본문 없음)
 
 ```
 Location: /api/studies/{studyId}/applications/{applicationId}
@@ -323,7 +332,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 유효값 표 위반. `fields` 에 사유 코드. 답 원문 없음 |
+| 400 | INVALID_INPUT | 유효값 표 위반. `errorMessage`에 필드명과 사유 코드. 답 원문 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
 | 403 | FORBIDDEN | `DISCORD_ID` 없음. 화면은 연동 팝업을 연다 |
 | 404 | NOT_FOUND | studyId 없음 또는 비공개(`STATUS = DRAFT`) |
