@@ -36,7 +36,7 @@ import { Checkbox, Input, Textarea } from '@studyclub/ui';
 
 export const KIND_LABEL: Record<StudyKind, string> = { study: '스터디', club: '클럽' };
 
-/** 「미정」을 빈 문자열로 다루는 게 폼 상태 전체와 일관된다 — 다른 선택 입력(주제 제외)도 빈 값이 「안 정함」이다. */
+/** 「미정」을 빈 문자열로 다루는 게 폼 상태 전체와 일관된다 — 다른 선택 입력(카테고리 제외)도 빈 값이 「안 정함」이다. */
 export const TIMEZONE_LABEL: Record<StudyTimezone, string> = { KST: 'KST', PST: 'PST', both: '동시 진행(KST·PST)' };
 
 export type FormMode = 'create' | 'edit';
@@ -80,7 +80,7 @@ export type StudyFormValues = {
   title: string;
   summary: string;
   description: string;
-  /** 주제 — 한 개만 고른다. `STUDY.CATEGORY` 는 단일 값이다(다중 카테고리는 지원하지 않는다). */
+  /** 카테고리 — 한 개만 고른다. `STUDY.CATEGORY` 는 단일 값이다(다중 카테고리는 지원하지 않는다). */
   category: string;
   deadline: string;
   /**
@@ -99,7 +99,7 @@ export type StudyFormValues = {
   /** STUDY.TIMEZONE. 빈 문자열 = 미정. 「진행 일정」과 달리 KST·PST·동시 진행 중 하나를 고르는 값이다. */
   timezone: StudyTimezone | '';
   /**
-   * STUDY.THUMBNAIL_URL. 선택 입력 — 비우면 목록·상세가 주제 기반 기본 이미지를 쓴다.
+   * STUDY.THUMBNAIL_URL. 선택 입력 — 비우면 목록·상세가 카테고리 기반 기본 이미지를 쓴다.
    * 업로드한 파일의 미리보기 값(blob: URL)이 프로토타입 한정으로 여기 들어간다 — 실제 업로드
    * 엔드포인트가 없어 별도 스토리지에 올리지 못한다. THUMBNAIL_URL 은 VARCHAR(2048)이라 파일을
    * data URL로 직접 넣을 수 없다 — 실제 연동 시엔 presigned-upload 로 받은 짧은 호스팅 URL이어야 한다.
@@ -134,7 +134,7 @@ export const EMPTY_FORM: StudyFormValues = {
 
 /**
  * 기존 클럽에 새 기수를 붙일 때의 기본값.
- * 제목은 **프로그램 제목**, 한 줄 소개·상세 설명·주제는 **최신 기수**의 것이다. 마감일·일정·정원·진행 시작일은
+ * 제목은 **프로그램 제목**, 한 줄 소개·상세 설명·카테고리는 **최신 기수**의 것이다. 마감일·일정·정원·진행 시작일은
  * 기수마다 달라 비운다.
  *
  * **디스코드 채널·드라이브 주소는 비우지 않고 최신 기수 값을 그대로 물려준다.** 클럽은 기수가 바뀌어도
@@ -193,7 +193,7 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.title.trim()) e.title = '제목을 입력하세요.';
   else if (f.title.trim().length > 60) e.title = '60자 이내로 입력하세요.';
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
-  if (!f.category) e.category = '주제를 선택하세요.';
+  if (!f.category) e.category = '카테고리를 선택하세요.';
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
   if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim())) e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
   const isUrl = (v: string) => /^https?:\/\/.+/i.test(v.trim());
@@ -374,7 +374,7 @@ export function StudyForm({
 }
 
 /**
- * 썸네일 — **선택 입력.** 목록·상세 카드에 쓸 이미지를 올린다. 비우면 주제 기반 기본 이미지를 쓴다
+ * 썸네일 — **선택 입력.** 목록·상세 카드에 쓸 이미지를 올린다. 비우면 카테고리 기반 기본 이미지를 쓴다
  * (아래 목록 카드가 늘 그렇게 동작해 왔다 — 이 필드는 그 기본값을 덮어쓰는 자리다).
  *
  * 실제 업로드 엔드포인트가 아직 없다 — 고른 파일은 이 화면 안에서만 보이는 미리보기(`blob:` URL)로
@@ -406,7 +406,7 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
           <img src={value} alt='' className='h-16 w-16 shrink-0 rounded-control border border-border object-cover' />
         ) : (
           <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-[11px] text-fg-muted'>
-            주제 기본값
+            카테고리 기본값
           </div>
         )}
         <div className='flex flex-col gap-1'>
@@ -428,7 +428,7 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
               </button>
             )}
           </div>
-          <span className='text-xs text-fg-muted'>비우면 주제에 맞는 기본 이미지가 쓰입니다</span>
+          <span className='text-xs text-fg-muted'>비우면 카테고리에 맞는 기본 이미지가 쓰입니다</span>
         </div>
         <input ref={inputRef} type='file' accept='image/*' onChange={pick} className='hidden' />
       </div>
@@ -437,7 +437,7 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
 }
 
 /**
- * 주제 — **한 개만** 고른다. `STUDY.CATEGORY` 가 단일 값이라 폼도 단일 선택이다(다중 카테고리 미지원).
+ * 카테고리 — **한 개만** 고른다. `STUDY.CATEGORY` 가 단일 값이라 폼도 단일 선택이다(다중 카테고리 미지원).
  *
  * 드롭다운을 쓰지 않는다. 열한 개뿐이라 펼쳐 놔도 스캔하기 어렵지 않고, 고른 것이 그 자리에서
  * 바로 보이는 편이 드롭다운을 열어 확인하는 것보다 빠르다.
@@ -454,11 +454,11 @@ function CategoryField({
   return (
     <div className='flex flex-col gap-1.5'>
       <span className='text-sm font-medium text-neutral-800'>
-        주제
+        카테고리
         <span className='ml-0.5 text-error-600'>*</span>
       </span>
 
-      <div role='radiogroup' aria-label='주제' className='flex flex-wrap gap-1.5'>
+      <div role='radiogroup' aria-label='카테고리' className='flex flex-wrap gap-1.5'>
         {STUDY_CATEGORIES.map((c) => {
           const on = value === c;
           return (
@@ -467,7 +467,7 @@ function CategoryField({
               type='button'
               role='radio'
               aria-checked={on}
-              // 이미 고른 것을 다시 누르면 풀리지 않는다 — 주제는 필수라 항상 하나는 고른 상태를 유지한다
+              // 이미 고른 것을 다시 누르면 풀리지 않는다 — 카테고리는 필수라 항상 하나는 고른 상태를 유지한다
               onClick={() => onChange(c)}
               className={`rounded-pill border px-3 py-1.5 text-[13px] font-medium transition-colors ${
                 on
@@ -629,7 +629,7 @@ function ProgramField({
           <select
             aria-label='프로그램 선택'
             value={value.programId}
-            // 프로그램을 고르면 제목은 프로그램 제목, 소개·설명·주제는 최신 기수의 것으로 채운다
+            // 프로그램을 고르면 제목은 프로그램 제목, 소개·설명·카테고리는 최신 기수의 것으로 채운다
             onChange={(ev) =>
               onChange(
                 ev.target.value

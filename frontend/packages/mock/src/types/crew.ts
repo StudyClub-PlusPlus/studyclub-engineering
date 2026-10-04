@@ -3,21 +3,11 @@ import type { MemberRegion } from './community';
 /** 출석 상태. 값이 없으면 미체크. */
 export type AttendanceStatus = "present" | "late" | "absent" | "excused";
 
-/**
- * 크루 상태.
- * - pending  : 승인 대기
- * - active   : 승인됨 — 출석부에 오른다
- * - waitlist : 정원이 차서 대기
- * - rejected : 거절
- */
-export type CrewStatus = "pending" | "active" | "waitlist" | "rejected";
-
 export type Crew = {
   id: string;
   name: string;
   email: string;
   region: MemberRegion;
-  status: CrewStatus;
   appliedAt: string;
   /** 지난 스터디 참여 횟수 */
   pastStudies: number;

@@ -81,7 +81,12 @@ class AttendanceGetIntegrationTest {
         insertAccountIfAbsent(ACCOUNT_A_ID, "수아", "sua@att-test.com");
         insertAccountIfAbsent(ACCOUNT_B_ID, "지원", "jiwon@att-test.com");
 
-        var program = studyProgramRepo.save(StudyProgram.builder().title("시스템 디자인 프로그램").build());
+        var program =
+                studyProgramRepo.save(
+                        StudyProgram.builder()
+                                .title("시스템 디자인 프로그램")
+                                .studyKind(StudyKind.STUDY)
+                                .build());
 
         study =
                 studyRepo.save(
@@ -91,7 +96,6 @@ class AttendanceGetIntegrationTest {
                                 .title("시스템 디자인 스터디")
                                 .oneLineSummary("시스템 디자인 심화")
                                 .category(StudyCategory.ALGORITHM)
-                                .studyKind(StudyKind.STUDY)
                                 .description("시스템 디자인 스터디 설명")
                                 .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
@@ -131,7 +135,7 @@ class AttendanceGetIntegrationTest {
                                 .studyGroupId(group.getId())
                                 .studyId(study.getId())
                                 .status(ParticipantStatus.ACTIVE)
-                                .participantRole(ParticipantRole.MEMBER)
+                                .participantRole(ParticipantRole.LEADER)
                                 .joinedAt(joinedAt)
                                 .build());
         participantB =

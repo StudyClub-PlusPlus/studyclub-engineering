@@ -6,7 +6,7 @@
 <!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
 | prefix | next |
 |---|---|
-| ST | 1 |
+| ST | 5 |
 | EP | 1 |
 | FN | 1 |
 | IA | 1 |
@@ -27,3 +27,7 @@
 
 | ID | 정규문장 | Actor | PRD | 프로토 | 상태 | 비고 |
 |---|---|---|---|---|---|---|
+| ST-001 | 캡틴은 스터디를 등록할 수 있다. | 캡틴 | [PRD](../stories/study-create/PRD.md) | [콘솔 › 스터디](https://playground.studyclub-plusplus.com/proto/console/studies) | | |
+| ST-002 | 캡틴은 운영 현황을 한 화면에서 볼 수 있다. | 캡틴 | [PRD](../stories/console-dashboard/PRD.md) | [콘솔 › 대시보드](https://playground.studyclub-plusplus.com/proto/console) | | 집계·API 는 주현님 명세(PR #90)와 맞춘다 |
+| ST-003 | 캡틴은 개별 스터디의 운영 현황을 볼 수 있다. | 캡틴 | [PRD](../stories/study-detail/PRD.md) | [콘솔 › 스터디 상세](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | |
+| ST-004 | 캡틴은 등록된 스터디를 수정·삭제할 수 있다. | 캡틴 | [PRD](../stories/study-edit/PRD.md) | [콘솔 › 정보 탭](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | 수정은 네비게이터도 가능 |

@@ -67,7 +67,7 @@ export function StudyConsole({ study }: { study: Study }) {
   const [meetings, setMeetings] = useState<Record<string, typeof initial.meetings>>({ c1: initial.meetings });
   // 크루가 어느 반에 속하는가. 반 이동은 이 값을 바꾼다.
   const [assign, setAssign] = useState<Record<string, string>>(() =>
-    Object.fromEntries(initial.crew.filter((c) => c.status === 'active').map((c) => [c.id, 'c1'])),
+    Object.fromEntries(initial.crew.map((c) => [c.id, 'c1'])),
   );
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
@@ -100,7 +100,7 @@ export function StudyConsole({ study }: { study: Study }) {
     if (q && TABS.some((t) => t.key === q)) setTab(q as TabKey);
   }, []);
 
-  const active = crew.filter((c) => c.status === 'active');
+  const active = crew;
   const open = recruitState(study) === 'apply';
   const deadline = toISODate(study.recruitment?.deadline);
   // 마감까지 남은 날. 마감일은 필수라 늘 있다 — 값이 비어 있는 옛 데이터만 undefined.
@@ -224,7 +224,8 @@ export function StudyConsole({ study }: { study: Study }) {
           )}
           <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
             {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
-            {open ? (dday === undefined ? '모집중' : dday === 0 ? '오늘 마감' : `모집중 · D-${dday}`) : '모집 마감'}
+            {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
+            {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
           </Badge>
           {draft && (
             <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>

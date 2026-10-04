@@ -137,7 +137,7 @@ export function AnnotationLayer() {
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 0 }}
       >
         {shown.map((h) => {
-          const color = 'var(--color-accent)';
+          const color = 'var(--color-brand)';
           const entry = entries.find((e) => e.n === h.n);
           // 자동 회피 위치를 바탕으로 하고, 명세가 손으로 밀어 둔 값(chipOffset)을 얹는다.
           const auto = badgePos.get(h.n);
@@ -175,11 +175,11 @@ export function AnnotationLayer() {
 
       {/* 번호별 명세 패널 */}
       <aside
-        className='fixed top-0 right-0 z-[70] flex h-screen w-[380px] flex-col border-l bg-[var(--color-surface)] shadow-lg'
+        className='fixed top-0 right-0 z-[70] flex h-screen w-[380px] flex-col border-l bg-[var(--color-bg)] shadow-lg'
         style={{ borderColor: 'var(--color-border)' }}
       >
         <header className='border-b px-5 py-4' style={{ borderColor: 'var(--color-border)' }}>
-          <div className='text-[11px] font-semibold text-[var(--color-fg-subtle)]'>설명</div>
+          <div className='text-[11px] font-semibold text-[var(--color-fg-muted)]'>설명</div>
           <h2 className='mt-0.5 text-base font-bold'>{spec.screen}</h2>
 
           {/* 스토리 칩 — 한 지면에 Story 가 여럿이면 고르는 자리.
@@ -196,7 +196,7 @@ export function AnnotationLayer() {
                     className='rounded-pill px-2.5 py-1 text-[11px] font-semibold transition-colors'
                     style={
                       active
-                        ? { background: 'var(--color-accent)', color: '#fff' }
+                        ? { background: 'var(--color-brand)', color: '#fff' }
                         : { background: 'var(--color-surface-2, #f1f2f6)', color: 'var(--color-fg-muted)' }
                     }
                   >
@@ -207,7 +207,7 @@ export function AnnotationLayer() {
             </div>
           )}
           {specs.length === 1 && spec.story ? (
-            <div className='mt-1 text-[11px] text-[var(--color-fg-subtle)]'>{spec.story}</div>
+            <div className='mt-1 text-[11px] text-[var(--color-fg-muted)]'>{spec.story}</div>
           ) : null}
         </header>
 
@@ -228,15 +228,15 @@ export function AnnotationLayer() {
           ) : null}
 
           {conditional.length > 0 && (
-            <p className='mt-4 text-[12px] leading-relaxed text-[var(--color-fg-subtle)]'>
+            <p className='mt-4 text-[12px] leading-relaxed text-[var(--color-fg-muted)]'>
               지금 화면에 없는 조건부 번호 — {conditional.map((e) => e.n).join(', ')}. 탭을 바꾸거나 상태를 만들면
               나타난다.
             </p>
           )}
 
           {(missing.length > 0 || undocumented.length > 0) && (
-            <section className='mt-6 rounded-lg border p-3' style={{ borderColor: 'var(--color-danger-500, #dc2626)' }}>
-              <h3 className='text-[13px] font-bold' style={{ color: 'var(--color-danger-600, #b91c1c)' }}>
+            <section className='mt-6 rounded-lg border p-3' style={{ borderColor: 'var(--color-error-500)' }}>
+              <h3 className='text-[13px] font-bold' style={{ color: 'var(--color-error-600)' }}>
                 대조 실패
               </h3>
               {missing.length > 0 && (
@@ -275,7 +275,7 @@ function SpecCard({ entry, hit }: { entry: AnnoEntry; hit?: Hit }) {
       <h3 className='flex items-center gap-2 text-[13px] font-bold'>
         <span
           className='grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[10px] font-extrabold text-white'
-          style={{ background: hit ? 'var(--color-accent)' : 'var(--color-fg-subtle)' }}
+          style={{ background: hit ? 'var(--color-brand)' : 'var(--color-fg-muted)' }}
         >
           {entry.n}
         </span>

@@ -5,7 +5,7 @@
 
    [1] PRIMITIVE  : @theme            (진실의 원천 — 색을 바꿀 곳은 여기 뿐)
    [2] SEMANTIC   : @theme inline     (역할 별칭 — 컴포넌트가 참조하는 층)
-   [3] 밀도 override: console.overrides.css (색 아님, radius/폰트/행높이만)
+   [3] 밀도 override: console.css         (색 아님, radius/폰트/행높이만)
 
    ※ Tailwind를 안 쓰는 앱이라면: `@import "tailwindcss";` 줄과 `@theme`/
      `@theme inline` 래퍼를 지우고 그 안의 선언을 `:root { ... }` 로 옮기면
@@ -112,7 +112,7 @@
 
   /* ---- Radius (semantic, 컴포넌트 권장값) ----
      비-inline @theme 에 두어 rounded-control/-card 유틸이 var()를 참조 →
-     console.overrides.css 에서 :root 로 덮어쓰면 유틸까지 함께 바뀝니다. */
+     console.css 에서 :root 로 덮어쓰면 유틸까지 함께 바뀝니다. */
   --radius-control: 8px;  /* 버튼·입력·셀렉트 */
   --radius-chip:    8px;  /* 필터칩·태그 */
   --radius-card:    16px;
@@ -201,7 +201,7 @@
   --rate-warn:    var(--color-warning-700); /* 60–79% */
   --rate-bad:     var(--color-error-700);   /* <60%  */
 
-  /* 밀도 토큰 (콘솔이 override 하는 대상 — console.overrides.css) */
+  /* 밀도 토큰 (콘솔이 override 하는 대상 — console.css) */
   --row-height: 52px;
 }
 

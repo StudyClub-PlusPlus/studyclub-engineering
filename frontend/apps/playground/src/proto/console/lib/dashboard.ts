@@ -68,7 +68,7 @@ function addWeeks(iso: string, n: number): string {
 }
 
 /**
- * 주제 코드.
+ * 카테고리 코드.
  *
  * 목록으로 넘길 때 **표시 라벨이 아니라 코드**를 쓴다. 라벨은 문구가 바뀌거나 영어로 뒤집히면
  * 링크가 깨진다. 코드는 API 가 쓰는 enum 이름 그대로다 — 새 이름을 따로 만들면 둘을 맞춰야 한다.
@@ -80,9 +80,8 @@ export function categoryCode(label: string): string {
 
 export function aggregate(today = todayISO(), studyList: Study[] = studies) {
   const regionCount: Record<MemberRegion, number> = { KR: 0, NA: 0, ETC: 0 };
-  // 주제는 **중복해서 달 수 있다.** 그래서 규모를 사람 수로 세지 않는다 — 한 사람이 여러 줄에
-  // 잡혀 합계가 총원을 넘고, 같은 화면의 「활성 크루」와 어긋나 보인다. 라벨이 몇 번 붙었는가,
-  // 즉 **스터디 수**로 센다.
+  // 규모는 사람 수가 아니라 **스터디 수**로 센다 — 사람으로 세면 한 사람이 여러 줄에 잡혀
+  // 합계가 총원을 넘고, 같은 화면의 「활성 크루」와 어긋나 보인다.
   const byCategory = new Map<string, { running: number; total: number }>();
   const weekStarts = Array.from({ length: TREND_WEEKS }, (_, i) => addWeeks(mondayOf(today), i - (TREND_WEEKS - 1)));
   const weekIndex = new Map(weekStarts.map((w, i) => [w, i]));
@@ -101,11 +100,11 @@ export function aggregate(today = todayISO(), studyList: Study[] = studies) {
 
   for (const study of studyList) {
     const { crew, attendance, meetings } = getStudyCrew(study);
-    const active = crew.filter((c) => c.status === 'active');
+    const active = crew;
     const running = study.status !== 'closed';
     const categories = categoriesOf(study);
-    // 주제는 중복해서 달 수 있다 — 한 스터디가 여러 줄에 잡히는 것이 정상이다.
-    for (const category of categories.length > 0 ? categories : ['기타']) {
+    // 카테고리는 스터디마다 하나다 — 첫 값만 센다.
+    for (const category of [categories[0] ?? '기타']) {
       const cat = byCategory.get(category) ?? { running: 0, total: 0 };
       cat.total += 1;
       if (running) cat.running += 1;

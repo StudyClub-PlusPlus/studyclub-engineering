@@ -35,7 +35,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className='sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] lg:flex'>
+    <aside className='sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg)] lg:flex'>
       <div className='flex h-16 items-center gap-2 border-b border-[var(--color-border)] px-5 text-[15px] font-bold'>
         <span
           className='grid h-7 w-7 place-items-center rounded-lg text-xs font-extrabold text-white'
@@ -56,7 +56,7 @@ export function Sidebar() {
               className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors'
               style={
                 active
-                  ? { background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }
+                  ? { background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }
                   : { color: 'var(--color-fg-muted)' }
               }
             >
@@ -75,25 +75,25 @@ export function Sidebar() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.picture} alt='' className='h-8 w-8 shrink-0 rounded-full' />
             ) : (
-              <span className='grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-[var(--color-accent)]'>
+              <span className='grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-brand-subtle)] text-xs font-bold text-[var(--color-brand)]'>
                 {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
               </span>
             )}
             <div className='min-w-0 flex-1'>
               <div className='truncate text-sm font-semibold'>{user.nickname ?? '운영자'}</div>
-              <div className='truncate text-xs text-[var(--color-fg-subtle)]'>{user.email}</div>
+              <div className='truncate text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
             </div>
             <button
               type='button'
               onClick={handleLogout}
               title='로그아웃'
-              className='grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--color-fg-subtle)] transition-colors hover:bg-[var(--color-surface-subtle)] hover:text-red-600'
+              className='grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--color-fg-muted)] transition-colors hover:bg-[var(--color-surface-subtle)] hover:text-red-600'
             >
               <LogOut size={15} />
             </button>
           </div>
         ) : (
-          <div className='px-1 py-2 text-xs text-[var(--color-fg-subtle)]'>로그인 필요</div>
+          <div className='px-1 py-2 text-xs text-[var(--color-fg-muted)]'>로그인 필요</div>
         )}
       </div>
     </aside>

@@ -6,6 +6,7 @@
 - [Turbo 모노레포](#turbo-모노레포)
 - [앱 구성](#앱-구성)
 - [디렉토리 구조](#디렉토리-구조)
+- [공유 패키지 (packages/*)](#공유-패키지-packages)
 - [Mock 데이터](#mock-데이터)
 - [실행](#실행)
 
@@ -18,10 +19,10 @@ frontend/
 ├── apps/
 │   ├── core-front/           # 사용자향 (studyclub-plusplus.com) :4700
 │   ├── back-office-front/    # 운영자향 (back-office.studyclub-plusplus.com) :4701
-│   └── playground/           # 컴포넌트 개발·실험용
+│   └── playground/           # 컴포넌트 개발·실험용 :4702
 ├── packages/
-│   ├── ui/                   # 공유 UI 컴포넌트 라이브러리 (@studyclub/ui)
-│   ├── design/               # 디자인 토큰·CSS 변수 (@studyclub/design)
+│   ├── design/               # 디자인 시스템 토큰 & 정본 CSS (@studyclub/design)
+│   ├── ui/                   # 공유 UI 컴포넌트 라이브러리 + Storybook (@studyclub/ui)
 │   ├── mock/                 # 공유 mock 데이터 + 타입 (@studyclub/mock)
 │   ├── eslint-config/        # 공유 ESLint 설정
 │   └── prettier-config/      # 공유 Prettier 설정
@@ -113,7 +114,24 @@ apps/{app}/
 
 상세: [API 연동 가이드](api-integration.md) · [관심사 분리](separation-of-concerns.md)
 
-## Mock 데이터
+## 공유 패키지 (packages/*)
+
+### 1. `@studyclub/design` — 디자인 시스템 & 정본 CSS
+- **토큰 SSOT**: `tokens.css` (OKLCH 기반 1계층 Primitive + 2계층 Semantic 토큰 원천)
+- **정본 CSS 진입점**:
+  - `base.css`: 공통 토큰 + 기본 엘리먼트 reset + `.card` 등 공통 셸
+  - `core.css`: 사용자 서비스 전용 스타일 (`core-front`, `playground proto/core`)
+  - `console.css`: 운영자 콘솔 전용 고밀도 스타일 (`back-office-front`, `playground proto/console`)
+- 각 앱의 `globals.css`는 위 정본 CSS 중 하나를 `@import`하여 사용합니다.
+- 상세: [`frontend/packages/design/docs/design-system.md`](../../frontend/packages/design/docs/design-system.md)
+
+### 2. `@studyclub/ui` — 공용 UI 컴포넌트 & Storybook
+- `design-system.md` §9 스펙을 구현한 공용 리액트 컴포넌트 라이브러리
+- 제공 컴포넌트: `Button`, `Badge`, `Card`, `Field`(`Input`/`Select`/`Textarea`), `FilterChip`, `Avatar`, `StatCard`, `CapacityBar`, `Checkbox`, `Modal`, `EmptyState`, `Toast`(`Toaster`), `StudyCard`, `AttendanceTable`, `Tabs`, `Nav`, `Segmented`, `Pagination`
+- **Storybook 9 (react-vite)** 환경 탑재 (`pnpm --prefix frontend storybook` 실행)
+- 상세: [Component Guide](component-guide.md) · [Storybook Guide](storybook-guide.md)
+
+### 3. `@studyclub/mock` — Mock 데이터 & MSW
 
 현재 프론트는 **mock 데이터로 동작**. 백엔드 API 완성 시 교체 예정.
 
@@ -197,13 +215,16 @@ API 교체 지점은 `// TODO(api)` 주석으로 표시되어 있음.
 ## 실행
 
 ```bash
-# 전체 (turbo)
-cd frontend && pnpm install && pnpm run dev
+# 프로젝트 루트에서 바로 실행할 때
+pnpm --prefix frontend storybook              # Storybook (:6006)
+pnpm --prefix frontend run dev                # 전체 앱 동시 실행
 
+# frontend/ 디렉토리에서 실행할 때
+cd frontend && pnpm install
+pnpm run dev                                  # turbo — 모든 앱 동시 실행
 # 개별 앱
-pnpm --filter core-front run dev        # :4700
-pnpm --filter back-office-front run dev # :4701
-
-# Storybook
-pnpm --filter @studyclub/ui run storybook  # :6006
+pnpm run dev:core-front                       # :4700
+pnpm run dev:back-office-front                # :4701
+pnpm run dev:playground                       # :4702
+pnpm run storybook                            # :6006
 ```

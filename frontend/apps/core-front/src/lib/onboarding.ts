@@ -175,7 +175,8 @@ export function returnPath(raw: string | null, locale: Locale): string {
     if (url.origin !== 'https://studyclub.invalid') return fallback;
     if (!/^\/(ko|en)(\/|$)/.test(url.pathname)) return fallback;
     if (/^\/(ko|en)\/(login|onboarding)(\/|$)/.test(url.pathname)) return fallback;
-    return `/${locale}${url.pathname.replace(/^\/(ko|en)/, '')}${url.search}${url.hash}` || fallback;
+    // 템플릿이 `/` 로 시작하니 결과는 항상 비어 있지 않다 — `|| fallback` 은 닿지 않는 코드였다
+    return `/${locale}${url.pathname.replace(/^\/(ko|en)/, '')}${url.search}${url.hash}`;
   } catch {
     return fallback;
   }

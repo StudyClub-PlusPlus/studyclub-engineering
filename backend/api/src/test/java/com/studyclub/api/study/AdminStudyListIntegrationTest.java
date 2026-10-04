@@ -176,6 +176,35 @@ class AdminStudyListIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - studyId 필터를 주면 해당 스터디 한 건만 반환한다")
+    void filterByStudyId() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?studyId=" + STUDY_ID,
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Long> ids = studyIds(response.getBody());
+        assertThat(ids).containsExactly(STUDY_ID);
+    }
+
+    @Test
+    @DisplayName("성공 - 존재하지 않는 studyId 필터를 주면 빈 목록을 반환한다")
+    void filterByStudyIdNotFound() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?studyId=999999999",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(items(response.getBody())).isEmpty();
+    }
+
+    @Test
     @DisplayName("성공 - 첫 번째 페이지 조회 시 limit 개수만큼 반환되고 total은 전체 수다")
     void paginationFirstPage() {
         var response =
@@ -194,10 +223,11 @@ class AdminStudyListIntegrationTest {
     @Test
     @DisplayName("성공 - 마지막 페이지 조회 시 남은 1건만 반환된다")
     void paginationLastPage() {
-        long total = studyRowCount();
+        // studyId 필터로 결과를 1건으로 좁혀 "limit 보다 남은 항목이 적은 마지막 페이지" 케이스를 재현한다.
+        // 전체 테이블 COUNT 에 의존하면 다른 테스트 클래스가 행을 추가할 때 offset 계산이 틀어진다.
         var response =
                 rest.exchange(
-                        "/api/admin/studies?limit=2&offset=" + (total - 1),
+                        "/api/admin/studies?studyId=" + STUDY_ID + "&limit=2&offset=0",
                         HttpMethod.GET,
                         authenticatedRequest(ADMIN_ID),
                         Map.class);
@@ -205,7 +235,7 @@ class AdminStudyListIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         Map<?, ?> body = response.getBody();
         assertThat(items(body)).hasSize(1);
-        assertThat(((Number) body.get("total")).longValue()).isEqualTo(total);
+        assertThat(((Number) body.get("total")).longValue()).isEqualTo(1L);
     }
 
     @Test
@@ -306,6 +336,11 @@ class AdminStudyListIntegrationTest {
                 CLUB_STUDY_ID);
         jdbcTemplate.update(
                 "DELETE FROM STUDY WHERE ID IN (?, ?, ?)", STUDY_ID, DRAFT_STUDY_ID, CLUB_STUDY_ID);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?, ?)",
+                STUDY_ID,
+                DRAFT_STUDY_ID,
+                CLUB_STUDY_ID);
         jdbcTemplate.update("DELETE FROM ACCOUNT WHERE ID IN (?, ?)", ADMIN_ID, MEMBER_ID);
     }
 
@@ -324,6 +359,10 @@ class AdminStudyListIntegrationTest {
                 now);
     }
 
+    /**
+     * 기수 하나와 그 프로그램을 같이 넣는다. 종류는 기수가 아니라 <b>프로그램</b>이 갖는다 — 목록 응답의 {@code studyKind} 와 필터가 이 행을
+     * 읽는다. 프로그램 ID 는 기수 ID 와 같게 둔다(이 테스트 한정 규칙).
+     */
     private void insertStudy(
             Long id,
             String slug,
@@ -334,17 +373,24 @@ class AdminStudyListIntegrationTest {
             String applicationForm,
             Timestamp now) {
         jdbcTemplate.update(
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?)",
+                id,
+                title,
+                kind,
+                now,
+                now);
+        jdbcTemplate.update(
                 "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                        + " IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 title,
                 slug,
                 "한 줄 소개",
                 category,
-                kind,
                 false,
                 "ONLINE",
                 status,

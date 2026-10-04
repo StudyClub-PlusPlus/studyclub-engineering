@@ -44,14 +44,14 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
     <div className='mx-auto max-w-4xl px-6 py-12'>
       <Link
         href={`/proto/core/${locale}/events`}
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]'
+        className='inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
       >
         <ArrowLeft size={15} /> {m('common.back_events', locale)}
       </Link>
 
       <span
         className='mt-6 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide'
-        style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}
+        style={{ background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }}
       >
         {event.type}
       </span>
@@ -63,7 +63,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           <div key={f.label} className='card flex items-center gap-3 p-4'>
             <f.icon size={18} className='shrink-0 text-[var(--color-fg-faint)]' />
             <div>
-              <dt className='text-xs text-[var(--color-fg-subtle)]'>{f.label}</dt>
+              <dt className='text-xs text-[var(--color-fg-muted)]'>{f.label}</dt>
               <dd className='font-semibold'>{f.value}</dd>
             </div>
           </div>
@@ -76,7 +76,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           target='_blank'
           rel='noreferrer'
           className='mt-12 inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]'
-          style={{ background: 'var(--color-accent)' }}
+          style={{ background: 'var(--color-brand)' }}
         >
           {m('common.rsvp', locale)} <ArrowUpRight size={17} />
         </a>

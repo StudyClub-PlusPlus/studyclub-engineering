@@ -6,4 +6,4 @@ import com.studyclub.domain.study.StudyStatus;
 
 /** 백오피스 스터디 목록 조건. null 이면 그 조건을 걸지 않는다. */
 public record BackofficeStudyListFilter(
-        StudyCategory category, StudyKind studyKind, StudyStatus status) {}
+        StudyCategory category, StudyKind studyKind, StudyStatus status, Long studyId) {}

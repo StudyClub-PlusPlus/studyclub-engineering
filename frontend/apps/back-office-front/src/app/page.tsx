@@ -47,7 +47,7 @@ function aggregate(studyRows: StudyRow[]) {
     if (!row) continue; // MSW 스터디 목록에 없으면 제외
 
     const { crew, attendance } = getStudyCrew(study);
-    const active = crew.filter((c) => c.status === 'active');
+    const active = crew;
     const running = row.phase !== 'CLOSED';
     const category = study.category ?? '기타';
     const bucket = byCategory.get(category) ?? { present: 0, checked: 0, crew: 0 };

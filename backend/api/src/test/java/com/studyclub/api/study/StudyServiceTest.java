@@ -2,12 +2,7 @@ package com.studyclub.api.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.studyclub.common.error.BusinessException;
@@ -20,7 +15,9 @@ import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroupRepository;
+import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
@@ -54,28 +51,13 @@ class StudyServiceTest {
     // ── create ────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("실패 - ADMIN 이 아닌 계정은 FORBIDDEN (판정은 StudyCaptainGuard 가 한다)")
-    void nonAdminThrowsForbidden() {
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "스터디 등록 권한이 없습니다."))
-                .when(studyCaptainGuard)
-                .assertCaptain(1L, "스터디 등록 권한이 없습니다.");
-
-        assertThatThrownBy(() -> studyService.create(1L, validCreateRequest()))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(
-                        e ->
-                                assertThat(((BusinessException) e).errorCode())
-                                        .isEqualTo(ErrorCode.FORBIDDEN));
-    }
-
-    @Test
     @DisplayName("실패 - 존재하지 않는 studyProgramId 는 INVALID_INPUT")
     void nonExistentStudyProgramIdThrowsInvalidInput() {
         when(studyProgramRepository.findById(999L)).thenReturn(Optional.empty());
 
         StudyCreateRequest request =
                 new StudyCreateRequest(
-                        999L, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+                        999L, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
 
         assertThatThrownBy(() -> studyService.create(1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -91,6 +73,7 @@ class StudyServiceTest {
         StudyCreateRequest request =
                 new StudyCreateRequest(
                         null,
+                        StudyKind.STUDY,
                         "스터디",
                         "소개",
                         null,
@@ -98,6 +81,49 @@ class StudyServiceTest {
                         null,
                         Instant.now().minusSeconds(3600),
                         null);
+
+        assertThat(request.studyKind()).isEqualTo(StudyKind.STUDY);
+        assertThatThrownBy(() -> studyService.create(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패 - 기존 프로그램에 studyKind 를 함께 보내면 INVALID_INPUT")
+    void existingProgramWithKindThrowsInvalidInput() {
+        StudyCreateRequest request =
+                new StudyCreateRequest(
+                        999L,
+                        StudyKind.STUDY,
+                        "스터디",
+                        "소개",
+                        null,
+                        StudyCategory.ALGORITHM,
+                        null,
+                        null,
+                        null);
+
+        assertThatThrownBy(() -> studyService.create(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패 - STUDY 종류 프로그램에 새 기수를 붙이면 INVALID_INPUT")
+    void studyKindProgramRejectsNewCohort() {
+        StudyProgram studyProgram = mock(StudyProgram.class);
+        when(studyProgram.getStudyKind()).thenReturn(StudyKind.STUDY);
+        when(studyProgramRepository.findById(999L)).thenReturn(Optional.of(studyProgram));
+
+        StudyCreateRequest request =
+                new StudyCreateRequest(
+                        999L, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
 
         assertThatThrownBy(() -> studyService.create(1L, request))
                 .isInstanceOf(BusinessException.class)
@@ -120,23 +146,6 @@ class StudyServiceTest {
                         e ->
                                 assertThat(((BusinessException) e).errorCode())
                                         .isEqualTo(ErrorCode.UNAUTHORIZED));
-    }
-
-    @Test
-    @DisplayName("실패(수정) - 캡틴이 아니면 FORBIDDEN (판정은 StudyCaptainGuard 가 한다)")
-    void updateForbiddenForMember() {
-        when(accountRepository.existsById(1L)).thenReturn(true);
-        when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "스터디 수정 권한이 없습니다."))
-                .when(studyCaptainGuard)
-                .assertCaptainOrNavigator(1L, 10L, "스터디 수정 권한이 없습니다.");
-
-        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, validUpdateRequest()))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(
-                        e ->
-                                assertThat(((BusinessException) e).errorCode())
-                                        .isEqualTo(ErrorCode.FORBIDDEN));
     }
 
     @Test
@@ -207,29 +216,11 @@ class StudyServiceTest {
     // ── update (백오피스) ─────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("실패(백오피스 수정) - 캡틴이 아니면 FORBIDDEN, 네비게이터 판정은 하지 않는다")
-    void backOfficeUpdateForbiddenWithoutNavigatorCheck() {
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "스터디 수정 권한이 없습니다."))
-                .when(studyCaptainGuard)
-                .assertCaptain(1L, "스터디 수정 권한이 없습니다.");
-
-        assertThatThrownBy(() -> studyService.updateFromBackOffice(1L, 10L, validUpdateRequest()))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(
-                        e ->
-                                assertThat(((BusinessException) e).errorCode())
-                                        .isEqualTo(ErrorCode.FORBIDDEN));
-        // 네비게이터를 통과시키는 판정이 백오피스 경로에서 불리면 안 된다
-        verify(studyCaptainGuard, never())
-                .assertCaptainOrNavigator(anyLong(), anyLong(), anyString());
-    }
-
-    @Test
     @DisplayName("실패(백오피스 수정) - 존재하지 않는 studyId → NOT_FOUND")
     void backOfficeUpdateStudyNotFound() {
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.updateFromBackOffice(1L, 10L, validUpdateRequest()))
+        assertThatThrownBy(() -> studyService.updateFromBackOffice(10L, validUpdateRequest()))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -244,7 +235,7 @@ class StudyServiceTest {
 
         StudyUpdateRequest request = new StudyUpdateRequest("  ", "소개", null, null, null, null);
 
-        assertThatThrownBy(() -> studyService.updateFromBackOffice(1L, 10L, request))
+        assertThatThrownBy(() -> studyService.updateFromBackOffice(10L, request))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -284,26 +275,11 @@ class StudyServiceTest {
     }
 
     @Test
-    @DisplayName("실패(백오피스 상세) - 캡틴이 아니면 FORBIDDEN")
-    void backOfficeDetailForbidden() {
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다."))
-                .when(studyCaptainGuard)
-                .assertCaptain(1L, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
-
-        assertThatThrownBy(() -> studyService.getDetailForBackOffice(1L, 10L))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(
-                        e ->
-                                assertThat(((BusinessException) e).errorCode())
-                                        .isEqualTo(ErrorCode.FORBIDDEN));
-    }
-
-    @Test
     @DisplayName("실패(백오피스 상세) - 존재하지 않는 studyId → NOT_FOUND")
     void backOfficeDetailNotFound() {
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.getDetailForBackOffice(1L, 10L))
+        assertThatThrownBy(() -> studyService.getDetailForBackOffice(10L))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -314,57 +290,11 @@ class StudyServiceTest {
     // ── delete ────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("실패(삭제) - 인증 없음 → UNAUTHORIZED")
-    void deleteUnauthorizedWhenAccountNotFound() {
-        doThrow(new BusinessException(ErrorCode.UNAUTHORIZED))
-                .when(studyCaptainGuard)
-                .assertCaptain(1L, "스터디 삭제 권한이 없습니다.");
-
-        assertThatThrownBy(() -> studyService.delete(1L, 10L))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(
-                        e ->
-                                assertThat(((BusinessException) e).errorCode())
-                                        .isEqualTo(ErrorCode.UNAUTHORIZED));
-    }
-
-    @Test
-    @DisplayName("실패(삭제) - MEMBER → FORBIDDEN")
-    void deleteForbiddenForMember() {
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "스터디 삭제 권한이 없습니다."))
-                .when(studyCaptainGuard)
-                .assertCaptain(1L, "스터디 삭제 권한이 없습니다.");
-
-        assertThatThrownBy(() -> studyService.delete(1L, 10L))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(
-                        e ->
-                                assertThat(((BusinessException) e).errorCode())
-                                        .isEqualTo(ErrorCode.FORBIDDEN));
-    }
-
-    @Test
-    @DisplayName("실패(삭제) - LEADER/CO_LEADER 도 삭제 불가 → FORBIDDEN")
-    void deleteForbiddenForNavigator() {
-        // 삭제는 assertCaptain 만 부른다 — 네비게이터(SystemRole.MEMBER)도 여기서 막힌다
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN, "스터디 삭제 권한이 없습니다."))
-                .when(studyCaptainGuard)
-                .assertCaptain(2L, "스터디 삭제 권한이 없습니다.");
-
-        assertThatThrownBy(() -> studyService.delete(2L, 10L))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(
-                        e ->
-                                assertThat(((BusinessException) e).errorCode())
-                                        .isEqualTo(ErrorCode.FORBIDDEN));
-    }
-
-    @Test
     @DisplayName("실패(삭제) - 존재하지 않는 studyId → NOT_FOUND")
     void deleteStudyNotFound() {
         when(studyRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.delete(1L, 10L))
+        assertThatThrownBy(() -> studyService.delete(10L))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -376,7 +306,7 @@ class StudyServiceTest {
 
     private StudyCreateRequest validCreateRequest() {
         return new StudyCreateRequest(
-                null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+                null, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
     }
 
     private StudyUpdateRequest validUpdateRequest() {

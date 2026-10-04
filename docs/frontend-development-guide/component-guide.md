@@ -17,13 +17,15 @@
 
 공유 컴포넌트 라이브러리 `@studyclub/ui` (`packages/ui`) 가 존재한다. 세 앱 모두 이 패키지에 의존하고 있으므로, **새 컴포넌트를 앱 로컬에 직접 만들기 전에 먼저 확인할 것**.
 
-**`@studyclub/ui` 제공 컴포넌트**: `Button` `Badge` `Card` `FieldShell` `Input` `Select` `Textarea` `FilterChip` `Avatar` `StatCard` `CapacityBar` `Checkbox` `Modal` `EmptyState`
+**`@studyclub/ui` 제공 컴포넌트**: `Button` `Badge` `Card` `FieldShell` `Input` `Select` `Textarea` `FilterChip` `Avatar` `StatCard` `CapacityBar` `Checkbox` `Modal` `EmptyState` `Toaster` `StudyCard` `AttendanceTable` `Tabs` `Nav` `Segmented` `Pagination`
 
 > `Input` · `Select` · `Textarea` · `FieldShell` 은 `Field.tsx` 에서 함께 export 된다.
 > `FilterChip` 은 `Chip.tsx` 에서 export 된다.
+> `Toaster` · `toast` 는 `Toast.tsx` 에서 함께 export 된다.
+> `StudyCard` · `AttendanceTable` · `Tabs` · `Nav` · `Segmented` · `Pagination` 은 각각 해당 파일에서 export 된다.
 
 ```typescript
-import { Button, Badge, Card } from '@studyclub/ui';
+import { Button, Badge, Card, StudyCard, Tabs } from '@studyclub/ui';
 ```
 
 두 앱에 걸쳐 공유되는 새 컴포넌트는 `packages/ui/src/` 에 추가하고 `src/index.ts` 에 export 한다.
@@ -122,13 +124,22 @@ const { ... } = useForm({ resolver: zodResolver(schema) });
 
 ## 스타일링
 
-- **Tailwind CSS** 사용 (postcss.config.mjs 설정 완료)
-- 인라인 `className` 으로 스타일 적용
-- 글로벌 스타일: `src/app/globals.css`
-- 컴포넌트별 CSS 모듈은 사용하지 않음 (Tailwind 로 충분)
+- **Tailwind CSS v4 (CSS-first)** 기반 스타일링
+- **정본 CSS 임포트**: 각 앱의 `src/app/globals.css`는 `@studyclub/design`의 정본 CSS를 로드하고, `@source`로 공용 UI 컴포넌트를 스캔합니다.
+  ```css
+  /* core-front / playground */
+  @import '@studyclub/design/core.css';
+  @source "../../../../packages/ui/src";
+
+  /* back-office-front */
+  @import '@studyclub/design/console.css';
+  @source "../../../../packages/ui/src";
+  ```
+- **토큰 사용 철칙**: raw HEX 리터럴(예: `#4856F5`) 사용 절대 금지. 반드시 `@studyclub/design`의 Semantic 토큰 유틸리티(`bg-brand`, `text-fg`, `text-fg-muted`, `border-border`, `rounded-control` 등)를 사용합니다.
+- 인라인 `className` 으로 스타일 적용하며, 컴포넌트별 CSS 모듈은 사용하지 않습니다.
 
 ```tsx
-<div className="flex items-center gap-4 p-4 rounded-lg border">
-  <h3 className="text-lg font-semibold">{title}</h3>
+<div className="flex items-center gap-4 p-4 rounded-card border border-border bg-bg shadow-sm">
+  <h3 className="text-lg font-semibold text-fg">{title}</h3>
 </div>
 ```

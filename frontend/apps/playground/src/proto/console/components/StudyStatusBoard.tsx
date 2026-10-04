@@ -149,7 +149,8 @@ function DeadlineCell({ deadline }: { deadline?: string }) {
   if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right text-sm text-fg-muted'>—</span>;
   const d = daysUntil(deadline);
   const tone = d < 0 || d === 0 ? 'text-error-700' : d <= DEADLINE_SOON_DAYS ? 'text-warning-700' : 'text-fg-secondary';
-  const label = d < 0 ? '마감 경과' : d === 0 ? '오늘 마감' : `D-${d}`;
+  // 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이고, 여기 쓰면 끝난 것으로 읽힌다
+  const label = d < 0 ? '마감 경과' : `D-${d}`;
   return (
     <span className={`tnum w-[110px] shrink-0 whitespace-nowrap text-right text-sm font-medium ${tone}`}>
       ~{deadline.slice(5)} ({label})
