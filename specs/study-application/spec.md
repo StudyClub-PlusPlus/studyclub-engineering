@@ -40,7 +40,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 - **accountId**: JWT `authentication.getPrincipal()`. 바디로 받지 않는다.
 - **캡틴**: 이 기수 `STUDY_PARTICIPANT` 의 `PARTICIPANT_ROLE` 이 `LEADER` 또는 `CO_LEADER` 이거나, `ACCOUNT.SYSTEM_ROLE=ADMIN`.
 - **날짜**: UTC ISO 8601.
-- **에러 바디**: `{ "errorCode", "errorMessage" }`. 유효값 실패는 `fields` 를 추가한다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
+- **에러 바디**: `{ "errorCode", "errorMessage" }`. `fields` 객체는 추가하지 않는다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
 - **500**: 예기치 않은 서버 오류 시 `INTERNAL_ERROR`.
 
 ### 열려 있는 모집 회차
@@ -56,6 +56,8 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 해당하는 행이 없으면 모집 마감으로 본다.
 
 ### 정원
+
+신청은 선착순이 아니다. 분반 배정 전에는 신청서 수가 모집 정원을 초과해도 허용한다. 신청서 수 자체는 정원 검사에 사용하지 않는다.
 
 비교 대상은 **분반 정원이 아니다.** 반은 신청 이후에 정한다. 대기열 없음.
 
@@ -129,7 +131,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 ### 유효값 표
 
-trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API `fields` 값은 사유 코드.
+trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API `errorMessage`에는 필드명과 사유 코드를 담는다.
 
 | 필드 | Empty | MIN | MAX | ENUM | 기본값 | 사유 코드 | 실패 카피 |
 |------|-------|-----|-----|------|--------|-----------|-----------|
@@ -142,7 +144,7 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 | 추가 질문 CHECKBOX | 필수면 불가 | 1개 | 옵션 수(+기타 1) | `options` + (기타 시) 자유 입력 | 없음 | 동일 | 동일 |
 | 기타 자유 입력 | 기타를 고르면 불가 | 1자 | 100자 | — | 빈 칸 | `other-empty` / `other-max` | `기타 내용을 입력해 주세요.` / `100자 이내로 입력해 주세요.` |
 
-공백만이면 빈 값이다. `fields` 키는 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
+공백만이면 빈 값이다. 오류 필드명은 `discordNickname` · `availableDays` · `scheduleAgreed` · `answers.{questionId}`.
 
 ### 플랫폼 기본 문항 (캡틴이 빼지 못함)
 
@@ -264,7 +266,7 @@ GET 신청 폼 조회와 같은 shape.
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 스키마 위반 (타입, 옵션 누락, 허용되지 않은 `allowOther`, 중복 id, 플랫폼 기본 문항 id 혼입). `fields` 에 위치 |
+| 400 | INVALID_INPUT | 스키마 위반 (타입, 옵션 누락, 허용되지 않은 `allowOther`, 중복 id, 플랫폼 기본 문항 id 혼입). `errorMessage`에 위치와 사유 |
 | 401 | UNAUTHORIZED | 로그인 필요 |
 | 403 | FORBIDDEN | 이 기수 캡틴이 아님 |
 | 404 | NOT_FOUND | studyId 없음 |
@@ -305,7 +307,7 @@ GET 신청 폼 조회와 같은 shape.
 ### 처리
 
 1. 로그인 · `DISCORD_ID` 존재 · 열려 있는 모집 회차 · 정원 · `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)` 검사
-2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. `fields` 에는 실패한 필드만 (화면은 검사 순서대로 하나 표시)
+2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. 공통 오류 응답의 `errorMessage`로 사유를 전달한다.
 3. `STUDY_APPLICATION` insert. `FORM_ANSWER` 저장
 4. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
 5. 커밋. 이후 같은 회차 POST 는 `409`
@@ -322,7 +324,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 유효값 표 위반. `fields` 에 사유 코드. 답 원문 없음 |
+| 400 | INVALID_INPUT | 유효값 표 위반. `errorMessage`에 필드명과 사유 코드. 답 원문 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
 | 403 | FORBIDDEN | `DISCORD_ID` 없음. 화면은 연동 팝업을 연다 |
 | 404 | NOT_FOUND | studyId 없음 또는 비공개(`STATUS = DRAFT`) |
@@ -559,7 +561,6 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 ## 미확정
 
 - [NEEDS CLARIFICATION] `FORM_ANSWER` JSON 유지 vs `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 정규화 — ERD README 와 같음. 이 스펙은 JSON 으로 구현한다
-- [NEEDS CLARIFICATION] 유효값 오류의 필드별 `fields` 응답 계약 — 현재는 공통 `{ errorCode, errorMessage }` 형식을 유지한다. [`share/2026-09-30-application-validation-error-fields.md`](../../share/2026-09-30-application-validation-error-fields.md)
 - [NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간
 - [NEEDS CLARIFICATION] `STUDY_APPLICATION` 생성시각 컬럼. 없으면 `applications/me.submittedAt` 은 null
 - [NEEDS CLARIFICATION] 열려 있는 모집 회차가 동시에 둘이면 어느 회차에 붙일지. 지금은 1건이라고 가정

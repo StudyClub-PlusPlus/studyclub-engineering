@@ -59,7 +59,7 @@ public class StudyApplicationService {
     public Long submit(Long accountId, Long studyId, SubmitStudyApplicationRequest request) {
         Account account =
                 accountRepository
-                        .findById(accountId)
+                        .findByIdForUpdate(accountId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
         if (account.getDiscordId() == null || account.getDiscordId().isBlank()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "디스코드 연동이 필요합니다.");
@@ -126,7 +126,7 @@ public class StudyApplicationService {
             return objectMapper.convertValue(
                     questions, new TypeReference<List<ApplicationFormQuestion>>() {});
         } catch (IllegalArgumentException | JacksonException e) {
-            log.error("저장된 신청 폼을 읽지 못했다 — studyId={}", study.getId(), e);
+            log.error("저장된 신청 폼을 읽지 못했다 — studyId={}", study.getId());
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
     }
@@ -142,7 +142,7 @@ public class StudyApplicationService {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JacksonException e) {
-            log.error("신청 답변 직렬화 실패 — studyId={}", studyId, e);
+            log.error("신청 답변 직렬화 실패 — studyId={}", studyId);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
     }

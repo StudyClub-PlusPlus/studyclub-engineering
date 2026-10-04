@@ -93,6 +93,31 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 분반 배정 전 신청서 수는 모집 정원을 초과할 수 있다")
+    void applicationsCanExceedCapacityBeforeAssignment() {
+        for (long accountId = 10_650L; accountId < 10_653L; accountId++) {
+            insertAccount(
+                    accountId,
+                    "capacity-" + accountId + "@example.com",
+                    "discord-" + accountId,
+                    Timestamp.from(Instant.now()));
+            var response =
+                    rest.postForEntity(
+                            "/api/studies/" + STUDY_ID + "/applications",
+                            authenticatedRequest(accountId, validRequest()),
+                            Void.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        }
+        assertThat(applicationCount()).isEqualTo(3L);
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?",
+                                Long.class,
+                                STUDY_ID))
+                .isZero();
+    }
+
+    @Test
     @DisplayName("실패 - 토큰 없이 신청하면 시큐리티도 401 + UNAUTHORIZED 계약을 지킨다")
     void rejectsUnauthenticatedApplicant() {
         var response =
@@ -447,6 +472,8 @@ class StudyApplicationSubmissionIntegrationTest {
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY_PROGRAM WHERE ID = ?", STUDY_ID);
         jdbcTemplate.update(
-                "DELETE FROM ACCOUNT WHERE ID IN (?, ?)", LINKED_ACCOUNT_ID, UNLINKED_ACCOUNT_ID);
+                "DELETE FROM ACCOUNT WHERE ID IN (?, ?, 10650, 10651, 10652)",
+                LINKED_ACCOUNT_ID,
+                UNLINKED_ACCOUNT_ID);
     }
 }
