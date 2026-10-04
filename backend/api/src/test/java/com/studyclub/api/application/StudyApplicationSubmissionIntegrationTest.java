@@ -204,6 +204,31 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - 저장 후 모집이 마감돼도 재시도는 이미 신청한 것으로 응답한다")
+    void retryAfterDeadlineReportsExistingApplication() {
+        var first =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = ? WHERE ID = ?",
+                Timestamp.from(Instant.now().minusSeconds(60)),
+                RECRUITMENT_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorMessage", "이미 신청한 스터디입니다.");
+        assertThat(applicationCount()).isEqualTo(1L);
+    }
+
+    @Test
     @DisplayName("실패 - 모집 정원이 찼으면 신청서와 별명을 바꾸지 않는다")
     void rejectsFullRecruitmentWithoutSideEffects() {
         Timestamp now = Timestamp.from(Instant.now());

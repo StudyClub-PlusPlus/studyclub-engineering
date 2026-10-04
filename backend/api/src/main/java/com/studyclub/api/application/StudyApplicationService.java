@@ -37,6 +37,7 @@ public class StudyApplicationService {
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final AccountRepository accountRepository;
+    private final StudyApplicationRepository studyApplicationRepository;
     private final ObjectMapper objectMapper;
     private final StudyApplicationSubmission studyApplicationSubmission;
 
@@ -50,6 +51,7 @@ public class StudyApplicationService {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.accountRepository = accountRepository;
+        this.studyApplicationRepository = studyApplicationRepository;
         this.objectMapper = objectMapper;
         this.studyApplicationSubmission =
                 new StudyApplicationSubmission(
@@ -70,6 +72,9 @@ public class StudyApplicationService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        if (studyApplicationRepository.existsByStudyIdAndAccountId(studyId, accountId)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "이미 신청한 스터디입니다.");
+        }
         if (!study.isPubliclyVisible()) {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
