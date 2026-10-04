@@ -29,7 +29,7 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
         {doc.sections.map((s, i) => (
           <section key={s.id} id={s.id} className='scroll-mt-24'>
             {s.chapter && s.chapter.ko !== doc.sections[i - 1]?.chapter?.ko ? (
-              <h2 className='mb-6 border-b border-(--color-border) pb-2 text-sm font-bold text-(--color-fg-subtle)'>
+              <h2 className='mb-6 border-b border-(--color-border) pb-2 text-sm font-bold text-(--color-fg-muted)'>
                 {lx(s.chapter, locale)}
               </h2>
             ) : null}
@@ -102,7 +102,7 @@ export function BlockView({ block, locale }: { block: Block; locale: Locale }) {
         <div className='-mx-1 overflow-x-auto px-1'>
           <table className='w-full min-w-full border-collapse text-[13px]'>
             <thead>
-              <tr className='border-b border-(--color-border) text-left text-(--color-fg-subtle)'>
+              <tr className='border-b border-(--color-border) text-left text-(--color-fg-muted)'>
                 {block.head.map((h, i) => (
                   <th key={i} className='whitespace-nowrap px-3 py-2 font-semibold'>
                     {lx(h, locale)}

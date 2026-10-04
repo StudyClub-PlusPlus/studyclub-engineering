@@ -1,0 +1,57 @@
+/* =============================================================================
+   @studyclub/design — base.css (모든 앱 공통 기본 스타일 정본)
+   사용자 사이트, 운영자 콘솔, 디자인 플레이그라운드 공용.
+   색·타이포·간격·공통 셸 클래스는 여기서 단일 소스로 관리합니다.
+   ============================================================================= */
+
+@import "./tokens.css";
+@import "./compat.css";
+
+html {
+  color-scheme: light;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
+
+/* base 레이어로 넣어야 text-white 같은 유틸리티가 정상 우선순위를 갖는다. */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  body {
+    background: transparent;
+  }
+}
+
+/* Soft card — 모든 앱 공용 */
+.card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+}
+
+.card-hover {
+  transition:
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+  border-color: var(--color-border-strong);
+}
+
+/* 가로 스크롤 필터 줄 스크롤바 숨김 유틸리티 */
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -80,16 +80,16 @@ export function NavAuth({ locale }: { locale: Locale }) {
         className='flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-[var(--color-surface-subtle)]'
       >
         {/* 프로필 사진은 받지 않는다 — 이름 첫 글자로 자리만 만든다 */}
-        <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-[var(--color-accent)]'>
+        <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-brand-subtle)] text-xs font-bold text-[var(--color-brand)]'>
           {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
         </span>
         <span className='hidden max-w-[8rem] truncate text-sm font-semibold sm:block'>{user.nickname ?? user.email}</span>
-        <ChevronDown size={14} className='text-[var(--color-fg-subtle)]' />
+        <ChevronDown size={14} className='text-[var(--color-fg-muted)]' />
       </button>
 
       {open && (
         <div className='absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] py-1 shadow-lg'>
-          <div className='truncate px-4 py-2 text-xs text-[var(--color-fg-subtle)]'>{user.email}</div>
+          <div className='truncate px-4 py-2 text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
           <Link
             href={`/proto/core/${locale}/my`}
             onClick={() => setOpen(false)}

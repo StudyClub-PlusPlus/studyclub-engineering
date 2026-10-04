@@ -1,0 +1,24 @@
+/* =============================================================================
+   @studyclub/design — core.css (사용자 서비스 core 스타일 정본)
+   core-front, playground proto/core 공용.
+   ============================================================================= */
+
+@import "./base.css";
+
+/* Hero gradient glow */
+.hero-glow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 520px;
+  z-index: -1;
+  background:
+    radial-gradient(
+      40% 60% at 20% 30%,
+      color-mix(in oklab, var(--color-primary-500) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(40% 60% at 75% 20%, color-mix(in oklab, var(--color-info-500) 16%, transparent), transparent 70%),
+    radial-gradient(35% 50% at 60% 60%, color-mix(in oklab, var(--color-chart-4) 14%, transparent), transparent 70%);
+  filter: blur(20px);
+  pointer-events: none;
+}

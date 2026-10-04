@@ -91,3 +91,88 @@ export const studiesHandlers = mockClient.createHandlerGroup('/api/studies', [
     ],
   },
 ]);
+
+export const adminStudiesHandlers = mockClient.createHandlerGroup('/api/admin/studies', [
+  {
+    method: 'GET',
+    path: '/:id',
+    presets: [
+      {
+        label: '정상',
+        status: 200,
+        response: ({ params }: MockResolveContext) => {
+          const detail = findApiStudyDetail(Number(params.id));
+          if (!detail)
+            return HttpResponse.json(
+              { errorMessage: '스터디를 찾을 수 없습니다.' },
+              { status: 404 },
+            );
+          return detail;
+        },
+      },
+      {
+        label: '찾을 수 없음',
+        status: 404,
+        response: { errorMessage: '스터디를 찾을 수 없습니다.' },
+      },
+      { label: '서버 오류', status: 500, response: { errorMessage: '서버 오류가 발생했습니다.' } },
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/',
+    presets: [
+      {
+        label: '생성 성공',
+        status: 201,
+        response: () =>
+          new HttpResponse(null, {
+            status: 201,
+            headers: { Location: '/api/admin/studies/1' },
+          }),
+      },
+      { label: '서버 오류', status: 500, response: { errorMessage: '스터디 등록에 실패했습니다.' } },
+    ],
+  },
+  {
+    method: 'PATCH',
+    path: '/:id',
+    presets: [
+      { label: '성공', status: 200, response: null },
+      { label: '서버 오류', status: 500, response: { errorMessage: '수정에 실패했습니다.' } },
+    ],
+  },
+  {
+    method: 'DELETE',
+    path: '/:id',
+    presets: [
+      { label: '성공', status: 200, response: null },
+      { label: '서버 오류', status: 500, response: { errorMessage: '삭제에 실패했습니다.' } },
+    ],
+  },
+]);
+
+export const adminStudyProgramsHandlers = mockClient.createHandlerGroup(
+  '/api/admin/study-programs',
+  [
+    {
+      method: 'GET',
+      path: '/',
+      presets: [
+        {
+          label: '정상',
+          status: 200,
+          response: {
+            items: [
+              { id: 1, name: '웹 프론트엔드 심화 클럽', kind: 'CLUB', latestStudyId: 1 },
+              { id: 2, name: '백엔드 아키텍처 클럽', kind: 'CLUB', latestStudyId: 2 },
+            ],
+          },
+        },
+        { label: '빈 목록', status: 200, response: { items: [] } },
+        { label: '서버 오류', status: 500, response: { errorMessage: '서버 오류가 발생했습니다.' } },
+      ],
+    },
+  ],
+);
+
