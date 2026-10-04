@@ -9,7 +9,7 @@ Feature: 스터디 관리
 
   Scenario: 스터디 상세 — 신청자 탭 (study_id:1 ai-paper-study)
     Given /studies/1 에 접속한다
-    Then 신청자 탭이 기본으로 열리고 크루 목록이 보인다
+    Then 신청자 탭이 기본으로 열리고 크루 목록이 보인다 (승인 대기 없음 — 신청한 사람은 곧 크루)
 
   Scenario: 스터디 상세 — 출석 탭 (study_id:1 ai-paper-study)
     Given /studies/1 에 접속한다
