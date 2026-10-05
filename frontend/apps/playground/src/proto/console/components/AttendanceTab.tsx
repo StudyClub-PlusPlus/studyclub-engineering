@@ -102,7 +102,7 @@ function Cell({
         aria-label={label}
         title={label}
         className={`relative grid h-8 w-full place-items-center rounded-sm border text-[11px] font-bold ${
-          status ? CELL_STYLE[status] : 'border-dashed border-border-strong bg-surface text-fg-muted'
+          status ? CELL_STYLE[status] : 'border-border bg-surface text-fg-muted'
         }`}
       >
         {presenting && <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />}
