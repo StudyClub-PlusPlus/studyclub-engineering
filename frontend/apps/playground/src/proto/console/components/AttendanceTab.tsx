@@ -336,7 +336,10 @@ export function AttendanceTab({
                   <span className='block text-[10px] font-medium text-fg-muted'>{s.date.slice(5)}</span>
                 </th>
               ))}
-              <th data-anno='attendance:3-4' className='px-3 py-2 text-right text-xs font-semibold text-fg-muted'>
+              <th
+                data-anno='attendance:3-4'
+                className='w-16 min-w-16 whitespace-nowrap px-3 py-2 text-right text-xs font-semibold text-fg-muted'
+              >
                 출석률
               </th>
             </tr>
@@ -379,7 +382,7 @@ export function AttendanceTab({
                       />
                     </td>
                   ))}
-                  <td className='tnum border-t border-border px-3 py-1.5 text-right font-bold'>
+                  <td className='tnum w-16 min-w-16 whitespace-nowrap border-t border-border px-3 py-1.5 text-right font-bold'>
                     {rate === undefined ? (
                       <span className='text-fg-muted'>—</span>
                     ) : (
