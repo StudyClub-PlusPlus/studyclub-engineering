@@ -53,7 +53,7 @@
 ### 관객별 엔드포인트
 
 > 규칙: [endpoint-convention](../../docs/backend-development-guide/api/endpoint-convention.md#관객으로-경로를-가른다--apiadmin) ·
-> [share/2026-09-24](../../share/2026-09-24-admin-api-path.md) · 권한: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
+> [docs/share/2026-09-24](../../docs/share/2026-09-24-admin-api-path.md) · 권한: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
 
 **백오피스가 부르는 API 는 `/api/admin` 아래 둔다.** 백오피스에는 캡틴만 들어온다(POL-0001).
 **같은 일을 사용자 사이트에서도 하면 그 일만 경로를 하나 더 둔다** — 권한 판정이 다르기 때문이다.
@@ -135,7 +135,7 @@ private StudyDetailResponse toDetail(Study study) {
 - 요청 DTO(`StudyCreateRequest`·`StudyUpdateRequest`)와 상세 응답(`StudyDetailResponse`)은 두 경로가 같이 쓴다.
   백오피스에만 필요한 필드가 생기면 그때 백오피스 응답을 따로 둔다 (목록은 이미 `BackofficeStudyListResponse` 로 따로다)
 - 컨트롤러·DTO·서비스는 모두 `api.study` 패키지 — [module-structure](../../docs/backend-development-guide/module-structure.md#package-convention)
-- 권한은 `@PreAuthorize(hasRole)` 가 아니라 `StudyCaptainGuard` 로 본다 — `hasRole` 로 올리는 건 [share/2026-09-24](../../share/2026-09-24-admin-api-path.md)에서 다음 작업으로 미뤘다
+- 권한은 `@PreAuthorize(hasRole)` 가 아니라 `StudyCaptainGuard` 로 본다 — `hasRole` 로 올리는 건 [docs/share/2026-09-24](../../docs/share/2026-09-24-admin-api-path.md)에서 다음 작업으로 미뤘다
 
 #### 이전 순서
 
@@ -310,7 +310,7 @@ private StudyDetailResponse toDetail(Study study) {
 | timezone | String | Y | 기준 시간대 (enum). `KST` / `PST` / `BOTH`(동시 진행). 운영자가 등록 폼에서 직접 고른다 — null 이면 사이트가 `schedule`/킥오프 문구로 추정하거나 「시간대 미정」으로 표시 | STUDY.TIMEZONE |
 | startAt | String | Y | 진행 시작 일시 (ISO 8601 UTC). `recruitDeadline`·`schedule` 과는 다른 값 | STUDY.START_AT |
 | endAt | String | Y | 종료일 (ISO 8601 UTC) | STUDY.END_AT |
-| discordChannelUrl | String | Y | 참고용 채널 링크 하나(주로 로비). 없으면 사이트 기본 초대 링크로 안내. **사이트 상세는 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 채우고 그 밖엔 null** ([share](../../share/2026-09-30-study-detail-private-urls.md)). 자동화(채널 조회·삭제 감지)의 근거로 쓰지 않는다 — [상세](../../docs/erd/STUDY.md#채널-삭제와-closed) | STUDY.DISCORD_CHANNEL_URL |
+| discordChannelUrl | String | Y | 참고용 채널 링크 하나(주로 로비). 없으면 사이트 기본 초대 링크로 안내. **사이트 상세는 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 채우고 그 밖엔 null** ([share](../../docs/share/2026-09-30-study-detail-private-urls.md)). 자동화(채널 조회·삭제 감지)의 근거로 쓰지 않는다 — [상세](../../docs/erd/STUDY.md#채널-삭제와-closed) | STUDY.DISCORD_CHANNEL_URL |
 | driveUrl | String | Y | 참고용 자료 드라이브 링크. 사이트 상세의 채움 조건은 `discordChannelUrl` 과 같다 | STUDY.DRIVE_URL |
 
 > **소스**: 이 필드가 어느 테이블·컬럼에서 오는지. 계산 필드는 `계산: {로직}`
