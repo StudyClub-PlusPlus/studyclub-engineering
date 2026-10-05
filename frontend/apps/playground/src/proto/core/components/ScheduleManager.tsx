@@ -46,6 +46,7 @@ import {
 } from '@core/lib/schedule-board';
 import type { Study } from '@studyclub/mock';
 import { Button, Input, Modal, cx } from '@studyclub/ui';
+import { canOpenDiscord, canOpenDrive, discordUrl, driveUrl } from '@core/lib/joined';
 import { Plus, Trash2 } from 'lucide-react';
 
 /**
@@ -498,10 +499,7 @@ export function ScheduleManager({
 
       {canEdit && dirty && (
         <div data-anno='schedule:6' className='sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-bg py-2'>
-          <p className='mr-1 text-xs text-fg-muted'>
-            변경 {changedIds.length}개
-            {errorCount > 0 && <span className='ml-1 text-error-700'>· 고칠 칸 {errorCount}개</span>}
-          </p>
+          {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
           <div className='flex items-center gap-1.5'>
             <Button variant='ghost' size='sm' onClick={clearDrafts}>
               변경 취소
@@ -690,6 +688,26 @@ function PresenterSelect({
 
 /* ── 스터디 정보 · 규칙 ───────────────────────────────────────────────────── */
 
+/** 정보 카드의 외부 주소 한 줄 — 주소를 그대로 보이고 새 창으로 연다. */
+function LinkItem({ label, href }: { label: string; href: string }) {
+  return (
+    <div className='flex min-w-0 gap-2'>
+      <dt className='shrink-0 text-fg-muted'>{label}</dt>
+      <dd className='min-w-0'>
+        <a
+          href={href}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='block max-w-[18rem] truncate font-semibold text-brand underline-offset-2 hover:underline'
+          title={href}
+        >
+          {href.replace(/^https?:\/\//, '')}
+        </a>
+      </dd>
+    </div>
+  );
+}
+
 function StudyBoard({
   study,
   canEdit,
@@ -737,6 +755,9 @@ function StudyBoard({
           <dt className='text-fg-muted'>네비게이터</dt>
           <dd className='font-semibold text-fg'>{navigator}</dd>
         </div>
+        {/* 시트 머리에 적어 두던 두 주소. 참가자에게만 보이는 화면이라 그대로 보인다 (share 09-30) */}
+        {canOpenDiscord(study) && <LinkItem label='디스코드' href={discordUrl(study)} />}
+        {canOpenDrive(study) && <LinkItem label='구글 드라이브' href={driveUrl(study)} />}
       </dl>
 
       <div data-anno='schedule:12' className='mt-3 border-t border-border pt-3'>

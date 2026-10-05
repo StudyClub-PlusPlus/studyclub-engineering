@@ -415,11 +415,7 @@ export function AttendanceTab({
           }`}
         >
           {dirty ? (
-            minimal ? (
-              <p data-anno='attendance:8' className='mr-1 text-xs text-fg-muted'>
-                변경 {pending}칸
-              </p>
-            ) : (
+            minimal ? null : (
               <p data-anno='attendance:8' className='text-sm font-medium text-brand'>
                 저장되지 않은 변경 {pending}칸. 저장을 눌러야 반영됩니다.
               </p>
