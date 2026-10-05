@@ -13,14 +13,19 @@
 | END_AT | DATETIME | Y | 실제 종료 |
 | TITLE | VARCHAR(50) | Y | 표시용 제목 (`3주차 논문 읽기`). 반복으로 만들면 그때 만든 회차 모두에 같은 제목 |
 | SERIES_ID | VARCHAR(36) | Y | 반복 묶음 ID (UUID). 한 번에 2개 이상 만든 회차가 같은 값을 갖는다. 한 번만 만든 회차는 NULL |
+| MEETING_TYPE | VARCHAR(16) | N | `KICKOFF` · `REGULAR`(기본). 킥오프는 분반마다 하나, 번호 0, 삭제 불가, 출석률 제외 |
+| PRESENTER1_PARTICIPANT_ID | BIGINT | Y | 발표자1 → [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md). 킥오프는 NULL |
+| PRESENTER2_PARTICIPANT_ID | BIGINT | Y | 발표자2 → STUDY_PARTICIPANT. 발표자1과 같을 수 없다 |
 
 **반복 묶음은 `SERIES_ID` 로 남긴다** — 지금은 쓰는 기능이 없고 삭제·수정은 한 회차씩이다. 반복 단위 수정·삭제를 붙일 때 쓴다.
-**회차 번호는 저장하지 않는다** — 분반 회차를 `SCHEDULED_AT` 오름차순으로 센 순번으로 계산한다. 저장하면 추가·삭제·수정 때마다 뒤 회차를 전부 다시 써야 한다.
+**발표 여부는 저장하지 않는다** — 출석부의 발표 표시·횟수는 `PRESENTER1·2_PARTICIPANT_ID` 에서 계산한다.
+**회차 번호는 저장하지 않는다** — 킥오프는 0, 정규 회차는 `SCHEDULED_AT` 오름차순으로 센 순번으로 계산한다. 저장하면 추가·삭제·수정 때마다 뒤 회차를 전부 다시 써야 한다.
 쓰기 규칙(같은 날 중복 금지 · 31일 상한 · 시작한 회차 수정·삭제 금지)은 [study-meeting 스펙](../../specs/study-meeting/spec.md).
 
 ## 관계
 - N : 1 [STUDY_GROUP](./STUDY_GROUP.md)
 - 1 : N [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)
+- N : 0..1 [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md) (발표자1 · 발표자2)
 
 ## 상태 (저장하지 않음 — 시각으로 계산)
 

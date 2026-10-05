@@ -53,7 +53,7 @@ import {
   ClipboardList,
   FolderOpen,
   Heart,
-  Settings2,
+  CalendarDays,
 } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
@@ -270,7 +270,7 @@ function WeekStrip({
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
                         type='button'
-                        title={`${hit.time} ${hit.title} ${hit.no}회차`}
+                        title={`${hit.time} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
                         onClick={() => study && router.push(userStudyPath(locale, study))}
                         className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left text-[10px] font-bold leading-tight hover:brightness-[0.97]'
                         style={{
@@ -559,8 +559,8 @@ function StudyItem({
   const ended = life === 'ended' && !completed;
   const showRate = !completed && book.rate !== undefined;
   const access = manageAccessOf(study.id);
-  // 관계가 끝난 스터디는 관리할 일이 없다.
-  const canManage = access !== undefined && life !== 'ended';
+  // 스터디 일정은 참가자 누구나 본다. 참여가 끝난 스터디는 더 이상 참가자가 아니다.
+  const canSeeSchedule = !ended;
 
   return (
     <li>
@@ -657,21 +657,15 @@ function StudyItem({
               >
                 {upcomingOf(study, locale, wallTz)}
               </p>
-              {canManage && (
+              {canSeeSchedule && (
                 <span data-anno='meeting:2' className='shrink-0'>
                   <Button
                     variant='secondary'
                     size='sm'
-                    leadingIcon={<Settings2 size={14} />}
-                    onClick={() =>
-                      router.push(
-                        access?.role === 'captain'
-                          ? `/proto/console/studies/${study.study_id}`
-                          : `/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`,
-                      )
-                    }
+                    leadingIcon={<CalendarDays size={14} />}
+                    onClick={() => router.push(`/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`)}
                   >
-                    스터디 관리
+                    스터디 일정
                   </Button>
                 </span>
               )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { withAdded, zonedInstant, zoneOfStudy, type ProtoMeeting } from '@core/lib/meetings';
+import { isKickoff, withAdded, zonedInstant, zoneOfStudy, type ProtoMeeting } from '@core/lib/meetings';
 import {
   attendancePoint,
   demoMyAttendance,
@@ -146,6 +146,8 @@ export function resolveStatus(
   now = new Date(),
 ): MyStatus | undefined {
   const saved = stored[meeting.id];
+  // 킥오프는 출석률에 넣지 않는다 — 기록이 없으면 결석이 아니라 빈 칸이다.
+  if (isKickoff(meeting) && saved === undefined) return undefined;
   const started = now.getTime() >= meetingWindow(study, meeting).start.getTime();
   const raw: MyStatus = saved ?? 'absent';
   if (raw === 'absent' && !started) return undefined;
@@ -189,9 +191,11 @@ export function meetingsOf(study: Study): ProtoMeeting[] {
   return withAdded(getStudyCrew(study).meetings, study.id);
 }
 
-/** 내 출석률(%). (present + late × 0.5) / 대상 회차. 대상은 시작된 회차 중 휴가가 아닌 것. */
+/** 내 출석률(%). (present + late × 0.5) / 대상 회차. 대상은 시작된 정규 회차 중 휴가가 아닌 것 — 킥오프는 뺀다. */
 export function myRate(study: Study, stored: Record<string, MyStatus>, now = new Date()): number | undefined {
-  const started = meetingsOf(study).filter((m) => now.getTime() >= meetingWindow(study, m).start.getTime());
+  const started = meetingsOf(study).filter(
+    (m) => !isKickoff(m) && now.getTime() >= meetingWindow(study, m).start.getTime(),
+  );
   if (started.length === 0) return undefined;
   const target = started.filter((m) => (stored[m.id] ?? 'absent') !== 'excused');
   if (target.length === 0) return undefined;

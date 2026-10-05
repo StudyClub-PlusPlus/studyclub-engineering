@@ -60,7 +60,7 @@ STUDY_ATTENDANCE {
 
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/attendances`
-- **인증**: 필요 (Bearer)
+- **인증**: 필요 (Bearer) — 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. 판정은 [회차 스펙 「권한 판정」](../study-meeting/spec.md#권한-판정) 보기와 같다. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다
 - **설명**: 지정한 그룹의 명부(모든 회차 × 해당 그룹 참가자)를 기본으로 반환. `meetingId` 쿼리 파라미터로 특정 회차 하나만 필터링 가능 — 응답 구조는 동일, 내용만 좁아짐
 
 ### Path Parameters
@@ -169,7 +169,8 @@ STUDY_ATTENDANCE {
 가중치: PRESENT=1.0, EXCUSED=1.0, LATE=0.5, ABSENT=0
 upper_bound = participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED') ? now() : participant.left_at
 countable_meetings = 스터디의 미팅 중
-  scheduled_at <= upper_bound
+  meeting_type = 'REGULAR'            // 킥오프는 출석만 남기고 출석률에서 뺀다 (study-meeting 스펙 결정 11)
+  AND scheduled_at <= upper_bound
   AND scheduled_at >= participant.joined_at
 
 스터디 평균 = 분모 0인 참가자는 제외하고 Σ(개인 분자) / Σ(개인 분모)   // 가중평균
