@@ -105,7 +105,15 @@ function Cell({
           status ? CELL_STYLE[status] : 'border-border bg-surface text-fg-muted'
         }`}
       >
-        {presenting && <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />}
+        {presenting && (
+          <Mic
+            size={10}
+            strokeWidth={2.5}
+            aria-hidden
+            data-anno='book:3-3'
+            className='absolute left-0.5 top-0.5 text-brand'
+          />
+        )}
         {status ? CELL_LABEL[status] : ''}
       </span>
     );
@@ -125,7 +133,15 @@ function Cell({
           : `border-dashed border-border-strong bg-surface text-fg-muted ${readOnly ? '' : 'hover:bg-surface-2'}`
       } ${readOnly ? 'cursor-default' : ''} ${changed ? 'border-solid border-brand ring-2 ring-brand/80' : ''}`}
     >
-      {presenting && <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />}
+      {presenting && (
+        <Mic
+          size={10}
+          strokeWidth={2.5}
+          aria-hidden
+          data-anno='book:3-3'
+          className='absolute left-0.5 top-0.5 text-brand'
+        />
+      )}
       {status ? CELL_LABEL[status] : ''}
       {changed && dot && (
         <span className='absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand ring-2 ring-bg' aria-hidden />
@@ -318,7 +334,7 @@ export function AttendanceTab({
               </th>
               {presentersOf && (
                 <th
-                  data-anno='attendance:3-5'
+                  data-anno='attendance:3-5 book:3-5'
                   className='w-16 whitespace-nowrap px-2 py-2 text-center text-[11px] font-semibold text-fg-muted'
                   title='일정의 발표자1·2로 맡은 횟수'
                 >
@@ -366,7 +382,11 @@ export function AttendanceTab({
                       >
                         {c.name}
                       </span>
-                      {c.left && <Badge tone='neutral'>{c.left.label}</Badge>}
+                      {c.left && (
+                        <span data-anno='book:3-6'>
+                          <Badge tone='neutral'>{c.left.label}</Badge>
+                        </span>
+                      )}
                       {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
                       {c.role && <Badge tone={c.role}>{c.role === 'captain' ? '캡틴' : '네비게이터'}</Badge>}
                     </span>

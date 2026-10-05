@@ -318,7 +318,7 @@ export function ScheduleManager({
                       <PresenterSelect
                         label={`${meetingLabel(m)} ${slot === 'presenter1' ? '발표자1' : '발표자2'}`}
                         placeholder={slot === 'presenter1' ? '발표자 1' : '발표자 2'}
-                        people={people.filter((p) => !p.left)}
+                        people={people}
                         value={v[slot]}
                         onChange={(id) => change(m, { [slot]: id })}
                       />
@@ -350,7 +350,7 @@ export function ScheduleManager({
                           aria-label={`${meetingLabel(m)} ${which} 신청 취소`}
                           title='신청 취소'
                           onClick={() => sign(m, slot, false)}
-                          className='grid h-5 w-5 shrink-0 place-items-center rounded-full hover:bg-brand hover:text-white'
+                          className='grid h-6 w-6 shrink-0 place-items-center rounded-full hover:bg-brand hover:text-on-brand'
                         >
                           <X size={12} strokeWidth={2.5} aria-hidden />
                         </button>
@@ -602,11 +602,14 @@ function PresenterSelect({
       className={cx(FIELD, 'border-border-strong', !value && 'text-fg-muted')}
     >
       <option value=''>{placeholder}</option>
-      {people.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.me ? `${p.name} (나)` : p.name}
-        </option>
-      ))}
+      {/* 중단한 사람은 고를 수 없다. 이미 배정돼 있으면 그 칸에만 「(참여 종료)」로 남겨 보인다 — 빈 칸처럼 보이면 안 된다 */}
+      {people
+        .filter((p) => !p.left || p.id === value)
+        .map((p) => (
+          <option key={p.id} value={p.id} disabled={Boolean(p.left)}>
+            {p.me ? `${p.name} (나)` : p.left ? `${p.name} (참여 종료)` : p.name}
+          </option>
+        ))}
     </select>
   );
 }

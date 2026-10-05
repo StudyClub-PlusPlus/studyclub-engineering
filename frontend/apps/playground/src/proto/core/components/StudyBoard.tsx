@@ -119,7 +119,7 @@ export function StudyBoard({
             data-anno='manage:3-2'
             aria-expanded={expanded}
             aria-controls={bodyId}
-            aria-label={expanded ? '스터디 정보 접기' : '스터디 정보 펼치기'}
+            aria-label='스터디 규칙'
             title={expanded ? '접기' : '펼치기'}
             onClick={() => setExpanded((v) => !v)}
             className='grid h-8 w-8 place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-fg'
@@ -129,62 +129,61 @@ export function StudyBoard({
         </div>
       </div>
 
-      {expanded && (
-        <div id={bodyId} data-anno='manage:3-1' className='mt-3 border-t border-border pt-3'>
-          <h3 className='text-sm font-bold text-fg'>스터디 규칙</h3>
-          {canEdit ? (
-            <div className='mt-2 flex flex-col gap-2'>
-              <AutoTextarea
-                label='스터디 규칙'
-                value={draft}
-                placeholder='킥오프에서 정한 규칙을 적어 두세요. 발표 방식 · 지각 기준 · 소요 시간 등'
-                maxLength={RULES_MAX}
-                minRows={4}
-                className='px-3 py-2 leading-relaxed'
-                onChange={setDraft}
-              />
-              <div className='flex items-center justify-between gap-2'>
-                <span className='tnum text-xs text-fg-muted'>
-                  {draft.length}/{RULES_MAX}
+      {/* 접어도 본문을 지우지 않고 숨긴다 — aria-controls 가 가리킬 곳이 늘 있다 */}
+      <div id={bodyId} hidden={!expanded} data-anno='manage:3-1' className='mt-3 border-t border-border pt-3'>
+        <h3 className='text-sm font-bold text-fg'>스터디 규칙</h3>
+        {canEdit ? (
+          <div className='mt-2 flex flex-col gap-2'>
+            <AutoTextarea
+              label='스터디 규칙'
+              value={draft}
+              placeholder='킥오프에서 정한 규칙을 적어 두세요. 발표 방식 · 지각 기준 · 소요 시간 등'
+              maxLength={RULES_MAX}
+              minRows={4}
+              className='px-3 py-2 leading-relaxed'
+              onChange={setDraft}
+            />
+            <div className='flex items-center justify-between gap-2'>
+              <span className='tnum text-xs text-fg-muted'>
+                {draft.length}/{RULES_MAX}
+              </span>
+              {changed && (
+                <span className='flex gap-2'>
+                  <Button variant='secondary' size='sm' onClick={() => setDraft(rules)}>
+                    취소
+                  </Button>
+                  <Button size='sm' onClick={save}>
+                    저장
+                  </Button>
                 </span>
-                {changed && (
-                  <span className='flex gap-2'>
-                    <Button variant='secondary' size='sm' onClick={() => setDraft(rules)}>
-                      취소
-                    </Button>
-                    <Button size='sm' onClick={save}>
-                      저장
-                    </Button>
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : rules ? (
-            <>
-              <p
-                className={cx(
-                  'mt-1.5 whitespace-pre-line text-sm leading-relaxed text-fg-secondary',
-                  long && !open && 'line-clamp-4',
-                )}
-              >
-                {rules}
-              </p>
-              {long && (
-                <button
-                  type='button'
-                  aria-expanded={open}
-                  onClick={() => setOpen((o) => !o)}
-                  className='mt-1 text-xs font-semibold text-brand underline-offset-2 hover:underline'
-                >
-                  {open ? '접기' : '모두 보기'}
-                </button>
               )}
-            </>
-          ) : (
-            <p className='mt-1.5 text-sm text-fg-muted'>아직 규칙이 없습니다.</p>
-          )}
-        </div>
-      )}
+            </div>
+          </div>
+        ) : rules ? (
+          <>
+            <p
+              className={cx(
+                'mt-1.5 whitespace-pre-line text-sm leading-relaxed text-fg-secondary',
+                long && !open && 'line-clamp-4',
+              )}
+            >
+              {rules}
+            </p>
+            {long && (
+              <button
+                type='button'
+                aria-expanded={open}
+                onClick={() => setOpen((o) => !o)}
+                className='mt-1 text-xs font-semibold text-brand underline-offset-2 hover:underline'
+              >
+                {open ? '접기' : '모두 보기'}
+              </button>
+            )}
+          </>
+        ) : (
+          <p className='mt-1.5 text-sm text-fg-muted'>아직 규칙이 없습니다.</p>
+        )}
+      </div>
     </section>
   );
 }
