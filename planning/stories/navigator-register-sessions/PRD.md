@@ -235,7 +235,7 @@ flowchart LR
 - **동작**: 버튼을 누르면 그 주소를 새 창으로 연다
 - **정책**
   - 이 화면에서는 조회만 한다. 정규 시간은 분반 설정, 네비게이터는 명부의 LEADER 다
-  - 두 주소는 참여자에게만 보이는 화면이라 그대로 보인다([2026-09-30 결정](../../../share/2026-09-30-study-detail-private-urls.md)). 참여를 중단한 사람은 이 화면에 들어오지 못한다. 완주한 사람의 디스코드는 클럽 로비로 간다
+  - 두 주소는 참여자에게만 보이는 화면이라 그대로 보인다([2026-09-30 결정](../../../docs/share/2026-09-30-study-detail-private-urls.md)). 참여를 중단한 사람은 이 화면에 들어오지 못한다. 완주한 사람의 디스코드는 클럽 로비로 간다
   - 주소가 비어 있으면 그 버튼을 두지 않는다
   - 고치는 곳은 백오피스다 — 캡틴이 스터디 상세에서 고친다. 이 화면에는 그 안내를 적지 않는다
 - **데이터**: `STUDY_GROUP.START_AT` · `STUDY_GROUP.TIMEZONE` · `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` · `STUDY.DISCORD_CHANNEL_URL` · `STUDY.DRIVE_URL`

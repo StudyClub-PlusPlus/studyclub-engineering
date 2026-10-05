@@ -43,7 +43,7 @@
 5. **화면에는 아직 아무것도 바뀌지 않는다.** 「이후 반복 모두」 버튼과 목록의 반복 표시는 두지 않는다. 서버 응답에도 아직 내보내지 않는다
 6. **이미 만든 회차는 비워 둔다.** 예전에 반복으로 만든 회차도 묶을 근거가 없어 채우지 않는다
 
-정본: [회차 스펙 결정 2](../specs/study-meeting/spec.md#결정-사항) · [STUDY_MEETING ERD](../docs/erd/STUDY_MEETING.md) · [회차 등록 PRD](../planning/stories/navigator-register-sessions/PRD.md)
+정본: [회차 스펙 결정 2](../../specs/study-meeting/spec.md#결정-사항) · [STUDY_MEETING ERD](../erd/STUDY_MEETING.md) · [회차 등록 PRD](../../planning/stories/navigator-register-sessions/PRD.md)
 
 ## 영향 — 누가 무엇을 해야 하나
 

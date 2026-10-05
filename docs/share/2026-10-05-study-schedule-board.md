@@ -16,7 +16,7 @@
 | **킥오프** | 스터디 첫 모임. 규칙 · 일정 · 발표자를 여기서 정한다. 시트에는 「0회차」로 적었다 |
 | **발표자1 · 발표자2** | 그 회차의 발표 담당. 1이 메인, 2가 보충 |
 
-화면 기획은 [회차 등록 PRD](../planning/stories/navigator-register-sessions/PRD.md), 서버 계약은 [회차 스펙](../specs/study-meeting/spec.md) 결정 9~12 에 있다.
+화면 기획은 [회차 등록 PRD](../../planning/stories/navigator-register-sessions/PRD.md), 서버 계약은 [회차 스펙](../../specs/study-meeting/spec.md) 결정 9~12 에 있다.
 playground 에서 「내 스터디 → 스터디 일정」 으로 직접 볼 수 있다.
 
 ## 한 줄 요약
@@ -56,6 +56,6 @@ playground 에서 「내 스터디 → 스터디 일정」 으로 직접 볼 수
 
 ## 영향 — 누가 무엇을 해야 하나
 
-- **백엔드**: 컬럼 4개(`STUDY_MEETING.MEETING_TYPE` · `PRESENTER1_PARTICIPANT_ID` · `PRESENTER2_PARTICIPANT_ID`, `STUDY_GROUP.RULES` 500자)를 마이그레이션으로 더한다. 목록 GET 권한을 「분반 참여자」로 넓히고, 발표 신청 API 와 규칙 저장 API 를 새로 만든다. 출석률 산식에서 킥오프를 뺀다. 반 만들기에서 킥오프를 함께 만든다. 자세한 건 [회차 스펙 구현 메모](../specs/study-meeting/spec.md#구현-메모)
+- **백엔드**: 컬럼 4개(`STUDY_MEETING.MEETING_TYPE` · `PRESENTER1_PARTICIPANT_ID` · `PRESENTER2_PARTICIPANT_ID`, `STUDY_GROUP.RULES` 500자)를 마이그레이션으로 더한다. 목록 GET 권한을 「분반 참여자」로 넓히고, 발표 신청 API 와 규칙 저장 API 를 새로 만든다. 출석률 산식에서 킥오프를 뺀다. 반 만들기에서 킥오프를 함께 만든다. 자세한 건 [회차 스펙 구현 메모](../../specs/study-meeting/spec.md#구현-메모)
 - **프론트**: core-front 스터디 일정 화면을 playground 대로 만든다. 출석부 격자는 백오피스와 같은 컴포넌트에 `readOnly` · 발표 표시 · 킥오프 제외 옵션이 생겼다
 - **디자인**: playground 의 표 편집 · 발표 신청 · 규칙 카드 모양을 확인해 주세요

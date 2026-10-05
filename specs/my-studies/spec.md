@@ -167,5 +167,5 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 - [NEEDS CLARIFICATION] 명부 `PAUSED` 의 탭·배지 (PRD §4 미확정과 같음)
 - [NEEDS CLARIFICATION] 클럽 디스코드 초대(로비) URL 은 지금 프론트 mock `site.discord_invite`(`frontend/packages/mock/src/index.ts`)에 있다. 서버 설정으로 옮길지만 미정 — 옮기기 전까지 이 응답에 넣지 않는다
 - [NEEDS CLARIFICATION] 회차 예정 길이. 컬럼이 없어 120분으로 본다(프로토 가정). 반·스터디마다 다르면 예정 종료 컬럼이 필요하다
-- 공개 상세 `GET /api/studies/{id}` 도 같은 규칙으로 막았다 — 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 `discordChannelUrl`·`driveUrl` 을 채운다 ([share/2026-09-30-study-detail-private-urls.md](../../share/2026-09-30-study-detail-private-urls.md))
+- 공개 상세 `GET /api/studies/{id}` 도 같은 규칙으로 막았다 — 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 `discordChannelUrl`·`driveUrl` 을 채운다 ([docs/share/2026-09-30-study-detail-private-urls.md](../../docs/share/2026-09-30-study-detail-private-urls.md))
 - [NEEDS CLARIFICATION] 회차 번호 컬럼(`MEETING_NO`)이 생기면 `sequence` 소스를 바꾼다. 지금은 예정 시각 순번이라 회차를 중간에 추가하면 뒤 번호가 밀린다
