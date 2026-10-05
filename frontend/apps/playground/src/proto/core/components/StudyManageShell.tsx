@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { StudyBoard } from '@core/components/StudyBoard';
 import { getUser } from '@core/lib/auth';
 import { t } from '@core/lib/i18n';
 import {
@@ -58,6 +59,9 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
 
   const [ready, setReady] = useState(false);
   const [dirty, setDirty] = useState(false);
+  /** 탭 위 규칙 카드의 저장하지 않은 글 — 탭의 고침과 따로 센다. */
+  const [rulesDirty, setRulesDirty] = useState(false);
+  const anyDirty = dirty || rulesDirty;
   const [leaveTo, setLeaveTo] = useState<string | null>(null);
 
   useEffect(() => {
@@ -71,7 +75,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
 
   // 출석부에 저장하지 않은 칸이 있으면, 탭·뒤로가기 링크를 누를 때 한 번 묻는다.
   useEffect(() => {
-    if (!dirty) return;
+    if (!anyDirty) return;
     function onClick(e: MouseEvent) {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
       const el = (e.target as Element | null)?.closest?.('a[href]');
@@ -84,7 +88,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     }
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);
-  }, [dirty]);
+  }, [anyDirty]);
 
   const studies = useMswStudies();
   // 주소 값은 study_id(STUDY.ID) 다. 역할 판정은 내부 키(`id`)로 한다.
@@ -139,6 +143,10 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
+        <div className='mt-5'>
+          <StudyBoard study={study} group={group} role={role} canEdit={canEdit} onDirtyChange={setRulesDirty} />
+        </div>
+
         <nav data-anno='manage:2' className='mt-6 flex gap-1 border-b border-border'>
           {tabs.map((tb) => {
             const on = pathname === tb.href;
@@ -173,6 +181,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
                 const to = leaveTo!;
                 setLeaveTo(null);
                 setDirty(false);
+                setRulesDirty(false);
                 router.push(to);
               }}
             >

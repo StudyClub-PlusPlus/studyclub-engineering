@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
-import { DiscordGlyph } from '@core/components/DiscordGlyph';
+import { AutoTextarea } from '@core/components/AutoTextarea';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import { meetingWindow, meetingsOf } from '@core/lib/attendance';
 import {
@@ -36,19 +36,10 @@ import {
   type Repeat,
   type ScheduleRole,
 } from '@core/lib/meetings';
-import {
-  ME_ID,
-  RULES_MAX,
-  getRules,
-  navigatorNameOf,
-  participantsOf,
-  saveRules,
-  type Participant,
-} from '@core/lib/schedule-board';
+import { ME_ID, participantsOf, type Participant } from '@core/lib/schedule-board';
 import type { Study } from '@studyclub/mock';
 import { Button, Input, Modal, cx } from '@studyclub/ui';
-import { canOpenDiscord, canOpenDrive, discordUrl, driveUrl } from '@core/lib/joined';
-import { FolderOpen, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 
 /**
  * 스터디 일정 — 구글 시트 출석부의 일정표를 옮긴 화면. 참가자 누구나 본다.
@@ -83,8 +74,6 @@ export function ScheduleManager({
   const bases = useRef<Record<string, RowDraft>>({});
   /** 고치는 중인 줄 — 저장 전까지는 화면에만 있다. */
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
-  /** 규칙 카드에 저장하지 않은 글이 있는지 — 표의 고침과 함께 이탈 경고를 낸다. */
-  const [rulesDirty, setRulesDirty] = useState(false);
   /** 목록의 일정을 어느 시간대로 보일지. 처음엔 분반 시간대 — 탭에 없는 시간대면 KST. */
   const [zone, setZone] = useState<string>(
     DISPLAY_ZONES.some((z) => z.iana === group.timeZone) ? group.timeZone : DISPLAY_ZONES[0].iana,
@@ -126,22 +115,20 @@ export function ScheduleManager({
     return n + (m ? Object.keys(errorsOf(m)).length : 0);
   }, 0);
 
-  const anyDirty = dirty || rulesDirty;
-
   useEffect(() => {
-    onDirtyChange?.(anyDirty);
+    onDirtyChange?.(dirty);
     return () => onDirtyChange?.(false);
-  }, [anyDirty, onDirtyChange]);
+  }, [dirty, onDirtyChange]);
 
   useEffect(() => {
-    if (!anyDirty) return;
+    if (!dirty) return;
     function onBeforeUnload(e: BeforeUnloadEvent) {
       e.preventDefault();
       e.returnValue = '';
     }
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [anyDirty]);
+  }, [dirty]);
 
   function change(m: ProtoMeeting, patch: Partial<RowDraft>) {
     if (!bases.current[m.id]) bases.current[m.id] = saved(m);
@@ -233,22 +220,9 @@ export function ScheduleManager({
   }
 
   const cols = canEdit ? 7 : 6;
-  const firstRegular = regular[0];
 
   return (
     <div className='flex flex-col gap-4'>
-      <StudyBoard
-        study={study}
-        canEdit={canEdit}
-        fixedTime={
-          firstRegular
-            ? `매주 ${DOW_LABEL[dowOf(firstRegular.date)]}요일 ${group.startAt} ${zoneLabel(group.timeZone)}`
-            : `${group.startAt} ${zoneLabel(group.timeZone)}`
-        }
-        navigator={navigatorNameOf(study, role)}
-        onDirtyChange={setRulesDirty}
-      />
-
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <h2 data-anno='schedule:1' className='text-[15px] font-bold'>
           회차
@@ -344,7 +318,7 @@ export function ScheduleManager({
                       <PresenterSelect
                         label={`${meetingLabel(m)} ${slot === 'presenter1' ? '발표자1' : '발표자2'}`}
                         placeholder={slot === 'presenter1' ? '발표자 1' : '발표자 2'}
-                        people={people}
+                        people={people.filter((p) => !p.left)}
                         value={v[slot]}
                         onChange={(id) => change(m, { [slot]: id })}
                       />
@@ -352,15 +326,16 @@ export function ScheduleManager({
                   }
                   const id = m[slot];
                   const other = slot === 'presenter1' ? m.presenter2 : m.presenter1;
-                  // 크루의 선착순 신청 — 빈 칸에만, 한 회차에 한 칸만.
+                  const which = slot === 'presenter1' ? '발표자1' : '발표자2';
+                  // 크루의 선착순 신청 — 빈 칸은 포인트 색 실선 칩 「신청」, 내 이름은 강조 칩 + × 로 취소.
                   if (!canEdit && !past && !id && other !== ME_ID) {
                     return (
                       <button
                         type='button'
                         data-anno='schedule:9-1'
-                        aria-label={`${meetingLabel(m)} ${slot === 'presenter1' ? '발표자1' : '발표자2'} 신청`}
+                        aria-label={`${meetingLabel(m)} ${which} 신청`}
                         onClick={() => sign(m, slot, true)}
-                        className='h-8 rounded-control border border-dashed border-brand px-2.5 text-xs font-bold text-brand hover:bg-brand-subtle'
+                        className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand text-xs font-semibold text-brand transition-colors hover:bg-brand-subtle'
                       >
                         신청
                       </button>
@@ -368,15 +343,16 @@ export function ScheduleManager({
                   }
                   if (!canEdit && !past && id === ME_ID) {
                     return (
-                      <span className='inline-flex items-center gap-1.5'>
-                        <b className='font-semibold text-fg'>{nameOf(id)}</b>
+                      <span className='inline-flex h-7 max-w-full items-center gap-1 rounded-pill bg-brand-subtle pl-2.5 pr-1 text-xs font-bold text-brand'>
+                        <span className='truncate'>{nameOf(id)}</span>
                         <button
                           type='button'
-                          aria-label={`${meetingLabel(m)} ${slot === 'presenter1' ? '발표자1' : '발표자2'} 신청 취소`}
+                          aria-label={`${meetingLabel(m)} ${which} 신청 취소`}
+                          title='신청 취소'
                           onClick={() => sign(m, slot, false)}
-                          className='text-xs font-semibold text-fg-muted underline-offset-2 hover:text-error-700 hover:underline'
+                          className='grid h-5 w-5 shrink-0 place-items-center rounded-full hover:bg-brand hover:text-white'
                         >
-                          취소
+                          <X size={12} strokeWidth={2.5} aria-hidden />
                         </button>
                       </span>
                     );
@@ -576,58 +552,6 @@ function CellInput({
   );
 }
 
-/** 내용만큼 늘어나는 글 상자. 긴 제목·규칙이 잘리지 않고 여러 줄로 보인다. */
-function AutoTextarea({
-  label,
-  value,
-  placeholder,
-  maxLength,
-  minRows = 1,
-  singleLine = false,
-  invalid,
-  className,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  placeholder?: string;
-  maxLength?: number;
-  minRows?: number;
-  /** 줄바꿈 키를 막는다 — 제목은 한 문장이고, 길면 접혀 보일 뿐이다. */
-  singleLine?: boolean;
-  invalid?: boolean;
-  className?: string;
-  onChange: (value: string) => void;
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight + 2}px`;
-  }, [value]);
-  return (
-    <textarea
-      ref={ref}
-      aria-label={label}
-      aria-invalid={invalid || undefined}
-      value={value}
-      placeholder={placeholder}
-      maxLength={maxLength}
-      rows={minRows}
-      onKeyDown={(ev) => {
-        if (singleLine && ev.key === 'Enter') ev.preventDefault();
-      }}
-      onChange={(ev) => onChange(singleLine ? ev.target.value.replace(/\n/g, ' ') : ev.target.value)}
-      className={cx(
-        'block w-full resize-none overflow-hidden rounded-control border bg-bg text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand/60',
-        invalid ? 'border-error-500' : 'border-border-strong',
-        className,
-      )}
-    />
-  );
-}
-
 function TitleInput({
   label,
   value,
@@ -684,146 +608,6 @@ function PresenterSelect({
         </option>
       ))}
     </select>
-  );
-}
-
-/* ── 스터디 정보 · 규칙 ───────────────────────────────────────────────────── */
-
-/** 정보 카드의 바로가기 — 아이콘과 이름만 보이고 새 창으로 연다. 주소는 가리키면 보인다. */
-function LinkButton({ label, href, icon }: { label: string; href: string; icon: ReactNode }) {
-  return (
-    <a
-      href={href}
-      target='_blank'
-      rel='noopener noreferrer'
-      title={href}
-      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 text-sm font-semibold text-fg-secondary hover:bg-surface-2 hover:text-fg'
-    >
-      {icon}
-      {label}
-    </a>
-  );
-}
-
-function StudyBoard({
-  study,
-  canEdit,
-  fixedTime,
-  navigator,
-  onDirtyChange,
-}: {
-  study: Study;
-  canEdit: boolean;
-  fixedTime: string;
-  navigator: string;
-  onDirtyChange: (dirty: boolean) => void;
-}) {
-  const [rules, setRules] = useState('');
-  /** 캡틴·네비게이터가 고치는 중인 글. 저장한 글과 다르면 저장·취소가 나온다. */
-  const [draft, setDraft] = useState('');
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const saved = getRules(study.id);
-    setRules(saved);
-    setDraft(saved);
-  }, [study.id]);
-
-  const long = rules.split('\n').length > 4 || rules.length > 240;
-  const changed = draft.trim() !== rules.trim();
-
-  useEffect(() => onDirtyChange(canEdit && changed), [canEdit, changed, onDirtyChange]);
-
-  function save() {
-    // TODO(api): PUT /api/studies/{studyId}/groups/{groupId}/rules
-    saveRules(study.id, draft.trim());
-    setRules(draft.trim());
-    setDraft(draft.trim());
-  }
-
-  return (
-    <section data-anno='schedule:11' className='card px-5 py-4'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <dl className='flex flex-wrap gap-x-6 gap-y-1 text-sm'>
-          <div className='flex gap-2'>
-            <dt className='text-fg-muted'>스터디 시간</dt>
-            <dd className='tnum font-semibold text-fg'>{fixedTime}</dd>
-          </div>
-          <div className='flex gap-2'>
-            <dt className='text-fg-muted'>네비게이터</dt>
-            <dd className='font-semibold text-fg'>{navigator}</dd>
-          </div>
-        </dl>
-        {/* 시트 머리에 적어 두던 두 주소. 참가자에게만 보이는 화면이라 그대로 연다 (share 09-30) */}
-        <div className='flex flex-wrap gap-1.5'>
-          {canOpenDiscord(study) && (
-            <LinkButton label='디스코드' href={discordUrl(study)} icon={<DiscordGlyph size={15} />} />
-          )}
-          {canOpenDrive(study) && (
-            <LinkButton
-              label='자료실'
-              href={driveUrl(study)}
-              icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden />}
-            />
-          )}
-        </div>
-      </div>
-
-      <div data-anno='schedule:12' className='mt-3 border-t border-border pt-3'>
-        <h3 className='text-sm font-bold text-fg'>스터디 규칙</h3>
-        {canEdit ? (
-          <div className='mt-2 flex flex-col gap-2'>
-            <AutoTextarea
-              label='스터디 규칙'
-              value={draft}
-              placeholder='킥오프에서 정한 규칙을 적어 두세요. 발표 방식 · 지각 기준 · 소요 시간 등'
-              maxLength={RULES_MAX}
-              minRows={4}
-              className='px-3 py-2 leading-relaxed'
-              onChange={setDraft}
-            />
-            <div className='flex items-center justify-between gap-2'>
-              <span className='tnum text-xs text-fg-muted'>
-                {draft.length}/{RULES_MAX}
-              </span>
-              {changed && (
-                <span className='flex gap-2'>
-                  <Button variant='secondary' size='sm' onClick={() => setDraft(rules)}>
-                    취소
-                  </Button>
-                  <Button size='sm' onClick={save}>
-                    저장
-                  </Button>
-                </span>
-              )}
-            </div>
-          </div>
-        ) : rules ? (
-          <>
-            <p
-              className={cx(
-                'mt-1.5 whitespace-pre-line text-sm leading-relaxed text-fg-secondary',
-                long && !open && 'line-clamp-4',
-              )}
-            >
-              {rules}
-            </p>
-            {long && (
-              <button
-                type='button'
-                aria-expanded={open}
-                onClick={() => setOpen((o) => !o)}
-                className='mt-1 text-xs font-semibold text-brand underline-offset-2 hover:underline'
-              >
-                {open ? '접기' : '모두 보기'}
-              </button>
-            )}
-          </>
-        ) : (
-          <p className='mt-1.5 text-sm text-fg-muted'>아직 규칙이 없습니다.</p>
-        )}
-      </div>
-    </section>
   );
 }
 

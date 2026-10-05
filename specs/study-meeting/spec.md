@@ -512,6 +512,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 - [NEEDS CLARIFICATION] 이미 운영 중인 분반에 킥오프 회차를 소급해 만들지 — 시트에는 0회차가 있지만 DB 에는 없다. 지금은 새로 만드는 분반에만 만든다.
 - [NEEDS CLARIFICATION] 한 사람이 맡을 수 있는 발표 수에 상한을 둘지 — 지금은 두지 않는다.
+- [NEEDS CLARIFICATION] 하차(스스로)와 제명(운영)을 어떻게 저장할지 — 명부는 `WITHDRAWN` 하나뿐이다. 출석부는 캡틴·네비게이터에게 사유를, 크루에게는 「참여 종료」만 보인다. 구분 컬럼(예: `STUDY_PARTICIPANT.WITHDRAW_TYPE`)을 둘지.
 - [NEEDS CLARIFICATION] 발표자1이 빠진 날 발표자2가 대신한 것을 따로 기록할지 — 지금은 일정의 발표자를 고쳐서 남긴다.
 
 - [NEEDS CLARIFICATION] 캡틴(ADMIN)에게도 「담당 반에 한해」 가 걸리는가 — POL-0001 문구가 캡틴·네비게이터를 함께 묶는다. 캡틴의 담당 반을 어떻게 아는지(명부 행?)도 같이 정해야 한다. 지금은 PRD 대로 ADMIN 은 모든 분반 허용.

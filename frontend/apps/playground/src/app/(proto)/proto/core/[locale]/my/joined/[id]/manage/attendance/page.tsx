@@ -9,7 +9,7 @@ import { useManage } from '@core/components/StudyManageShell';
 import { getMyAttendance, meetingsOf } from '@core/lib/attendance';
 import { isKickoff, type ProtoMeeting } from '@core/lib/meetings';
 import { getGroupAttendance, saveGroupAttendance, type AttendanceBook } from '@core/lib/navigator-attendance';
-import { ME_ID, participantsOf } from '@core/lib/schedule-board';
+import { LEFT_LABEL, ME_ID, participantsOf } from '@core/lib/schedule-board';
 import { Button } from '@studyclub/ui';
 import { ExternalLink } from 'lucide-react';
 
@@ -35,7 +35,10 @@ export default function StudyManageAttendancePage() {
   }, [study]);
 
   const meetings = meetingsOf(study);
-  const crew = participantsOf(study);
+  // 중단한 사람은 맨 아래로. 사유(하차·제명)는 캡틴·네비게이터에게만 — 크루에게는 「참여 종료」.
+  const crew = participantsOf(study)
+    .map((p) => ({ ...p, left: p.left && { label: canEdit ? LEFT_LABEL[p.left.kind] : '참여 종료', at: p.left.at } }))
+    .sort((a, b) => Number(Boolean(a.left)) - Number(Boolean(b.left)));
   const presentersOf = (id: string) => {
     const m = meetings.find((x) => x.id === id) as ProtoMeeting | undefined;
     return [m?.presenter1, m?.presenter2].filter((p): p is string => Boolean(p));

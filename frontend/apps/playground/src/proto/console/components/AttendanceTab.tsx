@@ -153,7 +153,11 @@ export function AttendanceTab({
 }: {
   study: Study;
   /** 이름 칸에 쓰는 것만 받는다 — 사용자 사이트는 명부 밖의 「나」도 넣는다. */
-  crew: (Pick<Crew, 'id' | 'name'> & { role?: 'captain' | 'navigator' })[];
+  crew: (Pick<Crew, 'id' | 'name'> & {
+    role?: 'captain' | 'navigator';
+    /** 스터디를 중단한 사람 — 이름을 흐리게, 칩 문구, 중단 일자(이 날 뒤 회차는 「—」·출석률 제외). */
+    left?: { label: string; at: string };
+  })[];
   meetings: StudyMeeting[];
   attendance: AttendanceBook;
   classes: StudyClass[];
@@ -333,7 +337,7 @@ export function AttendanceTab({
               ))}
               <th
                 data-anno='attendance:3-4'
-                className='w-16 min-w-16 whitespace-nowrap px-3 py-2 text-right text-xs font-semibold text-fg-muted'
+                className='w-[4.5rem] min-w-[4.5rem] max-w-[4.5rem] whitespace-nowrap px-3 py-2 text-right text-xs font-semibold text-fg-muted'
               >
                 출석률
               </th>
@@ -343,8 +347,12 @@ export function AttendanceTab({
             {crew.map((c) => {
               const row = draft[c.id];
               // 킥오프처럼 세지 않는 회차는 칸에만 두고 출석률에서 뺀다.
-              const counted =
-                row && notCounted ? Object.fromEntries(Object.entries(row).filter(([id]) => !notCounted.has(id))) : row;
+              // 중단한 사람은 중단 일자 뒤 회차를 칸에서 비우고 출석률에서도 뺀다.
+              const gone = (s: StudyMeeting) => Boolean(c.left && s.date > c.left.at);
+              const goneIds = new Set(meetings.filter(gone).map((s) => s.id));
+              const counted = row
+                ? Object.fromEntries(Object.entries(row).filter(([id]) => !notCounted?.has(id) && !goneIds.has(id)))
+                : row;
               const rate = attendanceRate(counted);
               const presented = presentersOf ? meetings.filter((s) => presentersOf(s.id).includes(c.id)).length : 0;
               return (
@@ -352,9 +360,13 @@ export function AttendanceTab({
                   <td className='sticky left-0 z-[1] whitespace-nowrap border-t border-border bg-surface px-4 py-1.5 font-semibold'>
                     {/* 동명이인 구분(디스코드 닉네임)이 붙으면 길어진다 — 칸은 좁게 두고 전체 이름은 가리키면 보인다 */}
                     <span className='flex items-center gap-1.5'>
-                      <span className='block max-w-[12rem] truncate' title={c.name}>
+                      <span
+                        className={`block max-w-[12rem] truncate ${c.left ? 'font-medium text-fg-muted' : ''}`}
+                        title={c.name}
+                      >
                         {c.name}
                       </span>
+                      {c.left && <Badge tone='neutral'>{c.left.label}</Badge>}
                       {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
                       {c.role && <Badge tone={c.role}>{c.role === 'captain' ? '캡틴' : '네비게이터'}</Badge>}
                     </span>
@@ -364,20 +376,26 @@ export function AttendanceTab({
                       {presented || <span className='text-fg-muted'>0</span>}
                     </td>
                   )}
-                  {meetings.map((s) => (
-                    <td key={s.id} data-anno='attendance:3-3' className='border-t border-border px-1 py-1.5'>
-                      <Cell
-                        status={row?.[s.id]}
-                        changed={cellOf(draft, c.id, s.id) !== cellOf(attendance, c.id, s.id)}
-                        onClick={() => toggle(c.id, s.id)}
-                        disabled={saving}
-                        readOnly={readOnly}
-                        presenting={presentersOf?.(s.id).includes(c.id)}
-                        dot={!minimal}
-                      />
-                    </td>
-                  ))}
-                  <td className='tnum w-16 min-w-16 whitespace-nowrap border-t border-border px-3 py-1.5 text-right font-bold'>
+                  {meetings.map((s) =>
+                    gone(s) ? (
+                      <td key={s.id} className='border-t border-border px-1 py-1.5 text-center text-xs text-fg-muted'>
+                        —
+                      </td>
+                    ) : (
+                      <td key={s.id} data-anno='attendance:3-3' className='border-t border-border px-1 py-1.5'>
+                        <Cell
+                          status={row?.[s.id]}
+                          changed={cellOf(draft, c.id, s.id) !== cellOf(attendance, c.id, s.id)}
+                          onClick={() => toggle(c.id, s.id)}
+                          disabled={saving}
+                          readOnly={readOnly}
+                          presenting={presentersOf?.(s.id).includes(c.id)}
+                          dot={!minimal}
+                        />
+                      </td>
+                    ),
+                  )}
+                  <td className='tnum w-[4.5rem] min-w-[4.5rem] max-w-[4.5rem] whitespace-nowrap border-t border-border px-3 py-1.5 text-right font-bold'>
                     {rate === undefined ? (
                       <span className='text-fg-muted'>—</span>
                     ) : (

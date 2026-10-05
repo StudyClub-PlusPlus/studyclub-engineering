@@ -1,10 +1,11 @@
 'use client';
 
 import { getUser } from '@core/lib/auth';
+import { meetingsOf } from '@core/lib/attendance';
 import { myGroupCrew } from '@core/lib/navigator-attendance';
 import type { Study } from '@studyclub/mock';
 
-import { scheduleAccessOf, type ManageRole, type ScheduleRole } from '@core/lib/meetings';
+import { isKickoff, scheduleAccessOf, type ManageRole, type ScheduleRole } from '@core/lib/meetings';
 
 /**
  * 스터디 일정 화면이 구글 시트 출석부에서 옮겨 온 것 — 참가자(발표자 후보)와 스터디 규칙.
@@ -19,7 +20,12 @@ export type Participant = {
   me?: boolean;
   /** 캡틴·네비게이터면 그 역할. 크루는 비운다 — 출석부 이름 옆 칩. */
   role?: ManageRole;
+  /** 스터디를 중단한 사람 — 하차(스스로) · 제명(운영). `at` 은 중단 일자(yyyy-MM-dd). */
+  left?: { kind: 'quit' | 'expelled'; at: string };
 };
+
+/** 하차·제명 이름. 크루에게는 사유 없이 「참여 종료」만 보인다. */
+export const LEFT_LABEL: Record<'quit' | 'expelled', string> = { quit: '하차', expelled: '제명' };
 
 /** 프로토의 「나」 — 분반 명부에 따로 없어 ID 를 고정한다. */
 export const ME_ID = 'me';
@@ -38,6 +44,18 @@ function myName(): string {
 export function participantsOf(study: Study): Participant[] {
   const crew = myGroupCrew(study);
   const myRole = scheduleAccessOf(study).role;
+  // 프로토 가정 — 명부 5번째는 하차, 9번째는 제명. 3회차 날 그만뒀다고 본다.
+  // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT (하차·제명 구분 컬럼은 미확정)
+  const regular = meetingsOf(study).filter((m) => !isKickoff(m));
+  const leftAt = regular[2]?.date ?? regular[0]?.date ?? '';
+  const leftOf = (i: number) =>
+    !leftAt
+      ? undefined
+      : i === 4
+        ? { kind: 'quit' as const, at: leftAt }
+        : i === 8
+          ? { kind: 'expelled' as const, at: leftAt }
+          : undefined;
   const names = [myName(), ...crew.map((c) => c.name)];
   const dup = (name: string) => names.filter((n) => n === name).length > 1;
   return [
@@ -47,6 +65,7 @@ export function participantsOf(study: Study): Participant[] {
       name: dup(c.name) ? `${c.name} (${c.discordNickname ?? `#${i + 1}`})` : c.name,
       // 프로토 가정 — 내가 네비게이터가 아니면 명부 첫 사람이 네비게이터다 (navigatorNameOf 와 같다).
       role: i === 0 && myRole !== 'navigator' ? ('navigator' as const) : undefined,
+      left: leftOf(i),
     })),
   ];
 }
