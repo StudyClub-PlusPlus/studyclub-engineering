@@ -81,6 +81,7 @@ function Cell({
   disabled,
   readOnly,
   presenting,
+  dot = true,
 }: {
   status: AttendanceStatus | undefined;
   changed?: boolean;
@@ -89,6 +90,8 @@ function Cell({
   readOnly?: boolean;
   /** 이 회차의 발표자 — 칸 왼쪽 위에 마이크 표시. */
   presenting?: boolean;
+  /** 고친 칸 오른쪽 위 점. 사용자 사이트는 테두리 강조만 쓴다. */
+  dot?: boolean;
 }) {
   const label = `${status ? CELL_LABEL[status] : '미체크'}${presenting ? ' · 발표' : ''}`;
   // 보기만 하는 칸은 버튼이 아니다 — 키보드 탭이 칸마다 멈추지 않게 한다.
@@ -129,7 +132,7 @@ function Cell({
     >
       {presenting && <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />}
       {status ? CELL_LABEL[status] : ''}
-      {changed && (
+      {changed && dot && (
         <span className='absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand ring-2 ring-bg' aria-hidden />
       )}
     </button>
@@ -317,10 +320,10 @@ export function AttendanceTab({
               {presentersOf && (
                 <th
                   data-anno='attendance:3-5'
-                  className='w-12 px-2 py-2 text-center text-[11px] font-semibold text-fg-muted'
+                  className='w-16 whitespace-nowrap px-2 py-2 text-center text-[11px] font-semibold text-fg-muted'
                   title='일정의 발표자1·2로 맡은 횟수'
                 >
-                  발표
+                  발표 횟수
                 </th>
               )}
               {meetings.map((s) => (
@@ -368,6 +371,7 @@ export function AttendanceTab({
                         disabled={saving}
                         readOnly={readOnly}
                         presenting={presentersOf?.(s.id).includes(c.id)}
+                        dot={!minimal}
                       />
                     </td>
                   ))}
