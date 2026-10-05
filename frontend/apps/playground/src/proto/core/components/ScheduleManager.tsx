@@ -15,7 +15,6 @@ import {
   defaultUntil,
   deleteMeetings,
   dowOf,
-  kstInstant,
   maxUntil,
   planDraft,
   previewOf,
@@ -23,7 +22,10 @@ import {
   updateMeeting,
   validateEdit,
   zoneLabel,
+  zoneTitle,
+  zonedInstant,
   wallLabel,
+  wallParts,
   type DraftErrors,
   type MeetingDraft,
   type NavigatorGroup,
@@ -275,7 +277,7 @@ function EditRow({
 }) {
   const [edit, setEdit] = useState({
     date: meeting.date,
-    time: meeting.time ?? fmtClock(meetingWindow(study, meeting).start),
+    time: meeting.time ?? wallParts(meetingWindow(study, meeting).start, group.timeZone).time,
     title: meeting.title ?? '',
   });
   const [errors, setErrors] = useState<DraftErrors>({});
@@ -284,15 +286,15 @@ function EditRow({
   function change(patch: Partial<typeof edit>) {
     const next = { ...edit, ...patch };
     setEdit(next);
-    if (touched) setErrors(validateEdit(next, meeting.id, existing));
+    if (touched) setErrors(validateEdit(next, meeting.id, existing, group.timeZone));
   }
 
   function save() {
     setTouched(true);
-    const found = validateEdit(edit, meeting.id, existing);
+    const found = validateEdit(edit, meeting.id, existing, group.timeZone);
     setErrors(found);
     if (Object.keys(found).length) return;
-    updateMeeting(study.id, meeting.id, edit);
+    updateMeeting(study.id, meeting.id, edit, group.timeZone);
     onSaved(`${meeting.no}회차를 ${dayLabel(edit.date)} ${edit.time}`);
   }
 
@@ -339,10 +341,6 @@ function EditRow({
   );
 }
 
-function fmtClock(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 /* ── 회차 추가 (반복 포함) ──────────────────────────────────────────────────── */
 
 function AddForm({
@@ -368,7 +366,7 @@ function AddForm({
   const [touched, setTouched] = useState(false);
 
   const existing = meetingsOf(study);
-  const { errors: live, plan } = planDraft(draft, existing);
+  const { errors: live, plan } = planDraft(draft, existing, group.timeZone);
 
   function change(patch: Partial<MeetingDraft>) {
     const next = { ...draft, ...patch };
@@ -377,7 +375,7 @@ function AddForm({
     if (patch.repeat === 'weekly' && next.weekdays.length === 0 && next.date) next.weekdays = [dowOf(next.date)];
     setDraft(next);
     // 한 번 막힌 뒤에는 고치는 즉시 문구가 풀려야 한다 — 다시 누를 때까지 빨간 채로 두지 않는다.
-    if (touched) setErrors(planDraft(next, existing).errors);
+    if (touched) setErrors(planDraft(next, existing, group.timeZone).errors);
   }
 
   function submit() {
@@ -385,12 +383,12 @@ function AddForm({
     setErrors(live);
     if (!plan) return;
     const { from } = previewOf(plan, existing);
-    addMeetings(study.id, { dates: plan.dates, time: draft.time, title: draft.title });
+    addMeetings(study.id, { dates: plan.dates, time: draft.time, timeZone: group.timeZone, title: draft.title });
     const first = plan.dates[0];
     const last = plan.dates[plan.dates.length - 1];
     onAdded(
       plan.dates.length === 1
-        ? `${from}회차 · ${wallLabel(kstInstant(first, draft.time), group.timeZone)}`
+        ? `${from}회차 · ${wallLabel(zonedInstant(first, draft.time, group.timeZone), group.timeZone)}`
         : `회차 ${plan.dates.length}개 · ${dayLabel(first)} ~ ${dayLabel(last)} ${draft.time}`,
     );
   }
@@ -415,7 +413,7 @@ function AddForm({
       open
       onClose={onCancel}
       title='회차 추가'
-      description={`${group.name} · 한국 시간(KST) 기준`}
+      description={`${group.name} · ${zoneTitle(group.timeZone)} 기준`}
       footer={
         <>
           <Button variant='secondary' onClick={onCancel}>
@@ -560,8 +558,8 @@ function AddForm({
                 )}
                 <li className='tnum'>
                   {plan.dates.length > 1 ? '첫 회차 ' : ''}KST{' '}
-                  {scheduleLabel(kstInstant(first, draft.time), 'Asia/Seoul')} · PDT{' '}
-                  {scheduleLabel(kstInstant(first, draft.time), 'America/Los_Angeles')}
+                  {scheduleLabel(zonedInstant(first, draft.time, group.timeZone), 'Asia/Seoul')} · PDT{' '}
+                  {scheduleLabel(zonedInstant(first, draft.time, group.timeZone), 'America/Los_Angeles')}
                 </li>
                 {plan.skipped.length > 0 && (
                   <li className='text-warning-700'>

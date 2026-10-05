@@ -8,18 +8,24 @@ import type { StudyMeeting } from '@studyclub/mock';
  * 회차는 스터디가 아니라 **분반(STUDY_GROUP)** 에 붙는다. 네비게이터 권한도 맡은 분반 안에서만 선다.
  * 추가·삭제는 브라우저에만 남는다 — 저장할 서버가 아직 없다.
  *
+ * 저장값은 서버와 같이 UTC 예정 시각(`scheduledAt`) 하나다. 화면의 일자·시각은 분반 시간대로 바꿔 계산한 값이다.
+ *
  * TODO(api): POST   /api/studies/{id}/groups/{groupId}/meetings — { scheduledAt[](UTC), title? }
  *            DELETE /api/studies/{id}/groups/{groupId}/meetings/{meetingId}
  */
 
-/** 시각(`HH:MM`)·제목·반복 묶음이 붙은 회차. 기존 mock 회차는 시각을 스터디 일정 문구에서 뽑는다. */
-export type ProtoMeeting = StudyMeeting & { time?: string; title?: string; seriesId?: string };
+/**
+ * 예정 시각·제목·반복 묶음이 붙은 회차.
+ * `scheduledAt`(UTC)이 저장값이고, `date`·`time` 은 분반 시간대로 계산한 값이다.
+ * 기존 mock 회차는 `scheduledAt` 이 없어 시각을 스터디 일정 문구(KST)에서 뽑는다.
+ */
+export type ProtoMeeting = StudyMeeting & { scheduledAt?: string; time?: string; title?: string; seriesId?: string };
 
 export type NavigatorGroup = {
   id: string;
   name: string;
-  /** IANA. 회차 시각은 이 시간대 벽시계로 받는다. 프로토는 KST 반만 다룬다. */
-  timeZone: 'Asia/Seoul';
+  /** IANA (STUDY_GROUP.TIMEZONE). 회차 시각은 이 시간대 벽시계로 받고 보인다. */
+  timeZone: string;
   /** 분반 정규 시작 시각 (STUDY_GROUP.START_AT). 새 회차의 기본값. */
   startAt: string;
 };
@@ -53,6 +59,14 @@ export function manageAccessOf(studyId: string): ManageAccess | undefined {
   return MANAGE_OF[studyId];
 }
 
+/** 일정 문구에 시간대가 없는 mock 스터디는 KST 로 본다. */
+const DEFAULT_ZONE = 'Asia/Seoul';
+
+/** 이 스터디 회차 시각의 기준 시간대 — 관리하는 분반이 있으면 그 분반 시간대. */
+export function zoneOfStudy(studyId: string): string {
+  return manageAccessOf(studyId)?.group.timeZone ?? DEFAULT_ZONE;
+}
+
 
 export const TITLE_MAX = 50;
 /** 반복으로 한 번에 만들 수 있는 기간(시작 날짜 포함 일수). 매일이면 최대 31회차. */
@@ -69,9 +83,11 @@ const ADDED_KEY = 'sc_added_meetings';
 const DELETED_KEY = 'sc_deleted_meetings';
 const EDITED_KEY = 'sc_edited_meetings';
 
-type Edit = { date: string; time: string; title?: string };
+/** 원래 있던 회차에 얹는 수정값. 예전 저장분은 `date`·`time`(분반 벽시계)만 있다. */
+type Edit = { scheduledAt?: string; date?: string; time?: string; title?: string };
 
-type Stored = { id: string; date: string; time: string; title?: string; seriesId?: string };
+/** 추가한 회차. 예전 저장분은 `scheduledAt` 대신 `date`·`time` 을 갖는다. */
+type Stored = { id: string; scheduledAt?: string; date?: string; time?: string; title?: string; seriesId?: string };
 
 function readJSON<T>(key: string): Record<string, T[]> {
   if (typeof window === 'undefined') return {};
@@ -93,14 +109,19 @@ function writeJSON(key: string, value: unknown) {
 
 export function addMeetings(
   studyId: string,
-  input: { dates: string[]; time: string; title?: string },
+  input: { dates: string[]; time: string; timeZone: string; title?: string },
 ): void {
   const store = readJSON<Stored>(ADDED_KEY);
   const title = input.title?.trim() || undefined;
   const stamp = Date.now();
   // 반복으로 한꺼번에 만든 회차는 같은 묶음 ID 를 남긴다 — 지금 화면은 쓰지 않지만, 반복 단위 수정·삭제를 붙일 때 쓴다.
   const seriesId = input.dates.length > 1 ? `r${stamp}` : undefined;
-  const rows = input.dates.map((date, i) => ({ id: `${studyId}-a${stamp}-${i}`, date, time: input.time, title, seriesId }));
+  const rows: Stored[] = input.dates.map((date, i) => ({
+    id: `${studyId}-a${stamp}-${i}`,
+    scheduledAt: zonedInstant(date, input.time, input.timeZone).toISOString(),
+    title,
+    seriesId,
+  }));
   store[studyId] = [...(store[studyId] ?? []), ...rows];
   writeJSON(ADDED_KEY, store);
 }
@@ -119,20 +140,26 @@ export function deleteMeetings(studyId: string, ids: string[]): void {
 }
 
 /**
- * 회차의 날짜·시각·제목을 고친다. **ID 는 그대로** — 크루가 이 회차에 낸 휴가 신청이 따라온다.
+ * 회차의 일자·시각·제목을 고친다. **ID 는 그대로다.** 입력은 분반 벽시계이고, UTC 로 바꿔 저장한다.
  * 추가한 회차는 행을 고치고, 원래 있던 회차는 고친 값을 따로 얹는다.
  */
-export function updateMeeting(studyId: string, id: string, edit: { date: string; time: string; title: string }): void {
+export function updateMeeting(
+  studyId: string,
+  id: string,
+  edit: { date: string; time: string; title: string },
+  timeZone: string,
+): void {
   const title = edit.title.trim() || undefined;
+  const scheduledAt = zonedInstant(edit.date, edit.time, timeZone).toISOString();
   const added = readJSON<Stored>(ADDED_KEY);
   const mine = added[studyId] ?? [];
   if (mine.some((m) => m.id === id)) {
-    added[studyId] = mine.map((m) => (m.id === id ? { ...m, date: edit.date, time: edit.time, title } : m));
+    added[studyId] = mine.map((m) => (m.id === id ? { id: m.id, scheduledAt, title, seriesId: m.seriesId } : m));
     writeJSON(ADDED_KEY, added);
     return;
   }
   const edited = readEdits();
-  edited[studyId] = { ...(edited[studyId] ?? {}), [id]: { date: edit.date, time: edit.time, title } };
+  edited[studyId] = { ...(edited[studyId] ?? {}), [id]: { scheduledAt, title } };
   writeJSON(EDITED_KEY, edited);
 }
 
@@ -146,13 +173,24 @@ function readEdits(): Record<string, Record<string, Edit>> {
   }
 }
 
-/** 기존 회차에서 지운 것을 빼고, 고친 값을 얹고, 추가한 것을 붙여 날짜순으로 번호를 다시 매긴다. 회차 번호는 저장값이 아니라 순서다. */
+/** 저장값(UTC)에 분반 시간대로 계산한 일자·시각을 붙인다. 예전 저장분은 벽시계 값을 UTC 로 올린다. */
+function withWall<T extends { scheduledAt?: string; date?: string; time?: string }>(row: T, timeZone: string): T {
+  const scheduledAt =
+    row.scheduledAt ?? (row.date && row.time ? zonedInstant(row.date, row.time, timeZone).toISOString() : undefined);
+  if (!scheduledAt) return row;
+  return { ...row, scheduledAt, ...wallParts(new Date(scheduledAt), timeZone) };
+}
+
+/** 기존 회차에서 지운 것을 빼고, 고친 값을 얹고, 추가한 것을 붙여 일정순으로 번호를 다시 매긴다. 회차 번호는 저장값이 아니라 순서다. */
 export function withAdded(base: StudyMeeting[], studyId: string): ProtoMeeting[] {
-  const added = (readJSON<Stored>(ADDED_KEY)[studyId] ?? []).map((m) => ({ ...m, no: 0 }));
+  const zone = zoneOfStudy(studyId);
+  const added = (readJSON<Stored>(ADDED_KEY)[studyId] ?? []).map((m) => ({ ...withWall(m, zone), no: 0 }) as ProtoMeeting);
   const deleted = new Set(readJSON<string>(DELETED_KEY)[studyId] ?? []);
   const edits = readEdits()[studyId] ?? {};
   if (added.length === 0 && deleted.size === 0 && Object.keys(edits).length === 0) return base;
-  const kept: ProtoMeeting[] = base.filter((m) => !deleted.has(m.id)).map((m) => (edits[m.id] ? { ...m, ...edits[m.id] } : m));
+  const kept: ProtoMeeting[] = base
+    .filter((m) => !deleted.has(m.id))
+    .map((m) => (edits[m.id] ? ({ ...m, ...withWall(edits[m.id], zone) } as ProtoMeeting) : m));
   return [...kept, ...added]
     .sort((a, b) =>
       `${a.date} ${(a as ProtoMeeting).time ?? ''}`.localeCompare(`${b.date} ${(b as ProtoMeeting).time ?? ''}`),
@@ -162,11 +200,45 @@ export function withAdded(base: StudyMeeting[], studyId: string): ProtoMeeting[]
 
 /* ── 날짜·시각 ───────────────────────────────────────────────────────────── */
 
-/** KST 벽시계 → 순간. 한국은 서머타임이 없어 +9 고정이다. */
-export function kstInstant(date: string, time: string): Date {
+/** 그 시간대에서 본 순간의 벽시계 부품. */
+function zonedParts(instant: Date, iana: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: iana,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(instant)
+      .map((p) => [p.type, p.value]),
+  );
+  return { year: parts.year, month: parts.month, day: parts.day, hour: parts.hour, minute: parts.minute };
+}
+
+/** 그 순간 시간대의 UTC 오프셋(ms). 서머타임이 있으면 날짜마다 다르다. */
+function offsetMs(instant: Date, iana: string): number {
+  const p = zonedParts(instant, iana);
+  const asUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
+  return asUtc - Math.floor(instant.getTime() / 60_000) * 60_000;
+}
+
+/** 분반 시간대의 벽시계(일자 `yyyy-MM-dd` · 시각 `HH:mm`) → 순간(UTC). 서버에 보낼 값이다. */
+export function zonedInstant(date: string, time: string, iana: string): Date {
   const [y, mo, d] = date.split('-').map(Number);
   const [h, mi] = time.split(':').map(Number);
-  return new Date(Date.UTC(y, mo - 1, d, h - 9, mi, 0));
+  const guess = Date.UTC(y, mo - 1, d, h, mi);
+  // 오프셋을 한 번 더 잰다 — 서머타임 경계를 넘는 날도 맞추기 위해.
+  const first = guess - offsetMs(new Date(guess), iana);
+  return new Date(guess - offsetMs(new Date(first), iana));
+}
+
+/** 순간(UTC) → 그 시간대의 일자·시각. 화면에 보이는 값이다. */
+export function wallParts(instant: Date, iana: string): { date: string; time: string } {
+  const p = zonedParts(instant, iana);
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
 }
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -192,31 +264,35 @@ export function wallLabel(instant: Date, iana: string): string {
 
 /** `2026-09-30 20:30` — 고른 시간대의 벽시계로. 회차 목록·미리보기의 일정 형식. */
 export function scheduleLabel(instant: Date, iana: string): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: iana,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    })
-      .formatToParts(instant)
-      .map((p) => [p.type, p.value]),
-  );
-  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+  const { date, time } = wallParts(instant, iana);
+  return `${date} ${time}`;
 }
 
 /** 회차 목록에서 고를 수 있는 표시 시간대. 입력은 언제나 분반 시간대로 받는다. */
 export const DISPLAY_ZONES = [
-  { iana: 'Asia/Seoul', label: 'KST' },
-  { iana: 'America/Los_Angeles', label: 'PDT' },
+  { iana: 'Asia/Seoul', label: 'KST', name: '한국 시간' },
+  { iana: 'America/Los_Angeles', label: 'PDT', name: '미국 서부 시간' },
 ] as const;
 
-/** 시간대 약칭. 표시 목록에 없으면 IANA 이름 그대로. */
+/** 시간대 약칭 (`KST`). 표시 목록에 없으면 브라우저가 주는 약칭 (`GMT+1` 등). */
 export function zoneLabel(iana: string): string {
-  return DISPLAY_ZONES.find((z) => z.iana === iana)?.label ?? iana;
+  const known = DISPLAY_ZONES.find((z) => z.iana === iana)?.label;
+  if (known) return known;
+  try {
+    return (
+      new Intl.DateTimeFormat('en-US', { timeZone: iana, timeZoneName: 'short' })
+        .formatToParts(new Date())
+        .find((p) => p.type === 'timeZoneName')?.value ?? iana
+    );
+  } catch {
+    return iana;
+  }
+}
+
+/** 「한국 시간(KST)」 — 관리 화면 머리와 회차 추가 창이 쓰는 기준 시간대 이름. */
+export function zoneTitle(iana: string): string {
+  const name = DISPLAY_ZONES.find((z) => z.iana === iana)?.name ?? iana;
+  return `${name}(${zoneLabel(iana)})`;
 }
 
 /** `9/30(수)` */
@@ -282,6 +358,7 @@ function expand(draft: MeetingDraft): string[] {
 export function planDraft(
   draft: MeetingDraft,
   existing: StudyMeeting[],
+  timeZone: string,
   now = new Date(),
 ): { errors: DraftErrors; plan?: MeetingPlan } {
   const errors: DraftErrors = {};
@@ -304,7 +381,7 @@ export function planDraft(
   }
 
   const byDate = new Map(existing.map((m) => [m.date, m]));
-  const past = (d: string) => kstInstant(d, draft.time).getTime() <= now.getTime();
+  const past = (d: string) => zonedInstant(d, draft.time, timeZone).getTime() <= now.getTime();
 
   if (draft.repeat === 'none') {
     const same = byDate.get(draft.date);
@@ -339,10 +416,11 @@ export function validateEdit(
   edit: { date: string; time: string; title: string },
   selfId: string,
   existing: StudyMeeting[],
+  timeZone: string,
   now = new Date(),
 ): DraftErrors {
   const others = existing.filter((m) => m.id !== selfId);
-  return planDraft({ ...edit, repeat: 'none', until: '', weekdays: [] }, others, now).errors;
+  return planDraft({ ...edit, repeat: 'none', until: '', weekdays: [] }, others, timeZone, now).errors;
 }
 
 /** 새 회차들이 몇 회차부터 몇 회차가 되는지, 뒤 회차 몇 개가 밀리는지, 기간이 늘어나는지. */

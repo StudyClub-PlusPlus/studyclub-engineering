@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 import { getUser } from '@core/lib/auth';
 import { t } from '@core/lib/i18n';
-import { MANAGE_ROLE_LABEL, manageAccessOf, type NavigatorGroup } from '@core/lib/meetings';
+import { MANAGE_ROLE_LABEL, manageAccessOf, zoneTitle, type NavigatorGroup } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
 import { Badge, Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
@@ -121,7 +121,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
             <p data-anno='manage:1-1' className='mt-1.5 flex flex-wrap items-center gap-2 text-sm text-fg-secondary'>
               <Badge tone={role}>{MANAGE_ROLE_LABEL[role]}</Badge>
               <span>
-                <b className='font-semibold text-fg'>{group.name}</b> · 한국 시간(KST) 기준
+                <b className='font-semibold text-fg'>{group.name}</b> · {zoneTitle(group.timeZone)} 기준
               </span>
             </p>
           </div>
