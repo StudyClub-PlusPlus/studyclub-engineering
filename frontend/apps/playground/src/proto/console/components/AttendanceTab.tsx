@@ -117,13 +117,8 @@ function Cell({
       disabled={disabled}
       aria-disabled={readOnly || undefined}
       aria-label={changed ? `${label} · 저장되지 않음` : label}
-      title={
-        readOnly
-          ? label
-          : changed
-            ? '저장되지 않음 — 눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'
-            : '눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'
-      }
+      // 가리킬 때는 조작 방법만 — 저장 상태는 테두리 강조가 보여 준다(스크린리더는 aria-label 로 듣는다).
+      title={readOnly ? label : '눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'}
       className={`relative h-8 w-full rounded-sm border text-[11px] font-bold transition-colors ${
         status
           ? CELL_STYLE[status]
