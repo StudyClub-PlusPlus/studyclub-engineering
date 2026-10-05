@@ -13,7 +13,7 @@ import type { StudyMeeting } from '@studyclub/mock';
  */
 
 /** 시각(`HH:MM`)·제목·반복 묶음이 붙은 회차. 기존 mock 회차는 시각을 스터디 일정 문구에서 뽑는다. */
-export type ProtoMeeting = StudyMeeting & { time?: string; title?: string; seriesId?: string };
+export type ProtoMeeting = StudyMeeting & { time?: string; title?: string };
 
 export type NavigatorGroup = {
   id: string;
@@ -71,7 +71,7 @@ const EDITED_KEY = 'sc_edited_meetings';
 
 type Edit = { date: string; time: string; title?: string };
 
-type Stored = { id: string; date: string; time: string; title?: string; seriesId?: string };
+type Stored = { id: string; date: string; time: string; title?: string };
 
 function readJSON<T>(key: string): Record<string, T[]> {
   if (typeof window === 'undefined') return {};
@@ -98,8 +98,8 @@ export function addMeetings(
   const store = readJSON<Stored>(ADDED_KEY);
   const title = input.title?.trim() || undefined;
   const stamp = Date.now();
-  const seriesId = input.dates.length > 1 ? `r${stamp}` : undefined;
-  const rows = input.dates.map((date, i) => ({ id: `${studyId}-a${stamp}-${i}`, date, time: input.time, title, seriesId }));
+  // 반복 묶음은 저장하지 않는다 — 만든 뒤에는 한 번만 만든 회차와 같다.
+  const rows = input.dates.map((date, i) => ({ id: `${studyId}-a${stamp}-${i}`, date, time: input.time, title }));
   store[studyId] = [...(store[studyId] ?? []), ...rows];
   writeJSON(ADDED_KEY, store);
 }

@@ -32,7 +32,7 @@ import {
 } from '@core/lib/meetings';
 import type { Study } from '@studyclub/mock';
 import { Button, Input, Modal, cx } from '@studyclub/ui';
-import { Pencil, Plus, Repeat as RepeatIcon, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 /**
  * 일정 — 맡은 분반의 회차를 더하고, 고치고, 지운다.
@@ -59,19 +59,10 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
   const started = (m: ProtoMeeting) => meetingWindow(study, m).start.getTime() <= now;
   const upcomingCount = meetings.filter((m) => !started(m)).length;
 
-  function remove(target: ProtoMeeting, scope: 'one' | 'following') {
-    const ids =
-      scope === 'one'
-        ? [target.id]
-        : meetings
-            .filter((m) => !started(m) && m.seriesId === target.seriesId && m.date >= target.date)
-            .map((m) => m.id);
-    deleteMeetings(study.id, ids);
-    setDone(
-      ids.length === 1
-        ? `${target.no}회차(${dayLabel(target.date)})를 지웠습니다.`
-        : `회차 ${ids.length}개를 지웠습니다.`,
-    );
+  /** 반복 묶음을 저장하지 않으므로 한 회차씩만 지운다. */
+  function remove(target: ProtoMeeting) {
+    deleteMeetings(study.id, [target.id]);
+    setDone(`${target.no}회차(${dayLabel(target.date)})를 지웠습니다.`);
     setConfirmId(null);
     refresh();
   }
@@ -177,16 +168,7 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
                   return (
                     <tr key={m.id} className={cx(past && 'text-fg-muted', confirmId === m.id && 'bg-error-50')}>
                       <td className='tnum border-t border-border px-4 py-2.5 font-bold'>{m.no}</td>
-                      <td className='tnum border-t border-border px-3 py-2.5'>
-                        <span className='inline-flex items-center gap-1.5'>
-                          {scheduleLabel(start, zone)}
-                          {m.seriesId && (
-                            <span data-anno='schedule:3-1' title='반복으로 만든 회차' className='text-fg-muted'>
-                              <RepeatIcon size={13} aria-label='반복' />
-                            </span>
-                          )}
-                        </span>
-                      </td>
+                      <td className='tnum border-t border-border px-3 py-2.5'>{scheduleLabel(start, zone)}</td>
                       <td className='border-t border-border px-3 py-2.5'>
                         {m.title ?? <span className='text-fg-muted'>—</span>}
                       </td>
@@ -240,9 +222,6 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
                 .flatMap((row, i) => {
                   const m = meetings[i];
                   if (confirmId !== m.id) return [row];
-                  const following = m.seriesId
-                    ? meetings.filter((x) => !started(x) && x.seriesId === m.seriesId && x.date >= m.date).length
-                    : 1;
                   return [
                     row,
                     <tr key={`${m.id}-confirm`} className='bg-error-50'>
@@ -255,20 +234,9 @@ export function ScheduleManager({ study, group }: { study: Study; group: Navigat
                             <Button variant='ghost' size='sm' onClick={() => setConfirmId(null)}>
                               취소
                             </Button>
-                            {following > 1 ? (
-                              <>
-                                <Button variant='secondary' size='sm' onClick={() => remove(m, 'one')}>
-                                  이 회차만
-                                </Button>
-                                <Button variant='destructive' size='sm' onClick={() => remove(m, 'following')}>
-                                  이후 반복 모두 ({following}개)
-                                </Button>
-                              </>
-                            ) : (
-                              <Button variant='destructive' size='sm' onClick={() => remove(m, 'one')}>
-                                삭제
-                              </Button>
-                            )}
+                            <Button variant='destructive' size='sm' onClick={() => remove(m)}>
+                              삭제
+                            </Button>
                           </span>
                         </div>
                       </td>
