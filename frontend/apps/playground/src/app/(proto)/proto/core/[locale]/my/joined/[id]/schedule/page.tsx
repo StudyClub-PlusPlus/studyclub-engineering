@@ -3,7 +3,7 @@
 import { ScheduleManager } from '@core/components/ScheduleManager';
 import { useManage } from '@core/components/StudyManageShell';
 
-import { MANAGE_SPEC, SCHEDULE_SPEC } from '../spec';
+import { MANAGE_SPEC, SCHEDULE_SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 export default function StudyManageSchedulePage() {

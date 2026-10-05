@@ -208,7 +208,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ### 프론트엔드 사용처
 
-- 프로토타입: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/joined/[id]/manage/schedule/page.tsx` (지금은 브라우저 저장)
+- 프로토타입: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/joined/[id]/schedule/page.tsx` (지금은 브라우저 저장)
 - core-front 스터디 일정 → 일정 탭 (미구현)
 
 ---

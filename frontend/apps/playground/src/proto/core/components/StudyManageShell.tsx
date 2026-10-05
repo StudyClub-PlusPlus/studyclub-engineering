@@ -49,7 +49,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const locale = (params?.locale as string) ?? 'ko';
   const id = typeof params?.id === 'string' ? params.id : '';
-  const base = `/proto/core/${locale}/my/joined/${id}/manage`;
+  const base = `/proto/core/${locale}/my/joined/${id}/schedule`;
 
   const [ready, setReady] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -110,7 +110,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const { role, group, canEdit } = access;
   const captain = role === 'captain';
   const tabs = [
-    { href: `${base}/schedule`, label: '일정' },
+    { href: base, label: '일정' },
     { href: `${base}/attendance`, label: '출석부' },
   ];
 

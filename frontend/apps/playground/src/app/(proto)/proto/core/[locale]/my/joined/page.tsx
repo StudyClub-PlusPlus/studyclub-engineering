@@ -80,6 +80,15 @@ const SORTS: { key: SortKey; label: string }[] = [
 
 const defaultSortOf = (filter: Filter): SortKey => (filter === 'ended' ? 'end' : 'next');
 
+/** 역할로 거르기 — 운영 = 캡틴(만든 캡틴)·네비게이터, 참여 = 크루. */
+type RoleFilter = 'all' | 'manage' | 'join';
+
+const ROLE_FILTERS: { key: RoleFilter; label: string }[] = [
+  { key: 'all', label: '모든 역할' },
+  { key: 'manage', label: '운영 (캡틴·네비게이터)' },
+  { key: 'join', label: '참여 (크루)' },
+];
+
 /** 내가 캡틴(그 스터디를 만든 캡틴)이나 네비게이터로 맡은 스터디. */
 const isMine = (study: Study) => manageAccessOf(study.id) !== undefined;
 
@@ -93,11 +102,13 @@ function studiesIn(
   mine: Study[],
   filter: Filter,
   sort: SortKey,
-  mineOnly: boolean,
+  role: RoleFilter,
   wallTz: WallTz,
   locale: Locale,
 ): Study[] {
-  const list = mine.filter((s) => filter === 'all' || lifeStatus(s) === filter).filter((s) => !mineOnly || isMine(s));
+  const list = mine
+    .filter((s) => filter === 'all' || lifeStatus(s) === filter)
+    .filter((s) => role === 'all' || (role === 'manage') === isMine(s));
   // 다음 회차가 없는 스터디(참여 종료 등)는 다음 회차 순에서 맨 뒤로 간다.
   const nextAt = (s: Study) => {
     const m = upcomingMeeting(s, wallTz);
@@ -123,7 +134,7 @@ function weekRangeLabel(days: WeekDay[]): string {
 
 /** 내 스터디에서 들어가는 스터디 일정. 주소 값은 study_id(STUDY.ID). */
 function schedulePath(locale: Locale, study: Study): string {
-  return `/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`;
+  return `/proto/core/${locale}/my/joined/${study.study_id}/schedule`;
 }
 
 function weekChip(category: string | undefined): { accent: string; tint: number } {
@@ -285,8 +296,7 @@ export default function MyJoinedPage() {
   const [mineIds, setMineIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<Filter>('active');
   const [sort, setSort] = useState<SortKey>(defaultSortOf('active'));
-  /** 내 담당만 — 캡틴·네비게이터로 맡은 스터디만 남긴다. */
-  const [mineOnly, setMineOnly] = useState(false);
+  const [role, setRole] = useState<RoleFilter>('all');
   const [page, setPage] = useState(1);
   const [wallTz, setWallTz] = useState<WallTz>('KST');
   const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
@@ -318,10 +328,10 @@ export default function MyJoinedPage() {
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
 
   const shown = useMemo(
-    () => studiesIn(mine, filter, sort, mineOnly, wallTz, locale),
-    [filter, mine, sort, mineOnly, wallTz, locale],
+    () => studiesIn(mine, filter, sort, role, wallTz, locale),
+    [filter, mine, sort, role, wallTz, locale],
   );
-  // 맡은 스터디가 하나도 없으면(대부분의 크루) 토글을 두지 않는다 — 눌러도 빈 목록뿐이다.
+  // 맡은 스터디가 하나도 없으면(대부분의 크루) 역할 거르기를 두지 않는다 — 어느 값이든 같은 목록이다.
   const hasMine = mine.some(isMine);
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
@@ -343,9 +353,12 @@ export default function MyJoinedPage() {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
-  const empty = mineOnly
-    ? { title: '맡은 스터디가 없습니다', description: '이 탭에는 캡틴이나 네비게이터로 맡은 스터디가 없습니다.' }
-    : EMPTY[filter];
+  const empty =
+    role === 'manage'
+      ? { title: '운영하는 스터디가 없습니다', description: '이 탭에는 캡틴이나 네비게이터로 맡은 스터디가 없습니다.' }
+      : role === 'join'
+        ? { title: '크루로 참여한 스터디가 없습니다', description: '이 탭에는 크루로 참여한 스터디가 없습니다.' }
+        : EMPTY[filter];
 
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
@@ -370,23 +383,22 @@ export default function MyJoinedPage() {
         <SegmentTabs anno='2' value={filter} options={FILTERS} onChange={changeFilter} />
         <div className='ml-auto flex flex-wrap items-center gap-2'>
           {hasMine && (
-            <button
-              type='button'
+            <select
               data-anno='2-2'
-              aria-pressed={mineOnly}
-              onClick={() => {
-                setMineOnly((v) => !v);
+              aria-label='역할'
+              value={role}
+              onChange={(ev) => {
+                setRole(ev.target.value as RoleFilter);
                 setPage(1);
               }}
-              className={cx(
-                'h-8 rounded-pill border px-3 text-sm font-semibold transition-colors',
-                mineOnly
-                  ? 'border-brand bg-brand-subtle text-brand'
-                  : 'border-border-strong text-fg-secondary hover:bg-surface-2',
-              )}
+              className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-fg-secondary'
             >
-              내 담당만
-            </button>
+              {ROLE_FILTERS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           )}
           <select
             data-anno='2-3'

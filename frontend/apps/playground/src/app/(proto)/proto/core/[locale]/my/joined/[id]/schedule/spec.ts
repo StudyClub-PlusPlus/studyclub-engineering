@@ -37,7 +37,7 @@ export const MANAGE_SPEC: ScreenSpec = {
       n: '2',
       title: '탭 — 일정 / 출석부',
       display: ['선택된 탭에 밑줄'],
-      behavior: ['탭마다 주소가 다르다(…/manage/schedule · …/manage/attendance). 새로고침해도 그 탭에 머문다'],
+      behavior: ['탭마다 주소가 다르다(…/schedule · …/schedule/attendance). 새로고침해도 그 탭에 머문다'],
       policy: ['규칙은 탭이 아니라 탭 위 정보 카드(3)에 둔다 — 어느 탭을 보든 규칙이 함께 보인다'],
     },
     {
