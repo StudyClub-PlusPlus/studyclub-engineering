@@ -102,7 +102,7 @@ flowchart LR
   - 시작전: 명부 `ACTIVE` 이고 오늘 < 기수 `START_DATE`
   - 참여중: 명부 `ACTIVE` 이고 오늘 >= 기수 `START_DATE`
   - 완주: 명부 `COMPLETED`. 배지 문구 `완주`
-  - 참여 중단: 명부 `WITHDRAWN`. 크루 배지는 `참여 종료`. 사유는 쓰지 않음
+  - 참여 중단: 명부 `WITHDRAWN`. 카드 상태 배지는 `종료`. 사유는 쓰지 않음
   - `PAUSED`: ERD에 있음. 이 화면 탭·배지는 미정
 - **데이터**: `STUDY_PARTICIPANT.STATUS`, `STUDY_COHORT.START_DATE` · `END_DATE`
 - **작업**: 필터 탭
@@ -168,7 +168,7 @@ flowchart LR
 
 ### 4-3. 참여 상태
 
-- **표시**: `시작전` · `참여중` · `완주` · `참여 종료`
+- **표시**: `시작전` · `참여중` · `완주` · `종료`
 - **정책**: 2번 탭과 같은 판정. 완주는 `참여 종료` 라벨을 쓰지 않음
 - **작업**: 상태 배지
 
@@ -253,7 +253,7 @@ erDiagram
 
 - 범위 밖: 찜 목록 본문, 출석·지각 확정, 캡틴 출석명부, 참여 중단 사유 표기, 휴가 신청·취소
 - 스토리 `크루는 스터디 출석부를 볼 수 있다` 는 스터디 일정의 출석부 탭으로 옮겼다 ([회차 등록 PRD](../navigator-register-sessions/PRD.md) 13)
-- 크루 화면에 `참여 중단`이라는 말은 쓰지 않음. 배지는 `참여 종료`
+- 크루 화면에 `참여 중단`이라는 말은 쓰지 않음. 카드 상태 배지는 `종료`
 - 명칭: 참여 상태·타임존은 탭. 전회 출석은 점수판 `n/n` 으로 읽음. 검색용 태그는 이 목록에 없음
 - 회차의 영어 식별자는 `meeting` (`STUDY_MEETING`). 로그인 `SESSION`과 구분
 - 목록의 정본은 명부(`STUDY_PARTICIPANT`). 신청 제출 시 명부가 생긴다
@@ -268,7 +268,7 @@ erDiagram
 | 대상 | 필드 | ERD | 비고 |
 | --- | --- | --- | --- |
 | 신청 | FORM_ANSWER | JSON | 행이 있으면 제출 완료. 상태값 없음. 이 화면은 명부(`STUDY_PARTICIPANT`)만. 프로토 `accepted`는 명부 `ACTIVE` |
-| 명부 | STATUS | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | `WITHDRAWN` = 참여 중단 → 크루 배지 `참여 종료`. `COMPLETED` = 완주. `PAUSED` 화면 미정 |
+| 명부 | STATUS | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | `WITHDRAWN` = 참여 중단 → 카드 상태 배지 `종료`. `COMPLETED` = 완주. `PAUSED` 화면 미정 |
 | 스터디 | TITLE, STUDY_KIND, CATEGORY | `STUDY` / `CLUB` | 기간·포맷·채널·자료는 기수 |
 | 기수 | START_DATE, END_DATE, DISCORD_CHANNEL_URL, DRIVE_URL, STATUS | 기수 상태 `DRAFT` / `OPEN` / `CLOSED` | 모집중·진행중은 저장하지 않고 날짜로 계산 |
 | 반 | NAME, STARTS_AT, TIMEZONE | IANA | 참가·회차·출석의 소속 |

@@ -2,6 +2,8 @@
 
 기준 프로토타입: 스터디 일정 — 일정 · 출석부 (playground 사용자 사이트 · 내 스터디 → 스터디 일정)
 
+화면 캡처 (2026-10-05): [내 스터디](screens/1-my-studies.jpg) · [네비게이터 일정](screens/2-navigator-schedule.jpg) · [네비게이터 출석부](screens/3-navigator-attendance.jpg) · [크루 일정](screens/4-crew-schedule.jpg) · [크루 출석부](screens/5-crew-attendance.jpg)
+
 지금까지 스터디마다 구글 시트로 쓰던 출석부(스터디 시간 · 네비게이터 · 일정표 · 출석 체크 · 스터디 규칙)를 웹으로 옮긴다.
 일정을 고치는 사람은 캡틴·네비게이터이고, 보는 사람은 그 분반 참가자 전원이다.
 

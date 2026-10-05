@@ -26,7 +26,7 @@ export type EndKind = 'completed' | 'withdrawn';
 export const LIFE_LABEL: Record<LifeStatus, string> = {
   upcoming: '시작전',
   active: '참여중',
-  ended: '참여 종료',
+  ended: '종료',
 };
 
 /** 프로토용 명부. 서버가 생기면 STUDY_PARTICIPANT.STATUS 로 교체한다. */
@@ -50,7 +50,7 @@ export function lifeStatus(study: Study): LifeStatus {
 }
 
 /** 참여 중단 배지. 완주는 이 배지를 쓰지 않는다. */
-export const LEFT_BADGE = { label: '참여 종료', tone: 'ended' as const };
+export const LEFT_BADGE = { label: '종료', tone: 'ended' as const };
 
 export function isCompleted(study: Study): boolean {
   return endKindOf(study) === 'completed';
