@@ -497,16 +497,13 @@ export function ScheduleManager({
       )}
 
       {canEdit && dirty && (
-        <div
-          data-anno='schedule:6'
-          className='sticky bottom-3 z-10 flex flex-wrap items-center gap-3 rounded-control border border-brand bg-brand-subtle px-4 py-2.5 shadow-md'
-        >
-          <p className='text-sm font-medium text-brand'>
-            저장되지 않은 변경 {changedIds.length}개 회차
+        <div data-anno='schedule:6' className='sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-bg py-2'>
+          <p className='mr-1 text-xs text-fg-muted'>
+            변경 {changedIds.length}개
             {errorCount > 0 && <span className='ml-1 text-error-700'>· 고칠 칸 {errorCount}개</span>}
           </p>
-          <div className='ml-auto flex items-center gap-2'>
-            <Button variant='secondary' size='sm' onClick={clearDrafts}>
+          <div className='flex items-center gap-1.5'>
+            <Button variant='ghost' size='sm' onClick={clearDrafts}>
               변경 취소
             </Button>
             <Button size='sm' onClick={saveAll} disabled={errorCount > 0}>

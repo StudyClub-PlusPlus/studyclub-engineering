@@ -407,26 +407,35 @@ export function AttendanceTab({
       {!readOnly && (
         <div
           className={`mt-4 flex flex-wrap items-center gap-3 ${
-            minimal && dirty
-              ? 'sticky bottom-3 z-10 rounded-control border border-brand bg-brand-subtle px-4 py-2.5 shadow-md'
-              : ''
+            minimal ? 'sticky bottom-0 z-10 justify-end bg-bg py-2' : ''
           }`}
         >
           {dirty ? (
-            <p data-anno='attendance:8' className='text-sm font-medium text-brand'>
-              저장되지 않은 변경 {pending}칸. 저장을 눌러야 반영됩니다.
-            </p>
+            minimal ? (
+              <p data-anno='attendance:8' className='mr-1 text-xs text-fg-muted'>
+                변경 {pending}칸
+              </p>
+            ) : (
+              <p data-anno='attendance:8' className='text-sm font-medium text-brand'>
+                저장되지 않은 변경 {pending}칸. 저장을 눌러야 반영됩니다.
+              </p>
+            )
           ) : (
             saved && !minimal && <span className='text-sm font-medium text-success-700'>저장되었습니다.</span>
           )}
-          <div className='ml-auto flex items-center gap-2'>
+          <div className={`flex items-center gap-2 ${minimal ? '' : 'ml-auto'}`}>
             {dirty && (
-              <Button variant='secondary' onClick={revert} disabled={saving}>
+              <Button
+                variant={minimal ? 'ghost' : 'secondary'}
+                size={minimal ? 'sm' : undefined}
+                onClick={revert}
+                disabled={saving}
+              >
                 변경 취소
               </Button>
             )}
             <span data-anno='attendance:7'>
-              <Button onClick={save} loading={saving} disabled={!dirty}>
+              <Button size={minimal ? 'sm' : undefined} onClick={save} loading={saving} disabled={!dirty}>
                 저장
               </Button>
             </span>
