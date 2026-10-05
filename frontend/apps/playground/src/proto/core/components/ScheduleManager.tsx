@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
+import { DiscordGlyph } from '@core/components/DiscordGlyph';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import { meetingWindow, meetingsOf } from '@core/lib/attendance';
 import {
@@ -47,7 +48,7 @@ import {
 import type { Study } from '@studyclub/mock';
 import { Button, Input, Modal, cx } from '@studyclub/ui';
 import { canOpenDiscord, canOpenDrive, discordUrl, driveUrl } from '@core/lib/joined';
-import { Plus, Trash2 } from 'lucide-react';
+import { FolderOpen, Plus, Trash2 } from 'lucide-react';
 
 /**
  * 스터디 일정 — 구글 시트 출석부의 일정표를 옮긴 화면. 참가자 누구나 본다.
@@ -688,23 +689,19 @@ function PresenterSelect({
 
 /* ── 스터디 정보 · 규칙 ───────────────────────────────────────────────────── */
 
-/** 정보 카드의 외부 주소 한 줄 — 주소를 그대로 보이고 새 창으로 연다. */
-function LinkItem({ label, href }: { label: string; href: string }) {
+/** 정보 카드의 바로가기 — 아이콘과 이름만 보이고 새 창으로 연다. 주소는 가리키면 보인다. */
+function LinkButton({ label, href, icon }: { label: string; href: string; icon: ReactNode }) {
   return (
-    <div className='flex min-w-0 gap-2'>
-      <dt className='shrink-0 text-fg-muted'>{label}</dt>
-      <dd className='min-w-0'>
-        <a
-          href={href}
-          target='_blank'
-          rel='noopener noreferrer'
-          className='block max-w-[18rem] truncate font-semibold text-brand underline-offset-2 hover:underline'
-          title={href}
-        >
-          {href.replace(/^https?:\/\//, '')}
-        </a>
-      </dd>
-    </div>
+    <a
+      href={href}
+      target='_blank'
+      rel='noopener noreferrer'
+      title={href}
+      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 text-sm font-semibold text-fg-secondary hover:bg-surface-2 hover:text-fg'
+    >
+      {icon}
+      {label}
+    </a>
   );
 }
 
@@ -746,19 +743,31 @@ function StudyBoard({
 
   return (
     <section data-anno='schedule:11' className='card px-5 py-4'>
-      <dl className='flex flex-wrap gap-x-6 gap-y-1 text-sm'>
-        <div className='flex gap-2'>
-          <dt className='text-fg-muted'>스터디 시간</dt>
-          <dd className='tnum font-semibold text-fg'>{fixedTime}</dd>
+      <div className='flex flex-wrap items-center justify-between gap-3'>
+        <dl className='flex flex-wrap gap-x-6 gap-y-1 text-sm'>
+          <div className='flex gap-2'>
+            <dt className='text-fg-muted'>스터디 시간</dt>
+            <dd className='tnum font-semibold text-fg'>{fixedTime}</dd>
+          </div>
+          <div className='flex gap-2'>
+            <dt className='text-fg-muted'>네비게이터</dt>
+            <dd className='font-semibold text-fg'>{navigator}</dd>
+          </div>
+        </dl>
+        {/* 시트 머리에 적어 두던 두 주소. 참가자에게만 보이는 화면이라 그대로 연다 (share 09-30) */}
+        <div className='flex flex-wrap gap-1.5'>
+          {canOpenDiscord(study) && (
+            <LinkButton label='디스코드' href={discordUrl(study)} icon={<DiscordGlyph size={15} />} />
+          )}
+          {canOpenDrive(study) && (
+            <LinkButton
+              label='구글 드라이브'
+              href={driveUrl(study)}
+              icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden />}
+            />
+          )}
         </div>
-        <div className='flex gap-2'>
-          <dt className='text-fg-muted'>네비게이터</dt>
-          <dd className='font-semibold text-fg'>{navigator}</dd>
-        </div>
-        {/* 시트 머리에 적어 두던 두 주소. 참가자에게만 보이는 화면이라 그대로 보인다 (share 09-30) */}
-        {canOpenDiscord(study) && <LinkItem label='디스코드' href={discordUrl(study)} />}
-        {canOpenDrive(study) && <LinkItem label='구글 드라이브' href={driveUrl(study)} />}
-      </dl>
+      </div>
 
       <div data-anno='schedule:12' className='mt-3 border-t border-border pt-3'>
         <h3 className='text-sm font-bold text-fg'>스터디 규칙</h3>
