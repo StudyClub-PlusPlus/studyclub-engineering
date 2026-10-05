@@ -7,15 +7,9 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { StudyBoard } from '@core/components/StudyBoard';
 import { getUser } from '@core/lib/auth';
 import { t } from '@core/lib/i18n';
-import {
-  SCHEDULE_ROLE_LABEL,
-  scheduleAccessOf,
-  zoneTitle,
-  type NavigatorGroup,
-  type ScheduleRole,
-} from '@core/lib/meetings';
+import { scheduleAccessOf, type NavigatorGroup, type ScheduleRole } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
-import { Badge, Button, Modal, cx } from '@studyclub/ui';
+import { Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
 
 import { useMswStudies } from '@/proto/lib/useMswStudies';
@@ -134,12 +128,6 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
         <header data-anno='manage:1' className='mt-3 flex flex-wrap items-start justify-between gap-3'>
           <div className='min-w-0'>
             <h1 className='text-2xl font-extrabold tracking-tight'>{t(study.title, locale === 'en' ? 'en' : 'ko')}</h1>
-            <p data-anno='manage:1-1' className='mt-1.5 flex flex-wrap items-center gap-2 text-sm text-fg-secondary'>
-              <Badge tone={role === 'crew' ? 'member' : role}>{SCHEDULE_ROLE_LABEL[role]}</Badge>
-              <span>
-                <b className='font-semibold text-fg'>{group.name}</b> · {zoneTitle(group.timeZone)} 기준
-              </span>
-            </p>
           </div>
         </header>
 
@@ -191,7 +179,9 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
           </>
         }
       >
-        <p className='text-sm text-fg-secondary'>저장을 누르지 않으면 고친 내용이 사라집니다. 나가기 전에 저장해 주세요.</p>
+        <p className='text-sm text-fg-secondary'>
+          저장을 누르지 않으면 고친 내용이 사라집니다. 나가기 전에 저장해 주세요.
+        </p>
       </Modal>
     </Ctx.Provider>
   );

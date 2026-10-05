@@ -399,7 +399,18 @@ export function AttendanceTab({
                     {rate === undefined ? (
                       <span className='text-fg-muted'>—</span>
                     ) : (
-                      <span className={rate >= 80 ? 'text-success-700' : rate >= 60 ? 'text-fg' : 'text-error-700'}>
+                      <span
+                        className={
+                          // 참여를 끝낸 사람의 출석률은 회색 — 지금 관리할 대상이 아니다.
+                          c.left
+                            ? 'text-fg-muted'
+                            : rate >= 80
+                              ? 'text-success-700'
+                              : rate >= 60
+                                ? 'text-fg'
+                                : 'text-error-700'
+                        }
+                      >
                         {rate}%
                       </span>
                     )}
