@@ -4,7 +4,6 @@ import type { Study } from '..';
 // ── 스터디 목록/상세 API 타입 ───────────────────────────────────────────
 export type ApiStudy = {
   studyId: number;
-  slug: string;
   title: string;
   oneLineSummary: string;
   category: string;
@@ -15,7 +14,6 @@ export type ApiStudy = {
   status: 'DRAFT' | 'OPEN' | 'CLOSED';
   phase: 'RECRUITING' | 'ONGOING' | 'CLOSED';
   recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED';
-  deliveryFormat: 'ONLINE' | 'OFFLINE' | 'HYBRID';
   capacity: number | null;
   currentApplicants: number;
   recruitDeadlineAt: string | null;
@@ -27,14 +25,12 @@ export type ApiStudy = {
 export type ApiStudyDetail = {
   id: number;
   programId: number;
-  slug: string;
   title: string;
   oneLineSummary: string;
   description: string | null;
   category: string;
   studyKind: 'STUDY' | 'CLUB';
   thumbnailUrl: string | null;
-  deliveryFormat: 'ONLINE' | 'OFFLINE' | 'HYBRID';
   status: 'DRAFT' | 'OPEN' | 'ONGOING' | 'ENDED' | 'CLOSED';
   recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED' | null;
   curriculum: string | null;
@@ -78,12 +74,6 @@ function toStudyStatus(status: Study['status']): 'DRAFT' | 'OPEN' | 'CLOSED' {
   return status === 'closed' ? 'CLOSED' : 'OPEN';
 }
 
-function toFormat(format: Study['format']): ApiStudy['deliveryFormat'] {
-  if (format === 'offline') return 'OFFLINE';
-  if (format === 'hybrid') return 'HYBRID';
-  return 'ONLINE';
-}
-
 function toTimezone(tz?: Study['timezone']): ApiStudy['timezone'] {
   if (!tz) return null;
   if (tz === 'both') return 'BOTH';
@@ -94,7 +84,6 @@ export function studyToApiStudy(s: Study): ApiStudy {
   const recruitClosed = s.recruitment?.status === 'closed';
   return {
     studyId: s.study_id,
-    slug: s.id,
     title: s.title.ko,
     oneLineSummary: s.summary.ko,
     category: categoryEnum(s.category ?? ''),
@@ -105,7 +94,6 @@ export function studyToApiStudy(s: Study): ApiStudy {
     status: toStudyStatus(s.status),
     phase: toPhase(s.status),
     recruitStatus: recruitClosed ? 'RECRUIT_CLOSED' : 'RECRUITING',
-    deliveryFormat: toFormat(s.format),
     capacity: s.seats?.total ?? null,
     currentApplicants: s.seats?.taken ?? 0,
     recruitDeadlineAt: isoDate(s.recruitment?.deadline),
@@ -120,14 +108,12 @@ export function studyToApiStudyDetail(s: Study): ApiStudyDetail {
   return {
     id: s.study_id,
     programId: s.study_id,
-    slug: s.id,
     title: s.title.ko,
     oneLineSummary: s.summary.ko,
     description: s.description?.ko ?? null,
     category: categoryEnum(s.category ?? ''),
     studyKind: s.kind === 'club' ? 'CLUB' : 'STUDY',
     thumbnailUrl: s.image ?? null,
-    deliveryFormat: toFormat(s.format),
     status: toStudyStatus(s.status),
     recruitStatus: recruitClosed ? 'RECRUIT_CLOSED' : 'RECRUITING',
     curriculum: null,
