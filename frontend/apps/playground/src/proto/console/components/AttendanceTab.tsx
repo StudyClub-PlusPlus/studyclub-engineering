@@ -423,7 +423,7 @@ export function AttendanceTab({
                         className={
                           // 참여를 끝낸 사람의 출석률은 회색 — 지금 관리할 대상이 아니다.
                           c.left
-                            ? 'text-fg-muted'
+                            ? 'font-normal text-fg-muted'
                             : rate >= 80
                               ? 'text-success-700'
                               : rate >= 60

@@ -17,6 +17,7 @@ import {
   durationOf,
   isCompleted,
   lifeStatus,
+  upcomingMeeting,
   mondayOf,
   upcomingOf,
   userWallTz,
@@ -27,10 +28,11 @@ import {
   type WeekDay,
 } from '@core/lib/joined';
 import { getApplications, getRegion } from '@core/lib/me';
-import { SCHEDULE_ROLE_LABEL, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
+import { meetingWindow, meetingsOf } from '@core/lib/attendance';
+import { SCHEDULE_ROLE_LABEL, isKickoff, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
 import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
-import { Award, BookOpen, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
+import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -66,10 +68,51 @@ const EMPTY: Record<Filter, { title: string; description: string }> = {
   },
 };
 
-function studiesIn(mine: Study[], filter: Filter): Study[] {
-  const list = filter === 'all' ? mine : mine.filter((s) => lifeStatus(s) === filter);
-  if (filter !== 'ended') return list;
-  return [...list].sort((a, b) => Number(isCompleted(b)) - Number(isCompleted(a)));
+/** 목록 정렬. 처음 값은 탭마다 다르다 — 참여 종료 탭은 종료일 최근 순, 나머지는 다음 회차 순. */
+type SortKey = 'next' | 'start' | 'end' | 'name';
+
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'next', label: '다음 회차 순' },
+  { key: 'start', label: '시작일 최근 순' },
+  { key: 'end', label: '종료일 최근 순' },
+  { key: 'name', label: '이름 순' },
+];
+
+const defaultSortOf = (filter: Filter): SortKey => (filter === 'ended' ? 'end' : 'next');
+
+/** 내가 캡틴(그 스터디를 만든 캡틴)이나 네비게이터로 맡은 스터디. */
+const isMine = (study: Study) => manageAccessOf(study.id) !== undefined;
+
+/** 첫·마지막 정규 회차 일자 — 킥오프는 기간에 넣지 않는다. */
+function spanOf(study: Study): { start: string; end: string } {
+  const regular = meetingsOf(study).filter((m) => !isKickoff(m));
+  return { start: regular[0]?.date ?? '', end: regular[regular.length - 1]?.date ?? '' };
+}
+
+function studiesIn(
+  mine: Study[],
+  filter: Filter,
+  sort: SortKey,
+  mineOnly: boolean,
+  wallTz: WallTz,
+  locale: Locale,
+): Study[] {
+  const list = mine.filter((s) => filter === 'all' || lifeStatus(s) === filter).filter((s) => !mineOnly || isMine(s));
+  // 다음 회차가 없는 스터디(참여 종료 등)는 다음 회차 순에서 맨 뒤로 간다.
+  const nextAt = (s: Study) => {
+    const m = upcomingMeeting(s, wallTz);
+    return m ? meetingWindow(s, m).start.getTime() : Number.POSITIVE_INFINITY;
+  };
+  const byKey = (a: Study, b: Study) => {
+    if (sort === 'next') return nextAt(a) - nextAt(b);
+    if (sort === 'start') return spanOf(b).start.localeCompare(spanOf(a).start);
+    if (sort === 'end') return spanOf(b).end.localeCompare(spanOf(a).end);
+    return t(a.title, locale).localeCompare(t(b.title, locale), locale);
+  };
+  // 참여 종료 탭은 완주 카드를 먼저 둔다 — 그 안에서 고른 순서로.
+  return [...list].sort(
+    (a, b) => (filter === 'ended' ? Number(isCompleted(b)) - Number(isCompleted(a)) : 0) || byKey(a, b),
+  );
 }
 
 function weekRangeLabel(days: WeekDay[]): string {
@@ -241,6 +284,9 @@ export default function MyJoinedPage() {
   const [ready, setReady] = useState(false);
   const [mineIds, setMineIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<Filter>('active');
+  const [sort, setSort] = useState<SortKey>(defaultSortOf('active'));
+  /** 내 담당만 — 캡틴·네비게이터로 맡은 스터디만 남긴다. */
+  const [mineOnly, setMineOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [wallTz, setWallTz] = useState<WallTz>('KST');
   const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
@@ -271,7 +317,12 @@ export default function MyJoinedPage() {
   const days = useMemo(() => weekDays(mine, locale, wallTz, weekStart), [mine, locale, wallTz, weekStart]);
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
 
-  const shown = useMemo(() => studiesIn(mine, filter), [filter, mine]);
+  const shown = useMemo(
+    () => studiesIn(mine, filter, sort, mineOnly, wallTz, locale),
+    [filter, mine, sort, mineOnly, wallTz, locale],
+  );
+  // 맡은 스터디가 하나도 없으면(대부분의 크루) 토글을 두지 않는다 — 눌러도 빈 목록뿐이다.
+  const hasMine = mine.some(isMine);
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
   const pageSafe = Math.min(page, pages);
@@ -279,6 +330,7 @@ export default function MyJoinedPage() {
 
   function changeFilter(next: Filter) {
     setFilter(next);
+    setSort(defaultSortOf(next));
     setPage(1);
   }
 
@@ -291,7 +343,9 @@ export default function MyJoinedPage() {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
-  const empty = EMPTY[filter];
+  const empty = mineOnly
+    ? { title: '맡은 스터디가 없습니다', description: '이 탭에는 캡틴이나 네비게이터로 맡은 스터디가 없습니다.' }
+    : EMPTY[filter];
 
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
@@ -314,16 +368,43 @@ export default function MyJoinedPage() {
 
       <div className='mt-5 flex flex-wrap items-center gap-2'>
         <SegmentTabs anno='2' value={filter} options={FILTERS} onChange={changeFilter} />
-        <span data-anno='2-1' className='ml-auto'>
-          <Button
-            variant='secondary'
-            size='sm'
-            leadingIcon={<Heart size={14} />}
-            onClick={() => router.push(`/proto/core/${locale}/my/saved`)}
+        <div className='ml-auto flex flex-wrap items-center gap-2'>
+          {hasMine && (
+            <button
+              type='button'
+              data-anno='2-2'
+              aria-pressed={mineOnly}
+              onClick={() => {
+                setMineOnly((v) => !v);
+                setPage(1);
+              }}
+              className={cx(
+                'h-8 rounded-pill border px-3 text-sm font-semibold transition-colors',
+                mineOnly
+                  ? 'border-brand bg-brand-subtle text-brand'
+                  : 'border-border-strong text-fg-secondary hover:bg-surface-2',
+              )}
+            >
+              내 담당만
+            </button>
+          )}
+          <select
+            data-anno='2-3'
+            aria-label='정렬'
+            value={sort}
+            onChange={(ev) => {
+              setSort(ev.target.value as SortKey);
+              setPage(1);
+            }}
+            className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-fg-secondary'
           >
-            찜한 스터디
-          </Button>
-        </span>
+            {SORTS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {shown.length === 0 ? (

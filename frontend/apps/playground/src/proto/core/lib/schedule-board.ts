@@ -20,12 +20,9 @@ export type Participant = {
   me?: boolean;
   /** 캡틴·네비게이터면 그 역할. 크루는 비운다 — 출석부 이름 옆 칩. */
   role?: ManageRole;
-  /** 스터디를 중단한 사람 — 하차(스스로) · 제명(운영). `at` 은 중단 일자(yyyy-MM-dd). */
-  left?: { kind: 'quit' | 'expelled'; at: string };
+  /** 스터디를 중단한 사람(하차·제명 구분 없이 「참여 중단」). `at` 은 중단 일자(yyyy-MM-dd). */
+  left?: { at: string };
 };
-
-/** 하차·제명 이름. 크루에게는 사유 없이 「참여 종료」만 보인다. */
-export const LEFT_LABEL: Record<'quit' | 'expelled', string> = { quit: '하차', expelled: '제명' };
 
 /** 프로토의 「나」 — 분반 명부에 따로 없어 ID 를 고정한다. */
 export const ME_ID = 'me';
@@ -44,18 +41,11 @@ function myName(): string {
 export function participantsOf(study: Study): Participant[] {
   const crew = myGroupCrew(study);
   const myRole = scheduleAccessOf(study).role;
-  // 프로토 가정 — 명부 5번째는 하차, 9번째는 제명. 3회차 날 그만뒀다고 본다.
-  // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT (하차·제명 구분 컬럼은 미확정)
+  // 프로토 가정 — 명부 5번째·9번째가 3회차 날 참여를 중단했다고 본다.
+  // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
   const regular = meetingsOf(study).filter((m) => !isKickoff(m));
   const leftAt = regular[2]?.date ?? regular[0]?.date ?? '';
-  const leftOf = (i: number) =>
-    !leftAt
-      ? undefined
-      : i === 4
-        ? { kind: 'quit' as const, at: leftAt }
-        : i === 8
-          ? { kind: 'expelled' as const, at: leftAt }
-          : undefined;
+  const leftOf = (i: number) => (leftAt && (i === 4 || i === 8) ? { at: leftAt } : undefined);
   const names = [myName(), ...crew.map((c) => c.name)];
   const dup = (name: string) => names.filter((n) => n === name).length > 1;
   return [

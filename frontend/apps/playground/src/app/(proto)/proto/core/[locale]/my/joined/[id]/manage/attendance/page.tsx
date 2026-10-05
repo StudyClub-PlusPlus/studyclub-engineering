@@ -9,7 +9,7 @@ import { useManage } from '@core/components/StudyManageShell';
 import { getMyAttendance, meetingsOf } from '@core/lib/attendance';
 import { isKickoff, type ProtoMeeting } from '@core/lib/meetings';
 import { getGroupAttendance, saveGroupAttendance, type AttendanceBook } from '@core/lib/navigator-attendance';
-import { LEFT_LABEL, ME_ID, participantsOf } from '@core/lib/schedule-board';
+import { ME_ID, participantsOf } from '@core/lib/schedule-board';
 import { Button } from '@studyclub/ui';
 import { ExternalLink } from 'lucide-react';
 
@@ -35,9 +35,9 @@ export default function StudyManageAttendancePage() {
   }, [study]);
 
   const meetings = meetingsOf(study);
-  // 중단한 사람은 맨 아래로. 사유(하차·제명)는 캡틴·네비게이터에게만 — 크루에게는 「참여 종료」.
+  // 중단한 사람은 맨 아래로. 하차·제명을 가르지 않고 누구에게나 「참여 중단」.
   const crew = participantsOf(study)
-    .map((p) => ({ ...p, left: p.left && { label: canEdit ? LEFT_LABEL[p.left.kind] : '참여 종료', at: p.left.at } }))
+    .map((p) => ({ ...p, left: p.left && { label: '참여 중단', at: p.left.at } }))
     .sort((a, b) => Number(Boolean(a.left)) - Number(Boolean(b.left)));
   const presentersOf = (id: string) => {
     const m = meetings.find((x) => x.id === id) as ProtoMeeting | undefined;
@@ -59,7 +59,7 @@ export default function StudyManageAttendancePage() {
       <ScreenSpecRegistrar spec={ATTENDANCE_SPEC} />
 
       {captain && (
-      <div className='mb-4 flex justify-end'>
+        <div className='mb-4 flex justify-end'>
           <span data-anno='book:2'>
             <Button
               size='sm'
@@ -70,7 +70,7 @@ export default function StudyManageAttendancePage() {
               백오피스 출석부 (전체 참여자)
             </Button>
           </span>
-      </div>
+        </div>
       )}
 
       {meetings.length === 0 ? (
