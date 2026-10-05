@@ -24,12 +24,12 @@
 
 ## 결정 사항
 
-PRD 「4. 미확정」 을 아래로 닫는다. 1~6 은 기획(세은님)과 합의(2·3 은 2026-10-02 답변으로 갱신), 7~8 은 이 스펙에서 정했다.
+PRD 「4. 미확정」 을 아래로 닫는다. 1~6 은 기획(세은님)과 합의(3 은 2026-10-02, 2 는 2026-10-05 답변으로 갱신), 7~8 은 이 스펙에서 정했다.
 
 | # | 항목 | 결정 | 근거 |
 |---|---|---|---|
 | 1 | 제목 · 회차 번호 | `STUDY_MEETING.TITLE` VARCHAR(50) NULL 추가. 회차 번호는 저장하지 않고 분반 회차를 `SCHEDULED_AT` 오름차순으로 센 순번으로 계산 | 번호를 저장하면 추가·삭제·수정 때마다 뒤 회차를 전부 다시 써야 한다. PRD 계산 규칙과 같다 |
-| 2 | 반복 | **반복은 만들 때만 쓰는 입력이다. 묶음을 저장하지 않는다** (`SERIES_ID` 없음). 삭제는 한 회차씩만 — PRD 3-5 「이후 반복 모두」 는 뺀다. 목록의 반복 표시도 그릴 근거가 없어 뺀다 | 기획 답변 (2026-10-02). 묶음을 저장하지 않으면 만든 뒤의 회차는 한 번만 만든 회차와 구별되지 않는다 |
+| 2 | 반복 | **반복 묶음 ID 를 저장한다** — `STUDY_MEETING.SERIES_ID` VARCHAR(36) NULL. 한 요청으로 회차를 2개 이상 만들면 서버가 UUID 하나를 만들어 그 회차 모두에 넣는다. 한 번만 만든 회차는 null. 요청 바디는 그대로다. **쓰는 기능은 아직 없다** — 삭제·수정은 한 회차씩이고(PRD 3-5 「이후 반복 모두」 없음), 목록의 반복 표시도 두지 않는다 | 기획 답변 (2026-10-05). 반복 단위 수정·삭제를 나중에 붙이려면 만들 때 묶음을 남겨야 한다 — 저장하지 않고 지나간 회차는 나중에 묶을 방법이 없다 |
 | 3 | 권한 | 그 분반의 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` 또는 `ACCOUNT.SYSTEM_ROLE = ADMIN`. 서버에서 검증 | PRD 권한 절 + POL-0001 스터디 단위 표 「회차 관리」 행 — 「담당 반에 한해 캡틴, 네비게이터」. 캡틴에게도 담당 반 제한이 걸리는지는 미확정이라 지금은 PRD 대로 ADMIN 전체 허용 (아래 미확정) |
 | 4 | 회차 변경 알림 | 범위 밖 | 알림 스펙([notification](../notification/spec.md))에 이벤트가 생기면 따로 붙인다 |
 | 5 | 첫 회차 등록 시 `STUDY.STATUS` | **`OPEN → ONGOING` 으로 바꾸지 않는다** | `Study.recruitStatus()` 가 `status == OPEN` 일 때만 값을 주고 그 밖엔 null 이라, 모집 중에 회차를 미리 깔면 모집이 닫힌다 (`phase()` 도 시작 전 ONGOING 을 「종료」 로 판정한다). 공개 여부는 #174 이후 `isPubliclyVisible()` 이 `status != DRAFT` 라 영향이 없다. 「진행 중」 은 지금처럼 `Study.phase()` 가 `STUDY.START_AT` 경과로 판정한다. [STUDY ERD 전이표](../../docs/erd/STUDY.md)와 어긋나 ERD 에 메모를 남겼다 |
@@ -220,7 +220,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 1. 분반을 잠근다 — 트랜잭션의 첫 조회 (위 「잠금」).
 2. 권한 판정 (위 「권한 판정」) → 분반 회차를 읽는다.
 3. 위 검증 + 기존 회차와 같은 날 → 409 `MEETING_DATE_CONFLICT`.
-4. `STUDY_MEETING` INSERT (`START_AT`·`END_AT` 은 비운다 — 보이스룸·디스코드가 기록).
+4. `STUDY_MEETING` INSERT (`START_AT`·`END_AT` 은 비운다 — 보이스룸·디스코드가 기록). `scheduledAts` 가 2개 이상이면 UUID 하나를 만들어 모든 행의 `SERIES_ID` 에 넣고, 1개면 null (결정 2).
 5. 분반 참여자 중 `STATUS IN (ACTIVE, PAUSED)` 인 사람마다 새 회차 × 참여자 `STUDY_ATTENDANCE(STATUS = ABSENT)` INSERT. `STUDY_ID`·`STUDY_GROUP_ID` 는 비정규화 값으로 채운다.
 6. `STUDY.STATUS` 는 건드리지 않는다 (결정 5).
 
@@ -292,7 +292,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 1. 분반 잠금 → 권한 판정 → 분반 회차 잠금 순서로 읽는다 (위 「잠금」).
 2. 대상 회차가 시작했으면 409.
-3. 검증 후 `SCHEDULED_AT`·`TITLE` 갱신.
+3. 검증 후 `SCHEDULED_AT`·`TITLE` 갱신. `SERIES_ID` 는 건드리지 않는다 — 시각을 옮겨도 같은 묶음이다.
 
 ### Response — 204 No Content
 
@@ -321,7 +321,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - **Method**: DELETE
 - **Path**: `/api/studies/{studyId}/meetings/{meetingId}`
 - **인증**: 필요 — 그 분반 네비게이터 · 캡틴
-- **설명**: 시작 전 회차 하나를 지운다. 반복으로 만든 회차도 한 회차씩 지운다. 지운 회차의 출석·휴가 행도 함께 지운다.
+- **설명**: 시작 전 회차 하나를 지운다. 반복으로 만든 회차도 한 회차씩 지운다 — 같은 `SERIES_ID` 의 다른 회차는 그대로 둔다. 지운 회차의 출석·휴가 행도 함께 지운다.
 
 ### Path Parameters
 
@@ -367,13 +367,14 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 - 마이그레이션은 `V23__add_study_meeting_title.sql` — beta(V22) 다음 번호로 먼저 머지한다 (2026-10-02). #174 처럼 V23 이후를 쓰던 열린 PR 은 번호를 하나씩 민다.
 - `ErrorCode` 에 `MEETING_ALREADY_STARTED(409)` · `MEETING_DATE_CONFLICT(409)` 를 더한다. 화면은 이 코드로 어느 칸 아래 이유를 적을지 가른다 — 디스코드 조기 시작이나 다른 사람의 추가는 화면 사전 검증으로 알 수 없다.
+- `SERIES_ID` 컬럼은 새 마이그레이션 `V{n}__add_study_meeting_series_id.sql` 로 더한다. `n` 은 머지 시점 beta 최신 번호의 다음이다 — 열린 PR 여럿이 V26 을 쓰고 있어 번호를 미리 박지 않는다. 기존 행은 null 로 둔다 — 이미 만든 반복 회차는 묶을 근거가 없다. 응답에는 아직 내보내지 않는다(쓰는 화면이 없다).
 - #174 가 `Study` 에서 `slug`·`capacity`·`isHidden`·`studyDeliveryFormat` 을 지우고 `phase()`·`recruitStatus()` 에 `recruitmentCapacity` 인자를 더한다. 구현 전에 머지 여부를 확인하고 rebase 한 뒤 테스트 픽스처를 맞춘다.
 
 ## 범위 밖
 
 - 회차 변경 알림 (결정 4)
 - 클럽(비모임형 출석) 회차 (결정 6)
-- 반복 묶음 저장 · 묶음 단위 삭제·수정 (결정 2)
+- 묶음 단위 삭제·수정 · 목록의 반복 표시 (결정 2 — 묶음 ID 는 저장해 둔다)
 - 출석부 편집 — [명부·출석](../attendance/spec.md)
 - 회차 취소 표현(`CANCELED_AT`) — 지금은 삭제만 있다
 - 백오피스 회차 관리 (`/api/admin/...`)

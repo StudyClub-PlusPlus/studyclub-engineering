@@ -187,6 +187,7 @@ erDiagram
     datetime START_AT              "실제 시작"
     datetime END_AT                "실제 종료"
     varchar  TITLE                 "표시용 제목 (50자)"
+    varchar  SERIES_ID             "반복 묶음 ID (UUID)"
   }
 
   STUDY_RECRUITMENT {
