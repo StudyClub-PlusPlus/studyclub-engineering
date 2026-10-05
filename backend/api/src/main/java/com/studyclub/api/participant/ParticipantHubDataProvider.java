@@ -1,15 +1,12 @@
 package com.studyclub.api.participant;
 
-import com.studyclub.api.participant.ParticipantHubResponses.ParticipantHubOverviewResponse;
-import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyCohortDetailResponse;
+import com.studyclub.api.participant.ParticipantHubResponses.ParticipatingStudyDetailResponse;
 import java.util.Optional;
 
 public interface ParticipantHubDataProvider {
 
-    ParticipantHubOverviewResponse getParticipantHubOverview(Long accountId);
+    Optional<ParticipatingStudyDetailResponse> findParticipatingStudyDetail(
+            Long accountId, Long studyId);
 
-    Optional<ParticipatingStudyCohortDetailResponse> findParticipatingStudyCohortDetail(
-            Long accountId, Long cohortId);
-
-    boolean studyCohortExists(Long cohortId);
+    boolean studyExists(Long studyId);
 }

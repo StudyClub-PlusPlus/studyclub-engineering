@@ -62,7 +62,7 @@ SQL 은 첫 ADMIN 까지다. 그 뒤로는 ADMIN 이 백오피스 화면에서 �
 ### `POST /auth/social-login` (변경)
 
 Request 그대로. `platform` = `CORE` | `BACK_OFFICE`.
-Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountView.role`).
+Response 200 그대로. `account.role` 은 이미 실려 있다(`AuthDtos.AccountView.role`).
 
 | 상태 | errorCode | 조건 |
 |---|---|---|
@@ -93,7 +93,7 @@ Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountVi
 
 화면 신설 없음. API 연결만 진행
 
-- `src/app/api/auth/social/login/route.ts` — 백엔드 403 은 지금처럼 그대로 넘긴다. 추가로 **`data.user.role !== 'ADMIN'` 이면 쿠키를 심지 않고 403** 을 돌려준다. 이때도 응답은 `errorCode: FORBIDDEN` + 같은 메시지로 맞춰서, 로그인 화면이 백엔드 403 과 구분 없이 처리한다. 백엔드가 뚫려도 프론트가 한 번 더 막는다(PRD `04b` "두 겹으로 막는다"). 파일 상단 allowlist 주석 갱신.
+- `src/app/api/auth/social/login/route.ts` — 백엔드 403 은 지금처럼 그대로 넘긴다. 추가로 **`data.account.role !== 'ADMIN'` 이면 쿠키를 심지 않고 403** 을 돌려준다. 이때도 응답은 `errorCode: FORBIDDEN` + 같은 메시지로 맞춰서, 로그인 화면이 백엔드 403 과 구분 없이 처리한다. 백엔드가 뚫려도 프론트가 한 번 더 막는다(PRD `04b` "두 겹으로 막는다"). 파일 상단 allowlist 주석 갱신.
 - `src/app/login/page.tsx` — `errorCode` 로 가른다. `FORBIDDEN` 이면 PRD BO-05 문구 「운영 권한이 없어요. 캡틴에게 요청하세요.」, `SIGNUP_REQUIRED` 면 「먼저 스터디클럽 사이트에서 로그인해 주세요.」. 나머지 에러는 지금처럼 `errorMessage`.
 
 ## 테스트
@@ -102,7 +102,7 @@ Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountVi
 
 - BACK_OFFICE + 처음 보는 sub → 403 SIGNUP_REQUIRED. ACCOUNT·ACCOUNT_IDENTITY 행 수 그대로.
 - BACK_OFFICE + MEMBER 계정 → 403 FORBIDDEN. SYSTEM_ROLE 그대로 MEMBER, LAST_LOGIN_AT 안 바뀜.
-- BACK_OFFICE + ADMIN 계정 → 200. 토큰 발급, LAST_LOGIN_AT 갱신, `user.role = ADMIN`.
+- BACK_OFFICE + ADMIN 계정 → 200. 토큰 발급, LAST_LOGIN_AT 갱신, `account.role = ADMIN`.
 - BACK_OFFICE + ADMIN 인데 온보딩 미완료 → 200 (온보딩을 안 본다).
 - CORE 기존 5건 그대로 통과 — allowlist 제거가 core-front 에 영향 없음.
 - 테스트 `application.yml` 의 `back-office.allowed-emails` 제거.
@@ -120,6 +120,7 @@ Response 200 그대로. `user.role` 은 이미 실려 있다(`AuthDtos.AccountVi
 
 - **백오피스 로그인에서 계정을 만들지 않는다.** 만들어도 MEMBER 라 어차피 못 들어오고, 공개 URL 에서 로그인 버튼만 눌러도 온보딩 미완료 MEMBER 행이 쌓인다. 부트스트랩의 "core-front 에서 먼저 로그인" 단계와 `SIGNUP_REQUIRED` 코드는 그대로 간다. (j00hyun · rowing0328)
 - **네비게이터(반장)는 SYSTEM_ROLE 로 안 푼다.** 스터디별 반장이라 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER`·`CO_LEADER` 인 사람이다. **이 PR 은 ADMIN(=캡틴)만 본다.** 기획이 네비게이터 백오피스 접근을 확정하면 별도 PR 에서 게이트를 `SYSTEM_ROLE = ADMIN OR PARTICIPANT_ROLE IN (LEADER, CO_LEADER)` 로 넓힌다. (j00hyun)
+  - **후속 확정 (2026-10-04):** 네비게이터는 백오피스에 들어오지 못한다. 게이트는 `SYSTEM_ROLE = ADMIN` 그대로 두고 넓히지 않는다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
 - **로그인 이후 요청의 ADMIN 판별은 요청마다 DB 조회.** 아래 [한계 / 후속](#한계--후속). (j00hyun)
 
 ## 미확정 (팀 결정)

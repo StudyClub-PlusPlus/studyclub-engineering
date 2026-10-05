@@ -1,3 +1,5 @@
+'use client';
+
 import { AttendanceTrend, Card, CategoryStudyCard, RegionDonut } from '@console/components/DashboardCharts';
 import { KpiCard } from '@console/components/KpiCard';
 import { StudyStatusBoard } from '@console/components/StudyStatusBoard';
@@ -7,6 +9,7 @@ import { events, todayISO } from '@studyclub/mock';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 // 프로토는 /proto/console 아래 매달린다.
 const BASE = '/proto/console';
@@ -21,7 +24,8 @@ const BASE = '/proto/console';
  * 최신인지 매번 확인하게 된다.
  */
 export default function Dashboard() {
-  const { updatedAt, kpi, board, regions, categories, trend } = aggregate();
+  const studies = useMswStudies();
+  const { updatedAt, kpi, board, regions, categories, trend } = aggregate(todayISO(), studies);
   const upcoming = events
     .filter((e) => e.date >= todayISO())
     .sort((a, b) => a.date.localeCompare(b.date))

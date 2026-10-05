@@ -6,12 +6,14 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { getUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { getBookmarks, setBookmarked } from '@core/lib/me';
-import { studies as allStudies, type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/mock';
 import { Button, Card, EmptyState } from '@studyclub/ui';
 import { Heart } from 'lucide-react';
+
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 /**
  * 찜한 스터디 — 내 스터디 탭 줄의 페이지 이동 목적지.
@@ -23,6 +25,7 @@ export default function SavedStudiesPage() {
   const locale = ((params?.locale as string) ?? 'ko') as Locale;
   const [ready, setReady] = useState(false);
   const [ids, setIds] = useState<string[]>([]);
+  const allStudies = useMswStudies();
 
   useEffect(() => {
     if (!getUser()) {
@@ -36,7 +39,7 @@ export default function SavedStudiesPage() {
   const saved = useMemo<Study[]>(() => {
     const byId = new Map(allStudies.map((s) => [s.id, s]));
     return ids.map((id) => byId.get(id)).filter((s): s is Study => Boolean(s)).reverse();
-  }, [ids]);
+  }, [ids, allStudies]);
 
   if (!ready) {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
@@ -76,7 +79,7 @@ export default function SavedStudiesPage() {
                   </span>
                   <div className='min-w-0 flex-1'>
                     <Link
-                      href={`/proto/core/${locale}/studies/${study.id}`}
+                      href={userStudyPath(locale, study)}
                       className='block truncate font-bold underline-offset-4 hover:underline'
                     >
                       {t(study.title, locale)}

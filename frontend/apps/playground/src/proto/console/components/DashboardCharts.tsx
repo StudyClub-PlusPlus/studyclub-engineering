@@ -98,13 +98,13 @@ export function RegionDonut({ data }: { data: { key: MemberRegion; count: number
   );
 }
 
-/** 주제별 출석률 — 가로 막대. 세로 막대는 주제 이름이 겹쳐 읽히지 않는다. */
+/** 카테고리별 출석률 — 가로 막대. 세로 막대는 카테고리 이름이 겹쳐 읽히지 않는다. */
 export type CategoryCount = { category: string; code: string; running: number; total: number };
 
 /**
- * 주제별 스터디 수.
+ * 카테고리별 스터디 수.
  *
- * 주제는 **중복해서 달 수 있다.** 그래서 이 카드는 「어느 분야를 얼마나 하고 있나」만 말한다 —
+ * 카테고리는 스터디마다 하나다. 그래서 합계가 총 스터디 수와 맞는다 —
  * 출석률을 여기 얹으면 한 스터디가 여러 줄의 평균에 동시에 들어가 값의 뜻이 흐려진다.
  * 출석률은 전체 평균(KPI)과 추세 차트가 맡는다.
  *
@@ -120,7 +120,7 @@ export function CategoryStudyCard({ data }: { data: CategoryCount[] }) {
 
   return (
     <Card
-      title='주제별 스터디 수'
+      title='카테고리별 스터디 수'
       anno='6'
       action={
         <div data-anno='6-1' className='flex gap-1'>
@@ -172,11 +172,6 @@ export function CategoryStudyCard({ data }: { data: CategoryCount[] }) {
           ))}
         </ul>
       )}
-
-      {/* 주제는 중복해서 달 수 있다 — 합계가 총 스터디 수를 넘는 것이 정상이다 */}
-      <p data-anno='6-2' className='mt-3 text-xs text-fg-muted'>
-        한 스터디가 여러 주제에 속할 수 있습니다.
-      </p>
     </Card>
   );
 }

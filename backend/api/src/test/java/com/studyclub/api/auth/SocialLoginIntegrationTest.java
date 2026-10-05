@@ -69,13 +69,25 @@ class SocialLoginIntegrationTest {
                 .thenReturn(new GoogleUser(sub, email, emailVerified, name, "https://img/pic.png"));
     }
 
-    /** 로그인 API 를 실제로 쏜다 */
-    @SuppressWarnings("unchecked")
+    /** 로그인 API 를 실제로 쏜다 (core-front) */
     private ResponseEntity<Map> login() {
+        return login("CORE");
+    }
+
+    @SuppressWarnings("unchecked")
+    private ResponseEntity<Map> login(String platform) {
         return rest.postForEntity(
                 "/auth/social-login",
-                Map.of("code", "dummy", "provider", "google", "platform", "CORE"),
+                Map.of("code", "dummy", "provider", "google", "platform", platform),
                 Map.class);
+    }
+
+    /** 백오피스는 자동 가입이 없어서 ACCOUNT + ACCOUNT_IDENTITY 를 직접 심는다 */
+    private Account seedAccount(SystemRole role, Instant lastLoginAt) {
+        Account account = accounts.save(new Account(EMAIL, "account_seed00000000", null, role));
+        identities.save(
+                new AccountIdentity(account.getId(), Issuer.GOOGLE, SUB, RAW_EMAIL, lastLoginAt));
+        return account;
     }
 
     @Test
@@ -92,14 +104,13 @@ class SocialLoginIntegrationTest {
         Map<String, Object> body = response.getBody();
         assertThat(body).containsKey("accessToken").containsKey("refreshToken");
 
-        // then ② 회원 정보 (키 user→account, name→nickname 개명은 프론트 동반 수정이 필요해 별도 PR)
-        //         ACCOUNT.EMAIL 은 소문자 정규화
-        assertThat(body).containsKey("user");
-        Map<String, Object> account = (Map<String, Object>) body.get("user");
+        // then ② 회원 정보 — ACCOUNT.EMAIL 은 소문자 정규화
+        assertThat(body).containsKey("account");
+        Map<String, Object> account = (Map<String, Object>) body.get("account");
         assertThat(account.get("email")).isEqualTo(EMAIL);
 
         // then ③ 닉네임은 임시값 account_<12hex> (총 20자). 구글 name 은 DB 에 안 넣는다
-        assertThat(account.get("name")).asString().startsWith("account_").hasSize(20);
+        assertThat(account.get("nickname")).asString().startsWith("account_").hasSize(20);
 
         // then ④ 온보딩 안 한 사람 → null. 프론트가 이걸 보고 온보딩 화면으로 보낸다
         assertThat(account.get("onboardingCompletedAt")).isNull();
@@ -230,5 +241,100 @@ class SocialLoginIntegrationTest {
         assertThat(response.getBody()).doesNotContainKey("accessToken");
         assertThat(accounts.count()).isZero();
         assertThat(identities.count()).isZero();
+    }
+
+    // ---- 백오피스 (platform=BACK_OFFICE) ----
+
+    @Test
+    @DisplayName("백오피스 실패 - 처음 보는 sub 면 403 SIGNUP_REQUIRED, 계정을 만들지 않는다")
+    void backOfficeUnknownSubIsSignupRequired() {
+        // given
+        googleReturns(SUB, RAW_EMAIL, "홍길동");
+
+        // when
+        var response = login("BACK_OFFICE");
+
+        // then — 403 + 전용 코드, 토큰 없음, 행 수 그대로
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).containsEntry("errorCode", "SIGNUP_REQUIRED");
+        assertThat(response.getBody()).doesNotContainKey("accessToken");
+        assertThat(accounts.count()).isZero();
+        assertThat(identities.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("백오피스 실패 - MEMBER 계정이면 403 FORBIDDEN, 승격도 LAST_LOGIN_AT 갱신도 없다")
+    void backOfficeMemberIsForbidden() {
+        // given — 일반 회원
+        Instant seededLogin = Instant.parse("2026-01-01T00:00:00Z");
+        Account member = seedAccount(SystemRole.MEMBER, seededLogin);
+        googleReturns(SUB, RAW_EMAIL, "홍길동");
+
+        // when
+        var response = login("BACK_OFFICE");
+
+        // then — 403 + FORBIDDEN, 토큰 없음
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
+        assertThat(response.getBody()).doesNotContainKey("accessToken");
+
+        // then — 여전히 MEMBER, 마지막 로그인 시각 그대로
+        assertThat(accounts.findById(member.getId()).orElseThrow().getSystemRole())
+                .isEqualTo(SystemRole.MEMBER);
+        assertThat(
+                        identities
+                                .findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB)
+                                .orElseThrow()
+                                .getLastLoginAt())
+                .isEqualTo(seededLogin);
+    }
+
+    @Test
+    @DisplayName("백오피스 성공 - ADMIN 계정이면 200, 토큰 발급 + LAST_LOGIN_AT 갱신 + 운영 권한 확인")
+    void backOfficeAdminLogsIn() {
+        // given — 온보딩까지 마친 ADMIN
+        Instant seededLogin = Instant.parse("2026-01-01T00:00:00Z");
+        Account admin = seedAccount(SystemRole.ADMIN, seededLogin);
+        admin.completeOnboarding("captain", "Asia/Seoul", Instant.now());
+        accounts.save(admin);
+        googleReturns(SUB, RAW_EMAIL, "홍길동");
+
+        // when
+        var response = login("BACK_OFFICE");
+
+        // then — 200 + 토큰, account.role = ADMIN
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsKey("accessToken");
+        Map<String, Object> account = (Map<String, Object>) response.getBody().get("account");
+        assertThat(account).containsEntry("role", "ADMIN");
+
+        // then — 새 행 없음, 마지막 로그인 시각만 앞으로 간다
+        assertThat(accounts.count()).isEqualTo(1);
+        assertThat(identities.count()).isEqualTo(1);
+        assertThat(
+                        identities
+                                .findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB)
+                                .orElseThrow()
+                                .getLastLoginAt())
+                .isAfter(seededLogin);
+    }
+
+    @Test
+    @DisplayName("백오피스 성공 - ADMIN 이 온보딩을 안 마쳤어도 200 (백오피스는 온보딩을 안 본다)")
+    void backOfficeAdminWithoutOnboardingLogsIn() {
+        // given — 온보딩 안 한 ADMIN
+        seedAccount(SystemRole.ADMIN, Instant.parse("2026-01-01T00:00:00Z"));
+        googleReturns(SUB, RAW_EMAIL, "홍길동");
+
+        // when
+        var response = login("BACK_OFFICE");
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsKey("accessToken");
+        Map<String, Object> account = (Map<String, Object>) response.getBody().get("account");
+        assertThat(account)
+                .containsEntry("role", "ADMIN")
+                .containsEntry("onboardingCompletedAt", null);
     }
 }

@@ -39,7 +39,7 @@ export function StudyStatusBoard({
         count={ongoing.length}
         href={`${BASE}/studies`}
         items={ongoing}
-        rowHref={(s) => `${BASE}/studies/${s.id}`}
+        rowHref={(s) => `${BASE}/studies/${s.study_id}`}
         empty='진행중 스터디가 없습니다'
         className='border-b border-border lg:border-b-0 lg:border-r'
         // 이름만 둔다. 출석률·회차를 여기 적으면 기준을 설명할 자리가 없어 숫자만 남는다.
@@ -51,7 +51,7 @@ export function StudyStatusBoard({
         count={recruiting.length}
         href={`${BASE}/studies`}
         items={recruiting}
-        rowHref={(s) => `${BASE}/studies/${s.id}`}
+        rowHref={(s) => `${BASE}/studies/${s.study_id}`}
         empty='모집중 스터디가 없습니다'
         className='border-b border-border lg:border-b-0 lg:border-r'
         row={(s) => <DeadlineCell deadline={s.deadline} />}
@@ -146,10 +146,11 @@ function Quadrant<T extends { id: string; title: string }>({
 
 /** 모집 마감 칸. 날짜만으로는 급한지 알 수 없어 남은 일수를 같이 적는다. */
 function DeadlineCell({ deadline }: { deadline?: string }) {
-  if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right text-sm text-fg-muted'>상시</span>;
+  if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right text-sm text-fg-muted'>—</span>;
   const d = daysUntil(deadline);
   const tone = d < 0 || d === 0 ? 'text-error-700' : d <= DEADLINE_SOON_DAYS ? 'text-warning-700' : 'text-fg-secondary';
-  const label = d < 0 ? '마감 경과' : d === 0 ? '오늘 마감' : `D-${d}`;
+  // 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이고, 여기 쓰면 끝난 것으로 읽힌다
+  const label = d < 0 ? '마감 경과' : `D-${d}`;
   return (
     <span className={`tnum w-[110px] shrink-0 whitespace-nowrap text-right text-sm font-medium ${tone}`}>
       ~{deadline.slice(5)} ({label})

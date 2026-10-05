@@ -12,7 +12,7 @@ const USER_KEY = `${STORAGE_PREFIX}user`;
 export type SessionUser = {
   id: number;
   email: string;
-  name: string | null;
+  nickname: string | null;
   picture: string | null;
   role: string;
 };
@@ -39,7 +39,17 @@ export function getUser(): SessionUser | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as SessionUser) : null;
+    if (raw) return JSON.parse(raw) as SessionUser;
+    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === '1') {
+      return {
+        id: 1,
+        email: 'admin@studyclub.local',
+        nickname: '로컬 관리자',
+        picture: null,
+        role: 'ADMIN',
+      };
+    }
+    return null;
   } catch {
     return null;
   }

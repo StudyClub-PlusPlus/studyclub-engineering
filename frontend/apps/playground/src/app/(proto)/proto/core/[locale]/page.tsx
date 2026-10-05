@@ -2,8 +2,8 @@ import Link from 'next/link';
 
 
 import { EventCard } from '@core/components/EventCard';
+import { FeaturedStudies } from '@core/components/FeaturedStudies';
 import { JoinCta } from '@core/components/JoinCta';
-import { StudyCard } from '@core/components/StudyCard';
 import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { ArrowRight } from 'lucide-react';
@@ -17,13 +17,6 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
     getMembers(),
     getSite(),
   ]);
-  const featured = studies
-    .filter((s) => s.status === 'recruiting' || s.status === 'ongoing')
-    .sort(
-      (a, b) =>
-        (a.status === 'recruiting' ? 0 : 1) - (b.status === 'recruiting' ? 0 : 1) || (a.order ?? 99) - (b.order ?? 99),
-    )
-    .slice(0, 6);
   const upcoming = [...events].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   const stats = [
@@ -37,8 +30,8 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
       {/* Hero */}
       <section className='relative py-16 sm:py-24'>
         <div className='hero-glow' />
-        <div className='inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-fg-muted)] shadow-sm'>
-          <span className='h-1.5 w-1.5 rounded-full' style={{ background: 'var(--color-accent)' }} />
+        <div className='inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1 text-xs font-semibold text-[var(--color-fg-muted)] shadow-sm'>
+          <span className='h-1.5 w-1.5 rounded-full' style={{ background: 'var(--color-brand)' }} />
           {m('hero.eyebrow', locale)}
         </div>
         <h1 className='mt-5 max-w-3xl whitespace-pre-line text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-6xl'>
@@ -53,14 +46,14 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
             target='_blank'
             rel='noreferrer'
             className='group inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]'
-            style={{ background: 'var(--color-accent)' }}
+            style={{ background: 'var(--color-brand)' }}
           >
             {m('hero.cta', locale)}
             <ArrowRight size={17} className='transition-transform group-hover:translate-x-0.5' />
           </a>
           <Link
             href={`/proto/core/${locale}/studies`}
-            className='rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-6 py-3 text-base font-semibold shadow-sm transition-colors hover:bg-[var(--color-surface-subtle)]'
+            className='rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg)] px-6 py-3 text-base font-semibold shadow-sm transition-colors hover:bg-[var(--color-surface-subtle)]'
           >
             {m('hero.cta_studies', locale)}
           </Link>
@@ -71,27 +64,14 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
           {stats.map((s) => (
             <div key={s.v}>
               <div className='text-3xl font-extrabold tracking-tight'>{s.k}</div>
-              <div className='mt-0.5 text-sm text-[var(--color-fg-subtle)]'>{s.v}</div>
+              <div className='mt-0.5 text-sm text-[var(--color-fg-muted)]'>{s.v}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Featured studies */}
-      {featured.length > 0 && (
-        <section className='pb-14'>
-          <SectionHead
-            title={m('studies.title', locale)}
-            href={`/proto/core/${locale}/studies`}
-            more={t({ ko: '전체 보기', en: 'View all' }, locale)}
-          />
-          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-            {featured.map((s) => (
-              <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Featured studies (MSW 반응형) */}
+      <FeaturedStudies locale={locale} leads={leads} />
 
       {/* Upcoming events */}
       {upcoming.length > 0 && (
@@ -132,9 +112,9 @@ function SectionHead({
     <div className='mb-5 flex items-end justify-between gap-4'>
       <div>
         <h2 className='text-xl font-bold tracking-tight'>{title}</h2>
-        {subtitle && <p className='mt-1 text-sm text-[var(--color-fg-subtle)]'>{subtitle}</p>}
+        {subtitle && <p className='mt-1 text-sm text-[var(--color-fg-muted)]'>{subtitle}</p>}
       </div>
-      <Link href={href} className='shrink-0 text-sm font-medium text-[var(--color-accent)] hover:underline'>
+      <Link href={href} className='shrink-0 text-sm font-medium text-[var(--color-brand)] hover:underline'>
         {more} →
       </Link>
     </div>

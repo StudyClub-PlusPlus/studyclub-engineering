@@ -77,7 +77,7 @@ function LoginForm({
       setUser({
         id: -1001,
         email: 'crew@example.com',
-        name: existing ? 'Journey' : null,
+        nickname: existing ? 'Journey' : null,
         picture: null,
         role: 'MEMBER',
         timeZone: existing ? 'Asia/Seoul' : null,

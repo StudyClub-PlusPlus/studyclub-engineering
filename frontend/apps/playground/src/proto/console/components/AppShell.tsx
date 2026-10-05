@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className='flex min-w-0 flex-1 flex-col'>
         <header className='sticky top-0 z-20 flex h-16 items-center justify-between border-b border-(--color-border) bg-[color-mix(in_srgb,var(--color-bg)_82%,transparent)] px-6 backdrop-blur-md'>
           <div className='text-sm font-bold tracking-tight'>StudyClub++ Back Office</div>
-          <span className='rounded-full bg-(--color-surface-subtle) px-2.5 py-1 text-xs font-medium text-(--color-fg-subtle)'>
+          <span className='rounded-full bg-(--color-surface-subtle) px-2.5 py-1 text-xs font-medium text-(--color-fg-muted)'>
             운영자 콘솔
           </span>
         </header>

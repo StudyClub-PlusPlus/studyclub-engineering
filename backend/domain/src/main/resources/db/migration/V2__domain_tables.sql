@@ -12,8 +12,7 @@ CREATE TABLE ACCOUNT_IDENTITY (
     UPDATED_AT       DATETIME   NOT NULL,
     PRIMARY KEY (ID),
     CONSTRAINT uk_account_identity_account_issuer     UNIQUE (ACCOUNT_ID, ISSUER),
-    CONSTRAINT uk_account_identity_issuer_provider UNIQUE (ISSUER, PROVIDER_USER_ID),
-    CONSTRAINT fk_account_identity_account FOREIGN KEY (ACCOUNT_ID) REFERENCES USERS (ID) ON DELETE CASCADE
+    CONSTRAINT uk_account_identity_issuer_provider UNIQUE (ISSUER, PROVIDER_USER_ID)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE STUDY (
@@ -47,8 +46,7 @@ CREATE TABLE STUDY_COHORT (
     CREATED_AT            DATETIME   NOT NULL,
     UPDATED_AT            DATETIME   NOT NULL,
     PRIMARY KEY (ID),
-    INDEX idx_study_cohort_study_status (STUDY_ID, STATUS),
-    CONSTRAINT fk_study_cohort_study FOREIGN KEY (STUDY_ID) REFERENCES STUDY (ID) ON DELETE CASCADE
+    INDEX idx_study_cohort_study_status (STUDY_ID, STATUS)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE STUDY_CLASS (
@@ -62,8 +60,7 @@ CREATE TABLE STUDY_CLASS (
     UPDATED_AT      DATETIME   NOT NULL,
     PRIMARY KEY (ID),
     CONSTRAINT uk_study_class_cohort_name UNIQUE (STUDY_COHORT_ID, NAME),
-    INDEX idx_study_class_cohort (STUDY_COHORT_ID),
-    CONSTRAINT fk_study_class_cohort FOREIGN KEY (STUDY_COHORT_ID) REFERENCES STUDY_COHORT (ID) ON DELETE CASCADE
+    INDEX idx_study_class_cohort (STUDY_COHORT_ID)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE STUDY_MEETING (
@@ -75,8 +72,7 @@ CREATE TABLE STUDY_MEETING (
     CREATED_AT     DATETIME  NOT NULL,
     UPDATED_AT     DATETIME  NOT NULL,
     PRIMARY KEY (ID),
-    INDEX idx_study_meeting_class_scheduled (STUDY_CLASS_ID, SCHEDULED_AT),
-    CONSTRAINT fk_study_meeting_class FOREIGN KEY (STUDY_CLASS_ID) REFERENCES STUDY_CLASS (ID) ON DELETE CASCADE
+    INDEX idx_study_meeting_class_scheduled (STUDY_CLASS_ID, SCHEDULED_AT)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE STUDY_APPLICATION (
@@ -175,6 +171,5 @@ CREATE TABLE STUDY_PROPOSAL_INTEREST (
     PRIMARY KEY (ID),
     CONSTRAINT uk_proposal_interest_proposal_account UNIQUE (PROPOSAL_ID, ACCOUNT_ID),
     INDEX idx_proposal_interest_proposal (PROPOSAL_ID),
-    INDEX idx_proposal_interest_account (ACCOUNT_ID),
-    CONSTRAINT fk_proposal_interest_proposal FOREIGN KEY (PROPOSAL_ID) REFERENCES STUDY_PROPOSAL (ID) ON DELETE CASCADE
+    INDEX idx_proposal_interest_account (ACCOUNT_ID)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;

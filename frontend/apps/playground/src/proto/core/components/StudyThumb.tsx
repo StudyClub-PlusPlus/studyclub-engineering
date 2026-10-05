@@ -16,52 +16,60 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-// 큐레이션된 팔레트(무지개 랜덤 대신 톤 정돈). [진한, 옅은] 2톤 대각 그라디언트.
+// 큐레이션된 팔레트. [진한, 옅은] 2톤 대각 그라디언트 — design-system.md §2-6 차트 토큰 기준.
 type Duo = [string, string];
 const C = {
-  indigo: ['#3730a3', '#4f46e5'] as Duo,
-  violet: ['#5b21b6', '#7c3aed'] as Duo,
-  blue: ['#1e40af', '#3b82f6'] as Duo,
-  teal: ['#115e59', '#0d9488'] as Duo,
-  emerald: ['#065f46', '#059669'] as Duo,
-  amber: ['#92400e', '#d97706'] as Duo,
-  rose: ['#9f1239', '#e11d48'] as Duo,
-  slate: ['#334155', '#64748b'] as Duo,
+  indigo: ['color-mix(in oklab, var(--color-chart-1) 60%, black)', 'var(--color-chart-1)'] as Duo,
+  violet: ['color-mix(in oklab, var(--color-chart-4) 60%, black)', 'var(--color-chart-4)'] as Duo,
+  blue: ['color-mix(in oklab, var(--color-chart-1) 70%, black)', 'var(--color-chart-1)'] as Duo,
+  teal: ['color-mix(in oklab, var(--color-chart-3) 60%, black)', 'var(--color-chart-3)'] as Duo,
+  emerald: ['color-mix(in oklab, var(--color-chart-5) 60%, black)', 'var(--color-chart-5)'] as Duo,
+  amber: ['color-mix(in oklab, var(--color-chart-2) 60%, black)', 'var(--color-chart-2)'] as Duo,
+  rose: ['color-mix(in oklab, var(--color-chart-6) 60%, black)', 'var(--color-chart-6)'] as Duo,
+  slate: ['var(--color-neutral-800)', 'var(--color-neutral-600)'] as Duo,
 };
 
 /**
  * 카테고리 → 아이콘 + 라벨 + 색. **색은 카테고리를 따라간다** (같은 분야 = 같은 색).
  *
  * ⚠️ 배열 순서 = 우선순위. 위에서부터 첫 일치를 쓰므로 **구체적인 것이 위**, 포괄적인 것이 아래다.
- * (DB 강의 → 데이터, 리트코드 → 알고리즘, 나머지 코딩 → 소프트웨어 개발)
+ * (DB 강의 → 데이터 사이언스, 리트코드 → CS, 나머지 코딩 → BE)
  * canonical 목록은 `@studyclub/mock` 의 `STUDY_CATEGORIES`. 여기 match 배열은 그 라벨 +
  * 기존 자유입력 데이터(레거시 표기)를 함께 흡수한다.
  */
 const RULES: { match: string[]; icon: LucideIcon; label: string; color: Duo }[] = [
   {
-    match: ['ai · ml', 'ai/ml', 'ai', 'ml', '머신러닝', '딥러닝', 'llm', '논문', 'kaggle', '캐글', 'causal', '인과'],
+    match: ['ai&ml', 'ai · ml', 'ai/ml', 'ai', 'ml', '머신러닝', '딥러닝', 'llm', '논문', 'kaggle', '캐글', 'causal', '인과'],
     icon: Brain,
-    label: 'AI · ML',
+    label: 'AI&ML',
     color: C.violet,
   },
   {
-    match: ['알고리즘', 'algorithm', 'leetcode', '리트코드', 'neetcode', '코테'],
+    match: ['cs(컴퓨터 사이언스)', '알고리즘', 'algorithm', 'leetcode', '리트코드', 'neetcode', '코테'],
     icon: Puzzle,
-    label: 'ALGORITHM',
+    label: 'CS',
     color: C.blue,
   },
-  { match: ['데이터', 'data', 'sql', 'db', '디비'], icon: Database, label: 'DATA', color: C.teal },
+  { match: ['데이터 사이언스', '데이터', 'data', 'sql', 'db', '디비'], icon: Database, label: 'DATA SCIENCE', color: C.teal },
+  { match: ['fe', '프론트', 'frontend', 'react', 'ui', 'ux'], icon: Code2, label: 'FE', color: C.indigo },
+  { match: ['모바일 프로그래밍', '모바일', 'mobile', 'ios', 'android'], icon: Code2, label: 'MOBILE', color: C.blue },
   {
-    match: ['기획', 'pm', '프로덕트', 'product', '그로스', 'growth'],
+    match: ['기획', '기획 · pm', 'pm', '프로덕트', 'product', '그로스', 'growth'],
     icon: Package,
-    label: '기획 · PM',
+    label: '기획',
     color: C.violet,
   },
   {
-    match: ['커리어', 'career', '이력서', 'resume', '인터뷰', 'interview', '면접'],
+    match: ['취업', '커리어', 'career', '이력서', 'resume', '인터뷰', 'interview', '면접'],
     icon: MessagesSquare,
-    label: 'CAREER',
+    label: '취업',
     color: C.amber,
+  },
+  {
+    match: ['디자인', 'design', '디자이너', 'figma'],
+    icon: Package,
+    label: 'DESIGN',
+    color: C.rose,
   },
   {
     match: ['비즈니스', 'business', '아티클', 'article', '시장', '산업'],
@@ -69,7 +77,7 @@ const RULES: { match: string[]; icon: LucideIcon; label: string; color: Duo }[] 
     label: 'BUSINESS',
     color: C.slate,
   },
-  { match: ['북클럽', 'book', '독서', '리딩'], icon: BookOpen, label: 'BOOK CLUB', color: C.amber },
+  { match: ['라이프스타일', '교양', '북클럽', 'book', '독서', '리딩'], icon: BookOpen, label: 'LIFESTYLE', color: C.amber },
   {
     match: ['어학', '언어', 'language', '영어', '중국어', '독일어', 'german', 'english', 'chinese'],
     icon: Languages,
@@ -97,6 +105,7 @@ const RULES: { match: string[]; icon: LucideIcon; label: string; color: Duo }[] 
   // 아래 두 개는 포괄 항목 — 위에서 안 걸린 것만 받는다
   {
     match: [
+      'be',
       '소프트웨어 개발',
       '코딩',
       'coding',
@@ -110,12 +119,11 @@ const RULES: { match: string[]; icon: LucideIcon; label: string; color: Duo }[] 
       'cloud',
       '보안',
       'security',
-      'react',
       'golang',
       'redis',
     ],
     icon: Code2,
-    label: 'DEV',
+    label: 'BE',
     color: C.indigo,
   },
   { match: ['기타', 'etc', 'other'], icon: Hash, label: 'ETC', color: C.slate },

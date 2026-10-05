@@ -2,9 +2,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { getEvent, getEvents, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { JsonLd, breadcrumbJsonLd, eventJsonLd } from '@/lib/jsonld';
+import { SITE_URL, pageMetadata } from '@/lib/seo';
 
 export async function generateStaticParams() {
   const events = await getEvents();
@@ -25,6 +28,24 @@ function fullDate(iso: string, locale: Locale) {
   });
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale; id: string }>;
+}): Promise<Metadata> {
+  const { locale, id } = await params;
+  const event = await getEvent(id);
+  if (!event) return {};
+  return pageMetadata({
+    locale,
+    path: `/events/${id}`,
+    title: t(event.title, locale),
+    description: t(event.summary, locale).slice(0, 155),
+    image: event.image,
+    ogType: 'article',
+  });
+}
+
 export default async function EventDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
   const event = await getEvent(id);
@@ -40,18 +61,30 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
     },
   ].filter(Boolean) as { icon: typeof Tag; label: string; value: string }[];
 
+  const url = `${SITE_URL}/${locale}/events/${id}`;
+
   return (
     <div className='mx-auto max-w-4xl px-6 py-12'>
+      <JsonLd
+        data={[
+          eventJsonLd(event, locale, url),
+          breadcrumbJsonLd([
+            { name: m('nav.home', locale), path: `/${locale}` },
+            { name: m('events.title', locale), path: `/${locale}/events` },
+            { name: t(event.title, locale), path: `/${locale}/events/${id}` },
+          ]),
+        ]}
+      />
       <Link
         href={`/${locale}/events`}
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]'
+        className='inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
       >
         <ArrowLeft size={15} /> {m('common.back_events', locale)}
       </Link>
 
       <span
         className='mt-6 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide'
-        style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}
+        style={{ background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }}
       >
         {event.type}
       </span>
@@ -63,7 +96,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           <div key={f.label} className='card flex items-center gap-3 p-4'>
             <f.icon size={18} className='shrink-0 text-[var(--color-fg-faint)]' />
             <div>
-              <dt className='text-xs text-[var(--color-fg-subtle)]'>{f.label}</dt>
+              <dt className='text-xs text-[var(--color-fg-muted)]'>{f.label}</dt>
               <dd className='font-semibold'>{f.value}</dd>
             </div>
           </div>
@@ -76,7 +109,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           target='_blank'
           rel='noreferrer'
           className='mt-12 inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]'
-          style={{ background: 'var(--color-accent)' }}
+          style={{ background: 'var(--color-brand)' }}
         >
           {m('common.rsvp', locale)} <ArrowUpRight size={17} />
         </a>

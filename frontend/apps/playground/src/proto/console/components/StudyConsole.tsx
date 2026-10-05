@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { CrewTab } from '@console/components/CrewTab';
 import { ResultsTab } from '@console/components/ResultsTab';
+import { StudyCreateDialog } from '@console/components/StudyCreateDialog';
 import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import type { StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
@@ -22,8 +24,8 @@ import {
   type Crew,
   type Study,
 } from '@studyclub/mock';
-import { Badge } from '@studyclub/ui';
-import { ArrowLeft } from 'lucide-react';
+import { Badge, Button, Modal } from '@studyclub/ui';
+import { ArrowLeft, Plus } from 'lucide-react';
 
 import { useAnnotate } from '@/proto/annotate';
 
@@ -48,7 +50,10 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
+type LeaveIntent = { kind: 'tab'; tab: TabKey } | { kind: 'href'; href: string };
+
 export function StudyConsole({ study }: { study: Study }) {
+  const router = useRouter();
   const initial = useMemo(() => getStudyCrew(study), [study]);
   const [crew] = useState<Crew[]>(initial.crew);
   const [attendance, setAttendance] = useState(initial.attendance);
@@ -62,12 +67,15 @@ export function StudyConsole({ study }: { study: Study }) {
   const [meetings, setMeetings] = useState<Record<string, typeof initial.meetings>>({ c1: initial.meetings });
   // 크루가 어느 반에 속하는가. 반 이동은 이 값을 바꾼다.
   const [assign, setAssign] = useState<Record<string, string>>(() =>
-    Object.fromEntries(initial.crew.filter((c) => c.status === 'active').map((c) => [c.id, 'c1'])),
+    Object.fromEntries(initial.crew.map((c) => [c.id, 'c1'])),
   );
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
   const [navigators, setNavigators] = useState<string[]>([]);
   const [tab, setTab] = useState<TabKey>('info');
+  const [attendanceDirty, setAttendanceDirty] = useState(false);
+  const [leave, setLeave] = useState<LeaveIntent | null>(null);
+  const [nextOpen, setNextOpen] = useState(false);
 
   // 스토리 칩을 고르면 그 Story 의 요소가 **보이는 탭**으로 옮겨 준다.
   // 「참석자 목록」을 골랐는데 정보 탭이 떠 있으면 명단 번호가 화면에 없어 대조할 수가 없다.
@@ -86,10 +94,16 @@ export function StudyConsole({ study }: { study: Study }) {
     if (on && wanted) setTab(wanted);
   }, [on, wanted]);
 
-  const active = crew.filter((c) => c.status === 'active');
+  // 사용자 사이트의 「백오피스 출석부」 버튼이 `?tab=attendance` 로 연다 — 들어와서 탭을 다시 찾게 하지 않는다.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('tab');
+    if (q && TABS.some((t) => t.key === q)) setTab(q as TabKey);
+  }, []);
+
+  const active = crew;
   const open = recruitState(study) === 'apply';
   const deadline = toISODate(study.recruitment?.deadline);
-  // 마감까지 남은 날. 마감일이 없으면(상시 모집) undefined.
+  // 마감까지 남은 날. 마감일은 필수라 늘 있다 — 값이 비어 있는 옛 데이터만 undefined.
   const dday =
     deadline === undefined
       ? undefined
@@ -119,25 +133,69 @@ export function StudyConsole({ study }: { study: Study }) {
     });
   }
 
-  function toggleAttendance(crewId: string, meetingId: string) {
-    setAttendance((a) => {
-      const row = { ...(a[crewId] ?? {}) };
-      // 미체크 → 출석 → 지각 → 결석 → 휴가 → 미체크. 잘못 누른 것을 되돌릴 수 있어야 한다.
-      const next: AttendanceStatus | undefined =
-        row[meetingId] === undefined
-          ? 'present'
-          : row[meetingId] === 'present'
-            ? 'late'
-            : row[meetingId] === 'late'
-              ? 'absent'
-              : row[meetingId] === 'absent'
-                ? 'excused'
-                : undefined;
-      if (next === undefined) delete row[meetingId];
-      else row[meetingId] = next;
-      return { ...a, [crewId]: row };
-    });
+  /** 칸을 눌러 고친 값을 한 번에 반영한다. 한 칸마다 따로 보내지 않는다. */
+  async function saveAttendance(next: Record<string, Record<string, AttendanceStatus>>) {
+    // TODO(api): POST /api/studies/{id}/attendances — 바뀐 칸만 updates[] 로 한 번에 보낸다.
+    await new Promise((r) => setTimeout(r, 400));
+    setAttendance(next);
   }
+
+  function requestTab(next: TabKey) {
+    if (next === tab) return;
+    if (tab === 'attendance' && attendanceDirty) {
+      setLeave({ kind: 'tab', tab: next });
+      return;
+    }
+    setTab(next);
+  }
+
+  function confirmLeave() {
+    if (!leave) return;
+    const intent = leave;
+    setLeave(null);
+    setAttendanceDirty(false);
+    if (intent.kind === 'tab') {
+      setTab(intent.tab);
+      return;
+    }
+    if (/^https?:\/\//.test(intent.href)) {
+      window.location.assign(intent.href);
+      return;
+    }
+    router.push(intent.href);
+  }
+
+  useEffect(() => {
+    if (tab !== 'attendance' || !attendanceDirty) return;
+
+    function onClick(e: MouseEvent) {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      const el = (e.target as Element | null)?.closest?.('a[href]');
+      if (!(el instanceof HTMLAnchorElement)) return;
+      const href = el.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+      if (el.target === '_blank' || el.hasAttribute('download')) return;
+
+      const url = new URL(href, window.location.href);
+      if (
+        url.origin === window.location.origin &&
+        url.pathname === window.location.pathname &&
+        url.search === window.location.search
+      ) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      setLeave({
+        kind: 'href',
+        href: url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : url.href,
+      });
+    }
+
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [tab, attendanceDirty]);
 
   return (
     <div>
@@ -158,9 +216,16 @@ export function StudyConsole({ study }: { study: Study }) {
           {tx(study.title)}
         </h1>
         <div data-anno='attendee:1-2' className='flex shrink-0 items-center gap-2'>
+          {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
+          {study.program?.kind === 'club' && (
+            <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
+              다음 기수 만들기
+            </Button>
+          )}
           <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
             {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
-            {open ? (dday === undefined ? '상시 모집' : dday === 0 ? '오늘 마감' : `모집중 · D-${dday}`) : '모집 마감'}
+            {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
+            {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
           </Badge>
           {draft && (
             <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
@@ -180,12 +245,17 @@ export function StudyConsole({ study }: { study: Study }) {
           <button
             key={tb.key}
             type='button'
-            onClick={() => setTab(tb.key)}
+            onClick={() => requestTab(tb.key)}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
             }`}
           >
             {tb.label}
+            {tb.key === 'attendance' && attendanceDirty && (
+              <span data-anno='attendance:8' className='ml-1.5 text-[11px] font-bold text-brand'>
+                저장 전
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -215,14 +285,35 @@ export function StudyConsole({ study }: { study: Study }) {
             onClass={setClassId}
             meetings={meetings[classId] ?? []}
             attendance={attendance}
-            onToggle={toggleAttendance}
-            onGoCrew={() => setTab('crew')}
+            onSave={saveAttendance}
+            onDirtyChange={setAttendanceDirty}
+            onGoCrew={() => requestTab('crew')}
           />
         )}
         {tab === 'form' && <ApplicationFormTab study={study} />}
         {tab === 'results' && <ResultsTab study={study} crew={crew} />}
         {tab === 'info' && <StudyInfoTab study={study} />}
       </div>
+
+      <StudyCreateDialog open={nextOpen} onClose={() => setNextOpen(false)} nextOf={study} />
+
+      <Modal
+        open={leave !== null}
+        onClose={() => setLeave(null)}
+        title='저장하지 않은 변경이 있습니다'
+        footer={
+          <>
+            <Button variant='secondary' onClick={confirmLeave}>
+              저장하지 않고 나가기
+            </Button>
+            <Button onClick={() => setLeave(null)}>이 화면에 머물기</Button>
+          </>
+        }
+      >
+        <p data-anno='attendance:9' className='text-sm text-fg-secondary'>
+          저장을 누르지 않으면 고친 출석이 사라집니다. 나가기 전에 저장해 주세요.
+        </p>
+      </Modal>
     </div>
   );
 }

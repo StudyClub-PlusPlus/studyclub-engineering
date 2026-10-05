@@ -6,10 +6,13 @@ import com.studyclub.common.error.ErrorResponse;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -29,6 +32,8 @@ public class GlobalExceptionHandler {
     /** 우리가 의도적으로 던진 예외 — 상태·코드는 ErrorCode 가 안다. */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
+        // 코드만 남긴다. 메시지 본문에는 사용자 입력(이메일 등)이 섞일 수 있다.
+        log.warn("Business error: code={}", e.errorCode().name());
         return respond(e.errorCode(), e.getMessage());
     }
 
@@ -42,6 +47,15 @@ public class GlobalExceptionHandler {
                         .map(f -> f.getField() + ": " + f.getDefaultMessage())
                         .collect(Collectors.joining(", "));
         return respond(ErrorCode.INVALID_INPUT, detail.isBlank() ? null : detail);
+    }
+
+    // 컨트롤러 검증 전에 실패하는 본문·파라미터 변환도 입력 오류다. 원본 예외 메시지에는 입력값이 섞일 수 있어 노출하지 않는다.
+    @ExceptionHandler({
+        HttpMessageNotReadableException.class,
+        MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ErrorResponse> handleInvalidRequest() {
+        return respond(ErrorCode.INVALID_INPUT, null);
     }
 
     /**
@@ -62,7 +76,7 @@ public class GlobalExceptionHandler {
         if (e instanceof org.springframework.web.ErrorResponse known) {
             return respond(ErrorCode.fromStatus(known.getStatusCode().value()), null);
         }
-        log.error("Unhandled exception", e);
+        log.error("Unhandled exception: method={}, uri={}", MDC.get("method"), MDC.get("uri"), e);
         return respond(ErrorCode.INTERNAL_ERROR, null);
     }
 

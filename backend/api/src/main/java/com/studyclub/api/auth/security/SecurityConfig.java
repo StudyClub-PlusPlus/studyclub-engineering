@@ -3,14 +3,19 @@ package com.studyclub.api.auth.security;
 import com.studyclub.api.auth.JwtService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.web.server.ConditionalOnManagementPort;
+import org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -27,9 +32,46 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:4700,http://localhost:4701}")
     private String allowedOrigins;
 
+    /** 디스코드 봇이 보내는 서비스 키. 값은 배포 시 주입한다 (PUBLIC 레포 — 커밋 금지). */
+    @Value("${discord.api-key:}")
+    private String discordApiKey;
+
     public SecurityConfig(JwtService jwtService, ObjectMapper objectMapper) {
         this.jwtService = jwtService;
         this.objectMapper = objectMapper;
+    }
+
+    /** 관리 포트 전용 체인. 조건 없이 경로 매처만 쓰면 포트가 합쳐질 때 앱 포트에서도 actuator 가 열린다. */
+    @Bean
+    @Order(0)
+    @ConditionalOnManagementPort(ManagementPortType.DIFFERENT)
+    SecurityFilterChain managementChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/actuator/**")
+                .authorizeHttpRequests(a -> a.anyRequest().permitAll())
+                .csrf(AbstractHttpConfigurer::disable);
+        return http.build();
+    }
+
+    /**
+     * 디스코드 봇 전용 체인. 사용자 JWT 와 서비스 키를 한 체인에 섞으면 "둘 중 아무거나 있으면 통과" 로 흐르기 쉬워, 경로로 갈라 둔다. 아래 기본 체인보다 먼저
+     * 매칭되어야 하므로 @Order 가 필요하다.
+     */
+    @Bean
+    @Order(1)
+    SecurityFilterChain discordChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/api/discord/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(AbstractHttpConfigurer::disable)
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .exceptionHandling(
+                        ex ->
+                                ex.authenticationEntryPoint(
+                                        new JsonAuthenticationEntryPoint(objectMapper)))
+                .addFilterBefore(
+                        new ApiKeyAuthFilter(discordApiKey),
+                        UsernamePasswordAuthenticationFilter.class);
+        return http.build();
     }
 
     @Bean
@@ -40,12 +82,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         auth ->
                                 auth.requestMatchers(
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(HttpMethod.GET, "/api/studies"),
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(HttpMethod.GET, "/api/studies/*"))
+                                        .permitAll()
+                                        .requestMatchers(
                                                 "/",
                                                 "/error",
                                                 "/api/health",
-                                                "/actuator/**",
-                                                "/api/studies",
-                                                "/api/studies/*",
                                                 // API 문서 — 스펙(springdoc) + Scalar UI.
                                                 // /scalar/** 까지 열어야 한다: UI 페이지가 /scalar/scalar.js 를
                                                 // 로드하는데
@@ -55,6 +100,9 @@ public class SecurityConfig {
                                                 "/scalar/**",
                                                 "/auth/social-login",
                                                 "/auth/refresh")
+                                        .permitAll()
+                                        .requestMatchers(
+                                                HttpMethod.GET, "/api/studies/*/application-form")
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())

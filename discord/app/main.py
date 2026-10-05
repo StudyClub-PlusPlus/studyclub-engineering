@@ -50,10 +50,11 @@ async def run_bot(bot: commands.Bot, token: str) -> None:
 
     A crash here aborts the TaskGroup, which cancels the API mid-serve rather
     than draining it: the lifespan shutdown is skipped and a request in flight
-    ends as a 500. That is deliberate -- with the bot dead ``/ping`` answers
-    503 anyway. To drain the API on a bot crash instead, the exception has to
-    be caught here (set the shutdown event, re-raise it after the TaskGroup)
-    so it never reaches the group; signals already take that cooperative path.
+    ends as a 500. That is deliberate -- with the bot dead every route that
+    needs it answers 503 anyway. To drain the API on a bot crash instead, the
+    exception has to be caught here (set the shutdown event, re-raise it after
+    the TaskGroup) so it never reaches the group; signals already take that
+    cooperative path.
     """
     async with bot:
         await bot.start(token)
@@ -99,6 +100,8 @@ async def run(settings: Settings) -> None:
     bot = create_bot(settings) if token is not None else None
     if bot is None:
         logger.warning("DISCORD_TOKEN is not set - running the API only, Discord bot disabled")
+    if settings.api_key is None:
+        logger.warning("DISCORD_API_KEY is not set - /api/v1/studies rejects every request with 401")
 
     server = _Server(
         uvicorn.Config(
@@ -106,6 +109,7 @@ async def run(settings: Settings) -> None:
             host=settings.api_host,
             port=settings.api_port,
             log_level=settings.log_level.lower(),
+            access_log=False,
         )
     )
 

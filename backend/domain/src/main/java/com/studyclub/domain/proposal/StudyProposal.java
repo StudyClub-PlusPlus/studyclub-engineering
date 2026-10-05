@@ -42,10 +42,22 @@ public class StudyProposal extends BaseEntity {
     @Column(nullable = false, columnDefinition = "text")
     private String content;
 
-    @Column(name = "PROPOSED_DATE", nullable = false)
-    private Instant proposedDate;
+    @Column(name = "PROPOSED_AT", nullable = false)
+    private Instant proposedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private StudyProposalStatus status;
+
+    /**
+     * 제안자 탈퇴 — {@code OPEN} 인 제안만 {@code CLOSED} 로 닫는다. 물리 삭제하지 않는 이유는 다른 회원의 {@code
+     * STUDY_PROPOSAL_INTEREST}(관심 표시)를 보호하기 위해서다 — 제안 행을 지우면 그 기록들이 고아가 된다
+     * (specs/user-leave/spec.md). {@code ACCEPTED}/{@code REJECTED}/이미 {@code CLOSED} 인 제안은 이미 종결
+     * 상태라 건드리지 않는다 — 멱등.
+     */
+    public void closeDueToProposerLeaving() {
+        if (status == StudyProposalStatus.OPEN) {
+            this.status = StudyProposalStatus.CLOSED;
+        }
+    }
 }

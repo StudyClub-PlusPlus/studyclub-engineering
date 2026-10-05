@@ -9,8 +9,8 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | `/api/me/bookmarks` | 북마크된 스터디 목록 (페이지네이션) | O | 구현중 |
-| POST | `/api/me/bookmarks/{studyCohortId}` | 북마크 추가 | O | 스펙작성중 |
-| DELETE | `/api/me/bookmarks/{studyCohortId}` | 북마크 해제 | O | 스펙작성중 |
+| POST | `/api/me/bookmarks/{studyId}` | 북마크 추가 | O | 스펙작성중 |
+| DELETE | `/api/me/bookmarks/{studyId}` | 북마크 해제 | O | 스펙작성중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -83,12 +83,12 @@
 
 ---
 
-## POST /api/me/bookmarks/{studyCohortId}
+## POST /api/me/bookmarks/{studyId}
 
 ### 기본 정보
 
 - **Method**: POST
-- **Path**: `/api/me/bookmarks/{studyCohortId}`
+- **Path**: `/api/me/bookmarks/{studyId}`
 - **인증**: 필요
 - **설명**: 스터디 기수를 북마크에 추가한다
 
@@ -96,7 +96,7 @@
 
 | 이름 | 타입 | 설명 |
 |------|------|------|
-| studyCohortId | Long | 북마크할 스터디 기수 ID |
+| studyId | Long | 북마크할 스터디 ID |
 
 ### Request Body
 
@@ -117,12 +117,12 @@
 
 ---
 
-## DELETE /api/me/bookmarks/{studyCohortId}
+## DELETE /api/me/bookmarks/{studyId}
 
 ### 기본 정보
 
 - **Method**: DELETE
-- **Path**: `/api/me/bookmarks/{studyCohortId}`
+- **Path**: `/api/me/bookmarks/{studyId}`
 - **인증**: 필요
 - **설명**: 스터디 기수 북마크를 해제한다
 
@@ -130,7 +130,7 @@
 
 | 이름 | 타입 | 설명 |
 |------|------|------|
-| studyCohortId | Long | 해제할 스터디 기수 ID |
+| studyId | Long | 해제할 스터디 ID |
 
 ### Request Body
 

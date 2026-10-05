@@ -15,7 +15,7 @@ import {
 } from '@core/lib/attendance';
 import { bookScore, myAttendanceBook, rateTone, type MyAttendanceBook } from '@core/lib/attendance-book';
 import { getUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
+import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import {
   LEFT_BADGE,
@@ -40,7 +40,8 @@ import {
   type WeekDay,
 } from '@core/lib/joined';
 import { getApplications, getRegion } from '@core/lib/me';
-import { studies as allStudies, type Study, type StudyMeeting } from '@studyclub/mock';
+import { MANAGE_ROLE_LABEL, manageAccessOf } from '@core/lib/meetings';
+import { type Study, type StudyMeeting } from '@studyclub/mock';
 import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
 import {
   Award,
@@ -51,10 +52,12 @@ import {
   ClipboardList,
   FolderOpen,
   Heart,
+  Settings2,
 } from 'lucide-react';
 
-import { SPEC } from './spec';
+import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 type Filter = 'all' | LifeStatus;
 
@@ -260,13 +263,14 @@ function WeekStrip({
               </p>
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
-                  const { accent, tint } = weekChip(byId.get(hit.studyId)?.category);
+                  const study = byId.get(hit.studyId);
+                  const { accent, tint } = weekChip(study?.category);
                   return (
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
                         type='button'
                         title={`${hit.time} ${hit.title} ${hit.no}회차`}
-                        onClick={() => router.push(`/proto/core/${locale}/studies/${hit.studyId}`)}
+                        onClick={() => study && router.push(userStudyPath(locale, study))}
                         className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left text-[10px] font-bold leading-tight hover:brightness-[0.97]'
                         style={{
                           borderLeftColor: accent,
@@ -411,10 +415,12 @@ export default function MyJoinedPage() {
     setReady(true);
   }, [locale, router]);
 
+  const allStudies = useMswStudies();
+
   const mine = useMemo<Study[]>(() => {
     const byId = new Map(allStudies.map((s) => [s.id, s]));
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => Boolean(s));
-  }, [mineIds]);
+  }, [mineIds, allStudies]);
 
   const days = useMemo(() => weekDays(mine, locale, wallTz, weekStart), [mine, locale, wallTz, weekStart]);
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
@@ -428,18 +434,19 @@ export default function MyJoinedPage() {
       appliedOpen.current = true;
       return;
     }
-    const study = mine.find((s) => s.id === open);
+    // 주소 값은 study_id 다. 펼침 상태(openIds)는 내부 키(`id`)로 들고 있는다.
+    const study = mine.find((s) => String(s.study_id) === open);
     if (!study) {
       appliedOpen.current = true;
       return;
     }
     const nextFilter = lifeStatus(study);
     const list = studiesIn(mine, nextFilter);
-    const idx = list.findIndex((s) => s.id === open);
+    const idx = list.findIndex((s) => s.id === study.id);
     appliedOpen.current = true;
     setFilter(nextFilter);
     if (idx >= 0) setPage(Math.floor(idx / PAGE_SIZE) + 1);
-    setOpenIds([open]);
+    setOpenIds([study.id]);
   }, [ready, mine]);
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
@@ -465,6 +472,7 @@ export default function MyJoinedPage() {
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
       <ScreenSpecRegistrar spec={SPEC} />
+      <ScreenSpecRegistrar spec={MEETING_SPEC} />
       <h1 data-anno='1' className='text-2xl font-extrabold tracking-tight'>
         내 스터디
       </h1>
@@ -570,6 +578,7 @@ function StudyItem({
   bookOpen: boolean;
   onToggleBook: () => void;
 }) {
+  const router = useRouter();
   const { icon: Icon } = categoryMeta(study.category);
   const life = lifeStatus(study);
   const completed = isCompleted(study);
@@ -582,6 +591,9 @@ function StudyItem({
   const panelId = `attendance-${study.id}`;
   const ended = life === 'ended' && !completed;
   const showRate = !completed && book.rate !== undefined;
+  const access = manageAccessOf(study.id);
+  // 관계가 끝난 스터디는 관리할 일이 없다.
+  const canManage = access !== undefined && life !== 'ended';
 
   return (
     <li>
@@ -613,13 +625,20 @@ function StudyItem({
         <div className='min-w-0 flex-1'>
           <div className='flex items-start justify-between gap-3'>
             <div className='min-w-0'>
-              <Link
-                data-anno='4-2'
-                href={`/proto/core/${locale}/studies/${study.id}`}
-                className='block truncate text-[17px] font-bold text-fg underline-offset-4 hover:underline'
-              >
-                {t(study.title, locale)}
-              </Link>
+              <div className='flex min-w-0 items-center gap-2'>
+                <Link
+                  data-anno='4-2'
+                  href={userStudyPath(locale, study)}
+                  className='min-w-0 truncate text-[17px] font-bold text-fg underline-offset-4 hover:underline'
+                >
+                  {t(study.title, locale)}
+                </Link>
+                {access && (
+                  <span data-anno='meeting:1' className='shrink-0'>
+                    <Badge tone={access.role}>{MANAGE_ROLE_LABEL[access.role]}</Badge>
+                  </span>
+                )}
+              </div>
               <p data-anno='4-5' className='mt-0.5 text-[13px] text-fg-muted'>
                 {durationOf(study, locale, wallTz)}
               </p>
@@ -661,15 +680,35 @@ function StudyItem({
           {completed ? (
             <MissionClear book={book} />
           ) : (
-            <p
-              data-anno='4-4'
-              className={cx(
-                'mt-3 tracking-tight',
-                ended ? 'text-sm font-semibold text-fg-muted' : 'text-lg font-extrabold text-fg',
+            <div className='mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
+              <p
+                data-anno='4-4'
+                className={cx(
+                  'min-w-0 tracking-tight',
+                  ended ? 'text-sm font-semibold text-fg-muted' : 'text-lg font-extrabold text-fg',
+                )}
+              >
+                {upcomingOf(study, locale, wallTz)}
+              </p>
+              {canManage && (
+                <span data-anno='meeting:2' className='shrink-0'>
+                  <Button
+                    variant='secondary'
+                    size='sm'
+                    leadingIcon={<Settings2 size={14} />}
+                    onClick={() =>
+                      router.push(
+                        access?.role === 'captain'
+                          ? `/proto/console/studies/${study.study_id}`
+                          : `/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`,
+                      )
+                    }
+                  >
+                    스터디 관리
+                  </Button>
+                </span>
               )}
-            >
-              {upcomingOf(study, locale, wallTz)}
-            </p>
+            </div>
           )}
 
           <div

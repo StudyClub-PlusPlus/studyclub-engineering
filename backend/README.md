@@ -15,7 +15,8 @@ Spring Boot 4.1.x multi-module backend (Java 25, Gradle Kotlin DSL).
 - `GET /` → `StudyClub++ API`
 - `GET /api/health` → `{ "status": "UP" }`
 - `GET /api/studies` → list of studies (hardcoded fixtures for now)
-- `GET /actuator/health` → actuator health
+- `GET /actuator/health` → actuator health (management port `${MANAGEMENT_PORT:9090}`, not
+  published — not reachable on the app port `8080`)
 
 ## Build & run
 

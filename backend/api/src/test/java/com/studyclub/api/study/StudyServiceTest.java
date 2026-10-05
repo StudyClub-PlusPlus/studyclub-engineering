@@ -1,0 +1,315 @@
+package com.studyclub.api.study;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.attendance.StudyAttendanceRepository;
+import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyCategory;
+import com.studyclub.domain.study.StudyGroupRepository;
+import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
+import com.studyclub.domain.study.StudyRecruitmentRepository;
+import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
+import java.time.Instant;
+import java.util.Optional;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class StudyServiceTest {
+
+    @Mock AccountRepository accountRepository;
+    @Mock StudyRepository studyRepository;
+    @Mock StudyProgramRepository studyProgramRepository;
+    @Mock StudyRecruitmentRepository studyRecruitmentRepository;
+    @Mock StudyParticipantRepository studyParticipantRepository;
+    @Mock StudyGroupRepository studyGroupRepository;
+    @Mock StudyMeetingRepository studyMeetingRepository;
+    @Mock StudyAttendanceRepository studyAttendanceRepository;
+    @Mock StudyApplicationRepository studyApplicationRepository;
+    @Mock StudyBookmarkRepository studyBookmarkRepository;
+    @Mock StudyCaptainGuard studyCaptainGuard;
+
+    @InjectMocks StudyService studyService;
+
+    // ── create ────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("실패 - 존재하지 않는 studyProgramId 는 INVALID_INPUT")
+    void nonExistentStudyProgramIdThrowsInvalidInput() {
+        when(studyProgramRepository.findById(999L)).thenReturn(Optional.empty());
+
+        StudyCreateRequest request =
+                new StudyCreateRequest(
+                        999L, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+
+        assertThatThrownBy(() -> studyService.create(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패 - recruitDeadline 이 과거이면 INVALID_INPUT")
+    void pastRecruitDeadlineThrowsInvalidInput() {
+        StudyCreateRequest request =
+                new StudyCreateRequest(
+                        null,
+                        StudyKind.STUDY,
+                        "스터디",
+                        "소개",
+                        null,
+                        StudyCategory.ALGORITHM,
+                        null,
+                        Instant.now().minusSeconds(3600),
+                        null);
+
+        assertThat(request.studyKind()).isEqualTo(StudyKind.STUDY);
+        assertThatThrownBy(() -> studyService.create(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패 - 기존 프로그램에 studyKind 를 함께 보내면 INVALID_INPUT")
+    void existingProgramWithKindThrowsInvalidInput() {
+        StudyCreateRequest request =
+                new StudyCreateRequest(
+                        999L,
+                        StudyKind.STUDY,
+                        "스터디",
+                        "소개",
+                        null,
+                        StudyCategory.ALGORITHM,
+                        null,
+                        null,
+                        null);
+
+        assertThatThrownBy(() -> studyService.create(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패 - STUDY 종류 프로그램에 새 기수를 붙이면 INVALID_INPUT")
+    void studyKindProgramRejectsNewCohort() {
+        StudyProgram studyProgram = mock(StudyProgram.class);
+        when(studyProgram.getStudyKind()).thenReturn(StudyKind.STUDY);
+        when(studyProgramRepository.findById(999L)).thenReturn(Optional.of(studyProgram));
+
+        StudyCreateRequest request =
+                new StudyCreateRequest(
+                        999L, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+
+        assertThatThrownBy(() -> studyService.create(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    // ── update (사용자 사이트) ────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("실패(수정) - 인증 없음 → UNAUTHORIZED")
+    void updateUnauthorizedWhenAccountNotFound() {
+        when(accountRepository.existsById(1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, validUpdateRequest()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.UNAUTHORIZED));
+    }
+
+    @Test
+    @DisplayName("실패(수정) - 존재하지 않는 studyId → NOT_FOUND")
+    void updateStudyNotFound() {
+        // 권한 판정까지 가지 않는다 — 스터디 조회가 먼저 NOT_FOUND 를 던진다
+        when(accountRepository.existsById(1L)).thenReturn(true);
+        when(studyRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, validUpdateRequest()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("실패(수정) - title 빈 문자열 → INVALID_INPUT")
+    void updateBlankTitleThrowsInvalidInput() {
+        when(accountRepository.existsById(1L)).thenReturn(true);
+        when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
+
+        StudyUpdateRequest request = new StudyUpdateRequest("  ", "소개", null, null, null, null);
+
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패(수정) - oneLineSummary 빈 문자열 → INVALID_INPUT")
+    void updateBlankOneLineSummaryThrowsInvalidInput() {
+        when(accountRepository.existsById(1L)).thenReturn(true);
+        when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
+
+        StudyUpdateRequest request = new StudyUpdateRequest("제목", "  ", null, null, null, null);
+
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("실패(수정) - recruitDeadline 과거 → INVALID_INPUT")
+    void updatePastRecruitDeadlineThrowsInvalidInput() {
+        when(accountRepository.existsById(1L)).thenReturn(true);
+        when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
+
+        StudyUpdateRequest request =
+                new StudyUpdateRequest(
+                        "제목", "소개", null, null, Instant.now().minusSeconds(3600), null);
+
+        assertThatThrownBy(() -> studyService.updateFromSite(1L, 10L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    // ── update (백오피스) ─────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("실패(백오피스 수정) - 존재하지 않는 studyId → NOT_FOUND")
+    void backOfficeUpdateStudyNotFound() {
+        when(studyRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studyService.updateFromBackOffice(10L, validUpdateRequest()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("실패(백오피스 수정) - 사이트와 같은 검증을 쓴다: title 빈 문자열 → INVALID_INPUT")
+    void backOfficeUpdateBlankTitleThrowsInvalidInput() {
+        when(studyRepository.findById(10L)).thenReturn(Optional.of(mock(Study.class)));
+
+        StudyUpdateRequest request = new StudyUpdateRequest("  ", "소개", null, null, null, null);
+
+        assertThatThrownBy(() -> studyService.updateFromBackOffice(10L, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    // ── detail ────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("실패(상세) - 존재하지 않는 studyId → NOT_FOUND")
+    void detailNotFound() {
+        when(studyRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studyService.getDetail(10L, null))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("실패(상세) - DRAFT 는 캡틴·네비게이터가 아니면 FORBIDDEN 이 아니라 NOT_FOUND")
+    void draftDetailHiddenFromOthers() {
+        Study draft = mock(Study.class);
+        when(draft.getStatus()).thenReturn(StudyStatus.DRAFT);
+        when(studyRepository.findById(10L)).thenReturn(Optional.of(draft));
+        when(studyCaptainGuard.isCaptainOrNavigator(1L, 10L)).thenReturn(false);
+
+        assertThatThrownBy(() -> studyService.getDetail(10L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("실패(백오피스 상세) - 존재하지 않는 studyId → NOT_FOUND")
+    void backOfficeDetailNotFound() {
+        when(studyRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studyService.getDetailForBackOffice(10L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    // ── delete ────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("실패(삭제) - 존재하지 않는 studyId → NOT_FOUND")
+    void deleteStudyNotFound() {
+        when(studyRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> studyService.delete(10L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    private StudyCreateRequest validCreateRequest() {
+        return new StudyCreateRequest(
+                null, null, "스터디", "소개", null, StudyCategory.ALGORITHM, null, null, null);
+    }
+
+    private StudyUpdateRequest validUpdateRequest() {
+        return new StudyUpdateRequest("스터디", "소개", null, StudyCategory.ALGORITHM, null, null);
+    }
+}

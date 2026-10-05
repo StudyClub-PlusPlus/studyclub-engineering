@@ -1,10 +1,12 @@
 import Link from 'next/link';
 
 import { BookOpen, Compass, UserPlus, Sparkles, HelpCircle } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
 import { getSite, type Locale, type L10n } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
 
 type Section = { id: string; icon: typeof BookOpen; title: L10n };
 
@@ -19,6 +21,16 @@ const SECTIONS: Section[] = [
   },
   { id: 'faq', icon: HelpCircle, title: { ko: '자주 묻는 질문', en: 'FAQ' } },
 ];
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return pageMetadata({
+    locale,
+    path: '/guide',
+    title: m('guide.title', locale),
+    description: m('seo.guide_description', locale),
+  });
+}
 
 export default async function GuidePage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -104,9 +116,9 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
           <a
             key={s.id}
             href={`#${s.id}`}
-            className='inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)]'
+            className='inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)]'
           >
-            <s.icon size={14} style={{ color: 'var(--color-accent)' }} />
+            <s.icon size={14} style={{ color: 'var(--color-brand)' }} />
             {t(s.title, locale)}
           </a>
         ))}
@@ -134,7 +146,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
         </p>
         <Link
           href={`/${locale}/about`}
-          className='mt-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--color-accent)] hover:underline'
+          className='mt-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--color-brand)] hover:underline'
         >
           {t({ ko: '소개에서 캡틴 더 보기', en: 'More about Captains on About' }, locale)} →
         </Link>
@@ -147,7 +159,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
           <li key={i} className='card flex items-start gap-3 p-5'>
             <span
               className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold text-white'
-              style={{ background: 'var(--color-accent)' }}
+              style={{ background: 'var(--color-brand)' }}
             >
               {i + 1}
             </span>
@@ -163,7 +175,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
           <li key={i} className='card flex items-start gap-3 p-5'>
             <span
               className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold text-white'
-              style={{ background: 'var(--color-accent)' }}
+              style={{ background: 'var(--color-brand)' }}
             >
               {i + 1}
             </span>
@@ -196,7 +208,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
 function SectionHeading({ section, locale }: { section: Section; locale: Locale }) {
   return (
     <h2 id={section.id} className='mb-4 mt-12 flex scroll-mt-20 items-center gap-2 text-xl font-bold tracking-tight'>
-      <section.icon size={20} style={{ color: 'var(--color-accent)' }} />
+      <section.icon size={20} style={{ color: 'var(--color-brand)' }} />
       {t(section.title, locale)}
     </h2>
   );

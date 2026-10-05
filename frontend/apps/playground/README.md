@@ -15,7 +15,7 @@
 ```bash
 git clone git@github.com:StudyClub-PlusPlus/studyclub-engineering.git
 cd studyclub-engineering/frontend
-npm install
+pnpm install
 ```
 
 > `git clone` 이 권한 오류를 내면 GitHub 계정이 `StudyClub-PlusPlus` 조직에 아직 안 들어온 것입니다. 디스코드에서 알려주세요.
@@ -24,7 +24,7 @@ npm install
 
 ```bash
 cd studyclub-engineering/frontend
-npm run dev --workspace=playground
+pnpm --filter playground run dev
 ```
 
 브라우저에서 http://localhost:4702 를 엽니다. 파일을 저장하면 화면이 알아서 새로고침됩니다.
@@ -115,6 +115,8 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 |---|---|---|
 | 회원가입 · 온보딩 | `/proto/core/ko/onboarding?scenario=default` | Story PRD · `specs/user-onboarding/spec.md` |
 | Google 로그인 미리보기 | `/proto/core/ko/login?scenario=new` | 온보딩 진입·복귀 흐름 |
+| 스터디 목록 | `/proto/core/ko/studies` | Story PRD 「크루로서, 스터디 목록을 둘러보고 검색·필터링할 수 있다.」 |
+| 스터디 상세 · 신청 | `/proto/core/ko/studies/{id}` | Story PRD 「크루로서, 스터디 신청 폼을 제출할 수 있다.」 |
 | 스터디 등록 모달 | `/proto/console/studies?new=1` | Story PRD 「운영자로서, 스터디를 등록할 수 있다.」 |
 | 내 스터디 · 참여 모음 | `/proto/core/ko/my/joined` | 코드 (`lib/joined.ts`, `lib/attendance-book.ts`) |
 | 내 스터디 · 출석 | `/proto/core/ko/my/studies` | 코드 (`lib/attendance.ts`) |
@@ -135,7 +137,7 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 - `next`로 전달된 playground 내부 주소가 있으면 가입 후 해당 화면으로 돌아갑니다. 외부 주소는 허용하지 않습니다.
 
 정책 출처: [온보딩 PRD](https://app.notion.com/p/benkang/1f683feabad3839b996781bd773ec465), `specs/user-onboarding/spec.md`.
-실제 서비스 연동 시 로그인 응답의 `user.name`·최상위 `suggestedNickname`과 명세의 응답 구조 차이, `core-front` 로그인 중계의 `suggestedNickname` 전달을 확인해야 합니다. 시안은 playground 안에서만 동작합니다.
+실제 서비스 연동 시 로그인 응답은 `account.nickname`과 최상위 `suggestedNickname`입니다. 시안은 playground 안에서만 동작합니다.
 
 ### 새 화면에 번호를 달려면
 

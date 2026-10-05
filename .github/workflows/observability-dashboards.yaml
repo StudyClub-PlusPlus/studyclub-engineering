@@ -1,0 +1,120 @@
+# Grafana **대시보드**의 정본은 레포다. 머지되면 Grafana 에 반영한다.
+# 알림은 observability-alerting.yaml — 일부러 갈라 뒀다(아래 §왜 둘인가).
+#
+# PR 과 merge 를 가른 이유: 이 레포는 PUBLIC 이다. PR 에서 도는 워크플로에 시크릿이
+# 닿으면 그 PR 의 코드가 시크릿을 읽는다. 그래서 PR 은 lint 만, 반영은 push 에서만.
+#
+# develop → stage / main → prod. 관측 대상 앱과 **같은 브랜치**에서 나가야 한다
+# (backend-develop → stage, backend-main → prod).
+#
+# ## 왜 둘인가 (2026-10-03 분리)
+# 한 워크플로에 묶여 있을 때 가드가 시크릿 6개를 전부 요구했다 — 알림용 토큰 하나가
+# 없으면 **대시보드 반영까지 같이 건너뛰었다.** 대시보드는 그 토큰이 필요 없다.
+# `needs: lint` 도 같은 결합이었다(알림 lint 가 깨지면 대시보드 반영이 통째로 막힌다).
+# 둘의 성격도 다르다 — 대시보드는 레포에서 지운 것을 **지우지 않고**, 알림은 지운다.
+
+name: observability-dashboards
+
+on:
+  pull_request:
+    branches: [beta, develop, main]
+    paths:
+      - 'observability/dashboards/**'
+      - 'observability/dashboard-tool.mjs'
+      - 'observability/grafana.mjs'
+      - '.github/workflows/observability-dashboards.yaml'
+  push:
+    branches: [beta, develop, main]
+    paths:
+      - 'observability/dashboards/**'
+      - 'observability/dashboard-tool.mjs'
+      - 'observability/grafana.mjs'
+      - '.github/workflows/observability-dashboards.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # 네트워크도 시크릿도 필요 없다. 여기서 막는 것들은 전부
+  # "Grafana 가 에러 없이 받아주는" 종류다 — 통과하면 조용히 깨진 채로 배포된다.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node observability/dashboard-tool.mjs --lint observability/dashboards/*.json
+
+  provision:
+    if: >-
+      github.event_name != 'pull_request'
+      && (github.ref_name == 'develop' || github.ref_name == 'main')
+    needs: lint
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'stage' }}
+    env:
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      GRAFANA_TOKEN: ${{ secrets.GRAFANA_SA_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 시크릿이 아직 없는 환경에서 빨간 체크를 만들지 않는다.
+      # "설정이 안 됐다" 와 "반영이 실패했다" 는 구분되어야 한다.
+      - name: 자격증명 있나
+        id: guard
+        run: |
+          missing=""
+          for v in GRAFANA_URL GRAFANA_TOKEN; do
+            eval "val=\$$v"
+            if [ -z "$val" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### 대시보드 반영 건너뜀"
+              echo
+              echo "이 Environment 에 없는 시크릿:$missing"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 덮기 **전에** 본다. 누가 Grafana 화면에서 고치고 PR 을 안 올렸으면 여기서 드러난다.
+      # exit 3 = 어긋남(설정 오류 1 과 구분). 지금은 경고만 하고 덮는다 — 막으면 남의
+      # 미처리 변경 때문에 내 배포가 멈춘다. 한 번이라도 실제로 날아가면 exit 1 로 바꾼다.
+      - name: 정본과 실물 비교 (drift)
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          set +e
+          out=$(node observability/dashboard-tool.mjs --drift observability/dashboards/*.json 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          if [ "$code" = "3" ]; then
+            {
+              echo "### ⚠️ Grafana 쪽에 레포에 없는 대시보드 변경이 있다 — 이번 반영으로 덮인다"
+              echo
+              echo '```'
+              echo "$out"
+              echo '```'
+              echo
+              echo "살려야 하는 변경이면 Grafana 에서 export 해서 PR 로 올린 뒤 다시 배포한다."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$code" != "0" ]; then
+            exit "$code"
+          fi
+
+      - name: Grafana 에 반영
+        if: steps.guard.outputs.ready == 'true'
+        run: node observability/dashboard-tool.mjs --push observability/dashboards/*.json
+
+      # "POST 가 200 이었다" 는 반영됐다는 뜻이 아니다 — Grafana 는 잘못된 설정도 200 으로 받는다.
+      - name: 반영 확인
+        if: steps.guard.outputs.ready == 'true'
+        run: node observability/dashboard-tool.mjs --drift observability/dashboards/*.json

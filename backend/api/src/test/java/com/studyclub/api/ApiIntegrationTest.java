@@ -6,11 +6,16 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 /**
@@ -85,6 +90,45 @@ class ApiIntegrationTest {
         assertThat(response.getBody().get("errorMessage")).asString().contains("code");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"", "{\"code\":", "{\"code\":{\"email\":\"private@example.test\"}}"})
+    @DisplayName("읽을 수 없는 로그인 본문은 400 — 빈 본문·깨진 JSON·자료형 오류가 서버 오류나 입력값 노출로 이어지지 않는다")
+    void unreadableRequestBodyReturnsBadRequest(String body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        var response =
+                rest.postForEntity(
+                        "/auth/social-login", new HttpEntity<>(body, headers), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .containsExactlyInAnyOrderEntriesOf(
+                        Map.of(
+                                "errorCode", "INVALID_INPUT",
+                                "errorMessage", "입력값이 올바르지 않습니다."));
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "/api/studies?limit=abc",
+                "/api/studies?category=INVALID",
+                "/api/studies?recruitDeadlineBefore=not-a-date",
+                "/api/studies/abc"
+            })
+    @DisplayName("숫자·상태·날짜·경로 ID 형식 오류는 400 — 컨트롤러에 도달하기 전의 입력 오류도 같은 계약을 지킨다")
+    void invalidRequestArgumentReturnsBadRequest(String path) {
+        var response = rest.getForEntity(path, Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .containsExactlyInAnyOrderEntriesOf(
+                        Map.of(
+                                "errorCode", "INVALID_INPUT",
+                                "errorMessage", "입력값이 올바르지 않습니다."));
+    }
+
     @Test
     @DisplayName("실패 - 위조된 refresh token → 401 + errorCode UNAUTHORIZED (내부 예외가 새지 않는다)")
     void refreshWithBogusToken() {
@@ -107,5 +151,16 @@ class ApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
         assertThat(response.getBody()).doesNotContainKeys("timestamp", "path", "success");
+    }
+
+    @Test
+    @DisplayName("성공 - 모든 응답에 X-Request-Id 가 실린다 (로그 추적용 식별자)")
+    void everyResponseCarriesRequestId() {
+        var ok = rest.getForEntity("/api/health", String.class);
+        assertThat(ok.getHeaders().getFirst("X-Request-Id")).isNotBlank();
+
+        // 시큐리티가 끊는 요청도 식별자를 가져야 한다 — 장애는 대개 이쪽에서 난다
+        var unauthorized = rest.getForEntity("/auth/me", String.class);
+        assertThat(unauthorized.getHeaders().getFirst("X-Request-Id")).isNotBlank();
     }
 }

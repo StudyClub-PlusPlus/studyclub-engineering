@@ -1,0 +1,43 @@
+# API의 spring.config.import로 읽는다. 실제 값은 환경변수 또는 외부 로컬 YAML에서 주입한다.
+mail:
+  auth:
+    configuration-set-name: ${MAIL_AUTH_CONFIGURATION_SET_NAME:}
+    region: ${MAIL_AUTH_REGION:}
+    sub-domain: ${MAIL_AUTH_SUB_DOMAIN:}
+    from-address: ${MAIL_AUTH_FROM_ADDRESS:}
+    access-key-id: ${MAIL_AUTH_ACCESS_KEY_ID:}
+    secret-access-key: ${MAIL_AUTH_SECRET_ACCESS_KEY:}
+  news:
+    configuration-set-name: ${MAIL_NEWS_CONFIGURATION_SET_NAME:}
+    region: ${MAIL_NEWS_REGION:}
+    sub-domain: ${MAIL_NEWS_SUB_DOMAIN:}
+    from-address: ${MAIL_NEWS_FROM_ADDRESS:}
+    access-key-id: ${MAIL_NEWS_ACCESS_KEY_ID:}
+    secret-access-key: ${MAIL_NEWS_SECRET_ACCESS_KEY:}
+  notify:
+    configuration-set-name: ${MAIL_NOTIFY_CONFIGURATION_SET_NAME:}
+    region: ${MAIL_NOTIFY_REGION:}
+    sub-domain: ${MAIL_NOTIFY_SUB_DOMAIN:}
+    from-address: ${MAIL_NOTIFY_FROM_ADDRESS:}
+    access-key-id: ${MAIL_NOTIFY_ACCESS_KEY_ID:}
+    secret-access-key: ${MAIL_NOTIFY_SECRET_ACCESS_KEY:}
+  order:
+    configuration-set-name: ${MAIL_ORDER_CONFIGURATION_SET_NAME:}
+    region: ${MAIL_ORDER_REGION:}
+    sub-domain: ${MAIL_ORDER_SUB_DOMAIN:}
+    from-address: ${MAIL_ORDER_FROM_ADDRESS:}
+    access-key-id: ${MAIL_ORDER_ACCESS_KEY_ID:}
+    secret-access-key: ${MAIL_ORDER_SECRET_ACCESS_KEY:}
+  cs:
+    configuration-set-name: ${MAIL_CS_CONFIGURATION_SET_NAME:}
+    region: ${MAIL_CS_REGION:}
+    sub-domain: ${MAIL_CS_SUB_DOMAIN:}
+    from-address: ${MAIL_CS_FROM_ADDRESS:}
+    access-key-id: ${MAIL_CS_ACCESS_KEY_ID:}
+    secret-access-key: ${MAIL_CS_SECRET_ACCESS_KEY:}
+
+notification:
+  polling:
+    fixed-delay-ms: ${NOTIFICATION_POLLING_FIXED_DELAY_MS:30000}
+    batch-size: ${NOTIFICATION_POLLING_BATCH_SIZE:100}
+    reclaim-timeout-minutes: ${NOTIFICATION_POLLING_RECLAIM_TIMEOUT_MINUTES:5}

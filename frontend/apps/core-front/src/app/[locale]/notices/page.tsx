@@ -1,7 +1,20 @@
+import type { Metadata } from 'next';
+
 import { Pill } from '@/components/Badge';
 import { JoinCta } from '@/components/JoinCta';
 import { getNotices, getSite, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return pageMetadata({
+    locale,
+    path: '/notices',
+    title: m('notices.title', locale),
+    description: m('seo.notices_description', locale),
+  });
+}
 
 export default async function NoticesPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -20,7 +33,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
             key={n.id}
             className='card card-hover p-6'
             style={
-              n.pinned ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)' } : undefined
+              n.pinned ? { borderColor: 'var(--color-brand)', background: 'var(--color-brand-subtle)' } : undefined
             }
           >
             <div className='flex flex-wrap items-center gap-2'>

@@ -67,7 +67,7 @@ export function CrewTab({
   onRemoveClass: (classId: string) => void;
   onAssign: (crewId: string, classId: string) => void;
 }) {
-  const active = crew.filter((c) => c.status === 'active');
+  const active = crew;
   const [newFrom, setNewFrom] = useState<string | null>(null);
   const [editing, setEditing] = useState<StudyClass | undefined>();
   const tally = tallyAvailability(active);
@@ -118,8 +118,8 @@ export function CrewTab({
                           style={{
                             background:
                               n === 0
-                                ? 'var(--color-surface)'
-                                : `color-mix(in oklab, var(--color-brand) ${Math.round((n / most) * 60)}%, var(--color-surface))`,
+                                ? 'var(--color-bg)'
+                                : `color-mix(in oklab, var(--color-brand) ${Math.round((n / most) * 60)}%, var(--color-bg))`,
                           }}
                         >
                           {n === 0 ? '' : n}

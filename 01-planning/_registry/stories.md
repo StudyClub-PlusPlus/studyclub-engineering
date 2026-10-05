@@ -1,0 +1,33 @@
+# Story 레지스트리 (SoT)
+
+> Story 의 **유일한 마스터**. PRD 는 이 표의 투영이다.
+> 행을 삭제하지 않는다 — 폐기는 상태를 `폐기`로 바꾸고 비고에 사유를 적는다.
+
+<!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
+| prefix | next |
+|---|---|
+| ST | 5 |
+| EP | 1 |
+| FN | 1 |
+| IA | 1 |
+| SRC | 1 |
+| POL | 8 |
+
+<!--
+발급 절차: next 값을 읽어 ID 를 만들고, 같은 커밋에서 next 를 +1 한다.
+단조 증가 — 폐기된 번호를 회수하지 않는다.
+-->
+
+## Stories
+
+> 아직 채우지 않았다. 노션에 있는 PRD 12건을 옮기면서 한 번에 등재한다.
+>
+> **상태 칸은 비워 둔다** — 기획완료·개발중·배포완료는 문서로 확인할 수 없는 값이라 적지 않는다.
+> 채울 수 있는 것은 PRD 파일이 실재하는지와 프로토가 떠 있는지 둘뿐이다.
+
+| ID | 정규문장 | Actor | PRD | 프로토 | 상태 | 비고 |
+|---|---|---|---|---|---|---|
+| ST-001 | 캡틴은 스터디를 등록할 수 있다. | 캡틴 | [PRD](../stories/study-create/PRD.md) | [콘솔 › 스터디](https://playground.studyclub-plusplus.com/proto/console/studies) | | |
+| ST-002 | 캡틴은 운영 현황을 한 화면에서 볼 수 있다. | 캡틴 | [PRD](../stories/console-dashboard/PRD.md) | [콘솔 › 대시보드](https://playground.studyclub-plusplus.com/proto/console) | | 집계·API 는 주현님 명세(PR #90)와 맞춘다 |
+| ST-003 | 캡틴은 개별 스터디의 운영 현황을 볼 수 있다. | 캡틴 | [PRD](../stories/study-detail/PRD.md) | [콘솔 › 스터디 상세](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | |
+| ST-004 | 캡틴은 등록된 스터디를 수정·삭제할 수 있다. | 캡틴 | [PRD](../stories/study-edit/PRD.md) | [콘솔 › 정보 탭](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | 수정은 네비게이터도 가능 |

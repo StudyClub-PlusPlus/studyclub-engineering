@@ -68,31 +68,11 @@ class ParticipantHubIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 내 스터디 목록은 참여·신청·일정·북마크를 한 번에 준다")
-    void returnsParticipantHub() {
-        var response =
-                rest.exchange(
-                        "/api/me/studies",
-                        HttpMethod.GET,
-                        authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
-                        Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody())
-                .containsKeys(
-                        "activeStudies",
-                        "pastStudies",
-                        "applications",
-                        "upcomingMeetings",
-                        "bookmarks");
-    }
-
-    @Test
     @DisplayName("성공 - 내 수강 상세는 출석률과 출석 타임라인을 같은 응답으로 준다")
     void returnsParticipantStudyDetail() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/301",
+                        "/api/me/studies/301",
                         HttpMethod.GET,
                         authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
@@ -107,7 +87,7 @@ class ParticipantHubIntegrationTest {
     void returnsConsistentCompletedStudyAttendance() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/291",
+                        "/api/me/studies/291",
                         HttpMethod.GET,
                         authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
@@ -131,7 +111,7 @@ class ParticipantHubIntegrationTest {
     void rejectsNonParticipant() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/303",
+                        "/api/me/studies/303",
                         HttpMethod.GET,
                         authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
@@ -145,7 +125,7 @@ class ParticipantHubIntegrationTest {
     void rejectsUnknownStudy() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/999",
+                        "/api/me/studies/999",
                         HttpMethod.GET,
                         authenticatedRequest(MockParticipantHubDataProvider.MOCK_ACCOUNT_ID),
                         Map.class);
@@ -155,25 +135,11 @@ class ParticipantHubIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 목업 대상이 아닌 계정은 다른 참가자의 목록 대신 빈 목록을 받는다")
-    void returnsEmptyOverviewForAnotherAccount() {
-        var response =
-                rest.exchange(
-                        "/api/me/studies",
-                        HttpMethod.GET,
-                        authenticatedRequest(ANOTHER_ACCOUNT_ID),
-                        Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().get("activeStudies")).asList().isEmpty();
-    }
-
-    @Test
     @DisplayName("실패 - 다른 계정은 목업 참가자의 스터디 기수 상세를 볼 수 없어 403을 받는다")
     void rejectsAnotherAccountFromParticipantDetail() {
         var response =
                 rest.exchange(
-                        "/api/me/study-cohorts/301",
+                        "/api/me/studies/301",
                         HttpMethod.GET,
                         authenticatedRequest(ANOTHER_ACCOUNT_ID),
                         Map.class);

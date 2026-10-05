@@ -40,6 +40,43 @@ export const MESSAGES: Dict = {
   'hero.cta': { ko: '지금 합류하기', en: 'Join now' },
   'hero.cta_studies': { ko: '스터디 둘러보기', en: 'Browse studies' },
 
+  // ── SEO 전용 문구 ─────────────────────────────────────────────────
+  // 화면에 안 보이고 검색 결과·AI 답변에만 쓰인다. 그래서 화면 카피와 분리해 둔다 —
+  // 화면 카피는 짧게 다듬느라 자주 바뀌는데, 여기는 키워드를 품고 길이를 지켜야 한다
+  // (title ~60자, description ~155자를 넘기면 검색 결과에서 잘린다).
+  'seo.site_description': {
+    ko: '미국·캐나다·한국 개발자 2,000여 명의 글로벌 스터디 클럽. 이력서·코딩 인터뷰·시스템 디자인·AI 스터디를 현직자와 무료로 함께합니다.',
+    en: 'A global study club of 2,000+ engineers across the US, Canada, and Korea. Free study groups on resumes, coding interviews, system design, and AI — with working engineers.',
+  },
+  'seo.keywords': {
+    ko: '스터디클럽, 스터디 클럽, 개발자 스터디, 개발자 커뮤니티, 코딩 인터뷰 스터디, 시스템 디자인 스터디, 이력서 스터디, AI 스터디, 알고리즘 스터디, 해외 취업 스터디',
+    en: 'study club, developer study group, engineering community, coding interview prep, system design study, resume review, AI study group',
+  },
+  'seo.home_title': {
+    ko: '스터디클럽 — 개발자 무료 스터디 커뮤니티',
+    en: 'StudyClub++ — Free study groups for engineers',
+  },
+  'seo.studies_description': {
+    ko: '모집 중인 개발자 스터디 전체 목록. 알고리즘·시스템 디자인·AI·커리어까지 관심 분야로 골라 무료로 참여하세요.',
+    en: 'Every open developer study group — algorithms, system design, AI, and career. Pick your topic and join for free.',
+  },
+  'seo.events_description': {
+    ko: '미국·한국·캐나다에서 열린 개발자 밋업·워크샵·직업탐방 기록과 다가오는 행사 일정.',
+    en: 'Developer meetups, workshops, and career talks across the US, Korea, and Canada — past records and upcoming dates.',
+  },
+  'seo.about_description': {
+    ko: 'StudyClub++ 는 미국·캐나다·한국 개발자 2,000여 명이 자발적으로 운영하는 비영리 스터디 커뮤니티입니다. 캡틴 제도와 운영 방식을 소개합니다.',
+    en: 'StudyClub++ is a non-profit, volunteer-run study community of 2,000+ engineers across the US, Canada, and Korea. Meet our Captains and how we run.',
+  },
+  'seo.guide_description': {
+    ko: '스터디 신청부터 디스코드 합류, 킥오프 참여까지 — 처음 오신 분을 위한 단계별 안내.',
+    en: 'From applying to a study to joining Discord and attending the kickoff — a step-by-step guide for newcomers.',
+  },
+  'seo.notices_description': {
+    ko: 'StudyClub++ 모집 공고·운영 개편·밋업 소식을 한곳에서 확인하세요.',
+    en: 'Recruiting announcements, operational updates, and meetup news from StudyClub++.',
+  },
+
   'studies.title': { ko: '스터디', en: 'Studies' },
   'events.title': { ko: '행사', en: 'Events' },
   'events.subtitle': {

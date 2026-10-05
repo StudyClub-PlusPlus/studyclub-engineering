@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 
 import {
@@ -5,10 +7,8 @@ import {
   events,
   getStudyCrew,
   attendancePoint,
-  recruitState,
   site,
   studies,
-  toISODate,
   type MemberRegion,
 } from '@studyclub/mock';
 import { StatCard } from '@studyclub/ui';
@@ -16,6 +16,8 @@ import { BookOpen, CalendarDays, TrendingUp, Users } from 'lucide-react';
 
 import { Card, CategoryBars, RegionDonut } from '@/components/DashboardCharts';
 import { PageHeader, TableCard } from '@/components/ui';
+import { useStudies } from '@/features/studies/queries';
+import type { StudyRow } from '@/features/studies/types';
 import { tx, EVENT_TYPE_LABEL } from '@/lib/l10n';
 
 /**
@@ -27,19 +29,26 @@ import { tx, EVENT_TYPE_LABEL } from '@/lib/l10n';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-/** 전 스터디의 크루·출석을 한 번만 순회해 필요한 집계를 모두 뽑는다. */
-function aggregate() {
+/**
+ * 현재 MSW/API 스터디 목록 기반으로 크루·출석을 순회해 필요한 집계를 뽑는다.
+ * TODO(api): GET /api/admin/stats 또는 /api/dashboard — 백엔드 대시보드 집계 API 연동
+ */
+function aggregate(studyRows: StudyRow[]) {
   const regionCount: Record<MemberRegion, number> = { KR: 0, NA: 0, ETC: 0 };
   const byCategory = new Map<string, { present: number; checked: number; crew: number }>();
   let activeCrew = 0;
   let present = 0;
   let checked = 0;
 
+  const rowMap = new Map(studyRows.map((r) => [r.studyId, r]));
+
   for (const study of studies) {
+    const row = rowMap.get(study.study_id);
+    if (!row) continue; // MSW 스터디 목록에 없으면 제외
+
     const { crew, attendance } = getStudyCrew(study);
-    const active = crew.filter((c) => c.status === 'active');
-    // 진행 중이 아닌 스터디의 크루는 "지금 참가 중"이 아니다
-    const running = study.status !== 'closed';
+    const active = crew;
+    const running = row.phase !== 'CLOSED';
     const category = study.category ?? '기타';
     const bucket = byCategory.get(category) ?? { present: 0, checked: 0, crew: 0 };
 
@@ -53,7 +62,6 @@ function aggregate() {
         if (v === 'excused') continue;
         checked += 1;
         bucket.checked += 1;
-        // 출석률 = (present + late × W) / 대상 회차
         const pt = attendancePoint(v);
         present += pt;
         bucket.present += pt;
@@ -80,9 +88,13 @@ function aggregate() {
 }
 
 export default function Dashboard() {
-  const { activeCrew, avgRate, regions, categories } = aggregate();
-  const runningStudies = studies.filter((s) => s.status !== 'closed').length;
-  const recruiting = studies.filter((s) => recruitState(s) === 'apply');
+  const { data: studyPage } = useStudies({});
+  const studyRows: StudyRow[] = studyPage?.rows ?? [];
+
+  const { activeCrew, avgRate, regions, categories } = aggregate(studyRows);
+  const runningStudies = studyRows.filter((s) => s.phase !== 'CLOSED').length;
+  const recruiting = studyRows.filter((s) => s.recruiting || s.phase === 'RECRUITING');
+  // TODO(api): GET /api/events — 다가오는 행사 API 연동 (현재 mock)
   const upcoming = events
     .filter((e) => e.date >= TODAY)
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -103,7 +115,7 @@ export default function Dashboard() {
       href: '/studies',
       icon: TrendingUp,
     },
-    // 활성 크루와 **같은 집합**을 센다(종료되지 않은 스터디). 기준이 다르면 두 숫자가 서로 안 맞는다.
+    // 활성 크루와 같은 집합을 센다(종료되지 않은 스터디).
     {
       label: '진행 중 스터디',
       value: runningStudies,
@@ -138,12 +150,13 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className='mt-6 grid items-start gap-6 lg:grid-cols-2'>
-        <Card title='크루 지역 분포'>
-          <RegionDonut data={regions} />
-        </Card>
-        <Card title='카테고리별 출석률'>
+      {/* 출석 지표: 분류별 출석률(막대) + 거주지 분포(도넛). 같은 높이로 나란히 둔다 */}
+      <div className='mt-6 grid gap-4 lg:grid-cols-2'>
+        <Card title='분류별 평균 출석률'>
           <CategoryBars data={categories} />
+        </Card>
+        <Card title='크루 거주지 분포'>
+          <RegionDonut data={regions} />
         </Card>
       </div>
 
@@ -166,19 +179,16 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {recruiting.map((s) => {
-                const deadline = toISODate(s.recruitment?.deadline);
-                return (
-                  <tr key={s.id}>
-                    <td className='max-w-0 truncate font-semibold'>
-                      <Link href={`/studies/${s.id}`} className='underline-offset-4 hover:text-brand hover:underline'>
-                        {tx(s.title)}
-                      </Link>
-                    </td>
-                    <td className='tnum whitespace-nowrap text-fg-secondary'>{deadline ? `~${deadline}` : '상시'}</td>
-                  </tr>
-                );
-              })}
+              {recruiting.map((s) => (
+                <tr key={s.studyId}>
+                  <td className='max-w-0 truncate font-semibold'>
+                    <Link href={`/studies/${s.studyId}`} className='underline-offset-4 hover:text-brand hover:underline'>
+                      {s.title}
+                    </Link>
+                  </td>
+                  <td className='tnum whitespace-nowrap text-fg-secondary'>{s.deadline ? `~${s.deadline}` : '상시'}</td>
+                </tr>
+              ))}
               {recruiting.length === 0 && (
                 <tr>
                   <td colSpan={2} className='text-center text-fg-muted'>

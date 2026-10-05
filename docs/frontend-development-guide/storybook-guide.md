@@ -37,12 +37,31 @@ packages/ui/
 
 ## 실행
 
+### 1. 프로젝트 최상위 루트에서 실행할 때
 ```bash
-# packages/ui 기준
-cd frontend && npm run storybook --workspace=@studyclub/ui
+# Storybook 개발 서버 실행 (:6006)
+pnpm --prefix frontend storybook
 
-# 또는 frontend 루트에서 turbo 태스크
-cd frontend && npx turbo run storybook --filter=@studyclub/ui
+# 또는 패키지 필터 명시
+pnpm --prefix frontend --filter @studyclub/ui run storybook
+
+# Storybook 정적 빌드
+pnpm --prefix frontend run build-storybook
+```
+
+### 2. `frontend/` 디렉토리에서 실행할 때
+```bash
+cd frontend
+
+# 단축 명령어
+pnpm storybook
+# 또는
+pnpm run dev:storybook
+# 또는 패키지 필터 명시
+pnpm --filter @studyclub/ui run storybook
+
+# Storybook 정적 빌드
+pnpm run build-storybook
 ```
 
 브라우저: `http://localhost:6006`
@@ -394,4 +413,4 @@ export const Controlled: Story = {
 - [ ] `tags: ['autodocs']` 포함
 - [ ] 주요 variant / 상태별 스토리 추가 (Default 포함 최소 2개)
 - [ ] 너비가 중요한 컴포넌트는 decorator로 너비 고정
-- [ ] `npm run storybook` 으로 로컬 확인 후 PR
+- [ ] `pnpm run storybook` 으로 로컬 확인 후 PR

@@ -1,0 +1,111 @@
+package com.studyclub.notification;
+
+import jakarta.persistence.LockModeType;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface NotificationRepository extends JpaRepository<Notification, Long> {
+
+    /** 테스트 전용 — 계정 하나가 받은 알림을 뒤져볼 때만 쓴다. 백오피스 조회는 볼륨이 계속 느는 아웃박스라 {@link #findPage} 를 쓴다. */
+    List<Notification> findAllByOrderByCreatedAtDesc();
+
+    /**
+     * 회원 탈퇴 — 이 계정이 수신자인 알림 이력을 잠그고 조회한다(비식별화 대상, specs/user-leave/spec.md).
+     *
+     * <p>{@code FOR UPDATE}(SKIP LOCKED 아님)인 이유: 폴링 스케줄러가 마침 이 행을 클레임·완료 처리 중이면 그 트랜잭션이 끝날 때까지 기다린
+     * 뒤 최신 상태를 읽어야 한다. 일반 조회는 트랜잭션 스냅샷을 읽어, 그 사이 PENDING→PROCESSING 으로 바뀐 행을 여전히 PENDING 으로 보고 취소해
+     * 버리거나 스케줄러의 갱신을 덮어쓸 수 있다. SKIP LOCKED 로 건너뛰면 잠긴 행은 비식별화가 누락돼 PII 가 남는다. 반대로 이 락을 먼저 잡으면 스케줄러의
+     * {@code findClaimableIds}(SKIP LOCKED)는 이 행을 건너뛰어 취소 대상이 발송되지 않는다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select n from Notification n where n.recipientUserId = :recipientUserId")
+    List<Notification> findByRecipientUserIdForUpdate(
+            @Param("recipientUserId") Long recipientUserId);
+
+    /**
+     * 완료 처리(markSent/markFailed) 전용 — 행을 잠근다({@code AccountRepository.findByEmailForUpdate} 와 같은
+     * 이유). 일반 {@code findById} 는 트랜잭션 시작 시점의 스냅샷을 읽을 뿐이라, 이 값을 읽어 자바에서 상태·lockedAt 을 확인한 뒤 저장하는 사이에
+     * 다른 트랜잭션(재수거 등)이 같은 행을 먼저 바꿔도 알아채지 못하고 덮어쓸 수 있다 — 확인과 갱신이 원자적이지 않다는 리뷰 지적. {@code FOR UPDATE}
+     * 로 읽으면 그 사이 재수거의 {@code FOR UPDATE SKIP LOCKED} 가 이 행을 건너뛰어 이번 재수거 사이클에서 손대지 않으므로, 확인·갱신이 사실상
+     * 한 트랜잭션 안에서 원자적으로 처리된다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select n from Notification n where n.id = :id")
+    Optional<Notification> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * 백오피스 발송 이력 조회 — LIMIT/OFFSET 을 DB 에 위임한다. {@code eventType}/{@code status} 는 null 이면 필터를 적용하지
+     * 않는다(Enum 을 그대로 바인딩하지 않고 이름으로 비교하는 이유는 네이티브 쿼리라 Hibernate 의 enum 타입 추론을 못 받기 때문).
+     */
+    @Query(
+            value =
+                    """
+            SELECT *
+            FROM NOTIFICATION
+            WHERE (:eventType IS NULL OR EVENT_TYPE = :eventType)
+              AND (:status IS NULL OR STATUS = :status)
+            ORDER BY CREATED_AT DESC
+            LIMIT :limit OFFSET :offset
+            """,
+            nativeQuery = true)
+    List<Notification> findPage(
+            @Param("eventType") String eventType,
+            @Param("status") String status,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    /** {@link #findPage} 와 같은 필터로 전체 건수를 센다 — 응답의 {@code total} 필드용. */
+    @Query(
+            value =
+                    """
+            SELECT COUNT(*)
+            FROM NOTIFICATION
+            WHERE (:eventType IS NULL OR EVENT_TYPE = :eventType)
+              AND (:status IS NULL OR STATUS = :status)
+            """,
+            nativeQuery = true)
+    long countFiltered(@Param("eventType") String eventType, @Param("status") String status);
+
+    /**
+     * 다중 서버 환경에서 같은 PENDING 행을 두 인스턴스가 동시에 집어가지 않도록 잠근다. InnoDB 가 행 락 획득을 원자적으로 처리하므로 이 SELECT 자체가
+     * 클레임이다 — 애플리케이션이 조율할 필요가 없다 (specs/notification/spec.md).
+     *
+     * <p>이 메서드는 반드시 뒤이은 {@code Notification.markProcessing} 저장과 같은 트랜잭션(같은 커넥션) 안에서 호출한다. 트랜잭션이
+     * 커밋되기 전까지 락이 유지된다.
+     */
+    @Query(
+            value =
+                    """
+            SELECT ID
+            FROM NOTIFICATION
+            WHERE STATUS = 'PENDING'
+              AND (SCHEDULED_AT IS NULL OR SCHEDULED_AT <= :now)
+            ORDER BY COALESCE(SCHEDULED_AT, CREATED_AT)
+            LIMIT :batchSize
+            FOR UPDATE SKIP LOCKED
+            """,
+            nativeQuery = true)
+    List<Long> findClaimableIds(@Param("batchSize") int batchSize, @Param("now") Instant now);
+
+    /**
+     * {@code lockedAt} 기준 컷오프를 넘겨 멈춘 PROCESSING 행을 잠근다. {@link #findClaimableIds} 와 같은 이유로 FOR
+     * UPDATE SKIP LOCKED 를 쓴다 — 마침 다른 인스턴스가 이 행에 대해 {@code markSent}/{@code markFailed} 를 커밋하는 중이면
+     * 이번 재수거 사이클에서는 건드리지 않고 넘어간다(그 커밋이 끝나면 STATUS 가 PROCESSING 이 아니게 되어 다음 조회부터 자연히 제외된다).
+     */
+    @Query(
+            value =
+                    """
+            SELECT ID
+            FROM NOTIFICATION
+            WHERE STATUS = 'PROCESSING'
+              AND LOCKED_AT < :cutoff
+            FOR UPDATE SKIP LOCKED
+            """,
+            nativeQuery = true)
+    List<Long> findStuckProcessingIds(@Param("cutoff") Instant cutoff);
+}
