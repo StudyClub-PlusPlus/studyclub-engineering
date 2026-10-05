@@ -12,7 +12,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -63,6 +62,7 @@ class AttendanceUpsertIntegrationTest {
     @Autowired StudyAttendanceRepository studyAttendanceRepo;
 
     private Study study;
+    private StudyGroup group;
     private StudyMeeting meeting1;
     private StudyMeeting meeting2;
     private StudyParticipant participantA;
@@ -91,18 +91,15 @@ class AttendanceUpsertIntegrationTest {
                 studyRepo.save(
                         Study.builder()
                                 .programId(program.getId())
-                                .slug("upsert-test-study")
                                 .title("Upsert 테스트 스터디")
                                 .oneLineSummary("테스트용")
                                 .category(StudyCategory.ALGORITHM)
                                 .description("설명")
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(10)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());
 
-        var group =
+        group =
                 studyGroupRepo.save(
                         new StudyGroup(
                                 study.getId(),
@@ -282,8 +279,8 @@ class AttendanceUpsertIntegrationTest {
     }
 
     @Test
-    @DisplayName("존재하지_않는_studyId_404")
-    void 존재하지_않는_studyId_404() {
+    @DisplayName("존재하지_않는_분반_404")
+    void 존재하지_않는_분반_404() {
         var body =
                 Map.of(
                         "updates",
@@ -293,7 +290,7 @@ class AttendanceUpsertIntegrationTest {
                                         "participantId", participantA.getId(),
                                         "status", "PRESENT")));
 
-        var response = post(999_999L, body, LEADER_ACCOUNT_ID);
+        var response = post(study.getId(), 999_999L, body, LEADER_ACCOUNT_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -302,12 +299,18 @@ class AttendanceUpsertIntegrationTest {
 
     private <T> org.springframework.http.ResponseEntity<T> post(
             Long studyId, Object body, Long callerAccountId) {
+        return post(studyId, group.getId(), body, callerAccountId);
+    }
+
+    private <T> org.springframework.http.ResponseEntity<T> post(
+            Long studyId, Long studyGroupId, Object body, Long callerAccountId) {
         return rest.exchange(
-                "/api/studies/{studyId}/attendances",
+                "/api/studies/{studyId}/attendances?studyGroupId={studyGroupId}",
                 HttpMethod.POST,
                 authenticatedRequest(body, callerAccountId),
                 (Class<T>) Void.class,
-                studyId);
+                studyId,
+                studyGroupId);
     }
 
     private HttpEntity<Object> authenticatedRequest(Object body, Long accountId) {

@@ -1,5 +1,6 @@
 package com.studyclub.api.bookmark;
 
+import com.studyclub.api.auth.security.RequireOnboarding;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -22,6 +23,7 @@ public class StudyBookmarkController {
         this.studyBookmarkService = studyBookmarkService;
     }
 
+    @RequireOnboarding
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/bookmarks")
     public ResponseEntity<StudyBookmarkResponse> getBookmarks(

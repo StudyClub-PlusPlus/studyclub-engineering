@@ -12,7 +12,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -29,7 +28,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -189,11 +187,9 @@ class MyStudyIntegrationTest {
                 studyRepository.save(
                         Study.builder()
                                 .programId(program.getId())
-                                .slug("my-studies-" + UUID.randomUUID())
                                 .title(title)
                                 .oneLineSummary("소개")
                                 .category(StudyCategory.SOFTWARE)
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.ONGOING)
                                 .startAt(startAt)
                                 .discordChannelUrl(DISCORD_URL)

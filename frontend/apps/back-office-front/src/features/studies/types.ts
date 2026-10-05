@@ -6,7 +6,6 @@ export type StudyPhase = 'RECRUITING' | 'ONGOING' | 'CLOSED';
 
 export type ApiStudySummary = {
   studyId: number;
-  slug: string;
   title: string;
   oneLineSummary: string;
   category: string;
@@ -39,7 +38,6 @@ export type StudyFilter = {
 /** 목록 한 줄이 실제로 그리는 값. API 가 안 주는 값(출석률 등)은 아예 두지 않는다. */
 export type StudyRow = {
   studyId: number;
-  slug: string;
   title: string;
   summary: string;
   category: string;
@@ -59,14 +57,12 @@ export type ApiStudyDetail = {
   programId: number;
   /** 프로그램 제목. 정보 탭이 프로그램을 읽기 전용으로 보여 주는 데 쓴다. */
   programTitle: string;
-  slug: string;
   title: string;
   oneLineSummary: string;
   description: string | null;
   category: string;
   studyKind: 'STUDY' | 'CLUB';
   thumbnailUrl: string | null;
-  deliveryFormat: string;
   status: 'DRAFT' | 'OPEN' | 'ONGOING' | 'ENDED' | 'CLOSED';
   /** `status != OPEN` 이면 null — 모집 상태가 "없는" 것이지 마감이 아니다. */
   recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED' | null;
@@ -146,7 +142,6 @@ export const CATEGORY_OPTIONS = Object.entries(CATEGORY_DISPLAY).map(([value, la
 export function toRow(api: ApiStudySummary): StudyRow {
   return {
     studyId: api.studyId,
-    slug: api.slug,
     title: api.title,
     summary: api.oneLineSummary,
     category: CATEGORY_DISPLAY[api.category] ?? api.category,

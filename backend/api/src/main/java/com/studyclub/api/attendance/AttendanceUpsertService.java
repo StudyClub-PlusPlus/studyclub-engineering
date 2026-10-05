@@ -4,9 +4,10 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
-import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.StudyGroup;
+import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyRepository;
@@ -25,30 +26,34 @@ import org.springframework.transaction.annotation.Transactional;
 public class AttendanceUpsertService {
 
     private final StudyRepository studyRepository;
+    private final StudyGroupRepository studyGroupRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
 
     public AttendanceUpsertService(
             StudyRepository studyRepository,
+            StudyGroupRepository studyGroupRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository) {
         this.studyRepository = studyRepository;
+        this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
     }
 
+    /** 권한은 {@code @RequireCaptainOrNavigator(GROUP)} 가 검사한다. */
     @Transactional
-    public void upsert(Long studyId, Long callerAccountId, AttendanceUpsertRequest request) {
+    public void upsert(Long studyId, Long studyGroupId, AttendanceUpsertRequest request) {
         validateStudyExists(studyId);
-        validateCallerIsCaptain(callerAccountId, studyId);
+        validateGroupBelongsToStudy(studyId, studyGroupId);
 
         List<AttendanceUpsertRequest.AttendanceUpsertItem> upsertRequests = request.updates();
         ValidRequestContext validRequestContext = validateRequests(upsertRequests);
 
-        validateMeetingsBelongToStudy(validRequestContext.meetingIds(), studyId);
+        validateMeetingsBelongToGroup(validRequestContext.meetingIds(), studyId, studyGroupId);
         Map<Long, StudyParticipant> participantById =
                 loadAndValidateParticipants(validRequestContext.participantIds(), studyId);
 
@@ -72,14 +77,13 @@ public class AttendanceUpsertService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
 
-    private void validateCallerIsCaptain(Long callerAccountId, Long studyId) {
-        boolean isCaptain =
-                studyParticipantRepository.existsByAccountIdAndStudyIdAndParticipantRoleIn(
-                        callerAccountId,
-                        studyId,
-                        List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER));
-        if (!isCaptain) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
+    private void validateGroupBelongsToStudy(Long studyId, Long studyGroupId) {
+        StudyGroup group =
+                studyGroupRepository
+                        .findById(studyGroupId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        if (!studyId.equals(group.getStudyId())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
         }
     }
 
@@ -107,24 +111,21 @@ public class AttendanceUpsertService {
         return new ValidRequestContext(statuses, meetingIds, participantIds);
     }
 
-    private void validateMeetingsBelongToStudy(Set<Long> meetingIds, Long studyId) {
+    private void validateMeetingsBelongToGroup(
+            Set<Long> meetingIds, Long studyId, Long studyGroupId) {
         List<StudyMeeting> meetings =
                 studyMeetingRepository.findByIdInAndStudyId(meetingIds, studyId);
         if (meetings.size() != meetingIds.size()) {
             throw meetingNotInStudy();
         }
-        // 회차 삭제와 겹치면 검증과 저장 사이에 회차가 사라져, 지운 회차의 출석이 다시 생긴다 (출석 → 회차 외래키가 없다).
-        // 회차 관리·디스코드 출석과 같은 분반 회차 잠금을 잡고 다시 본다 — 잠금 조회는 스냅샷이 아니라 커밋된 최신 행을 읽는다
+        boolean mixedOrWrongGroup =
+                meetings.stream().anyMatch(m -> !studyGroupId.equals(m.getStudyGroupId()));
+        if (mixedOrWrongGroup) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "회차가 서로 다른 분반이거나 studyGroupId와 일치하지 않습니다.");
+        }
         Set<Long> lockedIds =
-                meetings.stream()
-                        .map(StudyMeeting::getStudyGroupId)
-                        .distinct()
-                        .sorted()
-                        .flatMap(
-                                groupId ->
-                                        studyMeetingRepository
-                                                .findByStudyGroupIdForUpdate(groupId)
-                                                .stream())
+                studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId).stream()
                         .map(StudyMeeting::getId)
                         .collect(Collectors.toSet());
         if (!lockedIds.containsAll(meetingIds)) {

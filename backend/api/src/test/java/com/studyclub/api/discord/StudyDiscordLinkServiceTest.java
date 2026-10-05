@@ -5,15 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -45,7 +42,6 @@ class StudyDiscordLinkServiceTest {
     @Mock StudyDiscordLinkRepository studyDiscordLinkRepository;
     @Mock StudyRepository studyRepository;
     @Mock AccountRepository accountRepository;
-    @Mock StudyCaptainGuard studyCaptainGuard;
     @Mock TransactionTemplate transactionTemplate;
 
     @InjectMocks StudyDiscordLinkService service;
@@ -98,19 +94,6 @@ class StudyDiscordLinkServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.CONFLICT);
-        verify(discordBotClient, never()).createStudy(anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("ADMIN_이_아니면_스터디도_보지_않고_거절한다")
-    void ADMIN_이_아니면_스터디도_보지_않고_거절한다() {
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN))
-                .when(studyCaptainGuard)
-                .assertCaptain(eq(ADMIN_ID), anyString());
-
-        assertThatThrownBy(() -> service.link(ADMIN_ID, STUDY_ID, null))
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.FORBIDDEN);
         verify(discordBotClient, never()).createStudy(anyString(), anyString());
     }
 
