@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { classLabel, classPeriod, type StudyClass } from '@console/lib/classes';
 import { tzAbbr, wallToInstant } from '@console/lib/schedule';
 import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
-import { Button } from '@studyclub/ui';
+import { Badge, Button } from '@studyclub/ui';
 import { CalendarPlus, Mic, Plus } from 'lucide-react';
 
 /**
@@ -158,7 +158,7 @@ export function AttendanceTab({
 }: {
   study: Study;
   /** 이름 칸에 쓰는 것만 받는다 — 사용자 사이트는 명부 밖의 「나」도 넣는다. */
-  crew: Pick<Crew, 'id' | 'name'>[];
+  crew: (Pick<Crew, 'id' | 'name'> & { role?: 'captain' | 'navigator' })[];
   meetings: StudyMeeting[];
   attendance: AttendanceBook;
   classes: StudyClass[];
@@ -353,8 +353,12 @@ export function AttendanceTab({
                 <tr key={c.id}>
                   <td className='sticky left-0 z-[1] whitespace-nowrap border-t border-border bg-surface px-4 py-1.5 font-semibold'>
                     {/* 동명이인 구분(디스코드 닉네임)이 붙으면 길어진다 — 칸은 좁게 두고 전체 이름은 가리키면 보인다 */}
-                    <span className='block max-w-[12rem] truncate' title={c.name}>
-                      {c.name}
+                    <span className='flex items-center gap-1.5'>
+                      <span className='block max-w-[12rem] truncate' title={c.name}>
+                        {c.name}
+                      </span>
+                      {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
+                      {c.role && <Badge tone={c.role}>{c.role === 'captain' ? '캡틴' : '네비게이터'}</Badge>}
                     </span>
                   </td>
                   {presentersOf && (

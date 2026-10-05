@@ -4,7 +4,7 @@ import { getUser } from '@core/lib/auth';
 import { myGroupCrew } from '@core/lib/navigator-attendance';
 import type { Study } from '@studyclub/mock';
 
-import type { ScheduleRole } from '@core/lib/meetings';
+import { scheduleAccessOf, type ManageRole, type ScheduleRole } from '@core/lib/meetings';
 
 /**
  * 스터디 일정 화면이 구글 시트 출석부에서 옮겨 온 것 — 참가자(발표자 후보)와 스터디 규칙.
@@ -13,7 +13,13 @@ import type { ScheduleRole } from '@core/lib/meetings';
  */
 
 /** 발표자로 고를 수 있는 분반 참가자. `me` 는 로그인한 나. */
-export type Participant = { id: string; name: string; me?: boolean };
+export type Participant = {
+  id: string;
+  name: string;
+  me?: boolean;
+  /** 캡틴·네비게이터면 그 역할. 크루는 비운다 — 출석부 이름 옆 칩. */
+  role?: ManageRole;
+};
 
 /** 프로토의 「나」 — 분반 명부에 따로 없어 ID 를 고정한다. */
 export const ME_ID = 'me';
@@ -31,13 +37,16 @@ function myName(): string {
  */
 export function participantsOf(study: Study): Participant[] {
   const crew = myGroupCrew(study);
+  const myRole = scheduleAccessOf(study).role;
   const names = [myName(), ...crew.map((c) => c.name)];
   const dup = (name: string) => names.filter((n) => n === name).length > 1;
   return [
-    { id: ME_ID, name: myName(), me: true },
+    { id: ME_ID, name: myName(), me: true, role: myRole === 'crew' ? undefined : myRole },
     ...crew.map((c, i) => ({
       id: c.id,
       name: dup(c.name) ? `${c.name} (${c.discordNickname ?? `#${i + 1}`})` : c.name,
+      // 프로토 가정 — 내가 네비게이터가 아니면 명부 첫 사람이 네비게이터다 (navigatorNameOf 와 같다).
+      role: i === 0 && myRole !== 'navigator' ? ('navigator' as const) : undefined,
     })),
   ];
 }

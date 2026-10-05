@@ -2,37 +2,22 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { AttendanceGrid } from '@core/components/AttendanceGrid';
-import { DiscordGlyph } from '@core/components/DiscordGlyph';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
-import {
-  STATUS_LABEL,
-  STATUS_STYLE,
-  canCheckIn,
-  getMyAttendance,
-  resolveStatus,
-} from '@core/lib/attendance';
-import { bookScore, myAttendanceBook, rateTone, type MyAttendanceBook } from '@core/lib/attendance-book';
+import { bookScore, myAttendanceBook, type MyAttendanceBook } from '@core/lib/attendance-book';
 import { getUser } from '@core/lib/auth';
-import { userStudyPath, type Locale } from '@core/lib/content';
+import { type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import {
   LEFT_BADGE,
   LIFE_LABEL,
   addDays,
-  canOpenAttendance,
-  canOpenDiscord,
-  canOpenDrive,
-  discordUrl,
-  driveUrl,
   durationOf,
   isCompleted,
   lifeStatus,
   mondayOf,
-  upcomingMeeting,
   upcomingOf,
   userWallTz,
   weekDays,
@@ -42,20 +27,10 @@ import {
   type WeekDay,
 } from '@core/lib/joined';
 import { getApplications, getRegion } from '@core/lib/me';
-import { MANAGE_ROLE_LABEL, manageAccessOf } from '@core/lib/meetings';
-import { type Study, type StudyMeeting } from '@studyclub/mock';
+import { SCHEDULE_ROLE_LABEL, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
+import { type Study } from '@studyclub/mock';
 import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
-import {
-  Award,
-  BookOpen,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  FolderOpen,
-  Heart,
-  CalendarDays,
-} from 'lucide-react';
+import { Award, BookOpen, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -80,7 +55,10 @@ const LIFE_TONE: Record<LifeStatus, 'recruiting' | 'inprogress' | 'ended'> = {
 
 const EMPTY: Record<Filter, { title: string; description: string }> = {
   all: { title: '참여한 스터디가 없습니다', description: '신청이 승인되면 여기에 모입니다.' },
-  upcoming: { title: '시작 전 스터디가 없습니다', description: '승인된 뒤 아직 시작하지 않은 스터디가 여기에 모입니다.' },
+  upcoming: {
+    title: '시작 전 스터디가 없습니다',
+    description: '승인된 뒤 아직 시작하지 않은 스터디가 여기에 모입니다.',
+  },
   active: { title: '참여 중인 스터디가 없습니다', description: '지금 들어가는 스터디가 여기에 모입니다.' },
   ended: {
     title: '참여가 끝난 스터디가 없습니다',
@@ -100,83 +78,9 @@ function weekRangeLabel(days: WeekDay[]): string {
   return `${ymd.slice(0, 4)}년 ${Number(ymd.slice(5, 7))}월`;
 }
 
-function AttendActions({
-  study,
-  meeting,
-  attendAnno,
-}: {
-  study: Study;
-  meeting: StudyMeeting;
-  attendAnno: string;
-}) {
-  const stored = getMyAttendance(study.id);
-  const status = resolveStatus(study, meeting, stored);
-  const joinOn = canCheckIn(study, meeting) && canOpenDiscord(study);
-
-  function join() {
-    if (!joinOn) return;
-    window.open(discordUrl(study), '_blank', 'noopener,noreferrer');
-  }
-
-  if (status) {
-    return (
-      <span
-        className={cx(
-          'mt-0.5 block min-h-[1.625rem] truncate rounded-sm px-0.5 py-1 text-[10px] font-bold',
-          STATUS_STYLE[status],
-        )}
-      >
-        {STATUS_LABEL[status]}
-      </span>
-    );
-  }
-
-  return (
-    <button
-      type='button'
-      data-anno={attendAnno}
-      disabled={!joinOn}
-      onClick={join}
-      className={cx(
-        'mt-0.5 block min-h-[1.625rem] w-full truncate rounded-sm px-0.5 py-1 text-[10px] font-bold',
-        joinOn
-          ? 'bg-brand text-on-brand hover:bg-brand-hover'
-          : 'bg-neutral-200 text-neutral-400',
-      )}
-    >
-      참석
-    </button>
-  );
-}
-
-function ResourceIcon({
-  label,
-  anno,
-  disabled,
-  title,
-  onClick,
-  children,
-}: {
-  label: string;
-  anno: string;
-  disabled?: boolean;
-  title?: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type='button'
-      data-anno={anno}
-      aria-label={label}
-      title={title ?? label}
-      disabled={disabled}
-      onClick={onClick}
-      className='grid h-8 w-8 shrink-0 place-items-center rounded-control text-fg hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:text-fg-muted'
-    >
-      {children}
-    </button>
-  );
+/** 내 스터디에서 들어가는 스터디 일정. 주소 값은 study_id(STUDY.ID). */
+function schedulePath(locale: Locale, study: Study): string {
+  return `/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`;
 }
 
 function weekChip(category: string | undefined): { accent: string; tint: number } {
@@ -210,8 +114,7 @@ function WeekStrip({
     <section data-anno='1-1' className='mt-5'>
       <div className='flex flex-wrap items-end justify-between gap-2'>
         <h2 className='text-lg font-extrabold tracking-tight'>
-          {thisWeek ? '이번 주 일정 ' : '주간 일정 '}{' '}
-          <span className='tnum font-bold text-fg-muted'>{range}</span>
+          {thisWeek ? '이번 주 일정 ' : '주간 일정 '} <span className='tnum font-bold text-fg-muted'>{range}</span>
         </h2>
         <div className='flex items-center gap-2'>
           <SegmentTabs
@@ -239,20 +142,12 @@ function WeekStrip({
           {days.map((d) => (
             <li
               key={d.date}
-              className={cx(
-                'min-w-0 rounded-card px-1 py-1.5',
-                d.today ? 'bg-brand-subtle' : 'bg-surface-1',
-              )}
+              className={cx('min-w-0 rounded-card px-1 py-1.5', d.today ? 'bg-brand-subtle' : 'bg-surface-1')}
             >
               <p className={cx('text-center text-[11px] font-bold', d.today ? 'text-primary-700' : 'text-fg-muted')}>
                 {d.label}
               </p>
-              <p
-                className={cx(
-                  'tnum text-center text-sm font-extrabold',
-                  d.today ? 'text-primary-700' : 'text-fg',
-                )}
-              >
+              <p className={cx('tnum text-center text-sm font-extrabold', d.today ? 'text-primary-700' : 'text-fg')}>
                 {d.day}
               </p>
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
@@ -264,7 +159,7 @@ function WeekStrip({
                       <button
                         type='button'
                         title={`${hit.time} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
-                        onClick={() => study && router.push(userStudyPath(locale, study))}
+                        onClick={() => study && router.push(schedulePath(locale, study))}
                         className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left text-[10px] font-bold leading-tight hover:brightness-[0.97]'
                         style={{
                           borderLeftColor: accent,
@@ -289,15 +184,7 @@ function WeekStrip({
   );
 }
 
-function Pager({
-  page,
-  pages,
-  onChange,
-}: {
-  page: number;
-  pages: number;
-  onChange: (page: number) => void;
-}) {
+function Pager({ page, pages, onChange }: { page: number; pages: number; onChange: (page: number) => void }) {
   if (pages <= 1) return null;
   return (
     <nav data-anno='5' className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
@@ -344,7 +231,8 @@ function Pager({
  * 내 스터디 — 참여 목록.
  *
  * 기본 탭은 참여중. 크루가 여기 오는 이유는 지금 어디 들어가는지 확인하는 것이다.
- * 이번 주 회차는 주간 줄에서 보고, 참석은 카드 출석 기록의 다음 회차 칸에서 찍는다.
+ * 이번 주 회차는 주간 줄에서 보고, 카드나 주간 칸을 누르면 그 스터디의 스터디 일정으로 간다.
+ * 출석 기록 · 디스코드 · 자료실은 스터디 일정에 있다.
  */
 export default function MyJoinedPage() {
   const params = useParams();
@@ -356,9 +244,7 @@ export default function MyJoinedPage() {
   const [page, setPage] = useState(1);
   const [wallTz, setWallTz] = useState<WallTz>('KST');
   const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
-  const [openIds, setOpenIds] = useState<string[]>([]);
   const listTop = useRef<HTMLDivElement>(null);
-  const appliedOpen = useRef(false);
 
   useEffect(() => {
     if (!getUser()) {
@@ -386,28 +272,6 @@ export default function MyJoinedPage() {
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
 
   const shown = useMemo(() => studiesIn(mine, filter), [filter, mine]);
-
-  useEffect(() => {
-    if (!ready || appliedOpen.current) return;
-    const open = new URLSearchParams(window.location.search).get('open');
-    if (!open) {
-      appliedOpen.current = true;
-      return;
-    }
-    // 주소 값은 study_id 다. 펼침 상태(openIds)는 내부 키(`id`)로 들고 있는다.
-    const study = mine.find((s) => String(s.study_id) === open);
-    if (!study) {
-      appliedOpen.current = true;
-      return;
-    }
-    const nextFilter = lifeStatus(study);
-    const list = studiesIn(mine, nextFilter);
-    const idx = list.findIndex((s) => s.id === study.id);
-    appliedOpen.current = true;
-    setFilter(nextFilter);
-    if (idx >= 0) setPage(Math.floor(idx / PAGE_SIZE) + 1);
-    setOpenIds([study.id]);
-  }, [ready, mine]);
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
   const pageSafe = Math.min(page, pages);
@@ -470,16 +334,7 @@ export default function MyJoinedPage() {
         <div ref={listTop}>
           <ul className='mt-6 flex flex-col gap-3'>
             {paged.map((study) => (
-              <StudyItem
-                key={study.id}
-                study={study}
-                locale={locale}
-                wallTz={wallTz}
-                bookOpen={openIds.includes(study.id)}
-                onToggleBook={() =>
-                  setOpenIds((cur) => (cur.includes(study.id) ? cur.filter((id) => id !== study.id) : [...cur, study.id]))
-                }
-              />
+              <StudyItem key={study.id} study={study} locale={locale} wallTz={wallTz} />
             ))}
           </ul>
           <Pager page={pageSafe} pages={pages} onChange={changePage} />
@@ -502,9 +357,7 @@ function MissionClear({ book }: { book: MyAttendanceBook }) {
         완주를 축하합니다!
       </p>
       <p className='mt-1 flex items-baseline gap-1'>
-        <span className='tnum text-[32px] font-extrabold leading-none tracking-tight text-warning-700'>
-          {attended}
-        </span>
+        <span className='tnum text-[32px] font-extrabold leading-none tracking-tight text-warning-700'>{attended}</span>
         <span className='text-lg font-bold text-fg-muted'>/</span>
         <span className='tnum text-lg font-bold text-fg-muted'>{total}</span>
         <span className='ml-1 text-[13px] font-bold text-fg-muted'>회</span>
@@ -525,35 +378,17 @@ function MissionClear({ book }: { book: MyAttendanceBook }) {
   );
 }
 
-function StudyItem({
-  study,
-  locale,
-  wallTz,
-  bookOpen,
-  onToggleBook,
-}: {
-  study: Study;
-  locale: Locale;
-  wallTz: WallTz;
-  bookOpen: boolean;
-  onToggleBook: () => void;
-}) {
-  const router = useRouter();
+function StudyItem({ study, locale, wallTz }: { study: Study; locale: Locale; wallTz: WallTz }) {
   const { icon: Icon } = categoryMeta(study.category);
   const life = lifeStatus(study);
   const completed = isCompleted(study);
   const left = life === 'ended' && !completed;
-  const attendanceOn = canOpenAttendance();
-  const discordOn = canOpenDiscord(study);
-  const driveOn = canOpenDrive(study);
-  const nextMeeting = upcomingMeeting(study, wallTz);
   const book = myAttendanceBook(study);
-  const panelId = `attendance-${study.id}`;
   const ended = life === 'ended' && !completed;
-  const showRate = !completed && book.rate !== undefined;
-  const access = manageAccessOf(study.id);
-  // 스터디 일정은 참가자 누구나 본다. 참여가 끝난 스터디는 더 이상 참가자가 아니다.
-  const canSeeSchedule = !ended;
+  // 이 스터디에서 내 역할 — 맡은 스터디가 아니면 크루.
+  const role: ScheduleRole = manageAccessOf(study.id)?.role ?? 'crew';
+  // 카드는 스터디 일정으로 간다. 참여를 중단한 스터디는 더 이상 참가자가 아니라 링크가 없다.
+  const linked = !ended;
 
   return (
     <li>
@@ -562,12 +397,11 @@ function StudyItem({
         padding='lg'
         className={cx(
           'relative flex gap-4 overflow-hidden',
+          linked && 'transition-colors hover:border-border-strong hover:bg-surface-1',
           completed && 'border-warning-400 bg-warning-50 shadow-sm',
         )}
       >
-        {completed && (
-          <span className='absolute inset-y-0 left-0 w-1 bg-warning-400' aria-hidden='true' />
-        )}
+        {completed && <span className='absolute inset-y-0 left-0 w-1 bg-warning-400' aria-hidden='true' />}
         <span
           data-anno='4-1'
           className='relative grid h-12 w-12 shrink-0 place-items-center rounded-card text-white'
@@ -586,42 +420,29 @@ function StudyItem({
           <div className='flex items-start justify-between gap-3'>
             <div className='min-w-0'>
               <div className='flex min-w-0 items-center gap-2'>
-                <Link
-                  data-anno='4-2'
-                  href={userStudyPath(locale, study)}
-                  className='min-w-0 truncate text-[17px] font-bold text-fg underline-offset-4 hover:underline'
-                >
-                  {t(study.title, locale)}
-                </Link>
-                {access && (
-                  <span data-anno='meeting:1' className='shrink-0'>
-                    <Badge tone={access.role}>{MANAGE_ROLE_LABEL[access.role]}</Badge>
+                {linked ? (
+                  // 제목 링크를 카드 전체로 늘린다 — 카드 어디를 눌러도 스터디 일정으로 간다.
+                  <Link
+                    data-anno='4-2'
+                    href={schedulePath(locale, study)}
+                    className="min-w-0 truncate text-[17px] font-bold text-fg after:absolute after:inset-0 after:content-['']"
+                  >
+                    {t(study.title, locale)}
+                  </Link>
+                ) : (
+                  <span data-anno='4-2' className='min-w-0 truncate text-[17px] font-bold text-fg'>
+                    {t(study.title, locale)}
                   </span>
                 )}
+                <span data-anno='meeting:1' className='shrink-0'>
+                  <Badge tone={role === 'crew' ? 'member' : role}>{SCHEDULE_ROLE_LABEL[role]}</Badge>
+                </span>
               </div>
               <p data-anno='4-5' className='mt-0.5 text-[13px] text-fg-muted'>
                 {durationOf(study, locale, wallTz)}
               </p>
             </div>
             <span className='flex shrink-0 items-center gap-0.5'>
-              {discordOn && (
-                <ResourceIcon
-                  anno='4-6-2'
-                  label='디스코드'
-                  onClick={() => window.open(discordUrl(study), '_blank', 'noopener,noreferrer')}
-                >
-                  <DiscordGlyph size={16} />
-                </ResourceIcon>
-              )}
-              {driveOn && (
-                <ResourceIcon
-                  anno='4-6-3'
-                  label='자료실'
-                  onClick={() => window.open(driveUrl(study), '_blank', 'noopener,noreferrer')}
-                >
-                  <FolderOpen size={16} strokeWidth={1.75} />
-                </ResourceIcon>
-              )}
               <span data-anno='4-3' className='ml-1'>
                 {completed ? (
                   <span className='inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-pill bg-warning-100 px-2 py-0.5 text-xs font-bold text-warning-700'>
@@ -650,73 +471,8 @@ function StudyItem({
               >
                 {upcomingOf(study, locale, wallTz)}
               </p>
-              {canSeeSchedule && (
-                <span data-anno='meeting:2' className='shrink-0'>
-                  <Button
-                    variant='secondary'
-                    size='sm'
-                    leadingIcon={<CalendarDays size={14} />}
-                    onClick={() => router.push(`/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`)}
-                  >
-                    스터디 일정
-                  </Button>
-                </span>
-              )}
             </div>
           )}
-
-          <div
-            data-anno='4-6'
-            className={cx(
-              'mt-3 overflow-hidden rounded-control border border-border-strong bg-bg',
-              bookOpen && 'bg-surface-1',
-            )}
-          >
-            <button
-              type='button'
-              data-anno='4-6-1'
-              disabled={!attendanceOn}
-              title={attendanceOn ? undefined : '참여가 끝나 내 출석을 열 수 없습니다'}
-              aria-expanded={bookOpen}
-              aria-controls={panelId}
-              onClick={onToggleBook}
-              className='flex w-full items-center gap-1.5 px-3 py-2 text-left text-sm font-bold text-fg-secondary hover:bg-surface-2 hover:text-fg disabled:pointer-events-none disabled:text-fg-muted'
-            >
-              <ClipboardList size={14} aria-hidden='true' />
-              출석 기록
-              {showRate && (
-                <span data-anno='4-8' className={cx('tnum', rateTone(book.rate!))}>
-                  {book.rate}%
-                </span>
-              )}
-              <ChevronDown
-                size={14}
-                className={cx('ml-auto shrink-0 transition-transform', bookOpen && 'rotate-180')}
-                aria-hidden='true'
-              />
-            </button>
-            {bookOpen && (
-              <div id={panelId} data-anno='4-6-1-1' className='border-t border-border px-3 pb-3 pt-2'>
-                <AttendanceGrid
-                  book={book}
-                  study={study}
-                  wallTz={wallTz}
-                  headAnno='4-6-1-1'
-                  cellAnno='4-6-1-2'
-                  actionMeetingId={nextMeeting?.id}
-                  action={
-                    nextMeeting ? (
-                      <AttendActions
-                        study={study}
-                        meeting={nextMeeting}
-                        attendAnno='4-6-1-3'
-                      />
-                    ) : undefined
-                  }
-                />
-              </div>
-            )}
-          </div>
         </div>
       </Card>
     </li>
