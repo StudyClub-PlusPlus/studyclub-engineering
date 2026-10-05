@@ -50,4 +50,12 @@ public class StudyRecruitment extends BaseEntity {
     public void updateDeadline(Instant recruitDeadlineAt) {
         this.recruitDeadlineAt = recruitDeadlineAt;
     }
+
+    /** 모집 정원. {@code null} 이면 제한 없음. */
+    public void updateCapacity(Integer recruitmentCapacity) {
+        if (recruitmentCapacity != null && recruitmentCapacity < 1) {
+            throw new IllegalArgumentException("capacity 는 1 이상이어야 합니다.");
+        }
+        this.recruitmentCapacity = recruitmentCapacity;
+    }
 }

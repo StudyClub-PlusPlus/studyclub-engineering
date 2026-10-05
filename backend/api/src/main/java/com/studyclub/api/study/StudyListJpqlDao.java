@@ -1,6 +1,5 @@
 package com.studyclub.api.study;
 
-import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyPhase;
 import jakarta.persistence.EntityManager;
@@ -25,18 +24,23 @@ import org.springframework.stereotype.Repository;
 @Repository
 class StudyListJpqlDao implements StudyListDao {
 
-    private static final List<ParticipantStatus> OCCUPYING =
-            List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED);
-
     /** 현재 모집 마감 시각 — 가장 최근(id 최대) 회차의 값. 없으면 null(상시 모집). */
     private static final String CURRENT_DEADLINE =
             "(SELECT r.recruitDeadlineAt FROM StudyRecruitment r WHERE r.id ="
                     + " (SELECT MAX(r2.id) FROM StudyRecruitment r2 WHERE r2.studyId = s.id))";
 
-    /** 정원을 차지하는 참여자 수 — ACTIVE·PAUSED 만. */
-    private static final String OCCUPYING_COUNT =
-            "(SELECT COUNT(p) FROM StudyParticipant p WHERE p.studyId = s.id"
-                    + " AND p.status IN :occupying)";
+    /** 현재 모집 정원 — 가장 최근(id 최대) 회차의 값. 없으면 null(무제한). */
+    private static final String CURRENT_CAPACITY =
+            "(SELECT r.recruitmentCapacity FROM StudyRecruitment r WHERE r.id ="
+                    + " (SELECT MAX(r2.id) FROM StudyRecruitment r2 WHERE r2.studyId = s.id))";
+
+    /**
+     * 현재 모집 회차의 신청 수 — 정원과 같은 회차끼리 비교한다. 서비스(StudyListService·StudyService)가 응답 phase 를 계산할 때 쓰는 값과
+     * 같아야 필터·정렬이 카드와 어긋나지 않는다 (study-recruit-status/spec.md).
+     */
+    private static final String CURRENT_APPLICATION_COUNT =
+            "(SELECT COUNT(a) FROM StudyApplication a WHERE a.recruitmentId ="
+                    + " (SELECT MAX(r3.id) FROM StudyRecruitment r3 WHERE r3.studyId = s.id))";
 
     /** 단계 등수 — 0 모집 중 · 1 진행 중 · 2 종료. {@link StudyPhase} 선언 순서와 같다. */
     private static final String PHASE_RANK =
@@ -49,9 +53,13 @@ class StudyListJpqlDao implements StudyListDao {
                     + " IS NULL OR "
                     + CURRENT_DEADLINE
                     + " > :now)"
-                    + "   AND (s.capacity IS NULL OR "
-                    + OCCUPYING_COUNT
-                    + " < s.capacity) THEN 0"
+                    + "   AND ("
+                    + CURRENT_CAPACITY
+                    + " IS NULL OR "
+                    + CURRENT_APPLICATION_COUNT
+                    + " < "
+                    + CURRENT_CAPACITY
+                    + ") THEN 0"
                     + " ELSE 2 END";
 
     private static final String TIMEZONE =
@@ -68,7 +76,7 @@ class StudyListJpqlDao implements StudyListDao {
      * 나열한다(planning/stories/crew-browse-studies). 묶어서 최신 1건만 주면 진행 중인 기수가 목록에서 사라진다.
      */
     private static final String VISIBLE =
-            "s.isHidden = false" + " AND s.status <> com.studyclub.domain.study.StudyStatus.DRAFT";
+            "s.status <> com.studyclub.domain.study.StudyStatus.DRAFT";
 
     /** 모집 중 → 진행 중 → 종료, 같은 단계에서는 최근 등록 순. 사용자가 고르는 정렬은 없다. */
     private static final String ORDER_BY = " ORDER BY " + PHASE_RANK + " ASC, s.id DESC";
@@ -136,16 +144,13 @@ class StudyListJpqlDao implements StudyListDao {
     }
 
     /**
-     * 조립된 값과, 단계 판정이 쓰는 {@code :now}·{@code :occupying} 을 바인딩한다. 단계 판정은 필터로도 정렬로도 들어올 수 있어, 최종 JPQL
-     * 에 그 이름이 실제로 남았을 때만 넣는다 (없는 파라미터를 넣으면 Hibernate 가 예외를 던진다).
+     * 조립된 값과, 단계 판정이 쓰는 {@code :now} 를 바인딩한다. 단계 판정은 필터로도 정렬로도 들어올 수 있어, 최종 JPQL 에 그 이름이 실제로 남았을 때만
+     * 넣는다 (없는 파라미터를 넣으면 Hibernate 가 예외를 던진다).
      */
     private <T> TypedQuery<T> bind(TypedQuery<T> query, String jpql, Assembled where) {
         where.params().forEach(query::setParameter);
         if (jpql.contains(":now")) {
             query.setParameter("now", Instant.now());
-        }
-        if (jpql.contains(":occupying")) {
-            query.setParameter("occupying", OCCUPYING);
         }
         return query;
     }

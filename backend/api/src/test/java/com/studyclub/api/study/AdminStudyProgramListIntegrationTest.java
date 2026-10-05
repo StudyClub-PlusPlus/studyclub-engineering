@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -17,7 +16,6 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -117,11 +115,9 @@ class AdminStudyProgramListIntegrationTest {
         return studyRepository.save(
                 Study.builder()
                         .programId(program.getId())
-                        .slug(UUID.randomUUID().toString())
                         .title(title)
                         .oneLineSummary("소개")
                         .category(StudyCategory.OTHER)
-                        .studyDeliveryFormat(DeliveryFormat.ONLINE)
                         .status(StudyStatus.DRAFT)
                         .build());
     }

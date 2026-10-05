@@ -53,8 +53,8 @@ class AdminApplicationIntegrationTest {
         insertAccount(LEADER_ID, "leader-applications@example.com", SystemRole.MEMBER, now);
         insertAccount(MEMBER_ID, "member-applications@example.com", SystemRole.MEMBER, now);
         insertAccount(APPLICANT_ID, "applicant@example.com", SystemRole.MEMBER, now);
-        insertStudy(STUDY_ID, "applications-study", now);
-        insertStudy(OTHER_STUDY_ID, "other-applications-study", now);
+        insertStudy(STUDY_ID, now);
+        insertStudy(OTHER_STUDY_ID, now);
         insertRecruitment(RECRUITMENT_ID, STUDY_ID, now);
         insertRecruitment(OTHER_RECRUITMENT_ID, OTHER_STUDY_ID, now);
         insertParticipant(LEADER_ID, STUDY_ID, "LEADER", now);
@@ -214,7 +214,7 @@ class AdminApplicationIntegrationTest {
                 "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?)", STUDY_ID, OTHER_STUDY_ID);
     }
 
-    private void insertStudy(Long id, String slug, Timestamp now) {
+    private void insertStudy(Long id, Timestamp now) {
         // 종류는 프로그램이 갖는다 — 기수에는 컬럼이 없다. 프로그램 ID 는 기수 ID 와 같게 둔다
         jdbcTemplate.update(
                 "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
@@ -224,18 +224,15 @@ class AdminApplicationIntegrationTest {
                 now,
                 now);
         jdbcTemplate.update(
-                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY,"
+                        + " STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 "신청 조회 스터디",
-                slug,
                 "한 줄 소개",
                 "SOFTWARE",
-                false,
-                "ONLINE",
                 "OPEN",
                 "{\"questions\":[{\"id\":\"reason\",\"label\":\"지원 사유\",\"type\":\"TEXT\",\"required\":true}]}",
                 now,

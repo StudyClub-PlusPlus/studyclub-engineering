@@ -1,7 +1,7 @@
 // 백엔드 API 클라이언트 — **서버 전용**.
 // `fetchStudies` 는 서버 컴포넌트가 첫 화면을 그릴 때 쓴다(컨테이너 내부 URL + ISR).
 // 브라우저 조회는 `features/studies/queries.ts` 가 백엔드를 직접 부른다.
-import { CATEGORY_DISPLAY, type Study, type StudyFormat, type StudyStatus } from '@studyclub/mock';
+import { CATEGORY_DISPLAY, type Study, type StudyStatus } from '@studyclub/mock';
 export type { ApiStudy, ApiStudyDetail, ApiPage } from '@studyclub/mock/msw';
 import type { ApiStudy, ApiStudyDetail, ApiPage } from '@studyclub/mock/msw';
 
@@ -30,12 +30,12 @@ function l10n(text: string): { ko: string; en: string } {
 
 export function toStudy(api: ApiStudy): Study {
   return {
-    id: api.slug,
+    id: String(api.studyId),
     study_id: api.studyId,
+    format: 'online', // 진행 방식 컬럼은 V30 에서 삭제 — 전부 온라인
     title: l10n(api.title),
     summary: l10n(api.oneLineSummary),
     status: PHASE_STATUS[api.phase],
-    format: (api.deliveryFormat?.toLowerCase() ?? 'online') as StudyFormat,
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     category: CATEGORY_DISPLAY[api.category] ?? api.category,
     image: api.thumbnailUrl ?? undefined,
@@ -85,11 +85,11 @@ export function toStudyFromDetail(api: ApiStudyDetail): Study {
   return {
     id: String(api.id),
     study_id: api.id,
+    format: 'online', // 진행 방식 컬럼은 V30 에서 삭제 — 전부 온라인
     title: l10n(api.title),
     summary: l10n(api.oneLineSummary),
     description: api.description ? l10n(api.description) : undefined,
     status: LIFECYCLE_STATUS[api.status],
-    format: (api.deliveryFormat?.toLowerCase() ?? 'online') as StudyFormat,
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     category: CATEGORY_DISPLAY[api.category] ?? api.category,
     image: api.thumbnailUrl ?? undefined,
