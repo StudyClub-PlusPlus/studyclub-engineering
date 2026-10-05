@@ -328,7 +328,7 @@ export function AttendanceTab({
                   className='tnum w-[3.6rem] px-1 py-2 text-center text-[11px] font-semibold text-fg-secondary'
                 >
                   {headOf ? headOf(s) : `${s.no}회`}
-                  <span className='block text-[10px] font-medium text-fg-muted'>{s.date.slice(5)}</span>
+                  <span className='block text-[10px] font-medium text-fg-muted'>{s.date.slice(5).replace('-', '/')}</span>
                 </th>
               ))}
               <th
