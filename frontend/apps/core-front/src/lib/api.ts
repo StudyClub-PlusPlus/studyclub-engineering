@@ -32,6 +32,7 @@ export function toStudy(api: ApiStudy): Study {
   return {
     id: String(api.studyId),
     study_id: api.studyId,
+    format: 'online', // 진행 방식 컬럼은 V30 에서 삭제 — 전부 온라인
     title: l10n(api.title),
     summary: l10n(api.oneLineSummary),
     status: PHASE_STATUS[api.phase],
@@ -84,6 +85,7 @@ export function toStudyFromDetail(api: ApiStudyDetail): Study {
   return {
     id: String(api.id),
     study_id: api.id,
+    format: 'online', // 진행 방식 컬럼은 V30 에서 삭제 — 전부 온라인
     title: l10n(api.title),
     summary: l10n(api.oneLineSummary),
     description: api.description ? l10n(api.description) : undefined,

@@ -136,8 +136,8 @@ public class Study extends BaseEntity {
      * <p>{@code recruitDeadlineAt == null} 은 상시 모집이라 시각으로는 마감되지 않고, {@code recruitmentCapacity ==
      * null} 은 무제한이라 정원으로도 마감되지 않는다.
      *
-     * <p>참여자 수는 STUDY_PARTICIPANT 애그리거트 소관이라 밖에서 받는다. 정원을 차지하는 참여자(ACTIVE·PAUSED)만 세야 하므로 {@code
-     * StudyParticipantRepository.countByStudyIds} 가 주는 값을 그대로 넘긴다.
+     * <p>신청 수는 STUDY_APPLICATION 애그리거트 소관이라 밖에서 받는다. 정원과 같은 회차끼리 비교해야 하므로 최신 모집 회차의 신청 수 ({@code
+     * StudyApplicationRepository.countByRecruitmentIdIn}) 를 넘긴다.
      *
      * <p>{@code recruitDeadlineAt} · {@code recruitmentCapacity} 는 STUDY_RECRUITMENT 에서 가져온 값이다.
      */
