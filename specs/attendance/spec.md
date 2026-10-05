@@ -153,6 +153,10 @@ STUDY_ATTENDANCE {
 | meetings[].scheduledAt | String | N | 예정 시각 (ISO 8601) | STUDY_MEETING.SCHEDULED_AT |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].displayName | String | N | | ACCOUNT.NICKNAME |
+| participants[].participantRole | String | N | `LEADER` · `CO_LEADER` · `MEMBER`. 스터디 일정 출석부의 이름 옆 역할 칩(네비게이터) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| participants[].captain | Boolean | N | 그 스터디를 만든 캡틴이면 true — 이름 옆 「캡틴」 칩 | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
+| participants[].participantStatus | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` · `COMPLETED` · `DELETED`. `WITHDRAWN`·`DELETED` 이면 화면은 흐린 이름 + 칩, 맨 아래 줄 | STUDY_PARTICIPANT.STATUS |
+| participants[].leftAt | String | Y | 떠난 시각(UTC). 이 뒤 회차 칸은 「—」. 하차·제명 구분은 미확정 — 크루에게는 사유 없이 「참여 종료」만 보인다 | STUDY_PARTICIPANT.LEFT_AT |
 | participants[].attendances[].meetingId | Long | N | | STUDY_MEETING.ID |
 | participants[].attendances[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED \| null`. null = 미입력 | STUDY_ATTENDANCE.STATUS |
 | participants[].attendanceRate | Double | Y | 개인 누적 출석률. 분모 0이면 null → 화면은 "–" 표시 | 계산: 출석률 산식 참고 |

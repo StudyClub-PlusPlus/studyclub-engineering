@@ -181,6 +181,8 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | meetings | Array | N | `scheduledAt` 오름차순. 없으면 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 분반) |
 | studyGroup.navigatorName | String | Y | 시트 머리의 「네비게이터」. 없으면 null | STUDY_PARTICIPANT(LEADER) → ACCOUNT 닉네임 |
 | studyGroup.rules | String | Y | 스터디 규칙. 없으면 null | STUDY_GROUP.RULES |
+| study.discordChannelUrl | String | Y | 정보 카드 「디스코드」 버튼. 완주한 참여자는 클럽 로비 초대. 없으면 null — 버튼을 두지 않는다 | STUDY.DISCORD_CHANNEL_URL |
+| study.driveUrl | String | Y | 정보 카드 「자료실」 버튼. 없으면 null | STUDY.DRIVE_URL |
 | me.participantId | Long | Y | 내 명부 행. 명부에 없는 캡틴은 null | STUDY_PARTICIPANT.ID |
 | me.canEdit | Boolean | N | true 면 네비게이터·캡틴 — 화면이 표를 고칠 수 있게 연다 | 계산: 위 「권한 판정」 고치기 |
 | participants | Array | N | 발표자 드롭다운 후보. 그 분반 활성 참여자, 이름순 | STUDY_PARTICIPANT `STATUS IN (ACTIVE, PAUSED)` |

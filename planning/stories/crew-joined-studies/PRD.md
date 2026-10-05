@@ -299,7 +299,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/me/studies` | 로그인. 명부 참여만. 스터디마다 내 역할(`role`)을 함께 |
+| GET | `/api/me/studies` | 로그인. 명부 참여만. 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그(추가 필요) |
 | GET | `/api/me/studies/{id}/meetings` | 해당 명부 |
 | GET | `/api/me` | 거주 지역 등 |
 
