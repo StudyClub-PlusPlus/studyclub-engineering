@@ -98,7 +98,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].endAt | String (ISO 8601 UTC) | Y | | STUDY.END_AT |
 | items[].relation | String | N | 나와의 관계 — 탭·배지. 아래 표 | 계산: `participantStatus` + `startAt` |
 | items[].participantStatus | String | N | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | STUDY_PARTICIPANT.STATUS |
-| items[].participantRole | String | N | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼 | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| items[].participantRole | String | N | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼. **담당 캡틴**(스터디를 생성한 캡틴)도 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다 — 담당 캡틴의 명부 편입과 역할 값은 후속 작업 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
 | items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
@@ -109,7 +109,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].meetings[].startAt | String (ISO 8601 UTC) | Y | 실제 시작 | STUDY_MEETING.START_AT |
 | items[].meetings[].endAt | String (ISO 8601 UTC) | Y | 실제 종료 | STUDY_MEETING.END_AT |
 | items[].meetings[].attendanceStatus | String | Y | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT`. 출석 행이 없으면 null. **시작 전 회차**(`startAt` null 이고 `scheduledAt` > now)의 `ABSENT` 도 null — 회차를 만들 때 참여자 전원에게 기본으로 들어가는 값이라 화면에 결석으로 그리지 않는다. 시작 전이라도 `EXCUSED` 는 그대로 준다(사전 휴가 배지) | STUDY_ATTENDANCE.STATUS (내 계정) |
-| items[].meetings[].countedInRate | Boolean | N | 이 회차가 `attendanceRate` 분모에 들어갔는지. `scheduledAt` ≤ now 이고 `scheduledAt` ≥ 편입 시각(`JOINED_AT`)이며 명부가 `WITHDRAWN` 이 아닐 때 true. 편입 전 회차는 격자에는 보이지만 false | 계산: `AttendanceRateCalculator` 와 같은 조건 |
+| items[].meetings[].countedInRate | Boolean | N | 이 회차가 `attendanceRate` 분모에 들어갔는지. `scheduledAt` 이 편입 시각(`JOINED_AT`) 이상이고 상한(`ACTIVE`/`PAUSED`/`COMPLETED` 는 now, `WITHDRAWN`·`DELETED` 는 떠난 시각 `LEFT_AT`) 이하일 때 true — 하차 이전 회차는 그대로 집계에 남고 이후 회차만 제외한다([user-leave spec](../user-leave/spec.md) "WITHDRAWN·DELETED", 2026-10-01). 편입 전 회차는 격자에는 보이지만 false | 계산: `AttendanceRateCalculator.countsToward` 와 같은 조건 |
 
 #### relation — 나와의 관계
 

@@ -40,7 +40,7 @@ export default function PlaygroundIndex() {
       <div className='mt-8 grid gap-4 sm:grid-cols-2'>
         {ENTRIES.map((e) => (
           <Link key={e.href} href={e.href} className='block'>
-            <div className='h-full rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 transition-shadow hover:shadow-md'>
+            <div className='h-full rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg)] p-6 transition-shadow hover:shadow-md'>
               <h2 className='text-lg font-bold'>{e.title}</h2>
               <p className='mt-2 text-sm leading-relaxed text-[var(--color-fg-muted)]'>{e.body}</p>
             </div>
@@ -48,7 +48,7 @@ export default function PlaygroundIndex() {
         ))}
       </div>
 
-      <section className='mt-10 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6'>
+      <section className='mt-10 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg)] p-6'>
         <h2 className='text-base font-bold'>디자인 시스템 문서와의 관계</h2>
         <ul className='mt-3 space-y-1.5 text-sm leading-relaxed text-[var(--color-fg-muted)]'>
           <li>
@@ -63,7 +63,7 @@ export default function PlaygroundIndex() {
         </ul>
       </section>
 
-      <section className='mt-6 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6'>
+      <section className='mt-6 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg)] p-6'>
         <h2 className='text-base font-bold'>화면을 하나 추가하려면</h2>
         <ol className='mt-3 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--color-fg-muted)]'>
           <li>

@@ -696,7 +696,13 @@ function StudyItem({
                     variant='secondary'
                     size='sm'
                     leadingIcon={<Settings2 size={14} />}
-                    onClick={() => router.push(`/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`)}
+                    onClick={() =>
+                      router.push(
+                        access?.role === 'captain'
+                          ? `/proto/console/studies/${study.study_id}`
+                          : `/proto/core/${locale}/my/joined/${study.study_id}/manage/schedule`,
+                      )
+                    }
                   >
                     스터디 관리
                   </Button>

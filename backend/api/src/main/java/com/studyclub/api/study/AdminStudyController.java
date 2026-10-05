@@ -1,5 +1,6 @@
 package com.studyclub.api.study;
 
+import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.api.discord.StudyDiscordLinkService;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -22,12 +23,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 백오피스의 스터디 — 목록·상세·등록·수정·삭제. 캡틴만. DRAFT 도 다룬다.
+ * 백오피스의 스터디 — 목록·상세·등록·수정·삭제. 캡틴만 ({@code @RequireAdmin}).
  *
- * <p>사용자 사이트는 {@link StudyController}({@code /api/studies})를 쓴다. 로직은 {@link StudyService} 를 같이 쓰고
- * 권한 검사만 관객별 진입 메서드에서 따로 한다 — specs/study/spec.md 「관객별 엔드포인트」
+ * <p>사용자 사이트는 {@link StudyController}({@code /api/studies})를 쓴다. 로직은 {@link StudyService} 를 같이 쓴다 —
+ * specs/study/spec.md 「관객별 엔드포인트」 · specs/authz-guards/spec.md
  */
 @Tag(name = "백오피스 스터디", description = "캡틴이 스터디를 조회·등록·수정·삭제한다")
+@RequireAdmin
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/admin/studies")
@@ -36,17 +38,14 @@ public class AdminStudyController {
     private final BackofficeStudyListService backofficeStudyListService;
     private final StudyService studyService;
     private final StudyDiscordLinkService studyDiscordLinkService;
-    private final StudyCaptainGuard studyCaptainGuard;
 
     public AdminStudyController(
             BackofficeStudyListService backofficeStudyListService,
             StudyService studyService,
-            StudyDiscordLinkService studyDiscordLinkService,
-            StudyCaptainGuard studyCaptainGuard) {
+            StudyDiscordLinkService studyDiscordLinkService) {
         this.backofficeStudyListService = backofficeStudyListService;
         this.studyService = studyService;
         this.studyDiscordLinkService = studyDiscordLinkService;
-        this.studyCaptainGuard = studyCaptainGuard;
     }
 
     @Operation(summary = "백오피스 스터디 목록 조회", description = "ADMIN만 호출 가능. DRAFT 포함 전 상태를 반환한다.")
@@ -55,20 +54,17 @@ public class AdminStudyController {
             @RequestParam(required = false) StudyCategory category,
             @RequestParam(required = false) StudyKind studyKind,
             @RequestParam(required = false) StudyStatus status,
+            @RequestParam(required = false) Long studyId,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "20") int limit,
-            Authentication authentication) {
-        Long accountId = (Long) authentication.getPrincipal();
-        studyCaptainGuard.assertCaptain(accountId, "백오피스는 캡틴(ADMIN)만 접근할 수 있습니다.");
+            @RequestParam(defaultValue = "20") int limit) {
         return backofficeStudyListService.getStudies(
-                new BackofficeStudyListFilter(category, studyKind, status), offset, limit);
+                new BackofficeStudyListFilter(category, studyKind, status, studyId), offset, limit);
     }
 
     @Operation(summary = "백오피스 스터디 상세 조회", description = "ADMIN만 호출 가능. DRAFT 도 조회된다.")
     @GetMapping("/{studyId}")
-    public StudyDetailResponse detail(@PathVariable Long studyId, Authentication authentication) {
-        Long accountId = (Long) authentication.getPrincipal();
-        return studyService.getDetailForBackOffice(accountId, studyId);
+    public StudyDetailResponse detail(@PathVariable Long studyId) {
+        return studyService.getDetailForBackOffice(studyId);
     }
 
     @Operation(
@@ -93,19 +89,15 @@ public class AdminStudyController {
                             + " 보낸 필드만 반영한다.")
     @PatchMapping("/{studyId}")
     public ResponseEntity<Void> update(
-            @PathVariable Long studyId,
-            @Valid @RequestBody StudyUpdateRequest request,
-            Authentication authentication) {
-        Long accountId = (Long) authentication.getPrincipal();
-        studyService.updateFromBackOffice(accountId, studyId, request);
+            @PathVariable Long studyId, @Valid @RequestBody StudyUpdateRequest request) {
+        studyService.updateFromBackOffice(studyId, request);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "스터디 삭제", description = "ADMIN만 호출 가능. 크루 명단·출석 기록 포함 영구 삭제.")
     @DeleteMapping("/{studyId}")
-    public ResponseEntity<Void> delete(@PathVariable Long studyId, Authentication authentication) {
-        Long accountId = (Long) authentication.getPrincipal();
-        studyService.delete(accountId, studyId);
+    public ResponseEntity<Void> delete(@PathVariable Long studyId) {
+        studyService.delete(studyId);
         return ResponseEntity.noContent().build();
     }
 }

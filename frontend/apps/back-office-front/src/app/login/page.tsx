@@ -97,7 +97,7 @@ function BackOfficeLoginForm() {
           type='button'
           onClick={startLogin}
           disabled={loading}
-          className='mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-[#1f1f1f] shadow-sm transition hover:bg-neutral-50 disabled:opacity-60'
+          className='mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-bg px-4 py-3 text-sm font-semibold text-fg shadow-sm transition hover:bg-surface-1 disabled:opacity-60'
         >
           <svg width='18' height='18' viewBox='0 0 24 24' aria-hidden>
             <path

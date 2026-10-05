@@ -139,7 +139,7 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
 /** 목록에 필요한 만큼만 뽑는다 — 어느 스터디를 열어야 하는지 고르기 위한 숫자. */
 function summarize(study: Study) {
   const { crew, capacity } = getStudyCrew(study);
-  return { capacity, active: crew.filter((c) => c.status === 'active').length };
+  return { capacity, active: crew.length };
 }
 
 /** 화면에서 바꾼 공개 상태. TODO(api): 저장 API 를 붙이면 서버 값으로 대체한다. */

@@ -5,6 +5,7 @@ build/
 dist/
 .next/
 out/
+storybook-static/
 .turbo/
 *.log
 

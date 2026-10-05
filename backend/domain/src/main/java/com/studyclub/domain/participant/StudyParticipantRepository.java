@@ -2,6 +2,7 @@ package com.studyclub.domain.participant;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,11 +11,24 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByStudyId(Long studyId);
 
-    List<StudyParticipant> findByAccountId(Long accountId);
-
     void deleteByStudyId(Long studyId);
 
+    /** 내 스터디 목록(MyStudyQueryService)과 회원 탈퇴 익명화(AccountDeletionService) 공용 조회. */
+    List<StudyParticipant> findByAccountId(Long accountId);
+
     List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
+
+    List<StudyParticipant> findByStudyGroupIdAndStatusIn(
+            Long studyGroupId, Collection<ParticipantStatus> statuses);
+
+    /** 한 기수 안 여러 반 동시 소속은 금지라 많아야 하나다. 회차 관리 화면이 분반을 지정하지 않았을 때 쓴다. */
+    Optional<StudyParticipant> findFirstByStudyIdAndAccountId(Long studyId, Long accountId);
+
+    boolean existsByStudyGroupIdAndAccountIdAndParticipantRole(
+            Long studyGroupId, Long accountId, ParticipantRole participantRole);
+
+    boolean existsByStudyGroupIdAndAccountIdAndParticipantRoleIn(
+            Long studyGroupId, Long accountId, Collection<ParticipantRole> participantRoles);
 
     List<StudyParticipant> findByIdInAndStudyId(Collection<Long> ids, Long studyId);
 

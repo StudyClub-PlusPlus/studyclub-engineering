@@ -24,7 +24,7 @@ export type NavigatorGroup = {
   startAt: string;
 };
 
-/** 이 스터디를 사용자 사이트에서 관리할 수 있는 역할. 캡틴은 백오피스 출석부(스터디 전체)로도 간다. */
+/** 이 스터디를 관리할 수 있는 역할. 네비게이터는 사용자 사이트 스터디 관리로, 담당 캡틴은 백오피스 스터디 상세로 간다. */
 export type ManageRole = 'navigator' | 'captain';
 
 export type ManageAccess = { role: ManageRole; group: NavigatorGroup };
@@ -34,9 +34,9 @@ export const MANAGE_ROLE_LABEL: Record<ManageRole, string> = { navigator: '네�
 /**
  * 프로토 가정 — 로그인 회원은
  * - DDIA 2판 수요일반의 네비게이터
- * - AI 논문 스터디의 캡틴 (목요일반)
+ * - AI 논문 스터디의 담당 캡틴 (그 스터디를 생성한 캡틴)
  * TODO(api): GET /api/me/participations — 네비게이터 = STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER,
- *            캡틴 = ACCOUNT.SYSTEM_ROLE = ADMIN 이면서 그 스터디를 맡은 운영진
+ *            담당 캡틴 = ACCOUNT.SYSTEM_ROLE = ADMIN 이면서 그 스터디를 생성한 캡틴 (생성 시 명부에 들어간다)
  */
 const MANAGE_OF: Record<string, ManageAccess> = {
   'ddia-2nd': {

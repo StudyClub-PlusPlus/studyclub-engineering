@@ -2,7 +2,6 @@ import type {
   ApplicationQuestion,
   AttendanceStatus,
   Crew,
-  CrewStatus,
   DemoCrewRelation,
   MemberRegion,
   Study,
@@ -13,7 +12,6 @@ import { attendancePoint, attendanceRate, LATE_WEIGHT } from "../utils";
 
 export type {
   AttendanceStatus,
-  CrewStatus,
   Crew,
   StudyMeeting,
   StudyCrewData,
@@ -264,26 +262,20 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
   const seed = hash(study.id);
   // 운영자가 정한 모집 정원이 있으면 그것을, 없으면(제한 없음) 데모 명단 크기용 값을 쓴다.
   const capacity = recruitCapacity(study) ?? 12 + pick(seed, 3) * 4; // 12 · 16 · 20
-  const activeCount = Math.max(5, capacity - 2 - pick(seed + 7, 5));
-  // 마감된 스터디에도 처리되지 않은 신청은 남는다 — 승인 대기는 상태와 무관하게 존재한다
-  const pendingCount = 1 + pick(seed + 13, 4);
-  const waitlistCount = 0; // 대기 상태는 쓰지 않는다 — 승인하거나, 승인하지 않거나 둘뿐이다
+  // 신청한 사람은 곧 크루다 — 승인 단계가 없으므로 「처리되지 않은 신청」이라는 상태도 없다.
+  const total = Math.max(5, capacity - 2 - pick(seed + 7, 5));
 
   const crew: Crew[] = [];
-  const total = activeCount + pendingCount + waitlistCount;
   const formQuestions = study.applicationForm ?? [];
   for (let i = 0; i < total; i++) {
     const s = seed + i * 101;
     const past = pick(s + 3, 5); // 0~4
-    const status: CrewStatus =
-      i < activeCount ? "active" : i < activeCount + pendingCount ? "pending" : "waitlist";
     const name = CLEAN_NAMES[pick(s, CLEAN_NAMES.length)];
     crew.push({
       id: `${study.id}-c${i + 1}`,
       name,
       email: `member${(pick(s + 1, 900) + 100).toString()}@example.com`,
       region: REGIONS[pick(s + 5, REGIONS.length)],
-      status,
       appliedAt: addWeeks(baseDate(study.recruitment?.deadline), -1 - pick(s + 9, 3)),
       pastStudies: past,
       completionRate: past === 0 ? undefined : 60 + pick(s + 11, 5) * 10, // 60~100
@@ -317,7 +309,6 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
   const DEMO_CYCLE: AttendanceStatus[] = ["present", "late", "present", "late", "absent", "excused"];
   const attendance: StudyCrewData["attendance"] = {};
   for (const c of crew) {
-    if (c.status !== "active") continue;
     const row: Record<string, AttendanceStatus> = {};
     let past = 0;
     for (const m of meetings) {
@@ -342,6 +333,5 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
 export function isHotStudy(study: Study): boolean {
   if (study.status !== "recruiting") return false;
   const { crew, capacity } = getStudyCrew(study);
-  const applied = crew.filter((c) => c.status !== "rejected").length;
-  return applied / capacity >= 0.85;
+  return crew.length / capacity >= 0.85;
 }
