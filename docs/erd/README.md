@@ -178,6 +178,7 @@ erDiagram
     time     START_AT              "분반 정규 시작 시각"
     varchar  TIMEZONE              "IANA"
     int      CAPACITY              "분반 정원"
+    varchar  RULES                 "스터디 규칙 (500자)"
   }
 
   STUDY_MEETING {
@@ -187,6 +188,10 @@ erDiagram
     datetime START_AT              "실제 시작"
     datetime END_AT                "실제 종료"
     varchar  TITLE                 "표시용 제목 (50자)"
+    varchar  SERIES_ID             "반복 묶음 ID (UUID)"
+    varchar  MEETING_TYPE          "KICKOFF · REGULAR"
+    bigint   PRESENTER1_PARTICIPANT_ID "발표자1 → STUDY_PARTICIPANT"
+    bigint   PRESENTER2_PARTICIPANT_ID "발표자2 → STUDY_PARTICIPANT"
   }
 
   STUDY_RECRUITMENT {
