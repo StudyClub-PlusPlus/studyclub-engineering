@@ -761,7 +761,7 @@ function StudyBoard({
           )}
           {canOpenDrive(study) && (
             <LinkButton
-              label='구글 드라이브'
+              label='자료실'
               href={driveUrl(study)}
               icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden />}
             />
