@@ -13,6 +13,7 @@ import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import type { StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
 import { applyRule, ruleFromMeetings } from '@console/lib/schedule';
+import { studyAuthor } from '@console/lib/users';
 import {
   attendanceRate,
   getStudyCrew,
@@ -72,6 +73,8 @@ export function StudyConsole({ study }: { study: Study }) {
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
   const [navigators, setNavigators] = useState<string[]>([]);
+  // 담당 캡틴은 반 편성 전에는 반이 없다 — 반을 고르면 그때 명부에 들어간다
+  const [captainClass, setCaptainClass] = useState<string | undefined>();
   const [tab, setTab] = useState<TabKey>('info');
   const [attendanceDirty, setAttendanceDirty] = useState(false);
   const [leave, setLeave] = useState<LeaveIntent | null>(null);
@@ -264,6 +267,9 @@ export function StudyConsole({ study }: { study: Study }) {
         {tab === 'crew' && (
           <CrewTab
             crew={crew}
+            captain={studyAuthor(study)}
+            captainClass={captainClass}
+            onAssignCaptain={setCaptainClass}
             capacity={initial.capacity}
             classes={classes}
             assign={assign}
