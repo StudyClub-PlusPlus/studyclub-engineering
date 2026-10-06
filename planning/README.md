@@ -25,7 +25,8 @@ planning/stories/{story-name}/PRD.md
 | 크루로서, 스터디 상세 정보를 볼 수 있다               | [crew-view-study-detail](./stories/crew-view-study-detail/PRD.md)             |
 | 크루로서, 스터디 신청 폼을 제출할 수 있다              | [crew-submit-application](./stories/crew-submit-application/PRD.md)           |
 | 크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다         | [crew-joined-studies](./stories/crew-joined-studies/PRD.md)                   |
-| 크루로서, 스터디별 출석 기록을 볼 수 있다              | [crew-joined-studies](./stories/crew-joined-studies/PRD.md)                   |
+| 크루로서, 스터디별 출석 기록을 볼 수 있다              | [crew-view-attendance-record](./stories/crew-view-attendance-record/PRD.md)   |
+| 크루로서, 발표자를 신청할 수 있다                   | [crew-apply-presenter](./stories/crew-apply-presenter/PRD.md)                 |
 | 크루로서, 프로필을 수정할 수 있다                   | [crew-edit-profile](./stories/crew-edit-profile/PRD.md)                       |
 | 크루로서, 회원에서 탈퇴할 수 있다                   | [crew-leave](./stories/crew-leave/PRD.md)                                     |
 | 크루로서, 이용약관과 개인정보처리방침을 확인할 수 있다        | [crew-view-terms-privacy](./stories/crew-view-terms-privacy/PRD.md)           |

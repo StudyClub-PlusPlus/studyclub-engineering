@@ -1,6 +1,7 @@
 # 스터디 회차(미팅) API Spec
 
 > ERD: [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
+> Story PRD: [회차 등록](../../planning/stories/navigator-register-sessions/PRD.md) · [크루 발표자 신청](../../planning/stories/crew-apply-presenter/PRD.md)
 > 생성일: 2026-10-02
 > 상태: 스펙작성중
 >
