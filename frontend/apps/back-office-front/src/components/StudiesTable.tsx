@@ -13,6 +13,7 @@ import {
   toISODate,
   applyFormUrl,
   type Study,
+  type StudyLifecycleStatus,
 } from '@studyclub/mock';
 import { Badge, type BadgeTone } from '@studyclub/ui';
 
@@ -38,7 +39,7 @@ const CATEGORY_OPTIONS: { value: string; label: string }[] = [
   ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
 ];
 
-type StudyStatusFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
+type StudyStatusFilter = 'all' | StudyLifecycleStatus;
 type KindFilter = 'all' | 'study' | 'club';
 type RecruitFilter = 'all' | 'apply' | 'closed';
 type PublishFilter = 'all' | 'live' | 'draft';
@@ -46,9 +47,11 @@ type PublishFilter = 'all' | 'live' | 'draft';
 // "전체" 항목에 축 이름을 붙인다 — 필터가 한 줄에 나란히 서면 어떤 축인지 라벨 없이 알아야 한다.
 const STATUS_OPTIONS: { value: StudyStatusFilter; label: string }[] = [
   { value: 'all', label: '상태 전체' },
-  { value: 'recruiting', label: '모집 중' },
-  { value: 'ongoing', label: '진행 중' },
-  { value: 'closed', label: '종료' },
+  { value: 'DRAFT', label: '작성 중' },
+  { value: 'OPEN', label: '개설' },
+  { value: 'ONGOING', label: '진행 중' },
+  { value: 'ENDED', label: '종료' },
+  { value: 'CLOSED', label: '운영 종료' },
 ];
 
 const KIND_OPTIONS: { value: KindFilter; label: string }[] = [
@@ -107,6 +110,21 @@ const STATUS_DESCRIPTION: Record<string, string> = {
   ongoing: STUDY_STATUS_GUIDE[2].description,
   closed: STUDY_STATUS_GUIDE[3].description,
 };
+
+function lifecycleStatusOf(study: Study): StudyLifecycleStatus {
+  if (study.lifecycleStatus) return study.lifecycleStatus;
+  if (study.status === 'ongoing') return 'ONGOING';
+  if (study.status === 'closed') return 'ENDED';
+  return 'OPEN';
+}
+
+function statusToneOf(status: StudyLifecycleStatus): BadgeTone {
+  if (status === 'DRAFT') return 'neutral';
+  if (status === 'OPEN') return 'recruiting';
+  if (status === 'ONGOING') return 'inprogress';
+  if (status === 'ENDED') return 'error';
+  return 'closed';
+}
 
 /** 필터 셀렉트 — 세 축이 한 줄에 나란히 서므로 생김새를 하나로 맞춘다. */
 function FilterSelect<T extends string>({
@@ -263,7 +281,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
       studies
         .filter((s) => {
           if (category !== 'all' && s.category !== category) return false;
-          if (studyStatus !== 'all' && s.status !== studyStatus) return false;
+          if (studyStatus !== 'all' && lifecycleStatusOf(s) !== studyStatus) return false;
           if (kind !== 'all' && (s.kind ?? 'study') !== kind) return false;
           if (recruit !== 'all' && recruitState(s) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
@@ -386,7 +404,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             const crewStat = summarize(s);
             const capacity = s.recruitment?.capacity ?? s.seats?.total;
             const applied = crewStat.applied;
-            const statusTone = s.status === 'recruiting' ? 'recruiting' : s.status === 'ongoing' ? 'inprogress' : 'error';
+            const lifecycleStatus = lifecycleStatusOf(s);
             return (
               <tr key={s.id}>
                 <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
@@ -400,11 +418,15 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                 </td>
                 <td className='whitespace-nowrap'>
                   <StatusTooltip
-                    tone={statusTone}
-                    label={STATUS_LABEL[s.status] ?? s.status}
-                    description={STATUS_DESCRIPTION[s.status] ?? ''}
+                    tone={statusToneOf(lifecycleStatus)}
+                    label={STATUS_LABEL[lifecycleStatus] ?? lifecycleStatus}
+                    description={
+                      STUDY_STATUS_GUIDE.find((guide) => guide.label === STATUS_LABEL[lifecycleStatus])?.description ??
+                      STATUS_DESCRIPTION[s.status] ??
+                      ''
+                    }
                     nextStep={
-                      STUDY_STATUS_GUIDE.find((guide) => guide.label === STATUS_LABEL[s.status])?.nextStep ?? ''
+                      STUDY_STATUS_GUIDE.find((guide) => guide.label === STATUS_LABEL[lifecycleStatus])?.nextStep ?? ''
                     }
                   />
                 </td>

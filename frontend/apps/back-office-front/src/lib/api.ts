@@ -1,4 +1,4 @@
-import { CATEGORY_DISPLAY, type Study, type StudyStatus } from '@studyclub/mock';
+import { CATEGORY_DISPLAY, type Study, type StudyLifecycleStatus, type StudyStatus } from '@studyclub/mock';
 
 import { cookies } from 'next/headers';
 
@@ -25,7 +25,12 @@ type ApiPage = {
   limit: number;
 };
 
-function mapStatus(status: string): StudyStatus {
+function mapLifecycleStatus(status: string): StudyLifecycleStatus {
+  if (status === 'OPEN' || status === 'ONGOING' || status === 'ENDED' || status === 'CLOSED') return status;
+  return 'DRAFT';
+}
+
+function mapStatus(status: StudyLifecycleStatus): StudyStatus {
   if (status === 'ONGOING') return 'ongoing';
   if (status === 'ENDED' || status === 'CLOSED') return 'closed';
   return 'recruiting';
@@ -33,13 +38,15 @@ function mapStatus(status: string): StudyStatus {
 
 function mapToStudy(api: ApiStudy): Study {
   const category = CATEGORY_DISPLAY[api.category] ?? api.category;
+  const lifecycleStatus = mapLifecycleStatus(api.status);
   const isClosed = api.status === 'ENDED' || api.status === 'CLOSED';
 
   return {
     id: String(api.studyId),
     title: { ko: api.title, en: api.title },
     summary: { ko: '', en: '' },
-    status: mapStatus(api.status),
+    status: mapStatus(lifecycleStatus),
+    lifecycleStatus,
     format: 'online',
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     category,

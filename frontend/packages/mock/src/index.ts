@@ -6,6 +6,7 @@ export type Locale = "ko" | "en";
 export type L10n = { ko: string; en: string };
 
 export type StudyStatus = "recruiting" | "ongoing" | "closed";
+export type StudyLifecycleStatus = "DRAFT" | "OPEN" | "ONGOING" | "ENDED" | "CLOSED";
 export type StudyFormat = "online" | "offline" | "hybrid";
 
 // 스터디는 하나의 개념. 모집 마감일이 있으면 기한 모집, 없으면 상시 모집으로만 구분한다.
@@ -102,6 +103,8 @@ export type Study = {
   summary: L10n;
   description?: L10n;
   status: StudyStatus;
+  /** 백오피스 목록 API가 반환하는 스터디 라이프사이클 상태. */
+  lifecycleStatus?: StudyLifecycleStatus;
   format: StudyFormat;
   schedule?: L10n;
   lead?: string;
