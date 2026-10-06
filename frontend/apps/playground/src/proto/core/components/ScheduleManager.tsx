@@ -34,7 +34,6 @@ import {
   type NavigatorGroup,
   type ProtoMeeting,
   type Repeat,
-  type ScheduleRole,
 } from '@core/lib/meetings';
 import { ME_ID, participantsOf, type Participant } from '@core/lib/schedule-board';
 import type { Study } from '@studyclub/mock';
@@ -54,13 +53,11 @@ import { Plus, Trash2, X } from 'lucide-react';
 export function ScheduleManager({
   study,
   group,
-  role,
   canEdit,
   onDirtyChange,
 }: {
   study: Study;
   group: NavigatorGroup;
-  role: ScheduleRole;
   canEdit: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
@@ -209,10 +206,7 @@ export function ScheduleManager({
 
   function remove(target: ProtoMeeting) {
     deleteMeetings(study.id, [target.id]);
-    setDrafts((d) => {
-      const { [target.id]: _gone, ...rest } = d;
-      return rest;
-    });
+    setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => id !== target.id)));
     delete bases.current[target.id];
     setAnnounce(`${meetingLabel(target)}를 지웠습니다.`);
     setConfirmId(null);
