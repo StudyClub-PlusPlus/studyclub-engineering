@@ -58,4 +58,8 @@ public class StudyRecruitment extends BaseEntity {
         }
         this.recruitmentCapacity = recruitmentCapacity;
     }
+
+    public void updateStartAt(Instant startAt) {
+        this.startAt = startAt;
+    }
 }

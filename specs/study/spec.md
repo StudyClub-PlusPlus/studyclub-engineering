@@ -438,7 +438,7 @@ private StudyDetailResponse toDetail(Study study) {
 | 필드                       | 고정값                     | 비고                                                                                                                                          |
 | -------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | STUDY.STATUS               | `DRAFT`                    | 등록 후 ADMIN이 [공개(모집 시작)](#스터디-공개--공개-취소)로 OPEN 으로 전환                                                                   |
-| STUDY_RECRUITMENT.START_AT | `null`                     | 등록 시 채우지 않는다 — 공개할 때(`STATUS: DRAFT → OPEN`) 함께 채운다. 공개 판정 자체는 `STATUS` 로 한다                                      |
+| STUDY_RECRUITMENT.START_AT | `now()`                    | 등록 시 현재 시각으로 채운다 (`NOT NULL`). 공개(`STATUS: DRAFT → OPEN`) 시 최신 회차 `START_AT` 을 다시 `now()` 로 갱신한다. 공개 판정 자체는 `STATUS` 로 한다 — `START_AT` 은 "모집이 언제 시작됐는가"를 기록하는 사실 데이터. **TODO(migration)**: 컬럼을 `NULL ALLOWED` 로 바꾼 뒤에는 등록 시 채우지 않고 공개 시에만 채운다. unpublish 시 `null` 로 되돌린다 |
 | STUDY_PROGRAM.TITLE        | 요청의 `title`             | 새 프로그램일 때만. 프로그램 제목은 첫 기수 제목을 따른다                                                                                     |
 | STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. **제안 단계, 컬럼 미구현** |
 
@@ -500,7 +500,7 @@ Location: /api/admin/studies/{id}
 | 동작 | 선행 조건 | 결과 |
 |------|-----------|------|
 | publish (공개) | `STATUS=DRAFT` AND `APPLICATION_FORM.questions` ≥ 1 | `STATUS=OPEN`, 최신 회차(id MAX) `STUDY_RECRUITMENT.START_AT = now()` |
-| unpublish (공개 취소) | `STATUS=OPEN` | `STATUS=DRAFT`, 최신 회차 `STUDY_RECRUITMENT.START_AT = null`. 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
+| unpublish (공개 취소) | `STATUS=OPEN` | `STATUS=DRAFT`. 최신 회차 `STUDY_RECRUITMENT.START_AT` 은 공개 시각 그대로 유지 (`NOT NULL`). 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
 
 - 공개 = 모집 시작. 사이트 노출 여부는 `STATUS != DRAFT` 단일 판정.
 - `START_AT` 은 "모집이 언제 시작됐는가"라는 사실 데이터 — 노출 판정의 근거가 아님 ([ERD](../../docs/erd/STUDY.md#공개-여부)).
@@ -541,14 +541,14 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 - `publish(accountId, studyId)` · `unpublish(accountId, studyId)` — 캡틴 전용이라 진입 메서드 각각 하나. 첫 줄 `assertCaptain`. `create`·`delete` 패턴과 동일. `FromSite`/`ForBackOffice` 접미사 없음.
 - 신청 폼 판정: `study.getApplicationForm()` null 이거나 `questions` 배열 길이 0 → `APPLICATION_FORM_REQUIRED`. APPLICATION_FORM JSON 구조 정본: [study-application/spec.md §APPLICATION_FORM](../study-application/spec.md)
 - 상태 전이는 `Study` 엔티티의 의미 있는 메서드(`Study#publish()` · `Study#unpublish()`)로. setter 금지.
-- 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. publish 시 `START_AT = now()`, unpublish 시 `START_AT = null`.
+- 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. publish 시 `START_AT = now()`. unpublish 시 `START_AT` 은 변경하지 않는다 — 공개됐던 시각을 사실 기록으로 유지한다. `START_AT NOT NULL` 제약은 그대로. **TODO(migration)**: `NULL ALLOWED` 마이그레이션 후에는 등록 시 `null`, publish 시에만 `now()`, unpublish 시 `null` 로 되돌린다.
 
 ### 테스트 요구사항
 
 | 엔드포인트 | 성공 | 401 | 403 | 404 | 409-CONFLICT | 409-APP_FORM |
 |---|---|---|---|---|---|---|
 | `POST /api/admin/studies/{id}/publish` | DRAFT+폼 있음 → 204, STATUS=OPEN, 최신 회차 START_AT 채워짐 | 토큰 없음 | 네비게이터 | 없는 id | 이미 OPEN | 폼 없음/questions 0개 |
-| `POST /api/admin/studies/{id}/unpublish` | OPEN → 204, STATUS=DRAFT, 최신 회차 START_AT=null | 토큰 없음 | 네비게이터 | 없는 id | DRAFT·ONGOING·ENDED·CLOSED | — |
+| `POST /api/admin/studies/{id}/unpublish` | OPEN → 204, STATUS=DRAFT (START_AT 유지) | 토큰 없음 | 네비게이터 | 없는 id | DRAFT·ONGOING·ENDED·CLOSED | — |
 
 ### 프론트엔드 사용처
 
