@@ -97,7 +97,7 @@ public class BackofficeStudyListService {
             if (root.isTextual()) {
                 root = objectMapper.readTree(root.asText());
             }
-            JsonNode questions = root.get("questions");
+            JsonNode questions = root.isArray() ? root : root.get("questions");
             return questions != null && questions.isArray() && questions.size() > 0;
         } catch (Exception e) {
             log.warn("신청 폼 파싱 실패 — 폼 없음으로 처리", e);

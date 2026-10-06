@@ -15,6 +15,7 @@ type ApiStudy = {
   recruitmentStartAt: string | null;
   recruitDeadlineAt: string | null;
   startAt: string | null;
+  timezone: string | null;
   hasApplicationForm: boolean;
 };
 
@@ -36,6 +37,12 @@ function mapStatus(status: StudyLifecycleStatus): StudyStatus {
   return 'recruiting';
 }
 
+const TIMEZONE_DISPLAY: Record<string, string> = {
+  KST: '한국 시간 (KST)',
+  PST: '태평양 시간 (PST)',
+  BOTH: '한국·태평양 시간',
+};
+
 function mapToStudy(api: ApiStudy): Study {
   const category = CATEGORY_DISPLAY[api.category] ?? api.category;
   const lifecycleStatus = mapLifecycleStatus(api.status);
@@ -50,16 +57,17 @@ function mapToStudy(api: ApiStudy): Study {
     format: 'online',
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     category,
+    schedule: api.timezone ? { ko: TIMEZONE_DISPLAY[api.timezone] ?? api.timezone, en: api.timezone } : undefined,
     date: api.startAt?.slice(0, 10),
     published: api.status !== 'DRAFT',
     applicantCount: api.currentApplicants,
+    hasApplicationForm: api.hasApplicationForm,
     seats:
-      api.recruitmentCapacity === null
-        ? undefined
-        : { total: api.recruitmentCapacity, taken: api.currentApplicants },
+      api.recruitmentCapacity === null ? undefined : { total: api.recruitmentCapacity, taken: api.currentApplicants },
     recruitment: {
-      status: isClosed ? 'closed' : 'open',
-      form_url: api.hasApplicationForm ? '#' : undefined,
+      status: lifecycleStatus === 'OPEN' && !isClosed ? 'open' : 'closed',
+      form_url: undefined,
+      start_at: api.recruitmentStartAt?.slice(0, 10),
       deadline: api.recruitDeadlineAt?.slice(0, 10),
       capacity: api.recruitmentCapacity ?? undefined,
     },

@@ -6,7 +6,8 @@ export type Locale = "ko" | "en";
 export type L10n = { ko: string; en: string };
 
 export type StudyStatus = "recruiting" | "ongoing" | "closed";
-export type StudyLifecycleStatus = "DRAFT" | "OPEN" | "ONGOING" | "ENDED" | "CLOSED";
+export type StudyLifecycleStatus =
+  "DRAFT" | "OPEN" | "ONGOING" | "ENDED" | "CLOSED";
 export type StudyFormat = "online" | "offline" | "hybrid";
 
 // 스터디는 하나의 개념. 모집 마감일이 있으면 기한 모집, 없으면 상시 모집으로만 구분한다.
@@ -65,6 +66,7 @@ export type Recruitment = {
   status: RecruitmentStatus; // open=마감기한 있는 모집, monthly=매달 정기, always=상시, closed=마감
   cadence?: "one-time" | "monthly" | "weekly" | "rolling";
   form_url?: string; // 모집 구글폼
+  start_at?: string; // 모집 시작일(ISO)
   deadline?: string; // 모집 기한 (예: "2026/03/21")
   kickoff?: string; // 킥오프 일시 (예: "2026/03/23 (월) 6:00 PM PDT")
   capacity?: number; // 모집 인원
@@ -72,7 +74,8 @@ export type Recruitment = {
 };
 
 // 신청 폼 — 캡틴이 설계하는 질문 목록. 이름·이메일은 계정에서 읽고, 디스코드 서버 별명은 계정에 없으면 필수로 받는다.
-export type ApplicationQuestionType = "text" | "textarea" | "radio" | "checkbox" | "select";
+export type ApplicationQuestionType =
+  "text" | "textarea" | "radio" | "checkbox" | "select";
 export type ApplicationQuestion = {
   id: string;
   label: string;
@@ -141,6 +144,8 @@ export type Study = {
   weeks?: StudyWeek[]; // 주차별 커리큘럼
   recruitment?: Recruitment; // 모집 모델 (별도)
   applicationForm?: ApplicationQuestion[]; // 캡틴이 설계한 신청 폼 추가 질문. 없으면 계정 정보 + 디스코드 서버 별명만 받음
+  /** 목록 API가 계산한 신청 폼 존재 여부. 값이 있으면 이 값을 우선한다. */
+  hasApplicationForm?: boolean;
   applicationFormTitle?: string; // 신청 폼 제목. 없으면 스터디 제목을 그대로 쓴다
   applicationFormDescription?: string; // 신청 폼 설명. 마크다운(**굵게**·*기울임*·[링크](url)·목록) 허용. 없으면 스터디 소개를 그대로 쓴다
   reviews?: StudyReview[]; // 후기
@@ -190,7 +195,7 @@ export function todayISO(): string {
 }
 
 /**
- * 모집 상태. 판정 축은 **모집 마감일 하나**.
+ * 모집 상태. 모집 시작일·마감일·정원과 스터디 라이프사이클을 기준으로 판정한다.
  * 마감일을 비우면 마감 없이 계속 모집하는 것으로 본다(= 모집중).
  */
 export type RecruitState = "apply" | "closed";
@@ -198,9 +203,20 @@ export type RecruitState = "apply" | "closed";
 export function recruitState(study: Study): RecruitState {
   if (study.status !== "recruiting" || study.recruitment?.status === "closed")
     return "closed";
+  const today = todayISO();
+  const start = toISODate(study.recruitment?.start_at);
+  if (start && start > today) return "closed";
   const deadline = toISODate(study.recruitment?.deadline);
   if (!deadline) return "apply";
-  return deadline >= todayISO() ? "apply" : "closed";
+  if (deadline < today) return "closed";
+  if (
+    study.recruitment?.capacity !== undefined &&
+    study.applicantCount !== undefined &&
+    study.applicantCount >= study.recruitment.capacity
+  ) {
+    return "closed";
+  }
+  return "apply";
 }
 
 /**
@@ -400,7 +416,13 @@ export const studies: Study[] = [
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
     applicationForm: [
-      { id: "reason", label: "지원 사유", type: "text", required: true, placeholder: "내 답변" },
+      {
+        id: "reason",
+        label: "지원 사유",
+        type: "text",
+        required: true,
+        placeholder: "내 답변",
+      },
       {
         id: "time",
         label: "참여 가능 시간을 모두 선택하세요",
@@ -417,7 +439,8 @@ export const studies: Study[] = [
       },
       {
         id: "kickoff",
-        label: "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
+        label:
+          "킥오프 모임이 없는 스터디임을 확인하였습니다. 가이드를 잘 읽고, 궁금한 점이 있으면 질문하겠습니다.",
         type: "select",
         required: true,
         options: ["예", "아니오"],

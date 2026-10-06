@@ -126,6 +126,11 @@ function statusToneOf(status: StudyLifecycleStatus): BadgeTone {
   return 'closed';
 }
 
+function hasApplicationFormOf(study: Study): boolean {
+  if (study.hasApplicationForm !== undefined) return study.hasApplicationForm;
+  return Boolean(study.applicationForm?.length || applyFormUrl(study));
+}
+
 /** 필터 셀렉트 — 세 축이 한 줄에 나란히 서므로 생김새를 하나로 맞춘다. */
 function FilterSelect<T extends string>({
   value,
@@ -233,7 +238,8 @@ function StatusTooltip({
           {nextStep && <span className='mt-1 block text-neutral-300'>{nextStep}</span>}
           {label === '종료' && (
             <span className='mt-1 block border-t border-white/15 pt-1 text-amber-300'>
-              클럽: 채널을 다음 기수가 그대로 물려받아 지우지 않는다 — 지나간 기수는 여기 영구히 남고, 운영 종료로 넘어갈 수 있는 건 이 프로그램의 최신 기수뿐이다.
+              클럽: 채널을 다음 기수가 그대로 물려받아 지우지 않는다 — 지나간 기수는 여기 영구히 남고, 운영 종료로
+              넘어갈 수 있는 건 이 프로그램의 최신 기수뿐이다.
             </span>
           )}
           {label === '운영 종료' && (
@@ -285,7 +291,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           if (kind !== 'all' && (s.kind ?? 'study') !== kind) return false;
           if (recruit !== 'all' && recruitState(s) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
-          if (noFormOnly && applyFormUrl(s)) return false;
+          if (noFormOnly && hasApplicationFormOf(s)) return false;
           if (q) {
             const hay = `${tx(s.title)} ${tx(s.summary)} ${s.category ?? ''}`.toLowerCase();
             if (!hay.includes(q)) return false;
@@ -377,94 +383,107 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         >
           <div className='h-3 min-w-[1500px]' />
         </div>
-        <div ref={tableScrollRef} className='overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' onScroll={syncTopScroll}>
+        <div
+          ref={tableScrollRef}
+          className='overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+          onScroll={syncTopScroll}
+        >
           <table className='bo-table min-w-[1500px]'>
             <thead>
-          <tr>
-            <th className='whitespace-nowrap'>p-id</th>
-            <th>스터디명</th>
-            <th className='whitespace-nowrap'>스터디 상태</th>
-            <th className='whitespace-nowrap'>주제</th>
-            <th className='whitespace-nowrap'>종류</th>
-            <th className='whitespace-nowrap'>시간대</th>
-            <th className='whitespace-nowrap'>모집 시작일</th>
-            <th className='whitespace-nowrap'>모집 마감일</th>
-            <th className='whitespace-nowrap'>모집 상태</th>
-            <th className='whitespace-nowrap'>지원 현황</th>
-            <th className='whitespace-nowrap'>스터디 시작일</th>
-            <th className='whitespace-nowrap'>출석률</th>
-            <th className='whitespace-nowrap'>신청 폼</th>
-            <th className='whitespace-nowrap'>스터디 공개</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pageRows.map((s) => {
-            const open = recruitState(s) === 'apply';
-            const publish = publishState(s);
-            const crewStat = summarize(s);
-            const capacity = s.recruitment?.capacity ?? s.seats?.total;
-            const applied = crewStat.applied;
-            const lifecycleStatus = lifecycleStatusOf(s);
-            return (
-              <tr key={s.id}>
-                <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
-                <td className='w-[42%] max-w-0'>
-                  <Link
-                    href={`/studies/${s.id}`}
-                    className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
-                  >
-                    {tx(s.title)}
-                  </Link>
-                </td>
-                <td className='whitespace-nowrap'>
-                  <StatusTooltip
-                    tone={statusToneOf(lifecycleStatus)}
-                    label={STATUS_LABEL[lifecycleStatus] ?? lifecycleStatus}
-                    description={
-                      STUDY_STATUS_GUIDE.find((guide) => guide.label === STATUS_LABEL[lifecycleStatus])?.description ??
-                      STATUS_DESCRIPTION[s.status] ??
-                      ''
-                    }
-                    nextStep={
-                      STUDY_STATUS_GUIDE.find((guide) => guide.label === STATUS_LABEL[lifecycleStatus])?.nextStep ?? ''
-                    }
-                  />
-                </td>
-                <td className='whitespace-nowrap'>
-                  <Badge tone='neutral'>{s.category ?? '—'}</Badge>
-                </td>
-                <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
-                <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '—'}</td>
-                <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.publish_at)}</td>
-                <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.recruitment?.deadline)}</td>
-                <td>
-                  <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
-                    {open ? '모집중' : '마감'}
-                  </Badge>
-                </td>
-                <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
-                  {applied} / {capacity === undefined ? '제한 없음' : capacity}
-                </td>
-                <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.date)}</td>
-                <td className='tnum whitespace-nowrap text-xs font-semibold text-fg-secondary'>
-                  {crewStat.rate === undefined ? <span className='text-fg-muted'>—</span> : `${crewStat.rate}%`}
-                </td>
-                <td className='whitespace-nowrap text-center text-sm' aria-label={applyFormUrl(s) ? '신청 폼 있음' : '신청 폼 없음'}>
-                  {applyFormUrl(s) ? '✓' : '—'}
-                </td>
-                <td className='whitespace-nowrap'>
-                  <Badge tone='neutral'>{publish === 'live' ? '공개' : '비공개'}</Badge>
-                </td>
+              <tr>
+                <th className='whitespace-nowrap'>p-id</th>
+                <th>스터디명</th>
+                <th className='whitespace-nowrap'>스터디 상태</th>
+                <th className='whitespace-nowrap'>주제</th>
+                <th className='whitespace-nowrap'>종류</th>
+                <th className='whitespace-nowrap'>시간대</th>
+                <th className='whitespace-nowrap'>모집 시작일</th>
+                <th className='whitespace-nowrap'>모집 마감일</th>
+                <th className='whitespace-nowrap'>모집 상태</th>
+                <th className='whitespace-nowrap'>지원 현황</th>
+                <th className='whitespace-nowrap'>스터디 시작일</th>
+                <th className='whitespace-nowrap'>출석률</th>
+                <th className='whitespace-nowrap'>신청 폼</th>
+                <th className='whitespace-nowrap'>스터디 공개</th>
               </tr>
-            );
-          })}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={14} className='text-center text-fg-muted'>
-                조건에 맞는 스터디가 없습니다.
-              </td>
-            </tr>
-          )}
+            </thead>
+            <tbody>
+              {pageRows.map((s) => {
+                const open = recruitState(s) === 'apply';
+                const publish = publishState(s);
+                const crewStat = summarize(s);
+                const capacity = s.recruitment?.capacity ?? s.seats?.total;
+                const applied = crewStat.applied;
+                const lifecycleStatus = lifecycleStatusOf(s);
+                return (
+                  <tr key={s.id}>
+                    <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
+                    <td className='w-[42%] max-w-0'>
+                      <Link
+                        href={`/studies/${s.id}`}
+                        className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
+                      >
+                        {tx(s.title)}
+                      </Link>
+                    </td>
+                    <td className='whitespace-nowrap'>
+                      <StatusTooltip
+                        tone={statusToneOf(lifecycleStatus)}
+                        label={STATUS_LABEL[lifecycleStatus] ?? lifecycleStatus}
+                        description={
+                          STUDY_STATUS_GUIDE.find((guide) => guide.label === STATUS_LABEL[lifecycleStatus])
+                            ?.description ??
+                          STATUS_DESCRIPTION[s.status] ??
+                          ''
+                        }
+                        nextStep={
+                          STUDY_STATUS_GUIDE.find((guide) => guide.label === STATUS_LABEL[lifecycleStatus])?.nextStep ??
+                          ''
+                        }
+                      />
+                    </td>
+                    <td className='whitespace-nowrap'>
+                      <Badge tone='neutral'>{s.category ?? '—'}</Badge>
+                    </td>
+                    <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
+                    <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '—'}</td>
+                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
+                      {displayDate(s.recruitment?.start_at)}
+                    </td>
+                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
+                      {displayDate(s.recruitment?.deadline)}
+                    </td>
+                    <td>
+                      <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
+                        {open ? '모집중' : '마감'}
+                      </Badge>
+                    </td>
+                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
+                      {applied} / {capacity === undefined ? '제한 없음' : capacity}
+                    </td>
+                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.date)}</td>
+                    <td className='tnum whitespace-nowrap text-xs font-semibold text-fg-secondary'>
+                      {crewStat.rate === undefined ? <span className='text-fg-muted'>—</span> : `${crewStat.rate}%`}
+                    </td>
+                    <td
+                      className='whitespace-nowrap text-center text-sm'
+                      aria-label={hasApplicationFormOf(s) ? '신청 폼 있음' : '신청 폼 없음'}
+                    >
+                      {hasApplicationFormOf(s) ? '✓' : '—'}
+                    </td>
+                    <td className='whitespace-nowrap'>
+                      <Badge tone='neutral'>{publish === 'live' ? '공개' : '비공개'}</Badge>
+                    </td>
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={14} className='text-center text-fg-muted'>
+                    조건에 맞는 스터디가 없습니다.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
