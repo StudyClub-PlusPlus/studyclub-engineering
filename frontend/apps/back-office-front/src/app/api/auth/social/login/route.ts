@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({
-    user: data.account,
+    account: data.account,
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
   });
