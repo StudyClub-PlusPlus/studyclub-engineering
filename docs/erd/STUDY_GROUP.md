@@ -16,6 +16,7 @@
 | START_AT | TIME | Y | 분반 정규 시작 시각 |
 | TIMEZONE | VARCHAR(64) | Y | IANA. 회차 시각 기준 시간대 |
 | CAPACITY | INT | Y | 분반 정원 |
+| RULES | VARCHAR(500) | Y | 스터디 규칙 (500자 이하 — 운영 중인 시트의 규칙은 150~350자). 킥오프에서 정하고 네비게이터·캡틴이 고친다. 참여자 전원이 본다 |
 
 ## 관계
 - N : 1 [STUDY](./STUDY.md)

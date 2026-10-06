@@ -246,7 +246,7 @@ provisioning API 는 **upsert 만** 한다. 레포에서 지워도 Grafana 에�
 - 설계 판단과 배치: [`specs/observability-stack/spec.md`](../specs/observability-stack/spec.md)
   — 「대시보드」 「알림」 절
 - 알림 규칙 11종과 추가 절차: [`docs/observability/adding-alerts.md`](../docs/observability/adding-alerts.md)
-- 왜 webhook 으로 보내는지 등 결정 배경: [`share/2026-09-28-grafana-alert-discord-bot.md`](../share/2026-09-28-grafana-alert-discord-bot.md)
+- 왜 webhook 으로 보내는지 등 결정 배경: [`docs/share/2026-09-28-grafana-alert-discord-bot.md`](../docs/share/2026-09-28-grafana-alert-discord-bot.md)
 - 환경값(주소 · Org · 데이터소스 uid): Notion 「알림 시스템 — 구조와 사용법」 §환경값
 - Grafana 자체(Loki·Alloy 포함)는 이 레포가 아니라 인프라 쪽에서 띄운다. 이 디렉토리는
   **그 위에 올라가는 설정**만 정본으로 갖는다

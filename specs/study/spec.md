@@ -15,6 +15,7 @@
 > 갱신: 2026-09-29 — **관객별 엔드포인트로 나눈다**: 백오피스가 부르는 것은 `/api/admin/studies`(`AdminStudyController`, 캡틴만), 사용자 사이트는 `/api/studies`. 두 관객이 다 하는 일(목록·상세·수정)만 경로가 둘이고 로직은 `StudyService` 를 공유한다. 등록·삭제·공개는 `/api/admin` 으로 옮긴다. 근거·순서: 아래 「관객별 엔드포인트」
 > 갱신: 2026-09-29 — **작성자(`CREATED_BY`) 추가 (제안 단계, 백엔드 미반영)**: 스터디를 등록한 계정을 서버가 기록한다. 운영 콘솔 목록에 「작성자」 열을 넣고 「출석률」 열을 뺐다 — [captain-list-all-studies PRD](../../planning/stories/captain-list-all-studies/PRD.md)
 > 갱신: 2026-09-30 — 스터디 상세 FE 구현 완료(`StudyDetailView` + `useStudyDetail` 훅이 `GET /api/studies/{studyId}` 를 직접 호출). `sort` 파라미터 없음 확정 — 목록은 항상 최신순 고정.
+> 갱신: 2026-10-05 — 스키마 정리 반영(V26~V30): 정원은 최신 모집 회차(`RECRUITMENT_CAPACITY`), `SLUG`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT` 삭제, `CREATED_BY` 추가. 목록 단계 필터도 최신 회차 신청 수 기준
 
 ## 엔드포인트 목록
 
@@ -53,7 +54,7 @@
 ### 관객별 엔드포인트
 
 > 규칙: [endpoint-convention](../../docs/backend-development-guide/api/endpoint-convention.md#관객으로-경로를-가른다--apiadmin) ·
-> [share/2026-09-24](../../share/2026-09-24-admin-api-path.md) · 권한: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
+> [docs/share/2026-09-24](../../docs/share/2026-09-24-admin-api-path.md) · 권한: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
 
 **백오피스가 부르는 API 는 `/api/admin` 아래 둔다.** 백오피스에는 캡틴만 들어온다(POL-0001).
 **같은 일을 사용자 사이트에서도 하면 그 일만 경로를 하나 더 둔다** — 권한 판정이 다르기 때문이다.
@@ -135,7 +136,7 @@ private StudyDetailResponse toDetail(Study study) {
 - 요청 DTO(`StudyCreateRequest`·`StudyUpdateRequest`)와 상세 응답(`StudyDetailResponse`)은 두 경로가 같이 쓴다.
   백오피스에만 필요한 필드가 생기면 그때 백오피스 응답을 따로 둔다 (목록은 이미 `BackofficeStudyListResponse` 로 따로다)
 - 컨트롤러·DTO·서비스는 모두 `api.study` 패키지 — [module-structure](../../docs/backend-development-guide/module-structure.md#package-convention)
-- 권한은 `@PreAuthorize(hasRole)` 가 아니라 `StudyCaptainGuard` 로 본다 — `hasRole` 로 올리는 건 [share/2026-09-24](../../share/2026-09-24-admin-api-path.md)에서 다음 작업으로 미뤘다
+- 권한은 `@PreAuthorize(hasRole)` 가 아니라 `StudyCaptainGuard` 로 본다 — `hasRole` 로 올리는 건 [docs/share/2026-09-24](../../docs/share/2026-09-24-admin-api-path.md)에서 다음 작업으로 미뤘다
 
 #### 이전 순서
 
@@ -147,7 +148,7 @@ private StudyDetailResponse toDetail(Study study) {
    등록 모달(`StudyCreateDialog`, `TODO(api)`)은 처음부터 `POST /api/admin/studies`
 3. ✅ **백엔드 — 제거**: `StudyController` 의 `POST` · `DELETE` 를 없앤다. `PATCH` 는 `updateFromSite` 로 연결.
    옛 `POST` 는 부르는 화면이 없었고 옛 `DELETE` 를 부르던 콘솔은 2단계에서 같이 옮겨서, 과도기 없이 한 번에 뺐다
-4. ✅ **백엔드 — 사이트 상세 권한별 공개 범위**: DRAFT 는 캡틴·그 스터디 네비게이터에게만. 숨김(`IS_HIDDEN`)은 폐기 예정이라 보지 않는다.
+4. ✅ **백엔드 — 사이트 상세 권한별 공개 범위**: DRAFT 는 캡틴·그 스터디 네비게이터에게만. 숨김 플래그(`IS_HIDDEN`)는 V27 에서 삭제했다.
    (한때 상세를 사이트 경로 하나로 합쳤다가, 팀 결정으로 백오피스 상세를 다시 뒀다 — 2026-09-29)
 
 #### 테스트
@@ -193,9 +194,8 @@ private StudyDetailResponse toDetail(Study study) {
 
 > **정렬**: 지원하지 않는다 — 항상 최신순(등록 순번) 고정.
 
-> **공개 기준**: 목록에는 `STATUS != DRAFT` 인 스터디만 나온다. 지금 구현은 `STATUS = OPEN` 필터에
-> `IS_HIDDEN` 을 더해 쓴다 — 제안 반영 시 `IS_HIDDEN` 을 없애고 `STATUS != DRAFT` 하나로 정리한다
-> (`STATUS` 가 5단계로 늘어나므로 `= OPEN` 만으로는 `ONGOING`·`ENDED`·`CLOSED` 를 놓친다).
+> **공개 기준**: 목록에는 `STATUS != DRAFT` 인 스터디만 나온다. 별도 숨김 플래그는 없다(`IS_HIDDEN` 은 V27 에서 삭제)
+> (`STATUS` 가 5단계라 `= OPEN` 만으로는 `ONGOING`·`ENDED`·`CLOSED` 를 놓친다).
 > **모집 시작 일자(`START_AT`) 는 공개 판정에 쓰지 않는다** — `STATUS` 와 별개 필드라 동기화가 어긋날
 > 수 있어서다([ERD](../../docs/erd/STUDY.md#공개-여부) 참고). `status` 필터 값은 5단계로 늘어난다.
 >
@@ -262,21 +262,19 @@ private StudyDetailResponse toDetail(Study study) {
 ### Response — 200
 
 실제 응답(`StudyDetailResponse`). 아래 필드 표의 `recruitDeadline` 은 응답에서 `recruitDeadlineAt` 이고,
-`timezone` 은 아직 응답에 없다(컬럼 미구현). `slug`·`deliveryFormat` 은 스키마 정리 제안이 반영되면 빠진다.
+`timezone` 은 아직 응답에 없다(컬럼 미구현). `deliveryFormat` 은 스키마 정리로 제거되었다 — 프론트엔드 타입과 이 스펙 응답 예시 모두 포함하지 않는다.
 
 ```json
 {
   "id": 1,
   "programId": 1,
   "programTitle": "알고리즘 스터디",
-  "slug": "3f0c…",
   "title": "알고리즘 스터디",
   "oneLineSummary": "매주 알고리즘 문제를 풀고 코드 리뷰합니다.",
   "description": "매주 알고리즘 문제를 풀고 코드 리뷰하는 스터디",
   "category": "ALGORITHM",
   "studyKind": "STUDY",
   "thumbnailUrl": "https://example.com/thumb.jpg",
-  "deliveryFormat": "ONLINE",
   "status": "OPEN",
   "recruitStatus": "RECRUITING",
   "curriculum": "[{\"week\":1,\"topic\":\"배열\"}]",
@@ -310,7 +308,7 @@ private StudyDetailResponse toDetail(Study study) {
 | timezone | String | Y | 기준 시간대 (enum). `KST` / `PST` / `BOTH`(동시 진행). 운영자가 등록 폼에서 직접 고른다 — null 이면 사이트가 `schedule`/킥오프 문구로 추정하거나 「시간대 미정」으로 표시 | STUDY.TIMEZONE |
 | startAt | String | Y | 진행 시작 일시 (ISO 8601 UTC). `recruitDeadline`·`schedule` 과는 다른 값 | STUDY.START_AT |
 | endAt | String | Y | 종료일 (ISO 8601 UTC) | STUDY.END_AT |
-| discordChannelUrl | String | Y | 참고용 채널 링크 하나(주로 로비). 없으면 사이트 기본 초대 링크로 안내. **사이트 상세는 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 채우고 그 밖엔 null** ([share](../../share/2026-09-30-study-detail-private-urls.md)). 자동화(채널 조회·삭제 감지)의 근거로 쓰지 않는다 — [상세](../../docs/erd/STUDY.md#채널-삭제와-closed) | STUDY.DISCORD_CHANNEL_URL |
+| discordChannelUrl | String | Y | 참고용 채널 링크 하나(주로 로비). 없으면 사이트 기본 초대 링크로 안내. **사이트 상세는 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 채우고 그 밖엔 null** ([share](../../docs/share/2026-09-30-study-detail-private-urls.md)). 자동화(채널 조회·삭제 감지)의 근거로 쓰지 않는다 — [상세](../../docs/erd/STUDY.md#채널-삭제와-closed) | STUDY.DISCORD_CHANNEL_URL |
 | driveUrl | String | Y | 참고용 자료 드라이브 링크. 사이트 상세의 채움 조건은 `discordChannelUrl` 과 같다 | STUDY.DRIVE_URL |
 
 > **소스**: 이 필드가 어느 테이블·컬럼에서 오는지. 계산 필드는 `계산: {로직}`
@@ -346,7 +344,7 @@ private StudyDetailResponse toDetail(Study study) {
 - `frontend/apps/core-front/src/lib/content.ts` — `getStudy(id)` mock 함수
 - 운영 콘솔은 이 경로를 쓰지 않는다 — 아래 `GET /api/admin/studies/{studyId}` 를 쓴다
 - 구현: `StudyService#getDetail(studyId, accountId)`. 공개 판정은 `STATUS != DRAFT` 하나 — `Study#isPubliclyVisible`(OPEN 만)과 다르다.
-  숨김(`IS_HIDDEN`)은 폐기 예정이라 상세에서는 보지 않는다. 목록(`StudyListJpqlDao`)은 아직 `isHidden = false` 를 걸어 두었다 — 컬럼을 없앨 때 함께 뺀다
+  숨김 플래그(`IS_HIDDEN`)는 V27 에서 삭제했다 — 목록(`StudyListJpqlDao`)도 `STATUS != DRAFT` 하나로 거른다
 
 ### 미확정
 
@@ -440,7 +438,7 @@ private StudyDetailResponse toDetail(Study study) {
 | 필드                       | 고정값                     | 비고                                                                                                                                          |
 | -------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | STUDY.STATUS               | `DRAFT`                    | 등록 후 ADMIN이 [공개(모집 시작)](#스터디-공개--공개-취소)로 OPEN 으로 전환                                                                   |
-| STUDY_RECRUITMENT.START_AT | `null`                     | 등록 시 채우지 않는다 — 공개할 때(`STATUS: DRAFT → OPEN`) 함께 채운다. 공개 판정 자체는 `STATUS` 로 한다                                      |
+| STUDY_RECRUITMENT.START_AT | `now()`                    | 등록 시 현재 시각으로 채운다 (`NOT NULL`). 공개(`STATUS: DRAFT → OPEN`) 시 최신 회차 `START_AT` 을 다시 `now()` 로 갱신한다. 공개 판정 자체는 `STATUS` 로 한다 — `START_AT` 은 "모집이 언제 시작됐는가"를 기록하는 사실 데이터. **TODO(migration)**: 컬럼을 `NULL ALLOWED` 로 바꾼 뒤에는 등록 시 채우지 않고 공개 시에만 채운다. unpublish 시 `null` 로 되돌린다 |
 | STUDY_PROGRAM.TITLE        | 요청의 `title`             | 새 프로그램일 때만. 프로그램 제목은 첫 기수 제목을 따른다                                                                                     |
 | STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. **제안 단계, 컬럼 미구현** |
 
@@ -502,7 +500,7 @@ Location: /api/admin/studies/{id}
 | 동작 | 선행 조건 | 결과 |
 |------|-----------|------|
 | publish (공개) | `STATUS=DRAFT` AND `APPLICATION_FORM.questions` ≥ 1 | `STATUS=OPEN`, 최신 회차(id MAX) `STUDY_RECRUITMENT.START_AT = now()` |
-| unpublish (공개 취소) | `STATUS=OPEN` | `STATUS=DRAFT`, 최신 회차 `STUDY_RECRUITMENT.START_AT = null`. 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
+| unpublish (공개 취소) | `STATUS=OPEN` | `STATUS=DRAFT`. 최신 회차 `STUDY_RECRUITMENT.START_AT` 은 공개 시각 그대로 유지 (`NOT NULL`). 신청·크루·반·출석 변경 없음. 알림/이력 없음. |
 
 - 공개 = 모집 시작. 사이트 노출 여부는 `STATUS != DRAFT` 단일 판정.
 - `START_AT` 은 "모집이 언제 시작됐는가"라는 사실 데이터 — 노출 판정의 근거가 아님 ([ERD](../../docs/erd/STUDY.md#공개-여부)).
@@ -543,14 +541,14 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 - `publish(accountId, studyId)` · `unpublish(accountId, studyId)` — 캡틴 전용이라 진입 메서드 각각 하나. 첫 줄 `assertCaptain`. `create`·`delete` 패턴과 동일. `FromSite`/`ForBackOffice` 접미사 없음.
 - 신청 폼 판정: `study.getApplicationForm()` null 이거나 `questions` 배열 길이 0 → `APPLICATION_FORM_REQUIRED`. APPLICATION_FORM JSON 구조 정본: [study-application/spec.md §APPLICATION_FORM](../study-application/spec.md)
 - 상태 전이는 `Study` 엔티티의 의미 있는 메서드(`Study#publish()` · `Study#unpublish()`)로. setter 금지.
-- 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. publish 시 `START_AT = now()`, unpublish 시 `START_AT = null`.
+- 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. publish 시 `START_AT = now()`. unpublish 시 `START_AT` 은 변경하지 않는다 — 공개됐던 시각을 사실 기록으로 유지한다. `START_AT NOT NULL` 제약은 그대로. **TODO(migration)**: `NULL ALLOWED` 마이그레이션 후에는 등록 시 `null`, publish 시에만 `now()`, unpublish 시 `null` 로 되돌린다.
 
 ### 테스트 요구사항
 
 | 엔드포인트 | 성공 | 401 | 403 | 404 | 409-CONFLICT | 409-APP_FORM |
 |---|---|---|---|---|---|---|
 | `POST /api/admin/studies/{id}/publish` | DRAFT+폼 있음 → 204, STATUS=OPEN, 최신 회차 START_AT 채워짐 | 토큰 없음 | 네비게이터 | 없는 id | 이미 OPEN | 폼 없음/questions 0개 |
-| `POST /api/admin/studies/{id}/unpublish` | OPEN → 204, STATUS=DRAFT, 최신 회차 START_AT=null | 토큰 없음 | 네비게이터 | 없는 id | DRAFT·ONGOING·ENDED·CLOSED | — |
+| `POST /api/admin/studies/{id}/unpublish` | OPEN → 204, STATUS=DRAFT (START_AT 유지) | 토큰 없음 | 네비게이터 | 없는 id | DRAFT·ONGOING·ENDED·CLOSED | — |
 
 ### 프론트엔드 사용처
 
@@ -643,9 +641,8 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 
 - **`null` 과 키 생략을 구분한다.** `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 은 `null`(또는 빈 문자열 주소)을 보내면 비우고,
   키를 빼면 그대로 둔다. 나머지 필드는 `null` 이면 바꾸지 않는다
-- **정원은 `STUDY.CAPACITY` 에 저장한다.** 위 표의 정본은 `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 지만, 목록 응답·목록 단계 필터(JPQL)·
-  모집 상태 판정이 모두 `STUDY.CAPACITY` 를 읽고 있어 수정만 회차에 쓰면 목록과 상세의 모집 상태가 어긋난다.
-  `RECRUITMENT_CAPACITY` 로 옮기는 일은 읽는 쪽 전부와 함께 한 번에 한다 (스키마 정리 제안의 `STUDY.CAPACITY` 삭제와 같은 작업)
+- **정원은 최신 모집 회차의 `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 에 저장한다** (V26 에서 `STUDY.CAPACITY` 를 옮기고 삭제).
+  목록 응답·목록 단계 필터(JPQL)·상세의 모집 상태 판정이 모두 같은 회차의 정원과 신청 수를 비교한다. 모집 회차가 없으면 정원 수정은 404 다
 - `timezone` 은 컬럼이 없어 받지 않는다 — 보내면 무시된다
 - 운영 콘솔(정보 탭)은 **바뀐 칸만** 보낸다. 마감이 지난 스터디의 다른 칸을 고칠 때 지난 `recruitDeadline` 을 다시 보내면 400 이다
 - 프론트엔드 사용처: `frontend/apps/back-office-front/src/components/StudyInfoTab.tsx` (DELETE 도 같은 파일) — 호출은 `features/studies/queries.ts` `useUpdateStudy`. `/api/admin/studies/{studyId}` 로 옮긴다

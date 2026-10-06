@@ -157,7 +157,7 @@ erDiagram
     datetime START_AT "null이면 미정"
   }
   STUDY_RECRUITMENT {
-    datetime START_AT "null이면 모집 전"
+    datetime START_AT "등록/공개 시각. NOT NULL"
     datetime RECRUIT_DEADLINE_AT
     int RECRUITMENT_CAPACITY "null이면 제한 없음"
   }
