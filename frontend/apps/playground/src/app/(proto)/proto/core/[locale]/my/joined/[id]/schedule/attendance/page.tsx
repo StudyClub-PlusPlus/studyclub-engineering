@@ -7,7 +7,7 @@ import { AttendanceTab } from '@console/components/AttendanceTab';
 import { ruleFromMeetings } from '@console/lib/schedule';
 import { useManage } from '@core/components/StudyManageShell';
 import { getMyAttendance, meetingsOf } from '@core/lib/attendance';
-import { isKickoff, type ProtoMeeting } from '@core/lib/meetings';
+import { bookFromSchedule } from '@core/lib/meetings';
 import { getGroupAttendance, saveGroupAttendance, type AttendanceBook } from '@core/lib/navigator-attendance';
 import { ME_ID, participantsOf } from '@core/lib/schedule-board';
 import { Button } from '@studyclub/ui';
@@ -39,11 +39,7 @@ export default function StudyManageAttendancePage() {
   const crew = participantsOf(study)
     .map((p) => ({ ...p, left: p.left && { label: '참여 중단', at: p.left.at } }))
     .sort((a, b) => Number(Boolean(a.left)) - Number(Boolean(b.left)));
-  const presentersOf = (id: string) => {
-    const m = meetings.find((x) => x.id === id) as ProtoMeeting | undefined;
-    return [m?.presenter1, m?.presenter2].filter((p): p is string => Boolean(p));
-  };
-  const notCounted = new Set(meetings.filter(isKickoff).map((m) => m.id));
+  const { presentersOf, notCounted, headOf } = bookFromSchedule(meetings);
   const schedulePath = `/proto/core/${locale}/my/joined/${study.study_id}/schedule`;
 
   async function save(next: AttendanceBook) {
@@ -101,8 +97,7 @@ export default function StudyManageAttendancePage() {
             readOnly={!canEdit}
             presentersOf={presentersOf}
             notCounted={notCounted}
-            headOf={(m) => (isKickoff(m) ? '킥오프' : `${m.no}회`)}
-            minimal
+            headOf={headOf}
           />
         </div>
       ) : null}
