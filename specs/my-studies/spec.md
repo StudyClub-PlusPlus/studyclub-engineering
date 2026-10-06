@@ -5,7 +5,7 @@
 > 상태: 구현완료
 >
 > Story PRD:
-> - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../planning/stories/crew-joined-studies/PRD.md)
+> - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../01-planning/stories/crew-joined-studies/PRD.md)
 >
 > 기준 프로토타입: playground `/proto/core/ko/my/joined`
 

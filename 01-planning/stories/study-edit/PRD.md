@@ -57,7 +57,8 @@
   - 검증 규칙은 등록과 같다
   - 검토·승인 단계 없이 즉시 반영된다
   - 마감일을 고치면 헤더의 모집 상태가 함께 바뀐다
-- **데이터**: `PATCH /api/studies/{id}`
+- **데이터**: `PATCH /api/admin/studies/{studyId}`
+- **정책(보탬)**: 바뀐 칸만 보낸다. 마감이 지난 스터디에서 지난 마감일을 다시 보내지 않는다 — 마감이 지나도 다른 칸은 고칠 수 있다
 
 ### 3 — 스터디 삭제
 - **내용**: 저장 버튼과 **반대편 끝**
@@ -72,7 +73,7 @@
 - **정책**
   - **함께 사라지는 것을 명시한다** — 스터디만 지워진다고 오해하면 복구 요청이 들어온다
   - 되돌릴 수 없다는 것을 문구로 알린다
-- **데이터**: `DELETE /api/studies/{id}`
+- **데이터**: `DELETE /api/admin/studies/{studyId}`
 
 ### 상태별 화면
 
@@ -100,27 +101,46 @@
 
 | 필드 | 수정 | 비고 |
 |---|---|---|
-| title · summary · description · category · schedule · thumbnail | 가능 | 등록과 같은 제약 ([POL-0003](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0003-study-fields.md)) |
-| deadline · capacity | 가능 | 바꾸면 모집 상태가 따라 바뀐다 |
-| startDate · discordUrl · driveUrl | 가능 | |
-| program | 불가 | 기수가 속한 프로그램은 바뀌지 않는다 |
-| created_by | 불가 | 등록자는 바뀌지 않는다 |
+| title · oneLineSummary · description · category · schedule · timezone · thumbnail | 가능 | 등록과 같은 제약 ([POL-0003](../../_registry/policies/POL-0003-study-fields.md)) |
+| recruitDeadline · capacity | 가능 | 최신 모집 회차만. 바꾸면 모집 상태가 따라 바뀐다 |
+| startAt · discordChannelUrl · driveUrl | 가능 | `null` 이면 비우고, 키가 없으면 그대로 둔다 |
+| studyProgramId · studyKind | 불가 | 기수가 속한 프로그램·종류는 바뀌지 않는다 |
+| status | 불가 | 공개 API 로만 바꾼다 |
+| createdBy | 불가 | 등록자는 바뀌지 않는다 |
+
+- 고칠 수 있는 필드: title · oneLineSummary · description · category · recruitDeadline · capacity · schedule · timezone · startAt · discordChannelUrl · driveUrl
+- 고칠 수 없는 필드: studyProgramId · studyKind · status (상태는 공개 API 로만 바꾼다)
+- recruitDeadline · capacity 는 id 가 가장 큰(최신) 모집 회차만 고친다
+- `null` 과 키 생략을 구분한다. capacity · startAt · discordChannelUrl · driveUrl 은 `null` 이면 비우고, 키가 없으면 그대로 둔다
 
 ### 처리
 
-- **검증(서버 기준)** — 등록과 동일. title · summary · category · deadline 필수 · title ≤ 60자 ·
-  category 는 11종 중 하나
-- **저장** — 변경된 필드만 반영 후 목록 캐시 무효화
-- **삭제** — 스터디와 그에 달린 참여·출석 기록을 함께 제거
-- **실패 응답** — 검증 400(필드별 오류) · 권한 403 · 없는 스터디 404 · 저장 500(화면은 입력값 유지)
-- **완료 정의** — 수정: 바뀐 값이 조회 응답에 나타난다 / 삭제: 조회 응답에서 사라진다
+- 수정: 보낸 필드만 반영한다. 검증은 등록과 같다. recruitDeadline 은 null 불가, 보내면 미래여야 한다
+- 삭제: 물리 삭제. 스터디와 모집 회차 · 신청 · 반 · 명부 · 출석을 함께 지운다. 같은 프로그램의 다른 기수와 프로그램은 남는다
+- 실패: 400 `INVALID_INPUT` (필드명: 사유) · 401 · 403 · 404
 
-### API · 권한
+### API
 
 | 메서드 | 경로 | 권한 |
-|---|---|---|
-| PATCH | `/api/studies/{id}` | 캡틴 · 그 스터디의 네비게이터 |
-| DELETE | `/api/studies/{id}` | **캡틴만** |
+| --- | --- | --- |
+| PATCH | `/api/admin/studies/{studyId}` | 캡틴 (운영 콘솔) |
+| DELETE | `/api/admin/studies/{studyId}` | 캡틴 |
 
-- 수정은 네비게이터도 한다 — 맡은 스터디를 굴리는 데 필요하다 ([POL-0001](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0001-roles.md))
-- **삭제는 캡틴만** — 크루 명단과 출석 기록까지 사라지므로 되돌릴 수 없다
+네비게이터의 수정은 사용자 사이트 경로(`PATCH /api/studies/{studyId}`)가 따로 받는다 — 로직은 같고 권한만 다르다.
+
+계약은 [study/spec.md](../../../specs/study/spec.md#스터디-수정).
+
+### 권한
+
+- 수정: 캡틴, 그 스터디의 네비게이터. 서버에서 검증한다 — 맡은 스터디를 굴리는 데 필요하다 ([POL-0001](../../_registry/policies/POL-0001-roles.md))
+- 삭제: 캡틴만. 크루 명단·출석까지 사라지므로 되돌릴 수 없다
+
+### 외부 연동
+
+- 없음
+
+## 4. 미확정
+
+- 네비게이터가 고칠 수 있는 항목 범위
+- 삭제 대신 보관(아카이브)으로 바꿀지
+- 진행 중인 스터디의 삭제를 허용할지

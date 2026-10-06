@@ -16,7 +16,7 @@
 | **킥오프** | 스터디 첫 모임. 규칙 · 일정 · 발표자를 여기서 정한다. 시트에는 「0회차」로 적었다 |
 | **발표자1 · 발표자2** | 그 회차의 발표 담당. 1이 메인, 2가 보충 |
 
-화면 기획은 [회차 등록 PRD](../../planning/stories/navigator-register-sessions/PRD.md), 서버 계약은 [회차 스펙](../../specs/study-meeting/spec.md) 결정 9~12 에 있다.
+화면 기획은 [회차 등록 PRD](../../01-planning/stories/navigator-register-sessions/PRD.md), 서버 계약은 [회차 스펙](../../specs/study-meeting/spec.md) 결정 9~12 에 있다.
 playground 에서 「내 스터디 → 스터디 일정」 으로 직접 볼 수 있다.
 
 ## 한 줄 요약

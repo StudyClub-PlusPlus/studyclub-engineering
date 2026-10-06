@@ -1,12 +1,12 @@
 # 스터디 회차(미팅) API Spec
 
 > ERD: [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
-> Story PRD: [회차 등록](../../planning/stories/navigator-register-sessions/PRD.md) · [크루 발표자 신청](../../planning/stories/crew-apply-presenter/PRD.md)
+> Story PRD: [회차 등록](../../01-planning/stories/navigator-register-sessions/PRD.md) · [크루 발표자 신청](../../01-planning/stories/crew-apply-presenter/PRD.md)
 > 생성일: 2026-10-02
 > 상태: 스펙작성중
 >
 > Story PRD:
-> - [네비게이터로서, 스터디 회차를 등록할 수 있다](../../planning/stories/navigator-register-sessions/PRD.md)
+> - [네비게이터로서, 스터디 회차를 등록할 수 있다](../../01-planning/stories/navigator-register-sessions/PRD.md)
 >
 > 관련 스펙: [명부·출석](../attendance/spec.md) — 출석 조회·upsert 만 다루고 범위를 닫아 둔 스펙이라 여기서 고치지 않는다. 이 스펙이 만들고 지운 회차·출석 행은 그 스펙의 `GET /api/studies/{studyId}/attendances` 와 [내 스터디](../my-studies/spec.md) 에 그대로 보인다.
 

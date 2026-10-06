@@ -90,6 +90,9 @@
 
 | 메서드 | 경로 | 권한 |
 |---|---|---|
-| GET | `/api/studies/{id}` | 캡틴 · 그 스터디의 네비게이터 ([POL-0001](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/../_registry/policies/POL-0001-roles.md)) |
+| GET | `/api/admin/studies/{studyId}` | 캡틴 (운영 콘솔) ([POL-0001](../../_registry/policies/POL-0001-roles.md)) |
+| GET | `/api/studies/{studyId}` | 그 스터디의 네비게이터 — 사용자 사이트 경로. DRAFT 도 본다 |
+
+계약은 [study/spec.md](../../../specs/study/spec.md).
 
 - 네비게이터는 맡은 스터디를 굴려야 하므로 현황을 볼 수 있어야 한다. 남의 스터디는 열리지 않는다
