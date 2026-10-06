@@ -1,19 +1,19 @@
 # 스터디 API Spec
 
 > ERD: [STUDY](../../docs/erd/STUDY.md) · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md)
-> Story PRD: [등록](../../planning/stories/captain-create-study/PRD.md) · [수정·삭제](../../planning/stories/captain-edit-delete-study/PRD.md) · [공개](../../planning/stories/captain-publish-study/PRD.md) · [다음 기수](../../planning/stories/captain-reregister-cohort/PRD.md) · [운영 콘솔 목록](../../planning/stories/captain-list-all-studies/PRD.md)
+> Story PRD: [등록](../../01-planning/stories/study-create/PRD.md) · [수정·삭제](../../01-planning/stories/study-edit/PRD.md) · [공개](../../01-planning/stories/captain-publish-study/PRD.md) · [다음 기수](../../01-planning/stories/captain-reregister-cohort/PRD.md) · [운영 콘솔 목록](../../01-planning/stories/captain-list-all-studies/PRD.md)
 > 생성일: 2026-09-08 (GET) · 2026-09-11 (POST 절 추가)
 > 갱신: 2026-09-19 — 신청 폼·제출·결과 API 는 [study-application/spec.md](../study-application/spec.md) 로 분리
 > 갱신: 2026-09-20 — STUDY_COHORT 테이블 폐기. 코호트 필드는 STUDY 로 통합, 모집 마감은 STUDY_RECRUITMENT 로 분리. 응답·요청 구조 반영
 > 갱신: 2026-09-22 — 스키마 정리 제안 반영(**백엔드 미반영, 제안 단계**): `STUDY_KIND` 를 STUDY_PROGRAM 으로 이동, `SLUG`·`IS_HIDDEN`·`PUBLISH_AT`·`STUDY.CAPACITY`·`STUDY_DELIVERY_FORMAT` 삭제, 공개 = `STUDY_RECRUITMENT.START_AT` 유무, 상태 5단계, 상시 모집 폐지
 > 갱신: 2026-09-22 — PATCH/DELETE 스펙 추가 (#117 을 이 스펙의 스키마 제안에 맞춰 반영: `isHidden` 삭제, `studyKind` 는 STUDY_PROGRAM 소속이라 수정 불가, `recruitDeadline` null 불가, `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 수정 항목 추가)
-> 갱신: 2026-09-23 — `timezone` 필드 추가(**제안 단계, 백엔드 미반영**): 등록 폼에서 운영자가 KST/PST/동시 진행 중 직접 고르는 선택 입력. GET/POST/PATCH 세 곳에 반영. 운영 콘솔 목록에 컬럼 추가. 이 필드가 생기기 전 데이터는 값이 없어 사이트가 일정·킥오프 문구로 추정하거나 「시간대 미정」으로 보인다 — [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md#3-시간대-필터)
+> 갱신: 2026-09-23 — `timezone` 필드 추가(**제안 단계, 백엔드 미반영**): 등록 폼에서 운영자가 KST/PST/동시 진행 중 직접 고르는 선택 입력. GET/POST/PATCH 세 곳에 반영. 운영 콘솔 목록에 컬럼 추가. 이 필드가 생기기 전 데이터는 값이 없어 사이트가 일정·킥오프 문구로 추정하거나 「시간대 미정」으로 보인다 — [crew-browse-studies PRD](../../01-planning/stories/crew-browse-studies/PRD.md#3-시간대-필터)
 > 갱신: 2026-09-24 — **공개 판정 정정**(PR #129 리뷰): 「공개 = `START_AT` 유무」를 「공개 = `STATUS != DRAFT`」로 바꾼다. `START_AT` 은 `STATUS` 와 별개 필드라 한쪽만 바뀌는 동기화 버그 여지가 있고, 지금 등록 API가 `START_AT=now` 를 채우는 별도 버그와도 얽혀 있었다 — `STATUS` 하나로 판정하면 두 문제 다 공개 여부에는 영향을 주지 않는다. 상세: [ERD](../../docs/erd/STUDY.md#공개-여부) · [POL-0002](../../01-planning/_registry/policies/POL-0002-study-status.md#공개-여부)
 > 갱신: 2026-09-27 — 백오피스 정보 탭 연동. GET 응답에 `programId`·`oneLineSummary`·`schedule`·`discordChannelUrl`·`driveUrl` 추가, PATCH 가 `capacity`·`startAt`·`discordChannelUrl`·`driveUrl` 을 받는다(`null` = 비움, 키 생략 = 유지). **정원 저장 위치는 아직 `STUDY.CAPACITY`** 다 — 아래 「스터디 수정」 참고. `timezone` 은 컬럼이 없어 여전히 미구현
 > 갱신: 2026-09-28 — category 유효값 표를 11종(`StudyCategory` enum)으로 정정
 > 갱신: 2026-09-29 — 팀 결정: 스터디 상세도 백오피스용 `GET /api/admin/studies/{studyId}` 를 따로 둔다. 운영 콘솔은 이 경로를, 사용자 사이트 상세는 캡틴·네비게이터에게만 DRAFT 를 보여 준다
 > 갱신: 2026-09-29 — **관객별 엔드포인트로 나눈다**: 백오피스가 부르는 것은 `/api/admin/studies`(`AdminStudyController`, 캡틴만), 사용자 사이트는 `/api/studies`. 두 관객이 다 하는 일(목록·상세·수정)만 경로가 둘이고 로직은 `StudyService` 를 공유한다. 등록·삭제·공개는 `/api/admin` 으로 옮긴다. 근거·순서: 아래 「관객별 엔드포인트」
-> 갱신: 2026-09-29 — **작성자(`CREATED_BY`) 추가 (제안 단계, 백엔드 미반영)**: 스터디를 등록한 계정을 서버가 기록한다. 운영 콘솔 목록에 「작성자」 열을 넣고 「출석률」 열을 뺐다 — [captain-list-all-studies PRD](../../planning/stories/captain-list-all-studies/PRD.md)
+> 갱신: 2026-09-29 — **작성자(`CREATED_BY`) 추가 (제안 단계, 백엔드 미반영)**: 스터디를 등록한 계정을 서버가 기록한다. 운영 콘솔 목록에 「작성자」 열을 넣고 「출석률」 열을 뺐다 — [captain-list-all-studies PRD](../../01-planning/stories/captain-list-all-studies/PRD.md)
 > 갱신: 2026-09-30 — 스터디 상세 FE 구현 완료(`StudyDetailView` + `useStudyDetail` 훅이 `GET /api/studies/{studyId}` 를 직접 호출). `sort` 파라미터 없음 확정 — 목록은 항상 최신순 고정.
 > 갱신: 2026-10-05 — 스키마 정리 반영(V26~V30): 정원은 최신 모집 회차(`RECRUITMENT_CAPACITY`), `SLUG`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT` 삭제, `CREATED_BY` 추가. 목록 단계 필터도 최신 회차 신청 수 기준
 
@@ -207,7 +207,7 @@ private StudyDetailResponse toDetail(Study study) {
 > `모집중 (미정)`·`진행중`·`모집 마감`)로만 표현한다 — `recruitDeadline`·`recruitStatus` 로 계산한다.
 > D-N 산정은 `recruitDeadline` 하나면 된다. 목록에서는 정렬·신청하기·찜을 더 이상 제공하지 않는다
 > (둘러보기 전용으로 축소, 신청은 상세에서만 한다). playground 근거:
-> [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md).
+> [crew-browse-studies PRD](../../01-planning/stories/crew-browse-studies/PRD.md).
 >
 > **운영 콘솔 목록 갱신(2026-09-22)**: 「진행 일정」(`schedule`, 자유 텍스트) 열을 빼고 **스터디 시작일**
 > (`startAt`) 열을 넣었다 — 정렬·필터를 걸 수 있는 값이라야 목록에 둔다는 원칙에 맞춘다. **종류**
@@ -221,7 +221,7 @@ private StudyDetailResponse toDetail(Study study) {
 > **운영 콘솔 목록 갱신(2026-09-29)**: **작성자** 열을 추가하고 **출석률** 열을 뺐다. 작성자는 등록한
 > 캡틴의 닉네임(`ACCOUNT.NICKNAME`)이고 `STUDY.CREATED_BY` 로 찾는다 — 컬럼이 없던 시절
 > 등록된 스터디는 비어 있어 「—」로 보인다. 출석률은 기수 운영 화면의 출석 탭에서만 본다 — 목록 응답에
-> 넣지 않는다. 정본: [captain-list-all-studies PRD](../../planning/stories/captain-list-all-studies/PRD.md)
+> 넣지 않는다. 정본: [captain-list-all-studies PRD](../../01-planning/stories/captain-list-all-studies/PRD.md)
 
 ---
 
@@ -349,7 +349,7 @@ private StudyDetailResponse toDetail(Study study) {
 ### 미확정
 
 - [NEEDS CLARIFICATION] CLUB 에서 같은 STUDY_PROGRAM 아래 여러 STUDY 가 있을 때 어떤 기수를 기본으로 보여줄지 (현재는 studyId 직접 지정)
-- [NEEDS CLARIFICATION] `startAt` 이 비어 있는 기존 데이터의 처리 — 등록·수정 요청에는 필드가 생겼지만(위 참고), 이 필드가 생기기 전 데이터는 여전히 비어 있을 수 있다. playground mock 은 대표 날짜·킥오프 문구·모집 마감일로 값을 추정해 채운다(FE 전용 임시 처리) — 실제 데이터 백필 여부와 방법 미정. [crew-browse-studies PRD](../../planning/stories/crew-browse-studies/PRD.md) 참고
+- [NEEDS CLARIFICATION] `startAt` 이 비어 있는 기존 데이터의 처리 — 등록·수정 요청에는 필드가 생겼지만(위 참고), 이 필드가 생기기 전 데이터는 여전히 비어 있을 수 있다. playground mock 은 대표 날짜·킥오프 문구·모집 마감일로 값을 추정해 채운다(FE 전용 임시 처리) — 실제 데이터 백필 여부와 방법 미정. [crew-browse-studies PRD](../../01-planning/stories/crew-browse-studies/PRD.md) 참고
 - 공개 여부는 `STATUS != DRAFT` 로 정한다 — `DRAFT` 면 404, 아니면 조회 가능. 별도 숨김 플래그(`IS_HIDDEN`)는 없다. 모집 시작 일자(`START_AT`)는 판정에 쓰지 않는다 — [ERD](../../docs/erd/STUDY.md#공개-여부) 참고.
 
 ---
@@ -552,7 +552,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 
 ### 프론트엔드 사용처
 
-- `back-office-front` 운영 콘솔 스터디 목록 — 공개 설정 토글 ([captain-publish-study PRD](../../planning/stories/captain-publish-study/PRD.md))
+- `back-office-front` 운영 콘솔 스터디 목록 — 공개 설정 토글 ([captain-publish-study PRD](../../01-planning/stories/captain-publish-study/PRD.md))
 - 아직 미구현 (`TODO(api)`)
 
 ### 미확정 → 해소

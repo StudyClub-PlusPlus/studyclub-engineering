@@ -12,9 +12,9 @@
 > 기획 근거: playground 프로토 (`ApplicationFormTab` · `ApplyDialog` · `ResultsTab`)
 >
 > Story PRD:
-> - [캡틴으로서, 스터디 신청용 폼을 제작할 수 있다](../../planning/stories/captain-application-form/PRD.md)
-> - [크루로서, 스터디 신청 폼을 제출할 수 있다](../../planning/stories/crew-submit-application/PRD.md)
-> - [캡틴으로서, 스터디 신청서 결과를 모아볼 수 있다](../../planning/stories/captain-application-results/PRD.md)
+> - [캡틴으로서, 스터디 신청용 폼을 제작할 수 있다](../../01-planning/stories/captain-application-form/PRD.md)
+> - [크루로서, 스터디 신청 폼을 제출할 수 있다](../../01-planning/stories/crew-submit-application/PRD.md)
+> - [캡틴으로서, 스터디 신청서 결과를 모아볼 수 있다](../../01-planning/stories/captain-application-results/PRD.md)
 
 신청 폼 정의는 **기수(`STUDY.APPLICATION_FORM`)** 에 두고, 신청 행은 **모집 회차(`STUDY_APPLICATION.RECRUITMENT_ID`)** 에 붙인다. `STUDY_COHORT` 경로(`/cohorts/{cohortId}/…`)는 쓰지 않는다.
 

@@ -15,7 +15,7 @@
 | **네비게이터** | 그 분반을 맡아 운영하는 사람. 캡틴은 사이트 전체를 관리하는 사람 |
 | **API** | 화면이 서버에 "이거 저장해 주세요" 하고 말을 거는 창구. 이번에 회차용 창구 4개를 만들었다 |
 
-화면 기획은 [회차 등록 PRD](../planning/stories/navigator-register-sessions/PRD.md), 서버 계약은 [회차 스펙](../specs/study-meeting/spec.md)에 있다. 코드는 PR #177.
+화면 기획은 [회차 등록 PRD](../../01-planning/stories/navigator-register-sessions/PRD.md), 서버 계약은 [회차 스펙](../../specs/study-meeting/spec.md)에 있다. 코드는 PR #177.
 
 ## 한 줄 요약
 
