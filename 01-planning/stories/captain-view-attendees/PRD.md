@@ -128,8 +128,10 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | 스터디 참여 명단 — `/api/admin` 아래, 미정 | 캡틴 |
-| PATCH | 담당 지정·해제 — 미정 | 캡틴 |
+| GET | `/api/admin/studies/{studyId}/participants` | 캡틴 |
+| PATCH | `/api/admin/studies/{studyId}/participants/{participantId}/role` | 캡틴 |
+
+계약은 [study-group/spec.md](../../../specs/study-group/spec.md).
 
 ### 권한
 
@@ -146,6 +148,6 @@ erDiagram
 
 ## 4. 미확정
 
-- 명단·담당 지정 API 경로
+- ~~명단·담당 지정 API 경로~~ → [study-group/spec.md](../../../specs/study-group/spec.md) (2026-10-06)
 - 완주율 정의와 계산 위치
 - 공동 네비게이터(`CO_LEADER`)를 이 화면에서 구분할지

@@ -112,7 +112,9 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | 회원 목록 — `/api/admin` 아래, 미정 | 캡틴 |
+| GET | `/api/admin/users` (`role` · `q` · `offset` · `limit`) | 캡틴 |
+
+계약은 [admin-users/spec.md](../../../specs/admin-users/spec.md).
 
 ### 권한
 
@@ -129,5 +131,5 @@ erDiagram
 
 ## 4. 미확정
 
-- 회원 목록 API 경로와 스펙 위치
+- ~~회원 목록 API 경로와 스펙 위치~~ → `GET /api/admin/users`, [admin-users/spec.md](../../../specs/admin-users/spec.md) (2026-10-06)
 - 이름 칸에 닉네임을 쓸지 Google 이름을 쓸지

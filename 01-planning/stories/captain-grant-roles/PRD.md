@@ -124,7 +124,9 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| PATCH | 계정 권한 변경 — `/api/admin` 아래, 미정 | 캡틴 |
+| PATCH | `/api/admin/users/{accountId}/system-role` | 캡틴 |
+
+계약은 [admin-users/spec.md](../../../specs/admin-users/spec.md). 본인 변경은 409 `CANNOT_CHANGE_OWN_ROLE`, 마지막 캡틴 강등은 409 `LAST_ADMIN_REQUIRED`.
 
 ### 권한
 
@@ -136,6 +138,6 @@ erDiagram
 
 ## 4. 미확정
 
-- 권한 변경 API 경로와 스펙 위치
+- ~~권한 변경 API 경로와 스펙 위치~~ → `PATCH /api/admin/users/{accountId}/system-role`, [admin-users/spec.md](../../../specs/admin-users/spec.md) (2026-10-06)
 - 백엔드 Role 이름과 화면 이름의 매핑 — 코드의 `STUDENT/OPERATOR/ADMIN` 과 ERD 의 `MEMBER/ADMIN` 이 다르다
 - 권한 변경 이력(누가 언제 바꿨는지)을 남길지

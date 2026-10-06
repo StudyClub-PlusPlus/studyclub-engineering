@@ -151,9 +151,12 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | 가능한 시간 집계 — 미정 | 캡틴 |
-| POST · PATCH · DELETE | 분반 — 미정 | 캡틴 |
-| PATCH | 크루의 반 지정 — 미정 | 캡틴 |
+| GET | `/api/admin/studies/{studyId}/availability` | 캡틴 |
+| POST | `/api/admin/studies/{studyId}/groups` | 캡틴 |
+| PATCH · DELETE | `/api/admin/studies/{studyId}/groups/{groupId}` | 캡틴 |
+| PATCH | `/api/admin/studies/{studyId}/participants/{participantId}/group` | 캡틴 |
+
+계약은 [study-group/spec.md](../../../specs/study-group/spec.md).
 
 ### 권한
 
@@ -165,6 +168,7 @@ erDiagram
 
 ## 4. 미확정
 
-- 분반·반 지정 API 경로와 스펙 위치
+- ~~분반·반 지정 API 경로와 스펙 위치~~ → [study-group/spec.md](../../../specs/study-group/spec.md) (2026-10-06)
+- 신청 폼은 가능한 **요일**만 받는다. 요일 × 오전·오후·저녁 집계를 하려면 신청 폼에 시간대 질문이 먼저 필요하다
 - `STUDY_GROUP` 에 시작일·종료일·요일 컬럼이 없다
 - 반 일정을 바꿀 때 지워지는 오늘 이후 회차에 찍힌 휴가 신청 처리

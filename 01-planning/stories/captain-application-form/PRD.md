@@ -121,7 +121,7 @@ flowchart LR
   - 이 기수 `STUDY_APPLICATION`이 1건 이상이거나, 이 기수 `STUDY_RECRUITMENT` 중 `START_AT <= now()`인 행이 있으면 거절한다. 모집 회차가 아직 없으면 저장한다
   - 추가 질문 0개여도 저장한다
   - 질문 제목·선택지 유효값을 깨면 저장하지 않고 그 카드로 옮긴다
-- **데이터**: `PATCH /api/studies/{studyId}/application-form`
+- **데이터**: `PUT /api/admin/studies/{studyId}/application-form`
 
 ### 상태별 화면
 
@@ -213,8 +213,11 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/studies/{studyId}/application-form` | OPEN이고 숨김이 아니면 공개. DRAFT·숨김은 캡틴 누구나 |
-| PATCH | `/api/studies/{studyId}/application-form` | 이 기수 담당 캡틴 |
+| GET | `/api/admin/studies/{studyId}/application-form` | 캡틴 누구나 (백오피스 편집 화면) |
+| PUT | `/api/admin/studies/{studyId}/application-form` | 이 기수 담당 캡틴 |
+| GET | `/api/studies/{studyId}/application-form` | 사용자 사이트 — OPEN이고 숨김이 아니면 공개 |
+
+계약은 [study-application/spec.md](../../../specs/study-application/spec.md). 옛 `PUT /api/studies/{studyId}/application-form` 은 폐기 예정이다.
 
 실패:
 

@@ -127,8 +127,8 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| POST | `/api/studies/{studyId}/publish` | 캡틴 |
-| POST | `/api/studies/{studyId}/unpublish` | 캡틴 |
+| POST | `/api/admin/studies/{studyId}/publish` | 캡틴 |
+| POST | `/api/admin/studies/{studyId}/unpublish` | 캡틴 |
 
 계약은 [study/spec.md 스터디 공개](../../../specs/study/spec.md#스터디-공개--공개-취소).
 

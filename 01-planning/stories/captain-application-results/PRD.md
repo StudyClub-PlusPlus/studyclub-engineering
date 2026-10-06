@@ -157,7 +157,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/studies/{studyId}/applications` | 캡틴 누구나 |
+| GET | `/api/admin/studies/{studyId}/applications` | 캡틴 누구나 |
 
 쿼리 `recruitmentId`(선택): 특정 모집 회차만. 이 기수 소속이 아니면 `422`.
 
