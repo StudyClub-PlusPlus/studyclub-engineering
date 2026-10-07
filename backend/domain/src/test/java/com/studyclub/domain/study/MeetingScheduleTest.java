@@ -164,6 +164,75 @@ class MeetingScheduleTest {
                 .doesNotThrowAnyException();
     }
 
+    @Test
+    @DisplayName("킥오프 날이나 그 앞으로는 정규 회차를 만들 수 없다 — INVALID_INPUT")
+    void rejectsAddOnOrBeforeKickoff() {
+        // 킥오프 KST 10/14(수) 20:30
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(kickoff("2026-10-14T11:30:00Z")));
+
+        assertThatThrownBy(
+                        () ->
+                                schedule.checkAdd(
+                                        List.of(Instant.parse("2026-10-14T13:00:00Z")), NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT))
+                .hasMessageContaining("킥오프(10/14(수)) 뒤로만");
+    }
+
+    @Test
+    @DisplayName("킥오프 다음 날부터는 정규 회차를 만들 수 있다")
+    void allowsAddAfterKickoff() {
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(kickoff("2026-10-14T11:30:00Z")));
+
+        assertThatCode(() -> schedule.checkAdd(List.of(Instant.parse("2026-10-15T11:30:00Z")), NOW))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("킥오프가 없는 옛 분반은 순서 규칙이 없다")
+    void noKickoffNoOrderRule() {
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(meeting("2026-10-20T11:00:00Z")));
+
+        assertThatCode(() -> schedule.checkAdd(List.of(Instant.parse("2026-10-05T11:00:00Z")), NOW))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("정규 회차를 킥오프 날로 옮기면 INVALID_INPUT")
+    void rejectsMovingRegularOntoKickoff() {
+        StudyMeeting kickoff = kickoff("2026-10-14T11:30:00Z");
+        StudyMeeting regular = meeting("2026-10-21T11:30:00Z");
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(kickoff, regular));
+
+        assertThatThrownBy(
+                        () ->
+                                schedule.checkReschedule(
+                                        regular, Instant.parse("2026-10-14T13:00:00Z")))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("킥오프를 1회차 날이나 그 뒤로 옮기면 INVALID_INPUT, 앞이면 통과")
+    void kickoffMustStayBeforeFirstRegular() {
+        StudyMeeting kickoff = kickoff("2026-10-14T11:30:00Z");
+        StudyMeeting first = meeting("2026-10-21T11:30:00Z");
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(kickoff, first));
+
+        assertThatThrownBy(
+                        () ->
+                                schedule.checkReschedule(
+                                        kickoff, Instant.parse("2026-10-21T01:00:00Z")))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+        assertThatCode(
+                        () ->
+                                schedule.checkReschedule(
+                                        kickoff, Instant.parse("2026-10-20T11:30:00Z")))
+                .doesNotThrowAnyException();
+    }
+
+    private static StudyMeeting kickoff(String scheduledAt) {
+        return StudyMeeting.kickoff(1L, Instant.parse(scheduledAt));
+    }
+
     private static StudyMeeting meeting(String scheduledAt) {
         return StudyMeeting.schedule(1L, Instant.parse(scheduledAt), null);
     }

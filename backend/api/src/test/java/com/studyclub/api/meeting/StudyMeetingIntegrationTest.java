@@ -58,6 +58,8 @@ class StudyMeetingIntegrationTest {
     private static final Long COMPLETED_ID = 5106L;
     private static final Long CAPTAIN_ID = 5107L;
     private static final Long CO_LEADER_ID = 5108L;
+    // 이 스터디를 만든 캡틴 — 사용자 사이트에서 고칠 수 있는 캡틴은 이 사람뿐이다 (스펙 결정 3)
+    private static final Long CREATOR_ID = 5109L;
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     @Autowired TestRestTemplate rest;
@@ -76,6 +78,8 @@ class StudyMeetingIntegrationTest {
     private StudyGroup group;
     private StudyMeeting pastMeeting;
     private StudyMeeting futureMeeting;
+    private StudyParticipant member;
+    private StudyParticipant paused;
 
     @BeforeEach
     void setUp() {
@@ -97,10 +101,12 @@ class StudyMeetingIntegrationTest {
         insertAccountIfAbsent(COMPLETED_ID, "완주", "completed@meeting-test.com");
         insertAccountIfAbsent(CAPTAIN_ID, "캡틴", "captain@meeting-test.com");
         insertAccountIfAbsent(CO_LEADER_ID, "부반장", "coleader@meeting-test.com");
+        insertAccountIfAbsent(CREATOR_ID, "만든캡틴", "creator@meeting-test.com");
         jdbcTemplate.update(
-                "UPDATE ACCOUNT SET SYSTEM_ROLE = ? WHERE ID = ?",
+                "UPDATE ACCOUNT SET SYSTEM_ROLE = ? WHERE ID IN (?, ?)",
                 SystemRole.ADMIN.name(),
-                CAPTAIN_ID);
+                CAPTAIN_ID,
+                CREATOR_ID);
 
         var program =
                 studyProgramRepo.save(
@@ -115,6 +121,7 @@ class StudyMeetingIntegrationTest {
                                 .description("설명")
                                 .status(StudyStatus.OPEN)
                                 .startAt(Instant.now().minus(7, ChronoUnit.DAYS))
+                                .createdBy(CREATOR_ID)
                                 .build());
         // 정규 시작 20:00 KST = 11:00 UTC
         group =
@@ -135,9 +142,9 @@ class StudyMeetingIntegrationTest {
                 studyMeetingRepo.save(StudyMeeting.schedule(group.getId(), daysFromNowAt(3), null));
 
         participant(LEADER_ID, group, ParticipantRole.LEADER, ParticipantStatus.ACTIVE);
-        participant(MEMBER_ID, group, ParticipantRole.MEMBER, ParticipantStatus.ACTIVE);
+        member = participant(MEMBER_ID, group, ParticipantRole.MEMBER, ParticipantStatus.ACTIVE);
         participant(WITHDRAWN_ID, group, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN);
-        participant(PAUSED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.PAUSED);
+        paused = participant(PAUSED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.PAUSED);
         participant(COMPLETED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED);
         participant(CO_LEADER_ID, group, ParticipantRole.CO_LEADER, ParticipantStatus.PAUSED);
         participant(
@@ -169,6 +176,293 @@ class StudyMeetingIntegrationTest {
         assertThat(meetings).extracting(m -> m.get("number")).containsExactly(1, 2);
         assertThat(meetings).extracting(m -> m.get("title")).containsExactly("OT", null);
         assertThat(meetings).extracting(m -> m.get("started")).containsExactly(true, false);
+        assertThat(meetings).extracting(m -> m.get("type")).containsOnly("REGULAR");
+        assertThat(studyGroup).containsEntry("navigatorName", "네비게이터");
+        assertThat((Map<String, Object>) response.getBody().get("me"))
+                .containsEntry("canEdit", true);
+        // 발표자 후보는 활성 참여자(ACTIVE·PAUSED)만, 이름순 — 하차·완주는 빠진다
+        assertThat((List<Map<String, Object>>) response.getBody().get("participants"))
+                .extracting(p -> p.get("name"))
+                .containsExactly("네비게이터", "부반장", "쉼", "크루");
+    }
+
+    @Test
+    @DisplayName("성공 - 크루도 내 분반 일정을 본다. 고칠 수는 없다 (canEdit=false)")
+    void memberCanList() {
+        ResponseEntity<Map> response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings",
+                        null,
+                        MEMBER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat((Map<String, Object>) response.getBody().get("me"))
+                .containsEntry("participantId", member.getId().intValue())
+                .containsEntry("canEdit", false);
+    }
+
+    @Test
+    @DisplayName("실패 - 참여를 중단한 사람은 일정을 볼 수 없다 → 403")
+    void withdrawnCannotList() {
+        var response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings",
+                        null,
+                        WITHDRAWN_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("성공 - 킥오프는 0회차, 정규 회차는 1부터. 킥오프는 지울 수 없다 → 409 KICKOFF_NOT_DELETABLE")
+    void kickoffIsZeroAndNotDeletable() {
+        StudyMeeting kickoff =
+                studyMeetingRepo.save(
+                        StudyMeeting.kickoff(
+                                group.getId(), Instant.now().minus(3, ChronoUnit.DAYS)));
+
+        ResponseEntity<Map> list =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings",
+                        null,
+                        LEADER_ID,
+                        study.getId());
+        List<Map<String, Object>> meetings =
+                (List<Map<String, Object>>) list.getBody().get("meetings");
+        assertThat(meetings).extracting(m -> m.get("number")).containsExactly(0, 1, 2);
+        assertThat(meetings).extracting(m -> m.get("type")).first().isEqualTo("KICKOFF");
+
+        var delete =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/studies/{studyId}/meetings/{meetingId}",
+                        null,
+                        LEADER_ID,
+                        study.getId(),
+                        kickoff.getId());
+        assertThat(delete.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(delete.getBody()).containsEntry("errorCode", "KICKOFF_NOT_DELETABLE");
+    }
+
+    @Test
+    @DisplayName("실패 - 킥오프 날이나 그 앞에 정규 회차를 추가하면 400")
+    void cannotAddBeforeKickoff() {
+        studyMeetingRepo.save(StudyMeeting.kickoff(group.getId(), daysFromNowAt(5)));
+        var body =
+                Map.of(
+                        "studyGroupId",
+                        group.getId(),
+                        "scheduledAts",
+                        List.of(daysFromNowAt(4).toString()));
+
+        var response =
+                exchange(
+                        HttpMethod.POST,
+                        "/api/studies/{studyId}/meetings",
+                        body,
+                        LEADER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("성공 - 반복(2개 이상)으로 만든 회차는 같은 묶음 ID, 한 번 만든 회차는 없음")
+    void storesSeriesId() {
+        var repeat =
+                Map.of(
+                        "studyGroupId",
+                        group.getId(),
+                        "scheduledAts",
+                        List.of(daysFromNowAt(10).toString(), daysFromNowAt(17).toString()));
+        var once =
+                Map.of(
+                        "studyGroupId",
+                        group.getId(),
+                        "scheduledAts",
+                        List.of(daysFromNowAt(20).toString()));
+
+        exchange(
+                HttpMethod.POST,
+                "/api/studies/{studyId}/meetings",
+                repeat,
+                LEADER_ID,
+                study.getId());
+        exchange(
+                HttpMethod.POST, "/api/studies/{studyId}/meetings", once, LEADER_ID, study.getId());
+
+        List<StudyMeeting> all =
+                studyMeetingRepo.findByStudyGroupIdOrderByScheduledAt(group.getId());
+        StudyMeeting first = all.get(all.size() - 3);
+        StudyMeeting second = all.get(all.size() - 2);
+        StudyMeeting single = all.get(all.size() - 1);
+        assertThat(first.getSeriesId()).isNotNull().isEqualTo(second.getSeriesId());
+        assertThat(single.getSeriesId()).isNull();
+    }
+
+    @Test
+    @DisplayName("성공 - 수정에서 발표자 칸은 보낸 칸만 바뀐다. 키가 없으면 그대로, null 이면 비운다")
+    void updatesOnlySentPresenterSlots() {
+        StudyMeeting meeting = studyMeetingRepo.findById(futureMeeting.getId()).orElseThrow();
+        meeting.assignPresenters(member.getId(), paused.getId());
+        studyMeetingRepo.save(meeting);
+
+        var body = new java.util.HashMap<String, Object>();
+        body.put("scheduledAt", futureMeeting.getScheduledAt().toString());
+        body.put("presenter2ParticipantId", null);
+        var response =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/meetings/{meetingId}",
+                        body,
+                        LEADER_ID,
+                        study.getId(),
+                        futureMeeting.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        StudyMeeting updated = studyMeetingRepo.findById(futureMeeting.getId()).orElseThrow();
+        assertThat(updated.getPresenter1ParticipantId()).isEqualTo(member.getId());
+        assertThat(updated.getPresenter2ParticipantId()).isNull();
+    }
+
+    @Test
+    @DisplayName("실패 - 발표자1·2를 같은 사람으로 → 400")
+    void samePresenterTwiceRejected() {
+        var body =
+                Map.of(
+                        "scheduledAt",
+                        futureMeeting.getScheduledAt().toString(),
+                        "presenter1ParticipantId",
+                        member.getId(),
+                        "presenter2ParticipantId",
+                        member.getId());
+
+        var response =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/meetings/{meetingId}",
+                        body,
+                        LEADER_ID,
+                        study.getId(),
+                        futureMeeting.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("성공 - 크루가 빈 칸에 발표 신청하고, 같은 칸에 다른 크루가 신청하면 409 PRESENTER_SLOT_TAKEN")
+    void crewSignsUpFirstComeFirstServed() {
+        var mine =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/meetings/{meetingId}/presenters/1/me",
+                        null,
+                        MEMBER_ID,
+                        study.getId(),
+                        futureMeeting.getId());
+        var late =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/meetings/{meetingId}/presenters/1/me",
+                        null,
+                        PAUSED_ID,
+                        study.getId(),
+                        futureMeeting.getId());
+
+        assertThat(mine.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(late.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(late.getBody()).containsEntry("errorCode", "PRESENTER_SLOT_TAKEN");
+        assertThat(
+                        studyMeetingRepo
+                                .findById(futureMeeting.getId())
+                                .orElseThrow()
+                                .getPresenter1ParticipantId())
+                .isEqualTo(member.getId());
+    }
+
+    @Test
+    @DisplayName("실패 - 남의 칸을 빼려 하면 409 PRESENTER_NOT_ME")
+    void cannotCancelOthersSlot() {
+        exchange(
+                HttpMethod.PUT,
+                "/api/studies/{studyId}/meetings/{meetingId}/presenters/2/me",
+                null,
+                MEMBER_ID,
+                study.getId(),
+                futureMeeting.getId());
+
+        var response =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/studies/{studyId}/meetings/{meetingId}/presenters/2/me",
+                        null,
+                        PAUSED_ID,
+                        study.getId(),
+                        futureMeeting.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "PRESENTER_NOT_ME");
+    }
+
+    @Test
+    @DisplayName("실패 - 명부에 없는 사람은 발표 신청 403 — 캡틴도 우회하지 않는다")
+    void nonMemberCannotSignUp() {
+        var response =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/meetings/{meetingId}/presenters/1/me",
+                        null,
+                        CREATOR_ID,
+                        study.getId(),
+                        futureMeeting.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("성공 - 네비게이터가 규칙을 저장하면 목록에 실린다")
+    void savesRules() {
+        var response =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/groups/{groupId}/rules",
+                        Map.of("rules", "1. 발표는 최대 2명"),
+                        LEADER_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getRules())
+                .isEqualTo("1. 발표는 최대 2명");
+    }
+
+    @Test
+    @DisplayName("실패 - 규칙 501자 → 400, 크루 → 403")
+    void rulesValidationAndPermission() {
+        var tooLong =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/groups/{groupId}/rules",
+                        Map.of("rules", "가".repeat(501)),
+                        LEADER_ID,
+                        study.getId(),
+                        group.getId());
+        var crew =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/groups/{groupId}/rules",
+                        Map.of("rules", "규칙"),
+                        MEMBER_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(tooLong.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(crew.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
@@ -256,8 +550,26 @@ class StudyMeetingIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 명부에 없는 캡틴도 분반을 골라 오면 관리할 수 있다")
-    void captainManagesAnyGroup() {
+    @DisplayName("성공 - 명부에 없어도 이 스터디를 만든 캡틴은 분반을 골라 오면 관리할 수 있다")
+    void creatorCaptainManagesAnyGroup() {
+        var response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings?studyGroupId={groupId}",
+                        null,
+                        CREATOR_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> me = (Map<String, Object>) response.getBody().get("me");
+        assertThat(me).containsEntry("canEdit", true);
+        assertThat(me.get("participantId")).isNull();
+    }
+
+    @Test
+    @DisplayName("실패 - 이 스터디를 만들지 않은 다른 캡틴(ADMIN)은 사용자 사이트에서 403 — 운영은 백오피스에서")
+    void otherCaptainForbidden() {
         var response =
                 exchange(
                         HttpMethod.GET,
@@ -267,7 +579,7 @@ class StudyMeetingIntegrationTest {
                         study.getId(),
                         group.getId());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
@@ -278,7 +590,7 @@ class StudyMeetingIntegrationTest {
                         HttpMethod.GET,
                         "/api/studies/{studyId}/meetings",
                         null,
-                        CAPTAIN_ID,
+                        CREATOR_ID,
                         study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -344,7 +656,7 @@ class StudyMeetingIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 일반 크루는 403")
+    @DisplayName("실패 - 일반 크루는 회차를 추가할 수 없다 → 403")
     void memberForbidden() {
         var body =
                 Map.of(
@@ -438,9 +750,9 @@ class StudyMeetingIntegrationTest {
                         .build());
     }
 
-    private void participant(
+    private StudyParticipant participant(
             Long accountId, StudyGroup group, ParticipantRole role, ParticipantStatus status) {
-        studyParticipantRepo.save(
+        return studyParticipantRepo.save(
                 StudyParticipant.builder()
                         .accountId(accountId)
                         .studyGroupId(group.getId())
