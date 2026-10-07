@@ -46,8 +46,8 @@ export function participantsOf(study: Study): Participant[] {
   const leftAt = regular[2]?.date ?? regular[0]?.date ?? '';
   const changed = readLeft()[study.id] ?? {};
   const leftOf = (id: string, i: number) => {
-    // 네비게이터가 중단·재개한 기록이 프로토 가정보다 앞선다. null 은 「다시 참여」.
-    if (id in changed) return changed[id] ?? undefined;
+    // 네비게이터가 중단시킨 기록이 프로토 가정보다 앞선다.
+    if (id in changed) return changed[id];
     // 그날 회차까지 하고 나갔다고 본다 — 그날 끝 시각.
     return leftAt && (i === 4 || i === 8) ? { at: `${leftAt}T23:59` } : undefined;
   };
@@ -65,16 +65,16 @@ export function participantsOf(study: Study): Participant[] {
   ];
 }
 
-/* ── 참여 중단 · 다시 참여 ─────────────────────────────────────────────── */
+/* ── 참여 중단 ─────────── ─────────────────────────────────────────────── */
 
 /**
- * 네비게이터가 출석부에서 참여를 중단시키거나 되돌린 기록. 프로토는 브라우저에만 남는다.
- * TODO(api): POST /api/studies/{studyId}/participants/{participantId}/withdraw · /restore
+ * 네비게이터가 출석부에서 참여를 중단시킨 기록. 되돌리기는 없다. 프로토는 브라우저에만 남는다.
+ * TODO(api): POST /api/studies/{studyId}/participants/{participantId}/withdraw
  */
 const LEFT_KEY = 'sc_participant_left';
 
-/** studyId → participantId → 중단 일자. null 은 다시 참여시킨 사람(프로토 가정의 중단도 지운다). */
-type LeftStore = Record<string, Record<string, { at: string } | null>>;
+/** studyId → participantId → 중단 시각. */
+type LeftStore = Record<string, Record<string, { at: string }>>;
 
 function readLeft(): LeftStore {
   if (typeof window === 'undefined') return {};
@@ -86,7 +86,7 @@ function readLeft(): LeftStore {
   }
 }
 
-function writeLeft(studyId: string, participantId: string, value: { at: string } | null): void {
+function writeLeft(studyId: string, participantId: string, value: { at: string }): void {
   const store = readLeft();
   store[studyId] = { ...(store[studyId] ?? {}), [participantId]: value };
   try {
@@ -109,11 +109,6 @@ function now(): string {
 /** 참여 중단 — 지금까지의 출석은 남고, 지금 뒤에 시작하는 회차는 「—」·출석률에서 빠진다. */
 export function withdrawParticipant(studyId: string, participantId: string): void {
   writeLeft(studyId, participantId, { at: now() });
-}
-
-/** 다시 참여 — 중단 일자를 지운다. 중단 동안의 회차 칸이 다시 열린다. */
-export function restoreParticipant(studyId: string, participantId: string): void {
-  writeLeft(studyId, participantId, null);
 }
 
 /**

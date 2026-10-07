@@ -141,7 +141,7 @@ erDiagram
 
 ### 비고
 
-- 범위 밖: 회차 추가·수정(일정 탭 — [회차 등록 PRD](../navigator-register-sessions/PRD.md)), 스터디 전체 참여자 출석부(백오피스 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md)), 디스코드 출석 체크, 참여 중단 · 다시 참여([navigator-withdraw-participant](../navigator-withdraw-participant/PRD.md))
+- 범위 밖: 회차 추가·수정(일정 탭 — [회차 등록 PRD](../navigator-register-sessions/PRD.md)), 스터디 전체 참여자 출석부(백오피스 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md)), 디스코드 출석 체크, 참여 중단([navigator-withdraw-participant](../navigator-withdraw-participant/PRD.md))
 - 미구현: 저장은 브라우저에만 남는다
 - 구현 지시: 칸 값 · 순환 · 저장 방식은 백오피스 출석부와 같은 컴포넌트를 쓴다. 다른 점은 보이는 참여자 범위와 머리 줄을 숨기는 것뿐이다
 - 옛 출석 기록 주소 `/my/joined/{id}/attendance` 는 이 탭(`/my/joined/{id}/schedule/attendance`)으로 보낸다

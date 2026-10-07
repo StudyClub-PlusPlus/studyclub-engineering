@@ -27,7 +27,7 @@ import { CalendarPlus, Mic } from 'lucide-react';
  * - `presentersOf`: 그 회차 발표자. 칸에 발표 표시를 붙이고 이름 옆에 발표 횟수를 센다
  *   (발표 여부는 따로 입력하지 않는다 — 일정의 발표자1·2가 정본이다)
  * - `notCounted`: 출석률에 넣지 않는 회차(킥오프). 칸은 보이고 체크도 한다
- * - `onWithdraw` · `onRestore`: 사용자 사이트 네비게이터의 참여 중단 · 다시 참여. `manageable` 인 줄에만 버튼이 붙는다.
+ * - `onWithdraw`: 사용자 사이트 네비게이터의 참여 중단. `manageable` 이고 활동 중인 줄에만 버튼이 붙는다. 되돌리기는 없다.
  *   고친 칸이 남아 있으면 누를 수 없다 — 줄이 움직이면 어느 칸을 고쳤는지 놓친다
  * - `startAt`: 회차 시작 시각(HH:mm). 중단 시각과 견줘 그 뒤에 시작한 회차를 「—」로 비운다
  */
@@ -150,41 +150,40 @@ function Cell({
 }
 
 /**
- * 이름 칸 끝의 작은 버튼 — 참여 중단(활동 중인 줄, 빨강) · 다시 참여(중단한 줄, 보조).
+ * 이름 칸 끝의 작은 「참여 중단」 버튼 — 활동 중인 줄에만. 중단한 줄에는 버튼이 없다(되돌리지 않는다).
  * 바로 바꾸지 않는다. 누르면 확인 창이 뜬다(부모가 띄운다).
- * 고친 칸이 있으면 막는다. disabled 대신 aria-disabled — 가리키면 이유가 보이고 키보드로도 닿는다.
+ * 고친 칸이 있으면 막는다. disabled 대신 aria-disabled — 눌러서 이유를 보고 키보드로도 닿는다.
  */
 const BLOCKED_HINT_ID = 'participation-blocked-hint';
-const BLOCKED_HINT = '출석을 먼저 저장해 주세요. 참여 중단 · 다시 참여는 저장한 뒤에 할 수 있습니다.';
+const BLOCKED_HINT = '출석을 먼저 저장해 주세요. 참여 중단은 저장한 뒤에 할 수 있습니다.';
 
-function ParticipationButton({
+function WithdrawButton({
   name,
-  left,
   blocked,
   onClick,
   onBlocked,
 }: {
   name: string;
-  left: boolean;
   blocked: boolean;
   onClick: () => void;
   /** 막혔을 때 누르면 — 이유를 화면에 보인다(가리키기 툴팁은 터치·키보드에서 안 보인다). */
   onBlocked: () => void;
 }) {
-  const action = left ? '다시 참여' : '참여 중단';
   return (
     <Button
       size='sm'
-      // 참여 중단은 되돌릴 수 있어도 사람을 빼는 일이라 빨강. 다시 참여는 보조 버튼.
-      variant={left ? 'secondary' : 'destructive'}
-      aria-label={`${name} ${action}`}
+      variant='secondary'
+      aria-label={`${name} 참여 중단`}
       aria-disabled={blocked || undefined}
       aria-describedby={blocked ? BLOCKED_HINT_ID : undefined}
       onClick={blocked ? onBlocked : onClick}
+      // 배경은 채우지 않고 테두리·글씨만 빨강 — 줄마다 붙어 있어 채우면 표가 빨갛게 덮인다.
       // disabled 대신 흐리게만 — 눌러서 이유를 볼 수 있어야 한다. sm 은 높이 32px · 누르는 자리 44px.
-      className={blocked ? 'cursor-not-allowed opacity-40' : undefined}
+      className={`border-error-600 bg-transparent text-error-700 ${
+        blocked ? 'cursor-not-allowed opacity-40' : 'hover:border-error-700 hover:bg-error-50'
+      }`}
     >
-      {action}
+      참여 중단
     </Button>
   );
 }
@@ -205,7 +204,6 @@ export function AttendanceTab({
   notCounted,
   headOf,
   onWithdraw,
-  onRestore,
   startAt = '00:00',
 }: {
   study: Study;
@@ -214,7 +212,7 @@ export function AttendanceTab({
     role?: 'captain' | 'navigator';
     /** 스터디를 중단한 사람 — 이름을 흐리게, 칩 문구, 중단 일자(이 날 뒤 회차는 「—」·출석률 제외). */
     left?: { label: string; at: string };
-    /** 참여 중단 · 다시 참여 버튼을 붙일 줄 — 나 · 캡틴 · 네비게이터 줄은 비운다. */
+    /** 참여 중단 버튼을 붙일 줄 — 나 · 캡틴 · 네비게이터 줄은 비운다. */
     manageable?: boolean;
   })[];
   meetings: StudyMeeting[];
@@ -233,7 +231,6 @@ export function AttendanceTab({
   /** 열 머리 — 기본 「3회」. 킥오프는 「킥오프」. */
   headOf?: (meeting: StudyMeeting) => string;
   onWithdraw?: (crewId: string) => void;
-  onRestore?: (crewId: string) => void;
   startAt?: string;
 }) {
   const [draft, setDraft] = useState(() => cloneBook(attendance));
@@ -395,13 +392,12 @@ export function AttendanceTab({
                           )}
                           {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
                           {c.role && <Badge tone={c.role}>{c.role === 'captain' ? '캡틴' : '네비게이터'}</Badge>}
-                          {!readOnly && c.manageable && (c.left ? onRestore : onWithdraw) && (
+                          {!readOnly && c.manageable && !c.left && onWithdraw && (
                             <span data-anno='book:3-7' className='ml-auto pl-2'>
-                              <ParticipationButton
+                              <WithdrawButton
                                 name={c.name}
-                                left={Boolean(c.left)}
                                 blocked={dirty || saving}
-                                onClick={() => (c.left ? onRestore : onWithdraw)?.(c.id)}
+                                onClick={() => onWithdraw(c.id)}
                                 onBlocked={() => {
                                   setBlockedHint(true);
                                   setAnnounce(BLOCKED_HINT);
@@ -470,7 +466,7 @@ export function AttendanceTab({
           {!readOnly && (
             <div className='sticky bottom-0 z-10 mt-4 flex items-center justify-end gap-2 bg-bg py-2'>
               {/* 중단 버튼이 막힌 이유 — 늘 스크린리더 설명으로 두고, 막힌 버튼을 누르면 화면에도 보인다 */}
-              {dirty && (onWithdraw || onRestore) && (
+              {dirty && onWithdraw && (
                 <p
                   id={BLOCKED_HINT_ID}
                   className={showBlockedHint ? 'mr-auto text-xs text-fg-secondary' : 'sr-only'}

@@ -9,7 +9,7 @@ import { useManage } from '@core/components/StudyManageShell';
 import { getMyAttendance, meetingsOf } from '@core/lib/attendance';
 import { bookFromSchedule } from '@core/lib/meetings';
 import { getGroupAttendance, saveGroupAttendance, type AttendanceBook } from '@core/lib/navigator-attendance';
-import { ME_ID, participantsOf, restoreParticipant, withdrawParticipant } from '@core/lib/schedule-board';
+import { ME_ID, participantsOf, withdrawParticipant } from '@core/lib/schedule-board';
 import { Button, Modal } from '@studyclub/ui';
 import { ExternalLink } from 'lucide-react';
 
@@ -23,15 +23,15 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
  * 구글 시트처럼 출석과 발표를 한 격자에 보인다. 발표는 일정의 발표자1·2에서 가져온다.
  * 크루는 분반 전원의 기록을 보기만 한다. 킥오프 열은 출석률에 넣지 않는다.
  *
- * 캡틴·네비게이터는 크루 줄 끝 버튼으로 참여를 중단시키거나 다시 참여시킨다. 확인 창을 한 번 거친다.
+ * 캡틴·네비게이터는 크루 줄 끝 버튼으로 참여를 중단시킨다. 확인 창을 한 번 거친다. 되돌리기는 없다.
  * 하차·제명을 가르지 않는다 — 사유는 묻지도 남기지도 않는다.
  */
 export default function StudyManageAttendancePage() {
   const router = useRouter();
   const { study, group, locale, captain, canEdit, setDirty } = useManage();
   const [book, setBook] = useState<AttendanceBook | null>(null);
-  /** 확인 창 대상. 중단한 사람이면 다시 참여, 아니면 참여 중단. */
-  const [target, setTarget] = useState<{ id: string; name: string; left: boolean } | null>(null);
+  /** 참여 중단 확인 창 대상. */
+  const [target, setTarget] = useState<{ id: string; name: string } | null>(null);
   /** 중단·재개 뒤 다시 그려 명단을 새로 읽는다 — 프로토는 브라우저 저장소에서 읽는다. */
   const [, rerender] = useState(0);
   const [announce, setAnnounce] = useState('');
@@ -51,17 +51,14 @@ export default function StudyManageAttendancePage() {
 
   function ask(id: string) {
     const p = crew.find((c) => c.id === id);
-    if (p) setTarget({ id: p.id, name: p.name, left: Boolean(p.left) });
+    if (p && !p.left) setTarget({ id: p.id, name: p.name });
   }
 
   function confirm() {
     if (!target) return;
-    // TODO(api): POST /api/studies/{studyId}/participants/{participantId}/withdraw · /restore
-    if (target.left) restoreParticipant(study.id, target.id);
-    else withdrawParticipant(study.id, target.id);
-    setAnnounce(
-      target.left ? `${target.name} 님이 다시 참여합니다.` : `${target.name} 님의 참여를 중단했습니다. 맨 아래 줄로 옮겼습니다.`,
-    );
+    // TODO(api): POST /api/studies/{studyId}/participants/{participantId}/withdraw
+    withdrawParticipant(study.id, target.id);
+    setAnnounce(`${target.name} 님의 참여를 중단했습니다. 맨 아래 줄로 옮겼습니다.`);
     setTarget(null);
     rerender((v) => v + 1);
   }
@@ -125,7 +122,6 @@ export default function StudyManageAttendancePage() {
             notCounted={notCounted}
             headOf={headOf}
             onWithdraw={ask}
-            onRestore={ask}
             startAt={group.startAt}
           />
         </div>
@@ -138,34 +134,26 @@ export default function StudyManageAttendancePage() {
       <Modal
         open={target !== null}
         onClose={() => setTarget(null)}
-        title={target?.left ? `${target.name} 님을 다시 참여시킬까요?` : `${target?.name ?? ''} 님의 참여를 중단할까요?`}
+        title={`${target?.name ?? ''} 님의 참여를 중단할까요?`}
         footer={
           <>
             <Button variant='secondary' onClick={() => setTarget(null)}>
               취소
             </Button>
             <span data-anno='book:5'>
-              <Button variant={target?.left ? 'primary' : 'destructive'} onClick={confirm}>
-                {target?.left ? '다시 참여' : '참여 중단'}
+              <Button variant='destructive' onClick={confirm}>
+                참여 중단
               </Button>
             </span>
           </>
         }
       >
-        {target?.left ? (
-          <ul className='list-disc space-y-1 pl-5 text-sm text-fg-secondary'>
-            <li>활동 중인 줄로 올라가고, 「—」였던 회차 칸에 다시 출석을 체크할 수 있습니다.</li>
-            <li>중단해 있던 동안의 출석은 비어 있습니다. 필요하면 체크해 주세요.</li>
-            <li>스터디 디스코드 채널 · 드라이브 링크를 다시 봅니다.</li>
-          </ul>
-        ) : (
-          <ul className='list-disc space-y-1 pl-5 text-sm text-fg-secondary'>
-            <li>지금까지의 출석 기록은 그대로 남습니다.</li>
-            <li>지금 뒤에 시작하는 회차는 「—」로 비고 출석률에서 빠집니다.</li>
-            <li>더는 스터디 디스코드 채널 · 드라이브 링크를 볼 수 없고, 발표자로 고를 수 없습니다.</li>
-            <li>잘못 눌렀다면 같은 줄에서 다시 참여시킬 수 있습니다.</li>
-          </ul>
-        )}
+        <ul className='list-disc space-y-1 pl-5 text-sm text-fg-secondary'>
+          <li>지금까지의 출석 기록은 그대로 남습니다.</li>
+          <li>지금 뒤에 시작하는 회차는 「—」로 비고 출석률에서 빠집니다.</li>
+          <li>더는 스터디 디스코드 채널 · 드라이브 링크를 볼 수 없고, 발표자로 고를 수 없습니다.</li>
+          <li>중단한 뒤에는 다시 참여시킬 수 없습니다.</li>
+        </ul>
       </Modal>
     </>
   );

@@ -14,7 +14,7 @@
 | STATUS | VARCHAR(20) | N | 아래 |
 | PARTICIPANT_ROLE | VARCHAR(20) | N | 아래 |
 | JOINED_AT | DATETIME | N | 편입 시각 |
-| LEFT_AT | DATETIME | Y | 참여가 끝난 시각. `WITHDRAWN`·`DELETED` 일 때만 값이 있다. 출석률 집계가 이 시각까지의 회차만 분모에 넣는다(2026-10-01). 다시 참여하면 NULL ([참여 중단 스펙](../../specs/study-participant/spec.md), 2026-10-07) |
+| LEFT_AT | DATETIME | Y | 참여가 끝난 시각. `WITHDRAWN`·`DELETED` 일 때만 값이 있다. 출석률 집계가 이 시각까지의 회차만 분모에 넣는다(2026-10-01) |
 
 ## 관계
 - N : 1 [ACCOUNT](./ACCOUNT.md), [STUDY_CLASS](./STUDY_CLASS.md)
@@ -26,7 +26,7 @@
 |---|---|
 | `ACTIVE` | 참여 중. 기본값 |
 | `PAUSED` | 잠시 쉼 (출석 집계 제외) |
-| `WITHDRAWN` | 참여 중단 — 하차 · 제명을 가르지 않는다. 삭제 대신 이 상태. `LEFT_AT` 에 중단 시각. 네비게이터 · 담당 캡틴이 다시 참여시킬 수 있다 |
+| `WITHDRAWN` | 참여 중단 — 하차 · 제명을 가르지 않는다. 삭제 대신 이 상태. `LEFT_AT` 에 중단 시각. 네비게이터 · 담당 캡틴이 출석부에서 중단시킬 수 있다 ([참여 중단 스펙](../../specs/study-participant/spec.md)) |
 | `COMPLETED` | 완주 (STUDY ENDED 시 ACTIVE → COMPLETED 일괄) |
 | `DELETED` | 회원 탈퇴로 사라진 행. 삭제 대신 이 상태 — 행을 지우면 STUDY_ATTENDANCE(ACCOUNT_ID 로만 연결, FK 없음)가 출석률 집계에서 통째로 빠지기 때문([user-leave spec](../../specs/user-leave/spec.md)). `LEFT_AT` 에 탈퇴 시각. ACCOUNT_ID 는 그대로 둔다 — 참조할 ACCOUNT 행 자체가 없어져 더는 사람으로 되짚을 수 없다 |
 
@@ -37,12 +37,12 @@ stateDiagram-v2
   PAUSED --> ACTIVE : 복귀
   ACTIVE --> WITHDRAWN : 하차
   PAUSED --> WITHDRAWN : 하차
-  WITHDRAWN --> ACTIVE : 다시 참여 (네비게이터·담당 캡틴)
   ACTIVE --> COMPLETED : 스터디 종료
   ACTIVE --> DELETED : 회원 탈퇴
   PAUSED --> DELETED : 회원 탈퇴
   COMPLETED --> DELETED : 회원 탈퇴
   WITHDRAWN --> DELETED : 회원 탈퇴
+  WITHDRAWN --> [*]
   COMPLETED --> [*]
   DELETED --> [*]
 ```
