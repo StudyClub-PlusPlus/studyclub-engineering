@@ -17,6 +17,7 @@ import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,7 +80,8 @@ public class StudyApplicationService {
                 studyId, accountId, List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED))) {
             throw new BusinessException(ErrorCode.CONFLICT, "이미 참여 중인 스터디입니다.");
         }
-        if (!study.isPubliclyVisible()) {
+        // 신청은 OPEN 에서만 받는다. isPubliclyVisible() 은 「DRAFT 가 아니다」(조회 공개)라 진행 중·종료도 참이다
+        if (study.getStatus() != StudyStatus.OPEN) {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
         StudyRecruitment recruitment = openRecruitment(studyId);
