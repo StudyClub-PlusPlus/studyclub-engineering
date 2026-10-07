@@ -101,7 +101,7 @@ export function ProfileCard({
   const [opening, setOpening] = useState(false);
   const [composing, setComposing] = useState(false);
   const [nickStatus, setNickStatus] = useState<NickStatus>('idle');
-  const [problem, setProblem] = useState<'expired' | 'server' | null>(null);
+  const [problem, setProblem] = useState<'expired' | 'load' | 'server' | null>(null);
 
   const schema = useMemo(() => profileSchema(locale), [locale]);
   const {
@@ -187,7 +187,9 @@ export function ProfileCard({
           setProblem('expired');
           return;
         }
-        // 그 밖의 실패는 세션 값으로 연다 — 저장할 때 서버가 다시 본다
+        // 최신 값을 못 받으면 열지 않는다 — 세션 값으로 열면 다른 기기에서 바꾼 뒤의 옛 닉네임을 보여주게 된다
+        setProblem('load');
+        return;
       } finally {
         setOpening(false);
       }
@@ -368,6 +370,11 @@ export function ProfileCard({
           >
             다시 로그인
           </Link>
+        </p>
+      )}
+      {problem === 'load' && (
+        <p role='alert' className='border-t border-border px-6 py-3 text-xs text-error-700'>
+          내 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요
         </p>
       )}
       {problem === 'server' && (
