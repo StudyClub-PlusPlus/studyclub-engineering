@@ -5,12 +5,12 @@ import { Suspense, useEffect, useState } from 'react';
 
 import { getUser, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
-import { studies as allStudies } from '@studyclub/mock';
 import { Button } from '@studyclub/ui';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 /** 탈퇴 사유 — 둘에 기타 하나. 겹치는 항목을 두면 같은 사람이 날마다 다른 칸을 골라 집계가 흔들린다. */
 const REASONS = ['원하는 스터디 없음', '스터디 참여가 부담됨', '기타'];
@@ -41,6 +41,8 @@ function LeavePageInner() {
   const [pending, setPending] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState('');
+
+  const allStudies = useMswStudies();
 
   // 담당 스터디는 운영 쪽 값이라 사용자 사이트 mock 에 없다.
   // **프로토는 네비게이터 버전을 보여준다** — 볼 것이 더 많은 쪽이다. `?navigator=0` 이면 크루 화면.

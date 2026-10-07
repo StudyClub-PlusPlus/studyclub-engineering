@@ -71,10 +71,9 @@ function buildRoster(): ConsoleUser[] {
   for (const study of studies) {
     const { crew } = getStudyCrew(study);
     for (const c of crew) {
-      if (c.status === 'rejected') continue;
       const found = byEmail.get(c.email);
       if (found) {
-        if (c.status === 'active' && !found.studyIds.includes(study.id)) found.studyIds.push(study.id);
+        if (!found.studyIds.includes(study.id)) found.studyIds.push(study.id);
         continue;
       }
       const seed = hash(c.email);
@@ -86,7 +85,7 @@ function buildRoster(): ConsoleUser[] {
         account: 'crew',
         navigatorOf: [],
         joinedAt: joinDate(seed),
-        studyIds: c.status === 'active' ? [study.id] : [],
+        studyIds: [study.id],
         status: 'active',
       });
     }

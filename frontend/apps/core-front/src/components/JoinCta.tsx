@@ -7,7 +7,7 @@ export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: st
   return (
     <section
       className='relative overflow-hidden rounded-3xl px-8 py-10 sm:px-10'
-      style={{ background: 'linear-gradient(135deg, var(--color-accent), #6d28d9 90%)' }}
+      style={{ background: 'linear-gradient(135deg, var(--color-brand), var(--color-primary-900) 90%)' }}
     >
       <div
         className='pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full opacity-30'
@@ -23,7 +23,7 @@ export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: st
             target='_blank'
             rel='noreferrer'
             className='mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold shadow-sm transition-transform hover:scale-[1.03]'
-            style={{ color: 'var(--color-accent)' }}
+            style={{ color: 'var(--color-brand)' }}
           >
             <MessageCircle size={17} /> {m('nav.join', locale)}
           </a>
@@ -39,7 +39,7 @@ export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: st
             height={132}
             className='h-[132px] w-[132px]'
           />
-          <div className='mt-1.5 text-[11px] font-semibold text-[var(--color-fg-subtle)]'>
+          <div className='mt-1.5 text-[11px] font-semibold text-[var(--color-fg-muted)]'>
             {m('common.join_qr', locale)}
           </div>
         </div>

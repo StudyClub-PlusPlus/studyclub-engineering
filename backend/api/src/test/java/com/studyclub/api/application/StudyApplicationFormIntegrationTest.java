@@ -57,16 +57,14 @@ class StudyApplicationFormIntegrationTest {
                 APPLICANT_ID, "application-form-applicant@example.com", SystemRole.MEMBER, now);
         insertStudy(
                 PUBLIC_STUDY_ID,
-                "application-form-public",
                 "OPEN",
-                false,
                 """
                 {"title":"저장된 신청 제목","description":"저장된 설명","questions":[{"id":"reason","label":"지원 사유","type":"TEXT","required":true,"placeholder":"내 답변","description":null}]}
                 """,
                 now);
-        insertStudy(EDITABLE_STUDY_ID, "application-form-editable", "OPEN", false, null, now);
-        insertStudy(DRAFT_STUDY_ID, "application-form-draft", "DRAFT", false, null, now);
-        insertStudy(LOCKED_STUDY_ID, "application-form-locked", "OPEN", false, null, now);
+        insertStudy(EDITABLE_STUDY_ID, "OPEN", null, now);
+        insertStudy(DRAFT_STUDY_ID, "DRAFT", null, now);
+        insertStudy(LOCKED_STUDY_ID, "OPEN", null, now);
         insertRecruitment(
                 PUBLIC_RECRUITMENT_ID,
                 PUBLIC_STUDY_ID,
@@ -232,6 +230,36 @@ class StudyApplicationFormIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
     }
 
+    @Test
+    @DisplayName("실패 - 기타 입력을 지원하지 않는 타입은 allowOther=false도 보내지 않는다")
+    void rejectsAllowOtherOnUnsupportedType() {
+        Map<String, Object> request =
+                Map.of(
+                        "questions",
+                        List.of(
+                                Map.of(
+                                        "id",
+                                        "motivation",
+                                        "label",
+                                        "지원 동기",
+                                        "type",
+                                        "TEXT",
+                                        "required",
+                                        true,
+                                        "allowOther",
+                                        false)));
+
+        var response =
+                rest.exchange(
+                        "/api/admin/studies/" + EDITABLE_STUDY_ID + "/application-form",
+                        HttpMethod.PUT,
+                        authenticatedJsonRequest(CAPTAIN_ID, request),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
     private Map<String, Object> validRequest() {
         return Map.of(
                 "title",
@@ -304,30 +332,34 @@ class StudyApplicationFormIntegrationTest {
                 EDITABLE_STUDY_ID,
                 DRAFT_STUDY_ID,
                 LOCKED_STUDY_ID);
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PROGRAM WHERE ID IN (?, ?, ?, ?)",
+                PUBLIC_STUDY_ID,
+                EDITABLE_STUDY_ID,
+                DRAFT_STUDY_ID,
+                LOCKED_STUDY_ID);
     }
 
-    private void insertStudy(
-            Long id,
-            String slug,
-            String status,
-            boolean hidden,
-            String applicationForm,
-            Timestamp now) {
+    private void insertStudy(Long id, String status, String applicationForm, Timestamp now) {
+        // 종류는 프로그램이 갖는다 — 기수에는 컬럼이 없다. 프로그램 ID 는 기수 ID 와 같게 둔다
         jdbcTemplate.update(
-                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, DESCRIPTION,"
-                        + " CATEGORY, STUDY_KIND, IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS,"
+                "INSERT INTO STUDY_PROGRAM (ID, TITLE, STUDY_KIND, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, 'STUDY', ?, ?)",
+                id,
+                "프로그램",
+                now,
+                now);
+        jdbcTemplate.update(
+                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, DESCRIPTION,"
+                        + " CATEGORY, STATUS,"
                         + " APPLICATION_FORM, SCHEDULE, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?, ?)",
                 id,
                 id,
                 "신청 폼 스터디",
-                slug,
                 "신청 폼 한 줄 소개",
                 "신청 폼 상세 소개",
                 "SOFTWARE",
-                "STUDY",
-                hidden,
-                "ONLINE",
                 status,
                 applicationForm,
                 "매주 목 20:00",

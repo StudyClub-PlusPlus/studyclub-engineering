@@ -8,6 +8,8 @@ import {
   toRow,
   type ApiStudyDetail,
   type ApiStudyPage,
+  type ApiStudyProgram,
+  type StudyCreatePayload,
   type StudyFilter,
   type StudyRow,
   type StudyUpdatePayload,
@@ -24,10 +26,34 @@ export const studyKeys = {
   detail: (studyId: number) => [...studyKeys.all, 'detail', studyId] as const,
 };
 
+/** 프로그램 목록은 스터디 목록과 따로 무효화된다 — 등록으로 늘어나는 건 같지만 필터·페이지가 없다. */
+export const programKeys = {
+  all: ['study-programs'] as const,
+  clubs: () => [...programKeys.all, 'CLUB'] as const,
+};
+
+/**
+ * 기수를 붙일 수 있는 클럽 목록. 등록 모달이 열려 있을 때만 쓰므로 `enabled` 로 꺼 둔다 —
+ * 정보 탭에서는 부를 이유가 없다.
+ */
+export function useClubPrograms(enabled: boolean) {
+  return useQuery({
+    queryKey: programKeys.clubs(),
+    queryFn: () =>
+      http<{ items: ApiStudyProgram[] }>('/api/admin/study-programs?studyKind=CLUB'),
+    select: (page) => page.items,
+    enabled,
+  });
+}
+
 /**
  * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 목록은 아직 **사용자 사이트용 목록 API** 를 쓴다.
  * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외).
- * `GET /api/admin/studies` 가 status·페이지·total 을 지원하므로, `fetchStudies` 와 `toRow` 를 맞추면 교체할 수 있다.
+ * `GET /api/admin/studies` 가 status·페이지·total 을 지원하므로 교체할 수 있다 (PR #146 로 구현 완료).
+ * 전환 시 `fetchStudies`·`toRow` 와 함께 ApiStudySummary 타입도
+ * BackofficeStudyListResponse.StudySummary 에 맞게 바꾼다:
+ * status(5단계)·recruitmentCapacity·recruitmentStartAt·hasApplicationForm 추가,
+ * slug·phase·currentApplicants·closingSoon 제거.
  */
 function fetchStudies(filter: StudyFilter): Promise<ApiStudyPage> {
   return http<ApiStudyPage>(
@@ -62,6 +88,27 @@ export function useStudyDetail(studyId: number) {
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+/**
+ * 스터디 등록. 201 은 바디가 없고 `Location` 헤더만 온다 — 만들어진 id 가 필요하면 거기서 읽는다.
+ * 새 프로그램을 만들었을 수도 있어 클럽 목록도 함께 무효화한다.
+ */
+export function useCreateStudy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: StudyCreatePayload) =>
+      http<null>('/api/admin/studies', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: programKeys.all });
+      return queryClient.invalidateQueries({ queryKey: studyKeys.all });
+    },
+  });
+}
+
+/** TODO(api): PATCH /api/studies/{studyId} */
 export function useUpdateStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -76,6 +123,7 @@ export function useUpdateStudy(studyId: number) {
   });
 }
 
+/** TODO(api): DELETE /api/studies/{studyId} */
 export function useDeleteStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({

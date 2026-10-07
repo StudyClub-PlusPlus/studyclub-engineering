@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -16,6 +15,7 @@ import {
   type StudyLifecycleStatus,
 } from '@studyclub/mock';
 import { Badge, type BadgeTone } from '@studyclub/ui';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 
@@ -181,13 +181,13 @@ function summarize(study: Study) {
   }
 
   const { crew, capacity, attendance } = getStudyCrew(study);
-  const active = crew.filter((c) => c.status === 'active');
-  const rows = active.map((c) => attendanceRate(attendance[c.id])).filter((r): r is number => r !== undefined);
+  // 승인 대기는 없다(#171) — 신청한 사람이 곧 크루다
+  const rows = crew.map((c) => attendanceRate(attendance[c.id])).filter((r): r is number => r !== undefined);
   return {
     capacity,
-    active: active.length,
-    applied: crew.filter((c) => c.status !== 'rejected').length,
-    pending: crew.filter((c) => c.status === 'pending').length,
+    active: crew.length,
+    applied: crew.length,
+    pending: 0,
     rate: rows.length === 0 ? undefined : Math.round(rows.reduce((a, b) => a + b, 0) / rows.length),
   };
 }
@@ -448,7 +448,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
                     <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '—'}</td>
                     <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
-                      {displayDate(s.recruitment?.start_at)}
+                      {displayDate(s.recruitment?.start)}
                     </td>
                     <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
                       {displayDate(s.recruitment?.deadline)}

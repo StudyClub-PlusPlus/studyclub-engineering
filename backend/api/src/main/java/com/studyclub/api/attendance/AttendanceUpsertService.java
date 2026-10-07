@@ -3,13 +3,15 @@ package com.studyclub.api.attendance;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.attendance.AttendanceStatus;
-import com.studyclub.domain.attendance.StudyAttendance;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
-import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.StudyGroup;
+import com.studyclub.domain.study.StudyGroupRepository;
+import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyRepository;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -24,42 +26,49 @@ import org.springframework.transaction.annotation.Transactional;
 public class AttendanceUpsertService {
 
     private final StudyRepository studyRepository;
+    private final StudyGroupRepository studyGroupRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
 
     public AttendanceUpsertService(
             StudyRepository studyRepository,
+            StudyGroupRepository studyGroupRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository) {
         this.studyRepository = studyRepository;
+        this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
     }
 
+    /** 권한은 {@code @RequireCaptainOrNavigator(GROUP)} 가 검사한다. */
     @Transactional
-    public void upsert(Long studyId, Long callerAccountId, AttendanceUpsertRequest request) {
+    public void upsert(Long studyId, Long studyGroupId, AttendanceUpsertRequest request) {
         validateStudyExists(studyId);
-        validateCallerIsCaptain(callerAccountId, studyId);
+        validateGroupBelongsToStudy(studyId, studyGroupId);
 
         List<AttendanceUpsertRequest.AttendanceUpsertItem> upsertRequests = request.updates();
         ValidRequestContext validRequestContext = validateRequests(upsertRequests);
 
-        validateMeetingsBelongToStudy(validRequestContext.meetingIds(), studyId);
+        validateMeetingsBelongToGroup(validRequestContext.meetingIds(), studyId, studyGroupId);
         Map<Long, StudyParticipant> participantById =
                 loadAndValidateParticipants(validRequestContext.participantIds(), studyId);
-        Map<Pair<Long, Long>, StudyAttendance> existingAttendances =
-                loadExistingAttendances(validRequestContext.meetingIds());
 
-        studyAttendanceRepository.saveAll(
-                buildToSave(
-                        upsertRequests,
-                        validRequestContext.statuses(),
-                        participantById,
-                        existingAttendances,
-                        studyId));
+        Instant now = Instant.now();
+        for (int i = 0; i < upsertRequests.size(); i++) {
+            AttendanceUpsertRequest.AttendanceUpsertItem item = upsertRequests.get(i);
+            StudyParticipant participant = participantById.get(item.participantId());
+            studyAttendanceRepository.upsertStatus(
+                    participant.getAccountId(),
+                    studyId,
+                    participant.getStudyGroupId(),
+                    item.meetingId(),
+                    validRequestContext.statuses().get(i).name(),
+                    now);
+        }
     }
 
     private void validateStudyExists(Long studyId) {
@@ -68,14 +77,13 @@ public class AttendanceUpsertService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
 
-    private void validateCallerIsCaptain(Long callerAccountId, Long studyId) {
-        boolean isCaptain =
-                studyParticipantRepository.existsByAccountIdAndStudyIdAndParticipantRoleIn(
-                        callerAccountId,
-                        studyId,
-                        List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER));
-        if (!isCaptain) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
+    private void validateGroupBelongsToStudy(Long studyId, Long studyGroupId) {
+        StudyGroup group =
+                studyGroupRepository
+                        .findById(studyGroupId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        if (!studyId.equals(group.getStudyId())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
         }
     }
 
@@ -103,12 +111,31 @@ public class AttendanceUpsertService {
         return new ValidRequestContext(statuses, meetingIds, participantIds);
     }
 
-    private void validateMeetingsBelongToStudy(Set<Long> meetingIds, Long studyId) {
-        int found = studyMeetingRepository.findByIdInAndStudyId(meetingIds, studyId).size();
-        if (found != meetingIds.size()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT, "meetingId가 존재하지 않거나 이 스터디에 속하지 않습니다.");
+    private void validateMeetingsBelongToGroup(
+            Set<Long> meetingIds, Long studyId, Long studyGroupId) {
+        List<StudyMeeting> meetings =
+                studyMeetingRepository.findByIdInAndStudyId(meetingIds, studyId);
+        if (meetings.size() != meetingIds.size()) {
+            throw meetingNotInStudy();
         }
+        boolean mixedOrWrongGroup =
+                meetings.stream().anyMatch(m -> !studyGroupId.equals(m.getStudyGroupId()));
+        if (mixedOrWrongGroup) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "회차가 서로 다른 분반이거나 studyGroupId와 일치하지 않습니다.");
+        }
+        Set<Long> lockedIds =
+                studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId).stream()
+                        .map(StudyMeeting::getId)
+                        .collect(Collectors.toSet());
+        if (!lockedIds.containsAll(meetingIds)) {
+            throw meetingNotInStudy();
+        }
+    }
+
+    private static BusinessException meetingNotInStudy() {
+        return new BusinessException(
+                ErrorCode.INVALID_INPUT, "meetingId가 존재하지 않거나 이 스터디에 속하지 않습니다.");
     }
 
     private Map<Long, StudyParticipant> loadAndValidateParticipants(
@@ -119,48 +146,6 @@ public class AttendanceUpsertService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "participantId가 이 스터디에 속하지 않습니다.");
         }
         return participants.stream().collect(Collectors.toMap(StudyParticipant::getId, p -> p));
-    }
-
-    private Map<Pair<Long, Long>, StudyAttendance> loadExistingAttendances(Set<Long> meetingIds) {
-        return studyAttendanceRepository.findByStudyMeetingIdIn(meetingIds).stream()
-                .collect(
-                        Collectors.toMap(
-                                a -> Pair.of(a.getStudyMeetingId(), a.getAccountId()), a -> a));
-    }
-
-    private List<StudyAttendance> buildToSave(
-            List<AttendanceUpsertRequest.AttendanceUpsertItem> updates,
-            List<AttendanceStatus> statuses,
-            Map<Long, StudyParticipant> participantById,
-            Map<Pair<Long, Long>, StudyAttendance> existingAttendances,
-            Long studyId) {
-        List<StudyAttendance> toSave = new ArrayList<>();
-
-        for (int i = 0; i < updates.size(); i++) {
-            AttendanceUpsertRequest.AttendanceUpsertItem item = updates.get(i);
-            AttendanceStatus status = statuses.get(i);
-            StudyParticipant participant = participantById.get(item.participantId());
-            Long accountId = participant.getAccountId();
-
-            StudyAttendance existing =
-                    existingAttendances.get(Pair.of(item.meetingId(), accountId));
-
-            if (existing != null) {
-                existing.updateStatus(status);
-                toSave.add(existing);
-            } else {
-                toSave.add(
-                        StudyAttendance.builder()
-                                .accountId(accountId)
-                                .studyId(studyId)
-                                .studyGroupId(participant.getStudyGroupId())
-                                .studyMeetingId(item.meetingId())
-                                .status(status)
-                                .build());
-            }
-        }
-
-        return toSave;
     }
 
     private record ValidRequestContext(

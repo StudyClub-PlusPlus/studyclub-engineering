@@ -15,7 +15,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 /prototype {USER_STORY}
 ```
 
-`{USER_STORY}` 는 정규문장 그대로 받는다. 목록은 [`planning/README.md`](../../planning/README.md) 의 유저스토리 표다.
+`{USER_STORY}` 는 정규문장 그대로 받는다. 목록은 [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 의 유저스토리 표다.
 
 ```
 /prototype 네비게이터로서, 스터디별 공지를 등록할 수 있다.
@@ -54,7 +54,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 프로토타입이 **정본**이다. 문서는 프로토타입과 `spec.ts` 를 근거로 쓰고, 프로토에 없는 것은 창작하지 않는다.
 
-### PRD.md — `planning/stories/{story-name}/PRD.md`
+### PRD.md — `01-planning/stories/{story-name}/PRD.md`
 
 - prototype-agent `references/prd-guide.md` 의 Story PRD 구성을 따른다
   - 제목 = 정규문장 · `기준 프로토타입:` 한 줄
@@ -71,7 +71,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 ### 인덱스
 
-- [`planning/README.md`](../../planning/README.md) 유저스토리 표의 PRD 칸에 링크를 건다
+- [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 유저스토리 표의 PRD 칸에 링크를 건다
 - 새 도메인 스펙이면 [`specs/README.md`](../../specs/README.md) 표에도 한 줄 추가한다
 
 ## 3. PR

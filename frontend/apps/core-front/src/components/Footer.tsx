@@ -13,13 +13,13 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
           <div className='flex items-center gap-2 text-lg font-bold'>
             <span
               className='grid h-7 w-7 place-items-center rounded-lg text-sm font-extrabold text-white'
-              style={{ background: 'var(--color-accent)' }}
+              style={{ background: 'var(--color-brand)' }}
             >
               S
             </span>
             StudyClub++
           </div>
-          <p className='mt-3 text-sm text-(--color-fg-subtle)'>
+          <p className='mt-3 text-sm text-(--color-fg-muted)'>
             {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count}+
           </p>
           <p className='mt-1 text-xs text-(--color-fg-faint)'>

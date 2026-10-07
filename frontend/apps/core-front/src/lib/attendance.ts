@@ -55,6 +55,15 @@ function write(store: Store) {
   }
 }
 
+/** 회원 탈퇴 — 브라우저에 남은 내 출석 기록을 지운다. */
+export function clearMyAttendance() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // 저장소 접근 실패해도 탈퇴 흐름은 막지 않는다
+  }
+}
+
 export function getMyAttendance(studyId: string): Record<string, MyStatus> {
   return read()[studyId] ?? {};
 }

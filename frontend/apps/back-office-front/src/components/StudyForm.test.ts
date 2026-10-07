@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_FORM,
   detailToForm,
+  formToCreatePayload,
   formToPayload,
   serverErrorToField,
   validateStudyForm,
@@ -13,14 +14,13 @@ import type { ApiStudyDetail } from '@/features/studies/types';
 const detail: ApiStudyDetail = {
   id: 7,
   programId: 3,
-  slug: 'uuid',
+  programTitle: 'AI 논문 스터디',
   title: 'AI 논문 스터디',
   oneLineSummary: '논문을 함께 읽습니다.',
   description: null,
   category: 'AI_ML',
   studyKind: 'STUDY',
   thumbnailUrl: null,
-  deliveryFormat: 'ONLINE',
   status: 'OPEN',
   recruitStatus: 'RECRUITING',
   curriculum: null,
@@ -109,6 +109,47 @@ describe('validateStudyForm', () => {
     expect(validateStudyForm({ ...valid, driveUrl: 'drive.google.com/x' })).toHaveProperty('driveUrl');
     expect(validateStudyForm({ ...valid, driveUrl: 'https://drive.google.com/x' })).toEqual({});
   });
+
+  it('기존 클럽의 새 기수인데 프로그램을 안 고르면 막는다', () => {
+    expect(validateStudyForm({ ...valid, programMode: 'existing', programId: '' })).toHaveProperty('programId');
+    expect(validateStudyForm({ ...valid, programMode: 'existing', programId: '3' })).toEqual({});
+  });
+
+  it('새 프로그램이면 프로그램을 고르지 않아도 된다', () => {
+    expect(validateStudyForm({ ...valid, programMode: 'new', programId: '' })).toEqual({});
+  });
+});
+
+describe('formToCreatePayload', () => {
+  const base: StudyFormValues = {
+    ...EMPTY_FORM,
+    title: '제목',
+    summary: '소개',
+    category: 'DATA',
+    deadline: '2026-11-01',
+  };
+
+  it('새 프로그램이면 studyKind 를 보내고 studyProgramId 는 안 보낸다', () => {
+    const payload = formToCreatePayload({ ...base, programMode: 'new', kind: 'CLUB' });
+    expect(payload.studyKind).toBe('CLUB');
+    expect(payload).not.toHaveProperty('studyProgramId');
+  });
+
+  it('기존 클럽의 새 기수면 studyProgramId 만 보낸다 — 종류는 바꿀 수 없어 함께 보내면 서버가 400 이다', () => {
+    const payload = formToCreatePayload({ ...base, programMode: 'existing', programId: '3', kind: 'CLUB' });
+    expect(payload.studyProgramId).toBe(3);
+    expect(payload).not.toHaveProperty('studyKind');
+  });
+
+  it('마감일은 KST 그날 끝으로 보낸다', () => {
+    expect(formToCreatePayload(base).recruitDeadline).toBe('2026-11-01T14:59:59.000Z');
+  });
+
+  it('비어 있는 선택 칸은 싣지 않는다', () => {
+    const payload = formToCreatePayload(base);
+    expect(payload).not.toHaveProperty('schedule');
+    expect(payload).not.toHaveProperty('description');
+  });
 });
 
 describe('serverErrorToField', () => {
@@ -118,6 +159,9 @@ describe('serverErrorToField', () => {
     });
     expect(serverErrorToField('capacity: 1 이상의 정수여야 합니다.')).toEqual({
       capacity: '1 이상의 정수여야 합니다.',
+    });
+    expect(serverErrorToField('studyProgramId: 새 기수는 클럽에만 붙일 수 있습니다.')).toEqual({
+      programId: '새 기수는 클럽에만 붙일 수 있습니다.',
     });
   });
 

@@ -1,9 +1,11 @@
 package com.studyclub.api.study;
 
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
-import com.studyclub.domain.participant.StudyParticipantRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,16 +26,19 @@ public class BackofficeStudyListService {
     private final BackofficeStudyDao backofficeStudyDao;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
+    private final StudyProgramRepository studyProgramRepository;
     private final ObjectMapper objectMapper;
 
     public BackofficeStudyListService(
             BackofficeStudyDao backofficeStudyDao,
             StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
+            StudyProgramRepository studyProgramRepository,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
+        this.studyProgramRepository = studyProgramRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -61,6 +66,13 @@ public class BackofficeStudyListService {
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId, r -> r, (a, b) -> a));
 
+        Map<Long, StudyProgram> programs =
+                studyProgramRepository
+                        .findAllByIdIn(
+                                studies.stream().map(Study::getProgramId).distinct().toList())
+                        .stream()
+                        .collect(Collectors.toMap(StudyProgram::getId, p -> p));
+
         List<BackofficeStudyListResponse.StudySummary> items =
                 studies.stream()
                         .map(
@@ -72,7 +84,7 @@ public class BackofficeStudyListService {
                                             study.getTitle(),
                                             study.getStatus(),
                                             study.getCategory(),
-                                            study.getStudyKind(),
+                                            programs.get(study.getProgramId()).getStudyKind(),
                                             recruitment != null
                                                     ? recruitment.getRecruitmentCapacity()
                                                     : null,

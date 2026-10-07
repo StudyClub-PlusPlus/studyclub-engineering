@@ -1,7 +1,9 @@
 // 백엔드 API 클라이언트 — **서버 전용**.
 // `fetchStudies` 는 서버 컴포넌트가 첫 화면을 그릴 때 쓴다(컨테이너 내부 URL + ISR).
 // 브라우저 조회는 `features/studies/queries.ts` 가 백엔드를 직접 부른다.
-import { CATEGORY_DISPLAY, type Study, type StudyFormat, type StudyStatus } from '@studyclub/mock';
+import { CATEGORY_DISPLAY, type Study, type StudyStatus } from '@studyclub/mock';
+export type { ApiStudy, ApiStudyDetail, ApiPage } from '@studyclub/mock/msw';
+import type { ApiStudy, ApiStudyDetail, ApiPage } from '@studyclub/mock/msw';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -16,35 +18,6 @@ export type StudySearch = {
   category?: string;
 };
 
-export type ApiStudy = {
-  studyId: number;
-  slug: string;
-  title: string;
-  oneLineSummary: string;
-  category: string;
-  studyKind: 'STUDY' | 'CLUB';
-  thumbnailUrl: string | null;
-  schedule: string | null;
-  timezone: 'KST' | 'PST' | 'BOTH';
-  status: 'OPEN' | 'CLOSED';
-  phase: 'RECRUITING' | 'ONGOING' | 'CLOSED';
-  recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED' | null;
-  deliveryFormat: 'ONLINE' | 'OFFLINE' | 'HYBRID';
-  capacity: number | null;
-  currentApplicants: number;
-  recruitDeadlineAt: string | null;
-  startAt: string | null;
-  endAt: string | null;
-  closingSoon: boolean;
-};
-
-export type ApiPage<T> = {
-  items: T[];
-  total: number;
-  offset: number;
-  limit: number;
-};
-
 const PHASE_STATUS: Record<ApiStudy['phase'], StudyStatus> = {
   RECRUITING: 'recruiting',
   ONGOING: 'ongoing',
@@ -57,12 +30,12 @@ function l10n(text: string): { ko: string; en: string } {
 
 export function toStudy(api: ApiStudy): Study {
   return {
-    id: api.slug,
+    id: String(api.studyId),
     study_id: api.studyId,
+    format: 'online', // 진행 방식 컬럼은 V30 에서 삭제 — 전부 온라인
     title: l10n(api.title),
     summary: l10n(api.oneLineSummary),
     status: PHASE_STATUS[api.phase],
-    format: api.deliveryFormat.toLowerCase() as StudyFormat,
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     category: CATEGORY_DISPLAY[api.category] ?? api.category,
     image: api.thumbnailUrl ?? undefined,
@@ -89,7 +62,7 @@ export function studyQuery(search: StudySearch): URLSearchParams {
   return q;
 }
 
-/** 서버 전용. 실패하면 던진다 — 호출자가 mock fallback 이나 에러 응답을 고른다. */
+/** TODO(api): GET /api/studies — 서버 전용. 실패하면 던진다 — 호출자가 mock fallback 이나 에러 응답을 고른다. */
 export async function fetchStudies(search: StudySearch = {}): Promise<Study[]> {
   const res = await fetch(`${API_BASE}/api/studies?${studyQuery(search)}`, {
     next: { revalidate: 60 }, // ISR: 60초마다 갱신
@@ -98,6 +71,47 @@ export async function fetchStudies(search: StudySearch = {}): Promise<Study[]> {
 
   const page: ApiPage<ApiStudy> = await res.json();
   return page.items.map(toStudy);
+}
+
+const LIFECYCLE_STATUS: Record<ApiStudyDetail['status'], StudyStatus> = {
+  DRAFT: 'recruiting',
+  OPEN: 'recruiting',
+  ONGOING: 'ongoing',
+  ENDED: 'closed',
+  CLOSED: 'closed',
+};
+
+export function toStudyFromDetail(api: ApiStudyDetail): Study {
+  return {
+    id: String(api.id),
+    study_id: api.id,
+    format: 'online', // 진행 방식 컬럼은 V30 에서 삭제 — 전부 온라인
+    title: l10n(api.title),
+    summary: l10n(api.oneLineSummary),
+    description: api.description ? l10n(api.description) : undefined,
+    status: LIFECYCLE_STATUS[api.status],
+    kind: api.studyKind === 'CLUB' ? 'club' : 'study',
+    category: CATEGORY_DISPLAY[api.category] ?? api.category,
+    image: api.thumbnailUrl ?? undefined,
+    schedule: api.schedule ? l10n(api.schedule) : undefined,
+    startAt: api.startAt ?? undefined,
+    discord_url: api.discordChannelUrl ?? undefined,
+    driveUrl: api.driveUrl ?? undefined,
+    recruitment: {
+      status: api.recruitStatus !== 'RECRUITING' ? 'closed' : api.recruitDeadlineAt ? 'open' : 'always',
+      deadline: api.recruitDeadlineAt?.slice(0, 10),
+    },
+  };
+}
+
+/** TODO(api): GET /api/studies/{studyId} — 서버 전용. 실패하면 던진다. */
+export async function fetchStudy(studyId: number): Promise<Study> {
+  const res = await fetch(`${API_BASE}/api/studies/${studyId}`, {
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) throw new Error(`GET /api/studies/${studyId} failed: ${res.status}`);
+  const detail: ApiStudyDetail = await res.json();
+  return toStudyFromDetail(detail);
 }
 
 // 브라우저에서의 조회는 features/studies/queries.ts 가 한다 — 백엔드를 직접 부른다.

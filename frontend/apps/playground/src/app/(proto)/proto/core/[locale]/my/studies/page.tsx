@@ -24,12 +24,13 @@ import { getUser } from '@core/lib/auth';
 import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { getApplications } from '@core/lib/me';
-import { studies as allStudies, type Study } from '@studyclub/mock';
+import { isKickoff, meetingLabel } from '@core/lib/meetings';
+import { type Study } from '@studyclub/mock';
 import { CalendarClock } from 'lucide-react';
-
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
+import { useMswStudies } from '@/proto/lib/useMswStudies';
 
 /**
  * 내 스터디.
@@ -71,11 +72,13 @@ export default function MyStudiesPage() {
     setReady(true);
   }, [locale, router]);
 
+  const allStudies = useMswStudies();
+
   /** 승인되어 참여 중인 스터디만. 신청 대기·종료된 스터디는 출석할 일이 없다. */
   const mine = useMemo<Study[]>(() => {
     const byId = new Map(allStudies.map((s) => [s.id, s]));
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => s !== undefined && s.status !== 'closed');
-  }, [mineIds]);
+  }, [mineIds, allStudies]);
 
   if (!ready) {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
@@ -177,7 +180,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
           <CalendarClock size={12} strokeWidth={1.75} className='shrink-0' />
           {meeting && win ? (
             <span className='tnum truncate'>
-              오늘 {meeting.no}회차 {fmtTime(win.start)}~{fmtTime(win.end)}
+              오늘 {meetingLabel(meeting)} {fmtTime(win.start)}~{fmtTime(win.end)}
             </span>
           ) : (
             <span className='truncate'>오늘 회차 없음</span>
@@ -249,7 +252,8 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
                   key={m.id}
                   className='tnum w-[3.4rem] px-0 pb-1 text-center text-[11px] font-semibold text-fg-secondary'
                 >
-                  {m.no}회<span className='block text-[10px] font-medium text-fg-muted'>{m.date.slice(5)}</span>
+                  {isKickoff(m) ? '킥오프' : `${m.no}회`}
+                  <span className='block text-[10px] font-medium text-fg-muted'>{m.date.slice(5)}</span>
                 </th>
               ))}
             </tr>
@@ -261,7 +265,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
                 return (
                   <td key={m.id} className='p-0'>
                     <span
-                      title={`${m.no}회차 ${m.date}`}
+                      title={`${meetingLabel(m)} ${m.date}`}
                       className={`grid h-8 w-full place-items-center rounded-sm text-[11px] font-bold ${
                         status ? STATUS_STYLE[status] : 'border border-dashed border-border-strong text-fg-muted'
                       }`}

@@ -11,12 +11,12 @@ const NAV = [
 export default function SiteLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-6">
           <Link href="/" className="flex items-center gap-2 text-sm font-bold">
             <span
               className="grid h-6 w-6 place-items-center rounded-md text-[11px] font-extrabold text-white"
-              style={{ background: "var(--color-accent)" }}
+              style={{ background: "var(--color-brand)" }}
             >
               S
             </span>
@@ -33,7 +33,7 @@ export default function SiteLayout({ children }: Readonly<{ children: React.Reac
               </Link>
             ))}
           </nav>
-          <span className="ml-auto rounded-full bg-[var(--color-surface-subtle)] px-3 py-1 text-[11px] font-semibold text-[var(--color-fg-subtle)]">
+          <span className="ml-auto rounded-full bg-[var(--color-surface-subtle)] px-3 py-1 text-[11px] font-semibold text-[var(--color-fg-muted)]">
             미공개 · noindex
           </span>
         </div>

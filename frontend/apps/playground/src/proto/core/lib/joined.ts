@@ -1,7 +1,7 @@
 import { meetingsOf } from '@core/lib/attendance';
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
-import type { ProtoMeeting } from '@core/lib/meetings';
+import { isKickoff, meetingLabel, type ProtoMeeting } from '@core/lib/meetings';
 import { site, type MemberRegion, type Study, type StudyMeeting } from '@studyclub/mock';
 
 export type WallTz = 'KST' | 'PDT';
@@ -26,7 +26,7 @@ export type EndKind = 'completed' | 'withdrawn';
 export const LIFE_LABEL: Record<LifeStatus, string> = {
   upcoming: '시작전',
   active: '참여중',
-  ended: '참여 종료',
+  ended: '종료',
 };
 
 /** 프로토용 명부. 서버가 생기면 STUDY_PARTICIPANT.STATUS 로 교체한다. */
@@ -50,7 +50,7 @@ export function lifeStatus(study: Study): LifeStatus {
 }
 
 /** 참여 중단 배지. 완주는 이 배지를 쓰지 않는다. */
-export const LEFT_BADGE = { label: '참여 종료', tone: 'ended' as const };
+export const LEFT_BADGE = { label: '종료', tone: 'ended' as const };
 
 export function isCompleted(study: Study): boolean {
   return endKindOf(study) === 'completed';
@@ -87,9 +87,9 @@ export function userWallTz(region: MemberRegion): WallTz {
   return region === 'NA' ? 'PDT' : 'KST';
 }
 
-/** 첫 회차 ~ 마지막 회차. 예정일(SCHEDULED_AT)을 고른 타임존 날짜로 붙인다. */
+/** 첫 회차 ~ 마지막 회차(킥오프 제외). 예정일(SCHEDULED_AT)을 고른 타임존 날짜로 붙인다. */
 export function durationOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
-  const meetings = meetingsOf(study);
+  const meetings = meetingsOf(study).filter((m) => !isKickoff(m));
   if (meetings.length === 0) return locale === 'en' ? 'Dates TBD' : '기간 미정';
   const first = meetings[0];
   const last = meetings[meetings.length - 1];
@@ -239,8 +239,9 @@ export function upcomingOf(study: Study, locale: Locale, tz: WallTz = 'KST'): st
   const next = upcomingMeeting(study, tz);
   if (next) {
     const { date, time } = formatInTz(asKstInstant(next.date, meetingClock(study, next)), tz);
-    const title = (next as ProtoMeeting).title;
-    return `${next.no}회차 · ${date} ${time}${title ? ` · ${title}` : ''}`;
+    // 킥오프는 이름이 곧 제목이다 — 「킥오프 · … · 킥오프」 로 두 번 쓰지 않는다.
+    const title = isKickoff(next) ? undefined : (next as ProtoMeeting).title;
+    return `${meetingLabel(next)} · ${date} ${time}${title ? ` · ${title}` : ''}`;
   }
   if (lifeStatus(study) === 'ended') return locale === 'en' ? 'No upcoming meeting' : '다음 일정 없음';
   return study.schedule ? t(study.schedule, locale) : locale === 'en' ? 'No upcoming meeting' : '오늘 이후 회차 없음';

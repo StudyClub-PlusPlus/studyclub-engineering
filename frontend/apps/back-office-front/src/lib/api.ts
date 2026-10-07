@@ -1,6 +1,7 @@
+import { cookies } from 'next/headers';
+
 import { CATEGORY_DISPLAY, type Study, type StudyLifecycleStatus, type StudyStatus } from '@studyclub/mock';
 
-import { cookies } from 'next/headers';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -50,6 +51,7 @@ function mapToStudy(api: ApiStudy): Study {
 
   return {
     id: String(api.studyId),
+    study_id: api.studyId,
     title: { ko: api.title, en: api.title },
     summary: { ko: '', en: '' },
     status: mapStatus(lifecycleStatus),
@@ -67,7 +69,7 @@ function mapToStudy(api: ApiStudy): Study {
     recruitment: {
       status: lifecycleStatus === 'OPEN' && !isClosed ? 'open' : 'closed',
       form_url: undefined,
-      start_at: api.recruitmentStartAt?.slice(0, 10),
+      start: api.recruitmentStartAt?.slice(0, 10),
       deadline: api.recruitDeadlineAt?.slice(0, 10),
       capacity: api.recruitmentCapacity ?? undefined,
     },

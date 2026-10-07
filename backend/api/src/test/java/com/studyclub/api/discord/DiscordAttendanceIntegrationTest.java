@@ -13,7 +13,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -91,20 +90,21 @@ class DiscordAttendanceIntegrationTest {
         insertAccount(MEMBER_ACCOUNT_ID, "멤버", "member@discord-test.com", MEMBER_DISCORD_ID);
         insertAccount(LATE_ACCOUNT_ID, "지각", "late@discord-test.com", LATE_DISCORD_ID);
 
-        var program = studyProgramRepo.save(StudyProgram.builder().title("디스코드 프로그램").build());
+        var program =
+                studyProgramRepo.save(
+                        StudyProgram.builder()
+                                .title("디스코드 프로그램")
+                                .studyKind(StudyKind.STUDY)
+                                .build());
         var study =
                 studyRepo.save(
                         Study.builder()
                                 .programId(program.getId())
-                                .slug("discord-test-study")
                                 .title("디스코드 테스트 스터디")
                                 .oneLineSummary("테스트용")
                                 .category(StudyCategory.ALGORITHM)
-                                .studyKind(StudyKind.STUDY)
                                 .description("설명")
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(10)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());
         var group =

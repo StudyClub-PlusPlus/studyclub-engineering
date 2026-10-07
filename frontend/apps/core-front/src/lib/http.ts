@@ -7,7 +7,7 @@
 // 전제: 백엔드 CORS 허용 오리진이 좁게 유지될 것 · 배포에서 쿠키가 API 도메인까지 닿을 것
 // (`AUTH_COOKIE_DOMAIN`, 로컬은 host 가 같아 불필요).
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 export class ApiError extends Error {
   constructor(

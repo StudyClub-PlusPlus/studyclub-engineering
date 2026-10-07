@@ -1,9 +1,9 @@
 # 회원 탈퇴 API Spec
 
 > ERD: [ACCOUNT](../../docs/erd/ACCOUNT.md), [ACCOUNT_IDENTITY](../../docs/erd/ACCOUNT_IDENTITY.md), [ACCOUNT_CONSENT](../../docs/erd/ACCOUNT_CONSENT.md), [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md), [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md), [STUDY_REVIEW](../../docs/erd/STUDY_REVIEW.md), [STUDY_PROPOSAL](../../docs/erd/STUDY_PROPOSAL.md), [STUDY_PROPOSAL_INTEREST](../../docs/erd/STUDY_PROPOSAL_INTEREST.md), [STUDY_BOOKMARK](../../docs/erd/STUDY_BOOKMARK.md), [NOTIFICATION](../../docs/erd/NOTIFICATION.md)
-> Story PRD: [회원 탈퇴](../../planning/stories/crew-leave/PRD.md)
+> Story PRD: [회원 탈퇴](../../01-planning/stories/crew-leave/PRD.md)
 > 프로토타입: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/leave` (`/proto/core/ko/my/leave`)
-> 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) — 완료 뒤 같은 계정 재가입은 온보딩 흐름 그대로 탄다. [notification/spec.md](../notification/spec.md) — NOTIFICATION 스냅샷 비식별화가 이 스펙과 맞물린다. [study-application/spec.md](../study-application/spec.md) — FORM_ANSWER.discordNickname 비식별화가 이 스펙과 맞물린다. `frontend/apps/playground/src/proto/core/lib/legal.ts` — 이용약관 제11조·개인정보처리방침 제4·9조 (법령상 보존 근거). [POL-0007](../../planning/_registry/policies/POL-0007-account-data.md) — 회원 데이터와 탈퇴 정책 (이 스펙과 같은 내용의 기획 정본).
+> 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) — 완료 뒤 같은 계정 재가입은 온보딩 흐름 그대로 탄다. [notification/spec.md](../notification/spec.md) — NOTIFICATION 스냅샷 비식별화가 이 스펙과 맞물린다. [study-application/spec.md](../study-application/spec.md) — FORM_ANSWER.discordNickname 비식별화가 이 스펙과 맞물린다. `frontend/apps/playground/src/proto/core/lib/legal.ts` — 이용약관 제11조·개인정보처리방침 제4·9조 (법령상 보존 근거). [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) — 회원 데이터와 탈퇴 정책 (이 스펙과 같은 내용의 기획 정본).
 > 생성일: 2026-09-19
 > 상태: 스펙작성중
 
@@ -12,7 +12,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | DELETE | `/api/me` | 로그인한 본인 계정을 즉시·영구 삭제 (탈퇴) | O | 스펙작성중 |
-| GET | `/api/me/studies` | *(기존 API 확장)* 응답에 `participantRole`·`isActiveNavigator` 추가 — 탈퇴 화면의 "맡은 진행 중인 스터디" 경고에 사용 | O | 스펙작성중 |
+| GET | `/api/me/studies` | `specs/my-studies/spec.md` 가 정본인 기존 엔드포인트. 응답의 `relation`·`participantRole` 을 탈퇴 화면의 "맡은 진행 중인 스터디" 경고 판정에 재사용 | O | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -68,13 +68,14 @@
 4. 아래를 **한 트랜잭션**으로 처리한다 — 하나만 지워지고 하나는 남는 중간 상태를 두지 않는다:
    - `ACCOUNT_LEAVE_REASON` 1행 insert (`reason`, `createdAt=now`). accountId 는 담지 않는다.
    - `ACCOUNT_IDENTITY` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)` 에 걸려 [완료 기준 6](#완료-기준)이 깨진다).
-   - `STUDY_PARTICIPANT` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (참여 기록 파기 — 이 사람이 맡고 있던 네비게이터 자리가 사라진다. 공동 네비게이터가 없었다면 그 스터디는 네비게이터가 없는 상태가 되고, 있었다면 그 사람만 남는다 — 어느 쪽이든 시스템은 구분하지 않고 똑같이 처리한다).
+   - `STUDY_PARTICIPANT` WHERE `ACCOUNT_ID=accountId` 전부 `STATUS=DELETED` + `LEFT_AT=now` 로 전환 (물리 삭제 아님 — 지우면 `STUDY_ATTENDANCE` 가 갈 곳을 잃어 출석률 집계에서 전체 이력이 빠진다). 이 사람이 맡고 있던 네비게이터 자리가 사라진다. 공동 네비게이터가 없었다면 그 스터디는 네비게이터가 없는 상태가 되고, 있었다면 그 사람만 남는다 — 어느 쪽이든 시스템은 구분하지 않고 똑같이 처리한다.
    - `STUDY_BOOKMARK` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
    - `STUDY_PROPOSAL_INTEREST` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
    - `NOTIFICATION` WHERE `RECIPIENT_USER_ID=accountId` 인 행의 `RECIPIENT_VALUE`·`PAYLOAD.nickname` 을 비식별 처리한다(행은 유지, 발송 이력 자체는 지우지 않는다). `STATUS=PENDING` 인 행은 추가로 `CANCELLED` 로 전환한다 — [알림 비식별화](#알림-비식별화) 참고.
    - `STUDY_PROPOSAL` WHERE `PROPOSER_ACCOUNT_ID=accountId` AND `STATUS=OPEN` → `STATUS=CLOSED` 로 전환한다. `CONTENT`·`PROPOSED_AT` 은 그대로 둔다. `ACCEPTED`/`REJECTED`/이미 `CLOSED` 인 행은 이미 종결 상태라 건드리지 않는다 — [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) 참고.
    - `STUDY_APPLICATION` WHERE `ACCOUNT_ID=accountId` 인 행의 `FORM_ANSWER.discordNickname` 을 고정 마스킹 값으로 치환한다(`availableDays`·`scheduleAgreed`·`answers` 는 그대로 둔다). 행 자체는 지우지 않는다 — [STUDY_APPLICATION 의 FORM_ANSWER.discordNickname](#study_application-의-form_answerdiscordnickname) 참고.
-   - `ACCOUNT` 행 삭제. `ACCOUNT_CONSENT` 는 `fk_account_consent_account ... ON DELETE CASCADE` 로 함께 삭제된다 (프로필·동의 파기).
+   - `ACCOUNT_CONSENT` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (동의 이력 파기). Flyway 스키마에는 `fk_account_consent_account ... ON DELETE CASCADE` 가 있지만, stage(Hibernate `ddl-auto: update`)·테스트(H2)는 FK 없이 스키마를 만들어 cascade 에 기댈 수 없으므로 코드가 명시적으로 지운다.
+   - `ACCOUNT` 행 삭제 (프로필 파기).
    - `STUDY_ATTENDANCE`·`STUDY_REVIEW`·(방금 `discordNickname` 만 마스킹한) `STUDY_APPLICATION`·(방금 `CLOSED` 로 바뀐) `STUDY_PROPOSAL` 은 이 이상 **행 자체를 더 건드리지 않는다.** 이들의 `ACCOUNT_ID`/`PROPOSER_ACCOUNT_ID` 는 FK 가 아니라 인덱스뿐이라(`database-guide.md` 외래키 정책) DB 무결성 오류 없이 그대로 남고, 참조할 `ACCOUNT` 행 자체가 없어져 더는 사람으로 되짚을 수 없다 — 이것으로 "개인을 식별할 수 없도록 처리한 뒤 남긴다"가 성립한다. 별도 컬럼 변경(NULL 처리 등)이 필요 없다. 조회 계층은 이 ID 로 `ACCOUNT` 조회가 실패하면 "탈퇴한 회원"으로 표시한다(신규 요구사항 — 기존에 이런 실패 케이스를 다루지 않았다면 이번에 추가).
 5. `204 No Content`.
 
@@ -83,9 +84,13 @@
 `docs/erd/SESSION.md` 는 "Redis 에 세션을 두고 `REMOVED_AT` 으로 즉시 무효화한다"는 **설계**지만,
 아직 구현되지 않았다 — 백엔드 어디에도 Redis 관련 코드가 없다. 실제로는 `JwtService` 가 발급하는
 access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 stateless JWT 라, 서버가 특정 토큰을
-콕 집어 무효화할 방법이 없다. 즉 **탈퇴 처리 후에도 이미 발급된 토큰은 자연 만료(최장 30일)까지
+콕 집어 무효화할 방법이 없다. 즉 **탈퇴 처리 후에도 이미 발급된 access 토큰은 자연 만료(최장 7일)까지
 서명 검증만으로 계속 통과한다** — `GET /auth/me` 등 계정 조회 API 는 `ACCOUNT` 행이 없으면
 `404`/`401` 로 응답하니 실질적인 오남용 범위는 제한적이지만, 이론적으로는 남는다.
+
+다만 **refresh 는 막는다** — `POST /auth/refresh` 는 refresh 토큰의 서명·만료를 검증한 뒤 `ACCOUNT` 행이
+아직 있는지도 확인하고, 없으면 `401 UNAUTHORIZED` 로 거절한다. 그래서 탈퇴 후 access 토큰(7일)이 만료되면
+30일짜리 refresh 로 새 access 를 받아 세션을 이어 가는 길은 없다.
 
 이는 이 기능만의 문제가 아니라 현재 인증 구조 전체의 특성이라 `DELETE /api/me` 혼자서 새로
 풀지 않는다 — `SESSION`(Redis) 이 실제로 구현되는 시점에 이 엔드포인트도 그 무효화 로직을 같이
@@ -96,6 +101,13 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
   `POST /api/auth/logout` 으로 httpOnly 쿠키 제거)을 탈퇴 성공 콜백에서 그대로 호출한다 — 새 로직을
   만들지 않고 로그아웃과 동일한 정리를 재사용한다. 단, 이건 "이 브라우저의 흔적 정리"일 뿐 다른
   기기에 남아 있는 토큰이나 탈취된 토큰까지 막지는 못한다.
+- **이 브라우저에 남은 회원별 데이터도 지운다**: `logout()` 은 세션(`sc_user`)만 지우므로, 탈퇴 성공 시
+  `lib/me.ts` 의 `clearMyLocalData()` 로 디스코드 핸들·관심·신청·지역·표시 이름·출석 기록(`sc_discord`,
+  `sc_bookmarks`, `sc_applications`, `sc_region`, `sc_display_name`, `sc_my_attendance`)을 함께 지운다.
+  데모 시드 키는 남긴다(지우면 다음 미리보기 진입 때 더미가 다시 채워진다).
+- **이미 탈퇴된 계정(`404 NOT_FOUND`)은 정리 경로로 처리한다**: 서버는 끝났는데 응답만 못 받았거나 다른
+  탭에서 먼저 탈퇴한 경우 토큰이 남은 사용자가 재시도해도 영원히 정리되지 않으므로, 프론트는 이 응답을
+  오류로 막지 않고 성공과 같이 `logout()` + 로컬 데이터 정리 후 홈으로 보낸다.
 
 ### Response — 204
 
@@ -119,63 +131,61 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 
 ---
 
-## GET /api/me/studies (기존 API 확장)
+## GET /api/me/studies
 
-새 엔드포인트가 아니다. 이미 있는 `ParticipantHubController#getParticipantHubOverview` 의 응답에
-필드를 추가한다 — [common-guide.md](../../docs/common-guide.md) "기존 API 먼저 활용" 원칙.
+> **2026-10-01 갱신 — 이 섹션은 더 이상 정본이 아니다.** 원래는 당시 유일했던 목업 기반
+> `ParticipantHubController#getParticipantHubOverview` 응답(`ParticipatingStudySummary`)에
+> `participantRole`·`isActiveNavigator` 필드를 얹는 안이었다. 그런데 이 스펙 작성 이후 별도
+> PR(#157/#159, `specs/my-studies/spec.md`)이 이 엔드포인트를 명부·회차·출석 기반 **실데이터**
+> 응답(`MyStudy`, `relation` 필드 포함)으로 완전히 갈아끼웠고 `isActiveNavigator` 필드 자체가
+> 없다 — 두 PR 이 같은 엔드포인트를 독립적으로 확장하면서 생긴 충돌이다. 아래는 그 실데이터 응답에
+> 맞춰 "맡은 진행 중인 스터디" 판정을 다시 얹은 결과만 남긴다. 원래 안(별도 `isActiveNavigator`
+> 필드를 서버가 내려주는 것)과 달리 지금은 **프론트가** `relation`·`participantRole` 조합으로
+> 판정한다 — 아래 [프론트 판정 로직](#프론트-판정-로직) 참고.
 
-탈퇴 화면이 "맡은 진행 중인 스터디"를 **서버 판정**으로 이름까지 보여줘야 하는데
-([완료 기준 3](#완료-기준)), 현재 응답(`ParticipatingStudySummary`)에는 그 판정 결과가 없다.
-새 엔드포인트를 만드는 대신 이 응답에 필드를 얹는다.
+"맡은 진행 중인 스터디"는 `GET /api/me/studies`(`specs/my-studies/spec.md`)가 이미 내려주는
+`items[].relation`·`items[].participantRole` 로 판정한다. 새 필드를 추가하지 않는다.
 
-### 변경 전
+### 프론트 판정 로직
 
-```java
-record ParticipatingStudySummary(
-    Long cohortId, Long studyId, String title,
-    ParticipantStatus participantStatus, Integer attendanceRate,
-    Instant nextMeetingAt, String thumbnailUrl) {}
+```ts
+// frontend/apps/core-front/src/lib/me.ts: getActiveNavigatorStudies()
+items.filter(
+  (s) => s.relation === 'ONGOING' && (s.participantRole === 'LEADER' || s.participantRole === 'CO_LEADER'),
+)
 ```
 
-### 변경 후
+- `relation === 'ONGOING'` — 회차가 이미 시작됐고(`STUDY.START_AT <= now`) 명부 상태가
+  `ACTIVE`/`PAUSED`(`MyStudyQueryService.relation()`). `UPCOMING`(시작 전)은 빠져도 멈출 게 없고,
+  `COMPLETED`·`WITHDRAWN` 은 이미 끝났다 — [네비게이터 경고 정책](#네비게이터-경고--왜-막지-않는가)과
+  같은 기준이다. 원래 안의 `STUDY.STATUS=OPEN` 대신 실제 시작일을 쓰는 점만 다르고 의도는 같다.
+- `participantRole IN (LEADER, CO_LEADER)` — 네비게이터만 대상.
+- 판정을 프론트에 둔 이유: 서버가 `isActiveNavigator` 를 따로 계산해 내려주려면 `my-studies` 응답에
+  이 기능 전용 필드를 또 얹어야 하는데, 이미 있는 `relation` 이 사실상 같은 정보를 담고 있어
+  중복이다. "서버가 판정을 끝낸 불린 하나만 본다"는 원래 설계 의도보다, 이미 있는 필드를 재사용해
+  엔드포인트 하나로 두 PR 의 요구를 다 만족시키는 쪽을 택했다.
 
-```java
-record ParticipatingStudySummary(
-    Long cohortId, Long studyId, String title,
-    ParticipantStatus participantStatus, Integer attendanceRate,
-    Instant nextMeetingAt, String thumbnailUrl,
-    ParticipantRole participantRole,   // 추가 — 다른 화면에서도 "네비게이터" 뱃지 등에 재사용 가능한 일반 정보
-    boolean isActiveNavigator) {}      // 추가 — 이 스터디에서 이 사람이 빠지면 자리가 비는가 (판정은 서버가 끝낸다)
-```
+### 후속 — `STUDY.STATUS` 전환 기능이 생기면 (PR #141 리뷰, 2026-10-02)
 
-| 필드 | 타입 | NULL | 설명 | 소스 |
-|------|------|------|------|------|
-| participantRole | string | N | `MEMBER` \| `LEADER` \| `CO_LEADER` | `STUDY_PARTICIPANT.PARTICIPANT_ROLE` |
-| isActiveNavigator | boolean | N | `participantRole IN (LEADER, CO_LEADER)` 이고 `STUDY.STATUS=OPEN` 이면 `true` | 계산 — 아래 판정 로직 |
+지금 `relation` 을 쓰는 건 `STUDY.STATUS` 가 아직 생성 시점의 `DRAFT` 에서 바뀌는 기능이 없어서다
+(`Study.java` 에 이 값을 바꾸는 메서드 자체가 없다) — `STUDY.STATUS=OPEN` 을 조건으로 쓰면 지금은
+어떤 스터디도 통과하지 못해 경고가 영원히 안 뜬다.
 
-처음엔 `studyStatus`(`STUDY.STATUS` 원본)를 그대로 내려주고 프론트가 `participantRole in
-(LEADER, CO_LEADER) && studyStatus === 'OPEN'` 으로 조합해 판단하게 할 생각이었으나, 그러면 "이
-조합이면 자리가 빈다"는 도메인 규칙을 프론트가 알아야 한다 — PR 리뷰 지적으로 `isActiveNavigator`
-하나로 바꿨다. 원본 role·status 를 내려주는 것만으로는 "서버가 판정한다"를 절반만 지키는 셈이고,
-프론트는 그 값이 `true`인 항목만 골라 보여주면 된다(도메인 규칙을 몰라도 됨).
+`relation` 은 "개인 참여 상태 + 시작일"로 **내 스터디 화면의 탭**(시작 전·참여 중·완주·하차)을
+분류하는 값이라, **스터디 자체의 운영 상태**와는 의미가 다르다 — 운영자가 스터디를 명시적으로
+종료 처리해도 `relation` 은 그걸 모른다(날짜만 본다).
 
-### "맡은 진행 중인 스터디" 판정
+**`STUDY.STATUS` 가 실제로 전환되는 기능이 구현되면**, 탈퇴 경고 조건을 아래로 바꾼다:
 
 ```
-STUDY_PARTICIPANT
-  WHERE ACCOUNT_ID = :me
-    AND PARTICIPANT_ROLE IN (LEADER, CO_LEADER)
-    AND STATUS IN (ACTIVE, PAUSED)
-  → STUDY_ID
-JOIN STUDY WHERE STATUS = OPEN
-  → 이 STUDY_ID 들에 대해 isActiveNavigator = true
+STUDY.STATUS = ONGOING
+  AND STUDY_PARTICIPANT.STATUS IN (ACTIVE, PAUSED)
+  AND STUDY_PARTICIPANT.PARTICIPANT_ROLE IN (LEADER, CO_LEADER)
 ```
 
-`STUDY.STATUS=OPEN` 을 "진행 중"으로 쓴다 (`DRAFT`·`CLOSED` 제외). ERD 의 모집 상태 5단계 중
-`ONGOING`(진행중)·`UPCOMING`·`ENDED` 는 이번 스프린트 기준 코드에 없는 파생 상태라(`RecruitStatus.java`
-주석 참고) 쓸 수 없다 — 대신 사람이 결정하는 `STUDY.STATUS` 로 "공개되어 실제로 도는 기수인가"만
-가른다. `DRAFT`는 아직 공개 전이라 네비게이터가 빠져도 멈출 게 없고, `CLOSED`는 이미 끝나
-"끝난 스터디는 맡은 사람이 빠져도 멈출 것이 없다"([정책](#네비게이터-경고--왜-막지-않는가))에 해당한다.
+`relation` 하나만 보는 지금 방식과 달리, 스터디 운영 상태(`STUDY.STATUS`)와 개인 참여 상태를
+둘 다 확인해야 정확하다 — `STUDY.STATUS` 는 스터디 하나에 값이 하나뿐이라 특정 참가자가 이미
+`WITHDRAWN`/`COMPLETED` 로 빠졌는지 혼자서는 구분하지 못하기 때문이다.
 
 ### `@RequireOnboarding` 과의 관계
 
@@ -187,8 +197,15 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 실제로는 문제가 안 된다 — [user-onboarding spec](../user-onboarding/spec.md#회원-전용-api-공통-규칙)의
 "회원 전용 API 공통 규칙"에 따라 신청·참여 자체가 온보딩 완료 계정만 가능하므로, 온보딩 미완료
 계정은 애초에 `STUDY_PARTICIPANT` 행을 가질 수 없다 — "맡은 스터디"가 구조적으로 존재하지 않는다.
-그래서 프론트는 온보딩 미완료 계정에는 이 API 를 아예 호출하지 않고 경고 상자 없이 바로 탈퇴
-버튼을 보여줘도 안전하다. 이 엔드포인트의 `@RequireOnboarding` 은 그대로 둔다.
+이 엔드포인트의 `@RequireOnboarding` 은 그대로 둔다.
+
+**프론트는 이 API 를 조건 없이 호출한다** — "지금 이 계정이 온보딩을 완료했는가"를 먼저 판단해서
+호출 여부를 정하려면, 그 판단에 쓸 데이터를 프론트가 어딘가에서 이미 들고 있어야 하는데
+(예: `/auth/me` 를 별도로 먼저 불러서 `onboardingCompletedAt` 을 확인) 지금 core-front 에는
+그런 온보딩 상태 추적이 전혀 없다 — 없는 것을 추가로 만들 이유가 없다. 대신 **`200` 이외의 모든
+응답(온보딩 미완료의 `403 ONBOARDING_REQUIRED` 포함)을 "맡은 스터디 없음"과 동일하게 처리**한다 —
+빈 배열로 취급하고 경고 상자를 그냥 안 띄운다. 위 문단이 이미 증명하듯 온보딩 미완료 계정은 어차피
+빈 결과와 동치이므로, 에러를 구분하지 않고 뭉뚱그려도 정확성을 잃지 않는다.
 
 ### Error Responses
 
@@ -259,6 +276,13 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 `scheduleAgreed`·`answers`)은 개인 식별값이 아니고 모집 회차별 운영 통계에 쓰일 수 있어 그대로
 둔다 — 행 전체를 지우거나 통째로 마스킹하지 않는다.
 
+**`FORM_ANSWER` 가 JSON 객체가 아니면 전체를 비운다.** 배열·스칼라·깨진 JSON 은 `discordNickname` 이 어디 있는지 알 수 없다.
+원본을 두면 개인정보가 남을 수 있고, 예외를 던지면 그 행 하나 때문에 회원이 탈퇴를 못 하므로 `{}` 로 대체하고 로그에는
+신청서 ID 만 남긴다(스키마에 맞지 않는 행이라 백오피스 조회도 이미 못 읽는 값이다).
+
+**캡틴의 신청 결과 조회는 탈퇴한 신청자를 "탈퇴한 회원"으로 보여준다.** 신청서 행이 남으므로 `ACCOUNT` 와 LEFT JOIN 해서
+`applicantName` 은 `탈퇴한 회원`, `email` 은 null 로 내려준다. INNER JOIN 이면 탈퇴한 신청자가 목록에서 사라진다.
+
 이 결정은 [`specs/study-application/spec.md`](../study-application/spec.md#미확정)의
 "[NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간"에 대한 답이기도 하다 —
 행은 보존하고(법정 최소 보관 기간을 신경 쓸 필요가 애초에 없어진다), 그 안의 개인 식별 필드만
@@ -270,8 +294,8 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 |---|---|---|
 | `ACCOUNT` (프로필 포함) | 물리 삭제 | "계정·프로필 즉시 파기" |
 | `ACCOUNT_IDENTITY` (로그인 수단) | 물리 삭제 | "즉시 파기" + 재가입 가능 조건(UNIQUE 해제) |
-| `ACCOUNT_CONSENT` (약관 동의) | 물리 삭제 (FK CASCADE) | 프로필에 준하는 계정 데이터 |
-| `STUDY_PARTICIPANT` (참여) | 물리 삭제 | "참여 즉시 파기" |
+| `ACCOUNT_CONSENT` (약관 동의) | 물리 삭제 (서비스가 명시적으로 삭제) | 프로필에 준하는 계정 데이터 |
+| `STUDY_PARTICIPANT` (참여) | `STATUS=DELETED`·`LEFT_AT` 로 익명화 (물리 삭제 아님) | "참여 즉시 파기" — 행은 남기되 네비게이터 자리는 즉시 비운다. 출석률 집계 보존을 위해 2026-10-01 물리 삭제에서 변경 |
 | `STUDY_BOOKMARK` / `STUDY_PROPOSAL_INTEREST` (관심) | 물리 삭제 | "관심 즉시 파기" |
 | 디스코드 연동 (`ACCOUNT.DISCORD_*`) | `ACCOUNT` 삭제에 포함 | "디스코드 연동 정보 즉시 파기" |
 | `STUDY_ATTENDANCE` (출석) | 보존, 손대지 않음 | "출석 기록 보존, 비식별 처리" — FK 없어 자동으로 식별 불가 |
@@ -330,9 +354,13 @@ PRD 의 "법령상 보존이 필요한 정보는 그 기간 동안 보관한다"
 시도했다가 거부함"(`SesMailClient.java`)이라는 구체적인 의미로 코드에서 쓰이고 있어 "발송 시도조차
 안 하고 취소"와 섞이면 나중에 진짜 발송 장애를 진단할 때 노이즈가 된다 — `NotificationStatus` 에
 `CANCELLED` 를 신설하기로 리뷰에서 합의했다(`ERROR_TYPE` 은 `FAILED` 전용이라 채우지 않는다). `PROCESSING`
-은 이미 발송 시도 중이라 끼어들지 않고 마스킹만 적용한다. 자세한 상태 전이는
-[notification spec](../notification/spec.md#상태-전이) 참고 — `NotificationStatus` enum(코드)에
-`CANCELLED` 를 추가하는 작업은 이 스펙의 구현 PR이 아니라 notification 모듈 쪽 후속 작업이다.
+은 이미 발송 시도 중이라 끼어들지 않고 마스킹만 적용한다. 대상 행은 `SELECT ... FOR UPDATE`(SKIP
+LOCKED 아님)로 잠그고 읽는다 — 폴링 스케줄러가 같은 순간 PENDING→PROCESSING 으로 바꾸는 행을 스냅샷 값으로
+보고 취소하거나 덮어쓰지 않도록, 스케줄러 트랜잭션이 끝나길 기다린 뒤 최신 상태를 읽는다(SKIP LOCKED 로 건너뛰면
+잠긴 행의 PII 가 남는다). 반대로 탈퇴 직후 웰컴메일 리스너(`NotificationCreationService`)가 뒤늦게 실행돼 이미 지워진 계정의 알림을 새로 만드는 경합은, 리스너가 `ACCOUNT` 행을 `FOR UPDATE` 로 읽어 탈퇴 트랜잭션과 직렬화하는 것으로 막는다 — 탈퇴가 먼저면 계정이 없어 알림을 만들지 않고, 리스너가 먼저면 탈퇴가 기다렸다가 그 알림까지 비식별화한다. 자세한 상태 전이는
+[notification spec](../notification/spec.md#상태-전이) 참고. `NotificationStatus` 에 `CANCELLED` 를
+추가하는 코드(`Notification.cancel()`)는 이 스펙의 구현 PR에 포함했다 — `ERROR_TYPE`·`LOCKED_AT` 등
+`FAILED`/`PROCESSING` 전용 컬럼은 건드리지 않는다.
 
 - 구체적인 마스킹 값·컬럼 갱신 코드는 notification 모듈 소관이다. 이 스펙은 "무엇을 비식별해야
   하는가"까지만 정의하고, "어떻게(이벤트 vs 직접 리포지토리 호출)"는 plan.md 에서 정한다.
@@ -390,3 +418,10 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 | 2026-09-19 | 최초 작성 — `DELETE /api/me` 스펙 초안 + `GET /api/me/studies` 확장 | 회원 탈퇴 기획 (PRD, 프로토타입 `/proto/core/ko/my/leave`) |
 | 2026-09-23 | PR #110 리뷰(j00hyun) 반영 — SESSION(Redis) 미구현 사실 정정, `GET /api/me/studies` 를 `isActiveNavigator` 계산 필드로 교체, `STUDY_APPLICATION.FORM_ANSWER.discordNickname` 비식별 추가, `STUDY_PROPOSAL` ERD 상태도에 탈퇴 트리거 반영, 디스코드 role 제거 범위 밖 명시. `NOTIFICATION` PENDING 건 취소 처리는 PR 코멘트 스레드에서 별도 논의 후 반영 예정이라 이 라운드에서는 보류 | PR 리뷰 코멘트 7건 + `beta` 병합으로 새로 생긴 `specs/study-application/spec.md`·`POL-0007` |
 | 2026-09-24 | `NOTIFICATION` PENDING 취소 처리 확정 — PR #110 리뷰 스레드에서 `NotificationStatus.CANCELLED` 신설로 합의. `specs/notification/spec.md`·`docs/erd/NOTIFICATION.md` 상태도에도 반영 | PR #110 코멘트 스레드 합의 (j00hyun) |
+| 2026-09-27 | 구현 코드 대비 스펙 리뷰 반영 — `NotificationStatus.CANCELLED` 실제 코드 구현(더 이상 "notification 모듈 후속 작업" 아님), `GET /api/me/studies` `@RequireOnboarding` 절을 실제 프론트 동작("무조건 호출 + 에러는 빈 배열")에 맞게 정정 | 구현 PR 코드 리뷰 — 스펙 문서가 이후 합의를 못 따라간 부분 발견 |
+| 2026-09-28 | 구현 PR 코드 리뷰 반영 — 캡틴 신청 결과 조회를 LEFT JOIN 으로 바꿔 탈퇴한 신청자를 `탈퇴한 회원`으로 표시, JSON 객체가 아닌 `FORM_ANSWER` 는 탈퇴를 막지 않고 통째로 비움 | 구현 PR #141 코드 리뷰 |
+| 2026-09-28 | 구현 PR 2차 리뷰 반영 — `NOTIFICATION` 비식별화를 `FOR UPDATE` 락 조회로(스케줄러와 경합 방지), `POST /auth/refresh` 가 탈퇴한 계정은 401 로 거절, 프론트가 이미 탈퇴된 계정(404)을 정리 경로로 처리하고 회원별 localStorage 데이터도 삭제, 웰컴메일 리스너를 계정 행 락 조회로 바꿔 탈퇴 직후 알림 생성 경합 차단. `ACCOUNT_CONSENT` 를 DB cascade 대신 명시적 삭제로 변경(stage·H2 에 FK 없음). 마이그레이션 번호를 beta 의 V20 과 겹치지 않게 V21 로 변경(이후 beta 에 V21__add_study_discord_link 가 추가돼 V22 로 재조정) | 구현 PR #141 2차 코드 리뷰 |
+| 2026-10-01 | `STUDY_PARTICIPANT` 를 물리 삭제 대신 `STATUS=DELETED` + `LEFT_AT`(탈퇴 시각)으로 익명화하도록 변경 — 행을 지우면 `STUDY_ATTENDANCE`(ACCOUNT_ID 로만 연결, FK 없음)가 갈 곳을 잃어 출석률 집계에서 전체 이력이 통째로 빠지는 문제 발견. `AttendanceRateCalculator.countsToward` 가 `WITHDRAWN`·`DELETED` 도 `LEFT_AT` 이전 회차는 집계에 포함하고(결석 처리 아님) 이후 회차만 제외하도록 변경(`specs/attendance/spec.md`·`specs/my-studies/spec.md` 동반 수정, ERD `STUDY_PARTICIPANT` 갱신). 겸사겸사 beta 에 독립적으로 머지된 "내 스터디" 실데이터 API(`specs/my-studies/spec.md`, PR #157/#159)가 이 스펙의 목업 기반 `GET /api/me/studies` 확장(`isActiveNavigator` 필드)을 완전히 대체한 것을 반영 — "맡은 진행 중인 스터디" 판정을 서버 필드 대신 프론트가 `relation`·`participantRole` 로 계산하도록 정정, 프론트 `getActiveNavigatorStudies()` 도 새 응답 모양에 맞게 재작성 | 회원 탈퇴 집계 정책 재검토 — WITHDRAWN·회원탈퇴 이전 출석은 보존, 이후는 결석이 아니라 제외 |
+| 2026-10-02 | 3차 리뷰 반영 — 이미 WITHDRAWN 이었던 명부의 `LEFT_AT` 을 회원 탈퇴 시각으로 덮어써 출석률이 오염되던 버그 수정(이미 값이 있으면 보존). `getActiveNavigatorStudies()` 가 조회 실패(네트워크·5xx 등)와 "맡은 스터디 없음"을 구분하도록 변경 — 403 만 확정된 빈 결과로 두고 그 외는 재확인 경고를 띄운다. 마이그레이션 번호를 beta 의 V22 와 겹치지 않게 V24 로 재조정(beta 에 V22\_\_move_study_kind_to_program 추가) | 구현 PR #141 3차 코드 리뷰 |
+| 2026-10-02 | 확인 실패(unknown) 상태에서 탈퇴를 하드 블록하도록 변경 — "그래도 탈퇴" 우회 경로를 없애고, 확인(ok)이 성공할 때까지 탈퇴하기 버튼을 비활성화·재시도 버튼만 제공. "맡은 진행 중인 스터디" 판정에 `relation` 대신 `STUDY.STATUS` 를 쓰는 안을 리뷰에서 재검토 — `STUDY.STATUS` 전환 기능이 아직 없어 지금은 `relation` 을 유지하고, 그 기능이 생기면 `STUDY.STATUS=ONGOING` + 참여 상태 + 역할을 같이 보는 조건으로 바꾸기로 하고 후속 작업으로 메모 | 구현 PR #141 3차 리뷰 후속 논의 (j00hyun) |
+| 2026-10-03 | 마이그레이션 번호를 beta 의 V23 과 겹치지 않게 V25 로 재조정(beta 에 V23\_\_add_study_meeting_title 추가) | beta 머지 — 회차 관리 API(PR #162 이후) 추가로 발생한 번호 충돌 |

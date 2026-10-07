@@ -1,12 +1,17 @@
 package com.studyclub.api.study;
 
-import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,16 +25,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudyListService {
 
     private final StudyListDao studyListDao;
-    private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyApplicationRepository studyApplicationRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
+    private final StudyProgramRepository studyProgramRepository;
 
     public StudyListService(
             StudyListDao studyListDao,
-            StudyParticipantRepository studyParticipantRepository,
-            StudyRecruitmentRepository studyRecruitmentRepository) {
+            StudyApplicationRepository studyApplicationRepository,
+            StudyRecruitmentRepository studyRecruitmentRepository,
+            StudyProgramRepository studyProgramRepository) {
         this.studyListDao = studyListDao;
-        this.studyParticipantRepository = studyParticipantRepository;
+        this.studyApplicationRepository = studyApplicationRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
+        this.studyProgramRepository = studyProgramRepository;
     }
 
     public StudyListResponse list(StudyListFilter filter, int offset, int limit) {
@@ -41,17 +49,47 @@ public class StudyListService {
 
         List<Long> studyIds = studies.stream().map(Study::getId).toList();
 
-        Map<Long, Long> applicants =
-                studyParticipantRepository.countByStudyIds(studyIds).stream()
+        List<StudyRecruitment> latestRecruitments =
+                studyRecruitmentRepository.findLatestByStudyIdIn(studyIds);
+
+        // 신청자 수는 최신 모집 회차의 STUDY_APPLICATION 수 — 스펙 study-recruit-status/spec.md:46
+        List<Long> recruitmentIds =
+                latestRecruitments.stream().map(StudyRecruitment::getId).toList();
+        Map<Long, Long> applicationsByRecruitmentId =
+                studyApplicationRepository.countByRecruitmentIdIn(recruitmentIds).stream()
                         .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+        // studyId → 신청자 수 (최신 모집 회차 기준)
+        Map<Long, Long> applicants =
+                latestRecruitments.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        StudyRecruitment::getStudyId,
+                                        r ->
+                                                applicationsByRecruitmentId.getOrDefault(
+                                                        r.getId(), 0L)));
 
         Map<Long, Instant> deadlines =
-                studyRecruitmentRepository.findLatestByStudyIdIn(studyIds).stream()
+                latestRecruitments.stream()
                         .filter(recruitment -> recruitment.getRecruitDeadlineAt() != null)
                         .collect(
                                 Collectors.toMap(
                                         StudyRecruitment::getStudyId,
                                         StudyRecruitment::getRecruitDeadlineAt));
+
+        Map<Long, Integer> capacities =
+                latestRecruitments.stream()
+                        .filter(recruitment -> recruitment.getRecruitmentCapacity() != null)
+                        .collect(
+                                Collectors.toMap(
+                                        StudyRecruitment::getStudyId,
+                                        StudyRecruitment::getRecruitmentCapacity));
+
+        Map<Long, StudyProgram> programs =
+                studyProgramRepository
+                        .findAllByIdIn(
+                                studies.stream().map(Study::getProgramId).distinct().toList())
+                        .stream()
+                        .collect(Collectors.toMap(StudyProgram::getId, p -> p));
 
         List<StudyListResponse.StudySummary> items =
                 studies.stream()
@@ -59,8 +97,19 @@ public class StudyListService {
                                 study ->
                                         StudyListResponse.StudySummary.from(
                                                 study,
+                                                Optional.ofNullable(
+                                                                programs.get(study.getProgramId()))
+                                                        .orElseThrow(
+                                                                () ->
+                                                                        new BusinessException(
+                                                                                ErrorCode.NOT_FOUND,
+                                                                                "스터디 프로그램을 찾을 수 없습니다: "
+                                                                                        + study
+                                                                                                .getProgramId()))
+                                                        .getStudyKind(),
                                                 applicants.getOrDefault(study.getId(), 0L),
-                                                deadlines.get(study.getId())))
+                                                deadlines.get(study.getId()),
+                                                capacities.get(study.getId())))
                         .toList();
 
         return new StudyListResponse(items, total, offset, limit);
