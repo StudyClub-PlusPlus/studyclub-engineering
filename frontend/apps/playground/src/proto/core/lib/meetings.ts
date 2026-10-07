@@ -102,7 +102,6 @@ export function zoneOfStudy(studyId: string): string {
   return manageAccessOf(studyId)?.group.timeZone ?? DEFAULT_ZONE;
 }
 
-
 export const TITLE_MAX = 50;
 /** 반복으로 한 번에 만들 수 있는 기간(시작 날짜 포함 일수). 매일이면 최대 31회차. */
 export const REPEAT_SPAN_DAYS = 31;
@@ -268,10 +267,13 @@ const wallKey = (m: StudyMeeting) => `${m.date} ${(m as ProtoMeeting).time ?? ''
 /**
  * 킥오프를 맨 앞에 두고, 기존 회차에서 지운 것을 빼고, 고친 값을 얹고, 추가한 것을 붙인다.
  * 정규 회차는 일정순으로 1부터, 킥오프는 0. 회차 번호는 저장값이 아니라 순서다.
+ *
+ * `studyId` 는 저장 키다. 백오피스는 반마다 키를 따로 둔다 — 반의 시간대를 `zone` 으로 넘긴다.
  */
-export function withAdded(base: StudyMeeting[], studyId: string): ProtoMeeting[] {
-  const zone = zoneOfStudy(studyId);
-  const added = (readJSON<Stored>(ADDED_KEY)[studyId] ?? []).map((m) => ({ ...withWall(m, zone), no: 0 }) as ProtoMeeting);
+export function withAdded(base: StudyMeeting[], studyId: string, zone = zoneOfStudy(studyId)): ProtoMeeting[] {
+  const added = (readJSON<Stored>(ADDED_KEY)[studyId] ?? []).map(
+    (m) => ({ ...withWall(m, zone), no: 0 }) as ProtoMeeting,
+  );
   const deleted = new Set(readJSON<string>(DELETED_KEY)[studyId] ?? []);
   const edits = readEdits()[studyId] ?? {};
   const kickoff = kickoffOf(base, studyId);
@@ -284,6 +286,22 @@ export function withAdded(base: StudyMeeting[], studyId: string): ProtoMeeting[]
     .sort((a, b) => wallKey(a).localeCompare(wallKey(b)))
     .map((m, i) => ({ ...m, no: i + 1 }));
   return [...all.filter(isKickoff).map((m) => ({ ...m, no: 0 })), ...regular];
+}
+
+/**
+ * 출석부가 일정에서 읽는 것 — 회차별 발표자 · 출석률에서 뺄 킥오프 · 열 머리.
+ * 사용자 사이트 출석부와 백오피스 출석 탭이 같은 규칙을 쓴다.
+ */
+export function bookFromSchedule(meetings: ProtoMeeting[]) {
+  const byId = new Map(meetings.map((m) => [m.id, m]));
+  return {
+    /** 그 회차 발표자1·2 (참가자 ID). 발표 표시·횟수는 이것으로만 계산한다. */
+    presentersOf: (id: string) =>
+      [byId.get(id)?.presenter1, byId.get(id)?.presenter2].filter((p): p is string => Boolean(p)),
+    /** 출석은 찍지만 출석률에 넣지 않는 회차. */
+    notCounted: new Set(meetings.filter(isKickoff).map((m) => m.id)),
+    headOf: (m: StudyMeeting) => (isKickoff(m) ? '킥오프' : `${m.no}회`),
+  };
 }
 
 /* ── 날짜·시각 ───────────────────────────────────────────────────────────── */
@@ -453,7 +471,8 @@ export function planDraft(
   if (!draft.date) errors.date = '일자를 정해 주세요.';
   if (!draft.time) errors.time = '시작 시각을 정해 주세요.';
   if (draft.title.trim().length > TITLE_MAX) errors.title = `제목은 ${TITLE_MAX}자까지 쓸 수 있습니다.`;
-  if (draft.repeat === 'weekly' && draft.weekdays.length === 0) errors.weekdays = '반복할 요일을 하나 이상 골라 주세요.';
+  if (draft.repeat === 'weekly' && draft.weekdays.length === 0)
+    errors.weekdays = '반복할 요일을 하나 이상 골라 주세요.';
   if (draft.repeat !== 'none') {
     if (!draft.until) errors.until = '반복 종료일을 정해 주세요.';
     else if (draft.date && draft.until < draft.date) errors.until = '종료일은 시작 일자보다 뒤여야 합니다.';
