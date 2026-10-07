@@ -20,7 +20,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,8 +34,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
  * 캡틴 둘이 동시에 서로를 내리면 한쪽만 성공한다 — ADMIN 행 잠금(specs/admin-users/spec.md 「처리 규칙」 1)이 캡틴 0명을 막는지 본다.
  *
  * <p><b>타이밍이 아니라 잠금을 증명한다.</b> 서비스를 직접 두 스레드에서 부른다(HTTP 를 거치면 인터셉터가 진 쪽을 403 으로 바꿀 수 있다). 먼저 온 요청이
- * 잠금을 쥔 채 감사 로그 저장에서 멈추게 하고, 그 사이 뒤 요청이 실제로 막혀 있는지(끝나지 않는지) 확인한 뒤 풀어 준다. 잠금이 없으면 뒤 요청은 막히지 않고 바로
- * 성공해 이 테스트가 실패한다.
+ * 잠금을 쥔 채 감사 로그 저장에서 멈추게 하고, 그 사이 뒤 요청이 실제로 막혀 있는지(H2 의 SESSIONS.BLOCKER_ID 로 막힌 세션이 보이는지) 확인한 뒤 풀어
+ * 준다. 잠금이 없으면 뒤 요청은 막히지 않고 바로 성공해 이 테스트가 실패한다.
  *
  * <p>같은 DB 에 다른 테스트가 남긴 ADMIN 이 있으면 「둘뿐」이라는 전제가 깨져, 이 테스트의 두 계정을 뺀 ADMIN 을 잠시 MEMBER 로 내렸다가 끝나고
  * 되돌린다.
@@ -69,9 +68,13 @@ class AdminAccountRoleConcurrencyTest {
 
     @AfterEach
     void cleanUp() {
-        cleanSeedRows();
-        for (Long id : otherAdminIds) {
-            jdbcTemplate.update("UPDATE ACCOUNT SET SYSTEM_ROLE = 'ADMIN' WHERE ID = ?", id);
+        try {
+            // 다른 테스트의 ADMIN 을 먼저 되돌린다 — 아래 정리가 실패해도 공유 DB 에 ADMIN 이 없는 채로 남지 않게
+            for (Long id : otherAdminIds) {
+                jdbcTemplate.update("UPDATE ACCOUNT SET SYSTEM_ROLE = 'ADMIN' WHERE ID = ?", id);
+            }
+        } finally {
+            cleanSeedRows();
         }
     }
 
@@ -112,9 +115,10 @@ class AdminAccountRoleConcurrencyTest {
             Future<?> secondRequest =
                     pool.submit(
                             () -> service.changeSystemRole(ADMIN_B, ADMIN_A, SystemRole.MEMBER));
-            assertThatThrownBy(() -> secondRequest.get(500, TimeUnit.MILLISECONDS))
-                    .as("뒤 요청은 앞 요청이 커밋하기 전에는 끝나지 않는다")
-                    .isInstanceOf(TimeoutException.class);
+            // 시간이 아니라 상태로 증명한다 — H2 가 「다른 세션에 막힌 세션」을 보고할 때까지 기다린다
+            assertThat(awaitBlockedSession(10_000))
+                    .as("뒤 요청이 앞 요청의 행 잠금에 막힌 세션(BLOCKER_ID)이 보여야 한다")
+                    .isTrue();
             assertThat(secondRequest.isDone()).isFalse();
 
             release.countDown();
@@ -149,7 +153,29 @@ class AdminAccountRoleConcurrencyTest {
         } finally {
             release.countDown();
             pool.shutdownNow();
+            // 스레드가 끝나기 전에 정리가 DB 를 건드리지 않게 기다린다
+            assertThat(pool.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
         }
+    }
+
+    /**
+     * H2 의 {@code INFORMATION_SCHEMA.SESSIONS.BLOCKER_ID} 는 어떤 세션이 쥔 잠금 때문에 기다리는 세션에만 값이 있다. 그런 세션이
+     * 나타날 때까지 20ms 간격으로 본다.
+     */
+    private boolean awaitBlockedSession(long timeoutMillis) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+        while (System.nanoTime() < deadline) {
+            Long blocked =
+                    jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SESSIONS"
+                                    + " WHERE BLOCKER_ID IS NOT NULL",
+                            Long.class);
+            if (blocked != null && blocked > 0) {
+                return true;
+            }
+            Thread.sleep(20);
+        }
+        return false;
     }
 
     private void cleanSeedRows() {
