@@ -6,7 +6,7 @@ import { ClassPicker } from '@console/components/ClassPicker';
 import { type StudyClass } from '@console/lib/classes';
 import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
 import { Badge, Button } from '@studyclub/ui';
-import { CalendarPlus, Mic, UserCheck, UserMinus } from 'lucide-react';
+import { CalendarPlus, Mic } from 'lucide-react';
 
 /**
  * 출석 탭 — 크루 × 회차 격자.
@@ -150,7 +150,7 @@ function Cell({
 }
 
 /**
- * 이름 칸 끝의 작은 아이콘 버튼 — 참여 중단(활동 중인 줄) · 다시 참여(중단한 줄).
+ * 이름 칸 끝의 작은 버튼 — 참여 중단(활동 중인 줄, 빨강) · 다시 참여(중단한 줄, 보조).
  * 바로 바꾸지 않는다. 누르면 확인 창이 뜬다(부모가 띄운다).
  * 고친 칸이 있으면 막는다. disabled 대신 aria-disabled — 가리키면 이유가 보이고 키보드로도 닿는다.
  */
@@ -172,22 +172,20 @@ function ParticipationButton({
   onBlocked: () => void;
 }) {
   const action = left ? '다시 참여' : '참여 중단';
-  const Icon = left ? UserCheck : UserMinus;
   return (
-    <button
-      type='button'
+    <Button
+      size='sm'
+      // 참여 중단은 되돌릴 수 있어도 사람을 빼는 일이라 빨강. 다시 참여는 보조 버튼.
+      variant={left ? 'secondary' : 'destructive'}
       aria-label={`${name} ${action}`}
       aria-disabled={blocked || undefined}
       aria-describedby={blocked ? BLOCKED_HINT_ID : undefined}
-      title={blocked ? '출석을 먼저 저장해 주세요' : action}
       onClick={blocked ? onBlocked : onClick}
-      // 보이는 크기는 28px, 누르는 자리는 44px — 줄 높이를 늘리지 않고 터치 대상을 넓힌다.
-      className={`relative grid h-7 w-7 place-items-center rounded-sm text-fg-muted transition-colors after:absolute after:-inset-2 after:content-[''] ${
-        blocked ? 'cursor-not-allowed opacity-40' : 'hover:bg-surface-2 hover:text-fg'
-      }`}
+      // disabled 대신 흐리게만 — 눌러서 이유를 볼 수 있어야 한다. sm 은 높이 32px · 누르는 자리 44px.
+      className={blocked ? 'cursor-not-allowed opacity-40' : undefined}
     >
-      <Icon size={15} aria-hidden />
-    </button>
+      {action}
+    </Button>
   );
 }
 
