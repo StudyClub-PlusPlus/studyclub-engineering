@@ -1,6 +1,7 @@
 package com.studyclub.api.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.SystemRole;
@@ -111,5 +112,37 @@ class AccountTest {
         assertThat(account.getNickname()).isEqualTo("kimcheolsu");
         assertThat(account.getTimeZone()).isEqualTo("America/Vancouver");
         assertThat(account.getOnboardingCompletedAt()).isEqualTo(completedAt);
+    }
+
+    @Test
+    @DisplayName("권한 전이 - 다른 값이면 바꾸고 true 를 돌려준다")
+    void changeSystemRoleChangesValue() {
+        Account account = new Account("a@b.com", "n", null, SystemRole.MEMBER);
+
+        boolean changed = account.changeSystemRole(SystemRole.ADMIN);
+
+        assertThat(changed).isTrue();
+        assertThat(account.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+    }
+
+    @Test
+    @DisplayName("권한 전이 - 같은 값이면 아무것도 바꾸지 않고 false 를 돌려준다 (감사 로그를 남기지 않는 근거)")
+    void changeSystemRoleSameValueIsNoop() {
+        Account account = new Account("a@b.com", "n", null, SystemRole.ADMIN);
+
+        boolean changed = account.changeSystemRole(SystemRole.ADMIN);
+
+        assertThat(changed).isFalse();
+        assertThat(account.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+    }
+
+    @Test
+    @DisplayName("권한 전이 - null 은 예외 — 권한을 비울 수 없다")
+    void changeSystemRoleRejectsNull() {
+        Account account = new Account("a@b.com", "n", null, SystemRole.MEMBER);
+
+        assertThatThrownBy(() -> account.changeSystemRole(null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(account.getSystemRole()).isEqualTo(SystemRole.MEMBER);
     }
 }

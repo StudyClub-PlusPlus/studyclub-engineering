@@ -183,6 +183,23 @@ public class Account extends BaseEntity {
         this.timeZone = timeZone;
     }
 
+    /**
+     * 계정 권한 전이. 값이 바뀌었으면 {@code true}, 같은 값이면 아무것도 하지 않고 {@code false} — 호출자는 이 반환값으로 감사 로그를 남길지
+     * 판단한다 (중복 클릭·재시도에 기록이 쌓이지 않게).
+     *
+     * <p>「본인 변경 금지」·「마지막 캡틴 보호」는 계정 하나로 판단할 수 없는 규칙이라 서비스가 본다. 여기는 값 전이만 책임진다.
+     */
+    public boolean changeSystemRole(SystemRole newRole) {
+        if (newRole == null) {
+            throw new IllegalArgumentException("systemRole must not be null");
+        }
+        if (this.systemRole == newRole) {
+            return false;
+        }
+        this.systemRole = newRole;
+        return true;
+    }
+
     public void setProfileImgUrl(String profileImgUrl) {
         this.profileImgUrl = dropIfTooLong(profileImgUrl, PROFILE_IMG_URL_MAX);
     }
