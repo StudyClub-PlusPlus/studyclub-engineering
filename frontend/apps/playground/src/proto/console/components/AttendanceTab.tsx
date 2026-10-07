@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { ClassPicker } from '@console/components/ClassPicker';
 import { type StudyClass } from '@console/lib/classes';
 import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
-import { Badge, Button } from '@studyclub/ui';
+import { Badge, Button, Modal } from '@studyclub/ui';
 import { CalendarPlus, Mic } from 'lucide-react';
 
 /**
@@ -27,7 +27,8 @@ import { CalendarPlus, Mic } from 'lucide-react';
  * - `presentersOf`: 그 회차 발표자. 칸에 발표 표시를 붙이고 이름 옆에 발표 횟수를 센다
  *   (발표 여부는 따로 입력하지 않는다 — 일정의 발표자1·2가 정본이다)
  * - `notCounted`: 출석률에 넣지 않는 회차(킥오프). 칸은 보이고 체크도 한다
- * - `onWithdraw`: 사용자 사이트 네비게이터의 참여 중단. `manageable` 이고 활동 중인 줄에만 버튼이 붙는다. 되돌리기는 없다.
+ * - `onWithdraw`: 사용자 사이트 네비게이터의 참여 중단. 주면 `manageable` 이고 활동 중인 줄 왼쪽에 체크박스가 붙고,
+ *   고른 사람에게 출석을 한 번에 적용하거나 「중단 예정」으로 둔다. 저장이 성공한 뒤 중단 예정 ID 로 불린다. 되돌리기는 없다.
  *   고친 칸이 남아 있으면 누를 수 없다 — 줄이 움직이면 어느 칸을 고쳤는지 놓친다
  * - `startAt`: 회차 시작 시각(HH:mm). 중단 시각과 견줘 그 뒤에 시작한 회차를 「—」로 비운다
  */
@@ -150,43 +151,40 @@ function Cell({
 }
 
 /**
- * 이름 칸 끝의 작은 「참여 중단」 버튼 — 활동 중인 줄에만. 중단한 줄에는 버튼이 없다(되돌리지 않는다).
- * 바로 바꾸지 않는다. 누르면 확인 창이 뜬다(부모가 띄운다).
- * 고친 칸이 있으면 막는다. disabled 대신 aria-disabled — 눌러서 이유를 보고 키보드로도 닿는다.
+ * 줄 맨 왼쪽 체크박스로 크루를 골라 표 아래 선택 바에서 한 번에 처리한다 — 출석 일괄 적용 · 참여 중단.
+ * 둘 다 저장 전 변경이다. 참여 중단은 줄에 「중단 예정」만 붙고, 「저장」을 누를 때 확인 창을 거쳐 출석과 함께 반영된다.
  */
-const BLOCKED_HINT_ID = 'participation-blocked-hint';
-const BLOCKED_HINT = '출석을 먼저 저장해 주세요. 참여 중단은 저장한 뒤에 할 수 있습니다.';
 
-function WithdrawButton({
-  name,
-  blocked,
-  onClick,
-  onBlocked,
-}: {
-  name: string;
-  blocked: boolean;
-  onClick: () => void;
-  /** 막혔을 때 누르면 — 이유를 화면에 보인다(가리키기 툴팁은 터치·키보드에서 안 보인다). */
-  onBlocked: () => void;
-}) {
+/** 일괄 적용에서 고르는 상태. 빈 값은 미체크(칸 비우기). */
+const BULK_OPTIONS: { value: AttendanceStatus | ''; label: string }[] = [
+  { value: 'present', label: '출석' },
+  { value: 'late', label: '지각' },
+  { value: 'absent', label: '결석' },
+  { value: 'excused', label: '휴가' },
+  { value: '', label: '미체크' },
+];
+
+const CHECKBOX =
+  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
+
+/** 머리 칸의 전체 선택 — 일부만 골랐으면 「일부 선택」(indeterminate). */
+function SelectAll({ checked, partial, onChange }: { checked: boolean; partial: boolean; onChange: () => void }) {
   return (
-    <Button
-      size='sm'
-      variant='secondary'
-      aria-label={`${name} 참여 중단`}
-      aria-disabled={blocked || undefined}
-      aria-describedby={blocked ? BLOCKED_HINT_ID : undefined}
-      onClick={blocked ? onBlocked : onClick}
-      // 배경은 채우지 않고 테두리·글씨만 빨강 — 줄마다 붙어 있어 채우면 표가 빨갛게 덮인다.
-      // disabled 대신 흐리게만 — 눌러서 이유를 볼 수 있어야 한다. sm 은 높이 32px · 누르는 자리 44px.
-      className={`border-error-600 bg-transparent text-error-700 ${
-        blocked ? 'cursor-not-allowed opacity-40' : 'hover:border-error-700 hover:bg-error-50'
-      }`}
-    >
-      참여 중단
-    </Button>
+    <input
+      type='checkbox'
+      aria-label='크루 전체 선택'
+      className={CHECKBOX}
+      checked={checked}
+      ref={(el) => {
+        if (el) el.indeterminate = partial;
+      }}
+      onChange={onChange}
+    />
   );
 }
+
+const SELECT_CLASS =
+  'h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-fg focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 export function AttendanceTab({
   crew,
@@ -212,7 +210,7 @@ export function AttendanceTab({
     role?: 'captain' | 'navigator';
     /** 스터디를 중단한 사람 — 이름을 흐리게, 칩 문구, 중단 일자(이 날 뒤 회차는 「—」·출석률 제외). */
     left?: { label: string; at: string };
-    /** 참여 중단 버튼을 붙일 줄 — 나 · 캡틴 · 네비게이터 줄은 비운다. */
+    /** 체크박스로 고를 수 있는 줄 — 나 · 캡틴 · 네비게이터 줄은 비운다. */
     manageable?: boolean;
   })[];
   meetings: StudyMeeting[];
@@ -230,23 +228,88 @@ export function AttendanceTab({
   notCounted?: Set<string>;
   /** 열 머리 — 기본 「3회」. 킥오프는 「킥오프」. */
   headOf?: (meeting: StudyMeeting) => string;
-  onWithdraw?: (crewId: string) => void;
+  onWithdraw?: (crewIds: string[]) => void | Promise<void>;
   startAt?: string;
 }) {
   const [draft, setDraft] = useState(() => cloneBook(attendance));
   const [saving, setSaving] = useState(false);
   /** 결과 문구는 화면에 두지 않는다. 스크린리더만 저장 결과를 듣는다. */
   const [announce, setAnnounce] = useState('');
-  /** 막힌 중단 버튼을 눌렀을 때 저장 바에 이유를 보인다. 저장·취소로 고친 칸이 없어지면 사라진다. */
-  const [blockedHint, setBlockedHint] = useState(false);
+  /** 「중단 예정」 — 저장할 때 출석과 함께 참여 중단으로 반영된다. */
+  const [toWithdraw, setToWithdraw] = useState<Set<string>>(() => new Set());
+  /** 중단 예정이 있을 때 저장을 누르면 뜨는 확인 창. */
+  const [confirming, setConfirming] = useState(false);
+  /** 체크박스로 고른 크루. 중단돼 목록에서 빠진 사람은 아래에서 걸러 낸다. */
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const [bulkMeeting, setBulkMeeting] = useState('');
+  const [bulkStatus, setBulkStatus] = useState<AttendanceStatus | ''>('present');
 
   useEffect(() => {
     setDraft(cloneBook(attendance));
   }, [attendance]);
 
   const pending = changedCount(draft, attendance);
-  const dirty = pending > 0;
-  const showBlockedHint = blockedHint && dirty;
+  // 중단된 뒤 목록에서 빠진 사람은 예정에서도 뺀다.
+  const withdrawIds = crew.filter((c) => !c.left && toWithdraw.has(c.id)).map((c) => c.id);
+  const withdrawNames = crew.filter((c) => withdrawIds.includes(c.id)).map((c) => c.name);
+  const dirty = pending > 0 || withdrawIds.length > 0;
+
+  const selecting = !readOnly && Boolean(onWithdraw);
+  const selectable = selecting ? crew.filter((c) => c.manageable && !c.left).map((c) => c.id) : [];
+  const selected = selectable.filter((id) => picked.has(id));
+  const allPicked = selectable.length > 0 && selected.length === selectable.length;
+  // 일괄 적용 회차 — 고르지 않았으면 오늘 이전 마지막 회차(방금 끝난 회차)를 먼저 둔다.
+  const today = new Date().toISOString().slice(0, 10);
+  const defaultMeeting = [...meetings].reverse().find((s) => s.date <= today)?.id ?? meetings[0]?.id ?? '';
+  const meetingId = bulkMeeting || defaultMeeting;
+
+  function pick(id: string) {
+    setPicked((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function pickAll() {
+    setPicked(allPicked ? new Set() : new Set(selectable));
+  }
+
+  /** 고른 사람들의 한 회차 칸을 같은 값으로 — 저장 전 변경이다(칸 테두리 강조 · 저장 바). */
+  function applyBulk() {
+    if (saving || !meetingId || selected.length === 0) return;
+    setAnnounce('');
+    setDraft((book) => {
+      const next = { ...book };
+      for (const id of selected) {
+        const row = { ...(next[id] ?? {}) };
+        if (bulkStatus) row[meetingId] = bulkStatus;
+        else delete row[meetingId];
+        next[id] = row;
+      }
+      return next;
+    });
+    const head = meetings.find((s) => s.id === meetingId);
+    const label = BULK_OPTIONS.find((o) => o.value === bulkStatus)?.label ?? '';
+    setAnnounce(`${selected.length}명의 ${head ? (headOf ? headOf(head) : `${head.no}회`) : ''} 칸을 ${label}(으)로 바꿨습니다. 저장해야 반영됩니다.`);
+  }
+
+  /** 고른 사람을 「중단 예정」으로 — 아직 반영하지 않는다. 저장할 때 확인 창을 거친다. */
+  function markWithdraw() {
+    if (saving || selected.length === 0) return;
+    setToWithdraw((cur) => new Set([...cur, ...selected]));
+    setAnnounce(`${selected.length}명을 중단 예정으로 표시했습니다. 저장해야 반영됩니다.`);
+    setPicked(new Set());
+  }
+
+  function unmarkWithdraw(id: string) {
+    setToWithdraw((cur) => {
+      const next = new Set(cur);
+      next.delete(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -275,18 +338,31 @@ export function AttendanceTab({
     });
   }
 
+  /** 중단 예정이 있으면 확인 창부터 — 되돌릴 수 없는 일이 저장에 섞여 있다. */
+  function requestSave() {
+    if (!dirty || saving) return;
+    if (withdrawIds.length > 0) setConfirming(true);
+    else void save();
+  }
+
+  /** 출석과 참여 중단을 한 번에. 출석이 먼저 — 실패하면 중단도 하지 않는다(서버는 한 트랜잭션). */
   async function save() {
     if (!dirty || saving) return;
+    setConfirming(false);
     setSaving(true);
-    setBlockedHint(false);
-    await onSave(cloneBook(draft));
+    // TODO(api): 출석 updates[] 와 참여 중단 withdraw[] 를 한 요청 · 한 트랜잭션으로.
+    if (pending > 0) await onSave(cloneBook(draft));
+    const ids = withdrawIds;
+    if (ids.length > 0) await onWithdraw?.(ids);
+    setToWithdraw(new Set());
     setSaving(false);
-    setAnnounce(`출석 ${pending}칸을 저장했습니다.`);
+    const parts = [pending > 0 && `출석 ${pending}칸을 저장`, ids.length > 0 && `${ids.length}명의 참여를 중단`].filter(Boolean);
+    setAnnounce(`${parts.join('하고 ')}했습니다.`);
   }
 
   function revert() {
     if (saving) return;
-    setBlockedHint(false);
+    setToWithdraw(new Set());
     setDraft(cloneBook(attendance));
   }
 
@@ -332,7 +408,14 @@ export function AttendanceTab({
                     data-anno='attendance:3-1'
                     className='sticky left-0 z-[1] bg-surface px-4 py-3 text-left text-xs font-semibold text-fg-muted'
                   >
-                    크루
+                    <span className='flex items-center gap-3'>
+                      {selecting && (
+                        <span data-anno='book:3-7' className='flex'>
+                          <SelectAll checked={allPicked} partial={selected.length > 0 && !allPicked} onChange={pickAll} />
+                        </span>
+                      )}
+                      크루
+                    </span>
                   </th>
                   {presentersOf && (
                     <th
@@ -379,6 +462,21 @@ export function AttendanceTab({
                       <td className='sticky left-0 z-[1] whitespace-nowrap border-t border-border bg-surface px-4 py-1.5 font-semibold'>
                         {/* 동명이인 구분(디스코드 닉네임)이 붙으면 길어진다 — 칸은 좁게 두고 전체 이름은 가리키면 보인다 */}
                         <span className='flex items-center gap-1.5'>
+                          {selecting && (
+                            // 고를 수 없는 줄(나 · 운영진 · 중단한 사람)도 자리를 비워 이름 열을 맞춘다.
+                            <span className='mr-1.5 flex w-4 shrink-0'>
+                              {c.manageable && !c.left && (
+                                <input
+                                  type='checkbox'
+                                  aria-label={`${c.name} 선택`}
+                                  className={CHECKBOX}
+                                  checked={picked.has(c.id)}
+                                  onChange={() => pick(c.id)}
+                                  disabled={saving}
+                                />
+                              )}
+                            </span>
+                          )}
                           <span
                             className={`block max-w-[12rem] truncate ${c.left ? 'font-medium text-fg-muted' : ''}`}
                             title={c.name}
@@ -392,17 +490,19 @@ export function AttendanceTab({
                           )}
                           {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
                           {c.role && <Badge tone={c.role}>{c.role === 'captain' ? '캡틴' : '네비게이터'}</Badge>}
-                          {!readOnly && c.manageable && !c.left && onWithdraw && (
-                            <span data-anno='book:3-7' className='ml-auto pl-2'>
-                              <WithdrawButton
-                                name={c.name}
-                                blocked={dirty || saving}
-                                onClick={() => onWithdraw(c.id)}
-                                onBlocked={() => {
-                                  setBlockedHint(true);
-                                  setAnnounce(BLOCKED_HINT);
-                                }}
-                              />
+                          {withdrawIds.includes(c.id) && (
+                            // 저장 전이라 아직 중단이 아니다 — 칩과 「취소」로 예정만 보인다.
+                            <span data-anno='book:3-8' className='flex items-center gap-1'>
+                              <Badge tone='absent'>중단 예정</Badge>
+                              <button
+                                type='button'
+                                aria-label={`${c.name} 중단 예정 취소`}
+                                onClick={() => unmarkWithdraw(c.id)}
+                                disabled={saving}
+                                className='rounded-sm px-1 text-xs font-medium text-fg-muted underline-offset-2 hover:text-fg hover:underline'
+                              >
+                                취소
+                              </button>
                             </span>
                           )}
                         </span>
@@ -463,29 +563,110 @@ export function AttendanceTab({
           <p className='sr-only' aria-live='polite'>
             {announce}
           </p>
+          {selected.length > 0 && (
+            // 고른 사람이 있을 때만 — 출석 일괄 적용 · 참여 중단 예정. 둘 다 저장 전 변경이다.
+            <div
+              data-anno='book:3-9'
+              role='region'
+              aria-label='선택한 크루 처리'
+              className='sticky bottom-12 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-3 py-2 shadow-sm'
+            >
+              <span className='text-sm font-semibold text-fg'>선택한 {selected.length}명</span>
+              <select
+                aria-label='적용할 회차'
+                className={SELECT_CLASS}
+                value={meetingId}
+                onChange={(e) => setBulkMeeting(e.target.value)}
+              >
+                {meetings.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {`${headOf ? headOf(s) : `${s.no}회`} · ${Number(s.date.slice(5, 7))}/${s.date.slice(8, 10)}`}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label='적용할 출석 상태'
+                className={SELECT_CLASS}
+                value={bulkStatus}
+                onChange={(e) => setBulkStatus(e.target.value as AttendanceStatus | '')}
+              >
+                {BULK_OPTIONS.map((o) => (
+                  <option key={o.label} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <Button size='sm' variant='tonal' onClick={applyBulk} disabled={saving}>
+                출석 적용
+              </Button>
+              <span aria-hidden className='mx-1 h-5 w-px bg-border' />
+              <Button
+                size='sm'
+                variant='secondary'
+                onClick={markWithdraw}
+                disabled={saving}
+                // 테두리·글씨만 빨강.
+                className='border-error-600 bg-transparent text-error-700 hover:border-error-700 hover:bg-error-50'
+              >
+                참여 중단
+              </Button>
+              <Button size='sm' variant='ghost' className='ml-auto' onClick={() => setPicked(new Set())}>
+                선택 해제
+              </Button>
+            </div>
+          )}
           {!readOnly && (
-            <div className='sticky bottom-0 z-10 mt-4 flex items-center justify-end gap-2 bg-bg py-2'>
-              {/* 중단 버튼이 막힌 이유 — 늘 스크린리더 설명으로 두고, 막힌 버튼을 누르면 화면에도 보인다 */}
-              {dirty && onWithdraw && (
-                <p
-                  id={BLOCKED_HINT_ID}
-                  className={showBlockedHint ? 'mr-auto text-xs text-fg-secondary' : 'sr-only'}
-                >
-                  {BLOCKED_HINT}
-                </p>
-              )}
+            <div className='sticky bottom-0 z-10 mt-2 flex items-center justify-end gap-2 bg-bg py-2'>
               {dirty && (
                 <Button variant='ghost' size='sm' onClick={revert} disabled={saving}>
                   변경 취소
                 </Button>
               )}
               <span data-anno='attendance:7'>
-                <Button size='sm' onClick={save} loading={saving} disabled={!dirty}>
+                <Button size='sm' onClick={requestSave} loading={saving} disabled={!dirty}>
                   저장
                 </Button>
               </span>
             </div>
           )}
+
+          <Modal
+            open={confirming}
+            onClose={() => setConfirming(false)}
+            title={
+              withdrawIds.length === 1
+                ? `${withdrawNames[0]} 님의 참여를 중단하고 저장할까요?`
+                : `${withdrawIds.length}명의 참여를 중단하고 저장할까요?`
+            }
+            footer={
+              <>
+                <Button variant='secondary' onClick={() => setConfirming(false)}>
+                  취소
+                </Button>
+                <span data-anno='book:5'>
+                  <Button variant='destructive' onClick={() => void save()}>
+                    참여 중단하고 저장
+                  </Button>
+                </span>
+              </>
+            }
+          >
+            <p className='mb-3 text-sm text-fg'>
+              <span className='font-semibold'>참여 중단</span> {withdrawNames.join(', ')}
+              {pending > 0 && (
+                <>
+                  <br />
+                  <span className='font-semibold'>출석</span> {pending}칸
+                </>
+              )}
+            </p>
+            <ul className='list-disc space-y-1 pl-5 text-sm text-fg-secondary'>
+              <li>지금까지의 출석 기록은 그대로 남습니다.</li>
+              <li>지금 뒤에 시작하는 회차는 「—」로 비고 출석률에서 빠집니다.</li>
+              <li>더는 스터디 디스코드 채널 · 드라이브 링크를 볼 수 없고, 발표자로 고를 수 없습니다.</li>
+              <li>중단한 뒤에는 다시 참여시킬 수 없습니다.</li>
+            </ul>
+          </Modal>
         </>
       )}
     </div>

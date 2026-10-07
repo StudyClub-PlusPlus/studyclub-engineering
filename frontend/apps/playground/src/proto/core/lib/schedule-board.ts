@@ -69,7 +69,7 @@ export function participantsOf(study: Study): Participant[] {
 
 /**
  * 네비게이터가 출석부에서 참여를 중단시킨 기록. 되돌리기는 없다. 프로토는 브라우저에만 남는다.
- * TODO(api): POST /api/studies/{studyId}/participants/{participantId}/withdraw
+ * TODO(api): POST /api/studies/{studyId}/attendances 의 withdrawals[] — 출석 저장과 한 요청
  */
 const LEFT_KEY = 'sc_participant_left';
 

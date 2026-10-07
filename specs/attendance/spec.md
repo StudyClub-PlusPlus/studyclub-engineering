@@ -242,6 +242,8 @@ countable_meetings = 스터디의 미팅 중
 | updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 400 |
 | updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 400 |
 
+> **추가 예정 (2026-10-07, 스펙작성중)** — 요청에 `withdrawals[]`(참여 중단할 명부 행 ID)를 더해, 출석부 「저장」 한 번에 출석과 참여 중단을 같은 트랜잭션으로 반영한다. 그때 「`updates` 빈 배열 → 400」은 「`updates` · `withdrawals` 가 모두 비면 400」이 된다. `withdrawals` 를 보내지 않는 호출은 지금과 같다. 필드 · 권한 · 대상 제한은 [참여 중단 스펙](../study-participant/spec.md).
+
 ### Response — 204 No Content
 
 응답 바디 없음.
