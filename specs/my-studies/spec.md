@@ -2,10 +2,10 @@
 
 > ERD: [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY](../../docs/erd/STUDY.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > 생성일: 2026-09-30
-> 상태: 구현완료
+> 상태: 구현완료 · 2026-10-07 담당 캡틴 확장(`captain` 플래그·반 편성 전 담당 스터디) 미구현
 >
 > Story PRD:
-> - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../planning/stories/crew-joined-studies/PRD.md)
+> - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../01-planning/stories/crew-joined-studies/PRD.md)
 >
 > 기준 프로토타입: playground `/proto/core/ko/my/joined`
 
@@ -13,7 +13,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/me/studies | 내 스터디 — 명부에 있는 스터디 전부 + 회차별 내 출석 | O | 구현완료 |
+| GET | /api/me/studies | 내 스터디 — 명부에 있는 스터디 전부 + 내가 담당 캡틴인 스터디 + 회차별 내 출석 | O | 구현완료 · 담당 캡틴 확장 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -37,6 +37,8 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 - **Path**: `/api/me/studies`
 - **인증**: 필요 (온보딩 완료 — `@RequireOnboarding`)
 - **설명**: 로그인 회원의 명부(`STUDY_PARTICIPANT`) 행마다 스터디 하나. 각 스터디에 내 반의 회차와 회차별 내 출석을 붙인다
+  - 여기에 **내가 담당 캡틴인 스터디**(`STUDY.CREATED_BY = 나` · `STATUS != DRAFT`)를 더한다. 담당 캡틴은 반 편성 때 명부에 들어가므로, 그 전에는 명부만 보면 카드가 생기지 않는다. 아래 [담당 캡틴 카드](#담당-캡틴-카드)
+  - 같은 스터디가 두 경로로 다 잡히면(반 편성 뒤) 한 개만 주고 명부 쪽 값을 쓴다. `captain` 은 true
 
 ### Query Parameters
 
@@ -97,8 +99,9 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].startAt | String (ISO 8601 UTC) | Y | `relation` 판정 기준 | STUDY.START_AT |
 | items[].endAt | String (ISO 8601 UTC) | Y | | STUDY.END_AT |
 | items[].relation | String | N | 나와의 관계 — 탭·배지. 아래 표 | 계산: `participantStatus` + `startAt` |
-| items[].participantStatus | String | N | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | STUDY_PARTICIPANT.STATUS |
-| items[].participantRole | String | N | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼. **담당 캡틴**(스터디를 생성한 캡틴)도 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다 — 담당 캡틴의 명부 편입과 역할 값은 후속 작업 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| items[].participantStatus | String | Y | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED`. 반 편성 전 담당 캡틴 카드는 null | STUDY_PARTICIPANT.STATUS |
+| items[].participantRole | String | Y | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼. 반 편성 전 담당 캡틴 카드는 null | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(스터디를 생성한 캡틴)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.CREATED_BY = 나` |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
 | items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
@@ -121,6 +124,22 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | `WITHDRAWN` | 명부 `WITHDRAWN` | 참여 종료 | 참여 종료 |
 
 `PAUSED` 는 아래 미확정. 확정 전까지 `ACTIVE` 와 같이 날짜로 `UPCOMING`/`ONGOING` 을 준다.
+
+#### 담당 캡틴 카드
+
+담당 캡틴도 그 스터디에 참여한다. 다만 명부에는 **반 편성 때** 들어간다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-07).
+
+- **반 편성 뒤** — 명부 행이 있다. 크루 카드와 똑같이 채우고 `captain` 만 true 다. 출석률·완주도 크루와 같다 (끝까지 참여하면 「완주」)
+- **반 편성 전** — 명부 행이 없고 `CREATED_BY = 나` 로만 잡힌다. 명부 값이 없으니 아래처럼 채운다
+
+| 필드 | 값 (반 편성 전) |
+|---|---|
+| `captain` | true |
+| `participantStatus` · `participantRole` | null |
+| `relation` | `STUDY.STATUS ∈ {ENDED, CLOSED}` 면 `COMPLETED`. 아니면 now < `startAt` → `UPCOMING`, 그 밖 → `ONGOING`. `WITHDRAWN` 은 나오지 않는다 |
+| `discordChannelUrl` · `driveUrl` | 그대로 준다 (캡틴은 링크를 본다 — [share 2026-09-30](../../docs/share/2026-09-30-study-detail-private-urls.md)) |
+| `attendanceRate` | null — 아직 출석 대상이 아니다 |
+| `meetings` | `[]` — 내 반이 없다 |
 
 #### 화면이 응답에서 계산하는 것
 
@@ -153,6 +172,10 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | 시작 전 회차에 EXCUSED 행 있음 | 그 회차 `attendanceStatus` EXCUSED, `countedInRate` false |
 | 편입(`JOINED_AT`) 전 지난 회차 | 격자에 나오고 `countedInRate` false |
 | 다른 회원의 명부·출석 | 응답에 안 나옴 |
+| 내가 만든(`CREATED_BY = 나`) OPEN 스터디, 반 편성 전(명부 행 없음) | 1건. `captain` true, `participantStatus`·`participantRole`·`attendanceRate` null |
+| 내가 만든 DRAFT 스터디 | 응답에 안 나옴 |
+| 다른 캡틴이 만든 스터디에 내가 신청해 명부 MEMBER | `captain` false |
+| 담당 캡틴, 반 편성 뒤(명부 MEMBER 행 있음) | 1건만. 명부 값(출석률·회차 포함) + `captain` true |
 | 토큰 없음 | 401 |
 | 온보딩 미완료 | 403 ONBOARDING_REQUIRED |
 

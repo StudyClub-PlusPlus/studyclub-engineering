@@ -4,12 +4,13 @@
 > 생성일: 2026-10-01
 > 갱신: 2026-10-04 — PR #163 리뷰 반영. 인가는 `@RequireAdmin`, 이메일은 마스킹 + 「보기」 + 감사 로그, 권한 변경 화면은 응답 뒤 반영, 미확정 정리 ([결정 기록](#결정-기록))
 > 갱신: 2026-10-05 — 권한 변경 성공 시 디스코드 설정 안내 추가. 디스코드 역할은 자동으로 바꾸지 않는다
-> 갱신: 2026-10-07 — POL-0001 변경(#199 등) 반영. 권한표 스터디 단위에 「회차 관리」 행, 담당 캡틴 명부 행도 「참여 중」으로 센다 (기획 확인 대기 — [미확정](#미확정))
+> 갱신: 2026-10-07 — POL-0001 변경(#199 등) 반영. 권한표 스터디 단위에 「회차 관리」 행, 담당 캡틴 명부 행도 「참여 중」으로 센다
+> 갱신: 2026-10-08 — `beta` 반영: 기획 폴더 `01-planning/` 이동, #206 의 [admin-users](../admin-users/spec.md) 를 이 스펙이 대체, POL-0001 담당 캡틴 = `STUDY.CREATED_BY`·반 편성 때 명부 편입(#208)
 > 상태: 스펙작성중 — 남은 미확정 1건 (감사 로그 보관 기간)
 >
 > Story PRD:
-> - [캡틴으로서, 전체 회원 리스트를 조회할 수 있다](../../planning/stories/captain-list-users/PRD.md)
-> - [캡틴으로서, 유저에게 서로 다른 역할과 권한을 줄 수 있다](../../planning/stories/captain-grant-roles/PRD.md)
+> - [캡틴으로서, 전체 회원 리스트를 조회할 수 있다](../../01-planning/stories/captain-list-users/PRD.md)
+> - [캡틴으로서, 유저에게 서로 다른 역할과 권한을 줄 수 있다](../../01-planning/stories/captain-grant-roles/PRD.md)
 >
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) — 계정 권한(캡틴·크루)과 스터디 역할(네비게이터)은 다른 층이다
 > 관련: [authz-guards/spec.md](../authz-guards/spec.md) — 인가는 이 스펙을 따른다. [back-office-login/spec.md](../back-office-login/spec.md) — 「2단계 — 역할 부여」를 이 스펙이 받는다. [user-leave/spec.md](../user-leave/spec.md) — 탈퇴 계정은 물리 삭제라 목록에 나오지 않는다
@@ -42,7 +43,8 @@
 - **네비게이터는 계정 값이 아니다.** 한 사람이 여러 스터디를 맡을 수 있고 맡은 스터디마다 명부 행이 따로 선다. 그래서 `PATCH …/role` 은 `ADMIN`·`MEMBER` 둘만 받는다.
 - 「담당 스터디가 있다」 = 명부 행 중 `PARTICIPANT_ROLE ∈ {LEADER, CO_LEADER}` 이고 `STATUS ∈ {ACTIVE, PAUSED}` 인 것이 하나라도 있다. `CO_LEADER` 는 POL-0001 이 없애기로 했지만 enum·데이터가 남아 있어 [`StudyCaptainGuard`](../../backend/api/src/main/java/com/studyclub/api/study/StudyCaptainGuard.java) 처럼 함께 본다 — 정리되면 여기서도 빠진다.
 - 「참여 중인 스터디」 = 명부 행 중 `STATUS ∈ {ACTIVE, PAUSED}` 인 것의 `STUDY_ID` 개수(중복 제거). 하차(`WITHDRAWN`)·완주(`COMPLETED`)는 지난 일이라 세지 않는다.
-  - `PARTICIPANT_ROLE` 은 가리지 않는다. POL-0001 대로 **담당 캡틴이 스터디를 만들 때 명부에 들어가면**(백엔드 미구현) 그 행도 센다 — 스터디를 맡아 운영 중인 캡틴을 「휴면」으로 적지 않는다. 담당 캡틴 행은 `LEADER` 가 아니므로 「담당 스터디(네비게이터)」에는 잡히지 않는다.
+  - `PARTICIPANT_ROLE` 은 가리지 않는다. POL-0001 대로 **담당 캡틴(`STUDY.CREATED_BY`)도 그 스터디에 참여한다** — 반 편성 때 `MEMBER` 로 명부에 들어가며, 그 행도 센다. 담당 캡틴 행은 `LEADER` 가 아니므로 「담당 스터디(네비게이터)」에는 잡히지 않는다.
+  - 반 편성 **전**의 담당 캡틴은 명부 행이 없어 세지 않는다 ([미확정](#미확정)).
 
 ### 인가 — authz-guards 를 따른다
 
@@ -548,7 +550,7 @@ Notion 스토리 본문의 시스템 요건을 이 레포의 규약·스키마�
 
 ## 범위 밖
 
-- 네비게이터 지정·해제 — 스터디 크루 명단 소관 ([captain-view-attendees](../../planning/stories/captain-view-attendees/PRD.md))
+- 네비게이터 지정·해제 — 스터디 크루 명단 소관 ([study-group](../study-group/spec.md) · [captain-view-attendees](../../01-planning/stories/captain-view-attendees/PRD.md))
 - 회원 상세 화면 · 초대 · 정지 · 탈퇴 처리 · 명단 내보내기(CSV)
 - 정지 계정 — `ACCOUNT` 에 정지 상태가 없다. 생기면 목록 포함 여부를 그때 정한다
 - `CO_LEADER` 제거 — 별도 작업 (POL-0001)
@@ -573,5 +575,5 @@ Notion 스토리 본문의 시스템 요건을 이 레포의 규약·스키마�
 - 「변경 중」·「보기」 처리 중·실패 안내의 화면 모양 — 디자인에서 정한다. API 계약에는 영향 없음. 정해지기 전까지 실패는 `errorMessage` 토스트
 - 이메일 「보기」·마스킹·감사 로그는 아직 기획 문서(Notion·PRD)에 없다 — 기획 반영은 기획 쪽에서
 - **권한표에 POL-0001 「신청 폼 · 신청 결과」 표를 넣을지** — 기획 확인 대기. 지금은 넣지 않는다 ([권한표](#역할별-기본-권한표-조회)). 넣기로 하면 서버 정의에 그룹 추가 + 화면 열 이름표에 「담당 캡틴」·「다른 캡틴」
-- **담당 캡틴의 명부 행을 「참여 중」으로 셀지** — 기획 확인 대기. 지금은 센다 ([용어](#먼저-읽을-것--용어와-저장-값)). 바꾸면 목록 DAO 의 조건 한 곳
+- **반 편성 전 담당 캡틴을 「참여 중」으로 볼지** — 기획 확인 대기. 지금은 명부 행만 세므로 스터디를 만들고 반 편성 전인 캡틴은 「휴면」으로 보일 수 있다. 「`CREATED_BY = 나` 이고 끝나지 않은 스터디」도 세기로 하면 목록 DAO 의 조건 한 곳 ([용어](#먼저-읽을-것--용어와-저장-값))
 - 프로토 권한표에 「회차 관리」 행이 없다 — POL-0001 과 맞추는 것은 기획 쪽에서
