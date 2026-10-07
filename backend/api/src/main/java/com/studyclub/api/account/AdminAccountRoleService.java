@@ -35,10 +35,12 @@ public class AdminAccountRoleService {
         //    다시 센 값을 보므로 캡틴이 0명이 되지 않는다
         List<Account> admins = accountRepository.findAllAdminsForUpdate();
 
-        // 2. 대상이 없으면 404
+        // 2. 대상 행도 명시적으로 잠그고 읽는다. 없으면 404. 잠금 순서는 언제나 「ADMIN 스캔 → 대상 행」이라 교착이 없다.
+        //    (SYSTEM_ROLE 에 인덱스가 없는 MySQL REPEATABLE READ 에서는 1 이 사실상 ACCOUNT 전체 행을 잠가 대상도 보호되지만,
+        //    READ COMMITTED 이거나 인덱스가 생기면 그렇지 않다 — 같은 시각의 온보딩 갱신을 우리 UPDATE 가 덮어쓰지 않게 직접 잠근다)
         Account target =
                 accountRepository
-                        .findById(targetId)
+                        .findByIdForUpdate(targetId)
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다."));
 

@@ -51,7 +51,7 @@ class AdminAccountRoleServiceTest {
         // 동시 요청에서 앞 요청이 이미 커밋한 뒤의 시점: 요청자(1)는 이미 크루가 됐고 ADMIN 은 대상(2) 하나뿐
         Account target = account(TARGET_ID, SystemRole.ADMIN);
         givenAdmins(target);
-        when(accountRepository.findById(TARGET_ID)).thenReturn(Optional.of(target));
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
 
         assertThatThrownBy(() -> service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER))
                 .isInstanceOfSatisfying(
@@ -67,7 +67,7 @@ class AdminAccountRoleServiceTest {
         Account actor = account(ACTOR_ID, SystemRole.ADMIN);
         Account target = account(TARGET_ID, SystemRole.ADMIN);
         givenAdmins(actor, target);
-        when(accountRepository.findById(TARGET_ID)).thenReturn(Optional.of(target));
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
 
         var response = service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER);
 
@@ -88,7 +88,7 @@ class AdminAccountRoleServiceTest {
         Account actor = account(ACTOR_ID, SystemRole.ADMIN);
         Account target = account(TARGET_ID, SystemRole.MEMBER);
         givenAdmins(actor);
-        when(accountRepository.findById(TARGET_ID)).thenReturn(Optional.of(target));
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
 
         service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.ADMIN);
 
@@ -101,7 +101,7 @@ class AdminAccountRoleServiceTest {
     void sameValueComesBeforeLastAdminCheck() {
         Account target = account(TARGET_ID, SystemRole.ADMIN);
         givenAdmins(target);
-        when(accountRepository.findById(TARGET_ID)).thenReturn(Optional.of(target));
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
 
         var response = service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.ADMIN);
 
@@ -114,7 +114,7 @@ class AdminAccountRoleServiceTest {
     void selfComesBeforeSameValue() {
         Account actor = account(ACTOR_ID, SystemRole.ADMIN);
         givenAdmins(actor, account(TARGET_ID, SystemRole.ADMIN));
-        when(accountRepository.findById(ACTOR_ID)).thenReturn(Optional.of(actor));
+        when(accountRepository.findByIdForUpdate(ACTOR_ID)).thenReturn(Optional.of(actor));
 
         assertThatThrownBy(() -> service.changeSystemRole(ACTOR_ID, ACTOR_ID, SystemRole.ADMIN))
                 .isInstanceOfSatisfying(
@@ -127,7 +127,7 @@ class AdminAccountRoleServiceTest {
     @DisplayName("판정 순서 - 대상이 없으면 NOT_FOUND (2 가 3 보다 먼저)")
     void notFoundComesBeforeSelfCheck() {
         givenAdmins(account(ACTOR_ID, SystemRole.ADMIN));
-        when(accountRepository.findById(ACTOR_ID)).thenReturn(Optional.empty());
+        when(accountRepository.findByIdForUpdate(ACTOR_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.changeSystemRole(ACTOR_ID, ACTOR_ID, SystemRole.MEMBER))
                 .isInstanceOfSatisfying(
@@ -140,14 +140,14 @@ class AdminAccountRoleServiceTest {
     @DisplayName("판정 순서 - 판정 전에 ADMIN 행 잠금 조회가 먼저 일어난다 (1)")
     void locksAdminRowsFirst() {
         givenAdmins(account(ACTOR_ID, SystemRole.ADMIN));
-        when(accountRepository.findById(TARGET_ID)).thenReturn(Optional.empty());
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.ADMIN))
                 .isInstanceOf(BusinessException.class);
 
         var order = inOrder(accountRepository);
         order.verify(accountRepository).findAllAdminsForUpdate();
-        order.verify(accountRepository).findById(TARGET_ID);
+        order.verify(accountRepository).findByIdForUpdate(TARGET_ID);
     }
 
     private void givenAdmins(Account... admins) {

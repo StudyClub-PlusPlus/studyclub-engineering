@@ -76,7 +76,10 @@ public class AdminAuditLog extends BaseEntity {
                 actorAccountId, AdminAuditAction.EMAIL_REVEAL, targetAccountId, null, null);
     }
 
-    /** 계정 권한 변경. 값이 실제로 바뀐 경우에만 남긴다 — 호출자가 {@code Account.changeSystemRole} 의 반환값으로 판단한다. */
+    /**
+     * 계정 권한 변경. 값이 실제로 바뀐 경우에만 남긴다 — 같은 값 요청인지는 호출자(서비스)가 전이 전에 {@code before == after} 로 걸러 이 팩토리를
+     * 부르지 않는다.
+     */
     public static AdminAuditLog roleChange(
             Long actorAccountId, Long targetAccountId, SystemRole before, SystemRole after) {
         return new AdminAuditLog(

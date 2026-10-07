@@ -2,16 +2,20 @@ package com.studyclub.api.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
 
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.audit.AdminAuditLogRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +53,7 @@ class AdminAccountRoleIntegrationTest {
     @Autowired AccountRepository accountRepository;
     @Autowired JdbcTemplate jdbcTemplate;
     @MockitoSpyBean AdminAuditLogRepository adminAuditLogRepository;
+    @PersistenceContext EntityManager entityManager;
 
     @BeforeEach
     void seed() {
@@ -183,9 +188,19 @@ class AdminAccountRoleIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 감사 기록 저장이 실패하면 권한도 바뀌지 않는다 (500 INTERNAL_ERROR)")
+    @DisplayName("실패 - 감사 행을 넣은 직후 실패해도 권한은 그대로이고 행도 롤백된다 (500 INTERNAL_ERROR, 기록 0행)")
     void roleIsNotChangedWhenAuditLogFails() {
-        doThrow(new IllegalStateException("audit store down"))
+        // 진짜 INSERT 가 일어난 뒤에 실패시킨다. 스파이는 인터페이스 프록시라 callRealMethod 가 안 되므로(abstract real method),
+        // 같은 트랜잭션에 묶인 EntityManager 로 직접 넣고 flush 한 뒤 던진다 — 감사 행과 권한 변경이 함께 롤백되는지 본다
+        AtomicReference<Object> inserted = new AtomicReference<>();
+        doAnswer(
+                        inv -> {
+                            AdminAuditLog log = inv.getArgument(0);
+                            entityManager.persist(log);
+                            entityManager.flush();
+                            inserted.set(log);
+                            throw new IllegalStateException("boom");
+                        })
                 .when(adminAuditLogRepository)
                 .save(any());
 
@@ -194,6 +209,8 @@ class AdminAccountRoleIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody()).containsEntry("errorCode", "INTERNAL_ERROR");
         assertThat(roleOf(TARGET_MEMBER_ID)).isEqualTo("MEMBER");
+        // 진짜 INSERT 가 일어났다는 증거 — IDENTITY 키가 이미 채워져 있다
+        assertThat(((AdminAuditLog) inserted.get()).getId()).isNotNull();
         assertThat(auditRows()).isEmpty();
     }
 
