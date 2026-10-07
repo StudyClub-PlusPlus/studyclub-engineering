@@ -1,103 +1,115 @@
 'use client';
 
-// 유저 (스터디원 + 운영진 통합) — 실제 DB 유저를 백엔드에서 조회.
+// 유저 — 가입한 회원 목록·이메일 보기·계정 권한 변경.
+// 정렬·필터·검색·페이지는 서버가 한다(GET /api/admin/users). 화면에서 다시 거르지 않는다.
+// 서버 상태는 features/users/queries.ts, 이 페이지는 탭·검색·페이지 입력과 「보기」로 받은 원본만 들고 있다.
+import { useEffect, useMemo, useState } from 'react';
+
+import { Pagination, Segmented } from '@studyclub/ui';
+import { Info } from 'lucide-react';
+
 import { PageHeader } from '@/components/ui';
+import { PermissionMatrixDialog } from '@/features/users/components/PermissionMatrixDialog';
+import { UsersTable } from '@/features/users/components/UsersTable';
+import { TAB_OPTIONS } from '@/features/users/labels';
 import { useUsers } from '@/features/users/queries';
-
-const ROLE_LABEL: Record<string, string> = {
-  STUDENT: '스터디원',
-  OPERATOR: '운영진',
-  ADMIN: '관리자',
-};
-
-const ROLE_STYLE: Record<string, { fg: string; bg: string }> = {
-  STUDENT: { fg: 'var(--color-brand)', bg: 'var(--color-brand-subtle)' },
-  OPERATOR: { fg: 'var(--color-ongoing)', bg: 'var(--color-ongoing-soft)' },
-  ADMIN: { fg: 'var(--color-recruiting)', bg: 'var(--color-recruiting-soft)' },
-};
-
-function RoleBadge({ role }: { role: string }) {
-  const s = ROLE_STYLE[role] ?? ROLE_STYLE.STUDENT;
-  return (
-    <span
-      className='inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold'
-      style={{ color: s.fg, background: s.bg }}
-    >
-      <span className='h-1.5 w-1.5 rounded-full' style={{ background: s.fg }} />
-      {ROLE_LABEL[role] ?? role}
-    </span>
-  );
-}
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('ko-KR');
-}
+import { USER_PAGE_SIZE, type UserFilter, type UserRole } from '@/features/users/types';
+import { useRevealedEmails } from '@/features/users/useRevealedEmails';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 
 export default function UsersAdmin() {
-  const { data: users, error, isPending } = useUsers();
+  const [tab, setTab] = useState<UserRole>('ALL');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [matrixOpen, setMatrixOpen] = useState(false);
+
+  // 타이핑마다 부르지 않는다. 서버에는 앞뒤 공백을 자른 값을 보낸다.
+  const q = useDebouncedValue(search.trim(), 300);
+  // 검색어가 바뀌면 첫 페이지부터 — 렌더 중에 맞춘다(React 권장 패턴)
+  const [prevQ, setPrevQ] = useState(q);
+  if (prevQ !== q) {
+    setPrevQ(q);
+    setPage(1);
+  }
+
+  const filter = useMemo<UserFilter>(
+    () => ({
+      role: tab,
+      q: q || undefined,
+      offset: (page - 1) * USER_PAGE_SIZE,
+      limit: USER_PAGE_SIZE,
+    }),
+    [tab, q, page],
+  );
+
+  const { data, error, isPending, isPlaceholderData, dataUpdatedAt } = useUsers(filter);
+  const { emails, reveal } = useRevealedEmails(dataUpdatedAt);
+
+  // 권한을 바꾼 뒤 필터 결과가 줄면 지금 페이지가 범위 밖일 수 있다(서버는 빈 items + 실제 total).
+  // 에러가 아니므로 total 로 마지막 페이지를 계산해 다시 부른다.
+  useEffect(() => {
+    if (!data || isPlaceholderData) return;
+    if (data.items.length === 0 && data.total > 0 && data.offset >= data.total) {
+      setPage(Math.ceil(data.total / data.limit));
+    }
+  }, [data, isPlaceholderData]);
+
+  const pageCount = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
   return (
     <div>
-      <PageHeader title='유저' subtitle='스터디원 · 운영진 (실제 가입 계정)' />
+      <PageHeader
+        title='유저'
+        action={
+          <button
+            type='button'
+            onClick={() => setMatrixOpen(true)}
+            title='역할별 기본 권한'
+            aria-label='역할별 기본 권한'
+            className='grid h-8 w-8 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+          >
+            <Info size={17} />
+          </button>
+        }
+      />
+
+      <div className='mb-3 flex flex-wrap items-center gap-3'>
+        {/* 탭은 넷뿐이라 접어 둘 이유가 없다 — 펴 두면 지금 무엇으로 걸러져 있는지 한눈에 보인다 */}
+        <Segmented
+          shape='pill'
+          options={TAB_OPTIONS}
+          value={tab}
+          onChange={(next) => {
+            setTab(next);
+            setPage(1);
+          }}
+        />
+        <input
+          type='search'
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder='이름 · 이메일 검색'
+          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+        />
+        {/* 탭·검색으로 걸러진 뒤의 수다 — 표 위에 두어야 무엇을 세고 있는지가 분명하다 */}
+        <span className='tnum ml-auto text-sm text-fg-muted'>{data && `총 ${data.total}명`}</span>
+      </div>
 
       {error && (
-        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-red-600'>
+        <div className='mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-red-600'>
           {error.message}
         </div>
       )}
 
-      {isPending && (
-        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-muted)]'>
-          불러오는 중…
-        </div>
+      {isPending && !error ? (
+        <p className='py-10 text-center text-sm text-fg-muted'>불러오는 중…</p>
+      ) : (
+        data && <UsersTable rows={data.items} revealed={emails} onReveal={reveal} />
       )}
 
-      {users?.length === 0 && (
-        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-muted)]'>
-          아직 가입한 유저가 없어요. 구글 로그인으로 첫 유저가 생기면 여기 표시됩니다.
-        </div>
-      )}
+      <Pagination page={page} total={pageCount} onChange={setPage} className='mt-4' />
 
-      {users && users.length > 0 && (
-        <div className='overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)]'>
-          <table className='w-full text-sm'>
-            <thead>
-              <tr className='border-b border-[var(--color-border)] text-left text-xs text-[var(--color-fg-muted)]'>
-                <th className='px-4 py-3 font-medium'>유저</th>
-                <th className='px-4 py-3 font-medium'>이메일</th>
-                <th className='px-4 py-3 font-medium'>역할</th>
-                <th className='px-4 py-3 font-medium'>가입일</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className='border-b border-[var(--color-border)] last:border-0'>
-                  <td className='px-4 py-3'>
-                    <div className='flex items-center gap-3'>
-                      {u.picture ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={u.picture} alt='' className='h-8 w-8 rounded-full' />
-                      ) : (
-                        <div className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-surface-subtle)] text-xs font-bold'>
-                          {(u.nickname ?? u.email).slice(0, 1).toUpperCase()}
-                        </div>
-                      )}
-                      <span className='font-medium'>{u.nickname ?? '-'}</span>
-                    </div>
-                  </td>
-                  <td className='px-4 py-3 text-[var(--color-fg-muted)]'>{u.email}</td>
-                  <td className='px-4 py-3'>
-                    <RoleBadge role={u.role} />
-                  </td>
-                  <td className='px-4 py-3 tabular-nums text-[var(--color-fg-muted)]'>{fmtDate(u.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <PermissionMatrixDialog open={matrixOpen} onClose={() => setMatrixOpen(false)} />
     </div>
   );
 }
