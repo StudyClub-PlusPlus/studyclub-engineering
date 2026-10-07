@@ -17,6 +17,7 @@
 | 스터디 회차 | [study-meeting/](./study-meeting/) | 스펙작성중 | `/api/studies/{studyId}/meetings` — 네비게이터의 분반 회차 조회·추가(반복)·수정·삭제. 기획: [회차 등록](../01-planning/stories/navigator-register-sessions/PRD.md) |
 | 회원 탈퇴 | [user-leave/](./user-leave/) | 스펙작성중 | `DELETE /api/me` — 계정 즉시 삭제, 데이터 파기·보존 정책 |
 | 회원 관리 (백오피스) | [admin-users/](./admin-users/) | 스펙작성중 | `/api/admin/users` — 회원 목록 · 계정 권한(캡틴↔크루) 변경. 기획: [회원 목록](../01-planning/stories/captain-list-users/PRD.md) · [권한](../01-planning/stories/captain-grant-roles/PRD.md) |
+| 참여 중단 (사용자 사이트) | [study-participant/](./study-participant/) | 스펙작성중 | `/api/studies/{studyId}/participants/{participantId}/withdraw` · `/restore` — 네비게이터가 출석부에서 참여 중단 · 다시 참여. 기획: [참여 중단](../01-planning/stories/navigator-withdraw-participant/PRD.md) |
 | 분반 · 참여 명단 (백오피스) | [study-group/](./study-group/) | 스펙작성중 | 참여 명단 · 네비게이터 지정 · 가능 시간 집계 · 반 만들기·수정·삭제 · 반 지정. 기획: [참석자](../01-planning/stories/captain-view-attendees/PRD.md) · [반 편성](../01-planning/stories/captain-assign-classes/PRD.md) |
 
 ## 도메인 외 스펙

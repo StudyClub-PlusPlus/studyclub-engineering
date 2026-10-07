@@ -73,11 +73,11 @@ flowchart LR
 
 ### 2-1. 스터디를 중단한 사람
 
-- **내용**: 흐린 이름 + 「참여 중단」 칩. 중단 일자 뒤 회차 칸은 「—」 (누를 수 없다)
+- **내용**: 흐린 이름 + 「참여 중단」 칩. 중단 시각 뒤에 시작하는 회차 칸은 「—」 (누를 수 없다)
 - **정책**
   - 하차·제명을 가르지 않는다. 사유는 보이지도 저장하지도 않는다
   - 맨 아래 줄로 내린다. 줄을 지우지 않는다 — 중단 전 출석은 남고 고칠 수 있다
-  - 출석률은 중단 일자까지의 회차만 센다. 숫자는 회색 · 보통 굵기
+  - 출석률은 중단 시각까지의 회차만 센다. 숫자는 회색 · 보통 굵기
 - **데이터**: `STUDY_PARTICIPANT.STATUS = WITHDRAWN` · `LEFT_AT`
 
 ### 3. 저장 바
@@ -135,13 +135,13 @@ erDiagram
   STUDY_PARTICIPANT {
     varchar PARTICIPANT_ROLE "LEADER = 네비게이터"
     varchar STATUS "ACTIVE · PAUSED · WITHDRAWN"
-    datetime LEFT_AT "참여 중단 일자"
+    datetime LEFT_AT "참여 중단 시각"
   }
 ```
 
 ### 비고
 
-- 범위 밖: 회차 추가·수정(일정 탭 — [회차 등록 PRD](../navigator-register-sessions/PRD.md)), 스터디 전체 참여자 출석부(백오피스 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md)), 디스코드 출석 체크, 참여자 제명
+- 범위 밖: 회차 추가·수정(일정 탭 — [회차 등록 PRD](../navigator-register-sessions/PRD.md)), 스터디 전체 참여자 출석부(백오피스 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md)), 디스코드 출석 체크, 참여 중단 · 다시 참여([navigator-withdraw-participant](../navigator-withdraw-participant/PRD.md))
 - 미구현: 저장은 브라우저에만 남는다
 - 구현 지시: 칸 값 · 순환 · 저장 방식은 백오피스 출석부와 같은 컴포넌트를 쓴다. 다른 점은 보이는 참여자 범위와 머리 줄을 숨기는 것뿐이다
 - 옛 출석 기록 주소 `/my/joined/{id}/attendance` 는 이 탭(`/my/joined/{id}/schedule/attendance`)으로 보낸다
@@ -196,5 +196,5 @@ erDiagram
 ## 4. 미확정
 
 - 미체크로 되돌린 칸을 저장하는 방법 — 쓰기 API 는 네 값만 받는다
-- 네비게이터 쓰기를 맡은 분반 칸으로 좁힐지. 지금 서버 검증은 스터디 단위다
+- ~~네비게이터 쓰기를 맡은 분반 칸으로 좁힐지~~ → 분반 단위. 타 분반 네비게이터는 403 ([authz-guards](../../../specs/authz-guards/spec.md) B, 2026-10-07)
 - ~~캡틴(`SYSTEM_ROLE = ADMIN`)이 사용자 사이트에서 쓸 때의 권한 판정~~ → 그 스터디를 만든 캡틴만 고친다. 다른 캡틴은 크루 (2026-10-06)

@@ -6,7 +6,7 @@ import { ClassPicker } from '@console/components/ClassPicker';
 import { type StudyClass } from '@console/lib/classes';
 import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
 import { Badge, Button } from '@studyclub/ui';
-import { CalendarPlus, Mic } from 'lucide-react';
+import { CalendarPlus, Mic, UserCheck, UserMinus } from 'lucide-react';
 
 /**
  * 출석 탭 — 크루 × 회차 격자.
@@ -27,6 +27,9 @@ import { CalendarPlus, Mic } from 'lucide-react';
  * - `presentersOf`: 그 회차 발표자. 칸에 발표 표시를 붙이고 이름 옆에 발표 횟수를 센다
  *   (발표 여부는 따로 입력하지 않는다 — 일정의 발표자1·2가 정본이다)
  * - `notCounted`: 출석률에 넣지 않는 회차(킥오프). 칸은 보이고 체크도 한다
+ * - `onWithdraw` · `onRestore`: 사용자 사이트 네비게이터의 참여 중단 · 다시 참여. `manageable` 인 줄에만 버튼이 붙는다.
+ *   고친 칸이 남아 있으면 누를 수 없다 — 줄이 움직이면 어느 칸을 고쳤는지 놓친다
+ * - `startAt`: 회차 시작 시각(HH:mm). 중단 시각과 견줘 그 뒤에 시작한 회차를 「—」로 비운다
  */
 
 type AttendanceBook = Record<string, Record<string, AttendanceStatus>>;
@@ -146,6 +149,48 @@ function Cell({
   );
 }
 
+/**
+ * 이름 칸 끝의 작은 아이콘 버튼 — 참여 중단(활동 중인 줄) · 다시 참여(중단한 줄).
+ * 바로 바꾸지 않는다. 누르면 확인 창이 뜬다(부모가 띄운다).
+ * 고친 칸이 있으면 막는다. disabled 대신 aria-disabled — 가리키면 이유가 보이고 키보드로도 닿는다.
+ */
+const BLOCKED_HINT_ID = 'participation-blocked-hint';
+const BLOCKED_HINT = '출석을 먼저 저장해 주세요. 참여 중단 · 다시 참여는 저장한 뒤에 할 수 있습니다.';
+
+function ParticipationButton({
+  name,
+  left,
+  blocked,
+  onClick,
+  onBlocked,
+}: {
+  name: string;
+  left: boolean;
+  blocked: boolean;
+  onClick: () => void;
+  /** 막혔을 때 누르면 — 이유를 화면에 보인다(가리키기 툴팁은 터치·키보드에서 안 보인다). */
+  onBlocked: () => void;
+}) {
+  const action = left ? '다시 참여' : '참여 중단';
+  const Icon = left ? UserCheck : UserMinus;
+  return (
+    <button
+      type='button'
+      aria-label={`${name} ${action}`}
+      aria-disabled={blocked || undefined}
+      aria-describedby={blocked ? BLOCKED_HINT_ID : undefined}
+      title={blocked ? '출석을 먼저 저장해 주세요' : action}
+      onClick={blocked ? onBlocked : onClick}
+      // 보이는 크기는 28px, 누르는 자리는 44px — 줄 높이를 늘리지 않고 터치 대상을 넓힌다.
+      className={`relative grid h-7 w-7 place-items-center rounded-sm text-fg-muted transition-colors after:absolute after:-inset-2 after:content-[''] ${
+        blocked ? 'cursor-not-allowed opacity-40' : 'hover:bg-surface-2 hover:text-fg'
+      }`}
+    >
+      <Icon size={15} aria-hidden />
+    </button>
+  );
+}
+
 export function AttendanceTab({
   crew,
   meetings,
@@ -161,6 +206,9 @@ export function AttendanceTab({
   presentersOf,
   notCounted,
   headOf,
+  onWithdraw,
+  onRestore,
+  startAt = '00:00',
 }: {
   study: Study;
   /** 이름 칸에 쓰는 것만 받는다 — 사용자 사이트는 명부 밖의 「나」도 넣는다. */
@@ -168,6 +216,8 @@ export function AttendanceTab({
     role?: 'captain' | 'navigator';
     /** 스터디를 중단한 사람 — 이름을 흐리게, 칩 문구, 중단 일자(이 날 뒤 회차는 「—」·출석률 제외). */
     left?: { label: string; at: string };
+    /** 참여 중단 · 다시 참여 버튼을 붙일 줄 — 나 · 캡틴 · 네비게이터 줄은 비운다. */
+    manageable?: boolean;
   })[];
   meetings: StudyMeeting[];
   attendance: AttendanceBook;
@@ -184,11 +234,16 @@ export function AttendanceTab({
   notCounted?: Set<string>;
   /** 열 머리 — 기본 「3회」. 킥오프는 「킥오프」. */
   headOf?: (meeting: StudyMeeting) => string;
+  onWithdraw?: (crewId: string) => void;
+  onRestore?: (crewId: string) => void;
+  startAt?: string;
 }) {
   const [draft, setDraft] = useState(() => cloneBook(attendance));
   const [saving, setSaving] = useState(false);
   /** 결과 문구는 화면에 두지 않는다. 스크린리더만 저장 결과를 듣는다. */
   const [announce, setAnnounce] = useState('');
+  /** 막힌 중단 버튼을 눌렀을 때 저장 바에 이유를 보인다. 저장·취소로 고친 칸이 없어지면 사라진다. */
+  const [blockedHint, setBlockedHint] = useState(false);
 
   useEffect(() => {
     setDraft(cloneBook(attendance));
@@ -196,6 +251,7 @@ export function AttendanceTab({
 
   const pending = changedCount(draft, attendance);
   const dirty = pending > 0;
+  const showBlockedHint = blockedHint && dirty;
 
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -227,6 +283,7 @@ export function AttendanceTab({
   async function save() {
     if (!dirty || saving) return;
     setSaving(true);
+    setBlockedHint(false);
     await onSave(cloneBook(draft));
     setSaving(false);
     setAnnounce(`출석 ${pending}칸을 저장했습니다.`);
@@ -234,6 +291,7 @@ export function AttendanceTab({
 
   function revert() {
     if (saving) return;
+    setBlockedHint(false);
     setDraft(cloneBook(attendance));
   }
 
@@ -313,7 +371,8 @@ export function AttendanceTab({
                   const row = draft[c.id];
                   // 킥오프처럼 세지 않는 회차는 칸에만 두고 출석률에서 뺀다.
                   // 중단한 사람은 중단 일자 뒤 회차를 칸에서 비우고 출석률에서도 뺀다.
-                  const gone = (s: StudyMeeting) => Boolean(c.left && s.date > c.left.at);
+                  // 시각으로 견준다 — 같은 날이라도 중단한 뒤에 시작한 회차는 비운다.
+                  const gone = (s: StudyMeeting) => Boolean(c.left && `${s.date}T${startAt}` > c.left.at);
                   const goneIds = new Set(meetings.filter(gone).map((s) => s.id));
                   const counted = row
                     ? Object.fromEntries(Object.entries(row).filter(([id]) => !notCounted?.has(id) && !goneIds.has(id)))
@@ -338,6 +397,20 @@ export function AttendanceTab({
                           )}
                           {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
                           {c.role && <Badge tone={c.role}>{c.role === 'captain' ? '캡틴' : '네비게이터'}</Badge>}
+                          {!readOnly && c.manageable && (c.left ? onRestore : onWithdraw) && (
+                            <span data-anno='book:3-7' className='ml-auto pl-2'>
+                              <ParticipationButton
+                                name={c.name}
+                                left={Boolean(c.left)}
+                                blocked={dirty || saving}
+                                onClick={() => (c.left ? onRestore : onWithdraw)?.(c.id)}
+                                onBlocked={() => {
+                                  setBlockedHint(true);
+                                  setAnnounce(BLOCKED_HINT);
+                                }}
+                              />
+                            </span>
+                          )}
                         </span>
                       </td>
                       {presentersOf && (
@@ -398,6 +471,15 @@ export function AttendanceTab({
           </p>
           {!readOnly && (
             <div className='sticky bottom-0 z-10 mt-4 flex items-center justify-end gap-2 bg-bg py-2'>
+              {/* 중단 버튼이 막힌 이유 — 늘 스크린리더 설명으로 두고, 막힌 버튼을 누르면 화면에도 보인다 */}
+              {dirty && (onWithdraw || onRestore) && (
+                <p
+                  id={BLOCKED_HINT_ID}
+                  className={showBlockedHint ? 'mr-auto text-xs text-fg-secondary' : 'sr-only'}
+                >
+                  {BLOCKED_HINT}
+                </p>
+              )}
               {dirty && (
                 <Button variant='ghost' size='sm' onClick={revert} disabled={saving}>
                   변경 취소
