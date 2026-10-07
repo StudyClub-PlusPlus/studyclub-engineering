@@ -149,6 +149,24 @@
 | 출석 기록 없음 | 변화 대신 안내 | 「아직 출석 기록이 없습니다.」 |
 | 카테고리 0건 | 막대 대신 안내 | 「해당하는 스터디가 없습니다.」 |
 
+### 데이터 관계
+
+```mermaid
+erDiagram
+  STUDY ||--o{ STUDY_GROUP : "분반"
+  STUDY_GROUP ||--o{ STUDY_PARTICIPANT : "명부"
+  STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
+  STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
+  ACCOUNT ||--o{ STUDY_PARTICIPANT : ""
+  STUDY {
+    varchar STATUS
+    varchar CATEGORY
+  }
+  ACCOUNT {
+    varchar REGION_GROUP
+  }
+```
+
 ### 비고
 
 - 추세 차트만 최근 12주를 본다. 나머지는 전기간이다
@@ -196,3 +214,9 @@
 
 - 위젯별로 따로 부른다. 하나가 실패해도 전체가 에러 화면으로 바뀌지 않는다
 - 캡틴만 연다. **라우팅 가드만으로 처리하지 않고** 모든 `/api/admin/*` 에서 서버가 역할을 검증한다 — [POL-0001](../../_registry/policies/POL-0001-roles.md)
+
+## 4. 미확정
+
+- 집계를 서버 한 곳에서 할지
+- 「주」의 경계를 어느 시간대 기준으로 자를지
+- 활성 크루의 「진행 중」에 모집중(`OPEN`) 스터디를 포함할지

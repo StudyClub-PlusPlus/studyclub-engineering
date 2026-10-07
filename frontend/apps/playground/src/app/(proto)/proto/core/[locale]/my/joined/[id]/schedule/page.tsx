@@ -7,12 +7,12 @@ import { MANAGE_SPEC, SCHEDULE_SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 export default function StudyManageSchedulePage() {
-  const { study, group, role, canEdit, setDirty } = useManage();
+  const { study, group, canEdit, setDirty } = useManage();
   return (
     <>
       <ScreenSpecRegistrar spec={MANAGE_SPEC} />
       <ScreenSpecRegistrar spec={SCHEDULE_SPEC} />
-      <ScheduleManager study={study} group={group} role={role} canEdit={canEdit} onDirtyChange={setDirty} />
+      <ScheduleManager study={study} group={group} canEdit={canEdit} onDirtyChange={setDirty} />
     </>
   );
 }

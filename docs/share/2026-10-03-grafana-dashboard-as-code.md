@@ -106,6 +106,6 @@ Grafana 가 기본 제공하는 변수여야 하고, 아니면 검사가 실패�
 ## 더 보기
 
 - 규약·절차 전문: [`observability/README.md`](../observability/README.md)
-- 관측 스택 설계: [`specs/observability-stack/spec.md`](../specs/observability-stack/spec.md)
+- 관측 스택 설계: [`specs/observability-stack/spec.md`](../../specs/observability-stack/spec.md)
 - 알림 규칙 추가 절차: [`docs/observability/adding-alerts.md`](../docs/observability/adding-alerts.md)
 - 알림을 디스코드 봇으로 보내기로 한 배경: [2026-09-28](2026-09-28-grafana-alert-discord-bot.md)

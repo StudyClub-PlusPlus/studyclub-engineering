@@ -4,22 +4,18 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import { AutoTextarea } from '@core/components/AutoTextarea';
 import { SegmentTabs } from '@core/components/SegmentTabs';
-import { meetingWindow, meetingsOf } from '@core/lib/attendance';
 import {
   DISPLAY_ZONES,
   DOW_LABEL,
   REPEAT_SPAN_DAYS,
   TITLE_MAX,
-  addMeetings,
   dayLabel,
   defaultDate,
   defaultUntil,
-  deleteMeetings,
   dowOf,
   isKickoff,
   maxUntil,
   meetingLabel,
-  patchMeeting,
   planDraft,
   previewOf,
   validateEdit,
@@ -34,9 +30,9 @@ import {
   type NavigatorGroup,
   type ProtoMeeting,
   type Repeat,
-  type ScheduleRole,
 } from '@core/lib/meetings';
-import { ME_ID, participantsOf, type Participant } from '@core/lib/schedule-board';
+import { ME_ID, type Participant } from '@core/lib/schedule-board';
+import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import type { Study } from '@studyclub/mock';
 import { Button, Input, Modal, cx } from '@studyclub/ui';
 import { Plus, Trash2, X } from 'lucide-react';
@@ -50,21 +46,29 @@ import { Plus, Trash2, X } from 'lucide-react';
  *
  * 킥오프는 0회차로 맨 위에 둔다. 지우지 않고, 발표자가 없고, 출석률에 넣지 않는다.
  * 시작한 회차(흐린 줄)는 고치거나 지우지 않는다 — 출석이 찍혀 있다.
+ *
+ * 백오피스는 같은 표를 반마다 쓴다 — `source` 로 고른 반의 회차를 넘긴다. 없으면 사용자 사이트의 내 분반.
  */
 export function ScheduleManager({
   study,
   group,
-  role,
   canEdit,
   onDirtyChange,
+  source,
+  startAdding = false,
+  onStartedAdding,
 }: {
   study: Study;
   group: NavigatorGroup;
-  role: ScheduleRole;
   canEdit: boolean;
   onDirtyChange?: (dirty: boolean) => void;
+  source?: ScheduleSource;
+  /** 열자마자 회차 추가 창을 띄운다 — 백오피스 출석 탭의 「회차 추가」가 이리로 보낸다. */
+  startAdding?: boolean;
+  onStartedAdding?: () => void;
 }) {
-  const [adding, setAdding] = useState(false);
+  const src = source ?? studySource(study, group.timeZone);
+  const [adding, setAdding] = useState(canEdit && startAdding);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   /** 신청이 밀렸을 때처럼 알려야 하지만 성공은 아닌 한 줄. */
   const [notice, setNotice] = useState<string | null>(null);
@@ -83,16 +87,16 @@ export function ScheduleManager({
   const refresh = () => setRev((n) => n + 1);
 
   const now = Date.now();
-  const meetings = meetingsOf(study);
+  const meetings = src.meetings();
   const regular = meetings.filter((m) => !isKickoff(m));
-  const people = participantsOf(study);
+  const people = src.people;
   const nameOf = (id?: string) => people.find((p) => p.id === id)?.name;
-  const started = (m: ProtoMeeting) => meetingWindow(study, m).start.getTime() <= now;
+  const started = (m: ProtoMeeting) => src.startOf(m).getTime() <= now;
   const upcomingCount = regular.filter((m) => !started(m)).length;
 
   const saved = (m: ProtoMeeting): RowDraft => ({
     date: m.date,
-    time: m.time ?? wallParts(meetingWindow(study, m).start, group.timeZone).time,
+    time: m.time ?? wallParts(src.startOf(m), group.timeZone).time,
     title: m.title ?? '',
     presenter1: m.presenter1 ?? '',
     presenter2: m.presenter2 ?? '',
@@ -114,6 +118,11 @@ export function ScheduleManager({
     const m = meetings.find((x) => x.id === id);
     return n + (m ? Object.keys(errorsOf(m)).length : 0);
   }, 0);
+
+  // 창을 띄웠다고 알린다 — 다음에 이 탭에 올 때 또 열리지 않게.
+  useEffect(() => {
+    if (startAdding) onStartedAdding?.();
+  }, [startAdding, onStartedAdding]);
 
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -169,18 +178,13 @@ export function ScheduleManager({
       const before = bases.current[id] ?? saved(m);
       // 발표자 칸은 고치기 시작할 때와 달라진 것만 보낸다 — 그 사이 크루가 신청한 칸을 옛 값(빈칸)으로 덮지 않는다.
       // TODO(api): PUT /api/studies/{studyId}/meetings/{meetingId} — 바뀐 줄마다, 바꾼 발표자 칸만.
-      patchMeeting(
-        study.id,
-        id,
-        {
-          date: v.date,
-          time: v.time,
-          title: v.title,
-          ...(v.presenter1 !== before.presenter1 && { presenter1: v.presenter1 || null }),
-          ...(v.presenter2 !== before.presenter2 && { presenter2: v.presenter2 || null }),
-        },
-        group.timeZone,
-      );
+      src.patch(id, {
+        date: v.date,
+        time: v.time,
+        title: v.title,
+        ...(v.presenter1 !== before.presenter1 && { presenter1: v.presenter1 || null }),
+        ...(v.presenter2 !== before.presenter2 && { presenter2: v.presenter2 || null }),
+      });
     }
     setAnnounce(`회차 ${changedIds.length}개를 저장했습니다.`);
     clearDrafts();
@@ -191,7 +195,7 @@ export function ScheduleManager({
   function sign(m: ProtoMeeting, slot: 'presenter1' | 'presenter2', on: boolean) {
     const which = slot === 'presenter1' ? '발표자1' : '발표자2';
     // 누르기 직전 저장값을 다시 본다 — 화면을 연 사이 다른 크루가 먼저 신청했으면 덮지 않는다(선착순).
-    const latest = meetingsOf(study).find((x) => x.id === m.id) as ProtoMeeting | undefined;
+    const latest = src.meetings().find((x) => x.id === m.id);
     if (on && latest?.[slot]) {
       setNotice(`방금 다른 크루가 ${meetingLabel(m)} ${which}로 신청했습니다.`);
       refresh();
@@ -199,7 +203,7 @@ export function ScheduleManager({
     }
     // TODO(api): PUT /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me (DELETE 로 취소)
     //            409 PRESENTER_SLOT_TAKEN 이면 위 문구를 보이고 목록을 다시 부른다.
-    patchMeeting(study.id, m.id, { [slot]: on ? ME_ID : null }, group.timeZone);
+    src.patch(m.id, { [slot]: on ? ME_ID : null });
     setNotice(null);
     setAnnounce(
       on ? `${meetingLabel(m)} ${which}로 신청했습니다.` : `${meetingLabel(m)} ${which} 신청을 취소했습니다.`,
@@ -208,11 +212,8 @@ export function ScheduleManager({
   }
 
   function remove(target: ProtoMeeting) {
-    deleteMeetings(study.id, [target.id]);
-    setDrafts((d) => {
-      const { [target.id]: _gone, ...rest } = d;
-      return rest;
-    });
+    src.remove(target.id);
+    setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => id !== target.id)));
     delete bases.current[target.id];
     setAnnounce(`${meetingLabel(target)}를 지웠습니다.`);
     setConfirmId(null);
@@ -267,7 +268,7 @@ export function ScheduleManager({
 
       {adding && (
         <AddForm
-          study={study}
+          source={src}
           group={group}
           onCancel={() => setAdding(false)}
           onAdded={(label) => {
@@ -302,7 +303,7 @@ export function ScheduleManager({
               {meetings.flatMap((m) => {
                 const past = started(m);
                 const kickoff = isKickoff(m);
-                const start = meetingWindow(study, m).start;
+                const start = src.startOf(m);
                 const shown = wallParts(start, zone);
                 const v = valueOf(m);
                 const errors = errorsOf(m);
@@ -617,18 +618,18 @@ function PresenterSelect({
 /* ── 회차 추가 (반복 포함) ──────────────────────────────────────────────────── */
 
 function AddForm({
-  study,
+  source,
   group,
   onCancel,
   onAdded,
 }: {
-  study: Study;
+  source: ScheduleSource;
   group: NavigatorGroup;
   onCancel: () => void;
   onAdded: (label: string) => void;
 }) {
   const [draft, setDraft] = useState<MeetingDraft>(() => ({
-    date: defaultDate(meetingsOf(study), new Date().toISOString().slice(0, 10)),
+    date: defaultDate(source.meetings(), new Date().toISOString().slice(0, 10)),
     time: group.startAt,
     title: '',
     repeat: 'none',
@@ -638,7 +639,7 @@ function AddForm({
   const [errors, setErrors] = useState<DraftErrors>({});
   const [touched, setTouched] = useState(false);
 
-  const existing = meetingsOf(study);
+  const existing = source.meetings();
   const { errors: live, plan } = planDraft(draft, existing, group.timeZone);
 
   function change(patch: Partial<MeetingDraft>) {
@@ -656,7 +657,7 @@ function AddForm({
     setErrors(live);
     if (!plan) return;
     const { from } = previewOf(plan, existing);
-    addMeetings(study.id, { dates: plan.dates, time: draft.time, timeZone: group.timeZone, title: draft.title });
+    source.add({ dates: plan.dates, time: draft.time, title: draft.title });
     const first = plan.dates[0];
     const last = plan.dates[plan.dates.length - 1];
     onAdded(

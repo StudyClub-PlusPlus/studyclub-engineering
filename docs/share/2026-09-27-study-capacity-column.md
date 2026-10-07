@@ -15,7 +15,7 @@
 | **기수** (`STUDY` 테이블) | 한 번 열리는 스터디 하나. 클럽이면 "3기", "4기"처럼 여러 번 열린다 |
 | **모집 회차** (`STUDY_RECRUITMENT` 테이블) | 한 기수 안에서 사람을 모으는 한 번의 모집. 보통 1차 모집 하나지만, 자리가 남으면 **추가 모집**을 또 열 수 있다 |
 | **컬럼** | 표(테이블)의 한 칸. 예: `STUDY` 표의 `CAPACITY` 칸 |
-| **ERD** | 어떤 표에 어떤 칸이 있는지 적어 둔 **설계 문서**. [`docs/erd/`](../docs/erd/README.md) |
+| **ERD** | 어떤 표에 어떤 칸이 있는지 적어 둔 **설계 문서**. [`docs/erd/`](../erd/README.md) |
 
 그림으로 보면 이렇습니다.
 
@@ -49,7 +49,7 @@
 | 칸 | 뜻 | 지금 상태 |
 |---|---|---|
 | `STUDY.CAPACITY` | 기수 정원 | **코드가 전부 여기를 봅니다.** 목록 화면, 목록의 "모집중/종료" 필터, 모집 마감 판정, 상세 화면 |
-| `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` | 모집 회차 정원 | **설계 문서가 정한 정답**입니다 ([`docs/erd/STUDY.md`](../docs/erd/STUDY.md): "정원은 STUDY 에 두지 않는다"). 그런데 **만든 뒤로 코드가 한 번도 읽거나 쓰지 않았습니다** |
+| `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` | 모집 회차 정원 | **설계 문서가 정한 정답**입니다 ([`docs/erd/STUDY.md`](../erd/STUDY.md): "정원은 STUDY 에 두지 않는다"). 그런데 **만든 뒤로 코드가 한 번도 읽거나 쓰지 않았습니다** |
 | `STUDY_GROUP.CAPACITY` | 분반(반) 정원 | 모집 정원과는 **다른 값**입니다. 이 건과 무관합니다 |
 
 어쩌다 이렇게 됐는지는 표 변경 이력(마이그레이션)에 남아 있습니다.
@@ -72,7 +72,7 @@
 
 - 백오피스 정보 탭의 정원 수정은 `STUDY.CAPACITY` 에 저장합니다
 - 상세 조회도 `STUDY.CAPACITY` 를 돌려줍니다
-- 스펙 문서에 이 차이를 적었습니다 — [`specs/study/spec.md`](../specs/study/spec.md) 「스터디 수정 › 구현 메모」
+- 스펙 문서에 이 차이를 적었습니다 — [`specs/study/spec.md`](../../specs/study/spec.md) 「스터디 수정 › 구현 메모」
 
 > 왜 문서 쪽으로 바로 안 옮기나요?
 > 한쪽만 옮기면 위 비유처럼 장부가 갈립니다. 옮길 때는 **읽는 곳 전부 + 기존 데이터**를 한 번에 옮겨야 합니다.
@@ -87,7 +87,7 @@
 | **A. 기수 단위** | 「3기는 20명」. 추가 모집을 해도 합쳐서 20명 | 지금 코드가 맞습니다. 문서를 고치고, 안 쓰는 `RECRUITMENT_CAPACITY` 를 지웁니다 |
 | **B. 모집 회차 단위** | 「1차 모집 15명, 추가 모집 5명」처럼 회차마다 따로 | 문서가 맞습니다. 코드를 `RECRUITMENT_CAPACITY` 로 옮기고 `STUDY.CAPACITY` 를 지웁니다 |
 
-참고로 신청 스펙([`specs/study-application/spec.md`](../specs/study-application/spec.md) 「정원」)은 **B** 를 전제로 쓰여 있습니다 —
+참고로 신청 스펙([`specs/study-application/spec.md`](../../specs/study-application/spec.md) 「정원」)은 **B** 를 전제로 쓰여 있습니다 —
 "모집 회차가 여러 개여도 회차마다 독립적으로 판단한다".
 B 라면 「추가 모집 때 정원을 어떻게 입력받나」도 화면에서 정해야 합니다. 지금 등록·수정 폼에는 정원 칸이 **하나**뿐입니다.
 

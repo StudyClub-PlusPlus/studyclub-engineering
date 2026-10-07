@@ -73,7 +73,7 @@ class StudyListJpqlDao implements StudyListDao {
      * 공개 대상 — 숨김·작성 중(DRAFT)은 뺀다. 필터와 무관하게 항상 걸린다.
      *
      * <p>기수를 묶지 않는다. 같은 프로그램의 3기가 진행 중이고 4기가 모집 중이면 <b>둘 다</b> 나와야 한다 — 기획도 스터디 단위로
-     * 나열한다(planning/stories/crew-browse-studies). 묶어서 최신 1건만 주면 진행 중인 기수가 목록에서 사라진다.
+     * 나열한다(01-planning/stories/crew-browse-studies). 묶어서 최신 1건만 주면 진행 중인 기수가 목록에서 사라진다.
      */
     private static final String VISIBLE =
             "s.status <> com.studyclub.domain.study.StudyStatus.DRAFT";
