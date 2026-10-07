@@ -1,6 +1,7 @@
-# admin-accounts 구현 계획
+# admin-users 구현 계획
 
 > Spec: [spec.md](./spec.md) | 날짜: 2026-10-07 | 기준: `beta` @ `b8d8a08`
+> 갱신: 2026-10-08 — API 이름을 기획 문서(PRD)에 맞춤 (`/api/admin/users`, `…/system-role`, 필터 `role`, PRD 에러 코드). 스펙 위치 `specs/admin-users/`
 >
 > **기획 확인 대기 2건을 지금 가정으로 구현한다** — 권한표에 「신청 폼·결과」 표 없음, 반 편성 전 담당 캡틴은 「참여 중」으로 세지 않음(명부 행만 센다). 답이 다르면 아래 [바꾸기 쉬운 자리](#바꾸기-쉬운-자리)만 고친다.
 
@@ -10,9 +11,9 @@ spec.md 의 엔드포인트 전부다.
 
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/api/admin/accounts` | 회원 목록 — 필터·검색·페이지, 이메일 마스킹 |
-| POST | `/api/admin/accounts/{accountId}/email-reveals` | 이메일 원본 + 감사 로그 |
-| PATCH | `/api/admin/accounts/{accountId}/role` | 계정 권한 변경 + 감사 로그 |
+| GET | `/api/admin/users` | 회원 목록 — 필터·검색·페이지, 이메일 마스킹 |
+| POST | `/api/admin/users/{accountId}/email-reveals` | 이메일 원본 + 감사 로그 |
+| PATCH | `/api/admin/users/{accountId}/system-role` | 계정 권한 변경 + 감사 로그 |
 | GET | `/api/admin/role-permissions` | 역할별 기본 권한표 |
 | ~~GET~~ | ~~`/accounts`~~ | 삭제 — 화면이 옮겨 간 뒤 ([PR 나누기](#pr-나누기)) |
 
@@ -20,8 +21,9 @@ spec.md 의 엔드포인트 전부다.
 
 | 결정 | 선택 | 이유 |
 |------|------|------|
-| 컨트롤러 | 새 `AdminAccountController` (`com.studyclub.api.account`), 클래스에 `@RequireAdmin`, `@RequestMapping("/api/admin")` | authz-guards — 인가는 어노테이션으로만. endpoint-convention — 관객별 컨트롤러, `Admin*` 이름. 기존 `api.auth.AccountController` 는 사용자 쪽(온보딩)이라 섞지 않는다 |
+| 컨트롤러 | 새 `AdminUserController` (`com.studyclub.api.account`), 클래스에 `@RequireAdmin`, `@RequestMapping("/api/admin")` | authz-guards — 인가는 어노테이션으로만. endpoint-convention — 관객별 컨트롤러, `Admin*` 이름. 기존 `api.auth.AccountController` 는 사용자 쪽(온보딩)이라 섞지 않는다 |
 | 목록 조회 | JPQL DAO `AdminAccountJpqlDao` — `BackofficeStudyJpqlDao` 와 같은 모양(조건 조립 → count 쿼리 + 페이지 쿼리) | 이미 있는 패턴. 조건이 선택적이라 Spring Data 메서드 이름으로는 못 쓴다 |
+| 역할 필터 | `role` enum(`ALL`·`CAPTAIN`·`NAVIGATOR`·`CREW`, 기본 `ALL`) 하나를 받아 DAO 가 조건으로 바꾼다 — `CAPTAIN`=`SYSTEM_ROLE = ADMIN`, `NAVIGATOR`=담당 스터디 있음, `CREW`=`SYSTEM_ROLE = MEMBER` | PRD 의 `role` 파라미터. 탭과 1:1 이라 화면이 그대로 보낸다 |
 | 「참여 중」·「담당」 조건 | DAO 안 상수 한 곳 — `ACTIVE_STATUSES = {ACTIVE, PAUSED}`, `NAVIGATOR_ROLES = {LEADER, CO_LEADER}`. 「참여 중」은 `PARTICIPANT_ROLE` 을 보지 않는다 | 기획 답에 따라 바뀔 수 있는 조건을 한 곳에 모은다. 서브쿼리·IN 조회가 모두 이 상수를 쓴다 |
 | 정렬·휴면 집계 | 페이지 쿼리에서 `STUDY_PARTICIPANT` 상관 서브쿼리 2개(담당 여부 · 참여 중 스터디 수)를 SELECT·ORDER BY 에 둔다. Hibernate HQL 이 ORDER BY 서브쿼리를 못 받으면 같은 모양의 native SQL 로 바꾼다 | 정렬이 서버라 집계가 페이지 쿼리 안에 있어야 한다. 회원 수백 명 규모라 상관 서브쿼리로 충분하다 |
 | 담당 스터디 이름 | 페이지의 계정 ID 들로 명부 + 스터디 제목을 **한 번에**(`IN`) 조회해 메모리에서 묶는다 | 행마다 조회하면 N+1. 페이지 20행이라 IN 한 번이면 된다 |
@@ -34,7 +36,7 @@ spec.md 의 엔드포인트 전부다.
 | 감사 로그 | domain 모듈 `com.studyclub.domain.audit` — `AdminAuditLog`(BaseEntity, 정적 팩토리 `emailReveal(...)`·`roleChange(...)`), `AdminAuditAction` enum, `AdminAuditLogRepository` | 어떤 애그리거트에도 속하지 않는 insert-only 로그 (`AccountLeaveReason` 과 같은 위치 감각). 팩토리로 만들어 ACTION 과 BEFORE/AFTER 조합이 어긋나지 않게 한다 |
 | 마이그레이션 | `V31__admin_audit_log.sql` — 테이블 + 인덱스 2개. 번호는 구현 PR 을 올릴 때 `backend/scripts/check-migration-versions.sh` 로 다시 확인 | 지금 최신이 V30 |
 | 권한표 정의 | api 모듈 `com.studyclub.api.account.RolePermission` enum — `key`·`scope`·`label`·`allowedRoles`, 선언 순서 = 표 순서. 행은 POL-0001 (스터디 단위 5 · 사이트 전체 7), 그룹의 열(`roles`)도 enum 옆 정의에서 나온다 | 앞으로 게이팅을 붙일 인가 어노테이션도 api 모듈(`auth.security`)에 있어 같은 모듈에서 참조한다. 역할 키는 `SystemRole.ADMIN`·`ParticipantRole.LEADER`·`SystemRole.MEMBER` 의 이름을 그대로 쓴다 |
-| 에러 코드 | `ErrorCode` 에 `SELF_ROLE_CHANGE(409)`·`LAST_ADMIN(409)` 을 `CONFLICT` 뒤에 추가 | 스펙. `fromStatus(409)` 는 첫 409 인 `CONFLICT` 를 써야 한다 |
+| 에러 코드 | `ErrorCode` 에 `CANNOT_CHANGE_OWN_ROLE(409)`·`LAST_ADMIN_REQUIRED(409)` 을 `CONFLICT` 뒤에 추가 | 스펙. `fromStatus(409)` 는 첫 409 인 `CONFLICT` 를 써야 한다 |
 | 잠금 사유 계산 | 목록 서비스가 요청자 ID 와 `ADMIN` 수(COUNT 한 번)로 행마다 계산 | 스펙 — 판정은 서버 한 곳 |
 | 동시성 테스트 | Testcontainers 를 들이지 않는다. H2 의 `SELECT … FOR UPDATE` 행 잠금으로 두 스레드 동시 강등 테스트를 시도하고, 결과가 불안정하면 판정 로직 단위 테스트 + stage(MySQL) 수동 확인으로 대신한 뒤 PR 에 적는다 | 외부 라이브러리 추가는 합의가 필요하다 (AGENT.md). 테스트 설정도 MySQL 없이 도는 것이 원칙이다 |
 | FE 구조 | `features/users/` 를 새로 쓴다 — `types.ts`(응답 타입), `queries.ts`(`useUsers(filter)`·`useRevealEmail`·`useChangeAccountRole`·`useRolePermissions`). 화면은 playground `UsersTable` 을 옮기고 `@studyclub/ui` 의 Badge·Modal·Pagination·Toast·Segmented 를 쓴다 | 백오피스 기존 규약(키·fetcher·훅을 한 파일에). 프로토가 같은 UI 키트를 쓴다 |
@@ -78,7 +80,7 @@ BE 와 FE 는 처음부터 병렬로 간다. FE 는 MSW 목으로 화면을 먼�
 7. `NotificationListResponse` 가 `EmailMasking` 을 쓰게 교체 (기존 알림 테스트로 회귀 확인)
 
 **FE**
-1. mock — 응답 타입·목 데이터·MSW 핸들러(`/api/admin/accounts` 그룹, 권한표) + 에러 프리셋
+1. mock — 응답 타입·목 데이터·MSW 핸들러(`/api/admin/users` 그룹, 권한표) + 에러 프리셋
 2. `features/users/types.ts`·`queries.ts`
 3. 목록 화면 — 탭·검색·인원 수·표(이름·휴면·이메일·권한·네비게이터·가입일)·페이지·빈 결과
 4. 이메일 「보기」
@@ -109,7 +111,7 @@ BE 와 FE 는 처음부터 병렬로 간다. FE 는 MSW 목으로 화면을 먼�
 - **authz-guards**: `@RequireAdmin`·`AdminGuardInterceptor` (#178, 머지됨)
 - **playground**: 이메일 「보기」·디스코드 안내가 아직 반영 전 — 화면 모양·문구만 영향, API 무관. 반영되면 FE PR 에서 맞춘다
 - **스펙 미확정**: 감사 로그 보관 기간 — 구현에 영향 없음 (오래된 기록 삭제는 범위 밖)
-- **시작 시점**: 스펙 PR #163 이 승인되면 시작한다
+- **시작 시점**: 스펙 PR #163 머지됨(2026-10-08). API 이름을 PRD 에 맞추는 스펙 수정은 별도 PR
 
 ## 리스크
 
