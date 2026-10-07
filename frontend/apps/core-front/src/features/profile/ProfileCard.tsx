@@ -165,12 +165,14 @@ export function ProfileCard({
   }
 
   const line = nicknameLine();
+  // 저장 중에는 입력칸과 취소를 잠근다 — 취소한 뒤 다시 연 편집을 먼저 보낸 저장 응답이 닫아 버리면 안 된다
+  const saving = updateProfile.isPending;
   const blocked =
     composing ||
     Boolean(nicknameMessage) ||
     nickStatus === 'taken' ||
     nickStatus === 'checking' ||
-    updateProfile.isPending;
+    saving;
 
   async function openEditor() {
     setProblem(null);
@@ -279,6 +281,7 @@ export function ProfileCard({
                 labelHint={`${trimmedName.length}/20`}
                 aria-invalid={line.tone === 'error'}
                 aria-describedby='profile-nickname-help'
+                disabled={saving}
                 autoFocus
               />
               <p
@@ -323,6 +326,7 @@ export function ProfileCard({
                 onChange={(zone) => setValue('timeZone', zone, { shouldValidate: true })}
                 locale={locale}
                 error={errors.timeZone?.message}
+                disabled={saving}
                 hideLabel
               />
             </div>
@@ -393,10 +397,10 @@ export function ProfileCard({
         </Link>
         {editing && (
           <div className='flex items-center gap-2'>
-            <Button size='sm' variant='ghost' onClick={closeEditor}>
+            <Button size='sm' variant='ghost' onClick={closeEditor} disabled={saving}>
               취소
             </Button>
-            <Button size='sm' onClick={save} disabled={blocked} loading={updateProfile.isPending}>
+            <Button size='sm' onClick={save} disabled={blocked} loading={saving}>
               저장
             </Button>
           </div>
