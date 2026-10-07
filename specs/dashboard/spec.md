@@ -2,7 +2,7 @@
 
 > Playground: [운영 콘솔 대시보드](https://playground.studyclub-plusplus.com/proto/console)
 > PRD: [캡틴은 스터디클럽 웹사이트의 운영 현황을 볼 수 있다](https://app.notion.com/p/benkang/91583feabad382ac833b81e65dd894f8)
-> 작성일: 2026-09-16 · 수정일: 2026-10-04
+> 작성일: 2026-09-16 · 수정일: 2026-10-07
 > 대상: 캡틴용 운영 콘솔. 이 문서는 구현할 화면·집계·API 계약을 정의한다.
 > 상태: 구현·리뷰 전. 논의 중인 정책과 변경 조건은 해당 화면과 7절에 기록한다.
 
@@ -130,7 +130,7 @@
 | 운영 역할 | 실제 `ACTIVE` 참여자인 캡틴·반장·부반장 포함. 운영 권한만 있는 회원은 제외 |
 | 제외 | `PAUSED / WITHDRAWN / COMPLETED / DELETED` 참여 건, 참여 명부가 없는 신청자 |
 | 대상 없음 | `0` |
-| 클릭 | 운영 콘솔 ‘유저’ 메뉴와 같은 전체 유저 목록. 별도 필터 없음 |
+| 클릭 | 미정. 현재안은 필터 없는 전체 유저 목록 이동이며, 아래 기획 논의 결과에 따라 확정 |
 
 ```text
 활성참여 = 진행 중 기수의 ACTIVE 참여 명부에서 (ACCOUNT_ID, STUDY_ID)를 중복 제거한 집합
@@ -141,6 +141,12 @@
 신청 시에는 신청서만 저장한다. 캡틴이 반을 배정할 때 참여 명부를 생성한다. 대시보드는 실제 명부를 조회하며 별도 반 배정 필터를 추가하지 않는다.
 
 진행 중 판정에는 저장된 `STUDY.STATUS = ONGOING`을 사용한다. 첫 미팅 등록에 따른 상태 전환은 스터디 도메인에서 처리한다. 시작일 경과로 진행 상태를 추정하지 않는다.
+
+**논의 중 — 활성 크루 카드의 목록 이동**
+
+- 필터 없는 전체 유저 목록은 카드의 활성 크루와 집계 대상이 다르다. 현재 유저 목록에는 활성 크루 필터가 없다.
+- 카드 클릭 동작과 목록 필터는 [기획 논의 글](https://discord.com/channels/1528293741734133830/1555410259059941477)에 문의했으며, 아직 확정되지 않았다. 전체 유저 목록 이동을 확정 요구로 적용하지 않는다.
+- 개발자는 논의에서 확정한 동작을 구현한다. 결정 후 이 문서의 클릭 규칙·검증 기준을 수정한다. 목록 필터가 필요하면 관련 유저 목록 명세와 API 계약도 함께 수정한다.
 
 ### 2-2. 평균 출석률
 
@@ -161,6 +167,8 @@
 환산 출석수 = PRESENT 수 + EXCUSED 수 + 0.5 × LATE 수
 출석률 = 100 × 환산 출석수 / 집계 대상 수
 ```
+
+**적용 근거:** 스터디 스쿼드와 논의하여 스터디 팀의 공통 출석 계산식을 그대로 적용하기로 했다. 사용자 화면과 대시보드는 같은 집계 대상·기간·기준 시각에서 같은 출석률을 제공해야 한다. PRD의 ‘휴가는 분모에서 뺀다’는 기준과 차이가 있으나, 이 문서는 공통 계산식에 따라 `EXCUSED`를 분자·분모에 각각 1로 포함한다.
 
 - `EXCUSED`·결석·미입력도 집계 대상 수에 포함한다. 출석 행만 세어 분모를 만들지 않는다.
 - 합류 전·집계 상한 이후 회차는 제외한다. 실제 시작·종료나 출석 입력 완료를 조건으로 추가하지 않는다.
@@ -239,23 +247,35 @@
 
 | 항목 | 규칙 |
 |---|---|
-| 마감 시각 | 해당 기수에서 ID가 가장 큰 `STUDY_RECRUITMENT`의 `RECRUIT_DEADLINE_AT` |
-| 정원 | `STUDY.CAPACITY`. `null`이면 인원 제한 없음 |
-| 정원을 차지하는 수 | 해당 `STUDY_ID`의 `ACTIVE + PAUSED` 참여 명부 건수. 활성 크루용 중복 제거는 적용하지 않음 |
-| `RECRUIT_CLOSED` | 마감 시각이 있고 `asOf >= recruitDeadlineAt`, 또는 정원이 있고 명부 건수가 정원 이상 |
+| 기준 모집 회차 | 해당 기수에서 ID가 가장 큰 `STUDY_RECRUITMENT` |
+| 마감 시각 | 기준 모집 회차의 `RECRUIT_DEADLINE_AT`. `null`이면 시각으로 마감하지 않음 |
+| 정원 | 기준 모집 회차의 `RECRUITMENT_CAPACITY`. `null`이면 인원 제한 없음 |
+| 정원을 차지하는 수 | `RECRUITMENT_ID`가 기준 모집 회차 ID와 같은 `STUDY_APPLICATION` 행 수 |
+| `RECRUIT_CLOSED` | 마감 시각이 있고 `asOf >= recruitDeadlineAt`, 또는 정원이 있고 신청서 수가 정원 이상 |
 | `RECRUITING` | 위 마감 조건을 만족하지 않음 |
-| 임박 | 모집중이며 마감까지 72시간 미만. 정확히 72시간이면 임박 아님 |
+| 임박(현재안) | 모집중이며 마감까지 72시간 미만. 정확히 72시간이면 임박 아님. 개발 시 아래 임박 표시 논의 확인 |
 
-정원 계산은 `countByStudyIds()`, 임박 판정은 `Study.isClosingSoon()`의 기준을 사용한다. 서버는 두 판정에 같은 `asOf`를 적용한다.
+신청서 수는 `StudyApplicationRepository.countByRecruitmentIdIn()`으로 집계한다. 정원·신청서 수·마감 시각은 같은 모집 회차에서 가져온다. 다른 모집 회차의 신청서는 합산하지 않는다.
 
-**논의 중 — 정원 계산 단위**
+참여 상태나 계정 존재 여부로 신청서를 제외하지 않는다. 현재 공통 코드는 회원 탈퇴 후에도 남아 있는 신청서를 정원 계산에 포함한다. 활성 크루·1인당 참여 스터디에는 화면 2-1의 참여 명부 기준을 유지한다.
 
-- 현재는 기수 전체 정원과 `ACTIVE + PAUSED` 참여 명부 건수를 비교한다.
-- 모집 회차별 정원과 해당 모집의 신청서 수를 비교하는 설계도 있다. 이 방식으로 전환할지는 스터디 스쿼드가 결정한다.
-- 결정 전에는 현재 기준으로 개발한다. 변경안을 미리 적용하지 않는다.
-- 공통 모집 정책이 바뀌면 대시보드의 모집 상태·정원 마감 표시·정렬과 전체 목록에 같은 기준을 적용한다.
+모집 판정은 스터디 목록·상세의 `Study.recruitStatus()` 기준을 사용한다. 임박 판정은 `Study.isClosingSoon()` 기준을 사용한다. 구현 시 두 공통 판정에 같은 `asOf`를 전달하도록 한다.
 
-수동 마감 신호·사유는 사용하지 않는다. 마감 시각이 변경되면 저장된 값으로 판정한다. 대시보드 조회는 DB 상태를 변경하지 않는다. 신청 API는 제출 시점에 공통 모집 규칙으로 신청 가능 여부를 검증한다.
+**후속 확인 — 정원 정책·탈퇴 회원**
+
+- 대시보드는 스터디 스쿼드의 현재 공통 모집 로직으로 개발한다. 별도 정원 계산이나 탈퇴 회원 제외 조건을 추가하지 않는다.
+- [신청 정책 POL-0004](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/3ea91ae3b9c70ab6891ad7a8bfba7e98b79ddb59/01-planning/_registry/policies/POL-0004-application.md#L19)는 정원을 참여 명부의 활성 인원으로 판단한다. 코드와 기준이 다르지만, 이 대시보드는 코드의 신청서 수 기준을 적용한다.
+- 탈퇴 회원의 신청서가 정원을 계속 차지하는 것이 의도인지 스터디 스쿼드에 디스코드로 문의했다. 답변 전에도 현재 공통 로직으로 개발할 수 있다.
+- 스터디 스쿼드가 공통 로직을 변경하면 모집 상태·정원 마감 표시·정렬과 전체 목록에 함께 반영한다. 이 문서의 API 계약과 검증 기준도 갱신한다.
+
+**논의 중 — 임박 표시**
+
+- 현재 명세는 스터디 공통 코드의 3일 기준을 적용한다. 정확한 조건은 마감까지 72시간 미만이다.
+- PRD의 기준은 7일 이내다. 디스코드에서는 대시보드의 임박 표시를 삭제하는 안도 논의 중이다.
+- 개발자는 [기획 논의 글](https://discord.com/channels/1528293741734133830/1555410259059941477)의 최신 확정 내용을 확인하고 구현한다. 확정 전에는 위 현재안을 유지한다.
+- 표시 여부나 기준이 바뀌면 화면 3-2, 4.3절의 `deadlineBadge`, 응답 예시, 검증 기준을 함께 수정한다. 개발 시 이 `spec.md`에도 확정 내용을 반영한다.
+
+수동 마감 신호·사유는 사용하지 않는다. 마감 시각이 변경되면 저장된 값으로 판정한다. 대시보드 조회는 DB 상태를 변경하지 않는다. 실제 신청 제출 시점의 검증은 신청 API에서 처리한다.
 
 #### 행 표시
 
@@ -533,7 +553,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | 우선순위 | 조건 | 코드 |
 |---|---|---|
 | 1 | 마감 시각 경과 | `DEADLINE_PASSED` |
-| 2 | 정원 도달 | `CAPACITY_FULL` |
+| 2 | 기준 모집 회차에 정원이 있고 같은 회차의 신청서 수가 정원 이상 | `CAPACITY_FULL` |
 | 3 | 마감 시각 없음 | `DEADLINE_MISSING` |
 | 4 | 마감까지 72시간 미만 | `CLOSING_SOON` |
 | 5 | 그 외 | `NORMAL` |
@@ -751,20 +771,22 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | 조회 중 기준 변경 | 기준 주가 다르면 요약·추세 재조회. 응답 시간대가 다르면 전체 재조회 |
 | 주간 비교·평균 | 직전 주 고정. 분모 0이면 증감 숨김. 12주 평균은 유효 주별 동일 가중치 |
 | 시간대 분포 | 회원당 한 그룹. 인원 합계 = `totalCrew`. 비율은 개별 반올림하며 표시 합계를 보정하지 않음. 누락값은 `UNKNOWN`. 탈퇴 회원 제외 |
+| 모집 정원 집계 | ID가 가장 큰 모집 회차의 정원·신청서 수·마감 시각 사용. 다른 회차의 신청서 제외. 참여 상태·계정 삭제만으로 남아 있는 신청서를 제외하지 않음 |
 | 모집 경계 | 마감 시각과 같으면 마감. 정원과 같으면 마감. 72시간 미만만 임박 |
 | 모집 표시 | 시각 경과 → 정원 마감 → 오늘 마감 → 임박 순서 적용. 마감 `null` 처리 확인 |
 | 보드·목록 일치 | 같은 데이터·시각이면 보드 total·첫 4건이 전체 목록과 일치. 마감된 `OPEN` 기수 포함 |
 | 목록 필터·페이지 | 주소에 맞는 필터 선택. 필터 → 정렬 → 페이지 추출. 끝을 넘는 offset에도 실제 total 유지 |
 | 카테고리 | 단일 카테고리 합계 = 고유 기수 수. 누적에서 `DRAFT` 제외. 행 클릭 후 목록 total 일치 |
 | 부분 실패 | 실패한 묶음의 필드 생략·errors 반환. 정상 영역 유지. 실패를 0·null로 대체하지 않음 |
-| 빈 화면·로딩·클릭 | 카드별 빈 문구, 갱신 시각 누락, 전체 유저 목록·기수 상세·전체 보기 연결 확인 |
+| 빈 화면·로딩·클릭 | 카드별 빈 문구, 갱신 시각 누락, 커뮤니티 멤버의 전체 유저 목록·기수 상세·전체 보기 연결 확인. 활성 크루 카드 이동은 기획 확정 후 검증 기준 반영 |
 | 화면 구성 | KPI 4개·보드 2개 유지. 예정 행사·외 N개·복수 카테고리 안내 없음 |
 
 ## 6. 구현 참고
 
 - [공통 출석 계산기](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/a38aa64bdece9175c46acbea34222130621abd28/backend/api/src/main/java/com/studyclub/api/attendance/AttendanceRateCalculator.java) · [출석 조회 서비스](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/a38aa64bdece9175c46acbea34222130621abd28/backend/api/src/main/java/com/studyclub/api/attendance/AttendanceService.java)
 - [참여 명부](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/a38aa64bdece9175c46acbea34222130621abd28/backend/domain/src/main/java/com/studyclub/domain/participant/StudyParticipant.java) · [신청 저장 흐름](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/b755928d4f13a7d2508dfce3e2c0829473b979dd/backend/api/src/main/java/com/studyclub/api/application/StudyApplicationService.java)
-- [모집 판정](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/976e425b04db21e184252d77347e096d00459dd5/backend/domain/src/main/java/com/studyclub/domain/study/Study.java) · [정원용 참여 명부 집계](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/976e425b04db21e184252d77347e096d00459dd5/backend/domain/src/main/java/com/studyclub/domain/participant/StudyParticipantRepository.java)
+- [공통 모집·임박 판정](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/3ea91ae3b9c70ab6891ad7a8bfba7e98b79ddb59/backend/domain/src/main/java/com/studyclub/domain/study/Study.java) · [모집 회차 정원](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/3ea91ae3b9c70ab6891ad7a8bfba7e98b79ddb59/backend/domain/src/main/java/com/studyclub/domain/study/StudyRecruitment.java) · [신청서 수 집계](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/3ea91ae3b9c70ab6891ad7a8bfba7e98b79ddb59/backend/domain/src/main/java/com/studyclub/domain/application/StudyApplicationRepository.java)
+- [스터디 목록의 모집 회차·정원·신청서 조회](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/3ea91ae3b9c70ab6891ad7a8bfba7e98b79ddb59/backend/api/src/main/java/com/studyclub/api/study/StudyListService.java) · [정원 이동 PR #174](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/174)
 - [관리자 목록 요청](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/a38aa64bdece9175c46acbea34222130621abd28/backend/api/src/main/java/com/studyclub/api/study/AdminStudyController.java) · [목록 응답](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/a38aa64bdece9175c46acbea34222130621abd28/backend/api/src/main/java/com/studyclub/api/study/BackofficeStudyListResponse.java)
 - [카테고리 코드](../../backend/domain/src/main/java/com/studyclub/domain/study/StudyCategory.java) · [회원 정보](../../backend/domain/src/main/java/com/studyclub/domain/account/Account.java)
 - [공통 오류 코드](../../backend/common/src/main/java/com/studyclub/common/error/ErrorCode.java) · [스펙 작성 가이드](../../docs/backend-development-guide/spec-driven-development.md)
@@ -773,7 +795,10 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 | 항목 | 상태 | 현재 적용 기준 | 변경 조건·반영 범위 |
 |---|---|---|---|
-| 모집 정원 계산 단위 | 논의 중 | 화면 3-2의 기수 정원·참여 명부 기준 | 스터디 스쿼드가 공통 모집 정책을 변경하면 모집 보드·전체 목록에 함께 반영 |
+| 활성 크루 카드의 목록 이동 | 기획팀에 문의 완료. 결정 대기 | 전체 유저 목록 이동은 미확정. 현재 활성 크루 필터 없음 | [기획 논의 글](https://discord.com/channels/1528293741734133830/1555410259059941477)의 확정 동작을 구현하고 이 문서 수정. 필요 시 유저 목록 명세·API 계약·검증 기준도 수정 |
+| 모집 정원 정책 | POL-0004와 코드의 기준이 다름. 코드 기준 적용 | 화면 3-2의 최신 모집 회차 정원·신청서 수 기준 | 공통 모집 로직이 바뀌면 모집 보드·전체 목록에 함께 반영 |
+| 탈퇴 회원의 신청서 | 스터디 스쿼드에 문의 완료. 답변 대기 | 현재 공통 로직 사용. 남아 있는 신청서를 정원 계산에 포함 | 답변 전에도 개발 가능. 공통 로직이 바뀌면 대시보드도 반영 |
+| 임박 표시 | PRD는 7일. 표시 삭제안도 논의 중 | 현재 스터디 코드와 같은 3일 기준(72시간 미만) | [기획 논의 글](https://discord.com/channels/1528293741734133830/1555410259059941477)의 확정 내용에 따라 개발하고 화면·API·예시·검증 기준·이 문서를 함께 수정 |
 | 취소·미개최 회차 | 공통 정책 변경 시 반영 | 화면 2-2의 참여 기간·회차 조건. 별도 취소 제외 조건 없음 | 출석 스쿼드가 공통 제외 조건을 추가하면 모든 출석 지표에 함께 반영 |
 
-두 항목 모두 현재 명세로 개발할 수 있다. 정책 변경이 확정되면 해당 화면 규칙·API 계약·검증 기준을 함께 갱신한다. 구현·연동 완료 여부는 개발 리뷰에서 확인한다.
+정원·탈퇴 회원 처리는 현재 스터디 공통 로직으로 개발한다. 답변 대기로 개발을 중단하지 않는다. 활성 크루 카드 이동·임박 표시는 개발 시 연결된 논의 글을 확인한다. 정책이나 공통 로직이 바뀌면 해당 화면 규칙·API 계약·검증 기준을 함께 갱신한다. 구현·연동 완료 여부는 개발 리뷰에서 확인한다.
