@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { Badge } from '@studyclub/ui';
 import { ChevronDown } from 'lucide-react';
@@ -34,6 +34,7 @@ export function RoleBadgeSelect({
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const reasonId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +57,12 @@ export function RoleBadgeSelect({
     };
   }, [open]);
 
+  function choose(next: SystemRole) {
+    setOpen(false);
+    // 현재 값을 다시 고르면 바뀌는 것이 없다 — 요청도 안내도 없다
+    if (next !== role) onChange(next);
+  }
+
   const badge = (
     <Badge tone={ROLE_TONE[role]} dot className='whitespace-nowrap px-2.5 py-1 font-semibold'>
       {roleLabel(role)}
@@ -72,13 +79,19 @@ export function RoleBadgeSelect({
   }
 
   if (blockedReason) {
+    // 포커스를 받고(키보드) 사유를 읽어 준다(스크린리더). 마우스는 title 툴팁.
     return (
       <span
+        tabIndex={0}
         title={BLOCKED_REASON_MESSAGE[blockedReason]}
+        aria-describedby={reasonId}
         data-blocked={blockedReason}
-        className='inline-flex cursor-not-allowed opacity-70'
+        className='inline-flex cursor-not-allowed rounded-pill opacity-70 focus-visible:outline-none focus-visible:shadow-(--ring)'
       >
         {badge}
+        <span id={reasonId} className='sr-only'>
+          {BLOCKED_REASON_MESSAGE[blockedReason]}
+        </span>
       </span>
     );
   }
@@ -115,13 +128,16 @@ export function RoleBadgeSelect({
               type='button'
               role='option'
               aria-selected={r === role}
-              // mousedown 으로 처리한다. 바깥 클릭 감지가 mousedown 에서 메뉴를 닫아 버리면
+              // 마우스는 mousedown 으로 처리한다. 바깥 클릭 감지가 mousedown 에서 메뉴를 닫아 버리면
               // 버튼이 사라져 click 이 영영 오지 않는다.
               onMouseDown={(e) => {
                 e.preventDefault();
-                setOpen(false);
-                // 현재 값을 다시 고르면 바뀌는 것이 없다 — 요청도 안내도 없다
-                if (r !== role) onChange(r);
+                choose(r);
+              }}
+              // 키보드(Enter·Space)는 mousedown 없이 click 만 온다 — `detail === 0` 이 그 신호다.
+              // 마우스 클릭은 위 mousedown 에서 이미 메뉴가 닫혀 여기까지 오지 않는다.
+              onClick={(e) => {
+                if (e.detail === 0) choose(r);
               }}
               className='flex w-full rounded-control p-1 hover:bg-surface-2'
             >

@@ -64,6 +64,7 @@ export function UsersTable({
             <td className='max-w-0 text-fg-secondary'>
               <EmailCell
                 accountId={a.id}
+                displayName={displayName(a)}
                 maskedEmail={a.maskedEmail}
                 revealedEmail={revealed.get(a.id)}
                 onReveal={onReveal}

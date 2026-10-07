@@ -46,13 +46,14 @@ export default function UsersAdmin() {
   const { emails, reveal } = useRevealedEmails(dataUpdatedAt);
 
   // 권한을 바꾼 뒤 필터 결과가 줄면 지금 페이지가 범위 밖일 수 있다(서버는 빈 items + 실제 total).
-  // 에러가 아니므로 total 로 마지막 페이지를 계산해 다시 부른다.
+  // 에러가 아니므로 total 로 마지막 페이지를 계산해 다시 부른다(결과가 아예 없으면 첫 페이지).
   useEffect(() => {
     if (!data || isPlaceholderData) return;
-    if (data.items.length === 0 && data.total > 0 && data.offset >= data.total) {
-      setPage(Math.ceil(data.total / data.limit));
+    if (data.items.length === 0 && data.offset >= data.total && page > 1) {
+      // total 이 0 이면 돌아갈 마지막 장이 없다 — 첫 페이지로
+      setPage(Math.max(1, Math.ceil(data.total / data.limit)));
     }
-  }, [data, isPlaceholderData]);
+  }, [data, isPlaceholderData, page]);
 
   const pageCount = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
@@ -89,6 +90,8 @@ export default function UsersAdmin() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder='이름 · 이메일 검색'
+          aria-label='이름 · 이메일 검색'
+          maxLength={100}
           className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
         />
         {/* 탭·검색으로 걸러진 뒤의 수다 — 표 위에 두어야 무엇을 세고 있는지가 분명하다 */}

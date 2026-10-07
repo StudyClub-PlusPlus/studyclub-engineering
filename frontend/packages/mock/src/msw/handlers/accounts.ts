@@ -44,19 +44,101 @@ type MockAccountRecord = {
 export const MOCK_ACTOR_ID = 3;
 
 const NAMES = [
-  '가온', '하늘', '다온', '라온', '마루', '바다', '사랑', '아름', '자람', '차오름',
-  '카리', '타미', '파랑', '하람', '서윤', '도윤', '지우', '시우', '예준', '민서',
-  '하준', '유진', '수아', '지호', '서연', '현우', '지민', '은우', '채원', '주원',
-  '소율', '건우', '다은', '우진', '나윤', '태오', '연우', '리아', '세아', '준서',
-  '하린', '이안', '로아', '선우', '보라', '나래',
+  '가온',
+  '하늘',
+  '다온',
+  '라온',
+  '마루',
+  '바다',
+  '사랑',
+  '아름',
+  '자람',
+  '차오름',
+  '카리',
+  '타미',
+  '파랑',
+  '하람',
+  '서윤',
+  '도윤',
+  '지우',
+  '시우',
+  '예준',
+  '민서',
+  '하준',
+  '유진',
+  '수아',
+  '지호',
+  '서연',
+  '현우',
+  '지민',
+  '은우',
+  '채원',
+  '주원',
+  '소율',
+  '건우',
+  '다은',
+  '우진',
+  '나윤',
+  '태오',
+  '연우',
+  '리아',
+  '세아',
+  '준서',
+  '하린',
+  '이안',
+  '로아',
+  '선우',
+  '보라',
+  '나래',
 ];
 
 const LOCALS = [
-  'gaon', 'haneul', 'daon', 'raon', 'maru', 'bada', 'sarang', 'areum', 'jaram', 'chaoreum',
-  'kari', 'tami', 'parang', 'haram', 'seoyun', 'doyun', 'jiu', 'siu', 'yejun', 'minseo',
-  'hajun', 'yujin', 'sua', 'jiho', 'seoyeon', 'hyunwoo', 'jimin', 'eunwoo', 'chaewon', 'juwon',
-  'soyul', 'geonwoo', 'daeun', 'ujin', 'nayun', 'taeo', 'yeonwoo', 'ria', 'sea', 'junseo',
-  'harin', 'ian', 'roa', 'sunwoo', 'bora', 'narae',
+  'gaon',
+  'haneul',
+  'daon',
+  'raon',
+  'maru',
+  'bada',
+  'sarang',
+  'areum',
+  'jaram',
+  'chaoreum',
+  'kari',
+  'tami',
+  'parang',
+  'haram',
+  'seoyun',
+  'doyun',
+  'jiu',
+  'siu',
+  'yejun',
+  'minseo',
+  'hajun',
+  'yujin',
+  'sua',
+  'jiho',
+  'seoyeon',
+  'hyunwoo',
+  'jimin',
+  'eunwoo',
+  'chaewon',
+  'juwon',
+  'soyul',
+  'geonwoo',
+  'daeun',
+  'ujin',
+  'nayun',
+  'taeo',
+  'yeonwoo',
+  'ria',
+  'sea',
+  'junseo',
+  'harin',
+  'ian',
+  'roa',
+  'sunwoo',
+  'bora',
+  'narae',
 ];
 
 const STUDIES = {
@@ -112,7 +194,10 @@ export function maskEmail(email: string): string {
   return `${email[0]}***${email.slice(at)}`;
 }
 
-function blockedReason(a: MockAccountRecord, accounts: MockAccountRecord[]): ApiAdminAccount['roleChangeBlockedReason'] {
+function blockedReason(
+  a: MockAccountRecord,
+  accounts: MockAccountRecord[],
+): ApiAdminAccount['roleChangeBlockedReason'] {
   if (a.id === MOCK_ACTOR_ID) return 'CANNOT_CHANGE_OWN_ROLE';
   if (a.systemRole === 'ADMIN' && accounts.filter((x) => x.systemRole === 'ADMIN').length <= 1) {
     return 'LAST_ADMIN_REQUIRED';
@@ -184,13 +269,13 @@ function listAccounts({ request }: MockResolveContext): ApiAdminAccountPage {
 async function revealEmail({ params }: MockResolveContext): Promise<{ id: number; email: string } | Response> {
   const account = mockAdminAccounts.find((a) => a.id === Number(params.accountId));
   if (!account) return HttpResponse.json(notFound, { status: 404 });
-  return HttpResponse.json(
-    { id: account.id, email: account.email },
-    { headers: { 'Cache-Control': 'no-store' } },
-  );
+  return HttpResponse.json({ id: account.id, email: account.email }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
-async function changeRole({ request, params }: MockResolveContext): Promise<{ id: number; systemRole: ApiSystemRole } | Response> {
+async function changeRole({
+  request,
+  params,
+}: MockResolveContext): Promise<{ id: number; systemRole: ApiSystemRole } | Response> {
   const body = (await request.json().catch(() => null)) as { systemRole?: string } | null;
   const next = body?.systemRole;
   if (next !== 'ADMIN' && next !== 'MEMBER') {

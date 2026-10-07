@@ -1,5 +1,5 @@
 // 백오피스 회원 — 목록·이메일 보기·권한 변경·권한표. 키·fetcher·훅을 한 파일에 둔다.
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   ApiAdminAccountPage,
@@ -19,6 +19,12 @@ export const userKeys = {
   all: ['users'] as const,
   list: (filter: UserFilter) => [...userKeys.all, 'list', filter] as const,
   rolePermissions: () => ['role-permissions'] as const,
+  /**
+   * 줄(계정)마다 mutation 키가 따로다 — 줄이 다시 그려져(페이지를 넘겼다 돌아오는 등) 컴포넌트가 새로 생겨도
+   * 진행 중인 요청을 `useIsMutating` 으로 찾아 「처리 중」을 이어 보인다. 중복 제출을 막는 근거다.
+   */
+  roleChange: (accountId: number) => [...userKeys.all, 'role-change', accountId] as const,
+  emailReveal: (accountId: number) => [...userKeys.all, 'email-reveal', accountId] as const,
 };
 
 /** 목록 요청 경로. 값이 없는 조건은 넣지 않는다. `role=ALL` 은 기본값이라 싣지 않는다. */
@@ -45,14 +51,30 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 /**
  * 한 명의 이메일 원본 보기. 서버가 볼 때마다 감사 로그를 남긴다.
  *
- * ⚠️ 결과를 **쿼리 캐시에 넣지 않는다**(mutation 결과는 캐시 키가 없다) — 받은 원본은 호출한 화면이 자기
- * state 에만 둔다. URL·localStorage 에도 넣지 않는다.
+ * ⚠️ 원본을 **쿼리 캐시(MutationCache)에 남기지 않는다.** mutation 의 결과(`state.data`)는 기본적으로
+ * 관찰자가 붙어 있는 동안, 그리고 `gcTime`(기본 5분) 동안 캐시에 남는다. 그래서
+ * - `gcTime: 0` — 관찰자가 떨어지면 곧바로 캐시에서 지운다.
+ * - 호출한 쪽이 결과를 받자마자 `reset()` 으로 관찰자를 뗀다 (EmailCell).
+ * 받은 원본은 호출한 화면이 자기 state 에만 둔다. URL·localStorage 에도 넣지 않는다.
+ *
+ * 줄마다 키가 달라 `isPending` 은 **그 계정의 요청이 진행 중인가**로 센다(`useIsMutating`) — 컴포넌트가
+ * 새로 생겨도 이어진다. `isBusy()` 는 같은 판정을 동기로 한다(같은 틱 중복 클릭 방지).
  */
-export function useRevealEmail() {
-  return useMutation({
-    mutationFn: (accountId: number) =>
-      http<ApiEmailReveal>(`/api/admin/users/${accountId}/email-reveals`, { method: 'POST' }),
+export function useRevealEmail(accountId: number) {
+  const queryClient = useQueryClient();
+  const mutationKey = userKeys.emailReveal(accountId);
+  const mutation = useMutation({
+    mutationKey,
+    gcTime: 0,
+    mutationFn: () => http<ApiEmailReveal>(`/api/admin/users/${accountId}/email-reveals`, { method: 'POST' }),
   });
+  const isPending = useIsMutating({ mutationKey }) > 0;
+  return {
+    mutateAsync: mutation.mutateAsync,
+    reset: mutation.reset,
+    isPending,
+    isBusy: () => queryClient.isMutating({ mutationKey }) > 0,
+  };
 }
 
 /**
@@ -61,12 +83,15 @@ export function useRevealEmail() {
  * 잠금 사유·정렬·탭 결과도 바뀐다.
  *
  * `onSuccess` 가 무효화 Promise 를 돌려주므로 목록이 새로 올 때까지 mutation 이 진행 중으로 남는다 —
- * 그 줄이 「변경 중」에서 곧바로 새 값으로 넘어간다.
+ * 그 줄이 「변경 중」에서 곧바로 새 값으로 넘어간다. 줄마다 키가 달라(`userKeys.roleChange`) 줄이 다시
+ * 그려져도 「변경 중」이 이어지고 중복 제출이 막힌다.
  */
-export function useChangeAccountRole() {
+export function useChangeAccountRole(accountId: number) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ accountId, systemRole }: { accountId: number; systemRole: SystemRole }) =>
+  const mutationKey = userKeys.roleChange(accountId);
+  const mutation = useMutation({
+    mutationKey,
+    mutationFn: (systemRole: SystemRole) =>
       http<ApiRoleChange>(`/api/admin/users/${accountId}/system-role`, {
         method: 'PATCH',
         headers: JSON_HEADERS,
@@ -74,6 +99,12 @@ export function useChangeAccountRole() {
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
   });
+  const isPending = useIsMutating({ mutationKey }) > 0;
+  return {
+    mutateAsync: mutation.mutateAsync,
+    isPending,
+    isBusy: () => queryClient.isMutating({ mutationKey }) > 0,
+  };
 }
 
 /** 권한표 — 모달을 열 때만 부른다(`enabled`). 배포 사이에 바뀌지 않아 오래 신선하게 둔다. */

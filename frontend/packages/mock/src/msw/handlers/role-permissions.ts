@@ -19,7 +19,11 @@ export const mockRolePermissions: ApiRolePermissions = {
         { key: 'CREW_VIEW', label: '스터디 크루 명단 열람', allowedRoles: ['ADMIN', 'LEADER'] },
         { key: 'STUDY_EDIT', label: '스터디 정보 수정', allowedRoles: ['ADMIN', 'LEADER'] },
         { key: 'ATTENDANCE_EDIT', label: '출석 현황 수정', allowedRoles: ['ADMIN', 'LEADER'] },
-        { key: 'MEETING_MANAGE', label: '회차 관리 (추가·수정·삭제) — 담당 반에 한해', allowedRoles: ['ADMIN', 'LEADER'] },
+        {
+          key: 'MEETING_MANAGE',
+          label: '회차 관리 (추가·수정·삭제) — 담당 반에 한해',
+          allowedRoles: ['ADMIN', 'LEADER'],
+        },
         { key: 'NOTICE_STUDY', label: '스터디 공지 발행', allowedRoles: ['ADMIN', 'LEADER'] },
       ],
     },

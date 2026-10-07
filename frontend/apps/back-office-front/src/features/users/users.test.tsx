@@ -85,7 +85,7 @@ describe('UsersTable', () => {
     expect(within(row).getByText('휴면')).toBeInTheDocument();
     // 가린 이메일과 「보기」
     expect(within(row).getByText('n***@example.com')).toBeInTheDocument();
-    expect(within(row).getByRole('button', { name: '보기' })).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: 'n*** 이메일 보기' })).toBeInTheDocument();
   });
 
   it('받아 둔 원본이 있는 줄만 원본을 보이고 「보기」가 사라진다', () => {
@@ -100,7 +100,7 @@ describe('UsersTable', () => {
     );
     expect(screen.getByText('haneul@example.com')).toBeInTheDocument();
     expect(screen.getByText('n***@example.com')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: '보기' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /이메일 보기/ })).toHaveLength(1);
   });
 
   it('네비게이터는 첫 스터디와 나머지 개수를 적는다', () => {
@@ -174,7 +174,10 @@ describe('PermissionTables', () => {
   it('응답의 그룹 수만큼 표를, 행 수만큼 행을 그린다', () => {
     const { container } = render(
       <PermissionTables
-        groups={[group('STUDY', ['ADMIN', 'LEADER', 'MEMBER'], ['A', 'B', 'C']), group('SITE', ['ADMIN', 'MEMBER'], ['D', 'E'])]}
+        groups={[
+          group('STUDY', ['ADMIN', 'LEADER', 'MEMBER'], ['A', 'B', 'C']),
+          group('SITE', ['ADMIN', 'MEMBER'], ['D', 'E']),
+        ]}
       />,
     );
     expect(container.querySelectorAll('table')).toHaveLength(2);
@@ -187,7 +190,11 @@ describe('PermissionTables', () => {
   it('코드에 없는 그룹·역할 키도 그대로 그린다 (키 문자열 그대로)', () => {
     const { container } = render(
       <PermissionTables
-        groups={[group('STUDY', ['ADMIN', 'LEADER', 'MEMBER'], ['A']), group('SITE', ['ADMIN', 'MEMBER'], ['B']), group('APPLY', ['OWNER', 'ADMIN'], ['C', 'D'])]}
+        groups={[
+          group('STUDY', ['ADMIN', 'LEADER', 'MEMBER'], ['A']),
+          group('SITE', ['ADMIN', 'MEMBER'], ['B']),
+          group('APPLY', ['OWNER', 'ADMIN'], ['C', 'D']),
+        ]}
       />,
     );
     expect(container.querySelectorAll('table')).toHaveLength(3);
@@ -198,7 +205,13 @@ describe('PermissionTables', () => {
   it('허용 역할만 체크하고 나머지는 없음으로 그린다', () => {
     render(
       <PermissionTables
-        groups={[{ scope: 'SITE', roles: ['ADMIN', 'MEMBER'], permissions: [{ key: 'X', label: '무언가', allowedRoles: ['ADMIN'] }] }]}
+        groups={[
+          {
+            scope: 'SITE',
+            roles: ['ADMIN', 'MEMBER'],
+            permissions: [{ key: 'X', label: '무언가', allowedRoles: ['ADMIN'] }],
+          },
+        ]}
       />,
     );
     const row = screen.getByText('무언가').closest('tr')!;
