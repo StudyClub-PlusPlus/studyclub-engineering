@@ -54,4 +54,16 @@ public class StudyRecruitment extends BaseEntity {
     public boolean isFull(long activeParticipantCount) {
         return recruitmentCapacity != null && activeParticipantCount >= recruitmentCapacity;
     }
+
+    /** 모집 정원. {@code null} 이면 제한 없음. */
+    public void updateCapacity(Integer recruitmentCapacity) {
+        if (recruitmentCapacity != null && recruitmentCapacity < 1) {
+            throw new IllegalArgumentException("capacity 는 1 이상이어야 합니다.");
+        }
+        this.recruitmentCapacity = recruitmentCapacity;
+    }
+
+    public void updateStartAt(Instant startAt) {
+        this.startAt = startAt;
+    }
 }

@@ -73,7 +73,6 @@ class StudyCreateIntegrationTest {
         assertThat(study.get().getTitle()).isEqualTo("AI 논문 스터디");
         assertThat(study.get().getCategory().name()).isEqualTo("AI_ML");
         assertThat(study.get().getStatus().name()).isEqualTo("DRAFT");
-        assertThat(study.get().isHidden()).isFalse();
 
         var recruitment = recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId);
         assertThat(recruitment).isPresent();

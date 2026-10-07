@@ -1,6 +1,7 @@
 # 모집 상태 (모집 마감 자동 판정) Spec
 
 > ERD: [STUDY](../../docs/erd/STUDY.md) § "모집 상태" · [STUDY_RECRUITMENT](../../docs/erd/STUDY_RECRUITMENT.md) · 관련 스펙: [study/spec.md](../study/spec.md)
+> Story PRD: [스터디 목록](../../01-planning/stories/crew-browse-studies/PRD.md) · [콘솔 스터디 목록](../../01-planning/stories/captain-list-all-studies/PRD.md)
 > 생성일: 2026-09-15
 > 상태: 구현완료 (`UPCOMING` 은 없다 — 예약 공개가 없어 모집 예정 판정이 필요 없다)
 > 이슈: Notion 51 「[기능] 모집 마감 (정원 도달 or 기한 만료 시 자동)」

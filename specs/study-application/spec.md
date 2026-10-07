@@ -12,9 +12,9 @@
 > 기획 근거: playground 프로토 (`ApplicationFormTab` · `ApplyDialog` · `ResultsTab`)
 >
 > Story PRD:
-> - [캡틴으로서, 스터디 신청용 폼을 제작할 수 있다](../../planning/stories/captain-application-form/PRD.md)
-> - [크루로서, 스터디 신청 폼을 제출할 수 있다](../../planning/stories/crew-submit-application/PRD.md)
-> - [캡틴으로서, 스터디 신청서 결과를 모아볼 수 있다](../../planning/stories/captain-application-results/PRD.md)
+> - [캡틴으로서, 스터디 신청용 폼을 제작할 수 있다](../../01-planning/stories/captain-application-form/PRD.md)
+> - [크루로서, 스터디 신청 폼을 제출할 수 있다](../../01-planning/stories/crew-submit-application/PRD.md)
+> - [캡틴으로서, 스터디 신청서 결과를 모아볼 수 있다](../../01-planning/stories/captain-application-results/PRD.md)
 
 신청 폼 정의는 **기수(`STUDY.APPLICATION_FORM`)** 에 두고, 신청 행은 **모집 회차(`STUDY_APPLICATION.RECRUITMENT_ID`)** 에 붙인다. `STUDY_COHORT` 경로(`/cohorts/{cohortId}/…`)는 쓰지 않는다.
 
@@ -25,12 +25,12 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | Method | Path | 설명 | 인증 | 스토리 | 상태 |
 |--------|------|------|------|--------|------|
 | GET | /api/studies/{studyId}/application-form | 신청 폼 조회 | 공개 (OPEN 기수) | 캡틴 설계 · 크루 제출 | 스펙작성중 |
-| PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | O (그 스터디 네비게이터 또는 캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
-| GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
-| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (캡틴) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
+| PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | **폐기 예정** — 네비게이터는 폼을 고치지 않고, 담당 캡틴은 백오피스 경로를 쓴다 | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
+| GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴 누구나) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
+| PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (담당 캡틴만) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
 | POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현중 |
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
-| GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 스펙작성중 |
+| GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 스펙작성중 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -38,7 +38,9 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 ## 공통 사항
 
 - **accountId**: JWT `authentication.getPrincipal()`. 바디로 받지 않는다.
-- **캡틴**: 이 기수 `STUDY_PARTICIPANT` 의 `PARTICIPANT_ROLE` 이 `LEADER` 또는 `CO_LEADER` 이거나, `ACCOUNT.SYSTEM_ROLE=ADMIN`.
+- **캡틴**: `ACCOUNT.SYSTEM_ROLE=ADMIN`. 스터디와 상관없는 계정 권한이다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
+- **담당 캡틴**: 이 기수를 생성한 캡틴. 스터디 생성 시 명부(`STUDY_PARTICIPANT`)에 들어간다. 신청서를 내지 않고 정원에도 포함하지 않는다.
+- **네비게이터**: 이 기수 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER`(·`CO_LEADER`)인 크루. 신청 폼 수정·신청 결과 조회 권한이 없다 (백오피스 접근 불가).
 - **날짜**: UTC ISO 8601.
 - **에러 바디**: `{ "errorCode", "errorMessage" }`. `fields` 객체는 추가하지 않는다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
 - **500**: 예기치 않은 서버 오류 시 `INTERNAL_ERROR`.
@@ -172,7 +174,7 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/application-form`
-- **인증**: 불필요 — `STUDY.STATUS=OPEN` 일 때. 캡틴이 DRAFT 기수를 보려면 로그인 + 캡틴
+- **인증**: 불필요 — `STUDY.STATUS=OPEN` 일 때. DRAFT 기수를 보려면 로그인 + 캡틴 (담당이 아니어도 된다)
 - **설명**: 설문 제목·설명·추가 질문과, 신청 화면에 필요한 기수 안내(일정·모집 기한·주제)를 반환한다. 플랫폼 기본 문항 정의는 응답에 넣지 않는다 — 클라이언트·서버가 이 스펙 표로 안다.
 
 ### Path Parameters
@@ -225,7 +227,7 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 401 | UNAUTHORIZED | DRAFT 기수인데 미로그인 |
-| 403 | FORBIDDEN | DRAFT 기수인데 이 기수 캡틴이 아님 |
+| 403 | FORBIDDEN | DRAFT 기수인데 캡틴이 아님 |
 | 404 | NOT_FOUND | studyId 없음, 또는 OPEN 이 아닌데 캡틴도 아님 |
 
 ### 프론트엔드 사용처
@@ -241,17 +243,18 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 
 ### 기본 정보
 
-**같은 일을 두 관객이 한다 — 경로가 둘이다.** 본문 처리는 같고 권한 판정만 다르다.
+**폼 수정은 담당 캡틴만, 조회는 캡틴 누구나 한다.** 둘 다 백오피스 경로를 쓴다.
 
 | Method | Path | 누가 | 판정 |
 |---|---|---|---|
-| PUT | `/api/studies/{studyId}/application-form` | 그 스터디 **네비게이터** 또는 캡틴 | `assertCaptainOrNavigator` |
-| PUT | `/api/admin/studies/{studyId}/application-form` | **캡틴만** (백오피스) | `assertCaptain` |
-| GET | `/api/admin/studies/{studyId}/application-form` | **캡틴만** (백오피스 편집 화면) | `assertCaptain` |
+| PUT | `/api/admin/studies/{studyId}/application-form` | **담당 캡틴만** (백오피스) | 캡틴 + 이 기수 담당 여부 |
+| GET | `/api/admin/studies/{studyId}/application-form` | **캡틴 누구나** (백오피스 편집 화면 · 담당이 아니면 읽기 전용) | `@RequireAdmin` |
+| PUT | `/api/studies/{studyId}/application-form` | **폐기 예정** | — |
 
 - **설명**: 기수 신청 폼을 통째로 교체한다. 질문 설명은 여러 줄·마크다운 원문을 그대로 저장한다.
-- 백오피스는 캡틴만 들어간다(POL-0001). 네비게이터도 자기 스터디 폼은 고쳐야 하므로 **사용자 사이트 경로**로 연다.
-  결정 기록: [`share/2026-09-24-admin-api-path.md`](../../share/2026-09-24-admin-api-path.md)
+- 백오피스는 캡틴만 들어간다(POL-0001). **네비게이터는 신청 폼을 고치지 않는다** (2026-10-04 확정). 그래서 네비게이터용으로 열었던 사용자 사이트 경로 `PUT /api/studies/{studyId}/application-form` 은 폐기 예정이다. 코드 제거는 후속 작업.
+- 담당 캡틴 판정은 담당 캡틴의 명부 편입(스터디 생성 시)이 구현된 뒤에 붙는다. 그 전까지 서버는 캡틴이면 누구나 통과시킨다.
+  이전 결정 기록: [`docs/share/2026-09-24-admin-api-path.md`](../../docs/share/2026-09-24-admin-api-path.md)
 
 ### 정책
 
@@ -274,7 +277,7 @@ GET 신청 폼 조회와 같은 shape.
 |------|-----------|------|
 | 400 | INVALID_INPUT | 스키마 위반 (타입, 옵션 누락, 허용되지 않은 `allowOther`, 중복 id, 플랫폼 기본 문항 id 혼입). `errorMessage`에 위치와 사유 |
 | 401 | UNAUTHORIZED | 로그인 필요 |
-| 403 | FORBIDDEN | 이 기수 캡틴이 아님 |
+| 403 | FORBIDDEN | 이 기수 담당 캡틴이 아님 |
 | 404 | NOT_FOUND | studyId 없음 |
 | 409 | CONFLICT | 모집 시작 이후 또는 신청이 이미 들어온 뒤 수정 |
 
@@ -411,7 +414,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 
 - **Method**: GET
 - **Path**: `/api/admin/studies/{studyId}/applications`
-- **인증**: 필요 — 캡틴
+- **인증**: 필요 — 캡틴 (담당이 아니어도 된다). 네비게이터는 볼 수 없다
 - **설명**: 이 기수 모집 회차의 신청 행을 반환한다. **집계 API 는 없다.** 질문별 막대·응답자별 표는 클라이언트가 이 목록으로 계산한다.
 
 ### Query Parameters
@@ -481,7 +484,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 401 | UNAUTHORIZED | 로그인 필요 |
-| 403 | FORBIDDEN | 이 기수 캡틴이 아님 |
+| 403 | FORBIDDEN | 캡틴이 아님 |
 | 404 | NOT_FOUND | studyId 없음 |
 | 422 | INVALID_INPUT | `recruitmentId` 가 이 기수 모집 회차가 아님 |
 
@@ -550,10 +553,11 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 | 동작 | 허용 | 검증 위치 |
 |------|------|-----------|
 | 신청 폼 조회 (OPEN) | 누구나 | 서버 (공개 여부·상태) |
-| 신청 폼 저장 | 이 기수 캡틴 | 서버 |
+| 신청 폼 조회 (DRAFT · 백오피스) | 캡틴 누구나 | 서버 |
+| 신청 폼 저장 | 이 기수 담당 캡틴 | 서버 |
 | 신청 제출 | 로그인 + `DISCORD_ID` | 서버 |
 | 내 신청 여부 | 로그인 본인 | 서버 |
-| 신청 결과 조회 | 이 기수 캡틴 | 서버 |
+| 신청 결과 조회 | 캡틴 누구나 (네비게이터 불가) | 서버 |
 | 디스코드 연동 | 로그인 본인 | 서버 |
 | 미로그인 신청 | 거절 | 서버. 프로토는 로그인 가정 |
 

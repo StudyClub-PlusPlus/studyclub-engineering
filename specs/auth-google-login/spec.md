@@ -1,5 +1,7 @@
 # 구글 로그인 + 최소 Account (zapp 패턴 이식)
 
+> Story PRD: [크루는 Google 계정으로 로그인하고 온보딩을 마칠 수 있다.](../../01-planning/stories/crew-google-login-onboarding/PRD.md)
+
 ## WHAT
 
 core-front·back-office-front 의 `/login` 에 **구글 소셜 로그인**을 붙이고, **Spring 백엔드가 Account·JWT 의
