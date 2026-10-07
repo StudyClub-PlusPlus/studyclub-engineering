@@ -54,7 +54,6 @@ class AdminStudyListIntegrationTest {
         insertAccount(MEMBER_ID, "member-studylist@example.com", SystemRole.MEMBER, now);
         insertStudy(
                 STUDY_ID,
-                "al-open-algo",
                 "알고리즘 스터디",
                 "ALGORITHM",
                 "STUDY",
@@ -63,22 +62,13 @@ class AdminStudyListIntegrationTest {
                 now);
         insertStudy(
                 DRAFT_STUDY_ID,
-                "al-draft-sw",
                 "드래프트 스터디",
                 "SOFTWARE",
                 "STUDY",
                 "DRAFT",
                 "{\"questions\":[]}",
                 now);
-        insertStudy(
-                CLUB_STUDY_ID,
-                "al-open-club",
-                "클럽 스터디",
-                "LANGUAGE",
-                "CLUB",
-                "OPEN",
-                "{\"questions\":[]}",
-                now);
+        insertStudy(CLUB_STUDY_ID, "클럽 스터디", "LANGUAGE", "CLUB", "OPEN", "{\"questions\":[]}", now);
         insertRecruitment(STUDY_ID, 20, now);
         insertRecruitment(DRAFT_STUDY_ID, null, now);
         insertRecruitment(CLUB_STUDY_ID, 15, now);
@@ -365,7 +355,6 @@ class AdminStudyListIntegrationTest {
      */
     private void insertStudy(
             Long id,
-            String slug,
             String title,
             String category,
             String kind,
@@ -381,18 +370,15 @@ class AdminStudyListIntegrationTest {
                 now,
                 now);
         jdbcTemplate.update(
-                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, SLUG, ONE_LINE_SUMMARY, CATEGORY,"
-                        + " IS_HIDDEN, STUDY_DELIVERY_FORMAT, STATUS, APPLICATION_FORM,"
+                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY,"
+                        + " STATUS, APPLICATION_FORM,"
                         + " CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
+                        + " VALUES (?, ?, ?, ?, ?, ?, CAST(? AS JSON), ?, ?)",
                 id,
                 id,
                 title,
-                slug,
                 "한 줄 소개",
                 category,
-                false,
-                "ONLINE",
                 status,
                 applicationForm,
                 now,

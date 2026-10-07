@@ -279,6 +279,23 @@ public class StudyApplicationFormService {
     }
 
     /**
+     * applicationForm JSON 에 questions 가 1개 이상 있으면 {@code true}. null·빈 값·0개 질문·파싱 불가 모두 {@code
+     * false}.
+     */
+    public boolean hasAtLeastOneQuestion(String applicationForm) {
+        if (applicationForm == null || applicationForm.isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode root = jsonNodeOf(applicationForm);
+            JsonNode questions = root.path("questions");
+            return questions.isArray() && !questions.isEmpty();
+        } catch (JacksonException e) {
+            return false;
+        }
+    }
+
+    /**
      * 저장된 폼을 읽는다. JSON 을 <b>문자열로 한 번 더 감싼</b> 값이 들어 있는 경우를 함께 받아 준다 — 이 API 이전에 들어간 레거시 데이터 때문이다.
      * 새로 저장하는 경로는 항상 객체로 넣으므로, 레거시가 정리되면 이 분기를 지운다.
      */

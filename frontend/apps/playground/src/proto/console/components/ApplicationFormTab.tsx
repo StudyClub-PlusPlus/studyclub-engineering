@@ -177,7 +177,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
 
   async function save() {
     setSaving(true);
-    // TODO(api): PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form
+    // TODO(api): PUT /api/admin/studies/{studyId}/application-form
     await new Promise((r) => setTimeout(r, 400));
     setSaving(false);
     setSaved(true);

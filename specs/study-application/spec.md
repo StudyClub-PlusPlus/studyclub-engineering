@@ -12,9 +12,9 @@
 > 기획 근거: playground 프로토 (`ApplicationFormTab` · `ApplyDialog` · `ResultsTab`)
 >
 > Story PRD:
-> - [캡틴으로서, 스터디 신청용 폼을 제작할 수 있다](../../planning/stories/captain-application-form/PRD.md)
-> - [크루로서, 스터디 신청 폼을 제출할 수 있다](../../planning/stories/crew-submit-application/PRD.md)
-> - [캡틴으로서, 스터디 신청서 결과를 모아볼 수 있다](../../planning/stories/captain-application-results/PRD.md)
+> - [캡틴으로서, 스터디 신청용 폼을 제작할 수 있다](../../01-planning/stories/captain-application-form/PRD.md)
+> - [크루로서, 스터디 신청 폼을 제출할 수 있다](../../01-planning/stories/crew-submit-application/PRD.md)
+> - [캡틴으로서, 스터디 신청서 결과를 모아볼 수 있다](../../01-planning/stories/captain-application-results/PRD.md)
 
 신청 폼 정의는 **기수(`STUDY.APPLICATION_FORM`)** 에 두고, 신청 행은 **모집 회차(`STUDY_APPLICATION.RECRUITMENT_ID`)** 에 붙인다. `STUDY_COHORT` 경로(`/cohorts/{cohortId}/…`)는 쓰지 않는다.
 
@@ -25,7 +25,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | Method | Path | 설명 | 인증 | 스토리 | 상태 |
 |--------|------|------|------|--------|------|
 | GET | /api/studies/{studyId}/application-form | 신청 폼 조회 | 공개 (OPEN 기수) | 캡틴 설계 · 크루 제출 | 스펙작성중 |
-| PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | **폐기 예정** — 네비게이터는 폼을 고치지 않고, 담당 캡틴은 백오피스 경로를 쓴다 | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
+| PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | **폐기 — 코드에서 지운다** (2026-10-07). 네비게이터는 폼을 고치지 않고, 담당 캡틴은 백오피스 경로를 쓴다 | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 폐기 |
 | GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴 누구나) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
 | PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (담당 캡틴만) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
 | POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
@@ -39,7 +39,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 - **accountId**: JWT `authentication.getPrincipal()`. 바디로 받지 않는다.
 - **캡틴**: `ACCOUNT.SYSTEM_ROLE=ADMIN`. 스터디와 상관없는 계정 권한이다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
-- **담당 캡틴**: 이 기수를 생성한 캡틴. 스터디 생성 시 명부(`STUDY_PARTICIPANT`)에 들어간다. 신청서를 내지 않고 정원에도 포함하지 않는다.
+- **담당 캡틴**: 이 기수를 생성한 캡틴. 판정은 `STUDY.CREATED_BY = accountId`. 스터디에 참여하지만 신청서를 내지 않고 정원에도 잡히지 않는다. 반 편성 때 캡틴이 반을 지정하면 명부(`STUDY_PARTICIPANT`)에 들어간다 (2026-10-07, [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). `CREATED_BY` 가 NULL 인 옛 기수는 담당 캡틴이 없으므로 캡틴 누구나 담당으로 본다.
 - **네비게이터**: 이 기수 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER`(·`CO_LEADER`)인 크루. 신청 폼 수정·신청 결과 조회 권한이 없다 (백오피스 접근 불가).
 - **날짜**: UTC ISO 8601.
 - **에러 바디**: `{ "errorCode", "errorMessage" }`. 유효값 실패는 `fields` 를 추가한다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
@@ -65,6 +65,8 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 2. 없으면 인원 제한 없음
 
 기수 단위 정원(`STUDY.CAPACITY`)은 없다.
+
+**담당 캡틴은 정원에 넣지 않는다** ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-07). 정원은 신청 행 수로 세고 담당 캡틴은 신청 행이 없어서 자연히 빠진다. 반 편성 뒤 담당 캡틴이 명부에 들어가도 정원을 다시 세지 않는다. 명부 인원을 정원과 견주는 화면(참여 명단 `participantCount`)도 담당 캡틴 행을 뺀다.
 
 가득이면 저장하지 않는다.
 
@@ -239,14 +241,15 @@ trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API
 
 | Method | Path | 누가 | 판정 |
 |---|---|---|---|
-| PUT | `/api/admin/studies/{studyId}/application-form` | **담당 캡틴만** (백오피스) | 캡틴 + 이 기수 담당 여부 |
+| PUT | `/api/admin/studies/{studyId}/application-form` | **담당 캡틴만** (백오피스) | `@RequireAdmin` + 서비스에서 `STUDY.CREATED_BY = accountId` (NULL 이면 통과) |
 | GET | `/api/admin/studies/{studyId}/application-form` | **캡틴 누구나** (백오피스 편집 화면 · 담당이 아니면 읽기 전용) | `@RequireAdmin` |
-| PUT | `/api/studies/{studyId}/application-form` | **폐기 예정** | — |
+| PUT | `/api/studies/{studyId}/application-form` | **폐기** — 컨트롤러 메서드를 지운다 | — |
 
 - **설명**: 기수 신청 폼을 통째로 교체한다. 질문 설명은 여러 줄·마크다운 원문을 그대로 저장한다.
-- 백오피스는 캡틴만 들어간다(POL-0001). **네비게이터는 신청 폼을 고치지 않는다** (2026-10-04 확정). 그래서 네비게이터용으로 열었던 사용자 사이트 경로 `PUT /api/studies/{studyId}/application-form` 은 폐기 예정이다. 코드 제거는 후속 작업.
-- 담당 캡틴 판정은 담당 캡틴의 명부 편입(스터디 생성 시)이 구현된 뒤에 붙는다. 그 전까지 서버는 캡틴이면 누구나 통과시킨다.
-  이전 결정 기록: [`share/2026-09-24-admin-api-path.md`](../../share/2026-09-24-admin-api-path.md)
+- 백오피스는 캡틴만 들어간다(POL-0001). **네비게이터는 신청 폼을 고치지 않는다** (2026-10-04 확정). 그래서 네비게이터용으로 열었던 사용자 사이트 경로 `PUT /api/studies/{studyId}/application-form` 은 **지운다** — `StudyApplicationFormController.replaceForm`·`StudyApplicationFormService.replaceFormFromSite` 와 그 테스트. 부르는 화면은 없다(core-front·back-office-front 호출 0건). 남겨 두면 네비게이터가 이 경로로 폼을 고칠 수 있다. 같은 경로의 `GET`(공개 조회)은 남긴다.
+- 담당 캡틴 판정: `@RequireAdmin` 을 통과한 뒤, 서비스가 `STUDY.CREATED_BY` 를 요청 계정과 비교한다. 다르면 `403`. `CREATED_BY` 가 NULL(V29 이전 등록)이면 통과한다. 판정은 잠금(`409`) 검사보다 먼저 한다 — 담당이 아닌 캡틴에게 잠금 여부를 알려 줄 이유가 없다.
+  - 지금 서버는 이 판정 없이 캡틴이면 누구나 통과시킨다. 고칠 곳: `StudyApplicationFormService.replaceFormFromBackOffice`.
+  이전 결정 기록: [`docs/share/2026-09-24-admin-api-path.md`](../../docs/share/2026-09-24-admin-api-path.md)
 
 ### 정책
 
