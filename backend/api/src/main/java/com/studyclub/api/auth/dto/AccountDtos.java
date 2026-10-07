@@ -3,6 +3,7 @@ package com.studyclub.api.auth.dto;
 import com.studyclub.api.auth.validation.ValidNickname;
 import com.studyclub.api.auth.validation.ValidTimeZone;
 import com.studyclub.domain.account.AccountConsent;
+import com.studyclub.domain.account.LeaveReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
@@ -56,4 +57,11 @@ public final class AccountDtos {
             return new MarketingConsentView(false, null);
         }
     }
+
+    /**
+     * 회원 탈퇴 요청 (DELETE /api/me). {@code reason} 은 선택 — 정해진 값 셋({@link LeaveReason}) 중 하나만 받는다. 자유
+     * 문장은 집계가 안 되므로 애초에 받지 않는다 — 정해진 값 밖의 문자열은 역직렬화 단계에서 {@code HttpMessageNotReadableException} 으로
+     * 걸러져 {@code GlobalExceptionHandler} 가 400 INVALID_INPUT 으로 응답한다.
+     */
+    public record LeaveRequest(LeaveReason reason) {}
 }

@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 
+import { Button, Checkbox, Modal } from '@studyclub/ui';
+import { ChevronRight } from 'lucide-react';
+
 import { BlockView } from '@/components/LegalDoc';
 import type { Locale } from '@/lib/content';
 import { legalDoc, lx } from '@/lib/legal';
-import { Button, Checkbox, Modal } from '@studyclub/ui';
-import { ChevronRight } from 'lucide-react';
 
 type ConsentKey = 'age' | 'terms' | 'privacy' | 'marketing';
 

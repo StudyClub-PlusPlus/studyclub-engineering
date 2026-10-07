@@ -6,7 +6,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 > ⚠️ **일부만 구현됐다.** 헤더 검사는 `discord/app/api/headers.py` 의 FastAPI 의존성이고, 지금은
 > `POST /api/v1/studies` · `GET /api/v1/studies/{discordStudyId}/channels` ·
 > `POST /api/v1/channels/alert/msg` · `POST /api/v1/channels/announcement/msg` ·
-> `POST /api/v1/channels/{discordChannelId}/msg` 에만 걸려 있다. `health` · `ping` 은 여전히 인증 없이 열려 있고,
+> `POST /api/v1/channels/{discordChannelId}/msg` 에만 걸려 있다. `health` 는 여전히 인증 없이 열려 있고,
 > 없는 경로에 401 을 우선하는 동작도 아직 없다 (`discord/README.md` 참고).
 
 ## Table of Contents
@@ -71,9 +71,9 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 - `int` 변환은 **요청 경계에서 한 번** 한다 (FastAPI 의존성). discord.py 는 `int` 를 받으므로
   내부 코드는 `int` 를 들고 다니고, 파싱 실패는 거기서 400 이 된다 — 호출 직전마다 변환하면
   같은 파싱과 에러 처리를 엔드포인트마다 반복하게 된다. `config.py` 가 
-  `DISCORD_BOT_OUTPUT_CHANNEL` 을 시작 시점에 한 번 파싱해 `int` 로 들고 있는 것과 같은 결.
+  `DISCORD_BOT_CHANNEL_ID` 을 시작 시점에 한 번 파싱해 `int` 로 들고 있는 것과 같은 결.
 - 그 유저가 길드에 없으면 **404**, 있지만 자격이 없으면 **403**
-  (봇이 채널을 못 찾을 때 404 를 쓰는 `POST /api/v1/ping` 과 같은 결).
+  (봇이 채널을 못 찾을 때 404 를 쓰는 `POST /api/v1/channels/alert/msg` 와 같은 결).
 - **넘기는 건 이 ID 까지다** — 이름·이메일 같은 개인정보는 헤더로도 로그로도 넘기지 않는다.
 
 ### 시스템 호출
@@ -117,9 +117,10 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 ## 요청 예시
 
 ```bash
-curl -X POST http://localhost:4800/api/v1/ping \
+curl -X POST http://localhost:4800/api/v1/channels/alert/msg \
   -H 'Content-Type: application/json' \
   -H "X-API-Key: $DISCORD_API_KEY" \
   -H 'X-Discord-User-ID: 327394882193883136' \
-  -H 'Idempotency-Key: 9f1c2b3e-7a54-4d61-9c88-0f2b6d5e41aa'
+  -H 'Idempotency-Key: 9f1c2b3e-7a54-4d61-9c88-0f2b6d5e41aa' \
+  -d '{"msg": "알고리즘 스터디 1기가 완료 처리되었습니다."}'
 ```

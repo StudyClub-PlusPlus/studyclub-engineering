@@ -12,7 +12,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -20,6 +19,8 @@ import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.sql.Timestamp;
@@ -27,7 +28,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +60,7 @@ class MyStudyIntegrationTest {
     @Autowired JwtService jwtService;
     @Autowired AccountRepository accountRepository;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired StudyProgramRepository studyProgramRepository;
     @Autowired StudyRepository studyRepository;
     @Autowired StudyGroupRepository studyGroupRepository;
     @Autowired StudyMeetingRepository studyMeetingRepository;
@@ -178,16 +179,17 @@ class MyStudyIntegrationTest {
 
     /** 스터디 · 반 · MEMBER_ID 명부 한 줄. 명부 편입은 10일 전. */
     private Long enroll(String title, Instant startAt, ParticipantStatus status) {
+        // 종류는 프로그램이 갖는다 — 응답의 studyKind 가 여기서 온다
+        StudyProgram program =
+                studyProgramRepository.save(
+                        StudyProgram.builder().title(title).studyKind(StudyKind.STUDY).build());
         Study study =
                 studyRepository.save(
                         Study.builder()
-                                .programId(1L)
-                                .slug("my-studies-" + UUID.randomUUID())
+                                .programId(program.getId())
                                 .title(title)
                                 .oneLineSummary("소개")
                                 .category(StudyCategory.SOFTWARE)
-                                .studyKind(StudyKind.STUDY)
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.ONGOING)
                                 .startAt(startAt)
                                 .discordChannelUrl(DISCORD_URL)

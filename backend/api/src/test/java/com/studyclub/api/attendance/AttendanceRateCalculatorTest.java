@@ -34,15 +34,80 @@ class AttendanceRateCalculatorTest {
     class ComponentsTest {
 
         @Test
-        @DisplayName("참가자_상태_WITHDRAWN_이면_분모0_율null")
-        void 참가자_상태_WITHDRAWN_이면_분모0_율null() {
+        @DisplayName("참가자_상태_WITHDRAWN_인데_leftAt_없으면_분모0_율null")
+        void 참가자_상태_WITHDRAWN_인데_leftAt_없으면_분모0_율null() {
             var participant = participant(ParticipantStatus.WITHDRAWN);
+            // leftAt 이 없으면 countsToward 가 meeting 을 들여다보기도 전에 false 를 반환한다 —
+            // getScheduledAt() 을 스터빙하면 미사용 스터빙으로 실패하므로 빈 mock 을 그대로 쓴다.
+            StudyMeeting meeting = mock(StudyMeeting.class);
 
             double[] result =
-                    AttendanceRateCalculator.components(participant, List.of(), Map.of(), NOW);
+                    AttendanceRateCalculator.components(
+                            participant, List.of(meeting), Map.of(), NOW);
 
             assertThat(result[0]).isZero();
             assertThat(result[1]).isZero();
+        }
+
+        @Test
+        @DisplayName("참가자_상태_DELETED_인데_leftAt_없으면_분모0_율null")
+        void 참가자_상태_DELETED_인데_leftAt_없으면_분모0_율null() {
+            var participant = participant(ParticipantStatus.DELETED);
+            StudyMeeting meeting = mock(StudyMeeting.class);
+
+            double[] result =
+                    AttendanceRateCalculator.components(
+                            participant, List.of(meeting), Map.of(), NOW);
+
+            assertThat(result[0]).isZero();
+            assertThat(result[1]).isZero();
+        }
+
+        @Test
+        @DisplayName("참가자_상태_WITHDRAWN_이어도_leftAt_이전_미팅은_분모에_포함한다")
+        void 참가자_상태_WITHDRAWN_이어도_leftAt_이전_미팅은_분모에_포함한다() {
+            Instant leftAt = NOW.minusSeconds(1800);
+            var participant = withdrawnParticipant(ParticipantStatus.WITHDRAWN, leftAt);
+            var meeting = pastMeeting(1L); // NOW - 3600s, leftAt 이전
+            var att = attendance(AttendanceStatus.PRESENT);
+
+            double[] result =
+                    AttendanceRateCalculator.components(
+                            participant, List.of(meeting), Map.of(1L, att), NOW);
+
+            assertThat(result[0]).isEqualTo(1.0);
+            assertThat(result[1]).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("참가자_상태_WITHDRAWN_이면_leftAt_이후_미팅은_결석이_아니라_분모에서_제외한다")
+        void 참가자_상태_WITHDRAWN_이면_leftAt_이후_미팅은_분모에서_제외한다() {
+            Instant leftAt = NOW.minusSeconds(1800);
+            var participant = withdrawnParticipant(ParticipantStatus.WITHDRAWN, leftAt);
+            StudyMeeting afterLeft = mock(StudyMeeting.class);
+            when(afterLeft.getScheduledAt()).thenReturn(NOW.minusSeconds(900)); // leftAt 이후, now 이전
+
+            double[] result =
+                    AttendanceRateCalculator.components(
+                            participant, List.of(afterLeft), Map.of(), NOW);
+
+            assertThat(result[1]).isZero();
+        }
+
+        @Test
+        @DisplayName("참가자_상태_DELETED_이어도_leftAt_이전_미팅은_분모에_포함한다")
+        void 참가자_상태_DELETED_이어도_leftAt_이전_미팅은_분모에_포함한다() {
+            Instant leftAt = NOW.minusSeconds(1800);
+            var participant = withdrawnParticipant(ParticipantStatus.DELETED, leftAt);
+            var meeting = pastMeeting(1L); // NOW - 3600s, leftAt 이전
+            var att = attendance(AttendanceStatus.ABSENT);
+
+            double[] result =
+                    AttendanceRateCalculator.components(
+                            participant, List.of(meeting), Map.of(1L, att), NOW);
+
+            assertThat(result[0]).isZero();
+            assertThat(result[1]).isEqualTo(1);
         }
 
         @Test
@@ -339,6 +404,18 @@ class AttendanceRateCalculatorTest {
                 .status(status)
                 .participantRole(ParticipantRole.MEMBER)
                 .joinedAt(JOINED_AT)
+                .build();
+    }
+
+    private StudyParticipant withdrawnParticipant(ParticipantStatus status, Instant leftAt) {
+        return StudyParticipant.builder()
+                .accountId(1L)
+                .studyGroupId(1L)
+                .studyId(1L)
+                .status(status)
+                .participantRole(ParticipantRole.MEMBER)
+                .joinedAt(JOINED_AT)
+                .leftAt(leftAt)
                 .build();
     }
 

@@ -181,7 +181,7 @@ class _FakeBot:
     def __init__(self):
         self.callback = None
 
-    def command(self, name):
+    def command(self, name, **kwargs):
         def decorator(func):
             self.callback = func
             return func
@@ -272,7 +272,7 @@ async def test_command_translates_a_403(monkeypatch):
     ctx = await _run(monkeypatch, backend)
 
     assert "권한이 없습니다" in _sent(ctx)
-    assert "반장만" in _sent(ctx)
+    assert "반장(navigator)만" in _sent(ctx)
     assert _mentions_suppressed(ctx)
 
 

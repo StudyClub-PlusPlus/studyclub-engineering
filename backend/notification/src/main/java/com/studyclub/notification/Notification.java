@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import lombok.Getter;
@@ -143,6 +144,28 @@ public class Notification extends BaseEntity {
                     "id=%s status=%s lockedAt=%s 로 %s 전이할 수 없습니다 (재수거되어 클레임 소유권을 잃음, expected lockedAt=%s)."
                             .formatted(id, status, lockedAt, targetDescription, expectedLockedAt));
         }
+    }
+
+    /**
+     * 회원 탈퇴 — 이메일 원문·닉네임 스냅샷 비식별화. 행 자체(발송 이력·상태·시각)는 그대로 둔다 — "탈퇴한 계정에게 언제 무슨 알림이 나갔는지"는 발송 이력이지
+     * 회원 개인정보가 아니다(specs/user-leave/spec.md). {@code STATUS} 전이는 별도로 {@link #cancel()} 이 책임진다 — 상태와
+     * 무관하게 항상 호출 가능하다.
+     */
+    public void redactPii(String maskedRecipientValue) {
+        this.recipientValue = maskedRecipientValue;
+        Map<String, Object> redactedPayload = new HashMap<>(this.payload);
+        redactedPayload.put("nickname", null);
+        this.payload = redactedPayload;
+    }
+
+    /**
+     * 회원 탈퇴 — 아직 발송 시도조차 하지 않은 건을 취소한다. {@code FAILED} 와 구분하는 이유는 {@link #markFailed} 의 javadoc 과
+     * 같다 — 이건 "시도했다가 실패"가 아니라 "시도할 이유가 없어짐"이다. {@code PROCESSING} 은 이미 발송 시도 중이라 끼어들 수 없다 — 호출자가
+     * {@code PENDING} 인 것만 골라 불러야 한다.
+     */
+    public void cancel() {
+        requireStatus(NotificationStatus.PENDING, "CANCELLED");
+        this.status = NotificationStatus.CANCELLED;
     }
 
     /** 재수거 — {@code locked_at} 타임아웃을 넘겨 멈춰버린 PROCESSING 행을 다시 PENDING 으로 되돌린다. */

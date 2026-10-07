@@ -134,6 +134,21 @@ class AdminNotificationIntegrationTest {
     }
 
     @Test
+    @DisplayName("MEMBER 는 알림 조회가 403 FORBIDDEN — @RequireAdmin")
+    void memberIsForbidden() {
+        for (String path : new String[] {"notification-templates", "notifications"}) {
+            var response =
+                    testRestTemplate.exchange(
+                            "/api/admin/" + path,
+                            HttpMethod.GET,
+                            authenticated(SystemRole.MEMBER),
+                            Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
+        }
+    }
+
+    @Test
     @DisplayName("토큰이 없으면 두 조회 모두 401 — 필터 오류도 공통 에러 계약을 지킨다")
     void unauthenticatedIsRejected() {
         for (String path : new String[] {"notification-templates", "notifications"}) {

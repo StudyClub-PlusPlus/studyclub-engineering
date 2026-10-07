@@ -5,7 +5,7 @@
 > 상태: 구현완료
 >
 > Story PRD:
-> - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../planning/stories/crew-joined-studies/PRD.md)
+> - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../01-planning/stories/crew-joined-studies/PRD.md)
 >
 > 기준 프로토타입: playground `/proto/core/ko/my/joined`
 
@@ -98,7 +98,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].endAt | String (ISO 8601 UTC) | Y | | STUDY.END_AT |
 | items[].relation | String | N | 나와의 관계 — 탭·배지. 아래 표 | 계산: `participantStatus` + `startAt` |
 | items[].participantStatus | String | N | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED` | STUDY_PARTICIPANT.STATUS |
-| items[].participantRole | String | N | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼 | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| items[].participantRole | String | N | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼. **담당 캡틴**(스터디를 생성한 캡틴)도 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다 — 담당 캡틴의 명부 편입과 역할 값은 후속 작업 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
 | items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
@@ -109,7 +109,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].meetings[].startAt | String (ISO 8601 UTC) | Y | 실제 시작 | STUDY_MEETING.START_AT |
 | items[].meetings[].endAt | String (ISO 8601 UTC) | Y | 실제 종료 | STUDY_MEETING.END_AT |
 | items[].meetings[].attendanceStatus | String | Y | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT`. 출석 행이 없으면 null. **시작 전 회차**(`startAt` null 이고 `scheduledAt` > now)의 `ABSENT` 도 null — 회차를 만들 때 참여자 전원에게 기본으로 들어가는 값이라 화면에 결석으로 그리지 않는다. 시작 전이라도 `EXCUSED` 는 그대로 준다(사전 휴가 배지) | STUDY_ATTENDANCE.STATUS (내 계정) |
-| items[].meetings[].countedInRate | Boolean | N | 이 회차가 `attendanceRate` 분모에 들어갔는지. `scheduledAt` ≤ now 이고 `scheduledAt` ≥ 편입 시각(`JOINED_AT`)이며 명부가 `WITHDRAWN` 이 아닐 때 true. 편입 전 회차는 격자에는 보이지만 false | 계산: `AttendanceRateCalculator` 와 같은 조건 |
+| items[].meetings[].countedInRate | Boolean | N | 이 회차가 `attendanceRate` 분모에 들어갔는지. `scheduledAt` 이 편입 시각(`JOINED_AT`) 이상이고 상한(`ACTIVE`/`PAUSED`/`COMPLETED` 는 now, `WITHDRAWN`·`DELETED` 는 떠난 시각 `LEFT_AT`) 이하일 때 true — 하차 이전 회차는 그대로 집계에 남고 이후 회차만 제외한다([user-leave spec](../user-leave/spec.md) "WITHDRAWN·DELETED", 2026-10-01). 편입 전 회차는 격자에는 보이지만 false | 계산: `AttendanceRateCalculator.countsToward` 와 같은 조건 |
 
 #### relation — 나와의 관계
 
@@ -167,5 +167,5 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 - [NEEDS CLARIFICATION] 명부 `PAUSED` 의 탭·배지 (PRD §4 미확정과 같음)
 - [NEEDS CLARIFICATION] 클럽 디스코드 초대(로비) URL 은 지금 프론트 mock `site.discord_invite`(`frontend/packages/mock/src/index.ts`)에 있다. 서버 설정으로 옮길지만 미정 — 옮기기 전까지 이 응답에 넣지 않는다
 - [NEEDS CLARIFICATION] 회차 예정 길이. 컬럼이 없어 120분으로 본다(프로토 가정). 반·스터디마다 다르면 예정 종료 컬럼이 필요하다
-- 공개 상세 `GET /api/studies/{id}` 도 같은 규칙으로 막았다 — 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 `discordChannelUrl`·`driveUrl` 을 채운다 ([share/2026-09-30-study-detail-private-urls.md](../../share/2026-09-30-study-detail-private-urls.md))
+- 공개 상세 `GET /api/studies/{id}` 도 같은 규칙으로 막았다 — 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 `discordChannelUrl`·`driveUrl` 을 채운다 ([docs/share/2026-09-30-study-detail-private-urls.md](../../docs/share/2026-09-30-study-detail-private-urls.md))
 - [NEEDS CLARIFICATION] 회차 번호 컬럼(`MEETING_NO`)이 생기면 `sequence` 소스를 바꾼다. 지금은 예정 시각 순번이라 회차를 중간에 추가하면 뒤 번호가 밀린다

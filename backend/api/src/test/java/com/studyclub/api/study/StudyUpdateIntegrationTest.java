@@ -195,7 +195,9 @@ class StudyUpdateIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         var study = studyRepository.findById(studyId).orElseThrow();
-        assertThat(study.getCapacity()).isEqualTo(12);
+        var recruitment =
+                recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId).orElseThrow();
+        assertThat(recruitment.getRecruitmentCapacity()).isEqualTo(12);
         assertThat(study.getStartAt()).isEqualTo(Instant.parse("2026-11-02T00:00:00Z"));
         assertThat(study.getDiscordChannelUrl()).isEqualTo("https://discord.com/channels/1/2");
         assertThat(study.getDriveUrl()).isEqualTo("https://drive.google.com/drive/folders/abc");
@@ -219,8 +221,10 @@ class StudyUpdateIntegrationTest {
         var response = patch(studyId, clear);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        var recruitment =
+                recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId).orElseThrow();
+        assertThat(recruitment.getRecruitmentCapacity()).isNull();
         var study = studyRepository.findById(studyId).orElseThrow();
-        assertThat(study.getCapacity()).isNull();
         assertThat(study.getDiscordChannelUrl()).isNull();
         assertThat(study.getStartAt()).isEqualTo(Instant.parse("2026-11-02T00:00:00Z"));
         assertThat(study.getDriveUrl()).isEqualTo("https://drive.google.com/drive/folders/abc");
@@ -235,7 +239,9 @@ class StudyUpdateIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
-        assertThat(studyRepository.findById(studyId).orElseThrow().getCapacity()).isNull();
+        var recruitment =
+                recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId).orElseThrow();
+        assertThat(recruitment.getRecruitmentCapacity()).isNull();
     }
 
     @Test

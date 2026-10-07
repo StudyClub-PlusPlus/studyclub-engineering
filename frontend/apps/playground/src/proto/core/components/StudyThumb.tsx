@@ -16,17 +16,17 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-// 큐레이션된 팔레트(무지개 랜덤 대신 톤 정돈). [진한, 옅은] 2톤 대각 그라디언트.
+// 큐레이션된 팔레트. [진한, 옅은] 2톤 대각 그라디언트 — design-system.md §2-6 차트 토큰 기준.
 type Duo = [string, string];
 const C = {
-  indigo: ['#3730a3', '#4f46e5'] as Duo,
-  violet: ['#5b21b6', '#7c3aed'] as Duo,
-  blue: ['#1e40af', '#3b82f6'] as Duo,
-  teal: ['#115e59', '#0d9488'] as Duo,
-  emerald: ['#065f46', '#059669'] as Duo,
-  amber: ['#92400e', '#d97706'] as Duo,
-  rose: ['#9f1239', '#e11d48'] as Duo,
-  slate: ['#334155', '#64748b'] as Duo,
+  indigo: ['color-mix(in oklab, var(--color-chart-1) 60%, black)', 'var(--color-chart-1)'] as Duo,
+  violet: ['color-mix(in oklab, var(--color-chart-4) 60%, black)', 'var(--color-chart-4)'] as Duo,
+  blue: ['color-mix(in oklab, var(--color-chart-1) 70%, black)', 'var(--color-chart-1)'] as Duo,
+  teal: ['color-mix(in oklab, var(--color-chart-3) 60%, black)', 'var(--color-chart-3)'] as Duo,
+  emerald: ['color-mix(in oklab, var(--color-chart-5) 60%, black)', 'var(--color-chart-5)'] as Duo,
+  amber: ['color-mix(in oklab, var(--color-chart-2) 60%, black)', 'var(--color-chart-2)'] as Duo,
+  rose: ['color-mix(in oklab, var(--color-chart-6) 60%, black)', 'var(--color-chart-6)'] as Duo,
+  slate: ['var(--color-neutral-800)', 'var(--color-neutral-600)'] as Duo,
 };
 
 /**

@@ -104,7 +104,7 @@ function LoginForm() {
   return (
     <div className='mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 py-16 text-center'>
       <h1 className='text-2xl font-bold tracking-tight'>StudyClub++ 로그인</h1>
-      <p className='mt-2 text-sm text-[var(--color-fg-subtle,#666)]'>
+      <p className='mt-2 text-sm text-fg-muted'>
         로그인하면 수강생 페이지(내 스터디)를 볼 수 있어요.
       </p>
 
@@ -112,7 +112,7 @@ function LoginForm() {
         type='button'
         onClick={startLogin}
         disabled={loading}
-        className='mt-8 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border,#e5e5e5)] bg-white px-4 py-3 text-sm font-semibold text-[#1f1f1f] shadow-sm transition hover:bg-neutral-50 disabled:opacity-60'
+        className='mt-8 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-bg px-4 py-3 text-sm font-semibold text-fg shadow-sm transition hover:bg-surface-1 disabled:opacity-60'
       >
         <svg width='18' height='18' viewBox='0 0 24 24' aria-hidden>
           <path

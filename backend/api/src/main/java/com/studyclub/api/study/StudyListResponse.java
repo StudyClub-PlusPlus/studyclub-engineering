@@ -1,6 +1,5 @@
 package com.studyclub.api.study;
 
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
@@ -15,7 +14,6 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
 
     public record StudySummary(
             Long studyId,
-            String slug,
             String title,
             String oneLineSummary,
             StudyCategory category,
@@ -26,30 +24,32 @@ public record StudyListResponse(List<StudySummary> items, long total, int offset
             StudyStatus status,
             StudyPhase phase,
             RecruitStatus recruitStatus,
-            DeliveryFormat deliveryFormat,
             Integer capacity,
             long currentApplicants,
             Instant recruitDeadlineAt,
             Instant startAt,
             Instant endAt,
             boolean closingSoon) {
+        /** {@code studyKind} 는 프로그램의 값이라 밖에서 받는다 — docs/erd/STUDY_PROGRAM.md. */
         public static StudySummary from(
-                Study study, long applicantCount, Instant recruitDeadlineAt) {
+                Study study,
+                StudyKind studyKind,
+                long applicantCount,
+                Instant recruitDeadlineAt,
+                Integer recruitmentCapacity) {
             return new StudySummary(
                     study.getId(),
-                    study.getSlug(),
                     study.getTitle(),
                     study.getOneLineSummary(),
                     study.getCategory(),
-                    study.getStudyKind(),
+                    studyKind,
                     study.getThumbnailUrl(),
                     study.getSchedule(),
                     study.timezone(),
                     study.getStatus(),
-                    study.phase(applicantCount, recruitDeadlineAt),
-                    study.recruitStatus(applicantCount, recruitDeadlineAt),
-                    study.getStudyDeliveryFormat(),
-                    study.getCapacity(),
+                    study.phase(applicantCount, recruitDeadlineAt, recruitmentCapacity),
+                    study.recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity),
+                    recruitmentCapacity,
                     applicantCount,
                     recruitDeadlineAt,
                     study.getStartAt(),

@@ -87,6 +87,17 @@ export function classLabel(cls: { rule: ScheduleRule }): string {
   return `${days} ${cls.rule.time || ''} ${tzAbbr(cls.rule.tz, at)}`.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * 정보 카드의 「스터디 시간」 — 「매주 금요일 19:00 PDT」. 사용자 사이트 정보 카드와 같은 말투.
+ * 반 이름(`classLabel`)은 고르는 칩이라 짧게, 이것은 읽는 문장이라 요일을 풀어 쓴다.
+ */
+export function classTime(rule: ScheduleRule): string {
+  const days = rule.weekdays.map((d) => `${WEEKDAY_LABELS[d]}요일`).join(' · ');
+  if (!days) return '미정';
+  const at = rule.startDate ? wallToInstant(rule.startDate, rule.time, rule.tz) : new Date();
+  return `매주 ${days}${rule.time ? ` ${rule.time} ${tzAbbr(rule.tz, at)}` : ''}`;
+}
+
 /** 가능 시간 칸 하나를 반의 규칙으로 옮긴다. 시간대는 고르는 사람이 정한다. */
 export function ruleFromCell(cell: string, tz: StudyTz): ScheduleRule {
   const [dayKey, slotKey] = cell.split('-');
