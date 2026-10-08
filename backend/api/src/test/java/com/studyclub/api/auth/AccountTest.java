@@ -98,4 +98,18 @@ class AccountTest {
         assertThat(account.getTimeZone()).isEqualTo("Asia/Seoul");
         assertThat(account.getOnboardingCompletedAt()).isEqualTo(firstCompletedAt);
     }
+
+    @Test
+    @DisplayName("프로필 수정 - 닉네임·타임존을 한 번에 바꾸고 온보딩 완료시각은 건드리지 않는다")
+    void updatesProfile() {
+        Account account = new Account("a@b.com", "account_temp12345678", null, SystemRole.MEMBER);
+        Instant completedAt = Instant.now();
+        account.completeOnboarding("honggildong", "Asia/Seoul", completedAt);
+
+        account.updateProfile("kimcheolsu", "America/Vancouver");
+
+        assertThat(account.getNickname()).isEqualTo("kimcheolsu");
+        assertThat(account.getTimeZone()).isEqualTo("America/Vancouver");
+        assertThat(account.getOnboardingCompletedAt()).isEqualTo(completedAt);
+    }
 }

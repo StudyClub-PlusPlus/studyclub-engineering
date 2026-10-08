@@ -290,7 +290,7 @@ erDiagram
 | 회차 | SCHEDULED_AT, STARTS_AT, ENDS_AT | `STUDY_MEETING`. UTC datetime | 영어는 meeting. 회차 번호는 ERD 미확정. 프로토는 일정 문구에서 시각을 읽음 |
 | 내 출석 | STATUS | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT` | 휴가 = `EXCUSED`. 회차 생성 시 전원 `ABSENT`. 시작 전 화면은 결석을 그리지 않음 |
 | 회원 | REGION_GROUP, TIME_ZONE | 권역 `KR` / `NA` / `ETC`. 타임존 IANA | 화면 탭 `KST`/`PDT`는 표시용. 회차 일자도 이 탭 |
-| 역할 | PARTICIPANT_ROLE | `LEADER` = 네비게이터 | 캡틴은 `ACCOUNT.SYSTEM_ROLE = ADMIN` 담당 캡틴. 그 밖은 크루 |
+| 역할 | PARTICIPANT_ROLE | `LEADER` = 네비게이터 | 캡틴 = 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 반 편성 때 명부에 들어간다(역할 값은 `MEMBER`). 그 밖은 크루 |
 
 ### 처리
 
@@ -314,7 +314,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/me/studies` | 로그인. 명부 참여만. 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그(추가 필요) |
+| GET | `/api/me/studies` | 로그인. 명부 참여 + 내가 담당 캡틴인 스터디(반 편성 전이라 명부에 없어도). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그(추가 필요). [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴-카드) |
 | GET | `/api/me/studies/{id}/meetings` | 해당 명부 |
 | GET | `/api/me` | 거주 지역 등 |
 

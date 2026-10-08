@@ -14,11 +14,14 @@ import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS } from '@console/lib/class-view';
 import { classTime, type StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
-import { applyRule } from '@console/lib/schedule';
+
+import { applyRule, ruleFromMeetings } from '@console/lib/schedule';
+import { studyAuthor } from '@console/lib/users';
 import { seedClasses } from '@console/lib/seed-classes';
 import { ScheduleManager } from '@core/components/ScheduleManager';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
 import { discordUrl, driveUrl } from '@core/lib/joined';
+
 import {
   attendanceRate,
   getStudyCrew,
@@ -73,7 +76,7 @@ export function StudyConsole({ study }: { study: Study }) {
   const router = useRouter();
   const initial = useMemo(() => getStudyCrew(study), [study]);
   // 반 (ERD STUDY_CLASS). 회차·출석은 반에 붙는다 — 반이 다르면 모이는 날이 다르다.
-  // 프로토는 이미 회차가 있는 스터디를 열므로, 그 회차가 선 반 하나를 기본으로 둔다. 분반 mock 이 있으면 그 반들도.
+  // 프로토는 이미 회차가 있는 스터디를 여므로, 그 회차가 반 하나를 기본으로 둔다. 분반 mock 이 있으면 그 반들도.
   const seed = useMemo(() => seedClasses(study, initial, FIRST_CLASS), [study, initial]);
   const [crew] = useState<Crew[]>(initial.crew);
   const [attendance, setAttendance] = useState(seed.attendance);
@@ -86,7 +89,10 @@ export function StudyConsole({ study }: { study: Study }) {
   const [assign, setAssign] = useState<Record<string, string>>(seed.assign);
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
-  const [navigators, setNavigators] = useState<string[]>(seed.navigators);
+  const [navigators, setNavigators] = useState<string[]>([]);
+  // 담당 캡틴은 반 편성 전에는 반이 없다 — 반을 고르면 그때 명부에 들어간다
+  const [captainClass, setCaptainClass] = useState<string | undefined>();
+
   const [tab, setTab] = useState<TabKey>('info');
   const [attendanceDirty, setAttendanceDirty] = useState(false);
   const [tableDirty, setTableDirty] = useState(false);
@@ -307,6 +313,9 @@ export function StudyConsole({ study }: { study: Study }) {
         {tab === 'crew' && (
           <CrewTab
             crew={crew}
+            captain={studyAuthor(study)}
+            captainClass={captainClass}
+            onAssignCaptain={setCaptainClass}
             capacity={initial.capacity}
             classes={classes}
             assign={assign}
