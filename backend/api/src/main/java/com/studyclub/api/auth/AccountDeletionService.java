@@ -135,14 +135,9 @@ public class AccountDeletionService {
     }
 
     /**
-     * {@code FORM_ANSWER} 는 JSON 컬럼에 매핑된 순수 {@code String} 필드라, Hibernate 가 저장할 때 그 문자열 자체를 한 번 더
-     * JSON 문자열로 감싼다({@code BackOfficeApplicationQueryService.jsonNodeOf} 가 이미 같은 이유로 방어적으로 풀어 읽는다)
-     * — 그래서 읽을 때 감싸여 있으면 한 겹 벗기고, 쓸 때는 다시 감싸지 않고 (그래야 Hibernate 가 저장 시점에 한 번 더 감싸 원래와 같은 모양이 된다) 안쪽
-     * JSON 텍스트만 반환한다.
-     *
-     * <p>JSON 객체로 읽히지 않는 값(배열·스칼라·깨진 JSON)은 {@code discordNickname} 이 어디 있는지 알 수 없다. 원본을 그대로 두면
-     * 개인정보가 남을 수 있고, 예외를 던지면 이 행 하나 때문에 회원이 탈퇴 자체를 못 한다 — 그래서 전체를 빈 객체로 비운다. 어차피 스키마에 맞지 않는 행이라
-     * 백오피스 조회도 이미 못 읽는 값이다. 로그에는 신청서 ID 만 남긴다(내용·예외 메시지에 개인정보가 섞일 수 있다).
+     * JSON 객체로 읽히지 않는 값(배열·스칼라·깨진 JSON)은 {@code discordNickname} 이 어디 있는지 알 수 없다. 원본을 그대로 두면 개인정보가
+     * 남을 수 있고, 예외를 던지면 이 행 하나 때문에 회원이 탈퇴 자체를 못 한다 — 그래서 전체를 빈 객체로 비운다. 어차피 스키마에 맞지 않는 행이라 백오피스 조회도
+     * 이미 못 읽는 값이다. 로그에는 신청서 ID 만 남긴다(내용·예외 메시지에 개인정보가 섞일 수 있다).
      */
     private String maskDiscordNickname(Long applicationId, String formAnswerJson) {
         try {
