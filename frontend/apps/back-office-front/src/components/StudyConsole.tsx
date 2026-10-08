@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   attendanceRate,
@@ -18,26 +18,14 @@ import { ArrowLeft } from 'lucide-react';
 import { AttendanceTab } from '@/components/AttendanceTab';
 import { CrewTab } from '@/components/CrewTab';
 import { StudyInfoTab } from '@/components/StudyInfoTab';
+import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
 import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
 
-/**
- * 스터디 운영 콘솔.
- *
- * 한 스터디를 놓고 운영자가 하는 일은 셋뿐이라 탭도 셋이다:
- * **신청자**(누가 들어오는가) · **출석**(누가 나오는가) · **정보**(무엇을 알리는가).
- *
- * 헤더·정보 탭은 실제 API(`detail`)를 쓴다. 신청자·출석 탭은 아직 목 데이터다 — 같은 `study_id` 의
- * 목 스터디(`mockStudy`)가 있을 때만 그리고, 없으면 준비 중으로 둔다. 실제 스터디에 지어낸 명단을
- * 보여 주면 운영자가 그걸 믿고 판단한다.
- *
- * 크루 상태는 이 컴포넌트가 들고 있다 — 크루 승인이 출석부 명단을 바꾸므로 탭마다 따로 두면 어긋난다.
- * TODO(api): 승인·출석 체크는 화면 상태로만 처리. 저장 API 연결 필요.
- */
-
 const TABS = [
+  { key: 'info', label: '정보' },
+  { key: 'form', label: '신청 폼' },
   { key: 'crew', label: '신청자' },
   { key: 'attendance', label: '출석' },
-  { key: 'info', label: '정보' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -50,7 +38,14 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
   const initial = useMemo(() => (mockStudy ? getStudyCrew(mockStudy) : EMPTY_CREW), [mockStudy]);
   const crew = initial.crew;
   const [attendance, setAttendance] = useState(initial.attendance);
-  const [tab, setTab] = useState<TabKey>(mockStudy ? 'crew' : 'info');
+  const [tab, setTab] = useState<TabKey>('info');
+  const [savingForm, setSavingForm] = useState(false);
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    if (!TABS.some(({ key }) => key === requested)) return;
+    setTab(requested as TabKey);
+  }, []);
 
   const active = crew;
   const pending: Crew[] = [];
@@ -155,6 +150,7 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
           <button
             key={tb.key}
             type='button'
+            disabled={savingForm}
             onClick={() => setTab(tb.key)}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
@@ -171,7 +167,7 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
       </nav>
 
       <div className='mt-5'>
-        {tab !== 'info' && !mockStudy && (
+        {(tab === 'crew' || tab === 'attendance') && !mockStudy && (
           <div className='card px-6 py-10 text-center text-sm text-fg-muted'>
             {tab === 'crew' ? '신청자' : '출석'} 관리는 준비 중입니다.
           </div>
@@ -186,6 +182,7 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
             onToggle={toggleAttendance}
           />
         )}
+        {tab === 'form' && <ApplicationFormTab study={detail} onSavingChange={setSavingForm} />}
         {tab === 'info' && <StudyInfoTab detail={detail} />}
       </div>
     </div>
