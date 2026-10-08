@@ -8,7 +8,6 @@ import { ApplicationFormEditor } from './ApplicationFormEditor';
 import { useApplicationForm, useSaveApplicationForm } from './queries';
 import { toFormValues } from './schema';
 import type { ApiStudyDetail } from '@/features/studies/types';
-import { clearSession } from '@/lib/auth';
 import { ApiError } from '@/lib/http';
 
 export function ApplicationFormTab({
@@ -27,12 +26,6 @@ export function ApplicationFormTab({
     onSavingChange(mutation.isPending);
     return () => onSavingChange(false);
   }, [mutation.isPending, onSavingChange]);
-
-  useEffect(() => {
-    if (status !== 401) return;
-    clearSession();
-    window.location.href = '/login';
-  }, [status]);
 
   if (query.isPending)
     return (
