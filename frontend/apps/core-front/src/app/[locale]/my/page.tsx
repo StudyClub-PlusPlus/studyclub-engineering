@@ -6,29 +6,22 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import { MEMBER_REGIONS, type MemberRegion, type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/mock';
 import { CalendarClock, Heart } from 'lucide-react';
 
-import { ProfileDialog } from '@/components/ProfileDialog';
 import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
+import { ProfileCard } from '@/features/profile/ProfileCard';
 import { useStudies } from '@/features/studies/queries';
-import { getUser, logout, type SessionUser } from '@/lib/auth';
+import { getUser, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import {
   cancelApplication,
   getApplications,
   getBookmarks,
-  getDiscord,
-  getDisplayName,
-  getRegion,
   seedDemoData,
-  setDiscord,
   setBookmarked,
-  setDisplayName,
-  setRegion,
   type Application,
-  type DiscordLink,
 } from '@/lib/me';
 import { IS_DEV, syncPreview } from '@/lib/preview';
 import { recruitState } from '@/lib/recruit';
@@ -43,8 +36,8 @@ import { recruitState } from '@/lib/recruit';
  *
  * 참여 중과 참여 이력을 가르는 것은 신청 상태가 아니라 **스터디가 끝났는지** 여부다.
  *
- * 거주 지역은 내 정보에 있다: 일정 미정 스터디의 신청 폼이 "가능한 시간"을 이 지역의 현지
- * 시간으로 받으므로, 지역이 틀리면 운영자가 겹치는 시간을 잘못 계산한다.
+ * 시간대는 내 정보에 있다: 일정 미정 스터디의 신청 폼이 "가능한 시간"을 이 시간대가 속한 지역의
+ * 현지 시간으로 받으므로, 시간대가 틀리면 운영자가 겹치는 시간을 잘못 계산한다.
  */
 
 /** 목록 한 줄 — 카테고리 색 막대로 어느 분야인지 한눈에 구분한다(목록 카드와 같은 색 규칙). */
@@ -159,12 +152,8 @@ export default function MyPage() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
 
-  const [region, setRegionState] = useState<MemberRegion>('KR');
   const [applications, setApplications] = useState<Application[]>([]);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
-  const [name, setName] = useState('');
-  const [discord, setDiscordState] = useState<DiscordLink>(null);
-  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     // 로컬 미리보기에서는 세션 정의를 맞추고 더미를 채운다(버전이 같으면 아무것도 하지 않는다)
@@ -179,11 +168,8 @@ export default function MyPage() {
       return;
     }
     setUser(u);
-    setName(getDisplayName() ?? u.nickname ?? u.email);
-    setRegionState(getRegion());
     setApplications(getApplications());
     setBookmarks(getBookmarks());
-    setDiscordState(getDiscord());
     setReady(true);
   }, [locale, router]);
 
@@ -201,33 +187,8 @@ export default function MyPage() {
     .filter((s): s is Study => Boolean(s))
     .reverse();
 
-  const regionMeta = MEMBER_REGIONS.find((r) => r.key === region)!;
-
   if (!ready || !user) {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
-  }
-
-  async function handleLogout() {
-    await logout();
-    router.replace(`/${locale}`);
-  }
-
-  function saveProfile(next: { name: string; region: MemberRegion }) {
-    setName(next.name);
-    setDisplayName(next.name);
-    setRegionState(next.region);
-    setRegion(next.region);
-  }
-
-  function connectDiscord() {
-    // TODO(api): 디스코드 OAuth 로 교체
-    setDiscord('jiwon_dev');
-    setDiscordState(getDiscord());
-  }
-
-  function disconnectDiscord() {
-    setDiscord(null);
-    setDiscordState(null);
   }
 
   function handleCancel(studyId: string) {
@@ -244,77 +205,7 @@ export default function MyPage() {
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
       <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
 
-      {/* 내 정보 — 이름·이메일·거주 지역. 고치는 건 한 곳(수정 팝업)에서 한다 */}
-      <section className='card mt-5 px-6 py-5'>
-        <div className='flex items-start justify-between gap-4'>
-          <div className='flex min-w-0 items-center gap-4'>
-            {user.picture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.picture} alt='' className='h-14 w-14 shrink-0 rounded-full' />
-            ) : (
-              <div className='grid h-14 w-14 shrink-0 place-items-center rounded-full bg-surface-2 text-lg font-bold text-fg-secondary'>
-                {name.slice(0, 1).toUpperCase()}
-              </div>
-            )}
-            <div className='min-w-0'>
-              <p className='truncate text-lg font-bold text-fg'>{name}</p>
-              <p className='truncate text-sm text-fg-secondary'>{user.email}</p>
-              <p className='mt-1 text-[13px] text-fg-secondary'>
-                거주 지역 · {t(regionMeta.label, locale)}
-                <span className='ml-1 text-fg-muted'>{regionMeta.tzLabel}</span>
-              </p>
-              {/* 스터디가 디스코드에서 진행되므로, 연결 여부는 회원이 바로 알아야 한다 */}
-              <p className='mt-1 flex flex-wrap items-center gap-1.5 text-[13px]'>
-                <span className='text-fg-secondary'>디스코드 ·</span>
-                {discord ? (
-                  <>
-                    <span className='inline-flex items-center gap-1 rounded-pill bg-recruiting-bg px-2 py-0.5 text-[11px] font-bold text-recruiting-fg'>
-                      연결됨
-                    </span>
-                    <span className='text-fg-secondary'>@{discord.handle}</span>
-                    <button
-                      type='button'
-                      onClick={disconnectDiscord}
-                      className='text-xs font-semibold text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
-                    >
-                      연결 해제
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className='inline-flex items-center gap-1 rounded-pill bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-fg-secondary'>
-                      연결 안 됨
-                    </span>
-                    <button
-                      type='button'
-                      onClick={connectDiscord}
-                      className='text-xs font-semibold text-brand underline-offset-4 hover:underline'
-                    >
-                      연결하기
-                    </button>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className='flex shrink-0 items-center gap-2'>
-            <button
-              type='button'
-              onClick={() => setEditing(true)}
-              className='rounded-control border border-border-strong px-3 py-1.5 text-xs font-semibold text-fg-secondary transition-colors hover:bg-surface-2'
-            >
-              내 정보 수정
-            </button>
-            <button
-              type='button'
-              onClick={handleLogout}
-              className='rounded-control px-3 py-1.5 text-xs font-semibold text-fg-muted transition-colors hover:bg-surface-2'
-            >
-              로그아웃
-            </button>
-          </div>
-        </div>
-      </section>
+      <ProfileCard user={user} locale={locale} onUserChange={setUser} />
 
       <Section title='승인 대기' count={pending.length}>
         {pending.length === 0 ? (
@@ -433,16 +324,6 @@ export default function MyPage() {
           )
         }
       </ArchiveTabs>
-
-      <ProfileDialog
-        open={editing}
-        onClose={() => setEditing(false)}
-        locale={locale}
-        email={user.email}
-        name={name}
-        region={region}
-        onSave={saveProfile}
-      />
     </div>
   );
 }
