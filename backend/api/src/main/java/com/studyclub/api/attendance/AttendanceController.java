@@ -39,9 +39,11 @@ public class AttendanceController {
     public ResponseEntity<AttendanceResponse> getAttendances(
             @PathVariable Long studyId,
             @RequestParam Long studyGroupId,
-            @RequestParam(required = false) Long meetingId) {
+            @RequestParam(required = false) Long meetingId,
+            @RequestParam(defaultValue = "false") boolean includeWithdrawn) {
         return ResponseEntity.ok(
-                attendanceService.getAttendances(studyId, studyGroupId, meetingId));
+                attendanceService.getAttendances(
+                        studyId, studyGroupId, meetingId, includeWithdrawn));
     }
 
     @Operation(

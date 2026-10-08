@@ -65,4 +65,4 @@ stateDiagram-v2
 
 ## 미확정
 - 반 이동 이력을 남길지 (`SECTION_MOVED_AT` 또는 별도 로그).
-- 운영 `MEMO` — 표 설계에 있음. (`LEFT_AT` 은 2026-10-01 회원 탈퇴 작업으로 구현 완료)
+- 운영 `MEMO` — 표 설계에 있음. (`LEFT_AT` 은 2026-10-01 회원 탈퇴 작업으로 DELETED 구현 완료; WITHDRAWN 은 `StudyParticipant.markWithdrawn()` 로 2026-10-05 구현 완료)

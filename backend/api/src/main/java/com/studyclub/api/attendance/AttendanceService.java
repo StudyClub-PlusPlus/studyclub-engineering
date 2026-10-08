@@ -6,6 +6,7 @@ import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.attendance.StudyAttendance;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
+import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.StudyGroupRepository;
@@ -51,7 +52,8 @@ public class AttendanceService {
     }
 
     @Transactional(readOnly = true)
-    public AttendanceResponse getAttendances(Long studyId, Long studyGroupId, Long meetingId) {
+    public AttendanceResponse getAttendances(
+            Long studyId, Long studyGroupId, Long meetingId, boolean includeWithdrawn) {
         var study =
                 studyRepository
                         .findById(studyId)
@@ -69,8 +71,14 @@ public class AttendanceService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
         }
 
-        List<StudyParticipant> participants =
+        List<StudyParticipant> allParticipants =
                 studyParticipantRepository.findByStudyGroupId(studyGroupId);
+        List<StudyParticipant> participants =
+                includeWithdrawn
+                        ? allParticipants
+                        : allParticipants.stream()
+                                .filter(p -> p.getStatus() == ParticipantStatus.ACTIVE)
+                                .toList();
         List<StudyMeeting> allMeetings =
                 studyMeetingRepository.findByStudyGroupIdOrderByScheduledAt(studyGroupId);
 
@@ -157,7 +165,7 @@ public class AttendanceService {
                 new AttendanceResponse.StudySummary(
                         study.getId(),
                         study.getTitle(),
-                        participants.size(),
+                        allParticipants.size(),
                         allMeetings.size(),
                         avgRate),
                 meetingSummaries,

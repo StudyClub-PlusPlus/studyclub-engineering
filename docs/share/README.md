@@ -76,4 +76,5 @@
 | 2026-10-03 | [Grafana 대시보드를 레포에서 관리한다 — 고치는 건 그대로, 저장은 PR 로](2026-10-03-grafana-dashboard-as-code.md) | 결정됨 · 질문 3 |
 | 2026-10-05 | [반복으로 만든 회차의 「묶음 ID」를 저장하기로 — 지금 쓰는 기능은 없고, 나중을 위해 남긴다](2026-10-05-study-meeting-series-id.md) | 결정됨 |
 | 2026-10-05 | [구글 시트 출석부를 웹 「스터디 일정」으로 — 참가자 모두 보고, 발표자는 선착순, 킥오프는 0회차](2026-10-05-study-schedule-board.md) | 결정됨 · 질문 3 |
+| 2026-10-05 | [출석률 집계에서 하차·탈퇴를 다루는 방식 — markWithdrawn, includeWithdrawn 기본값, participantCount](2026-10-05-attendance-withdrawn-logic.md) | 결정됨 |
 | 2026-10-07 | [담당 캡틴은 「스터디를 만든 사람」 칸으로 판정하고 명부에는 반 편성 때 들어간다 — 사이트용 신청 폼 저장 경로는 지운다](2026-10-07-captain-owner-by-created-by.md) | 결정됨 |
