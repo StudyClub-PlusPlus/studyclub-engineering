@@ -18,7 +18,7 @@
 
 ## 관계
 - N : 1 [ACCOUNT](./ACCOUNT.md), [STUDY_CLASS](./STUDY_CLASS.md)
-- 출처: [STUDY_APPLICATION](./STUDY_APPLICATION.md) 제출
+- 출처: [STUDY_APPLICATION](./STUDY_APPLICATION.md) 제출. 담당 캡틴은 반 편성 때 반 지정으로 ([분반 스펙](../../specs/study-group/spec.md#담당-캡틴의-반-지정))
 
 ## 상태 — STATUS
 
@@ -50,6 +50,8 @@ stateDiagram-v2
 ## 상태 — PARTICIPANT_ROLE
 
 스터디 안에서의 역할. 시스템 권한(ACCOUNT.SYSTEM_ROLE)과 별개.
+
+> 캡틴 값은 두지 않는다. 스터디를 만든 **담당 캡틴**도 참여자라 반 편성 때 이 테이블에 `MEMBER` 행이 생긴다 (신청서 없이). 「담당 캡틴인가」는 이 테이블이 아니라 `STUDY.CREATED_BY` 로 판정한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-07).
 
 | 값 | 뜻 |
 |---|---|

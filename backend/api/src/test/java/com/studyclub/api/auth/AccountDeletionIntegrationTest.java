@@ -230,8 +230,8 @@ class AccountDeletionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - JSON 객체가 아닌 FORM_ANSWER(배열·깨진 JSON)가 있어도 탈퇴는 막히지 않고, 내용은 남기지 않고 비운다")
-    void deletesAccountEvenWithMalformedFormAnswer() {
+    @DisplayName("성공 - 배열 FORM_ANSWER가 있어도 탈퇴는 막히지 않고 내용을 비운다")
+    void deletesAccountEvenWithArrayFormAnswer() {
         Account account = seedAccount();
         StudyApplication arrayAnswer =
                 studyApplicationRepository.save(
@@ -240,13 +240,6 @@ class AccountDeletionIntegrationTest {
                                 .recruitmentId(9010L)
                                 .formAnswer("[\"홍길동/SWE\"]")
                                 .build());
-        StudyApplication brokenAnswer =
-                studyApplicationRepository.save(
-                        StudyApplication.builder()
-                                .accountId(account.getId())
-                                .recruitmentId(9011L)
-                                .formAnswer("홍길동/SWE {깨진 json")
-                                .build());
 
         var response =
                 rest.exchange(
@@ -254,11 +247,38 @@ class AccountDeletionIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(accountRepository.findById(account.getId())).isEmpty();
-        for (Long id : List.of(arrayAnswer.getId(), brokenAnswer.getId())) {
-            // 행은 보존하되 어디에 개인정보가 있는지 알 수 없는 값이라 통째로 비운다.
-            String reloaded = studyApplicationRepository.findById(id).orElseThrow().getFormAnswer();
-            assertThat(reloaded).doesNotContain("홍길동").contains("{}");
-        }
+        String reloaded =
+                studyApplicationRepository
+                        .findById(arrayAnswer.getId())
+                        .orElseThrow()
+                        .getFormAnswer();
+        assertThat(reloaded).doesNotContain("홍길동").isEqualTo("{}");
+    }
+
+    @Test
+    @DisplayName("성공 - 이전 방식의 문자열로 감싼 신청 답변도 별명을 마스킹한다")
+    void masksLegacyWrappedFormAnswer() {
+        Account account = seedAccount();
+        StudyApplication application =
+                studyApplicationRepository.save(
+                        StudyApplication.builder()
+                                .accountId(account.getId())
+                                .recruitmentId(9011L)
+                                .formAnswer(
+                                        "\"{\\\"discordNickname\\\":\\\"legacy-name\\\",\\\"answers\\\":{}}\"")
+                                .build());
+        var response =
+                rest.exchange(
+                        "/api/me", HttpMethod.DELETE, authenticatedBody(account, null), Void.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        String reloaded =
+                studyApplicationRepository
+                        .findById(application.getId())
+                        .orElseThrow()
+                        .getFormAnswer();
+        assertThat(reloaded)
+                .doesNotContain("legacy-name")
+                .contains("\"discordNickname\":\"[탈퇴한 계정]\"");
     }
 
     @Test

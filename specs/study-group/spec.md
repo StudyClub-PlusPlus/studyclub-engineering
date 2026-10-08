@@ -16,6 +16,7 @@
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당 · 완주율) | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/role | 네비게이터 지정 · 해제 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/group | 크루의 반 지정 · 이동 | O (ADMIN) | 스펙작성중 |
+| PUT | /api/admin/studies/{studyId}/captain/group | 담당 캡틴의 반 지정 · 이동 (명부 행이 없으면 만든다) | O (ADMIN) | 스펙작성중 |
 | GET | /api/admin/studies/{studyId}/availability | 신청자 가능 시간 집계 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (일정 → 회차 생성) | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 일정 수정 (오늘 이후 회차 다시 생성) | O (ADMIN) | 스펙작성중 |
@@ -56,6 +57,7 @@
   "participantCount": 18,
   "recruitmentCapacity": 20,
   "groups": [{ "groupId": 7, "name": "목 20:00 KST" }],
+  "captain": { "accountId": 5, "nickname": "rosy", "participantId": null, "groupId": null },
   "participants": [
     {
       "participantId": 41,
@@ -75,14 +77,17 @@
 
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|
-| participantCount | Int | N | `ACTIVE` · `PAUSED` 행 수 | 계산 |
+| participantCount | Int | N | `ACTIVE` · `PAUSED` 행 수. 담당 캡틴 행은 뺀다 — `recruitmentCapacity` 와 견주는 숫자라서다 (담당 캡틴은 정원 밖) | 계산 |
 | recruitmentCapacity | Int | Y | 정원. null 이면 제한 없음 | 최신 STUDY_RECRUITMENT.RECRUITMENT_CAPACITY |
 | groups[] | Array | N | 그 스터디의 분반 | STUDY_GROUP |
+| captain | Object | Y | 담당 캡틴. `CREATED_BY` 가 NULL 이면 null. 반 편성 화면이 명단 맨 위에 「캡틴」 줄로 그리고 반 칸을 준다 | STUDY.CREATED_BY → ACCOUNT |
+| captain.participantId · groupId | Long | Y | 반 편성 전(명부 행 없음)이면 둘 다 null | STUDY_PARTICIPANT |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |
 | participants[].regionGroup | String | Y | `KR` · `NA` · `ETC` | ACCOUNT.REGION_GROUP |
 | participants[].groupId | Long | Y | 반 미배정이면 null | STUDY_PARTICIPANT.STUDY_GROUP_ID |
 | participants[].participantRole | String | N | `LEADER` = 네비게이터 · `MEMBER` | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| participants[].captain | Boolean | N | 이 행이 담당 캡틴이면 true — 「캡틴」 칩. 반 편성 뒤의 담당 캡틴 행도 `participants` 에 들어간다 | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
 | participants[].status | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` | STUDY_PARTICIPANT.STATUS |
 | participants[].completionRate | Number | Y | 지난 스터디 완주율(0~1). 이력이 없으면 null — 화면 「첫 참여」 | 계산: 이 스터디 이전에 끝난 명부 행 중 `COMPLETED` 비율 |
 
@@ -136,6 +141,50 @@
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 그 스터디의 명부 행이 아님 |
 | 409 | PARTICIPANT_NOT_ACTIVE | 하차 · 탈퇴한 행 |
+
+---
+
+## 담당 캡틴의 반 지정
+
+담당 캡틴(`STUDY.CREATED_BY`)도 스터디에 참여한다. 신청서를 내지 않아 명부 행이 없으므로, 위 「크루의 반 지정」(명부 행 ID 를 받는다)으로는 반을 줄 수 없다. 반 편성 때 이 API 로 반을 정하면 명부에 들어간다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-07).
+
+### 기본 정보
+
+- **Method**: PUT
+- **Path**: `/api/admin/studies/{studyId}/captain/group`
+- **인증**: 필요 — ADMIN (반 편성 권한과 같다. 담당 캡틴 본인이 아니어도 된다)
+
+### Request Body
+
+```json
+{ "groupId": 7 }
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| groupId | Long | Y | 같은 스터디의 분반 |
+
+### 서버 동작
+
+- 담당 캡틴의 명부 행이 **없으면 만든다** — `STATUS=ACTIVE` · `PARTICIPANT_ROLE=MEMBER` · `JOINED_AT=now` · 신청 행 없음. 캡틴용 역할 값은 두지 않는다
+- 행이 **있으면** 「크루의 반 지정 · 이동」과 똑같이 반만 옮긴다
+- 새 반의 예정 회차 출석 행은 회차 생성 규칙대로 `ABSENT` 로 만든다 — 그 뒤로 출석·출석률·완주는 크루와 같다
+- 담당 캡틴은 정원 집계(`participantCount`)에서 뺀다
+
+### Response — 200
+
+```json
+{ "participantId": 52, "groupId": 7 }
+```
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 400 | INVALID_INPUT | `groupId` 누락 · 다른 스터디의 반 |
+| 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
+| 404 | NOT_FOUND | 없는 스터디 · 반 · 담당 캡틴 없음(`CREATED_BY` NULL) |
+| 409 | PARTICIPANT_NOT_ACTIVE | 담당 캡틴 행이 하차 · 탈퇴 상태 |
 
 ---
 

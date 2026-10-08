@@ -612,6 +612,15 @@ export const CLASS_SPEC: ScreenSpec = {
       display: ['크루 명단의 반 칸. 반이 둘 이상이면 고르는 칸이, 하나면 반 이름이 나온다'],
       behavior: ['바꾸면 그 자리에서 반이 옮겨진다'],
     },
+    {
+      n: '3-1',
+      title: '담당 캡틴의 반',
+      when: '신청자 탭을 보고 있을 때',
+      display: ['명단 맨 위 「캡틴」 줄 — 이 스터디를 만든 캡틴. 처음에는 「반 미지정」'],
+      behavior: ['반을 고르면 담당 캡틴이 명부에 들어간다. 그 뒤로 출석·완주는 크루와 같다'],
+      policy: ['신청서를 내지 않아 크루 목록에는 없다', '참여 인원/정원에 세지 않는다'],
+      data: ['PUT /api/admin/studies/{studyId}/captain/group — 미구현'],
+    },
   ],
 };
 
@@ -684,7 +693,7 @@ export const FORM_SPEC: ScreenSpec = {
       title: '저장',
       behavior: ['저장 → 완료 문구 표시', '처리 중 스피너로 중복 제출 차단'],
       policy: ['모집 시작 전에는 저장할 수 있다. 모집 시작 이후 수정은 막아야 한다 — 프로토타입은 아직 막지 않는다'],
-      data: ['PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form — 미구현'],
+      data: ['PUT /api/admin/studies/{studyId}/application-form — 담당 캡틴(STUDY.CREATED_BY)만. 담당 판정 미구현'],
     },
   ],
 };
