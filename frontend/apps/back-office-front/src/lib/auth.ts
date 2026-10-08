@@ -1,3 +1,5 @@
+import { getQueryClient } from '@/lib/query-client';
+
 // back-office 인증 — 구글 로그인(팝업) + allowlist. 세션키 prefix=bo_ (core=sc_ 와 격리).
 // 콜백 URI 는 core-front(4700) 것을 재사용 — GCP 에 redirect 하나만 등록, postMessage("*")
 // 로 BO opener 에 code 전달 (zapp back-office-google-login 결정 이식). BO 는 core-front 가
@@ -7,7 +9,7 @@ export const STORAGE_PREFIX = 'bo_';
 export const PLATFORM = 'BACK_OFFICE';
 
 export const ACCESS_COOKIE = `${STORAGE_PREFIX}access_token`;
-const USER_KEY = `${STORAGE_PREFIX}user`;
+export const USER_KEY = `${STORAGE_PREFIX}user`;
 
 export type SessionUser = {
   id: number;
@@ -57,11 +59,13 @@ export function getUser(): SessionUser | null {
 
 export function setUser(user: SessionUser): void {
   if (typeof window === 'undefined') return;
+  getQueryClient().clear();
   window.localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function clearSession(): void {
   if (typeof window === 'undefined') return;
+  getQueryClient().clear();
   window.localStorage.removeItem(USER_KEY);
 }
 
