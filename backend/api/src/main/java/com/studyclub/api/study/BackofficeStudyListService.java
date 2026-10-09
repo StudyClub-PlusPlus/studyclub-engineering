@@ -96,6 +96,7 @@ public class BackofficeStudyListService {
                                                     : null;
                                     return new BackofficeStudyListResponse.StudySummary(
                                             study.getId(),
+                                            study.getProgramId(),
                                             study.getTitle(),
                                             study.getStatus(),
                                             study.getCategory(),

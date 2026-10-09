@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   STUDY_CATEGORIES,
-  attendanceRate,
   getStudyCrew,
   publishState,
   recruitState,
@@ -22,13 +21,10 @@ import { STATUS_LABEL, tx } from '@/lib/l10n';
 import './studies-table.css';
 
 /**
- * 스터디 관리 목록.
+ * 스터디 관리 목록. 화면 정본은 playground 「스터디 관리 (운영 콘솔)」 (`proto/console/studies/spec.ts`).
  *
- * **칼럼은 등록 폼에 있는 항목으로만 짠다.** 운영자가 입력할 수 없는 값(형식·정원·연도·종류)은
- * 영원히 비거나 더미로 남으므로 목록에 두지 않는다. 상태 두 개(모집·공개)는 각각 등록 폼의
- * 「모집 마감일」·「공개일」 하나에서 파생되므로 별도 입력 없이도 항상 정확하다.
- *
- * 판정 함수는 사용자 사이트와 공유한다(`@studyclub/mock`) — 콘솔에만 "마감"으로 보이는 사고 방지.
+ * 모집 상태(모집중·마감)는 서버가 판정해 내려준 값(`recruitStatus` → `recruitment.status`)을 그린다 —
+ * 날짜·인원으로 다시 계산하지 않는다 (docs/backend-development-guide/api/endpoint-convention.md §판정은 서버가 내려준다).
  *
  * 행에 편집·삭제 버튼을 두지 않는다. 스터디 이름을 누르면 **운영 페이지**로 들어가고, 거기서
  * 크루 승인·출석·정보 수정을 모두 한다.
@@ -69,7 +65,7 @@ const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
 const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
   { value: 'all', label: '공개 전체' },
   { value: 'live', label: '공개' },
-  { value: 'draft', label: '비공개' },
+  { value: 'draft', label: '미공개' },
 ];
 
 const STUDY_STATUS_GUIDE = [
@@ -166,7 +162,6 @@ function summarize(study: Study) {
       active: study.applicantCount,
       applied: study.applicantCount,
       pending: 0,
-      rate: undefined,
     };
   }
 
@@ -176,20 +171,12 @@ function summarize(study: Study) {
       active: study.seats.taken,
       applied: study.seats.taken,
       pending: 0,
-      rate: undefined,
     };
   }
 
-  const { crew, capacity, attendance } = getStudyCrew(study);
+  const { crew, capacity } = getStudyCrew(study);
   // 승인 대기는 없다(#171) — 신청한 사람이 곧 크루다
-  const rows = crew.map((c) => attendanceRate(attendance[c.id])).filter((r): r is number => r !== undefined);
-  return {
-    capacity,
-    active: crew.length,
-    applied: crew.length,
-    pending: 0,
-    rate: rows.length === 0 ? undefined : Math.round(rows.reduce((a, b) => a + b, 0) / rows.length),
-  };
+  return { capacity, active: crew.length, applied: crew.length, pending: 0 };
 }
 
 function StatusTooltip({
@@ -337,6 +324,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             )}
           </span>
         ))}
+        <span className='text-xs text-fg-muted'>
+          모집중/마감은 상태가 아니라 모집 시작일·종료일과 정원으로 계산합니다
+        </span>
       </div>
       <div className='mb-5 flex flex-wrap items-center gap-2'>
         <input
@@ -391,18 +381,17 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           <table className='bo-table min-w-[1500px]'>
             <thead>
               <tr>
-                <th className='whitespace-nowrap'>p-id</th>
+                <th className='whitespace-nowrap'>P-ID</th>
                 <th>스터디명</th>
                 <th className='whitespace-nowrap'>스터디 상태</th>
                 <th className='whitespace-nowrap'>주제</th>
                 <th className='whitespace-nowrap'>종류</th>
                 <th className='whitespace-nowrap'>시간대</th>
                 <th className='whitespace-nowrap'>모집 시작일</th>
-                <th className='whitespace-nowrap'>모집 마감일</th>
+                <th className='whitespace-nowrap'>모집 종료일</th>
                 <th className='whitespace-nowrap'>모집 상태</th>
                 <th className='whitespace-nowrap'>지원 현황</th>
                 <th className='whitespace-nowrap'>스터디 시작일</th>
-                <th className='whitespace-nowrap'>출석률</th>
                 <th className='whitespace-nowrap'>신청 폼</th>
                 <th className='whitespace-nowrap'>스터디 공개</th>
               </tr>
@@ -417,7 +406,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                 const lifecycleStatus = lifecycleStatusOf(s);
                 return (
                   <tr key={s.id}>
-                    <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.id}</td>
+                    <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.program?.id ?? '—'}</td>
                     <td className='w-[42%] max-w-0'>
                       <Link
                         href={`/studies/${s.id}`}
@@ -446,7 +435,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                       <Badge tone='neutral'>{s.category ?? '—'}</Badge>
                     </td>
                     <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
-                    <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '—'}</td>
+                    <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '미정'}</td>
                     <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
                       {displayDate(s.recruitment?.start)}
                     </td>
@@ -461,10 +450,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
                       {applied} / {capacity === undefined ? '제한 없음' : capacity}
                     </td>
-                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{displayDate(s.date)}</td>
-                    <td className='tnum whitespace-nowrap text-xs font-semibold text-fg-secondary'>
-                      {crewStat.rate === undefined ? <span className='text-fg-muted'>—</span> : `${crewStat.rate}%`}
-                    </td>
+                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{toISODate(s.date) ?? '미정'}</td>
                     <td
                       className='whitespace-nowrap text-center text-sm'
                       aria-label={hasApplicationFormOf(s) ? '신청 폼 있음' : '신청 폼 없음'}
@@ -472,14 +458,14 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                       {hasApplicationFormOf(s) ? '✓' : '—'}
                     </td>
                     <td className='whitespace-nowrap'>
-                      <Badge tone='neutral'>{publish === 'live' ? '공개' : '비공개'}</Badge>
+                      <Badge tone='neutral'>{publish === 'live' ? '공개' : '미공개'}</Badge>
                     </td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={14} className='text-center text-fg-muted'>
+                  <td colSpan={13} className='text-center text-fg-muted'>
                     조건에 맞는 스터디가 없습니다.
                   </td>
                 </tr>

@@ -13,6 +13,7 @@ public record BackofficeStudyListResponse(
 
     public record StudySummary(
             Long studyId,
+            Long programId,
             String title,
             StudyStatus status,
             StudyCategory category,
