@@ -26,7 +26,7 @@ flowchart LR
 3. 빈 상태에서 반을 추가할 수도 있다
 4. 반을 만들면 시작일·종료일·요일·시간·시간대로 회차가 생긴다. 만들기 전에 반 이름과 회차 수를 미리 안다
 5. 반 이름은 그 반의 일정이다. 따로 입력하지 않는다
-6. 크루마다 반을 지정하거나 옮길 수 있다
+6. 크루마다 반을 지정하거나 옮길 수 있다. 담당 캡틴(스터디를 만든 캡틴)도 명단 맨 위 「캡틴」 줄에서 반을 지정한다. 지정하면 담당 캡틴이 명부에 들어간다
 7. 반의 일정을 고칠 수 있다. 오늘 이후 회차만 다시 만들어지고 이미 찍힌 출석은 남는다
 8. 크루가 한 명도 없는 반만 지울 수 있다
 9. 반이 없으면 무엇을 해야 하는지 안내를 본다
@@ -92,6 +92,9 @@ flowchart LR
 
 - **내용**: 크루 명단의 반 칸. 반이 둘 이상이면 고를 수 있고, 하나면 반 이름만 보인다
 - **동작**: 바꾸면 그 자리에서 반이 옮겨진다
+- **정책**
+  - 담당 캡틴은 신청서가 없어도 명단 맨 위에 「캡틴」 줄로 보이고 반 칸이 있다. 반이 없으면 「반 미지정」
+  - 담당 캡틴은 반을 받으면 명부에 들어가고, 출석·완주는 크루와 같다. 모집 정원에는 넣지 않는다 ([POL-0001](../../_registry/policies/POL-0001-roles.md))
 
 ### 상태별 화면
 
@@ -135,6 +138,7 @@ erDiagram
 | 분반 | NAME · START_AT · TIMEZONE · 시작일 · 종료일 · 요일 | 만들기·수정 |
 | 회차 | 분반 일정으로 만든 `SCHEDULED_AT` | 만들기·일정 수정 시 |
 | 명부 | `STUDY_PARTICIPANT.STUDY_GROUP_ID` | 크루의 반 지정 |
+| 명부 | `STUDY_PARTICIPANT` 행 추가 | 담당 캡틴의 반 지정 (행이 없을 때) |
 
 ### 처리
 
@@ -155,6 +159,7 @@ erDiagram
 | POST | `/api/admin/studies/{studyId}/groups` | 캡틴 |
 | PATCH · DELETE | `/api/admin/studies/{studyId}/groups/{groupId}` | 캡틴 |
 | PATCH | `/api/admin/studies/{studyId}/participants/{participantId}/group` | 캡틴 |
+| PUT | `/api/admin/studies/{studyId}/captain/group` | 캡틴 |
 
 계약은 [study-group/spec.md](../../../specs/study-group/spec.md).
 

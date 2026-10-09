@@ -75,6 +75,7 @@ STUDY_ATTENDANCE {
 |------|------|------|------|
 | studyGroupId | Long | **Y** | 조회할 그룹 ID. 존재하지 않으면 404. studyId 소속이 아니면 400 |
 | meetingId | Long | N | 특정 회차 하나만 필터링. 해당 그룹 소속이 아니거나 존재하지 않으면 404 |
+| includeWithdrawn | Boolean | N | `false`(기본값)이면 ACTIVE 참여자만. `true`이면 WITHDRAWN·DELETED 포함 전체 |
 
 ### Request Body
 
@@ -92,7 +93,10 @@ STUDY_ATTENDANCE {
                              → 404 if not found. group.study_id ≠ studyId → 400
 
 3. STUDY_PARTICIPANT         WHERE study_group_id = studyGroupId
+                             includeWithdrawn=false → STATUS = 'ACTIVE' 만 (PAUSED·COMPLETED·WITHDRAWN·DELETED 제외)
+                             includeWithdrawn=true  → 전체 (모든 상태 포함)
                              → 해당 그룹 참가자 목록. joined_at / status 포함
+                             participantCount 는 필터 무관하게 항상 전체 수(모든 상태)
 
 4. STUDY_MEETING             WHERE study_group_id = studyGroupId ORDER BY scheduled_at
                              → 해당 그룹 미팅 목록
@@ -155,7 +159,7 @@ STUDY_ATTENDANCE {
 | participants[].displayName | String | N | | ACCOUNT.NICKNAME |
 | participants[].participantRole | String | N | `LEADER` · `CO_LEADER` · `MEMBER`. 스터디 일정 출석부의 이름 옆 역할 칩(네비게이터) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | participants[].captain | Boolean | N | 그 스터디를 만든 캡틴이면 true — 이름 옆 「캡틴」 칩. 다른 캡틴(ADMIN)이 참여했으면 false(크루) | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
-| participants[].participantStatus | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` · `COMPLETED` · `DELETED`. `WITHDRAWN`·`DELETED` 이면 화면은 흐린 이름 + 칩, 맨 아래 줄 | STUDY_PARTICIPANT.STATUS |
+| participants[].participantStatus | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` · `COMPLETED` · `DELETED`. `WITHDRAWN`·`DELETED` 행은 `includeWithdrawn=true`일 때만 응답에 포함된다. 화면은 흐린 이름 + 칩, 맨 아래 줄 | STUDY_PARTICIPANT.STATUS |
 | participants[].leftAt | String | Y | 떠난 시각(UTC). 이 뒤 회차 칸은 「—」. 화면은 하차·제명을 가르지 않고 「참여 중단」 칩 | STUDY_PARTICIPANT.LEFT_AT |
 | participants[].attendances[].meetingId | Long | N | | STUDY_MEETING.ID |
 | participants[].attendances[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED \| null`. null = 미입력 | STUDY_ATTENDANCE.STATUS |
@@ -182,7 +186,8 @@ countable_meetings = 스터디의 미팅 중
 
 `upper_bound` 가 `left_at`([user-leave spec](../user-leave/spec.md) "WITHDRAWN·DELETED")인 경우
 `left_at` 이 없으면(하차 시각을 모르는 과거 데이터) `countable_meetings` 는 항상 0 — 안전하게 전체
-제외한다. **하차·회원 탈퇴 이전 회차의 출석·결석은 그대로 집계에 남고, 이후 회차는 결석(0점)이 아니라
+제외한다. WITHDRAWN 의 `left_at` 은 `StudyParticipant.markWithdrawn(withdrawnAt)` 이 채우며,
+DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차·회원 탈퇴 이전 회차의 출석·결석은 그대로 집계에 남고, 이후 회차는 결석(0점)이 아니라
 분모에서 아예 제외된다** — 하차 이후까지 결석으로 깔면 "하차"와 "결석"이라는 서로 다른 사실이 같은
 숫자로 섞인다(2026-10-01, 회원 탈퇴 구현 중 수정).
 
@@ -198,6 +203,7 @@ countable_meetings = 스터디의 미팅 중
 | 404 | NOT_FOUND | 존재하지 않는 studyGroupId |
 | 400 | INVALID_INPUT | studyGroupId가 해당 studyId 소속이 아님 |
 | 404 | NOT_FOUND | meetingId가 해당 그룹 소속이 아니거나 존재하지 않음 |
+| 400 | — | includeWithdrawn에 Boolean 외 값 → Spring 타입 바인딩 실패로 자동 처리 |
 
 미팅이 하나도 없으면 200, `meetings: []`, `participants[].attendances: []`, `study.avgAttendanceRate: null`.
 

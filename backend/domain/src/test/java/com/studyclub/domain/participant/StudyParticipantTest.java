@@ -21,6 +21,18 @@ class StudyParticipantTest {
     }
 
     @Test
+    @DisplayName("markWithdrawn_호출_시_STATUS가_WITHDRAWN이고_leftAt이_기록된다")
+    void markWithdrawn_호출_시_STATUS가_WITHDRAWN이고_leftAt이_기록된다() {
+        StudyParticipant participant = participantWith(ParticipantStatus.ACTIVE, null);
+        Instant withdrawnAt = Instant.parse("2026-06-01T00:00:00Z");
+
+        participant.markWithdrawn(withdrawnAt);
+
+        assertThat(participant.getStatus()).isEqualTo(ParticipantStatus.WITHDRAWN);
+        assertThat(participant.getLeftAt()).isEqualTo(withdrawnAt);
+    }
+
+    @Test
     @DisplayName("회원 탈퇴 - ACTIVE(leftAt 없음)였다면 탈퇴 시각을 leftAt 으로 채운다")
     void setsLeftAtForActiveParticipant() {
         StudyParticipant participant = participantWith(ParticipantStatus.ACTIVE, null);

@@ -123,7 +123,7 @@ export const studyTitleById: Record<string, string> = Object.fromEntries(studies
  *
  * TODO(api): 목록 응답의 작성자(STUDY.CREATED_BY)로 교체. 컬럼이 생기기 전 스터디는 작성자가 없다.
  */
-export function studyAuthor(study: Study): { id: string; name: string } {
-  const { id, name } = CAPTAINS[hash(study.id) % CAPTAINS.length];
-  return { id, name };
+export function studyAuthor(study: Study): { id: string; name: string; email: string } {
+  const { id, name, email } = CAPTAINS[hash(study.id) % CAPTAINS.length];
+  return { id, name, email };
 }
