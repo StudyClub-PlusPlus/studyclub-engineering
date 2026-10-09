@@ -140,7 +140,7 @@ class WelcomeEmailNotificationIntegrationTest {
                 .executeWithoutResult(
                         status -> {
                             applicationEventPublisher.publishEvent(
-                                    new com.studyclub.domain.account.UserRegisteredEvent(
+                                    com.studyclub.domain.account.UserRegisteredEvent.of(
                                             account.getId()));
                             status.setRollbackOnly();
                         });

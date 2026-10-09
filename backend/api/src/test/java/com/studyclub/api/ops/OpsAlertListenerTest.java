@@ -35,7 +35,7 @@ class OpsAlertListenerTest {
     }
 
     private static final StudyApplicationSubmitted EVENT =
-            new StudyApplicationSubmitted(7L, 3L, "알고리즘 스터디", 11L, "길동");
+            StudyApplicationSubmitted.of(7L, 3L, "알고리즘 스터디", 11L, "길동");
 
     @Test
     void 신청_이벤트를_발행하면_다른_스레드에서_notifier_가_불린다() {

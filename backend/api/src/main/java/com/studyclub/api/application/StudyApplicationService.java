@@ -100,7 +100,7 @@ public class StudyApplicationService {
         StudyApplication saved = studyApplicationRepository.save(application);
         account.changeDiscordNickname(answer.discordNickname());
         eventPublisher.publishEvent(
-                new StudyApplicationSubmitted(
+                StudyApplicationSubmitted.of(
                         saved.getId(),
                         studyId,
                         study.getTitle(),

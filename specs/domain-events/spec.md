@@ -1,21 +1,46 @@
 # 도메인 이벤트
 
-> 상태: 1단계 구현 · 실행기: `backend/api/src/main/java/com/studyclub/api/config/AsyncConfig.java`
+> 상태: 1단계 구현 · 계약: `backend/common/src/main/java/com/studyclub/common/event/` · 실행기: `backend/api/src/main/java/com/studyclub/api/config/AsyncConfig.java`
 
-## 규칙
+## 공통 계약
+
+모든 도메인 이벤트는 `DomainEvent` (common 모듈, `com.studyclub.common.event`) 를 구현한다.
+
+| 필드 | 타입 | 뜻 |
+|---|---|---|
+| `eventId` | UUID | 이벤트마다 새로 만든다 (`EventMeta.now`) |
+| `name` | String | `aggregate.past_tense`, snake case. 예 `user.registered` · `study_application.submitted` |
+| `occurredAt` | Instant (UTC) | 사실이 생긴 시각 (`EventMeta.now`) |
+| `aggregateType` | String | 사실이 생긴 aggregate. snake case (`account`, `study_application`) |
+| `aggregateId` | String | 그 aggregate 의 id |
+| `actorId` | String, nullable | 사실을 일으킨 계정 id. 시스템이 일으켰으면 null |
+| 페이로드 | 이벤트별 | id 와 표시용 값만. 비밀값·토큰·연락처 원문은 싣지 않는다 |
+
+Java 모양:
+
+- 이벤트 = `record`. 첫 컴포넌트는 `EventMeta meta` (eventId · occurredAt · actorId), 그 뒤에 페이로드
+- `name()` · `aggregateType()` · `aggregateId()` 를 구현한다. `name` 은 `NAME` 상수로 둔다
+- 만들 때는 `of(...)` 정적 팩토리를 쓴다 — 메타를 손으로 채우지 않는다
+- 클래스는 사실이 생긴 aggregate 의 `domain` 패키지에 둔다
+- 버전 필드·이벤트 레지스트리·레포 간 공유 패키지는 두지 않는다 (필요해지면 그때)
+
+### 이름 규칙
+
+- `<aggregate>.<과거형 동사>` — 무엇이 **일어났다**. 명령(`send_mail`)이 아니라 사실(`user.registered`)
+- Java 클래스 이름은 레포 관례를 따른다 (기존 `UserRegisteredEvent` 는 이름을 유지)
+
+### 발행·전달 규칙
 
 사실이 생기면 서비스가 도메인 이벤트를 발행하고, 부수효과(ops 알림·메일·외부 연동)는 **구독자**로 붙인다.
 서비스 메서드에서 부수효과를 직접 부르지 않는다.
 
-- 이벤트 = Java `record`, 과거형 이름, 얇은 페이로드 (id + 표시용 이름. 비밀값·연락처 원문 금지)
-- 이벤트는 사실이 생긴 aggregate 의 `domain` 패키지에 둔다 (`domain.account.UserRegisteredEvent` 와 같은 자리)
 - 발행: `ApplicationEventPublisher.publishEvent(...)` — 트랜잭션 안에서
 - 구독: 발행하는 서비스와 **다른 빈**에 `@TransactionalEventListener(phase = AFTER_COMMIT)`.
   같은 빈 안에 두면 프록시를 안 거쳐 `@Async` 가 무시된다
 - 요청을 막으면 안 되는 구독자는 `@Async` 를 붙이고 `fallbackExecution = true` (트랜잭션 밖 발행도 받는다)
-- 구독자는 예외를 삼키고 warn/error 로그만 남긴다 — 이미 커밋된 사실을 되돌릴 수 없다
+- 구독자는 예외를 삼키고 warn/error 로그만 남긴다 — 이미 커밋된 사실을 되돌릴 수 없다. 로그에는 `eventId` 를 남긴다
 
-## 전달 보장
+### 전달 보장
 
 메모리 안 · 커밋 뒤 전달이다. **커밋과 전송 사이에 프로세스가 죽으면 그 이벤트는 사라진다** (outbox 없음).
 ops 알림처럼 잃어도 되는 부수효과에 맞다. 잃으면 안 되는 것(메일)은 구독자가 DB 행을 만들고 폴러가 보낸다 —
@@ -25,10 +50,10 @@ ops 알림처럼 잃어도 되는 부수효과에 맞다. 잃으면 안 되는 �
 
 ## 이벤트
 
-| 이벤트 | 언제 | 페이로드 | 구독자 |
-|---|---|---|---|
-| `UserRegisteredEvent` (domain.account) | 온보딩 최초 완료 = 가입 확정. 계정당 1회 | `accountId` | `UserRegisteredNotificationListener` (웰컴메일 행 생성, 동기) · `OpsAlertListener` (@Async) |
-| `StudyApplicationSubmitted` (domain.application) | 스터디 신청 저장 | `applicationId` · `studyId` · `studyTitle` · `accountId` · `applicantNickname` | `OpsAlertListener` (@Async) |
+| name | 클래스 | 언제 | aggregate (type · id) · actor | 페이로드 | 구독자 |
+|---|---|---|---|---|---|
+| `user.registered` | `UserRegisteredEvent` (domain.account) | 온보딩 최초 완료 = 가입 확정. 계정당 1회 | `account` · accountId · 본인 | `accountId` | `UserRegisteredNotificationListener` (웰컴메일 행 생성, 동기) · `OpsAlertListener` (@Async) |
+| `study_application.submitted` | `StudyApplicationSubmitted` (domain.application) | 스터디 신청 저장 | `study_application` · applicationId · 신청자 | `applicationId` · `studyId` · `studyTitle` · `accountId` · `applicantNickname` | `OpsAlertListener` (@Async) |
 
 가입 이벤트는 새로 만들지 않고 기존 `UserRegisteredEvent` 를 그대로 쓴다 — 같은 사실에 이벤트가 둘이면 구독자가 어느 쪽을 들을지 갈린다.
 
