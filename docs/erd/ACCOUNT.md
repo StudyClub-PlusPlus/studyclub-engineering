@@ -9,7 +9,7 @@
 | ID | BIGINT PK | N | |
 | EMAIL | VARCHAR(255) | N | 대표 이메일. UNIQUE |
 | NICKNAME | VARCHAR(20) | N | 화면 표시명. 2~20자, UNIQUE |
-| PROFILE_IMG_URL | VARCHAR(512) | Y | |
+| PROFILE_IMG_URL | VARCHAR(2048) | Y | 프로필 사진 주소. 가입 때 구글 사진 주소가 들어가고, 마이페이지에서 올리면 우리 저장소(CloudFront) 주소로 바뀐다. 지우면 null ([profile-image](../../specs/profile-image/spec.md)) |
 | JOB_TITLE | VARCHAR(100) | Y | SWE, PM … |
 | COUNTRY_CODE | CHAR(2) | Y | ISO 3166-1 alpha-2 (`KR`, `US`, `CA`) |
 | CITY | VARCHAR(100) | Y | |
