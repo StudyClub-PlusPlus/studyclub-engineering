@@ -1,11 +1,91 @@
 import { HttpResponse } from 'msw';
 
-import { apiStudies, findApiStudyDetail, type ApiPage, type ApiStudy } from '../data';
+import { apiStudies, findApiStudyDetail, findApiApplicationForm, type ApiPage, type ApiStudy } from '../data';
 import { mockClient, type MockResolveContext } from '../utils';
 
 const emptyPage: ApiPage<ApiStudy> = { items: [], total: 0, offset: 0, limit: 100 };
 
 export const studiesHandlers = mockClient.createHandlerGroup('/api/studies', [
+  {
+    method: 'POST',
+    path: '/:id/applications',
+    presets: [
+      {
+        label: '신청 성공',
+        status: 201,
+        response: () => new HttpResponse(null, { status: 201, headers: { Location: '/api/studies/1/applications/1' } }),
+      },
+      {
+        label: '이미 신청',
+        status: 409,
+        response: { errorCode: 'CONFLICT', errorMessage: '이미 신청한 스터디입니다.' },
+      },
+      {
+        label: '모집 마감',
+        status: 409,
+        response: { errorCode: 'CONFLICT', errorMessage: '모집이 마감되었습니다.' },
+      },
+      {
+        label: '정원 초과',
+        status: 409,
+        response: { errorCode: 'CONFLICT', errorMessage: '정원이 가득 찼습니다.' },
+      },
+      {
+        label: '디스코드 미연동',
+        status: 403,
+        response: { errorCode: 'FORBIDDEN', errorMessage: '디스코드 연동이 필요합니다.' },
+      },
+      {
+        label: '이미 참여 중',
+        status: 409,
+        response: { errorCode: 'CONFLICT', errorMessage: '이미 참여 중인 스터디입니다.' },
+      },
+      {
+        label: '서버 오류',
+        status: 500,
+        response: { errorCode: 'INTERNAL_ERROR', errorMessage: '서버 오류가 발생했습니다.' },
+      },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/:id/applications/me',
+    presets: [
+      {
+        label: '신청 안 함',
+        status: 200,
+        response: { applied: false, applicationId: null, submittedAt: null },
+      },
+      {
+        label: '신청함',
+        status: 200,
+        response: { applied: true, applicationId: 1, submittedAt: '2026-10-01T12:00:00Z' },
+      },
+      {
+        label: '서버 오류',
+        status: 500,
+        response: { errorCode: 'INTERNAL_ERROR', errorMessage: '서버 오류가 발생했습니다.' },
+      },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/:id/application-form',
+    presets: [
+      {
+        label: '정상',
+        status: 200,
+        response: ({ params }: MockResolveContext) => {
+          const form = findApiApplicationForm(Number(params.id));
+          if (!form)
+            return HttpResponse.json({ errorMessage: '스터디를 찾을 수 없습니다.' }, { status: 404 });
+          return form;
+        },
+      },
+      { label: '찾을 수 없음', status: 404, response: { errorMessage: '스터디를 찾을 수 없습니다.' } },
+      { label: '서버 오류', status: 500, response: { errorMessage: '서버 오류가 발생했습니다.' } },
+    ],
+  },
   {
     method: 'GET',
     path: '/',
