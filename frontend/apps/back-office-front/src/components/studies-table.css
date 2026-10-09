@@ -1,0 +1,21 @@
+/* Reserve scrollbar space when filtering changes the page height. */
+html {
+  scrollbar-gutter: stable;
+}
+
+div:has(> .studies-status-guide) .bo-table th,
+div:has(> .studies-status-guide) .bo-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+div:has(> .studies-status-guide) .bo-table th:first-child,
+div:has(> .studies-status-guide) .bo-table td:first-child {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+}
+
+div:has(> .studies-status-guide) .bo-table th:nth-child(2) {
+  width: 300px;
+}

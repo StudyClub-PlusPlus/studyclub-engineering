@@ -34,8 +34,6 @@ import tools.jackson.databind.ObjectMapper;
 public class StudyApplicationService {
 
     private static final Logger log = LoggerFactory.getLogger(StudyApplicationService.class);
-    private static final List<ParticipantRole> CAPACITY_ROLES =
-            List.of(ParticipantRole.MEMBER, ParticipantRole.LEADER, ParticipantRole.CO_LEADER);
 
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
@@ -102,7 +100,7 @@ public class StudyApplicationService {
     private void checkCapacity(StudyRecruitment recruitment, Long studyId) {
         long activeCrewCount =
                 studyParticipantRepository.countByStudyIdAndStatusAndParticipantRoleIn(
-                        studyId, ParticipantStatus.ACTIVE, CAPACITY_ROLES);
+                        studyId, ParticipantStatus.ACTIVE, ParticipantRole.CAPACITY_ROLES);
         if (recruitment.isFull(activeCrewCount)) {
             throw new BusinessException(ErrorCode.CONFLICT, "정원이 가득 찼습니다.");
         }
