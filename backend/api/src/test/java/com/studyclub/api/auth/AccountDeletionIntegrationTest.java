@@ -379,8 +379,8 @@ class AccountDeletionIntegrationTest {
                 studyParticipantRepository.save(
                         StudyParticipant.builder()
                                 .accountId(accountId)
-                                .studyGroupId(9001L)
-                                .studyId(9001L)
+                                .studyGroupId(9099L)
+                                .studyId(9099L)
                                 .status(ParticipantStatus.ACTIVE)
                                 .participantRole(ParticipantRole.MEMBER)
                                 .joinedAt(Instant.now())
@@ -389,7 +389,7 @@ class AccountDeletionIntegrationTest {
         StudyMeeting meeting =
                 studyMeetingRepository.save(
                         StudyMeeting.schedule(
-                                9001L, Instant.now().plus(7, ChronoUnit.DAYS), "발표 회차"));
+                                9099L, Instant.now().plus(7, ChronoUnit.DAYS), "발표 회차"));
         meeting.assignPresenters(participant.getId(), null);
         studyMeetingRepository.save(meeting);
 
