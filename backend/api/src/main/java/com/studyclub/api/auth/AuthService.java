@@ -2,6 +2,7 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
+import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.common.error.BusinessException;
@@ -71,7 +72,7 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public AccountView me(Long accountId) {
+    public AccountSelfView me(Long accountId) {
         Account account =
                 accountRepository
                         .findById(accountId)
@@ -79,7 +80,7 @@ public class AuthService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
-        return toView(account);
+        return AccountSelfView.from(account);
     }
 
     public AccessTokenResponse refresh(String refreshToken) {

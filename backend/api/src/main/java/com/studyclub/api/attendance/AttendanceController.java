@@ -1,6 +1,7 @@
 package com.studyclub.api.attendance;
 
 import com.studyclub.api.auth.security.RequireCaptainOrNavigator;
+import com.studyclub.api.auth.security.RequireGroupRoster;
 import com.studyclub.api.auth.security.RequireOnboarding;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,17 +32,19 @@ public class AttendanceController {
 
     @Operation(
             summary = "출석 명부 조회",
-            description = "지정한 분반의 명부. 캡틴 또는 그 분반 네비게이터만 (specs/authz-guards).")
+            description = "지정한 분반의 명부. 그 분반의 활성 참여자(크루 포함) · 네비게이터 · 캡틴 (specs/authz-guards).")
     @SecurityRequirement(name = "bearerAuth")
     @RequireOnboarding
-    @RequireCaptainOrNavigator(scope = RequireCaptainOrNavigator.Scope.GROUP)
+    @RequireGroupRoster
     @GetMapping
     public ResponseEntity<AttendanceResponse> getAttendances(
             @PathVariable Long studyId,
             @RequestParam Long studyGroupId,
-            @RequestParam(required = false) Long meetingId) {
+            @RequestParam(required = false) Long meetingId,
+            @RequestParam(defaultValue = "false") boolean includeWithdrawn) {
         return ResponseEntity.ok(
-                attendanceService.getAttendances(studyId, studyGroupId, meetingId));
+                attendanceService.getAttendances(
+                        studyId, studyGroupId, meetingId, includeWithdrawn));
     }
 
     @Operation(

@@ -19,8 +19,8 @@ public final class ParticipantHubResponses {
 
     /**
      * 회원 탈퇴 화면의 "맡은 진행 중인 스터디" 경고(specs/user-leave/spec.md)도 이 목록을 그대로 쓴다 — {@code participantRole
-     * IN (LEADER, CO_LEADER)} 이고 {@code relation == ONGOING} 인 행이 있으면 경고를 띄운다 (판정 로직은 프론트, {@code
-     * lib/me.ts: getActiveNavigatorStudies}).
+     * == LEADER} 이고 {@code relation == ONGOING} 인 행이 있으면 경고를 띄운다 (판정 로직은 프론트, {@code lib/me.ts:
+     * getActiveNavigatorStudies}).
      */
     public record MyStudy(
             Long studyId,

@@ -24,7 +24,7 @@ spec.md 의 엔드포인트 전부다.
 | 컨트롤러 | 새 `AdminUserController` (`com.studyclub.api.account`), 클래스에 `@RequireAdmin`, `@RequestMapping("/api/admin")` | authz-guards — 인가는 어노테이션으로만. endpoint-convention — 관객별 컨트롤러, `Admin*` 이름. 기존 `api.auth.AccountController` 는 사용자 쪽(온보딩)이라 섞지 않는다 |
 | 목록 조회 | JPQL DAO `AdminAccountJpqlDao` — `BackofficeStudyJpqlDao` 와 같은 모양(조건 조립 → count 쿼리 + 페이지 쿼리) | 이미 있는 패턴. 조건이 선택적이라 Spring Data 메서드 이름으로는 못 쓴다 |
 | 역할 필터 | `role` enum(`ALL`·`CAPTAIN`·`NAVIGATOR`·`CREW`, 기본 `ALL`) 하나를 받아 DAO 가 조건으로 바꾼다 — `CAPTAIN`=`SYSTEM_ROLE = ADMIN`, `NAVIGATOR`=담당 스터디 있음, `CREW`=`SYSTEM_ROLE = MEMBER` | PRD 의 `role` 파라미터. 탭과 1:1 이라 화면이 그대로 보낸다 |
-| 「참여 중」·「담당」 조건 | DAO 안 상수 한 곳 — `ACTIVE_STATUSES = {ACTIVE, PAUSED}`, `NAVIGATOR_ROLES = {LEADER, CO_LEADER}`. 「참여 중」은 `PARTICIPANT_ROLE` 을 보지 않는다 | 기획 답에 따라 바뀔 수 있는 조건을 한 곳에 모은다. 서브쿼리·IN 조회가 모두 이 상수를 쓴다 |
+| 「참여 중」·「담당」 조건 | DAO 안 상수 한 곳 — `ACTIVE_STATUSES = {ACTIVE, PAUSED}`, `NAVIGATOR_ROLES = {LEADER}`. 「참여 중」은 `PARTICIPANT_ROLE` 을 보지 않는다 | 기획 답에 따라 바뀔 수 있는 조건을 한 곳에 모은다. 서브쿼리·IN 조회가 모두 이 상수를 쓴다 |
 | 정렬·휴면 집계 | 페이지 쿼리에서 `STUDY_PARTICIPANT` 상관 서브쿼리 2개(담당 여부 · 참여 중 스터디 수)를 SELECT·ORDER BY 에 둔다. Hibernate HQL 이 ORDER BY 서브쿼리를 못 받으면 같은 모양의 native SQL 로 바꾼다 | 정렬이 서버라 집계가 페이지 쿼리 안에 있어야 한다. 회원 수백 명 규모라 상관 서브쿼리로 충분하다 |
 | 담당 스터디 이름 | 페이지의 계정 ID 들로 명부 + 스터디 제목을 **한 번에**(`IN`) 조회해 메모리에서 묶는다 | 행마다 조회하면 N+1. 페이지 20행이라 IN 한 번이면 된다 |
 | 검색 `q` | `lower(nickname) LIKE lower(:q)` (온보딩 완료자만, `%`·`_` 이스케이프) **OR** `lower(email) = lower(:q)` | 스펙 — 이름은 부분 일치, 이메일은 전체 일치만 |

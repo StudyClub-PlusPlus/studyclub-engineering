@@ -42,7 +42,7 @@
 | 네비게이터 | 스터디 역할 | `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` | 그 스터디의 크루 명단에서 — **이 스펙 범위 밖** |
 
 - **네비게이터는 계정 값이 아니다.** 한 사람이 여러 스터디를 맡을 수 있고 맡은 스터디마다 명부 행이 따로 선다. 그래서 `PATCH …/system-role` 은 `ADMIN`·`MEMBER` 둘만 받는다.
-- 「담당 스터디가 있다」 = 명부 행 중 `PARTICIPANT_ROLE ∈ {LEADER, CO_LEADER}` 이고 `STATUS ∈ {ACTIVE, PAUSED}` 인 것이 하나라도 있다. `CO_LEADER` 는 POL-0001 이 없애기로 했지만 enum·데이터가 남아 있어 [`StudyCaptainGuard`](../../backend/api/src/main/java/com/studyclub/api/study/StudyCaptainGuard.java) 처럼 함께 본다 — 정리되면 여기서도 빠진다.
+- 「담당 스터디가 있다」 = 명부 행 중 `PARTICIPANT_ROLE = LEADER` 이고 `STATUS ∈ {ACTIVE, PAUSED}` 인 것이 하나라도 있다. 부반장(`CO_LEADER`)은 2026-10-09 에 없앴다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) — [`StudyCaptainGuard`](../../backend/api/src/main/java/com/studyclub/api/study/StudyCaptainGuard.java) 와 같은 기준.
 - 「참여 중인 스터디」 = 명부 행 중 `STATUS ∈ {ACTIVE, PAUSED}` 인 것의 `STUDY_ID` 개수(중복 제거). 하차(`WITHDRAWN`)·완주(`COMPLETED`)는 지난 일이라 세지 않는다.
   - `PARTICIPANT_ROLE` 은 가리지 않는다. POL-0001 대로 **담당 캡틴(`STUDY.CREATED_BY`)도 그 스터디에 참여한다** — 반 편성 때 `MEMBER` 로 명부에 들어가며, 그 행도 센다. 담당 캡틴 행은 `LEADER` 가 아니므로 「담당 스터디(네비게이터)」에는 잡히지 않는다.
   - 반 편성 **전**의 담당 캡틴은 명부 행이 없어 세지 않는다 ([미확정](#미확정)).
@@ -177,7 +177,7 @@
 | items[].name | String | Y | 표시 이름. **온보딩 전이면 null** — 화면은 `maskedEmail` 의 로컬파트(`n***`)를 적는다 | ACCOUNT.NICKNAME (계산: `ONBOARDING_COMPLETED_AT IS NULL` 이면 null) |
 | items[].maskedEmail | String | N | 가린 이메일. 앞 1자 + `***` + `@` 이후 (`h***@gmail.com`). 원본은 [이메일 보기](#이메일-보기)로만 | 계산: ACCOUNT.EMAIL 마스킹 ([security-guide](../../docs/backend-development-guide/security-guide.md#마스킹-기준)) |
 | items[].systemRole | String | N | `ADMIN` \| `MEMBER` | ACCOUNT.SYSTEM_ROLE |
-| items[].navigatorOf | Array | N | 담당 스터디. 없으면 `[]`. 편입 최신순 — 화면은 첫 개만 적고 나머지는 개수로 접는다 | 계산: STUDY_PARTICIPANT (`PARTICIPANT_ROLE ∈ {LEADER, CO_LEADER}`, `STATUS ∈ {ACTIVE, PAUSED}`), `JOINED_AT DESC` |
+| items[].navigatorOf | Array | N | 담당 스터디. 없으면 `[]`. 편입 최신순 — 화면은 첫 개만 적고 나머지는 개수로 접는다 | 계산: STUDY_PARTICIPANT (`PARTICIPANT_ROLE = LEADER`, `STATUS ∈ {ACTIVE, PAUSED}`), `JOINED_AT DESC` |
 | items[].navigatorOf[].studyId | Long | N | | STUDY.ID |
 | items[].navigatorOf[].title | String | N | | STUDY.TITLE |
 | items[].dormant | Boolean | N | 「휴면」 표기. 계정 상태가 아니라 참여 이력으로 판정한다 | 계산: 참여 중인 스터디 수 = 0 |
@@ -553,7 +553,7 @@
 - 네비게이터 지정·해제 — 스터디 크루 명단 소관 ([study-group](../study-group/spec.md) · [captain-view-attendees](../../01-planning/stories/captain-view-attendees/PRD.md))
 - 회원 상세 화면 · 초대 · 정지 · 탈퇴 처리 · 명단 내보내기(CSV)
 - 정지 계정 — `ACCOUNT` 에 정지 상태가 없다. 생기면 목록 포함 여부를 그때 정한다
-- `CO_LEADER` 제거 — 별도 작업 (POL-0001)
+- ~~`CO_LEADER` 제거 — 별도 작업 (POL-0001)~~ — 2026-10-09 완료 (V35)
 - 감사 로그 조회 화면·API, 보관 기간이 지난 기록을 지우는 작업 — 보관 기간이 정해진 뒤 별도로
 - 이메일 보기 횟수 제한
 - 디스코드 역할 자동 연동 — 운영자가 수동으로 바꾼다 ([위](#디스코드-역할은-자동으로-바꾸지-않는다))
