@@ -80,6 +80,7 @@ class StudyMeetingIntegrationTest {
     private StudyMeeting futureMeeting;
     private StudyParticipant member;
     private StudyParticipant paused;
+    private StudyParticipant withdrawn;
 
     @BeforeEach
     void setUp() {
@@ -122,6 +123,8 @@ class StudyMeetingIntegrationTest {
                                 .status(StudyStatus.OPEN)
                                 .startAt(Instant.now().minus(7, ChronoUnit.DAYS))
                                 .createdBy(CREATOR_ID)
+                                .discordChannelUrl("https://discord.gg/test")
+                                .driveUrl("https://drive.google.com/test")
                                 .build());
         // 정규 시작 20:00 KST = 11:00 UTC
         group =
@@ -143,7 +146,9 @@ class StudyMeetingIntegrationTest {
 
         participant(LEADER_ID, group, ParticipantRole.LEADER, ParticipantStatus.ACTIVE);
         member = participant(MEMBER_ID, group, ParticipantRole.MEMBER, ParticipantStatus.ACTIVE);
-        participant(WITHDRAWN_ID, group, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN);
+        withdrawn =
+                participant(
+                        WITHDRAWN_ID, group, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN);
         paused = participant(PAUSED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.PAUSED);
         participant(COMPLETED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED);
         participant(CO_LEADER_ID, group, ParticipantRole.CO_LEADER, ParticipantStatus.PAUSED);
@@ -184,6 +189,13 @@ class StudyMeetingIntegrationTest {
         assertThat((List<Map<String, Object>>) response.getBody().get("participants"))
                 .extracting(p -> p.get("name"))
                 .containsExactly("네비게이터", "부반장", "쉼", "크루");
+        // 스터디 정보 카드 — id·title·discordChannelUrl·driveUrl 모두 응답에 실린다
+        Map<String, Object> studyView = (Map<String, Object>) response.getBody().get("study");
+        assertThat(studyView)
+                .containsEntry("id", study.getId().intValue())
+                .containsEntry("title", "회차 테스트 스터디")
+                .containsEntry("discordChannelUrl", "https://discord.gg/test")
+                .containsEntry("driveUrl", "https://drive.google.com/test");
     }
 
     @Test
@@ -303,6 +315,30 @@ class StudyMeetingIntegrationTest {
         StudyMeeting single = all.get(all.size() - 1);
         assertThat(first.getSeriesId()).isNotNull().isEqualTo(second.getSeriesId());
         assertThat(single.getSeriesId()).isNull();
+    }
+
+    @Test
+    @DisplayName("성공 - 하차한 참여자가 발표자로 남아 있으면 active=false 로 표시된다")
+    void withdrawnPresenterShowsActiveFalse() {
+        StudyMeeting meeting = studyMeetingRepo.findById(futureMeeting.getId()).orElseThrow();
+        meeting.assignPresenters(withdrawn.getId(), null);
+        studyMeetingRepo.save(meeting);
+
+        ResponseEntity<Map> response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings",
+                        null,
+                        LEADER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<String, Object>> meetings =
+                (List<Map<String, Object>>) response.getBody().get("meetings");
+        Map<String, Object> presenter1 = (Map<String, Object>) meetings.get(1).get("presenter1");
+        assertThat(presenter1)
+                .containsEntry("participantId", withdrawn.getId().intValue())
+                .containsEntry("active", false);
     }
 
     @Test

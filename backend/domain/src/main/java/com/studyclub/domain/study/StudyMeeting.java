@@ -175,7 +175,9 @@ public class StudyMeeting extends BaseEntity {
     }
 
     private Long presenterAt(int slot) {
-        return slot == 1 ? presenter1ParticipantId : presenter2ParticipantId;
+        if (slot == 1) return presenter1ParticipantId;
+        if (slot == 2) return presenter2ParticipantId;
+        throw new IllegalArgumentException("발표자 칸은 1 또는 2 입니다: " + slot);
     }
 
     private void setPresenterAt(int slot, Long participantId) {

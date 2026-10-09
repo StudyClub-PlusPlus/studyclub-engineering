@@ -25,6 +25,8 @@ import com.studyclub.domain.proposal.StudyProposalInterest;
 import com.studyclub.domain.proposal.StudyProposalInterestRepository;
 import com.studyclub.domain.proposal.StudyProposalRepository;
 import com.studyclub.domain.proposal.StudyProposalStatus;
+import com.studyclub.domain.study.StudyMeeting;
+import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationChannel;
 import com.studyclub.notification.NotificationCreationService;
@@ -32,6 +34,7 @@ import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,6 +65,7 @@ class AccountDeletionIntegrationTest {
     @Autowired AccountConsentRepository accountConsentRepository;
     @Autowired AccountLeaveReasonRepository accountLeaveReasonRepository;
     @Autowired StudyParticipantRepository studyParticipantRepository;
+    @Autowired StudyMeetingRepository studyMeetingRepository;
     @Autowired StudyBookmarkRepository studyBookmarkRepository;
     @Autowired StudyProposalRepository studyProposalRepository;
     @Autowired StudyProposalInterestRepository studyProposalInterestRepository;
@@ -363,5 +367,35 @@ class AccountDeletionIntegrationTest {
 
         assertThat(notificationRepository.findAllByOrderByCreatedAtDesc())
                 .noneMatch(n -> account.getId().equals(n.getRecipientUserId()));
+    }
+
+    @Test
+    @DisplayName("성공 - 탈퇴 시 해당 계정의 예정 회차 발표자 칸이 비워진다")
+    void deletionReleasesPresenterSlots() {
+        Account account = seedAccount();
+        Long accountId = account.getId();
+
+        StudyParticipant participant =
+                studyParticipantRepository.save(
+                        StudyParticipant.builder()
+                                .accountId(accountId)
+                                .studyGroupId(9001L)
+                                .studyId(9001L)
+                                .status(ParticipantStatus.ACTIVE)
+                                .participantRole(ParticipantRole.MEMBER)
+                                .joinedAt(Instant.now())
+                                .build());
+
+        StudyMeeting meeting =
+                studyMeetingRepository.save(
+                        StudyMeeting.schedule(
+                                9001L, Instant.now().plus(7, ChronoUnit.DAYS), "발표 회차"));
+        meeting.assignPresenters(participant.getId(), null);
+        studyMeetingRepository.save(meeting);
+
+        rest.exchange("/api/me", HttpMethod.DELETE, authenticatedBody(account, null), Void.class);
+
+        StudyMeeting reloaded = studyMeetingRepository.findById(meeting.getId()).orElseThrow();
+        assertThat(reloaded.getPresenter1ParticipantId()).isNull();
     }
 }

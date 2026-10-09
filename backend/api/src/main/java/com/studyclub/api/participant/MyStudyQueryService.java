@@ -96,11 +96,15 @@ public class MyStudyQueryService {
             }
             List<StudyMeeting> meetings =
                     meetingsByGroupId.getOrDefault(participant.getStudyGroupId(), List.of());
+            StudyProgram program = programs.get(study.getProgramId());
+            if (program == null) {
+                continue;
+            }
             items.add(
                     toMyStudy(
                             participant,
                             study,
-                            programs.get(study.getProgramId()).getStudyKind(),
+                            program.getStudyKind(),
                             meetings,
                             attendanceByMeetingId,
                             now));
