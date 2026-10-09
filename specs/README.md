@@ -27,6 +27,8 @@ API 도메인이 아닌 것(인프라·운영). 구조는 같되 엔드포인트
 | 스펙 | 폴더 | 상태 | 설명 |
 |------|------|------|------|
 | 관측 스택 | [observability-stack/](./observability-stack/) | 1단계 구현 | 로그(Grafana+Loki+Alloy) → 메트릭·알림은 후속 |
+| 도메인 이벤트 | [domain-events/](./domain-events/) | 1단계 구현 | 사실 → 이벤트 발행, 부수효과는 `AFTER_COMMIT` 구독자 (`@Async` 실행기 상한) |
+| 운영자 알림 | [ops-alerts/](./ops-alerts/) | 1단계 구현 | 가입·신청 등 운영자가 알아야 할 이벤트 → 운영 디스코드 채널 (`OPS_DISCORD_WEBHOOK_URL`) |
 | 요청 인가 가드 | [authz-guards/](./authz-guards/) | 스펙작성중 | `@RequireAdmin` · `@RequireCaptainOrNavigator` · `@RequireOnboarding` 어노테이션 통일. [back-office-login](./back-office-login/spec.md) 후속 |
 
 > `—` = 아직 스펙 없음. 필요할 때 `_templates/` 에서 복사해서 시작한다.

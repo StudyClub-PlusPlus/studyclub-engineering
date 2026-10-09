@@ -217,6 +217,18 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 ---
 
+## 도메인 이벤트 · 운영자 알림 (ops alerts)
+
+사실이 생기면 도메인 이벤트를 발행하고, 부수효과(ops 알림·메일·외부 연동)는 구독자로 붙인다. 서비스 메서드에서 부수효과를 직접 부르지 않는다. 운영자가 초반에 알아야 할 이벤트는 OpsAlertListener 가 구독한다.
+
+운영자가 초반에 알아야 할 이벤트(가입·신청·승인·실패)는 ops 알림으로 보낸다. 새 기능을 만들면 ops 이벤트가 필요한지 판단하고 spec 표에 추가한다.
+
+- 이벤트 규칙·목록: [specs/domain-events/spec.md](./specs/domain-events/spec.md)
+- ops 알림 계약·표: [specs/ops-alerts/spec.md](./specs/ops-alerts/spec.md)
+- 구독자는 발행하는 서비스와 다른 빈에 둔다 (같은 빈이면 `@Async` 가 무시된다)
+- 이메일은 `maskEmail` 로 가리고, 토큰·비밀번호·전화번호는 싣지 않는다
+
+
 ## 관련
 
 - 승격 원본(도그푸딩): 내부 레포의 bakg 앱

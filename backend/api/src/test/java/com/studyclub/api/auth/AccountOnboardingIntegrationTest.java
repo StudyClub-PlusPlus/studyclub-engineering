@@ -184,7 +184,17 @@ class AccountOnboardingIntegrationTest {
         assertThat(
                         eventRecorder.received().stream()
                                 .filter(e -> e.accountId().equals(account.getId())))
-                .hasSize(1);
+                .singleElement()
+                .satisfies(
+                        e -> {
+                            // 공통 계약 메타 (specs/domain-events/spec.md)
+                            assertThat(e.eventId()).isNotNull();
+                            assertThat(e.occurredAt()).isNotNull();
+                            assertThat(e.name()).isEqualTo("user.registered");
+                            assertThat(e.aggregateType()).isEqualTo("account");
+                            assertThat(e.aggregateId()).isEqualTo(account.getId().toString());
+                            assertThat(e.actorId()).isEqualTo(account.getId().toString());
+                        });
     }
 
     @Test
