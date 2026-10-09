@@ -17,7 +17,7 @@ export { Card } from './Card';
 export type { CardProps } from './Card';
 
 export { FieldShell, Input, Select, Textarea } from './Field';
-export type { FieldShellProps, InputProps, SelectProps, TextareaProps } from './Field';
+export type { FieldShellProps, InputProps, InputSize, SelectProps, SelectSize, TextareaProps } from './Field';
 
 export { FilterChip } from './Chip';
 export type { FilterChipProps } from './Chip';
