@@ -40,7 +40,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 - **accountId**: JWT `authentication.getPrincipal()`. 바디로 받지 않는다.
 - **캡틴**: `ACCOUNT.SYSTEM_ROLE=ADMIN`. 스터디와 상관없는 계정 권한이다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
 - **담당 캡틴**: 이 기수를 생성한 캡틴. 판정은 `STUDY.CREATED_BY = accountId`. 스터디에 참여하지만 신청서를 내지 않고 정원에도 잡히지 않는다. 반 편성 때 캡틴이 반을 지정하면 명부(`STUDY_PARTICIPANT`)에 들어간다 (2026-10-07, [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). `CREATED_BY` 가 NULL 인 옛 기수는 담당 캡틴이 없으므로 캡틴 누구나 담당으로 본다.
-- **네비게이터**: 이 기수 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER`(·`CO_LEADER`)인 크루. 신청 폼 수정·신청 결과 조회 권한이 없다 (백오피스 접근 불가).
+- **네비게이터**: 이 기수 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER` 인 크루. 신청 폼 수정·신청 결과 조회 권한이 없다 (백오피스 접근 불가).
 - **날짜**: UTC ISO 8601.
 - **에러 바디**: `{ "errorCode", "errorMessage" }`. `fields` 객체는 추가하지 않는다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
 - **500**: 예기치 않은 서버 오류 시 `INTERNAL_ERROR`.
@@ -63,7 +63,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 비교 대상은 **분반 정원이 아니다.** 반은 신청 이후에 정한다. 대기열 없음.
 
-1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 기수 명부에서 `STATUS = ACTIVE`인 크루(`MEMBER`·`LEADER`·`CO_LEADER`)와 비교한다. 네비게이터는 포함하고 담당 캡틴은 포함하지 않는다. `PAUSED`·`WITHDRAWN`·`COMPLETED`·`DELETED`는 제외한다
+1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 기수 명부에서 `STATUS = ACTIVE`인 크루(`MEMBER`·`LEADER`)와 비교한다. 네비게이터는 포함하고 담당 캡틴은 포함하지 않는다. `PAUSED`·`WITHDRAWN`·`COMPLETED`·`DELETED`는 제외한다
 2. 없으면 인원 제한 없음
 
 기수 단위 정원(`STUDY.CAPACITY`)은 없다.

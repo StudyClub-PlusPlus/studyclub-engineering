@@ -230,7 +230,7 @@ erDiagram
     bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조"
     bigint   STUDY_ID              "→ STUDY 참조 (비정규화)"
     varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED / DELETED"
-    varchar  PARTICIPANT_ROLE      "MEMBER / LEADER / CO_LEADER"
+    varchar  PARTICIPANT_ROLE      "MEMBER / LEADER"
     datetime JOINED_AT             "편입 시각"
     datetime LEFT_AT               "참여 종료 시각. WITHDRAWN·DELETED 일 때만"
   }

@@ -71,7 +71,7 @@ public class StudyController {
     @Operation(
             summary = "스터디 수정 (사용자 사이트)",
             description =
-                    "캡틴 또는 그 스터디의 네비게이터(LEADER/CO_LEADER)."
+                    "캡틴 또는 그 스터디의 네비게이터(LEADER)."
                             + " 백오피스는 PATCH /api/admin/studies/{studyId} 를 쓰고 캡틴만 통과한다.")
     @SecurityRequirement(name = "bearerAuth")
     @RequireCaptainOrNavigator
