@@ -105,10 +105,7 @@ public class StudyMeeting extends BaseEntity {
         assertNotStarted(now);
     }
 
-    /**
-     * 네비게이터·캡틴이 발표자 두 칸을 정한다. 넘긴 값이 결과 값이다 — 바꾸지 않는 칸은 호출하는 쪽이 지금 값을 넘긴다. 같은 사람을 두 칸에 넣을 수 없고,
-     * 킥오프에는 발표자가 없다. 시작 판정은 {@link #reschedule} 이 이미 한다.
-     */
+    /** 네비게이터·캡틴이 발표자 두 칸을 한번에 정한다. 테스트·픽스처 셋업용. 서비스 레이어에서는 {@link #updatePresenter} 를 쓴다. */
     public void assignPresenters(Long presenter1, Long presenter2) {
         if (isKickoff() && (presenter1 != null || presenter2 != null)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "킥오프에는 발표자를 두지 않습니다.");
@@ -118,6 +115,21 @@ public class StudyMeeting extends BaseEntity {
         }
         this.presenter1ParticipantId = presenter1;
         this.presenter2ParticipantId = presenter2;
+    }
+
+    /** 네비게이터·캡틴이 발표자 한 칸만 바꾼다. 다른 칸은 그대로 둔다. 같은 사람이 두 칸에 들어갈 수 없다. */
+    public void updatePresenter(int slot, Long participantId) {
+        if (slot != 1 && slot != 2) {
+            throw new IllegalArgumentException("발표자 칸은 1 또는 2 입니다: " + slot);
+        }
+        if (isKickoff()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "킥오프에는 발표자를 두지 않습니다.");
+        }
+        Long other = presenterAt(otherSlot(slot));
+        if (participantId != null && participantId.equals(other)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "발표자1과 다른 사람을 골라 주세요.");
+        }
+        setPresenterAt(slot, participantId);
     }
 
     /** 크루가 빈 발표자 칸에 자기를 넣는다. 선착순 — 찬 칸에는 넣지 않고, 한 회차에 한 칸만. */

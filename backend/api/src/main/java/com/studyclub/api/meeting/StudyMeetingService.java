@@ -22,7 +22,6 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -233,23 +232,16 @@ public class StudyMeetingService {
         locked.schedule().checkReschedule(meeting, request.getScheduledAt());
 
         // 발표자는 보낸 칸만 바꾼다 — 화면을 연 사이 크루가 신청한 칸을 덮지 않는다
-        Long presenter1 =
-                request.presenter1Sent()
-                        ? request.getPresenter1ParticipantId()
-                        : meeting.getPresenter1ParticipantId();
-        Long presenter2 =
-                request.presenter2Sent()
-                        ? request.getPresenter2ParticipantId()
-                        : meeting.getPresenter2ParticipantId();
-        Set<Long> changed = new HashSet<>();
-        if (request.presenter1Sent() && presenter1 != null) {
-            changed.add(presenter1);
+        if (request.presenter1Sent()) {
+            Long p1 = request.getPresenter1ParticipantId();
+            if (p1 != null) assertActiveRoster(meeting.getStudyGroupId(), Set.of(p1));
+            meeting.updatePresenter(1, p1);
         }
-        if (request.presenter2Sent() && presenter2 != null) {
-            changed.add(presenter2);
+        if (request.presenter2Sent()) {
+            Long p2 = request.getPresenter2ParticipantId();
+            if (p2 != null) assertActiveRoster(meeting.getStudyGroupId(), Set.of(p2));
+            meeting.updatePresenter(2, p2);
         }
-        assertActiveRoster(meeting.getStudyGroupId(), changed);
-        meeting.assignPresenters(presenter1, presenter2);
     }
 
     @Transactional
