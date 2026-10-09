@@ -3,6 +3,8 @@
 import { useId } from 'react';
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
+import { ChevronDown } from 'lucide-react';
+
 import { cx } from './cx';
 
 /** design-system.md §9-2 — 입력 계열 공통 셸. */
@@ -85,13 +87,20 @@ export function Select({ label, helper, error, required, labelHint, className, i
   const invalid = Boolean(error);
   return (
     <FieldShell label={label} helper={helper} error={error} required={required} labelHint={labelHint} htmlFor={fieldId}>
-      <select
-        {...rest}
-        id={fieldId}
-        required={required}
-        aria-invalid={invalid || undefined}
-        className={controlClass(invalid, cx('h-10', className))}
-      />
+      <div className='relative'>
+        <select
+          {...rest}
+          id={fieldId}
+          required={required}
+          aria-invalid={invalid || undefined}
+          className={controlClass(invalid, cx('h-10 appearance-none pr-9', className))}
+        />
+        <ChevronDown
+          size={16}
+          className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted'
+          aria-hidden
+        />
+      </div>
     </FieldShell>
   );
 }

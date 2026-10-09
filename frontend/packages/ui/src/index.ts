@@ -66,3 +66,16 @@ export type { SegmentedProps, SegmentedOption } from './Segmented';
 export { Pagination } from './Pagination';
 export type { PaginationProps } from './Pagination';
 
+export { AutoTextarea } from './AutoTextarea';
+export type { AutoTextareaProps } from './AutoTextarea';
+
+export { MarkdownLite } from './MarkdownLite';
+
+export { HotBadge } from './HotBadge';
+
+export { DiscordGlyph } from './DiscordGlyph';
+
+export { StudyThumb, categoryMeta, categoryGradient } from './StudyThumb';
+export type { StudyThumbProps } from './StudyThumb';
+
+
