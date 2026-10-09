@@ -20,6 +20,8 @@ import { API_BASE } from './http';
 
 const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
+const DISCORD_KEY = 'sc_discord';
+const DISCORD_NICK_KEY = 'sc_discord_nickname';
 
 function readJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -75,6 +77,10 @@ export function getApplications(): Application[] {
   return readJSON<Application[]>(APPLICATION_KEY, []);
 }
 
+export function getApplication(studyId: string): Application | undefined {
+  return getApplications().find((a) => a.studyId === studyId);
+}
+
 export function addApplication(app: Application) {
   const rest = getApplications().filter((a) => a.studyId !== app.studyId);
   writeJSON(APPLICATION_KEY, [...rest, app]);
@@ -85,6 +91,30 @@ export function cancelApplication(studyId: string) {
     APPLICATION_KEY,
     getApplications().filter((a) => a.studyId !== studyId),
   );
+}
+
+/* ── 디스코드 연결 ───────────────────────────────────────────────────────── */
+
+export type DiscordLink = { handle: string } | null;
+
+export function getDiscord(): DiscordLink {
+  const v = readJSON<string>(DISCORD_KEY, '');
+  return v ? { handle: v } : null;
+}
+
+export function setDiscord(handle: string | null) {
+  writeJSON(DISCORD_KEY, handle ?? '');
+}
+
+export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자인';
+
+export function getDiscordNickname(): string | undefined {
+  const v = readJSON<string>(DISCORD_NICK_KEY, '');
+  return v.trim() || undefined;
+}
+
+export function setDiscordNickname(nickname: string) {
+  writeJSON(DISCORD_NICK_KEY, nickname.trim());
 }
 
 /* ── 거주 지역 ───────────────────────────────────────────────────────────── */

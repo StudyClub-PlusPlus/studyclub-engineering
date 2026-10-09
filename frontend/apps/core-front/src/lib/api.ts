@@ -2,8 +2,9 @@
 // `fetchStudies` 는 서버 컴포넌트가 첫 화면을 그릴 때 쓴다(컨테이너 내부 URL + ISR).
 // 브라우저 조회는 `features/studies/queries.ts` 가 백엔드를 직접 부른다.
 import { CATEGORY_DISPLAY, type Study, type StudyStatus } from '@studyclub/mock';
-export type { ApiStudy, ApiStudyDetail, ApiPage } from '@studyclub/mock/msw';
-import type { ApiStudy, ApiStudyDetail, ApiPage } from '@studyclub/mock/msw';
+import type { ApiPage, ApiStudy, ApiStudyApplicationForm, ApiStudyDetail } from '@studyclub/mock/msw';
+
+export type { ApiPage, ApiStudy, ApiStudyApplicationForm, ApiStudyDetail };
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -114,5 +115,5 @@ export async function fetchStudy(studyId: number): Promise<Study> {
   return toStudyFromDetail(detail);
 }
 
-// 브라우저에서의 조회는 features/studies/queries.ts 가 한다 — 백엔드를 직접 부른다.
+// 브라우저에서의 조회는 features/studies/queries.ts, features/applications/queries.ts 가 한다 — 백엔드를 직접 부른다.
 // 중계(route handler)를 두지 않는다: 하는 일이 "그대로 넘기기"뿐이라 파일만 는다.
