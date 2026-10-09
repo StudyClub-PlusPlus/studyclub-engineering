@@ -75,9 +75,10 @@
    - `STUDY_PROPOSAL` WHERE `PROPOSER_ACCOUNT_ID=accountId` AND `STATUS=OPEN` → `STATUS=CLOSED` 로 전환한다. `CONTENT`·`PROPOSED_AT` 은 그대로 둔다. `ACCEPTED`/`REJECTED`/이미 `CLOSED` 인 행은 이미 종결 상태라 건드리지 않는다 — [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) 참고.
    - `STUDY_APPLICATION` WHERE `ACCOUNT_ID=accountId` 인 행의 `FORM_ANSWER.discordNickname` 을 고정 마스킹 값으로 치환한다(`availableDays`·`scheduleAgreed`·`answers` 는 그대로 둔다). 행 자체는 지우지 않는다 — [STUDY_APPLICATION 의 FORM_ANSWER.discordNickname](#study_application-의-form_answerdiscordnickname) 참고.
    - `ACCOUNT_CONSENT` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (동의 이력 파기). Flyway 스키마에는 `fk_account_consent_account ... ON DELETE CASCADE` 가 있지만, stage(Hibernate `ddl-auto: update`)·테스트(H2)는 FK 없이 스키마를 만들어 cascade 에 기댈 수 없으므로 코드가 명시적으로 지운다.
-   - `ACCOUNT` 행 삭제 (프로필 파기).
+   - `ACCOUNT` 행 삭제 (프로필 파기). 지우기 전에 `PROFILE_IMG_URL` 을 읽어 둔다.
    - `STUDY_ATTENDANCE`·`STUDY_REVIEW`·(방금 `discordNickname` 만 마스킹한) `STUDY_APPLICATION`·(방금 `CLOSED` 로 바뀐) `STUDY_PROPOSAL` 은 이 이상 **행 자체를 더 건드리지 않는다.** 이들의 `ACCOUNT_ID`/`PROPOSER_ACCOUNT_ID` 는 FK 가 아니라 인덱스뿐이라(`database-guide.md` 외래키 정책) DB 무결성 오류 없이 그대로 남고, 참조할 `ACCOUNT` 행 자체가 없어져 더는 사람으로 되짚을 수 없다 — 이것으로 "개인을 식별할 수 없도록 처리한 뒤 남긴다"가 성립한다. 별도 컬럼 변경(NULL 처리 등)이 필요 없다. 조회 계층은 이 ID 로 `ACCOUNT` 조회가 실패하면 "탈퇴한 회원"으로 표시한다(신규 요구사항 — 기존에 이런 실패 케이스를 다루지 않았다면 이번에 추가).
-5. `204 No Content`.
+5. **트랜잭션 커밋 뒤** 읽어 둔 `PROFILE_IMG_URL` 이 우리가 올린 사진(공개 주소 접두어로 시작)이면 S3 에서 그 파일을 지운다 — [프로필 사진 스펙](../profile-image/spec.md) 의 저장 코드 지우기를 그대로 부른다. 구글 사진 주소·`null` 이면 건너뛴다. 지우기에 실패해도 탈퇴는 성공으로 답하고 WARN 로그에 S3 위치를 남긴다(정리 배치가 그 로그로 지운다). S3 호출은 트랜잭션 밖이다 — 외부 호출 동안 DB 잠금을 잡지 않는다.
+6. `204 No Content`.
 
 ### 발급된 토큰은 서버가 무효화하지 못한다 — 알려진 한계
 
@@ -298,6 +299,7 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 | `STUDY_PARTICIPANT` (참여) | `STATUS=DELETED`·`LEFT_AT` 로 익명화 (물리 삭제 아님) | "참여 즉시 파기" — 행은 남기되 네비게이터 자리는 즉시 비운다. 출석률 집계 보존을 위해 2026-10-01 물리 삭제에서 변경 |
 | `STUDY_BOOKMARK` / `STUDY_PROPOSAL_INTEREST` (관심) | 물리 삭제 | "관심 즉시 파기" |
 | 디스코드 연동 (`ACCOUNT.DISCORD_*`) | `ACCOUNT` 삭제에 포함 | "디스코드 연동 정보 즉시 파기" |
+| 프로필 사진 파일 (S3 `gigs/profiles/…`) | 커밋 뒤 S3 에서 삭제. 실패 시 WARN + 정리 배치 | "프로필 즉시 파기" — 주소만 지우면 파일이 공개 주소에 남는다 |
 | `STUDY_ATTENDANCE` (출석) | 보존, 손대지 않음 | "출석 기록 보존, 비식별 처리" — FK 없어 자동으로 식별 불가 |
 | `STUDY_REVIEW` (후기) | 보존, 손대지 않음 | 공개 콘텐츠, 다른 회원이 참고. `STUDY_ATTENDANCE` 와 동일 매커니즘으로 자동 비식별 |
 | `STUDY_APPLICATION` (신청서 답변) | 보존, 단 `FORM_ANSWER.discordNickname` 만 비식별 | 나머지는 `STUDY_ATTENDANCE` 와 동일 매커니즘. `discordNickname` 은 행에 직접 박힌 PII 라 별도 마스킹 필요 — [상세](#study_application-의-form_answerdiscordnickname) |
