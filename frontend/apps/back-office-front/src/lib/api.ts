@@ -13,6 +13,8 @@ type ApiStudy = {
   status: string;
   recruitmentCapacity: number | null;
   currentApplicants: number;
+  /** 서버 판정 (specs/study-recruit-status). OPEN 이 아니면 null. */
+  recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED' | null;
   recruitmentStartAt: string | null;
   recruitDeadlineAt: string | null;
   startAt: string | null;
@@ -29,6 +31,8 @@ type ApiPage = {
 
 function mapLifecycleStatus(status: string): StudyLifecycleStatus {
   if (status === 'OPEN' || status === 'ONGOING' || status === 'ENDED' || status === 'CLOSED') return status;
+  // 서버 enum 밖의 값 = 백엔드·프론트 배포가 어긋났다. 공개된 것처럼 보이지 않게 비공개로 둔다
+  if (status !== 'DRAFT') console.error('[admin/studies] 알 수 없는 STUDY.STATUS — 비공개로 취급:', status);
   return 'DRAFT';
 }
 
@@ -47,7 +51,6 @@ const TIMEZONE_DISPLAY: Record<string, string> = {
 function mapToStudy(api: ApiStudy): Study {
   const category = CATEGORY_DISPLAY[api.category] ?? api.category;
   const lifecycleStatus = mapLifecycleStatus(api.status);
-  const isClosed = api.status === 'ENDED' || api.status === 'CLOSED';
 
   return {
     id: String(api.studyId),
@@ -61,13 +64,14 @@ function mapToStudy(api: ApiStudy): Study {
     category,
     schedule: api.timezone ? { ko: TIMEZONE_DISPLAY[api.timezone] ?? api.timezone, en: api.timezone } : undefined,
     date: api.startAt?.slice(0, 10),
-    published: api.status !== 'DRAFT',
+    published: lifecycleStatus !== 'DRAFT',
     applicantCount: api.currentApplicants,
     hasApplicationForm: api.hasApplicationForm,
     seats:
       api.recruitmentCapacity === null ? undefined : { total: api.recruitmentCapacity, taken: api.currentApplicants },
     recruitment: {
-      status: lifecycleStatus === 'OPEN' && !isClosed ? 'open' : 'closed',
+      // 모집 상태는 서버 판정 그대로 — core-front/src/lib/api.ts 와 같은 방식
+      status: api.recruitStatus === 'RECRUITING' ? 'open' : 'closed',
       form_url: undefined,
       start: api.recruitmentStartAt?.slice(0, 10),
       deadline: api.recruitDeadlineAt?.slice(0, 10),

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.ParticipantStatus;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -291,6 +293,78 @@ class AdminStudyListIntegrationTest {
     // -------------------------------------------------------------------------
 
     @SuppressWarnings("unchecked")
+    @Test
+    @DisplayName("성공 - 명부 ACTIVE 가 정원에 닿으면 recruitStatus 는 RECRUIT_CLOSED 다")
+    void recruitClosedWhenActiveReachesCapacity() {
+        Timestamp now = Timestamp.from(Instant.now());
+        setCapacity(STUDY_ID, 2);
+        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
+        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
+
+        Map<String, Object> study = itemById(listStudies(), STUDY_ID);
+
+        assertThat(study)
+                .containsEntry("currentApplicants", 2)
+                .containsEntry("recruitStatus", "RECRUIT_CLOSED");
+    }
+
+    @Test
+    @DisplayName("성공 - PAUSED 는 정원에 들지 않는다 — 신청 검사와 같이 RECRUITING 이다")
+    void pausedDoesNotTakeASeat() {
+        Timestamp now = Timestamp.from(Instant.now());
+        setCapacity(STUDY_ID, 2);
+        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
+        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.PAUSED, now);
+
+        Map<String, Object> study = itemById(listStudies(), STUDY_ID);
+
+        assertThat(study)
+                .containsEntry("currentApplicants", 1)
+                .containsEntry("recruitStatus", "RECRUITING");
+    }
+
+    @Test
+    @DisplayName("성공 - OPEN 이 아닌 스터디는 recruitStatus 가 null 이다")
+    void draftHasNoRecruitStatus() {
+        Map<String, Object> draft = itemById(listStudies(), DRAFT_STUDY_ID);
+
+        assertThat(draft).containsEntry("recruitStatus", null);
+    }
+
+    private Map<?, ?> listStudies() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        return response.getBody();
+    }
+
+    private void setCapacity(Long studyId, int capacity) {
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUITMENT_CAPACITY = ? WHERE STUDY_ID = ?",
+                capacity,
+                studyId);
+    }
+
+    private void insertParticipant(
+            Long accountId, Long studyId, ParticipantStatus status, Timestamp now) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_PARTICIPANT (ACCOUNT_ID, STUDY_GROUP_ID, STUDY_ID, STATUS,"
+                        + " PARTICIPANT_ROLE, JOINED_AT, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                accountId,
+                0L,
+                studyId,
+                status.name(),
+                ParticipantRole.MEMBER.name(),
+                now,
+                now,
+                now);
+    }
+
     private static List<Map<String, Object>> items(Map<?, ?> body) {
         return (List<Map<String, Object>>) body.get("items");
     }
@@ -319,6 +393,11 @@ class AdminStudyListIntegrationTest {
     }
 
     private void cleanSeedRows() {
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID IN (?, ?, ?)",
+                STUDY_ID,
+                DRAFT_STUDY_ID,
+                CLUB_STUDY_ID);
         jdbcTemplate.update(
                 "DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID IN (?, ?, ?)",
                 STUDY_ID,
