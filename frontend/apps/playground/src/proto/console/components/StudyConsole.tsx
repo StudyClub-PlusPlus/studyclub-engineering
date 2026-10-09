@@ -14,14 +14,12 @@ import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS } from '@console/lib/class-view';
 import { classTime, type StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
-
-import { applyRule, ruleFromMeetings } from '@console/lib/schedule';
-import { studyAuthor } from '@console/lib/users';
+import { applyRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
+import { studyAuthor } from '@console/lib/users';
 import { ScheduleManager } from '@core/components/ScheduleManager';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
 import { discordUrl, driveUrl } from '@core/lib/joined';
-
 import {
   attendanceRate,
   getStudyCrew,
