@@ -122,6 +122,11 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - **관객으로 경로를 가른다** — 백오피스가 부르는 API 는 `/api/admin` 아래, 파일은 `Admin*`.
   같은 일을 사용자 사이트에서도 하면 **사이트용 엔드포인트를 따로** 만든다 (권한 판정이 다르다).
   [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md)
+- **판정은 서버가 내려준다** — 모집 중인지 · 정원이 찼는지 · 출석률 · 할 수 있는지(`can*`)처럼
+  정책으로 나오는 결론은 **엔티티 메서드 하나**가 계산하고 응답 필드로 준다. 프론트는 그 값을 그린다 —
+  날짜·인원 같은 재료로 다시 계산하지 않는다. 같은 판정을 쓰는 엔드포인트(사이트용·`/api/admin`·목록·상세)는
+  같은 메서드에 **같은 쿼리로 센 재료**를 넘긴다. 화면에 필요한 판정이 응답에 없으면 프론트에서 만들지 말고
+  스펙에 필드를 추가한다. [`docs/backend-development-guide/api/endpoint-convention.md` §판정은 서버가 내려준다](docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다)
 - **개발이 끝나면 스테이지까지 올린다** — PR 이 머지됐다고 끝이 아니다. `develop` 에 합쳐져야
   스테이지(`backend-develop` · `core-front-develop` · `back-office-front-develop`)가 배포되고,
   그때 처음 **기획·디자인이 눈으로 본다.** 내 브랜치에만 있으면 아무도 못 본 기능이다.
@@ -187,6 +192,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 9. **테스트를 같이 낸다** — 통합은 성공 1건 + 실패 코어(401/400/403/404), 단위는 규칙의 세부까지.
    `@DisplayName` 은 한글로
 10. **기존 API 활용** — 새 엔드포인트 전에 기존 것 확장으로 해결 가능한지 먼저 확인
+11. **판정은 응답에 싣는다** — 상태·가능 여부·비율은 엔티티 메서드로 계산해 필드로 준다. 같은 판정은 모든 엔드포인트가 같은 메서드·같은 재료 쿼리로
 
 ### Frontend (Next.js)
 
@@ -206,6 +212,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 2. **API 레이어** — `lib/api/` 에 모아두고 컴포넌트에서 직접 fetch 하지 않는다
 3. **Server Component 기본** — `'use client'` 는 인터랙션 필요한 말단에만
 4. **Mock 교체** — `// TODO(api)` 검색 → mock import 를 API 함수 호출로 교체
+5. **판정을 다시 하지 않는다** — `recruitStatus` 같은 응답 필드를 그린다. 날짜·숫자로 재계산 금지, 없으면 스펙에 요청 ([api-integration §판정](docs/frontend-development-guide/api-integration.md#판정을-다시-하지-않는다))
 
 ---
 

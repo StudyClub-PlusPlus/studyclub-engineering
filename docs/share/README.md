@@ -78,3 +78,4 @@
 | 2026-10-05 | [구글 시트 출석부를 웹 「스터디 일정」으로 — 참가자 모두 보고, 발표자는 선착순, 킥오프는 0회차](2026-10-05-study-schedule-board.md) | 결정됨 · 질문 3 |
 | 2026-10-05 | [출석률 집계에서 하차·탈퇴를 다루는 방식 — markWithdrawn, includeWithdrawn 기본값, participantCount](2026-10-05-attendance-withdrawn-logic.md) | 결정됨 |
 | 2026-10-07 | [담당 캡틴은 「스터디를 만든 사람」 칸으로 판정하고 명부에는 반 편성 때 들어간다 — 사이트용 신청 폼 저장 경로는 지운다](2026-10-07-captain-owner-by-created-by.md) | 결정됨 |
+| 2026-10-09 | [「모집 중인가」 같은 판정은 서버가 내려주고, 화면은 그 값을 그린다](2026-10-09-server-owns-judgments.md) | 결정됨 |
