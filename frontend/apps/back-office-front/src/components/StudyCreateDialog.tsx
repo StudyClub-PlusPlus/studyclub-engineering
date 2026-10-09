@@ -18,9 +18,8 @@ import { useCreateStudy } from '@/features/studies/queries';
 /**
  * 스터디 등록 팝업.
  *
- * 폼 본체는 `StudyForm` 이며 **정보 탭이 같은 것을 쓴다.** 등록과 수정에서 보이는 칸이 달라지면
- * 운영자가 화면마다 다른 것을 외워야 한다. 다른 점은 프로그램 칸뿐이다 — 등록에서만 고를 수 있어
- * `mode` 로 가른다.
+ * 폼 본체는 `StudyForm`이며, 등록 화면과 정보 탭이 같은 입력 구성을 공유한다.
+ * 이 컴포넌트는 모달 상태, 검증, 생성 요청, 성공·실패 상태만 담당한다.
  */
 export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [form, setForm] = useState<StudyFormValues>(EMPTY_FORM);
@@ -87,7 +86,7 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
     >
       {done ? (
         <p className='py-6 text-center text-sm text-fg-muted'>
-          등록되었습니다. 비공개 상태로 만들어지며, 모집을 시작하면 사이트에 공개됩니다.
+          등록되었습니다. 아직 사이트에 보이지 않습니다 — 목록에서 공개를 켜세요.
         </p>
       ) : (
         <>
