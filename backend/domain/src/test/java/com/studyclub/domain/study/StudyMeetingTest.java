@@ -99,6 +99,115 @@ class StudyMeetingTest {
                 .isEqualTo(Instant.parse("2026-10-08T14:59:59Z"));
     }
 
+    @Test
+    @DisplayName("반복으로 만든 회차는 묶음 ID 를 갖고, 한 번 만든 회차는 없다")
+    void keepsSeriesId() {
+        assertThat(StudyMeeting.schedule(1L, FUTURE, null, "s-1").getSeriesId()).isEqualTo("s-1");
+        assertThat(StudyMeeting.schedule(1L, FUTURE, null).getSeriesId()).isNull();
+        assertThat(StudyMeeting.schedule(1L, FUTURE, null).getMeetingType())
+                .isEqualTo(MeetingType.REGULAR);
+    }
+
+    @Test
+    @DisplayName("킥오프는 제목 「킥오프」 로 만들어지고 지울 수 없다 — KICKOFF_NOT_DELETABLE")
+    void kickoffIsNotDeletable() {
+        StudyMeeting kickoff = StudyMeeting.kickoff(1L, FUTURE);
+
+        assertThat(kickoff.getTitle()).isEqualTo("킥오프");
+        assertThat(kickoff.isKickoff()).isTrue();
+        assertThatThrownBy(() -> kickoff.assertDeletable(NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.KICKOFF_NOT_DELETABLE));
+    }
+
+    @Test
+    @DisplayName("발표자1과 발표자2가 같으면 INVALID_INPUT")
+    void presentersMustDiffer() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, FUTURE, null);
+
+        assertThatThrownBy(() -> meeting.assignPresenters(7L, 7L))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("킥오프에는 발표자를 둘 수 없다")
+    void kickoffHasNoPresenters() {
+        StudyMeeting kickoff = StudyMeeting.kickoff(1L, FUTURE);
+
+        assertThatThrownBy(() -> kickoff.assignPresenters(7L, null))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+        assertThatThrownBy(() -> kickoff.signUpPresenter(1, 7L, NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("빈 칸에 신청하면 들어가고, 찬 칸은 PRESENTER_SLOT_TAKEN")
+    void signUpIsFirstComeFirstServed() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, FUTURE, null);
+
+        meeting.signUpPresenter(1, 7L, NOW);
+
+        assertThat(meeting.getPresenter1ParticipantId()).isEqualTo(7L);
+        assertThatThrownBy(() -> meeting.signUpPresenter(1, 8L, NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.PRESENTER_SLOT_TAKEN));
+    }
+
+    @Test
+    @DisplayName("한 회차에 한 칸만 — 다른 칸에 이미 있으면 PRESENTER_ALREADY_ASSIGNED")
+    void signUpOneSlotPerMeeting() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, FUTURE, null);
+        meeting.signUpPresenter(1, 7L, NOW);
+
+        assertThatThrownBy(() -> meeting.signUpPresenter(2, 7L, NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.PRESENTER_ALREADY_ASSIGNED));
+    }
+
+    @Test
+    @DisplayName("남의 칸은 뺄 수 없다 — PRESENTER_NOT_ME. 내 칸은 빠진다")
+    void cancelOnlyMine() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, FUTURE, null);
+        meeting.signUpPresenter(2, 7L, NOW);
+
+        assertThatThrownBy(() -> meeting.cancelPresenter(2, 8L, NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.PRESENTER_NOT_ME));
+        meeting.cancelPresenter(2, 7L, NOW);
+        assertThat(meeting.getPresenter2ParticipantId()).isNull();
+    }
+
+    @Test
+    @DisplayName("시작한 회차에는 신청할 수 없다 — MEETING_ALREADY_STARTED")
+    void signUpRejectsStarted() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, FUTURE, null);
+        meeting.start(NOW);
+
+        assertThatThrownBy(() -> meeting.signUpPresenter(1, 7L, NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.MEETING_ALREADY_STARTED));
+    }
+
+    @Test
+    @DisplayName("칸 번호는 1·2 뿐이다")
+    void slotMustBeOneOrTwo() {
+        StudyMeeting meeting = StudyMeeting.schedule(1L, FUTURE, null);
+
+        assertThatThrownBy(() -> meeting.signUpPresenter(3, 7L, NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("떠난 사람의 예정 회차 발표자 칸은 비우고, 시작한 회차는 기록이라 둔다")
+    void releasesOnlyUpcomingSlots() {
+        StudyMeeting upcoming = StudyMeeting.schedule(1L, FUTURE, null);
+        upcoming.assignPresenters(7L, 8L);
+        StudyMeeting started = StudyMeeting.schedule(1L, FUTURE, null);
+        started.assignPresenters(7L, null);
+        started.start(NOW);
+
+        assertThat(upcoming.releasePresenter(7L, NOW)).isTrue();
+        assertThat(started.releasePresenter(7L, NOW)).isFalse();
+        assertThat(upcoming.getPresenter1ParticipantId()).isNull();
+        assertThat(upcoming.getPresenter2ParticipantId()).isEqualTo(8L);
+        assertThat(started.getPresenter1ParticipantId()).isEqualTo(7L);
+    }
+
     private static void assertCode(Throwable e, ErrorCode code) {
         assertThat(((BusinessException) e).errorCode()).isEqualTo(code);
     }

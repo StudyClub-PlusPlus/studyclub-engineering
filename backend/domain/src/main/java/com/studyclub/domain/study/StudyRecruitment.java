@@ -51,6 +51,10 @@ public class StudyRecruitment extends BaseEntity {
         this.recruitDeadlineAt = recruitDeadlineAt;
     }
 
+    public boolean isFull(long activeParticipantCount) {
+        return recruitmentCapacity != null && activeParticipantCount >= recruitmentCapacity;
+    }
+
     /** 모집 정원. {@code null} 이면 제한 없음. */
     public void updateCapacity(Integer recruitmentCapacity) {
         if (recruitmentCapacity != null && recruitmentCapacity < 1) {
