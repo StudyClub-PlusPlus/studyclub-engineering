@@ -24,6 +24,9 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     /** 한 기수 안 여러 반 동시 소속은 금지라 많아야 하나다. 회차 관리 화면이 분반을 지정하지 않았을 때 쓴다. */
     Optional<StudyParticipant> findFirstByStudyIdAndAccountId(Long studyId, Long accountId);
 
+    /** 분반 안 내 명부 행 — (ACCOUNT_ID, STUDY_GROUP_ID) 가 유일하다. 회차 보기·발표 신청 판정에 쓴다. */
+    Optional<StudyParticipant> findByStudyGroupIdAndAccountId(Long studyGroupId, Long accountId);
+
     boolean existsByStudyGroupIdAndAccountIdAndParticipantRole(
             Long studyGroupId, Long accountId, ParticipantRole participantRole);
 
