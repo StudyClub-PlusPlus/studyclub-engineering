@@ -157,7 +157,7 @@ STUDY_ATTENDANCE {
 | meetings[].scheduledAt | String | N | 예정 시각 (ISO 8601) | STUDY_MEETING.SCHEDULED_AT |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].displayName | String | N | | ACCOUNT.NICKNAME |
-| participants[].participantRole | String | N | `LEADER` · `CO_LEADER` · `MEMBER`. 스터디 일정 출석부의 이름 옆 역할 칩(네비게이터) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| participants[].participantRole | String | N | `LEADER` · `MEMBER`. 스터디 일정 출석부의 이름 옆 역할 칩(네비게이터) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | participants[].captain | Boolean | N | 그 스터디를 만든 캡틴이면 true — 이름 옆 「캡틴」 칩. 다른 캡틴(ADMIN)이 참여했으면 false(크루) | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
 | participants[].participantStatus | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` · `COMPLETED` · `DELETED`. `WITHDRAWN`·`DELETED` 행은 `includeWithdrawn=true`일 때만 응답에 포함된다. 화면은 흐린 이름 + 칩, 맨 아래 줄 | STUDY_PARTICIPANT.STATUS |
 | participants[].leftAt | String | Y | 떠난 시각(UTC). 이 뒤 회차 칸은 「—」. 화면은 하차·제명을 가르지 않고 「참여 중단」 칩 | STUDY_PARTICIPANT.LEFT_AT |
@@ -215,7 +215,7 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 
 - **Method**: POST
 - **Path**: `/api/studies/{studyId}/attendances`
-- **인증**: 필요 — LEADER 또는 CO_LEADER 역할 보유자
+- **인증**: 필요 — LEADER 역할 보유자
 - **설명**: 스터디 안에서 하나 이상의 미팅 × 참가자 조합에 대해 출석 상태를 한 번에 기록. 여러 회차에 걸친 정정 + 신규 입력이 한 요청에 섞여도 됨. row가 없으면 INSERT, 있으면 UPDATE.
 
 ### Path Parameters
@@ -271,7 +271,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 400 | INVALID_INPUT | updates가 빈 배열 |
-| 403 | FORBIDDEN | LEADER·CO_LEADER 역할 없음 |
+| 403 | FORBIDDEN | LEADER 역할 없음 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
 | 400 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |

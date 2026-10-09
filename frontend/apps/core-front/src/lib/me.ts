@@ -219,7 +219,7 @@ type MyStudyItem = {
   studyId: number;
   title: string;
   relation: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'WITHDRAWN';
-  participantRole: 'MEMBER' | 'LEADER' | 'CO_LEADER';
+  participantRole: 'MEMBER' | 'LEADER';
 };
 
 /**
@@ -232,7 +232,7 @@ export type NavigatorStudiesResult =
   | { status: 'unknown' };
 
 /**
- * "맡은 진행 중인 스터디" = 네비게이터(LEADER·CO_LEADER)이고 relation 이 ONGOING(회차가 시작돼
+ * "맡은 진행 중인 스터디" = 네비게이터(LEADER)이고 relation 이 ONGOING(회차가 시작돼
  * 실제로 도는 중)인 것. 이 사람이 빠지면 자리가 비는 경우만 경고한다 — UPCOMING(시작 전)은 빠져도
  * 멈출 게 없고, COMPLETED·WITHDRAWN 은 이미 끝났다(specs/user-leave/spec.md "네비게이터 경고").
  *
@@ -251,11 +251,7 @@ export async function getActiveNavigatorStudies(): Promise<NavigatorStudiesResul
     const data = await res.json();
     const items: MyStudyItem[] = data?.items ?? [];
     const studies = items
-      .filter(
-        (s) =>
-          s.relation === 'ONGOING' &&
-          (s.participantRole === 'LEADER' || s.participantRole === 'CO_LEADER'),
-      )
+      .filter((s) => s.relation === 'ONGOING' && s.participantRole === 'LEADER')
       .map((s) => ({ studyId: s.studyId, title: s.title }));
     return { status: 'ok', studies };
   } catch {

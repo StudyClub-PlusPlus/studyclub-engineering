@@ -410,19 +410,17 @@ class StudyApplicationSubmissionIntegrationTest {
     @Test
     @DisplayName("실패 - 정원 집계에는 ACTIVE MEMBER와 네비게이터를 포함한다")
     void countsNavigatorsInCapacity() {
-        for (String role : List.of("LEADER", "CO_LEADER")) {
-            jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
-            insertParticipant(UNLINKED_ACCOUNT_ID, "ACTIVE", "MEMBER");
-            insertParticipant(10650L, "ACTIVE", role);
-            var response =
-                    rest.postForEntity(
-                            "/api/studies/" + STUDY_ID + "/applications",
-                            authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
-                            Map.class);
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-            assertThat(response.getBody()).containsEntry("errorMessage", "정원이 가득 찼습니다.");
-            assertThat(applicationCount()).isZero();
-        }
+        jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
+        insertParticipant(UNLINKED_ACCOUNT_ID, "ACTIVE", "MEMBER");
+        insertParticipant(10650L, "ACTIVE", "LEADER");
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorMessage", "정원이 가득 찼습니다.");
+        assertThat(applicationCount()).isZero();
     }
 
     @Test

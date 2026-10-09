@@ -54,7 +54,7 @@ SQL 은 첫 ADMIN 까지다. 그 뒤로는 ADMIN 이 백오피스 화면에서 �
 - 백오피스 `/users` — 역할 배지 클릭 → 변경. 화면 형태는 playground 프로토(`/proto/console/users`, 역할 드롭다운)를 따른다.
 - 첫 ADMIN 은 그래도 SQL 이다. 이 기능은 두 번째 ADMIN 부터 쓴다.
 - 기획 쪽 스토리 PRD "캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다" 에 같은 기능이 이미 있다. 거기서는 역할이 캡틴·네비게이터·크루 3개고, API 를 `PATCH /api/users/{id}/role` 로 잡아 뒀다.
-- 네비게이터는 SYSTEM_ROLE 값이 아니다. 스터디별 반장이라 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER`·`CO_LEADER` 인 사람이다. 자주 바뀌는 자리라 enum 에 값을 넣지 않는다. 이 API 는 MEMBER·ADMIN 만 받는다.
+- 네비게이터는 SYSTEM_ROLE 값이 아니다. 스터디별 반장이라 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER` 인 사람이다. 자주 바뀌는 자리라 enum 에 값을 넣지 않는다. 이 API 는 MEMBER·ADMIN 만 받는다.
 - 그 스토리 PRD 에 담당자가 지정돼 있다. 우리가 먼저 API 를 만들면 그 사람 일과 겹칠 수 있으니 시작 전에 확인한다.
 
 ## API 계약
@@ -119,7 +119,7 @@ Response 200 그대로. `account.role` 은 이미 실려 있다(`AuthDtos.Accoun
 ## 리뷰에서 결정 (2026-09-15)
 
 - **백오피스 로그인에서 계정을 만들지 않는다.** 만들어도 MEMBER 라 어차피 못 들어오고, 공개 URL 에서 로그인 버튼만 눌러도 온보딩 미완료 MEMBER 행이 쌓인다. 부트스트랩의 "core-front 에서 먼저 로그인" 단계와 `SIGNUP_REQUIRED` 코드는 그대로 간다. (j00hyun · rowing0328)
-- **네비게이터(반장)는 SYSTEM_ROLE 로 안 푼다.** 스터디별 반장이라 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER`·`CO_LEADER` 인 사람이다. **이 PR 은 ADMIN(=캡틴)만 본다.** 기획이 네비게이터 백오피스 접근을 확정하면 별도 PR 에서 게이트를 `SYSTEM_ROLE = ADMIN OR PARTICIPANT_ROLE IN (LEADER, CO_LEADER)` 로 넓힌다. (j00hyun)
+- **네비게이터(반장)는 SYSTEM_ROLE 로 안 푼다.** 스터디별 반장이라 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER` 인 사람이다. **이 PR 은 ADMIN(=캡틴)만 본다.** 기획이 네비게이터 백오피스 접근을 확정하면 별도 PR 에서 게이트를 `SYSTEM_ROLE = ADMIN OR PARTICIPANT_ROLE = LEADER` 로 넓힌다. (j00hyun)
   - **후속 확정 (2026-10-04):** 네비게이터는 백오피스에 들어오지 못한다. 게이트는 `SYSTEM_ROLE = ADMIN` 그대로 두고 넓히지 않는다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
 - **로그인 이후 요청의 ADMIN 판별은 요청마다 DB 조회.** 아래 [한계 / 후속](#한계--후속). (j00hyun)
 

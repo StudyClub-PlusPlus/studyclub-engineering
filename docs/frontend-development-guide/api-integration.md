@@ -11,12 +11,14 @@
 - [에러와 401](#에러와-401)
 - [서버 컴포넌트로 충분한 경우](#서버-컴포넌트로-충분한-경우)
 - [응답 형태 주의](#응답-형태-주의)
+- [판정을 다시 하지 않는다](#판정을-다시-하지-않는다)
 
 ## 세 줄 요약
 
 1. 브라우저가 **백엔드를 직접 부른다.** 중계(BFF) 라우트를 만들지 않는다 — 인증은 **쿠키**로 간다
 2. 조회는 `useEffect + fetch` 가 아니라 **`useQuery`** 로 한다
 3. fetcher·쿼리 키·훅은 **그 기능 폴더 안에** 둔다 (`src/features/<기능>/queries.ts`)
+4. 모집 중인지·정원이 찼는지·출석률 같은 **판정은 응답 필드를 그린다.** 날짜·숫자로 다시 계산하지 않는다
 
 ## 인증 — 쿠키를 실어 보낸다
 
@@ -61,7 +63,7 @@ httpOnly 를 유지한 채 쿠키로 보내는 것이 이 구조의 핵심이다
 `queryFn` 에서 **Server Action 을 부르지 않는다.** 공식 문서가 명시한다 — 클라이언트에서 호출된
 Server Action 은 **직렬로 실행**되어 병렬 조회를 전제하는 쿼리 동작과 충돌한다.
 
-> 백오피스 화면이 부르는 백엔드 경로는 `/api/admin/...` 이다 — [엔드포인트 규약](api/endpoint-convention.md).
+> 백오피스 화면이 부르는 백엔드 경로는 `/api/admin/...` 이다 — [엔드포인트 규약](../backend-development-guide/api/endpoint-convention.md).
 
 ## 어디에 두나 — 기능 옆에
 
@@ -184,4 +186,22 @@ const { mutate } = useMutation({
 
 백엔드 성공 응답에는 **래퍼가 없다.** payload 가 그대로 온다 —
 `res.json().data` 로 벗기면 `undefined` 가 된다. 페이지네이션 목록만 `{ items, total, offset, limit }` 이다.
-([엔드포인트 규약 §응답 포맷](api/endpoint-convention.md))
+([엔드포인트 규약 §응답 포맷](../backend-development-guide/api/endpoint-convention.md#응답-포맷))
+
+## 판정을 다시 하지 않는다
+
+**"지금 어떤 상태인가" 는 서버가 응답 필드로 준다. 화면은 그 값을 그린다.**
+정본: [엔드포인트 규약 §판정은 서버가 내려준다](../backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다)
+
+```ts
+// ❌ 재료로 다시 판정한다 — 서버와 기준이 갈린다 (UTC 날짜 비교, 다른 인원 수)
+const open = deadline.slice(0, 10) >= todayISO() && applicants < capacity;
+
+// ✅ 서버 판정을 옮긴다
+const open = api.recruitStatus === 'RECRUITING';
+```
+
+- **필드가 없으면 만들지 않는다.** 스펙에 필드를 추가해 백엔드에 요청하고 `// TODO(api): recruitStatus 필요` 를 남긴다
+- **mock 데이터에도 판정 필드를 넣는다.** 화면 코드가 mock 과 실제 API 를 같은 경로로 읽어야 교체할 때 판정 로직이 따라오지 않는다
+- `packages/mock` 의 `recruitState()` 같은 공유 함수에 판정 축(시작일·정원·인원)을 더하지 않는다 — 크루 사이트·백오피스·playground 가 같이 흔들린다
+- 해도 되는 것: 날짜·숫자 표시 형식, 받은 값으로 정렬·필터, 입력 중 검증(최종은 서버), 낙관적 업데이트

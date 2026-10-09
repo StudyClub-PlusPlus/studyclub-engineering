@@ -57,7 +57,6 @@ class StudyMeetingIntegrationTest {
     private static final Long PAUSED_ID = 5105L;
     private static final Long COMPLETED_ID = 5106L;
     private static final Long CAPTAIN_ID = 5107L;
-    private static final Long CO_LEADER_ID = 5108L;
     // 이 스터디를 만든 캡틴 — 사용자 사이트에서 고칠 수 있는 캡틴은 이 사람뿐이다 (스펙 결정 3)
     private static final Long CREATOR_ID = 5109L;
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
@@ -101,7 +100,6 @@ class StudyMeetingIntegrationTest {
         insertAccountIfAbsent(PAUSED_ID, "쉼", "paused@meeting-test.com");
         insertAccountIfAbsent(COMPLETED_ID, "완주", "completed@meeting-test.com");
         insertAccountIfAbsent(CAPTAIN_ID, "캡틴", "captain@meeting-test.com");
-        insertAccountIfAbsent(CO_LEADER_ID, "부반장", "coleader@meeting-test.com");
         insertAccountIfAbsent(CREATOR_ID, "만든캡틴", "creator@meeting-test.com");
         jdbcTemplate.update(
                 "UPDATE ACCOUNT SET SYSTEM_ROLE = ? WHERE ID IN (?, ?)",
@@ -151,7 +149,6 @@ class StudyMeetingIntegrationTest {
                         WITHDRAWN_ID, group, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN);
         paused = participant(PAUSED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.PAUSED);
         participant(COMPLETED_ID, group, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED);
-        participant(CO_LEADER_ID, group, ParticipantRole.CO_LEADER, ParticipantStatus.PAUSED);
         participant(
                 OTHER_GROUP_LEADER_ID,
                 otherGroup,
@@ -188,7 +185,7 @@ class StudyMeetingIntegrationTest {
         // 발표자 후보는 활성 참여자(ACTIVE·PAUSED)만, 이름순 — 하차·완주는 빠진다
         assertThat((List<Map<String, Object>>) response.getBody().get("participants"))
                 .extracting(p -> p.get("name"))
-                .containsExactly("네비게이터", "부반장", "쉼", "크루");
+                .containsExactly("네비게이터", "쉼", "크루");
         // 스터디 정보 카드 — id·title·discordChannelUrl·driveUrl 모두 응답에 실린다
         Map<String, Object> studyView = (Map<String, Object>) response.getBody().get("study");
         assertThat(studyView)
@@ -530,11 +527,11 @@ class StudyMeetingIntegrationTest {
         List<StudyAttendance> attendances =
                 studyAttendanceRepo.findByStudyMeetingIdIn(
                         created.stream().map(StudyMeeting::getId).toList());
-        assertThat(attendances).hasSize(8);
+        assertThat(attendances).hasSize(6);
         assertThat(attendances)
                 .allSatisfy(a -> assertThat(a.getStatus()).isEqualTo(AttendanceStatus.ABSENT))
                 .extracting(StudyAttendance::getAccountId)
-                .containsOnly(LEADER_ID, MEMBER_ID, PAUSED_ID, CO_LEADER_ID);
+                .containsOnly(LEADER_ID, MEMBER_ID, PAUSED_ID);
         // 첫 회차를 깔아도 모집이 닫히지 않게 STATUS 는 그대로 둔다 (스펙 결정 5)
         assertThat(studyRepo.findById(study.getId()).orElseThrow().getStatus())
                 .isEqualTo(StudyStatus.OPEN);
@@ -674,21 +671,6 @@ class StudyMeetingIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
-    }
-
-    @Test
-    @DisplayName("실패 - 부반장(CO_LEADER)은 403 — POL-0001 이 부반장을 없앴다")
-    void coLeaderForbidden() {
-        var response =
-                exchange(
-                        HttpMethod.DELETE,
-                        "/api/studies/{studyId}/meetings/{meetingId}",
-                        null,
-                        CO_LEADER_ID,
-                        study.getId(),
-                        futureMeeting.getId());
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
