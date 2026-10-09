@@ -39,7 +39,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *   <li>9901 ADMIN · 10일 전 · 요청자 · 참여 0
  *   <li>9903 MEMBER · 4일 전 · 담당 2곳(9951 LEADER, 9953 LEADER) → 담당, 참여 2
  *   <li>9910 MEMBER · 1시간 전 · 같은 스터디 9951 의 두 반(그룹 99510·99511)에서 LEADER → 참여 1, 담당 스터디 1개
- *   <li>9909 MEMBER · 6일 전 · 9952 CO_LEADER PAUSED → 담당, 참여 1
+ *   <li>9909 MEMBER · 6일 전 · 9952 LEADER PAUSED → 담당, 참여 1
  *   <li>9908 MEMBER · 0일 전 · 9951·9952·9953 MEMBER ACTIVE → 참여 3, 담당 아님
  *   <li>9904 MEMBER · 2일 전 · 9951 MEMBER ACTIVE → 참여 1
  *   <li>9902 MEMBER · 1일 전 · 참여 0 (403 요청자)
@@ -61,7 +61,7 @@ class AdminAccountListIntegrationTest {
     private static final long NOT_ONBOARDED_ID = 9906L;
     private static final long CAPTAIN_PARTICIPANT_ID = 9907L;
     private static final long BUSY_CREW_ID = 9908L;
-    private static final long CO_NAVIGATOR_ID = 9909L;
+    private static final long PAUSED_NAVIGATOR_ID = 9909L;
     private static final long SAME_STUDY_LEADER_ID = 9910L;
     private static final long TIE_LOW_ID = 9914L;
     private static final long TIE_HIGH_ID = 9915L;
@@ -76,7 +76,7 @@ class AdminAccountListIntegrationTest {
                     NOT_ONBOARDED_ID,
                     CAPTAIN_PARTICIPANT_ID,
                     BUSY_CREW_ID,
-                    CO_NAVIGATOR_ID,
+                    PAUSED_NAVIGATOR_ID,
                     SAME_STUDY_LEADER_ID,
                     TIE_LOW_ID,
                     TIE_HIGH_ID,
@@ -95,7 +95,7 @@ class AdminAccountListIntegrationTest {
                     ADMIN_ID,
                     NAVIGATOR_ID,
                     SAME_STUDY_LEADER_ID,
-                    CO_NAVIGATOR_ID,
+                    PAUSED_NAVIGATOR_ID,
                     BUSY_CREW_ID,
                     CREW_ID,
                     MEMBER_ID,
@@ -121,7 +121,7 @@ class AdminAccountListIntegrationTest {
         insertAccount(
                 CAPTAIN_PARTICIPANT_ID, SystemRole.ADMIN, true, base.minus(20, ChronoUnit.DAYS));
         insertAccount(BUSY_CREW_ID, SystemRole.MEMBER, true, base);
-        insertAccount(CO_NAVIGATOR_ID, SystemRole.MEMBER, true, base.minus(6, ChronoUnit.DAYS));
+        insertAccount(PAUSED_NAVIGATOR_ID, SystemRole.MEMBER, true, base.minus(6, ChronoUnit.DAYS));
         insertAccount(
                 SAME_STUDY_LEADER_ID, SystemRole.MEMBER, true, base.minus(1, ChronoUnit.HOURS));
         // 두 계정의 가입일이 정확히 같다 — 남는 건 마지막 tie-break(id 내림차순)뿐이다
@@ -155,9 +155,9 @@ class AdminAccountListIntegrationTest {
                 ParticipantStatus.ACTIVE,
                 base.minus(2, ChronoUnit.DAYS));
         insertParticipant(
-                CO_NAVIGATOR_ID,
+                PAUSED_NAVIGATOR_ID,
                 STUDY_B,
-                ParticipantRole.CO_LEADER,
+                ParticipantRole.LEADER,
                 ParticipantStatus.PAUSED,
                 base.minus(5, ChronoUnit.DAYS));
         for (long studyId : STUDY_IDS) {
@@ -285,14 +285,17 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - PAUSED 인 CO_LEADER 도 담당으로 센다")
+    @DisplayName("성공 - PAUSED 인 LEADER 도 담당으로 센다")
     void pausedCoLeaderCountsAsNavigator() {
         var response = get("/api/admin/users?role=NAVIGATOR&q=" + PREFIX, ADMIN_ID);
 
         assertThat(ids(response.getBody()))
                 .containsExactly(
-                        CAPTAIN_NAVIGATOR_ID, NAVIGATOR_ID, SAME_STUDY_LEADER_ID, CO_NAVIGATOR_ID);
-        assertThat(navigatorOf(itemById(response.getBody(), CO_NAVIGATOR_ID)))
+                        CAPTAIN_NAVIGATOR_ID,
+                        NAVIGATOR_ID,
+                        SAME_STUDY_LEADER_ID,
+                        PAUSED_NAVIGATOR_ID);
+        assertThat(navigatorOf(itemById(response.getBody(), PAUSED_NAVIGATOR_ID)))
                 .containsExactly(Map.of("studyId", (int) STUDY_B, "title", "AI 논문 리딩"));
     }
 
@@ -315,7 +318,7 @@ class AdminAccountListIntegrationTest {
                 .containsExactly(
                         NAVIGATOR_ID,
                         SAME_STUDY_LEADER_ID,
-                        CO_NAVIGATOR_ID,
+                        PAUSED_NAVIGATOR_ID,
                         BUSY_CREW_ID,
                         CREW_ID,
                         MEMBER_ID,
@@ -354,7 +357,7 @@ class AdminAccountListIntegrationTest {
         // 계정이 9903 앞에 선다
         List<Long> ids = ids(response.getBody());
         assertThat(ids.indexOf(NAVIGATOR_ID)).isLessThan(ids.indexOf(SAME_STUDY_LEADER_ID));
-        assertThat(ids.indexOf(SAME_STUDY_LEADER_ID)).isLessThan(ids.indexOf(CO_NAVIGATOR_ID));
+        assertThat(ids.indexOf(SAME_STUDY_LEADER_ID)).isLessThan(ids.indexOf(PAUSED_NAVIGATOR_ID));
     }
 
     @Test
@@ -410,7 +413,7 @@ class AdminAccountListIntegrationTest {
         var navigatorByName = get("/api/admin/users?role=NAVIGATOR&q=acctlist_9909", ADMIN_ID);
         var captainByNavigatorName = get("/api/admin/users?role=CAPTAIN&q=acctlist_9903", ADMIN_ID);
 
-        assertThat(ids(navigatorByName.getBody())).containsExactly(CO_NAVIGATOR_ID);
+        assertThat(ids(navigatorByName.getBody())).containsExactly(PAUSED_NAVIGATOR_ID);
         assertThat(items(captainByNavigatorName.getBody())).isEmpty();
         assertThat(total(captainByNavigatorName.getBody())).isZero();
     }

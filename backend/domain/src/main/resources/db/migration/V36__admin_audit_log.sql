@@ -1,4 +1,4 @@
--- V31 — 운영 감사 로그 테이블 신설 (specs/admin-users/spec.md, docs/erd/ADMIN_AUDIT_LOG.md)
+-- V36 — 운영 감사 로그 테이블 신설 (specs/admin-users/spec.md, docs/erd/ADMIN_AUDIT_LOG.md)
 -- 캡틴이 이메일 원본을 보거나 계정 권한을 바꾼 일을 남긴다. insert-only.
 -- 계정 ID 와 행위만 담는다 (이메일·닉네임 금지). ACTOR/TARGET 은 ACCOUNT 와 FK 를 걸지 않는다:
 -- 회원이 탈퇴해 ACCOUNT 행이 지워져도 기록은 남고, 남은 ID 로는 더 이상 사람을 되짚을 수 없다.

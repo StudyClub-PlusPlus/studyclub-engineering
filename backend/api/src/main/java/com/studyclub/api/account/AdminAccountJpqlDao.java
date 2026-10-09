@@ -31,10 +31,10 @@ class AdminAccountJpqlDao implements AdminAccountDao {
             List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED);
 
     /**
-     * 「담당」 = 스터디를 맡은 역할. CO_LEADER 는 POL-0001 이 없애기로 했지만 데이터가 남아 있어 함께 본다 (StudyCaptainGuard 와 같다).
+     * 「담당」 = 스터디를 맡은 역할 — 네비게이터(LEADER) 하나다. 부반장(CO_LEADER)은 2026-10-09 에 없앴다 (POL-0001,
+     * StudyCaptainGuard 와 같다).
      */
-    static final List<ParticipantRole> NAVIGATOR_ROLES =
-            List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER);
+    static final List<ParticipantRole> NAVIGATOR_ROLES = List.of(ParticipantRole.LEADER);
 
     // 서브쿼리 조각의 별칭 p 는 바깥 쿼리의 a 에 상관된다
     private static final String PARTICIPATING =
