@@ -80,6 +80,12 @@ test.describe('인증 미들웨어', () => {
     await page.goto('/ko/my/studies');
     await expect(page).toHaveURL(/\/ko\/login/);
   });
+
+  test('/ko/my/joined — 비로그인 시 /ko/login 으로 리다이렉트', async ({ page }) => {
+    await page.goto('/ko/my/joined');
+    await expect(page).toHaveURL(/\/ko\/login/);
+    await expect(page).toHaveURL(/next=%2Fko%2Fmy%2Fjoined/);
+  });
 });
 
 test.describe('로그인 페이지', () => {
