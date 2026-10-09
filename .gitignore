@@ -1,5 +1,6 @@
 # deps / build
 node_modules/
+frontend/.pnpm-store/
 build/
 .gradle/
 dist/
@@ -34,3 +35,4 @@ serviceAccount*.json
 # local dev tooling
 .claude/
 .envrc
+.pnpm-store/

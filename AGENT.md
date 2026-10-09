@@ -31,7 +31,7 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
     design/              # 디자인 토큰 & 정본 CSS (@studyclub/design — base, core, console)
     ui/                  # 공용 UI 컴포넌트 (@studyclub/ui — Storybook 포함)
     mock/                # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티 (@studyclub/mock)
-planning/stories/        # Story PRD — planning/stories/{story-name}/PRD.md
+01-planning/             # 기획 — stories/{story-name}/PRD.md · _registry/(스토리 목록·정책 POL-####)
 specs/                   # API 스펙 — specs/{도메인}/spec.md
 backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
@@ -112,16 +112,22 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
   **playground 를 고쳤으면 커밋 전에 `pnpm --filter playground run build` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에서 바로 배포되는 유일한 앱이라(`playground-beta.yaml`) 다른 앱의 CI 게이트를 안 거친다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
-- **Story PRD** — 화면 기획은 `planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`planning/README.md`](planning/README.md)
-- **팀에 물을 것·정해진 것은 `share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
-  `share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`share/README.md`](share/README.md) 목록에 한 줄 추가한다.
+- **Story PRD** — 화면 기획은 `01-planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`01-planning/_registry/stories.md`](01-planning/_registry/stories.md)
+- **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
+  `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.
+  목록의 공유 칸은 **`공유전`** 으로 둔다 — 팀에는 모아서 한 번에 알리고 그때 `공유됨 (MM-DD)` 로 바꾼다 ([§공유](docs/share/README.md#공유--모아서-한-번에)).
   PR 설명이나 코드 주석에만 있으면 머지되는 순간 안 읽힌다. 규칙이 굳으면 `docs/` 로 올린다.
   **쓸 때는 그 작업을 안 한 사람이 읽는다고 가정한다** — 맨 앞에 「미리 알아야 할 것」으로 용어·배경을
   풀고, 약어는 처음 나올 때 설명하고, 비유를 하나 넣는다. 기획자·디자이너·이번 주 합류자가 읽고
-  "무슨 일이 왜 정해졌는지" 말할 수 있어야 한다. 규칙 전문은 [`share/README.md`](share/README.md) §쓰는 법.
+  "무슨 일이 왜 정해졌는지" 말할 수 있어야 한다. 규칙 전문은 [`docs/share/README.md`](docs/share/README.md) §쓰는 법.
 - **관객으로 경로를 가른다** — 백오피스가 부르는 API 는 `/api/admin` 아래, 파일은 `Admin*`.
   같은 일을 사용자 사이트에서도 하면 **사이트용 엔드포인트를 따로** 만든다 (권한 판정이 다르다).
   [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md)
+- **판정은 서버가 내려준다** — 모집 중인지 · 정원이 찼는지 · 출석률 · 할 수 있는지(`can*`)처럼
+  정책으로 나오는 결론은 **엔티티 메서드 하나**가 계산하고 응답 필드로 준다. 프론트는 그 값을 그린다 —
+  날짜·인원 같은 재료로 다시 계산하지 않는다. 같은 판정을 쓰는 엔드포인트(사이트용·`/api/admin`·목록·상세)는
+  같은 메서드에 **같은 쿼리로 센 재료**를 넘긴다. 화면에 필요한 판정이 응답에 없으면 프론트에서 만들지 말고
+  스펙에 필드를 추가한다. [`docs/backend-development-guide/api/endpoint-convention.md` §판정은 서버가 내려준다](docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다)
 - **개발이 끝나면 스테이지까지 올린다** — PR 이 머지됐다고 끝이 아니다. `develop` 에 합쳐져야
   스테이지(`backend-develop` · `core-front-develop` · `back-office-front-develop`)가 배포되고,
   그때 처음 **기획·디자인이 눈으로 본다.** 내 브랜치에만 있으면 아무도 못 본 기능이다.
@@ -187,6 +193,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 9. **테스트를 같이 낸다** — 통합은 성공 1건 + 실패 코어(401/400/403/404), 단위는 규칙의 세부까지.
    `@DisplayName` 은 한글로
 10. **기존 API 활용** — 새 엔드포인트 전에 기존 것 확장으로 해결 가능한지 먼저 확인
+11. **판정은 응답에 싣는다** — 상태·가능 여부·비율은 엔티티 메서드로 계산해 필드로 준다. 같은 판정은 모든 엔드포인트가 같은 메서드·같은 재료 쿼리로
 
 ### Frontend (Next.js)
 
@@ -206,11 +213,39 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 2. **API 레이어** — `lib/api/` 에 모아두고 컴포넌트에서 직접 fetch 하지 않는다
 3. **Server Component 기본** — `'use client'` 는 인터랙션 필요한 말단에만
 4. **Mock 교체** — `// TODO(api)` 검색 → mock import 를 API 함수 호출로 교체
+5. **판정을 다시 하지 않는다** — `recruitStatus` 같은 응답 필드를 그린다. 날짜·숫자로 재계산 금지, 없으면 스펙에 요청 ([api-integration §판정](docs/frontend-development-guide/api-integration.md#판정을-다시-하지-않는다))
 
 ---
+
+## 도메인 이벤트 · 운영자 알림 (ops alerts)
+
+사실이 생기면 도메인 이벤트를 발행하고, 부수효과(ops 알림·메일·외부 연동)는 구독자로 붙인다. 서비스 메서드에서 부수효과를 직접 부르지 않는다. 운영자가 초반에 알아야 할 이벤트는 OpsAlertListener 가 구독한다.
+
+운영자가 초반에 알아야 할 이벤트(가입·신청·승인·실패)는 ops 알림으로 보낸다. 새 기능을 만들면 ops 이벤트가 필요한지 판단하고 spec 표에 추가한다.
+
+- 이벤트 규칙·목록: [specs/domain-events/spec.md](./specs/domain-events/spec.md)
+- ops 알림 계약·표: [specs/ops-alerts/spec.md](./specs/ops-alerts/spec.md)
+- 구독자는 발행하는 서비스와 다른 빈에 둔다 (같은 빈이면 `@Async` 가 무시된다)
+- 이메일은 `maskEmail` 로 가리고, 토큰·비밀번호·전화번호는 싣지 않는다
+
 
 ## 관련
 
 - 승격 원본(도그푸딩): 내부 레포의 bakg 앱
 - 에픽: 내부 이슈 트래커의 `studyclub-plusplus-service-setup`
 - 도메인: studyclub-plusplus.com / stage / api / back-office / back-office-stage
+
+<!-- repo-kit:start -->
+## 무엇을 어디에 쓰나 (repo-kit)
+
+| 이런 일이 생기면 | 여기에 |
+|---|---|
+| 팀이 알아야 할 결정 · 팀에 물을 것 | `docs/share/YYYY-MM-DD-<주제>.md` (그 PR 안에서) |
+| 굳은 결정 | `docs/adr/NNNN-<주제>.md` |
+| prod 사고를 고쳤다 | `docs/incidents/YYYY-MM-DD-<요약>.md` (72시간 안) |
+| 같은 운영 작업 · 고객 문의를 두 번째 한다 | `.agents/tasks/ops/` · `.agents/tasks/cs/` |
+| 일을 끝냈다 | `docs/roadmap/tasks.md` 완료일 |
+| 화면이 바뀌었다 | PR 「화면 변경 근거」에 캡처 — 월말 `docs/releases/<YYYY-MM>/` 가 모아 간다 |
+
+일 시작 전 [`.agents/onboarding.md`](.agents/onboarding.md) 를 읽는다. 결정·사고·두 번째 운영 작업을 만나면 **같은 PR 에 넣을지 먼저 묻는다.**
+<!-- repo-kit:end -->

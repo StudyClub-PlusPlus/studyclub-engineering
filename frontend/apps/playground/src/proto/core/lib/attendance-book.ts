@@ -8,6 +8,7 @@ import {
   resolveStatus,
   type MyStatus,
 } from '@core/lib/attendance';
+import { isKickoff } from '@core/lib/meetings';
 import { attendancePoint, type Study, type StudyMeeting } from '@studyclub/mock';
 
 /**
@@ -41,12 +42,15 @@ export function myAttendanceBook(study: Study): MyAttendanceBook {
   const meetings = meetingsOf(study);
   const stored = getMyAttendance(study.id);
   const cells = Object.fromEntries(meetings.map((m) => [m.id, resolveStatus(study, m, stored)]));
-  return { meetings, cells, rate: rateFromCells(cells) };
+  // 킥오프 출석은 칸에는 보이지만 출석률에는 넣지 않는다.
+  const counted = Object.fromEntries(meetings.filter((m) => !isKickoff(m)).map((m) => [m.id, cells[m.id]]));
+  return { meetings, cells, rate: rateFromCells(counted) };
 }
 
 /** 완주 점수판. 출석·지각 횟수 / 대상 회차. 출석률의 지각 가중치(0.5)와는 다르다. */
 export function bookScore(book: MyAttendanceBook): { attended: number; total: number } {
   const target = book.meetings.filter((m) => {
+    if (isKickoff(m)) return false;
     const st = book.cells[m.id];
     return st !== undefined && st !== 'excused';
   });

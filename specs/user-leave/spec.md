@@ -1,9 +1,9 @@
 # 회원 탈퇴 API Spec
 
 > ERD: [ACCOUNT](../../docs/erd/ACCOUNT.md), [ACCOUNT_IDENTITY](../../docs/erd/ACCOUNT_IDENTITY.md), [ACCOUNT_CONSENT](../../docs/erd/ACCOUNT_CONSENT.md), [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md), [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md), [STUDY_REVIEW](../../docs/erd/STUDY_REVIEW.md), [STUDY_PROPOSAL](../../docs/erd/STUDY_PROPOSAL.md), [STUDY_PROPOSAL_INTEREST](../../docs/erd/STUDY_PROPOSAL_INTEREST.md), [STUDY_BOOKMARK](../../docs/erd/STUDY_BOOKMARK.md), [NOTIFICATION](../../docs/erd/NOTIFICATION.md)
-> Story PRD: [회원 탈퇴](../../planning/stories/crew-leave/PRD.md)
+> Story PRD: [회원 탈퇴](../../01-planning/stories/crew-leave/PRD.md)
 > 프로토타입: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/leave` (`/proto/core/ko/my/leave`)
-> 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) — 완료 뒤 같은 계정 재가입은 온보딩 흐름 그대로 탄다. [notification/spec.md](../notification/spec.md) — NOTIFICATION 스냅샷 비식별화가 이 스펙과 맞물린다. [study-application/spec.md](../study-application/spec.md) — FORM_ANSWER.discordNickname 비식별화가 이 스펙과 맞물린다. `frontend/apps/playground/src/proto/core/lib/legal.ts` — 이용약관 제11조·개인정보처리방침 제4·9조 (법령상 보존 근거). [POL-0007](../../planning/_registry/policies/POL-0007-account-data.md) — 회원 데이터와 탈퇴 정책 (이 스펙과 같은 내용의 기획 정본).
+> 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) — 완료 뒤 같은 계정 재가입은 온보딩 흐름 그대로 탄다. [notification/spec.md](../notification/spec.md) — NOTIFICATION 스냅샷 비식별화가 이 스펙과 맞물린다. [study-application/spec.md](../study-application/spec.md) — FORM_ANSWER.discordNickname 비식별화가 이 스펙과 맞물린다. `frontend/apps/playground/src/proto/core/lib/legal.ts` — 이용약관 제11조·개인정보처리방침 제4·9조 (법령상 보존 근거). [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) — 회원 데이터와 탈퇴 정책 (이 스펙과 같은 내용의 기획 정본).
 > 생성일: 2026-09-19
 > 상태: 스펙작성중
 
@@ -24,7 +24,7 @@
 (네비게이터로 맡은 진행 중인 스터디가 있으면 경고 + 재확인) → 탈퇴 → 즉시 처리 → 홈.
 
 - **유예 없음.** 탈퇴 요청이 성공하면 그 요청 안에서 계정과 관련 데이터가 바로 사라진다. "탈퇴 예약 후 N일 뒤 삭제" 같은 중간 상태는 두지 않는다.
-- **막지 않는다.** 네비게이터(맡은 스터디의 `LEADER`/`CO_LEADER`)여도 서버는 탈퇴를 거부하지 않는다. 프론트가 한 번 더 확인만 받는다 — [정책 근거](#네비게이터-경고--왜-막지-않는가).
+- **막지 않는다.** 네비게이터(맡은 스터디의 `LEADER`)여도 서버는 탈퇴를 거부하지 않는다. 프론트가 한 번 더 확인만 받는다 — [정책 근거](#네비게이터-경고--왜-막지-않는가).
 - **요청자를 가리지 않는다.** `SYSTEM_ROLE=ADMIN` 도 동일하게 처리한다. 최초 ADMIN 계정은 SQL 로 세우기로 되어 있어 캡틴이 0명이 되어도 복구 가능하다 — 별도 "마지막 관리자" 가드를 두지 않는다.
 - **재가입 가능.** `ACCOUNT`·`ACCOUNT_IDENTITY` 를 물리 삭제하므로 같은 구글 계정으로 다시 로그인하면 `(ISSUER, sub)` 미존재 + 동일 이메일 없음(이메일도 같이 지워졌으므로) 경로를 타 신규 가입으로 이어진다([user-onboarding](../user-onboarding/spec.md) 그대로).
 
@@ -151,7 +151,7 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 ```ts
 // frontend/apps/core-front/src/lib/me.ts: getActiveNavigatorStudies()
 items.filter(
-  (s) => s.relation === 'ONGOING' && (s.participantRole === 'LEADER' || s.participantRole === 'CO_LEADER'),
+  (s) => s.relation === 'ONGOING' && s.participantRole === 'LEADER',
 )
 ```
 
@@ -159,7 +159,7 @@ items.filter(
   `ACTIVE`/`PAUSED`(`MyStudyQueryService.relation()`). `UPCOMING`(시작 전)은 빠져도 멈출 게 없고,
   `COMPLETED`·`WITHDRAWN` 은 이미 끝났다 — [네비게이터 경고 정책](#네비게이터-경고--왜-막지-않는가)과
   같은 기준이다. 원래 안의 `STUDY.STATUS=OPEN` 대신 실제 시작일을 쓰는 점만 다르고 의도는 같다.
-- `participantRole IN (LEADER, CO_LEADER)` — 네비게이터만 대상.
+- `participantRole = LEADER` — 네비게이터만 대상.
 - 판정을 프론트에 둔 이유: 서버가 `isActiveNavigator` 를 따로 계산해 내려주려면 `my-studies` 응답에
   이 기능 전용 필드를 또 얹어야 하는데, 이미 있는 `relation` 이 사실상 같은 정보를 담고 있어
   중복이다. "서버가 판정을 끝낸 불린 하나만 본다"는 원래 설계 의도보다, 이미 있는 필드를 재사용해
@@ -180,7 +180,7 @@ items.filter(
 ```
 STUDY.STATUS = ONGOING
   AND STUDY_PARTICIPANT.STATUS IN (ACTIVE, PAUSED)
-  AND STUDY_PARTICIPANT.PARTICIPANT_ROLE IN (LEADER, CO_LEADER)
+  AND STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER
 ```
 
 `relation` 하나만 보는 지금 방식과 달리, 스터디 운영 상태(`STUDY.STATUS`)와 개인 참여 상태를
@@ -375,7 +375,7 @@ LOCKED 아님)로 잠그고 읽는다 — 폴링 스케줄러가 같은 순간 P
   범위 밖).
 - `STUDY.STATUS=OPEN` 인 스터디만 센다. `DRAFT`는 아직 공개 전이라 멈출 게 없고, `CLOSED`는 이미
   끝나서 네비게이터가 빠져도 아무 것도 멈추지 않는다.
-- **공동 네비게이터(`CO_LEADER`)가 남아 있어도 경고 조건은 똑같다.** "이 스터디에 다른 네비게이터가
+- **같은 스터디에 다른 네비게이터(다른 분반의 `LEADER`)가 남아 있어도 경고 조건은 똑같다.** "이 스터디에 다른 네비게이터가
   남는지"는 판정하지 않는다 — 인계가 실제로 필요한지 계산하는 건 "인계를 화면에서 처리하지 않는다"는
   위 정책과 어긋난다. 시스템은 "네비게이터 역할을 갖고 있었다"는 사실만 알리고, 그게 그 스터디를
   당장 멈추는 것이든 아니든 판단은 캡틴 몫으로 남긴다.

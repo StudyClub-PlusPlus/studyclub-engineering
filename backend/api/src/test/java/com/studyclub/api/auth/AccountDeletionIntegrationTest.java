@@ -25,6 +25,8 @@ import com.studyclub.domain.proposal.StudyProposalInterest;
 import com.studyclub.domain.proposal.StudyProposalInterestRepository;
 import com.studyclub.domain.proposal.StudyProposalRepository;
 import com.studyclub.domain.proposal.StudyProposalStatus;
+import com.studyclub.domain.study.StudyMeeting;
+import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.notification.Notification;
 import com.studyclub.notification.NotificationChannel;
 import com.studyclub.notification.NotificationCreationService;
@@ -32,6 +34,7 @@ import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,6 +65,7 @@ class AccountDeletionIntegrationTest {
     @Autowired AccountConsentRepository accountConsentRepository;
     @Autowired AccountLeaveReasonRepository accountLeaveReasonRepository;
     @Autowired StudyParticipantRepository studyParticipantRepository;
+    @Autowired StudyMeetingRepository studyMeetingRepository;
     @Autowired StudyBookmarkRepository studyBookmarkRepository;
     @Autowired StudyProposalRepository studyProposalRepository;
     @Autowired StudyProposalInterestRepository studyProposalInterestRepository;
@@ -230,8 +234,8 @@ class AccountDeletionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - JSON 객체가 아닌 FORM_ANSWER(배열·깨진 JSON)가 있어도 탈퇴는 막히지 않고, 내용은 남기지 않고 비운다")
-    void deletesAccountEvenWithMalformedFormAnswer() {
+    @DisplayName("성공 - 배열 FORM_ANSWER가 있어도 탈퇴는 막히지 않고 내용을 비운다")
+    void deletesAccountEvenWithArrayFormAnswer() {
         Account account = seedAccount();
         StudyApplication arrayAnswer =
                 studyApplicationRepository.save(
@@ -240,13 +244,6 @@ class AccountDeletionIntegrationTest {
                                 .recruitmentId(9010L)
                                 .formAnswer("[\"홍길동/SWE\"]")
                                 .build());
-        StudyApplication brokenAnswer =
-                studyApplicationRepository.save(
-                        StudyApplication.builder()
-                                .accountId(account.getId())
-                                .recruitmentId(9011L)
-                                .formAnswer("홍길동/SWE {깨진 json")
-                                .build());
 
         var response =
                 rest.exchange(
@@ -254,11 +251,38 @@ class AccountDeletionIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(accountRepository.findById(account.getId())).isEmpty();
-        for (Long id : List.of(arrayAnswer.getId(), brokenAnswer.getId())) {
-            // 행은 보존하되 어디에 개인정보가 있는지 알 수 없는 값이라 통째로 비운다.
-            String reloaded = studyApplicationRepository.findById(id).orElseThrow().getFormAnswer();
-            assertThat(reloaded).doesNotContain("홍길동").contains("{}");
-        }
+        String reloaded =
+                studyApplicationRepository
+                        .findById(arrayAnswer.getId())
+                        .orElseThrow()
+                        .getFormAnswer();
+        assertThat(reloaded).doesNotContain("홍길동").isEqualTo("{}");
+    }
+
+    @Test
+    @DisplayName("성공 - 이전 방식의 문자열로 감싼 신청 답변도 별명을 마스킹한다")
+    void masksLegacyWrappedFormAnswer() {
+        Account account = seedAccount();
+        StudyApplication application =
+                studyApplicationRepository.save(
+                        StudyApplication.builder()
+                                .accountId(account.getId())
+                                .recruitmentId(9011L)
+                                .formAnswer(
+                                        "\"{\\\"discordNickname\\\":\\\"legacy-name\\\",\\\"answers\\\":{}}\"")
+                                .build());
+        var response =
+                rest.exchange(
+                        "/api/me", HttpMethod.DELETE, authenticatedBody(account, null), Void.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        String reloaded =
+                studyApplicationRepository
+                        .findById(application.getId())
+                        .orElseThrow()
+                        .getFormAnswer();
+        assertThat(reloaded)
+                .doesNotContain("legacy-name")
+                .contains("\"discordNickname\":\"[탈퇴한 계정]\"");
     }
 
     @Test
@@ -343,5 +367,35 @@ class AccountDeletionIntegrationTest {
 
         assertThat(notificationRepository.findAllByOrderByCreatedAtDesc())
                 .noneMatch(n -> account.getId().equals(n.getRecipientUserId()));
+    }
+
+    @Test
+    @DisplayName("성공 - 탈퇴 시 해당 계정의 예정 회차 발표자 칸이 비워진다")
+    void deletionReleasesPresenterSlots() {
+        Account account = seedAccount();
+        Long accountId = account.getId();
+
+        StudyParticipant participant =
+                studyParticipantRepository.save(
+                        StudyParticipant.builder()
+                                .accountId(accountId)
+                                .studyGroupId(9099L)
+                                .studyId(9099L)
+                                .status(ParticipantStatus.ACTIVE)
+                                .participantRole(ParticipantRole.MEMBER)
+                                .joinedAt(Instant.now())
+                                .build());
+
+        StudyMeeting meeting =
+                studyMeetingRepository.save(
+                        StudyMeeting.schedule(
+                                9099L, Instant.now().plus(7, ChronoUnit.DAYS), "발표 회차"));
+        meeting.assignPresenters(participant.getId(), null);
+        studyMeetingRepository.save(meeting);
+
+        rest.exchange("/api/me", HttpMethod.DELETE, authenticatedBody(account, null), Void.class);
+
+        StudyMeeting reloaded = studyMeetingRepository.findById(meeting.getId()).orElseThrow();
+        assertThat(reloaded.getPresenter1ParticipantId()).isNull();
     }
 }

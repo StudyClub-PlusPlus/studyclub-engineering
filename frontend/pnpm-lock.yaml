@@ -17,6 +17,9 @@ importers:
 
   apps/back-office-front:
     dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.9.1
+        version: 5.9.1(react-hook-form@7.89.0(@types/react@19.3.0)(react@19.2.4))(zod@3.25.76)
       '@studyclub/design':
         specifier: workspace:*
         version: link:../../packages/design

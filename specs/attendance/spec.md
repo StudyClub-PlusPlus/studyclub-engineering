@@ -1,7 +1,7 @@
 # 명부 · 출석 API Spec
 
 > ERD: [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md)
-> Story PRD: [출석명부](../../planning/stories/captain-view-attendance-roster/PRD.md) · [네비게이터 출석 수정](../../planning/stories/navigator-edit-attendance/PRD.md) · [대시보드 출석률](../../planning/stories/captain-view-dashboard/PRD.md)
+> Story PRD: [출석명부](../../01-planning/stories/captain-view-attendance-roster/PRD.md) · [네비게이터 출석 수정](../../01-planning/stories/navigator-edit-attendance/PRD.md) · [크루 출석 기록](../../01-planning/stories/crew-view-attendance-record/PRD.md) · [대시보드 출석률](../../01-planning/stories/console-dashboard/PRD.md)
 > 생성일: 2026-09-15
 > 상태: 스펙확정
 
@@ -60,7 +60,7 @@ STUDY_ATTENDANCE {
 
 - **Method**: GET
 - **Path**: `/api/studies/{studyId}/attendances`
-- **인증**: 필요 (Bearer)
+- **인증**: 필요 (Bearer) — 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. 판정은 [회차 스펙 「권한 판정」](../study-meeting/spec.md#권한-판정) 보기와 같다. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다
 - **설명**: 지정한 그룹의 명부(모든 회차 × 해당 그룹 참가자)를 기본으로 반환. `meetingId` 쿼리 파라미터로 특정 회차 하나만 필터링 가능 — 응답 구조는 동일, 내용만 좁아짐
 
 ### Path Parameters
@@ -75,6 +75,7 @@ STUDY_ATTENDANCE {
 |------|------|------|------|
 | studyGroupId | Long | **Y** | 조회할 그룹 ID. 존재하지 않으면 404. studyId 소속이 아니면 400 |
 | meetingId | Long | N | 특정 회차 하나만 필터링. 해당 그룹 소속이 아니거나 존재하지 않으면 404 |
+| includeWithdrawn | Boolean | N | `false`(기본값)이면 ACTIVE 참여자만. `true`이면 WITHDRAWN·DELETED 포함 전체 |
 
 ### Request Body
 
@@ -92,7 +93,10 @@ STUDY_ATTENDANCE {
                              → 404 if not found. group.study_id ≠ studyId → 400
 
 3. STUDY_PARTICIPANT         WHERE study_group_id = studyGroupId
+                             includeWithdrawn=false → STATUS = 'ACTIVE' 만 (PAUSED·COMPLETED·WITHDRAWN·DELETED 제외)
+                             includeWithdrawn=true  → 전체 (모든 상태 포함)
                              → 해당 그룹 참가자 목록. joined_at / status 포함
+                             participantCount 는 필터 무관하게 항상 전체 수(모든 상태)
 
 4. STUDY_MEETING             WHERE study_group_id = studyGroupId ORDER BY scheduled_at
                              → 해당 그룹 미팅 목록
@@ -153,6 +157,10 @@ STUDY_ATTENDANCE {
 | meetings[].scheduledAt | String | N | 예정 시각 (ISO 8601) | STUDY_MEETING.SCHEDULED_AT |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].displayName | String | N | | ACCOUNT.NICKNAME |
+| participants[].participantRole | String | N | `LEADER` · `MEMBER`. 스터디 일정 출석부의 이름 옆 역할 칩(네비게이터) | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| participants[].captain | Boolean | N | 그 스터디를 만든 캡틴이면 true — 이름 옆 「캡틴」 칩. 다른 캡틴(ADMIN)이 참여했으면 false(크루) | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
+| participants[].participantStatus | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` · `COMPLETED` · `DELETED`. `WITHDRAWN`·`DELETED` 행은 `includeWithdrawn=true`일 때만 응답에 포함된다. 화면은 흐린 이름 + 칩, 맨 아래 줄 | STUDY_PARTICIPANT.STATUS |
+| participants[].leftAt | String | Y | 떠난 시각(UTC). 이 뒤 회차 칸은 「—」. 화면은 하차·제명을 가르지 않고 「참여 중단」 칩 | STUDY_PARTICIPANT.LEFT_AT |
 | participants[].attendances[].meetingId | Long | N | | STUDY_MEETING.ID |
 | participants[].attendances[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED \| null`. null = 미입력 | STUDY_ATTENDANCE.STATUS |
 | participants[].attendanceRate | Double | Y | 개인 누적 출석률. 분모 0이면 null → 화면은 "–" 표시 | 계산: 출석률 산식 참고 |
@@ -169,7 +177,8 @@ STUDY_ATTENDANCE {
 가중치: PRESENT=1.0, EXCUSED=1.0, LATE=0.5, ABSENT=0
 upper_bound = participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED') ? now() : participant.left_at
 countable_meetings = 스터디의 미팅 중
-  scheduled_at <= upper_bound
+  meeting_type = 'REGULAR'            // 킥오프는 출석만 남기고 출석률에서 뺀다 (study-meeting 스펙 결정 11)
+  AND scheduled_at <= upper_bound
   AND scheduled_at >= participant.joined_at
 
 스터디 평균 = 분모 0인 참가자는 제외하고 Σ(개인 분자) / Σ(개인 분모)   // 가중평균
@@ -177,7 +186,8 @@ countable_meetings = 스터디의 미팅 중
 
 `upper_bound` 가 `left_at`([user-leave spec](../user-leave/spec.md) "WITHDRAWN·DELETED")인 경우
 `left_at` 이 없으면(하차 시각을 모르는 과거 데이터) `countable_meetings` 는 항상 0 — 안전하게 전체
-제외한다. **하차·회원 탈퇴 이전 회차의 출석·결석은 그대로 집계에 남고, 이후 회차는 결석(0점)이 아니라
+제외한다. WITHDRAWN 의 `left_at` 은 `StudyParticipant.markWithdrawn(withdrawnAt)` 이 채우며,
+DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차·회원 탈퇴 이전 회차의 출석·결석은 그대로 집계에 남고, 이후 회차는 결석(0점)이 아니라
 분모에서 아예 제외된다** — 하차 이후까지 결석으로 깔면 "하차"와 "결석"이라는 서로 다른 사실이 같은
 숫자로 섞인다(2026-10-01, 회원 탈퇴 구현 중 수정).
 
@@ -193,6 +203,7 @@ countable_meetings = 스터디의 미팅 중
 | 404 | NOT_FOUND | 존재하지 않는 studyGroupId |
 | 400 | INVALID_INPUT | studyGroupId가 해당 studyId 소속이 아님 |
 | 404 | NOT_FOUND | meetingId가 해당 그룹 소속이 아니거나 존재하지 않음 |
+| 400 | — | includeWithdrawn에 Boolean 외 값 → Spring 타입 바인딩 실패로 자동 처리 |
 
 미팅이 하나도 없으면 200, `meetings: []`, `participants[].attendances: []`, `study.avgAttendanceRate: null`.
 
@@ -204,7 +215,7 @@ countable_meetings = 스터디의 미팅 중
 
 - **Method**: POST
 - **Path**: `/api/studies/{studyId}/attendances`
-- **인증**: 필요 — LEADER 또는 CO_LEADER 역할 보유자
+- **인증**: 필요 — LEADER 역할 보유자
 - **설명**: 스터디 안에서 하나 이상의 미팅 × 참가자 조합에 대해 출석 상태를 한 번에 기록. 여러 회차에 걸친 정정 + 신규 입력이 한 요청에 섞여도 됨. row가 없으면 INSERT, 있으면 UPDATE.
 
 ### Path Parameters
@@ -260,7 +271,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 400 | INVALID_INPUT | updates가 빈 배열 |
-| 403 | FORBIDDEN | LEADER·CO_LEADER 역할 없음 |
+| 403 | FORBIDDEN | LEADER 역할 없음 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
 | 400 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |

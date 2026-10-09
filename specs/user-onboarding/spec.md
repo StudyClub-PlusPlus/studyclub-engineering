@@ -1,6 +1,6 @@
 # 회원가입·온보딩 흐름
 
-> Story PRD: [Google 로그인·온보딩](../../planning/stories/crew-google-login-onboarding/PRD.md) · [프로필 수정](../../planning/stories/crew-edit-profile/PRD.md)
+> Story PRD: [Google 로그인·온보딩](../../01-planning/stories/crew-google-login-onboarding/PRD.md) · [프로필 수정](../../01-planning/stories/crew-edit-profile/PRD.md)
 
 소셜 로그인 **첫 성공이 곧 가입**이다. 로그인 직후 ACCOUNT·ACCOUNT_IDENTITY 를 만들고, 온보딩(필수 약관 + 닉네임 + 타임존)을 마쳐야 가입 완료. 완료 시점에 `UserRegisteredEvent` 를 **ACCOUNT 당 1회** 발행하고 웰컴메일은 알림팀이 받아서 보낸다.
 
@@ -147,7 +147,7 @@ ACCOUNT_IDENTITY
 
 ### `GET /auth/me`
 
-응답은 DB에 저장된 정보만 담는 `AccountView`를 사용한다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다.
+응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
 
 ### `GET /api/nicknames/availability`
 

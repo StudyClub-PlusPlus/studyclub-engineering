@@ -3,7 +3,8 @@
 import { useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
-import { Search, X } from 'lucide-react';
+import { FilterChip } from '@studyclub/ui';
+import { ChevronDown, Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
 import { useStudies } from '@/features/studies/queries';
@@ -31,32 +32,6 @@ const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
   { value: 'both', label: '동시 모집' },
 ];
 
-function FilterOption({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type='button'
-      onClick={onClick}
-      aria-pressed={active}
-      // 테두리로 칸을 나눈다 — 배경색만으로는 흰 바탕에서 칩 경계가 보이지 않는다
-      className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-        active
-          ? 'border-brand bg-brand text-on-brand'
-          : 'border-border-strong bg-bg text-fg-secondary hover:border-fg-muted hover:text-fg'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 function FilterSelect<T extends string>({
   value,
   options,
@@ -67,17 +42,20 @@ function FilterSelect<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value as T)}
-      className='h-9 w-fit min-w-0 rounded-lg border border-border-strong bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <div className='relative w-fit'>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        className='h-9 min-w-0 appearance-none rounded-lg border border-border-strong bg-bg pl-3 pr-9 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={14} className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted' aria-hidden />
+    </div>
   );
 }
 
@@ -200,13 +178,15 @@ export function StudyBrowser({
         </div>
         <FilterRow>
           {CATEGORY_OPTIONS.map((option) => (
-            <FilterOption
+            <FilterChip
               key={option.value}
-              active={category === option.value}
+              selected={category === option.value}
+              selectMode='single'
               onClick={() => setCategory(option.value)}
+              className='h-auto py-1.5 text-[13px] font-semibold'
             >
               {option.label}
-            </FilterOption>
+            </FilterChip>
           ))}
         </FilterRow>
       </div>

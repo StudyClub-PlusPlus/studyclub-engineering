@@ -22,6 +22,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 COPY --from=builder --chown=nextjs:nodejs /app/apps/playground/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/playground/.next/static ./apps/playground/.next/static
+# standalone 은 public/ 을 담지 않는다 — MSW 워커(mockServiceWorker.js)가 여기 있어서 빠지면 목업 화면이 깨진다.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/playground/public ./apps/playground/public
 
 USER nextjs
 # 앱 start 스크립트는 4702 를 바인딩한다. k8s probe/NodePort target 과 맞추려고 3000 으로 덮어쓴다.
@@ -31,4 +33,5 @@ ENV NODE_ENV=production \
     PORT=3000
 
 EXPOSE 3000
+# standalone 은 앱 위치(apps/playground)에 server.js 를 만든다 — next CLI 없이 node 로 바로 띄운다.
 CMD ["node", "apps/playground/server.js"]

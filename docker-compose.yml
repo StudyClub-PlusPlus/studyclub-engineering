@@ -67,6 +67,12 @@ services:
       DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
     ports:
       - "${API_PORT:-28080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
 
   # 단일 컨테이너에서 turbo 로 두 앱 동시 dev (install race 회피). per-app 스토리지
   # prefix(sc_/bo_)는 코드 상수라 공유 env 여도 무방.
@@ -79,7 +85,8 @@ services:
     # pnpm 이 재설치 확인을 묻는데(TTY 없음 → 실패) confirmModulesPurge=false 로 묻지 않고 진행.
     command: sh -c "corepack enable && pnpm install --config.confirmModulesPurge=false && pnpm run dev"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     environment:
       # macOS 도커 bind-mount 는 inotify 이벤트가 컨테이너로 전파 안 됨 → 폴링으로 HMR 활성화
       WATCHPACK_POLLING: "true"

@@ -1,5 +1,7 @@
 package com.studyclub.domain.study;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -39,6 +41,12 @@ public class StudyGroup extends BaseEntity {
 
     private Integer capacity;
 
+    /** 스터디 규칙 — 시트의 규칙 칸. 원문 그대로 저장하고 화면은 글자로만 그린다 (specs/study-meeting/spec.md 결정 12). */
+    @Column(name = "RULES", length = RULES_MAX_LENGTH)
+    private String rules;
+
+    static final int RULES_MAX_LENGTH = 500;
+
     protected StudyGroup() {}
 
     public StudyGroup(
@@ -72,5 +80,33 @@ public class StudyGroup extends BaseEntity {
 
     public Integer getCapacity() {
         return capacity;
+    }
+
+    public String getRules() {
+        return rules;
+    }
+
+    /**
+     * 규칙을 바꾼다. 줄바꿈은 {@code \n} 으로 맞추고, 탭·줄바꿈 밖의 제어문자는 거절한다. 길이는 코드포인트로 500자 — 이모지 하나를 한 글자로 센다.
+     * null·공백이면 지운다.
+     */
+    public void changeRules(String rules) {
+        if (rules == null || rules.isBlank()) {
+            this.rules = null;
+            return;
+        }
+        String normalized = rules.replace("\r\n", "\n").replace('\r', '\n');
+        if (normalized.codePoints().count() > RULES_MAX_LENGTH) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "규칙은 " + RULES_MAX_LENGTH + "자까지입니다.");
+        }
+        boolean hasControl =
+                normalized
+                        .codePoints()
+                        .anyMatch(c -> Character.isISOControl(c) && c != '\n' && c != '\t');
+        if (hasControl) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "규칙에 쓸 수 없는 문자가 있습니다.");
+        }
+        this.rules = normalized;
     }
 }

@@ -58,7 +58,8 @@ public class AttendanceRateCalculator {
                     case ACTIVE, PAUSED, COMPLETED -> now;
                     case WITHDRAWN, DELETED -> participant.getLeftAt();
                 };
-        if (upperBound == null) {
+        // 킥오프는 출석을 찍지만 출석률에 넣지 않는다 (specs/study-meeting/spec.md 결정 11)
+        if (upperBound == null || meeting.isKickoff()) {
             return false;
         }
         return !meeting.getScheduledAt().isAfter(upperBound)

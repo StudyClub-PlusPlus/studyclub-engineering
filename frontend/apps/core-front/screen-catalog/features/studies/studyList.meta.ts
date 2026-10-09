@@ -60,4 +60,42 @@ export const studyScreenStates: ScreenStateDef[] = [
     },
     screenshot: { fullPage: false },
   },
+  {
+    id: 'study-apply--modal',
+    label: '스터디 신청 모달 — 기본 (study_id=6, past-project-review)',
+    pageId: 'study-detail',
+    rationale: '스터디 상세에서 신청하기 클릭 시 뜨는 신청 폼 모달과 질문 필드들이 올바르게 렌더링되는지 확인한다.',
+    recipe: {
+      storage: [
+        {
+          key: 'sc_user',
+          value: {
+            id: 1,
+            email: 'test@test.com',
+            nickname: '테스트',
+            picture: null,
+            role: 'MEMBER',
+          },
+        },
+        {
+          key: 'sc_discord',
+          value: { linked: true, username: 'test#0001' },
+        },
+        {
+          key: 'sc_discord_nickname',
+          value: '테스트',
+        },
+      ],
+      render: { url: '/ko/studies/6' },
+      steps: [
+        { action: 'click', selector: 'button:has-text("신청하기")' },
+        { action: 'wait', ms: 500 },
+      ],
+    },
+    viewports: ['desktop', 'mobile'],
+    assertions: {
+      visible: ['[role="dialog"]', '[role="dialog"] h2:has-text("스터디 신청")'],
+    },
+    screenshot: { fullPage: false },
+  },
 ];

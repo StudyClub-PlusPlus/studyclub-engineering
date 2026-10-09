@@ -5,10 +5,14 @@ import com.studyclub.common.error.ErrorCode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -25,6 +29,9 @@ public class MeetingSchedule {
     static final int MAX_MEETINGS_PER_ADD = 31;
     // 시작일 포함 31일 → 첫 날과 마지막 날의 차이는 30일까지
     static final int MAX_SPAN_DAYS = 30;
+
+    private static final DateTimeFormatter SHORT_DAY =
+            DateTimeFormatter.ofPattern("M/d(E)", Locale.KOREAN);
 
     private final ZoneId zone;
     private final List<StudyMeeting> meetings;
@@ -61,13 +68,67 @@ public class MeetingSchedule {
                     ErrorCode.INVALID_INPUT, "반복은 시작일부터 " + (MAX_SPAN_DAYS + 1) + "일 안에서만 만듭니다.");
         }
         for (LocalDate day : days) {
+            assertAfterKickoff(day, null);
+        }
+        for (LocalDate day : days) {
             assertDayFree(day, null);
         }
     }
 
-    /** 회차 하나를 옮길 때 — 자기 자신을 뺀 다른 회차와 같은 날이면 막는다. */
+    /**
+     * 회차 하나를 옮길 때 — 자기 자신을 뺀 다른 회차와 같은 날이면 막는다. 정규 회차는 킥오프 뒤로만, 킥오프는 1회차 앞으로만 옮긴다 (결정 11). 킥오프가 없는
+     * 옛 분반은 순서 규칙이 없다.
+     */
     public void checkReschedule(StudyMeeting target, Instant scheduledAt) {
-        assertDayFree(localDate(scheduledAt), target);
+        LocalDate day = localDate(scheduledAt);
+        if (target.isKickoff()) {
+            assertBeforeFirstRegular(day, target);
+        } else {
+            assertAfterKickoff(day, target);
+        }
+        assertDayFree(day, target);
+    }
+
+    /**
+     * 회차 번호 — 저장하지 않고 센다. 킥오프는 0, 정규 회차는 예정 시각 오름차순으로 1부터. {@code meetings} 는 예정 시각 오름차순이어야 한다.
+     *
+     * @return 회차 ID → 번호
+     */
+    public static Map<Long, Integer> numbersOf(List<StudyMeeting> meetings) {
+        Map<Long, Integer> numbers = new HashMap<>();
+        int next = 1;
+        for (StudyMeeting meeting : meetings) {
+            numbers.put(meeting.getId(), meeting.isKickoff() ? 0 : next++);
+        }
+        return numbers;
+    }
+
+    private void assertAfterKickoff(LocalDate day, StudyMeeting except) {
+        for (StudyMeeting meeting : meetings) {
+            if (meeting != except && meeting.isKickoff()) {
+                LocalDate kickoff = localDate(meeting.getScheduledAt());
+                if (!day.isAfter(kickoff)) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_INPUT,
+                            "킥오프(" + kickoff.format(SHORT_DAY) + ") 뒤로만 회차를 만들 수 있습니다.");
+                }
+            }
+        }
+    }
+
+    private void assertBeforeFirstRegular(LocalDate day, StudyMeeting kickoff) {
+        for (StudyMeeting meeting : meetings) {
+            if (meeting != kickoff && !meeting.isKickoff()) {
+                LocalDate first = localDate(meeting.getScheduledAt());
+                if (!day.isBefore(first)) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_INPUT,
+                            "킥오프는 1회차(" + first.format(SHORT_DAY) + ")보다 앞이어야 합니다.");
+                }
+                // 오름차순이라 첫 정규 회차만 보면 된다
+                return;
+            }
+        }
     }
 
     /**

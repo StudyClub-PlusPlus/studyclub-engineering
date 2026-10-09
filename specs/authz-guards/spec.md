@@ -28,7 +28,7 @@
 - JWT role claim / refresh 정책 변경 (back-office-login에서 기각)
 - `PATCH /accounts/{id}/role` (2단계)
 - 네비게이터 백오피스 진입
-- `CO_LEADER` enum/데이터 삭제 (POL-0001은 없애기로 했으나 정리는 별도 — 가드는 당분간 LEADER+CO_LEADER를 네비게이터로 본다)
+- ~~`CO_LEADER` enum/데이터 삭제~~ — 2026-10-09 완료 (V35). 가드는 `LEADER` 만 네비게이터로 본다
 - Discord API 키 체인·공개 스터디 목록/상세
 
 ---
@@ -40,7 +40,7 @@
 | 층 | 판정 | 수단 (이번) |
 |----|------|-------------|
 | 계정 — 캡틴 | `SYSTEM_ROLE = ADMIN` | **`@RequireAdmin` + `AdminGuardInterceptor`** |
-| 스터디 — 캡틴 또는 네비게이터 | ADMIN **이거나** 해당 `studyId` 안 **어느 분반**이든 `PARTICIPANT_ROLE ∈ {LEADER, CO_LEADER}` | **`@RequireCaptainOrNavigator`(스터디 단위)** |
+| 스터디 — 캡틴 또는 네비게이터 | ADMIN **이거나** 해당 `studyId` 안 **어느 분반**이든 `PARTICIPANT_ROLE = LEADER` | **`@RequireCaptainOrNavigator`(스터디 단위)** |
 | 분반 — 캡틴 또는 **그 분반** 네비게이터 | ADMIN **이거나** 해당 `studyGroupId` 명부에서 네비게이터 | **`@RequireCaptainOrNavigator`(분반 단위)** — 출석 등 |
 | 계정 — 온보딩 | `ONBOARDING_COMPLETED_AT IS NOT NULL` | **`@RequireOnboarding`** (기존) |
 
@@ -124,10 +124,10 @@
 | 스터디 수정 | PATCH | `/api/studies/{studyId}` | **스터디** | `assertCaptainOrNavigator` | **스터디 단위** 어노테이션, Guard 호출 **제거** |
 | 신청 폼 저장 | PUT | `/api/studies/{studyId}/application-form` | **스터디** | 동일 | **스터디 단위** + `@RequireOnboarding`, Guard 호출 **제거** |
 | 신청 폼 조회 | GET | 동일 | — | 공개/편집 분기 | **변경 없음** (어노테이션 **금지** — [위 주의](#신청-폼-get--공개-분기-주의)) |
-| 출석 upsert | POST | `/api/studies/{studyId}/attendances` | **분반** | LEADER/CO_LEADER(스터디 전체, 캡틴 미포함) | **분반 단위** + `@RequireOnboarding`, 인라인 검사 **제거**. 캡틴 통과 · **타 분반 네비게이터 403** |
+| 출석 upsert | POST | `/api/studies/{studyId}/attendances` | **분반** | LEADER(스터디 전체, 캡틴 미포함) | **분반 단위** + `@RequireOnboarding`, 인라인 검사 **제거**. 캡틴 통과 · **타 분반 네비게이터 403** |
 | 출석 명부 | GET | 동일 (`studyGroupId` query) | **분반** | 인증만 | **분반 단위** + `@RequireOnboarding` — 캡틴 또는 **그 `studyGroupId` 네비게이터만** |
 
-> **후속 (2026-10-04 기획 확정)** — 네비게이터는 신청 폼을 고치지 못하고 백오피스에도 들어오지 못한다. 그래서 위 `PUT /api/studies/{studyId}/application-form`(네비게이터용 사용자 사이트 경로)은 폐기 예정이고, 백오피스 `PUT /api/admin/studies/{studyId}/application-form` 은 `@RequireAdmin` 에 더해 **이 기수 담당 캡틴**(스터디를 생성한 캡틴)만 통과시켜야 한다. 백오피스 신청 폼 조회·신청 결과 조회는 지금처럼 캡틴 누구나. 근거: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md) · [신청 스펙](../study-application/spec.md)
+> **후속 (2026-10-04 기획 확정)** — 네비게이터는 신청 폼을 고치지 못하고 백오피스에도 들어오지 못한다. 그래서 위 `PUT /api/studies/{studyId}/application-form`(네비게이터용 사용자 사이트 경로)은 폐기 예정이고, 백오피스 `PUT /api/admin/studies/{studyId}/application-form` 은 `@RequireAdmin` 에 더해 **이 기수 담당 캡틴**(스터디를 생성한 캡틴 — `STUDY.CREATED_BY = 나`, NULL 이면 캡틴 누구나)만 통과시켜야 한다. 사용자 사이트 `PUT` 은 지운다 (2026-10-07). 백오피스 신청 폼 조회·신청 결과 조회는 지금처럼 캡틴 누구나. 근거: [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md) · [신청 스펙](../study-application/spec.md)
 
 ### C. 회원 전용 · 온보딩
 
@@ -187,4 +187,4 @@
 
 - 역할 부여 API·화면 (BO 2단계) — 구현 시 `@RequireAdmin`
 - 표 「예정」행의 `@RequireOnboarding` — 각 기능 스펙 구현 시 표 갱신
-- 네비게이터 백오피스 접근 · `CO_LEADER` 제거 · JWT role claim — 기존 결정 유지
+- 네비게이터 백오피스 접근 · JWT role claim — 기존 결정 유지. `CO_LEADER` 제거는 2026-10-09 완료
