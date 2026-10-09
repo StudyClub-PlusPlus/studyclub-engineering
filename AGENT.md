@@ -115,6 +115,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - **Story PRD** — 화면 기획은 `01-planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`01-planning/_registry/stories.md`](01-planning/_registry/stories.md)
 - **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.
+  목록의 공유 칸은 **`공유전`** 으로 둔다 — 팀에는 모아서 한 번에 알리고 그때 `공유됨 (MM-DD)` 로 바꾼다 ([§공유](docs/share/README.md#공유--모아서-한-번에)).
   PR 설명이나 코드 주석에만 있으면 머지되는 순간 안 읽힌다. 규칙이 굳으면 `docs/` 로 올린다.
   **쓸 때는 그 작업을 안 한 사람이 읽는다고 가정한다** — 맨 앞에 「미리 알아야 할 것」으로 용어·배경을
   풀고, 약어는 처음 나올 때 설명하고, 비유를 하나 넣는다. 기획자·디자이너·이번 주 합류자가 읽고
@@ -122,6 +123,11 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - **관객으로 경로를 가른다** — 백오피스가 부르는 API 는 `/api/admin` 아래, 파일은 `Admin*`.
   같은 일을 사용자 사이트에서도 하면 **사이트용 엔드포인트를 따로** 만든다 (권한 판정이 다르다).
   [`docs/backend-development-guide/api/endpoint-convention.md`](docs/backend-development-guide/api/endpoint-convention.md)
+- **판정은 서버가 내려준다** — 모집 중인지 · 정원이 찼는지 · 출석률 · 할 수 있는지(`can*`)처럼
+  정책으로 나오는 결론은 **엔티티 메서드 하나**가 계산하고 응답 필드로 준다. 프론트는 그 값을 그린다 —
+  날짜·인원 같은 재료로 다시 계산하지 않는다. 같은 판정을 쓰는 엔드포인트(사이트용·`/api/admin`·목록·상세)는
+  같은 메서드에 **같은 쿼리로 센 재료**를 넘긴다. 화면에 필요한 판정이 응답에 없으면 프론트에서 만들지 말고
+  스펙에 필드를 추가한다. [`docs/backend-development-guide/api/endpoint-convention.md` §판정은 서버가 내려준다](docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다)
 - **개발이 끝나면 스테이지까지 올린다** — PR 이 머지됐다고 끝이 아니다. `develop` 에 합쳐져야
   스테이지(`backend-develop` · `core-front-develop` · `back-office-front-develop`)가 배포되고,
   그때 처음 **기획·디자인이 눈으로 본다.** 내 브랜치에만 있으면 아무도 못 본 기능이다.
@@ -187,6 +193,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 9. **테스트를 같이 낸다** — 통합은 성공 1건 + 실패 코어(401/400/403/404), 단위는 규칙의 세부까지.
    `@DisplayName` 은 한글로
 10. **기존 API 활용** — 새 엔드포인트 전에 기존 것 확장으로 해결 가능한지 먼저 확인
+11. **판정은 응답에 싣는다** — 상태·가능 여부·비율은 엔티티 메서드로 계산해 필드로 준다. 같은 판정은 모든 엔드포인트가 같은 메서드·같은 재료 쿼리로
 
 ### Frontend (Next.js)
 
@@ -206,6 +213,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 2. **API 레이어** — `lib/api/` 에 모아두고 컴포넌트에서 직접 fetch 하지 않는다
 3. **Server Component 기본** — `'use client'` 는 인터랙션 필요한 말단에만
 4. **Mock 교체** — `// TODO(api)` 검색 → mock import 를 API 함수 호출로 교체
+5. **판정을 다시 하지 않는다** — `recruitStatus` 같은 응답 필드를 그린다. 날짜·숫자로 재계산 금지, 없으면 스펙에 요청 ([api-integration §판정](docs/frontend-development-guide/api-integration.md#판정을-다시-하지-않는다))
 
 ---
 
