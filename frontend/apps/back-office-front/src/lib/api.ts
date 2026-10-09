@@ -7,6 +7,7 @@ const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_UR
 
 type ApiStudy = {
   studyId: number;
+  programId: number;
   title: string;
   category: string;
   studyKind: string;
@@ -43,9 +44,9 @@ function mapStatus(status: StudyLifecycleStatus): StudyStatus {
 }
 
 const TIMEZONE_DISPLAY: Record<string, string> = {
-  KST: '한국 시간 (KST)',
-  PST: '태평양 시간 (PST)',
-  BOTH: '한국·태평양 시간',
+  KST: 'KST',
+  PST: 'PST',
+  BOTH: '동시 진행(KST·PST)',
 };
 
 function mapToStudy(api: ApiStudy): Study {
@@ -61,6 +62,8 @@ function mapToStudy(api: ApiStudy): Study {
     lifecycleStatus,
     format: 'online',
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
+    // 목록 API 는 프로그램 제목을 주지 않는다 — 목록은 P-ID 만 쓴다
+    program: { id: String(api.programId), title: { ko: '', en: '' }, kind: api.studyKind === 'CLUB' ? 'club' : 'study' },
     category,
     schedule: api.timezone ? { ko: TIMEZONE_DISPLAY[api.timezone] ?? api.timezone, en: api.timezone } : undefined,
     date: api.startAt?.slice(0, 10),

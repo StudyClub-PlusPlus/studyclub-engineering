@@ -42,6 +42,8 @@ class AdminStudyListIntegrationTest {
     private static final Long STUDY_ID = 9601L;
     private static final Long DRAFT_STUDY_ID = 9602L;
     private static final Long CLUB_STUDY_ID = 9603L;
+    // 클럽의 다음 기수 — CLUB_STUDY_ID 와 같은 프로그램에 붙는다
+    private static final Long NEXT_COHORT_ID = 9604L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -331,6 +333,30 @@ class AdminStudyListIntegrationTest {
         assertThat(draft).containsEntry("recruitStatus", null);
     }
 
+    @Test
+    @DisplayName("성공 - 같은 프로그램의 기수는 programId 가 같다 — P-ID 는 스터디 ID 가 아니다")
+    void cohortsShareProgramId() {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO STUDY (ID, PROGRAM_ID, TITLE, ONE_LINE_SUMMARY, CATEGORY, STATUS,"
+                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                NEXT_COHORT_ID,
+                CLUB_STUDY_ID,
+                "클럽 스터디 2기",
+                "한 줄 소개",
+                "LANGUAGE",
+                "DRAFT",
+                now,
+                now);
+
+        Map<?, ?> body = listStudies();
+
+        assertThat(itemById(body, NEXT_COHORT_ID))
+                .containsEntry("programId", CLUB_STUDY_ID.intValue());
+        assertThat(itemById(body, CLUB_STUDY_ID))
+                .containsEntry("programId", CLUB_STUDY_ID.intValue());
+    }
+
     private Map<?, ?> listStudies() {
         var response =
                 rest.exchange(
@@ -393,6 +419,7 @@ class AdminStudyListIntegrationTest {
     }
 
     private void cleanSeedRows() {
+        jdbcTemplate.update("DELETE FROM STUDY WHERE ID = ?", NEXT_COHORT_ID);
         jdbcTemplate.update(
                 "DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID IN (?, ?, ?)",
                 STUDY_ID,
