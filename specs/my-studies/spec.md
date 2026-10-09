@@ -100,7 +100,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].endAt | String (ISO 8601 UTC) | Y | | STUDY.END_AT |
 | items[].relation | String | N | 나와의 관계 — 탭·배지. 아래 표 | 계산: `participantStatus` + `startAt` |
 | items[].participantStatus | String | Y | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED`. 반 편성 전 담당 캡틴 카드는 null | STUDY_PARTICIPANT.STATUS |
-| items[].participantRole | String | Y | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼. 반 편성 전 담당 캡틴 카드는 null | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| items[].participantRole | String | Y | `MEMBER` / `LEADER`. 네비게이터 배지·스터디 관리 버튼. 반 편성 전 담당 캡틴 카드는 null | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(스터디를 생성한 캡틴)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.CREATED_BY = 나` |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |

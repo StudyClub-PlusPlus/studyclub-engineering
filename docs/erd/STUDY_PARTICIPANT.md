@@ -56,8 +56,9 @@ stateDiagram-v2
 | 값 | 뜻 |
 |---|---|
 | `MEMBER` | 기본 |
-| `LEADER` | 반장. 회차 시작·출석 체크·수정 권한 (디스코드 명령어) |
-| `CO_LEADER` | 부반장. LEADER 와 같은 권한 |
+| `LEADER` | 반장(네비게이터). 회차 시작·출석 체크·수정 권한 (디스코드 명령어) |
+
+> 부반장(`CO_LEADER`)은 두지 않는다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). 2026-10-09 V35 가 남아 있던 행을 `LEADER` 로 올리고 enum 에서 지웠다.
 
 ## 제약
 - `UNIQUE(ACCOUNT_ID, STUDY_CLASS_ID)`

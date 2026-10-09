@@ -150,4 +150,4 @@ erDiagram
 
 - ~~명단·담당 지정 API 경로~~ → [study-group/spec.md](../../../specs/study-group/spec.md) (2026-10-06)
 - 완주율 정의와 계산 위치
-- 공동 네비게이터(`CO_LEADER`)를 이 화면에서 구분할지
+- ~~공동 네비게이터(`CO_LEADER`)를 이 화면에서 구분할지~~ — 부반장을 없앴다 (POL-0001, 2026-10-09)

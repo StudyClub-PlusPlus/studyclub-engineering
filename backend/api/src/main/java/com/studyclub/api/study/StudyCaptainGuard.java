@@ -27,9 +27,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class StudyCaptainGuard {
 
-    // POL-0001 은 부반장(CO_LEADER)을 없애기로 했다. enum·데이터 정리는 별도 이슈라 아직 함께 본다
-    private static final List<ParticipantRole> NAVIGATOR_ROLES =
-            List.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER);
+    private static final List<ParticipantRole> NAVIGATOR_ROLES = List.of(ParticipantRole.LEADER);
 
     // 참여 중단(WITHDRAWN)만 뺀다 — 완주자도 지난 자료는 본다
     private static final List<ParticipantStatus> LINK_VIEWER_STATUSES =
@@ -76,8 +74,8 @@ public class StudyCaptainGuard {
     }
 
     /**
-     * 출석 등 authz-guards 분반 단위 가드 — 캡틴이거나 <b>그 분반</b> 네비게이터(LEADER/CO_LEADER). 분반이 스터디에 속하는지 먼저
-     * 확인하고, 타 분반 네비게이터는 막는다.
+     * 출석 등 authz-guards 분반 단위 가드 — 캡틴이거나 <b>그 분반</b> 네비게이터(LEADER). 분반이 스터디에 속하는지 먼저 확인하고, 타 분반
+     * 네비게이터는 막는다.
      */
     public void assertCaptainOrNavigatorOfGroup(
             Long accountId, Long studyId, Long studyGroupId, String message) {
