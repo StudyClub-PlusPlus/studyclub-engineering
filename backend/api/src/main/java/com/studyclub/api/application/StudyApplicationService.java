@@ -1,6 +1,7 @@
 package com.studyclub.api.application;
 
 import com.studyclub.api.application.StudyApplicationRequests.SubmitStudyApplicationRequest;
+import com.studyclub.api.ops.OpsAlertNotifier;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -41,6 +42,7 @@ public class StudyApplicationService {
     private final StudyApplicationRepository studyApplicationRepository;
     private final ObjectMapper objectMapper;
     private final StudyParticipantRepository studyParticipantRepository;
+    private final OpsAlertNotifier opsAlertNotifier;
 
     public StudyApplicationService(
             StudyRepository studyRepository,
@@ -48,13 +50,15 @@ public class StudyApplicationService {
             StudyApplicationRepository studyApplicationRepository,
             StudyParticipantRepository studyParticipantRepository,
             AccountRepository accountRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            OpsAlertNotifier opsAlertNotifier) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.accountRepository = accountRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.objectMapper = objectMapper;
         this.studyParticipantRepository = studyParticipantRepository;
+        this.opsAlertNotifier = opsAlertNotifier;
     }
 
     @Transactional
@@ -94,6 +98,11 @@ public class StudyApplicationService {
 
         StudyApplication saved = studyApplicationRepository.save(application);
         account.changeDiscordNickname(answer.discordNickname());
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("스터디", study.getTitle() + " (#" + studyId + ")");
+        fields.put("신청자", account.getNickname());
+        fields.put("신청 ID", String.valueOf(saved.getId()));
+        opsAlertNotifier.send(OpsAlertNotifier.Level.INFO, "스터디 신청 접수", fields);
         return saved.getId();
     }
 

@@ -2,6 +2,7 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AccountDtos.OnboardingRequest;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
+import com.studyclub.api.ops.OpsAlertNotifier;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -14,7 +15,9 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
@@ -49,16 +52,19 @@ public class AccountOnboardingService {
     private final AccountConsentRepository accountConsentRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final Validator validator;
+    private final OpsAlertNotifier opsAlertNotifier;
 
     public AccountOnboardingService(
             AccountRepository accountRepository,
             AccountConsentRepository accountConsentRepository,
             ApplicationEventPublisher applicationEventPublisher,
-            Validator validator) {
+            Validator validator,
+            OpsAlertNotifier opsAlertNotifier) {
         this.accountRepository = accountRepository;
         this.accountConsentRepository = accountConsentRepository;
         this.applicationEventPublisher = applicationEventPublisher;
         this.validator = validator;
+        this.opsAlertNotifier = opsAlertNotifier;
     }
 
     @Transactional
@@ -146,5 +152,10 @@ public class AccountOnboardingService {
                                 agreedAt,
                                 ConsentType.MARKETING.currentVersion())));
         applicationEventPublisher.publishEvent(new UserRegisteredEvent(account.getId()));
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("닉네임", account.getNickname());
+        fields.put("이메일", OpsAlertNotifier.maskEmail(account.getEmail()));
+        fields.put("마케팅 동의", request.marketingAgreed() ? "예" : "아니오");
+        opsAlertNotifier.send(OpsAlertNotifier.Level.INFO, "신규 가입", fields);
     }
 }

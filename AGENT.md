@@ -217,6 +217,15 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 ---
 
+## 운영자 알림 (ops alerts)
+
+운영자가 초반에 알아야 할 이벤트(가입·신청·승인·실패)는 ops 알림으로 보낸다. 새 기능을 만들면 ops 이벤트가 필요한지 판단하고 spec 표에 추가한다.
+
+- 계약·이벤트 표: [specs/ops-alerts/spec.md](./specs/ops-alerts/spec.md)
+- 보내는 곳은 `OpsAlertNotifier.send(...)` 하나다. 웹훅을 따로 부르지 않는다
+- 이메일은 `maskEmail` 로 가리고, 토큰·비밀번호·전화번호는 싣지 않는다
+
+
 ## 관련
 
 - 승격 원본(도그푸딩): 내부 레포의 bakg 앱
