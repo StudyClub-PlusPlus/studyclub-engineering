@@ -46,11 +46,14 @@ erDiagram
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
   ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
   ACCOUNT ||--o{ ACCOUNT_CONSENT : "동의"
+  ACCOUNT_LEAVE_REASON
+  ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
   STUDY_MEETING ||--o{ STUDY_ATTENDANCE : "출석"
   ACCOUNT ||--o{ STUDY_ATTENDANCE : ""
+  STUDY ||--o| STUDY_DISCORD_LINK : "디스코드 연결 (없을 수 있음)"
   STUDY ||--o{ STUDY_RECRUITMENT : "모집"
   STUDY_RECRUITMENT ||--o{ STUDY_APPLICATION : "신청서"
   ACCOUNT ||--o{ STUDY_APPLICATION : ""
@@ -75,6 +78,7 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   NOTIFICATION {
     bigint ID PK
     varchar EVENT_TYPE
@@ -138,6 +142,24 @@ erDiagram
     varchar  CONSENT_VERSION      "동의한 약관 버전"
   }
 
+  ACCOUNT_LEAVE_REASON {
+    bigint   ID                PK
+    varchar  REASON               "NO_DESIRED_STUDY / PARTICIPATION_BURDEN / OTHER. NULL 이면 사유 미선택. ACCOUNT 와 잇지 않는다"
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  ADMIN_AUDIT_LOG {
+    bigint   ID                PK
+    bigint   ACTOR_ACCOUNT_ID     "행위한 캡틴. FK 없음"
+    varchar  ACTION               "EMAIL_REVEAL / ROLE_CHANGE"
+    bigint   TARGET_ACCOUNT_ID    "대상 회원. FK 없음"
+    varchar  BEFORE_VALUE         "ROLE_CHANGE 의 변경 전 SYSTEM_ROLE"
+    varchar  AFTER_VALUE          "ROLE_CHANGE 의 변경 후 SYSTEM_ROLE"
+    datetime CREATED_AT           "행위 시각"
+    datetime UPDATED_AT
+  }
+
   STUDY_PROGRAM {
     bigint   ID                PK
     varchar  TITLE
@@ -169,6 +191,7 @@ erDiagram
     time     START_AT              "분반 정규 시작 시각"
     varchar  TIMEZONE              "IANA"
     int      CAPACITY              "분반 정원"
+    varchar  RULES                 "스터디 규칙 (500자)"
   }
 
   STUDY_MEETING {
@@ -177,6 +200,11 @@ erDiagram
     datetime SCHEDULED_AT          "예정 시각 (UTC)"
     datetime START_AT              "실제 시작"
     datetime END_AT                "실제 종료"
+    varchar  TITLE                 "표시용 제목 (50자)"
+    varchar  SERIES_ID             "반복 묶음 ID (UUID)"
+    varchar  MEETING_TYPE          "KICKOFF · REGULAR"
+    bigint   PRESENTER1_PARTICIPANT_ID "발표자1 → STUDY_PARTICIPANT"
+    bigint   PRESENTER2_PARTICIPANT_ID "발표자2 → STUDY_PARTICIPANT"
   }
 
   STUDY_RECRUITMENT {
@@ -201,9 +229,10 @@ erDiagram
     bigint   ACCOUNT_ID            FK
     bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조"
     bigint   STUDY_ID              "→ STUDY 참조 (비정규화)"
-    varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED"
-    varchar  PARTICIPANT_ROLE      "MEMBER / LEADER / CO_LEADER"
+    varchar  STATUS                "ACTIVE / PAUSED / WITHDRAWN / COMPLETED / DELETED"
+    varchar  PARTICIPANT_ROLE      "MEMBER / LEADER"
     datetime JOINED_AT             "편입 시각"
+    datetime LEFT_AT               "참여 종료 시각. WITHDRAWN·DELETED 일 때만"
   }
 
   STUDY_ATTENDANCE {
@@ -211,8 +240,15 @@ erDiagram
     bigint   ACCOUNT_ID            FK
     bigint   STUDY_ID              "→ STUDY 참조 (비정규화 — 기수별 집계용)"
     bigint   STUDY_GROUP_ID        "→ STUDY_GROUP 참조 (비정규화 — 분반별 집계용)"
-    bigint   STUDY_MEETING_ID   FK
+    bigint   STUDY_MEETING_ID      "→ STUDY_MEETING 참조 (FK 없음 — 회차 삭제 시 앱이 지운다)"
     varchar  STATUS                "PRESENT / LATE / EXCUSED / ABSENT"
+  }
+
+  STUDY_DISCORD_LINK {
+    bigint   ID                 PK
+    bigint   STUDY_ID           FK "→ STUDY"
+    varchar  DISCORD_STUDY_ID      "카테고리 snowflake (문자열)"
+    varchar  DISCORD_ROLE_ID       "역할 snowflake (문자열)"
   }
 
   STUDY_REVIEW {
@@ -258,6 +294,7 @@ erDiagram
   STUDY_PROGRAM         ||--o{ STUDY_REVIEW         : "전체 후기 조회 (비정규화)"
 
   STUDY                 ||--o{ STUDY_GROUP           : "분반"
+  STUDY                 ||--o| STUDY_DISCORD_LINK    : "디스코드 연결 (없을 수 있음)"
   STUDY                 ||--o{ STUDY_RECRUITMENT     : "모집"
   STUDY_RECRUITMENT     ||--o{ STUDY_APPLICATION     : "신청서"
   STUDY                 ||--o{ STUDY_REVIEW          : "후기"
@@ -281,6 +318,8 @@ erDiagram
 | 회원  | [ACCOUNT](./ACCOUNT.md)                                    | 회원 프로필                 | `SYSTEM_ROLE`                        |
 | 회원  | [ACCOUNT_IDENTITY](./ACCOUNT_IDENTITY.md)                               | 소셜 로그인 수단 (구글 → 애플 확장) | —                                    |
 | 회원  | [ACCOUNT_CONSENT](./ACCOUNT_CONSENT.md)                                  | 회원 동의                 | —                                    |
+| 회원  | [ACCOUNT_LEAVE_REASON](./ACCOUNT_LEAVE_REASON.md)                        | 탈퇴 사유 집계 (계정과 잇지 않음) | —                              |
+| 회원  | [ADMIN_AUDIT_LOG](./ADMIN_AUDIT_LOG.md)                                  | 운영 감사 로그 — 이메일 보기·권한 변경 (ID 만) | —                              |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
 | 스터디 | [STUDY_PROGRAM](./STUDY_PROGRAM.md)                     | 스터디/클럽 정체성             | `STUDY_KIND`                                    |
 | 스터디 | [STUDY](./STUDY.md)                                     | 기수/회차 — 실제 운영 인스턴스     | `STATUS` |
@@ -290,6 +329,7 @@ erDiagram
 | 모집  | [STUDY_APPLICATION](./STUDY_APPLICATION.md)             | 신청서 (폼 스냅샷 + 답변)       | `STATUS`                             |
 | 모집  | [STUDY_PARTICIPANT](./STUDY_PARTICIPANT.md)             | 명부 — 분반에 소속된 사람        | `STATUS`, `PARTICIPANT_ROLE`         |
 | 운영  | [STUDY_ATTENDANCE](./STUDY_ATTENDANCE.md)                           | 회차별 출석                 | `STATUS`                             |
+| 운영  | [STUDY_DISCORD_LINK](./STUDY_DISCORD_LINK.md)           | 스터디 ↔ 디스코드 카테고리·역할 ID  | —                                    |
 | 반응  | [STUDY_REVIEW](./STUDY_REVIEW.md)                       | 후기                     | —                                    |
 | 반응  | [STUDY_BOOKMARK](./STUDY_BOOKMARK.md)                   | 북마크                    | —                                    |
 | 제안  | [STUDY_PROPOSAL](./STUDY_PROPOSAL.md)                   | "이런 스터디 열어주세요"         | `STATUS`                             |

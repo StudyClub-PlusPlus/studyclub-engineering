@@ -1,5 +1,7 @@
 # 구글 로그인 + 최소 Account (zapp 패턴 이식)
 
+> Story PRD: [크루는 Google 계정으로 로그인하고 온보딩을 마칠 수 있다.](../../01-planning/stories/crew-google-login-onboarding/PRD.md)
+
 ## WHAT
 
 core-front·back-office-front 의 `/login` 에 **구글 소셜 로그인**을 붙이고, **Spring 백엔드가 Account·JWT 의
@@ -22,7 +24,7 @@ docker compose up
 
 - 시크릿은 **PUBLIC 레포 금지** → `.env`(gitignore) 로 주입, `.env.example`(커밋)에 로컬 더미만.
   `application.yml` 은 `${DB_PASSWORD}` 등 env 참조만, 평문 비밀번호/토큰 0.
-- 프론트는 단일 컨테이너에서 `npm run dev`(turbo)로 두 앱 동시 기동 — install race 회피. per-app
+- 프론트는 단일 컨테이너에서 `pnpm run dev`(turbo)로 두 앱 동시 기동 — install race 회피. per-app
   스토리지 prefix 는 **코드 상수**(core=`sc_`, bo=`bo_`)로 두어 공유 env 충돌 회피.
 
 ### 인증 플로우 (zapp 이식)

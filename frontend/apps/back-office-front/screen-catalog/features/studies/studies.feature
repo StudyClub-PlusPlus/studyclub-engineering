@@ -7,6 +7,21 @@ Feature: 스터디 관리
     Given 스터디 목록 페이지에 접속한다
     Then 스터디 카드 목록이 보인다
 
-  Scenario: 스터디 크루 관리 — ai-paper-study
-    Given "ai-paper-study" 스터디 상세 페이지에 접속한다
-    Then 크루 목록과 출석 테이블이 보인다
+  Scenario: 스터디 상세 — 신청자 탭 (study_id:1 ai-paper-study)
+    Given /studies/1 에 접속한다
+    When "신청자" 탭을 클릭한다
+    Then 신청자 탭에 크루 목록이 보인다 (승인 대기 없음 — 신청한 사람은 곧 크루)
+
+  Scenario: 스터디 상세 — 신청 폼 탭
+    Given /studies/1?tab=form 에 접속한다
+    Then 신청 폼의 기본 질문과 추가 질문이 보인다
+
+  Scenario: 스터디 상세 — 출석 탭 (study_id:1 ai-paper-study)
+    Given /studies/1 에 접속한다
+    When "출석" 탭을 클릭한다
+    Then 출석부 테이블이 보인다
+
+  Scenario: 스터디 상세 — 정보 탭 (study_id:1 ai-paper-study)
+    Given /studies/1 에 접속한다
+    When "정보" 탭을 클릭한다
+    Then 스터디 메타 정보가 보인다

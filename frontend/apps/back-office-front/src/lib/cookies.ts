@@ -19,5 +19,10 @@ export function accessCookie(maxAge: number) {
   };
 }
 
+export function refreshCookie(maxAge: number) {
+  return { ...accessCookie(maxAge), path: '/api/auth' };
+}
+
 /** 지우기 — 심을 때와 같은 path·domain 이어야 한다. */
 export const clearAccess = accessCookie(0);
+export const clearRefresh = refreshCookie(0);

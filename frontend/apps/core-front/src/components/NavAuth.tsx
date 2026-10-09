@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
-import { getUser, logout, type SessionUser } from '@/lib/auth';
+import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
@@ -23,6 +23,10 @@ export function NavAuth({ locale }: { locale: Locale }) {
   useEffect(() => {
     // 미리보기 세션은 정의가 바뀌었을 수 있어 맞춰서 읽는다
     setUser(syncPreview());
+    // 마이페이지에서 닉네임을 고치면 헤더의 이름도 바로 따라간다
+    const onUserChanged = () => setUser(getUser());
+    window.addEventListener(USER_CHANGED_EVENT, onUserChanged);
+    return () => window.removeEventListener(USER_CHANGED_EVENT, onUserChanged);
   }, []);
 
   useEffect(() => {
@@ -84,17 +88,17 @@ export function NavAuth({ locale }: { locale: Locale }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={user.picture} alt='' className='h-8 w-8 rounded-full' />
         ) : (
-          <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-accent-soft)] text-xs font-bold text-[var(--color-accent)]'>
-            {(user.name ?? user.email).slice(0, 1).toUpperCase()}
+          <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-brand-subtle)] text-xs font-bold text-[var(--color-brand)]'>
+            {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
           </span>
         )}
-        <span className='hidden max-w-[8rem] truncate text-sm font-semibold sm:block'>{user.name ?? user.email}</span>
-        <ChevronDown size={14} className='text-[var(--color-fg-subtle)]' />
+        <span className='hidden max-w-[8rem] truncate text-sm font-semibold sm:block'>{user.nickname ?? user.email}</span>
+        <ChevronDown size={14} className='text-[var(--color-fg-muted)]' />
       </button>
 
       {open && (
         <div className='absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] py-1 shadow-lg'>
-          <div className='truncate px-4 py-2 text-xs text-[var(--color-fg-subtle)]'>{user.email}</div>
+          <div className='truncate px-4 py-2 text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
           <Link
             href={`/${locale}/my`}
             onClick={() => setOpen(false)}

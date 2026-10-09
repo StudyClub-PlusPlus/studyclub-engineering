@@ -1,11 +1,23 @@
 import Link from 'next/link';
 
 import { ArrowRight, BookOpen, Calendar, Compass, MessageCircle } from 'lucide-react';
+import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
 import { RegionClocks } from '@/components/RegionClocks';
 import { getSite, getOperators, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { pageMetadata } from '@/lib/seo';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: Locale }> }): Promise<Metadata> {
+  const { locale } = await params;
+  return pageMetadata({
+    locale,
+    path: '/about',
+    title: m('about.title', locale),
+    description: m('seo.about_description', locale),
+  });
+}
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -74,10 +86,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       {/* 캡틴이란? */}
       <div
         className='mt-6 rounded-2xl border p-8'
-        style={{ background: 'var(--color-accent-soft)', borderColor: 'var(--color-accent-soft)' }}
+        style={{ background: 'var(--color-brand-subtle)', borderColor: 'var(--color-brand-subtle)' }}
       >
         <h2 className='flex items-center gap-2 text-xl font-bold tracking-tight'>
-          <Compass size={20} style={{ color: 'var(--color-accent)' }} />
+          <Compass size={20} style={{ color: 'var(--color-brand)' }} />
           {m('about.captain_title', locale)}
         </h2>
         <p className='mt-3 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
@@ -86,7 +98,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         <ul className='mt-5 grid gap-2.5 sm:grid-cols-2'>
           {captainPoints.map((p, i) => (
             <li key={i} className='flex items-start gap-2 text-[15px] text-[var(--color-fg)]'>
-              <span className='mt-2 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-accent)' }} />
+              <span className='mt-2 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-brand)' }} />
               {t(p, locale)}
             </li>
           ))}
@@ -101,7 +113,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
             {operators.map((op) => (
               <div key={op.id} className='card p-6'>
                 <div className='text-base font-bold'>{t(op.name, locale)}</div>
-                <div className='mt-0.5 text-sm font-medium text-[var(--color-accent)]'>{t(op.role, locale)}</div>
+                <div className='mt-0.5 text-sm font-medium text-[var(--color-brand)]'>{t(op.role, locale)}</div>
                 <p className='mt-2.5 text-sm leading-relaxed text-[var(--color-fg-muted)]'>{t(op.bio, locale)}</p>
               </div>
             ))}
@@ -122,7 +134,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           const body = (
             <>
               <span className='flex items-center gap-2.5 font-semibold'>
-                <c.icon size={18} style={{ color: 'var(--color-accent)' }} />
+                <c.icon size={18} style={{ color: 'var(--color-brand)' }} />
                 {c.label}
               </span>
               <ArrowRight size={16} className='text-[var(--color-fg-faint)]' />

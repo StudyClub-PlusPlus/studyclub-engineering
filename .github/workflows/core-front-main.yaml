@@ -14,12 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # setup-node 의 cache: pnpm 이 pnpm 실행 파일을 찾으므로 먼저 설치한다.
+      # 버전은 frontend/package.json 의 packageManager 를 따른다 (루트엔 package.json 이 없다).
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
         working-directory: frontend
       - run: npx turbo run lint typecheck --filter=core-front
         working-directory: frontend
@@ -53,6 +58,7 @@ jobs:
           build-args: |
             NODE_ENV=production
             COMMIT_HASH=${{ github.sha }}
+            NEXT_PUBLIC_SITE_URL=https://studyclub-plusplus.com
             NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
             NEXT_PUBLIC_OAUTH_REDIRECT_URI=${{ secrets.NEXT_PUBLIC_OAUTH_REDIRECT_URI }}

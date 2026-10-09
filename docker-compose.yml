@@ -11,7 +11,7 @@
 # 시크릿/설정은 .env 로 주입 (PUBLIC 레포 — .env 는 gitignore, .env.example 참고).
 #
 # ⚠️ 프론트 포트 4700/4701 은 바꾸지 않는다 — GCP 에 등록된 구글 콜백(http://localhost:4700/api/auth/callback)과
-#    백엔드 CORS 기본값이 이 번호에 묶여 있다. 로컬 npm run dev 와 동시에 띄우면 포트가 겹치니 한쪽만 쓴다.
+#    백엔드 CORS 기본값이 이 번호에 묶여 있다. 로컬 pnpm run dev 와 동시에 띄우면 포트가 겹치니 한쪽만 쓴다.
 #
 # ⚠️ name 명시 필수 — 디렉토리 basename 이 'engineering' 이라 다른 서비스(place 등)와
 #    compose 프로젝트명이 충돌한다. 'studyclub' 로 고정해 격리.
@@ -62,8 +62,17 @@ services:
       MAIL_NOTIFY_FROM_ADDRESS: ${MAIL_NOTIFY_FROM_ADDRESS}
       MAIL_NOTIFY_ACCESS_KEY_ID: ${MAIL_NOTIFY_ACCESS_KEY_ID}
       MAIL_NOTIFY_SECRET_ACCESS_KEY: ${MAIL_NOTIFY_SECRET_ACCESS_KEY}
+      # 봇 ↔ 백엔드 양방향 서비스 키 (같은 값). 비어 있으면 백엔드는 봇을 부르지 않는다 (specs/discord-study-link)
+      DISCORD_API_KEY: ${DISCORD_API_KEY:-}
+      DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
     ports:
       - "${API_PORT:-28080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
 
   # 단일 컨테이너에서 turbo 로 두 앱 동시 dev (install race 회피). per-app 스토리지
   # prefix(sc_/bo_)는 코드 상수라 공유 env 여도 무방.
@@ -72,15 +81,18 @@ services:
     container_name: studyclub-frontend
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "npm install && npm run dev"
+    # node 이미지엔 pnpm 이 없다 → corepack 으로 켠다. 볼륨에 npm 시절 node_modules 가 남아 있으면
+    # pnpm 이 재설치 확인을 묻는데(TTY 없음 → 실패) confirmModulesPurge=false 로 묻지 않고 진행.
+    command: sh -c "corepack enable && pnpm install --config.confirmModulesPurge=false && pnpm run dev"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     environment:
       # macOS 도커 bind-mount 는 inotify 이벤트가 컨테이너로 전파 안 됨 → 폴링으로 HMR 활성화
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
       # 서버측(Next route handler)이 컨테이너 내부에서 백엔드에 닿는 URL.
-      # .env 의 API_BASE_URL(로컬 npm 용 localhost:28080)은 컨테이너 안에선 안 닿아서 여기서 고정한다.
+      # .env 의 API_BASE_URL(로컬 pnpm 용 localhost:28080)은 컨테이너 안에선 안 닿아서 여기서 고정한다.
       API_BASE_URL: http://api:8080
       # 브라우저용 (호스트에서 접근)
       NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-28080}
@@ -106,14 +118,22 @@ services:
       - studyclub-frontend-next-core:/app/apps/core-front/.next
       - studyclub-frontend-next-bo:/app/apps/back-office-front/.next
       - studyclub-frontend-next-playground:/app/apps/playground/.next
+      # .next 는 컨테이너 전용 볼륨으로 뺀다 — 호스트와 공유하면 컨테이너 경로(/app/...)가 박힌 캐시가 남아
+      # 로컬 pnpm run dev 가 Turbopack panic(Read-only file system)으로 죽는다.
 
   discord:
     image: studyclub-discord
     container_name: studyclub-discord
     build: ./discord
     env_file: ./.env
+    environment:
+      # 컨테이너 안에서는 호스트 포트가 아니라 내부 주소다 (frontend 와 같은 이유).
+      API_BASE_URL: http://api:8080
     ports:
       - "${DISCORD_PORT:-24800}:4800"
+    # create-study 의 스터디 이름 예약(SQLite, /app/data/discord.sqlite3)이 컨테이너 재생성 후에도 남도록.
+    volumes:
+      - studyclub-discord-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4800/api/v1/health')"]
@@ -127,6 +147,7 @@ volumes:
   studyclub-frontend-next-core:
   studyclub-frontend-next-bo:
   studyclub-frontend-next-playground:
+  studyclub-discord-data:
 
 # ─── stage / prod 는 compose 로 띄우지 않는다 ─────────────────────────────────────
 # 운영·stage 는 k8s 에 배포된다 (이미지 빌드·배포는 .github/workflows, 클러스터 설정은 인프라 레포).

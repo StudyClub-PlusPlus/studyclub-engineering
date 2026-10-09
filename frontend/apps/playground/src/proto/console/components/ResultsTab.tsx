@@ -36,7 +36,7 @@ function answerText(value: string | string[] | undefined): string {
 export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
   const [view, setView] = useState<ViewMode>('summary');
   const questions = study.applicationForm ?? [];
-  const respondents = crew.filter((c) => c.status !== 'rejected' && c.answers);
+  const respondents = crew.filter((c) => c.answers);
 
   if (questions.length === 0) {
     return (

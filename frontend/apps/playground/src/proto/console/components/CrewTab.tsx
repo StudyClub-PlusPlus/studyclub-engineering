@@ -24,6 +24,9 @@ import { Plus } from 'lucide-react';
  * 처리하지 않은 사람이 대기열에 쌓이고, 그 사이 그 사람은 자기가 들어왔는지 알 수 없다.
  *
  * 여기서 하는 일은 셋이다 — **반을 만들고, 크루를 반에 넣고, 이 스터디를 맡을 사람을 정한다.**
+ *
+ * **담당 캡틴도 반을 받는다.** 스터디를 만든 캡틴은 신청서를 내지 않아 크루 목록에 없다. 그래서 명단
+ * 맨 위에 따로 한 줄을 두고, 반을 지정하면 그때 명부에 들어간다. 모집 정원에는 세지 않는다 (POL-0001).
  */
 
 function regionLabel(key: Crew['region']) {
@@ -47,6 +50,9 @@ function Completion({ crew }: { crew: Crew }) {
 
 export function CrewTab({
   crew,
+  captain,
+  captainClass,
+  onAssignCaptain,
   capacity,
   classes,
   assign,
@@ -57,6 +63,11 @@ export function CrewTab({
   onToggleNavigator,
 }: {
   crew: Crew[];
+  /** 담당 캡틴 — 이 스터디를 만든 캡틴(STUDY.CREATED_BY). 없으면 줄을 그리지 않는다. */
+  captain?: { name: string; email: string };
+  /** 담당 캡틴의 반. 반 편성 전이면 undefined — 아직 명부에 없다. */
+  captainClass: string | undefined;
+  onAssignCaptain: (classId: string) => void;
   capacity: number;
   classes: StudyClass[];
   assign: Record<string, string>;
@@ -67,7 +78,7 @@ export function CrewTab({
   onRemoveClass: (classId: string) => void;
   onAssign: (crewId: string, classId: string) => void;
 }) {
-  const active = crew.filter((c) => c.status === 'active');
+  const active = crew;
   const [newFrom, setNewFrom] = useState<string | null>(null);
   const [editing, setEditing] = useState<StudyClass | undefined>();
   const tally = tallyAvailability(active);
@@ -118,8 +129,8 @@ export function CrewTab({
                           style={{
                             background:
                               n === 0
-                                ? 'var(--color-surface)'
-                                : `color-mix(in oklab, var(--color-brand) ${Math.round((n / most) * 60)}%, var(--color-surface))`,
+                                ? 'var(--color-bg)'
+                                : `color-mix(in oklab, var(--color-brand) ${Math.round((n / most) * 60)}%, var(--color-bg))`,
                           }}
                         >
                           {n === 0 ? '' : n}
@@ -212,6 +223,23 @@ export function CrewTab({
               </tr>
             </thead>
             <tbody>
+              {captain && (
+                <tr data-anno='class:3-1'>
+                  <td className='whitespace-nowrap font-semibold'>{captain.name}</td>
+                  <td className='whitespace-nowrap text-fg-secondary'>{captain.email}</td>
+                  <td className='whitespace-nowrap text-fg-muted'>—</td>
+                  <td className='whitespace-nowrap text-fg-muted'>—</td>
+                  <td className='whitespace-nowrap'>
+                    {/* TODO(api): PUT /api/admin/studies/{studyId}/captain/group — 명부 행이 없으면 만든다 */}
+                    <CaptainClassPick classes={classes} value={captainClass} onChange={onAssignCaptain} />
+                  </td>
+                  <td className='whitespace-nowrap'>
+                    <Badge tone='captain' className='px-2 py-0.5 text-xs font-semibold'>
+                      캡틴
+                    </Badge>
+                  </td>
+                </tr>
+              )}
               {active.map((c) => (
                 <tr key={c.id}>
                   <td className='whitespace-nowrap font-semibold'>{c.name}</td>
@@ -283,6 +311,41 @@ function NavigatorPick({ on, onToggle }: { on: boolean; onToggle: () => void }) 
     <Button size='sm' variant='ghost' onClick={onToggle}>
       네비게이터로
     </Button>
+  );
+}
+
+/**
+ * 담당 캡틴의 반 고르기. 크루와 달리 처음에는 반이 없다 — 신청서 없이 반 편성 때 처음 들어오기 때문이다.
+ * 그래서 반이 하나여도 「반 미지정」에서 고르게 한다.
+ */
+function CaptainClassPick({
+  classes,
+  value,
+  onChange,
+}: {
+  classes: StudyClass[];
+  value: string | undefined;
+  onChange: (id: string) => void;
+}) {
+  if (classes.length === 0) return <span className='text-xs text-fg-muted'>반 없음</span>;
+  return (
+    <select
+      aria-label='캡틴의 반'
+      value={value ?? ''}
+      onChange={(ev) => onChange(ev.target.value)}
+      className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+    >
+      {value === undefined && (
+        <option value='' disabled>
+          반 미지정
+        </option>
+      )}
+      {classes.map((c) => (
+        <option key={c.id} value={c.id}>
+          {classLabel(c)}
+        </option>
+      ))}
+    </select>
   );
 }
 

@@ -1,5 +1,7 @@
 # 회원가입·온보딩 흐름
 
+> Story PRD: [Google 로그인·온보딩](../../01-planning/stories/crew-google-login-onboarding/PRD.md) · [프로필 수정](../../01-planning/stories/crew-edit-profile/PRD.md)
+
 소셜 로그인 **첫 성공이 곧 가입**이다. 로그인 직후 ACCOUNT·ACCOUNT_IDENTITY 를 만들고, 온보딩(필수 약관 + 닉네임 + 타임존)을 마쳐야 가입 완료. 완료 시점에 `UserRegisteredEvent` 를 **ACCOUNT 당 1회** 발행하고 웰컴메일은 알림팀이 받아서 보낸다.
 
 MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있게만 해 두고 구현하지 않는다 — [애플 붙일 때](#애플-붙일-때).
@@ -145,7 +147,7 @@ ACCOUNT_IDENTITY
 
 ### `GET /auth/me`
 
-응답은 DB에 저장된 정보만 담는 `AccountView`를 사용한다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다.
+응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
 
 ### `GET /api/nicknames/availability`
 
@@ -210,7 +212,6 @@ ACCOUNT_IDENTITY
 
 - `ErrorCode` enum에 `SOCIAL_LOGIN_EMAIL_REQUIRED`(400), `ACCOUNT_LINK_REQUIRED`(409), `ONBOARDING_REQUIRED`(403) 추가.
 - 백엔드 가이드의 에러코드 표에 위 세 코드 반영.
-- 백엔드 `AuthResponse.user`와 프론트엔드의 `data.user` 사용 부분을 각각 `account`와 `data.account`로 함께 변경.
 - `JwtAuthFilter`는 JWT `sub`의 `ACCOUNT.ID`를 현재 로그인한 사용자값(principal)으로 등록하고, `/auth/me`도 이메일이 아닌 `ACCOUNT.ID`로 조회하도록 변경.
 
 ## 미완료 사용자가 할 수 있는 것

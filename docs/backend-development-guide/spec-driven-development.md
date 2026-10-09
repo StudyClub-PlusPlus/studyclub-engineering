@@ -27,11 +27,15 @@
 ## 디렉터리 구조
 
 ```
-planning/
-├── README.md                        # Story PRD 인덱스
+01-planning/
+├── _project.md                      # 기획 메타 — Actor·폴더 규칙
+├── _registry/
+│   ├── stories.md                   # Story 레지스트리 (ST-###) — PRD 인덱스
+│   └── policies/POL-####-*.md       # 여러 Story 에 걸치는 정책
 └── stories/
-    └── {story-slug}/
-        └── PRD.md                   # 화면·동작·권한 (기획 정본). 한 스토리 = 파일 하나
+    └── {story-name}/
+        ├── PRD.md                   # 화면·동작·권한 (기획 정본). 한 스토리 = 파일 하나
+        └── assets/                  # 화면 캡처
 
 specs/
 ├── README.md                        # 스펙 인덱스 — 전체 도메인·기능 목록
@@ -58,14 +62,14 @@ specs/
 - **파일 이름은 고정.** `spec.md`, `plan.md`, `tasks.md` — 어디서든 같은 이름
 - **contracts/ 는 선택.** 응답 JSON 예시가 길어지면 분리. 짧으면 spec.md 안에 인라인
 - **ERD 와 1:1 이 아니다.** ERD 는 테이블 단위, 스펙은 API 도메인 단위. study/ 스펙이 STUDY + STUDY_COHORT + STUDY_CLASS 를 포함할 수 있다
-- **Story PRD 는 `planning/stories/{slug}/PRD.md` 에만 만든다.** `specs/{도메인}/` 안에 `PRD.md` 를 두지 않는다. 레포 밖(`studyclubplusplus/planning/` 등)에 쓰지 않는다
+- **Story PRD 는 `01-planning/stories/{story-name}/PRD.md` 에만 만든다.** `specs/{도메인}/` 안에 `PRD.md` 를 두지 않는다. 레포 밖(`studyclubplusplus/planning/` 등)에 쓰지 않는다
 
 ## 워크플로우
 
 spec-kit 의 specify → plan → tasks → implement → converge 를 이 프로젝트 규모에 맞게 줄였다.
 
 ```
-0. Story PRD               ← planning/stories/{slug}/PRD.md
+0. Story PRD               ← 01-planning/stories/{story-name}/PRD.md
    ↓
 1. /spec {도메인}          ← 스펙 초안 생성 (spec.md). 헤더에 PRD 링크
    ↓
@@ -97,12 +101,12 @@ spec-kit 의 specify → plan → tasks → implement → converge 를 이 프�
 한 유저스토리의 화면·동작·권한·빈 상태·오류. API shape 는 여기에 쓰지 않고 `spec.md` 로 보낸다.
 
 ```
-planning/stories/{story-slug}/PRD.md
+01-planning/stories/{story-name}/PRD.md
 ```
 
-- **slug** 는 kebab-case. 폴더명에 `ST-###` 를 넣지 않는다
-- 새 PRD 는 이 경로에만 만든다. 인덱스 [`planning/README.md`](../../planning/README.md) 표에 한 줄 추가
-- `spec.md` 헤더 `Story PRD:` 에 상대 링크로 건다 (`../../planning/stories/{slug}/PRD.md`)
+- **폴더 이름(`{story-name}`)** 은 kebab-case. 폴더명에 `ST-###` 를 넣지 않는다
+- 새 PRD 는 이 경로에만 만든다. 인덱스 [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 표에 한 줄 추가
+- `spec.md` 헤더 `Story PRD:` 에 상대 링크로 건다 (`../../01-planning/stories/{story-name}/PRD.md`)
 
 ### spec.md — API 스펙 (정본)
 
@@ -113,7 +117,7 @@ planning/stories/{story-slug}/PRD.md
 
 > ERD: [STUDY](../../docs/erd/STUDY.md), [STUDY_COHORT](../../docs/erd/STUDY_COHORT.md)
 > Story PRD:
-> - [{Actor}로서, …할 수 있다](../../planning/stories/{story-slug}/PRD.md)
+> - [{Actor}로서, …할 수 있다](../../01-planning/stories/{story-name}/PRD.md)
 
 ## 엔드포인트 목록
 
@@ -343,7 +347,7 @@ contracts/
 ## 스펙과 코드의 관계
 
 ```
-planning/stories/{slug}/PRD.md   ← 화면·동작 (기획 정본)
+01-planning/stories/{story-name}/PRD.md   ← 화면·동작 (기획 정본)
        ↓
 specs/{도메인}/spec.md           ← API 계약 (정본)
        ↕ 사람이 맞춘다
@@ -361,7 +365,7 @@ springdoc OpenAPI                ← 실제 코드가 내보내는 것 (구현 �
 | [ddd-guide.md](ddd-guide.md) | 애그리거트·엔티티 설계 | plan.md 의 애그리거트 매핑이 여기를 따른다 |
 | [endpoint-convention.md](api/endpoint-convention.md) | URL·메서드·응답 포맷 규칙 | spec.md 가 이 규칙을 따라야 함 |
 | [common-guide.md](../common-guide.md) | 기존 API 활용 원칙 | 새 엔드포인트 추가 전 기존 것 확인 |
-| [planning/README.md](../../planning/README.md) | Story PRD 위치 | `planning/stories/{slug}/PRD.md`. spec.md 헤더에 링크 |
+| [01-planning/_registry/stories.md](../../01-planning/_registry/stories.md) | Story PRD 위치 | `01-planning/stories/{story-name}/PRD.md`. spec.md 헤더에 링크 |
 | [ERD](../erd/README.md) | 테이블·컬럼·상태 전이 | spec.md 필드의 소스 컬럼이 ERD 에서 유도 가능해야 함 |
 | [testing-guide.md](testing-guide.md) | 테스트 작성 | spec.md 의 에러 응답 = 통합 테스트 실패 케이스 |
 
@@ -369,8 +373,8 @@ springdoc OpenAPI                ← 실제 코드가 내보내는 것 (구현 �
 
 ```bash
 # 새 Story PRD (화면 기획)
-mkdir -p planning/stories/{story-slug}
-# PRD.md 를 그 폴더에 작성. planning/README.md 표에 한 줄 추가
+mkdir -p 01-planning/stories/{story-name}
+# PRD.md 를 그 폴더에 작성. 01-planning/_registry/stories.md 표에 한 줄 추가
 
 # 새 도메인 스펙 시작
 mkdir -p specs/{도메인}

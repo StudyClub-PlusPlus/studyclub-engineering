@@ -8,6 +8,7 @@ export const userKeys = {
   list: () => [...userKeys.all, 'list'] as const,
 };
 
+// TODO(api): GET /accounts 또는 GET /api/users — 유저 목록 조회
 export function useUsers() {
   return useQuery({
     queryKey: userKeys.list(),

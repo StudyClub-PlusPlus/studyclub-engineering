@@ -4,7 +4,6 @@ import { studyQuery, toStudy } from './api';
 
 const apiStudy = {
   studyId: 7,
-  slug: 'daily-leetcode-7',
   title: '데일리 리트코드',
   oneLineSummary: '매일 알고리즘 문제 풀이',
   category: 'ALGORITHM',
@@ -15,7 +14,6 @@ const apiStudy = {
   status: 'OPEN' as const,
   phase: 'RECRUITING' as const,
   recruitStatus: 'RECRUITING' as const,
-  deliveryFormat: 'ONLINE' as const,
   capacity: 30,
   currentApplicants: 12,
   recruitDeadlineAt: '2026-09-30T15:00:00Z',

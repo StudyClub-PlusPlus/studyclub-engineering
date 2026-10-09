@@ -163,7 +163,7 @@ class AccountOnboardingIntegrationTest {
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("name", nickname);
+        assertThat(response.getBody()).containsEntry("nickname", nickname);
         assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
         assertThat(response.getBody().get("onboardingCompletedAt")).isNotNull();
 
@@ -184,7 +184,17 @@ class AccountOnboardingIntegrationTest {
         assertThat(
                         eventRecorder.received().stream()
                                 .filter(e -> e.accountId().equals(account.getId())))
-                .hasSize(1);
+                .singleElement()
+                .satisfies(
+                        e -> {
+                            // 공통 계약 메타 (specs/domain-events/spec.md)
+                            assertThat(e.eventId()).isNotNull();
+                            assertThat(e.occurredAt()).isNotNull();
+                            assertThat(e.name()).isEqualTo("user.registered");
+                            assertThat(e.aggregateType()).isEqualTo("account");
+                            assertThat(e.aggregateId()).isEqualTo(account.getId().toString());
+                            assertThat(e.actorId()).isEqualTo(account.getId().toString());
+                        });
     }
 
     @Test
@@ -414,7 +424,7 @@ class AccountOnboardingIntegrationTest {
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("name", originalNickname);
+        assertThat(response.getBody()).containsEntry("nickname", originalNickname);
 
         assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
     }
@@ -448,7 +458,7 @@ class AccountOnboardingIntegrationTest {
                         Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("name", originalNickname);
+        assertThat(response.getBody()).containsEntry("nickname", originalNickname);
         assertThat(accountConsentRepository.findByAccountId(account.getId())).hasSize(3);
         assertThat(
                         eventRecorder.received().stream()
@@ -488,7 +498,7 @@ class AccountOnboardingIntegrationTest {
             assertThat(responses)
                     .allSatisfy(r -> assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK));
             assertThat(responses)
-                    .allSatisfy(r -> assertThat(r.getBody()).containsEntry("name", nickname));
+                    .allSatisfy(r -> assertThat(r.getBody()).containsEntry("nickname", nickname));
         } finally {
             pool.shutdown();
         }

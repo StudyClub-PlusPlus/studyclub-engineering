@@ -44,7 +44,7 @@ function BackOfficeLoginForm() {
           }
           throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
         }
-        if (data.user) setUser(data.user);
+        if (data.account) setUser(data.account);
         router.replace(next);
       } catch (e) {
         setError(e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.');
@@ -97,7 +97,7 @@ function BackOfficeLoginForm() {
           type='button'
           onClick={startLogin}
           disabled={loading}
-          className='mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-[#1f1f1f] shadow-sm transition hover:bg-neutral-50 disabled:opacity-60'
+          className='mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-bg px-4 py-3 text-sm font-semibold text-fg shadow-sm transition hover:bg-surface-1 disabled:opacity-60'
         >
           <svg width='18' height='18' viewBox='0 0 24 24' aria-hidden>
             <path

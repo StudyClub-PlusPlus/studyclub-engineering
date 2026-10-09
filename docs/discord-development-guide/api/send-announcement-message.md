@@ -4,7 +4,7 @@
 모두에게 알림을 울린다.** [`send-alert-message`](send-alert-message.md) 와 모양이 같고, **다른 곳만**
 [아래](#send-alert-message-와-다른-점)에 모아 적는다.
 
-> ⚠️ **아직 구현 전이다.** 이 문서는 구현할 계약이다.
+> ✅ **구현됨** — `discord/app/api/routes/channels.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
 > **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다.
 
@@ -28,13 +28,13 @@ POST /api/v1/channels/announcement/msg
 
 **captain 역할을 가진 멤버만 호출할 수 있다.** [`create-study`](create-study.md#요청) ·
 [`assign-role`](assign-role.md#요청) 과 같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를 조회해
-captain 역할 보유 여부를 확인하고, 없으면 **403** 이다. navigator 는 호출할 수 없다
-([`send-alert-message`](send-alert-message.md#요청) 와 다르다).
+captain 역할 보유 여부를 확인하고, 없으면 **403** 이다. navigator 도, 시스템(백엔드)도 호출할 수 없다 —
+길드 전체에 울리는 공지는 사람이 책임지고 보낸다 ([시스템 호출](common-header.md#시스템-호출)).
 
 captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는** 것이다. 이 엔드포인트는 어느 것도
 만들지 않고, 찾지 못하면 보내지 말고 실패한다. 둘 다 **설정값으로 ID 를 받는다**
 (예: `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_ANNOUNCEMENT_CHANNEL_ID`) — 이름으로 찾지 않는다.
-`DISCORD_BOT_OUTPUT_CHANNEL` 과 같은 방식이다.
+`DISCORD_BULLETIN_CHANNEL_ID` 과 같은 방식이다.
 
 ```jsonc
 { "msg": "알고리즘 스터디 2기 모집을 시작합니다. 신청은 이번 주 금요일까지입니다." }
@@ -99,8 +99,8 @@ captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는
 | **400** | `@everyone` · `@here` 를 지우고 나니 비었거나 공백만 남음 | 위와 같음 |
 | **400** | `msg` 가 1990자 초과 | 위와 같음. 잘라서 보내지 않는다 — 공지 뒷부분이 조용히 사라진다. 길이는 **가공 전** 값으로 잰다 |
 | **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
-| **404** | announcement 채널을 봇이 찾지 못함, 또는 그 ID 가 메시지를 올릴 수 있는 채널(텍스트 · 공지 채널)이 아님 | 위와 같은 **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨. `POST /api/v1/ping` 의 채널 404 와 같은 결 |
-| **409** | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. `POST /api/v1/ping` 이 `DISCORD_BOT_OUTPUT_CHANNEL` 미설정을 409 로 돌려주는 것과 같은 결. |
+| **404** | announcement 채널을 봇이 찾지 못함, 또는 그 ID 가 메시지를 올릴 수 있는 채널(텍스트 · 공지 채널)이 아님 | 위와 같은 **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨 |
+| **409** | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
 | **502** | Discord 가 전송을 거부 | 봇 권한 부족(announcement 채널의 `Send Messages`), 그 밖의 Discord 5xx |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
@@ -166,13 +166,13 @@ alert 보다 중복의 비용이 크다.
 | | [send-alert-message](send-alert-message.md) | send-announcement-message |
 |------|------|------|
 | 경로 | `/channels/alert/msg` | `/channels/announcement/msg` |
-| 호출 권한 | captain **또는** navigator | captain 만 |
+| 호출 권한 | captain **또는** 시스템(백엔드) | captain 만 — 시스템도 안 된다 |
 | 발신자 줄 | `발신: <@id>` 를 맨 위에 붙임 | **붙이지 않음** |
 | 맨 위 줄 | 발신자 줄 | `@everyone` |
 | 알림 | `AllowedMentions.none()` — 아무것도 안 울림 | `@everyone` 만 울림 |
 | `msg` 상한 | 1900자 | 1990자 |
 | 추가 권한 | 없음 | `Mention Everyone` (없으면 공지는 올리고 alert 채널에 알림) |
-| 설정값 | `DISCORD_ALERT_CHANNEL_ID` · captain · navigator 역할 | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` · captain 역할 · (권한 알림용) `DISCORD_ALERT_CHANNEL_ID` |
+| 설정값 | `DISCORD_ALERT_CHANNEL_ID` · captain 역할 · `DISCORD_BOT_ID` | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` · captain 역할 · (권한 알림용) `DISCORD_ALERT_CHANNEL_ID` |
 
 ## 미정 사항
 

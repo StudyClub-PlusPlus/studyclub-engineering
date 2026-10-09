@@ -3,7 +3,6 @@ package com.studyclub.api.application;
 import com.studyclub.api.application.AdminApplicationResponses.ApplicationQuestionResponse;
 import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationResponse;
 import com.studyclub.api.application.AdminApplicationResponses.StudyApplicationsResponse;
-import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.application.StudyApplicationRepository;
@@ -30,11 +29,13 @@ import tools.jackson.databind.ObjectMapper;
 @Transactional(readOnly = true)
 public class AdminApplicationQueryService {
 
+    /** 신청자가 탈퇴해 계정이 없을 때 신청자명 자리에 표시한다 (specs/user-leave/spec.md). */
+    private static final String WITHDRAWN_APPLICANT_NAME = "탈퇴한 회원";
+
     private final StudyRepository studyRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyParticipantRepository studyParticipantRepository;
-    private final StudyCaptainGuard studyCaptainGuard;
     private final ObjectMapper objectMapper;
 
     public AdminApplicationQueryService(
@@ -42,13 +43,11 @@ public class AdminApplicationQueryService {
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyApplicationRepository studyApplicationRepository,
             StudyParticipantRepository studyParticipantRepository,
-            StudyCaptainGuard studyCaptainGuard,
             ObjectMapper objectMapper) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyParticipantRepository = studyParticipantRepository;
-        this.studyCaptainGuard = studyCaptainGuard;
         this.objectMapper = objectMapper;
     }
 
@@ -58,7 +57,6 @@ public class AdminApplicationQueryService {
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 결과를 볼 권한이 없습니다.");
 
         StudyRecruitment recruitment = resolveRecruitment(studyId, requestedRecruitmentId);
         if (recruitment == null) {
@@ -121,7 +119,7 @@ public class AdminApplicationQueryService {
         return new StudyApplicationResponse(
                 application.id(),
                 application.recruitmentId(),
-                application.nickname(),
+                application.nickname() != null ? application.nickname() : WITHDRAWN_APPLICANT_NAME,
                 answer.discordNickname(),
                 application.email(),
                 application.createdAt(),

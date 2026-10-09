@@ -1,13 +1,40 @@
 'use client';
 
-// QueryClientProvider 는 클라이언트 컴포넌트여야 한다. layout.tsx(서버)는 이 파일만 끼운다.
-import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
+import { useEffect, useState, type ReactNode } from 'react';
 
+import { mockHandlerGroups } from '@studyclub/mock/msw';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { getQueryClient } from '@/lib/query-client';
 
+const MSWProvider = dynamic(
+  () => import('@studyclub/mock/msw').then((m) => m.MSWProvider),
+  { ssr: false },
+);
+
+const loadWorker = () => import('msw/browser').then(({ setupWorker }) => setupWorker());
+
+function MswQueryInvalidator() {
+  useEffect(() => {
+    const handler = () => {
+      getQueryClient().invalidateQueries();
+    };
+    window.addEventListener('msw:config-change', handler);
+    return () => window.removeEventListener('msw:config-change', handler);
+  }, []);
+  return null;
+}
+
 export function Providers({ children }: { children: ReactNode }) {
-  const queryClient = getQueryClient();
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  const [queryClient] = useState(() => getQueryClient());
+
+  return (
+    <MSWProvider mockHandlerGroups={mockHandlerGroups} loadWorker={loadWorker} fallback={null}>
+      <QueryClientProvider client={queryClient}>
+        <MswQueryInvalidator />
+        {children}
+      </QueryClientProvider>
+    </MSWProvider>
+  );
 }

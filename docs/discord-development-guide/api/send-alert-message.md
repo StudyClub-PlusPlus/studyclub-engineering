@@ -2,8 +2,9 @@
 
 **alert 채널**에 메시지 하나를 올린다. 운영진(captain)이 보고 조치해야 할 일을 알리는 용도다 —
 예를 들어 navigator 가 스터디를 완료 처리했을 때 captain 이 후속 작업을 하도록 알린다.
+**그 알림을 올리는 건 navigator 가 아니라 백엔드다** ([시스템 호출](common-header.md#시스템-호출)).
 
-> ⚠️ **아직 구현 전이다.** 이 문서는 구현할 계약이다.
+> ✅ **구현됨** — `discord/app/api/routes/channels.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
 > **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다.
 
@@ -24,14 +25,18 @@ POST /api/v1/channels/alert/msg
 
 헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다 (로그 추적용 — [중복 전송과 재시도](#중복-전송과-재시도) 참고).
 
-**captain 역할 또는 navigator 역할을 가진 멤버만 호출할 수 있다.** 봇이 `X-Discord-User-ID` 로 길드 멤버를
-조회해 둘 중 **하나라도** 갖고 있는지 확인하고, 둘 다 없으면 **403** 이다.
-[`create-study`](create-study.md#요청) · [`assign-role`](assign-role.md#요청) 이 captain 만 받는 것과 다르다.
+**captain 역할을 가진 멤버, 또는 시스템(백엔드)만 호출할 수 있다.** 봇이 `X-Discord-User-ID` 로 길드
+멤버를 조회해 captain 역할 보유 여부를 확인하고, 없으면 **403** 이다
+([`create-study`](create-study.md#요청) · [`assign-role`](assign-role.md#요청) 과 같은 규칙이다).
 
-captain 역할 · navigator 역할 · alert 채널은 모두 길드에 **이미 존재하는** 것이다. 이 엔드포인트는
-어느 것도 만들지 않고, 찾지 못하면 보내지 말고 실패한다. 셋 다 **설정값으로 ID 를 받는다**
-(예: `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` · `DISCORD_ALERT_CHANNEL_ID`) —
-이름으로 찾지 않는다. `DISCORD_BOT_OUTPUT_CHANNEL` 과 같은 방식이다.
+**navigator 는 호출할 수 없다.** navigator 가 손으로 alert 를 올릴 일은 없다 — navigator 의 행동에서
+비롯된 알림은 백엔드가 `DISCORD_BOT_ID` 를 싣고 올린다. 그 요청은 멤버 조회도 역할 검사도 거치지 않는다
+([시스템 호출](common-header.md#시스템-호출)).
+
+captain 역할과 alert 채널은 둘 다 길드에 **이미 존재하는** 것이다. 이 엔드포인트는 어느 것도 만들지 않고,
+찾지 못하면 보내지 말고 실패한다. 둘 다 **설정값으로 ID 를 받는다**
+(`DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_ALERT_CHANNEL_ID`) — 이름으로 찾지 않는다.
+`DISCORD_BULLETIN_CHANNEL_ID` 과 같은 방식이다. **`DISCORD_NAVIGATOR_ROLE_ID` 는 여기서 읽지 않는다.**
 
 ```jsonc
 { "msg": "알고리즘 스터디 1기가 완료 처리되었습니다. 역할 정리가 필요합니다." }
@@ -49,7 +54,7 @@ captain 역할 · navigator 역할 · alert 채널은 모두 길드에 **이미 
    더 이상 남지 않을 때까지 반복한다.
 2. **지운 결과가 비었거나 공백만 남으면 400** 이다. 보내지 않는다.
 3. **맨 위에 발신자 줄을 붙인다** — `X-Discord-User-ID` 의 멘션 `<@id>` 다. 봇이 올리는 메시지라
-   붙이지 않으면 채널에서 누가 보냈는지 알 수 없다.
+   붙이지 않으면 채널에서 누가 보냈는지 알 수 없다. 시스템 호출이면 봇 ID 가 들어가 봇 이름으로 보인다.
 
 ```
 발신: <@327394882193883136>
@@ -87,7 +92,7 @@ captain 역할 · navigator 역할 · alert 채널은 모두 길드에 **이미 
 | **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 — 이 엔드포인트는 역할 확인 때문에 필수다 |
 | **400** | `Idempotency-Key` 없음 |
 | **401** | `X-API-Key` 없음 또는 불일치 |
-| **403** | 요청자에게 captain 역할도 navigator 역할도 없음 |
+| **403** | 요청자에게 captain 역할이 없고, 시스템 호출도 아님 (navigator 포함) |
 | **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
 
 ### 이 엔드포인트에서 나는 것
@@ -97,9 +102,9 @@ captain 역할 · navigator 역할 · alert 채널은 모두 길드에 **이미 
 | **400** | `msg` 누락 · 문자열이 아님 · 빈 문자열 · 공백만 있음 | 요청자 잘못. 그대로 재시도해도 실패한다. 빈 알림을 204 로 흘려보내지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
 | **400** | `@everyone` · `@here` 를 지우고 나니 비었거나 공백만 남음 | 위와 같음 |
 | **400** | `msg` 가 1900자 초과 | 위와 같음. 잘라서 보내지 않는다 — 알림의 뒷부분이 조용히 사라지면 조치가 빠진다. 길이는 **가공 전** 값으로 잰다 |
-| **404** | captain 역할 또는 navigator 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. **요청자가 다른 쪽 역할을 갖고 있어도 실패한다** — 설정이 깨진 채로 권한 검사를 반쪽만 하지 않는다. `detail` 로 다른 404 와 구분한다 |
-| **404** | alert 채널을 봇이 찾지 못함, 또는 그 ID 가 텍스트 채널이 아님 | 위와 같은 **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨. `POST /api/v1/ping` 의 채널 404 와 같은 결 |
-| **409** | `DISCORD_ALERT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. `POST /api/v1/ping` 이 `DISCORD_BOT_OUTPUT_CHANNEL` 미설정을 409 로 돌려주는 것과 같은 결. |
+| **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다. **시스템 호출은 역할을 보지 않으므로 이 404 도 없다** |
+| **404** | alert 채널을 봇이 찾지 못함, 또는 그 ID 가 텍스트 채널이 아님 | 위와 같은 **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨 |
+| **409** | `DISCORD_ALERT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
 | **502** | Discord 가 전송을 거부 | 봇 권한 부족(alert 채널의 `Send Messages`), 그 밖의 Discord 5xx |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
@@ -133,6 +138,6 @@ Discord 호출은 **한 번**(메시지 전송)뿐이라 부분 적용 상태는
 
 정해야 이 계약이 확정되는 것들.
 
-- **발신자 줄 문구** — `발신:` 으로 둘지 다른 표기로 둘지. 바꿔도 길이가 크게 늘지 않으면 1900자 상한은 그대로 둔다.
+- **발신자 줄 문구** — 지금은 `발신:` 으로 구현돼 있다. 바꿔도 길이가 크게 늘지 않으면 1900자 상한은 그대로 둔다.
 - **에러 바디 모양** — 여기는 FastAPI 의 `{"detail": ...}`, 백엔드는 `{errorCode, errorMessage}` 다.
   맞출지 말지는 별도 결정 사항.

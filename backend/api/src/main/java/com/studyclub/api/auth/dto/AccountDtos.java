@@ -2,13 +2,16 @@ package com.studyclub.api.auth.dto;
 
 import com.studyclub.api.auth.validation.ValidNickname;
 import com.studyclub.api.auth.validation.ValidTimeZone;
+import com.studyclub.domain.account.AccountConsent;
+import com.studyclub.domain.account.LeaveReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
 
 /**
- * ACCOUNT 리소스(POST/GET /accounts/**) 요청 DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 달라 분리한다 — 여긴
+ * ACCOUNT 리소스(/accounts/**, /api/me) DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 달라 분리한다 — 여긴
  * "가입 완료 이후의 계정 관리" 쪽이다.
  */
 public final class AccountDtos {
@@ -30,4 +33,35 @@ public final class AccountDtos {
             @NotNull(message = "마케팅 수신 동의 여부는 필수입니다") Boolean marketingAgreed,
             @NotBlank(message = "닉네임은 필수입니다") @ValidNickname String nickname,
             @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {}
+
+    /**
+     * 프로필 수정 요청 (PATCH /api/me). 닉네임·타임존 둘 다 필수 — 부분 갱신이 없다. 온보딩과 같은 검증기를 써야 두 화면이 같은 닉네임을 두고 다른 말을
+     * 하지 않는다.
+     */
+    public record UpdateProfileRequest(
+            @NotBlank(message = "닉네임은 필수입니다") @ValidNickname String nickname,
+            @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {}
+
+    /** 마케팅 수신 동의 변경 요청 (PUT /api/me/marketing-consent). false 도 정상값이라 누락만 막는다. */
+    public record UpdateMarketingConsentRequest(
+            @NotNull(message = "마케팅 수신 동의 여부는 필수입니다") Boolean agreed) {}
+
+    /** 마케팅 수신 동의 현재 값. {@code agreedAt} 은 지금 값으로 정한 시각이고, 동의 행이 없으면 null 이다. */
+    public record MarketingConsentView(boolean agreed, Instant agreedAt) {
+
+        public static MarketingConsentView from(AccountConsent consent) {
+            return new MarketingConsentView(consent.isAgreed(), consent.getAgreedAt());
+        }
+
+        public static MarketingConsentView notAgreed() {
+            return new MarketingConsentView(false, null);
+        }
+    }
+
+    /**
+     * 회원 탈퇴 요청 (DELETE /api/me). {@code reason} 은 선택 — 정해진 값 셋({@link LeaveReason}) 중 하나만 받는다. 자유
+     * 문장은 집계가 안 되므로 애초에 받지 않는다 — 정해진 값 밖의 문자열은 역직렬화 단계에서 {@code HttpMessageNotReadableException} 으로
+     * 걸러져 {@code GlobalExceptionHandler} 가 400 INVALID_INPUT 으로 응답한다.
+     */
+    public record LeaveRequest(LeaveReason reason) {}
 }

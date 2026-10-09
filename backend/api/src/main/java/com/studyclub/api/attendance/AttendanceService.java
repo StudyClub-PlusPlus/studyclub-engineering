@@ -6,6 +6,7 @@ import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.attendance.StudyAttendance;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
+import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.StudyGroupRepository;
@@ -24,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class AttendanceService {
 
     private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
+    // WITHDRAWN(중도 하차)은 계정이 멀쩡히 남아 있어 닉네임이 정상 조회된다. 이 기본값은 계정 조회
+    // 자체가 실패할 때만 쓰인다 — 즉 DELETED(회원 탈퇴)인 참가자.
+    private static final String DELETED_ACCOUNT_NICKNAME = "탈퇴한 회원";
 
     private final StudyRepository studyRepository;
     private final StudyGroupRepository studyGroupRepository;
@@ -48,7 +52,8 @@ public class AttendanceService {
     }
 
     @Transactional(readOnly = true)
-    public AttendanceResponse getAttendances(Long studyId, Long studyGroupId, Long meetingId) {
+    public AttendanceResponse getAttendances(
+            Long studyId, Long studyGroupId, Long meetingId, boolean includeWithdrawn) {
         var study =
                 studyRepository
                         .findById(studyId)
@@ -66,8 +71,14 @@ public class AttendanceService {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
         }
 
-        List<StudyParticipant> participants =
+        List<StudyParticipant> allParticipants =
                 studyParticipantRepository.findByStudyGroupId(studyGroupId);
+        List<StudyParticipant> participants =
+                includeWithdrawn
+                        ? allParticipants
+                        : allParticipants.stream()
+                                .filter(p -> p.getStatus() == ParticipantStatus.ACTIVE)
+                                .toList();
         List<StudyMeeting> allMeetings =
                 studyMeetingRepository.findByStudyGroupIdOrderByScheduledAt(studyGroupId);
 
@@ -135,7 +146,7 @@ public class AttendanceService {
             participantAttendances.add(
                     new AttendanceResponse.ParticipantAttendance(
                             p.getId(),
-                            nicknames.getOrDefault(p.getAccountId(), ""),
+                            nicknames.getOrDefault(p.getAccountId(), DELETED_ACCOUNT_NICKNAME),
                             participantAttendancePerMeeting,
                             AttendanceRateCalculator.rate(numeratorDenominatorPair)));
         }
@@ -154,7 +165,7 @@ public class AttendanceService {
                 new AttendanceResponse.StudySummary(
                         study.getId(),
                         study.getTitle(),
-                        participants.size(),
+                        allParticipants.size(),
                         allMeetings.size(),
                         avgRate),
                 meetingSummaries,

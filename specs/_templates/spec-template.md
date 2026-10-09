@@ -5,7 +5,7 @@
 > 상태: 스펙작성중
 >
 > Story PRD:
-> - [{Actor}로서, …할 수 있다](../../planning/stories/{story-slug}/PRD.md)
+> - [{Actor}로서, …할 수 있다](../../01-planning/stories/{story-name}/PRD.md)
 
 ## 엔드포인트 목록
 
@@ -53,6 +53,8 @@
 | id | Long | N | | {TABLE}.ID |
 
 > **소스**: 이 필드가 어느 테이블·컬럼에서 오는지. 계산 필드는 `계산: {로직}`
+>
+> **판정 필드** (모집 중인가·찼나·할 수 있나·비율): 화면이 보여주면 응답에 넣는다. 소스는 `계산: {엔티티 메서드}` — 프론트가 재료로 다시 계산하게 두지 않는다 ([판정은 서버가 내려준다](../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다))
 
 ### Error Responses
 

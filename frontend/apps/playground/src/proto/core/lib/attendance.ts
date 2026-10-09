@@ -1,5 +1,6 @@
 'use client';
 
+import { isKickoff, withAdded, zonedInstant, zoneOfStudy, type ProtoMeeting } from '@core/lib/meetings';
 import {
   attendancePoint,
   demoMyAttendance,
@@ -110,9 +111,17 @@ const CHECKIN_OPEN_BEFORE_MIN = 30;
 
 /** 예정 창 (SCHEDULED_AT). 실제 STARTS_AT/ENDS_AT는 반장이 열 때. 프로토는 예정이 곧 창이다. */
 export function meetingWindow(study: Study, meeting: StudyMeeting) {
-  const { h, m } = startHour(study);
-  const start = new Date(`${meeting.date}T00:00:00`);
-  start.setHours(h, m, 0, 0);
+  const proto = meeting as ProtoMeeting;
+  let start: Date;
+  if (proto.scheduledAt) {
+    // 저장값(UTC) 그대로가 시작 순간이다.
+    start = new Date(proto.scheduledAt);
+  } else {
+    // mock 회차는 일정 문구의 시각을 스터디 기준 시간대의 벽시계로 본다.
+    const { h, m } = startHour(study);
+    const hhmm = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    start = zonedInstant(meeting.date, proto.time ?? hhmm, zoneOfStudy(study.id));
+  }
   const end = new Date(start.getTime() + DURATION_MIN * 60_000);
   return { start, end };
 }
@@ -137,6 +146,8 @@ export function resolveStatus(
   now = new Date(),
 ): MyStatus | undefined {
   const saved = stored[meeting.id];
+  // 킥오프는 출석률에 넣지 않는다 — 기록이 없으면 결석이 아니라 빈 칸이다.
+  if (isKickoff(meeting) && saved === undefined) return undefined;
   const started = now.getTime() >= meetingWindow(study, meeting).start.getTime();
   const raw: MyStatus = saved ?? 'absent';
   if (raw === 'absent' && !started) return undefined;
@@ -172,16 +183,19 @@ export function cancelLeave(study: Study, meeting: StudyMeeting, now = new Date(
 
 /** 오늘 회차. 없으면 undefined — 오늘 모이지 않는 스터디다. */
 export function todayMeeting(study: Study, today = new Date().toISOString().slice(0, 10)): StudyMeeting | undefined {
-  return getStudyCrew(study).meetings.find((m) => m.date === today);
+  return meetingsOf(study).find((m) => m.date === today);
 }
 
-export function meetingsOf(study: Study): StudyMeeting[] {
-  return getStudyCrew(study).meetings;
+/** 스터디 회차 + 네비게이터가 추가한 회차. 번호는 날짜순. */
+export function meetingsOf(study: Study): ProtoMeeting[] {
+  return withAdded(getStudyCrew(study).meetings, study.id);
 }
 
-/** 내 출석률(%). (present + late × 0.5) / 대상 회차. 대상은 시작된 회차 중 휴가가 아닌 것. */
+/** 내 출석률(%). (present + late × 0.5) / 대상 회차. 대상은 시작된 정규 회차 중 휴가가 아닌 것 — 킥오프는 뺀다. */
 export function myRate(study: Study, stored: Record<string, MyStatus>, now = new Date()): number | undefined {
-  const started = meetingsOf(study).filter((m) => now.getTime() >= meetingWindow(study, m).start.getTime());
+  const started = meetingsOf(study).filter(
+    (m) => !isKickoff(m) && now.getTime() >= meetingWindow(study, m).start.getTime(),
+  );
   if (started.length === 0) return undefined;
   const target = started.filter((m) => (stored[m.id] ?? 'absent') !== 'excused');
   if (target.length === 0) return undefined;

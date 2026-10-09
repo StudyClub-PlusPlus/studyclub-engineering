@@ -1,5 +1,7 @@
 package com.studyclub.domain.account;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -70,6 +72,9 @@ public class Account extends BaseEntity {
     @Column(name = "DISCORD_HANDLE", length = 64)
     private String discordHandle;
 
+    @Column(name = "DISCORD_NICKNAME", length = 100)
+    private String discordNickname;
+
     /** NULL 이면 온보딩 미완료. */
     @Column(name = "ONBOARDING_COMPLETED_AT")
     private Instant onboardingCompletedAt;
@@ -131,6 +136,19 @@ public class Account extends BaseEntity {
         return discordHandle;
     }
 
+    public String getDiscordNickname() {
+        return discordNickname;
+    }
+
+    public void changeDiscordNickname(String discordNickname) {
+        if (discordNickname == null
+                || discordNickname.isBlank()
+                || discordNickname.length() > 100) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "discordNickname: invalid");
+        }
+        this.discordNickname = discordNickname;
+    }
+
     public Instant getOnboardingCompletedAt() {
         return onboardingCompletedAt;
     }
@@ -154,6 +172,15 @@ public class Account extends BaseEntity {
         this.timeZone = timeZone;
         this.onboardingCompletedAt = now;
         return true;
+    }
+
+    /**
+     * 프로필 수정 — 닉네임·타임존을 한 번에 바꾼다. setter 둘로 나누지 않는다 — 닉네임은 중복 검사를 거친 값만 들어와야 하는데 setter 를 열어두면 검사
+     * 없이 바꾸는 경로가 생긴다. 형식 검증은 {@link #completeOnboarding} 과 같이 호출자(DTO)가 끝낸 값을 넘긴다고 가정한다.
+     */
+    public void updateProfile(String nickname, String timeZone) {
+        this.nickname = nickname;
+        this.timeZone = timeZone;
     }
 
     public void setProfileImgUrl(String profileImgUrl) {

@@ -6,7 +6,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
@@ -95,7 +94,9 @@ class StudyListIntegrationTest {
         save(draft, now.plus(5, ChronoUnit.DAYS));
 
         // 같은 프로그램의 두 기수 — 3기는 진행 중, 4기는 모집 중. 둘 다 목록에 나와야 한다
-        var program = studyProgramRepo.save(StudyProgram.builder().title("영어 회화 클럽").build());
+        var program =
+                studyProgramRepo.save(
+                        StudyProgram.builder().title("영어 회화 클럽").studyKind(StudyKind.CLUB).build());
         var season3 =
                 seasonOf(program.getId(), "영어 회화 3기", StudyCategory.LANGUAGE)
                         .startAt(now.minus(3, ChronoUnit.DAYS))
@@ -113,29 +114,23 @@ class StudyListIntegrationTest {
     private Study.StudyBuilder seasonOf(Long programId, String title, StudyCategory category) {
         return Study.builder()
                 .programId(programId)
-                .slug("season-" + title.hashCode())
                 .title(title)
                 .oneLineSummary("기수별로 따로 모집한다")
                 .category(category)
-                .studyKind(StudyKind.CLUB)
-                .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                .status(StudyStatus.OPEN)
-                .capacity(30);
+                .status(StudyStatus.OPEN);
     }
 
     private Study.StudyBuilder study(
             String title, String summary, StudyCategory category, StudyStatus status) {
-        var program = studyProgramRepo.save(StudyProgram.builder().title(title).build());
+        var program =
+                studyProgramRepo.save(
+                        StudyProgram.builder().title(title).studyKind(StudyKind.STUDY).build());
         return Study.builder()
                 .programId(program.getId())
-                .slug("study-" + program.getId())
                 .title(title)
                 .oneLineSummary(summary)
                 .category(category)
-                .studyKind(StudyKind.STUDY)
-                .studyDeliveryFormat(DeliveryFormat.ONLINE)
-                .status(status)
-                .capacity(30);
+                .status(status);
     }
 
     private void save(Study study, Instant deadline) {
@@ -253,7 +248,7 @@ class StudyListIntegrationTest {
                 .containsEntry("studyKind", "STUDY")
                 .containsEntry("phase", "CLOSED")
                 .containsEntry("timezone", "BOTH")
-                .containsKeys("slug", "thumbnailUrl", "schedule", "endAt", "closingSoon");
+                .containsKeys("thumbnailUrl", "schedule", "endAt", "closingSoon");
     }
 
     @Test

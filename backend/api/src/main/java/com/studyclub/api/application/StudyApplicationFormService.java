@@ -7,6 +7,7 @@ import com.studyclub.api.application.StudyApplicationFormResponses.StudyApplicat
 import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.application.ApplicationFormQuestionType;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
@@ -54,10 +55,9 @@ public class StudyApplicationFormService {
         this.objectMapper = objectMapper;
     }
 
-    /** 백오피스 조회 — 캡틴만. 판정만 다르고 본문은 사용자 사이트 조회와 같다. */
+    /** 백오피스 조회 — 권한은 {@code @RequireAdmin}. 본문은 사용자 사이트 조회와 같다. */
     @Transactional(readOnly = true)
     public StudyApplicationFormResponse getFormForBackOffice(Long studyId, Long accountId) {
-        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 폼을 볼 권한이 없습니다.");
         return getForm(studyId, accountId);
     }
 
@@ -75,19 +75,17 @@ public class StudyApplicationFormService {
         return toResponse(study);
     }
 
-    /** 사용자 사이트에서 저장한다 — 캡틴이거나 그 스터디의 네비게이터 (POL-0001). */
+    /** 사용자 사이트 저장 — 권한은 {@code @RequireCaptainOrNavigator}. */
     @Transactional
     public StudyApplicationFormResponse replaceFormFromSite(
             Long studyId, Long accountId, StudyApplicationFormRequest request) {
-        studyCaptainGuard.assertCaptainOrNavigator(accountId, studyId, "이 스터디의 신청 폼을 고칠 권한이 없습니다.");
         return replace(studyId, request);
     }
 
-    /** 백오피스에서 저장한다 — 캡틴만. 네비게이터는 백오피스에 들어오지 못한다 (POL-0001). */
+    /** 백오피스 저장 — 권한은 {@code @RequireAdmin}. */
     @Transactional
     public StudyApplicationFormResponse replaceFormFromBackOffice(
             Long studyId, Long accountId, StudyApplicationFormRequest request) {
-        studyCaptainGuard.assertCaptain(accountId, "백오피스에서 신청 폼을 고칠 권한이 없습니다.");
         return replace(studyId, request);
     }
 
@@ -197,10 +195,10 @@ public class StudyApplicationFormService {
         if (allowOther == null) {
             return null;
         }
-        if (!type.supportsOther() && allowOther) {
+        if (!type.supportsOther()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "allowOther를 사용할 수 없는 질문 타입입니다.");
         }
-        return type.supportsOther() ? allowOther : null;
+        return allowOther;
     }
 
     private String normalizeOptionalSingleLine(String value, int max, String field) {
@@ -277,6 +275,23 @@ public class StudyApplicationFormService {
         } catch (IllegalArgumentException | JacksonException e) {
             log.error("저장된 신청 폼을 읽지 못했다 — 원문 길이={}", raw.length(), e);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    /**
+     * applicationForm JSON 에 questions 가 1개 이상 있으면 {@code true}. null·빈 값·0개 질문·파싱 불가 모두 {@code
+     * false}.
+     */
+    public boolean hasAtLeastOneQuestion(String applicationForm) {
+        if (applicationForm == null || applicationForm.isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode root = jsonNodeOf(applicationForm);
+            JsonNode questions = root.path("questions");
+            return questions.isArray() && !questions.isEmpty();
+        } catch (JacksonException e) {
+            return false;
         }
     }
 

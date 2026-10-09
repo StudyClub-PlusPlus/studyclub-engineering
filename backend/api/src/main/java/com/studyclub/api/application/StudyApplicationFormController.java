@@ -2,6 +2,8 @@ package com.studyclub.api.application;
 
 import com.studyclub.api.application.StudyApplicationFormRequests.StudyApplicationFormRequest;
 import com.studyclub.api.application.StudyApplicationFormResponses.StudyApplicationFormResponse;
+import com.studyclub.api.auth.security.RequireCaptainOrNavigator;
+import com.studyclub.api.auth.security.RequireOnboarding;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,8 +40,8 @@ public class StudyApplicationFormController {
             summary = "스터디 신청 폼 조회",
             description =
                     """
-                    OPEN이고 숨김이 아닌 스터디는 공개로 조회합니다.
-                    DRAFT 또는 숨김 스터디는 해당 스터디 LEADER/CO_LEADER 또는 ADMIN만 조회할 수 있습니다.
+                    DRAFT가 아닌 스터디는 공개로 조회합니다.
+                    DRAFT 스터디는 해당 스터디 LEADER 또는 ADMIN만 조회할 수 있습니다.
                     플랫폼 기본 문항(디스코드 별명, 참여 가능 요일, 일정 확인)은 questions에 포함하지 않습니다.""")
     @GetMapping
     public StudyApplicationFormResponse getForm(
@@ -57,6 +59,8 @@ public class StudyApplicationFormController {
                     그쪽은 캡틴만 통과합니다 (POL-0001).
                     이미 신청서가 있거나 모집이 시작됐으면 CONFLICT입니다.""")
     @SecurityRequirement(name = "bearerAuth")
+    @RequireOnboarding
+    @RequireCaptainOrNavigator
     @PutMapping
     public StudyApplicationFormResponse replaceForm(
             @Parameter(description = "신청 폼을 저장할 스터디 ID", example = "1") @PathVariable Long studyId,

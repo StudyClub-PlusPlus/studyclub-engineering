@@ -5,7 +5,7 @@
 
 | ID | 정책 | 무엇을 정하나 | 쓰는 화면 |
 |---|---|---|---|
-| [POL-0001](policies/POL-0001-roles.md) | 역할과 권한 | 계정 권한(캡틴·크루)과 스터디 역할(네비게이터), 권한 11개 | 콘솔 전 화면 |
+| [POL-0001](policies/POL-0001-roles.md) | 역할과 권한 | 계정 권한(캡틴·크루)과 스터디 역할(네비게이터), 권한 12개 | 콘솔 전 화면 |
 | [POL-0002](policies/POL-0002-study-status.md) | 스터디 상태 | 라이프사이클(5단계)·모집 두 축, 화면 표기, 운영 종료 규칙 | 스터디 목록·상세, 사용자 사이트 |
 | [POL-0003](policies/POL-0003-study-fields.md) | 스터디 정보 항목 | 등록·수정에서 받는 값과 필수 여부, 공개 조건 | 스터디 등록·수정·공개 |
 | [POL-0004](policies/POL-0004-application.md) | 신청 | 신청은 상태를 갖지 않는다, 정원 판정 | 신청 폼, 신청자 목록 |
@@ -33,7 +33,7 @@
 | 4 | `RECRUIT_DEADLINE_AT` 을 NOT NULL 로 — 상시 모집을 두지 않는다 | [POL-0002](policies/POL-0002-study-status.md) |
 | 5 | `END_AT` 경과로 자동 종료 전환 삭제. `ONGOING → ENDED` 만 N주 경과로 자동, `ENDED → CLOSED` 는 캡틴 수동 확인만(디스코드 채널 삭제를 시스템이 검증하지 않는다) | [POL-0002](policies/POL-0002-study-status.md) |
 | 6 | 등록·수정 API 가 `startAt`·`discordChannelUrl`·`driveUrl` 을 입력으로 받도록 확장 | [POL-0003](policies/POL-0003-study-fields.md) |
-| 7 | `PARTICIPANT_ROLE` 에서 `CO_LEADER`(부반장) 삭제 | [POL-0001](policies/POL-0001-roles.md) |
+| 7 | ~~`PARTICIPANT_ROLE` 에서 `CO_LEADER`(부반장) 삭제~~ ✅ 2026-10-09 — V35 가 남은 부반장을 `LEADER` 로 올리고 enum 에서 지웠다 | [POL-0001](policies/POL-0001-roles.md) |
 | 8 | `study-recruit-status` 의 신청 상태 전제(`PENDING`·`WAITLISTED` 등) 정리 — [POL-0004](policies/POL-0004-application.md)와 지금 `study-recruit-status/spec.md` 가 서로 다른 전제를 쓰고 있어 먼저 확인 필요 | [POL-0004](policies/POL-0004-application.md) |
 | 9 | 탈퇴 시 `NOTIFICATION` 의 이메일·닉네임 스냅샷 비식별 처리 | [POL-0007](policies/POL-0007-account-data.md) |
 

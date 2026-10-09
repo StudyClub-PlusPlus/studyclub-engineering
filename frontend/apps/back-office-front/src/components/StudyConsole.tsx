@@ -1,19 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   attendanceRate,
   attendancePoint,
   getStudyCrew,
-  publishState,
-  recruitState,
-  toISODate,
   type AttendanceStatus,
   type Crew,
-  type CrewStatus,
   type Study,
+  type StudyCrewData,
 } from '@studyclub/mock';
 import { Badge } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
@@ -21,38 +18,42 @@ import { ArrowLeft } from 'lucide-react';
 import { AttendanceTab } from '@/components/AttendanceTab';
 import { CrewTab } from '@/components/CrewTab';
 import { StudyInfoTab } from '@/components/StudyInfoTab';
-import { tx } from '@/lib/l10n';
-
-/**
- * 스터디 운영 콘솔.
- *
- * 한 스터디를 놓고 운영자가 하는 일은 셋뿐이라 탭도 셋이다:
- * **신청자**(누가 들어오는가) · **출석**(누가 나오는가) · **정보**(무엇을 알리는가).
- *
- * 상태는 이 컴포넌트가 들고 있다 — 크루 승인이 출석부 명단을 바꾸므로 탭마다 따로 두면 어긋난다.
- * TODO(api): 승인·출석 체크는 화면 상태로만 처리. 저장 API 연결 필요.
- */
+import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
+import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
 
 const TABS = [
+  { key: 'info', label: '정보' },
+  { key: 'form', label: '신청 폼' },
   { key: 'crew', label: '신청자' },
   { key: 'attendance', label: '출석' },
-  { key: 'info', label: '정보' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
 
-export function StudyConsole({ study }: { study: Study }) {
-  const initial = useMemo(() => getStudyCrew(study), [study]);
-  const [crew, setCrew] = useState<Crew[]>(initial.crew);
-  const [attendance, setAttendance] = useState(initial.attendance);
-  const [tab, setTab] = useState<TabKey>('crew');
+const EMPTY_CREW: StudyCrewData = { crew: [], meetings: [], attendance: {}, capacity: 0 };
 
-  const active = crew.filter((c) => c.status === 'active');
-  const pending = crew.filter((c) => c.status === 'pending');
-  const open = recruitState(study) === 'apply';
-  const deadline = toISODate(study.recruitment?.deadline);
-  // 예약 공개는 없앴다 — 공개는 사람이 켜는 것이라 상태는 draft/live 둘뿐이다.
-  const unpublished = publishState(study) === 'draft';
+const categoryLabel = (code: string) => CATEGORY_OPTIONS.find((c) => c.value === code)?.label ?? code;
+
+export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mockStudy?: Study }) {
+  const initial = useMemo(() => (mockStudy ? getStudyCrew(mockStudy) : EMPTY_CREW), [mockStudy]);
+  const crew = initial.crew;
+  const [attendance, setAttendance] = useState(initial.attendance);
+  const [tab, setTab] = useState<TabKey>('info');
+  const [savingForm, setSavingForm] = useState(false);
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    if (!TABS.some(({ key }) => key === requested)) return;
+    setTab(requested as TabKey);
+  }, []);
+
+  const active = crew;
+  const pending: Crew[] = [];
+  const open = detail.recruitStatus === 'RECRUITING';
+  const deadline = detail.recruitDeadlineAt
+    ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
+    : null;
+  const unpublished = detail.status === 'DRAFT';
 
   // 스터디 전체 출석률 — 크루별 출석률의 평균이 아니라 **전체 대상 회차 기준**.
   // 평균을 쓰면 한 번만 나온 사람과 열 번 나온 사람이 같은 무게가 된다.
@@ -70,10 +71,7 @@ export function StudyConsole({ study }: { study: Study }) {
     return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [active, attendance]);
 
-  function setStatus(crewId: string, status: CrewStatus) {
-    setCrew((list) => list.map((c) => (c.id === crewId ? { ...c, status } : c)));
-  }
-
+  // TODO(api): POST /api/studies/{id}/attendances — 출석 체크 저장
   function toggleAttendance(crewId: string, meetingId: string) {
     setAttendance((a) => {
       const row = { ...(a[crewId] ?? {}) };
@@ -105,9 +103,11 @@ export function StudyConsole({ study }: { study: Study }) {
 
       <header className='mt-3 flex flex-wrap items-start justify-between gap-4'>
         <div className='min-w-0'>
-          <h1 className='text-2xl font-extrabold tracking-tight'>{tx(study.title)}</h1>
+          <h1 className='text-2xl font-extrabold tracking-tight'>{detail.title}</h1>
           <p className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-secondary'>
-            <span>{study.category ?? '—'}</span>
+            <span>{categoryLabel(detail.category)}</span>
+            <span className='text-fg-muted'>·</span>
+            <span>{detail.studyKind === 'CLUB' ? '클럽' : '스터디'}</span>
             {unpublished && (
               <>
                 <span className='text-fg-muted'>·</span>
@@ -118,9 +118,9 @@ export function StudyConsole({ study }: { study: Study }) {
         </div>
         <div className='flex shrink-0 items-center gap-2'>
           <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
-            {open ? '모집중' : '마감'}
+            {detail.status === 'OPEN' ? (open ? '모집중' : '모집 마감') : STATUS_LABEL[detail.status]}
           </Badge>
-          <span className='tnum text-xs text-fg-muted'>{deadline ? `~${deadline}` : open ? '상시' : ''}</span>
+          {deadline && <span className='tnum text-xs text-fg-muted'>~{deadline}</span>}
         </div>
       </header>
 
@@ -128,12 +128,20 @@ export function StudyConsole({ study }: { study: Study }) {
       <div className='mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4'>
         <Stat
           label='진행 일정'
-          value={study.schedule ? tx(study.schedule) : '미정 · 신청자 조율'}
+          value={detail.schedule || '미정 · 신청자 조율'}
           small
-          sub={`${initial.meetings.length}회차`}
+          sub={mockStudy ? `${initial.meetings.length}회차` : undefined}
         />
-        <Stat label='참석자' value={`${active.length}/${initial.capacity}`} />
-        <Stat label='승인 대기' value={`${pending.length}`} tone={pending.length > 0 ? 'warn' : undefined} />
+        <Stat
+          label='참석자'
+          value={mockStudy ? `${active.length}/${initial.capacity}` : '—'}
+          sub={detail.capacity == null ? '정원 제한 없음' : `정원 ${detail.capacity}명`}
+        />
+        <Stat
+          label='승인 대기'
+          value={mockStudy ? `${pending.length}` : '—'}
+          tone={pending.length > 0 ? 'warn' : undefined}
+        />
         <Stat label='출석률' value={overall === undefined ? '—' : `${overall}%`} />
       </div>
 
@@ -142,6 +150,7 @@ export function StudyConsole({ study }: { study: Study }) {
           <button
             key={tb.key}
             type='button'
+            disabled={savingForm}
             onClick={() => setTab(tb.key)}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
@@ -158,17 +167,23 @@ export function StudyConsole({ study }: { study: Study }) {
       </nav>
 
       <div className='mt-5'>
-        {tab === 'crew' && <CrewTab crew={crew} capacity={initial.capacity} onStatus={setStatus} />}
-        {tab === 'attendance' && (
+        {(tab === 'crew' || tab === 'attendance') && !mockStudy && (
+          <div className='card px-6 py-10 text-center text-sm text-fg-muted'>
+            {tab === 'crew' ? '신청자' : '출석'} 관리는 준비 중입니다.
+          </div>
+        )}
+        {tab === 'crew' && mockStudy && <CrewTab crew={crew} capacity={initial.capacity} />}
+        {tab === 'attendance' && mockStudy && (
           <AttendanceTab
-            study={study}
+            study={mockStudy}
             crew={active}
             meetings={initial.meetings}
             attendance={attendance}
             onToggle={toggleAttendance}
           />
         )}
-        {tab === 'info' && <StudyInfoTab study={study} />}
+        {tab === 'form' && <ApplicationFormTab study={detail} onSavingChange={setSavingForm} />}
+        {tab === 'info' && <StudyInfoTab detail={detail} />}
       </div>
     </div>
   );

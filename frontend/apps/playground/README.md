@@ -15,7 +15,7 @@
 ```bash
 git clone git@github.com:StudyClub-PlusPlus/studyclub-engineering.git
 cd studyclub-engineering/frontend
-npm install
+pnpm install
 ```
 
 > `git clone` 이 권한 오류를 내면 GitHub 계정이 `StudyClub-PlusPlus` 조직에 아직 안 들어온 것입니다. 디스코드에서 알려주세요.
@@ -24,7 +24,7 @@ npm install
 
 ```bash
 cd studyclub-engineering/frontend
-npm run dev --workspace=playground
+pnpm --filter playground run dev
 ```
 
 브라우저에서 http://localhost:4702 를 엽니다. 파일을 저장하면 화면이 알아서 새로고침됩니다.
@@ -137,7 +137,7 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 - `next`로 전달된 playground 내부 주소가 있으면 가입 후 해당 화면으로 돌아갑니다. 외부 주소는 허용하지 않습니다.
 
 정책 출처: [온보딩 PRD](https://app.notion.com/p/benkang/1f683feabad3839b996781bd773ec465), `specs/user-onboarding/spec.md`.
-실제 서비스 연동 시 로그인 응답의 `user.name`·최상위 `suggestedNickname`과 명세의 응답 구조 차이, `core-front` 로그인 중계의 `suggestedNickname` 전달을 확인해야 합니다. 시안은 playground 안에서만 동작합니다.
+실제 서비스 연동 시 로그인 응답은 `account.nickname`과 최상위 `suggestedNickname`입니다. 시안은 playground 안에서만 동작합니다.
 
 ### 새 화면에 번호를 달려면
 

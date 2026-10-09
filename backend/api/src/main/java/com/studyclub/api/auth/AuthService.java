@@ -2,6 +2,7 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
+import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.common.error.BusinessException;
@@ -71,7 +72,7 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public AccountView me(Long accountId) {
+    public AccountSelfView me(Long accountId) {
         Account account =
                 accountRepository
                         .findById(accountId)
@@ -79,20 +80,27 @@ public class AuthService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
-        return toView(account);
+        return AccountSelfView.from(account);
     }
 
     public AccessTokenResponse refresh(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "refreshToken 이 필요합니다.");
         }
+        Claims c;
+        Long accountId;
         try {
-            Claims c = jwtService.parse(refreshToken);
-            return new AccessTokenResponse(
-                    jwtService.issueAccess(c.getSubject(), c.get("email", String.class)));
+            c = jwtService.parse(refreshToken);
+            accountId = Long.valueOf(c.getSubject());
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
         }
+        // 탈퇴한 계정의 refresh token 은 서명·만료가 유효해도 새 access token 을 받지 못하게 한다.
+        if (!accountRepository.existsById(accountId)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "유효하지 않은 refresh token 입니다.");
+        }
+        return new AccessTokenResponse(
+                jwtService.issueAccess(c.getSubject(), c.get("email", String.class)));
     }
 
     private AuthResponse issueFor(Account account, String suggestedNickname) {

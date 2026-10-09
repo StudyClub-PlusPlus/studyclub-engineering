@@ -20,7 +20,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
             key={n.id}
             className='card card-hover p-6'
             style={
-              n.pinned ? { borderColor: 'var(--color-accent)', background: 'var(--color-accent-soft)' } : undefined
+              n.pinned ? { borderColor: 'var(--color-brand)', background: 'var(--color-brand-subtle)' } : undefined
             }
           >
             <div className='flex flex-wrap items-center gap-2'>

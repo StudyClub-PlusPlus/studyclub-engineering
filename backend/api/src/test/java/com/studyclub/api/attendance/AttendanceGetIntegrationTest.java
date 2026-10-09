@@ -13,7 +13,6 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.DeliveryFormat;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -81,21 +80,22 @@ class AttendanceGetIntegrationTest {
         insertAccountIfAbsent(ACCOUNT_A_ID, "수아", "sua@att-test.com");
         insertAccountIfAbsent(ACCOUNT_B_ID, "지원", "jiwon@att-test.com");
 
-        var program = studyProgramRepo.save(StudyProgram.builder().title("시스템 디자인 프로그램").build());
+        var program =
+                studyProgramRepo.save(
+                        StudyProgram.builder()
+                                .title("시스템 디자인 프로그램")
+                                .studyKind(StudyKind.STUDY)
+                                .build());
 
         study =
                 studyRepo.save(
                         Study.builder()
                                 .programId(program.getId())
-                                .slug("system-design-study")
                                 .title("시스템 디자인 스터디")
                                 .oneLineSummary("시스템 디자인 심화")
                                 .category(StudyCategory.ALGORITHM)
-                                .studyKind(StudyKind.STUDY)
                                 .description("시스템 디자인 스터디 설명")
-                                .studyDeliveryFormat(DeliveryFormat.ONLINE)
                                 .status(StudyStatus.OPEN)
-                                .capacity(10)
                                 .startAt(Instant.now().minus(30, ChronoUnit.DAYS))
                                 .build());
 
@@ -131,7 +131,7 @@ class AttendanceGetIntegrationTest {
                                 .studyGroupId(group.getId())
                                 .studyId(study.getId())
                                 .status(ParticipantStatus.ACTIVE)
-                                .participantRole(ParticipantRole.MEMBER)
+                                .participantRole(ParticipantRole.LEADER)
                                 .joinedAt(joinedAt)
                                 .build());
         participantB =
@@ -229,6 +229,53 @@ class AttendanceGetIntegrationTest {
         assertThat(attendancesB).hasSize(2);
         assertThat(((Map<?, ?>) attendancesB.get(0)).get("status")).isEqualTo("PRESENT");
         assertThat(((Map<?, ?>) attendancesB.get(1)).get("status")).isEqualTo("ABSENT");
+    }
+
+    @Test
+    @DisplayName("성공 - 크루(분반 활성 참여자)도 내 분반 출석부를 본다 — 고치기는 네비게이터만")
+    void memberCanViewOwnGroup() {
+        var response =
+                rest.exchange(
+                        "/api/studies/{studyId}/attendances?studyGroupId={groupId}",
+                        HttpMethod.GET,
+                        authenticatedRequest(ACCOUNT_B_ID),
+                        Map.class,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("성공 - 킥오프는 출석을 찍어도 출석률에 들어가지 않는다")
+    void kickoffExcludedFromRate() {
+        StudyMeeting kickoff =
+                studyMeetingRepo.save(
+                        StudyMeeting.kickoff(
+                                group.getId(), Instant.now().minus(20, ChronoUnit.DAYS)));
+        studyAttendanceRepo.save(
+                StudyAttendance.builder()
+                        .accountId(ACCOUNT_B_ID)
+                        .studyId(study.getId())
+                        .studyGroupId(group.getId())
+                        .studyMeetingId(kickoff.getId())
+                        .status(AttendanceStatus.ABSENT)
+                        .build());
+
+        var response =
+                rest.exchange(
+                        "/api/studies/{studyId}/attendances?studyGroupId={groupId}",
+                        HttpMethod.GET,
+                        authenticatedRequest(ACCOUNT_A_ID),
+                        Map.class,
+                        study.getId(),
+                        group.getId());
+
+        Map<?, ?> pB =
+                findParticipant(
+                        (List<?>) response.getBody().get("participants"), participantB.getId());
+        // 킥오프 결석이 들어갔다면 1/3 — 빠져야 그대로 0.5
+        assertThat((Double) pB.get("attendanceRate")).isCloseTo(0.5, within(0.001));
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

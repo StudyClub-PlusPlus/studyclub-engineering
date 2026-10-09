@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { Badge } from '@studyclub/ui';
 
 import { TableCard } from '@/components/ui';
@@ -16,14 +18,7 @@ import { PHASE_LABEL, type StudyRow } from '@/features/studies/types';
  *
  * 행에 편집·삭제 버튼을 두지 않는다. 이름을 누르면 운영 페이지로 들어가고 거기서 처리한다.
  */
-export function StudiesTable({
-  rows,
-  detailSlugs,
-}: {
-  rows: StudyRow[];
-  /** 운영 페이지가 있는 슬러그. 아직 목 데이터 기반이라 API 스터디는 상세가 없을 수 있다. */
-  detailSlugs?: ReadonlySet<string>;
-}) {
+export function StudiesTable({ rows }: { rows: StudyRow[] }) {
   return (
     <TableCard>
       <thead>
@@ -37,23 +32,15 @@ export function StudiesTable({
       </thead>
       <tbody>
         {rows.map((s) => {
-          const hasDetail = detailSlugs?.has(s.slug) ?? false;
           return (
             <tr key={s.studyId}>
               <td className='w-[44%] max-w-0'>
-                {hasDetail ? (
-                  <a
-                    href={`/studies/${s.slug}`}
-                    className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
-                  >
-                    {s.title}
-                  </a>
-                ) : (
-                  // 상세가 없는데 링크를 걸면 눌렀을 때 404 다. 왜 못 누르는지 제목으로 알려준다.
-                  <span className='block truncate font-semibold' title='운영 페이지 준비 중'>
-                    {s.title}
-                  </span>
-                )}
+                <Link
+                  href={`/studies/${s.studyId}`}
+                  className='block truncate font-semibold underline-offset-4 hover:text-brand hover:underline'
+                >
+                  {s.title}
+                </Link>
                 <span className='block truncate text-xs text-fg-muted'>{s.summary}</span>
               </td>
               <td className='whitespace-nowrap text-fg-secondary'>{s.category}</td>

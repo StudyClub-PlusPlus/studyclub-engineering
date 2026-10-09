@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.discord.StudyDiscordLink;
+import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import java.sql.Timestamp;
@@ -36,6 +38,7 @@ class StudyDeleteIntegrationTest {
     @Autowired AccountRepository accountRepository;
     @Autowired StudyRepository studyRepository;
     @Autowired StudyRecruitmentRepository recruitmentRepository;
+    @Autowired StudyDiscordLinkRepository studyDiscordLinkRepository;
     @Autowired JdbcTemplate jdbcTemplate;
 
     @BeforeEach
@@ -53,7 +56,7 @@ class StudyDeleteIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/api/studies/" + studyId,
+                        "/api/admin/studies/" + studyId,
                         HttpMethod.DELETE,
                         authenticatedNoBody(ADMIN_ID),
                         Void.class);
@@ -70,13 +73,31 @@ class StudyDeleteIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/api/studies/" + studyId,
+                        "/api/admin/studies/" + studyId,
                         HttpMethod.DELETE,
                         authenticatedNoBody(ADMIN_ID),
                         Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(recruitmentRepository.findByStudyId(studyId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("성공 - 삭제 시 STUDY_DISCORD_LINK 행도 함께 삭제된다")
+    void deleteCascadesToDiscordLink() {
+        Long studyId = createStudy("디스코드 스터디", "소개", "SOFTWARE");
+        studyDiscordLinkRepository.save(
+                new StudyDiscordLink(studyId, "1327394882193888020", "1327394882193888021"));
+
+        var response =
+                rest.exchange(
+                        "/api/admin/studies/" + studyId,
+                        HttpMethod.DELETE,
+                        authenticatedNoBody(ADMIN_ID),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(studyDiscordLinkRepository.existsByStudyId(studyId)).isFalse();
     }
 
     private Long createStudy(String title, String oneLineSummary, String category) {
@@ -86,7 +107,8 @@ class StudyDeleteIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(tokenFor(ADMIN_ID));
         var response =
-                rest.postForEntity("/api/studies", new HttpEntity<>(body, headers), Void.class);
+                rest.postForEntity(
+                        "/api/admin/studies", new HttpEntity<>(body, headers), Void.class);
         String path = response.getHeaders().getLocation().getPath();
         return Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
     }

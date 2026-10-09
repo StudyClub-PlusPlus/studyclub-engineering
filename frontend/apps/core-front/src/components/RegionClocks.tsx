@@ -22,8 +22,8 @@ const REGIONS: Region[] = [
     name: { ko: '미국', en: 'USA' },
     city: { ko: '베이 에어리어', en: 'Bay Area' },
     tz: 'America/Los_Angeles',
-    color: '#2563eb',
-    soft: '#eff4ff',
+    color: 'var(--color-info-600)',
+    soft: 'var(--color-info-50)',
   },
   {
     id: 'kr',
@@ -31,8 +31,8 @@ const REGIONS: Region[] = [
     name: { ko: '한국', en: 'Korea' },
     city: { ko: '서울', en: 'Seoul' },
     tz: 'Asia/Seoul',
-    color: '#e03131',
-    soft: '#fff0f0',
+    color: 'var(--color-error-600)',
+    soft: 'var(--color-error-50)',
   },
   {
     id: 'ca',
@@ -40,8 +40,8 @@ const REGIONS: Region[] = [
     name: { ko: '캐나다', en: 'Canada' },
     city: { ko: '밴쿠버', en: 'Vancouver' },
     tz: 'America/Vancouver',
-    color: '#e8590c',
-    soft: '#fff4ed',
+    color: 'var(--color-warning-600)',
+    soft: 'var(--color-warning-50)',
   },
 ];
 
@@ -88,7 +88,7 @@ export function RegionClocks({ locale }: { locale: Locale }) {
                 <div className='font-semibold' style={{ color: r.color }}>
                   {locale === 'ko' ? r.name.ko : r.name.en}
                 </div>
-                <div className='text-xs text-[var(--color-fg-subtle)]'>{locale === 'ko' ? r.city.ko : r.city.en}</div>
+                <div className='text-xs text-[var(--color-fg-muted)]'>{locale === 'ko' ? r.city.ko : r.city.en}</div>
               </div>
               <span className='ml-auto text-lg'>{p ? (p.daytime ? '☀️' : '🌙') : ''}</span>
             </div>

@@ -22,7 +22,8 @@
 | `_registry/policies.md` | **정책 라이브러리 목차.** 여러 Story 에 걸치는 규칙은 전부 여기 |
 | `_registry/policies/POL-####-*.md` | 정책 하나당 파일 하나 |
 | `_registry/stories.md` | Story 목록. 어떤 Story 에 기획서가 있고 없는지 |
-| `stories/{slug}/PRD.md` | Story 하나의 기획서 |
+| `_registry/ia.md` | 화면 구조(IA-###). 화면마다 어느 Story 가 사는지, Story 없는 고아 화면 |
+| `stories/{story-name}/PRD.md` | Story 하나의 기획서 |
 
 ## 쓰는 규칙
 

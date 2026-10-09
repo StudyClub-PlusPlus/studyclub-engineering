@@ -1,10 +1,12 @@
 # deps / build
 node_modules/
+frontend/.pnpm-store/
 build/
 .gradle/
 dist/
 .next/
 out/
+storybook-static/
 .turbo/
 *.log
 
@@ -33,3 +35,4 @@ serviceAccount*.json
 # local dev tooling
 .claude/
 .envrc
+.pnpm-store/
