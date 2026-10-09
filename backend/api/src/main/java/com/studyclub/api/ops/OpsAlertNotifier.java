@@ -6,27 +6,24 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
 /**
  * 운영자 알림 — 디스코드 웹훅에 임베드 한 장을 보낸다. 계약은 specs/ops-alerts/spec.md.
  *
+ * <p>전송(transport)만 맡는다. 언제 보낼지는 {@link OpsAlertListener} 가 도메인 이벤트를 구독해 정한다 — 서비스에서 직접 부르지 않는다.
+ * 리스너가 이미 커밋 뒤·별도 스레드에서 부르므로 여기서는 동기로 보낸다.
+ *
  * <ul>
  *   <li>{@code OPS_DISCORD_WEBHOOK_URL} 이 비어 있으면 아무것도 하지 않는다
- *   <li>요청을 막지도, 실패를 던지지도 않는다 — 백그라운드 전송(3초 타임아웃), 실패는 warn 로그만
- *   <li>트랜잭션 안에서 부르면 커밋 뒤에 보낸다 (롤백된 가입·신청을 알리지 않게)
+ *   <li>던지지 않는다 — 3초 타임아웃, 실패는 warn 로그만
  *   <li>환경 접두어는 {@code APP_ENV} 로 붙인다 — production 은 없음, 그 밖은 [Stage]·[Beta]·[Local]
  * </ul>
  */
@@ -51,21 +48,13 @@ public class OpsAlertNotifier {
 
     private final String webhookUrl;
     private final String prefix;
-    private final Executor executor;
     private final RestClient restClient;
 
-    @Autowired
     public OpsAlertNotifier(
             @Value("${ops.discord-webhook-url:}") String webhookUrl,
             @Value("${ops.env:local}") String env) {
-        this(webhookUrl, env, null);
-    }
-
-    /** {@code executor} 가 null 이면 공용 풀. 테스트는 동기 실행기를 넘긴다. */
-    OpsAlertNotifier(String webhookUrl, String env, Executor executor) {
         this.webhookUrl = webhookUrl;
         this.prefix = prefixOf(env);
-        this.executor = executor;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(3));
         factory.setReadTimeout(Duration.ofSeconds(3));
@@ -87,46 +76,12 @@ public class OpsAlertNotifier {
         if (!StringUtils.hasText(webhookUrl)) {
             return;
         }
-        Map<String, Object> payload;
-        try {
-            payload = payload(level, title, fields);
-        } catch (RuntimeException e) {
-            log.warn("ops-alert: 페이로드를 만들지 못했다 ({})", e.getClass().getSimpleName());
-            return;
-        }
-        Runnable task = () -> post(payload);
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(
-                    new TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            dispatch(task);
-                        }
-                    });
-        } else {
-            dispatch(task);
-        }
-    }
-
-    private void dispatch(Runnable task) {
-        try {
-            if (executor == null) {
-                CompletableFuture.runAsync(task);
-            } else {
-                executor.execute(task);
-            }
-        } catch (RuntimeException e) {
-            log.warn("ops-alert: 전송을 예약하지 못했다 ({})", e.getClass().getSimpleName());
-        }
-    }
-
-    private void post(Map<String, Object> payload) {
         try {
             restClient
                     .post()
                     .uri(webhookUrl)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(payload)
+                    .body(payload(level, title, fields))
                     .retrieve()
                     .toBodilessEntity();
         } catch (RuntimeException e) {

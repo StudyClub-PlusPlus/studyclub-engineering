@@ -1,7 +1,6 @@
 package com.studyclub.api.application;
 
 import com.studyclub.api.application.StudyApplicationRequests.SubmitStudyApplicationRequest;
-import com.studyclub.api.ops.OpsAlertNotifier;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -11,6 +10,7 @@ import com.studyclub.domain.application.ApplicationFormQuestion;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationAnswer;
 import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.application.StudyApplicationSubmitted;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
@@ -42,7 +43,7 @@ public class StudyApplicationService {
     private final StudyApplicationRepository studyApplicationRepository;
     private final ObjectMapper objectMapper;
     private final StudyParticipantRepository studyParticipantRepository;
-    private final OpsAlertNotifier opsAlertNotifier;
+    private final ApplicationEventPublisher eventPublisher;
 
     public StudyApplicationService(
             StudyRepository studyRepository,
@@ -51,14 +52,14 @@ public class StudyApplicationService {
             StudyParticipantRepository studyParticipantRepository,
             AccountRepository accountRepository,
             ObjectMapper objectMapper,
-            OpsAlertNotifier opsAlertNotifier) {
+            ApplicationEventPublisher eventPublisher) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.accountRepository = accountRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.objectMapper = objectMapper;
         this.studyParticipantRepository = studyParticipantRepository;
-        this.opsAlertNotifier = opsAlertNotifier;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -98,11 +99,13 @@ public class StudyApplicationService {
 
         StudyApplication saved = studyApplicationRepository.save(application);
         account.changeDiscordNickname(answer.discordNickname());
-        Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("스터디", study.getTitle() + " (#" + studyId + ")");
-        fields.put("신청자", account.getNickname());
-        fields.put("신청 ID", String.valueOf(saved.getId()));
-        opsAlertNotifier.send(OpsAlertNotifier.Level.INFO, "스터디 신청 접수", fields);
+        eventPublisher.publishEvent(
+                new StudyApplicationSubmitted(
+                        saved.getId(),
+                        studyId,
+                        study.getTitle(),
+                        accountId,
+                        account.getNickname()));
         return saved.getId();
     }
 

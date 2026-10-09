@@ -32,7 +32,7 @@ class OpsAlertNotifierTest {
         server.start();
         try {
             String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/hook";
-            OpsAlertNotifier notifier = new OpsAlertNotifier(url, "stage", Runnable::run);
+            OpsAlertNotifier notifier = new OpsAlertNotifier(url, "stage");
 
             Map<String, String> fields = new LinkedHashMap<>();
             fields.put("닉네임", "길동");
@@ -56,9 +56,9 @@ class OpsAlertNotifierTest {
     void 웹훅이_없거나_죽어_있어도_던지지_않는다() {
         assertThatCode(
                         () -> {
-                            new OpsAlertNotifier("", "production", Runnable::run)
+                            new OpsAlertNotifier("", "production")
                                     .send(OpsAlertNotifier.Level.ERROR, "t", Map.of());
-                            new OpsAlertNotifier("http://127.0.0.1:9/hook", "beta", Runnable::run)
+                            new OpsAlertNotifier("http://127.0.0.1:9/hook", "beta")
                                     .send(OpsAlertNotifier.Level.WARN, "t", Map.of("a", "b"));
                         })
                 .doesNotThrowAnyException();
