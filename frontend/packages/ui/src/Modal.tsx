@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 
+import { X } from 'lucide-react';
+
 import { cx } from './cx';
 
 /**
@@ -93,10 +95,13 @@ export function Modal({
 
   return (
     <div className='fixed inset-0 z-50 flex items-end justify-center sm:items-center'>
+      {/*
+        배경을 눌러도 닫히지 않는다 — 쓰던 것이 사라지는 창을 스쳐 누르다 잃는 일이 생긴다.
+        닫는 길은 X 와 Esc 둘뿐이다 (POL-0008).
+      */}
       <div
         className='absolute inset-0 animate-[fadeIn_var(--duration-base)_var(--ease-out)]'
         style={{ background: 'var(--overlay)' }}
-        onClick={onClose}
         aria-hidden='true'
       />
       <div
@@ -118,6 +123,15 @@ export function Modal({
             {description && <p className='text-sm text-fg-muted'>{description}</p>}
           </div>
           {headerEnd}
+          {/* 닫기는 늘 우상단 X 다. 제목이 무엇이든 같은 자리에 선다 */}
+          <button
+            type='button'
+            onClick={onClose}
+            aria-label='닫기'
+            className='-mr-1.5 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+          >
+            <X size={18} />
+          </button>
         </header>
 
         <div className='flex-1 overflow-y-auto px-6 py-4'>{children}</div>

@@ -14,6 +14,8 @@ const LINKS = [
   // href 는 들어가는 문, match 는 "지금 여기에 있는가" 판정. en 으로 보다가도 사용자 사이트가 켜져 있어야 한다.
   { href: '/proto/core/ko', match: '/proto/core', label: '사용자 사이트' },
   { href: '/proto/console', match: '/proto/console', label: '운영 콘솔' },
+  // 화면 뒤에 깔린 값과 규칙. 개발이 「상태가 몇 종이더라」를 물을 때 여는 자리다.
+  { href: '/proto/policies', match: '/proto/policies', label: '기획 라이브러리' },
 ];
 
 /**
