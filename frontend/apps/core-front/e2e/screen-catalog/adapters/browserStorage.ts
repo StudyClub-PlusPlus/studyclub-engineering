@@ -13,6 +13,16 @@ export async function seedBrowserStorage(page: Page, seeds: StorageSeed[]): Prom
   const baseURL = page.context().browser()?.contexts()[0]?.pages()[0]?.url() ?? 'http://localhost:4700';
   const origin = new URL(baseURL).origin;
 
+  // sc_access_token 쿠키 주입 (Next.js 미들웨어 /my, /onboarding 게이트 통과용)
+  await page.context().addCookies([
+    {
+      name: 'sc_access_token',
+      value: 'dev-preview',
+      domain: 'localhost',
+      path: '/',
+    },
+  ]);
+
   await page.goto(`${origin}/ko`, { waitUntil: 'domcontentloaded' });
 
   await page.evaluate((items: StorageSeed[]) => {

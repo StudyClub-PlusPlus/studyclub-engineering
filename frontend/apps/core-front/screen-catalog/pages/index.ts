@@ -8,6 +8,7 @@ export const pages: PageDef[] = [
   { id: 'event-detail', label: '이벤트 상세', path: '/ko/events/:id' },
   { id: 'login', label: '로그인', path: '/ko/login' },
   { id: 'my', label: '마이페이지', path: '/ko/my' },
-  { id: 'my-studies', label: '내 스터디', path: '/ko/my/studies' },
+  { id: 'my-joined', label: '내 스터디', path: '/ko/my/joined' },
+  { id: 'my-studies', label: '내 스터디(레거시)', path: '/ko/my/studies' },
   { id: 'about', label: '소개', path: '/ko/about' },
 ];
