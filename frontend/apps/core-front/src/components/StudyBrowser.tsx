@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
+import { FilterChip } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
@@ -56,6 +57,7 @@ function FilterOption({
     </button>
   );
 }
+
 
 function FilterSelect<T extends string>({
   value,
@@ -200,13 +202,15 @@ export function StudyBrowser({
         </div>
         <FilterRow>
           {CATEGORY_OPTIONS.map((option) => (
-            <FilterOption
+            <FilterChip
               key={option.value}
-              active={category === option.value}
+              selected={category === option.value}
+              selectMode='single'
               onClick={() => setCategory(option.value)}
+              className='h-auto py-1.5 text-[13px] font-semibold'
             >
               {option.label}
-            </FilterOption>
+            </FilterChip>
           ))}
         </FilterRow>
       </div>

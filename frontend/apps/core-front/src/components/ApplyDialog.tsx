@@ -1,77 +1,77 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
-import { Button, Checkbox, Modal, Textarea } from '@studyclub/ui';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { categoriesOf, type ApplicationQuestionType, type MemberRegion } from '@studyclub/mock';
+import type { ApiStudyApplicationForm } from '@studyclub/mock/msw';
+import { Button, Checkbox, Modal } from '@studyclub/ui';
+import { CalendarClock } from 'lucide-react';
 
+import { FormHeaderCard, QuestionFillView, formCardClass } from '@/components/ApplicationFormUi';
+import { DiscordNicknameField } from '@/components/DiscordNicknameField';
+import { useStudyApplicationForm, useSubmitApplication } from '@/features/applications/queries';
+import {
+  AVAILABLE_DAYS,
+  makeApplySchema,
+  normalizeSingleLine,
+} from '@/lib/apply-validation';
 import type { Locale, Study } from '@/lib/content';
-import { t } from '@/lib/i18n';
-import { addApplication, getRegion } from '@/lib/me';
+import { ApiError } from '@/lib/http';
+import { m, t } from '@/lib/i18n';
+import { addApplication, getApplication, getDiscordNickname, getRegion, setDiscordNickname } from '@/lib/me';
 
-/**
- * 스터디 신청 폼 — 프로토타입.
- *
- * **스터디마다 폼을 설계하지 않는다.** 운영자가 등록 때 넣은 「진행 일정」 유무로 묻는 것이 갈린다:
- * - 일정 있음 → 그 시간에 참여 가능한지 **확인**만 받는다
- * - 일정 미정 → 참여자끼리 맞춰야 하므로 **가능한 요일·시간대를 받는다**
- *
- * 회원은 여러 지역에 흩어져 있으므로 **가능한 시간은 각자의 현지 시간으로 받는다.**
- * 한국의 일요일 저녁과 북미의 일요일 저녁은 다른 시각이라, 지역 없이 요일·시간대만 모으면
- * 운영자가 겹치는 시간을 구할 수 없다. 저장 시 지역(기준 시간대)을 함께 남긴다.
- *
- * TODO(api): POST /api/studies/{id}/applications — 저장 테이블·API 미구현이라 화면 상태로만 처리.
- * TODO(api): 신청자 지역은 로그인 회원 정보에서 읽는다. 지금은 마이페이지에서 고른 값을 쓴다.
- */
+function StudyFormHeader({
+  study,
+  form,
+  locale,
+}: {
+  study: Study;
+  form: ApiStudyApplicationForm | null;
+  locale: Locale;
+}) {
+  const cats = categoriesOf(study);
+  const schedule = form?.schedule
+    ? form.schedule
+    : t({ ko: '일정 미정', en: 'Schedule TBD' }, locale);
+  const deadline = form?.recruitDeadline?.slice(0, 10);
+  const deadlineLabel = deadline
+    ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale)
+    : t({ ko: '모집 기한 미정', en: 'Deadline TBD' }, locale);
 
-const DAYS = [
-  { key: 'mon', ko: '월', en: 'Mon' },
-  { key: 'tue', ko: '화', en: 'Tue' },
-  { key: 'wed', ko: '수', en: 'Wed' },
-  { key: 'thu', ko: '목', en: 'Thu' },
-  { key: 'fri', ko: '금', en: 'Fri' },
-  { key: 'sat', ko: '토', en: 'Sat' },
-  { key: 'sun', ko: '일', en: 'Sun' },
-] as const;
-
-const SLOTS = [
-  { key: 'morning', ko: '오전', en: 'Morning' },
-  { key: 'afternoon', ko: '오후', en: 'Afternoon' },
-  { key: 'evening', ko: '저녁', en: 'Evening' },
-] as const;
-
-type ApplyFormValues = {
-  agreed: boolean;
-  cells: string[];
-  motivation: string;
-};
-
-function makeSchema(hasFixed: boolean, locale: Locale) {
-  return z
-    .object({
-      agreed: z.boolean(),
-      cells: z.array(z.string()),
-      motivation: z.string(),
-    })
-    .superRefine((val, ctx) => {
-      if (hasFixed && !val.agreed) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['agreed'],
-          message: t({ ko: '일정 참여 가능 여부를 확인해 주세요.', en: 'Please confirm you can attend.' }, locale),
-        });
-      }
-      if (!hasFixed && val.cells.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['cells'],
-          message: t({ ko: '가능한 시간을 하나 이상 선택해 주세요.', en: 'Select at least one time slot.' }, locale),
-        });
-      }
-    });
+  return (
+    <div>
+      <FormHeaderCard
+        title={form?.title ?? t(study.title, locale)}
+        summary={form?.description ?? t(study.summary, locale)}
+      />
+      <section className={`${formCardClass()} mt-3`}>
+        {cats.length > 0 && (
+          <p className='text-[11px] font-bold uppercase tracking-[0.14em] text-fg-muted'>{cats.join(' · ')}</p>
+        )}
+        <dl className={`${cats.length > 0 ? 'mt-3' : ''} flex flex-col gap-2 text-sm`}>
+          <div className='flex items-start gap-2'>
+            <dt className='shrink-0 font-medium text-fg'>{m('common.schedule', locale)}</dt>
+            <dd className='flex items-center gap-1.5 text-fg-secondary'>
+              <CalendarClock size={13} strokeWidth={1.75} className='shrink-0' />
+              {schedule}
+            </dd>
+          </div>
+          <div className='flex items-start gap-2'>
+            <dt className='shrink-0 font-medium text-fg'>{m('detail.deadline', locale)}</dt>
+            <dd className='text-fg-secondary'>{deadlineLabel}</dd>
+          </div>
+        </dl>
+        {form?.detail && (
+          <div className='mt-4 border-t border-border pt-4'>
+            <p className='text-sm font-bold text-fg'>{m('common.about_study', locale)}</p>
+            <p className='mt-2 whitespace-pre-line text-sm leading-[1.75] text-fg-secondary'>
+              {form.detail}
+            </p>
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }
 
 export function ApplyDialog({
@@ -79,203 +79,397 @@ export function ApplyDialog({
   locale,
   open,
   onClose,
+  onSubmitted,
+  onDeadline,
+  onRequireDiscord,
 }: {
   study: Study;
   locale: Locale;
   open: boolean;
   onClose: () => void;
+  onSubmitted: () => void;
+  onDeadline?: (label: string) => void;
+  onRequireDiscord?: () => void;
 }) {
-  const fixedSchedule = study.schedule ? t(study.schedule, locale) : null;
-  const [myRegion, setMyRegion] = useState<MemberRegion>('KR');
-  const [done, setDone] = useState(false);
-
-  const schema = useMemo(() => makeSchema(Boolean(fixedSchedule), locale), [fixedSchedule, locale]);
-
   const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-    watch,
-    setValue,
-    clearErrors,
-  } = useForm<ApplyFormValues>({
-    defaultValues: { agreed: false, cells: [], motivation: '' },
-    resolver: zodResolver(schema),
-  });
+    data: formData,
+    isLoading,
+    isFetching,
+    isError: formError,
+    refetch: refetchForm,
+  } = useStudyApplicationForm(study.study_id, open);
+  const form = formData ?? null;
+  const formLoading = isLoading || isFetching;
+
+  const submitMutation = useSubmitApplication(study.study_id);
+  const saving = submitMutation.isPending;
+
+  const fixedSchedule = form?.schedule ?? null;
+  const extraQuestions = (form?.questions ?? []).map((q) => ({
+    ...q,
+    type: q.type.toLowerCase() as ApplicationQuestionType,
+  }));
+
+  const applySchema = useMemo(
+    () =>
+      makeApplySchema({
+        extraQuestions,
+        hasFixedSchedule: Boolean(fixedSchedule),
+        locale,
+      }),
+    [extraQuestions, fixedSchedule, locale],
+  );
+
+  const [myRegion, setMyRegion] = useState<MemberRegion>('KR');
+  useEffect(() => setMyRegion(getRegion()), [open]);
+
+  const [agreed, setAgreed] = useState(false);
+  const [days, setDays] = useState<string[]>([]);
+  const [draftNick, setDraftNick] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({});
+  const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [invalidKey, setInvalidKey] = useState<string | null>(null);
+  const [attention, setAttention] = useState(0);
+
+  const discordRef = useRef<HTMLElement>(null);
+  const scheduleRef = useRef<HTMLElement>(null);
+  const daysRef = useRef<HTMLElement>(null);
+  const questionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  function cardClass(key: string) {
+    return invalidKey === key
+      ? 'apply-invalid rounded-xl border-2 border-error-600 bg-error-50 px-6 py-5'
+      : formCardClass();
+  }
+
+  function fieldOf(key: string | null) {
+    if (!key) return null;
+    if (key === 'discord') return discordRef.current;
+    if (key === 'schedule') return scheduleRef.current;
+    if (key === 'days') return daysRef.current;
+    return questionRefs.current[key] ?? null;
+  }
+
+  function markInvalid(key: string, message: string) {
+    setInvalidKey(key);
+    setAttention((n) => n + 1);
+    setError(message);
+  }
+
+  function clearInvalid(key: string) {
+    setError(null);
+    setInvalidKey((cur) => (cur === key ? null : cur));
+  }
+
+  function FieldHint({ field }: { field: string }) {
+    if (invalidKey !== field || !error) return null;
+    return (
+      <p role='alert' className='mt-2 text-xs text-error-700'>
+        {error}
+      </p>
+    );
+  }
+
+  useEffect(() => {
+    if (!open || !invalidKey) return;
+    const el = fieldOf(invalidKey);
+    if (!el) return;
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const id = window.setTimeout(() => {
+      const control = el.querySelector<HTMLElement>(
+        'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])',
+      );
+      (control ?? el).focus({ preventScroll: true });
+    }, 280);
+    return () => window.clearTimeout(id);
+  }, [invalidKey, attention, open]);
 
   useEffect(() => {
     if (!open) return;
-    reset({ agreed: false, cells: [], motivation: '' });
+    setAgreed(false);
+    setDays([]);
+    setDraftNick(getDiscordNickname() ?? '');
+    setAnswers({});
+    setOtherSelected({});
+    setOtherTexts({});
+    setError(null);
+    setInvalidKey(null);
+    setAttention(0);
+    setSubmitError(null);
     setDone(false);
-    setMyRegion(getRegion());
-  }, [open, reset]);
+  }, [open]);
 
-  const cells = watch('cells');
-  const agreedValue = watch('agreed');
-
-  function toggleCell(key: string) {
-    const next = cells.includes(key) ? cells.filter((x) => x !== key) : [...cells, key];
-    setValue('cells', next);
-    if (next.length > 0) clearErrors('cells');
+  function close() {
+    setAgreed(false);
+    setDays([]);
+    setDraftNick('');
+    setAnswers({});
+    setOtherSelected({});
+    setOtherTexts({});
+    setError(null);
+    setInvalidKey(null);
+    setAttention(0);
+    setSubmitError(null);
+    if (done) onSubmitted();
+    setDone(false);
+    onClose();
   }
 
-  const onSubmit = handleSubmit(async (values) => {
-    // TODO(api): POST /api/studies/{id}/applications
-    await new Promise((r) => setTimeout(r, 400));
-    addApplication({
-      studyId: study.id,
-      appliedAt: new Date().toISOString().slice(0, 10),
-      status: 'pending',
-      region: myRegion,
-      cells: fixedSchedule ? undefined : values.cells,
-      motivation: values.motivation.trim() || undefined,
-    });
-    setDone(true);
-  });
+  function toggleDay(key: string) {
+    clearInvalid('days');
+    setDays((d) => (d.includes(key) ? d.filter((x) => x !== key) : [...d, key]));
+  }
 
-  const region = MEMBER_REGIONS.find((r) => r.key === myRegion)!;
+  async function submit() {
+    if (getApplication(study.id)) {
+      onSubmitted();
+      return;
+    }
+
+    const parseResult = applySchema.safeParse({
+      discordNickname: draftNick,
+      days,
+      answers,
+      otherSelected,
+      otherTexts,
+      agreed,
+    });
+
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      const fieldKey = String(issue.path[0]);
+      return markInvalid(fieldKey, issue.message);
+    }
+
+    setError(null);
+    setInvalidKey(null);
+    setSubmitError(null);
+    const normalizedNick = normalizeSingleLine(draftNick);
+    setDiscordNickname(normalizedNick);
+
+    try {
+      const finalAnswers: Record<string, string | string[]> = {};
+      for (const q of extraQuestions) {
+        if (q.type === 'checkbox') {
+          const selected = Array.isArray(answers[q.id]) ? [...(answers[q.id] as string[])] : [];
+          if (otherSelected[q.id] && otherTexts[q.id]?.trim()) {
+            selected.push(normalizeSingleLine(otherTexts[q.id]));
+          }
+          if (selected.length > 0) {
+            finalAnswers[q.id] = selected;
+          }
+        } else if (q.type === 'radio' && otherSelected[q.id]) {
+          finalAnswers[q.id] = normalizeSingleLine(otherTexts[q.id]);
+        } else if (answers[q.id] !== undefined && answers[q.id] !== '') {
+          finalAnswers[q.id] = answers[q.id];
+        }
+      }
+
+      const reqBody: {
+        discordNickname: string;
+        availableDays: string[];
+        answers: Record<string, string | string[]>;
+        scheduleAgreed?: boolean;
+      } = {
+        discordNickname: normalizedNick,
+        availableDays: days,
+        answers: finalAnswers,
+      };
+      if (fixedSchedule) reqBody.scheduleAgreed = agreed;
+
+      await submitMutation.mutateAsync(reqBody);
+
+      addApplication({ studyId: study.id, appliedAt: new Date().toISOString().slice(0, 10), status: 'pending', region: myRegion, cells: days });
+      setDone(true);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 403) {
+          close();
+          onRequireDiscord?.();
+          return;
+        }
+
+        if (err.status === 409) {
+          if (err.message.includes('이미 신청')) {
+            addApplication({ studyId: study.id, appliedAt: new Date().toISOString().slice(0, 10), status: 'pending', region: myRegion, cells: days });
+            onSubmitted();
+            return;
+          }
+
+          if (err.message.includes('이미 참여')) {
+            setSubmitError(t({ ko: '이미 참여 중인 스터디입니다.', en: 'You are already participating in this study.' }, locale));
+            return;
+          }
+
+          if (err.message.includes('정원')) {
+            const label = t({ ko: '정원 마감', en: 'Full' }, locale);
+            close();
+            onDeadline?.(label);
+            return;
+          }
+
+          const label = t({ ko: '모집 마감', en: 'Recruiting closed' }, locale);
+          close();
+          onDeadline?.(label);
+          return;
+        }
+      }
+
+      setSubmitError(
+        err instanceof ApiError && err.message
+          ? err.message
+          : t({ ko: '신청하지 못했습니다. 다시 시도해 주세요.', en: 'Application failed. Please try again.' }, locale),
+      );
+    }
+  }
 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={saving ? () => {} : close}
+      size='lg'
       title={t({ ko: '스터디 신청', en: 'Apply to study' }, locale)}
       footer={
-        done ? (
-          <Button onClick={onClose}>{t({ ko: '확인', en: 'Done' }, locale)}</Button>
-        ) : (
-          <>
-            <Button variant='secondary' onClick={onClose} disabled={isSubmitting}>
-              {t({ ko: '취소', en: 'Cancel' }, locale)}
-            </Button>
-            <Button onClick={onSubmit} loading={isSubmitting}>
-              {t({ ko: '신청', en: 'Apply' }, locale)}
-            </Button>
-          </>
-        )
+        <>
+          <Button variant='secondary' onClick={close} disabled={saving}>
+            {t({ ko: '취소', en: 'Cancel' }, locale)}
+          </Button>
+          <Button onClick={submit} loading={saving} disabled={!form || formLoading || formError || done}>
+            {t({ ko: '신청', en: 'Apply' }, locale)}
+          </Button>
+        </>
       }
     >
       {done ? (
         <p className='py-6 text-center text-sm text-fg-secondary'>
-          {t(
-            {
-              ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.',
-              en: "Your application was received. We'll email you the result.",
-            },
-            locale,
-          )}
+          {t({ ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.', en: "Your application was received. We'll email you the result." }, locale)}
         </p>
       ) : (
-        <div className='flex flex-col gap-5'>
-          {/* 어떤 스터디에 신청하는지 — 목록 카드와 같은 어휘(작은 라벨 + 굵은 제목)를 쓴다 */}
-          <div className='border-b border-border pb-4'>
-            <p className='text-[11px] font-bold uppercase tracking-[0.14em] text-fg-muted'>
-              {t({ ko: '신청 대상', en: 'Applying to' }, locale)}
-            </p>
-            <p className='mt-1.5 text-lg font-bold leading-snug text-fg'>{t(study.title, locale)}</p>
-            <p className='mt-1 text-[13px] leading-relaxed text-fg-secondary'>{t(study.summary, locale)}</p>
-          </div>
-
-          {fixedSchedule ? (
-            <div className='flex flex-col gap-1.5'>
-              <Checkbox
-                {...register('agreed')}
-                checked={agreedValue}
-                label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
-              />
-              {errors.agreed && <p className='text-xs text-error-700'>{errors.agreed.message}</p>}
-            </div>
-          ) : (
-            <div className='flex flex-col gap-2'>
-              <div className='flex items-baseline justify-between gap-2'>
-                <p className='text-sm font-medium text-neutral-800'>
-                  {t({ ko: '가능한 시간', en: "When you're available" }, locale)}
-                  <span className='ml-0.5 text-error-600'>*</span>
-                </p>
-                <span className='text-xs text-fg-muted'>
-                  {t(
-                    {
-                      ko: `${t(region.label, locale)} 시간(${region.tzLabel}) 기준`,
-                      en: `In ${t(region.label, locale)} time (${region.tzLabel})`,
-                    },
-                    locale,
-                  )}
-                </span>
-              </div>
-
-              {/* 요일 × 시간대 격자 — 칸을 눌러 조합을 고른다 (월 저녁 + 일 오후 같은 응답이 가능) */}
-              <div className='overflow-x-auto'>
-                <table className='w-full table-fixed border-separate border-spacing-1'>
-                  <thead>
-                    <tr>
-                      <th className='w-9 p-0' />
-                      {DAYS.map((d) => (
-                        <th key={d.key} className='pb-1 text-center text-xs font-semibold text-fg-secondary'>
-                          {locale === 'ko' ? d.ko : d.en}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {SLOTS.map((sl) => (
-                      <tr key={sl.key}>
-                        <th
-                          scope='row'
-                          className='w-9 whitespace-nowrap pr-1.5 text-right text-xs font-medium text-fg-secondary'
-                        >
-                          {locale === 'ko' ? sl.ko : sl.en}
-                        </th>
-                        {DAYS.map((d) => {
-                          const key = `${d.key}-${sl.key}`;
-                          const on = cells.includes(key);
-                          return (
-                            <td key={key} className='p-0'>
-                              <button
-                                type='button'
-                                aria-pressed={on}
-                                aria-label={`${locale === 'ko' ? d.ko : d.en} ${locale === 'ko' ? sl.ko : sl.en}`}
-                                onClick={() => toggleCell(key)}
-                                className={`h-9 w-full rounded-sm border transition-colors focus-visible:outline-none focus-visible:shadow-(--ring) ${
-                                  on ? 'border-transparent bg-brand' : 'border-border bg-bg hover:border-border-interactive hover:bg-surface-2'
-                                }`}
-                              />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {errors.cells && <p className='text-xs text-error-700'>{errors.cells.message}</p>}
-
-              <p className='text-xs text-fg-muted'>
-                {t(
-                  {
-                    ko: '일정이 아직 정해지지 않아 신청자들의 응답을 모아 정합니다. 되는 시간을 모두 선택해 주세요. 다른 지역 신청자와는 시차를 반영해 맞춥니다.',
-                    en: "The schedule isn't set yet — it's decided from applicants' answers. Select every slot that works; time zones are reconciled across regions.",
-                  },
-                  locale,
-                )}
+      <div className='-mx-6 -my-4 h-full bg-surface-1 px-6 py-4'>
+        <div className='flex flex-col gap-3'>
+          {formLoading ? (
+            <div className='flex flex-col items-center justify-center py-16 text-center'>
+              <p className='text-sm text-fg-secondary'>
+                {t({ ko: '불러오는 중…', en: 'Loading…' }, locale)}
               </p>
             </div>
-          )}
+          ) : formError ? (
+            <div className='flex flex-col items-center justify-center gap-3 py-16 text-center'>
+              <p className='text-sm text-fg-secondary'>
+                {t({ ko: '신청 폼을 불러오지 못했습니다. 다시 시도해 주세요.', en: 'Failed to load the application form. Please try again.' }, locale)}
+              </p>
+              <Button variant='secondary' onClick={() => void refetchForm()}>
+                {t({ ko: '다시 시도', en: 'Retry' }, locale)}
+              </Button>
+            </div>
+          ) : (
+            <>
+              <StudyFormHeader study={study} form={form} locale={locale} />
 
-          <Textarea
-            {...register('motivation')}
-            label={t({ ko: '지원 동기', en: "Why you're applying" }, locale)}
-            rows={3}
-            placeholder={t(
-              {
-                ko: '선택 입력입니다. 간단히 적어 주시면 운영진이 참고합니다.',
-                en: 'Optional. A short note helps the organizers.',
-              },
-              locale,
-            )}
-          />
+              <section ref={discordRef} tabIndex={-1} className={`${cardClass('discord')} outline-none`}>
+                <DiscordNicknameField
+                  value={draftNick}
+                  invalid={invalidKey === 'discord'}
+                  onChange={(v) => { clearInvalid('discord'); setDraftNick(v); }}
+                />
+                <FieldHint field='discord' />
+              </section>
+
+              <section ref={daysRef} tabIndex={-1} className={`${cardClass('days')} outline-none`}>
+                <p className='text-sm font-medium text-neutral-800'>
+                  {t({ ko: '참여 가능한 요일', en: 'Days you can join' }, locale)}
+                  <span className='ml-0.5 text-error-600'>*</span>
+                </p>
+                <div className='mt-2 flex flex-col gap-2'>
+                  {AVAILABLE_DAYS.map((d) => (
+                    <Checkbox
+                      key={d.key}
+                      aria-invalid={invalidKey === 'days' ? 'true' : undefined}
+                      label={locale === 'ko' ? d.ko : d.en}
+                      checked={days.includes(d.key)}
+                      onChange={() => toggleDay(d.key)}
+                    />
+                  ))}
+                </div>
+                <FieldHint field='days' />
+              </section>
+
+              {fixedSchedule && (
+                <section ref={scheduleRef} tabIndex={-1} className={`${cardClass('schedule')} outline-none`}>
+                  <Checkbox
+                    aria-invalid={invalidKey === 'schedule' ? 'true' : undefined}
+                    label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
+                    checked={agreed}
+                    onChange={(e) => { setAgreed(e.target.checked); clearInvalid('schedule'); }}
+                  />
+                  <FieldHint field='schedule' />
+                </section>
+              )}
+
+              {extraQuestions.map((q) => (
+                <section
+                  key={q.id}
+                  tabIndex={-1}
+                  ref={(el) => { questionRefs.current[q.id] = el; }}
+                  className={`${cardClass(q.id)} outline-none`}
+                >
+                  <QuestionFillView
+                    q={q}
+                    invalid={invalidKey === q.id}
+                    value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
+                    values={Array.isArray(answers[q.id]) ? (answers[q.id] as string[]) : []}
+                    otherChecked={Boolean(otherSelected[q.id])}
+                    otherValue={otherTexts[q.id] ?? ''}
+                    onChange={(value) => {
+                      clearInvalid(q.id);
+                      setOtherSelected((prev) => ({ ...prev, [q.id]: false }));
+                      setAnswers((prev) => ({ ...prev, [q.id]: value }));
+                    }}
+                    onToggle={(option) => {
+                      clearInvalid(q.id);
+                      setAnswers((prev) => {
+                        const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
+                        return { ...prev, [q.id]: cur.includes(option) ? cur.filter((x) => x !== option) : [...cur, option] };
+                      });
+                    }}
+                    onOtherToggle={(checked) => {
+                      clearInvalid(q.id);
+                      setOtherSelected((prev) => ({ ...prev, [q.id]: checked }));
+                      if (q.type === 'radio' && checked) {
+                        setAnswers((prev) => ({ ...prev, [q.id]: otherTexts[q.id] ?? '' }));
+                      }
+                    }}
+                    onOtherChange={(text) => {
+                      clearInvalid(q.id);
+                      setOtherTexts((prev) => ({ ...prev, [q.id]: text }));
+                      if (q.type === 'radio') {
+                        setAnswers((prev) => ({ ...prev, [q.id]: text }));
+                      }
+                    }}
+                  />
+                  <FieldHint field={q.id} />
+                </section>
+              ))}
+
+              {submitError && (
+                <div role='alert' className='flex items-center gap-3 rounded-xl bg-error-50 px-4 py-3'>
+                  <p className='flex-1 text-sm text-error-700'>{submitError}</p>
+                  <Button variant='secondary' onClick={submit} disabled={saving}>
+                    {t({ ko: '다시 시도', en: 'Retry' }, locale)}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </div>
+      </div>
       )}
     </Modal>
   );
