@@ -9,7 +9,7 @@ import { useManage } from '@core/components/StudyManageShell';
 import { getMyAttendance, meetingsOf } from '@core/lib/attendance';
 import { bookFromSchedule } from '@core/lib/meetings';
 import { getGroupAttendance, saveGroupAttendance, type AttendanceBook } from '@core/lib/navigator-attendance';
-import { ME_ID, participantsOf } from '@core/lib/schedule-board';
+import { ME_ID, participantsOf, withdrawParticipant } from '@core/lib/schedule-board';
 import { Button } from '@studyclub/ui';
 import { ExternalLink } from 'lucide-react';
 
@@ -22,11 +22,17 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
  *
  * 구글 시트처럼 출석과 발표를 한 격자에 보인다. 발표는 일정의 발표자1·2에서 가져온다.
  * 크루는 분반 전원의 기록을 보기만 한다. 킥오프 열은 출석률에 넣지 않는다.
+ *
+ * 캡틴·네비게이터는 체크박스로 크루를 골라 출석을 한 번에 적용하거나 「중단 예정」으로 둔다.
+ * 저장을 누르면 확인 창을 거쳐 출석과 참여 중단이 함께 반영된다. 되돌리기는 없다.
+ * 하차·제명을 가르지 않는다 — 사유는 묻지도 남기지도 않는다.
  */
 export default function StudyManageAttendancePage() {
   const router = useRouter();
   const { study, group, locale, captain, canEdit, setDirty } = useManage();
   const [book, setBook] = useState<AttendanceBook | null>(null);
+  /** 중단·재개 뒤 다시 그려 명단을 새로 읽는다 — 프로토는 브라우저 저장소에서 읽는다. */
+  const [, rerender] = useState(0);
 
   // 프로토의 「나」는 분반 명부 밖에 있다 — 내 출석 기록(내 스터디 카드와 같은 값)을 내 줄에 채운다.
   useEffect(() => {
@@ -36,9 +42,18 @@ export default function StudyManageAttendancePage() {
 
   const meetings = meetingsOf(study);
   // 중단한 사람은 맨 아래로. 하차·제명을 가르지 않고 누구에게나 「참여 중단」.
+  // 나 · 캡틴 · 네비게이터 줄에는 중단 버튼이 없다 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
   const crew = participantsOf(study)
-    .map((p) => ({ ...p, left: p.left && { label: '참여 중단', at: p.left.at } }))
+    .map((p) => ({ ...p, left: p.left && { label: '참여 중단', at: p.left.at }, manageable: !p.me && !p.role }))
     .sort((a, b) => Number(Boolean(a.left)) - Number(Boolean(b.left)));
+
+  /** 저장 때 출석과 함께 불린다 — 확인 창은 출석 격자가 띄운다. */
+  async function withdraw(ids: string[]) {
+    // TODO(api): 출석 저장과 한 요청으로 — POST /api/studies/{studyId}/attendances 의 withdrawals[]
+    await new Promise((r) => setTimeout(r, 200));
+    for (const id of ids) withdrawParticipant(study.id, id);
+    rerender((v) => v + 1);
+  }
   const { presentersOf, notCounted, headOf } = bookFromSchedule(meetings);
   const schedulePath = `/proto/core/${locale}/my/joined/${study.study_id}/schedule`;
 
@@ -98,9 +113,12 @@ export default function StudyManageAttendancePage() {
             presentersOf={presentersOf}
             notCounted={notCounted}
             headOf={headOf}
+            onWithdraw={withdraw}
+            startAt={group.startAt}
           />
         </div>
       ) : null}
+
     </>
   );
 }

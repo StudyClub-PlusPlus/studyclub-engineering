@@ -26,7 +26,7 @@
 |---|---|
 | `ACTIVE` | 참여 중. 기본값 |
 | `PAUSED` | 잠시 쉼 (출석 집계 제외) |
-| `WITHDRAWN` | 중도 하차. 삭제 대신 이 상태. `LEFT_AT` 에 하차 시각 |
+| `WITHDRAWN` | 참여 중단 — 하차 · 제명을 가르지 않는다. 삭제 대신 이 상태. `LEFT_AT` 에 중단 시각. 네비게이터 · 담당 캡틴이 출석부에서 중단시킬 수 있다 ([참여 중단 스펙](../../specs/study-participant/spec.md)) |
 | `COMPLETED` | 완주 (STUDY ENDED 시 ACTIVE → COMPLETED 일괄) |
 | `DELETED` | 회원 탈퇴로 사라진 행. 삭제 대신 이 상태 — 행을 지우면 STUDY_ATTENDANCE(ACCOUNT_ID 로만 연결, FK 없음)가 출석률 집계에서 통째로 빠지기 때문([user-leave spec](../../specs/user-leave/spec.md)). `LEFT_AT` 에 탈퇴 시각. ACCOUNT_ID 는 그대로 둔다 — 참조할 ACCOUNT 행 자체가 없어져 더는 사람으로 되짚을 수 없다 |
 

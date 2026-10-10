@@ -19,7 +19,7 @@ export type Participant = {
   me?: boolean;
   /** 캡틴·네비게이터면 그 역할. 크루는 비운다 — 출석부 이름 옆 칩. */
   role?: ManageRole;
-  /** 스터디를 중단한 사람(하차·제명 구분 없이 「참여 중단」). `at` 은 중단 일자(yyyy-MM-dd). */
+  /** 스터디를 중단한 사람(하차·제명 구분 없이 「참여 중단」). `at` 은 중단 시각(yyyy-MM-ddTHH:mm, 분반 시간대). */
   left?: { at: string };
 };
 
@@ -44,7 +44,13 @@ export function participantsOf(study: Study): Participant[] {
   // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
   const regular = meetingsOf(study).filter((m) => !isKickoff(m));
   const leftAt = regular[2]?.date ?? regular[0]?.date ?? '';
-  const leftOf = (i: number) => (leftAt && (i === 4 || i === 8) ? { at: leftAt } : undefined);
+  const changed = readLeft()[study.id] ?? {};
+  const leftOf = (id: string, i: number) => {
+    // 네비게이터가 중단시킨 기록이 프로토 가정보다 앞선다.
+    if (id in changed) return changed[id];
+    // 그날 회차까지 하고 나갔다고 본다 — 그날 끝 시각.
+    return leftAt && (i === 4 || i === 8) ? { at: `${leftAt}T23:59` } : undefined;
+  };
   const names = [myName(), ...crew.map((c) => c.name)];
   const dup = (name: string) => names.filter((n) => n === name).length > 1;
   return [
@@ -54,9 +60,55 @@ export function participantsOf(study: Study): Participant[] {
       name: dup(c.name) ? `${c.name} (${c.discordNickname ?? `#${i + 1}`})` : c.name,
       // 프로토 가정 — 내가 네비게이터가 아니면 명부 첫 사람이 네비게이터다 (navigatorNameOf 와 같다).
       role: i === 0 && myRole !== 'navigator' ? ('navigator' as const) : undefined,
-      left: leftOf(i),
+      left: leftOf(c.id, i),
     })),
   ];
+}
+
+/* ── 참여 중단 ─────────── ─────────────────────────────────────────────── */
+
+/**
+ * 네비게이터가 출석부에서 참여를 중단시킨 기록. 되돌리기는 없다. 프로토는 브라우저에만 남는다.
+ * TODO(api): POST /api/studies/{studyId}/attendances 의 withdrawals[] — 출석 저장과 한 요청
+ */
+const LEFT_KEY = 'sc_participant_left';
+
+/** studyId → participantId → 중단 시각. */
+type LeftStore = Record<string, Record<string, { at: string }>>;
+
+function readLeft(): LeftStore {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(LEFT_KEY);
+    return raw ? (JSON.parse(raw) as LeftStore) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLeft(studyId: string, participantId: string, value: { at: string }): void {
+  const store = readLeft();
+  store[studyId] = { ...(store[studyId] ?? {}), [participantId]: value };
+  try {
+    localStorage.setItem(LEFT_KEY, JSON.stringify(store));
+  } catch {
+    // 저장 실패해도 화면 동작은 막지 않는다
+  }
+}
+
+/**
+ * 지금 시각(yyyy-MM-ddTHH:mm). 프로토는 브라우저 시간대로 회차 시각과 견준다.
+ * 서버는 누른 순간을 LEFT_AT 에 UTC 로 남기고 회차 SCHEDULED_AT 과 견준다 — 시간대 차이가 없다.
+ */
+function now(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** 참여 중단 — 지금까지의 출석은 남고, 지금 뒤에 시작하는 회차는 「—」·출석률에서 빠진다. */
+export function withdrawParticipant(studyId: string, participantId: string): void {
+  writeLeft(studyId, participantId, { at: now() });
 }
 
 /**
