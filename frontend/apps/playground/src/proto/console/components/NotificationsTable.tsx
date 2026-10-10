@@ -69,11 +69,11 @@ export function NotificationsTable() {
     <div className='flex flex-col gap-3'>
       <div data-anno='history:2' className='flex flex-wrap items-center gap-3'>
         {/*
-          고르기 전에는 **축 이름만** 보여준다 — 「알림 종류 전체」처럼 적으면 이미 거른 것처럼 읽힌다.
+          고르기 전에는 **축 이름만** 보여준다 — 「알림 이름 전체」처럼 적으면 이미 거른 것처럼 읽힌다.
           하나 고르고 나면 첫 줄이 「전체」로 바뀌어 되돌아갈 길이 생긴다.
         */}
         <FilterSelect
-          label='알림 종류'
+          label='알림 이름'
           value={eventType}
           disabled={phase === 'loading'}
           options={EVENT_FILTERS}
@@ -95,7 +95,7 @@ export function NotificationsTable() {
         <thead>
           <tr>
             <th className='w-[160px] whitespace-nowrap'>요청 시각</th>
-            <th className='w-[100px] whitespace-nowrap'>알림 종류</th>
+            <th className='w-[100px] whitespace-nowrap'>알림 이름</th>
             <th className='w-[80px] whitespace-nowrap'>채널</th>
             <th>수신 주소</th>
             <th className='w-[110px] whitespace-nowrap'>상태</th>
