@@ -31,12 +31,12 @@ import {
 import { getApplications, getRegion } from '@core/lib/me';
 import { SCHEDULE_ROLE_LABEL, isKickoff, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
-import { Badge, Button, Card, EmptyState, cx } from '@studyclub/ui';
+import { Badge, Button, Card, EmptyState, Select, cx } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 type Filter = 'all' | LifeStatus;
 
@@ -383,7 +383,7 @@ export default function MyJoinedPage() {
         <SegmentTabs anno='2' value={filter} options={FILTERS} onChange={changeFilter} />
         <div className='ml-auto flex flex-wrap items-center gap-2'>
           {hasMine && (
-            <select
+            <Select
               data-anno='2-2'
               aria-label='역할'
               value={role}
@@ -391,16 +391,17 @@ export default function MyJoinedPage() {
                 setRole(ev.target.value as RoleFilter);
                 setPage(1);
               }}
-              className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-fg-secondary'
+              size='sm'
+              className='text-fg-secondary'
             >
               {ROLE_FILTERS.map((o) => (
                 <option key={o.key} value={o.key}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
-          <select
+          <Select
             data-anno='2-3'
             aria-label='정렬'
             value={sort}
@@ -408,14 +409,15 @@ export default function MyJoinedPage() {
               setSort(ev.target.value as SortKey);
               setPage(1);
             }}
-            className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-fg-secondary'
+            size='sm'
+            className='text-fg-secondary'
           >
             {SORTS.map((o) => (
               <option key={o.key} value={o.key}>
                 {o.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 

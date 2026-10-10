@@ -20,7 +20,7 @@ export function MyStudiesLink({ locale }: { locale: Locale }) {
 
   return (
     <Link
-      href={`/${locale}/my/studies`}
+      href={`/${locale}/my/joined`}
       className='hidden rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-fg transition-colors hover:bg-surface-2 sm:block'
     >
       {t({ ko: '내 스터디', en: 'My studies' }, locale)}

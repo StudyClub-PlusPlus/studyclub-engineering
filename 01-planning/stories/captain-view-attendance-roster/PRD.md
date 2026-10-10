@@ -186,12 +186,12 @@ erDiagram
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
 | GET | `/api/studies/{studyId}/attendances` | 캡틴 |
-| POST | `/api/studies/{studyId}/attendances` | LEADER · CO_LEADER |
+| POST | `/api/studies/{studyId}/attendances` | LEADER |
 
 ### 권한
 
 - 열람: 캡틴
-- 쓰기: attendance 스펙은 그 스터디의 LEADER · CO_LEADER 만 허용한다
+- 쓰기: attendance 스펙은 그 스터디의 LEADER 만 허용한다
 
 ### 외부 연동
 

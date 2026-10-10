@@ -27,10 +27,11 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const [discordOpen, setDiscordOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [deadlineLabel, setDeadlineLabel] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   const state = recruitState(study);
-  const applyLabel = recruitLabel(state, locale);
+  const applyLabel = deadlineLabel ?? recruitLabel(state, locale);
   const doneLabel = t({ ko: '신청 완료', en: 'Applied' }, locale);
 
   useEffect(() => {
@@ -69,8 +70,10 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     setCompleteOpen(true);
   }
 
+  const isClosed = state === 'closed' || Boolean(deadlineLabel);
+
   const trigger =
-    state === 'closed' ? (
+    isClosed ? (
       <span data-anno='view:1' className={`${card} ${idle}`}>
         {applyLabel}
       </span>
@@ -84,7 +87,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
       </button>
     );
 
-  if (state === 'closed') return trigger;
+  if (isClosed) return trigger;
 
   // 카드는 overflow-hidden + hover transform 이라, 그 안에 두면 fixed 모달이
   // 카드 안에 그려졌다가 팝업으로 튀며 깜빡인다. body 로 빼서 바로 연다.
@@ -102,6 +105,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
         open={formOpen}
         onClose={() => setFormOpen(false)}
         onSubmitted={handleSubmitted}
+        onDeadline={(label) => setDeadlineLabel(label)}
       />
       <ApplyCompleteDialog locale={locale} open={completeOpen} onClose={() => setCompleteOpen(false)} />
     </>

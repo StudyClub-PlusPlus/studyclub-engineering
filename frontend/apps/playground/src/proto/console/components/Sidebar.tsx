@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { getUser, logout, type SessionUser } from '@console/lib/auth';
-import { LayoutDashboard, BookOpen, CalendarDays, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, CalendarDays, Users, Mail, LogOut } from 'lucide-react';
 
 // 프로토는 playground 안에서 /proto/console 아래 매달린다. 링크는 이 접두를 붙여야 한다.
 const BASE = '/proto/console';
@@ -16,6 +16,8 @@ const NAV = [
   { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합. 역할·권한 부여도 이 화면에서 한다.
   { href: '/users', label: '유저', icon: Users },
+  // 보낸 알림이 어디로 나갔고 어떤 상태인가. 템플릿 편집과는 다른 화면이다.
+  { href: '/notifications', label: '알림 발송 이력', icon: Mail },
 ];
 
 export function Sidebar() {

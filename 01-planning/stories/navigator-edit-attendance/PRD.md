@@ -174,13 +174,13 @@ erDiagram
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
 | GET | `/api/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 만든 캡틴 |
-| POST | `/api/studies/{studyId}/attendances` | 그 분반 LEADER · CO_LEADER · 그 스터디를 만든 캡틴 |
+| POST | `/api/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디를 만든 캡틴 |
 
 계약은 [attendance/spec.md](../../../specs/attendance/spec.md).
 
 ### 권한
 
-- 고치기: 그 분반의 `PARTICIPANT_ROLE = LEADER` · `CO_LEADER`, 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 아니면 403
+- 고치기: 그 분반의 `PARTICIPANT_ROLE = LEADER`, 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 아니면 403
 - 다른 캡틴(ADMIN)이 신청해 참여했으면 사용자 사이트에서는 크루다 — 고치기는 백오피스에서 한다
 - 서버에서 검증한다. 화면에서 칸을 막는 것은 편의일 뿐이다
 

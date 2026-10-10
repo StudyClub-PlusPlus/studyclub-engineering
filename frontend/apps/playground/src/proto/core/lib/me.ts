@@ -19,6 +19,7 @@ const ZONE_KEY = 'sc_timezone';
 const NAME_KEY = 'sc_display_name';
 const DISCORD_KEY = 'sc_discord';
 const DISCORD_NICK_KEY = 'sc_discord_nickname';
+const MARKETING_KEY = 'sc_marketing';
 
 /** 스터디클럽++ 서버 별명 예시. 이름/직무/지역/관심주제. */
 export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자인';
@@ -161,6 +162,24 @@ export function getDiscord(): DiscordLink {
 
 export function setDiscord(handle: string | null) {
   writeJSON(DISCORD_KEY, handle ?? '');
+}
+
+/**
+ * 마케팅 정보 수신 동의.
+ *
+ * 가입 때 받는 **선택** 항목이라, 회원이 나중에 끄고 켤 수 있어야 한다 — 받기로 한 사람도
+ * 마음이 바뀌고, 안 받기로 한 사람도 소식을 받고 싶어진다. 가입 화면에만 두면 바꿀 길이 없다.
+ *
+ * 가입 완료·탈퇴 같은 안내 메일은 이 값과 무관하게 나간다 (처리방침 제2조).
+ *
+ * TODO(api): GET/PATCH /api/me — ACCOUNT_CONSENT.MARKETING
+ */
+export function getMarketing(): boolean {
+  return readJSON<boolean>(MARKETING_KEY, false);
+}
+
+export function setMarketing(on: boolean) {
+  writeJSON(MARKETING_KEY, on);
 }
 
 /**

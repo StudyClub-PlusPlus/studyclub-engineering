@@ -1,5 +1,7 @@
 package com.studyclub.domain.account;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -70,6 +72,9 @@ public class Account extends BaseEntity {
     @Column(name = "DISCORD_HANDLE", length = 64)
     private String discordHandle;
 
+    @Column(name = "DISCORD_NICKNAME", length = 100)
+    private String discordNickname;
+
     /** NULL 이면 온보딩 미완료. */
     @Column(name = "ONBOARDING_COMPLETED_AT")
     private Instant onboardingCompletedAt;
@@ -131,6 +136,19 @@ public class Account extends BaseEntity {
         return discordHandle;
     }
 
+    public String getDiscordNickname() {
+        return discordNickname;
+    }
+
+    public void changeDiscordNickname(String discordNickname) {
+        if (discordNickname == null
+                || discordNickname.isBlank()
+                || discordNickname.length() > 100) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "discordNickname: invalid");
+        }
+        this.discordNickname = discordNickname;
+    }
+
     public Instant getOnboardingCompletedAt() {
         return onboardingCompletedAt;
     }
@@ -153,6 +171,49 @@ public class Account extends BaseEntity {
         this.nickname = nickname;
         this.timeZone = timeZone;
         this.onboardingCompletedAt = now;
+        return true;
+    }
+
+    /**
+     * 프로필 수정 — 닉네임·타임존을 한 번에 바꾼다. setter 둘로 나누지 않는다 — 닉네임은 중복 검사를 거친 값만 들어와야 하는데 setter 를 열어두면 검사
+     * 없이 바꾸는 경로가 생긴다. 형식 검증은 {@link #completeOnboarding} 과 같이 호출자(DTO)가 끝낸 값을 넘긴다고 가정한다.
+     */
+    public void updateProfile(String nickname, String timeZone) {
+        this.nickname = nickname;
+        this.timeZone = timeZone;
+    }
+
+    /**
+     * 요청자({@code actorId})가 이 계정의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 {@code null}. 위에서부터 먼저 맞는 것 하나 — 본인이
+     * 먼저다.
+     *
+     * <p><b>판정은 여기 하나다</b> — 백오피스 목록의 배지 잠금과 권한 변경 API 의 거절이 모두 이 메서드를 부른다 (endpoint-convention
+     * 「판정은 서버가 내려준다」). 캡틴 수는 계정 하나로 알 수 없어 호출자가 세어 넘긴다 ({@code SYSTEM_ROLE = ADMIN} 행 수 — 목록은 그냥
+     * 세고, 변경은 잠그고 센다).
+     */
+    public RoleChangeBlockedReason roleChangeBlockedReason(Long actorId, long adminCount) {
+        if (id.equals(actorId)) {
+            return RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE;
+        }
+        if (systemRole == SystemRole.ADMIN && adminCount <= 1) {
+            return RoleChangeBlockedReason.LAST_ADMIN_REQUIRED;
+        }
+        return null;
+    }
+
+    /**
+     * 계정 권한 전이. 값이 바뀌었으면 {@code true}, 같은 값이면 아무것도 하지 않고 {@code false}.
+     *
+     * <p>바꿔도 되는지는 {@link #roleChangeBlockedReason} 이 정하고, 서비스가 이 메서드를 부르기 전에 본다. 여기는 값 전이만 책임진다.
+     */
+    public boolean changeSystemRole(SystemRole newRole) {
+        if (newRole == null) {
+            throw new IllegalArgumentException("systemRole must not be null");
+        }
+        if (this.systemRole == newRole) {
+            return false;
+        }
+        this.systemRole = newRole;
         return true;
     }
 

@@ -66,10 +66,10 @@ export function RowActions() {
   );
 }
 
-export function TableCard({ children }: { children: ReactNode }) {
+export function TableCard({ children, tableClassName }: { children: ReactNode; tableClassName?: string }) {
   return (
     <div className='card overflow-x-auto'>
-      <table className='bo-table'>{children}</table>
+      <table className={'bo-table ' + (tableClassName ?? '')}>{children}</table>
     </div>
   );
 }

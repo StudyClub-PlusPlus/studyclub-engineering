@@ -4,7 +4,7 @@
 「누가 언제 이 사람의 이메일을 봤나」·「누가 이 사람을 캡틴으로 올렸나」에 답하려면 DB 에 남겨야 한다.
 **계정 ID 와 행위만** 담는다 — 이메일·닉네임 같은 개인정보는 넣지 않는다. 어떤 애그리거트에도 속하지 않는 insert-only 로그다.
 
-> 스펙: [admin-accounts](../../specs/admin-accounts/spec.md#감사-로그)
+> 스펙: [admin-users](../../specs/admin-users/spec.md#감사-로그)
 
 ## 컬럼
 
@@ -45,4 +45,4 @@
 
 ## 미확정
 
-- **보관 기간** — 운영진 확인 중. 정해지면 그보다 오래된 행을 지우는 작업을 따로 둔다 ([admin-accounts 미확정](../../specs/admin-accounts/spec.md#미확정))
+- **보관 기간** — 운영진 확인 중. 정해지면 그보다 오래된 행을 지우는 작업을 따로 둔다 ([admin-users 미확정](../../specs/admin-users/spec.md#미확정))

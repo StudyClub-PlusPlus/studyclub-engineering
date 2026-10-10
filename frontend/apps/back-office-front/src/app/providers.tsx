@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { mockHandlerGroups } from '@studyclub/mock/msw';
-import { Button } from '@studyclub/ui';
+import { Button, Toaster } from '@studyclub/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { USER_KEY } from '@/lib/auth';
@@ -59,6 +59,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <MswQueryInvalidator />
         {children}
+        <Toaster position='bottom-center' />
       </QueryClientProvider>
     </MSWProvider>
   );

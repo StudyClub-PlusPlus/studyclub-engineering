@@ -1,5 +1,5 @@
 import { CATEGORY_DISPLAY, studies as mockStudies } from '..';
-import type { Study } from '..';
+import type { ApplicationQuestion, Study } from '..';
 
 // ── 스터디 목록/상세 API 타입 ───────────────────────────────────────────
 export type ApiStudy = {
@@ -70,8 +70,10 @@ function toPhase(status: Study['status']): ApiStudy['phase'] {
   return 'CLOSED';
 }
 
-function toStudyStatus(status: Study['status']): 'DRAFT' | 'OPEN' | 'CLOSED' {
-  return status === 'closed' ? 'CLOSED' : 'OPEN';
+function toStudyStatus(status: Study['status']): ApiStudyDetail['status'] {
+  if (status === 'closed') return 'CLOSED';
+  if (status === 'ongoing') return 'ONGOING';
+  return 'OPEN';
 }
 
 function toTimezone(tz?: Study['timezone']): ApiStudy['timezone'] {
@@ -81,7 +83,7 @@ function toTimezone(tz?: Study['timezone']): ApiStudy['timezone'] {
 }
 
 export function studyToApiStudy(s: Study): ApiStudy {
-  const recruitClosed = s.recruitment?.status === 'closed';
+  const recruitClosed = s.status === 'closed' || s.status === 'ongoing' || s.recruitment?.status === 'closed';
   return {
     studyId: s.study_id,
     title: s.title.ko,
@@ -91,7 +93,7 @@ export function studyToApiStudy(s: Study): ApiStudy {
     thumbnailUrl: s.image ?? null,
     schedule: s.schedule?.ko ?? null,
     timezone: toTimezone(s.timezone),
-    status: toStudyStatus(s.status),
+    status: toStudyStatus(s.status) as ApiStudy['status'],
     phase: toPhase(s.status),
     recruitStatus: recruitClosed ? 'RECRUIT_CLOSED' : 'RECRUITING',
     capacity: s.seats?.total ?? null,
@@ -104,7 +106,7 @@ export function studyToApiStudy(s: Study): ApiStudy {
 }
 
 export function studyToApiStudyDetail(s: Study): ApiStudyDetail {
-  const recruitClosed = s.recruitment?.status === 'closed';
+  const recruitClosed = s.status === 'closed' || s.status === 'ongoing' || s.recruitment?.status === 'closed';
   return {
     id: s.study_id,
     programId: s.study_id,
@@ -124,6 +126,48 @@ export function studyToApiStudyDetail(s: Study): ApiStudyDetail {
     endAt: isoDate(s.date),
     discordChannelUrl: s.discord_url ?? null,
     driveUrl: s.driveUrl ?? null,
+  };
+}
+
+export type ApiApplicationFormQuestion = {
+  id: string;
+  label: string;
+  type: 'TEXT' | 'TEXTAREA' | 'RADIO' | 'CHECKBOX' | 'SELECT';
+  required: boolean;
+  placeholder?: string;
+  description?: string;
+  options?: string[];
+  allowOther?: boolean;
+};
+
+export type ApiStudyApplicationForm = {
+  studyId: number;
+  title: string;
+  description: string | null;
+  schedule: string | null;
+  recruitDeadline: string | null;
+  category: string;
+  summary: string;
+  detail: string | null;
+  questions: ApiApplicationFormQuestion[];
+};
+
+export function findApiApplicationForm(studyId: number): ApiStudyApplicationForm | undefined {
+  const s = mockStudies.find((m) => m.study_id === studyId);
+  if (!s) return undefined;
+  return {
+    studyId: s.study_id,
+    title: s.applicationFormTitle ?? s.title.ko,
+    description: s.applicationFormDescription ?? s.summary.ko ?? null,
+    schedule: s.schedule?.ko ?? null,
+    recruitDeadline: isoDate(s.recruitment?.deadline),
+    category: categoryEnum(s.category ?? ''),
+    summary: s.summary.ko,
+    detail: s.description?.ko ?? null,
+    questions: (s.applicationForm ?? []).map((q) => ({
+      ...q,
+      type: q.type.toUpperCase() as ApiApplicationFormQuestion['type'],
+    })),
   };
 }
 

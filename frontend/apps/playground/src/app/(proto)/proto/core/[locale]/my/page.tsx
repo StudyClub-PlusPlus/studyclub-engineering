@@ -18,10 +18,12 @@ import {
   getBookmarks,
   getDiscord,
   getDisplayName,
+  getMarketing,
   getTimeZone,
   seedDemoData,
   setDiscord,
   setBookmarked,
+  setMarketing,
   setDisplayName,
   setTimeZone,
   type Application,
@@ -32,12 +34,12 @@ import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
 import { recruitState } from '@core/lib/recruit';
 import { type Study } from '@studyclub/mock';
-import { Button, Input } from '@studyclub/ui';
+import { Button } from '@studyclub/ui';
 import { CalendarClock, Heart, Pencil } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
  * 마이페이지.
@@ -174,6 +176,8 @@ export default function MyPage() {
   const [draftName, setDraftName] = useState('');
   const [draftZone, setDraftZone] = useState('Asia/Seoul');
   const [composing, setComposing] = useState(false);
+  const [marketing, setMarketingState] = useState(false);
+  const [draftMarketing, setDraftMarketing] = useState(false);
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
 
   useEffect(() => {
@@ -190,6 +194,7 @@ export default function MyPage() {
     setApplications(getApplications());
     setBookmarks(getBookmarks());
     setDiscordState(getDiscord());
+    setMarketingState(getMarketing());
     setReady(true);
   }, [locale, router]);
 
@@ -256,6 +261,7 @@ export default function MyPage() {
   function openEditor() {
     setDraftName(name);
     setDraftZone(timeZone);
+    setDraftMarketing(marketing);
     setEditing(true);
   }
 
@@ -265,6 +271,8 @@ export default function MyPage() {
     setDisplayName(trimmedName);
     setTimeZoneState(draftZone);
     setTimeZone(draftZone);
+    setMarketingState(draftMarketing);
+    setMarketing(draftMarketing);
     setEditing(false);
   }
 
@@ -302,18 +310,26 @@ export default function MyPage() {
         <div className='flex items-start justify-between gap-4 px-6 pt-5'>
           <div className='min-w-0 flex-1'>
             {editing ? (
-              <div data-anno='profile:2' className='max-w-sm'>
-                <Input
-                  label='닉네임'
-                  value={draftName}
-                  onChange={(e) => setDraftName(e.target.value)}
-                  onCompositionStart={() => setComposing(true)}
-                  onCompositionEnd={() => setComposing(false)}
-                  labelHint={`${trimmedName.length}/20`}
-                  autoFocus
-                />
+              /*
+                보던 자리에서 고친다 — 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다.
+                블록을 새로 쌓으면 아래 값들이 밀려 같은 카드가 다른 화면처럼 보인다.
+              */
+              <div data-anno='profile:2' className='min-w-0'>
+                <div className='flex items-center gap-2'>
+                  <input
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    onCompositionStart={() => setComposing(true)}
+                    onCompositionEnd={() => setComposing(false)}
+                    autoFocus
+                    aria-label='닉네임'
+                    /* 테두리 대신 밑줄 — 입력칸을 상자로 만들면 그 줄만 키가 커져 카드 전체가 달라 보인다 */
+                    className='min-w-0 flex-1 border-0 border-b border-border-strong bg-transparent p-0 text-xl font-extrabold tracking-tight text-fg outline-none focus:border-brand'
+                  />
+                  <span className='tnum shrink-0 text-xs text-fg-placeholder'>{trimmedName.length}/20</span>
+                </div>
                 <p
-                  className={`mt-2 text-xs ${
+                  className={`mt-0.5 truncate text-sm ${
                     nameLine.tone === 'ok'
                       ? 'text-success-700'
                       : nameLine.tone === 'error'
@@ -347,20 +363,20 @@ export default function MyPage() {
         </div>
 
         {/* 값은 이름과 값 두 줄로만 세운다 — 칸을 나눠 담으면 둘뿐인 값이 표처럼 보인다 */}
-        <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-baseline gap-x-6 gap-y-3 px-6 pb-5 text-sm'>
-          <dt className='text-fg-muted'>시간대</dt>
-          <dd data-anno='profile:3' className='min-w-0'>
+        <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-center gap-x-6 gap-y-2 px-6 pb-5 text-sm'>
+          <dt className='flex min-h-8 items-center text-fg-muted'>시간대</dt>
+          <dd data-anno='profile:3' className='flex min-h-8 min-w-0 items-center'>
             {editing ? (
               <div className='max-w-xs'>
-                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel />
+                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel compact />
               </div>
             ) : (
               <span className='font-semibold text-fg'>{zoneLabel}</span>
             )}
           </dd>
 
-          <dt className='text-fg-muted'>디스코드</dt>
-          <dd data-anno='profile:4' className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
+          <dt className='flex min-h-8 items-center text-fg-muted'>디스코드</dt>
+          <dd data-anno='profile:4' className='flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
             {discord ? (
               <>
                 <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
@@ -389,18 +405,39 @@ export default function MyPage() {
               </>
             )}
           </dd>
+
+          {/*
+            가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다 — 가입 화면에만 두면 바꿀 수 없다.
+            가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
+          */}
+          <dt className='flex min-h-8 items-center text-fg-muted'>마케팅 수신</dt>
+          <dd data-anno='profile:5' className='flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
+            {editing ? (
+              <label className='inline-flex cursor-pointer items-center gap-2'>
+                <input
+                  type='checkbox'
+                  checked={draftMarketing}
+                  onChange={(ev) => setDraftMarketing(ev.target.checked)}
+                  className='h-4 w-4 accent-[var(--color-brand)]'
+                />
+                <span className='text-sm text-fg'>스터디 소식과 행사 안내를 이메일로 받기</span>
+              </label>
+            ) : (
+              <span className='font-semibold text-fg'>{marketing ? '받음 · 이메일' : '받지 않음'}</span>
+            )}
+          </dd>
         </dl>
 
         {/* 닫는 줄 — 무거운 동작은 왼쪽 끝, 주액션은 오른쪽 끝 */}
-        <div className='flex items-center justify-between gap-3 border-t border-border px-6 py-3'>
+        <div className='flex min-h-14 items-center justify-between gap-3 border-t border-border px-6 py-3'>
           <Link
-            data-anno='profile:6'
+            data-anno='profile:7'
             href={`/proto/core/${locale}/my/leave`}
             className='text-xs text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
           >
             회원 탈퇴
           </Link>
-          <div data-anno='profile:5' className='flex items-center gap-2'>
+          <div data-anno='profile:6' className='flex items-center gap-2'>
             {editing && (
               <>
                 <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>

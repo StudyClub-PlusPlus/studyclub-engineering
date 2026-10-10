@@ -7,16 +7,20 @@
 - [어디에 두나 — 기능 옆에](#어디에-두나--기능-옆에)
 - [서버 상태는 TanStack Query 로](#서버-상태는-tanstack-query-로)
 - [쿼리 키](#쿼리-키)
+- [필터·검색·페이지는 URL 에](#필터검색페이지는-url-에)
 - [변경(mutation)과 무효화](#변경mutation과-무효화)
 - [에러와 401](#에러와-401)
 - [서버 컴포넌트로 충분한 경우](#서버-컴포넌트로-충분한-경우)
 - [응답 형태 주의](#응답-형태-주의)
+- [판정을 다시 하지 않는다](#판정을-다시-하지-않는다)
 
 ## 세 줄 요약
 
 1. 브라우저가 **백엔드를 직접 부른다.** 중계(BFF) 라우트를 만들지 않는다 — 인증은 **쿠키**로 간다
 2. 조회는 `useEffect + fetch` 가 아니라 **`useQuery`** 로 한다
 3. fetcher·쿼리 키·훅은 **그 기능 폴더 안에** 둔다 (`src/features/<기능>/queries.ts`)
+4. 목록의 **필터·검색·페이지·탭은 URL 쿼리**에 둔다 (`useSearchParams`). `useState` 로 들고 있지 않는다
+4. 모집 중인지·정원이 찼는지·출석률 같은 **판정은 응답 필드를 그린다.** 날짜·숫자로 다시 계산하지 않는다
 
 ## 인증 — 쿠키를 실어 보낸다
 
@@ -61,7 +65,7 @@ httpOnly 를 유지한 채 쿠키로 보내는 것이 이 구조의 핵심이다
 `queryFn` 에서 **Server Action 을 부르지 않는다.** 공식 문서가 명시한다 — 클라이언트에서 호출된
 Server Action 은 **직렬로 실행**되어 병렬 조회를 전제하는 쿼리 동작과 충돌한다.
 
-> 백오피스 화면이 부르는 백엔드 경로는 `/api/admin/...` 이다 — [엔드포인트 규약](api/endpoint-convention.md).
+> 백오피스 화면이 부르는 백엔드 경로는 `/api/admin/...` 이다 — [엔드포인트 규약](../backend-development-guide/api/endpoint-convention.md).
 
 ## 어디에 두나 — 기능 옆에
 
@@ -146,6 +150,51 @@ export const studyKeys = {
 - **필터를 키에 넣는다.** 조건이 바뀌면 자연히 다른 캐시가 된다
 - 키 팩토리 **라이브러리는 쓰지 않는다** — 화면 10개 규모에서는 손으로 쓴 객체가 더 싸다
 
+## 필터·검색·페이지는 URL 에
+
+목록 화면의 **탭·필터·검색어·페이지·정렬**은 URL 쿼리(`?role=CAPTAIN&q=kim&page=2`)가 정본이다.
+`useState` 로 들고 있지 않는다. 크루 사이트(core-front)·백오피스 둘 다 같다.
+
+**왜** — `useState` 면 새로고침하거나 상세에 들어갔다 **뒤로 오면 첫 화면으로 돌아간다.** 운영자는
+같은 조건으로 여러 건을 차례로 처리하고, 크루는 걸러 둔 목록에서 스터디를 하나씩 열어 본다 — 매번
+다시 거는 게 가장 흔한 불편이다. URL 에 있으면 뒤로 가기·새로고침이 그대로 되고, 링크로 그 화면을 그대로 넘길 수 있다.
+
+앱마다 `src/lib/use-url-state.ts` 의 `useUrlState` 하나로 한다. 화면마다 URL 을 읽고 쓰는 코드를 새로 짜지 않는다.
+
+```tsx
+// 모듈 상수로 둔다 — 렌더마다 새 객체면 set 이 매번 바뀐다
+const URL_DEFAULTS = { q: '', status: 'all', page: '1' };
+const URL_ALLOWED = { status: STATUS_OPTIONS.map((o) => o.value) };   // 모르는 값은 기본값으로
+
+const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+const page = pageOf(filters.page);
+
+// 조건을 바꾸면 페이지는 1로 — 같은 set 에서 함께 바꾼다
+<Select value={filters.status} onChange={(v) => setFilters({ status: v, page: '1' })} />
+
+// 검색 입력칸 글자는 화면 state, 멈추면 URL 에
+const [query, setQuery] = useState(filters.q);
+const debounced = useDebouncedValue(query, 300);
+useEffect(() => {
+  if (debounced !== filters.q) setFilters({ q: debounced, page: '1' });
+}, [debounced, filters.q, setFilters]);
+```
+
+적용 예: core-front `StudyBrowser`·`EventBrowser`·마이 › 참여 스터디, 백오피스 `features/studies/StudiesTable`·`features/events/EventsTable`.
+
+- **라이브러리 없이** `useSearchParams` · `useRouter` · `usePathname` 으로 한다 (`useUrlState` 가 감싼다)
+- **기본값은 URL 에 싣지 않는다** — 첫 화면 주소가 깨끗하고, 같은 상태가 주소 둘로 갈리지 않는다
+- **`router.replace`** 를 쓴다. 타이핑·탭 전환마다 `push` 하면 뒤로 가기가 한 글자씩 되돌아간다
+- 검색 **입력칸의 글자**는 `useState` 로 두고, 디바운스한 값만 URL 에 쓴다
+- URL 값은 **믿지 않는다** — 모르는 탭 값·음수 페이지는 기본값으로 되돌린다. 서버 검증과 같은 범위로
+- 그대로 쿼리 키에 들어간다 (`userKeys.list(filter)`) — URL 이 바뀌면 캐시도 자연히 갈린다
+- 정적 프리렌더되는 페이지에서 `useSearchParams()` 를 쓰면 **`<Suspense>` 로 감싼다.** 안 감싸면 경계가 없어 **페이지 전체**(레이아웃·제목 포함)가 브라우저 렌더로 넘어간다 — 빌드는 통과하니 눈치채기 어렵다 (`my/joined/page.tsx` 참고)
+- **공개 목록 페이지**(SEO 대상)는 페이지에서 `await searchParams` 로 요청마다 렌더하게 한다 — 조건이 걸린 목록까지 HTML 에 들어간다 (`[locale]/studies/page.tsx` 참고)
+- 서버 컴포넌트 페이지(공개 목록 등)는 훅 대신 `searchParams` prop 으로 같은 값을 읽는다
+
+**URL 에 두지 않는 것** — 모달 열림·메뉴 펼침 같은 잠깐의 UI 상태, 그리고 **개인정보**(「보기」로 받은
+이메일 원본 등). URL 은 브라우저 기록·서버 접근 로그·공유 링크로 남는다.
+
 ## 변경(mutation)과 무효화
 
 ```ts
@@ -184,4 +233,22 @@ const { mutate } = useMutation({
 
 백엔드 성공 응답에는 **래퍼가 없다.** payload 가 그대로 온다 —
 `res.json().data` 로 벗기면 `undefined` 가 된다. 페이지네이션 목록만 `{ items, total, offset, limit }` 이다.
-([엔드포인트 규약 §응답 포맷](api/endpoint-convention.md))
+([엔드포인트 규약 §응답 포맷](../backend-development-guide/api/endpoint-convention.md#응답-포맷))
+
+## 판정을 다시 하지 않는다
+
+**"지금 어떤 상태인가" 는 서버가 응답 필드로 준다. 화면은 그 값을 그린다.**
+정본: [엔드포인트 규약 §판정은 서버가 내려준다](../backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다)
+
+```ts
+// ❌ 재료로 다시 판정한다 — 서버와 기준이 갈린다 (UTC 날짜 비교, 다른 인원 수)
+const open = deadline.slice(0, 10) >= todayISO() && applicants < capacity;
+
+// ✅ 서버 판정을 옮긴다
+const open = api.recruitStatus === 'RECRUITING';
+```
+
+- **필드가 없으면 만들지 않는다.** 스펙에 필드를 추가해 백엔드에 요청하고 `// TODO(api): recruitStatus 필요` 를 남긴다
+- **mock 데이터에도 판정 필드를 넣는다.** 화면 코드가 mock 과 실제 API 를 같은 경로로 읽어야 교체할 때 판정 로직이 따라오지 않는다
+- `packages/mock` 의 `recruitState()` 같은 공유 함수에 판정 축(시작일·정원·인원)을 더하지 않는다 — 크루 사이트·백오피스·playground 가 같이 흔들린다
+- 해도 되는 것: 날짜·숫자 표시 형식, 받은 값으로 정렬·필터, 입력 중 검증(최종은 서버), 낙관적 업데이트

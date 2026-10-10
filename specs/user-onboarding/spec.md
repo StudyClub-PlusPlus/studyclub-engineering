@@ -147,7 +147,7 @@ ACCOUNT_IDENTITY
 
 ### `GET /auth/me`
 
-응답은 DB에 저장된 정보만 담는 `AccountView`를 사용한다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다.
+응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
 
 ### `GET /api/nicknames/availability`
 
