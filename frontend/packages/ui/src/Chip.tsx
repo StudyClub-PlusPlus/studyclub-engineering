@@ -6,8 +6,8 @@ import { cx } from './cx';
 
 /**
  * design-system.md §9-8 Filter Chip.
- * 미선택: 흰 bg + border-strong + neutral-700
- * 선택(다중): brand-subtle bg + primary-700 / 선택(단일): brand solid
+ * 미선택: surface-raised + border + text-secondary
+ * 선택(다중): primary-light + primary-dark / 선택(단일): primary solid
  */
 export interface FilterChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   selected?: boolean;
@@ -29,8 +29,8 @@ export function FilterChip({ selected = false, selectMode = 'multi', className, 
         solid
           ? 'border border-transparent bg-brand text-on-brand hover:bg-brand-hover'
           : selected
-            ? 'border border-transparent bg-brand-subtle text-primary-700 hover:bg-brand-subtle-hover'
-            : 'border border-border-strong bg-bg text-neutral-700 hover:bg-surface-1',
+            ? 'border border-border-strong bg-primary-light text-primary-dark hover:brightness-[0.97]'
+            : 'border border-border bg-surface-raised text-text-secondary hover:border-border-interactive hover:bg-page-bg',
         className,
       )}
     >

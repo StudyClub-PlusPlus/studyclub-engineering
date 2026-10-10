@@ -237,7 +237,7 @@ export function ApplyDialog({
                                 aria-label={`${locale === 'ko' ? d.ko : d.en} ${locale === 'ko' ? sl.ko : sl.en}`}
                                 onClick={() => toggleCell(key)}
                                 className={`h-9 w-full rounded-sm border transition-colors focus-visible:outline-none focus-visible:shadow-(--ring) ${
-                                  on ? 'border-transparent bg-brand' : 'border-border-strong bg-bg hover:bg-surface-2'
+                                  on ? 'border-transparent bg-brand' : 'border-border bg-bg hover:border-border-interactive hover:bg-surface-2'
                                 }`}
                               />
                             </td>

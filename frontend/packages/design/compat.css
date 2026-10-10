@@ -2,7 +2,7 @@
    compat.css — 구 토큰 → 디자인 시스템 v1.0 매핑 (마이그레이션 브리지)
 
    기존 core-front/back-office-front 의 globals.css 색 토큰은 컴포넌트 36개 파일에서
-   약 350회 참조된다 (bg-accent / text-fg-subtle / bg-recruiting-soft ...).
+   여러 화면에서 참조된다 (text-fg-subtle / bg-recruiting-soft ...).
    이름을 한 번에 갈아엎으면 전 화면이 깨지므로, 구 이름을 신규 semantic 토큰의
    별칭으로 남겨 두고 점진적으로 걷어낸다.
 
@@ -17,31 +17,24 @@
   /* ---- Surfaces ----
      구 --color-surface(#fff)는 "카드"였다. 신규 semantic 토큰은 --color-bg(흰색).
      ⚠️ --color-bg 는 tokens.css 의 neutral-0(흰색)을 그대로 유지해야 하므로 여기서 덮어쓰지 않는다. */
-  --color-surface: var(--color-neutral-0); /* was #ffffff */
-  --color-surface-subtle: var(--color-neutral-100); /* was #f4f4f7 */
+  --color-surface: var(--color-surface-raised); /* legacy card/input surface */
+  --color-surface-subtle: var(--color-cloud);
 
   /* ---- Borders ---- */
-  --color-border: var(--color-neutral-200); /* was #ececef */
-  --color-border-strong: var(--color-neutral-300); /* was #e0e0e6 */
+  /* border 토큰은 tokens.css 의 신규 semantic 값을 그대로 사용한다. */
 
   /* ---- Text ----
      ⚠️ --color-fg-muted 는 tokens.css 의 neutral-600 을 그대로 유지해야 하므로 여기서 덮어쓰지 않는다. */
-  --color-fg: var(--color-neutral-900); /* was #18181b */
-  --color-fg-subtle: var(--color-neutral-600); /* was #71717a */
-  --color-fg-faint: var(--color-neutral-400); /* was #a1a1aa */
-
-  /* ---- Accent → Brand ---- */
-  --color-accent: var(--color-primary-600); /* was #4f46e5 */
-  --color-accent-hover: var(--color-primary-700); /* was #4338ca */
-  --color-accent-soft: var(--color-primary-50); /* was #eef2ff */
+  --color-fg-subtle: var(--color-text-muted);
+  --color-fg-faint: var(--color-text-tertiary);
 
   /* ---- Study status ----
      ⚠️ ongoing 은 색상군이 바뀐다: 구 amber → 신규 info(blue).
      design-system.md §2-5 가 "진행중 = inprogress = info" 로 규정. */
-  --color-recruiting: var(--color-success-700); /* was #15803d */
-  --color-recruiting-soft: var(--color-success-50); /* was #dcfce7 */
-  --color-ongoing: var(--color-info-700); /* was #b45309 (amber) */
-  --color-ongoing-soft: var(--color-info-50); /* was #fef3c7 (amber) */
-  --color-closed: var(--color-neutral-600); /* was #6b7280 */
-  --color-closed-soft: var(--color-neutral-100); /* was #f1f1f4 */
+  --color-recruiting: var(--color-success-fg);
+  --color-recruiting-soft: var(--color-success-bg);
+  --color-ongoing: var(--color-info-fg);
+  --color-ongoing-soft: var(--color-info-bg);
+  --color-closed: var(--color-neutral-fg);
+  --color-closed-soft: var(--color-neutral-bg);
 }

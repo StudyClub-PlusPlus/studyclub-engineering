@@ -27,7 +27,7 @@ export interface SegmentedProps<T extends string = string> {
  *
  * - track: surface-2
  * - active: 흰 bg(bg-bg) + shadow-xs
- * - inactive: neutral-600 (hover: neutral-900)
+ * - inactive: text-muted (hover: ink)
  */
 export function Segmented<T extends string = string>({
   options,
@@ -81,7 +81,7 @@ export function Segmented<T extends string = string>({
               itemPadding,
               fullWidth && 'flex-1',
               active
-                ? 'bg-bg font-semibold text-neutral-900 shadow-xs'
+                ? 'bg-surface-raised font-semibold text-ink shadow-xs'
                 : 'text-fg-muted hover:text-fg',
               opt.disabled && 'cursor-not-allowed opacity-40 hover:text-fg-muted',
             )}

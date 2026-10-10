@@ -198,7 +198,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
             <button
               type='button'
               onClick={() => act('leave')}
-              className='rounded-pill border border-border-strong px-4 py-2 text-[13px] font-bold text-fg-secondary transition-colors hover:bg-surface-2'
+              className='rounded-pill border border-border px-4 py-2 text-[13px] font-bold text-fg-secondary transition-colors hover:border-border-interactive hover:bg-surface-2'
             >
               휴가
             </button>
@@ -253,7 +253,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
                     <span
                       title={`${m.no}회차 ${m.date}`}
                       className={`grid h-8 w-full place-items-center rounded-sm text-[11px] font-bold ${
-                        status ? STATUS_STYLE[status] : 'border border-dashed border-border-strong text-fg-muted'
+                        status ? STATUS_STYLE[status] : 'border border-dashed border-border text-fg-muted'
                       }`}
                     >
                       {status ? STATUS_LABEL[status] : ''}

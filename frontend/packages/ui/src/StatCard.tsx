@@ -5,7 +5,7 @@ import { cx } from './cx';
 
 /**
  * design-system.md §9-7 Dashboard Stat Card.
- * 라벨(sm/neutral-600) → 값(3xl~4xl/700, tabular-nums) → 델타(success-700 ▲ / error-700 ▼)
+ * 라벨(sm/text-muted) → 값(3xl~4xl/700, tabular-nums) → 델타(success-fg ▲ / danger-fg ▼)
  */
 export interface StatCardProps {
   label: string;
@@ -40,7 +40,7 @@ export function StatCard({
   const down = typeof delta === 'number' && delta < 0;
   return (
     <Card className={cx('flex flex-col gap-1', className)}>
-      {/* §9-7 순서: 라벨 → 값 → 델타. 값은 neutral-900 + tabular-nums(.stat-value). */}
+      {/* §9-7 순서: 라벨 → 값 → 델타. 값은 ink + tabular-nums(.stat-value). */}
       <div className='flex items-center justify-between gap-2'>
         <span className='flex items-center gap-1.5 text-sm text-fg-muted'>
           {leadingIcon}
@@ -48,10 +48,10 @@ export function StatCard({
         </span>
         {icon && <span className='text-fg-placeholder'>{icon}</span>}
       </div>
-      <span className='stat-value text-3xl font-bold tracking-tight text-neutral-900'>{value}</span>
+      <span className='stat-value text-3xl font-bold tracking-tight text-ink'>{value}</span>
       {(up || down) && (
         <span className='flex items-baseline gap-1.5 text-sm'>
-          <span className={cx('tnum font-medium', up ? 'text-success-700' : 'text-error-700')}>
+          <span className={cx('tnum font-medium', up ? 'text-success-fg' : 'text-danger-fg')}>
             {up ? '▲' : '▼'} {Math.abs(delta as number)}
             {deltaSuffix}
           </span>
@@ -65,7 +65,7 @@ export function StatCard({
 
 /** §9-6 출석률 임계 색: ≥80 success / 60–79 warning / <60 error. */
 export function rateToneClass(rate: number): string {
-  if (rate >= 80) return 'text-success-700';
-  if (rate >= 60) return 'text-warning-700';
-  return 'text-error-700';
+  if (rate >= 80) return 'text-success-fg';
+  if (rate >= 60) return 'text-warning-fg';
+  return 'text-danger-fg';
 }

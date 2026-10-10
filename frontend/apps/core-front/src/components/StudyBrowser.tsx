@@ -49,7 +49,7 @@ function FilterOption({
       className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
         active
           ? 'border-brand bg-brand text-on-brand'
-          : 'border-border-strong bg-bg text-fg-secondary hover:border-fg-muted hover:text-fg'
+          : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:text-fg'
       }`}
     >
       {children}
@@ -70,7 +70,7 @@ function FilterSelect<T extends string>({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value as T)}
-      className='h-9 w-fit min-w-0 rounded-lg border border-border-strong bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+      className='h-9 w-fit min-w-0 rounded-lg border border-border bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]'
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -167,7 +167,7 @@ export function StudyBrowser({
               onChange={setTimezone}
             />
           </div>
-          <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 transition-[width] duration-200 sm:ml-auto sm:w-[200px] sm:focus-within:w-[312px]'>
+          <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-[312px]'>
             <input
               role='searchbox'
               type='text'
@@ -187,7 +187,7 @@ export function StudyBrowser({
                 <X size={14} />
               </button>
             )}
-            <div className='mx-1 h-5 w-px shrink-0 bg-border-strong' />
+            <div className='mx-1 h-5 w-px shrink-0 bg-border' />
             <button
               type='button'
               onClick={commitSearch}
@@ -242,7 +242,7 @@ export function StudyBrowser({
           <button
             type='button'
             onClick={clearSearch}
-            className='rounded-pill border border-border-strong px-4 py-1.5 text-sm font-semibold text-fg-secondary hover:border-fg-muted hover:text-fg'
+            className='rounded-pill border border-border px-4 py-1.5 text-sm font-semibold text-fg-secondary hover:border-border-interactive hover:text-fg'
           >
             {t({ ko: '검색어 지우기', en: 'Clear search' }, locale)}
           </button>

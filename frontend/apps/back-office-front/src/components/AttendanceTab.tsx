@@ -36,7 +36,7 @@ function Cell({ status, onClick }: { status: AttendanceStatus | undefined; onCli
       onClick={onClick}
       title='눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'
       className={`h-8 w-full rounded-sm border text-[11px] font-bold transition-colors ${
-        status ? CELL_STYLE[status] : 'border-dashed border-border-strong bg-surface text-fg-muted hover:bg-surface-2'
+        status ? CELL_STYLE[status] : 'border-dashed border-border bg-surface text-fg-muted hover:border-border-interactive hover:bg-surface-2'
       }`}
     >
       {status ? CELL_LABEL[status] : ''}

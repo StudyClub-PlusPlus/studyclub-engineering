@@ -7,15 +7,15 @@ import { cx } from './cx';
 
 /** design-system.md §9-2 — 입력 계열 공통 셸. */
 const CONTROL_BASE = cx(
-  'w-full rounded-control border bg-bg px-3.5 text-sm text-neutral-900',
+  'w-full rounded-control border bg-surface-raised px-3.5 text-sm text-ink',
   'placeholder:text-fg-placeholder',
   'transition-[border-color,box-shadow] duration-fast ease-out',
   'focus:outline-none',
-  'disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-neutral-400',
+  'disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-fg',
 );
 
-const CONTROL_OK = 'border-border-strong focus:border-brand focus:shadow-(--ring)';
-const CONTROL_ERROR = 'border-error-600 focus:border-error-600 focus:shadow-(--ring-error)';
+const CONTROL_OK = 'border-border focus:border-border-interactive focus:shadow-(--ring)';
+const CONTROL_ERROR = 'border-danger-fg focus:border-danger-fg focus:shadow-(--ring-error)';
 
 function controlClass(invalid: boolean, extra?: string) {
   return cx(CONTROL_BASE, invalid ? CONTROL_ERROR : CONTROL_OK, extra);
@@ -39,10 +39,10 @@ export function FieldShell({ label, helper, error, required, labelHint, htmlFor,
     <div className='flex flex-col gap-1.5'>
       {(label || labelHint) && (
         <div className='flex items-baseline justify-between gap-2'>
-          <label htmlFor={htmlFor} className='text-sm font-medium text-neutral-800'>
+          <label htmlFor={htmlFor} className='text-sm font-medium text-ink'>
             {label}
             {required && (
-              <span className='ml-0.5 text-error-600' aria-hidden='true'>
+              <span className='ml-0.5 text-danger-fg' aria-hidden='true'>
                 *
               </span>
             )}
@@ -51,7 +51,7 @@ export function FieldShell({ label, helper, error, required, labelHint, htmlFor,
         </div>
       )}
       {children}
-      {message && <p className={cx('text-xs', error ? 'text-error-700' : 'text-fg-muted')}>{message}</p>}
+      {message && <p className={cx('text-xs', error ? 'text-danger-fg' : 'text-fg-muted')}>{message}</p>}
     </div>
   );
 }

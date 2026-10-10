@@ -331,7 +331,7 @@ function ProgramField({
       className={`h-9 flex-1 rounded-control border px-3 text-sm transition-colors ${
         value.programMode === m
           ? 'border-brand bg-brand/5 font-semibold text-fg'
-          : 'border-border-strong text-fg-secondary hover:bg-surface-2'
+          : 'border-border text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
       }`}
     >
       {label}
@@ -363,7 +363,7 @@ function ProgramField({
                 className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
                   value.kind === k
                     ? 'border-brand bg-brand text-white'
-                    : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+                    : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
                 }`}
               >
                 {KIND_LABEL[k]}
@@ -381,7 +381,7 @@ function ProgramField({
             value={value.programId}
             onChange={(ev) => void selectProgram(ev.target.value)}
             disabled={isLoading || prefilling}
-            className='h-10 rounded-control border border-border-strong bg-bg px-3 text-sm outline-none focus:border-brand'
+            className='h-10 rounded-control border border-border bg-bg px-3 text-sm outline-none focus:border-border-interactive'
           >
             <option value=''>{isLoading ? '불러오는 중…' : '클럽을 고르세요'}</option>
             {clubs.map((c) => (
@@ -403,7 +403,7 @@ function ProgramField({
 }
 
 const DATE_INPUT =
-  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]';
+  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
 
 export function StudyForm({
   value,

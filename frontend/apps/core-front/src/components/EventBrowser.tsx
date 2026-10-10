@@ -41,7 +41,7 @@ function TypeChip({ active, onClick, children }: { active: boolean; onClick: () 
       className={`shrink-0 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
         active
           ? 'border-brand bg-brand text-on-brand'
-          : 'border-border-strong bg-bg text-fg-secondary hover:border-fg-muted hover:text-fg'
+          : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:text-fg'
       }`}
     >
       {children}
@@ -120,7 +120,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={m('filter.search_events', locale)}
-            className='h-8 w-full rounded-pill border border-border-strong bg-bg pl-9 pr-3 text-sm outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-(--ring)'
+            className='h-8 w-full rounded-pill border border-border bg-bg pl-9 pr-3 text-sm outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
           />
         </div>
       </div>
