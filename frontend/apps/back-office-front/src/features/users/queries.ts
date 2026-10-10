@@ -1,6 +1,8 @@
 // 백오피스 회원 — 목록·이메일 보기·권한 변경·권한표. 키·fetcher·훅을 한 파일에 둔다.
+import { toast } from '@studyclub/ui';
 import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { DISCORD_NOTICE } from '@/features/users/labels';
 import type {
   ApiAdminAccountPage,
   ApiEmailReveal,
@@ -67,10 +69,12 @@ export function useRevealEmail(accountId: number) {
     mutationKey,
     gcTime: 0,
     mutationFn: () => http<ApiEmailReveal>(`/api/admin/users/${accountId}/email-reveals`, { method: 'POST' }),
+    // 실패 안내는 훅에서 — 줄이 사라져(목록 갱신) 컴포넌트가 없어져도 안내는 뜬다. 가린 값은 그대로 둔다
+    onError: (err) => toast.error(err.message || '이메일을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'),
   });
   const isPending = useIsMutating({ mutationKey }) > 0;
   return {
-    mutateAsync: mutation.mutateAsync,
+    mutate: mutation.mutate,
     reset: mutation.reset,
     isPending,
     isBusy: () => queryClient.isMutating({ mutationKey }) > 0,
@@ -97,11 +101,19 @@ export function useChangeAccountRole(accountId: number) {
         headers: JSON_HEADERS,
         body: JSON.stringify({ systemRole }),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
+    // 안내는 훅 단계 콜백에서 띄운다. `mutate(…, { onSuccess })` 처럼 호출 단계에 두면, 성공 뒤 목록이 다시 와서
+    // 이 줄이 사라질 때(예: 캡틴 탭에서 내림) 콜백이 불리지 않아 안내가 사라진다. 훅 단계는 언마운트와 상관없이 불린다.
+    onSuccess: () => {
+      // 디스코드 역할은 자동으로 바뀌지 않는다 — 올림·내림 모두 안내한다
+      toast(DISCORD_NOTICE, { duration: 6000 });
+      return queryClient.invalidateQueries({ queryKey: userKeys.all });
+    },
+    // 기존 배지는 그대로다(응답 전에 바꾸지 않았다). 사유만 알린다
+    onError: (err) => toast.error(err.message || '권한을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.'),
   });
   const isPending = useIsMutating({ mutationKey }) > 0;
   return {
-    mutateAsync: mutation.mutateAsync,
+    mutate: mutation.mutate,
     isPending,
     isBusy: () => queryClient.isMutating({ mutationKey }) > 0,
   };

@@ -26,6 +26,39 @@ vi.mock('@studyclub/ui', async (importOriginal) => {
   return { ...actual, toast: Object.assign(vi.fn(), { error: vi.fn() }) };
 });
 
+// 화면이 탭·검색·페이지를 URL 로 든다(useUrlState). 테스트에는 Next 라우터가 없어 메모리 URL 로 대신한다 —
+// router.replace 가 이 값을 바꾸면 useSearchParams 를 쓰는 화면이 다시 그려진다.
+const memoryUrl = vi.hoisted(() => {
+  let search = '';
+  const listeners = new Set<() => void>();
+  return {
+    get: () => search,
+    set: (next: string) => {
+      search = next;
+      listeners.forEach((listener) => listener());
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+});
+
+vi.mock('next/navigation', async () => {
+  const { useMemo, useSyncExternalStore } = await import('react');
+  const router = {
+    replace: (url: string) => memoryUrl.set(url.includes('?') ? url.slice(url.indexOf('?') + 1) : ''),
+  };
+  return {
+    useSearchParams: () => {
+      const search = useSyncExternalStore(memoryUrl.subscribe, memoryUrl.get);
+      return useMemo(() => new URLSearchParams(search), [search]);
+    },
+    useRouter: () => router,
+    usePathname: () => '/users',
+  };
+});
+
 const httpMock = vi.mocked(http);
 const toastMock = vi.mocked(toast);
 const toastErrorMock = vi.mocked(toast.error);
@@ -75,6 +108,7 @@ const offsetOf = (path: unknown) => new URL(String(path), 'http://x').searchPara
 const listCalls = () => httpMock.mock.calls.filter(([path]) => String(path).startsWith('/api/admin/users?'));
 
 beforeEach(() => {
+  memoryUrl.set('');
   httpMock.mockReset();
   toastMock.mockClear();
   toastErrorMock.mockClear();
@@ -259,6 +293,29 @@ describe('RoleBadgeSelect 접근성', () => {
     const locked = screen.getByTitle('자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.');
     expect(locked).toHaveAttribute('tabindex', '0');
     expect(locked).toHaveAccessibleDescription('자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.');
+  });
+});
+
+describe('URL 조건', () => {
+  it('URL 의 탭·검색어·페이지로 첫 요청을 하고, 탭을 바꾸면 URL 에 쓰고 첫 페이지로 돌아간다', async () => {
+    memoryUrl.set('role=CAPTAIN&q=kim&page=2');
+    httpMock.mockResolvedValue(pageOf([account({ name: '김캡틴' })], 30, 20));
+    renderWith(<UsersAdmin />);
+
+    await screen.findByText('김캡틴');
+    expect(listCalls()[0][0]).toBe('/api/admin/users?role=CAPTAIN&q=kim&offset=20&limit=20');
+
+    fireEvent.click(screen.getByRole('tab', { name: '크루' }));
+    await waitFor(() => expect(memoryUrl.get()).toBe('role=CREW&q=kim'));
+  });
+
+  it('모르는 탭 값은 기본(전체)으로 읽는다', async () => {
+    memoryUrl.set('role=HACKER');
+    httpMock.mockResolvedValue(pageOf([account({ name: '아무개' })], 1, 0));
+    renderWith(<UsersAdmin />);
+
+    await screen.findByText('아무개');
+    expect(listCalls()[0][0]).toBe('/api/admin/users?offset=0&limit=20');
   });
 });
 

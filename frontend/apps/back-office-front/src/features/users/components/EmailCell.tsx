@@ -1,7 +1,5 @@
 'use client';
 
-import { toast } from '@studyclub/ui';
-
 import { useRevealEmail } from '@/features/users/queries';
 
 /**
@@ -28,18 +26,14 @@ export function EmailCell({
 }) {
   const reveal = useRevealEmail(accountId);
 
-  async function handleReveal() {
+  function handleReveal() {
     if (reveal.isBusy()) return;
-    try {
-      const { email } = await reveal.mutateAsync();
-      onReveal(accountId, email);
-    } catch (err) {
-      // 가린 값을 그대로 둔다
-      toast.error(err instanceof Error ? err.message : '이메일을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
-    } finally {
-      // 성공·실패 모두 — 원본이 mutation 상태에 남지 않게 한다
-      reveal.reset();
-    }
+    reveal.mutate(undefined, {
+      // 받은 원본은 페이지 state 로 넘긴다. 줄이 이미 사라졌으면 넘길 곳도 없으니 호출 단계 콜백으로 충분하다
+      onSuccess: ({ email }) => onReveal(accountId, email),
+      // 성공·실패 모두 — 원본이 mutation 상태에 남지 않게 한다. 실패 안내는 훅이 띄운다
+      onSettled: () => reveal.reset(),
+    });
   }
 
   return (

@@ -3,7 +3,7 @@
 // 유저 — 가입한 회원 목록·이메일 보기·계정 권한 변경.
 // 정렬·필터·검색·페이지는 서버가 한다(GET /api/admin/users). 화면에서 다시 거르지 않는다.
 // 서버 상태는 features/users/queries.ts, 이 페이지는 탭·검색·페이지 입력과 「보기」로 받은 원본만 들고 있다.
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { Pagination, Segmented } from '@studyclub/ui';
 import { Info } from 'lucide-react';
@@ -16,21 +16,36 @@ import { useUsers } from '@/features/users/queries';
 import { USER_PAGE_SIZE, type UserFilter, type UserRole } from '@/features/users/types';
 import { useRevealedEmails } from '@/features/users/use-revealed-emails';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { pageOf, useUrlState } from '@/lib/use-url-state';
 
+/** URL 쿼리 — `?role=CAPTAIN&q=kim&page=2`. 기본값은 싣지 않는다. */
+const URL_DEFAULTS = { role: 'ALL', q: '', page: '1' };
+const URL_ALLOWED = { role: TAB_OPTIONS.map((o) => o.value) };
+
+// 탭·검색·페이지를 URL 로 든다(useSearchParams) — 정적 프리렌더에는 Suspense 경계가 필요하다
 export default function UsersAdmin() {
-  const [tab, setTab] = useState<UserRole>('ALL');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  return (
+    <Suspense>
+      <UsersAdminContent />
+    </Suspense>
+  );
+}
+
+function UsersAdminContent() {
+  // 탭·검색어·페이지는 URL 이 정본이다 — 새로고침·뒤로 가기에도 남는다. 「보기」로 받은 이메일 원본은 URL 에 두지 않는다
+  const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const tab = filters.role as UserRole;
+  const q = filters.q;
+  const page = pageOf(filters.page);
+  const setPage = (next: number) => setFilters({ page: String(next) });
   const [matrixOpen, setMatrixOpen] = useState(false);
 
-  // 타이핑마다 부르지 않는다. 서버에는 앞뒤 공백을 자른 값을 보낸다.
-  const q = useDebouncedValue(search.trim(), 300);
-  // 검색어가 바뀌면 첫 페이지부터 — 렌더 중에 맞춘다(React 권장 패턴)
-  const [prevQ, setPrevQ] = useState(q);
-  if (prevQ !== q) {
-    setPrevQ(q);
-    setPage(1);
-  }
+  // 입력칸 글자는 화면 state. 타이핑마다 부르지 않고, 멈추면(300ms) 앞뒤 공백을 자른 값을 URL 에 — 첫 페이지부터
+  const [search, setSearch] = useState(q);
+  const debounced = useDebouncedValue(search.trim(), 300);
+  useEffect(() => {
+    if (debounced !== q) setFilters({ q: debounced, page: '1' });
+  }, [debounced, q, setFilters]);
 
   const filter = useMemo<UserFilter>(
     () => ({
@@ -51,9 +66,9 @@ export default function UsersAdmin() {
     if (!data || isPlaceholderData) return;
     if (data.items.length === 0 && data.offset >= data.total && page > 1) {
       // total 이 0 이면 돌아갈 마지막 장이 없다 — 첫 페이지로
-      setPage(Math.max(1, Math.ceil(data.total / data.limit)));
+      setFilters({ page: String(Math.max(1, Math.ceil(data.total / data.limit))) });
     }
-  }, [data, isPlaceholderData, page]);
+  }, [data, isPlaceholderData, page, setFilters]);
 
   const pageCount = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
@@ -80,10 +95,7 @@ export default function UsersAdmin() {
           shape='pill'
           options={TAB_OPTIONS}
           value={tab}
-          onChange={(next) => {
-            setTab(next);
-            setPage(1);
-          }}
+          onChange={(next) => setFilters({ role: next, page: '1' })}
         />
         <input
           type='search'

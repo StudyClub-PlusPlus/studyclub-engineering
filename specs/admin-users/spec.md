@@ -569,6 +569,7 @@
 | 2026-10-04 | 「참여 중」에 `PAUSED` 포함 · 권한표 역할 키는 DB 값 · 권한표는 서버에서 | PR #163 리뷰 — 제안대로 합의 |
 | 2026-10-04 | 권한이 바뀌어도 디스코드 역할은 자동으로 바꾸지 않는다. 성공 시 화면이 운영자 문의 안내를 띄운다 | 리드 회의 — 디스코드 스쿼드 합의. PR #163 리뷰로 전달 |
 | 2026-10-08 | **API 이름은 기획 문서(PRD)를 따른다** — `/api/admin/users`, `…/system-role`, 필터 `role`, 409 `CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED`, 스펙 위치 `specs/admin-users/`. PR #163 에서 정한 `accounts`·`systemRole`+`navigator`·`CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED` 을 대체한다 | 개발은 기획을 따른다. PRD 의 API 절(#206)과 맞춤 |
+| 2026-10-10 | **마지막 캡틴의 탈퇴는 막지 않는다.** 권한 변경은 캡틴 0명을 막지만(`LAST_ADMIN_REQUIRED`), 탈퇴는 회원 데이터 정책대로 막는 조건이 없다. 캡틴이 0명이 되면 백오피스에 아무도 못 들어가므로 **DB 에서 직접 `SYSTEM_ROLE=ADMIN` 을 넣어 복구한다** — 드문 일이라 화면·API 를 두지 않는다 | 리드 결정 (PR #219 리뷰). [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) |
 
 ## 미확정
 
