@@ -4,6 +4,7 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.RoleChangeBlockedReason;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.audit.AdminAuditLogRepository;
@@ -44,8 +45,11 @@ public class AdminAccountRoleService {
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다."));
 
+        // 판정은 엔티티 한 곳 — 목록이 배지를 잠그는 이유와 같은 메서드다. 캡틴 수는 1 에서 잠그고 센 값을 넘긴다
+        RoleChangeBlockedReason blocked = target.roleChangeBlockedReason(actorId, admins.size());
+
         // 3. 본인이면 값이 같아도 막는다
-        if (target.getId().equals(actorId)) {
+        if (blocked == RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE) {
             throw new BusinessException(ErrorCode.CANNOT_CHANGE_OWN_ROLE);
         }
 
@@ -55,8 +59,8 @@ public class AdminAccountRoleService {
             return new AdminAccountRoleResponse(target.getId(), before);
         }
 
-        // 5. 마지막 캡틴은 내릴 수 없다
-        if (before == SystemRole.ADMIN && newRole == SystemRole.MEMBER && admins.size() <= 1) {
+        // 5. 마지막 캡틴은 내릴 수 없다 — 값이 다르고 대상이 캡틴이면 곧 내리는 요청이다
+        if (blocked == RoleChangeBlockedReason.LAST_ADMIN_REQUIRED) {
             throw new BusinessException(ErrorCode.LAST_ADMIN_REQUIRED);
         }
 

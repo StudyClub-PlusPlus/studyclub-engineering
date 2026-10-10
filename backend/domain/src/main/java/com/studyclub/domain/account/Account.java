@@ -184,10 +184,27 @@ public class Account extends BaseEntity {
     }
 
     /**
+     * 요청자({@code actorId})가 이 계정의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 {@code null}. 위에서부터 먼저 맞는 것 하나 — 본인이
+     * 먼저다.
+     *
+     * <p><b>판정은 여기 하나다</b> — 백오피스 목록의 배지 잠금과 권한 변경 API 의 거절이 모두 이 메서드를 부른다 (endpoint-convention
+     * 「판정은 서버가 내려준다」). 캡틴 수는 계정 하나로 알 수 없어 호출자가 세어 넘긴다 ({@code SYSTEM_ROLE = ADMIN} 행 수 — 목록은 그냥
+     * 세고, 변경은 잠그고 센다).
+     */
+    public RoleChangeBlockedReason roleChangeBlockedReason(Long actorId, long adminCount) {
+        if (id.equals(actorId)) {
+            return RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE;
+        }
+        if (systemRole == SystemRole.ADMIN && adminCount <= 1) {
+            return RoleChangeBlockedReason.LAST_ADMIN_REQUIRED;
+        }
+        return null;
+    }
+
+    /**
      * 계정 권한 전이. 값이 바뀌었으면 {@code true}, 같은 값이면 아무것도 하지 않고 {@code false}.
      *
-     * <p>「본인 변경 금지」·「마지막 캡틴 보호」·「같은 값이면 감사 기록 없음」은 계정 하나로 판단할 수 없거나 전이 앞에서 정해야 하는 규칙이라 서비스가 이 메서드를
-     * 부르기 전에 본다 (특히 같은 값 판정이 마지막 캡틴 판정보다 먼저다). 여기는 값 전이만 책임진다 — 반환값은 호출자가 바뀐 것을 확인하는 데 쓸 수 있다.
+     * <p>바꿔도 되는지는 {@link #roleChangeBlockedReason} 이 정하고, 서비스가 이 메서드를 부르기 전에 본다. 여기는 값 전이만 책임진다.
      */
     public boolean changeSystemRole(SystemRole newRole) {
         if (newRole == null) {

@@ -7,7 +7,7 @@
 > 갱신: 2026-10-07 — POL-0001 변경(#199 등) 반영. 권한표 스터디 단위에 「회차 관리」 행, 담당 캡틴 명부 행도 「참여 중」으로 센다
 > 갱신: 2026-10-08 — `beta` 반영: 기획 폴더 `01-planning/` 이동, POL-0001 담당 캡틴 = `STUDY.CREATED_BY`·반 편성 때 명부 편입(#208)
 > 갱신: 2026-10-08 — **기획 문서(PRD)에 적힌 이름을 따른다** — 경로 `/api/admin/users`·`…/system-role`, 역할 필터 `role`, 에러 코드 `CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED`, 스펙 위치 `specs/admin-users/` (옛 `specs/admin-accounts/` 에서 옮김). 동작은 PR #163 합의 그대로 ([PRD 와 다른 곳](#기획-문서와-다른-곳))
-> 상태: 구현중 — 남은 미확정 1건 (감사 로그 보관 기간)
+> 상태: 구현완료 (2026-10-10, PR #219 · #221) — 남은 미확정 1건 (감사 로그 보관 기간)
 >
 > Story PRD:
 > - [캡틴으로서, 전체 회원 리스트를 조회할 수 있다](../../01-planning/stories/captain-list-users/PRD.md)
@@ -21,11 +21,11 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/admin/users | 회원 목록 — 필터·검색·페이지, 걸러진 뒤 총 인원. 이메일은 가려서 준다 | O (`@RequireAdmin`) | 구현중 |
-| POST | /api/admin/users/{accountId}/email-reveals | 한 명의 이메일 원본 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현중 |
-| PATCH | /api/admin/users/{accountId}/system-role | 계정 권한 변경 (ADMIN ↔ MEMBER) — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현중 |
-| GET | /api/admin/role-permissions | 역할별 기본 권한표 | O (`@RequireAdmin`) | 구현중 |
-| ~~GET~~ | ~~/accounts~~ | 옛 유저 목록 — **구현 PR 에서 삭제** ([아래](#옛-get-accounts-를-없앤다)) | O (`@RequireAdmin`, #178) | 변경예정 |
+| GET | /api/admin/users | 회원 목록 — 필터·검색·페이지, 걸러진 뒤 총 인원. 이메일은 가려서 준다 | O (`@RequireAdmin`) | 구현완료 |
+| POST | /api/admin/users/{accountId}/email-reveals | 한 명의 이메일 원본 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
+| PATCH | /api/admin/users/{accountId}/system-role | 계정 권한 변경 (ADMIN ↔ MEMBER) — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
+| GET | /api/admin/role-permissions | 역할별 기본 권한표 | O (`@RequireAdmin`) | 구현완료 |
+| ~~GET~~ | ~~/accounts~~ | 옛 유저 목록 — **삭제됨** (#221, [아래](#옛-get-accounts-를-없앤다)) | O (`@RequireAdmin`, #178) | 삭제 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -182,7 +182,7 @@
 | items[].navigatorOf[].title | String | N | | STUDY.TITLE |
 | items[].dormant | Boolean | N | 「휴면」 표기. 계정 상태가 아니라 참여 이력으로 판정한다 | 계산: 참여 중인 스터디 수 = 0 |
 | items[].joinedAt | String | N | 가입일. UTC ISO 8601 | ACCOUNT.CREATED_AT |
-| items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: 요청자 ID · `SYSTEM_ROLE = ADMIN` 수 |
+| items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수)` — 권한 변경 API 의 거절도 같은 메서드 |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면의 「총 N명」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
 | limit | Integer | N | 요청 값 그대로 | |

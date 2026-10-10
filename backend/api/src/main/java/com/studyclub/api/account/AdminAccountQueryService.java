@@ -5,7 +5,6 @@ import com.studyclub.api.account.AdminAccountDao.NavigatorRow;
 import com.studyclub.api.account.AdminAccountListFilter.Role;
 import com.studyclub.api.account.AdminAccountListResponse.AccountSummary;
 import com.studyclub.api.account.AdminAccountListResponse.NavigatorStudy;
-import com.studyclub.api.account.AdminAccountListResponse.RoleChangeBlockedReason;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.common.privacy.EmailMasking;
@@ -106,18 +105,7 @@ public class AdminAccountQueryService {
                 navigatorOf,
                 row.participatingStudyCount() == 0,
                 account.getCreatedAt(),
-                blockedReason(account, requesterId, adminCount));
-    }
-
-    /** 위에서부터 먼저 맞는 것 하나만 — 본인이 먼저다. 판정은 서버 한 곳에서 하고 화면은 이 값으로 배지를 잠근다. */
-    private static RoleChangeBlockedReason blockedReason(
-            Account account, Long requesterId, long adminCount) {
-        if (account.getId().equals(requesterId)) {
-            return RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE;
-        }
-        if (account.getSystemRole() == SystemRole.ADMIN && adminCount <= 1) {
-            return RoleChangeBlockedReason.LAST_ADMIN_REQUIRED;
-        }
-        return null;
+                // 판정은 엔티티 한 곳 — 권한 변경 API 가 거절할 때도 같은 메서드를 부른다
+                account.roleChangeBlockedReason(requesterId, adminCount));
     }
 }

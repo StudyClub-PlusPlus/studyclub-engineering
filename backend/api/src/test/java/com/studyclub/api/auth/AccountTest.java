@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.RoleChangeBlockedReason;
 import com.studyclub.domain.account.SystemRole;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * 구글이 주는 프로필 문자열이 컬럼보다 길어도 로그인이 죽지 않아야 한다.
@@ -144,5 +146,35 @@ class AccountTest {
         assertThatThrownBy(() -> account.changeSystemRole(null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(account.getSystemRole()).isEqualTo(SystemRole.MEMBER);
+    }
+
+    private static Account accountWithId(long id, SystemRole role) {
+        Account account = new Account("a" + id + "@b.com", "회원" + id, null, role);
+        ReflectionTestUtils.setField(account, "id", id);
+        return account;
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 본인이면 마지막 캡틴이어도 「본인」이 먼저다")
+    void ownAccountComesFirst() {
+        Account me = accountWithId(1L, SystemRole.ADMIN);
+        assertThat(me.roleChangeBlockedReason(1L, 1))
+                .isEqualTo(RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE);
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 남의 계정이 마지막 캡틴이면 막고, 캡틴이 둘 이상이면 연다")
+    void lastAdminIsBlocked() {
+        Account other = accountWithId(2L, SystemRole.ADMIN);
+        assertThat(other.roleChangeBlockedReason(1L, 1))
+                .isEqualTo(RoleChangeBlockedReason.LAST_ADMIN_REQUIRED);
+        assertThat(other.roleChangeBlockedReason(1L, 2)).isNull();
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 크루는 캡틴 수와 상관없이 올릴 수 있다")
+    void memberIsNeverBlockedByAdminCount() {
+        Account crew = accountWithId(3L, SystemRole.MEMBER);
+        assertThat(crew.roleChangeBlockedReason(1L, 1)).isNull();
     }
 }

@@ -41,7 +41,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
  * 되돌린다.
  */
 @SpringBootTest
-class AdminAccountRoleConcurrencyTest {
+class AdminAccountRoleConcurrencyIntegrationTest {
 
     private static final long ADMIN_A = 9961L;
     private static final long ADMIN_B = 9962L;

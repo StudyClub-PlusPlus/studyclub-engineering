@@ -1,5 +1,6 @@
 package com.studyclub.api.account;
 
+import com.studyclub.domain.account.RoleChangeBlockedReason;
 import com.studyclub.domain.account.SystemRole;
 import java.time.Instant;
 import java.util.List;
@@ -25,10 +26,4 @@ public record AdminAccountListResponse(
             RoleChangeBlockedReason roleChangeBlockedReason) {}
 
     public record NavigatorStudy(Long studyId, String title) {}
-
-    /** 화면이 배지를 잠그는 이유와 서버가 거절하는 이유가 하나의 어휘다 — 거절은 같은 이름의 ErrorCode. */
-    public enum RoleChangeBlockedReason {
-        CANNOT_CHANGE_OWN_ROLE,
-        LAST_ADMIN_REQUIRED
-    }
 }

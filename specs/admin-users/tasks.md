@@ -45,7 +45,7 @@
 - [ ] T032 엔드포인트 — `AdminUserController` 에 `PATCH /users/{accountId}/system-role` (`@Valid`)
 - [ ] T033 통합 테스트 — `api-test/account/AdminAccountRoleIntegrationTest.java`: MEMBER→ADMIN 200 + 감사 1행(`MEMBER`→`ADMIN`) / 같은 값 200 감사 0행 / 본인 409 / 404 / MEMBER 요청 403 / `systemRole=LEADER`·누락 400
 - [ ] T034 단위 테스트 — `api-test/account/AdminAccountRoleServiceTest.java`: LAST_ADMIN_REQUIRED 판정(ADMIN 1명일 때 다른 ADMIN 을 내리는 상황을 리포지터리 목으로 구성), 판정 순서
-- [ ] T035 동시성 테스트 시도 — `api-test/account/AdminAccountRoleConcurrencyTest.java`: ADMIN 2명이 두 스레드에서 동시에 서로를 내리면 한쪽만 200·다른 쪽 409 LAST_ADMIN_REQUIRED·ADMIN 1명 남음. **H2 에서 불안정하면** `@Disabled` 하지 말고 파일을 빼고 PR 에 「stage 수동 확인」으로 남긴다 (plan 기술 결정)
+- [ ] T035 동시성 테스트 시도 — `api-test/account/AdminAccountRoleConcurrencyIntegrationTest.java`: ADMIN 2명이 두 스레드에서 동시에 서로를 내리면 한쪽만 200·다른 쪽 409 LAST_ADMIN_REQUIRED·ADMIN 1명 남음. **H2 에서 불안정하면** `@Disabled` 하지 말고 파일을 빼고 PR 에 「stage 수동 확인」으로 남긴다 (plan 기술 결정)
 
 ### Phase B5: 권한표 (GET `/api/admin/role-permissions`)
 
