@@ -35,6 +35,7 @@ export function TimeZonePicker({
   error,
   /** 이미 라벨이 있는 자리(카드 칸 안)에서는 제 라벨을 숨긴다 — 같은 말이 두 번 나온다. */
   hideLabel,
+  compact,
 }: {
   value: string;
   onChange: (zone: string) => void;
@@ -42,6 +43,8 @@ export function TimeZonePicker({
   disabled?: boolean;
   error?: string;
   hideLabel?: boolean;
+  /** 값 줄 자리에 끼울 때. 상자를 낮춰 보기 모드와 줄 높이를 맞춘다. */
+  compact?: boolean;
 }) {
   const ko = locale === 'ko';
   const id = useId();
@@ -112,7 +115,7 @@ export function TimeZonePicker({
             select(ZONES[active]!.zone);
           }
         }}
-        className={`${hideLabel ? '' : 'mt-1.5'} flex min-h-12 w-full items-center justify-between gap-3 rounded-control border bg-bg px-3.5 py-2.5 text-left text-sm outline-none transition focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border-strong hover:border-brand'}`}
+        className={`${hideLabel ? '' : 'mt-1.5'} flex w-full items-center justify-between gap-3 rounded-control border bg-bg text-left text-sm ${compact ? 'min-h-8 px-2.5 py-1' : 'min-h-12 px-3.5 py-2.5'} outline-none transition focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border-strong hover:border-brand'}`}
       >
         <span className={selected ? 'font-medium text-fg' : 'text-fg-muted'}>
           {selected ?? (ko ? '지역을 선택해 주세요' : 'Select your region')}
@@ -129,7 +132,7 @@ export function TimeZonePicker({
           id={`${id}-list`}
           role='listbox'
           aria-label={ko ? '지역' : 'Region'}
-          className={`absolute left-0 right-0 ${hideLabel ? 'top-[56px]' : 'top-[76px]'} z-40 overflow-hidden rounded-card border border-border bg-bg p-1.5 shadow-lg`}
+          className={`absolute left-0 right-0 ${compact ? 'top-[38px]' : hideLabel ? 'top-[56px]' : 'top-[76px]'} z-40 overflow-hidden rounded-card border border-border bg-bg p-1.5 shadow-lg`}
         >
           {ZONES.map((z, index) => (
             <button
