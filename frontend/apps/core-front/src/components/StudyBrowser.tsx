@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
-import { FilterChip } from '@studyclub/ui';
+import { Select } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
@@ -58,7 +58,6 @@ function FilterOption({
   );
 }
 
-
 function FilterSelect<T extends string>({
   value,
   options,
@@ -69,17 +68,17 @@ function FilterSelect<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <select
+    <Select
       value={value}
       onChange={(event) => onChange(event.target.value as T)}
-      className='h-9 w-fit min-w-0 rounded-lg border border-border bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]'
+      className='h-9 w-fit rounded-lg border border-border bg-bg text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -169,7 +168,7 @@ export function StudyBrowser({
               onChange={setTimezone}
             />
           </div>
-          <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-[312px]'>
+          <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-full lg:focus-within:w-[312px]'>
             <input
               role='searchbox'
               type='text'
@@ -202,15 +201,13 @@ export function StudyBrowser({
         </div>
         <FilterRow>
           {CATEGORY_OPTIONS.map((option) => (
-            <FilterChip
+            <FilterOption
               key={option.value}
-              selected={category === option.value}
-              selectMode='single'
+              active={category === option.value}
               onClick={() => setCategory(option.value)}
-              className='h-auto py-1.5 text-[13px] font-semibold'
             >
               {option.label}
-            </FilterChip>
+            </FilterOption>
           ))}
         </FilterRow>
       </div>
