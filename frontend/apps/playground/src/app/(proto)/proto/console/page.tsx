@@ -9,7 +9,7 @@ import { events, todayISO } from '@studyclub/mock';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 // 프로토는 /proto/console 아래 매달린다.
 const BASE = '/proto/console';

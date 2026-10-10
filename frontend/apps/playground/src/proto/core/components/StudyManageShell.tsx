@@ -12,7 +12,7 @@ import { type Study } from '@studyclub/mock';
 import { Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
 
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
  * 스터디 일정 — 구글 시트 출석부를 옮긴 곳. 그 스터디 참가자 누구나 들어온다.

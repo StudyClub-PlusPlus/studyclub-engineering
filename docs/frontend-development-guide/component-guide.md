@@ -33,7 +33,7 @@ import { Button, Badge, Card, StudyCard, Tabs } from '@studyclub/ui';
 
 ## 네이밍 규칙
 
-- 파일명: **PascalCase** (`StudyCard.tsx`, `EventBrowser.tsx`)
+- 파일명: **PascalCase** (`StudyCard.tsx`, `EventBrowser.tsx`). 컴포넌트가 아닌 파일(훅·유틸)은 kebab-case — [이름 규칙](project-structure.md#파일-배치-규칙--기능-옆에-둔다)
 - 컴포넌트명 = 파일명 (1파일 1컴포넌트 원칙)
 - 합성어: 도메인 + 역할 (`StudyCard`, `EventBrowser`, `NavAuth`)
 
