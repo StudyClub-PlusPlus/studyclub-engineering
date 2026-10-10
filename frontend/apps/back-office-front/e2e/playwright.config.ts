@@ -4,6 +4,7 @@ import path from 'node:path';
 const APP_PORT = process.env.APP_PORT ?? '4701';
 const APP_ORIGIN = `http://localhost:${APP_PORT}`;
 const APP_ROOT = path.resolve(__dirname, '..');
+const API_MOCK_PORT = process.env.APP_API_MOCK_PORT ?? '4702';
 
 export default defineConfig({
   fullyParallel: true,
@@ -11,11 +12,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   timeout: 60_000,
-  reporter: (
-    process.env.CI
-      ? [['github'], ['html', { open: 'never' }]]
-      : [['list'], ['html', { open: 'never' }]]
-  ) as ReporterDescription[],
+  reporter: (process.env.CI
+    ? [['github'], ['html', { open: 'never' }]]
+    : [['list'], ['html', { open: 'never' }]]) as ReporterDescription[],
   use: {
     baseURL: APP_ORIGIN,
     navigationTimeout: 30_000,
@@ -37,13 +36,21 @@ export default defineConfig({
       use: { browserName: 'chromium' },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    cwd: APP_ROOT,
-    url: APP_ORIGIN,
-    // BO_DEV_BYPASS_AUTH=1: 인증 게이트 우회 — dev 전용, production 빌드에서는 동작 안 함
-    env: { BO_DEV_BYPASS_AUTH: '1' },
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'node e2e/mock-api.mjs',
+      cwd: APP_ROOT,
+      url: `http://127.0.0.1:${API_MOCK_PORT}/api/admin/studies?offset=0&limit=1000`,
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
+      command: 'npm run dev',
+      cwd: APP_ROOT,
+      url: APP_ORIGIN,
+      env: { BO_DEV_BYPASS_AUTH: '1', API_BASE_URL: `http://127.0.0.1:${API_MOCK_PORT}` },
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
 });
