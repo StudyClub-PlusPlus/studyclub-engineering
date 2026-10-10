@@ -11,8 +11,8 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 
 /**
- * ACCOUNT 리소스(/accounts/**, /api/me) DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 달라 분리한다 — 여긴
- * "가입 완료 이후의 계정 관리" 쪽이다.
+ * ACCOUNT 리소스(POST /accounts/onboarding, /api/me) DTO 모음. 로그인/토큰 응답 DTO({@link AuthDtos})와는 관심사가 달라
+ * 분리한다 — 여긴 "가입 완료 이후의 계정 관리" 쪽이다.
  */
 public final class AccountDtos {
 
