@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { TableCard } from '@console/components/ui';
 import {
+  EVENT_FILTERS,
+  EVENT_LABEL,
   PAGE_SIZE,
   STATUS_FILTERS,
   STATUS_LABEL,
@@ -12,9 +14,10 @@ import {
   type NotificationStatus,
 } from '@console/lib/notifications';
 import { Badge, Button } from '@studyclub/ui';
-import { RotateCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
+type EventFilter = (typeof EVENT_FILTERS)[number]['value'];
 type Phase = 'loading' | 'ready' | 'error';
 
 /**
@@ -27,14 +30,14 @@ type Phase = 'loading' | 'ready' | 'error';
  */
 export function NotificationsTable() {
   const [filter, setFilter] = useState<Filter>('all');
+  const [eventType, setEventType] = useState<EventFilter>('all');
   const [page, setPage] = useState(1);
   const [phase, setPhase] = useState<Phase>('loading');
-  const [nonce, setNonce] = useState(0);
   // 연타해도 **마지막 요청의 답만** 쓴다 — 먼저 보낸 요청이 늦게 와서 화면을 덮지 않게
   const latest = useRef(0);
 
   const offset = (page - 1) * PAGE_SIZE;
-  const { items, total } = useMemo(() => queryNotifications(filter, offset), [filter, offset]);
+  const { items, total } = useMemo(() => queryNotifications(filter, eventType, offset), [filter, eventType, offset]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // 프로토는 서버가 없다. 불러오는 사이의 화면을 보여주려고 지연만 흉내 낸다.
@@ -45,7 +48,7 @@ export function NotificationsTable() {
       if (ticket === latest.current) setPhase('ready');
     }, 320);
     return () => clearTimeout(timer);
-  }, [filter, page, nonce]);
+  }, [filter, eventType, page]);
 
   // 보던 페이지가 사라졌으면 첫 페이지로 — 건수가 늘거나 줄면 생긴다
   useEffect(() => {
@@ -57,9 +60,27 @@ export function NotificationsTable() {
     setPage(1);
   }
 
+  function changeEvent(next: EventFilter) {
+    setEventType(next);
+    setPage(1);
+  }
+
   return (
     <div className='flex flex-col gap-3'>
       <div data-anno='history:2' className='flex flex-wrap items-center gap-3'>
+        <select
+          aria-label='알림 종류'
+          value={eventType}
+          disabled={phase === 'loading'}
+          onChange={(e) => changeEvent(e.target.value as EventFilter)}
+          className='h-9 rounded-control border border-border-strong bg-bg px-3 text-sm disabled:bg-surface-2'
+        >
+          {EVENT_FILTERS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
         <select
           aria-label='상태'
           value={filter}
@@ -76,18 +97,6 @@ export function NotificationsTable() {
         <span data-anno='history:2-1' className='tnum text-sm text-fg-secondary'>
           총 {total.toLocaleString()}건
         </span>
-        {/* 다시 읽는 것뿐이다 — 「재발송」으로 읽히지 않게 아이콘과 문구를 함께 둔다 */}
-        <Button
-          data-anno='history:2-2'
-          size='sm'
-          variant='secondary'
-          disabled={phase === 'loading'}
-          leadingIcon={<RotateCw size={14} />}
-          onClick={() => setNonce((n) => n + 1)}
-          className='ml-auto'
-        >
-          새로고침
-        </Button>
       </div>
 
       <TableCard anno='history:3'>
@@ -117,7 +126,7 @@ export function NotificationsTable() {
             items.map((row) => (
               <tr key={row.id}>
                 <td className='tnum whitespace-nowrap text-fg-secondary'>{stamp(row.createdAt)}</td>
-                <td className='whitespace-nowrap'>가입 환영</td>
+                <td className='whitespace-nowrap'>{EVENT_LABEL[row.eventType] ?? row.eventType}</td>
                 <td className='whitespace-nowrap text-fg-secondary'>메일</td>
                 {/* 서버가 가린 값을 그대로 쓴다 — 전체 주소를 보여주는 길은 두지 않는다 */}
                 <td className='truncate text-fg-secondary'>{row.recipientValue}</td>
@@ -151,7 +160,7 @@ export function NotificationsTable() {
             <tr>
               <td colSpan={6} className='py-16 text-center'>
                 <p className='text-sm text-fg-secondary'>발송 이력을 불러오지 못했습니다. 다시 시도해 주세요.</p>
-                <Button size='sm' variant='secondary' className='mt-3' onClick={() => setNonce((n) => n + 1)}>
+                <Button size='sm' variant='secondary' className='mt-3' onClick={() => setPhase('loading')}>
                   다시 시도
                 </Button>
               </td>
@@ -162,14 +171,27 @@ export function NotificationsTable() {
 
       {total > 0 && (
         <div data-anno='history:4' className='flex items-center justify-center gap-4 pt-1'>
-          <Button size='sm' variant='ghost' disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            ‹ 이전
+          {/* 아이콘만 둔다 — 앞뒤로 넘긴다는 뜻은 화살표가 이미 말한다 */}
+          <Button
+            size='sm'
+            variant='ghost'
+            aria-label='이전 페이지'
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            <ChevronLeft size={16} />
           </Button>
           <span className='tnum text-sm text-fg-secondary'>
             {page} / {pages}
           </span>
-          <Button size='sm' variant='ghost' disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>
-            다음 ›
+          <Button
+            size='sm'
+            variant='ghost'
+            aria-label='다음 페이지'
+            disabled={page >= pages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            <ChevronRight size={16} />
           </Button>
         </div>
       )}
@@ -178,20 +200,8 @@ export function NotificationsTable() {
 }
 
 /**
- * 보는 사람의 시간대 약칭. `Intl` 은 서울을 「GMT+9」로 주는데, 우리 화면은 KST·ET·PT 로 적는다
- * ([POL-0006](01-planning/_registry/policies/POL-0006-timezone.md)). 모르는 지역이면 `Intl` 값을 그대로 쓴다.
- */
-function abbr(): string {
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  if (zone === 'Asia/Seoul') return 'KST';
-  if (zone === 'America/New_York' || zone === 'America/Toronto') return 'ET';
-  if (zone === 'America/Vancouver' || zone === 'America/Los_Angeles') return 'PT';
-  const part = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(new Date());
-  return part.find((p) => p.type === 'timeZoneName')?.value ?? '';
-}
-
-/**
- * 보는 사람의 시간대로 적고 약칭을 붙인다 (POL-0006). 서버는 UTC 로 준다.
+ * 보는 사람의 시간대로 그린다 (POL-0006). 서버는 UTC 로 주고, 브라우저가 알아서 바꾼다.
+ * **약칭은 적지 않는다** — 운영자는 자기 시간대로 읽으므로 KST·PT 를 매 줄에 달 이유가 없다.
  * 읽을 수 없는 값이 오면 원문을 그대로 둔다 — 비우면 값이 없는 것으로 읽힌다.
  */
 function stamp(iso: string): string {
@@ -205,5 +215,5 @@ function stamp(iso: string): string {
     minute: '2-digit',
     hour12: false,
   });
-  return `${date} ${abbr()}`.trim();
+  return date;
 }

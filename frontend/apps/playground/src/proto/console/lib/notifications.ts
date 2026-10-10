@@ -10,11 +10,24 @@
 /** 발송 상태. 서버가 정의한 값 그대로 쓴다. */
 export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
 
+/**
+ * 알림 종류.
+ *
+ * **지금 나가는 것은 가입 환영 하나뿐이다.** 다른 종류를 미리 적어 두지 않는다 — 기획이 정한 목록이
+ * 아직 없고, 백엔드 스펙에 남아 있는 옛 목록에는 없애기로 한 개념(승인/거절 · 마감임박)이 섞여 있다.
+ * 종류가 정해지면 여기에 더하면 화면·필터가 따라온다.
+ */
+export type NotificationEvent = 'USER_REGISTERED';
+
+export const EVENT_LABEL: Record<NotificationEvent, string> = {
+  USER_REGISTERED: '가입 환영',
+};
+
 export type NotificationRow = {
   /** 화면에 내보내지 않는다 — key 로만 쓴다 */
   id: number;
   createdAt: string;
-  eventType: 'USER_REGISTERED';
+  eventType: NotificationEvent;
   recipientType: 'EMAIL';
   /** **서버가 마스킹한 값**. 화면에서 가공하지 않는다 */
   recipientValue: string;
@@ -40,8 +53,14 @@ export const STATUS_TONE: Record<NotificationStatus, 'neutral' | 'inprogress' | 
   FAILED: 'error',
 };
 
+/** 알림 종류. 지금은 가입 환영 하나뿐이지만 축은 미리 세운다 — 늘면 여기만 더한다. */
+export const EVENT_FILTERS: { value: 'all' | NotificationEvent; label: string }[] = [
+  { value: 'all', label: '알림 종류 전체' },
+  ...(Object.keys(EVENT_LABEL) as NotificationEvent[]).map((key) => ({ value: key, label: EVENT_LABEL[key] })),
+];
+
 export const STATUS_FILTERS: { value: 'all' | NotificationStatus; label: string }[] = [
-  { value: 'all', label: '전체' },
+  { value: 'all', label: '상태 전체' },
   { value: 'PENDING', label: STATUS_LABEL.PENDING },
   { value: 'PROCESSING', label: STATUS_LABEL.PROCESSING },
   { value: 'SENT', label: STATUS_LABEL.SENT },
@@ -66,15 +85,15 @@ function masked(seed: number): string {
   return `${name.slice(0, 1)}***@${DOMAINS[seed % DOMAINS.length]}`;
 }
 
-/** 128건. **요청 시각 내림차순 고정** — 최근 것이 위다. */
-export const notifications: NotificationRow[] = Array.from({ length: 128 }, (_, i) => {
+/** 240건. **요청 시각 내림차순 고정** — 최근 것이 위다. */
+export const notifications: NotificationRow[] = Array.from({ length: 240 }, (_, i) => {
   const seed = hash(`notification-${i}`);
   const created = new Date(Date.UTC(2026, 9, 10, 9, 0) - i * 3_600_000 * (1 + (seed % 5)));
   // 대부분 나갔고, 최근 것 몇 건만 처리 중이거나 실패다 — 운영자가 볼 것이 있어야 화면이 설명된다
   const status: NotificationStatus = i === 0 ? 'PROCESSING' : i === 1 ? 'PENDING' : seed % 17 === 0 ? 'FAILED' : 'SENT';
   const sent = status === 'SENT' ? new Date(created.getTime() + 5_000 + (seed % 60) * 1000) : null;
   const row: NotificationRow = {
-    id: 1000 - i,
+    id: 2000 - i,
     createdAt: created.toISOString(),
     eventType: 'USER_REGISTERED',
     recipientType: 'EMAIL',
@@ -86,7 +105,13 @@ export const notifications: NotificationRow[] = Array.from({ length: 128 }, (_, 
 }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
 /** 한 페이지. 서버가 `items` 와 `total` 을 주는 모양을 그대로 흉내 낸다. */
-export function queryNotifications(status: 'all' | NotificationStatus, offset: number) {
-  const matched = status === 'all' ? notifications : notifications.filter((n) => n.status === status);
+export function queryNotifications(
+  status: 'all' | NotificationStatus,
+  eventType: 'all' | NotificationEvent,
+  offset: number,
+) {
+  const matched = notifications.filter(
+    (n) => (status === 'all' || n.status === status) && (eventType === 'all' || n.eventType === eventType),
+  );
   return { items: matched.slice(offset, offset + PAGE_SIZE), total: matched.length };
 }

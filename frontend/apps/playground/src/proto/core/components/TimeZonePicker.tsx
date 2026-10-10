@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Locale } from '@core/lib/content';
 import { zoneOffset } from '@core/lib/time-zones';
+import { ZONES } from '@core/lib/zones';
 import { Check, ChevronDown } from 'lucide-react';
 
 /**
@@ -15,12 +16,6 @@ import { Check, ChevronDown } from 'lucide-react';
  *
  * 오프셋은 상수로 적지 않는다 — 서머타임에 따라 북미가 한 시간씩 움직인다.
  */
-export const ZONES = [
-  { zone: 'Asia/Seoul', ko: '한국 · 서울', en: 'Korea · Seoul' },
-  { zone: 'America/New_York', ko: '북미 동부 · 뉴욕, 토론토', en: 'North America East · New York, Toronto' },
-  { zone: 'America/Vancouver', ko: '북미 서부 · 밴쿠버, LA', en: 'North America West · Vancouver, LA' },
-] as const;
-
 /** 고른 지역의 이름. 목록에 없는 값(기기 시간대)이면 비운다 — 그래야 고르라고 말할 수 있다. */
 export function zoneName(zone: string, locale: Locale): string | undefined {
   const found = ZONES.find((z) => z.zone === zone);
@@ -160,3 +155,5 @@ export function TimeZonePicker({
     </div>
   );
 }
+
+export { ZONES };

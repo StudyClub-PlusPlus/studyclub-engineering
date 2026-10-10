@@ -310,7 +310,7 @@ function compareBy(sort: NonNullable<SortState>, a: Study, b: Study): number {
 
 /**
  * 컬럼 머리의 위·아래 화살표. 누르면 그 방향으로 정렬하고, 이미 눌린 화살표를 다시 누르면 정렬을 푼다
- * (기본 순서 — 모집중 먼저, 마감 임박순 — 로 돌아간다).
+ * (기본 순서 — 모집중 먼저, 마감이 가까운 순 — 로 돌아간다).
  */
 function SortArrows({
   label,
@@ -447,7 +447,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           return true;
         })
         // 컬럼 화살표로 고른 정렬이 우선이다. 같은 값끼리는 기본 순서를 따른다.
-        // 기본: 운영자가 손댈 것부터 위로 — 모집중 먼저, 그 안에서 마감이 임박한 순.
+        // 기본: 운영자가 손댈 것부터 위로 — 모집중 먼저, 그 안에서 마감이 가까운 순.
         // 마감일은 필수다 — 값이 비어 있는 옛 데이터만 급할 게 없으므로 모집중 그룹의 끝.
         .sort((a, b) => {
           if (sort) {
