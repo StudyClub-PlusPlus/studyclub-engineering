@@ -159,39 +159,37 @@ export const studyKeys = {
 같은 조건으로 여러 건을 차례로 처리하고, 크루는 걸러 둔 목록에서 스터디를 하나씩 열어 본다 — 매번
 다시 거는 게 가장 흔한 불편이다. URL 에 있으면 뒤로 가기·새로고침이 그대로 되고, 링크로 그 화면을 그대로 넘길 수 있다.
 
+앱마다 `src/lib/use-url-state.ts` 의 `useUrlState` 하나로 한다. 화면마다 URL 을 읽고 쓰는 코드를 새로 짜지 않는다.
+
 ```tsx
-// features/users/useUserFilter.ts — URL 을 읽고 쓰는 곳을 한 곳에 둔다
-export function useUserFilter() {
-  const params = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+// 모듈 상수로 둔다 — 렌더마다 새 객체면 set 이 매번 바뀐다
+const URL_DEFAULTS = { q: '', status: 'all', page: '1' };
+const URL_ALLOWED = { status: STATUS_OPTIONS.map((o) => o.value) };   // 모르는 값은 기본값으로
 
-  const filter = {
-    role: (params.get('role') as UserRole | null) ?? 'ALL',
-    q: params.get('q') ?? '',
-    page: Math.max(1, Number(params.get('page')) || 1),
-  };
+const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+const page = pageOf(filters.page);
 
-  // 조건을 바꾸면 페이지는 1로 — 같은 함수 안에서 함께 바꾼다
-  function update(next: Partial<typeof filter>) {
-    const merged = { ...filter, page: 1, ...next };
-    const sp = new URLSearchParams();
-    if (merged.role !== 'ALL') sp.set('role', merged.role);   // 기본값은 싣지 않는다
-    if (merged.q) sp.set('q', merged.q);
-    if (merged.page > 1) sp.set('page', String(merged.page));
-    router.replace(`${pathname}${sp.size ? `?${sp}` : ''}`, { scroll: false });
-  }
-  return { filter, update };
-}
+// 조건을 바꾸면 페이지는 1로 — 같은 set 에서 함께 바꾼다
+<Select value={filters.status} onChange={(v) => setFilters({ status: v, page: '1' })} />
+
+// 검색 입력칸 글자는 화면 state, 멈추면 URL 에
+const [query, setQuery] = useState(filters.q);
+const debounced = useDebouncedValue(query, 300);
+useEffect(() => {
+  if (debounced !== filters.q) setFilters({ q: debounced, page: '1' });
+}, [debounced, filters.q, setFilters]);
 ```
 
-- **라이브러리 없이** `useSearchParams` · `useRouter` · `usePathname` 으로 한다
+적용 예: core-front `StudyBrowser`·`EventBrowser`·마이 › 참여 스터디, 백오피스 `features/studies/StudiesTable`·`features/events/EventsTable`.
+
+- **라이브러리 없이** `useSearchParams` · `useRouter` · `usePathname` 으로 한다 (`useUrlState` 가 감싼다)
 - **기본값은 URL 에 싣지 않는다** — 첫 화면 주소가 깨끗하고, 같은 상태가 주소 둘로 갈리지 않는다
 - **`router.replace`** 를 쓴다. 타이핑·탭 전환마다 `push` 하면 뒤로 가기가 한 글자씩 되돌아간다
 - 검색 **입력칸의 글자**는 `useState` 로 두고, 디바운스한 값만 URL 에 쓴다
 - URL 값은 **믿지 않는다** — 모르는 탭 값·음수 페이지는 기본값으로 되돌린다. 서버 검증과 같은 범위로
 - 그대로 쿼리 키에 들어간다 (`userKeys.list(filter)`) — URL 이 바뀌면 캐시도 자연히 갈린다
-- `useSearchParams()` 를 쓰는 클라이언트 컴포넌트는 **`<Suspense>` 로 감싼다.** 안 감싸면 `next build` 프리렌더에서 실패한다 (`back-office-front/src/app/login/page.tsx` 참고)
+- 정적 프리렌더되는 페이지에서 `useSearchParams()` 를 쓰면 **`<Suspense>` 로 감싼다.** 안 감싸면 경계가 없어 **페이지 전체**(레이아웃·제목 포함)가 브라우저 렌더로 넘어간다 — 빌드는 통과하니 눈치채기 어렵다 (`my/joined/page.tsx` 참고)
+- **공개 목록 페이지**(SEO 대상)는 페이지에서 `await searchParams` 로 요청마다 렌더하게 한다 — 조건이 걸린 목록까지 HTML 에 들어간다 (`[locale]/studies/page.tsx` 참고)
 - 서버 컴포넌트 페이지(공개 목록 등)는 훅 대신 `searchParams` prop 으로 같은 값을 읽는다
 
 **URL 에 두지 않는 것** — 모달 열림·메뉴 펼침 같은 잠깐의 UI 상태, 그리고 **개인정보**(「보기」로 받은
