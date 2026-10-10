@@ -48,7 +48,7 @@ function FilterSelect<T extends string>({
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       className={`h-9 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
+        value === 'all' ? 'border-border text-fg-secondary' : 'border-border-strong font-semibold text-fg'
       }`}
     >
       {options.map((o) => (
@@ -95,7 +95,7 @@ export function EventsTable({ events }: { events: StudyclubEvent[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='행사명 · 한 줄 소개 검색'
-          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-56 rounded-control border border-border bg-surface px-3 text-sm outline-none focus:border-border-interactive'
         />
         <FilterSelect value={type} onChange={setType} options={TYPE_OPTIONS} />
         <FilterSelect value={when} onChange={setWhen} options={WHEN_OPTIONS} />

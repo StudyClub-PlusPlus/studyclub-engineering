@@ -142,7 +142,7 @@ function FilterSelect<T extends string>({
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       className={`h-9 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
+        value === 'all' ? 'border-border text-fg-secondary' : 'border-border-strong font-semibold text-fg'
       }`}
     >
       {options.map((o) => (
@@ -334,14 +334,18 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='제목 · 한 줄 소개 검색'
-          className='h-9 w-[188px] rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-[188px] rounded-control border border-border bg-surface px-3 text-sm outline-none focus:border-border-interactive'
         />
         <FilterSelect value={category} onChange={setCategory} options={CATEGORY_OPTIONS} />
         <FilterSelect value={studyStatus} onChange={setStudyStatus} options={STATUS_OPTIONS} />
         <FilterSelect value={kind} onChange={setKind} options={KIND_OPTIONS} />
         <FilterSelect value={recruit} onChange={setRecruit} options={RECRUIT_OPTIONS} />
         <FilterSelect value={publish} onChange={setPublish} options={PUBLISH_OPTIONS} />
-        <label className='inline-flex h-9 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-surface px-3 text-sm text-fg-secondary'>
+        <label
+          className={`inline-flex h-9 cursor-pointer items-center gap-2 rounded-control border bg-surface px-3 text-sm text-fg-secondary ${
+            noFormOnly ? 'border-border-strong' : 'border-border'
+          }`}
+        >
           <input
             type='checkbox'
             checked={noFormOnly}

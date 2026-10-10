@@ -19,9 +19,9 @@ export function Checkbox({ label, className, id, ...rest }: CheckboxProps) {
         {...rest}
         id={fieldId}
         type='checkbox'
-        className='h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)'
+        className='h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)'
       />
-      <span className='text-sm text-neutral-800'>{label}</span>
+      <span className='text-sm text-ink'>{label}</span>
     </label>
   );
 }

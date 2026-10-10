@@ -24,7 +24,7 @@ packages/ui/src/
 
 | 금지 | 올바른 대안 |
 |---|---|
-| `color: #4856F5` (raw HEX) | `color: var(--color-brand)` |
+| `color: #5267D8` (raw HEX) | `color: var(--color-primary)` |
 | `background: rgb(72,86,245)` | `bg-brand` (Tailwind 유틸) |
 | `border-radius: 8px` | `rounded-control` (`var(--radius-control)`) |
 | `const cls = 'bg-' + name` (동적 조합) | 전체 클래스명을 정적 문자열로 나열 |
@@ -49,13 +49,13 @@ packages/ui/src/
 <div style={{ width: `${pct}%`, background: 'var(--color-brand)' }} />
 
 // ❌ 인라인에 HEX 직접
-<div style={{ background: '#4856F5' }} />
+<div style={{ background: '#5267D8' }} />
 ```
 
 ### 3-2. 색 토큰 계층
 
 ```
-Primitive  → --color-primary-600, --color-neutral-200 ...   (tokens.css §1)
+Role token → --color-primary, --color-ink, --color-border ... (tokens.css §1)
 Semantic   → --color-brand, --color-fg-muted, --color-border ... (tokens.css §2)
 Domain     → --color-recruiting-bg/fg/dot, --color-captain-bg/fg ... (tokens.css §2)
 ```
@@ -75,8 +75,8 @@ Domain     → --color-recruiting-bg/fg/dot, --color-captain-bg/fg ... (tokens.c
 | `--color-fg-placeholder` | `text-fg-placeholder` | placeholder / disabled |
 | `--color-bg` | `bg-bg` | 카드·모달 흰 배경 |
 | `--color-surface-1/2/3` | `bg-surface-1/2/3` | 앱 배경 단계 |
-| `--color-border` | `border-border` | 장식 구분선 |
-| `--color-border-strong` | `border-border-strong` | 입력 resting 보더 |
+| `--color-border` | `border-border` | 기본 경계와 장식 구분선 |
+| `--color-border-strong` | `border-border-strong` | 선택된 input·control 경계 |
 | `--radius-control` | `rounded-control` | 버튼·입력 |
 | `--radius-card` | `rounded-card` | 카드 |
 | `--radius-pill` | `rounded-pill` | 뱃지·칩 |
@@ -127,8 +127,8 @@ export function MyComponent({ variant = 'a', className, children, ...rest }: MyC
 // ✅ 문자열 전체를 맵에 넣는다 — Tailwind 정적 스캔을 보장
 const VARIANT: Record<MyVariant, string> = {
   primary:     'bg-brand text-on-brand hover:bg-brand-hover',
-  secondary:   'bg-bg border border-border-strong text-neutral-800 hover:bg-surface-1',
-  destructive: 'bg-error-600 text-on-brand hover:bg-error-700',
+  secondary:   'bg-surface-raised border border-border text-ink hover:border-border-interactive hover:bg-page-bg',
+  destructive: 'bg-danger-fg text-on-primary hover:brightness-90',
 };
 
 // 사용
@@ -174,7 +174,7 @@ const TONE: Record<BadgeTone, { chip: string; dot: string }> = {
 |---|---|
 | 포커스 링 | `focus-visible:outline-none focus-visible:shadow-(--ring)` |
 | 에러 포커스 링 | `focus:shadow-(--ring-error)` |
-| 비활성 | `disabled:bg-neutral-200 disabled:text-neutral-400 disabled:pointer-events-none` |
+| 비활성 | `disabled:bg-disabled-bg disabled:text-disabled-fg disabled:pointer-events-none` |
 | 상태 전달 | `aria-pressed`, `aria-invalid`, `aria-label`, `aria-busy` |
 | 색맹 대응 | 상태 색은 반드시 텍스트/아이콘 함께 (`dot` + 텍스트) |
 | 터치 타깃 44px | sm 버튼: `::after` 절대 패딩으로 hit-area 확장 |
@@ -205,7 +205,7 @@ cx('p-4', className) // className='p-2' → 결과: 'p-2'
 ```
 h-8 / h-10 / h-12  (sm/md/lg)
 rounded-control (8px)
-disabled → bg-neutral-200 / text-neutral-400 / shadow-none
+disabled → bg-disabled-bg / text-disabled-fg / shadow-none
 loading  → <Spinner /> + aria-busy + 폭 고정
 sm       → ::after 44px 터치 타깃
 ```
@@ -214,10 +214,11 @@ sm       → ::after 44px 터치 타깃
 
 ```
 h-10, px-3.5, rounded-control, bg-bg
-border-border-strong resting
-focus  → border-brand + shadow-(--ring)
-error  → border-error-600 + shadow-(--ring-error)
-disabled → bg-surface-2, text-neutral-400
+border-border resting
+selected → border-border-strong
+focus  → border-border-interactive + shadow-(--ring)
+error  → border-danger-fg + shadow-(--ring-error)
+disabled → bg-disabled-bg, text-disabled-fg
 placeholder → text-fg-placeholder
 ```
 
@@ -239,8 +240,8 @@ tonal: bg {semantic}-bg / text {semantic}-fg
 ### 7-5. CapacityBar 정원 진행바 (§9-5)
 
 ```
-트랙: bg-surface-3, h-1.5, rounded-pill
-채움: bg-brand  →  80%↑이면 bg-warning-500 (마감임박 승격)
+트랙: bg-disabled-bg, h-1.5, rounded-pill
+채움: bg-primary → 80%↑이면 bg-warning-fg (마감임박 승격)
 ```
 
 ### 7-6. StatCard (§9-7)
@@ -248,7 +249,7 @@ tonal: bg {semantic}-bg / text {semantic}-fg
 ```
 라벨: text-sm text-fg-muted
 값:   text-3xl font-bold + .stat-value (tabular-nums)
-델타: delta > 0 → text-success-700 ▲ / delta < 0 → text-error-700 ▼
+델타: delta > 0 → text-success-fg ▲ / delta < 0 → text-danger-fg ▼
 ```
 
 ### 7-7. Modal (§9-8)
@@ -266,10 +267,10 @@ Esc 닫기 · body scroll lock · 포커스 트랩 구현 필수
 ```
 상단 카테고리 컬러 스트립 4px (categoryColor)
 헤더: 카테고리 칩 + 상태 뱃지(Badge) + 북마크
-타이틀: text-xl font-semibold neutral-900 (2줄 말줄임)
+타이틀: text-xl font-semibold text-ink (2줄 말줄임)
 일정/요약: text-sm text-fg-muted / text-fg-secondary
 메타: 인원(👥 6/8명 tabular-nums) · 조회수(👁 124) · 신청 액션 버튼
-정원 진행바: CapacityBar 연동 (80%↑ warning-500 승격)
+정원 진행바: CapacityBar 연동 (80%↑ warning-fg 승격)
 ```
 
 ### 7-9. AttendanceTable (§9-6)
@@ -285,7 +286,7 @@ Esc 닫기 · body scroll lock · 포커스 트랩 구현 필수
 
 ```
 언더라인형 탭
-active: text-primary-700 font-semibold + 2px underline bg-brand
+active: text-primary-dark font-semibold + 2px underline bg-primary
 inactive: text-fg-muted hover:text-fg font-medium
 뱃지(badge) 지원, controlled/uncontrolled 대응
 ```
@@ -294,13 +295,13 @@ inactive: text-fg-muted hover:text-fg font-medium
 
 ```
 사이트: variant="site" 상단 가로 네비 (bg-bg/95, border 하단, backdrop-blur)
-콘솔: variant="sidebar" 좌측 사이드바 (bg-surface-1, active: bg-brand-subtle text-primary-700)
+콘솔: variant="sidebar" 좌측 사이드바 (bg-page-bg, active: bg-primary-light text-primary-dark)
 ```
 
 ### 7-12. Segmented & Pagination (§9-8)
 
 ```
-Segmented: track bg-surface-2, active bg-bg shadow-xs, rounded/pill 형태 지원
+Segmented: track bg-cloud, active bg-surface-raised shadow-xs, rounded/pill 형태 지원
 Pagination: 7칸 창(gap …), active bg-surface-2 font-bold text-fg
 ```
 
@@ -324,7 +325,7 @@ export type { MyComponentProps } from './MyComponent';
 - [ ] `bg-` / `text-` / `border-` 클래스명이 정적 문자열로만 조립됨
 - [ ] `className` prop 을 마지막 인자로 `cx()` 에 전달
 - [ ] 포커스 링(`focus-visible:shadow-(--ring)`) 적용
-- [ ] disabled 상태 처리 (`disabled:bg-neutral-200 disabled:text-neutral-400`)
+- [ ] disabled 상태 처리 (`disabled:bg-disabled-bg disabled:text-disabled-fg`)
 - [ ] 상태 전달에 색+텍스트 병행 (색맹 대응)
 - [ ] `index.ts` export 추가
 - [ ] `*.stories.tsx` 파일 생성 (stories-guide.md 참고)

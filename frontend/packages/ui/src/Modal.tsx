@@ -114,7 +114,7 @@ export function Modal({
       >
         <header className='flex items-start gap-3 border-b border-border px-6 py-4'>
           <div className='flex min-w-0 flex-1 flex-col gap-1'>
-            <h2 className='text-lg font-bold tracking-tight text-neutral-900'>{title}</h2>
+            <h2 className='text-lg font-bold tracking-tight text-ink'>{title}</h2>
             {description && <p className='text-sm text-fg-muted'>{description}</p>}
           </div>
           {headerEnd}

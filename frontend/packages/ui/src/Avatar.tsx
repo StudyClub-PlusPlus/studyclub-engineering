@@ -34,9 +34,9 @@ function initials(name: string): string {
 export function Avatar({ name, src, size = 32, role, className }: AvatarProps) {
   const ring =
     role === 'captain'
-      ? 'ring-2 ring-primary-600 ring-offset-1 ring-offset-bg'
+      ? 'ring-2 ring-primary ring-offset-1 ring-offset-surface-raised'
       : role === 'navigator'
-        ? 'ring-2 ring-info-500 ring-offset-1 ring-offset-bg'
+        ? 'ring-2 ring-info-fg ring-offset-1 ring-offset-surface-raised'
         : '';
   const base = cx(
     'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full',
@@ -49,7 +49,7 @@ export function Avatar({ name, src, size = 32, role, className }: AvatarProps) {
     return <img src={src} alt={name} className={cx(base, 'object-cover')} />;
   }
   return (
-    <span className={cx(base, 'bg-primary-100 font-semibold text-primary-700')} aria-label={name}>
+    <span className={cx(base, 'bg-primary-light font-semibold text-primary-dark')} aria-label={name}>
       {initials(name)}
     </span>
   );
