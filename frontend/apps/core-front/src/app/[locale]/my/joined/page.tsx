@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge, Button, Card, EmptyState, cx, Select } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -36,6 +36,7 @@ import {
 import { getApplications, getRegion, seedDemoData } from '@/lib/me';
 import { SCHEDULE_ROLE_LABEL, manageAccessOf, type ScheduleRole } from '@/lib/meetings';
 import { IS_DEV, syncPreview } from '@/lib/preview';
+import { pageOf, useUrlState } from '@/lib/use-url-state';
 
 type Filter = 'all' | LifeStatus;
 
@@ -88,6 +89,14 @@ const SORTS: { key: SortKey; label: string }[] = [
 ];
 
 const defaultSortOf = (filter: Filter): SortKey => (filter === 'ended' ? 'end' : 'next');
+
+/** URL 쿼리 — `?status=ended&role=manage&sort=name&page=2`. 정렬을 비우면 상태별 기본 정렬이다. */
+const URL_DEFAULTS = { status: 'active', role: 'all', sort: '', page: '1' };
+const URL_ALLOWED = {
+  status: FILTERS.map((f) => f.key),
+  role: ROLE_FILTERS.map((r) => r.key),
+  sort: SORTS.map((o) => o.key),
+};
 
 /** 첫·마지막 회차 일자 — 킥오프(no=0)를 제외한 정규 회차 기준. */
 function spanOf(study: Study): { start: string; end: string } {
@@ -403,16 +412,27 @@ function StudyItem({ study, locale, wallTz }: { study: Study; locale: Locale; wa
  * 기본 탭은 참여중. 이번 주 회차는 주간 줄에서 보고, 카드나 주간 칸을 누르면 그 스터디의
  * 스터디 일정으로 간다. 출석 기록·디스코드·자료실은 스터디 일정에 있다.
  */
+// 목록 조건을 URL 로 든다(useSearchParams) — 정적 프리렌더에서는 Suspense 경계가 있어야 레이아웃이 함께 렌더된다
 export default function MyJoinedPage() {
+  return (
+    <Suspense>
+      <MyJoinedPageContent />
+    </Suspense>
+  );
+}
+
+function MyJoinedPageContent() {
   const params = useParams();
   const router = useRouter();
   const locale = ((params?.locale as string) ?? 'ko') as Locale;
   const [ready, setReady] = useState(false);
   const [mineIds, setMineIds] = useState<string[]>([]);
-  const [filter, setFilter] = useState<Filter>('active');
-  const [sort, setSort] = useState<SortKey>(defaultSortOf('active'));
-  const [role, setRole] = useState<RoleFilter>('all');
-  const [page, setPage] = useState(1);
+  // 상태·역할·정렬·페이지는 URL 이 정본이다 — 스터디를 열었다 뒤로 와도 그대로다
+  const [query, setQuery] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const filter = query.status as Filter;
+  const role = query.role as RoleFilter;
+  const sort = (query.sort || defaultSortOf(filter)) as SortKey;
+  const page = pageOf(query.page);
   const [wallTz, setWallTz] = useState<WallTz>('KST');
   const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
   const listTop = useRef<HTMLDivElement>(null);
@@ -479,13 +499,12 @@ export default function MyJoinedPage() {
   const paged = shown.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE);
 
   function changeFilter(next: Filter) {
-    setFilter(next);
-    setSort(defaultSortOf(next));
-    setPage(1);
+    // 정렬을 비우면 새 상태의 기본 정렬로 돌아간다
+    setQuery({ status: next, sort: '', page: '1' });
   }
 
   function changePage(next: number) {
-    setPage(next);
+    setQuery({ page: String(next) });
     listTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -527,8 +546,7 @@ export default function MyJoinedPage() {
               aria-label='역할'
               value={role}
               onChange={(ev) => {
-                setRole(ev.target.value as RoleFilter);
-                setPage(1);
+                setQuery({ role: ev.target.value, page: '1' });
               }}
               size='sm'
               className='text-fg-secondary'
@@ -544,8 +562,7 @@ export default function MyJoinedPage() {
             aria-label='정렬'
             value={sort}
             onChange={(ev) => {
-              setSort(ev.target.value as SortKey);
-              setPage(1);
+              setQuery({ sort: ev.target.value, page: '1' });
             }}
             size='sm'
             className='text-fg-secondary'
