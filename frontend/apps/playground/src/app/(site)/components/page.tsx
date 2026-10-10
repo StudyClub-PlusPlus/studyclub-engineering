@@ -3,19 +3,27 @@
 import { useState } from "react";
 
 import {
+  AutoTextarea,
   Avatar,
   Badge,
   Button,
   CapacityBar,
   Card,
   Checkbox,
+  DiscordGlyph,
   EmptyState,
   FilterChip,
+  HotBadge,
   Input,
   Modal,
+  Pagination,
+  Segmented,
   Select,
   StatCard,
+  Tabs,
   Textarea,
+  Toaster,
+  toast,
 } from "@studyclub/ui";
 import type { BadgeTone, ButtonSize, ButtonVariant } from "@studyclub/ui";
 import { Search, Users } from "lucide-react";
@@ -40,9 +48,16 @@ export default function ComponentsCatalog() {
   const [modalOpen, setModalOpen] = useState(false);
   const [chip, setChip] = useState("all");
   const [checked, setChecked] = useState(true);
+  const [autoText, setAutoText] = useState("");
+  const [singleLineText, setSingleLineText] = useState("");
+  const [activeTab, setActiveTab] = useState("studies");
+  const [segVal, setSegVal] = useState("all");
+  const [segView, setSegView] = useState("grid");
+  const [page, setPage] = useState(1);
 
   return (
     <div className="space-y-10">
+      <Toaster />
       <header>
         <h1 className="text-3xl font-extrabold tracking-tight">컴포넌트 카탈로그</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--color-fg-muted)]">
@@ -93,6 +108,20 @@ export default function ComponentsCatalog() {
         </div>
       </Case>
 
+      <Case title="HotBadge · DiscordGlyph" note="마감 임박 뱃지와 디스코드 공식 아이콘. 배너·버튼 등에 사용한다.">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 rounded-card bg-[var(--color-surface-2)] p-3">
+            <span className="text-xs font-semibold text-[var(--color-fg-muted)]">HotBadge:</span>
+            <HotBadge />
+          </div>
+          <div className="flex items-center gap-3 rounded-card border border-[var(--color-border)] p-3">
+            <span className="text-xs font-semibold text-[var(--color-fg-muted)]">DiscordGlyph:</span>
+            <DiscordGlyph size={16} />
+            <DiscordGlyph size={24} />
+          </div>
+        </div>
+      </Case>
+
       <Case title="Card" note="padding none · md · lg. interactive 를 켜면 hover 반응이 붙는다.">
         <div className="grid gap-4 sm:grid-cols-3">
           <Card padding="none" className="p-4">
@@ -110,20 +139,118 @@ export default function ComponentsCatalog() {
         </div>
       </Case>
 
-      <Case title="Field — Input · Select · Textarea" note="label · helper · error · required 조합.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="스터디 이름" placeholder="예: 시스템 디자인 스터디" required />
-          <Input label="이메일" helper="가입에 쓴 주소를 적어주세요" defaultValue="not-an-email" error="이메일 형식이 아닙니다" />
-          <Select label="형식" defaultValue="online">
-            <option value="online">온라인</option>
-            <option value="offline">오프라인</option>
-            <option value="hybrid">하이브리드</option>
-          </Select>
-          <Textarea label="소개" helper="200자 이내" rows={3} placeholder="어떤 스터디인지 적어주세요" />
+      <Case
+        title="Input"
+        note="텍스트 입력 필드. sm(h-8) · md(h-10) · lg(h-12) 크기와 required · helper · error 상태 조합."
+      >
+        <div className="space-y-6 max-w-2xl">
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-fg-muted)]">크기 3종 (sm · md · lg)</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Input label="sm (h-8)" size="sm" placeholder="Small (32px)" />
+              <Input label="md / 기본 (h-10)" size="md" placeholder="Medium (40px)" />
+              <Input label="lg (h-12)" size="lg" placeholder="Large (48px)" />
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-fg-muted)]">상태 및 옵션 조합</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label="스터디 이름" placeholder="예: 시스템 디자인 스터디" required />
+              <Input label="이메일" helper="가입에 쓴 주소를 적어주세요" defaultValue="test@test.com" />
+              <Input label="닉네임" error="이미 사용 중인 닉네임입니다" defaultValue="중복닉네임" />
+              <Input label="비활성" disabled defaultValue="수정할 수 없습니다" />
+            </div>
+          </div>
         </div>
       </Case>
 
-      <Case title="Checkbox">
+      <Case
+        title="Select"
+        note="드롭다운 선택 필드. sm(h-8) · md(h-10) · lg(h-12) 크기와 helper · error 상태 조합."
+      >
+        <div className="space-y-6 max-w-2xl">
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-fg-muted)]">크기 3종 (sm · md · lg)</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Select label="sm (h-8)" size="sm" defaultValue="online">
+                <option value="online">온라인 (sm / 32px)</option>
+                <option value="offline">오프라인</option>
+              </Select>
+              <Select label="md / 기본 (h-10)" size="md" defaultValue="online">
+                <option value="online">온라인 (md / 40px)</option>
+                <option value="offline">오프라인</option>
+              </Select>
+              <Select label="lg (h-12)" size="lg" defaultValue="online">
+                <option value="lg">온라인 (lg / 48px)</option>
+                <option value="offline">오프라인</option>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-fg-muted)]">상태 및 옵션 조합</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Select label="진행 방식" helper="주요 모임 방식을 선택하세요" defaultValue="hybrid">
+                <option value="hybrid">하이브리드</option>
+                <option value="online">온라인</option>
+                <option value="offline">오프라인</option>
+              </Select>
+              <Select label="지역" error="지역을 선택해 주세요" defaultValue="">
+                <option value="" disabled>지역 선택</option>
+                <option value="gangnam">강남</option>
+                <option value="pangyo">판교</option>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </Case>
+
+      <Case
+        title="Textarea"
+        note="여러 줄 텍스트 입력 필드. rows 행 수 지정 및 label · helper · error 상태 조합."
+      >
+        <div className="space-y-4 max-w-xl">
+          <Textarea label="소개" helper="200자 이내로 입력해 주세요." rows={3} placeholder="어떤 스터디인지 적어주세요" />
+          <Textarea label="활동 목표" error="목표를 최소 10자 이상 작성해 주세요." rows={2} defaultValue="짧은 목표" />
+        </div>
+      </Case>
+
+      <Case
+        title="AutoTextarea"
+        note="내용 길이에 맞춰 높이가 자동 조절되는 텍스트 영역. 멀티라인 확장과 한 줄 인라인(singleLine) 형태를 모두 지원한다."
+      >
+        <div className="space-y-6 max-w-xl">
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-fg-muted)]">멀티라인 자동 높이 확장</p>
+            <AutoTextarea
+              label="자동 높이 조절 텍스트"
+              placeholder="텍스트를 여러 줄 입력해보세요. 내용에 따라 높이가 자동으로 늘어납니다."
+              value={autoText}
+              onChange={setAutoText}
+              minRows={2}
+            />
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-fg-muted)]">인라인 한 줄 입력 (singleLine · 엔터 방지)</p>
+            <div className="flex items-center gap-3 rounded-card border border-[var(--color-border)] bg-[var(--color-bg)] p-3">
+              <span className="shrink-0 text-sm font-medium text-neutral-800">스터디 규칙:</span>
+              <div className="flex-1 min-w-0">
+                <AutoTextarea
+                  label="인라인 스터디 규칙 입력"
+                  placeholder="제목이나 규칙처럼 한 줄 인라인으로 늘어나며, 엔터는 공백으로 치환됩니다."
+                  value={singleLineText}
+                  onChange={setSingleLineText}
+                  singleLine
+                  className="py-1 px-2.5 text-sm"
+                />
+              </div>
+              <Button size="sm">저장</Button>
+            </div>
+          </div>
+        </div>
+      </Case>
+
+      <Case title="Checkbox" note="label 조합. disabled 상태도 함께.">
         <div className="space-y-2">
           <Checkbox label="매주 알림 받기" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
           <Checkbox label="비활성" disabled />
@@ -161,6 +288,79 @@ export default function ComponentsCatalog() {
           <CapacityBar taken={4} total={20} showLabel />
           <CapacityBar taken={17} total={20} showLabel />
           <CapacityBar taken={20} total={20} showLabel />
+        </div>
+      </Case>
+
+      <Case title="Tabs · Segmented" note="언더라인형 탭과 세그먼트 컨트롤. 목록 필터링이나 뷰 전환에 쓴다.">
+        <div className="space-y-6 max-w-xl">
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-fg-muted)]">Tabs</p>
+            <Tabs
+              items={[
+                { key: "studies", label: "스터디 목록", badge: <Badge tone="recruiting">12</Badge> },
+                { key: "schedule", label: "주간 일정" },
+                { key: "notices", label: "공지사항" },
+              ]}
+              activeKey={activeTab}
+              onChange={setActiveTab}
+            />
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-fg-muted)]">Segmented</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <Segmented
+                size="md"
+                options={[
+                  { value: "all", label: "전체" },
+                  { value: "online", label: "온라인" },
+                  { value: "offline", label: "오프라인" },
+                ]}
+                value={segVal}
+                onChange={setSegVal}
+              />
+              <Segmented
+                size="sm"
+                shape="pill"
+                options={[
+                  { value: "grid", label: "격자" },
+                  { value: "list", label: "목록" },
+                ]}
+                value={segView}
+                onChange={setSegView}
+              />
+            </div>
+          </div>
+        </div>
+      </Case>
+
+      <Case
+        title="Pagination"
+        note="페이지 번호 창. 7페이지를 넘기면 중간에 gap(…)을 두고 윈도우를 계산한다."
+      >
+        <div className="max-w-md">
+          <Pagination page={page} total={12} onChange={setPage} />
+        </div>
+      </Case>
+
+      <Case title="Toast" note="semantic 토큰 기반 경량 토스트 알림. 버튼을 눌러 확인하세요.">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => toast.success("신청이 성공적으로 접수되었습니다.")}
+          >
+            성공 토스트
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => toast.error("모집 정원이 마감되었습니다.")}
+          >
+            에러 토스트
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => toast("기본 안내 알림입니다.")}>
+            기본 토스트
+          </Button>
         </div>
       </Case>
 

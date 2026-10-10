@@ -20,6 +20,8 @@ import { API_BASE } from './http';
 
 const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
+const DISCORD_KEY = 'sc_discord';
+const DISCORD_NICK_KEY = 'sc_discord_nickname';
 
 function readJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -75,6 +77,10 @@ export function getApplications(): Application[] {
   return readJSON<Application[]>(APPLICATION_KEY, []);
 }
 
+export function getApplication(studyId: string): Application | undefined {
+  return getApplications().find((a) => a.studyId === studyId);
+}
+
 export function addApplication(app: Application) {
   const rest = getApplications().filter((a) => a.studyId !== app.studyId);
   writeJSON(APPLICATION_KEY, [...rest, app]);
@@ -85,6 +91,30 @@ export function cancelApplication(studyId: string) {
     APPLICATION_KEY,
     getApplications().filter((a) => a.studyId !== studyId),
   );
+}
+
+/* ── 디스코드 연결 ───────────────────────────────────────────────────────── */
+
+export type DiscordLink = { handle: string } | null;
+
+export function getDiscord(): DiscordLink {
+  const v = readJSON<string>(DISCORD_KEY, '');
+  return v ? { handle: v } : null;
+}
+
+export function setDiscord(handle: string | null) {
+  writeJSON(DISCORD_KEY, handle ?? '');
+}
+
+export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자인';
+
+export function getDiscordNickname(): string | undefined {
+  const v = readJSON<string>(DISCORD_NICK_KEY, '');
+  return v.trim() || undefined;
+}
+
+export function setDiscordNickname(nickname: string) {
+  writeJSON(DISCORD_NICK_KEY, nickname.trim());
 }
 
 /* ── 거주 지역 ───────────────────────────────────────────────────────────── */
@@ -114,40 +144,31 @@ export function getRegion(): MemberRegion {
  */
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 5;
+const SEED_VERSION = 7;
 
 export function seedDemoData() {
   if (readJSON<number>(SEED_KEY, 0) >= SEED_VERSION) return;
   writeJSON(SEED_KEY, SEED_VERSION);
   {
     writeJSON(APPLICATION_KEY, [
+      // 참여중 (ongoing → active)
+      { studyId: '11', appliedAt: '2026-07-28', status: 'accepted', region: 'KR' }, // early-bird-g3 (네비게이터)
+      { studyId: '18', appliedAt: '2026-07-20', status: 'accepted', region: 'KR' }, // claude-code-source-study
+      // 시작전 (recruiting → upcoming)
+      { studyId: '1',  appliedAt: '2026-08-11', status: 'accepted', region: 'KR' }, // ai-paper-study (캡틴)
+      { studyId: '3',  appliedAt: '2026-09-01', status: 'accepted', region: 'KR' }, // python-pandas-ml-coding
+      // 참여 종료 — 참여 중단 (ongoing이지만 withdrawn → ended)
+      { studyId: '19', appliedAt: '2026-07-15', status: 'accepted', region: 'KR' }, // system-design-interview-ongoing
+      // 참여 종료 — 완주 (closed → completed)
+      { studyId: '28', appliedAt: '2026-02-03', status: 'accepted', region: 'KR' }, // leetcode150-2026
+      { studyId: '24', appliedAt: '2025-11-12', status: 'accepted', region: 'KR' }, // sql-for-data-analysis
+      { studyId: '22', appliedAt: '2026-01-10', status: 'accepted', region: 'KR' }, // business-articles
+      { studyId: '23', appliedAt: '2026-03-05', status: 'accepted', region: 'KR' }, // ai-engineering-book-club
+      { studyId: '25', appliedAt: '2025-10-01', status: 'accepted', region: 'KR' }, // db1-db2
+      { studyId: '26', appliedAt: '2025-09-12', status: 'accepted', region: 'KR' }, // aws-cpc
+      // 승인 대기 (pending — 마이페이지에서 보임, 내 스터디 탭에는 안 나옴)
       {
-        studyId: '11', // ddia-2nd
-        appliedAt: '2026-07-28',
-        status: 'accepted',
-        region: 'KR',
-      },
-      {
-        studyId: '1', // ai-paper-study
-        appliedAt: '2026-08-11',
-        status: 'accepted',
-        region: 'KR',
-      },
-      // 끝난 스터디 — 참여 이력으로 내려간다
-      {
-        studyId: '19', // leetcode150-2026
-        appliedAt: '2026-02-03',
-        status: 'accepted',
-        region: 'KR',
-      },
-      {
-        studyId: '15', // sql-for-data-analysis
-        appliedAt: '2025-11-12',
-        status: 'accepted',
-        region: 'KR',
-      },
-      {
-        studyId: '2', // pytorch-ai-coding
+        studyId: '2',
         appliedAt: '2026-08-14',
         status: 'pending',
         region: 'KR',

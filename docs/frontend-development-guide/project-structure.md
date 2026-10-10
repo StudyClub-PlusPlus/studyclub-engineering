@@ -107,7 +107,20 @@ apps/{app}/
 | 라우트 | `src/app/` | `page.tsx` — **조립만** 한다, fetch 를 직접 쓰지 않는다 |
 | BFF Route Handler | `src/app/api/` | `api/studies/route.ts` |
 
-- 기능 폴더 이름은 kebab-case (`notification-templates`), 컴포넌트 파일은 PascalCase, 나머지는 camelCase
+- **이름 규칙** — 컴포넌트 파일만 PascalCase, 그 밖의 파일·폴더는 전부 **kebab-case**
+
+  | 무엇 | 규칙 | 예 |
+  |---|---|---|
+  | 컴포넌트 (`.tsx`, 컴포넌트 하나를 export) | PascalCase = 컴포넌트명 | `UsersTable.tsx` · `RoleBadgeSelect.tsx` |
+  | 훅 | kebab-case, `use-` 로 시작 | `use-debounced-value.ts` · `use-revealed-emails.ts` (함수명은 `useDebouncedValue`) |
+  | 유틸·타입·라벨·쿼리 | kebab-case (한 단어면 소문자) | `query-client.ts` · `login-errors.ts` · `queries.ts` · `labels.ts` |
+  | 폴더 | kebab-case | `features/notification-templates/` |
+  | Next 특수 파일 | 프레임워크 규칙 그대로 | `page.tsx` · `layout.tsx` · `not-found.tsx` · `opengraph-image.tsx` |
+
+  - **camelCase 파일명(`useXxx.ts`)을 쓰지 않는다.** 파일명은 kebab, 그 안의 함수·변수명은 camelCase 다
+  - **왜 kebab 인가** — macOS 파일시스템은 대소문자를 구분하지 않아 `useUser.ts` → `UseUser.ts` 같은 변경을 git 이 못 알아채고, Linux CI 에서만 import 가 깨진다. 소문자만 쓰면 그 사고가 없다. Next 라우트·특수 파일도 소문자·하이픈이라 한 규칙으로 맞는다
+  - **컴포넌트를 PascalCase 로 두는 이유** — React 생태계에서 가장 흔하고, 이미 150개가 넘는다. 바꾸는 비용이 얻는 것보다 크다
+  - 실측 (2026-10-10, 테스트·라우트 제외): PascalCase 153 · 소문자 한 단어 128 · kebab 22 · camelCase 1 → 이 규칙은 이미 쓰던 방식을 적은 것이다
 - **`lib/api/` 처럼 타입별 서랍을 만들지 않는다.** 기능 하나를 고치는 데 서랍 네 개를 열게 된다
 - 처음부터 폴더를 쪼개지 않는다 — 파일 하나로 시작해서 커지면 나눈다. 빈 `index.ts` 를 두지 않는다
 - **`src/models/` 은 쓰지 않는다**(레거시). 타입은 그 기능의 `types.ts` 로 간다

@@ -1,6 +1,6 @@
-import { StudiesTable } from '@/components/StudiesTable';
 import { StudyCreateButton } from '@/components/StudyCreateButton';
 import { PageHeader } from '@/components/ui';
+import { StudiesTable } from '@/features/studies/StudiesTable';
 import { fetchStudies } from '@/lib/api';
 
 export const metadata = { title: '스터디' };

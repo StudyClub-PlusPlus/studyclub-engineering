@@ -24,12 +24,12 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 | Method | Path | 설명 | 인증 | 스토리 | 상태 |
 |--------|------|------|------|--------|------|
-| GET | /api/studies/{studyId}/application-form | 신청 폼 조회 | 공개 (OPEN 기수) | 캡틴 설계 · 크루 제출 | 스펙작성중 |
+| GET | /api/studies/{studyId}/application-form | 신청 폼 조회 | 공개 (OPEN 기수) | 캡틴 설계 · 크루 제출 | 구현완료 |
 | PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | **폐기 — 코드에서 지운다** (2026-10-07). 네비게이터는 폼을 고치지 않고, 담당 캡틴은 백오피스 경로를 쓴다 | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 폐기 |
 | GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴 누구나) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 스펙작성중 |
 | PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (담당 캡틴만) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
-| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현중 |
-| GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
+| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
+| GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 스펙작성중 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
 
@@ -136,6 +136,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 ### 유효값 표
 
 trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API `errorMessage`에는 필드명과 사유 코드를 담는다.
+클라이언트 검증은 `frontend/apps/core-front/src/lib/apply-validation.ts`의 Zod 스키마 팩토리(`makeApplySchema` + `.superRefine()`)로 구현하여 일원화한다.
 
 신청 제출 Request에는 Bean Validation을 적용하지 않는다. 필수값 누락·요일 개수 초과·null 요일 항목은 도메인에서 검사해 각각 `필드명: empty`·`availableDays: max`·`availableDays: enum`으로 응답한다.
 
@@ -234,6 +235,9 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 
 ### 프론트엔드 사용처
 
+- `frontend/apps/core-front/src/features/applications/queries.ts` (`useStudyApplicationForm`)
+- `frontend/apps/core-front/src/components/ApplyDialog.tsx`
+- `frontend/apps/core-front/src/components/ApplicationFormUi.tsx`
 - `frontend/apps/playground/src/proto/console/components/ApplicationFormTab.tsx`
 - `frontend/apps/playground/src/proto/core/components/ApplyDialog.tsx`
 
@@ -359,6 +363,11 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 
 ### 프론트엔드 사용처
 
+- `frontend/apps/core-front/src/features/applications/queries.ts` (`useSubmitApplication`)
+- `frontend/apps/core-front/src/components/ApplyDialog.tsx`
+- `frontend/apps/core-front/src/components/ApplyCompleteDialog.tsx`
+- `frontend/apps/core-front/src/lib/apply-validation.ts` (`makeApplySchema` Zod 팩토리)
+- `frontend/apps/core-front/e2e/specs/study-apply.spec.ts`
 - `frontend/apps/playground/src/proto/core/components/ApplyButton.tsx`
 - `frontend/apps/playground/src/proto/core/components/ApplyDialog.tsx`
 - `frontend/apps/playground/src/proto/core/components/ApplyDiscordGate.tsx`
@@ -405,6 +414,8 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 
 ### 프론트엔드 사용처
 
+- `frontend/apps/core-front/src/features/applications/queries.ts` (`useMyApplication`)
+- `frontend/apps/core-front/src/components/ApplyButton.tsx`
 - `frontend/apps/playground/src/proto/core/components/ApplyButton.tsx`
 
 ---
@@ -541,6 +552,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 ### 프론트엔드 사용처
 
+- `frontend/apps/core-front/src/components/ApplyDiscordGate.tsx`
 - `frontend/apps/playground/src/proto/core/components/ApplyDiscordGate.tsx`
 
 ### 외부 연동 (SYS-02)

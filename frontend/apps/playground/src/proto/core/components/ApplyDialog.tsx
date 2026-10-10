@@ -29,7 +29,6 @@ import { CalendarClock } from 'lucide-react';
  *
  * 이미 제출한 신청서는 고치지 않는다. 같은 스터디에 다시 저장하지 않는다.
  *
- * TODO(api): POST /api/studies/{id}/applications — 저장 테이블·API 미구현이라 화면 상태로만 처리.
  * TODO(api): 신청자 지역·디스코드 별명은 로그인 회원 정보에서 읽는다.
  */
 
@@ -89,12 +88,14 @@ export function ApplyDialog({
   open,
   onClose,
   onSubmitted,
+  onDeadline,
 }: {
   study: Study;
   locale: Locale;
   open: boolean;
   onClose: () => void;
   onSubmitted: () => void;
+  onDeadline?: (label: string) => void;
 }) {
   const fixedSchedule = study.schedule ? t(study.schedule, locale) : null;
   const [myRegion, setMyRegion] = useState<MemberRegion>('KR');
@@ -107,6 +108,7 @@ export function ApplyDialog({
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const extraQuestions = (study.applicationForm ?? []).filter((q) => q.id !== 'discord');
   const [invalidKey, setInvalidKey] = useState<string | null>(null);
   const [attention, setAttention] = useState(0);
@@ -178,6 +180,7 @@ export function ApplyDialog({
     setInvalidKey(null);
     setAttention(0);
     setSaving(false);
+    setSubmitError(null);
   }, [open]);
 
   function close() {
@@ -188,6 +191,7 @@ export function ApplyDialog({
     setError(null);
     setInvalidKey(null);
     setAttention(0);
+    setSubmitError(null);
     onClose();
   }
 
@@ -272,25 +276,76 @@ export function ApplyDialog({
     }
     setError(null);
     setInvalidKey(null);
+    setSubmitError(null);
     setSaving(true);
     setDiscordNickname(draftNick);
-    // TODO(api): POST /api/studies/{id}/applications
-    await new Promise((r) => setTimeout(r, 400));
-    addApplication({
-      studyId: study.id,
-      appliedAt: new Date().toISOString().slice(0, 10),
-      status: 'pending',
-      region: myRegion,
-      cells: days,
-    });
-    setSaving(false);
-    onSubmitted();
+    try {
+      const reqBody: Record<string, unknown> = {
+        discordNickname: draftNick.trim(),
+        availableDays: days,
+        answers,
+      };
+      if (fixedSchedule) reqBody.scheduleAgreed = agreed;
+
+      const res = await fetch(`/api/studies/${study.study_id}/applications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reqBody),
+      });
+
+      if (res.status === 201) {
+        addApplication({
+          studyId: study.id,
+          appliedAt: new Date().toISOString().slice(0, 10),
+          status: 'pending',
+          region: myRegion,
+          cells: days,
+        });
+        setSaving(false);
+        onSubmitted();
+        return;
+      }
+
+      const data = await res.json().catch(() => null) as { errorMessage?: string } | null;
+
+      if (res.status === 409 && data?.errorMessage?.includes('이미 신청')) {
+        addApplication({
+          studyId: study.id,
+          appliedAt: new Date().toISOString().slice(0, 10),
+          status: 'pending',
+          region: myRegion,
+          cells: days,
+        });
+        setSaving(false);
+        onSubmitted();
+        return;
+      }
+
+      if (res.status === 409) {
+        const label = data?.errorMessage?.includes('정원')
+          ? t({ ko: '정원 마감', en: 'Full' }, locale)
+          : t({ ko: '모집 마감', en: 'Recruiting closed' }, locale);
+        setSaving(false);
+        close();
+        onDeadline?.(label);
+        return;
+      }
+
+      setSaving(false);
+      setSubmitError(
+        data?.errorMessage ??
+          t({ ko: '신청하지 못했습니다. 다시 시도해 주세요.', en: 'Application failed. Please try again.' }, locale),
+      );
+    } catch {
+      setSaving(false);
+      setSubmitError(t({ ko: '신청하지 못했습니다. 다시 시도해 주세요.', en: 'Application failed. Please try again.' }, locale));
+    }
   }
 
   return (
     <Modal
       open={open}
-      onClose={close}
+      onClose={saving ? () => {} : close}
       size='lg'
       title={t({ ko: '스터디 신청', en: 'Apply to study' }, locale)}
       footer={
@@ -383,6 +438,15 @@ export function ApplyDialog({
               <FieldHint field={q.id} />
             </section>
           ))}
+
+          {submitError && (
+            <div role='alert' className='flex items-center gap-3 rounded-xl bg-error-50 px-4 py-3'>
+              <p className='flex-1 text-sm text-error-700'>{submitError}</p>
+              <Button variant='secondary' onClick={submit} disabled={saving}>
+                {t({ ko: '다시 시도', en: 'Retry' }, locale)}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </Modal>

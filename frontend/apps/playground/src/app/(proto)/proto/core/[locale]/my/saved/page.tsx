@@ -13,7 +13,7 @@ import { type Study } from '@studyclub/mock';
 import { Button, Card, EmptyState } from '@studyclub/ui';
 import { Heart } from 'lucide-react';
 
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
  * 찜한 스터디 — 내 스터디 탭 줄의 페이지 이동 목적지.

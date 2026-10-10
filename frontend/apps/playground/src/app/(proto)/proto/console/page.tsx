@@ -9,7 +9,7 @@ import { events, todayISO } from '@studyclub/mock';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 // 프로토는 /proto/console 아래 매달린다.
 const BASE = '/proto/console';
@@ -42,13 +42,11 @@ export default function Dashboard() {
       </header>
 
       <div data-anno='2' className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
-        <KpiCard
-          anno='2-1'
-          label='활성 크루'
-          value={kpi.activeCrew.toLocaleString()}
-          sub='진행 중 스터디 기준'
-          href={`${BASE}/users`}
-        />
+        {/*
+          유저 목록으로 보내지 않는다 — 그 목록은 가입자 전체이고 이 카드는 진행 중 스터디의
+          참여자다. 누른 곳과 도착한 곳의 수가 달라 어느 쪽이 맞는지 되묻게 된다.
+        */}
+        <KpiCard anno='2-1' label='활성 크루' value={kpi.activeCrew.toLocaleString()} sub='진행 중 스터디 기준' />
         <KpiCard
           anno='2-2'
           label='평균 출석률'

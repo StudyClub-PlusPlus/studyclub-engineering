@@ -14,15 +14,24 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter playground run build
 
 # ---- runner ----
+# standalone 만 넣는다 — 소스·node_modules 통째 복사 금지 (이미지가 4배로 뛴다).
 FROM node:20-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/playground/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/playground/.next/static ./apps/playground/.next/static
+# standalone 은 public/ 을 담지 않는다 — MSW 워커(mockServiceWorker.js)가 여기 있어서 빠지면 목업 화면이 깨진다.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/playground/public ./apps/playground/public
+
+USER nextjs
+# 앱 start 스크립트는 4702 를 바인딩한다. k8s probe/NodePort target 과 맞추려고 3000 으로 덮어쓴다.
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
 
 EXPOSE 3000
-# 앱 start 스크립트는 4702 를 바인딩한다. k8s probe/NodePort target 과 맞추려고 3000 으로 덮어쓴다.
-# pnpm 은 next 를 루트 node_modules/.bin 에 올리지 않는다 — 앱 디렉토리에서 앱의 .bin 으로 실행.
-WORKDIR /app/apps/playground
-CMD ["./node_modules/.bin/next", "start", "-p", "3000"]
+# standalone 은 앱 위치(apps/playground)에 server.js 를 만든다 — next CLI 없이 node 로 바로 띄운다.
+CMD ["node", "apps/playground/server.js"]

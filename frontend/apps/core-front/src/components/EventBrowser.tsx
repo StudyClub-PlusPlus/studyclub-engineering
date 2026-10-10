@@ -1,12 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Search } from 'lucide-react';
 
 import { EventRow } from './EventCard';
 import type { Locale, StudyclubEvent } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { useUrlState } from '@/lib/use-url-state';
 
 /**
  * 행사 목록 — 스터디 목록과 **같은 규칙**으로 고른다.
@@ -32,6 +34,10 @@ const WHEN_LABEL: Record<WhenTab, { ko: string; en: string }> = {
 
 type TypeFilter = 'all' | 'meetup' | 'workshop' | 'talk' | 'online';
 
+/** URL 쿼리 — `?when=past&type=talk&q=…`. 기본값은 싣지 않는다. */
+const URL_DEFAULTS = { q: '', when: 'upcoming', type: 'all' };
+const URL_ALLOWED = { when: WHEN_ORDER, type: ['all', 'meetup', 'workshop', 'talk', 'online'] };
+
 function TypeChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -50,9 +56,15 @@ function TypeChip({ active, onClick, children }: { active: boolean; onClick: () 
 }
 
 export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; locale: Locale }) {
-  const [query, setQuery] = useState('');
-  const [when, setWhen] = useState<WhenTab>('upcoming');
-  const [type, setType] = useState<TypeFilter>('all');
+  // 조건은 URL 이 정본이다. 입력칸 글자만 화면 state 로 두고, 멈추면(300ms) URL 에 쓴다
+  const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const when = filters.when as WhenTab;
+  const type = filters.type as TypeFilter;
+  const [query, setQuery] = useState(filters.q);
+  const debouncedQuery = useDebouncedValue(query, 300);
+  useEffect(() => {
+    if (debouncedQuery !== filters.q) setFilters({ q: debouncedQuery });
+  }, [debouncedQuery, filters.q, setFilters]);
 
   /** 시점 탭을 제외한 조건만 적용한 집합 — 탭별 건수의 기준. */
   const base = useMemo(() => {
@@ -98,7 +110,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
                 type='button'
                 role='tab'
                 aria-selected={on}
-                onClick={() => setWhen(w)}
+                onClick={() => setFilters({ when: w })}
                 className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
                   on ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
                 }`}
@@ -127,7 +139,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
 
       <div className='no-scrollbar mb-5 flex gap-1.5 overflow-x-auto whitespace-nowrap'>
         {typeOptions.map((o) => (
-          <TypeChip key={o.value} active={type === o.value} onClick={() => setType(o.value)}>
+          <TypeChip key={o.value} active={type === o.value} onClick={() => setFilters({ type: o.value })}>
             {o.label}
           </TypeChip>
         ))}

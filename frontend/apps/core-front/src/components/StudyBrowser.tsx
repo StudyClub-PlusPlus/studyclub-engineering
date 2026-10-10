@@ -3,13 +3,15 @@
 import { useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
-import { Search, X } from 'lucide-react';
+import { FilterChip } from '@studyclub/ui';
+import { ChevronDown, Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
 import { useStudies } from '@/features/studies/queries';
 import type { StudyPhaseFilter, StudySearch, StudyTimezoneFilter } from '@/lib/api';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { useUrlState } from '@/lib/use-url-state';
 
 type RecruitmentFilter = 'all' | StudyPhaseFilter;
 type TimezoneFilter = 'all' | StudyTimezoneFilter;
@@ -31,31 +33,13 @@ const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
   { value: 'both', label: '동시 모집' },
 ];
 
-function FilterOption({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type='button'
-      onClick={onClick}
-      aria-pressed={active}
-      // 테두리로 칸을 나눈다 — 배경색만으로는 흰 바탕에서 칩 경계가 보이지 않는다
-      className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-        active
-          ? 'border-brand bg-brand text-on-brand'
-          : 'border-border-strong bg-bg text-fg-secondary hover:border-fg-muted hover:text-fg'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
+/** URL 쿼리 — `?q=react&status=recruiting&category=AI_ML&tz=KST`. 기본값은 싣지 않는다. */
+const URL_DEFAULTS = { q: '', status: 'all', category: 'all', tz: 'all' };
+const URL_ALLOWED = {
+  status: RECRUITMENT_OPTIONS.map((o) => o.value),
+  category: CATEGORY_OPTIONS.map((o) => o.value),
+  tz: ['all', ...TIMEZONE_OPTIONS.map((o) => o.value)],
+};
 
 function FilterSelect<T extends string>({
   value,
@@ -67,17 +51,24 @@ function FilterSelect<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value as T)}
-      className='h-9 w-fit min-w-0 rounded-lg border border-border-strong bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <div className='relative w-fit'>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        className='h-9 min-w-0 appearance-none rounded-lg border border-border-strong bg-bg pl-3 pr-9 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={14}
+        className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted'
+        aria-hidden
+      />
+    </div>
   );
 }
 
@@ -102,11 +93,14 @@ export function StudyBrowser({
   locale: Locale;
   leads: Record<string, Operator>;
 }) {
-  const [input, setInput] = useState('');
-  const [query, setQuery] = useState('');
-  const [recruitment, setRecruitment] = useState<RecruitmentFilter>('all');
-  const [category, setCategory] = useState<string>('all');
-  const [timezone, setTimezone] = useState<TimezoneFilter>('all');
+  // 조건은 URL 이 정본이다 — 스터디를 열었다 뒤로 와도 걸어 둔 조건이 그대로다
+  const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const query = filters.q;
+  const recruitment = filters.status as RecruitmentFilter;
+  const category = filters.category;
+  const timezone = filters.tz as TimezoneFilter;
+  // 입력칸의 글자만 화면 state — Enter·검색 버튼으로 확정할 때 URL 에 쓴다
+  const [input, setInput] = useState(query);
 
   const search: StudySearch = {
     keyword: query.trim() || undefined,
@@ -122,13 +116,10 @@ export function StudyBrowser({
   const failed = isError;
 
   const hasQuery = query.trim().length > 0;
-  const commitSearch = () => setQuery(input);
+  const commitSearch = () => setFilters({ q: input });
   const clearSearch = () => {
     setInput('');
-    setQuery('');
-    setRecruitment('all');
-    setCategory('all');
-    setTimezone('all');
+    setFilters(URL_DEFAULTS);
   };
 
   return (
@@ -152,7 +143,7 @@ export function StudyBrowser({
                   type='button'
                   role='tab'
                   aria-selected={active}
-                  onClick={() => setRecruitment(option.value)}
+                  onClick={() => setFilters({ status: option.value })}
                   className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
                 >
                   {option.label}
@@ -164,7 +155,7 @@ export function StudyBrowser({
             <FilterSelect
               value={timezone}
               options={[{ value: 'all' as const, label: '시간대 전체' }, ...TIMEZONE_OPTIONS]}
-              onChange={setTimezone}
+              onChange={(tz) => setFilters({ tz })}
             />
           </div>
           <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 transition-[width] duration-200 sm:ml-auto sm:w-[200px] sm:focus-within:w-[312px]'>
@@ -200,13 +191,15 @@ export function StudyBrowser({
         </div>
         <FilterRow>
           {CATEGORY_OPTIONS.map((option) => (
-            <FilterOption
+            <FilterChip
               key={option.value}
-              active={category === option.value}
-              onClick={() => setCategory(option.value)}
+              selected={category === option.value}
+              selectMode='single'
+              onClick={() => setFilters({ category: option.value })}
+              className='h-auto py-1.5 text-[13px] font-semibold'
             >
               {option.label}
-            </FilterOption>
+            </FilterChip>
           ))}
         </FilterRow>
       </div>
