@@ -11,7 +11,7 @@ import { AccountRoleCell } from '@/features/users/components/AccountRoleCell';
 import { RoleBadgeSelect } from '@/features/users/components/RoleBadgeSelect';
 import { DISCORD_NOTICE } from '@/features/users/labels';
 import type { ApiAdminAccount, ApiAdminAccountPage } from '@/features/users/types';
-import { useRevealedEmails } from '@/features/users/useRevealedEmails';
+import { useRevealedEmails } from '@/features/users/use-revealed-emails';
 import { ApiError, http } from '@/lib/http';
 
 // 서버는 http 한 곳으로 막는다 — 경로·요청 모양까지 함께 확인한다.

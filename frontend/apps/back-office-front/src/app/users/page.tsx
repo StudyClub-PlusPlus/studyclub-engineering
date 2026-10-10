@@ -14,7 +14,7 @@ import { UsersTable } from '@/features/users/components/UsersTable';
 import { TAB_OPTIONS } from '@/features/users/labels';
 import { useUsers } from '@/features/users/queries';
 import { USER_PAGE_SIZE, type UserFilter, type UserRole } from '@/features/users/types';
-import { useRevealedEmails } from '@/features/users/useRevealedEmails';
+import { useRevealedEmails } from '@/features/users/use-revealed-emails';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 
 export default function UsersAdmin() {
