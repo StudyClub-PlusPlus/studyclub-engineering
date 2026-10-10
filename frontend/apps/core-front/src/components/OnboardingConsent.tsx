@@ -64,7 +64,7 @@ export function OnboardingConsent({
 
   return (
     <section>
-      <label className='flex cursor-pointer items-center gap-3 rounded-card border border-border-strong px-4 py-3.5 transition hover:border-brand has-[:checked]:border-brand has-[:checked]:bg-brand-subtle'>
+      <label className='flex cursor-pointer items-center gap-3 rounded-card border border-border px-4 py-3.5 transition hover:border-border-interactive has-[:checked]:border-border-strong has-[:checked]:bg-brand-subtle'>
         <Checkbox
           id='consent-all'
           checked={all}

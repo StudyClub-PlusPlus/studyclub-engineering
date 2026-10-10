@@ -9,7 +9,7 @@
 
 html {
   color-scheme: light;
-  background: var(--color-bg);
+  background: var(--color-page-bg);
   color: var(--color-fg);
   font-family: var(--font-sans);
 }
@@ -28,7 +28,7 @@ html {
 
 /* Soft card — 모든 앱 공용 */
 .card {
-  background: var(--color-bg);
+  background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-xs);
@@ -43,7 +43,7 @@ html {
 .card-hover:hover {
   box-shadow: var(--shadow-lg);
   transform: translateY(-3px);
-  border-color: var(--color-border-strong);
+  border-color: var(--color-border-interactive);
 }
 
 /* 가로 스크롤 필터 줄 스크롤바 숨김 유틸리티 */

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
-import { FilterChip } from '@studyclub/ui';
-import { ChevronDown, Search, X } from 'lucide-react';
+import { Select } from '@studyclub/ui';
+import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
 import { useStudies } from '@/features/studies/queries';
@@ -32,6 +32,32 @@ const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
   { value: 'both', label: '동시 모집' },
 ];
 
+function FilterOption({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      aria-pressed={active}
+      // 테두리로 칸을 나눈다 — 배경색만으로는 흰 바탕에서 칩 경계가 보이지 않는다
+      className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+        active
+          ? 'border-brand bg-brand text-on-brand'
+          : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:text-fg'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function FilterSelect<T extends string>({
   value,
   options,
@@ -42,20 +68,17 @@ function FilterSelect<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className='relative w-fit'>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value as T)}
-        className='h-9 min-w-0 appearance-none rounded-lg border border-border-strong bg-bg pl-3 pr-9 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown size={14} className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted' aria-hidden />
-    </div>
+    <Select
+      value={value}
+      onChange={(event) => onChange(event.target.value as T)}
+      className='h-9 w-fit rounded-lg border border-border bg-bg text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </Select>
   );
 }
 
@@ -145,7 +168,7 @@ export function StudyBrowser({
               onChange={setTimezone}
             />
           </div>
-          <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 transition-[width] duration-200 sm:ml-auto sm:w-[200px] sm:focus-within:w-[312px]'>
+          <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-full lg:focus-within:w-[312px]'>
             <input
               role='searchbox'
               type='text'
@@ -165,7 +188,7 @@ export function StudyBrowser({
                 <X size={14} />
               </button>
             )}
-            <div className='mx-1 h-5 w-px shrink-0 bg-border-strong' />
+            <div className='mx-1 h-5 w-px shrink-0 bg-border' />
             <button
               type='button'
               onClick={commitSearch}
@@ -178,15 +201,13 @@ export function StudyBrowser({
         </div>
         <FilterRow>
           {CATEGORY_OPTIONS.map((option) => (
-            <FilterChip
+            <FilterOption
               key={option.value}
-              selected={category === option.value}
-              selectMode='single'
+              active={category === option.value}
               onClick={() => setCategory(option.value)}
-              className='h-auto py-1.5 text-[13px] font-semibold'
             >
               {option.label}
-            </FilterChip>
+            </FilterOption>
           ))}
         </FilterRow>
       </div>
@@ -222,7 +243,7 @@ export function StudyBrowser({
           <button
             type='button'
             onClick={clearSearch}
-            className='rounded-pill border border-border-strong px-4 py-1.5 text-sm font-semibold text-fg-secondary hover:border-fg-muted hover:text-fg'
+            className='rounded-pill border border-border px-4 py-1.5 text-sm font-semibold text-fg-secondary hover:border-border-interactive hover:text-fg'
           >
             {t({ ko: '검색어 지우기', en: 'Clear search' }, locale)}
           </button>

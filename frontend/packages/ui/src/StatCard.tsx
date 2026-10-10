@@ -5,7 +5,7 @@ import { cx } from './cx';
 
 /**
  * design-system.md §9-7 Dashboard Stat Card.
- * 라벨(sm/neutral-600) → 값(3xl~4xl/700, tabular-nums) → 델타(success-700 ▲ / error-700 ▼)
+ * 라벨(sm/text-muted) → 값(3xl~4xl/700, tabular-nums) → 델타(success-fg ▲ / danger-fg ▼)
  */
 export interface StatCardProps {
   label: string;
@@ -69,10 +69,10 @@ export function StatCard({
         </span>
         {icon && <span className='text-fg-placeholder'>{icon}</span>}
       </div>
-      <span className='stat-value text-3xl font-bold tracking-tight text-neutral-900'>{value}</span>
+      <span className='stat-value text-3xl font-bold tracking-tight text-ink'>{value}</span>
       {hasDelta && delta !== 0 && (
         <span className='flex items-baseline gap-1.5 text-sm'>
-          <span className={cx('tnum font-medium', good ? 'text-success-700' : 'text-error-700')}>
+          <span className={cx('tnum font-medium', good ? 'text-success-fg' : 'text-danger-fg')}>
             {up ? '▲' : '▼'} {Math.abs(delta)}{unit}
           </span>
           {deltaLabel && <span className='text-xs text-fg-placeholder'>{deltaLabel}</span>}
@@ -90,7 +90,7 @@ export function StatCard({
 
 /** §9-6 출석률 임계 색: ≥80 success / 60–79 warning / <60 error. */
 export function rateToneClass(rate: number): string {
-  if (rate >= 80) return 'text-success-700';
-  if (rate >= 60) return 'text-warning-700';
-  return 'text-error-700';
+  if (rate >= 80) return 'text-success-fg';
+  if (rate >= 60) return 'text-warning-fg';
+  return 'text-danger-fg';
 }

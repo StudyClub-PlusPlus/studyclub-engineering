@@ -10,10 +10,11 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-brand text-on-brand shadow-xs hover:bg-brand-hover active:bg-brand-active',
-  tonal: 'bg-brand-subtle text-primary-700 hover:bg-brand-subtle-hover',
-  secondary: 'bg-bg text-neutral-800 border border-border-strong hover:bg-surface-1 hover:border-border-interactive',
-  ghost: 'bg-transparent text-neutral-700 hover:bg-surface-2',
-  destructive: 'bg-error-600 text-on-brand shadow-xs hover:bg-error-700',
+  tonal: 'bg-primary-light text-primary-dark hover:brightness-[0.97]',
+  secondary:
+    'bg-surface-raised text-ink border border-border hover:bg-page-bg hover:border-border-interactive',
+  ghost: 'bg-transparent text-text-secondary hover:bg-cloud',
+  destructive: 'bg-danger-fg text-on-primary shadow-xs hover:brightness-90',
 };
 
 /* h32/40/48 — sm 은 시각 높이를 유지한 채 ::after 로 44px 터치 타깃을 확보한다. */
@@ -56,7 +57,7 @@ export function Button({
         'transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out',
         'focus-visible:outline-none focus-visible:shadow-(--ring)',
         // disabled 는 변형 색을 전부 덮는다 (§9-1)
-        'disabled:pointer-events-none disabled:border-transparent disabled:bg-neutral-200 disabled:text-neutral-400 disabled:shadow-none',
+        'disabled:pointer-events-none disabled:border-transparent disabled:bg-disabled-bg disabled:text-disabled-fg disabled:shadow-none',
         SIZE[size],
         size === 'sm' && HIT_AREA,
         VARIANT[variant],

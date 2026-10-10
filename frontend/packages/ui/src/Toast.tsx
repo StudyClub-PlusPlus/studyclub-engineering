@@ -17,8 +17,8 @@ export function Toaster({ toastOptions, ...rest }: ToasterProps) {
       toastOptions={{
         duration: 4000,
         style: {
-          background: 'var(--color-bg)',
-          color: 'var(--color-fg)',
+          background: 'var(--color-surface-raised)',
+          color: 'var(--color-ink)',
           boxShadow: 'var(--shadow-lg)',
           borderRadius: 'var(--radius-md)',
           fontSize: '0.875rem',
@@ -27,14 +27,14 @@ export function Toaster({ toastOptions, ...rest }: ToasterProps) {
         },
         success: {
           iconTheme: {
-            primary: 'var(--color-success-500)',
-            secondary: 'var(--color-bg)',
+            primary: 'var(--color-success-fg)',
+            secondary: 'var(--color-surface-raised)',
           },
         },
         error: {
           iconTheme: {
-            primary: 'var(--color-error-500)',
-            secondary: 'var(--color-bg)',
+            primary: 'var(--color-danger-fg)',
+            secondary: 'var(--color-surface-raised)',
           },
         },
         ...toastOptions,
