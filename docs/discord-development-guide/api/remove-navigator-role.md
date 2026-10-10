@@ -1,6 +1,6 @@
 # Remove Navigator Discord Role
 
-**navigator 역할**을 유저 **한 명**에게서 뗀다. [`assign-navigator-role`](assign-navigator-role.md) 로
+**navigator 역할**을 여러 유저에게서 한 요청으로 뗀다. [`assign-navigator-role`](assign-navigator-role.md) 로
 붙였던 역할을 회수하는 짝이다. [`remove-role`](remove-role.md) 과 같은 동작인데 뗄 역할이
 **navigator 로 고정**이라 경로에 `discordRoleId` 가 없다. 계약 대부분이 remove-role 과 같고,
 **다른 곳만** 이 문서에 자세히 적는다.
@@ -14,22 +14,31 @@
 - [요청](#요청)
 - [성공 응답](#성공-응답)
 - [실패 응답](#실패-응답)
-- [여러 명을 뗄 때](#여러-명을-뗄-때)
+- [부분 실패와 재시도](#부분-실패와-재시도)
 - [remove-role 과 다른 점](#remove-role-과-다른-점)
 - [미정 사항](#미정-사항)
 
 ## 요청
 
 ```
-DELETE /api/v1/roles/navigator/users/{discordUserId}?discordStudyId={discordStudyId}
+DELETE /api/v1/roles/navigator/users
 ```
 
-| 위치 | 이름 | 타입 | 필수 | 설명 |
-|------|------|------|------|------|
-| 경로 | `discordUserId` | string | O | navigator 역할을 뗄 **Discord 유저 ID**(snowflake) |
-| 쿼리 | `discordStudyId` | string | O | snowflake. **로깅·추적용** — [assign-role 과 같다](assign-role.md#discordstudyid-의-역할) |
+경로 변수가 없다 — 뗄 역할이 navigator 로 고정이고, 대상은 바디로 받는다.
 
-**바디가 없다.** 그래서 `Content-Type` 도 붙이지 않는다.
+```jsonc
+{
+  "discordStudyId": "1327394882193883136",
+  "discordUserIds": ["327394882193883136", "412938471293847123"]
+}
+```
+
+| 필드 | 타입 | 필수 | 제약 |
+|------|------|------|------|
+| `discordStudyId` | string | O | snowflake. **로깅·추적용** — [assign-role 과 같다](assign-role.md#discordstudyid-의-역할) |
+| `discordUserIds` | string[] | O | snowflake 배열. 1개 이상, 중복은 무시. 상한은 [미정](#미정-사항) |
+
+**바디를 싣는 DELETE 다** — [remove-role 과 같다](remove-role.md#요청).
 
 헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다.
 
@@ -43,10 +52,20 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 
 ## 성공 응답
 
-**204 No Content** — 바디가 없다.
+**200 OK** — [remove-role 과 같은 모양](remove-role.md#성공-응답)이다.
 
-**204 는 "그 유저가 지금 navigator 역할을 갖고 있지 않다" 는 뜻이다.** 이번 요청이 실제로 뗐는지,
-원래 없었는지, 유저가 이미 길드를 떠났는지는 구분하지 않는다 ([remove-role](remove-role.md#성공-응답) 과 같다).
+```jsonc
+{
+  "succeededCount": 2,
+  "failed": [
+    { "discordUserId": "998234871293847123", "reason": "DISCORD_REJECTED" }
+  ]
+}
+```
+
+`succeededCount` 는 지금 navigator 역할을 갖고 있지 **않은** 요청 유저 수다. 이번에 뗐는지,
+원래 없었는지, 길드를 이미 떠났는지는 구분하지 않는다. `failed` 의 `reason` 은
+`DISCORD_REJECTED` 하나뿐이다.
 
 ## 실패 응답
 
@@ -73,7 +92,7 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 | **502** | Discord 가 회수를 거부 | 봇 권한 부족(`Manage Roles`), **역할 서열** 문제, 그 밖의 Discord 5xx |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
-`discordUserId` 가 **길드 멤버가 아니어도 에러가 아니다** (204) — [remove-role 과 같다](remove-role.md#길드에-없는-유저는-204-다).
+`discordUserIds` 의 유저가 **길드 멤버가 아니어도 에러가 아니다** — [remove-role 과 같다](remove-role.md#길드에-없는-유저는-성공이다).
 판단도 같은 방식으로 캐시가 아니라 Discord 의 `Unknown Member` 응답으로 한다.
 
 503 · 502 는 **재시도 가능**하다. 400 · 401 · 403 은 조건이 바뀌기 전에는 재시도해도 같다.
@@ -82,14 +101,11 @@ captain · navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의
 역할 서열과 429 는 [assign-navigator-role](assign-navigator-role.md#이-엔드포인트에서-나는-것) 과 같다 —
 봇 역할이 navigator 보다 아래면 **모든 요청이** 502 다. 서열 제한은 붙일 때와 뗄 때 똑같이 걸린다.
 
-## 여러 명을 뗄 때
+## 부분 실패와 재시도
 
-[remove-role 의 규칙](remove-role.md#여러-명을-뗄-때)을 그대로 따른다.
-
-- 여러 명이면 **호출자가 유저 수만큼 부른다.** 요청마다 Discord 호출은 한 번이라 요청 안의 부분 실패는 없다.
-- 한 명이 실패해도 **나머지를 계속 부르고**, 실패한 유저만 다시 부른다. 이미 뗀 유저에게 다시 붙여 되돌리지 않는다.
-- **`Idempotency-Key` 는 유저마다 따로** 만들고, 재시도할 때는 그 유저의 원래 키를 보낸다.
-  키는 로그 추적용이고, 서버는 중복 요청을 막지 않는다.
+[remove-role 의 규칙](remove-role.md#부분-실패와-재시도)을 그대로 따른다. navigator 역할을
+먼저 해석하고 없으면 404, 있으면 유저를 한 명씩 Discord 에 보내며, 한 명이 실패해도 나머지를
+계속 뗀다. 되돌리지 않고, 실패한 유저는 `failed` 로 알린다.
 
 ## remove-role 과 다른 점
 
@@ -117,14 +133,14 @@ remove-role 은 `discordRoleId` 가 없는 역할이면 404 다 — 틀린 ID(�
 여기서는 역할 ID 를 호출자가 보내지 않으므로 **404 의 뜻이 바뀐다:** 호출자 잘못이 아니라
 **설정값이 틀렸거나 길드에서 역할이 지워진 서버 설정 문제**다.
 
-"역할이 없으면 누구도 navigator 가 아니니 204" 로 둘 수도 있지만 404 로 둔다 — 설정이 깨진 채로
+"역할이 없으면 누구도 navigator 가 아니니 전원 성공" 으로 둘 수도 있지만 404 로 둔다 — 설정이 깨진 채로
 회수가 계속 "성공" 하면 아무도 알아채지 못하고, 설정이 고쳐졌을 때 떼졌어야 할 사람들이 navigator 로 남는다.
 
 역할은 요청 전에 확인하므로, 역할이 없을 때는 Discord 에 회수 요청을 보내지 않는다.
 
 ### 경로 충돌
 
-`/roles/navigator/users/{discordUserId}` 는 remove-role 의 `/roles/{discordRoleId}/users/{discordUserId}` 와 **모양이 겹친다.**
+`/roles/navigator/users` 는 remove-role 의 `/roles/{discordRoleId}/users` 와 **모양이 겹친다.**
 [assign-navigator-role 과 같은 문제](assign-navigator-role.md#경로-충돌)다 — **고정 경로를 동적 경로보다 먼저 등록**하고,
 테스트로 순서를 고정한다.
 
