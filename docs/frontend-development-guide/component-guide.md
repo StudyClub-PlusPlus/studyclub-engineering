@@ -120,7 +120,7 @@ const schema = useMemo(() => makeSchema(Boolean(fixedSchedule), locale), [fixedS
 const { ... } = useForm({ resolver: zodResolver(schema) });
 ```
 
-**필터·검색 UI**(`StudyBrowser`, `EventBrowser` 등)는 제출이 없는 즉시 반응 상태라 `useState`로 충분하다 — RHF 대상이 아니다.
+**필터·검색 UI**(`StudyBrowser`, `EventBrowser` 등)는 제출이 없는 즉시 반응 상태라 RHF 대상이 아니다. 값은 `useState` 가 아니라 **URL 쿼리**에 둔다 — [필터·검색·페이지는 URL 에](api-integration.md#필터검색페이지는-url-에).
 
 ## 스타일링
 
