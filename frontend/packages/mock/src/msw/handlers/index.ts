@@ -1,6 +1,7 @@
 import { registerHandlers, type MockHandlerGroup } from '../utils';
 import { accountsHandlers } from './accounts';
 import { notificationTemplatesHandlers } from './notification-templates';
+import { rolePermissionsHandlers } from './role-permissions';
 import {
   studiesHandlers,
   adminStudiesHandlers,
@@ -13,7 +14,8 @@ export {
   adminStudiesHandlers,
   adminStudyProgramsHandlers,
 } from './studies';
-export { accountsHandlers, mockUsers } from './accounts';
+export { accountsHandlers, mockAdminAccounts } from './accounts';
+export { rolePermissionsHandlers, mockRolePermissions } from './role-permissions';
 export { notificationTemplatesHandlers, mockNotificationTemplates } from './notification-templates';
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
@@ -21,6 +23,7 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   adminStudiesHandlers,
   adminStudyProgramsHandlers,
   accountsHandlers,
+  rolePermissionsHandlers,
   notificationTemplatesHandlers,
 ];
 

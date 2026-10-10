@@ -21,6 +21,15 @@ class ErrorCodeTest {
     }
 
     @Test
+    @DisplayName(
+            "409 코드가 늘어도 상태 409 는 첫 409 인 CONFLICT 로 되돌린다 — CANNOT_CHANGE_OWN_ROLE·LAST_ADMIN_REQUIRED 은 CONFLICT 뒤에 있다")
+    void fromStatus409StaysConflict() {
+        assertThat(ErrorCode.CANNOT_CHANGE_OWN_ROLE.status()).isEqualTo(409);
+        assertThat(ErrorCode.LAST_ADMIN_REQUIRED.status()).isEqualTo(409);
+        assertThat(ErrorCode.fromStatus(409)).isEqualTo(ErrorCode.CONFLICT);
+    }
+
+    @Test
     @DisplayName("모르는 4xx 는 INVALID_INPUT — 클라이언트 잘못을 서버 오류로 보고하지 않는다")
     void unknownClientErrorIsNotServerError() {
         assertThat(ErrorCode.fromStatus(418)).isEqualTo(ErrorCode.INVALID_INPUT);

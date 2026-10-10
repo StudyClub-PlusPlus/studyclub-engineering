@@ -22,6 +22,21 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     @Query("select a from Account a where a.id = :id")
     Optional<Account> findByIdForUpdate(@Param("id") Long id);
 
+    /**
+     * 계정 권한 변경 전용 — {@code ADMIN} 행을 모두 잠그고 읽는다. 캡틴 둘이 동시에 서로를 내려도 한쪽이 커밋할 때까지 다른 쪽이 기다렸다가 다시 센 값을
+     * 보게 해, 캡틴이 0명이 되는 일을 막는다 (specs/admin-users/spec.md 「처리 규칙」). 호출자는 반환된 목록의 크기로 캡틴 수를 센다.
+     *
+     * <p>주의: {@code SYSTEM_ROLE} 에 인덱스가 없는 MySQL REPEATABLE READ 에서는 이 조회가 사실상 모든 ACCOUNT 행을 잠근다.
+     * 호출자는 그것에 기대어 다른 행을 보호하지 말고, 지켜야 할 행은 {@link #findByIdForUpdate} 로 직접 잠근다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "select a from Account a where a.systemRole = com.studyclub.domain.account.SystemRole.ADMIN")
+    List<Account> findAllAdminsForUpdate();
+
+    /** 계정 권한별 수. 백오피스 회원 목록이 「마지막 캡틴」 잠금 사유를 계산할 때 쓴다 — 잠그지 않는 읽기다. */
+    long countBySystemRole(SystemRole systemRole);
+
     /** 디스코드 유저 ID 다건 → 회원. DISCORD_ID 는 UNIQUE 라 유저당 최대 1행이다. */
     List<Account> findByDiscordIdIn(Collection<String> discordIds);
 

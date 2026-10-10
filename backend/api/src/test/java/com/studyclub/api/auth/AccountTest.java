@@ -1,12 +1,15 @@
 package com.studyclub.api.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.RoleChangeBlockedReason;
 import com.studyclub.domain.account.SystemRole;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * 구글이 주는 프로필 문자열이 컬럼보다 길어도 로그인이 죽지 않아야 한다.
@@ -111,5 +114,67 @@ class AccountTest {
         assertThat(account.getNickname()).isEqualTo("kimcheolsu");
         assertThat(account.getTimeZone()).isEqualTo("America/Vancouver");
         assertThat(account.getOnboardingCompletedAt()).isEqualTo(completedAt);
+    }
+
+    @Test
+    @DisplayName("권한 전이 - 다른 값이면 바꾸고 true 를 돌려준다")
+    void changeSystemRoleChangesValue() {
+        Account account = new Account("a@b.com", "n", null, SystemRole.MEMBER);
+
+        boolean changed = account.changeSystemRole(SystemRole.ADMIN);
+
+        assertThat(changed).isTrue();
+        assertThat(account.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+    }
+
+    @Test
+    @DisplayName("권한 전이 - 같은 값이면 아무것도 바꾸지 않고 false 를 돌려준다 (감사 로그를 남기지 않는 근거)")
+    void changeSystemRoleSameValueIsNoop() {
+        Account account = new Account("a@b.com", "n", null, SystemRole.ADMIN);
+
+        boolean changed = account.changeSystemRole(SystemRole.ADMIN);
+
+        assertThat(changed).isFalse();
+        assertThat(account.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+    }
+
+    @Test
+    @DisplayName("권한 전이 - null 은 예외 — 권한을 비울 수 없다")
+    void changeSystemRoleRejectsNull() {
+        Account account = new Account("a@b.com", "n", null, SystemRole.MEMBER);
+
+        assertThatThrownBy(() -> account.changeSystemRole(null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(account.getSystemRole()).isEqualTo(SystemRole.MEMBER);
+    }
+
+    private static Account accountWithId(long id, SystemRole role) {
+        Account account = new Account("a" + id + "@b.com", "회원" + id, null, role);
+        ReflectionTestUtils.setField(account, "id", id);
+        return account;
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 본인이면 마지막 캡틴이어도 「본인」이 먼저다")
+    void ownAccountComesFirst() {
+        Account me = accountWithId(1L, SystemRole.ADMIN);
+        assertThat(me.roleChangeBlockedReason(1L, 1))
+                .isEqualTo(RoleChangeBlockedReason.CANNOT_CHANGE_OWN_ROLE);
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 남의 계정이 마지막 캡틴이면 막고, 캡틴이 둘 이상이면 연다")
+    void lastAdminIsBlocked() {
+        Account other = accountWithId(2L, SystemRole.ADMIN);
+        assertThat(other.roleChangeBlockedReason(1L, 1))
+                .isEqualTo(RoleChangeBlockedReason.LAST_ADMIN_REQUIRED);
+        assertThat(other.roleChangeBlockedReason(1L, 2)).isNull();
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 크루는 캡틴 수와 상관없이 올릴 수 있다")
+    void memberIsNeverBlockedByAdminCount() {
+        Account crew = accountWithId(3L, SystemRole.MEMBER);
+        assertThat(crew.roleChangeBlockedReason(1L, 1)).isNull();
     }
 }

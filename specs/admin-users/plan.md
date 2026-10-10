@@ -34,7 +34,7 @@ spec.md 의 엔드포인트 전부다.
 | 잠금 범위 | `SYSTEM_ROLE` 에 인덱스를 두지 않는다. MySQL 은 잠금 읽기가 훑은 행을 잠그므로 실제로는 `ACCOUNT` 전체 행이 잠깐 잠긴다 | 캡틴이 드물게 하는 일이고 트랜잭션이 짧다. 문제가 보이면 인덱스로 잠금 범위를 줄인다 |
 | 엔티티 메서드 | `Account.changeSystemRole(SystemRole) : boolean` — 값이 바뀌었으면 `true` | setter 금지. 같은 값이면 `false` 로 "변경 없음·감사 기록 없음"을 판정한다. 「본인」·「마지막 캡틴」은 계정 하나로 판단할 수 없는 규칙이라 서비스가 본다 |
 | 감사 로그 | domain 모듈 `com.studyclub.domain.audit` — `AdminAuditLog`(BaseEntity, 정적 팩토리 `emailReveal(...)`·`roleChange(...)`), `AdminAuditAction` enum, `AdminAuditLogRepository` | 어떤 애그리거트에도 속하지 않는 insert-only 로그 (`AccountLeaveReason` 과 같은 위치 감각). 팩토리로 만들어 ACTION 과 BEFORE/AFTER 조합이 어긋나지 않게 한다 |
-| 마이그레이션 | `V31__admin_audit_log.sql` — 테이블 + 인덱스 2개. 번호는 구현 PR 을 올릴 때 `backend/scripts/check-migration-versions.sh` 로 다시 확인 | 지금 최신이 V30 |
+| 마이그레이션 | `V36__admin_audit_log.sql` — 테이블 + 인덱스 2개. 번호는 구현 PR 을 올릴 때 `backend/scripts/check-migration-versions.sh` 로 다시 확인 | 계획 때는 V31 이었으나 구현 중 beta 가 V35 까지 와서 V36 (2026-10-09) |
 | 권한표 정의 | api 모듈 `com.studyclub.api.account.RolePermission` enum — `key`·`scope`·`label`·`allowedRoles`, 선언 순서 = 표 순서. 행은 POL-0001 (스터디 단위 5 · 사이트 전체 7), 그룹의 열(`roles`)도 enum 옆 정의에서 나온다 | 앞으로 게이팅을 붙일 인가 어노테이션도 api 모듈(`auth.security`)에 있어 같은 모듈에서 참조한다. 역할 키는 `SystemRole.ADMIN`·`ParticipantRole.LEADER`·`SystemRole.MEMBER` 의 이름을 그대로 쓴다 |
 | 에러 코드 | `ErrorCode` 에 `CANNOT_CHANGE_OWN_ROLE(409)`·`LAST_ADMIN_REQUIRED(409)` 을 `CONFLICT` 뒤에 추가 | 스펙. `fromStatus(409)` 는 첫 409 인 `CONFLICT` 를 써야 한다 |
 | 잠금 사유 계산 | 목록 서비스가 요청자 ID 와 `ADMIN` 수(COUNT 한 번)로 행마다 계산 | 스펙 — 판정은 서버 한 곳 |
@@ -72,7 +72,7 @@ BE 와 FE 는 처음부터 병렬로 간다. FE 는 MSW 목으로 화면을 먼�
 
 **BE**
 1. common — `EmailMasking` + 단위 테스트, `ErrorCode` 2개 추가
-2. domain — `Account.changeSystemRole` + 단위 테스트, `AdminAuditLog`·`AdminAuditAction`·`AdminAuditLogRepository`, `AccountRepository` 잠금 조회, `V31__admin_audit_log.sql`
+2. domain — `Account.changeSystemRole` + 단위 테스트, `AdminAuditLog`·`AdminAuditAction`·`AdminAuditLogRepository`, `AccountRepository` 잠금 조회, `V36__admin_audit_log.sql`
 3. api — 회원 목록: DAO·서비스·DTO·컨트롤러 GET + 통합 테스트
 4. api — 이메일 보기: 서비스·컨트롤러 POST + 통합 테스트(감사 기록·no-store·롤백)
 5. api — 권한 변경: 서비스·컨트롤러 PATCH + 통합 테스트 + 동시성 테스트 시도

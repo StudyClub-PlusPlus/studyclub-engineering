@@ -7,7 +7,7 @@
 > 갱신: 2026-10-07 — POL-0001 변경(#199 등) 반영. 권한표 스터디 단위에 「회차 관리」 행, 담당 캡틴 명부 행도 「참여 중」으로 센다
 > 갱신: 2026-10-08 — `beta` 반영: 기획 폴더 `01-planning/` 이동, POL-0001 담당 캡틴 = `STUDY.CREATED_BY`·반 편성 때 명부 편입(#208)
 > 갱신: 2026-10-08 — **기획 문서(PRD)에 적힌 이름을 따른다** — 경로 `/api/admin/users`·`…/system-role`, 역할 필터 `role`, 에러 코드 `CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED`, 스펙 위치 `specs/admin-users/` (옛 `specs/admin-accounts/` 에서 옮김). 동작은 PR #163 합의 그대로 ([PRD 와 다른 곳](#기획-문서와-다른-곳))
-> 상태: 스펙작성중 — 남은 미확정 1건 (감사 로그 보관 기간)
+> 상태: 구현완료 (2026-10-10, PR #219 · #221) — 남은 미확정 1건 (감사 로그 보관 기간)
 >
 > Story PRD:
 > - [캡틴으로서, 전체 회원 리스트를 조회할 수 있다](../../01-planning/stories/captain-list-users/PRD.md)
@@ -21,11 +21,11 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/admin/users | 회원 목록 — 필터·검색·페이지, 걸러진 뒤 총 인원. 이메일은 가려서 준다 | O (`@RequireAdmin`) | 스펙작성중 |
-| POST | /api/admin/users/{accountId}/email-reveals | 한 명의 이메일 원본 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 스펙작성중 |
-| PATCH | /api/admin/users/{accountId}/system-role | 계정 권한 변경 (ADMIN ↔ MEMBER) — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 스펙작성중 |
-| GET | /api/admin/role-permissions | 역할별 기본 권한표 | O (`@RequireAdmin`) | 스펙작성중 |
-| ~~GET~~ | ~~/accounts~~ | 옛 유저 목록 — **구현 PR 에서 삭제** ([아래](#옛-get-accounts-를-없앤다)) | O (`@RequireAdmin`, #178) | 변경예정 |
+| GET | /api/admin/users | 회원 목록 — 필터·검색·페이지, 걸러진 뒤 총 인원. 이메일은 가려서 준다 | O (`@RequireAdmin`) | 구현완료 |
+| POST | /api/admin/users/{accountId}/email-reveals | 한 명의 이메일 원본 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
+| PATCH | /api/admin/users/{accountId}/system-role | 계정 권한 변경 (ADMIN ↔ MEMBER) — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
+| GET | /api/admin/role-permissions | 역할별 기본 권한표 | O (`@RequireAdmin`) | 구현완료 |
+| ~~GET~~ | ~~/accounts~~ | 옛 유저 목록 — **삭제됨** (#221, [아래](#옛-get-accounts-를-없앤다)) | O (`@RequireAdmin`, #178) | 삭제 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -182,7 +182,7 @@
 | items[].navigatorOf[].title | String | N | | STUDY.TITLE |
 | items[].dormant | Boolean | N | 「휴면」 표기. 계정 상태가 아니라 참여 이력으로 판정한다 | 계산: 참여 중인 스터디 수 = 0 |
 | items[].joinedAt | String | N | 가입일. UTC ISO 8601 | ACCOUNT.CREATED_AT |
-| items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: 요청자 ID · `SYSTEM_ROLE = ADMIN` 수 |
+| items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수)` — 권한 변경 API 의 거절도 같은 메서드 |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면의 「총 N명」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
 | limit | Integer | N | 요청 값 그대로 | |
@@ -569,6 +569,7 @@
 | 2026-10-04 | 「참여 중」에 `PAUSED` 포함 · 권한표 역할 키는 DB 값 · 권한표는 서버에서 | PR #163 리뷰 — 제안대로 합의 |
 | 2026-10-04 | 권한이 바뀌어도 디스코드 역할은 자동으로 바꾸지 않는다. 성공 시 화면이 운영자 문의 안내를 띄운다 | 리드 회의 — 디스코드 스쿼드 합의. PR #163 리뷰로 전달 |
 | 2026-10-08 | **API 이름은 기획 문서(PRD)를 따른다** — `/api/admin/users`, `…/system-role`, 필터 `role`, 409 `CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED`, 스펙 위치 `specs/admin-users/`. PR #163 에서 정한 `accounts`·`systemRole`+`navigator`·`CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED` 을 대체한다 | 개발은 기획을 따른다. PRD 의 API 절(#206)과 맞춤 |
+| 2026-10-10 | **마지막 캡틴의 탈퇴는 막지 않는다.** 권한 변경은 캡틴 0명을 막지만(`LAST_ADMIN_REQUIRED`), 탈퇴는 회원 데이터 정책대로 막는 조건이 없다. 캡틴이 0명이 되면 백오피스에 아무도 못 들어가므로 **DB 에서 직접 `SYSTEM_ROLE=ADMIN` 을 넣어 복구한다** — 드문 일이라 화면·API 를 두지 않는다 | 리드 결정 (PR #219 리뷰). [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) |
 
 ## 미확정
 
