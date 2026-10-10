@@ -85,7 +85,8 @@ export function StudyInfoTab({ study }: { study: Study }) {
         title='스터디 삭제'
         footer={
           <>
-            <Button variant='secondary' onClick={() => setConfirmDelete(false)}>
+            {/* 결정을 묻는 모달 — 안전한 쪽이 기본 포커스를 받는다. Enter 로 삭제되면 안 된다 (POL-0008) */}
+            <Button variant='secondary' autoFocus onClick={() => setConfirmDelete(false)}>
               취소
             </Button>
             <Button variant='destructive' onClick={() => setConfirmDelete(false)}>

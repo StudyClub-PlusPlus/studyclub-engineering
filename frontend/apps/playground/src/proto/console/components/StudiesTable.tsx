@@ -54,7 +54,6 @@ import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'l
  */
 
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: '카테고리 전체' },
   ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
 ];
 
@@ -64,25 +63,21 @@ const PAGE_SIZE = 20;
 
 type StatusFilter = 'all' | LifecycleState;
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: '상태 전체' },
   ...LIFECYCLE_ORDER.map((s) => ({ value: s, label: LIFECYCLE_LABEL[s] })),
 ];
 
 type KindFilter = 'all' | StudyKind;
 const KIND_OPTIONS: { value: KindFilter; label: string }[] = [
-  { value: 'all', label: '종류 전체' },
   { value: 'study', label: KIND_LABEL.study },
   { value: 'club', label: KIND_LABEL.club },
 ];
 
 const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
-  { value: 'all', label: '모집 전체' },
   { value: 'apply', label: '모집중' },
   { value: 'closed', label: '마감' },
 ];
 
 const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
-  { value: 'all', label: '공개 전체' },
   { value: 'live', label: '공개' },
   { value: 'draft', label: '미공개' },
 ];
@@ -91,23 +86,33 @@ const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
  * 필터 셀렉트 — 다섯 축이 한 줄에 나란히 서므로 생김새를 하나로 맞춘다.
  * 「전체」 항목에 축 이름을 붙여 라벨 없이도 어떤 축인지 알 수 있게 한다.
  */
+/**
+ * 거르는 칸 하나 (POL-0008).
+ *
+ * 고르기 전에는 **축 이름**만 보인다 — 「상태 전체」처럼 적으면 이미 걸러 둔 것처럼 읽힌다.
+ * 하나 고르고 나면 첫 줄이 「전체」로 바뀌어 되돌아갈 길이 그 자리에 생긴다.
+ */
 function FilterSelect<T extends string>({
+  label,
   value,
   onChange,
   options,
 }: {
+  label: string;
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
 }) {
   return (
     <select
+      aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
       }`}
     >
+      <option value='all'>{value === 'all' ? label : '전체'}</option>
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
@@ -121,12 +126,14 @@ function FilterSelect<T extends string>({
 function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <select
+      aria-label='카테고리'
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
       }`}
     >
+      <option value='all'>{value === 'all' ? '카테고리' : '전체'}</option>
       {CATEGORY_OPTIONS.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
@@ -508,6 +515,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         />
         <span data-anno='status:3' className='shrink-0'>
           <FilterSelect
+            label='상태'
             value={status}
             onChange={(v) => {
               setStatus(v);
@@ -517,6 +525,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           />
         </span>
         <FilterSelect
+          label='종류'
           value={kind}
           onChange={(v) => {
             setKind(v);
@@ -525,6 +534,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           options={KIND_OPTIONS}
         />
         <FilterSelect
+          label='모집'
           value={recruit}
           onChange={(v) => {
             setRecruit(v);
@@ -534,6 +544,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         />
         <span data-anno='publish:3' className='shrink-0'>
           <FilterSelect
+            label='공개'
             value={publish}
             onChange={(v) => {
               setPublish(v);
@@ -688,7 +699,8 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         title={confirm?.next ? '스터디 공개' : '스터디 비공개'}
         footer={
           <>
-            <Button variant='secondary' onClick={() => setConfirm(null)}>
+            {/* 결정을 묻는 모달 — 안전한 쪽이 기본 포커스를 받는다. Enter 로 실행되면 안 된다 (POL-0008) */}
+            <Button variant='secondary' autoFocus onClick={() => setConfirm(null)}>
               취소
             </Button>
             <Button onClick={applyPublish}>{confirm?.next ? '공개' : '비공개로 전환'}</Button>

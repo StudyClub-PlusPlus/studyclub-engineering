@@ -54,13 +54,11 @@ export const STATUS_TONE: Record<NotificationStatus, 'neutral' | 'inprogress' | 
 };
 
 /** 알림 종류. 지금은 가입 환영 하나뿐이지만 축은 미리 세운다 — 늘면 여기만 더한다. */
-export const EVENT_FILTERS: { value: 'all' | NotificationEvent; label: string }[] = [
-  { value: 'all', label: '알림 종류 전체' },
-  ...(Object.keys(EVENT_LABEL) as NotificationEvent[]).map((key) => ({ value: key, label: EVENT_LABEL[key] })),
-];
+export const EVENT_FILTERS: { value: NotificationEvent; label: string }[] = (
+  Object.keys(EVENT_LABEL) as NotificationEvent[]
+).map((key) => ({ value: key, label: EVENT_LABEL[key] }));
 
-export const STATUS_FILTERS: { value: 'all' | NotificationStatus; label: string }[] = [
-  { value: 'all', label: '상태 전체' },
+export const STATUS_FILTERS: { value: NotificationStatus; label: string }[] = [
   { value: 'PENDING', label: STATUS_LABEL.PENDING },
   { value: 'PROCESSING', label: STATUS_LABEL.PROCESSING },
   { value: 'SENT', label: STATUS_LABEL.SENT },

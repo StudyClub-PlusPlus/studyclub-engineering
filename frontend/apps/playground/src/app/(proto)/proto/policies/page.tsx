@@ -20,6 +20,7 @@ const REPO = 'https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/b
 const GROUPS = [
   { key: 'study', label: '스터디', sections: ['스터디 종류', '카테고리', '스터디 상태', '신청'] },
   { key: 'member', label: '사람', sections: ['역할과 권한', '시간대', '닉네임', '회원 데이터와 탈퇴'] },
+  { key: 'rule', label: '규칙', sections: ['시간 표기 규칙', '모달 닫기 규칙', '드롭다운 규칙'] },
 ] as const;
 
 type GroupKey = (typeof GROUPS)[number]['key'];
@@ -34,10 +35,14 @@ const ANCHOR: Record<string, string> = {
   시간대: 'timezone',
   닉네임: 'nickname',
   '회원 데이터와 탈퇴': 'account',
+  '시간 표기 규칙': 'time-format',
+  '모달 닫기 규칙': 'modal',
+  '드롭다운 규칙': 'filter',
 };
 
 export default function PolicyLibrary() {
   const [group, setGroup] = useState<GroupKey>('study');
+  const [active, setActive] = useState<string>(GROUPS[0].sections[0]);
   const current = GROUPS.find((g) => g.key === group) ?? GROUPS[0];
   const show = (title: string) => current.sections.includes(title as never);
 
@@ -53,7 +58,10 @@ export default function PolicyLibrary() {
               <button
                 key={g.key}
                 type='button'
-                onClick={() => setGroup(g.key)}
+                onClick={() => {
+                  setGroup(g.key);
+                  setActive(g.sections[0]);
+                }}
                 className='rounded-lg px-3 py-2 text-left text-sm transition-colors'
                 style={
                   g.key === group
@@ -68,13 +76,21 @@ export default function PolicyLibrary() {
         </aside>
 
         <div>
-          {/* 절 바로가기는 가로로 — 묶음 안에서 어디로 갈지만 고르는 자리라 한 줄이면 된다 */}
-          <nav className='mb-6 flex flex-wrap gap-1.5 border-b border-border pb-4'>
+          {/*
+            절 바로가기 — 서류철 탭처럼. 지금 보고 있는 절에 밑줄이 서고, 그 줄이 본문과 이어진다.
+            칩으로 두면 고르는 버튼처럼 보여 「눌러야 내용이 바뀌나」 하고 멈칫하게 된다.
+          */}
+          <nav className='mb-6 flex flex-wrap gap-1 border-b border-border'>
             {current.sections.map((title) => (
               <a
                 key={title}
                 href={`#${ANCHOR[title]}`}
-                className='rounded-pill border border-border px-3 py-1.5 text-[13px] text-fg-secondary transition-colors hover:border-brand hover:text-brand'
+                onClick={() => setActive(title)}
+                className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  active === title
+                    ? 'border-brand text-fg'
+                    : 'border-transparent text-fg-muted hover:text-fg-secondary'
+                }`}
               >
                 {title}
               </a>
@@ -176,6 +192,61 @@ export default function PolicyLibrary() {
           2~20자 · 모든 언어의 글자와 숫자, 밑줄(_). 공백·이모지·특수문자는 받지 않는다. 중복은 불가하고
           대소문자를 구분하지 않는다. 비교값은 앞뒤 공백을 떼고 NFC 로 모은 뒤 소문자로 만든 것이며, 저장은
           입력한 그대로 한다. <b>가입과 프로필 수정이 같은 규칙</b>을 쓴다.
+        </P>
+      </Section>}
+
+      {show('시간 표기 규칙') && <Section title='시간 표기 규칙' pol='POL-0006' file='POL-0006-timezone.md'>
+        <Table head={['무엇', '규칙', '예']}>
+          <Tr cells={['시각', '24시간제. 오전·오후를 붙이지 않는다', '20:00 · 09:00']} />
+          <Tr cells={['기준 시간대', '보는 사람의 시간대로 바꿔 적는다', '서버는 UTC 로 주고받는다']} />
+          <Tr cells={['시간대 약칭', '한 화면이 여러 시간대를 섞어 보일 때만 붙인다', '목 20:00 KST (반 이름)']} />
+          <Tr cells={['날짜', '연-월-일 순서. 자릿수를 맞춰 세로로 읽히게', '2026-10-05 · 26. 10. 05.']} />
+          <Tr cells={['남은 날', 'D-N. 지난 것만 따로 구분한다', 'D-4 · 마감 경과']} />
+        </Table>
+        <P>
+          <b>24시간제로 통일한다</b> — 회차 시각, 반 이름, 지역 시계, 알림 발송 이력이 모두 그렇다.
+          오전·오후는 한 자리만 달라도 같은 화면 안에서 두 가지 읽기가 생긴다.
+        </P>
+        <P>
+          약칭은 <b>필요할 때만</b> 붙인다. 반 이름처럼 한 화면에 한국·북미 시각이 함께 서는 자리에는
+          붙이고, 운영자가 자기 시간대로만 읽는 목록(발송 이력 등)에는 붙이지 않는다 — 매 줄에 같은
+          약칭이 반복되면 읽을 것만 늘어난다.
+        </P>
+      </Section>}
+
+      {show('모달 닫기 규칙') && <Section title='모달 닫기 규칙' pol='POL-0008' file='POL-0008-screen-rules.md'>
+        <P>
+          모든 모달은 <b>우상단에 X</b> 를 둔다. <code>Esc</code> 는 X 와 똑같이 동작한다.{' '}
+          <b>배경 클릭으로는 닫히지 않는다</b> — 쓰던 것이 사라지는 창을 스쳐 누르다 잃는 일이 생긴다.
+        </P>
+        <Table head={['성격', '예', '하단 버튼']}>
+          <Tr cells={['읽기 전용', '약관 전문, 명단 보기', '없음. X 만']} />
+          <Tr cells={['입력·설정', '공개하기, 필터, 템플릿 추가', '액션 하나. 취소를 두지 않는다']} />
+          <Tr cells={['결정을 묻는다', '삭제, 탈퇴, 거절', '취소 + 액션. 취소가 기본 포커스']} />
+        </Table>
+        <P>
+          입력·설정 모달은 닫으면 작성 중이던 입력이 그대로 사라진다 — 확인 창을 띄우지 않는다. 결정을
+          묻는 모달은 <b>Enter 로 액션이 실행되면 안 된다.</b> 액션 버튼은 파괴적 동작임이 드러나게 표시한다.
+        </P>
+        <P>
+          X · <code>Esc</code> · 취소는 모두 같은 결과(닫기)를 낸다. 결정을 묻는 모달에만 취소를 두는 이유는{' '}
+          <b>안전한 선택지가 버튼으로 보여야</b> 하기 때문이다 — 액션 버튼이 화면에서 유일한 버튼이 되는
+          구성은 만들지 않는다.
+        </P>
+      </Section>}
+
+      {show('드롭다운 규칙') && <Section title='드롭다운 규칙' pol='POL-0008' file='POL-0008-screen-rules.md'>
+        <P>
+          <b>고르기 전에는 축 이름만 보인다.</b> 「상태 전체」·「카테고리 전체」처럼 적지 않는다 — 이미
+          무언가 걸러 둔 것처럼 읽힌다.
+        </P>
+        <Table head={['때', '첫 줄', '왜']}>
+          <Tr cells={['아직 고르지 않음', '축 이름 (「상태」 · 「카테고리」)', '무엇을 고르는 칸인지만 말한다']} />
+          <Tr cells={['하나 고른 뒤', '「전체」', '되돌아갈 길이 그 자리에 생긴다']} />
+        </Table>
+        <P>
+          고르지 않은 축은 계속 축 이름을 유지한다 — 축마다 따로 움직인다. 필터를 바꾸면 첫 페이지로
+          돌아가고, 고른 값은 저장하지 않는다.
         </P>
       </Section>}
 

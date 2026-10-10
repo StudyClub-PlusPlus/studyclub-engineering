@@ -9,20 +9,22 @@
 
 export type NotificationTemplate = {
   id: number;
-  eventType: 'USER_REGISTERED';
+  /** 알림 이름. */
+  name: string;
+  /** 지금은 메일뿐이다. 디스코드는 보낼 수단이 아직 없다. */
   channel: 'EMAIL';
   subject: string;
   body: string;
-  updatedAt: string | null;
+  /** **등록한 날이 곧 첫 수정일이다.** 비어 있는 경우를 두지 않는다 — 문구 없는 템플릿은 없다. */
+  updatedAt: string;
 };
 
-export const TEMPLATE_EVENT_LABEL: Record<string, string> = { USER_REGISTERED: '가입 환영' };
-export const TEMPLATE_CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일', DISCORD: '디스코드' };
+export const TEMPLATE_CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일' };
 
 export const templates: NotificationTemplate[] = [
   {
     id: 1,
-    eventType: 'USER_REGISTERED',
+    name: '가입 환영',
     channel: 'EMAIL',
     subject: 'StudyClub++에 오신 걸 환영합니다',
     body: `안녕하세요, {{nickname}}님.
@@ -38,6 +40,6 @@ StudyClub++ 바로가기
 
 감사합니다.
 StudyClub++ 드림`,
-    updatedAt: null,
+    updatedAt: '2026-09-12T00:00:00Z',
   },
 ];

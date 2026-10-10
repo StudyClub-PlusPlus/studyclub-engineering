@@ -17,7 +17,7 @@ import { Badge, Button } from '@studyclub/ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
-type EventFilter = (typeof EVENT_FILTERS)[number]['value'];
+type EventFilter = 'all' | (typeof EVENT_FILTERS)[number]['value'];
 type Phase = 'loading' | 'ready' | 'error';
 
 /**
@@ -68,32 +68,24 @@ export function NotificationsTable() {
   return (
     <div className='flex flex-col gap-3'>
       <div data-anno='history:2' className='flex flex-wrap items-center gap-3'>
-        <select
-          aria-label='알림 종류'
+        {/*
+          고르기 전에는 **축 이름만** 보여준다 — 「알림 종류 전체」처럼 적으면 이미 거른 것처럼 읽힌다.
+          하나 고르고 나면 첫 줄이 「전체」로 바뀌어 되돌아갈 길이 생긴다.
+        */}
+        <FilterSelect
+          label='알림 종류'
           value={eventType}
           disabled={phase === 'loading'}
-          onChange={(e) => changeEvent(e.target.value as EventFilter)}
-          className='h-9 rounded-control border border-border-strong bg-bg px-3 text-sm disabled:bg-surface-2'
-        >
-          {EVENT_FILTERS.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label='상태'
+          options={EVENT_FILTERS}
+          onChange={changeEvent}
+        />
+        <FilterSelect
+          label='상태'
           value={filter}
           disabled={phase === 'loading'}
-          onChange={(e) => changeFilter(e.target.value as Filter)}
-          className='h-9 rounded-control border border-border-strong bg-bg px-3 text-sm disabled:bg-surface-2'
-        >
-          {STATUS_FILTERS.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+          options={STATUS_FILTERS}
+          onChange={changeFilter}
+        />
         <span data-anno='history:2-1' className='tnum text-sm text-fg-secondary'>
           총 {total.toLocaleString()}건
         </span>
@@ -196,6 +188,38 @@ export function NotificationsTable() {
         </div>
       )}
     </div>
+  );
+}
+
+/** 거르는 칸 하나. 고르기 전에는 축 이름이 보이고, 고른 뒤에는 「전체」로 되돌릴 수 있다. */
+function FilterSelect<T extends string>({
+  label,
+  value,
+  options,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: 'all' | T;
+  options: { value: T; label: string }[];
+  disabled?: boolean;
+  onChange: (next: 'all' | T) => void;
+}) {
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value as 'all' | T)}
+      className='h-9 rounded-control border border-border-strong bg-bg px-3 text-sm disabled:bg-surface-2'
+    >
+      <option value='all'>{value === 'all' ? label : '전체'}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
