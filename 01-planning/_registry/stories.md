@@ -11,7 +11,7 @@
 | FN | 1 |
 | IA | 32 |
 | SRC | 1 |
-| POL | 9 |
+| POL | 10 |
 
 <!--
 발급 절차: next 값을 읽어 ID 를 만들고, 같은 커밋에서 next 를 +1 한다.
@@ -56,5 +56,5 @@
 | ST-027 | 캡틴은 스터디별 출석명부를 볼 수 있다. | 캡틴 | [PRD](../stories/captain-view-attendance-roster/PRD.md) | [콘솔 › 스터디 상세 › 출석](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | |
 | ST-028 | 캡틴은 전체 회원 리스트를 조회할 수 있다. | 캡틴 | [PRD](../stories/captain-list-users/PRD.md) | [콘솔 › 유저](https://playground.studyclub-plusplus.com/proto/console/users) | | |
 | ST-029 | 캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다. | 캡틴 | [PRD](../stories/captain-grant-roles/PRD.md) | [콘솔 › 유저](https://playground.studyclub-plusplus.com/proto/console/users) | | |
-| ST-030 | 캡틴은 알림 템플릿과 발송 이력을 조회할 수 있다. | 캡틴 |  |  | | 발송 이력은 ST-031 로 떼어 작성했다. 남은 것은 템플릿 조회 |
-| ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 | [PRD](../stories/notification-history/PRD.md) | [콘솔 › 알림 발송 이력](https://playground.studyclub-plusplus.com/proto/console/notifications) | | 조회 전용 — 재발송·취소 없음 |
+| ST-030 | 캡틴은 알림 템플릿, 발송 이력 조회가 가능하다. | 캡틴 | [PRD](../stories/notification-admin/PRD.md) | [콘솔 › 알림](https://playground.studyclub-plusplus.com/proto/console/notifications) | | 템플릿 추가 포함. 수정·삭제·재발송은 범위 밖 |
+| ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 |  |  | 폐기 | ST-030 에 합쳤다 — 한 메뉴 두 탭이라 문서를 가르면 같은 화면을 두 번 적게 된다 |
