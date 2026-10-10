@@ -209,6 +209,9 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
   if (!f.category) e.category = '카테고리를 선택하세요.';
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
+  if (f.deadline && f.startAt && f.startAt < f.deadline) {
+    e.startAt = '진행 시작일은 모집 마감일보다 빠를 수 없어요.';
+  }
   if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim())) {
     e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
   }
@@ -515,11 +518,20 @@ export function StudyForm({
         <input
           id='startAt'
           type='date'
+          min={value.deadline || undefined}
           value={value.startAt}
           onChange={(ev) => set('startAt', ev.target.value)}
           className={DATE_INPUT}
+          aria-invalid={Boolean(errors.startAt)}
+          aria-describedby={errors.startAt ? 'startAt-error' : undefined}
         />
-        <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+        {errors.startAt ? (
+          <p id='startAt-error' className='text-xs font-medium text-error-600'>
+            {errors.startAt}
+          </p>
+        ) : (
+          <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+        )}
       </div>
 
       <Input

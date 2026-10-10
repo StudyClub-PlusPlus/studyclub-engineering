@@ -35,3 +35,4 @@ serviceAccount*.json
 # local dev tooling
 .claude/
 .envrc
+.pnpm-store/

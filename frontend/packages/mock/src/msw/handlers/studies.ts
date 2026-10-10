@@ -95,6 +95,54 @@ export const studiesHandlers = mockClient.createHandlerGroup('/api/studies', [
 export const adminStudiesHandlers = mockClient.createHandlerGroup('/api/admin/studies', [
   {
     method: 'GET',
+    path: '/:id/application-form',
+    presets: [
+      {
+        label: '정상',
+        status: 200,
+        response: ({ params }: MockResolveContext) => {
+          const detail = findApiStudyDetail(Number(params.id));
+          if (!detail)
+            return HttpResponse.json(
+              { errorMessage: '스터디를 찾을 수 없습니다.' },
+              { status: 404 },
+            );
+          return {
+            studyId: detail.id,
+            title: detail.title,
+            description: detail.oneLineSummary,
+            questions: [
+              {
+                id: 'motivation',
+                label: '이 스터디에 참여하고 싶은 이유를 알려 주세요.',
+                type: 'TEXTAREA',
+                required: true,
+                description: '함께 공부하고 싶은 내용도 적어 주세요.',
+              },
+            ],
+          };
+        },
+      },
+      { label: '서버 오류', status: 500, response: { errorMessage: '신청 폼을 불러오지 못했습니다.' } },
+    ],
+  },
+  {
+    method: 'PUT',
+    path: '/:id/application-form',
+    presets: [
+      {
+        label: '성공',
+        status: 200,
+        response: async ({ request, params }: MockResolveContext) => ({
+          studyId: Number(params.id),
+          ...(await request.json()),
+        }),
+      },
+      { label: '서버 오류', status: 500, response: { errorMessage: '신청 폼을 저장하지 못했습니다.' } },
+    ],
+  },
+  {
+    method: 'GET',
     path: '/:id',
     presets: [
       {
@@ -175,4 +223,3 @@ export const adminStudyProgramsHandlers = mockClient.createHandlerGroup(
     },
   ],
 );
-

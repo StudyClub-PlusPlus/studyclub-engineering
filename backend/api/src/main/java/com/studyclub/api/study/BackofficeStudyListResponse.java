@@ -1,5 +1,6 @@
 package com.studyclub.api.study;
 
+import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyStatus;
@@ -12,11 +13,14 @@ public record BackofficeStudyListResponse(
 
     public record StudySummary(
             Long studyId,
+            Long programId,
             String title,
             StudyStatus status,
             StudyCategory category,
             StudyKind studyKind,
             Integer recruitmentCapacity,
+            long currentApplicants,
+            RecruitStatus recruitStatus,
             Instant recruitmentStartAt,
             Instant recruitDeadlineAt,
             Instant startAt,
