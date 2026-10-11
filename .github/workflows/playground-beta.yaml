@@ -7,6 +7,13 @@ on:
     paths:
       - 'frontend/apps/playground/**'
       - 'frontend/packages/**'
+      - '01-planning/stories/**'
+  pull_request:
+    paths:
+      - 'frontend/apps/playground/**'
+      - 'frontend/packages/**'
+      - '01-planning/stories/**'
+      - '.github/workflows/playground-beta.yaml'
   workflow_dispatch:
 
 jobs:
@@ -34,6 +41,7 @@ jobs:
 
   docker:
     needs: lint
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.BUILD_SLACK_WEBHOOK_URL }}
