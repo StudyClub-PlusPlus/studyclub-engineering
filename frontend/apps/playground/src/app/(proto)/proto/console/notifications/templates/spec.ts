@@ -4,6 +4,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 export const SPEC: ScreenSpec = {
   screen: '알림 템플릿 (운영 콘솔)',
   chip: '알림 템플릿',
+  prd: 'notification-admin',
   scope: 'template',
   notes: [
     '문구를 **보고 더한다.** 고치는 길은 아직 없다 — 편집 API 가 없다',
