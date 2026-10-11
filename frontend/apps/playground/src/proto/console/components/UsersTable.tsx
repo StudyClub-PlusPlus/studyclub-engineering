@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Pagination } from '@console/components/Pagination';
 import { PageHeader, TableCard } from '@console/components/ui';
+import { maskEmail } from '@console/lib/mask';
 import {
   ACCOUNT_ROLES,
   PERMISSIONS,
@@ -48,21 +49,15 @@ function EmailCell({ email }: { email: string }) {
             type='button'
             onClick={() => setShown(true)}
             aria-label={`${maskEmail(email)} 전체 주소 보기`}
-            className='inline-flex items-center gap-1 rounded-control px-1.5 py-0.5 text-xs font-semibold text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+            title='전체 주소 보기'
+            className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
           >
-            <Eye size={13} /> 보기
+            <Eye size={14} />
           </button>
         </span>
       )}
     </td>
   );
-}
-
-/** 아이디 첫 글자만 남기고 가린다. 도메인은 남긴다 — 어느 메일을 쓰는지는 운영에 쓸모가 있다. */
-function maskEmail(email: string): string {
-  const at = email.indexOf('@');
-  if (at <= 0) return email;
-  return `${email[0]}***${email.slice(at)}`;
 }
 
 /** 계정 권한 색. 캡틴과 크루를 색만으로 가르지 않으므로 이름도 함께 적는다. */

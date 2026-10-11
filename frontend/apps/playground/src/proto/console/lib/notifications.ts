@@ -28,7 +28,7 @@ export type NotificationRow = {
   createdAt: string;
   eventType: NotificationEvent;
   recipientType: 'EMAIL';
-  /** **서버가 마스킹한 값**. 화면에서 가공하지 않는다 */
+  /** 받는 사람 주소. 화면에는 가린 채로 두고, 필요한 줄만 눈 아이콘으로 펼친다 (POL-0007) */
   recipientValue: string;
   status: NotificationStatus;
   /** 없으면 아직 안 나갔다는 뜻 */
@@ -76,10 +76,10 @@ function hash(s: string): number {
 const NAMES = ['hong', 'jiwon', 'minsu', 'sora', 'daniel', 'yuna', 'kevin', 'haeun', 'junho', 'mia'];
 const DOMAINS = ['gmail.com', 'naver.com', 'outlook.com', 'kakao.com'];
 
-/** 서버가 내려주는 모양 그대로 — 가운데를 가린 주소. */
-function masked(seed: number): string {
+/** 받는 사람 주소. 가리는 일은 화면이 한다 — 여기서는 전체 주소를 그대로 둔다. */
+function address(seed: number): string {
   const name = NAMES[seed % NAMES.length];
-  return `${name.slice(0, 1)}***@${DOMAINS[seed % DOMAINS.length]}`;
+  return `${name}${(seed % 90) + 10}@${DOMAINS[seed % DOMAINS.length]}`;
 }
 
 /** 240건. **요청 시각 내림차순 고정** — 최근 것이 위다. */
@@ -94,7 +94,7 @@ export const notifications: NotificationRow[] = Array.from({ length: 240 }, (_, 
     createdAt: created.toISOString(),
     eventType: 'USER_REGISTERED',
     recipientType: 'EMAIL',
-    recipientValue: masked(seed),
+    recipientValue: address(seed),
     status,
     sentAt: sent ? sent.toISOString() : null,
   };

@@ -138,8 +138,8 @@ flowchart LR
 - **내용**: 요청 시각 · 알림 이름 · 채널 · 수신 주소 · 상태 · 발송 시각
 - **동작**: 요청 시각 내림차순 고정. 열 머리로 정렬하지 않고, 행을 눌러도 아무 일도 없다
 - **정책**
-  - **수신 주소는 서버가 가린 값을 그대로 쓴다** — 전체 주소를 보는 길을 두지 않는다. 열어 두면
-    조회 이력을 남겨야 하는데 그럴 장치가 없다
+  - **수신 주소는 가린 채로 두고 필요한 줄만 눈 아이콘으로 펼친다** — 유저 목록과 같은 규칙
+    ([POL-0007](../../_registry/policies/POL-0007-account-data.md)). 목록 전체를 펼치는 토글은 두지 않는다
   - 상태는 **문구와 색을 함께** 쓴다. 색만으로 가르면 색을 구분하지 못하는 사람이 읽을 수 없다
   - 「발송 완료」는 **보냈다는 뜻**이지 받았다는 뜻이 아니다 — 수신함 도착·읽음은 알 수 없다
   - 모르는 상태값은 원문 코드를 회색으로 그대로 적는다. 빈칸으로 두지 않는다
@@ -170,7 +170,7 @@ flowchart LR
 
 ### 비고
 
-- **범위 밖** — 템플릿 수정·삭제 · 재발송 · 발송 취소 · 실패 사유 상세 · 전체 주소 보기 ·
+- **범위 밖** — 템플릿 수정·삭제 · 재발송 · 발송 취소 · 실패 사유 상세 ·
   도착·읽음 여부 · 성공률 통계 · CSV 내려받기. **API 가 주지 않는 것을 화면이 지어내면 운영자는
   없는 수단을 찾는다**
 - 템플릿 화면은 **지금 등록된 문구**를 보여준다. 특정 발송 건에 쓰인 그때 원문이 아니다
@@ -190,7 +190,7 @@ flowchart LR
 | POST | `/api/admin/notification-templates` | 템플릿 추가 — 이름 · 제목 · 본문 (채널은 메일 고정) |
 | GET | `/api/admin/notifications` | 발송 이력 — `status` · `eventType` · `offset` · `limit`(20) |
 
-- 발송 이력 응답: `items[]`(`createdAt` · `eventType` · `recipientType` · `recipientValue`(마스킹) ·
+- 발송 이력 응답: `items[]`(`createdAt` · `eventType` · `recipientType` · `recipientValue`(**전체 주소**. 가리는 일은 화면이 한다) ·
   `status` · `sentAt`) + `total`. `id` · `templateId` 는 받되 화면에 쓰지 않는다
 - 알림 스펙의 `/back-office/notifications` 는 **구 경로**다 ([specs/notification](../../../specs/notification/spec.md))
 - 권한: 캡틴 ([POL-0001](../../_registry/policies/POL-0001-roles.md)). 라우팅만으로 막지 않고 서버가 검증한다

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { TableCard } from '@console/components/ui';
+import { maskEmail } from '@console/lib/mask';
 import {
   EVENT_FILTERS,
   EVENT_LABEL,
@@ -14,7 +15,7 @@ import {
   type NotificationStatus,
 } from '@console/lib/notifications';
 import { Badge, Button } from '@studyclub/ui';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
 type EventFilter = 'all' | (typeof EVENT_FILTERS)[number]['value'];
@@ -120,8 +121,8 @@ export function NotificationsTable() {
                 <td className='tnum whitespace-nowrap text-fg-secondary'>{stamp(row.createdAt)}</td>
                 <td className='whitespace-nowrap'>{EVENT_LABEL[row.eventType] ?? row.eventType}</td>
                 <td className='whitespace-nowrap text-fg-secondary'>메일</td>
-                {/* 서버가 가린 값을 그대로 쓴다 — 전체 주소를 보여주는 길은 두지 않는다 */}
-                <td className='truncate text-fg-secondary'>{row.recipientValue}</td>
+                {/* 가린 채로 두고 필요한 줄만 펼친다 — 유저 목록과 같은 규칙 (POL-0007) */}
+                <EmailCell email={row.recipientValue} />
                 <td>
                   <Badge tone={STATUS_TONE[row.status] ?? 'neutral'} dot className='whitespace-nowrap font-semibold'>
                     {STATUS_LABEL[row.status] ?? row.status}
@@ -188,6 +189,31 @@ export function NotificationsTable() {
         </div>
       )}
     </div>
+  );
+}
+
+/** 수신 주소 — 가린 채로 두고, 눈 아이콘을 누른 줄만 펼친다. 펼친 것은 그 줄에만 남는다. */
+function EmailCell({ email }: { email: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <td className='truncate text-fg-secondary'>
+      {shown ? (
+        <span title={email}>{email}</span>
+      ) : (
+        <span className='inline-flex items-center gap-1.5'>
+          {maskEmail(email)}
+          <button
+            type='button'
+            onClick={() => setShown(true)}
+            aria-label={`${maskEmail(email)} 전체 주소 보기`}
+            title='전체 주소 보기'
+            className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+          >
+            <Eye size={14} />
+          </button>
+        </span>
+      )}
+    </td>
   );
 }
 
