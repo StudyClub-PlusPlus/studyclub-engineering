@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 
 import { Checkbox, Input, Textarea } from '@studyclub/ui';
 
@@ -24,7 +24,7 @@ import { http } from '@/lib/http';
  * - 진행 형식(온/오프라인): 전 스터디 온라인 운영이라 선택지가 무의미
  * - 모집 시작일: 마감일만 관리 (모집 상태 판정 축이 마감일 하나) — 진행 시작일과는 다른 값이다
  * - 상시 모집·공개일: 없다. 마감일은 필수이고, 공개는 운영자가 직접 켠다
- * - 시간대·썸네일: 저장할 컬럼·업로드 API 가 아직 없다
+ * - 시간대: 저장할 컬럼·API 가 아직 없다
  *
  * **프로그램은 따로 등록하지 않고 이 폼에서 함께 다룬다.** 프로그램은 제목·종류뿐이고 기수 없는 프로그램은
  * 의미가 없다(docs/erd/STUDY_PROGRAM.md). 등록 모드에서는 「새 프로그램」(첫 기수와 함께 만든다) 또는
@@ -73,6 +73,8 @@ export type StudyFormValues = {
   programTitle: string;
   title: string;
   summary: string;
+  /** 업로드 API 연결 전까지는 이 화면에서만 쓰는 blob 미리보기 URL. */
+  thumbnail: string;
   description: string;
   /** API enum 코드 (`AI_ML` 등). */
   category: string;
@@ -95,6 +97,7 @@ export const EMPTY_FORM: StudyFormValues = {
   programTitle: '',
   title: '',
   summary: '',
+  thumbnail: '',
   description: DESCRIPTION_TEMPLATE,
   category: '',
   deadline: '',
@@ -133,6 +136,7 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
     programTitle: d.programTitle,
     title: d.title,
     summary: d.oneLineSummary,
+    thumbnail: d.thumbnailUrl ?? '',
     description: d.description ?? '',
     category: d.category,
     deadline: toKstDate(d.recruitDeadlineAt),
@@ -247,6 +251,65 @@ function CharCount({ len, max }: { len: number; max: number }) {
     <span className={`tnum ${len > max ? 'text-warning-700' : 'text-fg-placeholder'}`}>
       {len}/{max}
     </span>
+  );
+}
+
+/**
+ * 썸네일 — playground와 같은 로컬 미리보기 UI.
+ * 실제 업로드 API가 연결되기 전까지 선택한 파일은 blob URL로만 유지된다.
+ */
+function ThumbnailField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function pick(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (value.startsWith('blob:')) URL.revokeObjectURL(value);
+    onChange(URL.createObjectURL(file));
+  }
+
+  function remove() {
+    if (value.startsWith('blob:')) URL.revokeObjectURL(value);
+    onChange('');
+  }
+
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <span className='text-sm font-medium text-neutral-800'>썸네일</span>
+      <div className='flex items-center gap-3'>
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element -- blob: 미리보기는 next/image 최적화 대상이 아니다
+          <img src={value} alt='' className='h-16 w-16 shrink-0 rounded-control border border-border object-cover' />
+        ) : (
+          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-[11px] text-fg-muted'>
+            카테고리 기본값
+          </div>
+        )}
+        <div className='flex flex-col gap-1'>
+          <div className='flex gap-1.5'>
+            <button
+              type='button'
+              onClick={() => inputRef.current?.click()}
+              className='h-8 rounded-control border border-border-strong bg-bg px-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-surface-2'
+            >
+              {value ? '다른 이미지로 바꾸기' : '이미지 업로드'}
+            </button>
+            {value && (
+              <button
+                type='button'
+                onClick={remove}
+                className='h-8 rounded-control border border-border-strong bg-bg px-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-surface-2'
+              >
+                제거
+              </button>
+            )}
+          </div>
+          <span className='text-xs text-fg-muted'>비우면 카테고리에 맞는 기본 이미지가 쓰입니다</span>
+        </div>
+        <input ref={inputRef} type='file' accept='image/*' onChange={pick} className='hidden' />
+      </div>
+    </div>
   );
 }
 
@@ -500,6 +563,8 @@ export function StudyForm({
           labelHint={<CharCount len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
         />
       </div>
+
+      <ThumbnailField value={value.thumbnail} onChange={(next) => set('thumbnail', next)} />
 
       <CategoryField value={value.category} error={errors.category} onChange={(next) => set('category', next)} />
 
