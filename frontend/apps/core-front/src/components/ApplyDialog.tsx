@@ -131,6 +131,7 @@ export function ApplyDialog({
   const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({});
   const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   const [invalidKey, setInvalidKey] = useState<string | null>(null);
   const [attention, setAttention] = useState(0);
 
@@ -202,6 +203,7 @@ export function ApplyDialog({
     setInvalidKey(null);
     setAttention(0);
     setSubmitError(null);
+    setDone(false);
   }, [open]);
 
   function close() {
@@ -215,6 +217,8 @@ export function ApplyDialog({
     setInvalidKey(null);
     setAttention(0);
     setSubmitError(null);
+    if (done) onSubmitted();
+    setDone(false);
     onClose();
   }
 
@@ -283,7 +287,7 @@ export function ApplyDialog({
       await submitMutation.mutateAsync(reqBody);
 
       addApplication({ studyId: study.id, appliedAt: new Date().toISOString().slice(0, 10), status: 'pending', region: myRegion, cells: days });
-      onSubmitted();
+      setDone(true);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 403) {
@@ -337,12 +341,17 @@ export function ApplyDialog({
           <Button variant='secondary' onClick={close} disabled={saving}>
             {t({ ko: '취소', en: 'Cancel' }, locale)}
           </Button>
-          <Button onClick={submit} loading={saving} disabled={!form || formLoading || formError}>
+          <Button onClick={submit} loading={saving} disabled={!form || formLoading || formError || done}>
             {t({ ko: '신청', en: 'Apply' }, locale)}
           </Button>
         </>
       }
     >
+      {done ? (
+        <p className='py-6 text-center text-sm text-fg-secondary'>
+          {t({ ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.', en: "Your application was received. We'll email you the result." }, locale)}
+        </p>
+      ) : (
       <div className='-mx-6 -my-4 h-full bg-surface-1 px-6 py-4'>
         <div className='flex flex-col gap-3'>
           {formLoading ? (
@@ -461,6 +470,7 @@ export function ApplyDialog({
           )}
         </div>
       </div>
+      )}
     </Modal>
   );
 }

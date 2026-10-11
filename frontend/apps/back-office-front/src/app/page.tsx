@@ -144,7 +144,7 @@ export default function Dashboard() {
               value={s.value}
               sub={s.sub}
               leadingIcon={<s.icon size={15} />}
-              className='h-full transition-[border-color,box-shadow] duration-fast ease-out group-hover:border-border-strong group-hover:shadow-sm'
+              className='h-full transition-[border-color,box-shadow] duration-fast ease-out group-hover:border-border-interactive group-hover:shadow-sm'
             />
           </Link>
         ))}

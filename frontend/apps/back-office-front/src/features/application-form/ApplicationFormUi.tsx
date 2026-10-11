@@ -249,9 +249,9 @@ export function OptionMarker({ type, index }: { type: ApplicationQuestionType; i
     return <span className='w-5 shrink-0 text-center text-xs tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>;
   }
   if (type === 'checkbox') {
-    return <span className='h-4 w-4 shrink-0 rounded-xs border border-border-strong' aria-hidden />;
+    return <span className='h-4 w-4 shrink-0 rounded-xs border border-border' aria-hidden />;
   }
-  return <span className='h-4 w-4 shrink-0 rounded-full border border-border-strong' aria-hidden />;
+  return <span className='h-4 w-4 shrink-0 rounded-full border border-border' aria-hidden />;
 }
 
 export function OptionEditor({
@@ -446,7 +446,7 @@ export function QuestionFillView({
                 disabled={locked}
                 checked={!ghost && value === o}
                 onChange={() => onChange?.(o)}
-                className='h-4 w-4 shrink-0 border-border-strong accent-(--color-brand)'
+                className='h-4 w-4 shrink-0 border-border accent-(--color-brand)'
               />
               <span className='text-sm text-neutral-800'>{o}</span>
             </label>
@@ -457,7 +457,7 @@ export function QuestionFillView({
                 type='radio'
                 name={q.id}
                 disabled={locked}
-                className='h-4 w-4 shrink-0 border-border-strong accent-(--color-brand)'
+                className='h-4 w-4 shrink-0 border-border accent-(--color-brand)'
               />
               <span className='text-sm text-neutral-800'>기타:</span>
               <input

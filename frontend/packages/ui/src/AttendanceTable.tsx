@@ -37,9 +37,9 @@ export interface AttendanceTableProps extends HTMLAttributes<HTMLDivElement> {
 const CYCLE: (AttendanceStatus | undefined)[] = ['present', 'late', 'absent', 'excused', undefined];
 
 const STATUS_STYLE: Record<AttendanceStatus, string> = {
-  present: 'border-transparent bg-success-100 text-success-700 hover:bg-success-200',
-  late: 'border-transparent bg-warning-100 text-warning-700 hover:bg-warning-200',
-  absent: 'border-transparent bg-error-50 text-error-700 hover:bg-error-100',
+  present: 'border-transparent bg-success-bg text-success-fg hover:brightness-[0.97]',
+  late: 'border-transparent bg-warning-bg text-warning-fg hover:brightness-[0.97]',
+  absent: 'border-transparent bg-danger-bg text-danger-fg hover:brightness-[0.97]',
   excused: 'border-transparent bg-surface-2 text-fg-secondary hover:bg-surface-3',
 };
 
@@ -68,9 +68,9 @@ export function calculateAttendanceRate(row?: Record<string, AttendanceStatus | 
 /** 출석률 임계 색: ≥80 success / 60–79 warning / <60 error */
 export function attendanceRateColorClass(rate: number | undefined): string {
   if (rate === undefined) return 'text-fg-placeholder';
-  if (rate >= 80) return 'text-success-700';
-  if (rate >= 60) return 'text-warning-700';
-  return 'text-error-700';
+  if (rate >= 80) return 'text-success-fg';
+  if (rate >= 60) return 'text-warning-fg';
+  return 'text-danger-fg';
 }
 
 /**
@@ -129,7 +129,7 @@ export function AttendanceTable({
 
             return (
               <tr key={m.id} className={cx('transition-colors hover:bg-surface-1', rowHeight)}>
-                <td className='sticky left-0 z-10 whitespace-nowrap border-r border-border bg-bg px-4 py-2 font-semibold text-neutral-900'>
+                <td className='sticky left-0 z-10 whitespace-nowrap border-r border-border bg-surface-raised px-4 py-2 font-semibold text-ink'>
                   {m.name}
                   {m.role && <span className='ml-1.5 text-xs font-normal text-fg-muted'>({m.role})</span>}
                 </td>
@@ -158,7 +158,7 @@ export function AttendanceTable({
                             'inline-grid h-7 w-full place-items-center rounded-control text-xs font-semibold transition-colors focus-visible:shadow-(--ring) focus-visible:outline-none',
                             status
                               ? STATUS_STYLE[status]
-                              : 'border border-dashed border-border-strong bg-transparent text-fg-placeholder hover:bg-surface-2',
+                              : 'border border-dashed border-border bg-transparent text-fg-placeholder hover:border-border-interactive hover:bg-surface-2',
                           )}
                         >
                           {label ?? ''}

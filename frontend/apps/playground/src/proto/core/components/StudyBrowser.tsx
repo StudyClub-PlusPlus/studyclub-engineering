@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { recruitState, studyTimezone } from '@core/lib/recruit';
-import { FilterChip } from '@studyclub/ui';
-import { ChevronDown, Search, X } from 'lucide-react';
+import { Select } from '@studyclub/ui';
+import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
 
@@ -60,7 +60,31 @@ function searchText(study: Study): string {
   return [study.title.ko, study.title.en, study.summary.ko, study.summary.en].filter(Boolean).join(' ').toLowerCase();
 }
 
-
+function FilterOption({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      aria-pressed={active}
+      // 테두리로 칸을 나눈다 — 배경색만으로는 흰 바탕에서 칩 경계가 보이지 않는다
+      className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+        active
+          ? 'border-brand bg-brand text-on-brand'
+          : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:text-fg'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 function FilterSelect<T extends string>({
   value,
@@ -72,20 +96,17 @@ function FilterSelect<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className='relative w-fit'>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value as T)}
-        className='h-9 min-w-0 appearance-none rounded-lg border border-border-strong bg-bg pl-3 pr-9 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown size={14} className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted' aria-hidden />
-    </div>
+    <Select
+      value={value}
+      onChange={(event) => onChange(event.target.value as T)}
+      className='h-9 w-fit rounded-lg border border-border bg-bg text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </Select>
   );
 }
 
@@ -214,7 +235,7 @@ export function StudyBrowser({
           </div>
           <div
             data-anno='1'
-            className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 transition-[width] duration-200 sm:ml-auto sm:w-50 sm:focus-within:w-78'
+            className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-full lg:focus-within:w-[312px]'
           >
             <input
               type='text'
@@ -222,7 +243,7 @@ export function StudyBrowser({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
               placeholder={m('filter.search_studies', locale)}
-              className='h-9 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none'
+              className='h-9 min-w-0 flex-1 bg-transparent pl-3 pr-2 text-sm outline-none'
             />
             {(input || hasQuery) && (
               <button
@@ -247,15 +268,13 @@ export function StudyBrowser({
         </div>
         <FilterRow data-anno='4'>
           {CATEGORY_OPTIONS.map((option) => (
-            <FilterChip
+            <FilterOption
               key={option.value}
-              selected={category === option.value}
-              selectMode='single'
+              active={category === option.value}
               onClick={() => setCategory(option.value)}
-              className='h-auto py-1.5 text-[13px] font-semibold'
             >
               {option.label}
-            </FilterChip>
+            </FilterOption>
           ))}
         </FilterRow>
       </div>
