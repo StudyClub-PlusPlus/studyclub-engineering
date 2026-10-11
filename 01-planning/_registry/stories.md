@@ -45,7 +45,7 @@
 | ST-016 | 네비게이터는 스터디별 공지를 등록할 수 있다. | 네비게이터 |  |  | | 프로토타입 없음 — PRD 작성 전 |
 | ST-017 | 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | 네비게이터 | [PRD](../stories/navigator-edit-attendance/PRD.md) | [내 스터디 › 스터디 일정 › 출석부](https://playground.studyclub-plusplus.com/proto/core/ko/my/joined) | | |
 | ST-018 | 네비게이터는 참여자를 스터디에서 제명할 수 있다. | 네비게이터 |  |  | | 프로토타입 없음 — PRD 작성 전 |
-| ST-019 | 캡틴은 백오피스에 접근할 수 있다. | 캡틴 |  |  | | 프로토타입 없음 — PRD 작성 전. 접근 판정은 [POL-0001](policies/POL-0001-roles.md) |
+| ST-019 | 캡틴은 백오피스에 접근할 수 있다. | 캡틴 |  |  | 폐기 | Story 가 아니다 — 화면에서 하는 일이 아니라 모든 콘솔 화면에 걸리는 조건이다. 접근 판정은 [POL-0001](policies/POL-0001-roles.md), 로그인 흐름·에러는 [back-office-login](../../specs/back-office-login/spec.md) 소관 |
 | ST-020 | 캡틴은 등록한 스터디를 공개할 수 있다. | 캡틴 | [PRD](../stories/captain-publish-study/PRD.md) | [콘솔 › 스터디](https://playground.studyclub-plusplus.com/proto/console/studies) | | |
 | ST-021 | 캡틴은 기존 스터디를 재등록할 수 있다(기수제). | 캡틴 | [PRD](../stories/captain-reregister-cohort/PRD.md) | [콘솔 › 스터디 상세](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | |
 | ST-022 | 캡틴은 모든 스터디의 리스트를 볼 수 있다. | 캡틴 | [PRD](../stories/captain-list-all-studies/PRD.md) | [콘솔 › 스터디](https://playground.studyclub-plusplus.com/proto/console/studies) | | |

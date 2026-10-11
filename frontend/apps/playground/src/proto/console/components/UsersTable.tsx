@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Pagination } from '@console/components/Pagination';
 import { PageHeader, TableCard } from '@console/components/ui';
+import { maskEmail } from '@console/lib/mask';
 import {
   ACCOUNT_ROLES,
   PERMISSIONS,
@@ -18,7 +19,7 @@ import {
 } from '@console/lib/roles';
 import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
 import { Badge, Modal, type BadgeTone } from '@studyclub/ui';
-import { Check, ChevronDown, Info, Minus } from 'lucide-react';
+import { Check, ChevronDown, Eye, Info, Minus } from 'lucide-react';
 
 /** 한 화면에 20명. 스크롤로 다 내리는 것보다 「몇 번째 장을 보고 있는가」가 남는 편이 낫다. */
 const PAGE_SIZE = 20;
@@ -26,6 +27,39 @@ const PAGE_SIZE = 20;
 type RoleFilter = 'all' | RoleKey;
 
 // 순서는 어디서나 같다: 전체 → 캡틴 → 네비게이터 → 크루. `ROLES` 가 그 순서를 소유한다.
+/**
+ * 이메일 칸 — **가린 채로 둔다.**
+ *
+ * 역할을 바꾸러 들어온 화면이라 주소 전체가 필요한 일은 드물다. 늘 펼쳐 두면 화면을 띄워 둔 채
+ * 자리를 비우거나 화면을 공유할 때 수십 명의 주소가 그대로 드러난다. 필요한 사람이 한 줄씩 펼친다.
+ *
+ * 펼친 것은 그 줄에만 남고 다른 줄에 옮겨 가지 않는다 — 한 번 누르면 목록 전체가 열리는 토글을
+ * 두지 않는다.
+ */
+function EmailCell({ email }: { email: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <td className='max-w-0 truncate text-fg-secondary'>
+      {shown ? (
+        <span title={email}>{email}</span>
+      ) : (
+        <span className='inline-flex items-center gap-1.5'>
+          <span className='tnum'>{maskEmail(email)}</span>
+          <button
+            type='button'
+            onClick={() => setShown(true)}
+            aria-label={`${maskEmail(email)} 전체 주소 보기`}
+            title='전체 주소 보기'
+            className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+          >
+            <Eye size={14} />
+          </button>
+        </span>
+      )}
+    </td>
+  );
+}
+
 /** 계정 권한 색. 캡틴과 크루를 색만으로 가르지 않으므로 이름도 함께 적는다. */
 const ROLE_TONE: Record<AccountRole, BadgeTone> = { captain: 'captain', crew: 'member' };
 
@@ -323,7 +357,7 @@ export function UsersTable() {
                   {m.name}
                   {m.status === 'dormant' && <span className='ml-1.5 text-xs text-fg-muted'>휴면</span>}
                 </td>
-                <td className='max-w-0 truncate text-fg-secondary'>{m.email}</td>
+                <EmailCell email={m.email} />
                 <td>
                   <RoleBadgeSelect
                     role={m.account}
