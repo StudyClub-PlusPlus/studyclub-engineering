@@ -228,22 +228,18 @@ stateDiagram-v2
 **편집·재발송은 이번 구현에 없다** — 둘 다 조회만.
 
 인증은 기존 백오피스 로그인 플로우(`POST /auth/social-login`, `platform=BACK_OFFICE`)를 그대로 쓴다 —
-이 스펙이 새 권한 체계를 만들지는 않는다. 다만 그 로그인의 인가 방식 자체가 지금의 이메일 allowlist에서
-`ACCOUNT.SYSTEM_ROLE = ADMIN` 검사로 바뀔 예정이다(리뷰 코멘트, 이 스펙과 별개로 진행되는 변경) — 이
-두 엔드포인트는 그 변경이 어떤 시점에 나가든 **그때의 백오피스 인가 방식을 그대로 따른다**는 것이
-이번 결정이다. 스터디 캡틴용 별도 권한은 두지 않는다. 알림 설계 문서 원안(§1)의 "캡틴만 열람"은 이
-스펙에서는 따르지 않는다 — 웰컴메일은 특정 스터디에 속하지 않는 계정 단위 알림이라 캡틴이 볼 이유가
-약하다.
+이 스펙이 새 권한 체계를 만들지는 않는다.
 
-**갱신(구현 PR) — 요청마다 걸리는 ADMIN 역할 검사는 이번 구현에 없다.** 애초 이 절은 `SYSTEM_ROLE =
-ADMIN` 검사가 요청마다 걸리는 걸 전제로 두 엔드포인트에 403 FORBIDDEN 을 넣어뒀지만, 구현 중 그 가드를
-직접 만들어 넣는 건 이 스펙(웰컴메일)의 범위를 넘어선다고 판단해 뺐다 —
-[specs/back-office-login/spec.md](../back-office-login/spec.md) 도 "로그인 뒤 요청의 ADMIN 판별은
-후속 PR 에서 요청마다 DB 조회로 붙인다"고 이미 후속 PR 로 못박아 둔 항목이다. 그래서 지금은 **로그인만
-되어 있으면(SystemRole 과 무관하게) 이 두 엔드포인트를 호출할 수 있다** — 아래 403 FORBIDDEN 행은 그
-후속 PR 이 실제로 가드를 붙이기 전까지는 발생하지 않는다.
+**갱신(2026-10-11) — 인가는 `@RequireAdmin` 이다.** 두 엔드포인트는 `AdminNotificationController` 클래스
+단위 `@RequireAdmin` 으로 **캡틴(`SYSTEM_ROLE = ADMIN`)만** 호출할 수 있다
+([authz-guards/spec.md](../authz-guards/spec.md) 가 이 스펙의 "로그인만 되어 있으면 호출 가능"이던 구멍을
+막았다). 캡틴이 아니면 403 `FORBIDDEN` 이다. 스터디 캡틴용 별도 권한은 두지 않는다 — 여기서 "캡틴"은
+계정 권한(POL-0001)이다.
 
-### `GET /back-office/notification-templates`
+> 이전 판은 "요청마다 걸리는 ADMIN 역할 검사는 이번 구현에 없다"고 적었다. 그 전제는 더 이상 사실이
+> 아니라 위로 대체했다.
+
+### `GET /api/admin/notification-templates`
 
 - **인증**: 필요 (백오피스)
 - **설명**: 등록된 알림 템플릿 전체 목록. 이번 구현에는 웰컴메일 1건뿐이지만, 다음 이벤트가 추가돼도
@@ -279,14 +275,18 @@ ADMIN` 검사가 요청마다 걸리는 걸 전제로 두 엔드포인트에 403
 | 상태 | errorCode | 조건 |
 |---|---|---|
 | 401 | UNAUTHORIZED | 토큰 없음/만료 |
-| 403 | FORBIDDEN | (후속 PR 예정) 로그인은 됐지만 `SYSTEM_ROLE = ADMIN` 이 아님 — 이번 구현에는 이 검사가 없어 지금은 발생하지 않는다 |
+| 403 | FORBIDDEN | 로그인은 됐지만 `SYSTEM_ROLE = ADMIN`(캡틴)이 아님 — `@RequireAdmin` |
 
-### `GET /back-office/notifications`
+### `GET /api/admin/notifications`
 
 - **인증**: 필요 (백오피스)
 - **설명**: 발송 이력 — 어떤 이벤트로, 어느 주소로, 어떤 상태로 나갔는지
 - **Query Parameters**: `eventType`(선택), `status`(선택), `offset`(기본 0), `limit`(기본 20) 만 —
   기간(날짜 범위) 필터·정렬 옵션은 요구된 바 없어 이번 구현에 넣지 않는다
+- **정렬**: 요청 시각(`CREATED_AT`) 내림차순 고정. 페이지네이션(`LIMIT`/`OFFSET`)과 필터·건수는 DB 가
+  한다 — 전체를 읽어 와서 거르지 않는다
+- **`total`**: 보이는 한 페이지가 아니라 **`eventType`·`status` 조건에 걸린 전체 건수**다
+- **범위 밖 `offset`**: `offset` 이 `total` 이상이면 에러가 아니라 빈 `items` 와 실제 `total` 을 준다
 
 ```jsonc
 {
@@ -324,7 +324,8 @@ ADMIN` 검사가 요청마다 걸리는 걸 전제로 두 엔드포인트에 403
 | 상태 | errorCode | 조건 |
 |---|---|---|
 | 401 | UNAUTHORIZED | 토큰 없음/만료 |
-| 403 | FORBIDDEN | (후속 PR 예정) 로그인은 됐지만 `SYSTEM_ROLE = ADMIN` 이 아님 — 이번 구현에는 이 검사가 없어 지금은 발생하지 않는다 |
+| 400 | INVALID_INPUT | `offset` 이 0 미만이거나 `limit` 이 1 미만, 또는 `eventType`·`status` 가 모르는 값 |
+| 403 | FORBIDDEN | 로그인은 됐지만 `SYSTEM_ROLE = ADMIN`(캡틴)이 아님 — `@RequireAdmin` |
 
 **결정 — `recipientValue` 마스킹 예외는 두지 않는다.** 운영진이 특정 회원 문의 대응 시 이메일 원문
 대조가 필요해질 수 있다는 점은 알아두되, 이번 구현에서는 고려하지 않는다 — 필요해지면 별도 스펙에서
@@ -332,7 +333,10 @@ ADMIN` 검사가 요청마다 걸리는 걸 전제로 두 엔드포인트에 403
 
 ### 프론트엔드 사용처
 
-- 아직 없음 — `back-office-front` 쪽 화면은 후속. 이 절은 API 계약만 정의한다.
+- 알림 템플릿 목록·상세(읽기 전용): `frontend/apps/back-office-front/src/app/notification-templates/` →
+  `GET /api/admin/notification-templates`
+- 발송 이력 화면: 아직 없음 — [PRD (ST-030)](../../01-planning/stories/notification-admin/PRD.md) 의 「발송 이력」 탭이 이
+  API 를 쓴다. 후속
 
 ## 웰컴메일 콘텐츠
 
