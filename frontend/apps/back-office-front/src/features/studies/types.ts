@@ -97,6 +97,7 @@ export type StudyCreatePayload = {
   oneLineSummary: string;
   description?: string;
   category: string;
+  thumbnailUrl?: string;
   recruitDeadline: string;
   schedule?: string;
   capacity?: number | null;

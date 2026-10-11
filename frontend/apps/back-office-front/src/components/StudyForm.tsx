@@ -153,6 +153,7 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
 function cohortDefaults(latest: ApiStudyDetail): Partial<StudyFormValues> {
   return {
     summary: latest.oneLineSummary,
+    thumbnail: latest.thumbnailUrl ?? '',
     description: latest.description ?? '',
     category: latest.category,
     discordUrl: latest.discordChannelUrl ?? '',
@@ -191,7 +192,8 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
  *
  * ⚠️ 등록 API 는 아직 정원·진행 시작일·채널/드라이브 주소를 받지 않는다(`StudyCreateRequest`). 그래서 그
  * 칸들은 **등록 요청에 실리지 않고**, 등록 뒤 정보 탭에서 저장해야 한다 — specs/study-registration-spec.md
- * 10절의 남은 항목이다. 보내도 서버가 조용히 버리므로 아예 싣지 않는다.
+ * 10절의 남은 항목이다. 썸네일은 서버가 URL을 받지만, 현재 파일 선택은 blob 미리보기만 만들므로 blob URL은
+ * 요청에서 제외한다.
  */
 export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   const payload: StudyCreatePayload = {
@@ -203,6 +205,9 @@ export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   if (form.programMode === 'existing') payload.studyProgramId = Number(form.programId);
   else payload.studyKind = form.kind;
   if (form.description.trim()) payload.description = form.description;
+  if (form.thumbnail.trim() && !form.thumbnail.startsWith('blob:')) {
+    payload.thumbnailUrl = form.thumbnail.trim();
+  }
   if (form.schedule.trim()) payload.schedule = form.schedule.trim();
   return payload;
 }

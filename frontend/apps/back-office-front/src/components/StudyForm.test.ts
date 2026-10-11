@@ -150,6 +150,16 @@ describe('formToCreatePayload', () => {
     expect(payload).not.toHaveProperty('schedule');
     expect(payload).not.toHaveProperty('description');
   });
+
+  it('로컬 blob 미리보기는 서버에 보내지 않는다', () => {
+    const payload = formToCreatePayload({ ...base, thumbnail: 'blob:http://localhost/preview' });
+    expect(payload).not.toHaveProperty('thumbnailUrl');
+  });
+
+  it('호스팅된 썸네일 URL은 생성 요청에 포함한다', () => {
+    const payload = formToCreatePayload({ ...base, thumbnail: 'https://cdn.example.com/study.png' });
+    expect(payload.thumbnailUrl).toBe('https://cdn.example.com/study.png');
+  });
 });
 
 describe('serverErrorToField', () => {

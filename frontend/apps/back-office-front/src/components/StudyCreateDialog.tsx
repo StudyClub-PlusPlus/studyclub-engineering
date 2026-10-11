@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Button, Modal } from '@studyclub/ui';
@@ -22,6 +23,7 @@ import { useCreateStudy } from '@/features/studies/queries';
  * 이 컴포넌트는 모달 상태, 검증, 생성 요청, 성공·실패 상태만 담당한다.
  */
 export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const router = useRouter();
   const [form, setForm] = useState<StudyFormValues>(EMPTY_FORM);
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
     try {
       await create.mutateAsync(formToCreatePayload(form));
       setDone(true);
+      router.refresh();
     } catch (err) {
       // 서버가 `필드: 사유` 로 주면 그 칸에 붙이고, 아니면 입력값을 그대로 둔 채 위에 알린다
       const message = err instanceof Error ? err.message : '등록하지 못했습니다. 잠시 후 다시 시도해 주세요.';
