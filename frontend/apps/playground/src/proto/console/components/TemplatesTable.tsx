@@ -5,15 +5,18 @@ import { useState } from 'react';
 import { TableCard } from '@console/components/ui';
 import {
   TEMPLATE_CHANNEL_LABEL,
+  TRIGGERS,
+  TRIGGER_LABEL,
   templates as seeded,
   type NotificationTemplate,
+  type NotificationTrigger,
 } from '@console/lib/templates';
-import { Button, Input, Modal, Textarea } from '@studyclub/ui';
+import { Button, Input, Modal, Select, Textarea } from '@studyclub/ui';
 import { ArrowLeft, Plus } from 'lucide-react';
 
-type Draft = { name: string; subject: string; body: string };
+type Draft = { name: string; trigger: NotificationTrigger; subject: string; body: string };
 
-const EMPTY: Draft = { name: '', subject: '', body: '' };
+const EMPTY: Draft = { name: '', trigger: 'USER_REGISTERED', subject: '', body: '' };
 
 /**
  * 알림 템플릿.
@@ -27,7 +30,15 @@ export function TemplatesTable() {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Draft>(EMPTY);
 
-  const blocked = !draft.name.trim() || !draft.subject.trim() || !draft.body.trim();
+  // 조건 하나에 템플릿 하나다 — 같은 계기에 두 통을 보내지 않는다
+  const taken = new Set(rows.map((r) => r.trigger));
+  const free = TRIGGERS.filter((t) => !taken.has(t.value));
+  const blocked = !draft.name.trim() || !draft.subject.trim() || !draft.body.trim() || taken.has(draft.trigger);
+
+  function openAdd() {
+    setDraft({ ...EMPTY, trigger: free[0]?.value ?? 'USER_REGISTERED' });
+    setAdding(true);
+  }
 
   function add() {
     if (blocked) return;
@@ -55,6 +66,7 @@ export function TemplatesTable() {
 
         <div data-anno='template:4' className='card'>
           <Row label='알림 이름'>{open.name}</Row>
+          <Row label='발송 조건'>{TRIGGER_LABEL[open.trigger] ?? open.trigger}</Row>
           <Row label='채널'>{TEMPLATE_CHANNEL_LABEL[open.channel] ?? open.channel}</Row>
           <Row label='제목'>{open.subject}</Row>
           <Row label='본문'>
@@ -70,7 +82,7 @@ export function TemplatesTable() {
   return (
     <div className='flex flex-col gap-3'>
       <div className='flex justify-end'>
-        <Button data-anno='template:2' size='sm' leadingIcon={<Plus size={14} />} onClick={() => setAdding(true)}>
+        <Button data-anno='template:2' size='sm' leadingIcon={<Plus size={14} />} onClick={openAdd}>
           템플릿 추가
         </Button>
       </div>
@@ -78,8 +90,9 @@ export function TemplatesTable() {
       <TableCard anno='template:3'>
         <thead>
           <tr>
-            <th className='w-[180px] whitespace-nowrap'>알림 이름</th>
-            <th className='w-[100px] whitespace-nowrap'>채널</th>
+            <th className='w-[160px] whitespace-nowrap'>알림 이름</th>
+            <th className='w-[150px] whitespace-nowrap'>발송 조건</th>
+            <th className='w-[90px] whitespace-nowrap'>채널</th>
             <th>제목</th>
             <th className='w-[180px] whitespace-nowrap'>마지막 수정</th>
           </tr>
@@ -92,6 +105,7 @@ export function TemplatesTable() {
                   {t.name}
                 </Button>
               </td>
+              <td className='whitespace-nowrap text-fg-secondary'>{TRIGGER_LABEL[t.trigger] ?? t.trigger}</td>
               <td className='whitespace-nowrap text-fg-secondary'>{TEMPLATE_CHANNEL_LABEL[t.channel] ?? t.channel}</td>
               <td className='truncate text-fg-secondary'>{t.subject}</td>
               <td className='tnum whitespace-nowrap text-fg-secondary'>{stamp(t.updatedAt)}</td>
@@ -121,6 +135,22 @@ export function TemplatesTable() {
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder='모집 시작 안내'
           />
+          {/* 알림은 이름이 아니라 이 조건으로 나간다 — 조건이 없으면 보낼 계기가 없다 */}
+          <Select
+            label='발송 조건'
+            required
+            value={draft.trigger}
+            onChange={(e) => setDraft({ ...draft, trigger: e.target.value as NotificationTrigger })}
+          >
+            {free.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </Select>
+          {free.length === 0 && (
+            <p className='-mt-2 text-xs text-fg-muted'>조건마다 템플릿이 이미 하나씩 있습니다.</p>
+          )}
           <Input
             label='제목'
             required

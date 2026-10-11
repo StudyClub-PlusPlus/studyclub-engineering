@@ -7,10 +7,29 @@
  * TODO(api): GET /api/admin/notification-templates
  */
 
+/**
+ * 발송 조건 — **언제 보내는가.**
+ *
+ * 알림은 이름이 아니라 이 값으로 나간다. 조건이 없는 템플릿은 보낼 계기가 없어 영영 발송되지 않는다.
+ * 운영자는 조건을 고르고, 저장되는 코드는 그 선택이 정한다 — 코드를 직접 적지 않는다.
+ */
+export type NotificationTrigger = 'USER_REGISTERED' | 'USER_WITHDRAWN';
+
+export const TRIGGERS: { value: NotificationTrigger; label: string }[] = [
+  { value: 'USER_REGISTERED', label: '회원가입 완료 시' },
+  { value: 'USER_WITHDRAWN', label: '회원 탈퇴 시' },
+];
+
+export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
+  TRIGGERS.map((t) => [t.value, t.label]),
+);
+
 export type NotificationTemplate = {
   id: number;
-  /** 알림 이름. */
+  /** 알림 이름 — 목록에서 사람이 알아보는 이름. */
   name: string;
+  /** 언제 보내는가. 조건 하나에 템플릿 하나다. */
+  trigger: NotificationTrigger;
   /** 지금은 메일뿐이다. 디스코드는 보낼 수단이 아직 없다. */
   channel: 'EMAIL';
   subject: string;
@@ -25,6 +44,7 @@ export const templates: NotificationTemplate[] = [
   {
     id: 1,
     name: '가입 환영',
+    trigger: 'USER_REGISTERED',
     channel: 'EMAIL',
     subject: 'StudyClub++에 오신 걸 환영합니다',
     body: `안녕하세요, {{nickname}}님.
