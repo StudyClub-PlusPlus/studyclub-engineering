@@ -30,6 +30,7 @@
 
 - [ ] 스키마 변경 시 `V{n}__*.sql` 마이그레이션을 같이 넣었다
 - [ ] 관련 문서(ERD, 스펙)를 업데이트했다
+- [ ] `01-planning/stories/**` 또는 `frontend/apps/playground/**/spec.ts` 를 건드렸다면 `pnpm --filter playground export-specs --check` 통과 확인
 
 <!-- repo-kit:start -->
 ## 팀 공유
