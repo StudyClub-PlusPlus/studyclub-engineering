@@ -58,6 +58,7 @@ class AttendanceUpsertServiceTest {
 
         var request =
                 new AttendanceUpsertRequest(
+                        GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
                                         MEETING_ID, PARTICIPANT_ID, "NOT_A_STATUS")));
@@ -79,7 +80,7 @@ class AttendanceUpsertServiceTest {
         var item =
                 new AttendanceUpsertRequest.AttendanceUpsertItem(
                         MEETING_ID, PARTICIPANT_ID, "PRESENT");
-        var request = new AttendanceUpsertRequest(List.of(item, item));
+        var request = new AttendanceUpsertRequest(GROUP_ID, List.of(item, item));
 
         assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request))
                 .isInstanceOf(BusinessException.class)
@@ -99,6 +100,7 @@ class AttendanceUpsertServiceTest {
 
         var request =
                 new AttendanceUpsertRequest(
+                        GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
                                         MEETING_ID, PARTICIPANT_ID, "PRESENT")));
@@ -124,6 +126,7 @@ class AttendanceUpsertServiceTest {
 
         var request =
                 new AttendanceUpsertRequest(
+                        GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
                                         MEETING_ID, PARTICIPANT_ID, "PRESENT")));
@@ -149,6 +152,7 @@ class AttendanceUpsertServiceTest {
 
         var request =
                 new AttendanceUpsertRequest(
+                        GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
                                         MEETING_ID, PARTICIPANT_ID, "PRESENT")));
@@ -170,6 +174,7 @@ class AttendanceUpsertServiceTest {
                 STUDY_ID,
                 GROUP_ID,
                 new AttendanceUpsertRequest(
+                        GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
                                         MEETING_ID, PARTICIPANT_ID, "late"))));
