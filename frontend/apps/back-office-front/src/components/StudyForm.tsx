@@ -1,13 +1,17 @@
 'use client';
 
+import { useState } from 'react';
+
 import { Checkbox, Input, Textarea } from '@studyclub/ui';
 
+import { useClubPrograms } from '@/features/studies/queries';
 import {
   CATEGORY_OPTIONS,
   type ApiStudyDetail,
   type StudyCreatePayload,
   type StudyUpdatePayload,
 } from '@/features/studies/types';
+import { http } from '@/lib/http';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -138,6 +142,17 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
     startAt: toKstDate(d.startAt),
     discordUrl: d.discordChannelUrl ?? '',
     driveUrl: d.driveUrl ?? '',
+  };
+}
+
+/** 기존 클럽의 최신 기수에서 새 기수에 물려줄 값을 만든다. */
+function cohortDefaults(latest: ApiStudyDetail): Partial<StudyFormValues> {
+  return {
+    summary: latest.oneLineSummary,
+    description: latest.description ?? '',
+    category: latest.category,
+    discordUrl: latest.discordChannelUrl ?? '',
+    driveUrl: latest.driveUrl ?? '',
   };
 }
 
@@ -286,12 +301,17 @@ function CategoryField({
 function ProgramField({
   mode,
   value,
+  errors,
   onChange,
 }: {
   mode: FormMode;
   value: StudyFormValues;
+  errors: StudyFormErrors;
   onChange: (next: StudyFormValues) => void;
 }) {
+  const [prefilling, setPrefilling] = useState(false);
+  const { data: clubs = [], isLoading } = useClubPrograms(mode === 'create');
+
   if (mode === 'edit') {
     return (
       <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-control border border-border bg-surface-2 px-3 py-2.5 text-sm'>
@@ -303,45 +323,133 @@ function ProgramField({
     );
   }
 
+  async function selectProgram(programId: string) {
+    if (!programId) {
+      onChange({ ...value, programId: '', programTitle: '', programMode: 'existing', kind: 'CLUB' });
+      return;
+    }
+
+    const club = clubs.find((candidate) => String(candidate.programId) === programId);
+    const base: StudyFormValues = {
+      ...value,
+      programMode: 'existing',
+      programId,
+      kind: 'CLUB',
+      programTitle: club?.title ?? '',
+      title: club?.title ?? value.title,
+    };
+    onChange(base);
+    if (!club?.latestStudyId) return;
+
+    setPrefilling(true);
+    try {
+      const latest = await http<ApiStudyDetail>(`/api/admin/studies/${club.latestStudyId}`);
+      onChange({ ...base, ...cohortDefaults(latest) });
+    } catch {
+      // 최신 기수를 읽지 못해도 운영자가 직접 입력할 수 있도록 선택은 유지한다.
+    } finally {
+      setPrefilling(false);
+    }
+  }
+
+  const selectMode = (nextMode: StudyFormValues['programMode']) => {
+    onChange({
+      ...value,
+      programMode: nextMode,
+      programId: '',
+      programTitle: '',
+      kind: nextMode === 'existing' ? 'CLUB' : 'STUDY',
+    });
+  };
+
+  const uniqueClubs = Array.from(
+    new Map(
+      clubs
+        .filter((club) => club.programId != null)
+        .map((club) => [String(club.programId), club]),
+    ).values(),
+  );
+
   return (
     <div className='flex flex-col gap-2'>
       <span className='text-sm font-medium text-neutral-800'>
         프로그램
         <span className='ml-0.5 text-error-600'>*</span>
       </span>
-      <div className='grid grid-cols-2 gap-2'>
-        <div className='rounded-control border border-brand bg-brand/5 px-3 py-[7.5px] text-center'>
-          <p className='text-sm font-semibold text-fg'>새 프로그램</p>
-        </div>
-        <div className='rounded-control border border-brand bg-brand/5 px-3 py-[7.5px] text-center'>
-          <p className='text-sm font-semibold text-fg'>기존 클럽의 새 기수</p>
-        </div>
-      </div>
-
-      <div className='flex flex-wrap items-center gap-2 text-sm'>
-        <span className='text-xs text-fg-muted'>종류</span>
-        <div role='radiogroup' aria-label='종류' className='inline-flex gap-1'>
-          {(['STUDY', 'CLUB'] as StudyKind[]).map((k) => (
+      <div role='radiogroup' aria-label='프로그램' className='grid grid-cols-2 gap-2'>
+        {[
+          { value: 'new' as const, label: '새 프로그램' },
+          { value: 'existing' as const, label: '기존 클럽의 새 기수' },
+        ].map((option) => {
+          const selected = value.programMode === option.value;
+          return (
             <button
-              key={k}
+              key={option.value}
               type='button'
               role='radio'
-              aria-checked={value.kind === k}
-              onClick={() => onChange({ ...value, programMode: 'new', programId: '', programTitle: '', kind: k })}
-              className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
-                value.kind === k
-                  ? 'border-brand bg-brand text-white'
+              aria-checked={selected}
+              onClick={() => selectMode(option.value)}
+              className={`rounded-control border px-3 py-[7.5px] text-center transition-colors ${
+                selected
+                  ? 'border-brand bg-brand/5 text-fg'
                   : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
               }`}
             >
-              {KIND_LABEL[k]}
+              <span className='text-sm font-semibold'>{option.label}</span>
             </button>
-          ))}
-        </div>
-        <span className='text-xs text-fg-muted'>
-          {value.kind === 'CLUB' ? '이전 기수 참여자가 다음 기수에 이어집니다' : '한 번 모집해 한 번 진행'}
-        </span>
+          );
+        })}
       </div>
+
+      {value.programMode === 'new' ? (
+        <div className='flex flex-wrap items-center gap-2 text-sm'>
+          <span className='text-xs text-fg-muted'>종류</span>
+          <div role='radiogroup' aria-label='종류' className='inline-flex gap-1'>
+            {(['STUDY', 'CLUB'] as StudyKind[]).map((kind) => (
+              <button
+                key={kind}
+                type='button'
+                role='radio'
+                aria-checked={value.kind === kind}
+                onClick={() => onChange({ ...value, kind })}
+                className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
+                  value.kind === kind
+                    ? 'border-brand bg-brand text-white'
+                    : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+                }`}
+              >
+                {KIND_LABEL[kind]}
+              </button>
+            ))}
+          </div>
+          <span className='text-xs text-fg-muted'>
+            {value.kind === 'CLUB' ? '이전 기수 참여자가 다음 기수에 이어집니다' : '한 번 모집해 한 번 진행'}
+          </span>
+        </div>
+      ) : (
+        <div className='flex flex-col gap-1.5'>
+          <select
+            aria-label='프로그램 선택'
+            value={value.programId}
+            onChange={(event) => void selectProgram(event.target.value)}
+            disabled={isLoading || prefilling}
+            className='h-10 rounded-control border border-border-strong bg-bg px-3 text-sm outline-none focus:border-brand'
+          >
+            <option value=''>{isLoading ? '불러오는 중…' : '클럽을 고르세요'}</option>
+            {uniqueClubs.map((club) => (
+              <option key={`club-${String(club.programId)}`} value={club.programId}>
+                {club.title}
+              </option>
+            ))}
+          </select>
+          <p className='text-xs text-fg-muted'>
+            {prefilling
+              ? '최신 기수의 내용을 불러오는 중…'
+              : '새 기수를 붙일 수 있는 것은 클럽뿐입니다. 최신 기수의 내용을 바탕으로 시작합니다.'}
+          </p>
+          {errors.programId && <p className='text-xs font-medium text-error-600'>{errors.programId}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -366,7 +474,7 @@ export function StudyForm({
   return (
     <div className='flex flex-col gap-3'>
       {/* 새 프로그램을 만들고, 그 종류를 정한다 */}
-      <ProgramField mode={mode} value={value} onChange={onChange} />
+      <ProgramField mode={mode} value={value} errors={errors} onChange={onChange} />
 
       {/* 무엇을 만드는지부터 적고 날짜는 뒤에 받는다 */}
       <div>
