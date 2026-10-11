@@ -2,6 +2,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 
 /** 회원 탈퇴 — 크루가 스스로 계정을 지운다. */
 export const SPEC: ScreenSpec = {
+  prd: 'crew-leave',
   screen: '회원 탈퇴 (사용자 사이트)',
   chip: '회원 탈퇴',
   scope: 'leave',

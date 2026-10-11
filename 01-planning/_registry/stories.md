@@ -6,7 +6,7 @@
 <!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
 | prefix | next |
 |---|---|
-| ST | 32 |
+| ST | 33 |
 | EP | 1 |
 | FN | 1 |
 | IA | 32 |
@@ -56,5 +56,6 @@
 | ST-027 | 캡틴은 스터디별 출석명부를 볼 수 있다. | 캡틴 | [PRD](../stories/captain-view-attendance-roster/PRD.md) | [콘솔 › 스터디 상세 › 출석](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | |
 | ST-028 | 캡틴은 전체 회원 리스트를 조회할 수 있다. | 캡틴 | [PRD](../stories/captain-list-users/PRD.md) | [콘솔 › 유저](https://playground.studyclub-plusplus.com/proto/console/users) | | |
 | ST-029 | 캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다. | 캡틴 | [PRD](../stories/captain-grant-roles/PRD.md) | [콘솔 › 유저](https://playground.studyclub-plusplus.com/proto/console/users) | | |
-| ST-030 | 캡틴은 알림 템플릿, 발송 이력 조회가 가능하다. | 캡틴 | [PRD](../stories/notification-admin/PRD.md) | [콘솔 › 알림](https://playground.studyclub-plusplus.com/proto/console/notifications) | | 템플릿 추가 포함. 수정·삭제·재발송은 범위 밖 |
-| ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 |  |  | 폐기 | ST-030 에 합쳤다 — 한 메뉴 두 탭이라 문서를 가르면 같은 화면을 두 번 적게 된다 |
+| ST-030 | 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | 캡틴 | [PRD](../stories/notification-template/PRD.md) | [콘솔 › 알림 › 알림 템플릿](https://playground.studyclub-plusplus.com/proto/console/notifications/templates) | | 지금은 보기·추가까지. 수정·삭제는 API 가 없다 |
+| ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 |  |  | 폐기 | ST-030 에 합쳤다가 다시 갈랐다 — 지금은 ST-032 |
+| ST-032 | 캡틴은 알림 발송 이력을 조회할 수 있다. | 캡틴 | [PRD](../stories/notification-history/PRD.md) | [콘솔 › 알림 › 발송 이력](https://playground.studyclub-plusplus.com/proto/console/notifications) | | 실패 건 재발송 포함 |

@@ -7,6 +7,8 @@ import type { ScreenSpec } from '@/proto/annotate';
  * 「어디를 봐야 하나」로 바뀐다.
  */
 export const SPEC: ScreenSpec = {
+  prd: 'console-dashboard',
+  scope: 'dashboard',
   screen: '대시보드 (운영 콘솔)',
   notes: [
     '기간 필터가 없다 — 전기간 기준. 추세 차트만 최근 12주를 본다',

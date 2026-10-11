@@ -8,6 +8,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 
 /** 스터디 공개 — 등록해 둔 스터디를 사이트에 세운다. */
 export const PUBLISH_SPEC: ScreenSpec = {
+  prd: 'captain-publish-study',
   screen: '스터디 관리 (운영 콘솔)',
   chip: '스터디 공개',
   scope: 'publish',
@@ -76,6 +77,7 @@ export const PUBLISH_SPEC: ScreenSpec = {
 
 /** 스터디 목록 — 기획 항목이 목록에 어떻게 보이는가. */
 export const LIST_SPEC: ScreenSpec = {
+  prd: 'captain-list-all-studies',
   screen: '스터디 관리 (운영 콘솔)',
   chip: '스터디 목록',
   scope: 'list',
