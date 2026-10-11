@@ -489,6 +489,8 @@ erDiagram
 
 출석 체크인 POST는 반장 디스코드 연동 소관. 휴가 POST/DELETE는 이 화면 범위 밖.
 
+계약은 [my-studies/spec.md](../../../specs/my-studies/spec.md).
+
 ### 권한
 
 - 화면·목록: 로그인 회원, 본인 명부만. 검증 위치 서버

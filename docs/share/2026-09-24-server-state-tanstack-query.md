@@ -1,6 +1,7 @@
 ---
 상태: 결정됨
 물어볼 사람: — (프론트 구현자 전원이 따름)
+반영: 해당 없음 (프론트 구현 규약 — docs/frontend-development-guide/api-integration.md)
 ---
 
 # 화면이 서버 데이터를 가져오는 방법을 하나로 정한다

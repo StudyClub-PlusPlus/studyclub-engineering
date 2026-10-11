@@ -31,13 +31,16 @@ pnpm --filter playground run dev
 
 ## 화면 하나 추가하기
 
+> 여기는 컴포넌트를 조립해 보는 **연습 화면**입니다. 유저스토리 프로토타입은 [`/proto`](#프로토-proto) 아래에 만들고,
+> 순서는 [`/prototype` 스킬](../../../.claude/skills/prototype.md)을 따릅니다.
+
 ```bash
-cd studyclub-engineering/frontend/apps/playground/src/app/screens
+cd "studyclub-engineering/frontend/apps/playground/src/app/(site)/screens"
 cp -r study-detail 내가-만들-화면-이름
 ```
 
 1. `내가-만들-화면-이름/page.tsx` 를 열어 내용을 고칩니다
-2. `src/app/page.tsx` 의 `ENTRIES` 배열에 링크를 한 줄 추가합니다
+2. `src/app/(site)/page.tsx` 의 `ENTRIES` 배열에 링크를 한 줄 추가합니다
 3. http://localhost:4702 에서 확인합니다
 
 **규칙 하나** — 버튼·카드 같은 부품은 직접 만들지 말고 `@studyclub/ui` 에서 가져옵니다.

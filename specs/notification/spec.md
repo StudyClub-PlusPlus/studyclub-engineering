@@ -2,6 +2,7 @@
 
 > ERD: [NOTIFICATION](../../docs/erd/NOTIFICATION.md), [NOTIFICATION_TEMPLATE](../../docs/erd/NOTIFICATION_TEMPLATE.md)
 > 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) (트리거 쪽 계약)
+> Story PRD: [알림 템플릿](../../01-planning/stories/notification-template/PRD.md) (ST-030) · [발송 이력](../../01-planning/stories/notification-history/PRD.md) (ST-032)
 > 생성일: 2026-09-12 · 상태: 구현중
 
 ## 범위

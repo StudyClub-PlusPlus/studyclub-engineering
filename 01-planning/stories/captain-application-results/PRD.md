@@ -215,6 +215,8 @@ erDiagram
 - `403` 캡틴이 아님
 - `404` 기수 없음
 
+계약은 [study-application/spec.md](../../../specs/study-application/spec.md).
+
 ### 권한
 
 - 조회: 캡틴(`SYSTEM_ROLE=ADMIN`) 누구나. 이 기수 담당 캡틴이 아니어도 된다. 검증 위치 서버

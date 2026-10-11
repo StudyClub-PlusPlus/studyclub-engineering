@@ -246,3 +246,5 @@ erDiagram
 
 - 위젯별로 따로 부른다. 하나가 실패해도 전체가 에러 화면으로 바뀌지 않는다
 - 캡틴만 연다. **라우팅 가드만으로 처리하지 않고** 모든 `/api/admin/*` 에서 서버가 역할을 검증한다 — [POL-0001](../../_registry/policies/POL-0001-roles.md)
+
+계약은 [dashboard/spec.md](../../../specs/dashboard/spec.md).

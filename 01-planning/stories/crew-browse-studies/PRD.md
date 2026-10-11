@@ -191,6 +191,8 @@ erDiagram
 | --- | --- | --- |
 | GET | `/api/studies` | 불필요 (공개) |
 
+계약은 [study/spec.md](../../../specs/study/spec.md) · [study-recruit-status/spec.md](../../../specs/study-recruit-status/spec.md).
+
 ### 권한
 
 - 조회: 누구나(비로그인 포함)

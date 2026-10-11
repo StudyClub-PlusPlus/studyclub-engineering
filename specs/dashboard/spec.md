@@ -1,7 +1,7 @@
 # 운영 대시보드 화면·API Spec
 
 > Playground: [운영 콘솔 대시보드](https://playground.studyclub-plusplus.com/proto/console)
-> PRD: [캡틴은 스터디클럽 웹사이트의 운영 현황을 볼 수 있다](https://app.notion.com/p/benkang/91583feabad382ac833b81e65dd894f8)
+> Story PRD: [캡틴은 운영 현황을 한 화면에서 볼 수 있다](../../01-planning/stories/console-dashboard/PRD.md) (ST-002) — 화면이 무엇을 하는지·완료 기준은 PRD 가 정본
 > 작성일: 2026-09-16 · 수정일: 2026-10-07
 > 대상: 캡틴용 운영 콘솔. 이 문서는 구현할 화면·집계·API 계약을 정의한다.
 > 상태: 구현·리뷰 전. 논의 중인 정책과 변경 조건은 해당 화면과 7절에 기록한다.
@@ -94,6 +94,9 @@
 `ACCOUNT.SYSTEM_ROLE = ADMIN`인 캡틴만 조회할 수 있다. 서버는 모든 대시보드 API에서 권한을 검사한다. 인증·권한 오류는 [운영 콘솔 로그인 명세](../back-office-login/spec.md)를 따른다.
 
 ## 3. 화면별 명세
+
+> 화면이 무엇을 보여 주고 언제 완료인지는 [PRD §2 화면명세](../../01-planning/stories/console-dashboard/PRD.md#2-화면명세)가 정본이다.
+> 이 절의 정본은 **집계 대상 · 산식 · 실패 범위**처럼 API 가 지켜야 할 규칙이다. 표시 문구가 PRD 와 어긋나면 PRD 를 따른다.
 
 ### 1 / 1-1. 제목과 갱신 시각
 

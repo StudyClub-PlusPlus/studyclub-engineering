@@ -296,6 +296,8 @@ erDiagram
 | --- | --- | --- |
 | POST | `/api/admin/studies` | 캡틴 (`SYSTEM_ROLE = ADMIN`) |
 
+계약은 [study/spec.md](../../../specs/study/spec.md).
+
 ### 권한
 
 - 캡틴만 등록한다. 서버에서 검증한다 (403) — [POL-0001](../../_registry/policies/POL-0001-roles.md)

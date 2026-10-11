@@ -23,9 +23,11 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 ## 전제
 
-- **단건 모드**로 동작한다. 이 레포에는 `01-planning/_registry/` 가 없다 — `ST-###`·`IA-###`·`SRC-####` 를 쓰지 않는다
+- **레지스트리 모드**로 동작한다. Story 는 [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 의 `ST-###` 행이다.
+  새 Story·화면이면 같은 파일 맨 위 번호 대장(NUMBER LEDGER)에서 `ST`·`IA` 번호를 받고, 같은 커밋에서 `next` 를 +1 한다
+- 여러 Story 에 걸치는 규칙은 PRD 에 값을 쓰지 않고 [`POL-####`](../../01-planning/_registry/policies.md) 를 가리킨다
 - Story 폴더 이름(`{story-name}`)은 kebab-case, `{actor}-{행동}` (예: `crew-edit-profile`, `captain-publish-study`)
-- 표에 이미 PRD 가 걸린 Story 면 **수정**, `—` 면 **생성**이다
+- 표에 이미 PRD 가 걸린 Story 면 **수정**, PRD 칸이 비어 있으면 **생성**이다
 
 ## 1. 프로토타입 생성·수정
 
@@ -80,7 +82,8 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 ### 인덱스
 
-- [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 유저스토리 표의 PRD 칸에 링크를 건다
+- [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 유저스토리 표의 PRD · 프로토 · Spec 칸에 링크를 건다
+- 새 화면이면 [`01-planning/_registry/informationarchitecture.md`](../../01-planning/_registry/informationarchitecture.md) 에 `IA-###` 노드를 추가한다
 - 새 도메인 스펙이면 [`specs/README.md`](../../specs/README.md) 표에도 한 줄 추가한다
 
 ## 3. PR

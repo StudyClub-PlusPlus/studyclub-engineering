@@ -365,6 +365,8 @@ min/max 필드 없음. 길이·개수 상한은 유효값 표.
 - `404` 기수 없음. 화면 `이 스터디를 찾을 수 없습니다.` 폼 없음
 - `409` 이미 신청, 모집 마감, 또는 정원 초과
 
+계약은 [study-application/spec.md](../../../specs/study-application/spec.md).
+
 ### 권한
 
 - 신청: 로그인 회원이고 `DISCORD_ID`가 있을 때. 검증 위치 서버

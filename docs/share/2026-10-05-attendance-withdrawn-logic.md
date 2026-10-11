@@ -1,5 +1,8 @@
 ---
 상태: 결정됨
+반영:
+  - specs/attendance/spec.md — 됨
+  - 01-planning/stories/navigator-edit-attendance/PRD.md — 확인 필요 (2-1 은 참여 중단자를 출석부 맨 아래 줄에 남긴다. 「기본 뷰는 ACTIVE 만」과 다르다)
 ---
 
 # 출석률 집계에서 하차·탈퇴를 다루는 방식 — 세 가지 결정

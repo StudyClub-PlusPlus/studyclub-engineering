@@ -299,6 +299,8 @@ erDiagram
 | GET | `/api/studies/{studyId}/attendances` | 캡틴 |
 | POST | `/api/studies/{studyId}/attendances` | LEADER |
 
+계약은 [attendance/spec.md](../../../specs/attendance/spec.md).
+
 ### 권한
 
 - 열람: 캡틴
