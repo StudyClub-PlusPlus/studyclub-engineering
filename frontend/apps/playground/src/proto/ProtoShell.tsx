@@ -15,7 +15,7 @@ const LINKS = [
   { href: '/proto/core/ko', match: '/proto/core', label: '사용자 사이트' },
   { href: '/proto/console', match: '/proto/console', label: '운영 콘솔' },
   // 화면 뒤에 깔린 값과 규칙. 개발이 「상태가 몇 종이더라」를 물을 때 여는 자리다.
-  { href: '/proto/policies', match: '/proto/policies', label: '기획 라이브러리' },
+  { href: '/proto/policies', match: '/proto/policies', label: '정책 라이브러리' },
 ];
 
 /**

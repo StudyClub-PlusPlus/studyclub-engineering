@@ -10,7 +10,7 @@ import { STUDY_CATEGORIES } from '@studyclub/mock';
 const REPO = 'https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies';
 
 /**
- * 기획 라이브러리 — 화면 뒤에 깔린 **값과 규칙**을 한 지면에 모은다.
+ * 정책 라이브러리 — 화면 뒤에 깔린 **값과 규칙**을 한 지면에 모은다.
  *
  * 개발이 「스터디 상태가 몇 종이더라」를 물을 때 화면을 뒤지지 않게 하려는 자리다.
  * **여기 적힌 값은 프로토가 실제로 쓰는 상수를 그대로 읽어 그린다** — 따로 적어 두면 화면이 바뀐 뒤
@@ -48,7 +48,7 @@ export default function PolicyLibrary() {
 
   return (
     <div className='mx-auto max-w-5xl px-6 py-10'>
-      <h1 className='text-2xl font-extrabold tracking-tight'>기획 라이브러리</h1>
+      <h1 className='text-2xl font-extrabold tracking-tight'>정책 라이브러리</h1>
 
       <div className='mt-6 grid gap-8 lg:grid-cols-[9rem_1fr]'>
         {/* 묶음은 왼쪽에 세로로 — 메뉴와 같은 자리라 눈이 먼저 간다 */}
