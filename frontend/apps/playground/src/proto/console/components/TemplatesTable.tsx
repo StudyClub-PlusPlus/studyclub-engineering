@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { NotificationTabs } from '@console/components/NotificationTabs';
 import { TableCard } from '@console/components/ui';
 import {
   TEMPLATE_CHANNEL_LABEL,
@@ -56,6 +57,7 @@ export function TemplatesTable() {
   if (open) {
     return (
       <div className='flex flex-col gap-3'>
+        <NotificationTabs />
         <button
           type='button'
           onClick={() => setOpen(null)}
@@ -80,11 +82,14 @@ export function TemplatesTable() {
 
   return (
     <div className='flex flex-col gap-3'>
-      <div className='flex justify-end'>
-        <Button data-anno='template:2' size='sm' leadingIcon={<Plus size={14} />} onClick={openAdd}>
-          템플릿 추가
-        </Button>
-      </div>
+      {/* 추가는 **템플릿 탭에서만** 할 수 있는 일이다 — 발송 이력으로 넘어가면 같이 사라진다 */}
+      <NotificationTabs
+        action={
+          <Button data-anno='template:2' size='sm' leadingIcon={<Plus size={14} />} onClick={openAdd}>
+            템플릿 추가
+          </Button>
+        }
+      />
 
       <TableCard anno='template:3'>
         <thead>

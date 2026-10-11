@@ -1,4 +1,3 @@
-import { NotificationTabs } from '@console/components/NotificationTabs';
 import { TemplatesTable } from '@console/components/TemplatesTable';
 import { PageHeader } from '@console/components/ui';
 
@@ -12,7 +11,6 @@ export default function TemplatesAdmin() {
     <div data-anno='template:1'>
       <ScreenSpecRegistrar spec={SPEC} />
       <PageHeader title='알림' />
-      <NotificationTabs />
       <TemplatesTable />
     </div>
   );

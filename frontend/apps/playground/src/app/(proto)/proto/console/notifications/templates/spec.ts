@@ -4,7 +4,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 export const SPEC: ScreenSpec = {
   screen: '알림 템플릿 (운영 콘솔)',
   chip: '알림 템플릿',
-  prd: 'notification-admin',
+  prd: 'notification-template',
   scope: 'template',
   notes: [
     '문구를 **보고 더한다.** 고치는 길은 아직 없다 — 편집 API 가 없다',
@@ -14,12 +14,16 @@ export const SPEC: ScreenSpec = {
     {
       n: '1',
       title: '제목과 탭',
-      display: ['제목 「알림」. 그 아래 알림 템플릿 · 발송 이력 두 탭'],
-      policy: ['지금 등록된 문구가 무엇인지 보는 자리다 — 특정 발송 건에 쓰인 그때 원문이 아니다'],
+      display: ['제목 「알림」. 그 아래 알림 템플릿 · 발송 이력 두 탭, 그 줄 오른쪽 끝에 템플릿 추가'],
+      policy: [
+        '지금 등록된 문구가 무엇인지 보는 자리다 — 특정 발송 건에 쓰인 그때 원문이 아니다',
+        '**추가는 이 탭에서만 선다** — 발송 이력으로 넘어가면 같이 사라진다. 지금 보는 것과 지금 할 수 있는 일을 한 줄에서 읽게 한다',
+      ],
     },
     {
       n: '2',
       title: '템플릿 추가',
+      display: ['탭 줄 오른쪽 끝'],
       behavior: ['누르면 창이 열린다. 추가하면 목록 맨 위에 선다'],
       policy: [
         '**나가는 알림이 늘 때마다 코드를 고치지 않게 한다** — 문구는 운영자가 더한다',

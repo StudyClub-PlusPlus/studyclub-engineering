@@ -5,7 +5,7 @@ export const SPEC: ScreenSpec = {
   screen: '알림 발송 이력 (운영 콘솔)',
   chip: '알림 발송 이력',
   scope: 'history',
-  prd: 'notification-admin',
+  prd: 'notification-history',
   notes: [
     '사이드바는 「알림」 하나다. 템플릿과 발송 이력은 **화면 안 탭**으로 가른다 — 사이드바를 두 단으로 만들면 다른 메뉴와 깊이가 달라져 훑기 어렵다',
     '**실패한 건을 다시 보내는 것 말고는 조회만 한다.** 발송 취소·실패 사유 상세는 없다 — API 가 주지 않는 것을 화면이 지어내면 운영자는 없는 수단을 찾는다',
