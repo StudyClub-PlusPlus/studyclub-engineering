@@ -135,6 +135,7 @@ export const SPEC: ScreenSpec = {
         '한 주를 집으면 그 주의 출석률과 밑재료를 알린다 — 「2026-08-24 주 · 출석률 68% (출석 412 / 대상 606)」',
       ],
       policy: [
+        '**주의 경계는 한국 시간 기준이다** — 한국 월요일 새벽 회차는 다른 시계로는 아직 일요일이라, 기준이 없으면 같은 회차가 보는 사람마다 다른 주에 들어간다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md))',
         '**체크된 회차가 없는 주는 값이 없는 것으로 다룬다. 0% 로 알리지 않는다** — 쉬어간 주가 폭락으로 보이면 없는 문제를 찾게 된다',
         '값이 한 주뿐이어도 그 값을 알린다 — 이어지는 선이 없을 뿐이다',
         '값이 하나도 없을 때만 그 사실을 적는다',
