@@ -27,6 +27,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
       - run: npx turbo run lint typecheck --filter=playground
+      # 설명 보기(spec.ts)와 PRD 가 갈리면 막는다 — 손으로 두 벌 맞추지 않는다
+      - run: pnpm --filter playground export-specs -- --check
         working-directory: frontend
 
   docker:

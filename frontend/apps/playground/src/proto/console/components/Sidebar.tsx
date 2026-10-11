@@ -16,8 +16,9 @@ const NAV = [
   { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합. 역할·권한 부여도 이 화면에서 한다.
   { href: '/users', label: '유저', icon: Users },
-  // 보낸 알림이 어디로 나갔고 어떤 상태인가. 템플릿 편집과는 다른 화면이다.
-  { href: '/notifications', label: '알림 발송 이력', icon: Mail },
+  // 알림은 메뉴 하나다 — 템플릿과 발송 이력은 그 안에서 탭으로 가른다.
+  // 사이드바를 두 단으로 만들면 다른 메뉴와 깊이가 달라져 훑기 어렵다.
+  { href: '/notifications', label: '알림', icon: Mail },
 ];
 
 export function Sidebar() {
@@ -62,7 +63,7 @@ export function Sidebar() {
                   : { color: 'var(--color-fg-muted)' }
               }
             >
-              <item.icon size={16} />
+              <item.icon size={17} />
               {item.label}
             </Link>
           );

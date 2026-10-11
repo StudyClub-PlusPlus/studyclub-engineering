@@ -11,6 +11,7 @@ import { useStudies } from '@/features/studies/queries';
 import type { StudyPhaseFilter, StudySearch, StudyTimezoneFilter } from '@/lib/api';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+import { useUrlState } from '@/lib/use-url-state';
 
 type RecruitmentFilter = 'all' | StudyPhaseFilter;
 type TimezoneFilter = 'all' | StudyTimezoneFilter;
@@ -58,6 +59,14 @@ function FilterOption({
   );
 }
 
+/** URL 쿼리 — `?q=react&status=recruiting&category=AI_ML&tz=KST`. 기본값은 싣지 않는다. */
+const URL_DEFAULTS = { q: '', status: 'all', category: 'all', tz: 'all' };
+const URL_ALLOWED = {
+  status: RECRUITMENT_OPTIONS.map((o) => o.value),
+  category: CATEGORY_OPTIONS.map((o) => o.value),
+  tz: ['all', ...TIMEZONE_OPTIONS.map((o) => o.value)],
+};
+
 function FilterSelect<T extends string>({
   value,
   options,
@@ -103,11 +112,14 @@ export function StudyBrowser({
   locale: Locale;
   leads: Record<string, Operator>;
 }) {
-  const [input, setInput] = useState('');
-  const [query, setQuery] = useState('');
-  const [recruitment, setRecruitment] = useState<RecruitmentFilter>('all');
-  const [category, setCategory] = useState<string>('all');
-  const [timezone, setTimezone] = useState<TimezoneFilter>('all');
+  // 조건은 URL 이 정본이다 — 스터디를 열었다 뒤로 와도 걸어 둔 조건이 그대로다
+  const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const query = filters.q;
+  const recruitment = filters.status as RecruitmentFilter;
+  const category = filters.category;
+  const timezone = filters.tz as TimezoneFilter;
+  // 입력칸의 글자만 화면 state — Enter·검색 버튼으로 확정할 때 URL 에 쓴다
+  const [input, setInput] = useState(query);
 
   const search: StudySearch = {
     keyword: query.trim() || undefined,
@@ -123,13 +135,10 @@ export function StudyBrowser({
   const failed = isError;
 
   const hasQuery = query.trim().length > 0;
-  const commitSearch = () => setQuery(input);
+  const commitSearch = () => setFilters({ q: input });
   const clearSearch = () => {
     setInput('');
-    setQuery('');
-    setRecruitment('all');
-    setCategory('all');
-    setTimezone('all');
+    setFilters(URL_DEFAULTS);
   };
 
   return (
@@ -153,7 +162,7 @@ export function StudyBrowser({
                   type='button'
                   role='tab'
                   aria-selected={active}
-                  onClick={() => setRecruitment(option.value)}
+                  onClick={() => setFilters({ status: option.value })}
                   className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
                 >
                   {option.label}
@@ -165,7 +174,7 @@ export function StudyBrowser({
             <FilterSelect
               value={timezone}
               options={[{ value: 'all' as const, label: '시간대 전체' }, ...TIMEZONE_OPTIONS]}
-              onChange={setTimezone}
+              onChange={(tz) => setFilters({ tz })}
             />
           </div>
           <div className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-full lg:focus-within:w-[312px]'>
@@ -204,7 +213,7 @@ export function StudyBrowser({
             <FilterOption
               key={option.value}
               active={category === option.value}
-              onClick={() => setCategory(option.value)}
+              onClick={() => setFilters({ category: option.value })}
             >
               {option.label}
             </FilterOption>

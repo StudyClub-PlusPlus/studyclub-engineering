@@ -8,7 +8,6 @@ import {
   attendancePoint,
   getStudyCrew,
   type AttendanceStatus,
-  type Crew,
   type Study,
   type StudyCrewData,
 } from '@studyclub/mock';
@@ -16,9 +15,10 @@ import { Badge } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
 
 import { AttendanceTab } from '@/components/AttendanceTab';
-import { CrewTab } from '@/components/CrewTab';
 import { StudyInfoTab } from '@/components/StudyInfoTab';
 import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
+import { ApplicationsTab } from '@/features/applications/ApplicationsTab';
+import { useApplications } from '@/features/applications/queries';
 import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
 
 const TABS = [
@@ -48,7 +48,9 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
   }, []);
 
   const active = crew;
-  const pending: Crew[] = [];
+  const applicationQuery = useApplications(detail.id, tab === 'crew');
+  const applications = applicationQuery.isError ? undefined : applicationQuery.data?.applications;
+  const pendingCount = applications?.filter((application) => application.status === 'PENDING').length;
   const open = detail.recruitStatus === 'RECRUITING';
   const deadline = detail.recruitDeadlineAt
     ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
@@ -139,8 +141,8 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
         />
         <Stat
           label='승인 대기'
-          value={mockStudy ? `${pending.length}` : '—'}
-          tone={pending.length > 0 ? 'warn' : undefined}
+          value={pendingCount == null ? '—' : `${pendingCount}`}
+          tone={pendingCount ? 'warn' : undefined}
         />
         <Stat label='출석률' value={overall === undefined ? '—' : `${overall}%`} />
       </div>
@@ -157,9 +159,9 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
             }`}
           >
             {tb.label}
-            {tb.key === 'crew' && pending.length > 0 && (
+            {tb.key === 'crew' && pendingCount != null && pendingCount > 0 && (
               <span className='ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[11px] font-bold text-warning-700'>
-                {pending.length}
+                {pendingCount}
               </span>
             )}
           </button>
@@ -167,12 +169,10 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
       </nav>
 
       <div className='mt-5'>
-        {(tab === 'crew' || tab === 'attendance') && !mockStudy && (
-          <div className='card px-6 py-10 text-center text-sm text-fg-muted'>
-            {tab === 'crew' ? '신청자' : '출석'} 관리는 준비 중입니다.
-          </div>
+        {tab === 'attendance' && !mockStudy && (
+          <div className='card px-6 py-10 text-center text-sm text-fg-muted'>출석 관리는 준비 중입니다.</div>
         )}
-        {tab === 'crew' && mockStudy && <CrewTab crew={crew} capacity={initial.capacity} />}
+        {tab === 'crew' && <ApplicationsTab studyId={detail.id} />}
         {tab === 'attendance' && mockStudy && (
           <AttendanceTab
             study={mockStudy}

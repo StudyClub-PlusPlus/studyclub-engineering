@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 4702",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "export-specs": "node scripts/export-specs.mjs"
   },
   "dependencies": {
     "@studyclub/design": "workspace:*",
@@ -31,9 +32,12 @@
     "eslint": "^9.24.0",
     "prettier": "^3.5.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "esbuild": "^0.25.0"
   },
   "msw": {
-    "workerDirectory": ["public"]
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

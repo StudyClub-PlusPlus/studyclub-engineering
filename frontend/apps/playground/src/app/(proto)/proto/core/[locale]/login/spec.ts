@@ -1,6 +1,8 @@
 import type { ScreenSpec } from '@/proto/annotate';
 
 export const SPEC: ScreenSpec = {
+  prd: 'crew-google-login-onboarding',
+  scope: 'login',
   screen: 'Google 로그인',
   notes: [
     'Notion PRD: https://app.notion.com/p/benkang/1f683feabad3839b996781bd773ec465',

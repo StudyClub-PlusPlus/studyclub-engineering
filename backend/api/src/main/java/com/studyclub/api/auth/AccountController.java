@@ -2,45 +2,30 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AccountDtos.OnboardingRequest;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
-import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
-import com.studyclub.domain.account.AccountRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 유저 목록 (백오피스 "유저" 탭) + 온보딩 완료. 목록은 캡틴만 ({@code @RequireAdmin}). */
-@Tag(name = "유저", description = "백오피스 유저 목록 · 온보딩 완료")
+/**
+ * 온보딩 완료. 백오피스 회원 목록은 {@code GET /api/admin/users}({@code AdminUserController})로 옮겼다
+ * (specs/admin-users/spec.md 「옛 GET /accounts 를 없앤다」).
+ */
+@Tag(name = "유저", description = "온보딩 완료")
 @RestController
 @RequestMapping("/accounts")
 public class AccountController {
 
-    private final AccountRepository accountRepository;
     private final AccountOnboardingService accountOnboardingService;
 
-    public AccountController(
-            AccountRepository accountRepository,
-            AccountOnboardingService accountOnboardingService) {
-        this.accountRepository = accountRepository;
+    public AccountController(AccountOnboardingService accountOnboardingService) {
         this.accountOnboardingService = accountOnboardingService;
-    }
-
-    @RequireAdmin
-    @SecurityRequirement(name = "bearerAuth")
-    @GetMapping
-    public List<AccountView> list() {
-        return accountRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
-                .map(AccountView::from)
-                .toList();
     }
 
     /**

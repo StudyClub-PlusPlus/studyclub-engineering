@@ -6,12 +6,12 @@
 <!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
 | prefix | next |
 |---|---|
-| ST | 32 |
+| ST | 33 |
 | EP | 1 |
 | FN | 1 |
 | IA | 32 |
 | SRC | 1 |
-| POL | 8 |
+| POL | 10 |
 
 <!--
 발급 절차: next 값을 읽어 ID 를 만들고, 같은 커밋에서 next 를 +1 한다.
@@ -45,7 +45,7 @@
 | ST-016 | 네비게이터는 스터디별 공지를 등록할 수 있다. | 네비게이터 |  |  | | 프로토타입 없음 — PRD 작성 전 |
 | ST-017 | 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | 네비게이터 | [PRD](../stories/navigator-edit-attendance/PRD.md) | [내 스터디 › 스터디 일정 › 출석부](https://playground.studyclub-plusplus.com/proto/core/ko/my/joined) | | |
 | ST-018 | 네비게이터는 참여자를 스터디에서 제명할 수 있다. | 네비게이터 |  |  | | 프로토타입 없음 — PRD 작성 전 |
-| ST-019 | 캡틴은 백오피스에 접근할 수 있다. | 캡틴 |  |  | | 프로토타입 없음 — PRD 작성 전. 접근 판정은 [POL-0001](policies/POL-0001-roles.md) |
+| ST-019 | 캡틴은 백오피스에 접근할 수 있다. | 캡틴 |  |  | 폐기 | Story 가 아니다 — 화면에서 하는 일이 아니라 모든 콘솔 화면에 걸리는 조건이다. 접근 판정은 [POL-0001](policies/POL-0001-roles.md), 로그인 흐름·에러는 [back-office-login](../../specs/back-office-login/spec.md) 소관 |
 | ST-020 | 캡틴은 등록한 스터디를 공개할 수 있다. | 캡틴 | [PRD](../stories/captain-publish-study/PRD.md) | [콘솔 › 스터디](https://playground.studyclub-plusplus.com/proto/console/studies) | | |
 | ST-021 | 캡틴은 기존 스터디를 재등록할 수 있다(기수제). | 캡틴 | [PRD](../stories/captain-reregister-cohort/PRD.md) | [콘솔 › 스터디 상세](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | |
 | ST-022 | 캡틴은 모든 스터디의 리스트를 볼 수 있다. | 캡틴 | [PRD](../stories/captain-list-all-studies/PRD.md) | [콘솔 › 스터디](https://playground.studyclub-plusplus.com/proto/console/studies) | | |
@@ -56,5 +56,6 @@
 | ST-027 | 캡틴은 스터디별 출석명부를 볼 수 있다. | 캡틴 | [PRD](../stories/captain-view-attendance-roster/PRD.md) | [콘솔 › 스터디 상세 › 출석](https://playground.studyclub-plusplus.com/proto/console/studies/1) | | |
 | ST-028 | 캡틴은 전체 회원 리스트를 조회할 수 있다. | 캡틴 | [PRD](../stories/captain-list-users/PRD.md) | [콘솔 › 유저](https://playground.studyclub-plusplus.com/proto/console/users) | | |
 | ST-029 | 캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다. | 캡틴 | [PRD](../stories/captain-grant-roles/PRD.md) | [콘솔 › 유저](https://playground.studyclub-plusplus.com/proto/console/users) | | |
-| ST-030 | 캡틴은 알림 템플릿과 발송 이력을 조회할 수 있다. | 캡틴 |  |  | | 발송 이력은 ST-031 로 떼어 작성했다. 남은 것은 템플릿 조회 |
-| ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 | [PRD](../stories/notification-history/PRD.md) | [콘솔 › 알림 발송 이력](https://playground.studyclub-plusplus.com/proto/console/notifications) | | 조회 전용 — 재발송·취소 없음 |
+| ST-030 | 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | 캡틴 | [PRD](../stories/notification-template/PRD.md) | [콘솔 › 알림 › 알림 템플릿](https://playground.studyclub-plusplus.com/proto/console/notifications/templates) | | 지금은 보기·추가까지. 수정·삭제는 API 가 없다 |
+| ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 |  |  | 폐기 | ST-030 에 합쳤다가 다시 갈랐다 — 지금은 ST-032 |
+| ST-032 | 캡틴은 알림 발송 이력을 조회할 수 있다. | 캡틴 | [PRD](../stories/notification-history/PRD.md) | [콘솔 › 알림 › 발송 이력](https://playground.studyclub-plusplus.com/proto/console/notifications) | | 실패 건 재발송 포함 |
