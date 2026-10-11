@@ -61,7 +61,10 @@ export function Modal({
           'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
         ) ?? [],
       );
-    focusables()[0]?.focus();
+    // 결정형 창은 **취소에 먼저 선다** (POL-0008) — `data-autofocus` 가 달린 쪽이 우선이다.
+    // 아무것도 없으면 패널 안 첫 요소, 곧 닫기(X) 다.
+    const preferred = panelRef.current?.querySelector<HTMLElement>('[data-autofocus]');
+    (preferred ?? focusables()[0])?.focus();
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {

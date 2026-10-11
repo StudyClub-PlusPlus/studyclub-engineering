@@ -700,7 +700,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         footer={
           <>
             {/* 결정을 묻는 모달 — 안전한 쪽이 기본 포커스를 받는다. Enter 로 실행되면 안 된다 (POL-0008) */}
-            <Button variant='secondary' autoFocus onClick={() => setConfirm(null)}>
+            <Button variant='secondary' data-autofocus onClick={() => setConfirm(null)}>
               취소
             </Button>
             <Button onClick={applyPublish}>{confirm?.next ? '공개' : '비공개로 전환'}</Button>

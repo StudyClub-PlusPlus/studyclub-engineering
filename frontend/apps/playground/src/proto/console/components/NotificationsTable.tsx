@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { TableCard } from '@console/components/ui';
 import { maskEmail } from '@console/lib/mask';
@@ -9,7 +9,8 @@ import {
   EVENT_LABEL,
   failedIds,
   notifications as seeded,
-  resend,
+  requestResend,
+  trackResend,
   PAGE_SIZE,
   STATUS_FILTERS,
   STATUS_LABEL,
@@ -17,8 +18,8 @@ import {
   queryNotifications,
   type NotificationStatus,
 } from '@console/lib/notifications';
-import { Badge, Button, Modal } from '@studyclub/ui';
-import { ChevronLeft, ChevronRight, Eye, EyeOff, RotateCw } from 'lucide-react';
+import { Badge, Button, Modal, toast } from '@studyclub/ui';
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, RotateCw } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
 type EventFilter = 'all' | (typeof EVENT_FILTERS)[number]['value'];
@@ -37,16 +38,21 @@ export function NotificationsTable() {
   const [filter, setFilter] = useState<Filter>('all');
   const [eventType, setEventType] = useState<EventFilter>('all');
   const [page, setPage] = useState(1);
-  // 다시 보내기 전에 묻는다. 한 건이면 그 수신처를, 묶음이면 건수를 적는다
-  const [asking, setAsking] = useState<{ ids: number[]; email?: string } | null>(null);
+  // 묶음으로 보낼 때만 묻는다. 한 건은 누른 그 줄에서 바로 일어난다
+  const [asking, setAsking] = useState(false);
+  // 다시 보내는 중인 건. 끝이 확인될 때까지 그 줄의 아이콘은 돌아간다
+  const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
+  // 이번 화면에서 다시 보낸 건. 상태가 바뀌어도 자리를 지킨다 — 다음에 읽을 때 빠진다
+  const [keep, setKeep] = useState<ReadonlySet<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [phase, setPhase] = useState<Phase>('loading');
   // 연타해도 **마지막 요청의 답만** 쓴다 — 먼저 보낸 요청이 늦게 와서 화면을 덮지 않게
   const latest = useRef(0);
 
   const offset = (page - 1) * PAGE_SIZE;
   const { items, total } = useMemo(
-    () => queryNotifications(filter, eventType, offset, rows),
-    [filter, eventType, offset, rows],
+    () => queryNotifications(filter, eventType, offset, rows, keep),
+    [filter, eventType, offset, rows, keep],
   );
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   // 거른 조건에 걸린 **실패 건 전체**. 보고 있는 페이지에 한정하지 않는다
@@ -67,13 +73,85 @@ export function NotificationsTable() {
     if (page > pages) setPage(1);
   }, [page, pages]);
 
+  /**
+   * 다시 보낸다 — 한 건이든 묶음이든 같은 길이다.
+   *
+   * 1. 누른 자리의 아이콘이 **돌기 시작하고 눌리지 않는다.** 두 번 눌러 두 번 나가는 일이 없게
+   * 2. 서버가 **접수**하면 그 줄이 「대기」로 바뀐다 — 접수 전에 미리 바꾸면, 닿지 못했을 때
+   *    보낸 적 없는 건이 보낸 것처럼 남는다
+   * 3. **끝이 확인되면** 상태를 그 결과로 적고 한 번만 알린다
+   */
+  const run = useCallback(async (ids: number[]) => {
+    if (ids.length === 0) return;
+    setBusy((prev) => new Set([...prev, ...ids]));
+    const done = () => setBusy((prev) => new Set([...prev].filter((id) => !ids.includes(id))));
+
+    try {
+      await requestResend(ids);
+    } catch {
+      // 한 건도 나가지 않았다. 상태는 「실패」 그대로 두고 아이콘을 되살린다
+      done();
+      toast.error(
+        (t) => (
+          <span className='flex items-center gap-3'>
+            재발송을 요청하지 못했습니다. 다시 시도해 주세요.
+            <button
+              type='button'
+              className='shrink-0 font-semibold text-primary-600 underline-offset-2 hover:underline'
+              onClick={() => {
+                toast.dismiss(t.id);
+                void run(ids);
+              }}
+            >
+              다시 시도
+            </button>
+          </span>
+        ),
+        { duration: 8000 },
+      );
+      return;
+    }
+
+    setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: 'PENDING', sentAt: null } : r)));
+    setKeep((prev) => new Set([...prev, ...ids]));
+
+    const { settled } = await trackResend(ids, rows);
+    const sentAt = new Date().toISOString();
+    setRows((prev) =>
+      prev.map((r) => {
+        const end = settled.get(r.id);
+        if (!end) return r;
+        return { ...r, status: end, sentAt: end === 'SENT' ? sentAt : null };
+      }),
+    );
+    done();
+
+    // 끝내 알 수 없었던 건에는 아무 말도 하지 않는다 — 지어낸 결과는 틀린 말이 된다
+    if (settled.size === 0) return;
+    const ok = [...settled.values()].filter((v) => v === 'SENT').length;
+    const bad = settled.size - ok;
+    if (settled.size === 1) {
+      if (bad === 0) toast.success('재발송에 성공했습니다.');
+      else toast.error('발송에 실패했습니다.');
+    } else if (bad === 0) {
+      toast.success(`${ok}건 재발송에 성공했습니다.`);
+    } else if (ok === 0) {
+      toast.error(`발송에 실패했습니다. 실패: ${bad}건`);
+    } else {
+      toast.error(`${ok}건 재발송에 성공했습니다. 실패: ${bad}건`);
+    }
+  }, [rows]);
+
+  // 다시 읽을 때 자리를 지켜 주던 건을 놓아준다 — 그때는 거르는 조건대로 빠진다
   function changeFilter(next: Filter) {
     setFilter(next);
+    setKeep(new Set());
     setPage(1);
   }
 
   function changeEvent(next: EventFilter) {
     setEventType(next);
+    setKeep(new Set());
     setPage(1);
   }
 
@@ -111,9 +189,9 @@ export function NotificationsTable() {
             size='sm'
             variant='secondary'
             className='ml-auto'
-            leadingIcon={<RotateCw size={13} />}
-            disabled={phase === 'loading'}
-            onClick={() => setAsking({ ids: allFailed })}
+            leadingIcon={bulkBusy ? <Loader2 size={13} className='animate-spin' /> : <RotateCw size={13} />}
+            disabled={phase === 'loading' || bulkBusy}
+            onClick={() => setAsking(true)}
           >
             전체 재발송
           </Button>
@@ -160,15 +238,17 @@ export function NotificationsTable() {
                       실패한 건만 다시 보낸다. 상태 옆에 두면 **무엇을 다시 보내는지**가 한 줄에서 읽히고,
                       대부분 비어 있을 칼럼 하나를 표 끝에 두지 않아도 된다.
                     */}
-                    {row.status === 'FAILED' && (
+                    {(row.status === 'FAILED' || busy.has(row.id)) && (
                       <button
                         type='button'
-                        onClick={() => setAsking({ ids: [row.id], email: row.recipientValue })}
+                        onClick={() => void run([row.id])}
+                        disabled={busy.has(row.id)}
                         aria-label='재발송'
+                        aria-busy={busy.has(row.id) || undefined}
                         title='재발송'
-                        className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+                        className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:hover:bg-transparent'
                       >
-                        <RotateCw size={13} />
+                        {busy.has(row.id) ? <Loader2 size={13} className='animate-spin' /> : <RotateCw size={13} />}
                       </button>
                     )}
                   </span>
@@ -207,20 +287,24 @@ export function NotificationsTable() {
         </tbody>
       </TableCard>
 
-      {/* 메일은 되돌릴 수 없다 — 지나가는 손끝에 눌려 나가지 않게 한 번 더 묻는다 (POL-0008) */}
+      {/*
+        묶음은 한 번 누르면 수십 통이 한꺼번에 나간다 — 건수를 적어 두고 다시 묻는다 (POL-0008).
+        한 건은 묻지 않는다: 누른 그 줄에서 무엇이 나가는지가 이미 보인다.
+      */}
       <Modal
-        open={asking !== null}
-        onClose={() => setAsking(null)}
+        open={asking}
+        onClose={() => setAsking(false)}
         title='알림을 재발송합니다'
         footer={
           <>
-            <Button variant='secondary' onClick={() => setAsking(null)}>
+            <Button variant='secondary' data-autofocus onClick={() => setAsking(false)}>
               취소
             </Button>
             <Button
               onClick={() => {
-                if (asking) setRows((prev) => resend(prev, asking.ids));
-                setAsking(null);
+                setAsking(false);
+                setBulkBusy(true);
+                void run(allFailed).finally(() => setBulkBusy(false));
               }}
             >
               재발송
@@ -229,19 +313,8 @@ export function NotificationsTable() {
         }
       >
         <p className='text-sm text-fg-secondary'>
-          {asking?.email ? (
-            <>
-              <strong className='font-semibold text-fg'>{maskEmail(asking.email)}</strong> 으로 알림을
-              재발송합니다.
-            </>
-          ) : (
-            <>
-              발송 실패한 알림{' '}
-              <strong className='tnum font-semibold text-fg'>{(asking?.ids.length ?? 0).toLocaleString()}건</strong>을
-              재발송합니다.
-            </>
-          )}{' '}
-          실패 기록은 그대로 남고, 새 건이 「대기」로 들어갑니다.
+          발송 실패한 알림 <strong className='tnum font-semibold text-fg'>{allFailed.length.toLocaleString()}건</strong>
+          을 재발송합니다. 보내고 나면 되돌릴 수 없습니다.
         </p>
       </Modal>
 

@@ -1,4 +1,5 @@
 import { AppShell } from '@console/components/AppShell';
+import { Toaster } from '@studyclub/ui';
 
 /**
  * 운영 콘솔 셸.
@@ -11,6 +12,8 @@ export default function ConsoleProtoLayout({ children }: { children: React.React
   return (
     <div data-app='console'>
       <AppShell>{children}</AppShell>
+      {/* 끝난 일을 한 번 알리고 사라진다 — 결과를 창으로 띄우면 다음 일을 하려고 또 닫아야 한다 */}
+      <Toaster position='bottom-center' />
     </div>
   );
 }

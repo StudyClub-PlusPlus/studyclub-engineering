@@ -108,32 +108,47 @@ export const notifications: NotificationRow[] = Array.from({ length: 240 }, (_, 
   return row;
 }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-/** 한 페이지. 서버가 `items` 와 `total` 을 주는 모양을 그대로 흉내 낸다. */
 /**
- * 실패한 건을 다시 보낸다. 한 건이든 거른 전체든 같은 길로 지나간다.
+ * 재발송을 서버에 **맡긴다.** 돌아오는 것은 「접수했다」까지다 — 보냈다는 뜻이 아니다.
  *
- * **실패 건은 그대로 두고 새 건을 만든다** — 지워 버리면 언제 왜 실패했는지가 사라지고,
- * 같은 행을 고쳐 쓰면 한 번에 성공한 건과 두 번 만에 나간 건을 구분할 수 없다.
- * 새 건은 발송 대기로 들어가 다음 차례에 집어간다.
+ * 프로토는 서버가 없어 지연만 흉내 낸다. 접수 자체가 실패하는 길(네트워크가 끊기거나 서버가
+ * 받지 못한 경우)도 보여야 해서, **id 로 정해지는 드문 경우** 하나를 실패로 만든다 — 누를 때마다
+ * 달라지면 그 화면을 다시 띄울 수 없다.
  *
- * 실패가 아닌 건은 조용히 건너뛴다 — 같은 메일이 두 번 가는 쪽이 더 나쁜 일이다.
+ * TODO(api): POST /api/admin/notifications/resend
  */
-export function resend(rows: NotificationRow[], ids: number[]): NotificationRow[] {
-  const wanted = new Set(ids);
-  const targets = rows.filter((r) => wanted.has(r.id) && r.status === 'FAILED');
-  if (targets.length === 0) return rows;
+export function requestResend(ids: number[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => (hash(`ack-${ids[0]}`) % 7 === 0 ? reject(new Error('unreachable')) : resolve()), 700);
+  });
+}
 
-  let nextId = Math.max(...rows.map((r) => r.id));
-  const requestedAt = new Date().toISOString();
-  // 새 건은 요청한 순서대로 쌓는다 — 묶음으로 보내도 맨 위가 가장 나중 건이 되게
-  const again = targets.map<NotificationRow>((target) => ({
-    ...target,
-    id: ++nextId,
-    createdAt: requestedAt,
-    status: 'PENDING',
-    sentAt: null,
-  }));
-  return [...again.reverse(), ...rows];
+/** 재발송의 끝. 보냈는지 못 보냈는지, 아니면 끝내 알 수 없었는지. */
+export type ResendOutcome = { settled: Map<number, 'SENT' | 'FAILED'>; abandoned: number[] };
+
+/**
+ * 접수된 건의 **최종 상태**를 쫓는다.
+ *
+ * 접수는 보냈다는 뜻이 아니라, 완료·실패가 확인될 때까지 따로 쫓아야 한다. 쫓는 방식과 주기,
+ * 언제 포기하는지는 서버가 붙을 때 정한다 — 화면은 **끝을 알게 되는 시점**만 알면 된다.
+ *
+ * 포기한 건은 `abandoned` 로 돌아온다. 그 건에는 아무 말도 하지 않는다 — 못 쫓았다는 사정은
+ * 운영자가 할 일을 바꾸지 않고, 화면이 지어낸 결과를 적으면 틀린 말이 된다.
+ */
+export function trackResend(ids: number[], rows: NotificationRow[]): Promise<ResendOutcome> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const settled = new Map<number, 'SENT' | 'FAILED'>();
+      const abandoned: number[] = [];
+      for (const id of ids) {
+        const row = rows.find((r) => r.id === id);
+        const seed = hash(`settle-${row?.recipientValue ?? id}-${id}`);
+        if (seed % 23 === 0) abandoned.push(id);
+        else settled.set(id, seed % 4 === 0 ? 'FAILED' : 'SENT');
+      }
+      resolve({ settled, abandoned });
+    }, 1800);
+  });
 }
 
 /** 지금 거른 조건에 걸린 **실패 건 전체**. 보고 있는 페이지에 한정하지 않는다. */
@@ -144,14 +159,24 @@ export function failedIds(
   return rows.filter((n) => n.status === 'FAILED' && (eventType === 'all' || n.eventType === eventType)).map((n) => n.id);
 }
 
+/**
+ * 한 페이지. 서버가 `items` 와 `total` 을 주는 모양을 그대로 흉내 낸다.
+ *
+ * `keep` 은 **이번 화면에서 다시 보낸 건**이다. 상태가 바뀌어 거르는 조건에서 벗어나도 그 자리에
+ * 남긴다 — 누르자마자 행이 사라지면 방금 무엇을 눌렀는지, 그래서 어떻게 됐는지 볼 수 없다.
+ * 다음에 다시 읽을 때 빠진다.
+ */
 export function queryNotifications(
   status: 'all' | NotificationStatus,
   eventType: 'all' | NotificationEvent,
   offset: number,
   rows: NotificationRow[] = notifications,
+  keep: ReadonlySet<number> = new Set(),
 ) {
   const matched = rows.filter(
-    (n) => (status === 'all' || n.status === status) && (eventType === 'all' || n.eventType === eventType),
+    (n) =>
+      (status === 'all' || n.status === status || keep.has(n.id)) &&
+      (eventType === 'all' || n.eventType === eventType),
   );
   return { items: matched.slice(offset, offset + PAGE_SIZE), total: matched.length };
 }

@@ -83,7 +83,7 @@ export function EventDialog({
         ) : confirmDelete ? (
           <>
             {/* 결정을 묻는 모달 — 안전한 쪽이 기본 포커스 (POL-0008) */}
-            <Button variant='secondary' autoFocus onClick={() => setConfirmDelete(false)} disabled={saving}>
+            <Button variant='secondary' data-autofocus onClick={() => setConfirmDelete(false)} disabled={saving}>
               취소
             </Button>
             <Button variant='destructive' onClick={handleDelete} loading={saving}>
