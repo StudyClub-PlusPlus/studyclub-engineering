@@ -44,8 +44,6 @@ flowchart LR
 
 ![알림 템플릿](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/notification-admin/assets/templates.png)
 
-![템플릿 추가](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/notification-admin/assets/template-add.png)
-
 <!-- spec:start template -->
 
 > 문구를 **보고 더한다.** 고치는 길은 아직 없다 — 편집 API 가 없다
