@@ -38,11 +38,17 @@ export type NotificationRow = {
 export const PAGE_SIZE = 20;
 
 /** 상태 문구와 색. **색만으로 가르지 않는다** — 문구를 늘 함께 적는다. */
+/**
+ * 상태 이름. **「발송」을 앞에 붙이지 않는다** — 발송 이력의 상태 칸이라 무엇의 상태인지는
+ * 열 이름이 이미 말한다. 짧아야 뱃지 옆에 재발송 아이콘이 설 자리가 남는다.
+ *
+ * 「완료」는 **보냈다는 뜻**이지 받았다는 뜻이 아니다 (POL-0009).
+ */
 export const STATUS_LABEL: Record<NotificationStatus, string> = {
-  PENDING: '발송 대기',
-  PROCESSING: '발송 중',
-  SENT: '발송 완료',
-  FAILED: '발송 실패',
+  PENDING: '대기',
+  PROCESSING: '처리 중',
+  SENT: '완료',
+  FAILED: '실패',
 };
 
 export const STATUS_TONE: Record<NotificationStatus, 'neutral' | 'inprogress' | 'recruiting' | 'error'> = {

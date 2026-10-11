@@ -24,23 +24,21 @@ type Filter = 'all' | NotificationStatus;
 type EventFilter = 'all' | (typeof EVENT_FILTERS)[number]['value'];
 type Phase = 'loading' | 'ready' | 'error';
 
-/** 실패 뱃지만 줄여 쓴다 — 그 옆에 재발송 아이콘이 서야 해서 자리를 내준다. */
-const BADGE_LABEL: Partial<Record<NotificationStatus, string>> = { FAILED: '실패' };
-
 /**
  * 알림 발송 이력.
  *
  * **조회만 하는 화면이다.** 재발송·취소·실패 사유 상세는 없다 — API 가 주지 않는 것을 화면이
  * 지어내면 운영자는 있지도 않은 수단을 찾는다.
  *
- * 「발송 완료」는 **보냈다는 뜻이지 받았다는 뜻이 아니다.** 수신함 도착·읽음은 알 수 없다.
+ * 「완료」는 **보냈다는 뜻이지 받았다는 뜻이 아니다.** 수신함 도착·읽음은 알 수 없다.
  */
 export function NotificationsTable() {
   const [rows, setRows] = useState(seeded);
   const [filter, setFilter] = useState<Filter>('all');
   const [eventType, setEventType] = useState<EventFilter>('all');
   const [page, setPage] = useState(1);
-  const [askAll, setAskAll] = useState(false);
+  // 다시 보내기 전에 묻는다. 한 건이면 그 수신처를, 묶음이면 건수를 적는다
+  const [asking, setAsking] = useState<{ ids: number[]; email?: string } | null>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   // 연타해도 **마지막 요청의 답만** 쓴다 — 먼저 보낸 요청이 늦게 와서 화면을 덮지 않게
   const latest = useRef(0);
@@ -115,7 +113,7 @@ export function NotificationsTable() {
             className='ml-auto'
             leadingIcon={<RotateCw size={13} />}
             disabled={phase === 'loading'}
-            onClick={() => setAskAll(true)}
+            onClick={() => setAsking({ ids: allFailed })}
           >
             전체 재발송
           </Button>
@@ -156,7 +154,7 @@ export function NotificationsTable() {
                 <td>
                   <span className='inline-flex items-center gap-1.5'>
                     <Badge tone={STATUS_TONE[row.status] ?? 'neutral'} dot className='whitespace-nowrap font-semibold'>
-                      {BADGE_LABEL[row.status] ?? STATUS_LABEL[row.status] ?? row.status}
+                      {STATUS_LABEL[row.status] ?? row.status}
                     </Badge>
                     {/*
                       실패한 건만 다시 보낸다. 상태 옆에 두면 **무엇을 다시 보내는지**가 한 줄에서 읽히고,
@@ -165,7 +163,7 @@ export function NotificationsTable() {
                     {row.status === 'FAILED' && (
                       <button
                         type='button'
-                        onClick={() => setRows((prev) => resend(prev, [row.id]))}
+                        onClick={() => setAsking({ ids: [row.id], email: row.recipientValue })}
                         aria-label='재발송'
                         title='재발송'
                         className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
@@ -209,19 +207,20 @@ export function NotificationsTable() {
         </tbody>
       </TableCard>
 
+      {/* 메일은 되돌릴 수 없다 — 지나가는 손끝에 눌려 나가지 않게 한 번 더 묻는다 (POL-0008) */}
       <Modal
-        open={askAll}
-        onClose={() => setAskAll(false)}
-        title='실패한 알림을 모두 다시 보냅니다'
+        open={asking !== null}
+        onClose={() => setAsking(null)}
+        title='알림을 재발송합니다'
         footer={
           <>
-            <Button variant='secondary' onClick={() => setAskAll(false)}>
+            <Button variant='secondary' onClick={() => setAsking(null)}>
               취소
             </Button>
             <Button
               onClick={() => {
-                setRows((prev) => resend(prev, allFailed));
-                setAskAll(false);
+                if (asking) setRows((prev) => resend(prev, asking.ids));
+                setAsking(null);
               }}
             >
               재발송
@@ -230,8 +229,17 @@ export function NotificationsTable() {
         }
       >
         <p className='text-sm text-fg-secondary'>
-          실패한 <strong className='tnum font-semibold text-fg'>{allFailed.length.toLocaleString()}건</strong>을 같은
-          수신처로 다시 보냅니다. 실패 기록은 그대로 남고, 새 건이 발송 대기로 들어갑니다.
+          {asking?.email ? (
+            <>
+              <strong className='font-semibold text-fg'>{maskEmail(asking.email)}</strong> 으로 다시 보냅니다.
+            </>
+          ) : (
+            <>
+              실패한 <strong className='tnum font-semibold text-fg'>{(asking?.ids.length ?? 0).toLocaleString()}건</strong>
+              을 같은 수신처로 다시 보냅니다.
+            </>
+          )}{' '}
+          실패 기록은 그대로 남고, 새 건이 「대기」로 들어갑니다.
         </p>
       </Modal>
 
