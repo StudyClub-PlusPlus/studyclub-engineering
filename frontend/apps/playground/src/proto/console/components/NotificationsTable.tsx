@@ -68,7 +68,7 @@ export function NotificationsTable() {
 
   return (
     <div className='flex flex-col gap-3'>
-      <div data-anno='history:2' className='flex flex-wrap items-center gap-3'>
+      <div data-anno='history:1' className='flex flex-wrap items-center gap-3'>
         {/*
           고르기 전에는 **축 이름만** 보여준다 — 「알림 이름 전체」처럼 적으면 이미 거른 것처럼 읽힌다.
           하나 고르고 나면 첫 줄이 「전체」로 바뀌어 되돌아갈 길이 생긴다.
@@ -87,12 +87,12 @@ export function NotificationsTable() {
           options={STATUS_FILTERS}
           onChange={changeFilter}
         />
-        <span data-anno='history:2-1' className='tnum text-sm text-fg-secondary'>
+        <span data-anno='history:1-1' className='tnum text-sm text-fg-secondary'>
           총 {total.toLocaleString()}건
         </span>
       </div>
 
-      <TableCard anno='history:3'>
+      <TableCard anno='history:2'>
         <thead>
           <tr>
             <th className='w-[160px] whitespace-nowrap'>요청 시각</th>
@@ -163,7 +163,7 @@ export function NotificationsTable() {
       </TableCard>
 
       {total > 0 && (
-        <div data-anno='history:4' className='flex items-center justify-center gap-4 pt-1'>
+        <div data-anno='history:3' className='flex items-center justify-center gap-4 pt-1'>
           {/* 아이콘만 둔다 — 앞뒤로 넘긴다는 뜻은 화살표가 이미 말한다 */}
           <Button
             size='sm'

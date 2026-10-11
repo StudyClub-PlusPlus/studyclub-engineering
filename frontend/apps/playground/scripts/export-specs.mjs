@@ -22,8 +22,15 @@ const REPO = path.resolve(ROOT, '../../..');
 const APP = path.join(ROOT, 'src/app/(proto)');
 const STORIES = path.join(REPO, '01-planning/stories');
 
-const MARK_START = '<!-- spec:start -->';
-const MARK_END = '<!-- spec:end -->';
+/**
+ * 자리 표시 — 화면마다 하나씩. `scope` 로 가른다.
+ *
+ *   <!-- spec:start template -->  … 여기에 들어간다 …  <!-- spec:end template -->
+ *
+ * 한 PRD 가 화면 둘을 담을 수 있어서(탭으로 갈린 지면) 이름을 붙인다. 캡처는 이 바깥에 두면
+ * 생성할 때 지워지지 않는다.
+ */
+const mark = (kind, scope) => `<!-- spec:${kind} ${scope} -->`;
 
 /** `spec.ts` 를 전부 찾는다. 화면마다 하나씩 있다. */
 async function findSpecs(dir) {
@@ -107,17 +114,17 @@ try {
       process.exitCode = 1;
       continue;
     }
-    const body = `${MARK_START}\n\n${toMarkdown(spec)}\n\n${MARK_END}`;
+    const scope = spec.scope ?? 'screen';
+    const start = mark('start', scope);
+    const end = mark('end', scope);
+    const body = `${start}\n\n${toMarkdown(spec)}\n\n${end}`;
     const current = await readFile(prd, 'utf8');
-    if (!current.includes(MARK_START)) {
-      console.error(`✗ ${spec.prd} — PRD 에 ${MARK_START} 자리가 없다`);
+    if (!current.includes(start)) {
+      console.error(`✗ ${spec.prd} — PRD 에 ${start} 자리가 없다`);
       process.exitCode = 1;
       continue;
     }
-    const next = current.replace(
-      new RegExp(`${MARK_START}[\\s\\S]*?${MARK_END}`),
-      () => body,
-    );
+    const next = current.replace(new RegExp(`${start}[\\s\\S]*?${end}`), () => body);
     if (next === current) continue;
     if (check) stale.push(spec.prd);
     else {
