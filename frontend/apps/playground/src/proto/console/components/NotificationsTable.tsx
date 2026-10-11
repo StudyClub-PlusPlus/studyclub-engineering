@@ -231,12 +231,14 @@ export function NotificationsTable() {
         <p className='text-sm text-fg-secondary'>
           {asking?.email ? (
             <>
-              <strong className='font-semibold text-fg'>{maskEmail(asking.email)}</strong> 으로 다시 보냅니다.
+              <strong className='font-semibold text-fg'>{maskEmail(asking.email)}</strong> 으로 알림을
+              재발송합니다.
             </>
           ) : (
             <>
-              실패한 <strong className='tnum font-semibold text-fg'>{(asking?.ids.length ?? 0).toLocaleString()}건</strong>
-              을 같은 수신처로 다시 보냅니다.
+              발송 실패한 알림{' '}
+              <strong className='tnum font-semibold text-fg'>{(asking?.ids.length ?? 0).toLocaleString()}건</strong>을
+              재발송합니다.
             </>
           )}{' '}
           실패 기록은 그대로 남고, 새 건이 「대기」로 들어갑니다.
