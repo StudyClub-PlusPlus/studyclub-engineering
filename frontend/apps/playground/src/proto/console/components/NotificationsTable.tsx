@@ -7,6 +7,7 @@ import { maskEmail } from '@console/lib/mask';
 import {
   EVENT_FILTERS,
   EVENT_LABEL,
+  failedIds,
   notifications as seeded,
   resend,
   PAGE_SIZE,
@@ -16,12 +17,15 @@ import {
   queryNotifications,
   type NotificationStatus,
 } from '@console/lib/notifications';
-import { Badge, Button } from '@studyclub/ui';
-import { ChevronLeft, ChevronRight, Eye, RotateCw } from 'lucide-react';
+import { Badge, Button, Modal } from '@studyclub/ui';
+import { ChevronLeft, ChevronRight, Eye, EyeOff, RotateCw } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
 type EventFilter = 'all' | (typeof EVENT_FILTERS)[number]['value'];
 type Phase = 'loading' | 'ready' | 'error';
+
+/** 실패 뱃지만 줄여 쓴다 — 그 옆에 재발송 아이콘이 서야 해서 자리를 내준다. */
+const BADGE_LABEL: Partial<Record<NotificationStatus, string>> = { FAILED: '실패' };
 
 /**
  * 알림 발송 이력.
@@ -36,6 +40,7 @@ export function NotificationsTable() {
   const [filter, setFilter] = useState<Filter>('all');
   const [eventType, setEventType] = useState<EventFilter>('all');
   const [page, setPage] = useState(1);
+  const [askAll, setAskAll] = useState(false);
   const [phase, setPhase] = useState<Phase>('loading');
   // 연타해도 **마지막 요청의 답만** 쓴다 — 먼저 보낸 요청이 늦게 와서 화면을 덮지 않게
   const latest = useRef(0);
@@ -46,6 +51,8 @@ export function NotificationsTable() {
     [filter, eventType, offset, rows],
   );
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // 거른 조건에 걸린 **실패 건 전체**. 보고 있는 페이지에 한정하지 않는다
+  const allFailed = useMemo(() => (filter === 'FAILED' ? failedIds(eventType, rows) : []), [filter, eventType, rows]);
 
   // 프로토는 서버가 없다. 불러오는 사이의 화면을 보여주려고 지연만 흉내 낸다.
   useEffect(() => {
@@ -96,6 +103,23 @@ export function NotificationsTable() {
         <span data-anno='history:1-1' className='tnum text-sm text-fg-secondary'>
           총 {total.toLocaleString()}건
         </span>
+        {/*
+          실패만 걸렀을 때만 선다 — 다른 조건에서는 성공한 건까지 묶여 같은 메일이 두 번 간다.
+          누르는 즉시 보내지 않고 몇 건인지 알린 뒤 다시 묻는다 (POL-0008).
+        */}
+        {filter === 'FAILED' && allFailed.length > 0 && (
+          <Button
+            data-anno='history:1-2'
+            size='sm'
+            variant='secondary'
+            className='ml-auto'
+            leadingIcon={<RotateCw size={13} />}
+            disabled={phase === 'loading'}
+            onClick={() => setAskAll(true)}
+          >
+            전체 재발송
+          </Button>
+        )}
       </div>
 
       <TableCard anno='history:2'>
@@ -105,16 +129,15 @@ export function NotificationsTable() {
             <th className='w-[150px] whitespace-nowrap'>알림 조건</th>
             <th className='w-[80px] whitespace-nowrap'>채널</th>
             <th>수신 주소</th>
-            <th className='w-[110px] whitespace-nowrap'>상태</th>
+            <th className='w-[130px] whitespace-nowrap'>상태</th>
             <th className='w-[160px] whitespace-nowrap'>발송 시각</th>
-            <th className='w-[90px] whitespace-nowrap' />
           </tr>
         </thead>
         <tbody>
           {phase === 'loading' &&
             Array.from({ length: PAGE_SIZE }, (_, i) => (
               <tr key={`skeleton-${i}`}>
-                {Array.from({ length: 7 }, (__, c) => (
+                {Array.from({ length: 6 }, (__, c) => (
                   <td key={c}>
                     <span className='block h-3.5 w-full max-w-[160px] animate-pulse rounded bg-surface-2' />
                   </td>
@@ -131,32 +154,36 @@ export function NotificationsTable() {
                 {/* 가린 채로 두고 필요한 줄만 펼친다 — 유저 목록과 같은 규칙 (POL-0007) */}
                 <EmailCell email={row.recipientValue} />
                 <td>
-                  <Badge tone={STATUS_TONE[row.status] ?? 'neutral'} dot className='whitespace-nowrap font-semibold'>
-                    {STATUS_LABEL[row.status] ?? row.status}
-                  </Badge>
+                  <span className='inline-flex items-center gap-1.5'>
+                    <Badge tone={STATUS_TONE[row.status] ?? 'neutral'} dot className='whitespace-nowrap font-semibold'>
+                      {BADGE_LABEL[row.status] ?? STATUS_LABEL[row.status] ?? row.status}
+                    </Badge>
+                    {/*
+                      실패한 건만 다시 보낸다. 상태 옆에 두면 **무엇을 다시 보내는지**가 한 줄에서 읽히고,
+                      대부분 비어 있을 칼럼 하나를 표 끝에 두지 않아도 된다.
+                    */}
+                    {row.status === 'FAILED' && (
+                      <button
+                        type='button'
+                        onClick={() => setRows((prev) => resend(prev, [row.id]))}
+                        aria-label='재발송'
+                        title='재발송'
+                        className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+                      >
+                        <RotateCw size={13} />
+                      </button>
+                    )}
+                  </span>
                 </td>
                 <td className='tnum whitespace-nowrap text-fg-secondary'>
                   {row.sentAt ? stamp(row.sentAt) : <span className='text-fg-muted'>—</span>}
-                </td>
-                <td className='whitespace-nowrap'>
-                  {/* 실패한 건만 다시 보낸다. 실패 기록은 지우지 않고 새 건이 발송 대기로 선다 */}
-                  {row.status === 'FAILED' && (
-                    <Button
-                      size='sm'
-                      variant='secondary'
-                      leadingIcon={<RotateCw size={13} />}
-                      onClick={() => setRows((prev) => resend(prev, row.id))}
-                    >
-                      재발송
-                    </Button>
-                  )}
                 </td>
               </tr>
             ))}
 
           {phase === 'ready' && items.length === 0 && (
             <tr>
-              <td colSpan={7} className='py-16 text-center'>
+              <td colSpan={6} className='py-16 text-center'>
                 <p className='text-sm text-fg-muted'>
                   {filter === 'all' ? '아직 알림 발송 이력이 없습니다.' : '선택한 상태의 발송 이력이 없습니다.'}
                 </p>
@@ -171,7 +198,7 @@ export function NotificationsTable() {
 
           {phase === 'error' && (
             <tr>
-              <td colSpan={7} className='py-16 text-center'>
+              <td colSpan={6} className='py-16 text-center'>
                 <p className='text-sm text-fg-secondary'>발송 이력을 불러오지 못했습니다. 다시 시도해 주세요.</p>
                 <Button size='sm' variant='secondary' className='mt-3' onClick={() => setPhase('loading')}>
                   다시 시도
@@ -181,6 +208,32 @@ export function NotificationsTable() {
           )}
         </tbody>
       </TableCard>
+
+      <Modal
+        open={askAll}
+        onClose={() => setAskAll(false)}
+        title='실패한 알림을 모두 다시 보냅니다'
+        footer={
+          <>
+            <Button variant='secondary' onClick={() => setAskAll(false)}>
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                setRows((prev) => resend(prev, allFailed));
+                setAskAll(false);
+              }}
+            >
+              재발송
+            </Button>
+          </>
+        }
+      >
+        <p className='text-sm text-fg-secondary'>
+          실패한 <strong className='tnum font-semibold text-fg'>{allFailed.length.toLocaleString()}건</strong>을 같은
+          수신처로 다시 보냅니다. 실패 기록은 그대로 남고, 새 건이 발송 대기로 들어갑니다.
+        </p>
+      </Modal>
 
       {total > 0 && (
         <div data-anno='history:3' className='flex items-center justify-center gap-4 pt-1'>
@@ -217,22 +270,19 @@ function EmailCell({ email }: { email: string }) {
   const [shown, setShown] = useState(false);
   return (
     <td className='truncate text-fg-secondary'>
-      {shown ? (
-        <span title={email}>{email}</span>
-      ) : (
-        <span className='inline-flex items-center gap-1.5'>
-          {maskEmail(email)}
-          <button
-            type='button'
-            onClick={() => setShown(true)}
-            aria-label={`${maskEmail(email)} 전체 주소 보기`}
-            title='전체 주소 보기'
-            className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-          >
-            <Eye size={14} />
-          </button>
-        </span>
-      )}
+      <span className='inline-flex items-center gap-1.5'>
+        <span title={shown ? email : undefined}>{shown ? email : maskEmail(email)}</span>
+        {/* 같은 자리의 같은 버튼이 다시 가린다 — 펼친 줄을 되돌릴 길이 없으면 옆사람이 볼 때까지 남는다 */}
+        <button
+          type='button'
+          onClick={() => setShown((v) => !v)}
+          aria-label={shown ? '전체 주소 가리기' : '전체 주소 보기'}
+          title={shown ? '가리기' : '전체 주소 보기'}
+          className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+        >
+          {shown ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </span>
     </td>
   );
 }

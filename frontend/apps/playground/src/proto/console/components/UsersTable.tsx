@@ -19,7 +19,7 @@ import {
 } from '@console/lib/roles';
 import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
 import { Badge, Modal, type BadgeTone } from '@studyclub/ui';
-import { Check, ChevronDown, Eye, Info, Minus } from 'lucide-react';
+import { Check, ChevronDown, Eye, EyeOff, Info, Minus } from 'lucide-react';
 
 /** 한 화면에 20명. 스크롤로 다 내리는 것보다 「몇 번째 장을 보고 있는가」가 남는 편이 낫다. */
 const PAGE_SIZE = 20;
@@ -34,28 +34,26 @@ type RoleFilter = 'all' | RoleKey;
  * 자리를 비우거나 화면을 공유할 때 수십 명의 주소가 그대로 드러난다. 필요한 사람이 한 줄씩 펼친다.
  *
  * 펼친 것은 그 줄에만 남고 다른 줄에 옮겨 가지 않는다 — 한 번 누르면 목록 전체가 열리는 토글을
- * 두지 않는다.
+ * 두지 않는다. 펼친 줄은 **같은 버튼으로 다시 가린다.**
  */
 function EmailCell({ email }: { email: string }) {
   const [shown, setShown] = useState(false);
   return (
     <td className='max-w-0 truncate text-fg-secondary'>
-      {shown ? (
-        <span title={email}>{email}</span>
-      ) : (
-        <span className='inline-flex items-center gap-1.5'>
-          <span className='tnum'>{maskEmail(email)}</span>
-          <button
-            type='button'
-            onClick={() => setShown(true)}
-            aria-label={`${maskEmail(email)} 전체 주소 보기`}
-            title='전체 주소 보기'
-            className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-          >
-            <Eye size={14} />
-          </button>
+      <span className='inline-flex items-center gap-1.5'>
+        <span className='tnum' title={shown ? email : undefined}>
+          {shown ? email : maskEmail(email)}
         </span>
-      )}
+        <button
+          type='button'
+          onClick={() => setShown((v) => !v)}
+          aria-label={shown ? '전체 주소 가리기' : '전체 주소 보기'}
+          title={shown ? '가리기' : '전체 주소 보기'}
+          className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+        >
+          {shown ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </span>
     </td>
   );
 }

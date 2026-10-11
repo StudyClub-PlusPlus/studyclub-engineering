@@ -104,23 +104,38 @@ export const notifications: NotificationRow[] = Array.from({ length: 240 }, (_, 
 
 /** 한 페이지. 서버가 `items` 와 `total` 을 주는 모양을 그대로 흉내 낸다. */
 /**
- * 실패한 건을 다시 보낸다.
+ * 실패한 건을 다시 보낸다. 한 건이든 거른 전체든 같은 길로 지나간다.
  *
  * **실패 건은 그대로 두고 새 건을 만든다** — 지워 버리면 언제 왜 실패했는지가 사라지고,
  * 같은 행을 고쳐 쓰면 한 번에 성공한 건과 두 번 만에 나간 건을 구분할 수 없다.
  * 새 건은 발송 대기로 들어가 다음 차례에 집어간다.
+ *
+ * 실패가 아닌 건은 조용히 건너뛴다 — 같은 메일이 두 번 가는 쪽이 더 나쁜 일이다.
  */
-export function resend(rows: NotificationRow[], id: number): NotificationRow[] {
-  const target = rows.find((r) => r.id === id);
-  if (!target || target.status !== 'FAILED') return rows;
-  const again: NotificationRow = {
+export function resend(rows: NotificationRow[], ids: number[]): NotificationRow[] {
+  const wanted = new Set(ids);
+  const targets = rows.filter((r) => wanted.has(r.id) && r.status === 'FAILED');
+  if (targets.length === 0) return rows;
+
+  let nextId = Math.max(...rows.map((r) => r.id));
+  const requestedAt = new Date().toISOString();
+  // 새 건은 요청한 순서대로 쌓는다 — 묶음으로 보내도 맨 위가 가장 나중 건이 되게
+  const again = targets.map<NotificationRow>((target) => ({
     ...target,
-    id: Math.max(...rows.map((r) => r.id)) + 1,
-    createdAt: new Date().toISOString(),
+    id: ++nextId,
+    createdAt: requestedAt,
     status: 'PENDING',
     sentAt: null,
-  };
-  return [again, ...rows];
+  }));
+  return [...again.reverse(), ...rows];
+}
+
+/** 지금 거른 조건에 걸린 **실패 건 전체**. 보고 있는 페이지에 한정하지 않는다. */
+export function failedIds(
+  eventType: 'all' | NotificationEvent,
+  rows: NotificationRow[] = notifications,
+): number[] {
+  return rows.filter((n) => n.status === 'FAILED' && (eventType === 'all' || n.eventType === eventType)).map((n) => n.id);
 }
 
 export function queryNotifications(
