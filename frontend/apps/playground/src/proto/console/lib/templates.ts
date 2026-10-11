@@ -26,9 +26,10 @@ export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
 
 export type NotificationTemplate = {
   id: number;
-  /** 알림 이름 — 목록에서 사람이 알아보는 이름. */
-  name: string;
-  /** 언제 보내는가. 조건 하나에 템플릿 하나다. */
+  /**
+   * 언제 보내는가. **이것이 곧 알림의 이름이다** — 조건 하나에 템플릿 하나라 따로 이름을 받지 않는다.
+   * 이름을 따로 두면 「가입 환영」이라는 템플릿이 탈퇴 때 나가는 일이 생긴다.
+   */
   trigger: NotificationTrigger;
   /** 지금은 메일뿐이다. 디스코드는 보낼 수단이 아직 없다. */
   channel: 'EMAIL';
@@ -43,7 +44,6 @@ export const TEMPLATE_CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일' 
 export const templates: NotificationTemplate[] = [
   {
     id: 1,
-    name: '가입 환영',
     trigger: 'USER_REGISTERED',
     channel: 'EMAIL',
     subject: 'StudyClub++에 오신 걸 환영합니다',

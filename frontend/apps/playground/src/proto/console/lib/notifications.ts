@@ -11,15 +11,15 @@
 export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
 
 /**
- * 알림 — **템플릿 하나가 곧 알림 하나**다 (POL-0009).
+ * 알림 조건 — **언제 보냈는가.** 템플릿의 조건과 같은 값이다 (POL-0009).
  *
- * 운영자에게 보이는 것은 알림 이름뿐이고, 「종류」라는 구분 축을 따로 두지 않는다.
- * 지금 나가는 것은 가입 환영 하나뿐이며, 템플릿을 더하면 여기도 함께 늘어난다.
+ * 이름을 따로 두지 않는다 — 조건 하나에 템플릿 하나라 조건이 곧 그 알림이다.
  */
-export type NotificationEvent = 'USER_REGISTERED';
+export type NotificationEvent = 'USER_REGISTERED' | 'USER_WITHDRAWN';
 
 export const EVENT_LABEL: Record<NotificationEvent, string> = {
-  USER_REGISTERED: '가입 환영',
+  USER_REGISTERED: '회원가입 완료 시',
+  USER_WITHDRAWN: '회원 탈퇴 시',
 };
 
 export type NotificationRow = {
@@ -92,7 +92,8 @@ export const notifications: NotificationRow[] = Array.from({ length: 240 }, (_, 
   const row: NotificationRow = {
     id: 2000 - i,
     createdAt: created.toISOString(),
-    eventType: 'USER_REGISTERED',
+    // 가입이 대부분이고 탈퇴가 가끔 섞인다 — 조건 필터가 무슨 일을 하는지 보이게
+    eventType: seed % 9 === 0 ? 'USER_WITHDRAWN' : 'USER_REGISTERED',
     recipientType: 'EMAIL',
     recipientValue: address(seed),
     status,
@@ -102,12 +103,33 @@ export const notifications: NotificationRow[] = Array.from({ length: 240 }, (_, 
 }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
 /** 한 페이지. 서버가 `items` 와 `total` 을 주는 모양을 그대로 흉내 낸다. */
+/**
+ * 실패한 건을 다시 보낸다.
+ *
+ * **실패 건은 그대로 두고 새 건을 만든다** — 지워 버리면 언제 왜 실패했는지가 사라지고,
+ * 같은 행을 고쳐 쓰면 한 번에 성공한 건과 두 번 만에 나간 건을 구분할 수 없다.
+ * 새 건은 발송 대기로 들어가 다음 차례에 집어간다.
+ */
+export function resend(rows: NotificationRow[], id: number): NotificationRow[] {
+  const target = rows.find((r) => r.id === id);
+  if (!target || target.status !== 'FAILED') return rows;
+  const again: NotificationRow = {
+    ...target,
+    id: Math.max(...rows.map((r) => r.id)) + 1,
+    createdAt: new Date().toISOString(),
+    status: 'PENDING',
+    sentAt: null,
+  };
+  return [again, ...rows];
+}
+
 export function queryNotifications(
   status: 'all' | NotificationStatus,
   eventType: 'all' | NotificationEvent,
   offset: number,
+  rows: NotificationRow[] = notifications,
 ) {
-  const matched = notifications.filter(
+  const matched = rows.filter(
     (n) => (status === 'all' || n.status === status) && (eventType === 'all' || n.eventType === eventType),
   );
   return { items: matched.slice(offset, offset + PAGE_SIZE), total: matched.length };

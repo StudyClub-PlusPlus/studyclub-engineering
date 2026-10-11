@@ -8,7 +8,7 @@ export const SPEC: ScreenSpec = {
   prd: 'notification-admin',
   notes: [
     '사이드바는 「알림」 하나다. 템플릿과 발송 이력은 **화면 안 탭**으로 가른다 — 사이드바를 두 단으로 만들면 다른 메뉴와 깊이가 달라져 훑기 어렵다',
-    '**조회만 하는 화면이다.** 재발송·발송 취소·실패 사유 상세·전체 주소 보기는 없다 — API 가 주지 않는 것을 화면이 지어내면 운영자는 없는 수단을 찾는다',
+    '**실패한 건을 다시 보내는 것 말고는 조회만 한다.** 발송 취소·실패 사유 상세는 없다 — API 가 주지 않는 것을 화면이 지어내면 운영자는 없는 수단을 찾는다',
     '알림 템플릿은 별개 화면이다. 이 이력에서 템플릿을 열어도 **지금 등록된 문구**이지 그때 나간 원문이 아니다',
     '프로토는 서버가 없다. 불러오는 사이의 화면을 보여주려고 지연만 흉내 낸다',
   ],
@@ -16,10 +16,10 @@ export const SPEC: ScreenSpec = {
     {
       n: '1',
       title: '거르는 칸',
-      display: ['알림 이름 · 상태 두 축. 고르기 전에는 축 이름만 보인다 ([POL-0008](../../../../../01-planning/_registry/policies/POL-0008-screen-rules.md))'],
+      display: ['알림 조건 · 상태 두 축. 고르기 전에는 축 이름만 보인다 ([POL-0008](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0008-screen-rules.md))'],
       behavior: ['고르면 첫 페이지로 돌아간다 — 3페이지를 보던 중에 거르면 그 페이지가 없을 수 있다'],
       policy: [
-        '거르는 축은 **등록된 템플릿의 이름**에서 온다 — 선택지를 따로 관리하지 않는다 ([POL-0009](../../../../../01-planning/_registry/policies/POL-0009-notification.md))',
+        '거르는 축은 **등록된 템플릿의 조건**에서 온다 — 선택지를 따로 관리하지 않는다 ([POL-0009](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0009-notification.md))',
         '전체일 때는 상태 조건을 서버에 보내지 않는다',
       ],
     },
@@ -32,15 +32,21 @@ export const SPEC: ScreenSpec = {
     {
       n: '2',
       title: '이력 표',
-      display: ['요청 시각 · 알림 이름 · 채널 · 수신 주소 · 상태 · 발송 시각'],
-      behavior: ['요청 시각 내림차순 고정. 열 머리를 눌러 정렬하지 않는다', '행을 눌러도 아무 일도 없다 — 상세 화면이 없다'],
+      display: ['요청 시각 · 알림 조건 · 채널 · 수신 주소 · 상태 · 발송 시각 · 재발송'],
+      behavior: [
+        '요청 시각 내림차순 고정. 열 머리를 눌러 정렬하지 않는다',
+        '행을 눌러도 아무 일도 없다 — 상세 화면이 없다',
+        '**발송 실패한 건에만 재발송이 선다.** 누르면 같은 수신처로 새 건이 발송 대기로 들어간다',
+      ],
       policy: [
         '**수신 주소는 서버가 가린 값을 그대로 쓴다** — 화면에서 풀거나 다시 가리지 않는다',
         '상태는 **문구와 색을 함께** 쓴다. 색만으로 가르면 색을 못 가리는 사람이 읽을 수 없다',
         '「발송 완료」는 **보냈다는 뜻**이지 받았다는 뜻이 아니다 — 수신함 도착·읽음은 알 수 없다',
         '모르는 상태값이 오면 원문 코드를 회색으로 그대로 적는다. 빈칸으로 두지 않는다',
-        '시각은 **보는 사람의 시간대**로 적고 약칭을 붙인다 ([POL-0006](../../../../../01-planning/_registry/policies/POL-0006-timezone.md)). 읽을 수 없는 값이면 원문을 그대로 둔다',
+        '시각은 **보는 사람의 시간대**로 적고 약칭을 붙인다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md)). 읽을 수 없는 값이면 원문을 그대로 둔다',
         'id·템플릿 id 는 화면에 내보내지 않는다 — 운영자가 쓸 일이 없다',
+        '**재발송은 실패 건을 고치지 않는다.** 그 기록은 그대로 두고 새 건을 만든다 — 지우면 언제 왜 실패했는지가 사라지고, 같은 행을 고쳐 쓰면 한 번에 나간 건과 두 번 만에 나간 건을 가릴 수 없다',
+        '성공·대기·처리 중인 건에는 재발송을 두지 않는다 — 같은 메일이 두 번 간다',
       ],
       data: ['`createdAt` · `eventType` · `recipientType` · `recipientValue`(마스킹) · `status` · `sentAt`'],
     },

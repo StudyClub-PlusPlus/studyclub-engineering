@@ -14,9 +14,9 @@ import {
 import { Button, Input, Modal, Select, Textarea } from '@studyclub/ui';
 import { ArrowLeft, Plus } from 'lucide-react';
 
-type Draft = { name: string; trigger: NotificationTrigger; subject: string; body: string };
+type Draft = { trigger: NotificationTrigger; subject: string; body: string };
 
-const EMPTY: Draft = { name: '', trigger: 'USER_REGISTERED', subject: '', body: '' };
+const EMPTY: Draft = { trigger: 'USER_REGISTERED', subject: '', body: '' };
 
 /**
  * 알림 템플릿.
@@ -33,7 +33,7 @@ export function TemplatesTable() {
   // 조건 하나에 템플릿 하나다 — 같은 계기에 두 통을 보내지 않는다
   const taken = new Set(rows.map((r) => r.trigger));
   const free = TRIGGERS.filter((t) => !taken.has(t.value));
-  const blocked = !draft.name.trim() || !draft.subject.trim() || !draft.body.trim() || taken.has(draft.trigger);
+  const blocked = !draft.subject.trim() || !draft.body.trim() || taken.has(draft.trigger);
 
   function openAdd() {
     setDraft({ ...EMPTY, trigger: free[0]?.value ?? 'USER_REGISTERED' });
@@ -46,7 +46,7 @@ export function TemplatesTable() {
     const now = new Date().toISOString();
     setRows((prev) => [
       // 채널은 메일 하나뿐이라 고르게 하지 않는다 — 고를 것이 하나면 묻지 않는다
-      { id: Math.max(0, ...prev.map((r) => r.id)) + 1, ...draft, name: draft.name.trim(), channel: 'EMAIL', updatedAt: now },
+      { id: Math.max(0, ...prev.map((r) => r.id)) + 1, ...draft, channel: 'EMAIL', updatedAt: now },
       ...prev,
     ]);
     setDraft(EMPTY);
@@ -65,8 +65,7 @@ export function TemplatesTable() {
         </button>
 
         <div data-anno='template:4' className='card'>
-          <Row label='알림 이름'>{open.name}</Row>
-          <Row label='발송 조건'>{TRIGGER_LABEL[open.trigger] ?? open.trigger}</Row>
+          <Row label='알림 조건'>{TRIGGER_LABEL[open.trigger] ?? open.trigger}</Row>
           <Row label='채널'>{TEMPLATE_CHANNEL_LABEL[open.channel] ?? open.channel}</Row>
           <Row label='제목'>{open.subject}</Row>
           <Row label='본문'>
@@ -90,8 +89,7 @@ export function TemplatesTable() {
       <TableCard anno='template:3'>
         <thead>
           <tr>
-            <th className='w-[160px] whitespace-nowrap'>알림 이름</th>
-            <th className='w-[150px] whitespace-nowrap'>발송 조건</th>
+            <th className='w-[180px] whitespace-nowrap'>알림 조건</th>
             <th className='w-[90px] whitespace-nowrap'>채널</th>
             <th>제목</th>
             <th className='w-[180px] whitespace-nowrap'>마지막 수정</th>
@@ -102,10 +100,9 @@ export function TemplatesTable() {
             <tr key={t.id}>
               <td className='whitespace-nowrap'>
                 <Button variant='ghost' size='sm' className='-ml-2 font-semibold' onClick={() => setOpen(t)}>
-                  {t.name}
+                  {TRIGGER_LABEL[t.trigger] ?? t.trigger}
                 </Button>
               </td>
-              <td className='whitespace-nowrap text-fg-secondary'>{TRIGGER_LABEL[t.trigger] ?? t.trigger}</td>
               <td className='whitespace-nowrap text-fg-secondary'>{TEMPLATE_CHANNEL_LABEL[t.channel] ?? t.channel}</td>
               <td className='truncate text-fg-secondary'>{t.subject}</td>
               <td className='tnum whitespace-nowrap text-fg-secondary'>{stamp(t.updatedAt)}</td>
@@ -128,16 +125,9 @@ export function TemplatesTable() {
         }
       >
         <div data-anno='template:2-1' className='flex flex-col gap-4'>
-          <Input
-            label='알림 이름'
-            required
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            placeholder='모집 시작 안내'
-          />
           {/* 알림은 이름이 아니라 이 조건으로 나간다 — 조건이 없으면 보낼 계기가 없다 */}
           <Select
-            label='발송 조건'
+            label='알림 조건'
             required
             value={draft.trigger}
             onChange={(e) => setDraft({ ...draft, trigger: e.target.value as NotificationTrigger })}

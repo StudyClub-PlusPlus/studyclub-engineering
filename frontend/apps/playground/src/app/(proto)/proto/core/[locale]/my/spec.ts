@@ -2,6 +2,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 
 /** 프로필 수정 — 크루가 자기 정보를 고친다. */
 export const SPEC: ScreenSpec = {
+  prd: 'crew-edit-profile',
   screen: '마이페이지 (사용자 사이트)',
   chip: '프로필 수정',
   scope: 'profile',

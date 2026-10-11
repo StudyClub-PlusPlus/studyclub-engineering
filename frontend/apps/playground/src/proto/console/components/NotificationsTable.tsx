@@ -7,6 +7,8 @@ import { maskEmail } from '@console/lib/mask';
 import {
   EVENT_FILTERS,
   EVENT_LABEL,
+  notifications as seeded,
+  resend,
   PAGE_SIZE,
   STATUS_FILTERS,
   STATUS_LABEL,
@@ -15,7 +17,7 @@ import {
   type NotificationStatus,
 } from '@console/lib/notifications';
 import { Badge, Button } from '@studyclub/ui';
-import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, RotateCw } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
 type EventFilter = 'all' | (typeof EVENT_FILTERS)[number]['value'];
@@ -30,6 +32,7 @@ type Phase = 'loading' | 'ready' | 'error';
  * 「발송 완료」는 **보냈다는 뜻이지 받았다는 뜻이 아니다.** 수신함 도착·읽음은 알 수 없다.
  */
 export function NotificationsTable() {
+  const [rows, setRows] = useState(seeded);
   const [filter, setFilter] = useState<Filter>('all');
   const [eventType, setEventType] = useState<EventFilter>('all');
   const [page, setPage] = useState(1);
@@ -38,7 +41,10 @@ export function NotificationsTable() {
   const latest = useRef(0);
 
   const offset = (page - 1) * PAGE_SIZE;
-  const { items, total } = useMemo(() => queryNotifications(filter, eventType, offset), [filter, eventType, offset]);
+  const { items, total } = useMemo(
+    () => queryNotifications(filter, eventType, offset, rows),
+    [filter, eventType, offset, rows],
+  );
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // 프로토는 서버가 없다. 불러오는 사이의 화면을 보여주려고 지연만 흉내 낸다.
@@ -74,7 +80,7 @@ export function NotificationsTable() {
           하나 고르고 나면 첫 줄이 「전체」로 바뀌어 되돌아갈 길이 생긴다.
         */}
         <FilterSelect
-          label='알림 이름'
+          label='알림 조건'
           value={eventType}
           disabled={phase === 'loading'}
           options={EVENT_FILTERS}
@@ -96,18 +102,19 @@ export function NotificationsTable() {
         <thead>
           <tr>
             <th className='w-[160px] whitespace-nowrap'>요청 시각</th>
-            <th className='w-[100px] whitespace-nowrap'>알림 이름</th>
+            <th className='w-[150px] whitespace-nowrap'>알림 조건</th>
             <th className='w-[80px] whitespace-nowrap'>채널</th>
             <th>수신 주소</th>
             <th className='w-[110px] whitespace-nowrap'>상태</th>
             <th className='w-[160px] whitespace-nowrap'>발송 시각</th>
+            <th className='w-[90px] whitespace-nowrap' />
           </tr>
         </thead>
         <tbody>
           {phase === 'loading' &&
             Array.from({ length: PAGE_SIZE }, (_, i) => (
               <tr key={`skeleton-${i}`}>
-                {Array.from({ length: 6 }, (__, c) => (
+                {Array.from({ length: 7 }, (__, c) => (
                   <td key={c}>
                     <span className='block h-3.5 w-full max-w-[160px] animate-pulse rounded bg-surface-2' />
                   </td>
@@ -131,12 +138,25 @@ export function NotificationsTable() {
                 <td className='tnum whitespace-nowrap text-fg-secondary'>
                   {row.sentAt ? stamp(row.sentAt) : <span className='text-fg-muted'>—</span>}
                 </td>
+                <td className='whitespace-nowrap'>
+                  {/* 실패한 건만 다시 보낸다. 실패 기록은 지우지 않고 새 건이 발송 대기로 선다 */}
+                  {row.status === 'FAILED' && (
+                    <Button
+                      size='sm'
+                      variant='secondary'
+                      leadingIcon={<RotateCw size={13} />}
+                      onClick={() => setRows((prev) => resend(prev, row.id))}
+                    >
+                      재발송
+                    </Button>
+                  )}
+                </td>
               </tr>
             ))}
 
           {phase === 'ready' && items.length === 0 && (
             <tr>
-              <td colSpan={6} className='py-16 text-center'>
+              <td colSpan={7} className='py-16 text-center'>
                 <p className='text-sm text-fg-muted'>
                   {filter === 'all' ? '아직 알림 발송 이력이 없습니다.' : '선택한 상태의 발송 이력이 없습니다.'}
                 </p>
@@ -151,7 +171,7 @@ export function NotificationsTable() {
 
           {phase === 'error' && (
             <tr>
-              <td colSpan={6} className='py-16 text-center'>
+              <td colSpan={7} className='py-16 text-center'>
                 <p className='text-sm text-fg-secondary'>발송 이력을 불러오지 못했습니다. 다시 시도해 주세요.</p>
                 <Button size='sm' variant='secondary' className='mt-3' onClick={() => setPhase('loading')}>
                   다시 시도

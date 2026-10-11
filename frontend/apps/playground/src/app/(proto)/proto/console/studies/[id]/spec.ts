@@ -11,6 +11,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 
 /** 참석자 목록 — 지금 누가 이 스터디에 참여하고 있는가. */
 export const ATTENDEE_SPEC: ScreenSpec = {
+  prd: 'captain-view-attendees',
   screen: '스터디 운영 (운영 콘솔)',
   chip: '참석자 목록',
   scope: 'attendee',
@@ -84,6 +85,7 @@ export const ATTENDEE_SPEC: ScreenSpec = {
 
 /** 스터디 수정·삭제 — 정보 탭에서 한다. */
 export const EDIT_SPEC: ScreenSpec = {
+  prd: 'study-edit',
   screen: '스터디 운영 (운영 콘솔)',
   chip: '스터디 수정·삭제',
   scope: 'edit',
@@ -399,6 +401,7 @@ export const SCHEDULE_SPEC: ScreenSpec = {
 
 /** 출석 관리 — 반마다 누가 몇 번 나왔는가를 보고 고친다. */
 export const ATTENDANCE_SPEC: ScreenSpec = {
+  prd: 'captain-view-attendance-roster',
   screen: '스터디 운영 (운영 콘솔)',
   chip: '출석 관리',
   scope: 'attendance',
@@ -525,6 +528,7 @@ export const ATTENDANCE_SPEC: ScreenSpec = {
 
 /** 반 편성 — 신청자들의 가능한 시간을 모아 반을 만든다. */
 export const CLASS_SPEC: ScreenSpec = {
+  prd: 'captain-assign-classes',
   screen: '스터디 운영 (운영 콘솔)',
   chip: '반 편성',
   scope: 'class',
@@ -626,6 +630,7 @@ export const CLASS_SPEC: ScreenSpec = {
 
 /** 신청 폼 설계 — 캡틴이 이 코호트의 신청서 질문을 만든다. */
 export const FORM_SPEC: ScreenSpec = {
+  prd: 'captain-application-form',
   screen: '스터디 운영 (운영 콘솔)',
   chip: '신청 폼 설계',
   scope: 'form',
@@ -700,6 +705,7 @@ export const FORM_SPEC: ScreenSpec = {
 
 /** 신청 결과 모아보기 — 캡틴이 설계한 신청 폼 추가 질문에 지원자들이 뭐라고 답했는지 본다. */
 export const RESULTS_SPEC: ScreenSpec = {
+  prd: 'captain-application-results',
   screen: '스터디 운영 (운영 콘솔)',
   chip: '신청 결과 모아보기',
   scope: 'results',

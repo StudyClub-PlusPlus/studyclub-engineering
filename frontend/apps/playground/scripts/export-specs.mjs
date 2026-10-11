@@ -57,7 +57,8 @@ async function loadSpec(file, tmp) {
     external: ['react', 'next/*', '@/proto/annotate'],
   });
   const mod = await import(pathToFileURL(out).href);
-  return mod.SPEC;
+  // 한 지면에 Story 가 여럿이면 파일이 여러 명세를 내보낸다 (`SPECS`).
+  return mod.SPECS ?? (mod.SPEC ? [mod.SPEC] : []);
 }
 
 /** ScreenSpec → 마크다운. PRD 의 다른 절과 같은 모양으로 적는다. */
@@ -97,17 +98,18 @@ let skipped = 0;
 
 try {
   for (const file of await findSpecs(APP)) {
-    let spec;
+    let specs;
     try {
-      spec = await loadSpec(file, tmp);
+      specs = await loadSpec(file, tmp);
     } catch {
       continue; // 화면명세가 아닌 spec.ts 는 건너뛴다
     }
-    if (!spec?.entries?.length) continue;
-    if (!spec.prd) {
-      skipped += 1;
-      continue;
-    }
+    for (const spec of specs) {
+      if (!spec?.entries?.length) continue;
+      if (!spec.prd) {
+        skipped += 1;
+        continue;
+      }
     const prd = path.join(STORIES, spec.prd, 'PRD.md');
     if (!existsSync(prd)) {
       console.error(`✗ ${spec.prd} — PRD 가 없다 (${path.relative(REPO, file)})`);
@@ -126,10 +128,11 @@ try {
     }
     const next = current.replace(new RegExp(`${start}[\\s\\S]*?${end}`), () => body);
     if (next === current) continue;
-    if (check) stale.push(spec.prd);
-    else {
-      await writeFile(prd, next);
-      wrote += 1;
+      if (check) stale.push(`${spec.prd}/${scope}`);
+      else {
+        await writeFile(prd, next);
+        wrote += 1;
+      }
     }
   }
 } finally {

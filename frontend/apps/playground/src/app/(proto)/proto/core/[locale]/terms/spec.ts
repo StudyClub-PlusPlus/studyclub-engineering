@@ -5,6 +5,8 @@ import type { ScreenSpec } from '@/proto/annotate';
  * 출처: Story PRD 「크루로서, 이용약관과 개인정보처리방침을 확인할 수 있다.」
  */
 export const SPEC: ScreenSpec = {
+  prd: 'crew-view-terms-privacy',
+  scope: 'terms',
   screen: '이용약관',
   notes: [
     '푸터의 이용약관·개인정보처리방침 링크는 모든 화면 하단에 있다. 로그인 없이 보이며, 개인정보처리방침은 다른 고지와 구분되게 표시한다 — 이 화면 밖이라 번호를 매기지 않는다',
