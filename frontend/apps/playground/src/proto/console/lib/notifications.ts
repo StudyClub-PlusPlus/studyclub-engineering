@@ -18,8 +18,8 @@ export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
 export type NotificationEvent = 'USER_REGISTERED' | 'USER_WITHDRAWN';
 
 export const EVENT_LABEL: Record<NotificationEvent, string> = {
-  USER_REGISTERED: '회원가입 완료 시',
-  USER_WITHDRAWN: '회원 탈퇴 시',
+  USER_REGISTERED: '회원가입',
+  USER_WITHDRAWN: '회원 탈퇴',
 };
 
 export type NotificationRow = {

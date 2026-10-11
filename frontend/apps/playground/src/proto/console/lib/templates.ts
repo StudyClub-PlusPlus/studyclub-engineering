@@ -16,8 +16,8 @@
 export type NotificationTrigger = 'USER_REGISTERED' | 'USER_WITHDRAWN';
 
 export const TRIGGERS: { value: NotificationTrigger; label: string }[] = [
-  { value: 'USER_REGISTERED', label: '회원가입 완료 시' },
-  { value: 'USER_WITHDRAWN', label: '회원 탈퇴 시' },
+  { value: 'USER_REGISTERED', label: '회원가입' },
+  { value: 'USER_WITHDRAWN', label: '회원 탈퇴' },
 ];
 
 export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
