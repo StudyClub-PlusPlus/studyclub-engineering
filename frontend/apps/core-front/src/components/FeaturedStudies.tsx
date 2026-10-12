@@ -36,8 +36,8 @@ export function FeaturedStudies({
         </Link>
       </div>
       <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-        {featured.map((s) => (
-          <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
+        {featured.map((s, i) => (
+          <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} source='landing' />
         ))}
       </div>
     </section>

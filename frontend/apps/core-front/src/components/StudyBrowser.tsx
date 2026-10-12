@@ -8,6 +8,7 @@ import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
 import { useStudies } from '@/features/studies/queries';
+import { track } from '@/lib/analytics';
 import type { StudyPhaseFilter, StudySearch, StudyTimezoneFilter } from '@/lib/api';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
@@ -135,7 +136,13 @@ export function StudyBrowser({
   const failed = isError;
 
   const hasQuery = query.trim().length > 0;
-  const commitSearch = () => setFilters({ q: input });
+  const commitSearch = () => {
+    track({
+      name: 'Study Searched',
+      props: { query_length: input.trim().length, result_count: studies.length, has_results: studies.length > 0 },
+    });
+    setFilters({ q: input });
+  };
   const clearSearch = () => {
     setInput('');
     setFilters(URL_DEFAULTS);
@@ -162,7 +169,17 @@ export function StudyBrowser({
                   type='button'
                   role='tab'
                   aria-selected={active}
-                  onClick={() => setFilters({ status: option.value })}
+                  onClick={() => {
+                    track({
+                      name: 'Study Filter Tab Changed',
+                      props: {
+                        tab: option.value as 'all' | 'recruiting' | 'ongoing' | 'closed',
+                        result_count: studies.length,
+                        category: filters.category,
+                      },
+                    });
+                    setFilters({ status: option.value });
+                  }}
                   className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
                 >
                   {option.label}
@@ -213,7 +230,13 @@ export function StudyBrowser({
             <FilterOption
               key={option.value}
               active={category === option.value}
-              onClick={() => setFilters({ category: option.value })}
+              onClick={() => {
+                track({
+                  name: 'Study Category Filtered',
+                  props: { category: option.value, tab: filters.status, result_count: studies.length },
+                });
+                setFilters({ category: option.value });
+              }}
             >
               {option.label}
             </FilterOption>
@@ -239,8 +262,8 @@ export function StudyBrowser({
           aria-busy={loading}
           className={`grid gap-4 transition-opacity sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}
         >
-          {studies.map((s) => (
-            <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
+          {studies.map((s, i) => (
+            <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} />
           ))}
         </div>
       ) : hasQuery ? (

@@ -3,6 +3,7 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
+import { track } from '@/lib/analytics';
 import { buildGoogleAuthUrl, isConfigured, setSuggestedNickname, setUser } from '@/lib/auth';
 import type { SessionUser } from '@/lib/auth';
 import {
@@ -55,12 +56,15 @@ function LoginForm() {
             setSuggestedNickname(null);
           }
           if (!account.onboardingCompletedAt) {
+            track({ name: 'Auth Login Completed', props: { is_new_user: true, next_path: next } });
             router.replace(`/${locale}/onboarding?next=${encodeURIComponent(next)}`);
             return;
           }
         }
+        track({ name: 'Auth Login Completed', props: { is_new_user: false, next_path: next } });
         router.replace(next);
       } catch (e) {
+        track({ name: 'Auth Login Failed', props: { error_message: String(e), http_status: 0 } });
         setError(loginErrorFromCaught(e));
       } finally {
         setLoading(false);
@@ -75,6 +79,7 @@ function LoginForm() {
       if (!data || data.source !== 'studyclub-oauth') return;
       popupRef.current?.close();
       if (data.error) {
+        track({ name: 'Auth OAuth Cancelled', props: { error: String(data.error) } });
         setError(loginErrorFromOAuthPopup(String(data.error)));
         return;
       }
@@ -99,14 +104,13 @@ function LoginForm() {
       'studyclub-google-login',
       `width=${w},height=${h},left=${left},top=${top}`,
     );
+    track({ name: 'Auth Google Login Clicked', props: { popup_blocked: !popupRef.current } });
   }
 
   return (
     <div className='mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 py-16 text-center'>
       <h1 className='text-2xl font-bold tracking-tight'>StudyClub++ 로그인</h1>
-      <p className='mt-2 text-sm text-fg-muted'>
-        로그인하면 수강생 페이지(내 스터디)를 볼 수 있어요.
-      </p>
+      <p className='mt-2 text-sm text-fg-muted'>로그인하면 수강생 페이지(내 스터디)를 볼 수 있어요.</p>
 
       <button
         type='button'

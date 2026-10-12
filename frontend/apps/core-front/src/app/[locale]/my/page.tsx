@@ -12,6 +12,7 @@ import { CalendarClock, Heart } from 'lucide-react';
 import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { useStudies } from '@/features/studies/queries';
+import { track } from '@/lib/analytics';
 import { getUser, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
@@ -192,6 +193,15 @@ export default function MyPage() {
   }
 
   function handleCancel(studyId: string) {
+    const app = applications.find((a) => a.studyId === studyId);
+    track({
+      name: 'My Application Cancelled',
+      props: {
+        study_id: String(studyId),
+        applied_at: app?.appliedAt ?? '',
+        days_since_apply: app ? Math.floor((Date.now() - new Date(app.appliedAt).getTime()) / 86400000) : 0,
+      },
+    });
     cancelApplication(studyId);
     setApplications(getApplications());
   }

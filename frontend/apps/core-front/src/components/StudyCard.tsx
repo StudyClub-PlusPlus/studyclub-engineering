@@ -1,8 +1,11 @@
+'use client';
+
 import Link from 'next/link';
 
 import { CalendarClock, Globe, Rocket } from 'lucide-react';
 
 import { categoryGradient, categoryMeta } from './StudyThumb';
+import { track } from '@/lib/analytics';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { recruitBadge, studyStartValue, studyTimezoneLabel } from '@/lib/recruit';
@@ -13,7 +16,18 @@ function shortDate(value: string): string {
   return m ? `${m[1]}/${m[2]}` : value;
 }
 
-export function StudyCard({ study, locale }: { study: Study; locale: Locale; lead?: Operator; index?: number }) {
+export function StudyCard({
+  study,
+  locale,
+  index,
+  source = 'studies_list',
+}: {
+  study: Study;
+  locale: Locale;
+  lead?: Operator;
+  index?: number;
+  source?: 'landing' | 'studies_list';
+}) {
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
   const badge = recruitBadge(study, locale);
   const startValue = studyStartValue(study, locale);
@@ -27,6 +41,19 @@ export function StudyCard({ study, locale }: { study: Study; locale: Locale; lea
         href={`/${locale}/studies/${study.study_id}`}
         className='absolute inset-0 z-[1] rounded-[inherit]'
         aria-label={t(study.title, locale)}
+        onClick={() =>
+          track({
+            name: 'Study Card Clicked',
+            props: {
+              study_id: String(study.study_id),
+              study_title_ko: study.title.ko,
+              study_category: study.category,
+              study_status: study.status as 'recruiting' | 'ongoing' | 'closed',
+              source,
+              card_position: index ?? 0,
+            },
+          })
+        }
       />
 
       {/* 컬러 헤더 — 고정 높이. 색은 카테고리를 따라간다(같은 분야 = 같은 색) */}
