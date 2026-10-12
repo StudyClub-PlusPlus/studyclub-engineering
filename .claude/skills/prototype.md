@@ -60,6 +60,15 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
   - 제목 = 정규문장 · `기준 프로토타입:` 한 줄
   - §1 기본설명 (흐름 다이어그램 · 완료 기준) · §2 화면명세 (`spec.ts` 번호와 1:1) · §3 시스템 요건 · §4 미확정
 - `spec.ts` 의 번호·`display`·`behavior`·`policy`·`data` 를 §2 의 내용·동작·정책·데이터로 옮긴다. 번호를 바꾸지 않는다
+- **`§2 화면명세` 안에 `spec.ts` 의 `scope` 마다 마커 쌍을 반드시 넣는다** — `scope` 생략 시 `screen`
+
+  ```markdown
+  <!-- spec:start {scope} -->
+
+  <!-- spec:end {scope} -->
+  ```
+
+  마커를 넣은 뒤 `frontend/` 에서 `pnpm --filter playground export-specs` 를 실행하면 내용을 자동으로 채운다. **마커가 없으면 playground CI(`export-specs --check`)가 막는다.**
 - 프로토 링크는 배포된 절대 URL 만. 배포 전이면 지면 이름만 적는다
 - prd-guide §5 자가 검증 체크리스트를 통과시킨다
 

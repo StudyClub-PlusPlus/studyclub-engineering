@@ -27,6 +27,23 @@ const CLEAN_NAMES = [
 
 const REGIONS: MemberRegion[] = ["KR", "KR", "KR", "NA", "KR", "NA", "ETC", "KR", "NA", "KR"];
 
+/**
+ * 메일 아이디 — 이름을 로마자로 적은 모양.
+ *
+ * `member540@` 처럼 전부 같은 꼴로 만들면 **가린 주소가 모두 똑같아 보여** 마스킹이 일하는지
+ * 알 수 없다. 사람마다 첫 글자와 길이가 달라야 화면이 실제처럼 읽힌다.
+ * 도메인은 `example.com` 으로 둔다 — 공개 레포라 진짜로 보이는 주소를 적지 않는다.
+ */
+const MAIL_DOMAINS = ["gmail.com", "naver.com", "kakao.com", "daum.net", "outlook.com"];
+
+const ROMAN: Record<string, string> = {
+  지원: "jiwon", 민서: "minseo", 도윤: "doyun", 서연: "seoyeon", 하준: "hajun",
+  예린: "yerin", 시우: "siwoo", 수아: "sua", 지호: "jiho", 채원: "chaewon",
+  건우: "gunwoo", 유나: "yuna", 민준: "minjun", 소율: "soyul", 준서: "junseo",
+  다인: "dain", 현우: "hyunwoo", 지안: "jian", 태윤: "taeyun", 은서: "eunseo",
+  성민: "seongmin", 가온: "gaon", 루아: "rua", 세아: "sea", 정우: "jungwoo",
+};
+
 /** 문자열 → 정수 해시. 같은 스터디는 항상 같은 명단을 만든다. */
 function hash(s: string): number {
   let h = 2166136261;
@@ -274,7 +291,7 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
     crew.push({
       id: `${study.id}-c${i + 1}`,
       name,
-      email: `member${(pick(s + 1, 900) + 100).toString()}@example.com`,
+      email: `${ROMAN[name] ?? "member"}${pick(s + 1, 90) + 10}@${MAIL_DOMAINS[pick(s + 2, MAIL_DOMAINS.length)]}`,
       region: REGIONS[pick(s + 5, REGIONS.length)],
       appliedAt: addWeeks(baseDate(study.recruitment?.deadline), -1 - pick(s + 9, 3)),
       pastStudies: past,

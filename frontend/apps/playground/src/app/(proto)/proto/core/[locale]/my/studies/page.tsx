@@ -30,7 +30,7 @@ import { CalendarClock } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
  * 내 스터디.

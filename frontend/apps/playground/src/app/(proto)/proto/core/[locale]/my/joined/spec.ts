@@ -6,6 +6,7 @@ import type { ScreenSpec } from '@/proto/annotate';
  * Story ID 는 발번 대장에서 실제로 받기 전까지 비워 둔다.
  */
 export const SPEC: ScreenSpec = {
+  prd: 'crew-joined-studies',
   screen: '내 스터디',
   notes: [
     '기본 탭은 참여중 — 크루가 이 화면에 오는 이유는 지금 들어가는 스터디를 확인하는 것이다',

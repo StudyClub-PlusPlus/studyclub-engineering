@@ -2,6 +2,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 
 /** 회원 탈퇴 — 크루가 스스로 계정을 지운다. */
 export const SPEC: ScreenSpec = {
+  prd: 'crew-leave',
   screen: '회원 탈퇴 (사용자 사이트)',
   chip: '회원 탈퇴',
   scope: 'leave',
@@ -72,6 +73,18 @@ export const SPEC: ScreenSpec = {
         '유예를 두지 않는다 — 두면 처리방침의 「탈퇴 시까지 보유」와 어긋나 설명이 늘어난다',
       ],
       data: ['DELETE /api/me — 미구현'],
+    },
+    {
+      n: '5',
+      title: '상태별 화면',
+      display: [
+        '기본 — 안내 두 줄 · 사유 · 탈퇴 · 취소',
+        '맡은 스터디 있음 — 위에 경고가 하나 더 붙는다',
+        '재확인 — 경고 안에 「그래도 탈퇴하시겠습니까?」와 버튼 둘',
+        '처리 중 — 탈퇴가 눌리지 않는다',
+        '완료 — 홈으로 보내고 로그아웃한다',
+      ],
+      policy: ['되묻는 줄이 붙어도 지면이 뛰지 않는다 — 읽던 자리를 잃는다'],
     },
   ],
 };

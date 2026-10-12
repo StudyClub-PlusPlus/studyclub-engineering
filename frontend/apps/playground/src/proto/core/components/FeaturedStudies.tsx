@@ -6,7 +6,7 @@ import { StudyCard } from '@core/components/StudyCard';
 import type { Locale, Operator } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /** TODO(api): GET /api/studies — Featured 스터디 목록 연동 */
 export function FeaturedStudies({

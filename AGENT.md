@@ -111,8 +111,9 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   프론트는 `pnpm test`. 포맷이 걸리면 `./gradlew spotlessApply` 로 고친다.
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
   **playground 를 고쳤으면 커밋 전에 `pnpm --filter playground run build` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에서 바로 배포되는 유일한 앱이라(`playground-beta.yaml`) 다른 앱의 CI 게이트를 안 거친다.
+  `01-planning/stories/**` 또는 `playground/**/spec.ts` 를 건드렸으면 `pnpm --filter playground export-specs --check` 도 통과해야 한다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
-- **Story PRD** — 화면 기획은 `01-planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`01-planning/_registry/stories.md`](01-planning/_registry/stories.md)
+- **Story PRD** — 화면 기획은 `01-planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`01-planning/_registry/stories.md`](01-planning/_registry/stories.md). **`§2 화면명세` 안에 `spec.ts` `scope` 마다 `<!-- spec:start {scope} -->` / `<!-- spec:end {scope} -->` 마커를 넣고 `pnpm --filter playground export-specs` 로 내용을 채운다** — 마커 없이 PR 을 올리면 playground CI 가 막는다
 - **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.
   목록의 공유 칸은 **`공유전`** 으로 둔다 — 팀에는 모아서 한 번에 알리고 그때 `공유됨 (MM-DD)` 로 바꾼다 ([§공유](docs/share/README.md#공유--모아서-한-번에)).

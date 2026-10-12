@@ -1,6 +1,8 @@
 import type { ScreenSpec } from '@/proto/annotate';
 
 export const SPEC: ScreenSpec = {
+  prd: 'crew-browse-studies',
+  scope: 'browse',
   screen: '스터디 목록 필터링',
   notes: [
     '필터는 제출 버튼 없이 선택·입력 즉시 결과 목록에 반영된다',

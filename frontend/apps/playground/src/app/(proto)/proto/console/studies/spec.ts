@@ -8,6 +8,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 
 /** 스터디 공개 — 등록해 둔 스터디를 사이트에 세운다. */
 export const PUBLISH_SPEC: ScreenSpec = {
+  prd: 'captain-publish-study',
   screen: '스터디 관리 (운영 콘솔)',
   chip: '스터디 공개',
   scope: 'publish',
@@ -76,6 +77,7 @@ export const PUBLISH_SPEC: ScreenSpec = {
 
 /** 스터디 목록 — 기획 항목이 목록에 어떻게 보이는가. */
 export const LIST_SPEC: ScreenSpec = {
+  prd: 'captain-list-all-studies',
   screen: '스터디 관리 (운영 콘솔)',
   chip: '스터디 목록',
   scope: 'list',
@@ -188,7 +190,7 @@ export const LIST_SPEC: ScreenSpec = {
         '정렬하면 1페이지로 돌아간다',
       ],
       policy: [
-        '기본 순서는 모집중 먼저, 그 안에서 마감이 임박한 순이다 — 운영자가 손댈 것부터 위로',
+        '기본 순서는 모집중 먼저, 그 안에서 마감이 가까운 순이다 — 운영자가 손댈 것부터 위로',
         '값이 없는 행(예: 모집 시작일이 없는 미공개)은 오름·내림과 관계없이 맨 뒤로 보낸다',
         '프로그램 · 스터디 · 상태 · 카테고리 · 종류 · 시간대 · 모집 시작일 · 모집 종료일 · 모집 상태 · 지원 현황 · 스터디 시작일 · 신청 폼 · 공개 상태 · 작성자 모두 정렬된다',
       ],

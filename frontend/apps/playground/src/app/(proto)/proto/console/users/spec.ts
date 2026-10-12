@@ -9,6 +9,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 
 /** 전체 유저 목록 — 누가 있는가. */
 export const LIST_SPEC: ScreenSpec = {
+  prd: 'captain-list-users',
   screen: '유저 (운영 콘솔)',
   chip: '유저 목록',
   scope: 'list',
@@ -60,6 +61,7 @@ export const LIST_SPEC: ScreenSpec = {
 
 /** 권한 부여 — 계정에 캡틴을 주거나 거둔다. */
 export const ROLE_SPEC: ScreenSpec = {
+  prd: 'captain-grant-roles',
   screen: '유저 (운영 콘솔)',
   chip: '권한 부여',
   scope: 'role',

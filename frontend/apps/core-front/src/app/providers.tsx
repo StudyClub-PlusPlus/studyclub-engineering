@@ -6,11 +6,20 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { mockHandlerGroups } from '@studyclub/mock/msw';
 import { QueryClientProvider } from '@tanstack/react-query';
 
+import { PageViewTracker } from '@/components/PageViewTracker';
+import { initAmplitude } from '@/lib/amplitude';
 import { getQueryClient } from '@/lib/query-client';
 
 const MSWProvider = dynamic(() => import('@studyclub/mock/msw').then((m) => m.MSWProvider), { ssr: false });
 
 const loadWorker = () => import('msw/browser').then(({ setupWorker }) => setupWorker());
+
+function AmplitudeInit() {
+  useEffect(() => {
+    initAmplitude();
+  }, []);
+  return null;
+}
 
 function MswQueryInvalidator() {
   useEffect(() => {
@@ -29,6 +38,8 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <MSWProvider mockHandlerGroups={mockHandlerGroups} loadWorker={loadWorker} fallback={null}>
       <QueryClientProvider client={queryClient}>
+        <AmplitudeInit />
+        <PageViewTracker />
         <MswQueryInvalidator />
         {children}
       </QueryClientProvider>

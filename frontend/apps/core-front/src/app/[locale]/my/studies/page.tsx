@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { type Study } from '@studyclub/mock';
 import { CalendarClock } from 'lucide-react';
@@ -26,6 +26,7 @@ import { getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { getApplications } from '@/lib/me';
+import { useUrlState } from '@/lib/use-url-state';
 
 /**
  * 내 스터디.
@@ -39,17 +40,31 @@ import { getApplications } from '@/lib/me';
 
 type Tab = 'today' | 'attendance';
 
+/** URL 쿼리 — `?tab=attendance`. */
+const URL_DEFAULTS = { tab: 'today' };
+const URL_ALLOWED = { tab: ['today', 'attendance'] };
+
 function fmtTime(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+// 목록 조건을 URL 로 든다(useSearchParams) — 정적 프리렌더에서는 Suspense 경계가 있어야 레이아웃이 함께 렌더된다
 export default function MyStudiesPage() {
+  return (
+    <Suspense>
+      <MyStudiesPageContent />
+    </Suspense>
+  );
+}
+
+function MyStudiesPageContent() {
   const params = useParams();
   const router = useRouter();
   const locale = ((params?.locale as string) ?? 'ko') as Locale;
 
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<Tab>('today');
+  const [query, setQuery] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const tab = query.tab as Tab;
   const [mineIds, setMineIds] = useState<string[]>([]);
   /** 출석을 누르면 올려서 다시 읽는다(저장소가 localStorage 라 렌더 트리거가 없다). */
   const [tick, setTick] = useState(0);
@@ -98,7 +113,7 @@ export default function MyStudiesPage() {
           <button
             key={tb.key}
             type='button'
-            onClick={() => setTab(tb.key)}
+            onClick={() => setQuery({ tab: tb.key })}
             className={`rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
               tab === tb.key ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
             }`}
