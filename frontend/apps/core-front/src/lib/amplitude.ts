@@ -1,7 +1,6 @@
 import * as amplitude from '@amplitude/analytics-browser';
 
 const API_KEY = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY;
-const ENVIRONMENT = process.env.NODE_ENV === 'production' ? 'production' : 'development';
 
 let initialized = false;
 
@@ -27,7 +26,7 @@ export function initAmplitude() {
     type: 'enrichment',
     execute: async (event) => {
       const locale = window.location.pathname.startsWith('/en') ? 'en' : 'ko';
-      event.event_properties = { environment: ENVIRONMENT, platform: 'web', locale, ...event.event_properties };
+      event.event_properties = { platform: 'web', locale, ...event.event_properties };
       return event;
     },
   });
