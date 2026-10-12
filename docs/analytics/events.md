@@ -23,11 +23,10 @@
 
 enrichment plugin이 자동 주입 — 개별 이벤트에 별도 명시 불필요.
 
-| 속성          | 값                            | 주입 방식                 |
-| ------------- | ----------------------------- | ------------------------- |
-| `environment` | `production` \| `development` | `amplitude.ts` enrichment |
-| `platform`    | `web`                         | `amplitude.ts` enrichment |
-| `locale`      | `ko` \| `en`                  | `amplitude.ts` enrichment |
+| 속성       | 값           | 주입 방식                 |
+| ---------- | ------------ | ------------------------- |
+| `platform` | `web`        | `amplitude.ts` enrichment |
+| `locale`   | `ko` \| `en` | `amplitude.ts` enrichment |
 
 ---
 
