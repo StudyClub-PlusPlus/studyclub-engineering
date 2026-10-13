@@ -121,7 +121,7 @@ ACCOUNT_IDENTITY
 | Method | Path | 설명 | 인증 | 상태 |
 |---|---|---|---|---|
 | POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+ACCOUNT_IDENTITY 생성, 기존이면 조회. 동일 이메일 충돌 시 `ACCOUNT_LINK_REQUIRED`를 반환하며 토큰을 발급하지 않음 | X | 구현완료 |
-| GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) | 구현완료 |
+| GET | `/api/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용. 처음엔 `/auth/me` 였고 프로필 수정 뒤 마이페이지 경로로 옮겼다 | O (미완료도 가능) | 구현완료 |
 | GET | `/api/nicknames/availability` | 입력 중 닉네임 사용 가능 여부 조회 | O (미완료도 가능) | 구현완료 |
 | POST | `/accounts/onboarding` | 만 14세 이상 확인 후 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) | 구현완료 |
 
@@ -145,7 +145,7 @@ ACCOUNT_IDENTITY
 - 이메일 없음 / `email_verified != true` → `400 SOCIAL_LOGIN_EMAIL_REQUIRED`. 프론트는 이 코드로 "가입 불가 안내" 화면을 다른 400 케이스와 구분해 분기한다.
 - 처음 보는 `(issuer, sub)`이지만 동일 이메일의 ACCOUNT가 이미 있음 → `409 ACCOUNT_LINK_REQUIRED`. ACCOUNT·ACCOUNT_IDENTITY를 생성하거나 JWT를 발급하지 않는다. 프론트는 기존 로그인 수단으로 로그인한 뒤 계정을 연결하라고 안내한다.
 
-### `GET /auth/me`
+### `GET /api/me`
 
 응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
 

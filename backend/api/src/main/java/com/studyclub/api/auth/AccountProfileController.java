@@ -4,6 +4,7 @@ import com.studyclub.api.auth.dto.AccountDtos.MarketingConsentView;
 import com.studyclub.api.auth.dto.AccountDtos.UpdateMarketingConsentRequest;
 import com.studyclub.api.auth.dto.AccountDtos.UpdateProfileImageRequest;
 import com.studyclub.api.auth.dto.AccountDtos.UpdateProfileRequest;
+import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.api.auth.security.RequireOnboarding;
 import com.studyclub.common.error.BusinessException;
@@ -22,13 +23,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 마이페이지 내 정보. 회원 전용 — 온보딩 미완료 계정은 {@code @RequireOnboarding} 가드가 403 ONBOARDING_REQUIRED 로 막는다.
+ * 마이페이지 내 정보. 조회만 온보딩 미완료 계정도 허용한다 — 프론트가 이 응답의 {@code onboardingCompletedAt} 으로 온보딩 화면으로 보낼지 정한다.
+ * 수정·마케팅 수신 동의는 {@code @RequireOnboarding} 가드가 403 ONBOARDING_REQUIRED 로 막는다.
  *
  * <p>온보딩 완료와 달리 {@code @Valid} 를 쓴다 — 멱등 체크가 검증보다 먼저여야 할 이유가 없다.
  */
-@Tag(name = "내 정보", description = "마이페이지 프로필 수정·마케팅 수신 동의")
+@Tag(name = "내 정보", description = "마이페이지 내 정보 조회·프로필 수정·마케팅 수신 동의")
 @SecurityRequirement(name = "bearerAuth")
-@RequireOnboarding
 @RestController
 @RequestMapping("/api/me")
 public class AccountProfileController {
@@ -39,9 +40,16 @@ public class AccountProfileController {
         this.accountProfileService = accountProfileService;
     }
 
+    @Operation(summary = "내 정보 조회", description = "온보딩 미완료 사용자도 조회 가능.")
+    @GetMapping
+    public AccountSelfView me(Authentication authentication) {
+        return accountProfileService.get(authenticatedAccountId(authentication));
+    }
+
     @Operation(summary = "프로필 수정 — 닉네임·타임존")
+    @RequireOnboarding
     @PatchMapping
-    public AccountView updateProfile(
+    public AccountSelfView updateProfile(
             Authentication authentication, @Valid @RequestBody UpdateProfileRequest request) {
         return accountProfileService.update(authenticatedAccountId(authentication), request);
     }
@@ -61,12 +69,14 @@ public class AccountProfileController {
     }
 
     @Operation(summary = "마케팅 수신 동의 조회")
+    @RequireOnboarding
     @GetMapping("/marketing-consent")
     public MarketingConsentView getMarketingConsent(Authentication authentication) {
         return accountProfileService.getMarketingConsent(authenticatedAccountId(authentication));
     }
 
     @Operation(summary = "마케팅 수신 동의 변경")
+    @RequireOnboarding
     @PutMapping("/marketing-consent")
     public MarketingConsentView changeMarketingConsent(
             Authentication authentication,
