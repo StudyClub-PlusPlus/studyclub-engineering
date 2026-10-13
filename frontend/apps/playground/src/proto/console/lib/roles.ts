@@ -201,6 +201,7 @@ export function requestRoleChange(id: string): Promise<void> {
       h ^= id.charCodeAt(i);
       h = Math.imul(h, 16777619);
     }
-    setTimeout(() => (Math.abs(h) % 6 === 0 ? reject(new Error('save failed')) : resolve()), 900);
+    // 세 줄에 한 줄꼴로 실패한다 — 실패했을 때의 화면도 눌러 봐야 하므로 드물게 두지 않는다
+    setTimeout(() => (Math.abs(h) % 3 === 0 ? reject(new Error('save failed')) : resolve()), 900);
   });
 }

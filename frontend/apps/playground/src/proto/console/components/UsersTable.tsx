@@ -84,7 +84,7 @@ function RoleBadgeSelect({
 }: {
   role: AccountRole;
   blocked: string | null;
-  /** 저장을 기다리는 중. 배지는 **지금 저장된 값** 그대로 두고 옆에 그 사실만 알린다. */
+  /** 저장을 기다리는 중. 배지는 **지금 저장된 값** 그대로 두고 옆에서 돌기만 한다. */
   saving: boolean;
   onChange: (next: AccountRole) => void;
 }) {
@@ -127,15 +127,13 @@ function RoleBadgeSelect({
     );
   }
 
-  // 저장을 기다리는 동안에는 다시 고를 수 없다 — 두 번 눌러 두 번 저장되지 않게
+  // 저장을 기다리는 동안에는 다시 고를 수 없다 — 두 번 눌러 두 번 저장되지 않게.
+  // 도는 것 하나면 된다 — 「변경 중」이라고 적으면 줄마다 글이 늘고 배지가 밀린다
   if (saving) {
     return (
       <span data-anno='role:1' className='inline-flex items-center gap-1.5'>
         {badge}
-        <span className='inline-flex items-center gap-1 text-xs text-fg-muted'>
-          <Loader2 size={12} className='animate-spin' />
-          변경 중
-        </span>
+        <Loader2 size={13} className='animate-spin text-fg-muted' aria-label='저장 중' />
       </span>
     );
   }
