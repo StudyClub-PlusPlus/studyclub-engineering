@@ -272,8 +272,11 @@ export function UsersTable() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [page, setPage] = useState(1);
-  // 저장을 기다리는 줄. 그 줄의 배지는 잠기고 「변경 중」이 붙는다
+  // 저장을 기다리는 줄. 그 줄의 배지는 잠기고 옆에서 하나가 돈다
   const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
+  // 바꾸는 함수가 **지금 값**을 읽어야 한다. 의존성에 넣으면 줄이 바뀔 때마다 함수가 새로 만들어진다
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   // TODO(api): 로그인한 계정 id 로 교체. 자기 권한을 스스로 못 내리게 하는 데 쓴다.
   const actorId = rows.find((r) => r.account === 'captain')?.id ?? '';
@@ -286,6 +289,8 @@ export function UsersTable() {
    * 보여야 하는 값이라, 기다리는 동안에는 **원래 배지를 그대로 두고** 변경 중이라는 사실만 알린다.
    */
   const changeAccount = useCallback(async (id: string, account: AccountRole) => {
+    // 지금과 같은 값을 고른 것은 **아무 일도 아니다** — 보내지도, 바뀌었다고 알리지도 않는다
+    if (rowsRef.current.find((m) => m.id === id)?.account === account) return;
     setSaving((prev) => new Set([...prev, id]));
     try {
       await requestRoleChange(id);
