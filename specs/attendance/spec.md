@@ -10,6 +10,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/me/studies/{studyId}/attendances | 출석 명부 조회 | O (그 분반 참여자·네비게이터·캡틴) | 스펙확정 |
+| POST | /api/me/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (네비게이터 — 그 분반 LEADER) | 스펙확정 |
 | GET | /api/admin/studies/{studyId}/attendances | 출석 명부 조회 | O (캡틴) | 스펙확정 |
 | POST | /api/admin/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (캡틴) | 스펙확정 |
 
@@ -274,7 +275,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 400 | INVALID_INPUT | updates가 빈 배열 |
-| 403 | FORBIDDEN | LEADER 역할 없음 |
+| 403 | FORBIDDEN | 캡틴(SYSTEM_ROLE=ADMIN)이 아님 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
 | 400 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |
@@ -284,3 +285,48 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 ### 미확정
 
 - `[OPEN]` 버전 체크(낙관적 잠금) 필요 여부
+
+---
+
+## 출석 생성/수정 (upsert) — 사용자 사이트 (네비게이터)
+
+### 기본 정보
+
+- **Method**: POST
+- **Path**: `/api/me/studies/{studyId}/attendances`
+- **인증**: 필요 — 그 분반의 네비게이터(`PARTICIPANT_ROLE=LEADER`). 다른 분반 LEADER 또는 분반 MEMBER는 403.
+- **설명**: 네비게이터가 자신이 맡은 분반의 출석을 수정. 요청 구조는 `/api/admin/…` POST와 동일. 인증은 어노테이션 가드 대신 코드에서 `assertCaptainOrNavigatorOfGroup` 으로 검사한다 (`studyGroupId`가 request body에 있어 인터셉터가 읽지 못하기 때문).
+
+### Path Parameters
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| studyId | Long | 스터디 ID |
+
+### Query Parameters
+
+없음
+
+### Request Body
+
+`/api/admin/studies/{studyId}/attendances` POST 와 동일.
+
+```json
+{
+  "studyGroupId": 1,
+  "updates": [
+    { "meetingId": 1, "participantId": 20, "status": "PRESENT" }
+  ]
+}
+```
+
+### Response — 204 No Content
+
+응답 바디 없음.
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 403 | FORBIDDEN | 그 분반의 LEADER가 아님 (다른 분반 LEADER, MEMBER, 미참여자 포함) |
+| 나머지 | — | `/api/admin/…` POST 와 동일 |
