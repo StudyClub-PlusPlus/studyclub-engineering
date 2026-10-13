@@ -20,6 +20,10 @@ public record AttendanceResponse(
     public record ParticipantAttendance(
             long participantId,
             String displayName,
+            String participantRole,
+            boolean captain,
+            String participantStatus,
+            Instant leftAt,
             List<AttendanceEntry> attendances,
             Double attendanceRate) {}
 

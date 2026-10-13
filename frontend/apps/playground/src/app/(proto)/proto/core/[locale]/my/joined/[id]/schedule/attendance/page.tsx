@@ -43,7 +43,8 @@ export default function StudyManageAttendancePage() {
   const schedulePath = `/proto/core/${locale}/my/joined/${study.study_id}/schedule`;
 
   async function save(next: AttendanceBook) {
-    // TODO(api): POST /api/studies/{id}/groups/{groupId}/attendances — 바뀐 칸만 updates[] 로 한 번에.
+    // TODO(api): GET  /api/me/studies/{id}/attendances?studyGroupId={groupId}
+    //            POST /api/admin/studies/{id}/attendances — body: { studyGroupId, updates[] }
     await new Promise((r) => setTimeout(r, 400));
     saveGroupAttendance(study, next);
     setBook(next);
