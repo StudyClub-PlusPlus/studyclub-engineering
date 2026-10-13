@@ -259,13 +259,6 @@ function NavigatorCell({ studyIds }: { studyIds: string[] }) {
   );
 }
 
-/** 「캡틴으로」· 「크루로」 — 받침에 따라 조사를 고른다. 「(으)로」를 적어 두지 않는다. */
-function withParticle(label: string): string {
-  const code = label.charCodeAt(label.length - 1);
-  const hasFinal = code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 !== 0;
-  return `${label}${hasFinal ? '으로' : '로'}`;
-}
-
 /** 권한 칸. 범위는 표 제목 옆 한마디가 말한다. */
 function ScopeCell({ scope }: { scope: Scope }) {
   if (scope === 'none') return <Minus size={15} className='inline text-fg-placeholder' aria-label='없음' />;
@@ -297,10 +290,9 @@ export function UsersTable() {
     try {
       await requestRoleChange(id);
       setRows((list) => list.map((m) => (m.id === id ? { ...m, account } : m)));
-      // 디스코드 역할은 이 화면이 건드리지 못한다. 바꾼 사람이 그 사실을 바로 알아야 한다
-      toast.success(`권한을 ${withParticle(ROLE_LABEL[account])} 바꿨습니다. 디스코드 설정 변경은 운영자에게 요청해 주세요.`, {
-        duration: 6000,
-      });
+      // 디스코드 역할은 이 화면이 건드리지 못한다. 바꾼 사람이 그 사실을 바로 알아야 한다.
+      // 무엇으로 바뀌었는지는 배지가 그 자리에서 말하므로 여기서 또 말하지 않는다
+      toast.success('변경 성공. 디스코드 권한은 별도로 변경해야 합니다.', { duration: 6000 });
     } catch {
       // 바뀐 것이 없다. 배지는 원래 값 그대로다
       toast.error(
