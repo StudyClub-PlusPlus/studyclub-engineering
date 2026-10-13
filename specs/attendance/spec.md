@@ -9,10 +9,10 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/me/studies/{studyId}/attendances | 출석 명부 조회 | O (그 분반 참여자·네비게이터·캡틴) | 스펙확정 |
-| POST | /api/me/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (네비게이터 — 그 분반 LEADER) | 스펙확정 |
-| GET | /api/admin/studies/{studyId}/attendances | 출석 명부 조회 | O (캡틴) | 스펙확정 |
-| POST | /api/admin/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (캡틴) | 스펙확정 |
+| GET | /api/me/studies/{studyId}/attendances | 출석 명부 조회 | O (그 분반 참여자·네비게이터·캡틴) | 구현완료 |
+| POST | /api/me/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (네비게이터 — 그 분반 LEADER) | 구현완료 |
+| GET | /api/admin/studies/{studyId}/attendances | 출석 명부 조회 | O (캡틴) | 구현중 — 컨트롤러는 있고 통합 테스트가 없다 |
+| POST | /api/admin/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (캡틴) | 구현완료 |
 
 > 이번 스코프는 명부 화면을 띄우는 데 필요한 **조회 1개 + 생성 1개** API만 다룬다. 세션 취소, 휴가 신청·승인, 정정 이력 조회 등 나머지 CRUD는 별도 스펙.
 > `[OPEN]` = 캡틴 확정 전 제안 기본값 / 팀 확인 필요.

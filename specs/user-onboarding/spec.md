@@ -118,12 +118,12 @@ ACCOUNT_IDENTITY
 
 ## API 계약
 
-| Method | Path | 설명 | 인증 |
-|---|---|---|---|
-| POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+ACCOUNT_IDENTITY 생성, 기존이면 조회. 동일 이메일 충돌 시 `ACCOUNT_LINK_REQUIRED`를 반환하며 토큰을 발급하지 않음 | X |
-| GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) |
-| GET | `/api/nicknames/availability` | 입력 중 닉네임 사용 가능 여부 조회 | O (미완료도 가능) |
-| POST | `/accounts/onboarding` | 만 14세 이상 확인 후 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) |
+| Method | Path | 설명 | 인증 | 상태 |
+|---|---|---|---|---|
+| POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+ACCOUNT_IDENTITY 생성, 기존이면 조회. 동일 이메일 충돌 시 `ACCOUNT_LINK_REQUIRED`를 반환하며 토큰을 발급하지 않음 | X | 구현완료 |
+| GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) | 구현완료 |
+| GET | `/api/nicknames/availability` | 입력 중 닉네임 사용 가능 여부 조회 | O (미완료도 가능) | 구현완료 |
+| POST | `/accounts/onboarding` | 만 14세 이상 확인 후 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) | 구현완료 |
 
 `POST /accounts/onboarding`은 기존 ACCOUNT 리소스 경로를 사용한다. 온보딩은 1회성 완료 액션이라 마이페이지 수정 API(별도 스펙, `/accounts/me` 형태 예상)와 경로를 분리한다.
 

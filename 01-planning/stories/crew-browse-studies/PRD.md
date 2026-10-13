@@ -163,6 +163,17 @@ erDiagram
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | core-front `/studies` (`StudyBrowser`) | 있음 — `GET /api/studies` 연결 | `features/studies/queries.ts` · `FeaturedStudies.tsx` · `lib/api.ts` 의 낡은 `TODO(api)` 지우기 |
+| BE | `GET /api/studies` | 구현완료 | 사이트 목록의 정원 인원을 신청 API 와 같은 기준으로 ([POL-0004](../../_registry/policies/POL-0004-application.md) 「백엔드와 어긋난 것」) |
+
 ### 데이터
 
 | 대상 | 필드 | ERD | 비고 |

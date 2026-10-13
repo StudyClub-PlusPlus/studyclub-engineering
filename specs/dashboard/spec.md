@@ -369,14 +369,14 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 현황 보드는 전용 API를 사용한다. 전체 보기·카테고리 목록은 `/api/admin/studies`를 사용한다. 두 API는 대상 선정·모집 판정·정렬 로직을 공유한다.
 
-| Method | Path | 화면·용도 |
-|---|---|---|
-| GET | `/api/admin/stats/summary` | 1-1, 2: KPI·주간 비교 |
-| GET | `/api/admin/stats/study-board` | 3-1, 3-2: 보드별 미리보기 |
-| GET | `/api/admin/studies` | 전체 보기·카테고리별 목록 |
-| GET | `/api/admin/stats/crew-timezones` | 4: 활성 크루 시간대 분포 |
-| GET | `/api/admin/stats/attendance-trend` | 5, 5-1: 12주 추세·평균 |
-| GET | `/api/admin/stats/studies-by-category` | 6: 진행중·누적 개수 |
+| Method | Path | 화면·용도 | 상태 |
+|---|---|---|---|
+| GET | `/api/admin/stats/summary` | 1-1, 2: KPI·주간 비교 | 스펙작성중 |
+| GET | `/api/admin/stats/study-board` | 3-1, 3-2: 보드별 미리보기 | 스펙작성중 |
+| GET | `/api/admin/studies` | 전체 보기·카테고리별 목록 | 구현완료 |
+| GET | `/api/admin/stats/crew-timezones` | 4: 활성 크루 시간대 분포 | 스펙작성중 |
+| GET | `/api/admin/stats/attendance-trend` | 5, 5-1: 12주 추세·평균 | 스펙작성중 |
+| GET | `/api/admin/stats/studies-by-category` | 6: 진행중·누적 개수 | 스펙작성중 |
 
 - 모든 API는 `Authorization: Bearer <JWT>` 인증과 `@RequireAdmin` 검사를 적용한다.
 - Path Parameter·Request Body는 없다. Query는 각 API 표를 따른다.

@@ -151,6 +151,18 @@ erDiagram
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | core-front `/my/joined/[id]/schedule` 출석부 탭 | 없음 — 「스터디 일정 화면을 준비 중입니다」 자리만 있다 | 프로토 스터디 일정 › 출석부(크루 보기)대로 만든다 |
+| BE | `GET /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
+| BE | `GET /api/studies/{studyId}/meetings` | 구현중 | [study-meeting 스펙](../../../specs/study-meeting/spec.md#구현-메모) 마무리 |
+
 ### 데이터
 
 | 대상 | 필드 | 크루 |
@@ -171,7 +183,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/studies/{studyId}/attendances` 분반 출석부 | 그 분반 활성 참여자(조회) · 네비게이터 · 캡틴 |
+| GET | `/api/me/studies/{studyId}/attendances` 분반 출석부 | 그 분반 활성 참여자(조회) · 네비게이터 · 캡틴 |
 | GET | `/api/studies/{studyId}/meetings` 회차 · 발표자 | 그 분반 활성 참여자 · 네비게이터 · 캡틴 |
 
 출석부 응답 `participants[]` 에 `participantRole` · `captain` · `participantStatus` · `leftAt` 이 있어야 칩·참여 중단 표시를 그린다. 계약은 [출석 스펙](../../../specs/attendance/spec.md) · [회차 스펙](../../../specs/study-meeting/spec.md).

@@ -277,6 +277,18 @@ erDiagram
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | back-office-front 출석 탭 (`AttendanceTab`) | 있음 — **mock**. 같은 ID 의 mock 스터디가 없으면 빈 화면 (`StudyConsole` 의 `TODO(api)`) | 아래 API 에 연결한다 |
+| BE | `GET /api/admin/studies/{studyId}/attendances` | 구현중 — 컨트롤러는 있고 통합 테스트가 없다 | 통합 테스트를 붙이고 스펙 상태를 구현완료로 |
+| BE | `POST /api/admin/studies/{studyId}/attendances` | 구현완료 | 없음 |
+
 ### 데이터
 
 - 읽기: 반의 회차 목록, 크루 목록, 크루 × 회차 상태, 크루별 출석률, 반 평균
@@ -296,8 +308,10 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/studies/{studyId}/attendances` | 캡틴 |
-| POST | `/api/studies/{studyId}/attendances` | LEADER |
+| GET | `/api/admin/studies/{studyId}/attendances` | 캡틴 |
+| POST | `/api/admin/studies/{studyId}/attendances` | 캡틴 |
+
+네비게이터(LEADER)는 사용자 사이트에서 `/api/me/studies/{studyId}/attendances` 로 같은 일을 한다.
 
 계약은 [attendance/spec.md](../../../specs/attendance/spec.md).
 

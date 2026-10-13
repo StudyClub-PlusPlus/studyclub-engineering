@@ -22,8 +22,8 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | `/api/admin/notification-templates` | 알림 템플릿 목록 조회 | O (백오피스) | 구현중 |
-| GET | `/api/admin/notifications` | 발송 이력 조회 | O (백오피스) | 구현중 |
+| GET | `/api/admin/notification-templates` | 알림 템플릿 목록 조회 | O (백오피스) | 구현완료 |
+| GET | `/api/admin/notifications` | 발송 이력 조회 | O (백오피스) | 구현완료 |
 
 ### 이 기능이 "알림(Notification)" 으로 추상화되고 이벤트 핸들러 방식으로 개발된다는 것의 확인
 
