@@ -95,6 +95,21 @@ class NicknameAvailabilityIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 자기 현재 닉네임은 사용 가능이다 — 마이페이지에서 표기만 바꿔도 화면이 막지 않는다")
+    void reportsOwnNicknameAsAvailable() {
+        Account owner = seedAccount();
+        String nickname = "Mine" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        owner.completeOnboarding(nickname, "Asia/Seoul", Instant.now());
+        accounts.save(owner);
+
+        assertThat(check(owner, nickname).getBody()).isEqualTo(Map.of("available", true));
+        assertThat(check(owner, nickname.toUpperCase(Locale.ROOT)).getBody())
+                .isEqualTo(Map.of("available", true));
+        // 다른 계정이 보면 여전히 사용 중이다
+        assertThat(check(seedAccount(), nickname).getBody()).isEqualTo(Map.of("available", false));
+    }
+
+    @Test
     @DisplayName("성공 - 한글 쿼리도 DB의 닉네임과 비교한다")
     void acceptsEncodedKoreanNickname() {
         Account owner = seedAccount();

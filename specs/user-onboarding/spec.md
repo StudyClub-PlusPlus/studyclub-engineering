@@ -154,9 +154,9 @@ ACCOUNT_IDENTITY
 온보딩에서 닉네임을 입력하는 동안 실제 DB의 사용 여부를 조회한다. 쿼리 `value`는 필수 문자열이며 예시는 `/api/nicknames/availability?value=Journey`다. 클라이언트는 쿼리 값을 URL 인코딩한다.
 
 - 인증된 사용자만 호출할 수 있고, 온보딩 미완료 사용자도 허용한다. Google 로그인 후 사용하는 기능이므로 기획 PR #75의 비로그인 공개 제안 대신 기존 JWT 인증을 사용한다. `@RequireOnboarding`은 적용하지 않는다.
-- `NicknamePolicy.normalize()`로 앞뒤 공백을 제거하고 같은 클래스의 형식 규칙을 검사한 뒤, `AccountRepository.existsByNicknameIgnoreCase()`로 중복을 조회한다. 가입 완료 때와 같은 비교 기준을 사용한다.
+- `NicknamePolicy.normalize()`로 앞뒤 공백을 제거하고 같은 클래스의 형식 규칙을 검사한 뒤, `AccountRepository.existsByNicknameIgnoreCaseAndIdNot()`로 부른 사람의 계정을 뺀 중복을 조회한다. 가입 완료 때와 같은 비교 기준을 사용한다.
 - 현재 기준은 모든 언어의 글자·숫자·밑줄을 허용하며 대소문자를 구분하지 않는다. Playground의 예시 목록과 NFC 변환은 서버의 판정 기준이 아니다. NFC 정책을 도입하려면 조회·최종 검사·기존 데이터를 함께 검토한다.
-- 조회는 닉네임을 예약하거나 계정·동의 기록을 저장하지 않는다. 로그인한 본인의 이름도 이미 DB에 있으면 사용 중으로 반환한다. 마이페이지의 본인 닉네임 유지 여부 판정은 별도 계약이다.
+- 조회는 닉네임을 예약하거나 계정·동의 기록을 저장하지 않는다. 로그인한 본인의 현재 닉네임은 사용 가능으로 반환한다 — 온보딩 중에는 임시 닉네임(`account_` 접두사)이라 형식 검사에서 먼저 걸리고, 마이페이지에서 표기만 바꿀 때 화면이 막히지 않는다.
 
 응답:
 
