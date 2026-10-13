@@ -2,7 +2,6 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
-import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.common.error.BusinessException;
@@ -12,7 +11,6 @@ import com.studyclub.domain.account.AccountRepository;
 import io.jsonwebtoken.Claims;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -69,18 +67,6 @@ public class AuthService {
             // 같은 sub 가 동시에 들어와 INSERT 가 겹친 경우 (스펙). 한 번 더 돌리면 분기 1 로 잡힌다.
             return accountRegistrar.findOrRegister(g, email);
         }
-    }
-
-    @Transactional(readOnly = true)
-    public AccountSelfView me(Long accountId) {
-        Account account =
-                accountRepository
-                        .findById(accountId)
-                        .orElseThrow(
-                                () ->
-                                        new BusinessException(
-                                                ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
-        return AccountSelfView.from(account);
     }
 
     public AccessTokenResponse refresh(String refreshToken) {

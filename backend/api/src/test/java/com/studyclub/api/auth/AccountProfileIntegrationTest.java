@@ -33,7 +33,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 /**
- * PATCH /api/me — 성공 + 실패 코어 (specs/profile-edit/spec.md). 닉네임 형식 규칙의 세부는 {@link
+ * GET·PATCH /api/me — 성공 + 실패 코어 (specs/profile-edit/spec.md). 닉네임 형식 규칙의 세부는 {@link
  * NicknamePolicyTest} 가 단위로 덮는다. 여기서는 온보딩과 다른 규칙 하나, "지금 쓰는 자기 닉네임은 중복이 아니다" 를 지킨다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -83,8 +83,43 @@ class AccountProfileIntegrationTest {
                 "/api/me", HttpMethod.PATCH, new HttpEntity<>(body, headers), Map.class);
     }
 
+    @SuppressWarnings("rawtypes")
+    private ResponseEntity<Map> getMe(Account account) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(jwt.issueAccess(String.valueOf(account.getId()), account.getEmail()));
+        return rest.exchange("/api/me", HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+    }
+
     @Test
-    @DisplayName("성공 - 닉네임·타임존을 저장하고 바뀐 AccountView 를 돌려준다")
+    @DisplayName("성공 - GET /api/me 는 저장된 닉네임·타임존·온보딩 완료 시각을 돌려준다")
+    void returnsMe() {
+        String nickname = uniqueNickname();
+        Account account = seedOnboardedAccount(nickname);
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("nickname", nickname);
+        assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
+        assertThat(response.getBody()).containsEntry("email", account.getEmail());
+        assertThat(response.getBody()).containsKey("discordNickname");
+        assertThat(response.getBody().get("onboardingCompletedAt")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("성공 - 온보딩 미완료 계정도 GET /api/me 는 403 이 아니라 200 이다 — 프론트가 이 응답으로 온보딩 화면으로 보낸다")
+    void returnsMeBeforeOnboarding() {
+        Account account = seedUnonboardedAccount();
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("email", account.getEmail());
+        assertThat(response.getBody().get("onboardingCompletedAt")).isNull();
+    }
+
+    @Test
+    @DisplayName("성공 - 닉네임·타임존을 저장하고 바뀐 AccountSelfView 를 돌려준다 — GET /api/me 와 같은 모양")
     void updatesNicknameAndTimeZone() {
         Account account = seedOnboardedAccount(uniqueNickname());
         String newNickname = uniqueNickname();
@@ -95,6 +130,7 @@ class AccountProfileIntegrationTest {
         assertThat(response.getBody()).containsEntry("nickname", newNickname);
         assertThat(response.getBody()).containsEntry("timeZone", "America/Vancouver");
         assertThat(response.getBody()).containsEntry("email", account.getEmail());
+        assertThat(response.getBody()).containsKey("discordNickname");
 
         Account saved = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(saved.getNickname()).isEqualTo(newNickname);

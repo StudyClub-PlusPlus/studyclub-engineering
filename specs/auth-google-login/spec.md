@@ -49,7 +49,7 @@ Spring POST /auth/social-login { code, provider, platform }
 | Account 엔티티 | `domain` : `id, email(uniq), nickname, profileImgUrl, systemRole(MEMBER\|ADMIN), jobTitle, countryCode, city, regionGroup, timeZone, discordId(uniq), discordHandle, createdAt, updatedAt` |
 | AccountIdentity 엔티티 | `domain` : `id, accountId, issuer, providerUserId, lastLoginAt` — OAuth 수단 분리 |
 | 인증 서비스 | `api` : Google code→token→userinfo 교환, 자동가입(CORE), 백오피스 조회 전용 `AccountRegistrar.findAdmin`, JWT 발급 |
-| 엔드포인트 | `POST /auth/social-login`, `GET /auth/me`, `POST /auth/refresh` |
+| 엔드포인트 | `POST /auth/social-login`, `POST /auth/refresh`, 내 정보 조회는 `GET /api/me`(마이페이지 묶음) |
 | 보안 | SecurityConfig(JWT 필터, `/auth/**`·`/api/health` permitAll, 나머지 인증) |
 | 백오피스 게이트 | `ACCOUNT.SYSTEM_ROLE=ADMIN`. 첫 ADMIN 은 SQL |
 
