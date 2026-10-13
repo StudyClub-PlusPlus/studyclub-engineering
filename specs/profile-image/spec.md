@@ -1,315 +1,302 @@
-# 프로필 사진 — 마이페이지에서 사진을 올리고 지운다
+# 프로필 사진 · 이미지 업로드 Spec
 
-> Story PRD: [크루는 프로필을 수정할 수 있다.](../../01-planning/stories/crew-edit-profile/PRD.md)
+> ERD: [UPLOAD](../../docs/erd/UPLOAD.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
+> Story PRD: [crew-edit-profile](../../01-planning/stories/crew-edit-profile/PRD.md) · 썸네일은 [study-create](../../01-planning/stories/study-create/PRD.md)
+> 관련 스펙: [profile-edit](../profile-edit/spec.md) — 같은 카드 · [user-leave](../user-leave/spec.md) — 탈퇴 시 파일 삭제
+> 저장소: [docs/s3-storage.md](../../docs/s3-storage.md) — 버킷·CloudFront·폴더 규칙
+> 생성일: 2026-10-08
+> 상태: 스펙작성중
 
-마이페이지 내 정보 카드에 프로필 사진을 올리고 지우는 기능을 붙인다.
+## WHAT
 
-동작은 이렇다. 사용자가 브라우저에서 사진 파일을 고르면 백엔드로 보낸다. 백엔드가 파일을 검사한 뒤 AWS S3(파일 저장소)에 넣는다. 그 파일을 볼 수 있는 인터넷 주소를 `ACCOUNT.PROFILE_IMG_URL` 컬럼에 저장한다. 이후 화면은 그 주소로 사진을 보여준다.
+마이페이지 내 정보 카드에 프로필 사진을 올리고 지운다. 사진은 AWS S3 에 두고 주소를 `ACCOUNT.PROFILE_IMG_URL` 에 적는다.
 
-API 는 두 개를 새로 만든다. `PUT /api/me/profile-image`(올리기)와 `DELETE /api/me/profile-image`(지우기).
+올리기는 **공용 업로드 API** 하나로 받는다. 파일을 먼저 올려 업로드 번호를 받고(`PENDING`), 기능 쪽 저장 API 가 그 번호를 받아 연결한다(`ATTACHED`). 연결 안 된 파일은 정리 배치가 하루 뒤 지운다. 스터디 썸네일처럼 저장 대상이 아직 없는 상태에서 올려야 하는 기능도 같은 API 를 쓴다.
 
-사진 크기를 줄이거나 자르는 처리는 하지 않는다. 화면에서 작게 보여준다. 다만 **사진 속 위치·기기 정보(메타데이터)는 저장 전에 지운다** — 픽셀은 그대로 두고 메타데이터 부분만 걷어낸다.
+새로 만드는 건 **업로드 API 하나, `UPLOAD` 테이블 하나, 프로필 연결·삭제 API 둘, 정리 배치 하나**다.
 
-S3 에 파일을 넣고 빼는 코드는 프로필 사진 전용으로 만들지 않는다. 폴더 이름만 바꾸면 스터디 썸네일 같은 다른 기능도 같은 코드를 쓸 수 있게 한다. 리더 요청이 "기획을 기다리지 말고 먼저 연동해서, 필요하면 언제든 붙일 수 있는 상태로" 였다.
+## 엔드포인트 목록
 
-## 지금 (beta 기준)
+| Method | Path | 설명 | 인증 | 상태 |
+|--------|------|------|------|------|
+| POST | `/api/uploads/images` | 이미지 올리기 → 업로드 번호 | O + 온보딩 | 스펙작성중 |
+| PUT | `/api/me/profile-image` | 업로드 번호를 프로필에 연결 (교체 포함) | O + 온보딩 | 스펙작성중 |
+| DELETE | `/api/me/profile-image` | 프로필 사진 지우기 | O + 온보딩 | 스펙작성중 |
 
-- 사진 주소를 넣을 자리는 이미 있다. `ACCOUNT.PROFILE_IMG_URL` 컬럼(2048자)과 `Account.profileImgUrl` 필드다.
-- 그 자리에는 지금 구글 사진 주소가 들어 있다. 구글 로그인으로 처음 가입할 때 구글이 준 프로필 사진 주소를 한 번 넣는다. 그 뒤로는 어떤 코드도 이 값을 바꾸지 않는다. 다시 로그인해도 안 바뀐다.
-- 화면은 이미 이 값을 쓴다. `GET /auth/me` 응답의 `picture` 필드로 나가고, 헤더(`NavAuth`)가 값이 있으면 둥근 사진으로 그린다.
-- 마이페이지 내 정보 카드(`ProfileCard`)에는 사진 영역이 없다. 프로필 수정 스펙은 사진을 범위 밖으로 뒀다.
-- 백엔드에 S3 코드가 없다. AWS 라이브러리는 알림 메일(SES)에만 쓴다. 파일 업로드를 받는 설정도 없다.
-- S3 사용 안내 문서 `docs/s3-storage.md` 가 있다. 버킷(stage 용·production 용, 서울 리전), 파일을 볼 때 쓰는 CloudFront 주소, 폴더 규칙이 정해져 있다. 공개 파일은 `gigs/` 폴더 아래에 두고, 프로필 사진은 `gigs/profiles/` 에 두라고 돼 있다. 코드 예시는 TypeScript 만 있다.
-- 프론트에 파일 업로드 코드가 없다.
+정리 배치는 API 가 아니다 — [정리 배치](#정리-배치).
 
-## 범위
+## 공통 사항
 
-이 스펙이 다루는 것:
+- **accountId**: JWT 토큰에서 꺼낸다. 요청에 계정 번호를 따로 받지 않는다.
+- **온보딩**: 셋 다 `@RequireOnboarding`. 미완료면 `403 ONBOARDING_REQUIRED`.
+- **500**: 예기치 않은 서버 오류는 `500 INTERNAL_ERROR`.
+- **S3 호출은 트랜잭션 밖**에서 한다. 외부 네트워크를 기다리는 동안 DB 잠금을 잡지 않는다.
 
-- `PUT /api/me/profile-image` — 사진 올리기. 이미 있으면 바꾸기
-- `DELETE /api/me/profile-image` — 사진 지우기
-- 백엔드의 S3 저장 코드 — 올리기, 지우기, 볼 수 있는 주소 만들기. 폴더만 바꿔 다른 기능도 쓴다
-- core-front 내 정보 카드의 사진 영역
-- 저장 전 메타데이터(EXIF·XMP 등) 제거
-- **탈퇴할 때 사진 파일 삭제** — 탈퇴 스펙([user-leave](../user-leave/spec.md))에 함께 반영했다. 회원 데이터 정책이 탈퇴 시 프로필 즉시 파기를 요구한다
+## 결정
 
-다루지 않는 것:
+### 1. 올리기와 연결을 나눈다
 
-- **사진 크기 줄이기, 자르기, 썸네일 만들기** — 원본 그대로 저장한다. [한계 / 후속](#한계--후속)
-- **스터디 썸네일 업로드** — 저장 코드는 같이 쓰지만, API 는 스터디 생성 스펙에서 정한다
-- **브라우저가 S3 에 직접 올리는 방식** — 서버를 거치지 않고 올리는 방식(서명 주소)이 있지만 쓰지 않는다. 프로필 사진은 작고, 파일 형식과 크기 검사를 서버가 해야 한다
-- **이미지가 아닌 파일**
-
-## 흐름
+스터디 등록 폼은 "파일을 고르면 바로 미리보기, 등록을 눌러야 스터디가 생긴다" 라서 올리는 시점에 붙일 대상이 없다. 그래서 올리기 API 는 대상 없이 부를 수 있어야 하고, 연결은 기능 쪽 저장 API 가 번호를 받아서 한다. 프로필도 같은 길을 쓴다 — 방식이 하나여야 교체·삭제·탈퇴 정리가 한 길로 간다.
 
 ```
-마이페이지 › 내 정보 카드 › 사진
-
-  사진 바꾸기 → 파일 선택 (jpeg · png · webp)
-    ├─ 형식이 아니거나 5MB 초과                     → 화면에서 사유를 보여준다. 서버에 안 보낸다
-    └─ PUT /api/me/profile-image (파일 전송)
-         ├─ (서버) 형식 판정 → 메타데이터 제거 → S3 저장
-         ├─ 토큰 없음 · 만료                          → 401 UNAUTHORIZED
-         ├─ 온보딩 미완료                             → 403 ONBOARDING_REQUIRED
-         ├─ 파일 없음 · 빈 파일 · 형식 아님 · 5MB 초과   → 400 INVALID_INPUT
-         ├─ S3 설정 없음 · S3 에 못 올림              → 503 EXTERNAL_SERVICE_ERROR
-         └─ 200 AccountView                          → picture 가 새 주소. 카드 · 헤더 · 세션 user 갱신
-
-  사진 지우기 → DELETE /api/me/profile-image
-    ├─ 401 · 403                                     → 위와 같음
-    ├─ S3 설정 없음                                  → 503 EXTERNAL_SERVICE_ERROR
-    ├─ 사진이 원래 없음                               → 200 AccountView (지울 게 없어도 성공)
-    └─ 200 AccountView                               → picture 가 null
+① POST /api/uploads/images (file, purpose)  → 201 { uploadId, url }   UPLOAD 행 PENDING
+② PUT /api/me/profile-image { uploadId }    → 200 AccountView          PENDING → ATTACHED, PROFILE_IMG_URL 갱신
 ```
 
-## 판정 규칙
+프로필은 프론트가 ① 성공 직후 ② 를 바로 부른다. 사용자에게는 한 동작이다. 썸네일은 ② 가 스터디 등록·수정 API 다 — 이 스펙 범위 밖, [알려진 한계](#알려진-한계).
 
-**누구 사진인가**
-- 로그인 토큰에 든 계정 번호(`ACCOUNT.ID`)의 사진이다. 주소나 요청 본문에 계정 번호를 따로 받지 않는다. 프로필 수정과 같다.
-- 온보딩을 안 끝낸 계정은 못 쓴다. `@RequireOnboarding` 을 붙여 403 `ONBOARDING_REQUIRED` 로 막는다.
+### 2. 연결은 조건부 UPDATE 한 문장
 
-**어떤 파일을 받나**
-- jpeg, png, webp 세 가지만 받는다.
-- 형식은 파일 내용을 보고 판단한다. 모든 이미지 파일은 맨 앞 몇 바이트에 "나는 png 다" 같은 표시가 있다. 그걸 읽어서 판단한다.
-- 파일 이름의 확장자나 브라우저가 보낸 파일 종류(`Content-Type`)는 믿지 않는다. 둘 다 보내는 쪽이 마음대로 정할 수 있는 값이라, 텍스트 파일 이름을 `사진.jpg` 로 바꿔 보내면 통과돼 버린다.
-- 저장할 때 붙이는 확장자도 이 판단 결과로 정한다.
-- 크기는 5MB 까지. 프로필 사진으로 충분한 크기다. 서버가 파일을 메모리에 통째로 받았다가 S3 로 보내기 때문에 상한이 꼭 있어야 한다. 스프링의 업로드 크기 제한도 같은 값으로 두고, 넘치면 스프링이 던지는 예외를 400 `INVALID_INPUT` 으로 바꿔 준다.
-- 크기 줄이기는 안 한다. 화면이 작게 보여준다. 라이브러리를 추가하지 않는 가장 단순한 방법이다.
+주인·용도·상태 확인을 조회하고 나서 바꾸는 두 단계로 하지 않는다. 조건을 UPDATE 에 걸고 바뀐 행 수로 판단한다.
 
-**사진 속 위치 정보를 지운다 (메타데이터 제거)**
-- 폰으로 찍은 사진에는 촬영 위치(GPS 좌표)·촬영 시각·기기 모델이 EXIF 라는 메타데이터로 들어 있는 경우가 흔하다. 프로필 사진은 누구나 볼 수 있는 주소(`gigs/`)에 올라가므로, 그대로 저장하면 **사진 주소만 알면 위치까지 읽힌다.**
-- 그래서 S3 에 넣기 전에 메타데이터 부분을 걷어낸다. 픽셀 데이터는 건드리지 않는다 — 다시 압축하지 않으므로 화질이 그대로고 라이브러리도 필요 없다.
+```sql
+UPDATE UPLOAD
+SET STATUS = 'ATTACHED', ATTACHED_AT = now
+WHERE ID = ?               -- 이 번호가
+  AND ACCOUNT_ID = ?       -- 내 것이고
+  AND PURPOSE = ?          -- 용도가 맞고
+  AND STATUS = 'PENDING'   -- 아직 연결 안 됐을 때만
+```
+
+- 0 행이면 `400 INVALID_INPUT` — 「업로드한 사진을 찾을 수 없습니다. 다시 올려 주세요.」 번호가 없든, 남의 것이든, 용도가 다르든, 이미 연결됐든, 만료됐든 같은 답이다. 사유를 구분하지 않는 건 정보 유출 방지다 — 어떤 번호가 존재하는지 응답으로 알 수 없게 한다.
+- 저장 API 는 URL 문자열을 받지 않는다. 번호만 받는다. 문자열을 받으면 외부 이미지·추적 픽셀을 꽂을 수 있다.
+
+### 3. 정리 배치 — 먼저 `DELETING` 으로 찜하고 나서 지운다
+
+한 시간마다 돈다. 알림 모듈의 폴링 스케줄러(`@Scheduled` + 행 선점)와 같은 방식.
+
+```sql
+-- 1단계 찜하기
+UPDATE UPLOAD
+SET STATUS = 'DELETING'
+WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
+  AND CREATED_AT < now - 24시간        -- 올린 지 하루가 지난 것만
+```
+
+2단계는 `DELETING` 행을 전부 읽어 하나씩 S3 파일 삭제 → 행 삭제. 교체·지우기·탈퇴가 남긴 `DELETING` 도 같이 치운다. 한 건이 실패해도 나머지는 계속 가고, 실패한 건 `DELETING` 그대로 남아 다음 시간에 다시 시도한다.
+
+찜하기를 먼저 하는 이유는 연결과의 경쟁이다. 배치가 먼저 `DELETING` 으로 바꾸면 그 뒤에 온 연결은 `STATUS='PENDING'` 조건에 안 맞아 400, 연결이 먼저였으면 찜하기 조건에 안 맞아 배치가 건너뛴다. 어느 순서든 한쪽만 이긴다. 서버 두 대가 2단계에서 같은 행을 집어도 S3 는 없는 키를 지워도 성공이라 괜찮다.
+
+### 4. 교체는 새 키 · 옛 파일은 커밋 뒤 삭제
+
+- 올릴 때마다 새 UUID 키다. 같은 키에 덮어쓰면 CloudFront 가 복사본을 들고 있다가 옛 사진을 최대 하루 계속 준다.
+- 연결 트랜잭션 안: 계정 행 잠금 → 새 업로드 조건부 UPDATE(0 행이면 400, 롤백) → 옛 주소가 우리 것이면 옛 `UPLOAD` 행을 `DELETING` → `PROFILE_IMG_URL` 갱신 → 커밋.
+- 커밋 뒤: 옛 파일 S3 삭제 → 행 삭제. 실패해도 응답은 성공이고, 행이 `DELETING` 으로 남아 배치가 다시 지운다.
+- 옛 주소가 구글 사진(`https://lh3.googleusercontent.com/...`)이거나 `null` 이면 우리 S3 에 없다. DB 값만 바꾼다.
+- 지우기도 같다. `PROFILE_IMG_URL` 을 null 로, 우리 파일이면 `DELETING`, 커밋 뒤 삭제. 구글 사진으로 되돌리지 않는다.
+
+### 5. 저장 전에 메타데이터를 지운다
+
+폰 사진의 EXIF 에는 촬영 위치(GPS)·시각·기기 모델이 들어 있다. `gigs/` 는 공개 폴더라 그대로 저장하면 주소만 알면 위치까지 읽힌다. 픽셀은 건드리지 않고 메타데이터 부분만 걷어낸다 — 재압축이 없어 화질이 그대로고 라이브러리도 필요 없다.
 
 | 형식 | 지우는 부분 | 남기는 부분 |
 |---|---|---|
-| jpeg | `APP1`(EXIF · XMP), `APP13`(IPTC) 세그먼트 | 나머지 세그먼트와 이미지 데이터. `APP2`(색 프로필 ICC)는 색이 틀어지지 않게 남긴다 |
-| png | `eXIf` · `tEXt` · `iTXt` · `zTXt` 청크 | 나머지 청크 (`iCCP` 색 프로필 포함) |
-| webp | `EXIF` · `XMP ` 청크. `VP8X` 헤더의 EXIF·XMP 표시 비트도 끄고 `RIFF` 전체 길이를 다시 쓴다 | 나머지 청크 (`ICCP` 포함) |
+| jpeg | `APP1`(EXIF · XMP), `APP13`(IPTC) 세그먼트 | 나머지. `APP2`(ICC 색 프로필)는 색이 틀어지지 않게 남긴다 |
+| png | `eXIf` · `tEXt` · `iTXt` · `zTXt` 청크 | 나머지 (`iCCP` 포함) |
+| webp | `EXIF` · `XMP ` 청크. `VP8X` 의 EXIF·XMP 비트를 끄고 `RIFF` 길이를 다시 쓴다 | 나머지 (`ICCP` 포함) |
 
-- 걷어낸 뒤 결과가 깨져 있으면(구조를 읽다 실패) 400 `INVALID_INPUT` — 「이미지를 읽을 수 없습니다.」 로 답하고 저장하지 않는다. 깨진 채로 저장하지 않는다.
-- jpeg 회전 정보(EXIF Orientation)도 함께 사라진다. 세로로 찍은 사진이 눕혀 보일 수 있다 — [한계 / 후속](#한계--후속).
+걷어낸 결과가 깨져 있으면 `400` 「이미지를 읽을 수 없습니다.」 — 깨진 채로 저장하지 않는다.
 
-**S3 에 넣을 때 붙이는 값**
-- `Content-Type` — 판정한 형식(`image/jpeg` · `image/png` · `image/webp`). 브라우저가 보낸 값을 쓰지 않는다. 이 값이 틀리면 브라우저가 이미지를 내려받거나, 엉뚱한 형식으로 해석한다.
-- `Cache-Control: public, max-age=86400` (1일) — 바꿀 때마다 주소가 새로 생겨서 바꾸기에는 캐시가 문제 되지 않는다. 문제는 **지울 때**다. 지운 뒤에도 CloudFront·브라우저 캐시가 살아 있는 동안 옛 주소로 사진이 보인다. 1일은 "지운 뒤 최대 하루 보일 수 있다" 는 상한이다 — [미확정](#미확정-팀-결정).
+### 6. 서버 경유 · 5MB · 형식은 파일 내용으로
 
-**어디에 저장하고 어떤 주소로 보나**
-- S3 안의 파일 위치(키)는 `gigs/profiles/<UUID>.<확장자>` 다. 예: `gigs/profiles/3f2a9c1e-7b4d-4e8a-9c2f-1a5b6d7e8f90.webp`
-- 사진을 보는 주소는 `<공개 주소 접두어>/gigs/profiles/3f2a9c1e-7b4d-4e8a-9c2f-1a5b6d7e8f90.webp` 다. 접두어는 `https://d27gz6v6wvae1d.cloudfront.net/studyclub` 같은 CloudFront 주소이고, stage 와 production 이 다르기 때문에 환경변수로 받는다.
-- `gigs/` 폴더에 두는 이유: S3 문서가 "누구나 볼 수 있는 파일은 `gigs/` 아래에" 라고 정했다. 프로필 사진은 누구나 보는 값이라 여기에 맞다.
+- 브라우저 → 서버 → S3. 서명 주소(브라우저 → S3 직접)는 쓰지 않는다. 형식 검사와 메타데이터 제거를 서버가 해야 한다.
+- jpeg · png · webp, 5MB. 형식은 맨 앞 바이트(jpeg `FF D8 FF`, png `89 50 4E 47`, webp `RIFF`+`WEBP`)로 판단한다. 확장자와 브라우저가 보낸 `Content-Type` 은 믿지 않는다. 저장 확장자도 판정 결과로.
+- 서버가 메모리에 통째로 받으므로 `spring.servlet.multipart.max-file-size=5MB`, `max-request-size=6MB`. 넘치면 `400 INVALID_INPUT`.
+- S3 에 넣을 때 `Content-Type` 은 판정한 형식, `Cache-Control: public, max-age=86400`.
+- 키는 `gigs/<용도 폴더>/<UUID>.<확장자>`, 주소는 `<S3_PUBLIC_BASE_URL>/<키>`. `gigs/` 는 S3 문서가 공개 파일 폴더로 정한 곳이다.
 
-**사진을 바꿀 때 — 덮어쓰지 않고 새 파일을 만든다**
-- 사진을 바꿀 때 같은 위치에 덮어쓰지 않는다. 매번 새 UUID 로 새 위치에 올린다.
-- 이유는 CloudFront 때문이다. CloudFront 는 한 번 보여준 파일을 복사본으로 들고 있다가 같은 주소 요청이 오면 S3 에 다시 안 가고 복사본을 준다. 같은 위치에 덮어쓰면 CloudFront 는 바뀐 걸 모르고 옛 사진을 계속 준다. 몇 시간에서 하루까지 그럴 수 있다. 사용자는 바꿨는데 화면엔 옛 사진이 보인다.
-- 새 위치에 올리면 주소가 새 거라 복사본이 없고, S3 에서 새 파일을 가져온다.
-- 대신 옛 파일이 S3 에 남는다. 그래서 바꾼 뒤에 옛 파일을 지운다.
+### 7. 용도(purpose)와 상한
 
-**옛 파일은 우리가 올린 것만 지운다**
-- 옛 주소가 우리 공개 주소 접두어로 시작하면 우리가 올린 파일이다. 접두어를 떼서 S3 위치를 만들고 지운다.
-- 옛 주소가 구글 사진 주소(`https://lh3.googleusercontent.com/...`)면 구글 서버에 있는 파일이지 우리 S3 에는 없다. 지울 게 없으니 건너뛰고 DB 값만 새 주소로 바꾼다.
-- 옛 주소가 없으면(null) 당연히 아무것도 안 지운다.
+- `purpose` 는 `PROFILE` · `STUDY_THUMBNAIL`. 폴더(`gigs/profiles/` · `gigs/thumbnails/`)를 정하고, 연결할 때 칸과 맞는지 본다. 프로필용으로 올린 파일을 썸네일에 꽂지 못한다.
+- 연결 안 한(`PENDING`) 파일이 계정에 20개면 `400`. 연결 안 하고 계속 올리는 남용 방지. 배치가 돌면 다시 올릴 수 있다.
 
-| 옛 주소 | 처리 |
-|---|---|
-| `https://d27gz...cloudfront.net/studyclub/gigs/profiles/aaaa.webp` | 접두어 떼고 `gigs/profiles/aaaa.webp` 를 S3 에서 지운다 |
-| `https://lh3.googleusercontent.com/...` | 안 지운다. DB 값만 바꾼다 |
-| `null` | 안 지운다 |
+### 8. 연결은 `PATCH /api/me` 에 넣지 않는다
 
-**일이 중간에 실패하면**
-- 순서는 세 단계다.
-  1. 새 파일을 S3 에 올린다.
-  2. DB 에서 계정 행을 잠그고 주소를 새 주소로 바꾼다. 여기만 트랜잭션으로 감싼다.
-  3. DB 저장이 끝난 뒤 옛 파일을 S3 에서 지운다.
-- 2 에서 실패하면 1 에서 올린 새 파일을 지운다. 주소가 DB 에 안 들어갔으니 아무도 못 보는 파일이 되기 때문이다.
-- 3 에서 실패하면 성공으로 답한다. 사용자 입장에서는 사진이 이미 바뀌었고, S3 에 아무도 안 쓰는 파일 하나가 남을 뿐이다. 대신 WARN 로그에 계정 번호와 S3 위치를 남긴다. 로그는 Loki 에 들어가므로 Grafana 에서 검색해 남은 파일을 찾을 수 있고, 정리 배치도 이 로그를 근거로 돈다. 알림은 안 보낸다. (노이즈)
-- S3 에 올리고 지우는 일은 트랜잭션 밖에서 한다. S3 호출은 외부 네트워크라 느릴 수 있는데, 그동안 DB 잠금을 잡고 있으면 다른 요청이 기다린다.
+그 API 는 닉네임·시간대 둘 다 필수에 부분 갱신이 없다. 사진은 저장 버튼 없이 고른 즉시 반영되는 별도 동작이라 따로 둔다.
 
-**지우기**
-- 지운 사진도 캐시가 살아 있는 동안(최대 1일) 옛 주소로 보일 수 있다. 응답은 바로 `picture: null` 이므로 우리 화면에서는 즉시 사라진다.
-- 순서는 같다. DB 에서 주소를 null 로 바꾸고, 저장이 끝난 뒤 S3 파일을 지운다.
-- 사진이 원래 없으면 아무것도 안 하고 200 으로 답한다.
-- 지우면 null 이다. 가입 때 들어온 구글 사진으로 되돌리지 않는다. 사용자가 "지운다" 고 했으면 사진이 없는 상태가 맞다.
+### 9. S3 설정이 없으면 503, 서버는 뜬다
 
-**S3 설정이 없으면**
-- 로컬처럼 S3 키가 없는 환경에서는 503 `EXTERNAL_SERVICE_ERROR` 로 답한다.
-- 설정이 없어도 서버는 뜬다. 사진 설정 때문에 다른 기능까지 못 뜨면 안 된다.
-- S3 호출이 실패해도 같은 503 이다.
+로컬처럼 키가 없는 환경에서 올리기는 `503 EXTERNAL_SERVICE_ERROR`. S3 호출 실패도 같은 503. 정리 배치는 설정이 없으면 아무것도 안 한다.
 
-**응답**
-- 올리기, 지우기 둘 다 `AccountView` 로 답한다. `GET /auth/me` 와 같은 모양이다. 프론트는 이 응답으로 세션 user 를 바꾸고 다시 조회하지 않는다. 프로필 수정과 같다.
+## 이미지 올리기
 
-## API 계약
+### 기본 정보
 
-### `PUT /api/me/profile-image` (신규)
+- **Method**: POST
+- **Path**: `/api/uploads/images`
+- **인증**: 필요 + 온보딩 완료
+- **설명**: 이미지를 올려 두고 업로드 번호를 받는다. 어디에 쓸지는 아직 정하지 않아도 된다
 
-로그인한 본인의 프로필 사진을 올린다. 이미 있으면 바꾼다. 마이페이지 내 정보 카드의 "사진 바꾸기" 가 부른다.
+### Request — `multipart/form-data`
 
-인증 필요 + 온보딩 완료 필요.
+| 파트 | 타입 | 필수 | 제약 | 설명 |
+|------|------|------|------|------|
+| file | 파일 | Y | jpeg · png · webp, 5MB 이하 | |
+| purpose | String | Y | `PROFILE` · `STUDY_THUMBNAIL` | 폴더와 연결 가능한 칸을 정한다 |
 
-Request — 파일 전송 형식(`multipart/form-data`). 파트는 하나다.
+### Response — 201
 
-| 파트 | 타입 | 설명 |
-|---|---|---|
-| file | 파일 | jpeg · png · webp, 5MB 이하 |
-
-Response `200 OK` — `AccountView`. `GET /auth/me` 와 같은 모양이고 `picture` 에 새 주소가 실린다.
-
-```jsonc
+```json
 {
-  "id": 1,
-  "email": "honggildong@example.com",
-  "nickname": "honggildong",
-  "picture": "https://d27gz6v6wvae1d.cloudfront.net/studyclub/gigs/profiles/3f2a9c1e-7b4d-4e8a-9c2f-1a5b6d7e8f90.webp",
-  "role": "MEMBER",
-  "createdAt": "2026-09-01T00:00:00Z",
-  "timeZone": "Asia/Seoul",
-  "onboardingCompletedAt": "2026-09-01T00:10:00Z"
+  "uploadId": 32,
+  "url": "https://d27gz6v6wvae1d.cloudfront.net/studyclub/gigs/profiles/3f2a9c1e-7b4d-4e8a-9c2f-1a5b6d7e8f90.webp"
 }
 ```
 
-| 상태 | errorCode | 조건 |
-|---|---|---|
-| 400 | INVALID_INPUT | `file` 파트 없음, 빈 파일, jpeg/png/webp 아님, 5MB 초과, 이미지 구조가 깨짐. `errorMessage` 에 사유 |
-| 401 | UNAUTHORIZED | 토큰 없음 · 만료 |
-| 403 | ONBOARDING_REQUIRED | `ONBOARDING_COMPLETED_AT IS NULL` |
-| 503 | EXTERNAL_SERVICE_ERROR | S3 설정 없음, S3 에 못 올림 |
+| 필드 | 타입 | NULL | 설명 | 소스 |
+|------|------|------|------|------|
+| uploadId | Long | N | 업로드 번호. 저장 API 에 넘긴다 | UPLOAD.ID |
+| url | String | N | 볼 수 있는 주소. 연결 전에도 주소만 알면 보인다. 미리보기용 | `S3_PUBLIC_BASE_URL` + UPLOAD.S3_KEY |
 
-메시지:
-- 형식 — `jpeg, png, webp 파일만 올릴 수 있습니다.`
-- 크기 — `5MB 이하 파일만 올릴 수 있습니다.`
-- 빈 파일 — `파일이 비어 있습니다.`
-- 구조가 깨짐 — `이미지를 읽을 수 없습니다.`
-
-왜 `PUT` 인가 — 사진은 계정당 하나다. 올리는 것이 곧 바꾸는 것이다. 같은 파일을 두 번 올려도 결과는 같다. 주소만 바뀐다.
-
-`ErrorCode` 추가 없음. 마이그레이션 없음.
-
-### `DELETE /api/me/profile-image` (신규)
-
-로그인한 본인의 프로필 사진을 지운다.
-
-인증 필요 + 온보딩 완료 필요.
-
-Response `200 OK` — `AccountView`. `picture` 는 `null`. 사진이 원래 없어도 200.
+### Error Responses
 
 | 상태 | errorCode | 조건 |
-|---|---|---|
+|------|-----------|------|
+| 400 | INVALID_INPUT | `file` 없음 · 빈 파일 · jpeg/png/webp 아님 · 5MB 초과 · 구조가 깨짐 · `purpose` 없음·모르는 값 · `PENDING` 20개 |
 | 401 | UNAUTHORIZED | 토큰 없음 · 만료 |
-| 403 | ONBOARDING_REQUIRED | `ONBOARDING_COMPLETED_AT IS NULL` |
-| 503 | EXTERNAL_SERVICE_ERROR | S3 설정 없음 |
+| 403 | ONBOARDING_REQUIRED | 온보딩 미완료 |
+| 503 | EXTERNAL_SERVICE_ERROR | S3 설정 없음 · S3 에 못 올림 |
 
-왜 `204`(본문 없음)가 아니라 `200` 에 `AccountView` 인가 — 프론트가 올리기와 똑같은 방법으로 세션을 바꾸게 하려고.
+400 `errorMessage`: 형식 `jpeg, png, webp 파일만 올릴 수 있습니다.` · 크기 `5MB 이하 파일만 올릴 수 있습니다.` · 빈 파일 `파일이 비어 있습니다.` · 깨짐 `이미지를 읽을 수 없습니다.` · 용도 `용도가 올바르지 않습니다.` · 상한 `올린 뒤 쓰지 않은 사진이 너무 많습니다. 잠시 후 다시 시도해 주세요.`
 
-### 바뀌지 않는 것
+### 프론트엔드 사용처
 
-`GET /auth/me`, `PATCH /api/me`, `AccountView` 모양 전부 그대로다. `picture` 는 원래 있던 필드다. `SecurityConfig` 도 안 건드린다. `anyRequest().authenticated()` 라서 새 주소는 자동으로 로그인 필요 대상이 된다.
+- core-front `ProfileCard` 사진 바꾸기 — `FormData` 에 `file`·`purpose='PROFILE'`. `Content-Type` 헤더는 직접 넣지 않는다(브라우저가 붙인다)
+- 스터디 등록 폼 썸네일 — `purpose='STUDY_THUMBNAIL'`, 후속
+
+## 프로필 사진 연결
+
+### 기본 정보
+
+- **Method**: PUT
+- **Path**: `/api/me/profile-image`
+- **인증**: 필요 + 온보딩 완료
+- **설명**: 올려 둔 사진을 내 프로필에 연결한다. 이미 있으면 바꾼다
+
+### Request Body
+
+```json
+{ "uploadId": 32 }
+```
+
+| 필드 | 타입 | 필수 | 제약 | 설명 |
+|------|------|------|------|------|
+| uploadId | Long | Y | 내가 올린 것, `purpose=PROFILE`, `PENDING` | `POST /api/uploads/images` 가 돌려준 번호 |
+
+### Response — 200
+
+`AccountView` — `GET /auth/me` 와 같은 모양. `picture` 에 새 주소. 프론트는 이 응답으로 세션 user 를 바꾸고 다시 조회하지 않는다.
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 400 | INVALID_INPUT | `uploadId` 없음 · 조건부 UPDATE 0 행 (번호 없음 · 남의 것 · 용도 다름 · 이미 연결 · 만료). 전부 `업로드한 사진을 찾을 수 없습니다. 다시 올려 주세요.` |
+| 401 | UNAUTHORIZED | 토큰 없음 · 만료 |
+| 403 | ONBOARDING_REQUIRED | 온보딩 미완료 |
+
+S3 호출이 없는 API 라 503 이 없다. 옛 파일 삭제는 커밋 뒤라 응답에 영향이 없다.
+
+### 프론트엔드 사용처
+
+- core-front `ProfileCard` — 올리기 201 직후 호출. 올리기부터 연결까지 사진 버튼 둘 다 잠근다. 연결이 실패하면 사유만 보여준다(올린 파일은 하루 뒤 서버가 지운다)
+
+## 프로필 사진 지우기
+
+### 기본 정보
+
+- **Method**: DELETE
+- **Path**: `/api/me/profile-image`
+- **인증**: 필요 + 온보딩 완료
+- **설명**: 내 프로필 사진을 지운다
+
+### Response — 200
+
+`AccountView`. `picture` 는 `null`. 사진이 원래 없어도 200. `204` 가 아닌 이유는 프론트가 연결과 똑같이 세션을 바꾸게 하려고.
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 토큰 없음 · 만료 |
+| 403 | ONBOARDING_REQUIRED | 온보딩 미완료 |
+
+### 프론트엔드 사용처
+
+- core-front `ProfileCard` 지우기 — 확인 창 없음. 지운 사진은 캐시가 살아 있는 동안(최대 1일) 옛 주소로 보일 수 있지만 응답이 `picture: null` 이라 우리 화면에선 즉시 사라진다
+
+## 정리 배치
+
+- `api` 모듈 `upload` 패키지에 스케줄러 하나. `NotificationPollingScheduler` 와 같은 모양 — `@Scheduled(fixedDelayString)`, 찜하기 → 읽기 → 건별 처리, 건별 실패는 로그만.
+- 주기 1시간, 보관 24시간, `PENDING` 상한 20 은 설정값(기본값 적음). 테스트에서 줄여 쓴다.
+- 서버 다중 실행은 막지 않는다. 찜하기가 조건부 UPDATE 라 같은 행을 두 번 찜하지 못하고, 2단계는 두 번 해도 결과가 같다.
+
+## 스키마 변경
+
+`UPLOAD` 테이블 신설, Flyway 마이그레이션 1개(`domain` 모듈 다음 번호). 컬럼·인덱스·상태 전이는 [ERD UPLOAD](../../docs/erd/UPLOAD.md).
+
+| 컬럼 | 뜻 |
+|---|---|
+| ID | 업로드 번호 |
+| ACCOUNT_ID | 올린 사람. FK 없음(애그리거트 간 참조) |
+| PURPOSE | `PROFILE` · `STUDY_THUMBNAIL` |
+| S3_KEY · CONTENT_TYPE · SIZE | 어디에 무엇이. `S3_KEY` UNIQUE |
+| STATUS | `PENDING` · `ATTACHED` · `DELETING` |
+| ATTACHED_AT · CREATED_AT · UPDATED_AT | 시각 |
+
+기능 쪽 칼럼(`ACCOUNT.PROFILE_IMG_URL`, `STUDY.THUMBNAIL_URL`)은 그대로 주소를 담는다. 화면·응답은 지금처럼 주소를 읽는다. `ErrorCode` 추가 없음.
 
 ## 백엔드 구현 지점
 
-**S3 저장 코드**
-- `api` 모듈에 `storage` 패키지를 새로 만들고 클래스 하나를 둔다. 하는 일은 넷이다. 올리기(폴더, 파일 내용, 확장자를 받아 S3 위치를 돌려줌), 지우기(S3 위치), 볼 수 있는 주소 만들기(S3 위치 → 주소), 주소에서 S3 위치 뽑기.
-- S3 클라이언트는 알림 메일의 SES 클라이언트와 같은 방식으로 만든다. 환경변수로 받은 키를 그대로 넣는 방식이다. 라이브러리는 AWS SDK v2 의 `s3` 이고 버전은 SES 와 맞춘다.
-- 별도 모듈을 안 만드는 이유: 쓰는 곳이 API 계층뿐이다. 스터디 썸네일이 들어와도 같은 모듈에서 쓴다.
-
-**설정**
-- 알림 메일과 같은 `@ConfigurationProperties` 레코드를 만든다. 값은 다섯 개. 리전, 버킷 이름, 액세스 키, 시크릿 키, 공개 주소 접두어.
-- 환경변수 이름은 S3 문서 그대로 `AWS_REGION`, `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. 여기에 `S3_PUBLIC_BASE_URL` 을 더한다. 값 예시: `https://d27gz6v6wvae1d.cloudfront.net/studyclub`
-- `.env.example` 에는 이름만 빈 값으로 적는다.
-- 버킷이나 키가 비어 있으면 저장 코드가 503 을 던진다.
-
-**업로드 크기 제한**
-- `spring.servlet.multipart.max-file-size=5MB`. 요청 전체 상한 `max-request-size` 는 6MB 로 둔다. 파일 전송 형식에는 파일 외에 구분선과 헤더가 조금 더 붙어서 파일보다 요청이 조금 크다.
-- `GlobalExceptionHandler` 에 `MaxUploadSizeExceededException` 을 400 `INVALID_INPUT` 으로 바꾸는 처리를 한 줄 더한다.
-
-**형식 판정**
-- 작은 헬퍼 클래스 하나. 파일 맨 앞 바이트가 jpeg(`FF D8 FF`), png(`89 50 4E 47`), webp(`RIFF` 뒤 4바이트 건너뛰고 `WEBP`) 중 어느 것인지만 본다. 라이브러리 없음.
-
-**메타데이터 제거**
-- 형식 판정 옆에 헬퍼 하나. 형식별로 세그먼트·청크를 순서대로 읽으며 위 표의 부분만 빼고 다시 이어 붙인다. 라이브러리 없음.
-- 저장 코드(`storage`)는 받은 바이트를 그대로 올린다 — 메타데이터 제거는 프로필 사진 서비스가 저장 코드를 부르기 **전에** 한다. 다른 기능(썸네일)도 같은 헬퍼를 부른다.
-- 저장 코드의 올리기는 `Content-Type` 과 `Cache-Control` 을 인자로 받아 S3 요청에 싣는다.
-
-**컨트롤러와 서비스**
-- 프로필 수정에서 만든 `AccountProfileController` 에 `PUT`, `DELETE` 메서드 두 개를 더한다.
-- `AccountProfileService` 에 올리기, 지우기 메서드 두 개를 더한다. 트랜잭션은 DB 부분만 감싸고 S3 호출은 밖에서 한다.
-- `Account.setProfileImgUrl` 은 이미 있어서 그대로 쓴다. 2048 자 넘으면 값을 버리는 코드가 들어 있지만 우리 주소는 그 근처도 안 간다.
-
-**테스트**
-- S3 클라이언트를 가짜로 바꾼 통합 테스트. 경우는 이렇다.
-  - 올리기 성공
-  - 이름만 `.jpg` 인 텍스트 파일 → 400
-  - 5MB 초과 → 400
-  - 빈 파일 → 400
-  - 바꿀 때 옛 파일이 지워진다
-  - 옛 주소가 구글이면 안 지운다
-  - 지우기 성공
-  - 사진 없을 때 지우기 → 200
-  - DB 저장 실패 시 새로 올린 파일을 지운다
-  - 설정 없을 때 → 503
-  - GPS 가 든 jpeg → S3 에 넘어간 바이트에 `Exif` 가 없다 (가짜 S3 가 받은 바이트를 검사)
-  - `eXIf` 청크가 든 png, `EXIF` 청크가 든 webp → 같은 검사. webp 는 `VP8X` 표시 비트와 `RIFF` 길이도 맞는지
-  - 메타데이터가 없는 사진 → 바이트가 그대로다
-  - 구조가 깨진 jpeg → 400
-  - S3 요청의 `Content-Type` 이 판정한 형식이다 (이름이 `.png` 인 jpeg 를 올려도 `image/jpeg`)
-
-**문서**
-- `docs/backend-development-guide/api/endpoint-convention.md` 에 두 줄
-- ~~`docs/erd/ACCOUNT.md` 의 `PROFILE_IMG_URL` 설명~~ — 이 PR 에서 고쳤다 (길이도 실제 칼럼 2048 로 바로잡음)
-- `docs/s3-storage.md` 에 백엔드 환경변수 `S3_PUBLIC_BASE_URL` 한 줄
+- `domain`: `Upload` 엔티티 + 리포지토리의 조건부 UPDATE 셋(연결 · 찜하기 · `ATTACHED`→`DELETING`). `@Modifying` 으로 바뀐 행 수를 돌려준다.
+- `api/upload`: 컨트롤러(`POST /api/uploads/images`), 서비스(올리기 · 연결 · 버리기 · 커밋 뒤 삭제), 스케줄러. 올리기에서 `UPLOAD` INSERT 가 실패하면 방금 올린 S3 파일을 지운다 — 행이 없으면 배치도 못 찾는다.
+- `api/storage`: S3 클라이언트 하나(올리기 · 지우기 · 키↔주소). SES 클라이언트와 같은 방식, AWS SDK v2 `s3`.
+- 형식 판정 · 메타데이터 제거 헬퍼 둘. 라이브러리 없음.
+- `AccountProfileController`/`Service` 에 연결·지우기. 커밋 뒤 삭제는 `TransactionSynchronization.afterCommit`.
+- `GlobalExceptionHandler` 에 `MaxUploadSizeExceededException` → 400 한 줄.
+- 설정: `AWS_REGION` · `S3_BUCKET` · `AWS_ACCESS_KEY_ID` · `AWS_SECRET_ACCESS_KEY` · `S3_PUBLIC_BASE_URL`(예 `https://d27gz6v6wvae1d.cloudfront.net/studyclub`). `.env.example` 에 이름만.
+- 문서: `endpoint-convention.md` 세 줄, `docs/s3-storage.md` 에 `S3_PUBLIC_BASE_URL` 한 줄.
 
 ## 프론트 (core-front)
 
-**화면**
-- 내 정보 카드 위쪽에 사진 영역을 둔다. 현재 사진을 둥글게 보여주고, 없으면 기본 원(닉네임 첫 글자). 옆에 "사진 바꾸기" 와 "지우기" 버튼.
-- 프로토에 사진 영역이 없어서 위치와 문구는 임시다. 기획 수정본이 나오면 맞춘다.
-- 닉네임 편집 상태와 상관없이 사진은 언제든 바꿀 수 있다. 사진은 저장 버튼 없이 바로 서버에 반영되는 별도 API 다.
+- `ProfileCard` 위쪽에 사진 영역. 둥근 사진, 없으면 닉네임 첫 글자. "사진 바꾸기" · "지우기". 프로토에 없어 위치·문구는 임시.
+- 숨긴 `<input type="file" accept="image/jpeg,image/png,image/webp">`. 고른 직후 크기·`file.type` 을 보고 안 맞으면 서버에 안 보낸다.
+- 올리기 → 연결 두 호출을 `features/profile/queries.ts` mutation 으로. 올리기 mutation 은 `purpose` 를 인자로 받아 썸네일 폼에서도 쓴다.
+- 성공 응답 `AccountView` 로 `setUser`. 헤더의 `user.picture` 가 그대로 바뀐다.
+- 잠금: 올리기~연결, 지우기 중 사진 버튼 둘 다. 닉네임 저장 중(`saving`)에도 — 두 응답이 세션을 번갈아 쓰면 한쪽이 덮인다.
+- 오류: 400·503 은 서버 사유를 사진 아래 한 줄, 401 은 재로그인, 403 은 온보딩으로.
 
-**파일 고르기**
-- 숨긴 `<input type="file">` 을 쓴다. `accept="image/jpeg,image/png,image/webp"` 로 파일 선택창에서 이미지만 보이게 한다.
-- 고른 직후 크기(5MB)와 종류(`file.type`)를 보고 안 맞으면 사유를 보여준다. 서버에 안 보낸다. 최종 판단은 서버가 한다.
+## 테스트
 
-**서버 호출**
-- `http('/api/me/profile-image', { method: 'PUT', body: formData })`. `formData` 는 `FormData` 에 `file` 을 넣은 것이다.
-- `http()` 가 `Content-Type` 헤더를 정하지 않으므로 브라우저가 파일 전송 형식에 맞는 헤더를 알아서 붙인다. JSON 헤더를 직접 넣으면 안 된다. 넣으면 서버가 파일을 못 읽는다.
-- 지우기는 `DELETE`.
-- 둘 다 `features/profile/queries.ts` 에 mutation 으로 둔다.
+S3 클라이언트를 가짜로 바꾼 통합 테스트.
 
-**응답 처리**
-- 성공하면 응답 `AccountView` 로 `setUser` 를 부른다. 헤더가 `user.picture` 를 보고 있어서 그대로 바뀐다. 다시 조회하지 않는다.
-- 새 주소가 매번 다르므로 브라우저가 옛 사진을 캐시에서 보여주는 문제도 없다.
+- 올리기: 성공 201 · 이름만 `.jpg` 인 텍스트 · 5MB 초과 · 빈 파일 · `purpose` 없음 · `PENDING` 20개 → 400 · 설정 없음 → 503
+- 연결: 성공(`ATTACHED`, `PROFILE_IMG_URL`) · 남의 번호 · 썸네일용 번호 · 같은 번호 두 번 → 400
+- 교체: 옛 행 `DELETING` → 커밋 뒤 S3 삭제·행 삭제. 옛 주소가 구글이면 안 지움. S3 삭제 실패 시 `DELETING` 으로 남음
+- 지우기: `picture` null · 사진 없을 때 200
+- 배치: 24시간 지난 `PENDING` 과 남은 `DELETING` 을 지우고 `ATTACHED` 는 안 건드림 · 찜한 행에 연결 → 400
+- 메타데이터: GPS 든 jpeg · `eXIf` png · `EXIF` webp → S3 에 넘어간 바이트에 없음. S3 요청 `Content-Type` 이 판정한 형식
 
-**잠금**
-- 올리기, 지우기 중에는 사진 버튼 둘 다 누를 수 없게 한다.
-- 닉네임 저장 중(`saving`)에도 사진 버튼을 잠근다. 두 응답이 세션을 번갈아 쓰면 한쪽 값이 덮인다.
+## 미확정
 
-**오류**
-- 400, 503 은 서버가 준 사유를 사진 아래 한 줄로 보여준다. 마케팅 동의와 같은 방식이다.
-- 401 은 다시 로그인하라고 안내한다.
-- 403 `ONBOARDING_REQUIRED` 는 온보딩 화면으로 보낸다.
-
-**확인 창**
-- 지울 때 "정말 지우시겠어요?" 창은 없다. 다시 올리면 된다.
-
-## 미확정 (팀 결정)
-
-- **운영 서버의 요청 크기 제한.** 운영 서버 앞단(k8s 인그레스)이 5MB 파일 요청을 통과시키는지 인프라에서 확인이 필요하다. 막혀 있으면 그쪽 설정을 올리거나 우리 상한을 내린다.
+- **운영 인그레스의 요청 크기 제한.** 5MB 요청이 통과하는지 인프라 확인. 막혀 있으면 그쪽을 올리거나 우리 상한을 내린다.
 - **사진 영역 위치와 문구.** 프로토에 없다. 기획 수정본이 나오면 맞춘다.
-- ~~**프로필 사진을 안 받는다고 적힌 문서 세 개**~~ — 이 PR 에서 고쳤다. 회원 데이터 정책(POL-0007: 선택 항목으로 받음, 메타데이터 제거, 탈퇴 시 파일 삭제), 기획(crew-edit-profile PRD), 프로필 수정·온보딩·탈퇴 스펙, ERD.
-- **개인정보 처리방침 개정이 기능을 켜기 전에 필요하다.** 수집항목(제2조)·수탁(제7조, AWS)·보유기간(제4조) — 시행 전 공지. 할 일 목록은 [legal-placeholders](../../docs/legal/legal-placeholders.md#도입-예정-서비스와-그때-해야-할-개정). 특히 **CloudFront 가 해외 엣지에 사본을 두는 것이 국외 이전에 해당하는지** 판단이 필요하다.
-- **지운 사진이 캐시에 남는 시간.** 기본 1일(`max-age=86400`). 더 줄이려면 지울 때·탈퇴할 때 CloudFront 무효화를 같이 건다 — 배포 ID 환경변수와 무효화 권한이 더 필요하다. 1일로 둘지 무효화까지 할지?
-- **업로드 방식 — 기능별 API(이 스펙) 대 범용 업로드.** 스터디 썸네일은 등록 폼에서 스터디가 생기기 **전에** 올려야 해서([study-create PRD](../../01-planning/stories/study-create/PRD.md) §17) 이 스펙의 `PUT /api/me/...` 모양을 그대로 쓸 수 없다. 썸네일까지 한 가지 방식으로 가려면 「먼저 올리고 업로드 ID 를 받아 → 저장 API 에 ID 를 넘겨 연결」 하는 범용 업로드(업로드 기록 테이블 + 연결 안 된 파일 주기 정리)가 필요하다. 프로필 사진을 지금 방식으로 먼저 낼지, 범용 업로드로 같이 갈지 결정 필요.
+- **개인정보 처리방침 개정이 기능을 켜기 전에 필요하다.** 수집항목(제2조)·수탁(제7조, AWS)·보유기간(제4조) — 시행 전 공지. 할 일은 [legal-placeholders](../../docs/legal/legal-placeholders.md#도입-예정-서비스와-그때-해야-할-개정). 특히 CloudFront 해외 엣지 사본이 국외 이전에 해당하는지.
+- **지운 사진이 캐시에 남는 시간.** 기본 1일(`max-age=86400`). 줄이려면 지울 때·탈퇴할 때 CloudFront 무효화 — 배포 ID 환경변수와 권한이 더 필요하다.
+- **보관 24시간 · 상한 20개.** 제안값. 설정값이라 코드 수정 없이 바꾼다.
 
-## 한계 / 후속
+## 알려진 한계
 
-- **크기 줄이기, 자르기** — 큰 원본이 그대로 내려간다. 필요해지면 올릴 때 서버에서 줄이거나 CloudFront 쪽에서 변환한다.
-- **안 쓰는 파일** — 옛 파일 지우기가 실패하면 S3 에 파일이 남는다. WARN 로그에 위치가 남으니 쌓이면 그 로그를 근거로 정리하는 배치를 둔다.
-- **스터디 썸네일** — 같은 저장 코드를 `gigs/thumbnails/` 폴더로 쓴다. API 는 스터디 생성 스펙에서.
-- ~~**탈퇴할 때 파일 지우기**~~ — 범위 안으로 옮겼다. 탈퇴 스펙에 「커밋 뒤 사진 파일 삭제」 단계를 넣었다.
-- **세로 사진이 눕혀 보이는 문제** — 메타데이터를 지우면 jpeg 회전 정보(Orientation)도 사라진다. 대부분의 폰은 저장할 때 이미 픽셀을 돌려 두지만, 아닌 기기도 있다. 생기면 올릴 때 회전 값만 읽어 픽셀을 돌리거나(이미지 처리 필요), 프론트에서 캔버스로 한 번 그려 보내는 방법이 있다.
+- **스터디 썸네일** — 올리기는 `purpose=STUDY_THUMBNAIL` 로 이 API 를 그대로 쓴다. 스터디 등록·수정 API 가 `thumbnailUploadId` 를 받아 결정 2 의 연결 규칙을 타는 변경과, 썸네일 교체·스터디 삭제 시 옛 파일을 `DELETING` 으로 넘기는 것은 스터디 스펙에서.
+- **연결 전 파일도 주소만 알면 보인다** — `gigs/` 는 공개 폴더다. 주소가 UUID 라 추측은 못 하고, 하루 뒤 지워진다.
+- **크기 줄이기 · 자르기 없음** — 원본이 그대로 내려간다. 필요해지면 서버에서 줄이거나 CloudFront 쪽에서 변환한다.
+- **세로 사진이 눕혀 보일 수 있다** — 메타데이터를 지우면 jpeg 회전 정보(Orientation)도 사라진다. 대부분의 폰은 저장할 때 픽셀을 돌려 두지만 아닌 기기도 있다. 생기면 회전 값만 읽어 픽셀을 돌리거나 프론트에서 캔버스로 그려 보낸다.
+- **탈퇴** — 탈퇴 스펙이 `PROFILE_IMG_URL` 의 파일과 그 계정의 `PENDING` 업로드를 `DELETING` 으로 넘기고 커밋 뒤 지운다.
 
 ## 변경이력
 
 | 날짜 | 변경 | 근거 |
-|---|---|---|
-| 2026-10-09 | 메타데이터(EXIF 등) 제거, S3 `Content-Type`·`Cache-Control`, 탈퇴 시 파일 삭제를 범위 안으로, 정책·기획 문서 정리, 미확정에 처리방침 개정·캐시 시간·업로드 방식 추가 | 리뷰: 원본 그대로 공개 저장하면 위치 정보가 노출된다 · 회원 데이터 정책의 즉시 파기 |
-| 2026-10-08 | 최초 작성 — `PUT`·`DELETE /api/me/profile-image`, 서버를 거치는 업로드, 파일 내용으로 형식 판정, 바꿀 때마다 새 파일·옛 파일 삭제, 저장 코드는 폴더만 바꿔 재사용 | 리더 요청: 기획을 기다리지 않고 프로필 수정에 사진 등록, 필요하면 언제든 연동 가능한 상태 |
+|------|------|------|
+| 2026-10-13 | 공용 업로드 API `POST /api/uploads/images` + `UPLOAD` 테이블 + 조건부 UPDATE 연결 + 정리 배치. 프로필 연결은 `PUT /api/me/profile-image { uploadId }`. 팀 스펙 틀로 재구성 | 리뷰: 스터디 썸네일은 등록 폼에서 스터디가 생기기 전에 올려야 한다 |
+| 2026-10-09 | 메타데이터(EXIF 등) 제거, S3 `Content-Type`·`Cache-Control`, 탈퇴 시 파일 삭제, 정책·기획 문서 정리 | 리뷰: 원본 그대로 공개 저장하면 위치 정보가 노출된다 · 회원 데이터 정책의 즉시 파기 |
+| 2026-10-08 | 최초 작성 — `PUT`·`DELETE /api/me/profile-image`, 서버 경유 업로드, 파일 내용으로 형식 판정, 교체 시 새 파일·옛 파일 삭제 | 리더 요청: 기획을 기다리지 않고 프로필 수정에 사진 등록 |
