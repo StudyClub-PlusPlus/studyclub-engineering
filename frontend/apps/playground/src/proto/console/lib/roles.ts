@@ -182,3 +182,25 @@ export function assignBlockReason(args: { isSelf: boolean; targetRole: AccountRo
   if (targetRole === 'captain' && captainCount <= 1) return '마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요.';
   return null;
 }
+
+/**
+ * 권한 바꾸기를 서버에 맡긴다.
+ *
+ * **화면이 먼저 바꾸지 않는다** — 권한은 「지금 저장돼 있는 것」이 보여야 하는 값이다. 눌렀다는
+ * 이유로 배지를 미리 바꾸면, 저장에 실패해도 바뀐 것처럼 남아 운영자가 다시 누를 이유를 모른다.
+ *
+ * 프로토는 서버가 없어 지연만 흉내 낸다. 실패하는 길도 보여야 해서 **id 로 정해지는 드문 경우**
+ * 하나를 실패로 만든다 — 누를 때마다 달라지면 그 화면을 다시 띄울 수 없다.
+ *
+ * TODO(api): PATCH /api/admin/users/{id}/role
+ */
+export function requestRoleChange(id: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let h = 2166136261;
+    for (let i = 0; i < id.length; i++) {
+      h ^= id.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    setTimeout(() => (Math.abs(h) % 6 === 0 ? reject(new Error('save failed')) : resolve()), 900);
+  });
+}

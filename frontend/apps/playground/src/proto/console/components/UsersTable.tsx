@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Pagination } from '@console/components/Pagination';
 import { PageHeader, TableCard } from '@console/components/ui';
@@ -12,14 +12,15 @@ import {
   ROLES,
   ROLE_LABEL,
   assignBlockReason,
+  requestRoleChange,
   scopeOf,
   type AccountRole,
   type RoleKey,
   type Scope,
 } from '@console/lib/roles';
 import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
-import { Badge, Modal, type BadgeTone } from '@studyclub/ui';
-import { Check, ChevronDown, Eye, EyeOff, Info, Minus } from 'lucide-react';
+import { Badge, Modal, toast, type BadgeTone } from '@studyclub/ui';
+import { Check, ChevronDown, Eye, EyeOff, Info, Loader2, Minus } from 'lucide-react';
 
 /** 한 화면에 20명. 스크롤로 다 내리는 것보다 「몇 번째 장을 보고 있는가」가 남는 편이 낫다. */
 const PAGE_SIZE = 20;
@@ -78,10 +79,13 @@ const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
 function RoleBadgeSelect({
   role,
   blocked,
+  saving,
   onChange,
 }: {
   role: AccountRole;
   blocked: string | null;
+  /** 저장을 기다리는 중. 배지는 **지금 저장된 값** 그대로 두고 옆에 그 사실만 알린다. */
+  saving: boolean;
   onChange: (next: AccountRole) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -119,6 +123,19 @@ function RoleBadgeSelect({
     return (
       <span data-anno='role:1' title={blocked} className='inline-flex cursor-not-allowed opacity-70'>
         {badge}
+      </span>
+    );
+  }
+
+  // 저장을 기다리는 동안에는 다시 고를 수 없다 — 두 번 눌러 두 번 저장되지 않게
+  if (saving) {
+    return (
+      <span data-anno='role:1' className='inline-flex items-center gap-1.5'>
+        {badge}
+        <span className='inline-flex items-center gap-1 text-xs text-fg-muted'>
+          <Loader2 size={12} className='animate-spin' />
+          변경 중
+        </span>
       </span>
     );
   }
@@ -244,6 +261,13 @@ function NavigatorCell({ studyIds }: { studyIds: string[] }) {
   );
 }
 
+/** 「캡틴으로」· 「크루로」 — 받침에 따라 조사를 고른다. 「(으)로」를 적어 두지 않는다. */
+function withParticle(label: string): string {
+  const code = label.charCodeAt(label.length - 1);
+  const hasFinal = code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 !== 0;
+  return `${label}${hasFinal ? '으로' : '로'}`;
+}
+
 /** 권한 칸. 범위는 표 제목 옆 한마디가 말한다. */
 function ScopeCell({ scope }: { scope: Scope }) {
   if (scope === 'none') return <Minus size={15} className='inline text-fg-placeholder' aria-label='없음' />;
@@ -257,14 +281,52 @@ export function UsersTable() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [page, setPage] = useState(1);
+  // 저장을 기다리는 줄. 그 줄의 배지는 잠기고 「변경 중」이 붙는다
+  const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
 
   // TODO(api): 로그인한 계정 id 로 교체. 자기 권한을 스스로 못 내리게 하는 데 쓴다.
   const actorId = rows.find((r) => r.account === 'captain')?.id ?? '';
   const captainCount = rows.filter((r) => r.account === 'captain').length;
 
-  function setAccount(id: string, account: AccountRole) {
-    setRows((list) => list.map((m) => (m.id === id ? { ...m, account } : m)));
-  }
+  /**
+   * 권한을 바꾼다 — **저장된 뒤에** 화면이 바뀐다.
+   *
+   * 누르자마자 배지를 바꾸면 저장에 실패해도 바뀐 것처럼 남는다. 권한은 지금 저장돼 있는 것이
+   * 보여야 하는 값이라, 기다리는 동안에는 **원래 배지를 그대로 두고** 변경 중이라는 사실만 알린다.
+   */
+  const changeAccount = useCallback(async (id: string, account: AccountRole) => {
+    setSaving((prev) => new Set([...prev, id]));
+    try {
+      await requestRoleChange(id);
+      setRows((list) => list.map((m) => (m.id === id ? { ...m, account } : m)));
+      // 디스코드 역할은 이 화면이 건드리지 못한다. 바꾼 사람이 그 사실을 바로 알아야 한다
+      toast.success(`권한을 ${withParticle(ROLE_LABEL[account])} 바꿨습니다. 디스코드 설정 변경은 운영자에게 요청해 주세요.`, {
+        duration: 6000,
+      });
+    } catch {
+      // 바뀐 것이 없다. 배지는 원래 값 그대로다
+      toast.error(
+        (t) => (
+          <span className='flex items-center gap-3'>
+            권한을 바꾸지 못했습니다. 다시 시도해 주세요.
+            <button
+              type='button'
+              className='shrink-0 font-semibold text-primary-600 underline-offset-2 hover:underline'
+              onClick={() => {
+                toast.dismiss(t.id);
+                void changeAccount(id, account);
+              }}
+            >
+              다시 시도
+            </button>
+          </span>
+        ),
+        { duration: 8000 },
+      );
+    } finally {
+      setSaving((prev) => new Set([...prev].filter((x) => x !== id)));
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -364,7 +426,8 @@ export function UsersTable() {
                       targetRole: m.account,
                       captainCount,
                     })}
-                    onChange={(next) => setAccount(m.id, next)}
+                    saving={saving.has(m.id)}
+                    onChange={(next) => void changeAccount(m.id, next)}
                   />
                 </td>
                 {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
