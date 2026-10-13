@@ -68,7 +68,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
             type='button'
             onClick={enterPreview}
             title='로그인 없이 마이페이지 보기 (로컬 개발 서버 전용)'
-            className='rounded-full border border-dashed border-[var(--color-border-strong)] px-3 py-2 text-sm font-semibold text-[var(--color-fg-muted)] transition-colors hover:bg-[var(--color-surface-subtle)]'
+            className='rounded-full border border-dashed border-[var(--color-border)] px-3 py-2 text-sm font-semibold text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-subtle)]'
           >
             MY
           </button>

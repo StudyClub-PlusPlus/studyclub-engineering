@@ -49,7 +49,7 @@ export function ApplyCompleteDialog({
       }
       footer={
         <Button data-anno='complete:3' className='w-full' onClick={goMyStudies}>
-          {t({ ko: '내 스터디로 이동하기', en: 'Go to My studies' }, locale)}
+          {t({ ko: '내 스터디 보러 가기', en: 'Go to My studies' }, locale)}
         </Button>
       }
     >

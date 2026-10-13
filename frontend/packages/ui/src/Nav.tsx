@@ -27,7 +27,7 @@ export interface NavProps extends HTMLAttributes<HTMLElement> {
  * design-system.md §9-8 Nav.
  *
  * - 사이트: 상단 가로 네비(흰 bg + border 하단)
- * - 콘솔: 좌측 사이드바(surface-1, active: brand-subtle bg + primary-700)
+ * - 콘솔: 좌측 사이드바(page-bg, active: primary-light + primary-dark)
  */
 export function Nav({
   variant = 'site',
@@ -61,7 +61,7 @@ export function Nav({
             const itemClass = cx(
               'flex items-center gap-2.5 rounded-control px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
               item.active
-                ? 'bg-brand-subtle font-semibold text-primary-700'
+                ? 'bg-primary-light font-semibold text-primary-dark'
                 : 'text-fg-muted hover:bg-surface-2 hover:text-fg',
               item.disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-fg-muted',
             );

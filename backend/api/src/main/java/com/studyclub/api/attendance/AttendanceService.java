@@ -143,10 +143,17 @@ public class AttendanceService {
                 totalDenominator += (long) numeratorDenominatorPair[1];
             }
 
+            boolean captain =
+                    study.getCreatedBy() != null && study.getCreatedBy().equals(p.getAccountId());
+
             participantAttendances.add(
                     new AttendanceResponse.ParticipantAttendance(
                             p.getId(),
                             nicknames.getOrDefault(p.getAccountId(), DELETED_ACCOUNT_NICKNAME),
+                            p.getParticipantRole().name(),
+                            captain,
+                            p.getStatus().name(),
+                            p.getLeftAt(),
                             participantAttendancePerMeeting,
                             AttendanceRateCalculator.rate(numeratorDenominatorPair)));
         }

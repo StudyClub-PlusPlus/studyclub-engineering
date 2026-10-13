@@ -105,14 +105,10 @@ export function StudyCreateDialog({
           done ? (
             <Button onClick={close}>확인</Button>
           ) : (
-            <>
-              <Button data-anno='8' variant='secondary' onClick={close} disabled={saving}>
-                취소
-              </Button>
-              <Button data-anno='9' onClick={handleSubmit} loading={saving}>
-                {editing ? '저장' : '등록'}
-              </Button>
-            </>
+            /* 입력·설정 모달이라 취소를 두지 않는다 — 닫는 길은 X 와 Esc 다 (POL-0008) */
+            <Button data-anno='9' onClick={handleSubmit} loading={saving}>
+              {editing ? '저장' : '등록'}
+            </Button>
           )
         }
       >

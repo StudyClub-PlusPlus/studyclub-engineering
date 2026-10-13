@@ -15,8 +15,17 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
   });
 }
 
-export default async function StudiesPage({ params }: { params: Promise<{ locale: Locale }> }) {
+export default async function StudiesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: Locale }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { locale } = await params;
+  // 목록 조건을 URL(`?q=…`)로 받는다 — searchParams 를 읽어 요청마다 렌더한다. 정적으로 두면 클라이언트의
+  // useSearchParams 때문에 페이지 전체가 브라우저 렌더로 넘어가 HTML 에 목록·제목이 빠진다(SEO).
+  await searchParams;
   const leads = await getOperatorMap();
 
   return (

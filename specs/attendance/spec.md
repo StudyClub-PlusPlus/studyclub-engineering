@@ -9,13 +9,15 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/studies/{studyId}/attendances | 출석 명부 조회 | O | 스펙확정 |
-| POST | /api/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (캡틴) | 스펙확정 |
+| GET | /api/me/studies/{studyId}/attendances | 출석 명부 조회 | O (그 분반 참여자·네비게이터·캡틴) | 스펙확정 |
+| POST | /api/me/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (네비게이터 — 그 분반 LEADER) | 스펙확정 |
+| GET | /api/admin/studies/{studyId}/attendances | 출석 명부 조회 | O (캡틴) | 스펙확정 |
+| POST | /api/admin/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (캡틴) | 스펙확정 |
 
 > 이번 스코프는 명부 화면을 띄우는 데 필요한 **조회 1개 + 생성 1개** API만 다룬다. 세션 취소, 휴가 신청·승인, 정정 이력 조회 등 나머지 CRUD는 별도 스펙.
 > `[OPEN]` = 캡틴 확정 전 제안 기본값 / 팀 확인 필요.
 
-**GET과 POST는 같은 경로를 쓴다** — `/api/studies/{studyId}/attendances`. 같은 리소스(스터디의 출석 컬렉션)를 메서드로만 구분: GET은 읽고, POST는 upsert한다. 명부 화면은 따로 미팅 목록을 부르지 않는다 — 미팅 목록도 GET 응답 안의 `meetings[]`로 함께 내려간다. 회차를 관리(추가·수정·삭제)하는 화면의 목록은 [`GET /api/studies/{studyId}/meetings`](../study-meeting/spec.md)다.
+관객별로 경로가 나뉜다. 크루·네비게이터용 `/api/me`, 캡틴 전용 백오피스는 `/api/admin`. 명부 화면은 따로 미팅 목록을 부르지 않는다 — 미팅 목록도 GET 응답 안의 `meetings[]`로 함께 내려간다. 회차를 관리(추가·수정·삭제)하는 화면의 목록은 [`GET /api/studies/{studyId}/meetings`](../study-meeting/spec.md)다.
 
 ### 관련 데이터 모델
 
@@ -59,8 +61,8 @@ STUDY_ATTENDANCE {
 ### 기본 정보
 
 - **Method**: GET
-- **Path**: `/api/studies/{studyId}/attendances`
-- **인증**: 필요 (Bearer) — 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. 판정은 [회차 스펙 「권한 판정」](../study-meeting/spec.md#권한-판정) 보기와 같다. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다
+- **Path**: `/api/me/studies/{studyId}/attendances` (크루·네비게이터·캡틴) / `/api/admin/studies/{studyId}/attendances` (캡틴 전용)
+- **인증**: 필요 (Bearer) — `/api/me`: 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. `/api/admin`: 캡틴(SYSTEM_ROLE=ADMIN)만. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다
 - **설명**: 지정한 그룹의 명부(모든 회차 × 해당 그룹 참가자)를 기본으로 반환. `meetingId` 쿼리 파라미터로 특정 회차 하나만 필터링 가능 — 응답 구조는 동일, 내용만 좁아짐
 
 ### Path Parameters
@@ -214,8 +216,8 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 ### 기본 정보
 
 - **Method**: POST
-- **Path**: `/api/studies/{studyId}/attendances`
-- **인증**: 필요 — LEADER 역할 보유자
+- **Path**: `/api/admin/studies/{studyId}/attendances`
+- **인증**: 필요 — 캡틴(SYSTEM_ROLE=ADMIN)
 - **설명**: 스터디 안에서 하나 이상의 미팅 × 참가자 조합에 대해 출석 상태를 한 번에 기록. 여러 회차에 걸친 정정 + 신규 입력이 한 요청에 섞여도 됨. row가 없으면 INSERT, 있으면 UPDATE.
 
 ### Path Parameters
@@ -232,6 +234,7 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 
 ```json
 {
+  "studyGroupId": 1,
   "updates": [
     { "meetingId": 1, "participantId": 20, "status": "PRESENT" },
     { "meetingId": 1, "participantId": 10, "status": "PRESENT" },
@@ -242,6 +245,7 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 
 | 필드 | 타입 | 필수 | 검증 |
 |------|------|------|------|
+| studyGroupId | Long | Y | 출석을 기록할 분반 ID. 존재하지 않으면 404. studyId 소속이 아니면 400. updates의 모든 meetingId는 이 분반 소속이어야 함 |
 | updates | array | Y | 1개 이상. 빈 배열 → 400 |
 | updates[].meetingId | Long | Y | studyId에 속한 StudyMeeting.id여야 함 → 아니면 400 |
 | updates[].participantId | Long | Y | studyId에 속한 StudyParticipant.id여야 함 → 아니면 400 |
@@ -273,7 +277,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 400 | INVALID_INPUT | updates가 빈 배열 |
-| 403 | FORBIDDEN | LEADER 역할 없음 |
+| 403 | FORBIDDEN | 캡틴(SYSTEM_ROLE=ADMIN)이 아님 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
 | 400 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |
@@ -283,3 +287,48 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 ### 미확정
 
 - `[OPEN]` 버전 체크(낙관적 잠금) 필요 여부
+
+---
+
+## 출석 생성/수정 (upsert) — 사용자 사이트 (네비게이터)
+
+### 기본 정보
+
+- **Method**: POST
+- **Path**: `/api/me/studies/{studyId}/attendances`
+- **인증**: 필요 — 그 분반의 네비게이터(`PARTICIPANT_ROLE=LEADER`). 다른 분반 LEADER 또는 분반 MEMBER는 403.
+- **설명**: 네비게이터가 자신이 맡은 분반의 출석을 수정. 요청 구조는 `/api/admin/…` POST와 동일. 인증은 어노테이션 가드 대신 코드에서 `assertCaptainOrNavigatorOfGroup` 으로 검사한다 (`studyGroupId`가 request body에 있어 인터셉터가 읽지 못하기 때문).
+
+### Path Parameters
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| studyId | Long | 스터디 ID |
+
+### Query Parameters
+
+없음
+
+### Request Body
+
+`/api/admin/studies/{studyId}/attendances` POST 와 동일.
+
+```json
+{
+  "studyGroupId": 1,
+  "updates": [
+    { "meetingId": 1, "participantId": 20, "status": "PRESENT" }
+  ]
+}
+```
+
+### Response — 204 No Content
+
+응답 바디 없음.
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 403 | FORBIDDEN | 그 분반의 LEADER가 아님 (다른 분반 LEADER, MEMBER, 미참여자 포함) |
+| 나머지 | — | `/api/admin/…` POST 와 동일 |

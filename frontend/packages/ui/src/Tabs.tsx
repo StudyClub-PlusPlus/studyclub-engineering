@@ -24,8 +24,8 @@ export interface TabsProps {
  * design-system.md §9-8 Tabs.
  *
  * 언더라인형 탭.
- * - active: text primary-700 + 2px underline brand(600)
- * - inactive: neutral-600 (hover: neutral-900)
+ * - active: primary-dark + 2px underline primary
+ * - inactive: text-muted (hover: ink)
  */
 export function Tabs({ items, activeKey, defaultActiveKey, onChange, className }: TabsProps) {
   const [internalActive, setInternalActive] = useState<string>(
@@ -59,7 +59,7 @@ export function Tabs({ items, activeKey, defaultActiveKey, onChange, className }
               onClick={() => handleTabClick(tab.key, tab.disabled)}
               className={cx(
                 'relative -mb-px flex items-center whitespace-nowrap px-4 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
-                isActive ? 'font-semibold text-primary-700' : 'font-medium text-fg-muted hover:text-fg',
+                isActive ? 'font-semibold text-primary-dark' : 'font-medium text-fg-muted hover:text-fg',
                 tab.disabled && 'cursor-not-allowed opacity-40 hover:text-fg-muted',
               )}
             >
@@ -69,7 +69,7 @@ export function Tabs({ items, activeKey, defaultActiveKey, onChange, className }
                 <span
                   className={cx(
                     'ml-1.5 inline-flex items-center rounded-pill px-1.5 py-0.5 text-xs font-semibold',
-                    isActive ? 'bg-brand-subtle text-primary-700' : 'bg-surface-2 text-fg-muted',
+                    isActive ? 'bg-primary-light text-primary-dark' : 'bg-surface-2 text-fg-muted',
                   )}
                 >
                   {tab.badge}

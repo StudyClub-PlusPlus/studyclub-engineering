@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { StudyclubEvent } from '@studyclub/mock';
 import { Badge } from '@studyclub/ui';
@@ -9,6 +9,8 @@ import { EventDialog } from '@/components/EventDialog';
 import { EVENT_TYPES } from '@/components/EventForm';
 import { TableCard } from '@/components/ui';
 import { tx, EVENT_TYPE_LABEL } from '@/lib/l10n';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { useUrlState } from '@/lib/use-url-state';
 
 /**
  * 행사 관리 목록 — 스터디 목록과 같은 규칙.
@@ -48,7 +50,7 @@ function FilterSelect<T extends string>({
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       className={`h-9 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
+        value === 'all' ? 'border-border text-fg-secondary' : 'border-border-strong font-semibold text-fg'
       }`}
     >
       {options.map((o) => (
@@ -60,10 +62,20 @@ function FilterSelect<T extends string>({
   );
 }
 
+/** URL 쿼리 — `?type=talk&when=past&q=…`. 기본값은 싣지 않는다. */
+const URL_DEFAULTS = { q: '', type: 'all', when: 'all' };
+const URL_ALLOWED = { type: TYPE_OPTIONS.map((o) => o.value), when: WHEN_OPTIONS.map((o) => o.value) };
+
 export function EventsTable({ events }: { events: StudyclubEvent[] }) {
-  const [query, setQuery] = useState('');
-  const [type, setType] = useState('all');
-  const [when, setWhen] = useState<WhenFilter>('all');
+  // 조건은 URL 이 정본이다. 입력칸 글자만 화면 state 로 두고, 멈추면(300ms) URL 에 쓴다
+  const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const type = filters.type;
+  const when = filters.when as WhenFilter;
+  const [query, setQuery] = useState(filters.q);
+  const debouncedQuery = useDebouncedValue(query, 300);
+  useEffect(() => {
+    if (debouncedQuery !== filters.q) setFilters({ q: debouncedQuery });
+  }, [debouncedQuery, filters.q, setFilters]);
   const [editing, setEditing] = useState<StudyclubEvent | null>(null);
 
   const rows = useMemo(() => {
@@ -95,10 +107,10 @@ export function EventsTable({ events }: { events: StudyclubEvent[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='행사명 · 한 줄 소개 검색'
-          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-56 rounded-control border border-border bg-surface px-3 text-sm outline-none focus:border-border-interactive'
         />
-        <FilterSelect value={type} onChange={setType} options={TYPE_OPTIONS} />
-        <FilterSelect value={when} onChange={setWhen} options={WHEN_OPTIONS} />
+        <FilterSelect value={type} onChange={(v) => setFilters({ type: v })} options={TYPE_OPTIONS} />
+        <FilterSelect value={when} onChange={(v) => setFilters({ when: v })} options={WHEN_OPTIONS} />
         <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
       </div>
 

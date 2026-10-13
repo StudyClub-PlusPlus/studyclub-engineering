@@ -10,8 +10,8 @@ import { cx } from './cx';
  * 구조:
  * - 상단 카테고리 컬러 스트립 4px
  * - 헤더: 카테고리 태그 + 상태 pill + 북마크
- * - 타이틀: text-xl/600 neutral-900 (2줄 말줄임)
- * - 일정: text-sm neutral-600
+ * - 타이틀: text-xl/600 ink (2줄 말줄임)
+ * - 일정: text-sm text-muted
  * - 메타: 인원(👥 6/8명 tabular-nums) · 조회수(👁 124 tabular-nums) · 액션(신청하기 sm)
  * - 정원 진행바: 80%↑ warning tint 승격
  */
@@ -90,7 +90,7 @@ export function StudyCard({
         </div>
 
         {/* 타이틀 (2줄 말줄임) */}
-        <h3 className='mt-3 line-clamp-2 text-xl font-semibold leading-[1.3] tracking-tight text-neutral-900'>
+        <h3 className='mt-3 line-clamp-2 text-xl font-semibold leading-[1.3] tracking-tight text-ink'>
           {title}
         </h3>
 

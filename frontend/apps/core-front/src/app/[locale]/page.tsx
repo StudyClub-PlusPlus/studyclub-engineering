@@ -66,7 +66,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
           </a>
           <Link
             href={`/${locale}/studies`}
-            className='rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg)] px-6 py-3 text-base font-semibold shadow-sm transition-colors hover:bg-[var(--color-surface-2)]'
+            className='rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-6 py-3 text-base font-semibold shadow-sm transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-2)]'
           >
             {m('hero.cta_studies', locale)}
           </Link>

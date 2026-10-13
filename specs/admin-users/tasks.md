@@ -20,7 +20,7 @@
 - [ ] T002 [P] 에러 코드 2개 — `common/error/ErrorCode.java` 에 `CANNOT_CHANGE_OWN_ROLE(409)`·`LAST_ADMIN_REQUIRED(409)` 을 `CONFLICT` **뒤에** 추가 (문구는 spec 「계정 권한 변경 › Error Responses」). `api-test/web/ErrorCodeTest.java` 에 `fromStatus(409) == CONFLICT` 유지 확인 추가
 - [ ] T003 [P] 계정 권한 전이 — `domain/account/Account.java` 에 `changeSystemRole(SystemRole) : boolean`(null 이면 예외, 같은 값이면 `false`) + `api-test/auth/AccountTest.java` 에 단위 테스트
 - [ ] T004 [P] 감사 로그 엔티티 — `domain/audit/AdminAuditLog.java`(BaseEntity, 정적 팩토리 `emailReveal(actorId, targetId)`·`roleChange(actorId, targetId, before, after)`, setter 없음), `domain/audit/AdminAuditAction.java`(`EMAIL_REVEAL`·`ROLE_CHANGE`), `domain/audit/AdminAuditLogRepository.java`. 인덱스 2개를 `@Table(indexes=…)` 에 (ERD [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md))
-- [ ] T005 [P] 마이그레이션 — `backend/domain/src/main/resources/db/migration/V31__admin_audit_log.sql`. 번호는 `backend/scripts/check-migration-versions.sh` 로 확인. 엔티티(T004)와 컬럼·인덱스 이름이 같아야 한다
+- [ ] T005 [P] 마이그레이션 — `backend/domain/src/main/resources/db/migration/V36__admin_audit_log.sql` (계획 때 V31, beta 가 V35 까지 와서 V36). 번호는 `backend/scripts/check-migration-versions.sh` 로 확인. 엔티티(T004)와 컬럼·인덱스 이름이 같아야 한다
 - [ ] T006 ADMIN 잠금 조회 — `domain/account/AccountRepository.java` 에 `@Lock(PESSIMISTIC_WRITE)` + `select a from Account a where a.systemRole = ADMIN` 메서드 (`findByIdForUpdate` 옆, 왜 잠그는지 주석). T003 과 같은 모듈이지만 파일이 다르다
 
 ### Phase B2: 회원 목록 (GET `/api/admin/users`)
@@ -45,7 +45,7 @@
 - [ ] T032 엔드포인트 — `AdminUserController` 에 `PATCH /users/{accountId}/system-role` (`@Valid`)
 - [ ] T033 통합 테스트 — `api-test/account/AdminAccountRoleIntegrationTest.java`: MEMBER→ADMIN 200 + 감사 1행(`MEMBER`→`ADMIN`) / 같은 값 200 감사 0행 / 본인 409 / 404 / MEMBER 요청 403 / `systemRole=LEADER`·누락 400
 - [ ] T034 단위 테스트 — `api-test/account/AdminAccountRoleServiceTest.java`: LAST_ADMIN_REQUIRED 판정(ADMIN 1명일 때 다른 ADMIN 을 내리는 상황을 리포지터리 목으로 구성), 판정 순서
-- [ ] T035 동시성 테스트 시도 — `api-test/account/AdminAccountRoleConcurrencyTest.java`: ADMIN 2명이 두 스레드에서 동시에 서로를 내리면 한쪽만 200·다른 쪽 409 LAST_ADMIN_REQUIRED·ADMIN 1명 남음. **H2 에서 불안정하면** `@Disabled` 하지 말고 파일을 빼고 PR 에 「stage 수동 확인」으로 남긴다 (plan 기술 결정)
+- [ ] T035 동시성 테스트 시도 — `api-test/account/AdminAccountRoleConcurrencyIntegrationTest.java`: ADMIN 2명이 두 스레드에서 동시에 서로를 내리면 한쪽만 200·다른 쪽 409 LAST_ADMIN_REQUIRED·ADMIN 1명 남음. **H2 에서 불안정하면** `@Disabled` 하지 말고 파일을 빼고 PR 에 「stage 수동 확인」으로 남긴다 (plan 기술 결정)
 
 ### Phase B5: 권한표 (GET `/api/admin/role-permissions`)
 

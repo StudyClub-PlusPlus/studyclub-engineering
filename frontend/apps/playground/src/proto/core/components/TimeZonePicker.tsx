@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Locale } from '@core/lib/content';
 import { zoneOffset } from '@core/lib/time-zones';
+import { ZONES } from '@core/lib/zones';
 import { Check, ChevronDown } from 'lucide-react';
 
 /**
@@ -15,12 +16,6 @@ import { Check, ChevronDown } from 'lucide-react';
  *
  * 오프셋은 상수로 적지 않는다 — 서머타임에 따라 북미가 한 시간씩 움직인다.
  */
-export const ZONES = [
-  { zone: 'Asia/Seoul', ko: '한국 · 서울', en: 'Korea · Seoul' },
-  { zone: 'America/New_York', ko: '북미 동부 · 뉴욕, 토론토', en: 'North America East · New York, Toronto' },
-  { zone: 'America/Vancouver', ko: '북미 서부 · 밴쿠버, LA', en: 'North America West · Vancouver, LA' },
-] as const;
-
 /** 고른 지역의 이름. 목록에 없는 값(기기 시간대)이면 비운다 — 그래야 고르라고 말할 수 있다. */
 export function zoneName(zone: string, locale: Locale): string | undefined {
   const found = ZONES.find((z) => z.zone === zone);
@@ -35,6 +30,7 @@ export function TimeZonePicker({
   error,
   /** 이미 라벨이 있는 자리(카드 칸 안)에서는 제 라벨을 숨긴다 — 같은 말이 두 번 나온다. */
   hideLabel,
+  compact,
 }: {
   value: string;
   onChange: (zone: string) => void;
@@ -42,6 +38,8 @@ export function TimeZonePicker({
   disabled?: boolean;
   error?: string;
   hideLabel?: boolean;
+  /** 값 줄 자리에 끼울 때. 상자를 낮춰 보기 모드와 줄 높이를 맞춘다. */
+  compact?: boolean;
 }) {
   const ko = locale === 'ko';
   const id = useId();
@@ -112,7 +110,7 @@ export function TimeZonePicker({
             select(ZONES[active]!.zone);
           }
         }}
-        className={`${hideLabel ? '' : 'mt-1.5'} flex min-h-12 w-full items-center justify-between gap-3 rounded-control border bg-bg px-3.5 py-2.5 text-left text-sm outline-none transition focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border-strong hover:border-brand'}`}
+        className={`${hideLabel ? '' : 'mt-1.5'} flex w-full items-center justify-between gap-3 rounded-control border bg-bg text-left text-sm ${compact ? 'min-h-8 px-2.5 py-1' : 'min-h-12 px-3.5 py-2.5'} outline-none transition focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border-strong hover:border-brand'}`}
       >
         <span className={selected ? 'font-medium text-fg' : 'text-fg-muted'}>
           {selected ?? (ko ? '지역을 선택해 주세요' : 'Select your region')}
@@ -129,7 +127,7 @@ export function TimeZonePicker({
           id={`${id}-list`}
           role='listbox'
           aria-label={ko ? '지역' : 'Region'}
-          className={`absolute left-0 right-0 ${hideLabel ? 'top-[56px]' : 'top-[76px]'} z-40 overflow-hidden rounded-card border border-border bg-bg p-1.5 shadow-lg`}
+          className={`absolute left-0 right-0 ${compact ? 'top-[38px]' : hideLabel ? 'top-[56px]' : 'top-[76px]'} z-40 overflow-hidden rounded-card border border-border bg-bg p-1.5 shadow-lg`}
         >
           {ZONES.map((z, index) => (
             <button
@@ -157,3 +155,5 @@ export function TimeZonePicker({
     </div>
   );
 }
+
+export { ZONES };

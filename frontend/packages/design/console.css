@@ -62,7 +62,7 @@
   background: var(--color-brand);
 }
 .btn-ghost {
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
   color: var(--color-fg-muted);
   padding: 0.375rem 0.75rem;
 }
