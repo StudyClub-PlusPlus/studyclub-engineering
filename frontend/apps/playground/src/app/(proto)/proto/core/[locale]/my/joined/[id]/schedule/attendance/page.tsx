@@ -116,7 +116,7 @@ export default function StudyManageAttendancePage() {
             crew={crew}
             meetings={meetings}
             attendance={book}
-            classes={[{ id: group.id, rule: ruleFromMeetings(study, meetings) }]}
+            classes={[{ id: group.id, title: group.name, rule: ruleFromMeetings(study, meetings) }]}
             classId={group.id}
             onClass={() => {}}
             onSave={save}

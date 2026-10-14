@@ -39,7 +39,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 - **accountId**: JWT `authentication.getPrincipal()`. 바디로 받지 않는다.
 - **캡틴**: `ACCOUNT.SYSTEM_ROLE=ADMIN`. 스터디와 상관없는 계정 권한이다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
-- **담당 캡틴**: 이 기수를 생성한 캡틴. 판정은 `STUDY.CREATED_BY = accountId`. 스터디에 참여하지만 신청서를 내지 않고 정원에도 잡히지 않는다. 반 편성 때 캡틴이 반을 지정하면 명부(`STUDY_PARTICIPANT`)에 들어간다 (2026-10-07, [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). `CREATED_BY` 가 NULL 인 옛 기수는 담당 캡틴이 없으므로 캡틴 누구나 담당으로 본다.
+- **담당 캡틴**: 이 기수를 생성한 캡틴. 판정은 `STUDY.CREATED_BY = accountId`. 저절로 참여하지 않는다. 참여하려면 크루처럼 신청하고, 신청하면 명부·정원 모두 크루와 같다 (2026-10-14, [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). `CREATED_BY` 가 NULL 인 옛 기수는 담당 캡틴이 없으므로 캡틴 누구나 담당으로 본다.
 - **네비게이터**: 이 기수 `STUDY_PARTICIPANT.PARTICIPANT_ROLE` 이 `LEADER` 인 크루. 신청 폼 수정·신청 결과 조회 권한이 없다 (백오피스 접근 불가).
 - **날짜**: UTC ISO 8601.
 - **에러 바디**: `{ "errorCode", "errorMessage" }`. `fields` 객체는 추가하지 않는다. 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문은 넣지 않는다.
@@ -63,12 +63,12 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 
 비교 대상은 **분반 정원이 아니다.** 반은 신청 이후에 정한다. 대기열 없음.
 
-1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 기수 명부에서 `STATUS = ACTIVE`인 크루(`MEMBER`·`LEADER`)와 비교한다. 네비게이터는 포함하고 담당 캡틴은 포함하지 않는다. `PAUSED`·`WITHDRAWN`·`COMPLETED`·`DELETED`는 제외한다
+1. `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 가 있으면 — 기수 명부에서 `STATUS = ACTIVE`인 크루(`MEMBER`·`LEADER`)와 비교한다. 네비게이터와 신청한 담당 캡틴도 포함한다. `PAUSED`·`WITHDRAWN`·`COMPLETED`·`DELETED`는 제외한다
 2. 없으면 인원 제한 없음
 
 기수 단위 정원(`STUDY.CAPACITY`)은 없다.
 
-**담당 캡틴은 정원에 넣지 않는다** ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-07). 정원은 신청 행 수로 세고 담당 캡틴은 신청 행이 없어서 자연히 빠진다. 반 편성 뒤 담당 캡틴이 명부에 들어가도 정원을 다시 세지 않는다. 명부 인원을 정원과 견주는 화면(참여 명단 `participantCount`)도 담당 캡틴 행을 뺀다.
+**담당 캡틴도 신청했으면 정원에 들어간다** ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-14). 신청이 곧 참여라 크루와 구분하지 않는다 (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md)). 신청하지 않은 담당 캡틴은 명부에 없으므로 세지 않는다.
 
 가득이면 저장하지 않는다.
 
@@ -325,7 +325,7 @@ GET 신청 폼 조회와 같은 shape.
 1. 로그인 · `DISCORD_ID` 존재 · 같은 기수(모든 모집 회차)에 기존 신청이 없는지 · 기존 명부 · 열려 있는 모집 회차 · 정원 검사
 
    기존 기수 신청 여부는 모집 기간과 답변 검사보다 먼저 확인한다. 저장 후 마감된 요청의 재시도도 `409` 이미 신청으로 응답하며 새 행을 만들지 않는다.
-   이 기수 명부에 `ACTIVE`·`PAUSED`로 있으면 신청할 수 없다. 기존 신청 확인 다음, 모집 기간 검사 전에 확인한다. 담당 캡틴은 생성 시 명부에 등록되면 이 규칙으로 신청이 차단된다. 생성 시 명부 등록은 별도 작업이다.
+   이 기수 명부에 `ACTIVE`·`PAUSED`로 있으면 신청할 수 없다. 기존 신청 확인 다음, 모집 기간 검사 전에 확인한다.
    DB의 `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)`는 회차 안의 중복만 막는다. 기수 전체 중복을 막기 위해 계정 행을 잠근 상태에서 기존 신청 확인과 저장을 같은 트랜잭션으로 처리한다. 신청은 명부를 늘리지 않으므로 모집 회차 행은 잠그지 않는다.
 2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. 공통 오류 응답의 `errorMessage`로 사유를 전달한다.
 3. `STUDY_APPLICATION` insert. `FORM_ANSWER` 저장

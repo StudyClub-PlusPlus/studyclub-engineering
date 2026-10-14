@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { ClassPicker } from '@console/components/ClassPicker';
-import { type StudyClass } from '@console/lib/classes';
+import { hasSchedule, type StudyClass } from '@console/lib/classes';
 import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
 import { Badge, Button, Modal } from '@studyclub/ui';
 import { CalendarPlus, Mic } from 'lucide-react';
@@ -391,7 +391,7 @@ export function AttendanceTab({
       <div data-anno='attendance:5' className='card px-6 py-10 text-center'>
         <p className='text-sm font-semibold text-fg'>아직 반이 없습니다.</p>
         <p className='mt-1.5 text-sm text-fg-muted'>
-          신청자 탭에서 가능한 시간을 보고 반을 만들면 그 반의 출석부가 만들어집니다.
+          신청자 탭에서 반을 만들고 일정 탭에서 일정을 정하면 그 반의 출석부가 만들어집니다.
         </p>
         <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={onGoCrew}>
           반 만들기
@@ -407,11 +407,17 @@ export function AttendanceTab({
       {meetings.length === 0 ? (
         // 반은 있는데 회차가 없다 — 회차는 일정 탭에서 만든다. 반 고르기는 위에 남겨 다른 반으로 옮길 수 있게 한다.
         <div data-anno='attendance:5' className='card px-6 py-10 text-center'>
-          <p className='text-sm font-semibold text-fg'>이 반에는 아직 회차가 없습니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>일정 탭에서 회차를 추가하면 이 반의 출석부가 만들어집니다.</p>
+          <p className='text-sm font-semibold text-fg'>
+            {hasSchedule(cls) ? '이 반에는 아직 회차가 없습니다.' : '이 반은 아직 일정이 없습니다.'}
+          </p>
+          <p className='mt-1.5 text-sm text-fg-muted'>
+            {hasSchedule(cls)
+              ? '일정 탭에서 회차를 추가하면 이 반의 출석부가 만들어집니다.'
+              : '일정 탭에서 요일 · 시각 · 기간을 정하면 회차와 출석부가 만들어집니다.'}
+          </p>
           {onAddMeeting && (
             <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={onAddMeeting}>
-              회차 추가하러 가기
+              {hasSchedule(cls) ? '회차 추가하러 가기' : '일정 정하러 가기'}
             </Button>
           )}
         </div>

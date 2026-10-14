@@ -254,7 +254,7 @@ export function meetingLabel(m: StudyMeeting): string {
 /**
  * 분반마다 하나 있는 킥오프(0회차). 규칙·일정·발표자를 정하는 첫 모임이다.
  * mock 에는 킥오프가 없어 첫 회차 한 주 전에 하나 둔다. 지우지 않고, 일자·시각·제목만 고친다.
- * TODO(api): 분반을 만들 때 서버가 킥오프 회차(`MEETING_TYPE = KICKOFF`)를 함께 만든다.
+ * TODO(api): 반 일정을 처음 정할 때(PATCH …/groups/{groupId} 의 kickoffAt) 서버가 킥오프 회차(`MEETING_TYPE = KICKOFF`)를 함께 만든다.
  */
 function kickoffOf(base: StudyMeeting[], studyId: string): ProtoMeeting | undefined {
   const first = [...base].sort((a, b) => a.date.localeCompare(b.date))[0];

@@ -37,7 +37,7 @@ export function classView({
 }: {
   study: Study;
   cls: StudyClass | undefined;
-  /** 반을 만들 때 진행 일정이 깐 회차. */
+  /** 반 일정을 정할 때 깐 회차. */
   base: StudyMeeting[];
   /** 이 반에 속한 크루. */
   crew: Crew[];
