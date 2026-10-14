@@ -145,6 +145,6 @@ public class AccountOnboardingService {
                                 request.marketingAgreed(),
                                 agreedAt,
                                 ConsentType.MARKETING.currentVersion())));
-        applicationEventPublisher.publishEvent(new UserRegisteredEvent(account.getId()));
+        applicationEventPublisher.publishEvent(UserRegisteredEvent.of(account.getId()));
     }
 }

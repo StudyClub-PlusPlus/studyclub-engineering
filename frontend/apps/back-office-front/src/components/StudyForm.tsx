@@ -209,6 +209,9 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
   if (!f.category) e.category = '카테고리를 선택하세요.';
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
+  if (f.deadline && f.startAt && f.startAt < f.deadline) {
+    e.startAt = '진행 시작일은 모집 마감일보다 빠를 수 없어요.';
+  }
   if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim())) {
     e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
   }
@@ -328,7 +331,7 @@ function ProgramField({
       className={`h-9 flex-1 rounded-control border px-3 text-sm transition-colors ${
         value.programMode === m
           ? 'border-brand bg-brand/5 font-semibold text-fg'
-          : 'border-border-strong text-fg-secondary hover:bg-surface-2'
+          : 'border-border text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
       }`}
     >
       {label}
@@ -360,7 +363,7 @@ function ProgramField({
                 className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
                   value.kind === k
                     ? 'border-brand bg-brand text-white'
-                    : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+                    : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
                 }`}
               >
                 {KIND_LABEL[k]}
@@ -378,7 +381,7 @@ function ProgramField({
             value={value.programId}
             onChange={(ev) => void selectProgram(ev.target.value)}
             disabled={isLoading || prefilling}
-            className='h-10 rounded-control border border-border-strong bg-bg px-3 text-sm outline-none focus:border-brand'
+            className='h-10 rounded-control border border-border bg-bg px-3 text-sm outline-none focus:border-border-interactive'
           >
             <option value=''>{isLoading ? '불러오는 중…' : '클럽을 고르세요'}</option>
             {clubs.map((c) => (
@@ -400,7 +403,7 @@ function ProgramField({
 }
 
 const DATE_INPUT =
-  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]';
+  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
 
 export function StudyForm({
   value,
@@ -515,11 +518,20 @@ export function StudyForm({
         <input
           id='startAt'
           type='date'
+          min={value.deadline || undefined}
           value={value.startAt}
           onChange={(ev) => set('startAt', ev.target.value)}
           className={DATE_INPUT}
+          aria-invalid={Boolean(errors.startAt)}
+          aria-describedby={errors.startAt ? 'startAt-error' : undefined}
         />
-        <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+        {errors.startAt ? (
+          <p id='startAt-error' className='text-xs font-medium text-error-600'>
+            {errors.startAt}
+          </p>
+        ) : (
+          <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+        )}
       </div>
 
       <Input

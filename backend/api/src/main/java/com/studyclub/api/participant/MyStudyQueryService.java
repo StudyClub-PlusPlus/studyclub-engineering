@@ -11,6 +11,7 @@ import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.MeetingSchedule;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyMeeting;
@@ -95,11 +96,15 @@ public class MyStudyQueryService {
             }
             List<StudyMeeting> meetings =
                     meetingsByGroupId.getOrDefault(participant.getStudyGroupId(), List.of());
+            StudyProgram program = programs.get(study.getProgramId());
+            if (program == null) {
+                continue;
+            }
             items.add(
                     toMyStudy(
                             participant,
                             study,
-                            programs.get(study.getProgramId()).getStudyKind(),
+                            program.getStudyKind(),
                             meetings,
                             attendanceByMeetingId,
                             now));
@@ -120,13 +125,14 @@ public class MyStudyQueryService {
         MyStudyRelation relation = relation(participant.getStatus(), study.getStartAt(), now);
         boolean withdrawn = relation == MyStudyRelation.WITHDRAWN;
 
+        // 킥오프는 0, 정규 회차는 1부터 — 스터디 일정 화면과 같은 번호 (specs/study-meeting/spec.md 결정 11)
+        Map<Long, Integer> numbers = MeetingSchedule.numbersOf(meetings);
         List<MyStudyMeeting> meetingViews = new ArrayList<>();
-        for (int i = 0; i < meetings.size(); i++) {
-            StudyMeeting meeting = meetings.get(i);
+        for (StudyMeeting meeting : meetings) {
             meetingViews.add(
                     new MyStudyMeeting(
                             meeting.getId(),
-                            i + 1,
+                            numbers.get(meeting.getId()),
                             meeting.getScheduledAt(),
                             meeting.getStartAt(),
                             meeting.getEndAt(),

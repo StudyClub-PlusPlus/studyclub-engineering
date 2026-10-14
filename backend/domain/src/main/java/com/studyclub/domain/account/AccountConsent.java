@@ -14,7 +14,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
 /**
- * 회원 약관 동의 이력. 온보딩 완료 시 유형별 1행(버전 포함). 약관 개정 시 같은 {@link ConsentType} 에 새 {@code consentVersion} 행을
+ * 회원 약관 동의. 온보딩 완료 시 유형별 1행(버전 포함). 약관 개정 시 같은 {@link ConsentType} 에 새 {@code consentVersion} 행을
  * 추가한다.
  */
 @Entity
@@ -61,6 +61,15 @@ public class AccountConsent extends BaseEntity {
         this.agreed = agreed;
         this.agreedAt = agreedAt;
         this.consentVersion = consentVersion;
+    }
+
+    /** 값이 지금과 같으면 아무것도 안 바꾼다 — {@code agreedAt} 은 지금 값으로 정한 시각이어야 한다. */
+    public void changeAgreement(boolean agreed, Instant now) {
+        if (this.agreed == agreed) {
+            return;
+        }
+        this.agreed = agreed;
+        this.agreedAt = now;
     }
 
     public Long getId() {

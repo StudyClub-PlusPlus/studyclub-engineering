@@ -1,7 +1,7 @@
 package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
-import com.studyclub.api.auth.dto.AuthDtos.AccountView;
+import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
 import com.studyclub.api.auth.dto.AuthDtos.RefreshRequest;
 import com.studyclub.api.auth.dto.AuthDtos.SocialLoginRequest;
@@ -35,7 +35,7 @@ public class AuthController {
 
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
-    public AccountView me(Authentication authentication) {
+    public AccountSelfView me(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }

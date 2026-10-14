@@ -68,6 +68,20 @@ export function getMyAttendance(studyId: string): Record<string, MyStatus> {
   return read()[studyId] ?? {};
 }
 
+/** 데모용 — 스터디별 출석 기록을 한 번에 덮어쓴다. 이미 기록이 있는 스터디는 건드리지 않는다. 변경이 있으면 true. */
+export function mergeAttendanceSeed(data: Record<string, Record<string, MyStatus>>): boolean {
+  const store = read();
+  let changed = false;
+  for (const [studyId, cells] of Object.entries(data)) {
+    if (!store[studyId] || Object.keys(store[studyId]).length === 0) {
+      store[studyId] = cells;
+      changed = true;
+    }
+  }
+  if (changed) write(store);
+  return changed;
+}
+
 function save(studyId: string, meetingId: string, status: MyStatus) {
   const store = read();
   store[studyId] = { ...(store[studyId] ?? {}), [meetingId]: status };

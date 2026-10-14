@@ -2,7 +2,7 @@ import { cx } from './cx';
 
 /**
  * design-system.md §9-5 정원 진행바.
- * 트랙 surface-3 · 채움 brand(600) · 80%↑ 이면 채움 warning-500 (= "마감임박" 승격 신호).
+ * 트랙 disabled-bg · 채움 primary · 80%↑ 이면 채움 warning-fg (= "마감임박" 승격 신호).
  */
 export const CAPACITY_WARN_THRESHOLD = 80;
 
@@ -41,7 +41,7 @@ export function CapacityBar({ taken, total, showLabel = false, label, className 
         <div
           className={cx(
             'h-full rounded-pill transition-[width] duration-base ease-out',
-            warn ? 'bg-warning-500' : 'bg-brand',
+            warn ? 'bg-warning-fg' : 'bg-primary',
           )}
           style={{ width: `${pct}%` }}
         />

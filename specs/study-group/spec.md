@@ -120,7 +120,7 @@
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| participantRole | String | Y | `LEADER` · `MEMBER` (`CO_LEADER` 는 받지 않는다 — [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md) 백엔드 요청 7) |
+| participantRole | String | Y | `LEADER` · `MEMBER` (부반장 `CO_LEADER` 는 2026-10-09 에 없앴다 — [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
 
 ### 서버 동작
 

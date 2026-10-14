@@ -13,6 +13,7 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly body?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -35,6 +36,6 @@ export async function http<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(res.status, messageOf(body, res.status));
+  if (!res.ok) throw new ApiError(res.status, messageOf(body, res.status), body);
   return body as T;
 }

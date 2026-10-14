@@ -28,7 +28,8 @@ public class UserRegisteredNotificationListener {
         } catch (RuntimeException e) {
             // 이미 커밋된 회원가입과 알림 저장 실패를 분리하고, 수신자 정보 없이 원인을 기록한다.
             log.error(
-                    "웰컴메일 알림 생성 실패. accountId={}, cause={}",
+                    "웰컴메일 알림 생성 실패. eventId={}, accountId={}, cause={}",
+                    event.eventId(),
                     event.accountId(),
                     e.getClass().getSimpleName());
         }

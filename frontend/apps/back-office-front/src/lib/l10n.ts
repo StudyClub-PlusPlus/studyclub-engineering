@@ -7,6 +7,11 @@ export function tx(value: L10n | undefined): string {
 }
 
 export const STATUS_LABEL: Record<string, string> = {
+  DRAFT: '작성 중',
+  OPEN: '개설',
+  ONGOING: '진행 중',
+  ENDED: '종료',
+  CLOSED: '운영 종료',
   recruiting: '모집 중',
   ongoing: '진행 중',
   closed: '종료',

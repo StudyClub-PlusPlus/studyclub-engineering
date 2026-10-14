@@ -50,5 +50,31 @@ public final class AuthDtos {
             /** 구글이 이번 로그인에 준 name. 온보딩 닉네임 입력칸 초기값용이라 DB 에 저장하지 않는다. */
             String suggestedNickname) {}
 
+    public record AccountSelfView(
+            Long id,
+            String email,
+            String nickname,
+            String picture,
+            String role,
+            String createdAt,
+            String timeZone,
+            String onboardingCompletedAt,
+            String discordNickname) {
+
+        public static AccountSelfView from(Account account) {
+            AccountView view = AccountView.from(account);
+            return new AccountSelfView(
+                    view.id(),
+                    view.email(),
+                    view.nickname(),
+                    view.picture(),
+                    view.role(),
+                    view.createdAt(),
+                    view.timeZone(),
+                    view.onboardingCompletedAt(),
+                    account.getDiscordNickname());
+        }
+    }
+
     public record AccessTokenResponse(String accessToken) {}
 }

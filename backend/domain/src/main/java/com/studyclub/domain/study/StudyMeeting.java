@@ -5,6 +5,8 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -22,6 +24,7 @@ import java.time.Instant;
 public class StudyMeeting extends BaseEntity {
 
     static final int TITLE_MAX_LENGTH = 50;
+    static final String KICKOFF_TITLE = "킥오프";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,6 +45,21 @@ public class StudyMeeting extends BaseEntity {
     @Column(name = "TITLE", length = TITLE_MAX_LENGTH)
     private String title;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "MEETING_TYPE", nullable = false, length = 16)
+    private MeetingType meetingType = MeetingType.REGULAR;
+
+    // 발표자 칸은 명부 행(STUDY_PARTICIPANT.ID)을 가리킨다. 애그리거트가 달라 외래키 없이 ID 로만 잡는다
+    @Column(name = "PRESENTER1_PARTICIPANT_ID")
+    private Long presenter1ParticipantId;
+
+    @Column(name = "PRESENTER2_PARTICIPANT_ID")
+    private Long presenter2ParticipantId;
+
+    /** 한 요청으로 함께 만든 반복 회차 묶음. 지금은 저장만 하고 쓰는 기능이 없다 (결정 2). */
+    @Column(name = "SERIES_ID", length = 36)
+    private String seriesId;
+
     protected StudyMeeting() {}
 
     public StudyMeeting(Long studyGroupId, Instant scheduledAt, Instant startAt, Instant endAt) {
@@ -53,10 +71,137 @@ public class StudyMeeting extends BaseEntity {
 
     /** 네비게이터가 화면에서 회차를 잡는다. 실제 시작·종료는 디스코드가 기록하므로 비워 둔다 (specs/study-meeting/spec.md). */
     public static StudyMeeting schedule(Long studyGroupId, Instant scheduledAt, String title) {
+        return schedule(studyGroupId, scheduledAt, title, null);
+    }
+
+    /** 반복으로 함께 만든 회차는 같은 {@code seriesId} 를 받는다. 한 번만 만든 회차는 null. */
+    public static StudyMeeting schedule(
+            Long studyGroupId, Instant scheduledAt, String title, String seriesId) {
         StudyMeeting meeting =
                 new StudyMeeting(studyGroupId, MeetingSchedule.storable(scheduledAt), null, null);
         meeting.title = normalizeTitle(title);
+        meeting.seriesId = seriesId;
         return meeting;
+    }
+
+    /** 분반의 킥오프(0회차). 분반을 만들 때 함께 만든다 — 일자는 네비게이터가 나중에 고친다. 반 만들기 API 가 생기면 거기서 부른다 (구현 메모). */
+    public static StudyMeeting kickoff(Long studyGroupId, Instant scheduledAt) {
+        StudyMeeting meeting =
+                new StudyMeeting(studyGroupId, MeetingSchedule.storable(scheduledAt), null, null);
+        meeting.title = KICKOFF_TITLE;
+        meeting.meetingType = MeetingType.KICKOFF;
+        return meeting;
+    }
+
+    public boolean isKickoff() {
+        return meetingType == MeetingType.KICKOFF;
+    }
+
+    /** 킥오프는 지우지 않는다 — 분반마다 반드시 하나 있다. 시작한 회차도 출석이 있어 지우지 않는다. */
+    public void assertDeletable(Instant now) {
+        if (isKickoff()) {
+            throw new BusinessException(ErrorCode.KICKOFF_NOT_DELETABLE, "킥오프는 지울 수 없습니다.");
+        }
+        assertNotStarted(now);
+    }
+
+    /** 네비게이터·캡틴이 발표자 두 칸을 한번에 정한다. 테스트·픽스처 셋업용. 서비스 레이어에서는 {@link #updatePresenter} 를 쓴다. */
+    public void assignPresenters(Long presenter1, Long presenter2) {
+        if (isKickoff() && (presenter1 != null || presenter2 != null)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "킥오프에는 발표자를 두지 않습니다.");
+        }
+        if (presenter1 != null && presenter1.equals(presenter2)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "발표자1과 다른 사람을 골라 주세요.");
+        }
+        this.presenter1ParticipantId = presenter1;
+        this.presenter2ParticipantId = presenter2;
+    }
+
+    /** 네비게이터·캡틴이 발표자 한 칸만 바꾼다. 다른 칸은 그대로 둔다. 같은 사람이 두 칸에 들어갈 수 없다. */
+    public void updatePresenter(int slot, Long participantId) {
+        if (slot != 1 && slot != 2) {
+            throw new IllegalArgumentException("발표자 칸은 1 또는 2 입니다: " + slot);
+        }
+        if (isKickoff()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "킥오프에는 발표자를 두지 않습니다.");
+        }
+        Long other = presenterAt(otherSlot(slot));
+        if (participantId != null && participantId.equals(other)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "발표자1과 다른 사람을 골라 주세요.");
+        }
+        setPresenterAt(slot, participantId);
+    }
+
+    /** 크루가 빈 발표자 칸에 자기를 넣는다. 선착순 — 찬 칸에는 넣지 않고, 한 회차에 한 칸만. */
+    public void signUpPresenter(int slot, Long participantId, Instant now) {
+        assertPresenterSlotOpen(slot, now);
+        if (presenterAt(slot) != null) {
+            throw new BusinessException(
+                    ErrorCode.PRESENTER_SLOT_TAKEN, "다른 크루가 먼저 발표자" + slot + " 로 신청했습니다.");
+        }
+        if (participantId.equals(presenterAt(otherSlot(slot)))) {
+            throw new BusinessException(
+                    ErrorCode.PRESENTER_ALREADY_ASSIGNED, "이 회차에는 이미 발표자로 들어가 있습니다.");
+        }
+        setPresenterAt(slot, participantId);
+    }
+
+    /** 크루가 자기가 들어간 발표자 칸에서 빠진다. 다른 사람 이름은 뺄 수 없다. */
+    public void cancelPresenter(int slot, Long participantId, Instant now) {
+        assertPresenterSlotOpen(slot, now);
+        if (!participantId.equals(presenterAt(slot))) {
+            throw new BusinessException(ErrorCode.PRESENTER_NOT_ME, "내가 신청한 칸이 아닙니다.");
+        }
+        setPresenterAt(slot, null);
+    }
+
+    /**
+     * 참여자가 분반을 떠나면 그가 맡은 예정 회차의 발표자 칸을 비운다. 시작한 회차는 기록이라 둔다.
+     *
+     * @return 칸을 비웠으면 true
+     */
+    public boolean releasePresenter(Long participantId, Instant now) {
+        if (isStarted(now)) {
+            return false;
+        }
+        boolean changed = false;
+        if (participantId.equals(presenter1ParticipantId)) {
+            presenter1ParticipantId = null;
+            changed = true;
+        }
+        if (participantId.equals(presenter2ParticipantId)) {
+            presenter2ParticipantId = null;
+            changed = true;
+        }
+        return changed;
+    }
+
+    private void assertPresenterSlotOpen(int slot, Instant now) {
+        if (slot != 1 && slot != 2) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "발표자 칸은 1 또는 2 입니다.");
+        }
+        if (isKickoff()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "킥오프에는 발표자를 두지 않습니다.");
+        }
+        assertNotStarted(now);
+    }
+
+    private Long presenterAt(int slot) {
+        if (slot == 1) return presenter1ParticipantId;
+        if (slot == 2) return presenter2ParticipantId;
+        throw new IllegalArgumentException("발표자 칸은 1 또는 2 입니다: " + slot);
+    }
+
+    private void setPresenterAt(int slot, Long participantId) {
+        if (slot == 1) {
+            presenter1ParticipantId = participantId;
+        } else {
+            presenter2ParticipantId = participantId;
+        }
+    }
+
+    private static int otherSlot(int slot) {
+        return slot == 1 ? 2 : 1;
     }
 
     /** 시작한 회차인지 — 예정 시각이 지났거나, 디스코드 출석이 예정 시각 전에 이미 열었다. 시작한 회차에는 출석이 찍혀 있을 수 있어 고치거나 지우지 않는다. */
@@ -138,5 +283,21 @@ public class StudyMeeting extends BaseEntity {
 
     public String getTitle() {
         return title;
+    }
+
+    public MeetingType getMeetingType() {
+        return meetingType;
+    }
+
+    public Long getPresenter1ParticipantId() {
+        return presenter1ParticipantId;
+    }
+
+    public Long getPresenter2ParticipantId() {
+        return presenter2ParticipantId;
+    }
+
+    public String getSeriesId() {
+        return seriesId;
     }
 }

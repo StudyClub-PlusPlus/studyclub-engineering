@@ -45,8 +45,7 @@ public class DiscordAttendanceService {
     /** 예정 회차를 자동으로 시작시켜 줄 여유 폭. 운영 정책이라 스키마와 무관하다. */
     static final Duration MEETING_PICK_WINDOW = Duration.ofHours(2);
 
-    private static final Set<ParticipantRole> LEADER_ROLES =
-            EnumSet.of(ParticipantRole.LEADER, ParticipantRole.CO_LEADER);
+    private static final Set<ParticipantRole> LEADER_ROLES = EnumSet.of(ParticipantRole.LEADER);
 
     /** 명부에 살아 있는 상태. WITHDRAWN·COMPLETED 는 출석 대상이 아니다. */
     private static final Set<ParticipantStatus> ATTENDABLE =

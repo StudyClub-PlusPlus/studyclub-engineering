@@ -44,7 +44,7 @@ export function StudyDetailView({
         </p>
         <Link
           href={`/${locale}/studies`}
-          className='mt-4 inline-flex items-center gap-1.5 rounded-pill border border-border-strong px-4 py-2 text-sm font-semibold text-fg transition-colors hover:border-brand hover:text-brand'
+          className='mt-4 inline-flex items-center gap-1.5 rounded-pill border border-border px-4 py-2 text-sm font-semibold text-fg transition-colors hover:border-border-interactive hover:text-brand'
         >
           <ArrowLeft size={15} /> {m('common.back_studies', locale)}
         </Link>

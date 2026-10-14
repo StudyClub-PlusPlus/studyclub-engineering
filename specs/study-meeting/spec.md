@@ -3,7 +3,7 @@
 > ERD: [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > Story PRD: [회차 등록](../../01-planning/stories/navigator-register-sessions/PRD.md) · [크루 발표자 신청](../../01-planning/stories/crew-apply-presenter/PRD.md)
 > 생성일: 2026-10-02
-> 상태: 스펙작성중
+> 상태: 구현중 (2026-10-07 — 백엔드)
 >
 > Story PRD:
 > - [네비게이터로서, 스터디 회차를 등록할 수 있다](../../01-planning/stories/navigator-register-sessions/PRD.md)
@@ -14,13 +14,13 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/studies/{studyId}/meetings | 분반 회차 목록 (발표자 · 규칙 포함) | O (그 분반 참여자 · 캡틴) | 스펙작성중 |
-| POST | /api/studies/{studyId}/meetings | 회차 추가 (한 번 · 반복) | O (그 분반 네비게이터 · 캡틴) | 스펙작성중 |
-| PUT | /api/studies/{studyId}/meetings/{meetingId} | 회차 수정 (시각 · 제목 · 발표자) | O (그 분반 네비게이터 · 캡틴) | 스펙작성중 |
-| DELETE | /api/studies/{studyId}/meetings/{meetingId} | 회차 삭제 (한 회차씩, 킥오프 불가) | O (그 분반 네비게이터 · 캡틴) | 스펙작성중 |
-| PUT | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 (빈 칸에 나) | O (그 분반 참여자) | 스펙작성중 |
-| DELETE | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 취소 (내 이름 빼기) | O (그 분반 참여자) | 스펙작성중 |
-| PUT | /api/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 | O (그 분반 네비게이터 · 캡틴) | 스펙작성중 |
+| GET | /api/studies/{studyId}/meetings | 분반 회차 목록 (발표자 · 규칙 포함) | O (그 분반 참여자 · 캡틴) | 구현중 |
+| POST | /api/studies/{studyId}/meetings | 회차 추가 (한 번 · 반복) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
+| PUT | /api/studies/{studyId}/meetings/{meetingId} | 회차 수정 (시각 · 제목 · 발표자) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
+| DELETE | /api/studies/{studyId}/meetings/{meetingId} | 회차 삭제 (한 회차씩, 킥오프 불가) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
+| PUT | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 (빈 칸에 나) | O (그 분반 참여자) | 구현중 |
+| DELETE | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 취소 (내 이름 빼기) | O (그 분반 참여자) | 구현중 |
+| PUT | /api/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 | O (그 분반 네비게이터 · 캡틴) | 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -192,7 +192,8 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 | meetings[].id | Long | N | | STUDY_MEETING.ID |
 | meetings[].type | String | N | `KICKOFF` · `REGULAR` | STUDY_MEETING.MEETING_TYPE |
 | meetings[].number | Int | N | 회차 번호. 킥오프는 0 | 계산: 정규 회차를 `SCHEDULED_AT` 오름차순으로 센 순번 (1부터) |
-| meetings[].presenter1 · presenter2 | Object | Y | `{ participantId, name }`. 비었으면 null. 킥오프는 늘 null | STUDY_MEETING.PRESENTER1·2_PARTICIPANT_ID → STUDY_PARTICIPANT |
+| meetings[].presenter1 · presenter2 | Object | Y | `{ participantId, name, active }`. 비었으면 null. 킥오프는 늘 null. `active=false` 면 참여를 중단한 사람 — 화면은 「이름 (참여 종료)」 | STUDY_MEETING.PRESENTER1·2_PARTICIPANT_ID → STUDY_PARTICIPANT |
+| study.id · study.title | Long · String | N | 지면 머리의 스터디 이름 | STUDY.ID · STUDY.TITLE |
 | meetings[].scheduledAt | String | N | UTC ISO 8601 | STUDY_MEETING.SCHEDULED_AT |
 | meetings[].title | String | Y | 없으면 null — 화면은 「—」 | STUDY_MEETING.TITLE |
 | meetings[].started | Boolean | N | true 면 시작한 회차 — 화면은 흐린 줄, 수정·삭제·발표 신청 불가 | 계산: `now >= SCHEDULED_AT OR START_AT IS NOT NULL` |

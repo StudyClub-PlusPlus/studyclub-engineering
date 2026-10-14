@@ -36,7 +36,6 @@ class StudyUpdateIntegrationTest {
 
     private static final Long ADMIN_ID = 8010L;
     private static final Long LEADER_ID = 8011L;
-    private static final Long CO_LEADER_ID = 8012L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -52,8 +51,6 @@ class StudyUpdateIntegrationTest {
         insertAccountIfAbsent(ADMIN_ID, "admin-update-study@example.test", SystemRole.ADMIN, now);
         insertAccountIfAbsent(
                 LEADER_ID, "leader-update-study@example.test", SystemRole.MEMBER, now);
-        insertAccountIfAbsent(
-                CO_LEADER_ID, "co-leader-update-study@example.test", SystemRole.MEMBER, now);
     }
 
     @Test
@@ -132,26 +129,6 @@ class StudyUpdateIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(studyRepository.findById(studyId).orElseThrow().getTitle()).isEqualTo("리더 수정 후");
-    }
-
-    @Test
-    @DisplayName("성공 - CO_LEADER 도 수정 가능하다")
-    void coLeaderCanUpdate() {
-        Long studyId = createStudy("코리더 수정 전", "소개", "SOFTWARE");
-        insertParticipantIfAbsent(studyId, CO_LEADER_ID, ParticipantRole.CO_LEADER);
-
-        Map<String, Object> body = Map.of("title", "코리더 수정 후", "oneLineSummary", "소개");
-
-        var response =
-                rest.exchange(
-                        "/api/studies/" + studyId,
-                        HttpMethod.PATCH,
-                        authenticated(CO_LEADER_ID, body),
-                        Void.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        assertThat(studyRepository.findById(studyId).orElseThrow().getTitle())
-                .isEqualTo("코리더 수정 후");
     }
 
     @Test

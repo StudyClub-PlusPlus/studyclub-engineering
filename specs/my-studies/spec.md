@@ -2,12 +2,13 @@
 
 > ERD: [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY](../../docs/erd/STUDY.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > 생성일: 2026-09-30
-> 상태: 구현완료 · 2026-10-07 담당 캡틴 확장(`captain` 플래그·반 편성 전 담당 스터디) 미구현
+> 상태: 구현완료 (프론트 core-front `/my/joined` 구현 완료, 백엔드 담당 캡틴 확장 구현중)
 >
 > Story PRD:
 > - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../01-planning/stories/crew-joined-studies/PRD.md)
 >
 > 기준 프로토타입: playground `/proto/core/ko/my/joined`
+> 실제 경로: core-front `/[locale]/my/joined` 및 스터디 일정 `/[locale]/my/joined/[id]/schedule`
 
 ## 엔드포인트 목록
 
@@ -100,7 +101,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].endAt | String (ISO 8601 UTC) | Y | | STUDY.END_AT |
 | items[].relation | String | N | 나와의 관계 — 탭·배지. 아래 표 | 계산: `participantStatus` + `startAt` |
 | items[].participantStatus | String | Y | `ACTIVE` / `PAUSED` / `WITHDRAWN` / `COMPLETED`. 반 편성 전 담당 캡틴 카드는 null | STUDY_PARTICIPANT.STATUS |
-| items[].participantRole | String | Y | `MEMBER` / `LEADER` / `CO_LEADER`. 네비게이터 배지·스터디 관리 버튼. 반 편성 전 담당 캡틴 카드는 null | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
+| items[].participantRole | String | Y | `MEMBER` / `LEADER`. 네비게이터 배지·스터디 관리 버튼. 반 편성 전 담당 캡틴 카드는 null | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | items[].captain | Boolean | N | 내가 이 스터디의 **담당 캡틴**(스터디를 생성한 캡틴)이면 true — 「캡틴」 배지. 스터디 관리 버튼을 받고, 누르면 백오피스 스터디 상세로 간다. 다른 캡틴(ADMIN)이 신청해 참여한 스터디는 false(크루) | 계산: `STUDY.CREATED_BY = 나` |
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
@@ -182,7 +183,10 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 ### 프론트엔드 사용처
 
 - 프로토: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/joined/page.tsx`
-- core-front 이관 시 `lib/api/` 에 `getMyStudies()`
+- core-front 구현: `frontend/apps/core-front/src/app/[locale]/my/joined/page.tsx` (`/[locale]/my/joined`)
+- 스터디 일정: `frontend/apps/core-front/src/app/[locale]/my/joined/[id]/schedule/page.tsx` (`/[locale]/my/joined/[id]/schedule`)
+- E2E 카탈로그: `frontend/apps/core-front/screen-catalog/features/my/joinedStudies.feature` · `joinedStudies.meta.ts`
+- E2E 스펙: `frontend/apps/core-front/e2e/specs/joined-studies.spec.ts`
 
 ### 미확정
 

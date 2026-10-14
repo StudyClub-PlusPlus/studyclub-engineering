@@ -10,7 +10,7 @@ import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
-import { useMswStudies } from '@/proto/lib/useMswStudies';
+import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /** 탈퇴 사유 — 둘에 기타 하나. 겹치는 항목을 두면 같은 사람이 날마다 다른 칸을 골라 집계가 흔들린다. */
 const REASONS = ['원하는 스터디 없음', '스터디 참여가 부담됨', '기타'];

@@ -7,6 +7,7 @@
 - [관객으로 경로를 가른다 — /api/admin](#관객으로-경로를-가른다--apiadmin)
 - [HTTP Method 사용](#http-method-사용)
 - [응답 포맷](#응답-포맷)
+- [판정은 서버가 내려준다](#판정은-서버가-내려준다)
 - [인증](#인증)
 - [현재 엔드포인트 목록](#현재-엔드포인트-목록)
 
@@ -126,6 +127,52 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 - 프론트는 `errorMessage` 가 아니라 **`errorCode` 로 분기**한다 (메시지는 표시용)
 - 코드 목록과 던지는 법: [`../exception-handling-guide.md`](../exception-handling-guide.md)
 
+## 판정은 서버가 내려준다
+
+**화면이 "그래서 지금 어떤 상태인가" 를 보여줘야 하면, 그 답을 응답 필드로 준다.**
+프론트는 날짜·숫자를 받아 같은 판정을 다시 하지 않는다.
+
+**판정** = 여러 값과 정책을 조합해서 나오는 결론. 재료(날짜·인원·정원)는 보여주기용이고, 결론은 서버 한 곳에서 낸다.
+
+| 판정 | 응답 필드 | 재료 — 프론트가 이걸로 다시 계산하면 안 된다 |
+|---|---|---|
+| 모집 중인가 | `recruitStatus` | 마감 시각 · 정원 · 정원 인원 |
+| 출석률 | `attendanceRate` | 회차 · 출석 칸 |
+| 지금 진행 중인 회차 | 회차의 상태 필드 | 예정 시각 · 시작·종료 시각 |
+| 이 사람이 이걸 할 수 있나 | `canApply` 처럼 `can*` | 역할 · 상태 · 기간 |
+
+### 규칙
+
+1. **판정은 엔티티 메서드 하나에 둔다** ([ddd-guide — 파생값](../ddd-guide.md)). 같은 판정을 쓰는 엔드포인트 —
+   사이트용 · `/api/admin` · 목록 · 상세 — 가 **모두 그 메서드를 부르고, 재료도 같은 쿼리로 센다.**
+   메서드는 같은데 넘기는 인원 수가 다르면 판정이 갈린다
+2. **응답에 판정 필드를 넣는다.** 재료(`18/20` 의 18, 마감 시각)도 같이 줄 수 있지만 표시용이다
+3. **시각이 걸린 판정은 서버 시각으로 한다** (`Instant.now()`). 브라우저 시계·시간대에 맡기지 않는다
+4. **스펙 응답 표에 적는다** — 소스 칸에 `계산: {메서드}`. 같은 판정이 다른 스펙에도 있으면 그 스펙을 링크한다
+5. **화면에 판정이 필요한데 응답에 없으면 프론트에서 만들지 않는다.** 스펙에 필드를 추가하고 백엔드에 요청한다.
+   그동안은 `// TODO(api): recruitStatus 필요` 를 남긴다
+
+### 프론트가 해도 되는 것
+
+- 표시 형식 — 날짜 포맷, 보는 사람 시간대로 바꿔 보여주기, 숫자 포맷
+- 받은 판정·값으로 정렬·필터·그룹
+- 입력 중 검증 — 사용자에게 빨리 알려주는 용도. 최종 판정은 서버
+- 낙관적 업데이트 — 다음 조회에서 서버 값으로 덮인다
+
+### 왜
+
+2026-10 에 「정원이 찼나」 하나를 세 곳이 세 가지로 세고 있었다.
+
+| 어디 | 세는 것 |
+|---|---|
+| 신청 API `checkCapacity` — **정본** ([POL-0004](../../../01-planning/_registry/policies/POL-0004-application.md)) | 기수 명부의 `ACTIVE` 인원 |
+| 공개 목록·상세 `recruitStatus` | 최신 모집 회차의 신청서 수 (정책이 바뀌기 전 기준) |
+| 백오피스 목록 초안 (#204) | 명부 `ACTIVE`+`PAUSED`. 그리고 프론트가 마감을 UTC **날짜**로 다시 비교 |
+
+같은 스터디가 사이트에서는 모집중, 백오피스에서는 마감이고, 신청은 거절될 수 있었다.
+마감 비교는 날짜 단위라 KST 12:00 마감이 다음 날 09:00 까지 약 21시간 열려 보였다.
+판정이 서버 한 곳에 있으면 정책이 바뀔 때 고칠 곳도 한 곳이다.
+
 ## 인증
 
 - 인증이 필요한 엔드포인트: `Authorization: Bearer <JWT>` 헤더
@@ -162,6 +209,9 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 | GET | `/api/studies` | 스터디 목록 (현재 하드코딩 픽스처) | X |
 | GET | `/api/me/studies` | 내 스터디 — 명부 스터디 + 회차별 내 출석 ([스펙](../../../specs/my-studies/spec.md)) | O |
 | GET | `/api/me/study-cohorts/{cohortId}` | 내 수강 기수·출석 상세 (목업) | O |
+| PATCH | `/api/me` | 프로필 수정 — 닉네임·시간대를 한 번에 저장, 온보딩 완료 필요 | O |
+| GET | `/api/me/marketing-consent` | 마케팅 수신 동의 조회 (`{agreed, agreedAt}`), 온보딩 완료 필요 | O |
+| PUT | `/api/me/marketing-consent` | 마케팅 수신 동의 변경, 온보딩 완료 필요 | O |
 | GET · POST | `/api/studies/{studyId}/meetings` | 분반 회차 목록 · 추가 ([스펙](../../../specs/study-meeting/spec.md)) | O |
 | PUT · DELETE | `/api/studies/{studyId}/meetings/{meetingId}` | 회차 수정 · 삭제 | O |
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
@@ -169,4 +219,7 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 | GET | `/auth/me` | 내 정보 조회 | O |
 | GET | `/api/nicknames/availability?value={nickname}` | 실제 DB의 닉네임 사용 가능 여부 (`{available}`), 온보딩 미완료도 허용 | O |
 | POST | `/accounts/onboarding` | 만 14세 이상 확인 후 가입 완료, 요청·오류 상세는 [온보딩 spec](../../../specs/user-onboarding/spec.md) 참조 | O |
-| GET | `/users` | 유저 목록 (백오피스) | O |
+| GET | `/api/admin/users` | 백오피스 회원 목록 — 역할 탭·검색·페이지, 이메일 마스킹 ([스펙](../../../specs/admin-users/spec.md)) | O (ADMIN) |
+| POST | `/api/admin/users/{accountId}/email-reveals` | 회원 이메일 원본 보기 + 감사 로그 | O (ADMIN) |
+| PATCH | `/api/admin/users/{accountId}/system-role` | 계정 권한 변경 (캡틴 ↔ 크루) + 감사 로그 | O (ADMIN) |
+| GET | `/api/admin/role-permissions` | 역할별 기본 권한표 | O (ADMIN) |

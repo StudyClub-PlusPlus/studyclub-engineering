@@ -95,6 +95,12 @@ export type Study = {
   applicationForm?: ApplicationQuestion[];
   applicationFormTitle?: string;
   applicationFormDescription?: string;
+  /** 백오피스 목록 API 가 준 스터디 라이프사이클 상태. */
+  lifecycleStatus?: StudyLifecycleStatus;
+  /** 백오피스 목록 API 가 준 현재 지원 인원. */
+  applicantCount?: number;
+  /** 백오피스 목록 API 가 계산한 신청 폼 존재 여부. 값이 있으면 applicationForm 보다 우선한다. */
+  hasApplicationForm?: boolean;
   reviews?: StudyReview[];
   stats?: StudyStats;
   past_participants?: L10n[];
@@ -105,3 +111,5 @@ export type StudyProgram = NonNullable<Study["program"]> & { cohorts: number };
 export type RecruitState = "apply" | "closed";
 export type PublishState = "draft" | "live";
 export type LifecycleState = "DRAFT" | "OPEN" | "ONGOING" | "ENDED" | "CLOSED";
+/** API 의 STUDY.STATUS 그대로. {@link LifecycleState} 와 같은 값이다. */
+export type StudyLifecycleStatus = LifecycleState;

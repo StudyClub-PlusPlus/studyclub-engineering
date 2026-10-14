@@ -4,14 +4,14 @@
   "private": true,
   "description": "StudyClub++ 디자인 시스템 v1.0 — 사용자 사이트 + 운영자 콘솔 공용 토큰 (Tailwind v4 CSS-first)",
   "exports": {
-    "./tokens.css": "./tokens.css",
-    "./compat.css": "./compat.css",
-    "./base.css": "./base.css",
-    "./core.css": "./core.css",
-    "./console.css": "./console.css",
-    "./console.overrides.css": "./console.css",
-    "./core-front.css": "./core.css",
-    "./back-office-front.css": "./console.css"
+    "./tokens.css":           { "style": "./tokens.css",  "default": "./tokens.css"  },
+    "./compat.css":           { "style": "./compat.css",  "default": "./compat.css"  },
+    "./base.css":             { "style": "./base.css",    "default": "./base.css"    },
+    "./core.css":             { "style": "./core.css",    "default": "./core.css"    },
+    "./console.css":          { "style": "./console.css", "default": "./console.css" },
+    "./console.overrides.css":{ "style": "./console.css", "default": "./console.css" },
+    "./core-front.css":       { "style": "./core.css",    "default": "./core.css"    },
+    "./back-office-front.css":{ "style": "./console.css", "default": "./console.css" }
   },
   "peerDependencies": {
     "tailwindcss": "^4"

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 
+import { X } from 'lucide-react';
+
 import { cx } from './cx';
 
 /**
@@ -59,7 +61,10 @@ export function Modal({
           'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
         ) ?? [],
       );
-    focusables()[0]?.focus();
+    // 결정형 창은 **취소에 먼저 선다** (POL-0008) — `data-autofocus` 가 달린 쪽이 우선이다.
+    // 아무것도 없으면 패널 안 첫 요소, 곧 닫기(X) 다.
+    const preferred = panelRef.current?.querySelector<HTMLElement>('[data-autofocus]');
+    (preferred ?? focusables()[0])?.focus();
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -93,10 +98,13 @@ export function Modal({
 
   return (
     <div className='fixed inset-0 z-50 flex items-end justify-center sm:items-center'>
+      {/*
+        배경을 눌러도 닫히지 않는다 — 쓰던 것이 사라지는 창을 스쳐 누르다 잃는 일이 생긴다.
+        닫는 길은 X 와 Esc 둘뿐이다 (POL-0008).
+      */}
       <div
         className='absolute inset-0 animate-[fadeIn_var(--duration-base)_var(--ease-out)]'
         style={{ background: 'var(--overlay)' }}
-        onClick={onClose}
         aria-hidden='true'
       />
       <div
@@ -114,10 +122,19 @@ export function Modal({
       >
         <header className='flex items-start gap-3 border-b border-border px-6 py-4'>
           <div className='flex min-w-0 flex-1 flex-col gap-1'>
-            <h2 className='text-lg font-bold tracking-tight text-neutral-900'>{title}</h2>
+            <h2 className='text-lg font-bold tracking-tight text-ink'>{title}</h2>
             {description && <p className='text-sm text-fg-muted'>{description}</p>}
           </div>
           {headerEnd}
+          {/* 닫기는 늘 우상단 X 다. 제목이 무엇이든 같은 자리에 선다 */}
+          <button
+            type='button'
+            onClick={onClose}
+            aria-label='닫기'
+            className='-mr-1.5 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+          >
+            <X size={18} />
+          </button>
         </header>
 
         <div className='flex-1 overflow-y-auto px-6 py-4'>{children}</div>

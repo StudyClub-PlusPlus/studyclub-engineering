@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Locale, Operator, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { recruitState, studyTimezone } from '@core/lib/recruit';
+import { Select } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';
@@ -77,7 +78,7 @@ function FilterOption({
       className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
         active
           ? 'border-brand bg-brand text-on-brand'
-          : 'border-border-strong bg-bg text-fg-secondary hover:border-fg-muted hover:text-fg'
+          : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:text-fg'
       }`}
     >
       {children}
@@ -95,17 +96,17 @@ function FilterSelect<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <select
+    <Select
       value={value}
       onChange={(event) => onChange(event.target.value as T)}
-      className='h-9 w-fit min-w-0 rounded-lg border border-border-strong bg-bg px-3 text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+      className='h-9 w-fit rounded-lg border border-border bg-bg text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -234,7 +235,7 @@ export function StudyBrowser({
           </div>
           <div
             data-anno='1'
-            className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border-strong bg-bg px-1 transition-[width] duration-200 sm:ml-auto sm:w-50 sm:focus-within:w-78'
+            className='relative flex h-9 w-full shrink-0 items-center rounded-pill border border-border bg-bg px-1 transition-[border-color,width] duration-200 focus-within:border-border-interactive sm:ml-auto sm:w-[200px] sm:focus-within:w-full lg:focus-within:w-[312px]'
           >
             <input
               type='text'
@@ -242,7 +243,7 @@ export function StudyBrowser({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
               placeholder={m('filter.search_studies', locale)}
-              className='h-9 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none'
+              className='h-9 min-w-0 flex-1 bg-transparent pl-3 pr-2 text-sm outline-none'
             />
             {(input || hasQuery) && (
               <button

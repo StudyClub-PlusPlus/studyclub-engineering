@@ -13,12 +13,16 @@
 | [POL-0006](policies/POL-0006-timezone.md) | 시간대와 지역 | 3종, 지역 파생, 날짜 표기 | 온보딩, 프로필 수정, 반 편성, 출석 |
 | [POL-0007](policies/POL-0007-account-data.md) | 회원 데이터와 탈퇴 | 갖고 있는 값, 탈퇴 시 지우는 것과 남기는 것 | 온보딩, 프로필 수정, 탈퇴, 약관 |
 
+| [POL-0008](policies/POL-0008-screen-rules.md) | 화면 공통 규칙 | 팝업 닫는 수단, 버튼 문구, 빈 표 | 전 화면 |
+
+| [POL-0009](policies/POL-0009-notification.md) | 알림 | 종류는 템플릿이 정한다, 채널, 발송 이력 | 알림 템플릿 · 발송 이력 |
+
 ## 아직 없는 것
 
-결정이 덜 된 것들이다. 정해지는 대로 `POL-0008` 부터 붙인다.
+결정이 덜 된 것들이다. 정해지는 대로 `POL-0010` 부터 붙인다.
 
 - 반 편성 규칙 (반 크기, 시간대 기준, 옮기기)
-- 공지·알림 종류와 발송 기준
+- 공지 발행 기준 (사이트 공지 · 스터디 공지)
 - 출석 판정 (지각·결석 기준)
 
 ## 백엔드에 넘길 요청
@@ -33,7 +37,7 @@
 | 4 | `RECRUIT_DEADLINE_AT` 을 NOT NULL 로 — 상시 모집을 두지 않는다 | [POL-0002](policies/POL-0002-study-status.md) |
 | 5 | `END_AT` 경과로 자동 종료 전환 삭제. `ONGOING → ENDED` 만 N주 경과로 자동, `ENDED → CLOSED` 는 캡틴 수동 확인만(디스코드 채널 삭제를 시스템이 검증하지 않는다) | [POL-0002](policies/POL-0002-study-status.md) |
 | 6 | 등록·수정 API 가 `startAt`·`discordChannelUrl`·`driveUrl` 을 입력으로 받도록 확장 | [POL-0003](policies/POL-0003-study-fields.md) |
-| 7 | `PARTICIPANT_ROLE` 에서 `CO_LEADER`(부반장) 삭제 | [POL-0001](policies/POL-0001-roles.md) |
+| 7 | ~~`PARTICIPANT_ROLE` 에서 `CO_LEADER`(부반장) 삭제~~ ✅ 2026-10-09 — V35 가 남은 부반장을 `LEADER` 로 올리고 enum 에서 지웠다 | [POL-0001](policies/POL-0001-roles.md) |
 | 8 | `study-recruit-status` 의 신청 상태 전제(`PENDING`·`WAITLISTED` 등) 정리 — [POL-0004](policies/POL-0004-application.md)와 지금 `study-recruit-status/spec.md` 가 서로 다른 전제를 쓰고 있어 먼저 확인 필요 | [POL-0004](policies/POL-0004-application.md) |
 | 9 | 탈퇴 시 `NOTIFICATION` 의 이메일·닉네임 스냅샷 비식별 처리 | [POL-0007](policies/POL-0007-account-data.md) |
 

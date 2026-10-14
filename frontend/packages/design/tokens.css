@@ -15,69 +15,125 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   [1] PRIMITIVE PALETTE  — OKLCH 설계 → sRGB(HEX) 변환, WCAG 검증 완료
+   [1] COLOR CONTRACT — Tailwind v4 `--color-*` namespace
    ============================================================================ */
 @theme {
-  /* ---- Primary : Indigo-Violet (H≈272) ---- */
+  /* ---- Brand : Cobalt ---- */
+  --color-primary:        #5267D8;
+  --color-primary-hover:  #485BCB;
+  --color-primary-active: #4053BF;
+  --color-primary-dark:   #344183;
+  --color-primary-light:  #E9ECFF;
+
+  /* 제한적 강조. 상태색 대신 사용하지 않는다. */
+  --color-highlight:       #FF805C;
+  --color-highlight-hover: #EF704F;
+
+  /* 기존 scale 유틸리티 호환. 신규 코드는 위 역할 토큰을 우선한다. */
   --color-primary-50:  #F5F7FF;
-  --color-primary-100: #E8EEFF;
+  --color-primary-100: var(--color-primary-light);
   --color-primary-200: #D5DFFF;
   --color-primary-300: #B6C6FF;
   --color-primary-400: #8BA3FF;
-  --color-primary-500: #647CFF;
-  --color-primary-600: #4856F5; /* 브랜드 기준 */
-  --color-primary-700: #3A44D3;
-  --color-primary-800: #2F39AA;
-  --color-primary-900: #263087;
+  --color-primary-500: #6075E8;
+  --color-primary-600: var(--color-primary);
+  --color-primary-700: var(--color-primary-hover);
+  --color-primary-800: var(--color-primary-active);
+  --color-primary-900: var(--color-primary-dark);
   --color-primary-950: #171E58;
 
-  /* ---- Neutral : Cool Slate (H≈270) ---- */
+  /* ---- Text ---- */
+  --color-ink:              #282A43;
+  --color-text-secondary:   #626476;
+  --color-text-muted:       #6C6D7F;
+  --color-text-placeholder: #717384;
+  --color-text-tertiary:    #9798A8;
+
+  /* ---- Border & focus ---- */
+  --color-border:             #E2E1E9;
+  --color-border-strong:      #8D90A3;
+  --color-border-interactive: #7A8BD8;
+  --color-focus-ring:         #7183DA;
+
+  /* ---- Surface ---- */
+  --color-page-bg:        #FBFCFF;
+  --color-surface-raised: #FFFFFF;
+  --color-cloud:          #F7F5FB;
+  --color-white:          #FFFFFF;
+
+  /* ---- On-color ---- */
+  --color-on-primary:   #FFFFFF;
+  --color-on-highlight: #282A43;
+
+  /* ---- Disabled ---- */
+  --color-disabled-bg: #EFF0F5;
+  --color-disabled-fg: #77798A;
+
+  /* ---- Legacy neutral scale ---- */
   --color-neutral-0:   #FFFFFF;
-  --color-neutral-50:  #F9FAFC;
-  --color-neutral-100: #F4F5F9;
-  --color-neutral-200: #E6E8ED;
+  --color-neutral-50:  var(--color-page-bg);
+  --color-neutral-100: var(--color-cloud);
+  --color-neutral-200: var(--color-border);
   --color-neutral-300: #D4D7DE;
-  --color-neutral-400: #A6A9B2;
-  --color-neutral-500: #7E818C;
-  --color-neutral-600: #5D616A;
-  --color-neutral-700: #464951;
+  --color-neutral-400: var(--color-text-tertiary);
+  --color-neutral-500: var(--color-text-placeholder);
+  --color-neutral-600: var(--color-text-muted);
+  --color-neutral-700: var(--color-text-secondary);
   --color-neutral-800: #2D2F35;
-  --color-neutral-900: #1C1E23;
+  --color-neutral-900: var(--color-ink);
   --color-neutral-950: #0D0E13;
 
-  /* ---- Semantic scales ---- */
-  --color-success-50:  #E6F9EA;
-  --color-success-100: #CEF3D6;
-  --color-success-500: #43B16A;
-  --color-success-600: #2A9754;
-  --color-success-700: #227C45;
+  /* ---- Semantic feedback ---- */
+  --color-success-bg: #E6F4EC;
+  --color-success-fg: #357553;
+  --color-warning-bg: #FFF1D8;
+  --color-warning-fg: #8A5D18;
+  --color-danger-bg:  #FCE9E6;
+  --color-danger-fg:  #A94740;
+  --color-info-bg:    #E4F0F5;
+  --color-info-fg:    #356F86;
+  --color-neutral-bg: #F0EFF4;
+  --color-neutral-fg: #696A7C;
 
-  --color-warning-50:  #FFF3E4;
-  --color-warning-100: #FFE7C9;
-  --color-warning-400: #F4B64A; /* 솔리드 앰버 bg (위에 neutral-900 텍스트) */
-  --color-warning-500: #E9A128;
-  --color-warning-600: #D08B00;
-  --color-warning-700: #9D6800;
+  /* 기존 scale 유틸리티 호환. 상태의 dot은 fg와 같은 색을 쓴다. */
+  --color-success-50:  var(--color-success-bg);
+  --color-success-100: var(--color-success-bg);
+  --color-success-200: var(--color-success-bg);
+  --color-success-500: var(--color-success-fg);
+  --color-success-600: var(--color-success-fg);
+  --color-success-700: var(--color-success-fg);
 
-  --color-error-50:  #FFEFEE;
-  --color-error-100: #FFDFDC;
-  --color-error-500: #F1383E;
-  --color-error-600: #DB0C26;
-  --color-error-700: #B5081E;
+  --color-warning-50:  var(--color-warning-bg);
+  --color-warning-100: var(--color-warning-bg);
+  --color-warning-200: var(--color-warning-bg);
+  --color-warning-400: var(--color-warning-fg);
+  --color-warning-500: var(--color-warning-fg);
+  --color-warning-600: var(--color-warning-fg);
+  --color-warning-700: var(--color-warning-fg);
 
-  --color-info-50:  #E9F5FF;
-  --color-info-100: #D6EDFF;
-  --color-info-500: #0095DB;
-  --color-info-600: #007CB7;
-  --color-info-700: #006799;
+  --color-error-50:  var(--color-danger-bg);
+  --color-error-100: var(--color-danger-bg);
+  --color-error-500: var(--color-danger-fg);
+  --color-error-600: var(--color-danger-fg);
+  --color-error-700: var(--color-danger-fg);
 
-  /* ---- Chart categorical (L≈0.64 균일, 한 차트 5색 이하 권장) ---- */
-  --color-chart-1: #6D83E6; /* indigo */
-  --color-chart-2: #BC7D00; /* amber  */
-  --color-chart-3: #00A0A6; /* teal   */
-  --color-chart-4: #B36BC4; /* magenta*/
-  --color-chart-5: #2EA55C; /* green  */
-  --color-chart-6: #D8625C; /* coral  */
+  --color-info-50:  var(--color-info-bg);
+  --color-info-100: var(--color-info-bg);
+  --color-info-500: var(--color-info-fg);
+  --color-info-600: var(--color-info-fg);
+  --color-info-700: var(--color-info-fg);
+
+  /* ---- Chart categorical: 순서 고정, semantic 상태색과 혼용 금지 ---- */
+  --color-chart-1: #5267D8;
+  --color-chart-2: #D86645;
+  --color-chart-3: #3F8460;
+  --color-chart-4: #B1781B;
+  --color-chart-5: #397D8F;
+  --color-chart-6: #765AB5;
+
+  /* ---- Effect colors ---- */
+  --color-overlay: rgba(40, 42, 67, 0.48);
+  --color-shadow-tint: rgba(52, 65, 131, 0.14);
 
   /* ---- Typography ---- */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
@@ -125,6 +181,8 @@
   --shadow-md: 0 2px 4px rgba(23,25,35,.06), 0 6px 16px rgba(23,25,35,.10);
   --shadow-lg: 0 4px 8px rgba(23,25,35,.06), 0 12px 28px rgba(23,25,35,.12);
   --shadow-xl: 0 8px 16px rgba(23,25,35,.08), 0 24px 56px rgba(23,25,35,.16);
+  --shadow-card: 0 16px 40px var(--color-shadow-tint);
+  --shadow-focus-ring: 0 0 0 3px var(--color-focus-ring);
 
   /* ---- Motion ---- */
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
@@ -143,47 +201,44 @@
    ============================================================================ */
 @theme inline {
   /* Brand */
-  --color-brand:         var(--color-primary-600);
-  --color-brand-hover:   var(--color-primary-700);
-  --color-brand-active:  var(--color-primary-800);
-  --color-brand-subtle:  var(--color-primary-50);
-  --color-brand-subtle-hover: var(--color-primary-100);
-  --color-on-brand:      var(--color-neutral-0);
+  --color-brand:              var(--color-primary);
+  --color-brand-hover:        var(--color-primary-hover);
+  --color-brand-active:       var(--color-primary-active);
+  --color-brand-subtle:       var(--color-primary-light);
+  --color-brand-subtle-hover: var(--color-primary-light);
+  --color-on-brand:           var(--color-on-primary);
 
   /* Text */
-  --color-fg:            var(--color-neutral-900); /* 본문/헤딩 */
-  --color-fg-secondary:  var(--color-neutral-700);
-  --color-fg-muted:      var(--color-neutral-600);
-  --color-fg-placeholder:var(--color-neutral-500); /* placeholder/disabled 전용 */
-  --color-fg-on-color:   var(--color-neutral-0);
+  --color-fg:             var(--color-ink);
+  --color-fg-secondary:   var(--color-text-secondary);
+  --color-fg-muted:       var(--color-text-muted);
+  --color-fg-placeholder: var(--color-text-placeholder);
+  --color-fg-on-color:    var(--color-on-primary);
 
   /* Surface & Border */
-  --color-bg:            var(--color-neutral-0);
-  --color-surface-1:     var(--color-neutral-50);
-  --color-surface-2:     var(--color-neutral-100);
-  --color-surface-3:     var(--color-neutral-200);
-  --color-border:        var(--color-neutral-200); /* 장식적 구분선 */
-  --color-border-strong: var(--color-neutral-300); /* 입력 resting */
-  --color-border-interactive: var(--color-neutral-400);
+  --color-bg:        var(--color-surface-raised);
+  --color-surface-1: var(--color-page-bg);
+  --color-surface-2: var(--color-cloud);
+  --color-surface-3: var(--color-disabled-bg);
 
   /* Status — Study */
-  --color-recruiting-bg:  var(--color-success-50);  --color-recruiting-fg:  var(--color-success-700);  --color-recruiting-dot:  var(--color-success-500);
-  --color-closingsoon-bg: var(--color-warning-50);  --color-closingsoon-fg: var(--color-warning-700);  --color-closingsoon-dot: var(--color-warning-500);
-  --color-closed-bg:      var(--color-neutral-100);  --color-closed-fg:      var(--color-neutral-600);   --color-closed-dot:      var(--color-neutral-400);
-  --color-inprogress-bg:  var(--color-info-50);     --color-inprogress-fg:  var(--color-info-700);     --color-inprogress-dot:  var(--color-info-500);
-  --color-ended-bg:       var(--color-neutral-100);  --color-ended-fg:       var(--color-neutral-500);   --color-ended-dot:       var(--color-neutral-400);
+  --color-recruiting-bg:  var(--color-success-bg); --color-recruiting-fg:  var(--color-success-fg); --color-recruiting-dot:  var(--color-success-fg);
+  --color-closingsoon-bg: var(--color-warning-bg); --color-closingsoon-fg: var(--color-warning-fg); --color-closingsoon-dot: var(--color-warning-fg);
+  --color-closed-bg:      var(--color-neutral-bg); --color-closed-fg:      var(--color-neutral-fg); --color-closed-dot:      var(--color-neutral-fg);
+  --color-inprogress-bg:  var(--color-info-bg);    --color-inprogress-fg:  var(--color-info-fg);    --color-inprogress-dot:  var(--color-info-fg);
+  --color-ended-bg:       var(--color-neutral-bg); --color-ended-fg:       var(--color-neutral-fg); --color-ended-dot:       var(--color-neutral-fg);
 
   /* Role */
-  --color-captain-bg:    var(--color-primary-50);   --color-captain-fg:    var(--color-primary-700);
-  --color-navigator-bg:  var(--color-info-50);      --color-navigator-fg:  var(--color-info-700);
-  --color-member-bg:     var(--color-neutral-100);   --color-member-fg:     var(--color-neutral-700);
+  --color-captain-bg:   var(--color-primary-light); --color-captain-fg:   var(--color-primary-dark);
+  --color-navigator-bg: var(--color-info-bg);       --color-navigator-fg: var(--color-info-fg);
+  --color-member-bg:    var(--color-neutral-bg);    --color-member-fg:    var(--color-neutral-fg);
 
   /* Attendance */
-  --color-present-bg: var(--color-success-50); --color-present-fg: var(--color-success-700);
-  --color-late-bg:    var(--color-warning-50); --color-late-fg:    var(--color-warning-700);
-  --color-absent-bg:  var(--color-error-50);   --color-absent-fg:  var(--color-error-700);
-  --color-leave-bg:   var(--color-info-50);    --color-leave-fg:   var(--color-info-700);
-  --color-unchecked-bg: var(--color-neutral-100); --color-unchecked-fg: var(--color-neutral-500);
+  --color-present-bg:   var(--color-success-bg); --color-present-fg:   var(--color-success-fg);
+  --color-late-bg:      var(--color-warning-bg); --color-late-fg:      var(--color-warning-fg);
+  --color-absent-bg:    var(--color-danger-bg);  --color-absent-fg:    var(--color-danger-fg);
+  --color-leave-bg:     var(--color-info-bg);    --color-leave-fg:     var(--color-info-fg);
+  --color-unchecked-bg: var(--color-neutral-bg); --color-unchecked-fg: var(--color-neutral-fg);
 }
 /* (semantic radius 는 위 primitive @theme 블록으로 이동 — override 호환) */
 
@@ -192,14 +247,14 @@
    ============================================================================ */
 :root {
   /* Focus ring & overlay */
-  --ring: 0 0 0 3px rgba(72, 86, 245, .35);       /* primary-600 @35% */
-  --ring-error: 0 0 0 3px rgba(219, 12, 38, .30); /* error-600 @30%  */
-  --overlay: rgba(23, 25, 35, .48);
+  --ring: var(--shadow-focus-ring);
+  --ring-error: 0 0 0 3px color-mix(in oklab, var(--color-danger-fg) 55%, transparent);
+  --overlay: var(--color-overlay);
 
   /* Attendance-rate threshold (텍스트/미터 색) */
-  --rate-good:    var(--color-success-700); /* ≥80% */
-  --rate-warn:    var(--color-warning-700); /* 60–79% */
-  --rate-bad:     var(--color-error-700);   /* <60%  */
+  --rate-good: var(--color-success-fg); /* ≥80% */
+  --rate-warn: var(--color-warning-fg); /* 60–79% */
+  --rate-bad:  var(--color-danger-fg);  /* <60%  */
 
   /* 밀도 토큰 (콘솔이 override 하는 대상 — console.css) */
   --row-height: 52px;

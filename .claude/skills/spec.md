@@ -81,6 +81,7 @@ specs/
 - **nullable** 은 ERD 의 NULL 컬럼을 따른다
 - **enum** 값은 백엔드 도메인 엔티티의 enum 정의를 따른다
 - **소스 컬럼**을 반드시 표기: `STUDY.TITLE`, `STUDY_COHORT.STATUS`, `계산: now() < deadline`
+- **판정은 필드로 준다** — 화면이 "모집 중인가·찼나·할 수 있나·몇 %" 를 보여주면 그 결론을 응답 필드로 넣는다 (`recruitStatus`, `can*`, `attendanceRate`). 재료(날짜·인원)만 주고 프론트가 계산하게 두지 않는다. 소스는 `계산: {엔티티 메서드}` 로 적고, 같은 판정이 다른 스펙에 있으면 링크한다 ([`docs/backend-development-guide/api/endpoint-convention.md`](../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다))
 - **에러 응답**은 인증(401)·권한(403)·없음(404)·충돌(409) 중 해당하는 것
 - 불확실한 부분은 **`[NEEDS CLARIFICATION]`** 로 명시. 추측하지 않는다
 - 상태는 `스펙작성중` 으로 표기
@@ -180,6 +181,7 @@ spec.md 를 아래 6개 축으로 검증한다. 구현 코드가 있으면 코�
 - [ ] 모든 필드에 타입 + NULL + 소스 컬럼이 있는가
 - [ ] 날짜가 UTC ISO 8601 인가
 - [ ] enum 이 대문자 문자열인가
+- [ ] 화면이 보여주는 상태·가능 여부·비율이 **판정 필드**로 있는가 — 프론트가 날짜·인원으로 다시 계산해야 하는 응답이 아닌가
 
 **3. ERD 정합성**
 - [ ] 응답 필드가 ERD 컬럼에서 유도 가능한가
@@ -207,6 +209,7 @@ spec.md 를 아래 6개 축으로 검증한다. 구현 코드가 있으면 코�
 - [ ] DTO 필드가 spec.md 응답 표와 일치하는가
 - [ ] SecurityConfig permitAll 이 spec.md 인증 여부와 일치하는가
 - [ ] 통합 테스트가 spec.md 의 에러 응답을 모두 커버하는가
+- [ ] 판정 필드가 엔티티 메서드 하나로 계산되고, **같은 판정을 내는 다른 엔드포인트**(사이트용·`/api/admin`·목록·상세)가 같은 메서드에 같은 재료 쿼리를 넘기는가 — `grep -rn "<메서드명>(" backend/` 로 호출부를 모두 본다
 
 #### 출력
 

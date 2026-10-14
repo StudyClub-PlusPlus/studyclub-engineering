@@ -3,6 +3,7 @@
 > ERD: [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
 > 관련 스펙: [attendance/spec.md](../attendance/spec.md) — 화면에서 찍는 출석 (같은 테이블, 다른 진입점)
 > 봇 계약: [discord-development-guide/api/summary.md](../../docs/discord-development-guide/api/summary.md)
+> Story PRD: [출석 상태 수정](../../01-planning/stories/navigator-edit-attendance/PRD.md) (ST-017) — 같은 출석을 디스코드에서 찍는 진입점
 > 생성일: 2026-09-21
 > 상태: 구현완료 (백엔드 · 봇 커맨드 양쪽)
 > 이슈: Notion 113 「[기능] Discord 일괄 출석 체크」 · Notion 134 「[기능] Discord DB Table in BE」
@@ -182,7 +183,7 @@ CREATE TABLE STUDY_DISCORD_LINK (
 | `callerDiscordUserId` | `string` | Y | `^[0-9]{17,20}$`. 커맨드를 친 사람 |
 | `discordUserIds` | `string[]` | Y | 1개 이상 100개 이하, 각 항목 `^[0-9]{17,20}$` |
 
-**호출자는 그 스터디의 `LEADER` · `CO_LEADER` 이면서 명부에 살아 있어야(`ACTIVE`·`PAUSED`) 한다.**
+**호출자는 그 스터디의 `LEADER` 이면서 명부에 살아 있어야(`ACTIVE`·`PAUSED`) 한다.**
 아니면 403. 반 단위가 아니라 스터디 단위인 건 공부방을 같이 쓰기 때문이고, 화면 경로
 (`AttendanceUpsertService.validateCallerIsCaptain`)가 이미 스터디 단위로 보고 있어 기준이 같다.
 

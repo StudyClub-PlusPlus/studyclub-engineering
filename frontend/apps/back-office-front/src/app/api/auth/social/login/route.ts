@@ -2,8 +2,8 @@
 // 백엔드가 SYSTEM_ROLE=ADMIN 계정만 토큰 발급. 여기서 계정의 role 을 한 번 더 본다(두 겹).
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ACCESS_COOKIE } from '@/lib/auth';
-import { accessCookie } from '@/lib/cookies';
+import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth';
+import { accessCookie, refreshCookie } from '@/lib/cookies';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -43,9 +43,14 @@ export async function POST(req: NextRequest) {
 
   const res = NextResponse.json({
     account: data.account,
-    accessToken: data.accessToken,
-    refreshToken: data.refreshToken,
   });
   res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7));
+  if (data.refreshToken) {
+    res.cookies.set(
+      REFRESH_COOKIE,
+      data.refreshToken,
+      refreshCookie(data.refreshTokenExpiresIn ?? 60 * 60 * 24 * 30),
+    );
+  }
   return res;
 }

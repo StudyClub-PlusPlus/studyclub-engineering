@@ -100,6 +100,12 @@ describe('validateStudyForm', () => {
     expect(validateStudyForm({ ...valid, deadline: '' })).toHaveProperty('deadline');
   });
 
+  it('진행 시작일은 모집 마감일보다 빠를 수 없다', () => {
+    expect(validateStudyForm({ ...valid, startAt: '2026-10-31' })).toHaveProperty('startAt');
+    expect(validateStudyForm({ ...valid, startAt: '2026-11-01' })).toEqual({});
+    expect(validateStudyForm({ ...valid, startAt: '2026-11-02' })).toEqual({});
+  });
+
   it('정원은 1 이상의 정수여야 한다', () => {
     expect(validateStudyForm({ ...valid, unlimited: false, capacity: '0' })).toHaveProperty('capacity');
     expect(validateStudyForm({ ...valid, unlimited: false, capacity: '5' })).toEqual({});

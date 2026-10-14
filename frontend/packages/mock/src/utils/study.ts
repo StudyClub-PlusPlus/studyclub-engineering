@@ -27,7 +27,9 @@ export function todayISO(): string {
 }
 
 /**
- * 모집 상태. 판정 축은 모집 마감일 하나.
+ * 모집 상태. API 데이터는 서버 판정(`recruitStatus` → `recruitment.status`)이 먼저 거른다 —
+ * 아래 마감일 비교는 mock 데이터용이다. 판정 축(시작일·정원·인원)을 여기 더하지 않는다
+ * (docs/frontend-development-guide/api-integration.md §판정을 다시 하지 않는다).
  */
 export function recruitState(study: Study): RecruitState {
   if (study.status !== "recruiting" || study.recruitment?.status === "closed")

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
-import { getUser, logout, type SessionUser } from '@/lib/auth';
+import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
@@ -23,6 +23,10 @@ export function NavAuth({ locale }: { locale: Locale }) {
   useEffect(() => {
     // 미리보기 세션은 정의가 바뀌었을 수 있어 맞춰서 읽는다
     setUser(syncPreview());
+    // 마이페이지에서 닉네임을 고치면 헤더의 이름도 바로 따라간다
+    const onUserChanged = () => setUser(getUser());
+    window.addEventListener(USER_CHANGED_EVENT, onUserChanged);
+    return () => window.removeEventListener(USER_CHANGED_EVENT, onUserChanged);
   }, []);
 
   useEffect(() => {
@@ -64,7 +68,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
             type='button'
             onClick={enterPreview}
             title='로그인 없이 마이페이지 보기 (로컬 개발 서버 전용)'
-            className='rounded-full border border-dashed border-[var(--color-border-strong)] px-3 py-2 text-sm font-semibold text-[var(--color-fg-muted)] transition-colors hover:bg-[var(--color-surface-subtle)]'
+            className='rounded-full border border-dashed border-[var(--color-border)] px-3 py-2 text-sm font-semibold text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-subtle)]'
           >
             MY
           </button>

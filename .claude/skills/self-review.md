@@ -93,6 +93,15 @@ PR 번호: {PR번호}
 - 에러 핸들링: catch 없는 외부 호출, 빈 catch 블록
 - 네이밍: 의도를 숨기는 이름
 - 하드코딩 매직 넘버
+- 판정 위치 ([규약](../../docs/backend-development-guide/api/endpoint-convention.md#판정은-서버가-내려준다)):
+  - FE — 서버가 줄 수 있는 판정(모집 상태·정원·가능 여부·비율)을 날짜·숫자로 다시 계산한다 → 응답 필드를 쓰거나, 없으면 `// TODO(api)` 로 요청
+  - FE — `packages/mock` 공유 판정 함수에 축(시작일·정원·인원)을 더한다 → 다른 앱까지 바뀐다
+- 파일 이름 ([규약](../../docs/frontend-development-guide/project-structure.md#파일-배치-규칙--기능-옆에-둔다)):
+  - FE — 컴포넌트가 아닌 파일(훅·유틸)을 camelCase(`useXxx.ts`)로 만든다 → kebab-case(`use-xxx.ts`)
+- 목록 상태 위치 ([규약](../../docs/frontend-development-guide/api-integration.md#필터검색페이지는-url-에)):
+  - FE — 목록의 탭·필터·검색어·페이지를 `useState` 로 든다 → URL 쿼리(`useSearchParams` + `router.replace`)로. 새로고침·뒤로 가기에 조건이 사라진다
+  - FE — 개인정보(이메일 원본 등)를 URL 에 싣는다
+  - BE — 화면이 쓸 판정을 응답에 안 넣고 재료만 준다 / 같은 판정을 엔드포인트마다 다른 쿼리로 센다
 
 [deep 추가 기준]
 - 성능: N+1 쿼리, O(n²) 루프
@@ -131,6 +140,7 @@ Codex 가 있으면:
 | 에러 코드 일치 | Service 의 BusinessException vs spec.md Error Responses |
 | SecurityConfig | permitAll 목록 vs spec.md 인증 여부 |
 | 상태 전이 | 엔티티 메서드 vs spec.md / ERD 상태 정의 |
+| 판정 필드 | 응답 DTO 의 판정 필드가 엔티티 메서드로 계산되는가 · 같은 메서드를 부르는 다른 서비스가 같은 재료 쿼리를 쓰는가 |
 
 4. **불일치 발견 시**:
    - 구현이 맞고 스펙이 오래된 경우 → **스펙을 수정**한다 (spec.md 직접 Edit)

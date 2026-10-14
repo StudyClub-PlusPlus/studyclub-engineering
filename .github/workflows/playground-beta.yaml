@@ -7,6 +7,13 @@ on:
     paths:
       - 'frontend/apps/playground/**'
       - 'frontend/packages/**'
+      - '01-planning/stories/**'
+  pull_request:
+    paths:
+      - 'frontend/apps/playground/**'
+      - 'frontend/packages/**'
+      - '01-planning/stories/**'
+      - '.github/workflows/playground-beta.yaml'
   workflow_dispatch:
 
 jobs:
@@ -28,50 +35,7 @@ jobs:
         working-directory: frontend
       - run: npx turbo run lint typecheck --filter=playground
         working-directory: frontend
+      # 설명 보기(spec.ts)와 PRD 가 갈리면 막는다 — 손으로 두 벌 맞추지 않는다
+      - run: pnpm --filter playground export-specs -- --check
+        working-directory: frontend
 
-  docker:
-    needs: lint
-    runs-on: ubuntu-latest
-    env:
-      SLACK_WEBHOOK_URL: ${{ secrets.BUILD_SLACK_WEBHOOK_URL }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-      # playground 는 mock 데이터만 쓴다 → NEXT_PUBLIC_* build-arg 없음
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: frontend
-          file: frontend/apps/playground/Dockerfile
-          push: true
-          tags: hyperrealitycorp/studyclub-playground-production
-          platforms: linux/amd64
-          build-args: |
-            NODE_ENV=production
-            COMMIT_HASH=${{ github.sha }}
-      - name: Deployment
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.REMOTE_SSH_IP }}
-          username: ${{ secrets.REMOTE_SSH_ID }}
-          password: ${{ secrets.REMOTE_SSH_PASSWORD }}
-          port: ${{ secrets.REMOTE_SSH_PORT }}
-          script: |
-            source ~/.bashrc
-            bash ./deployment/studyclub/playground-production.sh
-      - uses: act10ns/slack@v1
-        continue-on-error: true
-        with:
-          status: ${{ job.status }}
-          steps: ${{ toJson(steps) }}
-          channel: '#build-status'
-        if: always()

@@ -1,10 +1,13 @@
 package com.studyclub.api.study;
 
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,16 +26,19 @@ public class BackofficeStudyListService {
     private static final Logger log = LoggerFactory.getLogger(BackofficeStudyListService.class);
 
     private final BackofficeStudyDao backofficeStudyDao;
+    private final StudyParticipantRepository studyParticipantRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyProgramRepository studyProgramRepository;
     private final ObjectMapper objectMapper;
 
     public BackofficeStudyListService(
             BackofficeStudyDao backofficeStudyDao,
+            StudyParticipantRepository studyParticipantRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyProgramRepository studyProgramRepository,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
+        this.studyParticipantRepository = studyParticipantRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyProgramRepository = studyProgramRepository;
         this.objectMapper = objectMapper;
@@ -51,6 +57,13 @@ public class BackofficeStudyListService {
         }
 
         List<Long> studyIds = studies.stream().map(Study::getId).toList();
+
+        // 정원 인원 = 명부 ACTIVE · 정원 역할 — 신청 검사와 같은 기준 (POL-0004)
+        Map<Long, Long> applicantCounts =
+                studyParticipantRepository
+                        .countCapacityHoldersByStudyIds(studyIds, ParticipantRole.CAPACITY_ROLES)
+                        .stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
 
         Map<Long, StudyRecruitment> latestRecruitments =
                 studyRecruitmentRepository.findLatestByStudyIdIn(studyIds).stream()
@@ -71,19 +84,29 @@ public class BackofficeStudyListService {
                                 study -> {
                                     StudyRecruitment recruitment =
                                             latestRecruitments.get(study.getId());
+                                    long applicants =
+                                            applicantCounts.getOrDefault(study.getId(), 0L);
+                                    Integer capacity =
+                                            recruitment != null
+                                                    ? recruitment.getRecruitmentCapacity()
+                                                    : null;
+                                    Instant deadline =
+                                            recruitment != null
+                                                    ? recruitment.getRecruitDeadlineAt()
+                                                    : null;
                                     return new BackofficeStudyListResponse.StudySummary(
                                             study.getId(),
+                                            study.getProgramId(),
                                             study.getTitle(),
                                             study.getStatus(),
                                             study.getCategory(),
                                             programs.get(study.getProgramId()).getStudyKind(),
-                                            recruitment != null
-                                                    ? recruitment.getRecruitmentCapacity()
-                                                    : null,
+                                            capacity,
+                                            applicants,
+                                            // 모집 상태는 서버가 판정해 내려준다 — 프론트가 날짜·인원으로 다시 계산하지 않게
+                                            study.recruitStatus(applicants, deadline, capacity),
                                             recruitment != null ? recruitment.getStartAt() : null,
-                                            recruitment != null
-                                                    ? recruitment.getRecruitDeadlineAt()
-                                                    : null,
+                                            deadline,
                                             study.getStartAt(),
                                             study.timezone(),
                                             hasQuestions(study.getApplicationForm()));
@@ -100,7 +123,7 @@ public class BackofficeStudyListService {
             if (root.isTextual()) {
                 root = objectMapper.readTree(root.asText());
             }
-            JsonNode questions = root.get("questions");
+            JsonNode questions = root.isArray() ? root : root.get("questions");
             return questions != null && questions.isArray() && questions.size() > 0;
         } catch (Exception e) {
             log.warn("신청 폼 파싱 실패 — 폼 없음으로 처리", e);
