@@ -8,8 +8,8 @@ import { getStudyCrew, type AttendanceStatus, type Crew, type Study } from '@stu
  * 백오피스 출석부와 같은 격자·같은 상태값을 쓴다. 다른 점은 범위뿐이다:
  * 사용자 사이트는 소속 분반, 백오피스는 스터디 전체.
  *
- * TODO(api): GET  /api/studies/{id}/groups/{groupId}/attendances
- *            POST /api/studies/{id}/groups/{groupId}/attendances — 바뀐 칸만 updates[] 로
+ * TODO(api): GET  /api/me/studies/{id}/attendances?studyGroupId={groupId}
+ *            POST /api/admin/studies/{id}/attendances — body: { studyGroupId, updates[] }
  */
 
 export type AttendanceBook = Record<string, Record<string, AttendanceStatus>>;

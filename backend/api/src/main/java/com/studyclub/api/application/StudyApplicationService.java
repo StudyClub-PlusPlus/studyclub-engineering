@@ -10,6 +10,7 @@ import com.studyclub.domain.application.ApplicationFormQuestion;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationAnswer;
 import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.application.StudyApplicationSubmitted;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
@@ -41,6 +43,7 @@ public class StudyApplicationService {
     private final StudyApplicationRepository studyApplicationRepository;
     private final ObjectMapper objectMapper;
     private final StudyParticipantRepository studyParticipantRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public StudyApplicationService(
             StudyRepository studyRepository,
@@ -48,13 +51,15 @@ public class StudyApplicationService {
             StudyApplicationRepository studyApplicationRepository,
             StudyParticipantRepository studyParticipantRepository,
             AccountRepository accountRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.accountRepository = accountRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.objectMapper = objectMapper;
         this.studyParticipantRepository = studyParticipantRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -94,6 +99,13 @@ public class StudyApplicationService {
 
         StudyApplication saved = studyApplicationRepository.save(application);
         account.changeDiscordNickname(answer.discordNickname());
+        eventPublisher.publishEvent(
+                StudyApplicationSubmitted.of(
+                        saved.getId(),
+                        studyId,
+                        study.getTitle(),
+                        accountId,
+                        account.getNickname()));
         return saved.getId();
     }
 

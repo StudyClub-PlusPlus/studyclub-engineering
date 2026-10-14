@@ -80,6 +80,12 @@ test.describe('인증 미들웨어', () => {
     await page.goto('/ko/my/studies');
     await expect(page).toHaveURL(/\/ko\/login/);
   });
+
+  test('/ko/my/joined — 비로그인 시 /ko/login 으로 리다이렉트', async ({ page }) => {
+    await page.goto('/ko/my/joined');
+    await expect(page).toHaveURL(/\/ko\/login/);
+    await expect(page).toHaveURL(/next=%2Fko%2Fmy%2Fjoined/);
+  });
 });
 
 test.describe('로그인 페이지', () => {
@@ -110,7 +116,30 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
     await expect(page.getByRole('button', { name: /신청하기|Apply/i })).not.toBeVisible();
   });
 
-  test('신청 버튼 클릭 시 다이얼로그 열림', async ({ page }) => {
+  test('비로그인 시 신청 버튼 클릭하면 로그인 페이지로 리다이렉트', async ({ page }) => {
+    await page.goto('/ko/studies/3');
+    const applyBtn = page.getByRole('button', { name: /신청하기|Apply/i }).first();
+    await applyBtn.click();
+    await expect(page).toHaveURL(/\/ko\/login\?next=%2Fko%2Fstudies%2F3/);
+  });
+
+  test('로그인 + 디스코드 연동 시 신청 다이얼로그 열림', async ({ page }) => {
+    // 클라이언트 인증 및 디스코드 연동 세션 주입
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'sc_user',
+        JSON.stringify({
+          id: 1,
+          email: 'test@test.com',
+          nickname: '테스트크루',
+          picture: null,
+          role: 'MEMBER',
+        }),
+      );
+      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
+    });
+
     await page.goto('/ko/studies/3');
     const applyBtn = page.getByRole('button', { name: /신청하기|Apply/i }).first();
     await applyBtn.click();
@@ -118,17 +147,47 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
   });
 
   test('폼 미제출 시 에러 메시지 표시', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'sc_user',
+        JSON.stringify({
+          id: 1,
+          email: 'test@test.com',
+          nickname: '테스트크루',
+          picture: null,
+          role: 'MEMBER',
+        }),
+      );
+      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
+    });
+
     await page.goto('/ko/studies/3');
     await page.getByRole('button', { name: /신청하기|Apply/i }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
-    // 아무것도 선택하지 않고 신청 클릭
+    // 입력하지 않고 신청 클릭
     await page.getByRole('dialog').getByRole('button', { name: /^신청$|^Apply$/i }).click();
-    // Zod 검증 에러가 화면에 노출돼야 한다
-    await expect(page.getByRole('dialog').locator('p.text-error-700, [class*="text-error"]')).toBeVisible();
+    // 검증 에러 노출
+    await expect(page.getByRole('dialog').getByRole('alert').first()).toBeVisible();
   });
 
   test('Esc 키로 다이얼로그 닫힘', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'sc_user',
+        JSON.stringify({
+          id: 1,
+          email: 'test@test.com',
+          nickname: '테스트크루',
+          picture: null,
+          role: 'MEMBER',
+        }),
+      );
+      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
+    });
+
     await page.goto('/ko/studies/3');
     await page.getByRole('button', { name: /신청하기|Apply/i }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible();

@@ -3,19 +3,21 @@
 import { useId } from 'react';
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
+import { ChevronDown } from 'lucide-react';
+
 import { cx } from './cx';
 
 /** design-system.md §9-2 — 입력 계열 공통 셸. */
 const CONTROL_BASE = cx(
-  'w-full rounded-control border bg-bg px-3.5 text-sm text-neutral-900',
+  'w-full rounded-control border bg-surface-raised px-3.5 text-sm text-ink',
   'placeholder:text-fg-placeholder',
   'transition-[border-color,box-shadow] duration-fast ease-out',
   'focus:outline-none',
-  'disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-neutral-400',
+  'disabled:cursor-not-allowed disabled:bg-disabled-bg disabled:text-disabled-fg',
 );
 
-const CONTROL_OK = 'border-border-strong focus:border-brand focus:shadow-(--ring)';
-const CONTROL_ERROR = 'border-error-600 focus:border-error-600 focus:shadow-(--ring-error)';
+const CONTROL_OK = 'border-border focus:border-border-interactive focus:shadow-(--ring)';
+const CONTROL_ERROR = 'border-danger-fg focus:border-danger-fg focus:shadow-(--ring-error)';
 
 function controlClass(invalid: boolean, extra?: string) {
   return cx(CONTROL_BASE, invalid ? CONTROL_ERROR : CONTROL_OK, extra);
@@ -39,10 +41,10 @@ export function FieldShell({ label, helper, error, required, labelHint, htmlFor,
     <div className='flex flex-col gap-1.5'>
       {(label || labelHint) && (
         <div className='flex items-baseline justify-between gap-2'>
-          <label htmlFor={htmlFor} className='text-sm font-medium text-neutral-800'>
+          <label htmlFor={htmlFor} className='text-sm font-medium text-ink'>
             {label}
             {required && (
-              <span className='ml-0.5 text-error-600' aria-hidden='true'>
+              <span className='ml-0.5 text-danger-fg' aria-hidden='true'>
                 *
               </span>
             )}
@@ -51,16 +53,36 @@ export function FieldShell({ label, helper, error, required, labelHint, htmlFor,
         </div>
       )}
       {children}
-      {message && <p className={cx('text-xs', error ? 'text-error-700' : 'text-fg-muted')}>{message}</p>}
+      {message && <p className={cx('text-xs', error ? 'text-danger-fg' : 'text-fg-muted')}>{message}</p>}
     </div>
   );
 }
 
 type FieldMeta = Pick<FieldShellProps, 'label' | 'helper' | 'error' | 'required' | 'labelHint'>;
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement>, FieldMeta {}
+export type InputSize = 'sm' | 'md' | 'lg';
 
-export function Input({ label, helper, error, required, labelHint, className, id, ...rest }: InputProps) {
+const INPUT_SIZES: Record<InputSize, string> = {
+  sm: 'h-8',
+  md: 'h-10',
+  lg: 'h-12',
+};
+
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>, FieldMeta {
+  size?: InputSize;
+}
+
+export function Input({
+  label,
+  helper,
+  error,
+  required,
+  labelHint,
+  className,
+  id,
+  size = 'md',
+  ...rest
+}: InputProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   const invalid = Boolean(error);
@@ -71,27 +93,54 @@ export function Input({ label, helper, error, required, labelHint, className, id
         id={fieldId}
         required={required}
         aria-invalid={invalid || undefined}
-        className={controlClass(invalid, cx('h-10', className))}
+        className={controlClass(invalid, cx(INPUT_SIZES[size], className))}
       />
     </FieldShell>
   );
 }
 
-export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement>, FieldMeta {}
+export type SelectSize = 'sm' | 'md' | 'lg';
 
-export function Select({ label, helper, error, required, labelHint, className, id, ...rest }: SelectProps) {
+const SELECT_SIZES: Record<SelectSize, string> = {
+  sm: 'h-8',
+  md: 'h-10',
+  lg: 'h-12',
+};
+
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'>, FieldMeta {
+  size?: SelectSize;
+}
+
+export function Select({
+  label,
+  helper,
+  error,
+  required,
+  labelHint,
+  className,
+  id,
+  size = 'md',
+  ...rest
+}: SelectProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   const invalid = Boolean(error);
   return (
     <FieldShell label={label} helper={helper} error={error} required={required} labelHint={labelHint} htmlFor={fieldId}>
-      <select
-        {...rest}
-        id={fieldId}
-        required={required}
-        aria-invalid={invalid || undefined}
-        className={controlClass(invalid, cx('h-10', className))}
-      />
+      <div className='relative'>
+        <select
+          {...rest}
+          id={fieldId}
+          required={required}
+          aria-invalid={invalid || undefined}
+          className={controlClass(invalid, cx(SELECT_SIZES[size], 'appearance-none pr-9', className))}
+        />
+        <ChevronDown
+          size={16}
+          className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted'
+          aria-hidden
+        />
+      </div>
     </FieldShell>
   );
 }

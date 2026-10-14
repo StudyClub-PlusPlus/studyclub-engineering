@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { BOARD_PREVIEW, DEADLINE_SOON_DAYS, daysUntil, type BoardStudy } from '@console/lib/dashboard';
+import { BOARD_PREVIEW, daysUntil, type BoardStudy } from '@console/lib/dashboard';
 
 /**
  * 현황 보드.
@@ -148,7 +148,9 @@ function Quadrant<T extends { id: string; title: string }>({
 function DeadlineCell({ deadline }: { deadline?: string }) {
   if (deadline === undefined) return <span className='w-[110px] shrink-0 text-right text-sm text-fg-muted'>—</span>;
   const d = daysUntil(deadline);
-  const tone = d < 0 || d === 0 ? 'text-error-700' : d <= DEADLINE_SOON_DAYS ? 'text-warning-700' : 'text-fg-secondary';
+  // 임박을 따로 가르지 않는다 — 운영 화면은 남은 날을 숫자로 읽는 자리고, 재촉은 사용자 사이트의 일이다.
+  // 지난 것만 구분한다 — 그건 이미 벌어진 일이라 눈에 띄어야 한다.
+  const tone = d < 0 ? 'text-error-700' : 'text-fg-secondary';
   // 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이고, 여기 쓰면 끝난 것으로 읽힌다
   const label = d < 0 ? '마감 경과' : `D-${d}`;
   return (

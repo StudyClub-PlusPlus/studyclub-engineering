@@ -26,15 +26,15 @@ flowchart LR
 
 · **완료 기준**
 
-1. 내 분반의 참여자 × 회차 출석 상태를 한 화면에서 본다
-2. 칸을 눌러 출석 · 지각 · 결석 · 휴가 · 미체크 사이를 바꾼다
-3. 바꾼 칸은 저장을 눌러야 반영된다. 저장 전에는 어느 칸이 바뀌었는지 테두리로 안다
-4. 저장 전 변경을 한 번에 되돌릴 수 있다
-5. 저장하지 않은 변경이 있는 채로 탭·링크로 나가려 하면 한 번 더 묻는다
-6. 참여자별 출석률을 보고, 칸을 바꾸면 바로 다시 계산된다. 킥오프는 출석률에 넣지 않는다
-7. 내 분반 참여자만 보인다. 캡틴은 백오피스 출석부(전체 참여자)로 바로 갈 수 있다
-8. 회차가 없으면 그 사실과 일정으로 가는 길을 본다
-9. 네비게이터와 그 스터디를 만든 캡틴만 고친다. 다른 참여자에게는 보기 화면이다 ([crew-view-attendance-record](../crew-view-attendance-record/PRD.md))
+1. 내 분반 참여자 × 회차 출석 격자 조회
+2. 칸 클릭으로 출석·지각·결석·휴가·미체크 전환
+3. 저장으로 일괄 반영 — 저장 전 변경 칸은 테두리로 구분
+4. 저장 전 변경 일괄 되돌리기
+5. 미저장 상태로 이탈 시 재확인
+6. 참여자별 출석률 실시간 재계산 — 킥오프 제외
+7. 내 분반 참여자만 표시. 캡틴은 백오피스 출석부로 이동
+8. 회차 없을 때 안내와 일정으로 가는 경로
+9. 수정 권한 — 네비게이터와 담당 캡틴. 그 외에는 조회 화면
 
 ## 2. 화면명세
 
@@ -73,11 +73,11 @@ flowchart LR
 
 ### 2-1. 스터디를 중단한 사람
 
-- **내용**: 흐린 이름 + 「참여 중단」 칩. 중단 일자 뒤 회차 칸은 「—」 (누를 수 없다)
+- **내용**: 흐린 이름 + 「참여 중단」 칩. 중단 시각 뒤에 시작하는 회차 칸은 「—」 (누를 수 없다)
 - **정책**
   - 하차·제명을 가르지 않는다. 사유는 보이지도 저장하지도 않는다
   - 맨 아래 줄로 내린다. 줄을 지우지 않는다 — 중단 전 출석은 남고 고칠 수 있다
-  - 출석률은 중단 일자까지의 회차만 센다. 숫자는 회색 · 보통 굵기
+  - 출석률은 중단 시각까지의 회차만 센다. 숫자는 회색 · 보통 굵기
 - **데이터**: `STUDY_PARTICIPANT.STATUS = WITHDRAWN` · `LEFT_AT`
 
 ### 3. 저장 바
@@ -135,18 +135,30 @@ erDiagram
   STUDY_PARTICIPANT {
     varchar PARTICIPANT_ROLE "LEADER = 네비게이터"
     varchar STATUS "ACTIVE · PAUSED · WITHDRAWN"
-    datetime LEFT_AT "참여 중단 일자"
+    datetime LEFT_AT "참여 중단 시각"
   }
 ```
 
 ### 비고
 
-- 범위 밖: 회차 추가·수정(일정 탭 — [회차 등록 PRD](../navigator-register-sessions/PRD.md)), 스터디 전체 참여자 출석부(백오피스 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md)), 디스코드 출석 체크, 참여자 제명
+- 범위 밖: 회차 추가·수정(일정 탭 — [회차 등록 PRD](../navigator-register-sessions/PRD.md)), 스터디 전체 참여자 출석부(백오피스 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md)), 디스코드 출석 체크, 참여 중단([navigator-withdraw-participant](../navigator-withdraw-participant/PRD.md))
 - 미구현: 저장은 브라우저에만 남는다
 - 구현 지시: 칸 값 · 순환 · 저장 방식은 백오피스 출석부와 같은 컴포넌트를 쓴다. 다른 점은 보이는 참여자 범위와 머리 줄을 숨기는 것뿐이다
 - 옛 출석 기록 주소 `/my/joined/{id}/attendance` 는 이 탭(`/my/joined/{id}/schedule/attendance`)으로 보낸다
 
 ## 3. 시스템 요건
+
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | core-front 스터디 일정 › 출석부 편집 | 없음 — 스터디 일정 화면이 자리만 있다 | 백오피스 출석부와 같은 격자 컴포넌트로 만든다 |
+| BE | `GET` · `POST /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
+| 기획 | 참여 중단자 줄 | 이 PRD 2-1 은 맨 아래 줄에 남긴다 · share 는 기본 뷰를 `ACTIVE` 만으로 정했다 | 어느 쪽인지 정한다 ([share 10-05](../../../docs/share/2026-10-05-attendance-withdrawn-logic.md)) |
 
 ### 데이터
 
@@ -173,8 +185,8 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 만든 캡틴 |
-| POST | `/api/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디를 만든 캡틴 |
+| GET | `/api/me/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 만든 캡틴 |
+| POST | `/api/me/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디를 만든 캡틴 |
 
 계약은 [attendance/spec.md](../../../specs/attendance/spec.md).
 
@@ -196,5 +208,5 @@ erDiagram
 ## 4. 미확정
 
 - 미체크로 되돌린 칸을 저장하는 방법 — 쓰기 API 는 네 값만 받는다
-- 네비게이터 쓰기를 맡은 분반 칸으로 좁힐지. 지금 서버 검증은 스터디 단위다
+- ~~네비게이터 쓰기를 맡은 분반 칸으로 좁힐지~~ → 분반 단위. 타 분반 네비게이터는 403 ([authz-guards](../../../specs/authz-guards/spec.md) B, 2026-10-07)
 - ~~캡틴(`SYSTEM_ROLE = ADMIN`)이 사용자 사이트에서 쓸 때의 권한 판정~~ → 그 스터디를 만든 캡틴만 고친다. 다른 캡틴은 크루 (2026-10-06)

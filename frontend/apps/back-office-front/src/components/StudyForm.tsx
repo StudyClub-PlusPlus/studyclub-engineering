@@ -73,8 +73,9 @@ export type StudyFormValues = {
   programTitle: string;
   title: string;
   summary: string;
-  /** 업로드 API 연결 전까지는 이 화면에서만 쓰는 blob 미리보기 URL. */
+  /** 화면 미리보기 URL. 새 파일을 고르면 thumbnailFile을 S3에 업로드한다. */
   thumbnail: string;
+  thumbnailFile?: File | null;
   description: string;
   /** API enum 코드 (`AI_ML` 등). */
   category: string;
@@ -98,6 +99,7 @@ export const EMPTY_FORM: StudyFormValues = {
   title: '',
   summary: '',
   thumbnail: '',
+  thumbnailFile: null,
   description: DESCRIPTION_TEMPLATE,
   category: '',
   deadline: '',
@@ -137,6 +139,7 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
     title: d.title,
     summary: d.oneLineSummary,
     thumbnail: d.thumbnailUrl ?? '',
+    thumbnailFile: null,
     description: d.description ?? '',
     category: d.category,
     deadline: toKstDate(d.recruitDeadlineAt),
@@ -192,8 +195,7 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
  *
  * ⚠️ 등록 API 는 아직 정원·진행 시작일·채널/드라이브 주소를 받지 않는다(`StudyCreateRequest`). 그래서 그
  * 칸들은 **등록 요청에 실리지 않고**, 등록 뒤 정보 탭에서 저장해야 한다 — specs/study-registration-spec.md
- * 10절의 남은 항목이다. 썸네일은 서버가 URL을 받지만, 현재 파일 선택은 blob 미리보기만 만들므로 blob URL은
- * 요청에서 제외한다.
+ * 10절의 남은 항목이다. 썸네일은 파일을 등록 다이얼로그에서 S3에 업로드한 뒤 반환된 URL을 보낸다.
  */
 export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   const payload: StudyCreatePayload = {
@@ -242,6 +244,9 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
   if (!f.category) e.category = '카테고리를 선택하세요.';
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
+  if (f.deadline && f.startAt && f.startAt < f.deadline) {
+    e.startAt = '진행 시작일은 모집 마감일보다 빠를 수 없어요.';
+  }
   if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim())) {
     e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
   }
@@ -260,10 +265,15 @@ function CharCount({ len, max }: { len: number; max: number }) {
 }
 
 /**
- * 썸네일 — playground와 같은 로컬 미리보기 UI.
- * 실제 업로드 API가 연결되기 전까지 선택한 파일은 blob URL로만 유지된다.
+ * 썸네일 — playground와 같은 로컬 미리보기 UI. 선택한 File은 등록 시 S3로 업로드한다.
  */
-function ThumbnailField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+function ThumbnailField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string, file: File | null) => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function pick(event: ChangeEvent<HTMLInputElement>) {
@@ -271,12 +281,12 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
     event.target.value = '';
     if (!file) return;
     if (value.startsWith('blob:')) URL.revokeObjectURL(value);
-    onChange(URL.createObjectURL(file));
+    onChange(URL.createObjectURL(file), file);
   }
 
   function remove() {
     if (value.startsWith('blob:')) URL.revokeObjectURL(value);
-    onChange('');
+    onChange('', null);
   }
 
   return (
@@ -312,7 +322,13 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
           </div>
           <span className='text-xs text-fg-muted'>비우면 카테고리에 맞는 기본 이미지가 쓰입니다</span>
         </div>
-        <input ref={inputRef} type='file' accept='image/*' onChange={pick} className='hidden' />
+        <input
+          ref={inputRef}
+          type='file'
+          accept='image/jpeg,image/png,image/webp'
+          onChange={pick}
+          className='hidden'
+        />
       </div>
     </div>
   );
@@ -483,7 +499,7 @@ function ProgramField({
                 className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
                   value.kind === kind
                     ? 'border-brand bg-brand text-white'
-                    : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+                    : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
                 }`}
               >
                 {KIND_LABEL[kind]}
@@ -501,7 +517,7 @@ function ProgramField({
             value={value.programId}
             onChange={(event) => void selectProgram(event.target.value)}
             disabled={isLoading || prefilling}
-            className='h-10 rounded-control border border-border-strong bg-bg px-3 text-sm outline-none focus:border-brand'
+            className='h-10 rounded-control border border-border bg-bg px-3 text-sm outline-none focus:border-border-interactive'
           >
             <option value=''>{isLoading ? '불러오는 중…' : '클럽을 고르세요'}</option>
             {uniqueClubs.map((club) => (
@@ -523,7 +539,7 @@ function ProgramField({
 }
 
 const DATE_INPUT =
-  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]';
+  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
 
 export function StudyForm({
   value,
@@ -569,7 +585,10 @@ export function StudyForm({
         />
       </div>
 
-      <ThumbnailField value={value.thumbnail} onChange={(next) => set('thumbnail', next)} />
+      <ThumbnailField
+        value={value.thumbnail}
+        onChange={(next, file) => onChange({ ...value, thumbnail: next, thumbnailFile: file })}
+      />
 
       <CategoryField value={value.category} error={errors.category} onChange={(next) => set('category', next)} />
 
@@ -633,11 +652,20 @@ export function StudyForm({
           <input
             id='startAt'
             type='date'
+            min={value.deadline || undefined}
             value={value.startAt}
             onChange={(ev) => set('startAt', ev.target.value)}
             className={DATE_INPUT}
+            aria-invalid={Boolean(errors.startAt)}
+            aria-describedby={errors.startAt ? 'startAt-error' : undefined}
           />
-          <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+          {errors.startAt ? (
+            <p id='startAt-error' className='text-xs font-medium text-error-600'>
+              {errors.startAt}
+            </p>
+          ) : (
+            <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+          )}
         </div>
       </div>
 

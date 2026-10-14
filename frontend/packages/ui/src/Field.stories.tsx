@@ -24,6 +24,17 @@ export const InputDefault: Story = {
   render: () => <Input label='스터디 이름' placeholder='이름을 입력해 주세요' />,
 };
 
+export const InputSizes: Story = {
+  name: 'Input / 크기 (sm, md, lg)',
+  render: () => (
+    <div className='flex flex-col gap-4'>
+      <Input label='Small (h-8)' size='sm' placeholder='Small (32px)' />
+      <Input label='Medium / 기본 (h-10)' size='md' placeholder='Medium (40px)' />
+      <Input label='Large (h-12)' size='lg' placeholder='Large (48px)' />
+    </div>
+  ),
+};
+
 export const InputRequired: Story = {
   name: 'Input / 필수',
   render: () => <Input label='이름' placeholder='필수 항목' required />,
@@ -64,6 +75,23 @@ export const SelectError: Story = {
     <Select label='지역' error='지역을 선택해 주세요.'>
       <option value=''>선택해 주세요</option>
     </Select>
+  ),
+};
+
+export const SelectSizes: Story = {
+  name: 'Select / 크기 (sm, md, lg)',
+  render: () => (
+    <div className='flex flex-col gap-4'>
+      <Select label='Small (h-8)' size='sm'>
+        <option value='sm'>Small (32px)</option>
+      </Select>
+      <Select label='Medium / 기본 (h-10)' size='md'>
+        <option value='md'>Medium (40px)</option>
+      </Select>
+      <Select label='Large (h-12)' size='lg'>
+        <option value='lg'>Large (48px)</option>
+      </Select>
+    </div>
   ),
 };
 

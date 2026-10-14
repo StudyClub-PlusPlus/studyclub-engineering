@@ -23,9 +23,11 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 ## 전제
 
-- **단건 모드**로 동작한다. 이 레포에는 `01-planning/_registry/` 가 없다 — `ST-###`·`IA-###`·`SRC-####` 를 쓰지 않는다
+- **레지스트리 모드**로 동작한다. Story 는 [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 의 `ST-###` 행이다.
+  새 Story·화면이면 같은 파일 맨 위 번호 대장(NUMBER LEDGER)에서 `ST`·`IA` 번호를 받고, 같은 커밋에서 `next` 를 +1 한다
+- 여러 Story 에 걸치는 규칙은 PRD 에 값을 쓰지 않고 [`POL-####`](../../01-planning/_registry/policies.md) 를 가리킨다
 - Story 폴더 이름(`{story-name}`)은 kebab-case, `{actor}-{행동}` (예: `crew-edit-profile`, `captain-publish-study`)
-- 표에 이미 PRD 가 걸린 Story 면 **수정**, `—` 면 **생성**이다
+- 표에 이미 PRD 가 걸린 Story 면 **수정**, PRD 칸이 비어 있으면 **생성**이다
 
 ## 1. 프로토타입 생성·수정
 
@@ -59,7 +61,21 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 - prototype-agent `references/prd-guide.md` 의 Story PRD 구성을 따른다
   - 제목 = 정규문장 · `기준 프로토타입:` 한 줄
   - §1 기본설명 (흐름 다이어그램 · 완료 기준) · §2 화면명세 (`spec.ts` 번호와 1:1) · §3 시스템 요건 · §4 미확정
+- **§3 맨 앞에 `### 개발 범위` 표를 둔다** — `| 구분 | 대상 | 지금 | 할 일 |`. 기준일과 `beta` 를 머리에 적는다
+  - FE 줄: 실제 앱(core-front · back-office-front)의 라우트·컴포넌트와 데이터 연결(API · mock · 없음)
+  - BE 줄: 엔드포인트마다 스펙 상태 칸 값을 그대로 옮긴다. 스펙이 없으면 「스펙 없음」
+  - 기획 줄: 문서끼리 어긋나 정해야 하는 것
+  - 다 끝나면 「할 일」이 모두 「없음」이 된다. PRD 를 고칠 때마다 이 표도 다시 본다
 - `spec.ts` 의 번호·`display`·`behavior`·`policy`·`data` 를 §2 의 내용·동작·정책·데이터로 옮긴다. 번호를 바꾸지 않는다
+- **`§2 화면명세` 안에 `spec.ts` 의 `scope` 마다 마커 쌍을 반드시 넣는다** — `scope` 생략 시 `screen`
+
+  ```markdown
+  <!-- spec:start {scope} -->
+
+  <!-- spec:end {scope} -->
+  ```
+
+  마커를 넣은 뒤 `frontend/` 에서 `pnpm --filter playground export-specs` 를 실행하면 내용을 자동으로 채운다. **마커가 없으면 playground CI(`export-specs --check`)가 막는다.**
 - 프로토 링크는 배포된 절대 URL 만. 배포 전이면 지면 이름만 적는다
 - prd-guide §5 자가 검증 체크리스트를 통과시킨다
 
@@ -71,7 +87,8 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 ### 인덱스
 
-- [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 유저스토리 표의 PRD 칸에 링크를 건다
+- [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 유저스토리 표의 PRD · 프로토 · Spec 칸에 링크를 건다
+- 새 화면이면 [`01-planning/_registry/informationarchitecture.md`](../../01-planning/_registry/informationarchitecture.md) 에 `IA-###` 노드를 추가한다
 - 새 도메인 스펙이면 [`specs/README.md`](../../specs/README.md) 표에도 한 줄 추가한다
 
 ## 3. PR

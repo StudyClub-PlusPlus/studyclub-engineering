@@ -1,5 +1,7 @@
 # 백오피스 로그인 — ADMIN 만 들어온다
 
+> Story: 없음 — ST-019 「캡틴은 백오피스에 접근할 수 있다」는 폐기됐다. 화면에서 하는 일이 아니라 모든 콘솔 화면에 걸리는 조건이라서다. 접근 판정은 [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
+
 백오피스(`back-office-front`) 로그인은 **`ACCOUNT.SYSTEM_ROLE = ADMIN` 인 계정만** 통과한다. 이메일 allowlist(env `BACK_OFFICE_ALLOWED_EMAILS`)는 버린다.
 계정이 없거나 MEMBER 면 거절한다.
 

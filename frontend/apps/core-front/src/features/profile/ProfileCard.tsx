@@ -308,7 +308,7 @@ export function ProfileCard({
             disabled={opening}
             title='내 정보 수정'
             aria-label='내 정보 수정'
-            className='grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border-strong text-fg-secondary transition-colors hover:bg-surface-2 hover:text-fg'
+            className='grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border text-fg-secondary transition-colors hover:border-border-interactive hover:bg-surface-2 hover:text-fg'
           >
             <Pencil size={15} />
           </button>

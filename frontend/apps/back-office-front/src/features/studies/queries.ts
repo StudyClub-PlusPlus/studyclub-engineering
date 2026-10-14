@@ -88,6 +88,31 @@ export function useStudyDetail(studyId: number) {
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+type StudyThumbnailUploadResponse = {
+  uploadUrl: string;
+  thumbnailUrl: string;
+};
+
+/** 관리자용 presigned URL을 받아 선택한 썸네일을 S3에 직접 업로드한다. */
+export async function uploadStudyThumbnail(file: File): Promise<string> {
+  const { uploadUrl, thumbnailUrl } = await http<StudyThumbnailUploadResponse>(
+    '/api/admin/study-thumbnails/upload-url',
+    {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size }),
+    },
+  );
+
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+  if (!response.ok) throw new Error('썸네일 업로드에 실패했습니다.');
+  return thumbnailUrl;
+}
+
 /**
  * 스터디 등록. 201 은 바디가 없고 `Location` 헤더만 온다 — 만들어진 id 가 필요하면 거기서 읽는다.
  * 새 프로그램을 만들었을 수도 있어 클럽 목록도 함께 무효화한다.

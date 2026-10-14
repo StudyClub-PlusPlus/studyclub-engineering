@@ -35,6 +35,7 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
     implementation("org.apache.commons:commons-lang3")
+    implementation("software.amazon.awssdk:s3:2.46.7")
 
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")

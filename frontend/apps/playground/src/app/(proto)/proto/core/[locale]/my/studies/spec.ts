@@ -7,6 +7,8 @@ import type { ScreenSpec } from '@/proto/annotate';
  * Story ID 는 비워 둔다 — `stories.md` 발번 대장에서 실제로 발급받기 전에는 적지 않는다.
  */
 export const SPEC: ScreenSpec = {
+  prd: 'crew-view-attendance-record',
+  scope: 'record',
   screen: '내 스터디 · 출석',
   notes: [
     '출석 이력은 브라우저(localStorage)에만 남는다. 기기·브라우저가 바뀌면 사라진다 — 저장할 서버가 아직 없다',

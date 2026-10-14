@@ -14,7 +14,7 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from '@/components/StudyForm';
-import { useCreateStudy } from '@/features/studies/queries';
+import { uploadStudyThumbnail, useCreateStudy } from '@/features/studies/queries';
 
 /**
  * 스터디 등록 팝업.
@@ -28,14 +28,16 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const create = useCreateStudy();
-  const saving = create.isPending;
+  const saving = create.isPending || uploading;
 
   useEffect(() => {
     if (!open) return;
     setForm(EMPTY_FORM);
     setErrors({});
     setFailure(null);
+    setUploading(false);
     setDone(false);
   }, [open]);
 
@@ -43,6 +45,7 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
     setForm(EMPTY_FORM);
     setErrors({});
     setFailure(null);
+    setUploading(false);
     setDone(false);
     onClose();
   }
@@ -54,7 +57,13 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
 
     setFailure(null);
     try {
-      await create.mutateAsync(formToCreatePayload(form));
+      const payload = formToCreatePayload(form);
+      if (form.thumbnailFile) {
+        setUploading(true);
+        payload.thumbnailUrl = await uploadStudyThumbnail(form.thumbnailFile);
+        setUploading(false);
+      }
+      await create.mutateAsync(payload);
       setDone(true);
       router.refresh();
     } catch (err) {
@@ -63,6 +72,7 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
       const fieldError = serverErrorToField(message);
       if (fieldError) setErrors(fieldError);
       else setFailure(message);
+      setUploading(false);
     }
   }
 

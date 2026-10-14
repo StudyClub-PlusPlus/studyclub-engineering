@@ -71,12 +71,8 @@ export function ClassDialog({
       onClose={onClose}
       title={edit ? '반 수정' : '반 만들기'}
       footer={
-        <>
-          <Button variant='secondary' onClick={onClose}>
-            취소
-          </Button>
-          <Button onClick={create}>{edit ? '저장' : '만들기'}</Button>
-        </>
+        /* 입력·설정 모달 — 취소 없이 X 로 닫는다 (POL-0008) */
+        <Button onClick={create}>{edit ? '저장' : '만들기'}</Button>
       }
     >
       <div data-anno='class:1-2' className='flex flex-col gap-4 py-2'>

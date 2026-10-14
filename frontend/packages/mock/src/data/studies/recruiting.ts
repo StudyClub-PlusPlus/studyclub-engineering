@@ -28,7 +28,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
     recruit_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     recruitment: {
       status: "open",
-      deadline: "2026-10-05",
+      deadline: "2026-12-31",
       cadence: "one-time",
       form_url: "https://forms.gle/Zynn7eGdjQZQLUEx9",
     },
@@ -131,7 +131,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
     recruit_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
     recruitment: {
       status: "monthly",
-      deadline: "2026-09-30",
+      deadline: "2026-12-31",
       cadence: "monthly",
       form_url: "https://forms.gle/Ub9YHsQjuhyw7o166",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -166,7 +166,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
     recruit_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
     recruitment: {
       status: "monthly",
-      deadline: "2026-09-30",
+      deadline: "2026-12-31",
       cadence: "monthly",
       form_url: "https://forms.gle/4RpAXWfWCVNVmRAU8",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },
@@ -201,7 +201,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
     recruit_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     recruitment: {
       status: "open",
-      deadline: "2026-10-20",
+      deadline: "2026-12-31",
       cadence: "one-time",
       form_url: "https://forms.gle/SMQeimGZKMQ2Zbeq8",
     },
@@ -236,7 +236,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
     recruit_url: "https://forms.gle/QD54d719pDyGcuLF8",
     recruitment: {
       status: "open",
-      deadline: "2026-09-29",
+      deadline: "2026-12-31",
       cadence: "one-time",
       form_url: "https://forms.gle/QD54d719pDyGcuLF8",
     },
@@ -269,7 +269,7 @@ export const STUDIES_RECRUITING: StudyDraft[] = [
     recruit_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
     recruitment: {
       status: "monthly",
-      deadline: "2026-09-30",
+      deadline: "2026-12-31",
       cadence: "monthly",
       form_url: "https://forms.gle/7tqPWZXf8m4eSz2t5",
       note: { ko: "매달 추가 모집합니다", en: "New members recruited monthly" },

@@ -30,7 +30,7 @@ export function RegistrationNavigation({ children, locale }: { children: React.R
           href={switchUrl}
           hrefLang={other}
           lang={other}
-          className='rounded-full border border-border-strong px-3.5 py-2 text-xs font-medium text-fg-muted transition hover:bg-surface-1 focus-visible:outline-none focus-visible:shadow-(--ring)'
+          className='rounded-full border border-border px-3.5 py-2 text-xs font-medium text-fg-muted transition hover:border-border-interactive hover:bg-surface-1 focus-visible:outline-none focus-visible:shadow-(--ring)'
         >
           {other === 'en' ? 'English' : '한국어'}
         </Link>
