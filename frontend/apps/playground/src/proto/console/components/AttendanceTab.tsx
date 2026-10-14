@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { ClassPicker } from '@console/components/ClassPicker';
 import { type StudyClass } from '@console/lib/classes';
@@ -29,8 +29,10 @@ import { CalendarPlus, Mic } from 'lucide-react';
  * - `notCounted`: 출석률에 넣지 않는 회차(킥오프). 칸은 보이고 체크도 한다
  * - `onWithdraw`: 사용자 사이트 네비게이터의 참여 중단. 주면 `manageable` 이고 활동 중인 줄 왼쪽에 체크박스가 붙고,
  *   고른 사람에게 출석을 한 번에 적용하거나 「중단 예정」으로 둔다. 저장이 성공한 뒤 중단 예정 ID 로 불린다. 되돌리기는 없다.
- *   고친 칸이 남아 있으면 누를 수 없다 — 줄이 움직이면 어느 칸을 고쳤는지 놓친다
+ *   운영진(`withdrawable` 아님)도 고를 수 있지만, 섞여 있으면 「참여 중단」만 잠근다
  * - `startAt`: 회차 시작 시각(HH:mm). 중단 시각과 견줘 그 뒤에 시작한 회차를 「—」로 비운다
+ * - `title` · `toolbar`: 표 위 제목 줄 — 제목 옆에 「전체 N · 선택 M」, 오른쪽에 `toolbar`(사용자 사이트의 KST/PDT)
+ * - `whenOf`: 회차 머리의 일자·시각 — 고른 시간대의 벽시계. 없으면 저장된 일자만
  */
 
 type AttendanceBook = Record<string, Record<string, AttendanceStatus>>;
@@ -203,6 +205,9 @@ export function AttendanceTab({
   headOf,
   onWithdraw,
   startAt = '00:00',
+  title,
+  toolbar,
+  whenOf,
 }: {
   study: Study;
   /** 이름 칸에 쓰는 것만 받는다 — 사용자 사이트는 명부 밖의 「나」도 넣는다. */
@@ -210,8 +215,10 @@ export function AttendanceTab({
     role?: 'captain' | 'navigator';
     /** 스터디를 중단한 사람 — 이름을 흐리게, 칩 문구, 중단 일자(이 날 뒤 회차는 「—」·출석률 제외). */
     left?: { label: string; at: string };
-    /** 체크박스로 고를 수 있는 줄 — 나 · 캡틴 · 네비게이터 줄은 비운다. */
+    /** 체크박스로 고를 수 있는 줄 — 출석 일괄 적용 대상. 중단한 줄은 늘 빠진다. */
     manageable?: boolean;
+    /** 참여 중단할 수 있는 줄 — 나 · 캡틴 · 네비게이터는 아니다. 고른 사람 중 하나라도 아니면 「참여 중단」이 잠긴다. */
+    withdrawable?: boolean;
   })[];
   meetings: StudyMeeting[];
   attendance: AttendanceBook;
@@ -230,6 +237,9 @@ export function AttendanceTab({
   headOf?: (meeting: StudyMeeting) => string;
   onWithdraw?: (crewIds: string[]) => void | Promise<void>;
   startAt?: string;
+  title?: string;
+  toolbar?: ReactNode;
+  whenOf?: (meeting: StudyMeeting) => { date: string; time: string };
 }) {
   const [draft, setDraft] = useState(() => cloneBook(attendance));
   const [saving, setSaving] = useState(false);
@@ -258,6 +268,13 @@ export function AttendanceTab({
   const selectable = selecting ? crew.filter((c) => c.manageable && !c.left).map((c) => c.id) : [];
   const selected = selectable.filter((id) => picked.has(id));
   const allPicked = selectable.length > 0 && selected.length === selectable.length;
+  // 운영진이 섞이면 참여 중단만 막는다 — 출석 적용은 그대로 된다.
+  const blockedNames = crew.filter((c) => selected.includes(c.id) && !c.withdrawable).map((c) => c.name);
+  /** 회차 머리 일자 `9/30` — 고른 시간대가 있으면 그 벽시계로. */
+  const dayOf = (s: StudyMeeting) => {
+    const ymd = whenOf ? whenOf(s).date : s.date;
+    return `${Number(ymd.slice(5, 7))}/${ymd.slice(8, 10)}`;
+  };
   // 일괄 적용 회차 — 고르지 않았으면 오늘 이전 마지막 회차(방금 끝난 회차)를 먼저 둔다.
   const today = new Date().toISOString().slice(0, 10);
   const defaultMeeting = [...meetings].reverse().find((s) => s.date <= today)?.id ?? meetings[0]?.id ?? '';
@@ -297,7 +314,7 @@ export function AttendanceTab({
 
   /** 고른 사람을 「중단 예정」으로 — 아직 반영하지 않는다. 저장할 때 확인 창을 거친다. */
   function markWithdraw() {
-    if (saving || selected.length === 0) return;
+    if (saving || selected.length === 0 || blockedNames.length > 0) return;
     setToWithdraw((cur) => new Set([...cur, ...selected]));
     setAnnounce(`${selected.length}명을 중단 예정으로 표시했습니다. 저장해야 반영됩니다.`);
     setPicked(new Set());
@@ -400,6 +417,18 @@ export function AttendanceTab({
         </div>
       ) : (
         <>
+          {title && (
+            <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
+              <h2 data-anno='book:3-10' className='text-base font-bold'>
+                {title}
+                <span className='tnum ml-2 text-sm font-medium text-fg-muted'>
+                  전체 {crew.length}
+                  {selecting && ` · 선택 ${selected.length}`}
+                </span>
+              </h2>
+              {toolbar}
+            </div>
+          )}
           <div data-anno='attendance:3' className='card overflow-x-auto'>
             <table className='w-full border-separate border-spacing-0 text-sm'>
               <thead>
@@ -433,7 +462,15 @@ export function AttendanceTab({
                       className='tnum w-[3.6rem] px-1 py-2 text-center text-[11px] font-semibold text-fg-secondary'
                     >
                       {headOf ? headOf(s) : `${s.no}회`}
-                      <span className='block text-[10px] font-medium text-fg-muted'>{`${Number(s.date.slice(5, 7))}/${s.date.slice(8, 10)}`}</span>
+                      <span className='block text-[10px] font-medium text-fg-muted'>
+                        {dayOf(s)}
+                        {/* 고른 시간대의 시작 시각 — 일자만으로는 KST·PDT 차이가 잘 안 보인다 */}
+                        {whenOf && (
+                          <span data-anno='book:3-11' className='block'>
+                            {whenOf(s).time}
+                          </span>
+                        )}
+                      </span>
                     </th>
                   ))}
                   <th
@@ -463,7 +500,7 @@ export function AttendanceTab({
                         {/* 동명이인 구분(디스코드 닉네임)이 붙으면 길어진다 — 칸은 좁게 두고 전체 이름은 가리키면 보인다 */}
                         <span className='flex items-center gap-1.5'>
                           {selecting && (
-                            // 고를 수 없는 줄(나 · 운영진 · 중단한 사람)도 자리를 비워 이름 열을 맞춘다.
+                            // 고를 수 없는 줄(중단한 사람)도 자리를 비워 이름 열을 맞춘다.
                             <span className='mr-1.5 flex w-4 shrink-0'>
                               {c.manageable && !c.left && (
                                 <input
@@ -580,7 +617,7 @@ export function AttendanceTab({
               >
                 {meetings.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {`${headOf ? headOf(s) : `${s.no}회`} · ${Number(s.date.slice(5, 7))}/${s.date.slice(8, 10)}`}
+                    {`${headOf ? headOf(s) : `${s.no}회`} · ${dayOf(s)}${whenOf ? ` ${whenOf(s).time}` : ''}`}
                   </option>
                 ))}
               </select>
@@ -604,12 +641,19 @@ export function AttendanceTab({
                 size='sm'
                 variant='secondary'
                 onClick={markWithdraw}
-                disabled={saving}
+                disabled={saving || blockedNames.length > 0}
+                aria-describedby={blockedNames.length > 0 ? 'withdraw-blocked' : undefined}
                 // 테두리·글씨만 빨강.
                 className='border-error-600 bg-transparent text-error-700 hover:border-error-700 hover:bg-error-50'
               >
                 참여 중단
               </Button>
+              {blockedNames.length > 0 && (
+                // 왜 잠겼는지 버튼 옆에 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
+                <span id='withdraw-blocked' data-anno='book:3-12' className='text-xs text-fg-muted'>
+                  운영진({blockedNames.join(', ')})은 참여 중단할 수 없습니다
+                </span>
+              )}
               <Button size='sm' variant='ghost' className='ml-auto' onClick={() => setPicked(new Set())}>
                 선택 해제
               </Button>
@@ -645,7 +689,7 @@ export function AttendanceTab({
                 </Button>
                 <span data-anno='book:5'>
                   <Button variant='destructive' onClick={() => void save()}>
-                    참여 중단하고 저장
+                    저장
                   </Button>
                 </span>
               </>

@@ -5,9 +5,10 @@ import { useEffect, useState } from 'react';
 
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { ruleFromMeetings } from '@console/lib/schedule';
+import { SegmentTabs } from '@core/components/SegmentTabs';
 import { useManage } from '@core/components/StudyManageShell';
-import { getMyAttendance, meetingsOf } from '@core/lib/attendance';
-import { bookFromSchedule } from '@core/lib/meetings';
+import { getMyAttendance, meetingWindow, meetingsOf } from '@core/lib/attendance';
+import { bookFromSchedule, DISPLAY_ZONES, wallParts } from '@core/lib/meetings';
 import { getGroupAttendance, saveGroupAttendance, type AttendanceBook } from '@core/lib/navigator-attendance';
 import { ME_ID, participantsOf, withdrawParticipant } from '@core/lib/schedule-board';
 import { Button } from '@studyclub/ui';
@@ -23,7 +24,9 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
  * 구글 시트처럼 출석과 발표를 한 격자에 보인다. 발표는 일정의 발표자1·2에서 가져온다.
  * 크루는 분반 전원의 기록을 보기만 한다. 킥오프 열은 출석률에 넣지 않는다.
  *
- * 캡틴·네비게이터는 체크박스로 크루를 골라 출석을 한 번에 적용하거나 「중단 예정」으로 둔다.
+ * 캡틴·네비게이터는 체크박스로 참여자를 골라 출석을 한 번에 적용하거나 「중단 예정」으로 둔다.
+ * 운영진(나 · 캡틴 · 네비게이터)도 고를 수 있다 — 참여 중단만 막는다.
+ * 회차 머리의 일자·시각은 일정 탭처럼 KST/PDT 로 바꿔 본다.
  * 저장을 누르면 확인 창을 거쳐 출석과 참여 중단이 함께 반영된다. 되돌리기는 없다.
  * 하차·제명을 가르지 않는다 — 사유는 묻지도 남기지도 않는다.
  */
@@ -31,6 +34,10 @@ export default function StudyManageAttendancePage() {
   const router = useRouter();
   const { study, group, locale, captain, canEdit, setDirty } = useManage();
   const [book, setBook] = useState<AttendanceBook | null>(null);
+  /** 회차 머리를 어느 시간대로 보일지. 일정 탭과 같다 — 처음엔 분반 시간대, 탭에 없는 시간대면 KST. */
+  const [zone, setZone] = useState<string>(
+    DISPLAY_ZONES.some((z) => z.iana === group.timeZone) ? group.timeZone : DISPLAY_ZONES[0].iana,
+  );
   /** 중단·재개 뒤 다시 그려 명단을 새로 읽는다 — 프로토는 브라우저 저장소에서 읽는다. */
   const [, rerender] = useState(0);
 
@@ -42,9 +49,14 @@ export default function StudyManageAttendancePage() {
 
   const meetings = meetingsOf(study);
   // 중단한 사람은 맨 아래로. 하차·제명을 가르지 않고 누구에게나 「참여 중단」.
-  // 나 · 캡틴 · 네비게이터 줄에는 중단 버튼이 없다 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
+  // 누구나 골라 출석을 적용할 수 있다. 나 · 캡틴 · 네비게이터는 참여 중단만 못 한다 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
   const crew = participantsOf(study)
-    .map((p) => ({ ...p, left: p.left && { label: '참여 중단', at: p.left.at }, manageable: !p.me && !p.role }))
+    .map((p) => ({
+      ...p,
+      left: p.left && { label: '참여 중단', at: p.left.at },
+      manageable: true,
+      withdrawable: !p.me && !p.role,
+    }))
     .sort((a, b) => Number(Boolean(a.left)) - Number(Boolean(b.left)));
 
   /** 저장 때 출석과 함께 불린다 — 확인 창은 출석 격자가 띄운다. */
@@ -116,6 +128,17 @@ export default function StudyManageAttendancePage() {
             headOf={headOf}
             onWithdraw={withdraw}
             startAt={group.startAt}
+            title='출석'
+            toolbar={
+              <SegmentTabs
+                anno='book:3-11'
+                label='회차 표시 시간대'
+                value={zone}
+                options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
+                onChange={setZone}
+              />
+            }
+            whenOf={(m) => wallParts(meetingWindow(study, m).start, zone)}
           />
         </div>
       ) : null}
