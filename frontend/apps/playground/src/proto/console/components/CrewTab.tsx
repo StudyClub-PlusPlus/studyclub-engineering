@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { CHECKBOX, SELECT_CLASS, SelectAll } from '@console/components/AttendanceTab';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
@@ -142,6 +143,37 @@ export function CrewTab({
     setSaved(false);
     setDraftNav((d) => withDraft(d, id, nav === navigators.includes(id) ? undefined : nav));
   }
+  // 여러 명을 골라 반 · 역할을 한 번에 — 고른 값은 저장 전 변경에 얹히고, 「저장」으로 반영한다(출석부 일괄 적용과 같은 방식)
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  const [bulkClass, setBulkClass] = useState('');
+  const [bulkRole, setBulkRole] = useState<'' | 'crew' | 'navigator'>('');
+  const [announce, setAnnounce] = useState('');
+  // 보이는 줄만 센다 — 필터로 숨긴 사람까지 바뀌면 안 된다
+  const selected = shown.filter((c) => checkedIds.has(c.id));
+  const allPicked = shown.length > 0 && selected.length === shown.length;
+  function pick(id: string) {
+    setCheckedIds((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function pickAll() {
+    setCheckedIds(allPicked ? new Set() : new Set(shown.map((c) => c.id)));
+  }
+  function applyBulk() {
+    if (!bulkClass && !bulkRole) return;
+    for (const c of selected) {
+      if (bulkClass) pickClass(c.id, bulkClass);
+      if (bulkRole) pickRole(c.id, bulkRole === 'navigator');
+    }
+    setAnnounce(`${selected.length}명에 적용했습니다. 저장을 눌러야 반영됩니다.`);
+    setCheckedIds(new Set());
+    setBulkClass('');
+    setBulkRole('');
+  }
+
   function discard() {
     setDraftClass({});
     setDraftNav({});
@@ -249,6 +281,14 @@ export function CrewTab({
           <TableCard>
             <thead>
               <tr>
+                <th data-anno='attendee:3-6' className='w-8'>
+                  <SelectAll
+                    label='보이는 크루 전체 선택'
+                    checked={allPicked}
+                    partial={selected.length > 0 && !allPicked}
+                    onChange={pickAll}
+                  />
+                </th>
                 <th className='whitespace-nowrap'>이름</th>
                 <th className='whitespace-nowrap'>디스코드 닉네임</th>
                 <th>이메일</th>
@@ -261,6 +301,15 @@ export function CrewTab({
               {shown.map((c) => (
                 // 고친 줄은 옅게 칠한다 — 저장 전인 것이 한눈에 보인다
                 <tr key={c.id} className={changedIds.has(c.id) ? 'bg-brand-subtle/40' : undefined}>
+                  <td className='w-8'>
+                    <input
+                      type='checkbox'
+                      aria-label={`${c.name} 선택`}
+                      className={CHECKBOX}
+                      checked={checkedIds.has(c.id)}
+                      onChange={() => pick(c.id)}
+                    />
+                  </td>
                   <td className='whitespace-nowrap font-semibold'>{c.name}</td>
                   {/* 디스코드에서 이 사람을 찾을 때 쓰는 이름 — 신청할 때 받은 서버 별명 */}
                   <td data-anno='attendee:3-4' className='whitespace-nowrap text-fg-secondary'>
@@ -279,7 +328,7 @@ export function CrewTab({
               ))}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={6} className='text-center text-fg-muted'>
+                  <td colSpan={7} className='text-center text-fg-muted'>
                     {active.length === 0 ? '아직 크루가 없습니다.' : '조건에 맞는 크루가 없습니다.'}
                   </td>
                 </tr>
@@ -287,6 +336,51 @@ export function CrewTab({
             </tbody>
           </TableCard>
         </div>
+        <p className='sr-only' aria-live='polite'>
+          {announce}
+        </p>
+        {selected.length > 0 && (
+          // 고른 사람이 있을 때만 — 출석부 「선택한 크루 처리」와 같은 바
+          <div
+            data-anno='attendee:3-7'
+            role='region'
+            aria-label='선택한 크루 처리'
+            className='sticky bottom-12 z-10 mt-3 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-3 py-2 shadow-sm'
+          >
+            <span className='text-sm font-semibold text-fg'>선택한 {selected.length}명</span>
+            {classes.length > 1 && (
+              <select
+                aria-label='바꿀 반'
+                className={SELECT_CLASS}
+                value={bulkClass}
+                onChange={(e) => setBulkClass(e.target.value)}
+              >
+                <option value=''>반 그대로</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {classLabel(c)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              aria-label='바꿀 역할'
+              className={SELECT_CLASS}
+              value={bulkRole}
+              onChange={(e) => setBulkRole(e.target.value as typeof bulkRole)}
+            >
+              <option value=''>역할 그대로</option>
+              <option value='crew'>크루</option>
+              <option value='navigator'>네비게이터</option>
+            </select>
+            <Button size='sm' variant='tonal' onClick={applyBulk} disabled={!bulkClass && !bulkRole}>
+              적용
+            </Button>
+            <Button size='sm' variant='ghost' className='ml-auto' onClick={() => setCheckedIds(new Set())}>
+              선택 해제
+            </Button>
+          </div>
+        )}
         {/* 저장 바 — 고친 것이 있을 때만. 표가 길어도 보이게 아래에 붙인다 */}
         {changed > 0 ? (
           <div data-anno='attendee:3-5' className='sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-bg py-2'>

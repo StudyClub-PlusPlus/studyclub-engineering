@@ -166,15 +166,25 @@ const BULK_OPTIONS: { value: AttendanceStatus | ''; label: string }[] = [
   { value: '', label: '미체크' },
 ];
 
-const CHECKBOX =
+export const CHECKBOX =
   'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 /** 머리 칸의 전체 선택 — 일부만 골랐으면 「일부 선택」(indeterminate). */
-function SelectAll({ checked, partial, onChange }: { checked: boolean; partial: boolean; onChange: () => void }) {
+export function SelectAll({
+  checked,
+  partial,
+  onChange,
+  label = '크루 전체 선택',
+}: {
+  checked: boolean;
+  partial: boolean;
+  onChange: () => void;
+  label?: string;
+}) {
   return (
     <input
       type='checkbox'
-      aria-label='크루 전체 선택'
+      aria-label={label}
       className={CHECKBOX}
       checked={checked}
       ref={(el) => {
@@ -185,7 +195,7 @@ function SelectAll({ checked, partial, onChange }: { checked: boolean; partial: 
   );
 }
 
-const SELECT_CLASS =
+export const SELECT_CLASS =
   'h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-fg focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 export function AttendanceTab({
