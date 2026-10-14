@@ -5,9 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { type Study } from '@studyclub/mock';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { CalendarClock } from 'lucide-react';
 
-import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
 import { useStudies } from '@/features/studies/queries';
 import {
   STATUS_LABEL,

@@ -1,7 +1,6 @@
 {
   "shadows": [
     "frontend/apps/core-front/src/components/StudyCard.tsx",
-    "frontend/apps/core-front/src/components/StudyThumb.tsx",
     "frontend/apps/playground/src/proto/core/components/StudyCard.tsx"
   ],
   "palette": {

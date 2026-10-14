@@ -7,66 +7,148 @@ import {
   Hash,
   Languages,
   MessagesSquare,
+  Monitor,
   Package,
+  Palette,
   Puzzle,
+  Server,
+  Smartphone,
   Sunrise,
   type LucideIcon,
 } from 'lucide-react';
 
 type Duo = [string, string];
 
+// 큐레이션된 팔레트. [진한, 옅은] 2톤 대각 그라디언트 — design-system.md §2-6 차트 토큰 기준.
 const C = {
   indigo: ['color-mix(in oklab, var(--color-chart-1) 60%, black)', 'var(--color-chart-1)'] as Duo,
   violet: ['color-mix(in oklab, var(--color-chart-4) 60%, black)', 'var(--color-chart-4)'] as Duo,
-  blue:   ['color-mix(in oklab, var(--color-chart-1) 70%, black)', 'var(--color-chart-1)'] as Duo,
-  teal:   ['color-mix(in oklab, var(--color-chart-3) 60%, black)', 'var(--color-chart-3)'] as Duo,
-  emerald:['color-mix(in oklab, var(--color-chart-5) 60%, black)', 'var(--color-chart-5)'] as Duo,
-  amber:  ['color-mix(in oklab, var(--color-chart-2) 60%, black)', 'var(--color-chart-2)'] as Duo,
-  rose:   ['color-mix(in oklab, var(--color-chart-6) 60%, black)', 'var(--color-chart-6)'] as Duo,
-  slate:  ['var(--color-neutral-800)', 'var(--color-neutral-600)'] as Duo,
+  blue: ['color-mix(in oklab, var(--color-chart-1) 70%, black)', 'var(--color-chart-1)'] as Duo,
+  teal: ['color-mix(in oklab, var(--color-chart-3) 60%, black)', 'var(--color-chart-3)'] as Duo,
+  emerald: ['color-mix(in oklab, var(--color-chart-5) 60%, black)', 'var(--color-chart-5)'] as Duo,
+  amber: ['color-mix(in oklab, var(--color-chart-2) 60%, black)', 'var(--color-chart-2)'] as Duo,
+  rose: ['color-mix(in oklab, var(--color-chart-6) 60%, black)', 'var(--color-chart-6)'] as Duo,
+  slate: ['var(--color-neutral-800)', 'var(--color-neutral-600)'] as Duo,
 };
 
-const RULES: { match: string[]; icon: LucideIcon; label: string; color: Duo }[] = [
+type Meta = { icon: LucideIcon; label: string; color: Duo };
+
+const AI_ML: Meta = { icon: Brain, label: 'AI · ML', color: C.violet };
+const ALGORITHM: Meta = { icon: Puzzle, label: 'CS', color: C.blue };
+const DATA: Meta = { icon: Database, label: 'DATA', color: C.teal };
+const SOFTWARE: Meta = { icon: Code2, label: 'DEV', color: C.indigo };
+const CAREER: Meta = { icon: MessagesSquare, label: 'CAREER', color: C.amber };
+const BOOK_CLUB: Meta = { icon: BookOpen, label: 'BOOK CLUB', color: C.amber };
+const LANGUAGE: Meta = { icon: Languages, label: 'LANGUAGE', color: C.emerald };
+const LIFESTYLE: Meta = { icon: Sunrise, label: 'LIFESTYLE', color: C.rose };
+const PRODUCT: Meta = { icon: Package, label: '기획', color: C.violet };
+const BUSINESS: Meta = { icon: Briefcase, label: 'BUSINESS', color: C.slate };
+const OTHER: Meta = { icon: Hash, label: 'ETC', color: C.slate };
+
+/**
+ * 공식 카테고리 11개 — API enum 값과 화면 표기(`@studyclub/mock` 의 `CATEGORY_DISPLAY`) 둘 다 받는다.
+ * 앱은 보통 표기로 바꿔서 넘기지만, enum 값이 그대로 와도 같은 결과가 나와야 한다.
+ */
+const CANONICAL: Record<string, Meta> = {
+  ai_ml: AI_ML,
+  'ai · ml': AI_ML,
+  algorithm: ALGORITHM,
+  알고리즘: ALGORITHM,
+  data: DATA,
+  데이터: DATA,
+  software: SOFTWARE,
+  '소프트웨어 개발': SOFTWARE,
+  career: CAREER,
+  커리어: CAREER,
+  book_club: BOOK_CLUB,
+  북클럽: BOOK_CLUB,
+  language: LANGUAGE,
+  어학: LANGUAGE,
+  lifestyle: LIFESTYLE,
+  라이프스타일: LIFESTYLE,
+  product: PRODUCT,
+  '기획 · pm': PRODUCT,
+  business: BUSINESS,
+  비즈니스: BUSINESS,
+  other: OTHER,
+  기타: OTHER,
+};
+
+/**
+ * 공식 목록에 없는 값(카테고리가 고정되기 전 자유입력 데이터)만 키워드로 추정한다.
+ *
+ * ⚠️ 배열 순서 = 우선순위. 위에서부터 첫 일치를 쓰므로 **구체적인 것이 위**, 포괄적인 것이 아래다.
+ * 영문 키워드는 단어 단위로만 맞춘다 — 그냥 포함 여부로 보면 `lifestyle` 안의 `fe` 가 FE 로 걸린다.
+ */
+const LEGACY_RULES: (Meta & { match: string[] })[] = [
   {
-    match: ['ai&ml','ai · ml','ai/ml','ai','ml','머신러닝','딥러닝','llm','논문','kaggle','캐글','causal','인과'],
-    icon: Brain, label: 'AI&ML', color: C.violet,
+    ...AI_ML,
+    match: ['ai · ml', 'ai', 'ml', 'ai/ml', '머신러닝', '딥러닝', 'llm', '논문', 'kaggle', '캐글', 'causal', '인과'],
+  },
+  { ...ALGORITHM, match: ['cs', 'algorithm', 'leetcode', '리트코드', 'neetcode', '코테', '자료구조'] },
+  { ...DATA, match: ['데이터', 'data', 'sql', 'db', '디비'] },
+  {
+    icon: Server,
+    label: 'BACKEND',
+    color: C.indigo,
+    match: ['백엔드', 'backend', 'spring', 'django', 'express', 'nest'],
   },
   {
-    match: ['cs(컴퓨터 사이언스)','알고리즘','algorithm','leetcode','리트코드','neetcode','코테'],
-    icon: Puzzle, label: 'CS', color: C.blue,
-  },
-  { match: ['데이터 사이언스','데이터','data','sql','db','디비'], icon: Database, label: 'DATA SCIENCE', color: C.teal },
-  { match: ['fe','프론트','frontend','react','ui','ux'], icon: Code2, label: 'FE', color: C.indigo },
-  { match: ['모바일 프로그래밍','모바일','mobile','ios','android'], icon: Code2, label: 'MOBILE', color: C.blue },
-  {
-    match: ['기획','기획 · pm','pm','프로덕트','product','그로스','growth'],
-    icon: Package, label: '기획', color: C.violet,
+    icon: Monitor,
+    label: 'FRONTEND',
+    color: C.blue,
+    match: ['프론트엔드', 'frontend', 'react', 'vue', 'angular', 'next'],
   },
   {
-    match: ['취업','커리어','career','이력서','resume','인터뷰','interview','면접'],
-    icon: MessagesSquare, label: '취업', color: C.amber,
+    icon: Smartphone,
+    label: 'MOBILE',
+    color: C.teal,
+    match: ['모바일', 'mobile', 'ios', 'android', 'flutter', 'swift', 'kotlin'],
   },
-  { match: ['디자인','design','디자이너','figma'], icon: Package, label: 'DESIGN', color: C.rose },
+  { ...PRODUCT, match: ['기획', 'planning', '프로덕트', 'product', '그로스', 'growth'] },
+  { icon: Package, label: 'PM', color: C.violet, match: ['pm', '프로젝트 매니'] },
+  { icon: Palette, label: 'DESIGN', color: C.rose, match: ['디자인', 'design', 'figma', 'ui', 'ux'] },
+  { ...CAREER, match: ['커리어', 'career', '취업', 'resume', '이력서', 'interview', '인터뷰', '면접'] },
+  { ...BUSINESS, match: ['비즈니스', 'business', 'article', '아티클', '시장', '산업'] },
+  { ...BOOK_CLUB, match: ['북클럽', 'book', '독서', '리딩'] },
+  { ...LANGUAGE, match: ['어학', 'language', '언어', '영어', '중국어', '독일어', 'german', 'english', 'chinese'] },
   {
-    match: ['비즈니스','business','아티클','article','시장','산업'],
-    icon: Briefcase, label: 'BUSINESS', color: C.slate,
+    ...LIFESTYLE,
+    match: [
+      '라이프스타일',
+      'lifestyle',
+      '습관',
+      'habit',
+      '회고',
+      'retro',
+      '네트워킹',
+      'network',
+      '커피챗',
+      '밋업',
+      'meetup',
+    ],
   },
-  { match: ['라이프스타일','교양','북클럽','book','독서','리딩'], icon: BookOpen, label: 'LIFESTYLE', color: C.amber },
+  // 아래는 포괄 항목 — 위에서 안 걸린 것만 받는다
   {
-    match: ['어학','언어','language','영어','중국어','독일어','german','english','chinese'],
-    icon: Languages, label: 'LANGUAGE', color: C.emerald,
+    ...SOFTWARE,
+    match: [
+      '소프트웨어 개발',
+      '코딩',
+      'coding',
+      '개발',
+      'dev',
+      '클라우드',
+      'cloud',
+      '보안',
+      'security',
+      'golang',
+      'redis',
+    ],
   },
-  {
-    match: ['라이프스타일','lifestyle','습관','habit','회고','retro','네트워킹','network','커피챗','밋업','meetup'],
-    icon: Sunrise, label: 'LIFESTYLE', color: C.rose,
-  },
-  {
-    match: ['be','소프트웨어 개발','코딩','coding','개발','dev','프론트','frontend','백엔드','backend','클라우드','cloud','보안','security','golang','redis'],
-    icon: Code2, label: 'BE', color: C.indigo,
-  },
-  { match: ['기타','etc','other'], icon: Hash, label: 'ETC', color: C.slate },
+  { ...OTHER, match: ['기타', 'etc', 'other'] },
 ];
 
+// 규칙에 안 걸리는 값은 팔레트에서 순환 배정 — 같은 값이면 항상 같은 색.
 const FALLBACK: Duo[] = [C.indigo, C.teal, C.amber, C.rose, C.violet, C.blue, C.emerald, C.slate];
 
 function hash(seed: string): number {
@@ -75,15 +157,22 @@ function hash(seed: string): number {
   return h;
 }
 
-function pick(category?: string): { icon: LucideIcon; label: string; color: Duo } {
-  const key = (category ?? '').toLowerCase();
-  for (const r of RULES) if (r.match.some((m) => key.includes(m))) return r;
+function hasKeyword(key: string, word: string): boolean {
+  if (!/^[a-z0-9]+$/.test(word)) return key.includes(word);
+  return new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`).test(key);
+}
+
+function pick(category?: string): Meta {
+  const key = (category ?? '').trim().toLowerCase();
+  const canonical = CANONICAL[key];
+  if (canonical) return canonical;
+  for (const { match, ...meta } of LEGACY_RULES) if (match.some((m) => hasKeyword(key, m))) return meta;
   const label = (category ?? 'STUDY').toUpperCase().slice(0, 10);
   return { icon: Hash, label, color: FALLBACK[hash(label) % FALLBACK.length]! };
 }
 
 /** 카테고리 → 아이콘·라벨·색. 카드 헤더에서 재사용. */
-export function categoryMeta(category?: string): { icon: LucideIcon; label: string; color: Duo } {
+export function categoryMeta(category?: string): Meta {
   return pick(category);
 }
 

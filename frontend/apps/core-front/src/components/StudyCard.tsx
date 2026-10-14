@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { CalendarClock, Globe, Rocket } from 'lucide-react';
 
-import { categoryGradient, categoryMeta } from './StudyThumb';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { recruitBadge, studyStartValue, studyTimezoneLabel } from '@/lib/recruit';
