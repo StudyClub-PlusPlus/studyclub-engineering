@@ -6,7 +6,7 @@ import { ClassDialog } from '@console/components/ClassDialog';
 import { TableCard } from '@console/components/ui';
 import { classLabel, classPeriod, classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
-import { Badge, Button } from '@studyclub/ui';
+import { Button } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
 /**
@@ -182,7 +182,7 @@ export function CrewTab({
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>지역</th>
                 <th className='whitespace-nowrap'>반</th>
-                <th className='whitespace-nowrap'>담당</th>
+                <th className='whitespace-nowrap'>역할</th>
               </tr>
             </thead>
             <tbody>
@@ -200,7 +200,11 @@ export function CrewTab({
                     <ClassPick classes={classes} value={assign[c.id]} onChange={(id) => onAssign(c.id, id)} />
                   </td>
                   <td data-anno='attendee:3-2' className='whitespace-nowrap'>
-                    <NavigatorPick on={navigators.includes(c.id)} onToggle={() => onToggleNavigator(c.id)} />
+                    <RolePick
+                      name={c.name}
+                      navigator={navigators.includes(c.id)}
+                      onChange={(nav) => nav !== navigators.includes(c.id) && onToggleNavigator(c.id)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -234,28 +238,36 @@ export function CrewTab({
 }
 
 /**
- * 이 스터디의 네비게이터 — 캡틴이 크루 중에서 정한다.
+ * 이 스터디에서의 역할 — 크루(기본) · 네비게이터. 캡틴이 정한다.
  *
- * **역할은 스터디마다 따로 선다.** 여기서 지정된 사람은 이 스터디에 한해 정보 수정·알럿·출석
- * 현황 수정을 할 수 있고, 다른 스터디에서는 크루일 뿐이다.
+ * 옆 「반」 칸과 같은 드롭다운이다. 누를 때마다 바뀌는 배지는 바꿀 수 있다는 것이 안 보이고,
+ * 잘못 눌러도 권한이 바로 넘어간다.
+ *
+ * **역할은 스터디마다 따로 선다.** 네비게이터는 이 스터디에 한해 정보 수정·공지·출석 현황 수정을
+ * 할 수 있고, 다른 스터디에서는 크루일 뿐이다.
  */
-function NavigatorPick({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  if (on) {
-    return (
-      <span className='inline-flex items-center gap-1.5'>
-        <Badge tone='navigator' className='px-2 py-0.5 text-xs font-semibold'>
-          네비게이터
-        </Badge>
-        <Button size='sm' variant='ghost' onClick={onToggle}>
-          해제
-        </Button>
-      </span>
-    );
-  }
+function RolePick({
+  name,
+  navigator,
+  onChange,
+}: {
+  name: string;
+  navigator: boolean;
+  onChange: (navigator: boolean) => void;
+}) {
   return (
-    <Button size='sm' variant='ghost' onClick={onToggle}>
-      네비게이터로
-    </Button>
+    <select
+      aria-label={`${name} 역할`}
+      value={navigator ? 'navigator' : 'crew'}
+      onChange={(ev) => onChange(ev.target.value === 'navigator')}
+      // 네비게이터는 몇 안 된다 — 긴 명단에서 바로 눈에 띄게 테두리를 칠한다
+      className={`h-8 rounded-control border bg-bg px-2 text-sm outline-none focus:border-brand focus:shadow-[var(--ring)] ${
+        navigator ? 'border-brand font-semibold text-fg' : 'border-border-strong text-neutral-900'
+      }`}
+    >
+      <option value='crew'>크루</option>
+      <option value='navigator'>네비게이터</option>
+    </select>
   );
 }
 
