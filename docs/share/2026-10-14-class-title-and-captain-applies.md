@@ -10,6 +10,7 @@
   - specs/my-studies/spec.md · study-application · admin-users · study — 됨
   - docs/erd/STUDY.md · STUDY_PARTICIPANT.md — 됨
   - 01-planning/stories/captain-view-attendance-roster/PRD.md · navigator-register-sessions/PRD.md — 됨
+  - 01-planning/stories/navigator-withdraw-participant/PRD.md — 됨 (참여 중단 잠김 안내 문구 · 위치)
   - playground 스터디 운영 프로토 — 됨
   - specs/study-meeting/spec.md — 됨 (킥오프를 처음 정규 회차 추가 때 함께 · 일괄 삭제는 회차마다 DELETE)
 ---
@@ -60,6 +61,8 @@
 | 회차 일자 | `2026-09-23` | 고칠 수 없는 줄은 `2026-09-23 (수)` |
 | 버튼 모양 | 화면마다 제각각 | 행동 성격으로 통일 — `@studyclub/ui` Button 에 `danger`(빨간 테두리) 추가. [POL-0008 「버튼」](../../01-planning/_registry/policies/POL-0008-screen-rules.md#버튼) |
 | 모달 머리 | 대상을 제목에 붙이기도 함 | 제목은 하는 일, 대상은 아래 작은 글씨(`description`) |
+| 일괄 변경 드롭다운 기본값 (신청자 탭) | 「반 변경 안 함」 · 「역할 변경 안 함」 | **「반 변경」 · 「역할 변경」.** 둘 다 고르지 않으면 「적용」이 잠긴다 |
+| 참여 중단이 막혔을 때 안내 (출석부 — 사용자 사이트 · 백오피스) | 「참여 중단」 바로 옆 「운영진(이름들)은 참여 중단할 수 없습니다」 | **줄 끝(「선택 해제」 뒤)에 「네비게이터는 참여 중단할 수 없습니다. 캡틴에게 문의하세요.」** 이름은 띄우지 않는다 |
 
 API 쪽 변경 ([study-group 스펙](../../specs/study-group/spec.md)):
 
