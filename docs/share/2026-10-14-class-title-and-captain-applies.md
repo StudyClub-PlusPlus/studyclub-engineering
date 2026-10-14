@@ -5,7 +5,7 @@
   - 01-planning/_registry/policies/POL-0001-roles.md — 됨
   - 01-planning/stories/captain-assign-classes/PRD.md — 됨
   - 01-planning/stories/captain-view-attendees/PRD.md — 됨
-  - 01-planning/stories/crew-joined-studies/PRD.md — 됨
+  - 01-planning/stories/crew-joined-studies/PRD.md · crew-submit-application/PRD.md — 됨
   - specs/study-group/spec.md — 됨
   - specs/my-studies/spec.md · study-application · admin-users · study — 됨
   - docs/erd/STUDY.md · STUDY_PARTICIPANT.md — 됨
