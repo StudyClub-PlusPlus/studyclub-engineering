@@ -18,8 +18,10 @@ import { tx } from '@console/lib/l10n';
 import { applyRule, type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
 import { ScheduleManager } from '@core/components/ScheduleManager';
+import { SegmentTabs } from '@core/components/SegmentTabs';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
 import { discordUrl, driveUrl } from '@core/lib/joined';
+import { DISPLAY_ZONES, wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
 import {
   attendanceRate,
   getStudyCrew,
@@ -108,6 +110,11 @@ export function StudyConsole({ study }: { study: Study }) {
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
   const [navigators, setNavigators] = useState<string[]>([]);
+  // 참여 중단한 크루 — 출석부에서 고른다. 하차 · 제명을 가르지 않고, 되돌리지 않는다 (사용자 사이트와 같다).
+  // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
+  const [left, setLeft] = useState<Record<string, { at: string }>>({});
+  // 출석부 회차 머리의 시간대 — 사용자 사이트 출석부 · 일정 표와 같은 KST/PDT 전환
+  const [zone, setZone] = useState<string>(DISPLAY_ZONES[0]!.iana);
   // 일정 탭의 「일정 정하기 · 스터디 시간 수정」 창
   const [ruleOpen, setRuleOpen] = useState(false);
 
@@ -205,6 +212,7 @@ export function StudyConsole({ study }: { study: Study }) {
     base: meetings[classId] ?? [],
     crew: active.filter((c) => assign[c.id] === classId),
     navigators,
+    left,
   });
 
   function requestClass(id: string) {
@@ -214,6 +222,14 @@ export function StudyConsole({ study }: { study: Study }) {
       return;
     }
     setClassId(id);
+  }
+
+  /** 출석 저장 때 함께 불린다 — 확인 창은 출석부가 띄운다. 중단 시각은 지금, 그 반 시간대 벽시계로. */
+  async function withdraw(tz: string, ids: string[]) {
+    // TODO(api): 출석 저장과 한 요청으로 — POST /api/admin/studies/{id}/attendances 의 withdrawals[]
+    await new Promise((r) => setTimeout(r, 200));
+    const now = wallParts(new Date(), tz);
+    setLeft((prev) => ({ ...prev, ...Object.fromEntries(ids.map((id) => [id, { at: `${now.date}T${now.time}` }])) }));
   }
 
   /** 칸을 눌러 고친 값을 한 번에 반영한다. 한 칸마다 따로 보내지 않는다. */
@@ -461,14 +477,29 @@ export function StudyConsole({ study }: { study: Study }) {
                   base: meetings[cls.id] ?? [],
                   crew: active.filter((c) => assign[c.id] === cls.id),
                   navigators,
+                  left,
                 });
                 if (!v) return null;
+                // 중단한 사람은 맨 아래로. 누구나 골라 출석을 적용할 수 있고, 네비게이터는 참여 중단만 못 한다 —
+                // 네비게이터를 내보내려면 신청자 탭에서 역할을 크루로 바꾼 뒤 중단한다.
+                const rows = v.crew
+                  .map((c) => ({
+                    ...c,
+                    left: c.left && { label: '참여 중단', at: c.left.at },
+                    manageable: true,
+                    withdrawable: c.role !== 'navigator',
+                  }))
+                  .sort((a, b) => Number(Boolean(a.left)) - Number(Boolean(b.left)));
+                const instantOf = (m: ProtoMeeting) =>
+                  m.scheduledAt
+                    ? new Date(m.scheduledAt)
+                    : zonedInstant(m.date, m.time ?? v.group.startAt, v.group.timeZone);
                 return (
                   <section key={cls.id}>
                     {classes.length > 1 && <h3 className='mb-2 text-[15px] font-bold'>{classLabel(cls)}</h3>}
                     <AttendanceTab
                       study={study}
-                      crew={v.crew}
+                      crew={rows}
                       classes={[cls]}
                       classId={cls.id}
                       onClass={() => {}}
@@ -490,6 +521,18 @@ export function StudyConsole({ study }: { study: Study }) {
                       presentersOf={v.book.presentersOf}
                       notCounted={v.book.notCounted}
                       headOf={v.book.headOf}
+                      onWithdraw={(ids) => withdraw(cls.rule.tz, ids)}
+                      startAt={v.group.startAt}
+                      toolbar={
+                        <SegmentTabs
+                          anno='attendance:11'
+                          label='회차 표시 시간대'
+                          value={zone}
+                          options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
+                          onChange={setZone}
+                        />
+                      }
+                      whenOf={(m) => wallParts(instantOf(m as ProtoMeeting), zone)}
                     />
                   </section>
                 );
