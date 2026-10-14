@@ -375,7 +375,21 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 | Tonal | primary-light | primary-dark | brightness 97% | 보조 주요 액션 |
 | Secondary (outline) | surface-raised + border | ink | page-bg / border-interactive | 취소·보조 |
 | Ghost | 투명 | text-secondary | cloud | 아이콘 버튼, 3차 액션 |
-| Destructive | danger-fg | on-primary | brightness 90% | 삭제·거절 |
+| Danger (outline) | surface-raised + danger-fg 테두리 | danger-fg | danger-bg | 삭제·참여 중단을 **여는** 버튼 |
+| Destructive | danger-fg | on-primary | brightness 90% | 되돌릴 수 없는 **마지막 확인** (확인 모달의 「삭제」) |
+
+**고르는 법 — 행동의 성격으로 정한다.** 같은 행동은 어느 화면에서나 같은 변형이다 ([POL-0008](../../../../01-planning/_registry/policies/POL-0008-screen-rules.md#버튼)).
+
+| 성격 | 예 | 변형 |
+|---|---|---|
+| 주 행동 — 한 묶음에 하나 | 저장 · 만들기 · 회차 추가 | Primary |
+| 보조 행동 | 수정 · 적용 · 출석 적용 | Secondary |
+| 되돌리기 | 취소 · 변경 취소 · 선택 해제 | Ghost |
+| 지우기 · 내보내기를 연다 | 삭제 · 참여 중단 | Danger |
+| 지우기 마지막 확인 | 확인 모달의 「삭제」 | Destructive |
+
+- 한 줄에 함께 둘 때 되돌리기는 왼쪽, 주 행동은 오른쪽 끝.
+- 화면에서 `className` 으로 색을 덧칠해 변형을 흉내 내지 않는다 — 필요한 모양이 없으면 여기에 변형을 더한다.
 
 **사이즈**: sm h32/px12/text-sm · md h40/px16/text-sm~15 · lg h48/px20/text-base. 라운딩 `--radius-control`(8). 모바일 터치 타깃 **최소 44px**(sm는 hit-area 패딩으로 보정). **disabled**: disabled-bg / disabled-fg / 그림자 없음. **loading**: 스피너 + 라벨 유지, 폭 고정.
 

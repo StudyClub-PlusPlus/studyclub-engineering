@@ -221,7 +221,7 @@ export function CrewTab({
                     </span>
                     <Button
                       size='sm'
-                      variant='ghost'
+                      variant='secondary'
                       data-anno='class:1-2'
                       aria-label={`${classLabel(cls)} 수정`}
                       onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
@@ -231,7 +231,7 @@ export function CrewTab({
                     {/* 사람이 든 반은 지우지 않는다 — 그 반의 출석 기록까지 사라진다 */}
                     <Button
                       size='sm'
-                      variant='ghost'
+                      variant='danger'
                       data-anno='class:1-3'
                       aria-label={`${classLabel(cls)} 삭제`}
                       disabled={active.some((c) => assign[c.id] === cls.id)}
@@ -345,7 +345,7 @@ export function CrewTab({
             data-anno='attendee:3-7'
             role='region'
             aria-label='선택한 크루 처리'
-            className='sticky bottom-12 z-10 mt-3 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-3 py-2 shadow-sm'
+            className='sticky bottom-12 z-10 mt-3 flex flex-wrap items-center gap-2 bg-bg py-2'
           >
             <span className='text-sm font-semibold text-fg'>선택한 {selected.length}명</span>
             {classes.length > 1 && (
@@ -373,7 +373,7 @@ export function CrewTab({
               <option value='crew'>크루</option>
               <option value='navigator'>네비게이터</option>
             </select>
-            <Button size='sm' variant='tonal' onClick={applyBulk} disabled={!bulkClass && !bulkRole}>
+            <Button size='sm' variant='secondary' onClick={applyBulk} disabled={!bulkClass && !bulkRole}>
               적용
             </Button>
             <Button size='sm' variant='ghost' className='ml-auto' onClick={() => setCheckedIds(new Set())}>

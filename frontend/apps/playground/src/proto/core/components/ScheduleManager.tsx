@@ -474,11 +474,10 @@ export function ScheduleManager({
           <span data-anno='schedule:3-7' className='flex items-center gap-2'>
             <Button
               size='sm'
-              variant='secondary'
+              variant='danger'
               disabled={picked.length === 0}
               title={picked.length === 0 ? '지울 회차를 왼쪽 체크박스로 고르세요' : undefined}
               onClick={() => setBulkConfirm(true)}
-              className='border-error-600 bg-transparent text-error-700 hover:border-error-700 hover:bg-error-50'
             >
               삭제
             </Button>

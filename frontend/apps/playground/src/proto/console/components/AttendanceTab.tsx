@@ -630,7 +630,7 @@ export function AttendanceTab({
               data-anno='book:3-9'
               role='region'
               aria-label='선택한 크루 처리'
-              className='sticky bottom-12 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-3 py-2 shadow-sm'
+              className='sticky bottom-12 z-10 mt-4 flex flex-wrap items-center gap-2 bg-bg py-2'
             >
               <span className='text-sm font-semibold text-fg'>선택한 {selected.length}명</span>
               <select
@@ -657,18 +657,16 @@ export function AttendanceTab({
                   </option>
                 ))}
               </select>
-              <Button size='sm' variant='tonal' onClick={applyBulk} disabled={saving}>
+              <Button size='sm' variant='secondary' onClick={applyBulk} disabled={saving}>
                 출석 적용
               </Button>
               <span aria-hidden className='mx-1 h-5 w-px bg-border' />
               <Button
                 size='sm'
-                variant='secondary'
+                variant='danger'
                 onClick={markWithdraw}
                 disabled={saving || blockedNames.length > 0}
                 aria-describedby={blockedNames.length > 0 ? 'withdraw-blocked' : undefined}
-                // 테두리·글씨만 빨강.
-                className='border-error-600 bg-transparent text-error-700 hover:border-error-700 hover:bg-error-50'
               >
                 참여 중단
               </Button>
