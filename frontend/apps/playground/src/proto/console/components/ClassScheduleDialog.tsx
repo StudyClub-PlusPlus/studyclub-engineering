@@ -75,37 +75,42 @@ export function ClassScheduleDialog({
       }
     >
       <div data-anno='schedule:14-1' className='flex flex-col gap-4 py-2'>
-        <div className='flex flex-col gap-2'>
-          <span className='text-sm font-medium text-neutral-800'>{editing ? '스터디 시간' : '진행 일정'}</span>
+        <div className='flex flex-col gap-4'>
           {/* 기간은 회차를 깔 때만 받는다 — 수정에서는 회차를 건드리지 않는다 */}
           {!editing && (
-            <div className='flex flex-wrap items-center gap-2'>
-              <input
-                type='date'
-                aria-label='시작일'
-                aria-describedby='rule-msg'
-                aria-invalid={invalid || undefined}
-                value={rule.startDate}
-                onChange={(ev) => setRule({ ...rule, startDate: ev.target.value })}
-                className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-              />
-              <span className='text-sm text-fg-muted'>~</span>
-              <input
-                type='date'
-                aria-label='종료일'
-                aria-describedby='rule-msg'
-                aria-invalid={invalid || undefined}
-                value={rule.endDate}
-                onChange={(ev) => setRule({ ...rule, endDate: ev.target.value })}
-                className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-              />
+            <div className='flex flex-col gap-2'>
+              <span className='text-sm font-medium text-neutral-800'>진행 기간</span>
+              <div className='flex flex-wrap items-center gap-2'>
+                <input
+                  type='date'
+                  aria-label='시작일'
+                  aria-describedby='rule-msg'
+                  aria-invalid={invalid || undefined}
+                  value={rule.startDate}
+                  onChange={(ev) => setRule({ ...rule, startDate: ev.target.value })}
+                  className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+                />
+                <span className='text-sm text-fg-muted'>~</span>
+                <input
+                  type='date'
+                  aria-label='종료일'
+                  aria-describedby='rule-msg'
+                  aria-invalid={invalid || undefined}
+                  value={rule.endDate}
+                  onChange={(ev) => setRule({ ...rule, endDate: ev.target.value })}
+                  className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+                />
+              </div>
             </div>
           )}
 
-          <div className='flex flex-wrap items-center gap-2'>
+          <div className='flex flex-col gap-2'>
+            <span id='rule-days' className='text-sm font-medium text-neutral-800'>
+              스터디 요일
+            </span>
             <div
               role='group'
-              aria-label='요일'
+              aria-labelledby='rule-days'
               aria-describedby='rule-msg'
               aria-invalid={invalid || undefined}
               className='flex gap-1'
@@ -129,33 +134,41 @@ export function ClassScheduleDialog({
                 );
               })}
             </div>
-            <input
-              type='time'
-              aria-label='시간'
-              value={rule.time}
-              onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
-              className='h-10 w-[7.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-            />
-            {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
-            <div role='group' aria-label='시간대' className='flex gap-1'>
-              {STUDY_TZS.map((tz) => {
-                const on = rule.tz === tz.key;
-                return (
-                  <button
-                    key={tz.key}
-                    type='button'
-                    aria-pressed={on}
-                    onClick={() => setRule({ ...rule, tz: tz.key })}
-                    className={`h-10 rounded-control border px-3 text-sm font-semibold transition-colors ${
-                      on
-                        ? 'border-brand bg-brand text-white'
-                        : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
-                    }`}
-                  >
-                    {tz.label} <span className='opacity-70'>{tzAbbr(tz.key, at)}</span>
-                  </button>
-                );
-              })}
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <label htmlFor='rule-time' className='text-sm font-medium text-neutral-800'>
+              스터디 시간
+            </label>
+            <div className='flex flex-wrap items-center gap-2'>
+              <input
+                type='time'
+                id='rule-time'
+                value={rule.time}
+                onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
+                className='h-10 w-[7.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+              />
+              {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
+              <div role='group' aria-label='시간대' className='flex gap-1'>
+                {STUDY_TZS.map((tz) => {
+                  const on = rule.tz === tz.key;
+                  return (
+                    <button
+                      key={tz.key}
+                      type='button'
+                      aria-pressed={on}
+                      onClick={() => setRule({ ...rule, tz: tz.key })}
+                      className={`h-10 rounded-control border px-3 text-sm font-semibold transition-colors ${
+                        on
+                          ? 'border-brand bg-brand text-white'
+                          : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+                      }`}
+                    >
+                      {tz.label} <span className='opacity-70'>{tzAbbr(tz.key, at)}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
