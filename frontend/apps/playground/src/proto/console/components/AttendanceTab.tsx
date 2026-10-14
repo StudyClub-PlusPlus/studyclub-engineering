@@ -422,16 +422,16 @@ export function AttendanceTab({
         // 반은 있는데 회차가 없다 — 회차는 일정 탭에서 만든다. 반 고르기는 위에 남겨 다른 반으로 옮길 수 있게 한다.
         <div data-anno='attendance:5' className='card px-6 py-10 text-center'>
           <p className='text-sm font-semibold text-fg'>
-            {hasSchedule(cls) ? '이 반에는 아직 회차가 없습니다.' : '이 반은 아직 일정이 없습니다.'}
+            {hasSchedule(cls) ? '이 반에는 아직 회차가 없습니다.' : '이 반은 아직 스터디 시간이 없습니다.'}
           </p>
           <p className='mt-1.5 text-sm text-fg-muted'>
             {hasSchedule(cls)
               ? '일정 탭에서 회차를 추가하면 이 반의 출석부가 만들어집니다.'
-              : '일정 탭에서 요일 · 시각 · 기간을 정하면 회차와 출석부가 만들어집니다.'}
+              : '일정 탭에서 스터디 시간을 정하고 회차를 추가하면 출석부가 만들어집니다.'}
           </p>
           {onAddMeeting && (
             <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={onAddMeeting}>
-              {hasSchedule(cls) ? '회차 추가하러 가기' : '일정 정하러 가기'}
+              {hasSchedule(cls) ? '회차 추가하러 가기' : '스터디 시간 정하러 가기'}
             </Button>
           )}
         </div>

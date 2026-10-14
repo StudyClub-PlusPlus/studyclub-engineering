@@ -15,7 +15,7 @@ import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS } from '@console/lib/class-view';
 import { classLabel, classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
-import { applyRule, type ScheduleRule } from '@console/lib/schedule';
+import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
 import { ScheduleManager } from '@core/components/ScheduleManager';
 import { SegmentTabs } from '@core/components/SegmentTabs';
@@ -115,7 +115,7 @@ export function StudyConsole({ study }: { study: Study }) {
   const [left, setLeft] = useState<Record<string, { at: string }>>({});
   // 출석부 회차 머리의 시간대 — 사용자 사이트 출석부 · 일정 표와 같은 KST/PDT 전환
   const [zone, setZone] = useState<string>(DISPLAY_ZONES[0]!.iana);
-  // 일정 탭의 「일정 정하기 · 스터디 시간 수정」 창
+  // 일정 탭의 「스터디 시간 정하기 · 수정」 창
   const [ruleOpen, setRuleOpen] = useState(false);
 
   const [tab, setTab] = useState<TabKey>('info');
@@ -182,15 +182,9 @@ export function StudyConsole({ study }: { study: Study }) {
     if (isNew) setClassId(cls.id);
   }
 
-  /**
-   * 반의 진행 일정을 정한다. **처음 정할 때만** 회차를 깐다.
-   * 이미 일정이 있는 반의 수정은 스터디 시간(요일·시각·시간대)만 바꾸고 회차는 그대로 둔다 — 회차는 일정 표에서 고친다.
-   */
+  /** 반의 스터디 시간(요일 · 시각 · 시간대)을 정하거나 고친다. 회차는 건드리지 않는다 — 회차는 일정 표에서만 만든다. */
   function saveRule(id: string, rule: ScheduleRule) {
-    const cur = classes.find((c) => c.id === id);
-    const first = !cur || !hasSchedule(cur);
     setClasses((list) => list.map((c) => (c.id === id ? { ...c, rule } : c)));
-    if (first) setMeetings((prev) => ({ ...prev, [id]: applyRule(id, prev[id] ?? [], rule, todayISO()) }));
   }
 
   function removeClass(id: string) {
@@ -385,9 +379,10 @@ export function StudyConsole({ study }: { study: Study }) {
               {!hasSchedule(view.cls) && view.meetings.length === 0 ? (
                 // 신청자 탭에서 제목만으로 만든 반 — 언제 모일지 정해야 회차와 출석부가 생긴다
                 <div data-anno='schedule:14' className='card px-6 py-10 text-center'>
-                  <p className='text-sm font-semibold text-fg'>아직 이 반의 일정이 없습니다.</p>
+                  <p className='text-sm font-semibold text-fg'>아직 이 반의 스터디 시간이 없습니다.</p>
                   <p className='mt-1.5 text-sm text-fg-muted'>
-                    요일 · 시각 · 기간을 정하면 회차가 만들어집니다. 회차 제목은 그 뒤 일정 표에서 채웁니다.
+                    요일 · 시각을 정한 뒤 일정 표의 「회차 추가」로 회차를 만듭니다. 그 요일 · 시각이 매주 반복으로
+                    채워집니다.
                   </p>
                   <Button
                     size='sm'
@@ -395,7 +390,7 @@ export function StudyConsole({ study }: { study: Study }) {
                     leadingIcon={<CalendarPlus size={15} />}
                     onClick={() => setRuleOpen(true)}
                   >
-                    일정 정하기
+                    스터디 시간 정하기
                   </Button>
                 </div>
               ) : (
@@ -496,7 +491,6 @@ export function StudyConsole({ study }: { study: Study }) {
                     : zonedInstant(m.date, m.time ?? v.group.startAt, v.group.timeZone);
                 return (
                   <section key={cls.id}>
-                    {classes.length > 1 && <h3 className='mb-2 text-[15px] font-bold'>{classLabel(cls)}</h3>}
                     <AttendanceTab
                       study={study}
                       crew={rows}
@@ -510,7 +504,7 @@ export function StudyConsole({ study }: { study: Study }) {
                       onGoCrew={() => requestTab('crew')}
                       onAddMeeting={() => {
                         // 고친 출석이 남아 있으면 먼저 묻는다 — 창은 일정 탭에 바로 들어갈 때만 연다.
-                        // 일정이 없는 반은 회차 추가가 아니라 일정 정하기 창을 연다.
+                        // 스터디 시간이 없는 반은 회차 추가가 아니라 스터디 시간 정하기 창을 연다.
                         if (!dirtyTab) {
                           setClassId(cls.id);
                           if (hasSchedule(cls)) setAddOnOpen(true);
@@ -523,6 +517,8 @@ export function StudyConsole({ study }: { study: Study }) {
                       headOf={v.book.headOf}
                       onWithdraw={(ids) => withdraw(cls.rule.tz, ids)}
                       startAt={v.group.startAt}
+                      // 제목 줄 — 반 제목 · 「전체 N · 선택 M」 · 오른쪽 KST/PDT (사용자 사이트 출석부와 같은 줄)
+                      title={classes.length > 1 ? classLabel(cls) : '출석'}
                       toolbar={
                         <SegmentTabs
                           anno='attendance:11'

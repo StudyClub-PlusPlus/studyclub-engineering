@@ -355,7 +355,7 @@ export function CrewTab({
                 value={bulkClass}
                 onChange={(e) => setBulkClass(e.target.value)}
               >
-                <option value=''>반 그대로</option>
+                <option value=''>반 변경 안 함</option>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {classLabel(c)}
@@ -369,7 +369,7 @@ export function CrewTab({
               value={bulkRole}
               onChange={(e) => setBulkRole(e.target.value as typeof bulkRole)}
             >
-              <option value=''>역할 그대로</option>
+              <option value=''>역할 변경 안 함</option>
               <option value='crew'>크루</option>
               <option value='navigator'>네비게이터</option>
             </select>

@@ -3,26 +3,15 @@
 import { useEffect, useState } from 'react';
 
 import { classLabel, hasSchedule, type StudyClass } from '@console/lib/classes';
-import {
-  EMPTY_RULE,
-  STUDY_TZS,
-  WEEKDAY_LABELS,
-  canBuildMeetings,
-  otherClock,
-  ruleDates,
-  tzAbbr,
-  wallToInstant,
-  type ScheduleRule,
-} from '@console/lib/schedule';
+import { EMPTY_RULE, STUDY_TZS, WEEKDAY_LABELS, otherClock, tzAbbr, type ScheduleRule } from '@console/lib/schedule';
 import { Button, Modal } from '@studyclub/ui';
 
 /**
- * 반의 진행 일정 — 일정 탭에서 연다.
+ * 반의 스터디 시간(요일 · 시각 · 시간대) — 일정 탭에서 연다.
  *
- * 두 가지로 열린다.
- * - **일정 정하기**(일정 없는 반): 요일·시각·기간을 정하면 회차가 깔린다. 깔린 회차의 제목은 비어 있다 — 일정 표에서 채운다.
- * - **스터디 시간 수정**(일정 있는 반): 요일·시각·시간대만 바꾼다. **회차를 더하거나 다시 깔지 않는다** —
- *   회차를 더하고 옮기는 일은 일정 표 하나에서만 한다. 두 곳에서 회차가 생기면 어디서 생긴 것인지 헷갈린다.
+ * - **스터디 시간 정하기**(아직 없는 반) · **스터디 시간 수정**(있는 반) 둘 다 같은 칸이다.
+ * - **회차를 만들지도 지우지도 않는다.** 회차는 일정 표의 「회차 추가」로만 만든다 — 그 창이 이 요일 · 시각으로
+ *   매주 반복을 채워 연다. 기간도 받지 않는다 — 반의 기간은 첫 회차 ~ 마지막 회차로 계산한다.
  */
 export function ClassScheduleDialog({
   open,
@@ -46,11 +35,10 @@ export function ClassScheduleDialog({
 
   const editing = hasSchedule(cls);
 
-  const count = ruleDates(rule).length;
-  // 수정은 기간을 받지 않으므로 요일만 있으면 된다
-  const valid = editing ? rule.weekdays.length > 0 : canBuildMeetings(rule);
+  const valid = rule.weekdays.length > 0;
   const invalid = touched && !valid;
-  const at = rule.startDate ? wallToInstant(rule.startDate, rule.time, rule.tz) : new Date();
+  // 시간대 칩의 KST/PDT 표기는 오늘 기준 — 기간을 받지 않으니 기준일이 없다
+  const at = new Date();
   const other = otherClock(rule);
 
   function toggleDay(d: number) {
@@ -68,42 +56,14 @@ export function ClassScheduleDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? `스터디 시간 수정 - ${classLabel(cls)}` : `일정 정하기 - ${classLabel(cls)}`}
+      title={`${editing ? '스터디 시간 수정' : '스터디 시간 정하기'} - ${classLabel(cls)}`}
       footer={
         /* 입력·설정 모달 — 취소 없이 X 로 닫는다 (POL-0008) */
-        <Button onClick={save}>{editing ? '저장' : '회차 만들기'}</Button>
+        <Button onClick={save}>저장</Button>
       }
     >
       <div data-anno='schedule:14-1' className='flex flex-col gap-4 py-2'>
         <div className='flex flex-col gap-4'>
-          {/* 기간은 회차를 깔 때만 받는다 — 수정에서는 회차를 건드리지 않는다 */}
-          {!editing && (
-            <div className='flex flex-col gap-2'>
-              <span className='text-sm font-medium text-neutral-800'>진행 기간</span>
-              <div className='flex flex-wrap items-center gap-2'>
-                <input
-                  type='date'
-                  aria-label='시작일'
-                  aria-describedby='rule-msg'
-                  aria-invalid={invalid || undefined}
-                  value={rule.startDate}
-                  onChange={(ev) => setRule({ ...rule, startDate: ev.target.value })}
-                  className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-                />
-                <span className='text-sm text-fg-muted'>~</span>
-                <input
-                  type='date'
-                  aria-label='종료일'
-                  aria-describedby='rule-msg'
-                  aria-invalid={invalid || undefined}
-                  value={rule.endDate}
-                  onChange={(ev) => setRule({ ...rule, endDate: ev.target.value })}
-                  className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-                />
-              </div>
-            </div>
-          )}
-
           <div className='flex flex-col gap-2'>
             <span id='rule-days' className='text-sm font-medium text-neutral-800'>
               스터디 요일
@@ -180,22 +140,13 @@ export function ClassScheduleDialog({
           ) : null}
 
           <p id='rule-msg' role='status' className='text-xs'>
-            {editing ? (
-              touched && !valid ? (
-                <span className='font-medium text-error-600'>요일을 하나 이상 골라 주세요.</span>
-              ) : (
-                <span className='text-fg-muted'>
-                  스터디 시간만 바꿉니다. 회차는 그대로입니다 — 회차를 더하거나 옮기려면 일정 표에서 고칩니다.
-                </span>
-              )
-            ) : count > 0 ? (
-              <span className='text-fg-secondary'>
-                회차 <b className='tnum'>{count}</b>회 · 제목은 일정 표에서 채웁니다.
-              </span>
-            ) : touched ? (
-              <span className='font-medium text-error-600'>시작일 · 종료일 · 요일을 모두 정해야 합니다.</span>
+            {touched && !valid ? (
+              <span className='font-medium text-error-600'>요일을 하나 이상 골라 주세요.</span>
             ) : (
-              <span className='text-fg-muted'>시작일 · 종료일 · 요일을 정하면 회차가 만들어집니다.</span>
+              <span className='text-fg-muted'>
+                스터디 시간만 {editing ? '바꿉니다. 이미 있는 회차는 그대로입니다' : '정합니다'}. 회차는 일정 표의
+                「회차 추가」로 만듭니다.
+              </span>
             )}
           </p>
         </div>

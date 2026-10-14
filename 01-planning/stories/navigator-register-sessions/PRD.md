@@ -363,7 +363,7 @@ erDiagram
 | --- | --- | --- |
 | 회차 | STUDY_GROUP_ID · SCHEDULED_AT(UTC) | 추가·수정 (캡틴·네비게이터) |
 | 회차 | 제목(`TITLE`) | 추가·수정 (캡틴·네비게이터) |
-| 회차 | 종류(`MEETING_TYPE`) | 반 일정을 처음 정할 때(`kickoffAt`) 서버가 `KICKOFF` 하나를 함께 만든다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)). 화면이 추가하는 회차는 `REGULAR` |
+| 회차 | 종류(`MEETING_TYPE`) | 킥오프가 없는 분반에 처음 정규 회차를 추가할 때 서버가 첫 회차 한 주 전에 `KICKOFF` 하나를 함께 만든다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)). 화면이 추가하는 회차는 `REGULAR` |
 | 회차 | 발표자1·2(`PRESENTER1_PARTICIPANT_ID` · `PRESENTER2_PARTICIPANT_ID`) | 캡틴·네비게이터는 누구든 지정·변경. 크루는 빈 칸에 자기만 넣고, 자기만 뺀다 |
 | 회차 | 반복 묶음 ID(`SERIES_ID`) | 반복으로 2개 이상 추가할 때 서버가 같은 값을 넣는다. 수정해도 바뀌지 않는다. 지금 화면은 쓰지 않는다 |
 | 회차 | START_AT · END_AT | 쓰지 않는다. 보이스룸이 기록한다 |

@@ -17,7 +17,7 @@
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/role | 네비게이터 지정 · 해제 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/group | 크루의 반 지정 · 이동 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 스펙작성중 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 수정 · 반 일정 정하기(회차 생성) · 스터디 시간 수정(회차 그대로) | O (ADMIN) | 스펙작성중 |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 스펙작성중 |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 스펙작성중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -188,7 +188,7 @@
 - **Method**: POST
 - **Path**: `/api/admin/studies/{studyId}/groups`
 - **인증**: 필요 — ADMIN
-- **설명**: 제목만 받아 분반을 만든다. **회차는 만들지 않는다** — 일정은 아래 「반 이름 · 일정」으로 따로 정한다 (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md)).
+- **설명**: 제목만 받아 분반을 만든다. **회차는 만들지 않는다** — 스터디 시간은 아래 「반 이름 · 스터디 시간」으로 따로 정하고, 회차는 회차 추가로 만든다 (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md)).
 
 ### Request Body
 
@@ -221,63 +221,58 @@
 
 ---
 
-## 반 이름 · 일정
+## 반 이름 · 스터디 시간
 
 ### 기본 정보
 
 - **Method**: PATCH
 - **Path**: `/api/admin/studies/{studyId}/groups/{groupId}`
 - **인증**: 필요 — ADMIN
-- **설명**: 반 제목을 수정하거나(신청자 탭 「수정」) 반 일정을 정하고 고친다(일정 탭). 보낸 필드만 바꾼다.
+- **설명**: 반 제목(신청자 탭 「수정」)이나 스터디 시간(일정 탭 「스터디 시간 정하기 · 수정」)을 바꾼다. 보낸 필드만 바꾼다. **회차는 만들지도 바꾸지도 않는다** (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md))
 
 ### Request Body
 
 ```json
 {
   "name": "A반",
-  "startDate": "2026-10-15",
-  "endDate": "2026-12-03",
   "daysOfWeek": ["thu"],
   "startTime": "20:00",
-  "timezone": "Asia/Seoul",
-  "kickoffAt": "2026-10-08T11:00:00Z"
+  "timezone": "Asia/Seoul"
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | name | String | N | 반 제목. 앞뒤 공백을 자르고 1~20자(코드포인트 기준) |
-| startDate · endDate | String (yyyy-MM-dd, 분반 현지) | N* | `startDate ≤ endDate` |
-| daysOfWeek | String[] | N* | `mon` ~ `sun`, 1개 이상 |
-| startTime | String (HH:mm, 분반 현지) | N* | |
-| timezone | String (IANA) | N* | [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 값 |
-| kickoffAt | String (ISO-8601 UTC) | N | 킥오프 회차 시각. **처음 일정을 정할 때만** 받는다. 첫 정규 회차보다 앞 |
+| daysOfWeek | String[] | N | `mon` ~ `sun`, 1개 이상 |
+| startTime | String (HH:mm, 분반 현지) | N | |
+| timezone | String (IANA) | N | [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 값 |
 
-\* 일정 필드는 처음 정할 때 다섯(`startDate` · `endDate` · `daysOfWeek` · `startTime` · `timezone`)을 함께 보낸다. 이미 일정이 있으면 `daysOfWeek` · `startTime` · `timezone` 중 바꿀 것만 보낸다. `startDate` · `endDate` 는 받지 않는다(400).
+기간(시작일 · 종료일)은 받지 않는다. 반의 기간은 저장하지 않고 첫 회차 ~ 마지막 회차로 계산한다.
 
 ### 서버 동작
 
-- `name` 만 오면 이름만 바꾼다. 회차 · 출석은 그대로
-- **처음 일정을 정할 때**(지금 회차가 없음): 시작일~종료일 사이 고른 요일마다 정규 회차를 만든다. 현지 날짜 · 시각을 `timezone` 으로 UTC 로 바꿔 `STUDY_MEETING.SCHEDULED_AT` 에 저장한다. `MEETING_TYPE = REGULAR`, 같은 `SERIES_ID`, **`TITLE` 은 NULL** — 일정 표에서 채운다. `kickoffAt` 이 오면 `MEETING_TYPE = KICKOFF` 회차 하나도 만든다 — [회차 스펙 결정 11](../study-meeting/spec.md#결정-사항)
-- **이미 일정이 있을 때**(스터디 시간 수정): `DAYS_OF_WEEK` · `START_AT` · `TIMEZONE` 만 바꾼다. **회차를 만들지도 지우지도 않는다** — 회차는 [회차 스펙](../study-meeting/spec.md)의 추가 · 수정 · 삭제로만 바뀐다 (2026-10-14)
-- 새로 만든 예정 회차의 출석 행은 그 반 활성 명부 행마다 `ABSENT` 로 만든다
-- 회차 수 상한은 회차 스펙과 같다
+- 보낸 필드만 `NAME` · `DAYS_OF_WEEK` · `START_AT` · `TIMEZONE` 에 쓴다
+- 회차 · 출석은 건드리지 않는다. 회차는 [회차 스펙](../study-meeting/spec.md)의 추가 · 수정 · 삭제로만 바뀐다
+- 이미 있는 회차의 시각은 따라 바뀌지 않는다 — 회차마다 `SCHEDULED_AT` 을 갖는다
 
 ### Response — 200
 
 ```json
-{ "groupId": 7, "name": "A반", "meetingCount": 8, "createdCount": 8 }
+{ "groupId": 7, "name": "A반", "daysOfWeek": ["thu"], "startTime": "20:00", "timezone": "Asia/Seoul" }
 ```
-
-`meetingCount` 는 정규 회차 수(킥오프 제외). `createdCount` 는 이번에 만든 회차 수 — 처음 일정을 정할 때만 0보다 크다.
 
 ### Error Responses
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 빈 바디 · 이름 길이 밖 · 날짜 역전 · 요일 키 밖 · 시간대 밖 · 처음 정하는데 일정 필드 누락 · 킥오프가 첫 회차보다 늦음 · 회차 0개 |
+| 400 | INVALID_INPUT | 빈 바디 · 이름 길이 밖 · 요일 0개 · 요일 키 밖 · 시각 형식 밖 · 시간대 밖 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
+
+### 킥오프
+
+반 일정이 회차를 만들지 않으므로 킥오프도 여기서 만들지 않는다. **킥오프가 없는 분반에 처음 정규 회차를 추가할 때** 회차 추가 API 가 첫 회차 한 주 전 같은 시각에 `MEETING_TYPE = KICKOFF` 회차를 함께 만든다 — [회차 스펙 결정 11](../study-meeting/spec.md#결정-사항). 회차 스펙 반영 필요.
 
 ---
 
@@ -308,7 +303,7 @@
 
 ## 데이터 변경 (필요)
 
-- `STUDY_GROUP` 에 `START_DATE` · `END_DATE` (DATE) · `DAYS_OF_WEEK` (VARCHAR) 추가 — 일정 수정 화면이 지금 값을 다시 보여 주려면 필요하다. 반을 막 만들면 비어 있으므로 NULL 허용
+- `STUDY_GROUP` 에 `DAYS_OF_WEEK` (VARCHAR, NULL 허용) 추가 — 스터디 시간 수정 창과 「회차 추가」 기본 요일이 읽는다. 시작일 · 종료일 컬럼은 두지 않는다(기간은 회차에서 계산)
 - `ErrorCode` 에 `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` 추가
 
 ## 프론트엔드 사용처

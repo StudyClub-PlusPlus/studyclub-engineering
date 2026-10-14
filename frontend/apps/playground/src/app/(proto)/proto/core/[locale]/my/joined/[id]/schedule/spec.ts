@@ -286,7 +286,7 @@ export const SCHEDULE_SPEC: ScreenSpec = {
         '일자·시각·제목만 고친다. 1회차보다 앞이어야 하고, 정규 회차는 킥오프 뒤로만 만든다',
         '발표자가 없다. 출석은 찍지만 출석률에 넣지 않는다',
       ],
-      data: ['STUDY_MEETING.MEETING_TYPE = KICKOFF — 반 일정을 처음 정할 때(kickoffAt) 서버가 함께 만든다'],
+      data: ['STUDY_MEETING.MEETING_TYPE = KICKOFF — 킥오프가 없는 분반에 처음 정규 회차를 추가할 때 서버가 첫 회차 한 주 전에 함께 만든다'],
     },
   ],
 };

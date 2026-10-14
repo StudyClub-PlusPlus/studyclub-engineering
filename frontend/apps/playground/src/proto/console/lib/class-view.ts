@@ -72,7 +72,7 @@ export function classView({
         .map((c) => c.name)
         .join(', ') || '미지정',
     source,
-    group: { id: cls.id, name: classLabel(cls), timeZone: cls.rule.tz, startAt: time },
+    group: { id: cls.id, name: classLabel(cls), timeZone: cls.rule.tz, startAt: time, weekdays: cls.rule.weekdays },
     meetings,
     book: bookFromSchedule(meetings),
   };

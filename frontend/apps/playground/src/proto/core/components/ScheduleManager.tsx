@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import {
   DISPLAY_ZONES,
+  addDaysYmd,
   DOW_LABEL,
   REPEAT_SPAN_DAYS,
   TITLE_MAX,
@@ -630,14 +631,32 @@ function AddForm({
   onCancel: () => void;
   onAdded: (label: string) => void;
 }) {
-  const [draft, setDraft] = useState<MeetingDraft>(() => ({
-    date: defaultDate(source.meetings(), new Date().toISOString().slice(0, 10)),
-    time: group.startAt,
-    title: '',
-    repeat: 'none',
-    until: '',
-    weekdays: [],
-  }));
+  const [draft, setDraft] = useState<MeetingDraft>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const regular = source.meetings().filter((m) => !isKickoff(m));
+    // 회차가 하나도 없는 반 — 반의 스터디 요일 · 시각으로 매주 반복을 채워 둔다. 회차는 여기서만 만든다
+    if (regular.length === 0 && group.weekdays && group.weekdays.length > 0) {
+      const days = group.weekdays;
+      let date = addDaysYmd(today, 1);
+      while (!days.includes(dowOf(date))) date = addDaysYmd(date, 1);
+      return {
+        date,
+        time: group.startAt,
+        title: '',
+        repeat: 'weekly',
+        until: defaultUntil(date, 'weekly'),
+        weekdays: days,
+      };
+    }
+    return {
+      date: defaultDate(source.meetings(), today),
+      time: group.startAt,
+      title: '',
+      repeat: 'none',
+      until: '',
+      weekdays: [],
+    };
+  });
   const [errors, setErrors] = useState<DraftErrors>({});
   const [touched, setTouched] = useState(false);
 
