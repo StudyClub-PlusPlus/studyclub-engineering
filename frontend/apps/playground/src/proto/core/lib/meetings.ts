@@ -412,11 +412,6 @@ export function dateWithDow(ymd: string): string {
   return ymd ? `${ymd} (${DOW[dowOf(ymd)]})` : '';
 }
 
-/** `(수)` — 일자 입력칸 옆에 붙인다. 날짜가 비었거나 잘못되면 빈 문자열 */
-export function dowSuffix(ymd: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? `(${DOW[dowOf(ymd)]})` : '';
-}
-
 export function dowOf(ymd: string): number {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();

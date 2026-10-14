@@ -10,7 +10,6 @@ import {
   TITLE_MAX,
   dateWithDow,
   dayLabel,
-  dowSuffix,
   defaultDate,
   defaultUntil,
   dowOf,
@@ -290,7 +289,7 @@ export function ScheduleManager({
             <thead>
               <tr className='text-left text-xs font-semibold text-fg-muted'>
                 <th className='w-24 px-4 py-3'>회차</th>
-                <th className='w-48 px-2 py-3'>일자</th>
+                <th className='w-40 px-2 py-3'>일자</th>
                 <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
                 <th className='min-w-[16rem] px-2 py-3'>제목</th>
                 <th data-anno='schedule:9' className='w-36 px-2 py-3'>
@@ -382,19 +381,13 @@ export function ScheduleManager({
                     </td>
                     <td className={cn(cell, 'tnum')}>
                       {editable ? (
-                        // 입력칸은 요일을 못 그린다 — 옆에 붙인다. 고치면 바로 따라 바뀐다
-                        <div className='flex items-start gap-1.5'>
-                          <CellInput
-                            type='date'
-                            label={`${meetingLabel(m)} 일자 (${zoneLabel(zone)})`}
-                            value={wall.date}
-                            error={errors.date}
-                            onChange={(date) => changeWall(m, { date })}
-                          />
-                          <span aria-hidden className='shrink-0 py-1.5 text-fg-secondary'>
-                            {dowSuffix(wall.date)}
-                          </span>
-                        </div>
+                        <CellInput
+                          type='date'
+                          label={`${meetingLabel(m)} 일자 (${zoneLabel(zone)})`}
+                          value={wall.date}
+                          error={errors.date}
+                          onChange={(date) => changeWall(m, { date })}
+                        />
                       ) : (
                         <span className='inline-block whitespace-nowrap py-1.5'>{dateWithDow(shown.date)}</span>
                       )}
