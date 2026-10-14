@@ -1,7 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 
 import { MapPin, ChevronRight } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
 import type { StudyclubEvent, Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 
@@ -18,12 +21,26 @@ function dateParts(iso: string, locale: Locale) {
 }
 
 // 행사 목록의 한 "행". (카드 그리드가 아니라 리스트형)
-export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Locale }) {
+export function EventRow({
+  event,
+  locale,
+  source = 'landing',
+}: {
+  event: StudyclubEvent;
+  locale: Locale;
+  source?: 'landing' | 'events_list';
+}) {
   const { mon, day, year, time } = dateParts(event.date, locale);
   return (
     <Link
       href={`/${locale}/events/${event.id}`}
       className='group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-(--color-surface-subtle) sm:px-5'
+      onClick={() =>
+        track({
+          name: 'Event Card Clicked',
+          props: { event_id: String(event.id), event_title_ko: event.title.ko, source },
+        })
+      }
     >
       {/* 날짜 박스 */}
       <div
