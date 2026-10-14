@@ -676,16 +676,16 @@ export function AttendanceTab({
                     >
                       참여 중단
                     </Button>
-                    {blockedNames.length > 0 && (
-                      // 왜 잠겼는지 버튼 옆에 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
-                      <span id='withdraw-blocked' data-anno='book:3-12' className='text-xs text-fg-muted'>
-                        네비게이터는 참여 중단할 수 없습니다. 캡틴에게 문의하세요.
-                      </span>
-                    )}
                     {selected.length > 0 && (
                       <Button size='sm' variant='ghost' onClick={() => setPicked(new Set())}>
                         선택 해제
                       </Button>
+                    )}
+                    {blockedNames.length > 0 && (
+                      // 왜 잠겼는지 버튼 줄 끝에 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
+                      <span id='withdraw-blocked' data-anno='book:3-12' className='text-xs text-fg-muted'>
+                        네비게이터는 참여 중단할 수 없습니다. 캡틴에게 문의하세요.
+                      </span>
                     )}
                   </>
                 ) : undefined
