@@ -36,7 +36,7 @@ import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import type { Study } from '@studyclub/mock';
 import { AutoTextarea, Button, Input, Modal, cx } from '@studyclub/ui';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 
 /**
  * 스터디 일정 — 구글 시트 출석부의 일정표를 옮긴 화면. 참가자 누구나 본다.
@@ -70,7 +70,9 @@ export function ScheduleManager({
 }) {
   const src = source ?? studySource(study, group.timeZone);
   const [adding, setAdding] = useState(canEdit && startAdding);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  // 일괄 삭제 — 고른 예정 정규 회차. 확인 모달은 한 회차 삭제와 같은 창을 쓴다
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
   /** 신청이 밀렸을 때처럼 알려야 하지만 성공은 아닌 한 줄. */
   const [notice, setNotice] = useState<string | null>(null);
   /** 화면 문구 없이 스크린리더에만 결과를 알린다 — 늘 붙어 있는 aria-live 영역. */
@@ -212,16 +214,34 @@ export function ScheduleManager({
     refresh();
   }
 
-  function remove(target: ProtoMeeting) {
-    src.remove(target.id);
-    setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => id !== target.id)));
-    delete bases.current[target.id];
-    setAnnounce(`${meetingLabel(target)}를 지웠습니다.`);
-    setConfirmId(null);
+  function remove(targets: ProtoMeeting[]) {
+    const ids = new Set(targets.map((t) => t.id));
+    for (const t of targets) {
+      src.remove(t.id);
+      delete bases.current[t.id];
+    }
+    setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => !ids.has(id))));
+    setAnnounce(
+      targets.length === 1 ? `${meetingLabel(targets[0]!)}를 지웠습니다.` : `회차 ${targets.length}개를 지웠습니다.`,
+    );
+    setBulkConfirm(false);
+    setChecked(new Set());
     refresh();
   }
 
-  const confirming = confirmId ? meetings.find((m) => m.id === confirmId) : undefined;
+  // 지울 수 있는 회차 — 예정된 정규 회차만. 킥오프와 시작한 회차는 출석이 걸려 있어 지우지 않는다
+  const deletable = canEdit ? meetings.filter((m) => !isKickoff(m) && !started(m)) : [];
+  const picked = deletable.filter((m) => checked.has(m.id));
+  const allChecked = deletable.length > 0 && picked.length === deletable.length;
+  function toggle(id: string) {
+    setChecked((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  const toDelete = bulkConfirm ? picked : [];
 
   return (
     <div className='flex flex-col gap-4'>
@@ -242,14 +262,7 @@ export function ScheduleManager({
           />
           {canEdit && (
             <span data-anno='schedule:2'>
-              <Button
-                size='sm'
-                leadingIcon={<Plus size={15} />}
-                onClick={() => {
-                  setAdding(true);
-                  setConfirmId(null);
-                }}
-              >
+              <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
                 회차 추가
               </Button>
             </span>
@@ -289,6 +302,21 @@ export function ScheduleManager({
           <table className='w-full min-w-[66rem] border-separate border-spacing-0 text-sm'>
             <thead>
               <tr className='text-left text-xs font-semibold text-fg-muted'>
+                {canEdit && (
+                  <th data-anno='schedule:3-6' className='w-10 py-3 pl-4'>
+                    <input
+                      type='checkbox'
+                      aria-label='지울 수 있는 회차 전체 선택'
+                      className={CHECKBOX}
+                      checked={allChecked}
+                      disabled={deletable.length === 0}
+                      ref={(el) => {
+                        if (el) el.indeterminate = picked.length > 0 && !allChecked;
+                      }}
+                      onChange={() => setChecked(allChecked ? new Set() : new Set(deletable.map((m) => m.id)))}
+                    />
+                  </th>
+                )}
                 <th className='w-24 px-4 py-3'>회차</th>
                 <th className='w-40 px-2 py-3'>일자</th>
                 <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
@@ -297,7 +325,6 @@ export function ScheduleManager({
                   발표자1
                 </th>
                 <th className='w-36 px-2 py-3'>발표자2</th>
-                {canEdit && <th className='w-14 px-3 py-3 text-right'>삭제</th>}
               </tr>
             </thead>
             <tbody>
@@ -370,9 +397,22 @@ export function ScheduleManager({
                       past && 'text-fg-muted',
                       kickoff && 'bg-surface-1',
                       changed && 'bg-brand-subtle/40',
-                      confirmId === m.id && 'bg-error-50',
+                      bulkConfirm && checked.has(m.id) && 'bg-error-50',
                     )}
                   >
+                    {canEdit && (
+                      <td className='border-t border-border py-2.5 pl-4 align-top'>
+                        {!kickoff && !past && (
+                          <input
+                            type='checkbox'
+                            aria-label={`${meetingLabel(m)} 선택`}
+                            className={CHECKBOX}
+                            checked={checked.has(m.id)}
+                            onChange={() => toggle(m.id)}
+                          />
+                        )}
+                      </td>
+                    )}
                     <td
                       data-anno={kickoff ? 'schedule:10' : undefined}
                       className='tnum border-t border-border px-4 py-2.5 align-top font-bold'
@@ -425,28 +465,6 @@ export function ScheduleManager({
                       {presenterCell('presenter2')}
                       {errors.presenter2 && <p className='mt-1 text-[11px] text-error-700'>{errors.presenter2}</p>}
                     </td>
-                    {canEdit && (
-                      <td className='border-t border-border px-3 py-1.5 text-right align-top'>
-                        {past || kickoff ? (
-                          <span
-                            className='inline-block py-1.5 text-xs text-fg-muted'
-                            title={kickoff ? '킥오프는 지울 수 없습니다' : '출석이 찍혀 있어 지울 수 없습니다'}
-                          >
-                            —
-                          </span>
-                        ) : (
-                          <button
-                            type='button'
-                            data-anno='schedule:3-4'
-                            aria-label={`${meetingLabel(m)} 삭제`}
-                            onClick={() => setConfirmId(m.id)}
-                            className='grid h-8 w-8 place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-error-700'
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </td>
-                    )}
                   </tr>
                 );
                 return [row];
@@ -457,24 +475,50 @@ export function ScheduleManager({
       )}
 
       {/* 결정을 묻는 모달 — 취소가 기본 포커스. Enter 로 지워지면 안 된다 (POL-0008) */}
+      {picked.length > 0 && (
+        // 고른 회차가 있을 때만 — 출석부 「선택한 크루 처리」와 같은 자리
+        <div
+          data-anno='schedule:3-7'
+          role='region'
+          aria-label='선택한 회차 처리'
+          className='sticky bottom-12 z-10 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-3 py-2 shadow-sm'
+        >
+          <span className='text-sm font-semibold text-fg'>선택한 {picked.length}회차</span>
+          <Button
+            size='sm'
+            variant='secondary'
+            onClick={() => setBulkConfirm(true)}
+            className='border-error-600 bg-transparent text-error-700 hover:border-error-700 hover:bg-error-50'
+          >
+            삭제
+          </Button>
+          <Button size='sm' variant='ghost' className='ml-auto' onClick={() => setChecked(new Set())}>
+            선택 해제
+          </Button>
+        </div>
+      )}
+
+      {/* 결정을 묻는 모달 — 취소가 기본 포커스. Enter 로 지워지면 안 된다 (POL-0008). 회차는 체크박스로 골라서만 지운다 */}
       <Modal
-        open={confirming !== undefined}
-        onClose={() => setConfirmId(null)}
+        open={toDelete.length > 0}
+        onClose={() => setBulkConfirm(false)}
         title='회차 삭제'
         footer={
           <>
-            <Button variant='secondary' data-autofocus onClick={() => setConfirmId(null)}>
+            <Button variant='secondary' data-autofocus onClick={() => setBulkConfirm(false)}>
               취소
             </Button>
-            <Button variant='destructive' onClick={() => confirming && remove(confirming)}>
+            <Button variant='destructive' onClick={() => remove(toDelete)}>
               삭제
             </Button>
           </>
         }
       >
         <p data-anno='schedule:3-5' className='text-sm text-fg-secondary'>
-          {confirming ? `${meetingLabel(confirming)}(${dayLabel(confirming.date)})를 지울까요?` : ''} 뒤 회차 번호는
-          하나씩 당겨집니다. 되돌릴 수 없습니다.
+          {toDelete.length === 1
+            ? `${meetingLabel(toDelete[0]!)}(${dayLabel(toDelete[0]!.date)})를 지울까요?`
+            : `회차 ${toDelete.length}개(${toDelete.map((m) => meetingLabel(m)).join(', ')})를 지울까요?`}{' '}
+          뒤 회차 번호는 당겨집니다. 되돌릴 수 없습니다.
         </p>
       </Modal>
 
@@ -514,6 +558,10 @@ function sameRow(a: RowDraft, b: RowDraft): boolean {
 function cn(...parts: string[]): string {
   return parts.join(' ');
 }
+
+/** 회차 선택 체크박스 — 출석부 체크박스와 같은 모양. */
+const CHECKBOX =
+  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 const FIELD =
   'h-8 w-full rounded-control border bg-bg px-2 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand/60';
