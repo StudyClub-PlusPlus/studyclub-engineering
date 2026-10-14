@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
-import { ALL_CLASSES, ClassPicker } from '@console/components/ClassPicker';
+import { ClassPicker } from '@console/components/ClassPicker';
 import { ClassScheduleDialog } from '@console/components/ClassScheduleDialog';
 import { CrewTab } from '@console/components/CrewTab';
 import { ResultsTab } from '@console/components/ResultsTab';
@@ -73,6 +73,21 @@ const LEAVE_COPY: Record<DirtyTab, string> = {
   attendance: '저장을 누르지 않으면 고친 출석이 사라집니다. 나가기 전에 저장해 주세요.',
 };
 
+type AttendanceBook = Record<string, Record<string, AttendanceStatus>>;
+
+const NO_BOOK: AttendanceBook = {};
+
+/** 한 권의 출석(크루 → 회차 → 상태)을 반별로 나눈다. 크루는 지금 속한 반으로 간다. */
+function splitBook(book: AttendanceBook, assign: Record<string, string>): Record<string, AttendanceBook> {
+  const out: Record<string, AttendanceBook> = {};
+  for (const [crewId, row] of Object.entries(book)) {
+    const cls = assign[crewId];
+    if (!cls) continue;
+    (out[cls] ??= {})[crewId] = row;
+  }
+  return out;
+}
+
 export function StudyConsole({ study }: { study: Study }) {
   const router = useRouter();
   const initial = useMemo(() => getStudyCrew(study), [study]);
@@ -80,7 +95,9 @@ export function StudyConsole({ study }: { study: Study }) {
   // 프로토는 이미 회차가 있는 스터디를 여므로, 그 회차가 반 하나를 기본으로 둔다. 분반 mock 이 있으면 그 반들도.
   const seed = useMemo(() => seedClasses(study, initial, FIRST_CLASS), [study, initial]);
   const [crew] = useState<Crew[]>(initial.crew);
-  const [attendance, setAttendance] = useState(seed.attendance);
+  // 출석은 반마다 따로 든다 — 출석 탭이 반별 출석부를 한꺼번에 띄우고 반마다 저장한다.
+  // 한 권으로 두면 한 반을 저장할 때 다른 반 출석부의 저장 전 고침까지 새로 읽혀 사라진다.
+  const [books, setBooks] = useState<Record<string, AttendanceBook>>(() => splitBook(seed.attendance, seed.assign));
   // 회차는 진행 일정 규칙이 만든다. 규칙이 바뀌면 오늘 이후 회차만 다시 깔린다 — 찍은 출석은 남는다.
   const [classes, setClasses] = useState<StudyClass[]>(seed.classes);
   const [classId, setClassId] = useState(FIRST_CLASS);
@@ -95,10 +112,9 @@ export function StudyConsole({ study }: { study: Study }) {
   const [ruleOpen, setRuleOpen] = useState(false);
 
   const [tab, setTab] = useState<TabKey>('info');
-  const [attendanceDirty, setAttendanceDirty] = useState(false);
   const [crewDirty, setCrewDirty] = useState(false);
-  // 출석 탭 「전체」 — 반별 출석부를 이어 본다. 보기 전용이고, 고치려면 반을 고른다
-  const [attendanceAll, setAttendanceAll] = useState(false);
+  // 반별 출석부 중 하나라도 저장 전 고침이 있으면 출석 탭이 「고친 것 있음」
+  const [dirtyBooks, setDirtyBooks] = useState<Record<string, boolean>>({});
   const [tableDirty, setTableDirty] = useState(false);
   const [rulesDirty, setRulesDirty] = useState(false);
   // 일정 탭은 고칠 곳이 둘이다 — 일정 표와 반 규칙. 어느 쪽이든 저장 전이면 나가기 전에 묻는다.
@@ -113,7 +129,7 @@ export function StudyConsole({ study }: { study: Study }) {
       ? 'crew'
       : tab === 'schedule' && scheduleDirty
         ? 'schedule'
-        : tab === 'attendance' && attendanceDirty
+        : tab === 'attendance' && Object.values(dirtyBooks).some(Boolean)
           ? 'attendance'
           : null;
 
@@ -191,17 +207,6 @@ export function StudyConsole({ study }: { study: Study }) {
     navigators,
   });
 
-  /** 출석 탭의 반 칩 — 「전체」면 보기 전용 모아 보기, 반이면 그 반 출석부. */
-  function requestAttendanceClass(id: string) {
-    if (id === ALL_CLASSES) {
-      if (dirtyTab) setLeave({ kind: 'class', id });
-      else setAttendanceAll(true);
-      return;
-    }
-    setAttendanceAll(false);
-    requestClass(id);
-  }
-
   function requestClass(id: string) {
     if (id === classId) return;
     if (dirtyTab) {
@@ -212,10 +217,10 @@ export function StudyConsole({ study }: { study: Study }) {
   }
 
   /** 칸을 눌러 고친 값을 한 번에 반영한다. 한 칸마다 따로 보내지 않는다. */
-  async function saveAttendance(next: Record<string, Record<string, AttendanceStatus>>) {
+  async function saveAttendance(groupId: string, next: AttendanceBook) {
     // TODO(api): POST /api/admin/studies/{id}/attendances — body: { studyGroupId, updates[] }
     await new Promise((r) => setTimeout(r, 400));
-    setAttendance(next);
+    setBooks((prev) => ({ ...prev, [groupId]: next }));
   }
 
   function requestTab(next: TabKey) {
@@ -231,7 +236,7 @@ export function StudyConsole({ study }: { study: Study }) {
     if (!leave) return;
     const intent = leave;
     setLeave(null);
-    setAttendanceDirty(false);
+    setDirtyBooks({});
     setCrewDirty(false);
     setTableDirty(false);
     setRulesDirty(false);
@@ -240,8 +245,7 @@ export function StudyConsole({ study }: { study: Study }) {
       return;
     }
     if (intent.kind === 'class') {
-      if (intent.id === ALL_CLASSES) setAttendanceAll(true);
-      else setClassId(intent.id);
+      setClassId(intent.id);
       return;
     }
     if (/^https?:\/\//.test(intent.href)) {
@@ -432,19 +436,24 @@ export function StudyConsole({ study }: { study: Study }) {
               </Button>
             </div>
           ))}
-        {tab === 'attendance' && attendanceAll && classes.length > 1 && (
-          <div data-anno='attendance:10'>
-            <ClassPicker
-              classes={classes}
-              classId={ALL_CLASSES}
-              onClass={requestAttendanceClass}
-              anno='attendance:0'
-              withAll
+        {tab === 'attendance' &&
+          (classes.length === 0 ? (
+            // 반이 없으면 출석부도 없다 — 안내와 갈 곳은 출석부 컴포넌트가 그린다
+            <AttendanceTab
+              study={study}
+              crew={[]}
+              classes={[]}
+              classId=''
+              onClass={() => {}}
+              meetings={[]}
+              attendance={NO_BOOK}
+              onSave={async () => {}}
+              onGoCrew={() => requestTab('crew')}
             />
-            <p className='mb-4 text-sm text-fg-muted'>
-              반마다 회차가 달라 출석부를 반별로 이어 보여 줍니다. 출석을 고치려면 위에서 반을 고르세요.
-            </p>
-            <div className='flex flex-col gap-8'>
+          ) : (
+            // 반 고르기 없이 반별 출석부를 이어 보여 준다. 반마다 회차가 달라 표 하나로 합치지 않는다.
+            // 반마다 따로 고치고 저장한다
+            <div data-anno='attendance:0' className='flex flex-col gap-8'>
               {classes.map((cls) => {
                 const v = classView({
                   study,
@@ -456,7 +465,7 @@ export function StudyConsole({ study }: { study: Study }) {
                 if (!v) return null;
                 return (
                   <section key={cls.id}>
-                    <h3 className='mb-2 text-[15px] font-bold'>{classLabel(cls)}</h3>
+                    {classes.length > 1 && <h3 className='mb-2 text-[15px] font-bold'>{classLabel(cls)}</h3>}
                     <AttendanceTab
                       study={study}
                       crew={v.crew}
@@ -464,10 +473,20 @@ export function StudyConsole({ study }: { study: Study }) {
                       classId={cls.id}
                       onClass={() => {}}
                       meetings={v.meetings}
-                      attendance={attendance}
-                      onSave={saveAttendance}
+                      attendance={books[cls.id] ?? NO_BOOK}
+                      onSave={(next) => saveAttendance(cls.id, next)}
+                      onDirtyChange={(d) => setDirtyBooks((m) => (m[cls.id] === d ? m : { ...m, [cls.id]: d }))}
                       onGoCrew={() => requestTab('crew')}
-                      readOnly
+                      onAddMeeting={() => {
+                        // 고친 출석이 남아 있으면 먼저 묻는다 — 창은 일정 탭에 바로 들어갈 때만 연다.
+                        // 일정이 없는 반은 회차 추가가 아니라 일정 정하기 창을 연다.
+                        if (!dirtyTab) {
+                          setClassId(cls.id);
+                          if (hasSchedule(cls)) setAddOnOpen(true);
+                          else setRuleOpen(true);
+                        }
+                        requestTab('schedule');
+                      }}
                       presentersOf={v.book.presentersOf}
                       notCounted={v.book.notCounted}
                       headOf={v.book.headOf}
@@ -476,36 +495,7 @@ export function StudyConsole({ study }: { study: Study }) {
                 );
               })}
             </div>
-          </div>
-        )}
-        {tab === 'attendance' && !(attendanceAll && classes.length > 1) && (
-          <AttendanceTab
-            study={study}
-            crew={view?.crew ?? []}
-            classes={classes}
-            classId={classId}
-            onClass={requestAttendanceClass}
-            withAll
-            meetings={view?.meetings ?? []}
-            attendance={attendance}
-            onSave={saveAttendance}
-            onDirtyChange={setAttendanceDirty}
-            onGoCrew={() => requestTab('crew')}
-            onAddMeeting={() => {
-              // 고친 출석이 남아 있으면 먼저 묻는다 — 창은 일정 탭에 바로 들어갈 때만 연다.
-              // 일정이 없는 반은 회차 추가가 아니라 일정 정하기 창을 연다.
-              const cur = classes.find((c) => c.id === classId);
-              if (!dirtyTab) {
-                if (cur && hasSchedule(cur)) setAddOnOpen(true);
-                else setRuleOpen(true);
-              }
-              requestTab('schedule');
-            }}
-            presentersOf={view?.book.presentersOf}
-            notCounted={view?.book.notCounted}
-            headOf={view?.book.headOf}
-          />
-        )}
+          ))}
         {tab === 'form' && <ApplicationFormTab study={study} />}
         {tab === 'results' && <ResultsTab study={study} crew={crew} />}
         {tab === 'info' && <StudyInfoTab study={study} />}

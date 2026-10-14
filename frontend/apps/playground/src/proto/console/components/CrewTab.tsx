@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 
-import { ClassDialog } from '@console/components/ClassDialog';
-import { ClassPicker } from '@console/components/ClassPicker';
 import { TableCard } from '@console/components/ui';
-import { classLabel, type StudyClass } from '@console/lib/classes';
+import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
+import { EMPTY_RULE } from '@console/lib/schedule';
 import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
 import { Button } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
@@ -52,7 +51,6 @@ export function CrewTab({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const active = crew;
-  const [dialogOpen, setDialogOpen] = useState(false);
   // 명단 필터 — 반을 나눌 때 지역별로, 반을 확인할 때 반별로 본다. 둘 다 화면에서만 거른다
   const [regionFilter, setRegionFilter] = useState<'all' | Crew['region']>('all');
   const [picked, setClassFilter] = useState<string>('all');
@@ -62,7 +60,64 @@ export function CrewTab({
     (c) =>
       (regionFilter === 'all' || c.region === regionFilter) && (classFilter === 'all' || assign[c.id] === classFilter),
   );
-  const [editing, setEditing] = useState<StudyClass | undefined>();
+  // 반 만들기 · 제목 수정은 모달 없이 카드 안에서 한다.
+  // 수정은 그 반 카드가, 「반 추가」는 목록 맨 아래 새 카드가 입력칸으로 열린다. 한 번에 하나만 연다.
+  const [renaming, setRenaming] = useState<{ id: string; title: string; touched: boolean } | null>(null);
+  function saveRename(cls: StudyClass | undefined) {
+    if (!renaming) return;
+    const title = renaming.title.trim();
+    if (!title) {
+      setRenaming({ ...renaming, touched: true });
+      return;
+    }
+    // TODO(api): 새 반은 POST …/groups { name }, 수정은 PATCH …/groups/{groupId} { name }
+    if (!cls) onSaveClass({ id: `c${Date.now()}`, title, rule: EMPTY_RULE });
+    else if (title !== cls.title) onSaveClass({ ...cls, title });
+    setRenaming(null);
+  }
+  const adding = renaming?.id === NEW_CLASS;
+
+  /** 카드 안 입력 — 입력칸은 줄의 절반, 취소 · 저장은 오른쪽(읽기 상태의 수정 · 삭제 자리). */
+  function editor(cls: StudyClass | undefined) {
+    if (!renaming) return null;
+    const errId = `class-title-${renaming.id}`;
+    const empty = renaming.touched && !renaming.title.trim();
+    return (
+      <form
+        data-anno='class:1-4'
+        className='flex flex-col gap-1'
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          saveRename(cls);
+        }}
+        onKeyDown={(ev) => ev.key === 'Escape' && setRenaming(null)}
+      >
+        <div className='flex items-center gap-3'>
+          <input
+            aria-label='반 제목'
+            value={renaming.title}
+            maxLength={CLASS_TITLE_MAX}
+            placeholder={cls ? undefined : '예: A반 · 미국 금요일반'}
+            aria-invalid={empty || undefined}
+            aria-describedby={errId}
+            onChange={(ev) => setRenaming({ ...renaming, title: ev.target.value })}
+            className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 text-sm font-bold text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+          />
+          <div className='ml-auto flex shrink-0 gap-1.5'>
+            <Button type='button' size='sm' variant='ghost' onClick={() => setRenaming(null)}>
+              취소
+            </Button>
+            <Button type='submit' size='sm'>
+              저장
+            </Button>
+          </div>
+        </div>
+        <p id={errId} role='status' className='text-xs text-error-600'>
+          {empty ? '반 제목을 입력해 주세요.' : ''}
+        </p>
+      </form>
+    );
+  }
 
   // 반 · 역할은 고친 값을 모았다가 「저장」으로 한 번에 반영한다 — 일정 표와 같다.
   // 한 칸 바꿀 때마다 저장하면 여러 명을 옮기는 도중의 어중간한 편성이 그대로 남는다.
@@ -109,53 +164,58 @@ export function CrewTab({
               size='sm'
               variant='secondary'
               leadingIcon={<Plus size={15} />}
-              onClick={() => {
-                setEditing(undefined);
-                setDialogOpen(true);
-              }}
+              disabled={adding}
+              onClick={() => setRenaming({ id: NEW_CLASS, title: '', touched: false })}
             >
               반 추가
             </Button>
           </span>
         </h2>
-        {classes.length === 0 ? (
+        {classes.length === 0 && !adding ? (
           <p className='mt-2 rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
             아직 반이 없습니다. 「반 추가」로 반을 만들고 크루를 나눠 주세요.
           </p>
         ) : (
           <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
             {classes.map((cls) => (
-              <li key={cls.id} className='card flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3'>
-                <span className='text-sm font-bold'>{classLabel(cls)}</span>
-                <span className='tnum ml-auto text-sm text-fg-secondary'>
-                  {active.filter((c) => assign[c.id] === cls.id).length}명
-                </span>
-                <Button
-                  size='sm'
-                  variant='ghost'
-                  data-anno='class:1-2'
-                  aria-label={`${classLabel(cls)} 수정`}
-                  onClick={() => {
-                    setEditing(cls);
-                    setDialogOpen(true);
-                  }}
-                >
-                  수정
-                </Button>
-                {/* 사람이 든 반은 지우지 않는다 — 그 반의 출석 기록까지 사라진다 */}
-                <Button
-                  size='sm'
-                  variant='ghost'
-                  data-anno='class:1-3'
-                  aria-label={`${classLabel(cls)} 삭제`}
-                  disabled={active.some((c) => assign[c.id] === cls.id)}
-                  title={active.some((c) => assign[c.id] === cls.id) ? '크루가 있는 반은 지울 수 없습니다' : undefined}
-                  onClick={() => onRemoveClass(cls.id)}
-                >
-                  삭제
-                </Button>
+              <li key={cls.id} className='card px-4 py-3'>
+                {renaming?.id === cls.id ? (
+                  editor(cls)
+                ) : (
+                  <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
+                    <span className='text-sm font-bold'>{classLabel(cls)}</span>
+                    <span className='tnum ml-auto text-sm text-fg-secondary'>
+                      {active.filter((c) => assign[c.id] === cls.id).length}명
+                    </span>
+                    <Button
+                      size='sm'
+                      variant='ghost'
+                      data-anno='class:1-2'
+                      aria-label={`${classLabel(cls)} 수정`}
+                      onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
+                    >
+                      수정
+                    </Button>
+                    {/* 사람이 든 반은 지우지 않는다 — 그 반의 출석 기록까지 사라진다 */}
+                    <Button
+                      size='sm'
+                      variant='ghost'
+                      data-anno='class:1-3'
+                      aria-label={`${classLabel(cls)} 삭제`}
+                      disabled={active.some((c) => assign[c.id] === cls.id)}
+                      title={
+                        active.some((c) => assign[c.id] === cls.id) ? '크루가 있는 반은 지울 수 없습니다' : undefined
+                      }
+                      onClick={() => onRemoveClass(cls.id)}
+                    >
+                      삭제
+                    </Button>
+                  </div>
+                )}
               </li>
             ))}
+            {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
+            {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
           </ul>
         )}
       </section>
@@ -163,26 +223,27 @@ export function CrewTab({
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
           <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 text-[15px] font-bold'>
             참여 크루
+            {/* 반 제목 옆 개수와 같은 모양 — 숫자만. 필터와 상관없이 전체 인원 */}
+            <span className='tnum text-[13px] font-medium text-fg-muted'>{active.length}</span>
           </h2>
         </div>
-        {/* 필터는 제목 아래 줄 — 반은 일정 · 출석 탭과 같은 칩에 「전체」만 더하고, 지역은 드롭다운 */}
+        {/* 필터는 제목 아래 줄, 왼쪽부터 반 · 지역 드롭다운 */}
         <div data-anno='attendee:3-3' className='mt-2 flex flex-wrap items-center gap-2'>
-          <ClassPicker
-            classes={classes}
-            classId={classFilter}
-            onClass={setClassFilter}
-            anno='attendee:3-3'
-            withAll
-            className=''
-          />
-          <span className='ml-auto'>
+          {/* 반이 하나면 거를 것이 없다 */}
+          {classes.length > 1 && (
             <FilterSelect
-              label='지역'
-              value={regionFilter}
-              onChange={(v) => setRegionFilter(v as typeof regionFilter)}
-              options={MEMBER_REGIONS.map((r) => ({ value: r.key, label: r.label.ko }))}
+              label='반'
+              value={classFilter}
+              onChange={setClassFilter}
+              options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
             />
-          </span>
+          )}
+          <FilterSelect
+            label='지역'
+            value={regionFilter}
+            onChange={(v) => setRegionFilter(v as typeof regionFilter)}
+            options={MEMBER_REGIONS.map((r) => ({ value: r.key, label: r.label.ko }))}
+          />
         </div>
         <div className='mt-2'>
           <TableCard>
@@ -242,20 +303,6 @@ export function CrewTab({
           </p>
         )}
       </section>
-
-      <ClassDialog
-        open={dialogOpen}
-        edit={editing}
-        onClose={() => {
-          setDialogOpen(false);
-          setEditing(undefined);
-        }}
-        onSave={(cls) => {
-          onSaveClass(cls);
-          setDialogOpen(false);
-          setEditing(undefined);
-        }}
-      />
     </div>
   );
 }
@@ -302,7 +349,10 @@ function withDraft<T>(drafts: Record<string, T>, id: string, value: T | undefine
   return next;
 }
 
-/** 지역 필터 드롭다운. 값이 있으면 테두리로 드러낸다 — 걸러진 채로 명단을 오독하지 않게. */
+/** 「반 추가」로 연 새 카드의 자리 표시 id — 저장하면 진짜 id 를 받는다. */
+const NEW_CLASS = '__new__';
+
+/** 명단 필터 드롭다운(반 · 지역). 값이 있으면 테두리로 드러낸다 — 걸러진 채로 명단을 오독하지 않게. */
 function FilterSelect({
   label,
   value,

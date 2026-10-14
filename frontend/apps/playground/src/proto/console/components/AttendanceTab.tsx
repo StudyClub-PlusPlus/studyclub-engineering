@@ -208,7 +208,6 @@ export function AttendanceTab({
   title,
   toolbar,
   whenOf,
-  withAll = false,
 }: {
   study: Study;
   /** 이름 칸에 쓰는 것만 받는다 — 사용자 사이트는 명부 밖의 「나」도 넣는다. */
@@ -239,8 +238,6 @@ export function AttendanceTab({
   onWithdraw?: (crewIds: string[]) => void | Promise<void>;
   startAt?: string;
   title?: string;
-  /** 반 칩 맨 앞에 「전체」 — 누르면 `onClass('all')`. 백오피스 출석 탭만. */
-  withAll?: boolean;
   toolbar?: ReactNode;
   whenOf?: (meeting: StudyMeeting) => { date: string; time: string };
 }) {
@@ -409,7 +406,7 @@ export function AttendanceTab({
 
   return (
     <div>
-      <ClassPicker classes={classes} classId={classId} onClass={onClass} anno='attendance:0' withAll={withAll} />
+      <ClassPicker classes={classes} classId={classId} onClass={onClass} anno='attendance:0' />
 
       {meetings.length === 0 ? (
         // 반은 있는데 회차가 없다 — 회차는 일정 탭에서 만든다. 반 고르기는 위에 남겨 다른 반으로 옮길 수 있게 한다.
