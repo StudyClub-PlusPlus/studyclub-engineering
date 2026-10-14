@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ClassDialog } from '@console/components/ClassDialog';
 import { TableCard } from '@console/components/ui';
-import { classLabel, classPeriod, classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
+import { classLabel, type StudyClass } from '@console/lib/classes';
 import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
 import { Button } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
@@ -28,17 +28,16 @@ function regionLabel(key: Crew['region']) {
 
 export function CrewTab({
   crew,
-  capacity,
   classes,
   assign,
   onSaveClass,
   onRemoveClass,
   onAssign,
+  onDirtyChange,
   navigators,
   onToggleNavigator,
 }: {
   crew: Crew[];
-  capacity: number;
   classes: StudyClass[];
   assign: Record<string, string>;
   /** 이 스터디를 맡은 크루. 네비게이터 권한은 여기 있는 사람에게 이 스터디 안에서만 선다. */
@@ -48,6 +47,8 @@ export function CrewTab({
   onSaveClass: (cls: StudyClass) => void;
   onRemoveClass: (classId: string) => void;
   onAssign: (crewId: string, classId: string) => void;
+  /** 반 · 역할에 저장하지 않은 변경이 있는가. 탭을 옮기기 전에 묻는 데 쓴다. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const active = crew;
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -62,6 +63,41 @@ export function CrewTab({
   );
   const filtered = regionFilter !== 'all' || classFilter !== 'all';
   const [editing, setEditing] = useState<StudyClass | undefined>();
+
+  // 반 · 역할은 고친 값을 모았다가 「저장」으로 한 번에 반영한다 — 일정 표와 같다.
+  // 한 칸 바꿀 때마다 저장하면 여러 명을 옮기는 도중의 어중간한 편성이 그대로 남는다.
+  const [draftClass, setDraftClass] = useState<Record<string, string>>({});
+  const [draftNav, setDraftNav] = useState<Record<string, boolean>>({});
+  const classOf = (id: string) => draftClass[id] ?? assign[id];
+  const isNavigator = (id: string) => draftNav[id] ?? navigators.includes(id);
+  const changedIds = new Set([...Object.keys(draftClass), ...Object.keys(draftNav)]);
+  const changed = changedIds.size;
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(changed > 0);
+  }, [changed, onDirtyChange]);
+
+  /** 저장한 값과 같아지면 고친 것에서 뺀다 — 되돌렸는데 「변경 1건」이 남지 않게. */
+  function pickClass(id: string, classId: string) {
+    setSaved(false);
+    setDraftClass((d) => withDraft(d, id, classId === assign[id] ? undefined : classId));
+  }
+  function pickRole(id: string, nav: boolean) {
+    setSaved(false);
+    setDraftNav((d) => withDraft(d, id, nav === navigators.includes(id) ? undefined : nav));
+  }
+  function discard() {
+    setDraftClass({});
+    setDraftNav({});
+  }
+  function save() {
+    // TODO(api): PATCH …/participants/{id}/group · PATCH …/participants/{id}/role — 바뀐 줄만 보낸다
+    for (const [id, classId] of Object.entries(draftClass)) onAssign(id, classId);
+    for (const [id, nav] of Object.entries(draftNav)) if (nav !== navigators.includes(id)) onToggleNavigator(id);
+    discard();
+    setSaved(true);
+  }
 
   return (
     <div className='flex flex-col gap-6'>
@@ -91,14 +127,6 @@ export function CrewTab({
             {classes.map((cls) => (
               <li key={cls.id} className='card flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3'>
                 <span className='text-sm font-bold'>{classLabel(cls)}</span>
-                {/* 일정은 일정 탭에서 정한다 — 여기서는 정해졌는지만 보인다 */}
-                {hasSchedule(cls) ? (
-                  <span className='tnum text-sm text-fg-muted'>
-                    {classTime(cls.rule)} · {classPeriod(cls)}
-                  </span>
-                ) : (
-                  <span className='text-sm text-fg-muted'>일정 미정</span>
-                )}
                 <span className='tnum ml-auto text-sm text-fg-secondary'>
                   {active.filter((c) => assign[c.id] === cls.id).length}명
                 </span>
@@ -136,9 +164,6 @@ export function CrewTab({
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
           <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 text-[15px] font-bold'>
             참여 크루
-            <span className='tnum text-[13px] font-medium text-fg-muted'>
-              {active.length}/{capacity}
-            </span>
           </h2>
           <div data-anno='attendee:3-3' className='ml-auto flex flex-wrap items-center gap-2'>
             <FilterSelect
@@ -187,7 +212,8 @@ export function CrewTab({
             </thead>
             <tbody>
               {shown.map((c) => (
-                <tr key={c.id}>
+                // 고친 줄은 옅게 칠한다 — 저장 전인 것이 한눈에 보인다
+                <tr key={c.id} className={changedIds.has(c.id) ? 'bg-brand-subtle/40' : undefined}>
                   <td className='whitespace-nowrap font-semibold'>{c.name}</td>
                   {/* 디스코드에서 이 사람을 찾을 때 쓰는 이름 — 신청할 때 받은 서버 별명 */}
                   <td data-anno='attendee:3-4' className='whitespace-nowrap text-fg-secondary'>
@@ -197,14 +223,10 @@ export function CrewTab({
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
                     {/* 반 이동 = 이 값 변경 */}
-                    <ClassPick classes={classes} value={assign[c.id]} onChange={(id) => onAssign(c.id, id)} />
+                    <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
                   </td>
                   <td data-anno='attendee:3-2' className='whitespace-nowrap'>
-                    <RolePick
-                      name={c.name}
-                      navigator={navigators.includes(c.id)}
-                      onChange={(nav) => nav !== navigators.includes(c.id) && onToggleNavigator(c.id)}
-                    />
+                    <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
                   </td>
                 </tr>
               ))}
@@ -218,6 +240,21 @@ export function CrewTab({
             </tbody>
           </TableCard>
         </div>
+        {/* 저장 바 — 고친 것이 있을 때만. 표가 길어도 보이게 아래에 붙인다 */}
+        {changed > 0 ? (
+          <div data-anno='attendee:3-5' className='sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-bg py-2'>
+            <Button variant='ghost' size='sm' onClick={discard}>
+              변경 취소
+            </Button>
+            <Button size='sm' onClick={save}>
+              저장
+            </Button>
+          </div>
+        ) : (
+          <p role='status' className='mt-2 min-h-5 text-right text-xs text-fg-muted'>
+            {saved ? '저장했습니다.' : ''}
+          </p>
+        )}
       </section>
 
       <ClassDialog
@@ -269,6 +306,14 @@ function RolePick({
       <option value='navigator'>네비게이터</option>
     </select>
   );
+}
+
+/** 고친 값 한 칸을 넣거나(값) 뺀다(undefined). */
+function withDraft<T>(drafts: Record<string, T>, id: string, value: T | undefined): Record<string, T> {
+  const next = { ...drafts };
+  if (value === undefined) delete next[id];
+  else next[id] = value;
+  return next;
 }
 
 /** 명단 필터. 값이 있으면 테두리로 드러낸다 — 걸러진 채로 명단을 오독하지 않게. */

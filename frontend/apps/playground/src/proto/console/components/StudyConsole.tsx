@@ -63,11 +63,12 @@ const TABS = [
 type TabKey = (typeof TABS)[number]['key'];
 
 /** 저장하지 않은 고침을 들고 있을 수 있는 탭. */
-type DirtyTab = 'schedule' | 'attendance';
+type DirtyTab = 'crew' | 'schedule' | 'attendance';
 
 type LeaveIntent = { kind: 'tab'; tab: TabKey } | { kind: 'href'; href: string } | { kind: 'class'; id: string };
 
 const LEAVE_COPY: Record<DirtyTab, string> = {
+  crew: '저장을 누르지 않으면 고친 반 · 역할이 사라집니다. 나가기 전에 저장해 주세요.',
   schedule: '저장을 누르지 않으면 고친 일정·규칙이 사라집니다. 나가기 전에 저장해 주세요.',
   attendance: '저장을 누르지 않으면 고친 출석이 사라집니다. 나가기 전에 저장해 주세요.',
 };
@@ -95,6 +96,7 @@ export function StudyConsole({ study }: { study: Study }) {
 
   const [tab, setTab] = useState<TabKey>('info');
   const [attendanceDirty, setAttendanceDirty] = useState(false);
+  const [crewDirty, setCrewDirty] = useState(false);
   const [tableDirty, setTableDirty] = useState(false);
   const [rulesDirty, setRulesDirty] = useState(false);
   // 일정 탭은 고칠 곳이 둘이다 — 일정 표와 반 규칙. 어느 쪽이든 저장 전이면 나가기 전에 묻는다.
@@ -105,7 +107,13 @@ export function StudyConsole({ study }: { study: Study }) {
   const [addOnOpen, setAddOnOpen] = useState(false);
   // 저장 전 고침은 보고 있는 탭에만 있다 — 탭을 옮기거나 반을 바꾸면 사라진다.
   const dirtyTab: DirtyTab | null =
-    tab === 'schedule' && scheduleDirty ? 'schedule' : tab === 'attendance' && attendanceDirty ? 'attendance' : null;
+    tab === 'crew' && crewDirty
+      ? 'crew'
+      : tab === 'schedule' && scheduleDirty
+        ? 'schedule'
+        : tab === 'attendance' && attendanceDirty
+          ? 'attendance'
+          : null;
 
   // 스토리 칩을 고르면 그 Story 의 요소가 **보이는 탭**으로 옮겨 준다.
   // 「참석자 목록」을 골랐는데 정보 탭이 떠 있으면 명단 번호가 화면에 없어 대조할 수가 없다.
@@ -211,6 +219,7 @@ export function StudyConsole({ study }: { study: Study }) {
     const intent = leave;
     setLeave(null);
     setAttendanceDirty(false);
+    setCrewDirty(false);
     setTableDirty(false);
     setRulesDirty(false);
     if (intent.kind === 'tab') {
@@ -322,10 +331,10 @@ export function StudyConsole({ study }: { study: Study }) {
         {tab === 'crew' && (
           <CrewTab
             crew={crew}
-            capacity={initial.capacity}
             classes={classes}
             assign={assign}
             onSaveClass={saveClass}
+            onDirtyChange={setCrewDirty}
             onRemoveClass={removeClass}
             onAssign={(crewId, id) => setAssign((a) => ({ ...a, [crewId]: id }))}
             navigators={navigators}
