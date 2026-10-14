@@ -115,7 +115,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
               router.replace(`/${locale}`);
               router.refresh();
             }}
-            className='block w-full px-4 py-2 text-left text-sm font-medium text-red-600 hover:bg-[var(--color-surface-subtle)]'
+            className='block w-full px-4 py-2 text-left text-sm font-medium text-danger-fg hover:bg-[var(--color-surface-subtle)]'
           >
             {locale === 'en' ? 'Log out' : '로그아웃'}
           </button>

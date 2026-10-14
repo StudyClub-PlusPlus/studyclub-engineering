@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react';
 
 import { MarkdownLite } from '@core/components/ApplicationFormUi';
 import { ApplyButton } from '@core/components/ApplyButton';
-import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import type { Locale, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { recruitBadge, studyStartValue, studyTimezoneLabel, toISODate } from '@core/lib/recruit';
 import { getStudyCrew, recruitCapacity, studies as mockStudies } from '@studyclub/mock';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { ArrowLeft, CalendarClock, Globe, Rocket } from 'lucide-react';
 
 import { SPECS } from '@/app/(proto)/proto/core/[locale]/studies/[id]/spec';
