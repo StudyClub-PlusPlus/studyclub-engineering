@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
-import { Pill } from '@/components/Badge';
 import { JoinCta } from '@/components/JoinCta';
+import { Pill } from '@/components/StatusBadge';
 import { getNotices, getSite, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';

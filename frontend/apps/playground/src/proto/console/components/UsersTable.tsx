@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Pagination } from '@console/components/Pagination';
 import { PageHeader, TableCard } from '@console/components/ui';
+import { maskEmail } from '@console/lib/mask';
 import {
   ACCOUNT_ROLES,
   PERMISSIONS,
@@ -11,14 +11,15 @@ import {
   ROLES,
   ROLE_LABEL,
   assignBlockReason,
+  requestRoleChange,
   scopeOf,
   type AccountRole,
   type RoleKey,
   type Scope,
 } from '@console/lib/roles';
 import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
-import { Badge, Modal, type BadgeTone } from '@studyclub/ui';
-import { Check, ChevronDown, Info, Minus } from 'lucide-react';
+import { Badge, Modal, Pagination, toast, type BadgeTone } from '@studyclub/ui';
+import { Check, ChevronDown, Eye, EyeOff, Info, Loader2, Minus } from 'lucide-react';
 
 /** 한 화면에 20명. 스크롤로 다 내리는 것보다 「몇 번째 장을 보고 있는가」가 남는 편이 낫다. */
 const PAGE_SIZE = 20;
@@ -26,6 +27,37 @@ const PAGE_SIZE = 20;
 type RoleFilter = 'all' | RoleKey;
 
 // 순서는 어디서나 같다: 전체 → 캡틴 → 네비게이터 → 크루. `ROLES` 가 그 순서를 소유한다.
+/**
+ * 이메일 칸 — **가린 채로 둔다.**
+ *
+ * 역할을 바꾸러 들어온 화면이라 주소 전체가 필요한 일은 드물다. 늘 펼쳐 두면 화면을 띄워 둔 채
+ * 자리를 비우거나 화면을 공유할 때 수십 명의 주소가 그대로 드러난다. 필요한 사람이 한 줄씩 펼친다.
+ *
+ * 펼친 것은 그 줄에만 남고 다른 줄에 옮겨 가지 않는다 — 한 번 누르면 목록 전체가 열리는 토글을
+ * 두지 않는다. 펼친 줄은 **같은 버튼으로 다시 가린다.**
+ */
+function EmailCell({ email }: { email: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <td className='max-w-0 truncate text-fg-secondary'>
+      <span className='inline-flex items-center gap-1.5'>
+        <span className='tnum' title={shown ? email : undefined}>
+          {shown ? email : maskEmail(email)}
+        </span>
+        <button
+          type='button'
+          onClick={() => setShown((v) => !v)}
+          aria-label={shown ? '전체 주소 가리기' : '전체 주소 보기'}
+          title={shown ? '가리기' : '전체 주소 보기'}
+          className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+        >
+          {shown ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </span>
+    </td>
+  );
+}
+
 /** 계정 권한 색. 캡틴과 크루를 색만으로 가르지 않으므로 이름도 함께 적는다. */
 const ROLE_TONE: Record<AccountRole, BadgeTone> = { captain: 'captain', crew: 'member' };
 
@@ -46,10 +78,13 @@ const ROLE_FILTERS: { value: RoleFilter; label: string }[] = [
 function RoleBadgeSelect({
   role,
   blocked,
+  saving,
   onChange,
 }: {
   role: AccountRole;
   blocked: string | null;
+  /** 저장을 기다리는 중. 배지는 **지금 저장된 값** 그대로 두고 옆에서 돌기만 한다. */
+  saving: boolean;
   onChange: (next: AccountRole) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -87,6 +122,17 @@ function RoleBadgeSelect({
     return (
       <span data-anno='role:1' title={blocked} className='inline-flex cursor-not-allowed opacity-70'>
         {badge}
+      </span>
+    );
+  }
+
+  // 저장을 기다리는 동안에는 다시 고를 수 없다 — 두 번 눌러 두 번 저장되지 않게.
+  // 도는 것 하나면 된다 — 「변경 중」이라고 적으면 줄마다 글이 늘고 배지가 밀린다
+  if (saving) {
+    return (
+      <span data-anno='role:1' className='inline-flex items-center gap-1.5'>
+        {badge}
+        <Loader2 size={13} className='animate-spin text-fg-muted' aria-label='저장 중' />
       </span>
     );
   }
@@ -225,14 +271,56 @@ export function UsersTable() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [page, setPage] = useState(1);
+  // 저장을 기다리는 줄. 그 줄의 배지는 잠기고 옆에서 하나가 돈다
+  const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
+  // 바꾸는 함수가 **지금 값**을 읽어야 한다. 의존성에 넣으면 줄이 바뀔 때마다 함수가 새로 만들어진다
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
 
   // TODO(api): 로그인한 계정 id 로 교체. 자기 권한을 스스로 못 내리게 하는 데 쓴다.
   const actorId = rows.find((r) => r.account === 'captain')?.id ?? '';
   const captainCount = rows.filter((r) => r.account === 'captain').length;
 
-  function setAccount(id: string, account: AccountRole) {
-    setRows((list) => list.map((m) => (m.id === id ? { ...m, account } : m)));
-  }
+  /**
+   * 권한을 바꾼다 — **저장된 뒤에** 화면이 바뀐다.
+   *
+   * 누르자마자 배지를 바꾸면 저장에 실패해도 바뀐 것처럼 남는다. 권한은 지금 저장돼 있는 것이
+   * 보여야 하는 값이라, 기다리는 동안에는 **원래 배지를 그대로 두고** 변경 중이라는 사실만 알린다.
+   */
+  const changeAccount = useCallback(async (id: string, account: AccountRole) => {
+    // 지금과 같은 값을 고른 것은 **아무 일도 아니다** — 보내지도, 바뀌었다고 알리지도 않는다
+    if (rowsRef.current.find((m) => m.id === id)?.account === account) return;
+    setSaving((prev) => new Set([...prev, id]));
+    try {
+      await requestRoleChange(id);
+      setRows((list) => list.map((m) => (m.id === id ? { ...m, account } : m)));
+      // 디스코드 역할은 이 화면이 건드리지 못한다. 바꾼 사람이 그 사실을 바로 알아야 한다.
+      // 무엇으로 바뀌었는지는 배지가 그 자리에서 말하므로 여기서 또 말하지 않는다
+      toast.success('변경 성공. 디스코드 권한은 별도로 변경해야 합니다.', { duration: 6000 });
+    } catch {
+      // 바뀐 것이 없다. 배지는 원래 값 그대로다
+      toast.error(
+        (t) => (
+          <span className='flex items-center gap-3'>
+            권한을 바꾸지 못했습니다. 다시 시도해 주세요.
+            <button
+              type='button'
+              className='shrink-0 font-semibold text-primary-600 underline-offset-2 hover:underline'
+              onClick={() => {
+                toast.dismiss(t.id);
+                void changeAccount(id, account);
+              }}
+            >
+              다시 시도
+            </button>
+          </span>
+        ),
+        { duration: 8000 },
+      );
+    } finally {
+      setSaving((prev) => new Set([...prev].filter((x) => x !== id)));
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -323,7 +411,7 @@ export function UsersTable() {
                   {m.name}
                   {m.status === 'dormant' && <span className='ml-1.5 text-xs text-fg-muted'>휴면</span>}
                 </td>
-                <td className='max-w-0 truncate text-fg-secondary'>{m.email}</td>
+                <EmailCell email={m.email} />
                 <td>
                   <RoleBadgeSelect
                     role={m.account}
@@ -332,7 +420,8 @@ export function UsersTable() {
                       targetRole: m.account,
                       captainCount,
                     })}
-                    onChange={(next) => setAccount(m.id, next)}
+                    saving={saving.has(m.id)}
+                    onChange={(next) => void changeAccount(m.id, next)}
                   />
                 </td>
                 {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
@@ -353,7 +442,7 @@ export function UsersTable() {
         </TableCard>
       </div>
 
-      <Pagination anno='list:4' page={current} total={pageCount} onChange={setPage} />
+      <Pagination data-anno='list:4' className='mt-4' page={current} total={pageCount} onChange={setPage} />
 
       {matrixOpen && <PermissionMatrixDialog onClose={() => setMatrixOpen(false)} />}
     </div>

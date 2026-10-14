@@ -116,7 +116,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
           <a
             key={s.id}
             href={`#${s.id}`}
-            className='inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)]'
+            className='inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:text-[var(--color-fg)]'
           >
             <s.icon size={14} style={{ color: 'var(--color-brand)' }} />
             {t(s.title, locale)}

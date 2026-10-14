@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
-import { AutoTextarea } from '@core/components/AutoTextarea';
 import { RULES_MAX, getRules, saveRules } from '@core/lib/schedule-board';
-import { Button, cx } from '@studyclub/ui';
+import { AutoTextarea, Button, cx } from '@studyclub/ui';
 
 /**
  * 스터디 규칙 (STUDY_GROUP.RULES) — 분반마다 하나.

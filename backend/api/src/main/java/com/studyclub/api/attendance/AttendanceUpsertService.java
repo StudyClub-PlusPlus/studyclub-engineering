@@ -44,7 +44,10 @@ public class AttendanceUpsertService {
         this.studyAttendanceRepository = studyAttendanceRepository;
     }
 
-    /** 권한은 {@code @RequireCaptainOrNavigator(GROUP)} 가 검사한다. */
+    /**
+     * 권한은 호출자(컨트롤러)가 검사한다. 어드민 경로는 {@code @RequireAdmin}, 사용자 경로는 {@code
+     * studyCaptainGuard.assertCaptainOrNavigatorOfGroup} 으로 각각 처리한다.
+     */
     @Transactional
     public void upsert(Long studyId, Long studyGroupId, AttendanceUpsertRequest request) {
         validateStudyExists(studyId);

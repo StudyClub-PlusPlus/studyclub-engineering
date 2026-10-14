@@ -49,7 +49,7 @@ export function LifecycleBadge({ state }: { state: LifecycleState }) {
           <span className='block font-semibold'>{LIFECYCLE_LABEL[state]}</span>
           <span className='block'>{hint.meaning}</span>
           {hint.next && <span className='mt-1 block text-neutral-300'>{hint.next}</span>}
-          {hint.clubNote && <span className='mt-1 block border-t border-white/15 pt-1 text-amber-300'>{hint.clubNote}</span>}
+          {hint.clubNote && <span className='mt-1 block border-t border-white/15 pt-1 text-warning-fg-inverse'>{hint.clubNote}</span>}
         </span>
       )}
     </span>

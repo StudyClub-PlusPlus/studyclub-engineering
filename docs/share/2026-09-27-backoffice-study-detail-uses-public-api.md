@@ -1,6 +1,9 @@
 ---
 상태: 결정됨 (2026-09-29)
 물어볼 사람: —
+반영:
+  - specs/study/spec.md — 됨
+  - 01-planning/stories/study-detail/PRD.md — 됨
 ---
 
 > **2026-09-29 결정 — 질문대로 관리자용 상세 창구를 만들었다.**

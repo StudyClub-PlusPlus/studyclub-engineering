@@ -219,4 +219,7 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 | GET | `/auth/me` | 내 정보 조회 | O |
 | GET | `/api/nicknames/availability?value={nickname}` | 실제 DB의 닉네임 사용 가능 여부 (`{available}`), 온보딩 미완료도 허용 | O |
 | POST | `/accounts/onboarding` | 만 14세 이상 확인 후 가입 완료, 요청·오류 상세는 [온보딩 spec](../../../specs/user-onboarding/spec.md) 참조 | O |
-| GET | `/users` | 유저 목록 (백오피스) | O |
+| GET | `/api/admin/users` | 백오피스 회원 목록 — 역할 탭·검색·페이지, 이메일 마스킹 ([스펙](../../../specs/admin-users/spec.md)) | O (ADMIN) |
+| POST | `/api/admin/users/{accountId}/email-reveals` | 회원 이메일 원본 보기 + 감사 로그 | O (ADMIN) |
+| PATCH | `/api/admin/users/{accountId}/system-role` | 계정 권한 변경 (캡틴 ↔ 크루) + 감사 로그 | O (ADMIN) |
+| GET | `/api/admin/role-permissions` | 역할별 기본 권한표 | O (ADMIN) |

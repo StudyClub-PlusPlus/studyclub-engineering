@@ -54,6 +54,14 @@ export type ScreenSpec = {
    */
   story?: string;
   /**
+   * 이 화면명세를 실어 보낼 PRD 폴더 이름 (`01-planning/stories/<여기>/PRD.md`).
+   *
+   * **설명 보기에 뜨는 것이 곧 기획서다.** 손으로 두 벌 쓰면 한쪽만 고쳐져 화면과 문서가 갈린다.
+   * 이 값을 적어 두면 `pnpm --filter playground export-specs` 가 PRD 의 화면명세 절을 여기서 만들어
+   * 넣는다. 아직 기획서가 없는 프로토는 비워 둔다.
+   */
+  prd?: string;
+  /**
    * 스토리 칩에 적을 짧은 이름.
    *
    * 한 화면에 여러 Story 가 산다. 스터디 상세만 해도 반 편성·출석·수정이 한 지면에 있고,

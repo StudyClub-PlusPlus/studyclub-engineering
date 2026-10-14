@@ -3,6 +3,7 @@
 > ERD: [STUDY_DISCORD_LINK](../../docs/erd/STUDY_DISCORD_LINK.md) · [STUDY](../../docs/erd/STUDY.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
 > 봇 계약: [create-study](../../docs/discord-development-guide/api/create-study.md) · [summary](../../docs/discord-development-guide/api/summary.md) · [common-header](../../docs/discord-development-guide/api/common-header.md)
 > 관련 스펙: [discord-attendance/spec.md](../discord-attendance/spec.md) — 이 테이블을 읽는 쪽
+> Story PRD: [스터디 등록](../../01-planning/stories/study-create/PRD.md) (ST-001) — 등록하면 디스코드 채널이 따라 생긴다
 > 생성일: 2026-09-29
 > 상태: 구현완료
 > 이슈: Notion 134 「[기능] Discord DB Table in BE」 남은 절반 (테이블은 #143 에서 생겼다)

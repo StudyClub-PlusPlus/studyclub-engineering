@@ -129,7 +129,7 @@ export function BlockView({ block, locale }: { block: Block; locale: Locale }) {
       return (
         <p
           className='rounded-card border-l-2 bg-(--color-surface-subtle) py-3 pl-4 pr-4 text-[14px] leading-relaxed text-(--color-fg-muted)'
-          style={{ borderLeftColor: 'var(--color-border-strong)' }}
+          style={{ borderLeftColor: 'var(--color-border)' }}
         >
           {lx(block.text, locale)}
         </p>

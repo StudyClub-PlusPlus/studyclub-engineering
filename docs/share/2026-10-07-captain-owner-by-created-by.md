@@ -1,6 +1,10 @@
 ---
 상태: 결정됨
 물어볼 사람: 기획
+반영:
+  - POL-0001 — 됨
+  - specs/my-studies · study-group · admin-users — 됨
+  - specs/study-application/spec.md — 일부 (「신청 처리」가 아직 "생성 시 명부에 등록되면"이라고 적는다)
 ---
 
 # 담당 캡틴은 「스터디를 만든 사람」 칸으로 판정하고, 명부에는 반 편성 때 들어간다

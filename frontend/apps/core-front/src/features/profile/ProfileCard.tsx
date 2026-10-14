@@ -19,6 +19,7 @@ import {
   useUpdateProfile,
   type MarketingConsent,
 } from '@/features/profile/queries';
+import { track } from '@/lib/analytics';
 import { checkNicknameAvailability } from '@/lib/api/nicknames';
 import type { OnboardingAccount } from '@/lib/api/onboarding';
 import { logout, setUser, type SessionUser } from '@/lib/auth';
@@ -168,11 +169,7 @@ export function ProfileCard({
   // 저장 중에는 입력칸과 취소를 잠근다 — 취소한 뒤 다시 연 편집을 먼저 보낸 저장 응답이 닫아 버리면 안 된다
   const saving = updateProfile.isPending;
   const blocked =
-    composing ||
-    Boolean(nicknameMessage) ||
-    nickStatus === 'taken' ||
-    nickStatus === 'checking' ||
-    saving;
+    composing || Boolean(nicknameMessage) || nickStatus === 'taken' || nickStatus === 'checking' || saving;
 
   async function openEditor() {
     setProblem(null);
@@ -245,7 +242,12 @@ export function ProfileCard({
       return;
     }
     try {
-      applySaved(toSessionUser(await updateProfile.mutateAsync(payload)));
+      const result = await updateProfile.mutateAsync(payload);
+      const changedFields: string[] = [];
+      if (!isSameNickname(values.nickname, user.nickname)) changedFields.push('nickname');
+      if (values.timeZone !== user.timeZone) changedFields.push('timeZone');
+      track({ name: 'My Profile Updated', props: { changed_fields: changedFields, new_region: values.timeZone } });
+      applySaved(toSessionUser(result));
     } catch (err) {
       handleSaveError(err);
     }
@@ -308,7 +310,7 @@ export function ProfileCard({
             disabled={opening}
             title='내 정보 수정'
             aria-label='내 정보 수정'
-            className='grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border-strong text-fg-secondary transition-colors hover:bg-surface-2 hover:text-fg'
+            className='grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border text-fg-secondary transition-colors hover:border-border-interactive hover:bg-surface-2 hover:text-fg'
           >
             <Pencil size={15} />
           </button>

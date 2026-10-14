@@ -17,7 +17,7 @@ export { Card } from './Card';
 export type { CardProps } from './Card';
 
 export { FieldShell, Input, Select, Textarea } from './Field';
-export type { FieldShellProps, InputProps, SelectProps, TextareaProps } from './Field';
+export type { FieldShellProps, InputProps, InputSize, SelectProps, SelectSize, TextareaProps } from './Field';
 
 export { FilterChip } from './Chip';
 export type { FilterChipProps } from './Chip';
@@ -65,4 +65,17 @@ export type { SegmentedProps, SegmentedOption } from './Segmented';
 
 export { Pagination } from './Pagination';
 export type { PaginationProps } from './Pagination';
+
+export { AutoTextarea } from './AutoTextarea';
+export type { AutoTextareaProps } from './AutoTextarea';
+
+export { MarkdownLite } from './MarkdownLite';
+
+export { HotBadge } from './HotBadge';
+
+export { DiscordGlyph } from './DiscordGlyph';
+
+export { StudyThumb, categoryMeta, categoryGradient } from './StudyThumb';
+export type { StudyThumbProps } from './StudyThumb';
+
 

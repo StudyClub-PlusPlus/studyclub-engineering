@@ -39,7 +39,7 @@ export function ApplyDiscordGate({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={linking ? () => {} : onClose}
       title={t({ ko: '디스코드 연동', en: 'Connect Discord' }, locale)}
       footer={
         <>

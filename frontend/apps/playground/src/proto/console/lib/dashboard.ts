@@ -26,8 +26,6 @@ import {
 /** 추세 구간. 12주보다 짧으면 계절을, 길면 최근 변화를 못 본다. */
 export const TREND_WEEKS = 12;
 
-/** 마감 임박 기준. 이 안에 들면 이번 주에 손을 써야 한다. */
-export const DEADLINE_SOON_DAYS = 7;
 
 /** 사분면이 미리 보여주는 행 수. 넘으면 「외 N개」로 접는다. */
 export const BOARD_PREVIEW = 4;
