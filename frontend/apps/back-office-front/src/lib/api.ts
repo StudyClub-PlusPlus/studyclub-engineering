@@ -82,22 +82,25 @@ function mapToStudy(api: ApiStudy): Study {
       status: api.recruitStatus === 'RECRUITING' ? 'open' : 'closed',
       form_url: undefined,
       start: api.recruitmentStartAt?.slice(0, 10),
-      deadline: api.recruitDeadlineAt?.slice(0, 10),
+      // 시각까지 둔다 — 모집 마감순은 같은 날 안에서도 마감 시각으로 가른다(서버 정렬과 같게). 날짜만 쓰는 곳은 toISODate 로 자른다
+      deadline: api.recruitDeadlineAt ?? undefined,
       capacity: api.recruitmentCapacity ?? undefined,
     },
   };
 }
 
-export async function fetchStudies(): Promise<Study[]> {
-  // 쿠키를 통째로 넘기지 않는다 — 사이트(sc_) 쿠키도 같이 실려 API 가 다른 앱의 계정으로 판단한다(2026-10-16 stage /studies 403).
-  // 백오피스 액세스 토큰만 Authorization 으로 보낸다 (core-front bff 와 같은 방식)
-  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
+/** `GET /api/admin/studies` 가 한 번에 주는 최대 행 수 — 서버가 1~100 만 받는다 (specs/dashboard 4.4). */
+const PAGE_LIMIT = 100;
+/** 나눠 받는 횟수 상한 — total 이 요청 사이에 늘어나도 끝없이 돌지 않게. 1만 건이면 넉넉하다. */
+const MAX_PAGES = 100;
+
+async function fetchStudyPage(token: string | undefined, offset: number): Promise<ApiPage> {
   const maxRetries = 2;
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     let response: Response;
     try {
-      response = await fetch(API_BASE + '/api/admin/studies?offset=0&limit=1000', {
+      response = await fetch(API_BASE + '/api/admin/studies?offset=' + offset + '&limit=' + PAGE_LIMIT, {
         cache: 'no-store',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -118,9 +121,29 @@ export async function fetchStudies(): Promise<Study[]> {
       throw new Error('스터디 목록을 불러오지 못했습니다. (' + response.status + ')');
     }
 
-    const page = (await response.json()) as ApiPage;
-    return page.items.map(mapToStudy);
+    return (await response.json()) as ApiPage;
   }
 
   throw new Error('스터디 목록을 불러오지 못했습니다.');
+}
+
+/**
+ * 스터디 관리 목록 — 전부 받아 화면이 거르고 정렬한다(StudiesTable).
+ * 서버는 한 번에 100건까지만 주므로 total 까지 나눠 받는다. 요청 사이에 행이 밀려 같은 스터디가
+ * 두 번 오면 하나만 남긴다.
+ */
+export async function fetchStudies(): Promise<Study[]> {
+  // 쿠키를 통째로 넘기지 않는다 — 사이트(sc_) 쿠키도 같이 실려 API 가 다른 앱의 계정으로 판단한다(2026-10-16 stage /studies 403).
+  // 백오피스 액세스 토큰만 Authorization 으로 보낸다 (core-front bff 와 같은 방식)
+  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
+  const byId = new Map<number, ApiStudy>();
+
+  for (let pageIndex = 0; pageIndex < MAX_PAGES; pageIndex += 1) {
+    const page = await fetchStudyPage(token, pageIndex * PAGE_LIMIT);
+    for (const item of page.items) byId.set(item.studyId, item);
+    const received = pageIndex * PAGE_LIMIT + page.items.length;
+    if (page.items.length < PAGE_LIMIT || received >= page.total) break;
+  }
+
+  return [...byId.values()].map(mapToStudy);
 }

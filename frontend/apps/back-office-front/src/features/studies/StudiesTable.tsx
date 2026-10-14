@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  CATEGORY_DISPLAY,
   STUDY_CATEGORIES,
   getStudyCrew,
   publishState,
@@ -70,6 +72,28 @@ const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
   { value: 'draft', label: '미공개' },
 ];
 
+/**
+ * 정렬. `all` 은 이 목록의 기본 순서(모집중 먼저, 마감 빠른 순)다. 나머지는 대시보드 「전체 보기」·카테고리 행이
+ * 여는 순서와 같다 (specs/dashboard 4.4 — TITLE_ASC · RECRUITMENT · ID_DESC). 보드에 보인 4건이 이 목록의 첫 4건이어야 한다.
+ */
+type SortOrder = 'all' | 'title' | 'recruitment' | 'id';
+
+const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
+  { value: 'all', label: '기본 순서' },
+  { value: 'title', label: '이름순' },
+  { value: 'recruitment', label: '모집 마감순' },
+  { value: 'id', label: '최근 등록순' },
+];
+
+/** 모집 마감순은 「개설」 스터디에만 뜻이 있다 — 다른 상태면 최근 등록순으로 바꾼다 (spec 4.4). */
+function sortOptionsFor(status: StudyStatusFilter) {
+  return status === 'OPEN' ? SORT_OPTIONS : SORT_OPTIONS.filter((o) => o.value !== 'recruitment');
+}
+
+function effectiveSort(sort: SortOrder, status: StudyStatusFilter): SortOrder {
+  return sort === 'recruitment' && status !== 'OPEN' ? 'id' : sort;
+}
+
 /** URL 쿼리 — `?category=…&status=OPEN&recruit=apply&noForm=1&page=2`. 기본값은 싣지 않는다. */
 const URL_DEFAULTS = {
   q: '',
@@ -79,6 +103,8 @@ const URL_DEFAULTS = {
   recruit: 'all',
   publish: 'all',
   noForm: '',
+  sort: 'all',
+  view: '',
   page: '1',
 };
 const URL_ALLOWED = {
@@ -88,6 +114,79 @@ const URL_ALLOWED = {
   recruit: RECRUIT_OPTIONS.map((o) => o.value),
   publish: PUBLISH_OPTIONS.map((o) => o.value),
   noForm: ['1'],
+  sort: SORT_OPTIONS.map((o) => o.value),
+};
+
+/**
+ * 대시보드에서 들어오는 주소 (specs/dashboard 3 · 6 · 4.4). `?view=ongoing&category=AI_ML` 처럼 보기와
+ * 카테고리 **코드**를 받는다. 이 목록의 필터·정렬로 바꿔 주소를 다시 쓰고, 나머지 조건(검색·종류·모집·신청 폼)은 비운다.
+ * 모르는 view 면 null, 모르는 카테고리 코드면 카테고리를 걸지 않는다.
+ *
+ * | view | 필터 · 정렬 |
+ * |---|---|
+ * | ongoing | 진행 중 · 이름순 (카테고리가 있으면 + 공개) |
+ * | recruitment | 개설 · 모집 마감순 |
+ * | cumulative | 공개 · 최근 등록순 (카테고리 행에서만) |
+ */
+export function entryFilters(view: string | null, categoryCode: string | null): Partial<typeof URL_DEFAULTS> | null {
+  if (view !== 'ongoing' && view !== 'recruitment' && view !== 'cumulative') return null;
+  const category = (categoryCode && CATEGORY_DISPLAY[categoryCode]) || 'all';
+  const reset = { view: '', q: '', kind: 'all', recruit: 'all', noForm: '', page: '1', category };
+  if (view === 'ongoing') {
+    return { ...reset, status: 'ONGOING', publish: category === 'all' ? 'all' : 'live', sort: 'title' };
+  }
+  if (view === 'recruitment') return { ...reset, status: 'OPEN', publish: 'all', sort: 'recruitment' };
+  return { ...reset, status: 'all', publish: 'live', sort: 'id' };
+}
+
+/** 문자열 비교 — 서버 정렬(제목 → 기수 ID)과 같은 결과가 나오도록 로캘을 타지 않는다. */
+function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function byTitle(a: Study, b: Study): number {
+  return compareText(tx(a.title), tx(b.title)) || a.study_id - b.study_id;
+}
+
+/** 마감 시각(ms). 없거나 읽을 수 없으면 맨 끝으로 보낸다. */
+function deadlineTime(study: Study): number {
+  const raw = study.recruitment?.deadline;
+  const at = raw ? Date.parse(raw) : NaN;
+  if (!Number.isNaN(at)) return at;
+  const date = toISODate(raw);
+  const day = date ? Date.parse(date) : NaN;
+  return Number.isNaN(day) ? Number.POSITIVE_INFINITY : day;
+}
+
+/**
+ * 모집 마감순 (spec 3-2 · 4.4 RECRUITMENT). 모집중을 먼저, 마감을 나중에 — 모집 상태는 서버 판정
+ * (`recruitStatus` → `recruitment.status`) 그대로 쓴다. 각 묶음은 마감 시각이 빠른 순, 마감이 없으면 끝.
+ */
+function byRecruitment(a: Study, b: Study): number {
+  const ra = a.recruitment?.status === 'open' ? 0 : 1;
+  const rb = b.recruitment?.status === 'open' ? 0 : 1;
+  if (ra !== rb) return ra - rb;
+  const da = deadlineTime(a);
+  const db = deadlineTime(b);
+  if (da !== db) return da < db ? -1 : 1;
+  return byTitle(a, b);
+}
+
+/** 이 목록의 기본 순서 — 운영자가 손댈 것부터: 모집중 먼저, 그 안에서 마감이 빠른 순. 마감일 없는 상시 모집은 모집중의 끝. */
+function byDefault(a: Study, b: Study): number {
+  const ra = recruitState(a) === 'apply' ? 0 : 1;
+  const rb = recruitState(b) === 'apply' ? 0 : 1;
+  if (ra !== rb) return ra - rb;
+  const da = toISODate(a.recruitment?.deadline) ?? '9999-99-99';
+  const db = toISODate(b.recruitment?.deadline) ?? '9999-99-99';
+  return da.localeCompare(db);
+}
+
+const COMPARATOR: Record<SortOrder, (a: Study, b: Study) => number> = {
+  all: byDefault,
+  title: byTitle,
+  recruitment: byRecruitment,
+  id: (a, b) => b.study_id - a.study_id,
 };
 
 const STUDY_STATUS_GUIDE = [
@@ -269,13 +368,24 @@ function displayDate(value?: string) {
 export function StudiesTable({ studies }: { studies: Study[] }) {
   // 조건·페이지는 URL 이 정본이다 — 운영 페이지에 들어갔다 뒤로 와도 걸어 둔 조건이 그대로다.
   // 조건을 바꾸면 페이지는 1로 돌아간다(같은 set 에서 함께 바꾼다).
-  const [filters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const [urlFilters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  // 대시보드에서 `?view=…` 로 들어왔으면 그 조건으로 바로 그리고(깜빡임 없이), 주소는 이 목록의 필터로 바꿔 쓴다
+  const searchParams = useSearchParams();
+  const entry = useMemo(
+    () => entryFilters(searchParams.get('view'), searchParams.get('category')),
+    [searchParams],
+  );
+  useEffect(() => {
+    if (entry) setFilters(entry);
+  }, [entry, setFilters]);
+  const filters = entry ? { ...urlFilters, ...entry } : urlFilters;
   const category = filters.category;
   const studyStatus = filters.status as StudyStatusFilter;
   const kind = filters.kind as KindFilter;
   const recruit = filters.recruit as RecruitFilter;
   const publish = filters.publish as PublishFilter;
   const noFormOnly = filters.noForm === '1';
+  const sort = effectiveSort(filters.sort as SortOrder, studyStatus);
   const page = pageOf(filters.page);
   const setPage = (next: number) => setFilters({ page: String(next) });
   // 검색 입력칸 글자는 화면 state — 목록은 바로 거르고, 멈추면(300ms) URL 에 쓴다
@@ -316,18 +426,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           }
           return true;
         })
-        // 운영자가 손댈 것부터 위로: 모집중 먼저, 그 안에서 마감이 임박한 순.
-        // 마감일 없는 상시 모집은 급할 게 없으므로 모집중 그룹의 끝.
-        .sort((a, b) => {
-          const ra = recruitState(a) === 'apply' ? 0 : 1;
-          const rb = recruitState(b) === 'apply' ? 0 : 1;
-          if (ra !== rb) return ra - rb;
-          const da = toISODate(a.recruitment?.deadline) ?? '9999-99-99';
-          const db = toISODate(b.recruitment?.deadline) ?? '9999-99-99';
-          return da.localeCompare(db);
-        })
+        .sort(COMPARATOR[sort])
     );
-  }, [studies, query, category, studyStatus, kind, recruit, publish, noFormOnly]);
+  }, [studies, query, category, studyStatus, kind, recruit, publish, noFormOnly, sort]);
 
   const pageSize = 20;
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -370,7 +471,8 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         />
         <FilterSelect
           value={studyStatus}
-          onChange={(v) => setFilters({ status: v, page: '1' })}
+          // 모집 마감순은 「개설」에만 뜻이 있다 — 상태를 바꾸면 최근 등록순으로 (spec 4.4)
+          onChange={(v) => setFilters({ status: v, sort: effectiveSort(filters.sort as SortOrder, v), page: '1' })}
           options={STATUS_OPTIONS}
         />
         <FilterSelect value={kind} onChange={(v) => setFilters({ kind: v, page: '1' })} options={KIND_OPTIONS} />
@@ -404,6 +506,11 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           </span>
           신청 폼 없는 것만
         </label>
+        <FilterSelect
+          value={sort}
+          onChange={(v) => setFilters({ sort: v, page: '1' })}
+          options={sortOptionsFor(studyStatus)}
+        />
         <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
       </div>
 
