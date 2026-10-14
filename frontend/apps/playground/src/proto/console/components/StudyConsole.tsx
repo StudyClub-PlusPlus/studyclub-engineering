@@ -6,14 +6,14 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
-import { ClassPicker } from '@console/components/ClassPicker';
+import { ALL_CLASSES, ClassPicker } from '@console/components/ClassPicker';
 import { ClassScheduleDialog } from '@console/components/ClassScheduleDialog';
 import { CrewTab } from '@console/components/CrewTab';
 import { ResultsTab } from '@console/components/ResultsTab';
 import { StudyCreateDialog } from '@console/components/StudyCreateDialog';
 import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS } from '@console/lib/class-view';
-import { classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
+import { classLabel, classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
 import { applyRule, type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
@@ -97,6 +97,8 @@ export function StudyConsole({ study }: { study: Study }) {
   const [tab, setTab] = useState<TabKey>('info');
   const [attendanceDirty, setAttendanceDirty] = useState(false);
   const [crewDirty, setCrewDirty] = useState(false);
+  // 출석 탭 「전체」 — 반별 출석부를 이어 본다. 보기 전용이고, 고치려면 반을 고른다
+  const [attendanceAll, setAttendanceAll] = useState(false);
   const [tableDirty, setTableDirty] = useState(false);
   const [rulesDirty, setRulesDirty] = useState(false);
   // 일정 탭은 고칠 곳이 둘이다 — 일정 표와 반 규칙. 어느 쪽이든 저장 전이면 나가기 전에 묻는다.
@@ -189,6 +191,17 @@ export function StudyConsole({ study }: { study: Study }) {
     navigators,
   });
 
+  /** 출석 탭의 반 칩 — 「전체」면 보기 전용 모아 보기, 반이면 그 반 출석부. */
+  function requestAttendanceClass(id: string) {
+    if (id === ALL_CLASSES) {
+      if (dirtyTab) setLeave({ kind: 'class', id });
+      else setAttendanceAll(true);
+      return;
+    }
+    setAttendanceAll(false);
+    requestClass(id);
+  }
+
   function requestClass(id: string) {
     if (id === classId) return;
     if (dirtyTab) {
@@ -227,7 +240,8 @@ export function StudyConsole({ study }: { study: Study }) {
       return;
     }
     if (intent.kind === 'class') {
-      setClassId(intent.id);
+      if (intent.id === ALL_CLASSES) setAttendanceAll(true);
+      else setClassId(intent.id);
       return;
     }
     if (/^https?:\/\//.test(intent.href)) {
@@ -418,13 +432,60 @@ export function StudyConsole({ study }: { study: Study }) {
               </Button>
             </div>
           ))}
-        {tab === 'attendance' && (
+        {tab === 'attendance' && attendanceAll && classes.length > 1 && (
+          <div data-anno='attendance:10'>
+            <ClassPicker
+              classes={classes}
+              classId={ALL_CLASSES}
+              onClass={requestAttendanceClass}
+              anno='attendance:0'
+              withAll
+            />
+            <p className='mb-4 text-sm text-fg-muted'>
+              반마다 회차가 달라 출석부를 반별로 이어 보여 줍니다. 출석을 고치려면 위에서 반을 고르세요.
+            </p>
+            <div className='flex flex-col gap-8'>
+              {classes.map((cls) => {
+                const v = classView({
+                  study,
+                  cls,
+                  base: meetings[cls.id] ?? [],
+                  crew: active.filter((c) => assign[c.id] === cls.id),
+                  navigators,
+                });
+                if (!v) return null;
+                return (
+                  <section key={cls.id}>
+                    <h3 className='mb-2 text-[15px] font-bold'>{classLabel(cls)}</h3>
+                    <AttendanceTab
+                      study={study}
+                      crew={v.crew}
+                      classes={[cls]}
+                      classId={cls.id}
+                      onClass={() => {}}
+                      meetings={v.meetings}
+                      attendance={attendance}
+                      onSave={saveAttendance}
+                      onGoCrew={() => requestTab('crew')}
+                      readOnly
+                      presentersOf={v.book.presentersOf}
+                      notCounted={v.book.notCounted}
+                      headOf={v.book.headOf}
+                    />
+                  </section>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {tab === 'attendance' && !(attendanceAll && classes.length > 1) && (
           <AttendanceTab
             study={study}
             crew={view?.crew ?? []}
             classes={classes}
             classId={classId}
-            onClass={requestClass}
+            onClass={requestAttendanceClass}
+            withAll
             meetings={view?.meetings ?? []}
             attendance={attendance}
             onSave={saveAttendance}

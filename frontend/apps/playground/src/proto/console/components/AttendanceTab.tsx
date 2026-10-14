@@ -208,6 +208,7 @@ export function AttendanceTab({
   title,
   toolbar,
   whenOf,
+  withAll = false,
 }: {
   study: Study;
   /** 이름 칸에 쓰는 것만 받는다 — 사용자 사이트는 명부 밖의 「나」도 넣는다. */
@@ -238,6 +239,8 @@ export function AttendanceTab({
   onWithdraw?: (crewIds: string[]) => void | Promise<void>;
   startAt?: string;
   title?: string;
+  /** 반 칩 맨 앞에 「전체」 — 누르면 `onClass('all')`. 백오피스 출석 탭만. */
+  withAll?: boolean;
   toolbar?: ReactNode;
   whenOf?: (meeting: StudyMeeting) => { date: string; time: string };
 }) {
@@ -309,7 +312,9 @@ export function AttendanceTab({
     });
     const head = meetings.find((s) => s.id === meetingId);
     const label = BULK_OPTIONS.find((o) => o.value === bulkStatus)?.label ?? '';
-    setAnnounce(`${selected.length}명의 ${head ? (headOf ? headOf(head) : `${head.no}회`) : ''} 칸을 ${label}(으)로 바꿨습니다. 저장해야 반영됩니다.`);
+    setAnnounce(
+      `${selected.length}명의 ${head ? (headOf ? headOf(head) : `${head.no}회`) : ''} 칸을 ${label}(으)로 바꿨습니다. 저장해야 반영됩니다.`,
+    );
   }
 
   /** 고른 사람을 「중단 예정」으로 — 아직 반영하지 않는다. 저장할 때 확인 창을 거친다. */
@@ -373,7 +378,9 @@ export function AttendanceTab({
     if (ids.length > 0) await onWithdraw?.(ids);
     setToWithdraw(new Set());
     setSaving(false);
-    const parts = [pending > 0 && `출석 ${pending}칸을 저장`, ids.length > 0 && `${ids.length}명의 참여를 중단`].filter(Boolean);
+    const parts = [pending > 0 && `출석 ${pending}칸을 저장`, ids.length > 0 && `${ids.length}명의 참여를 중단`].filter(
+      Boolean,
+    );
     setAnnounce(`${parts.join('하고 ')}했습니다.`);
   }
 
@@ -402,7 +409,7 @@ export function AttendanceTab({
 
   return (
     <div>
-      <ClassPicker classes={classes} classId={classId} onClass={onClass} anno='attendance:0' />
+      <ClassPicker classes={classes} classId={classId} onClass={onClass} anno='attendance:0' withAll={withAll} />
 
       {meetings.length === 0 ? (
         // 반은 있는데 회차가 없다 — 회차는 일정 탭에서 만든다. 반 고르기는 위에 남겨 다른 반으로 옮길 수 있게 한다.
@@ -446,7 +453,11 @@ export function AttendanceTab({
                     <span className='flex items-center gap-3'>
                       {selecting && (
                         <span data-anno='book:3-7' className='flex'>
-                          <SelectAll checked={allPicked} partial={selected.length > 0 && !allPicked} onChange={pickAll} />
+                          <SelectAll
+                            checked={allPicked}
+                            partial={selected.length > 0 && !allPicked}
+                            onChange={pickAll}
+                          />
                         </span>
                       )}
                       크루
