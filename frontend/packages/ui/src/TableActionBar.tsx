@@ -13,6 +13,7 @@ import { cx } from './cx';
  *
  * 선택 줄과 저장 줄을 따로 쌓지 않는다 — 두 줄이면 어느 버튼이 무엇에 걸리는지 흐려진다.
  * 배경은 페이지와 같은 색 하나뿐이다(스크롤할 때 표가 비치지 않게). 띠 · 테두리 · 그림자를 넣지 않는다.
+ * 붙는 높이는 CSS 변수 `--table-action-bar-bottom`(기본 0) — 화면 아래에 다른 고정 요소가 있는 곳(playground 의 「설명 보기」)만 올린다.
  */
 export interface TableActionBarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
   /** 왼쪽 — 고른 것에 하는 일. 고를 수 없는 표면 비운다. */
@@ -27,7 +28,10 @@ export function TableActionBar({ selection, save, className, ...rest }: TableAct
       role='region'
       aria-label='표 작업'
       {...rest}
-      className={cx('sticky bottom-0 z-10 flex flex-wrap items-center gap-2 bg-bg py-2', className)}
+      className={cx(
+        'sticky bottom-[var(--table-action-bar-bottom,0px)] z-10 flex flex-wrap items-center gap-2 bg-bg py-2',
+        className,
+      )}
     >
       {selection && <div className='flex flex-wrap items-center gap-2'>{selection}</div>}
       {save && <div className='ml-auto flex items-center gap-2'>{save}</div>}
