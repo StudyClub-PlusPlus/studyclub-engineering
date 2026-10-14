@@ -7,9 +7,9 @@
     "frontend/apps/playground/src/proto/core/components/StudyCard.tsx"
   ],
   "palette": {
-    "core-front": 2,
-    "back-office-front": 8,
-    "playground/proto": 3,
+    "core-front": 0,
+    "back-office-front": 2,
+    "playground/proto": 1,
     "packages/ui": 0
   }
 }

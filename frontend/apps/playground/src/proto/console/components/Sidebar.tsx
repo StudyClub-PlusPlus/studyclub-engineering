@@ -90,7 +90,7 @@ export function Sidebar() {
               type='button'
               onClick={handleLogout}
               title='로그아웃'
-              className='grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--color-fg-muted)] transition-colors hover:bg-[var(--color-surface-subtle)] hover:text-red-600'
+              className='grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--color-fg-muted)] transition-colors hover:bg-[var(--color-surface-subtle)] hover:text-danger-fg'
             >
               <LogOut size={15} />
             </button>
