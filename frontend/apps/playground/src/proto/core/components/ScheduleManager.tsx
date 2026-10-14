@@ -261,6 +261,26 @@ export function ScheduleManager({
             onChange={setZone}
           />
           {canEdit && (
+            // 삭제는 늘 보인다 — 체크해야 나타나면 지우는 방법을 찾을 수 없다. 고르기 전에는 잠겨 있고 이유를 말한다
+            <span data-anno='schedule:3-7' className='flex items-center gap-2'>
+              {picked.length > 0 && (
+                <span className='tnum text-sm font-semibold text-fg' aria-live='polite'>
+                  {picked.length}개 선택
+                </span>
+              )}
+              <Button
+                size='sm'
+                variant='secondary'
+                disabled={picked.length === 0}
+                title={picked.length === 0 ? '지울 회차를 왼쪽 체크박스로 고르세요' : undefined}
+                onClick={() => setBulkConfirm(true)}
+                className='border-error-600 bg-transparent text-error-700 hover:border-error-700 hover:bg-error-50'
+              >
+                삭제
+              </Button>
+            </span>
+          )}
+          {canEdit && (
             <span data-anno='schedule:2'>
               <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
                 회차 추가
@@ -475,28 +495,6 @@ export function ScheduleManager({
       )}
 
       {/* 결정을 묻는 모달 — 취소가 기본 포커스. Enter 로 지워지면 안 된다 (POL-0008) */}
-      {picked.length > 0 && (
-        // 고른 회차가 있을 때만 — 출석부 「선택한 크루 처리」와 같은 자리
-        <div
-          data-anno='schedule:3-7'
-          role='region'
-          aria-label='선택한 회차 처리'
-          className='sticky bottom-12 z-10 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-3 py-2 shadow-sm'
-        >
-          <span className='text-sm font-semibold text-fg'>선택한 {picked.length}회차</span>
-          <Button
-            size='sm'
-            variant='secondary'
-            onClick={() => setBulkConfirm(true)}
-            className='border-error-600 bg-transparent text-error-700 hover:border-error-700 hover:bg-error-50'
-          >
-            삭제
-          </Button>
-          <Button size='sm' variant='ghost' className='ml-auto' onClick={() => setChecked(new Set())}>
-            선택 해제
-          </Button>
-        </div>
-      )}
 
       {/* 결정을 묻는 모달 — 취소가 기본 포커스. Enter 로 지워지면 안 된다 (POL-0008). 회차는 체크박스로 골라서만 지운다 */}
       <Modal
