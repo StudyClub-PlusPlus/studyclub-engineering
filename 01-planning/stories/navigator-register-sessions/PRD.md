@@ -2,6 +2,8 @@
 
 기준 프로토타입: 스터디 일정 — 일정 · 출석부 (playground 사용자 사이트 · 내 스터디 → 스터디 일정)
 
+관련 결정: [09-30 스터디 상세가 디스코드·자료실 링크를 누구에게나 준다](../../../docs/share/2026-09-30-study-detail-private-urls.md) · [10-02 네비게이터의 회차 등록](../../../docs/share/2026-10-02-study-meeting-decisions.md) · [10-05 구글 시트 출석부를 웹 「스터디 일정」으로](../../../docs/share/2026-10-05-study-schedule-board.md) · [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)
+
 화면 캡처 (2026-10-06): [내 스터디](assets/1-my-studies.jpg) · [네비게이터 일정](assets/2-navigator-schedule.jpg) · [네비게이터 출석부](assets/3-navigator-attendance.jpg) · [크루 일정](assets/4-crew-schedule.jpg) · [크루 출석부](assets/5-crew-attendance.jpg)
 
 지금까지 스터디마다 구글 시트로 쓰던 출석부(스터디 시간 · 네비게이터 · 일정표 · 출석 체크 · 스터디 규칙)를 웹으로 옮긴다.

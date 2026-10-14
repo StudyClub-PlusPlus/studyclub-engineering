@@ -2,6 +2,8 @@
 
 기준 프로토타입: 스터디 일정 — 출석부 탭, 캡틴·네비게이터로 볼 때 (playground 사용자 사이트 · 내 스터디 → 스터디 일정 → 출석부)
 
+관련 결정: [10-05 출석률 집계에서 하차·탈퇴를 다루는 방식](../../../docs/share/2026-10-05-attendance-withdrawn-logic.md)
+
 화면 캡처 (2026-10-06): [네비게이터 출석부](../navigator-register-sessions/assets/3-navigator-attendance.jpg)
 
 ## 1. 기본설명

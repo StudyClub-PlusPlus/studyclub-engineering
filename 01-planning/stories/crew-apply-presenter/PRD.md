@@ -2,6 +2,8 @@
 
 기준 프로토타입: 스터디 일정 — 일정 탭, 크루로 볼 때 (playground 사용자 사이트 · 내 스터디 → 스터디 일정)
 
+관련 결정: [10-05 구글 시트 출석부를 웹 「스터디 일정」으로](../../../docs/share/2026-10-05-study-schedule-board.md)
+
 화면 캡처 (2026-10-06): [크루 일정](../navigator-register-sessions/assets/4-crew-schedule.jpg)
 
 ## 1. 기본설명

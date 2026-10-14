@@ -2,6 +2,8 @@
 
 기준 프로토타입: 내 스터디 (playground 사용자 사이트 · 참여 모음)
 
+관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)
+
 ## 1. 기본설명
 
 · **배경**

@@ -2,6 +2,8 @@
 
 기준 프로토타입: 스터디 신청 (playground 사용자 사이트 · 상세의 신청하기)
 
+관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)
+
 > 갱신: 2026-09-22 — 신청하기·찜은 목록에서 뺐다. 목록은 둘러보기 전용, 신청은 상세에서만 한다. [crew-browse-studies](../crew-browse-studies/PRD.md) 참고
 
 ## 1. 기본설명
