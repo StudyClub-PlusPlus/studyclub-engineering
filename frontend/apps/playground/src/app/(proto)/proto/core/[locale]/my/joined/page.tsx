@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { SegmentTabs } from '@core/components/SegmentTabs';
-import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { meetingWindow, meetingsOf } from '@core/lib/attendance';
 import { bookScore, myAttendanceBook, type MyAttendanceBook } from '@core/lib/attendance-book';
 import { getUser } from '@core/lib/auth';
@@ -31,6 +30,7 @@ import {
 import { getApplications, getRegion } from '@core/lib/me';
 import { SCHEDULE_ROLE_LABEL, isKickoff, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Badge, Button, Card, EmptyState, Select, cx } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 

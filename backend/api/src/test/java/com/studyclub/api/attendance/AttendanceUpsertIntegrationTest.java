@@ -77,8 +77,8 @@ class AttendanceUpsertIntegrationTest {
         studyRepo.deleteAll();
         studyProgramRepo.deleteAll();
 
-        insertAccountIfAbsent(LEADER_ACCOUNT_ID, "리더", "leader@upsert-test.com");
-        insertAccountIfAbsent(MEMBER_ACCOUNT_ID, "멤버", "member@upsert-test.com");
+        insertAccountIfAbsent(LEADER_ACCOUNT_ID, "리더", "leader@upsert-test.com", SystemRole.ADMIN);
+        insertAccountIfAbsent(MEMBER_ACCOUNT_ID, "멤버", "member@upsert-test.com", SystemRole.MEMBER);
 
         var program =
                 studyProgramRepo.save(
@@ -151,6 +151,8 @@ class AttendanceUpsertIntegrationTest {
     void 성공_새_출석_기록_INSERT된다() {
         var body =
                 Map.of(
+                        "studyGroupId",
+                        group.getId(),
                         "updates",
                         List.of(
                                 Map.of(
@@ -198,6 +200,8 @@ class AttendanceUpsertIntegrationTest {
 
         var body =
                 Map.of(
+                        "studyGroupId",
+                        group.getId(),
                         "updates",
                         List.of(
                                 Map.of(
@@ -228,6 +232,8 @@ class AttendanceUpsertIntegrationTest {
 
         var body =
                 Map.of(
+                        "studyGroupId",
+                        group.getId(),
                         "updates",
                         List.of(
                                 Map.of(
@@ -262,10 +268,12 @@ class AttendanceUpsertIntegrationTest {
     }
 
     @Test
-    @DisplayName("MEMBER_역할은_403")
-    void MEMBER_역할은_403() {
+    @DisplayName("비어드민_403")
+    void 비어드민_403() {
         var body =
                 Map.of(
+                        "studyGroupId",
+                        group.getId(),
                         "updates",
                         List.of(
                                 Map.of(
@@ -283,6 +291,8 @@ class AttendanceUpsertIntegrationTest {
     void 존재하지_않는_분반_404() {
         var body =
                 Map.of(
+                        "studyGroupId",
+                        999_999L,
                         "updates",
                         List.of(
                                 Map.of(
@@ -290,7 +300,7 @@ class AttendanceUpsertIntegrationTest {
                                         "participantId", participantA.getId(),
                                         "status", "PRESENT")));
 
-        var response = post(study.getId(), 999_999L, body, LEADER_ACCOUNT_ID);
+        var response = post(study.getId(), body, LEADER_ACCOUNT_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -299,18 +309,12 @@ class AttendanceUpsertIntegrationTest {
 
     private <T> org.springframework.http.ResponseEntity<T> post(
             Long studyId, Object body, Long callerAccountId) {
-        return post(studyId, group.getId(), body, callerAccountId);
-    }
-
-    private <T> org.springframework.http.ResponseEntity<T> post(
-            Long studyId, Long studyGroupId, Object body, Long callerAccountId) {
         return rest.exchange(
-                "/api/studies/{studyId}/attendances?studyGroupId={studyGroupId}",
+                "/api/admin/studies/{studyId}/attendances",
                 HttpMethod.POST,
                 authenticatedRequest(body, callerAccountId),
                 (Class<T>) Void.class,
-                studyId,
-                studyGroupId);
+                studyId);
     }
 
     private HttpEntity<Object> authenticatedRequest(Object body, Long accountId) {
@@ -321,7 +325,7 @@ class AttendanceUpsertIntegrationTest {
         return new HttpEntity<>(body, headers);
     }
 
-    private void insertAccountIfAbsent(Long id, String nickname, String email) {
+    private void insertAccountIfAbsent(Long id, String nickname, String email, SystemRole role) {
         if (accountRepository.findById(id).isPresent()) {
             return;
         }
@@ -333,7 +337,7 @@ class AttendanceUpsertIntegrationTest {
                 id,
                 email,
                 nickname,
-                SystemRole.MEMBER.name(),
+                role.name(),
                 "Asia/Seoul",
                 now,
                 now,

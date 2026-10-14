@@ -53,7 +53,7 @@ export const SPEC: ScreenSpec = {
         '**마지막 수정은 늘 값이 있다** — 등록한 날이 첫 수정일이라 「수정된 적 없음」이라는 상태가 없다',
         '채널 열은 지금 모두 「메일」이다 — 다른 채널이 생기면 그때 값이 갈린다',
       ],
-      data: ['`GET /api/admin/notification-templates` — 미구현'],
+      data: ['`GET /api/admin/notification-templates` — 구현완료'],
     },
     {
       n: '4',

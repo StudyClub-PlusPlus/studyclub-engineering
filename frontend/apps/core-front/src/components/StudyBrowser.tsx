@@ -6,7 +6,7 @@ import { CATEGORY_DISPLAY } from '@studyclub/mock';
 import { Select } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
-import { StudyCard } from './StudyCard';
+import { StudyListCard } from './StudyListCard';
 import { useStudies } from '@/features/studies/queries';
 import { track, type AnalyticsEvent } from '@/lib/analytics';
 import type { StudyPhaseFilter, StudySearch, StudyTimezoneFilter } from '@/lib/api';
@@ -284,7 +284,7 @@ export function StudyBrowser({
           className={`grid gap-4 transition-opacity sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}
         >
           {studies.map((s, i) => (
-            <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} />
+            <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} />
           ))}
         </div>
       ) : hasQuery ? (

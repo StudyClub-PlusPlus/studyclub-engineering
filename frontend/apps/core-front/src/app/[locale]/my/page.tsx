@@ -7,9 +7,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { type Study } from '@studyclub/mock';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { CalendarClock, Heart } from 'lucide-react';
 
-import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { useStudies } from '@/features/studies/queries';
 import { track } from '@/lib/analytics';

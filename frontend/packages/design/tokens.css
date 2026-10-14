@@ -88,6 +88,7 @@
   --color-success-fg: #357553;
   --color-warning-bg: #FFF1D8;
   --color-warning-fg: #8A5D18;
+  --color-warning-fg-inverse: #F2C46B; /* 어두운 바탕(툴팁 bg-neutral-900) 위 경고 문구 */
   --color-danger-bg:  #FCE9E6;
   --color-danger-fg:  #A94740;
   --color-info-bg:    #E4F0F5;

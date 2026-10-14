@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle';
 import { LifecycleBadge } from '@console/components/LifecycleBadge';
-import { Pagination } from '@console/components/Pagination';
 import { KIND_LABEL, TIMEZONE_LABEL } from '@console/components/StudyForm';
 import { tx } from '@console/lib/l10n';
 import { studyAuthor } from '@console/lib/users';
@@ -24,7 +23,7 @@ import {
   type Study,
   type StudyKind,
 } from '@studyclub/mock';
-import { Badge, Button, Modal } from '@studyclub/ui';
+import { Badge, Button, Modal, Pagination } from '@studyclub/ui';
 import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'lucide-react';
 
 /**
@@ -691,7 +690,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         </div>
       </div>
 
-      <Pagination anno='list:8' page={current} total={pageCount} onChange={setPage} />
+      <Pagination data-anno='list:8' className='mt-4' page={current} total={pageCount} onChange={setPage} />
 
       <Modal
         open={confirm !== null}

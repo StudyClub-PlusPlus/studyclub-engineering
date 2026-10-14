@@ -345,6 +345,18 @@ erDiagram
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | core-front `/my/joined/[id]/schedule` (일정 · 정보 · 규칙 · 출석부) | 없음 — 「준비 중」 자리만 있다. 회차 데이터는 브라우저 mock (`lib/meetings.ts`) | 프로토 스터디 일정대로 만들고 아래 API 에 연결한다. 「이후 반복 모두」 버튼은 넣지 않는다 |
+| BE | 회차 `GET` · `POST` · `PUT` · `DELETE`, 발표자, 규칙 저장 | 구현중 | [study-meeting 스펙](../../../specs/study-meeting/spec.md#구현-메모) 마무리 |
+| BE | `GET /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
+
 ### 데이터
 
 | 대상 | 필드 | 쓰기 |
@@ -384,7 +396,7 @@ erDiagram
 | DELETE | `/api/studies/{studyId}/meetings/{meetingId}` 회차 삭제 | 그 분반 네비게이터 · 캡틴 |
 | PUT · DELETE | `/api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me` 발표 신청·취소 | 그 분반 참여자 |
 | PUT | `/api/studies/{studyId}/groups/{groupId}/rules` 규칙 저장 | 그 분반 네비게이터 · 캡틴 |
-| GET | `/api/studies/{studyId}/attendances` 분반 출석부 | 그 분반 참여자(조회) · 네비게이터 · 캡틴 |
+| GET | `/api/me/studies/{studyId}/attendances` 분반 출석부 | 그 분반 참여자(조회) · 네비게이터 · 캡틴 |
 
 계약 정본: [회차 스펙](../../../specs/study-meeting/spec.md)
 

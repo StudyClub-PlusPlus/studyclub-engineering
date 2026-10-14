@@ -155,6 +155,18 @@ flowchart LR
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | back-office-front 「알림」 › 발송 이력 탭 | 없음 — 화면이 없다 | 프로토대로 만들고 [알림 템플릿](../notification-template/PRD.md#개발-범위)과 두 탭으로 묶는다 |
+| BE | `GET /api/admin/notifications` | 구현완료 | 없음 |
+| BE | 재발송 `POST /api/admin/notifications/resend` | 없음 · **스펙 없음** | [notification 스펙](../../../specs/notification/spec.md)에 계약부터 쓴다 → 구현 (완료 기준 6 · 7) |
+
 ### API
 
 | 메서드 | 경로 | 설명 |

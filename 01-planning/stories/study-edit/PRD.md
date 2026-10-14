@@ -158,6 +158,17 @@
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | back-office-front 정보 탭 (`StudyInfoTab`) | 있음 — 수정 · 삭제 API 연결 | `features/studies/queries.ts` 의 낡은 `TODO(api)` 두 줄 지우기 (이미 `/api/admin` 경로를 쓴다) |
+| BE | `PATCH` · `DELETE /api/admin/studies/{studyId}` | 구현완료 (`timezone` 제외) | 시간대 저장 — [study-create](../study-create/PRD.md#개발-범위)와 같은 일 |
+
 ### 데이터
 
 수정 대상은 등록과 같다. 이 Story 가 새로 만드는 필드는 없다.

@@ -1,0 +1,27 @@
+name: design-drift
+
+# 프로토타입·앱이 디자인 시스템에서 다시 갈라지면 PR 을 막는다.
+# @studyclub/ui 부품의 사본, 토큰을 건너뛴 색·글자 크기가 기준선(scripts/component-drift-baseline.json)보다
+# 늘면 실패한다. 줄였으면 `node scripts/check-component-drift.mjs --update` 로 기준선을 낮춰 함께 커밋한다.
+on:
+  pull_request:
+    paths:
+      - 'frontend/apps/**'
+      - 'frontend/packages/ui/**'
+      - 'frontend/packages/design/**'
+      - 'scripts/check-component-drift.mjs'
+      - 'scripts/component-drift-baseline.json'
+      - '.github/workflows/design-drift.yaml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 외부 패키지를 쓰지 않는 스크립트라 의존성 설치가 필요 없다.
+      # import.meta.dirname 을 쓰므로 Node 20.11 이상.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/check-component-drift.mjs --report

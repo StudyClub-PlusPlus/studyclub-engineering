@@ -67,7 +67,7 @@ enrichment plugin이 자동 주입 — 개별 이벤트에 별도 명시 불필�
 | `Study Filter Tab Changed` | 모집 상태 탭 전환 (`all` · `recruiting` · `ongoing` · `closed`). 새 조건의 결과가 로드된 뒤 발화 — `result_count` 는 바뀐 뒤의 결과 수 | `StudyBrowser.tsx` 탭 버튼 | `tab`, `result_count`, `category` | ✅   |
 | `Study Category Filtered`  | 카테고리 칩 선택. 결과 로드 후 발화 | `StudyBrowser.tsx` FilterOption     | `category`, `result_count`, `tab`                                             | ✅   |
 | `Study Searched`           | 검색어 입력 커밋. 결과 로드 후 발화, 같은 검색어 재입력은 안 보냄 | `StudyBrowser.tsx` `commitSearch()` | `query_length`, `result_count`, `has_results`                                 | ✅   |
-| `Study Card Clicked`       | 스터디 카드 클릭             | `src/components/StudyCard.tsx`      | `study_id`, `study_title_ko`, `study_category`, `study_status`, `source`, `card_position` | ✅   |
+| `Study Card Clicked`       | 스터디 카드 클릭             | `src/components/StudyListCard.tsx`      | `study_id`, `study_title_ko`, `study_category`, `study_status`, `source`, `card_position` | ✅   |
 | `Study Bookmarked`         | 북마크 추가                  | `BookmarkButton` toggle             | `study_id`, `study_category`, `source`                                        | ⬜ (기능 미구현) |
 | `Study Unbookmarked`       | 북마크 해제                  | `BookmarkButton` / `handleUnbookmark()` | `study_id`, `study_category`, `source`                                    | ⬜ (기능 미구현) |
 | `Event Card Clicked`       | 이벤트 카드 클릭             | `src/components/EventCard.tsx`      | `event_id`, `event_title_ko`, `source`                  | ✅   |
