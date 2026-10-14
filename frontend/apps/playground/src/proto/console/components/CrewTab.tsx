@@ -61,7 +61,6 @@ export function CrewTab({
     (c) =>
       (regionFilter === 'all' || c.region === regionFilter) && (classFilter === 'all' || assign[c.id] === classFilter),
   );
-  const filtered = regionFilter !== 'all' || classFilter !== 'all';
   const [editing, setEditing] = useState<StudyClass | undefined>();
 
   // 반 · 역할은 고친 값을 모았다가 「저장」으로 한 번에 반영한다 — 일정 표와 같다.
@@ -165,8 +164,8 @@ export function CrewTab({
           <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 text-[15px] font-bold'>
             참여 크루
           </h2>
-          <div data-anno='attendee:3-3' className='ml-auto flex flex-wrap items-center gap-2'>
-            <FilterSelect
+          <div data-anno='attendee:3-3' className='ml-auto flex flex-wrap items-center gap-x-4 gap-y-2'>
+            <FilterChips
               label='지역'
               value={regionFilter}
               onChange={(v) => setRegionFilter(v as typeof regionFilter)}
@@ -174,27 +173,12 @@ export function CrewTab({
             />
             {/* 반이 하나면 거를 것이 없다 */}
             {classes.length > 1 && (
-              <FilterSelect
+              <FilterChips
                 label='반'
                 value={classFilter}
                 onChange={setClassFilter}
                 options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
               />
-            )}
-            {filtered && (
-              <>
-                <span className='tnum text-sm text-fg-muted'>{shown.length}명</span>
-                <Button
-                  size='sm'
-                  variant='ghost'
-                  onClick={() => {
-                    setRegionFilter('all');
-                    setClassFilter('all');
-                  }}
-                >
-                  필터 해제
-                </Button>
-              </>
             )}
           </div>
         </div>
@@ -316,8 +300,11 @@ function withDraft<T>(drafts: Record<string, T>, id: string, value: T | undefine
   return next;
 }
 
-/** 명단 필터. 값이 있으면 테두리로 드러낸다 — 걸러진 채로 명단을 오독하지 않게. */
-function FilterSelect({
+/**
+ * 명단 필터 — 칩. 「전체」가 맨 앞이고 고른 칩이 채워진다.
+ * 일정 · 출석 탭의 반 고르기와 같은 모양이다. 선택지가 몇 개뿐이라 펼쳐야 보이는 목록에 숨기지 않는다.
+ */
+function FilterChips({
   label,
   value,
   onChange,
@@ -329,21 +316,26 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <select
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
-    >
-      <option value='all'>{value === 'all' ? label : `${label} 전체`}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
+    <div role='group' aria-label={`${label} 필터`} className='flex flex-wrap items-center gap-1.5'>
+      <span aria-hidden className='mr-0.5 text-xs font-medium text-fg-muted'>
+        {label}
+      </span>
+      {[{ value: 'all', label: '전체' }, ...options].map((o) => (
+        <button
+          key={o.value}
+          type='button'
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={`rounded-pill border px-3 py-1 text-[13px] font-semibold transition-colors ${
+            value === o.value
+              ? 'border-brand bg-brand text-white'
+              : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+          }`}
+        >
           {o.label}
-        </option>
+        </button>
       ))}
-    </select>
+    </div>
   );
 }
 
