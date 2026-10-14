@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { getUser } from '@core/lib/auth';
 import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { getBookmarks, setBookmarked } from '@core/lib/me';
 import { type Study } from '@studyclub/mock';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Button, Card, EmptyState } from '@studyclub/ui';
 import { Heart } from 'lucide-react';
 

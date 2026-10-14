@@ -6,7 +6,7 @@ import { NavLinks } from '@/components/NavLinks';
 import type { Locale } from '@/lib/content';
 import { m } from '@/lib/i18n';
 
-export function Nav({
+export function SiteHeader({
   locale,
   discordUrl,
   mentoringUrl,
@@ -49,7 +49,6 @@ export function Nav({
           >
             {other.toUpperCase()}
           </Link>
-          <MyStudiesLink locale={locale} />
           <a
             href={discordUrl}
             target='_blank'
@@ -59,6 +58,7 @@ export function Nav({
           >
             {m('nav.join', locale)}
           </a>
+          <MyStudiesLink locale={locale} />
           <NavAuth locale={locale} />
         </div>
       </div>

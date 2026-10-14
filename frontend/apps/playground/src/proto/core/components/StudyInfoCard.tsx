@@ -2,9 +2,8 @@
 
 import { useId, useState, type ReactNode } from 'react';
 
-import { DiscordGlyph } from '@core/components/DiscordGlyph';
 import { RulesEditor } from '@core/components/RulesEditor';
-import { cx } from '@studyclub/ui';
+import { DiscordGlyph, cx } from '@studyclub/ui';
 import { ChevronDown, FolderOpen } from 'lucide-react';
 
 /** 정보 카드의 바로가기 — 아이콘과 이름만 보이고 새 창으로 연다. 주소는 가리키면 보인다. */

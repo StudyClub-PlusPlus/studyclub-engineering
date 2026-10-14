@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Bookmark, Sparkles } from 'lucide-react';
+import { CalendarClock, Globe, Rocket } from 'lucide-react';
 
-import { Badge } from './Badge';
-import { Button } from './Button';
 import { StudyCard } from './StudyCard';
 
 const meta = {
@@ -10,99 +8,58 @@ const meta = {
   component: StudyCard,
   tags: ['autodocs'],
   args: {
-    category: '개발',
-    categoryColor: 'var(--color-chart-1)',
-    categoryIcon: <Sparkles size={13} />,
-    badge: <Badge tone='recruiting'>모집중</Badge>,
-    bookmark: (
-      <button
-        type='button'
-        aria-label='북마크'
-        className='grid h-8 w-8 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-      >
-        <Bookmark size={16} />
-      </button>
-    ),
+    href: '#',
+    category: '소프트웨어 개발',
+    badge: { label: '모집중 D-5', dotClassName: 'bg-recruiting-dot' },
     title: 'React 딥다이브 스터디 — 리액트 내부 원리와 최적화',
-    schedule: '매주 목 20:00 · 8주 과정',
     summary: '리액트 19의 신규 기능과 Fiber 아키텍처, 렌더링 최적화를 깊이 있게 학습합니다.',
-    currentMembers: 6,
-    maxMembers: 8,
-    views: 124,
-    action: (
-      <Button size='sm' variant='primary'>
-        신청하기
-      </Button>
-    ),
+    details: [
+      { icon: CalendarClock, label: '매주 목 20:00 · 8주 과정' },
+      { icon: Globe, label: '한국 시간 (KST)' },
+      { icon: Rocket, label: '시작 예정일 11/03' },
+    ],
   },
   argTypes: {
-    category: { control: 'text' },
-    categoryColor: {
+    category: {
       control: 'select',
       options: [
-        'var(--color-chart-1)',
-        'var(--color-chart-2)',
-        'var(--color-chart-3)',
-        'var(--color-chart-4)',
-        'var(--color-chart-5)',
-        'var(--color-chart-6)',
-        'var(--color-brand)',
+        'AI · ML',
+        '알고리즘',
+        '데이터',
+        '소프트웨어 개발',
+        '커리어',
+        '북클럽',
+        '어학',
+        '라이프스타일',
+        '기획 · PM',
+        '비즈니스',
+        '기타',
       ],
-      labels: {
-        'var(--color-chart-1)': 'chart-1 — indigo',
-        'var(--color-chart-2)': 'chart-2 — amber',
-        'var(--color-chart-3)': 'chart-3 — teal',
-        'var(--color-chart-4)': 'chart-4 — magenta',
-        'var(--color-chart-5)': 'chart-5 — green',
-        'var(--color-chart-6)': 'chart-6 — coral',
-        'var(--color-brand)':   'brand — primary',
-      },
     },
     title: { control: 'text' },
-    currentMembers: { control: 'number' },
-    maxMembers: { control: 'number' },
-    views: { control: 'number' },
   },
+  decorators: [
+    (Story) => (
+      <div className='max-w-sm'>
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof StudyCard>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  render: (args) => (
-    <div className='max-w-sm'>
-      <StudyCard {...args} />
-    </div>
-  ),
-};
+export const Default: Story = {};
 
 export const ClosingSoon: Story = {
-  render: (args) => (
-    <div className='max-w-sm'>
-      <StudyCard
-        {...args}
-        badge={<Badge tone='closingsoon'>마감임박</Badge>}
-        currentMembers={7}
-        maxMembers={8}
-      />
-    </div>
-  ),
+  args: { category: 'AI · ML', badge: { label: '마감임박 D-1', dotClassName: 'bg-closingsoon-dot' } },
 };
 
 export const InProgress: Story = {
-  render: (args) => (
-    <div className='max-w-sm'>
-      <StudyCard
-        {...args}
-        badge={<Badge tone='inprogress'>진행중</Badge>}
-        currentMembers={8}
-        maxMembers={8}
-        action={
-          <Button size='sm' variant='secondary' disabled>
-            모집 마감
-          </Button>
-        }
-      />
-    </div>
-  ),
+  args: { category: '북클럽', badge: { label: '진행중', dotClassName: 'bg-inprogress-dot' } },
+};
+
+export const Closed: Story = {
+  args: { category: '어학', badge: { label: '모집 마감', dotClassName: 'bg-closed-dot' } },
 };

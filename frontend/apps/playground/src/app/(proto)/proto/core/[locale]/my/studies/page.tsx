@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 
-import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import {
   STATUS_LABEL,
   STATUS_STYLE,
@@ -26,6 +25,7 @@ import { t } from '@core/lib/i18n';
 import { getApplications } from '@core/lib/me';
 import { isKickoff, meetingLabel } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { CalendarClock } from 'lucide-react';
 
 import { SPEC } from './spec';

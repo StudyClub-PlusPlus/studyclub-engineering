@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import { StudyCard } from '@/components/StudyCard';
+import { StudyListCard } from '@/components/StudyListCard';
 import { useStudies } from '@/features/studies/queries';
 import type { Locale, Operator } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
@@ -37,7 +37,7 @@ export function FeaturedStudies({
       </div>
       <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
         {featured.map((s) => (
-          <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
+          <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
         ))}
       </div>
     </section>

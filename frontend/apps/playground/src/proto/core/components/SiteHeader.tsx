@@ -6,7 +6,7 @@ import { NavLinks } from '@core/components/NavLinks';
 import type { Locale } from '@core/lib/content';
 import { m } from '@core/lib/i18n';
 
-export function Nav({
+export function SiteHeader({
   locale,
   discordUrl,
   mentoringUrl,

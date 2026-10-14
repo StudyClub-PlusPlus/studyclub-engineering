@@ -112,6 +112,9 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
   **playground 를 고쳤으면 커밋 전에 `pnpm --filter playground run build` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에서 바로 배포되는 유일한 앱이라(`playground-beta.yaml`) 다른 앱의 CI 게이트를 안 거친다.
   `01-planning/stories/**` 또는 `playground/**/spec.ts` 를 건드렸으면 `pnpm --filter playground export-specs --check` 도 통과해야 한다.
+  프론트 화면·부품을 고쳤으면 레포 루트에서 `node scripts/check-component-drift.mjs` 도 통과시킨다 — `@studyclub/ui` 와 같은 이름의 부품 사본이나
+  토큰을 건너뛴 값(Tailwind 기본 팔레트 색, `#hex` 색 코드, `text-[13px]` 같은 글자 크기)이 기준선보다 늘면 실패한다.
+  부품 모양은 `packages/ui` 에서만 고친다. PR 에서는 `design-drift` CI 가 같은 검사를 돌린다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
 - **Story PRD** — 화면 기획은 `01-planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`01-planning/_registry/stories.md`](01-planning/_registry/stories.md). **`§2 화면명세` 안에 `spec.ts` `scope` 마다 `<!-- spec:start {scope} -->` / `<!-- spec:end {scope} -->` 마커를 넣고 `pnpm --filter playground export-specs` 로 내용을 채운다** — 마커 없이 PR 을 올리면 playground CI 가 막는다
 - **기획은 `stories.md` 한 줄에서 출발한다** — 개발 전에 이 순서로 읽는다. 행의 링크를 따라가면 된다.
