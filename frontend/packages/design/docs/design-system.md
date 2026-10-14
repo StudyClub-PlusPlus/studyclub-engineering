@@ -316,8 +316,8 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 **두 앱의 허용 차이 = 밀도 뿐(색 아님).** 콘솔이 더 촘촘해야 하면 아래처럼 **밀도 토큰만** override 하고 색 토큰은 건드리지 않습니다.
 
 ```css
-/* console.css — 색은 절대 재정의하지 않음 */
-:root {
+/* console-only.css — 색은 절대 재정의하지 않음. 콘솔 루트에만 건다 */
+[data-app="console"] {
   --radius-control: 6px;   /* 사이트 8 → 콘솔 6 */
   --radius-card: 12px;     /* 사이트 16 → 콘솔 12 */
   --font-size-base: 15px;  /* 콘솔 밀도 (사이트 16 유지) */
@@ -329,7 +329,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 1. 두 파일의 색 값을 뽑아 이 시스템의 가장 가까운 토큰에 매핑(예: 기존 `--main:#4a5cf2` → `--color-brand`).
 2. 컴포넌트에서 HEX 리터럴을 전부 semantic 토큰 참조로 치환.
 3. 두 앱의 색 정의 파일을 삭제하고 공용 `tokens.css` 하나를 import.
-4. 콘솔에만 필요한 밀도 차이는 `console.css`(색 없음)로 통합 관리.
+4. 콘솔에만 필요한 밀도 차이는 `console-only.css`(색 없음)로 통합 관리.
 > 실제 두 파일을 공유해 주시면 "기존 변수 → 새 토큰" 1:1 매핑 표를 만들어 드립니다.
 
 ### 8-1. CSS 진입점 파일 구조 (`@studyclub/design`)
@@ -342,12 +342,18 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 | `compat.css` | 구 토큰 점진적 마이그레이션 별칭 브리지 | 공용 |
 | `base.css` | `tokens` + `compat` + `html`/`body`/`.card`/`.card-hover`/`.no-scrollbar` | 공통 베이스 (Storybook 등) |
 | `core.css` | `base.css` + `.hero-glow` | `core-front`, `playground proto/core` |
-| `console.css` | `base.css` + 콘솔 밀도 오버라이드 + `.bo-table` / `.btn` | `back-office-front`, `playground proto/console` |
+| `console-only.css` | 콘솔 밀도 오버라이드(`[data-app="console"]` 스코프) + `.bo-table` / `.btn`. base 없음 | `playground` (core.css 위에 추가) |
+| `console.css` | `base.css` + `console-only.css` | `back-office-front` |
 
 **앱별 `globals.css` 적용 형태**:
 ```css
-/* core-front / playground */
+/* core-front */
 @import '@studyclub/design/core.css';
+@source "../../../../packages/ui/src";
+
+/* playground — 사이트·콘솔 프로토가 한 앱에 같이 있다 */
+@import '@studyclub/design/core.css';
+@import '@studyclub/design/console-only.css';
 @source "../../../../packages/ui/src";
 
 /* back-office-front */
@@ -479,7 +485,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 - **Semantic 컬러는 상태 피드백 전용.** 차트 카테고리 팔레트와 혼용하지 않습니다.
 - **장식 보더의 낮은 대비는 의도된 것.** 미니멀한 인상을 위해 resting 보더는 연하게, 대신 포커스/에러/선택 등 **상태를 전달하는 경계는 반드시 3:1↑**.
 - **라이트 전용이지만 구조는 다크 확장 대비 완료.** 확장 시 단순 invert 금지 — surface는 순수 검정 대신 `#0D0E13`/`#16181F` 계열, primary는 채도 낮추고 명도 올린 버전으로 **재설계**. semantic 레이어 덕에 컴포넌트 수정 없이 토큰만 교체하면 됨.
-- **밀도 차이는 밀도 토큰으로만.** 콘솔을 촘촘하게 만들 때 색을 새로 정의하지 말 것 — `console.css`에서 radius/폰트/행높이만 조정.
+- **밀도 차이는 밀도 토큰으로만.** 콘솔을 촘촘하게 만들 때 색을 새로 정의하지 말 것 — `console-only.css`에서 radius/폰트/행높이만 조정.
 - **한글 우선 검수.** 자간·line-height는 라틴 기준으로 짜면 한글에서 답답해 보임. 실제 한글 문장으로 QA 필수.
 
 ---
