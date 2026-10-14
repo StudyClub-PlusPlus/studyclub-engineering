@@ -35,7 +35,7 @@ import {
 import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import type { Study } from '@studyclub/mock';
-import { AutoTextarea, Button, Input, Modal, cx } from '@studyclub/ui';
+import { AutoTextarea, Button, Input, Modal, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
 
 /**
@@ -260,6 +260,14 @@ export function ScheduleManager({
             options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
             onChange={setZone}
           />
+          {canEdit && (
+            // 고른 것과 상관없는 일이라 작업 바가 아니라 제목 줄에 둔다 — 신청자 탭 「반 추가」와 같은 자리
+            <span data-anno='schedule:2'>
+              <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
+                회차 추가
+              </Button>
+            </span>
+          )}
         </div>
       </div>
 
@@ -468,31 +476,43 @@ export function ScheduleManager({
       )}
 
       {canEdit && (
-        // 표 아래 — 왼쪽은 고른 회차 삭제, 오른쪽은 회차 추가.
+        // 표 하단 작업 바 — 한 줄. 왼쪽은 고른 회차 삭제, 오른쪽은 저장 (POL-0008 「표 하단 작업 바」).
         // 삭제는 늘 보인다 — 체크해야 나타나면 지우는 방법을 찾을 수 없다. 고르기 전에는 잠겨 있고 이유를 말한다
-        <div className='flex flex-wrap items-center gap-2'>
-          <span data-anno='schedule:3-7' className='flex items-center gap-2'>
-            <Button
-              size='sm'
-              variant='danger'
-              disabled={picked.length === 0}
-              title={picked.length === 0 ? '지울 회차를 왼쪽 체크박스로 고르세요' : undefined}
-              onClick={() => setBulkConfirm(true)}
-            >
-              삭제
-            </Button>
-            {picked.length > 0 && (
-              <span className='tnum text-sm font-semibold text-fg' aria-live='polite'>
-                {picked.length}개 선택
-              </span>
-            )}
-          </span>
-          <span data-anno='schedule:2' className='ml-auto'>
-            <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
-              회차 추가
-            </Button>
-          </span>
-        </div>
+        <TableActionBar
+          data-anno='schedule:3-7'
+          selection={
+            <>
+              <SelectionCount count={picked.length} unit='개' />
+              <Button
+                size='sm'
+                variant='danger'
+                disabled={picked.length === 0}
+                title={picked.length === 0 ? '지울 회차를 왼쪽 체크박스로 고르세요' : undefined}
+                onClick={() => setBulkConfirm(true)}
+              >
+                삭제
+              </Button>
+              {picked.length > 0 && (
+                <Button size='sm' variant='ghost' onClick={() => setChecked(new Set())}>
+                  선택 해제
+                </Button>
+              )}
+            </>
+          }
+          save={
+            <span data-anno='schedule:6' className='flex items-center gap-2'>
+              {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
+              {dirty && (
+                <Button variant='ghost' size='sm' onClick={clearDrafts}>
+                  변경 취소
+                </Button>
+              )}
+              <Button size='sm' onClick={saveAll} disabled={!dirty || errorCount > 0}>
+                저장
+              </Button>
+            </span>
+          }
+        />
       )}
 
       {/* 결정을 묻는 모달 — 취소가 기본 포커스. Enter 로 지워지면 안 된다 (POL-0008). 회차는 체크박스로 골라서만 지운다 */}
@@ -518,20 +538,6 @@ export function ScheduleManager({
           뒤 회차 번호는 당겨집니다. 되돌릴 수 없습니다.
         </p>
       </Modal>
-
-      {canEdit && dirty && (
-        <div data-anno='schedule:6' className='sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-bg py-2'>
-          {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
-          <div className='flex items-center gap-1.5'>
-            <Button variant='ghost' size='sm' onClick={clearDrafts}>
-              변경 취소
-            </Button>
-            <Button size='sm' onClick={saveAll} disabled={errorCount > 0}>
-              저장
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
