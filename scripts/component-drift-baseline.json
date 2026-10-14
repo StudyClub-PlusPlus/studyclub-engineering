@@ -1,0 +1,15 @@
+{
+  "shadows": [
+    "frontend/apps/core-front/src/components/Nav.tsx",
+    "frontend/apps/core-front/src/components/StudyCard.tsx",
+    "frontend/apps/core-front/src/components/StudyThumb.tsx",
+    "frontend/apps/playground/src/proto/core/components/Nav.tsx",
+    "frontend/apps/playground/src/proto/core/components/StudyCard.tsx"
+  ],
+  "palette": {
+    "core-front": 2,
+    "back-office-front": 8,
+    "playground/proto": 3,
+    "packages/ui": 0
+  }
+}
