@@ -231,7 +231,8 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 참여 크루 명단 · 네비게이터 지정 | 없음 — `CrewTab` 컴포넌트는 mock 이고 어느 화면에서도 쓰지 않는다 | 프로토대로 만들고 `CrewTab` 을 정리한다 |
+| FE | back-office-front 신청자 탭 | 있음 — 다른 화면. `ApplicationsTab`(신청 결과 API)으로 대기 · 승인 · 거절 심사 · 이전 참여 · 완주율 · 신청서를 보인다. `CrewTab` 은 mock 이고 쓰지 않는다 | 프로토대로 바꾼다 — 참여 크루 명단(디스코드 닉네임 · 이메일 · 지역 · 반 · 역할) · 반 · 지역 필터 · 체크박스 일괄 변경 · 저장 바. 심사 · 완주율 칸은 뺀다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
+| BE | `GET /api/admin/studies/{studyId}/applications` 의 `completionRate` | 구현완료 | 신청자 탭에서 쓰지 않는다. 다른 화면이 쓰지 않으면 응답에서 뺄지 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
 | BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants/{id}/role` | 스펙작성중 · 컨트롤러 없음 | [study-group 스펙](../../../specs/study-group/spec.md) 확정 → 구현 |
 
 ### 데이터
@@ -271,6 +272,6 @@ erDiagram
 
 ## 4. 미확정
 
-- ~~명단·담당 지정 API 경로~~ → [study-group/spec.md](../../../specs/study-group/spec.md) (2026-10-06)
+- ~~명단·역할 지정 API 경로~~ → [study-group/spec.md](../../../specs/study-group/spec.md) (2026-10-06)
 - ~~완주율 정의와 계산 위치~~ — 명단에서 완주율을 뺐다. 필요해지면 그때 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md))
 - ~~공동 네비게이터(`CO_LEADER`)를 이 화면에서 구분할지~~ — 부반장을 없앴다 (POL-0001, 2026-10-09)

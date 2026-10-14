@@ -22,7 +22,7 @@
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
-모두 `@RequireAdmin`. 반 편성 · 담당 지정은 네비게이터가 하지 못한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
+모두 `@RequireAdmin`. 반 편성 · 역할(네비게이터) 지정은 네비게이터가 하지 못한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)).
 
 ---
 
@@ -308,7 +308,7 @@
 
 ## 프론트엔드 사용처
 
-- back-office-front 스터디 상세 — 신청자 탭(명단 · 담당 · 반 만들기 · 반 제목 수정) · 일정 탭(반 일정 정하기 · 수정) (미구현). 프로토: playground `console/studies/{id}`
+- back-office-front 스터디 상세 — 신청자 탭(명단 · 역할 · 반 만들기 · 반 제목 수정 · 일괄 변경) · 일정 탭(스터디 시간 정하기 · 수정) (미구현 — 지금 신청자 탭은 신청 심사 화면). 프로토: playground `console/studies/{id}`
 
 ## 미확정
 
