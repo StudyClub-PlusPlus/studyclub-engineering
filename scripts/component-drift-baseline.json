@@ -1,8 +1,5 @@
 {
-  "shadows": [
-    "frontend/apps/core-front/src/components/StudyCard.tsx",
-    "frontend/apps/playground/src/proto/core/components/StudyCard.tsx"
-  ],
+  "shadows": [],
   "palette": {
     "core-front": 0,
     "back-office-front": 2,
