@@ -2,6 +2,9 @@
 상태: 결정됨 (질문 2건 남음)
 알릴 사람: 기획(세은님) · 프론트 (스터디 관리 → 일정 탭)
 물어볼 사람: 세은님 — 아래 「남은 질문」
+반영:
+  - specs/study-meeting/spec.md — 됨
+  - 01-planning/stories/navigator-register-sessions/PRD.md — 됨
 ---
 
 # 네비게이터의 회차 등록 — 반복은 만들 때만, 삭제는 한 회차씩, 첫 회차를 등록해도 「진행 중」으로 바꾸지 않는다

@@ -148,6 +148,18 @@ erDiagram
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | core-front 스터디 일정 › 출석부 편집 | 없음 — 스터디 일정 화면이 자리만 있다 | 백오피스 출석부와 같은 격자 컴포넌트로 만든다 |
+| BE | `GET` · `POST /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
+| 기획 | 참여 중단자 줄 | 이 PRD 2-1 은 맨 아래 줄에 남긴다 · share 는 기본 뷰를 `ACTIVE` 만으로 정했다 | 어느 쪽인지 정한다 ([share 10-05](../../../docs/share/2026-10-05-attendance-withdrawn-logic.md)) |
+
 ### 데이터
 
 | 필드 | 값 |
@@ -173,8 +185,8 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 만든 캡틴 |
-| POST | `/api/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디를 만든 캡틴 |
+| GET | `/api/me/studies/{studyId}/attendances` | 그 분반 활성 참여자(조회) · 네비게이터 · 만든 캡틴 |
+| POST | `/api/me/studies/{studyId}/attendances` | 그 분반 LEADER · 그 스터디를 만든 캡틴 |
 
 계약은 [attendance/spec.md](../../../specs/attendance/spec.md).
 

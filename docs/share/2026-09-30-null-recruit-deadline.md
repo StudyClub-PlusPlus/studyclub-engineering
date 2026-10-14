@@ -2,6 +2,11 @@
 상태: 결정됨
 결정일: 2026-10-01
 근거: 스터디 등록·수정·목록 PRD, 스터디 API 스펙, ERD
+반영:
+  - POL-0002 — 됨
+  - specs/study-application/spec.md — 됨
+  - 01-planning/stories/crew-view-study-detail/PRD.md — 안 됨 (마감일 없는 옛 데이터를 모집 중으로 보고 「신청하기」를 보여 준다)
+  - 01-planning/stories/crew-browse-studies/PRD.md — 확인 필요 (같은 경우에 「모집중 (미정)」 배지)
 ---
 
 # 모집 마감 시각은 필수다

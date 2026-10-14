@@ -1,6 +1,7 @@
 # 스터디 북마크 API Spec
 
 > ERD: [STUDY_BOOKMARK](../../docs/erd/STUDY_BOOKMARK.md)
+> Story PRD: 없음 — 찜 Story 가 [레지스트리](../../01-planning/_registry/stories.md)에 없다. 화면은 [IA-012 찜한 스터디](../../01-planning/_registry/informationarchitecture.md) (고아 화면)
 > 생성일: 2026-09-08
 > 상태: 구현중
 

@@ -78,7 +78,7 @@ flowchart LR
 - **정책**
   - **마지막 수정은 늘 값이 있다** — 등록한 날이 첫 수정일이라 「수정된 적 없음」이라는 상태가 없다
   - 채널 열은 지금 모두 「메일」이다 — 다른 채널이 생기면 그때 값이 갈린다
-- **데이터**: `GET /api/admin/notification-templates` — 미구현
+- **데이터**: `GET /api/admin/notification-templates` — 구현완료
 
 ### 4 — 템플릿 전문
 
@@ -95,11 +95,28 @@ flowchart LR
   스토리가 말하는 세 가지 중 둘이 남아 있다 — 붙을 때 이 문서에 더한다
 - 이 화면은 **지금 등록된 문구**를 보여준다. 특정 발송 건에 쓰인 그때 원문이 아니다 —
   그때 원문은 어디에서도 볼 수 없다
-- **미구현** — 서버 연동. 프로토는 mock 으로 그린다
+- 목록·전문 보기는 실제 운영 콘솔에 이미 붙어 있다. 프로토는 mock 으로 그린다 — 무엇이 남았는지는 [개발 범위](#개발-범위)
 
 ---
 
 ## 3. 시스템 요건
+
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 이 표는 「할 일」이 모두 「없음」이 된다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | back-office-front `/notification-templates` 목록 | 있음 — 이벤트 · 채널 · 제목 · 마지막 수정 | 열 이름 「이벤트」 → 「알림 조건」 (완료 기준 1) |
+| FE | back-office-front `/notification-templates/[id]` 전문 | 있음 — 단건 API 없이 목록에서 고른다 | 없음 |
+| FE | 사이드바 「알림」 하나 · 템플릿 / 발송 이력 두 탭 | 없음 — 사이드바에 「알림 템플릿」만 | 「알림」 아래 두 탭으로 묶기. 프로토 주소는 `/notifications/templates` · `/notifications` |
+| FE | 템플릿 추가 버튼 · 추가 창 | 없음 | 프로토 `proto/console/notifications/templates` 대로. 이미 쓰인 조건은 선택지에서 뺀다 (완료 기준 3·5) |
+| BE | `GET /api/admin/notification-templates` | 구현완료 — `AdminNotificationController` · 통합 테스트 있음 | 없음 |
+| BE | `POST /api/admin/notification-templates` | 없음 · **스펙 없음** | [notification 스펙](../../../specs/notification/spec.md)에 계약부터 쓴다 → 구현. 같은 조건 중복은 `UNIQUE(EVENT_TYPE, CHANNEL)` 위반 → 409 |
+| BE | 알림 조건 「회원 탈퇴」 | 없음 — `NotificationEventType` 이 `USER_REGISTERED` 하나뿐. 탈퇴는 이벤트를 내지 않는다 | 탈퇴 이벤트 발행 · `USER_WITHDRAWN`(가칭) 추가 · 리스너 (완료 기준 4) |
+
+- **범위 밖** — 템플릿 수정·삭제(편집 API 없음, [비고](#비고)), 메일 외 채널
+- 조건이 코드의 enum 이라, 「템플릿을 더하면 알림이 는다」([아래](#템플릿이-곧-알림이다))는 **새 조건마다 BE 이벤트가 먼저** 있어야 성립한다
 
 ### API
 

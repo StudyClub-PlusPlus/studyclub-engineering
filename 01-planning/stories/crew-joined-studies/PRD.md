@@ -447,6 +447,18 @@ erDiagram
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | core-front `/my/joined` | 있음 — 공개 스터디 목록(`GET /api/studies`)과 브라우저 mock 으로 그린다 (`TODO(api)`) | `GET /api/me/studies` 로 바꾸고 역할 · 참여 상태 · 다음 회차를 응답 값으로 그린다 |
+| BE | `GET /api/me/studies` | 구현완료 · 담당 캡틴 확장 구현중 | 담당 캡틴 확장 마무리 |
+| BE | 주간 일정용 회차 (아래 API 표의 `GET /api/me/studies/{id}/meetings`) | 스펙 없음 · 컨트롤러 없음 | `GET /api/me/studies` 응답으로 충분한지 먼저 정한다 → 모자라면 [my-studies 스펙](../../../specs/my-studies/spec.md)에 더한다 |
+
 ### 데이터
 
 | 대상 | 필드 | ERD | 비고 |
@@ -485,9 +497,11 @@ erDiagram
 | --- | --- | --- |
 | GET | `/api/me/studies` | 로그인. 명부 참여 + 내가 담당 캡틴인 스터디(반 편성 전이라 명부에 없어도). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그(추가 필요). [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴-카드) |
 | GET | `/api/me/studies/{id}/meetings` | 해당 명부 |
-| GET | `/api/me` | 거주 지역 등 |
+| GET | `/auth/me` | 거주 지역 등 |
 
 출석 체크인 POST는 반장 디스코드 연동 소관. 휴가 POST/DELETE는 이 화면 범위 밖.
+
+계약은 [my-studies/spec.md](../../../specs/my-studies/spec.md).
 
 ### 권한
 
