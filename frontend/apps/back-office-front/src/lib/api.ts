@@ -91,7 +91,7 @@ function mapToStudy(api: ApiStudy): Study {
 
 /** `GET /api/admin/studies` 가 한 번에 주는 최대 행 수 — 서버가 1~100 만 받는다 (specs/dashboard 4.4). */
 const PAGE_LIMIT = 100;
-/** 나눠 받는 횟수 상한 — total 이 요청 사이에 늘어나도 끝없이 돌지 않게. 1만 건이면 넉넉하다. */
+/** 나눠 받는 장 수 상한 — 1만 건. 넘으면 잘라 보이지 않고 실패로 알린다. */
 const MAX_PAGES = 100;
 
 async function fetchStudyPage(token: string | undefined, offset: number): Promise<ApiPage> {
@@ -129,20 +129,25 @@ async function fetchStudyPage(token: string | undefined, offset: number): Promis
 
 /**
  * 스터디 관리 목록 — 전부 받아 화면이 거르고 정렬한다(StudiesTable).
- * 서버는 한 번에 100건까지만 주므로 total 까지 나눠 받는다. 요청 사이에 행이 밀려 같은 스터디가
- * 두 번 오면 하나만 남긴다.
+ * 서버는 한 번에 100건까지만 주므로 첫 장으로 total 을 알고 나머지 장을 한꺼번에 받는다.
+ * 요청 사이에 행이 밀려 같은 스터디가 두 번 오면 하나만 남긴다.
  */
 export async function fetchStudies(): Promise<Study[]> {
   // 쿠키를 통째로 넘기지 않는다 — 사이트(sc_) 쿠키도 같이 실려 API 가 다른 앱의 계정으로 판단한다(2026-10-16 stage /studies 403).
   // 백오피스 액세스 토큰만 Authorization 으로 보낸다 (core-front bff 와 같은 방식)
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;
-  const byId = new Map<number, ApiStudy>();
+  const first = await fetchStudyPage(token, 0);
+  const pageCount = Math.ceil(first.total / PAGE_LIMIT);
+  if (pageCount > MAX_PAGES) throw new Error('스터디가 너무 많아 목록을 한 번에 불러올 수 없습니다.');
 
-  for (let pageIndex = 0; pageIndex < MAX_PAGES; pageIndex += 1) {
-    const page = await fetchStudyPage(token, pageIndex * PAGE_LIMIT);
-    for (const item of page.items) byId.set(item.studyId, item);
-    const received = pageIndex * PAGE_LIMIT + page.items.length;
-    if (page.items.length < PAGE_LIMIT || received >= page.total) break;
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, pageCount - 1) }, (_, i) => fetchStudyPage(token, (i + 1) * PAGE_LIMIT)),
+  );
+  const byId = new Map<number, ApiStudy>();
+  for (const page of [first, ...rest]) for (const item of page.items) byId.set(item.studyId, item);
+  // 받는 사이에 스터디가 지워지면 한 건이 밀려 빠질 수 있다 — 드문 일이라 다시 받지 않고 남겨만 둔다
+  if (byId.size < first.total) {
+    console.warn(`[admin/studies] total ${first.total} 중 ${byId.size}건만 받았다 — 받는 사이 목록이 바뀌었다`);
   }
 
   return [...byId.values()].map(mapToStudy);

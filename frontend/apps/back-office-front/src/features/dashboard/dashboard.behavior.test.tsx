@@ -182,7 +182,7 @@ function renderDashboard() {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  return render(<Dashboard />, { wrapper });
+  return { client, ...render(<Dashboard />, { wrapper }) };
 }
 
 const kpi = (anno: string) => document.querySelector<HTMLElement>(`[data-anno="${anno}"]`)!;
@@ -285,6 +285,29 @@ describe('제목 줄 · KPI', () => {
     expect(screen.getByText('평균 75%')).toBeInTheDocument();
   });
 
+  it('커뮤니티 멤버 묶음만 실패하면 그 카드만 실패로 그린다', async () => {
+    respond({
+      summary: { ...without(SUMMARY, 'communityMembers'), errors: { communityMembers: { errorCode: 'INTERNAL_ERROR', errorMessage: '실패' } } },
+    });
+    renderDashboard();
+
+    expect(await within(kpi('2-4')).findByText(LOAD_FAILED)).toBeInTheDocument();
+    expect(screen.getAllByText(LOAD_FAILED)).toHaveLength(1);
+    expect(within(kpi('2-2')).getByText('78%')).toBeInTheDocument();
+  });
+
+  it('다시 읽다 실패하면 받아 두었던 수를 남기지 않고 실패로 바꾼다 (spec 2.4)', async () => {
+    const { client } = renderDashboard();
+    expect(await within(kpi('2-1')).findByText('128')).toBeInTheDocument();
+
+    respond({ summary: serverError() });
+    await act(() => client.refetchQueries({ queryKey: ['dashboard', 'summary'] }));
+
+    expect(within(kpi('2-1')).getByText(LOAD_FAILED)).toBeInTheDocument();
+    expect(screen.queryByText('128')).toBeNull();
+    expect(screen.getByText('전기간 기준')).toBeInTheDocument();
+  });
+
   it('분모가 0 이라 값이 없으면(필드가 빠져도) 실패가 아니라 빈 상태 — 증감은 숨긴다', async () => {
     const rest = without(SUMMARY, 'attendanceRate', 'studiesPerCrew');
     respond({
@@ -358,6 +381,25 @@ describe('크루 지역 분포', () => {
     expect(screen.queryByText('미분류')).toBeNull();
   });
 
+  it('미분류가 있으면 범례 끝에 보인다', async () => {
+    respond({
+      'crew-timezones': {
+        ...CREW,
+        totalCrew: 4,
+        timeZoneGroups: [
+          { code: 'KST', count: 2, percentage: 50 },
+          { code: 'ET', count: 1, percentage: 25 },
+          { code: 'PT', count: 0, percentage: 0 },
+          { code: 'UNKNOWN', count: 1, percentage: 25 },
+        ],
+      },
+    });
+    renderDashboard();
+
+    expect(await screen.findByText('미분류')).toBeInTheDocument();
+    expect(screen.getAllByText('25%')).toHaveLength(2);
+  });
+
   it('활성 크루가 없으면 차트 대신 안내', async () => {
     respond({
       'crew-timezones': {
@@ -383,6 +425,23 @@ describe('평균 출석률 추세', () => {
 
     act(() => points[0]!.focus());
     expect(screen.getByText('2026-09-07 주 · 출석률 85% (출석 8.5 / 대상 10) · America/New_York 기준')).toBeInTheDocument();
+  });
+
+  it('값이 한 주뿐이면 선 없이 점 하나만 찍는다', async () => {
+    respond({
+      'attendance-trend': {
+        ...TREND,
+        averageRate: 65,
+        points: TREND.points.map((p, i) =>
+          i === 11 ? p : { ...p, weightedAttended: 0, eligibleCount: 0, rate: null },
+        ),
+      },
+    });
+    renderDashboard();
+
+    expect(await screen.findByText('평균 65%')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /주.* · 출석률/ })).toHaveLength(1);
+    expect(document.querySelectorAll('polyline')).toHaveLength(0);
   });
 
   it('모든 주가 비면 차트 대신 안내', async () => {
@@ -440,8 +499,10 @@ describe('조회 중 기준이 바뀌면 (spec 2.3)', () => {
 
     await waitFor(() => expect(callsTo('summary')).toHaveLength(2));
     await waitFor(() => expect(callsTo('attendance-trend')).toHaveLength(2));
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(callsTo('summary')).toHaveLength(2);
+    expect(callsTo('study-board:ONGOING')).toHaveLength(1);
+    expect(callsTo('study-board:RECRUITMENT')).toHaveLength(1);
     expect(callsTo('crew-timezones')).toHaveLength(1);
   });
 
@@ -450,7 +511,7 @@ describe('조회 중 기준이 바뀌면 (spec 2.3)', () => {
     renderDashboard();
 
     await waitFor(() => expect(callsTo('crew-timezones')).toHaveLength(2));
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(callsTo('summary')).toHaveLength(2);
     expect(callsTo('studies-by-category')).toHaveLength(2);
   });

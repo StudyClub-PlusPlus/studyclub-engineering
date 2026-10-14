@@ -2,7 +2,7 @@
 // 영역마다 따로 부른다. 하나가 실패해도 나머지는 그린다 (PRD §3 API · spec 2.4).
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import type {
   ApiAttendanceTrend,
@@ -121,18 +121,24 @@ export function useStudiesByCategory() {
  * - 요약의 이번 주와 추세의 이번 주가 다르면 — 조회 중에 주가 바뀐 것이다. 요약·추세를 함께 다시 부른다
  *
  * 다시 불러도 어긋나면 그대로 둔다 — 경계 시각에 걸리면 계속 부르다 끝나지 않을 수 있다.
+ * 다시 읽는 중인 응답이 있으면 비교하지 않는다 — 지난 방문의 캐시와 새 응답이 잠깐 섞인 것을 어긋남으로 보지 않게.
  */
 export function useDashboardConsistency({
-  summary,
-  boards,
-  trend,
+  summary: summaryQuery,
+  boards: boardQueries,
+  trend: trendQuery,
 }: {
-  summary: ApiDashboardSummary | undefined;
-  boards: (ApiStudyBoard | undefined)[];
-  trend: ApiAttendanceTrend | undefined;
+  summary: Pick<UseQueryResult<ApiDashboardSummary>, 'data' | 'isFetching'>;
+  boards: Pick<UseQueryResult<ApiStudyBoard>, 'data' | 'isFetching'>[];
+  trend: Pick<UseQueryResult<ApiAttendanceTrend>, 'data' | 'isFetching'>;
 }) {
   const queryClient = useQueryClient();
   const retried = useRef(false);
+
+  const settled = ![summaryQuery, ...boardQueries, trendQuery].some((q) => q.isFetching);
+  const summary = settled ? summaryQuery.data : undefined;
+  const boards = settled ? boardQueries.map((q) => q.data) : [];
+  const trend = settled ? trendQuery.data : undefined;
 
   const zones = new Set(
     [summary?.timeZone, ...boards.map((b) => b?.timeZone), trend?.timeZone].filter((z) => z !== undefined),

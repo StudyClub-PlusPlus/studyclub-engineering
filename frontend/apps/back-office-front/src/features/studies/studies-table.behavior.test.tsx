@@ -1,6 +1,6 @@
 import type { Study } from '@studyclub/mock';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StudiesTable, entryFilters } from '@/features/studies/StudiesTable';
 
@@ -80,6 +80,15 @@ const urlParams = () => Object.fromEntries(new URLSearchParams(memoryUrl.get()))
 
 beforeEach(() => {
   memoryUrl.set('');
+  // 주소만 바꾸는 쪽(history.replaceState)도 메모리 URL 로 옮긴다 — Next 가 useSearchParams 와 맞춰 주는 것을 대신한다
+  vi.spyOn(window.history, 'replaceState').mockImplementation((_state, _title, url) => {
+    const next = String(url ?? '');
+    memoryUrl.set(next.includes('?') ? next.slice(next.indexOf('?') + 1) : '');
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 4.4)', () => {
@@ -129,6 +138,59 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
     fireEvent.change(screen.getByDisplayValue('개설'), { target: { value: 'all' } });
     await waitFor(() => expect(urlParams()).toEqual({ sort: 'id' }));
     expect(titles().slice(0, 3)).toEqual(['작성 중', '나 진행', '가 진행']);
+  });
+
+  it('카테고리 없이 들어와도 주소를 목록 필터로 옮겨 적는다 — 진행중 · 누적', async () => {
+    memoryUrl.set('view=ongoing');
+    const { unmount } = render(<StudiesTable studies={STUDIES} />);
+    expect(titles()).toEqual(['가 진행', '나 진행', '하 진행']);
+    await waitFor(() => expect(urlParams()).toEqual({ status: 'ONGOING', sort: 'title' }));
+    unmount();
+
+    memoryUrl.set('view=cumulative');
+    render(<StudiesTable studies={STUDIES} />);
+    await waitFor(() => expect(urlParams()).toEqual({ publish: 'live', sort: 'id' }));
+  });
+
+  it('주소를 옮겨 적기 전에 조건을 바꿔도 진입 조건 위에 얹는다', () => {
+    memoryUrl.set('view=ongoing&category=AI_ML');
+    // 옮겨 적기가 아직 안 된 상태를 만든다
+    vi.mocked(window.history.replaceState).mockImplementation(() => {});
+    render(<StudiesTable studies={STUDIES} />);
+
+    fireEvent.change(screen.getByDisplayValue('종류 전체'), { target: { value: 'club' } });
+    expect(urlParams()).toEqual({ category: 'AI · ML', status: 'ONGOING', publish: 'live', sort: 'title', kind: 'club' });
+  });
+
+  it('이름이 같으면 기수 ID 순, 마감 시각이 같으면 이름·ID 순 — 서버 정렬과 같다', () => {
+    const tied = [
+      ongoing(31, '같은 이름'),
+      ongoing(30, '같은 이름'),
+      study(41, '나 같은 마감', { recruitment: { status: 'open', deadline: '2026-09-18T14:59:00Z' } }),
+      study(40, '가 같은 마감', { recruitment: { status: 'open', deadline: '2026-09-18T14:59:00Z' } }),
+    ];
+    memoryUrl.set('status=ONGOING&sort=title');
+    const { unmount } = render(<StudiesTable studies={tied} />);
+    expect(screen.getAllByRole('link').map((a) => a.getAttribute('href')).filter((h) => h?.startsWith('/studies/'))).toEqual([
+      '/studies/30',
+      '/studies/31',
+    ]);
+    unmount();
+
+    memoryUrl.set('status=OPEN&sort=recruitment');
+    render(<StudiesTable studies={tied} />);
+    expect(screen.getAllByRole('link').map((a) => a.textContent).filter((t) => t?.includes('같은 마감'))).toEqual([
+      '가 같은 마감',
+      '나 같은 마감',
+    ]);
+  });
+
+  it('모집 마감순은 「개설」일 때만 고를 수 있다', () => {
+    memoryUrl.set('status=ONGOING');
+    render(<StudiesTable studies={STUDIES} />);
+
+    const options = [...screen.getByRole('combobox', { name: '정렬' }).querySelectorAll('option')].map((o) => o.textContent);
+    expect(options).toEqual(['기본 순서', '이름순', '최근 등록순']);
   });
 
   it('주소에 view 가 없으면 지금까지처럼 기본 순서로 그린다 — 주소를 건드리지 않는다', () => {

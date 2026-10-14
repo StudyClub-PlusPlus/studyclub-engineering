@@ -50,6 +50,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('fetchStudies — 서버는 한 번에 100건까지 준다', () => {
@@ -78,6 +79,36 @@ describe('fetchStudies — 서버는 한 번에 100건까지 준다', () => {
     const [first] = await fetchStudies();
 
     expect(first!.recruitment?.deadline).toBe('2026-09-18T14:59:00Z');
+  });
+
+  it('받는 사이 행이 밀려 같은 스터디가 두 번 와도 하나만 남긴다', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const offset = Number(new URL(String(input)).searchParams.get('offset'));
+      // 첫 장 1~100, 둘째 장은 한 칸 밀려 100~198 — 100 이 두 번 온다
+      const ids = offset === 0 ? Array.from({ length: 100 }, (_, i) => i + 1) : Array.from({ length: 99 }, (_, i) => i + 100);
+      return new Response(JSON.stringify({ items: ids.map(apiStudy), total: 199, offset, limit: 100 }), { status: 200 });
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const studies = await fetchStudies();
+
+    expect(studies).toHaveLength(198);
+    expect(new Set(studies.map((s) => s.study_id)).size).toBe(198);
+    expect(console.warn).toHaveBeenCalled();
+  });
+
+  it('잠깐 끊긴 연결(503)은 다시 시도한다', async () => {
+    serverWith(3);
+    const ok = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementationOnce(async () => new Response('', { status: 503 }));
+    fetchMock.mockImplementation(ok);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const studies = await fetchStudies();
+
+    vi.useRealTimers();
+    expect(studies).toHaveLength(3);
+    expect(requested()).toEqual(['?offset=0&limit=100', '?offset=0&limit=100']);
   });
 
   it('서버가 거절하면 상태 코드와 함께 실패한다', async () => {

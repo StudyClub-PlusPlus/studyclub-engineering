@@ -64,8 +64,8 @@ function BoardColumn({
   const state = queryState(query);
 
   return (
-    // 헤더 + 행 다섯 줄(4 + 「외 N개」) 높이를 늘 지킨다 — 건수가 들고 날 때 아래 차트가 밀리지 않게
-    <div className={`flex min-h-[268px] flex-col px-5 py-4 ${className}`}>
+    // 위아래 여백 32 + 제목 24 + 간격 8 + 행 44×5(4 + 「외 N개」) = 284px 를 늘 지킨다 — 건수가 들고 날 때 아래 차트가 밀리지 않게
+    <div className={`flex min-h-71 flex-col px-5 py-4 ${className}`}>
       <div className='flex h-6 items-baseline gap-2'>
         <h2 className='text-base font-bold'>{title}</h2>
         {state.status === 'ok' && (
@@ -77,13 +77,16 @@ function BoardColumn({
       </div>
 
       {state.status === 'loading' && (
-        <ul className='mt-2' aria-hidden='true'>
-          {Array.from({ length: BOARD_PREVIEW }, (_, i) => (
-            <li key={i} className='flex h-11 items-center px-1'>
-              <SkeletonBar className='h-4 w-2/3' />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className='mt-2' aria-hidden='true'>
+            {Array.from({ length: BOARD_PREVIEW }, (_, i) => (
+              <li key={i} className='flex h-11 items-center px-1'>
+                <SkeletonBar className='h-4 w-2/3' />
+              </li>
+            ))}
+          </ul>
+          <span className='sr-only'>불러오는 중</span>
+        </>
       )}
       {state.status === 'error' && (
         <p className='flex flex-1 items-center justify-center text-sm text-fg-muted'>{LOAD_FAILED}</p>

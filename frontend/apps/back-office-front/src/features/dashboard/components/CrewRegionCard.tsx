@@ -76,7 +76,8 @@ function RegionDonut({ data }: { data: ApiCrewTimezones }) {
         })}
       </svg>
 
-      <ul className='flex min-w-0 flex-1 flex-col gap-2.5'>
+      {/* 좁으면 범례를 도넛 아래로 내린다 — 지역 이름·비율·인원 한 줄을 자르지 않는다 */}
+      <ul className='flex min-w-48 flex-1 flex-col gap-2.5'>
         {groups.map((g) => {
           const label = TIME_ZONE_GROUP_LABEL[g.code] ?? { region: g.code };
           return (

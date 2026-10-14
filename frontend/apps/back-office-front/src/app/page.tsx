@@ -34,7 +34,7 @@ export default function Dashboard() {
   const trend = useAttendanceTrend(timeZone, ready);
   const categories = useStudiesByCategory();
 
-  useDashboardConsistency({ summary: summary.data, boards: [ongoing.data, recruitment.data], trend: trend.data });
+  useDashboardConsistency({ summary, boards: [ongoing, recruitment], trend });
 
   // 1-1 — 범위와 읽은 시각을 함께 적는다. 요약을 못 읽으면 범위만
   const readAt = summary.data && !summary.isError ? ` · ${formatAsOf(summary.data.asOf, summary.data.timeZone)} 갱신` : '';

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   CATEGORY_DISPLAY,
@@ -253,14 +253,18 @@ function FilterSelect<T extends string>({
   value,
   onChange,
   options,
+  label,
 }: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
+  /** 접근 가능한 이름 — 옵션 글자만으로 무슨 축인지 알 수 없을 때 */
+  label?: string;
 }) {
   return (
     <select
       value={value}
+      aria-label={label}
       onChange={(e) => onChange(e.target.value as T)}
       className={`h-9 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
@@ -368,17 +372,23 @@ function displayDate(value?: string) {
 export function StudiesTable({ studies }: { studies: Study[] }) {
   // 조건·페이지는 URL 이 정본이다 — 운영 페이지에 들어갔다 뒤로 와도 걸어 둔 조건이 그대로다.
   // 조건을 바꾸면 페이지는 1로 돌아간다(같은 set 에서 함께 바꾼다).
-  const [urlFilters, setFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  const [urlFilters, setUrlFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
   // 대시보드에서 `?view=…` 로 들어왔으면 그 조건으로 바로 그리고(깜빡임 없이), 주소는 이 목록의 필터로 바꿔 쓴다
   const searchParams = useSearchParams();
   const entry = useMemo(
     () => entryFilters(searchParams.get('view'), searchParams.get('category')),
     [searchParams],
   );
+  // 주소만 바꾼다(shallow) — router.replace 면 서버 컴포넌트가 목록 전체를 한 번 더 받는다
   useEffect(() => {
-    if (entry) setFilters(entry);
-  }, [entry, setFilters]);
+    if (entry) setUrlFilters(entry, { shallow: true });
+  }, [entry, setUrlFilters]);
   const filters = entry ? { ...urlFilters, ...entry } : urlFilters;
+  // 주소를 옮겨 적기 전에 조건을 바꿔도 진입 조건 위에 얹는다 — 남아 있는 view·카테고리 코드가 고른 값을 덮지 않게
+  const setFilters = useCallback(
+    (patch: Partial<typeof URL_DEFAULTS>) => setUrlFilters(entry ? { ...entry, ...patch } : patch),
+    [entry, setUrlFilters],
+  );
   const category = filters.category;
   const studyStatus = filters.status as StudyStatusFilter;
   const kind = filters.kind as KindFilter;
@@ -510,6 +520,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           value={sort}
           onChange={(v) => setFilters({ sort: v, page: '1' })}
           options={sortOptionsFor(studyStatus)}
+          label='정렬'
         />
         <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
       </div>

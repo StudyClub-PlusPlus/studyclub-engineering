@@ -157,7 +157,10 @@ function TrendChart({ trend }: { trend: ApiAttendanceTrend }) {
             i % 4 === 0 || i === points.length - 1 ? (
               <span
                 key={p.weekStart}
-                className='tnum absolute -translate-x-1/2 whitespace-nowrap'
+                // 양 끝 라벨은 안쪽으로 붙인다 — 가운데 맞춤이면 카드 여백 밖으로 삐져나간다
+                className={`tnum absolute whitespace-nowrap ${
+                  i === 0 ? '' : i === points.length - 1 ? '-translate-x-full' : '-translate-x-1/2'
+                }`}
                 style={{ left: `${x(i)}%` }}
               >
                 {p.weekStart.slice(5)}
@@ -167,8 +170,9 @@ function TrendChart({ trend }: { trend: ApiAttendanceTrend }) {
         </div>
       </div>
 
-      {/* 짚은 주의 출석률과 밑재료. 자리를 늘 비워 둬 짚을 때 카드가 들썩이지 않게 한다 */}
-      <p className='tnum mt-3 min-h-5 text-xs text-fg-secondary' aria-live='polite'>
+      {/* 짚은 주의 출석률과 밑재료. 자리를 늘 비워 둬 짚을 때 카드가 들썩이지 않게 한다.
+          화면 읽기 프로그램은 점(버튼)의 이름으로 같은 문장을 읽으므로 여기는 숨긴다 */}
+      <p className='tnum mt-3 min-h-5 text-xs text-fg-secondary' aria-hidden='true'>
         {activePoint ? trendPointText(activePoint, timeZone) : ''}
       </p>
     </div>
