@@ -61,6 +61,14 @@ storage:
     secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
     public-base-url: ${S3_PUBLIC_BASE_URL:}
 
+# 이미지 올리기 (specs/profile-image/spec.md). 전부 제안값 — env 없이 기본값으로 두고 테스트에서 줄여 쓴다.
+upload:
+  pending-limit: 20              # 연결 안 한 파일이 계정에 이만큼이면 더 못 올린다
+  pending-retention-hours: 24    # 이 시간 지나도 연결 없으면 정리 배치가 지운다
+  cleanup:
+    enabled: true
+    fixed-delay-ms: 3600000      # 한 시간
+
 # JWT 서명키 (운영은 내부 시크릿 SSOT → env 주입, 레포 평문 금지)
 jwt:
   secret: ${JWT_SECRET:local-dev-jwt-secret-change-me}
