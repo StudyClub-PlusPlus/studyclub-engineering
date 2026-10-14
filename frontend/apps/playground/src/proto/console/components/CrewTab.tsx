@@ -51,6 +51,15 @@ export function CrewTab({
 }) {
   const active = crew;
   const [dialogOpen, setDialogOpen] = useState(false);
+  // 명단 필터 — 반을 나눌 때 지역별로, 반을 확인할 때 반별로 본다. 둘 다 화면에서만 거른다
+  const [regionFilter, setRegionFilter] = useState<'all' | Crew['region']>('all');
+  const [picked, setClassFilter] = useState<string>('all');
+  // 고른 반이 지워졌으면 전체로 본다
+  const classFilter = classes.some((c) => c.id === picked) ? picked : 'all';
+  const shown = active.filter(
+    (c) => (regionFilter === 'all' || c.region === regionFilter) && (classFilter === 'all' || assign[c.id] === classFilter),
+  );
+  const filtered = regionFilter !== 'all' || classFilter !== 'all';
   const [editing, setEditing] = useState<StudyClass | undefined>();
 
   return (
@@ -128,11 +137,44 @@ export function CrewTab({
             {active.length}/{capacity}
           </span>
         </h2>
+        <div data-anno='attendee:3-3' className='mt-2 flex flex-wrap items-center gap-2'>
+          <FilterSelect
+            label='지역'
+            value={regionFilter}
+            onChange={(v) => setRegionFilter(v as typeof regionFilter)}
+            options={MEMBER_REGIONS.map((r) => ({ value: r.key, label: r.label.ko }))}
+          />
+          {/* 반이 하나면 거를 것이 없다 */}
+          {classes.length > 1 && (
+            <FilterSelect
+              label='반'
+              value={classFilter}
+              onChange={setClassFilter}
+              options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
+            />
+          )}
+          {filtered && (
+            <>
+              <span className='tnum text-sm text-fg-muted'>{shown.length}명</span>
+              <Button
+                size='sm'
+                variant='ghost'
+                onClick={() => {
+                  setRegionFilter('all');
+                  setClassFilter('all');
+                }}
+              >
+                필터 해제
+              </Button>
+            </>
+          )}
+        </div>
         <div className='mt-2'>
           <TableCard>
             <thead>
               <tr>
                 <th className='whitespace-nowrap'>이름</th>
+                <th className='whitespace-nowrap'>디스코드 닉네임</th>
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>지역</th>
                 <th className='whitespace-nowrap'>반</th>
@@ -140,9 +182,13 @@ export function CrewTab({
               </tr>
             </thead>
             <tbody>
-              {active.map((c) => (
+              {shown.map((c) => (
                 <tr key={c.id}>
                   <td className='whitespace-nowrap font-semibold'>{c.name}</td>
+                  {/* 디스코드에서 이 사람을 찾을 때 쓰는 이름 — 신청할 때 받은 서버 별명 */}
+                  <td data-anno='attendee:3-4' className='whitespace-nowrap text-fg-secondary'>
+                    {c.discordNickname || '—'}
+                  </td>
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
@@ -154,10 +200,10 @@ export function CrewTab({
                   </td>
                 </tr>
               ))}
-              {active.length === 0 && (
+              {shown.length === 0 && (
                 <tr>
-                  <td colSpan={5} className='text-center text-fg-muted'>
-                    아직 크루가 없습니다.
+                  <td colSpan={6} className='text-center text-fg-muted'>
+                    {active.length === 0 ? '아직 크루가 없습니다.' : '조건에 맞는 크루가 없습니다.'}
                   </td>
                 </tr>
               )}
@@ -206,6 +252,37 @@ function NavigatorPick({ on, onToggle }: { on: boolean; onToggle: () => void }) 
     <Button size='sm' variant='ghost' onClick={onToggle}>
       네비게이터로
     </Button>
+  );
+}
+
+/** 명단 필터. 값이 있으면 테두리로 드러낸다 — 걸러진 채로 명단을 오독하지 않게. */
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
+      }`}
+    >
+      <option value='all'>{value === 'all' ? label : `${label} 전체`}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }
 

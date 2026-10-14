@@ -60,6 +60,7 @@
       "participantId": 41,
       "accountId": 12,
       "nickname": "jamie",
+      "discordNickname": "제이미/BE/서울/분산시스템",
       "email": "jamie@example.com",
       "regionGroup": "KR",
       "groupId": 7,
@@ -79,6 +80,7 @@
 | groups[] | Array | N | 그 스터디의 분반 | STUDY_GROUP |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |
+| participants[].discordNickname | String | Y | 디스코드 서버 별명. 신청 때 받은 값으로 갱신된다. 없으면 null — 화면 「—」 | ACCOUNT.DISCORD_NICKNAME |
 | participants[].regionGroup | String | Y | `KR` · `NA` · `ETC` | ACCOUNT.REGION_GROUP |
 | participants[].groupId | Long | Y | 반 미배정이면 null | STUDY_PARTICIPANT.STUDY_GROUP_ID |
 | participants[].participantRole | String | N | `LEADER` = 네비게이터 · `MEMBER` | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
