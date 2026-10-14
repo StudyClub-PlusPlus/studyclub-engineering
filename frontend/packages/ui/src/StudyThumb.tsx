@@ -51,7 +51,7 @@ const RULES: { match: string[]; icon: LucideIcon; label: string; color: Duo }[] 
     match: ['비즈니스','business','아티클','article','시장','산업'],
     icon: Briefcase, label: 'BUSINESS', color: C.slate,
   },
-  { match: ['교양','북클럽','book','독서','리딩'], icon: BookOpen, label: 'LIFESTYLE', color: C.amber },
+  { match: ['라이프스타일','교양','북클럽','book','독서','리딩'], icon: BookOpen, label: 'LIFESTYLE', color: C.amber },
   {
     match: ['어학','언어','language','영어','중국어','독일어','german','english','chinese'],
     icon: Languages, label: 'LANGUAGE', color: C.emerald,
@@ -61,7 +61,7 @@ const RULES: { match: string[]; icon: LucideIcon; label: string; color: Duo }[] 
     icon: Sunrise, label: 'LIFESTYLE', color: C.rose,
   },
   {
-    match: ['be','소프트웨어 개발','코딩','coding','개발','dev','백엔드','backend','클라우드','cloud','보안','security'],
+    match: ['be','소프트웨어 개발','코딩','coding','개발','dev','프론트','frontend','백엔드','backend','클라우드','cloud','보안','security','golang','redis'],
     icon: Code2, label: 'BE', color: C.indigo,
   },
   { match: ['기타','etc','other'], icon: Hash, label: 'ETC', color: C.slate },

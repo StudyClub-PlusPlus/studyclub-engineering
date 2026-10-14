@@ -3,9 +3,8 @@ import Link from 'next/link';
 import { userStudyPath, type Locale, type Operator, type Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { recruitBadge, studyStartValue, studyTimezoneLabel } from '@core/lib/recruit';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { CalendarClock, Globe, Rocket } from 'lucide-react';
-
-import { categoryGradient, categoryMeta } from './StudyThumb';
 
 /** `2026-10-05` → `10/05`. 값이 날짜가 아니면(미정 등 자기설명 문구) 그대로 둔다. */
 function shortDate(value: string): string {
