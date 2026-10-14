@@ -56,7 +56,9 @@ export function ClassScheduleDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={`${editing ? '스터디 시간 수정' : '스터디 시간 정하기'} - ${classLabel(cls)}`}
+      // 제목은 하는 일, 대상(반)은 제목 아래 작은 글씨 — 회차 추가 창과 같다 (POL-0008)
+      title={editing ? '스터디 시간 수정' : '스터디 시간 정하기'}
+      description={classLabel(cls)}
       footer={
         /* 입력·설정 모달 — 취소 없이 X 로 닫는다 (POL-0008) */
         <Button onClick={save}>저장</Button>

@@ -457,7 +457,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 |---|---|
 | Tabs | 언더라인형. active text primary-dark + 2px underline primary, inactive text-muted |
 | Filter Chip | pill. 미선택 border/text-secondary/surface-raised · 선택 border-strong + primary-light/primary-dark(다중) 또는 primary solid(단일) |
-| Modal/Dialog | radius `--radius-modal`, `shadow-xl`, 오버레이 rgba(23,25,35,.48), 등장 base/ease-out, 모바일은 바텀시트(상단 radius 24) |
+| Modal/Dialog | radius `--radius-modal`, `shadow-xl`, 오버레이 rgba(23,25,35,.48), 등장 base/ease-out, 모바일은 바텀시트(상단 radius 24). 머리는 `title`(하는 일) + `description`(대상 · 기준, 작은 글씨) — 대상을 제목에 붙이지 않는다 |
 | Toast | 좌측 상태 색 스트립 4px + 아이콘, bg 흰색, shadow-lg, 자동 4s |
 | Avatar | radius-full, 사이즈 24/32/40, 이니셜 fallback primary-light/primary-dark, 역할 링(캡틴=primary) |
 | Nav | 사이트=상단 가로 네비(surface-raised + border 하단), 콘솔=좌측 사이드바(page-bg, active primary-light/primary-dark) |
