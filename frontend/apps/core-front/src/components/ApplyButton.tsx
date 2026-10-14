@@ -62,9 +62,8 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
         study_id: String(study.study_id),
         study_title_ko: study.title.ko,
         study_category: study.category ?? '',
-        study_status: study.status as 'recruiting' | 'ongoing' | 'closed',
+        study_status: study.status,
         has_external_form: false,
-        recruit_status: study.status ?? '',
       },
     });
     if (!getUser()) {
@@ -103,9 +102,8 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
               study_id: String(study.study_id),
               study_title_ko: study.title.ko,
               study_category: study.category ?? '',
-              study_status: study.status as 'recruiting' | 'ongoing' | 'closed',
+              study_status: study.status,
               has_external_form: true,
-              recruit_status: study.status ?? '',
             },
           });
           track({

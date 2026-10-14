@@ -37,6 +37,7 @@ function LoginForm() {
     async (code: string) => {
       setLoading(true);
       setError(null);
+      let httpStatus = 0;
       try {
         const res = await fetch('/api/auth/social/login', {
           method: 'POST',
@@ -45,6 +46,7 @@ function LoginForm() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
+          httpStatus = res.status;
           throw new Error(loginErrorFromExchange(res.status, data));
         }
         if (data.account) {
@@ -64,7 +66,7 @@ function LoginForm() {
         track({ name: 'Auth Login Completed', props: { is_new_user: false, next_path: next } });
         router.replace(next);
       } catch (e) {
-        track({ name: 'Auth Login Failed', props: { error_message: String(e), http_status: 0 } });
+        track({ name: 'Auth Login Failed', props: { error_message: String(e), http_status: httpStatus } });
         setError(loginErrorFromCaught(e));
       } finally {
         setLoading(false);

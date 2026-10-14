@@ -153,7 +153,6 @@ export function ApplyDialog({
           study_id: String(study.study_id),
           selected_slots_count: days.length,
           selected_days: days,
-          selected_slots: days,
           region: myRegion,
         },
       });
@@ -295,10 +294,9 @@ export function ApplyDialog({
         study_id: String(study.study_id),
         study_title_ko: study.title.ko,
         study_category: study.category ?? '',
-        study_status: study.status as 'recruiting' | 'ongoing' | 'closed',
+        study_status: study.status,
         has_fixed_schedule: !!fixedSchedule,
         selected_slots_count: days.length,
-        has_motivation: false,
         region: myRegion,
         schedule_confirmed: agreed,
       },
@@ -350,7 +348,7 @@ export function ApplyDialog({
           study_id: String(study.study_id),
           study_title_ko: study.title.ko,
           study_category: study.category ?? '',
-          study_status: study.status as 'recruiting' | 'ongoing' | 'closed',
+          study_status: study.status,
           apply_type: 'internal',
         },
       });
@@ -415,7 +413,7 @@ export function ApplyDialog({
   return (
     <Modal
       open={open}
-      onClose={saving ? () => {} : close}
+      onClose={saving ? () => {} : () => close()}
       size='lg'
       title={t({ ko: '스터디 신청', en: 'Apply to study' }, locale)}
       footer={

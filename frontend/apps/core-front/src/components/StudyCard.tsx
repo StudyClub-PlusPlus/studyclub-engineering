@@ -48,7 +48,7 @@ export function StudyCard({
               study_id: String(study.study_id),
               study_title_ko: study.title.ko,
               study_category: study.category,
-              study_status: study.status as 'recruiting' | 'ongoing' | 'closed',
+              study_status: study.status,
               source,
               card_position: index ?? 0,
             },
