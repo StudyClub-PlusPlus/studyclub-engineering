@@ -17,12 +17,14 @@ AWS_REGION=ap-northeast-2
 S3_BUCKET=studyclub-production
 AWS_ACCESS_KEY_ID=     # 인프라 담당자에게 요청
 AWS_SECRET_ACCESS_KEY= # 인프라 담당자에게 요청
+S3_PUBLIC_BASE_URL=https://ducf0htkez9mz.cloudfront.net/studyclub
 
 # ── Stage ──
 AWS_REGION=ap-northeast-2
 S3_BUCKET=studyclub-stage
 AWS_ACCESS_KEY_ID=     # 인프라 담당자에게 요청
 AWS_SECRET_ACCESS_KEY= # 인프라 담당자에게 요청
+S3_PUBLIC_BASE_URL=https://d27gz6v6wvae1d.cloudfront.net/studyclub
 ```
 
 > 키는 인프라 레포의 AWS IAM terraform 에서 `terraform output` 으로 꺼낸다 (인프라 담당자에게 요청).

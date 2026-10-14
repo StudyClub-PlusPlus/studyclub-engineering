@@ -1,9 +1,18 @@
 server:
   port: 8080
+  tomcat:
+    # 5MB 초과로 거부한 요청의 남은 본문을 끝까지 읽는다. 기본값(2MB)이면 Tomcat 이 연결을 끊어
+    # 브라우저가 400 응답 대신 네트워크 오류를 본다. multipart max-request-size 와 같은 값.
+    max-swallow-size: 6MB
 
 spring:
   config:
     import: classpath:notification.yml
+  # 이미지 올리기 상한 — 파일 5MB, 요청(파일 + purpose 파트) 6MB. 넘치면 400 INVALID_INPUT.
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   application:
     name: studyclub-api
   # PUBLIC 레포 — 비밀번호/호스트는 env 로만 주입 (docker-compose → .env, 로컬 host 는 `set -a; source ../.env`).
@@ -40,6 +49,17 @@ google:
   client-id: ${GOOGLE_CLIENT_ID:}
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
+
+# 파일 저장소 (specs/profile-image/spec.md, docs/s3-storage.md). 키·버킷·주소는 env 로만.
+# 전부 비어 있어도 부팅된다 — 로컬처럼 키가 없는 환경에서는 올리기만 503 EXTERNAL_SERVICE_ERROR.
+# public-base-url 은 CloudFront 주소에 /studyclub 까지 (예 https://d27gz6v6wvae1d.cloudfront.net/studyclub).
+storage:
+  s3:
+    region: ${AWS_REGION:}
+    bucket: ${S3_BUCKET:}
+    access-key-id: ${AWS_ACCESS_KEY_ID:}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+    public-base-url: ${S3_PUBLIC_BASE_URL:}
 
 # JWT 서명키 (운영은 내부 시크릿 SSOT → env 주입, 레포 평문 금지)
 jwt:
