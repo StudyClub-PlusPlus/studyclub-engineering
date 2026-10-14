@@ -478,6 +478,7 @@ Pretendard 기준, 한글은 같은 px에서 라틴보다 크고 빽빽하게 �
 | Highlight | on-highlight / highlight | 5.65 | ✅ AA |
 | Success chip | success-fg / success-bg | 4.85 | ✅ AA |
 | Warning chip | warning-fg / warning-bg | 5.14 | ✅ AA |
+| 툴팁 위 경고 문구 | warning-fg-inverse / neutral-900 | 8.58 | ✅ AA |
 | Danger chip | danger-fg / danger-bg | 4.90 | ✅ AA |
 | Info chip | info-fg / info-bg | 4.80 | ✅ AA |
 | Neutral chip | neutral-fg / neutral-bg | 4.64 | ✅ AA |

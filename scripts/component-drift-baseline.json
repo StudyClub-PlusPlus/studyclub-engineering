@@ -2,8 +2,8 @@
   "shadows": [],
   "palette": {
     "core-front": 0,
-    "back-office-front": 2,
-    "playground/proto": 1,
+    "back-office-front": 0,
+    "playground/proto": 0,
     "packages/ui": 0
   }
 }
