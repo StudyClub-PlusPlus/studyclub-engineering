@@ -1,6 +1,6 @@
 # 프로필 사진 · 이미지 업로드 Spec
 
-> ERD: [UPLOAD](../../docs/erd/UPLOAD.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
+> ERD: [STORAGE_OBJECT](../../docs/erd/STORAGE_OBJECT.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
 > Story PRD: [crew-edit-profile](../../01-planning/stories/crew-edit-profile/PRD.md) · 썸네일은 [study-create](../../01-planning/stories/study-create/PRD.md)
 > 관련 스펙: [profile-edit](../profile-edit/spec.md) — 같은 카드 · [user-leave](../user-leave/spec.md) — 탈퇴 시 파일 삭제
 > 저장소: [docs/s3-storage.md](../../docs/s3-storage.md) — 버킷·CloudFront·폴더 규칙
@@ -9,18 +9,18 @@
 
 ## WHAT
 
-마이페이지 내 정보 카드에 프로필 사진을 올리고 지운다. 사진은 AWS S3 에 두고 주소를 `ACCOUNT.PROFILE_IMG_URL` 에 적는다.
+마이페이지 내 정보 카드에 프로필 사진을 올리고 지운다. 사진은 오브젝트 스토리지(지금은 AWS S3)에 두고 주소를 `ACCOUNT.PROFILE_IMG_URL` 에 적는다.
 
 올리기는 **공용 업로드 API** 하나로 받는다. 파일을 먼저 올려 업로드 번호를 받고(`PENDING`), 기능 쪽 저장 API 가 그 번호를 받아 연결한다(`ATTACHED`). 연결 안 된 파일은 정리 배치가 하루 뒤 지운다. 스터디 썸네일처럼 저장 대상이 아직 없는 상태에서 올려야 하는 기능도 같은 API 를 쓴다.
 
-새로 만드는 건 **업로드 API 하나, `UPLOAD` 테이블 하나, 프로필 연결·삭제 API 둘, 정리 배치 하나**다.
+새로 만드는 건 **업로드 API 하나, `STORAGE_OBJECT` 테이블 하나, 프로필 연결·삭제 API 둘, 정리 배치 하나**다.
 
 ## 엔드포인트 목록
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| POST | `/api/uploads/images` | 이미지 올리기 → 업로드 번호 | O + 온보딩 | 스펙작성중 |
-| PUT | `/api/me/profile-image` | 업로드 번호를 프로필에 연결 (교체 포함) | O + 온보딩 | 스펙작성중 |
+| POST | `/api/uploads/images` | 이미지 올리기 → 파일 번호 | O + 온보딩 | 스펙작성중 |
+| PUT | `/api/me/profile-image` | 파일 번호를 프로필에 연결 (교체 포함) | O + 온보딩 | 스펙작성중 |
 | DELETE | `/api/me/profile-image` | 프로필 사진 지우기 | O + 온보딩 | 스펙작성중 |
 
 정리 배치는 API 가 아니다 — [정리 배치](#정리-배치).
@@ -39,8 +39,8 @@
 스터디 등록 폼은 "파일을 고르면 바로 미리보기, 등록을 눌러야 스터디가 생긴다" 라서 올리는 시점에 붙일 대상이 없다. 그래서 올리기 API 는 대상 없이 부를 수 있어야 하고, 연결은 기능 쪽 저장 API 가 번호를 받아서 한다. 프로필도 같은 길을 쓴다 — 방식이 하나여야 교체·삭제·탈퇴 정리가 한 길로 간다.
 
 ```
-① POST /api/uploads/images (file, purpose)  → 201 { uploadId, url }   UPLOAD 행 PENDING
-② PUT /api/me/profile-image { uploadId }    → 200 AccountView          PENDING → ATTACHED, PROFILE_IMG_URL 갱신
+① POST /api/uploads/images (file, purpose)  → 201 { fileId, url }     STORAGE_OBJECT 행 PENDING
+② PUT /api/me/profile-image { fileId }      → 200 AccountView          PENDING → ATTACHED, PROFILE_IMG_URL 갱신
 ```
 
 프로필은 프론트가 ① 성공 직후 ② 를 바로 부른다. 사용자에게는 한 동작이다. 썸네일은 ② 가 스터디 등록·수정 API 다 — 이 스펙 범위 밖, [알려진 한계](#알려진-한계).
@@ -50,7 +50,7 @@
 주인·용도·상태 확인을 조회하고 나서 바꾸는 두 단계로 하지 않는다. 조건을 UPDATE 에 걸고 바뀐 행 수로 판단한다.
 
 ```sql
-UPDATE UPLOAD
+UPDATE STORAGE_OBJECT
 SET STATUS = 'ATTACHED', ATTACHED_AT = now
 WHERE ID = ?               -- 이 번호가
   AND ACCOUNT_ID = ?       -- 내 것이고
@@ -67,7 +67,7 @@ WHERE ID = ?               -- 이 번호가
 
 ```sql
 -- 1단계 찜하기
-UPDATE UPLOAD
+UPDATE STORAGE_OBJECT
 SET STATUS = 'DELETING'
 WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
   AND CREATED_AT < now - 24시간        -- 올린 지 하루가 지난 것만
@@ -80,7 +80,7 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 ### 4. 교체는 새 키 · 옛 파일은 커밋 뒤 삭제
 
 - 올릴 때마다 새 UUID 키다. 같은 키에 덮어쓰면 CloudFront 가 복사본을 들고 있다가 옛 사진을 최대 하루 계속 준다.
-- 연결 트랜잭션 안: 계정 행 잠금 → 새 업로드 조건부 UPDATE(0 행이면 400, 롤백) → 옛 주소가 우리 것이면 옛 `UPLOAD` 행을 `DELETING` → `PROFILE_IMG_URL` 갱신 → 커밋.
+- 연결 트랜잭션 안: 계정 행 잠금 → 새 업로드 조건부 UPDATE(0 행이면 400, 롤백) → 옛 주소가 우리 것이면 옛 `STORAGE_OBJECT` 행을 `DELETING` → `PROFILE_IMG_URL` 갱신 → 커밋.
 - 커밋 뒤: 옛 파일 S3 삭제 → 행 삭제. 실패해도 응답은 성공이고, 행이 `DELETING` 으로 남아 배치가 다시 지운다.
 - 옛 주소가 구글 사진(`https://lh3.googleusercontent.com/...`)이거나 `null` 이면 우리 S3 에 없다. DB 값만 바꾼다.
 - 지우기도 같다. `PROFILE_IMG_URL` 을 null 로, 우리 파일이면 `DELETING`, 커밋 뒤 삭제. 구글 사진으로 되돌리지 않는다.
@@ -118,6 +118,10 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 
 로컬처럼 키가 없는 환경에서 올리기는 `503 EXTERNAL_SERVICE_ERROR`. S3 호출 실패도 같은 503. 정리 배치는 설정이 없으면 아무것도 안 한다.
 
+### 10. 모델은 S3 에 묶지 않는다
+
+테이블은 「올린 파일」(`STORAGE_OBJECT`)이지 「올리기 행위」가 아니다. 행마다 `PROVIDER`(`S3` / `R2`)와 `OBJECT_KEY` 를 적는다. 지금은 `S3` 만 쓰지만 저장·삭제가 행의 `PROVIDER` 로 구현을 고르므로, 다른 오브젝트 스토리지로 옮길 때 코드가 아니라 행이 바뀐다. 버킷·CloudFront·환경변수는 S3 구현의 것이라 그대로 S3 이름이다. 이 문서에서 S3 라고 쓴 곳은 지금 구현을 말한다.
+
 ## 이미지 올리기
 
 ### 기본 정보
@@ -125,7 +129,7 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 - **Method**: POST
 - **Path**: `/api/uploads/images`
 - **인증**: 필요 + 온보딩 완료
-- **설명**: 이미지를 올려 두고 업로드 번호를 받는다. 어디에 쓸지는 아직 정하지 않아도 된다
+- **설명**: 이미지를 올려 두고 파일 번호를 받는다. 어디에 쓸지는 아직 정하지 않아도 된다
 
 ### Request — `multipart/form-data`
 
@@ -138,15 +142,15 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 
 ```json
 {
-  "uploadId": 32,
+  "fileId": 32,
   "url": "https://d27gz6v6wvae1d.cloudfront.net/studyclub/gigs/profiles/3f2a9c1e-7b4d-4e8a-9c2f-1a5b6d7e8f90.webp"
 }
 ```
 
 | 필드 | 타입 | NULL | 설명 | 소스 |
 |------|------|------|------|------|
-| uploadId | Long | N | 업로드 번호. 저장 API 에 넘긴다 | UPLOAD.ID |
-| url | String | N | 볼 수 있는 주소. 연결 전에도 주소만 알면 보인다. 미리보기용 | `S3_PUBLIC_BASE_URL` + UPLOAD.S3_KEY |
+| fileId | Long | N | 파일 번호. 저장 API 에 넘긴다 | STORAGE_OBJECT.ID |
+| url | String | N | 볼 수 있는 주소. 연결 전에도 주소만 알면 보인다. 미리보기용 | `S3_PUBLIC_BASE_URL` + STORAGE_OBJECT.OBJECT_KEY |
 
 ### Error Responses
 
@@ -176,12 +180,12 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 ### Request Body
 
 ```json
-{ "uploadId": 32 }
+{ "fileId": 32 }
 ```
 
 | 필드 | 타입 | 필수 | 제약 | 설명 |
 |------|------|------|------|------|
-| uploadId | Long | Y | 내가 올린 것, `purpose=PROFILE`, `PENDING` | `POST /api/uploads/images` 가 돌려준 번호 |
+| fileId | Long | Y | 내가 올린 것, `purpose=PROFILE`, `PENDING` | `POST /api/uploads/images` 가 돌려준 번호 |
 
 ### Response — 200
 
@@ -191,7 +195,7 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | `uploadId` 없음 · 조건부 UPDATE 0 행 (번호 없음 · 남의 것 · 용도 다름 · 이미 연결 · 만료). 전부 `업로드한 사진을 찾을 수 없습니다. 다시 올려 주세요.` |
+| 400 | INVALID_INPUT | `fileId` 없음 · 조건부 UPDATE 0 행 (번호 없음 · 남의 것 · 용도 다름 · 이미 연결 · 만료). 전부 `업로드한 사진을 찾을 수 없습니다. 다시 올려 주세요.` |
 | 401 | UNAUTHORIZED | 토큰 없음 · 만료 |
 | 403 | ONBOARDING_REQUIRED | 온보딩 미완료 |
 
@@ -233,14 +237,15 @@ S3 호출이 없는 API 라 503 이 없다. 옛 파일 삭제는 커밋 뒤라 �
 
 ## 스키마 변경
 
-`UPLOAD` 테이블 신설, Flyway 마이그레이션 1개(`domain` 모듈 다음 번호). 컬럼·인덱스·상태 전이는 [ERD UPLOAD](../../docs/erd/UPLOAD.md).
+`STORAGE_OBJECT` 테이블 신설, Flyway 마이그레이션 1개(`domain` 모듈 다음 번호). 컬럼·인덱스·상태 전이는 [ERD STORAGE_OBJECT](../../docs/erd/STORAGE_OBJECT.md).
 
 | 컬럼 | 뜻 |
 |---|---|
-| ID | 업로드 번호 |
+| ID | 파일 번호 |
 | ACCOUNT_ID | 올린 사람. FK 없음(애그리거트 간 참조) |
 | PURPOSE | `PROFILE` · `STUDY_THUMBNAIL` |
-| S3_KEY · CONTENT_TYPE · SIZE | 어디에 무엇이. `S3_KEY` UNIQUE |
+| PROVIDER · OBJECT_KEY | 어디에. `S3` · `R2`, 지금은 `S3` 만. `OBJECT_KEY` UNIQUE |
+| CONTENT_TYPE · SIZE | 무엇이 |
 | STATUS | `PENDING` · `ATTACHED` · `DELETING` |
 | ATTACHED_AT · CREATED_AT · UPDATED_AT | 시각 |
 
@@ -248,9 +253,9 @@ S3 호출이 없는 API 라 503 이 없다. 옛 파일 삭제는 커밋 뒤라 �
 
 ## 백엔드 구현 지점
 
-- `domain`: `Upload` 엔티티 + 리포지토리의 조건부 UPDATE 셋(연결 · 찜하기 · `ATTACHED`→`DELETING`). `@Modifying` 으로 바뀐 행 수를 돌려준다.
-- `api/upload`: 컨트롤러(`POST /api/uploads/images`), 서비스(올리기 · 연결 · 버리기 · 커밋 뒤 삭제), 스케줄러. 올리기에서 `UPLOAD` INSERT 가 실패하면 방금 올린 S3 파일을 지운다 — 행이 없으면 배치도 못 찾는다.
-- `api/storage`: S3 클라이언트 하나(올리기 · 지우기 · 키↔주소). SES 클라이언트와 같은 방식, AWS SDK v2 `s3`.
+- `domain`: `StorageObject` 엔티티 + 리포지토리의 조건부 UPDATE 셋(연결 · 찜하기 · `ATTACHED`→`DELETING`). `@Modifying` 으로 바뀐 행 수를 돌려준다.
+- `api/upload`: 컨트롤러(`POST /api/uploads/images`), 서비스(올리기 · 연결 · 버리기 · 커밋 뒤 삭제), 스케줄러. 올리기에서 `STORAGE_OBJECT` INSERT 가 실패하면 방금 올린 S3 파일을 지운다 — 행이 없으면 배치도 못 찾는다.
+- `api/storage`: 저장소 인터페이스 하나(올리기 · 지우기 · 키↔주소)와 S3 구현 하나. 올리기는 설정된 `PROVIDER` 로, 지우기는 행의 `PROVIDER` 로 구현을 고른다. S3 구현은 SES 클라이언트와 같은 방식, AWS SDK v2 `s3`.
 - 형식 판정 · 메타데이터 제거 헬퍼 둘. 라이브러리 없음.
 - `AccountProfileController`/`Service` 에 연결·지우기. 커밋 뒤 삭제는 `TransactionSynchronization.afterCommit`.
 - `GlobalExceptionHandler` 에 `MaxUploadSizeExceededException` → 400 한 줄.
@@ -287,16 +292,17 @@ S3 클라이언트를 가짜로 바꾼 통합 테스트.
 
 ## 알려진 한계
 
-- **스터디 썸네일** — 올리기는 `purpose=STUDY_THUMBNAIL` 로 이 API 를 그대로 쓴다. 스터디 등록·수정 API 가 `thumbnailUploadId` 를 받아 결정 2 의 연결 규칙을 타는 변경과, 썸네일 교체·스터디 삭제 시 옛 파일을 `DELETING` 으로 넘기는 것은 스터디 스펙에서.
+- **스터디 썸네일** — 올리기는 `purpose=STUDY_THUMBNAIL` 로 이 API 를 그대로 쓴다. 스터디 등록·수정 API 가 `thumbnailFileId` 를 받아 결정 2 의 연결 규칙을 타는 변경과, 썸네일 교체·스터디 삭제 시 옛 파일을 `DELETING` 으로 넘기는 것은 스터디 스펙에서.
 - **연결 전 파일도 주소만 알면 보인다** — `gigs/` 는 공개 폴더다. 주소가 UUID 라 추측은 못 하고, 하루 뒤 지워진다.
 - **크기 줄이기 · 자르기 없음** — 원본이 그대로 내려간다. 필요해지면 서버에서 줄이거나 CloudFront 쪽에서 변환한다.
 - **세로 사진이 눕혀 보일 수 있다** — 메타데이터를 지우면 jpeg 회전 정보(Orientation)도 사라진다. 대부분의 폰은 저장할 때 픽셀을 돌려 두지만 아닌 기기도 있다. 생기면 회전 값만 읽어 픽셀을 돌리거나 프론트에서 캔버스로 그려 보낸다.
-- **탈퇴** — 탈퇴 스펙이 `PROFILE_IMG_URL` 의 파일과 그 계정의 `PENDING` 업로드를 `DELETING` 으로 넘기고 커밋 뒤 지운다.
+- **탈퇴** — 탈퇴 스펙이 `PROFILE_IMG_URL` 의 파일과 그 계정의 `PENDING` 파일을 `DELETING` 으로 넘기고 커밋 뒤 지운다.
 
 ## 변경이력
 
 | 날짜 | 변경 | 근거 |
 |------|------|------|
+| 2026-10-14 | 테이블 `UPLOAD` → `STORAGE_OBJECT`, `S3_KEY` → `OBJECT_KEY`, `PROVIDER`(`S3` / `R2`) 추가, 응답 `uploadId` → `fileId`. S3 호출은 인터페이스 뒤로 | 리뷰: 모델은 행위가 아니라 결과물 이름으로, S3 에 묶지 말고 다른 오브젝트 스토리지 이관을 열어 둔다 |
 | 2026-10-13 | 공용 업로드 API `POST /api/uploads/images` + `UPLOAD` 테이블 + 조건부 UPDATE 연결 + 정리 배치. 프로필 연결은 `PUT /api/me/profile-image { uploadId }`. 팀 스펙 틀로 재구성 | 리뷰: 스터디 썸네일은 등록 폼에서 스터디가 생기기 전에 올려야 한다 |
 | 2026-10-09 | 메타데이터(EXIF 등) 제거, S3 `Content-Type`·`Cache-Control`, 탈퇴 시 파일 삭제, 정책·기획 문서 정리 | 리뷰: 원본 그대로 공개 저장하면 위치 정보가 노출된다 · 회원 데이터 정책의 즉시 파기 |
 | 2026-10-08 | 최초 작성 — `PUT`·`DELETE /api/me/profile-image`, 서버 경유 업로드, 파일 내용으로 형식 판정, 교체 시 새 파일·옛 파일 삭제 | 리더 요청: 기획을 기다리지 않고 프로필 수정에 사진 등록 |

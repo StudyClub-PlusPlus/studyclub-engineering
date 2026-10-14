@@ -46,7 +46,7 @@ erDiagram
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
   ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
   ACCOUNT ||--o{ ACCOUNT_CONSENT : "동의"
-  ACCOUNT ||--o{ UPLOAD : "올린 파일 (FK 없음)"
+  ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
   ACCOUNT_LEAVE_REASON
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
@@ -80,7 +80,7 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
-  ACCOUNT ||--o{ UPLOAD : "올린 파일 (FK 없음)"
+  ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
   NOTIFICATION {
     bigint ID PK
     varchar EVENT_TYPE
@@ -151,11 +151,12 @@ erDiagram
     datetime UPDATED_AT
   }
 
-  UPLOAD {
+  STORAGE_OBJECT {
     bigint   ID                PK
     bigint   ACCOUNT_ID           "올린 사람 (FK 없음)"
     varchar  PURPOSE              "PROFILE / STUDY_THUMBNAIL"
-    varchar  S3_KEY            UK "gigs/profiles/<UUID>.webp"
+    varchar  PROVIDER             "S3 / R2"
+    varchar  OBJECT_KEY        UK "gigs/profiles/<UUID>.webp"
     varchar  CONTENT_TYPE
     bigint   SIZE
     varchar  STATUS               "PENDING / ATTACHED / DELETING"
@@ -336,7 +337,7 @@ erDiagram
 | 회원  | [ACCOUNT_LEAVE_REASON](./ACCOUNT_LEAVE_REASON.md)                        | 탈퇴 사유 집계 (계정과 잇지 않음) | —                              |
 | 회원  | [ADMIN_AUDIT_LOG](./ADMIN_AUDIT_LOG.md)                                  | 운영 감사 로그 — 이메일 보기·권한 변경 (ID 만) | —                              |
 | 회원  | [SESSION](./SESSION.md)                                 | 발급 토큰 (**Redis 캐시** — DB 테이블 아님) | — |
-| 회원  | [UPLOAD](./UPLOAD.md)                                   | 올린 이미지 파일 — 주인·용도·S3 위치·연결 여부 | `STATUS` |
+| 회원  | [STORAGE_OBJECT](./STORAGE_OBJECT.md)                   | 올린 이미지 파일 — 주인·용도·저장소 위치·연결 여부 | `STATUS` |
 | 스터디 | [STUDY_PROGRAM](./STUDY_PROGRAM.md)                     | 스터디/클럽 정체성             | `STUDY_KIND`                                    |
 | 스터디 | [STUDY](./STUDY.md)                                     | 기수/회차 — 실제 운영 인스턴스     | `STATUS` |
 | 스터디 | [STUDY_GROUP](./STUDY_GROUP.md)                         | 분반 (요일·시간대별)           | —                                    |
