@@ -9,16 +9,11 @@ import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 
 import { OnboardingConsent } from '@/components/OnboardingConsent';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
+import { track } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { checkNicknameAvailability } from '@/lib/api/nicknames';
 import { completeOnboarding } from '@/lib/api/onboarding';
-import {
-  getSuggestedNickname,
-  getUser,
-  logout,
-  setSuggestedNickname,
-  setUser,
-} from '@/lib/auth';
+import { getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import {
   clearDraft,
@@ -53,7 +48,9 @@ function OnboardingScreen() {
   useEffect(() => {
     const user = getUser();
     if (!user) {
-      router.replace(`/${locale}/login?next=${encodeURIComponent(`/${locale}/onboarding?next=${encodeURIComponent(next)}`)}`);
+      router.replace(
+        `/${locale}/login?next=${encodeURIComponent(`/${locale}/onboarding?next=${encodeURIComponent(next)}`)}`,
+      );
       return;
     }
     if (user.onboardingCompletedAt) {
@@ -92,20 +89,10 @@ function OnboardingScreen() {
   );
 }
 
-function OnboardingForm({
-  locale,
-  next,
-  accountId,
-}: {
-  locale: Locale;
-  next: string;
-  accountId: number;
-}) {
+function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: string; accountId: number }) {
   const ko = locale === 'ko';
   const router = useRouter();
-  const [draft, setDraft] = useState<OnboardingDraft>(() =>
-    initialDraft(accountId, getSuggestedNickname()),
-  );
+  const [draft, setDraft] = useState<OnboardingDraft>(() => initialDraft(accountId, getSuggestedNickname()));
   const [touched, setTouched] = useState(false);
   const [composing, setComposing] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
@@ -114,6 +101,9 @@ function OnboardingForm({
   const [fieldErrors, setFieldErrors] = useState<OnboardingFieldErrors>({});
   const [pending, setPending] = useState(false);
   const submitting = useRef(false);
+  const startTime = useRef(Date.now());
+  const conflictCount = useRef(0);
+  const prevRequiredAgreed = useRef(false);
 
   useEffect(() => {
     saveDraft(accountId, draft);
@@ -125,14 +115,14 @@ function OnboardingForm({
       setFieldErrors((previous) => ({ ...previous, nickname: undefined }));
     } else if (field === 'timeZone') {
       setFieldErrors((previous) => ({ ...previous, timeZone: undefined }));
-    } else if (
-      field === 'termsOfServiceAgreed' ||
-      field === 'privacyPolicyAgreed' ||
-      field === 'marketingAgreed'
-    ) {
+    } else if (field === 'termsOfServiceAgreed' || field === 'privacyPolicyAgreed' || field === 'marketingAgreed') {
       setFieldErrors((previous) => ({ ...previous, consent: undefined }));
     }
   }
+
+  useEffect(() => {
+    track({ name: 'Onboarding Started', props: { suggested_nickname: getSuggestedNickname() !== null } });
+  }, []);
 
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const nickAbort = useRef<AbortController | null>(null);
@@ -167,6 +157,21 @@ function OnboardingForm({
   }, [trimmedNick, composing, nickFormatError]);
 
   const requiredAgreed = ageConfirmed && draft.termsOfServiceAgreed && draft.privacyPolicyAgreed;
+
+  useEffect(() => {
+    if (requiredAgreed && !prevRequiredAgreed.current) {
+      track({
+        name: 'Onboarding Consents Agreed',
+        props: {
+          terms_agreed: draft.termsOfServiceAgreed,
+          privacy_agreed: draft.privacyPolicyAgreed,
+          marketing_agreed: draft.marketingAgreed,
+        },
+      });
+    }
+    prevRequiredAgreed.current = requiredAgreed;
+  }, [requiredAgreed, draft.termsOfServiceAgreed, draft.privacyPolicyAgreed, draft.marketingAgreed]);
+
   const valid =
     !nicknameError(draft.nickname, locale) &&
     nickStatus !== 'taken' &&
@@ -257,6 +262,13 @@ function OnboardingForm({
     setProblem(null);
     setFieldErrors({});
     try {
+      track({
+        name: 'Onboarding Nickname Submitted',
+        props: {
+          used_suggested_name: getSuggestedNickname() !== null && draft.nickname.trim() === getSuggestedNickname(),
+          nickname_length: draft.nickname.trim().length,
+        },
+      });
       const account = await completeOnboarding({
         age14Confirmed: ageConfirmed,
         termsOfServiceAgreed: draft.termsOfServiceAgreed,
@@ -276,6 +288,13 @@ function OnboardingForm({
       });
       setSuggestedNickname(null);
       clearDraft(accountId);
+      track({
+        name: 'Onboarding Completed',
+        props: {
+          time_to_complete_sec: Math.round((Date.now() - startTime.current) / 1000),
+          marketing_agreed: draft.marketingAgreed,
+        },
+      });
       router.replace(next);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -283,6 +302,8 @@ function OnboardingForm({
           setProblem('expired');
           setFieldErrors({});
         } else if (err.status === 409) {
+          conflictCount.current += 1;
+          track({ name: 'Onboarding Nickname Conflict', props: { attempt_count: conflictCount.current } });
           setNickStatus('taken');
           setFieldErrors({ nickname: ko ? '이미 사용중인 닉네임입니다' : 'This nickname is taken' });
           document.getElementById('onboarding-nickname')?.focus();

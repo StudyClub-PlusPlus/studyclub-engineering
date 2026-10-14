@@ -86,6 +86,7 @@ export function clearSession(): void {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(USER_KEY);
   setSuggestedNickname(null);
+  window.dispatchEvent(new Event(USER_CHANGED_EVENT));
 }
 
 /** 로그아웃 — localStorage 유저 제거 + 서버 라우트로 httpOnly 쿠키 제거. */

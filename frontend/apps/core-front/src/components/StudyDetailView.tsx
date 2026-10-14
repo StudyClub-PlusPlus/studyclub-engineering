@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { ArrowLeft, CalendarClock } from 'lucide-react';
 
-
 import { ApplyButton } from '@/components/ApplyButton';
 import { useStudyDetail } from '@/features/studies/queries';
 import type { Locale } from '@/lib/content';
@@ -16,13 +15,7 @@ import { toISODate } from '@/lib/recruit';
 import { SITE_URL } from '@/lib/seo';
 
 /** TODO(api): GET /api/studies/{id} — 스터디 상세 조회 */
-export function StudyDetailView({
-  id,
-  locale,
-}: {
-  id: number;
-  locale: Locale;
-}) {
+export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) {
   const { data: study, error, isPending } = useStudyDetail(id);
 
   if (isPending) {
@@ -40,7 +33,13 @@ export function StudyDetailView({
         <p className='text-lg font-bold text-fg-secondary'>
           {isNotFound
             ? t({ ko: '스터디를 찾을 수 없어요.', en: 'Study not found.' }, locale)
-            : t({ ko: '스터디 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.', en: 'Could not load study details. Please try again.' }, locale)}
+            : t(
+                {
+                  ko: '스터디 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+                  en: 'Could not load study details. Please try again.',
+                },
+                locale,
+              )}
         </p>
         <Link
           href={`/${locale}/studies`}
