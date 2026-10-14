@@ -689,7 +689,7 @@ export function AttendanceTab({
                 </Button>
                 <span data-anno='book:5'>
                   <Button variant='destructive' onClick={() => void save()}>
-                    참여 중단하고 저장
+                    저장
                   </Button>
                 </span>
               </>
