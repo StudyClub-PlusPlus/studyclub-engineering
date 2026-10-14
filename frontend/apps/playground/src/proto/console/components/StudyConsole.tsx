@@ -149,10 +149,15 @@ export function StudyConsole({ study }: { study: Study }) {
     if (isNew) setClassId(cls.id);
   }
 
-  /** 반의 진행 일정을 정한다. 바꾸면 **오늘 이후 회차만** 다시 깔린다 — 찍은 출석은 남는다. */
+  /**
+   * 반의 진행 일정을 정한다. **처음 정할 때만** 회차를 깐다.
+   * 이미 일정이 있는 반의 수정은 스터디 시간(요일·시각·시간대)만 바꾸고 회차는 그대로 둔다 — 회차는 일정 표에서 고친다.
+   */
   function saveRule(id: string, rule: ScheduleRule) {
+    const cur = classes.find((c) => c.id === id);
+    const first = !cur || !hasSchedule(cur);
     setClasses((list) => list.map((c) => (c.id === id ? { ...c, rule } : c)));
-    setMeetings((prev) => ({ ...prev, [id]: applyRule(id, prev[id] ?? [], rule, todayISO()) }));
+    if (first) setMeetings((prev) => ({ ...prev, [id]: applyRule(id, prev[id] ?? [], rule, todayISO()) }));
   }
 
   function removeClass(id: string) {
@@ -381,8 +386,6 @@ export function StudyConsole({ study }: { study: Study }) {
               <ClassScheduleDialog
                 open={ruleOpen}
                 cls={view.cls}
-                // 표·규칙에 저장하지 않은 고침이 있으면 회차를 다시 깔지 않는다 — 고친 줄이 사라진다
-                blocked={scheduleDirty}
                 onClose={() => setRuleOpen(false)}
                 onSave={(rule) => {
                   saveRule(view.cls.id, rule);

@@ -17,7 +17,7 @@
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/role | 네비게이터 지정 · 해제 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/group | 크루의 반 지정 · 이동 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 스펙작성중 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 수정 · 반 일정 정하기·수정 (회차 생성 · 오늘 이후 재생성) | O (ADMIN) | 스펙작성중 |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 수정 · 반 일정 정하기(회차 생성) · 스터디 시간 수정(회차 그대로) | O (ADMIN) | 스펙작성중 |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 스펙작성중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -253,23 +253,23 @@
 | timezone | String (IANA) | N* | [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 값 |
 | kickoffAt | String (ISO-8601 UTC) | N | 킥오프 회차 시각. **처음 일정을 정할 때만** 받는다. 첫 정규 회차보다 앞 |
 
-\* 일정 필드는 처음 정할 때 다섯(`startDate` · `endDate` · `daysOfWeek` · `startTime` · `timezone`)을 함께 보낸다. 이미 일정이 있으면 바꿀 것만 보낸다.
+\* 일정 필드는 처음 정할 때 다섯(`startDate` · `endDate` · `daysOfWeek` · `startTime` · `timezone`)을 함께 보낸다. 이미 일정이 있으면 `daysOfWeek` · `startTime` · `timezone` 중 바꿀 것만 보낸다. `startDate` · `endDate` 는 받지 않는다(400).
 
 ### 서버 동작
 
 - `name` 만 오면 이름만 바꾼다. 회차 · 출석은 그대로
 - **처음 일정을 정할 때**(지금 회차가 없음): 시작일~종료일 사이 고른 요일마다 정규 회차를 만든다. 현지 날짜 · 시각을 `timezone` 으로 UTC 로 바꿔 `STUDY_MEETING.SCHEDULED_AT` 에 저장한다. `MEETING_TYPE = REGULAR`, 같은 `SERIES_ID`, **`TITLE` 은 NULL** — 일정 표에서 채운다. `kickoffAt` 이 오면 `MEETING_TYPE = KICKOFF` 회차 하나도 만든다 — [회차 스펙 결정 11](../study-meeting/spec.md#결정-사항)
-- **일정을 바꿀 때**: 화면이 저장 전에 확인을 받는다(지워지는 회차의 제목 · 발표자 · 휴가 신청도 사라진다). 서버는 **오늘 이후 시작 전** 정규 회차를 지우고 새 일정으로 다시 만든다. 지난 회차 · 출석 · 킥오프는 둔다. 지우는 회차의 출석 행도 함께 지운다 (회차 삭제 규칙과 같다)
+- **이미 일정이 있을 때**(스터디 시간 수정): `DAYS_OF_WEEK` · `START_AT` · `TIMEZONE` 만 바꾼다. **회차를 만들지도 지우지도 않는다** — 회차는 [회차 스펙](../study-meeting/spec.md)의 추가 · 수정 · 삭제로만 바뀐다 (2026-10-14)
 - 새로 만든 예정 회차의 출석 행은 그 반 활성 명부 행마다 `ABSENT` 로 만든다
 - 회차 수 상한은 회차 스펙과 같다
 
 ### Response — 200
 
 ```json
-{ "groupId": 7, "name": "A반", "meetingCount": 8, "regeneratedCount": 5 }
+{ "groupId": 7, "name": "A반", "meetingCount": 8, "createdCount": 8 }
 ```
 
-`meetingCount` 는 정규 회차 수(킥오프 제외). `regeneratedCount` 는 이번에 지우고 다시 만든 회차 수 — 처음 정할 때는 만든 수, 이름만 바꿨으면 0.
+`meetingCount` 는 정규 회차 수(킥오프 제외). `createdCount` 는 이번에 만든 회차 수 — 처음 일정을 정할 때만 0보다 크다.
 
 ### Error Responses
 
@@ -319,5 +319,5 @@
 
 - 보류(MVP 이후): 신청자 가능 시간 집계(`GET …/availability`) — 신청 폼의 가능한 시간 질문이 필수가 아니라 2026-10-14 에 화면과 함께 뺐다
 - [NEEDS CLARIFICATION] 신청자를 명부(`STUDY_PARTICIPANT`)에 넣는 시점 — 반 지정 때인지, 모집 마감 때 일괄인지
-- [NEEDS CLARIFICATION] 반 일정을 바꿀 때 지워지는 회차에 걸린 휴가 신청 처리
+- ~~반 일정을 바꿀 때 지워지는 회차에 걸린 휴가 신청 처리~~ → 스터디 시간 수정이 회차를 지우지 않아 없어졌다 (2026-10-14)
 - [NEEDS CLARIFICATION] 명단 열람을 그 스터디의 네비게이터에게도 열지 (PRD 는 허용) — 연다면 사용자 사이트 경로를 따로 두고 이메일을 빼야 한다

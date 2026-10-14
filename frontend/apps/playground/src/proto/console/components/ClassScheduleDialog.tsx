@@ -19,61 +19,48 @@ import { Button, Modal } from '@studyclub/ui';
 /**
  * 반의 진행 일정 — 일정 탭에서 연다.
  *
- * 반은 신청자 탭에서 제목만으로 만들어진다. 요일·시각·기간은 여기서 정하고, 정하면 회차가 깔린다.
- * 깔린 회차의 제목은 비어 있다 — 일정 표에서 바로 채운다.
- * 이미 정한 일정을 바꾸면 **오늘 이후 회차만** 다시 깔린다. 찍힌 출석은 남는다.
+ * 두 가지로 열린다.
+ * - **일정 정하기**(일정 없는 반): 요일·시각·기간을 정하면 회차가 깔린다. 깔린 회차의 제목은 비어 있다 — 일정 표에서 채운다.
+ * - **스터디 시간 수정**(일정 있는 반): 요일·시각·시간대만 바꾼다. **회차를 더하거나 다시 깔지 않는다** —
+ *   회차를 더하고 옮기는 일은 일정 표 하나에서만 한다. 두 곳에서 회차가 생기면 어디서 생긴 것인지 헷갈린다.
  */
 export function ClassScheduleDialog({
   open,
   cls,
-  blocked = false,
   onClose,
   onSave,
 }: {
   open: boolean;
   cls: StudyClass;
-  /** 일정 표 · 규칙에 저장하지 않은 고침이 있다. 있으면 저장을 막는다. */
-  blocked?: boolean;
   onClose: () => void;
   onSave: (rule: ScheduleRule) => void;
 }) {
   const [rule, setRule] = useState<ScheduleRule>(EMPTY_RULE);
   const [touched, setTouched] = useState(false);
-  // 이미 일정이 있는 반은 저장 전에 한 번 더 묻는다 — 오늘 이후 회차와 거기 적은 것이 지워진다
-  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setRule(hasSchedule(cls) ? cls.rule : { ...EMPTY_RULE, tz: cls.rule.tz });
     setTouched(false);
-    setConfirming(false);
   }, [open, cls]);
 
   const editing = hasSchedule(cls);
 
   const count = ruleDates(rule).length;
-  const invalid = touched && !canBuildMeetings(rule);
+  // 수정은 기간을 받지 않으므로 요일만 있으면 된다
+  const valid = editing ? rule.weekdays.length > 0 : canBuildMeetings(rule);
+  const invalid = touched && !valid;
   const at = rule.startDate ? wallToInstant(rule.startDate, rule.time, rule.tz) : new Date();
   const other = otherClock(rule);
 
   function toggleDay(d: number) {
     const on = rule.weekdays.includes(d);
-    update({ ...rule, weekdays: (on ? rule.weekdays.filter((x) => x !== d) : [...rule.weekdays, d]).sort() });
-  }
-
-  /** 값을 바꾸면 확인을 다시 받는다 — 확인한 것과 저장할 것이 달라지면 안 된다. */
-  function update(next: ScheduleRule) {
-    setRule(next);
-    setConfirming(false);
+    setRule({ ...rule, weekdays: (on ? rule.weekdays.filter((x) => x !== d) : [...rule.weekdays, d]).sort() });
   }
 
   function save() {
     setTouched(true);
-    if (blocked || !canBuildMeetings(rule)) return;
-    if (editing && !confirming) {
-      setConfirming(true);
-      return;
-    }
+    if (!valid) return;
     onSave(rule);
   }
 
@@ -81,36 +68,39 @@ export function ClassScheduleDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={`${classLabel(cls)} 일정`}
+      title={editing ? `${classLabel(cls)} 스터디 시간 수정` : `${classLabel(cls)} 일정 정하기`}
       footer={
         /* 입력·설정 모달 — 취소 없이 X 로 닫는다 (POL-0008) */
-        <Button onClick={save} disabled={blocked}>{!editing ? '회차 만들기' : confirming ? '지우고 다시 만들기' : '저장'}</Button>
+        <Button onClick={save}>{editing ? '저장' : '회차 만들기'}</Button>
       }
     >
       <div data-anno='schedule:14-1' className='flex flex-col gap-4 py-2'>
         <div className='flex flex-col gap-2'>
-          <span className='text-sm font-medium text-neutral-800'>진행 일정</span>
-          <div className='flex flex-wrap items-center gap-2'>
-            <input
-              type='date'
-              aria-label='시작일'
-              aria-describedby='rule-msg'
-              aria-invalid={invalid || undefined}
-              value={rule.startDate}
-              onChange={(ev) => update({ ...rule, startDate: ev.target.value })}
-              className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-            />
-            <span className='text-sm text-fg-muted'>~</span>
-            <input
-              type='date'
-              aria-label='종료일'
-              aria-describedby='rule-msg'
-              aria-invalid={invalid || undefined}
-              value={rule.endDate}
-              onChange={(ev) => update({ ...rule, endDate: ev.target.value })}
-              className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-            />
-          </div>
+          <span className='text-sm font-medium text-neutral-800'>{editing ? '스터디 시간' : '진행 일정'}</span>
+          {/* 기간은 회차를 깔 때만 받는다 — 수정에서는 회차를 건드리지 않는다 */}
+          {!editing && (
+            <div className='flex flex-wrap items-center gap-2'>
+              <input
+                type='date'
+                aria-label='시작일'
+                aria-describedby='rule-msg'
+                aria-invalid={invalid || undefined}
+                value={rule.startDate}
+                onChange={(ev) => setRule({ ...rule, startDate: ev.target.value })}
+                className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+              />
+              <span className='text-sm text-fg-muted'>~</span>
+              <input
+                type='date'
+                aria-label='종료일'
+                aria-describedby='rule-msg'
+                aria-invalid={invalid || undefined}
+                value={rule.endDate}
+                onChange={(ev) => setRule({ ...rule, endDate: ev.target.value })}
+                className='h-10 w-[9.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+              />
+            </div>
+          )}
 
           <div className='flex flex-wrap items-center gap-2'>
             <div
@@ -143,7 +133,7 @@ export function ClassScheduleDialog({
               type='time'
               aria-label='시간'
               value={rule.time}
-              onChange={(ev) => update({ ...rule, time: ev.target.value })}
+              onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
               className='h-10 w-[7.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
             />
             {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
@@ -155,7 +145,7 @@ export function ClassScheduleDialog({
                     key={tz.key}
                     type='button'
                     aria-pressed={on}
-                    onClick={() => update({ ...rule, tz: tz.key })}
+                    onClick={() => setRule({ ...rule, tz: tz.key })}
                     className={`h-10 rounded-control border px-3 text-sm font-semibold transition-colors ${
                       on
                         ? 'border-brand bg-brand text-white'
@@ -177,19 +167,17 @@ export function ClassScheduleDialog({
           ) : null}
 
           <p id='rule-msg' role='status' className='text-xs'>
-            {blocked ? (
-              <span className='font-medium text-error-600'>
-                일정 표나 스터디 규칙에 저장하지 않은 고침이 있습니다. 먼저 저장하거나 취소한 뒤 일정을 바꿔 주세요.
-              </span>
-            ) : confirming ? (
-              <span className='font-medium text-error-600'>
-                오늘 이후 회차를 지우고 새 일정으로 다시 만듭니다. 그 회차에 적은 제목 · 발표자와 휴가 신청도 함께
-                지워집니다. 지난 회차와 출석은 남습니다.
-              </span>
+            {editing ? (
+              touched && !valid ? (
+                <span className='font-medium text-error-600'>요일을 하나 이상 골라 주세요.</span>
+              ) : (
+                <span className='text-fg-muted'>
+                  스터디 시간만 바꿉니다. 회차는 그대로입니다 — 회차를 더하거나 옮기려면 일정 표에서 고칩니다.
+                </span>
+              )
             ) : count > 0 ? (
               <span className='text-fg-secondary'>
-                {editing ? '오늘 이후 회차가 다시 만들어집니다 — ' : ''}회차 <b className='tnum'>{count}</b>회 · 제목은
-                일정 표에서 채웁니다.
+                회차 <b className='tnum'>{count}</b>회 · 제목은 일정 표에서 채웁니다.
               </span>
             ) : touched ? (
               <span className='font-medium text-error-600'>시작일 · 종료일 · 요일을 모두 정해야 합니다.</span>

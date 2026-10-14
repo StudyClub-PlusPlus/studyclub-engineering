@@ -55,7 +55,7 @@
 API 쪽 변경 ([study-group 스펙](../../specs/study-group/spec.md)):
 
 - `POST …/groups` 는 `{ name }` 만 받는다. 회차를 만들지 않는다
-- `PATCH …/groups/{groupId}` 하나로 반 제목 수정과 일정 정하기·수정을 한다. 처음 정하면 회차를 만들고(제목 NULL), 바꾸면 오늘 이후 회차만 다시 만든다
+- `PATCH …/groups/{groupId}` 하나로 반 제목 수정과 일정 정하기·수정을 한다. 처음 정하면 회차를 만들고(제목 NULL), 그 뒤 스터디 시간 수정은 요일 · 시각 · 시간대만 바꾸고 회차는 건드리지 않는다
 - `PUT …/captain/group`(담당 캡틴 반 지정)과 `GET …/availability`(가능 시간 집계)는 지웠다
 - 참여 명단 응답에서 `captain` 객체와 `completionRate` 를 지웠다. 행마다 `captain` 플래그는 남는다(신청한 담당 캡틴 표시용)
 
