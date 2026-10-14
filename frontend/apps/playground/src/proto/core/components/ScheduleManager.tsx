@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { AutoTextarea } from '@core/components/AutoTextarea';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import {
   DISPLAY_ZONES,
@@ -34,7 +33,7 @@ import {
 import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import type { Study } from '@studyclub/mock';
-import { Button, Input, Modal, cx } from '@studyclub/ui';
+import { AutoTextarea, Button, Input, Modal, cx } from '@studyclub/ui';
 import { Plus, Trash2, X } from 'lucide-react';
 
 /**
