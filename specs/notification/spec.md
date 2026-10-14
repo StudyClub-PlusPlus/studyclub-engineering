@@ -2,6 +2,7 @@
 
 > ERD: [NOTIFICATION](../../docs/erd/NOTIFICATION.md), [NOTIFICATION_TEMPLATE](../../docs/erd/NOTIFICATION_TEMPLATE.md)
 > 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) (트리거 쪽 계약)
+> Story PRD: [알림 템플릿](../../01-planning/stories/notification-template/PRD.md) (ST-030) · [발송 이력](../../01-planning/stories/notification-history/PRD.md) (ST-032)
 > 생성일: 2026-09-12 · 상태: 구현중
 
 ## 범위
@@ -21,8 +22,8 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | `/api/admin/notification-templates` | 알림 템플릿 목록 조회 | O (백오피스) | 구현중 |
-| GET | `/api/admin/notifications` | 발송 이력 조회 | O (백오피스) | 구현중 |
+| GET | `/api/admin/notification-templates` | 알림 템플릿 목록 조회 | O (백오피스) | 구현완료 |
+| GET | `/api/admin/notifications` | 발송 이력 조회 | O (백오피스) | 구현완료 |
 
 ### 이 기능이 "알림(Notification)" 으로 추상화되고 이벤트 핸들러 방식으로 개발된다는 것의 확인
 

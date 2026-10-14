@@ -12,8 +12,12 @@ export default function ConsoleProtoLayout({ children }: { children: React.React
   return (
     <div data-app='console'>
       <AppShell>{children}</AppShell>
-      {/* 끝난 일을 한 번 알리고 사라진다 — 결과를 창으로 띄우면 다음 일을 하려고 또 닫아야 한다 */}
-      <Toaster position='bottom-center' />
+      {/*
+        끝난 일을 한 번 알리고 사라진다 — 결과를 창으로 띄우면 다음 일을 하려고 또 닫아야 한다.
+        가운데가 아니라 **오른쪽 아래**에 둔다: 표가 화면을 가득 채우는 지면이라, 가운데에 뜨면
+        마지막 줄의 버튼을 덮어 다음 줄을 누르지 못한다.
+      */}
+      <Toaster position='bottom-right' />
     </div>
   );
 }

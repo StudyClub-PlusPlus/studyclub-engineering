@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { ArrowLeft, CalendarClock } from 'lucide-react';
 
 import { ApplyButton } from '@/components/ApplyButton';
-import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
 import { useStudyDetail } from '@/features/studies/queries';
 import type { Locale } from '@/lib/content';
 import { ApiError } from '@/lib/http';

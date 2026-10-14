@@ -228,6 +228,18 @@ erDiagram
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | back-office-front 신청 폼 탭 (`ApplicationFormTab`) | 있음 — 조회 · 저장 API 연결 | 없음 |
+| BE | `GET` · `PUT /api/admin/studies/{studyId}/application-form` | 구현완료 | 없음 |
+| BE | 옛 사이트 경로 `PUT /api/studies/{studyId}/application-form` | 폐기 — 스펙에서는 지웠고 컨트롤러는 남아 있다 | 지운다 ([share 10-07](../../../docs/share/2026-10-07-captain-owner-by-created-by.md)) |
+
 ### 데이터
 
 | 대상 | 필드 | 제약 |

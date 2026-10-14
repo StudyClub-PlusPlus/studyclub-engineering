@@ -7,7 +7,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 
-import { categoryGradient, categoryMeta } from '@core/components/StudyThumb';
 import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
 import { getUser, type SessionUser } from '@core/lib/auth';
 import { userStudyPath, type Locale } from '@core/lib/content';
@@ -34,6 +33,7 @@ import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
 import { recruitState } from '@core/lib/recruit';
 import { type Study } from '@studyclub/mock';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Button } from '@studyclub/ui';
 import { CalendarClock, Heart, Pencil } from 'lucide-react';
 

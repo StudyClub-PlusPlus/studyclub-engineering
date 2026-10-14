@@ -1,5 +1,5 @@
-import { Pill } from '@core/components/Badge';
 import { JoinCta } from '@core/components/JoinCta';
+import { Pill } from '@core/components/StatusBadge';
 import { getNotices, getSite, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 

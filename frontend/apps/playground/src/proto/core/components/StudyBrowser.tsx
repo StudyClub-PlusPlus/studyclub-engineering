@@ -8,7 +8,7 @@ import { recruitState, studyTimezone } from '@core/lib/recruit';
 import { Select } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
-import { StudyCard } from './StudyCard';
+import { StudyListCard } from './StudyListCard';
 
 type RecruitmentFilter = 'all' | 'recruiting' | 'ongoing' | 'closed';
 type TimezoneFilter = 'all' | 'KST' | 'PST' | 'both';
@@ -283,7 +283,7 @@ export function StudyBrowser({
       {filtered.length > 0 ? (
         <div data-anno='5' className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
           {filtered.map((s) => (
-            <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
+            <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
           ))}
         </div>
       ) : hasQuery ? (

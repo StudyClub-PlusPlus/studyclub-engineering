@@ -7,8 +7,8 @@ import type { Metadata } from 'next';
 import '@/app/globals.css';
 import { Providers } from '@/app/providers';
 import { Footer } from '@/components/Footer';
-import { Nav } from '@/components/Nav';
 import { RegistrationNavigation } from '@/components/RegistrationNavigation';
+import { SiteHeader } from '@/components/SiteHeader';
 import { getSite } from '@/lib/content';
 import { LOCALES, isLocale, m } from '@/lib/i18n';
 import { JsonLd, organizationJsonLd, webSiteJsonLd } from '@/lib/jsonld';
@@ -79,7 +79,7 @@ export default async function LocaleLayout({
           <div className='flex min-h-screen flex-col'>
             <Suspense fallback={<div className='h-16 border-b border-border' />}>
               <RegistrationNavigation locale={locale}>
-                <Nav locale={locale} discordUrl={site.discord_invite} mentoringUrl={site.mentoring_url} />
+                <SiteHeader locale={locale} discordUrl={site.discord_invite} mentoringUrl={site.mentoring_url} />
               </RegistrationNavigation>
             </Suspense>
             <main className='flex-1'>{children}</main>

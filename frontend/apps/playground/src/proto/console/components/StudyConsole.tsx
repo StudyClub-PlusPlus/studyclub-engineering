@@ -181,7 +181,7 @@ export function StudyConsole({ study }: { study: Study }) {
 
   /** 칸을 눌러 고친 값을 한 번에 반영한다. 한 칸마다 따로 보내지 않는다. */
   async function saveAttendance(next: Record<string, Record<string, AttendanceStatus>>) {
-    // TODO(api): POST /api/studies/{id}/attendances — 바뀐 칸만 updates[] 로 한 번에 보낸다.
+    // TODO(api): POST /api/admin/studies/{id}/attendances — body: { studyGroupId, updates[] }
     await new Promise((r) => setTimeout(r, 400));
     setAttendance(next);
   }

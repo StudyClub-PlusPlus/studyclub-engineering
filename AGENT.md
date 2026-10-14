@@ -112,8 +112,18 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   로컬에서 안 돌리면 PR CI(`backend-PR-CI`)가 잡지만, 그 전에 리뷰어 시간을 먹는다.
   **playground 를 고쳤으면 커밋 전에 `pnpm --filter playground run build` (frontend/ 에서)를 돌려 오류가 없는지 확인한 뒤에만 커밋한다** — `beta` 브랜치에서 바로 배포되는 유일한 앱이라(`playground-beta.yaml`) 다른 앱의 CI 게이트를 안 거친다.
   `01-planning/stories/**` 또는 `playground/**/spec.ts` 를 건드렸으면 `pnpm --filter playground export-specs --check` 도 통과해야 한다.
+  프론트 화면·부품을 고쳤으면 레포 루트에서 `node scripts/check-component-drift.mjs` 도 통과시킨다 — `@studyclub/ui` 와 같은 이름의 부품 사본이나
+  토큰을 건너뛴 값(Tailwind 기본 팔레트 색, `#hex` 색 코드, `text-[13px]` 같은 글자 크기)이 기준선보다 늘면 실패한다.
+  부품 모양은 `packages/ui` 에서만 고친다. PR 에서는 `design-drift` CI 가 같은 검사를 돌린다.
 - **스펙 먼저** — 새 API 는 `specs/{도메인}/spec.md` 를 먼저 쓴다. 가이드: [`docs/backend-development-guide/spec-driven-development.md`](docs/backend-development-guide/spec-driven-development.md)
 - **Story PRD** — 화면 기획은 `01-planning/stories/{story-name}/PRD.md` 에만 만든다. `specs/` 안이나 레포 밖에 두지 않는다. 인덱스: [`01-planning/_registry/stories.md`](01-planning/_registry/stories.md). **`§2 화면명세` 안에 `spec.ts` `scope` 마다 `<!-- spec:start {scope} -->` / `<!-- spec:end {scope} -->` 마커를 넣고 `pnpm --filter playground export-specs` 로 내용을 채운다** — 마커 없이 PR 을 올리면 playground CI 가 막는다
+- **기획은 `stories.md` 한 줄에서 출발한다** — 개발 전에 이 순서로 읽는다. 행의 링크를 따라가면 된다.
+  1. [`stories.md`](01-planning/_registry/stories.md) 에서 Story(`ST-###`) 행을 찾는다
+  2. **PRD** — 무엇을 만들고 언제 완료인지. 걸린 `POL-####` 은 여러 화면에 걸친 규칙
+  3. **프로토** — 어떻게 생겼는지 (playground)
+  4. **Spec** — API 경로·요청·응답·판정 필드. 경로·필드가 PRD 와 다르면 **스펙이 정본**이다
+  5. [`docs/share/`](docs/share/README.md) — 목록의 **반영** 칸이 `됨`·`해당 없음` 이 아닌 같은 도메인 건. 문서에 아직 안 들어간 결정이다
+  - **무엇이 이미 있고 무엇을 만들지**는 PRD §3 「개발 범위」 표에 있다. 스펙 상태나 PRD 를 고쳤으면 `node scripts/check-dev-scope.mjs` 로 코드와 어긋나지 않았는지 본다
 - **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.
   목록의 공유 칸은 **`공유전`** 으로 둔다 — 팀에는 모아서 한 번에 알리고 그때 `공유됨 (MM-DD)` 로 바꾼다 ([§공유](docs/share/README.md#공유--모아서-한-번에)).

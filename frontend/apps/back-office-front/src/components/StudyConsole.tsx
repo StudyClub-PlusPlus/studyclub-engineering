@@ -73,7 +73,7 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
     return total === 0 ? undefined : Math.round((score / total) * 100);
   }, [active, attendance]);
 
-  // TODO(api): POST /api/studies/{id}/attendances — 출석 체크 저장
+  // TODO(api): POST /api/admin/studies/{id}/attendances — body: { studyGroupId, updates[] }
   function toggleAttendance(crewId: string, meetingId: string) {
     setAttendance((a) => {
       const row = { ...(a[crewId] ?? {}) };

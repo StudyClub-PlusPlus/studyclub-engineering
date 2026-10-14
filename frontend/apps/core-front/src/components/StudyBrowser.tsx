@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
 import { Select } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
-import { StudyCard } from './StudyCard';
+import { StudyListCard } from './StudyListCard';
 import { useStudies } from '@/features/studies/queries';
-import { track } from '@/lib/analytics';
+import { track, type AnalyticsEvent } from '@/lib/analytics';
 import type { StudyPhaseFilter, StudySearch, StudyTimezoneFilter } from '@/lib/api';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
@@ -135,12 +135,29 @@ export function StudyBrowser({
   const loading = isFetching;
   const failed = isError;
 
+  // 결과 수는 새 조건의 응답이 와야 안다 — 클릭 순간의 studies 는 이전 조건의 목록이다.
+  // 조건이 바뀌고 로딩이 끝나면 그때 보낸다. 실패한 조회는 보내지 않는다(결과 수가 없다).
+  const searchKey = JSON.stringify(search);
+  const pendingTrack = useRef<{ fromKey: string; build: (resultCount: number) => AnalyticsEvent } | null>(null);
+  const trackAfterLoad = (build: (resultCount: number) => AnalyticsEvent) => {
+    pendingTrack.current = { fromKey: searchKey, build };
+  };
+  useEffect(() => {
+    const pending = pendingTrack.current;
+    if (!pending || loading || searchKey === pending.fromKey) return;
+    pendingTrack.current = null;
+    if (!failed) track(pending.build(studies.length));
+  }, [searchKey, loading, failed, studies.length]);
+
   const hasQuery = query.trim().length > 0;
   const commitSearch = () => {
-    track({
-      name: 'Study Searched',
-      props: { query_length: input.trim().length, result_count: studies.length, has_results: studies.length > 0 },
-    });
+    if (input.trim() !== query.trim()) {
+      const queryLength = input.trim().length;
+      trackAfterLoad((count) => ({
+        name: 'Study Searched',
+        props: { query_length: queryLength, result_count: count, has_results: count > 0 },
+      }));
+    }
     setFilters({ q: input });
   };
   const clearSearch = () => {
@@ -170,14 +187,16 @@ export function StudyBrowser({
                   role='tab'
                   aria-selected={active}
                   onClick={() => {
-                    track({
-                      name: 'Study Filter Tab Changed',
-                      props: {
-                        tab: option.value as 'all' | 'recruiting' | 'ongoing' | 'closed',
-                        result_count: studies.length,
-                        category: filters.category,
-                      },
-                    });
+                    if (!active) {
+                      trackAfterLoad((count) => ({
+                        name: 'Study Filter Tab Changed',
+                        props: {
+                          tab: option.value as 'all' | 'recruiting' | 'ongoing' | 'closed',
+                          result_count: count,
+                          category: filters.category,
+                        },
+                      }));
+                    }
                     setFilters({ status: option.value });
                   }}
                   className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
@@ -231,10 +250,12 @@ export function StudyBrowser({
               key={option.value}
               active={category === option.value}
               onClick={() => {
-                track({
-                  name: 'Study Category Filtered',
-                  props: { category: option.value, tab: filters.status, result_count: studies.length },
-                });
+                if (category !== option.value) {
+                  trackAfterLoad((count) => ({
+                    name: 'Study Category Filtered',
+                    props: { category: option.value, tab: filters.status, result_count: count },
+                  }));
+                }
                 setFilters({ category: option.value });
               }}
             >
@@ -263,7 +284,7 @@ export function StudyBrowser({
           className={`grid gap-4 transition-opacity sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}
         >
           {studies.map((s, i) => (
-            <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} />
+            <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} />
           ))}
         </div>
       ) : hasQuery ? (

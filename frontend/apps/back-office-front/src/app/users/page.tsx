@@ -111,7 +111,7 @@ function UsersAdminContent() {
       </div>
 
       {error && (
-        <div className='mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-red-600'>
+        <div className='mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-danger-fg'>
           {error.message}
         </div>
       )}

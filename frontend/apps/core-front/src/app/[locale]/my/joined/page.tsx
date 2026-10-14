@@ -5,10 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge, Button, Card, EmptyState, cx, Select } from '@studyclub/ui';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { SegmentTabs } from '@/components/SegmentTabs';
-import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
 import { useStudies } from '@/features/studies/queries';
 import { meetingWindow, meetingsOf, mergeAttendanceSeed, type MyStatus } from '@/lib/attendance';
 import { bookScore, myAttendanceBook, type MyAttendanceBook } from '@/lib/attendance-book';

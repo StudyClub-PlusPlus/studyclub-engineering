@@ -20,18 +20,16 @@ type Story = StoryObj<typeof meta>;
 
 export const NoImage: Story = {
   name: '이미지 없음 — 카테고리 fallback',
-  render: () => <StudyThumb category='AI&ML' />,
+  render: () => <StudyThumb category='AI · ML' />,
 };
 
 export const WithImage: Story = {
   name: '이미지 있음',
-  render: () => (
-    <StudyThumb image='https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=640' />
-  ),
+  render: () => <StudyThumb image='https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=640' />,
 };
 
 export const Categories: Story = {
-  name: '카테고리별 그라디언트',
+  name: '공식 카테고리 11개',
   decorators: [
     (Story) => (
       <div className='w-full'>
@@ -41,7 +39,19 @@ export const Categories: Story = {
   ],
   render: () => (
     <div className='grid grid-cols-2 gap-2'>
-      {['AI&ML', 'FE', '데이터 사이언스', 'CS', '취업', '어학', '디자인', '기타'].map((cat) => (
+      {[
+        'AI · ML',
+        '알고리즘',
+        '데이터',
+        '소프트웨어 개발',
+        '커리어',
+        '북클럽',
+        '어학',
+        '라이프스타일',
+        '기획 · PM',
+        '비즈니스',
+        '기타',
+      ].map((cat) => (
         <div key={cat} className='overflow-hidden rounded-lg'>
           <StudyThumb category={cat} />
         </div>
