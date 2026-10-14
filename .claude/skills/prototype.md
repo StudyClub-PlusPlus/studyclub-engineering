@@ -41,7 +41,8 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 **부품은 `@studyclub/ui` 에서 가져온다.** 버튼·뱃지·입력칸·카드처럼 두 화면 이상에 보이는 부품의 모양을 바꾸려면
 `frontend/packages/ui` 를 고친다 — 그래야 프로토에서 본 모습이 실제 앱에도 들어간다. `proto/` 에 ui 와 같은 이름의
-부품을 새로 만들지 않고, 색은 Tailwind 기본 팔레트(`text-red-600` …) 대신 토큰(`text-danger-fg` …)을 쓴다.
+부품을 새로 만들지 않고, 색은 Tailwind 기본 팔레트(`text-red-600` …)나 색 코드(`text-[#FCD34D]`) 대신 토큰(`text-danger-fg` …)을,
+글자 크기는 `text-[13px]` 대신 타입 스케일(`text-xs` · `text-sm` …)을 쓴다. 맞는 토큰이 없으면 `tokens.css` 에 먼저 추가한다.
 
 1. 기존 화면이 이 Story 를 담을 수 있으면 그 화면을 고친다. 새 지면은 기존 지면에 자리가 없을 때만 만든다
 2. 데이터는 `@studyclub/mock` 을 쓴다. 실 API 교체 지점에 `// TODO(api): {METHOD} {path}` 를 단다

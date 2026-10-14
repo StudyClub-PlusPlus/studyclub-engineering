@@ -8,8 +8,11 @@
  *
  * 1. 그림자 부품 — @studyclub/ui 가 export 하는 부품과 같은 이름의 .tsx 가 앱·프로토에 있는가.
  *    부품은 packages/ui 에서만 고친다. 같은 이름 사본이 있으면 어느 쪽을 고쳐야 하는지 헷갈린다.
- * 2. 토큰 우회 — Tailwind 기본 팔레트(bg-red-600, text-slate-500 …)를 쓴 횟수.
- *    tokens.css 가 정의한 이름(neutral·primary·error …)은 토큰이라 세지 않는다.
+ * 2. 토큰 우회 — 토큰 대신 값을 직접 쓴 횟수. 세 가지를 따로 센다.
+ *    - palette : Tailwind 기본 팔레트(bg-red-600, text-slate-500 …). tokens.css 가 정의한 이름(neutral·primary …)은 뺀다.
+ *    - hex     : 색 코드를 직접 쓴 것(text-[#FCD34D], style 의 '#2D2F35' …).
+ *    - fontPx  : 글자 크기를 직접 쓴 것(text-[13px] …). 타입 스케일(text-xs · text-sm …)을 쓴다.
+ *    레이아웃 폭·높이(w-[320px] …)는 정당한 경우가 많아 세지 않는다.
  *
  * 기존 것은 기준선(scripts/component-drift-baseline.json)에 적어 두고 **늘어날 때만** 실패한다.
  * 줄였으면 --update 로 기준선을 낮춘다.
@@ -70,28 +73,55 @@ const paletteRe = new RegExp(
   `\\b(?:bg|text|border|ring|fill|stroke|from|via|to|outline|divide|decoration|accent|caret)-(${TW_PALETTE})-\\d{2,3}\\b`,
   'g',
 );
-const palette = {};
-const paletteHits = {};
+const isCode = (n) => isSource(n) || (n.endsWith('.ts') && !n.endsWith('.d.ts') && !n.endsWith('.test.ts'));
+const KINDS = {
+  palette: {
+    re: paletteRe,
+    files: isSource,
+    keep: (m) => !tokenNames.has(m[1]),
+    fix: 'tokens.css 의 semantic 토큰(text-danger-fg, text-fg-muted …)을 쓴다',
+  },
+  hex: {
+    re: /-\[#[0-9a-fA-F]{3,8}\]|['"`]#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?['"`]/g,
+    files: isCode,
+    keep: () => true,
+    fix: '색 코드 대신 토큰(var(--color-…), text-warning-fg …)을 쓴다. 맞는 토큰이 없으면 tokens.css 에 먼저 추가한다',
+  },
+  fontPx: {
+    re: /\btext-\[\d+(?:\.\d+)?px\]/g,
+    files: isSource,
+    keep: () => true,
+    fix: '타입 스케일(text-xs · text-sm …)을 쓴다. 자주 쓰는 크기라면 스케일에 단계를 추가한다',
+  },
+};
+const counts = {};
+const hits = {};
+for (const kind of Object.keys(KINDS)) {
+  counts[kind] = {};
+  hits[kind] = {};
+}
 for (const [area, dir] of Object.entries(AREAS)) {
-  palette[area] = 0;
-  paletteHits[area] = [];
-  for (const f of walk(dir, isSource)) {
-    for (const m of read(f).matchAll(paletteRe)) {
-      if (tokenNames.has(m[1])) continue;
-      palette[area]++;
-      paletteHits[area].push(`${rel(f)}  ${m[0]}`);
+  for (const [kind, { re, files, keep }] of Object.entries(KINDS)) {
+    counts[kind][area] = 0;
+    hits[kind][area] = [];
+    for (const f of walk(dir, files)) {
+      for (const m of read(f).matchAll(re)) {
+        if (!keep(m)) continue;
+        counts[kind][area]++;
+        hits[kind][area].push(`${rel(f)}  ${m[0]}`);
+      }
     }
   }
 }
 
 // ── --update
 if (args.has('--update')) {
-  writeFileSync(BASELINE, `${JSON.stringify({ shadows, palette }, null, 2)}\n`);
-  console.log(`기준선 저장: ${rel(BASELINE)} (그림자 ${shadows.length}개, 팔레트 ${JSON.stringify(palette)})`);
+  writeFileSync(BASELINE, `${JSON.stringify({ shadows, ...counts }, null, 2)}\n`);
+  console.log(`기준선 저장: ${rel(BASELINE)} (그림자 ${shadows.length}개, ${JSON.stringify(counts)})`);
   process.exit(0);
 }
 
-const base = existsSync(BASELINE) ? JSON.parse(read(BASELINE)) : { shadows: [], palette: {} };
+const base = existsSync(BASELINE) ? JSON.parse(read(BASELINE)) : { shadows: [] };
 const problems = [];
 const notes = [];
 
@@ -99,12 +129,20 @@ const known = new Set(base.shadows);
 for (const s of shadows) if (!known.has(s)) problems.push(`그림자 부품 추가됨: ${s} — @studyclub/ui 의 같은 부품을 import 한다`);
 for (const s of base.shadows) if (!shadows.includes(s)) notes.push(`그림자 부품 사라짐: ${s} — --update 로 기준선에서 뺀다`);
 
-for (const [area, n] of Object.entries(palette)) {
-  const was = base.palette?.[area] ?? 0;
-  if (n > was) {
-    problems.push(`${area}: 기본 팔레트 ${was} → ${n}회 — tokens.css 의 semantic 토큰(text-danger-fg, text-fg-muted …)을 쓴다`);
-    for (const h of paletteHits[area]) problems.push(`    ${h}`);
-  } else if (n < was) notes.push(`${area}: 기본 팔레트 ${was} → ${n}회 — --update 로 기준선을 낮춘다`);
+for (const [kind, { fix }] of Object.entries(KINDS)) {
+  for (const [area, n] of Object.entries(counts[kind])) {
+    const was = base[kind]?.[area] ?? 0;
+    if (n > was) {
+      problems.push(`${area}: ${kind} ${was} → ${n}회 — ${fix}`);
+      // 어디서 늘었는지는 기준선에 파일별로 남기지 않아 알 수 없다 — 파일별 횟수로 묶어 보여 준다
+      const byFile = new Map();
+      for (const h of hits[kind][area]) {
+        const [file, value] = h.split('  ');
+        byFile.set(file, [...(byFile.get(file) ?? []), value]);
+      }
+      for (const [file, values] of byFile) problems.push(`    ${file}  ×${values.length}  ${[...new Set(values)].join(' ')}`);
+    } else if (n < was) notes.push(`${area}: ${kind} ${was} → ${n}회 — --update 로 기준선을 낮춘다`);
+  }
 }
 
 // ── --report: 프로토 ↔ 앱 같은 이름 파일 차이
@@ -148,7 +186,8 @@ if (args.has('--report')) {
   console.log('');
 }
 
-console.log(`그림자 부품 ${shadows.length}개 (기준선 ${base.shadows.length}) · 기본 팔레트 ${JSON.stringify(palette)}`);
+console.log(`그림자 부품 ${shadows.length}개 (기준선 ${base.shadows.length})`);
+for (const kind of Object.keys(KINDS)) console.log(`  ${kind.padEnd(7)} ${JSON.stringify(counts[kind])}`);
 for (const n of notes) console.log(`  · ${n}`);
 if (problems.length) {
   console.log('');
