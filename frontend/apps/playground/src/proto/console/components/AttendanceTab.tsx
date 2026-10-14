@@ -679,7 +679,7 @@ export function AttendanceTab({
                     {blockedNames.length > 0 && (
                       // 왜 잠겼는지 버튼 옆에 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
                       <span id='withdraw-blocked' data-anno='book:3-12' className='text-xs text-fg-muted'>
-                        운영진({blockedNames.join(', ')})은 참여 중단할 수 없습니다
+                        네비게이터는 참여 중단할 수 없습니다. 캡틴에게 문의하세요.
                       </span>
                     )}
                     {selected.length > 0 && (
