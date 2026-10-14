@@ -7,7 +7,7 @@ import { EMPTY_RULE } from '@console/lib/schedule';
 import { Button, Modal } from '@studyclub/ui';
 
 /**
- * 반 만들기 · 이름 바꾸기 — 제목 하나만 받는다.
+ * 반 만들기 · 수정 — 제목 하나만 받는다.
  *
  * 반을 나누는 일과 일정을 정하는 일은 따로 한다. 신청자를 보며 반을 나눌 때는 몇 시에 모일지 아직
  * 모를 수 있고, 일정은 회차·출석부와 함께 보는 일정 탭이 자리다. 그래서 여기서는 회차를 만들지 않는다.
@@ -45,7 +45,7 @@ export function ClassDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={edit ? '반 이름 바꾸기' : '반 만들기'}
+      title={edit ? '반 수정' : '반 만들기'}
       footer={
         /* 입력·설정 모달 — 취소 없이 X 로 닫는다 (POL-0008) */
         <Button onClick={save}>{edit ? '저장' : '만들기'}</Button>

@@ -17,7 +17,7 @@
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/role | 네비게이터 지정 · 해제 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/group | 크루의 반 지정 · 이동 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 스펙작성중 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 이름 바꾸기 · 반 일정 정하기·수정 (회차 생성 · 오늘 이후 재생성) | O (ADMIN) | 스펙작성중 |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 수정 · 반 일정 정하기·수정 (회차 생성 · 오늘 이후 재생성) | O (ADMIN) | 스펙작성중 |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 스펙작성중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -228,7 +228,7 @@
 - **Method**: PATCH
 - **Path**: `/api/admin/studies/{studyId}/groups/{groupId}`
 - **인증**: 필요 — ADMIN
-- **설명**: 반 이름을 바꾸거나(신청자 탭) 반 일정을 정하고 고친다(일정 탭). 보낸 필드만 바꾼다.
+- **설명**: 반 제목을 수정하거나(신청자 탭 「수정」) 반 일정을 정하고 고친다(일정 탭). 보낸 필드만 바꾼다.
 
 ### Request Body
 
@@ -313,7 +313,7 @@
 
 ## 프론트엔드 사용처
 
-- back-office-front 스터디 상세 — 신청자 탭(명단 · 담당 · 반 만들기 · 이름 바꾸기) · 일정 탭(반 일정 정하기 · 수정) (미구현). 프로토: playground `console/studies/{id}`
+- back-office-front 스터디 상세 — 신청자 탭(명단 · 담당 · 반 만들기 · 반 제목 수정) · 일정 탭(반 일정 정하기 · 수정) (미구현). 프로토: playground `console/studies/{id}`
 
 ## 미확정
 

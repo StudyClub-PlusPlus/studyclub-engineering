@@ -57,7 +57,8 @@ export function CrewTab({
   // 고른 반이 지워졌으면 전체로 본다
   const classFilter = classes.some((c) => c.id === picked) ? picked : 'all';
   const shown = active.filter(
-    (c) => (regionFilter === 'all' || c.region === regionFilter) && (classFilter === 'all' || assign[c.id] === classFilter),
+    (c) =>
+      (regionFilter === 'all' || c.region === regionFilter) && (classFilter === 'all' || assign[c.id] === classFilter),
   );
   const filtered = regionFilter !== 'all' || classFilter !== 'all';
   const [editing, setEditing] = useState<StudyClass | undefined>();
@@ -105,13 +106,13 @@ export function CrewTab({
                   size='sm'
                   variant='ghost'
                   data-anno='class:1-2'
-                  aria-label={`${classLabel(cls)} 이름 바꾸기`}
+                  aria-label={`${classLabel(cls)} 수정`}
                   onClick={() => {
                     setEditing(cls);
                     setDialogOpen(true);
                   }}
                 >
-                  이름 바꾸기
+                  수정
                 </Button>
                 {/* 사람이 든 반은 지우지 않는다 — 그 반의 출석 기록까지 사라진다 */}
                 <Button
@@ -131,43 +132,46 @@ export function CrewTab({
         )}
       </section>
       <section data-anno='attendee:3'>
-        <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 text-[15px] font-bold'>
-          참여 크루
-          <span className='tnum text-[13px] font-medium text-fg-muted'>
-            {active.length}/{capacity}
-          </span>
-        </h2>
-        <div data-anno='attendee:3-3' className='mt-2 flex flex-wrap items-center gap-2'>
-          <FilterSelect
-            label='지역'
-            value={regionFilter}
-            onChange={(v) => setRegionFilter(v as typeof regionFilter)}
-            options={MEMBER_REGIONS.map((r) => ({ value: r.key, label: r.label.ko }))}
-          />
-          {/* 반이 하나면 거를 것이 없다 */}
-          {classes.length > 1 && (
+        {/* 필터는 제목 줄 오른쪽에 둔다 — 반 목록의 「반 추가」와 같은 자리 */}
+        <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
+          <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 text-[15px] font-bold'>
+            참여 크루
+            <span className='tnum text-[13px] font-medium text-fg-muted'>
+              {active.length}/{capacity}
+            </span>
+          </h2>
+          <div data-anno='attendee:3-3' className='ml-auto flex flex-wrap items-center gap-2'>
             <FilterSelect
-              label='반'
-              value={classFilter}
-              onChange={setClassFilter}
-              options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
+              label='지역'
+              value={regionFilter}
+              onChange={(v) => setRegionFilter(v as typeof regionFilter)}
+              options={MEMBER_REGIONS.map((r) => ({ value: r.key, label: r.label.ko }))}
             />
-          )}
-          {filtered && (
-            <>
-              <span className='tnum text-sm text-fg-muted'>{shown.length}명</span>
-              <Button
-                size='sm'
-                variant='ghost'
-                onClick={() => {
-                  setRegionFilter('all');
-                  setClassFilter('all');
-                }}
-              >
-                필터 해제
-              </Button>
-            </>
-          )}
+            {/* 반이 하나면 거를 것이 없다 */}
+            {classes.length > 1 && (
+              <FilterSelect
+                label='반'
+                value={classFilter}
+                onChange={setClassFilter}
+                options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
+              />
+            )}
+            {filtered && (
+              <>
+                <span className='tnum text-sm text-fg-muted'>{shown.length}명</span>
+                <Button
+                  size='sm'
+                  variant='ghost'
+                  onClick={() => {
+                    setRegionFilter('all');
+                    setClassFilter('all');
+                  }}
+                >
+                  필터 해제
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         <div className='mt-2'>
           <TableCard>
