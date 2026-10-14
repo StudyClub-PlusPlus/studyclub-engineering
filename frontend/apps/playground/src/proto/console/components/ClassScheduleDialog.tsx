@@ -68,7 +68,7 @@ export function ClassScheduleDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? `${classLabel(cls)} 스터디 시간 수정` : `${classLabel(cls)} 일정 정하기`}
+      title={editing ? `스터디 시간 수정 - ${classLabel(cls)}` : `일정 정하기 - ${classLabel(cls)}`}
       footer={
         /* 입력·설정 모달 — 취소 없이 X 로 닫는다 (POL-0008) */
         <Button onClick={save}>{editing ? '저장' : '회차 만들기'}</Button>
@@ -146,7 +146,7 @@ export function ClassScheduleDialog({
                 id='rule-time'
                 value={rule.time}
                 onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
-                className='h-10 w-[7.5rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+                className='h-10 w-[10rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
               />
               {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
               <div role='group' aria-label='시간대' className='flex gap-1'>

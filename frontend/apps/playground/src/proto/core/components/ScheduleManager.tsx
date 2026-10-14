@@ -220,7 +220,7 @@ export function ScheduleManager({
     refresh();
   }
 
-  const cols = canEdit ? 7 : 6;
+  const confirming = confirmId ? meetings.find((m) => m.id === confirmId) : undefined;
 
   return (
     <div className='flex flex-col gap-4'>
@@ -438,7 +438,7 @@ export function ScheduleManager({
                             type='button'
                             data-anno='schedule:3-4'
                             aria-label={`${meetingLabel(m)} 삭제`}
-                            onClick={() => setConfirmId(confirmId === m.id ? null : m.id)}
+                            onClick={() => setConfirmId(m.id)}
                             className='grid h-8 w-8 place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-error-700'
                           >
                             <Trash2 size={14} />
@@ -448,32 +448,34 @@ export function ScheduleManager({
                     )}
                   </tr>
                 );
-                if (confirmId !== m.id) return [row];
-                return [
-                  row,
-                  <tr key={`${m.id}-confirm`} className='bg-error-50'>
-                    <td colSpan={cols} className='px-4 pb-3'>
-                      <div data-anno='schedule:3-5' className='flex flex-wrap items-center justify-between gap-2'>
-                        <p className='text-[13px] text-error-700'>
-                          {meetingLabel(m)}를 지울까요? 뒤 회차 번호는 하나씩 당겨집니다.
-                        </p>
-                        <span className='flex flex-wrap gap-1.5'>
-                          <Button variant='ghost' size='sm' onClick={() => setConfirmId(null)}>
-                            취소
-                          </Button>
-                          <Button variant='destructive' size='sm' onClick={() => remove(m)}>
-                            삭제
-                          </Button>
-                        </span>
-                      </div>
-                    </td>
-                  </tr>,
-                ];
+                return [row];
               })}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* 결정을 묻는 모달 — 취소가 기본 포커스. Enter 로 지워지면 안 된다 (POL-0008) */}
+      <Modal
+        open={confirming !== undefined}
+        onClose={() => setConfirmId(null)}
+        title='회차 삭제'
+        footer={
+          <>
+            <Button variant='secondary' data-autofocus onClick={() => setConfirmId(null)}>
+              취소
+            </Button>
+            <Button variant='destructive' onClick={() => confirming && remove(confirming)}>
+              삭제
+            </Button>
+          </>
+        }
+      >
+        <p data-anno='schedule:3-5' className='text-sm text-fg-secondary'>
+          {confirming ? `${meetingLabel(confirming)}(${dayLabel(confirming.date)})를 지울까요?` : ''} 뒤 회차 번호는
+          하나씩 당겨집니다. 되돌릴 수 없습니다.
+        </p>
+      </Modal>
 
       {canEdit && dirty && (
         <div data-anno='schedule:6' className='sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-bg py-2'>
