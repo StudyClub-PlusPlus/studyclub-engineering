@@ -25,7 +25,7 @@ API 3개(조회 2 + 재발송 1)를 이번 스펙에 포함한다 — [백오피
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | `/api/admin/notification-templates` | 알림 템플릿 목록 조회 | O (`@RequireAdmin`) | 구현완료 |
-| GET | `/api/admin/notifications` | 발송 이력 조회 — 행마다 `canResend` 추가, `ids` 로 재발송한 건의 끝을 쫓는다 | O (`@RequireAdmin`) | 스펙작성중 (`canResend`·`ids` 추가 — 기존 동작은 구현완료) |
+| GET | `/api/admin/notifications` | 발송 이력 조회 — 행마다 `canResend` 추가, `ids` 로 재발송한 건의 끝을 쫓는다 | O (`@RequireAdmin`) | 변경예정 (`canResend`·`ids`·정렬·limit 상한 추가 — [미확정](#미확정)) |
 | POST | `/api/admin/notifications/resend` | 실패 건 재발송 — 고른 FAILED 행을 그 행 그대로 PENDING 으로 되돌린다. 줄마다 가려 접수(`accepted`)·제외(`skipped`)를 돌려준다. 접수까지만 응답 | O (`@RequireAdmin`) | 스펙작성중 |
 
 ### 이 기능이 "알림(Notification)" 으로 추상화되고 이벤트 핸들러 방식으로 개발된다는 것의 확인
@@ -594,7 +594,16 @@ API의 `application.yml`은 `spring.config.import: classpath:notification.yml`�
 
 ## 미확정
 
-없음 — 이번 스펙에 있던 모든 [NEEDS CLARIFICATION] 항목을 확정했다. 각 섹션의 "결정 —" 문단 참고.
+웰컴메일 스펙(2026-09)의 [NEEDS CLARIFICATION] 은 모두 확정했다. 각 섹션의 "결정 —" 문단 참고.
+
+2026-10-11 발송 이력 FE·재발송 추가로 남은 것:
+
+- **`GET /api/admin/notifications` 변경예정** — 이미 구현된 조회에 `canResend` 필드, `ids` 파라미터, 정렬 보조 키(`ID DESC`),
+  `limit` 상한 100 을 더한다. 기존 동작(필터·건수·페이지)은 그대로라 구현 PR 이 합쳐지면 `구현완료` 로 돌아간다
+- **수신 주소 표기 — 기획 확인 필요.** 기획 PRD(ST-032)·POL-0009 는 서버가 전체 주소를 내리라고 하고, 이 스펙은 가린 값을
+  유지한다. 답이 "전체 주소 필요" 면 별도 「보기」 API + 감사 로그 스펙이 따로 필요하다
+  ([docs/share](../../docs/share/2026-10-11-notification-resend.md))
+- **발송 이력 PRD 의 문장 하나** — "재발송은 새 건을 만든다"가 "그 줄을 되돌린다"(POL-0009)와 모순이다. 기획이 고친다
 
 ## 한계 / 후속
 
