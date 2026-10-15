@@ -5,7 +5,7 @@
 **navigator 로 고정**이라 경로에 `discordRoleId` 가 없다. 계약 대부분이 remove-role 과 같고,
 **다른 곳만** 이 문서에 자세히 적는다.
 
-> ⚠️ **아직 구현 전이다.** 이 문서는 구현할 계약이다.
+> ✅ **구현됨** — `discord/app/api/routes/roles.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
 > **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다.
 
@@ -36,7 +36,7 @@ DELETE /api/v1/roles/navigator/users
 | 필드 | 타입 | 필수 | 제약 |
 |------|------|------|------|
 | `discordStudyId` | string | O | snowflake. **로깅·추적용** — [assign-role 과 같다](assign-role.md#discordstudyid-의-역할) |
-| `discordUserIds` | string[] | O | snowflake 배열. 1개 이상, 중복은 무시. 상한은 [미정](#미정-사항) |
+| `discordUserIds` | string[] | O | snowflake 배열. 1개 이상, 중복은 무시. **최대 100개** (중복 제거 후) — [assign-navigator-role 과 같다](assign-navigator-role.md#요청) |
 
 **바디를 싣는 DELETE 다** — [remove-role 과 같다](remove-role.md#요청).
 
@@ -86,14 +86,21 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 
 | 상태 | 언제 | 원인 |
 |------|------|------|
-| **400** | `discordUserId` · `discordStudyId` 가 snowflake 형식이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
-| **400** | `discordStudyId` 쿼리가 없음 | 위와 같음 |
+| **400** | `discordStudyId` · `discordUserIds` 의 원소가 snowflake 형식이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
+| **400** | `discordStudyId` 가 없음 | 위와 같음 |
+| **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
+| **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
 | **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제. 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
 | **404** | navigator 역할을 길드에서 찾지 못함 | [아래](#navigator-역할이-없으면-404-다) 참고 |
+| **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
+요청자가 captain 이 아니면 navigator 역할 설정이 깨져 있어도 **403** 이 먼저 나간다 — 요청자 확인이 navigator 역할 확인보다 앞선다.
+
 `discordUserIds` 의 유저가 **길드 멤버가 아니어도 에러가 아니다** — [remove-role 과 같다](remove-role.md#길드에-없는-유저는-성공이다).
-판단도 같은 방식으로 캐시가 아니라 Discord 의 `Unknown Member` 응답으로 한다.
+판단도 같은 방식으로 캐시가 아니라 Discord 의 `Unknown Member` 응답으로 한다. 멤버 캐시는 **회수를 보낼
+멤버 객체를 얻는 데만** 쓴다 — 캐시에 있으면 바로 회수를 보내고, 없으면 Discord 에 그 멤버를 물은 뒤 보낸다.
+어느 쪽이든 "길드에 없다" 는 Discord 가 `Unknown Member` 로 답했을 때만 내린다.
 
 503 · 502 는 **재시도 가능**하다. 400 · 401 · 403 은 조건이 바뀌기 전에는 재시도해도 같다.
 captain · navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의 역할이나 서버 설정을 고쳐야 풀린다.

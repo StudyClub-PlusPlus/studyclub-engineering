@@ -4,7 +4,7 @@
 멤버들에게 배정하는 용도다 — 역할을 만드는 건 [`create-study.md`](create-study.md), 떼는 건
 [`remove-role.md`](remove-role.md) 쪽이다.
 
-> ⚠️ **아직 구현 전이다.** 이 문서는 구현할 계약이다.
+> ✅ **구현됨** — `discord/app/api/routes/roles.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
 > **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다.
 
@@ -24,13 +24,15 @@ POST /api/v1/roles/{discordRoleId}/users
 
 | 경로 변수 | 타입 | 설명 |
 |-----------|------|------|
-| `discordRoleId` | string | 붙일 **Discord 역할 ID**(snowflake). `create-study` 가 돌려준 `discordRoleId` 가 여기 들어간다 |
+| `discordRoleId` | string | 붙일 **Discord 역할 ID**(snowflake). `create-study` 가 돌려준 `discordRoleId` 가 여기 들어간다. captain · navigator · `@everyone` 은 안 된다 — [아래](#배정할-수-있는-역할의-범위) |
 
 헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다.
 
-**captain 역할을 가진 멤버만 호출할 수 있다.** [`create-study`](create-study.md#요청) 와 같은 규칙이다 —
-봇이 `X-Discord-User-ID` 로 길드 멤버를 조회해 captain 역할 보유 여부를 확인하고, 없으면 **403** 이다.
-captain 역할은 길드에 **이미 존재하는** 역할이고, 찾지 못하면 배정하지 말고 실패한다.
+**captain 역할을 가진 멤버, 또는 [시스템](common-header.md#시스템-호출)만 호출할 수 있다.**
+멤버가 부르면 [`create-study`](create-study.md#요청) 와 같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를
+조회해 captain 역할 보유 여부를 확인하고, 없으면 **403** 이다. captain 역할은 길드에 **이미 존재하는** 역할이고,
+찾지 못하면 배정하지 말고 실패한다. 백엔드가 `X-Discord-User-ID` 에 `DISCORD_BOT_ID` 를 실어 부르면 멤버 조회도
+역할 검사도 하지 않는다 — 스터디 참가 확정처럼 백엔드가 스스로 처리하는 배정이 이 경로를 쓴다.
 
 ```jsonc
 {
@@ -42,7 +44,7 @@ captain 역할은 길드에 **이미 존재하는** 역할이고, 찾지 못하�
 | 필드 | 타입 | 필수 | 제약 |
 |------|------|------|------|
 | `discordStudyId` | string | O | snowflake. **로깅·추적용**이다 — 아래 설명 참고 |
-| `discordUserIds` | string[] | O | snowflake 배열. 1개 이상, 중복은 무시. 상한은 [미정](#미정-사항) |
+| `discordUserIds` | string[] | O | snowflake 배열. 1개 이상, 중복은 무시. **최대 100개** (중복 제거 후) |
 
 **모든 ID 는 문자열이다** — snowflake 는 64비트라 JSON 숫자로 보내면 JS 호출자에서 정밀도가
 깨진다 ([common-header.md](common-header.md#x-discord-user-id) 와 같은 규칙). `discordRoleId` 는 경로에 있으니
@@ -60,9 +62,18 @@ captain 역할은 길드에 **이미 존재하는** 역할이고, 찾지 못하�
 
 ### 배정할 수 있는 역할의 범위
 
-봇은 `discordRoleId` 를 **제한하지 않는다** — 길드에 있고 봇이 붙일 수 있는 역할이면 무엇이든 배정한다.
-captain 이 스터디 역할이 아닌 역할을 배정하는 것도 허용이다. **의도된 설계다.**
+봇이 막는 역할은 **셋뿐이다** — 이 셋이면 아무도 건드리지 않고 **400** 이다.
 
+| 역할 | 왜 막나 |
+|------|---------|
+| captain (`DISCORD_CAPTAIN_ROLE_ID`) | 사람이 손으로 준다. API 로 열면 captain 이 captain 을 만들 수 있다 |
+| navigator (`DISCORD_NAVIGATOR_ROLE_ID`) | 전용 엔드포인트가 있다 — [assign-navigator-role](assign-navigator-role.md) · [remove-navigator-role](remove-navigator-role.md) |
+| `@everyone` (역할 ID = 길드 ID) | 모든 멤버가 이미 갖고 있고, Discord 도 붙이고 떼는 걸 거부한다 |
+
+막으려면 두 ID 를 알아야 하므로, 시스템 호출이어도 `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 가
+비어 있으면 **409** 다 — 설정이 비었다고 그 역할이 열리지 않는다. (2026-10-14 결정)
+
+그 밖의 역할은 **제한하지 않는다** — 길드에 있고 봇이 붙일 수 있으면 배정한다.
 올바른 역할을 고르는 책임은 **백엔드**에 있다:
 
 - 백엔드가 아는 역할은 [`create-study`](create-study.md#성공-응답) 가 만든 것뿐이다.
@@ -125,15 +136,20 @@ captain 이 스터디 역할이 아닌 역할을 배정하는 것도 허용이�
 | **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
 | **502** | `X-Discord-User-ID` 멤버 조회 중 Discord 가 거부하거나 5xx — 대상은 아직 건드리지 않았다 |
 
+시스템 호출은 요청자를 조회하지 않으므로 위의 403 · 404 · 502 가 나지 않는다.
+
 ### 이 엔드포인트에서 나는 것
 
 | 상태 | 언제 | 원인 |
 |------|------|------|
 | **400** | `discordRoleId` · `discordStudyId` · `discordUserIds` 의 원소가 snowflake 형식이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
 | **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
-| **400** | `discordUserIds` 가 상한 초과 | 상한은 [미정](#미정-사항) |
+| **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
+| **400** | `discordRoleId` 가 captain · navigator · `@everyone` 역할 | [배정할 수 있는 역할의 범위](#배정할-수-있는-역할의-범위). 역할이 길드에 있는지보다 먼저 본다 |
 | **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
 | **404** | `discordRoleId` 에 해당하는 역할이 길드에 없음 | 이미 지워졌거나 애초에 없는 ID. 아무 유저도 건드리지 않는다 |
+| **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
+| **502** | 캐시에 없는 대상 유저를 Discord 에 물었는데 답이 없음 | 아직 아무도 건드리지 않았다. 그대로 재시도해도 안전하다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
 503 · 502 는 **재시도 가능**하다. 400 · 401 · 403 은 조건이 바뀌기 전에는 재시도해도 같다.
@@ -158,7 +174,9 @@ Discord 에는 "역할을 여러 명에게 한 번에" 가 없다. **유저 한 
 2명은 이미 붙어 있다.
 
 **규칙 1 — 역할이 없으면 아무것도 하지 않는다. 유저가 없으면 그 사람만 뺀다.**
-역할과 모든 유저를 길드 캐시에서 먼저 해석한다. **역할**이 없으면 붙일 대상 자체가 없으므로
+역할과 모든 유저를 먼저 해석한다. 유저는 멤버 캐시(봇이 `members` intent 로 채운다)에서 먼저 찾고,
+캐시에 없는 유저만 Discord 에 한 번에 묻는다 — 캐시만 보면 캐시에서 빠진 *실제 멤버*가 `NOT_IN_GUILD` 로
+잘못 나간다. **역할**이 없으면 붙일 대상 자체가 없으므로
 아무것도 하지 않고 404 다. **유저**가 없으면 그 유저만 `failed` 에 `NOT_IN_GUILD` 로 담고
 나머지는 그대로 붙인다.
 
@@ -174,7 +192,8 @@ Discord 에는 "역할을 여러 명에게 한 번에" 가 없다. **유저 한 
 
 대신 **그 유저를 `failed` 에 `DISCORD_REJECTED` 로 담고 나머지를 계속 붙인다.** 한 명에서
 멈추면 뒤에 남은 사람들이 재시도가 올 때까지 공부방에 못 들어간다. 이미 붙은 유저 ID 는
-로그에 남긴다.
+로그에 남긴다. 해석한 뒤 붙이기 전에 길드를 나간 유저(Discord 의 `Unknown Member`)는
+`DISCORD_REJECTED` 가 아니라 `NOT_IN_GUILD` 다 — 실제로 일어난 일이 그것이다.
 
 > 봇 권한 부족이나 **역할 서열** 문제는 유저마다 똑같이 실패하므로 `failed` 가 전원으로 채워진다.
 > 그 경우 호출자가 아무리 재시도해도 같으니, **봇 쪽 설정 문제임을 로그에서 알아볼 수 있게
@@ -197,10 +216,9 @@ Discord 에는 "역할을 여러 명에게 한 번에" 가 없다. **유저 한 
 
 정해야 이 계약이 확정되는 것들.
 
-- **captain 역할을 찾는 방법** — [`create-study`](create-study.md#미정-사항) 와 같은 결정을 따른다
-  (설정값으로 ID 를 받는 쪽 권장).
-- **`discordUserIds` 상한** — 유저 수만큼 Discord 호출이 나가므로 상한이 곧 최악의 응답 시간이다.
-  100 정도가 무난하지만, 한 스터디 최대 인원이 정해지면 거기 맞추는 게 낫다.
+- ~~**captain 역할을 찾는 방법**~~ — 정해졌다. 설정값(`DISCORD_CAPTAIN_ROLE_ID`)으로 ID 를 받는다.
+- ~~**`discordUserIds` 상한**~~ — 정해졌다. 중복을 뺀 뒤 **100개**. 유저 수만큼 Discord 호출이 나가므로
+  상한이 곧 최악의 응답 시간이고, 캐시에 없는 유저를 한 번에 묻는 Discord 멤버 조회가 최대 100명까지 받는다.
 - ~~**길드에 없는 유저 처리**~~ — 정해졌다. 건너뛰고 나머지를 붙이며, 빠진 사람은
   [`failed`](#성공-응답) 로 알린다 (2026-09-29, 황준희). 207 대신 200 을 쓴다 — 부분 실패가
   예외가 아니라 **정상적인 결과 모양**이라 상태 코드를 가를 이유가 없다.
