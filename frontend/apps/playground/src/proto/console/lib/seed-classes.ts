@@ -6,24 +6,28 @@ import type { AttendanceStatus, Study, StudyCrewData, StudyMeeting } from '@stud
  * 프로토 mock — 분반이 여럿인 스터디.
  *
  * 처음 반(`c1`)은 스터디 mock 회차에서 진행 일정을 되읽는다. 여기 적은 반은 그 뒤에 붙는다.
- * 반 이름은 따로 받지 않는다 — 일정이 곧 이름이다(「금 19:00 PDT」).
+ * 반 제목은 캡틴이 짓는다 — 일정과 따로다.
  *
  * TODO(api): GET /api/studies/{id}/groups
  */
 type ExtraClass = {
   id: string;
+  title: string;
   /** 0=일 … 6=토. 이 반이 모이는 요일. */
   weekday: number;
   time: string;
   tz: StudyTz;
 };
 
+/** 처음 반의 제목. 사용자 사이트 분반 mock 과 같은 이름을 쓴다. 없으면 「1반」. */
+const FIRST_TITLES: Record<string, string> = { 'ddia-2nd': '수요일반', 'ai-paper-study': '목요일반' };
+
 const EXTRA_CLASSES: Record<string, ExtraClass[]> = {
   'ddia-2nd': [
     // 미국 금요일반 — 금 7PM PDT
-    { id: 'c2', weekday: 5, time: '19:00', tz: 'America/Los_Angeles' },
+    { id: 'c2', title: '미국 금요일반', weekday: 5, time: '19:00', tz: 'America/Los_Angeles' },
     // 미국 토요일반 — 토 5PM PDT
-    { id: 'c3', weekday: 6, time: '17:00', tz: 'America/Los_Angeles' },
+    { id: 'c3', title: '미국 토요일반', weekday: 6, time: '17:00', tz: 'America/Los_Angeles' },
   ],
 };
 
@@ -57,7 +61,11 @@ export function seedClasses(
   firstId: string,
   today = new Date().toISOString().slice(0, 10),
 ): SeededClasses {
-  const first: StudyClass = { id: firstId, rule: ruleFromMeetings(study, initial.meetings) };
+  const first: StudyClass = {
+    id: firstId,
+    title: FIRST_TITLES[study.id] ?? '1반',
+    rule: ruleFromMeetings(study, initial.meetings),
+  };
   const extras = EXTRA_CLASSES[study.id] ?? [];
   const out: SeededClasses = {
     classes: [first],
@@ -76,6 +84,7 @@ export function seedClasses(
     const meetings = dates.map((date, i) => ({ id: `${study.id}-${x.id}-s${i + 1}`, no: i + 1, date }));
     out.classes.push({
       id: x.id,
+      title: x.title,
       rule: {
         startDate: dates[0] ?? '',
         endDate: dates[dates.length - 1] ?? '',

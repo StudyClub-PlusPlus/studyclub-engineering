@@ -17,7 +17,7 @@
 | GET | /api/studies/{studyId}/meetings | 분반 회차 목록 (발표자 · 규칙 포함) | O (그 분반 참여자 · 캡틴) | 구현중 |
 | POST | /api/studies/{studyId}/meetings | 회차 추가 (한 번 · 반복) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId} | 회차 수정 (시각 · 제목 · 발표자) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
-| DELETE | /api/studies/{studyId}/meetings/{meetingId} | 회차 삭제 (한 회차씩, 킥오프 불가) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
+| DELETE | /api/studies/{studyId}/meetings/{meetingId} | 회차 삭제 (한 회차씩, 킥오프 불가). 화면의 일괄 삭제는 고른 회차마다 부른다 | O (그 분반 네비게이터 · 캡틴) | 구현중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 (빈 칸에 나) | O (그 분반 참여자) | 구현중 |
 | DELETE | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 취소 (내 이름 빼기) | O (그 분반 참여자) | 구현중 |
 | PUT | /api/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 | O (그 분반 네비게이터 · 캡틴) | 구현중 |
@@ -262,6 +262,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 4. `STUDY_MEETING` INSERT (`MEETING_TYPE = REGULAR`, `START_AT`·`END_AT` 은 비운다 — 보이스룸·디스코드가 기록). `scheduledAts` 가 2개 이상이면 UUID 하나를 만들어 모든 행의 `SERIES_ID` 에 넣고, 1개면 null (결정 2).
 5. 분반 참여자 중 `STATUS IN (ACTIVE, PAUSED)` 인 사람마다 새 회차 × 참여자 `STUDY_ATTENDANCE(STATUS = ABSENT)` INSERT. `STUDY_ID`·`STUDY_GROUP_ID` 는 비정규화 값으로 채운다.
 6. `STUDY.STATUS` 는 건드리지 않는다 (결정 5).
+7. **분반에 킥오프가 없으면** 이번에 넣은 회차 중 가장 이른 것의 한 주 전 같은 시각에 `MEETING_TYPE = KICKOFF` 회차 하나를 함께 INSERT 한다 (출석 행도 5와 같이). 반을 만들 때는 회차를 만들지 않으므로 킥오프는 여기서 처음 생긴다 (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md))
 
 > 시작 전 회차의 `ABSENT` 는 결석이 아니다 — 내 스터디는 시작 전 `ABSENT` 를 빈칸으로 보여 주고(`MyStudyQueryService.visibleStatus`), 출석률 분모는 `scheduled_at <= now()` 회차만 센다.
 >
@@ -385,6 +386,8 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 1. 분반 잠금 → 권한 판정 → 분반 회차 잠금 순서로 읽는다 (위 「잠금」).
 2. 대상 회차가 시작했으면 409.
 3. 그 회차의 `STUDY_ATTENDANCE` 와 `STUDY_MEETING` 을 지운다. 둘 사이 외래키는 없어 DB 가 지워 주지 않는다 — 출석 행을 빠뜨리면 고아로 남는다.
+
+> **일괄 삭제** — 화면은 체크박스로 여러 회차를 골라 한 번에 지운다(줄마다 삭제 버튼 없음). API 는 한 회차씩 그대로 두고 화면이 고른 회차마다 부른다. 중간에 하나가 실패하면(시작함 409 등) 나머지 결과와 함께 실패한 회차를 알린다 (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md))
 
 > **휴가 신청** — 별도 테이블이 없다. 크루가 낸 휴가는 출석 행 `STATUS = EXCUSED` 다(명부 스펙 「EXCUSED 는 POST 로 직접 세팅」, `MyStudyQueryService` 「사전 휴가(EXCUSED)」). 출석 행을 지우면 휴가도 함께 사라진다. 휴가 신청 테이블이 생기면 이 절에 삭제 대상을 더한다.
 
@@ -517,7 +520,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ## 미확정
 
-- [NEEDS CLARIFICATION] 이미 운영 중인 분반에 킥오프 회차를 소급해 만들지 — 시트에는 0회차가 있지만 DB 에는 없다. 지금은 새로 만드는 분반에만 만든다.
+- [NEEDS CLARIFICATION] 이미 운영 중인 분반에 킥오프 회차를 소급해 만들지 — 시트에는 0회차가 있지만 DB 에는 없다. 지금은 킥오프가 없는 분반에 처음 정규 회차를 추가할 때만 만든다 (서버 동작 7).
 - [NEEDS CLARIFICATION] 한 사람이 맡을 수 있는 발표 수에 상한을 둘지 — 지금은 두지 않는다.
 - [NEEDS CLARIFICATION] 발표자1이 빠진 날 발표자2가 대신한 것을 따로 기록할지 — 지금은 일정의 발표자를 고쳐서 남긴다.
 

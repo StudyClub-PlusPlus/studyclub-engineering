@@ -16,6 +16,12 @@
   position: relative;
   z-index: 0;
   isolation: isolate;
+  /* 「설명 보기」 토글(AnnotateToggle · 화면 아래 가운데)이 앉을 자리.
+     본문 맨 아래를 이만큼 비우고, 표 하단 작업 바(TableActionBar · sticky)도 이만큼 위에 붙인다 —
+     토글이 어떤 화면의 마지막 줄 · 작업 바 버튼도 가리지 않는다. 실제 서비스에는 토글이 없어 0 이다. */
+  --proto-dock: 4rem;
+  --table-action-bar-bottom: var(--proto-dock);
+  padding-bottom: var(--proto-dock);
 }
 
 /* 신청 폼 — 필수 미입력 카드를 한 번 깜빡이며 가리킨다. */
