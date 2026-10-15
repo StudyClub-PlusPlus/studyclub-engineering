@@ -48,7 +48,7 @@ export function studySource(study: Study, timeZone: string): ScheduleSource {
 /**
  * 백오피스 — 캡틴이 고른 반.
  *
- * `key` 는 반의 저장 키, `base` 는 반을 만들 때 진행 일정이 깐 회차다.
+ * `key` 는 반의 저장 키, `base` 는 반 일정을 정할 때 깐 회차다.
  * 처음부터 있던 반은 스터디 키를 그대로 써서 사용자 사이트의 그 분반 일정과 같은 회차를 본다.
  */
 export function classSource({

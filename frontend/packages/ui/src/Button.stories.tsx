@@ -14,7 +14,7 @@ const meta = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['primary', 'tonal', 'secondary', 'ghost', 'destructive'],
+      options: ['primary', 'tonal', 'secondary', 'ghost', 'danger', 'destructive'],
     },
     size: { control: 'select', options: ['sm', 'md', 'lg'] },
   },
@@ -27,6 +27,7 @@ export const Primary: Story = { render: (args) => <Button {...args} variant='pri
 export const Tonal: Story = { render: (args) => <Button {...args} variant='tonal' /> };
 export const Secondary: Story = { render: (args) => <Button {...args} variant='secondary' /> };
 export const Ghost: Story = { render: (args) => <Button {...args} variant='ghost' /> };
+export const Danger: Story = { render: (args) => <Button {...args} variant='danger' /> };
 export const Destructive: Story = { render: (args) => <Button {...args} variant='destructive' /> };
 export const Loading: Story = { render: (args) => <Button {...args} loading /> };
 export const Disabled: Story = { render: (args) => <Button {...args} disabled /> };
@@ -34,7 +35,7 @@ export const Disabled: Story = { render: (args) => <Button {...args} disabled />
 export const AllVariants: Story = {
   render: () => (
     <div className='flex flex-wrap gap-3'>
-      {(['primary', 'tonal', 'secondary', 'ghost', 'destructive'] as const).map((v) => (
+      {(['primary', 'tonal', 'secondary', 'ghost', 'danger', 'destructive'] as const).map((v) => (
         <Button key={v} variant={v}>
           {v}
         </Button>
