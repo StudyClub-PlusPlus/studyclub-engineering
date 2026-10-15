@@ -123,6 +123,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   3. **프로토** — 어떻게 생겼는지 (playground)
   4. **Spec** — API 경로·요청·응답·판정 필드. 경로·필드가 PRD 와 다르면 **스펙이 정본**이다
   5. [`docs/share/`](docs/share/README.md) — 목록의 **반영** 칸이 `됨`·`해당 없음` 이 아닌 같은 도메인 건. 문서에 아직 안 들어간 결정이다
+  - PRD 머리의 **`관련 결정:`** 줄이 그 화면에 걸린 share 결정이다. share 를 PRD 에 반영할 때 이 줄에 링크를 단다 — [share README §반영](docs/share/README.md#반영--결정이-기획-문서에-들어갔나)
   - **무엇이 이미 있고 무엇을 만들지**는 PRD §3 「개발 범위」 표에 있다. 스펙 상태나 PRD 를 고쳤으면 `node scripts/check-dev-scope.mjs` 로 코드와 어긋나지 않았는지 본다
 - **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.

@@ -2,6 +2,8 @@
 
 기준 프로토타입: 내 스터디 (playground 사용자 사이트 · 참여 모음)
 
+관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)
+
 ## 1. 기본설명
 
 · **배경**
@@ -456,7 +458,7 @@ erDiagram
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | core-front `/my/joined` | 있음 — 공개 스터디 목록(`GET /api/studies`)과 브라우저 mock 으로 그린다 (`TODO(api)`) | `GET /api/me/studies` 로 바꾸고 역할 · 참여 상태 · 다음 회차를 응답 값으로 그린다 |
-| BE | `GET /api/me/studies` | 구현완료 · 담당 캡틴 확장 구현중 | 담당 캡틴 확장 마무리 |
+| BE | `GET /api/me/studies` | 구현완료 · `captain` 플래그 없음 | 명부 행에 `captain` 플래그 추가 |
 | BE | 주간 일정용 회차 (아래 API 표의 `GET /api/me/studies/{id}/meetings`) | 스펙 없음 · 컨트롤러 없음 | `GET /api/me/studies` 응답으로 충분한지 먼저 정한다 → 모자라면 [my-studies 스펙](../../../specs/my-studies/spec.md)에 더한다 |
 
 ### 데이터
@@ -471,7 +473,7 @@ erDiagram
 | 회차 | SCHEDULED_AT, STARTS_AT, ENDS_AT | `STUDY_MEETING`. UTC datetime | 영어는 meeting. 회차 번호는 ERD 미확정. 프로토는 일정 문구에서 시각을 읽음 |
 | 내 출석 | STATUS | `PRESENT` / `LATE` / `EXCUSED` / `ABSENT` | 휴가 = `EXCUSED`. 회차 생성 시 전원 `ABSENT`. 시작 전 화면은 결석을 그리지 않음 |
 | 회원 | REGION_GROUP, TIME_ZONE | 권역 `KR` / `NA` / `ETC`. 타임존 IANA | 화면 탭 `KST`/`PDT`는 표시용. 회차 일자도 이 탭 |
-| 역할 | PARTICIPANT_ROLE | `LEADER` = 네비게이터 | 캡틴 = 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 반 편성 때 명부에 들어간다(역할 값은 `MEMBER`). 그 밖은 크루 |
+| 역할 | PARTICIPANT_ROLE | `LEADER` = 네비게이터 | 캡틴 = 그 스터디를 만든 캡틴(`STUDY.CREATED_BY`). 신청했을 때만 명부에 있다(역할 값은 `MEMBER`) (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)). 그 밖은 크루 |
 
 ### 처리
 
@@ -495,7 +497,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/me/studies` | 로그인. 명부 참여 + 내가 담당 캡틴인 스터디(반 편성 전이라 명부에 없어도). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그(추가 필요). [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴-카드) |
+| GET | `/api/me/studies` | 로그인. 명부 참여 스터디만(담당 캡틴도 신청했을 때만). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그(추가 필요). [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴) |
 | GET | `/api/me/studies/{id}/meetings` | 해당 명부 |
 | GET | `/auth/me` | 거주 지역 등 |
 

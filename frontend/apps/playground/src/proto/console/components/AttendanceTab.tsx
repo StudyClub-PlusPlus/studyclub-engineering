@@ -3,9 +3,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { ClassPicker } from '@console/components/ClassPicker';
-import { type StudyClass } from '@console/lib/classes';
+import { hasSchedule, type StudyClass } from '@console/lib/classes';
 import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
-import { Badge, Button, Modal } from '@studyclub/ui';
+import { Badge, Button, Modal, SelectionCount, TableActionBar } from '@studyclub/ui';
 import { CalendarPlus, Mic } from 'lucide-react';
 
 /**
@@ -166,15 +166,25 @@ const BULK_OPTIONS: { value: AttendanceStatus | ''; label: string }[] = [
   { value: '', label: '미체크' },
 ];
 
-const CHECKBOX =
+export const CHECKBOX =
   'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 /** 머리 칸의 전체 선택 — 일부만 골랐으면 「일부 선택」(indeterminate). */
-function SelectAll({ checked, partial, onChange }: { checked: boolean; partial: boolean; onChange: () => void }) {
+export function SelectAll({
+  checked,
+  partial,
+  onChange,
+  label = '크루 전체 선택',
+}: {
+  checked: boolean;
+  partial: boolean;
+  onChange: () => void;
+  label?: string;
+}) {
   return (
     <input
       type='checkbox'
-      aria-label='크루 전체 선택'
+      aria-label={label}
       className={CHECKBOX}
       checked={checked}
       ref={(el) => {
@@ -185,7 +195,7 @@ function SelectAll({ checked, partial, onChange }: { checked: boolean; partial: 
   );
 }
 
-const SELECT_CLASS =
+export const SELECT_CLASS =
   'h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-fg focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 export function AttendanceTab({
@@ -309,7 +319,9 @@ export function AttendanceTab({
     });
     const head = meetings.find((s) => s.id === meetingId);
     const label = BULK_OPTIONS.find((o) => o.value === bulkStatus)?.label ?? '';
-    setAnnounce(`${selected.length}명의 ${head ? (headOf ? headOf(head) : `${head.no}회`) : ''} 칸을 ${label}(으)로 바꿨습니다. 저장해야 반영됩니다.`);
+    setAnnounce(
+      `${selected.length}명의 ${head ? (headOf ? headOf(head) : `${head.no}회`) : ''} 칸을 ${label}(으)로 바꿨습니다. 저장해야 반영됩니다.`,
+    );
   }
 
   /** 고른 사람을 「중단 예정」으로 — 아직 반영하지 않는다. 저장할 때 확인 창을 거친다. */
@@ -373,7 +385,9 @@ export function AttendanceTab({
     if (ids.length > 0) await onWithdraw?.(ids);
     setToWithdraw(new Set());
     setSaving(false);
-    const parts = [pending > 0 && `출석 ${pending}칸을 저장`, ids.length > 0 && `${ids.length}명의 참여를 중단`].filter(Boolean);
+    const parts = [pending > 0 && `출석 ${pending}칸을 저장`, ids.length > 0 && `${ids.length}명의 참여를 중단`].filter(
+      Boolean,
+    );
     setAnnounce(`${parts.join('하고 ')}했습니다.`);
   }
 
@@ -391,7 +405,7 @@ export function AttendanceTab({
       <div data-anno='attendance:5' className='card px-6 py-10 text-center'>
         <p className='text-sm font-semibold text-fg'>아직 반이 없습니다.</p>
         <p className='mt-1.5 text-sm text-fg-muted'>
-          신청자 탭에서 가능한 시간을 보고 반을 만들면 그 반의 출석부가 만들어집니다.
+          신청자 탭에서 반을 만들고 일정 탭에서 일정을 정하면 그 반의 출석부가 만들어집니다.
         </p>
         <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={onGoCrew}>
           반 만들기
@@ -407,11 +421,17 @@ export function AttendanceTab({
       {meetings.length === 0 ? (
         // 반은 있는데 회차가 없다 — 회차는 일정 탭에서 만든다. 반 고르기는 위에 남겨 다른 반으로 옮길 수 있게 한다.
         <div data-anno='attendance:5' className='card px-6 py-10 text-center'>
-          <p className='text-sm font-semibold text-fg'>이 반에는 아직 회차가 없습니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>일정 탭에서 회차를 추가하면 이 반의 출석부가 만들어집니다.</p>
+          <p className='text-sm font-semibold text-fg'>
+            {hasSchedule(cls) ? '이 반에는 아직 회차가 없습니다.' : '이 반은 아직 스터디 시간이 없습니다.'}
+          </p>
+          <p className='mt-1.5 text-sm text-fg-muted'>
+            {hasSchedule(cls)
+              ? '일정 탭에서 회차를 추가하면 이 반의 출석부가 만들어집니다.'
+              : '일정 탭에서 스터디 시간을 정하고 회차를 추가하면 출석부가 만들어집니다.'}
+          </p>
           {onAddMeeting && (
             <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={onAddMeeting}>
-              회차 추가하러 가기
+              {hasSchedule(cls) ? '회차 추가하러 가기' : '스터디 시간 정하러 가기'}
             </Button>
           )}
         </div>
@@ -440,7 +460,11 @@ export function AttendanceTab({
                     <span className='flex items-center gap-3'>
                       {selecting && (
                         <span data-anno='book:3-7' className='flex'>
-                          <SelectAll checked={allPicked} partial={selected.length > 0 && !allPicked} onChange={pickAll} />
+                          <SelectAll
+                            checked={allPicked}
+                            partial={selected.length > 0 && !allPicked}
+                            onChange={pickAll}
+                          />
                         </span>
                       )}
                       크루
@@ -600,78 +624,89 @@ export function AttendanceTab({
           <p className='sr-only' aria-live='polite'>
             {announce}
           </p>
-          {selected.length > 0 && (
-            // 고른 사람이 있을 때만 — 출석 일괄 적용 · 참여 중단 예정. 둘 다 저장 전 변경이다.
-            <div
+          {/* 표 하단 작업 바 — 한 줄. 왼쪽은 고른 크루에 하는 일(출석 일괄 적용 · 참여 중단), 오른쪽은 저장 (POL-0008) */}
+          {(selecting || !readOnly) && (
+            <TableActionBar
+              className='mt-2'
               data-anno='book:3-9'
-              role='region'
-              aria-label='선택한 크루 처리'
-              className='sticky bottom-12 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-3 py-2 shadow-sm'
-            >
-              <span className='text-sm font-semibold text-fg'>선택한 {selected.length}명</span>
-              <select
-                aria-label='적용할 회차'
-                className={SELECT_CLASS}
-                value={meetingId}
-                onChange={(e) => setBulkMeeting(e.target.value)}
-              >
-                {meetings.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {`${headOf ? headOf(s) : `${s.no}회`} · ${dayOf(s)}${whenOf ? ` ${whenOf(s).time}` : ''}`}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label='적용할 출석 상태'
-                className={SELECT_CLASS}
-                value={bulkStatus}
-                onChange={(e) => setBulkStatus(e.target.value as AttendanceStatus | '')}
-              >
-                {BULK_OPTIONS.map((o) => (
-                  <option key={o.label} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <Button size='sm' variant='tonal' onClick={applyBulk} disabled={saving}>
-                출석 적용
-              </Button>
-              <span aria-hidden className='mx-1 h-5 w-px bg-border' />
-              <Button
-                size='sm'
-                variant='secondary'
-                onClick={markWithdraw}
-                disabled={saving || blockedNames.length > 0}
-                aria-describedby={blockedNames.length > 0 ? 'withdraw-blocked' : undefined}
-                // 테두리·글씨만 빨강.
-                className='border-error-600 bg-transparent text-error-700 hover:border-error-700 hover:bg-error-50'
-              >
-                참여 중단
-              </Button>
-              {blockedNames.length > 0 && (
-                // 왜 잠겼는지 버튼 옆에 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
-                <span id='withdraw-blocked' data-anno='book:3-12' className='text-xs text-fg-muted'>
-                  운영진({blockedNames.join(', ')})은 참여 중단할 수 없습니다
-                </span>
-              )}
-              <Button size='sm' variant='ghost' className='ml-auto' onClick={() => setPicked(new Set())}>
-                선택 해제
-              </Button>
-            </div>
-          )}
-          {!readOnly && (
-            <div className='sticky bottom-0 z-10 mt-2 flex items-center justify-end gap-2 bg-bg py-2'>
-              {dirty && (
-                <Button variant='ghost' size='sm' onClick={revert} disabled={saving}>
-                  변경 취소
-                </Button>
-              )}
-              <span data-anno='attendance:7'>
-                <Button size='sm' onClick={requestSave} loading={saving} disabled={!dirty}>
-                  저장
-                </Button>
-              </span>
-            </div>
+              selection={
+                selecting ? (
+                  <>
+                    <SelectionCount count={selected.length} unit='명' />
+                    <select
+                      aria-label='적용할 회차'
+                      className={SELECT_CLASS}
+                      disabled={selected.length === 0}
+                      value={meetingId}
+                      onChange={(e) => setBulkMeeting(e.target.value)}
+                    >
+                      {meetings.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {`${headOf ? headOf(s) : `${s.no}회`} · ${dayOf(s)}${whenOf ? ` ${whenOf(s).time}` : ''}`}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label='적용할 출석 상태'
+                      className={SELECT_CLASS}
+                      disabled={selected.length === 0}
+                      value={bulkStatus}
+                      onChange={(e) => setBulkStatus(e.target.value as AttendanceStatus | '')}
+                    >
+                      {BULK_OPTIONS.map((o) => (
+                        <option key={o.label} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size='sm'
+                      variant='secondary'
+                      onClick={applyBulk}
+                      disabled={saving || selected.length === 0}
+                    >
+                      출석 적용
+                    </Button>
+                    <Button
+                      size='sm'
+                      variant='danger'
+                      onClick={markWithdraw}
+                      disabled={saving || selected.length === 0 || blockedNames.length > 0}
+                      aria-describedby={blockedNames.length > 0 ? 'withdraw-blocked' : undefined}
+                    >
+                      참여 중단
+                    </Button>
+                    {selected.length > 0 && (
+                      <Button size='sm' variant='ghost' onClick={() => setPicked(new Set())}>
+                        선택 해제
+                      </Button>
+                    )}
+                    {blockedNames.length > 0 && (
+                      // 왜 잠겼는지 버튼 줄 끝에 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
+                      <span id='withdraw-blocked' data-anno='book:3-12' className='text-xs text-fg-muted'>
+                        네비게이터는 참여 중단할 수 없습니다. 캡틴에게 문의하세요.
+                      </span>
+                    )}
+                  </>
+                ) : undefined
+              }
+              save={
+                readOnly ? undefined : (
+                  <>
+                    {dirty && (
+                      <Button variant='ghost' size='sm' onClick={revert} disabled={saving}>
+                        변경 취소
+                      </Button>
+                    )}
+                    <span data-anno='attendance:7'>
+                      <Button size='sm' onClick={requestSave} loading={saving} disabled={!dirty}>
+                        저장
+                      </Button>
+                    </span>
+                  </>
+                )
+              }
+            />
           )}
 
           <Modal

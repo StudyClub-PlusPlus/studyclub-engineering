@@ -38,6 +38,8 @@ export type NavigatorGroup = {
   timeZone: string;
   /** 분반 정규 시작 시각 (STUDY_GROUP.START_AT). 새 회차의 기본값. */
   startAt: string;
+  /** 분반 스터디 요일 (0=일 … 6=토, STUDY_GROUP.DAYS_OF_WEEK). 회차가 없는 반의 「회차 추가」가 이 요일 매주 반복으로 열린다. */
+  weekdays?: number[];
 };
 
 /** 이 스터디를 고칠 수 있는 역할. 둘 다 사용자 사이트 스터디 일정에서 고친다. */
@@ -254,7 +256,7 @@ export function meetingLabel(m: StudyMeeting): string {
 /**
  * 분반마다 하나 있는 킥오프(0회차). 규칙·일정·발표자를 정하는 첫 모임이다.
  * mock 에는 킥오프가 없어 첫 회차 한 주 전에 하나 둔다. 지우지 않고, 일자·시각·제목만 고친다.
- * TODO(api): 분반을 만들 때 서버가 킥오프 회차(`MEETING_TYPE = KICKOFF`)를 함께 만든다.
+ * TODO(api): 킥오프가 없는 분반에 처음 정규 회차를 추가할 때 서버가 킥오프 회차(`MEETING_TYPE = KICKOFF`)를 첫 회차 한 주 전에 함께 만든다.
  */
 function kickoffOf(base: StudyMeeting[], studyId: string): ProtoMeeting | undefined {
   const first = [...base].sort((a, b) => a.date.localeCompare(b.date))[0];
@@ -276,7 +278,8 @@ export function withAdded(base: StudyMeeting[], studyId: string, zone = zoneOfSt
   );
   const deleted = new Set(readJSON<string>(DELETED_KEY)[studyId] ?? []);
   const edits = readEdits()[studyId] ?? {};
-  const kickoff = kickoffOf(base, studyId);
+  // 처음부터 회차가 있던 반은 그 첫 회차로, 회차 없이 만든 반은 「회차 추가」로 처음 만든 회차로 킥오프를 둔다
+  const kickoff = kickoffOf(base.length > 0 ? base : added, studyId);
   const kept: ProtoMeeting[] = [...(kickoff ? [kickoff] : []), ...base]
     .filter((m) => !deleted.has(m.id))
     .map((m) => (edits[m.id] ? ({ ...m, ...withWall(edits[m.id], zone) } as ProtoMeeting) : m));
@@ -405,6 +408,11 @@ export function zoneTitle(iana: string): string {
 export function dayLabel(ymd: string): string {
   const [, m, d] = ymd.split('-').map(Number);
   return `${m}/${d}(${DOW[dowOf(ymd)]})`;
+}
+
+/** `2026-09-23 (수)` — 일정 표 일자 칸. 날짜만 보면 무슨 요일인지 셈해야 한다 */
+export function dateWithDow(ymd: string): string {
+  return ymd ? `${ymd} (${DOW[dowOf(ymd)]})` : '';
 }
 
 export function dowOf(ymd: string): number {

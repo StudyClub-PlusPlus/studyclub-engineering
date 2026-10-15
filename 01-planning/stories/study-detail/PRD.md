@@ -2,6 +2,8 @@
 
 기준 프로토타입: 운영 콘솔 › 스터디 › 스터디 상세 — https://playground.studyclub-plusplus.com/proto/console/studies
 
+관련 결정: [09-27 백오피스 스터디 상세가 공개용 창구를 빌려 쓴다](../../../docs/share/2026-09-27-backoffice-study-detail-uses-public-api.md)
+
 ## 1. 기본설명
 
 ### 하는 일

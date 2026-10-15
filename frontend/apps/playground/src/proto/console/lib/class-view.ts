@@ -9,7 +9,11 @@ export const FIRST_CLASS = 'c1';
 /** 시각이 없는 반의 기본 시각. */
 const DEFAULT_TIME = '20:00';
 
-export type ClassCrew = Pick<Crew, 'id' | 'name'> & { role?: 'navigator' };
+export type ClassCrew = Pick<Crew, 'id' | 'name'> & {
+  role?: 'navigator';
+  /** 참여 중단 — 그 시각(분반 시간대 yyyy-MM-ddTHH:mm) 뒤 회차는 출석 대상이 아니고 발표자로 고를 수 없다. */
+  left?: { at: string };
+};
 
 export type ClassView = {
   cls: StudyClass;
@@ -34,15 +38,18 @@ export function classView({
   base,
   crew,
   navigators,
+  left = {},
 }: {
   study: Study;
   cls: StudyClass | undefined;
-  /** 반을 만들 때 진행 일정이 깐 회차. */
+  /** 반 일정을 정할 때 깐 회차. */
   base: StudyMeeting[];
   /** 이 반에 속한 크루. */
   crew: Crew[];
   /** 이 스터디의 네비게이터로 지정된 크루 ID. */
   navigators: string[];
+  /** 참여 중단한 크루 — crewId → 중단 시각. */
+  left?: Record<string, { at: string }>;
 }): ClassView | undefined {
   if (!cls) return undefined;
   const key = cls.id === FIRST_CLASS ? study.id : `${study.id}~${cls.id}`;
@@ -51,6 +58,7 @@ export function classView({
     id: c.id,
     name: c.name,
     role: navigators.includes(c.id) ? 'navigator' : undefined,
+    left: left[c.id],
   }));
   const source = classSource({ key, base, timeZone: cls.rule.tz, time, people: members });
   const meetings = source.meetings();
@@ -64,7 +72,7 @@ export function classView({
         .map((c) => c.name)
         .join(', ') || '미지정',
     source,
-    group: { id: cls.id, name: classLabel(cls), timeZone: cls.rule.tz, startAt: time },
+    group: { id: cls.id, name: classLabel(cls), timeZone: cls.rule.tz, startAt: time, weekdays: cls.rule.weekdays },
     meetings,
     book: bookFromSchedule(meetings),
   };
