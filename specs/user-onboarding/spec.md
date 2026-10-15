@@ -103,7 +103,7 @@ ACCOUNT_IDENTITY
 - **개인정보 수집·이용** — 필수. `true` 아니면 거부. `ACCOUNT_CONSENT` `PRIVACY_POLICY`
 - **마케팅 수신** — 동의 여부는 선택이지만 요청 필드는 필수. `false`도 정상값이며 `ACCOUNT_CONSENT` `MARKETING`에 거부 이력을 남긴다
 - **닉네임** — 필수. trim 후 2~20자, **중복 불가**. 모든 언어의 글자·숫자·밑줄(`_`)만 허용하고 공백·줄바꿈·그 외 특수문자는 허용하지 않는다. 밑줄만으로 구성할 수 없으며 영문 대소문자는 구분하지 않는다. `운영진`·`관리자`·`admin` 등 공식 계정으로 오해할 수 있는 이름과 `account_` 접두사는 사용할 수 없다. `ACCOUNT.NICKNAME`
-- **타임존** — 필수. IANA ID (`ZoneId.of()` 통과). `ACCOUNT.TIME_ZONE`
+- **타임존** — 필수. 시간대 정책이 고를 수 있다고 정한 목록 중 하나 — `Asia/Seoul` · `America/New_York` · `America/Vancouver` · `America/Los_Angeles`. 온보딩 화면 드롭다운과 같은 넷이고, 존재하는 IANA ID 라도 목록에 없으면 `400 INVALID_INPUT`. 프로필 수정이 같은 검증기를 쓴다. `ACCOUNT.TIME_ZONE`
 - **만 14세 이상 확인** — 필수. `age14Confirmed=true`만 허용하며 `false`·`null`·누락은 `400 INVALID_INPUT`. 본인의 연령 확인 진술을 검증하는 항목이며 실제 나이 인증은 아니다. 별도 약관 문서·버전·DB 컬럼·`ACCOUNT_CONSENT` 행은 만들지 않는다.
 
 약관 버전은 클라이언트가 안 보낸다. **서버가 현재 게시 버전을 붙인다.**
@@ -184,7 +184,7 @@ ACCOUNT_IDENTITY
   "privacyPolicyAgreed": true,    // 필수, true 아니면 거부
   "marketingAgreed": false,       // 필수, false도 유효 (거부 이력 남김)
   "nickname": "jinjoong",         // 필수, 닉네임 규칙 적용
-  "timeZone": "Asia/Seoul"        // 필수, ZoneId.of() 통과하는 IANA ID
+  "timeZone": "Asia/Seoul"        // 필수, 고를 수 있는 넷 중 하나
 }
 ```
 

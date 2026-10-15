@@ -332,6 +332,27 @@ class AccountOnboardingIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - 존재하는 IANA ID 라도 시간대 목록에 없으면 400 — 반 편성이 이 값으로 갈린다")
+    void rejectsTimeZoneOutsideList() {
+        Account account = seedUnonboardedAccount();
+        Map<String, Object> body = new HashMap<>(validRequest(uniqueNickname()));
+        body.put("timeZone", "Asia/Tokyo");
+
+        var response =
+                rest.exchange(
+                        "/accounts/onboarding",
+                        HttpMethod.POST,
+                        authenticatedBody(account, body),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        assertThat(response.getBody().get("errorMessage")).asString().contains("timeZone");
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().getTimeZone())
+                .isNull();
+    }
+
+    @Test
     @DisplayName("실패 - 이미 다른 계정이 쓰는 닉네임(대소문자 무시)이면 409 + errorCode CONFLICT")
     void rejectsDuplicateNicknameIgnoringCase() {
         String baseNickname = uniqueNickname();
