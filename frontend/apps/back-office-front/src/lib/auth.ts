@@ -6,10 +6,10 @@ import { getQueryClient } from '@/lib/query-client';
 // 떠 있어야 로그인 가능(compose 로컬·스테이지 항상 함께).
 
 export const STORAGE_PREFIX = 'bo_';
+
 export const PLATFORM = 'BACK_OFFICE';
 
-export const ACCESS_COOKIE = `${STORAGE_PREFIX}access_token`;
-export const REFRESH_COOKIE = `${STORAGE_PREFIX}refresh_token`;
+export { ACCESS_COOKIE, REFRESH_COOKIE } from './cookie-names';
 export const USER_KEY = `${STORAGE_PREFIX}user`;
 
 export type SessionUser = {

@@ -6,9 +6,8 @@
 //     온보딩 완료 여부는 쿠키만으로 알 수 없어, 미완료 분기는 로그인 응답·온보딩 페이지에서 처리한다.
 import { NextRequest, NextResponse } from 'next/server';
 
+import { ACCESS_COOKIE } from '@/lib/cookie-names';
 import { DEFAULT_LOCALE, isLocale } from '@/lib/i18n';
-
-const ACCESS_COOKIE = 'sc_access_token';
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -22,11 +21,7 @@ export function middleware(req: NextRequest) {
 
   // /:locale/my · /:locale/onboarding 게이트
   const rest = pathname.slice(first.length + 1);
-  const gated =
-    rest === '/my' ||
-    rest.startsWith('/my/') ||
-    rest === '/onboarding' ||
-    rest.startsWith('/onboarding/');
+  const gated = rest === '/my' || rest.startsWith('/my/') || rest === '/onboarding' || rest.startsWith('/onboarding/');
   if (!gated) return NextResponse.next();
 
   if (req.cookies.get(ACCESS_COOKIE)?.value) return NextResponse.next();
@@ -38,6 +33,8 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
+  // 쿠키 이름이 런타임 env(AUTH_COOKIE_ENV)를 읽는다 — edge 는 빌드 때 값으로 굳으므로 node 에서 돈다
+  runtime: 'nodejs',
   // api·_next·그리고 **확장자가 있는 모든 경로**를 뺀다.
   // 후자가 핵심이다 — sitemap.xml·robots.txt·llms.txt·og 이미지·public 자산이 전부 여기 걸린다.
   // 하나씩 나열하면 파일이 늘 때마다 조용히 리다이렉트되어 404 가 된다.
