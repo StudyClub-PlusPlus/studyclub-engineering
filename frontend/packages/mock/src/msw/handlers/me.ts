@@ -62,6 +62,34 @@ function studyStatusOf(study: (typeof studies)[number]) {
  * TODO(api): GET /api/me/studies
  * TODO(api): GET /api/me/studies/:id
  */
+function attendanceStatusFor(
+  relation: MyStudyRelation,
+  studyId: number,
+  index: number,
+  meetingDate: string
+): 'PRESENT' | 'LATE' | 'ABSENT' | null {
+  if (relation === 'COMPLETED') {
+    // 완주 스터디: 80% 이상의 출석률을 보장하도록 적절한 출석 상태 부여
+    if (studyId === 22) return 'PRESENT';
+    if (studyId === 23) return index === 2 ? 'LATE' : 'PRESENT';
+    if (studyId === 24) return index === 4 ? 'ABSENT' : 'PRESENT';
+    if (studyId === 25) return index === 1 ? 'LATE' : index === 5 ? 'ABSENT' : 'PRESENT';
+    return (index + studyId) % 7 === 0 ? 'LATE' : 'PRESENT';
+  }
+
+  if (relation === 'WITHDRAWN') {
+    return index < 2 ? 'PRESENT' : null;
+  }
+
+  if (relation === 'ONGOING') {
+    const isPast = new Date(meetingDate).getTime() < Date.now();
+    if (!isPast) return null;
+    return (index + studyId) % 6 === 0 ? 'LATE' : 'PRESENT';
+  }
+
+  return null;
+}
+
 export const meStudiesHandlers = mockClient.createHandlerGroup('/api/me', [
   {
     method: 'GET',
@@ -73,52 +101,61 @@ export const meStudiesHandlers = mockClient.createHandlerGroup('/api/me', [
         response: () => ({
           items: studies
             .filter((study) => ACCEPTED_IDS.has(study.study_id))
-            .map((study) => ({
-              studyId: study.study_id,
-              title: study.title.ko,
-              category: CATEGORY_KEY[study.category ?? ''] ?? 'OTHER',
-              studyKind: study.kind === 'club' ? 'CLUB' : 'STUDY',
-              startAt: study.startAt ?? null,
-              endAt: study.date ? `${study.date}T23:59:59Z` : null,
-              relation: relationOf(study),
-              participantStatus: participantStatusOf(relationOf(study)),
-              participantRole: LEADER_IDS.has(study.study_id) ? 'LEADER' : 'MEMBER',
-              captain: CAPTAIN_IDS.has(study.study_id),
-              discordChannelUrl: study.discord_url ?? null,
-              driveUrl: study.driveUrl ?? null,
-              attendanceRate: null,
-              meetings: (() => {
-                const crewMeetings = getStudyCrew(study).meetings;
-                const firstDate = crewMeetings[0]?.date;
-                const kickoffDate =
-                  study.startAt?.slice(0, 10) ?? (firstDate ? addDays(firstDate, -7) : null);
-                const kickoff = kickoffDate
-                  ? [
-                      {
-                        meetingId: 0,
-                        sequence: 0,
-                        scheduledAt: meetingScheduledAt(kickoffDate, study),
-                        startAt: null,
-                        endAt: null,
-                        attendanceStatus: null,
-                        countedInRate: false,
-                      },
-                    ]
-                  : [];
-                return [
-                  ...kickoff,
-                  ...crewMeetings.map((m, i) => ({
-                    meetingId: i + 1,
-                    sequence: m.no,
-                    scheduledAt: meetingScheduledAt(m.date, study),
-                    startAt: null,
-                    endAt: null,
-                    attendanceStatus: null,
-                    countedInRate: true,
-                  })),
-                ];
-              })(),
-            })),
+            .map((study) => {
+              const relation = relationOf(study);
+              const crewMeetings = getStudyCrew(study).meetings;
+              const firstDate = crewMeetings[0]?.date;
+              const kickoffDate =
+                study.startAt?.slice(0, 10) ?? (firstDate ? addDays(firstDate, -7) : null);
+              const kickoff = kickoffDate
+                ? [
+                    {
+                      meetingId: 0,
+                      sequence: 0,
+                      scheduledAt: meetingScheduledAt(kickoffDate, study),
+                      startAt: null,
+                      endAt: null,
+                      attendanceStatus:
+                        relation === 'COMPLETED' || relation === 'WITHDRAWN'
+                          ? ('PRESENT' as const)
+                          : new Date(kickoffDate).getTime() < Date.now()
+                            ? ('PRESENT' as const)
+                            : null,
+                      countedInRate: false,
+                    },
+                  ]
+                : [];
+              const regularMeetings = crewMeetings.map((m, i) => ({
+                meetingId: i + 1,
+                sequence: m.no,
+                scheduledAt: meetingScheduledAt(m.date, study),
+                startAt: null,
+                endAt: null,
+                attendanceStatus: attendanceStatusFor(relation, study.study_id, i, m.date),
+                countedInRate: true,
+              }));
+              const regularStatuses = regularMeetings.map((m) => m.attendanceStatus);
+              const attendedCount = regularStatuses.filter((s) => s === 'PRESENT' || s === 'LATE').length;
+              const totalCount = regularStatuses.filter((s) => s !== null).length;
+              const attendanceRate = totalCount > 0 ? Math.round((attendedCount / totalCount) * 100) / 100 : null;
+
+              return {
+                studyId: study.study_id,
+                title: study.title.ko,
+                category: CATEGORY_KEY[study.category ?? ''] ?? 'OTHER',
+                studyKind: study.kind === 'club' ? 'CLUB' : 'STUDY',
+                startAt: study.startAt ?? null,
+                endAt: study.date ? `${study.date}T23:59:59Z` : null,
+                relation,
+                participantStatus: participantStatusOf(relation),
+                participantRole: LEADER_IDS.has(study.study_id) ? 'LEADER' : 'MEMBER',
+                captain: CAPTAIN_IDS.has(study.study_id),
+                discordChannelUrl: study.discord_url ?? null,
+                driveUrl: study.driveUrl ?? null,
+                attendanceRate,
+                meetings: [...kickoff, ...regularMeetings],
+              };
+            }),
         }),
       },
       { label: '빈 목록', status: 200, response: { items: [] } },

@@ -180,15 +180,32 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
     await expect(page.getByRole('main').getByRole('link', { name: '내 스터디' })).toBeVisible();
     await expect(page.getByRole('link', { name: '일정' })).toBeVisible();
     await expect(page.getByRole('link', { name: '출석' })).toBeVisible();
-    await expect(page.locator('table')).toBeVisible();
+    await expect(page.locator('table').first()).toBeVisible();
 
     // 출석 탭 클릭 이동 확인
     await page.getByRole('link', { name: '출석' }).click();
     await expect(page).toHaveURL(/\/ko\/my\/joined\/\d+\/schedule\/attendance/);
-    await expect(page.locator('table')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: /출석/ })).toBeVisible();
+    await expect(page.getByText('출석률')).toBeVisible();
 
     // 내 스터디 링크 클릭 시 내 스터디 목록으로 복귀 확인
     await page.getByRole('main').getByRole('link', { name: '내 스터디' }).click();
     await expect(page).toHaveURL(/\/ko\/my\/joined/);
   });
 });
+
+test.describe('내 스터디 상세 — 출석 탭 모바일 반응형', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('모바일에서 스터디 정보 카드 및 출석 테이블 렌더링 확인', async ({ page }) => {
+    await loginAsCrew(page);
+    await page.goto('/ko/my/joined/1/schedule/attendance');
+
+    await expect(page.getByRole('heading', { level: 2, name: /출석/ })).toBeVisible();
+    await expect(page.getByText('출석률')).toBeVisible();
+
+    const toggleRules = page.getByRole('button', { name: '스터디 규칙' });
+    await expect(toggleRules).toBeVisible();
+  });
+});
+

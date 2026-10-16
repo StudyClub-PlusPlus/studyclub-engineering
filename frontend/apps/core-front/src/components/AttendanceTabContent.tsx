@@ -409,18 +409,18 @@ export function AttendanceTabContent({
                 >
                   참여 중단
                 </Button>
-                {selected.length > 0 && (
-                  <Button size='sm' variant='ghost' onClick={() => setPicked(new Set())}>
-                    선택 해제
-                  </Button>
-                )}
                 {blockedNames.length > 0 && (
-                  <span className='text-xs text-fg-muted'>
+                  <span className='w-full text-xs text-fg-muted sm:w-auto'>
                     네비게이터는 참여 중단할 수 없습니다. 캡틴에게 문의하세요.
                   </span>
                 )}
               </div>
               <div className='ml-auto flex items-center gap-2'>
+                {selected.length > 0 && (
+                  <Button size='sm' variant='ghost' onClick={() => setPicked(new Set())}>
+                    선택 해제
+                  </Button>
+                )}
                 {dirty && (
                   <Button variant='ghost' size='sm' disabled={saving} onClick={revert}>
                     변경 취소
@@ -435,8 +435,8 @@ export function AttendanceTabContent({
           {/* 컬럼 헤더 행 */}
           <div className='flex text-sm'>
             <div className='flex shrink-0'>
-              <div className='flex w-28 min-w-28 max-w-28 items-center border-b border-border px-2 py-3 text-left text-xs font-semibold text-fg-muted sm:w-48 sm:min-w-[12rem] sm:max-w-[12rem] sm:px-4'>
-                <span className='flex items-center gap-2 sm:gap-3'>
+              <div className='flex w-[110px] min-w-[110px] max-w-[110px] items-center border-b border-border px-1.5 py-3 text-left text-xs font-semibold text-fg-muted sm:w-48 sm:min-w-[12rem] sm:max-w-[12rem] sm:px-4'>
+                <span className='flex items-center gap-1.5 sm:gap-3'>
                   {canEdit && (
                     <input
                       type='checkbox'
@@ -453,7 +453,7 @@ export function AttendanceTabContent({
                 </span>
               </div>
               <div
-                className='flex w-10 min-w-10 max-w-10 items-center justify-center whitespace-nowrap border-b border-border px-1 py-2 text-[11px] font-semibold text-fg-muted sm:w-16 sm:min-w-[4rem] sm:max-w-[4rem] sm:px-2'
+                className='flex w-9 min-w-9 max-w-9 items-center justify-center whitespace-nowrap border-b border-border px-1 py-2 text-[11px] font-semibold text-fg-muted sm:w-16 sm:min-w-[4rem] sm:max-w-[4rem] sm:px-2'
                 title='일정의 발표자1·2로 맡은 횟수'
               >
                 <span className='sm:hidden'>발표</span>
@@ -469,7 +469,7 @@ export function AttendanceTabContent({
                 {meetings.map((m) => (
                   <div
                     key={m.id}
-                    className='tnum flex w-13 min-w-10 shrink-0 flex-col items-center justify-center px-1 py-2 text-[11px] font-semibold text-fg-secondary sm:w-15'
+                    className='tnum flex w-11 min-w-11 shrink-0 flex-col items-center justify-center px-0.5 py-2 text-[11px] font-semibold text-fg-secondary sm:w-15 sm:min-w-10 sm:px-1'
                   >
                     {headOf(m)}
                     <span className='block text-[10px] font-medium text-fg-muted'>{dayOf(m)}</span>
@@ -477,7 +477,7 @@ export function AttendanceTabContent({
                 ))}
               </div>
             </div>
-            <div className='flex w-14 min-w-14 max-w-14 shrink-0 items-center justify-end whitespace-nowrap border-b border-border px-2 py-2 text-xs font-semibold text-fg-muted sm:w-20 sm:min-w-[5rem] sm:max-w-[5rem] sm:px-3'>
+            <div className='flex w-12 min-w-12 max-w-12 shrink-0 items-center justify-end whitespace-nowrap border-b border-border px-1 py-2 text-xs font-semibold text-fg-muted sm:w-20 sm:min-w-[5rem] sm:max-w-[5rem] sm:px-3'>
               출석률
             </div>
           </div>
@@ -498,8 +498,8 @@ export function AttendanceTabContent({
             <div key={p.id} className='flex items-stretch border-b border-border bg-surface text-sm'>
               {/* 고정: 크루 + 발표횟수 */}
               <div className='flex shrink-0'>
-                <div className='flex w-28 min-w-28 max-w-28 items-center whitespace-nowrap px-2 py-3 font-semibold sm:w-48 sm:min-w-[12rem] sm:max-w-[12rem] sm:px-4'>
-                  <span className='flex items-center gap-1.5'>
+                <div className='flex w-[110px] min-w-[110px] max-w-[110px] items-center overflow-hidden whitespace-nowrap px-1.5 py-3 font-semibold sm:w-48 sm:min-w-[12rem] sm:max-w-[12rem] sm:px-4'>
+                  <span className='flex min-w-0 items-center gap-1 sm:gap-1.5'>
                     {canEdit && (
                       <span className='mr-1 flex w-4 shrink-0 sm:mr-1.5'>
                         {p.manageable && !p.leftAt && (
@@ -514,14 +514,23 @@ export function AttendanceTabContent({
                         )}
                       </span>
                     )}
-                    <span
-                      className={`min-w-0 max-w-[3.5rem] truncate sm:max-w-[7.5rem] ${p.leftAt ? 'font-medium text-fg-muted' : ''}`}
-                      title={p.name}
-                    >
-                      {p.name}
+                    <span className={`min-w-0 ${p.leftAt ? 'font-medium text-fg-muted' : ''}`} title={p.name}>
+                      <span className='sm:hidden whitespace-nowrap'>{p.name.length >= 3 ? `${p.name.slice(0, 2)}…` : p.name}</span>
+                      <span className='hidden sm:inline truncate max-w-[7.5rem]'>{p.name}</span>
                     </span>
                     {p.leftAt && <Badge tone='neutral'>참여 중단</Badge>}
-                    {p.role && <Badge tone={p.role}>{p.role === 'captain' ? '캡틴' : '네비게이터'}</Badge>}
+                    {p.role && (
+                      <Badge tone={p.role} className='px-1 py-0 text-[10px] leading-tight shrink-0 sm:px-2 sm:py-0.5 sm:text-xs'>
+                        {p.role === 'captain' ? (
+                          '캡틴'
+                        ) : (
+                          <>
+                            <span className='sm:hidden'>네비</span>
+                            <span className='hidden sm:inline'>네비게이터</span>
+                          </>
+                        )}
+                      </Badge>
+                    )}
                     {pending && (
                       <span className='flex items-center gap-1'>
                         <Badge tone='absent'>중단 예정</Badge>
@@ -538,7 +547,7 @@ export function AttendanceTabContent({
                     )}
                   </span>
                 </div>
-                <div className='flex w-10 min-w-10 max-w-10 items-center justify-center whitespace-nowrap px-1 py-3 text-xs font-semibold text-fg-secondary sm:w-16 sm:min-w-[4rem] sm:max-w-[4rem] sm:px-2'>
+                <div className='flex w-9 min-w-9 max-w-9 items-center justify-center whitespace-nowrap px-1 py-3 text-xs font-semibold text-fg-secondary sm:w-16 sm:min-w-[4rem] sm:max-w-[4rem] sm:px-2'>
                   {(() => {
                     const n = meetings.filter((m) => !gone(m) && presentersOf(m.id).includes(p.id)).length;
                     return n > 0 ? n : <span className='text-fg-muted'>0</span>;
@@ -563,7 +572,10 @@ export function AttendanceTabContent({
                         —
                       </div>
                     ) : (
-                      <div key={m.id} className='flex w-13 min-w-10 shrink-0 items-center px-1 py-3 sm:w-15'>
+                      <div
+                        key={m.id}
+                        className='flex w-11 min-w-11 shrink-0 items-center px-0.5 py-3 sm:w-15 sm:min-w-10 sm:px-1'
+                      >
                         {(() => {
                           const status = row?.[m.id];
                           const changed = cells[p.id]?.[m.id] !== savedCells[p.id]?.[m.id];
@@ -630,7 +642,7 @@ export function AttendanceTabContent({
                 </div>
               </div>
               {/* 고정: 출석률 */}
-              <div className='tnum flex w-14 min-w-14 max-w-14 shrink-0 items-center justify-end whitespace-nowrap px-2 py-3 font-bold sm:w-20 sm:min-w-[5rem] sm:max-w-[5rem] sm:px-3'>
+              <div className='tnum flex w-12 min-w-12 max-w-12 shrink-0 items-center justify-end whitespace-nowrap px-1 py-3 font-bold sm:w-20 sm:min-w-[5rem] sm:max-w-[5rem] sm:px-3'>
                 {rate === undefined ? (
                   <span className='text-fg-muted'>—</span>
                 ) : (

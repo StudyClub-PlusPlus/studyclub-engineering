@@ -214,7 +214,12 @@ function withWall<T extends { scheduledAt?: string; date?: string; time?: string
 /* ── 킥오프 ─────────────────────────────────────────────────────────────── */
 
 export function isKickoff(m: StudyMeeting): boolean {
-  return (m as ProtoMeeting).kind === 'kickoff';
+  return (
+    (m as ProtoMeeting).kind === 'kickoff' ||
+    m.no === 0 ||
+    (m as { type?: string }).type === 'KICKOFF' ||
+    (m as ProtoMeeting).title === '킥오프'
+  );
 }
 
 export function meetingLabel(m: StudyMeeting): string {

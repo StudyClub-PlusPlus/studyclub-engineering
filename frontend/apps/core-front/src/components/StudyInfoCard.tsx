@@ -97,25 +97,27 @@ export function StudyInfoCard({
             <dd className='font-semibold text-fg'>{navigator}</dd>
           </div>
         </dl>
-        <div className='flex flex-wrap items-center gap-1.5'>
-          {hasDiscord && discordHref && (
-            <LinkButton label='디스코드' href={discordHref} icon={<DiscordGlyph size={15} />} />
-          )}
-          {hasDrive && driveHref && (
-            <LinkButton
-              label='자료실'
-              href={driveHref}
-              icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden />}
-            />
-          )}
-          {actions}
+        <div className='flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-start'>
+          <div className='flex flex-wrap items-center gap-1.5'>
+            {hasDiscord && discordHref && (
+              <LinkButton label='디스코드' href={discordHref} icon={<DiscordGlyph size={15} />} />
+            )}
+            {hasDrive && driveHref && (
+              <LinkButton
+                label='자료실'
+                href={driveHref}
+                icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden />}
+              />
+            )}
+            {actions}
+          </div>
           <button
             type='button'
             aria-label='스터디 규칙'
             aria-expanded={open}
             title={open ? '접기' : '펼치기'}
             onClick={() => setOpen((v) => !v)}
-            className='grid h-8 w-8 place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-fg'
+            className='ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-fg sm:ml-0'
           >
             <ChevronDown size={16} aria-hidden className={`transition-transform${open ? ' rotate-180' : ''}`} />
           </button>

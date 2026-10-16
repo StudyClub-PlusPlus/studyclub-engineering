@@ -114,16 +114,20 @@ function PresenterCell({
 }
 
 function apiMeetingsOf(data: ApiMeetingList | undefined, group: NavigatorGroup): ProtoMeeting[] {
-  return (data?.meetings ?? []).map((m) => ({
-    id: String(m.id),
-    no: m.number,
-    date: wallParts(new Date(m.scheduledAt), group.timeZone).date,
-    time: wallParts(new Date(m.scheduledAt), group.timeZone).time,
-    scheduledAt: m.scheduledAt,
-    title: m.title ?? '',
-    presenter1: m.presenter1 ? String(m.presenter1.participantId) : '',
-    presenter2: m.presenter2 ? String(m.presenter2.participantId) : '',
-  }));
+  return (data?.meetings ?? []).map((m) => {
+    const isKickoffMeeting = m.type === 'KICKOFF' || m.number === 0 || m.title === '킥오프';
+    return {
+      id: String(m.id),
+      no: isKickoffMeeting ? 0 : m.number,
+      kind: isKickoffMeeting ? 'kickoff' : undefined,
+      date: wallParts(new Date(m.scheduledAt), group.timeZone).date,
+      time: wallParts(new Date(m.scheduledAt), group.timeZone).time,
+      scheduledAt: m.scheduledAt,
+      title: m.title ?? (isKickoffMeeting ? '킥오프' : ''),
+      presenter1: m.presenter1 ? String(m.presenter1.participantId) : '',
+      presenter2: m.presenter2 ? String(m.presenter2.participantId) : '',
+    };
+  });
 }
 
 type PendingMeeting = { id: string; date: string; time: string; title: string };
