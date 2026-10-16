@@ -77,6 +77,9 @@ public final class StudyMeetingRequests {
         }
     }
 
+    /** 회차 일괄 삭제. 전부 지우거나 하나도 안 지운다. studyGroupId 는 경로 변수로 받는다. */
+    public record BulkDelete(@NotEmpty List<@NotNull Long> meetingIds) {}
+
     /** 스터디 규칙. null·공백이면 지운다. */
     public record Rules(String rules) {}
 }

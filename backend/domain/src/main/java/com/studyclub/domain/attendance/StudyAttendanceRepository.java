@@ -85,4 +85,9 @@ public interface StudyAttendanceRepository extends JpaRepository<StudyAttendance
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM StudyAttendance a WHERE a.studyMeetingId = :studyMeetingId")
     int deleteByStudyMeetingId(@Param("studyMeetingId") Long studyMeetingId);
+
+    /** 여러 회차의 출석을 한 문장으로 지운다 — 회차 일괄 삭제용. 위와 같은 이유로 DELETE 문이다. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM StudyAttendance a WHERE a.studyMeetingId IN :studyMeetingIds")
+    int deleteByStudyMeetingIdIn(@Param("studyMeetingIds") Collection<Long> studyMeetingIds);
 }

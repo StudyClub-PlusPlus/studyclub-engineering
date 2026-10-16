@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "회차", description = "스터디 일정 — 분반 회차 조회 · 추가 · 수정 · 삭제 · 발표 신청")
+@Tag(name = "회차", description = "스터디 일정 — 분반 회차 조회 · 추가 · 수정 · 삭제(일괄) · 발표 신청")
 @RestController
 @RequestMapping("/api/studies/{studyId}/meetings")
 public class StudyMeetingController {
@@ -59,17 +59,6 @@ public class StudyMeetingController {
             @Valid @RequestBody StudyMeetingRequests.Update request,
             Authentication authentication) {
         studyMeetingService.update(accountId(authentication), studyId, meetingId, request);
-        return ResponseEntity.noContent().build();
-    }
-
-    @Operation(summary = "회차 삭제", description = "시작 전 회차 하나. 그 회차의 출석·휴가도 지운다.")
-    @SecurityRequirement(name = "bearerAuth")
-    @DeleteMapping("/{meetingId}")
-    public ResponseEntity<Void> delete(
-            @PathVariable Long studyId,
-            @PathVariable Long meetingId,
-            Authentication authentication) {
-        studyMeetingService.delete(accountId(authentication), studyId, meetingId);
         return ResponseEntity.noContent().build();
     }
 
