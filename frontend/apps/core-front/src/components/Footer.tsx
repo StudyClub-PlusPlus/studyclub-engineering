@@ -23,7 +23,7 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
             {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count}+
           </p>
           <p className='mt-1 text-xs text-(--color-fg-faint)'>
-            © {new Date().getFullYear()} StudyClub++ · preview · dummy data
+            © {new Date().getFullYear()} StudyClub++
           </p>
         </div>
         <div className='flex flex-col gap-3 text-sm sm:items-end'>

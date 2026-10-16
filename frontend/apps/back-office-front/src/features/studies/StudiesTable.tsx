@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   STUDY_CATEGORIES,
-  getStudyCrew,
   publishState,
   recruitState,
   toISODate,
@@ -196,9 +195,8 @@ function summarize(study: Study) {
     };
   }
 
-  const { crew, capacity } = getStudyCrew(study);
-  // 승인 대기는 없다(#171) — 신청한 사람이 곧 크루다
-  return { capacity, active: crew.length, applied: crew.length, pending: 0 };
+  // 인원을 모르면 0 — 예시 명단으로 메우지 않는다
+  return { capacity: study.recruitment?.capacity ?? 0, active: 0, applied: 0, pending: 0 };
 }
 
 function StatusTooltip({

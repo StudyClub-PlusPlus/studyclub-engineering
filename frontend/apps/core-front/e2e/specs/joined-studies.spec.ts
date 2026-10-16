@@ -1,8 +1,72 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
+const DAY = 24 * 60 * 60 * 1000;
+const at = (offsetDays: number) => new Date(Date.now() + offsetDays * DAY).toISOString();
+
+/** GET /api/me/studies 고정 응답 — 참여중 1건 · 완주 1건. 백엔드 없이 화면을 본다. */
+const MY_STUDIES = {
+  items: [
+    {
+      studyId: 101,
+      title: 'E2E 참여중 스터디',
+      category: 'BACKEND',
+      studyKind: 'STUDY',
+      startAt: at(-14),
+      endAt: at(28),
+      relation: 'ONGOING',
+      participantStatus: 'ACTIVE',
+      participantRole: 'MEMBER',
+      discordChannelUrl: null,
+      driveUrl: null,
+      attendanceRate: 1,
+      meetings: [-7, 0, 7].map((d, i) => ({
+        meetingId: 1000 + i,
+        sequence: i + 1,
+        scheduledAt: at(d),
+        startAt: null,
+        endAt: null,
+        attendanceStatus: d < 0 ? 'PRESENT' : null,
+        countedInRate: d < 0,
+      })),
+    },
+    {
+      studyId: 102,
+      title: 'E2E 완주 스터디',
+      category: 'AI_ML',
+      studyKind: 'STUDY',
+      startAt: at(-90),
+      endAt: at(-30),
+      relation: 'COMPLETED',
+      participantStatus: 'COMPLETED',
+      participantRole: 'MEMBER',
+      discordChannelUrl: null,
+      driveUrl: null,
+      attendanceRate: 0.5,
+      meetings: [-60, -45].map((d, i) => ({
+        meetingId: 2000 + i,
+        sequence: i + 1,
+        scheduledAt: at(d),
+        startAt: null,
+        endAt: null,
+        attendanceStatus: i === 0 ? 'PRESENT' : 'ABSENT',
+        countedInRate: true,
+      })),
+    },
+  ],
+};
+
 // 로그인 + 온보딩 완료 사용자 세션 주입 헬퍼
 async function loginAsCrew(page: Page) {
+  await page.route('**/api/me/studies', (route) =>
+    route.fulfill({
+      json: MY_STUDIES,
+      headers: {
+        'Access-Control-Allow-Origin': route.request().headers()['origin'] ?? '*',
+        'Access-Control-Allow-Credentials': 'true',
+      },
+    }),
+  );
   await page.context().addCookies([
     {
       name: 'sc_access_token',

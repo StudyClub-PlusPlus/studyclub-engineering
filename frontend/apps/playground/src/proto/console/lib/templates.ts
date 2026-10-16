@@ -46,7 +46,7 @@ export const templates: NotificationTemplate[] = [
     id: 1,
     trigger: 'USER_REGISTERED',
     channel: 'EMAIL',
-    subject: 'StudyClub++에 오신 걸 환영합니다',
+    subject: '[StudyClub++] 회원가입을 환영합니다',
     body: `안녕하세요, {{nickname}}님.
 
 StudyClub++ 회원가입이 완료되었습니다.

@@ -59,7 +59,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
       <div className='flex items-center gap-2'>
         <Link
           href={`/${locale}/login`}
-          className='rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-fg)] transition-colors hover:bg-[var(--color-surface-subtle)]'
+          className='whitespace-nowrap rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-fg)] transition-colors hover:bg-[var(--color-surface-subtle)]'
         >
           {locale === 'en' ? 'Log in' : '로그인'}
         </Link>
