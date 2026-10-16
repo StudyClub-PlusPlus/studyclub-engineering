@@ -60,6 +60,12 @@ storage:
     access-key-id: ${AWS_ACCESS_KEY_ID:}
     secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
     public-base-url: ${S3_PUBLIC_BASE_URL:}
+  # 로컬 개발용 — 키 없이 사진 기능을 끝까지 돌려 본다. 켜면 S3 대신 로컬 폴더에 쓰고 API 가 /local-storage/** 로 내준다.
+  # 운영에서는 켜지 않는다 (꺼져 있어야 키가 빠졌을 때 503 으로 드러난다).
+  local:
+    enabled: ${STORAGE_LOCAL_ENABLED:false}
+    dir: ${STORAGE_LOCAL_DIR:${java.io.tmpdir}/studyclub-storage}
+    public-base-url: ${STORAGE_LOCAL_PUBLIC_BASE_URL:http://localhost:8080/local-storage}
 
 # 이미지 올리기 (specs/profile-image/spec.md). 전부 제안값 — env 없이 기본값으로 두고 테스트에서 줄여 쓴다.
 upload:

@@ -13,14 +13,15 @@ class S3ObjectStorageTest {
         return new S3ObjectStorage(
                 new StorageProperties(
                         new StorageProperties.S3(
-                                "ap-northeast-2", "bucket", "key", "secret", publicBaseUrl)));
+                                "ap-northeast-2", "bucket", "key", "secret", publicBaseUrl),
+                        null));
     }
 
     @Test
     void 설정이_비어_있으면_올리기는_503() {
         S3ObjectStorage storage =
                 new S3ObjectStorage(
-                        new StorageProperties(new StorageProperties.S3("", "", "", "", "")));
+                        new StorageProperties(new StorageProperties.S3("", "", "", "", ""), null));
 
         assertThat(storage.isConfigured()).isFalse();
         assertThatThrownBy(() -> storage.put("gigs/profiles/a.webp", new byte[1], "image/webp"))

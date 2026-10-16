@@ -34,7 +34,10 @@ public class UploadService {
 
     private static final Logger log = LoggerFactory.getLogger(UploadService.class);
 
-    /** 지금 올리는 저장소. 다른 저장소로 옮길 때 여기만 바꾼다 — 옛 파일은 행의 PROVIDER 로 제 저장소에서 지운다. */
+    /**
+     * 지금 올리는 저장소. 다른 저장소로 옮길 때 여기만 바꾼다 — 옛 파일은 행의 PROVIDER 로 제 저장소에서 지운다. 로컬 저장소를 켰으면({@code
+     * storage.local.enabled}) 그쪽이 우선이다.
+     */
     static final StorageProvider ACTIVE_PROVIDER = StorageProvider.S3;
 
     public record Uploaded(Long fileId, String url) {}
@@ -181,7 +184,7 @@ public class UploadService {
      * 설정이 없으면 아무것도 안 한다.
      */
     public void cleanUp(Instant now) {
-        ObjectStorage storage = storageFor(ACTIVE_PROVIDER);
+        ObjectStorage storage = storageFor(activeProvider());
         if (!storage.isConfigured()) {
             return;
         }
@@ -224,8 +227,14 @@ public class UploadService {
         }
     }
 
+    private StorageProvider activeProvider() {
+        return storages.stream().anyMatch(storage -> storage.provider() == StorageProvider.LOCAL)
+                ? StorageProvider.LOCAL
+                : ACTIVE_PROVIDER;
+    }
+
     private ObjectStorage activeStorage() {
-        ObjectStorage storage = storageFor(ACTIVE_PROVIDER);
+        ObjectStorage storage = storageFor(activeProvider());
         if (!storage.isConfigured()) {
             throw new BusinessException(ErrorCode.EXTERNAL_SERVICE_ERROR, "파일 저장소가 설정되지 않았습니다.");
         }

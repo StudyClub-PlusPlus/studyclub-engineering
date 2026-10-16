@@ -9,7 +9,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     붙는다
  */
 @ConfigurationProperties(prefix = "storage")
-public record StorageProperties(S3 s3) {
+public record StorageProperties(S3 s3, Local local) {
+
+    /** 로컬 개발용 저장소 ({@link LocalObjectStorage}). {@code enabled} 가 true 일 때만 쓴다. */
+    public record Local(boolean enabled, String dir, String publicBaseUrl) {}
 
     public record S3(
             String region,
