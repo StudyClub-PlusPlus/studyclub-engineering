@@ -100,7 +100,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
 
   return (
     <div>
-      <div className='mb-3 flex items-center justify-between gap-3'>
+      <div className='mb-3 flex flex-wrap items-center justify-between gap-3'>
         <div role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
           {WHEN_ORDER.map((w) => {
             const on = when === w;
@@ -122,7 +122,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
           })}
         </div>
 
-        <div className='relative w-52 shrink-0'>
+        <div className='relative w-full sm:w-52 sm:shrink-0'>
           <Search
             size={15}
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder'
