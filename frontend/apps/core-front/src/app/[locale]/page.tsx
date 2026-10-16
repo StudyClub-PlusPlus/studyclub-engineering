@@ -7,7 +7,7 @@ import { EventCard } from '@/components/EventCard';
 import { FeaturedStudies } from '@/components/FeaturedStudies';
 import { HeroCTADiscordLink, HeroCTAStudiesLink } from '@/components/HeroCTAButton';
 import { JoinCta } from '@/components/JoinCta';
-import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from '@/lib/content';
+import { getStudies, getEvents, getOperatorMap, getSite, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 
@@ -24,18 +24,11 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: L
 
 export default async function Landing({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
-  const [studies, events, leads, members, site] = await Promise.all([
-    getStudies(),
-    getEvents(),
-    getOperatorMap(),
-    getMembers(),
-    getSite(),
-  ]);
+  const [studies, events, leads, site] = await Promise.all([getStudies(), getEvents(), getOperatorMap(), getSite()]);
   const upcoming = [...events].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   const stats = [
     { k: `${site.community.member_count}+`, v: t({ ko: '커뮤니티 멤버', en: 'Members' }, locale) },
-    { k: `${members.length}`, v: t({ ko: '활동 스터디원', en: 'Active members' }, locale) },
     { k: `${studies.length}`, v: t({ ko: '스터디', en: 'Studies' }, locale) },
   ];
 

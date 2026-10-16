@@ -63,7 +63,7 @@ export function studyQuery(search: StudySearch): URLSearchParams {
   return q;
 }
 
-/** TODO(api): GET /api/studies — 서버 전용. 실패하면 던진다 — 호출자가 mock fallback 이나 에러 응답을 고른다. */
+/** TODO(api): GET /api/studies — 서버 전용. 실패하면 던진다 — 호출자가 빈 상태나 에러 응답을 고른다. */
 export async function fetchStudies(search: StudySearch = {}): Promise<Study[]> {
   const res = await fetch(`${API_BASE}/api/studies?${studyQuery(search)}`, {
     next: { revalidate: 60 }, // ISR: 60초마다 갱신

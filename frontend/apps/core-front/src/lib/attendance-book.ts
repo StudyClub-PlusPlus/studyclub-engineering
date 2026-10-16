@@ -1,21 +1,15 @@
 'use client';
 
-import { attendancePoint, type Study, type StudyMeeting } from '@studyclub/mock';
-
-import { getMyAttendance, meetingsOf, resolveStatus, type MyStatus } from '@/lib/attendance';
-
-export type BookStatus = MyStatus;
+import type { AttendanceMark, JoinedMeeting, JoinedStudy } from '@/features/my-studies/queries';
 
 export type MyAttendanceBook = {
-  meetings: StudyMeeting[];
-  cells: Record<string, BookStatus | undefined>;
+  meetings: JoinedMeeting[];
+  cells: Record<string, AttendanceMark | undefined>;
 };
 
-export function myAttendanceBook(study: Study): MyAttendanceBook {
-  const meetings = meetingsOf(study);
-  const stored = getMyAttendance(study.id);
-  const cells = Object.fromEntries(meetings.map((m) => [m.id, resolveStatus(study, m, stored)]));
-  return { meetings, cells };
+/** 내 출석부 — GET /api/me/studies 가 준 회차별 내 출석. */
+export function myAttendanceBook(study: JoinedStudy): MyAttendanceBook {
+  return { meetings: study.meetings, cells: study.myAttendance };
 }
 
 /** 완주 점수판. 출석·지각 횟수 / 대상 회차. 휴가는 분모에서 뺀다. */
@@ -29,11 +23,4 @@ export function bookScore(book: MyAttendanceBook): { attended: number; total: nu
     return st === 'present' || st === 'late';
   }).length;
   return { attended, total: target.length };
-}
-
-export function attendanceRate(book: MyAttendanceBook): number | undefined {
-  const target = Object.values(book.cells).filter((v): v is BookStatus => v !== undefined && v !== 'excused');
-  if (target.length === 0) return undefined;
-  const score = target.reduce((sum, v) => sum + attendancePoint(v), 0);
-  return Math.round((score / target.length) * 100);
 }
