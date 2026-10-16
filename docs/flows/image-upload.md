@@ -2,7 +2,7 @@
 
 > 이미지가 필요한 기능(프로필 사진·스터디 썸네일·배너…)은 전부 이 길 하나를 쓴다. 새로 만들지 않는다.
 > 계약 정본: [specs/profile-image/spec.md](../../specs/profile-image/spec.md) · 버킷·공개 폴더: [s3-storage.md](../s3-storage.md)
-> 갱신: 2026-10-16
+> 갱신: 2026-10-16 — 프로필 사진(core-front) · 스터디 썸네일(back-office) 연동
 
 ## 한 줄 요약
 
@@ -64,8 +64,14 @@ const thumb = useImageUpload({
 {thumb.error && <p role='alert'>{thumb.error}</p>}
 ```
 
-- 즉시 저장 예: core-front 마이페이지 프로필 사진 — `apps/core-front/src/features/profile/ProfileCard.tsx`
-- 앱에 `lib/upload.ts` 가 없으면(back-office 등) 만든다 — `http<UploadedImage>('/api/uploads/images', { method: 'POST', body })` 한 줄
+| 붙인 곳 | 방식 | 코드 |
+|---|---|---|
+| core-front 마이페이지 프로필 사진 | 고르면 바로 연결 (저장 버튼 없음) | `apps/core-front/src/features/profile/ProfileCard.tsx` |
+| back-office 스터디 등록·정보 탭 썸네일 | 고르면 미리보기, 「저장」 때 `thumbnailFileId` 로 연결 | `apps/back-office-front/src/components/StudyForm.tsx` (`ThumbnailField`) |
+
+- 두 앱 모두 `lib/upload.ts` 에 서버 호출 한 줄이 있다. 새 앱이면 같은 한 줄을 만든다
+- 폼 방식이면 **올리는 동안 다른 칸을 고쳐도 덮이지 않게** 최신 폼 값을 ref 로 들고 썸네일만 얹는다 (`ThumbnailField` 참고)
+- 수정 PATCH 는 **바뀌었을 때만** 번호를 보낸다 — 같은 번호를 두 번 연결하면 400
 
 ## 백엔드 — 새 용도를 붙일 때
 
@@ -84,10 +90,14 @@ const thumb = useImageUpload({
    entity.setThumbnailUrl(newUrl); // 또는 null
    uploadService.deleteAfterCommit(old.stream().toList());
    ```
-   `markDeletingByUrl` 은 **올린 사람**이 다르면 찜하지 않는다 — 남의 파일을 지우지 않게. 그래서 스터디 썸네일처럼
-   여러 운영자가 고치는 자원은, A 가 올린 썸네일을 B 가 바꾸면 옛 파일이 안 지워지고 남는다. 이런 용도를 붙일 때는
-   주인 조건을 어떻게 할지(자원 단위 권한으로 확인 등) 먼저 정한다 — 아직 정하지 않았다
-5. **탈퇴** — 이미 처리돼 있다. 그 계정이 올린 파일은 용도와 상관없이 전부 지운다
+   주인이 **계정**인 자원(프로필 사진)은 `markDeletingByUrl(url, accountId, now)` — 올린 사람이 다르면 찜하지 않는다.
+   여러 사람이 고치는 **자원**(스터디 썸네일)은 `markDeletingByUrlForPurpose(url, purpose, now)` — 주인 대신 용도를 건다.
+   A 가 올린 썸네일을 B 가 바꿔도 지워지고, 칸에 다른 용도의 파일이 들어가도 지우지 않는다. 자원을 고칠 권한은 호출자가 먼저 확인한다
+   ```java
+   var old = uploadService.markDeletingByUrlForPurpose(study.getThumbnailUrl(), StoragePurpose.STUDY_THUMBNAIL, now);
+   ```
+6. **자원을 지울 때** — 그 자원의 이미지도 같은 방식으로 찜하고 커밋 뒤 지운다 (스터디 삭제가 예)
+7. **탈퇴** — 이미 처리돼 있다. 그 계정의 **프로필 사진과 연결 안 된 파일**만 지운다. 자원에 붙은 파일(스터디 썸네일)은 자원의 것이라 남긴다 — 운영자가 탈퇴해도 썸네일이 깨지지 않게
 
 ## 로컬 개발 — 키 없이
 

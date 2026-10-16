@@ -150,7 +150,31 @@ public class UploadService {
         return Optional.empty();
     }
 
-    /** 탈퇴 — 그 계정의 연결된·연결 안 된 파일을 전부 찜하고 돌려준다. 호출자의 트랜잭션 안에서 부른다. */
+    /**
+     * {@link #markDeletingByUrl} 의 자원용 — 주인 대신 용도로 찜한다. 스터디 썸네일처럼 운영자 여럿이 고치는 자원에 쓴다. 자원을 고칠 권한은
+     * 호출자가 확인한다. 호출자의 트랜잭션 안에서 부른다.
+     */
+    public Optional<StorageObject> markDeletingByUrlForPurpose(
+            String url, StoragePurpose purpose, Instant now) {
+        if (url == null) {
+            return Optional.empty();
+        }
+        for (ObjectStorage storage : storages) {
+            Optional<String> key = storage.keyFromUrl(url);
+            if (key.isPresent()) {
+                return repository
+                        .findByObjectKey(key.get())
+                        .filter(
+                                object ->
+                                        repository.markDeletingForPurpose(
+                                                        object.getId(), purpose, now)
+                                                == 1);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** 탈퇴 — 그 계정의 프로필 사진과 연결 안 된 파일을 찜하고 돌려준다. 스터디 썸네일 등 자원에 붙은 파일은 남긴다. 호출자의 트랜잭션 안에서 부른다. */
     public List<StorageObject> markDeletingByAccount(Long accountId, Instant now) {
         repository.markDeletingByAccountId(accountId, now);
         return repository.findAllByAccountIdAndStatus(accountId, StorageObjectStatus.DELETING);

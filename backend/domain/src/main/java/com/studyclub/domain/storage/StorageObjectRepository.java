@@ -59,6 +59,25 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
             @Param("id") Long id, @Param("accountId") Long accountId, @Param("now") Instant now);
 
     /**
+     * 연결된 파일을 용도 조건으로 찜한다 — 스터디 썸네일처럼 여러 운영자가 고치는 자원용. 주인 대신 용도를 건다: 주소 칸에 다른 용도의 파일(남의 프로필 사진 등)이
+     * 들어가도 지우지 않게.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(
+            """
+            UPDATE StorageObject s
+            SET s.status = com.studyclub.domain.storage.StorageObjectStatus.DELETING,
+                s.updatedAt = :now
+            WHERE s.id = :id
+              AND s.purpose = :purpose
+              AND s.status = com.studyclub.domain.storage.StorageObjectStatus.ATTACHED
+            """)
+    int markDeletingForPurpose(
+            @Param("id") Long id,
+            @Param("purpose") StoragePurpose purpose,
+            @Param("now") Instant now);
+
+    /**
      * 정리 배치 1단계 — 올린 지 {@code before} 보다 오래된 {@code PENDING} 을 전부 {@code DELETING} 으로 찜한다. 배치가 먼저
      * 찜하면 그 뒤에 온 연결은 {@link #attach} 의 {@code PENDING} 조건에 안 맞아 실패한다. 어느 순서든 한쪽만 이긴다.
      */
@@ -73,7 +92,10 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
             """)
     int claimExpiredPending(@Param("before") Instant before, @Param("now") Instant now);
 
-    /** 탈퇴 — 그 계정의 연결된·연결 안 된 파일을 전부 지우기로 찜한다. 이미 {@code DELETING} 인 행은 그대로. */
+    /**
+     * 탈퇴 — 그 계정의 프로필 사진과 연결 안 된 파일을 지우기로 찜한다. 다른 자원에 붙은 파일(스터디 썸네일 등)은 그 자원의 것이라 남긴다 — 운영자가 탈퇴해도 그가
+     * 올린 썸네일은 깨지지 않아야 한다. 이미 {@code DELETING} 인 행은 그대로.
+     */
     @Modifying(flushAutomatically = true)
     @Query(
             """
@@ -81,7 +103,9 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
             SET s.status = com.studyclub.domain.storage.StorageObjectStatus.DELETING,
                 s.updatedAt = :now
             WHERE s.accountId = :accountId
-              AND s.status <> com.studyclub.domain.storage.StorageObjectStatus.DELETING
+              AND (s.status = com.studyclub.domain.storage.StorageObjectStatus.PENDING
+                   OR (s.status = com.studyclub.domain.storage.StorageObjectStatus.ATTACHED
+                       AND s.purpose = com.studyclub.domain.storage.StoragePurpose.PROFILE))
             """)
     int markDeletingByAccountId(@Param("accountId") Long accountId, @Param("now") Instant now);
 
