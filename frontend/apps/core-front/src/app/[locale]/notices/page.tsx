@@ -28,6 +28,11 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
       </header>
 
       <div className='mt-10 flex flex-col gap-4'>
+        {notices.length === 0 && (
+          <p className='text-sm text-(--color-fg-muted)'>
+            {t({ ko: '아직 등록된 공지가 없어요.', en: 'No notices yet.' }, locale)}
+          </p>
+        )}
         {notices.map((n) => (
           <article
             key={n.id}
