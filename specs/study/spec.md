@@ -405,7 +405,7 @@ private StudyDetailResponse toDetail(Study study) {
   "oneLineSummary": "AI 논문을 함께 읽고 토론합니다.",
   "description": "매주 목요일 논문 하나씩 읽고 토론합니다.",
   "category": "AI_ML",
-  "thumbnailUrl": null,
+  "thumbnailFileId": null,
   "recruitDeadline": "2026-11-01T00:00:00Z",
   "capacity": 20,
   "schedule": "매주 목 20:00 · 8주 과정",
@@ -424,7 +424,7 @@ private StudyDetailResponse toDetail(Study study) {
 | oneLineSummary    | String  | Y    | 비어 있으면 등록 불가                                                                                                                                                | STUDY.ONE_LINE_SUMMARY                                                                    |
 | description       | String  | N    | —                                                                                                                                                                    | STUDY.DESCRIPTION                                                                         |
 | category          | String  | Y    | StudyCategory enum 값 중 하나. 유효값은 GET 응답의 enum 표 참조                                                                                                      | STUDY.CATEGORY                                                                            |
-| thumbnailUrl      | String  | N    | —                                                                                                                                                                    | STUDY.THUMBNAIL_URL                                                                       |
+| thumbnailFileId   | Long    | N    | `POST /api/uploads/images`(`purpose=STUDY_THUMBNAIL`) 가 준 번호. 내 것·썸네일용·아직 연결 안 됨이어야 하고, 아니면 400. **주소 문자열은 받지 않는다** — [이미지 업로드](../../docs/flows/image-upload.md) | STUDY.THUMBNAIL_URL (번호로 찾은 공개 주소) |
 | recruitDeadline   | String  | Y    | 필수. 미래여야 함                                                                                                                                                    | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT (NOT NULL). 항상 STUDY_RECRUITMENT 행 1개 함께 생성 |
 | capacity          | Integer | N    | 1 이상의 정수. 비우면(null) 제한 없음                                                                                                                                | STUDY_RECRUITMENT.RECRUITMENT_CAPACITY                                                    |
 | schedule          | String  | N    | 자유 텍스트                                                                                                                                                          | STUDY.SCHEDULE                                                                            |
@@ -628,6 +628,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 | startAt           | String  | N    | ISO 8601 UTC, 또는 `null`(미정으로 되돌림)                | STUDY.START_AT                                               |
 | discordChannelUrl | String  | N    | http(s) URL, 또는 `null`                                  | STUDY.DISCORD_CHANNEL_URL                                    |
 | driveUrl          | String  | N    | http(s) URL, 또는 `null`                                  | STUDY.DRIVE_URL                                              |
+| thumbnailFileId   | Long    | N    | 새로 올린 번호, 또는 `null`(썸네일 지움). **백오피스 PATCH 에서만** 반영. 옛 파일은 커밋 뒤 지운다 — 다른 운영자가 올린 것이어도 | STUDY.THUMBNAIL_URL |
 
 **수정 불가 필드:**
 

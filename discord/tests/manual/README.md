@@ -7,15 +7,9 @@
 2. **Discord 서비스 API** ([`docs/discord-development-guide/api/`](../../../docs/discord-development-guide/api/))
    9개 엔드포인트를 호출하고 요청·응답 원문을 보여 준다.
 
-> ⚠️ **9개 중 5개가 구현됐다.** `create-study` · `get-study-channels` · `send-message` ·
-> `send-alert-message` · `send-announcement-message` 는 실제로 응답한다
-> (`app/api/routes/studies.py` · `channels.py`).
+> ✅ **9개 모두 구현됐다** (`app/api/routes/studies.py` · `channels.py` · `roles.py`).
 >
-> **역할 4개**(`assign-role` · `remove-role` · `assign-navigator-role` ·
-> `remove-navigator-role`)는 아직 없다 — 보내면 **404** 다. 구현되는 대로 여기서 바로
-> 확인하라고 만든 도구다.
->
-> `X-API-Key` 검사는 구현된 5개에 전부 걸려 있다 (`app/api/headers.py` 의
+> `X-API-Key` 검사는 9개에 전부 걸려 있다 (`app/api/headers.py` 의
 > `require_api_key`), 그래서 상단 토글은 실제로 **401** 을 만든다. 단 **없는 경로에는
 > 401 보다 404 가 먼저** 나간다 — 라우트가 없으면 의존성이 돌기 전에 끝난다
 > ([common-header.md](../../../docs/discord-development-guide/api/common-header.md) 참고).
@@ -121,6 +115,10 @@ Next 가 `code` 를 Spring 에 넘기고 **Spring 이** 교환·계정 매핑·�
 
 상단 토글로 헤더를 일부러 빠뜨리거나 틀리게 보낼 수 있다. 문서가 규정하는 것의 절반이
 400 / 401 / 403 동작이라, 그 경로를 손으로 밟을 수 있어야 한다.
+
+**시스템 호출**([common-header.md](../../../docs/discord-development-guide/api/common-header.md#시스템-호출))은
+`X-Discord-User-ID` 덮어쓰기 칸에 서비스의 `DISCORD_BOT_ID` 값을 넣어 보낸다. 받는 곳은 `get-study-channels` ·
+`send-alert-message` · `assign-role` · `remove-role` 넷뿐이고, 나머지는 **403** 이다.
 
 ## 나중에
 

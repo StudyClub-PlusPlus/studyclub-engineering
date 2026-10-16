@@ -9,7 +9,7 @@
 - [x] T003 AFTER_COMMIT 리스너와 REQUIRES_NEW 생성 서비스, 디버그 코드 제거
 - [x] T004 재수거·클레임·메일 발송·결과 저장
 - [x] T005 MailClient/SES 구현 및 mail 카테고리 설정
-- [x] T006 백오피스 조회 API (`RequireAdmin`+`AdminGuardInterceptor` 가드는 이번 스펙 범위를 넘어선다고 판단해 제거 — 로그인만 요구, ADMIN 역할 검사는 [back-office-login/spec.md](../back-office-login/spec.md)의 후속 PR로 미룸)
+- [x] T006 백오피스 조회 API (`RequireAdmin`+`AdminGuardInterceptor` 가드는 이번 스펙 범위를 넘어선다고 판단해 제거 — 로그인만 요구, ADMIN 역할 검사는 [back-office-login/spec.md](../back-office-login/spec.md)의 후속 PR로 미룸. **이후 authz-guards 로 클래스 단위 `@RequireAdmin` 이 적용됨**)
 - [x] T007 온보딩 이벤트·발송·실패·재수거·관리자 API 테스트
 - [x] T008 ERD 2개·관계도 2곳·모듈 문서·스펙 상태 갱신
 

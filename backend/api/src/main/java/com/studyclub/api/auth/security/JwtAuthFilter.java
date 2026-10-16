@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -26,16 +27,36 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <p>쿠키를 읽는 이유: 프론트 토큰은 <b>httpOnly</b> 라 브라우저 JS 가 값을 읽어 헤더로 붙일 수 없다. 쿠키를 받으면 화면이 중계 서버 없이 이 API 를
  * 직접 부를 수 있다. 대신 쿠키 인증이므로 <b>CORS 허용 오리진을 좁게</b> 유지해야 한다 ({@code cors.allowed-origins}).
+ *
+ * <p><b>어느 쿠키를 읽나</b> — 사이트({@code sc_})와 백오피스({@code bo_}) 쿠키는 같은 상위 도메인에 심기므로 브라우저는 둘을 함께 보낸다. 먼저
+ * 온 것을 쓰면 다른 앱에 로그인한 계정으로 판단된다(2026-10-16 stage: 사이트에서 사진을 올렸는데 백오피스의 온보딩 안 한 계정으로 잡혀 403). 그래서 요청의
+ * {@code Origin} 으로 고른다 — 백오피스 오리진이면 {@code bo_} 만, 그 밖의 브라우저 요청이면 {@code sc_} 만. {@code Origin} 이
+ * 없는 요청(서버 간 호출)은 헤더를 쓰고, 헤더도 없으면 있는 쿠키 하나를 쓴다.
+ *
+ * <p><b>환경별 이름</b> — stage 와 운영도 같은 상위 도메인이라 이름이 같으면 서로 덮어쓴다. {@code AUTH_COOKIE_ENV}(stage 만
+ * {@code stage})가 있으면 {@code sc_stage_access_token} 처럼 이름에 넣는다. 운영은 비워 기존 이름을 그대로 쓴다.
  */
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private static final List<String> ACCESS_COOKIES =
-            List.of("sc_access_token", "bo_access_token");
-
     private final JwtService jwtService;
+    private final String siteCookie;
+    private final String backOfficeCookie;
+    private final Set<String> backOfficeOrigins;
 
     public JwtAuthFilter(JwtService jwtService) {
+        this(jwtService, "", Set.of());
+    }
+
+    /**
+     * @param cookieEnv 쿠키 이름에 넣을 환경 이름. 비면 기존 이름({@code sc_access_token})
+     * @param backOfficeOrigins 백오피스 오리진 — 여기서 온 요청은 {@code bo_} 쿠키만 읽는다
+     */
+    public JwtAuthFilter(JwtService jwtService, String cookieEnv, Set<String> backOfficeOrigins) {
         this.jwtService = jwtService;
+        String env = cookieEnv == null || cookieEnv.isBlank() ? "" : cookieEnv.trim() + "_";
+        this.siteCookie = "sc_" + env + "access_token";
+        this.backOfficeCookie = "bo_" + env + "access_token";
+        this.backOfficeOrigins = backOfficeOrigins;
     }
 
     @Override
@@ -56,7 +77,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    /** 헤더 우선, 없으면 쿠키. 사용자 사이트(sc_)와 백오피스(bo_)가 쿠키 이름으로 갈린다. */
+    /** 헤더 우선. 쿠키는 {@code Origin} 으로 어느 앱의 것인지 고른다. */
     private String resolveToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
@@ -66,11 +87,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (cookies == null) {
             return null;
         }
-        return Arrays.stream(cookies)
-                .filter(c -> ACCESS_COOKIES.contains(c.getName()))
-                .map(Cookie::getValue)
-                .filter(v -> v != null && !v.isBlank())
-                .findFirst()
-                .orElse(null);
+        String origin = request.getHeader("Origin");
+        List<String> names;
+        if (origin == null) {
+            names = List.of(siteCookie, backOfficeCookie);
+        } else if (backOfficeOrigins.contains(origin)) {
+            names = List.of(backOfficeCookie);
+        } else {
+            names = List.of(siteCookie);
+        }
+        for (String name : names) {
+            String value =
+                    Arrays.stream(cookies)
+                            .filter(c -> name.equals(c.getName()))
+                            .map(Cookie::getValue)
+                            .filter(v -> v != null && !v.isBlank())
+                            .findFirst()
+                            .orElse(null);
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
     }
 }

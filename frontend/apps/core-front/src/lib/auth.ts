@@ -5,10 +5,10 @@
 import { API_BASE } from './http';
 
 export const STORAGE_PREFIX = 'sc_';
+
 export const PLATFORM = 'CORE';
 
-export const ACCESS_COOKIE = `${STORAGE_PREFIX}access_token`;
-export const REFRESH_COOKIE = `${STORAGE_PREFIX}refresh_token`;
+export { ACCESS_COOKIE, REFRESH_COOKIE } from './cookie-names';
 const USER_KEY = `${STORAGE_PREFIX}user`;
 const SUGGESTED_NICKNAME_KEY = `${STORAGE_PREFIX}suggested_nickname`;
 
@@ -102,9 +102,7 @@ export async function logout(): Promise<void> {
 /** 탈퇴 사유 — 정해진 값 셋. 자유 입력은 없다 (specs/user-leave/spec.md). */
 export type LeaveReason = 'NO_DESIRED_STUDY' | 'PARTICIPATION_BURDEN' | 'OTHER';
 
-export type DeleteAccountResult =
-  | { ok: true }
-  | { ok: false; errorCode: string; errorMessage: string };
+export type DeleteAccountResult = { ok: true } | { ok: false; errorCode: string; errorMessage: string };
 
 /**
  * 회원 탈퇴 — DELETE /api/me. 백엔드를 직접 호출한다(`lib/http.ts` 와 같은 이유 — access 쿠키가

@@ -36,6 +36,9 @@ dependencies {
 
     implementation("org.apache.commons:commons-lang3")
 
+    // 프로필 사진 등 파일 저장 (specs/profile-image/spec.md). 알림 모듈의 ses 와 같은 버전.
+    implementation("software.amazon.awssdk:s3:2.46.7")
+
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     testCompileOnly("org.projectlombok:lombok")
