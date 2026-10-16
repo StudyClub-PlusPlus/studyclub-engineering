@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
+import { CalendarDays, Search } from 'lucide-react';
 
 import { Checkbox } from './Checkbox';
 import { FieldShell, Input, Select, Textarea } from './Field';
@@ -95,6 +97,26 @@ export const SelectSizes: Story = {
   ),
 };
 
+export const SelectIconPositions: Story = {
+  name: 'Select / 아이콘 위치',
+  render: () => (
+    <div className='flex flex-col gap-4'>
+      <Select label='기본 아이콘 (오른쪽)' defaultValue='weekly'>
+        <option value='none'>반복 안 함</option>
+        <option value='weekly'>매주</option>
+      </Select>
+      <Select label='왼쪽 아이콘' icon={<Search size={16} />} iconPosition='left' defaultValue='search'>
+        <option value='search'>스터디 검색</option>
+        <option value='member'>멤버 검색</option>
+      </Select>
+      <Select label='사용자 아이콘' icon={<CalendarDays size={16} />} defaultValue='date'>
+        <option value='date'>날짜 선택</option>
+        <option value='time'>시간 선택</option>
+      </Select>
+    </div>
+  ),
+};
+
 export const TextareaDefault: Story = {
   name: 'Textarea / 기본',
   render: () => <Textarea label='스터디 소개' placeholder='스터디를 소개해 주세요.' rows={4} />,
@@ -103,6 +125,24 @@ export const TextareaDefault: Story = {
 export const TextareaError: Story = {
   name: 'Textarea / 오류',
   render: () => <Textarea label='스터디 소개' defaultValue='짧음' error='최소 20자 이상 입력해 주세요.' />,
+};
+
+export const TextareaWithCount: Story = {
+  name: 'Textarea / 글자수 카운터 (showCount)',
+  render: () => {
+    const [value, setValue] = useState('');
+    return (
+      <Textarea
+        label='스터디 규칙'
+        placeholder='스터디 규칙을 입력해 주세요.'
+        rows={4}
+        maxLength={500}
+        showCount
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+    );
+  },
 };
 
 export const FieldShellWithCheckbox: Story = {
