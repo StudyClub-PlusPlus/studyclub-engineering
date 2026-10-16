@@ -257,7 +257,7 @@ stateDiagram-v2
     "id": 1,
     "eventType": "USER_REGISTERED",
     "channel": "EMAIL",
-    "subject": "StudyClub++에 오신 걸 환영합니다",
+    "subject": "[StudyClub++] 회원가입을 환영합니다",
     "body": "안녕하세요, {{nickname}}님...",
     "updatedAt": "2026-09-12T00:00:00Z",
     "updatedByAdminId": null
@@ -297,7 +297,7 @@ stateDiagram-v2
     "id": 1,
     "eventType": "USER_REGISTERED",
     "channel": "EMAIL",
-    "subject": "StudyClub++에 오신 걸 환영합니다",
+    "subject": "[StudyClub++] 회원가입을 환영합니다",
     "body": "안녕하세요, {{nickname}}님...",
     "updatedAt": "2026-09-12T00:00:00Z"
   }
@@ -502,7 +502,7 @@ id 를 모으는 사이 다른 캡틴이 일부를 먼저 다시 보냈다면 �
 ## 웰컴메일 콘텐츠
 
 - 트리거: `USER_REGISTERED`, 채널: `EMAIL`, 발송 시점: 즉시(`scheduled_at = NULL`)
-- 제목: `StudyClub++에 오신 걸 환영합니다`
+- 제목: `[StudyClub++] 회원가입을 환영합니다` (V38, 제목 규칙은 docs/mail-templates/README.md §제목 규칙)
 - 본문은 알림 이벤트 카탈로그 문서의 초안을 그대로 쓰되, **`{{name}}` 을 `{{nickname}}` 으로 바꾼다** — 이 서비스는 실명(`NAME`) 컬럼을 두지 않기로 이미 결정했고([user-onboarding/spec.md](../user-onboarding/spec.md)), 화면에 보여줄 이름은 `ACCOUNT.NICKNAME` 하나뿐이다.
 - 마케팅 수신 동의 여부와 무관하게 발송 — 가입 완료를 알리는 트랜잭션 메일이라 `ACCOUNT_CONSENT.MARKETING` 을 확인하지 않는다(이벤트 카탈로그 문서의 코멘트로 이미 확정: 홍보 문구를 최소화하고 정보 안내용으로 유지).
 
