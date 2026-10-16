@@ -5,7 +5,7 @@
 > 관련 스펙: [profile-edit](../profile-edit/spec.md) — 같은 카드 · [user-leave](../user-leave/spec.md) — 탈퇴 시 파일 삭제
 > 저장소: [docs/s3-storage.md](../../docs/s3-storage.md) — 버킷·CloudFront·폴더 규칙
 > 생성일: 2026-10-08
-> 상태: 스펙작성중
+> 상태: 구현완료
 
 ## WHAT
 
@@ -19,9 +19,9 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| POST | `/api/uploads/images` | 이미지 올리기 → 파일 번호 | O + 온보딩 | 스펙작성중 |
-| PUT | `/api/me/profile-image` | 파일 번호를 프로필에 연결 (교체 포함) | O + 온보딩 | 스펙작성중 |
-| DELETE | `/api/me/profile-image` | 프로필 사진 지우기 | O + 온보딩 | 스펙작성중 |
+| POST | `/api/uploads/images` | 이미지 올리기 → 파일 번호 | O + 온보딩 | 구현완료 |
+| PUT | `/api/me/profile-image` | 파일 번호를 프로필에 연결 (교체 포함) | O + 온보딩 | 구현완료 |
+| DELETE | `/api/me/profile-image` | 프로필 사진 지우기 | O + 온보딩 | 구현완료 |
 
 정리 배치는 API 가 아니다 — [정리 배치](#정리-배치).
 
@@ -91,9 +91,11 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 
 | 형식 | 지우는 부분 | 남기는 부분 |
 |---|---|---|
-| jpeg | `APP1`(EXIF · XMP), `APP13`(IPTC) 세그먼트 | 나머지. `APP2`(ICC 색 프로필)는 색이 틀어지지 않게 남긴다 |
-| png | `eXIf` · `tEXt` · `iTXt` · `zTXt` 청크 | 나머지 (`iCCP` 포함) |
-| webp | `EXIF` · `XMP ` 청크. `VP8X` 의 EXIF·XMP 비트를 끄고 `RIFF` 길이를 다시 쓴다 | 나머지 (`ICCP` 포함) |
+| jpeg | `APP0` · ICC 색 프로필(`APP2`) · `APP14` 를 뺀 모든 `APPn` 세그먼트, `COM`, `EOI` 뒤에 붙은 데이터 | `APP0`(JFIF) · `APP2` 중 ICC 색 프로필 · `APP14`(Adobe 색변환) · 디코딩 테이블(DQT · DHT · SOF · DRI) · 압축 데이터. EXIF 의 회전 값(Orientation)은 그 값 하나만 든 `APP1` 로 다시 쓴다 |
+| png | 아래 목록에 없는 청크 전부 (`eXIf` · 텍스트 · `tIME` · C2PA `caBX` 같은 제조사 전용 포함) | 필수(`IHDR` `PLTE` `IDAT` `IEND`) · 색(`iCCP` `sRGB` `gAMA` `cHRM` `cICP` `mDCV` `cLLI` `sBIT`) · 투명도·배경(`tRNS` `bKGD` `hIST` `sPLT`) · `pHYs` · 애니메이션(`acTL` `fcTL` `fdAT`) |
+| webp | 아래 목록에 없는 청크 전부 (`EXIF` · `XMP ` 포함). `VP8X` 의 EXIF·XMP 비트를 끄고 `RIFF` 길이를 다시 쓴다 | `VP8 ` · `VP8L` · `VP8X` · `ALPH` · `ANIM` · `ANMF` · `ICCP` |
+
+세 형식 모두 지우는 목록이 아니라 남기는 목록이다. 갤럭시는 EXIF 밖에도 메타데이터를 넣는다 — `APP4` 에 센서 고유 ID와 보정값, `EOI` 뒤 꼬리에 촬영 시각(`Image_UTC_Data`)과 이동통신 국가코드(`MCC_Data`). 갤럭시 S25+ 실사진으로 확인했다. 남기는 목록으로 하면 제조사가 새 자리를 만들어도 빠진다.
 
 걷어낸 결과가 깨져 있으면 `400` 「이미지를 읽을 수 없습니다.」 — 깨진 채로 저장하지 않는다.
 
@@ -101,7 +103,7 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 
 - 브라우저 → 서버 → S3. 서명 주소(브라우저 → S3 직접)는 쓰지 않는다. 형식 검사와 메타데이터 제거를 서버가 해야 한다.
 - jpeg · png · webp, 5MB. 형식은 맨 앞 바이트(jpeg `FF D8 FF`, png `89 50 4E 47`, webp `RIFF`+`WEBP`)로 판단한다. 확장자와 브라우저가 보낸 `Content-Type` 은 믿지 않는다. 저장 확장자도 판정 결과로.
-- 서버가 메모리에 통째로 받으므로 `spring.servlet.multipart.max-file-size=5MB`, `max-request-size=6MB`. 넘치면 `400 INVALID_INPUT`.
+- 서버가 메모리에 통째로 받으므로 `spring.servlet.multipart.max-file-size=5MB`, `max-request-size=6MB`. 넘치면 `400 INVALID_INPUT`. Tomcat `max-swallow-size` 도 6MB — 거부한 요청의 남은 본문을 끝까지 읽어야 브라우저가 400 응답을 받는다. 기본값(2MB)이면 연결을 끊어 네트워크 오류로 보인다.
 - S3 에 넣을 때 `Content-Type` 은 판정한 형식, `Cache-Control: public, max-age=86400`.
 - 키는 `gigs/<용도 폴더>/<UUID>.<확장자>`, 주소는 `<S3_PUBLIC_BASE_URL>/<키>`. `gigs/` 는 S3 문서가 공개 파일 폴더로 정한 곳이다.
 
@@ -275,12 +277,12 @@ S3 호출이 없는 API 라 503 이 없다. 옛 파일 삭제는 커밋 뒤라 �
 
 S3 클라이언트를 가짜로 바꾼 통합 테스트.
 
-- 올리기: 성공 201 · 이름만 `.jpg` 인 텍스트 · 5MB 초과 · 빈 파일 · `purpose` 없음 · `PENDING` 20개 → 400 · 설정 없음 → 503
+- 올리기: 성공 201 · 이름만 `.jpg` 인 텍스트 · 빈 파일 · 깨진 구조 · `purpose` 없음 · `PENDING` 상한 → 400 · 설정 없음 → 503. 5MB 초과는 테스트 클라이언트가 응답 전에 연결이 끊겨 통합 테스트로 못 잡는다 — 로컬 서버에 curl 로 확인한다
 - 연결: 성공(`ATTACHED`, `PROFILE_IMG_URL`) · 남의 번호 · 썸네일용 번호 · 같은 번호 두 번 → 400
 - 교체: 옛 행 `DELETING` → 커밋 뒤 S3 삭제·행 삭제. 옛 주소가 구글이면 안 지움. S3 삭제 실패 시 `DELETING` 으로 남음
 - 지우기: `picture` null · 사진 없을 때 200
 - 배치: 24시간 지난 `PENDING` 과 남은 `DELETING` 을 지우고 `ATTACHED` 는 안 건드림 · 찜한 행에 연결 → 400
-- 메타데이터: GPS 든 jpeg · `eXIf` png · `EXIF` webp → S3 에 넘어간 바이트에 없음. S3 요청 `Content-Type` 이 판정한 형식
+- 메타데이터: GPS 든 jpeg · `eXIf` png · `EXIF` webp → S3 에 넘어간 바이트에 없음. jpeg 는 `APP4` · `COM` · `EOI` 뒤 꼬리도 빠지고 `APP0` · ICC · `APP14` 는 남음. S3 요청 `Content-Type` 이 판정한 형식
 
 ## 미확정
 
@@ -295,13 +297,15 @@ S3 클라이언트를 가짜로 바꾼 통합 테스트.
 - **스터디 썸네일** — 올리기는 `purpose=STUDY_THUMBNAIL` 로 이 API 를 그대로 쓴다. 스터디 등록·수정 API 가 `thumbnailFileId` 를 받아 결정 2 의 연결 규칙을 타는 변경과, 썸네일 교체·스터디 삭제 시 옛 파일을 `DELETING` 으로 넘기는 것은 스터디 스펙에서.
 - **연결 전 파일도 주소만 알면 보인다** — `gigs/` 는 공개 폴더다. 주소가 UUID 라 추측은 못 하고, 하루 뒤 지워진다.
 - **크기 줄이기 · 자르기 없음** — 원본이 그대로 내려간다. 필요해지면 서버에서 줄이거나 CloudFront 쪽에서 변환한다.
-- **세로 사진이 눕혀 보일 수 있다** — 메타데이터를 지우면 jpeg 회전 정보(Orientation)도 사라진다. 대부분의 폰은 저장할 때 픽셀을 돌려 두지만 아닌 기기도 있다. 생기면 회전 값만 읽어 픽셀을 돌리거나 프론트에서 캔버스로 그려 보낸다.
 - **탈퇴** — 탈퇴 스펙이 `PROFILE_IMG_URL` 의 파일과 그 계정의 `PENDING` 파일을 `DELETING` 으로 넘기고 커밋 뒤 지운다.
 
 ## 변경이력
 
 | 날짜 | 변경 | 근거 |
 |------|------|------|
+| 2026-10-16 | jpeg 회전 값(Orientation)만 남기기 · png·webp 도 남기는 목록 방식 · 옛 파일 찜에 주인 조건 | 리뷰: 폰은 세로 사진을 픽셀은 눕힌 채 회전 값으로 세운다 — 통째로 지우면 사진이 눕는다. 제조사 전용 청크가 빠지지 않았다 |
+| 2026-10-14 | jpeg 메타데이터 제거를 남기는 목록 방식으로, `EOI` 뒤 데이터 버림, png `tIME` 추가 | 갤럭시 S25+ 실사진에서 `APP4` 센서 고유 ID와 `EOI` 뒤 촬영 시각·국가코드가 남는 것 확인 |
+| 2026-10-14 | 구현 완료 — 백엔드(`domain` V37 · `api/storage` · `api/upload` · 프로필 연결·지우기 · 탈퇴 · 정리 배치)와 core-front 사진 영역. Tomcat `max-swallow-size` 6MB | 구현 PR |
 | 2026-10-14 | 테이블 `UPLOAD` → `STORAGE_OBJECT`, `S3_KEY` → `OBJECT_KEY`, `PROVIDER`(`S3` / `R2`) 추가, 응답 `uploadId` → `fileId`. S3 호출은 인터페이스 뒤로 | 리뷰: 모델은 행위가 아니라 결과물 이름으로, S3 에 묶지 말고 다른 오브젝트 스토리지 이관을 열어 둔다 |
 | 2026-10-13 | 공용 업로드 API `POST /api/uploads/images` + `UPLOAD` 테이블 + 조건부 UPDATE 연결 + 정리 배치. 프로필 연결은 `PUT /api/me/profile-image { uploadId }`. 팀 스펙 틀로 재구성 | 리뷰: 스터디 썸네일은 등록 폼에서 스터디가 생기기 전에 올려야 한다 |
 | 2026-10-09 | 메타데이터(EXIF 등) 제거, S3 `Content-Type`·`Cache-Control`, 탈퇴 시 파일 삭제, 정책·기획 문서 정리 | 리뷰: 원본 그대로 공개 저장하면 위치 정보가 노출된다 · 회원 데이터 정책의 즉시 파기 |

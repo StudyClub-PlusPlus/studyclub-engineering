@@ -220,7 +220,7 @@ class StudyServiceTest {
     void backOfficeUpdateStudyNotFound() {
         when(studyRepository.findById(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> studyService.updateFromBackOffice(10L, validUpdateRequest()))
+        assertThatThrownBy(() -> studyService.updateFromBackOffice(1L, 10L, validUpdateRequest()))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -235,7 +235,7 @@ class StudyServiceTest {
 
         StudyUpdateRequest request = new StudyUpdateRequest("  ", "소개", null, null, null, null);
 
-        assertThatThrownBy(() -> studyService.updateFromBackOffice(10L, request))
+        assertThatThrownBy(() -> studyService.updateFromBackOffice(1L, 10L, request))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->

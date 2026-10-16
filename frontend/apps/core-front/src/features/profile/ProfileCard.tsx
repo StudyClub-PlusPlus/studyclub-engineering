@@ -5,17 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Checkbox, Input, toast } from '@studyclub/ui';
+import { Button, Checkbox, Input, toast, useImageUpload } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { TimeZonePicker, zoneName } from '@/components/TimeZonePicker';
 import { isSameNickname } from '@/features/profile/nickname';
+import { initialOf } from '@/features/profile/photo';
 import {
+  useAttachProfileImage,
   useChangeMarketingConsent,
   useFetchLatestAccount,
   useMarketingConsent,
+  useRemoveProfileImage,
   useUpdateProfile,
   type MarketingConsent,
 } from '@/features/profile/queries';
@@ -27,6 +30,7 @@ import type { Locale } from '@/lib/content';
 import { ApiError } from '@/lib/http';
 import { nicknameError, parseOnboardingFieldErrors } from '@/lib/onboarding';
 import { isPreview } from '@/lib/preview';
+import { uploadImage } from '@/lib/upload';
 
 /**
  * 마이페이지 내 정보 카드.
@@ -36,6 +40,7 @@ import { isPreview } from '@/lib/preview';
  *
  * 닉네임·시간대의 진본은 서버다. 저장에 성공하면 응답으로 세션 user 를 갱신한다.
  * 마케팅 수신 동의는 프로필 저장과 따로 간다 — 누르면 바로 바뀐다.
+ * 프로필 사진도 저장 버튼 없이 고른 즉시 반영된다 — 올리기(번호 받기) 와 연결, 두 호출을 이어서 부른다.
  */
 
 type NickStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
@@ -123,6 +128,15 @@ export function ProfileCard({
   const fetchLatestAccount = useFetchLatestAccount(user.id);
   const consent = useMarketingConsent(user.id, !preview);
   const changeConsent = useChangeMarketingConsent(user.id);
+  // 사용자에게는 한 동작이다 — 올리기 201 직후 연결을 바로 부른다. 연결이 실패하면 올린 파일은 하루 뒤 서버가 지운다
+  const photo = useImageUpload({
+    purpose: 'PROFILE',
+    upload: uploadImage,
+    onUploaded: async (uploaded) => applyPhoto(await attachImage.mutateAsync(uploaded.fileId)),
+    onError: photoErrorMessage,
+  });
+  const attachImage = useAttachProfileImage();
+  const removeImage = useRemoveProfileImage();
 
   const draftName = watch('nickname');
   const draftZone = watch('timeZone');
@@ -168,8 +182,11 @@ export function ProfileCard({
   const line = nicknameLine();
   // 저장 중에는 입력칸과 취소를 잠근다 — 취소한 뒤 다시 연 편집을 먼저 보낸 저장 응답이 닫아 버리면 안 된다
   const saving = updateProfile.isPending;
+  // 올리기~연결, 지우기 동안 사진 버튼 둘 다 잠근다. 닉네임 저장과도 서로 잠근다 — 두 응답이 세션을 번갈아 쓰면 한쪽이 덮인다
+  const photoBusy = photo.isUploading || removeImage.isPending;
+  const photoLocked = photoBusy || saving;
   const blocked =
-    composing || Boolean(nicknameMessage) || nickStatus === 'taken' || nickStatus === 'checking' || saving;
+    composing || Boolean(nicknameMessage) || nickStatus === 'taken' || nickStatus === 'checking' || saving || photoBusy;
 
   async function openEditor() {
     setProblem(null);
@@ -253,6 +270,37 @@ export function ProfileCard({
     }
   });
 
+  /** 사진 쪽 실패 문구. 400·503 은 서버 사유를 그대로, 401 은 재로그인, 403 은 온보딩으로 — 이 둘은 문구 없이 null. */
+  function photoErrorMessage(err: unknown): string | null {
+    if (err instanceof ApiError) {
+      if (err.status === 401) {
+        setProblem('expired');
+        return null;
+      }
+      if (err.status === 403) {
+        router.replace(`/${locale}/onboarding?next=${encodeURIComponent(`/${locale}/my`)}`);
+        return null;
+      }
+      return err.message;
+    }
+    return '사진을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요';
+  }
+
+  function applyPhoto(account: OnboardingAccount) {
+    const next = toSessionUser(account);
+    setUser(next);
+    onUserChange(next);
+  }
+
+  async function removePhoto() {
+    photo.setError(null);
+    try {
+      applyPhoto(await removeImage.mutateAsync());
+    } catch (err) {
+      photo.setError(photoErrorMessage(err));
+    }
+  }
+
   function closeEditor() {
     setProblem(null);
     setEditing(false);
@@ -271,6 +319,44 @@ export function ProfileCard({
   return (
     <section className={cardClass}>
       <div className='flex items-start justify-between gap-4 px-6 pt-5'>
+        {/* 프로토에 사진이 없어 위치·문구는 임시. 고른 즉시 반영되는 별도 동작이라 저장 버튼과 묶지 않는다 */}
+        <div className='flex shrink-0 flex-col items-center gap-2'>
+          {user.picture ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.picture} alt='' className='h-16 w-16 rounded-full object-cover' />
+          ) : (
+            <div
+              aria-hidden='true'
+              className='grid h-16 w-16 place-items-center rounded-full bg-surface-2 text-2xl font-bold text-fg-secondary'
+            >
+              {initialOf(user.nickname, user.email)}
+            </div>
+          )}
+          {/* 미리보기 세션은 서버가 모르는 계정이라 사진 버튼을 두지 않는다 */}
+          {!preview && (
+            <div className='flex items-center gap-2 text-xs'>
+              <button
+                type='button'
+                onClick={photo.pick}
+                disabled={photoLocked}
+                className='text-fg-secondary underline-offset-4 hover:text-fg hover:underline disabled:opacity-50'
+              >
+                {photo.isUploading ? '올리는 중' : '사진 바꾸기'}
+              </button>
+              {user.picture && (
+                <button
+                  type='button'
+                  onClick={removePhoto}
+                  disabled={photoLocked}
+                  className='text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline disabled:opacity-50'
+                >
+                  지우기
+                </button>
+              )}
+            </div>
+          )}
+          <input {...photo.inputProps} className='hidden' aria-label='프로필 사진 파일' />
+        </div>
         <div className='min-w-0 flex-1'>
           {editing && (
             <div className='max-w-sm'>
@@ -316,6 +402,12 @@ export function ProfileCard({
           </button>
         )}
       </div>
+
+      {photo.error && (
+        <p role='alert' className='px-6 pt-2 text-xs text-error-700'>
+          {photo.error}
+        </p>
+      )}
 
       {/* 값은 이름과 값 두 줄로만 세운다 — 칸을 나눠 담으면 몇 안 되는 값이 표처럼 보인다 */}
       <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-baseline gap-x-6 gap-y-3 px-6 pb-5 text-sm'>

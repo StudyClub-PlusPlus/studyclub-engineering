@@ -1,6 +1,7 @@
 package com.studyclub.api.auth.security;
 
 import com.studyclub.api.auth.JwtService;
+import com.studyclub.api.storage.LocalObjectStorage;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.autoconfigure.web.server.ConditionalOnManagementPort;
@@ -31,6 +32,14 @@ public class SecurityConfig {
     /** 콤마 구분 허용 오리진 (프론트 dev + prod 도메인). */
     @Value("${cors.allowed-origins:http://localhost:4700,http://localhost:4701}")
     private String allowedOrigins;
+
+    /** 쿠키 이름에 넣을 환경 이름 — stage 만 {@code stage}. 운영·로컬은 비워 기존 이름. {@link JwtAuthFilter} 참고. */
+    @Value("${auth.cookie-env:}")
+    private String cookieEnv;
+
+    /** 백오피스 오리진(콤마 구분). 여기서 온 요청은 백오피스 쿠키만 읽는다. */
+    @Value("${auth.back-office-origins:http://localhost:4701}")
+    private String backOfficeOrigins;
 
     /** 디스코드 봇이 보내는 서비스 키. 값은 배포 시 주입한다 (PUBLIC 레포 — 커밋 금지). */
     @Value("${discord.api-key:}")
@@ -104,6 +113,10 @@ public class SecurityConfig {
                                         .requestMatchers(
                                                 HttpMethod.GET, "/api/studies/*/application-form")
                                         .permitAll()
+                                        // 로컬 저장소가 내주는 사진 — 켜지 않으면 핸들러가 없어 404 다
+                                        .requestMatchers(
+                                                HttpMethod.GET, LocalObjectStorage.PATH + "/**")
+                                        .permitAll()
                                         .anyRequest()
                                         .authenticated())
                 // 미인증 → 403(기본) 대신 401 + ErrorResponse 바디. ERROR 디스패치가 막히지 않도록 /error 는 위에서
@@ -113,7 +126,14 @@ public class SecurityConfig {
                                 ex.authenticationEntryPoint(
                                         new JsonAuthenticationEntryPoint(objectMapper)))
                 .addFilterBefore(
-                        new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+                        new JwtAuthFilter(
+                                jwtService,
+                                cookieEnv,
+                                java.util.Arrays.stream(backOfficeOrigins.split(","))
+                                        .map(String::trim)
+                                        .filter(o -> !o.isEmpty())
+                                        .collect(java.util.stream.Collectors.toSet())),
+                        UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
