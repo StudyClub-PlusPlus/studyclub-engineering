@@ -33,6 +33,14 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:4700,http://localhost:4701}")
     private String allowedOrigins;
 
+    /** 쿠키 이름에 넣을 환경 이름 — stage 만 {@code stage}. 운영·로컬은 비워 기존 이름. {@link JwtAuthFilter} 참고. */
+    @Value("${auth.cookie-env:}")
+    private String cookieEnv;
+
+    /** 백오피스 오리진(콤마 구분). 여기서 온 요청은 백오피스 쿠키만 읽는다. */
+    @Value("${auth.back-office-origins:http://localhost:4701}")
+    private String backOfficeOrigins;
+
     /** 디스코드 봇이 보내는 서비스 키. 값은 배포 시 주입한다 (PUBLIC 레포 — 커밋 금지). */
     @Value("${discord.api-key:}")
     private String discordApiKey;
@@ -118,7 +126,14 @@ public class SecurityConfig {
                                 ex.authenticationEntryPoint(
                                         new JsonAuthenticationEntryPoint(objectMapper)))
                 .addFilterBefore(
-                        new JwtAuthFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+                        new JwtAuthFilter(
+                                jwtService,
+                                cookieEnv,
+                                java.util.Arrays.stream(backOfficeOrigins.split(","))
+                                        .map(String::trim)
+                                        .filter(o -> !o.isEmpty())
+                                        .collect(java.util.stream.Collectors.toSet())),
+                        UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
