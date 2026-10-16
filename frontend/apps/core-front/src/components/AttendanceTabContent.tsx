@@ -342,7 +342,7 @@ export function AttendanceTabContent({
           <span className='tnum ml-2 text-sm font-medium text-fg-muted'>전체 {people.length}</span>
         </h2>
 
-        <div role='tablist' aria-label='회차 표시 시간대' className='inline-flex rounded-pill bg-surface-2 p-1'>
+        <div role='tablist' aria-label='회차 표시 시간대' className='ml-auto inline-flex rounded-pill bg-surface-2 p-1'>
           {DISPLAY_ZONES.map((z) => {
             return (
               <Button

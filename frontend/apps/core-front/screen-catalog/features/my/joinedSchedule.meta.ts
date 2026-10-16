@@ -80,7 +80,7 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
       ],
       render: { url: '/ko/my/joined/1/schedule/attendance' },
     },
-    viewports: ['desktop'],
+    viewports: ['desktop', 'mobile'],
     assertions: {
       visible: ['button:has-text("백오피스 출석 (전체 참여자)")', '[role="region"]', 'button:has-text("출석 적용")'],
     },

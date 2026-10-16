@@ -671,7 +671,7 @@ export function ScheduleTab({
           </span>
         </h2>
 
-        <div className='flex items-center gap-2'>
+        <div className='ml-auto flex items-center gap-2'>
           {canEdit && (
             <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
               회차 추가
