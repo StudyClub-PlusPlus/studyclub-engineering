@@ -190,7 +190,7 @@ WHERE status = 'PROCESSING'
 | EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` |
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
-| BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함 |
+| BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함. 태그(`<`)로 시작하면 HTML 본문 — 아래 [본문 형식](#본문-형식--html--텍스트-대체본) |
 | UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 | UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음) — 편집 화면이 아직 없어 이번 구현에서는 항상 NULL(마이그레이션이 만든 행) |
 
@@ -256,7 +256,7 @@ stateDiagram-v2
     "id": 1,
     "eventType": "USER_REGISTERED",
     "channel": "EMAIL",
-    "subject": "StudyClub++에 오신 걸 환영합니다",
+    "subject": "[StudyClub++] 회원가입을 환영합니다",
     "body": "안녕하세요, {{nickname}}님...",
     "updatedAt": "2026-09-12T00:00:00Z",
     "updatedByAdminId": null
@@ -461,7 +461,7 @@ id 를 모으는 사이 다른 캡틴이 일부를 먼저 다시 보냈다면 �
 ## 웰컴메일 콘텐츠
 
 - 트리거: `USER_REGISTERED`, 채널: `EMAIL`, 발송 시점: 즉시(`scheduled_at = NULL`)
-- 제목: `StudyClub++에 오신 걸 환영합니다`
+- 제목: `[StudyClub++] 회원가입을 환영합니다` (V38, 제목 규칙은 [메일 템플릿 README §제목 규칙](../../docs/mail-templates/README.md#제목-규칙))
 - 본문은 알림 이벤트 카탈로그 문서의 초안을 그대로 쓰되, **`{{name}}` 을 `{{nickname}}` 으로 바꾼다** — 이 서비스는 실명(`NAME`) 컬럼을 두지 않기로 이미 결정했고([user-onboarding/spec.md](../user-onboarding/spec.md)), 화면에 보여줄 이름은 `ACCOUNT.NICKNAME` 하나뿐이다.
 - 마케팅 수신 동의 여부와 무관하게 발송 — 가입 완료를 알리는 트랜잭션 메일이라 `ACCOUNT_CONSENT.MARKETING` 을 확인하지 않는다(이벤트 카탈로그 문서의 코멘트로 이미 확정: 홍보 문구를 최소화하고 정보 안내용으로 유지).
 
@@ -483,6 +483,27 @@ StudyClub++ 드림
 
 렌더링은 `{{nickname}}` 문자열 치환 하나뿐이라 별도 템플릿 엔진 라이브러리 없이 `String.replace` 로
 충분하다고 본다. 두 번째 이벤트(변수 여러 개·조건부 문구)가 생기면 그때 라이브러리 도입을 재검토한다.
+
+> 위 텍스트는 V14 시딩 본문이다. **V38 부터 본문은 HTML 시안**([user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html))이다 —
+> 문구는 같고 표 레이아웃·버튼·링크가 붙었다. 제목은 그대로다.
+
+### 본문 형식 — HTML + 텍스트 대체본
+
+본문이 HTML 인지는 **별도 컬럼 없이 본문으로 정한다**: 앞 공백을 빼고 `<` 로 시작하면 HTML(`MailBody.isHtml`).
+렌더러·발송기·백오피스 상세·playground 미리보기가 모두 이 규칙 하나를 쓴다.
+
+| | 텍스트 본문 | HTML 본문 |
+|---|---|---|
+| 치환 값 | 그대로 끼운다 | `& < > " '` 를 HTML 이스케이프해서 끼운다 — 닉네임은 문자 제한이 없어 `<a href=…>` 가 링크가 될 수 있다 |
+| SES `Body` | `text` 만 | `html`(렌더 결과) + `text`(대체본) — multipart/alternative 로 나간다 |
+| 백오피스 상세 | `<pre>` | `sandbox=""` iframe(`srcdoc`) — 스크립트·폼·이동 차단 |
+
+- 제목(SUBJECT)은 태그로 시작하지 않으므로 항상 텍스트 규칙(이스케이프 없음)이다 — 메일 헤더라 HTML 로 해석되지 않는다
+- **텍스트 대체본은 HTML 에서 자동 생성**한다(`MailBody.toPlainText`). `BODY_TEXT` 컬럼을 두면 운영자가 두 벌을 맞춰야 하고,
+  어긋나면 받는 메일함마다 내용이 달라진다. 규칙: `<head>`·`<style>`·`<script>`·주석 제거 → `<a href="U">L</a>` 는 `L (U)`
+  (글자가 주소와 같거나 `mailto:` 주소면 글자만) → `<br>`·블록 끝(`p div h1-6 li tr table`)은 줄바꿈 → 나머지 태그 제거 →
+  엔티티 해제 → 줄마다 공백 정리, 빈 줄은 하나로. 외부 파서 의존성 없이 정규식이다 — 템플릿이 복잡해져 대체본이 읽기 어려워지면 파서로 바꾼다
+- `MailClient.send(category, to, subject, body)` 시그니처는 그대로다. 형식 판단은 발송기 안에서 한다
 
 ## 메일 발송 자격증명 (환경 설정)
 
