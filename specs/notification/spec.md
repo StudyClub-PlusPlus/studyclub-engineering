@@ -27,6 +27,7 @@ API 3개(조회 2 + 재발송 1)를 이번 스펙에 포함한다 — [백오피
 | GET | `/api/admin/notification-templates` | 알림 템플릿 목록 조회 | O (`@RequireAdmin`) | 구현완료 |
 | GET | `/api/admin/notifications` | 발송 이력 조회 — 행마다 `canResend` 추가, `ids` 로 재발송한 건의 끝을 쫓는다 | O (`@RequireAdmin`) | 구현완료 |
 | POST | `/api/admin/notifications/resend` | 실패 건 재발송 — 고른 FAILED 행을 그 행 그대로 PENDING 으로 되돌린다. 줄마다 가려 접수(`accepted`)·제외(`skipped`)를 돌려준다. 접수까지만 응답 | O (`@RequireAdmin`) | 구현완료 |
+| GET | `/api/notification-templates` | 템플릿 미리보기 — 디자이너가 playground 에서 지금 DB 문구를 본다. 읽기 전용, 운영자 ID 없음 | X (공개) | 구현완료 |
 
 ### 이 기능이 "알림(Notification)" 으로 추상화되고 이벤트 핸들러 방식으로 개발된다는 것의 확인
 
@@ -280,6 +281,39 @@ stateDiagram-v2
 |---|---|---|
 | 401 | UNAUTHORIZED | 토큰 없음/만료 |
 | 403 | FORBIDDEN | 로그인은 됐지만 `SYSTEM_ROLE = ADMIN`(캡틴)이 아님 — `@RequireAdmin` |
+
+### `GET /api/notification-templates`
+
+- **인증**: 없음 (공개, `SecurityConfig` permitAll — GET 만)
+- **설명**: 디자이너가 playground(`/proto/mail`)에서 **지금 DB 에 있는 문구**를 보고 예시 값으로 채워 보는 미리보기용.
+  playground 에는 로그인이 없고(백오피스 쿠키는 오리진이 달라 쓰지 않는다), 문구는 가입한 모든 사람이 받는 메일 본문이라
+  공개해도 새는 것이 없다. playground 는 **서버(Next 서버 컴포넌트)에서** 부르므로 CORS 허용 오리진은 넓히지 않는다
+- 관리용과 응답을 나눈다 — `updatedByAdminId`(운영자 계정 ID)를 싣지 않는다. 편집이 생겨도 이 경로는 읽기만 한다
+- **Query Parameters**: 없음
+
+```json
+[
+  {
+    "id": 1,
+    "eventType": "USER_REGISTERED",
+    "channel": "EMAIL",
+    "subject": "StudyClub++에 오신 걸 환영합니다",
+    "body": "안녕하세요, {{nickname}}님...",
+    "updatedAt": "2026-09-12T00:00:00Z"
+  }
+]
+```
+
+| 필드 | 타입 | NULL | 설명 | 소스 |
+|---|---|---|---|---|
+| id | Long | N | | NOTIFICATION_TEMPLATE.ID |
+| eventType | String | N | | NOTIFICATION_TEMPLATE.EVENT_TYPE |
+| channel | String | N | | NOTIFICATION_TEMPLATE.CHANNEL |
+| subject | String | N | 플레이스홀더 그대로 | NOTIFICATION_TEMPLATE.SUBJECT |
+| body | String | N | 플레이스홀더 그대로. 치환은 화면이 서버 렌더러와 같은 규칙(`{{key}}` 문자열 치환)으로 한다 | NOTIFICATION_TEMPLATE.BODY |
+| updatedAt | String | N | ISO-8601 UTC | NOTIFICATION_TEMPLATE.UPDATED_AT |
+
+**Error Responses**: 없음 (빈 목록은 `[]`)
 
 ### `GET /api/admin/notifications`
 
