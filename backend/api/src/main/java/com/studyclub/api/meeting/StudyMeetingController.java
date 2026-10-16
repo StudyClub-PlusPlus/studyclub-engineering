@@ -62,6 +62,20 @@ public class StudyMeetingController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "회차 일괄 삭제",
+            description = "한 분반의 시작 전 회차 여럿. 하나라도 시작했거나 킥오프면 아무것도 지우지 않는다(409). 그 회차들의 출석·휴가도 지운다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAll(
+            @PathVariable Long studyId,
+            @Valid @RequestBody StudyMeetingRequests.BulkDelete request,
+            Authentication authentication) {
+        studyMeetingService.deleteAll(
+                accountId(authentication), studyId, request.studyGroupId(), request.meetingIds());
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "발표 신청", description = "그 분반 참여자가 빈 발표자 칸(1·2)에 자기를 넣는다. 선착순.")
     @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/{meetingId}/presenters/{slot}/me")

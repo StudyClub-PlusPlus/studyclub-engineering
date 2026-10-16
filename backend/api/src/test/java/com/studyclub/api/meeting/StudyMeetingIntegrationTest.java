@@ -250,11 +250,14 @@ class StudyMeetingIntegrationTest {
         var delete =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(kickoff.getId())),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId",
+                                group.getId(),
+                                "meetingIds",
+                                List.of(kickoff.getId())),
                         LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
         assertThat(delete.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(delete.getBody()).containsEntry("errorCode", "KICKOFF_NOT_DELETABLE");
     }
@@ -571,11 +574,14 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(futureMeeting.getId())),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId",
+                                group.getId(),
+                                "meetingIds",
+                                List.of(futureMeeting.getId())),
                         LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(studyMeetingRepo.findById(futureMeeting.getId())).isEmpty();
@@ -595,11 +601,12 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(futureMeeting.getId(), another.getId())),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId(), another.getId())),
                         LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(studyMeetingRepo.findAllById(List.of(futureMeeting.getId(), another.getId())))
@@ -619,11 +626,12 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(futureMeeting.getId(), pastMeeting.getId())),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId(), pastMeeting.getId())),
                         LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody())
@@ -640,11 +648,12 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(futureMeeting.getId(), 999_999L)),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId(), 999_999L)),
                         LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(studyMeetingRepo.findById(futureMeeting.getId())).isPresent();
@@ -660,13 +669,13 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
+                        "/api/studies/{studyId}/meetings",
                         Map.of(
+                                "studyGroupId", group.getId(),
                                 "meetingIds",
-                                List.of(futureMeeting.getId(), otherGroupMeeting.getId())),
+                                        List.of(futureMeeting.getId(), otherGroupMeeting.getId())),
                         CREATOR_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
@@ -679,22 +688,22 @@ class StudyMeetingIntegrationTest {
         var empty =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of()),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of("studyGroupId", group.getId(), "meetingIds", List.of()),
                         LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
         assertThat(empty.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(empty.getBody()).containsEntry("errorCode", "INVALID_INPUT");
 
         var member =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(futureMeeting.getId())),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId())),
                         MEMBER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
         assertThat(member.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
@@ -779,11 +788,12 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(futureMeeting.getId())),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId())),
                         OTHER_GROUP_LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
@@ -816,11 +826,10 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(999_999L)),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of("studyGroupId", group.getId(), "meetingIds", List.of(999_999L)),
                         LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
@@ -832,11 +841,14 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/groups/{groupId}/meetings",
-                        Map.of("meetingIds", List.of(pastMeeting.getId())),
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId",
+                                group.getId(),
+                                "meetingIds",
+                                List.of(pastMeeting.getId())),
                         LEADER_ID,
-                        study.getId(),
-                        group.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).containsEntry("errorCode", "MEETING_ALREADY_STARTED");
