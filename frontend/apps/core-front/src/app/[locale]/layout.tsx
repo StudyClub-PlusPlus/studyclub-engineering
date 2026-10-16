@@ -82,7 +82,8 @@ export default async function LocaleLayout({
                 <SiteHeader locale={locale} discordUrl={site.discord_invite} mentoringUrl={site.mentoring_url} />
               </RegistrationNavigation>
             </Suspense>
-            <main className='flex-1'>{children}</main>
+            {/* 장식(히어로 글로우 등)이 화면 밖으로 번져 가로 스크롤을 만들지 않게 자른다. clip 은 sticky 를 깨지 않는다 */}
+            <main className='flex-1 overflow-x-clip'>{children}</main>
             <Footer locale={locale} site={site} />
             <Toaster position='bottom-center' />
           </div>
