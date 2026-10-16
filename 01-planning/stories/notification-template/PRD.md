@@ -109,7 +109,7 @@ flowchart LR
 |---|---|---|---|
 | FE | back-office-front `/notification-templates` 목록 | 있음 — 이벤트 · 채널 · 제목 · 마지막 수정 | 열 이름 「이벤트」 → 「알림 조건」 (완료 기준 1) |
 | FE | back-office-front `/notification-templates/[id]` 전문 | 있음 — 단건 API 없이 목록에서 고른다 | 없음 |
-| FE | 사이드바 「알림」 하나 · 템플릿 / 발송 이력 두 탭 | 없음 — 사이드바에 「알림 템플릿」만 | 「알림」 아래 두 탭으로 묶기. 프로토 주소는 `/notifications/templates` · `/notifications` |
+| FE | 사이드바 「알림」 하나 · 템플릿 / 발송 이력 두 탭 | 구현완료 — 사이드바 「알림」 한 메뉴, 두 탭 (템플릿은 기존 `/notification-templates`, 발송 이력은 `/notifications`) | 없음. 프로토 주소(`/notifications/templates`)와는 템플릿 경로만 다르다 |
 | FE | 템플릿 추가 버튼 · 추가 창 | 없음 | 프로토 `proto/console/notifications/templates` 대로. 이미 쓰인 조건은 선택지에서 뺀다 (완료 기준 3·5) |
 | BE | `GET /api/admin/notification-templates` | 구현완료 — `AdminNotificationController` · 통합 테스트 있음 | 없음 |
 | BE | `POST /api/admin/notification-templates` | 없음 · **스펙 없음** | [notification 스펙](../../../specs/notification/spec.md)에 계약부터 쓴다 → 구현. 같은 조건 중복은 `UNIQUE(EVENT_TYPE, CHANNEL)` 위반 → 409 |

@@ -451,8 +451,9 @@ id 를 모으는 사이 다른 캡틴이 일부를 먼저 다시 보냈다면 �
 - 알림 템플릿 목록·상세(읽기 전용): `frontend/apps/back-office-front/src/app/notification-templates/` →
   `GET /api/admin/notification-templates`
 - 발송 이력 화면(구현완료 2026-10-16): [PRD (ST-032)](../../01-planning/stories/notification-history/PRD.md)
-  - 사이드바에 새 메뉴 「알림 발송 이력」(`/notifications`)을 더했다. 기존 「알림 템플릿」 메뉴·화면은 이번 이슈에서 손대지 않는다
-    (템플릿은 이번 범위 밖 — PRD 의 「알림」 한 메뉴 두 탭 구조로의 통합은 템플릿 작업 때)
+  - 사이드바는 「알림」 **한 메뉴**이고 그 안에서 「알림 템플릿」·「발송 이력」 **두 탭**으로 가른다(기획 PRD·playground 와 같은 모양).
+    발송 이력은 `/notifications`, 템플릿 목록·상세는 기존 `/notification-templates` 를 유지한다 — 템플릿 화면에는 탭 줄만 얹었고
+    동작은 바꾸지 않았다(템플릿 추가 등은 이번 범위 밖)
   - `frontend/apps/back-office-front/src/app/notifications/page.tsx` (필터·페이지는 URL 쿼리 — `useUrlState`)
   - `frontend/apps/back-office-front/src/features/notifications/queries.ts` → `GET /api/admin/notifications`, `POST /api/admin/notifications/resend`
   - `frontend/packages/mock/src/msw/handlers/notifications.ts` (MSW)

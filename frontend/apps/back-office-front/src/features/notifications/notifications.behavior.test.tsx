@@ -263,7 +263,7 @@ describe('비었을 때와 못 읽었을 때', () => {
 
     expect(await screen.findByText('아직 알림 발송 이력이 없습니다.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '전체 보기' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: '페이지 네비게이션' })).not.toBeInTheDocument();
   });
 
   it('거른 결과가 없으면 안내와 전체 보기가 서고, 누르면 조건이 풀린다', async () => {

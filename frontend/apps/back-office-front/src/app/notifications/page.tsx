@@ -11,6 +11,7 @@ import { RotateCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui';
 import { useNotificationTemplates } from '@/features/notification-templates/queries';
 import { HistoryNotice, HistorySkeleton, HistoryTable } from '@/features/notifications/components/HistoryTable';
+import { NotificationTabs } from '@/features/notifications/components/NotificationTabs';
 import { ResendAllDialog } from '@/features/notifications/components/ResendAllDialog';
 import { eventLabel, STATUS_OPTIONS } from '@/features/notifications/labels';
 import { useNotificationResend, useNotifications } from '@/features/notifications/queries';
@@ -73,7 +74,8 @@ function NotificationHistory() {
 
   return (
     <div>
-      <PageHeader title='알림 발송 이력' subtitle='회원에게 나간 알림의 수신 주소와 상태. 실패한 건은 다시 보낼 수 있습니다.' />
+      <PageHeader title='알림' subtitle='회원에게 나간 알림의 수신 주소와 상태. 실패한 건은 다시 보낼 수 있습니다.' />
+      <NotificationTabs />
 
       <div className='mb-3 flex flex-wrap items-center gap-3'>
         {/* 고르기 전에는 축 이름만 보인다 — 「알림 조건 전체」처럼 적으면 이미 거른 것처럼 읽힌다. 하나 고르면 첫 줄이 「전체」다 */}
