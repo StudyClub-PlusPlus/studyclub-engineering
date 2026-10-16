@@ -91,11 +91,11 @@ WHERE STATUS = 'PENDING'              -- 아직 연결 안 됐고
 
 | 형식 | 지우는 부분 | 남기는 부분 |
 |---|---|---|
-| jpeg | `APP0` · ICC 색 프로필(`APP2`) · `APP14` 를 뺀 모든 `APPn` 세그먼트, `COM`, `EOI` 뒤에 붙은 데이터 | `APP0`(JFIF) · `APP2` 중 ICC 색 프로필 · `APP14`(Adobe 색변환) · 디코딩 테이블(DQT · DHT · SOF · DRI) · 압축 데이터 |
-| png | `eXIf` · `tEXt` · `iTXt` · `zTXt` · `tIME` 청크 | 나머지 (`iCCP` 포함) |
-| webp | `EXIF` · `XMP ` 청크. `VP8X` 의 EXIF·XMP 비트를 끄고 `RIFF` 길이를 다시 쓴다 | 나머지 (`ICCP` 포함) |
+| jpeg | `APP0` · ICC 색 프로필(`APP2`) · `APP14` 를 뺀 모든 `APPn` 세그먼트, `COM`, `EOI` 뒤에 붙은 데이터 | `APP0`(JFIF) · `APP2` 중 ICC 색 프로필 · `APP14`(Adobe 색변환) · 디코딩 테이블(DQT · DHT · SOF · DRI) · 압축 데이터. EXIF 의 회전 값(Orientation)은 그 값 하나만 든 `APP1` 로 다시 쓴다 |
+| png | 아래 목록에 없는 청크 전부 (`eXIf` · 텍스트 · `tIME` · C2PA `caBX` 같은 제조사 전용 포함) | 필수(`IHDR` `PLTE` `IDAT` `IEND`) · 색(`iCCP` `sRGB` `gAMA` `cHRM` `cICP` `mDCV` `cLLI` `sBIT`) · 투명도·배경(`tRNS` `bKGD` `hIST` `sPLT`) · `pHYs` · 애니메이션(`acTL` `fcTL` `fdAT`) |
+| webp | 아래 목록에 없는 청크 전부 (`EXIF` · `XMP ` 포함). `VP8X` 의 EXIF·XMP 비트를 끄고 `RIFF` 길이를 다시 쓴다 | `VP8 ` · `VP8L` · `VP8X` · `ALPH` · `ANIM` · `ANMF` · `ICCP` |
 
-jpeg 는 지우는 목록이 아니라 남기는 목록이다. 갤럭시는 EXIF 밖에도 메타데이터를 넣는다 — `APP4` 에 센서 고유 ID와 보정값, `EOI` 뒤 꼬리에 촬영 시각(`Image_UTC_Data`)과 이동통신 국가코드(`MCC_Data`). 갤럭시 S25+ 실사진으로 확인했다. 남기는 목록으로 하면 제조사가 새 자리를 만들어도 빠진다.
+세 형식 모두 지우는 목록이 아니라 남기는 목록이다. 갤럭시는 EXIF 밖에도 메타데이터를 넣는다 — `APP4` 에 센서 고유 ID와 보정값, `EOI` 뒤 꼬리에 촬영 시각(`Image_UTC_Data`)과 이동통신 국가코드(`MCC_Data`). 갤럭시 S25+ 실사진으로 확인했다. 남기는 목록으로 하면 제조사가 새 자리를 만들어도 빠진다.
 
 걷어낸 결과가 깨져 있으면 `400` 「이미지를 읽을 수 없습니다.」 — 깨진 채로 저장하지 않는다.
 
@@ -297,13 +297,13 @@ S3 클라이언트를 가짜로 바꾼 통합 테스트.
 - **스터디 썸네일** — 올리기는 `purpose=STUDY_THUMBNAIL` 로 이 API 를 그대로 쓴다. 스터디 등록·수정 API 가 `thumbnailFileId` 를 받아 결정 2 의 연결 규칙을 타는 변경과, 썸네일 교체·스터디 삭제 시 옛 파일을 `DELETING` 으로 넘기는 것은 스터디 스펙에서.
 - **연결 전 파일도 주소만 알면 보인다** — `gigs/` 는 공개 폴더다. 주소가 UUID 라 추측은 못 하고, 하루 뒤 지워진다.
 - **크기 줄이기 · 자르기 없음** — 원본이 그대로 내려간다. 필요해지면 서버에서 줄이거나 CloudFront 쪽에서 변환한다.
-- **세로 사진이 눕혀 보일 수 있다** — 메타데이터를 지우면 jpeg 회전 정보(Orientation)도 사라진다. 대부분의 폰은 저장할 때 픽셀을 돌려 두지만 아닌 기기도 있다. 생기면 회전 값만 읽어 픽셀을 돌리거나 프론트에서 캔버스로 그려 보낸다.
 - **탈퇴** — 탈퇴 스펙이 `PROFILE_IMG_URL` 의 파일과 그 계정의 `PENDING` 파일을 `DELETING` 으로 넘기고 커밋 뒤 지운다.
 
 ## 변경이력
 
 | 날짜 | 변경 | 근거 |
 |------|------|------|
+| 2026-10-16 | jpeg 회전 값(Orientation)만 남기기 · png·webp 도 남기는 목록 방식 · 옛 파일 찜에 주인 조건 | 리뷰: 폰은 세로 사진을 픽셀은 눕힌 채 회전 값으로 세운다 — 통째로 지우면 사진이 눕는다. 제조사 전용 청크가 빠지지 않았다 |
 | 2026-10-14 | jpeg 메타데이터 제거를 남기는 목록 방식으로, `EOI` 뒤 데이터 버림, png `tIME` 추가 | 갤럭시 S25+ 실사진에서 `APP4` 센서 고유 ID와 `EOI` 뒤 촬영 시각·국가코드가 남는 것 확인 |
 | 2026-10-14 | 구현 완료 — 백엔드(`domain` V37 · `api/storage` · `api/upload` · 프로필 연결·지우기 · 탈퇴 · 정리 배치)와 core-front 사진 영역. Tomcat `max-swallow-size` 6MB | 구현 PR |
 | 2026-10-14 | 테이블 `UPLOAD` → `STORAGE_OBJECT`, `S3_KEY` → `OBJECT_KEY`, `PROVIDER`(`S3` / `R2`) 추가, 응답 `uploadId` → `fileId`. S3 호출은 인터페이스 뒤로 | 리뷰: 모델은 행위가 아니라 결과물 이름으로, S3 에 묶지 말고 다른 오브젝트 스토리지 이관을 열어 둔다 |

@@ -40,9 +40,10 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
             @Param("now") Instant now);
 
     /**
-     * 연결된 파일을 지우기로 찜한다 — 교체·지우기가 옛 파일에 쓴다. {@code ATTACHED} 일 때만 바뀐다.
+     * 연결된 파일을 지우기로 찜한다 — 교체·지우기가 옛 파일에 쓴다. 내 것이고 {@code ATTACHED} 일 때만 바뀐다. 주인을 거는 이유: 주소 칸에 남의 파일
+     * 주소가 들어가도(다른 기능이 같은 칸을 쓰게 될 때 등) 남의 파일을 지우지 않게.
      *
-     * @return 1 이면 찜함. 0 이면 이미 지우는 중이거나 없는 행
+     * @return 1 이면 찜함. 0 이면 이미 지우는 중·남의 것·없는 행
      */
     @Modifying(flushAutomatically = true)
     @Query(
@@ -51,9 +52,11 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
             SET s.status = com.studyclub.domain.storage.StorageObjectStatus.DELETING,
                 s.updatedAt = :now
             WHERE s.id = :id
+              AND s.accountId = :accountId
               AND s.status = com.studyclub.domain.storage.StorageObjectStatus.ATTACHED
             """)
-    int markDeleting(@Param("id") Long id, @Param("now") Instant now);
+    int markDeleting(
+            @Param("id") Long id, @Param("accountId") Long accountId, @Param("now") Instant now);
 
     /**
      * 정리 배치 1단계 — 올린 지 {@code before} 보다 오래된 {@code PENDING} 을 전부 {@code DELETING} 으로 찜한다. 배치가 먼저

@@ -211,6 +211,22 @@ class ProfileImageIntegrationTest {
     }
 
     @Test
+    @DisplayName("지우기 - 내 주소 칸에 남의 파일 주소가 있어도 남의 파일은 지우지 않는다")
+    void doesNotDeleteOthersFile() {
+        Account owner = seedOnboardedAccount(null);
+        Long ownersFile = upload(owner, "PROFILE");
+        attach(owner, ownersFile);
+        String ownersUrl =
+                accountRepository.findById(owner.getId()).orElseThrow().getProfileImgUrl();
+        Account other = seedOnboardedAccount(ownersUrl);
+
+        assertThat(remove(other).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        assertThat(row(ownersFile).getStatus()).isEqualTo(StorageObjectStatus.ATTACHED);
+        verify(storage, org.mockito.Mockito.never()).delete(anyString());
+    }
+
+    @Test
     @DisplayName("교체 - 옛 주소가 구글 사진이면 아무것도 지우지 않는다")
     void doesNotDeleteGooglePicture() {
         Account account = seedOnboardedAccount(GOOGLE_PICTURE);

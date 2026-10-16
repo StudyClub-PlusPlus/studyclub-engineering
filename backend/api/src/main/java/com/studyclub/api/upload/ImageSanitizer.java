@@ -20,11 +20,12 @@ import java.util.Set;
  *   <li>jpeg — 남기는 목록 방식. {@code APP0}(JFIF) · {@code APP2} 중 ICC 색 프로필 · {@code APP14}(Adobe 색변환)
  *       · 디코딩 테이블(DQT · DHT · SOF · DRI)만 남기고 다른 {@code APPn} 과 {@code COM} 은 전부 뺀다. {@code EOI} 뒤에
  *       붙은 데이터도 버린다. 지우는 목록으로 하면 갤럭시가 EXIF 밖({@code APP4}, {@code EOI} 뒤 꼬리)에 넣는 센서 고유 ID · 촬영 시각 ·
- *       국가코드가 남는다 — 갤럭시 S25+ 실사진으로 확인
- *   <li>png — {@code eXIf} · {@code tEXt} · {@code iTXt} · {@code zTXt} · {@code tIME} 청크. {@code
- *       iCCP} 는 남긴다
- *   <li>webp — {@code EXIF} · {@code XMP } 청크. {@code VP8X} 의 EXIF·XMP 비트를 끄고 {@code RIFF} 길이를 다시
- *       쓴다. {@code ICCP} 는 남긴다
+ *       국가코드가 남는다 — 갤럭시 S25+ 실사진으로 확인. EXIF 의 회전 값(Orientation)만은 회전 값 하나짜리 {@code APP1} 로 다시 쓴다 —
+ *       폰은 세로 사진을 픽셀은 눕힌 채 회전 값으로 세우므로, 통째로 지우면 사진이 눕는다
+ *   <li>png — 남기는 목록 방식. 필수 청크와 화면에 그리는 데 쓰는 청크(색·투명도·픽셀 비율·애니메이션)만 남긴다. {@code eXIf} · 텍스트 ·
+ *       {@code tIME} · 제조사 전용 청크(C2PA {@code caBX} 등)는 빠진다
+ *   <li>webp — 남기는 목록 방식. {@code VP8 } · {@code VP8L} · {@code VP8X} · {@code ALPH} · {@code ANIM}
+ *       · {@code ANMF} · {@code ICCP} 만. {@code VP8X} 의 EXIF·XMP 비트를 끄고 {@code RIFF} 길이를 다시 쓴다
  * </ul>
  *
  * <p>구조가 어긋나면(길이가 파일을 넘는 등) 400 「이미지를 읽을 수 없습니다.」 깨진 채로 저장하지 않는다.
@@ -70,12 +71,15 @@ public final class ImageSanitizer {
     private static final int JPEG_EOI = 0xD9;
     private static final int JPEG_SOS = 0xDA;
     private static final int JPEG_APP0 = 0xE0;
+    private static final int JPEG_APP1 = 0xE1;
     private static final int JPEG_APP2 = 0xE2;
     private static final int JPEG_APP14 = 0xEE;
     private static final int JPEG_APP15 = 0xEF;
     private static final int JPEG_COM = 0xFE;
     private static final byte[] ICC_PROFILE_TAG =
             "ICC_PROFILE\0".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] EXIF_TAG = "Exif\0\0".getBytes(StandardCharsets.US_ASCII);
+    private static final int EXIF_ORIENTATION_TAG = 0x0112;
 
     /**
      * SOI 뒤에 「FF 마커 + 2바이트 길이 + 본문」 세그먼트가 이어지다가 SOS 가 나오면 그 뒤는 압축 데이터다. SOS 부터 EOI 까지는 그대로 복사한다 —
@@ -115,6 +119,11 @@ public final class ImageSanitizer {
             if (keepJpegSegment(marker, bytes, pos + 3, length - 2)) {
                 out.write(0xFF);
                 out.write(bytes, pos, 1 + length);
+            } else if (marker == JPEG_APP1) {
+                int orientation = exifOrientation(bytes, pos + 3, length - 2);
+                if (orientation > 1) {
+                    writeOrientationOnlyExif(out, orientation);
+                }
             }
             pos += 1 + length;
         }
@@ -146,6 +155,72 @@ public final class ImageSanitizer {
         return false;
     }
 
+    /**
+     * EXIF {@code APP1} 의 IFD0 에서 회전 값(태그 {@code 0x0112}, 1~8)을 읽는다. 못 읽으면 1(회전 없음) — 회전 값이 깨졌다고
+     * 올리기를 막지는 않는다.
+     */
+    private static int exifOrientation(byte[] bytes, int payloadPos, int payloadLength) {
+        int end = payloadPos + payloadLength;
+        if (payloadLength < EXIF_TAG.length + 8
+                || !Arrays.equals(
+                        bytes,
+                        payloadPos,
+                        payloadPos + EXIF_TAG.length,
+                        EXIF_TAG,
+                        0,
+                        EXIF_TAG.length)) {
+            return 1;
+        }
+        int tiff = payloadPos + EXIF_TAG.length;
+        boolean little;
+        if (bytes[tiff] == 'I' && bytes[tiff + 1] == 'I') {
+            little = true;
+        } else if (bytes[tiff] == 'M' && bytes[tiff + 1] == 'M') {
+            little = false;
+        } else {
+            return 1;
+        }
+        long ifd = tiff + readU32(bytes, tiff + 4, little);
+        if (ifd + 2 > end) {
+            return 1;
+        }
+        int count = readU16(bytes, (int) ifd, little);
+        for (int i = 0; i < count; i++) {
+            int entry = (int) ifd + 2 + i * 12;
+            if (entry + 12 > end) {
+                return 1;
+            }
+            if (readU16(bytes, entry, little) == EXIF_ORIENTATION_TAG) {
+                int value = readU16(bytes, entry + 8, little);
+                return value >= 1 && value <= 8 ? value : 1;
+            }
+        }
+        return 1;
+    }
+
+    /** 회전 값 하나만 든 EXIF {@code APP1}. 빅엔디언 TIFF · IFD0 항목 하나 · 다음 IFD 없음 — 34바이트. */
+    private static void writeOrientationOnlyExif(ByteArrayOutputStream out, int orientation) {
+        out.write(0xFF);
+        out.write(JPEG_APP1);
+        out.write(0);
+        out.write(34); // 길이 2 + "Exif\0\0" 6 + TIFF 머리 8 + 항목 수 2 + 항목 12 + 다음 IFD 4
+        out.write(EXIF_TAG, 0, EXIF_TAG.length);
+        out.writeBytes(new byte[] {'M', 'M', 0, 0x2A, 0, 0, 0, 8}); // TIFF 머리, IFD0 은 8바이트 뒤
+        out.writeBytes(new byte[] {0, 1}); // 항목 하나
+        out.writeBytes(new byte[] {0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, (byte) orientation, 0, 0});
+        out.writeBytes(new byte[] {0, 0, 0, 0}); // 다음 IFD 없음
+    }
+
+    private static int readU16(byte[] bytes, int pos, boolean little) {
+        return little
+                ? ((bytes[pos + 1] & 0xFF) << 8) | (bytes[pos] & 0xFF)
+                : readU16BE(bytes, pos);
+    }
+
+    private static long readU32(byte[] bytes, int pos, boolean little) {
+        return little ? readU32LE(bytes, pos) : readU32BE(bytes, pos);
+    }
+
     /** SOS 위치부터 첫 {@code FF D9}. 없으면 깨진 파일. */
     private static int findEoi(byte[] bytes, int from) {
         for (int i = from; i + 1 < bytes.length; i++) {
@@ -159,7 +234,15 @@ public final class ImageSanitizer {
     // ---- png --------------------------------------------------------------------------------
 
     private static final int PNG_SIGNATURE_LENGTH = 8;
-    private static final Set<String> PNG_DROP = Set.of("eXIf", "tEXt", "iTXt", "zTXt", "tIME");
+
+    /**
+     * 남기는 청크 — 필수 넷 · 색({@code iCCP} · {@code sRGB} · {@code gAMA} · {@code cHRM} · {@code cICP} ·
+     * HDR 둘) · 투명도·배경·팔레트 보조 · 픽셀 비율 · APNG 애니메이션. 나머지는 전부 뺀다.
+     */
+    private static final Set<String> PNG_KEEP =
+            Set.of(
+                    "IHDR", "PLTE", "IDAT", "IEND", "iCCP", "sRGB", "gAMA", "cHRM", "cICP", "mDCV",
+                    "cLLI", "sBIT", "tRNS", "bKGD", "hIST", "sPLT", "pHYs", "acTL", "fcTL", "fdAT");
 
     /**
      * 서명 8바이트 뒤에 「4바이트 길이 + 4바이트 타입 + 본문 + 4바이트 CRC」 청크가 IEND 까지 이어진다. 청크를 통째로 빼므로 CRC 는 그대로 맞다.
@@ -183,7 +266,7 @@ public final class ImageSanitizer {
                 throw new IllegalStateException("첫 청크가 IHDR 이 아님");
             }
             first = false;
-            if (!PNG_DROP.contains(type)) {
+            if (PNG_KEEP.contains(type)) {
                 out.write(bytes, pos, (int) (chunkEnd - pos));
             }
             pos = (int) chunkEnd;
@@ -196,7 +279,8 @@ public final class ImageSanitizer {
     // ---- webp -------------------------------------------------------------------------------
 
     private static final int WEBP_HEADER_LENGTH = 12;
-    private static final Set<String> WEBP_DROP = Set.of("EXIF", "XMP ");
+    private static final Set<String> WEBP_KEEP =
+            Set.of("VP8 ", "VP8L", "VP8X", "ALPH", "ANIM", "ANMF", "ICCP");
     private static final int VP8X_FLAG_EXIF = 0x08;
     private static final int VP8X_FLAG_XMP = 0x04;
 
@@ -228,7 +312,7 @@ public final class ImageSanitizer {
             }
             // 마지막 청크의 채움 바이트가 빠진 파일도 있다 — 본문까지만 있으면 받는다
             int copyEnd = (int) Math.min(chunkEnd, end);
-            if (!WEBP_DROP.contains(fourCc)) {
+            if (WEBP_KEEP.contains(fourCc)) {
                 byte[] chunk = Arrays.copyOfRange(bytes, pos, copyEnd);
                 if (fourCc.equals("VP8X") && length >= 1) {
                     chunk[8] = (byte) (chunk[8] & ~(VP8X_FLAG_EXIF | VP8X_FLAG_XMP));

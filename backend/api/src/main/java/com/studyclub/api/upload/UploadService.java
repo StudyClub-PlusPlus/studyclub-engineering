@@ -126,10 +126,10 @@ public class UploadService {
     }
 
     /**
-     * 주소가 우리 파일이면 그 행을 {@code DELETING} 으로 찜한다. 구글 사진·null 이면 비어 있다 — DB 값만 바꾸면 된다. 호출자의 트랜잭션 안에서
-     * 부른다.
+     * 주소가 우리 파일이고 그 계정 것이면 그 행을 {@code DELETING} 으로 찜한다. 구글 사진·null·남의 파일이면 비어 있다 — DB 값만 바꾸면 된다.
+     * 호출자의 트랜잭션 안에서 부른다.
      */
-    public Optional<StorageObject> markDeletingByUrl(String url, Instant now) {
+    public Optional<StorageObject> markDeletingByUrl(String url, Long accountId, Instant now) {
         if (url == null) {
             return Optional.empty();
         }
@@ -138,7 +138,10 @@ public class UploadService {
             if (key.isPresent()) {
                 return repository
                         .findByObjectKey(key.get())
-                        .filter(object -> repository.markDeleting(object.getId(), now) == 1);
+                        .filter(
+                                object ->
+                                        repository.markDeleting(object.getId(), accountId, now)
+                                                == 1);
             }
         }
         return Optional.empty();

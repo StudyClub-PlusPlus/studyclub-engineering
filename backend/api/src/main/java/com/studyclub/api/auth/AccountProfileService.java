@@ -68,7 +68,7 @@ public class AccountProfileService {
         StorageObject attached =
                 uploadService.attach(fileId, accountId, StoragePurpose.PROFILE, now);
         Optional<StorageObject> old =
-                uploadService.markDeletingByUrl(account.getProfileImgUrl(), now);
+                uploadService.markDeletingByUrl(account.getProfileImgUrl(), accountId, now);
         account.setProfileImgUrl(uploadService.publicUrl(attached));
         uploadService.deleteAfterCommit(old.stream().toList());
         return AccountView.from(account);
@@ -79,7 +79,8 @@ public class AccountProfileService {
     public AccountView removeProfileImage(Long accountId) {
         Account account = requireAccountByIdForUpdate(accountId);
         Optional<StorageObject> old =
-                uploadService.markDeletingByUrl(account.getProfileImgUrl(), Instant.now());
+                uploadService.markDeletingByUrl(
+                        account.getProfileImgUrl(), accountId, Instant.now());
         account.setProfileImgUrl(null);
         uploadService.deleteAfterCommit(old.stream().toList());
         return AccountView.from(account);

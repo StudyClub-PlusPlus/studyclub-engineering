@@ -81,6 +81,38 @@ class ImageSanitizerTest {
         }
 
         @Test
+        void EXIF_는_빠지고_회전_값만_남는다() {
+            // 리틀엔디언 TIFF · IFD0 항목 둘(Make, Orientation=6) — 폰 세로 사진 모양
+            byte[] exifLittle =
+                    jpegSegment(
+                            0xE1,
+                            concat(
+                                    ascii("Exif\0\0"),
+                                    bytes('I', 'I', 0x2A, 0, 8, 0, 0, 0),
+                                    bytes(2, 0),
+                                    bytes(0x0F, 0x01, 2, 0, 4, 0, 0, 0, 'G', 'P', 'S', 0),
+                                    bytes(0x12, 0x01, 3, 0, 1, 0, 0, 0, 6, 0, 0, 0),
+                                    bytes(0, 0, 0, 0)));
+            byte[] input = concat(bytes(0xFF, 0xD8), app0, exifLittle, dqt, sosAndRest);
+
+            byte[] out = ImageSanitizer.strip(input, ImageFormat.JPEG);
+
+            byte[] orientationOnly =
+                    jpegSegment(
+                            0xE1,
+                            concat(
+                                    ascii("Exif\0\0"),
+                                    bytes('M', 'M', 0, 0x2A, 0, 0, 0, 8),
+                                    bytes(0, 1),
+                                    bytes(0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, 6, 0, 0),
+                                    bytes(0, 0, 0, 0)));
+            assertThat(out)
+                    .isEqualTo(concat(bytes(0xFF, 0xD8), app0, orientationOnly, dqt, sosAndRest));
+            assertThat(contains(out, "GPS")).isFalse();
+            assertThat(ImageSanitizer.strip(out, ImageFormat.JPEG)).isEqualTo(out);
+        }
+
+        @Test
         void EOI_뒤_꼬리_데이터는_버린다() {
             // 갤럭시는 EOI 뒤에 촬영 시각(Image_UTC_Data)·국가코드(MCC_Data)를 붙인다
             byte[] trailer = ascii("Image_UTC_Data1791537689624MCC_Data450");
@@ -165,6 +197,16 @@ class ImageSanitizerTest {
         }
 
         @Test
+        void 목록에_없는_청크는_빠지고_색_투명도는_남는다() {
+            byte[] c2pa = pngChunk("caBX", ascii("c2pa manifest"));
+            byte[] trns = pngChunk("tRNS", bytes(0, 0));
+            byte[] input = concat(signature, ihdr, c2pa, trns, idat, iend);
+
+            assertThat(ImageSanitizer.strip(input, ImageFormat.PNG))
+                    .isEqualTo(concat(signature, ihdr, trns, idat, iend));
+        }
+
+        @Test
         void IEND_뒤_쓰레기는_버린다() {
             byte[] input = concat(signature, ihdr, idat, iend, ascii("trailing"));
 
@@ -209,6 +251,14 @@ class ImageSanitizerTest {
             byte[] expectedVp8x = webpChunk("VP8X", bytes(0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0));
             assertThat(out).isEqualTo(riff(concat(expectedVp8x, iccp, vp8)));
             assertThat(contains(out, "GPS")).isFalse();
+        }
+
+        @Test
+        void 목록에_없는_청크는_빠진다() {
+            byte[] unknown = webpChunk("C2PA", ascii("manifest"));
+            byte[] input = riff(concat(vp8, unknown));
+
+            assertThat(ImageSanitizer.strip(input, ImageFormat.WEBP)).isEqualTo(riff(vp8));
         }
 
         @Test
