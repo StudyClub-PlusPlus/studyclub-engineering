@@ -20,6 +20,10 @@ def create_bot(settings: Settings) -> commands.Bot:
     """Build the Discord bot with the required intents and commands registered."""
     intents = discord.Intents.default()
     intents.message_content = True
+    # Keeps the member cache complete, so the role endpoints resolve most
+    # targets without a Discord call. Privileged: it must also be switched on
+    # in the Developer Portal, or the bot is refused at login.
+    intents.members = True
 
     # Without ``help_command`` discord.py files every command under "No
     # Category" and describes ``!help`` in English, which is what members read.
