@@ -113,6 +113,11 @@ public class SecurityConfig {
                                         .requestMatchers(
                                                 HttpMethod.GET, "/api/studies/*/application-form")
                                         .permitAll()
+                                        // 알림 문구 미리보기 — 모든 가입자가 받는 메일 본문이라 공개. playground 가 서버에서
+                                        // 부른다
+                                        .requestMatchers(
+                                                HttpMethod.GET, "/api/notification-templates")
+                                        .permitAll()
                                         // 로컬 저장소가 내주는 사진 — 켜지 않으면 핸들러가 없어 404 다
                                         .requestMatchers(
                                                 HttpMethod.GET, LocalObjectStorage.PATH + "/**")

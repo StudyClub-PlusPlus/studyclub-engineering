@@ -18,4 +18,10 @@ public class NotificationTemplateQueryService {
                 .map(NotificationTemplateResponse::from)
                 .toList();
     }
+
+    public List<NotificationTemplatePreviewResponse> listPreviews() {
+        return notificationTemplateRepository.findAllByOrderByIdAsc().stream()
+                .map(NotificationTemplatePreviewResponse::from)
+                .toList();
+    }
 }
