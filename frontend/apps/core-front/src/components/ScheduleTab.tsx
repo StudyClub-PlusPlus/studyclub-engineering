@@ -87,8 +87,8 @@ function PresenterCell({
     }
     if (slotValue === myId) {
       return (
-        <span className='inline-flex h-7 w-full min-w-0 items-center gap-1 rounded-pill bg-brand-subtle pl-2.5 pr-1 text-xs font-bold text-brand'>
-          <span className='truncate'>{name}</span>
+        <span className='relative inline-flex h-7 w-full min-w-0 items-center rounded-pill bg-brand-subtle px-1 text-xs font-bold text-brand'>
+          <span className='flex-1 truncate text-center'>{name}</span>
           <button
             type='button'
             aria-label={`${label} 신청 취소`}

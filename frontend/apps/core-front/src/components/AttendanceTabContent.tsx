@@ -572,7 +572,9 @@ export function AttendanceTabContent({
                             return (
                               <span
                                 className={`relative grid h-8 w-full place-items-center rounded-sm text-[11px] font-bold ${
-                                  status ? STATUS_STYLE[status] : 'bg-surface text-fg-muted'
+                                  status
+                                    ? STATUS_STYLE[status]
+                                    : 'border border-dashed border-border-strong bg-surface text-fg-muted'
                                 }`}
                               >
                                 {presenting && (

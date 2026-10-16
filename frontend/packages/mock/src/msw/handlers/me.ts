@@ -1,14 +1,36 @@
 import { HttpResponse } from 'msw';
 
+import { CATEGORY_DISPLAY } from '../../constants/study';
 import { studies } from '../../data';
+import { getStudyCrew } from '../../data/crew';
 import { mockClient, type MockResolveContext } from '../utils';
+
+/** 스터디 카테고리 표시명 → API 키 (역매핑) */
+const CATEGORY_KEY: Record<string, string> = Object.fromEntries(
+  Object.entries(CATEGORY_DISPLAY).map(([k, v]) => [v, k])
+);
+
+function meetingScheduledAt(date: string, study: (typeof studies)[number]): string {
+  const time =
+    study.schedule?.ko
+      .match(/(\d{1,2}):(\d{2})/)
+      ?.slice(1)
+      .join(':') ?? '20:00';
+  return `${date}T${time}:00+09:00`;
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 type MyStudyRelation = 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'WITHDRAWN';
 
 const ACCEPTED_IDS = new Set([1, 3, 9, 11, 18, 19, 20, 22, 23, 24, 25, 26, 28]);
 const WITHDRAWN_IDS = new Set([19]);
 const LEADER_IDS = new Set([11]);
-const CAPTAIN_IDS = new Set([1, 9, 20]);
+const CAPTAIN_IDS = new Set([1, 20]);
 
 const GROUP_ID_OFFSET = 1000;
 
@@ -54,7 +76,7 @@ export const meStudiesHandlers = mockClient.createHandlerGroup('/api/me', [
             .map((study) => ({
               studyId: study.study_id,
               title: study.title.ko,
-              category: 'OTHER',
+              category: CATEGORY_KEY[study.category ?? ''] ?? 'OTHER',
               studyKind: study.kind === 'club' ? 'CLUB' : 'STUDY',
               startAt: study.startAt ?? null,
               endAt: study.date ? `${study.date}T23:59:59Z` : null,
@@ -65,7 +87,37 @@ export const meStudiesHandlers = mockClient.createHandlerGroup('/api/me', [
               discordChannelUrl: study.discord_url ?? null,
               driveUrl: study.driveUrl ?? null,
               attendanceRate: null,
-              meetings: [],
+              meetings: (() => {
+                const crewMeetings = getStudyCrew(study).meetings;
+                const firstDate = crewMeetings[0]?.date;
+                const kickoffDate =
+                  study.startAt?.slice(0, 10) ?? (firstDate ? addDays(firstDate, -7) : null);
+                const kickoff = kickoffDate
+                  ? [
+                      {
+                        meetingId: 0,
+                        sequence: 0,
+                        scheduledAt: meetingScheduledAt(kickoffDate, study),
+                        startAt: null,
+                        endAt: null,
+                        attendanceStatus: null,
+                        countedInRate: false,
+                      },
+                    ]
+                  : [];
+                return [
+                  ...kickoff,
+                  ...crewMeetings.map((m, i) => ({
+                    meetingId: i + 1,
+                    sequence: m.no,
+                    scheduledAt: meetingScheduledAt(m.date, study),
+                    startAt: null,
+                    endAt: null,
+                    attendanceStatus: null,
+                    countedInRate: true,
+                  })),
+                ];
+              })(),
             })),
         }),
       },
