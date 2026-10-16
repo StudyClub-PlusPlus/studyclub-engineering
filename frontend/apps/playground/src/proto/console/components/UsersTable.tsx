@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Pagination } from '@console/components/Pagination';
 import { PageHeader, TableCard } from '@console/components/ui';
 import { maskEmail } from '@console/lib/mask';
 import {
@@ -19,7 +18,7 @@ import {
   type Scope,
 } from '@console/lib/roles';
 import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
-import { Badge, Modal, toast, type BadgeTone } from '@studyclub/ui';
+import { Badge, Modal, Pagination, toast, type BadgeTone } from '@studyclub/ui';
 import { Check, ChevronDown, Eye, EyeOff, Info, Loader2, Minus } from 'lucide-react';
 
 /** 한 화면에 20명. 스크롤로 다 내리는 것보다 「몇 번째 장을 보고 있는가」가 남는 편이 낫다. */
@@ -443,7 +442,7 @@ export function UsersTable() {
         </TableCard>
       </div>
 
-      <Pagination anno='list:4' page={current} total={pageCount} onChange={setPage} />
+      <Pagination data-anno='list:4' className='mt-4' page={current} total={pageCount} onChange={setPage} />
 
       {matrixOpen && <PermissionMatrixDialog onClose={() => setMatrixOpen(false)} />}
     </div>

@@ -12,7 +12,7 @@ export function PermissionMatrixDialog({ open, onClose }: { open: boolean; onClo
   return (
     <Modal open={open} onClose={onClose} size='lg' title='역할별 기본 권한'>
       {error ? (
-        <p className='text-sm text-red-600'>{error.message}</p>
+        <p className='text-sm text-danger-fg'>{error.message}</p>
       ) : isPending || !data ? (
         <p className='py-6 text-center text-sm text-fg-muted'>불러오는 중…</p>
       ) : (

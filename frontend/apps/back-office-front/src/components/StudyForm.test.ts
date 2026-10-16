@@ -186,3 +186,22 @@ describe('serverErrorToField', () => {
     expect(serverErrorToField('status: 바꿀 수 없습니다.')).toBeNull();
   });
 });
+
+describe('썸네일', () => {
+  const withThumb = detailToForm({ ...detail, thumbnailUrl: 'https://cdn.test/gigs/thumbnails/a.jpg' });
+
+  it('새로 올렸으면 번호를 보낸다 — 등록과 수정 둘 다', () => {
+    const uploaded = { ...withThumb, thumbnailFileId: 7, thumbnailUrl: 'https://cdn.test/gigs/thumbnails/b.jpg' };
+    expect(formToPayload(uploaded, withThumb)).toEqual({ thumbnailFileId: 7 });
+    expect(formToCreatePayload({ ...uploaded, programMode: 'new' }).thumbnailFileId).toBe(7);
+  });
+
+  it('있던 것을 지웠으면 null 을 보낸다', () => {
+    expect(formToPayload({ ...withThumb, thumbnailUrl: '' }, withThumb)).toEqual({ thumbnailFileId: null });
+  });
+
+  it('그대로면 보내지 않는다 — 같은 번호를 두 번 연결하면 400', () => {
+    expect(formToPayload(withThumb, withThumb)).toEqual({});
+    expect(formToCreatePayload({ ...withThumb, programMode: 'new' })).not.toHaveProperty('thumbnailFileId');
+  });
+});

@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 
 import { EventCard } from '@/components/EventCard';
 import { FeaturedStudies } from '@/components/FeaturedStudies';
+import { HeroCTADiscordLink, HeroCTAStudiesLink } from '@/components/HeroCTAButton';
 import { JoinCta } from '@/components/JoinCta';
 import { getStudies, getEvents, getOperatorMap, getMembers, getSite, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
@@ -54,7 +55,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
           {m('hero.subtitle', locale)}
         </p>
         <div className='mt-8 flex flex-wrap items-center gap-3'>
-          <a
+          <HeroCTADiscordLink
             href={site.discord_invite}
             target='_blank'
             rel='noreferrer'
@@ -63,13 +64,13 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
           >
             {m('hero.cta', locale)}
             <ArrowRight size={17} className='transition-transform group-hover:translate-x-0.5' />
-          </a>
-          <Link
+          </HeroCTADiscordLink>
+          <HeroCTAStudiesLink
             href={`/${locale}/studies`}
             className='rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-6 py-3 text-base font-semibold shadow-sm transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-2)]'
           >
             {m('hero.cta_studies', locale)}
-          </Link>
+          </HeroCTAStudiesLink>
         </div>
 
         {/* Stats */}

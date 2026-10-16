@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { categoriesOf, type ApplicationQuestionType, type MemberRegion } from '@studyclub/mock';
@@ -10,11 +11,8 @@ import { CalendarClock } from 'lucide-react';
 import { FormHeaderCard, QuestionFillView, formCardClass } from '@/components/ApplicationFormUi';
 import { DiscordNicknameField } from '@/components/DiscordNicknameField';
 import { useStudyApplicationForm, useSubmitApplication } from '@/features/applications/queries';
-import {
-  AVAILABLE_DAYS,
-  makeApplySchema,
-  normalizeSingleLine,
-} from '@/lib/apply-validation';
+import { track } from '@/lib/analytics';
+import { AVAILABLE_DAYS, makeApplySchema, normalizeSingleLine } from '@/lib/apply-validation';
 import type { Locale, Study } from '@/lib/content';
 import { ApiError } from '@/lib/http';
 import { m, t } from '@/lib/i18n';
@@ -30,9 +28,7 @@ function StudyFormHeader({
   locale: Locale;
 }) {
   const cats = categoriesOf(study);
-  const schedule = form?.schedule
-    ? form.schedule
-    : t({ ko: '일정 미정', en: 'Schedule TBD' }, locale);
+  const schedule = form?.schedule ? form.schedule : t({ ko: '일정 미정', en: 'Schedule TBD' }, locale);
   const deadline = form?.recruitDeadline?.slice(0, 10);
   const deadlineLabel = deadline
     ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale)
@@ -64,9 +60,7 @@ function StudyFormHeader({
         {form?.detail && (
           <div className='mt-4 border-t border-border pt-4'>
             <p className='text-sm font-bold text-fg'>{m('common.about_study', locale)}</p>
-            <p className='mt-2 whitespace-pre-line text-sm leading-[1.75] text-fg-secondary'>
-              {form.detail}
-            </p>
+            <p className='mt-2 whitespace-pre-line text-sm leading-[1.75] text-fg-secondary'>{form.detail}</p>
           </div>
         )}
       </section>
@@ -91,6 +85,8 @@ export function ApplyDialog({
   onDeadline?: (label: string) => void;
   onRequireDiscord?: () => void;
 }) {
+  const router = useRouter();
+
   const {
     data: formData,
     isLoading,
@@ -134,6 +130,35 @@ export function ApplyDialog({
   const [done, setDone] = useState(false);
   const [invalidKey, setInvalidKey] = useState<string | null>(null);
   const [attention, setAttention] = useState(0);
+
+  const dialogOpenTracked = useRef(false);
+
+  useEffect(() => {
+    if (open && form && !dialogOpenTracked.current) {
+      dialogOpenTracked.current = true;
+      track({
+        name: 'Study Apply Dialog Opened',
+        props: { study_id: String(study.study_id), has_fixed_schedule: !!form.schedule, my_region: myRegion },
+      });
+    }
+    if (!open) dialogOpenTracked.current = false;
+  }, [open, form, myRegion, study.study_id]);
+
+  useEffect(() => {
+    if (!open || days.length === 0) return;
+    const timer = setTimeout(() => {
+      track({
+        name: 'Study Apply Slots Selected',
+        props: {
+          study_id: String(study.study_id),
+          selected_slots_count: days.length,
+          selected_days: days,
+          region: myRegion,
+        },
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [days, open, myRegion, study.study_id]);
 
   const discordRef = useRef<HTMLElement>(null);
   const scheduleRef = useRef<HTMLElement>(null);
@@ -206,7 +231,16 @@ export function ApplyDialog({
     setDone(false);
   }, [open]);
 
-  function close() {
+  function close(silent = false) {
+    if (!done && !silent) {
+      track({
+        name: 'Study Apply Dialog Dismissed',
+        props: {
+          study_id: String(study.study_id),
+          interaction_step: agreed ? 'schedule' : days.length > 0 ? 'slots' : 'idle',
+        },
+      });
+    }
     setAgreed(false);
     setDays([]);
     setDraftNick('');
@@ -254,6 +288,20 @@ export function ApplyDialog({
     const normalizedNick = normalizeSingleLine(draftNick);
     setDiscordNickname(normalizedNick);
 
+    track({
+      name: 'Study Apply Submitted',
+      props: {
+        study_id: String(study.study_id),
+        study_title_ko: study.title.ko,
+        study_category: study.category ?? '',
+        study_status: study.status,
+        has_fixed_schedule: !!fixedSchedule,
+        selected_slots_count: days.length,
+        region: myRegion,
+        schedule_confirmed: agreed,
+      },
+    });
+
     try {
       const finalAnswers: Record<string, string | string[]> = {};
       for (const q of extraQuestions) {
@@ -286,42 +334,74 @@ export function ApplyDialog({
 
       await submitMutation.mutateAsync(reqBody);
 
-      addApplication({ studyId: study.id, appliedAt: new Date().toISOString().slice(0, 10), status: 'pending', region: myRegion, cells: days });
+      addApplication({
+        studyId: study.id,
+        appliedAt: new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        region: myRegion,
+        cells: days,
+      });
       setDone(true);
+      track({
+        name: 'Study Apply Completed',
+        props: {
+          study_id: String(study.study_id),
+          study_title_ko: study.title.ko,
+          study_category: study.category ?? '',
+          study_status: study.status,
+          apply_type: 'internal',
+        },
+      });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 403) {
-          close();
+          close(true);
           onRequireDiscord?.();
           return;
         }
 
         if (err.status === 409) {
           if (err.message.includes('이미 신청')) {
-            addApplication({ studyId: study.id, appliedAt: new Date().toISOString().slice(0, 10), status: 'pending', region: myRegion, cells: days });
+            addApplication({
+              studyId: study.id,
+              appliedAt: new Date().toISOString().slice(0, 10),
+              status: 'pending',
+              region: myRegion,
+              cells: days,
+            });
             onSubmitted();
             return;
           }
 
           if (err.message.includes('이미 참여')) {
-            setSubmitError(t({ ko: '이미 참여 중인 스터디입니다.', en: 'You are already participating in this study.' }, locale));
+            setSubmitError(
+              t({ ko: '이미 참여 중인 스터디입니다.', en: 'You are already participating in this study.' }, locale),
+            );
             return;
           }
 
           if (err.message.includes('정원')) {
             const label = t({ ko: '정원 마감', en: 'Full' }, locale);
-            close();
+            close(true);
             onDeadline?.(label);
             return;
           }
 
           const label = t({ ko: '모집 마감', en: 'Recruiting closed' }, locale);
-          close();
+          close(true);
           onDeadline?.(label);
           return;
         }
       }
 
+      track({
+        name: 'Study Apply Failed',
+        props: {
+          study_id: String(study.study_id),
+          error_type: err instanceof ApiError ? 'server' : 'network',
+          validation_field: null,
+        },
+      });
       setSubmitError(
         err instanceof ApiError && err.message
           ? err.message
@@ -333,143 +413,183 @@ export function ApplyDialog({
   return (
     <Modal
       open={open}
-      onClose={saving ? () => {} : close}
+      onClose={saving ? () => {} : () => close()}
       size='lg'
       title={t({ ko: '스터디 신청', en: 'Apply to study' }, locale)}
       footer={
-        <>
-          <Button variant='secondary' onClick={close} disabled={saving}>
-            {t({ ko: '취소', en: 'Cancel' }, locale)}
-          </Button>
-          <Button onClick={submit} loading={saving} disabled={!form || formLoading || formError || done}>
-            {t({ ko: '신청', en: 'Apply' }, locale)}
-          </Button>
-        </>
+        done ? (
+          <>
+            <Button variant='secondary' onClick={() => close()}>
+              {t({ ko: '닫기', en: 'Close' }, locale)}
+            </Button>
+            <Button
+              onClick={() => {
+                close();
+                router.push(`/${locale}/my`);
+              }}
+            >
+              {t({ ko: '내 스터디 보러 가기', en: 'Go to My studies' }, locale)}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant='secondary' onClick={() => close()} disabled={saving}>
+              {t({ ko: '취소', en: 'Cancel' }, locale)}
+            </Button>
+            <Button onClick={submit} loading={saving} disabled={!form || formLoading || formError}>
+              {t({ ko: '신청', en: 'Apply' }, locale)}
+            </Button>
+          </>
+        )
       }
     >
       {done ? (
         <p className='py-6 text-center text-sm text-fg-secondary'>
-          {t({ ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.', en: "Your application was received. We'll email you the result." }, locale)}
+          {t(
+            {
+              ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.',
+              en: "Your application was received. We'll email you the result.",
+            },
+            locale,
+          )}
         </p>
       ) : (
-      <div className='-mx-6 -my-4 h-full bg-surface-1 px-6 py-4'>
-        <div className='flex flex-col gap-3'>
-          {formLoading ? (
-            <div className='flex flex-col items-center justify-center py-16 text-center'>
-              <p className='text-sm text-fg-secondary'>
-                {t({ ko: '불러오는 중…', en: 'Loading…' }, locale)}
-              </p>
-            </div>
-          ) : formError ? (
-            <div className='flex flex-col items-center justify-center gap-3 py-16 text-center'>
-              <p className='text-sm text-fg-secondary'>
-                {t({ ko: '신청 폼을 불러오지 못했습니다. 다시 시도해 주세요.', en: 'Failed to load the application form. Please try again.' }, locale)}
-              </p>
-              <Button variant='secondary' onClick={() => void refetchForm()}>
-                {t({ ko: '다시 시도', en: 'Retry' }, locale)}
-              </Button>
-            </div>
-          ) : (
-            <>
-              <StudyFormHeader study={study} form={form} locale={locale} />
-
-              <section ref={discordRef} tabIndex={-1} className={`${cardClass('discord')} outline-none`}>
-                <DiscordNicknameField
-                  value={draftNick}
-                  invalid={invalidKey === 'discord'}
-                  onChange={(v) => { clearInvalid('discord'); setDraftNick(v); }}
-                />
-                <FieldHint field='discord' />
-              </section>
-
-              <section ref={daysRef} tabIndex={-1} className={`${cardClass('days')} outline-none`}>
-                <p className='text-sm font-medium text-neutral-800'>
-                  {t({ ko: '참여 가능한 요일', en: 'Days you can join' }, locale)}
-                  <span className='ml-0.5 text-error-600'>*</span>
+        <div className='-mx-6 -my-4 h-full bg-surface-1 px-6 py-4'>
+          <div className='flex flex-col gap-3'>
+            {formLoading ? (
+              <div className='flex flex-col items-center justify-center py-16 text-center'>
+                <p className='text-sm text-fg-secondary'>{t({ ko: '불러오는 중…', en: 'Loading…' }, locale)}</p>
+              </div>
+            ) : formError ? (
+              <div className='flex flex-col items-center justify-center gap-3 py-16 text-center'>
+                <p className='text-sm text-fg-secondary'>
+                  {t(
+                    {
+                      ko: '신청 폼을 불러오지 못했습니다. 다시 시도해 주세요.',
+                      en: 'Failed to load the application form. Please try again.',
+                    },
+                    locale,
+                  )}
                 </p>
-                <div className='mt-2 flex flex-col gap-2'>
-                  {AVAILABLE_DAYS.map((d) => (
+                <Button variant='secondary' onClick={() => void refetchForm()}>
+                  {t({ ko: '다시 시도', en: 'Retry' }, locale)}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <StudyFormHeader study={study} form={form} locale={locale} />
+
+                <section ref={discordRef} tabIndex={-1} className={`${cardClass('discord')} outline-none`}>
+                  <DiscordNicknameField
+                    value={draftNick}
+                    invalid={invalidKey === 'discord'}
+                    onChange={(v) => {
+                      clearInvalid('discord');
+                      setDraftNick(v);
+                    }}
+                  />
+                  <FieldHint field='discord' />
+                </section>
+
+                <section ref={daysRef} tabIndex={-1} className={`${cardClass('days')} outline-none`}>
+                  <p className='text-sm font-medium text-neutral-800'>
+                    {t({ ko: '참여 가능한 요일', en: 'Days you can join' }, locale)}
+                    <span className='ml-0.5 text-error-600'>*</span>
+                  </p>
+                  <div className='mt-2 flex flex-col gap-2'>
+                    {AVAILABLE_DAYS.map((d) => (
+                      <Checkbox
+                        key={d.key}
+                        aria-invalid={invalidKey === 'days' ? 'true' : undefined}
+                        label={locale === 'ko' ? d.ko : d.en}
+                        checked={days.includes(d.key)}
+                        onChange={() => toggleDay(d.key)}
+                      />
+                    ))}
+                  </div>
+                  <FieldHint field='days' />
+                </section>
+
+                {fixedSchedule && (
+                  <section ref={scheduleRef} tabIndex={-1} className={`${cardClass('schedule')} outline-none`}>
                     <Checkbox
-                      key={d.key}
-                      aria-invalid={invalidKey === 'days' ? 'true' : undefined}
-                      label={locale === 'ko' ? d.ko : d.en}
-                      checked={days.includes(d.key)}
-                      onChange={() => toggleDay(d.key)}
+                      aria-invalid={invalidKey === 'schedule' ? 'true' : undefined}
+                      label={t(
+                        { ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` },
+                        locale,
+                      )}
+                      checked={agreed}
+                      onChange={(e) => {
+                        setAgreed(e.target.checked);
+                        clearInvalid('schedule');
+                      }}
                     />
-                  ))}
-                </div>
-                <FieldHint field='days' />
-              </section>
+                    <FieldHint field='schedule' />
+                  </section>
+                )}
 
-              {fixedSchedule && (
-                <section ref={scheduleRef} tabIndex={-1} className={`${cardClass('schedule')} outline-none`}>
-                  <Checkbox
-                    aria-invalid={invalidKey === 'schedule' ? 'true' : undefined}
-                    label={t({ ko: `${fixedSchedule} 참여 가능합니다`, en: `I can attend: ${fixedSchedule}` }, locale)}
-                    checked={agreed}
-                    onChange={(e) => { setAgreed(e.target.checked); clearInvalid('schedule'); }}
-                  />
-                  <FieldHint field='schedule' />
-                </section>
-              )}
+                {extraQuestions.map((q) => (
+                  <section
+                    key={q.id}
+                    tabIndex={-1}
+                    ref={(el) => {
+                      questionRefs.current[q.id] = el;
+                    }}
+                    className={`${cardClass(q.id)} outline-none`}
+                  >
+                    <QuestionFillView
+                      q={q}
+                      invalid={invalidKey === q.id}
+                      value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
+                      values={Array.isArray(answers[q.id]) ? (answers[q.id] as string[]) : []}
+                      otherChecked={Boolean(otherSelected[q.id])}
+                      otherValue={otherTexts[q.id] ?? ''}
+                      onChange={(value) => {
+                        clearInvalid(q.id);
+                        setOtherSelected((prev) => ({ ...prev, [q.id]: false }));
+                        setAnswers((prev) => ({ ...prev, [q.id]: value }));
+                      }}
+                      onToggle={(option) => {
+                        clearInvalid(q.id);
+                        setAnswers((prev) => {
+                          const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
+                          return {
+                            ...prev,
+                            [q.id]: cur.includes(option) ? cur.filter((x) => x !== option) : [...cur, option],
+                          };
+                        });
+                      }}
+                      onOtherToggle={(checked) => {
+                        clearInvalid(q.id);
+                        setOtherSelected((prev) => ({ ...prev, [q.id]: checked }));
+                        if (q.type === 'radio' && checked) {
+                          setAnswers((prev) => ({ ...prev, [q.id]: otherTexts[q.id] ?? '' }));
+                        }
+                      }}
+                      onOtherChange={(text) => {
+                        clearInvalid(q.id);
+                        setOtherTexts((prev) => ({ ...prev, [q.id]: text }));
+                        if (q.type === 'radio') {
+                          setAnswers((prev) => ({ ...prev, [q.id]: text }));
+                        }
+                      }}
+                    />
+                    <FieldHint field={q.id} />
+                  </section>
+                ))}
 
-              {extraQuestions.map((q) => (
-                <section
-                  key={q.id}
-                  tabIndex={-1}
-                  ref={(el) => { questionRefs.current[q.id] = el; }}
-                  className={`${cardClass(q.id)} outline-none`}
-                >
-                  <QuestionFillView
-                    q={q}
-                    invalid={invalidKey === q.id}
-                    value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
-                    values={Array.isArray(answers[q.id]) ? (answers[q.id] as string[]) : []}
-                    otherChecked={Boolean(otherSelected[q.id])}
-                    otherValue={otherTexts[q.id] ?? ''}
-                    onChange={(value) => {
-                      clearInvalid(q.id);
-                      setOtherSelected((prev) => ({ ...prev, [q.id]: false }));
-                      setAnswers((prev) => ({ ...prev, [q.id]: value }));
-                    }}
-                    onToggle={(option) => {
-                      clearInvalid(q.id);
-                      setAnswers((prev) => {
-                        const cur = Array.isArray(prev[q.id]) ? (prev[q.id] as string[]) : [];
-                        return { ...prev, [q.id]: cur.includes(option) ? cur.filter((x) => x !== option) : [...cur, option] };
-                      });
-                    }}
-                    onOtherToggle={(checked) => {
-                      clearInvalid(q.id);
-                      setOtherSelected((prev) => ({ ...prev, [q.id]: checked }));
-                      if (q.type === 'radio' && checked) {
-                        setAnswers((prev) => ({ ...prev, [q.id]: otherTexts[q.id] ?? '' }));
-                      }
-                    }}
-                    onOtherChange={(text) => {
-                      clearInvalid(q.id);
-                      setOtherTexts((prev) => ({ ...prev, [q.id]: text }));
-                      if (q.type === 'radio') {
-                        setAnswers((prev) => ({ ...prev, [q.id]: text }));
-                      }
-                    }}
-                  />
-                  <FieldHint field={q.id} />
-                </section>
-              ))}
-
-              {submitError && (
-                <div role='alert' className='flex items-center gap-3 rounded-xl bg-error-50 px-4 py-3'>
-                  <p className='flex-1 text-sm text-error-700'>{submitError}</p>
-                  <Button variant='secondary' onClick={submit} disabled={saving}>
-                    {t({ ko: '다시 시도', en: 'Retry' }, locale)}
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
+                {submitError && (
+                  <div role='alert' className='flex items-center gap-3 rounded-xl bg-error-50 px-4 py-3'>
+                    <p className='flex-1 text-sm text-error-700'>{submitError}</p>
+                    <Button variant='secondary' onClick={submit} disabled={saving}>
+                      {t({ ko: '다시 시도', en: 'Retry' }, locale)}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
       )}
     </Modal>
   );

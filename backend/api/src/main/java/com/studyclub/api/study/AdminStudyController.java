@@ -89,8 +89,10 @@ public class AdminStudyController {
                             + " 보낸 필드만 반영한다.")
     @PatchMapping("/{studyId}")
     public ResponseEntity<Void> update(
-            @PathVariable Long studyId, @Valid @RequestBody StudyUpdateRequest request) {
-        studyService.updateFromBackOffice(studyId, request);
+            @PathVariable Long studyId,
+            @Valid @RequestBody StudyUpdateRequest request,
+            Authentication authentication) {
+        studyService.updateFromBackOffice((Long) authentication.getPrincipal(), studyId, request);
         return ResponseEntity.noContent().build();
     }
 

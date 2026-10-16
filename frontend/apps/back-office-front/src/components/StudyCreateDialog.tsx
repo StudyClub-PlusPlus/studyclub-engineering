@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Button, Modal } from '@studyclub/ui';
@@ -14,30 +13,28 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from '@/components/StudyForm';
-import { uploadStudyThumbnail, useCreateStudy } from '@/features/studies/queries';
+import { useCreateStudy } from '@/features/studies/queries';
 
 /**
  * 스터디 등록 팝업.
  *
- * 폼 본체는 `StudyForm`이며, 등록 화면과 정보 탭이 같은 입력 구성을 공유한다.
- * 이 컴포넌트는 모달 상태, 검증, 생성 요청, 성공·실패 상태만 담당한다.
+ * 폼 본체는 `StudyForm` 이며 **정보 탭이 같은 것을 쓴다.** 등록과 수정에서 보이는 칸이 달라지면
+ * 운영자가 화면마다 다른 것을 외워야 한다. 다른 점은 프로그램 칸뿐이다 — 등록에서만 고를 수 있어
+ * `mode` 로 가른다.
  */
 export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const router = useRouter();
   const [form, setForm] = useState<StudyFormValues>(EMPTY_FORM);
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const create = useCreateStudy();
-  const saving = create.isPending || uploading;
+  const saving = create.isPending;
 
   useEffect(() => {
     if (!open) return;
     setForm(EMPTY_FORM);
     setErrors({});
     setFailure(null);
-    setUploading(false);
     setDone(false);
   }, [open]);
 
@@ -45,7 +42,6 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
     setForm(EMPTY_FORM);
     setErrors({});
     setFailure(null);
-    setUploading(false);
     setDone(false);
     onClose();
   }
@@ -57,22 +53,14 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
 
     setFailure(null);
     try {
-      const payload = formToCreatePayload(form);
-      if (form.thumbnailFile) {
-        setUploading(true);
-        payload.thumbnailUrl = await uploadStudyThumbnail(form.thumbnailFile);
-        setUploading(false);
-      }
-      await create.mutateAsync(payload);
+      await create.mutateAsync(formToCreatePayload(form));
       setDone(true);
-      router.refresh();
     } catch (err) {
       // 서버가 `필드: 사유` 로 주면 그 칸에 붙이고, 아니면 입력값을 그대로 둔 채 위에 알린다
       const message = err instanceof Error ? err.message : '등록하지 못했습니다. 잠시 후 다시 시도해 주세요.';
       const fieldError = serverErrorToField(message);
       if (fieldError) setErrors(fieldError);
       else setFailure(message);
-      setUploading(false);
     }
   }
 
@@ -99,7 +87,7 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
     >
       {done ? (
         <p className='py-6 text-center text-sm text-fg-muted'>
-          등록되었습니다. 아직 사이트에 보이지 않습니다 — 목록에서 공개를 켜세요.
+          등록되었습니다. 비공개 상태로 만들어지며, 모집을 시작하면 사이트에 공개됩니다.
         </p>
       ) : (
         <>

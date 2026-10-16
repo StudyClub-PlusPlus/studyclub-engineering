@@ -36,3 +36,8 @@ mail:
 notification:
   polling:
     enabled: false
+
+# 업로드 정리 배치도 같은 이유로 끈다. 배치 테스트는 cleanUp() 을 직접 부른다.
+upload:
+  cleanup:
+    enabled: false

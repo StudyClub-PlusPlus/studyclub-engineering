@@ -2,6 +2,7 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AccountDtos.MarketingConsentView;
 import com.studyclub.api.auth.dto.AccountDtos.UpdateMarketingConsentRequest;
+import com.studyclub.api.auth.dto.AccountDtos.UpdateProfileImageRequest;
 import com.studyclub.api.auth.dto.AccountDtos.UpdateProfileRequest;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.api.auth.security.RequireOnboarding;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -42,6 +44,20 @@ public class AccountProfileController {
     public AccountView updateProfile(
             Authentication authentication, @Valid @RequestBody UpdateProfileRequest request) {
         return accountProfileService.update(authenticatedAccountId(authentication), request);
+    }
+
+    @Operation(summary = "프로필 사진 연결 — 올려 둔 파일 번호를 내 프로필에, 이미 있으면 교체")
+    @PutMapping("/profile-image")
+    public AccountView changeProfileImage(
+            Authentication authentication, @Valid @RequestBody UpdateProfileImageRequest request) {
+        return accountProfileService.changeProfileImage(
+                authenticatedAccountId(authentication), request.fileId());
+    }
+
+    @Operation(summary = "프로필 사진 지우기 — 사진이 없어도 200")
+    @DeleteMapping("/profile-image")
+    public AccountView removeProfileImage(Authentication authentication) {
+        return accountProfileService.removeProfileImage(authenticatedAccountId(authentication));
     }
 
     @Operation(summary = "마케팅 수신 동의 조회")

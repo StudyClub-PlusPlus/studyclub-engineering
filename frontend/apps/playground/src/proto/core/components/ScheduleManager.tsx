@@ -2,13 +2,14 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { AutoTextarea } from '@core/components/AutoTextarea';
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import {
   DISPLAY_ZONES,
+  addDaysYmd,
   DOW_LABEL,
   REPEAT_SPAN_DAYS,
   TITLE_MAX,
+  dateWithDow,
   dayLabel,
   defaultDate,
   defaultUntil,
@@ -34,8 +35,8 @@ import {
 import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import type { Study } from '@studyclub/mock';
-import { Button, Input, Modal, cx } from '@studyclub/ui';
-import { Plus, Trash2, X } from 'lucide-react';
+import { AutoTextarea, Button, Input, Modal, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Plus, X } from 'lucide-react';
 
 /**
  * 스터디 일정 — 구글 시트 출석부의 일정표를 옮긴 화면. 참가자 누구나 본다.
@@ -69,7 +70,9 @@ export function ScheduleManager({
 }) {
   const src = source ?? studySource(study, group.timeZone);
   const [adding, setAdding] = useState(canEdit && startAdding);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  // 일괄 삭제 — 고른 예정 정규 회차. 확인 모달은 한 회차 삭제와 같은 창을 쓴다
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
   /** 신청이 밀렸을 때처럼 알려야 하지만 성공은 아닌 한 줄. */
   const [notice, setNotice] = useState<string | null>(null);
   /** 화면 문구 없이 스크린리더에만 결과를 알린다 — 늘 붙어 있는 aria-live 영역. */
@@ -211,16 +214,34 @@ export function ScheduleManager({
     refresh();
   }
 
-  function remove(target: ProtoMeeting) {
-    src.remove(target.id);
-    setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => id !== target.id)));
-    delete bases.current[target.id];
-    setAnnounce(`${meetingLabel(target)}를 지웠습니다.`);
-    setConfirmId(null);
+  function remove(targets: ProtoMeeting[]) {
+    const ids = new Set(targets.map((t) => t.id));
+    for (const t of targets) {
+      src.remove(t.id);
+      delete bases.current[t.id];
+    }
+    setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => !ids.has(id))));
+    setAnnounce(
+      targets.length === 1 ? `${meetingLabel(targets[0]!)}를 지웠습니다.` : `회차 ${targets.length}개를 지웠습니다.`,
+    );
+    setBulkConfirm(false);
+    setChecked(new Set());
     refresh();
   }
 
-  const cols = canEdit ? 7 : 6;
+  // 지울 수 있는 회차 — 예정된 정규 회차만. 킥오프와 시작한 회차는 출석이 걸려 있어 지우지 않는다
+  const deletable = canEdit ? meetings.filter((m) => !isKickoff(m) && !started(m)) : [];
+  const picked = deletable.filter((m) => checked.has(m.id));
+  const allChecked = deletable.length > 0 && picked.length === deletable.length;
+  function toggle(id: string) {
+    setChecked((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  const toDelete = bulkConfirm ? picked : [];
 
   return (
     <div className='flex flex-col gap-4'>
@@ -240,15 +261,9 @@ export function ScheduleManager({
             onChange={setZone}
           />
           {canEdit && (
+            // 고른 것과 상관없는 일이라 작업 바가 아니라 제목 줄에 둔다 — 신청자 탭 「반 추가」와 같은 자리
             <span data-anno='schedule:2'>
-              <Button
-                size='sm'
-                leadingIcon={<Plus size={15} />}
-                onClick={() => {
-                  setAdding(true);
-                  setConfirmId(null);
-                }}
-              >
+              <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
                 회차 추가
               </Button>
             </span>
@@ -281,13 +296,28 @@ export function ScheduleManager({
 
       {meetings.length === 0 ? (
         <p className='card px-6 py-10 text-center text-sm text-fg-muted'>
-          {canEdit ? '아직 회차가 없습니다. 「회차 추가」로 만드세요.' : '아직 회차가 없습니다.'}
+          {canEdit ? '아직 회차가 없습니다. 아래 「회차 추가」로 만드세요.' : '아직 회차가 없습니다.'}
         </p>
       ) : (
         <div data-anno='schedule:3' className='card overflow-x-auto'>
           <table className='w-full min-w-[66rem] border-separate border-spacing-0 text-sm'>
             <thead>
               <tr className='text-left text-xs font-semibold text-fg-muted'>
+                {canEdit && (
+                  <th data-anno='schedule:3-6' className='w-10 py-3 pl-4'>
+                    <input
+                      type='checkbox'
+                      aria-label='지울 수 있는 회차 전체 선택'
+                      className={CHECKBOX}
+                      checked={allChecked}
+                      disabled={deletable.length === 0}
+                      ref={(el) => {
+                        if (el) el.indeterminate = picked.length > 0 && !allChecked;
+                      }}
+                      onChange={() => setChecked(allChecked ? new Set() : new Set(deletable.map((m) => m.id)))}
+                    />
+                  </th>
+                )}
                 <th className='w-24 px-4 py-3'>회차</th>
                 <th className='w-40 px-2 py-3'>일자</th>
                 <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
@@ -296,7 +326,6 @@ export function ScheduleManager({
                   발표자1
                 </th>
                 <th className='w-36 px-2 py-3'>발표자2</th>
-                {canEdit && <th className='w-14 px-3 py-3 text-right'>삭제</th>}
               </tr>
             </thead>
             <tbody>
@@ -369,9 +398,22 @@ export function ScheduleManager({
                       past && 'text-fg-muted',
                       kickoff && 'bg-surface-1',
                       changed && 'bg-brand-subtle/40',
-                      confirmId === m.id && 'bg-error-50',
+                      bulkConfirm && checked.has(m.id) && 'bg-error-50',
                     )}
                   >
+                    {canEdit && (
+                      <td className='border-t border-border py-2.5 pl-4 align-top'>
+                        {!kickoff && !past && (
+                          <input
+                            type='checkbox'
+                            aria-label={`${meetingLabel(m)} 선택`}
+                            className={CHECKBOX}
+                            checked={checked.has(m.id)}
+                            onChange={() => toggle(m.id)}
+                          />
+                        )}
+                      </td>
+                    )}
                     <td
                       data-anno={kickoff ? 'schedule:10' : undefined}
                       className='tnum border-t border-border px-4 py-2.5 align-top font-bold'
@@ -389,7 +431,7 @@ export function ScheduleManager({
                           onChange={(date) => changeWall(m, { date })}
                         />
                       ) : (
-                        <span className='inline-block py-1.5'>{shown.date}</span>
+                        <span className='inline-block whitespace-nowrap py-1.5'>{dateWithDow(shown.date)}</span>
                       )}
                     </td>
                     <td className={cn(cell, 'tnum')}>
@@ -424,70 +466,78 @@ export function ScheduleManager({
                       {presenterCell('presenter2')}
                       {errors.presenter2 && <p className='mt-1 text-[11px] text-error-700'>{errors.presenter2}</p>}
                     </td>
-                    {canEdit && (
-                      <td className='border-t border-border px-3 py-1.5 text-right align-top'>
-                        {past || kickoff ? (
-                          <span
-                            className='inline-block py-1.5 text-xs text-fg-muted'
-                            title={kickoff ? '킥오프는 지울 수 없습니다' : '출석이 찍혀 있어 지울 수 없습니다'}
-                          >
-                            —
-                          </span>
-                        ) : (
-                          <button
-                            type='button'
-                            data-anno='schedule:3-4'
-                            aria-label={`${meetingLabel(m)} 삭제`}
-                            onClick={() => setConfirmId(confirmId === m.id ? null : m.id)}
-                            className='grid h-8 w-8 place-items-center rounded-control text-fg-muted hover:bg-surface-2 hover:text-error-700'
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </td>
-                    )}
                   </tr>
                 );
-                if (confirmId !== m.id) return [row];
-                return [
-                  row,
-                  <tr key={`${m.id}-confirm`} className='bg-error-50'>
-                    <td colSpan={cols} className='px-4 pb-3'>
-                      <div data-anno='schedule:3-5' className='flex flex-wrap items-center justify-between gap-2'>
-                        <p className='text-[13px] text-error-700'>
-                          {meetingLabel(m)}를 지울까요? 뒤 회차 번호는 하나씩 당겨집니다.
-                        </p>
-                        <span className='flex flex-wrap gap-1.5'>
-                          <Button variant='ghost' size='sm' onClick={() => setConfirmId(null)}>
-                            취소
-                          </Button>
-                          <Button variant='destructive' size='sm' onClick={() => remove(m)}>
-                            삭제
-                          </Button>
-                        </span>
-                      </div>
-                    </td>
-                  </tr>,
-                ];
+                return [row];
               })}
             </tbody>
           </table>
         </div>
       )}
 
-      {canEdit && dirty && (
-        <div data-anno='schedule:6' className='sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-bg py-2'>
-          {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
-          <div className='flex items-center gap-1.5'>
-            <Button variant='ghost' size='sm' onClick={clearDrafts}>
-              변경 취소
-            </Button>
-            <Button size='sm' onClick={saveAll} disabled={errorCount > 0}>
-              저장
-            </Button>
-          </div>
-        </div>
+      {canEdit && (
+        // 표 하단 작업 바 — 한 줄. 왼쪽은 고른 회차 삭제, 오른쪽은 저장 (POL-0008 「표 하단 작업 바」).
+        // 삭제는 늘 보인다 — 체크해야 나타나면 지우는 방법을 찾을 수 없다. 고르기 전에는 잠겨 있고 이유를 말한다
+        <TableActionBar
+          data-anno='schedule:3-7'
+          selection={
+            <>
+              <SelectionCount count={picked.length} unit='개' />
+              <Button
+                size='sm'
+                variant='danger'
+                disabled={picked.length === 0}
+                title={picked.length === 0 ? '지울 회차를 왼쪽 체크박스로 고르세요' : undefined}
+                onClick={() => setBulkConfirm(true)}
+              >
+                삭제
+              </Button>
+              {picked.length > 0 && (
+                <Button size='sm' variant='ghost' onClick={() => setChecked(new Set())}>
+                  선택 해제
+                </Button>
+              )}
+            </>
+          }
+          save={
+            <span data-anno='schedule:6' className='flex items-center gap-2'>
+              {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
+              {dirty && (
+                <Button variant='ghost' size='sm' onClick={clearDrafts}>
+                  변경 취소
+                </Button>
+              )}
+              <Button size='sm' onClick={saveAll} disabled={!dirty || errorCount > 0}>
+                저장
+              </Button>
+            </span>
+          }
+        />
       )}
+
+      {/* 결정을 묻는 모달 — 취소가 기본 포커스. Enter 로 지워지면 안 된다 (POL-0008). 회차는 체크박스로 골라서만 지운다 */}
+      <Modal
+        open={toDelete.length > 0}
+        onClose={() => setBulkConfirm(false)}
+        title='회차 삭제'
+        footer={
+          <>
+            <Button variant='secondary' data-autofocus onClick={() => setBulkConfirm(false)}>
+              취소
+            </Button>
+            <Button variant='destructive' onClick={() => remove(toDelete)}>
+              삭제
+            </Button>
+          </>
+        }
+      >
+        <p data-anno='schedule:3-5' className='text-sm text-fg-secondary'>
+          {toDelete.length === 1
+            ? `${meetingLabel(toDelete[0]!)}(${dayLabel(toDelete[0]!.date)})를 지울까요?`
+            : `회차 ${toDelete.length}개(${toDelete.map((m) => meetingLabel(m)).join(', ')})를 지울까요?`}{' '}
+          뒤 회차 번호는 당겨집니다. 되돌릴 수 없습니다.
+        </p>
+      </Modal>
     </div>
   );
 }
@@ -511,6 +561,10 @@ function sameRow(a: RowDraft, b: RowDraft): boolean {
 function cn(...parts: string[]): string {
   return parts.join(' ');
 }
+
+/** 회차 선택 체크박스 — 출석부 체크박스와 같은 모양. */
+const CHECKBOX =
+  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 const FIELD =
   'h-8 w-full rounded-control border bg-bg px-2 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand/60';
@@ -628,14 +682,32 @@ function AddForm({
   onCancel: () => void;
   onAdded: (label: string) => void;
 }) {
-  const [draft, setDraft] = useState<MeetingDraft>(() => ({
-    date: defaultDate(source.meetings(), new Date().toISOString().slice(0, 10)),
-    time: group.startAt,
-    title: '',
-    repeat: 'none',
-    until: '',
-    weekdays: [],
-  }));
+  const [draft, setDraft] = useState<MeetingDraft>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const regular = source.meetings().filter((m) => !isKickoff(m));
+    // 회차가 하나도 없는 반 — 반의 스터디 요일 · 시각으로 매주 반복을 채워 둔다. 회차는 여기서만 만든다
+    if (regular.length === 0 && group.weekdays && group.weekdays.length > 0) {
+      const days = group.weekdays;
+      let date = addDaysYmd(today, 1);
+      while (!days.includes(dowOf(date))) date = addDaysYmd(date, 1);
+      return {
+        date,
+        time: group.startAt,
+        title: '',
+        repeat: 'weekly',
+        until: defaultUntil(date, 'weekly'),
+        weekdays: days,
+      };
+    }
+    return {
+      date: defaultDate(source.meetings(), today),
+      time: group.startAt,
+      title: '',
+      repeat: 'none',
+      until: '',
+      weekdays: [],
+    };
+  });
   const [errors, setErrors] = useState<DraftErrors>({});
   const [touched, setTouched] = useState(false);
 

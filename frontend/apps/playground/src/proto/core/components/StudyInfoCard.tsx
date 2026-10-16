@@ -2,9 +2,8 @@
 
 import { useId, useState, type ReactNode } from 'react';
 
-import { DiscordGlyph } from '@core/components/DiscordGlyph';
 import { RulesEditor } from '@core/components/RulesEditor';
-import { cx } from '@studyclub/ui';
+import { DiscordGlyph, cx } from '@studyclub/ui';
 import { ChevronDown, FolderOpen } from 'lucide-react';
 
 /** 정보 카드의 바로가기 — 아이콘과 이름만 보이고 새 창으로 연다. 주소는 가리키면 보인다. */
@@ -29,10 +28,11 @@ function LinkButton({ label, href, icon }: { label: string; href: string; icon: 
  * 사용자 사이트 스터디 일정(내 분반)과 백오피스 일정 탭(고른 반)이 같은 카드를 쓴다.
  * 무엇을 보일지는 부르는 쪽이 정한다 — 카드는 받은 값을 그릴 뿐이다.
  *
- * 번호는 `anno` 하나를 받아 카드 · `-1` 규칙 · `-2` 접기로 붙인다.
+ * 번호는 `anno` 하나를 받아 카드 · `-1` 규칙 · `-2` 접기 · `-3` 시간 수정으로 붙인다.
  */
 export function StudyInfoCard({
   time,
+  onEditTime,
   navigator,
   discordHref,
   driveHref,
@@ -44,6 +44,8 @@ export function StudyInfoCard({
 }: {
   /** 「매주 수요일 20:30 KST」 */
   time: string;
+  /** 있으면 스터디 시간 옆에 「수정」을 둔다 — 백오피스 일정 탭만. */
+  onEditTime?: () => void;
   /** 네비게이터 이름. 없으면 부르는 쪽이 「미지정」 등으로 넘긴다. */
   navigator: string;
   /** 비면 그 버튼을 두지 않는다. */
@@ -67,6 +69,19 @@ export function StudyInfoCard({
           <div className='flex gap-2'>
             <dt className='text-fg-muted'>스터디 시간</dt>
             <dd className='tnum font-semibold text-fg'>{time}</dd>
+            {onEditTime && (
+              <dd>
+                <button
+                  type='button'
+                  data-anno={`${anno}-3`}
+                  aria-label='스터디 시간 수정'
+                  onClick={onEditTime}
+                  className='text-sm font-semibold text-brand underline-offset-2 hover:underline'
+                >
+                  수정
+                </button>
+              </dd>
+            )}
           </div>
           <div className='flex gap-2'>
             <dt className='text-fg-muted'>네비게이터</dt>

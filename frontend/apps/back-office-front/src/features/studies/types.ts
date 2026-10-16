@@ -97,13 +97,14 @@ export type StudyCreatePayload = {
   oneLineSummary: string;
   description?: string;
   category: string;
-  thumbnailUrl?: string;
   recruitDeadline: string;
   schedule?: string;
   capacity?: number | null;
   startAt?: string | null;
   discordChannelUrl?: string | null;
   driveUrl?: string | null;
+  /** 썸네일 — `POST /api/uploads/images` 가 준 번호. 주소 문자열은 받지 않는다. */
+  thumbnailFileId?: number;
 };
 
 /**
@@ -121,6 +122,8 @@ export type StudyUpdatePayload = {
   startAt?: string | null;
   discordChannelUrl?: string | null;
   driveUrl?: string | null;
+  /** 새로 올린 썸네일 번호. `null` 이면 썸네일을 지운다. */
+  thumbnailFileId?: number | null;
 };
 
 export const STATUS_LABEL: Record<ApiStudyDetail['status'], string> = {

@@ -3,9 +3,7 @@
 Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 보기**. 자세한 계약은 각 문서가 원본이고,
 이 문서는 무엇이 있는지와 공통 규칙만 모은다.
 
-> ⚠️ **일부만 구현됐다** — create-study · get-study-channels · send-message ·
-> send-alert-message · send-announcement-message 다섯 개다.
-> 나머지는 아래가 구현할 계약의 요약이다.
+> ✅ **아래 아홉 개 모두 구현됐다** — `discord/app/api/routes/`.
 > **대상 길드는 하나로 고정**이라 어떤 요청에도 길드를 넘기지 않는다.
 
 ## Table of Contents
@@ -24,10 +22,10 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 |--------|------|------|-----------|------|
 | `POST` | `/api/v1/studies` | [create-study](create-study.md) | captain | 201 + `{discordStudyId, discordRoleId}` |
 | `GET` | `/api/v1/studies/{discordStudyId}/channels` | [get-study-channels](get-study-channels.md) | captain · navigator · 시스템 | 200 + 채널 배열 |
-| `POST` | `/api/v1/roles/{discordRoleId}/users` | [assign-role](assign-role.md) | captain | 204 |
-| `DELETE` | `/api/v1/roles/{discordRoleId}/users/{discordUserId}?discordStudyId=` | [remove-role](remove-role.md) | captain | 204 |
-| `POST` | `/api/v1/roles/navigator/users` | [assign-navigator-role](assign-navigator-role.md) | captain | 204 |
-| `DELETE` | `/api/v1/roles/navigator/users/{discordUserId}?discordStudyId=` | [remove-navigator-role](remove-navigator-role.md) | captain | 204 |
+| `POST` | `/api/v1/roles/{discordRoleId}/users` | [assign-role](assign-role.md) | captain · 시스템 | 200 + `{succeededCount, failed}` |
+| `DELETE` | `/api/v1/roles/{discordRoleId}/users` | [remove-role](remove-role.md) | captain · 시스템 | 200 + `{succeededCount, failed}` |
+| `POST` | `/api/v1/roles/navigator/users` | [assign-navigator-role](assign-navigator-role.md) | captain | 200 + `{succeededCount, failed}` |
+| `DELETE` | `/api/v1/roles/navigator/users` | [remove-navigator-role](remove-navigator-role.md) | captain | 200 + `{succeededCount, failed}` |
 | `POST` | `/api/v1/channels/{discordChannelId}/msg` | [send-message](send-message.md) | captain · navigator | 204 |
 | `POST` | `/api/v1/channels/alert/msg` | [send-alert-message](send-alert-message.md) | captain · 시스템 | 204 |
 | `POST` | `/api/v1/channels/announcement/msg` | [send-announcement-message](send-announcement-message.md) | captain | 204 |
@@ -41,7 +39,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 | 헤더 | 언제 | 없거나 틀리면 |
 |------|------|---------------|
 | `Content-Type: application/json` | 바디가 있을 때만 | — |
-| `X-API-Key` | 항상 — 서비스 간 인증 | 401 (경로가 없어도 401 우선) |
+| `X-API-Key` | 항상 — 서비스 간 인증 | 401. 단 없는 경로는 키 검사 전에 404 (401 우선은 [아직 미구현](common-header.md)) |
 | `X-Discord-User-ID` | 역할 확인이 필요한 요청 — **현재 모든 엔드포인트**. 시스템 호출은 `DISCORD_BOT_ID` | 400, 길드 멤버 아님 404, 자격 없음 403 |
 | `Idempotency-Key` | 상태를 바꾸는 요청 (`GET` 제외 전부) — 로그 추적용 요청 ID | 없으면 400 |
 
@@ -63,10 +61,13 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 | 401 / 403 | 인증 실패 / 역할 없음 | 조건이 바뀌기 전엔 소용없음 |
 | 404 | 요청자·대상 멤버, 역할, 채널 없음 — `detail` 로 구분 | 원인에 따라 다름 |
 | 409 | 같은 이름의 스터디가 있거나 만드는 중(create-study), 또는 서버 설정 누락 — `detail` 로 구분 | 소용없음 |
-| 502 | Discord 가 거부 (권한 부족, 역할 서열, Discord 5xx) | 5xx 는 가능, 권한·서열은 설정을 고쳐야 함 |
+| 502 | Discord 가 거부 (권한 부족, Discord 5xx) | 5xx 는 가능, 권한은 설정을 고쳐야 함 |
 | 503 | 봇 비활성 또는 아직 미연결 | 가능 |
 
 - 에러 바디는 FastAPI 기본형 `{"detail": "..."}` 이다.
+- **역할 배정·회수 단계의 Discord 실패는 502 가 아니다** — 유저별로 `failed`(`DISCORD_REJECTED`) 에 담기고 응답은 200 이다.
+  역할 서열 문제도 여기로 나간다. 역할 API 의 502 는 대상을 건드리기 전의 실패뿐이다 — 요청자 조회 실패,
+  그리고 붙이기에서 캐시에 없는 대상 유저를 Discord 에 물었는데 답이 없을 때.
 - **429 는 밖으로 나가지 않는다** — discord.py 가 내부에서 기다리므로 응답이 느려질 뿐이다. 호출자는 타임아웃을 넉넉히 잡는다.
 - **먼저 다 확인하고, 그 다음에 실행한다** — 검증에서 걸리면 Discord 에 아무것도 보내지 않는다.
 - **`Idempotency-Key` 는 저장하지 않는다** — 로그 추적용이다. 재시도할 때 **같은 키**를 보내 시도들을 로그에서 묶는다.
@@ -94,25 +95,30 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 
 ## 역할
 
-네 엔드포인트 모두 **captain 만** 호출한다. `discordStudyId` 는 **로그용**이고 봇은 그 값으로 아무것도 검증하지 않는다.
+navigator 고정 둘은 **captain 만**, 아무 역할 둘은 **captain · 시스템**이 호출한다. `discordStudyId` 는 **로그용**이고 봇은 그 값으로 아무것도 검증하지 않는다.
 
 | | 붙이기 | 떼기 |
 |------|--------|------|
 | 아무 역할 | [assign-role](assign-role.md) | [remove-role](remove-role.md) |
 | navigator 고정 | [assign-navigator-role](assign-navigator-role.md) | [remove-navigator-role](remove-navigator-role.md) |
-| 대상 | 바디의 `discordUserIds` 배열 (여러 명) | 경로의 `discordUserId` (한 명) |
-| 길드에 없는 대상 유저 | **404**, 아무도 건드리지 않음 | **204** (이미 원하는 상태) |
-| 역할이 없음 | 404 | 404 |
-| 도중 실패 | 되돌리지 않고 502 — 같은 요청을 그대로 재시도 | 요청당 Discord 호출 1번이라 부분 실패 없음 |
-| 여러 명 | 한 요청에 배열 | 호출자가 유저 수만큼 호출, **유저마다 다른 `Idempotency-Key`** |
+| 대상 | 바디의 `discordUserIds` 배열 | 바디의 `discordUserIds` 배열 |
+| 길드에 없는 대상 유저 | `failed` 에 `NOT_IN_GUILD` | **성공으로 센다** (이미 원하는 상태) |
+| 대상 유저 해석 | 멤버 캐시 먼저, 없는 유저만 Discord 에 한 번에 묻는다 | 미리 해석하지 않는다 — Discord 의 `Unknown Member` 응답으로만 "길드에 없음" 을 판단 |
+| 역할이 없음 | 404 (navigator 고정은 설정이 없으면 409) | 404 (navigator 고정은 설정이 없으면 409) |
+| 도중 실패 | 되돌리지 않고 그 유저만 `failed` — 나머지는 계속. Discord 와의 연결이 끊기면 거기서 멈추고 남은 유저도 `failed` | 같음 |
+| 재시도 | 전체 재전송도, `failed` 만 재전송도 안전 (멱등) | 같음 |
 
-- 붙이기·떼기 모두 **멱등**이다. 204 는 "지금 그 상태다" 라는 뜻이고, 이번에 바뀌었는지는 구분하지 않는다.
-- `discordRoleId` 는 제한하지 않는다 — 올바른 스터디↔역할 쌍을 보내는 건 백엔드 책임이다.
+- 붙이기·떼기 모두 **멱등**이다. `succeededCount` 는 "지금 그 상태인 유저 수" 이고, 이번에 바뀌었는지는 구분하지 않는다.
+- `discordRoleId` 로 **captain · navigator · `@everyone` 은 안 된다** (400) — captain 은 사람이 손으로 주고,
+  navigator 는 전용 엔드포인트가 있다. 막으려면 두 ID 가 필요해서 시스템 호출이어도 설정이 비면 409 다.
+  그 밖의 역할은 제한하지 않는다 — 올바른 스터디↔역할 쌍을 보내는 건 백엔드 책임이다.
 - **navigator 역할은 길드 전체에 하나라**, 스터디 A 때문에 떼면 스터디 B 의 navigator 권한도 사라진다.
   백엔드는 유저가 **남은 어떤 스터디에서도 navigator 가 아닐 때만** `remove-navigator-role` 을 부른다.
-- 봇 역할이 대상 역할보다 아래면 **역할 서열** 때문에 502 다. 재시도로 안 풀리고 길드에서 봇 역할을 올려야 한다
-  (navigator 고정 엔드포인트는 이 경우 **모든 요청이** 실패한다).
-- `discordUserIds` 상한은 미정 (100 정도 제안).
+- 봇 역할이 대상 역할보다 아래면 **역할 서열** 때문에 전원 `failed`(`DISCORD_REJECTED`) 로 나간다. 재시도로 안 풀리고
+  길드에서 봇 역할을 올려야 한다 (navigator 고정 엔드포인트는 이 경우 **모든 요청이** 그렇게 끝난다).
+- `discordUserIds` 는 중복을 뺀 뒤 **최대 100개**다. 넘으면 400.
+- 봇은 `members` intent 로 멤버 캐시를 채운다. **privileged intent** 라 Developer Portal 에서도 켜야 하고,
+  안 켜면 봇이 로그인에서 거부된다 ([`discord/README.md`](../../../discord/README.md)).
 
 ## 메시지
 
@@ -146,7 +152,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 
 고정 경로와 동적 경로가 모양이 겹친다.
 
-- `/roles/navigator/users[/{id}]` ↔ `/roles/{discordRoleId}/users[/{id}]`
+- `/roles/navigator/users` ↔ `/roles/{discordRoleId}/users`
 - `/channels/alert/msg` · `/channels/announcement/msg` ↔ `/channels/{discordChannelId}/msg`
 
 FastAPI 는 등록 순서대로 매칭하므로 **고정 경로를 먼저 등록**하고, 테스트로 순서를 고정한다.
@@ -157,4 +163,4 @@ FastAPI 는 등록 순서대로 매칭하므로 **고정 경로를 먼저 등록
 - **에러 바디 모양** — 여기는 `{"detail": ...}`, 백엔드는 `{errorCode, errorMessage}` 다. 맞출지 결정 필요.
 - **Discord 유저 ID 매핑** — 현재 `ACCOUNT_IDENTITY` 는 `GOOGLE` / `APPLE` 뿐이라, 연동 전까지 호출자가
   `X-Discord-User-ID` 를 채울 수 없다.
-- 엔드포인트별 미정 사항 (create-study 의 기본 채널 이름, 역할 배정 상한, 발신자 줄 문구, 공지 crosspost 등)은 각 문서에 있다.
+- 엔드포인트별 미정 사항 (create-study 의 기본 채널 이름, 발신자 줄 문구, 공지 crosspost 등)은 각 문서에 있다.

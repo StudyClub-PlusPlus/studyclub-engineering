@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useRef, useState } from 'react';
 
-import { Checkbox, Input, Textarea } from '@studyclub/ui';
+import { Checkbox, Input, Select, Textarea, useImageUpload } from '@studyclub/ui';
 
 import { useClubPrograms } from '@/features/studies/queries';
 import {
@@ -11,7 +11,8 @@ import {
   type StudyCreatePayload,
   type StudyUpdatePayload,
 } from '@/features/studies/types';
-import { http } from '@/lib/http';
+import { ApiError, http } from '@/lib/http';
+import { uploadImage } from '@/lib/upload';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -24,7 +25,7 @@ import { http } from '@/lib/http';
  * - 진행 형식(온/오프라인): 전 스터디 온라인 운영이라 선택지가 무의미
  * - 모집 시작일: 마감일만 관리 (모집 상태 판정 축이 마감일 하나) — 진행 시작일과는 다른 값이다
  * - 상시 모집·공개일: 없다. 마감일은 필수이고, 공개는 운영자가 직접 켠다
- * - 시간대: 저장할 컬럼·API 가 아직 없다
+ * - 시간대: 저장할 컬럼이 아직 없다
  *
  * **프로그램은 따로 등록하지 않고 이 폼에서 함께 다룬다.** 프로그램은 제목·종류뿐이고 기수 없는 프로그램은
  * 의미가 없다(docs/erd/STUDY_PROGRAM.md). 등록 모드에서는 「새 프로그램」(첫 기수와 함께 만든다) 또는
@@ -49,19 +50,6 @@ export const TITLE_RECOMMENDED = 24;
 /** 카드 한 줄 소개가 줄바꿈 없이 한 줄로 유지되는 최대 글자수. */
 export const SUMMARY_RECOMMENDED = 25;
 
-/** 등록할 때 공고의 기본 구조를 미리 보여 준다 — 운영자가 매번 항목 순서를 새로 만들지 않게 한다. */
-export const DESCRIPTION_TEMPLATE = `## 목표
-
-
-## 진행 방식
-
-
-## 참가 대상
-
-
-## 특이사항
-`;
-
 export type StudyFormValues = {
   /** 등록에서만 고른다. 수정 모드는 늘 `existing` — 프로그램은 바꾸지 않는다. */
   programMode: 'new' | 'existing';
@@ -73,9 +61,6 @@ export type StudyFormValues = {
   programTitle: string;
   title: string;
   summary: string;
-  /** 화면 미리보기 URL. 새 파일을 고르면 thumbnailFile을 S3에 업로드한다. */
-  thumbnail: string;
-  thumbnailFile?: File | null;
   description: string;
   /** API enum 코드 (`AI_ML` 등). */
   category: string;
@@ -89,6 +74,10 @@ export type StudyFormValues = {
   startAt: string;
   discordUrl: string;
   driveUrl: string;
+  /** 썸네일 미리보기 주소. 빈 문자열이면 없음. */
+  thumbnailUrl: string;
+  /** 이번에 새로 올린 썸네일 번호 — 저장할 때만 보낸다. 서버 값에서 되돌린 폼은 늘 null. */
+  thumbnailFileId: number | null;
 };
 
 export const EMPTY_FORM: StudyFormValues = {
@@ -98,9 +87,7 @@ export const EMPTY_FORM: StudyFormValues = {
   programTitle: '',
   title: '',
   summary: '',
-  thumbnail: '',
-  thumbnailFile: null,
-  description: DESCRIPTION_TEMPLATE,
+  description: '',
   category: '',
   deadline: '',
   capacity: '',
@@ -109,6 +96,8 @@ export const EMPTY_FORM: StudyFormValues = {
   startAt: '',
   discordUrl: '',
   driveUrl: '',
+  thumbnailUrl: '',
+  thumbnailFileId: null,
 };
 
 /**
@@ -138,8 +127,6 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
     programTitle: d.programTitle,
     title: d.title,
     summary: d.oneLineSummary,
-    thumbnail: d.thumbnailUrl ?? '',
-    thumbnailFile: null,
     description: d.description ?? '',
     category: d.category,
     deadline: toKstDate(d.recruitDeadlineAt),
@@ -149,18 +136,8 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
     startAt: toKstDate(d.startAt),
     discordUrl: d.discordChannelUrl ?? '',
     driveUrl: d.driveUrl ?? '',
-  };
-}
-
-/** 기존 클럽의 최신 기수에서 새 기수에 물려줄 값을 만든다. */
-function cohortDefaults(latest: ApiStudyDetail): Partial<StudyFormValues> {
-  return {
-    summary: latest.oneLineSummary,
-    thumbnail: latest.thumbnailUrl ?? '',
-    description: latest.description ?? '',
-    category: latest.category,
-    discordUrl: latest.discordChannelUrl ?? '',
-    driveUrl: latest.driveUrl ?? '',
+    thumbnailUrl: d.thumbnailUrl ?? '',
+    thumbnailFileId: null,
   };
 }
 
@@ -186,6 +163,9 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
   if (changed('startAt')) p.startAt = form.startAt ? startDateToIso(form.startAt) : null;
   if (changed('discordUrl')) p.discordChannelUrl = form.discordUrl.trim() || null;
   if (changed('driveUrl')) p.driveUrl = form.driveUrl.trim() || null;
+  // 새로 올렸으면 그 번호, 있던 것을 지웠으면 null — 그대로면 보내지 않는다 (같은 번호를 두 번 연결하면 400)
+  if (form.thumbnailFileId !== null) p.thumbnailFileId = form.thumbnailFileId;
+  else if (changed('thumbnailUrl') && !form.thumbnailUrl) p.thumbnailFileId = null;
   return p;
 }
 
@@ -195,7 +175,7 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
  *
  * ⚠️ 등록 API 는 아직 정원·진행 시작일·채널/드라이브 주소를 받지 않는다(`StudyCreateRequest`). 그래서 그
  * 칸들은 **등록 요청에 실리지 않고**, 등록 뒤 정보 탭에서 저장해야 한다 — specs/study-registration-spec.md
- * 10절의 남은 항목이다. 썸네일은 파일을 등록 다이얼로그에서 S3에 업로드한 뒤 반환된 URL을 보낸다.
+ * 10절의 남은 항목이다. 보내도 서버가 조용히 버리므로 아예 싣지 않는다.
  */
 export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   const payload: StudyCreatePayload = {
@@ -207,10 +187,8 @@ export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   if (form.programMode === 'existing') payload.studyProgramId = Number(form.programId);
   else payload.studyKind = form.kind;
   if (form.description.trim()) payload.description = form.description;
-  if (form.thumbnail.trim() && !form.thumbnail.startsWith('blob:')) {
-    payload.thumbnailUrl = form.thumbnail.trim();
-  }
   if (form.schedule.trim()) payload.schedule = form.schedule.trim();
+  if (form.thumbnailFileId !== null) payload.thumbnailFileId = form.thumbnailFileId;
   return payload;
 }
 
@@ -223,6 +201,7 @@ const SERVER_FIELD: Record<string, keyof StudyFormValues> = {
   discordChannelUrl: 'discordUrl',
   studyProgramId: 'programId',
   studyKind: 'kind',
+  thumbnailFileId: 'thumbnailUrl',
 };
 
 /** 서버 검증 메시지(`capacity: 1 이상의 정수여야 합니다.`)를 칸 오류로 바꾼다. 못 바꾸면 null. */
@@ -265,122 +244,27 @@ function CharCount({ len, max }: { len: number; max: number }) {
 }
 
 /**
- * 썸네일 — playground와 같은 로컬 미리보기 UI. 선택한 File은 등록 시 S3로 업로드한다.
+ * 기존 클럽을 고르면 물려받는 값 — 제목은 **프로그램 제목**, 소개·설명·주제는 **최신 기수**의 것이다.
+ *
+ * 마감일·진행 일정·정원·진행 시작일은 기수마다 달라 비운다. 반대로 **디스코드 채널·드라이브 주소는 물려받는다**
+ * — 클럽은 기수가 바뀌어도 채널을 새로 파지 않고 같은 채널을 계속 쓴다(채널은 사실 기수가 아니라 프로그램
+ * 단위 자원이다). 새 채널로 바꿨다면 그 칸만 고치면 된다.
  */
-function ThumbnailField({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (next: string, file: File | null) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  function pick(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (value.startsWith('blob:')) URL.revokeObjectURL(value);
-    onChange(URL.createObjectURL(file), file);
-  }
-
-  function remove() {
-    if (value.startsWith('blob:')) URL.revokeObjectURL(value);
-    onChange('', null);
-  }
-
-  return (
-    <div className='flex flex-col gap-1.5'>
-      <span className='text-sm font-medium text-neutral-800'>썸네일</span>
-      <div className='flex items-center gap-3'>
-        {value ? (
-          // eslint-disable-next-line @next/next/no-img-element -- blob: 미리보기는 next/image 최적화 대상이 아니다
-          <img src={value} alt='' className='h-16 w-16 shrink-0 rounded-control border border-border object-cover' />
-        ) : (
-          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-[11px] text-fg-muted'>
-            카테고리 기본값
-          </div>
-        )}
-        <div className='flex flex-col gap-1'>
-          <div className='flex gap-1.5'>
-            <button
-              type='button'
-              onClick={() => inputRef.current?.click()}
-              className='h-8 rounded-control border border-border-strong bg-bg px-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-surface-2'
-            >
-              {value ? '다른 이미지로 바꾸기' : '이미지 업로드'}
-            </button>
-            {value && (
-              <button
-                type='button'
-                onClick={remove}
-                className='h-8 rounded-control border border-border-strong bg-bg px-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-surface-2'
-              >
-                제거
-              </button>
-            )}
-          </div>
-          <span className='text-xs text-fg-muted'>비우면 카테고리에 맞는 기본 이미지가 쓰입니다</span>
-        </div>
-        <input
-          ref={inputRef}
-          type='file'
-          accept='image/jpeg,image/png,image/webp'
-          onChange={pick}
-          className='hidden'
-        />
-      </div>
-    </div>
-  );
-}
-
-/** 카테고리 — playground와 동일하게 펼쳐진 칩으로 고른다. */
-function CategoryField({
-  value,
-  error,
-  onChange,
-}: {
-  value: string;
-  error?: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div className='flex flex-col gap-1.5'>
-      <span className='text-sm font-medium text-neutral-800'>
-        카테고리
-        <span className='ml-0.5 text-error-600'>*</span>
-      </span>
-      <div role='radiogroup' aria-label='카테고리' className='flex flex-wrap gap-1.5'>
-        {CATEGORY_OPTIONS.map((category) => {
-          const selected = value === category.value;
-          return (
-            <button
-              key={category.value}
-              type='button'
-              role='radio'
-              aria-checked={selected}
-              onClick={() => onChange(category.value)}
-              className={`rounded-pill border px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                selected
-                  ? 'border-brand bg-brand text-white'
-                  : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
-              }`}
-            >
-              {category.label}
-            </button>
-          );
-        })}
-      </div>
-      {error && <p className='text-xs font-medium text-error-600'>{error}</p>}
-    </div>
-  );
+function cohortDefaults(latest: ApiStudyDetail): Partial<StudyFormValues> {
+  return {
+    summary: latest.oneLineSummary,
+    description: latest.description ?? '',
+    category: latest.category,
+    discordUrl: latest.discordChannelUrl ?? '',
+    driveUrl: latest.driveUrl ?? '',
+  };
 }
 
 /**
- * 프로그램 — 등록에서는 「새 프로그램」을 만들고, 수정에서는 읽기 전용.
+ * 프로그램 — 등록이면 「새 프로그램 / 기존 클럽의 새 기수」, 수정이면 읽기 전용.
  *
  * 종류는 기수마다 다른 값이 아니라 프로그램의 속성이고, **한 번 정하면 바꾸지 못한다.**
- * 새 기수 연결 화면은 별도 작업으로 둔다.
+ * 새 기수를 붙일 수 있는 것은 클럽뿐이다 — 스터디는 기수가 1개다.
  */
 function ProgramField({
   mode,
@@ -394,7 +278,11 @@ function ProgramField({
   onChange: (next: StudyFormValues) => void;
 }) {
   const [prefilling, setPrefilling] = useState(false);
+  // 등록 모달에서만 부른다 — 정보 탭에서는 고를 일이 없어 요청하지 않는다
   const { data: clubs = [], isLoading } = useClubPrograms(mode === 'create');
+
+  // MVP: 클럽 미지원 — create 모드에서는 프로그램/종류 선택 불필요 (EMPTY_FORM 기본값 사용)
+  if (mode === 'create') return null;
 
   if (mode === 'edit') {
     return (
@@ -407,13 +295,16 @@ function ProgramField({
     );
   }
 
+  /**
+   * 클럽을 고르면 최신 기수를 읽어 폼을 채운다. 프로그램 선택 자체는 먼저 반영해 두고 — 응답을 기다리는
+   * 동안에도 고른 것이 보여야 한다 — 값이 오면 덮어쓴다. 최신 기수를 못 읽어도 선택은 유효하다.
+   */
   async function selectProgram(programId: string) {
     if (!programId) {
-      onChange({ ...value, programId: '', programTitle: '', programMode: 'existing', kind: 'CLUB' });
+      onChange({ ...value, programId: '', programTitle: '' });
       return;
     }
-
-    const club = clubs.find((candidate) => String(candidate.programId) === programId);
+    const club = clubs.find((c) => String(c.programId) === programId);
     const base: StudyFormValues = {
       ...value,
       programMode: 'existing',
@@ -430,28 +321,35 @@ function ProgramField({
       const latest = await http<ApiStudyDetail>(`/api/admin/studies/${club.latestStudyId}`);
       onChange({ ...base, ...cohortDefaults(latest) });
     } catch {
-      // 최신 기수를 읽지 못해도 운영자가 직접 입력할 수 있도록 선택은 유지한다.
+      // 못 읽으면 빈 칸으로 둔다 — 운영자가 직접 적으면 되고, 등록을 막을 이유는 없다
     } finally {
       setPrefilling(false);
     }
   }
 
-  const selectMode = (nextMode: StudyFormValues['programMode']) => {
-    onChange({
-      ...value,
-      programMode: nextMode,
-      programId: '',
-      programTitle: '',
-      kind: nextMode === 'existing' ? 'CLUB' : 'STUDY',
-    });
-  };
-
-  const uniqueClubs = Array.from(
-    new Map(
-      clubs
-        .filter((club) => club.programId != null)
-        .map((club) => [String(club.programId), club]),
-    ).values(),
+  const modeBtn = (m: StudyFormValues['programMode'], label: string) => (
+    <button
+      type='button'
+      role='radio'
+      aria-checked={value.programMode === m}
+      onClick={() =>
+        // 모드를 옮기면 이전 모드의 선택을 들고 가지 않는다
+        onChange({
+          ...value,
+          programMode: m,
+          programId: '',
+          programTitle: '',
+          kind: m === 'existing' ? 'CLUB' : 'STUDY',
+        })
+      }
+      className={`h-9 flex-1 rounded-control border px-3 text-sm transition-colors ${
+        value.programMode === m
+          ? 'border-brand bg-brand/5 font-semibold text-fg'
+          : 'border-border text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
+      }`}
+    >
+      {label}
+    </button>
   );
 
   return (
@@ -460,49 +358,29 @@ function ProgramField({
         프로그램
         <span className='ml-0.5 text-error-600'>*</span>
       </span>
-      <div role='radiogroup' aria-label='프로그램' className='grid grid-cols-2 gap-2'>
-        {[
-          { value: 'new' as const, label: '새 프로그램' },
-          { value: 'existing' as const, label: '기존 클럽의 새 기수' },
-        ].map((option) => {
-          const selected = value.programMode === option.value;
-          return (
-            <button
-              key={option.value}
-              type='button'
-              role='radio'
-              aria-checked={selected}
-              onClick={() => selectMode(option.value)}
-              className={`rounded-control border px-3 py-[7.5px] text-center transition-colors ${
-                selected
-                  ? 'border-brand bg-brand/5 text-fg'
-                  : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
-              }`}
-            >
-              <span className='text-sm font-semibold'>{option.label}</span>
-            </button>
-          );
-        })}
+      <div role='radiogroup' aria-label='프로그램' className='flex gap-2'>
+        {modeBtn('new', '새 프로그램')}
+        {modeBtn('existing', '기존 클럽의 새 기수')}
       </div>
 
       {value.programMode === 'new' ? (
         <div className='flex flex-wrap items-center gap-2 text-sm'>
           <span className='text-xs text-fg-muted'>종류</span>
           <div role='radiogroup' aria-label='종류' className='inline-flex gap-1'>
-            {(['STUDY', 'CLUB'] as StudyKind[]).map((kind) => (
+            {(['STUDY', 'CLUB'] as StudyKind[]).map((k) => (
               <button
-                key={kind}
+                key={k}
                 type='button'
                 role='radio'
-                aria-checked={value.kind === kind}
-                onClick={() => onChange({ ...value, kind })}
+                aria-checked={value.kind === k}
+                onClick={() => onChange({ ...value, kind: k })}
                 className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
-                  value.kind === kind
+                  value.kind === k
                     ? 'border-brand bg-brand text-white'
                     : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
                 }`}
               >
-                {KIND_LABEL[kind]}
+                {KIND_LABEL[k]}
               </button>
             ))}
           </div>
@@ -515,24 +393,93 @@ function ProgramField({
           <select
             aria-label='프로그램 선택'
             value={value.programId}
-            onChange={(event) => void selectProgram(event.target.value)}
+            onChange={(ev) => void selectProgram(ev.target.value)}
             disabled={isLoading || prefilling}
             className='h-10 rounded-control border border-border bg-bg px-3 text-sm outline-none focus:border-border-interactive'
           >
             <option value=''>{isLoading ? '불러오는 중…' : '클럽을 고르세요'}</option>
-            {uniqueClubs.map((club) => (
-              <option key={`club-${String(club.programId)}`} value={club.programId}>
-                {club.title}
+            {clubs.map((c) => (
+              <option key={c.programId} value={c.programId}>
+                {c.title}
               </option>
             ))}
           </select>
           <p className='text-xs text-fg-muted'>
             {prefilling
               ? '최신 기수의 내용을 불러오는 중…'
-              : '새 기수를 붙일 수 있는 것은 클럽뿐입니다. 최신 기수의 내용을 바탕으로 시작합니다.'}
+              : '새 기수를 붙일 수 있는 것은 클럽뿐입니다. 스터디는 기수가 1개이고, 종류는 한 번 정하면 바꿀 수 없습니다.'}
           </p>
           {errors.programId && <p className='text-xs font-medium text-error-600'>{errors.programId}</p>}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 썸네일 — 고르면 바로 올리고(번호 받기) 미리보기를 띄운다. 스터디에 붙는 건 「저장」 때다.
+ * 올리기만 하고 저장하지 않으면 서버가 하루 뒤 지운다 (docs/flows/image-upload.md).
+ */
+function ThumbnailField({
+  value,
+  error,
+  onChange,
+}: {
+  value: StudyFormValues;
+  error?: string;
+  onChange: (next: StudyFormValues) => void;
+}) {
+  // 올리는 동안 다른 칸을 고쳐도 덮어쓰지 않게 — 올리기가 끝난 시점의 폼 값에 썸네일만 얹는다
+  const latest = useRef(value);
+  latest.current = value;
+  const thumb = useImageUpload({
+    purpose: 'STUDY_THUMBNAIL',
+    upload: uploadImage,
+    onUploaded: ({ fileId, url }) => onChange({ ...latest.current, thumbnailFileId: fileId, thumbnailUrl: url }),
+    onError: (err) =>
+      err instanceof ApiError ? err.message : '썸네일을 올리지 못했습니다. 잠시 후 다시 시도해 주세요',
+  });
+  const shown = thumb.error ?? error;
+
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <span className='text-sm font-medium text-fg'>썸네일</span>
+      <div className='flex items-center gap-4'>
+        {value.thumbnailUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value.thumbnailUrl} alt='' className='h-20 w-36 rounded-control object-cover' />
+        ) : (
+          <div className='grid h-20 w-36 place-items-center rounded-control bg-surface-2 text-xs text-fg-muted'>
+            없음
+          </div>
+        )}
+        <div className='flex items-center gap-3 text-sm'>
+          <button
+            type='button'
+            onClick={thumb.pick}
+            disabled={thumb.isUploading}
+            className='text-fg-secondary underline-offset-4 hover:text-fg hover:underline disabled:opacity-50'
+          >
+            {thumb.isUploading ? '올리는 중' : value.thumbnailUrl ? '바꾸기' : '이미지 고르기'}
+          </button>
+          {value.thumbnailUrl && (
+            <button
+              type='button'
+              onClick={() => onChange({ ...value, thumbnailUrl: '', thumbnailFileId: null })}
+              disabled={thumb.isUploading}
+              className='text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline disabled:opacity-50'
+            >
+              지우기
+            </button>
+          )}
+        </div>
+        <input {...thumb.inputProps} className='hidden' aria-label='썸네일 파일' />
+      </div>
+      <p className='text-xs text-fg-muted'>jpeg · png · webp, 5MB 이하. 저장해야 반영됩니다.</p>
+      {shown && (
+        <p role='alert' className='text-xs text-error-700'>
+          {shown}
+        </p>
       )}
     </div>
   );
@@ -557,48 +504,53 @@ export function StudyForm({
 
   return (
     <div className='flex flex-col gap-3'>
-      {/* 새 프로그램을 만들고, 그 종류를 정한다 */}
+      {/* 어느 프로그램의 기수인지부터 정한다 — 기존 클럽을 고르면 아래 칸들이 채워진다 */}
       <ProgramField mode={mode} value={value} errors={errors} onChange={onChange} />
 
       {/* 무엇을 만드는지부터 적고 날짜는 뒤에 받는다 */}
-      <div>
-        <Input
-          label='제목'
-          required
-          value={value.title}
-          onChange={(ev) => set('title', ev.target.value)}
-          placeholder='AI 논문 스터디'
-          error={errors.title}
-          labelHint={<CharCount len={value.title.trim().length} max={TITLE_RECOMMENDED} />}
-        />
-      </div>
-
-      <div>
-        <Input
-          label='한 줄 소개'
-          required
-          value={value.summary}
-          onChange={(ev) => set('summary', ev.target.value)}
-          placeholder='AI 논문을 함께 읽고 토론합니다.'
-          error={errors.summary}
-          labelHint={<CharCount len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
-        />
-      </div>
-
-      <ThumbnailField
-        value={value.thumbnail}
-        onChange={(next, file) => onChange({ ...value, thumbnail: next, thumbnailFile: file })}
+      <Input
+        label='제목'
+        required
+        value={value.title}
+        onChange={(ev) => set('title', ev.target.value)}
+        placeholder='AI 논문 스터디'
+        error={errors.title}
+        labelHint={<CharCount len={value.title.trim().length} max={TITLE_RECOMMENDED} />}
       />
 
-      <CategoryField value={value.category} error={errors.category} onChange={(next) => set('category', next)} />
+      <Input
+        label='한 줄 소개'
+        required
+        value={value.summary}
+        onChange={(ev) => set('summary', ev.target.value)}
+        placeholder='AI 논문을 함께 읽고 토론합니다.'
+        error={errors.summary}
+        labelHint={<CharCount len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
+      />
+
+      <ThumbnailField value={value} error={errors.thumbnailUrl} onChange={onChange} />
+
+      <Select
+        label='카테고리'
+        required
+        value={value.category}
+        onChange={(ev) => set('category', ev.target.value)}
+        error={errors.category}
+      >
+        <option value=''>선택하세요</option>
+        {CATEGORY_OPTIONS.map((c) => (
+          <option key={c.value} value={c.value}>
+            {c.label}
+          </option>
+        ))}
+      </Select>
 
       <Textarea
         label='상세 설명'
-        rows={8}
+        rows={6}
         value={value.description}
         onChange={(ev) => set('description', ev.target.value)}
-        placeholder='스터디 목표, 진행 방식, 참가 대상, 특이사항을 적어 주세요.'
-        helper='마크다운을 사용할 수 있습니다.'
+        placeholder='스터디 목표, 진행 방식, 참가 대상, 특이사항을 적어 주세요. 마크다운을 쓸 수 있습니다.'
       />
 
       <Input
@@ -606,7 +558,7 @@ export function StudyForm({
         value={value.schedule}
         onChange={(ev) => set('schedule', ev.target.value)}
         placeholder='매주 목 20:00 · 8주 과정'
-        labelHint={<span>비우면 신청 화면에 일정 미정으로 안내합니다</span>}
+        labelHint='비우면 신청 화면에 일정 미정으로 안내합니다'
       />
 
       <div className='grid gap-3 sm:grid-cols-2'>
@@ -644,29 +596,27 @@ export function StudyForm({
         />
       </div>
 
-      <div className='grid gap-3 sm:grid-cols-2'>
-        <div className='flex flex-col gap-1.5'>
-          <label htmlFor='startAt' className='text-sm font-medium text-neutral-800'>
-            진행 시작일
-          </label>
-          <input
-            id='startAt'
-            type='date'
-            min={value.deadline || undefined}
-            value={value.startAt}
-            onChange={(ev) => set('startAt', ev.target.value)}
-            className={DATE_INPUT}
-            aria-invalid={Boolean(errors.startAt)}
-            aria-describedby={errors.startAt ? 'startAt-error' : undefined}
-          />
-          {errors.startAt ? (
-            <p id='startAt-error' className='text-xs font-medium text-error-600'>
-              {errors.startAt}
-            </p>
-          ) : (
-            <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
-          )}
-        </div>
+      <div className='flex flex-col gap-1.5'>
+        <label htmlFor='startAt' className='text-sm font-medium text-neutral-800'>
+          진행 시작일
+        </label>
+        <input
+          id='startAt'
+          type='date'
+          min={value.deadline || undefined}
+          value={value.startAt}
+          onChange={(ev) => set('startAt', ev.target.value)}
+          className={DATE_INPUT}
+          aria-invalid={Boolean(errors.startAt)}
+          aria-describedby={errors.startAt ? 'startAt-error' : undefined}
+        />
+        {errors.startAt ? (
+          <p id='startAt-error' className='text-xs font-medium text-error-600'>
+            {errors.startAt}
+          </p>
+        ) : (
+          <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+        )}
       </div>
 
       <Input

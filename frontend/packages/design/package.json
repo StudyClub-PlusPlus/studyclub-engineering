@@ -9,6 +9,7 @@
     "./base.css":             { "style": "./base.css",    "default": "./base.css"    },
     "./core.css":             { "style": "./core.css",    "default": "./core.css"    },
     "./console.css":          { "style": "./console.css", "default": "./console.css" },
+    "./console-only.css":     { "style": "./console-only.css", "default": "./console-only.css" },
     "./console.overrides.css":{ "style": "./console.css", "default": "./console.css" },
     "./core-front.css":       { "style": "./core.css",    "default": "./core.css"    },
     "./back-office-front.css":{ "style": "./console.css", "default": "./console.css" }
@@ -22,6 +23,7 @@
     "base.css",
     "core.css",
     "console.css",
+    "console-only.css",
     "docs"
   ]
 }
