@@ -50,7 +50,7 @@ class RoleUsersRequest(BaseModel):
         The limit is counted after deduplication, so the response accounts for
         exactly the users counted here.
         """
-        unique = list(dict.fromkeys(ids))
+        unique = list(dict.fromkeys(str(int(uid)) for uid in ids))
         if len(unique) > MAX_USERS:
             raise ValueError(f"at most {MAX_USERS} users may be given at once")
         return unique
