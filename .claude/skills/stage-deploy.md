@@ -19,9 +19,9 @@ description: "기능 브랜치를 develop 에 합쳐 push 해서 stage 에 반�
 
 | 바뀐 경로 | 워크플로 | 확인 주소 |
 |---|---|---|
-| `backend/**` | `backend-develop-CI` (+ `backend-migration-check`) | `https://api.stage.studyclub-plusplus.com/api/health` |
+| `backend/**` | `backend-develop-CI` (+ `backend-migration-check`) | `https://api-stage.studyclub-plusplus.com/api/health` |
 | `frontend/apps/core-front/**` · `frontend/packages/**` | `core-front-develop-CI` | `https://stage.studyclub-plusplus.com` |
-| `frontend/apps/back-office-front/**` · `frontend/packages/**` | `back-office-front-develop-CI` | back-office-stage 도메인 |
+| `frontend/apps/back-office-front/**` · `frontend/packages/**` | `back-office-front-develop-CI` | `https://back-office-stage.studyclub-plusplus.com` |
 | `frontend/packages/ui/**` | `storybook-develop-CI` 도 | — |
 
 빌드 결과는 슬랙 `#build-status` 에 뜬다.
@@ -90,7 +90,7 @@ gh run watch <databaseId> --exit-status
 
 ### 6. stage 확인
 
-- `curl -s https://api.stage.studyclub-plusplus.com/api/health` — 새 이미지가 떴는지
+- `curl -s https://api-stage.studyclub-plusplus.com/api/health` — 새 이미지가 떴는지
 - 기능 확인은 `prober` 로 케이스를 만들어 돌린다 (`/prober:extract` → `/prober:smoke`)
 - 테스트 발송(메일·디스코드)은 테스트 수신함으로만
 
@@ -109,3 +109,9 @@ git checkout <브랜치>
 | 마이그레이션 | 새로 실행된 번호, 없으면 없음 |
 | stage 확인 | 무엇을 눌러 봤나 · 결과 |
 | 남은 것 | env 누락 · 실패한 워크플로 등 |
+
+## 알려진 함정
+
+- **새 env 가 필요한 기능은 stage 서버 env 부터.** 배포 스크립트는 원격 서버(`deployment/studyclub/api-stage.sh`)에 있고 이 레포 밖이다.
+  2026-10-16 이미지 업로드를 올렸을 때 S3 env 가 없어 503 이었다 — push 전에 PR 「머지 전 확인」의 env 를 인프라 담당자에게 먼저 요청한다
+- **stage 백오피스는 ADMIN 계정이어야 한다.** MEMBER 로 로그인돼 있으면 `/studies` 가 403 으로 통째로 죽는다(React #441) — 배포 문제로 착각하지 않는다
