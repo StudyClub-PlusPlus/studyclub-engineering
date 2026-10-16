@@ -1,0 +1,43 @@
+/**
+ * 메일 템플릿 미리보기 — 서버 렌더러(`NotificationTemplateRenderer`)와 **같은 규칙**으로 채운다.
+ *
+ * 서버는 payload 의 키마다 `{{key}}` 를 값(String.valueOf)으로 바꾸고, 모르는 플레이스홀더는 그대로 둔다.
+ * 이스케이프하지 않는 것까지 같게 둔다 — 화면과 실제 메일이 달라 보이면 미리보기가 아니다.
+ * (그래서 iframe 은 sandbox 로 스크립트를 막는다.)
+ */
+
+export type MailTemplate = {
+  id: number;
+  eventType: string;
+  channel: string;
+  subject: string;
+  body: string;
+  updatedAt: string;
+};
+
+export function renderTemplate(template: string, payload: Record<string, unknown>): string {
+  let rendered = template;
+  for (const [key, value] of Object.entries(payload)) {
+    rendered = rendered.replaceAll(`{{${key}}}`, String(value));
+  }
+  return rendered;
+}
+
+/** 본문에 쓰인 플레이스홀더 이름 — 예시 payload 의 기본 키가 된다. */
+export function placeholders(...texts: string[]): string[] {
+  const keys = new Set<string>();
+  for (const text of texts) for (const m of text.matchAll(/\{\{(\w+)\}\}/g)) keys.add(m[1]);
+  return [...keys];
+}
+
+/** 태그로 시작하면 HTML 본문이다. 지금 DB 본문은 텍스트(text/plain 으로 나간다). */
+export const isHtml = (body: string) => /^\s*</.test(body);
+
+const escapeHtml = (s: string) =>
+  s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+
+/** iframe srcdoc 으로 넣을 문서. 텍스트 본문은 메일함처럼 줄바꿈만 지켜 보여 준다. */
+export function toPreviewDocument(body: string): string {
+  if (isHtml(body)) return body;
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"></head><body style="margin:24px;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(body)}</body></html>`;
+}

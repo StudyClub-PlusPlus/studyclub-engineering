@@ -158,6 +158,22 @@ class AdminNotificationIntegrationTest {
         }
     }
 
+    @Test
+    @DisplayName("공개 미리보기는 토큰 없이 원문을 주고, 운영자 ID 는 싣지 않는다")
+    void publicPreviewListsTemplatesWithoutAdminId() {
+        var response = testRestTemplate.getForEntity("/api/notification-templates", List.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .singleElement()
+                .satisfies(
+                        item -> {
+                            Map<?, ?> row = (Map<?, ?>) item;
+                            assertThat(row.get("body")).isEqualTo("안녕하세요, {{nickname}}님.");
+                            assertThat(row.get("eventType")).isEqualTo("USER_REGISTERED");
+                            assertThat(row.containsKey("updatedByAdminId")).isFalse();
+                        });
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"status=INVALID", "eventType=INVALID"})
     @DisplayName("알 수 없는 알림 필터는 400 — enum 변환 실패를 서버 오류로 보고하지 않는다")
