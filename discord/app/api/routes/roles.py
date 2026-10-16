@@ -143,6 +143,25 @@ def log_refusals(operation: str, key: str, role: discord.Role, refused: list[str
         )
 
 
+def log_unreachable(operation: str, key: str, role: discord.Role, uid: str, exc: Exception) -> None:
+    """Log the connection to Discord failing, after which no user is tried.
+
+    Anything but ``discord.HTTPException`` is the connection itself: a reset
+    comes up as OSError, a dropped connection as aiohttp's own error, a stall as
+    a timeout. Unlike a refusal it fails every user after this one alike, and
+    each could wait minutes on it, so the rest are reported as failed untried.
+    CancelledError is a BaseException and still propagates.
+    """
+    logger.exception(
+        "%s %s: lost discord at %s, so role %s is not tried for anyone after: %s",
+        operation,
+        key,
+        uid,
+        role.id,
+        exc,
+    )
+
+
 async def assign_role(
     guild: discord.Guild, role: discord.Role, user_ids: list[str], operation: str, key: str
 ) -> tuple[list[str], list[dict]]:
@@ -155,10 +174,14 @@ async def assign_role(
     succeeded: list[str] = []
     failed: list[dict] = []
     refused: list[str] = []
+    unreachable = False
     for uid in user_ids:
         member = members.get(uid)
         if member is None:
             failed.append({"discordUserId": uid, "reason": NOT_IN_GUILD})
+            continue
+        if unreachable:
+            failed.append({"discordUserId": uid, "reason": DISCORD_REJECTED})
             continue
         try:
             await member.add_roles(role)
@@ -170,6 +193,11 @@ async def assign_role(
             if isinstance(exc, discord.Forbidden):
                 refused.append(uid)
             logger.warning("%s %s: could not give role %s to %s: %s", operation, key, role.id, uid, exc)
+            failed.append({"discordUserId": uid, "reason": DISCORD_REJECTED})
+            continue
+        except Exception as exc:
+            log_unreachable(operation, key, role, uid, exc)
+            unreachable = True
             failed.append({"discordUserId": uid, "reason": DISCORD_REJECTED})
             continue
         succeeded.append(uid)
@@ -191,7 +219,11 @@ async def remove_role(
     succeeded: list[str] = []
     failed: list[dict] = []
     refused: list[str] = []
+    unreachable = False
     for uid in user_ids:
+        if unreachable:
+            failed.append({"discordUserId": uid, "reason": DISCORD_REJECTED})
+            continue
         try:
             member = guild.get_member(int(uid)) or await guild.fetch_member(int(uid))
             await member.remove_roles(role)
@@ -209,6 +241,11 @@ async def remove_role(
             if isinstance(exc, discord.Forbidden):
                 refused.append(uid)
             logger.warning("%s %s: could not take role %s from %s: %s", operation, key, role.id, uid, exc)
+            failed.append({"discordUserId": uid, "reason": DISCORD_REJECTED})
+            continue
+        except Exception as exc:
+            log_unreachable(operation, key, role, uid, exc)
+            unreachable = True
             failed.append({"discordUserId": uid, "reason": DISCORD_REJECTED})
             continue
         succeeded.append(uid)

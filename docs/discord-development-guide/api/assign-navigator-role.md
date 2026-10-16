@@ -121,7 +121,8 @@ captain · navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의
 2. **붙이는 도중 실패하면 되돌리지 않는다** — 그 유저가 원래부터 navigator 였을 수 있다. 그 유저를
    `failed` 에 `DISCORD_REJECTED` 로 담고 나머지를 계속 붙이며, 이미 붙은 유저 ID 를 로그에 남긴다.
    해석한 뒤 붙이기 전에 길드를 나간 유저(Discord 의 `Unknown Member`)는 `DISCORD_REJECTED` 가 아니라
-   `NOT_IN_GUILD` 다 — 실제로 일어난 일이 그것이다.
+   `NOT_IN_GUILD` 다 — 실제로 일어난 일이 그것이다. Discord 와의 **연결 자체가 끊기면** 거기서 멈추고
+   남은 유저를 모두 `failed` 로 알린다 ([assign-role](assign-role.md#부분-실패와-재시도) 과 같다).
 3. **재시도는 전체를 다시 보내도 되고, `failed` 의 유저만 보내도 된다** — 역할 부여는 멱등이다.
    같은 `Idempotency-Key` 로 보내 로그에서 묶는다. 서버는 중복 요청을 막지 않는다.
 

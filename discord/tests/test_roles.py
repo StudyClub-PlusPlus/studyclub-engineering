@@ -1,6 +1,7 @@
 import asyncio
 from unittest.mock import AsyncMock, Mock
 
+import aiohttp
 import discord
 import pytest
 from fastapi.testclient import TestClient
@@ -136,6 +137,12 @@ def _changes(guild, method):
 
 
 both = pytest.mark.parametrize("method", ["POST", "DELETE"])
+# How losing Discord itself comes up: none of them is a discord.HTTPException.
+transport = pytest.mark.parametrize(
+    "error",
+    [OSError(54, "Connection reset by peer"), aiohttp.ServerDisconnectedError(), asyncio.TimeoutError()],
+    ids=["reset", "disconnected", "timeout"],
+)
 every = pytest.mark.parametrize(
     "method,path",
     [(m, p) for p in (NAVIGATOR_PATH, STUDY_PATH) for m in ("POST", "DELETE")],
@@ -209,6 +216,38 @@ def test_assign_keeps_going_past_a_user_discord_rejects(tmp_path):
     }
     guild.targets[TARGET_IDS[1]].add_roles.assert_awaited_once()
     guild.targets[TARGET_IDS[2]].add_roles.assert_awaited_once()
+
+
+@transport
+def test_assign_stops_at_a_lost_connection_and_reports_the_rest(error, tmp_path, caplog):
+    caplog.set_level("INFO")
+    guild = FakeGuild()
+    guild.targets[TARGET_IDS[1]].add_roles.side_effect = error
+
+    response = _assign(_client(_bot(guild), tmp_path))
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "succeededCount": 1,
+        "failed": [
+            {"discordUserId": TARGET_IDS[1], "reason": "DISCORD_REJECTED"},
+            {"discordUserId": TARGET_IDS[2], "reason": "DISCORD_REJECTED"},
+        ],
+    }
+    guild.targets[TARGET_IDS[2]].add_roles.assert_not_awaited()
+    assert f"1 succeeded ({TARGET_IDS[0]})" in caplog.text
+
+
+def test_assign_after_a_lost_connection_still_reports_non_members_as_such(tmp_path):
+    guild = FakeGuild(members=TARGET_IDS[:2])
+    guild.targets[TARGET_IDS[1]].add_roles.side_effect = OSError(54, "Connection reset by peer")
+
+    response = _assign(_client(_bot(guild), tmp_path))
+
+    assert response.json()["failed"] == [
+        {"discordUserId": TARGET_IDS[1], "reason": "DISCORD_REJECTED"},
+        {"discordUserId": TARGET_IDS[2], "reason": "NOT_IN_GUILD"},
+    ]
 
 
 def test_assign_to_a_user_who_left_after_the_lookup_is_not_in_guild(tmp_path):
@@ -294,6 +333,50 @@ def test_remove_never_takes_a_cache_miss_for_an_absence(tmp_path):
     # Each target missed by the cache is asked about, and the role really goes.
     assert guild.fetch_member.await_count == 1 + len(TARGET_IDS)
     assert len(_changes(guild, "DELETE")) == 3
+
+
+@transport
+def test_remove_stops_at_a_lost_connection_and_reports_the_rest(error, tmp_path, caplog):
+    caplog.set_level("INFO")
+    guild = FakeGuild(cached=TARGET_IDS)
+    guild.targets[TARGET_IDS[1]].remove_roles.side_effect = error
+
+    response = _remove(_client(_bot(guild), tmp_path))
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "succeededCount": 1,
+        "failed": [
+            {"discordUserId": TARGET_IDS[1], "reason": "DISCORD_REJECTED"},
+            {"discordUserId": TARGET_IDS[2], "reason": "DISCORD_REJECTED"},
+        ],
+    }
+    guild.targets[TARGET_IDS[2]].remove_roles.assert_not_awaited()
+    assert f"1 succeeded ({TARGET_IDS[0]})" in caplog.text
+
+
+@transport
+def test_remove_stops_when_looking_up_a_member_loses_the_connection(error, tmp_path):
+    guild = FakeGuild(cached=(TARGET_IDS[0], TARGET_IDS[2]))
+    fetch = guild.fetch_member.side_effect
+
+    def lose_the_second(user_id):
+        if user_id == int(TARGET_IDS[1]):
+            raise error
+        return fetch(user_id)
+
+    guild.fetch_member.side_effect = lose_the_second
+
+    response = _remove(_client(_bot(guild), tmp_path))
+
+    assert response.json() == {
+        "succeededCount": 1,
+        "failed": [
+            {"discordUserId": TARGET_IDS[1], "reason": "DISCORD_REJECTED"},
+            {"discordUserId": TARGET_IDS[2], "reason": "DISCORD_REJECTED"},
+        ],
+    }
+    guild.targets[TARGET_IDS[2]].remove_roles.assert_not_awaited()
 
 
 def test_remove_rejects_any_other_not_found(tmp_path):
