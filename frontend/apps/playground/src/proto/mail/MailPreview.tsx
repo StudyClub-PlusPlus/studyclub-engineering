@@ -64,7 +64,7 @@ export function MailPreview({ templates }: { templates: MailTemplate[] }) {
           <p className='text-lg font-semibold text-ink'>{renderTemplate(selected.subject, payload)}</p>
           <span className='text-xs text-fg-muted'>
             마지막 수정 {new Date(selected.updatedAt).toLocaleString('ko-KR')} ·{' '}
-            {isHtml(selected.body) ? 'HTML 본문' : '텍스트 본문 (text/plain 으로 나간다)'}
+            {isHtml(selected.body) ? 'HTML 본문 (text/html + 텍스트 대체본으로 나간다)' : '텍스트 본문 (text/plain 으로 나간다)'}
           </span>
         </div>
 
