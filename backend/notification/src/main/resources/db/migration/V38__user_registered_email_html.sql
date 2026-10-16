@@ -1,7 +1,7 @@
 -- V38 — 웰컴메일(USER_REGISTERED · EMAIL) 본문을 HTML 시안으로 바꾼다 (docs/mail-templates/user-registered-email.html).
 --   * 발송기는 본문이 태그로 시작하면 text/html + 태그를 걷은 text/plain 대체본을 함께 보낸다(SesMailClient · MailBody).
 --   * {{nickname}} 은 렌더러가 HTML 이스케이프해서 끼운다(NotificationTemplateRenderer).
---   * 제목은 그대로다. 본문 약 5KB — TEXT(64KB) 안이다.
+--   * 제목도 바꾼다 — 메일 제목 규칙 「[StudyClub++] 무엇」(docs/mail-templates/README.md §제목 규칙). 본문 약 5KB — TEXT(64KB) 안이다.
 --   * stage 는 Flyway 가 꺼져 있어 이 파일이 돌지 않는다. 같은 내용을 손으로 한 번 넣는다(PR 본문의 stage SQL).
 UPDATE NOTIFICATION_TEMPLATE
    SET BODY = '<!DOCTYPE html>
@@ -11,7 +11,7 @@ UPDATE NOTIFICATION_TEMPLATE
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<title>StudyClub++에 오신 걸 환영합니다</title>
+<title>[StudyClub++] 회원가입을 환영합니다</title>
 </head>
 <body style="margin:0;padding:0;background-color:#F5F7FF;">
 <!-- 미리보기 문구: 받은편지함 목록에서 제목 옆에 보인다 -->
@@ -77,6 +77,7 @@ UPDATE NOTIFICATION_TEMPLATE
 </table>
 </body>
 </html>',
+       SUBJECT = '[StudyClub++] 회원가입을 환영합니다',
        UPDATED_AT = UTC_TIMESTAMP(6)
  WHERE EVENT_TYPE = 'USER_REGISTERED'
    AND CHANNEL = 'EMAIL';
