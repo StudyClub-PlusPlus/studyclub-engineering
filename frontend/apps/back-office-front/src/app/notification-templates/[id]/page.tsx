@@ -55,8 +55,19 @@ export default function NotificationTemplateDetail() {
           <div className='card'>
             <Field label='제목'>{template.subject}</Field>
             <Field label='본문'>
-              {/* 치환 변수({{nickname}} 등)가 그대로 보여야 하므로 원문을 손대지 않는다. */}
-              <pre className='whitespace-pre-wrap break-words font-sans text-sm leading-relaxed'>{template.body}</pre>
+              {/* 치환 변수({{nickname}} 등)가 그대로 보여야 하므로 원문을 손대지 않는다.
+                  HTML 본문(태그로 시작 — 서버 MailBody.isHtml 과 같은 규칙)은 메일 모양으로 보여 준다.
+                  sandbox 비움 = 스크립트·폼·링크 이동을 전부 막는다. */}
+              {/^\s*</.test(template.body) ? (
+                <iframe
+                  title='본문 미리보기'
+                  sandbox=''
+                  srcDoc={template.body}
+                  className='h-[40rem] w-full rounded-lg border border-[var(--color-border)] bg-white'
+                />
+              ) : (
+                <pre className='whitespace-pre-wrap break-words font-sans text-sm leading-relaxed'>{template.body}</pre>
+              )}
             </Field>
             <Field label='이벤트 코드'>
               <code className='rounded bg-[var(--color-surface-subtle)] px-1.5 py-0.5 text-xs'>
