@@ -35,7 +35,7 @@ import {
   type WeekDay,
 } from '@/lib/joined';
 import type { ApiMyStudy } from '@/lib/joined-api';
-import { getRegion, seedDemoData } from '@/lib/me';
+import { getRegion } from '@/lib/me';
 import { isKickoff, manageAccessOf, type ScheduleRole } from '@/lib/meetings';
 import { IS_DEV, syncPreview } from '@/lib/preview';
 import { pageOf, useUrlState } from '@/lib/use-url-state';

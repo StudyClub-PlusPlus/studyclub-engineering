@@ -114,7 +114,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{ study, group, groupId, locale, role, captain, canEdit, setDirty }}>
-      <div className='mx-auto max-w-6xl px-6 pb-16 pt-8'>
+      <div className='mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6'>
         <Link
           href={`/${locale}/my/joined`}
           className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary hover:text-fg'
