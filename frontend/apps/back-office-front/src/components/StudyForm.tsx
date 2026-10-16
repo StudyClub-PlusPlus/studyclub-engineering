@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
-import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
+import { Checkbox, Input, Select, Textarea, useImageUpload } from '@studyclub/ui';
 
 import { useClubPrograms } from '@/features/studies/queries';
 import {
@@ -11,7 +11,8 @@ import {
   type StudyCreatePayload,
   type StudyUpdatePayload,
 } from '@/features/studies/types';
-import { http } from '@/lib/http';
+import { ApiError, http } from '@/lib/http';
+import { uploadImage } from '@/lib/upload';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -24,7 +25,7 @@ import { http } from '@/lib/http';
  * - 진행 형식(온/오프라인): 전 스터디 온라인 운영이라 선택지가 무의미
  * - 모집 시작일: 마감일만 관리 (모집 상태 판정 축이 마감일 하나) — 진행 시작일과는 다른 값이다
  * - 상시 모집·공개일: 없다. 마감일은 필수이고, 공개는 운영자가 직접 켠다
- * - 시간대·썸네일: 저장할 컬럼·업로드 API 가 아직 없다
+ * - 시간대: 저장할 컬럼이 아직 없다
  *
  * **프로그램은 따로 등록하지 않고 이 폼에서 함께 다룬다.** 프로그램은 제목·종류뿐이고 기수 없는 프로그램은
  * 의미가 없다(docs/erd/STUDY_PROGRAM.md). 등록 모드에서는 「새 프로그램」(첫 기수와 함께 만든다) 또는
@@ -73,6 +74,10 @@ export type StudyFormValues = {
   startAt: string;
   discordUrl: string;
   driveUrl: string;
+  /** 썸네일 미리보기 주소. 빈 문자열이면 없음. */
+  thumbnailUrl: string;
+  /** 이번에 새로 올린 썸네일 번호 — 저장할 때만 보낸다. 서버 값에서 되돌린 폼은 늘 null. */
+  thumbnailFileId: number | null;
 };
 
 export const EMPTY_FORM: StudyFormValues = {
@@ -91,6 +96,8 @@ export const EMPTY_FORM: StudyFormValues = {
   startAt: '',
   discordUrl: '',
   driveUrl: '',
+  thumbnailUrl: '',
+  thumbnailFileId: null,
 };
 
 /**
@@ -129,6 +136,8 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
     startAt: toKstDate(d.startAt),
     discordUrl: d.discordChannelUrl ?? '',
     driveUrl: d.driveUrl ?? '',
+    thumbnailUrl: d.thumbnailUrl ?? '',
+    thumbnailFileId: null,
   };
 }
 
@@ -154,6 +163,9 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
   if (changed('startAt')) p.startAt = form.startAt ? startDateToIso(form.startAt) : null;
   if (changed('discordUrl')) p.discordChannelUrl = form.discordUrl.trim() || null;
   if (changed('driveUrl')) p.driveUrl = form.driveUrl.trim() || null;
+  // 새로 올렸으면 그 번호, 있던 것을 지웠으면 null — 그대로면 보내지 않는다 (같은 번호를 두 번 연결하면 400)
+  if (form.thumbnailFileId !== null) p.thumbnailFileId = form.thumbnailFileId;
+  else if (changed('thumbnailUrl') && !form.thumbnailUrl) p.thumbnailFileId = null;
   return p;
 }
 
@@ -176,6 +188,7 @@ export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   else payload.studyKind = form.kind;
   if (form.description.trim()) payload.description = form.description;
   if (form.schedule.trim()) payload.schedule = form.schedule.trim();
+  if (form.thumbnailFileId !== null) payload.thumbnailFileId = form.thumbnailFileId;
   return payload;
 }
 
@@ -188,6 +201,7 @@ const SERVER_FIELD: Record<string, keyof StudyFormValues> = {
   discordChannelUrl: 'discordUrl',
   studyProgramId: 'programId',
   studyKind: 'kind',
+  thumbnailFileId: 'thumbnailUrl',
 };
 
 /** 서버 검증 메시지(`capacity: 1 이상의 정수여야 합니다.`)를 칸 오류로 바꾼다. 못 바꾸면 null. */
@@ -402,6 +416,75 @@ function ProgramField({
   );
 }
 
+/**
+ * 썸네일 — 고르면 바로 올리고(번호 받기) 미리보기를 띄운다. 스터디에 붙는 건 「저장」 때다.
+ * 올리기만 하고 저장하지 않으면 서버가 하루 뒤 지운다 (docs/flows/image-upload.md).
+ */
+function ThumbnailField({
+  value,
+  error,
+  onChange,
+}: {
+  value: StudyFormValues;
+  error?: string;
+  onChange: (next: StudyFormValues) => void;
+}) {
+  // 올리는 동안 다른 칸을 고쳐도 덮어쓰지 않게 — 올리기가 끝난 시점의 폼 값에 썸네일만 얹는다
+  const latest = useRef(value);
+  latest.current = value;
+  const thumb = useImageUpload({
+    purpose: 'STUDY_THUMBNAIL',
+    upload: uploadImage,
+    onUploaded: ({ fileId, url }) => onChange({ ...latest.current, thumbnailFileId: fileId, thumbnailUrl: url }),
+    onError: (err) =>
+      err instanceof ApiError ? err.message : '썸네일을 올리지 못했습니다. 잠시 후 다시 시도해 주세요',
+  });
+  const shown = thumb.error ?? error;
+
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <span className='text-sm font-medium text-fg'>썸네일</span>
+      <div className='flex items-center gap-4'>
+        {value.thumbnailUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value.thumbnailUrl} alt='' className='h-20 w-36 rounded-control object-cover' />
+        ) : (
+          <div className='grid h-20 w-36 place-items-center rounded-control bg-surface-2 text-xs text-fg-muted'>
+            없음
+          </div>
+        )}
+        <div className='flex items-center gap-3 text-sm'>
+          <button
+            type='button'
+            onClick={thumb.pick}
+            disabled={thumb.isUploading}
+            className='text-fg-secondary underline-offset-4 hover:text-fg hover:underline disabled:opacity-50'
+          >
+            {thumb.isUploading ? '올리는 중' : value.thumbnailUrl ? '바꾸기' : '이미지 고르기'}
+          </button>
+          {value.thumbnailUrl && (
+            <button
+              type='button'
+              onClick={() => onChange({ ...value, thumbnailUrl: '', thumbnailFileId: null })}
+              disabled={thumb.isUploading}
+              className='text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline disabled:opacity-50'
+            >
+              지우기
+            </button>
+          )}
+        </div>
+        <input {...thumb.inputProps} className='hidden' aria-label='썸네일 파일' />
+      </div>
+      <p className='text-xs text-fg-muted'>jpeg · png · webp, 5MB 이하. 저장해야 반영됩니다.</p>
+      {shown && (
+        <p role='alert' className='text-xs text-error-700'>
+          {shown}
+        </p>
+      )}
+    </div>
+  );
+}
+
 const DATE_INPUT =
   'h-10 w-[9.5rem] shrink-0 rounded-control border border-border bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
 
@@ -444,6 +527,8 @@ export function StudyForm({
         error={errors.summary}
         labelHint={<CharCount len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
       />
+
+      <ThumbnailField value={value} error={errors.thumbnailUrl} onChange={onChange} />
 
       <Select
         label='카테고리'

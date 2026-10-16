@@ -1,6 +1,7 @@
 package com.studyclub.api.auth.security;
 
 import com.studyclub.api.auth.JwtService;
+import com.studyclub.api.storage.LocalObjectStorage;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.autoconfigure.web.server.ConditionalOnManagementPort;
@@ -103,6 +104,10 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers(
                                                 HttpMethod.GET, "/api/studies/*/application-form")
+                                        .permitAll()
+                                        // 로컬 저장소가 내주는 사진 — 켜지 않으면 핸들러가 없어 404 다
+                                        .requestMatchers(
+                                                HttpMethod.GET, LocalObjectStorage.PATH + "/**")
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())
