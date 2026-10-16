@@ -9,7 +9,9 @@ import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { SegmentTabs } from '@/components/SegmentTabs';
-import { useMyStudies, type JoinedStudy } from '@/features/my-studies/queries';
+import { toJoinedStudy, type JoinedStudy } from '@/features/my-studies/queries';
+import { useMyStudies } from '@/features/studies/queries';
+import { meetingsOf, mergeAttendanceSeed, type MyStatus } from '@/lib/attendance';
 import { bookScore, myAttendanceBook, type MyAttendanceBook } from '@/lib/attendance-book';
 import { getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
@@ -32,7 +34,9 @@ import {
   type WallTz,
   type WeekDay,
 } from '@/lib/joined';
-import { getRegion } from '@/lib/me';
+import type { ApiMyStudy } from '@/lib/joined-api';
+import { getRegion, seedDemoData } from '@/lib/me';
+import { isKickoff, manageAccessOf, type ScheduleRole } from '@/lib/meetings';
 import { IS_DEV, syncPreview } from '@/lib/preview';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
 
@@ -98,7 +102,7 @@ const URL_ALLOWED = {
 
 /** 첫·마지막 회차 일자 — 킥오프(no=0)를 제외한 정규 회차 기준. */
 function spanOf(study: JoinedStudy): { start: string; end: string } {
-  const regular = study.meetings.filter((m) => m.no !== 0);
+  const regular = meetingsOf(study).filter((m) => !isKickoff(m));
   return { start: regular[0]?.date ?? '', end: regular[regular.length - 1]?.date ?? '' };
 }
 
@@ -109,10 +113,16 @@ function studiesIn(
   role: RoleFilter,
   wallTz: WallTz,
   locale: Locale,
+  joinedMap?: Map<string, ApiMyStudy>,
 ): JoinedStudy[] {
+  const isStudyMine = (s: JoinedStudy) => {
+    const item = joinedMap?.get(s.id);
+    if (item) return Boolean(item.captain || item.participantRole === 'LEADER');
+    return isMine(s);
+  };
   const list = mine
     .filter((s) => filter === 'all' || lifeStatus(s) === filter)
-    .filter((s) => role === 'all' || (role === 'manage') === isMine(s));
+    .filter((s) => role === 'all' || (role === 'manage') === isStudyMine(s));
   const nextAt = (s: JoinedStudy) => {
     const m = upcomingMeeting(s);
     return m ? new Date(m.scheduledAt).getTime() : Number.POSITIVE_INFINITY;
@@ -137,6 +147,11 @@ function weekRangeLabel(days: WeekDay[]): string {
 /** 내 스터디에서 스터디 일정으로 가는 경로. */
 function schedulePath(locale: Locale, study: JoinedStudy): string {
   return `/${locale}/my/joined/${study.study_id}/schedule`;
+}
+
+function weekChip(category: string | undefined): { accent: string; tint: number } {
+  const [accent] = categoryMeta(category).color;
+  return { accent, tint: 14 };
 }
 
 function WeekStrip({
@@ -205,8 +220,7 @@ function WeekStrip({
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
                   const study = byId.get(hit.studyId);
-                  const { color } = categoryMeta(study?.category);
-                  const [accent] = color;
+                  const { accent, tint } = weekChip(study?.category);
                   return (
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
@@ -216,7 +230,7 @@ function WeekStrip({
                         className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left text-[10px] font-bold leading-tight hover:brightness-[0.97]'
                         style={{
                           borderLeftColor: accent,
-                          backgroundColor: `color-mix(in srgb, ${accent} 14%, var(--color-bg))`,
+                          backgroundColor: `color-mix(in srgb, ${accent} ${tint}%, var(--color-bg))`,
                           color: accent,
                         }}
                       >
@@ -312,16 +326,33 @@ function MissionClear({ book }: { book: MyAttendanceBook }) {
   );
 }
 
-function StudyItem({ study, locale, wallTz }: { study: JoinedStudy; locale: Locale; wallTz: WallTz }) {
+function StudyItem({
+  study,
+  locale,
+  wallTz,
+  joinedItem,
+}: {
+  study: JoinedStudy;
+  locale: Locale;
+  wallTz: WallTz;
+  joinedItem?: ApiMyStudy;
+}) {
   const { icon: Icon } = categoryMeta(study.category);
   const life = lifeStatus(study);
   const completed = isCompleted(study);
   const left = life === 'ended' && !completed;
+  const ended = life === 'ended' && !completed;
   const book = myAttendanceBook(study);
-  // 이 스터디에서 내 역할 — 서버의 participantRole·captain 이 정한다
-  const role = study.role;
+  // 이 스터디에서 내 역할 — GET /api/me/studies 응답의 participantRole·captain 플래그 사용.
+  const role: ScheduleRole = joinedItem
+    ? joinedItem.captain
+      ? 'captain'
+      : joinedItem.participantRole === 'LEADER'
+        ? 'navigator'
+        : 'crew'
+    : (manageAccessOf(study.id)?.role ?? 'crew');
   // 카드는 스터디 일정으로 간다. 참여를 중단한 스터디는 더 이상 참가자가 아니라 링크가 없다.
-  const linked = !(life === 'ended' && !completed);
+  const linked = !ended;
 
   return (
     <li>
@@ -329,7 +360,7 @@ function StudyItem({ study, locale, wallTz }: { study: JoinedStudy; locale: Loca
         padding='lg'
         className={cx(
           'relative flex gap-4 overflow-hidden',
-          linked && 'cursor-pointer transition-colors hover:border-border-strong hover:bg-surface-1',
+          linked && 'transition-colors hover:border-border-strong hover:bg-surface-1',
           completed && 'border-warning-400 bg-warning-50 shadow-sm',
         )}
       >
@@ -390,7 +421,7 @@ function StudyItem({ study, locale, wallTz }: { study: JoinedStudy; locale: Loca
               <p
                 className={cx(
                   'min-w-0 tracking-tight',
-                  left ? 'text-sm font-semibold text-fg-muted' : 'text-lg font-extrabold text-fg',
+                  ended ? 'text-sm font-semibold text-fg-muted' : 'text-lg font-extrabold text-fg',
                 )}
               >
                 {upcomingOf(study, locale, wallTz)}
@@ -423,7 +454,6 @@ function MyJoinedPageContent() {
   const router = useRouter();
   const locale = ((params?.locale as string) ?? 'ko') as Locale;
   const [ready, setReady] = useState(false);
-  const [accountId, setAccountId] = useState<number>();
   // 상태·역할·정렬·페이지는 URL 이 정본이다 — 스터디를 열었다 뒤로 와도 그대로다
   const [query, setQuery] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
   const filter = query.status as Filter;
@@ -444,23 +474,48 @@ function MyJoinedPageContent() {
       router.replace(`/${locale}/onboarding?next=${encodeURIComponent(`/${locale}/my/joined`)}`);
       return;
     }
-    setAccountId(u.id);
     const tz = userWallTz(getRegion());
     setWallTz(tz);
     setWeekStart(mondayOf(ymdInTz(new Date(), tz)));
     setReady(true);
   }, [locale, router]);
 
-  const { data: mine = [], isPending, isError, refetch } = useMyStudies(accountId);
+  const { data: joined, isPending: joinedPending, isError, refetch } = useMyStudies();
+
+  const mine = useMemo<JoinedStudy[]>(() => (joined?.items ?? []).map(toJoinedStudy), [joined]);
+
+  const [, setAttendanceTick] = useState(0);
+
+  // 완주 스터디 출석 데모 데이터 — 스터디 목록이 로드된 후 한 번만 채운다.
+  useEffect(() => {
+    if (!IS_DEV || mine.length === 0) return;
+    const seed: Record<string, Record<string, MyStatus>> = {};
+    for (const study of mine) {
+      if (!isCompleted(study)) continue;
+      const meetings = meetingsOf(study);
+      // 마지막 회차만 결석 처리 — 완주 점수판 색상 변화가 보이도록.
+      seed[study.id] = Object.fromEntries(
+        meetings.map((m, i) => [m.id, i === meetings.length - 1 ? ('absent' as const) : ('present' as const)]),
+      );
+    }
+    const changed = mergeAttendanceSeed(seed);
+    if (changed) setAttendanceTick((t) => t + 1);
+  }, [mine]);
 
   const days = useMemo(() => weekDays(mine, locale, wallTz, weekStart), [mine, locale, wallTz, weekStart]);
   const thisWeek = weekStart === mondayOf(ymdInTz(new Date(), wallTz));
 
-  const hasMine = mine.some(isMine);
+  const joinedMap = useMemo(() => new Map((joined?.items ?? []).map((item) => [String(item.studyId), item])), [joined]);
+
+  const hasMine = mine.some((s) => {
+    const item = joinedMap.get(s.id);
+    if (item) return Boolean(item.captain || item.participantRole === 'LEADER');
+    return isMine(s);
+  });
 
   const shown = useMemo(
-    () => studiesIn(mine, filter, sort, role, wallTz, locale),
-    [mine, filter, sort, role, wallTz, locale],
+    () => studiesIn(mine, filter, sort, role, wallTz, locale, joinedMap),
+    [mine, filter, sort, role, wallTz, locale, joinedMap],
   );
 
   const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
@@ -477,7 +532,7 @@ function MyJoinedPageContent() {
     listTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  if (!ready || (isPending && !isError)) {
+  if (!ready || joinedPending) {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
@@ -569,7 +624,13 @@ function MyJoinedPageContent() {
         <div ref={listTop}>
           <ul className='mt-6 flex flex-col gap-3'>
             {paged.map((study) => (
-              <StudyItem key={study.id} study={study} locale={locale} wallTz={wallTz} />
+              <StudyItem
+                key={study.id}
+                study={study}
+                locale={locale}
+                wallTz={wallTz}
+                joinedItem={joinedMap.get(study.id)}
+              />
             ))}
           </ul>
           <Pager page={pageSafe} pages={pages} onChange={changePage} />

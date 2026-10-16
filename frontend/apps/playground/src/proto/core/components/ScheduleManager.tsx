@@ -416,7 +416,7 @@ export function ScheduleManager({
                     )}
                     <td
                       data-anno={kickoff ? 'schedule:10' : undefined}
-                      className='tnum border-t border-border px-4 py-2.5 align-top font-bold'
+                      className='tnum border-t border-border px-4 py-2.5 align-top font-bold '
                     >
                       {m.no}
                       {past && <span className='sr-only'> (지난 회차 · 고칠 수 없음)</span>}
@@ -456,7 +456,7 @@ export function ScheduleManager({
                           onChange={(title) => change(m, { title })}
                         />
                       ) : (
-                        <span className='inline-block whitespace-pre-wrap break-words py-1.5'>
+                        <span className='inline-block whitespace-pre-wrap break-words py-1.5 align-middle text-center'>
                           {m.title ?? <span className='text-fg-muted'>—</span>}
                         </span>
                       )}
