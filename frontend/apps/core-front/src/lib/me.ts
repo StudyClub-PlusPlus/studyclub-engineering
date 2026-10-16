@@ -2,7 +2,6 @@
 
 import type { MemberRegion } from '@studyclub/mock';
 
-import { clearMyAttendance } from './attendance';
 import { getUser } from './auth';
 import { API_BASE } from './http';
 
@@ -20,6 +19,8 @@ import { API_BASE } from './http';
 
 const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
+/** 예전 프로토가 브라우저에 남긴 내 출석 기록. 출석은 이제 서버에 있다 — 탈퇴할 때 남은 값만 지운다. */
+const LEGACY_ATTENDANCE_KEY = 'sc_my_attendance';
 const DISCORD_KEY = 'sc_discord';
 const DISCORD_NICK_KEY = 'sc_discord_nickname';
 
@@ -187,14 +188,13 @@ export function seedDemoData() {
  */
 export function clearMyLocalData() {
   if (typeof window === 'undefined') return;
-  for (const key of [BOOKMARK_KEY, APPLICATION_KEY]) {
+  for (const key of [BOOKMARK_KEY, APPLICATION_KEY, LEGACY_ATTENDANCE_KEY]) {
     try {
       localStorage.removeItem(key);
     } catch {
       // 저장소 접근 실패해도 탈퇴 흐름은 막지 않는다
     }
   }
-  clearMyAttendance();
 }
 
 /* ── 맡은 진행 중인 스터디 (회원 탈퇴 경고) ──────────────────────────────────── */
