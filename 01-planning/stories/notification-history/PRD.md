@@ -163,7 +163,7 @@ flowchart LR
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 「알림」 › 발송 이력 탭 | 없음 — 화면이 없다 | 프로토대로 만들되, 지금은 알림 템플릿과 묶지 않고 사이드바에 「알림 발송 이력」(`/notifications`)으로 따로 둔다 — 두 탭으로 묶는 것은 [알림 템플릿](../notification-template/PRD.md#개발-범위) 작업 때 (→ [share 10-11](../../../docs/share/2026-10-11-notification-resend.md)) |
+| FE | back-office-front 「알림 발송 이력」 (`/notifications`) | 구현완료 — 사이드바에 따로 둔 메뉴 | 없음. 알림 템플릿과 한 「알림」 메뉴의 두 탭으로 묶는 것은 [알림 템플릿](../notification-template/PRD.md#개발-범위) 작업 때 (→ [share 10-11](../../../docs/share/2026-10-11-notification-resend.md)) |
 | BE | `GET /api/admin/notifications` | 구현완료 — 행마다 `canResend`·`?ids=` 포함 | 없음. 수신 주소는 서버가 가린 값이다 — 전체 주소 여부는 [share](../../../docs/share/2026-10-11-notification-resend.md) 에서 확인 중 |
 | BE | 재발송 `POST /api/admin/notifications/resend` | 구현완료 — 그 줄을 `PENDING` 으로 되돌리고 `accepted`·`skipped` 를 돌려준다 | 없음. 기획은 위 이력 표 정책의 「재발송은 실패 건을 고치지 않는다. 새 건을 만든다」를 「그 줄을 되돌린다」로 고친다 |
 

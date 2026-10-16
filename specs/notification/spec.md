@@ -450,13 +450,16 @@ id 를 모으는 사이 다른 캡틴이 일부를 먼저 다시 보냈다면 �
 
 - 알림 템플릿 목록·상세(읽기 전용): `frontend/apps/back-office-front/src/app/notification-templates/` →
   `GET /api/admin/notification-templates`
-- 발송 이력 화면(예정, 백엔드 구현 뒤 FE 로 구현): [PRD (ST-032)](../../01-planning/stories/notification-history/PRD.md)
-  - 사이드바에 새 메뉴 「알림 발송 이력」(`/notifications`)을 더한다. 기존 「알림 템플릿」 메뉴·화면은 이번 이슈에서 손대지 않는다
+- 발송 이력 화면(구현완료 2026-10-16): [PRD (ST-032)](../../01-planning/stories/notification-history/PRD.md)
+  - 사이드바에 새 메뉴 「알림 발송 이력」(`/notifications`)을 더했다. 기존 「알림 템플릿」 메뉴·화면은 이번 이슈에서 손대지 않는다
     (템플릿은 이번 범위 밖 — PRD 의 「알림」 한 메뉴 두 탭 구조로의 통합은 템플릿 작업 때)
   - `frontend/apps/back-office-front/src/app/notifications/page.tsx` (필터·페이지는 URL 쿼리 — `useUrlState`)
   - `frontend/apps/back-office-front/src/features/notifications/queries.ts` → `GET /api/admin/notifications`, `POST /api/admin/notifications/resend`
   - `frontend/packages/mock/src/msw/handlers/notifications.ts` (MSW)
-  - 화면은 `canResend` 가 `true` 인 행만 고를 수 있게 한다. 상태 문자열로 다시 계산하지 않는다
+  - 화면은 `canResend` 가 `true` 인 줄에만 재발송 아이콘을 세운다. 상태 문자열로 다시 계산하지 않는다
+  - 한 줄 재발송은 묻지 않고, **실패만 거른 목록**에서만 「전체 재발송」이 서며 건수를 적은 확인 창으로 다시 묻는다.
+    전체 재발송은 같은 조건으로 `GET ?status=FAILED&limit=100` 을 읽어 ID 를 모은 뒤 100건씩 `POST` 한다
+  - 접수한 줄의 끝은 2초 주기로 `GET ?ids=` 로 쫓고 2분에서 포기한다. 포기하면 아무 말도 하지 않는다. 끝나면 토스트 한 번
 
 ## 웰컴메일 콘텐츠
 
