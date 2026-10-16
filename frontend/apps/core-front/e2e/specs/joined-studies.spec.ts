@@ -167,7 +167,7 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
     await expect(page.getByRole('tab', { name: '전체' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  test('스터디 카드 클릭 시 스터디 일정 화면으로 이동', async ({ page }) => {
+  test('스터디 카드 클릭 시 스터디 일정 화면으로 이동 및 탭 전환', async ({ page }) => {
     await page.goto('/ko/my/joined');
 
     // 첫 번째 클릭 가능한 스터디 카드의 제목 링크 클릭
@@ -177,6 +177,18 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
 
     // /ko/my/joined/:id/schedule 경로로 이동 확인
     await expect(page).toHaveURL(/\/ko\/my\/joined\/\d+\/schedule/);
-    await expect(page.getByText(/스터디 일정 화면을 준비 중입니다\./)).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: '내 스터디' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '일정' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '출석' })).toBeVisible();
+    await expect(page.locator('table')).toBeVisible();
+
+    // 출석 탭 클릭 이동 확인
+    await page.getByRole('link', { name: '출석' }).click();
+    await expect(page).toHaveURL(/\/ko\/my\/joined\/\d+\/schedule\/attendance/);
+    await expect(page.locator('table')).toBeVisible();
+
+    // 내 스터디 링크 클릭 시 내 스터디 목록으로 복귀 확인
+    await page.getByRole('main').getByRole('link', { name: '내 스터디' }).click();
+    await expect(page).toHaveURL(/\/ko\/my\/joined/);
   });
 });
