@@ -47,7 +47,9 @@ class MailBodyTest {
     @Test
     @DisplayName("실제 웰컴메일 시안의 대체본에 핵심 문구와 링크가 남는다")
     void welcomeTemplate() throws Exception {
-        Path file = Path.of("../../docs/mail-templates/user-registered-email.html");
+        Path file =
+                Path.of(
+                        "../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html");
         String text = MailBody.toPlainText(Files.readString(file));
 
         assertThat(text)

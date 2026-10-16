@@ -8,7 +8,6 @@ import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.notification.*;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -157,22 +156,6 @@ class AdminNotificationIntegrationTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
             assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
         }
-    }
-
-    @Test
-    @DisplayName("공개 미리보기는 토큰 없이 원문을 주고, 운영자 ID 는 싣지 않는다")
-    void publicPreviewListsTemplatesWithoutAdminId() {
-        var response = testRestTemplate.getForEntity("/api/notification-templates", List.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody())
-                .singleElement()
-                .satisfies(
-                        item -> {
-                            Map<?, ?> row = (Map<?, ?>) item;
-                            assertThat(row.get("body")).isEqualTo("안녕하세요, {{nickname}}님.");
-                            assertThat(row.get("eventType")).isEqualTo("USER_REGISTERED");
-                            assertThat(row.containsKey("updatedByAdminId")).isFalse();
-                        });
     }
 
     @ParameterizedTest

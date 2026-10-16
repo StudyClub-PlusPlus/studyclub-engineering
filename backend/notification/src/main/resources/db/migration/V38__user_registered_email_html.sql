@@ -1,4 +1,5 @@
--- V38 — 웰컴메일(USER_REGISTERED · EMAIL) 본문을 HTML 시안으로 바꾼다 (docs/mail-templates/user-registered-email.html).
+-- V38 — 웰컴메일(USER_REGISTERED · EMAIL) 본문을 HTML 시안으로 바꾼다
+--   (frontend/apps/playground/src/proto/mail/templates/user-registered-email.html — 시안 정본, playground /proto/mail 에서 편집·미리보기).
 --   * 발송기는 본문이 태그로 시작하면 text/html + 태그를 걷은 text/plain 대체본을 함께 보낸다(SesMailClient · MailBody).
 --   * {{nickname}} 은 렌더러가 HTML 이스케이프해서 끼운다(NotificationTemplateRenderer).
 --   * 제목도 바꾼다 — 메일 제목 규칙 「[StudyClub++] 무엇」(docs/mail-templates/README.md §제목 규칙). 본문 약 5KB — TEXT(64KB) 안이다.
