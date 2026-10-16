@@ -240,6 +240,15 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - 구독자는 발행하는 서비스와 다른 빈에 둔다 (같은 빈이면 `@Async` 가 무시된다)
 - 이메일은 `maskEmail` 로 가리고, 토큰·비밀번호·전화번호는 싣지 않는다
 
+## 이미지 업로드
+
+이미지가 필요한 기능은 새로 만들지 않고 공용 길을 쓴다 — 먼저 올려 `fileId` 를 받고, 기능 저장 API 가 그 번호로 연결한다.
+프론트는 `@studyclub/ui` 의 `useImageUpload`, 백엔드는 `UploadService.attach` · `markDeletingByUrl` · `deleteAfterCommit`.
+기능 API 는 이미지 주소 문자열을 받지 않는다. 로컬은 키 없이 로컬 저장소로 돈다.
+
+- 붙이는 법(새 용도 추가·교체·로컬 설정): [docs/flows/image-upload.md](./docs/flows/image-upload.md)
+- 계약: [specs/profile-image/spec.md](./specs/profile-image/spec.md)
+
 
 ## 관련
 

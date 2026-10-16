@@ -74,3 +74,14 @@ export { DiscordGlyph } from './DiscordGlyph';
 
 export { StudyThumb, categoryMeta, categoryGradient } from './StudyThumb';
 export type { StudyThumbProps } from './StudyThumb';
+
+export {
+  IMAGE_ACCEPT,
+  IMAGE_MAX_BYTES,
+  IMAGE_SIZE_ERROR,
+  IMAGE_TYPE_ERROR,
+  imageFileProblem,
+  imageUploadForm,
+  useImageUpload,
+} from './useImageUpload';
+export type { ImagePurpose, UploadedImage, UseImageUploadOptions } from './useImageUpload';

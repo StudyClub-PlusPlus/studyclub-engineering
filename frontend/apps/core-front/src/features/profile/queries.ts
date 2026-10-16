@@ -47,26 +47,6 @@ export function useUpdateProfile() {
   });
 }
 
-/** POST /api/uploads/images 응답. 번호는 저장 API 에 넘기고, 주소는 미리보기용이다. */
-export type UploadedImage = { fileId: number; url: string };
-
-/**
- * POST /api/uploads/images — 파일을 먼저 올려 번호를 받는다. 어디에 쓸지는 저장 API 가 정한다.
- *
- * `purpose` 를 인자로 받는 이유: 스터디 등록 폼의 썸네일도 같은 API 를 쓴다. `Content-Type` 은 직접 넣지 않는다 — 브라우저가
- * multipart 경계 문자열과 함께 붙인다.
- */
-export function useUploadImage() {
-  return useMutation({
-    mutationFn: ({ file, purpose }: { file: File; purpose: 'PROFILE' | 'STUDY_THUMBNAIL' }) => {
-      const body = new FormData();
-      body.append('file', file);
-      body.append('purpose', purpose);
-      return http<UploadedImage>('/api/uploads/images', { method: 'POST', body });
-    },
-  });
-}
-
 /** PUT /api/me/profile-image — 올려 둔 번호를 프로필에 연결한다. 응답은 `GET /auth/me` 와 같은 모양이라 세션 user 를 이걸로 갱신한다. */
 export function useAttachProfileImage() {
   return useMutation({

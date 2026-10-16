@@ -2,17 +2,17 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Checkbox, Input, toast } from '@studyclub/ui';
+import { Button, Checkbox, Input, toast, useImageUpload } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { TimeZonePicker, zoneName } from '@/components/TimeZonePicker';
 import { isSameNickname } from '@/features/profile/nickname';
-import { PHOTO_ACCEPT, initialOf, photoProblem } from '@/features/profile/photo';
+import { initialOf } from '@/features/profile/photo';
 import {
   useAttachProfileImage,
   useChangeMarketingConsent,
@@ -20,7 +20,6 @@ import {
   useMarketingConsent,
   useRemoveProfileImage,
   useUpdateProfile,
-  useUploadImage,
   type MarketingConsent,
 } from '@/features/profile/queries';
 import { track } from '@/lib/analytics';
@@ -31,6 +30,7 @@ import type { Locale } from '@/lib/content';
 import { ApiError } from '@/lib/http';
 import { nicknameError, parseOnboardingFieldErrors } from '@/lib/onboarding';
 import { isPreview } from '@/lib/preview';
+import { uploadImage } from '@/lib/upload';
 
 /**
  * 마이페이지 내 정보 카드.
@@ -108,8 +108,6 @@ export function ProfileCard({
   const [composing, setComposing] = useState(false);
   const [nickStatus, setNickStatus] = useState<NickStatus>('idle');
   const [problem, setProblem] = useState<'expired' | 'load' | 'server' | null>(null);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   const schema = useMemo(() => profileSchema(locale), [locale]);
   const {
@@ -130,7 +128,13 @@ export function ProfileCard({
   const fetchLatestAccount = useFetchLatestAccount(user.id);
   const consent = useMarketingConsent(user.id, !preview);
   const changeConsent = useChangeMarketingConsent(user.id);
-  const uploadImage = useUploadImage();
+  // 사용자에게는 한 동작이다 — 올리기 201 직후 연결을 바로 부른다. 연결이 실패하면 올린 파일은 하루 뒤 서버가 지운다
+  const photo = useImageUpload({
+    purpose: 'PROFILE',
+    upload: uploadImage,
+    onUploaded: async (uploaded) => applyPhoto(await attachImage.mutateAsync(uploaded.fileId)),
+    onError: photoErrorMessage,
+  });
   const attachImage = useAttachProfileImage();
   const removeImage = useRemoveProfileImage();
 
@@ -179,7 +183,7 @@ export function ProfileCard({
   // 저장 중에는 입력칸과 취소를 잠근다 — 취소한 뒤 다시 연 편집을 먼저 보낸 저장 응답이 닫아 버리면 안 된다
   const saving = updateProfile.isPending;
   // 올리기~연결, 지우기 동안 사진 버튼 둘 다 잠근다. 닉네임 저장과도 서로 잠근다 — 두 응답이 세션을 번갈아 쓰면 한쪽이 덮인다
-  const photoBusy = uploadImage.isPending || attachImage.isPending || removeImage.isPending;
+  const photoBusy = photo.isUploading || removeImage.isPending;
   const photoLocked = photoBusy || saving;
   const blocked =
     composing || Boolean(nicknameMessage) || nickStatus === 'taken' || nickStatus === 'checking' || saving || photoBusy;
@@ -266,21 +270,20 @@ export function ProfileCard({
     }
   });
 
-  /** 사진 쪽 실패. 400·503 은 서버 사유를 그대로, 401 은 재로그인, 403 은 온보딩으로. */
-  function handlePhotoError(err: unknown) {
+  /** 사진 쪽 실패 문구. 400·503 은 서버 사유를 그대로, 401 은 재로그인, 403 은 온보딩으로 — 이 둘은 문구 없이 null. */
+  function photoErrorMessage(err: unknown): string | null {
     if (err instanceof ApiError) {
       if (err.status === 401) {
         setProblem('expired');
-        return;
+        return null;
       }
       if (err.status === 403) {
         router.replace(`/${locale}/onboarding?next=${encodeURIComponent(`/${locale}/my`)}`);
-        return;
+        return null;
       }
-      setPhotoError(err.message);
-      return;
+      return err.message;
     }
-    setPhotoError('사진을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요');
+    return '사진을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요';
   }
 
   function applyPhoto(account: OnboardingAccount) {
@@ -289,32 +292,12 @@ export function ProfileCard({
     onUserChange(next);
   }
 
-  async function changePhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    // 비워 둬야 같은 파일을 다시 골랐을 때도 change 가 난다
-    event.target.value = '';
-    if (!file) return;
-    const problem = photoProblem(file);
-    if (problem) {
-      setPhotoError(problem);
-      return;
-    }
-    setPhotoError(null);
-    try {
-      // 사용자에게는 한 동작이다 — 올리기 201 직후 연결을 바로 부른다. 연결이 실패하면 올린 파일은 하루 뒤 서버가 지운다
-      const uploaded = await uploadImage.mutateAsync({ file, purpose: 'PROFILE' });
-      applyPhoto(await attachImage.mutateAsync(uploaded.fileId));
-    } catch (err) {
-      handlePhotoError(err);
-    }
-  }
-
   async function removePhoto() {
-    setPhotoError(null);
+    photo.setError(null);
     try {
       applyPhoto(await removeImage.mutateAsync());
     } catch (err) {
-      handlePhotoError(err);
+      photo.setError(photoErrorMessage(err));
     }
   }
 
@@ -354,11 +337,11 @@ export function ProfileCard({
             <div className='flex items-center gap-2 text-xs'>
               <button
                 type='button'
-                onClick={() => fileInput.current?.click()}
+                onClick={photo.pick}
                 disabled={photoLocked}
                 className='text-fg-secondary underline-offset-4 hover:text-fg hover:underline disabled:opacity-50'
               >
-                {photoBusy && !removeImage.isPending ? '올리는 중' : '사진 바꾸기'}
+                {photo.isUploading ? '올리는 중' : '사진 바꾸기'}
               </button>
               {user.picture && (
                 <button
@@ -372,14 +355,7 @@ export function ProfileCard({
               )}
             </div>
           )}
-          <input
-            ref={fileInput}
-            type='file'
-            accept={PHOTO_ACCEPT}
-            className='hidden'
-            aria-label='프로필 사진 파일'
-            onChange={changePhoto}
-          />
+          <input {...photo.inputProps} className='hidden' aria-label='프로필 사진 파일' />
         </div>
         <div className='min-w-0 flex-1'>
           {editing && (
@@ -427,9 +403,9 @@ export function ProfileCard({
         )}
       </div>
 
-      {photoError && (
+      {photo.error && (
         <p role='alert' className='px-6 pt-2 text-xs text-error-700'>
-          {photoError}
+          {photo.error}
         </p>
       )}
 

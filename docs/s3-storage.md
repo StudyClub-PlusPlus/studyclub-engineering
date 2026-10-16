@@ -32,13 +32,7 @@ S3_PUBLIC_BASE_URL=    # 인프라 담당자에게 요청 (CloudFront 주소 + /
 
 ### 키 없이 로컬에서 개발하기
 
-`.env` 에 `STORAGE_LOCAL_ENABLED=true` 한 줄이면 S3 없이 사진 올리기·바꾸기·지우기가 끝까지 돈다.
-파일은 로컬 폴더(기본 `<임시 폴더>/studyclub-storage`, `STORAGE_LOCAL_DIR` 로 변경)에 쓰고,
-API 서버가 `/local-storage/<키>` 로 내준다. 행의 `PROVIDER` 는 `LOCAL` 로 남는다.
-
-- 호스트에서 `bootRun` 하면 주소는 `http://localhost:8080/local-storage/...` (다르면 `STORAGE_LOCAL_PUBLIC_BASE_URL`)
-- docker compose 는 `http://localhost:${API_PORT}/local-storage/...` 로 자동으로 맞춘다
-- 운영(stage·production)에서는 켜지 않는다 — 꺼져 있어야 키가 빠졌을 때 503 으로 드러난다
+로컬은 기본이 로컬 저장소(`STORAGE_LOCAL_ENABLED=true`)라 키 없이 돈다. 이미지 업로드를 새 화면에 붙이는 법·로컬 설정은 [flows/image-upload.md](flows/image-upload.md).
 
 ## 권한
 
