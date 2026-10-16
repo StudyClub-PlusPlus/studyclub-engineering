@@ -14,7 +14,7 @@
   },
   "fontPx": {
     "core-front": 58,
-    "back-office-front": 18,
+    "back-office-front": 13,
     "playground/proto": 77,
     "packages/ui": 6
   }

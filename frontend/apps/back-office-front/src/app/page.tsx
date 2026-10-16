@@ -1,241 +1,60 @@
 'use client';
 
-import Link from 'next/link';
-
+import { PageHeader } from '@/components/ui';
+import { AttendanceTrendCard } from '@/features/dashboard/components/AttendanceTrendCard';
+import { CategoryCountsCard } from '@/features/dashboard/components/CategoryCountsCard';
+import { CrewRegionCard } from '@/features/dashboard/components/CrewRegionCard';
+import { KpiCards } from '@/features/dashboard/components/KpiCards';
+import { StudyBoard } from '@/features/dashboard/components/StudyBoard';
+import { formatAsOf } from '@/features/dashboard/format';
 import {
-  MEMBER_REGIONS,
-  events,
-  getStudyCrew,
-  attendancePoint,
-  site,
-  studies,
-  type MemberRegion,
-} from '@studyclub/mock';
-import { StatCard } from '@studyclub/ui';
-import { BookOpen, CalendarDays, TrendingUp, Users } from 'lucide-react';
-
-import { Card, CategoryBars, RegionDonut } from '@/components/DashboardCharts';
-import { PageHeader, TableCard } from '@/components/ui';
-import { useStudies } from '@/features/studies/queries';
-import type { StudyRow } from '@/features/studies/types';
-import { tx, EVENT_TYPE_LABEL } from '@/lib/l10n';
+  useAttendanceTrend,
+  useCrewTimezones,
+  useDashboardConsistency,
+  useDashboardSummary,
+  useStudiesByCategory,
+  useStudyBoard,
+  useViewerTimeZone,
+} from '@/features/dashboard/queries';
 
 /**
- * 운영 대시보드.
+ * 운영 대시보드. 화면 정본은 playground 운영 콘솔 › 대시보드, 기획은 PRD `console-dashboard`,
+ * 집계·API 계약은 specs/dashboard/spec.md.
  *
- * 지표는 **운영자가 손을 써야 하는지 알려주는 것**만 둔다. 모집중·진행중 같은 개수는 바로 아래
- * 목록이 이미 말해주므로 카드로 중복하지 않고 목록 우상단에 적는다.
+ * 기간 필터·자동 갱신이 없다 — 들어올 때와 새로고침할 때만 읽는다. 영역마다 따로 불러
+ * 한 곳이 실패해도 나머지는 그린다. 수는 모두 서버가 센 값을 그대로 그린다.
  */
-
-const TODAY = new Date().toISOString().slice(0, 10);
-
-/**
- * 현재 MSW/API 스터디 목록 기반으로 크루·출석을 순회해 필요한 집계를 뽑는다.
- * TODO(api): GET /api/admin/stats 또는 /api/dashboard — 백엔드 대시보드 집계 API 연동
- */
-function aggregate(studyRows: StudyRow[]) {
-  const regionCount: Record<MemberRegion, number> = { KR: 0, NA: 0, ETC: 0 };
-  const byCategory = new Map<string, { present: number; checked: number; crew: number }>();
-  let activeCrew = 0;
-  let present = 0;
-  let checked = 0;
-
-  const rowMap = new Map(studyRows.map((r) => [r.studyId, r]));
-
-  for (const study of studies) {
-    const row = rowMap.get(study.study_id);
-    if (!row) continue; // MSW 스터디 목록에 없으면 제외
-
-    const { crew, attendance } = getStudyCrew(study);
-    const active = crew;
-    const running = row.phase !== 'CLOSED';
-    const category = study.category ?? '기타';
-    const bucket = byCategory.get(category) ?? { present: 0, checked: 0, crew: 0 };
-
-    for (const c of active) {
-      bucket.crew += 1;
-      if (running) {
-        activeCrew += 1;
-        regionCount[c.region] += 1;
-      }
-      for (const v of Object.values(attendance[c.id] ?? {})) {
-        if (v === 'excused') continue;
-        checked += 1;
-        bucket.checked += 1;
-        const pt = attendancePoint(v);
-        present += pt;
-        bucket.present += pt;
-      }
-    }
-    byCategory.set(category, bucket);
-  }
-
-  const categories = [...byCategory.entries()]
-    .filter(([, v]) => v.checked > 0)
-    .map(([category, v]) => ({
-      category,
-      rate: Math.round((v.present / v.checked) * 100),
-      crew: v.crew,
-    }))
-    .sort((a, b) => b.rate - a.rate);
-
-  return {
-    activeCrew,
-    avgRate: checked === 0 ? 0 : Math.round((present / checked) * 100),
-    regions: MEMBER_REGIONS.map((r) => ({ key: r.key, count: regionCount[r.key] })),
-    categories,
-  };
-}
-
 export default function Dashboard() {
-  const { data: studyPage } = useStudies({});
-  const studyRows: StudyRow[] = studyPage?.rows ?? [];
+  // 조회자 시간대 — 주간 집계·갱신 시각·마감 날짜가 이 시간대를 따른다. 요약·보드·추세에 같은 값을 보낸다
+  const { ready, timeZone } = useViewerTimeZone();
+  const summary = useDashboardSummary(timeZone, ready);
+  const ongoing = useStudyBoard('ONGOING', timeZone, ready);
+  const recruitment = useStudyBoard('RECRUITMENT', timeZone, ready);
+  const crewTimezones = useCrewTimezones();
+  const trend = useAttendanceTrend(timeZone, ready);
+  const categories = useStudiesByCategory();
 
-  const { activeCrew, avgRate, regions, categories } = aggregate(studyRows);
-  const runningStudies = studyRows.filter((s) => s.phase !== 'CLOSED').length;
-  const recruiting = studyRows.filter((s) => s.recruiting || s.phase === 'RECRUITING');
-  // TODO(api): GET /api/events — 다가오는 행사 API 연동 (현재 mock)
-  const upcoming = events
-    .filter((e) => e.date >= TODAY)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 6);
+  useDashboardConsistency({ summary, boards: [ongoing, recruitment], trend });
 
-  const stats = [
-    {
-      label: '활성 크루',
-      value: activeCrew.toLocaleString(),
-      sub: '진행 중 스터디 기준',
-      href: '/studies',
-      icon: Users,
-    },
-    {
-      label: '평균 출석률',
-      value: `${avgRate}%`,
-      sub: '전 스터디 · 지각 포함',
-      href: '/studies',
-      icon: TrendingUp,
-    },
-    // 활성 크루와 같은 집합을 센다(종료되지 않은 스터디).
-    {
-      label: '진행 중 스터디',
-      value: runningStudies,
-      sub: '종료 제외',
-      href: '/studies',
-      icon: BookOpen,
-    },
-    {
-      label: '커뮤니티 멤버',
-      value: site.community.member_count.toLocaleString(),
-      sub: tx(site.community.region),
-      href: '/users',
-      icon: CalendarDays,
-    },
-  ];
+  // 1-1 — 범위와 읽은 시각을 함께 적는다. 요약을 못 읽으면 범위만
+  const readAt = summary.data && !summary.isError ? ` · ${formatAsOf(summary.data.asOf, summary.data.timeZone)} 갱신` : '';
 
   return (
     <div>
-      <PageHeader title='대시보드' />
+      <PageHeader title='대시보드' action={<p className='tnum text-xs text-fg-muted'>전기간 기준{readAt}</p>} />
 
-      <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
-        {stats.map((s) => (
-          <Link key={s.label} href={s.href} className='group'>
-            <StatCard
-              label={s.label}
-              value={s.value}
-              sub={s.sub}
-              leadingIcon={<s.icon size={15} />}
-              className='h-full transition-[border-color,box-shadow] duration-fast ease-out group-hover:border-border-interactive group-hover:shadow-sm'
-            />
-          </Link>
-        ))}
-      </div>
+      <KpiCards summary={summary} />
 
-      {/* 출석 지표: 분류별 출석률(막대) + 거주지 분포(도넛). 같은 높이로 나란히 둔다 */}
-      <div className='mt-6 grid gap-4 lg:grid-cols-2'>
-        <Card title='분류별 평균 출석률'>
-          <CategoryBars data={categories} />
-        </Card>
-        <Card title='크루 거주지 분포'>
-          <RegionDonut data={regions} />
-        </Card>
-      </div>
+      <StudyBoard ongoing={ongoing} recruitment={recruitment} />
 
-      <div className='mt-6 grid gap-6 lg:grid-cols-2'>
-        <section>
-          <div className='mb-3 flex items-baseline justify-between gap-3'>
-            <h2 className='text-base font-bold'>
-              모집중 스터디
-              <span className='tnum ml-2 text-[13px] font-medium text-fg-muted'>{recruiting.length}</span>
-            </h2>
-            <Link href='/studies' className='text-xs font-medium text-brand'>
-              전체 보기
-            </Link>
-          </div>
-          <TableCard>
-            <thead>
-              <tr>
-                <th>스터디</th>
-                <th className='whitespace-nowrap'>모집 마감</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recruiting.map((s) => (
-                <tr key={s.studyId}>
-                  <td className='max-w-0 truncate font-semibold'>
-                    <Link href={`/studies/${s.studyId}`} className='underline-offset-4 hover:text-brand hover:underline'>
-                      {s.title}
-                    </Link>
-                  </td>
-                  <td className='tnum whitespace-nowrap text-fg-secondary'>{s.deadline ? `~${s.deadline}` : '상시'}</td>
-                </tr>
-              ))}
-              {recruiting.length === 0 && (
-                <tr>
-                  <td colSpan={2} className='text-center text-fg-muted'>
-                    모집중 스터디가 없습니다.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </TableCard>
-        </section>
-
-        <section>
-          <div className='mb-3 flex items-baseline justify-between gap-3'>
-            <h2 className='text-base font-bold'>
-              다가오는 행사
-              <span className='tnum ml-2 text-[13px] font-medium text-fg-muted'>{upcoming.length}</span>
-            </h2>
-            <Link href='/events' className='text-xs font-medium text-brand'>
-              전체 보기
-            </Link>
-          </div>
-          <TableCard>
-            <thead>
-              <tr>
-                <th>행사</th>
-                <th className='whitespace-nowrap'>타입</th>
-                <th className='whitespace-nowrap'>날짜</th>
-              </tr>
-            </thead>
-            <tbody>
-              {upcoming.map((e) => (
-                <tr key={e.id}>
-                  <td className='max-w-0 truncate font-semibold'>{tx(e.title)}</td>
-                  <td className='whitespace-nowrap text-fg-secondary'>{EVENT_TYPE_LABEL[e.type] ?? e.type}</td>
-                  <td className='tnum whitespace-nowrap text-fg-secondary'>{e.date}</td>
-                </tr>
-              ))}
-              {upcoming.length === 0 && (
-                <tr>
-                  <td colSpan={3} className='text-center text-fg-muted'>
-                    예정된 행사가 없습니다.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </TableCard>
-        </section>
+      <div className='mt-6 grid items-start gap-6 lg:grid-cols-10'>
+        <div className='flex flex-col gap-6 lg:col-span-4'>
+          <CrewRegionCard query={crewTimezones} />
+          <AttendanceTrendCard query={trend} />
+        </div>
+        <div className='lg:col-span-6'>
+          <CategoryCountsCard query={categories} />
+        </div>
       </div>
     </div>
   );
