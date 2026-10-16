@@ -42,6 +42,14 @@ ENV PORT=3000
 
 COPY --from=builder /app ./
 
+# Run as non-root (uid/gid 1001). App files stay root-owned (read-only for the app);
+# only Next.js runtime cache dirs are writable.
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs \
+ && mkdir -p apps/core-front/.next/cache apps/core-front/.next/server/route-cache \
+ && chown -R 1001:1001 apps/core-front/.next/cache apps/core-front/.next/server/route-cache
+USER 1001
+
 EXPOSE 3000
 # The app's start script binds 4700; override to container port 3000 to match the
 # k8s readiness/liveness probes and the NodePort service target_port.

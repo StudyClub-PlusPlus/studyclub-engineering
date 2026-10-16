@@ -1,7 +1,7 @@
 // BO 전 페이지 로그인 게이트 — access 쿠키(bo_access_token) 없으면 /login 으로.
 import { NextRequest, NextResponse } from 'next/server';
 
-const ACCESS_COOKIE = 'bo_access_token';
+import { ACCESS_COOKIE } from '@/lib/cookie-names';
 
 /**
  * 로컬 UI 작업용 게이트 우회.
@@ -59,6 +59,8 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
+  // 쿠키 이름이 런타임 env(AUTH_COOKIE_ENV)를 읽는다 — edge 는 빌드 때 값으로 굳으므로 node 에서 돈다
+  runtime: 'nodejs',
   // api, _next 정적 자원, 그리고 확장자가 있는 모든 정적 파일(mockServiceWorker.js, favicon.ico 등)만 게이트 제외
   matcher: ['/((?!api|_next/|.*\\..*).*)'],
 };

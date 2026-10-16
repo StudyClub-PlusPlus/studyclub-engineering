@@ -47,6 +47,25 @@ export function useUpdateProfile() {
   });
 }
 
+/** PUT /api/me/profile-image — 올려 둔 번호를 프로필에 연결한다. 응답은 `GET /auth/me` 와 같은 모양이라 세션 user 를 이걸로 갱신한다. */
+export function useAttachProfileImage() {
+  return useMutation({
+    mutationFn: (fileId: number) =>
+      http<OnboardingAccount>('/api/me/profile-image', {
+        method: 'PUT',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ fileId }),
+      }),
+  });
+}
+
+/** DELETE /api/me/profile-image — 사진이 없어도 200. 응답은 `picture: null` 인 계정. */
+export function useRemoveProfileImage() {
+  return useMutation({
+    mutationFn: () => http<OnboardingAccount>('/api/me/profile-image', { method: 'DELETE' }),
+  });
+}
+
 /** GET /api/me/marketing-consent */
 export function useMarketingConsent(accountId: number, enabled: boolean) {
   return useQuery({

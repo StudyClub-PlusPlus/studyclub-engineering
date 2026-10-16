@@ -125,6 +125,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   5. [`docs/share/`](docs/share/README.md) — 목록의 **반영** 칸이 `됨`·`해당 없음` 이 아닌 같은 도메인 건. 문서에 아직 안 들어간 결정이다
   - PRD 머리의 **`관련 결정:`** 줄이 그 화면에 걸린 share 결정이다. share 를 PRD 에 반영할 때 이 줄에 링크를 단다 — [share README §반영](docs/share/README.md#반영--결정이-기획-문서에-들어갔나)
   - **무엇이 이미 있고 무엇을 만들지**는 PRD §3 「개발 범위」 표에 있다. 스펙 상태나 PRD 를 고쳤으면 `node scripts/check-dev-scope.mjs` 로 코드와 어긋나지 않았는지 본다
+- **메일을 새로 만들거나 고치면 [`docs/mail-templates/README.md`](docs/mail-templates/README.md) 를 따른다** — 제목은 `[StudyClub++] 무엇`, 본문 시안은 [`frontend/apps/playground/src/proto/mail/templates/`](frontend/apps/playground/src/proto/mail/templates/) 에 두고 가입메일(`user-registered-email.html`)을 복사해 시작한다 — playground `/proto/mail` 에서 고치며 바로 본다. 문구 정본은 DB 라 반영은 `V{n}` 마이그레이션(stage 는 Flyway off — 손으로 한 번)
 - **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.
   목록의 공유 칸은 **`공유전`** 으로 둔다 — 팀에는 모아서 한 번에 알리고 그때 `공유됨 (MM-DD)` 로 바꾼다 ([§공유](docs/share/README.md#공유--모아서-한-번에)).
@@ -239,6 +240,15 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - ops 알림 계약·표: [specs/ops-alerts/spec.md](./specs/ops-alerts/spec.md)
 - 구독자는 발행하는 서비스와 다른 빈에 둔다 (같은 빈이면 `@Async` 가 무시된다)
 - 이메일은 `maskEmail` 로 가리고, 토큰·비밀번호·전화번호는 싣지 않는다
+
+## 이미지 업로드
+
+이미지가 필요한 기능은 새로 만들지 않고 공용 길을 쓴다 — 먼저 올려 `fileId` 를 받고, 기능 저장 API 가 그 번호로 연결한다.
+프론트는 `@studyclub/ui` 의 `useImageUpload`, 백엔드는 `UploadService.attach` · `markDeletingByUrl` · `deleteAfterCommit`.
+기능 API 는 이미지 주소 문자열을 받지 않는다. 로컬은 키 없이 로컬 저장소로 돈다.
+
+- 붙이는 법(새 용도 추가·교체·로컬 설정): [docs/flows/image-upload.md](./docs/flows/image-upload.md)
+- 계약: [specs/profile-image/spec.md](./specs/profile-image/spec.md)
 
 
 ## 관련

@@ -1,8 +1,8 @@
 'use client';
 
-import { type MemberRegion, type Study, type StudyMeeting } from '@studyclub/mock';
+import { type MemberRegion } from '@studyclub/mock';
 
-import { meetingsOf } from '@/lib/attendance';
+import type { JoinedMeeting, JoinedStudy, ScheduleRole } from '@/features/my-studies/queries';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
 
@@ -27,31 +27,26 @@ export const LIFE_LABEL: Record<LifeStatus, string> = {
 /** 참여 중단 배지. 완주는 이 배지를 쓰지 않는다. */
 export const LEFT_BADGE = { label: '종료', tone: 'ended' as const };
 
-/** 프로토용 명부. 서버가 생기면 STUDY_PARTICIPANT.STATUS 로 교체한다. */
-const END_KIND: Record<string, EndKind> = {
-  '19': 'withdrawn', // system-design-interview-ongoing
-  'system-design-interview-ongoing': 'withdrawn',
+export const SCHEDULE_ROLE_LABEL: Record<ScheduleRole, string> = {
+  captain: '캡틴',
+  navigator: '네비게이터',
+  crew: '크루',
 };
 
-/**
- * 관계가 끝난 이유.
- * TODO(api): GET /api/me/studies 응답의 STUDY_PARTICIPANT.STATUS 로 교체.
- *            WITHDRAWN(참여 중단)은 서버에서 내려줘야 한다 — 스터디 status 로는 판정 불가.
- */
-export function endKindOf(study: Study): EndKind | undefined {
-  const fixed = END_KIND[study.id] ?? (study.study_id !== undefined ? END_KIND[String(study.study_id)] : undefined);
-  if (fixed) return fixed;
-  if (study.status === 'closed') return 'completed';
+/** 관계가 끝난 이유 — 서버의 `relation`(명부 STATUS)이 정한다. */
+export function endKindOf(study: JoinedStudy): EndKind | undefined {
+  if (study.relation === 'COMPLETED') return 'completed';
+  if (study.relation === 'WITHDRAWN') return 'withdrawn';
   return undefined;
 }
 
-export function lifeStatus(study: Study): LifeStatus {
+export function lifeStatus(study: JoinedStudy): LifeStatus {
   if (endKindOf(study)) return 'ended';
-  if (study.status === 'recruiting') return 'upcoming';
+  if (study.relation === 'UPCOMING') return 'upcoming';
   return 'active';
 }
 
-export function isCompleted(study: Study): boolean {
+export function isCompleted(study: JoinedStudy): boolean {
   return endKindOf(study) === 'completed';
 }
 
@@ -93,18 +88,14 @@ export function ymdInTz(at: Date, tz: WallTz): string {
   }).format(at);
 }
 
-/** 일정 문구(「매주 목 20:00 · 8주」)에서 KST 시각을 뽑는다. 없으면 20:00. */
-function meetingClock(study: Study): string {
-  const raw = study.schedule?.ko ?? '';
-  const m = raw.match(/(\d{1,2}):(\d{2})/);
-  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '20:00';
-}
+/** 회차 길이 컬럼이 없어 예정 종료는 시작 + 120분으로 본다 (specs/my-studies 「화면이 응답에서 계산하는 것」). */
+const MEETING_MIN = 120;
 
-/** 일정 문구의 시각은 KST 로 적혀 있다고 본다. */
-function asKstInstant(date: string, clock: string): Date {
-  const [y, mo, d] = date.split('-').map(Number);
-  const [h, mi] = clock.split(':').map(Number);
-  return new Date(Date.UTC(y, mo - 1, d, h - 9, mi, 0));
+/** 회차 종료 기준 — 실제 종료가 있으면 그것, 없으면 예정 시각 + 120분. */
+export function meetingEnd(meeting: JoinedMeeting): Date {
+  return meeting.endAt
+    ? new Date(meeting.endAt)
+    : new Date(new Date(meeting.scheduledAt).getTime() + MEETING_MIN * 60_000);
 }
 
 function formatInTz(instant: Date, tz: WallTz): { date: string; time: string } {
@@ -126,43 +117,36 @@ function formatInTz(instant: Date, tz: WallTz): { date: string; time: string } {
 }
 
 /** 첫 회차 ~ 마지막 회차. 예정일(SCHEDULED_AT)을 고른 타임존 날짜로 붙인다. 킥오프(no === 0)는 제외한다. */
-export function durationOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
-  const meetings = meetingsOf(study).filter((m) => m.no !== 0);
+export function durationOf(study: JoinedStudy, locale: Locale, tz: WallTz = 'KST'): string {
+  const meetings = study.meetings.filter((m) => m.no !== 0);
   if (meetings.length === 0) return locale === 'en' ? 'Dates TBD' : '기간 미정';
-  const clock = meetingClock(study);
-  const start = formatInTz(asKstInstant(meetings[0].date, clock), tz).date;
-  const end = formatInTz(asKstInstant(meetings[meetings.length - 1].date, clock), tz).date;
+  const start = formatInTz(new Date(meetings[0].scheduledAt), tz).date;
+  const end = formatInTz(new Date(meetings[meetings.length - 1].scheduledAt), tz).date;
   return `${start} ~ ${end}`;
 }
 
-/** 회차 예정일(SCHEDULED_AT)을 고른 타임존 날짜(yyyy-mm-dd)로. */
-export function meetingWallDate(study: Study, meeting: StudyMeeting, tz: WallTz): string {
-  return formatInTz(asKstInstant(meeting.date, meetingClock(study)), tz).date;
-}
-
-/** 다가오는 회차. 참여 종료·완주는 없다. */
-export function upcomingMeeting(study: Study, tz: WallTz = 'KST'): StudyMeeting | undefined {
+/** 다가오는 회차. 참여 종료·완주는 없다. 진행 중인 회차는 끝날 때까지 다음 회차로 남는다. */
+export function upcomingMeeting(study: JoinedStudy): JoinedMeeting | undefined {
   const life = lifeStatus(study);
   if (life === 'ended') return undefined;
-  const today = ymdInTz(new Date(), tz);
-  const meetings = meetingsOf(study);
-  return life === 'upcoming' ? meetings[0] : meetings.find((m) => m.date >= today);
+  if (life === 'upcoming') return study.meetings[0];
+  const now = Date.now();
+  return study.meetings.find((m) => meetingEnd(m).getTime() > now);
 }
 
-function meetingLabel(meeting: StudyMeeting): string {
+function meetingLabel(meeting: JoinedMeeting): string {
   return meeting.no === 0 ? '킥오프' : `${meeting.no}회차`;
 }
 
 /** 다가오는 일정 문구. 회차·날짜·시각을 선택한 타임존으로 붙인다. */
-export function upcomingOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
-  const next = upcomingMeeting(study, tz);
+export function upcomingOf(study: JoinedStudy, locale: Locale, tz: WallTz = 'KST'): string {
+  const next = upcomingMeeting(study);
   if (next) {
-    const clock = meetingClock(study);
-    const { date, time } = formatInTz(asKstInstant(next.date, clock), tz);
+    const { date, time } = formatInTz(new Date(next.scheduledAt), tz);
     return `${meetingLabel(next)} · ${date} ${time}`;
   }
   if (lifeStatus(study) === 'ended') return locale === 'en' ? 'No upcoming meeting' : '다음 일정 없음';
-  return study.schedule ? t(study.schedule, locale) : locale === 'en' ? 'No upcoming meeting' : '오늘 이후 회차 없음';
+  return locale === 'en' ? 'No upcoming meeting' : '오늘 이후 회차 없음';
 }
 
 export type WeekHit = {
@@ -188,16 +172,15 @@ const DOW_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
  * 이번 주(월~일) 회차. 참여 종료·완주는 뺀다 — 이미 끝난 관계다.
  * 날짜는 고른 타임존 벽시계 기준이다.
  */
-export function weekDays(studies: Study[], locale: Locale, tz: WallTz, monday: string): WeekDay[] {
+export function weekDays(studies: JoinedStudy[], locale: Locale, tz: WallTz, monday: string): WeekDay[] {
   const today = ymdInTz(new Date(), tz);
   const end = addDays(monday, 6);
   const byDate = new Map<string, WeekHit[]>();
 
   for (const study of studies) {
     if (lifeStatus(study) === 'ended') continue;
-    const clock = meetingClock(study);
-    for (const m of meetingsOf(study)) {
-      const { date, time } = formatInTz(asKstInstant(m.date, clock), tz);
+    for (const m of study.meetings) {
+      const { date, time } = formatInTz(new Date(m.scheduledAt), tz);
       if (date < monday || date > end) continue;
       const hits = byDate.get(date) ?? [];
       hits.push({ studyId: study.id, meetingId: m.id, title: t(study.title, locale), no: m.no, time });

@@ -212,6 +212,9 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 | PATCH | `/api/me` | 프로필 수정 — 닉네임·시간대를 한 번에 저장, 온보딩 완료 필요 | O |
 | GET | `/api/me/marketing-consent` | 마케팅 수신 동의 조회 (`{agreed, agreedAt}`), 온보딩 완료 필요 | O |
 | PUT | `/api/me/marketing-consent` | 마케팅 수신 동의 변경, 온보딩 완료 필요 | O |
+| POST | `/api/uploads/images` | 이미지 올리기 → `{fileId, url}`. 어디에 쓸지는 저장 API 가 정한다 ([스펙](../../../specs/profile-image/spec.md)), 온보딩 완료 필요 | O |
+| PUT | `/api/me/profile-image` | 올려 둔 파일 번호를 프로필 사진으로 연결 (교체 포함), 온보딩 완료 필요 | O |
+| DELETE | `/api/me/profile-image` | 프로필 사진 지우기 — 사진이 없어도 200, 온보딩 완료 필요 | O |
 | GET · POST | `/api/studies/{studyId}/meetings` | 분반 회차 목록 · 추가 ([스펙](../../../specs/study-meeting/spec.md)) | O |
 | PUT · DELETE | `/api/studies/{studyId}/meetings/{meetingId}` | 회차 수정 · 삭제 | O |
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |

@@ -72,10 +72,14 @@ public class SesMailClient implements MailClient {
     }
 
     private Message buildMessage(String subject, String body) {
-        return Message.builder()
-                .subject(textContent(subject))
-                .body(Body.builder().text(textContent(body)).build())
-                .build();
+        // HTML 본문은 text/html + text/plain 대체본(태그를 걷어 만든다)을 함께 보낸다 — 텍스트 전용 메일함·스팸 점수.
+        Body.Builder content = Body.builder();
+        if (MailBody.isHtml(body)) {
+            content.html(textContent(body)).text(textContent(MailBody.toPlainText(body)));
+        } else {
+            content.text(textContent(body));
+        }
+        return Message.builder().subject(textContent(subject)).body(content.build()).build();
     }
 
     private Content textContent(String value) {
