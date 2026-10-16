@@ -5,8 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class NotificationTest {
 
@@ -107,5 +110,106 @@ class NotificationTest {
         assertThatThrownBy(() -> notification.markSent(Instant.now(), firstLockedAt))
                 .isInstanceOf(NotificationClaimLostException.class);
         assertThat(notification.getStatus()).isEqualTo(NotificationStatus.PROCESSING);
+    }
+
+    private Notification failed(Long recipientUserId) {
+        Notification notification =
+                Notification.pendingImmediate(
+                        NotificationEventType.USER_REGISTERED,
+                        NotificationChannel.EMAIL,
+                        "user@example.com",
+                        recipientUserId,
+                        10L,
+                        Map.of("nickname", "gildong"));
+        Instant lockedAt = Instant.now();
+        notification.markProcessing(lockedAt);
+        notification.markFailed(NotificationErrorType.PROVIDER_ERROR, lockedAt);
+        return notification;
+    }
+
+    @Test
+    @DisplayName("재발송 — FAILED 가 같은 행 그대로 PENDING 으로 돌아가고 실패 원인·잠금이 비워진다")
+    void resend_resetsFailedToPending() {
+        Notification notification = failed(1L);
+
+        notification.resend();
+
+        assertThat(notification.getStatus()).isEqualTo(NotificationStatus.PENDING);
+        assertThat(notification.getErrorType()).isNull();
+        assertThat(notification.getLockedAt()).isNull();
+        assertThat(notification.getSentAt()).isNull();
+        // 발송 시점 스냅샷은 그대로 쓴다
+        assertThat(notification.getRecipientValue()).isEqualTo("user@example.com");
+        assertThat(notification.getTemplateId()).isEqualTo(10L);
+        assertThat(notification.getPayload()).containsEntry("nickname", "gildong");
+    }
+
+    @Test
+    @DisplayName("재발송한 건이 또 실패하면 새 원인이 남고 다시 재발송할 수 있다")
+    void resend_failAgain_canBeResentAgain() {
+        Notification notification = failed(1L);
+        notification.resend();
+        Instant lockedAt = Instant.now();
+        notification.markProcessing(lockedAt);
+        notification.markFailed(NotificationErrorType.INVALID_RECIPIENT, lockedAt);
+
+        assertThat(notification.getErrorType()).isEqualTo(NotificationErrorType.INVALID_RECIPIENT);
+        assertThat(notification.canResend(Set.of(1L))).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = NotificationStatus.class,
+            names = {"PENDING", "PROCESSING", "SENT", "CANCELLED"})
+    @DisplayName("FAILED 가 아니면 재발송할 수 없다 — 같은 메일이 두 번 가거나 보낼 이유가 없다")
+    void resend_notFailed_isRejected(NotificationStatus status) {
+        Notification notification = withStatus(status);
+
+        assertThat(notification.resendSkipReason(Set.of(1L))).contains(ResendSkipReason.NOT_FAILED);
+        assertThat(notification.canResend(Set.of(1L))).isFalse();
+        assertThatThrownBy(notification::resend).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("수신 계정이 남아 있지 않은 실패 건(탈퇴)은 재발송할 수 없다")
+    void resend_recipientGone_isRejected() {
+        Notification notification = failed(1L);
+
+        assertThat(notification.resendSkipReason(Set.of(2L)))
+                .contains(ResendSkipReason.RECIPIENT_GONE);
+        assertThat(notification.canResend(Set.of())).isFalse();
+    }
+
+    @Test
+    @DisplayName("수신 계정이 있으면 재발송할 수 있다")
+    void resend_recipientExists_isAllowed() {
+        Notification notification = failed(1L);
+
+        assertThat(notification.resendSkipReason(Set.of(1L))).isEmpty();
+        assertThat(notification.canResend(Set.of(1L))).isTrue();
+    }
+
+    @Test
+    @DisplayName("수신 계정 ID 가 없는 건(운영 공용 발송 등)은 계정 검사를 건너뛴다")
+    void resend_withoutRecipientUser_skipsAccountCheck() {
+        Notification notification = failed(null);
+
+        assertThat(notification.canResend(Set.of())).isTrue();
+    }
+
+    private Notification withStatus(NotificationStatus status) {
+        Notification notification = pending();
+        Instant lockedAt = Instant.now();
+        switch (status) {
+            case PENDING -> {}
+            case PROCESSING -> notification.markProcessing(lockedAt);
+            case SENT -> {
+                notification.markProcessing(lockedAt);
+                notification.markSent(Instant.now(), lockedAt);
+            }
+            case CANCELLED -> notification.cancel();
+            default -> throw new IllegalArgumentException(status.name());
+        }
+        return notification;
     }
 }

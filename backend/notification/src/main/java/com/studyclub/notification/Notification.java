@@ -14,6 +14,8 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import lombok.Getter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -166,6 +168,40 @@ public class Notification extends BaseEntity {
     public void cancel() {
         requireStatus(NotificationStatus.PENDING, "CANCELLED");
         this.status = NotificationStatus.CANCELLED;
+    }
+
+    /**
+     * 이 건을 지금 재발송할 수 없는 이유. 없으면(비어 있으면) 재발송할 수 있다 — 목록의 {@code canResend} 와 재발송 접수가 <b>같은 메서드</b>를
+     * 쓴다. 판정 재료인 {@code existingAccountIds} 는 호출자가 같은 쿼리로 센 "지금 남아 있는 계정 ID" 다.
+     *
+     * <p>{@code RECIPIENT_USER_ID} 가 없는 건(운영 공용 발송 등)은 계정과 무관하므로 계정 검사를 건너뛴다.
+     */
+    public Optional<ResendSkipReason> resendSkipReason(Set<Long> existingAccountIds) {
+        if (status != NotificationStatus.FAILED) {
+            return Optional.of(ResendSkipReason.NOT_FAILED);
+        }
+        if (recipientUserId != null && !existingAccountIds.contains(recipientUserId)) {
+            return Optional.of(ResendSkipReason.RECIPIENT_GONE);
+        }
+        return Optional.empty();
+    }
+
+    public boolean canResend(Set<Long> existingAccountIds) {
+        return resendSkipReason(existingAccountIds).isEmpty();
+    }
+
+    /**
+     * 운영자 재발송 — 실패한 건을 <b>그 행 그대로</b> 다시 {@code PENDING} 으로 되돌려 폴링이 집어가게 한다. 새 행을 만들지 않는다(알림 하나에 줄
+     * 하나, 시도 이력을 남기지 않는다 — POL-0009). 이전 실패 원인({@code ERROR_TYPE})은 지워지고, 다시 실패하면 새 원인이 남는다.
+     *
+     * <p>{@code RECIPIENT_*}·{@code TEMPLATE_ID}·{@code PAYLOAD} 는 건드리지 않는다 — 발송 시점의 스냅샷을 그대로 다시
+     * 쓴다. 호출자는 {@link #resendSkipReason} 로 먼저 확인한다.
+     */
+    public void resend() {
+        requireStatus(NotificationStatus.FAILED, "PENDING(재발송)");
+        this.status = NotificationStatus.PENDING;
+        this.errorType = null;
+        this.lockedAt = null;
     }
 
     /** 재수거 — {@code locked_at} 타임아웃을 넘겨 멈춰버린 PROCESSING 행을 다시 PENDING 으로 되돌린다. */
