@@ -215,6 +215,10 @@ export function ScheduleManager({
   }
 
   function remove(targets: ProtoMeeting[]) {
+    // TODO(api): DELETE /api/studies/{studyId}/meetings 한 번
+    //            body: { studyGroupId, meetingIds: [...] } — 전부 지우거나 하나도 안 지운다.
+    //            409 (MEETING_ALREADY_STARTED · KICKOFF_NOT_DELETABLE)면 목록을 다시 불러 오고
+    //            errorMessage 를 notice 로 보인다 — 서버가 「N회차, M회차는 이미 시작해 지울 수 없습니다.」 로 준다.
     const ids = new Set(targets.map((t) => t.id));
     for (const t of targets) {
       src.remove(t.id);
