@@ -14,7 +14,8 @@ const NAV = [
   { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },
-  { href: '/notification-templates', label: '알림 템플릿', icon: Mail },
+  // 알림 템플릿과 발송 이력은 한 메뉴의 두 탭이다 — 어느 쪽 화면에 있어도 「알림」이 활성이다
+  { href: '/notifications', label: '알림', icon: Mail, also: ['/notification-templates'] },
 ];
 
 export function Sidebar() {
@@ -46,11 +47,14 @@ export function Sidebar() {
       </div>
       <nav className='flex flex-1 flex-col gap-0.5 p-3'>
         {NAV.map((item) => {
-          const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+          const active = item.exact
+            ? pathname === item.href
+            : [item.href, ...(item.also ?? [])].some((prefix) => pathname.startsWith(prefix));
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? 'page' : undefined}
               className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors'
               style={
                 active

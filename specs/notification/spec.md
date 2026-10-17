@@ -5,7 +5,7 @@
 > Story PRD: [알림 템플릿](../../01-planning/stories/notification-template/PRD.md) (ST-030) · [발송 이력](../../01-planning/stories/notification-history/PRD.md) (ST-032)
 > 정책: [POL-0009 알림](../../01-planning/_registry/policies/POL-0009-notification.md) · [POL-0008 화면 공통 규칙](../../01-planning/_registry/policies/POL-0008-screen-rules.md)
 > 생성일: 2026-09-12 · 상태: 구현중
-> 갱신: 2026-10-11 — 발송 이력 화면(FE)이 쓰는 API 확정, **실패 건 재발송**(`POST /api/admin/notifications/resend`) 추가. 재발송은 **새 행을 만들지 않고 그 행을 `PENDING` 으로 되돌린다** — 재발송은 `스펙작성중`
+> 갱신: 2026-10-11 — 발송 이력 화면(FE)이 쓰는 API 확정, **실패 건 재발송**(`POST /api/admin/notifications/resend`) 추가. 재발송은 **새 행을 만들지 않고 그 행을 `PENDING` 으로 되돌린다** — 백엔드 구현완료(2026-10-16), 발송 이력 화면(FE)은 후속
 
 ## 범위
 
@@ -25,8 +25,8 @@ API 3개(조회 2 + 재발송 1)를 이번 스펙에 포함한다 — [백오피
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | `/api/admin/notification-templates` | 알림 템플릿 목록 조회 | O (`@RequireAdmin`) | 구현완료 |
-| GET | `/api/admin/notifications` | 발송 이력 조회 — 행마다 `canResend` 추가, `ids` 로 재발송한 건의 끝을 쫓는다 | O (`@RequireAdmin`) | 변경예정 (`canResend`·`ids`·정렬·limit 상한 추가 — [미확정](#미확정)) |
-| POST | `/api/admin/notifications/resend` | 실패 건 재발송 — 고른 FAILED 행을 그 행 그대로 PENDING 으로 되돌린다. 줄마다 가려 접수(`accepted`)·제외(`skipped`)를 돌려준다. 접수까지만 응답 | O (`@RequireAdmin`) | 스펙작성중 |
+| GET | `/api/admin/notifications` | 발송 이력 조회 — 행마다 `canResend` 추가, `ids` 로 재발송한 건의 끝을 쫓는다 | O (`@RequireAdmin`) | 구현완료 |
+| POST | `/api/admin/notifications/resend` | 실패 건 재발송 — 고른 FAILED 행을 그 행 그대로 PENDING 으로 되돌린다. 줄마다 가려 접수(`accepted`)·제외(`skipped`)를 돌려준다. 접수까지만 응답 | O (`@RequireAdmin`) | 구현완료 |
 
 ### 이 기능이 "알림(Notification)" 으로 추상화되고 이벤트 핸들러 방식으로 개발된다는 것의 확인
 
@@ -289,10 +289,10 @@ stateDiagram-v2
   기간(날짜 범위) 필터·정렬 옵션은 요구된 바 없어 이번 구현에 넣지 않는다. 여기에 **`ids`**(선택)를 더한다 —
   쉼표로 이은 ID 목록(최대 100개). 주면 그 행들을 `offset`·`limit` 과 상관없이 모두 준다(`total` 은 찾은 건수).
   **재발송을 접수한 건의 끝(`SENT`·`FAILED`)을 쫓을 때** 쓴다 — 쫓는 주기와 포기 시점은 FE 구현이 정한다
-- **정렬**: 요청 시각(`CREATED_AT`) 내림차순, 같은 시각이면 `ID` 내림차순(페이지 경계에서 순서가 흔들리지 않게). 현재 코드는 `CREATED_AT` 만 쓴다 — 보조 키는 구현에서 추가한다. 페이지네이션(`LIMIT`/`OFFSET`)과 필터·건수는 DB 가
+- **정렬**: 요청 시각(`CREATED_AT`) 내림차순, 같은 시각이면 `ID` 내림차순(페이지 경계에서 순서가 흔들리지 않게).  페이지네이션(`LIMIT`/`OFFSET`)과 필터·건수는 DB 가
   한다 — 전체를 읽어 와서 거르지 않는다
 - **`total`**: 보이는 한 페이지가 아니라 **`eventType`·`status` 조건에 걸린 전체 건수**다
-- **`limit` 상한**: 100. 넘기면 400 `INVALID_INPUT`. 현재 코드는 상한이 없다 — 구현에서 추가한다
+- **`limit` 상한**: 100. 넘기면 400 `INVALID_INPUT`.
 - **범위 밖 `offset`**: `offset` 이 `total` 이상이면 에러가 아니라 빈 `items` 와 실제 `total` 을 준다
 
 ```jsonc
@@ -450,13 +450,21 @@ id 를 모으는 사이 다른 캡틴이 일부를 먼저 다시 보냈다면 �
 
 - 알림 템플릿 목록·상세(읽기 전용): `frontend/apps/back-office-front/src/app/notification-templates/` →
   `GET /api/admin/notification-templates`
-- 발송 이력 화면(예정, 이 스펙 뒤 구현): [PRD (ST-032)](../../01-planning/stories/notification-history/PRD.md)
-  - 사이드바에 새 메뉴 「알림 발송 이력」(`/notifications`)을 더한다. 기존 「알림 템플릿」 메뉴·화면은 이번 이슈에서 손대지 않는다
-    (템플릿은 이번 범위 밖 — PRD 의 「알림」 한 메뉴 두 탭 구조로의 통합은 템플릿 작업 때)
+- 발송 이력 화면(구현완료 2026-10-16): [PRD (ST-032)](../../01-planning/stories/notification-history/PRD.md)
+  - 사이드바는 「알림」 **한 메뉴**이고 그 안에서 「알림 템플릿」·「발송 이력」 **두 탭**으로 가른다(기획 PRD·playground 와 같은 모양).
+    발송 이력은 `/notifications`, 템플릿 목록·상세는 기존 `/notification-templates` 를 유지한다 — 템플릿 화면에는 탭 줄만 얹었고
+    동작은 바꾸지 않았다(템플릿 추가 등은 이번 범위 밖)
   - `frontend/apps/back-office-front/src/app/notifications/page.tsx` (필터·페이지는 URL 쿼리 — `useUrlState`)
   - `frontend/apps/back-office-front/src/features/notifications/queries.ts` → `GET /api/admin/notifications`, `POST /api/admin/notifications/resend`
   - `frontend/packages/mock/src/msw/handlers/notifications.ts` (MSW)
-  - 화면은 `canResend` 가 `true` 인 행만 고를 수 있게 한다. 상태 문자열로 다시 계산하지 않는다
+  - 화면은 `canResend` 가 `true` 인 줄에만 재발송 아이콘을 세운다. 상태 문자열로 다시 계산하지 않는다
+  - 한 줄 재발송은 묻지 않고, **실패만 거른 목록**에서만 「전체 재발송」이 서며 건수를 적은 확인 창으로 다시 묻는다.
+    전체 재발송은 같은 조건으로 `GET ?status=FAILED&limit=100` 을 읽어 ID 를 모은 뒤 100건씩 `POST` 한다
+  - 접수한 줄의 끝은 2초 주기로 `GET ?ids=` 로 쫓고 2분에서 포기한다. 포기하면 아무 말도 하지 않는다. 끝나면 토스트 한 번
+  - **거르는 조건에서 벗어난 줄을 그 자리에서 치우지 않는다** (기획 PRD). 접수·완료 때 목록을 다시 읽지 않고 화면이 가진 목록의 그
+    줄만 상태를 바꾼다 — 「실패」로 거른 목록에서도 줄이 남고, 다음에 필터·페이지를 바꿔 새로 읽을 때 빠진다.
+    `skipped` 로 돌아온 줄은 `GET ?ids=` 로 서버의 지금 모습을 읽어 맞춘다
+  - 요청이 서버에 닿지 못하면(한 건도 나가지 않음) 오류 토스트에 「다시 시도」를 띄운다. 묶음이면 나가지 못한 줄만 다시 보낸다
 
 ## 웰컴메일 콘텐츠
 
@@ -619,8 +627,6 @@ API의 `application.yml`은 `spring.config.import: classpath:notification.yml`�
 
 2026-10-11 발송 이력 FE·재발송 추가로 남은 것:
 
-- **`GET /api/admin/notifications` 변경예정** — 이미 구현된 조회에 `canResend` 필드, `ids` 파라미터, 정렬 보조 키(`ID DESC`),
-  `limit` 상한 100 을 더한다. 기존 동작(필터·건수·페이지)은 그대로라 구현 PR 이 합쳐지면 `구현완료` 로 돌아간다
 - **수신 주소 표기 — 개발 리뷰 합의, 기획 확인만 남음.** 기획 PRD(ST-032)·POL-0009 는 서버가 전체 주소를 내리라고 하고, 이 스펙은
   가린 값을 유지한다. 스펙 리뷰(PR #245)에서 가린 값 유지·줄별 펼침 미제공으로 합의했다. 운영자가 알림의 수신 회원을 알아야
   하는 경우는 필요해질 때 별도 스펙(「보기」 API + 감사 로그)으로 다룬다. 기획 문서가 아직 전체 주소 기준이라 기획의 수정이 필요하다
