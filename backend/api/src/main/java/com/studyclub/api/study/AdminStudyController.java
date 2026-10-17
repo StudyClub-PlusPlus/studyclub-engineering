@@ -2,6 +2,7 @@ package com.studyclub.api.study;
 
 import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.api.discord.StudyDiscordLinkService;
+import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyStatus;
@@ -48,17 +49,27 @@ public class AdminStudyController {
         this.studyDiscordLinkService = studyDiscordLinkService;
     }
 
-    @Operation(summary = "백오피스 스터디 목록 조회", description = "ADMIN만 호출 가능. DRAFT 포함 전 상태를 반환한다.")
+    @Operation(
+            summary = "백오피스 스터디 목록 조회",
+            description =
+                    "ADMIN만 호출 가능. DRAFT 포함 전 상태. 모집 판정은 최신 회차 신청서 수 기준."
+                            + " visibility·recruitStatus·sort 는 대시보드 전체 보기용(specs/dashboard/spec.md 4.4).")
     @GetMapping
     public BackofficeStudyListResponse list(
             @RequestParam(required = false) StudyCategory category,
             @RequestParam(required = false) StudyKind studyKind,
             @RequestParam(required = false) StudyStatus status,
             @RequestParam(required = false) Long studyId,
+            @RequestParam(required = false) StudyVisibility visibility,
+            @RequestParam(required = false) RecruitStatus recruitStatus,
+            @RequestParam(required = false) BackofficeStudySort sort,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit) {
         return backofficeStudyListService.getStudies(
-                new BackofficeStudyListFilter(category, studyKind, status, studyId), offset, limit);
+                new BackofficeStudyListFilter(
+                        category, studyKind, status, studyId, visibility, recruitStatus, sort),
+                offset,
+                limit);
     }
 
     @Operation(summary = "백오피스 스터디 상세 조회", description = "ADMIN만 호출 가능. DRAFT 도 조회된다.")

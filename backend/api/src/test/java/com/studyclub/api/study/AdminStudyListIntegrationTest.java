@@ -296,12 +296,13 @@ class AdminStudyListIntegrationTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    @DisplayName("성공 - 명부 ACTIVE 가 정원에 닿으면 recruitStatus 는 RECRUIT_CLOSED 다")
-    void recruitClosedWhenActiveReachesCapacity() {
+    @DisplayName("성공 - 최신 모집 회차 신청서 수가 정원에 닿으면 recruitStatus 는 RECRUIT_CLOSED 다")
+    void recruitClosedWhenApplicationsReachCapacity() {
         Timestamp now = Timestamp.from(Instant.now());
         setCapacity(STUDY_ID, 2);
-        insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
-        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
+        long recruitmentId = latestRecruitmentId(STUDY_ID);
+        insertApplication(ADMIN_ID, recruitmentId, now);
+        insertApplication(MEMBER_ID, recruitmentId, now);
 
         Map<String, Object> study = itemById(listStudies(), STUDY_ID);
 
@@ -311,18 +312,49 @@ class AdminStudyListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - PAUSED 는 정원에 들지 않는다 — 신청 검사와 같이 RECRUITING 이다")
-    void pausedDoesNotTakeASeat() {
+    @DisplayName("성공 - 명부 ACTIVE 만으로는 정원을 채우지 않는다 — 신청서 수 기준이다")
+    void activeRosterDoesNotCloseRecruitmentAlone() {
         Timestamp now = Timestamp.from(Instant.now());
         setCapacity(STUDY_ID, 2);
         insertParticipant(ADMIN_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
-        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.PAUSED, now);
+        insertParticipant(MEMBER_ID, STUDY_ID, ParticipantStatus.ACTIVE, now);
 
         Map<String, Object> study = itemById(listStudies(), STUDY_ID);
 
         assertThat(study)
-                .containsEntry("currentApplicants", 1)
+                .containsEntry("currentApplicants", 0)
                 .containsEntry("recruitStatus", "RECRUITING");
+    }
+
+    @Test
+    @DisplayName("성공 - visibility=PUBLIC 이면 DRAFT 를 빼고, sort=TITLE_ASC 는 제목순이다")
+    void visibilityPublicAndTitleSort() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?visibility=PUBLIC&sort=TITLE_ASC&limit=100",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<String, Object>> items = items(response.getBody());
+        assertThat(items).noneMatch(i -> "DRAFT".equals(i.get("status")));
+        List<String> titles = items.stream().map(i -> (String) i.get("title")).toList();
+        assertThat(titles).isSorted();
+    }
+
+    @Test
+    @DisplayName("실패 - sort=RECRUITMENT 인데 status 가 OPEN 이 아니면 400")
+    void recruitmentSortRequiresOpenStatus() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?sort=RECRUITMENT",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
     }
 
     @Test
@@ -421,6 +453,8 @@ class AdminStudyListIntegrationTest {
     private void cleanSeedRows() {
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID = ?", NEXT_COHORT_ID);
         jdbcTemplate.update(
+                "DELETE FROM STUDY_APPLICATION WHERE ACCOUNT_ID IN (?, ?)", ADMIN_ID, MEMBER_ID);
+        jdbcTemplate.update(
                 "DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID IN (?, ?, ?)",
                 STUDY_ID,
                 DRAFT_STUDY_ID,
@@ -502,6 +536,22 @@ class AdminStudyListIntegrationTest {
                 Timestamp.from(Instant.now().minusSeconds(3600)),
                 Timestamp.from(Instant.now().plusSeconds(3600)),
                 capacity,
+                now,
+                now);
+    }
+
+    private long latestRecruitmentId(Long studyId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT MAX(ID) FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", Long.class, studyId);
+    }
+
+    private void insertApplication(Long accountId, long recruitmentId, Timestamp now) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_APPLICATION (ACCOUNT_ID, RECRUITMENT_ID, FORM_ANSWER,"
+                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, CAST(? AS JSON), ?, ?)",
+                accountId,
+                recruitmentId,
+                "{\"discordNickname\":\"n\"}",
                 now,
                 now);
     }
