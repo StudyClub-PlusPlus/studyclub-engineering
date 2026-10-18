@@ -84,6 +84,58 @@
 - 스터디 role 부여·회수는 사람이 아니라 백엔드가 알아서 하는 일이다. 봇 규칙상 이때는 요청자 칸(`X-Discord-User-ID`)에 **봇 자신의 번호**(`DISCORD_BOT_ID`)를 넣는다.
 - 백엔드의 봇 호출 부품(`DiscordBotClient`)에는 이 설정이 없다. 스터디 생성 말고는 부르는 메서드도 없다.
 
+## 디스코드 API 현황
+
+창구는 세 갈래다. **봇이 연 창구**(백엔드가 봇을 부름), **백엔드가 연 창구**(봇이나 화면이 백엔드를 부름), **앞으로 만들 창구**.
+
+### 봇이 연 창구 — `discord/app/api/routes/` (9개 모두 구현)
+
+| 창구 | 하는 일 | 지금 부르는 곳 | 불러야 하는 곳 |
+|---|---|---|---|
+| `POST /api/v1/studies` | 카테고리·채널 2개·스터디 role 생성 | ✅ 백엔드 스터디 등록 (`StudyDiscordLinkService`) | — |
+| `GET /api/v1/studies/{discordStudyId}/channels` | 스터디 채널 목록 | ❌ 없음 | 정해진 곳 없음. 스터디 상세의 디스코드 링크를 자동으로 채울 때 쓸 수 있다 |
+| `POST /api/v1/roles/{discordRoleId}/users` | 스터디 role 부여 | ❌ 없음 | B3 크루 편입 |
+| `DELETE /api/v1/roles/{discordRoleId}/users` | 스터디 role 회수 | ❌ 없음 | B5 참여 중단 |
+| `POST /api/v1/roles/navigator/users` | 네비게이터 role 부여 | ❌ 없음 | B4 네비게이터 지정 |
+| `DELETE /api/v1/roles/navigator/users` | 네비게이터 role 회수 | ❌ 없음 | B4 네비게이터 해제 |
+| `POST /api/v1/channels/{discordChannelId}/msg` | 스터디 채널에 메시지 | ❌ 없음 | 정해진 곳 없음 (회차 안내 등 후보) |
+| `POST /api/v1/channels/alert/msg` | 운영 alert 채널에 메시지 | ❌ 없음 | 정해진 곳 없음. Grafana 알림은 이 창구가 아니라 봇 토큰으로 직접 올리고, 백엔드 운영 알림(`OpsAlertNotifier`)은 webhook 을 쓴다 |
+| `POST /api/v1/channels/announcement/msg` | 길드 전체 공지 | ❌ 없음 | 정해진 곳 없음 |
+
+### 백엔드가 연 창구
+
+| 창구 | 하는 일 | 상태 | 부르는 곳 |
+|---|---|---|---|
+| `POST /api/discord/studies/{discordStudyId}/attendances` | 봇이 음성 채널 출석을 백엔드에 기록 | ✅ 구현완료 ([discord-attendance](../../specs/discord-attendance/spec.md)) | ✅ 봇 `/attendance` 명령 (`discord/app/backend_client.py`) |
+| `POST /api/admin/studies/{studyId}/discord-link` | 자동 생성이 실패한 스터디에 디스코드 다시 붙이기 | ✅ 구현완료 ([discord-study-link](../../specs/discord-study-link/spec.md)) | ❌ **백오피스 화면에 버튼이 없다.** 지금은 API 를 직접 불러야 한다 |
+| `POST /api/me/discord/link` | 디스코드 계정 연동 (`DISCORD_ID` 저장) | ❌ 스펙작성중, 코드 없음 | ❌ 사이트 연동 창이 불러야 하는데 가짜로 성공한다 |
+
+### 앞으로 만들 창구
+
+| 창구 | 누가 | 왜 | 언제 |
+|---|---|---|---|
+| `POST /api/me/discord/link` (위 표) | 디스코드 스쿼드 | 모든 자동화의 출발점 | **지금** (B1) |
+| `GET /auth/me` 에 `discordLinked` 필드 추가 | 디스코드 스쿼드 | 화면이 연동 여부를 서버 값으로 알게 (아래 「화면·기능」 ①) | B1 과 같이 |
+| 봇 「길드 멤버인가」 창구 | 디스코드 스쿼드 | 가입 여부 확인 | 질문 2 가 (나)일 때 (B6) |
+| 네비게이터 지정·해제, 참여 중단, 명부 편입 API | 스터디 스쿼드 | 이벤트를 발행할 자리 | 각 스펙대로 (B4 · B5 · B3) |
+
+## 화면·기능별 호출 현황
+
+API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이다.
+
+| # | 화면·기능 | 파일 | 지금 | 해야 할 것 | 담당 |
+|---|---|---|---|---|---|
+| ① | 사이트 「신청하기」 버튼 | `core-front/src/components/ApplyButton.tsx` | 연동 여부를 **브라우저 저장소**(`localStorage` 의 `sc_discord`)로 판단한다. 서버의 `DISCORD_ID` 와 상관없다 | `GET /auth/me` 의 `discordLinked` 로 판단. 서버가 403 을 주면 연동 창을 여는 처리는 이미 있다 (`ApplyDialog` 의 `onRequireDiscord`) | 프론트 (B1 이후) |
+| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | 0.4초 뒤 성공한 척하고 브라우저 저장소에 가짜 핸들(`jiwon_dev`)을 쓴다 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
+| ③ | 신청서의 디스코드 별명 칸 | `core-front/src/components/ApplyDialog.tsx` | 기본값을 브라우저 저장소에서 읽는다. 제출은 서버로 간다 ✅ | 스펙대로 `GET /auth/me` 의 `discordNickname` 에서 읽기 | 프론트 |
+| ④ | 백오피스 스터디 등록 | `back-office-front/src/components/StudyForm.tsx` | 등록은 된다. 디스코드 생성이 성공했는지 **알 수 없다** | 상세에 연결 여부 표시 + 실패 시 「디스코드 다시 연결」 버튼(`POST .../discord-link`) | 디스코드 스쿼드 (응답 필드) · 프론트 |
+| ⑤ | 스터디의 디스코드 링크 | 백오피스 `StudyForm` 입력 → 사이트 상세·내 스터디 표시 | 캡틴이 링크(`STUDY.DISCORD_CHANNEL_URL`)를 **손으로** 넣는다. 봇이 만든 채널과 따로 논다 | 봇이 만든 채널로 자동으로 채울지 정한다 (이번 범위 밖) | 기획 |
+| ⑥ | 신청 제출 (백엔드) | `StudyApplicationService.submit` | 봇을 안 부른다 | 질문 3 이 「제출 시」면 B3 구독자가 `study_application.submitted` 를 듣는다 | 디스코드 스쿼드 |
+| ⑦ | 네비게이터 지정·해제 (백엔드) | 없음 | API 자체가 없다 | API + `role_changed` 발행 → B4 구독자 | 스터디 → 디스코드 |
+| ⑧ | 참여 중단 (백엔드) | 없음 | API 자체가 없다 | API + `withdrawn` 발행 → B5 구독자 | 스터디 → 디스코드 |
+| ⑨ | 회원 탈퇴 (백엔드) | `AccountDeletionService` | 디스코드 role 이 그대로 남는다 | 이번 범위 밖 — [user-leave 스펙](../../specs/user-leave/spec.md)이 「디스코드 스쿼드와 별도로 맞춘다」고 적어 두었다 | 디스코드 스쿼드 |
+| ⑩ | 백오피스 회원 권한 변경 | `back-office-front/src/features/users/` | 「디스코드 설정은 운영자에게 문의」 안내만 띄운다 | **바꾸지 않는다** — 10-04 에 손으로 하기로 정했다 ([admin-users 스펙](../../specs/admin-users/spec.md)) | — |
+
 ## 백엔드 개발 범위
 
 **공통 규칙** — B3~B5 는 전부 이 규칙을 따른다. 스터디 생성(`StudyDiscordLinkService.linkAfterCreate`)이 이미 쓰는 방식이다.
@@ -112,7 +164,8 @@
 - 에러: `code` 없음 400 · 다른 계정이 이미 쓰는 ID 409 · Discord 실패·타임아웃 502 (부분 저장 없음).
 - **새 설정값**: Discord OAuth 앱의 client id · client secret · redirect URI. 값은 내부 시크릿 저장소에만 두고 코드에는 `env` 이름만 쓴다.
 - 끝나면 풀리는 것: 신청 403, 스터디 생성 때 디스코드 건너뜀.
-- 프론트는 `ApplyDiscordGate` 의 가짜 연동을 이 API 로 바꾼다.
+- 같이 할 것: `GET /auth/me` 응답에 `discordLinked`(Boolean) 를 더한다. 화면은 지금 연동 여부를 브라우저 저장소로 판단한다 — 「판정은 서버가 내려준다」 규칙대로 서버 값을 주어야 한다. `DISCORD_ID` 자체는 싣지 않는다.
+- 프론트는 `ApplyDiscordGate` 의 가짜 연동을 이 API 로, `ApplyButton` 의 판단을 `discordLinked` 로 바꾼다 ([화면·기능 ①②](#화면기능별-호출-현황)).
 
 ### B2. `DiscordBotClient` 확장
 
@@ -150,7 +203,7 @@
 
 - **회원 탈퇴**: 명부 행은 `DELETED` 가 되지만 디스코드 role 은 그대로 남는다. 넣을지는 따로 정한다.
 - **스터디 삭제**: 디스코드 카테고리·role 을 지우는 봇 창구가 없다.
-- **생성 실패 표시**: 백오피스 상세에 「디스코드 연결됨/안 됨」을 보여 주려면 상세 응답에 필드가 필요하다.
+- **스터디 이름 변경**: 디스코드 채널·role 이름을 바꾸는 봇 창구가 없다. 웹에서 제목을 바꿔도 디스코드는 옛 이름으로 남는다.
 
 ## 스쿼드별 작업
 
@@ -188,7 +241,9 @@
 | 할 일 | 범위 | 비고 |
 |---|---|---|
 | **B1** 디스코드 계정 연동 API + Discord OAuth 앱 설정 | `POST /api/me/discord/link` | **가장 먼저.** 신청 403 · 생성 건너뜀이 이걸로 풀린다. 스펙 확정도 같이 |
-| B1 짝 — 사이트 연동 버튼을 실제 호출로 | `ApplyDiscordGate.tsx` | 프론트 담당에게 넘겨도 된다 |
+| B1 짝 — `GET /auth/me` 에 `discordLinked` | `AuthDtos.AccountSelfView` | user-onboarding 스펙에 필드 추가 |
+| B1 짝 — 사이트 연동 창·신청 버튼을 실제 호출로 | `ApplyDiscordGate.tsx` · `ApplyButton.tsx` | 프론트 담당에게 넘겨도 된다 |
+| 백오피스 상세에 디스코드 연결 여부 필드 + 「다시 연결」 버튼 | 상세 응답 · `POST .../discord-link` | [화면·기능 ④](#화면기능별-호출-현황). 화면은 프론트 담당 |
 | **B2** `DiscordBotClient` 에 role 메서드 4개 + `DISCORD_BOT_ID` 설정 | `backend/api/.../discord/` | 이벤트 합의 없이도 시작할 수 있다 |
 | **B3~B5** 이벤트 구독자 — 위 표의 「듣는 쪽이 하는 일」 | `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` | [공통 규칙](#백엔드-개발-범위)을 지킨다. 네비게이터 회수 전 「다른 스터디에서도 `LEADER` 인가」 조회는 이쪽이 만든다 |
 | **B6** 봇에 「길드 멤버인가」 창구 (질문 2 가 (나)일 때) | `discord/` | 백엔드는 B1 직후 부른다 |
