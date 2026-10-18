@@ -17,7 +17,6 @@
 | TIMEZONE | VARCHAR(64) | Y | IANA. 회차 시각 기준 시간대 |
 | CAPACITY | INT | Y | 분반 정원 |
 | RULES | VARCHAR(500) | Y | 스터디 규칙 (500자 이하 — 운영 중인 시트의 규칙은 150~350자). 킥오프에서 정하고 네비게이터·캡틴이 고친다. 참여자 전원이 본다 |
-| DAYS_OF_WEEK | VARCHAR(255) | Y | 분반 정규 요일(쉼표 구분, `mon`~`sun`). 스터디 시간 수정 창과 회차 추가의 기본 요일로 사용. ([study-group 스펙](../../specs/study-group/spec.md)) |
 
 ## 관계
 - N : 1 [STUDY](./STUDY.md)
@@ -31,4 +30,5 @@
 - 인덱스 `(STUDY_ID)` — `idx_study_group_study`
 
 ## 미확정
+- `DAYS_OF_WEEK VARCHAR(255) NULL` 추가 예정 — 스터디 시간 수정 창과 회차 추가 기본 요일로 사용. 마이그레이션 미작성 ([study-group 스펙](../../specs/study-group/spec.md) 「데이터 변경」)
 - 멤버의 분반 이동은 STUDY_PARTICIPANT.STUDY_GROUP_ID 갱신 + 이력 남길지.
