@@ -26,7 +26,7 @@ import {
 import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname-availability';
 import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
-import { Button } from '@studyclub/ui';
+import { Button, Checkbox } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 
 import { SPEC } from './spec';
@@ -247,7 +247,7 @@ export default function MyPage() {
 
         <dl className='divide-y divide-border border-t border-border text-sm'>
           <Field label='시간대' anno='profile:3' saved={savedRow === 'zone'}>
-            <div className='w-full max-w-[16rem]'>
+            <div className='w-full sm:w-52'>
               <TimeZonePicker value={timeZone} onChange={changeZone} locale={locale} hideLabel compact />
             </div>
           </Field>
@@ -256,18 +256,14 @@ export default function MyPage() {
             {discord ? (
               <>
                 <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
-                <button
-                  type='button'
-                  onClick={disconnectDiscord}
-                  className='shrink-0 text-xs font-semibold text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
-                >
+                <Button size='sm' variant='ghost' className='ml-auto sm:ml-0' onClick={disconnectDiscord}>
                   연결 해제
-                </button>
+                </Button>
               </>
             ) : (
               <>
                 <span className='text-fg-muted'>연결 안 됨</span>
-                <Button size='sm' variant='secondary' onClick={connectDiscord}>
+                <Button size='sm' variant='secondary' className='ml-auto sm:ml-0' onClick={connectDiscord}>
                   연결하기
                 </Button>
               </>
@@ -279,28 +275,26 @@ export default function MyPage() {
             가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
           */}
           <Field label='마케팅 수신' anno='profile:5' saved={savedRow === 'marketing'}>
-            <label className='inline-flex cursor-pointer items-center gap-2.5'>
-              <input
-                type='checkbox'
-                checked={marketing}
-                onChange={(ev) => changeMarketing(ev.target.checked)}
-                className='h-4 w-4 accent-[var(--color-brand)]'
-              />
-              <span className='text-fg'>스터디 소식과 행사 안내를 이메일로 받기</span>
-            </label>
+            <Checkbox
+              label='스터디 소식과 행사 안내를 이메일로 받기'
+              checked={marketing}
+              onChange={(ev) => changeMarketing(ev.target.checked)}
+            />
           </Field>
         </dl>
 
-        <div className='border-t border-border px-6 py-3.5'>
-          <Link
-            data-anno='profile:7'
-            href={`/proto/core/${locale}/my/leave`}
-            className='text-xs text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
-          >
-            회원 탈퇴
-          </Link>
-        </div>
       </section>
+
+      {/* 찾을 수 있되 눈에 띄지 않게 — 카드 안 한 줄을 통째로 내주면 링크 하나에 무게가 실린다 */}
+      <div className='mt-3 max-w-2xl px-1'>
+        <Link
+          data-anno='profile:7'
+          href={`/proto/core/${locale}/my/leave`}
+          className='text-xs text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
+        >
+          회원 탈퇴
+        </Link>
+      </div>
     </div>
   );
 }
@@ -318,14 +312,15 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className='flex min-h-14 flex-col gap-1.5 px-6 py-3 sm:flex-row sm:items-center sm:gap-6'>
-      <dt className='shrink-0 whitespace-nowrap text-fg-muted sm:w-24'>{label}</dt>
-      <dd data-anno={anno} className='flex min-w-0 flex-1 items-center gap-3'>
+    <div className='flex min-h-16 flex-col gap-2 px-6 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6'>
+      <dt className='flex shrink-0 items-center gap-2 whitespace-nowrap font-medium text-fg-secondary'>
+        {label}
+        {/* 저장 표시는 이름 옆 — 값 쪽에 두면 값이 밀려 움직인다 */}
+        <Saved show={saved} />
+      </dt>
+      {/* 값과 동작은 오른쪽으로 모은다 — 이름은 왼쪽, 바꾸는 손은 오른쪽 한 줄로 읽힌다 */}
+      <dd data-anno={anno} className='flex w-full min-w-0 items-center gap-3 sm:w-auto sm:justify-end'>
         {children}
-        {/* 저장 표시는 줄 끝 — 이름 칸에 두면 이름이 밀려 줄바꿈된다 */}
-        <span className='ml-auto shrink-0'>
-          <Saved show={saved} />
-        </span>
       </dd>
     </div>
   );
