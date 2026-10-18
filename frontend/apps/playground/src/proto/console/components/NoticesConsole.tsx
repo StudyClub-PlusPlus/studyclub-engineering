@@ -9,7 +9,7 @@ import { getUser } from '@console/lib/auth';
 import { seedNotices, type Notice } from '@console/lib/notices';
 import { todayISO } from '@studyclub/mock';
 import { Button, Pagination } from '@studyclub/ui';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 /**
  * 공지 관리 — **스터디 관리 목록과 같은 모양**이다. 두 화면을 오가는 운영자가 다른 규칙을 외우지 않게.
@@ -24,31 +24,32 @@ type SortKey = 'title' | 'postedAt' | 'updatedAt';
 type SortDir = 'asc' | 'desc';
 const PAGE_SIZE = 20;
 
-function SortArrows({
+/**
+ * 정렬하는 컬럼 머리 — **이름을 누른다.** 처음 누르면 오름차순, 다시 누르면 내림차순, 또 누르면 오름차순.
+ * 화살표를 그리지 않는다 — 열마다 작은 화살표 두 개가 서면 머리 줄이 어수선하다.
+ * 지금 정렬 중인 열은 이름이 강조색이다.
+ */
+function SortLabel({
   label,
   active,
   onChange,
+  anno,
 }: {
   label: string;
   active: SortDir | null;
-  onChange: (dir: SortDir | null) => void;
+  onChange: (dir: SortDir) => void;
+  anno?: string;
 }) {
-  const arrow = (dir: SortDir, Icon: typeof ChevronUp, name: string) => (
+  return (
     <button
       type='button'
-      aria-label={`${label} ${name} 정렬`}
-      aria-pressed={active === dir}
-      onClick={() => onChange(active === dir ? null : dir)}
-      className={`rounded-sm p-0 leading-none ${active === dir ? 'text-brand' : 'text-fg-placeholder hover:text-fg-secondary'}`}
+      data-anno={anno}
+      onClick={() => onChange(active === 'asc' ? 'desc' : 'asc')}
+      aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
+      className={`whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline ${active ? 'text-brand' : ''}`}
     >
-      <Icon size={11} strokeWidth={2.5} />
+      {label}
     </button>
-  );
-  return (
-    <span className='inline-flex flex-col'>
-      {arrow('asc', ChevronUp, '오름차순')}
-      {arrow('desc', ChevronDown, '내림차순')}
-    </span>
   );
 }
 
@@ -85,8 +86,8 @@ export function NoticesConsole() {
   const current = Math.min(page, pageCount);
   const pageRows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
-  function applySort(key: SortKey, dir: SortDir | null) {
-    setSort(dir ? { key, dir } : null);
+  function applySort(key: SortKey, dir: SortDir) {
+    setSort({ key, dir });
     setPage(1);
   }
 
@@ -137,35 +138,14 @@ export function NoticesConsole() {
           <thead>
             <tr>
               <th>
-                <span className='inline-flex items-center gap-1'>
-                  제목
-                  <SortArrows
-                    label='제목'
-                    active={sort?.key === 'title' ? sort.dir : null}
-                    onChange={(d) => applySort('title', d)}
-                  />
-                </span>
+                <SortLabel label='제목' active={sort?.key === 'title' ? sort.dir : null} onChange={(d) => applySort('title', d)} />
               </th>
               <th className='whitespace-nowrap'>작성자</th>
               <th className='whitespace-nowrap'>
-                <span className='inline-flex items-center gap-1'>
-                  게시일
-                  <SortArrows
-                    label='게시일'
-                    active={sort?.key === 'postedAt' ? sort.dir : null}
-                    onChange={(d) => applySort('postedAt', d)}
-                  />
-                </span>
+                <SortLabel label='게시일' active={sort?.key === 'postedAt' ? sort.dir : null} onChange={(d) => applySort('postedAt', d)} />
               </th>
               <th className='whitespace-nowrap'>
-                <span className='inline-flex items-center gap-1'>
-                  마지막 수정
-                  <SortArrows
-                    label='마지막 수정'
-                    active={sort?.key === 'updatedAt' ? sort.dir : null}
-                    onChange={(d) => applySort('updatedAt', d)}
-                  />
-                </span>
+                <SortLabel label='마지막 수정' active={sort?.key === 'updatedAt' ? sort.dir : null} onChange={(d) => applySort('updatedAt', d)} />
               </th>
             </tr>
           </thead>

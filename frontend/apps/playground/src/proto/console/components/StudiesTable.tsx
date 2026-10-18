@@ -24,7 +24,7 @@ import {
   type StudyKind,
 } from '@studyclub/mock';
 import { Badge, Button, Modal, Pagination } from '@studyclub/ui';
-import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'lucide-react';
+import { Check, GripVertical, Minus, RotateCcw } from 'lucide-react';
 
 /**
  * 스터디 관리 목록.
@@ -318,31 +318,32 @@ function compareBy(sort: NonNullable<SortState>, a: Study, b: Study): number {
  * 컬럼 머리의 위·아래 화살표. 누르면 그 방향으로 정렬하고, 이미 눌린 화살표를 다시 누르면 정렬을 푼다
  * (기본 순서 — 모집중 먼저, 마감이 가까운 순 — 로 돌아간다).
  */
-function SortArrows({
+/**
+ * 정렬하는 컬럼 머리 — **이름을 누른다.** 처음 누르면 오름차순, 다시 누르면 내림차순, 또 누르면 오름차순.
+ * 화살표를 그리지 않는다 — 열마다 작은 화살표 두 개가 서면 머리 줄이 어수선하다.
+ * 지금 정렬 중인 열은 이름이 강조색이다.
+ */
+function SortLabel({
   label,
   active,
   onChange,
+  anno,
 }: {
   label: string;
   active: SortDir | null;
-  onChange: (dir: SortDir | null) => void;
+  onChange: (dir: SortDir) => void;
+  anno?: string;
 }) {
-  const arrow = (dir: SortDir, Icon: typeof ChevronUp, name: string) => (
+  return (
     <button
       type='button'
-      aria-label={`${label} ${name} 정렬`}
-      aria-pressed={active === dir}
-      onClick={() => onChange(active === dir ? null : dir)}
-      className={`rounded-sm p-0 leading-none ${active === dir ? 'text-brand' : 'text-fg-placeholder hover:text-fg-secondary'}`}
+      data-anno={anno}
+      onClick={() => onChange(active === 'asc' ? 'desc' : 'asc')}
+      aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
+      className={`whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline ${active ? 'text-brand' : ''}`}
     >
-      <Icon size={11} strokeWidth={2.5} />
+      {label}
     </button>
-  );
-  return (
-    <span data-anno='list:9' className='inline-flex flex-col'>
-      {arrow('asc', ChevronUp, '오름차순')}
-      {arrow('desc', ChevronDown, '내림차순')}
-    </span>
   );
 }
 
@@ -605,26 +606,20 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             <thead>
               <tr>
                 <th data-anno='program:1' className='whitespace-nowrap'>
-                  <span className='inline-flex items-center gap-1'>
-                    P-ID
-                    <span data-anno='program:2'>
-                      <SortArrows
-                        label='P-ID'
-                        active={sort?.key === 'program' ? sort.dir : null}
-                        onChange={(d) => applySort('program', d)}
-                      />
-                    </span>
-                  </span>
+                  <SortLabel
+                    anno='program:2'
+                    label='P-ID'
+                    active={sort?.key === 'program' ? sort.dir : null}
+                    onChange={(d) => applySort('program', d)}
+                  />
                 </th>
                 <th>
-                  <span className='inline-flex items-center gap-1'>
-                    스터디
-                    <SortArrows
-                      label='스터디'
-                      active={sort?.key === 'title' ? sort.dir : null}
-                      onChange={(d) => applySort('title', d)}
-                    />
-                  </span>
+                  <SortLabel
+                    anno='list:9'
+                    label='스터디'
+                    active={sort?.key === 'title' ? sort.dir : null}
+                    onChange={(d) => applySort('title', d)}
+                  />
                 </th>
                 {columns.map((c, i) => (
                   <th
@@ -641,8 +636,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                   >
                     <span className='inline-flex items-center gap-1'>
                       <GripVertical size={12} className='cursor-grab text-fg-placeholder' aria-hidden='true' />
-                      {c.label}
-                      <SortArrows
+                      <SortLabel
                         label={c.label}
                         active={sort?.key === c.key ? sort.dir : null}
                         onChange={(d) => applySort(c.key, d)}
