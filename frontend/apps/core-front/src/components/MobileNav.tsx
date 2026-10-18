@@ -55,7 +55,7 @@ export function MobileNav({
   }, [open]);
 
   const all = signedIn
-    ? [...links, { href: `/${locale}/my/joined`, label: t({ ko: '내 스터디', en: 'My studies' }, locale) }]
+    ? [...links, { href: `/${locale}/my/joined`, label: t({ ko: '내 스터디룸', en: 'My study room' }, locale) }]
     : links;
   const focusRing = 'focus-visible:outline-none focus-visible:shadow-(--ring)';
 

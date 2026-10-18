@@ -67,7 +67,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
   const url = `${SITE_URL}/${locale}/studies/${id}`;
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-8'>
+    <div className='mx-auto max-w-6xl px-6 pb-16 pt-8'>
       <JsonLd
         data={[
           courseJsonLd(study, locale, url),
@@ -85,7 +85,9 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
         <ArrowLeft size={15} /> {m('common.back_studies', locale)}
       </Link>
 
-      <article className='card mt-4 overflow-hidden'>
+      {/* 넓은 화면: 왼쪽 본문 + 오른쪽 고정 신청 카드. 좁은 화면은 위아래로 */}
+      <div className='mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]'>
+        <article className='card overflow-hidden'>
         <header className='relative flex flex-col gap-3 overflow-hidden px-6 pb-7 pt-6 sm:px-8' style={{ background }}>
           {artUrl && (
             <span
@@ -108,22 +110,6 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
           <p className='text-[16px] leading-relaxed text-fg-secondary sm:pr-40'>{t(study.summary, locale)}</p>
         </header>
 
-        <dl className='grid gap-px border-b border-border bg-border sm:grid-cols-2'>
-          {facts.map((f, i) => (
-            <div
-              key={f.label}
-              // 칸이 홀수면 마지막 칸을 두 칸으로 — 빈 회색 칸이 남지 않게
-              className={`flex items-center gap-3 bg-bg px-6 py-4 sm:px-8 ${facts.length % 2 && i === facts.length - 1 ? 'sm:col-span-2' : ''}`}
-            >
-              <f.icon size={18} className='shrink-0' style={{ color: ink }} />
-              <div className='min-w-0'>
-                <dt className='text-xs text-fg-muted'>{f.label}</dt>
-                <dd className='tnum text-[15px] font-semibold text-fg'>{f.value}</dd>
-              </div>
-            </div>
-          ))}
-        </dl>
-
         {study.description && (
           <div className='px-6 py-7 sm:px-8'>
             <h2 className='text-[15px] font-bold text-fg'>{m('common.about_study', locale)}</h2>
@@ -132,14 +118,30 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
             </p>
           </div>
         )}
+        </article>
 
-        <div className='flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface-1 px-6 py-5 sm:px-8'>
-          <span className='tnum text-sm font-medium text-fg-secondary'>
-            {deadline ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale) : ''}
-          </span>
-          <ApplyButton study={study} locale={locale} />
-        </div>
-      </article>
+        <aside className='card flex flex-col overflow-hidden lg:sticky lg:top-24'>
+          <dl className='flex flex-col divide-y divide-border'>
+            {facts.map((f) => (
+              <div key={f.label} className='flex items-center gap-3 px-6 py-4'>
+                <f.icon size={18} className='shrink-0' style={{ color: ink }} />
+                <div className='min-w-0'>
+                  <dt className='text-xs text-fg-muted'>{f.label}</dt>
+                  <dd className='tnum text-[15px] font-semibold text-fg'>{f.value}</dd>
+                </div>
+              </div>
+            ))}
+          </dl>
+          <div className='flex flex-col gap-3 border-t border-border bg-surface-1 px-6 py-5'>
+            {deadline && (
+              <span className='tnum text-sm font-medium text-fg-secondary'>
+                {t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale)}
+              </span>
+            )}
+            <ApplyButton study={study} locale={locale} />
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

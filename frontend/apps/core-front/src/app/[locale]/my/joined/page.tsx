@@ -494,7 +494,7 @@ function MyJoinedPageContent() {
 
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
-      <h1 className='text-2xl font-extrabold tracking-tight'>내 스터디</h1>
+      <h1 className='text-2xl font-extrabold tracking-tight'>내 스터디룸</h1>
 
       <WeekStrip
         days={days}

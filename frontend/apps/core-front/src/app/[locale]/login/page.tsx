@@ -112,7 +112,7 @@ function LoginForm() {
   return (
     <div className='mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 py-16 text-center'>
       <h1 className='text-2xl font-bold tracking-tight'>StudyClub 로그인</h1>
-      <p className='mt-2 text-sm text-fg-muted'>로그인하면 수강생 페이지(내 스터디)를 볼 수 있어요.</p>
+      <p className='mt-2 text-sm text-fg-muted'>로그인하면 내 스터디룸에서 참여한 스터디를 볼 수 있어요.</p>
 
       <button
         type='button'
