@@ -20,7 +20,7 @@ import {
 } from '@/proto/lib/feedback';
 
 /**
- * 문의·오류 신고 — 사이트 어디서든 같은 팝업 하나를 연다.
+ * 문의·신고 — 사이트 어디서든 같은 팝업 하나를 연다.
  *
  * 여는 자리는 둘: 프로필 드롭다운(로그인)과 푸터(비로그인 포함). **플로팅 버튼은 만들지 않는다.**
  * 팝업은 레이아웃에 하나만 두고(`FeedbackHost`), 여는 쪽은 `openFeedback()` 만 부른다.
@@ -142,16 +142,17 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
     setSending(true);
     await new Promise((r) => setTimeout(r, 600));
     try {
-      // 자동 수집 — 사용자가 입력하지 않는다
+      // 자동 수집 — 사용자가 입력하지 않는다. UA 는 원문을 보내고 서버가 파싱한다
       addFeedback({
         type: draft.type as FeedbackType,
         title,
         body: draft.body,
         images: draft.images.length > 0 ? draft.images : undefined,
         author: getUser()?.nickname ?? undefined,
-        pageUrl: window.location.pathname.replace('/proto/core', '') + window.location.search,
+        // 화면 경로만 — 쿼리는 보내지 않는다
+        pageUrl: window.location.pathname.replace('/proto/core', ''),
         userAgent: navigator.userAgent,
-        viewport: `${window.innerWidth}×${window.innerHeight}`,
+        viewport: `${window.innerWidth} × ${window.innerHeight}`,
       });
     } catch {
       setSending(false);
@@ -188,7 +189,7 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title='문의·오류 신고'
+        title='문의·신고'
         size='lg'
         footer={
           <Button data-anno='feedback:5' onClick={send} loading={sending} disabled={sending}>
@@ -328,6 +329,11 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
               {imageError ?? `선택 · ${IMAGE_MAX_COUNT}장까지, 한 장에 5MB · PNG · JPG · WEBP · GIF`}
             </p>
           </div>
+
+          {/* 무엇이 함께 가는지 알린다 — 개인정보 처리방침의 수집 항목과 같은 말 */}
+          <p data-anno='feedback:6' className='text-xs text-fg-muted'>
+            접수 처리를 위해 현재 화면 주소와 브라우저 정보가 함께 전송됩니다
+          </p>
         </div>
       </Modal>
     </>
