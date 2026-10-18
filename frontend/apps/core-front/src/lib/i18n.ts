@@ -30,7 +30,7 @@ export const MESSAGES: Dict = {
 
   'hero.eyebrow': { ko: 'StudyClub', en: 'StudyClub' },
   'hero.title': {
-    ko: '미국·캐나다·한국이 함께하는\n글로벌 스터디 클럽++',
+    ko: '미국·캐나다·한국이 함께하는\n글로벌 스터디클럽',
     en: 'A global study club++\nacross the US, Canada & Korea',
   },
   'hero.subtitle': {

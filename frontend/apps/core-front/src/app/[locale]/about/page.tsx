@@ -1,6 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
-import { ArrowRight, BookOpen, Calendar, Compass, Flag, Globe2, MessageCircle, Users } from 'lucide-react';
+import { ArrowRight, BookOpen, Calendar, Globe2, MessageCircle } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
@@ -25,10 +26,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
   // 역할 세 가지 — 크루(참여) · 네비게이터(스터디 하나를 이끈다) · 캡틴(운영진).
   // 예전 「반장·부반장」은 네비게이터로 바뀌었다.
-  const roles: { id: string; icon: typeof Users; name: L10n; tagline: L10n; points: L10n[] }[] = [
+  // art = public/about-art/role-<id>.webp (zapp-design:icon 세트, 원본은 내부 design/assets/icons)
+  const roles: { id: string; name: L10n; tagline: L10n; points: L10n[] }[] = [
     {
       id: 'crew',
-      icon: Users,
       name: { ko: '크루', en: 'Crew' },
       tagline: { ko: '함께 공부하는 스터디원', en: 'Members who study together' },
       points: [
@@ -39,7 +40,6 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
     },
     {
       id: 'navigator',
-      icon: Flag,
       name: { ko: '네비게이터', en: 'Navigator' },
       tagline: { ko: '스터디 하나를 이끄는 진행자', en: 'The guide who leads a study' },
       points: [
@@ -49,7 +49,6 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
     },
     {
       id: 'captain',
-      icon: Compass,
       name: { ko: '캡틴', en: 'Captain' },
       tagline: { ko: '커뮤니티를 운영하는 운영진', en: 'Volunteer organizers of the community' },
       points: [
@@ -100,6 +99,51 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
     ko: `이 두 가지 문제를 해결하기 위해 2024년 초에 만들어진 것이 스터디클럽입니다. 스터디클럽은 일종의 스터디 그룹 풀로서, 누구나 이곳에서 스터디를 제안하고, 모집해서 진행할 수 있습니다. 지금은 미국·캐나다·한국의 개발자 ${site.community.member_count.toLocaleString()}명 이상이 함께하고 있습니다.`,
     en: `StudyClub was created in early 2024 to solve these two problems. It is a pool of study groups where anyone can propose a study, recruit members, and run it. Today more than ${site.community.member_count.toLocaleString()} engineers across the US, Canada, and Korea are part of it.`,
   };
+
+  // 이야기 — 출처: 운영진 「스터디클럽 소개」 문서(인원·지역·운영진 수는 2025-08 기준), 운영진 설명.
+  const story: { art: string; when: L10n; title: L10n; body: L10n }[] = [
+    {
+      art: 'region-us',
+      when: { ko: '2024년 초', en: 'Early 2024' },
+      title: { ko: '실리콘밸리에서 출발', en: 'Born in Silicon Valley' },
+      body: {
+        ko: '베이 에어리어 한인 엔지니어들의 스터디 모임으로 시작했어요. 미국 서부에서 동부로 퍼졌어요.',
+        en: 'It started as a study group of Korean engineers in the Bay Area, then spread from the West Coast to the East.',
+      },
+    },
+    {
+      art: 'region-ca',
+      when: { ko: '북미 전역', en: 'Across North America' },
+      title: { ko: '캐나다와 유럽까지', en: 'Canada, then Europe' },
+      body: {
+        ko: '캐나다, 그리고 스위스·독일에서도 함께해요. 북미에만 운영진 15명이 있어요.',
+        en: 'Members join from Canada, Switzerland, and Germany. North America alone has 15 Captains.',
+      },
+    },
+    {
+      art: 'region-kr',
+      when: { ko: '그리고 한국', en: 'And Korea' },
+      title: { ko: '한국으로 진출', en: 'Expanding to Korea' },
+      body: {
+        ko: '한국에서도 운영진 7명이 함께 스터디를 열고, 한국 크루와 북미 크루가 한 스터디에서 만나요.',
+        en: 'Seven Captains in Korea open studies too, where Korean and North American crew meet in one group.',
+      },
+    },
+  ];
+  const networking: { title: L10n; body: L10n }[] = [
+    {
+      title: { ko: '현업 엔지니어와 함께', en: 'Study with working engineers' },
+      body: { ko: '미국·한국 현직자의 경험을 스터디에서 바로 들어요.', en: 'Hear real experience from engineers in the US and Korea.' },
+    },
+    {
+      title: { ko: '레퍼럴과 커리어', en: 'Referrals and careers' },
+      body: { ko: '레퍼럴을 부탁하고, 이직·인터뷰 경험을 나눠요.', en: 'Ask for referrals and share interview and job-change stories.' },
+    },
+    {
+      title: { ko: '온라인 너머 오프라인', en: 'Beyond online' },
+      body: { ko: '피크닉과 오프라인 특강으로 직접 만나요.', en: 'Meet in person at picnics and offline sessions.' },
+    },
+  ];
 
   const cards = [
     {
@@ -160,6 +204,38 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         <p className='mt-6 max-w-3xl text-[17px] font-semibold leading-loose text-[var(--color-fg)]'>{t(outro, locale)}</p>
       </div>
 
+      {/* 우리의 이야기 — 실리콘밸리에서 시작해 한국까지 */}
+      <div className='mt-10'>
+        <h2 className='text-xl font-bold tracking-tight'>{t({ ko: '실리콘밸리에서 시작했어요', en: 'It started in Silicon Valley' }, locale)}</h2>
+        <p className='mt-2 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
+          {t(
+            {
+              ko: '베이 에어리어에서 일하는 한인 엔지니어들이 같이 공부하려고 모인 것이 시작이에요. 미국을 중심으로 자라 캐나다와 한국까지 넓어졌고, 지금은 시차를 넘어 함께 공부하며 서로의 경험과 기회를 나눠요.',
+              en: 'It began with Korean engineers in the Bay Area who wanted to study together. It grew across the US, then reached Canada and Korea. Today we study across time zones and share experience and opportunities with each other.',
+            },
+            locale,
+          )}
+        </p>
+        <ol className='mt-6 grid gap-4 md:grid-cols-3'>
+          {story.map((st) => (
+            <li key={st.art} className='card flex flex-col gap-3 p-6'>
+              <Image src={`/about-art/${st.art}.webp`} alt='' width={64} height={64} className='h-16 w-16' />
+              <div className='text-sm font-semibold text-[var(--color-brand)]'>{t(st.when, locale)}</div>
+              <div className='text-lg font-bold tracking-tight'>{t(st.title, locale)}</div>
+              <p className='text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>{t(st.body, locale)}</p>
+            </li>
+          ))}
+        </ol>
+        <ul className='mt-4 grid gap-3 sm:grid-cols-3'>
+          {networking.map((n, i) => (
+            <li key={i} className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-[15px] leading-relaxed'>
+              <span className='font-semibold'>{t(n.title, locale)}</span>
+              <span className='text-[var(--color-fg-muted)]'> {t(n.body, locale)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {/* 역할 — 크루 · 네비게이터 · 캡틴 */}
       <div className='mt-10'>
         <h2 className='text-xl font-bold tracking-tight'>{m('about.roles_title', locale)}</h2>
@@ -174,10 +250,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
               className='scroll-mt-20 rounded-2xl border p-6'
               style={{ background: 'var(--color-brand-subtle)', borderColor: 'var(--color-brand-subtle)' }}
             >
-              <h3 className='flex items-center gap-2 text-lg font-bold tracking-tight'>
-                <r.icon size={20} style={{ color: 'var(--color-brand)' }} />
-                {t(r.name, locale)}
-              </h3>
+              <Image src={`/about-art/role-${r.id}.webp`} alt='' width={72} height={72} className='h-18 w-18' />
+              <h3 className='mt-3 text-lg font-bold tracking-tight'>{t(r.name, locale)}</h3>
               <p className='mt-1 text-sm font-medium text-[var(--color-brand)]'>{t(r.tagline, locale)}</p>
               <ul className='mt-4 flex flex-col gap-2.5'>
                 {r.points.map((p, i) => (

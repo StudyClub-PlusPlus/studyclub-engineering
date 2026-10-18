@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react
 import type { Metadata } from 'next';
 
 import { getEvent, getEvents, type Locale } from '@/lib/content';
+import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/lib/event-details';
 import { m, t } from '@/lib/i18n';
 import { JsonLd, breadcrumbJsonLd, eventJsonLd } from '@/lib/jsonld';
 import { SITE_URL, pageMetadata } from '@/lib/seo';
@@ -50,6 +51,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
   const { locale, id } = await params;
   const event = await getEvent(id);
   if (!event) notFound();
+  const detail = EVENT_DETAILS[id];
 
   const facts = [
     { icon: CalendarDays, label: m('common.when', locale), value: fullDate(event.date, locale) },
@@ -83,10 +85,10 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
       </Link>
 
       <span
-        className='mt-6 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide'
+        className='mt-6 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold'
         style={{ background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }}
       >
-        {event.type}
+        {m(`event_type.${event.type}`, locale)}
       </span>
       <h1 className='mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl'>{t(event.title, locale)}</h1>
       <p className='mt-3 max-w-2xl text-lg text-[var(--color-fg-muted)]'>{t(event.summary, locale)}</p>
@@ -102,6 +104,48 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           </div>
         ))}
       </dl>
+
+      {detail && (
+        <section className='mt-10'>
+          <h2 className='text-lg font-bold tracking-tight'>{t({ ko: '어떤 행사였나요', en: 'About this event' }, locale)}</h2>
+          <div className='mt-3 flex max-w-2xl flex-col gap-3 text-[16px] leading-relaxed text-[var(--color-fg)]'>
+            {detail.about.map((p, i) => (
+              <p key={i}>{t(p, locale)}</p>
+            ))}
+          </div>
+          {detail.voices && (
+            <div className='mt-6 grid gap-3 sm:grid-cols-2'>
+              {detail.voices.map((v, i) => (
+                <blockquote key={i} className='card p-5 text-[15px] leading-relaxed text-[var(--color-fg)]'>
+                  “{t(v, locale)}”
+                  <footer className='mt-2 text-xs text-[var(--color-fg-muted)]'>{t({ ko: '참가자 후기', en: 'Attendee' }, locale)}</footer>
+                </blockquote>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* 공통 — 스터디클럽 행사는 이런 것들 */}
+      <section className='mt-12 rounded-2xl p-6 sm:p-8' style={{ background: 'var(--color-brand-subtle)' }}>
+        <h2 className='text-lg font-bold tracking-tight'>{t({ ko: '스터디클럽 행사는 이렇게 열려요', en: 'How StudyClub events work' }, locale)}</h2>
+        <ul className='mt-4 grid gap-3 sm:grid-cols-2'>
+          {EVENT_KINDS.map((k) => (
+            <li key={k.title.ko} className='rounded-xl bg-[var(--color-bg)] p-4 text-[15px] leading-relaxed'>
+              <span className='font-semibold'>{t(k.title, locale)}</span>
+              <span className='text-[var(--color-fg-muted)]'> {t(k.body, locale)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className='mt-6 grid gap-3 md:grid-cols-3'>
+          {EVENT_VOICES.map((v, i) => (
+            <blockquote key={i} className='rounded-xl bg-[var(--color-bg)] p-4 text-sm leading-relaxed text-[var(--color-fg)]'>
+              “{t(v.quote, locale)}”
+              <footer className='mt-2 text-xs text-[var(--color-fg-muted)]'>{t(v.from, locale)}</footer>
+            </blockquote>
+          ))}
+        </div>
+      </section>
 
       {event.link && (
         <a

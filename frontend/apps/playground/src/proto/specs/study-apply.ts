@@ -46,7 +46,7 @@ export const APPLY_SPEC: ScreenSpec = {
     {
       n: '2',
       title: '디스코드 서버 별명',
-      display: ['"[스터디 클럽++] 디스코드 서버 별명" 단답형. 예시 placeholder "홍길동/SWE/산호세/시스템디자인"'],
+      display: ['"[스터디클럽] 디스코드 서버 별명" 단답형. 예시 placeholder "홍길동/SWE/산호세/시스템디자인"'],
       policy: [
         '계정(ACCOUNT.DISCORD_NICKNAME)에 값이 있으면 그 값으로 채운다. 지원자가 고칠 수 있다',
         '고친 값은 계정에 다시 저장한다',
