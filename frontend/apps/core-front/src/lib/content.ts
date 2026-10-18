@@ -70,7 +70,10 @@ export async function getOperatorMap(): Promise<Record<string, Operator>> {
   return Object.fromEntries(ops.map((o) => [o.id, o]));
 }
 
-// TODO(api): GET /api/announcements — 공지 API 가 생기면 연동(고정 먼저, 날짜 내림차순). 그전까지는 빈 목록.
+// TODO(api): GET /api/announcements — 공지 API 가 생기면 연동. 그전까지는 lib/notices.ts 의 실제 공지(고정 먼저, 날짜 내림차순).
 export async function getNotices(): Promise<Announcement[]> {
-  return [];
+  const { NOTICES } = await import('./notices');
+  return NOTICES.map((n) => ({ id: n.id, title: n.title, date: n.date, pinned: n.pinned, tag: n.tag, body: n.summary })).sort(
+    (a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.date.localeCompare(a.date),
+  );
 }

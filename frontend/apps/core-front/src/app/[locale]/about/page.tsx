@@ -53,8 +53,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       tagline: { ko: '커뮤니티를 운영하는 운영진', en: 'Volunteer organizers of the community' },
       points: [
         { ko: '스터디 초기 세팅(모집 광고 · 디스코드 · 킥오프)을 도와줍니다.', en: 'Handle the initial setup: recruiting, Discord, and kickoff.' },
-        { ko: '100% 자원봉사이며, 수익은 전액 기부합니다.', en: '100% volunteer, and all profits are donated.' },
-        { ko: '모든 스터디와 이벤트에 무료로 참여하고, 누구나 지원할 수 있습니다.', en: 'Join every study and event for free, and anyone can apply.' },
+        { ko: '누구나 캡틴에 지원할 수 있습니다.', en: 'Anyone can apply to become a Captain.' },
       ],
     },
   ];

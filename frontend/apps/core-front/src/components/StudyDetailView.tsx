@@ -109,8 +109,12 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
         </header>
 
         <dl className='grid gap-px border-b border-border bg-border sm:grid-cols-2'>
-          {facts.map((f) => (
-            <div key={f.label} className='flex items-center gap-3 bg-bg px-6 py-4 sm:px-8'>
+          {facts.map((f, i) => (
+            <div
+              key={f.label}
+              // 칸이 홀수면 마지막 칸을 두 칸으로 — 빈 회색 칸이 남지 않게
+              className={`flex items-center gap-3 bg-bg px-6 py-4 sm:px-8 ${facts.length % 2 && i === facts.length - 1 ? 'sm:col-span-2' : ''}`}
+            >
               <f.icon size={18} className='shrink-0' style={{ color: ink }} />
               <div className='min-w-0'>
                 <dt className='text-xs text-fg-muted'>{f.label}</dt>

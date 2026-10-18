@@ -78,18 +78,11 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
     {
       id: 'captain',
       name: { ko: '캡틴', en: 'Captain' },
-      desc: { ko: '커뮤니티를 운영하는 자원봉사 운영진. 스터디 세팅을 돕습니다.', en: 'Volunteer organizers who run the community and help set up studies.' },
+      desc: { ko: '커뮤니티를 운영하는 운영진. 스터디 세팅을 돕습니다.', en: 'Organizers who run the community and help set up studies.' },
     },
   ];
 
   const faqs: { q: L10n; a: L10n }[] = [
-    {
-      q: { ko: '참여 비용이 있나요?', en: 'Does it cost anything?' },
-      a: {
-        ko: '무료입니다. StudyClub 는 100% 자원봉사로 운영되며, 발생하는 수익은 전액 기부합니다.',
-        en: "It's free. StudyClub is 100% volunteer-run, and any profits are donated in full.",
-      },
-    },
     {
       q: { ko: '개발자가 아니어도 참여할 수 있나요?', en: "Can I join if I'm not a developer?" },
       a: {
@@ -121,8 +114,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
     {
       q: { ko: '캡틴이 되려면 어떻게 하나요?', en: 'How do I become a Captain?' },
       a: {
-        ko: '누구나 지원할 수 있습니다. 디스코드에서 캡틴 모집 안내를 확인하고 문의하세요. 캡틴은 모든 스터디·이벤트에 무료로 참여합니다.',
-        en: 'Anyone can apply. Check the Captain recruiting notice on Discord and reach out. Captains join every study and event for free.',
+        ko: '누구나 지원할 수 있습니다. 디스코드에서 캡틴 모집 안내를 확인하고 문의하세요.',
+        en: 'Anyone can apply. Check the Captain recruiting notice on Discord and reach out.',
       },
     },
   ];

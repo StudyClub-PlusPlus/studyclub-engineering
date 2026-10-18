@@ -23,7 +23,7 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
   const site = await getSite();
   const headline =
     locale === 'ko'
-      ? '미국 · 캐나다 · 한국 개발자들의\n무료 스터디 커뮤니티'
+      ? '미국 · 캐나다 · 한국 개발자들의\n글로벌 스터디 커뮤니티'
       : 'Free study groups for engineers\nacross the US, Canada & Korea';
   const members =
     locale === 'ko'
