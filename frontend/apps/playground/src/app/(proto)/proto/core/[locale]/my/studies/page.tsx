@@ -75,7 +75,7 @@ export default function MyStudiesPage() {
 
   const allStudies = useMswStudies();
 
-  /** 승인되어 참여 중인 스터디만. 신청 대기·종료된 스터디는 출석할 일이 없다. */
+  /** 참여 중인 스터디만. 종료된 스터디는 출석할 일이 없다. */
   const mine = useMemo<Study[]>(() => {
     const byId = new Map(allStudies.map((s) => [s.id, s]));
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => s !== undefined && s.status !== 'closed');
