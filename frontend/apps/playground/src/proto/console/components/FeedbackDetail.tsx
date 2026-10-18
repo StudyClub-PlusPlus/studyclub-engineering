@@ -19,7 +19,7 @@ import {
 } from '@/proto/lib/feedback';
 
 /**
- * 문의·신고 상세 — 한 장에 위에서 아래로: 머리(유형·제목·상태) → 본문 → 첨부 → 제출 환경 → 운영 메모.
+ * 문의·오류 신고 상세 — 한 장에 위에서 아래로: 머리(유형·제목·상태) → 본문 → 첨부 → 제출 환경 → 운영 메모.
  *
  * 본문은 평문 — HTML 로 해석하지 않고 줄바꿈만 살린다.
  * 상태는 고르면 바로 저장(확인 창 없음). 운영 메모는 [저장] 으로 — 내부용, 제출자에게 보이지 않는다.
@@ -42,7 +42,7 @@ export function FeedbackDetail({ id }: { id: string }) {
   if (f === null)
     return (
       <div className='py-20 text-center text-sm text-fg-muted'>
-        삭제되었거나 없는 문의·신고입니다.{' '}
+        삭제되었거나 없는 문의·오류 신고입니다.{' '}
         <Link href='/proto/console/feedbacks' className='font-semibold text-brand hover:underline'>
           목록으로
         </Link>

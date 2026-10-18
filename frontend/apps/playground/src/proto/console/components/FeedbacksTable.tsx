@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { PageHeader } from '@console/components/ui';
-import { Badge, Button } from '@studyclub/ui';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Badge, Button, Pagination } from '@studyclub/ui';
 
 import {
   FEEDBACK_STATUSES,
@@ -20,10 +19,10 @@ import {
 } from '@/proto/lib/feedback';
 
 /**
- * 문의·신고 — 사이트에서 들어온 문의 · 개선 의견 · 오류 신고 목록.
+ * 문의·오류 신고 — 사이트에서 들어온 문의 · 개선 의견 · 오류 신고 목록.
  *
  * 접수 시각 내림차순 고정 — 열 머리를 눌러 정렬하지 않는다.
- * 제목·내용 검색(400ms 기다렸다가) · 유형 · 상태. 무엇이든 바꾸면 1페이지로. 20건씩, 이전·다음.
+ * 제목·내용 검색(400ms 기다렸다가) · 유형 · 상태. 무엇이든 바꾸면 1페이지로. 20건씩 — 다른 콘솔 목록과 같은 페이지 넘김.
  * 줄 어디를 눌러도 상세로 간다. 사이트에서 이 브라우저로 보낸 것도 같이 보인다(프로토 — localStorage).
  * TODO(api): GET /api/admin/feedbacks?type&status&q&offset&limit — 캡틴 전용
  */
@@ -133,7 +132,7 @@ export function FeedbacksTable() {
 
   return (
     <div>
-      <PageHeader title='문의·신고' />
+      <PageHeader title='문의·오류 신고' />
 
       <div data-anno='feedback-admin:1' className='mb-3 flex flex-wrap items-center gap-2'>
         <input
@@ -214,10 +213,10 @@ export function FeedbacksTable() {
               <tr>
                 <td colSpan={5} className='py-12 text-center text-fg-muted'>
                   {rows.length === 0 ? (
-                    '접수된 문의·신고가 없습니다.'
+                    '접수된 문의·오류 신고가 없습니다.'
                   ) : (
                     <span className='inline-flex flex-col items-center gap-3'>
-                      조건에 맞는 문의·신고가 없습니다.
+                      조건에 맞는 문의·오류 신고가 없습니다.
                       <Button size='sm' variant='secondary' onClick={resetAll}>
                         전체 보기
                       </Button>
@@ -230,24 +229,7 @@ export function FeedbacksTable() {
         </table>
       </div>
 
-      {/* 이전 · 쪽수 · 다음 — 첫 쪽에서 이전, 마지막 쪽에서 다음이 비활성 */}
-      <nav data-anno='feedback-admin:2-1' aria-label='페이지' className='mt-4 flex items-center justify-center gap-3 text-sm'>
-        <Button size='sm' variant='ghost' disabled={current <= 1} onClick={() => setPage(current - 1)} leadingIcon={<ChevronLeft size={14} />}>
-          이전
-        </Button>
-        <span className='tnum text-fg-secondary'>
-          {current} / {pageCount}
-        </span>
-        <Button
-          size='sm'
-          variant='ghost'
-          disabled={current >= pageCount}
-          onClick={() => setPage(current + 1)}
-          trailingIcon={<ChevronRight size={14} />}
-        >
-          다음
-        </Button>
-      </nav>
+      <Pagination data-anno='feedback-admin:2-1' className='mt-4' page={current} total={pageCount} onChange={setPage} />
     </div>
   );
 }

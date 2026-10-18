@@ -127,7 +127,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
             className='flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
           >
             <MessageSquareWarning size={16} className='text-[var(--color-fg-muted)]' />
-            {locale === 'en' ? 'Contact · report' : '문의·신고'}
+            {locale === 'en' ? 'Contact · report a bug' : '문의·오류 신고'}
           </button>
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
