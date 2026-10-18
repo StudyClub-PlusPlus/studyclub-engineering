@@ -92,6 +92,7 @@
 - 참여 중단 트랜잭션은 회차 수정 · 발표 신청과 **같은 분반 잠금을 먼저 쥔다** ([회차 스펙](../../specs/study-meeting/spec.md)의 「분반 잠금 → 권한 판정 → 회차 잠금」 순서). 그래야 저장과 동시에 들어온 발표 신청이 중단자를 다시 넣지 못한다
 - 「뒤에 시작하는 회차」는 잠금을 얻은 뒤의 서버 시각(`LEFT_AT`)으로 가른다
 - 사용자 사이트(`/api/me/…`)와 관리자(`/api/admin/…`) 저장이 같은 규칙 · 같은 잠금을 쓴다
+- 한 요청의 `withdrawals[]` 는 **요청한 분반 소속만** 받는다. 다른 분반 명부 행이 섞이면 400. 관리자 경로도 같다 (잠금은 늘 분반 하나, 2026-10-18 결정)
 
 그대로 두는 것: 백오피스 일정 탭의 스터디 시간 「수정」은 지금처럼 둔다.
 
@@ -99,32 +100,31 @@
 
 **기획**: 할 일 없음. PRD 7건(용어만 고친 crew-joined-studies 까지 8건)과 POL-0008 에 반영했다. 프로토는 playground 에 있다.
 
-**FE**
+**FE** (PR #278 에 이미 들어 있는 것은 뺐다. 신청 칩 너비 · 일정 표 가운데 정렬(D11)과 `TableActionBar` 위치 옵션은 #278 에 있어 할 일 없음. #278 머지 뒤 playground 세 표의 `className` 덮어쓰기를 그 옵션으로 바꾼다)
 
 | 앱 | 할 일 | 결정 |
 |---|---|---|
-| core-front · back-office-front | 일정 · 출석 · 참여 크루 표의 작업 바를 표 카드 맨 위로, 스크롤 시 고정 | D1 |
-| packages/ui | `TableActionBar` 에 맨 위 모양(`position='top'`: sticky top · `surface-raised` 바탕 · 아래 선 · 좌우 여백)을 옵션으로. 위치 옵션은 PR #278 이 추가한다. 지금 playground 세 표가 `className` 으로 덮어쓰는 `top-… bottom-auto border-b bg-surface-raised px-4` 를 그 옵션으로 바꾸고, ui 설명 주석(「표 하단 · 띠 · 테두리 없음」)도 design-system §9-7-1 에 맞춘다. 부품 모양은 ui 에서만 고친다 | D1 |
+| back-office-front | 일정 · 출석 · 참여 크루 표의 작업 바를 표 카드 맨 위로, 스크롤 시 고정 (core-front 일정 · 출석은 #278 에 있음) | D1 |
 | packages/ui | 일괄 변경 드롭다운을 ui 부품으로: ui `Select` 에 비활성 회색(`disabled-bg` · `disabled-fg`)을 넣고, 키보드 안전 확정(마우스 즉시 · 화살표는 미리보기 · Enter/칸 떠남 확정)을 가진 일괄 선택 부품을 만든다. 프로토 `BulkSelect` 가 동작 정본. core-front · back-office-front 가 각자 다시 만들지 않게 | D2 · D13 |
 | packages/ui | 「?」 설명 팝오버와 「중단 예정 취소」 즉시 말풍선을 ui 부품(팝오버 · 툴팁)으로. 휴대폰 폭에서 화면 밖으로 나가지 않게(폭 상한) | D8 · D9 |
 | core-front · back-office-front | 「적용」 · 「출석 적용」 버튼 제거. 마우스로 고르면 바로 반영, 키보드(화살표)는 Enter · 칸 떠남에 확정, Esc 는 미리 본 값을 버림, 반영 뒤 처음 글로 되돌리기. 프로토 `BulkSelect` 참고 | D2 |
 | back-office-front | 출석 탭 반 칩(한 반씩), 반 전환 시 미저장 확인 | D3 |
-| core-front | 정보 카드 바로가기 줄 맨 앞(「디스코드」 왼쪽)에 「백오피스 출석부」(캡틴) | D4 |
-| core-front · back-office-front | 출석 격자: 고정 열 · 칸 너비 · 일자만 · 상태 색 테두리 · 가운데 정렬 | D5 |
-| core-front · back-office-front | 닉네임 · 디스코드 닉네임 열 (BE 응답 필드가 오면 연결) | D6 |
+| core-front | 정보 카드 바로가기 줄 맨 앞(「디스코드」 왼쪽)에 「백오피스 출석부」(캡틴). 지금은 탭 줄 오른쪽 「백오피스 출석 (전체 참여자)」 | D4 |
+| core-front | 출석 격자 남은 것: 빈 칸 기본 점선 테두리 제거(고친 빈 칸은 brand 대신 중립 테두리) · 참여 중단 칸 너비를 회차 칸과 같게 · 출석률 「-」 가운데 · 휴대폰 폭은 디스코드 닉네임을 닉네임 아래에, 칩 숨김. 고정 열 · 일자만 · 상태 색 테두리는 #278 에 있음 | D5 |
+| back-office-front | 출석 격자: 고정 열 · 칸 너비 · 일자만 · 상태 색 테두리 · 가운데 정렬 | D5 |
+| core-front · back-office-front | 「크루」 → 「닉네임」 열, 오른쪽 「디스코드 닉네임」 열 (BE 응답 필드가 오면 연결) | D6 |
 | core-front · back-office-front | 참여 중단 저장 뒤 일정 다시 불러오기. 확인 창 문구 「앞으로 맡은 회차의 발표자에서 빠집니다.」 | D7 |
-| core-front · back-office-front | 중단 예정 줄 표시(옅은 빨강 · 되돌리기 아이콘 · 「중단 예정 n명」) | D8 |
+| core-front · back-office-front | 중단 예정 줄 표시(「중단 예정」 칩 대신 옅은 빨강 · 되돌리기 아이콘 · 「중단 예정 n명」) | D8 |
 | core-front · back-office-front | 출석 제목 옆 「?」 설명 팝오버 | D9 |
-| core-front · back-office-front | 탭 · 표 제목 · 열 이름 변경, 제목 옆 전체 개수만 | D10 |
-| core-front | 발표 신청 칩 너비 맞춤, 일정 표 가운데 정렬 | D11 |
+| core-front · back-office-front | core-front: 일정 표 제목 「회차」 → 「일정」. back-office-front: 탭 「출석」 · 일정 표 제목 「일정」 · 신청자 열 「닉네임」 · 제목 옆 전체 개수만. core-front 탭 「출석」 · 제목 옆 전체 개수는 #278 에 있음 | D10 |
 | back-office-front | 일정 표 제목 · 발표자 열 폭 축소 | D12 |
-| core-front · back-office-front | 작업 바 비활성 회색 | D13 |
+| back-office-front | 작업 바 비활성 회색 (core-front 는 #278 에서 아무도 안 고르면 바 안 컨트롤이 비활성) | D13 |
 
 **BE**
 
 | 대상 | 할 일 | 결정 |
 |---|---|---|
 | `GET /api/me/studies/{studyId}/attendances` · `GET /api/admin/studies/{studyId}/attendances` | 응답 `participants[]` 에 `discordNickname`(`ACCOUNT.DISCORD_NICKNAME`) 추가. `DELETED` 는 null, 로그에 남기지 않음. [attendance 스펙](../../specs/attendance/spec.md)의 「닉네임만 내린다」 규칙을 이 결정으로 고쳐 적고 시작한다 (위 「D6 근거와 범위」) | D6 |
-| 출석 저장의 `withdrawals[]` (사용자 사이트 · 관리자) | 분반 잠금을 먼저 쥐고, 같은 트랜잭션에서 그 분반 회차 중 `SCHEDULED_AT > LEFT_AT` 인 회차의 `PRESENTER1/2_PARTICIPANT_ID` 가 중단자면 null. 시작한 회차는 그대로. [study-participant 스펙](../../specs/study-participant/spec.md) 처리 6번(지금은 반대로 적혀 있음)과 테스트 시나리오에 성공 · 동시 신청 케이스를 더하고 시작한다 (위 「D7 순서」) | D7 |
+| 출석 저장의 `withdrawals[]` (사용자 사이트 · 관리자) | 분반 잠금을 먼저 쥐고, 같은 트랜잭션에서 그 분반 회차 중 `SCHEDULED_AT > LEFT_AT` 인 회차의 `PRESENTER1/2_PARTICIPANT_ID` 가 중단자면 null. 시작한 회차는 그대로. [study-participant 스펙](../../specs/study-participant/spec.md) 처리 6번(지금은 반대로 적혀 있음)과 테스트 시나리오에 성공 · 동시 신청 · 다른 분반 섞임 400 케이스를 더하고 시작한다 (위 「D7 순서」) | D7 |
 
 PRD 마다 §3 「개발 범위」 아래 **「10-18 기획 변경: FE / BE 추가 작업」** 표에 같은 내용을 그 화면 기준으로 나눠 적었다.
