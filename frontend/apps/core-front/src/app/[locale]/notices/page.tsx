@@ -22,7 +22,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
   const [notices, site] = await Promise.all([getNotices(), getSite()]);
 
   return (
-    <div className='mx-auto max-w-3xl px-6 py-14'>
+    <div className='mx-auto max-w-6xl px-6 py-14'>
       <header className='max-w-2xl'>
         <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('notices.title', locale)}</h1>
         <p className='mt-3 text-lg text-(--color-fg-muted)'>{m('notices.subtitle', locale)}</p>
