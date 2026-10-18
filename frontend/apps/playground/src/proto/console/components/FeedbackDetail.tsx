@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import { STATUS_CLASS, StatusBadge, TYPE_TONE, stamp } from '@console/components/FeedbacksTable';
+import { getUser } from '@console/lib/auth';
 import { Badge, Button, Modal, Textarea, toast } from '@studyclub/ui';
 import { Check, ChevronDown, ChevronLeft } from 'lucide-react';
 
@@ -28,6 +29,12 @@ import {
  * 이전·다음 건 이동은 두지 않는다.
  * TODO(api): GET·PATCH /api/admin/feedbacks/{id} — 삭제된 건은 404
  */
+/** 지금 콘솔에 로그인한 캡틴 — 완료 처리자로 남긴다 */
+function me(): string {
+  const u = getUser();
+  return u?.nickname ?? u?.email ?? '캡틴';
+}
+
 export function FeedbackDetail({ id }: { id: string }) {
   const [f, setF] = useState<Feedback | null | undefined>(undefined);
   const [memo, setMemo] = useState('');
@@ -58,8 +65,10 @@ export function FeedbackDetail({ id }: { id: string }) {
 
   function changeStatus(next: FeedbackStatus) {
     // TODO(api): 실패하면 드롭다운을 이전 값으로 되돌리고 「상태를 변경하지 못했습니다」 + 다시 시도
-    patchFeedback(id, { status: next });
-    setF((cur) => (cur ? { ...cur, status: next } : cur));
+    // 완료로 바꾸면 바꾼 캡틴을 남기고, 완료에서 벗어나면 지운다
+    const doneBy = next === 'done' ? me() : '';
+    patchFeedback(id, { status: next, doneBy });
+    setF((cur) => (cur ? { ...cur, status: next, doneBy } : cur));
     toast.success('상태를 변경했습니다.');
   }
 
@@ -77,8 +86,10 @@ export function FeedbackDetail({ id }: { id: string }) {
     await new Promise((r) => setTimeout(r, 500));
     const first = !f.reply;
     const next = { body: reply.trim(), at: f.reply?.at ?? new Date().toISOString() };
-    patchFeedback(id, first ? { reply: next, status: 'done' } : { reply: next });
-    setF((cur) => (cur ? { ...cur, reply: next, status: first ? 'done' : cur.status } : cur));
+    patchFeedback(id, first ? { reply: next, status: 'done', doneBy: me() } : { reply: next });
+    setF((cur) =>
+      cur ? { ...cur, reply: next, ...(first ? { status: 'done' as const, doneBy: me() } : {}) } : cur,
+    );
     setSendingReply(false);
     setEditingReply(false);
     toast.success(first ? '회신을 보냈습니다.' : '회신을 고쳤습니다.');

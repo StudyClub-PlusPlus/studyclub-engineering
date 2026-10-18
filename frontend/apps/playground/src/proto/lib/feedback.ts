@@ -55,6 +55,8 @@ export type Feedback = {
   viewport: string;
   createdAt: string; // ISO
   status: FeedbackStatus;
+  /** 「완료」로 바꾼 캡틴 — 회신으로든 상태 변경으로든. 완료가 아니면 없거나 빈 문자열 */
+  doneBy?: string;
   /** 캡틴 회신 — 제출자가 내 문의에서 본다. 수정해도 시각은 처음 보낸 때 */
   reply?: { body: string; at: string };
   /** 캡틴 전용 메모 — 내부용, 사용자에게 보이지 않는다 */
@@ -64,7 +66,7 @@ export type Feedback = {
 const SENT_KEY = 'sc_feedback_sent';
 const PATCH_KEY = 'sc_feedback_patch';
 
-type Patch = Partial<Pick<Feedback, 'status' | 'memo' | 'reply'>>;
+type Patch = Partial<Pick<Feedback, 'status' | 'memo' | 'reply' | 'doneBy'>>;
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -148,6 +150,8 @@ const SEED_REPLY: Record<string, { body: string; at: string }> = {
 const SEEDED: Feedback[] = SEED.map((f, i) => ({
   ...f,
   status: SEED_REPLY[f.id] ? 'done' : seedStatus(i),
+  // 완료 더미는 캡틴 둘이 나눠 처리한 것으로
+  doneBy: SEED_REPLY[f.id] || seedStatus(i) === 'done' ? (i % 2 ? '세린' : 'Alex') : undefined,
   reply: SEED_REPLY[f.id],
   memo: i === 6 ? '스터디 카드 제목 렌더링 확인 필요 — 이스케이프 누락 의심' : '',
 }));

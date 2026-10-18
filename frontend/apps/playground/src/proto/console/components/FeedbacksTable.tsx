@@ -171,6 +171,7 @@ export function FeedbacksTable() {
             <col className='min-w-[180px]' />
             <col className='w-[120px]' />
             <col className='w-[100px]' />
+            <col className='w-[120px]' />
           </colgroup>
           <thead>
             <tr>
@@ -179,13 +180,14 @@ export function FeedbacksTable() {
               <th>제목</th>
               <th className='whitespace-nowrap'>제출자</th>
               <th className='whitespace-nowrap'>상태</th>
+              <th className='whitespace-nowrap'>완료 처리자</th>
             </tr>
           </thead>
           <tbody>
             {rows === null &&
               Array.from({ length: PAGE_SIZE }, (_, i) => (
                 <tr key={i}>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <span className='block h-4 animate-pulse rounded bg-surface-2' />
                   </td>
                 </tr>
@@ -207,11 +209,14 @@ export function FeedbacksTable() {
                 <td className='whitespace-nowrap'>
                   <StatusBadge status={f.status} />
                 </td>
+                <td className='truncate whitespace-nowrap text-fg-secondary'>
+                  {f.doneBy || <span className='text-fg-muted'>—</span>}
+                </td>
               </tr>
             ))}
             {rows !== null && pageRows.length === 0 && (
               <tr>
-                <td colSpan={5} className='py-12 text-center text-fg-muted'>
+                <td colSpan={6} className='py-12 text-center text-fg-muted'>
                   {rows.length === 0 ? (
                     '접수된 문의·오류 신고가 없습니다.'
                   ) : (
