@@ -56,7 +56,8 @@ function SortLabel({
 export function NoticesConsole() {
   const [rows, setRows] = useState<Notice[]>(seedNotices);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
+  // 기본 순서도 한 열의 정렬이다 — 게시일 내림차순(최근 게시 먼저). 처음부터 그 열이 강조된다.
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'postedAt', dir: 'desc' });
   const [page, setPage] = useState(1);
   /** null = 닫힘, 'new' = 등록, id = 그 공지 편집 */
   const [target, setTarget] = useState<'new' | string | null>(null);

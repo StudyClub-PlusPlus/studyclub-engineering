@@ -315,10 +315,6 @@ function compareBy(sort: NonNullable<SortState>, a: Study, b: Study): number {
 }
 
 /**
- * 컬럼 머리의 위·아래 화살표. 누르면 그 방향으로 정렬하고, 이미 눌린 화살표를 다시 누르면 정렬을 푼다
- * (기본 순서 — 모집중 먼저, 마감이 가까운 순 — 로 돌아간다).
- */
-/**
  * 정렬하는 컬럼 머리 — **이름을 누른다.** 처음 누르면 오름차순, 다시 누르면 내림차순, 또 누르면 오름차순.
  * 화살표를 그리지 않는다 — 열마다 작은 화살표 두 개가 서면 머리 줄이 어수선하다.
  * 지금 정렬 중인 열은 이름이 강조색이다.
@@ -379,7 +375,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
   const [publish, setPublish] = useState<PublishFilter>('all');
   const [noFormOnly, setNoFormOnly] = useState(false);
-  const [sort, setSort] = useState<SortState>(null);
+  // 기본 순서도 한 열의 정렬이다 — 모집 상태 오름차순(모집중 먼저). 같은 상태끼리는 마감이 가까운 순.
+  // 처음부터 그 열을 강조해 두어, 지금 무엇으로 줄 세웠는지 늘 보이게 한다.
+  const [sort, setSort] = useState<SortState>({ key: 'recruit', dir: 'asc' });
   const [page, setPage] = useState(1);
   const [order, setOrder] = useState<ColumnKey[]>(DEFAULT_ORDER);
   const [dragKey, setDragKey] = useState<ColumnKey | null>(null);
