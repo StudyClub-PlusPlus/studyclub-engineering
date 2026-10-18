@@ -13,7 +13,7 @@ export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
 /**
  * 알림 조건 — **언제 보냈는가.** 템플릿의 조건과 같은 값이다 (POL-0009).
  *
- * 이름을 따로 두지 않는다 — 조건 하나에 템플릿 하나라 조건이 곧 그 알림이다.
+ * 이름을 따로 두지 않는다 — 조건이 곧 그 알림이다.
  */
 export type NotificationEvent = 'USER_REGISTERED' | 'USER_WITHDRAWN' | 'FEEDBACK_REPLIED';
 
