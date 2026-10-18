@@ -58,7 +58,8 @@ function seedOf(id: string): number {
 /** 크루마다 고정된 더미 요일 — 평일 저녁형·주말형이 섞이게 */
 function dummyDays(c: Crew): string[] {
   const h = seedOf(c.id);
-  const weights = c.region === 'NA' ? [3, 5, 4, 6, 2, 7, 5] : [4, 6, 3, 5, 2, 6, 7];
+  // 8 중 몇의 확률로 그 요일이 되는지 — 한국은 주말·화목, 북미는 토·목이 많게
+  const weights = c.region === 'NA' ? [2, 2, 1, 4, 1, 5, 3] : [2, 4, 2, 4, 1, 5, 6];
   const picked = DAYS.filter((_, i) => ((h >> i) & 7) < weights[i]).map((d) => d.key);
   return picked.length > 0 ? picked : [DAYS[h % 7].key];
 }
