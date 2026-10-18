@@ -43,6 +43,7 @@ flowchart LR
 ![공지 목록](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/crew-view-notices/assets/list.png)
 
 - **내용**: 제목 · 게시일 한 줄씩. 작성자 · 분류 · 고정 표시 없음
+- **모양**: 페이지 폭을 다 쓰는 게시판 — 카드로 감싸지 않는다. 가운데 한 덩어리로 두면 앱 화면처럼 보인다
 - **동작**
   - 게시일 내림차순 고정. 정렬을 바꾸는 수단은 없다
   - 10건씩 페이지. 한 페이지에 다 들어가면 페이지 번호를 보이지 않는다
@@ -55,7 +56,8 @@ flowchart LR
 
 ![공지 상세](https://raw.githubusercontent.com/StudyClub-PlusPlus/studyclub-engineering/beta/01-planning/stories/crew-view-notices/assets/detail.png)
 
-- **내용**: 제목 · 게시일 · 본문. 아래에 이전 공지 · 다음 공지, 「목록으로」
+- **내용**: 제목 · 게시일 · 본문. 아래에 다음 공지 · 이전 공지 두 줄, 「목록으로」
+- **모양**: 목록과 같은 게시판 글 — 페이지 폭, 카드 없음. 본문 글줄만 읽기 폭으로 묶는다
 - **본문**
   - 평문이다. 줄바꿈과 공백을 그대로 보존한다 (`white-space: pre-wrap`)
   - HTML 로 해석하지 않는다. 입력된 태그는 문자 그대로 보인다
