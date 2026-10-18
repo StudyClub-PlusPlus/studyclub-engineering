@@ -67,8 +67,8 @@ export function FeedbackDetail({ id }: { id: string }) {
   const replyInvalid = replyLen < REPLY_MIN || replyLen > REPLY_MAX;
 
   /**
-   * 회신 전송 — 확인 창 없이 바로. 회신 저장 + 상태 「완료」 + 제출자에게 알림 메일 1통(링크만).
-   * 고칠 때는 메일을 다시 보내지 않고, 처음 보낸 시각을 그대로 둔다.
+   * 회신 전송 — 확인 창 없이 바로. 회신 저장 + 상태 「완료」. 제출자에게 알리는 일은 알림 조건 「문의 회신」이 맡는다.
+   * 고치는 것은 새 회신이 아니다 — 알림 조건이 다시 걸리지 않고, 처음 보낸 시각을 그대로 둔다.
    * TODO(api): PATCH /api/admin/feedbacks/{id} { reply } — 실패하면 입력을 남기고 「회신을 보내지 못했습니다」 + 다시 시도
    */
   async function sendReply() {
