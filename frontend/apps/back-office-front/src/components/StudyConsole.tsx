@@ -183,7 +183,7 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
           />
         )}
         {tab === 'form' && <ApplicationFormTab study={detail} onSavingChange={setSavingForm} />}
-        {tab === 'info' && <StudyInfoTab detail={detail} />}
+        {tab === 'info' && <StudyInfoTab detail={detail} onSavingChange={setSavingForm} />}
       </div>
     </div>
   );

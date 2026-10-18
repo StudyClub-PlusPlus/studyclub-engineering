@@ -24,7 +24,7 @@ import type { ApiStudyDetail } from '@/features/studies/types';
  * 운영자는 같은 정보를 두 가지 모양으로 보게 되고 어디를 눌러야 뭐가 바뀌는지 매번 확인해야 한다.
  * 여기서는 보이는 칸이 곧 고치는 칸이다.
  */
-export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
+export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetail; onSavingChange?: (saving: boolean) => void }) {
   const router = useRouter();
   const initial = useMemo(() => detailToForm(detail), [detail]);
   const [form, setForm] = useState<StudyFormValues>(initial);
@@ -35,6 +35,12 @@ export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
 
   const update = useUpdateStudy(detail.id);
   const remove = useDeleteStudy(detail.id);
+  const busy = update.isPending || remove.isPending;
+
+  useEffect(() => {
+    onSavingChange?.(busy);
+    return () => onSavingChange?.(false);
+  }, [busy, onSavingChange]);
 
   // 저장 뒤 서버 값을 다시 받으면 그 값으로 폼을 맞춘다 — 서버가 다듬은 값(공백 제거 등)을 보여 준다
   useEffect(() => {
@@ -51,13 +57,18 @@ export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
   }
 
   function save() {
+    if (busy || !dirty) return;
     const e = validateStudyForm(form);
     setErrors(e);
     setSaveError(null);
     if (Object.keys(e).length > 0) return;
 
     update.mutate(formToPayload(form, initial), {
-      onSuccess: () => setSaved(true),
+      onSuccess: () => {
+        setSaved(true);
+        // 상세는 React Query, 목록은 서버 컴포넌트이므로 양쪽 캐시를 갱신한다.
+        router.refresh();
+      },
       onError: (err) => {
         const fieldError = serverErrorToField(err.message);
         if (fieldError) setErrors(fieldError);
@@ -67,21 +78,27 @@ export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
   }
 
   function confirmRemove() {
+    if (busy) return;
     remove.mutate(undefined, {
-      onSuccess: () => router.push('/studies'),
+      onSuccess: () => {
+        router.replace('/studies');
+        router.refresh();
+      },
     });
   }
 
   return (
     <div className='card px-6 py-5'>
-      <StudyForm mode='edit' value={form} errors={errors} onChange={change} />
+      <fieldset disabled={busy} className='min-w-0' aria-label='스터디 정보'>
+        <StudyForm mode='edit' value={form} errors={errors} onChange={change} />
+      </fieldset>
 
       <div className='mt-6 flex items-center gap-3 border-t border-border pt-4'>
         {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
         <button
           type='button'
           onClick={() => setConfirmDelete(true)}
-          disabled={update.isPending}
+          disabled={busy}
           className='h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
         >
           스터디 삭제
@@ -89,7 +106,7 @@ export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
         <div className='ml-auto flex items-center gap-3'>
           {saveError && <span className='text-sm font-medium text-error-600'>{saveError}</span>}
           {saved && !dirty && <span className='text-sm font-medium text-success-700'>저장되었습니다.</span>}
-          <Button onClick={save} loading={update.isPending} disabled={!dirty}>
+          <Button onClick={save} loading={update.isPending} disabled={!dirty || busy}>
             저장
           </Button>
         </div>
@@ -107,6 +124,7 @@ export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
           <>
             <Button
               variant='secondary'
+              data-autofocus
               disabled={remove.isPending}
               onClick={() => {
                 setConfirmDelete(false);
