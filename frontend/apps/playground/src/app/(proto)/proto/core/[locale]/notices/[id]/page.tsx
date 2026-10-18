@@ -39,7 +39,8 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
       {/* 게시판 글 모양 — 페이지 폭을 다 쓰고 카드로 감싸지 않는다. 본문 글줄만 읽기 폭(READ)으로 묶는다 */}
       <article className='mt-3 border-t-2 border-(--color-fg)'>
         <header className='border-b border-(--color-border) px-2 py-6'>
-          <h1 className='break-words text-[24px] font-bold leading-[1.35] tracking-tight sm:text-[30px]'>{t(n.title, locale)}</h1>
+          {/* 제목은 본문(16px)의 1.4배 안쪽 — 크게 벌리면 제목만 떠 보이고 본문이 작아 보인다 */}
+          <h1 className='break-words text-[20px] font-bold leading-[1.4] tracking-tight sm:text-[22px]'>{t(n.title, locale)}</h1>
           <time className='mt-2 block text-sm tabular-nums text-(--color-fg-muted)'>{n.date}</time>
         </header>
         {/* 긴 공백·긴 주소가 들어와도 넘치지 않게 — pre-wrap + 단어 중간 줄바꿈 허용 */}
