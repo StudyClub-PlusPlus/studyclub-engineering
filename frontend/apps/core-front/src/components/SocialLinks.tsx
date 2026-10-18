@@ -12,6 +12,9 @@ function XMark({ size = 16 }: { size?: number }) {
   );
 }
 
+// stage·로컬에서만 보인다 (lib/social.ts)
+const PENDING = '주소 준비 중';
+
 const ICON: Record<SocialId, (p: { size?: number }) => React.ReactNode> = {
   instagram: (p) => <Instagram {...p} />,
   x: (p) => <XMark {...p} />,
@@ -25,19 +28,25 @@ export function SocialIcons({ locale }: { locale: Locale }) {
   if (!channels.length) return null;
   return (
     <div className='flex items-center gap-1'>
-      {channels.map((c) => (
-        <a
-          key={c.id}
-          href={c.href}
-          target='_blank'
-          rel='noreferrer'
-          aria-label={t(c.label, locale)}
-          title={t(c.label, locale)}
-          className='grid h-9 w-9 place-items-center rounded-full text-(--color-fg-muted) transition-colors hover:bg-(--color-surface-subtle) hover:text-(--color-fg)'
-        >
-          {ICON[c.id]({ size: 17 })}
-        </a>
-      ))}
+      {channels.map((c) =>
+        c.href ? (
+          <a
+            key={c.id}
+            href={c.href}
+            target='_blank'
+            rel='noreferrer'
+            aria-label={t(c.label, locale)}
+            title={t(c.label, locale)}
+            className='grid h-9 w-9 place-items-center rounded-full text-(--color-fg-muted) transition-colors hover:bg-(--color-surface-subtle) hover:text-(--color-fg)'
+          >
+            {ICON[c.id]({ size: 17 })}
+          </a>
+        ) : (
+          <span key={c.id} title={`${t(c.label, locale)} · ${PENDING}`} className='grid h-9 w-9 place-items-center rounded-full text-(--color-fg-faint)'>
+            {ICON[c.id]({ size: 17 })}
+          </span>
+        ),
+      )}
     </div>
   );
 }
@@ -55,18 +64,28 @@ export function FollowStrip({ locale }: { locale: Locale }) {
         </p>
       </div>
       <div className='flex flex-wrap gap-2'>
-        {channels.map((c) => (
-          <a
-            key={c.id}
-            href={c.href}
-            target='_blank'
-            rel='noreferrer'
-            className='inline-flex items-center gap-2 rounded-full bg-(--color-bg) px-4 py-2 text-sm font-semibold text-(--color-fg) shadow-sm transition-colors hover:bg-(--color-surface-subtle)'
-          >
-            {ICON[c.id]({ size: 16 })}
-            {t(c.label, locale)}
-          </a>
-        ))}
+        {channels.map((c) =>
+          c.href ? (
+            <a
+              key={c.id}
+              href={c.href}
+              target='_blank'
+              rel='noreferrer'
+              className='inline-flex items-center gap-2 rounded-full bg-(--color-bg) px-4 py-2 text-sm font-semibold text-(--color-fg) shadow-sm transition-colors hover:bg-(--color-surface-subtle)'
+            >
+              {ICON[c.id]({ size: 16 })}
+              {t(c.label, locale)}
+            </a>
+          ) : (
+            <span
+              key={c.id}
+              className='inline-flex items-center gap-2 rounded-full border border-dashed border-(--color-border) px-4 py-2 text-sm font-semibold text-(--color-fg-faint)'
+            >
+              {ICON[c.id]({ size: 16 })}
+              {t(c.label, locale)} · {PENDING}
+            </span>
+          ),
+        )}
       </div>
     </section>
   );
