@@ -53,7 +53,7 @@ export type Feedback = {
   viewport: string;
   createdAt: string; // ISO
   status: FeedbackStatus;
-  /** 운영 메모 — 내부용, 사용자에게 보이지 않는다 */
+  /** 캡틴 전용 메모 — 내부용, 사용자에게 보이지 않는다 */
   memo: string;
 };
 

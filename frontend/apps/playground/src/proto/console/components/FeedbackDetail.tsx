@@ -19,10 +19,10 @@ import {
 } from '@/proto/lib/feedback';
 
 /**
- * 문의·오류 신고 상세 — 한 장에 위에서 아래로: 머리(유형·제목·상태) → 본문 → 첨부 → 제출 환경 → 운영 메모.
+ * 문의·오류 신고 상세 — 한 장에 위에서 아래로: 머리(유형·제목·상태) → 본문 → 첨부 → 제출 환경 → 캡틴 전용 메모.
  *
  * 본문은 평문 — HTML 로 해석하지 않고 줄바꿈만 살린다.
- * 상태는 고르면 바로 저장(확인 창 없음). 운영 메모는 [저장] 으로 — 내부용, 제출자에게 보이지 않는다.
+ * 상태는 고르면 바로 저장(확인 창 없음). 캡틴 전용 메모는 [저장] 으로 — 내부용, 제출자에게 보이지 않는다.
  * 이전·다음 건 이동은 두지 않는다.
  * TODO(api): GET·PATCH /api/admin/feedbacks/{id} — 삭제된 건은 404
  */
@@ -135,7 +135,7 @@ export function FeedbackDetail({ id }: { id: string }) {
 
         <section data-anno='feedback-admin:5' className='px-6 py-5'>
           <Textarea
-            label='운영 메모'
+            label='캡틴 전용 메모'
             rows={4}
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
