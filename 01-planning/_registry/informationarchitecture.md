@@ -25,7 +25,7 @@
 | IA-008 | 회원 탈퇴 | `/my/leave` | IA-007 | ST-013 | |
 | IA-009 | 내 스터디 | `/my/joined` | IA-007 | ST-009 | 주간 일정 · 정렬 · 역할 필터 |
 | IA-010 | 스터디 일정 — 일정 탭 | `/my/joined/{id}/schedule` | IA-009 | ST-015 · ST-011 | 정보 카드 · 규칙 · 회차 표(선택 · 일괄 삭제) · 발표 신청 |
-| IA-011 | 스터디 일정 — 출석부 탭 | `/my/joined/{id}/schedule/attendance` | IA-010 | ST-017 · ST-010 · ST-018 | 고치기 · 참여 중단(캡틴·네비게이터) · 보기(크루). 옛 `/my/joined/{id}/attendance` 는 여기로 보낸다 |
+| IA-011 | 스터디 일정 — 출석 탭 | `/my/joined/{id}/schedule/attendance` | IA-010 | ST-017 · ST-010 · ST-018 | 고치기 · 참여 중단(캡틴·네비게이터) · 보기(크루). 옛 `/my/joined/{id}/attendance` 는 여기로 보낸다 |
 | IA-012 | 찜한 스터디 | `/my/saved` | IA-007 | — | **고아** — 찜 Story 가 없다 (스펙: `specs/study-bookmark`). 내 스터디에서 버튼은 뺐다 |
 | IA-013 | 옛 내 스터디(출석) | `/my/studies` | IA-007 | — | **고아** — 내 스터디(IA-009) 이전 화면. 정리 대상 |
 | IA-014 | 이용약관 | `/terms` | IA-001 | ST-014 | 푸터 링크 |
@@ -49,7 +49,7 @@
 | IA-027 | 신청 결과 탭 | `/studies/{id}` › 신청 결과 | IA-024 | ST-024 | |
 | IA-028 | 신청자 탭 | `/studies/{id}` › 신청자 | IA-024 | ST-026 · ST-025 | 반 목록(제목) · 참여 크루 명단 · 반 · 역할 · 일괄 변경 |
 | IA-032 | 일정 탭 | `/studies/{id}` › 일정 | IA-024 | ST-025 · ST-015 | 반별 스터디 시간 · 회차 표(사용자 사이트 IA-010 과 같은 표) |
-| IA-029 | 출석 탭 | `/studies/{id}` › 출석 | IA-024 | ST-027 · ST-017 · ST-018 | 반별 출석부 · 일괄 출석 · 참여 중단 |
+| IA-029 | 출석 탭 | `/studies/{id}` › 출석 | IA-024 | ST-027 · ST-017 · ST-018 | 반 칩으로 한 반씩 · 일괄 출석 · 참여 중단 |
 | IA-030 | 유저 | `/users` | IA-021 | ST-028 · ST-029 | 회원 목록 · 권한 칸 · 기본 권한 표 |
 | IA-033 | 알림 발송 이력 | `/notifications` | IA-021 | ST-032 | 실패 건 재발송 |
 | IA-034 | 알림 템플릿 | `/notifications/templates` | IA-033 | ST-030 | 보기 · 추가 |
@@ -81,7 +81,7 @@
 | IA-009 | 내 스터디 | ST-009 크루는 참여 중인 스터디를 모아 볼 수 있다. | [crew-joined-studies](../stories/crew-joined-studies/PRD.md) |
 | IA-010 | 스터디 일정 — 일정 탭 | ST-015 네비게이터는 스터디 회차를 등록할 수 있다. | [navigator-register-sessions](../stories/navigator-register-sessions/PRD.md) |
 | | | ST-011 크루는 발표자를 신청할 수 있다. | [crew-apply-presenter](../stories/crew-apply-presenter/PRD.md) |
-| IA-011 | 스터디 일정 — 출석부 탭 | ST-017 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | [navigator-edit-attendance](../stories/navigator-edit-attendance/PRD.md) |
+| IA-011 | 스터디 일정 — 출석 탭 | ST-017 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | [navigator-edit-attendance](../stories/navigator-edit-attendance/PRD.md) |
 | | | ST-010 크루는 스터디별 출석 기록을 볼 수 있다. | [crew-view-attendance-record](../stories/crew-view-attendance-record/PRD.md) |
 | | | ST-018 네비게이터는 참여자를 스터디에서 제명할 수 있다. | [navigator-withdraw-participant](../stories/navigator-withdraw-participant/PRD.md) |
 | IA-014 | 이용약관 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
@@ -126,7 +126,7 @@ IA-001 홈 /
 │  ├─ IA-008 회원 탈퇴 /my/leave
 │  ├─ IA-009 내 스터디 /my/joined
 │  │  └─ IA-010 스터디 일정 — 일정 /my/joined/{id}/schedule
-│  │     └─ IA-011 스터디 일정 — 출석부 …/schedule/attendance
+│  │     └─ IA-011 스터디 일정 — 출석 …/schedule/attendance
 │  ├─ IA-012 찜한 스터디 /my/saved            (고아)
 │  └─ IA-013 옛 내 스터디 /my/studies         (고아)
 ├─ IA-014 이용약관 /terms

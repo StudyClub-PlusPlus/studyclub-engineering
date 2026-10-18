@@ -266,7 +266,7 @@ function PresenterHelp() {
           className='absolute left-0 top-full z-30 mt-1.5 w-72 rounded-card border border-border bg-surface-raised p-3 text-left text-xs font-normal leading-relaxed text-fg-secondary shadow-md'
         >
           <p className='flex items-center gap-1.5 font-semibold text-fg'>
-            <span className='relative grid h-6 w-9 place-items-center rounded-sm bg-success-100 text-[10px] font-bold text-success-700'>
+            <span className='relative grid h-6 w-10 place-items-center rounded-sm bg-success-100 text-xs font-bold text-success-700'>
               <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
               출석
             </span>
@@ -765,7 +765,7 @@ export function AttendanceTab({
                                 />
                                 <span
                                   aria-hidden
-                                  className='pointer-events-none absolute left-full top-1/2 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded-sm bg-fg px-2 py-1 text-[11px] font-semibold text-bg opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'
+                                  className='pointer-events-none absolute left-full top-1/2 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded-sm bg-fg px-2 py-1 text-xs font-semibold text-bg opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'
                                 >
                                   중단 예정 취소
                                 </span>
@@ -884,7 +884,7 @@ export function AttendanceTab({
             <ul className='list-disc space-y-1 pl-5 text-sm text-fg-secondary'>
               <li>지금까지의 출석 기록은 그대로 남습니다.</li>
               <li>지금 뒤에 시작하는 회차는 「-」로 비고 출석률에서 빠집니다.</li>
-              <li>더는 스터디 디스코드 채널 · 드라이브 링크를 볼 수 없고, 발표자로 고를 수 없습니다.</li>
+              <li>더는 스터디 디스코드 채널 · 드라이브 링크를 볼 수 없고, 앞으로 맡은 회차의 발표자에서 빠집니다.</li>
               <li>중단한 뒤에는 다시 참여시킬 수 없습니다.</li>
             </ul>
           </Modal>
