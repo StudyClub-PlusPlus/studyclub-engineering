@@ -32,7 +32,7 @@
 | IA-015 | 개인정보 처리방침 | `/privacy` | IA-001 | ST-014 | 푸터 링크 |
 | IA-016 | 소개 | `/about` | IA-001 | — | **고아** — Story 없음 |
 | IA-017 | 가이드 | `/guide` | IA-001 | — | **고아** — Story 없음 |
-| IA-018 | 공지 | `/notices` | IA-001 | ST-033 | 목록 · 상세. 비로그인도 본다. 스터디별 공지(ST-016)와 다르다 |
+| IA-018 | 공지 | `/notices` · `/notices/{id}` | IA-001 | ST-034 | 목록 · 상세. 비로그인도 본다. 스터디별 공지(ST-016)와 다르다 |
 | IA-019 | 행사 목록 | `/events` | IA-001 | — | **고아** — 행사 Story 없음 |
 | IA-020 | 행사 상세 | `/events/{id}` | IA-019 | — | **고아** |
 
@@ -87,7 +87,7 @@
 | | | ST-018 네비게이터는 참여자를 스터디에서 제명할 수 있다. | [navigator-withdraw-participant](../stories/navigator-withdraw-participant/PRD.md) |
 | IA-014 | 이용약관 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
 | IA-015 | 개인정보 처리방침 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
-| IA-018 | 공지 | ST-033 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | [captain-post-notice](../stories/captain-post-notice/PRD.md) |
+| IA-018 | 공지 | ST-034 크루는 스터디클럽 웹사이트의 공지를 볼 수 있다. | [crew-view-notices](../stories/crew-view-notices/PRD.md) |
 
 ### 운영 콘솔
 
