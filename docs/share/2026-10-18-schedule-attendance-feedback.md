@@ -11,6 +11,7 @@
   - 01-planning/stories/captain-view-attendance-roster/PRD.md — 됨
   - 01-planning/stories/captain-view-attendees/PRD.md — 됨
   - 01-planning/_registry/informationarchitecture.md — 됨 (탭 이름 「출석」)
+  - 01-planning/stories/crew-joined-studies/PRD.md · 01-planning/_registry/stories.md — 됨 (탭 이름 「출석」, 용어만)
   - playground 스터디 일정 · 스터디 운영 프로토 — 됨
   - specs/attendance/spec.md — 안 됨 (응답에 `discordNickname`, BE 할 일 D6)
   - specs/study-participant/spec.md — 안 됨 (참여 중단 시 발표자 비우기, BE 할 일 D7)
@@ -28,6 +29,20 @@
 - **반**: 한 스터디 안에서 모이는 시간이 다른 묶음이다. 반마다 회차와 출석부가 따로 있다.
 - **참여 중단**: 네비게이터나 캡틴이 크루를 스터디에서 빼는 일이다. 출석부에서 고르고 저장할 때 반영된다. 되돌리지 않는다.
 - **FE / BE**: FE 는 화면(core-front · back-office-front), BE 는 서버(API · DB)다.
+
+## 화면 캡처 (playground, 2026-10-18)
+
+| | |
+|---|---|
+| 사용자 사이트 출석: 정보 카드 「백오피스 출석부」 · 작업 바 · 고정 열 | ![](assets/2026-10-18-schedule-attendance-feedback/01-site-attendance-top.jpg) |
+| 아무도 고르지 않았을 때 작업 바 옅은 회색 | ![](assets/2026-10-18-schedule-attendance-feedback/02-site-attendance-bar-disabled.jpg) |
+| 고른 상태 · 중단 예정 줄 · 고친 칸 상태 색 테두리 | ![](assets/2026-10-18-schedule-attendance-feedback/03-site-attendance-selected-pending.png) |
+| 「?」 발표 표시 설명 | ![](assets/2026-10-18-schedule-attendance-feedback/04-site-attendance-presenter-help.png) |
+| 일정 탭(캡틴): 제목 「일정」 · 작업 바 맨 위 · 빈 칸 「-」 가운데 | ![](assets/2026-10-18-schedule-attendance-feedback/05-site-schedule-captain.jpg) |
+| 일정 탭(크루): 신청 칩과 내 이름 칩 같은 너비 | ![](assets/2026-10-18-schedule-attendance-feedback/06-site-schedule-crew-chips.jpg) |
+| 백오피스 신청자: 「닉네임」 · 작업 바 맨 위 · 「적용」 없음 | ![](assets/2026-10-18-schedule-attendance-feedback/07-bo-applicants-bar-top.jpg) |
+| 백오피스 출석: 반 칩 | ![](assets/2026-10-18-schedule-attendance-feedback/08-bo-attendance-class-chips.jpg) |
+| 백오피스 일정: 제목 · 발표자 열 축소, 가로 스크롤 없음 | ![](assets/2026-10-18-schedule-attendance-feedback/09-bo-schedule-compact.jpg) |
 
 ## 한 줄 요약
 
@@ -50,7 +65,7 @@
 | # | 결정 | 화면 |
 |---|---|---|
 | D1 | 일괄 수정 작업 바는 표 카드 **맨 위**. 스크롤하면 위에 붙어 따라온다 | 일정 · 출석 · 신청자(참여 크루) |
-| D2 | **「적용」 · 「출석 적용」 버튼을 없앤다.** 드롭다운에서 마우스로 고르는 순간(키보드는 화살표로 옮긴 뒤 Enter 를 누를 때) 고른 줄에 저장 전 변경으로 얹힌다. 「참여 중단」 버튼은 그대로 | 출석 · 신청자 |
+| D2 | **「적용」 · 「출석 적용」 버튼을 없앤다.** 드롭다운에서 마우스로 고르는 순간(키보드는 화살표로 옮긴 뒤 Enter 를 누르거나 칸을 떠날 때) 고른 줄에 저장 전 변경으로 얹힌다. 「참여 중단」 버튼은 그대로 | 출석 · 신청자 |
 | D3 | 백오피스 출석은 **반 칩으로 한 반씩**. 모든 반을 잇는 전체 보기는 없다 | 백오피스 출석 |
 | D4 | 「백오피스 출석부」 버튼(캡틴만)은 스터디 정보 카드 바로가기 줄 **맨 앞, 「디스코드」 왼쪽** | 사용자 사이트 일정 · 출석 |
 | D5 | 출석 격자: 닉네임 · 디스코드 닉네임 · 발표 횟수(왼쪽)와 출석률(오른쪽) **고정**, 회차 열만 가로 스크롤. 회차 칸 너비 통일. 회차 머리는 **일자만**. 칸은 평소 테두리 없음, **고치고 저장 전인 칸만 그 상태 색** 테두리(출석 초록 · 지각 주황 · 결석 빨강 · 휴가/미체크 회색). 빈 칸 「-」 가운데 | 출석(사용자 사이트 · 백오피스) |

@@ -1,6 +1,6 @@
 # 크루는 스터디별 출석 기록을 볼 수 있다.
 
-기준 프로토타입: 스터디 일정 — 출석 탭, 크루로 볼 때 (playground 사용자 사이트 · 내 스터디 → 스터디 일정 → 출석부)
+기준 프로토타입: 스터디 일정 — 출석 탭, 크루로 볼 때 (playground 사용자 사이트 · 내 스터디 → 스터디 일정 → 출석)
 
 관련 결정: [10-18 일정·출석 화면 피드백](../../../docs/share/2026-10-18-schedule-attendance-feedback.md)
 
@@ -147,7 +147,7 @@ erDiagram
 
 ### 비고
 
-- 범위 밖: 출석 고치기([navigator-edit-attendance](../navigator-edit-attendance/PRD.md)), 휴가 신청·취소, 디스코드 출석 체크, 스터디 전체 참여자 출석부(백오피스 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md))
+- 범위 밖: 출석 고치기([navigator-edit-attendance](../navigator-edit-attendance/PRD.md)), 휴가 신청·취소, 디스코드 출석 체크, 다른 반 출석부(백오피스 반 칩 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md))
 - 내 스터디 카드의 완주 점수판(참여 횟수 / 총 횟수)은 [crew-joined-studies](../crew-joined-studies/PRD.md) 4-4. 같은 출석 기록을 쓴다
 - 옛 출석 기록 주소 `/my/joined/{id}/attendance` 는 이 탭(`/my/joined/{id}/schedule/attendance`)으로 보낸다
 - 미구현: 프로토타입은 브라우저 저장 값을 읽는다

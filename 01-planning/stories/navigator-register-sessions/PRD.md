@@ -1,6 +1,6 @@
 # 네비게이터는 스터디 회차를 등록할 수 있다.
 
-기준 프로토타입: 스터디 일정 — 일정 · 출석부 (playground 사용자 사이트 · 내 스터디 → 스터디 일정)
+기준 프로토타입: 스터디 일정 — 일정 · 출석 (playground 사용자 사이트 · 내 스터디 → 스터디 일정)
 
 관련 결정: [09-30 스터디 상세가 디스코드·자료실 링크를 누구에게나 준다](../../../docs/share/2026-09-30-study-detail-private-urls.md) · [10-02 네비게이터의 회차 등록](../../../docs/share/2026-10-02-study-meeting-decisions.md) · [10-05 구글 시트 출석부를 웹 「스터디 일정」으로](../../../docs/share/2026-10-05-study-schedule-board.md) · [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md) · [10-18 일정·출석 화면 피드백](../../../docs/share/2026-10-18-schedule-attendance-feedback.md)
 

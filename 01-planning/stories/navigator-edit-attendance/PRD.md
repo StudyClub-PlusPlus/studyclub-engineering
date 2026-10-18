@@ -1,6 +1,6 @@
 # 네비게이터는 스터디별 출석 상태를 수정할 수 있다.
 
-기준 프로토타입: 스터디 일정 — 출석 탭, 캡틴·네비게이터로 볼 때 (playground 사용자 사이트 · 내 스터디 → 스터디 일정 → 출석부)
+기준 프로토타입: 스터디 일정 — 출석 탭, 캡틴·네비게이터로 볼 때 (playground 사용자 사이트 · 내 스터디 → 스터디 일정 → 출석)
 
 관련 결정: [10-05 출석률 집계에서 하차·탈퇴를 다루는 방식](../../../docs/share/2026-10-05-attendance-withdrawn-logic.md) · [10-18 일정·출석 화면 피드백](../../../docs/share/2026-10-18-schedule-attendance-feedback.md)
 
@@ -168,7 +168,7 @@ erDiagram
 
 ### 비고
 
-- 범위 밖: 회차 추가·수정(일정 탭 — [회차 등록 PRD](../navigator-register-sessions/PRD.md)), 스터디 전체 참여자 출석부(백오피스 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md)), 디스코드 출석 체크, 참여 중단([navigator-withdraw-participant](../navigator-withdraw-participant/PRD.md))
+- 범위 밖: 회차 추가·수정(일정 탭 — [회차 등록 PRD](../navigator-register-sessions/PRD.md)), 다른 반 출석부(백오피스 반 칩 — [captain-view-attendance-roster](../captain-view-attendance-roster/PRD.md)), 디스코드 출석 체크, 참여 중단([navigator-withdraw-participant](../navigator-withdraw-participant/PRD.md))
 - 미구현: 저장은 브라우저에만 남는다
 - 구현 지시: 칸 값 · 순환 · 저장 방식은 백오피스 출석부와 같은 컴포넌트를 쓴다. 다른 점은 보이는 참여자 범위와 머리 줄을 숨기는 것뿐이다
 - 옛 출석 기록 주소 `/my/joined/{id}/attendance` 는 이 탭(`/my/joined/{id}/schedule/attendance`)으로 보낸다
