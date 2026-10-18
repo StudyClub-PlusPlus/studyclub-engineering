@@ -113,9 +113,7 @@ export async function getOperatorMap(): Promise<Record<string, Operator>> {
   return Object.fromEntries(ops.map((o) => [o.id, o]));
 }
 
-/** 공지사항 — TODO(api): GET /api/announcements 연동 — 고정(pinned) 먼저, 그다음 날짜 내림차순. */
+/** 공지사항 — TODO(api): GET /api/notices 연동 — 날짜 내림차순. 상단 고정은 없다. */
 export async function getNotices(): Promise<Announcement[]> {
-  return [...announcementsData].sort(
-    (a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false) || b.date.localeCompare(a.date),
-  );
+  return [...announcementsData].sort((a, b) => b.date.localeCompare(a.date));
 }
