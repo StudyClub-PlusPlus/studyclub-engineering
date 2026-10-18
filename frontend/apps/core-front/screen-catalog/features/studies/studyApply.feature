@@ -8,11 +8,21 @@ Feature: 스터디 신청 폼 (crew-submit-application)
     Then 로그인 페이지(/ko/login?next=...)로 리다이렉트된다
 
   Scenario: 디스코드 미연동 사용자의 신청 시도
-    Given 로그인되어 있으나 디스코드가 연동되지 않은 사용자
+    Given 로그인되어 있으나 GET /auth/me 의 discordLinked 가 false 인 사용자
     When 신청하기 버튼을 클릭한다
     Then 디스코드 연동 모달(ApplyDiscordGate)이 노출된다
-    When "디스코드 연동하기"를 클릭하여 연동을 완료한다
+    When "디스코드 연동하기"를 클릭하고 POST /api/me/discord/link 가 204 를 준다
     Then 신청 폼(ApplyDialog)으로 자동으로 이동한다
+
+  Scenario: 디스코드 연동 실패
+    Given 디스코드 연동 모달이 열려 있다
+    When "디스코드 연동하기"를 클릭했는데 POST /api/me/discord/link 가 실패한다
+    Then 연동 모달에 남아 실패 문구가 보인다 (409 는 다른 계정에 이미 연동, 401 은 다시 로그인, 그 밖은 다시 시도)
+
+  Scenario: 연동 여부를 알 수 없음
+    Given GET /auth/me 조회가 실패하거나 응답에 discordLinked 가 없다
+    When 신청하기 버튼을 클릭한다
+    Then 신청 폼을 연다 — 제출이 403 이면 그때 디스코드 연동 모달을 연다
 
   Scenario: 디스코드 미연동 게이트 취소
     Given 로그인되어 있으나 디스코드가 연동되지 않은 사용자
@@ -20,7 +30,7 @@ Feature: 스터디 신청 폼 (crew-submit-application)
     Then 모달이 닫히고 상세 페이지에 머문다
 
   Scenario: 신청 폼 렌더링 및 동적 질문 확인
-    Given 디스코드가 연동된 로그인 사용자
+    Given GET /auth/me 의 discordLinked 가 true 인 로그인 사용자
     When 신청하기 버튼을 클릭하여 신청 폼을 연다
     Then 디스코드 별명, 참여 가능한 요일 등 플랫폼 기본 질문이 보인다
     And 지원 사유, 하고 싶은 말, 참여 가능 시간 등 추가 질문이 보인다
