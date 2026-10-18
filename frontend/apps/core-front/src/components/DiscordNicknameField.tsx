@@ -5,7 +5,7 @@ import { Input } from '@studyclub/ui';
 import { DISCORD_NICKNAME_MAX } from '@/lib/apply-validation';
 import { DISCORD_NICKNAME_EXAMPLE } from '@/lib/me';
 
-export const DISCORD_NICKNAME_LABEL = '[스터디 클럽++] 디스코드 서버 별명';
+export const DISCORD_NICKNAME_LABEL = '[스터디클럽] 디스코드 서버 별명';
 
 export function DiscordNicknameField({
   value,

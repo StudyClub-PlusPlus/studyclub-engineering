@@ -26,7 +26,7 @@ const meta = {
   tags: ['autodocs'],
   args: {
     variant: 'site',
-    brand: <span className='text-lg font-bold tracking-tight'>StudyClub++</span>,
+    brand: <span className='text-lg font-bold tracking-tight'>StudyClub</span>,
     items: siteItems,
     actions: (
       <Button size='sm' variant='primary'>

@@ -199,7 +199,7 @@ export function StudyBrowser({
   return (
     <div>
       {/*
-        층마다 다른 모양을 쓴다 — 상단 사이트 메뉴가 이미 밑줄 탭이라, 여기서도 밑줄을 쓰면
+        층마다 다른 모양을 쓴다. 상단 사이트 메뉴가 이미 밑줄 탭이라, 여기서도 밑줄을 쓰면
         같은 위계로 읽힌다. 상태는 **세그먼트**, 카테고리는 **테두리 칩**.
       */}
       <div className='mb-6 flex flex-col gap-4'>
@@ -281,7 +281,7 @@ export function StudyBrowser({
 
       {/* Grid */}
       {filtered.length > 0 ? (
-        <div data-anno='5' className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+        <div data-anno='5' className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3'>
           {filtered.map((s) => (
             <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
           ))}
@@ -291,7 +291,7 @@ export function StudyBrowser({
         <div data-anno='6' className='flex min-h-[240px] flex-col items-center justify-center gap-4 text-center'>
           <p className='text-base font-bold text-fg-secondary'>
             <span className='text-fg'>&quot;{query.trim()}&quot;</span>
-            {t({ ko: '에 해당하는 스터디를 찾을 수 없어요', en: ' — no studies found' }, locale)}
+            {t({ ko: '에 해당하는 스터디를 찾을 수 없어요', en: ': no studies found' }, locale)}
           </p>
           <button
             type='button'

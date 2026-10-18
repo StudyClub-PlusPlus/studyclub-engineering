@@ -118,7 +118,7 @@ export function withdrawParticipant(studyId: string, participantId: string): voi
  */
 export function navigatorNameOf(study: Study, role: ScheduleRole): string {
   if (role === 'navigator') return myName();
-  return myGroupCrew(study)[0]?.name ?? '—';
+  return myGroupCrew(study)[0]?.name ?? '-';
 }
 
 /* ── 스터디 규칙 ───────────────────────────────────────────────────────── */

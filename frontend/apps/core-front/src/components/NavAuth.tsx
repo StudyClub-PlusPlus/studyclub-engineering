@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, DoorOpen, LogOut, UserRound } from 'lucide-react';
 
 import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
+import { announceMenuOpen, closeOnOtherMenu } from '@/lib/header-menus';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
 export function NavAuth({ locale }: { locale: Locale }) {
@@ -19,6 +20,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // 다른 헤더 메뉴가 열리면 닫는다 (lib/header-menus.ts)
+  useEffect(() => closeOnOtherMenu('avatar', () => setOpen(false)), []);
 
   useEffect(() => {
     // 미리보기 세션은 정의가 바뀌었을 수 있어 맞춰서 읽는다
@@ -81,7 +85,10 @@ export function NavAuth({ locale }: { locale: Locale }) {
     <div className='relative' ref={ref}>
       <button
         type='button'
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => {
+          if (!v) announceMenuOpen('avatar');
+          return !v;
+        })}
         className='flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-[var(--color-surface-subtle)]'
       >
         {user.picture ? (
@@ -97,15 +104,26 @@ export function NavAuth({ locale }: { locale: Locale }) {
       </button>
 
       {open && (
-        <div className='absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] py-1 shadow-lg'>
-          <div className='truncate px-4 py-2 text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
+        // 그림자는 옅게 — 진한 shadow-lg 는 화면에서 떠 보이기만 했다. 테두리로 경계를 잡고 그림자는 아래로만 살짝
+        <div className='absolute right-0 z-40 mt-2 w-52 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-1.5 shadow-[0_10px_30px_-12px_rgb(15_23_42/0.18)]'>
+          <div className='truncate px-3 pb-2 pt-1.5 text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
+          <Link
+            href={`/${locale}/my/joined`}
+            onClick={() => setOpen(false)}
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+          >
+            <DoorOpen size={16} style={{ color: 'var(--color-brand)' }} />
+            {locale === 'en' ? 'My study room' : '내 스터디룸'}
+          </Link>
           <Link
             href={`/${locale}/my`}
             onClick={() => setOpen(false)}
-            className='block px-4 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
           >
+            <UserRound size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'My page' : '마이페이지'}
           </Link>
+          <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
             type='button'
             onClick={async () => {
@@ -115,8 +133,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
               router.replace(`/${locale}`);
               router.refresh();
             }}
-            className='block w-full px-4 py-2 text-left text-sm font-medium text-danger-fg hover:bg-[var(--color-surface-subtle)]'
+            className='flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-danger-fg hover:bg-[var(--color-surface-subtle)]'
           >
+            <LogOut size={16} />
             {locale === 'en' ? 'Log out' : '로그아웃'}
           </button>
         </div>

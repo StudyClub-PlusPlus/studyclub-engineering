@@ -3,7 +3,7 @@ import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { cx } from './cx';
-import { categoryGradient, categoryMeta } from './StudyThumb';
+import { categoryArtUrl, categoryMeta, categoryTint } from './StudyThumb';
 
 /**
  * design-system.md §9-5 Study Card — **둘러보기 전용.**
@@ -12,7 +12,7 @@ import { categoryGradient, categoryMeta } from './StudyThumb';
  * 섞으면 목록에서 실수로 신청 버튼을 누르는 일이 생긴다.
  *
  * 구조:
- * - 컬러 헤더(고정 높이 160px): 카테고리 그라디언트 + 워터마크 아이콘, 글래스 상태 배지, 카테고리 라벨, 제목(2줄)
+ * - 컬러 헤더(고정 높이 160px, 모바일 두 칸일 땐 128px): 카테고리 그라디언트 + 워터마크 아이콘, 글래스 상태 배지, 카테고리 라벨, 제목(2줄)
  * - 본문: 한 줄 소개(2줄) + 정보 줄(일정·시간대·시작 예정일 …)
  * - 카드 전체가 링크다(stretched link). 앱은 `linkAs` 로 Next.js `Link` 를 넘긴다.
  *
@@ -52,6 +52,8 @@ export function StudyCard({
   ...rest
 }: StudyCardProps) {
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(category);
+  const artUrl = categoryArtUrl(category);
+  const { background, ink } = categoryTint(category);
 
   return (
     <div {...rest} className={cx('card card-hover relative flex flex-col overflow-hidden', className)}>
@@ -60,17 +62,26 @@ export function StudyCard({
 
       {/* 컬러 헤더 — 고정 높이. 색은 카테고리를 따라간다(같은 분야 = 같은 색) */}
       <div
-        className='relative flex h-40 shrink-0 flex-col justify-between overflow-hidden p-4'
-        style={{ background: categoryGradient(category) }}
+        className='relative flex h-32 shrink-0 flex-col justify-between overflow-hidden p-3 sm:h-40 sm:p-4'
+        style={{ background }}
       >
-        <CategoryIcon
-          className='pointer-events-none absolute -bottom-5 -right-4 text-white/15'
-          size={104}
-          strokeWidth={1.25}
-          aria-hidden='true'
-        />
+        {artUrl ? (
+          <span
+            className='pointer-events-none absolute right-2 top-2 h-14 w-14 bg-contain sm:right-3 sm:top-3 sm:h-24 sm:w-24 bg-center bg-no-repeat'
+            style={{ backgroundImage: `url(${artUrl})` }}
+            aria-hidden='true'
+          />
+        ) : (
+          <CategoryIcon
+            className='pointer-events-none absolute -bottom-5 -right-4 opacity-15'
+            style={{ color: ink }}
+            size={104}
+            strokeWidth={1.25}
+            aria-hidden='true'
+          />
+        )}
         {badge ? (
-          <span className='relative inline-flex w-fit items-center gap-1.5 rounded-pill bg-black/40 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md'>
+          <span className='relative inline-flex w-fit items-center gap-1.5 rounded-pill bg-white/85 px-2.5 py-1 text-xs font-semibold text-fg shadow-sm backdrop-blur-md'>
             {badge.dotClassName && (
               <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', badge.dotClassName)} aria-hidden='true' />
             )}
@@ -79,26 +90,26 @@ export function StudyCard({
         ) : (
           <span />
         )}
-        <div className='relative text-white'>
-          <span className='flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/70'>
+        <div className='relative text-fg'>
+          <span className='flex items-center gap-1.5 text-xs font-semibold' style={{ color: ink }}>
             <CategoryIcon size={12} strokeWidth={1.75} className='shrink-0' />
             {categoryLabel}
           </span>
           {/* 최대 2줄 — 넘치면 말줄임. 카드 높이를 균일하게 유지한다. */}
-          <h3 className='mt-1 line-clamp-2 break-keep text-xl font-bold leading-[1.3] tracking-tight'>{title}</h3>
+          <h3 className='mt-1 line-clamp-2 break-keep text-base font-bold sm:text-xl leading-[1.3] tracking-tight'>{title}</h3>
         </div>
       </div>
 
       {/* 본문 — 한 줄 소개와 정보 줄을 한 영역에 모은다. 별도 하단 바로 나누지 않는다. */}
-      <div className='flex flex-1 flex-col gap-3 p-5'>
-        {summary && <p className='line-clamp-2 text-sm leading-relaxed text-fg-secondary'>{summary}</p>}
+      <div className='flex flex-1 flex-col gap-2 p-3 sm:gap-3 sm:p-5'>
+        {summary && <p className='line-clamp-2 text-xs leading-relaxed text-fg-secondary sm:text-sm'>{summary}</p>}
 
         {details.length > 0 && (
           <div className='space-y-1.5 text-xs text-fg-muted'>
             {details.map(({ icon: Icon, label }, i) => (
-              <div key={i} className='flex items-center gap-2'>
+              <div key={i} className='flex min-w-0 items-center gap-2'>
                 <Icon size={13} strokeWidth={1.75} className='shrink-0' />
-                {label}
+                <span className='truncate'>{label}</span>
               </div>
             ))}
           </div>

@@ -16,8 +16,8 @@
 | 환경 | URL |
 |------|-----|
 | 로컬 | `http://localhost:8080` |
-| 스테이지 | `https://api.stage.studyclub-plusplus.com` |
-| 프로덕션 | `https://api.studyclub-plusplus.com` |
+| 스테이지 | `https://api.stage.studyclub.life` |
+| 프로덕션 | `https://api.studyclub.life` |
 
 ## URL 구조
 

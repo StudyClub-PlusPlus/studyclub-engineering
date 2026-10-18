@@ -1,6 +1,6 @@
 # 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다.
 
-기준 프로토타입: 운영 콘솔 › 알림 › 알림 템플릿 — https://playground.studyclub-plusplus.com/proto/console/notifications/templates
+기준 프로토타입: 운영 콘솔 › 알림 › 알림 템플릿 — https://playground.studyclub.life/proto/console/notifications/templates
 
 ## 1. 기본설명
 

@@ -40,6 +40,6 @@ describe('pageMetadata', () => {
 
   it('og:url 은 절대 URL 이다 (상대경로면 크롤러가 해석 못 한다)', () => {
     const md = pageMetadata({ locale: 'en', path: '/studies/foo', title: 'Foo', description: 'bar' });
-    expect(md.openGraph?.url).toBe('https://studyclub-plusplus.com/en/studies/foo');
+    expect(md.openGraph?.url).toBe('https://studyclub.life/en/studies/foo');
   });
 });

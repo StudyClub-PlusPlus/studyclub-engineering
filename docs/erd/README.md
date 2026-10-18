@@ -1,4 +1,4 @@
-# ERD — StudyClub++ 데이터 모델
+# ERD — StudyClub 데이터 모델
 
 백엔드 스쿼드 08/24 회의에서 통합한 ERD 의 **레포 정본**. 테이블당 md 1개, 변경은 PR 로.
 
@@ -122,7 +122,7 @@ erDiagram
     varchar  TIME_ZONE            "IANA"
     varchar  DISCORD_ID        UK "snowflake"
     varchar  DISCORD_HANDLE
-    varchar  DISCORD_NICKNAME     "스터디클럽++ 서버 별명. 없으면 신청 시 필수 입력"
+    varchar  DISCORD_NICKNAME     "스터디클럽 서버 별명. 없으면 신청 시 필수 입력"
     datetime ONBOARDING_COMPLETED_AT    "온보딩 완료 시각"
   }
 

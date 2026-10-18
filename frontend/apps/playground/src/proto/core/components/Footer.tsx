@@ -17,7 +17,7 @@ export function Footer({ locale }: { locale: Locale }) {
     <footer className='mt-20 border-t border-(--color-border)'>
       <div className='mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 sm:flex-row sm:items-end sm:justify-between'>
         <p className='text-xs text-(--color-fg-faint)'>
-          © {new Date().getFullYear()} StudyClub++ · preview · dummy data
+          © {new Date().getFullYear()} StudyClub · preview · dummy data
         </p>
 
         {/* data-anno 를 직접 달지 않는다 — 푸터는 모든 화면에 뜨므로 약관과 무관한 화면마다

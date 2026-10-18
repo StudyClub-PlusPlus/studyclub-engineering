@@ -40,7 +40,7 @@ export function PageHeader({
       </div>
       {action ??
         (createLabel && (
-          // TODO(api): wire to api.studyclub-plusplus.com — 생성 폼/뮤테이션 연결
+          // TODO(api): wire to api.studyclub.life — 생성 폼/뮤테이션 연결
           <Button size='sm' disabled title='미구현 (백엔드 연결 예정)' leadingIcon={<Plus size={15} />}>
             {createLabel}
           </Button>
@@ -53,11 +53,11 @@ export function PageHeader({
 export function RowActions() {
   return (
     <div className='flex justify-end gap-1.5'>
-      {/* TODO(api): wire to api.studyclub-plusplus.com — 편집 */}
+      {/* TODO(api): wire to api.studyclub.life — 편집 */}
       <Button variant='ghost' size='sm' disabled>
         편집
       </Button>
-      {/* TODO(api): wire to api.studyclub-plusplus.com — 삭제 */}
+      {/* TODO(api): wire to api.studyclub.life — 삭제 */}
       <Button variant='destructive' size='sm' disabled>
         삭제
       </Button>

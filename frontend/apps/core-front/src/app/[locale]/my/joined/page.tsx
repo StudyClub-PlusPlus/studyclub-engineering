@@ -35,6 +35,7 @@ import {
   type WeekDay,
 } from '@/lib/joined';
 import type { ApiMyStudy } from '@/lib/joined-api';
+import { PAGE } from '@/lib/layout';
 import { getRegion } from '@/lib/me';
 import { isKickoff, manageAccessOf, type ScheduleRole } from '@/lib/meetings';
 import { IS_DEV, syncPreview } from '@/lib/preview';
@@ -548,8 +549,8 @@ function MyJoinedPageContent() {
   }
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
-      <h1 className='text-2xl font-extrabold tracking-tight'>내 스터디</h1>
+    <div className={`${PAGE} pb-16 pt-10`}>
+      <h1 className='text-2xl font-extrabold tracking-tight'>내 스터디룸</h1>
 
       <WeekStrip
         days={days}

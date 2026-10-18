@@ -151,7 +151,7 @@ export function TemplatesTable() {
             required
             value={draft.subject}
             onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
-            placeholder='[StudyClub++] 새 스터디 모집이 시작됐습니다'
+            placeholder='[StudyClub] 새 스터디 모집이 시작됐습니다'
           />
           <Textarea
             label='본문'
