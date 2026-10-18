@@ -28,6 +28,7 @@
 | IA-011 | 스터디 일정 — 출석부 탭 | `/my/joined/{id}/schedule/attendance` | IA-010 | ST-017 · ST-010 · ST-018 | 고치기 · 참여 중단(캡틴·네비게이터) · 보기(크루). 옛 `/my/joined/{id}/attendance` 는 여기로 보낸다 |
 | IA-012 | 찜한 스터디 | `/my/saved` | IA-007 | — | **고아** — 찜 Story 가 없다 (스펙: `specs/study-bookmark`). 내 스터디에서 버튼은 뺐다 |
 | IA-013 | 옛 내 스터디(출석) | `/my/studies` | IA-007 | — | **고아** — 내 스터디(IA-009) 이전 화면. 정리 대상 |
+| IA-036 | 내 문의 | `/my/feedbacks` · `/my/feedbacks/{id}` | IA-007 | ST-035 | 목록 · 문의하기 팝업 · 상세(답변). 프로필 드롭다운에서 들어온다 |
 | IA-014 | 이용약관 | `/terms` | IA-001 | ST-014 | 푸터 링크 |
 | IA-015 | 개인정보 처리방침 | `/privacy` | IA-001 | ST-014 | 푸터 링크 |
 | IA-016 | 소개 | `/about` | IA-001 | — | **고아** — Story 없음 |
@@ -52,6 +53,7 @@
 | IA-029 | 출석 탭 | `/studies/{id}` › 출석 | IA-024 | ST-027 · ST-017 · ST-018 | 반별 출석부 · 일괄 출석 · 참여 중단 |
 | IA-030 | 유저 | `/users` | IA-021 | ST-028 · ST-029 | 회원 목록 · 권한 칸 · 기본 권한 표 |
 | IA-035 | 공지 관리 | `/notices` | IA-021 | ST-033 | 목록 · 등록·편집 팝업 · 삭제. 사용자 사이트 IA-018 과 같은 데이터 |
+| IA-037 | 문의·오류 신고 | `/feedbacks` · `/feedbacks/{id}` | IA-021 | ST-036 | 목록 · 상세(상태 · 회신 · 캡틴 전용 메모) |
 | IA-033 | 알림 발송 이력 | `/notifications` | IA-021 | ST-032 | 실패 건 재발송 |
 | IA-034 | 알림 템플릿 | `/notifications/templates` | IA-033 | ST-030 | 보기 · 추가 |
 | IA-031 | 행사 | `/events` | IA-021 | — | **고아** — 행사 Story 없음 |
@@ -78,6 +80,7 @@
 | IA-005 | 스터디 상세 | ST-007 크루는 스터디 상세 정보를 볼 수 있다. | [crew-view-study-detail](../stories/crew-view-study-detail/PRD.md) |
 | IA-006 | 신청 폼 (모달) | ST-008 크루는 스터디 신청 폼을 제출할 수 있다. | [crew-submit-application](../stories/crew-submit-application/PRD.md) |
 | IA-007 | 마이페이지 | ST-012 크루는 프로필을 수정할 수 있다. | [crew-edit-profile](../stories/crew-edit-profile/PRD.md) |
+| IA-036 | 내 문의 | ST-035 크루는 캡틴에게 문의/오류신고를 제출할 수 있다. | [crew-submit-feedback](../stories/crew-submit-feedback/PRD.md) |
 | IA-008 | 회원 탈퇴 | ST-013 크루는 회원에서 탈퇴할 수 있다. | [crew-leave](../stories/crew-leave/PRD.md) |
 | IA-009 | 내 스터디 | ST-009 크루는 참여 중인 스터디를 모아 볼 수 있다. | [crew-joined-studies](../stories/crew-joined-studies/PRD.md) |
 | IA-010 | 스터디 일정 — 일정 탭 | ST-015 네비게이터는 스터디 회차를 등록할 수 있다. | [navigator-register-sessions](../stories/navigator-register-sessions/PRD.md) |
@@ -112,6 +115,7 @@
 | IA-030 | 유저 | ST-028 캡틴은 전체 회원 리스트를 조회할 수 있다. | [captain-list-users](../stories/captain-list-users/PRD.md) |
 | | | ST-029 캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다. | [captain-grant-roles](../stories/captain-grant-roles/PRD.md) |
 | IA-035 | 공지 관리 | ST-033 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | [captain-post-notice](../stories/captain-post-notice/PRD.md) |
+| IA-037 | 문의·오류 신고 | ST-036 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | [captain-view-feedbacks](../stories/captain-view-feedbacks/PRD.md) |
 | IA-033 | 알림 발송 이력 | ST-032 캡틴은 알림 발송 이력을 조회할 수 있다. | [notification-history](../stories/notification-history/PRD.md) |
 | IA-034 | 알림 템플릿 | ST-030 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | [notification-template](../stories/notification-template/PRD.md) |
 
@@ -131,7 +135,8 @@ IA-001 홈 /
 │  │  └─ IA-010 스터디 일정 — 일정 /my/joined/{id}/schedule
 │  │     └─ IA-011 스터디 일정 — 출석부 …/schedule/attendance
 │  ├─ IA-012 찜한 스터디 /my/saved            (고아)
-│  └─ IA-013 옛 내 스터디 /my/studies         (고아)
+│  ├─ IA-013 옛 내 스터디 /my/studies         (고아)
+│  └─ IA-036 내 문의 /my/feedbacks
 ├─ IA-014 이용약관 /terms
 ├─ IA-015 개인정보 처리방침 /privacy
 ├─ IA-016 소개 /about                         (고아)
@@ -153,6 +158,7 @@ IA-021 대시보드 /
 │     └─ IA-029 출석
 ├─ IA-030 유저 /users
 ├─ IA-035 공지 관리 /notices
+├─ IA-037 문의·오류 신고 /feedbacks
 ├─ IA-033 알림 발송 이력 /notifications
 │  └─ IA-034 알림 템플릿 /notifications/templates
 └─ IA-031 행사 /events                        (고아)

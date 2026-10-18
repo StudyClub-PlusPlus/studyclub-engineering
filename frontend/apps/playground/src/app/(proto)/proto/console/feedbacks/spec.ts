@@ -4,6 +4,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 export const SPEC: ScreenSpec = {
   screen: '문의·오류 신고 (운영 콘솔)',
   chip: '문의·오류 신고',
+  prd: 'captain-view-feedbacks',
   scope: 'feedback-admin',
   notes: [
     '사용자 사이트 「내 문의」에서 보낸 문의·오류 신고가 여기로 쌓인다. 로그인한 사람만 보낸다. 프로토는 이 브라우저에서 보낸 것도 함께 보인다',
