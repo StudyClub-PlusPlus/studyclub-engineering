@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getUser } from '@core/lib/auth';
 import { Button, Input, Modal, Textarea, Toaster, toast } from '@studyclub/ui';
+import { ImagePlus, X } from 'lucide-react';
 
 import {
   BODY_MAX,
   BODY_MIN,
   FEEDBACK_TYPES,
+  IMAGE_MAX_BYTES,
+  IMAGE_MAX_COUNT,
+  IMAGE_TYPES,
   TITLE_MAX,
   TITLE_MIN,
   addFeedback,
@@ -22,6 +26,7 @@ import {
  * 팝업은 레이아웃에 하나만 두고(`FeedbackHost`), 여는 쪽은 `openFeedback()` 만 부른다.
  *
  * 입력·설정 팝업 규칙(POL-0008) — X 와 보내기 하나, 취소 없음. 닫으면 입력은 사라지고 묻지 않는다.
+ * 이미지 첨부는 선택 — 3장까지, 장당 5MB. 고르거나 끌어 놓거나 ⌘V 로 붙여 넣는다(스크린샷).
  * TODO(api): POST /api/feedbacks — 인증 선택, 서버가 rate limit(로그인 = 사용자, 비로그인 = IP)
  */
 
@@ -31,8 +36,33 @@ export function openFeedback() {
   window.dispatchEvent(new Event(OPEN_EVENT));
 }
 
-type Draft = { type: FeedbackType | ''; title: string; body: string };
-const EMPTY: Draft = { type: '', title: '', body: '' };
+type Draft = { type: FeedbackType | ''; title: string; body: string; images: string[] };
+const EMPTY: Draft = { type: '', title: '', body: '', images: [] };
+
+/**
+ * 프로토는 브라우저에만 남기므로 긴 변을 1280px 로 줄여 JPEG 로 바꾼다 — 원본을 그대로 담으면 저장 공간이 넘친다.
+ * TODO(api): 업로드 API 로 원본을 올리고 fileId 를 받는다 (STORAGE_OBJECT)
+ */
+function shrink(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('image'));
+    };
+    img.src = url;
+  });
+}
 
 function Count({ len, min, max }: { len: number; min: number; max: number }) {
   const bad = len > 0 && (len < min || len > max);
@@ -44,11 +74,15 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [touched, setTouched] = useState(false);
   const [sending, setSending] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const on = () => {
       setDraft(EMPTY);
       setTouched(false);
+      setImageError(null);
       setOpen(true);
     };
     window.addEventListener(OPEN_EVENT, on);
@@ -74,6 +108,34 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
   };
   const invalid = Boolean(errors.type || errors.title || errors.body);
 
+  async function attach(files: File[]) {
+    setImageError(null);
+    const room = IMAGE_MAX_COUNT - draft.images.length;
+    if (room <= 0) {
+      setImageError(`이미지는 ${IMAGE_MAX_COUNT}장까지 붙일 수 있어요.`);
+      return;
+    }
+    const ok: File[] = [];
+    for (const f of files) {
+      if (!IMAGE_TYPES.includes(f.type)) {
+        setImageError('PNG · JPG · WEBP · GIF 이미지만 붙일 수 있어요.');
+        continue;
+      }
+      if (f.size > IMAGE_MAX_BYTES) {
+        setImageError('이미지는 한 장에 5MB까지 붙일 수 있어요.');
+        continue;
+      }
+      ok.push(f);
+    }
+    if (ok.length > room) setImageError(`이미지는 ${IMAGE_MAX_COUNT}장까지 붙일 수 있어요.`);
+    try {
+      const next = await Promise.all(ok.slice(0, room).map(shrink));
+      setDraft((d) => ({ ...d, images: [...d.images, ...next].slice(0, IMAGE_MAX_COUNT) }));
+    } catch {
+      setImageError('이미지를 읽지 못했어요. 다른 파일로 시도해 주세요.');
+    }
+  }
+
   async function send() {
     setTouched(true);
     if (invalid || sending) return;
@@ -85,6 +147,7 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
         type: draft.type as FeedbackType,
         title,
         body: draft.body,
+        images: draft.images.length > 0 ? draft.images : undefined,
         author: getUser()?.nickname ?? undefined,
         pageUrl: window.location.pathname.replace('/proto/core', '') + window.location.search,
         userAgent: navigator.userAgent,
@@ -133,7 +196,16 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
           </Button>
         }
       >
-        <div className='flex flex-col gap-4'>
+        <div
+          className='flex flex-col gap-4'
+          onPaste={(e) => {
+            // 클립보드에 이미지가 있으면 첨부로 받는다 — 글자 붙여넣기는 그대로 둔다
+            const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
+            if (files.length === 0) return;
+            e.preventDefault();
+            void attach(files);
+          }}
+        >
           <div data-anno='feedback:2' className='flex flex-col gap-1.5'>
             <span className='text-sm font-medium text-neutral-800'>
               유형<span className='ml-0.5 text-error-600'>*</span>
@@ -193,6 +265,68 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
                 </a>
               </p>
             )}
+          </div>
+
+          {/* 이미지 첨부 — 선택. 오류는 스크린샷이 있으면 재현이 쉽다 */}
+          <div data-anno='feedback:5-1' className='flex flex-col gap-1.5'>
+            <span className='flex items-baseline justify-between text-sm font-medium text-neutral-800'>
+              이미지 첨부
+              <span className='tnum text-xs font-normal text-fg-placeholder'>
+                {draft.images.length}/{IMAGE_MAX_COUNT}
+              </span>
+            </span>
+            <div className='flex flex-wrap gap-2'>
+              {draft.images.map((src, i) => (
+                <div key={i} className='group relative h-20 w-20 overflow-hidden rounded-control border border-border'>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 붙인 그 자리의 미리보기라 최적화가 필요 없다 */}
+                  <img src={src} alt={`첨부 이미지 ${i + 1}`} className='h-full w-full object-cover' />
+                  <button
+                    type='button'
+                    onClick={() => setDraft((d) => ({ ...d, images: d.images.filter((_, j) => j !== i) }))}
+                    aria-label={`첨부 이미지 ${i + 1} 빼기`}
+                    className='absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80'
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              {draft.images.length < IMAGE_MAX_COUNT && (
+                <button
+                  type='button'
+                  onClick={() => fileRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    void attach(Array.from(e.dataTransfer.files));
+                  }}
+                  className={`flex h-20 min-w-[13rem] flex-1 flex-col items-center justify-center gap-1 rounded-control border border-dashed text-xs transition-colors ${
+                    dragging ? 'border-brand bg-brand/5 text-brand' : 'border-border-strong text-fg-muted hover:bg-surface-2'
+                  }`}
+                >
+                  <ImagePlus size={18} />
+                  <span>눌러서 고르거나 끌어 놓기 · ⌘V 붙여넣기</span>
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type='file'
+              accept={IMAGE_TYPES.join(',')}
+              multiple
+              hidden
+              onChange={(e) => {
+                void attach(Array.from(e.target.files ?? []));
+                e.target.value = '';
+              }}
+            />
+            <p className={`text-xs ${imageError ? 'text-error-700' : 'text-fg-muted'}`}>
+              {imageError ?? `선택 · ${IMAGE_MAX_COUNT}장까지, 한 장에 5MB · PNG · JPG · WEBP · GIF`}
+            </p>
           </div>
         </div>
       </Modal>

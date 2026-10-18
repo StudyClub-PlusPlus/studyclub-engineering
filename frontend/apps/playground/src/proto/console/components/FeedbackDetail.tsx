@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { STATUS_TONE, TYPE_TONE, stamp } from '@console/components/FeedbacksTable';
-import { Badge, Button, Textarea, toast } from '@studyclub/ui';
+import { Badge, Button, Modal, Textarea, toast } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
 
 import {
@@ -28,6 +28,8 @@ import {
 export function FeedbackDetail({ id }: { id: string }) {
   const [f, setF] = useState<Feedback | null | undefined>(undefined);
   const [memo, setMemo] = useState('');
+  /** 크게 보고 있는 첨부 이미지 */
+  const [zoom, setZoom] = useState<number | null>(null);
 
   useEffect(() => {
     const found = getFeedback(id) ?? null;
@@ -100,6 +102,26 @@ export function FeedbackDetail({ id }: { id: string }) {
           <h2 className='mb-3 text-xs font-semibold text-fg-muted'>내용</h2>
           {/* 평문 — 태그도 글자 그대로. 긴 줄이 카드 밖으로 넘치지 않게 */}
           <p className='whitespace-pre-wrap break-words text-sm leading-relaxed text-fg [overflow-wrap:anywhere]'>{f.body}</p>
+
+          {f.images && f.images.length > 0 && (
+            <div data-anno='feedback-admin:6' className='mt-5 border-t border-border pt-4'>
+              <h2 className='mb-2 text-xs font-semibold text-fg-muted'>첨부 이미지 {f.images.length}장</h2>
+              <div className='flex flex-wrap gap-2'>
+                {f.images.map((src, i) => (
+                  <button
+                    key={i}
+                    type='button'
+                    onClick={() => setZoom(i)}
+                    aria-label={`첨부 이미지 ${i + 1} 크게 보기`}
+                    className='h-28 w-40 overflow-hidden rounded-control border border-border hover:border-brand'
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 사용자가 올린 이미지 원본 */}
+                    <img src={src} alt={`첨부 이미지 ${i + 1}`} className='h-full w-full object-cover' />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <aside className='flex flex-col gap-4'>
@@ -131,6 +153,17 @@ export function FeedbackDetail({ id }: { id: string }) {
           </section>
         </aside>
       </div>
+      <Modal
+        open={zoom !== null}
+        onClose={() => setZoom(null)}
+        title={zoom !== null ? `첨부 이미지 ${zoom + 1} / ${f.images?.length ?? 0}` : ''}
+        size='lg'
+      >
+        {zoom !== null && f.images?.[zoom] && (
+          // eslint-disable-next-line @next/next/no-img-element -- 사용자가 올린 이미지 원본
+          <img src={f.images[zoom]} alt={`첨부 이미지 ${zoom + 1}`} className='mx-auto max-h-[70vh] w-auto rounded-control' />
+        )}
+      </Modal>
     </div>
   );
 }

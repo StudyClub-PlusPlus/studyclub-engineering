@@ -30,12 +30,19 @@ export const TITLE_MAX = 100;
 export const BODY_MIN = 10;
 export const BODY_MAX = 2000;
 
+/** 이미지 첨부 — 장수 · 장당 원본 크기 · 받는 형식 */
+export const IMAGE_MAX_COUNT = 3;
+export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+
 export type Feedback = {
   id: string;
   type: FeedbackType;
   title: string;
   /** 평문. HTML 로 해석하지 않는다 */
   body: string;
+  /** 첨부 이미지. 프로토는 줄인 data URL — 실제로는 업로드 fileId (STORAGE_OBJECT) */
+  images?: string[];
   /** 제출자 닉네임. 비로그인이면 없다 → 「비회원」 */
   author?: string;
   /** 자동 수집 — 사용자가 입력하지 않는다 */
@@ -74,12 +81,18 @@ const UA_WIN = 'Edge 140 · Windows 11';
 const UA_IOS = 'Safari 26 · iOS 26';
 const UA_AND = 'Chrome 141 · Android 15';
 
+/** 더미 스크린샷 — 실제 이미지 대신 회색 화면에 한 줄 설명을 그린 SVG */
+function shot(label: string, w = 1280, h = 800): string {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'><rect width='100%' height='100%' fill='#eef0f5'/><rect x='0' y='0' width='100%' height='64' fill='#2b2d42'/><rect x='48' y='120' width='${w - 96}' height='${h - 200}' rx='16' fill='#ffffff' stroke='#d6d9e2'/><text x='50%' y='52%' text-anchor='middle' font-family='sans-serif' font-size='${Math.round(w / 32)}' fill='#6b7080'>${label}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 /** 더미 — 최근 3주치. 미확인이 위에 섞이게 */
 const SEED: Omit<Feedback, 'status' | 'memo'>[] = [
-  { id: 'fb-24', type: 'bug', title: '신청하기 눌렀는데 디스코드 연동 창이 계속 다시 떠요', body: '디스코드 연결을 끝냈는데 신청하기를 누르면 연결 창이 또 뜹니다.\n새로고침해도 똑같아요.', author: '하늘', pageUrl: '/ko/studies/ai-paper', userAgent: UA_MAC, viewport: '1440×900', createdAt: '2026-10-18T13:12:00Z' },
+  { id: 'fb-24', type: 'bug', title: '신청하기 눌렀는데 디스코드 연동 창이 계속 다시 떠요', body: '디스코드 연결을 끝냈는데 신청하기를 누르면 연결 창이 또 뜹니다.\n새로고침해도 똑같아요.', author: '하늘', pageUrl: '/ko/studies/ai-paper', userAgent: UA_MAC, viewport: '1440×900', createdAt: '2026-10-18T13:12:00Z' , images: [shot('디스코드 연결 창이 다시 뜬 화면'), shot('신청하기 버튼 상태')] },
   { id: 'fb-23', type: 'question', title: '북미에 사는데 한국 시간 스터디 참여해도 되나요?', body: 'LA 에 살고 있습니다. 화요일 저녁 8시(KST) 스터디가 있던데 여기서는 새벽 4시라서요. 녹화로 참여해도 되는지 궁금합니다.', author: 'jay_la', pageUrl: '/ko/studies/system-design', userAgent: UA_IOS, viewport: '390×844', createdAt: '2026-10-18T05:40:00Z' },
   { id: 'fb-22', type: 'idea', title: '스터디 목록에서 시간대로 거를 수 있으면 좋겠어요', body: '북미 사람이라 PST 로 진행하는 스터디만 보고 싶은데 필터가 없어서 하나씩 열어 봐야 해요.', author: 'minji', pageUrl: '/ko/studies', userAgent: UA_MAC, viewport: '1280×800', createdAt: '2026-10-17T22:03:00Z' },
-  { id: 'fb-21', type: 'bug', title: '모바일에서 출석 체크 버튼이 안 눌려요', body: '아이폰 사파리에서 오늘 출석 버튼을 눌러도 반응이 없습니다. 데스크톱에서는 됩니다.', author: '도윤', pageUrl: '/ko/my/joined/7/schedule/attendance', userAgent: UA_IOS, viewport: '375×812', createdAt: '2026-10-17T11:30:00Z' },
+  { id: 'fb-21', type: 'bug', title: '모바일에서 출석 체크 버튼이 안 눌려요', body: '아이폰 사파리에서 오늘 출석 버튼을 눌러도 반응이 없습니다. 데스크톱에서는 됩니다.', author: '도윤', pageUrl: '/ko/my/joined/7/schedule/attendance', userAgent: UA_IOS, viewport: '375×812', createdAt: '2026-10-17T11:30:00Z' , images: [shot('출석 버튼 — iPhone Safari', 390, 844)] },
   { id: 'fb-20', type: 'idea', title: '공지에 이미지도 넣을 수 있으면', body: '행사 공지에 장소 지도를 같이 올리면 좋겠어요.', pageUrl: '/ko/notices/offline-meetup-bayarea', userAgent: UA_WIN, viewport: '1920×1080', createdAt: '2026-10-16T09:15:00Z' },
   { id: 'fb-19', type: 'question', title: '스터디 중간에 그만두면 다음 기수 신청에 불이익이 있나요', body: '개인 사정으로 이번 기수를 중간에 그만둬야 할 것 같은데, 다음 기수 신청할 때 영향이 있는지 궁금합니다.', author: '서연', pageUrl: '/ko/my/joined', userAgent: UA_MAC, viewport: '1512×982', createdAt: '2026-10-15T14:48:00Z' },
   { id: 'fb-18', type: 'bug', title: '<b>마감</b> 이라고 글자가 그대로 보여요', body: '스터디 카드에 <b>마감</b> 처럼 태그가 그대로 나옵니다.', pageUrl: '/ko', userAgent: UA_AND, viewport: '412×915', createdAt: '2026-10-15T02:10:00Z' },
@@ -98,7 +111,7 @@ const SEED: Omit<Feedback, 'status' | 'memo'>[] = [
   { id: 'fb-05', type: 'bug', title: '탈퇴 버튼을 눌러도 아무 일이 없어요', body: '회원 탈퇴 화면에서 탈퇴하기를 눌렀는데 그대로입니다.', author: '익명검사', pageUrl: '/ko/my/leave', userAgent: UA_AND, viewport: '412×915', createdAt: '2026-10-02T20:50:00Z' },
   { id: 'fb-04', type: 'idea', title: '행사 캘린더 내보내기', body: '행사 일정을 구글 캘린더에 바로 넣을 수 있게 해 주세요.', author: '도윤', pageUrl: '/ko/events', userAgent: UA_MAC, viewport: '1440×900', createdAt: '2026-10-01T06:25:00Z' },
   { id: 'fb-03', type: 'question', title: '스터디 비용이 있나요', body: '모든 스터디가 무료인지 궁금합니다.', pageUrl: '/ko', userAgent: UA_IOS, viewport: '390×844', createdAt: '2026-09-30T17:00:00Z' },
-  { id: 'fb-02', type: 'bug', title: '스터디 카드 썸네일이 깨져 보여요', body: '목록에서 일부 카드 이미지가 회색 상자로 나옵니다.', author: '서연', pageUrl: '/ko/studies', userAgent: UA_WIN, viewport: '1366×768', createdAt: '2026-09-29T12:40:00Z' },
+  { id: 'fb-02', type: 'bug', title: '스터디 카드 썸네일이 깨져 보여요', body: '목록에서 일부 카드 이미지가 회색 상자로 나옵니다.', author: '서연', pageUrl: '/ko/studies', userAgent: UA_WIN, viewport: '1366×768', createdAt: '2026-09-29T12:40:00Z' , images: [shot('스터디 목록 — 회색 썸네일')] },
 ];
 
 /** 오래된 것일수록 처리가 끝나 있게 — 프로토 첫 화면이 현실적으로 보이도록 */
