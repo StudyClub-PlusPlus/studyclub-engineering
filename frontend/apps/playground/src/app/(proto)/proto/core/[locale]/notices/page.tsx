@@ -1,14 +1,16 @@
+
 import { JoinCta } from '@core/components/JoinCta';
 import { Pill } from '@core/components/StatusBadge';
 import { getNotices, getSite, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
+import { Pin } from 'lucide-react';
 
 export default async function NoticesPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   const [notices, site] = await Promise.all([getNotices(), getSite()]);
 
   return (
-    <div className='mx-auto max-w-3xl px-6 py-14'>
+    <div className='mx-auto max-w-6xl px-6 py-14'>
       <header className='max-w-2xl'>
         <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('notices.title', locale)}</h1>
         <p className='mt-3 text-lg text-(--color-fg-muted)'>{m('notices.subtitle', locale)}</p>
@@ -24,7 +26,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
             }
           >
             <div className='flex flex-wrap items-center gap-2'>
-              {n.pinned && <span aria-label='pinned'>📌</span>}
+              {n.pinned && <Pin size={14} aria-label='pinned' style={{ color: 'var(--color-brand)' }} />}
               {n.tag && <Pill>{m(`notice_tag.${n.tag}`, locale)}</Pill>}
               <time className='ml-auto text-xs font-medium text-(--color-fg-faint)'>{n.date}</time>
             </div>

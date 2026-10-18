@@ -28,7 +28,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
   if (!n) notFound();
 
   return (
-    <div className='mx-auto max-w-3xl px-6 py-12'>
+    <div className='mx-auto max-w-6xl px-6 py-12'>
       <Link
         href={`/${locale}/notices`}
         className='inline-flex items-center gap-1.5 text-sm font-medium text-(--color-fg-muted) hover:text-(--color-fg)'
@@ -36,7 +36,8 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
         <ArrowLeft size={15} /> {m('notices.title', locale)}
       </Link>
 
-      <header className='mt-6 border-b border-(--color-border) pb-6'>
+      {/* 컨테이너 폭은 다른 페이지와 같게, 읽는 글줄은 3xl 로 */}
+      <header className='mt-6 max-w-3xl border-b border-(--color-border) pb-6'>
         <div className='flex items-center gap-2'>
           {n.pinned && <Pin size={14} aria-label='pinned' style={{ color: 'var(--color-brand)' }} />}
           {n.tag && <Pill>{m(`notice_tag.${n.tag}`, locale)}</Pill>}
@@ -45,7 +46,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
         <h1 className='mt-3 text-[26px] font-bold leading-[1.3] tracking-tight sm:text-3xl'>{t(n.title, locale)}</h1>
       </header>
 
-      <div className='mt-8 flex flex-col gap-4 text-[16px] leading-[1.85] text-(--color-fg)'>
+      <div className='mt-8 flex max-w-3xl flex-col gap-4 text-[16px] leading-[1.85] text-(--color-fg)'>
         {n.blocks.map((b, i) => {
           if ('h' in b) return <h2 key={i} className='mt-6 text-lg font-bold tracking-tight'>{t(b.h, locale)}</h2>;
           if ('p' in b) return <p key={i}>{t(b.p, locale)}</p>;

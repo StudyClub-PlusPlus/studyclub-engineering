@@ -239,7 +239,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
           {t(study.title, locale)}
         </Link>
         <span data-anno='4-1' className='tnum shrink-0 text-sm font-bold text-fg'>
-          {rate === undefined ? <span className='text-fg-muted'>—</span> : `${rate}%`}
+          {rate === undefined ? <span className='text-fg-muted'>-</span> : `${rate}%`}
         </span>
       </div>
 

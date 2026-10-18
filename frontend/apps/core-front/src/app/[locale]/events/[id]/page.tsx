@@ -71,7 +71,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
   const url = `${SITE_URL}/${locale}/events/${id}`;
 
   return (
-    <div className='mx-auto max-w-4xl px-6 py-12'>
+    <div className='mx-auto max-w-6xl px-6 py-12'>
       <JsonLd
         data={[
           eventJsonLd(event, locale, url),
@@ -90,7 +90,9 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
       </Link>
 
       {/* 머리 — 스터디 상세와 같은 틀: 옅은 바탕 + 배지 + 제목 + 한 줄, 아래 정보 칸 */}
-      <article className='card mt-4 overflow-hidden p-0'>
+      <div className='mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]'>
+        <div className='min-w-0'>
+      <article className='card overflow-hidden p-0'>
         <header
           className='flex flex-col gap-3 px-6 pb-7 pt-6 sm:px-8'
           style={{ background: 'linear-gradient(135deg, var(--color-brand-subtle), color-mix(in oklab, var(--color-brand) 16%, white))' }}
@@ -101,19 +103,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           <h1 className='text-[26px] font-bold leading-[1.25] tracking-tight sm:text-[30px]'>{t(event.title, locale)}</h1>
           <p className='text-[16px] leading-relaxed text-[var(--color-fg-muted)]'>{t(event.summary, locale)}</p>
         </header>
-        <dl className='grid gap-px bg-[var(--color-border)] sm:grid-cols-3'>
-          {facts.map((f) => (
-            <div key={f.label} className='flex items-center gap-3 bg-[var(--color-bg)] px-6 py-4'>
-              <f.icon size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
-              <div className='min-w-0'>
-                <dt className='text-xs text-[var(--color-fg-muted)]'>{f.label}</dt>
-                <dd className='font-semibold'>{f.value}</dd>
-              </div>
-            </div>
-          ))}
-        </dl>
       </article>
-
       {detail && (
         <section className='mt-10'>
           <h2 className='text-lg font-bold tracking-tight'>{t({ ko: '어떤 행사였나요', en: 'About this event' }, locale)}</h2>
@@ -134,6 +124,33 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           )}
         </section>
       )}
+
+        </div>
+        <aside className='card overflow-hidden p-0 lg:sticky lg:top-24'>
+        <dl className='flex flex-col divide-y divide-[var(--color-border)]'>
+          {facts.map((f) => (
+            <div key={f.label} className='flex items-center gap-3 px-6 py-4'>
+              <f.icon size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
+              <div className='min-w-0'>
+                <dt className='text-xs text-[var(--color-fg-muted)]'>{f.label}</dt>
+                <dd className='font-semibold'>{f.value}</dd>
+              </div>
+            </div>
+          ))}
+        </dl>
+      {event.link && (
+        <a
+          href={event.link}
+          target='_blank'
+          rel='noreferrer'
+          className='m-6 mt-2 inline-flex justify-center items-center gap-2 rounded-full px-6 py-3 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]'
+          style={{ background: 'var(--color-brand)' }}
+        >
+          {m('common.rsvp', locale)} <ArrowUpRight size={17} />
+        </a>
+      )}
+        </aside>
+      </div>
 
       {/* 공통 — 스터디클럽 행사는 이런 것들 */}
       <section className='mt-12 rounded-2xl p-6 sm:p-8' style={{ background: 'var(--color-brand-subtle)' }}>
@@ -156,17 +173,6 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
         </div>
       </section>
 
-      {event.link && (
-        <a
-          href={event.link}
-          target='_blank'
-          rel='noreferrer'
-          className='mt-12 inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]'
-          style={{ background: 'var(--color-brand)' }}
-        >
-          {m('common.rsvp', locale)} <ArrowUpRight size={17} />
-        </a>
-      )}
     </div>
   );
 }
