@@ -63,6 +63,21 @@
 | D12 | 백오피스 일정 표는 제목 · 발표자 열을 좁혀 **가로 스크롤 없이** 들어가게 | 백오피스 일정 |
 | D13 | 아무도 고르지 않았을 때 작업 바 드롭다운 · 버튼은 **옅은 회색(비활성)**, 한 명이라도 고르면 살아난다 | 출석 · 신청자 |
 
+### D6 디스코드 닉네임을 크루에게도 보이는 근거와 범위
+
+- **근거**: 디스코드 닉네임은 스터디클럽 디스코드 서버의 별명이다. 같은 서버 멤버끼리는 디스코드에서 이미 서로 보인다. 출석부는 같은 분반 참여자에게만 보인다. 그래서 새로 넓어지는 노출이 아니라고 본다. 다만 전에는 동명이인일 때만 괄호로 보였고, 이제는 늘 보인다
+- **값**: 신청할 때 받은 서버 별명(`ACCOUNT.DISCORD_NICKNAME`, 예 「홍길동/SWE/산호세/시스템디자인」). 이메일 · 디스코드 계정 ID 는 여전히 내리지 않는다
+- **회원 탈퇴(`DELETED`)한 사람**: `discordNickname = null`(화면 「-」). 탈퇴하면 별명을 파기하는 [회원 탈퇴 스펙](../../specs/user-leave/spec.md)과 맞춘다
+- **참여 중단(`WITHDRAWN`)한 사람**: 계정이 남아 있으니 그대로 보인다. 지난 출석 줄의 주인을 알아볼 수 있어야 한다
+- **로그**: 응답 값을 로그 · 감사 로그에 남기지 않는다 ([보안 가이드 §PII](../backend-development-guide/security-guide.md))
+- **그리기**: 본인이 마음대로 넣는 글자다. FE 는 글자로만 그린다(HTML · 마크다운으로 해석하지 않는다)
+
+### D7 발표자 비우기의 순서
+
+- 참여 중단 트랜잭션은 회차 수정 · 발표 신청과 **같은 분반 잠금을 먼저 쥔다** ([회차 스펙](../../specs/study-meeting/spec.md)의 「분반 잠금 → 권한 판정 → 회차 잠금」 순서). 그래야 저장과 동시에 들어온 발표 신청이 중단자를 다시 넣지 못한다
+- 「뒤에 시작하는 회차」는 잠금을 얻은 뒤의 서버 시각(`LEFT_AT`)으로 가른다
+- 사용자 사이트(`/api/me/…`)와 관리자(`/api/admin/…`) 저장이 같은 규칙 · 같은 잠금을 쓴다
+
 그대로 두는 것: 백오피스 일정 탭의 스터디 시간 「수정」은 지금처럼 둔다.
 
 ## 영향: 누가 무엇을 해야 하나
@@ -92,7 +107,7 @@
 
 | 대상 | 할 일 | 결정 |
 |---|---|---|
-| `GET /api/me/studies/{studyId}/attendances` · `GET /api/admin/studies/{studyId}/attendances` | 응답 `participants[]` 에 `discordNickname` 추가. [attendance 스펙](../../specs/attendance/spec.md)에 필드부터 적는다 | D6 |
-| 출석 저장의 `withdrawals[]` (사용자 사이트 · 관리자) | 같은 트랜잭션에서, 그 분반 회차 중 `SCHEDULED_AT > LEFT_AT` 인 회차의 `PRESENTER1/2_PARTICIPANT_ID` 가 중단자면 null. 시작한 회차는 그대로. [study-participant 스펙](../../specs/study-participant/spec.md)에 규칙부터 적는다 | D7 |
+| `GET /api/me/studies/{studyId}/attendances` · `GET /api/admin/studies/{studyId}/attendances` | 응답 `participants[]` 에 `discordNickname`(`ACCOUNT.DISCORD_NICKNAME`) 추가. `DELETED` 는 null, 로그에 남기지 않음. [attendance 스펙](../../specs/attendance/spec.md)의 「닉네임만 내린다」 규칙을 이 결정으로 고쳐 적고 시작한다 (위 「D6 근거와 범위」) | D6 |
+| 출석 저장의 `withdrawals[]` (사용자 사이트 · 관리자) | 분반 잠금을 먼저 쥐고, 같은 트랜잭션에서 그 분반 회차 중 `SCHEDULED_AT > LEFT_AT` 인 회차의 `PRESENTER1/2_PARTICIPANT_ID` 가 중단자면 null. 시작한 회차는 그대로. [study-participant 스펙](../../specs/study-participant/spec.md) 처리 6번(지금은 반대로 적혀 있음)과 테스트 시나리오에 성공 · 동시 신청 케이스를 더하고 시작한다 (위 「D7 순서」) | D7 |
 
 PRD 마다 §3 「개발 범위」 아래 **「10-18 기획 변경: FE / BE 추가 작업」** 표에 같은 내용을 그 화면 기준으로 나눠 적었다.

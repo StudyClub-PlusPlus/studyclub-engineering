@@ -1,6 +1,6 @@
 # 크루는 스터디별 출석 기록을 볼 수 있다.
 
-기준 프로토타입: 스터디 일정 — 출석부 탭, 크루로 볼 때 (playground 사용자 사이트 · 내 스터디 → 스터디 일정 → 출석부)
+기준 프로토타입: 스터디 일정 — 출석 탭, 크루로 볼 때 (playground 사용자 사이트 · 내 스터디 → 스터디 일정 → 출석부)
 
 관련 결정: [10-18 일정·출석 화면 피드백](../../../docs/share/2026-10-18-schedule-attendance-feedback.md)
 
@@ -162,7 +162,7 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/my/joined/[id]/schedule` 출석부 탭 | 없음 — 「스터디 일정 화면을 준비 중입니다」 자리만 있다 | 프로토 스터디 일정 › 출석부(크루 보기)대로 만든다 |
+| FE | core-front `/my/joined/[id]/schedule` 출석 탭 | 없음 — 「스터디 일정 화면을 준비 중입니다」 자리만 있다 | 프로토 스터디 일정 › 출석부(크루 보기)대로 만든다 |
 | BE | `GET /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
 | BE | `GET /api/studies/{studyId}/meetings` | 구현중 | [study-meeting 스펙](../../../specs/study-meeting/spec.md#구현-메모) 마무리 |
 

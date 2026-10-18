@@ -266,7 +266,7 @@ function PresenterHelp() {
           className='absolute left-0 top-full z-30 mt-1.5 w-72 rounded-card border border-border bg-surface-raised p-3 text-left text-xs font-normal leading-relaxed text-fg-secondary shadow-md'
         >
           <p className='flex items-center gap-1.5 font-semibold text-fg'>
-            <span className='relative grid h-6 w-10 place-items-center rounded-sm bg-success-100 text-xs font-bold text-success-700'>
+            <span className='relative grid h-8 w-[3.6rem] shrink-0 place-items-center rounded-sm bg-success-100 text-xs font-bold text-success-700'>
               <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
               출석
             </span>
