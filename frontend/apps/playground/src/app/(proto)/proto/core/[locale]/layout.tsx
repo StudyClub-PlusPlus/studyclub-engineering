@@ -32,7 +32,7 @@ export default async function LocaleLayout({
       </Suspense>
       <main className='flex-1'>{children}</main>
       <Footer locale={locale} />
-      <FeedbackHost locale={locale} discordUrl={site.discord_invite} />
+      <FeedbackHost discordUrl={site.discord_invite} />
     </div>
   );
 }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 
 import { getUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
 import { Button, Input, Modal, Textarea, Toaster, toast } from '@studyclub/ui';
 
 import {
@@ -40,12 +39,11 @@ function Count({ len, min, max }: { len: number; min: number; max: number }) {
   return <span className={`tnum ${bad ? 'text-warning-700' : 'text-fg-placeholder'}`}>{len}/{max}</span>;
 }
 
-export function FeedbackHost({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
+export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [touched, setTouched] = useState(false);
   const [sending, setSending] = useState(false);
-  const ko = locale !== 'en';
 
   useEffect(() => {
     const on = () => {
@@ -82,7 +80,7 @@ export function FeedbackHost({ locale, discordUrl }: { locale: Locale; discordUr
     setSending(true);
     await new Promise((r) => setTimeout(r, 600));
     try {
-      // 자동 수집 — 사용자가 입력하지 않는다. 팝업 아래 한 줄로 알린다
+      // 자동 수집 — 사용자가 입력하지 않는다
       addFeedback({
         type: draft.type as FeedbackType,
         title,
@@ -196,10 +194,6 @@ export function FeedbackHost({ locale, discordUrl }: { locale: Locale; discordUr
               </p>
             )}
           </div>
-
-          <p data-anno='feedback:6' className='text-xs text-fg-muted'>
-            {ko ? '보고 계신 화면 정보가 함께 전송됩니다' : 'Info about the page you are viewing is sent with it'}
-          </p>
         </div>
       </Modal>
     </>
