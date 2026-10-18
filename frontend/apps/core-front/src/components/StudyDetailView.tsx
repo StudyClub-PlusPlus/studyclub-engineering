@@ -82,7 +82,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
         >
           <div className='flex items-center gap-1.5 text-white/85'>
             <CategoryIcon size={14} strokeWidth={1.75} className='shrink-0' />
-            <span className='text-[11px] font-bold uppercase tracking-[0.14em]'>{categoryLabel}</span>
+            <span className='text-xs font-semibold'>{categoryLabel}</span>
           </div>
           <h1 className='break-keep text-[28px] font-bold leading-[1.25] tracking-tight text-white'>
             {t(study.title, locale)}

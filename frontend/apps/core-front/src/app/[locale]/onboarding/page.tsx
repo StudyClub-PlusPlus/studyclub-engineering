@@ -187,7 +187,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
         : {
             text: ko
               ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
-              : '2–20 characters · Korean, letters, numbers, underscore (_)',
+              : '2 to 20 characters · Korean, letters, numbers, underscore (_)',
             tone: 'muted',
           }
       : nickFormatError
@@ -206,7 +206,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
                 : {
                     text: ko
                       ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
-                      : '2–20 characters · Korean, letters, numbers, underscore (_)',
+                      : '2 to 20 characters · Korean, letters, numbers, underscore (_)',
                     tone: 'muted',
                   };
 

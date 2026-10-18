@@ -37,7 +37,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
   const site = await getSite();
 
   const joinSteps: L10n[] = [
-    { ko: '디스코드에 합류합니다 — 모든 스터디가 디스코드에서 진행됩니다.', en: 'Join the Discord server — every study runs there.' },
+    { ko: '디스코드에 합류합니다. 모든 스터디가 디스코드에서 진행됩니다.', en: 'Join the Discord server. Every study runs there.' },
     { ko: '구글 계정으로 로그인하고 모집 중인 스터디를 찾습니다.', en: "Sign in with Google and find a study that's recruiting." },
     {
       ko: '스터디 페이지에서 신청서를 내면 바로 크루가 됩니다.',
@@ -51,8 +51,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
 
   const proposeSteps: L10n[] = [
     {
-      ko: '공부하고 싶은 주제로 스터디를 제안합니다 — 누구나 가능합니다.',
-      en: 'Propose a study on a topic you want to learn — anyone can.',
+      ko: '공부하고 싶은 주제로 스터디를 제안합니다. 누구나 할 수 있습니다.',
+      en: 'Propose a study on a topic you want to learn. Anyone can.',
     },
     {
       ko: '캡틴이 모집 광고, 디스코드 채널, 킥오프 세팅을 도와줍니다.',
@@ -73,7 +73,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
     {
       id: 'navigator',
       name: { ko: '네비게이터', en: 'Navigator' },
-      desc: { ko: '스터디 하나를 이끄는 진행자. 일정·출석·발표 순서를 챙깁니다.', en: 'Leads a study — schedule, attendance, and presenter rotation.' },
+      desc: { ko: '스터디 하나를 이끄는 진행자. 일정·출석·발표 순서를 챙깁니다.', en: 'Leads a study: schedule, attendance, and presenter rotation.' },
     },
     {
       id: 'captain',
@@ -94,14 +94,14 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       q: { ko: '개발자가 아니어도 참여할 수 있나요?', en: "Can I join if I'm not a developer?" },
       a: {
         ko: '네. 개발·AI 스터디가 많지만 어학·북클럽·라이프스타일 등 다양한 스터디가 있어, 관심만 있으면 누구나 참여할 수 있습니다.',
-        en: 'Yes. There are many dev and AI studies, but also language, book club, and habit clubs — anyone interested is welcome.',
+        en: 'Yes. There are many dev and AI studies, but also language, book club, and habit clubs. Anyone interested is welcome.',
       },
     },
     {
       q: { ko: '스터디는 보통 몇 명이 참여하나요?', en: 'How many people are in a study?' },
       a: {
         ko: '스터디당 보통 10~15명이 참여합니다. 인원이 많으면 반을 나누기도 합니다.',
-        en: 'Usually 10–15 people per study. Larger groups may split into sections.',
+        en: 'Usually 10 to 15 people per study. Larger groups may split into sections.',
       },
     },
     {
@@ -154,8 +154,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
         <p className='max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg)]'>
           {t(
             {
-              ko: `StudyClub 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 스터디 커뮤니티입니다. 여러 스터디가 모인 '풀(pool)'로, 누구나 공부하고 싶은 주제로 스터디를 제안하고 운영할 수 있습니다. 디스코드에서 모든 스터디와 이벤트가 운영됩니다.`,
-              en: `StudyClub is a global study community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It's a pool of study groups — anyone can propose and run a study on a topic they want to learn. Every study and event runs on Discord.`,
+              ko: `StudyClub 는 미국·캐나다·한국의 개발자 ${site.community.member_count.toLocaleString()}명 이상이 함께하는 글로벌 스터디 커뮤니티입니다. 여러 스터디가 모인 '풀(pool)'로, 누구나 공부하고 싶은 주제로 스터디를 제안하고 운영할 수 있습니다. 디스코드에서 모든 스터디와 이벤트가 운영됩니다.`,
+              en: `StudyClub is a global study community of ${site.community.member_count.toLocaleString()}+ engineers across the US, Canada, and Korea. It's a pool of study groups where anyone can propose and run a study on a topic they want to learn. Every study and event runs on Discord.`,
             },
             locale,
           )}
