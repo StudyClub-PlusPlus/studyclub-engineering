@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle';
 import { LifecycleBadge } from '@console/components/LifecycleBadge';
-import { KIND_LABEL, TIMEZONE_LABEL } from '@console/components/StudyForm';
+import { TIMEZONE_LABEL } from '@console/components/StudyForm';
 import { tx } from '@console/lib/l10n';
 import { studyAuthor } from '@console/lib/users';
 import {
@@ -21,21 +21,19 @@ import {
   todayISO,
   type LifecycleState,
   type Study,
-  type StudyKind,
 } from '@studyclub/mock';
 import { Badge, Button, Modal, Pagination, Select, cx } from '@studyclub/ui';
-import { Check, GripVertical, Minus, RotateCcw } from 'lucide-react';
+import { Check, Minus, RotateCcw } from 'lucide-react';
 
 /**
  * 스터디 관리 목록.
  *
  * **칼럼은 등록 폼에 있는 항목으로만 짠다.** 운영자가 입력할 수 없는 값(연도)은
- * 영원히 비거나 더미로 남으므로 목록에 두지 않는다. 제목·카테고리·종류·시간대·모집 상태·참여 인원·공개 상태·스터디 시작일·
+ * 영원히 비거나 더미로 남으므로 목록에 두지 않는다. 제목·카테고리·시간대·모집 상태·참여 인원·공개 상태·스터디 시작일·
  * 모집 마감일이 보이고, 여기에 스터디 상태(5단계)가 더해진다. 한 줄 소개·진행 일정(자유 텍스트)은 목록에 두지
  * 않는다 — 진행 일정은 신청 화면에 알리는 문구일 뿐 운영자가 목록에서 훑어볼 값이 아니고, 정렬·필터도 못 건다.
  * 언제 시작하는지가 궁금하면 **스터디 시작일**(`STUDY.START_AT`, 정렬 가능한 날짜)을 본다.
- * 종류(스터디/클럽)는 새 프로그램을 등록할 때 정하고 그 뒤로는 바꾸지 못하는 값이다 — 기수(이 목록의
- * 한 행)가 아니라 프로그램의 속성이지만, 운영자가 목록에서 클럽만 걸러 보는 일이 많아 컬럼·필터로 둔다.
+ * 종류(스터디/클럽)는 목록에 두지 않는다 — 칼럼도 거르는 칸도 없다.
  * 시간대(KST/PST/동시 진행)는 등록 폼에서 운영자가 직접 고르는 값이다 — 값이 없으면 「미정」이다.
  * 모집 상태는 「모집 종료일」과 「모집 정원」에서, 지원 현황의 분모는 「모집 정원」(비우면 제한 없음)에서 나온다.
  * 공개 상태는 등록 폼이 아니라 이 목록에서 켠다 — **모집 시작 일자가 있으면 공개**다.
@@ -61,12 +59,6 @@ const PAGE_SIZE = 20;
 type StatusFilter = 'all' | LifecycleState;
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   ...LIFECYCLE_ORDER.map((s) => ({ value: s, label: LIFECYCLE_LABEL[s] })),
-];
-
-type KindFilter = 'all' | StudyKind;
-const KIND_OPTIONS: { value: KindFilter; label: string }[] = [
-  { value: 'study', label: KIND_LABEL.study },
-  { value: 'club', label: KIND_LABEL.club },
 ];
 
 const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
@@ -164,7 +156,6 @@ function startedOn(s: Study): string | undefined {
 type ColumnKey =
   | 'status'
   | 'category'
-  | 'kind'
   | 'timezone'
   | 'recruitStart'
   | 'recruitEnd'
@@ -200,13 +191,6 @@ const COLUMNS: Column[] = [
     label: '카테고리',
     cellClass: 'whitespace-nowrap text-fg-secondary',
     render: ({ s }) => <CategoryCell categories={categoriesOf(s)} />,
-  },
-  {
-    key: 'kind',
-    label: '종류',
-    cellClass: 'whitespace-nowrap text-fg-secondary',
-    anno: 'list:2-2',
-    render: ({ s }) => (s.program?.kind ? KIND_LABEL[s.program.kind] : <span className='text-fg-muted'>—</span>),
   },
   {
     key: 'timezone',
@@ -298,7 +282,6 @@ const SORT_VALUE: Record<SortKey, (s: Study) => string | number | undefined> = {
   title: (s) => tx(s.title),
   status: (s) => LIFECYCLE_ORDER.indexOf(lifecycleState(s)),
   category: (s) => categoriesOf(s)[0],
-  kind: (s) => s.program?.kind,
   timezone: (s) => s.timezone,
   recruitStart: (s) => startedOn(s),
   recruitEnd: (s) => toISODate(s.recruitment?.deadline),
@@ -375,7 +358,6 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState<StatusFilter>('all');
-  const [kind, setKind] = useState<KindFilter>('all');
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
   const [publish, setPublish] = useState<PublishFilter>('all');
   const [noFormOnly, setNoFormOnly] = useState(false);
@@ -445,7 +427,6 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         .filter((s) => {
           if (category !== 'all' && !categoriesOf(s).includes(category)) return false;
           if (status !== 'all' && lifecycleState(s) !== status) return false;
-          if (kind !== 'all' && s.program?.kind !== kind) return false;
           if (recruit !== 'all' && recruitState(s) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
           if (noFormOnly && applyFormUrl(s)) return false;
@@ -471,7 +452,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           return da.localeCompare(db);
         })
     );
-  }, [studies, patch, query, category, status, kind, recruit, publish, noFormOnly, sort]);
+  }, [studies, patch, query, category, status, recruit, publish, noFormOnly, sort]);
 
   // 필터·정렬이 바뀌어 페이지 수가 줄어도 빈 페이지가 남지 않게 현재 페이지를 눌러 준다.
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -527,15 +508,6 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           />
         </span>
         <FilterSelect
-          label='종류'
-          value={kind}
-          onChange={(v) => {
-            setKind(v);
-            setPage(1);
-          }}
-          options={KIND_OPTIONS}
-        />
-        <FilterSelect
           label='모집'
           value={recruit}
           onChange={(v) => {
@@ -576,7 +548,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
               className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${noFormOnly ? 'left-3.5' : 'left-0.5'}`}
             />
           </span>
-          신청 폼 없는 것만
+          신청 폼 없음
         </button>
         <span className='ml-auto shrink-0 pl-2 text-xs text-fg-muted'>{rows.length}개</span>
       </div>
@@ -637,7 +609,6 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     className={`group whitespace-nowrap ${dragKey === c.key ? 'opacity-40' : ''}`}
                   >
                     <span className='inline-flex items-center gap-1'>
-                      <GripVertical size={12} className='cursor-grab text-fg-placeholder' aria-hidden='true' />
                       <SortLabel
                         label={c.label}
                         active={sort?.key === c.key ? sort.dir : null}

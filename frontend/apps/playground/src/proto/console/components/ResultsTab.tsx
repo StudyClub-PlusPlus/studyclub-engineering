@@ -95,14 +95,14 @@ function AvailableDaysSummary({ crew }: { crew: Crew[] }) {
           const total = r.kr + r.na;
           return (
             <li key={r.key} className='flex items-center gap-3 px-1 py-1'>
-              <span className={`w-8 shrink-0 text-[13px] ${total === best ? 'font-bold text-fg' : 'font-medium text-fg-secondary'}`}>
+              <span className={`w-8 shrink-0 text-sm ${total === best ? 'font-bold text-fg' : 'font-medium text-fg-secondary'}`}>
                 {r.label}
               </span>
               <span className='flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
                 <span className='block h-full bg-brand' style={{ width: `${(r.kr / max) * 100}%` }} />
                 <span className='block h-full bg-warning-500' style={{ width: `${(r.na / max) * 100}%` }} />
               </span>
-              <span className='tnum w-28 shrink-0 text-right text-[13px] text-fg-secondary'>
+              <span className='tnum w-28 shrink-0 text-right text-sm text-fg-secondary'>
                 <span className='font-bold text-fg'>{total}명</span> ({r.kr} · {r.na})
               </span>
             </li>
