@@ -5,6 +5,8 @@ export type StudyclubEvent = {
   title: L10n;
   summary: L10n;
   date: string;
+  /** "year" = 연도만 안다(현황 시트에 연도만 있음). date 의 월·일은 자리채움이라 보여 주지 않는다 */
+  datePrecision?: "day" | "year";
   type: "meetup" | "workshop" | "talk" | "online";
   location?: L10n;
   link?: string;
