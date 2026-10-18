@@ -265,19 +265,17 @@ export default function MyPage() {
           */}
           <dt className='flex min-h-8 items-center text-fg-muted'>마케팅 수신</dt>
           <dd data-anno='profile:5' className='flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
-            {editing ? (
-              <label className='inline-flex cursor-pointer items-center gap-2'>
-                <input
-                  type='checkbox'
-                  checked={draftMarketing}
-                  onChange={(ev) => setDraftMarketing(ev.target.checked)}
-                  className='h-4 w-4 accent-[var(--color-brand)]'
-                />
-                <span className='text-sm text-fg'>스터디 소식과 행사 안내를 이메일로 받기</span>
-              </label>
-            ) : (
-              <span className='font-semibold text-fg'>{marketing ? '받음 · 이메일' : '받지 않음'}</span>
-            )}
+            {/* 보기·편집 모두 같은 체크박스 — 보기 상태는 저장된 값만 보여주고 못 바꾼다 */}
+            <label className={'inline-flex items-center gap-2 ' + (editing ? 'cursor-pointer' : 'cursor-default')}>
+              <input
+                type='checkbox'
+                checked={editing ? draftMarketing : marketing}
+                disabled={!editing}
+                onChange={(ev) => setDraftMarketing(ev.target.checked)}
+                className='h-4 w-4 accent-[var(--color-brand)] disabled:cursor-default'
+              />
+              <span className='text-sm text-fg'>스터디 소식과 행사 안내를 이메일로 받기</span>
+            </label>
           </dd>
         </dl>
 
