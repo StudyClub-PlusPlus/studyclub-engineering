@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { FeedbackDialog } from '@core/components/Feedback';
 import { getUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { PAGE } from '@core/lib/layout';
@@ -23,7 +24,7 @@ import {
 /**
  * 내 문의 — 프로필 드롭다운 「문의·오류 신고」가 여는 곳(`/my/feedbacks`).
  *
- * 로그인한 본인 것만 보인다. 상태는 둘 — 접수 · 답변 완료. 캡틴 전용 메모는 보이지 않는다.
+ * 로그인한 본인 것만 보인다. [문의하기] 는 팝업을 연다. 상태는 둘 — 접수 · 답변 완료. 캡틴 전용 메모는 보이지 않는다.
  * 삭제는 두지 않는다.
  * TODO(api): GET /api/my/feedbacks · GET /api/my/feedbacks/{id} — 서버가 본인 것만 돌려준다
  */
@@ -76,12 +77,13 @@ function useMe(locale: Locale, next: string): string | null | undefined {
   return me;
 }
 
-export function MyFeedbackList({ locale }: { locale: Locale }) {
+export function MyFeedbackList({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
   const router = useRouter();
   const base = `/proto/core/${locale}/my/feedbacks`;
   const me = useMe(locale, base);
   const [rows, setRows] = useState<Feedback[] | null>(null);
   const [page, setPage] = useState(1);
+  const [writing, setWriting] = useState(false);
 
   useEffect(() => {
     if (me) setRows(listMyFeedbacks(me));
@@ -92,7 +94,7 @@ export function MyFeedbackList({ locale }: { locale: Locale }) {
   const pageRows = (rows ?? []).slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
   const writeButton = (
-    <Button data-anno='my-feedback:1' size='sm' leadingIcon={<Plus size={15} />} onClick={() => router.push(`${base}/new`)}>
+    <Button data-anno='my-feedback:1' size='sm' leadingIcon={<Plus size={15} />} onClick={() => setWriting(true)}>
       문의하기
     </Button>
   );
@@ -161,6 +163,16 @@ export function MyFeedbackList({ locale }: { locale: Locale }) {
         </table>
       </div>
       <Pagination className='mt-4' page={current} total={pageCount} onChange={setPage} />
+
+      <FeedbackDialog
+        open={writing}
+        onClose={() => setWriting(false)}
+        onSent={() => {
+          if (me) setRows(listMyFeedbacks(me));
+          setPage(1);
+        }}
+        discordUrl={discordUrl}
+      />
     </div>
   );
 }

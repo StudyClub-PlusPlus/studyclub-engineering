@@ -1,7 +1,8 @@
 import { MyFeedbackList } from '@core/components/MyFeedback';
-import type { Locale } from '@core/lib/content';
+import { getSite, type Locale } from '@core/lib/content';
 
 export default async function MyFeedbacksPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
-  return <MyFeedbackList locale={locale} />;
+  const site = await getSite();
+  return <MyFeedbackList locale={locale} discordUrl={site.discord_invite} />;
 }

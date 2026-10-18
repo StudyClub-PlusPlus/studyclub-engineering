@@ -174,7 +174,7 @@ export function FeedbackDetail({ id }: { id: string }) {
                 value={reply}
                 maxLength={REPLY_MAX}
                 onChange={(e) => setReply(e.target.value)}
-                placeholder={f.reply ? '제출자에게 보이는 답변' : '제출자에게 보이는 답변 · 보내면 상태가 「완료」로 바뀜'}
+                placeholder={f.reply ? '제출자에게 보이는 답변입니다' : "제출자에게 보이는 답변으로, 전송 시 이 문의는 '완료' 처리됩니다"}
                 labelHint={
                   <span className={`tnum ${replyLen > 0 && replyInvalid ? 'text-warning-700' : 'text-fg-placeholder'}`}>
                     {replyLen}/{REPLY_MAX}

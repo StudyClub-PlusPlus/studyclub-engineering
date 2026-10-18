@@ -1,15 +1,10 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { getUser } from '@core/lib/auth';
-import type { Locale } from '@core/lib/content';
-import { PAGE } from '@core/lib/layout';
-import { IS_DEV, syncPreview } from '@core/lib/preview';
-import { Button, Input, Textarea, toast } from '@studyclub/ui';
-import { ChevronLeft, ImagePlus, X } from 'lucide-react';
+import { Button, Input, Modal, Textarea, toast } from '@studyclub/ui';
+import { ImagePlus, X } from 'lucide-react';
 
 import {
   BODY_MAX,
@@ -25,10 +20,11 @@ import {
 } from '@/proto/lib/feedback';
 
 /**
- * 문의·오류 신고 작성 — 「내 문의」의 [문의하기] 가 여는 페이지(`/my/feedbacks/new`).
+ * 문의·오류 신고 작성 팝업 — 「내 문의」 목록의 [문의하기] 가 연다.
  *
- * 로그인한 사람만 쓴다. 전송하면 내 문의 목록으로 돌아간다.
- * 자동으로 함께 가는 것은 브라우저·OS 와 화면 크기뿐 — 화면 경로는 모으지 않는다(목록을 거쳐 오므로 문제의 화면이 아니다).
+ * 목록에서 열고 전송하면 닫히며, 방금 쓴 건이 같은 목록 맨 위에 선다. 로그인은 목록이 이미 확인했다.
+ * 입력·설정 팝업 규칙(POL-0008) — X 와 전송 하나, 취소 없음. 닫으면 입력은 사라지고 묻지 않는다.
+ * 자동으로 함께 가는 것은 브라우저·OS 와 화면 크기뿐 — 화면 경로는 모으지 않는다.
  * 이미지 첨부는 선택 — 3장까지, 장당 5MB. 고르거나 끌어 놓거나 ⌘V 로 붙여 넣는다(스크린샷).
  * TODO(api): POST /api/feedbacks — 인증 필수, 서버가 사용자 기준 rate limit
  */
@@ -66,9 +62,18 @@ function Count({ len, min, max }: { len: number; min: number; max: number }) {
   return <span className={`tnum ${bad ? 'text-warning-700' : 'text-fg-placeholder'}`}>{len}/{max}</span>;
 }
 
-export function FeedbackNewForm({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
-  const router = useRouter();
-  const listHref = `/proto/core/${locale}/my/feedbacks`;
+export function FeedbackDialog({
+  open,
+  onClose,
+  onSent,
+  discordUrl,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** 전송된 뒤 — 목록을 다시 읽는다 */
+  onSent: () => void;
+  discordUrl: string;
+}) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [touched, setTouched] = useState(false);
   const [sending, setSending] = useState(false);
@@ -76,10 +81,13 @@ export function FeedbackNewForm({ locale, discordUrl }: { locale: Locale; discor
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // 열 때마다 빈 칸에서 시작한다 — 닫으면 입력은 사라진다
   useEffect(() => {
-    // 로그인한 사람만 쓴다
-    if (!(IS_DEV ? syncPreview() : getUser())) router.replace(`/proto/core/${locale}/login?next=${listHref}/new`);
-  }, [locale, listHref, router]);
+    if (!open) return;
+    setDraft(EMPTY);
+    setTouched(false);
+    setImageError(null);
+  }, [open]);
 
   const title = draft.title.trim();
   const body = draft.body.trim();
@@ -169,17 +177,22 @@ export function FeedbackNewForm({ locale, discordUrl }: { locale: Locale; discor
     }
     setSending(false);
     toast.success('의견을 보내주셔서 감사합니다.');
-    router.push(listHref);
+    onSent();
+    onClose();
   }
 
   return (
-    <div className={`${PAGE} pb-16 pt-10`}>
-      <Link href={listHref} className='inline-flex items-center gap-1 text-sm font-medium text-fg-muted hover:text-fg'>
-        <ChevronLeft size={15} /> 내 문의
-      </Link>
-      <h1 className='mt-3 text-2xl font-extrabold tracking-tight'>문의하기</h1>
-
-      <div className='card mt-6 max-w-2xl px-6 py-6'>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title='문의하기'
+      size='lg'
+      footer={
+        <Button data-anno='feedback:5' onClick={send} loading={sending} disabled={sending}>
+          전송
+        </Button>
+      }
+    >
         <div
           className='flex flex-col gap-4'
           onPaste={(e) => {
@@ -313,12 +326,6 @@ export function FeedbackNewForm({ locale, discordUrl }: { locale: Locale; discor
             </p>
           </div>
         </div>
-        <div className='mt-6 flex justify-end border-t border-border pt-5'>
-          <Button data-anno='feedback:5' onClick={send} loading={sending} disabled={sending}>
-            전송
-          </Button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
