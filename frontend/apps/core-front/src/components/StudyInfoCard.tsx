@@ -45,7 +45,7 @@ export function StudyInfoCard({
   driveUrlOverride,
   navigatorName,
   initialRules,
-  actions,
+  leadingAction,
 }: {
   study: Study;
   group: NavigatorGroup;
@@ -56,12 +56,16 @@ export function StudyInfoCard({
   driveUrlOverride?: string | null;
   navigatorName?: string | null;
   initialRules?: string | null;
-  actions?: React.ReactNode;
+  /** 바로가기 줄 맨 앞(「디스코드」 왼쪽)에 붙일 버튼 — 캡틴의 「백오피스 출석부」 (10-18 D4). */
+  leadingAction?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
   const [rulesExpanded, setRulesExpanded] = useState(false);
   const [rules, setRules] = useState(() => initialRules ?? '');
   const [saved, setSaved] = useState(() => initialRules ?? '');
+  /** 규칙 저장 중 · 실패 문구 — 두 번 눌러 같은 요청이 두 번 가지 않게 잠근다. */
+  const [savingRules, setSavingRules] = useState(false);
+  const [rulesError, setRulesError] = useState<string | null>(null);
   const rulesRef = useRef<HTMLParagraphElement>(null);
   const [rulesOverflows, setRulesOverflows] = useState(false);
 
@@ -99,6 +103,7 @@ export function StudyInfoCard({
         </dl>
         <div className='flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-start'>
           <div className='flex flex-wrap items-center gap-1.5'>
+            {leadingAction}
             {hasDiscord && discordHref && (
               <LinkButton label='디스코드' href={discordHref} icon={<DiscordGlyph size={15} />} />
             )}
@@ -109,7 +114,6 @@ export function StudyInfoCard({
                 icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden />}
               />
             )}
-            {actions}
           </div>
           <button
             type='button'
@@ -160,11 +164,18 @@ export function StudyInfoCard({
           </div>
         )}
         {canEdit && rules !== saved && (
-          <div className='mt-2 flex justify-end gap-2'>
+          <div className='mt-2 flex flex-wrap items-center justify-end gap-2'>
+            {rulesError && (
+              <p role='status' className='mr-auto text-xs font-semibold text-error-700'>
+                {rulesError}
+              </p>
+            )}
             <Button
               size='sm'
               variant='secondary'
+              disabled={savingRules}
               onClick={() => {
+                setRulesError(null);
                 setRules(saved);
                 onDirty(false);
               }}
@@ -173,10 +184,20 @@ export function StudyInfoCard({
             </Button>
             <Button
               size='sm'
+              loading={savingRules}
               onClick={async () => {
-                await saveStudyRules(Number(study.id), groupId, rules);
-                setSaved(rules);
-                onDirty(false);
+                if (savingRules) return;
+                setSavingRules(true);
+                setRulesError(null);
+                try {
+                  await saveStudyRules(Number(study.id), groupId, rules);
+                  setSaved(rules);
+                  onDirty(false);
+                } catch {
+                  setRulesError('규칙을 저장하지 못했습니다. 잠시 뒤 다시 저장해 주세요.');
+                } finally {
+                  setSavingRules(false);
+                }
               }}
             >
               저장

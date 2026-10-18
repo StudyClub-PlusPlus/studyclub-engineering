@@ -135,7 +135,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
             driveUrlOverride={groupInfo.study.driveUrl}
             navigatorName={groupInfo.studyGroup.navigatorName}
             initialRules={groupInfo.studyGroup.rules}
-            actions={
+            leadingAction={
               captain ? (
                 <Button
                   size='sm'
@@ -143,7 +143,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
                   trailingIcon={<ExternalLink size={14} />}
                   onClick={() => window.open(`${BACKOFFICE_BASE}/studies/${study.id}?tab=attendance`, '_blank')}
                 >
-                  백오피스 출석 (전체 참여자)
+                  백오피스 출석부
                 </Button>
               ) : null
             }
