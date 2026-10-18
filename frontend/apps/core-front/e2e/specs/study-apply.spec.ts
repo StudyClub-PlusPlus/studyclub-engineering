@@ -248,18 +248,21 @@ test.describe('크루 스터디 신청 E2E 플로우 (PRD: crew-submit-applicati
     // 신청 제출 클릭
     await dialog.getByRole('button', { name: /^신청$|^Apply$/i }).click();
 
-    // 완료 다이얼로그 오픈 확인 (PRD: "스터디 신청 완료")
+    // 완료 다이얼로그 오픈 확인
     const completeDialog = page.getByRole('dialog');
     await expect(completeDialog).toBeVisible();
-    await expect(completeDialog.getByRole('heading', { name: /스터디 신청 완료/i })).toBeVisible();
-    await expect(completeDialog.getByText(/내 스터디로 이동할까요/i)).toBeVisible();
+    await expect(completeDialog.getByRole('heading', { name: /스터디 신청/i })).toBeVisible();
+    await expect(completeDialog.getByText(/신청이 접수되었습니다/i)).toBeVisible();
 
-    // "내 스터디 보러 가기" 버튼 확인
-    const myStudiesBtn = completeDialog.getByRole('button', { name: /내 스터디 보러 가기/i });
+    // "내 스터디룸 보러 가기" 버튼 확인
+    const myStudiesBtn = completeDialog.getByRole('button', { name: /내 스터디룸 보러 가기/i });
     await expect(myStudiesBtn).toBeVisible();
 
     // 닫기 버튼 클릭 시 완료 다이얼로그 닫힘
-    await completeDialog.getByRole('button', { name: /닫기|Close/i }).first().click();
+    await completeDialog
+      .getByRole('button', { name: /닫기|Close/i })
+      .first()
+      .click();
     await expect(completeDialog).not.toBeVisible();
 
     // 신청 후 상세 화면의 버튼이 '신청 완료'로 변경되었는지 확인
