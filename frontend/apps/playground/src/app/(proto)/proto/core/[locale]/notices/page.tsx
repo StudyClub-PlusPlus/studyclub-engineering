@@ -1,10 +1,8 @@
 import Link from 'next/link';
 
 import { JoinCta } from '@core/components/JoinCta';
-import { Pill } from '@core/components/StatusBadge';
 import { getNotices, getSite, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
-import { Pin } from 'lucide-react';
 
 export default async function NoticesPage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
@@ -23,13 +21,9 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
             key={n.id}
             href={`/proto/core/${locale}/notices/${n.id}`}
             className='card card-hover block p-6'
-            style={
-              n.pinned ? { borderColor: 'var(--color-brand)', background: 'var(--color-brand-subtle)' } : undefined
-            }
           >
             <div className='flex flex-wrap items-center gap-2'>
-              {n.pinned && <Pin size={14} aria-label='pinned' style={{ color: 'var(--color-brand)' }} />}
-              {n.tag && <Pill>{m(`notice_tag.${n.tag}`, locale)}</Pill>}
+              {/* 공지에는 분류·상단 고정이 없다 — 날짜 순으로만 선다 */}
               <time className='ml-auto text-xs font-medium text-(--color-fg-faint)'>{n.date}</time>
             </div>
             <h2 className='mt-3 text-lg font-bold tracking-tight'>{t(n.title, locale)}</h2>

@@ -2,12 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 
-import { Pill } from '@core/components/StatusBadge';
 import { getNotices, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { DETAIL_ASIDE, DETAIL_GRID, PAGE, READ } from '@core/lib/layout';
 import { NOTICES, getNotice, type Notice } from '@core/lib/notices';
-import { ArrowLeft, ArrowRight, CalendarDays, Pin, Tag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarDays } from 'lucide-react';
 
 /**
  * 프로토의 공지 목록은 mock(@studyclub/mock announcements)을 쓴다. 상세는 lib/notices 의 실제 공지를 먼저 찾고,
@@ -47,14 +46,6 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
             className='flex flex-col gap-3 px-6 pb-7 pt-6 sm:px-10'
             style={{ background: 'linear-gradient(135deg, var(--color-brand-subtle), color-mix(in oklab, var(--color-brand) 12%, white))' }}
           >
-            <div className='flex items-center gap-2'>
-              {n.tag && <Pill>{m(`notice_tag.${n.tag}`, locale)}</Pill>}
-              {n.pinned && (
-                <span className='inline-flex items-center gap-1 text-xs font-semibold' style={{ color: 'var(--color-brand)' }}>
-                  <Pin size={13} /> {t({ ko: '고정', en: 'Pinned' }, locale)}
-                </span>
-              )}
-            </div>
             <h1 className={`${READ} text-[26px] font-bold leading-[1.3] tracking-tight sm:text-[30px]`}>{t(n.title, locale)}</h1>
             <p className={`${READ} text-[16px] leading-relaxed text-(--color-fg-muted)`}>{t(n.summary, locale)}</p>
           </header>
@@ -102,15 +93,6 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
                 <dd className='font-semibold tabular-nums'>{n.date}</dd>
               </div>
             </div>
-            {n.tag && (
-              <div className='flex items-center gap-3 px-6 py-4'>
-                <Tag size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
-                <div>
-                  <dt className='text-xs text-(--color-fg-muted)'>{t({ ko: '분류', en: 'Type' }, locale)}</dt>
-                  <dd className='font-semibold'>{m(`notice_tag.${n.tag}`, locale)}</dd>
-                </div>
-              </div>
-            )}
           </dl>
           <div className='flex flex-col gap-2 border-t border-(--color-border) bg-(--color-surface-subtle) p-5'>
             <Link
