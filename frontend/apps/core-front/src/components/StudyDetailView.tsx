@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 
-import { categoryGradient, categoryMeta } from '@studyclub/ui';
-import { ArrowLeft, CalendarClock } from 'lucide-react';
+import { categoryArtUrl, categoryMeta, categoryTint } from '@studyclub/ui';
+import { ArrowLeft, CalendarClock, Globe, Rocket, Users } from 'lucide-react';
 
 import { ApplyButton } from '@/components/ApplyButton';
 import { useStudyDetail } from '@/features/studies/queries';
@@ -11,7 +11,7 @@ import type { Locale } from '@/lib/content';
 import { ApiError } from '@/lib/http';
 import { m, t } from '@/lib/i18n';
 import { JsonLd, breadcrumbJsonLd, courseJsonLd } from '@/lib/jsonld';
-import { toISODate } from '@/lib/recruit';
+import { recruitBadge, studyStartValue, studyTimezoneLabel, toISODate } from '@/lib/recruit';
 import { SITE_URL } from '@/lib/seo';
 
 /** TODO(api): GET /api/studies/{id} — 스터디 상세 조회 */
@@ -54,6 +54,16 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
   const rec = study.recruitment;
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
   const deadline = toISODate(rec?.deadline);
+  const { background, ink } = categoryTint(study.category);
+  const artUrl = categoryArtUrl(study.category);
+  const badge = recruitBadge(study, locale);
+  // 목록 카드와 같은 정보를 칸으로 — 같은 개념은 같은 모양(ui 스킬 §3 일관성)
+  const facts = [
+    ...(study.schedule ? [{ icon: CalendarClock, label: t({ ko: '일정', en: 'Schedule' }, locale), value: t(study.schedule, locale) }] : []),
+    { icon: Globe, label: t({ ko: '시간대', en: 'Time zone' }, locale), value: studyTimezoneLabel(study, locale) },
+    { icon: Rocket, label: t({ ko: '시작 예정일', en: 'Starts' }, locale), value: studyStartValue(study, locale) },
+    ...(rec?.capacity ? [{ icon: Users, label: t({ ko: '정원', en: 'Capacity' }, locale), value: `${rec.capacity}${t({ ko: '명', en: '' }, locale)}` }] : []),
+  ];
   const url = `${SITE_URL}/${locale}/studies/${id}`;
 
   return (
@@ -76,28 +86,42 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
       </Link>
 
       <article className='card mt-4 overflow-hidden'>
-        <header
-          className='flex flex-col gap-2.5 px-8 pb-7 pt-6'
-          style={{ background: categoryGradient(study.category) }}
-        >
-          <div className='flex items-center gap-1.5 text-white/85'>
+        <header className='relative flex flex-col gap-3 overflow-hidden px-6 pb-7 pt-6 sm:px-8' style={{ background }}>
+          {artUrl && (
+            <span
+              aria-hidden='true'
+              className='pointer-events-none absolute right-4 top-4 h-20 w-20 bg-contain bg-center bg-no-repeat sm:right-8 sm:top-1/2 sm:h-32 sm:w-32 sm:-translate-y-1/2'
+              style={{ backgroundImage: `url(${artUrl})` }}
+            />
+          )}
+          <span className='inline-flex w-fit items-center gap-1.5 rounded-pill bg-white/85 px-2.5 py-1 text-xs font-semibold text-fg shadow-sm'>
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${badge.dotClass}`} aria-hidden='true' />
+            {badge.label}
+          </span>
+          <div className='flex items-center gap-1.5 pr-24 sm:pr-40' style={{ color: ink }}>
             <CategoryIcon size={14} strokeWidth={1.75} className='shrink-0' />
             <span className='text-xs font-semibold'>{categoryLabel}</span>
           </div>
-          <h1 className='break-keep text-[28px] font-bold leading-[1.25] tracking-tight text-white'>
+          <h1 className='pr-24 text-[26px] font-bold leading-[1.25] tracking-tight text-fg sm:pr-40 sm:text-[30px]'>
             {t(study.title, locale)}
           </h1>
-          <p className='text-[16px] leading-relaxed text-white/90'>{t(study.summary, locale)}</p>
-          {study.schedule && (
-            <p className='flex items-center gap-1.5 text-[14px] font-medium text-white/90'>
-              <CalendarClock size={14} strokeWidth={1.75} className='shrink-0' />
-              {t(study.schedule, locale)}
-            </p>
-          )}
+          <p className='text-[16px] leading-relaxed text-fg-secondary sm:pr-40'>{t(study.summary, locale)}</p>
         </header>
 
+        <dl className='grid gap-px border-b border-border bg-border sm:grid-cols-2'>
+          {facts.map((f) => (
+            <div key={f.label} className='flex items-center gap-3 bg-bg px-6 py-4 sm:px-8'>
+              <f.icon size={18} className='shrink-0' style={{ color: ink }} />
+              <div className='min-w-0'>
+                <dt className='text-xs text-fg-muted'>{f.label}</dt>
+                <dd className='tnum text-[15px] font-semibold text-fg'>{f.value}</dd>
+              </div>
+            </div>
+          ))}
+        </dl>
+
         {study.description && (
-          <div className='px-8 py-7'>
+          <div className='px-6 py-7 sm:px-8'>
             <h2 className='text-[15px] font-bold text-fg'>{m('common.about_study', locale)}</h2>
             <p className='mt-3 whitespace-pre-line text-[16px] leading-[1.85] text-fg-secondary'>
               {t(study.description, locale)}
@@ -105,7 +129,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
           </div>
         )}
 
-        <div className='flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface-1 px-8 py-5'>
+        <div className='flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface-1 px-6 py-5 sm:px-8'>
           <span className='tnum text-sm font-medium text-fg-secondary'>
             {deadline ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale) : ''}
           </span>

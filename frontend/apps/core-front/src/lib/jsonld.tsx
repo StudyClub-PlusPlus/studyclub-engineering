@@ -114,7 +114,8 @@ export function eventJsonLd(ev: StudyclubEvent, locale: Locale, url: string): Js
     url,
     name: t(ev.title, locale),
     description: t(ev.summary, locale),
-    startDate: ev.date,
+    // 연도만 아는 행사는 연도만 (ISO 8601 은 YYYY 를 허용) — 지어낸 1월 1일을 검색엔진에 내보내지 않는다
+    startDate: ev.datePrecision === 'year' ? ev.date.slice(0, 4) : ev.date,
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode: online
       ? 'https://schema.org/OnlineEventAttendanceMode'
