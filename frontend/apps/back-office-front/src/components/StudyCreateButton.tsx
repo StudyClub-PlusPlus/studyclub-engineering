@@ -45,6 +45,10 @@ export function StudyCreateButton({ label = '스터디 등록' }: { label?: stri
       </Button>
       <StudyCreateDialog
         open={open}
+        onCreated={() => {
+          // 새 등록은 DRAFT일 수 있으므로 기존 공개/상태 필터와 페이지를 버리고 전체 목록의 첫 페이지로 간다.
+          window.location.assign('/studies?status=all&publish=all&page=1');
+        }}
         onClose={() => {
           setOpen(false);
           syncUrl(false);
