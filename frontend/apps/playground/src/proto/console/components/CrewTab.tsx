@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { CHECKBOX, SELECT_CLASS, SelectAll } from '@console/components/AttendanceTab';
+import { BulkSelect, CHECKBOX, SelectAll } from '@console/components/AttendanceTab';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
@@ -286,32 +286,24 @@ export function CrewTab({
                     <>
                       <SelectionCount count={selected.length} unit='명' />
                       {classes.length > 1 && (
-                        <select
-                          aria-label='바꿀 반'
-                          className={SELECT_CLASS}
-                          value=''
+                        <BulkSelect
+                          label='바꿀 반'
+                          placeholder='반 변경'
+                          options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
                           disabled={selected.length === 0}
-                          onChange={(e) => e.target.value && applyBulk({ classId: e.target.value })}
-                        >
-                          <option value=''>반 변경</option>
-                          {classes.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {classLabel(c)}
-                            </option>
-                          ))}
-                        </select>
+                          onPick={(v) => applyBulk({ classId: v })}
+                        />
                       )}
-                      <select
-                        aria-label='바꿀 역할'
-                        className={SELECT_CLASS}
-                        value=''
+                      <BulkSelect
+                        label='바꿀 역할'
+                        placeholder='역할 변경'
+                        options={[
+                          { value: 'crew', label: '크루' },
+                          { value: 'navigator', label: '네비게이터' },
+                        ]}
                         disabled={selected.length === 0}
-                        onChange={(e) => e.target.value && applyBulk({ role: e.target.value as 'crew' | 'navigator' })}
-                      >
-                        <option value=''>역할 변경</option>
-                        <option value='crew'>크루</option>
-                        <option value='navigator'>네비게이터</option>
-                      </select>
+                        onPick={(v) => applyBulk({ role: v as 'crew' | 'navigator' })}
+                      />
                       {selected.length > 0 && (
                         <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
                           선택 해제

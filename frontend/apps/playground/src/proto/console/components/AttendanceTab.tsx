@@ -283,6 +283,63 @@ function PresenterHelp() {
   );
 }
 
+/**
+ * 작업 바의 일괄 변경 드롭다운 — 「적용」 버튼 없이 고르면 반영한다 (POL-0008).
+ *
+ * 접힌 네이티브 select 는 화살표 키를 누를 때마다 change 를 낸다(Windows). 그때마다 반영하면
+ * 키보드로 목록을 훑기만 해도 첫 항목이 고른 사람 전원에게 얹힌다. 그래서
+ * - 마우스로 고르면 바로 반영한다
+ * - 키보드로 옮기는 동안은 보이기만 하고, Enter 를 누르거나 칸을 떠날 때 반영한다
+ * 반영하면 처음 글(placeholder)로 돌아온다 — 같은 값을 또 고를 수 있다.
+ */
+export function BulkSelect({
+  label,
+  placeholder,
+  options,
+  disabled,
+  onPick,
+}: {
+  label: string;
+  placeholder: string;
+  options: { value: string; label: string }[];
+  disabled?: boolean;
+  onPick: (value: string) => void;
+}) {
+  const [pending, setPending] = useState('');
+  const keyboard = useRef(false);
+  function commit(v: string) {
+    setPending('');
+    if (v) onPick(v);
+  }
+  return (
+    <select
+      aria-label={label}
+      className={SELECT_CLASS}
+      disabled={disabled}
+      value={pending}
+      onPointerDown={() => {
+        keyboard.current = false;
+      }}
+      onKeyDown={(e) => {
+        keyboard.current = true;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commit(pending);
+        }
+      }}
+      onChange={(e) => (keyboard.current ? setPending(e.target.value) : commit(e.target.value))}
+      onBlur={() => pending && commit(pending)}
+    >
+      <option value=''>{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function AttendanceTab({
   crew,
   meetings,
@@ -563,21 +620,14 @@ export function AttendanceTab({
                           </option>
                         ))}
                       </select>
-                      {/* 「적용」 버튼 없이 고르는 즉시 바뀐다 — 늘 「출석 상태」로 돌아와 같은 값을 또 고를 수 있다 */}
-                      <select
-                        aria-label='바꿀 출석 상태'
-                        className={SELECT_CLASS}
+                      {/* 「적용」 버튼 없이 고르면 바뀐다(키보드는 Enter 로 확정) — 늘 「출석 상태」로 돌아와 같은 값을 또 고를 수 있다 */}
+                      <BulkSelect
+                        label='바꿀 출석 상태'
+                        placeholder='출석 상태'
+                        options={BULK_OPTIONS}
                         disabled={saving || selected.length === 0}
-                        value=''
-                        onChange={(e) => e.target.value && applyBulk(e.target.value as AttendanceStatus | 'clear')}
-                      >
-                        <option value=''>출석 상태</option>
-                        {BULK_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
+                        onPick={(v) => applyBulk(v as AttendanceStatus | 'clear')}
+                      />
                       <Button
                         size='sm'
                         variant='danger'
@@ -733,7 +783,8 @@ export function AttendanceTab({
                             )}
                             <span
                               className={`block min-w-0 truncate ${c.left ? 'font-medium text-fg-muted' : ''}`}
-                              title={c.name}
+                              // 휴대폰 폭에서는 디스코드 닉네임 열을 숨긴다 — 가리키면(길게 누르면) 함께 보여 동명이인을 가른다
+                              title={c.discordNickname ? `${c.name} (${c.discordNickname})` : c.name}
                             >
                               {c.name}
                             </span>
