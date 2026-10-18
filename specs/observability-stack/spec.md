@@ -58,7 +58,7 @@
                             리버스 프록시 (TLS) ─────────┘
                                      │
                                      ▼
-                    grafana.studyclub-plusplus.com
+                    grafana.studyclub.life
                        구글 로그인 · 이메일 allowlist
                                      │
                                      └──▶ Discord (알림)
@@ -144,7 +144,7 @@ Loki 에 또 밀어넣는다. 배포할 때마다 Alloy 도 재기동되므로 �
 #### 1. actuator 를 앱 포트에서 떼어낸다
 
 현재 `SecurityConfig` 는 `/actuator/**` 를 `permitAll()` 로 열어두고 있고, 실제로
-`https://api.studyclub-plusplus.com/actuator` 가 인증 없이 200 을 준다. 여기에 `prometheus`
+`https://api.studyclub.life/actuator` 가 인증 없이 200 을 준다. 여기에 `prometheus`
 엔드포인트를 추가하면 URI별 호출량·응답시간·DB 커넥션풀·JVM 상태가 그대로 인터넷에 공개된다.
 
 ```yaml
@@ -275,7 +275,7 @@ INFO 가시성을 잃는 대가가 크고, 해당 프로퍼티는 과거 동작 
 
 ### 노출 · 인증
 
-- `GF_SERVER_ROOT_URL=https://grafana.studyclub-plusplus.com`
+- `GF_SERVER_ROOT_URL=https://grafana.studyclub.life`
 - 익명 접근 off, 신규 가입 off
 - **구글 OAuth** — 백오피스가 쓰는 GCP 클라이언트를 재사용하고, 접근 가능 이메일을 명시적으로 제한한다
 
@@ -582,7 +582,7 @@ Spring Boot 4.1.1 / Java 25 에서 재확인한 것: ECS 의 `log.level` 중첩 
 ### 사람이 해야 하는 작업 (코드로 안 되는 것)
 
 1. 호스트 SSH 접속 후 자원 확인 (`free -h`, `df -h /var/lib/docker`, `docker network ls`)
-2. DNS A 레코드 `grafana.studyclub-plusplus.com` 추가
+2. DNS A 레코드 `grafana.studyclub.life` 추가
 3. **Let's Encrypt 인증서 SAN 목록에 위 도메인 추가** — 현재 인증서는 와일드카드가 아니라 6개
    도메인을 나열한 멀티 SAN 이다. 갱신 설정에 수동으로 넣어야 한다
 4. 리버스 프록시에 vhost 추가 (→ `127.0.0.1:3000`)

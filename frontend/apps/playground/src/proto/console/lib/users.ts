@@ -31,8 +31,8 @@ export type ConsoleUser = {
 
 /** 캡틴 — 운영진 계정. mock operators 와 같은 사람으로 둔다. */
 const CAPTAINS: { id: string; name: string; email: string; region: MemberRegion; joinedAt: string }[] = [
-  { id: 'alex', name: 'Alex', email: 'alex@studyclub-plusplus.com', region: 'NA', joinedAt: '2025-01-08' },
-  { id: 'robin', name: 'Robin', email: 'robin@studyclub-plusplus.com', region: 'NA', joinedAt: '2025-02-19' },
+  { id: 'alex', name: 'Alex', email: 'alex@studyclub.life', region: 'NA', joinedAt: '2025-01-08' },
+  { id: 'robin', name: 'Robin', email: 'robin@studyclub.life', region: 'NA', joinedAt: '2025-02-19' },
 ];
 
 function hash(s: string): number {

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "회차", description = "스터디 일정 — 분반 회차 조회 · 추가 · 수정 · 삭제 · 발표 신청")
+@Tag(name = "회차", description = "스터디 일정 — 분반 회차 조회 · 추가 · 수정 · 삭제(일괄) · 발표 신청")
 @RestController
 @RequestMapping("/api/studies/{studyId}/meetings")
 public class StudyMeetingController {
@@ -62,14 +62,17 @@ public class StudyMeetingController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "회차 삭제", description = "시작 전 회차 하나. 그 회차의 출석·휴가도 지운다.")
+    @Operation(
+            summary = "회차 일괄 삭제",
+            description = "한 분반의 시작 전 회차 여럿. 하나라도 시작했거나 킥오프면 아무것도 지우지 않는다(409). 그 회차들의 출석·휴가도 지운다.")
     @SecurityRequirement(name = "bearerAuth")
-    @DeleteMapping("/{meetingId}")
-    public ResponseEntity<Void> delete(
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAll(
             @PathVariable Long studyId,
-            @PathVariable Long meetingId,
+            @Valid @RequestBody StudyMeetingRequests.BulkDelete request,
             Authentication authentication) {
-        studyMeetingService.delete(accountId(authentication), studyId, meetingId);
+        studyMeetingService.deleteAll(
+                accountId(authentication), studyId, request.studyGroupId(), request.meetingIds());
         return ResponseEntity.noContent().build();
     }
 

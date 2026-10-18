@@ -19,9 +19,9 @@ description: "기능 브랜치를 develop 에 합쳐 push 해서 stage 에 반�
 
 | 바뀐 경로 | 워크플로 | 확인 주소 |
 |---|---|---|
-| `backend/**` | `backend-develop-CI` (+ `backend-migration-check`) | `https://api-stage.studyclub-plusplus.com/api/health` |
-| `frontend/apps/core-front/**` · `frontend/packages/**` | `core-front-develop-CI` | `https://stage.studyclub-plusplus.com` |
-| `frontend/apps/back-office-front/**` · `frontend/packages/**` | `back-office-front-develop-CI` | `https://back-office-stage.studyclub-plusplus.com` |
+| `backend/**` | `backend-develop-CI` (+ `backend-migration-check`) | `https://api-stage.studyclub.life/api/health` |
+| `frontend/apps/core-front/**` · `frontend/packages/**` | `core-front-develop-CI` | `https://stage.studyclub.life` |
+| `frontend/apps/back-office-front/**` · `frontend/packages/**` | `back-office-front-develop-CI` | `https://back-office-stage.studyclub.life` |
 | `frontend/packages/ui/**` | `storybook-develop-CI` 도 | — |
 
 빌드 결과는 슬랙 `#build-status` 에 뜬다.
@@ -90,7 +90,7 @@ gh run watch <databaseId> --exit-status
 
 ### 6. stage 확인
 
-- `curl -s https://api-stage.studyclub-plusplus.com/api/health` — 새 이미지가 떴는지
+- `curl -s https://api-stage.studyclub.life/api/health` — 새 이미지가 떴는지
 - 기능 확인은 `prober` 로 케이스를 만들어 돌린다 (`/prober:extract` → `/prober:smoke`)
 - 테스트 발송(메일·디스코드)은 테스트 수신함으로만
 

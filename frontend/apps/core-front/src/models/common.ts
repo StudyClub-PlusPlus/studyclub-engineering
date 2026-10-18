@@ -1,6 +1,6 @@
 // 도메인 공통 타입 — 로케일/다국어 문자열.
 // 데이터(하드코딩)는 @studyclub/mock 에 있고, 여기(models/)는 도메인 "모델"(타입 + 동작)을 소유한다.
-// TODO(api): 팀 합류 후 api.studyclub-plusplus.com 응답 스키마와 맞춘다.
+// TODO(api): 팀 합류 후 api.studyclub.life 응답 스키마와 맞춘다.
 
 export type Locale = 'ko' | 'en';
 

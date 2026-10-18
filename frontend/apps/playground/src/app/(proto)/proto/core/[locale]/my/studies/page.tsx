@@ -22,6 +22,7 @@ import {
 import { getUser } from '@core/lib/auth';
 import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
+import { PAGE } from '@core/lib/layout';
 import { getApplications } from '@core/lib/me';
 import { isKickoff, meetingLabel } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
@@ -33,7 +34,7 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
- * 내 스터디.
+ * 내 스터디룸.
  *
  * 회원이 매주 하는 일은 **오늘 출석을 찍는 것** 하나라서, 그 버튼이 페이지 첫 화면에 있어야 한다.
  * 지난 출석은 따져볼 때만 보므로 탭 뒤에 둔다.
@@ -85,10 +86,10 @@ export default function MyStudiesPage() {
   }
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-8'>
+    <div className={`${PAGE} pb-16 pt-8`}>
       <ScreenSpecRegistrar spec={SPEC} />
       <h1 data-anno='1' className='text-2xl font-extrabold tracking-tight'>
-        내 스터디
+        내 스터디룸
       </h1>
 
       <nav data-anno='2' className='mt-5 inline-flex rounded-pill bg-surface-2 p-1'>
@@ -239,7 +240,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
           {t(study.title, locale)}
         </Link>
         <span data-anno='4-1' className='tnum shrink-0 text-sm font-bold text-fg'>
-          {rate === undefined ? <span className='text-fg-muted'>—</span> : `${rate}%`}
+          {rate === undefined ? <span className='text-fg-muted'>-</span> : `${rate}%`}
         </span>
       </div>
 

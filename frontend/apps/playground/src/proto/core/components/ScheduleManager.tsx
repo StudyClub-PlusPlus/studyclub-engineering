@@ -215,6 +215,10 @@ export function ScheduleManager({
   }
 
   function remove(targets: ProtoMeeting[]) {
+    // TODO(api): DELETE /api/studies/{studyId}/meetings 한 번
+    //            body: { studyGroupId, meetingIds: [...] } — 전부 지우거나 하나도 안 지운다.
+    //            409 (MEETING_ALREADY_STARTED · KICKOFF_NOT_DELETABLE)면 목록을 다시 불러 오고
+    //            errorMessage 를 notice 로 보인다 — 서버가 「N회차, M회차는 이미 시작해 지울 수 없습니다.」 로 준다.
     const ids = new Set(targets.map((t) => t.id));
     for (const t of targets) {
       src.remove(t.id);
@@ -288,7 +292,7 @@ export function ScheduleManager({
           onCancel={() => setAdding(false)}
           onAdded={(label) => {
             setAdding(false);
-            setAnnounce(`회차를 추가했습니다 — ${label}`);
+            setAnnounce(`회차를 추가했습니다. ${label}`);
             refresh();
           }}
         />
@@ -342,7 +346,7 @@ export function ScheduleManager({
                 const cell = 'border-t border-border px-2 py-1.5 align-top';
 
                 const presenterCell = (slot: 'presenter1' | 'presenter2') => {
-                  if (kickoff) return <span className='text-fg-muted'>—</span>;
+                  if (kickoff) return <span className='text-fg-muted'>-</span>;
                   if (editable) {
                     return (
                       <PresenterSelect
@@ -387,7 +391,7 @@ export function ScheduleManager({
                       </span>
                     );
                   }
-                  return nameOf(id) ?? <span className='text-fg-muted'>—</span>;
+                  return nameOf(id) ?? <span className='text-fg-muted'>-</span>;
                 };
 
                 const row = (
@@ -457,7 +461,7 @@ export function ScheduleManager({
                         />
                       ) : (
                         <span className='inline-block whitespace-pre-wrap break-words py-1.5'>
-                          {m.title ?? <span className='text-fg-muted'>—</span>}
+                          {m.title ?? <span className='text-fg-muted'>-</span>}
                         </span>
                       )}
                     </td>
@@ -909,7 +913,7 @@ function AddForm({
                 </li>
                 {plan.skipped.length > 0 && (
                   <li className='text-warning-700'>
-                    건너뜀 <b className='tnum'>{plan.skipped.length}</b>개 —{' '}
+                    건너뜀 <b className='tnum'>{plan.skipped.length}</b>개:{' '}
                     {plan.skipped.map((s) => `${dayLabel(s.date)} ${s.reason}`).join(', ')}
                   </li>
                 )}

@@ -30,7 +30,10 @@ export function EventRow({
   locale: Locale;
   source?: 'landing' | 'events_list';
 }) {
-  const { mon, day, year, time } = dateParts(event.date, locale);
+  const parts = dateParts(event.date, locale);
+  // 연도만 아는 행사는 월·일을 지어내지 않는다 — 박스에 연도만
+  const { mon, day, year, time } =
+    event.datePrecision === 'year' ? { mon: '', day: parts.year, year: '', time: '' } : parts;
   return (
     <Link
       href={`/${locale}/events/${event.id}`}
@@ -47,7 +50,7 @@ export function EventRow({
         className='flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 text-center'
         style={{ background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }}
       >
-        <span className='text-[10px] font-semibold uppercase tracking-wide'>{mon}</span>
+        {mon && <span className='text-[10px] font-semibold'>{mon}</span>}
         <span className='text-lg font-bold leading-none'>{day}</span>
         {year && <span className='mt-0.5 text-[9px] font-medium opacity-70'>{year}</span>}
       </div>

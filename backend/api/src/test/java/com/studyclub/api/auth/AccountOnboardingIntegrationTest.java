@@ -115,7 +115,7 @@ class AccountOnboardingIntegrationTest {
                     new NotificationTemplate(
                             NotificationEventType.USER_REGISTERED,
                             NotificationChannel.EMAIL,
-                            "StudyClub++에 오신 걸 환영합니다",
+                            "StudyClub에 오신 걸 환영합니다",
                             "안녕하세요, {{nickname}}님."));
         }
     }

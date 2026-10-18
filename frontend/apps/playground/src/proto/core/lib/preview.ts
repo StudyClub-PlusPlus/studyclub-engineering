@@ -14,7 +14,7 @@ import { seedDemoData } from '@core/lib/me';
  *
  * 원본은 로컬 개발 서버(NODE_ENV=development)에서만 미리보기를 열어 준다. playground 는
  * 빌드해서 배포하므로 그 조건이면 production 이라 로그인 게이트에 막히고, 정작 보여 주려던
- * 마이페이지·내 스터디를 아무도 못 본다. 여기는 mock 전용 표면이라 게이트가 지킬 것이 없다.
+ * 마이페이지·내 스터디룸을 아무도 못 본다. 여기는 mock 전용 표면이라 게이트가 지킬 것이 없다.
  */
 export const IS_DEV = true;
 

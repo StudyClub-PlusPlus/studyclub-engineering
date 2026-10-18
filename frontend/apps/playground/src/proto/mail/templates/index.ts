@@ -17,7 +17,7 @@ export const MAIL_TEMPLATES: MailTemplateMeta[] = [
   {
     key: 'user-registered-email',
     name: '회원가입 환영 (USER_REGISTERED)',
-    subject: '[StudyClub++] 회원가입을 환영합니다',
+    subject: '[StudyClub] 회원가입을 환영합니다',
     sample: { nickname: '스터디메이트' },
   },
 ];

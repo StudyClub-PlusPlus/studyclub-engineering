@@ -1,10 +1,10 @@
 # studyclub-engineering
 
-StudyClub++ 코드 모노레포 (**public**). 미국·캐나다·한국의 개발자 스터디 클럽 서비스.
+StudyClub 코드 모노레포 (**public**). 미국·캐나다·한국의 개발자 스터디 클럽 서비스.
 
-- 사용자 사이트: https://studyclub-plusplus.com
-- 운영 콘솔: https://back-office.studyclub-plusplus.com
-- API: https://api.studyclub-plusplus.com
+- 사용자 사이트: https://studyclub.life
+- 운영 콘솔: https://back-office.studyclub.life
+- API: https://api.studyclub.life
 
 > ⚠️ **PUBLIC 레포** — `.env`·토큰·키·개인정보 등 민감정보 커밋 금지. 자세한 규칙은 [`CLAUDE.md`](./CLAUDE.md).
 
@@ -74,7 +74,7 @@ cd backend
 
 | 메서드 | 경로           | 설명                    |
 | ------ | -------------- | ----------------------- |
-| GET    | `/`            | `StudyClub++ API`       |
+| GET    | `/`            | `StudyClub API`       |
 | GET    | `/api/health`  | `{ "status": "UP" }`    |
 | GET    | `/api/studies` | 스터디 목록 (현재 더미) |
 
@@ -102,11 +102,11 @@ docker run -p 8080:8080 studyclub-api
 
 | 도메인                                   | 서비스                    |
 | ---------------------------------------- | ------------------------- |
-| studyclub-plusplus.com                   | core-front (prod)         |
-| stage.studyclub-plusplus.com             | core-front (stage)        |
-| back-office.studyclub-plusplus.com       | back-office-front (prod)  |
-| back-office-stage.studyclub-plusplus.com | back-office-front (stage) |
-| api.studyclub-plusplus.com               | api (prod)                |
+| studyclub.life                   | core-front (prod)         |
+| stage.studyclub.life             | core-front (stage)        |
+| back-office.studyclub.life       | back-office-front (prod)  |
+| back-office-stage.studyclub.life | back-office-front (stage) |
+| api.studyclub.life               | api (prod)                |
 
 ## 기여
 
