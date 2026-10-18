@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 
-import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
+import { TimeZonePicker } from '@core/components/TimeZonePicker';
 import { getUser, type SessionUser } from '@core/lib/auth';
 import { type Locale } from '@core/lib/content';
 import { PAGE } from '@core/lib/layout';
@@ -27,7 +27,7 @@ import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname
 import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
 import { Button } from '@studyclub/ui';
-import { Pencil } from 'lucide-react';
+import { Check, Pencil } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
@@ -51,9 +51,11 @@ export default function MyPage() {
   const [name, setName] = useState('');
   const [discord, setDiscordState] = useState<DiscordLink>(null);
   // 인라인 편집 — 고치는 값 옆에서 바로 고친다. 항목이 둘뿐이라 따로 지면을 열 일이 아니다.
+  // 닉네임만 따로 고친다 — 검사(형식·중복)가 있어 확정 단계가 필요하다. 나머지 줄은 누르면 바로 저장된다
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
-  const [draftZone, setDraftZone] = useState('Asia/Seoul');
+  /** 방금 저장된 줄 — 잠깐 「저장됨」을 띄운다 */
+  const [savedRow, setSavedRow] = useState<'name' | 'zone' | 'discord' | 'marketing' | null>(null);
   const [composing, setComposing] = useState(false);
   const [marketing, setMarketingState] = useState(false);
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
@@ -113,37 +115,59 @@ export default function MyPage() {
 
   const nameBlocked = Boolean(nameFormatError) || nickStatus === 'taken' || nickStatus === 'checking';
 
-  const zoneLabel = zoneName(timeZone, locale) ?? timeZone;
 
   if (!ready || !user) {
     return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
 
+  function flash(row: 'name' | 'zone' | 'discord' | 'marketing') {
+    setSavedRow(row);
+    window.setTimeout(() => setSavedRow((cur) => (cur === row ? null : cur)), 1800);
+  }
+
   function openEditor() {
     setDraftName(name);
-    setDraftZone(timeZone);
     setEditing(true);
   }
 
-  function save() {
+  function saveName() {
     if (nameBlocked) return;
-    setName(trimmedName);
-    setDisplayName(trimmedName);
-    setTimeZoneState(draftZone);
-    setTimeZone(draftZone);
+    if (!unchangedName) {
+      // TODO(api): PATCH /api/me { nickname, timeZone } — 시간대는 지금 값을 같이 보낸다
+      setName(trimmedName);
+      setDisplayName(trimmedName);
+      flash('name');
+    }
     setEditing(false);
+  }
+
+  function changeZone(zone: string) {
+    if (zone === timeZone) return;
+    // TODO(api): PATCH /api/me { nickname, timeZone } — 닉네임은 지금 값을 같이 보낸다
+    setTimeZoneState(zone);
+    setTimeZone(zone);
+    flash('zone');
+  }
+
+  function changeMarketing(on: boolean) {
+    // TODO(api): PUT /api/me/marketing-consent — 실패하면 이전 값으로 되돌리고 사유를 보여준다
+    setMarketingState(on);
+    setMarketing(on);
+    flash('marketing');
   }
 
   function connectDiscord() {
     // TODO(api): 디스코드 OAuth 로 교체
     setDiscord('jiwon_dev');
     setDiscordState(getDiscord());
+    flash('discord');
   }
 
   function disconnectDiscord() {
     setDiscord(null);
     setDiscordState(null);
+    flash('discord');
   }
 
   return (
@@ -151,135 +175,123 @@ export default function MyPage() {
       <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
 
       <ScreenSpecRegistrar spec={SPEC} />
-      {/* 내 정보 — 닉네임·이메일·나의 시간대. 고치는 건 한 곳(수정 팝업)에서 한다 */}
-      {/* 내 정보 — 이름줄 하나, 값줄 셋. 값을 가로로 늘어놓아야 카드가 비어 보이지 않는다 */}
-      {/* 내 정보 — 보기와 편집이 같은 카드 안에서 바뀐다. 고칠 것이 셋뿐이라 지면을 옮길 일이 아니다 */}
-      {/* 편집 중에는 넘치게 둔다 — 시간대 메뉴가 카드 밖으로 열린다 */}
-      <section data-anno='profile:1' className={`card mt-5 ${editing ? '' : 'overflow-hidden'}`}>
-        <div className='flex items-start justify-between gap-4 px-6 pt-5'>
-          <div className='min-w-0 flex-1'>
-            {editing ? (
-              /*
-                보던 자리에서 고친다. 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다.
-                블록을 새로 쌓으면 아래 값들이 밀려 같은 카드가 다른 화면처럼 보인다.
-              */
-              <div data-anno='profile:2' className='min-w-0'>
-                <div className='flex items-center gap-2'>
-                  <input
-                    value={draftName}
-                    onChange={(e) => setDraftName(e.target.value)}
-                    onCompositionStart={() => setComposing(true)}
-                    onCompositionEnd={() => setComposing(false)}
-                    autoFocus
-                    aria-label='닉네임'
-                    /* 테두리 대신 밑줄 — 입력칸을 상자로 만들면 그 줄만 키가 커져 카드 전체가 달라 보인다 */
-                    className='min-w-0 flex-1 border-0 border-b border-border-strong bg-transparent p-0 text-xl font-extrabold tracking-tight text-fg outline-none focus:border-brand'
-                  />
-                  <span className='tnum shrink-0 text-xs text-fg-placeholder'>{trimmedName.length}/20</span>
-                </div>
-                <p
-                  className={`mt-0.5 truncate text-sm ${
-                    nameLine.tone === 'ok'
-                      ? 'text-success-700'
-                      : nameLine.tone === 'error'
-                        ? 'text-error-700'
-                        : 'text-fg-muted'
-                  }`}
-                >
-                  {nameLine.text}
-                </p>
+      {/*
+        내 정보 — 줄마다 스스로 저장된다. 카드 전체를 편집 모드로 바꾸지 않는다:
+        닉네임·시간대는 저장 버튼을, 마케팅·디스코드는 누르는 즉시를 따르면 한 카드에 저장 방식이 둘이 된다.
+        닉네임만 검사가 있어 그 자리에서 고치고 확정한다.
+      */}
+      {/* 고칠 값이 넷뿐이라 페이지 폭을 다 쓰지 않는다 — 넓히면 이름과 값·동작 사이가 멀어진다 */}
+      <section data-anno='profile:1' className='card mt-5 max-w-2xl'>
+        <div className='px-6 pb-5 pt-6'>
+          {editing ? (
+            /* 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다 — 카드 높이가 그대로다 */
+            <div data-anno='profile:2'>
+              <div className='flex items-center gap-2'>
+                <input
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onCompositionStart={() => setComposing(true)}
+                  onCompositionEnd={() => setComposing(false)}
+                  onKeyDown={(e) => {
+                    if (composing) return;
+                    if (e.key === 'Enter') saveName();
+                    if (e.key === 'Escape') setEditing(false);
+                  }}
+                  autoFocus
+                  maxLength={20}
+                  aria-label='닉네임'
+                  /* 테두리 대신 밑줄 — 상자로 만들면 그 줄만 키가 커져 카드가 달라 보인다 */
+                  className='min-w-0 flex-1 border-0 border-b-2 border-brand bg-transparent p-0 pb-0.5 text-xl font-extrabold tracking-tight text-fg outline-none'
+                />
+                <span className='tnum shrink-0 text-xs text-fg-placeholder'>{trimmedName.length}/20</span>
+                <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
+                  취소
+                </Button>
+                <Button size='sm' onClick={saveName} disabled={nameBlocked}>
+                  저장
+                </Button>
               </div>
-            ) : (
-              <>
+              <p
+                className={`mt-1 truncate text-sm ${
+                  nameLine.tone === 'ok'
+                    ? 'text-success-700'
+                    : nameLine.tone === 'error'
+                      ? 'text-error-700'
+                      : 'text-fg-muted'
+                }`}
+              >
+                {nameLine.text}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className='flex min-w-0 items-center gap-1.5'>
                 <p className='truncate text-xl font-extrabold tracking-tight text-fg'>{name}</p>
-                <p className='mt-0.5 truncate text-sm text-fg-muted'>{user.email}</p>
-              </>
-            )}
-          </div>
-
-          {!editing && (
-            <button
-              type='button'
-              data-anno='profile:1-1'
-              onClick={openEditor}
-              title='내 정보 수정'
-              aria-label='내 정보 수정'
-              className='grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border-strong text-fg-secondary transition-colors hover:bg-surface-2 hover:text-fg'
-            >
-              <Pencil size={15} />
-            </button>
+                {/* 고치는 자리는 고칠 값 바로 옆 — 카드 모서리의 버튼은 무엇을 고치는지 읽히지 않는다 */}
+                <button
+                  type='button'
+                  data-anno='profile:1-1'
+                  onClick={openEditor}
+                  title='닉네임 수정'
+                  aria-label='닉네임 수정'
+                  className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+                >
+                  <Pencil size={14} />
+                </button>
+                <Saved show={savedRow === 'name'} />
+              </div>
+              <p className='mt-0.5 truncate text-sm text-fg-muted'>{user.email}</p>
+            </div>
           )}
         </div>
 
-        {/* 값은 이름과 값 두 줄로만 세운다 — 칸을 나눠 담으면 둘뿐인 값이 표처럼 보인다 */}
-        <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-center gap-x-6 gap-y-2 px-6 pb-5 text-sm'>
-          <dt className='flex min-h-8 items-center text-fg-muted'>시간대</dt>
-          <dd data-anno='profile:3' className='flex min-h-8 min-w-0 items-center'>
-            {editing ? (
-              <div className='max-w-xs'>
-                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel compact />
-              </div>
-            ) : (
-              <span className='font-semibold text-fg'>{zoneLabel}</span>
-            )}
-          </dd>
+        <dl className='divide-y divide-border border-t border-border text-sm'>
+          <Field label='시간대' anno='profile:3' saved={savedRow === 'zone'}>
+            <div className='w-full max-w-[16rem]'>
+              <TimeZonePicker value={timeZone} onChange={changeZone} locale={locale} hideLabel compact />
+            </div>
+          </Field>
 
-          <dt className='flex min-h-8 items-center text-fg-muted'>디스코드</dt>
-          <dd data-anno='profile:4' className='flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
+          <Field label='디스코드' anno='profile:4' saved={savedRow === 'discord'}>
             {discord ? (
               <>
                 <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
-                {editing && (
-                  <button
-                    type='button'
-                    onClick={disconnectDiscord}
-                    className='text-xs font-semibold text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
-                  >
-                    연결 해제
-                  </button>
-                )}
+                <button
+                  type='button'
+                  onClick={disconnectDiscord}
+                  className='shrink-0 text-xs font-semibold text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
+                >
+                  연결 해제
+                </button>
               </>
             ) : (
               <>
-                <span className='font-semibold text-fg-muted'>연결 안 됨</span>
-                {editing && (
-                  <button
-                    type='button'
-                    onClick={connectDiscord}
-                    className='text-xs font-semibold text-brand underline-offset-4 hover:underline'
-                  >
-                    연결하기
-                  </button>
-                )}
+                <span className='text-fg-muted'>연결 안 됨</span>
+                <Button size='sm' variant='secondary' onClick={connectDiscord}>
+                  연결하기
+                </Button>
               </>
             )}
-          </dd>
+          </Field>
 
           {/*
             가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다. 가입 화면에만 두면 바꿀 수 없다.
             가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
           */}
-          <dt className='flex min-h-8 items-center text-fg-muted'>마케팅 수신</dt>
-          <dd data-anno='profile:5' className='flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
-            {/* 편집 버튼과 무관하게 누르면 바로 저장된다 — 켜고 끄는 한 줄이라 저장 단계를 두지 않는다 */}
-            <label className='inline-flex cursor-pointer items-center gap-2'>
+          <Field label='마케팅 수신' anno='profile:5' saved={savedRow === 'marketing'}>
+            <label className='inline-flex cursor-pointer items-center gap-2.5'>
               <input
                 type='checkbox'
                 checked={marketing}
-                onChange={(ev) => {
-                  // TODO(api): PUT /api/me/marketing-consent — 실패하면 이전 값으로 되돌리고 사유를 보여준다
-                  setMarketingState(ev.target.checked);
-                  setMarketing(ev.target.checked);
-                }}
+                onChange={(ev) => changeMarketing(ev.target.checked)}
                 className='h-4 w-4 accent-[var(--color-brand)]'
               />
-              <span className='text-sm text-fg'>스터디 소식과 행사 안내를 이메일로 받기</span>
+              <span className='text-fg'>스터디 소식과 행사 안내를 이메일로 받기</span>
             </label>
-          </dd>
+          </Field>
         </dl>
 
-        {/* 닫는 줄 — 무거운 동작은 왼쪽 끝, 주액션은 오른쪽 끝 */}
-        <div className='flex min-h-14 items-center justify-between gap-3 border-t border-border px-6 py-3'>
+        <div className='border-t border-border px-6 py-3.5'>
           <Link
             data-anno='profile:7'
             href={`/proto/core/${locale}/my/leave`}
@@ -287,20 +299,52 @@ export default function MyPage() {
           >
             회원 탈퇴
           </Link>
-          <div data-anno='profile:6' className='flex items-center gap-2'>
-            {editing && (
-              <>
-                <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
-                  취소
-                </Button>
-                <Button size='sm' onClick={save} disabled={nameBlocked}>
-                  저장
-                </Button>
-              </>
-            )}
-          </div>
         </div>
       </section>
     </div>
+  );
+}
+
+/** 내 정보 한 줄 — 이름은 왼쪽 고정 폭, 값과 동작은 오른쪽. 줄마다 스스로 저장된다. */
+function Field({
+  label,
+  anno,
+  saved,
+  children,
+}: {
+  label: string;
+  anno: string;
+  saved: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className='flex min-h-14 flex-col gap-1.5 px-6 py-3 sm:flex-row sm:items-center sm:gap-6'>
+      <dt className='shrink-0 whitespace-nowrap text-fg-muted sm:w-24'>{label}</dt>
+      <dd data-anno={anno} className='flex min-w-0 flex-1 items-center gap-3'>
+        {children}
+        {/* 저장 표시는 줄 끝 — 이름 칸에 두면 이름이 밀려 줄바꿈된다 */}
+        <span className='ml-auto shrink-0'>
+          <Saved show={saved} />
+        </span>
+      </dd>
+    </div>
+  );
+}
+
+/** 저장 직후 잠깐 뜨는 표시 — 즉시 저장되는 줄이 정말 저장됐는지 알 수 있게 */
+function Saved({ show }: { show: boolean }) {
+  return (
+    <span
+      aria-live='polite'
+      className={`inline-flex items-center gap-0.5 text-xs font-semibold text-success-700 transition-opacity duration-300 ${
+        show ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      {show && (
+        <>
+          <Check size={12} strokeWidth={3} /> 저장됨
+        </>
+      )}
+    </span>
   );
 }
