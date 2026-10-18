@@ -91,7 +91,7 @@ export function StudyCard({
           <span />
         )}
         <div className='relative text-fg'>
-          <span className='flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em]' style={{ color: ink }}>
+          <span className='flex items-center gap-1.5 text-xs font-semibold' style={{ color: ink }}>
             <CategoryIcon size={12} strokeWidth={1.75} className='shrink-0' />
             {categoryLabel}
           </span>

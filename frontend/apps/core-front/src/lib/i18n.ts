@@ -35,7 +35,7 @@ export const MESSAGES: Dict = {
   },
   'hero.subtitle': {
     ko: '미국·캐나다·한국의 개발자 2,800여 명이 함께하는 글로벌 커뮤니티. 이력서·인터뷰·시스템 디자인부터 AI까지, 현직자와 함께 준비합니다.',
-    en: 'A global community of 2,800+ engineers across the US, Canada, and Korea. From resumes and interviews to system design and AI — prepared together with working engineers.',
+    en: 'A global community of 2,800+ engineers across the US, Canada, and Korea. From resumes and interviews to system design and AI, prepared together with working engineers.',
   },
   'hero.cta': { ko: '지금 합류하기', en: 'Join now' },
   'hero.cta_studies': { ko: '스터디 둘러보기', en: 'Browse studies' },
@@ -46,31 +46,31 @@ export const MESSAGES: Dict = {
   // (title ~60자, description ~155자를 넘기면 검색 결과에서 잘린다).
   'seo.site_description': {
     ko: '미국·캐나다·한국 개발자 2,800여 명의 글로벌 스터디 클럽. 이력서·코딩 인터뷰·시스템 디자인·AI 스터디를 현직자와 무료로 함께합니다.',
-    en: 'A global study club of 2,800+ engineers across the US, Canada, and Korea. Free study groups on resumes, coding interviews, system design, and AI — with working engineers.',
+    en: 'A global study club of 2,800+ engineers across the US, Canada, and Korea. Free study groups on resumes, coding interviews, system design, and AI, with working engineers.',
   },
   'seo.keywords': {
     ko: '스터디클럽, 스터디 클럽, 개발자 스터디, 개발자 커뮤니티, 코딩 인터뷰 스터디, 시스템 디자인 스터디, 이력서 스터디, AI 스터디, 알고리즘 스터디, 해외 취업 스터디',
     en: 'study club, developer study group, engineering community, coding interview prep, system design study, resume review, AI study group',
   },
   'seo.home_title': {
-    ko: '스터디클럽 — 개발자 무료 스터디 커뮤니티',
-    en: 'StudyClub — Free study groups for engineers',
+    ko: '스터디클럽 | 개발자 무료 스터디 커뮤니티',
+    en: 'StudyClub | Free study groups for engineers',
   },
   'seo.studies_description': {
     ko: '모집 중인 개발자 스터디 전체 목록. 알고리즘·시스템 디자인·AI·커리어까지 관심 분야로 골라 무료로 참여하세요.',
-    en: 'Every open developer study group — algorithms, system design, AI, and career. Pick your topic and join for free.',
+    en: 'Every open developer study group: algorithms, system design, AI, and career. Pick your topic and join for free.',
   },
   'seo.events_description': {
     ko: '미국·한국·캐나다에서 열린 개발자 밋업·워크샵·직업탐방 기록과 다가오는 행사 일정.',
-    en: 'Developer meetups, workshops, and career talks across the US, Korea, and Canada — past records and upcoming dates.',
+    en: 'Developer meetups, workshops, and career talks across the US, Korea, and Canada. Past records and upcoming dates.',
   },
   'seo.about_description': {
     ko: 'StudyClub 는 미국·캐나다·한국 개발자 2,800여 명이 자발적으로 운영하는 비영리 스터디 커뮤니티입니다. 캡틴 제도와 운영 방식을 소개합니다.',
     en: 'StudyClub is a non-profit, volunteer-run study community of 2,800+ engineers across the US, Canada, and Korea. Meet our Captains and how we run.',
   },
   'seo.guide_description': {
-    ko: '스터디 신청부터 디스코드 합류, 킥오프 참여까지 — 처음 오신 분을 위한 단계별 안내.',
-    en: 'From applying to a study to joining Discord and attending the kickoff — a step-by-step guide for newcomers.',
+    ko: '스터디 신청부터 디스코드 합류, 킥오프 참여까지. 처음 오신 분을 위한 단계별 안내.',
+    en: 'From applying to a study to joining Discord and attending the kickoff: a step-by-step guide for newcomers.',
   },
   'seo.notices_description': {
     ko: 'StudyClub 모집 공고·운영 개편·밋업 소식을 한곳에서 확인하세요.',
@@ -93,8 +93,8 @@ export const MESSAGES: Dict = {
     en: 'StudyClub has Crew who study together, Navigators who lead a study, and Captains who run the community.',
   },
   'about.captain_body': {
-    ko: '캡틴(Captain)은 StudyClub 의 자원봉사 운영진입니다. 스터디를 여는 초기 세팅 — 모집 광고, 디스코드 채널 개설, 킥오프 진행 — 을 도와, 스터디원이 공부에만 집중할 수 있게 합니다.',
-    en: "Captains are StudyClub's volunteer organizers. They handle the initial setup for a study — recruiting, spinning up the Discord channel, and running the kickoff — so members can focus on studying.",
+    ko: '캡틴(Captain)은 StudyClub 의 자원봉사 운영진입니다. 스터디를 여는 초기 세팅(모집 광고, 디스코드 채널 개설, 킥오프 진행)을 도와, 스터디원이 공부에만 집중할 수 있게 합니다.',
+    en: "Captains are StudyClub's volunteer organizers. They handle the initial setup for a study (recruiting, spinning up the Discord channel, and running the kickoff) so members can focus on studying.",
   },
 
   'guide.title': { ko: '가이드', en: 'Guide' },
@@ -106,7 +106,7 @@ export const MESSAGES: Dict = {
   'notices.title': { ko: '공지사항', en: 'Notices' },
   'notices.subtitle': {
     ko: '모집·개편·밋업 등 최신 소식.',
-    en: 'Latest news — recruiting, updates, and meetups.',
+    en: 'Latest news: recruiting, updates, and meetups.',
   },
   'notice_tag.notice': { ko: '공지', en: 'Notice' },
   'notice_tag.update': { ko: '업데이트', en: 'Update' },

@@ -219,6 +219,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 | 인증 흐름 (OAuth·BFF) | [`docs/frontend-development-guide/auth-flow.md`](docs/frontend-development-guide/auth-flow.md) |
 | 관심사 분리 | [`docs/frontend-development-guide/separation-of-concerns.md`](docs/frontend-development-guide/separation-of-concerns.md) |
 | API 연동·에러/로딩 처리 | [`docs/frontend-development-guide/api-integration.md`](docs/frontend-development-guide/api-integration.md) |
+| **화면 문구·표기 (줄표 금지 등)** | [`docs/frontend-development-guide/ui-copy.md`](docs/frontend-development-guide/ui-copy.md) |
 
 #### FE 핵심 요약
 
@@ -227,6 +228,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 3. **Server Component 기본** — `'use client'` 는 인터랙션 필요한 말단에만
 4. **Mock 교체** — `// TODO(api)` 검색 → mock import 를 API 함수 호출로 교체
 5. **판정을 다시 하지 않는다** — `recruitStatus` 같은 응답 필드를 그린다. 날짜·숫자로 재계산 금지, 없으면 스펙에 요청 ([api-integration §판정](docs/frontend-development-guide/api-integration.md#판정을-다시-하지-않는다))
+6. **화면 문구에 줄표(em dash·en dash)를 쓰지 않는다**: 쌍점·쉼표·문장 나누기로. 대문자 자간 라벨(`LIFESTYLE`) 대신 칩과 같은 한글 이름. PR 전에 자기검사 0건 ([ui-copy](docs/frontend-development-guide/ui-copy.md))
 
 ---
 

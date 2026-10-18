@@ -35,16 +35,16 @@ const C = {
 type Meta = { icon: LucideIcon; label: string; color: Duo; art?: string };
 
 const AI_ML: Meta = { icon: Brain, label: 'AI · ML', color: C.violet, art: 'ai_ml' };
-const ALGORITHM: Meta = { icon: Puzzle, label: 'CS', color: C.blue, art: 'algorithm' };
-const DATA: Meta = { icon: Database, label: 'DATA', color: C.teal, art: 'data' };
-const SOFTWARE: Meta = { icon: Code2, label: 'DEV', color: C.indigo, art: 'software' };
-const CAREER: Meta = { icon: MessagesSquare, label: 'CAREER', color: C.amber, art: 'career' };
-const BOOK_CLUB: Meta = { icon: BookOpen, label: 'BOOK CLUB', color: C.amber, art: 'book_club' };
-const LANGUAGE: Meta = { icon: Languages, label: 'LANGUAGE', color: C.emerald, art: 'language' };
-const LIFESTYLE: Meta = { icon: Sunrise, label: 'LIFESTYLE', color: C.rose, art: 'lifestyle' };
-const PRODUCT: Meta = { icon: Package, label: '기획', color: C.violet, art: 'product' };
-const BUSINESS: Meta = { icon: Briefcase, label: 'BUSINESS', color: C.slate, art: 'business' };
-const OTHER: Meta = { icon: Hash, label: 'ETC', color: C.slate, art: 'other' };
+const ALGORITHM: Meta = { icon: Puzzle, label: '알고리즘', color: C.blue, art: 'algorithm' };
+const DATA: Meta = { icon: Database, label: '데이터', color: C.teal, art: 'data' };
+const SOFTWARE: Meta = { icon: Code2, label: '소프트웨어 개발', color: C.indigo, art: 'software' };
+const CAREER: Meta = { icon: MessagesSquare, label: '커리어', color: C.amber, art: 'career' };
+const BOOK_CLUB: Meta = { icon: BookOpen, label: '북클럽', color: C.amber, art: 'book_club' };
+const LANGUAGE: Meta = { icon: Languages, label: '어학', color: C.emerald, art: 'language' };
+const LIFESTYLE: Meta = { icon: Sunrise, label: '라이프스타일', color: C.rose, art: 'lifestyle' };
+const PRODUCT: Meta = { icon: Package, label: '기획 · PM', color: C.violet, art: 'product' };
+const BUSINESS: Meta = { icon: Briefcase, label: '비즈니스', color: C.slate, art: 'business' };
+const OTHER: Meta = { icon: Hash, label: '기타', color: C.slate, art: 'other' };
 
 /**
  * 공식 카테고리 11개 — API enum 값과 화면 표기(`@studyclub/mock` 의 `CATEGORY_DISPLAY`) 둘 다 받는다.
@@ -90,28 +90,28 @@ const LEGACY_RULES: (Meta & { match: string[] })[] = [
   { ...DATA, match: ['데이터', 'data', 'sql', 'db', '디비'] },
   {
     icon: Server,
-    label: 'BACKEND',
+    label: '백엔드',
     color: C.indigo,
     art: 'backend',
     match: ['백엔드', 'backend', 'spring', 'django', 'express', 'nest'],
   },
   {
     icon: Monitor,
-    label: 'FRONTEND',
+    label: '프론트엔드',
     color: C.blue,
     art: 'frontend',
     match: ['프론트엔드', 'frontend', 'react', 'vue', 'angular', 'next'],
   },
   {
     icon: Smartphone,
-    label: 'MOBILE',
+    label: '모바일',
     color: C.teal,
     art: 'mobile',
     match: ['모바일', 'mobile', 'ios', 'android', 'flutter', 'swift', 'kotlin'],
   },
   { ...PRODUCT, match: ['기획', 'planning', '프로덕트', 'product', '그로스', 'growth'] },
   { icon: Package, label: 'PM', color: C.violet, art: 'product', match: ['pm', '프로젝트 매니'] },
-  { icon: Palette, label: 'DESIGN', color: C.rose, art: 'design', match: ['디자인', 'design', 'figma', 'ui', 'ux'] },
+  { icon: Palette, label: '디자인', color: C.rose, art: 'design', match: ['디자인', 'design', 'figma', 'ui', 'ux'] },
   { ...CAREER, match: ['커리어', 'career', '취업', 'resume', '이력서', 'interview', '인터뷰', '면접'] },
   { ...BUSINESS, match: ['비즈니스', 'business', 'article', '아티클', '시장', '산업'] },
   { ...BOOK_CLUB, match: ['북클럽', 'book', '독서', '리딩'] },
@@ -171,7 +171,7 @@ function pick(category?: string): Meta {
   const canonical = CANONICAL[key];
   if (canonical) return canonical;
   for (const { match, ...meta } of LEGACY_RULES) if (match.some((m) => hasKeyword(key, m))) return meta;
-  const label = (category ?? 'STUDY').toUpperCase().slice(0, 10);
+  const label = (category ?? '스터디').trim().slice(0, 12);
   return { icon: Hash, label, color: FALLBACK[hash(label) % FALLBACK.length]! };
 }
 
@@ -236,7 +236,7 @@ export function StudyThumb({ image, category, className = '' }: StudyThumbProps)
         <Icon className='pointer-events-none absolute -right-3 -bottom-4 opacity-15' style={{ color: ink }} size={104} strokeWidth={1.25} />
       )}
       <Icon className='relative shrink-0' style={{ color: ink }} size={22} strokeWidth={1.75} />
-      <span className='relative text-[13px] font-bold uppercase tracking-[0.14em]' style={{ color: ink }}>
+      <span className='relative text-sm font-semibold' style={{ color: ink }}>
         {label}
       </span>
     </div>

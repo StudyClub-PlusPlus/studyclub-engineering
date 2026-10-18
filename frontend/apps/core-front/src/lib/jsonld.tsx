@@ -33,7 +33,7 @@ export function organizationJsonLd(locale: Locale, site: Site): Json {
     description:
       locale === 'ko'
         ? '미국·캐나다·한국의 개발자 2,800여 명이 함께하는 글로벌 스터디 커뮤니티. 이력서·인터뷰·시스템 디자인부터 AI까지 현직자와 함께 준비합니다.'
-        : 'A global study community of 2,800+ engineers across the US, Canada, and Korea — resumes, interviews, system design, and AI, prepared together with working engineers.',
+        : 'A global study community of 2,800+ engineers across the US, Canada, and Korea. Resumes, interviews, system design, and AI, prepared together with working engineers.',
     sameAs: [site.discord_invite].filter(Boolean),
     areaServed: t(site.community.region, locale),
   };
