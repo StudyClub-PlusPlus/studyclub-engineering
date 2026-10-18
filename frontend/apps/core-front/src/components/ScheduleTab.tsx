@@ -109,7 +109,7 @@ function PresenterCell({
       {name}
     </span>
   ) : (
-    <span className='block text-center text-fg-muted'>—</span>
+    <span className='block text-center text-fg-muted'>-</span>
   );
 }
 
@@ -347,7 +347,7 @@ function AddMeetingForm({
                 </li>
                 {plan.skipped.length > 0 && (
                   <li className='text-warning-700'>
-                    건너뜀 <b className='tnum'>{plan.skipped.length}</b>개 —{' '}
+                    건너뜀 <b className='tnum'>{plan.skipped.length}</b>개:{' '}
                     {plan.skipped.map((s) => `${dayLabel(s.date)} ${s.reason}`).join(', ')}
                   </li>
                 )}
@@ -904,12 +904,12 @@ export function ScheduleTab({
                             className='w-full px-2 py-1'
                           />
                         ) : (
-                          v.title || <span className='block text-center text-fg-muted'>—</span>
+                          v.title || <span className='block text-center text-fg-muted'>-</span>
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>
                         {isKickoff(m) ? (
-                          <span className='block text-center text-fg-muted'>—</span>
+                          <span className='block text-center text-fg-muted'>-</span>
                         ) : canEdit && !started ? (
                           <Select
                             aria-label={`${meetingLabel(m)} 발표자 1`}
@@ -953,7 +953,7 @@ export function ScheduleTab({
                       </td>
                       <td className='px-2 py-3 text-center'>
                         {isKickoff(m) ? (
-                          <span className='block text-center text-fg-muted'>—</span>
+                          <span className='block text-center text-fg-muted'>-</span>
                         ) : canEdit && !started ? (
                           <Select
                             aria-label={`${meetingLabel(m)} 발표자 2`}

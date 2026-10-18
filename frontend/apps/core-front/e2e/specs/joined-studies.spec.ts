@@ -104,7 +104,7 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
 
   test('로그인 회원 접속 시 제목, 주간 일정 그리드, 기본 "참여중" 탭이 렌더링된다', async ({ page }) => {
     await page.goto('/ko/my/joined');
-    await expect(page.locator('h1')).toHaveText('내 스터디');
+    await expect(page.locator('h1')).toHaveText('내 스터디룸');
 
     // 주간 일정 영역 확인
     const weekHeading = page.locator('section h2');
@@ -177,7 +177,7 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
 
     // /ko/my/joined/:id/schedule 경로로 이동 확인
     await expect(page).toHaveURL(/\/ko\/my\/joined\/\d+\/schedule/);
-    await expect(page.getByRole('main').getByRole('link', { name: '내 스터디' })).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: '내 스터디룸' })).toBeVisible();
     await expect(page.getByRole('link', { name: '일정' })).toBeVisible();
     await expect(page.getByRole('link', { name: '출석' })).toBeVisible();
     await expect(page.locator('table').first()).toBeVisible();
@@ -188,8 +188,8 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
     await expect(page.getByRole('heading', { level: 2, name: /출석/ })).toBeVisible();
     await expect(page.getByText('출석률')).toBeVisible();
 
-    // 내 스터디 링크 클릭 시 내 스터디 목록으로 복귀 확인
-    await page.getByRole('main').getByRole('link', { name: '내 스터디' }).click();
+    // 내 스터디룸 링크 클릭 시 내 스터디룸 목록으로 복귀 확인
+    await page.getByRole('main').getByRole('link', { name: '내 스터디룸' }).click();
     await expect(page).toHaveURL(/\/ko\/my\/joined/);
   });
 });

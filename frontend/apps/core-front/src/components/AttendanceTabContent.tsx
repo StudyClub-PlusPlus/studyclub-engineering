@@ -569,7 +569,7 @@ export function AttendanceTabContent({
                         key={m.id}
                         className='flex w-8 min-w-8 shrink-0 items-center justify-center px-1 py-3 text-xs text-fg-muted'
                       >
-                        —
+                        -
                       </div>
                     ) : (
                       <div
@@ -644,7 +644,7 @@ export function AttendanceTabContent({
               {/* 고정: 출석률 */}
               <div className='tnum flex w-12 min-w-12 max-w-12 shrink-0 items-center justify-end whitespace-nowrap px-1 py-3 font-bold sm:w-20 sm:min-w-[5rem] sm:max-w-[5rem] sm:px-3'>
                 {rate === undefined ? (
-                  <span className='text-fg-muted'>—</span>
+                  <span className='text-fg-muted'>-</span>
                 ) : (
                   <span
                     className={
@@ -715,7 +715,7 @@ export function AttendanceTabContent({
         </p>
         <ul className='list-disc space-y-1 pl-5 text-sm text-fg-secondary'>
           <li>지금까지의 출석 기록은 그대로 남습니다.</li>
-          <li>지금 뒤에 시작하는 회차는 「—」로 비고 출석률에서 빠집니다.</li>
+          <li>지금 뒤에 시작하는 회차는 「-」로 비고 출석률에서 빠집니다.</li>
           <li>더는 스터디 디스코드 채널 · 드라이브 링크를 볼 수 없고, 발표자로 고를 수 없습니다.</li>
           <li>중단한 뒤에는 다시 참여시킬 수 없습니다.</li>
         </ul>
