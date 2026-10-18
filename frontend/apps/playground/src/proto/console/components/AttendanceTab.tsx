@@ -802,9 +802,9 @@ export function AttendanceTab({
                             )}
                             {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
                             {c.role && (
-                              <Badge tone={c.role} className='sr-only shrink-0 sm:not-sr-only sm:inline-flex'>
-                                {c.role === 'captain' ? '캡틴' : '네비게이터'}
-                              </Badge>
+                              <span className='sr-only shrink-0 sm:not-sr-only sm:inline-flex'>
+                                <Badge tone={c.role}>{c.role === 'captain' ? '캡틴' : '네비게이터'}</Badge>
+                              </span>
                             )}
                             {pendingLeave && (
                               // 저장 전이라 아직 중단이 아니다 — 칩 없이 되돌리기 아이콘만. 줄 색이 예정임을 말한다.
