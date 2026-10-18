@@ -51,7 +51,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
               <time className='ml-auto text-xs font-medium text-(--color-fg-faint)'>{n.date}</time>
             </div>
             <h2 className='mt-3 text-lg font-bold tracking-tight'>{t(n.title, locale)}</h2>
-            <p className='mt-2 line-clamp-2 text-[15px] leading-relaxed text-(--color-fg-muted)'>{t(n.body, locale)}</p>
+            <p className='mt-2 line-clamp-2 text-base leading-relaxed text-(--color-fg-muted)'>{t(n.body, locale)}</p>
           </Link>
         ))}
       </div>

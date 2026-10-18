@@ -23,7 +23,7 @@ const ENTRIES = [
   },
   {
     href: '/proto/core/ko/my/joined',
-    title: '내 스터디 · 참여 모음',
+    title: '내 스터디룸 · 참여 모음',
     body: '크루가 참여 중인 스터디를 모아 본다. 기본 탭은 참여중. 카드에 출석률이 있고, 출석 기록을 열어 회차 칸을 본다.',
   },
 ];

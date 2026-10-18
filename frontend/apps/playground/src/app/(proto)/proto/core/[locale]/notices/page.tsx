@@ -1,3 +1,4 @@
+import Link from 'next/link';
 
 import { JoinCta } from '@core/components/JoinCta';
 import { Pill } from '@core/components/StatusBadge';
@@ -18,9 +19,10 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
 
       <div className='mt-10 flex flex-col gap-4'>
         {notices.map((n) => (
-          <article
+          <Link
             key={n.id}
-            className='card card-hover p-6'
+            href={`/proto/core/${locale}/notices/${n.id}`}
+            className='card card-hover block p-6'
             style={
               n.pinned ? { borderColor: 'var(--color-brand)', background: 'var(--color-brand-subtle)' } : undefined
             }
@@ -32,7 +34,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
             </div>
             <h2 className='mt-3 text-lg font-bold tracking-tight'>{t(n.title, locale)}</h2>
             <p className='mt-2 line-clamp-2 text-[15px] leading-relaxed text-(--color-fg-muted)'>{t(n.body, locale)}</p>
-          </article>
+          </Link>
         ))}
       </div>
 

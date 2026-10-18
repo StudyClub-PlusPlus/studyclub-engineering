@@ -35,7 +35,7 @@ export const SPEC: ScreenSpec = {
     },
     {
       n: '2-1',
-      title: '내 스터디',
+      title: '내 스터디룸',
       display: ['진행 상태 탭 줄 오른쪽의 페이지 이동 버튼'],
       behavior: ['누르면 참여 중인 스터디 모음으로 간다'],
     },

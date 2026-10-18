@@ -144,7 +144,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       {/* 스터디 클럽이란? */}
       <SectionHeading section={SECTIONS[0]} locale={locale} />
       <div className='card p-8'>
-        <p className='max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg)]'>
+        <p className='max-w-3xl text-base leading-relaxed text-[var(--color-fg)]'>
           {t(
             {
               ko: `StudyClub 는 미국·캐나다·한국의 개발자 ${site.community.member_count.toLocaleString()}명 이상이 함께하는 글로벌 스터디 커뮤니티입니다. 여러 스터디가 모인 '풀(pool)'로, 누구나 공부하고 싶은 주제로 스터디를 제안하고 운영할 수 있습니다. 디스코드에서 모든 스터디와 이벤트가 운영됩니다.`,
@@ -161,7 +161,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
         {roles.map((r) => (
           <Link key={r.id} href={`/${locale}/about#${r.id}`} className='card card-hover p-5'>
             <div className='text-base font-bold'>{t(r.name, locale)}</div>
-            <p className='mt-1.5 text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>{t(r.desc, locale)}</p>
+            <p className='mt-1.5 text-base leading-relaxed text-[var(--color-fg-muted)]'>{t(r.desc, locale)}</p>
           </Link>
         ))}
       </div>
@@ -177,7 +177,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
             >
               {i + 1}
             </span>
-            <span className='text-[15px] leading-relaxed text-[var(--color-fg)]'>{t(step, locale)}</span>
+            <span className='text-base leading-relaxed text-[var(--color-fg)]'>{t(step, locale)}</span>
           </li>
         ))}
       </ol>
@@ -193,7 +193,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
             >
               {i + 1}
             </span>
-            <span className='text-[15px] leading-relaxed text-[var(--color-fg)]'>{t(step, locale)}</span>
+            <span className='text-base leading-relaxed text-[var(--color-fg)]'>{t(step, locale)}</span>
           </li>
         ))}
       </ol>
@@ -203,11 +203,11 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       <div className='flex flex-col gap-3'>
         {faqs.map((f, i) => (
           <details key={i} className='card group p-5'>
-            <summary className='flex cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-semibold text-[var(--color-fg)]'>
+            <summary className='flex cursor-pointer list-none items-center justify-between gap-3 text-base font-semibold text-[var(--color-fg)]'>
               {t(f.q, locale)}
               <span className='text-[var(--color-fg-faint)] transition-transform group-open:rotate-45'>+</span>
             </summary>
-            <p className='mt-3 text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>{t(f.a, locale)}</p>
+            <p className='mt-3 text-base leading-relaxed text-[var(--color-fg-muted)]'>{t(f.a, locale)}</p>
           </details>
         ))}
       </div>

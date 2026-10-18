@@ -101,14 +101,14 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           <span className='inline-flex w-fit items-center rounded-full bg-white/85 px-2.5 py-1 text-xs font-semibold shadow-sm' style={{ color: 'var(--color-brand)' }}>
             {m(`event_type.${event.type}`, locale)}
           </span>
-          <h1 className='text-[26px] font-bold leading-[1.25] tracking-tight sm:text-[30px]'>{t(event.title, locale)}</h1>
-          <p className='text-[16px] leading-relaxed text-[var(--color-fg-muted)]'>{t(event.summary, locale)}</p>
+          <h1 className='text-2xl font-bold leading-[1.25] tracking-tight sm:text-3xl'>{t(event.title, locale)}</h1>
+          <p className='text-base leading-relaxed text-[var(--color-fg-muted)]'>{t(event.summary, locale)}</p>
         </header>
       </article>
       {detail && (
         <section className='mt-10'>
           <h2 className='text-lg font-bold tracking-tight'>{t({ ko: '어떤 행사였나요', en: 'About this event' }, locale)}</h2>
-          <div className='mt-3 flex max-w-2xl flex-col gap-3 text-[16px] leading-relaxed text-[var(--color-fg)]'>
+          <div className='mt-3 flex max-w-2xl flex-col gap-3 text-base leading-relaxed text-[var(--color-fg)]'>
             {detail.about.map((p, i) => (
               <p key={i}>{t(p, locale)}</p>
             ))}
@@ -116,7 +116,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           {detail.voices && (
             <div className='mt-6 grid gap-3 sm:grid-cols-2'>
               {detail.voices.map((v, i) => (
-                <blockquote key={i} className='card p-5 text-[15px] leading-relaxed text-[var(--color-fg)]'>
+                <blockquote key={i} className='card p-5 text-base leading-relaxed text-[var(--color-fg)]'>
                   “{t(v, locale)}”
                   <footer className='mt-2 text-xs text-[var(--color-fg-muted)]'>{t({ ko: '참가자 후기', en: 'Attendee' }, locale)}</footer>
                 </blockquote>
@@ -158,7 +158,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
         <h2 className='text-lg font-bold tracking-tight'>{t({ ko: '스터디클럽 행사는 이렇게 열려요', en: 'How StudyClub events work' }, locale)}</h2>
         <ul className='mt-4 grid gap-3 sm:grid-cols-2'>
           {EVENT_KINDS.map((k) => (
-            <li key={k.title.ko} className='rounded-xl bg-[var(--color-bg)] p-4 text-[15px] leading-relaxed'>
+            <li key={k.title.ko} className='rounded-xl bg-[var(--color-bg)] p-4 text-base leading-relaxed'>
               <span className='font-semibold'>{t(k.title, locale)}</span>
               <span className='text-[var(--color-fg-muted)]'> {t(k.body, locale)}</span>
             </li>

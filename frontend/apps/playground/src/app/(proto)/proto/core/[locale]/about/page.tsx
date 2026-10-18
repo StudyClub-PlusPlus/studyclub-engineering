@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 
 import { JoinCta } from '@core/components/JoinCta';
+import { MemberMap } from '@core/components/MemberMap';
 import { RegionClocks } from '@core/components/RegionClocks';
 import { getSite, getOperators, type L10n, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
@@ -268,12 +269,27 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </div>
       )}
 
-      {/* 글로벌 — 세 지역 실시간 시계 */}
+      {/* 어디서 함께하나 — 지도 + 지역별 시간대 */}
       <div className='mt-10'>
-        <h2 className='mb-4 flex items-center gap-2 text-xl font-bold tracking-tight'>
+        <h2 className='flex items-center gap-2 text-xl font-bold tracking-tight'>
           <Globe2 size={20} style={{ color: 'var(--color-brand)' }} />
-          {t({ ko: '지금, 세 지역에서', en: 'Right now, across three regions' }, locale)}
+          {t({ ko: '어디서 함께하나요', en: 'Where we are' }, locale)}
         </h2>
+        <p className='mt-2 mb-4 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
+          {t(
+            {
+              ko: '미국 서부부터 동부, 캐나다, 한국, 유럽까지. 시차가 달라도 같은 스터디에서 만나요.',
+              en: 'From the US West Coast to the East, Canada, Korea, and Europe. Different time zones, same study.',
+            },
+            locale,
+          )}
+        </p>
+        <MemberMap locale={locale} />
+      </div>
+
+      {/* 지금 각 지역의 시간 */}
+      <div className='mt-10'>
+        <h2 className='mb-4 text-xl font-bold tracking-tight'>{t({ ko: '지금, 각 지역의 시간', en: 'Right now, around the world' }, locale)}</h2>
         <RegionClocks locale={locale} />
       </div>
 

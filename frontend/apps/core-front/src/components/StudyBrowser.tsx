@@ -281,7 +281,7 @@ export function StudyBrowser({
       ) : studies.length > 0 ? (
         <div
           aria-busy={loading}
-          className={`grid gap-4 transition-opacity sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}
+          className={`grid grid-cols-2 gap-3 transition-opacity sm:gap-4 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}
         >
           {studies.map((s, i) => (
             <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} />

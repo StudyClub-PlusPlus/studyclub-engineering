@@ -100,7 +100,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
     en: `StudyClub was created in early 2024 to solve these two problems. It is a pool of study groups where anyone can propose a study, recruit members, and run it. Today more than ${site.community.member_count.toLocaleString()} engineers across the US, Canada, and Korea are part of it.`,
   };
 
-  // 이야기 — 출처: 운영진 「스터디클럽 소개」 문서(인원·지역·운영진 수는 2025-08 기준), 운영진 설명.
+  // 이야기 — 출처: 운영진 「스터디클럽 소개」 문서(인원·지역은 2025-08 기준), 운영진 설명.
   const story: { art: string; when: L10n; title: L10n; body: L10n }[] = [
     {
       art: 'region-us',
@@ -116,8 +116,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       when: { ko: '북미 전역', en: 'Across North America' },
       title: { ko: '캐나다와 유럽까지', en: 'Canada, then Europe' },
       body: {
-        ko: '캐나다, 그리고 스위스·독일에서도 함께해요. 북미에만 운영진 15명이 있어요.',
-        en: 'Members join from Canada, Switzerland, and Germany. North America alone has 15 Captains.',
+        ko: '캐나다, 그리고 스위스·독일에서도 함께해요.',
+        en: 'Members join from Canada, Switzerland, and Germany.',
       },
     },
     {
@@ -125,8 +125,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       when: { ko: '그리고 한국', en: 'And Korea' },
       title: { ko: '한국으로 진출', en: 'Expanding to Korea' },
       body: {
-        ko: '한국에서도 운영진 7명이 함께 스터디를 열고, 한국 크루와 북미 크루가 한 스터디에서 만나요.',
-        en: 'Seven Captains in Korea open studies too, where Korean and North American crew meet in one group.',
+        ko: '한국에서도 스터디가 열리고, 한국 크루와 북미 크루가 한 스터디에서 만나요.',
+        en: 'Studies open in Korea too, where Korean and North American crew meet in one group.',
       },
     },
   ];
@@ -178,7 +178,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       </header>
 
       <div className='card mt-10 p-8'>
-        <div className='flex max-w-3xl flex-col gap-4 text-[17px] leading-loose text-[var(--color-fg)]'>
+        <div className='flex max-w-3xl flex-col gap-4 text-lg leading-loose text-[var(--color-fg)]'>
           {intro.map((p, i) => (
             <p key={i}>{t(p, locale)}</p>
           ))}
@@ -186,13 +186,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         <div className='mt-6 grid gap-4 md:grid-cols-2'>
           {problems.map((pr, i) => (
             <div key={i} className='rounded-xl border border-[var(--color-border)] p-5'>
-              <h3 className='text-[15px] font-bold text-[var(--color-fg)]'>
+              <h3 className='text-base font-bold text-[var(--color-fg)]'>
                 <span style={{ color: 'var(--color-brand)' }}>{i + 1}. </span>
                 {t(pr.q, locale)}
               </h3>
               <ul className='mt-3 flex flex-col gap-2'>
                 {pr.a.map((line, j) => (
-                  <li key={j} className='flex items-start gap-2 text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
+                  <li key={j} className='flex items-start gap-2 text-base leading-relaxed text-[var(--color-fg-muted)]'>
                     <span className='mt-2.5 h-1 w-1 shrink-0 rounded-full bg-[var(--color-fg-faint)]' />
                     {t(line, locale)}
                   </li>
@@ -201,13 +201,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
             </div>
           ))}
         </div>
-        <p className='mt-6 max-w-3xl text-[17px] font-semibold leading-loose text-[var(--color-fg)]'>{t(outro, locale)}</p>
+        <p className='mt-6 max-w-3xl text-lg font-semibold leading-loose text-[var(--color-fg)]'>{t(outro, locale)}</p>
       </div>
 
       {/* 우리의 이야기 — 실리콘밸리에서 시작해 한국까지 */}
       <div className='mt-10'>
         <h2 className='text-xl font-bold tracking-tight'>{t({ ko: '실리콘밸리에서 시작했어요', en: 'It started in Silicon Valley' }, locale)}</h2>
-        <p className='mt-2 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
+        <p className='mt-2 max-w-3xl text-base leading-relaxed text-[var(--color-fg-muted)]'>
           {t(
             {
               ko: '베이 에어리어에서 일하는 한인 엔지니어들이 같이 공부하려고 모인 것이 시작이에요. 미국을 중심으로 자라 캐나다와 한국까지 넓어졌고, 지금은 시차를 넘어 함께 공부하며 서로의 경험과 기회를 나눠요.',
@@ -222,13 +222,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
               <Image src={`/about-art/${st.art}.webp`} alt='' width={64} height={64} className='h-16 w-16' />
               <div className='text-sm font-semibold text-[var(--color-brand)]'>{t(st.when, locale)}</div>
               <div className='text-lg font-bold tracking-tight'>{t(st.title, locale)}</div>
-              <p className='text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>{t(st.body, locale)}</p>
+              <p className='text-base leading-relaxed text-[var(--color-fg-muted)]'>{t(st.body, locale)}</p>
             </li>
           ))}
         </ol>
         <ul className='mt-4 grid gap-3 sm:grid-cols-3'>
           {networking.map((n, i) => (
-            <li key={i} className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-[15px] leading-relaxed'>
+            <li key={i} className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-base leading-relaxed'>
               <span className='font-semibold'>{t(n.title, locale)}</span>
               <span className='text-[var(--color-fg-muted)]'> {t(n.body, locale)}</span>
             </li>
@@ -239,7 +239,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       {/* 역할 — 크루 · 네비게이터 · 캡틴 */}
       <div className='mt-10'>
         <h2 className='text-xl font-bold tracking-tight'>{m('about.roles_title', locale)}</h2>
-        <p className='mt-2 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
+        <p className='mt-2 max-w-3xl text-base leading-relaxed text-[var(--color-fg-muted)]'>
           {m('about.roles_body', locale)}
         </p>
         <div className='mt-5 grid gap-4 md:grid-cols-3'>
@@ -255,7 +255,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
               <p className='mt-1 text-sm font-medium text-[var(--color-brand)]'>{t(r.tagline, locale)}</p>
               <ul className='mt-4 flex flex-col gap-2.5'>
                 {r.points.map((p, i) => (
-                  <li key={i} className='flex items-start gap-2 text-[15px] leading-relaxed text-[var(--color-fg)]'>
+                  <li key={i} className='flex items-start gap-2 text-base leading-relaxed text-[var(--color-fg)]'>
                     <span className='mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-brand)' }} />
                     {t(p, locale)}
                   </li>
@@ -288,7 +288,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           <Globe2 size={20} style={{ color: 'var(--color-brand)' }} />
           {t({ ko: '어디서 함께하나요', en: 'Where we are' }, locale)}
         </h2>
-        <p className='mt-2 mb-4 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
+        <p className='mt-2 mb-4 max-w-3xl text-base leading-relaxed text-[var(--color-fg-muted)]'>
           {t(
             {
               ko: '미국 서부부터 동부, 캐나다, 한국, 유럽까지. 시차가 달라도 같은 스터디에서 만나요.',

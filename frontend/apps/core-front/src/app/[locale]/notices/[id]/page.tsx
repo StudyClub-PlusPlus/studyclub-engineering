@@ -52,11 +52,11 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
                 </span>
               )}
             </div>
-            <h1 className={`${READ} text-[26px] font-bold leading-[1.3] tracking-tight sm:text-[30px]`}>{t(n.title, locale)}</h1>
-            <p className={`${READ} text-[16px] leading-relaxed text-(--color-fg-muted)`}>{t(n.summary, locale)}</p>
+            <h1 className={`${READ} text-2xl font-bold leading-[1.3] tracking-tight sm:text-3xl`}>{t(n.title, locale)}</h1>
+            <p className={`${READ} text-base leading-relaxed text-(--color-fg-muted)`}>{t(n.summary, locale)}</p>
           </header>
 
-          <div className={`${READ} flex flex-col gap-4 px-6 py-8 text-[16px] leading-[1.85] text-(--color-fg) sm:px-10`}>
+          <div className={`${READ} flex flex-col gap-4 px-6 py-8 text-base leading-[1.85] text-(--color-fg) sm:px-10`}>
             {n.blocks.map((b, i) => {
               if ('h' in b)
                 return (
@@ -80,7 +80,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
                 <Link
                   key={i}
                   href={`/${locale}${b.link.href}`}
-                  className='inline-flex w-fit items-center gap-1 text-[15px] font-semibold text-(--color-brand) hover:underline'
+                  className='inline-flex w-fit items-center gap-1 text-base font-semibold text-(--color-brand) hover:underline'
                 >
                   {t(b.link.label, locale)} <ArrowRight size={15} />
                 </Link>

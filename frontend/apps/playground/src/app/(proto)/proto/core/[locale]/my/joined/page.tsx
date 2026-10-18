@@ -27,6 +27,7 @@ import {
   type WallTz,
   type WeekDay,
 } from '@core/lib/joined';
+import { PAGE } from '@core/lib/layout';
 import { getApplications, getRegion } from '@core/lib/me';
 import { SCHEDULE_ROLE_LABEL, isKickoff, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
@@ -132,7 +133,7 @@ function weekRangeLabel(days: WeekDay[]): string {
   return `${ymd.slice(0, 4)}년 ${Number(ymd.slice(5, 7))}월`;
 }
 
-/** 내 스터디에서 들어가는 스터디 일정. 주소 값은 study_id(STUDY.ID). */
+/** 내 스터디룸에서 들어가는 스터디 일정. 주소 값은 study_id(STUDY.ID). */
 function schedulePath(locale: Locale, study: Study): string {
   return `/proto/core/${locale}/my/joined/${study.study_id}/schedule`;
 }
@@ -282,7 +283,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
 }
 
 /**
- * 내 스터디 — 참여 목록.
+ * 내 스터디룸 — 참여 목록.
  *
  * 기본 탭은 참여중. 크루가 여기 오는 이유는 지금 어디 들어가는지 확인하는 것이다.
  * 이번 주 회차는 주간 줄에서 보고, 카드나 주간 칸을 누르면 그 스터디의 스터디 일정으로 간다.
@@ -361,11 +362,11 @@ export default function MyJoinedPage() {
         : EMPTY[filter];
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
+    <div className={`${PAGE} pb-16 pt-10`}>
       <ScreenSpecRegistrar spec={SPEC} />
       <ScreenSpecRegistrar spec={MEETING_SPEC} />
       <h1 data-anno='1' className='text-2xl font-extrabold tracking-tight'>
-        내 스터디
+        내 스터디룸
       </h1>
 
       <WeekStrip
