@@ -263,7 +263,7 @@ function PresenterHelp() {
           id='presenter-help'
           role='dialog'
           aria-label='발표 표시 설명'
-          className='absolute left-0 top-full z-30 mt-1.5 w-72 rounded-card border border-border bg-surface-raised p-3 text-left text-xs font-normal leading-relaxed text-fg-secondary shadow-md'
+          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card sm:left-0 border border-border bg-surface-raised p-3 text-left text-xs font-normal leading-relaxed text-fg-secondary shadow-md'
         >
           <p className='flex items-center gap-1.5 font-semibold text-fg'>
             <span className='relative grid h-8 w-[3.6rem] shrink-0 place-items-center rounded-sm bg-success-100 text-xs font-bold text-success-700'>
@@ -781,21 +781,26 @@ export function AttendanceTab({
                                 )}
                               </span>
                             )}
-                            <span
-                              className={`block min-w-0 truncate ${c.left ? 'font-medium text-fg-muted' : ''}`}
-                              // 휴대폰 폭에서는 디스코드 닉네임 열을 숨긴다 — 가리키면(길게 누르면) 함께 보여 동명이인을 가른다
-                              title={c.discordNickname ? `${c.name} (${c.discordNickname})` : c.name}
-                            >
-                              {c.name}
+                            {/* 휴대폰 폭에서는 디스코드 닉네임 열을 숨기는 대신 닉네임 아래에 작게 둔다 — 누르거나 가리키지 않아도 동명이인을 가른다 */}
+                            <span className={`min-w-0 ${c.left ? 'font-medium text-fg-muted' : ''}`}>
+                              <span className='block truncate' title={c.name}>
+                                {c.name}
+                              </span>
+                              {c.discordNickname && (
+                                <span className='block truncate text-xs font-normal text-fg-muted sm:hidden'>
+                                  {c.discordNickname}
+                                </span>
+                              )}
                             </span>
+                            {/* 칩은 휴대폰 폭에서 숨긴다 — 좁은 닉네임 칸에서 닉네임을 밀어낸다. 중단한 사람은 흐린 이름 · 「-」 칸으로 가른다 */}
                             {c.left && (
-                              <span data-anno='book:3-6' className='shrink-0'>
+                              <span data-anno='book:3-6' className='hidden shrink-0 sm:inline-flex'>
                                 <Badge tone='neutral'>{c.left.label}</Badge>
                               </span>
                             )}
                             {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
                             {c.role && (
-                              <Badge tone={c.role} className='shrink-0'>
+                              <Badge tone={c.role} className='hidden shrink-0 sm:inline-flex'>
                                 {c.role === 'captain' ? '캡틴' : '네비게이터'}
                               </Badge>
                             )}

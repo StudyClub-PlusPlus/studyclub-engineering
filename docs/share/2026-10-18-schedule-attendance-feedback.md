@@ -104,7 +104,9 @@
 | 앱 | 할 일 | 결정 |
 |---|---|---|
 | core-front · back-office-front | 일정 · 출석 · 참여 크루 표의 작업 바를 표 카드 맨 위로, 스크롤 시 고정 | D1 |
-| packages/ui | `TableActionBar` 에 위치 옵션(`position='top'`). PR #278 이 추가한다. 머지 뒤 playground 의 `className` 덮어쓰기(`top-…` · `bottom-auto`)를 그 옵션으로 바꾼다. 부품 모양은 ui 에서만 고친다 | D1 |
+| packages/ui | `TableActionBar` 에 맨 위 모양(`position='top'`: sticky top · `surface-raised` 바탕 · 아래 선 · 좌우 여백)을 옵션으로. 위치 옵션은 PR #278 이 추가한다. 지금 playground 세 표가 `className` 으로 덮어쓰는 `top-… bottom-auto border-b bg-surface-raised px-4` 를 그 옵션으로 바꾸고, ui 설명 주석(「표 하단 · 띠 · 테두리 없음」)도 design-system §9-7-1 에 맞춘다. 부품 모양은 ui 에서만 고친다 | D1 |
+| packages/ui | 일괄 변경 드롭다운을 ui 부품으로: ui `Select` 에 비활성 회색(`disabled-bg` · `disabled-fg`)을 넣고, 키보드 안전 확정(마우스 즉시 · 화살표는 미리보기 · Enter/칸 떠남 확정)을 가진 일괄 선택 부품을 만든다. 프로토 `BulkSelect` 가 동작 정본. core-front · back-office-front 가 각자 다시 만들지 않게 | D2 · D13 |
+| packages/ui | 「?」 설명 팝오버와 「중단 예정 취소」 즉시 말풍선을 ui 부품(팝오버 · 툴팁)으로. 휴대폰 폭에서 화면 밖으로 나가지 않게(폭 상한) | D8 · D9 |
 | core-front · back-office-front | 「적용」 · 「출석 적용」 버튼 제거. 마우스로 고르면 바로 반영, 키보드(화살표)는 Enter · 칸 떠남에 확정, 반영 뒤 처음 글로 되돌리기. 프로토 `BulkSelect` 참고 | D2 |
 | back-office-front | 출석 탭 반 칩(한 반씩), 반 전환 시 미저장 확인 | D3 |
 | core-front | 정보 카드 바로가기 줄 맨 앞(「디스코드」 왼쪽)에 「백오피스 출석부」(캡틴) | D4 |
