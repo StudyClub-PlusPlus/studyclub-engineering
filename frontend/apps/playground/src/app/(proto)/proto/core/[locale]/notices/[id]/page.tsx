@@ -4,8 +4,8 @@ import { notFound } from 'next/navigation';
 import { autolink } from '@core/lib/autolink';
 import { getNotices, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
-import { READ } from '@core/lib/layout';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { PAGE, READ } from '@core/lib/layout';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 /**
  * 공지 상세 — 제목 · 게시일 · 본문, 아래에 이전·다음 공지와 목록으로.
@@ -31,40 +31,46 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
   const base = `/proto/core/${locale}/notices`;
 
   return (
-    <div className='mx-auto max-w-3xl px-6 py-12'>
-      <article className='card overflow-hidden p-0'>
-        <header className='border-b border-(--color-border) px-6 pb-5 pt-7 sm:px-10'>
-          <h1 className={`${READ} break-words text-[24px] font-bold leading-[1.35] tracking-tight sm:text-[28px]`}>
-            {t(n.title, locale)}
-          </h1>
+    <div className={`${PAGE} py-12`}>
+      <Link href={base} className='text-sm font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'>
+        {m('notices.title', locale)}
+      </Link>
+
+      {/* 게시판 글 모양 — 페이지 폭을 다 쓰고 카드로 감싸지 않는다. 본문 글줄만 읽기 폭(READ)으로 묶는다 */}
+      <article className='mt-3 border-t-2 border-(--color-fg)'>
+        <header className='border-b border-(--color-border) px-2 py-6'>
+          <h1 className='break-words text-[24px] font-bold leading-[1.35] tracking-tight sm:text-[30px]'>{t(n.title, locale)}</h1>
           <time className='mt-2 block text-sm tabular-nums text-(--color-fg-muted)'>{n.date}</time>
         </header>
-        {/* 긴 공백·긴 주소가 들어와도 카드 밖으로 넘치지 않게 — pre-wrap + 단어 중간 줄바꿈 허용 */}
+        {/* 긴 공백·긴 주소가 들어와도 넘치지 않게 — pre-wrap + 단어 중간 줄바꿈 허용 */}
         <div
-          className={`${READ} whitespace-pre-wrap break-words px-6 py-8 text-[16px] leading-[1.85] text-(--color-fg) [overflow-wrap:anywhere] sm:px-10`}
+          className={`${READ} min-h-40 whitespace-pre-wrap break-words px-2 py-10 text-[16px] leading-[1.85] text-(--color-fg) [overflow-wrap:anywhere]`}
         >
           {autolink(t(n.body, locale))}
         </div>
       </article>
 
-      <nav aria-label={t({ ko: '다른 공지', en: 'Other notices' }, locale)} className='mt-4 grid grid-cols-2 gap-3'>
-        <NeighborLink
-          dir='prev'
-          label={t({ ko: '이전 공지', en: 'Previous' }, locale)}
-          empty={t({ ko: '이전 공지가 없습니다', en: 'No previous notice' }, locale)}
-          href={older && `${base}/${older.id}`}
-          title={older && t(older.title, locale)}
-        />
-        <NeighborLink
-          dir='next'
+      {/* 이전·다음 — 게시판처럼 위아래 두 줄. 이동할 공지의 제목을 함께 보인다 */}
+      <nav aria-label={t({ ko: '다른 공지', en: 'Other notices' }, locale)} className='border-y border-(--color-border)'>
+        <NeighborRow
           label={t({ ko: '다음 공지', en: 'Next' }, locale)}
           empty={t({ ko: '다음 공지가 없습니다', en: 'No next notice' }, locale)}
           href={newer && `${base}/${newer.id}`}
           title={newer && t(newer.title, locale)}
+          date={newer?.date}
+          icon={<ChevronUp size={15} />}
+        />
+        <NeighborRow
+          label={t({ ko: '이전 공지', en: 'Previous' }, locale)}
+          empty={t({ ko: '이전 공지가 없습니다', en: 'No previous notice' }, locale)}
+          href={older && `${base}/${older.id}`}
+          title={older && t(older.title, locale)}
+          date={older?.date}
+          icon={<ChevronDown size={15} />}
         />
       </nav>
 
-      <div className='mt-6 flex justify-center'>
+      <div className='mt-8 flex justify-end'>
         <Link
           href={base}
           className='inline-flex items-center rounded-full border border-(--color-border) bg-(--color-bg) px-6 py-2.5 text-sm font-semibold hover:bg-(--color-surface-subtle)'
@@ -72,44 +78,47 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
           {t({ ko: '목록으로', en: 'Back to list' }, locale)}
         </Link>
       </div>
-      <span className='sr-only'>{m('notices.title', locale)}</span>
     </div>
   );
 }
 
-/** 이전·다음 칸 — 이동할 공지의 제목을 함께 보인다. 없으면 흐린 안내만 */
-function NeighborLink({
-  dir,
+/** 이전·다음 한 줄 — 이동할 공지의 제목과 게시일. 없으면 흐린 안내만 */
+function NeighborRow({
   label,
   empty,
   href,
   title,
+  date,
+  icon,
 }: {
-  dir: 'prev' | 'next';
   label: string;
   empty: string;
   href?: string;
   title?: string;
+  date?: string;
+  icon: React.ReactNode;
 }) {
-  const align = dir === 'next' ? 'items-end text-right' : 'items-start text-left';
   const head = (
-    <span className='inline-flex items-center gap-1 text-xs font-semibold text-(--color-fg-muted)'>
-      {dir === 'prev' && <ChevronLeft size={14} />}
+    <span className='inline-flex w-24 shrink-0 items-center gap-1 text-sm font-semibold text-(--color-fg-muted)'>
+      {icon}
       {label}
-      {dir === 'next' && <ChevronRight size={14} />}
     </span>
   );
   if (!href)
     return (
-      <div aria-disabled='true' className={`card flex min-w-0 flex-col gap-1 p-4 opacity-50 ${align}`}>
+      <div aria-disabled='true' className='flex items-center gap-4 px-2 py-4 opacity-50 [&+*]:border-t [&+*]:border-(--color-border)'>
         {head}
         <span className='text-sm text-(--color-fg-muted)'>{empty}</span>
       </div>
     );
   return (
-    <Link href={href} className={`card card-hover flex min-w-0 flex-col gap-1 p-4 ${align}`}>
+    <Link
+      href={href}
+      className='flex items-center gap-4 px-2 py-4 transition-colors hover:bg-(--color-surface-subtle) [&+*]:border-t [&+*]:border-(--color-border)'
+    >
       {head}
-      <span className='w-full truncate text-sm font-semibold'>{title}</span>
+      <span className='min-w-0 flex-1 truncate text-sm font-semibold'>{title}</span>
+      <time className='hidden shrink-0 text-sm tabular-nums text-(--color-fg-muted) sm:block'>{date}</time>
     </Link>
   );
 }

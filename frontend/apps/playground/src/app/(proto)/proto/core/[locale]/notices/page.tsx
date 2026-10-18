@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { getNotices, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
+import { PAGE } from '@core/lib/layout';
 
 /** 한 페이지에 보이는 공지 수 */
 const PAGE_SIZE = 10;
@@ -27,36 +28,41 @@ export default async function NoticesPage({
   const base = `/proto/core/${locale}/notices`;
 
   return (
-    <div className='mx-auto max-w-3xl px-6 py-14'>
-      <header>
-        <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('notices.title', locale)}</h1>
-      </header>
+    <div className={`${PAGE} py-14`}>
+      <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('notices.title', locale)}</h1>
 
-      {rows.length === 0 ? (
-        <p className='card mt-10 px-6 py-16 text-center text-sm text-(--color-fg-muted)'>
-          {t({ ko: '등록된 공지가 없습니다.', en: 'No notices yet.' }, locale)}
-        </p>
-      ) : (
-        <ul className='card mt-10 divide-y divide-(--color-border) overflow-hidden p-0'>
-          {rows.map((n) => (
-            <li key={n.id}>
-              <Link
-                href={`${base}/${n.id}`}
-                className='flex items-center gap-4 px-6 py-4 transition-colors hover:bg-(--color-surface-subtle)'
-              >
-                {/* 제목은 남는 폭을 다 쓰고 한 줄로 자른다. 게시일은 고정폭·줄바꿈 없음 */}
-                <span className='min-w-0 flex-1 truncate text-[15px] font-semibold'>{t(n.title, locale)}</span>
-                <time className='w-24 shrink-0 whitespace-nowrap text-right text-sm tabular-nums text-(--color-fg-muted)'>
-                  {n.date}
-                </time>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* 게시판 모양 — 페이지 폭을 다 쓰고 카드로 감싸지 않는다. 가운데 한 덩어리로 두면 앱 화면처럼 보인다 */}
+      <div className='mt-10 border-t-2 border-(--color-fg)'>
+        <div className='hidden items-center gap-6 border-b border-(--color-border) px-2 py-3 text-xs font-semibold text-(--color-fg-muted) sm:flex'>
+          <span className='flex-1'>{t({ ko: '제목', en: 'Title' }, locale)}</span>
+          <span className='w-28 text-right'>{t({ ko: '게시일', en: 'Posted' }, locale)}</span>
+        </div>
+        {rows.length === 0 ? (
+          <p className='border-b border-(--color-border) py-20 text-center text-sm text-(--color-fg-muted)'>
+            {t({ ko: '등록된 공지가 없습니다.', en: 'No notices yet.' }, locale)}
+          </p>
+        ) : (
+          <ul>
+            {rows.map((n) => (
+              <li key={n.id} className='border-b border-(--color-border)'>
+                <Link
+                  href={`${base}/${n.id}`}
+                  className='flex flex-col gap-1 px-2 py-5 transition-colors hover:bg-(--color-surface-subtle) sm:flex-row sm:items-center sm:gap-6'
+                >
+                  {/* 제목은 남는 폭을 다 쓰고 한 줄로 자른다. 게시일은 고정폭·줄바꿈 없음 */}
+                  <span className='min-w-0 flex-1 truncate text-[16px] font-semibold'>{t(n.title, locale)}</span>
+                  <time className='shrink-0 whitespace-nowrap text-sm tabular-nums text-(--color-fg-muted) sm:w-28 sm:text-right'>
+                    {n.date}
+                  </time>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {pageCount > 1 && (
-        <nav aria-label={t({ ko: '페이지', en: 'Pages' }, locale)} className='mt-6 flex justify-center gap-1'>
+        <nav aria-label={t({ ko: '페이지', en: 'Pages' }, locale)} className='mt-8 flex justify-center gap-1'>
           {Array.from({ length: pageCount }, (_, k) => k + 1).map((p) => (
             <Link
               key={p}
