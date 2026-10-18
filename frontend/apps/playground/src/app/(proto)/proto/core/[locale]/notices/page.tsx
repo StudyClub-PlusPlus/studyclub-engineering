@@ -1,7 +1,6 @@
 import Link from 'next/link';
 
-import { JoinCta } from '@core/components/JoinCta';
-import { getNotices, getSite, type Locale } from '@core/lib/content';
+import { getNotices, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 
 /** 한 페이지에 보이는 공지 수 */
@@ -21,7 +20,7 @@ export default async function NoticesPage({
 }) {
   const { locale } = await params;
   const { page: raw } = await searchParams;
-  const [notices, site] = await Promise.all([getNotices(), getSite()]);
+  const notices = await getNotices();
   const pageCount = Math.max(1, Math.ceil(notices.length / PAGE_SIZE));
   const page = Math.min(Math.max(1, Number(raw) || 1), pageCount);
   const rows = notices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -72,10 +71,6 @@ export default async function NoticesPage({
           ))}
         </nav>
       )}
-
-      <div className='mt-12'>
-        <JoinCta locale={locale} discordUrl={site.discord_invite} />
-      </div>
     </div>
   );
 }
