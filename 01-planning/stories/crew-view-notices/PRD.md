@@ -1,4 +1,4 @@
-# 크루는 스터디클럽 웹사이트의 공지를 볼 수 있다.
+# 크루는 스터디클럽 공지를 확인할 수 있다.
 
 기준 프로토타입: 사용자 사이트 › 공지 — https://playground.studyclub.life/proto/core/ko/notices
 

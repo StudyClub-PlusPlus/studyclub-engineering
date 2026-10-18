@@ -87,7 +87,7 @@
 | | | ST-018 네비게이터는 참여자를 스터디에서 제명할 수 있다. | [navigator-withdraw-participant](../stories/navigator-withdraw-participant/PRD.md) |
 | IA-014 | 이용약관 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
 | IA-015 | 개인정보 처리방침 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
-| IA-018 | 공지 | ST-034 크루는 스터디클럽 웹사이트의 공지를 볼 수 있다. | [crew-view-notices](../stories/crew-view-notices/PRD.md) |
+| IA-018 | 공지 | ST-034 크루는 스터디클럽 공지를 확인할 수 있다. | [crew-view-notices](../stories/crew-view-notices/PRD.md) |
 
 ### 운영 콘솔
 
