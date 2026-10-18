@@ -139,7 +139,7 @@ export function FeedbackDetail({ id }: { id: string }) {
             rows={4}
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            helper='내부용 — 제출자에게 보이지 않습니다'
+            placeholder='내부용 — 제출자에게 보이지 않습니다'
           />
           <div className='mt-2 flex justify-end'>
             <Button size='sm' onClick={saveMemo} disabled={memo === f.memo}>

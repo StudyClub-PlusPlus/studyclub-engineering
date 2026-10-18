@@ -56,7 +56,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '5',
       title: '운영 메모',
-      display: ['여러 줄 입력 · 저장'],
+      display: ['여러 줄 입력 · 저장. 비어 있을 때 칸 안에 「내부용 — 제출자에게 보이지 않습니다」'],
       behavior: ['저장을 눌러야 저장된다. 「저장했습니다」'],
       policy: ['**내부용** — 제출자에게 보이지 않는다'],
       data: ['`PATCH /api/admin/feedbacks/{id}` — 미구현'],
