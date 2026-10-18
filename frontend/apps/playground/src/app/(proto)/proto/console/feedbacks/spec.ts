@@ -42,7 +42,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '3',
       title: '상태',
-      display: ['상세 머리 오른쪽 드롭다운 — 미확인 · 확인 · 완료'],
+      display: ['상세 머리 오른쪽 상태 뱃지가 곧 드롭다운 — 누르면 미확인 · 확인 · 완료 뱃지가 펼쳐진다'],
       behavior: ['고르면 바로 저장 — 확인 창 없음. 「상태를 변경했습니다」', '실패하면 이전 값으로 돌아가고 다시 시도'],
       data: ['`PATCH /api/admin/feedbacks/{id}` — 미구현'],
     },

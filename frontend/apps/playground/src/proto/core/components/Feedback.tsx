@@ -25,7 +25,7 @@ import {
  * 여는 자리는 둘: 프로필 드롭다운(로그인)과 푸터(비로그인 포함). **플로팅 버튼은 만들지 않는다.**
  * 팝업은 레이아웃에 하나만 두고(`FeedbackHost`), 여는 쪽은 `openFeedback()` 만 부른다.
  *
- * 입력·설정 팝업 규칙(POL-0008) — X 와 보내기 하나, 취소 없음. 닫으면 입력은 사라지고 묻지 않는다.
+ * 입력·설정 팝업 규칙(POL-0008) — X 와 전송 하나, 취소 없음. 닫으면 입력은 사라지고 묻지 않는다.
  * 이미지 첨부는 선택 — 3장까지, 장당 5MB. 고르거나 끌어 놓거나 ⌘V 로 붙여 넣는다(스크린샷).
  * TODO(api): POST /api/feedbacks — 인증 선택, 서버가 rate limit(로그인 = 사용자, 비로그인 = IP)
  */
@@ -193,7 +193,7 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
         size='lg'
         footer={
           <Button data-anno='feedback:5' onClick={send} loading={sending} disabled={sending}>
-            보내기
+            전송
           </Button>
         }
       >

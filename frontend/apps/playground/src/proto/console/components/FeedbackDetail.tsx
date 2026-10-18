@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { StatusBadge, TYPE_TONE, stamp } from '@console/components/FeedbacksTable';
+import { STATUS_CLASS, StatusBadge, TYPE_TONE, stamp } from '@console/components/FeedbacksTable';
 import { Badge, Button, Modal, Textarea, toast } from '@studyclub/ui';
-import { ChevronLeft } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft } from 'lucide-react';
 
 import {
   FEEDBACK_STATUSES,
@@ -82,21 +82,10 @@ export function FeedbackDetail({ id }: { id: string }) {
               {submitterLabel(f)} · {stamp(f.createdAt)}
             </p>
           </div>
-          <label data-anno='feedback-admin:3' className='flex shrink-0 items-center gap-2 text-sm text-fg-secondary'>
+          <div data-anno='feedback-admin:3' className='flex shrink-0 items-center gap-2 text-sm text-fg-secondary'>
             상태
-            <select
-              value={f.status}
-              onChange={(e) => changeStatus(e.target.value as FeedbackStatus)}
-              className='h-9 rounded-control border border-border-strong bg-surface px-3 text-sm font-semibold text-fg outline-none focus:border-brand'
-            >
-              {FEEDBACK_STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <StatusBadge status={f.status} />
-          </label>
+            <StatusPicker value={f.status} onChange={changeStatus} />
+          </div>
         </header>
 
         {/* 평문 — 태그도 글자 그대로. 긴 줄이 카드 밖으로 넘치지 않게 */}
@@ -173,6 +162,70 @@ export function FeedbackDetail({ id }: { id: string }) {
           <img src={f.images[zoom]} alt={`첨부 이미지 ${zoom + 1}`} className='mx-auto max-h-[70vh] w-auto rounded-control' />
         )}
       </Modal>
+    </div>
+  );
+}
+
+/**
+ * 상태 고르기 — **뱃지가 곧 드롭다운이다.** 지금 상태 뱃지를 누르면 같은 모양의 뱃지 셋이 펼쳐진다.
+ * 드롭다운과 뱃지를 따로 두면 같은 값을 두 번 보게 된다.
+ */
+function StatusPicker({ value, onChange }: { value: FeedbackStatus; onChange: (next: FeedbackStatus) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className='relative'>
+      <button
+        type='button'
+        aria-haspopup='listbox'
+        aria-expanded={open}
+        aria-label={`상태 ${FEEDBACK_STATUSES.find((s) => s.value === value)?.label} — 바꾸기`}
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center gap-1 rounded-pill py-1 pl-2.5 pr-1.5 text-xs font-semibold ring-1 ring-transparent transition hover:ring-border-strong ${STATUS_CLASS[value]}`}
+      >
+        {FEEDBACK_STATUSES.find((s) => s.value === value)?.label}
+        <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <ul
+          role='listbox'
+          aria-label='상태'
+          className='absolute right-0 z-20 mt-1.5 flex w-32 flex-col gap-1 rounded-control border border-border bg-surface p-1.5 shadow-lg'
+        >
+          {FEEDBACK_STATUSES.map((s) => (
+            <li key={s.value}>
+              <button
+                type='button'
+                role='option'
+                aria-selected={s.value === value}
+                onClick={() => {
+                  setOpen(false);
+                  if (s.value !== value) onChange(s.value);
+                }}
+                className='flex w-full items-center justify-between rounded-control px-1.5 py-1 hover:bg-surface-2'
+              >
+                <StatusBadge status={s.value} />
+                {s.value === value && <Check size={13} className='text-fg-muted' />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
