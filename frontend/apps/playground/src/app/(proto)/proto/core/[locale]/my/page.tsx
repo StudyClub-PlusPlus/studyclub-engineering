@@ -181,7 +181,7 @@ export default function MyPage() {
         닉네임만 검사가 있어 그 자리에서 고치고 확정한다.
       */}
       {/* 고칠 값이 넷뿐이라 페이지 폭을 다 쓰지 않는다 — 넓히면 이름과 값·동작 사이가 멀어진다 */}
-      <section data-anno='profile:1' className='card mt-5 max-w-2xl'>
+      <section data-anno='profile:1' className='card mt-5 max-w-xl'>
         <div className='px-6 pb-5 pt-6'>
           {editing ? (
             /* 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다 — 카드 높이가 그대로다 */
@@ -256,14 +256,14 @@ export default function MyPage() {
             {discord ? (
               <>
                 <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
-                <Button size='sm' variant='ghost' className='ml-auto sm:ml-0' onClick={disconnectDiscord}>
+                <Button size='sm' variant='ghost' onClick={disconnectDiscord}>
                   연결 해제
                 </Button>
               </>
             ) : (
               <>
                 <span className='text-fg-muted'>연결 안 됨</span>
-                <Button size='sm' variant='secondary' className='ml-auto sm:ml-0' onClick={connectDiscord}>
+                <Button size='sm' variant='secondary' onClick={connectDiscord}>
                   연결하기
                 </Button>
               </>
@@ -286,7 +286,7 @@ export default function MyPage() {
       </section>
 
       {/* 찾을 수 있되 눈에 띄지 않게 — 카드 안 한 줄을 통째로 내주면 링크 하나에 무게가 실린다 */}
-      <div className='mt-3 max-w-2xl px-1'>
+      <div className='mt-3 max-w-xl px-1'>
         <Link
           data-anno='profile:7'
           href={`/proto/core/${locale}/my/leave`}
@@ -312,15 +312,15 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className='flex min-h-16 flex-col gap-2 px-6 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6'>
-      <dt className='flex shrink-0 items-center gap-2 whitespace-nowrap font-medium text-fg-secondary'>
-        {label}
-        {/* 저장 표시는 이름 옆 — 값 쪽에 두면 값이 밀려 움직인다 */}
-        <Saved show={saved} />
-      </dt>
-      {/* 값과 동작은 오른쪽으로 모은다 — 이름은 왼쪽, 바꾸는 손은 오른쪽 한 줄로 읽힌다 */}
-      <dd data-anno={anno} className='flex w-full min-w-0 items-center gap-3 sm:w-auto sm:justify-end'>
+    <div className='flex min-h-14 flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:gap-0'>
+      {/* 이름 칸은 고정 폭 — 값이 이름 바로 옆에서 시작해 한 줄로 읽힌다 */}
+      <dt className='shrink-0 whitespace-nowrap font-medium text-fg-secondary sm:w-28'>{label}</dt>
+      <dd data-anno={anno} className='flex min-w-0 flex-1 items-center gap-2'>
         {children}
+        {/* 저장 표시는 줄 끝 — 값 옆에 두면 값이 밀려 움직인다 */}
+        <span className='ml-auto shrink-0'>
+          <Saved show={saved} />
+        </span>
       </dd>
     </div>
   );
