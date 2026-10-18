@@ -61,6 +61,37 @@ async function open() {
 const mutations = () => fetchMock.mock.calls.filter(([, init]) => ['PATCH', 'DELETE'].includes(init?.method));
 
 describe('스터디 수정·삭제 API 연결', () => {
+  it('썸네일 업로드가 끝나야 저장할 수 있고 업로드 번호를 PATCH에 포함한다', async () => {
+    const user = await open();
+    await user.type(screen.getByDisplayValue('기존 제목'), ' 변경');
+    let finish!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    await user.upload(screen.getByLabelText('썸네일 파일'), new File(['image'], 'image.png', { type: 'image/png' }));
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '스터디 삭제' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(mutations()).toHaveLength(0);
+    finish(Response.json({ fileId: 42, url: 'https://example.com/thumbnail.png' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(mutations()).toHaveLength(1));
+    expect(JSON.parse(mutations()[0][1].body)).toEqual({ title: '기존 제목 변경', thumbnailFileId: 42 });
+  });
+
+  it('썸네일 업로드 실패 후 잠금을 해제하고 오류를 표시한다', async () => {
+    const user = await open();
+    await user.type(screen.getByDisplayValue('기존 제목'), ' 변경');
+    let finish!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    await user.upload(screen.getByLabelText('썸네일 파일'), new File(['image'], 'image.png', { type: 'image/png' }));
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    finish(Response.json({ errorMessage: '업로드 실패' }, { status: 500 }));
+    await screen.findByText('업로드 실패');
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '이미지 업로드' })).toBeEnabled();
+    expect(mutations()).toHaveLength(0);
+  });
+
   it('바뀐 제목만 PATCH하고 상세를 다시 읽으며 서버 목록도 갱신한다', async () => {
     const user = await open();
     const title = screen.getByDisplayValue('기존 제목');

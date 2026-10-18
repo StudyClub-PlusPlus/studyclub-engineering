@@ -32,10 +32,11 @@ export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetai
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const update = useUpdateStudy(detail.id);
   const remove = useDeleteStudy(detail.id);
-  const busy = update.isPending || remove.isPending;
+  const busy = uploading || update.isPending || remove.isPending;
 
   useEffect(() => {
     onSavingChange?.(busy);
@@ -90,7 +91,7 @@ export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetai
   return (
     <div className='card px-6 py-5'>
       <fieldset disabled={busy} className='min-w-0' aria-label='스터디 정보'>
-        <StudyForm mode='edit' value={form} errors={errors} onChange={change} />
+        <StudyForm mode='edit' value={form} errors={errors} onChange={change} onUploadingChange={setUploading} />
       </fieldset>
 
       <div className='mt-6 flex items-center gap-3 border-t border-border pt-4'>
@@ -104,6 +105,7 @@ export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetai
           스터디 삭제
         </button>
         <div className='ml-auto flex items-center gap-3'>
+          {uploading && <span role='status' className='text-sm text-fg-muted'>썸네일 업로드 중입니다.</span>}
           {saveError && <span className='text-sm font-medium text-error-600'>{saveError}</span>}
           {saved && !dirty && <span className='text-sm font-medium text-success-700'>저장되었습니다.</span>}
           <Button onClick={save} loading={update.isPending} disabled={!dirty || busy}>

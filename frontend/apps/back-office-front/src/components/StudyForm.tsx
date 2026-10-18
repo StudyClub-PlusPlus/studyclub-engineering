@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Checkbox, Input, Select, Textarea, useImageUpload } from '@studyclub/ui';
 
@@ -421,10 +421,12 @@ function ThumbnailField({
   value,
   error,
   onChange,
+  onUploadingChange,
 }: {
   value: StudyFormValues;
   error?: string;
   onChange: (next: StudyFormValues) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   // 올리는 동안 다른 칸을 고쳐도 덮어쓰지 않게 — 올리기가 끝난 시점의 폼 값에 썸네일만 얹는다
   const latest = useRef(value);
@@ -437,6 +439,11 @@ function ThumbnailField({
       err instanceof ApiError ? err.message : '썸네일을 올리지 못했습니다. 잠시 후 다시 시도해 주세요',
   });
   const shown = thumb.error ?? error;
+
+  useEffect(() => {
+    onUploadingChange?.(thumb.isUploading);
+    return () => onUploadingChange?.(false);
+  }, [thumb.isUploading, onUploadingChange]);
 
   return (
     <div className='flex flex-col gap-1.5'>
@@ -495,11 +502,13 @@ export function StudyForm({
   value,
   errors,
   onChange,
+  onUploadingChange,
   mode = 'create',
 }: {
   value: StudyFormValues;
   errors: StudyFormErrors;
   onChange: (next: StudyFormValues) => void;
+  onUploadingChange?: (uploading: boolean) => void;
   /** 등록이면 프로그램을 고르고, 수정이면 읽기 전용으로 보인다. */
   mode?: FormMode;
 }) {
@@ -531,7 +540,7 @@ export function StudyForm({
         labelHint={<CharCount len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
       />
 
-      <ThumbnailField value={value} error={errors.thumbnailUrl} onChange={onChange} />
+      <ThumbnailField value={value} error={errors.thumbnailUrl} onChange={onChange} onUploadingChange={onUploadingChange} />
 
       <Select
         label='카테고리'
