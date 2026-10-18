@@ -10,7 +10,6 @@ import { useEffect, useState } from 'react';
 import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
 import { getUser, type SessionUser } from '@core/lib/auth';
 import { type Locale } from '@core/lib/content';
-import { t } from '@core/lib/i18n';
 import { PAGE } from '@core/lib/layout';
 import {
   getDiscord,
