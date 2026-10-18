@@ -69,10 +69,6 @@ export const MESSAGES: Dict = {
   },
 
   'notices.title': { ko: '공지사항', en: 'Notices' },
-  'notices.subtitle': {
-    ko: '모집·개편·밋업 등 최신 소식.',
-    en: 'Latest news: recruiting, updates, and meetups.',
-  },
   'notice_tag.notice': { ko: '공지', en: 'Notice' },
   'notice_tag.update': { ko: '업데이트', en: 'Update' },
   'notice_tag.recruit': { ko: '모집', en: 'Recruiting' },

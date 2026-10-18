@@ -31,7 +31,6 @@ export default async function NoticesPage({
     <div className='mx-auto max-w-3xl px-6 py-14'>
       <header>
         <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('notices.title', locale)}</h1>
-        <p className='mt-3 text-lg text-(--color-fg-muted)'>{m('notices.subtitle', locale)}</p>
       </header>
 
       {rows.length === 0 ? (
