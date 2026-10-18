@@ -143,10 +143,9 @@ export function CrewTab({
     setSaved(false);
     setDraftNav((d) => withDraft(d, id, nav === navigators.includes(id) ? undefined : nav));
   }
-  // 여러 명을 골라 반 · 역할을 한 번에 — 고른 값은 저장 전 변경에 얹히고, 「저장」으로 반영한다(출석부 일괄 적용과 같은 방식)
+  // 여러 명을 골라 반 · 역할을 한 번에 — 고르는 즉시 저장 전 변경에 얹히고, 「저장」으로 반영한다(출석부 일괄 변경과 같은 방식).
+  // 「적용」 버튼은 두지 않는다 — 드롭다운에서 고른 것이 곧 적용이다 (2026-10-17 기획 결정)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
-  const [bulkClass, setBulkClass] = useState('');
-  const [bulkRole, setBulkRole] = useState<'' | 'crew' | 'navigator'>('');
   const [announce, setAnnounce] = useState('');
   // 보이는 줄만 센다 — 필터로 숨긴 사람까지 바뀌면 안 된다
   const selected = shown.filter((c) => checkedIds.has(c.id));
@@ -162,16 +161,14 @@ export function CrewTab({
   function pickAll() {
     setCheckedIds(allPicked ? new Set() : new Set(shown.map((c) => c.id)));
   }
-  function applyBulk() {
-    if (!bulkClass && !bulkRole) return;
+  /** 고른 사람 모두의 반 또는 역할을 바꾼다. 선택은 그대로 둔다 — 반과 역할을 이어서 바꿀 수 있게. */
+  function applyBulk(change: { classId?: string; role?: 'crew' | 'navigator' }) {
+    if (selected.length === 0) return;
     for (const c of selected) {
-      if (bulkClass) pickClass(c.id, bulkClass);
-      if (bulkRole) pickRole(c.id, bulkRole === 'navigator');
+      if (change.classId) pickClass(c.id, change.classId);
+      if (change.role) pickRole(c.id, change.role === 'navigator');
     }
     setAnnounce(`${selected.length}명에 적용했습니다. 저장을 눌러야 반영됩니다.`);
-    setCheckedIds(new Set());
-    setBulkClass('');
-    setBulkRole('');
   }
 
   function discard() {
@@ -278,7 +275,69 @@ export function CrewTab({
           />
         </div>
         <div className='mt-2'>
-          <TableCard>
+          <TableCard
+            top={
+              // 표 맨 위 작업 바 — 한 줄. 왼쪽은 고른 크루에 하는 일, 오른쪽은 저장 (POL-0008). 일정 · 출석 표와 같은 자리 · 같은 모양
+              active.length > 0 ? (
+                <TableActionBar
+                  className='top-[var(--table-action-bar-top,4rem)] bottom-auto border-b border-border bg-surface-raised px-4'
+                  data-anno='attendee:3-7'
+                  selection={
+                    <>
+                      <SelectionCount count={selected.length} unit='명' />
+                      {classes.length > 1 && (
+                        <select
+                          aria-label='바꿀 반'
+                          className={SELECT_CLASS}
+                          value=''
+                          disabled={selected.length === 0}
+                          onChange={(e) => e.target.value && applyBulk({ classId: e.target.value })}
+                        >
+                          <option value=''>반 변경</option>
+                          {classes.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {classLabel(c)}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <select
+                        aria-label='바꿀 역할'
+                        className={SELECT_CLASS}
+                        value=''
+                        disabled={selected.length === 0}
+                        onChange={(e) => e.target.value && applyBulk({ role: e.target.value as 'crew' | 'navigator' })}
+                      >
+                        <option value=''>역할 변경</option>
+                        <option value='crew'>크루</option>
+                        <option value='navigator'>네비게이터</option>
+                      </select>
+                      {selected.length > 0 && (
+                        <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
+                          선택 해제
+                        </Button>
+                      )}
+                    </>
+                  }
+                  save={
+                    <span data-anno='attendee:3-5' className='flex items-center gap-2'>
+                      <span role='status' className='text-xs text-fg-muted'>
+                        {saved && changed === 0 ? '저장했습니다.' : ''}
+                      </span>
+                      {changed > 0 && (
+                        <Button variant='ghost' size='sm' onClick={discard}>
+                          변경 취소
+                        </Button>
+                      )}
+                      <Button size='sm' onClick={save} disabled={changed === 0}>
+                        저장
+                      </Button>
+                    </span>
+                  }
+                />
+              ) : undefined
+            }
+          >
             <thead>
               <tr>
                 <th data-anno='attendee:3-6' className='w-8'>
@@ -289,7 +348,7 @@ export function CrewTab({
                     onChange={pickAll}
                   />
                 </th>
-                <th className='whitespace-nowrap'>이름</th>
+                <th className='whitespace-nowrap'>닉네임</th>
                 <th className='whitespace-nowrap'>디스코드 닉네임</th>
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>지역</th>
@@ -339,73 +398,6 @@ export function CrewTab({
         <p className='sr-only' aria-live='polite'>
           {announce}
         </p>
-        {/* 표 하단 작업 바 — 한 줄. 왼쪽은 고른 크루에 하는 일, 오른쪽은 저장 (POL-0008 「표 하단 작업 바」) */}
-        {active.length > 0 && (
-          <TableActionBar
-            className='mt-1'
-            data-anno='attendee:3-7'
-            selection={
-              <>
-                <SelectionCount count={selected.length} unit='명' />
-                {classes.length > 1 && (
-                  <select
-                    aria-label='바꿀 반'
-                    className={SELECT_CLASS}
-                    value={bulkClass}
-                    disabled={selected.length === 0}
-                    onChange={(e) => setBulkClass(e.target.value)}
-                  >
-                    <option value=''>반 변경</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {classLabel(c)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <select
-                  aria-label='바꿀 역할'
-                  className={SELECT_CLASS}
-                  value={bulkRole}
-                  disabled={selected.length === 0}
-                  onChange={(e) => setBulkRole(e.target.value as typeof bulkRole)}
-                >
-                  <option value=''>역할 변경</option>
-                  <option value='crew'>크루</option>
-                  <option value='navigator'>네비게이터</option>
-                </select>
-                <Button
-                  size='sm'
-                  variant='secondary'
-                  onClick={applyBulk}
-                  disabled={selected.length === 0 || (!bulkClass && !bulkRole)}
-                >
-                  적용
-                </Button>
-                {selected.length > 0 && (
-                  <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
-                    선택 해제
-                  </Button>
-                )}
-              </>
-            }
-            save={
-              <span data-anno='attendee:3-5' className='flex items-center gap-2'>
-                <span role='status' className='text-xs text-fg-muted'>
-                  {saved && changed === 0 ? '저장했습니다.' : ''}
-                </span>
-                {changed > 0 && (
-                  <Button variant='ghost' size='sm' onClick={discard}>
-                    변경 취소
-                  </Button>
-                )}
-                <Button size='sm' onClick={save} disabled={changed === 0}>
-                  저장
-                </Button>
-              </span>
-            }
-          />
-        )}
       </section>
     </div>
   );
