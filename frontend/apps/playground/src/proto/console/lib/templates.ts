@@ -1,10 +1,9 @@
 /**
  * 알림 템플릿 (프로토 mock).
  *
- * **문구를 보는 화면이다.** 고치는 길은 두지 않는다 — 편집 API 가 없고, 지금 등록된 문구는
- * 마이그레이션이 넣은 한 건뿐이다.
+ * 문구를 보고·더하고·고치고·지운다. 지금 등록된 문구는 마이그레이션이 넣은 한 건뿐이다.
  *
- * TODO(api): GET /api/admin/notification-templates
+ * TODO(api): GET·POST /api/admin/notification-templates · PUT·DELETE /api/admin/notification-templates/{id}
  */
 
 /**
@@ -27,8 +26,8 @@ export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
 export type NotificationTemplate = {
   id: number;
   /**
-   * 언제 보내는가. **이것이 곧 알림의 이름이다** — 조건 하나에 템플릿 하나라 따로 이름을 받지 않는다.
-   * 이름을 따로 두면 「가입 환영」이라는 템플릿이 탈퇴 때 나가는 일이 생긴다.
+   * 언제 보내는가. **이것이 곧 알림의 이름이다** — 따로 이름을 받지 않는다. 이름을 따로 두면
+   * 「가입 환영」이라는 템플릿이 탈퇴 때 나가는 일이 생긴다. 같은 조건에 여러 통을 둘 수 있고, 제목으로 구분한다.
    */
   trigger: NotificationTrigger;
   /** 지금은 메일뿐이다. 디스코드는 보낼 수단이 아직 없다. */
