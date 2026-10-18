@@ -1,116 +1,115 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-
+import { autolink } from '@core/lib/autolink';
 import { getNotices, type Locale } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
-import { DETAIL_ASIDE, DETAIL_GRID, PAGE, READ } from '@core/lib/layout';
-import { NOTICES, getNotice, type Notice } from '@core/lib/notices';
-import { ArrowLeft, ArrowRight, CalendarDays } from 'lucide-react';
+import { READ } from '@core/lib/layout';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
- * 프로토의 공지 목록은 mock(@studyclub/mock announcements)을 쓴다. 상세는 lib/notices 의 실제 공지를 먼저 찾고,
- * 없으면 mock 공지를 본문 한 단락짜리 공지로 보여 준다.
+ * 공지 상세 — 제목 · 게시일 · 본문, 아래에 이전·다음 공지와 목록으로.
+ *
+ * **본문은 평문이다.** 줄바꿈·공백을 그대로 두고(pre-wrap), HTML 로 해석하지 않는다. 주소만 링크로 바꾼다.
+ * 작성자는 내보내지 않는다 — 운영 콘솔에만 있다.
+ * 삭제된 공지는 목록에 없으므로 그 주소는 404 다. TODO(api): GET /api/notices/{id} — 삭제 건 404, 이전·다음 id·제목 포함
  */
-async function findNotice(id: string): Promise<Notice | undefined> {
-  const real = getNotice(id);
-  if (real) return real;
-  const mock = (await getNotices()).find((a) => a.id === id);
-  return mock && { ...mock, summary: mock.body, blocks: [] };
-}
-
 export async function generateStaticParams() {
-  const ids = new Set([...NOTICES.map((n) => n.id), ...(await getNotices()).map((a) => a.id)]);
-  return [...ids].map((id) => ({ id }));
+  return (await getNotices()).map((a) => ({ id: a.id }));
 }
 
-/** 공지 상세 — 브이크래프트 소식 상세처럼 배너 없는 제목형 머리 + 소제목 위계가 분명한 본문 */
 export default async function NoticeDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
-  const n = await findNotice(id);
-  if (!n) notFound();
+  // 게시일 내림차순 — 앞쪽이 최신이다
+  const list = await getNotices();
+  const i = list.findIndex((a) => a.id === id);
+  if (i < 0) notFound();
+  const n = list[i];
+  // 「다음」 = 더 최신, 「이전」 = 더 오래된 공지. 끝에서는 비활성
+  const newer = i > 0 ? list[i - 1] : undefined;
+  const older = i < list.length - 1 ? list[i + 1] : undefined;
+  const base = `/proto/core/${locale}/notices`;
 
   return (
-    <div className={`${PAGE} py-12`}>
-      <Link
-        href={`/proto/core/${locale}/notices`}
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-(--color-fg-muted) hover:text-(--color-fg)'
-      >
-        <ArrowLeft size={15} /> {m('notices.title', locale)}
-      </Link>
+    <div className='mx-auto max-w-3xl px-6 py-12'>
+      <article className='card overflow-hidden p-0'>
+        <header className='border-b border-(--color-border) px-6 pb-5 pt-7 sm:px-10'>
+          <h1 className={`${READ} break-words text-[24px] font-bold leading-[1.35] tracking-tight sm:text-[28px]`}>
+            {t(n.title, locale)}
+          </h1>
+          <time className='mt-2 block text-sm tabular-nums text-(--color-fg-muted)'>{n.date}</time>
+        </header>
+        {/* 긴 공백·긴 주소가 들어와도 카드 밖으로 넘치지 않게 — pre-wrap + 단어 중간 줄바꿈 허용 */}
+        <div
+          className={`${READ} whitespace-pre-wrap break-words px-6 py-8 text-[16px] leading-[1.85] text-(--color-fg) [overflow-wrap:anywhere] sm:px-10`}
+        >
+          {autolink(t(n.body, locale))}
+        </div>
+      </article>
 
-      <div className={`mt-4 ${DETAIL_GRID}`}>
-        {/* 본문 — 스터디·행사 상세와 같은 머리 카드. 글줄은 READ 폭 */}
-        <article className='card overflow-hidden p-0'>
-          <header
-            className='flex flex-col gap-3 px-6 pb-7 pt-6 sm:px-10'
-            style={{ background: 'linear-gradient(135deg, var(--color-brand-subtle), color-mix(in oklab, var(--color-brand) 12%, white))' }}
-          >
-            <h1 className={`${READ} text-[26px] font-bold leading-[1.3] tracking-tight sm:text-[30px]`}>{t(n.title, locale)}</h1>
-            <p className={`${READ} text-[16px] leading-relaxed text-(--color-fg-muted)`}>{t(n.summary, locale)}</p>
-          </header>
+      <nav aria-label={t({ ko: '다른 공지', en: 'Other notices' }, locale)} className='mt-4 grid grid-cols-2 gap-3'>
+        <NeighborLink
+          dir='prev'
+          label={t({ ko: '이전 공지', en: 'Previous' }, locale)}
+          empty={t({ ko: '이전 공지가 없습니다', en: 'No previous notice' }, locale)}
+          href={older && `${base}/${older.id}`}
+          title={older && t(older.title, locale)}
+        />
+        <NeighborLink
+          dir='next'
+          label={t({ ko: '다음 공지', en: 'Next' }, locale)}
+          empty={t({ ko: '다음 공지가 없습니다', en: 'No next notice' }, locale)}
+          href={newer && `${base}/${newer.id}`}
+          title={newer && t(newer.title, locale)}
+        />
+      </nav>
 
-          <div className={`${READ} flex flex-col gap-4 px-6 py-8 text-[16px] leading-[1.85] text-(--color-fg) sm:px-10`}>
-            {n.blocks.map((b, i) => {
-              if ('h' in b)
-                return (
-                  <h2 key={i} className='mt-6 border-l-[3px] pl-3 text-lg font-bold tracking-tight' style={{ borderColor: 'var(--color-brand)' }}>
-                    {t(b.h, locale)}
-                  </h2>
-                );
-              if ('p' in b) return <p key={i}>{t(b.p, locale)}</p>;
-              if ('ul' in b)
-                return (
-                  <ul key={i} className='flex flex-col gap-1.5 rounded-xl bg-(--color-surface-subtle) px-5 py-4'>
-                    {b.ul.map((li, j) => (
-                      <li key={j} className='flex items-start gap-2'>
-                        <span className='mt-3 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-brand)' }} />
-                        {t(li, locale)}
-                      </li>
-                    ))}
-                  </ul>
-                );
-              return (
-                <Link
-                  key={i}
-                  href={`/proto/core/${locale}${b.link.href}`}
-                  className='inline-flex w-fit items-center gap-1 text-[15px] font-semibold text-(--color-brand) hover:underline'
-                >
-                  {t(b.link.label, locale)} <ArrowRight size={15} />
-                </Link>
-              );
-            })}
-          </div>
-        </article>
-
-        {/* 오른쪽 — 게시 정보와 다음 행동 */}
-        <aside className={`card overflow-hidden p-0 ${DETAIL_ASIDE}`}>
-          <dl className='flex flex-col divide-y divide-(--color-border)'>
-            <div className='flex items-center gap-3 px-6 py-4'>
-              <CalendarDays size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
-              <div>
-                <dt className='text-xs text-(--color-fg-muted)'>{t({ ko: '게시일', en: 'Posted' }, locale)}</dt>
-                <dd className='font-semibold tabular-nums'>{n.date}</dd>
-              </div>
-            </div>
-          </dl>
-          <div className='flex flex-col gap-2 border-t border-(--color-border) bg-(--color-surface-subtle) p-5'>
-            <Link
-              href={`/proto/core/${locale}/studies`}
-              className='inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-white'
-              style={{ background: 'var(--color-brand)' }}
-            >
-              {t({ ko: '모집 중인 스터디 보기', en: 'See open studies' }, locale)} <ArrowRight size={15} />
-            </Link>
-            <Link
-              href={`/proto/core/${locale}/notices`}
-              className='inline-flex items-center justify-center rounded-full border border-(--color-border) bg-(--color-bg) px-5 py-2.5 text-sm font-semibold'
-            >
-              {t({ ko: '다른 공지 보기', en: 'All notices' }, locale)}
-            </Link>
-          </div>
-        </aside>
+      <div className='mt-6 flex justify-center'>
+        <Link
+          href={base}
+          className='inline-flex items-center rounded-full border border-(--color-border) bg-(--color-bg) px-6 py-2.5 text-sm font-semibold hover:bg-(--color-surface-subtle)'
+        >
+          {t({ ko: '목록으로', en: 'Back to list' }, locale)}
+        </Link>
       </div>
+      <span className='sr-only'>{m('notices.title', locale)}</span>
     </div>
+  );
+}
+
+/** 이전·다음 칸 — 이동할 공지의 제목을 함께 보인다. 없으면 흐린 안내만 */
+function NeighborLink({
+  dir,
+  label,
+  empty,
+  href,
+  title,
+}: {
+  dir: 'prev' | 'next';
+  label: string;
+  empty: string;
+  href?: string;
+  title?: string;
+}) {
+  const align = dir === 'next' ? 'items-end text-right' : 'items-start text-left';
+  const head = (
+    <span className='inline-flex items-center gap-1 text-xs font-semibold text-(--color-fg-muted)'>
+      {dir === 'prev' && <ChevronLeft size={14} />}
+      {label}
+      {dir === 'next' && <ChevronRight size={14} />}
+    </span>
+  );
+  if (!href)
+    return (
+      <div aria-disabled='true' className={`card flex min-w-0 flex-col gap-1 p-4 opacity-50 ${align}`}>
+        {head}
+        <span className='text-sm text-(--color-fg-muted)'>{empty}</span>
+      </div>
+    );
+  return (
+    <Link href={href} className={`card card-hover flex min-w-0 flex-col gap-1 p-4 ${align}`}>
+      {head}
+      <span className='w-full truncate text-sm font-semibold'>{title}</span>
+    </Link>
   );
 }

@@ -1,13 +1,13 @@
 'use client';
 
 import type { Notice } from '@console/lib/notices';
-import { MARKDOWN_HINT } from '@core/components/ApplicationFormUi';
 import { Input, Textarea } from '@studyclub/ui';
 
 /**
  * 공지 입력 폼 — **등록 팝업과 편집 팝업이 나눠 쓴다.** 스터디 폼(`StudyForm`)과 같은 규칙이다.
  *
  * 제목과 본문뿐이다. **공개 단계가 없다** — 등록하면 곧 사이트에 올라간다. 분류·상단 고정은 두지 않는다.
+ * **본문은 서식 없는 글이다** — 줄바꿈만 그대로 살린다. 마크다운 기호도 글자 그대로 나간다.
  * 작성자는 받지 않는다 — 로그인한 캡틴으로 정해진다.
  */
 
@@ -68,7 +68,7 @@ export function NoticeForm({
           value={value.body}
           onChange={(ev) => set('body', ev.target.value)}
           error={errors.body}
-          helper={MARKDOWN_HINT}
+          helper='서식 없이 줄바꿈만 그대로 보입니다'
         />
       </div>
     </div>

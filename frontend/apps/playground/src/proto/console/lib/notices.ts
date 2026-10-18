@@ -13,7 +13,7 @@ import { announcements } from '@studyclub/mock';
 export type Notice = {
   id: string;
   title: string;
-  /** 마크다운 — 스터디 상세 설명과 같은 규칙 */
+  /** 서식 없는 글 — 줄바꿈만 그대로 살린다 */
   body: string;
   /** 등록한 캡틴. **콘솔에만 보인다** — 사이트에는 내보내지 않는다 */
   author: string;
