@@ -32,7 +32,7 @@
 | IA-015 | 개인정보 처리방침 | `/privacy` | IA-001 | ST-014 | 푸터 링크 |
 | IA-016 | 소개 | `/about` | IA-001 | — | **고아** — Story 없음 |
 | IA-017 | 가이드 | `/guide` | IA-001 | — | **고아** — Story 없음 |
-| IA-018 | 공지 | `/notices` | IA-001 | — | **고아** — 사이트 공지 Story 없음. 스터디별 공지(ST-016)와 다르다 |
+| IA-018 | 공지 | `/notices` | IA-001 | ST-033 | 목록 · 상세. 비로그인도 본다. 스터디별 공지(ST-016)와 다르다 |
 | IA-019 | 행사 목록 | `/events` | IA-001 | — | **고아** — 행사 Story 없음 |
 | IA-020 | 행사 상세 | `/events/{id}` | IA-019 | — | **고아** |
 
@@ -51,6 +51,7 @@
 | IA-032 | 일정 탭 | `/studies/{id}` › 일정 | IA-024 | ST-025 · ST-015 | 반별 스터디 시간 · 회차 표(사용자 사이트 IA-010 과 같은 표) |
 | IA-029 | 출석 탭 | `/studies/{id}` › 출석 | IA-024 | ST-027 · ST-017 · ST-018 | 반별 출석부 · 일괄 출석 · 참여 중단 |
 | IA-030 | 유저 | `/users` | IA-021 | ST-028 · ST-029 | 회원 목록 · 권한 칸 · 기본 권한 표 |
+| IA-035 | 공지 관리 | `/notices` | IA-021 | ST-033 | 목록 · 등록·편집 팝업 · 삭제. 사용자 사이트 IA-018 과 같은 데이터 |
 | IA-033 | 알림 발송 이력 | `/notifications` | IA-021 | ST-032 | 실패 건 재발송 |
 | IA-034 | 알림 템플릿 | `/notifications/templates` | IA-033 | ST-030 | 보기 · 추가 |
 | IA-031 | 행사 | `/events` | IA-021 | — | **고아** — 행사 Story 없음 |
@@ -86,6 +87,7 @@
 | | | ST-018 네비게이터는 참여자를 스터디에서 제명할 수 있다. | [navigator-withdraw-participant](../stories/navigator-withdraw-participant/PRD.md) |
 | IA-014 | 이용약관 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
 | IA-015 | 개인정보 처리방침 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
+| IA-018 | 공지 | ST-033 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | [captain-post-notice](../stories/captain-post-notice/PRD.md) |
 
 ### 운영 콘솔
 
@@ -109,6 +111,7 @@
 | | | ST-018 네비게이터는 참여자를 스터디에서 제명할 수 있다. — 같은 참여 중단 | [navigator-withdraw-participant](../stories/navigator-withdraw-participant/PRD.md) |
 | IA-030 | 유저 | ST-028 캡틴은 전체 회원 리스트를 조회할 수 있다. | [captain-list-users](../stories/captain-list-users/PRD.md) |
 | | | ST-029 캡틴은 유저에게 서로 다른 역할과 권한을 줄 수 있다. | [captain-grant-roles](../stories/captain-grant-roles/PRD.md) |
+| IA-035 | 공지 관리 | ST-033 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | [captain-post-notice](../stories/captain-post-notice/PRD.md) |
 | IA-033 | 알림 발송 이력 | ST-032 캡틴은 알림 발송 이력을 조회할 수 있다. | [notification-history](../stories/notification-history/PRD.md) |
 | IA-034 | 알림 템플릿 | ST-030 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | [notification-template](../stories/notification-template/PRD.md) |
 
@@ -133,7 +136,7 @@ IA-001 홈 /
 ├─ IA-015 개인정보 처리방침 /privacy
 ├─ IA-016 소개 /about                         (고아)
 ├─ IA-017 가이드 /guide                       (고아)
-├─ IA-018 공지 /notices                       (고아)
+├─ IA-018 공지 /notices
 └─ IA-019 행사 /events                        (고아)
    └─ IA-020 행사 상세 /events/{id}           (고아)
 
@@ -149,6 +152,7 @@ IA-021 대시보드 /
 │     ├─ IA-032 일정
 │     └─ IA-029 출석
 ├─ IA-030 유저 /users
+├─ IA-035 공지 관리 /notices
 ├─ IA-033 알림 발송 이력 /notifications
 │  └─ IA-034 알림 템플릿 /notifications/templates
 └─ IA-031 행사 /events                        (고아)

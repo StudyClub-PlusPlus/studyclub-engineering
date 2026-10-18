@@ -6,10 +6,10 @@
 <!-- NUMBER LEDGER — 모든 ID의 단일 발급처. 수동 편집 금지(에이전트가 갱신). -->
 | prefix | next |
 |---|---|
-| ST | 33 |
+| ST | 34 |
 | EP | 1 |
 | FN | 1 |
-| IA | 35 |
+| IA | 36 |
 | SRC | 1 |
 | POL | 10 |
 
@@ -64,3 +64,4 @@
 | ST-030 | 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | 캡틴 | [PRD](../stories/notification-template/PRD.md) | [콘솔 › 알림 › 알림 템플릿](https://playground.studyclub.life/proto/console/notifications/templates) | [notification](../../specs/notification/spec.md) | | 지금은 보기·추가까지. 수정·삭제는 API 가 없다 |
 | ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 |  |  | | 폐기 | ST-030 에 합쳤다가 다시 갈랐다 — 지금은 ST-032 |
 | ST-032 | 캡틴은 알림 발송 이력을 조회할 수 있다. | 캡틴 | [PRD](../stories/notification-history/PRD.md) | [콘솔 › 알림 › 발송 이력](https://playground.studyclub.life/proto/console/notifications) | [notification](../../specs/notification/spec.md) | | 실패 건 재발송 포함 |
+| ST-033 | 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | 캡틴 | [PRD](../stories/captain-post-notice/PRD.md) | [콘솔 › 공지](https://playground.studyclub.life/proto/console/notices) | | | 스펙 없음 — API·테이블부터. 스터디별 공지(ST-016)와 다르다 |

@@ -4,7 +4,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 export const SPEC: ScreenSpec = {
   screen: '공지 관리 (운영 콘솔)',
   chip: '공지',
-  prd: 'site-notice',
+  prd: 'captain-post-notice',
   scope: 'notice',
   notes: [
     '**스터디 관리 목록·등록 팝업과 같은 모양이다** — 두 화면을 오가는 운영자가 다른 규칙을 외우지 않게',
