@@ -95,7 +95,6 @@ export function FeedbackDetail({ id }: { id: string }) {
 
         {f.images && f.images.length > 0 && (
           <section data-anno='feedback-admin:6' className='px-6 py-5'>
-            <h2 className='mb-2 text-xs font-semibold text-fg-muted'>첨부 이미지 {f.images.length}장</h2>
             <div className='flex flex-wrap gap-2'>
               {f.images.map((src, i) => (
                 <button
@@ -114,7 +113,6 @@ export function FeedbackDetail({ id }: { id: string }) {
         )}
 
         <section data-anno='feedback-admin:4' className='px-6 py-5'>
-          <h2 className='mb-2 text-xs font-semibold text-fg-muted'>제출 환경</h2>
           <dl className='grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5 text-sm'>
             <dt className='text-fg-muted'>화면</dt>
             <dd className='min-w-0'>

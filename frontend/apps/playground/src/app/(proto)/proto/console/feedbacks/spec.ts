@@ -49,7 +49,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '4',
       title: '제출 환경',
-      display: ['화면 경로 · 브라우저(예: Chrome 131 · macOS) · 화면 크기'],
+      display: ['화면 경로 · 브라우저(예: Chrome 131 · macOS) · 화면 크기. 묶음 제목은 두지 않는다'],
       behavior: ['화면 경로를 누르면 그 화면이 새 탭으로 열린다 — 없어진 페이지여도 링크는 건다'],
       policy: ['제출자가 입력한 값이 아니다 — 보낼 때 함께 실려 온다'],
     },
@@ -64,7 +64,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '6',
       title: '첨부 이미지',
-      display: ['본문 아래 썸네일. 첨부가 없으면 칸을 두지 않는다'],
+      display: ['본문 아래 썸네일. 묶음 제목은 두지 않는다. 첨부가 없으면 칸을 두지 않는다'],
       behavior: ['누르면 크게 본다'],
       data: ['업로드 fileId (STORAGE_OBJECT) — 미구현'],
     },
