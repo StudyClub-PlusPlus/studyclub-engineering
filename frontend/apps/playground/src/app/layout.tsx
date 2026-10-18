@@ -5,8 +5,8 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Playground · StudyClub++", template: "%s · Playground" },
-  description: "StudyClub++ 디자인 playground — 실제 컴포넌트로 화면을 조립하는 샌드박스.",
+  title: { default: "Playground · StudyClub", template: "%s · Playground" },
+  description: "StudyClub 디자인 playground — 실제 컴포넌트로 화면을 조립하는 샌드박스.",
   robots: { index: false, follow: false },
 };
 

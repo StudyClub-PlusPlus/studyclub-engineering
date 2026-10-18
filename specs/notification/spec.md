@@ -256,7 +256,7 @@ stateDiagram-v2
     "id": 1,
     "eventType": "USER_REGISTERED",
     "channel": "EMAIL",
-    "subject": "[StudyClub++] 회원가입을 환영합니다",
+    "subject": "[StudyClub] 회원가입을 환영합니다",
     "body": "안녕하세요, {{nickname}}님...",
     "updatedAt": "2026-09-12T00:00:00Z",
     "updatedByAdminId": null
@@ -461,24 +461,24 @@ id 를 모으는 사이 다른 캡틴이 일부를 먼저 다시 보냈다면 �
 ## 웰컴메일 콘텐츠
 
 - 트리거: `USER_REGISTERED`, 채널: `EMAIL`, 발송 시점: 즉시(`scheduled_at = NULL`)
-- 제목: `[StudyClub++] 회원가입을 환영합니다` (V38, 제목 규칙은 [메일 템플릿 README §제목 규칙](../../docs/mail-templates/README.md#제목-규칙))
+- 제목: `[StudyClub] 회원가입을 환영합니다` (V38, 제목 규칙은 [메일 템플릿 README §제목 규칙](../../docs/mail-templates/README.md#제목-규칙))
 - 본문은 알림 이벤트 카탈로그 문서의 초안을 그대로 쓰되, **`{{name}}` 을 `{{nickname}}` 으로 바꾼다** — 이 서비스는 실명(`NAME`) 컬럼을 두지 않기로 이미 결정했고([user-onboarding/spec.md](../user-onboarding/spec.md)), 화면에 보여줄 이름은 `ACCOUNT.NICKNAME` 하나뿐이다.
 - 마케팅 수신 동의 여부와 무관하게 발송 — 가입 완료를 알리는 트랜잭션 메일이라 `ACCOUNT_CONSENT.MARKETING` 을 확인하지 않는다(이벤트 카탈로그 문서의 코멘트로 이미 확정: 홍보 문구를 최소화하고 정보 안내용으로 유지).
 
 ```
 안녕하세요, {{nickname}}님.
 
-StudyClub++ 회원가입이 완료되었습니다.
+StudyClub 회원가입이 완료되었습니다.
 가입을 환영합니다!
 
-StudyClub++ 바로가기
+StudyClub 바로가기
 
 이 메일은 회원님의 가입 요청에 따라 가입 완료 사실을 안내하기 위해 발송되었습니다.
 
-직접 가입하지 않으셨거나 계정 관련 문의가 있다면 support@studyclub-plusplus.com으로 연락해 주세요.
+직접 가입하지 않으셨거나 계정 관련 문의가 있다면 support@studyclub.life으로 연락해 주세요.
 
 감사합니다.
-StudyClub++ 드림
+StudyClub 드림
 ```
 
 렌더링은 `{{nickname}}` 문자열 치환 하나뿐이라 별도 템플릿 엔진 라이브러리 없이 `String.replace` 로
@@ -550,7 +550,7 @@ mail:
     secret-access-key: ${MAIL_CS_SECRET_ACCESS_KEY:}
 ```
 
-- 카테고리별로 `region` · `sub-domain`(예: `notify.studyclub-plusplus.com`) · `from-address` · SES
+- 카테고리별로 `region` · `sub-domain`(예: `notify.studyclub.life`) · `from-address` · SES
   발송용 `access-key-id`/`secret-access-key` 를 따로 둔다 — 카테고리마다 다른 AWS 리전·발신
   서브도메인·IAM 자격증명을 쓸 수 있게 하기 위해서다(**결정 — 리전도 카테고리마다 달라질 수 있게
   설계**. 공통값 하나로 묶지 않는다). 값은 기존 `google.client-secret: ${GOOGLE_CLIENT_SECRET:}` 과

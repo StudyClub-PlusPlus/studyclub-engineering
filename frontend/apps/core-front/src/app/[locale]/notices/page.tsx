@@ -1,3 +1,4 @@
+import { Pin } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
@@ -42,7 +43,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
             }
           >
             <div className='flex flex-wrap items-center gap-2'>
-              {n.pinned && <span aria-label='pinned'>📌</span>}
+              {n.pinned && <Pin size={14} aria-label='pinned' style={{ color: 'var(--color-brand)' }} />}
               {n.tag && <Pill>{m(`notice_tag.${n.tag}`, locale)}</Pill>}
               <time className='ml-auto text-xs font-medium text-(--color-fg-faint)'>{n.date}</time>
             </div>

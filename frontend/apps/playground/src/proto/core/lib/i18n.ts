@@ -28,9 +28,9 @@ export const MESSAGES: Dict = {
   'nav.terms': { ko: '이용약관', en: 'Terms' },
   'nav.privacy': { ko: '개인정보처리방침', en: 'Privacy' },
 
-  'issue.label': { ko: 'StudyClub++ · Vol.1', en: 'StudyClub++ · Vol.1' },
+  'issue.label': { ko: 'StudyClub · Vol.1', en: 'StudyClub · Vol.1' },
 
-  'hero.eyebrow': { ko: 'StudyClub++', en: 'StudyClub++' },
+  'hero.eyebrow': { ko: 'StudyClub', en: 'StudyClub' },
   'hero.title': {
     ko: '미국·캐나다·한국이 함께하는\n글로벌 스터디 클럽++',
     en: 'A global study club++\nacross the US, Canada & Korea',
@@ -53,8 +53,8 @@ export const MESSAGES: Dict = {
   'about.operators': { ko: '캡틴', en: 'Captains' },
   'about.captain_title': { ko: '캡틴이란?', en: "What's a Captain?" },
   'about.captain_body': {
-    ko: '캡틴(Captain)은 StudyClub++ 의 자원봉사 운영진입니다. 스터디를 여는 초기 세팅 — 모집 광고, 디스코드 채널 개설, 킥오프 진행 — 을 도와, 스터디원이 공부에만 집중할 수 있게 합니다.',
-    en: "Captains are StudyClub++'s volunteer organizers. They handle the initial setup for a study — recruiting, spinning up the Discord channel, and running the kickoff — so members can focus on studying.",
+    ko: '캡틴(Captain)은 StudyClub 의 자원봉사 운영진입니다. 스터디를 여는 초기 세팅 — 모집 광고, 디스코드 채널 개설, 킥오프 진행 — 을 도와, 스터디원이 공부에만 집중할 수 있게 합니다.',
+    en: "Captains are StudyClub's volunteer organizers. They handle the initial setup for a study — recruiting, spinning up the Discord channel, and running the kickoff — so members can focus on studying.",
   },
 
   'guide.title': { ko: '가이드', en: 'Guide' },

@@ -44,14 +44,14 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
         fontFamily: 'sans-serif',
       }}
     >
-      <div style={{ fontSize: 34, letterSpacing: 6, color: '#7dd3fc', fontWeight: 700 }}>STUDYCLUB++</div>
+      <div style={{ fontSize: 34, letterSpacing: 6, color: '#7dd3fc', fontWeight: 700 }}>STUDYCLUB</div>
       <div style={{ fontSize: 68, fontWeight: 800, lineHeight: 1.25, marginTop: 28, whiteSpace: 'pre-wrap' }}>
         {headline}
       </div>
       <div style={{ display: 'flex', gap: 20, marginTop: 44, fontSize: 30, color: '#cbd5e1' }}>
         <span>{members}</span>
         <span style={{ color: '#475569' }}>·</span>
-        <span>studyclub-plusplus.com</span>
+        <span>studyclub.life</span>
       </div>
     </div>,
     size,

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { Moon, Sun } from 'lucide-react';
+
 import type { Locale } from '@/lib/content';
 
 type Region = {
@@ -90,7 +92,9 @@ export function RegionClocks({ locale }: { locale: Locale }) {
                 </div>
                 <div className='text-xs text-[var(--color-fg-muted)]'>{locale === 'ko' ? r.city.ko : r.city.en}</div>
               </div>
-              <span className='ml-auto text-lg'>{p ? (p.daytime ? '☀️' : '🌙') : ''}</span>
+              <span className='ml-auto' aria-hidden='true'>
+                {p ? p.daytime ? <Sun size={18} className='text-amber-500' /> : <Moon size={18} className='text-indigo-400' /> : null}
+              </span>
             </div>
             <div className='mt-2 px-5 pb-4' style={{ background: r.soft }}>
               <div

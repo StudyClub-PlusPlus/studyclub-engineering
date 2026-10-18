@@ -1,6 +1,6 @@
 # 운영 대시보드 화면·API Spec
 
-> Playground: [운영 콘솔 대시보드](https://playground.studyclub-plusplus.com/proto/console)
+> Playground: [운영 콘솔 대시보드](https://playground.studyclub.life/proto/console)
 > Story PRD: [캡틴은 운영 현황을 한 화면에서 볼 수 있다](../../01-planning/stories/console-dashboard/PRD.md) (ST-002) — 화면이 무엇을 하는지·완료 기준은 PRD 가 정본
 > 작성일: 2026-09-16 · 수정일: 2026-10-07
 > 대상: 캡틴용 운영 콘솔. 이 문서는 구현할 화면·집계·API 계약을 정의한다.

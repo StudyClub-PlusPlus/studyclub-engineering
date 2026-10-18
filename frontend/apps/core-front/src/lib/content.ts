@@ -1,9 +1,10 @@
-// StudyClub++ 콘텐츠 접근자.
+// StudyClub 콘텐츠 접근자.
 // 스터디는 백엔드 API 에서 가져온다. 실패하면 예시 데이터로 메우지 않고 빈 목록·null 을 준다 —
 // 화면은 빈 상태를 그린다(상세는 클라이언트가 404·500 에 반응한다).
-// 행사·운영진·공지는 아직 API 가 없어 빈 목록이다. 사이트 설정(디스코드 초대·커뮤니티 규모)만 상수로 둔다.
+// 행사는 기능 개발 전이라 예시 데이터(@studyclub/mock events)를 그대로 보여 준다 — 실제 지난 행사들이다.
+// 운영진·공지는 아직 API 가 없어 빈 목록이다. 사이트 설정(디스코드 초대·커뮤니티 규모)은 상수로 둔다.
 import type { Study, StudyclubEvent, Operator, Site, Announcement } from '@studyclub/mock';
-import { site as siteData } from '@studyclub/mock';
+import { events as eventsData, site as siteData } from '@studyclub/mock';
 
 import { fetchStudies, fetchStudy } from './api';
 
@@ -36,9 +37,9 @@ export async function getStudies(): Promise<Study[]> {
   }
 }
 
-// TODO(api): GET /api/events — 행사 API 가 생기면 연동. 그전까지는 빈 목록(화면은 빈 상태).
+// TODO(api): GET /api/events — 행사 API 가 생기면 연동. 그전까지는 mock 데이터.
 export async function getEvents(): Promise<StudyclubEvent[]> {
-  return [];
+  return [...eventsData].sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.id.localeCompare(b.id));
 }
 
 // TODO(api): GET /api/operators — 운영진 API 가 생기면 연동. 빈 목록이면 소개 페이지가 섹션을 숨긴다.

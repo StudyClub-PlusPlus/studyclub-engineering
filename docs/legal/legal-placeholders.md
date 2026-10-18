@@ -15,9 +15,9 @@
 
 | # | 항목 | 값 | 상태 |
 |---|---|---|---|
-| 1 | 개인정보 보호책임자 | 강주영 / 개인정보 보호책임자 / `privacy@studyclub-plusplus.com` | ✅ 확정 |
+| 1 | 개인정보 보호책임자 | 강주영 / 개인정보 보호책임자 / `privacy@studyclub.life` | ✅ 확정 |
 | 2 | 대표자 성명 | 강주영 | ✅ 확정 |
-| 3 | 대표 이메일 주소 | `contact@studyclub-plusplus.com` | ✅ 확정 |
+| 3 | 대표 이메일 주소 | `contact@studyclub.life` | ✅ 확정 |
 | 4 | 국외 이전 여부 | **있음** | ★ 결정 필요 |
 | 5 | 국외 이전 상세 | Google LLC · Discord Inc. (미국) | ⚠️ 연락처 검증 필요 |
 | 6 | 수탁자 — 서버·인프라 | 현재 해당 없음 → **행 삭제** | ✅ 확정 |
@@ -32,7 +32,7 @@
 ```
 성명:   강주영
 직책:   개인정보 보호책임자
-연락처: privacy@studyclub-plusplus.com
+연락처: privacy@studyclub.life
 ```
 
 - `privacy@` 는 **이미 수신되는 주소**다. 운영 도메인에 걸린 기존 별칭이라 새로 만들 것이 없다.
@@ -48,7 +48,7 @@
 ## [3] 대표 이메일 주소 — 약관 제6조·제11조·제12조, 방침 도입부·제13조 (총 5곳)
 
 ```
-contact@studyclub-plusplus.com
+contact@studyclub.life
 ```
 
 - 열람·정정·삭제·탈퇴·이의제기 접수처. **요청일로부터 10일 내 응답 의무**가 붙는 주소이므로 실제로 읽는 사람이 있어야 한다.

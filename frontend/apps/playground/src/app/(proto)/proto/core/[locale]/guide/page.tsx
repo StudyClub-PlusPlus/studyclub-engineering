@@ -57,8 +57,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
     {
       q: { ko: '참여 비용이 있나요?', en: 'Does it cost anything?' },
       a: {
-        ko: '무료입니다. StudyClub++ 는 100% 자원봉사로 운영되며, 발생하는 수익은 전액 기부합니다.',
-        en: "It's free. StudyClub++ is 100% volunteer-run, and any profits are donated in full.",
+        ko: '무료입니다. StudyClub 는 100% 자원봉사로 운영되며, 발생하는 수익은 전액 기부합니다.',
+        en: "It's free. StudyClub is 100% volunteer-run, and any profits are donated in full.",
       },
     },
     {
@@ -118,8 +118,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
         <p className='max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg)]'>
           {t(
             {
-              ko: `StudyClub++ 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 스터디 커뮤니티입니다. 여러 스터디가 모인 '풀(pool)'로, 누구나 공부하고 싶은 주제로 스터디를 제안하고 운영할 수 있습니다. 디스코드에서 모든 스터디와 이벤트가 운영됩니다.`,
-              en: `StudyClub++ is a global study community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It's a pool of study groups — anyone can propose and run a study on a topic they want to learn. Every study and event runs on Discord.`,
+              ko: `StudyClub 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 스터디 커뮤니티입니다. 여러 스터디가 모인 '풀(pool)'로, 누구나 공부하고 싶은 주제로 스터디를 제안하고 운영할 수 있습니다. 디스코드에서 모든 스터디와 이벤트가 운영됩니다.`,
+              en: `StudyClub is a global study community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It's a pool of study groups — anyone can propose and run a study on a topic they want to learn. Every study and event runs on Discord.`,
             },
             locale,
           )}

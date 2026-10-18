@@ -1,11 +1,11 @@
 import Link from 'next/link';
 
-import { ArrowRight, BookOpen, Calendar, Compass, MessageCircle } from 'lucide-react';
+import { ArrowRight, BookOpen, Calendar, Compass, Flag, Globe2, MessageCircle, Users } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
 import { RegionClocks } from '@/components/RegionClocks';
-import { getSite, getOperators, type Locale } from '@/lib/content';
+import { getSite, getOperators, type L10n, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 
@@ -23,26 +23,47 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   const { locale } = await params;
   const [site, operators] = await Promise.all([getSite(), getOperators()]);
 
-  const captainPoints = [
+  // 역할 세 가지 — 크루(참여) · 네비게이터(스터디 하나를 이끈다) · 캡틴(운영진).
+  // 예전 「반장·부반장」은 네비게이터로 바뀌었다.
+  const roles: { id: string; icon: typeof Users; name: L10n; tagline: L10n; points: L10n[] }[] = [
     {
-      ko: '스터디 초기 세팅(모집 광고 · 디스코드 · 킥오프)을 도와줍니다.',
-      en: 'They handle the initial setup — recruiting, Discord, and kickoff.',
+      id: 'crew',
+      icon: Users,
+      name: { ko: '크루', en: 'Crew' },
+      tagline: { ko: '함께 공부하는 스터디원', en: 'Members who study together' },
+      points: [
+        { ko: '모집 중인 스터디에 신청하면 크루가 됩니다.', en: 'Apply to a recruiting study and you become Crew.' },
+        { ko: '매주 세션에 참여하고 돌아가며 발표합니다.', en: 'Join weekly sessions and take turns presenting.' },
+        { ko: '마지막 회고로 한 시즌을 마무리합니다.', en: 'Wrap up the season with a retro.' },
+      ],
     },
     {
-      ko: '100% 자원봉사이며, 수익은 전액 기부합니다.',
-      en: '100% volunteer, and all profits are donated.',
+      id: 'navigator',
+      icon: Flag,
+      name: { ko: '네비게이터', en: 'Navigator' },
+      tagline: { ko: '스터디 하나를 이끄는 진행자', en: 'The guide who leads a study' },
+      points: [
+        { ko: '일정·출석·발표 순서를 챙기며 스터디를 끝까지 이끕니다.', en: 'Keeps the schedule, attendance, and presenter rotation on track.' },
+        { ko: '스터디의 디스코드 채널을 운영하고 크루의 질문을 받습니다.', en: "Runs the study's Discord channel and answers Crew questions." },
+      ],
     },
     {
-      ko: '캡틴은 모든 스터디와 이벤트에 무료로 참여합니다.',
-      en: 'Captains join every study and event for free.',
+      id: 'captain',
+      icon: Compass,
+      name: { ko: '캡틴', en: 'Captain' },
+      tagline: { ko: '커뮤니티를 운영하는 운영진', en: 'Volunteer organizers of the community' },
+      points: [
+        { ko: '스터디 초기 세팅(모집 광고 · 디스코드 · 킥오프)을 도와줍니다.', en: 'Handle the initial setup — recruiting, Discord, and kickoff.' },
+        { ko: '100% 자원봉사이며, 수익은 전액 기부합니다.', en: '100% volunteer, and all profits are donated.' },
+        { ko: '모든 스터디와 이벤트에 무료로 참여하고, 누구나 지원할 수 있습니다.', en: 'Join every study and event for free — and anyone can apply.' },
+      ],
     },
-    { ko: '누구나 캡틴에 지원할 수 있습니다.', en: 'Anyone can apply to become a Captain.' },
   ];
 
   const body = t(
     {
-      ko: `StudyClub++ 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 커뮤니티입니다. SWE/MLE 커리어 — 이력서, 인터뷰, 시스템 디자인, 커리어 생존 — 를 함께 준비하는 자원봉사 운영 모임입니다. 세 지역의 시차를 넘나들며 온라인 세션과 오프라인 밋업을 오가고, 원격으로도 참여합니다.`,
-      en: `StudyClub++ is a global community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It is a volunteer-run group preparing together for SWE/MLE careers — resumes, interviews, system design, and career survival. Spanning three time zones, we mix online meetings with offline meetups, and members join remotely.`,
+      ko: `StudyClub 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 커뮤니티입니다. SWE/MLE 커리어 — 이력서, 인터뷰, 시스템 디자인, 커리어 생존 — 를 함께 준비하는 자원봉사 운영 모임입니다. 세 지역의 시차를 넘나들며 온라인 세션과 오프라인 밋업을 오가고, 원격으로도 참여합니다.`,
+      en: `StudyClub is a global community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It is a volunteer-run group preparing together for SWE/MLE careers — resumes, interviews, system design, and career survival. Spanning three time zones, we mix online meetings with offline meetups, and members join remotely.`,
     },
     locale,
   );
@@ -83,26 +104,36 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         <p className='max-w-3xl text-[17px] leading-loose text-[var(--color-fg)]'>{body}</p>
       </div>
 
-      {/* 캡틴이란? */}
-      <div
-        className='mt-6 rounded-2xl border p-8'
-        style={{ background: 'var(--color-brand-subtle)', borderColor: 'var(--color-brand-subtle)' }}
-      >
-        <h2 className='flex items-center gap-2 text-xl font-bold tracking-tight'>
-          <Compass size={20} style={{ color: 'var(--color-brand)' }} />
-          {m('about.captain_title', locale)}
-        </h2>
-        <p className='mt-3 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
-          {m('about.captain_body', locale)}
+      {/* 역할 — 크루 · 네비게이터 · 캡틴 */}
+      <div className='mt-10'>
+        <h2 className='text-xl font-bold tracking-tight'>{m('about.roles_title', locale)}</h2>
+        <p className='mt-2 max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>
+          {m('about.roles_body', locale)}
         </p>
-        <ul className='mt-5 grid gap-2.5 sm:grid-cols-2'>
-          {captainPoints.map((p, i) => (
-            <li key={i} className='flex items-start gap-2 text-[15px] text-[var(--color-fg)]'>
-              <span className='mt-2 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-brand)' }} />
-              {t(p, locale)}
-            </li>
+        <div className='mt-5 grid gap-4 md:grid-cols-3'>
+          {roles.map((r) => (
+            <section
+              key={r.id}
+              id={r.id}
+              className='scroll-mt-20 rounded-2xl border p-6'
+              style={{ background: 'var(--color-brand-subtle)', borderColor: 'var(--color-brand-subtle)' }}
+            >
+              <h3 className='flex items-center gap-2 text-lg font-bold tracking-tight'>
+                <r.icon size={20} style={{ color: 'var(--color-brand)' }} />
+                {t(r.name, locale)}
+              </h3>
+              <p className='mt-1 text-sm font-medium text-[var(--color-brand)]'>{t(r.tagline, locale)}</p>
+              <ul className='mt-4 flex flex-col gap-2.5'>
+                {r.points.map((p, i) => (
+                  <li key={i} className='flex items-start gap-2 text-[15px] leading-relaxed text-[var(--color-fg)]'>
+                    <span className='mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-brand)' }} />
+                    {t(p, locale)}
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       </div>
 
       {/* 캡틴 (운영진) 소개 */}
@@ -124,7 +155,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       {/* 글로벌 — 세 지역 실시간 시계 */}
       <div className='mt-10'>
         <h2 className='mb-4 flex items-center gap-2 text-xl font-bold tracking-tight'>
-          🌏 {t({ ko: '지금, 세 지역에서', en: 'Right now, across three regions' }, locale)}
+          <Globe2 size={20} style={{ color: 'var(--color-brand)' }} />
+          {t({ ko: '지금, 세 지역에서', en: 'Right now, across three regions' }, locale)}
         </h2>
         <RegionClocks locale={locale} />
       </div>

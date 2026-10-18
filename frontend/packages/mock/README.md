@@ -1,6 +1,6 @@
 # @studyclub/mock
 
-StudyClub++ 모노레포의 공유 목 데이터 + 도메인 타입/상수/유틸 + MSW(Mock Service Worker) 계층 패키지입니다.
+StudyClub 모노레포의 공유 목 데이터 + 도메인 타입/상수/유틸 + MSW(Mock Service Worker) 계층 패키지입니다.
 
 ## 디렉토리 구조
 

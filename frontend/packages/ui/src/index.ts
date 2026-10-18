@@ -72,7 +72,7 @@ export { HotBadge } from './HotBadge';
 
 export { DiscordGlyph } from './DiscordGlyph';
 
-export { StudyThumb, categoryMeta, categoryGradient } from './StudyThumb';
+export { StudyThumb, categoryArtUrl, categoryMeta, categoryGradient } from './StudyThumb';
 export type { StudyThumbProps } from './StudyThumb';
 
 export {

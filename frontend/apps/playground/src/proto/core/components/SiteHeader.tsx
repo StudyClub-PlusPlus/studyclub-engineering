@@ -34,7 +34,7 @@ export function SiteHeader({
           >
             S
           </span>
-          StudyClub++
+          StudyClub
         </Link>
 
         <NavLinks

@@ -21,7 +21,7 @@ const DISCORD_KEY = 'sc_discord';
 const DISCORD_NICK_KEY = 'sc_discord_nickname';
 const MARKETING_KEY = 'sc_marketing';
 
-/** 스터디클럽++ 서버 별명 예시. 이름/직무/지역/관심주제. */
+/** 스터디클럽 서버 별명 예시. 이름/직무/지역/관심주제. */
 export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자인';
 
 function readJSON<T>(key: string, fallback: T): T {
@@ -183,7 +183,7 @@ export function setMarketing(on: boolean) {
 }
 
 /**
- * 스터디클럽++ 디스코드 서버 별명.
+ * 스터디클럽 디스코드 서버 별명.
  *
  * 계정(`ACCOUNT.DISCORD_NICKNAME`)에 있으면 신청 폼의 기본값으로 채운다.
  * 지원자가 고친 값은 여기에 다시 저장한다.
