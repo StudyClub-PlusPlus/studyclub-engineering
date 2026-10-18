@@ -23,7 +23,7 @@ import {
   type Study,
 } from '@studyclub/mock';
 import { Badge, Button, Modal, Pagination, Select, cx } from '@studyclub/ui';
-import { Check, Minus, RotateCcw } from 'lucide-react';
+import { Check, Minus } from 'lucide-react';
 
 /**
  * 스터디 관리 목록.
@@ -43,8 +43,7 @@ import { Check, Minus, RotateCcw } from 'lucide-react';
  * 필터는 **사용자 사이트 목록과 같은 모양**이다 — 선택지가 적은 축은 드롭다운이 아니라 세그먼트 탭으로,
  * 눌러 보기 전에 무엇이 걸려 있는지 보이게 한다. 카테고리는 `STUDY.CATEGORY` 가 단일 값이라 드롭다운 단일 선택이다.
  *
- * 컬럼 순서는 운영자가 바꿀 수 있다. **프로그램 ID › 스터디(제목) 두 칸은 맨 앞에 고정**한다 — 행이 어느 스터디인지 잃으면
- * 나머지 칸을 읽을 수 없고, 프로그램이 스터디를 묶는 위계라 그 앞에 온다.
+ * 칼럼 순서는 고정이다 — 운영자가 끌어서 바꾸지 않는다. 프로그램 ID › 스터디(제목) 두 칸이 맨 앞이다.
  *
  * 행에 편집·삭제 버튼을 두지 않는다. 스터디 이름을 누르면 **운영 페이지**로 들어가고, 거기서
  * 크루 명단·출석·정보 수정을 모두 한다.
@@ -330,29 +329,6 @@ function SortLabel({
   );
 }
 
-const DEFAULT_ORDER: ColumnKey[] = COLUMNS.map((c) => c.key);
-const ORDER_STORAGE_KEY = 'studyclub.console.studies.columns';
-
-/** 저장된 순서를 읽는다. 컬럼이 늘거나 줄었어도 깨지지 않게 알려진 키만 남기고 빠진 것은 뒤에 붙인다. */
-function loadOrder(): ColumnKey[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) ?? 'null');
-    if (!Array.isArray(raw)) return DEFAULT_ORDER;
-    const known = raw.filter((k): k is ColumnKey => DEFAULT_ORDER.includes(k));
-    return [...known, ...DEFAULT_ORDER.filter((k) => !known.includes(k))];
-  } catch {
-    return DEFAULT_ORDER;
-  }
-}
-
-function move<T>(list: T[], from: number, to: number): T[] {
-  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return list;
-  const next = [...list];
-  const [item] = next.splice(from, 1);
-  next.splice(to, 0, item);
-  return next;
-}
-
 export function StudiesTable({ studies }: { studies: Study[] }) {
   const [patch, setPatch] = useState<Record<string, PublishPatch>>({});
   const [query, setQuery] = useState('');
@@ -365,8 +341,6 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   // 처음부터 그 열을 강조해 두어, 지금 무엇으로 줄 세웠는지 늘 보이게 한다.
   const [sort, setSort] = useState<SortState>({ key: 'recruit', dir: 'asc' });
   const [page, setPage] = useState(1);
-  const [order, setOrder] = useState<ColumnKey[]>(DEFAULT_ORDER);
-  const [dragKey, setDragKey] = useState<ColumnKey | null>(null);
   // 가로 스크롤바를 표 위에도 둔다 — 행이 많으면 아래로 내려가야 스크롤바가 보인다.
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
@@ -399,25 +373,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
     dst.scrollLeft = src.scrollLeft;
   }
 
-  // 저장된 순서는 마운트 뒤에 읽는다 — 서버 렌더와 첫 클라이언트 렌더가 같아야 한다.
-  useEffect(() => setOrder(loadOrder()), []);
 
-  function changeOrder(next: ColumnKey[]) {
-    setOrder(next);
-    try {
-      localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // 저장이 막혀 있어도(시크릿 창 등) 이번 화면에서는 순서가 바뀐다
-    }
-  }
-
-  // 컬럼을 뺐다 넣었다 하는 동안 localStorage 에 남은 옛 컬럼 키(예: 삭제된 'schedule')가
-  // 있어도 죽지 않도록 존재하지 않는 키는 걸러낸다 — order 는 loadOrder() 가 이미 걸러주지만
-  // 방어적으로 한 번 더 막는다.
-  const columns = order
-    .map((k) => COLUMNS.find((c) => c.key === k))
-    .filter((c): c is (typeof COLUMNS)[number] => c !== undefined);
-  const isDefaultOrder = order.every((k, i) => k === DEFAULT_ORDER[i]);
+  // 칼럼 순서는 고정이다 — 운영자가 바꾸지 않는다
+  const columns = COLUMNS;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -478,7 +436,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   return (
     <div>
       {/* 필터는 한 줄에 둔다. 좁으면 줄바꿈하지 않고 옆으로 넘긴다. */}
-      <div data-anno='list:4' className='mb-5 flex flex-nowrap items-center gap-2 overflow-x-auto'>
+      <div data-anno='list:4' className='mb-3 flex flex-nowrap items-center gap-2 overflow-x-auto'>
         <input
           type='search'
           value={query}
@@ -553,19 +511,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         <span className='ml-auto shrink-0 pl-2 text-xs text-fg-muted'>{rows.length}개</span>
       </div>
 
-      <div className='mb-2 flex h-6 items-center justify-end'>
-        {!isDefaultOrder && (
-          <button
-            type='button'
-            onClick={() => changeOrder(DEFAULT_ORDER)}
-            className='inline-flex items-center gap-1 text-xs font-medium text-fg-muted hover:text-fg'
-          >
-            <RotateCcw size={12} /> 컬럼 순서 초기화
-          </button>
-        )}
-      </div>
-
-      <div data-anno='list:6' className='card'>
+      <div className='card'>
         <div
           ref={topScrollRef}
           onScroll={() => syncScroll('top')}
@@ -595,19 +541,8 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     onChange={(d) => applySort('title', d)}
                   />
                 </th>
-                {columns.map((c, i) => (
-                  <th
-                    key={c.key}
-                    draggable
-                    onDragStart={() => setDragKey(c.key)}
-                    onDragEnd={() => setDragKey(null)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => {
-                      if (dragKey) changeOrder(move(order, order.indexOf(dragKey), i));
-                      setDragKey(null);
-                    }}
-                    className={`group whitespace-nowrap ${dragKey === c.key ? 'opacity-40' : ''}`}
-                  >
+                {columns.map((c) => (
+                  <th key={c.key} className='whitespace-nowrap'>
                     <span className='inline-flex items-center gap-1'>
                       <SortLabel
                         label={c.label}
