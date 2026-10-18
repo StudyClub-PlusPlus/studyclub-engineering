@@ -147,7 +147,7 @@ export const ATTENDEE_SPEC: ScreenSpec = {
       n: '3-4',
       title: '디스코드 닉네임',
       when: '신청자 탭을 보고 있을 때',
-      display: ['그 크루의 스터디클럽++ 디스코드 서버 별명. 없으면 「—」'],
+      display: ['그 크루의 스터디클럽 디스코드 서버 별명. 없으면 「—」'],
       policy: ['운영자가 디스코드에서 그 사람을 찾을 때 쓴다. 신청할 때 받은 값으로 계정에 저장된다'],
       data: ['ACCOUNT.DISCORD_NICKNAME'],
     },

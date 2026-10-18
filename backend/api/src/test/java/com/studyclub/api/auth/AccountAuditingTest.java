@@ -38,7 +38,7 @@ class AccountAuditingTest {
         // when
         Account saved =
                 accounts.save(
-                        new Account("audit@studyclub-plusplus.com", "감사", null, SystemRole.MEMBER));
+                        new Account("audit@studyclub.life", "감사", null, SystemRole.MEMBER));
         em.flush();
 
         // then
@@ -52,7 +52,7 @@ class AccountAuditingTest {
         // given
         Account saved =
                 accounts.save(
-                        new Account("edit@studyclub-plusplus.com", "수정", null, SystemRole.MEMBER));
+                        new Account("edit@studyclub.life", "수정", null, SystemRole.MEMBER));
         em.flush();
         Instant createdAt = saved.getCreatedAt();
         Instant updatedAt = saved.getUpdatedAt();

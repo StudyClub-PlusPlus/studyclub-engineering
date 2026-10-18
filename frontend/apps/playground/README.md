@@ -1,10 +1,10 @@
 # playground — 디자인 샌드박스
 
 디자이너·기획자가 **실제 서비스 컴포넌트로** 화면을 조립해 보는 곳입니다.
-여기서 무엇을 깨뜨려도 `studyclub-plusplus.com` 배포는 영향을 받지 않습니다.
+여기서 무엇을 깨뜨려도 `studyclub.life` 배포는 영향을 받지 않습니다.
 
 - 로컬: http://localhost:4702
-- 배포(예정): https://playground.studyclub-plusplus.com — `main` 에 머지되면 자동 반영
+- 배포(예정): https://playground.studyclub.life — `main` 에 머지되면 자동 반영
 
 ---
 

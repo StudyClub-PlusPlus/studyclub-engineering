@@ -27,13 +27,13 @@ export function organizationJsonLd(locale: Locale, site: Site): Json {
     '@type': 'Organization',
     '@id': `${SITE_URL}/#organization`,
     name: SITE_NAME,
-    alternateName: locale === 'ko' ? '스터디클럽++' : 'StudyClub Plus Plus',
+    alternateName: locale === 'ko' ? '스터디클럽' : 'StudyClub Plus Plus',
     url: `${SITE_URL}/${locale}`,
     logo: `${SITE_URL}/icon.svg`,
     description:
       locale === 'ko'
-        ? '미국·캐나다·한국의 개발자 2,000여 명이 함께하는 글로벌 스터디 커뮤니티. 이력서·인터뷰·시스템 디자인부터 AI까지 현직자와 함께 준비합니다.'
-        : 'A global study community of 2,000+ engineers across the US, Canada, and Korea — resumes, interviews, system design, and AI, prepared together with working engineers.',
+        ? '미국·캐나다·한국의 개발자 2,800여 명이 함께하는 글로벌 스터디 커뮤니티. 이력서·인터뷰·시스템 디자인부터 AI까지 현직자와 함께 준비합니다.'
+        : 'A global study community of 2,800+ engineers across the US, Canada, and Korea — resumes, interviews, system design, and AI, prepared together with working engineers.',
     sameAs: [site.discord_invite].filter(Boolean),
     areaServed: t(site.community.region, locale),
   };

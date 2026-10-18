@@ -7,8 +7,8 @@ export const announcements: Announcement[] = [
     tag: "update",
     pinned: true,
     title: {
-      ko: "StudyClub++ 홈페이지 개편 안내",
-      en: "StudyClub++ website renewal",
+      ko: "StudyClub 홈페이지 개편 안내",
+      en: "StudyClub website renewal",
     },
     body: {
       ko: "스터디·행사·가이드·공지를 한곳에서 볼 수 있도록 홈페이지를 새단장했습니다. 캡틴 소개와 참여 가이드가 새로 추가됐어요. 피드백은 디스코드에서 언제든 환영합니다.",
@@ -218,8 +218,8 @@ export const operators: Operator[] = [
     name: { ko: "Alex", en: "Alex" },
     role: { ko: "운영 리드 · 창립자", en: "Lead Organizer · Founder" },
     bio: {
-      ko: "StudyClub++ 를 시작하고 운영하는 사람. SWE/MLE 커리어 커뮤니티를 키우는 중.",
-      en: "Founder and operator of StudyClub++. Growing the SWE/MLE career community.",
+      ko: "StudyClub 를 시작하고 운영하는 사람. SWE/MLE 커리어 커뮤니티를 키우는 중.",
+      en: "Founder and operator of StudyClub. Growing the SWE/MLE career community.",
     },
     links: { linkedin: "https://linkedin.com/in/example" },
     order: 1,

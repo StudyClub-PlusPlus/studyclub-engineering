@@ -2,7 +2,7 @@
   "name": "core-front",
   "version": "0.0.1",
   "private": true,
-  "description": "StudyClub++ 사용자향 랜딩 (Next.js App Router, ko·en)",
+  "description": "StudyClub 사용자향 랜딩 (Next.js App Router, ko·en)",
   "scripts": {
     "dev": "next dev -p 4700",
     "build": "next build",

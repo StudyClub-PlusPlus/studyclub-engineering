@@ -34,7 +34,7 @@ export default function PlaygroundIndex() {
       <h1 className='text-3xl font-extrabold tracking-tight'>디자인 playground</h1>
       <p className='mt-3 max-w-2xl leading-relaxed text-[var(--color-fg-muted)]'>
         실제 프로덕션 컴포넌트로 화면을 조립해 보는 곳입니다. 여기서 무엇을 깨뜨려도{' '}
-        <strong>studyclub-plusplus.com 배포는 영향을 받지 않습니다</strong> — 마음껏 고치세요.
+        <strong>studyclub.life 배포는 영향을 받지 않습니다</strong> — 마음껏 고치세요.
       </p>
 
       <div className='mt-8 grid gap-4 sm:grid-cols-2'>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { BookOpen, Compass, UserPlus, Sparkles, HelpCircle } from 'lucide-react';
+import { BookOpen, Users, UserPlus, Sparkles, HelpCircle } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
@@ -12,7 +12,7 @@ type Section = { id: string; icon: typeof BookOpen; title: L10n };
 
 const SECTIONS: Section[] = [
   { id: 'what', icon: BookOpen, title: { ko: '스터디 클럽이란?', en: 'What is the study club?' } },
-  { id: 'captain', icon: Compass, title: { ko: '캡틴이란?', en: "What's a Captain?" } },
+  { id: 'roles', icon: Users, title: { ko: '크루 · 네비게이터 · 캡틴', en: 'Crew · Navigator · Captain' } },
   { id: 'join', icon: UserPlus, title: { ko: '참여하는 법', en: 'How to join' } },
   {
     id: 'propose',
@@ -37,12 +37,15 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
   const site = await getSite();
 
   const joinSteps: L10n[] = [
-    { ko: '디스코드에 합류합니다.', en: 'Join the Discord server.' },
-    { ko: '모집 중인 스터디를 찾습니다.', en: "Find a study that's recruiting." },
-    { ko: '모집폼(구글폼)으로 신청합니다.', en: 'Apply through the recruiting form.' },
+    { ko: '디스코드에 합류합니다 — 모든 스터디가 디스코드에서 진행됩니다.', en: 'Join the Discord server — every study runs there.' },
+    { ko: '구글 계정으로 로그인하고 모집 중인 스터디를 찾습니다.', en: "Sign in with Google and find a study that's recruiting." },
     {
-      ko: '킥오프에 참여해 반장·일정·진행 방식을 정합니다.',
-      en: 'Join the kickoff to set the lead, schedule, and format.',
+      ko: '스터디 페이지에서 신청서를 내면 바로 크루가 됩니다.',
+      en: "Submit the application on the study's page and you're Crew right away.",
+    },
+    {
+      ko: '킥오프에서 네비게이터와 함께 일정·진행 방식을 정합니다.',
+      en: 'At the kickoff, set the schedule and format with your Navigator.',
     },
   ];
 
@@ -56,12 +59,26 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       en: 'A Captain helps set up recruiting, the Discord channel, and the kickoff.',
     },
     {
-      ko: '모집이 열리면 스터디원이 모이고 킥오프로 시작합니다.',
-      en: 'Once recruiting opens, members gather and you start with the kickoff.',
+      ko: '모집이 열리면 크루가 모이고 킥오프로 시작합니다.',
+      en: 'Once recruiting opens, Crew gather and you start with the kickoff.',
     },
     {
-      ko: '반장·부반장, 발표자(백업 포함)를 정해 운영하고, 마지막엔 회고로 마무리합니다.',
-      en: 'Assign a lead and co-lead, dual presenters (with backup), and end with a retro.',
+      ko: '네비게이터가 스터디를 이끌고, 발표자(백업 포함)를 정해 운영한 뒤 회고로 마무리합니다.',
+      en: 'A Navigator leads the study, presenters (with backup) take turns, and you end with a retro.',
+    },
+  ];
+
+  const roles: { id: string; name: L10n; desc: L10n }[] = [
+    { id: 'crew', name: { ko: '크루', en: 'Crew' }, desc: { ko: '스터디에 참여해 함께 공부하는 스터디원.', en: 'Members who join a study and learn together.' } },
+    {
+      id: 'navigator',
+      name: { ko: '네비게이터', en: 'Navigator' },
+      desc: { ko: '스터디 하나를 이끄는 진행자. 일정·출석·발표 순서를 챙깁니다.', en: 'Leads a study — schedule, attendance, and presenter rotation.' },
+    },
+    {
+      id: 'captain',
+      name: { ko: '캡틴', en: 'Captain' },
+      desc: { ko: '커뮤니티를 운영하는 자원봉사 운영진. 스터디 세팅을 돕습니다.', en: 'Volunteer organizers who run the community and help set up studies.' },
     },
   ];
 
@@ -69,8 +86,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
     {
       q: { ko: '참여 비용이 있나요?', en: 'Does it cost anything?' },
       a: {
-        ko: '무료입니다. StudyClub++ 는 100% 자원봉사로 운영되며, 발생하는 수익은 전액 기부합니다.',
-        en: "It's free. StudyClub++ is 100% volunteer-run, and any profits are donated in full.",
+        ko: '무료입니다. StudyClub 는 100% 자원봉사로 운영되며, 발생하는 수익은 전액 기부합니다.',
+        en: "It's free. StudyClub is 100% volunteer-run, and any profits are donated in full.",
       },
     },
     {
@@ -92,6 +109,13 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       a: {
         ko: '마감일이 없는 스터디는 언제든 합류할 수 있습니다. 마감일이 지난 스터디는 다음 모집을 기다리면 됩니다.',
         en: 'Studies with no deadline accept members anytime. For studies with a deadline, wait for the next intake.',
+      },
+    },
+    {
+      q: { ko: '네비게이터는 누가 하나요?', en: 'Who becomes a Navigator?' },
+      a: {
+        ko: '스터디마다 한 명 이상이 맡아 스터디를 이끕니다. 맡고 싶다면 스터디를 제안하거나 캡틴에게 문의하세요.',
+        en: 'Each study has at least one Navigator who leads it. To take it on, propose a study or ask a Captain.',
       },
     },
     {
@@ -130,26 +154,23 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
         <p className='max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg)]'>
           {t(
             {
-              ko: `StudyClub++ 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 스터디 커뮤니티입니다. 여러 스터디가 모인 '풀(pool)'로, 누구나 공부하고 싶은 주제로 스터디를 제안하고 운영할 수 있습니다. 디스코드에서 모든 스터디와 이벤트가 운영됩니다.`,
-              en: `StudyClub++ is a global study community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It's a pool of study groups — anyone can propose and run a study on a topic they want to learn. Every study and event runs on Discord.`,
+              ko: `StudyClub 는 미국·캐나다·한국의 개발자 ${site.community.member_count}+명이 함께하는 글로벌 스터디 커뮤니티입니다. 여러 스터디가 모인 '풀(pool)'로, 누구나 공부하고 싶은 주제로 스터디를 제안하고 운영할 수 있습니다. 디스코드에서 모든 스터디와 이벤트가 운영됩니다.`,
+              en: `StudyClub is a global study community of ${site.community.member_count}+ engineers across the US, Canada, and Korea. It's a pool of study groups — anyone can propose and run a study on a topic they want to learn. Every study and event runs on Discord.`,
             },
             locale,
           )}
         </p>
       </div>
 
-      {/* 캡틴이란? */}
+      {/* 역할 — 크루 · 네비게이터 · 캡틴 (자세한 건 소개 페이지) */}
       <SectionHeading section={SECTIONS[1]} locale={locale} />
-      <div className='card p-8'>
-        <p className='max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg)]'>
-          {m('about.captain_body', locale)}
-        </p>
-        <Link
-          href={`/${locale}/about`}
-          className='mt-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--color-brand)] hover:underline'
-        >
-          {t({ ko: '소개에서 캡틴 더 보기', en: 'More about Captains on About' }, locale)} →
-        </Link>
+      <div className='grid gap-3 sm:grid-cols-3'>
+        {roles.map((r) => (
+          <Link key={r.id} href={`/${locale}/about#${r.id}`} className='card card-hover p-5'>
+            <div className='text-base font-bold'>{t(r.name, locale)}</div>
+            <p className='mt-1.5 text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>{t(r.desc, locale)}</p>
+          </Link>
+        ))}
       </div>
 
       {/* 참여하는 법 */}

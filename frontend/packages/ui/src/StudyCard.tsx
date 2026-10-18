@@ -3,7 +3,7 @@ import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { cx } from './cx';
-import { categoryGradient, categoryMeta } from './StudyThumb';
+import { categoryArtUrl, categoryGradient, categoryMeta } from './StudyThumb';
 
 /**
  * design-system.md §9-5 Study Card — **둘러보기 전용.**
@@ -52,6 +52,7 @@ export function StudyCard({
   ...rest
 }: StudyCardProps) {
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(category);
+  const artUrl = categoryArtUrl(category);
 
   return (
     <div {...rest} className={cx('card card-hover relative flex flex-col overflow-hidden', className)}>
@@ -63,12 +64,20 @@ export function StudyCard({
         className='relative flex h-40 shrink-0 flex-col justify-between overflow-hidden p-4'
         style={{ background: categoryGradient(category) }}
       >
-        <CategoryIcon
-          className='pointer-events-none absolute -bottom-5 -right-4 text-white/15'
-          size={104}
-          strokeWidth={1.25}
-          aria-hidden='true'
-        />
+        {artUrl ? (
+          <span
+            className='pointer-events-none absolute right-3 top-3 h-24 w-24 bg-contain bg-center bg-no-repeat drop-shadow-lg'
+            style={{ backgroundImage: `url(${artUrl})` }}
+            aria-hidden='true'
+          />
+        ) : (
+          <CategoryIcon
+            className='pointer-events-none absolute -bottom-5 -right-4 text-white/15'
+            size={104}
+            strokeWidth={1.25}
+            aria-hidden='true'
+          />
+        )}
         {badge ? (
           <span className='relative inline-flex w-fit items-center gap-1.5 rounded-pill bg-black/40 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md'>
             {badge.dotClassName && (

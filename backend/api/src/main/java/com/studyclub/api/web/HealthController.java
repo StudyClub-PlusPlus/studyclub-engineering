@@ -11,7 +11,7 @@ public class HealthController {
 
     @GetMapping("/")
     public String root() {
-        return "StudyClub++ API";
+        return "StudyClub API";
     }
 
     @GetMapping("/api/health")

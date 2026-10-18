@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 스터디 일정 화면 맨 위 규칙 카드 (specs/study-meeting/spec.md 「스터디 규칙 저장」). 읽기는 회차 목록 응답에 실린다. */
-@Tag(name = "회차", description = "스터디 일정 — 분반 회차 조회 · 추가 · 수정 · 삭제 · 발표 신청")
+@Tag(name = "회차", description = "스터디 일정 — 분반 회차 조회 · 추가 · 수정 · 삭제(일괄) · 발표 신청")
 @RestController
 @RequestMapping("/api/studies/{studyId}/groups/{groupId}/rules")
 public class StudyGroupRulesController {

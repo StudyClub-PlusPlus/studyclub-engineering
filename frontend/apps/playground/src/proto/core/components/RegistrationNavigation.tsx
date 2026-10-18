@@ -23,7 +23,7 @@ export function RegistrationNavigation({ children, locale }: { children: React.R
           <span className='grid h-7 w-7 place-items-center rounded-lg bg-brand text-sm font-extrabold text-on-brand'>
             S
           </span>
-          StudyClub++
+          StudyClub
         </Link>
         <Link
           href={switchUrl}

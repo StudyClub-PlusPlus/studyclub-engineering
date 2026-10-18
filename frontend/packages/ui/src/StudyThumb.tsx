@@ -31,19 +31,20 @@ const C = {
   slate: ['var(--color-neutral-800)', 'var(--color-neutral-600)'] as Duo,
 };
 
-type Meta = { icon: LucideIcon; label: string; color: Duo };
+// art = 카테고리 스팟 이미지 slug — 앱 public 의 /study-art/study-<art>.webp (zapp-design:icon 으로 생성, 원본은 내부 design/assets/icons).
+type Meta = { icon: LucideIcon; label: string; color: Duo; art?: string };
 
-const AI_ML: Meta = { icon: Brain, label: 'AI · ML', color: C.violet };
-const ALGORITHM: Meta = { icon: Puzzle, label: 'CS', color: C.blue };
-const DATA: Meta = { icon: Database, label: 'DATA', color: C.teal };
-const SOFTWARE: Meta = { icon: Code2, label: 'DEV', color: C.indigo };
-const CAREER: Meta = { icon: MessagesSquare, label: 'CAREER', color: C.amber };
-const BOOK_CLUB: Meta = { icon: BookOpen, label: 'BOOK CLUB', color: C.amber };
-const LANGUAGE: Meta = { icon: Languages, label: 'LANGUAGE', color: C.emerald };
-const LIFESTYLE: Meta = { icon: Sunrise, label: 'LIFESTYLE', color: C.rose };
-const PRODUCT: Meta = { icon: Package, label: '기획', color: C.violet };
-const BUSINESS: Meta = { icon: Briefcase, label: 'BUSINESS', color: C.slate };
-const OTHER: Meta = { icon: Hash, label: 'ETC', color: C.slate };
+const AI_ML: Meta = { icon: Brain, label: 'AI · ML', color: C.violet, art: 'ai_ml' };
+const ALGORITHM: Meta = { icon: Puzzle, label: 'CS', color: C.blue, art: 'algorithm' };
+const DATA: Meta = { icon: Database, label: 'DATA', color: C.teal, art: 'data' };
+const SOFTWARE: Meta = { icon: Code2, label: 'DEV', color: C.indigo, art: 'software' };
+const CAREER: Meta = { icon: MessagesSquare, label: 'CAREER', color: C.amber, art: 'career' };
+const BOOK_CLUB: Meta = { icon: BookOpen, label: 'BOOK CLUB', color: C.amber, art: 'book_club' };
+const LANGUAGE: Meta = { icon: Languages, label: 'LANGUAGE', color: C.emerald, art: 'language' };
+const LIFESTYLE: Meta = { icon: Sunrise, label: 'LIFESTYLE', color: C.rose, art: 'lifestyle' };
+const PRODUCT: Meta = { icon: Package, label: '기획', color: C.violet, art: 'product' };
+const BUSINESS: Meta = { icon: Briefcase, label: 'BUSINESS', color: C.slate, art: 'business' };
+const OTHER: Meta = { icon: Hash, label: 'ETC', color: C.slate, art: 'other' };
 
 /**
  * 공식 카테고리 11개 — API enum 값과 화면 표기(`@studyclub/mock` 의 `CATEGORY_DISPLAY`) 둘 다 받는다.
@@ -91,23 +92,26 @@ const LEGACY_RULES: (Meta & { match: string[] })[] = [
     icon: Server,
     label: 'BACKEND',
     color: C.indigo,
+    art: 'backend',
     match: ['백엔드', 'backend', 'spring', 'django', 'express', 'nest'],
   },
   {
     icon: Monitor,
     label: 'FRONTEND',
     color: C.blue,
+    art: 'frontend',
     match: ['프론트엔드', 'frontend', 'react', 'vue', 'angular', 'next'],
   },
   {
     icon: Smartphone,
     label: 'MOBILE',
     color: C.teal,
+    art: 'mobile',
     match: ['모바일', 'mobile', 'ios', 'android', 'flutter', 'swift', 'kotlin'],
   },
   { ...PRODUCT, match: ['기획', 'planning', '프로덕트', 'product', '그로스', 'growth'] },
-  { icon: Package, label: 'PM', color: C.violet, match: ['pm', '프로젝트 매니'] },
-  { icon: Palette, label: 'DESIGN', color: C.rose, match: ['디자인', 'design', 'figma', 'ui', 'ux'] },
+  { icon: Package, label: 'PM', color: C.violet, art: 'product', match: ['pm', '프로젝트 매니'] },
+  { icon: Palette, label: 'DESIGN', color: C.rose, art: 'design', match: ['디자인', 'design', 'figma', 'ui', 'ux'] },
   { ...CAREER, match: ['커리어', 'career', '취업', 'resume', '이력서', 'interview', '인터뷰', '면접'] },
   { ...BUSINESS, match: ['비즈니스', 'business', 'article', '아티클', '시장', '산업'] },
   { ...BOOK_CLUB, match: ['북클럽', 'book', '독서', '리딩'] },
@@ -176,6 +180,12 @@ export function categoryMeta(category?: string): Meta {
   return pick(category);
 }
 
+/** 카테고리 스팟 이미지 URL. 없는 카테고리(자유입력 fallback)는 undefined — 그때는 lucide 아이콘을 쓴다. */
+export function categoryArtUrl(category?: string): string | undefined {
+  const { art } = pick(category);
+  return art ? `/study-art/study-${art}.webp` : undefined;
+}
+
 /** 카테고리 색 그라디언트 CSS 값. */
 export function categoryGradient(category?: string): string {
   const [from, to] = pick(category).color;
@@ -200,6 +210,7 @@ export function StudyThumb({ image, category, className = '' }: StudyThumbProps)
   }
 
   const { icon: Icon, label, color } = pick(category);
+  const artUrl = categoryArtUrl(category);
   const [from, to] = color;
 
   return (
@@ -208,7 +219,14 @@ export function StudyThumb({ image, category, className = '' }: StudyThumbProps)
       style={{ background: `linear-gradient(120deg, ${from}, ${to})` }}
       aria-hidden='true'
     >
-      <Icon className='pointer-events-none absolute -right-3 -bottom-4 text-white/15' size={104} strokeWidth={1.25} />
+      {artUrl ? (
+        <span
+          className='pointer-events-none absolute right-3 top-1/2 aspect-square h-[118%] -translate-y-1/2 bg-contain bg-center bg-no-repeat drop-shadow-lg'
+          style={{ backgroundImage: `url(${artUrl})` }}
+        />
+      ) : (
+        <Icon className='pointer-events-none absolute -right-3 -bottom-4 text-white/15' size={104} strokeWidth={1.25} />
+      )}
       <Icon className='relative shrink-0 text-white' size={22} strokeWidth={1.75} />
       <span className='relative text-[13px] font-bold uppercase tracking-[0.14em] text-white/90'>{label}</span>
     </div>
