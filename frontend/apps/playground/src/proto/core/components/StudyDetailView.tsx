@@ -10,7 +10,7 @@ import type { Locale, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { recruitBadge, studyStartValue, studyTimezoneLabel, toISODate } from '@core/lib/recruit';
 import { getStudyCrew, recruitCapacity, studies as mockStudies } from '@studyclub/mock';
-import { categoryGradient, categoryMeta } from '@studyclub/ui';
+import { categoryArtUrl, categoryMeta, categoryTint } from '@studyclub/ui';
 import { ArrowLeft, CalendarClock, Globe, Rocket } from 'lucide-react';
 
 import { SPECS } from '@/app/(proto)/proto/core/[locale]/studies/[id]/spec';
@@ -101,12 +101,18 @@ export function StudyDetailView({
 
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(study.category);
   const badge = recruitBadge(study, locale);
-  const startValue = studyStartValue(study, locale);
-  const startText = `${t({ ko: '시작 예정일', en: 'Starts' }, locale)} ${startValue}`;
-  const timezoneLabel = studyTimezoneLabel(study, locale);
+  const { background, ink } = categoryTint(study.category);
+  const artUrl = categoryArtUrl(study.category);
   const deadline = toISODate(study.recruitment?.deadline);
   const joined = getStudyCrew(study).crew.length;
   const cap = recruitCapacity(study);
+
+  // 목록 카드와 같은 정보를 칸으로 — 같은 개념은 같은 모양
+  const facts = [
+    ...(study.schedule ? [{ icon: CalendarClock, label: t({ ko: '일정', en: 'Schedule' }, locale), value: t(study.schedule, locale) }] : []),
+    { icon: Globe, label: t({ ko: '시간대', en: 'Time zone' }, locale), value: studyTimezoneLabel(study, locale) },
+    { icon: Rocket, label: t({ ko: '시작 예정일', en: 'Starts' }, locale), value: studyStartValue(study, locale) },
+  ];
 
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-8'>
@@ -121,40 +127,46 @@ export function StudyDetailView({
       </Link>
 
       <article className='card mt-4 overflow-hidden'>
-        <header
-          className='flex flex-col gap-2.5 px-8 pb-7 pt-6'
-          style={{ background: categoryGradient(study.category) }}
-        >
-          <span className='inline-flex w-fit items-center gap-1.5 rounded-pill bg-black/40 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md'>
+        <header className='relative flex flex-col gap-3 overflow-hidden px-6 pb-7 pt-6 sm:px-8' style={{ background }}>
+          {artUrl && (
+            <span
+              aria-hidden='true'
+              className='pointer-events-none absolute right-4 top-4 h-20 w-20 bg-contain bg-center bg-no-repeat sm:right-8 sm:top-1/2 sm:h-32 sm:w-32 sm:-translate-y-1/2'
+              style={{ backgroundImage: `url(${artUrl})` }}
+            />
+          )}
+          <span className='inline-flex w-fit items-center gap-1.5 rounded-pill bg-white/85 px-2.5 py-1 text-xs font-semibold text-fg shadow-sm'>
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${badge.dotClass}`} aria-hidden='true' />
             {badge.label}
           </span>
-          <div className='flex items-center gap-1.5 text-white/85'>
+          <div className='flex items-center gap-1.5 pr-24 sm:pr-40' style={{ color: ink }}>
             <CategoryIcon size={14} strokeWidth={1.75} className='shrink-0' />
-            <span className='text-[11px] font-bold uppercase tracking-[0.14em]'>{categoryLabel}</span>
+            <span className='text-xs font-semibold'>{categoryLabel}</span>
           </div>
-          <h1 className='break-keep text-[28px] font-bold leading-[1.25] tracking-tight text-white'>
+          <h1 className='pr-24 text-[26px] font-bold leading-[1.25] tracking-tight text-fg sm:pr-40 sm:text-[30px]'>
             {t(study.title, locale)}
           </h1>
-          <p className='text-[16px] leading-relaxed text-white/90'>{t(study.summary, locale)}</p>
-          <p className='flex items-center gap-1.5 text-[14px] font-medium text-white/90'>
-            {study.schedule ? (
-              <>
-                <CalendarClock size={14} strokeWidth={1.75} className='shrink-0' />
-                {t(study.schedule, locale)}
-                <span className='text-white/70'>· {timezoneLabel}</span>
-              </>
-            ) : (
-              <>
-                <Globe size={14} strokeWidth={1.75} className='shrink-0' />
-                {timezoneLabel}
-              </>
-            )}
-          </p>
+          <p className='text-[16px] leading-relaxed text-fg-secondary sm:pr-40'>{t(study.summary, locale)}</p>
         </header>
 
+        <dl className='grid gap-px border-b border-border bg-border sm:grid-cols-2'>
+          {facts.map((f, i) => (
+            <div
+              key={f.label}
+              // 칸이 홀수면 마지막 칸을 두 칸으로 — 빈 회색 칸이 남지 않게
+              className={`flex items-center gap-3 bg-bg px-6 py-4 sm:px-8 ${facts.length % 2 && i === facts.length - 1 ? 'sm:col-span-2' : ''}`}
+            >
+              <f.icon size={18} className='shrink-0' style={{ color: ink }} />
+              <div className='min-w-0'>
+                <dt className='text-xs text-fg-muted'>{f.label}</dt>
+                <dd className='tnum text-[15px] font-semibold text-fg'>{f.value}</dd>
+              </div>
+            </div>
+          ))}
+        </dl>
+
         {study.description && (
-          <div className='px-8 py-7'>
+          <div className='px-6 py-7 sm:px-8'>
             <h2 className='text-[15px] font-bold text-fg'>{m('common.about_study', locale)}</h2>
             <MarkdownLite
               text={t(study.description, locale)}
@@ -163,7 +175,7 @@ export function StudyDetailView({
           </div>
         )}
 
-        <div className='flex flex-col gap-1 border-t border-border px-8 py-5'>
+        <div className='flex flex-col gap-1 border-t border-border px-6 py-5 sm:px-8'>
           <span className='tnum text-sm font-medium text-fg-secondary'>
             <span data-anno='view:3'>
               {cap
@@ -174,16 +186,12 @@ export function StudyDetailView({
           </span>
           <span data-anno='view:4' className='text-xs text-fg-muted'>
             {study.program?.kind === 'club'
-              ? t({ ko: '클럽 — 이전 기수 참여자는 새 기수에 신청 없이 자동으로 이어집니다.', en: 'Club — members carry over to new cohorts without re-applying.' }, locale)
-              : t({ ko: '스터디 — 참여하려면 신청이 필요합니다.', en: 'Study — you need to apply to join.' }, locale)}
+              ? t({ ko: '클럽: 이전 기수 참여자는 새 기수에 신청 없이 자동으로 이어집니다.', en: 'Club: members carry over to new cohorts without re-applying.' }, locale)
+              : t({ ko: '스터디: 참여하려면 신청이 필요합니다.', en: 'Study: you need to apply to join.' }, locale)}
           </span>
         </div>
 
-        <div className='flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface-1 px-8 py-5'>
-          <span className='tnum flex items-center gap-1.5 text-sm font-semibold text-fg-secondary'>
-            <Rocket size={14} strokeWidth={2} className='shrink-0' />
-            {startText}
-          </span>
+        <div className='flex flex-wrap items-center justify-end gap-4 border-t border-border bg-surface-1 px-6 py-5 sm:px-8'>
           <ApplyButton study={study} locale={locale} />
         </div>
       </article>

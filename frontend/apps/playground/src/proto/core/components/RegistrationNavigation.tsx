@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
@@ -20,9 +21,7 @@ export function RegistrationNavigation({ children, locale }: { children: React.R
     <header className='sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur-md'>
       <div className='mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-6'>
         <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 text-lg font-bold tracking-tight'>
-          <span className='grid h-7 w-7 place-items-center rounded-lg bg-brand text-sm font-extrabold text-on-brand'>
-            S
-          </span>
+          <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
           StudyClub
         </Link>
         <Link

@@ -311,7 +311,7 @@ export default function MyPage() {
           <div className='min-w-0 flex-1'>
             {editing ? (
               /*
-                보던 자리에서 고친다 — 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다.
+                보던 자리에서 고친다. 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다.
                 블록을 새로 쌓으면 아래 값들이 밀려 같은 카드가 다른 화면처럼 보인다.
               */
               <div data-anno='profile:2' className='min-w-0'>
@@ -407,7 +407,7 @@ export default function MyPage() {
           </dd>
 
           {/*
-            가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다 — 가입 화면에만 두면 바꿀 수 없다.
+            가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다. 가입 화면에만 두면 바꿀 수 없다.
             가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
           */}
           <dt className='flex min-h-8 items-center text-fg-muted'>마케팅 수신</dt>
