@@ -35,7 +35,7 @@ function Cell({ status, onClick }: { status: AttendanceStatus | undefined; onCli
       type='button'
       onClick={onClick}
       title='눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'
-      className={`h-8 w-full rounded-sm border text-[11px] font-bold transition-colors ${
+      className={`h-8 w-full rounded-sm border type-label-lg transition-colors ${
         status ? CELL_STYLE[status] : 'border-dashed border-border bg-surface text-fg-muted hover:border-border-interactive hover:bg-surface-2'
       }`}
     >
@@ -59,7 +59,7 @@ export function AttendanceTab({
   if (meetings.length === 0) {
     return (
       <div className='card px-6 py-10 text-center'>
-        <p className='text-sm font-semibold text-fg'>아직 회차가 없습니다.</p>
+        <p className='type-label-lg text-fg'>아직 회차가 없습니다.</p>
         <Button size='sm' className='mt-4' leadingIcon={<Plus size={15} />} disabled title='미구현'>
           회차 등록
         </Button>
@@ -70,9 +70,9 @@ export function AttendanceTab({
   return (
     <div>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <h2 className='text-[15px] font-bold'>
+        <h2 className='type-title-lg'>
           출석부
-          <span className='ml-2 text-[13px] font-medium text-fg-muted'>
+          <span className='ml-2 type-label-lg text-fg-muted'>
             크루 {crew.length} · 회차 {meetings.length}
           </span>
         </h2>
@@ -82,21 +82,21 @@ export function AttendanceTab({
       </div>
 
       <div className='card mt-3 overflow-x-auto'>
-        <table className='w-full border-separate border-spacing-0 text-sm'>
+        <table className='w-full border-separate border-spacing-0 type-body-sm'>
           <thead>
             <tr>
-              <th className='sticky left-0 z-[1] bg-surface px-4 py-3 text-left text-xs font-semibold text-fg-muted'>
+              <th className='sticky left-0 z-[1] bg-surface px-4 py-3 text-left type-label-sm text-fg-muted'>
                 크루
               </th>
               {meetings.map((s) => (
                 <th
                   key={s.id}
-                  className='tnum w-[3.6rem] px-1 py-2 text-center text-[11px] font-semibold text-fg-secondary'
+                  className='tnum w-[3.6rem] px-1 py-2 text-center type-label-sm text-fg-secondary'
                 >
-                  {s.no}회<span className='block text-[10px] font-medium text-fg-muted'>{s.date.slice(5)}</span>
+                  {s.no}회<span className='block type-label-sm text-fg-muted'>{s.date.slice(5)}</span>
                 </th>
               ))}
-              <th className='px-3 py-2 text-right text-xs font-semibold text-fg-muted'>출석률</th>
+              <th className='px-3 py-2 text-right type-label-sm text-fg-muted'>출석률</th>
             </tr>
           </thead>
           <tbody>
@@ -113,7 +113,7 @@ export function AttendanceTab({
                       <Cell status={row?.[s.id]} onClick={() => onToggle(c.id, s.id)} />
                     </td>
                   ))}
-                  <td className='tnum border-t border-border px-3 py-1.5 text-right font-bold'>
+                  <td className='tnum border-t border-border px-3 py-1.5 text-right font-semibold'>
                     {rate === undefined ? (
                       <span className='text-fg-muted'>—</span>
                     ) : (
@@ -129,7 +129,7 @@ export function AttendanceTab({
         </table>
       </div>
 
-      <p className='mt-2 text-xs text-fg-muted'>
+      <p className='mt-2 type-label-sm text-fg-muted'>
         칸을 누르면 출석 → 지각 → 결석 → 휴가 → 미체크 순으로 바뀝니다. 출석률은 출석 1, 지각 0.5로 셉니다.
       </p>
     </div>

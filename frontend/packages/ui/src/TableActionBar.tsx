@@ -48,7 +48,7 @@ export interface SelectionCountProps {
 /** 「3명 선택」 — 작업 바 맨 왼쪽. 0 이어도 보인다 — 고를 수 있는 표라는 것을 알린다. */
 export function SelectionCount({ count, unit = '개' }: SelectionCountProps) {
   return (
-    <span aria-live='polite' className={cx('tnum mr-1 text-sm font-semibold', count > 0 ? 'text-fg' : 'text-fg-muted')}>
+    <span aria-live='polite' className={cx('tnum mr-1 type-label-lg', count > 0 ? 'text-fg' : 'text-fg-muted')}>
       {count}
       {unit} 선택
     </span>

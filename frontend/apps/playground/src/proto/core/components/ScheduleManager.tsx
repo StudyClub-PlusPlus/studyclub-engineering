@@ -250,9 +250,9 @@ export function ScheduleManager({
   return (
     <div className='flex flex-col gap-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <h2 data-anno='schedule:1' className='text-[15px] font-bold'>
+        <h2 data-anno='schedule:1' className='type-title-lg'>
           회차
-          <span className='ml-2 text-[13px] font-medium text-fg-muted'>
+          <span className='ml-2 type-label-lg text-fg-muted'>
             전체 {regular.length} · 예정 {upcomingCount}
           </span>
         </h2>
@@ -280,7 +280,7 @@ export function ScheduleManager({
       </p>
 
       {notice && (
-        <p role='status' className='rounded-control bg-warning-50 px-3 py-2 text-sm font-semibold text-warning-700'>
+        <p role='status' className='rounded-control bg-warning-50 px-3 py-2 type-label-lg text-warning-700'>
           {notice}
         </p>
       )}
@@ -299,14 +299,14 @@ export function ScheduleManager({
       )}
 
       {meetings.length === 0 ? (
-        <p className='card px-6 py-10 text-center text-sm text-fg-muted'>
+        <p className='card px-6 py-10 text-center type-body-sm text-fg-muted'>
           {canEdit ? '아직 회차가 없습니다. 아래 「회차 추가」로 만드세요.' : '아직 회차가 없습니다.'}
         </p>
       ) : (
         <div data-anno='schedule:3' className='card overflow-x-auto'>
-          <table className='w-full min-w-[66rem] border-separate border-spacing-0 text-sm'>
+          <table className='w-full min-w-[66rem] border-separate border-spacing-0 type-body-sm'>
             <thead>
-              <tr className='text-left text-xs font-semibold text-fg-muted'>
+              <tr className='text-left type-label-sm text-fg-muted'>
                 {canEdit && (
                   <th data-anno='schedule:3-6' className='w-10 py-3 pl-4'>
                     <input
@@ -369,7 +369,7 @@ export function ScheduleManager({
                         data-anno='schedule:9-1'
                         aria-label={`${meetingLabel(m)} ${which} 신청`}
                         onClick={() => sign(m, slot, true)}
-                        className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand text-xs font-semibold text-brand transition-colors hover:bg-brand-subtle'
+                        className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand type-label-lg text-brand transition-colors hover:bg-brand-subtle'
                       >
                         신청
                       </button>
@@ -377,7 +377,7 @@ export function ScheduleManager({
                   }
                   if (!canEdit && !past && id === ME_ID) {
                     return (
-                      <span className='inline-flex h-7 max-w-full items-center gap-1 rounded-pill bg-brand-subtle pl-2.5 pr-1 text-xs font-bold text-brand'>
+                      <span className='inline-flex h-7 max-w-full items-center gap-1 rounded-pill bg-brand-subtle pl-2.5 pr-1 type-label-sm text-brand'>
                         <span className='truncate'>{nameOf(id)}</span>
                         <button
                           type='button'
@@ -420,7 +420,7 @@ export function ScheduleManager({
                     )}
                     <td
                       data-anno={kickoff ? 'schedule:10' : undefined}
-                      className='tnum border-t border-border px-4 py-2.5 align-top font-bold'
+                      className='tnum border-t border-border px-4 py-2.5 align-top font-semibold'
                     >
                       {m.no}
                       {past && <span className='sr-only'> (지난 회차 · 고칠 수 없음)</span>}
@@ -468,7 +468,7 @@ export function ScheduleManager({
                     <td className={cell}>{presenterCell('presenter1')}</td>
                     <td className={cell}>
                       {presenterCell('presenter2')}
-                      {errors.presenter2 && <p className='mt-1 text-[11px] text-error-700'>{errors.presenter2}</p>}
+                      {errors.presenter2 && <p className='mt-1 type-label-sm text-error-700'>{errors.presenter2}</p>}
                     </td>
                   </tr>
                 );
@@ -505,7 +505,7 @@ export function ScheduleManager({
           }
           save={
             <span data-anno='schedule:6' className='flex items-center gap-2'>
-              {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
+              {errorCount > 0 && <p className='mr-1 type-label-sm text-error-700'>고칠 칸 {errorCount}개</p>}
               {dirty && (
                 <Button variant='ghost' size='sm' onClick={clearDrafts}>
                   변경 취소
@@ -535,7 +535,7 @@ export function ScheduleManager({
           </>
         }
       >
-        <p data-anno='schedule:3-5' className='text-sm text-fg-secondary'>
+        <p data-anno='schedule:3-5' className='type-body-sm text-fg-secondary'>
           {toDelete.length === 1
             ? `${meetingLabel(toDelete[0]!)}(${dayLabel(toDelete[0]!.date)})를 지울까요?`
             : `회차 ${toDelete.length}개(${toDelete.map((m) => meetingLabel(m)).join(', ')})를 지울까요?`}{' '}
@@ -571,7 +571,7 @@ const CHECKBOX =
   'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 const FIELD =
-  'h-8 w-full rounded-control border bg-bg px-2 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand/60';
+  'h-8 w-full rounded-control border bg-bg px-2 type-body-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand/60';
 
 function CellInput({
   type = 'text',
@@ -603,7 +603,7 @@ function CellInput({
         className={cx(FIELD, error ? 'border-error-500' : 'border-border-strong')}
       />
       {error && (
-        <p id={errorId} className='mt-1 text-[11px] leading-snug text-error-700'>
+        <p id={errorId} className='mt-1 type-label-sm text-error-700'>
           {error}
         </p>
       )}
@@ -631,10 +631,10 @@ function TitleInput({
         maxLength={TITLE_MAX + 10}
         singleLine
         invalid={Boolean(error)}
-        className='min-h-8 px-2 py-1 leading-snug'
+        className='min-h-8 px-2 py-1'
         onChange={onChange}
       />
-      {error && <p className='mt-1 text-[11px] leading-snug text-error-700'>{error}</p>}
+      {error && <p className='mt-1 type-label-sm text-error-700'>{error}</p>}
     </div>
   );
 }
@@ -802,7 +802,7 @@ function AddForm({
         </div>
 
         <div data-anno='schedule:7-3' className='flex flex-col gap-1.5'>
-          <span className='text-sm font-medium text-neutral-800'>반복</span>
+          <span className='type-label-lg text-neutral-800'>반복</span>
           <div role='group' aria-label='반복' className='flex flex-wrap gap-1.5'>
             {repeatOptions.map((o) => {
               const on = draft.repeat === o.key;
@@ -813,7 +813,7 @@ function AddForm({
                   aria-pressed={on}
                   onClick={() => change({ repeat: o.key })}
                   className={cx(
-                    'h-9 rounded-control border px-3 text-sm font-semibold transition-colors',
+                    'h-9 rounded-control border px-3 type-label-lg transition-colors',
                     on
                       ? 'border-brand bg-brand text-white'
                       : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2',
@@ -837,7 +837,7 @@ function AddForm({
                       aria-label={`${DOW_LABEL[d]}요일`}
                       onClick={() => toggleWeekday(d)}
                       className={cx(
-                        'h-9 w-9 rounded-control border text-sm font-semibold transition-colors',
+                        'h-9 w-9 rounded-control border type-label-lg transition-colors',
                         on
                           ? 'border-brand bg-brand text-white'
                           : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2',
@@ -848,7 +848,7 @@ function AddForm({
                   );
                 })}
               </div>
-              {errors.weekdays && <p className='text-xs text-error-700'>{errors.weekdays}</p>}
+              {errors.weekdays && <p className='type-label-sm text-error-700'>{errors.weekdays}</p>}
             </div>
           )}
         </div>
@@ -882,10 +882,10 @@ function AddForm({
           />
         </div>
 
-        <div data-anno='schedule:7-6' className='rounded-control border border-border px-3.5 py-2.5 text-sm'>
+        <div data-anno='schedule:7-6' className='rounded-control border border-border px-3.5 py-2.5 type-body-sm'>
           {plan && preview && first ? (
             <>
-              <p className='font-bold text-fg'>
+              <p className='font-semibold text-fg'>
                 {plan.dates.length === 1 ? (
                   <>
                     <span className='tnum'>{preview.from}</span>회차로 추가됩니다
@@ -900,7 +900,7 @@ function AddForm({
                   </>
                 )}
               </p>
-              <ul className='mt-1 flex flex-col gap-0.5 text-xs text-fg-secondary'>
+              <ul className='mt-1 flex flex-col gap-0.5 type-label-sm text-fg-secondary'>
                 {plan.dates.length > 1 && (
                   <li className='tnum'>
                     {dayLabel(first)} ~ {dayLabel(plan.dates[plan.dates.length - 1])}
@@ -926,7 +926,7 @@ function AddForm({
               </ul>
             </>
           ) : touched && errors.form ? (
-            <p className='font-medium text-error-700'>{errors.form}</p>
+            <p className='font-semibold text-error-700'>{errors.form}</p>
           ) : (
             <p className='text-fg-muted'>
               일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.

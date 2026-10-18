@@ -61,7 +61,7 @@ export function TemplatesTable() {
         <button
           type='button'
           onClick={() => setOpen(null)}
-          className='inline-flex w-fit items-center gap-1.5 text-sm font-medium text-fg-secondary hover:text-fg'
+          className='inline-flex w-fit items-center gap-1.5 type-label-lg text-fg-secondary hover:text-fg'
         >
           <ArrowLeft size={15} /> 알림 템플릿
         </button>
@@ -72,7 +72,7 @@ export function TemplatesTable() {
           <Row label='제목'>{open.subject}</Row>
           <Row label='본문'>
             {/* 치환 변수({{nickname}})가 그대로 보여야 한다 — 미리 채워 보여주면 원문을 알 수 없다 */}
-            <pre className='whitespace-pre-wrap break-words font-sans text-sm leading-relaxed'>{open.body}</pre>
+            <pre className='whitespace-pre-wrap break-words font-sans type-body-sm'>{open.body}</pre>
           </Row>
           <Row label='마지막 수정'>{stamp(open.updatedAt)}</Row>
         </div>
@@ -144,7 +144,7 @@ export function TemplatesTable() {
             ))}
           </Select>
           {free.length === 0 && (
-            <p className='-mt-2 text-xs text-fg-muted'>조건마다 템플릿이 이미 하나씩 있습니다.</p>
+            <p className='-mt-2 type-label-sm text-fg-muted'>조건마다 템플릿이 이미 하나씩 있습니다.</p>
           )}
           <Input
             label='제목'
@@ -171,8 +171,8 @@ export function TemplatesTable() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className='border-b border-border px-5 py-4 last:border-b-0'>
-      <div className='mb-1.5 text-xs font-semibold text-fg-muted'>{label}</div>
-      <div className='text-sm'>{children}</div>
+      <div className='mb-1.5 type-label-sm text-fg-muted'>{label}</div>
+      <div className='type-body-sm'>{children}</div>
     </div>
   );
 }

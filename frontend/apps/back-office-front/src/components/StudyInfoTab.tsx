@@ -82,13 +82,13 @@ export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
           type='button'
           onClick={() => setConfirmDelete(true)}
           disabled={update.isPending}
-          className='h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
+          className='h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
         >
           스터디 삭제
         </button>
         <div className='ml-auto flex items-center gap-3'>
-          {saveError && <span className='text-sm font-medium text-error-600'>{saveError}</span>}
-          {saved && !dirty && <span className='text-sm font-medium text-success-700'>저장되었습니다.</span>}
+          {saveError && <span className='type-label-lg text-error-600'>{saveError}</span>}
+          {saved && !dirty && <span className='type-label-lg text-success-700'>저장되었습니다.</span>}
           <Button onClick={save} loading={update.isPending} disabled={!dirty}>
             저장
           </Button>
@@ -122,9 +122,9 @@ export function StudyInfoTab({ detail }: { detail: ApiStudyDetail }) {
         }
       >
         <div className='py-6 text-center'>
-          <p className='text-sm font-semibold text-fg'>‘{detail.title}’ 스터디를 삭제합니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>크루 명단과 출석 기록도 함께 사라지며 되돌릴 수 없습니다.</p>
-          {remove.error && <p className='mt-3 text-sm font-medium text-error-600'>{remove.error.message}</p>}
+          <p className='type-label-lg text-fg'>‘{detail.title}’ 스터디를 삭제합니다.</p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>크루 명단과 출석 기록도 함께 사라지며 되돌릴 수 없습니다.</p>
+          {remove.error && <p className='mt-3 type-label-lg text-error-600'>{remove.error.message}</p>}
         </div>
       </Modal>
     </div>

@@ -104,22 +104,22 @@ export function AttendanceTable({
 
   return (
     <Card padding='none' className={cx('overflow-x-auto', className)} {...rest}>
-      <table className='w-full border-separate border-spacing-0 text-sm'>
+      <table className='w-full border-separate border-spacing-0 type-body-sm'>
         <thead>
           <tr className='bg-surface-2'>
-            <th className='sticky left-0 z-10 border-b border-border bg-surface-2 px-4 py-3 text-left text-xs font-semibold text-fg-muted'>
+            <th className='sticky left-0 z-10 border-b border-border bg-surface-2 px-4 py-3 text-left type-label-sm text-fg-muted'>
               크루
             </th>
             {sessions.map((s) => (
               <th
                 key={s.id}
-                className='tnum min-w-[3.75rem] border-b border-border px-1.5 py-2.5 text-center text-xs font-semibold text-fg-secondary'
+                className='tnum min-w-[3.75rem] border-b border-border px-1.5 py-2.5 text-center type-label-sm text-fg-secondary'
               >
                 <div>{s.no}회</div>
-                {s.date && <div className='text-[10px] font-normal text-fg-muted'>{s.date}</div>}
+                {s.date && <div className='type-label-sm text-fg-muted'>{s.date}</div>}
               </th>
             ))}
-            <th className='border-b border-border px-4 py-3 text-right text-xs font-semibold text-fg-muted'>출석률</th>
+            <th className='border-b border-border px-4 py-3 text-right type-label-sm text-fg-muted'>출석률</th>
           </tr>
         </thead>
         <tbody className='divide-y divide-border'>
@@ -131,7 +131,7 @@ export function AttendanceTable({
               <tr key={m.id} className={cx('transition-colors hover:bg-surface-1', rowHeight)}>
                 <td className='sticky left-0 z-10 whitespace-nowrap border-r border-border bg-surface-raised px-4 py-2 font-semibold text-ink'>
                   {m.name}
-                  {m.role && <span className='ml-1.5 text-xs font-normal text-fg-muted'>({m.role})</span>}
+                  {m.role && <span className='ml-1.5 type-label-sm text-fg-muted'>({m.role})</span>}
                 </td>
 
                 {sessions.map((s) => {
@@ -143,7 +143,7 @@ export function AttendanceTable({
                       {readOnly ? (
                         <span
                           className={cx(
-                            'inline-grid h-7 w-full place-items-center rounded-control text-xs font-semibold transition-colors',
+                            'inline-grid h-7 w-full place-items-center rounded-control type-label-sm transition-colors',
                             status ? STATUS_STYLE[status] : 'text-fg-placeholder',
                           )}
                         >
@@ -155,7 +155,7 @@ export function AttendanceTable({
                           onClick={() => handleCellClick(m.id, s.id, status)}
                           title='클릭하여 출석 → 지각 → 결석 → 휴가 → 미체크 순환'
                           className={cx(
-                            'inline-grid h-7 w-full place-items-center rounded-control text-xs font-semibold transition-colors focus-visible:shadow-(--ring) focus-visible:outline-none',
+                            'inline-grid h-7 w-full place-items-center rounded-control type-label-lg transition-colors focus-visible:shadow-(--ring) focus-visible:outline-none',
                             status
                               ? STATUS_STYLE[status]
                               : 'border border-dashed border-border bg-transparent text-fg-placeholder hover:border-border-interactive hover:bg-surface-2',
@@ -168,7 +168,7 @@ export function AttendanceTable({
                   );
                 })}
 
-                <td className={cx('tnum whitespace-nowrap px-4 py-2 text-right font-bold', attendanceRateColorClass(rate))}>
+                <td className={cx('tnum whitespace-nowrap px-4 py-2 text-right font-semibold', attendanceRateColorClass(rate))}>
                   {rate !== undefined ? `${rate}%` : '—'}
                 </td>
               </tr>

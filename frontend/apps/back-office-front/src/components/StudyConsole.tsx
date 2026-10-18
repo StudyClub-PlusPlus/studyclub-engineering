@@ -46,15 +46,15 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
     <div>
       <Link
         href='/studies'
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg'
+        className='inline-flex items-center gap-1.5 type-label-lg text-fg-secondary transition-colors hover:text-fg'
       >
         <ArrowLeft size={15} /> 스터디 관리
       </Link>
 
       <header className='mt-3 flex flex-wrap items-start justify-between gap-4'>
         <div className='min-w-0'>
-          <h1 className='text-2xl font-extrabold tracking-tight'>{detail.title}</h1>
-          <p className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-secondary'>
+          <h1 className='type-headline-md'>{detail.title}</h1>
+          <p className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 type-body-sm text-fg-secondary'>
             <span>{categoryLabel(detail.category)}</span>
             <span className='text-fg-muted'>·</span>
             <span>{detail.studyKind === 'CLUB' ? '클럽' : '스터디'}</span>
@@ -70,7 +70,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
           <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
             {detail.status === 'OPEN' ? (open ? '모집중' : '모집 마감') : STATUS_LABEL[detail.status]}
           </Badge>
-          {deadline && <span className='tnum text-xs text-fg-muted'>~{deadline}</span>}
+          {deadline && <span className='tnum type-label-sm text-fg-muted'>~{deadline}</span>}
         </div>
       </header>
 
@@ -98,13 +98,13 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
             type='button'
             disabled={savingForm}
             onClick={() => setTab(tb.key)}
-            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            className={`-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
             }`}
           >
             {tb.label}
             {tb.key === 'crew' && pendingCount != null && pendingCount > 0 && (
-              <span className='ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[11px] font-bold text-warning-700'>
+              <span className='ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 type-label-sm text-warning-700'>
                 {pendingCount}
               </span>
             )}
@@ -114,7 +114,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
 
       <div className='mt-5'>
         {tab === 'attendance' && (
-          <div className='card px-6 py-10 text-center text-sm text-fg-muted'>출석 관리는 준비 중입니다.</div>
+          <div className='card px-6 py-10 text-center type-body-sm text-fg-muted'>출석 관리는 준비 중입니다.</div>
         )}
         {tab === 'crew' && <ApplicationsTab studyId={detail.id} />}
         {tab === 'form' && <ApplicationFormTab study={detail} onSavingChange={setSavingForm} />}
@@ -140,16 +140,16 @@ function Stat({
 }) {
   return (
     <div className='card px-4 py-3'>
-      <p className='text-xs font-medium text-fg-muted'>{label}</p>
+      <p className='type-label-sm text-fg-muted'>{label}</p>
       <p
-        className={`mt-0.5 font-extrabold ${small ? 'truncate text-[15px] leading-7' : 'tnum text-xl'} ${
+        className={`mt-0.5 font-semibold ${small ? 'truncate type-body-sm' : 'tnum type-title-lg'} ${
           tone === 'warn' ? 'text-warning-700' : 'text-fg'
         }`}
         title={small ? value : undefined}
       >
         {value}
       </p>
-      {sub && <p className='tnum -mt-0.5 text-[11px] font-medium text-fg-muted'>{sub}</p>}
+      {sub && <p className='tnum -mt-0.5 type-label-sm text-fg-muted'>{sub}</p>}
     </div>
   );
 }

@@ -58,7 +58,7 @@ export function RulesEditor({
 
   return (
     <>
-      <h3 className='text-sm font-bold text-fg'>스터디 규칙</h3>
+      <h3 className='type-title-md text-fg'>스터디 규칙</h3>
       {canEdit ? (
         <div className='mt-2 flex flex-col gap-2'>
           <AutoTextarea
@@ -67,11 +67,11 @@ export function RulesEditor({
             placeholder='킥오프에서 정한 규칙을 적어 두세요. 발표 방식 · 지각 기준 · 소요 시간 등'
             maxLength={RULES_MAX}
             minRows={4}
-            className='px-3 py-2 leading-relaxed'
+            className='px-3 py-2'
             onChange={setDraft}
           />
           <div className='flex items-center justify-between gap-2'>
-            <span className='tnum text-xs text-fg-muted'>
+            <span className='tnum type-label-sm text-fg-muted'>
               {draft.length}/{RULES_MAX}
             </span>
             {changed && (
@@ -90,7 +90,7 @@ export function RulesEditor({
         <>
           <p
             className={cx(
-              'mt-1.5 whitespace-pre-line text-sm leading-relaxed text-fg-secondary',
+              'mt-1.5 whitespace-pre-line type-body-sm text-fg-secondary',
               long && !open && 'line-clamp-4',
             )}
           >
@@ -101,14 +101,14 @@ export function RulesEditor({
               type='button'
               aria-expanded={open}
               onClick={() => setOpen((o) => !o)}
-              className='mt-1 text-xs font-semibold text-brand underline-offset-2 hover:underline'
+              className='mt-1 type-label-lg text-brand underline-offset-2 hover:underline'
             >
               {open ? '접기' : '모두 보기'}
             </button>
           )}
         </>
       ) : (
-        <p className='mt-1.5 text-sm text-fg-muted'>아직 규칙이 없습니다.</p>
+        <p className='mt-1.5 type-body-sm text-fg-muted'>아직 규칙이 없습니다.</p>
       )}
     </>
   );

@@ -67,7 +67,7 @@ export function ClassScheduleDialog({
       <div data-anno='schedule:14-1' className='flex flex-col gap-4 py-2'>
         <div className='flex flex-col gap-4'>
           <div className='flex flex-col gap-2'>
-            <span id='rule-days' className='text-sm font-medium text-neutral-800'>
+            <span id='rule-days' className='type-label-lg text-neutral-800'>
               스터디 요일
             </span>
             <div
@@ -85,7 +85,7 @@ export function ClassScheduleDialog({
                     type='button'
                     aria-pressed={on}
                     onClick={() => toggleDay(d)}
-                    className={`h-9 w-9 rounded-control border text-sm font-semibold transition-colors ${
+                    className={`h-9 w-9 rounded-control border type-label-lg transition-colors ${
                       on
                         ? 'border-brand bg-brand text-white'
                         : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
@@ -99,7 +99,7 @@ export function ClassScheduleDialog({
           </div>
 
           <div className='flex flex-col gap-2'>
-            <label htmlFor='rule-time' className='text-sm font-medium text-neutral-800'>
+            <label htmlFor='rule-time' className='type-label-lg text-neutral-800'>
               스터디 시간
             </label>
             <div className='flex flex-wrap items-center gap-2'>
@@ -108,7 +108,7 @@ export function ClassScheduleDialog({
                 id='rule-time'
                 value={rule.time}
                 onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
-                className='h-10 w-[10rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+                className='h-10 w-[10rem] rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
               />
               {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
               <div role='group' aria-label='시간대' className='flex gap-1'>
@@ -120,7 +120,7 @@ export function ClassScheduleDialog({
                       type='button'
                       aria-pressed={on}
                       onClick={() => setRule({ ...rule, tz: tz.key })}
-                      className={`h-10 rounded-control border px-3 text-sm font-semibold transition-colors ${
+                      className={`h-10 rounded-control border px-3 type-label-lg transition-colors ${
                         on
                           ? 'border-brand bg-brand text-white'
                           : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
@@ -136,14 +136,14 @@ export function ClassScheduleDialog({
 
           {/* 반대편 시각을 같이 적는다 — 목 21:00 KST 는 미국에서 수요일이다 */}
           {other ? (
-            <p className='text-xs text-fg-muted'>
+            <p className='type-label-sm text-fg-muted'>
               {STUDY_TZS.find((t) => t.key !== rule.tz)?.label} 기준 <b className='font-semibold'>{other}</b>
             </p>
           ) : null}
 
-          <p id='rule-msg' role='status' className='text-xs'>
+          <p id='rule-msg' role='status' className='type-label-sm'>
             {touched && !valid ? (
-              <span className='font-medium text-error-600'>요일을 하나 이상 골라 주세요.</span>
+              <span className='font-semibold text-error-600'>요일을 하나 이상 골라 주세요.</span>
             ) : (
               <span className='text-fg-muted'>
                 스터디 시간만 {editing ? '바꿉니다. 이미 있는 회차는 그대로입니다' : '정합니다'}. 회차는 일정 표의

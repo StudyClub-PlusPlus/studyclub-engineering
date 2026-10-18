@@ -65,7 +65,7 @@ export function Badge({ tone = 'neutral', dot = false, className, children }: Ba
   return (
     <span
       className={cx(
-        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-2 py-0.5 text-xs font-medium',
+        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-2 py-0.5 type-label-sm',
         t.chip,
         className,
       )}

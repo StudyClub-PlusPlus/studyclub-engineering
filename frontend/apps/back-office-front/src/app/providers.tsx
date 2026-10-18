@@ -44,7 +44,7 @@ export function Providers({ children }: { children: ReactNode }) {
   if (sessionChanged) {
     return (
       <div className='px-6 py-10 text-center'>
-        <p role='alert' className='text-sm text-fg-secondary'>
+        <p role='alert' className='type-body-sm text-fg-secondary'>
           다른 탭에서 로그인 정보가 변경되었습니다. 다시 접속해 주세요.
         </p>
         <Button type='button' variant='secondary' className='mt-3' onClick={() => window.location.reload()}>

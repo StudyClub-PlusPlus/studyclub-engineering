@@ -286,11 +286,11 @@ function ProgramField({
 
   if (mode === 'edit') {
     return (
-      <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-control border border-border bg-surface-2 px-3 py-2.5 text-sm'>
-        <span className='font-medium text-neutral-800'>프로그램</span>
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-control border border-border bg-surface-2 px-3 py-2.5 type-body-sm'>
+        <span className='font-semibold text-neutral-800'>프로그램</span>
         <span className='min-w-0 truncate text-fg-secondary'>{value.programTitle}</span>
         {/* 종류는 정하면 바꾸지 못한다 — 읽기 전용 */}
-        <span className='ml-auto text-xs text-fg-muted'>{KIND_LABEL[value.kind]} · 변경할 수 없음</span>
+        <span className='ml-auto type-label-sm text-fg-muted'>{KIND_LABEL[value.kind]} · 변경할 수 없음</span>
       </div>
     );
   }
@@ -342,7 +342,7 @@ function ProgramField({
           kind: m === 'existing' ? 'CLUB' : 'STUDY',
         })
       }
-      className={`h-9 flex-1 rounded-control border px-3 text-sm transition-colors ${
+      className={`h-9 flex-1 rounded-control border px-3 type-label-lg transition-colors ${
         value.programMode === m
           ? 'border-brand bg-brand/5 font-semibold text-fg'
           : 'border-border text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
@@ -354,7 +354,7 @@ function ProgramField({
 
   return (
     <div className='flex flex-col gap-2'>
-      <span className='text-sm font-medium text-neutral-800'>
+      <span className='type-label-lg text-neutral-800'>
         프로그램
         <span className='ml-0.5 text-error-600'>*</span>
       </span>
@@ -364,8 +364,8 @@ function ProgramField({
       </div>
 
       {value.programMode === 'new' ? (
-        <div className='flex flex-wrap items-center gap-2 text-sm'>
-          <span className='text-xs text-fg-muted'>종류</span>
+        <div className='flex flex-wrap items-center gap-2 type-body-sm'>
+          <span className='type-label-sm text-fg-muted'>종류</span>
           <div role='radiogroup' aria-label='종류' className='inline-flex gap-1'>
             {(['STUDY', 'CLUB'] as StudyKind[]).map((k) => (
               <button
@@ -374,7 +374,7 @@ function ProgramField({
                 role='radio'
                 aria-checked={value.kind === k}
                 onClick={() => onChange({ ...value, kind: k })}
-                className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
+                className={`h-8 rounded-pill border px-3 type-label-lg transition-colors ${
                   value.kind === k
                     ? 'border-brand bg-brand text-white'
                     : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
@@ -384,7 +384,7 @@ function ProgramField({
               </button>
             ))}
           </div>
-          <span className='text-xs text-fg-muted'>
+          <span className='type-label-sm text-fg-muted'>
             {value.kind === 'CLUB' ? '이전 기수 참여자가 다음 기수에 이어집니다' : '한 번 모집해 한 번 진행'}
           </span>
         </div>
@@ -395,7 +395,7 @@ function ProgramField({
             value={value.programId}
             onChange={(ev) => void selectProgram(ev.target.value)}
             disabled={isLoading || prefilling}
-            className='h-10 rounded-control border border-border bg-bg px-3 text-sm outline-none focus:border-border-interactive'
+            className='h-10 rounded-control border border-border bg-bg px-3 type-body-sm outline-none focus:border-border-interactive'
           >
             <option value=''>{isLoading ? '불러오는 중…' : '클럽을 고르세요'}</option>
             {clubs.map((c) => (
@@ -404,12 +404,12 @@ function ProgramField({
               </option>
             ))}
           </select>
-          <p className='text-xs text-fg-muted'>
+          <p className='type-label-sm text-fg-muted'>
             {prefilling
               ? '최신 기수의 내용을 불러오는 중…'
               : '새 기수를 붙일 수 있는 것은 클럽뿐입니다. 스터디는 기수가 1개이고, 종류는 한 번 정하면 바꿀 수 없습니다.'}
           </p>
-          {errors.programId && <p className='text-xs font-medium text-error-600'>{errors.programId}</p>}
+          {errors.programId && <p className='type-label-sm text-error-600'>{errors.programId}</p>}
         </div>
       )}
     </div>
@@ -443,17 +443,17 @@ function ThumbnailField({
 
   return (
     <div className='flex flex-col gap-1.5'>
-      <span className='text-sm font-medium text-fg'>썸네일</span>
+      <span className='type-label-lg text-fg'>썸네일</span>
       <div className='flex items-center gap-4'>
         {value.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={value.thumbnailUrl} alt='' className='h-20 w-36 rounded-control object-cover' />
         ) : (
-          <div className='grid h-20 w-36 place-items-center rounded-control bg-surface-2 text-xs text-fg-muted'>
+          <div className='grid h-20 w-36 place-items-center rounded-control bg-surface-2 type-label-sm text-fg-muted'>
             없음
           </div>
         )}
-        <div className='flex items-center gap-3 text-sm'>
+        <div className='flex items-center gap-3 type-body-sm'>
           <button
             type='button'
             onClick={thumb.pick}
@@ -475,9 +475,9 @@ function ThumbnailField({
         </div>
         <input {...thumb.inputProps} className='hidden' aria-label='썸네일 파일' />
       </div>
-      <p className='text-xs text-fg-muted'>jpeg · png · webp, 5MB 이하. 저장해야 반영됩니다.</p>
+      <p className='type-label-sm text-fg-muted'>jpeg · png · webp, 5MB 이하. 저장해야 반영됩니다.</p>
       {shown && (
-        <p role='alert' className='text-xs text-error-700'>
+        <p role='alert' className='type-label-sm text-error-700'>
           {shown}
         </p>
       )}
@@ -486,7 +486,7 @@ function ThumbnailField({
 }
 
 const DATE_INPUT =
-  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
+  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border bg-bg px-3 type-body-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
 
 export function StudyForm({
   value,
@@ -563,7 +563,7 @@ export function StudyForm({
 
       <div className='grid gap-3 sm:grid-cols-2'>
         <div className='flex flex-col gap-1.5'>
-          <label htmlFor='deadline' className='text-sm font-medium text-neutral-800'>
+          <label htmlFor='deadline' className='type-label-lg text-neutral-800'>
             모집 마감일
             <span className='ml-0.5 text-error-600'>*</span>
           </label>
@@ -574,7 +574,7 @@ export function StudyForm({
             onChange={(ev) => set('deadline', ev.target.value)}
             className={DATE_INPUT}
           />
-          {errors.deadline && <p className='text-xs font-medium text-error-600'>{errors.deadline}</p>}
+          {errors.deadline && <p className='type-label-sm text-error-600'>{errors.deadline}</p>}
         </div>
 
         <Input
@@ -597,7 +597,7 @@ export function StudyForm({
       </div>
 
       <div className='flex flex-col gap-1.5'>
-        <label htmlFor='startAt' className='text-sm font-medium text-neutral-800'>
+        <label htmlFor='startAt' className='type-label-lg text-neutral-800'>
           진행 시작일
         </label>
         <input
@@ -611,11 +611,11 @@ export function StudyForm({
           aria-describedby={errors.startAt ? 'startAt-error' : undefined}
         />
         {errors.startAt ? (
-          <p id='startAt-error' className='text-xs font-medium text-error-600'>
+          <p id='startAt-error' className='type-label-sm text-error-600'>
             {errors.startAt}
           </p>
         ) : (
-          <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+          <span className='type-label-sm text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
         )}
       </div>
 

@@ -31,8 +31,8 @@ const ENTRIES = [
 export default function PlaygroundIndex() {
   return (
     <div>
-      <h1 className='text-3xl font-extrabold tracking-tight'>디자인 playground</h1>
-      <p className='mt-3 max-w-2xl leading-relaxed text-[var(--color-fg-muted)]'>
+      <h1 className='type-headline-lg'>디자인 playground</h1>
+      <p className='mt-3 max-w-2xl text-[var(--color-fg-muted)]'>
         실제 프로덕션 컴포넌트로 화면을 조립해 보는 곳입니다. 여기서 무엇을 깨뜨려도{' '}
         <strong>studyclub-plusplus.com 배포는 영향을 받지 않습니다</strong> — 마음껏 고치세요.
       </p>
@@ -41,16 +41,16 @@ export default function PlaygroundIndex() {
         {ENTRIES.map((e) => (
           <Link key={e.href} href={e.href} className='block'>
             <div className='h-full rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg)] p-6 transition-shadow hover:shadow-md'>
-              <h2 className='text-lg font-bold'>{e.title}</h2>
-              <p className='mt-2 text-sm leading-relaxed text-[var(--color-fg-muted)]'>{e.body}</p>
+              <h2 className='type-title-md'>{e.title}</h2>
+              <p className='mt-2 type-body-sm text-[var(--color-fg-muted)]'>{e.body}</p>
             </div>
           </Link>
         ))}
       </div>
 
       <section className='mt-10 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg)] p-6'>
-        <h2 className='text-base font-bold'>디자인 시스템 문서와의 관계</h2>
-        <ul className='mt-3 space-y-1.5 text-sm leading-relaxed text-[var(--color-fg-muted)]'>
+        <h2 className='type-title-md'>디자인 시스템 문서와의 관계</h2>
+        <ul className='mt-3 space-y-1.5 type-body-sm text-[var(--color-fg-muted)]'>
           <li>
             <strong>design-system.md</strong> — 규칙의 정본. 색·타이포·간격·접근성 기준을 정한다
           </li>
@@ -64,8 +64,8 @@ export default function PlaygroundIndex() {
       </section>
 
       <section className='mt-6 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg)] p-6'>
-        <h2 className='text-base font-bold'>화면을 하나 추가하려면</h2>
-        <ol className='mt-3 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--color-fg-muted)]'>
+        <h2 className='type-title-md'>화면을 하나 추가하려면</h2>
+        <ol className='mt-3 list-decimal space-y-1.5 pl-5 type-body-sm text-[var(--color-fg-muted)]'>
           <li>
             <code>src/app/screens/study-detail/</code> 폴더를 통째로 복사해 새 이름을 붙입니다
           </li>

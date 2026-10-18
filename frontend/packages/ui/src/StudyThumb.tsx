@@ -210,7 +210,7 @@ export function StudyThumb({ image, category, className = '' }: StudyThumbProps)
     >
       <Icon className='pointer-events-none absolute -right-3 -bottom-4 text-white/15' size={104} strokeWidth={1.25} />
       <Icon className='relative shrink-0 text-white' size={22} strokeWidth={1.75} />
-      <span className='relative text-[13px] font-bold uppercase tracking-[0.14em] text-white/90'>{label}</span>
+      <span className='relative type-label-lg uppercase text-white/90'>{label}</span>
     </div>
   );
 }

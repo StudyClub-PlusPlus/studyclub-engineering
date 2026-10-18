@@ -86,13 +86,13 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
       }
     >
       {done ? (
-        <p className='py-6 text-center text-sm text-fg-muted'>
+        <p className='py-6 text-center type-body-sm text-fg-muted'>
           등록되었습니다. 비공개 상태로 만들어지며, 모집을 시작하면 사이트에 공개됩니다.
         </p>
       ) : (
         <>
           {failure && (
-            <p className='mb-3 rounded-control bg-error-50 px-3 py-2 text-sm text-error-700'>{failure}</p>
+            <p className='mb-3 rounded-control bg-error-50 px-3 py-2 type-body-sm text-error-700'>{failure}</p>
           )}
           <StudyForm mode='create' value={form} errors={errors} onChange={setForm} />
         </>

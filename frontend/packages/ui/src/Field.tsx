@@ -9,7 +9,7 @@ import { cx } from './cx';
 
 /** design-system.md §9-2 — 입력 계열 공통 셸. */
 const CONTROL_BASE = cx(
-  'w-full rounded-control border bg-surface-raised px-3.5 text-sm text-ink',
+  'w-full rounded-control border bg-surface-raised px-3.5 type-body-md text-ink',
   'placeholder:text-fg-placeholder',
   'transition-[border-color,box-shadow] duration-fast ease-out',
   'focus:outline-none',
@@ -41,7 +41,7 @@ export function FieldShell({ label, helper, error, required, labelHint, htmlFor,
     <div className='flex flex-col gap-1.5'>
       {(label || labelHint) && (
         <div className='flex items-baseline justify-between gap-2'>
-          <label htmlFor={htmlFor} className='text-sm font-medium text-ink'>
+          <label htmlFor={htmlFor} className='type-label-lg text-ink'>
             {label}
             {required && (
               <span className='ml-0.5 text-danger-fg' aria-hidden='true'>
@@ -49,11 +49,11 @@ export function FieldShell({ label, helper, error, required, labelHint, htmlFor,
               </span>
             )}
           </label>
-          {labelHint && <span className='shrink-0 text-xs text-fg-placeholder'>{labelHint}</span>}
+          {labelHint && <span className='shrink-0 type-label-sm text-fg-placeholder'>{labelHint}</span>}
         </div>
       )}
       {children}
-      {message && <p className={cx('text-xs', error ? 'text-danger-fg' : 'text-fg-muted')}>{message}</p>}
+      {message && <p className={cx('type-label-sm', error ? 'text-danger-fg' : 'text-fg-muted')}>{message}</p>}
     </div>
   );
 }
@@ -169,7 +169,7 @@ export function Textarea({
         rows={rows}
         required={required}
         aria-invalid={invalid || undefined}
-        className={controlClass(invalid, cx('py-2.5 leading-relaxed', className))}
+        className={controlClass(invalid, cx('py-2.5', className))}
       />
     </FieldShell>
   );

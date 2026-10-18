@@ -83,24 +83,24 @@ export function RegionClocks({ locale }: { locale: Locale }) {
         return (
           <div key={r.id} className='card overflow-hidden p-0' style={{ borderTop: `3px solid ${r.color}` }}>
             <div className='flex items-center gap-3 px-5 pt-4'>
-              <span className='text-2xl leading-none'>{r.flag}</span>
+              <span className='type-headline-sm'>{r.flag}</span>
               <div className='min-w-0'>
                 <div className='font-semibold' style={{ color: r.color }}>
                   {locale === 'ko' ? r.name.ko : r.name.en}
                 </div>
-                <div className='text-xs text-[var(--color-fg-muted)]'>{locale === 'ko' ? r.city.ko : r.city.en}</div>
+                <div className='type-label-sm text-[var(--color-fg-muted)]'>{locale === 'ko' ? r.city.ko : r.city.en}</div>
               </div>
-              <span className='ml-auto text-lg'>{p ? (p.daytime ? '☀️' : '🌙') : ''}</span>
+              <span className='ml-auto type-body-lg'>{p ? (p.daytime ? '☀️' : '🌙') : ''}</span>
             </div>
             <div className='mt-2 px-5 pb-4' style={{ background: r.soft }}>
               <div
-                className='pt-3 font-mono text-3xl font-bold tabular-nums tracking-tight'
+                className='pt-3 type-headline-md tabular-nums'
                 style={{ color: r.color }}
                 suppressHydrationWarning
               >
                 {p ? p.time : '--:--:--'}
               </div>
-              <div className='mt-0.5 text-xs text-[var(--color-fg-muted)]' suppressHydrationWarning>
+              <div className='mt-0.5 type-label-sm text-[var(--color-fg-muted)]' suppressHydrationWarning>
                 {p ? p.date : ' '}
               </div>
             </div>

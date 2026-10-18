@@ -85,8 +85,8 @@ export function MobileNav({
                   href={l.href}
                   onClick={() => setOpen(false)}
                   aria-current={active ? 'page' : undefined}
-                  className={`rounded-control px-3 py-2.5 text-base transition-colors ${focusRing} ${
-                    active ? 'bg-brand-subtle font-semibold text-brand' : 'font-medium text-fg hover:bg-surface-2'
+                  className={`rounded-control px-3 py-2.5 type-body-md transition-colors ${focusRing} ${
+                    active ? 'bg-brand-subtle font-semibold text-brand' : 'font-semibold text-fg hover:bg-surface-2'
                   }`}
                 >
                   {l.label}
@@ -98,7 +98,7 @@ export function MobileNav({
                 href={mentoring.href}
                 target='_blank'
                 rel='noreferrer'
-                className={`inline-flex items-center gap-1 rounded-control px-3 py-2.5 text-base font-medium text-fg-muted hover:bg-surface-2 ${focusRing}`}
+                className={`inline-flex items-center gap-1 rounded-control px-3 py-2.5 type-title-md text-fg-muted hover:bg-surface-2 ${focusRing}`}
               >
                 {mentoring.label}
                 <ArrowUpRight size={14} />
@@ -108,7 +108,7 @@ export function MobileNav({
               href={join.href}
               target='_blank'
               rel='noreferrer'
-              className={`mt-2 rounded-full bg-brand px-4 py-2.5 text-center text-sm font-semibold text-on-brand ${focusRing}`}
+              className={`mt-2 rounded-full bg-brand px-4 py-2.5 text-center type-label-lg text-on-brand ${focusRing}`}
             >
               {join.label}
             </a>

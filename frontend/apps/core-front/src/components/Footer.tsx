@@ -10,23 +10,23 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
     <footer className='mt-20 border-t border-(--color-border)'>
       <div className='mx-auto flex max-w-6xl flex-col gap-6 px-6 py-12 sm:flex-row sm:items-end sm:justify-between'>
         <div>
-          <div className='flex items-center gap-2 text-lg font-bold'>
+          <div className='flex items-center gap-2 type-title-md'>
             <span
-              className='grid h-7 w-7 place-items-center rounded-lg text-sm font-extrabold text-white'
+              className='grid h-7 w-7 place-items-center rounded-lg type-label-lg text-white'
               style={{ background: 'var(--color-brand)' }}
             >
               S
             </span>
             StudyClub++
           </div>
-          <p className='mt-3 text-sm text-(--color-fg-muted)'>
+          <p className='mt-3 type-body-sm text-(--color-fg-muted)'>
             {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count}+
           </p>
-          <p className='mt-1 text-xs text-(--color-fg-faint)'>
+          <p className='mt-1 type-label-sm text-(--color-fg-faint)'>
             © {new Date().getFullYear()} StudyClub++
           </p>
         </div>
-        <div className='flex flex-col gap-3 text-sm sm:items-end'>
+        <div className='flex flex-col gap-3 type-body-sm sm:items-end'>
           <div className='flex flex-wrap gap-x-6 gap-y-2 text-(--color-fg-muted)'>
             <Link href={`/${locale}/studies`} className='hover:text-(--color-fg)'>
               {m('nav.studies', locale)}

@@ -23,13 +23,13 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
   return (
     <div className='mx-auto max-w-3xl px-6 py-14'>
       <header className='max-w-2xl'>
-        <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('notices.title', locale)}</h1>
-        <p className='mt-3 text-lg text-(--color-fg-muted)'>{m('notices.subtitle', locale)}</p>
+        <h1 className='type-headline-lg sm:type-headline-lg'>{m('notices.title', locale)}</h1>
+        <p className='mt-3 type-body-lg text-(--color-fg-muted) type-prose'>{m('notices.subtitle', locale)}</p>
       </header>
 
       <div className='mt-10 flex flex-col gap-4'>
         {notices.length === 0 && (
-          <p className='text-sm text-(--color-fg-muted)'>
+          <p className='type-body-sm text-(--color-fg-muted)'>
             {t({ ko: '아직 등록된 공지가 없어요.', en: 'No notices yet.' }, locale)}
           </p>
         )}
@@ -44,10 +44,10 @@ export default async function NoticesPage({ params }: { params: Promise<{ locale
             <div className='flex flex-wrap items-center gap-2'>
               {n.pinned && <span aria-label='pinned'>📌</span>}
               {n.tag && <Pill>{m(`notice_tag.${n.tag}`, locale)}</Pill>}
-              <time className='ml-auto text-xs font-medium text-(--color-fg-faint)'>{n.date}</time>
+              <time className='ml-auto type-label-sm text-(--color-fg-faint)'>{n.date}</time>
             </div>
-            <h2 className='mt-3 text-lg font-bold tracking-tight'>{t(n.title, locale)}</h2>
-            <p className='mt-2 line-clamp-2 text-[15px] leading-relaxed text-(--color-fg-muted)'>{t(n.body, locale)}</p>
+            <h2 className='mt-3 type-title-md'>{t(n.title, locale)}</h2>
+            <p className='mt-2 line-clamp-2 type-body-sm text-(--color-fg-muted)'>{t(n.body, locale)}</p>
           </article>
         ))}
       </div>

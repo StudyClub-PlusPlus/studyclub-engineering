@@ -102,7 +102,7 @@ export function CrewTab({
             aria-invalid={empty || undefined}
             aria-describedby={errId}
             onChange={(ev) => setRenaming({ ...renaming, title: ev.target.value })}
-            className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 text-sm font-bold text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+            className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
           />
           <div className='ml-auto flex shrink-0 gap-1.5'>
             <Button type='button' size='sm' variant='ghost' onClick={() => setRenaming(null)}>
@@ -113,7 +113,7 @@ export function CrewTab({
             </Button>
           </div>
         </div>
-        <p id={errId} role='status' className='text-xs text-error-600'>
+        <p id={errId} role='status' className='type-label-sm text-error-600'>
           {empty ? '반 제목을 입력해 주세요.' : ''}
         </p>
       </form>
@@ -189,8 +189,8 @@ export function CrewTab({
   return (
     <div className='flex flex-col gap-6'>
       <section data-anno='class:1'>
-        <h2 className='flex items-baseline gap-2 text-[15px] font-bold'>
-          반<span className='tnum text-[13px] font-medium text-fg-muted'>{classes.length}</span>
+        <h2 className='flex items-baseline gap-2 type-title-lg'>
+          반<span className='tnum type-label-lg text-fg-muted'>{classes.length}</span>
           <span className='ml-auto'>
             <Button
               size='sm'
@@ -204,7 +204,7 @@ export function CrewTab({
           </span>
         </h2>
         {classes.length === 0 && !adding ? (
-          <p className='mt-2 rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
+          <p className='mt-2 rounded-card border border-dashed border-border px-4 py-6 text-center type-body-sm text-fg-muted'>
             아직 반이 없습니다. 「반 추가」로 반을 만들고 크루를 나눠 주세요.
           </p>
         ) : (
@@ -215,8 +215,8 @@ export function CrewTab({
                   editor(cls)
                 ) : (
                   <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
-                    <span className='text-sm font-bold'>{classLabel(cls)}</span>
-                    <span className='tnum ml-auto text-sm text-fg-secondary'>
+                    <span className='type-label-lg'>{classLabel(cls)}</span>
+                    <span className='tnum ml-auto type-body-sm text-fg-secondary'>
                       {active.filter((c) => assign[c.id] === cls.id).length}명
                     </span>
                     <Button
@@ -253,10 +253,10 @@ export function CrewTab({
       </section>
       <section data-anno='attendee:3'>
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-          <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 text-[15px] font-bold'>
+          <h2 data-anno='attendee:3-1' className='flex items-baseline gap-2 type-title-lg'>
             참여 크루
             {/* 반 제목 옆 개수와 같은 모양 — 숫자만. 필터와 상관없이 전체 인원 */}
-            <span className='tnum text-[13px] font-medium text-fg-muted'>{active.length}</span>
+            <span className='tnum type-label-lg text-fg-muted'>{active.length}</span>
           </h2>
         </div>
         {/* 필터는 제목 아래 줄, 왼쪽부터 반 · 지역 드롭다운 */}
@@ -391,7 +391,7 @@ export function CrewTab({
             }
             save={
               <span data-anno='attendee:3-5' className='flex items-center gap-2'>
-                <span role='status' className='text-xs text-fg-muted'>
+                <span role='status' className='type-label-sm text-fg-muted'>
                   {saved && changed === 0 ? '저장했습니다.' : ''}
                 </span>
                 {changed > 0 && (
@@ -435,7 +435,7 @@ function RolePick({
       value={navigator ? 'navigator' : 'crew'}
       onChange={(ev) => onChange(ev.target.value === 'navigator')}
       // 네비게이터는 몇 안 된다 — 긴 명단에서 바로 눈에 띄게 테두리를 칠한다
-      className={`h-8 rounded-control border bg-bg px-2 text-sm outline-none focus:border-brand focus:shadow-[var(--ring)] ${
+      className={`h-8 rounded-control border bg-bg px-2 type-body-sm outline-none focus:border-brand focus:shadow-[var(--ring)] ${
         navigator ? 'border-brand font-semibold text-fg' : 'border-border-strong text-neutral-900'
       }`}
     >
@@ -473,7 +473,7 @@ function FilterSelect({
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
+      className={`h-9 shrink-0 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
       }`}
     >
@@ -497,14 +497,14 @@ function ClassPick({
   value: string | undefined;
   onChange: (id: string) => void;
 }) {
-  if (classes.length === 0) return <span className='text-xs text-fg-muted'>반 없음</span>;
-  if (classes.length === 1) return <span className='text-sm text-fg-secondary'>{classLabel(classes[0]!)}</span>;
+  if (classes.length === 0) return <span className='type-label-sm text-fg-muted'>반 없음</span>;
+  if (classes.length === 1) return <span className='type-body-sm text-fg-secondary'>{classLabel(classes[0]!)}</span>;
   return (
     <select
       aria-label='반'
       value={value ?? classes[0]!.id}
       onChange={(ev) => onChange(ev.target.value)}
-      className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+      className='h-8 rounded-control border border-border-strong bg-bg px-2 type-body-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
     >
       {classes.map((c) => (
         <option key={c.id} value={c.id}>

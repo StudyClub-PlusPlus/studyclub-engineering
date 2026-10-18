@@ -58,13 +58,13 @@ export function ApplyDiscordGate({
       }
     >
       <div data-anno='discord:1' className='flex flex-col gap-3 py-2'>
-        <p className='text-sm font-medium text-fg'>
+        <p className='type-label-lg text-fg'>
           {t(
             { ko: '스터디 신청 전 디스코드 연동은 필수입니다.', en: 'You must connect Discord before applying.' },
             locale,
           )}
         </p>
-        <p className='text-sm leading-relaxed text-fg-secondary'>
+        <p className='type-body-sm text-fg-secondary'>
           {t(
             {
               ko: '스터디는 디스코드에서 진행됩니다. 연동이 끝나면 신청 폼으로 이동합니다.',

@@ -47,7 +47,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
     return (
       <Link
         href={`/${locale}/onboarding`}
-        className='rounded-full bg-brand px-4 py-2 text-sm font-semibold text-on-brand'
+        className='rounded-full bg-brand px-4 py-2 type-label-lg text-on-brand'
       >
         {locale === 'en' ? 'Finish sign-up' : '가입 마무리'}
       </Link>
@@ -59,7 +59,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
       <div className='flex items-center gap-2'>
         <Link
           href={`/${locale}/login`}
-          className='whitespace-nowrap rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-fg)] transition-colors hover:bg-[var(--color-surface-subtle)]'
+          className='whitespace-nowrap rounded-full border border-[var(--color-border)] px-4 py-2 type-label-lg text-[var(--color-fg)] transition-colors hover:bg-[var(--color-surface-subtle)]'
         >
           {locale === 'en' ? 'Log in' : '로그인'}
         </Link>
@@ -68,7 +68,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
             type='button'
             onClick={enterPreview}
             title='로그인 없이 마이페이지 보기 (로컬 개발 서버 전용)'
-            className='rounded-full border border-dashed border-[var(--color-border)] px-3 py-2 text-sm font-semibold text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-subtle)]'
+            className='rounded-full border border-dashed border-[var(--color-border)] px-3 py-2 type-label-lg text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-subtle)]'
           >
             MY
           </button>
@@ -88,21 +88,21 @@ export function NavAuth({ locale }: { locale: Locale }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={user.picture} alt='' className='h-8 w-8 rounded-full' />
         ) : (
-          <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-brand-subtle)] text-xs font-bold text-[var(--color-brand)]'>
+          <span className='grid h-8 w-8 place-items-center rounded-full bg-[var(--color-brand-subtle)] type-label-sm text-[var(--color-brand)]'>
             {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
           </span>
         )}
-        <span className='hidden max-w-[8rem] truncate text-sm font-semibold sm:block'>{user.nickname ?? user.email}</span>
+        <span className='hidden max-w-[8rem] truncate type-label-lg sm:block'>{user.nickname ?? user.email}</span>
         <ChevronDown size={14} className='text-[var(--color-fg-muted)]' />
       </button>
 
       {open && (
         <div className='absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] py-1 shadow-lg'>
-          <div className='truncate px-4 py-2 text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
+          <div className='truncate px-4 py-2 type-label-sm text-[var(--color-fg-muted)]'>{user.email}</div>
           <Link
             href={`/${locale}/my`}
             onClick={() => setOpen(false)}
-            className='block px-4 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+            className='block px-4 py-2 type-label-lg text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
           >
             {locale === 'en' ? 'My page' : '마이페이지'}
           </Link>
@@ -115,7 +115,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
               router.replace(`/${locale}`);
               router.refresh();
             }}
-            className='block w-full px-4 py-2 text-left text-sm font-medium text-danger-fg hover:bg-[var(--color-surface-subtle)]'
+            className='block w-full px-4 py-2 text-left type-label-lg text-danger-fg hover:bg-[var(--color-surface-subtle)]'
           >
             {locale === 'en' ? 'Log out' : '로그아웃'}
           </button>

@@ -88,7 +88,7 @@ export function TimeZonePicker({
   return (
     <div ref={root} className='relative'>
       {!hideLabel && (
-        <label htmlFor={`${id}-trigger`} className='text-sm font-medium text-neutral-800'>
+        <label htmlFor={`${id}-trigger`} className='type-label-lg text-neutral-800'>
           {ko ? '나의 시간대' : 'My time zone'}{' '}
           <span className='text-error-600' aria-hidden='true'>
             *
@@ -125,9 +125,9 @@ export function TimeZonePicker({
             select(ZONES[active]!.zone);
           }
         }}
-        className={`${triggerGap} flex min-h-12 w-full items-center justify-between gap-3 rounded-control border bg-bg px-3.5 py-2.5 text-left text-sm outline-none transition focus-visible:border-border-interactive focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border hover:border-border-interactive'}`}
+        className={`${triggerGap} flex min-h-12 w-full items-center justify-between gap-3 rounded-control border bg-bg px-3.5 py-2.5 text-left type-label-lg outline-none transition focus-visible:border-border-interactive focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 ${error ? 'border-error-600' : 'border-border hover:border-border-interactive'}`}
       >
-        <span className={selected ? 'font-medium text-fg' : 'text-fg-muted'}>
+        <span className={selected ? 'font-semibold text-fg' : 'text-fg-muted'}>
           {selected ?? (ko ? '지역을 선택해 주세요' : 'Select your region')}
         </span>
         <ChevronDown
@@ -136,7 +136,7 @@ export function TimeZonePicker({
         />
       </button>
       {error && (
-        <p id={`${id}-error`} className='mt-2 text-xs leading-relaxed text-error-700'>
+        <p id={`${id}-error`} className='mt-2 type-label-sm text-error-700'>
           {error}
         </p>
       )}
@@ -157,13 +157,13 @@ export function TimeZonePicker({
               onMouseDown={(event) => event.preventDefault()}
               onMouseEnter={() => setActive(index)}
               onClick={() => select(z.zone)}
-              className={`flex w-full items-center justify-between gap-2 rounded-control px-3 py-2.5 text-left text-sm hover:bg-brand-subtle ${
+              className={`flex w-full items-center justify-between gap-2 rounded-control px-3 py-2.5 text-left type-label-lg hover:bg-brand-subtle ${
                 active === index ? 'bg-brand-subtle' : ''
               }`}
             >
               <span className='min-w-0'>
-                <span className='block font-medium'>{ko ? z.ko : z.en}</span>
-                <span className='mt-0.5 block text-xs text-fg-muted'>{zoneOffset(z.zone, now)}</span>
+                <span className='block font-semibold'>{ko ? z.ko : z.en}</span>
+                <span className='mt-0.5 block type-label-sm text-fg-muted'>{zoneOffset(z.zone, now)}</span>
               </span>
               {value === z.zone && <Check size={16} className='shrink-0 text-brand' aria-hidden='true' />}
             </button>

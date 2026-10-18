@@ -24,7 +24,7 @@ export const Sizes: Story = {
       {([14, 16, 20, 24, 32] as const).map((s) => (
         <div key={s} className='flex flex-col items-center gap-1'>
           <DiscordGlyph size={s} />
-          <span className='text-[10px] text-fg-muted'>{s}</span>
+          <span className='type-label-sm text-fg-muted'>{s}</span>
         </div>
       ))}
     </div>

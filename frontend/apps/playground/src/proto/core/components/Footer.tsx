@@ -16,13 +16,13 @@ export function Footer({ locale }: { locale: Locale }) {
   return (
     <footer className='mt-20 border-t border-(--color-border)'>
       <div className='mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 sm:flex-row sm:items-end sm:justify-between'>
-        <p className='text-xs text-(--color-fg-faint)'>
+        <p className='type-label-sm text-(--color-fg-faint)'>
           © {new Date().getFullYear()} StudyClub++ · preview · dummy data
         </p>
 
         {/* data-anno 를 직접 달지 않는다 — 푸터는 모든 화면에 뜨므로 약관과 무관한 화면마다
             설명 없는 배지가 하나씩 붙는다. 약관·방침 화면의 spec 이 이 표식을 selector 로 가리킨다. */}
-        <div data-legal-links className='flex flex-wrap gap-x-5 gap-y-2 text-xs text-(--color-fg-faint)'>
+        <div data-legal-links className='flex flex-wrap gap-x-5 gap-y-2 type-label-sm text-(--color-fg-faint)'>
           <Link href={`/proto/core/${locale}/terms`} className='hover:text-(--color-fg-muted)'>
             {m('nav.terms', locale)}
           </Link>

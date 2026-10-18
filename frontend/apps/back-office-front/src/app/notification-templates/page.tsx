@@ -15,19 +15,19 @@ export default function NotificationTemplatesPage() {
       <PageHeader title='알림 템플릿' subtitle='가입·신청 등 이벤트마다 나가는 메일·디스코드 문구' />
 
       {error && (
-        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-danger-fg'>
+        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 type-body-sm text-danger-fg'>
           {error.message}
         </div>
       )}
 
       {isPending && (
-        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-muted)]'>
+        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center type-body-sm text-[var(--color-fg-muted)]'>
           불러오는 중…
         </div>
       )}
 
       {templates?.length === 0 && (
-        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-muted)]'>
+        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center type-body-sm text-[var(--color-fg-muted)]'>
           등록된 템플릿이 없습니다.
         </div>
       )}
@@ -55,7 +55,7 @@ export default function NotificationTemplatesPage() {
                 </td>
                 <td className='whitespace-nowrap text-fg-secondary'>{CHANNEL_LABEL[t.channel] ?? t.channel}</td>
                 <td className='max-w-0 truncate text-fg-secondary'>{t.subject}</td>
-                <td className='tnum whitespace-nowrap text-xs text-fg-muted'>{fmtDateTime(t.updatedAt)}</td>
+                <td className='tnum whitespace-nowrap type-label-sm text-fg-muted'>{fmtDateTime(t.updatedAt)}</td>
               </tr>
             ))}
           </tbody>

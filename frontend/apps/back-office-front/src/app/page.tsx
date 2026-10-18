@@ -24,7 +24,7 @@ import { tx } from '@/lib/l10n';
  */
 
 function Pending() {
-  return <p className='py-10 text-center text-sm text-fg-muted'>준비 중입니다.</p>;
+  return <p className='py-10 text-center type-body-sm text-fg-muted'>준비 중입니다.</p>;
 }
 
 export default function Dashboard() {
@@ -81,11 +81,11 @@ export default function Dashboard() {
       <div className='mt-6'>
         <section>
           <div className='mb-3 flex items-baseline justify-between gap-3'>
-            <h2 className='text-base font-bold'>
+            <h2 className='type-title-md'>
               모집중 스터디
-              <span className='tnum ml-2 text-[13px] font-medium text-fg-muted'>{recruiting.length}</span>
+              <span className='tnum ml-2 type-label-lg text-fg-muted'>{recruiting.length}</span>
             </h2>
-            <Link href='/studies' className='text-xs font-medium text-brand'>
+            <Link href='/studies' className='type-label-sm text-brand'>
               전체 보기
             </Link>
           </div>

@@ -92,10 +92,10 @@ function LoginForm({
       <ScreenSpecRegistrar spec={SPEC} />
       <div className='w-full max-w-[420px]'>
         <div className='mb-8 text-center' data-anno='1'>
-          <h1 className='text-[28px] font-bold tracking-tight'>
+          <h1 className='type-headline-lg'>
             {ko ? 'StudyClub++ 로그인' : 'Log in to StudyClub++'}
           </h1>
-          <p className='mt-3 text-sm leading-relaxed text-fg-muted'>
+          <p className='mt-3 type-body-sm text-fg-muted'>
             {ko ? '함께 배우고 성장하는 스터디를 만나보세요.' : 'Find your people. Learn and grow together.'}
           </p>
         </div>
@@ -103,7 +103,7 @@ function LoginForm({
           {error && (
             <p
               role='alert'
-              className='mb-5 flex items-start gap-2 rounded-control bg-error-50 p-3 text-sm text-error-700'
+              className='mb-5 flex items-start gap-2 rounded-control bg-error-50 p-3 type-body-sm text-error-700'
               data-anno='3'
             >
               <AlertCircle size={17} className='mt-0.5 shrink-0' />
@@ -114,7 +114,7 @@ function LoginForm({
             <Button
               variant='secondary'
               size='lg'
-              className='w-full text-sm'
+              className='w-full type-label-lg'
               loading={loading}
               onClick={startLogin}
               leadingIcon={<GoogleIcon />}

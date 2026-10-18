@@ -99,8 +99,8 @@ export default function StudyManageAttendancePage() {
 
       {meetings.length === 0 ? (
         <div data-anno='book:4' className='card px-6 py-10 text-center'>
-          <p className='text-sm font-semibold text-fg'>아직 회차가 없습니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>
+          <p className='type-label-lg text-fg'>아직 회차가 없습니다.</p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
             {canEdit ? '일정 탭에서 회차를 만들면 이 반의 출석부가 만들어집니다.' : '회차가 생기면 출석부가 보입니다.'}
           </p>
           {canEdit && (

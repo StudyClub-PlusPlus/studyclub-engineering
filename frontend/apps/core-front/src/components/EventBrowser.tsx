@@ -44,7 +44,7 @@ function TypeChip({ active, onClick, children }: { active: boolean; onClick: () 
       type='button'
       onClick={onClick}
       aria-pressed={active}
-      className={`shrink-0 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+      className={`shrink-0 rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
         active
           ? 'border-brand bg-brand text-on-brand'
           : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:text-fg'
@@ -111,12 +111,12 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
                 role='tab'
                 aria-selected={on}
                 onClick={() => setFilters({ when: w })}
-                className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-4 py-1.5 type-label-lg transition-colors ${
                   on ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
                 }`}
               >
                 {t(WHEN_LABEL[w], locale)}
-                <span className={`tnum text-xs ${on ? 'text-fg-secondary' : 'text-fg-muted'}`}>{counts[w]}</span>
+                <span className={`tnum type-label-sm ${on ? 'text-fg-secondary' : 'text-fg-muted'}`}>{counts[w]}</span>
               </button>
             );
           })}
@@ -132,7 +132,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={m('filter.search_events', locale)}
-            className='h-8 w-full rounded-pill border border-border bg-bg pl-9 pr-3 text-sm outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
+            className='h-8 w-full rounded-pill border border-border bg-bg pl-9 pr-3 type-body-md outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
           />
         </div>
       </div>
@@ -152,7 +152,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
           ))}
         </div>
       ) : (
-        <p className='mt-10 text-sm text-fg-secondary'>{m('filter.none', locale)}</p>
+        <p className='mt-10 type-body-sm text-fg-secondary'>{m('filter.none', locale)}</p>
       )}
     </div>
   );

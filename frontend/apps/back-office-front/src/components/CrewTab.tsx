@@ -16,8 +16,8 @@ function Completion({ crew }: { crew: Crew }) {
     crew.completionRate >= 80 ? 'text-success-700' : crew.completionRate >= 60 ? 'text-fg' : 'text-warning-700';
   return (
     <span className='tnum'>
-      <span className={`font-bold ${tone}`}>{crew.completionRate}%</span>
-      <span className='ml-1 text-xs text-fg-muted'>({crew.pastStudies}회)</span>
+      <span className={`font-semibold ${tone}`}>{crew.completionRate}%</span>
+      <span className='ml-1 type-label-sm text-fg-muted'>({crew.pastStudies}회)</span>
     </span>
   );
 }
@@ -26,9 +26,9 @@ export function CrewTab({ crew, capacity }: { crew: Crew[]; capacity: number }) 
   return (
     <div className='flex flex-col gap-6'>
       <section>
-        <h2 className='flex items-baseline gap-2 text-[15px] font-bold'>
+        <h2 className='flex items-baseline gap-2 type-title-lg'>
           참여 크루
-          <span className='tnum text-[13px] font-medium text-fg-muted'>
+          <span className='tnum type-label-lg text-fg-muted'>
             {crew.length}/{capacity}
           </span>
         </h2>
@@ -52,7 +52,7 @@ export function CrewTab({ crew, capacity }: { crew: Crew[]; capacity: number }) 
                   <td className='whitespace-nowrap'>
                     <Completion crew={c} />
                   </td>
-                  <td className='tnum whitespace-nowrap text-xs text-fg-muted'>{c.appliedAt}</td>
+                  <td className='tnum whitespace-nowrap type-label-sm text-fg-muted'>{c.appliedAt}</td>
                 </tr>
               ))}
               {crew.length === 0 && (

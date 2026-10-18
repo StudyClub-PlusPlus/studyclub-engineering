@@ -31,7 +31,7 @@ export function ApplicationsTab({ studyId }: { studyId: number }) {
   const query = useApplications(studyId);
   if (query.isPending)
     return (
-      <p role='status' className='py-10 text-center text-sm text-fg-muted'>
+      <p role='status' className='py-10 text-center type-body-sm text-fg-muted'>
         불러오는 중
       </p>
     );
@@ -39,7 +39,7 @@ export function ApplicationsTab({ studyId }: { studyId: number }) {
     const status = query.error instanceof ApiError ? query.error.status : undefined;
     return (
       <div className='py-10 text-center'>
-        <p role='alert' className='text-sm text-fg-secondary'>
+        <p role='alert' className='type-body-sm text-fg-secondary'>
           {status === 403
             ? '담당하는 스터디가 아니에요.'
             : status === 404
@@ -49,7 +49,7 @@ export function ApplicationsTab({ studyId }: { studyId: number }) {
                 : '신청자를 불러오지 못했습니다. 다시 시도해 주세요.'}
         </p>
         {status === 403 ? (
-          <Link href='/studies' className='mt-3 inline-block text-sm font-semibold text-brand hover:underline'>
+          <Link href='/studies' className='mt-3 inline-block type-label-lg text-brand hover:underline'>
             스터디 관리로 돌아가기
           </Link>
         ) : (
@@ -122,7 +122,7 @@ function ApplicationReview({
     return (
       <div className='py-10 text-center'>
         <p role='alert'>담당하는 스터디가 아니에요.</p>
-        <Link href='/studies' className='mt-3 inline-block text-sm font-semibold text-brand'>
+        <Link href='/studies' className='mt-3 inline-block type-label-lg text-brand'>
           스터디 관리로 돌아가기
         </Link>
       </div>
@@ -131,15 +131,15 @@ function ApplicationReview({
   return (
     <section className='space-y-4' aria-label='신청자 심사'>
       <div>
-        <h2 className='text-[15px] font-bold'>신청자</h2>
-        <p className='mt-1 text-sm text-fg-secondary'>
+        <h2 className='type-title-lg'>신청자</h2>
+        <p className='mt-1 type-body-sm text-fg-secondary'>
           정원 {data.capacity == null ? '제한 없음' : `${data.capacity}명`} · 신청 {applications.length}명 · 승인{' '}
           {counts.APPROVED}명 · 대기 {counts.PENDING}명
         </p>
       </div>
-      {isFull && <p className='rounded-control bg-warning-100 px-4 py-3 text-sm text-warning-700'>정원이 찼어요.</p>}
+      {isFull && <p className='rounded-control bg-warning-100 px-4 py-3 type-body-sm text-warning-700'>정원이 찼어요.</p>}
       {!data.canApprove && data.approvalBlockedReason && (
-        <p className='text-sm text-fg-secondary'>{data.approvalBlockedReason}</p>
+        <p className='type-body-sm text-fg-secondary'>{data.approvalBlockedReason}</p>
       )}
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <Segmented
@@ -158,7 +158,7 @@ function ApplicationReview({
         />
         {status === 'PENDING' && (
           <div className='flex items-center gap-2'>
-            <span className='text-xs text-fg-muted'>{selectedIds.length}명 선택</span>
+            <span className='type-label-sm text-fg-muted'>{selectedIds.length}명 선택</span>
             <Button
               type='button'
               size='sm'
@@ -181,17 +181,17 @@ function ApplicationReview({
         )}
       </div>
       {notice && (
-        <p role='status' className='text-sm text-fg-secondary'>
+        <p role='status' className='type-body-sm text-fg-secondary'>
           {notice}
         </p>
       )}
       {copyError && (
-        <p role='alert' className='text-sm text-error-600'>
+        <p role='alert' className='type-body-sm text-error-600'>
           {copyError}
         </p>
       )}
       {mutation.error && (
-        <p role='alert' className='text-sm text-error-600'>
+        <p role='alert' className='type-body-sm text-error-600'>
           {mutation.error instanceof ApiError && mutation.error.status === 409
             ? '신청 상태 또는 정원이 변경되었습니다. 최신 목록을 확인하고 다시 시도해 주세요.'
             : '처리 결과를 확인하지 못했습니다. 최신 신청 상태를 확인해 주세요.'}
@@ -260,8 +260,8 @@ function ApplicationReview({
                     )}
                     <td>
                       <p className='whitespace-nowrap font-semibold'>{application.applicantName}</p>
-                      <p className='text-xs text-fg-muted'>{application.discordNickname || '—'}</p>
-                      <p className='text-xs text-fg-muted'>{application.email ?? '—'}</p>
+                      <p className='type-label-sm text-fg-muted'>{application.discordNickname || '—'}</p>
+                      <p className='type-label-sm text-fg-muted'>{application.email ?? '—'}</p>
                     </td>
                     <td className='whitespace-nowrap'>
                       {application.previousParticipationCount === 0
@@ -314,7 +314,7 @@ function ApplicationReview({
                   <tr id={`application-${application.id}`}>
                     <td colSpan={status === 'PENDING' ? 7 : 5}>
                       {isExpanded ? (
-                        <dl className='space-y-4 p-2 text-sm'>
+                        <dl className='space-y-4 p-2 type-body-sm'>
                           <div>
                             <dt className='font-semibold'>참여 가능 요일</dt>
                             <dd className='mt-1 text-fg-secondary'>
@@ -344,7 +344,7 @@ function ApplicationReview({
                           )}
                         </dl>
                       ) : (
-                        <p className='max-w-3xl truncate text-sm text-fg-secondary'>
+                        <p className='max-w-3xl truncate type-body-sm text-fg-secondary'>
                           {firstQuestion
                             ? `${firstQuestion.label} — ${answerText(application.answers[firstQuestion.id])}`
                             : '이 스터디는 신청 폼에 추가 질문이 없습니다.'}

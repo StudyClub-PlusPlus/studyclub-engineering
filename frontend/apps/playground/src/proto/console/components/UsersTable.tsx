@@ -203,9 +203,9 @@ function PermissionMatrixDialog({ onClose }: { onClose: () => void }) {
       <div className='flex flex-col gap-6' data-anno='role:4'>
         {PERMISSION_GROUPS.map((group) => (
           <section key={group.key}>
-            <h3 className='mb-2 flex items-baseline gap-2 text-sm font-bold'>
+            <h3 className='mb-2 flex items-baseline gap-2 type-title-md'>
               {group.label}
-              {group.note && <span className='text-xs font-medium text-fg-muted'>{group.note}</span>}
+              {group.note && <span className='type-label-sm text-fg-muted'>{group.note}</span>}
             </h3>
             <TableCard>
               <thead>
@@ -370,7 +370,7 @@ export function UsersTable() {
                   setRoleFilter(o.value);
                   setPage(1);
                 }}
-                className={`rounded-pill px-3 py-1.5 text-sm font-semibold transition-colors ${
+                className={`rounded-pill px-3 py-1.5 type-label-lg transition-colors ${
                   on ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted hover:text-fg'
                 }`}
               >
@@ -387,10 +387,10 @@ export function UsersTable() {
             setPage(1);
           }}
           placeholder='이름 · 이메일 검색'
-          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
         />
         {/* 탭·검색으로 걸러진 뒤의 수다 — 표 위에 두어야 무엇을 세고 있는지가 분명하다 */}
-        <span className='tnum ml-auto text-sm text-fg-muted'>총 {filtered.length}명</span>
+        <span className='tnum ml-auto type-body-sm text-fg-muted'>총 {filtered.length}명</span>
       </div>
 
       <div>
@@ -409,7 +409,7 @@ export function UsersTable() {
               <tr key={m.id}>
                 <td className='whitespace-nowrap font-semibold'>
                   {m.name}
-                  {m.status === 'dormant' && <span className='ml-1.5 text-xs text-fg-muted'>휴면</span>}
+                  {m.status === 'dormant' && <span className='ml-1.5 type-label-sm text-fg-muted'>휴면</span>}
                 </td>
                 <EmailCell email={m.email} />
                 <td>
@@ -425,10 +425,10 @@ export function UsersTable() {
                   />
                 </td>
                 {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
-                <td className='whitespace-nowrap text-xs text-fg-secondary'>
+                <td className='whitespace-nowrap type-label-sm text-fg-secondary'>
                   <NavigatorCell studyIds={m.navigatorOf} />
                 </td>
-                <td className='tnum whitespace-nowrap text-xs text-fg-muted'>{m.joinedAt}</td>
+                <td className='tnum whitespace-nowrap type-label-sm text-fg-muted'>{m.joinedAt}</td>
               </tr>
             ))}
             {pageRows.length === 0 && (

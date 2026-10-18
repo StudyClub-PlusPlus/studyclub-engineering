@@ -25,7 +25,7 @@ const REASONS = ['원하는 스터디 없음', '스터디 참여가 부담됨', 
  */
 export default function LeavePage() {
   return (
-    <Suspense fallback={<div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>}>
+    <Suspense fallback={<div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>}>
       <LeavePageInner />
     </Suspense>
   );
@@ -63,7 +63,7 @@ function LeavePageInner() {
     setTimeout(() => router.replace(`/proto/core/${locale}`), 800);
   }
 
-  if (!user) return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+  if (!user) return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
 
   return (
     <div className='mx-auto w-full max-w-[640px] px-6 py-10'>
@@ -72,28 +72,28 @@ function LeavePageInner() {
       <button
         type='button'
         onClick={() => router.push(`/proto/core/${locale}/my`)}
-        className='mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-fg-muted hover:text-fg'
+        className='mb-6 inline-flex items-center gap-1.5 type-label-lg text-fg-muted hover:text-fg'
       >
         <ArrowLeft size={15} /> 마이페이지
       </button>
 
       <header data-anno='leave:1'>
-        <h1 className='text-2xl font-bold tracking-tight'>회원 탈퇴</h1>
-        <ul className='mt-3 flex flex-col gap-1.5 text-sm leading-relaxed text-fg-secondary'>
+        <h1 className='type-headline-lg'>회원 탈퇴</h1>
+        <ul className='mt-3 flex flex-col gap-1.5 type-body-sm text-fg-secondary'>
           <li>· 탈퇴는 즉시 처리되며 되돌릴 수 없습니다.</li>
           <li>· 같은 구글 계정으로 다시 가입할 수 있지만, 지난 기록은 돌아오지 않습니다.</li>
         </ul>
       </header>
 
       <section data-anno='leave:2' className='mt-7'>
-        <label htmlFor='leave-reason' className='text-sm font-bold'>
-          탈퇴 사유 <span className='font-medium text-fg-muted'>(선택)</span>
+        <label htmlFor='leave-reason' className='type-label-lg'>
+          탈퇴 사유 <span className='font-semibold text-fg-muted'>(선택)</span>
         </label>
         <select
           id='leave-reason'
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className='mt-2 h-11 w-full rounded-control border border-border bg-surface px-3 text-sm'
+          className='mt-2 h-11 w-full rounded-control border border-border bg-surface px-3 type-body-md'
         >
           <option value=''>사유 선택</option>
           {REASONS.map((r) => (
@@ -107,22 +107,22 @@ function LeavePageInner() {
       {isNavigator && (
         <section
           data-anno='leave:3'
-          className='mt-7 rounded-card border border-warning-400 bg-warning-50 px-5 py-4 text-sm'
+          className='mt-7 rounded-card border border-warning-400 bg-warning-50 px-5 py-4 type-body-sm'
         >
-          <p className='flex items-center gap-2 font-bold text-warning-700'>
+          <p className='flex items-center gap-2 font-semibold text-warning-700'>
             <AlertTriangle size={16} /> 네비게이터로 맡은 스터디 {navigatorOf.length}개
           </p>
-          <ul className='mt-2 flex flex-col gap-1 font-medium text-fg'>
+          <ul className='mt-2 flex flex-col gap-1 font-semibold text-fg'>
             {navigatorOf.map((s) => (
               <li key={s.id}>· {s.title.ko}</li>
             ))}
           </ul>
-          <p className='mt-2 leading-relaxed text-fg'>
+          <p className='mt-2 text-fg'>
             캡틴에게 탈퇴 사실을 꼭 공유해 주시길 바랍니다.
           </p>
           {confirming && (
             <div className='mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-warning-400/50 pt-4'>
-              <p className='mr-auto text-sm font-bold text-fg'>그래도 탈퇴하시겠습니까?</p>
+              <p className='mr-auto type-label-lg text-fg'>그래도 탈퇴하시겠습니까?</p>
               <Button variant='secondary' onClick={() => setConfirming(false)}>
                 탈퇴 취소
               </Button>

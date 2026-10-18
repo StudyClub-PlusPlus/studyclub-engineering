@@ -11,7 +11,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className='w-[480px] text-sm leading-relaxed text-fg'>
+      <div className='w-[480px] type-body-sm text-fg'>
         <Story />
       </div>
     ),

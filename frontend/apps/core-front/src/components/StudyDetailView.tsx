@@ -20,7 +20,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
 
   if (isPending) {
     return (
-      <div className='mx-auto max-w-3xl px-6 py-20 text-center text-sm text-fg-muted'>
+      <div className='mx-auto max-w-3xl px-6 py-20 text-center type-body-sm text-fg-muted'>
         {t({ ko: '스터디 정보를 불러오는 중…', en: 'Loading study details…' }, locale)}
       </div>
     );
@@ -30,7 +30,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
     const isNotFound = error instanceof ApiError && error.status === 404;
     return (
       <div className='mx-auto max-w-3xl px-6 py-20 text-center'>
-        <p className='text-lg font-bold text-fg-secondary'>
+        <p className='type-title-md text-fg-secondary'>
           {isNotFound
             ? t({ ko: '스터디를 찾을 수 없어요.', en: 'Study not found.' }, locale)
             : t(
@@ -43,7 +43,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
         </p>
         <Link
           href={`/${locale}/studies`}
-          className='mt-4 inline-flex items-center gap-1.5 rounded-pill border border-border px-4 py-2 text-sm font-semibold text-fg transition-colors hover:border-border-interactive hover:text-brand'
+          className='mt-4 inline-flex items-center gap-1.5 rounded-pill border border-border px-4 py-2 type-label-lg text-fg transition-colors hover:border-border-interactive hover:text-brand'
         >
           <ArrowLeft size={15} /> {m('common.back_studies', locale)}
         </Link>
@@ -70,7 +70,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
       />
       <Link
         href={`/${locale}/studies`}
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg'
+        className='inline-flex items-center gap-1.5 type-label-lg text-fg-secondary transition-colors hover:text-fg'
       >
         <ArrowLeft size={15} /> {m('common.back_studies', locale)}
       </Link>
@@ -82,14 +82,14 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
         >
           <div className='flex items-center gap-1.5 text-white/85'>
             <CategoryIcon size={14} strokeWidth={1.75} className='shrink-0' />
-            <span className='text-[11px] font-bold uppercase tracking-[0.14em]'>{categoryLabel}</span>
+            <span className='type-label-sm uppercase'>{categoryLabel}</span>
           </div>
-          <h1 className='break-keep text-[28px] font-bold leading-[1.25] tracking-tight text-white'>
+          <h1 className='break-keep type-headline-lg text-white'>
             {t(study.title, locale)}
           </h1>
-          <p className='text-[16px] leading-relaxed text-white/90'>{t(study.summary, locale)}</p>
+          <p className='type-body-md text-white/90 type-prose'>{t(study.summary, locale)}</p>
           {study.schedule && (
-            <p className='flex items-center gap-1.5 text-[14px] font-medium text-white/90'>
+            <p className='flex items-center gap-1.5 type-label-lg text-white/90'>
               <CalendarClock size={14} strokeWidth={1.75} className='shrink-0' />
               {t(study.schedule, locale)}
             </p>
@@ -98,15 +98,15 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
 
         {study.description && (
           <div className='px-8 py-7'>
-            <h2 className='text-[15px] font-bold text-fg'>{m('common.about_study', locale)}</h2>
-            <p className='mt-3 whitespace-pre-line text-[16px] leading-[1.85] text-fg-secondary'>
+            <h2 className='type-title-lg text-fg'>{m('common.about_study', locale)}</h2>
+            <p className='mt-3 whitespace-pre-line type-body-md text-fg-secondary type-prose'>
               {t(study.description, locale)}
             </p>
           </div>
         )}
 
         <div className='flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface-1 px-8 py-5'>
-          <span className='tnum text-sm font-medium text-fg-secondary'>
+          <span className='tnum type-label-lg text-fg-secondary'>
             {deadline ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale) : ''}
           </span>
           <ApplyButton study={study} locale={locale} />

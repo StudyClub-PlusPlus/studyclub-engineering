@@ -104,20 +104,20 @@ function UsersAdminContent() {
           placeholder='이름 · 이메일 검색'
           aria-label='이름 · 이메일 검색'
           maxLength={100}
-          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-56 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
         />
         {/* 탭·검색으로 걸러진 뒤의 수다 — 표 위에 두어야 무엇을 세고 있는지가 분명하다 */}
-        <span className='tnum ml-auto text-sm text-fg-muted'>{data && `총 ${data.total}명`}</span>
+        <span className='tnum ml-auto type-body-sm text-fg-muted'>{data && `총 ${data.total}명`}</span>
       </div>
 
       {error && (
-        <div className='mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-danger-fg'>
+        <div className='mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 type-body-sm text-danger-fg'>
           {error.message}
         </div>
       )}
 
       {isPending && !error ? (
-        <p className='py-10 text-center text-sm text-fg-muted'>불러오는 중…</p>
+        <p className='py-10 text-center type-body-sm text-fg-muted'>불러오는 중…</p>
       ) : (
         data && <UsersTable rows={data.items} revealed={emails} onReveal={reveal} />
       )}

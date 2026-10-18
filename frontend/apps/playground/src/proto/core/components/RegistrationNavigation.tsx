@@ -19,8 +19,8 @@ export function RegistrationNavigation({ children, locale }: { children: React.R
   return (
     <header className='sticky top-0 z-30 border-b border-border bg-bg/95 backdrop-blur-md'>
       <div className='mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-6'>
-        <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 text-lg font-bold tracking-tight'>
-          <span className='grid h-7 w-7 place-items-center rounded-lg bg-brand text-sm font-extrabold text-on-brand'>
+        <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 type-title-md'>
+          <span className='grid h-7 w-7 place-items-center rounded-lg bg-brand type-label-lg text-on-brand'>
             S
           </span>
           StudyClub++
@@ -29,7 +29,7 @@ export function RegistrationNavigation({ children, locale }: { children: React.R
           href={switchUrl}
           hrefLang={other}
           lang={other}
-          className='rounded-full border border-border-strong px-3.5 py-2 text-xs font-medium text-fg-muted transition hover:bg-surface-1 focus-visible:outline-none focus-visible:shadow-(--ring)'
+          className='rounded-full border border-border-strong px-3.5 py-2 type-label-sm text-fg-muted transition hover:bg-surface-1 focus-visible:outline-none focus-visible:shadow-(--ring)'
         >
           {other === 'en' ? 'English' : '한국어'}
         </Link>

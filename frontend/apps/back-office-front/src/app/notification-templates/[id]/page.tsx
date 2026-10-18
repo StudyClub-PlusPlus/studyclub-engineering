@@ -12,8 +12,8 @@ import { CHANNEL_LABEL, EVENT_LABEL, fmtDateTime } from '@/features/notification
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className='border-b border-[var(--color-border)] px-5 py-4 last:border-b-0'>
-      <div className='mb-1.5 text-xs font-semibold text-[var(--color-fg-muted)]'>{label}</div>
-      <div className='text-sm'>{children}</div>
+      <div className='mb-1.5 type-label-sm text-[var(--color-fg-muted)]'>{label}</div>
+      <div className='type-body-sm'>{children}</div>
     </div>
   );
 }
@@ -24,24 +24,24 @@ export default function NotificationTemplateDetail() {
 
   return (
     <div>
-      <Link href='/notification-templates' className='mb-3 inline-block text-sm text-fg-muted hover:text-brand'>
+      <Link href='/notification-templates' className='mb-3 inline-block type-body-sm text-fg-muted hover:text-brand'>
         ← 알림 템플릿
       </Link>
 
       {error && (
-        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-danger-fg'>
+        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 type-body-sm text-danger-fg'>
           {error.message}
         </div>
       )}
 
       {isPending && (
-        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-muted)]'>
+        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center type-body-sm text-[var(--color-fg-muted)]'>
           불러오는 중…
         </div>
       )}
 
       {!isPending && !error && !template && (
-        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-muted)]'>
+        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center type-body-sm text-[var(--color-fg-muted)]'>
           템플릿을 찾을 수 없습니다.
         </div>
       )}
@@ -66,11 +66,11 @@ export default function NotificationTemplateDetail() {
                   className='h-[40rem] w-full rounded-lg border border-[var(--color-border)] bg-white'
                 />
               ) : (
-                <pre className='whitespace-pre-wrap break-words font-sans text-sm leading-relaxed'>{template.body}</pre>
+                <pre className='whitespace-pre-wrap break-words font-sans type-body-sm'>{template.body}</pre>
               )}
             </Field>
             <Field label='이벤트 코드'>
-              <code className='rounded bg-[var(--color-surface-subtle)] px-1.5 py-0.5 text-xs'>
+              <code className='rounded bg-[var(--color-surface-subtle)] px-1.5 py-0.5 type-label-sm'>
                 {template.eventType}
               </code>
             </Field>

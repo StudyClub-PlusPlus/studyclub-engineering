@@ -162,7 +162,7 @@ function FilterSelect<T extends string>({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={`h-9 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
+      className={`h-9 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
       }`}
     >
@@ -238,7 +238,7 @@ function StatusTooltip({
         <span
           role='tooltip'
           style={{ position: 'fixed', left: pos.x, top: pos.y, width, transform: 'translateX(-50%)' }}
-          className='pointer-events-none z-50 whitespace-normal rounded-control bg-neutral-900 px-3 py-2 text-left text-xs font-normal leading-relaxed text-white shadow-lg'
+          className='pointer-events-none z-50 whitespace-normal rounded-control bg-neutral-900 px-3 py-2 text-left type-label-sm text-white shadow-lg'
         >
           <span className='block font-semibold'>{label}</span>
           <span className='block'>{description}</span>
@@ -334,7 +334,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
 
   return (
     <div>
-      <div className='studies-status-guide mb-[14px] flex flex-wrap items-center gap-2 text-sm'>
+      <div className='studies-status-guide mb-[14px] flex flex-wrap items-center gap-2 type-body-sm'>
         <span className='mr-1 font-semibold text-fg-secondary'>스터디 상태</span>
         {STUDY_STATUS_GUIDE.map((status, index) => (
           <span key={status.label} className='inline-flex items-center gap-2'>
@@ -349,7 +349,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             )}
           </span>
         ))}
-        <span className='text-xs text-fg-muted'>
+        <span className='type-label-sm text-fg-muted'>
           모집중/마감은 상태가 아니라 모집 시작일·종료일과 정원으로 계산합니다
         </span>
       </div>
@@ -359,7 +359,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='제목 · 한 줄 소개 검색'
-          className='h-9 w-[188px] rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-[188px] rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
         />
         <FilterSelect
           value={category}
@@ -382,7 +382,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           onChange={(v) => setFilters({ publish: v, page: '1' })}
           options={PUBLISH_OPTIONS}
         />
-        <label className='inline-flex h-9 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-surface px-3 text-sm text-fg-secondary'>
+        <label className='inline-flex h-9 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-surface px-3 type-label-lg text-fg-secondary'>
           <input
             type='checkbox'
             checked={noFormOnly}
@@ -402,7 +402,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           </span>
           신청 폼 없는 것만
         </label>
-        <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
+        <span className='ml-auto type-label-sm text-fg-muted'>{rows.length}개</span>
       </div>
 
       <div className='card'>
@@ -447,7 +447,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                 const lifecycleStatus = lifecycleStatusOf(s);
                 return (
                   <tr key={s.id}>
-                    <td className='whitespace-nowrap font-mono text-xs text-fg-muted'>{s.program?.id ?? '—'}</td>
+                    <td className='whitespace-nowrap font-mono type-label-sm text-fg-muted'>{s.program?.id ?? '—'}</td>
                     <td className='w-[42%] max-w-0'>
                       <Link
                         href={`/studies/${s.id}`}
@@ -477,10 +477,10 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                     </td>
                     <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
                     <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '미정'}</td>
-                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
+                    <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
                       {displayDate(s.recruitment?.start)}
                     </td>
-                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
+                    <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
                       {displayDate(s.recruitment?.deadline)}
                     </td>
                     <td>
@@ -488,12 +488,12 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                         {open ? '모집중' : '마감'}
                       </Badge>
                     </td>
-                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>
+                    <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
                       {applied} / {capacity === undefined ? '제한 없음' : capacity}
                     </td>
-                    <td className='tnum whitespace-nowrap text-xs text-fg-secondary'>{toISODate(s.date) ?? '미정'}</td>
+                    <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>{toISODate(s.date) ?? '미정'}</td>
                     <td
-                      className='whitespace-nowrap text-center text-sm'
+                      className='whitespace-nowrap text-center type-body-sm'
                       aria-label={hasApplicationFormOf(s) ? '신청 폼 있음' : '신청 폼 없음'}
                     >
                       {hasApplicationFormOf(s) ? '✓' : '—'}
@@ -534,8 +534,8 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                 aria-current={currentPage === pageNumber ? 'page' : undefined}
                 className={
                   currentPage === pageNumber
-                    ? 'inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white'
-                    : 'inline-flex h-8 w-8 items-center justify-center rounded-full text-sm text-fg-secondary hover:bg-surface-2'
+                    ? 'inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand type-label-lg text-white'
+                    : 'inline-flex h-8 w-8 items-center justify-center rounded-full type-label-lg text-fg-secondary hover:bg-surface-2'
                 }
               >
                 {pageNumber}

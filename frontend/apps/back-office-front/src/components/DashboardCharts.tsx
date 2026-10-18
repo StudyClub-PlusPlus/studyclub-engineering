@@ -32,7 +32,7 @@ export function Card({
   return (
     <section className='card px-6 py-5'>
       <div className='flex items-baseline justify-between gap-3'>
-        <h2 className='text-[15px] font-bold'>{title}</h2>
+        <h2 className='type-title-md'>{title}</h2>
         {action}
       </div>
       <div className='mt-4'>{children}</div>
@@ -82,12 +82,12 @@ export function RegionDonut({ data }: { data: { key: MemberRegion; count: number
                 style={{ background: REGION_COLOR[d.key] }}
                 aria-hidden='true'
               />
-              <span className='min-w-0 flex-1 truncate text-sm font-medium text-fg'>
+              <span className='min-w-0 flex-1 truncate type-label-lg text-fg'>
                 {meta?.label.ko ?? d.key}
-                <span className='ml-1.5 text-xs text-fg-muted'>{meta?.tzLabel}</span>
+                <span className='ml-1.5 type-label-sm text-fg-muted'>{meta?.tzLabel}</span>
               </span>
-              <span className='tnum shrink-0 text-sm font-bold text-fg'>{pct}%</span>
-              <span className='tnum w-12 shrink-0 text-right text-xs text-fg-muted'>{d.count}명</span>
+              <span className='tnum shrink-0 type-label-lg text-fg'>{pct}%</span>
+              <span className='tnum w-12 shrink-0 text-right type-label-sm text-fg-muted'>{d.count}명</span>
             </li>
           );
         })}
@@ -99,13 +99,13 @@ export function RegionDonut({ data }: { data: { key: MemberRegion; count: number
 /** 카테고리별 출석률 — 가로 막대. 세로 막대는 카테고리 이름이 겹쳐 읽히지 않는다. */
 export function CategoryBars({ data }: { data: { category: string; rate: number; crew: number }[] }) {
   if (data.length === 0) {
-    return <p className='py-6 text-center text-sm text-fg-muted'>집계할 출석 기록이 없습니다.</p>;
+    return <p className='py-6 text-center type-body-sm text-fg-muted'>집계할 출석 기록이 없습니다.</p>;
   }
   return (
     <ul className='flex flex-col gap-3'>
       {data.map((d) => (
         <li key={d.category} className='flex items-center gap-3'>
-          <span className='w-24 shrink-0 truncate text-[13px] font-medium text-fg-secondary' title={d.category}>
+          <span className='w-24 shrink-0 truncate type-label-lg text-fg-secondary' title={d.category}>
             {d.category}
           </span>
           <span className='h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
@@ -114,8 +114,8 @@ export function CategoryBars({ data }: { data: { category: string; rate: number;
               style={{ width: `${d.rate}%`, background: rateColor(d.rate) }}
             />
           </span>
-          <span className='tnum w-10 shrink-0 text-right text-[13px] font-bold text-fg'>{d.rate}%</span>
-          <span className='tnum w-14 shrink-0 text-right text-xs text-fg-muted'>{d.crew}명</span>
+          <span className='tnum w-10 shrink-0 text-right type-label-lg text-fg'>{d.rate}%</span>
+          <span className='tnum w-14 shrink-0 text-right type-label-sm text-fg-muted'>{d.crew}명</span>
         </li>
       ))}
     </ul>

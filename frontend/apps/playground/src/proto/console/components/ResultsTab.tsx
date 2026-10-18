@@ -42,7 +42,7 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
     return (
       <p
         data-anno='results:2'
-        className='rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'
+        className='rounded-card border border-dashed border-border px-4 py-6 text-center type-body-sm text-fg-muted'
       >
         이 스터디는 신청 폼에 추가 질문이 없습니다. 「신청 폼」 탭에서 질문을 추가하면 여기서 답을 모아볼 수 있습니다.
       </p>
@@ -52,8 +52,8 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
   return (
     <div className='flex flex-col gap-5'>
       <div data-anno='results:2' className='flex items-center justify-between gap-3'>
-        <p className='text-sm text-fg-muted'>
-          응답자 <span className='tnum font-bold text-fg'>{respondents.length}</span>명
+        <p className='type-body-sm text-fg-muted'>
+          응답자 <span className='tnum font-semibold text-fg'>{respondents.length}</span>명
         </p>
         <nav data-anno='results:2-1' className='inline-flex rounded-pill bg-surface-2 p-1'>
           {VIEW_OPTIONS.map((o) => {
@@ -63,7 +63,7 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
                 key={o.value}
                 type='button'
                 onClick={() => setView(o.value)}
-                className={`rounded-pill px-3 py-1.5 text-sm font-semibold transition-colors ${
+                className={`rounded-pill px-3 py-1.5 type-label-lg transition-colors ${
                   on ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted hover:text-fg'
                 }`}
               >
@@ -75,7 +75,7 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
       </div>
 
       {respondents.length === 0 ? (
-        <p className='rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
+        <p className='rounded-card border border-dashed border-border px-4 py-6 text-center type-body-sm text-fg-muted'>
           아직 들어온 신청이 없습니다.
         </p>
       ) : view === 'summary' ? (
@@ -132,7 +132,7 @@ function QuestionSummary({
     <Card
       title={`${index + 1}. ${q.label || '(제목 없음)'}`}
       action={
-        <span className='whitespace-nowrap text-xs font-medium text-fg-muted'>
+        <span className='whitespace-nowrap type-label-sm text-fg-muted'>
           {TYPE_LABEL[q.type]} · {answered.length}명 응답
         </span>
       }
@@ -161,13 +161,13 @@ function ChoiceTally({ q, respondents }: { q: ApplicationQuestion; respondents: 
     <ul className='flex flex-col gap-1'>
       {tallies.map(({ option, count }) => (
         <li key={option} className='flex items-center gap-3 px-1 py-1'>
-          <span className='w-32 shrink-0 truncate text-[13px] font-medium text-fg-secondary' title={option}>
+          <span className='w-32 shrink-0 truncate type-label-lg text-fg-secondary' title={option}>
             {option}
           </span>
           <span className='h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
             <span className='block h-full rounded-pill bg-brand' style={{ width: `${(count / max) * 100}%` }} />
           </span>
-          <span className='tnum w-10 shrink-0 text-right text-[13px] font-bold text-fg'>{count}명</span>
+          <span className='tnum w-10 shrink-0 text-right type-label-lg text-fg'>{count}명</span>
         </li>
       ))}
     </ul>
@@ -177,12 +177,12 @@ function ChoiceTally({ q, respondents }: { q: ApplicationQuestion; respondents: 
 /** 단답형·장문형 — 옵션이 없어 집계할 수 없다. 답만 나열하고 누가 썼는지는 붙이지 않는다. */
 function TextAnswerList({ q, respondents }: { q: ApplicationQuestion; respondents: Crew[] }) {
   if (respondents.length === 0) {
-    return <p className='text-sm text-fg-muted'>아직 답이 없습니다.</p>;
+    return <p className='type-body-sm text-fg-muted'>아직 답이 없습니다.</p>;
   }
   return (
     <ol className='flex list-decimal flex-col gap-2 pl-5 marker:text-fg-muted'>
       {respondents.map((c) => (
-        <li key={c.id} className='whitespace-pre-wrap text-sm text-fg-secondary'>
+        <li key={c.id} className='whitespace-pre-wrap type-body-sm text-fg-secondary'>
           {answerText(c.answers?.[q.id])}
         </li>
       ))}

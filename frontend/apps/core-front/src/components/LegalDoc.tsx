@@ -11,8 +11,8 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
   return (
     <div className='mx-auto max-w-3xl px-6 py-14'>
       <header data-anno='1'>
-        <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{lx(doc.title, locale)}</h1>
-        <p data-anno='1-1' className='mt-3 text-sm text-(--color-fg-muted)'>
+        <h1 className='type-headline-lg sm:type-headline-lg'>{lx(doc.title, locale)}</h1>
+        <p data-anno='1-1' className='mt-3 type-body-sm text-(--color-fg-muted)'>
           {lx(LEGAL_TEXT.updatedAt, locale)} <time dateTime={doc.updatedAt}>{doc.updatedAt}</time>
         </p>
       </header>
@@ -29,11 +29,11 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
         {doc.sections.map((s, i) => (
           <section key={s.id} id={s.id} className='scroll-mt-24'>
             {s.chapter && s.chapter.ko !== doc.sections[i - 1]?.chapter?.ko ? (
-              <h2 className='mb-6 border-b border-(--color-border) pb-2 text-sm font-bold text-(--color-fg-muted)'>
+              <h2 className='mb-6 border-b border-(--color-border) pb-2 type-title-md text-(--color-fg-muted)'>
                 {lx(s.chapter, locale)}
               </h2>
             ) : null}
-            <h2 className='text-lg font-bold tracking-tight'>{lx(s.heading, locale)}</h2>
+            <h2 className='type-title-md'>{lx(s.heading, locale)}</h2>
             {s.blocks?.length ? (
               <div className='mt-3 flex flex-col gap-3'>
                 {s.blocks.map((b, i) => (
@@ -41,7 +41,7 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
                 ))}
               </div>
             ) : (
-              <p className='mt-2 text-[15px] italic text-(--color-fg-faint)'>{lx(LEGAL_TEXT.empty, locale)}</p>
+              <p className='mt-2 type-body-sm italic text-(--color-fg-faint)'>{lx(LEGAL_TEXT.empty, locale)}</p>
             )}
           </section>
         ))}
@@ -50,14 +50,14 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
   );
 }
 
-const TEXT = 'text-[15px] leading-relaxed text-(--color-fg-muted)';
+const TEXT = 'type-body-sm text-(--color-fg-muted)';
 
 export function BlockView({ block, locale }: { block: Block; locale: Locale }) {
   switch (block.kind) {
     case 'p':
       // 원문에서 굵게 강조된 문단 — 면책·책임 한계처럼 놓치면 안 되는 조항이다.
       return (
-        <p className={block.strong ? 'text-[15px] font-semibold leading-relaxed text-(--color-fg)' : TEXT}>
+        <p className={block.strong ? 'type-label-lg text-(--color-fg)' : TEXT}>
           {lx(block.text, locale)}
         </p>
       );
@@ -87,7 +87,7 @@ export function BlockView({ block, locale }: { block: Block; locale: Locale }) {
         <ol className={`list-decimal space-y-2.5 pl-5 ${TEXT}`}>
           {block.items.map((it, i) => (
             <li key={i}>
-              <span className='font-bold text-(--color-fg)'>{lx(it.title, locale)}</span>
+              <span className='font-semibold text-(--color-fg)'>{lx(it.title, locale)}</span>
               <br />
               {lx(it.body, locale)}
             </li>
@@ -100,7 +100,7 @@ export function BlockView({ block, locale }: { block: Block; locale: Locale }) {
       // 표 자체를 가로 스크롤시킨다 — 법률 문서는 열 대응이 흐트러지면 읽을 수 없다.
       return (
         <div className='-mx-1 overflow-x-auto px-1'>
-          <table className='w-full min-w-full border-collapse text-[13px]'>
+          <table className='w-full min-w-full border-collapse type-body-sm'>
             <thead>
               <tr className='border-b border-(--color-border) text-left text-(--color-fg-muted)'>
                 {block.head.map((h, i) => (
@@ -128,7 +128,7 @@ export function BlockView({ block, locale }: { block: Block; locale: Locale }) {
     case 'note':
       return (
         <p
-          className='rounded-card border-l-2 bg-(--color-surface-subtle) py-3 pl-4 pr-4 text-[14px] leading-relaxed text-(--color-fg-muted)'
+          className='rounded-card border-l-2 bg-(--color-surface-subtle) py-3 pl-4 pr-4 type-body-sm text-(--color-fg-muted)'
           style={{ borderLeftColor: 'var(--color-border)' }}
         >
           {lx(block.text, locale)}

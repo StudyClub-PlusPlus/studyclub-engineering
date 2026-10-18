@@ -35,9 +35,9 @@ export function Sidebar() {
 
   return (
     <aside className='sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg)] lg:flex'>
-      <div className='flex h-16 items-center gap-2 border-b border-[var(--color-border)] px-5 text-[15px] font-bold'>
+      <div className='flex h-16 items-center gap-2 border-b border-[var(--color-border)] px-5 type-label-lg'>
         <span
-          className='grid h-7 w-7 place-items-center rounded-lg text-xs font-extrabold text-white'
+          className='grid h-7 w-7 place-items-center rounded-lg type-label-sm text-white'
           style={{ background: 'var(--color-fg)' }}
         >
           S+
@@ -51,7 +51,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors'
+              className='flex items-center gap-2.5 rounded-lg px-3 py-2 type-label-lg transition-colors'
               style={
                 active
                   ? { background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }
@@ -73,13 +73,13 @@ export function Sidebar() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.picture} alt='' className='h-8 w-8 shrink-0 rounded-full' />
             ) : (
-              <span className='grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-brand-subtle)] text-xs font-bold text-[var(--color-brand)]'>
+              <span className='grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-brand-subtle)] type-label-sm text-[var(--color-brand)]'>
                 {(user.nickname ?? user.email).slice(0, 1).toUpperCase()}
               </span>
             )}
             <div className='min-w-0 flex-1'>
-              <div className='truncate text-sm font-semibold'>{user.nickname ?? '운영자'}</div>
-              <div className='truncate text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
+              <div className='truncate type-label-lg'>{user.nickname ?? '운영자'}</div>
+              <div className='truncate type-label-sm text-[var(--color-fg-muted)]'>{user.email}</div>
             </div>
             <button
               type='button'
@@ -91,7 +91,7 @@ export function Sidebar() {
             </button>
           </div>
         ) : (
-          <div className='px-1 py-2 text-xs text-[var(--color-fg-muted)]'>로그인 필요</div>
+          <div className='px-1 py-2 type-label-sm text-[var(--color-fg-muted)]'>로그인 필요</div>
         )}
       </div>
     </aside>

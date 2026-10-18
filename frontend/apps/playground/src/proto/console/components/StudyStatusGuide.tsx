@@ -10,7 +10,7 @@ import { ChevronRight } from 'lucide-react';
  */
 export function StudyStatusGuide() {
   return (
-    <div data-anno='status:1' className='mb-4 flex flex-wrap items-center gap-x-1 gap-y-2 text-xs text-fg-muted'>
+    <div data-anno='status:1' className='mb-4 flex flex-wrap items-center gap-x-1 gap-y-2 type-label-sm text-fg-muted'>
       <span className='mr-1 font-semibold text-fg-secondary'>스터디 상태</span>
       {LIFECYCLE_ORDER.map((state, i) => (
         <span key={state} className='inline-flex items-center gap-1'>

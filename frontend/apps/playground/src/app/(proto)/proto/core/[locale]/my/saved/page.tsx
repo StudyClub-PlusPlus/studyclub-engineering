@@ -42,18 +42,18 @@ export default function SavedStudiesPage() {
   }, [ids, allStudies]);
 
   if (!ready) {
-    return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+    return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
   return (
     <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
       <div className='flex items-center justify-between gap-3'>
-        <h1 className='text-2xl font-extrabold tracking-tight'>찜한 스터디</h1>
+        <h1 className='type-headline-lg'>찜한 스터디</h1>
         <Button variant='secondary' size='sm' onClick={() => router.push(`/proto/core/${locale}/my/joined`)}>
           내 스터디
         </Button>
       </div>
-      <p className='mt-1 text-sm text-fg-secondary'>하트로 담아 둔 스터디 {saved.length}개</p>
+      <p className='mt-1 type-body-sm text-fg-secondary'>하트로 담아 둔 스터디 {saved.length}개</p>
 
       {saved.length === 0 ? (
         <div className='mt-8'>
@@ -80,11 +80,11 @@ export default function SavedStudiesPage() {
                   <div className='min-w-0 flex-1'>
                     <Link
                       href={userStudyPath(locale, study)}
-                      className='block truncate font-bold underline-offset-4 hover:underline'
+                      className='block truncate font-semibold underline-offset-4 hover:underline'
                     >
                       {t(study.title, locale)}
                     </Link>
-                    <p className='mt-0.5 text-[13px] text-fg-muted'>{label}</p>
+                    <p className='mt-0.5 type-body-sm text-fg-muted'>{label}</p>
                   </div>
                   <button
                     type='button'

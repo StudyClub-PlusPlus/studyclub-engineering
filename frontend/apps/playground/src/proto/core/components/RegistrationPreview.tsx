@@ -63,7 +63,7 @@ export function RegistrationPreviewToolbar() {
       aria-label={ko ? '가입 화면 검토 도구' : 'Signup preview controls'}
       className='border-b border-border bg-surface-1'
     >
-      <div className='mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 text-xs sm:px-6'>
+      <div className='mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 type-label-sm sm:px-6'>
         <span className='font-semibold text-fg-muted'>{ko ? '가입 화면 미리보기' : 'Signup preview'}</span>
         <div className='flex gap-3'>
           <Link
@@ -87,7 +87,7 @@ export function RegistrationPreviewToolbar() {
             id='registration-scenario'
             value={current}
             onChange={(event) => navigate(event.target.value)}
-            className='min-h-9 rounded-control border border-border-strong bg-bg px-2 text-xs focus-visible:outline-none focus-visible:shadow-(--ring)'
+            className='min-h-9 rounded-control border border-border-strong bg-bg px-2 type-body-md focus-visible:outline-none focus-visible:shadow-(--ring)'
           >
             {scenarios.map((value) => (
               <option key={value} value={value}>
@@ -141,7 +141,7 @@ export function RegistrationFeedback() {
       className='fixed bottom-20 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center gap-3 rounded-card border border-border bg-bg p-4 shadow-lg'
     >
       <CheckCircle2 size={21} className='shrink-0 text-success-700' aria-hidden='true' />
-      <p className='flex-1 text-sm font-medium'>
+      <p className='flex-1 type-label-lg'>
         {ko ? `${notice.nickname}님, 가입이 완료됐어요!` : `Welcome, ${notice.nickname}! Your sign-up is complete.`}
       </p>
       <button

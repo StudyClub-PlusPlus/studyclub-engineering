@@ -27,9 +27,9 @@ export function SiteHeader({
   return (
     <header className='sticky top-0 z-30 border-b border-(--color-border) bg-[color-mix(in_srgb,var(--color-bg)_82%,transparent)] backdrop-blur-md'>
       <div className='mx-auto flex h-16 max-w-6xl items-center gap-7 px-6'>
-        <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 text-lg font-bold tracking-tight'>
+        <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 type-title-md'>
           <span
-            className='grid h-7 w-7 place-items-center rounded-lg text-sm font-extrabold text-white'
+            className='grid h-7 w-7 place-items-center rounded-lg type-label-lg text-white'
             style={{ background: 'var(--color-brand)' }}
           >
             S
@@ -45,7 +45,7 @@ export function SiteHeader({
         <div className='ml-auto flex items-center gap-3'>
           <Link
             href={`/proto/core/${other}`}
-            className='rounded-full px-2 py-1 text-xs font-semibold text-(--color-fg-muted) transition-colors hover:bg-(--color-surface-subtle) hover:text-(--color-fg)'
+            className='rounded-full px-2 py-1 type-label-sm text-(--color-fg-muted) transition-colors hover:bg-(--color-surface-subtle) hover:text-(--color-fg)'
           >
             {other.toUpperCase()}
           </Link>
@@ -53,7 +53,7 @@ export function SiteHeader({
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='hidden rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors sm:block'
+            className='hidden rounded-full px-4 py-2 type-label-lg text-white shadow-sm transition-colors sm:block'
             style={{ background: 'var(--color-brand)' }}
           >
             {m('nav.join', locale)}

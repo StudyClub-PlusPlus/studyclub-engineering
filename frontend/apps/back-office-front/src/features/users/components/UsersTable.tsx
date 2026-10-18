@@ -59,7 +59,7 @@ export function UsersTable({
           <tr key={a.id}>
             <td className='whitespace-nowrap font-semibold'>
               {displayName(a)}
-              {a.dormant && <span className='ml-1.5 text-xs font-normal text-fg-muted'>휴면</span>}
+              {a.dormant && <span className='ml-1.5 type-label-sm text-fg-muted'>휴면</span>}
             </td>
             <td className='max-w-0 text-fg-secondary'>
               <EmailCell
@@ -74,10 +74,10 @@ export function UsersTable({
               <AccountRoleCell account={a} />
             </td>
             {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
-            <td className='whitespace-nowrap text-xs text-fg-secondary'>
+            <td className='whitespace-nowrap type-label-sm text-fg-secondary'>
               <NavigatorCell studies={a.navigatorOf} />
             </td>
-            <td className='tnum whitespace-nowrap text-xs text-fg-muted'>{fmtDate(a.joinedAt)}</td>
+            <td className='tnum whitespace-nowrap type-label-sm text-fg-muted'>{fmtDate(a.joinedAt)}</td>
           </tr>
         ))}
         {rows.length === 0 && (

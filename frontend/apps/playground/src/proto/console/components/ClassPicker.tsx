@@ -28,7 +28,7 @@ export function ClassPicker({
           type='button'
           aria-pressed={c.id === classId}
           onClick={() => onClass(c.id)}
-          className={`rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+          className={`rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
             c.id === classId
               ? 'border-brand bg-brand text-white'
               : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
