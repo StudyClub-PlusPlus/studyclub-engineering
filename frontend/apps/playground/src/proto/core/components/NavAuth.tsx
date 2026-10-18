@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { openFeedback } from '@core/components/Feedback';
 import { getUser, logout, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@core/lib/preview';
@@ -116,19 +115,16 @@ export function NavAuth({ locale }: { locale: Locale }) {
             <Heart size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'Saved' : '찜한 스터디'}
           </Link>
-          {/* 찜한 스터디 아래, 로그아웃 위 — 구분선으로 로그아웃과 떨어뜨린다 */}
-          <button
-            type='button'
+          {/* 찜한 스터디 아래, 로그아웃 위 — 구분선으로 로그아웃과 떨어뜨린다. 내 문의 목록으로 간다 */}
+          <Link
+            href={`/proto/core/${locale}/my/feedbacks`}
             data-anno='feedback:1'
-            onClick={() => {
-              setOpen(false);
-              openFeedback();
-            }}
-            className='flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+            onClick={() => setOpen(false)}
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
           >
             <MessageSquareWarning size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'Contact · report a bug' : '문의·오류 신고'}
-          </button>
+          </Link>
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
             type='button'

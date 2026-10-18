@@ -1,10 +1,15 @@
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { getUser } from '@core/lib/auth';
-import { Button, Input, Modal, Textarea, Toaster, toast } from '@studyclub/ui';
-import { ImagePlus, X } from 'lucide-react';
+import type { Locale } from '@core/lib/content';
+import { PAGE } from '@core/lib/layout';
+import { IS_DEV, syncPreview } from '@core/lib/preview';
+import { Button, Input, Textarea, toast } from '@studyclub/ui';
+import { ChevronLeft, ImagePlus, X } from 'lucide-react';
 
 import {
   BODY_MAX,
@@ -20,21 +25,13 @@ import {
 } from '@/proto/lib/feedback';
 
 /**
- * 문의·오류 신고 — 사이트 어디서든 같은 팝업 하나를 연다.
+ * 문의·오류 신고 작성 — 「내 문의」의 [문의하기] 가 여는 페이지(`/my/feedbacks/new`).
  *
- * 여는 자리는 둘: 프로필 드롭다운(로그인)과 푸터(비로그인 포함). **플로팅 버튼은 만들지 않는다.**
- * 팝업은 레이아웃에 하나만 두고(`FeedbackHost`), 여는 쪽은 `openFeedback()` 만 부른다.
- *
- * 입력·설정 팝업 규칙(POL-0008) — X 와 전송 하나, 취소 없음. 닫으면 입력은 사라지고 묻지 않는다.
+ * 로그인한 사람만 쓴다. 전송하면 내 문의 목록으로 돌아간다.
+ * 자동으로 함께 가는 것은 브라우저·OS 와 화면 크기뿐 — 화면 경로는 모으지 않는다(목록을 거쳐 오므로 문제의 화면이 아니다).
  * 이미지 첨부는 선택 — 3장까지, 장당 5MB. 고르거나 끌어 놓거나 ⌘V 로 붙여 넣는다(스크린샷).
- * TODO(api): POST /api/feedbacks — 인증 선택, 서버가 rate limit(로그인 = 사용자, 비로그인 = IP)
+ * TODO(api): POST /api/feedbacks — 인증 필수, 서버가 사용자 기준 rate limit
  */
-
-const OPEN_EVENT = 'sc:open-feedback';
-
-export function openFeedback() {
-  window.dispatchEvent(new Event(OPEN_EVENT));
-}
 
 type Draft = { type: FeedbackType | ''; title: string; body: string; images: string[] };
 const EMPTY: Draft = { type: '', title: '', body: '', images: [] };
@@ -69,8 +66,9 @@ function Count({ len, min, max }: { len: number; min: number; max: number }) {
   return <span className={`tnum ${bad ? 'text-warning-700' : 'text-fg-placeholder'}`}>{len}/{max}</span>;
 }
 
-export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
-  const [open, setOpen] = useState(false);
+export function FeedbackNewForm({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
+  const router = useRouter();
+  const listHref = `/proto/core/${locale}/my/feedbacks`;
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [touched, setTouched] = useState(false);
   const [sending, setSending] = useState(false);
@@ -79,15 +77,9 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const on = () => {
-      setDraft(EMPTY);
-      setTouched(false);
-      setImageError(null);
-      setOpen(true);
-    };
-    window.addEventListener(OPEN_EVENT, on);
-    return () => window.removeEventListener(OPEN_EVENT, on);
-  }, []);
+    // 로그인한 사람만 쓴다
+    if (!(IS_DEV ? syncPreview() : getUser())) router.replace(`/proto/core/${locale}/login?next=${listHref}/new`);
+  }, [locale, listHref, router]);
 
   const title = draft.title.trim();
   const body = draft.body.trim();
@@ -142,15 +134,13 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
     setSending(true);
     await new Promise((r) => setTimeout(r, 600));
     try {
-      // 자동 수집 — 사용자가 입력하지 않는다. UA 는 원문을 보내고 서버가 파싱한다
+      // 자동 수집 — 브라우저·OS(원문을 보내고 서버가 파싱)와 화면 크기
       addFeedback({
         type: draft.type as FeedbackType,
         title,
         body: draft.body,
         images: draft.images.length > 0 ? draft.images : undefined,
-        author: getUser()?.nickname ?? undefined,
-        // 화면 경로만 — 쿼리는 보내지 않는다
-        pageUrl: window.location.pathname.replace('/proto/core', ''),
+        author: getUser()?.nickname ?? '',
         userAgent: navigator.userAgent,
         viewport: `${window.innerWidth} × ${window.innerHeight}`,
       });
@@ -178,25 +168,18 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
       return;
     }
     setSending(false);
-    setOpen(false);
-    // 답변을 약속하는 말은 쓰지 않는다
     toast.success('의견을 보내주셔서 감사합니다.');
+    router.push(listHref);
   }
 
   return (
-    <>
-      <Toaster position='bottom-right' />
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        title='문의·오류 신고'
-        size='lg'
-        footer={
-          <Button data-anno='feedback:5' onClick={send} loading={sending} disabled={sending}>
-            전송
-          </Button>
-        }
-      >
+    <div className={`${PAGE} pb-16 pt-10`}>
+      <Link href={listHref} className='inline-flex items-center gap-1 text-sm font-medium text-fg-muted hover:text-fg'>
+        <ChevronLeft size={15} /> 내 문의
+      </Link>
+      <h1 className='mt-3 text-2xl font-extrabold tracking-tight'>문의하기</h1>
+
+      <div className='card mt-6 max-w-2xl px-6 py-6'>
         <div
           className='flex flex-col gap-4'
           onPaste={(e) => {
@@ -330,16 +313,12 @@ export function FeedbackHost({ discordUrl }: { discordUrl: string }) {
             </p>
           </div>
         </div>
-      </Modal>
-    </>
-  );
-}
-
-/** 여는 버튼 — 푸터 같은 서버 컴포넌트 안에서도 쓸 수 있게 따로 둔다 */
-export function FeedbackLink({ label, className }: { label: string; className?: string }) {
-  return (
-    <button type='button' onClick={openFeedback} className={className}>
-      {label}
-    </button>
+        <div className='mt-6 flex justify-end border-t border-border pt-5'>
+          <Button data-anno='feedback:5' onClick={send} loading={sending} disabled={sending}>
+            전송
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,5 @@
 import Link from 'next/link';
 
-import { FeedbackLink } from '@core/components/Feedback';
 import type { Locale } from '@core/lib/content';
 import { m } from '@core/lib/i18n';
 
@@ -30,11 +29,8 @@ export function Footer({ locale }: { locale: Locale }) {
           <Link href={`/proto/core/${locale}/privacy`} className='font-semibold hover:text-(--color-fg-muted)'>
             {m('nav.privacy', locale)}
           </Link>
-          {/* 비로그인 방문자가 여는 자리 — 프로필 드롭다운과 같은 팝업을 연다 */}
-          <FeedbackLink
-            label={locale === 'en' ? 'Contact · report a bug' : '문의·오류 신고'}
-            className='hover:text-(--color-fg-muted)'
-          />
+          {/* 가입하다 막힌 사람을 위한 운영 메일 — 링크·폼이 아니라 글자만 (문의·오류 신고는 로그인해야 쓴다) */}
+          <span className='select-all'>contact@studyclub.life</span>
         </div>
       </div>
     </footer>

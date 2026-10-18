@@ -13,11 +13,13 @@
  * 알림은 이름이 아니라 이 값으로 나간다. 조건이 없는 템플릿은 보낼 계기가 없어 영영 발송되지 않는다.
  * 운영자는 조건을 고르고, 저장되는 코드는 그 선택이 정한다 — 코드를 직접 적지 않는다.
  */
-export type NotificationTrigger = 'USER_REGISTERED' | 'USER_WITHDRAWN';
+export type NotificationTrigger = 'USER_REGISTERED' | 'USER_WITHDRAWN' | 'FEEDBACK_REPLIED';
 
 export const TRIGGERS: { value: NotificationTrigger; label: string }[] = [
   { value: 'USER_REGISTERED', label: '회원가입' },
   { value: 'USER_WITHDRAWN', label: '회원 탈퇴' },
+  // 캡틴이 문의·오류 신고에 회신하면 제출자에게 — 회신 내용은 담지 않고 내 문의 링크만
+  { value: 'FEEDBACK_REPLIED', label: '문의 회신' },
 ];
 
 export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
@@ -61,5 +63,21 @@ StudyClub 바로가기
 감사합니다.
 StudyClub 드림`,
     updatedAt: '2026-09-12T00:00:00Z',
+  },
+  {
+    id: 2,
+    trigger: 'FEEDBACK_REPLIED',
+    channel: 'EMAIL',
+    subject: '[StudyClub] 문의하신 내용에 답변이 등록되었습니다',
+    body: `안녕하세요, {{nickname}}님.
+
+보내 주신 문의에 답변이 등록되었습니다.
+아래 링크에서 확인해 주세요.
+
+{{link}}
+
+감사합니다.
+StudyClub 드림`,
+    updatedAt: '2026-10-19T00:00:00Z',
   },
 ];
