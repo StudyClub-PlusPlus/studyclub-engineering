@@ -3,7 +3,7 @@ import type { ElementType, HTMLAttributes, ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { cx } from './cx';
-import { categoryArtUrl, categoryGradient, categoryMeta } from './StudyThumb';
+import { categoryArtUrl, categoryMeta, categoryTint } from './StudyThumb';
 
 /**
  * design-system.md §9-5 Study Card — **둘러보기 전용.**
@@ -53,6 +53,7 @@ export function StudyCard({
 }: StudyCardProps) {
   const { icon: CategoryIcon, label: categoryLabel } = categoryMeta(category);
   const artUrl = categoryArtUrl(category);
+  const { background, ink } = categoryTint(category);
 
   return (
     <div {...rest} className={cx('card card-hover relative flex flex-col overflow-hidden', className)}>
@@ -62,24 +63,25 @@ export function StudyCard({
       {/* 컬러 헤더 — 고정 높이. 색은 카테고리를 따라간다(같은 분야 = 같은 색) */}
       <div
         className='relative flex h-40 shrink-0 flex-col justify-between overflow-hidden p-4'
-        style={{ background: categoryGradient(category) }}
+        style={{ background }}
       >
         {artUrl ? (
           <span
-            className='pointer-events-none absolute right-3 top-3 h-24 w-24 bg-contain bg-center bg-no-repeat drop-shadow-lg'
+            className='pointer-events-none absolute right-3 top-3 h-24 w-24 bg-contain bg-center bg-no-repeat'
             style={{ backgroundImage: `url(${artUrl})` }}
             aria-hidden='true'
           />
         ) : (
           <CategoryIcon
-            className='pointer-events-none absolute -bottom-5 -right-4 text-white/15'
+            className='pointer-events-none absolute -bottom-5 -right-4 opacity-15'
+            style={{ color: ink }}
             size={104}
             strokeWidth={1.25}
             aria-hidden='true'
           />
         )}
         {badge ? (
-          <span className='relative inline-flex w-fit items-center gap-1.5 rounded-pill bg-black/40 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md'>
+          <span className='relative inline-flex w-fit items-center gap-1.5 rounded-pill bg-white/85 px-2.5 py-1 text-xs font-semibold text-fg shadow-sm backdrop-blur-md'>
             {badge.dotClassName && (
               <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', badge.dotClassName)} aria-hidden='true' />
             )}
@@ -88,8 +90,8 @@ export function StudyCard({
         ) : (
           <span />
         )}
-        <div className='relative text-white'>
-          <span className='flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/70'>
+        <div className='relative text-fg'>
+          <span className='flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em]' style={{ color: ink }}>
             <CategoryIcon size={12} strokeWidth={1.75} className='shrink-0' />
             {categoryLabel}
           </span>

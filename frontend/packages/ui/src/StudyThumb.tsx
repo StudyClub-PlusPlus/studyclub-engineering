@@ -186,6 +186,19 @@ export function categoryArtUrl(category?: string): string | undefined {
   return art ? `/study-art/study-${art}.webp` : undefined;
 }
 
+/**
+ * 카테고리 옅은 틴트 바탕 + 진한 글자색. 카드 헤더용.
+ * 진한 그라디언트 위에 인디고 3D 스팟 이미지를 얹으면 서로 싸워 탁해 보인다(2026-10-18 stage 캡처) —
+ * 바탕을 밝게 두고 카테고리 색은 글자·옅은 면으로만 남긴다.
+ */
+export function categoryTint(category?: string): { background: string; ink: string } {
+  const [from, to] = pick(category).color;
+  return {
+    background: `linear-gradient(135deg, color-mix(in oklab, ${to} 10%, white), color-mix(in oklab, ${to} 24%, white))`,
+    ink: from,
+  };
+}
+
 /** 카테고리 색 그라디언트 CSS 값. */
 export function categoryGradient(category?: string): string {
   const [from, to] = pick(category).color;
@@ -209,26 +222,23 @@ export function StudyThumb({ image, category, className = '' }: StudyThumbProps)
     return <img src={image} alt='' className={`${base} object-cover ${className}`} />;
   }
 
-  const { icon: Icon, label, color } = pick(category);
+  const { icon: Icon, label } = pick(category);
   const artUrl = categoryArtUrl(category);
-  const [from, to] = color;
-
+  const { background, ink } = categoryTint(category);
   return (
-    <div
-      className={`${base} flex items-center gap-3 px-5 ${className}`}
-      style={{ background: `linear-gradient(120deg, ${from}, ${to})` }}
-      aria-hidden='true'
-    >
+    <div className={`${base} flex items-center gap-3 px-5 ${className}`} style={{ background }} aria-hidden='true'>
       {artUrl ? (
         <span
-          className='pointer-events-none absolute right-3 top-1/2 aspect-square h-[118%] -translate-y-1/2 bg-contain bg-center bg-no-repeat drop-shadow-lg'
+          className='pointer-events-none absolute right-3 top-1/2 aspect-square h-[92%] -translate-y-1/2 bg-contain bg-center bg-no-repeat'
           style={{ backgroundImage: `url(${artUrl})` }}
         />
       ) : (
-        <Icon className='pointer-events-none absolute -right-3 -bottom-4 text-white/15' size={104} strokeWidth={1.25} />
+        <Icon className='pointer-events-none absolute -right-3 -bottom-4 opacity-15' style={{ color: ink }} size={104} strokeWidth={1.25} />
       )}
-      <Icon className='relative shrink-0 text-white' size={22} strokeWidth={1.75} />
-      <span className='relative text-[13px] font-bold uppercase tracking-[0.14em] text-white/90'>{label}</span>
+      <Icon className='relative shrink-0' style={{ color: ink }} size={22} strokeWidth={1.75} />
+      <span className='relative text-[13px] font-bold uppercase tracking-[0.14em]' style={{ color: ink }}>
+        {label}
+      </span>
     </div>
   );
 }

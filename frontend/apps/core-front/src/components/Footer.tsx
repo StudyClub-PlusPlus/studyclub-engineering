@@ -16,10 +16,17 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
             StudyClub
           </div>
           <p className='mt-3 text-sm text-(--color-fg-muted)'>
-            {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count}+
+            {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count.toLocaleString()}+
           </p>
-          <p className='mt-1 text-xs text-(--color-fg-faint)'>
-            © {new Date().getFullYear()} StudyClub
+          <p className='mt-1 flex flex-wrap items-center gap-x-3 text-xs text-(--color-fg-faint)'>
+            <span>© {new Date().getFullYear()} StudyClub</span>
+            <Link href={`/${locale}/terms`} className='hover:text-(--color-fg)'>
+              {t({ ko: '이용약관', en: 'Terms' }, locale)}
+            </Link>
+            {/* 개인정보처리방침은 법적으로 눈에 띄게 둔다 — 굵게 */}
+            <Link href={`/${locale}/privacy`} className='font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'>
+              {t({ ko: '개인정보처리방침', en: 'Privacy Policy' }, locale)}
+            </Link>
           </p>
         </div>
         <div className='flex flex-col gap-3 text-sm sm:items-end'>
