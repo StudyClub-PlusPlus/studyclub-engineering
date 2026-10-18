@@ -129,7 +129,7 @@ export function FeedbackDetail({ id }: { id: string }) {
 
         {/* 평문 — 태그도 글자 그대로. 긴 줄이 카드 밖으로 넘치지 않게 */}
         <section className='px-6 py-5'>
-          <p className='whitespace-pre-wrap break-words text-[15px] leading-relaxed text-fg [overflow-wrap:anywhere]'>{f.body}</p>
+          <p className='whitespace-pre-wrap break-words text-base leading-relaxed text-fg [overflow-wrap:anywhere]'>{f.body}</p>
         </section>
 
         {f.images && f.images.length > 0 && (

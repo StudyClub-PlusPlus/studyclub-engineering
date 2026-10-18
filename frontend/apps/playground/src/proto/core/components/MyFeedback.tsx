@@ -212,7 +212,7 @@ export function MyFeedbackDetail({ locale, id }: { locale: Locale; id: string })
 
           {/* 내가 쓴 내용 — 평문, 줄바꿈 그대로 */}
           <section className='px-6 py-5'>
-            <p className='whitespace-pre-wrap break-words text-[15px] leading-relaxed [overflow-wrap:anywhere]'>{f.body}</p>
+            <p className='whitespace-pre-wrap break-words text-base leading-relaxed [overflow-wrap:anywhere]'>{f.body}</p>
             {f.images && f.images.length > 0 && (
               <div className='mt-4 flex flex-wrap gap-2'>
                 {f.images.map((src, i) => (
@@ -230,7 +230,7 @@ export function MyFeedbackDetail({ locale, id }: { locale: Locale; id: string })
                   <h2 className='text-sm font-bold'>답변</h2>
                   <span className='tnum text-sm text-fg-muted'>{stamp(f.reply.at)}</span>
                 </div>
-                <p className='mt-2 whitespace-pre-wrap break-words text-[15px] leading-relaxed [overflow-wrap:anywhere]'>
+                <p className='mt-2 whitespace-pre-wrap break-words text-base leading-relaxed [overflow-wrap:anywhere]'>
                   {f.reply.body}
                 </p>
               </>

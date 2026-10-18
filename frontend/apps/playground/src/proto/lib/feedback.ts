@@ -93,7 +93,7 @@ const UA_AND = 'Chrome 141 · Android';
 
 /** 더미 스크린샷 — 실제 이미지 대신 회색 화면에 한 줄 설명을 그린 SVG */
 function shot(label: string, w = 1280, h = 800): string {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'><rect width='100%' height='100%' fill='#eef0f5'/><rect x='0' y='0' width='100%' height='64' fill='#2b2d42'/><rect x='48' y='120' width='${w - 96}' height='${h - 200}' rx='16' fill='#ffffff' stroke='#d6d9e2'/><text x='50%' y='52%' text-anchor='middle' font-family='sans-serif' font-size='${Math.round(w / 32)}' fill='#6b7080'>${label}</text></svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'><rect width='100%' height='100%' fill='whitesmoke'/><rect x='0' y='0' width='100%' height='64' fill='darkslategray'/><rect x='48' y='120' width='${w - 96}' height='${h - 200}' rx='16' fill='white' stroke='gainsboro'/><text x='50%' y='52%' text-anchor='middle' font-family='sans-serif' font-size='${Math.round(w / 32)}' fill='dimgray'>${label}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
