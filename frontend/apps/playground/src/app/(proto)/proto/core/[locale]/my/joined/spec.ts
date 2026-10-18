@@ -1,13 +1,13 @@
 import type { ScreenSpec } from '@/proto/annotate';
 
 /**
- * 내 스터디 — 참여 중인 스터디 모음.
+ * 내 스터디룸 — 참여 중인 스터디 모음.
  *
  * Story ID 는 발번 대장에서 실제로 받기 전까지 비워 둔다.
  */
 export const SPEC: ScreenSpec = {
   prd: 'crew-joined-studies',
-  screen: '내 스터디',
+  screen: '내 스터디룸',
   notes: [
     '기본 탭은 참여중: 크루가 이 화면에 오는 이유는 지금 들어가는 스터디를 확인하는 것이다',
     '주간 일정은 제목 아래, 참여 상태 탭 위에 둔다. 참여중·시작전 회차만 모은다',
@@ -19,7 +19,7 @@ export const SPEC: ScreenSpec = {
     '시드는 전체·참여 종료가 10개를 넘기도록 채운다. 페이징을 보려고',
     '승인(accepted)된 신청만 모은다. 승인 대기는 마이페이지에 남긴다',
     '카드와 주간 칸은 모집공고 상세가 아니라 그 스터디의 스터디 일정으로 간다. 출석 기록 · 출석률 · 디스코드 · 자료실은 스터디 일정에 있다. 이 화면에 두지 않는다',
-    '내 스터디 목록에서는 분야·온오프·권역 태그를 두지 않는다. 검색 카드의 분류용이다',
+    '내 스터디룸 목록에서는 분야·온오프·권역 태그를 두지 않는다. 검색 카드의 분류용이다',
     '완주 카드는 배지·점수판만. 전회 출석 칩과 출석률 100% 는 점수판 n/n 과 겹쳐 뺀다',
     '회차 일자는 주간 줄과 같은 KST/PDT. 저장은 반 타임존·UTC 예정 시각',
   ],
@@ -27,7 +27,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '1',
       title: '페이지 제목',
-      display: ['"내 스터디" 고정 문구'],
+      display: ['"내 스터디룸" 고정 문구'],
     },
     {
       n: '1-1',
@@ -186,7 +186,7 @@ export const SPEC: ScreenSpec = {
  * 스터디별 내 역할 — 카드 제목 옆 배지. 일정 · 출석부 화면 명세는 `[id]/schedule/spec.ts`.
  */
 export const MEETING_SPEC: ScreenSpec = {
-  screen: '내 스터디',
+  screen: '내 스터디룸',
   chip: '역할',
   scope: 'meeting',
   notes: [

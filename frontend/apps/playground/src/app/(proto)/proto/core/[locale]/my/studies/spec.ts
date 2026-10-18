@@ -1,7 +1,7 @@
 import type { ScreenSpec } from '@/proto/annotate';
 
 /**
- * 내 스터디 · 출석 — 번호별 명세.
+ * 내 스터디룸 · 출석 — 번호별 명세.
  *
  * 근거는 전부 코드다. 판정 규칙은 `@core/lib/attendance.ts`, 참여 목록은 `@core/lib/me.ts`.
  * Story ID 는 비워 둔다 — `stories.md` 발번 대장에서 실제로 발급받기 전에는 적지 않는다.
@@ -9,7 +9,7 @@ import type { ScreenSpec } from '@/proto/annotate';
 export const SPEC: ScreenSpec = {
   prd: 'crew-view-attendance-record',
   scope: 'record',
-  screen: '내 스터디 · 출석',
+  screen: '내 스터디룸 · 출석',
   notes: [
     '출석 이력은 브라우저(localStorage)에만 남는다. 기기·브라우저가 바뀌면 사라진다. 저장할 서버가 아직 없다',
     '운영자 출석부(운영 콘솔)에서 대신 찍어 주는 흐름은 이 화면 범위 밖이다',
@@ -19,7 +19,7 @@ export const SPEC: ScreenSpec = {
     {
       n: '1',
       title: '페이지 제목',
-      display: ['"내 스터디" 고정 문구'],
+      display: ['"내 스터디룸" 고정 문구'],
     },
     {
       n: '2',

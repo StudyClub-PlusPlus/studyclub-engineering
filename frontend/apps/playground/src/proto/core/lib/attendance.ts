@@ -154,7 +154,7 @@ export function resolveStatus(
   return raw;
 }
 
-/** 네비게이터가 출석을 찍는 흐름의 프로토 흉내. 내 스터디 지금 참석은 이 함수를 부르지 않는다. */
+/** 네비게이터가 출석을 찍는 흐름의 프로토 흉내. 내 스터디룸 지금 참석은 이 함수를 부르지 않는다. */
 export function checkIn(study: Study, meeting: StudyMeeting, now = new Date()): MyStatus | undefined {
   if (!canCheckIn(study, meeting, now)) return undefined;
   const { start } = meetingWindow(study, meeting);

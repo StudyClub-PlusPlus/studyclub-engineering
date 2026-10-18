@@ -11,6 +11,7 @@ import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
 import { getUser, type SessionUser } from '@core/lib/auth';
 import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
+import { PAGE } from '@core/lib/layout';
 import {
   cancelApplication,
   getApplications,
@@ -298,7 +299,7 @@ export default function MyPage() {
   }
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
+    <div className={`${PAGE} pb-16 pt-10`}>
       <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
 
       <ScreenSpecRegistrar spec={SPEC} />

@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getUser, logout, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@core/lib/preview';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, DoorOpen, Heart, LogOut, UserRound } from 'lucide-react';
 
 export function NavAuth({ locale }: { locale: Locale }) {
   const router = useRouter();
@@ -88,29 +88,34 @@ export function NavAuth({ locale }: { locale: Locale }) {
       </button>
 
       {open && (
-        <div className='absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] py-1 shadow-lg'>
-          <div className='truncate px-4 py-2 text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
-          <Link
-            href={`/proto/core/${locale}/my`}
-            onClick={() => setOpen(false)}
-            className='block px-4 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
-          >
-            {locale === 'en' ? 'My page' : '마이페이지'}
-          </Link>
+        // 그림자는 옅게. 테두리로 경계를 잡고 그림자는 아래로만 살짝
+        <div className='absolute right-0 z-40 mt-2 w-52 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-1.5 shadow-[0_10px_30px_-12px_rgb(15_23_42/0.18)]'>
+          <div className='truncate px-3 pb-2 pt-1.5 text-xs text-[var(--color-fg-muted)]'>{user.email}</div>
           <Link
             href={`/proto/core/${locale}/my/joined`}
             onClick={() => setOpen(false)}
-            className='block px-4 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
           >
-            {locale === 'en' ? 'My studies' : '내 스터디'}
+            <DoorOpen size={16} style={{ color: 'var(--color-brand)' }} />
+            {locale === 'en' ? 'My study room' : '내 스터디룸'}
+          </Link>
+          <Link
+            href={`/proto/core/${locale}/my`}
+            onClick={() => setOpen(false)}
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+          >
+            <UserRound size={16} className='text-[var(--color-fg-muted)]' />
+            {locale === 'en' ? 'My page' : '마이페이지'}
           </Link>
           <Link
             href={`/proto/core/${locale}/my/saved`}
             onClick={() => setOpen(false)}
-            className='block px-4 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
           >
+            <Heart size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'Saved' : '찜한 스터디'}
           </Link>
+          <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
             type='button'
             onClick={async () => {
@@ -120,8 +125,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
               router.replace(`/proto/core/${locale}`);
               router.refresh();
             }}
-            className='block w-full px-4 py-2 text-left text-sm font-medium text-danger-fg hover:bg-[var(--color-surface-subtle)]'
+            className='flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-danger-fg hover:bg-[var(--color-surface-subtle)]'
           >
+            <LogOut size={16} />
             {locale === 'en' ? 'Log out' : '로그아웃'}
           </button>
         </div>

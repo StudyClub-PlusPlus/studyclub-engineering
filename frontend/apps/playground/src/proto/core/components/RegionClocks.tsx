@@ -3,51 +3,10 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
+
 import type { Locale } from '@core/lib/content';
+import { REGIONS, tzLabel } from '@core/lib/regions';
 import { Moon, Sun } from 'lucide-react';
-
-
-type Region = {
-  id: string;
-  /** public/about-art/<art>.webp — 국기 이모지 대신 아이콘 세트 */
-  art: string;
-  name: { ko: string; en: string };
-  city: { ko: string; en: string };
-  tz: string;
-  color: string; // 대표 색
-  soft: string; // 옅은 배경
-};
-
-// 스터디 클럽이 활동하는 세 지역 (운영진 분포 기준).
-const REGIONS: Region[] = [
-  {
-    id: 'us',
-    art: 'region-us',
-    name: { ko: '미국', en: 'USA' },
-    city: { ko: '베이 에어리어', en: 'Bay Area' },
-    tz: 'America/Los_Angeles',
-    color: 'var(--color-info-600)',
-    soft: 'var(--color-info-50)',
-  },
-  {
-    id: 'kr',
-    art: 'region-kr',
-    name: { ko: '한국', en: 'Korea' },
-    city: { ko: '서울', en: 'Seoul' },
-    tz: 'Asia/Seoul',
-    color: 'var(--color-error-600)',
-    soft: 'var(--color-error-50)',
-  },
-  {
-    id: 'ca',
-    art: 'region-ca',
-    name: { ko: '캐나다', en: 'Canada' },
-    city: { ko: '밴쿠버', en: 'Vancouver' },
-    tz: 'America/Vancouver',
-    color: 'var(--color-warning-600)',
-    soft: 'var(--color-warning-50)',
-  },
-];
 
 function parts(tz: string, locale: Locale) {
   const loc = locale === 'ko' ? 'ko-KR' : 'en-US';
@@ -67,7 +26,7 @@ function parts(tz: string, locale: Locale) {
   }).format(now);
   const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', hour12: false }).format(now));
   const daytime = hour >= 7 && hour < 19;
-  return { time, date, daytime };
+  return { time, date, daytime, tz: tzLabel(tz, now) };
 }
 
 export function RegionClocks({ locale }: { locale: Locale }) {
@@ -81,7 +40,7 @@ export function RegionClocks({ locale }: { locale: Locale }) {
   }, []);
 
   return (
-    <div className='grid gap-4 sm:grid-cols-3'>
+    <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
       {REGIONS.map((r) => {
         const p = mounted ? parts(r.tz, locale) : null;
         return (
@@ -93,6 +52,10 @@ export function RegionClocks({ locale }: { locale: Locale }) {
                   {locale === 'ko' ? r.name.ko : r.name.en}
                 </div>
                 <div className='text-xs text-[var(--color-fg-muted)]'>{locale === 'ko' ? r.city.ko : r.city.en}</div>
+                {/* 시간대 — 약어(PDT·EST 등)와 UTC 차이. 서머타임에 따라 바뀌어 마운트 뒤에만 그린다 */}
+                <div className='mt-0.5 text-[11px] font-semibold tabular-nums' style={{ color: r.color }} suppressHydrationWarning>
+                  {p ? [p.tz.abbr, p.tz.offset].filter(Boolean).join(' · ') : ' '}
+                </div>
               </div>
               <span className='ml-auto' aria-hidden='true'>
                 {p ? p.daytime ? <Sun size={18} className='text-amber-500' /> : <Moon size={18} className='text-indigo-400' /> : null}

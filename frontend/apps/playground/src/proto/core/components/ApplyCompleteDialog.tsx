@@ -12,7 +12,7 @@ import { X } from 'lucide-react';
  * 스터디 신청 완료 팝업.
  *
  * 장바구니에 담은 뒤 「장바구니로 갈까요?」를 묻는 것과 같다.
- * X 는 지금 화면(목록·상세)에 머물고, 버튼은 내 스터디로 바로 간다.
+ * X 는 지금 화면(목록·상세)에 머물고, 버튼은 내 스터디룸으로 바로 간다.
  * 제출한 폼은 여기서 고치지 않는다.
  */
 export function ApplyCompleteDialog({
@@ -49,14 +49,14 @@ export function ApplyCompleteDialog({
       }
       footer={
         <Button data-anno='complete:3' className='w-full' onClick={goMyStudies}>
-          {t({ ko: '내 스터디 보러 가기', en: 'Go to My studies' }, locale)}
+          {t({ ko: '내 스터디룸 보러 가기', en: 'Go to My study room' }, locale)}
         </Button>
       }
     >
       <div data-anno='complete:1' className='flex flex-col gap-2 py-4 text-sm leading-relaxed'>
         <p className='text-fg'>
           {t(
-            { ko: '스터디 신청이 완료되었습니다. 내 스터디로 이동할까요?', en: 'Your application is in. Go to My studies?' },
+            { ko: '스터디 신청이 완료되었습니다. 내 스터디룸으로 이동할까요?', en: 'Your application is in. Go to My study room?' },
             locale,
           )}
         </p>
