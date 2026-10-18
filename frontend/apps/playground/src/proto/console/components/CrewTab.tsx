@@ -364,7 +364,7 @@ export function CrewTab({
                   <td className='whitespace-nowrap font-semibold'>{c.name}</td>
                   {/* 디스코드에서 이 사람을 찾을 때 쓰는 이름 — 신청할 때 받은 서버 별명 */}
                   <td data-anno='attendee:3-4' className='whitespace-nowrap text-fg-secondary'>
-                    {c.discordNickname || '—'}
+                    {c.discordNickname || '-'}
                   </td>
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>

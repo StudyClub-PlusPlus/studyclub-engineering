@@ -171,7 +171,7 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front 스터디 일정 › 출석부 참여 중단 | 없음 — 스터디 일정 화면이 자리만 있다 | [출석 수정](../navigator-edit-attendance/PRD.md#개발-범위)과 같은 화면에서 만든다 |
+| FE | core-front 스터디 일정 › 출석 참여 중단 | 없음 — 스터디 일정 화면이 자리만 있다 | [출석 수정](../navigator-edit-attendance/PRD.md#개발-범위)과 같은 화면에서 만든다 |
 | BE | `POST /api/studies/{studyId}/attendances` (`withdrawals[]`) | 스펙작성중 — 백엔드 요청에 `withdrawals` 가 없다 | 스펙 확정 → 구현 |
 | 기획 | 저장 경로 | 이 PRD 와 [study-participant 스펙](../../../specs/study-participant/spec.md)은 옛 경로 `/api/studies/{studyId}/attendances` 를 적었다. 출석 API 는 #241 · #244 에서 `/api/me/…` · `/api/admin/…` 로 나뉘었다 | 어느 경로에 `withdrawals[]` 를 더할지 정하고 스펙 · PRD 경로를 고친다 |
 

@@ -326,6 +326,8 @@ export function BulkSelect({
           e.preventDefault();
           commit(pending);
         }
+        // Esc 는 미리 본 값을 버린다 — 떠날 때 확정되지 않게
+        if (e.key === 'Escape') setPending('');
       }}
       onChange={(e) => (keyboard.current ? setPending(e.target.value) : commit(e.target.value))}
       onBlur={() => pending && commit(pending)}
@@ -792,15 +794,15 @@ export function AttendanceTab({
                                 </span>
                               )}
                             </span>
-                            {/* 칩은 휴대폰 폭에서 숨긴다 — 좁은 닉네임 칸에서 닉네임을 밀어낸다. 중단한 사람은 흐린 이름 · 「-」 칸으로 가른다 */}
+                            {/* 칩은 휴대폰 폭에서 화면에서만 숨긴다(sr-only) — 좁은 닉네임 칸에서 닉네임을 밀어낸다. 스크린리더는 역할 · 참여 중단을 그대로 듣는다 */}
                             {c.left && (
-                              <span data-anno='book:3-6' className='hidden shrink-0 sm:inline-flex'>
+                              <span data-anno='book:3-6' className='sr-only shrink-0 sm:not-sr-only sm:inline-flex'>
                                 <Badge tone='neutral'>{c.left.label}</Badge>
                               </span>
                             )}
                             {/* 사용자 사이트는 캡틴·네비게이터에 역할 칩을 붙인다. 크루는 칩 없음 */}
                             {c.role && (
-                              <Badge tone={c.role} className='hidden shrink-0 sm:inline-flex'>
+                              <Badge tone={c.role} className='sr-only shrink-0 sm:not-sr-only sm:inline-flex'>
                                 {c.role === 'captain' ? '캡틴' : '네비게이터'}
                               </Badge>
                             )}
