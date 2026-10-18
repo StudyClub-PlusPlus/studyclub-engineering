@@ -56,7 +56,6 @@ export default function MyPage() {
   const [draftZone, setDraftZone] = useState('Asia/Seoul');
   const [composing, setComposing] = useState(false);
   const [marketing, setMarketingState] = useState(false);
-  const [draftMarketing, setDraftMarketing] = useState(false);
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
 
   useEffect(() => {
@@ -124,7 +123,6 @@ export default function MyPage() {
   function openEditor() {
     setDraftName(name);
     setDraftZone(timeZone);
-    setDraftMarketing(marketing);
     setEditing(true);
   }
 
@@ -134,8 +132,6 @@ export default function MyPage() {
     setDisplayName(trimmedName);
     setTimeZoneState(draftZone);
     setTimeZone(draftZone);
-    setMarketingState(draftMarketing);
-    setMarketing(draftMarketing);
     setEditing(false);
   }
 
@@ -265,14 +261,17 @@ export default function MyPage() {
           */}
           <dt className='flex min-h-8 items-center text-fg-muted'>마케팅 수신</dt>
           <dd data-anno='profile:5' className='flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
-            {/* 보기·편집 모두 같은 체크박스 — 보기 상태는 저장된 값만 보여주고 못 바꾼다 */}
-            <label className={'inline-flex items-center gap-2 ' + (editing ? 'cursor-pointer' : 'cursor-default')}>
+            {/* 편집 버튼과 무관하게 누르면 바로 저장된다 — 켜고 끄는 한 줄이라 저장 단계를 두지 않는다 */}
+            <label className='inline-flex cursor-pointer items-center gap-2'>
               <input
                 type='checkbox'
-                checked={editing ? draftMarketing : marketing}
-                disabled={!editing}
-                onChange={(ev) => setDraftMarketing(ev.target.checked)}
-                className='h-4 w-4 accent-[var(--color-brand)] disabled:cursor-default'
+                checked={marketing}
+                onChange={(ev) => {
+                  // TODO(api): PUT /api/me/marketing-consent — 실패하면 이전 값으로 되돌리고 사유를 보여준다
+                  setMarketingState(ev.target.checked);
+                  setMarketing(ev.target.checked);
+                }}
+                className='h-4 w-4 accent-[var(--color-brand)]'
               />
               <span className='text-sm text-fg'>스터디 소식과 행사 안내를 이메일로 받기</span>
             </label>
