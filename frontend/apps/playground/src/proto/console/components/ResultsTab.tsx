@@ -33,6 +33,94 @@ function answerText(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value.join(', ') : value;
 }
 
+/* ── 참여 가능한 요일 (기본 문항) — 프로토 더미 ─────────────────────────────
+ * 신청 폼은 모든 신청서에 「참여 가능한 요일」을 받는다(`FORM_ANSWER.availableDays`). 그런데 콘솔 어디에도
+ * 그 답을 보여 주는 자리가 없어서, 캡틴이 시간을 정할 근거를 볼 수 없다.
+ * mock 크루에는 이 값이 없으므로 크루 id 로 고정된 더미를 만든다 — 새로고침해도 같다.
+ * TODO(api): 신청 목록 응답의 availableDays
+ */
+const DAYS = [
+  { key: 'mon', label: '월' },
+  { key: 'tue', label: '화' },
+  { key: 'wed', label: '수' },
+  { key: 'thu', label: '목' },
+  { key: 'fri', label: '금' },
+  { key: 'sat', label: '토' },
+  { key: 'sun', label: '일' },
+] as const;
+
+function seedOf(id: string): number {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+/** 크루마다 고정된 더미 요일 — 평일 저녁형·주말형이 섞이게 */
+function dummyDays(c: Crew): string[] {
+  const h = seedOf(c.id);
+  const weights = c.region === 'NA' ? [3, 5, 4, 6, 2, 7, 5] : [4, 6, 3, 5, 2, 6, 7];
+  const picked = DAYS.filter((_, i) => ((h >> i) & 7) < weights[i]).map((d) => d.key);
+  return picked.length > 0 ? picked : [DAYS[h % 7].key];
+}
+
+const REGION_LABEL: Record<string, string> = { KR: '한국', NA: '북미', ETC: '기타' };
+
+function daysText(days: string[]): string {
+  return DAYS.filter((d) => days.includes(d.key))
+    .map((d) => d.label)
+    .join(' · ');
+}
+
+/** 요일별 몇 명이 되는지 — 지역(시간대)별로 나눠 쌓는다. 같은 「화」라도 서울과 북미는 다른 날 다른 시각이다 */
+function AvailableDaysSummary({ crew }: { crew: Crew[] }) {
+  const rows = DAYS.map((d) => {
+    const who = crew.filter((c) => dummyDays(c).includes(d.key));
+    return { ...d, kr: who.filter((c) => c.region !== 'NA').length, na: who.filter((c) => c.region === 'NA').length };
+  });
+  const max = Math.max(1, ...rows.map((r) => r.kr + r.na));
+  const best = Math.max(...rows.map((r) => r.kr + r.na));
+  return (
+    <Card
+      anno='results:5'
+      title='참여 가능한 요일'
+      action={
+        <span className='whitespace-nowrap text-xs font-medium text-fg-muted'>
+          기본 질문 · {crew.length}명 응답 · <span className='text-warning-700'>더미</span>
+        </span>
+      }
+    >
+      <ul className='flex flex-col gap-1'>
+        {rows.map((r) => {
+          const total = r.kr + r.na;
+          return (
+            <li key={r.key} className='flex items-center gap-3 px-1 py-1'>
+              <span className={`w-8 shrink-0 text-[13px] ${total === best ? 'font-bold text-fg' : 'font-medium text-fg-secondary'}`}>
+                {r.label}
+              </span>
+              <span className='flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
+                <span className='block h-full bg-brand' style={{ width: `${(r.kr / max) * 100}%` }} />
+                <span className='block h-full bg-warning-500' style={{ width: `${(r.na / max) * 100}%` }} />
+              </span>
+              <span className='tnum w-28 shrink-0 text-right text-[13px] text-fg-secondary'>
+                <span className='font-bold text-fg'>{total}명</span> ({r.kr} · {r.na})
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className='mt-3 flex items-center gap-3 text-xs text-fg-muted'>
+        <span className='inline-flex items-center gap-1'>
+          <span className='h-2 w-2 rounded-full bg-brand' /> 한국
+        </span>
+        <span className='inline-flex items-center gap-1'>
+          <span className='h-2 w-2 rounded-full bg-warning-500' /> 북미
+        </span>
+        <span>· 요일만 받는다 — 몇 시에 되는지는 알 수 없다</span>
+      </p>
+    </Card>
+  );
+}
+
 export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
   const [view, setView] = useState<ViewMode>('summary');
   const questions = study.applicationForm ?? [];
@@ -40,12 +128,15 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
 
   if (questions.length === 0) {
     return (
-      <p
+      <div className='flex flex-col gap-4'>
+        {crew.length > 0 && <AvailableDaysSummary crew={crew} />}
+        <p
         data-anno='results:2'
         className='rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'
       >
         이 스터디는 신청 폼에 추가 질문이 없습니다. 「신청 폼」 탭에서 질문을 추가하면 여기서 답을 모아볼 수 있습니다.
-      </p>
+        </p>
+      </div>
     );
   }
 
@@ -80,6 +171,7 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
         </p>
       ) : view === 'summary' ? (
         <div data-anno='results:3' className='flex flex-col gap-4'>
+          <AvailableDaysSummary crew={respondents} />
           {questions.map((q, qi) => (
             <QuestionSummary key={q.id} q={q} index={qi} respondents={respondents} />
           ))}
@@ -91,6 +183,8 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
               <tr>
                 <th className='whitespace-nowrap'>디스코드 별명</th>
                 <th>이메일</th>
+                <th className='whitespace-nowrap'>지역</th>
+                <th className='whitespace-nowrap'>참여 가능한 요일</th>
                 {questions.map((q) => (
                   <th key={q.id} className='min-w-[10rem]'>
                     {q.label || '(제목 없음)'}
@@ -103,6 +197,8 @@ export function ResultsTab({ study, crew }: { study: Study; crew: Crew[] }) {
                 <tr key={c.id}>
                   <td className='whitespace-nowrap font-semibold'>{c.discordNickname}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
+                  <td className='whitespace-nowrap text-fg-secondary'>{REGION_LABEL[c.region] ?? c.region}</td>
+                  <td className='whitespace-nowrap text-fg-secondary'>{daysText(dummyDays(c))}</td>
                   {questions.map((q) => (
                     <td key={q.id} className='text-fg-secondary'>
                       {answerText(c.answers?.[q.id])}
