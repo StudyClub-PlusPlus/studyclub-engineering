@@ -45,9 +45,33 @@ public class StudyGroup extends BaseEntity {
     @Column(name = "RULES", length = RULES_MAX_LENGTH)
     private String rules;
 
-    static final int RULES_MAX_LENGTH = 500;
+    public static final int RULES_MAX_LENGTH = 500;
+
+    /** 반 제목 상한 — 카드 한 줄에 들어가는 길이 (specs/study-group/spec.md 「반 만들기」). 컬럼은 255 그대로다. */
+    public static final int NAME_MAX_LENGTH = 20;
 
     protected StudyGroup() {}
+
+    /**
+     * 캡틴이 제목만 정해 반을 만든다. 스터디 시간(시각·시간대)·정원·규칙은 비워 둔다 — 시간은 일정 탭에서 따로 정하고, 회차는 회차 추가로만 생긴다 (share
+     * 10-14).
+     */
+    public static StudyGroup create(Long studyId, String name) {
+        return new StudyGroup(studyId, normalizeName(name), null, null, null);
+    }
+
+    // 앞뒤 공백을 자르고 코드포인트로 센다 — 이모지 하나를 한 글자로
+    static String normalizeName(String name) {
+        String trimmed = name == null ? "" : name.strip();
+        if (trimmed.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "반 제목을 입력하세요.");
+        }
+        if (trimmed.codePoints().count() > NAME_MAX_LENGTH) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "반 제목은 " + NAME_MAX_LENGTH + "자까지입니다.");
+        }
+        return trimmed;
+    }
 
     public StudyGroup(
             Long studyId, String name, Instant startAt, String timezone, Integer capacity) {
@@ -84,6 +108,11 @@ public class StudyGroup extends BaseEntity {
 
     public String getRules() {
         return rules;
+    }
+
+    /** 반 제목을 바꾼다. 길이·공백 규칙은 {@link #normalizeName} 이 본다. */
+    public void changeName(String name) {
+        this.name = normalizeName(name);
     }
 
     /**

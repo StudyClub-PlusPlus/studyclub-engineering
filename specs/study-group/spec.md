@@ -16,7 +16,7 @@
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/role | 네비게이터 지정 · 해제 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/group | 크루의 반 지정 · 이동 | O (ADMIN) | 스펙작성중 |
-| POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 스펙작성중 |
+| POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현중 |
 | PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 스펙작성중 |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 스펙작성중 |
 
@@ -198,11 +198,12 @@
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| name | String | Y | 반 제목. 앞뒤 공백을 자르고 1~20자(코드포인트 기준) |
+| name | String | Y | 반 제목. 앞뒤 공백을 자르고 1~20자(코드포인트 기준). 같은 스터디에 같은 이름(대소문자 무시)의 반이 있으면 409 |
 
 ### 서버 동작
 
 - `START_AT` · `TIMEZONE` · 시작일 · 종료일 · 요일은 비운다
+- 이름 중복은 `UNIQUE(STUDY_ID, NAME)` 가 막는다. 운영 DB 정렬(`utf8mb4_unicode_ci`)이 대소문자를 가리지 않아 `A반` 과 `a반` 도 같은 이름이다 — 서버도 대소문자를 무시하고 먼저 확인한다. 확인과 저장 사이에 같은 이름이 먼저 들어오면 제약 위반을 409 로 바꾼다
 - 회차 · 출석 행은 만들지 않는다
 
 ### Response — 201
@@ -218,6 +219,7 @@
 | 400 | INVALID_INPUT | `name` 누락 · 공백뿐 · 20자 초과 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 |
+| 409 | CONFLICT | 이 스터디에 같은 이름의 반이 있음 — 화면은 `errorMessage` 를 입력칸 아래에 적는다 |
 
 ---
 

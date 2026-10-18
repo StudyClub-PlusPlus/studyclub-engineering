@@ -21,6 +21,9 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     List<StudyParticipant> findByStudyGroupIdAndStatusIn(
             Long studyGroupId, Collection<ParticipantStatus> statuses);
 
+    boolean existsByStudyGroupIdAndStatusIn(
+            Long studyGroupId, Collection<ParticipantStatus> statuses);
+
     /** 한 기수 안 여러 반 동시 소속은 금지라 많아야 하나다. 회차 관리 화면이 분반을 지정하지 않았을 때 쓴다. */
     Optional<StudyParticipant> findFirstByStudyIdAndAccountId(Long studyId, Long accountId);
 
