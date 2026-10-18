@@ -6,6 +6,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationHistoryPage from '@/app/notifications/page';
+import { formatStamp } from '@/features/notifications/labels';
 import { RESEND_GIVE_UP_MS, RESEND_POLL_MS, RESEND_REQUEST_TIMEOUT_MS } from '@/features/notifications/queries';
 import type {
   ApiNotification,
@@ -795,5 +796,33 @@ describe('로그인 만료(401)는 공통 처리로 간다', () => {
     expect(toastErrorMock).not.toHaveBeenCalled();
     expect(resendCalls()).toHaveLength(0);
     await waitFor(() => expect(screen.getByRole('button', { name: '전체 재발송' })).not.toHaveAttribute('aria-busy'));
+  });
+});
+
+describe('시각은 줄마다 약칭 없이 시각만, 기준은 표 위에 한 번', () => {
+  it('각 줄은 24시간제 시각만 적고 시간대 약칭을 붙이지 않는다', async () => {
+    fakeServer([row({ id: 1, createdAt: '2026-10-15T09:00:00Z', sentAt: '2026-10-15T09:00:05Z' })]);
+    renderPage();
+    await screen.findByText('h***@example.com');
+
+    const cells = within(table().getAllByRole('row')[1]!).getAllByRole('cell');
+    expect(cells[0]!.textContent).toMatch(/^\d{2}\. \d{2}\. \d{2}\. \d{2}:\d{2}$/);
+    expect(cells[5]!.textContent).toMatch(/^\d{2}\. \d{2}\. \d{2}\. \d{2}:\d{2}$/);
+    expect(screen.getByRole('table').textContent).not.toMatch(/GMT|KST|UTC|PST|PDT/);
+  });
+
+  it('기준 시간대는 표 위에 딱 한 번만 밝힌다', async () => {
+    fakeServer([row({ id: 1 }), row({ id: 2 }), row({ id: 3 })]);
+    renderPage();
+    await screen.findAllByText('h***@example.com');
+
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    await waitFor(() => expect(screen.getByTestId('timezone-note')).toHaveTextContent(zone));
+    expect(screen.getAllByText(/내 시간대 기준/)).toHaveLength(1);
+  });
+
+  it('읽을 수 없는 값은 원문 그대로 둔다', () => {
+    expect(formatStamp('not-a-date')).toBe('not-a-date');
+    expect(formatStamp('2026-10-15T09:00:00Z')).toMatch(/^\d{2}\. \d{2}\. \d{2}\. \d{2}:\d{2}$/);
   });
 });
