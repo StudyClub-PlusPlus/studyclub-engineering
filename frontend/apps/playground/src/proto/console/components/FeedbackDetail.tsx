@@ -67,7 +67,7 @@ export function FeedbackDetail({ id }: { id: string }) {
   const replyInvalid = replyLen < REPLY_MIN || replyLen > REPLY_MAX;
 
   /**
-   * 회신 보내기 — 확인 창 없이 바로. 회신 저장 + 상태 「완료」 + 제출자에게 알림 메일 1통(링크만).
+   * 회신 전송 — 확인 창 없이 바로. 회신 저장 + 상태 「완료」 + 제출자에게 알림 메일 1통(링크만).
    * 고칠 때는 메일을 다시 보내지 않고, 처음 보낸 시각을 그대로 둔다.
    * TODO(api): PATCH /api/admin/feedbacks/{id} { reply } — 실패하면 입력을 남기고 「회신을 보내지 못했습니다」 + 다시 시도
    */
@@ -195,7 +195,7 @@ export function FeedbackDetail({ id }: { id: string }) {
                   </Button>
                 )}
                 <Button size='sm' onClick={sendReply} loading={sendingReply} disabled={replyInvalid || sendingReply}>
-                  {f.reply ? '저장' : '회신 보내기'}
+                  {f.reply ? '저장' : '전송'}
                 </Button>
               </div>
             </>
