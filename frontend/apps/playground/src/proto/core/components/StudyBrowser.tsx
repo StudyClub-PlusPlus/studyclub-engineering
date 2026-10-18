@@ -281,7 +281,7 @@ export function StudyBrowser({
 
       {/* Grid */}
       {filtered.length > 0 ? (
-        <div data-anno='5' className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+        <div data-anno='5' className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3'>
           {filtered.map((s) => (
             <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
           ))}
