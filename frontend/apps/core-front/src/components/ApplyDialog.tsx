@@ -428,7 +428,7 @@ export function ApplyDialog({
                 router.push(`/${locale}/my`);
               }}
             >
-              {t({ ko: '내 스터디 보러 가기', en: 'Go to My studies' }, locale)}
+              {t({ ko: '내 스터디룸 보러 가기', en: 'Go to My study room' }, locale)}
             </Button>
           </>
         ) : (

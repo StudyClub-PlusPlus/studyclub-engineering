@@ -8,6 +8,7 @@ import { getEvent, getEvents, type Locale } from '@/lib/content';
 import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/lib/event-details';
 import { m, t } from '@/lib/i18n';
 import { JsonLd, breadcrumbJsonLd, eventJsonLd } from '@/lib/jsonld';
+import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@/lib/layout';
 import { SITE_URL, pageMetadata } from '@/lib/seo';
 
 export async function generateStaticParams() {
@@ -71,7 +72,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
   const url = `${SITE_URL}/${locale}/events/${id}`;
 
   return (
-    <div className='mx-auto max-w-6xl px-6 py-12'>
+    <div className={`${PAGE} py-12`}>
       <JsonLd
         data={[
           eventJsonLd(event, locale, url),
@@ -90,7 +91,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
       </Link>
 
       {/* 머리 — 스터디 상세와 같은 틀: 옅은 바탕 + 배지 + 제목 + 한 줄, 아래 정보 칸 */}
-      <div className='mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]'>
+      <div className={`mt-4 ${DETAIL_GRID}`}>
         <div className='min-w-0'>
       <article className='card overflow-hidden p-0'>
         <header
@@ -126,7 +127,7 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
       )}
 
         </div>
-        <aside className='card overflow-hidden p-0 lg:sticky lg:top-24'>
+        <aside className={`card overflow-hidden p-0 ${DETAIL_ASIDE}`}>
         <dl className='flex flex-col divide-y divide-[var(--color-border)]'>
           {facts.map((f) => (
             <div key={f.label} className='flex items-center gap-3 px-6 py-4'>
