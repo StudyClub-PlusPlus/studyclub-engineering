@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import { openFeedback } from '@core/components/Feedback';
 import { getUser, logout, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@core/lib/preview';
-import { ChevronDown, DoorOpen, Heart, LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, DoorOpen, Heart, LogOut, UserRound, MessageSquareWarning } from 'lucide-react';
 
 export function NavAuth({ locale }: { locale: Locale }) {
   const router = useRouter();
@@ -115,6 +116,19 @@ export function NavAuth({ locale }: { locale: Locale }) {
             <Heart size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'Saved' : '찜한 스터디'}
           </Link>
+          {/* 찜한 스터디 아래, 로그아웃 위 — 구분선으로 로그아웃과 떨어뜨린다 */}
+          <button
+            type='button'
+            data-anno='feedback:1'
+            onClick={() => {
+              setOpen(false);
+              openFeedback();
+            }}
+            className='flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+          >
+            <MessageSquareWarning size={16} className='text-[var(--color-fg-muted)]' />
+            {locale === 'en' ? 'Feedback · report a bug' : '문의·오류 신고'}
+          </button>
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
             type='button'

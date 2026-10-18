@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 
+import { FeedbackHost } from '@core/components/Feedback';
 import { Footer } from '@core/components/Footer';
 import { RegistrationNavigation } from '@core/components/RegistrationNavigation';
 import { SiteHeader } from '@core/components/SiteHeader';
@@ -31,6 +32,7 @@ export default async function LocaleLayout({
       </Suspense>
       <main className='flex-1'>{children}</main>
       <Footer locale={locale} />
+      <FeedbackHost locale={locale} discordUrl={site.discord_invite} />
     </div>
   );
 }

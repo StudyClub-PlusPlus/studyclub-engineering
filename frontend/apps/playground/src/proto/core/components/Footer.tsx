@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { FeedbackLink } from '@core/components/Feedback';
 import type { Locale } from '@core/lib/content';
 import { m } from '@core/lib/i18n';
 
@@ -29,6 +30,11 @@ export function Footer({ locale }: { locale: Locale }) {
           <Link href={`/proto/core/${locale}/privacy`} className='font-semibold hover:text-(--color-fg-muted)'>
             {m('nav.privacy', locale)}
           </Link>
+          {/* 비로그인 방문자가 여는 자리 — 프로필 드롭다운과 같은 팝업을 연다 */}
+          <FeedbackLink
+            label={locale === 'en' ? 'Feedback · report a bug' : '문의·오류 신고'}
+            className='hover:text-(--color-fg-muted)'
+          />
         </div>
       </div>
     </footer>
