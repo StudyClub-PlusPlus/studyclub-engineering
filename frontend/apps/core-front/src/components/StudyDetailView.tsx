@@ -11,6 +11,7 @@ import type { Locale } from '@/lib/content';
 import { ApiError } from '@/lib/http';
 import { m, t } from '@/lib/i18n';
 import { JsonLd, breadcrumbJsonLd, courseJsonLd } from '@/lib/jsonld';
+import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@/lib/layout';
 import { recruitBadge, studyStartValue, studyTimezoneLabel, toISODate } from '@/lib/recruit';
 import { SITE_URL } from '@/lib/seo';
 
@@ -20,7 +21,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
 
   if (isPending) {
     return (
-      <div className='mx-auto max-w-3xl px-6 py-20 text-center text-sm text-fg-muted'>
+      <div className={`${PAGE} py-20 text-center text-sm text-fg-muted`}>
         {t({ ko: '스터디 정보를 불러오는 중…', en: 'Loading study details…' }, locale)}
       </div>
     );
@@ -29,7 +30,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
   if (error || !study) {
     const isNotFound = error instanceof ApiError && error.status === 404;
     return (
-      <div className='mx-auto max-w-3xl px-6 py-20 text-center'>
+      <div className={`${PAGE} py-20 text-center`}>
         <p className='text-lg font-bold text-fg-secondary'>
           {isNotFound
             ? t({ ko: '스터디를 찾을 수 없어요.', en: 'Study not found.' }, locale)
@@ -67,7 +68,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
   const url = `${SITE_URL}/${locale}/studies/${id}`;
 
   return (
-    <div className='mx-auto max-w-6xl px-6 pb-16 pt-8'>
+    <div className={`${PAGE} pb-16 pt-8`}>
       <JsonLd
         data={[
           courseJsonLd(study, locale, url),
@@ -86,7 +87,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
       </Link>
 
       {/* 넓은 화면: 왼쪽 본문 + 오른쪽 고정 신청 카드. 좁은 화면은 위아래로 */}
-      <div className='mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]'>
+      <div className={`mt-4 ${DETAIL_GRID}`}>
         <article className='card overflow-hidden'>
         <header className='relative flex flex-col gap-3 overflow-hidden px-6 pb-7 pt-6 sm:px-8' style={{ background }}>
           {artUrl && (
@@ -120,7 +121,7 @@ export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) 
         )}
         </article>
 
-        <aside className='card flex flex-col overflow-hidden lg:sticky lg:top-24'>
+        <aside className={`card flex flex-col overflow-hidden ${DETAIL_ASIDE}`}>
           <dl className='flex flex-col divide-y divide-border'>
             {facts.map((f) => (
               <div key={f.label} className='flex items-center gap-3 px-6 py-4'>

@@ -2,6 +2,7 @@
  * 크루가 참여하는 지역 — 소개의 지도와 세계 시계가 함께 읽는다.
  * 출처: 운영진 「스터디클럽 소개」 문서의 지역(미국 서부·동부, 한국, 캐나다, 유럽 스위스·독일)과
  * 후기에 적힌 도시(베이 에어리어, 세인트루이스, 뉴욕, 서울). 2026-10-18 기준.
+ * 캐나다는 도시 근거가 없어 지도 핀·시간대를 대표값(밴쿠버 위치·태평양 시간)으로 둔다 — 실제 도시를 알면 고친다.
  */
 export type Region = {
   id: string;
@@ -26,7 +27,8 @@ export const REGIONS: Region[] = [
     id: 'ca',
     art: 'region-ca',
     name: { ko: '캐나다', en: 'Canada' },
-    city: { ko: '밴쿠버', en: 'Vancouver' },
+    // 소개 문서엔 「캐나다」만 있다 — 도시는 모른다. 시계는 서부 시간을 대표값으로
+    city: { ko: '캐나다 서부 시간 기준', en: 'Pacific time shown' },
     tz: 'America/Vancouver',
     lat: 49.3,
     lon: -123.1,
@@ -48,6 +50,7 @@ export const REGIONS: Region[] = [
     id: 'eu',
     art: 'region-eu',
     name: { ko: '유럽', en: 'Europe' },
+    // 소개 문서: 유럽(스위스·독일). 두 나라 모두 중부유럽 시간이다
     city: { ko: '스위스 · 독일', en: 'Switzerland · Germany' },
     tz: 'Europe/Zurich',
     lat: 47.4,

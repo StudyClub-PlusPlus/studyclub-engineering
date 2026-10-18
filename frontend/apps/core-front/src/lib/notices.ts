@@ -63,14 +63,6 @@ export const NOTICES: Notice[] = [
         ],
       },
       { link: { label: { ko: '모집 중인 스터디 보기', en: 'See open studies' }, href: '/studies' } },
-      { h: { ko: '크루 · 네비게이터 · 캡틴', en: 'Crew · Navigator · Captain' } },
-      {
-        p: {
-          ko: '역할 이름을 새로 정리했어요. 함께 공부하는 크루, 스터디 하나를 이끄는 네비게이터, 커뮤니티를 운영하는 캡틴이에요. 예전의 반장·부반장은 이제 네비게이터라고 불러요.',
-          en: 'We renamed the roles: Crew study together, a Navigator leads each study, and Captains run the community. What used to be the class lead is now the Navigator.',
-        },
-      },
-      { link: { label: { ko: '역할 자세히 보기', en: 'More about the roles' }, href: '/about#crew' } },
       { h: { ko: '모임과 대화는 디스코드에서 그대로', en: 'Meetings and chat stay on Discord' } },
       {
         p: {

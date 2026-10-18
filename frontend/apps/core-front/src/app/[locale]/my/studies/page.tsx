@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 
 import { ArrowLeft } from 'lucide-react';
 
+import { PAGE } from '@/lib/layout';
+
 /**
  * 오늘 출석 — 회원이 직접 체크인하는 화면.
  *
@@ -17,7 +19,7 @@ export default function MyStudiesPage() {
   const locale = (params?.locale as string) ?? 'ko';
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-8'>
+    <div className={`${PAGE} pb-16 pt-8`}>
       <Link
         href={`/${locale}/my/joined`}
         className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary hover:text-fg'
