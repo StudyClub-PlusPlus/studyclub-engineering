@@ -6,9 +6,34 @@ import { Button, Modal } from '@studyclub/ui';
 import { MessageCircle } from 'lucide-react';
 
 import type { Locale } from '@/lib/content';
+import { linkDiscord } from '@/lib/discord';
+import { ApiError } from '@/lib/http';
 import { t } from '@/lib/i18n';
-import { setDiscord } from '@/lib/me';
 
+/**
+ * 디스코드 OAuth 인가 코드. 디스코드 앱 등록·백엔드(DSC-01) 전이라 아직 팝업을 열지 않는다 —
+ * 개발 서버의 MSW 목은 코드를 보지 않는다. 백엔드가 붙으면 OAuth 팝업으로 받은 코드로 바꾼다.
+ */
+const PENDING_OAUTH_CODE = 'pending-oauth';
+
+/** POST /api/me/discord/link 실패 문구. 502(토큰 교환 실패) 등은 기본 문구. */
+function linkErrorCopy(e: unknown) {
+  if (e instanceof ApiError && e.status === 409) {
+    return {
+      ko: '이 디스코드 계정은 다른 StudyClub 계정에 이미 연동되어 있습니다.',
+      en: 'This Discord account is already connected to another StudyClub account.',
+    };
+  }
+  if (e instanceof ApiError && e.status === 401) {
+    return { ko: '로그인이 만료되었습니다. 다시 로그인해 주세요.', en: 'Your session has expired. Please log in again.' };
+  }
+  return {
+    ko: '디스코드 연동을 완료하지 못했습니다. 다시 시도해 주세요.',
+    en: 'Failed to connect Discord. Please try again.',
+  };
+}
+
+/** 신청 전 디스코드 연동 창. 서버가 연동을 저장해야(204) 신청 폼으로 넘어간다. */
 export function ApplyDiscordGate({
   locale,
   open,
@@ -27,22 +52,12 @@ export function ApplyDiscordGate({
     setLinking(true);
     setError(null);
     try {
-      // TODO(api): POST /api/me/discord/link
-      await new Promise((r) => setTimeout(r, 400));
-      setDiscord('jiwon_dev');
+      await linkDiscord(PENDING_OAUTH_CODE);
       setLinking(false);
       onLinked();
-    } catch {
+    } catch (e) {
       setLinking(false);
-      setError(
-        t(
-          {
-            ko: '디스코드 연동을 완료하지 못했습니다. 다시 시도해 주세요.',
-            en: 'Failed to connect Discord. Please try again.',
-          },
-          locale,
-        ),
-      );
+      setError(t(linkErrorCopy(e), locale));
     }
   }
 

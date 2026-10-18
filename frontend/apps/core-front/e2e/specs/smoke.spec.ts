@@ -136,7 +136,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           role: 'MEMBER',
         }),
       );
-      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('msw-discord-linked', 'true');
       localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
     });
 
@@ -158,7 +158,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           role: 'MEMBER',
         }),
       );
-      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('msw-discord-linked', 'true');
       localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
     });
 
@@ -184,7 +184,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           role: 'MEMBER',
         }),
       );
-      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('msw-discord-linked', 'true');
       localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
     });
 

@@ -21,7 +21,6 @@ const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
 /** 예전 프로토가 브라우저에 남긴 내 출석 기록. 출석은 이제 서버에 있다 — 탈퇴할 때 남은 값만 지운다. */
 const LEGACY_ATTENDANCE_KEY = 'sc_my_attendance';
-const DISCORD_KEY = 'sc_discord';
 const DISCORD_NICK_KEY = 'sc_discord_nickname';
 
 function readJSON<T>(key: string, fallback: T): T {
@@ -94,18 +93,8 @@ export function cancelApplication(studyId: string) {
   );
 }
 
-/* ── 디스코드 연결 ───────────────────────────────────────────────────────── */
-
-export type DiscordLink = { handle: string } | null;
-
-export function getDiscord(): DiscordLink {
-  const v = readJSON<string>(DISCORD_KEY, '');
-  return v ? { handle: v } : null;
-}
-
-export function setDiscord(handle: string | null) {
-  writeJSON(DISCORD_KEY, handle ?? '');
-}
+/* ── 디스코드 서버 별명 ─────────────────────────────────────────────────────── */
+// 연동 여부는 여기 두지 않는다 — 서버(GET /auth/me 의 discordLinked)가 정본이다. lib/discord.ts
 
 export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자인';
 

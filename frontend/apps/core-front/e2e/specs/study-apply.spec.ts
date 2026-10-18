@@ -30,11 +30,11 @@ async function seedSession(
         localStorage.removeItem('sc_user');
       }
 
+      // 연동 여부는 GET /auth/me 의 discordLinked 다 — 개발 서버의 MSW 목이 이 값으로 답한다
+      localStorage.setItem('msw-discord-linked', String(discord));
       if (discord) {
-        localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
         localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
       } else {
-        localStorage.removeItem('sc_discord');
         localStorage.removeItem('sc_discord_nickname');
       }
 
@@ -107,7 +107,7 @@ test.describe('크루 스터디 신청 E2E 플로우 (PRD: crew-submit-applicati
     const discordModal = page.getByRole('dialog');
     await expect(discordModal).toBeVisible();
 
-    // 디스코드 연동하기 버튼 클릭 (모의 연동 완료)
+    // 디스코드 연동하기 → POST /api/me/discord/link (MSW 목이 204)
     const linkBtn = discordModal.getByRole('button', { name: /디스코드 연동하기/i });
     await linkBtn.click();
 
