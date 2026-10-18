@@ -58,7 +58,7 @@ export function RegionClocks({ locale }: { locale: Locale }) {
                 </div>
               </div>
               <span className='ml-auto' aria-hidden='true'>
-                {p ? p.daytime ? <Sun size={18} className='text-amber-500' /> : <Moon size={18} className='text-indigo-400' /> : null}
+                {p ? p.daytime ? <Sun size={18} style={{ color: 'var(--color-warning-600)' }} /> : <Moon size={18} style={{ color: 'var(--color-brand)' }} /> : null}
               </span>
             </div>
             <div className='mt-2 px-5 pb-4' style={{ background: r.soft }}>

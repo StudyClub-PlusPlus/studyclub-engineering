@@ -114,7 +114,7 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
         <Marquee label={t({ ko: '회원 후기', en: 'Member reviews' }, locale)} seconds={80}>
           {VOICES.map((v, i) => (
             <figure key={i} className='card flex w-80 shrink-0 flex-col justify-between gap-4 p-5'>
-              <blockquote className='text-[15px] leading-relaxed text-[var(--color-fg)]'>“{t(v.quote, locale)}”</blockquote>
+              <blockquote className='text-base leading-relaxed text-[var(--color-fg)]'>“{t(v.quote, locale)}”</blockquote>
               <figcaption className='text-xs font-medium text-[var(--color-fg-muted)]'>
                 {v.who ? `${t(v.who, locale)} · ` : ''}
                 {t(v.from, locale)}
