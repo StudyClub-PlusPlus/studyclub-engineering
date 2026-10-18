@@ -147,7 +147,7 @@ export const ATTENDEE_SPEC: ScreenSpec = {
       n: '3-4',
       title: '디스코드 닉네임',
       when: '신청자 탭을 보고 있을 때',
-      display: ['그 크루의 스터디클럽++ 디스코드 서버 별명. 없으면 「—」'],
+      display: ['그 크루의 스터디클럽 디스코드 서버 별명. 없으면 「—」'],
       policy: ['운영자가 디스코드에서 그 사람을 찾을 때 쓴다. 신청할 때 받은 값으로 계정에 저장된다'],
       data: ['ACCOUNT.DISCORD_NICKNAME'],
     },
@@ -804,7 +804,7 @@ export const FORM_SPEC: ScreenSpec = {
     {
       n: '2',
       title: '기본 질문 — 디스코드 서버 별명',
-      display: ['[스터디 클럽++] 디스코드 서버 별명 · 단답형 · 필수 · 예) 홍길동/SWE/산호세/시스템디자인'],
+      display: ['[스터디클럽] 디스코드 서버 별명 · 단답형 · 필수 · 예) 홍길동/SWE/산호세/시스템디자인'],
       policy: [
         '삭제·타입 변경 불가 — 모든 신청 폼에 항상 포함되는 질문이다',
         'ACCOUNT.DISCORD_NICKNAME 이 있으면 그 값을 그대로 쓰고, 없으면 지원자가 필수 입력한다',

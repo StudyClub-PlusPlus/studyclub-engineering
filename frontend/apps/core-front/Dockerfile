@@ -1,4 +1,4 @@
-# StudyClub++ core-front — Next.js (turbo + pnpm-workspace monorepo)
+# StudyClub core-front — Next.js (turbo + pnpm-workspace monorepo)
 # Build context = repo root (`.`), NOT this directory:  docker build -f apps/core-front/Dockerfile .
 #
 # UNVERIFIED first-pass Dockerfile — may need a tweak after the first real build.

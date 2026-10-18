@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { MobileNav } from '@/components/MobileNav';
@@ -30,13 +31,8 @@ export function SiteHeader({
     <header className='sticky top-0 z-30 border-b border-(--color-border) bg-[color-mix(in_srgb,var(--color-bg)_82%,transparent)] backdrop-blur-md'>
       <div className='mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6 md:gap-7'>
         <Link href={`/${locale}`} className='flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight'>
-          <span
-            className='grid h-7 w-7 place-items-center rounded-lg text-sm font-extrabold text-white'
-            style={{ background: 'var(--color-brand)' }}
-          >
-            S
-          </span>
-          StudyClub++
+          <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
+          StudyClub
         </Link>
 
         <NavLinks links={links} mentoring={mentoring} />

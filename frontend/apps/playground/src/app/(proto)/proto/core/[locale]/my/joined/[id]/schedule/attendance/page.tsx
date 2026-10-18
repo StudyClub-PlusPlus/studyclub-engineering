@@ -41,7 +41,7 @@ export default function StudyManageAttendancePage() {
   /** 중단·재개 뒤 다시 그려 명단을 새로 읽는다 — 프로토는 브라우저 저장소에서 읽는다. */
   const [, rerender] = useState(0);
 
-  // 프로토의 「나」는 분반 명부 밖에 있다 — 내 출석 기록(내 스터디 카드와 같은 값)을 내 줄에 채운다.
+  // 프로토의 「나」는 분반 명부 밖에 있다 — 내 출석 기록(내 스터디룸 카드와 같은 값)을 내 줄에 채운다.
   useEffect(() => {
     const group = getGroupAttendance(study);
     setBook(group[ME_ID] ? group : { ...group, [ME_ID]: { ...getMyAttendance(study.id) } });

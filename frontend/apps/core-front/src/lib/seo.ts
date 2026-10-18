@@ -8,16 +8,16 @@ import type { Locale } from './content';
 import { DEFAULT_LOCALE, LOCALES } from './i18n';
 
 /** 색인해도 되는 유일한 호스트. 여기 말고 다른 곳에 뜬 우리 사이트는 전부 색인 금지다. */
-export const CANONICAL_ORIGIN = 'https://studyclub-plusplus.com';
+export const CANONICAL_ORIGIN = 'https://studyclub.life';
 
 /** 배포 도메인. 환경변수로 덮을 수 있게 둔다 — 프리뷰 배포에서 canonical 이 prod 를 가리키면 안 된다. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? CANONICAL_ORIGIN).replace(/\/+$/, '');
-export const SITE_NAME = 'StudyClub++';
+export const SITE_NAME = 'StudyClub';
 
 /**
  * **이 빌드가 색인되어도 되는가.**
  *
- * ⚠️ stage(`stage.studyclub-plusplus.com`)가 색인되면 prod 와 **같은 콘텐츠로 경쟁한다** —
+ * ⚠️ stage(`stage.studyclub.life`)가 색인되면 prod 와 **같은 콘텐츠로 경쟁한다** —
  * 하필 우리가 이기려는 그 키워드로. 구글이 둘 중 하나를 골라 버리는데 고르는 쪽이 stage 일 수도 있다.
  * robots.txt 로 `Allow: /` 를 내보내는 순간 "와서 가져가라"고 초대하는 꼴이라
  * 호스트별로 반드시 갈라야 한다.
@@ -55,14 +55,14 @@ type PageSeo = {
   /** article/profile 등. 기본 website */
   ogType?: 'website' | 'article';
   /**
-   * 루트 template(`%s · StudyClub++`)을 건너뛴다.
-   * 홈처럼 제목 자체에 브랜드가 이미 들어간 경우 — 안 쓰면 `… · StudyClub++` 가 덧붙어
+   * 루트 template(`%s · StudyClub`)을 건너뛴다.
+   * 홈처럼 제목 자체에 브랜드가 이미 들어간 경우 — 안 쓰면 `… · StudyClub` 가 덧붙어
    * 60자를 넘겨 검색 결과에서 잘린다.
    */
   titleAbsolute?: boolean;
 };
 
-/** 페이지 metadata 한 벌. title 은 기본적으로 루트 template(`%s · StudyClub++`)이 감싼다. */
+/** 페이지 metadata 한 벌. title 은 기본적으로 루트 template(`%s · StudyClub`)이 감싼다. */
 export function pageMetadata({
   locale,
   path = '',

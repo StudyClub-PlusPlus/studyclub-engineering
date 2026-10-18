@@ -15,7 +15,7 @@ export default function StudySchedulePage() {
         href={`/${locale}/my/joined`}
         className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary hover:text-fg'
       >
-        <ArrowLeft size={15} /> 내 스터디
+        <ArrowLeft size={15} /> 내 스터디룸
       </Link>
       <p className='mt-16 text-center text-sm text-fg-secondary'>스터디 일정 화면을 준비 중입니다.</p>
     </div>
