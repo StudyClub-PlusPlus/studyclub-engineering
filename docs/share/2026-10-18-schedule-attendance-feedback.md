@@ -2,20 +2,20 @@
 상태: 결정됨
 물어볼 사람: 기획
 반영:
-  - 01-planning/_registry/policies/POL-0008-screen-rules.md — 됨 (표 맨 위 작업 바)
-  - 01-planning/stories/navigator-edit-attendance/PRD.md — 됨
-  - 01-planning/stories/navigator-withdraw-participant/PRD.md — 됨
-  - 01-planning/stories/navigator-register-sessions/PRD.md — 됨
-  - 01-planning/stories/crew-view-attendance-record/PRD.md — 됨
-  - 01-planning/stories/crew-apply-presenter/PRD.md — 됨
-  - 01-planning/stories/captain-view-attendance-roster/PRD.md — 됨
-  - 01-planning/stories/captain-view-attendees/PRD.md — 됨
-  - 01-planning/_registry/informationarchitecture.md — 됨 (탭 이름 「출석」)
-  - 01-planning/stories/crew-joined-studies/PRD.md · 01-planning/_registry/stories.md — 됨 (탭 이름 「출석」, 용어만)
-  - playground 스터디 일정 · 스터디 운영 프로토 — 됨
+  - 01-planning/_registry/policies/POL-0008-screen-rules.md — 됨 (#285, 표 맨 위 작업 바)
+  - 01-planning/stories/navigator-edit-attendance/PRD.md — 됨 (#285)
+  - 01-planning/stories/navigator-withdraw-participant/PRD.md — 됨 (#285)
+  - 01-planning/stories/navigator-register-sessions/PRD.md — 됨 (#285)
+  - 01-planning/stories/crew-view-attendance-record/PRD.md — 됨 (#285)
+  - 01-planning/stories/crew-apply-presenter/PRD.md — 됨 (#285)
+  - 01-planning/stories/captain-view-attendance-roster/PRD.md — 됨 (#285)
+  - 01-planning/stories/captain-view-attendees/PRD.md — 됨 (#285)
+  - 01-planning/_registry/informationarchitecture.md — 됨 (#285, 탭 이름 「출석」)
+  - 01-planning/stories/crew-joined-studies/PRD.md · 01-planning/_registry/stories.md — 됨 (#285, 탭 이름 「출석」, 용어만)
+  - playground 스터디 일정 · 스터디 운영 프로토 — 됨 (#285)
   - specs/attendance/spec.md — 안 됨 (응답에 `discordNickname`, BE 할 일 D6)
   - specs/study-participant/spec.md — 안 됨 (참여 중단 시 발표자 비우기, BE 할 일 D7)
-  - frontend/packages/design/docs/design-system.md §9-7-1 — 됨 (표 맨 위 작업 바)
+  - frontend/packages/design/docs/design-system.md §9-7-1 — 됨 (#285, 표 맨 위 작업 바)
   - core-front · back-office-front 화면 — 안 됨 (FE 할 일, 아래 표)
 ---
 
