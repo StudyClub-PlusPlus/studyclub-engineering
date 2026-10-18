@@ -52,7 +52,7 @@
 | 누가 | 할 일 |
 |---|---|
 | 기획 | 위 두 가지를 답한다. 재발송 문구(확인 창, 결과 토스트)는 PRD 에 이미 있어 별도 확정은 필요 없다 |
-| 백엔드 | 스펙 `specs/notification/spec.md` 리뷰. 통과하면 `POST /api/admin/notifications/resend`, 목록 응답의 `canResend`, `?ids=` 조회, 정렬 보조 키(`ID DESC`), `limit` 상한을 구현한다. 마이그레이션은 없다 |
+| 백엔드 | 구현됨 — `POST /api/admin/notifications/resend`, 목록 응답의 `canResend`, `?ids=` 조회, 정렬 보조 키(`ID DESC`), `limit` 상한. 마이그레이션은 없다 |
 | 프론트 | 구현됨 — `back-office-front` 사이드바 「알림」 한 메뉴에 템플릿 / 발송 이력 두 탭. 필터·페이지는 URL 쿼리에 둔다 |
 
 ## 같이 정리한 것

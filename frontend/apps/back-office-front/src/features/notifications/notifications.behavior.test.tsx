@@ -6,18 +6,25 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationHistoryPage from '@/app/notifications/page';
-import { RESEND_POLL_MS } from '@/features/notifications/queries';
+import { RESEND_GIVE_UP_MS, RESEND_POLL_MS, RESEND_REQUEST_TIMEOUT_MS } from '@/features/notifications/queries';
 import type {
   ApiNotification,
   ApiNotificationPage,
   ApiNotificationResend,
 } from '@/features/notifications/types';
 import { ApiError, http } from '@/lib/http';
+import { handleUnauthorized } from '@/lib/query-client';
 
 // 서버는 http 한 곳으로 막는다 — 경로·요청 모양까지 함께 확인한다.
 vi.mock('@/lib/http', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/http')>()),
   http: vi.fn(),
+}));
+
+// 로그인 만료(401)의 공통 처리는 세션을 지우고 화면을 옮기므로 실제로 부르지 않고 호출로만 확인한다.
+vi.mock('@/lib/query-client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/query-client')>()),
+  handleUnauthorized: vi.fn(),
 }));
 
 // 토스트는 DOM 이 아니라 호출로 확인한다 (Toaster 를 마운트하지 않는다).
@@ -62,6 +69,7 @@ const httpMock = vi.mocked(http);
 const toastMock = vi.mocked(toast);
 const toastErrorMock = vi.mocked(toast.error);
 const toastDismissMock = vi.mocked(toast.dismiss);
+const unauthorizedMock = vi.mocked(handleUnauthorized);
 
 function row(patch: Partial<ApiNotification> = {}): ApiNotification {
   return {
@@ -88,18 +96,35 @@ type ServerOpts = {
   resendFails?: boolean | ((call: number) => boolean);
   /** true 면 「거른 전체」의 ID 를 모으는 목록 읽기(limit=100)가 실패한다. */
   gatherFails?: boolean;
+  /** 실패할 때의 상태 코드(기본 500). 401 이면 로그인 만료다. */
+  failStatus?: number;
+  /** true 면 끝 추적(`?ids=`) 요청이 실패한다. */
+  trackFails?: boolean;
+  /** 해당 요청이 응답 없이 걸린다 — 요청의 제한 시간(abort)으로만 끝난다. */
+  hang?: { resend?: boolean; track?: boolean };
+  /** 「거른 전체」 목록 읽기(limit=100)가 끝날 때마다 불린다(1부터). 읽는 사이 다른 운영자가 재발송하는 상황을 만든다. */
+  afterGatherRead?: (readNo: number, db: ApiNotification[]) => void;
 };
+
+/** 응답이 오지 않는 요청 — 호출한 쪽이 끊을(abort) 때만 끝난다. */
+const hung = (init?: RequestInit) =>
+  new Promise<never>((_, reject) =>
+    init?.signal?.addEventListener('abort', () => reject(new DOMException('요청 시간 초과', 'AbortError'))),
+  );
 
 function fakeServer(initial: ApiNotification[], opts: ServerOpts = {}) {
   const db = initial.map((r) => ({ ...r }));
   let resendCall = 0;
-  httpMock.mockImplementation(async (path: string, init?: RequestInit) => {
+  let gatherRead = 0;
+  const failure = () => new ApiError(opts.failStatus ?? 500, '서버 오류');
+  const respond = async (path: string, init?: RequestInit): Promise<unknown> => {
     const url = new URL(path, 'http://x');
     if (url.pathname === '/api/admin/notification-templates') return TEMPLATES;
     if (url.pathname === '/api/admin/notifications/resend') {
       resendCall += 1;
+      if (opts.hang?.resend) return hung(init);
       const fails = typeof opts.resendFails === 'function' ? opts.resendFails(resendCall) : opts.resendFails;
-      if (fails) throw new ApiError(500, '서버 오류');
+      if (fails) throw failure();
       const { ids } = JSON.parse(String(init?.body)) as { ids: number[] };
       const result: ApiNotificationResend = { accepted: [], skipped: [] };
       for (const id of ids) {
@@ -115,23 +140,35 @@ function fakeServer(initial: ApiNotification[], opts: ServerOpts = {}) {
     if (url.pathname === '/api/admin/notifications') {
       const ids = url.searchParams.get('ids');
       if (ids) {
+        if (opts.hang?.track) return hung(init);
+        if (opts.trackFails) throw failure();
         const items = db.filter((r) => ids.split(',').map(Number).includes(r.id));
         return { items, total: items.length, offset: 0, limit: items.length } satisfies ApiNotificationPage;
       }
-      if (opts.gatherFails && url.searchParams.get('limit') === '100') throw new ApiError(500, '서버 오류');
+      const gather = url.searchParams.get('limit') === '100';
+      if (opts.gatherFails && gather) throw failure();
       const status = url.searchParams.get('status');
       const offset = Number(url.searchParams.get('offset') ?? 0);
       const limit = Number(url.searchParams.get('limit') ?? 20);
       const matched = db.filter((r) => !status || r.status === status);
-      return { items: matched.slice(offset, offset + limit), total: matched.length, offset, limit } satisfies ApiNotificationPage;
+      const page = { items: matched.slice(offset, offset + limit), total: matched.length, offset, limit } satisfies ApiNotificationPage;
+      // 이 응답은 이미 나간 것이다 — 먼저 복사해 두고, 그 뒤에 서버 상태를 바꾼다(변화는 다음 읽기부터 보인다)
+      const sent = structuredClone(page);
+      if (gather) opts.afterGatherRead?.((gatherRead += 1), db);
+      return sent;
     }
     throw new Error(`unexpected request: ${path}`);
-  });
+  };
+  // 실제 네트워크처럼 응답을 복사해서 준다 — 같은 객체를 넘기면 서버 쪽 변경이 이미 받은 응답까지 바꿔 버린다
+  httpMock.mockImplementation(async (path: string, init?: RequestInit) => structuredClone(await respond(path, init)));
   return db;
 }
 
 function renderPage() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  // 실제 앱(`lib/query-client.ts`)과 같은 신선도 — `staleTime` 이 0 이면 캐시를 다시 쓰는 문제가 테스트에 드러나지 않는다
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: 60_000, refetchOnWindowFocus: false } },
+  });
   return render(
     <QueryClientProvider client={client}>
       <NotificationHistoryPage />
@@ -160,6 +197,7 @@ beforeEach(() => {
   toastMock.mockReset();
   toastErrorMock.mockReset();
   toastDismissMock.mockReset();
+  unauthorizedMock.mockReset();
   memoryUrl.set('');
 });
 
@@ -579,5 +617,183 @@ describe('전체 재발송', () => {
 
     await waitFor(() => expect(resendCalls()).toHaveLength(1));
     expect(JSON.parse(String(resendCalls()[0]![1]?.body)).ids).toEqual([1, 2, 3]);
+  });
+});
+
+// ───────── 리뷰 반영 (PR #268) ─────────
+
+const failedRows = (n: number) =>
+  Array.from({ length: n }, (_, i) => row({ id: i + 1, status: 'FAILED', sentAt: null, canResend: true }));
+
+/** 「실패」로 거른 목록에서 「전체 재발송」을 눌러 확인 창까지 확인한다. */
+async function confirmResendAll() {
+  fireEvent.click(await screen.findByRole('button', { name: '전체 재발송' }));
+  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '재발송' }));
+}
+
+describe('거른 전체를 모을 때 빠뜨리지 않는다', () => {
+  it('읽는 사이 다른 운영자가 앞쪽 100건을 재발송해도 뒤쪽 100건을 건너뛰지 않는다', async () => {
+    memoryUrl.set('status=FAILED');
+    const server: ServerOpts = {
+      // 첫 100건을 읽은 직후 다른 운영자가 그 100건을 재발송했다 → 「실패」 목록에는 나머지 100건만 남는다
+      afterGatherRead: (readNo, db) => {
+        if (readNo !== 1) return;
+        db.slice(0, 100).forEach((r) => {
+          r.status = 'PENDING';
+          r.canResend = false;
+        });
+      },
+    };
+    fakeServer(failedRows(200), server);
+    renderPage();
+    await confirmResendAll();
+
+    await waitFor(() => expect(resendCalls().length).toBeGreaterThan(0));
+    const requested = new Set(resendCalls().flatMap((c) => (JSON.parse(String(c[1]?.body)) as { ids: number[] }).ids));
+    // 예전 방식은 offset=100 에서 빈 목록을 받고 끝나 앞의 100건만 모았다
+    expect(requested.size).toBe(200);
+    expect(requested.has(101) && requested.has(200)).toBe(true);
+  });
+
+  it('아무도 건드리지 않았으면 한 번 더 훑어 확인하고 끝낸다 — 무한히 훑지 않는다', async () => {
+    memoryUrl.set('status=FAILED');
+    fakeServer(failedRows(130));
+    renderPage();
+    await screen.findByRole('button', { name: '전체 재발송' });
+    const readsBefore = listReads().filter((p) => p.includes('limit=100')).length;
+    await confirmResendAll();
+
+    await waitFor(() => expect(resendCalls()).toHaveLength(2));
+    // 130건 = 2쪽. 첫 훑기(2번) + 새 ID 가 없는지 확인하는 훑기(2번)에서 멈춘다
+    expect(listReads().filter((p) => p.includes('limit=100')).length - readsBefore).toBe(4);
+  });
+});
+
+describe('재발송 뒤 캐시는 오래된 것으로 표시된다 (staleTime 60초)', () => {
+  it('완료된 줄이 「실패」 목록에 남지 않는다 — 60초 안에 필터를 바꿨다 돌아와도 서버에서 다시 읽는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    memoryUrl.set('status=FAILED');
+    const db = fakeServer(failedRows(2));
+    renderPage();
+    const [first] = await screen.findAllByRole('button', { name: '재발송' });
+    fireEvent.click(first!);
+    await waitFor(() => expect(table().getByText('대기')).toBeInTheDocument());
+    db.find((r) => r.id === 1)!.status = 'SENT';
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RESEND_POLL_MS + 10);
+    });
+    await waitFor(() => expect(toastMock).toHaveBeenCalledWith('재발송에 성공했습니다.'));
+    expect(table().getAllByRole('row')).toHaveLength(1 + 2); // 지금 보는 화면에서는 줄이 그대로다
+
+    // 60초가 지나기 전에 필터를 「전체」 → 「실패」로 바꾼다
+    fireEvent.change(screen.getByRole('combobox', { name: '상태' }), { target: { value: 'ALL' } });
+    await waitFor(() => expect(table().getAllByRole('row').length).toBeGreaterThan(1));
+    fireEvent.change(screen.getByRole('combobox', { name: '상태' }), { target: { value: 'FAILED' } });
+
+    // 오래된 캐시를 그대로 쓰면 total 이 2건으로 남는다. 서버를 다시 읽어 실제 실패 1건만 보여야 한다
+    await waitFor(() => expect(screen.getByTestId('history-total')).toHaveTextContent('총 1건'));
+    expect(table().getAllByRole('row')).toHaveLength(1 + 1);
+  });
+});
+
+describe('요청에 제한 시간이 있다', () => {
+  it('접수 요청이 응답 없이 걸리면 제한 시간 뒤 실패로 보고, 로딩을 풀고 「다시 시도」를 띄운다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fakeServer([row({ id: 7, status: 'FAILED', sentAt: null, canResend: true })], { hang: { resend: true } });
+    renderPage();
+    const button = await screen.findByRole('button', { name: '재발송' });
+    fireEvent.click(button);
+    await waitFor(() => expect(button).toBeDisabled()); // 기다리는 중
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RESEND_REQUEST_TIMEOUT_MS + 10);
+    });
+
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: '재발송' })).toBeEnabled());
+  });
+
+  it('끝을 쫓는 요청이 걸려도 포기 시점(2분)에 로딩을 풀고 아무 말도 하지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fakeServer([row({ id: 7, status: 'FAILED', sentAt: null, canResend: true })], { hang: { track: true } });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '재발송' }));
+    await waitFor(() => expect(table().getByText('대기')).toBeInTheDocument());
+
+    // 예전 방식은 걸린 요청을 끝없이 기다려 마감이 지나도 아이콘이 계속 돌았다
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RESEND_GIVE_UP_MS + RESEND_REQUEST_TIMEOUT_MS);
+    });
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: '재발송' })).not.toBeInTheDocument());
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).not.toHaveBeenCalled();
+  });
+
+  it('전체 재발송 중 끝을 쫓는 요청이 걸려도 포기 시점에 버튼이 다시 눌린다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    memoryUrl.set('status=FAILED');
+    fakeServer(failedRows(2), { hang: { track: true } });
+    renderPage();
+    await confirmResendAll();
+    await waitFor(() => expect(screen.getByRole('button', { name: '전체 재발송' })).toHaveAttribute('aria-busy', 'true'));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RESEND_GIVE_UP_MS + RESEND_REQUEST_TIMEOUT_MS);
+    });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '전체 재발송' })).not.toHaveAttribute('aria-busy'));
+  });
+});
+
+describe('로그인 만료(401)는 공통 처리로 간다', () => {
+  it('접수 요청이 401 이면 공통 처리를 부르고, 같은 401 이 반복될 「다시 시도」는 띄우지 않는다', async () => {
+    fakeServer([row({ id: 7, status: 'FAILED', sentAt: null, canResend: true })], {
+      resendFails: true,
+      failStatus: 401,
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '재발송' }));
+
+    await waitFor(() => expect(unauthorizedMock).toHaveBeenCalledTimes(1));
+    expect(unauthorizedMock.mock.calls[0]![0]).toMatchObject({ status: 401 });
+    expect(toastErrorMock).not.toHaveBeenCalled(); // 「다시 시도」 안내가 없다
+    await waitFor(() => expect(screen.getByRole('button', { name: '재발송' })).toBeEnabled());
+    expect(resendCalls()).toHaveLength(1);
+  });
+
+  it('끝을 쫓다가 401 이 오면 공통 처리를 부르고 더 쫓지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fakeServer([row({ id: 7, status: 'FAILED', sentAt: null, canResend: true })], { trackFails: true, failStatus: 401 });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '재발송' }));
+    await waitFor(() => expect(table().getByText('대기')).toBeInTheDocument());
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RESEND_POLL_MS + 10);
+    });
+    await waitFor(() => expect(unauthorizedMock).toHaveBeenCalledTimes(1));
+    const tracked = () => listCalls().filter((p) => p.includes('ids=')).length;
+    const afterFirst = tracked();
+
+    // 예전 방식은 2분 동안 같은 401 을 무시하며 계속 불렀다
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RESEND_GIVE_UP_MS);
+    });
+    expect(tracked()).toBe(afterFirst);
+    expect(toastMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole('button', { name: '재발송' })).not.toBeInTheDocument());
+  });
+
+  it('전체 재발송의 ID 를 모으다 401 이 오면 공통 처리를 부르고 「다시 시도」는 띄우지 않는다', async () => {
+    memoryUrl.set('status=FAILED');
+    fakeServer(failedRows(3), { gatherFails: true, failStatus: 401 });
+    renderPage();
+    await confirmResendAll();
+
+    await waitFor(() => expect(unauthorizedMock).toHaveBeenCalled());
+    expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(resendCalls()).toHaveLength(0);
+    await waitFor(() => expect(screen.getByRole('button', { name: '전체 재발송' })).not.toHaveAttribute('aria-busy'));
   });
 });
