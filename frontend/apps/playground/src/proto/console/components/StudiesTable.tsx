@@ -53,6 +53,11 @@ const CATEGORY_OPTIONS: { value: string; label: string }[] = [...STUDY_CATEGORIE
 
 type RecruitFilter = 'all' | 'apply' | 'closed';
 type PublishFilter = 'all' | 'live' | 'draft';
+type FormFilter = 'all' | 'has' | 'none';
+const FORM_OPTIONS: { value: FormFilter; label: string }[] = [
+  { value: 'has', label: '있음' },
+  { value: 'none', label: '없음' },
+];
 const PAGE_SIZE = 20;
 
 type StatusFilter = 'all' | LifecycleState;
@@ -336,7 +341,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   const [status, setStatus] = useState<StatusFilter>('all');
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
   const [publish, setPublish] = useState<PublishFilter>('all');
-  const [noFormOnly, setNoFormOnly] = useState(false);
+  const [form, setForm] = useState<FormFilter>('all');
   // 기본 순서도 한 열의 정렬이다 — 모집 상태 오름차순(모집중 먼저). 같은 상태끼리는 마감이 가까운 순.
   // 처음부터 그 열을 강조해 두어, 지금 무엇으로 줄 세웠는지 늘 보이게 한다.
   const [sort, setSort] = useState<SortState>({ key: 'recruit', dir: 'asc' });
@@ -387,7 +392,8 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           if (status !== 'all' && lifecycleState(s) !== status) return false;
           if (recruit !== 'all' && recruitState(s) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
-          if (noFormOnly && applyFormUrl(s)) return false;
+          if (form === 'has' && !applyFormUrl(s)) return false;
+          if (form === 'none' && applyFormUrl(s)) return false;
           if (q) {
             const hay = `${tx(s.title)} ${categoriesOf(s).join(' ')}`.toLowerCase();
             if (!hay.includes(q)) return false;
@@ -410,7 +416,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           return da.localeCompare(db);
         })
     );
-  }, [studies, patch, query, category, status, recruit, publish, noFormOnly, sort]);
+  }, [studies, patch, query, category, status, recruit, publish, form, sort]);
 
   // 필터·정렬이 바뀌어 페이지 수가 줄어도 빈 페이지가 남지 않게 현재 페이지를 눌러 준다.
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -485,29 +491,18 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             options={PUBLISH_OPTIONS}
           />
         </span>
-        <button
-          data-anno='list:5'
-          type='button'
-          role='switch'
-          aria-checked={noFormOnly}
-          onClick={() => {
-            setNoFormOnly((v) => !v);
-            setPage(1);
-          }}
-          className={`inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-control border px-3 text-sm transition-colors ${
-            noFormOnly ? 'border-brand font-semibold text-fg' : 'border-border-strong text-fg-secondary'
-          }`}
-        >
-          <span
-            aria-hidden='true'
-            className={`relative h-4 w-7 rounded-pill transition-colors ${noFormOnly ? 'bg-brand' : 'bg-neutral-300'}`}
-          >
-            <span
-              className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${noFormOnly ? 'left-3.5' : 'left-0.5'}`}
-            />
-          </span>
-          신청 폼 없음
-        </button>
+        {/* 다른 거르는 칸과 같은 드롭다운 — 있음·없음 둘 다 거른다 */}
+        <span data-anno='list:5' className='shrink-0'>
+          <FilterSelect
+            label='신청 폼'
+            value={form}
+            onChange={(v) => {
+              setForm(v);
+              setPage(1);
+            }}
+            options={FORM_OPTIONS}
+          />
+        </span>
         <span className='ml-auto shrink-0 pl-2 text-xs text-fg-muted'>{rows.length}개</span>
       </div>
 
