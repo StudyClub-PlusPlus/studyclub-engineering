@@ -10,10 +10,11 @@
 export type FeedbackType = 'bug' | 'idea' | 'question';
 export type FeedbackStatus = 'new' | 'seen' | 'done';
 
+/** 고르는 순서 — 문의 · 개선 의견 · 오류 신고 */
 export const FEEDBACK_TYPES: { value: FeedbackType; label: string }[] = [
-  { value: 'bug', label: '오류 신고' },
-  { value: 'idea', label: '개선 의견' },
   { value: 'question', label: '문의' },
+  { value: 'idea', label: '개선 의견' },
+  { value: 'bug', label: '오류 신고' },
 ];
 export const FEEDBACK_TYPE_LABEL: Record<FeedbackType, string> = { bug: '오류 신고', idea: '개선 의견', question: '문의' };
 
