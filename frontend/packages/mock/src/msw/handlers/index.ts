@@ -2,20 +2,18 @@ import { registerHandlers, type MockHandlerGroup } from '../utils';
 import { accountsHandlers } from './accounts';
 import { notificationTemplatesHandlers } from './notification-templates';
 import { rolePermissionsHandlers } from './role-permissions';
-import {
-  studiesHandlers,
-  adminStudiesHandlers,
-  adminStudyProgramsHandlers,
-} from './studies';
+import { meStudiesHandlers } from './me';
+import { studyMeetingsHandlers } from './meetings';
+import { attendanceHandlers } from './attendance';
+import { studiesHandlers, adminStudiesHandlers, adminStudyProgramsHandlers } from './studies';
 
 export { registerHandlers, type MockHandlerGroup } from '../utils';
-export {
-  studiesHandlers,
-  adminStudiesHandlers,
-  adminStudyProgramsHandlers,
-} from './studies';
+export { studiesHandlers, adminStudiesHandlers, adminStudyProgramsHandlers } from './studies';
 export { accountsHandlers, mockAdminAccounts } from './accounts';
 export { rolePermissionsHandlers, mockRolePermissions } from './role-permissions';
+export { meStudiesHandlers } from './me';
+export { studyMeetingsHandlers } from './meetings';
+export { attendanceHandlers } from './attendance';
 export { notificationTemplatesHandlers, mockNotificationTemplates } from './notification-templates';
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
@@ -24,9 +22,12 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   adminStudyProgramsHandlers,
   accountsHandlers,
   rolePermissionsHandlers,
+  meStudiesHandlers,
+  studyMeetingsHandlers,
+  attendanceHandlers,
   notificationTemplatesHandlers,
 ];
 
 export const handlers = mockHandlerGroups.flatMap((group) =>
-  registerHandlers(group.handlers.map((h) => ({ ...h, preset: h.presets[0] }))),
+  registerHandlers(group.handlers.map((h) => ({ ...h, preset: h.presets[0] })))
 );
