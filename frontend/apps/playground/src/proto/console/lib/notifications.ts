@@ -7,6 +7,8 @@
  * TODO(api): GET /api/admin/notifications — status · eventType · offset · limit
  */
 
+import { maskEmail } from './mask';
+
 /** 발송 상태. 서버가 정의한 값 그대로 쓴다. */
 export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
 
@@ -28,7 +30,7 @@ export type NotificationRow = {
   createdAt: string;
   eventType: NotificationEvent;
   recipientType: 'EMAIL';
-  /** 받는 사람 주소. 화면에는 가린 채로 두고, 필요한 줄만 눈 아이콘으로 펼친다 (POL-0007) */
+  /** 받는 사람 주소. **서버가 가린 값**을 그대로 쓴다 — 전체 주소를 내려받는 길도, 화면에서 펼치는 길도 두지 않는다 */
   recipientValue: string;
   status: NotificationStatus;
   /** 없으면 아직 안 나갔다는 뜻 */
@@ -82,10 +84,10 @@ function hash(s: string): number {
 const NAMES = ['hong', 'jiwon', 'minsu', 'sora', 'daniel', 'yuna', 'kevin', 'haeun', 'junho', 'mia'];
 const DOMAINS = ['gmail.com', 'naver.com', 'outlook.com', 'kakao.com'];
 
-/** 받는 사람 주소. 가리는 일은 화면이 한다 — 여기서는 전체 주소를 그대로 둔다. */
+/** 받는 사람 주소 — 서버가 이미 가려서 내려주는 모양(`h***@gmail.com`)을 흉내 낸다. */
 function address(seed: number): string {
   const name = NAMES[seed % NAMES.length];
-  return `${name}${(seed % 90) + 10}@${DOMAINS[seed % DOMAINS.length]}`;
+  return maskEmail(`${name}${(seed % 90) + 10}@${DOMAINS[seed % DOMAINS.length]}`);
 }
 
 /** 240건. **요청 시각 내림차순 고정** — 최근 것이 위다. */

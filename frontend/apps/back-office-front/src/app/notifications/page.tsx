@@ -13,6 +13,7 @@ import { useNotificationTemplates } from '@/features/notification-templates/quer
 import { HistoryNotice, HistorySkeleton, HistoryTable } from '@/features/notifications/components/HistoryTable';
 import { NotificationTabs } from '@/features/notifications/components/NotificationTabs';
 import { ResendAllDialog } from '@/features/notifications/components/ResendAllDialog';
+import { TimezoneNote } from '@/features/notifications/components/TimezoneNote';
 import { eventLabel, STATUS_OPTIONS } from '@/features/notifications/labels';
 import { useNotificationResend, useNotifications } from '@/features/notifications/queries';
 import { NOTIFICATION_PAGE_SIZE, type NotificationFilter } from '@/features/notifications/types';
@@ -111,6 +112,8 @@ function NotificationHistory() {
           </Button>
         )}
       </div>
+
+      <TimezoneNote />
 
       {loading ? (
         <HistorySkeleton />
