@@ -175,6 +175,25 @@ class MyStudyIntegrationTest {
                 .containsEntry("attendanceStatus", "PRESENT");
     }
 
+    @Test
+    @DisplayName("성공 - 반 미배정(신청 직후) 명부도 스터디로 나오고 회차는 빈 배열이다")
+    void listsStudyWithoutGroupWithEmptyMeetings() {
+        Long assigned = enroll("반 있음", now.minus(DAY.multipliedBy(7)), ParticipantStatus.ACTIVE);
+        meeting(participant(MEMBER_ID, assigned), now.minus(DAY), true);
+        Long applied = enroll("반 없음", now.plus(DAY.multipliedBy(7)), ParticipantStatus.ACTIVE);
+        jdbcTemplate.update(
+                "UPDATE STUDY_PARTICIPANT SET STUDY_GROUP_ID = NULL WHERE ACCOUNT_ID = ? AND STUDY_ID = ?",
+                MEMBER_ID,
+                applied);
+
+        List<Map<String, Object>> items = items(MEMBER_ID);
+
+        assertThat(items).hasSize(2);
+        assertThat(item(items, applied)).containsEntry("relation", "UPCOMING");
+        assertThat(meetings(item(items, applied))).isEmpty();
+        assertThat(meetings(item(items, assigned))).hasSize(1);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     /** 스터디 · 반 · MEMBER_ID 명부 한 줄. 명부 편입은 10일 전. */

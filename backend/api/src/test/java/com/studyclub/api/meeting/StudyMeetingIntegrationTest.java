@@ -756,6 +756,26 @@ class StudyMeetingIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - 반 미배정(신청 직후) 크루가 분반을 안 주면 400 — 아직 볼 반이 없다")
+    void unassignedCrewWithoutGroupId() {
+        jdbcTemplate.update(
+                "UPDATE STUDY_PARTICIPANT SET STUDY_GROUP_ID = NULL WHERE ID = ?", member.getId());
+
+        var response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/studies/{studyId}/meetings",
+                        null,
+                        MEMBER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .containsEntry("errorCode", "INVALID_INPUT")
+                .containsEntry("errorMessage", "아직 반이 배정되지 않았습니다.");
+    }
+
+    @Test
     @DisplayName("실패 - 토큰 없이 → 401 + errorCode UNAUTHORIZED")
     void unauthenticated() {
         var response =

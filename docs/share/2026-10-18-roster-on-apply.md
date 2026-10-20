@@ -3,9 +3,11 @@
 물어볼 사람: 백엔드 (신청 제출 구현자 — 확인 없이 PRD 대로 정함)
 반영:
   - 01-planning/stories/crew-submit-application/PRD.md — 됨 (개발 범위 · 관련 결정)
-  - specs/study-application/spec.md — 됨 (신청 제출 처리 · 상태 변경예정)
+  - specs/study-application/spec.md — 됨 (신청 제출 처리 · 상태 구현완료)
   - specs/study-group/spec.md — 됨 (미결 사항 닫음 · 반 지정이 첫 배정도 맡음)
   - docs/erd/STUDY_PARTICIPANT.md — 됨 (반 칸 NULL 허용)
+  - backend 코드 · V40 마이그레이션 — 됨 (2026-10-20)
+  - specs/study-meeting · attendance · discord-attendance · my-studies — 됨 (반 미배정 행 처리)
 ---
 
 # 신청하면 명부에 바로 들어간다 — 반은 비워 두고 캡틴이 나중에 채운다
@@ -48,11 +50,17 @@ PRD 가 처음부터 이렇게 적었고, 스펙·코드만 달랐다. **PRD 쪽
 
 ## 영향 — 누가 무엇을 해야 하나
 
-**백엔드 (스터디 스쿼드)** — 아직 코드는 안 바뀌었다. 아래가 할 일이다.
+**백엔드 (스터디 스쿼드)** — 반영됨 (2026-10-20).
 
-1. 마이그레이션: `STUDY_PARTICIPANT.STUDY_GROUP_ID` 를 NULL 허용으로 (다음 번호 `V38`). 엔티티 `StudyParticipant` 의 `nullable = false` 도 푼다
-2. `StudyApplicationService.submit` 에서 신청 저장 뒤 명부 행 insert. 정원 검사 전에 모집 회차 행 잠금
-3. 반이 빈 행을 읽는 곳 점검 — 반으로 거르는 조회(출석부 · 회차 · 네비게이터 판정)는 빈 반 행을 자연히 건너뛴다. **내 스터디**(`MyStudyQueryService`) · **참여 명단**처럼 사람 기준으로 읽는 곳은 반이 null 이어도 깨지지 않는지 본다
+1. 마이그레이션 `V40__study_participant_group_nullable.sql`: `STUDY_PARTICIPANT.STUDY_GROUP_ID` NULL 허용. 엔티티 `StudyParticipant` 의 `nullable = false` 도 풀었다. (처음 적은 `V38`·`V39` 는 알림 모듈이 먼저 써서 `V40` 이 됐다 — Flyway 이력은 모듈 구분 없이 하나다)
+2. `StudyApplicationService.submit`: 신청 저장 뒤 명부 행 insert(`StudyParticipant.joinByApplication` — `ACTIVE` · `MEMBER` · 반 비움). 정원 검사 전에 모집 회차 행을 잠근다. 잠금 순서는 **계정 → 모집 회차**
+3. 반이 빈 행을 읽는 곳 점검 결과
+   - 반으로 거르는 조회(출석부 · 회차 명단 · 네비게이터 판정 · 대시보드 출석 집계)는 빈 반 행을 자연히 건너뛴다 — 손대지 않았다
+   - **내 스터디**(`MyStudyQueryService`): 스터디는 보여 주고 회차는 `[]`
+   - **회차 목록**(`GET …/meetings`, 분반 생략): 반이 없으면 400 「아직 반이 배정되지 않았습니다.」
+   - **출석 저장**(`POST …/attendances`): 반 미배정 참가자를 넣으면 400 — 출석 행의 반 칸을 채울 수 없다
+   - **디스코드 출석**: 반 미배정 크루는 `noMeeting[]` 으로 돌려준다 (전에는 반 정렬에서 터질 자리였다)
+   - **참여 명단**(`GET /api/admin/studies/{studyId}/participants`): 아직 코드가 없다. 만들 때 `groupId` null 을 「미배정」으로 내려준다 (스펙에 이미 있다)
 4. `UNIQUE(ACCOUNT_ID, STUDY_GROUP_ID)` 는 NULL 을 여럿 허용한다. 같은 기수 중복 신청은 지금처럼 계정 잠금 + 기존 신청 확인으로 막는다
 
 **프론트**: 백오피스 신청자 탭 명단에서 반이 비어 있는 크루를 「미배정」으로 보여 준다 (스펙상 `groupId` null — 이미 있는 계약).

@@ -407,13 +407,18 @@ public class StudyMeetingService {
     // 분반을 안 주면 이 스터디의 내 명부 행이 속한 분반 — 명부에 없는 캡틴은 분반을 골라 와야 한다
     private Long myGroupId(Long accountId, Long studyId) {
         account(accountId);
-        return studyParticipantRepository
-                .findFirstByStudyIdAndAccountId(studyId, accountId)
-                .map(StudyParticipant::getStudyGroupId)
-                .orElseThrow(
-                        () ->
-                                new BusinessException(
-                                        ErrorCode.INVALID_INPUT, "studyGroupId 를 지정해 주세요."));
+        StudyParticipant me =
+                studyParticipantRepository
+                        .findFirstByStudyIdAndAccountId(studyId, accountId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.INVALID_INPUT,
+                                                "studyGroupId 를 지정해 주세요."));
+        if (me.isGroupUnassigned()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "아직 반이 배정되지 않았습니다.");
+        }
+        return me.getStudyGroupId();
     }
 
     private void account(Long accountId) {

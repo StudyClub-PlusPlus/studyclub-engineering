@@ -28,7 +28,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | **폐기 — 코드에서 지운다** (2026-10-07). 네비게이터는 폼을 고치지 않고, 담당 캡틴은 백오피스 경로를 쓴다 | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 폐기 |
 | GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴 누구나) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
 | PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (담당 캡틴만) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
-| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 변경예정 — 같은 트랜잭션에서 명부 편입(반 미배정)을 더한다 (2026-10-18, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)) |
+| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 — 같은 트랜잭션에서 명부 편입(반 미배정) (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)) |
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙확정 — 컨트롤러가 없다 (2026-10-14 확인). 사이트 신청 버튼은 이미 부른다 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 구현완료 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
@@ -593,7 +593,6 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 ## 미확정
 
-- **변경예정 사유 (2026-10-18)** — `POST /api/studies/{studyId}/applications` 는 지금 신청만 저장하고 명부를 만들지 않는다. PRD 대로 같은 트랜잭션에서 명부에 넣도록 바꾼다(반 미배정). 지금 상태로는 정원 검사가 명부를 세므로 정원이 차지 않는다 (→ [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md))
 - [NEEDS CLARIFICATION] `FORM_ANSWER` JSON 유지 vs `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 정규화 — ERD README 와 같음. 이 스펙은 JSON 으로 구현한다
 - [NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간
 - [NEEDS CLARIFICATION] `STUDY_APPLICATION` 생성시각 컬럼. 없으면 `applications/me.submittedAt` 은 null

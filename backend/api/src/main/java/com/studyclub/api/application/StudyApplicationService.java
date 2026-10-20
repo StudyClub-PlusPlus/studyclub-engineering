@@ -13,12 +13,14 @@ import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.application.StudyApplicationSubmitted;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,6 +100,9 @@ public class StudyApplicationService {
                         .build();
 
         StudyApplication saved = studyApplicationRepository.save(application);
+        // 신청 제출 = 명부 편입. 반은 비워 둔다 — 캡틴이 반을 만든 뒤 지정한다
+        studyParticipantRepository.save(
+                StudyParticipant.joinByApplication(accountId, studyId, Instant.now()));
         account.changeDiscordNickname(answer.discordNickname());
         eventPublisher.publishEvent(
                 StudyApplicationSubmitted.of(
@@ -118,9 +123,17 @@ public class StudyApplicationService {
         }
     }
 
+    // 신청이 명부를 늘리므로 회차 행을 잠근 뒤 정원을 센다 — 마지막 한 자리에 두 명이 동시에 들어오지 않게.
+    // 잠금 순서는 계정 → 모집 회차. 다른 경로도 이 순서를 따라야 교착하지 않는다
     private StudyRecruitment openRecruitment(Long studyId) {
-        return studyRecruitmentRepository.findOpenByStudyIdOrderByStartAtDesc(studyId).stream()
-                .findFirst()
+        Long recruitmentId =
+                studyRecruitmentRepository.findOpenByStudyIdOrderByStartAtDesc(studyId).stream()
+                        .findFirst()
+                        .map(StudyRecruitment::getId)
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.CONFLICT, "모집이 마감되었습니다."));
+        return studyRecruitmentRepository
+                .findByIdForUpdate(recruitmentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "모집이 마감되었습니다."));
     }
 

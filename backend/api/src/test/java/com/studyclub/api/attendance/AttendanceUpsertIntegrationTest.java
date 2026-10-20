@@ -48,6 +48,7 @@ class AttendanceUpsertIntegrationTest {
 
     private static final Long LEADER_ACCOUNT_ID = 3001L;
     private static final Long MEMBER_ACCOUNT_ID = 3002L;
+    private static final Long UNASSIGNED_ACCOUNT_ID = 3003L;
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwt;
@@ -303,6 +304,30 @@ class AttendanceUpsertIntegrationTest {
         var response = post(study.getId(), body, LEADER_ACCOUNT_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("반_미배정_참가자_400_출석을_만들지_않는다")
+    void 반_미배정_참가자_400_출석을_만들지_않는다() {
+        StudyParticipant unassigned =
+                studyParticipantRepo.save(
+                        StudyParticipant.joinByApplication(
+                                UNASSIGNED_ACCOUNT_ID, study.getId(), Instant.now()));
+        var body =
+                Map.of(
+                        "studyGroupId",
+                        group.getId(),
+                        "updates",
+                        List.of(
+                                Map.of(
+                                        "meetingId", meeting1.getId(),
+                                        "participantId", unassigned.getId(),
+                                        "status", "PRESENT")));
+
+        var response = post(study.getId(), body, LEADER_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(studyAttendanceRepo.findAll()).isEmpty();
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

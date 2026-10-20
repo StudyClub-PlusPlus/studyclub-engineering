@@ -273,6 +273,27 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
+    @DisplayName("반_미배정_크루는_noMeeting_이고_전체가_실패하지_않는다")
+    void 반_미배정_크루는_noMeeting_이고_전체가_실패하지_않는다() {
+        when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))
+                .thenReturn(Optional.of(link()));
+        when(studyParticipantRepository.findByStudyId(STUDY_ID))
+                .thenReturn(
+                        List.of(
+                                participant(LEADER_ACCOUNT_ID, GROUP_A, ParticipantRole.LEADER),
+                                participant(MEMBER_ACCOUNT_ID, null, ParticipantRole.MEMBER)));
+        givenMeetings(GROUP_A, List.of(meeting(1L, GROUP_A, Instant.now(), true)));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(g -> assertThat(g.marked()).containsExactly(LEADER_DISCORD_ID));
+        assertThat(response.noMeeting()).containsExactly(MEMBER_DISCORD_ID);
+    }
+
+    @Test
     @DisplayName("옆_반_반장이_쳐도_통과한다_공부방을_같이_쓴다")
     void 옆_반_반장이_쳐도_통과한다_공부방을_같이_쓴다() {
         when(studyDiscordLinkRepository.findByDiscordStudyId(DISCORD_STUDY_ID))

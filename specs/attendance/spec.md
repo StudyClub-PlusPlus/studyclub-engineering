@@ -281,6 +281,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
 | 400 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |
+| 400 | INVALID_INPUT | updates[].participantId가 반 미배정(신청 직후) 참가자 — 회차가 없고 출석 행의 반 칸을 채울 수 없다 |
 | 400 | INVALID_INPUT | updates[].status 허용값 외 |
 | 400 | INVALID_INPUT | updates[] 내 (meetingId, participantId) 중복 |
 

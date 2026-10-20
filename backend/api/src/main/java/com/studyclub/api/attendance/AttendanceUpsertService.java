@@ -148,6 +148,10 @@ public class AttendanceUpsertService {
         if (participants.size() != participantIds.size()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "participantId가 이 스터디에 속하지 않습니다.");
         }
+        // 반 미배정(신청 직후) 크루는 회차가 없다. 출석 행의 반 칸도 채울 수 없다
+        if (participants.stream().anyMatch(StudyParticipant::isGroupUnassigned)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "반이 배정되지 않은 참가자가 있습니다.");
+        }
         return participants.stream().collect(Collectors.toMap(StudyParticipant::getId, p -> p));
     }
 
