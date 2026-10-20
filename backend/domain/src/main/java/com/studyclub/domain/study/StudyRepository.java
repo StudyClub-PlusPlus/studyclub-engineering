@@ -12,6 +12,10 @@ import org.springframework.data.repository.query.Param;
 public interface StudyRepository extends JpaRepository<Study, Long> {
     List<Study> findByProgramIdInAndStatus(Collection<Long> programIds, StudyStatus status);
 
+    List<Study> findByStatus(StudyStatus status);
+
+    List<Study> findByStatusIn(Collection<StudyStatus> statuses);
+
     Optional<Study> findFirstByProgramIdOrderByIdDesc(Long programId);
 
     /**
