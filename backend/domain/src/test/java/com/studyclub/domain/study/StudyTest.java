@@ -61,6 +61,29 @@ class StudyTest {
     }
 
     @Test
+    @DisplayName("고정 asOf: 마감 시각과 같으면 RECRUIT_CLOSED, 1초 전이면 RECRUITING")
+    void recruitStatus_fixedAsOf_makesDeadlineBoundaryDeterministic() {
+        var study = getStudy(StudyStatus.OPEN, 30);
+        var deadline = Instant.parse("2026-06-15T12:00:00Z");
+
+        assertThat(study.recruitStatus(0, deadline, 30, deadline))
+                .isEqualTo(RecruitStatus.RECRUIT_CLOSED);
+        assertThat(study.recruitStatus(0, deadline, 30, deadline.minusSeconds(1)))
+                .isEqualTo(RecruitStatus.RECRUITING);
+    }
+
+    @Test
+    @DisplayName("고정 asOf: 마감 2일 후면 종료 임박, asOf가 마감 직후면 아님")
+    void isClosingSoon_fixedAsOf_makesWindowDeterministic() {
+        var study = getStudy(StudyStatus.OPEN);
+        var asOf = Instant.parse("2026-06-01T00:00:00Z");
+        var deadline = asOf.plus(2, ChronoUnit.DAYS);
+
+        assertThat(study.isClosingSoon(deadline, asOf)).isTrue();
+        assertThat(study.isClosingSoon(deadline, deadline)).isFalse();
+    }
+
+    @Test
     @DisplayName("마감 1초 전 → RECRUITING")
     void recruiting_oneSecondBeforeDeadline() {
         var study = getStudy(StudyStatus.OPEN, 30);

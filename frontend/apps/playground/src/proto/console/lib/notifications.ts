@@ -7,19 +7,22 @@
  * TODO(api): GET /api/admin/notifications — status · eventType · offset · limit
  */
 
+import { maskEmail } from './mask';
+
 /** 발송 상태. 서버가 정의한 값 그대로 쓴다. */
 export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED';
 
 /**
  * 알림 조건 — **언제 보냈는가.** 템플릿의 조건과 같은 값이다 (POL-0009).
  *
- * 이름을 따로 두지 않는다 — 조건 하나에 템플릿 하나라 조건이 곧 그 알림이다.
+ * 이름을 따로 두지 않는다 — 조건이 곧 그 알림이다.
  */
-export type NotificationEvent = 'USER_REGISTERED' | 'USER_WITHDRAWN';
+export type NotificationEvent = 'USER_REGISTERED' | 'USER_WITHDRAWN' | 'FEEDBACK_REPLIED';
 
 export const EVENT_LABEL: Record<NotificationEvent, string> = {
   USER_REGISTERED: '회원가입',
   USER_WITHDRAWN: '회원 탈퇴',
+  FEEDBACK_REPLIED: '문의 회신',
 };
 
 export type NotificationRow = {
@@ -28,7 +31,7 @@ export type NotificationRow = {
   createdAt: string;
   eventType: NotificationEvent;
   recipientType: 'EMAIL';
-  /** 받는 사람 주소. 화면에는 가린 채로 두고, 필요한 줄만 눈 아이콘으로 펼친다 (POL-0007) */
+  /** 받는 사람 주소. **서버가 가린 값**을 그대로 쓴다 — 전체 주소를 내려받는 길도, 화면에서 펼치는 길도 두지 않는다 */
   recipientValue: string;
   status: NotificationStatus;
   /** 없으면 아직 안 나갔다는 뜻 */
@@ -82,10 +85,10 @@ function hash(s: string): number {
 const NAMES = ['hong', 'jiwon', 'minsu', 'sora', 'daniel', 'yuna', 'kevin', 'haeun', 'junho', 'mia'];
 const DOMAINS = ['gmail.com', 'naver.com', 'outlook.com', 'kakao.com'];
 
-/** 받는 사람 주소. 가리는 일은 화면이 한다 — 여기서는 전체 주소를 그대로 둔다. */
+/** 받는 사람 주소 — 서버가 이미 가려서 내려주는 모양(`h***@gmail.com`)을 흉내 낸다. */
 function address(seed: number): string {
   const name = NAMES[seed % NAMES.length];
-  return `${name}${(seed % 90) + 10}@${DOMAINS[seed % DOMAINS.length]}`;
+  return maskEmail(`${name}${(seed % 90) + 10}@${DOMAINS[seed % DOMAINS.length]}`);
 }
 
 /** 240건. **요청 시각 내림차순 고정** — 최근 것이 위다. */
@@ -99,7 +102,7 @@ export const notifications: NotificationRow[] = Array.from({ length: 240 }, (_, 
     id: 2000 - i,
     createdAt: created.toISOString(),
     // 가입이 대부분이고 탈퇴가 가끔 섞인다 — 조건 필터가 무슨 일을 하는지 보이게
-    eventType: seed % 9 === 0 ? 'USER_WITHDRAWN' : 'USER_REGISTERED',
+    eventType: seed % 9 === 0 ? 'USER_WITHDRAWN' : seed % 7 === 0 ? 'FEEDBACK_REPLIED' : 'USER_REGISTERED',
     recipientType: 'EMAIL',
     recipientValue: address(seed),
     status,

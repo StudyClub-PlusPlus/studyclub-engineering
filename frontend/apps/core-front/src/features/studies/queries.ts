@@ -1,14 +1,28 @@
 // 스터디 목록 조회 — 키·fetcher·훅을 한곳에. 브라우저가 백엔드를 직접 부른다.
 import { useQuery } from '@tanstack/react-query';
 
-import { studyQuery, toStudy, toStudyFromDetail, type ApiPage, type ApiStudy, type ApiStudyDetail, type StudySearch } from '@/lib/api';
+import {
+  studyQuery,
+  toStudy,
+  toStudyFromDetail,
+  type ApiPage,
+  type ApiStudy,
+  type ApiStudyDetail,
+  type StudySearch,
+} from '@/lib/api';
 import type { Study } from '@/lib/content';
 import { http } from '@/lib/http';
+import { joinedStudyIds, type ApiMyStudies } from '@/lib/joined-api';
+import { getStudyAttendance, getStudyMeetings } from '@/lib/joined-detail-api';
 
 export const studyKeys = {
   all: ['studies'] as const,
   list: (search: StudySearch) => [...studyKeys.all, 'list', search] as const,
   detail: (studyId: number) => [...studyKeys.all, 'detail', studyId] as const,
+  joined: () => [...studyKeys.all, 'joined'] as const,
+  groupInfo: (studyId: number) => [...studyKeys.all, 'group-info', studyId] as const,
+  meetings: (studyId: number, groupId: number) => [...studyKeys.all, 'meetings', studyId, groupId] as const,
+  attendance: (studyId: number, groupId: number) => [...studyKeys.all, 'attendance', studyId, groupId] as const,
 };
 
 /**
@@ -41,5 +55,43 @@ export function useStudyDetail(studyId: number) {
       return toStudyFromDetail(detail);
     },
     retry: false,
+  });
+}
+
+/** 로그인 회원의 참여 명부. 서버가 relation·role을 판정한다. */
+export function useMyStudies() {
+  return useQuery({
+    queryKey: studyKeys.joined(),
+    queryFn: async () => {
+      const response = await http<ApiMyStudies>('/api/me/studies');
+      return { ...response, ids: joinedStudyIds(response.items) };
+    },
+    retry: false,
+  });
+}
+
+/** 내 분반 정보 (groupId 없이 첫 로드). Shell에서 role·group 도출에 사용. */
+export function useStudyGroupInfo(studyId: number) {
+  return useQuery({
+    queryKey: studyKeys.groupInfo(studyId),
+    queryFn: () => getStudyMeetings(studyId),
+    enabled: Number.isFinite(studyId) && studyId > 0,
+    retry: false,
+  });
+}
+
+export function useStudyMeetings(studyId: number, groupId: number) {
+  return useQuery({
+    queryKey: studyKeys.meetings(studyId, groupId),
+    queryFn: () => getStudyMeetings(studyId, groupId),
+    enabled: Number.isFinite(studyId) && Number.isFinite(groupId),
+  });
+}
+
+export function useStudyAttendance(studyId: number, groupId: number) {
+  return useQuery({
+    queryKey: studyKeys.attendance(studyId, groupId),
+    queryFn: () => getStudyAttendance(studyId, groupId),
+    enabled: Number.isFinite(studyId) && Number.isFinite(groupId),
   });
 }

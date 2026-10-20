@@ -142,7 +142,7 @@ export function ProfileCard({
   const draftZone = watch('timeZone');
   const trimmedName = draftName.trim();
   const nicknameMessage = errors.nickname?.message;
-  // 지금 쓰는 자기 닉네임이면 서버에 묻지 않는다 — 확인 API 는 자기 닉네임도 "사용 중" 이라 답한다
+  // 지금 쓰는 자기 닉네임이면 서버에 묻지 않는다 — 안 바뀐 값으로 요청을 보낼 이유가 없다
   const unchangedName = isSameNickname(draftName, user.nickname);
 
   useEffect(() => {
