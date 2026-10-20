@@ -304,6 +304,33 @@ class AccountProfileIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - 온보딩 미완료 계정은 프로필 사진 연결·지우기도 403 ONBOARDING_REQUIRED")
+    void rejectsUnonboardedAccountOnProfileImage() {
+        Account account = seedUnonboardedAccount();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(jwt.issueAccess(String.valueOf(account.getId()), account.getEmail()));
+
+        // 가드가 메서드마다 붙어 있어 사진 엔드포인트만 빠질 수 있다 — 둘 다 따로 확인한다.
+        var put =
+                rest.exchange(
+                        "/api/me/profile-image",
+                        HttpMethod.PUT,
+                        new HttpEntity<>(Map.of("fileId", 1), headers),
+                        Map.class);
+        var delete =
+                rest.exchange(
+                        "/api/me/profile-image",
+                        HttpMethod.DELETE,
+                        new HttpEntity<>(headers),
+                        Map.class);
+
+        assertThat(put.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(put.getBody()).containsEntry("errorCode", "ONBOARDING_REQUIRED");
+        assertThat(delete.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(delete.getBody()).containsEntry("errorCode", "ONBOARDING_REQUIRED");
+    }
+
+    @Test
     @DisplayName("실패 - 토큰 없이 부르면 401 UNAUTHORIZED")
     void rejectsUnauthenticated() {
         Map<String, Object> body = Map.of("nickname", uniqueNickname(), "timeZone", "Asia/Seoul");

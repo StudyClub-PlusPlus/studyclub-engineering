@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 마이페이지 내 정보. 조회만 온보딩 미완료 계정도 허용한다 — 프론트가 이 응답의 {@code onboardingCompletedAt} 으로 온보딩 화면으로 보낼지 정한다.
- * 수정·마케팅 수신 동의는 {@code @RequireOnboarding} 가드가 403 ONBOARDING_REQUIRED 로 막는다.
+ * 수정·프로필 사진·마케팅 수신 동의는 {@code @RequireOnboarding} 가드가 403 ONBOARDING_REQUIRED 로 막는다.
  *
  * <p>온보딩 완료와 달리 {@code @Valid} 를 쓴다 — 멱등 체크가 검증보다 먼저여야 할 이유가 없다.
  */
@@ -55,6 +55,7 @@ public class AccountProfileController {
     }
 
     @Operation(summary = "프로필 사진 연결 — 올려 둔 파일 번호를 내 프로필에, 이미 있으면 교체")
+    @RequireOnboarding
     @PutMapping("/profile-image")
     public AccountView changeProfileImage(
             Authentication authentication, @Valid @RequestBody UpdateProfileImageRequest request) {
@@ -63,6 +64,7 @@ public class AccountProfileController {
     }
 
     @Operation(summary = "프로필 사진 지우기 — 사진이 없어도 200")
+    @RequireOnboarding
     @DeleteMapping("/profile-image")
     public AccountView removeProfileImage(Authentication authentication) {
         return accountProfileService.removeProfileImage(authenticatedAccountId(authentication));
