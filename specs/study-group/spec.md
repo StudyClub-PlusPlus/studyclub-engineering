@@ -54,7 +54,7 @@
   "studyId": 3,
   "participantCount": 18,
   "recruitmentCapacity": 20,
-  "groups": [{ "groupId": 7, "name": "A반" }],
+  "groups": [{ "groupId": 7, "name": "A반", "canDelete": false }],
   "participants": [
     {
       "participantId": 41,
@@ -78,6 +78,7 @@
 | participantCount | Int | N | `ACTIVE` · `PAUSED` 행 수. 신청한 담당 캡틴도 크루와 같이 센다 | 계산 |
 | recruitmentCapacity | Int | Y | 정원. null 이면 제한 없음 | 최신 STUDY_RECRUITMENT.RECRUITMENT_CAPACITY |
 | groups[] | Array | N | 그 스터디의 분반 | STUDY_GROUP |
+| groups[].canDelete | Boolean | N | 이 반을 지울 수 있으면 true — 신청자 탭 「삭제」 버튼. `includeLeft` 와 상관없이 `DELETED` 밖의 명부 행(`ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN`)이 하나도 없을 때만 true. 「반 삭제」 API 와 같은 판정 | 계산 |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |
 | participants[].discordNickname | String | Y | 디스코드 서버 별명. 신청 때 받은 값으로 갱신된다. 없으면 null — 화면 「—」 | ACCOUNT.DISCORD_NICKNAME |

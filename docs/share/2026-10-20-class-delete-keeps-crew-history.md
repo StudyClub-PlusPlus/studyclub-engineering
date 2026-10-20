@@ -4,8 +4,8 @@
 반영:
   - specs/study-group/spec.md 「반 삭제」 — 됨 (#294)
   - backend AdminStudyGroupService#delete — 됨 (#294)
-  - specs/study-group/spec.md 「참여 명단」 groups[] 에 삭제 가능 여부(`canDelete`) 필드 — 안 됨
-  - 01-planning/stories/captain-assign-classes/PRD.md 1-3 「반 삭제」 비활성 조건 — 안 됨
+  - specs/study-group/spec.md 「참여 명단」 groups[] 에 삭제 가능 여부(`canDelete`) 필드 — 됨 (#294). 명단 API 구현은 아직
+  - 01-planning/stories/captain-assign-classes/PRD.md 1-3 「반 삭제」 비활성 조건 — 됨 (#294)
 ---
 
 # 수료 · 참여 중단 크루가 있던 반도 지울 수 없다 — 지금 활동 중인 크루가 없어도
@@ -60,6 +60,6 @@
 
 ## 영향 — 누가 무엇을 해야 하나
 
-- **백엔드**: 끝났다 (#294). 다음 할 일 하나 — **반마다 삭제 가능 여부를 응답에 담는다.** 「참여 명단」 API(`GET /api/admin/studies/{studyId}/participants`)의 `groups[]` 에 `canDelete` 를 추가한다. 레포 규칙 「판정은 서버가 내려준다」 — 이 판정을 화면이 따로 계산하면 안 된다. 스펙 먼저 고친다.
+- **백엔드**: 끝났다 (#294). 다음 할 일 하나 — **반마다 삭제 가능 여부를 응답에 담는다.** 「참여 명단」 API(`GET /api/admin/studies/{studyId}/participants`)의 `groups[]` 에 `canDelete` 를 추가한다. 레포 규칙 「판정은 서버가 내려준다」 — 이 판정을 화면이 따로 계산하면 안 된다. 스펙에는 넣었다 (#294) — 명단 API 를 구현할 때 같이 만든다.
 - **프론트**: 지금 신청자 탭은 **활성 크루 수**로 삭제 버튼을 끈다. 그런데 명단 API 는 기본으로 `WITHDRAWN` 행을 빼고, `COMPLETED` 는 상태 값에도 없다. 그래서 수료 · 참여 중단 크루만 남은 반은 **버튼이 켜져 있다가 눌렀을 때 409** 가 난다. `canDelete` 가 나오면 그 값으로 버튼을 끈다. 그 전까지는 409 를 받으면 「수료하거나 참여를 중단한 크루가 있던 반은 지울 수 없습니다」를 보이고 명단을 다시 불러온다.
-- **기획**: [captain-assign-classes PRD](../../01-planning/stories/captain-assign-classes/PRD.md) 1-3 「반 삭제」의 「크루가 한 명이라도 있으면 비활성」을 「**명부에 크루가 남아 있으면** 비활성 — 수료 · 참여 중단 크루도 센다, 회원 탈퇴는 세지 않는다」로 고친다. 비활성 버튼의 툴팁 문구도 정한다.
+- **기획**: [captain-assign-classes PRD](../../01-planning/stories/captain-assign-classes/PRD.md) 1-3 「반 삭제」를 「**명부에 크루가 남아 있으면** 비활성 — 수료 · 참여 중단 크루도 센다, 회원 탈퇴는 세지 않는다」로 고쳤다 (#294). 비활성 버튼 툴팁은 프로토의 「크루가 있는 반은 지울 수 없습니다」 그대로 둔다.

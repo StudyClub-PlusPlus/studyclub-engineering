@@ -130,4 +130,4 @@
 | 2026-10-16 | [로그인 쿠키는 앱(사이트·백오피스)과 환경(stage·운영)마다 따로 읽는다 — stage 로그인 한 번 풀림](2026-10-16-auth-cookie-per-app-and-env.md) | 결정됨 | 됨 | 공유전 |
 | 2026-10-18 | [일정 · 출석 화면 피드백 반영: 작업 바는 표 위, 「적용」 버튼 없음, 백오피스 출석은 반 칩으로](2026-10-18-schedule-attendance-feedback.md) | 결정됨 | 일부 (attendance · study-participant 스펙 안 됨) · FE 15건 · BE 2건 남음 | 공유전 |
 | 2026-10-18 | [디스코드 자동화 다섯 가지 중 연결된 건 「스터디 생성」 하나 — 회원 디스코드 ID 가 없어 그것도 멈춰 있다](2026-10-18-discord-automation-gap.md) | 질문 | 결정 전 | 공유전 |
-| 2026-10-20 | [수료 · 참여 중단 크루가 있던 반도 지울 수 없다 — 지금 활동 중인 크루가 없어도](2026-10-20-class-delete-keeps-crew-history.md) | 결정됨 | 일부 (study-group 스펙 삭제 · 백엔드 됨, `canDelete` 필드 · PRD 1-3 안 됨) | 공유전 |
+| 2026-10-20 | [수료 · 참여 중단 크루가 있던 반도 지울 수 없다 — 지금 활동 중인 크루가 없어도](2026-10-20-class-delete-keeps-crew-history.md) | 결정됨 | 됨 · 명단 API 의 `canDelete` 구현 남음 | 공유전 |
