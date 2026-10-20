@@ -3,6 +3,9 @@
 > 작성일: 2026-09-01  
 > 범위: `frontend/apps/back-office-front`, back-office 인증과 연결된 `backend/api`  
 > 성격: 현재 구현 상태를 기준으로 한 내부 점검 메모
+>
+> **2026-10-11 재확인** — 해결: 유저 조회 권한(`/api/admin/users` 는 `@RequireAdmin`) · 토큰 JSON 노출(로그인 응답은 `account` 만, 토큰은 쿠키).
+> 남음: OAuth state/nonce 검증 · `next` 리다이렉트 검증. 나머지는 미확인. 다 해결되면 이 파일을 지운다.
 
 ## 요약
 

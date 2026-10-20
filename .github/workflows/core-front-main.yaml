@@ -58,10 +58,11 @@ jobs:
           build-args: |
             NODE_ENV=production
             COMMIT_HASH=${{ github.sha }}
-            NEXT_PUBLIC_SITE_URL=https://studyclub-plusplus.com
+            NEXT_PUBLIC_SITE_URL=https://studyclub.life
             NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
             NEXT_PUBLIC_OAUTH_REDIRECT_URI=${{ secrets.NEXT_PUBLIC_OAUTH_REDIRECT_URI }}
+            NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ secrets.NEXT_PUBLIC_AMPLITUDE_API_KEY }}
       - name: Deployment
         uses: appleboy/ssh-action@v1
         with:

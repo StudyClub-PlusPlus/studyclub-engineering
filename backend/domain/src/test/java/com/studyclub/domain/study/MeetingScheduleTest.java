@@ -229,6 +229,42 @@ class MeetingScheduleTest {
                 .doesNotThrowAnyException();
     }
 
+    @Test
+    @DisplayName("일괄 삭제 — 시작 전 정규 회차만 고르면 통과")
+    void deletesFutureRegularMeetings() {
+        StudyMeeting a = meeting("2026-10-08T11:00:00Z");
+        StudyMeeting b = meeting("2026-10-15T11:00:00Z");
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(a, b));
+
+        assertThatCode(() -> schedule.checkDelete(List.of(a, b), NOW)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("일괄 삭제 — 킥오프가 섞이면 KICKOFF_NOT_DELETABLE")
+    void bulkDeleteRejectsKickoff() {
+        StudyMeeting kickoff = kickoff("2026-10-07T11:00:00Z");
+        StudyMeeting first = meeting("2026-10-14T11:00:00Z");
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(kickoff, first));
+
+        assertThatThrownBy(() -> schedule.checkDelete(List.of(first, kickoff), NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.KICKOFF_NOT_DELETABLE));
+    }
+
+    @Test
+    @DisplayName("일괄 삭제 — 시작한 회차가 섞이면 MEETING_ALREADY_STARTED, 막힌 회차 번호를 모두 적는다")
+    void bulkDeleteNamesStartedMeetings() {
+        StudyMeeting kickoff = kickoff("2026-09-17T11:00:00Z");
+        StudyMeeting first = meeting("2026-09-24T11:00:00Z"); // 지남
+        StudyMeeting second = meeting("2026-10-08T11:00:00Z");
+        StudyMeeting third = meeting("2026-10-15T11:00:00Z");
+        third.start(Instant.parse("2026-10-01T23:00:00Z")); // 디스코드가 일찍 연 회차
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(kickoff, first, second, third));
+
+        assertThatThrownBy(() -> schedule.checkDelete(List.of(third, second, first), NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.MEETING_ALREADY_STARTED))
+                .hasMessage("1회차, 3회차는 이미 시작해 지울 수 없습니다.");
+    }
+
     private static StudyMeeting kickoff(String scheduledAt) {
         return StudyMeeting.kickoff(1L, Instant.parse(scheduledAt));
     }

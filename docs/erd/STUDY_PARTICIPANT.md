@@ -18,7 +18,7 @@
 
 ## 관계
 - N : 1 [ACCOUNT](./ACCOUNT.md), [STUDY_CLASS](./STUDY_CLASS.md)
-- 출처: [STUDY_APPLICATION](./STUDY_APPLICATION.md) 제출. 담당 캡틴은 반 편성 때 반 지정으로 ([분반 스펙](../../specs/study-group/spec.md#담당-캡틴의-반-지정))
+- 출처: [STUDY_APPLICATION](./STUDY_APPLICATION.md) 제출. 담당 캡틴도 신청으로만 들어온다
 
 ## 상태 — STATUS
 
@@ -26,7 +26,7 @@
 |---|---|
 | `ACTIVE` | 참여 중. 기본값 |
 | `PAUSED` | 잠시 쉼 (출석 집계 제외) |
-| `WITHDRAWN` | 중도 하차. 삭제 대신 이 상태. `LEFT_AT` 에 하차 시각 |
+| `WITHDRAWN` | 참여 중단 — 하차 · 제명을 가르지 않는다. 삭제 대신 이 상태. `LEFT_AT` 에 중단 시각. 네비게이터 · 담당 캡틴이 출석부에서 중단시킬 수 있다 ([참여 중단 스펙](../../specs/study-participant/spec.md)) |
 | `COMPLETED` | 완주 (STUDY ENDED 시 ACTIVE → COMPLETED 일괄) |
 | `DELETED` | 회원 탈퇴로 사라진 행. 삭제 대신 이 상태 — 행을 지우면 STUDY_ATTENDANCE(ACCOUNT_ID 로만 연결, FK 없음)가 출석률 집계에서 통째로 빠지기 때문([user-leave spec](../../specs/user-leave/spec.md)). `LEFT_AT` 에 탈퇴 시각. ACCOUNT_ID 는 그대로 둔다 — 참조할 ACCOUNT 행 자체가 없어져 더는 사람으로 되짚을 수 없다 |
 
@@ -51,7 +51,7 @@ stateDiagram-v2
 
 스터디 안에서의 역할. 시스템 권한(ACCOUNT.SYSTEM_ROLE)과 별개.
 
-> 캡틴 값은 두지 않는다. 스터디를 만든 **담당 캡틴**도 참여자라 반 편성 때 이 테이블에 `MEMBER` 행이 생긴다 (신청서 없이). 「담당 캡틴인가」는 이 테이블이 아니라 `STUDY.CREATED_BY` 로 판정한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-07).
+> 캡틴 값은 두지 않는다. 스터디를 만든 **담당 캡틴**이 참여하려면 신청하고, 그러면 이 테이블에 크루와 같은 `MEMBER` 행이 생긴다. 「담당 캡틴인가」는 이 테이블이 아니라 `STUDY.CREATED_BY` 로 판정한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md), 2026-10-14).
 
 | 값 | 뜻 |
 |---|---|

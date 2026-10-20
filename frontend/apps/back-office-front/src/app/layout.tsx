@@ -6,10 +6,10 @@ import { AppShell } from '@/components/AppShell';
 
 export const metadata: Metadata = {
   title: {
-    default: 'StudyClub++ Back Office',
-    template: '%s · StudyClub++ Back Office',
+    default: 'StudyClub Back Office',
+    template: '%s · StudyClub Back Office',
   },
-  description: 'StudyClub++ 운영자 콘솔 — 스터디/행사/스터디원/운영진 관리 (mock 데이터).',
+  description: 'StudyClub 운영자 콘솔. 스터디·행사·스터디원·운영진 관리.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <link
           rel='stylesheet'
-          href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable.min.css'
+          href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css'
         />
       </head>
       {/* data-app="console" — console.css 의 본문 밀도(15px) 스코프 앵커 */}

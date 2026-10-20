@@ -113,6 +113,11 @@ public class Study extends BaseEntity {
         this.discordChannelUrl = blankToNull(discordChannelUrl);
     }
 
+    /** 썸네일 주소. 올리기 API 가 준 우리 저장소 주소만 들어온다 — 외부 주소 문자열을 받지 않는다. {@code null} 이면 없음. */
+    public void changeThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
     public void changeDriveUrl(String driveUrl) {
         this.driveUrl = blankToNull(driveUrl);
     }

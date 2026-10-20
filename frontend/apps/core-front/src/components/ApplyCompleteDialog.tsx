@@ -48,14 +48,14 @@ export function ApplyCompleteDialog({
             {t({ ko: '닫기', en: 'Close' }, locale)}
           </Button>
           <Button onClick={goMyStudies}>
-            {t({ ko: '내 스터디 보러 가기', en: 'Go to My studies' }, locale)}
+            {t({ ko: '내 스터디룸 보러 가기', en: 'Go to My study room' }, locale)}
           </Button>
         </div>
       }
     >
       <div className='flex flex-col gap-2 py-4 text-sm leading-relaxed'>
         <p className='text-fg'>
-          {t({ ko: '스터디 신청이 완료되었습니다. 내 스터디로 이동할까요?', en: 'Your application is in. Go to My studies?' }, locale)}
+          {t({ ko: '스터디 신청이 완료되었습니다. 내 스터디룸으로 이동할까요?', en: 'Your application is in. Go to My studies?' }, locale)}
         </p>
         <p className='text-fg-secondary'>
           {t({ ko: '제출한 내용은 수정할 수 없습니다.', en: 'Submitted answers cannot be edited.' }, locale)}

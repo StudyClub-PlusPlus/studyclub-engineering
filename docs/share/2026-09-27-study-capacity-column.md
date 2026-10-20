@@ -2,6 +2,11 @@
 상태: 결정됨
 결정일: 2026-10-02
 근거: POL-0003 스터디 정보 항목 · POL-0004 신청
+반영:
+  - POL-0003 — 됨
+  - docs/erd/STUDY.md — 됨
+  - specs/study-application/spec.md — 됨
+  - specs/study/spec.md — 안 됨 (「스터디 수정」이 아직 `STUDY.CAPACITY` 를 읽고 쓴다)
 ---
 
 # 스터디 정원이 두 군데 적혀 있다 — 문서가 가리키는 곳과 코드가 읽는 곳이 다르다

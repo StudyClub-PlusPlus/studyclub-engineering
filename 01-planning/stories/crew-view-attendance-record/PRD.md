@@ -51,9 +51,9 @@ flowchart LR
 
 - **내용**
   - 참여자 × 회차 격자. 한 칸이 한 사람의 한 회차
-  - 첫 열은 「킥오프」, 다음 열부터 「1회」 「2회」 …. 회차 머리 아래에 일자 `M/dd`
+  - 첫 열은 「킥오프」, 다음 열부터 「1회」 「2회」 …. 회차 머리 아래에 일자 `M/dd` · 시각 `HH:mm`
   - 이름 열 → 발표 횟수 열 → 회차 칸들 → 출석률 열
-  - 머리 줄(반 · 인원 · 기준 시간대) · 진행 기간 · 조작 안내 · 저장 바 · 회차 추가 버튼은 두지 않는다
+  - 표 위 제목 줄 「출석 · 전체 N」 · KST · PDT 탭은 운영진 화면과 같다 ([출석 상태 수정 PRD](../navigator-edit-attendance/PRD.md) §1-1). 반 이름 · 진행 기간 · 조작 안내 · 저장 바 · 회차 추가 버튼은 두지 않는다
 - **동작**
   - 칸에 마우스를 올리면 상태 이름만 보인다 (예: 「출석 · 발표」)
   - 칸을 눌러도 아무 일도 일어나지 않는다
@@ -151,6 +151,18 @@ erDiagram
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | core-front `/my/joined/[id]/schedule` 출석부 탭 | 없음 — 「스터디 일정 화면을 준비 중입니다」 자리만 있다 | 프로토 스터디 일정 › 출석부(크루 보기)대로 만든다 |
+| BE | `GET /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
+| BE | `GET /api/studies/{studyId}/meetings` | 구현중 | [study-meeting 스펙](../../../specs/study-meeting/spec.md#구현-메모) 마무리 |
+
 ### 데이터
 
 | 대상 | 필드 | 크루 |
@@ -171,7 +183,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/studies/{studyId}/attendances` 분반 출석부 | 그 분반 활성 참여자(조회) · 네비게이터 · 캡틴 |
+| GET | `/api/me/studies/{studyId}/attendances` 분반 출석부 | 그 분반 활성 참여자(조회) · 네비게이터 · 캡틴 |
 | GET | `/api/studies/{studyId}/meetings` 회차 · 발표자 | 그 분반 활성 참여자 · 네비게이터 · 캡틴 |
 
 출석부 응답 `participants[]` 에 `participantRole` · `captain` · `participantStatus` · `leftAt` 이 있어야 칩·참여 중단 표시를 그린다. 계약은 [출석 스펙](../../../specs/attendance/spec.md) · [회차 스펙](../../../specs/study-meeting/spec.md).

@@ -1,5 +1,42 @@
-/* playground 스타일 진입점 — 정본: @studyclub/design/core.css */
+/* playground 스타일 진입점 — 정본: @studyclub/design/core.css + console-only.css
+   사용자 사이트 프로토와 콘솔 프로토가 한 앱에 같이 산다. 콘솔 밀도는 [data-app="console"]
+   아래에서만 걸리므로 사이트 화면에는 영향이 없다. */
 @import "@studyclub/design/core.css";
+@import "@studyclub/design/console-only.css";
 
 /* 공용 컴포넌트는 node_modules 심링크 너머라 Tailwind 자동 탐지에 안 걸린다. */
 @source "../../../../packages/ui/src";
+
+/* 한국어는 낱말 중간에서 줄을 바꾸지 않는다 ("스터디원/들과" 처럼 끊기던 문제). 긴 영문 URL 은 넘치면 끊는다 */
+:lang(ko) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+/* 슬라이딩 띠 — components/Marquee.tsx */
+.marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+.marquee-group {
+  display: flex;
+  gap: 1rem;
+  padding-right: 1rem;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}

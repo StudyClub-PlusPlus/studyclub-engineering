@@ -5,10 +5,10 @@ import { useEffect, useState } from 'react';
 
 import { createPortal } from 'react-dom';
 
-import { ApplyCompleteDialog } from '@/components/ApplyCompleteDialog';
 import { ApplyDialog } from '@/components/ApplyDialog';
 import { ApplyDiscordGate } from '@/components/ApplyDiscordGate';
 import { useMyApplication } from '@/features/applications/queries';
+import { track } from '@/lib/analytics';
 import { getUser } from '@/lib/auth';
 import type { Locale, Study } from '@/lib/content';
 import { t } from '@/lib/i18n';
@@ -20,7 +20,6 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const pathname = usePathname();
   const [formOpen, setFormOpen] = useState(false);
   const [discordOpen, setDiscordOpen] = useState(false);
-  const [completeOpen, setCompleteOpen] = useState(false);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [deadlineLabel, setDeadlineLabel] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -46,16 +45,27 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
         });
       }
     }
-  }, [study.id, myApp, completeOpen]);
+  }, [study.id, myApp]);
 
   const isClosed = state === 'closed' || Boolean(deadlineLabel);
 
   const card = 'inline-flex items-center rounded-pill px-8 py-3 text-sm font-bold';
-  const live = 'bg-brand text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)';
+  const live =
+    'bg-brand text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)';
   const idle = 'bg-surface-2 text-fg-placeholder';
 
   function requestApply() {
     if (alreadyApplied) return;
+    track({
+      name: 'Study Apply CTA Clicked',
+      props: {
+        study_id: String(study.study_id),
+        study_title_ko: study.title.ko,
+        study_category: study.category ?? '',
+        study_status: study.status,
+        has_external_form: false,
+      },
+    });
     if (!getUser()) {
       router.push(`/${locale}/login?next=${encodeURIComponent(pathname)}`);
       return;
@@ -75,7 +85,6 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   function handleSubmitted() {
     setFormOpen(false);
     setAlreadyApplied(true);
-    setCompleteOpen(true);
   }
 
   // 외부 신청 폼(구글 폼 등)이 있으면 그쪽으로 보낸다.
@@ -86,24 +95,39 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
         target='_blank'
         rel='noopener noreferrer'
         className={`${card} ${live}`}
+        onClick={() => {
+          track({
+            name: 'Study Apply CTA Clicked',
+            props: {
+              study_id: String(study.study_id),
+              study_title_ko: study.title.ko,
+              study_category: study.category ?? '',
+              study_status: study.status,
+              has_external_form: true,
+            },
+          });
+          track({
+            name: 'Study Apply External Opened',
+            props: { study_id: String(study.study_id), study_title_ko: study.title.ko },
+          });
+        }}
       >
         {applyLabel}
       </a>
     );
   }
 
-  const trigger =
-    isClosed ? (
-      <span className={`${card} ${idle}`}>{applyLabel}</span>
-    ) : ready && alreadyApplied ? (
-      <button type='button' disabled className={`${card} ${idle}`}>
-        {doneLabel}
-      </button>
-    ) : (
-      <button type='button' onClick={requestApply} className={`${card} ${live}`}>
-        {applyLabel}
-      </button>
-    );
+  const trigger = isClosed ? (
+    <span className={`${card} ${idle}`}>{applyLabel}</span>
+  ) : ready && alreadyApplied ? (
+    <button type='button' disabled className={`${card} ${idle}`}>
+      {doneLabel}
+    </button>
+  ) : (
+    <button type='button' onClick={requestApply} className={`${card} ${live}`}>
+      {applyLabel}
+    </button>
+  );
 
   if (isClosed) return trigger;
 
@@ -126,12 +150,6 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
           setFormOpen(false);
           setDiscordOpen(true);
         }}
-      />
-      <ApplyCompleteDialog
-        studyId={study.id}
-        locale={locale}
-        open={completeOpen}
-        onClose={() => setCompleteOpen(false)}
       />
     </>
   );

@@ -2,6 +2,10 @@
 상태: 결정됨 (질문 3건 남음)
 알릴 사람: 백엔드 · 프론트 · 디자인
 물어볼 사람: 기획 (세은님) — 아래 「남은 질문」
+반영:
+  - specs/study-meeting/spec.md · specs/attendance/spec.md — 됨
+  - docs/erd/STUDY_MEETING.md · STUDY_GROUP.md — 됨
+  - 01-planning/stories/navigator-register-sessions/PRD.md · crew-apply-presenter/PRD.md — 됨
 ---
 
 # 구글 시트 출석부를 웹 「스터디 일정」으로 옮긴다 — 참가자 모두 보고, 발표자는 선착순, 킥오프는 0회차

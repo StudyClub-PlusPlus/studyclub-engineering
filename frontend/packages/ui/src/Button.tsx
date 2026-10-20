@@ -5,15 +5,16 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx';
 
 /** design-system.md §9-1 */
-export type ButtonVariant = 'primary' | 'tonal' | 'secondary' | 'ghost' | 'destructive';
+export type ButtonVariant = 'primary' | 'tonal' | 'secondary' | 'ghost' | 'danger' | 'destructive';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-brand text-on-brand shadow-xs hover:bg-brand-hover active:bg-brand-active',
   tonal: 'bg-primary-light text-primary-dark hover:brightness-[0.97]',
-  secondary:
-    'bg-surface-raised text-ink border border-border hover:bg-page-bg hover:border-border-interactive',
+  secondary: 'bg-surface-raised text-ink border border-border hover:bg-page-bg hover:border-border-interactive',
   ghost: 'bg-transparent text-text-secondary hover:bg-cloud',
+  /** 지우기 · 내보내기를 **여는** 버튼 — 테두리. 되돌릴 수 없는 마지막 확인은 destructive(채움)가 받는다. */
+  danger: 'bg-surface-raised text-danger-fg border border-danger-fg hover:bg-danger-bg',
   destructive: 'bg-danger-fg text-on-primary shadow-xs hover:brightness-90',
 };
 
@@ -56,6 +57,7 @@ export function Button({
         'relative inline-flex shrink-0 items-center justify-center rounded-control font-semibold',
         'transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out',
         'focus-visible:outline-none focus-visible:shadow-(--ring)',
+        'hover:cursor-pointer',
         // disabled 는 변형 색을 전부 덮는다 (§9-1)
         'disabled:pointer-events-none disabled:border-transparent disabled:bg-disabled-bg disabled:text-disabled-fg disabled:shadow-none',
         SIZE[size],

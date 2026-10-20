@@ -17,7 +17,8 @@
 | GET | /api/studies/{studyId}/meetings | 분반 회차 목록 (발표자 · 규칙 포함) | O (그 분반 참여자 · 캡틴) | 구현중 |
 | POST | /api/studies/{studyId}/meetings | 회차 추가 (한 번 · 반복) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId} | 회차 수정 (시각 · 제목 · 발표자) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
-| DELETE | /api/studies/{studyId}/meetings/{meetingId} | 회차 삭제 (한 회차씩, 킥오프 불가) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
+| DELETE | /api/studies/{studyId}/meetings/{meetingId} | 회차 삭제 (한 회차, 킥오프 불가) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
+| DELETE | /api/studies/{studyId}/groups/{groupId}/meetings | 회차 일괄 삭제 (한 분반의 여러 회차, 전부 아니면 하나도) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 (빈 칸에 나) | O (그 분반 참여자) | 구현중 |
 | DELETE | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 취소 (내 이름 빼기) | O (그 분반 참여자) | 구현중 |
 | PUT | /api/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 | O (그 분반 네비게이터 · 캡틴) | 구현중 |
@@ -28,7 +29,7 @@
 
 ## 결정 사항
 
-PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님)과 합의(3 은 2026-10-02, 2 · 9~12 는 2026-10-05 답변), 7~8 은 이 스펙에서 정했다.
+PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님)과 합의(3 은 2026-10-02, 2 · 9~12 는 2026-10-05 답변), 7~8 은 이 스펙에서 정했다. 13 은 2026-10-15 일괄 삭제 API 요구로 더했다.
 
 | # | 항목 | 결정 | 근거 |
 |---|---|---|---|
@@ -44,6 +45,7 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님
 | 10 | 발표자 | `STUDY_MEETING.PRESENTER1_PARTICIPANT_ID` · `PRESENTER2_PARTICIPANT_ID` (BIGINT NULL → `STUDY_PARTICIPANT.ID`). 네비게이터·캡틴은 누구든 지정. 크루는 빈 칸에 자기만 넣고 자기만 뺀다(선착순, 한 회차에 한 칸). 발표 여부는 따로 저장하지 않는다 — 출석부의 발표 표시·횟수는 이 두 칸에서 계산 | 시트의 「발표자1·2」 칸과 「발표 여부」 칸이 같은 사실을 두 번 적어 어긋났다. 하나만 둔다 |
 | 11 | 킥오프 | `STUDY_MEETING.MEETING_TYPE` VARCHAR(16) NOT NULL DEFAULT `REGULAR` — `KICKOFF` · `REGULAR`. 분반마다 킥오프 하나, 번호 0. 지울 수 없고 발표자가 없다. 정규 회차는 킥오프 뒤로만 둔다. **출석은 찍고 출석률에서 뺀다** | 모든 스터디는 킥오프에서 규칙·일정·발표자를 정한다. 시트는 0회차로 적고 참석만 기록했다 |
 | 12 | 스터디 규칙 | `STUDY_GROUP.RULES` VARCHAR(500) NULL — 500자 이하. 네비게이터·캡틴이 고치고 참여자 전원이 본다 | 시트의 규칙 칸. 반마다 진행 방식이 달라 분반에 둔다 |
+| 13 | 일괄 삭제 | **한 요청으로 지운다** — `DELETE /api/studies/{studyId}/groups/{groupId}/meetings`, 바디 `{ "meetingIds": [...] }`. 한 분반의 회차만, 한 트랜잭션에서 **전부 지우거나 하나도 안 지운다**. 하나라도 시작했거나 킥오프면 409 로 전부 거절하고, 메시지에 막힌 회차 번호를 적는다 | 화면은 체크박스로 골라 한 번에 지운다(share 10-14). 회차마다 DELETE 를 부르면 중간 실패 때 일부만 지워진 채 남고, 화면이 실패 목록을 모아야 한다. 한 번에 잠그고 판정하면 「지웠다 / 안 지웠다」 둘뿐이다. 아래 「회차 일괄 삭제」 |
 
 ### 경로
 
@@ -262,6 +264,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 4. `STUDY_MEETING` INSERT (`MEETING_TYPE = REGULAR`, `START_AT`·`END_AT` 은 비운다 — 보이스룸·디스코드가 기록). `scheduledAts` 가 2개 이상이면 UUID 하나를 만들어 모든 행의 `SERIES_ID` 에 넣고, 1개면 null (결정 2).
 5. 분반 참여자 중 `STATUS IN (ACTIVE, PAUSED)` 인 사람마다 새 회차 × 참여자 `STUDY_ATTENDANCE(STATUS = ABSENT)` INSERT. `STUDY_ID`·`STUDY_GROUP_ID` 는 비정규화 값으로 채운다.
 6. `STUDY.STATUS` 는 건드리지 않는다 (결정 5).
+7. **분반에 킥오프가 없으면** 이번에 넣은 회차 중 가장 이른 것의 한 주 전 같은 시각에 `MEETING_TYPE = KICKOFF` 회차 하나를 함께 INSERT 한다 (출석 행도 5와 같이). 반을 만들 때는 회차를 만들지 않으므로 킥오프는 여기서 처음 생긴다 (→ [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md))
 
 > 시작 전 회차의 `ABSENT` 는 결석이 아니다 — 내 스터디는 시작 전 `ABSENT` 를 빈칸으로 보여 주고(`MyStudyQueryService.visibleStatus`), 출석률 분모는 `scheduled_at <= now()` 회차만 센다.
 >
@@ -386,6 +389,8 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 2. 대상 회차가 시작했으면 409.
 3. 그 회차의 `STUDY_ATTENDANCE` 와 `STUDY_MEETING` 을 지운다. 둘 사이 외래키는 없어 DB 가 지워 주지 않는다 — 출석 행을 빠뜨리면 고아로 남는다.
 
+> **일괄 삭제** — 화면은 체크박스로 여러 회차를 골라 한 번에 지운다(줄마다 삭제 버튼 없음, [share 10-14](../../docs/share/2026-10-14-class-title-and-captain-applies.md)). 화면은 고른 회차 수와 상관없이 아래 「회차 일괄 삭제」(`DELETE /api/studies/{studyId}/groups/{groupId}/meetings`) 를 한 번 부른다. 이 엔드포인트는 한 회차만 지우는 호출용으로 남긴다 — 서버에서는 일괄 삭제에 하나를 넘긴 것과 같다.
+
 > **휴가 신청** — 별도 테이블이 없다. 크루가 낸 휴가는 출석 행 `STATUS = EXCUSED` 다(명부 스펙 「EXCUSED 는 POST 로 직접 세팅」, `MyStudyQueryService` 「사전 휴가(EXCUSED)」). 출석 행을 지우면 휴가도 함께 사라진다. 휴가 신청 테이블이 생기면 이 절에 삭제 대상을 더한다.
 
 ### Response — 204 No Content
@@ -403,6 +408,68 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 ### 프론트엔드 사용처
 
 - core-front 스터디 일정 → 일정 탭 → 삭제 확인 (미구현)
+
+---
+
+## 회차 일괄 삭제
+
+### 기본 정보
+
+- **Method**: DELETE
+- **Path**: `/api/studies/{studyId}/groups/{groupId}/meetings`
+- **인증**: 필요 — 그 분반 네비게이터 · 캡틴
+- **설명**: 한 분반의 시작 전 정규 회차 여럿을 한 번에 지운다. **전부 지우거나 하나도 안 지운다** (결정 13). 지운 회차의 출석·휴가 행도 함께 지운다.
+
+### Path Parameters
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| studyId | Long | 스터디 ID |
+| groupId | Long | 분반 ID |
+
+### Query Parameters
+
+없음
+
+### Request Body
+
+```json
+{ "meetingIds": [41, 42, 43] }
+```
+
+| 필드 | 타입 | 필수 | 검증 |
+|------|------|------|------|
+| meetingIds | Long[] | Y | 1개 이상(`@NotEmpty`). 같은 ID 가 겹치면 하나로 본다. 모두 **이 분반(`groupId`)** 회차 → 아니면 404 |
+
+### 서버 동작
+
+한 트랜잭션, 단건 삭제와 같은 잠금 순서 (위 「잠금」):
+
+1. `groupId` 분반을 잠그지 않고 읽는다 — 없거나 이 스터디 소속이 아니면 404.
+2. 분반 잠금 → 권한 판정 → 분반 회차 잠금.
+3. 잠근 회차에서 `meetingIds` 의 ID 를 모두 찾는다 — 하나라도 없거나 이 분반 소속이 아니면 404.
+4. 잠근 뒤의 시각으로 판정한다. 킥오프가 섞이면 409 `KICKOFF_NOT_DELETABLE`. 시작한 회차가 섞이면 409 `MEETING_ALREADY_STARTED` — `errorMessage` 에 막힌 회차 번호를 모두 적는다(예: 「3회차, 4회차는 이미 시작해 지울 수 없습니다.」). 어느 쪽이든 **아무것도 지우지 않는다.**
+5. 고른 회차의 `STUDY_MEETING` 과 `STUDY_ATTENDANCE` 를 지운다. 출석은 `STUDY_MEETING_ID IN (…)` 한 문장으로.
+
+> 409 를 받으면 화면은 목록을 다시 불러 시작한 줄을 잠그고, `errorMessage` 를 알림으로 보인다. 고른 것 중 지울 수 있는 것만 지우려면 막힌 회차를 빼고 다시 부른다.
+
+### Response — 204 No Content
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 토큰 없음 |
+| 400 | INVALID_INPUT | `meetingIds` 가 비었음(`@NotEmpty`) |
+| 403 | FORBIDDEN | 그 분반 네비게이터도 캡틴도 아님 |
+| 404 | NOT_FOUND | 없는 `studyId` · 없는 `groupId` · 고른 회차 중 하나라도 없거나 이 분반 소속이 아님 |
+| 409 | KICKOFF_NOT_DELETABLE | 킥오프가 섞임 |
+| 409 | MEETING_ALREADY_STARTED | 이미 시작한 회차가 섞임 — 메시지에 회차 번호 |
+
+### 프론트엔드 사용처
+
+- 프로토타입: `frontend/apps/playground/src/proto/core/components/ScheduleManager.tsx` `remove` (지금은 브라우저 저장)
+- core-front 스터디 일정 → 일정 탭 → 표 아래 「삭제」 (미구현)
 
 ---
 
@@ -510,14 +577,14 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 - 회차 변경 알림 (결정 4)
 - 클럽(비모임형 출석) 회차 (결정 6)
-- 묶음 단위 삭제·수정 · 목록의 반복 표시 (결정 2 — 묶음 ID 는 저장해 둔다)
+- 묶음(`SERIES_ID`) 단위 삭제·수정 · 목록의 반복 표시 (결정 2 — 묶음 ID 는 저장해 둔다). 고른 회차 일괄 삭제는 결정 13
 - 출석부 편집 — [명부·출석](../attendance/spec.md)
 - 회차 취소 표현(`CANCELED_AT`) — 지금은 삭제만 있다
 - 백오피스 회차 관리 (`/api/admin/...`)
 
 ## 미확정
 
-- [NEEDS CLARIFICATION] 이미 운영 중인 분반에 킥오프 회차를 소급해 만들지 — 시트에는 0회차가 있지만 DB 에는 없다. 지금은 새로 만드는 분반에만 만든다.
+- [NEEDS CLARIFICATION] 이미 운영 중인 분반에 킥오프 회차를 소급해 만들지 — 시트에는 0회차가 있지만 DB 에는 없다. 지금은 킥오프가 없는 분반에 처음 정규 회차를 추가할 때만 만든다 (서버 동작 7).
 - [NEEDS CLARIFICATION] 한 사람이 맡을 수 있는 발표 수에 상한을 둘지 — 지금은 두지 않는다.
 - [NEEDS CLARIFICATION] 발표자1이 빠진 날 발표자2가 대신한 것을 따로 기록할지 — 지금은 일정의 발표자를 고쳐서 남긴다.
 

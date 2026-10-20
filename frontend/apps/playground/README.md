@@ -1,10 +1,10 @@
 # playground — 디자인 샌드박스
 
 디자이너·기획자가 **실제 서비스 컴포넌트로** 화면을 조립해 보는 곳입니다.
-여기서 무엇을 깨뜨려도 `studyclub-plusplus.com` 배포는 영향을 받지 않습니다.
+여기서 무엇을 깨뜨려도 `studyclub.life` 배포는 영향을 받지 않습니다.
 
 - 로컬: http://localhost:4702
-- 배포(예정): https://playground.studyclub-plusplus.com — `main` 에 머지되면 자동 반영
+- 배포(예정): https://playground.studyclub.life — `main` 에 머지되면 자동 반영
 
 ---
 
@@ -31,13 +31,16 @@ pnpm --filter playground run dev
 
 ## 화면 하나 추가하기
 
+> 여기는 컴포넌트를 조립해 보는 **연습 화면**입니다. 유저스토리 프로토타입은 [`/proto`](#프로토-proto) 아래에 만들고,
+> 순서는 [`/prototype` 스킬](../../../.claude/skills/prototype.md)을 따릅니다.
+
 ```bash
-cd studyclub-engineering/frontend/apps/playground/src/app/screens
+cd "studyclub-engineering/frontend/apps/playground/src/app/(site)/screens"
 cp -r study-detail 내가-만들-화면-이름
 ```
 
 1. `내가-만들-화면-이름/page.tsx` 를 열어 내용을 고칩니다
-2. `src/app/page.tsx` 의 `ENTRIES` 배열에 링크를 한 줄 추가합니다
+2. `src/app/(site)/page.tsx` 의 `ENTRIES` 배열에 링크를 한 줄 추가합니다
 3. http://localhost:4702 에서 확인합니다
 
 **규칙 하나** — 버튼·카드 같은 부품은 직접 만들지 말고 `@studyclub/ui` 에서 가져옵니다.
@@ -106,7 +109,7 @@ http://localhost:4702/proto 로 들어가면 **사이트 첫 화면으로 바로
 
 ### 설명 보기
 
-화면 아래 **설명 보기** 버튼(단축키 <kbd>A</kbd>)을 누르면 요소마다 번호 배지가 붙고
+화면 아래 가운데 **설명 보기** 버튼(단축키 <kbd>A</kbd>)을 누르면 요소마다 번호 배지가 붙고
 오른쪽에 그 번호의 설명이 열립니다. 기획서의 "1 · 1-1 · 1-2" 번호 규칙을 화면 위에서 그대로 씁니다.
 
 지금 명세가 있는 화면은 아래입니다.

@@ -2,6 +2,8 @@
 
 기준 프로토타입: 스터디 상세 (playground 사용자 사이트 · 스터디 상세)
 
+관련 결정: [09-30 모집 마감 시각은 필수다](../../../docs/share/2026-09-30-null-recruit-deadline.md)
+
 ## 1. 기본설명
 
 · **진입·사용 흐름**
@@ -144,6 +146,18 @@ erDiagram
 - 구현완료(2026-09-30): `StudyDetailView` 클라이언트 컴포넌트가 `useStudyDetail` 훅을 통해 `GET /api/studies/{studyId}`를 직접 호출한다. 개발 환경은 MSW가 인터셉트, 프로덕션은 실 API로 동작. 404·500 상태에 대응하는 오류 화면도 클라이언트 단에서 처리한다
 
 ## 3. 시스템 요건
+
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | core-front `/studies/[id]` (`StudyDetailView`) | 있음 — `GET /api/studies/{id}` 연결 | `StudyDetailView.tsx` 의 낡은 `TODO(api)` 지우기 |
+| BE | `GET /api/studies/{studyId}` | 구현완료 | 없음 |
+| 기획 | 마감일 없는 옛 데이터 | 이 PRD 는 「신청하기」를 보여 준다 · 신청 API 는 막는다 | 어느 쪽인지 정한다 ([share 09-30](../../../docs/share/2026-09-30-null-recruit-deadline.md)) |
 
 ### 데이터
 

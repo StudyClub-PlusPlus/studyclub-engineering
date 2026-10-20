@@ -1,7 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 
 import { MapPin, ChevronRight } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
 import type { StudyclubEvent, Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 
@@ -18,19 +21,36 @@ function dateParts(iso: string, locale: Locale) {
 }
 
 // 행사 목록의 한 "행". (카드 그리드가 아니라 리스트형)
-export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Locale }) {
-  const { mon, day, year, time } = dateParts(event.date, locale);
+export function EventRow({
+  event,
+  locale,
+  source = 'landing',
+}: {
+  event: StudyclubEvent;
+  locale: Locale;
+  source?: 'landing' | 'events_list';
+}) {
+  const parts = dateParts(event.date, locale);
+  // 연도만 아는 행사는 월·일을 지어내지 않는다 — 박스에 연도만
+  const { mon, day, year, time } =
+    event.datePrecision === 'year' ? { mon: '', day: parts.year, year: '', time: '' } : parts;
   return (
     <Link
       href={`/${locale}/events/${event.id}`}
       className='group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-(--color-surface-subtle) sm:px-5'
+      onClick={() =>
+        track({
+          name: 'Event Card Clicked',
+          props: { event_id: String(event.id), event_title_ko: event.title.ko, source },
+        })
+      }
     >
       {/* 날짜 박스 */}
       <div
         className='flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 text-center'
         style={{ background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }}
       >
-        <span className='text-[10px] font-semibold uppercase tracking-wide'>{mon}</span>
+        {mon && <span className='text-[10px] font-semibold'>{mon}</span>}
         <span className='text-lg font-bold leading-none'>{day}</span>
         {year && <span className='mt-0.5 text-[9px] font-medium opacity-70'>{year}</span>}
       </div>

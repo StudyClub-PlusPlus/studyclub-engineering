@@ -37,8 +37,8 @@
 | GET | /api/admin/study-programs | 프로그램 목록 (`studyKind` 필수). 등록 모달의 「기존 클럽의 새 기수」 드롭다운이 `CLUB` 으로 부른다 — `programId`·`title`·`latestStudyId` 만 준다 | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId} | 스터디 수정 | O (ADMIN) | 구현완료 (`timezone` 제외) — 사이트용과 로직 공유, 콘솔 정보 탭이 부른다 |
 | DELETE | /api/admin/studies/{studyId} | 스터디 삭제 | O (ADMIN) | 구현완료 — 옛 `DELETE /api/studies/{studyId}` 는 없앴다 |
-| POST | /api/admin/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 스펙확정 |
-| POST | /api/admin/studies/{studyId}/unpublish | 공개 취소 | O (ADMIN) | 스펙확정 |
+| POST | /api/admin/studies/{studyId}/publish | 스터디 공개 (= 모집 시작) | O (ADMIN) | 구현완료 |
+| POST | /api/admin/studies/{studyId}/unpublish | 공개 취소 | O (ADMIN) | 구현완료 |
 
 신청 폼 설계 · 신청 제출 · 신청 결과 · 디스코드 연동은 [study-application/spec.md](../study-application/spec.md). 옛 경로 `PATCH /api/studies/{studyId}/cohorts/{cohortId}/application-form` 은 폐기.
 
@@ -405,7 +405,7 @@ private StudyDetailResponse toDetail(Study study) {
   "oneLineSummary": "AI 논문을 함께 읽고 토론합니다.",
   "description": "매주 목요일 논문 하나씩 읽고 토론합니다.",
   "category": "AI_ML",
-  "thumbnailUrl": null,
+  "thumbnailFileId": null,
   "recruitDeadline": "2026-11-01T00:00:00Z",
   "capacity": 20,
   "schedule": "매주 목 20:00 · 8주 과정",
@@ -424,7 +424,7 @@ private StudyDetailResponse toDetail(Study study) {
 | oneLineSummary    | String  | Y    | 비어 있으면 등록 불가                                                                                                                                                | STUDY.ONE_LINE_SUMMARY                                                                    |
 | description       | String  | N    | —                                                                                                                                                                    | STUDY.DESCRIPTION                                                                         |
 | category          | String  | Y    | StudyCategory enum 값 중 하나. 유효값은 GET 응답의 enum 표 참조                                                                                                      | STUDY.CATEGORY                                                                            |
-| thumbnailUrl      | String  | N    | —                                                                                                                                                                    | STUDY.THUMBNAIL_URL                                                                       |
+| thumbnailFileId   | Long    | N    | `POST /api/uploads/images`(`purpose=STUDY_THUMBNAIL`) 가 준 번호. 내 것·썸네일용·아직 연결 안 됨이어야 하고, 아니면 400. **주소 문자열은 받지 않는다** — [이미지 업로드](../../docs/flows/image-upload.md) | STUDY.THUMBNAIL_URL (번호로 찾은 공개 주소) |
 | recruitDeadline   | String  | Y    | 필수. 미래여야 함                                                                                                                                                    | STUDY_RECRUITMENT.RECRUIT_DEADLINE_AT (NOT NULL). 항상 STUDY_RECRUITMENT 행 1개 함께 생성 |
 | capacity          | Integer | N    | 1 이상의 정수. 비우면(null) 제한 없음                                                                                                                                | STUDY_RECRUITMENT.RECRUITMENT_CAPACITY                                                    |
 | schedule          | String  | N    | 자유 텍스트                                                                                                                                                          | STUDY.SCHEDULE                                                                            |
@@ -440,7 +440,7 @@ private StudyDetailResponse toDetail(Study study) {
 | STUDY.STATUS               | `DRAFT`                    | 등록 후 ADMIN이 [공개(모집 시작)](#스터디-공개--공개-취소)로 OPEN 으로 전환                                                                   |
 | STUDY_RECRUITMENT.START_AT | `now()`                    | 등록 시 현재 시각으로 채운다 (`NOT NULL`). 공개(`STATUS: DRAFT → OPEN`) 시 최신 회차 `START_AT` 을 다시 `now()` 로 갱신한다. 공개 판정 자체는 `STATUS` 로 한다 — `START_AT` 은 "모집이 언제 시작됐는가"를 기록하는 사실 데이터. **TODO(migration)**: 컬럼을 `NULL ALLOWED` 로 바꾼 뒤에는 등록 시 채우지 않고 공개 시에만 채운다. unpublish 시 `null` 로 되돌린다 |
 | STUDY_PROGRAM.TITLE        | 요청의 `title`             | 새 프로그램일 때만. 프로그램 제목은 첫 기수 제목을 따른다                                                                                     |
-| STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. 구현됨(V29). 이 값이 **담당 캡틴** 판정의 근거다 — 등록할 때 명부에 넣지 않는다. 반 편성 때 들어간다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
+| STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. 구현됨(V29). 이 값이 **담당 캡틴** 판정의 근거다 — 등록할 때 명부에 넣지 않는다. 참여하려면 신청한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
 
 ### Response — 201 No Content
 
@@ -628,6 +628,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 | startAt           | String  | N    | ISO 8601 UTC, 또는 `null`(미정으로 되돌림)                | STUDY.START_AT                                               |
 | discordChannelUrl | String  | N    | http(s) URL, 또는 `null`                                  | STUDY.DISCORD_CHANNEL_URL                                    |
 | driveUrl          | String  | N    | http(s) URL, 또는 `null`                                  | STUDY.DRIVE_URL                                              |
+| thumbnailFileId   | Long    | N    | 새로 올린 번호, 또는 `null`(썸네일 지움). **백오피스 PATCH 에서만** 반영. 옛 파일은 커밋 뒤 지운다 — 다른 운영자가 올린 것이어도 | STUDY.THUMBNAIL_URL |
 
 **수정 불가 필드:**
 

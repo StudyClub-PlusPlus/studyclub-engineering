@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Configuration;
 @OpenAPIDefinition(
         info =
                 @Info(
-                        title = "StudyClub++ API",
+                        title = "StudyClub API",
                         version = "v1",
                         description =
                                 """

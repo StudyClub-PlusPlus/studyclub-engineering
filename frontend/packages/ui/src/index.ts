@@ -35,6 +35,8 @@ export { Checkbox } from './Checkbox';
 export type { CheckboxProps } from './Checkbox';
 
 export { Modal } from './Modal';
+export { SelectionCount, TableActionBar } from './TableActionBar';
+export type { SelectionCountProps, TableActionBarProps } from './TableActionBar';
 export type { ModalProps } from './Modal';
 
 export { EmptyState } from './EmptyState';
@@ -45,14 +47,6 @@ export type { Toast, ToasterProps } from './Toast';
 
 export { StudyCard } from './StudyCard';
 export type { StudyCardProps } from './StudyCard';
-
-export { AttendanceTable, calculateAttendanceRate, attendanceRateColorClass } from './AttendanceTable';
-export type {
-  AttendanceTableProps,
-  AttendanceMember,
-  AttendanceSession,
-  AttendanceStatus,
-} from './AttendanceTable';
 
 export { Tabs } from './Tabs';
 export type { TabsProps, TabItem } from './Tabs';
@@ -75,7 +69,16 @@ export { HotBadge } from './HotBadge';
 
 export { DiscordGlyph } from './DiscordGlyph';
 
-export { StudyThumb, categoryMeta, categoryGradient } from './StudyThumb';
+export { StudyThumb, categoryArtUrl, categoryMeta, categoryGradient, categoryTint } from './StudyThumb';
 export type { StudyThumbProps } from './StudyThumb';
 
-
+export {
+  IMAGE_ACCEPT,
+  IMAGE_MAX_BYTES,
+  IMAGE_SIZE_ERROR,
+  IMAGE_TYPE_ERROR,
+  imageFileProblem,
+  imageUploadForm,
+  useImageUpload,
+} from './useImageUpload';
+export type { ImagePurpose, UploadedImage, UseImageUploadOptions } from './useImageUpload';

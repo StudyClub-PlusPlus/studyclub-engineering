@@ -1,0 +1,21 @@
+{
+  "shadows": [],
+  "palette": {
+    "core-front": 0,
+    "back-office-front": 0,
+    "playground/proto": 0,
+    "packages/ui": 0
+  },
+  "hex": {
+    "core-front": 8,
+    "back-office-front": 4,
+    "playground/proto": 4,
+    "packages/ui": 0
+  },
+  "fontPx": {
+    "core-front": 43,
+    "back-office-front": 17,
+    "playground/proto": 75,
+    "packages/ui": 4
+  }
+}

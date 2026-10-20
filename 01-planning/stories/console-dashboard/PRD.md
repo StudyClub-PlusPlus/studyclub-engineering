@@ -1,6 +1,6 @@
 # 캡틴은 운영 현황을 한 화면에서 볼 수 있다.
 
-기준 프로토타입: 운영 콘솔 › 대시보드 — https://playground.studyclub-plusplus.com/proto/console
+기준 프로토타입: 운영 콘솔 › 대시보드 — https://playground.studyclub.life/proto/console
 
 ## 1. 기본설명
 
@@ -188,6 +188,19 @@
 
 ## 3. 시스템 요건
 
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | back-office-front `/` 대시보드 | 있음 — 스터디 목록만 API, KPI · 추세 · 분포 · 행사는 mock (`app/page.tsx` 의 `TODO(api)`) | 아래 통계 API 가 생기는 대로 mock 을 걷어 낸다 |
+| BE | `GET /api/admin/studies` | 구현완료 | 없음 |
+| BE | `GET /api/admin/stats/summary` · `study-board` · `crew-timezones` · `attendance-trend` · `studies-by-category` | 스펙작성중 · 컨트롤러 없음 | [dashboard 스펙](../../../specs/dashboard/spec.md) 확정 → 구현 |
+| BE | 예정 행사 | 없음 — 행사 API 가 없다 | 범위를 정한다 (행사 스토리 없음) |
+
 ### 데이터 관계
 
 ```mermaid
@@ -246,3 +259,5 @@ erDiagram
 
 - 위젯별로 따로 부른다. 하나가 실패해도 전체가 에러 화면으로 바뀌지 않는다
 - 캡틴만 연다. **라우팅 가드만으로 처리하지 않고** 모든 `/api/admin/*` 에서 서버가 역할을 검증한다 — [POL-0001](../../_registry/policies/POL-0001-roles.md)
+
+계약은 [dashboard/spec.md](../../../specs/dashboard/spec.md).

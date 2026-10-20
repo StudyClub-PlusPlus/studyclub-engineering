@@ -1,7 +1,7 @@
 # 운영 대시보드 화면·API Spec
 
-> Playground: [운영 콘솔 대시보드](https://playground.studyclub-plusplus.com/proto/console)
-> PRD: [캡틴은 스터디클럽 웹사이트의 운영 현황을 볼 수 있다](https://app.notion.com/p/benkang/91583feabad382ac833b81e65dd894f8)
+> Playground: [운영 콘솔 대시보드](https://playground.studyclub.life/proto/console)
+> Story PRD: [캡틴은 운영 현황을 한 화면에서 볼 수 있다](../../01-planning/stories/console-dashboard/PRD.md) (ST-002) — 화면이 무엇을 하는지·완료 기준은 PRD 가 정본
 > 작성일: 2026-09-16 · 수정일: 2026-10-07
 > 대상: 캡틴용 운영 콘솔. 이 문서는 구현할 화면·집계·API 계약을 정의한다.
 > 상태: 구현·리뷰 전. 논의 중인 정책과 변경 조건은 해당 화면과 7절에 기록한다.
@@ -94,6 +94,9 @@
 `ACCOUNT.SYSTEM_ROLE = ADMIN`인 캡틴만 조회할 수 있다. 서버는 모든 대시보드 API에서 권한을 검사한다. 인증·권한 오류는 [운영 콘솔 로그인 명세](../back-office-login/spec.md)를 따른다.
 
 ## 3. 화면별 명세
+
+> 화면이 무엇을 보여 주고 언제 완료인지는 [PRD §2 화면명세](../../01-planning/stories/console-dashboard/PRD.md#2-화면명세)가 정본이다.
+> 이 절의 정본은 **집계 대상 · 산식 · 실패 범위**처럼 API 가 지켜야 할 규칙이다. 표시 문구가 PRD 와 어긋나면 PRD 를 따른다.
 
 ### 1 / 1-1. 제목과 갱신 시각
 
@@ -366,14 +369,14 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 현황 보드는 전용 API를 사용한다. 전체 보기·카테고리 목록은 `/api/admin/studies`를 사용한다. 두 API는 대상 선정·모집 판정·정렬 로직을 공유한다.
 
-| Method | Path | 화면·용도 |
-|---|---|---|
-| GET | `/api/admin/stats/summary` | 1-1, 2: KPI·주간 비교 |
-| GET | `/api/admin/stats/study-board` | 3-1, 3-2: 보드별 미리보기 |
-| GET | `/api/admin/studies` | 전체 보기·카테고리별 목록 |
-| GET | `/api/admin/stats/crew-timezones` | 4: 활성 크루 시간대 분포 |
-| GET | `/api/admin/stats/attendance-trend` | 5, 5-1: 12주 추세·평균 |
-| GET | `/api/admin/stats/studies-by-category` | 6: 진행중·누적 개수 |
+| Method | Path | 화면·용도 | 상태 |
+|---|---|---|---|
+| GET | `/api/admin/stats/summary` | 1-1, 2: KPI·주간 비교 | 스펙작성중 |
+| GET | `/api/admin/stats/study-board` | 3-1, 3-2: 보드별 미리보기 | 스펙작성중 |
+| GET | `/api/admin/studies` | 전체 보기·카테고리별 목록 | 구현완료 |
+| GET | `/api/admin/stats/crew-timezones` | 4: 활성 크루 시간대 분포 | 스펙작성중 |
+| GET | `/api/admin/stats/attendance-trend` | 5, 5-1: 12주 추세·평균 | 스펙작성중 |
+| GET | `/api/admin/stats/studies-by-category` | 6: 진행중·누적 개수 | 스펙작성중 |
 
 - 모든 API는 `Authorization: Bearer <JWT>` 인증과 `@RequireAdmin` 검사를 적용한다.
 - Path Parameter·Request Body는 없다. Query는 각 API 표를 따른다.

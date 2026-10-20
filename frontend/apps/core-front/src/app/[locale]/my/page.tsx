@@ -7,14 +7,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { type Study } from '@studyclub/mock';
+import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { CalendarClock, Heart } from 'lucide-react';
 
-import { categoryGradient, categoryMeta } from '@/components/StudyThumb';
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { useStudies } from '@/features/studies/queries';
+import { track } from '@/lib/analytics';
 import { getUser, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
+import { PAGE } from '@/lib/layout';
 import {
   cancelApplication,
   getApplications,
@@ -192,6 +194,15 @@ export default function MyPage() {
   }
 
   function handleCancel(studyId: string) {
+    const app = applications.find((a) => a.studyId === studyId);
+    track({
+      name: 'My Application Cancelled',
+      props: {
+        study_id: String(studyId),
+        applied_at: app?.appliedAt ?? '',
+        days_since_apply: app ? Math.floor((Date.now() - new Date(app.appliedAt).getTime()) / 86400000) : 0,
+      },
+    });
     cancelApplication(studyId);
     setApplications(getApplications());
   }
@@ -202,7 +213,7 @@ export default function MyPage() {
   }
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
+    <div className={`${PAGE} pb-16 pt-10`}>
       <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
 
       <ProfileCard user={user} locale={locale} onUserChange={setUser} />

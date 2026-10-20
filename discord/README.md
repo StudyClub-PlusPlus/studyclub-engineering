@@ -1,4 +1,4 @@
-# StudyClub++ Discord
+# StudyClub Discord
 
 Baseline Discord bot + FastAPI service in Python. The Discord client and the HTTP
 API run concurrently on one asyncio event loop, so neither blocks the other.
@@ -14,6 +14,7 @@ app/
     routes/health.py   # GET /api/v1/health (liveness + bot state)
     routes/studies.py  # POST /api/v1/studies (create-study)
     routes/channels.py # POST /api/v1/channels/{id|alert|announcement}/msg (send-message and friends)
+    routes/roles.py    # POST/DELETE /api/v1/roles/{id|navigator}/users (give/take a role)
     headers.py         # common request headers (X-API-Key, X-Discord-User-ID, Idempotency-Key)
     guild.py           # resolves the caller in the guild and checks their role
   study_reservations.py  # SQLite study-name reservations for create-study
@@ -39,6 +40,12 @@ tests/                 # pytest unit tests
   Copy `.env.example` to `.env` there and set `DISCORD_TOKEN`. With no token
   the API still starts and `/api/v1/health` reports `"bot": "disabled"`; only a
   token that is set but invalid is fatal.
+- **Privileged intent** — the bot asks for the `members` intent, which keeps
+  the member cache complete for the role endpoints. Discord treats it as
+  privileged: switch on **Server Members Intent** under the application's
+  *Bot* page in the Developer Portal **before deploying**. Without it Discord
+  refuses the login, and since the bot and the API share one TaskGroup, the
+  whole service goes down with it.
 - **Settings** — `DISCORD_BOT_CHANNEL_ID` is the numeric Discord channel ID the
   bot takes commands from; see [Bot commands](#bot-commands). Leave it empty and
   every command is refused everywhere — a missing setting never means "any
@@ -128,8 +135,8 @@ message contains ever notifies anyone.
 The backend also raises alerts on its own behalf rather than a member's. It says
 so by sending `DISCORD_BOT_ID` as `X-Discord-User-ID`, and such a request skips
 the member and role lookup entirely -- `X-API-Key` has already established who
-the caller is. The same goes for listing a study's channels. No other endpoint
-accepts it, and leaving `DISCORD_BOT_ID` unset means no request is ever a system
+the caller is. The same goes for listing a study's channels and for giving or
+taking a study role. No other endpoint accepts it, and leaving `DISCORD_BOT_ID` unset means no request is ever a system
 call.
 
 Post a guild-wide announcement (contract:
@@ -180,6 +187,40 @@ render as text and ring nobody. A user who has left the guild does not hold the
 message back -- it goes up mentioning everyone still there, and the bot leaves a
 note in the alert channel naming who was left out. Here `Send Messages` is per
 channel, so a `502` means that one channel's permissions, not every request.
+
+Give the navigator role to users, or take it back (contracts:
+`docs/discord-development-guide/api/assign-navigator-role.md` and
+`remove-navigator-role.md`). Needs `DISCORD_NAVIGATOR_ROLE_ID`, and a caller
+with the captain role. `POST` gives, `DELETE` takes, with the same body:
+
+```bash
+curl -X POST http://localhost:4800/api/v1/roles/navigator/users \
+  -H 'Content-Type: application/json' \
+  -H "X-API-Key: $DISCORD_API_KEY" \
+  -H 'X-Discord-User-ID: 327394882193883136' \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"discordStudyId": "1327394882193883136",
+       "discordUserIds": ["427394882193883136", "527394882193883136"]}'
+```
+
+Answers `200` with `{"succeededCount": n, "failed": [...]}` -- each of the (at
+most 100) users is either counted or listed, and one failing never stops the
+rest. Giving lists users outside the guild as `NOT_IN_GUILD`; taking counts them
+as done, since leaving the guild drops every role. The role is guild-wide, so
+taking it ends the user's navigator rights in every study at once: the backend
+calls `DELETE` only when the user is a navigator in none of them. The bot needs
+`Manage Roles` and a role **above navigator** -- otherwise every user fails as
+`DISCORD_REJECTED` on every request, and the log says to check that.
+
+Give or take a study's own role -- the `discordRoleId` create-study returned --
+the same way (contracts: `docs/discord-development-guide/api/assign-role.md` and
+`remove-role.md`), at `/api/v1/roles/{discordRoleId}/users` with the same body
+and answer. A captain or the system (`DISCORD_BOT_ID`) may call. The captain,
+navigator, and `@everyone` roles are refused with `400`: captain is handed out
+by hand and navigator has the endpoints above. Refusing them takes both role
+IDs, so `DISCORD_CAPTAIN_ROLE_ID` and `DISCORD_NAVIGATOR_ROLE_ID` must be set
+even for a system call (`409` otherwise). The fixed `navigator` path is
+registered before this one, or it would be taken for a role ID.
 
 ## Bot commands
 

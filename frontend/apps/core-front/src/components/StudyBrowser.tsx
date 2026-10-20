@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { CATEGORY_DISPLAY } from '@studyclub/mock';
 import { Select } from '@studyclub/ui';
 import { Search, X } from 'lucide-react';
 
-import { StudyCard } from './StudyCard';
+import { StudyListCard } from './StudyListCard';
 import { useStudies } from '@/features/studies/queries';
+import { track, type AnalyticsEvent } from '@/lib/analytics';
 import type { StudyPhaseFilter, StudySearch, StudyTimezoneFilter } from '@/lib/api';
 import type { Locale, Operator, Study } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
@@ -134,8 +135,31 @@ export function StudyBrowser({
   const loading = isFetching;
   const failed = isError;
 
+  // 결과 수는 새 조건의 응답이 와야 안다 — 클릭 순간의 studies 는 이전 조건의 목록이다.
+  // 조건이 바뀌고 로딩이 끝나면 그때 보낸다. 실패한 조회는 보내지 않는다(결과 수가 없다).
+  const searchKey = JSON.stringify(search);
+  const pendingTrack = useRef<{ fromKey: string; build: (resultCount: number) => AnalyticsEvent } | null>(null);
+  const trackAfterLoad = (build: (resultCount: number) => AnalyticsEvent) => {
+    pendingTrack.current = { fromKey: searchKey, build };
+  };
+  useEffect(() => {
+    const pending = pendingTrack.current;
+    if (!pending || loading || searchKey === pending.fromKey) return;
+    pendingTrack.current = null;
+    if (!failed) track(pending.build(studies.length));
+  }, [searchKey, loading, failed, studies.length]);
+
   const hasQuery = query.trim().length > 0;
-  const commitSearch = () => setFilters({ q: input });
+  const commitSearch = () => {
+    if (input.trim() !== query.trim()) {
+      const queryLength = input.trim().length;
+      trackAfterLoad((count) => ({
+        name: 'Study Searched',
+        props: { query_length: queryLength, result_count: count, has_results: count > 0 },
+      }));
+    }
+    setFilters({ q: input });
+  };
   const clearSearch = () => {
     setInput('');
     setFilters(URL_DEFAULTS);
@@ -144,7 +168,7 @@ export function StudyBrowser({
   return (
     <div>
       {/*
-        층마다 다른 모양을 쓴다 — 상단 사이트 메뉴가 이미 밑줄 탭이라, 여기서도 밑줄을 쓰면
+        층마다 다른 모양을 쓴다. 상단 사이트 메뉴가 이미 밑줄 탭이라, 여기서도 밑줄을 쓰면
         같은 위계로 읽힌다. 상태는 **세그먼트**, 카테고리는 **테두리 칩**.
       */}
       <div className='mb-6 flex flex-col gap-4'>
@@ -162,7 +186,19 @@ export function StudyBrowser({
                   type='button'
                   role='tab'
                   aria-selected={active}
-                  onClick={() => setFilters({ status: option.value })}
+                  onClick={() => {
+                    if (!active) {
+                      trackAfterLoad((count) => ({
+                        name: 'Study Filter Tab Changed',
+                        props: {
+                          tab: option.value as 'all' | 'recruiting' | 'ongoing' | 'closed',
+                          result_count: count,
+                          category: filters.category,
+                        },
+                      }));
+                    }
+                    setFilters({ status: option.value });
+                  }}
                   className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
                 >
                   {option.label}
@@ -213,7 +249,15 @@ export function StudyBrowser({
             <FilterOption
               key={option.value}
               active={category === option.value}
-              onClick={() => setFilters({ category: option.value })}
+              onClick={() => {
+                if (category !== option.value) {
+                  trackAfterLoad((count) => ({
+                    name: 'Study Category Filtered',
+                    props: { category: option.value, tab: filters.status, result_count: count },
+                  }));
+                }
+                setFilters({ category: option.value });
+              }}
             >
               {option.label}
             </FilterOption>
@@ -237,17 +281,17 @@ export function StudyBrowser({
       ) : studies.length > 0 ? (
         <div
           aria-busy={loading}
-          className={`grid gap-4 transition-opacity sm:grid-cols-2 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}
+          className={`grid grid-cols-2 gap-3 transition-opacity sm:gap-4 lg:grid-cols-3 ${loading ? 'opacity-60' : ''}`}
         >
-          {studies.map((s) => (
-            <StudyCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
+          {studies.map((s, i) => (
+            <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} index={i} />
           ))}
         </div>
       ) : hasQuery ? (
         <div className='flex min-h-[240px] flex-col items-center justify-center gap-4 text-center'>
           <p className='text-base font-bold text-fg-secondary'>
             <span className='text-fg'>&quot;{query.trim()}&quot;</span>
-            {t({ ko: '에 해당하는 스터디를 찾을 수 없어요', en: ' — no studies found' }, locale)}
+            {t({ ko: '에 해당하는 스터디를 찾을 수 없어요', en: ': no studies found' }, locale)}
           </p>
           <button
             type='button'

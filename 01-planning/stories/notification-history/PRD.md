@@ -1,6 +1,6 @@
 # 캡틴은 알림 발송 이력을 조회할 수 있다.
 
-기준 프로토타입: 운영 콘솔 › 알림 › 발송 이력 — https://playground.studyclub-plusplus.com/proto/console/notifications
+기준 프로토타입: 운영 콘솔 › 알림 › 발송 이력 — https://playground.studyclub.life/proto/console/notifications
 
 ## 1. 기본설명
 
@@ -154,6 +154,18 @@ flowchart LR
 ---
 
 ## 3. 시스템 요건
+
+### 개발 범위
+
+> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
+> BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+
+| 구분 | 대상 | 지금 | 할 일 |
+|---|---|---|---|
+| FE | back-office-front 「알림」 › 발송 이력 탭 | 없음 — 화면이 없다 | 프로토대로 만들되, 지금은 알림 템플릿과 묶지 않고 사이드바에 「알림 발송 이력」(`/notifications`)으로 따로 둔다 — 두 탭으로 묶는 것은 [알림 템플릿](../notification-template/PRD.md#개발-범위) 작업 때 (→ [share 10-11](../../../docs/share/2026-10-11-notification-resend.md)) |
+| BE | `GET /api/admin/notifications` | 변경예정 — 조회는 구현완료, 행마다 `canResend`·`?ids=` 추가 | [스펙](../../../specs/notification/spec.md#get-apiadminnotifications) 합의 후 구현. 수신 주소는 서버가 가린 값 — 전체 주소 여부는 [share](../../../docs/share/2026-10-11-notification-resend.md) 에서 확인 중 |
+| BE | 재발송 `POST /api/admin/notifications/resend` | 스펙작성중 | [스펙](../../../specs/notification/spec.md#post-apiadminnotificationsresend) 합의 후 구현 (완료 기준 6 · 7). 그 줄을 `PENDING` 으로 되돌린다 — 아래 「재발송은 실패 건을 고치지 않는다」 문장은 이에 맞게 고쳐야 한다 |
 
 ### API
 

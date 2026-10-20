@@ -7,19 +7,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApplicationFormTab } from '@console/components/ApplicationFormTab';
 import { AttendanceTab } from '@console/components/AttendanceTab';
 import { ClassPicker } from '@console/components/ClassPicker';
+import { ClassScheduleDialog } from '@console/components/ClassScheduleDialog';
 import { CrewTab } from '@console/components/CrewTab';
 import { ResultsTab } from '@console/components/ResultsTab';
 import { StudyCreateDialog } from '@console/components/StudyCreateDialog';
 import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS } from '@console/lib/class-view';
-import { classTime, type StudyClass } from '@console/lib/classes';
+import { classLabel, classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
-import { applyRule } from '@console/lib/schedule';
+import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
-import { studyAuthor } from '@console/lib/users';
 import { ScheduleManager } from '@core/components/ScheduleManager';
+import { SegmentTabs } from '@core/components/SegmentTabs';
 import { StudyInfoCard } from '@core/components/StudyInfoCard';
 import { discordUrl, driveUrl } from '@core/lib/joined';
+import { DISPLAY_ZONES, wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
 import {
   attendanceRate,
   getStudyCrew,
@@ -43,6 +45,8 @@ import { useAnnotate } from '@/proto/annotate';
  * **정보**(무엇을 알리는가) · **신청 폼**(어떻게 물어보는가) · **신청 결과**(뭐라고 답했는가) ·
  * **신청자**(누가 들어오고 어느 반인가) · **일정**(반마다 언제 모이는가) · **출석**(누가 나오는가).
  *
+ * 반은 신청자 탭에서 제목으로 만들고, 그 반이 언제 모이는지는 일정 탭에서 정한다 — 정하면 회차가 깔린다.
+ *
  * 상태는 이 컴포넌트가 들고 있다 — 반 배정이 출석부 명단을 바꾸므로 탭마다 따로 두면 어긋난다.
  * 일정·출석은 반을 하나 골라 보고, 두 탭이 고른 반을 함께 쓴다 — 일정에서 고친 회차가 곧 출석부의 열이다.
  * 일정 표는 사용자 사이트 스터디 일정과 같은 것을 쓴다. 처음부터 있던 반은 사용자 사이트의 그 분반과 같은 회차다.
@@ -61,14 +65,30 @@ const TABS = [
 type TabKey = (typeof TABS)[number]['key'];
 
 /** 저장하지 않은 고침을 들고 있을 수 있는 탭. */
-type DirtyTab = 'schedule' | 'attendance';
+type DirtyTab = 'crew' | 'schedule' | 'attendance';
 
 type LeaveIntent = { kind: 'tab'; tab: TabKey } | { kind: 'href'; href: string } | { kind: 'class'; id: string };
 
 const LEAVE_COPY: Record<DirtyTab, string> = {
+  crew: '저장을 누르지 않으면 고친 반 · 역할이 사라집니다. 나가기 전에 저장해 주세요.',
   schedule: '저장을 누르지 않으면 고친 일정·규칙이 사라집니다. 나가기 전에 저장해 주세요.',
   attendance: '저장을 누르지 않으면 고친 출석이 사라집니다. 나가기 전에 저장해 주세요.',
 };
+
+type AttendanceBook = Record<string, Record<string, AttendanceStatus>>;
+
+const NO_BOOK: AttendanceBook = {};
+
+/** 한 권의 출석(크루 → 회차 → 상태)을 반별로 나눈다. 크루는 지금 속한 반으로 간다. */
+function splitBook(book: AttendanceBook, assign: Record<string, string>): Record<string, AttendanceBook> {
+  const out: Record<string, AttendanceBook> = {};
+  for (const [crewId, row] of Object.entries(book)) {
+    const cls = assign[crewId];
+    if (!cls) continue;
+    (out[cls] ??= {})[crewId] = row;
+  }
+  return out;
+}
 
 export function StudyConsole({ study }: { study: Study }) {
   const router = useRouter();
@@ -77,22 +97,31 @@ export function StudyConsole({ study }: { study: Study }) {
   // 프로토는 이미 회차가 있는 스터디를 여므로, 그 회차가 반 하나를 기본으로 둔다. 분반 mock 이 있으면 그 반들도.
   const seed = useMemo(() => seedClasses(study, initial, FIRST_CLASS), [study, initial]);
   const [crew] = useState<Crew[]>(initial.crew);
-  const [attendance, setAttendance] = useState(seed.attendance);
+  // 출석은 반마다 따로 든다 — 출석 탭이 반별 출석부를 한꺼번에 띄우고 반마다 저장한다.
+  // 한 권으로 두면 한 반을 저장할 때 다른 반 출석부의 저장 전 고침까지 새로 읽혀 사라진다.
+  const [books, setBooks] = useState<Record<string, AttendanceBook>>(() => splitBook(seed.attendance, seed.assign));
   // 회차는 진행 일정 규칙이 만든다. 규칙이 바뀌면 오늘 이후 회차만 다시 깔린다 — 찍은 출석은 남는다.
   const [classes, setClasses] = useState<StudyClass[]>(seed.classes);
   const [classId, setClassId] = useState(FIRST_CLASS);
-  // 반을 만들 때 진행 일정이 까는 회차. 일정 탭에서 더하고 고치고 지운 것은 이 위에 얹힌다.
+  // 반 일정을 정할 때 깔리는 회차. 일정 탭에서 더하고 고치고 지운 것은 이 위에 얹힌다.
   const [meetings, setMeetings] = useState<Record<string, typeof initial.meetings>>(seed.meetings);
   // 크루가 어느 반에 속하는가. 반 이동은 이 값을 바꾼다.
   const [assign, setAssign] = useState<Record<string, string>>(seed.assign);
   // 이 스터디를 맡은 크루. 역할은 스터디마다 따로 서므로 전역 역할 값과 섞지 않는다.
   // TODO(api): STUDY_PARTICIPANT 에 담당 표시가 필요하다. 지금은 화면 상태로만 둔다.
   const [navigators, setNavigators] = useState<string[]>([]);
-  // 담당 캡틴은 반 편성 전에는 반이 없다 — 반을 고르면 그때 명부에 들어간다
-  const [captainClass, setCaptainClass] = useState<string | undefined>();
+  // 참여 중단한 크루 — 출석부에서 고른다. 하차 · 제명을 가르지 않고, 되돌리지 않는다 (사용자 사이트와 같다).
+  // TODO(api): STUDY_PARTICIPANT.STATUS = WITHDRAWN · LEFT_AT
+  const [left, setLeft] = useState<Record<string, { at: string }>>({});
+  // 출석부 회차 머리의 시간대 — 사용자 사이트 출석부 · 일정 표와 같은 KST/PDT 전환
+  const [zone, setZone] = useState<string>(DISPLAY_ZONES[0]!.iana);
+  // 일정 탭의 「스터디 시간 정하기 · 수정」 창
+  const [ruleOpen, setRuleOpen] = useState(false);
 
   const [tab, setTab] = useState<TabKey>('info');
-  const [attendanceDirty, setAttendanceDirty] = useState(false);
+  const [crewDirty, setCrewDirty] = useState(false);
+  // 반별 출석부 중 하나라도 저장 전 고침이 있으면 출석 탭이 「고친 것 있음」
+  const [dirtyBooks, setDirtyBooks] = useState<Record<string, boolean>>({});
   const [tableDirty, setTableDirty] = useState(false);
   const [rulesDirty, setRulesDirty] = useState(false);
   // 일정 탭은 고칠 곳이 둘이다 — 일정 표와 반 규칙. 어느 쪽이든 저장 전이면 나가기 전에 묻는다.
@@ -103,7 +132,13 @@ export function StudyConsole({ study }: { study: Study }) {
   const [addOnOpen, setAddOnOpen] = useState(false);
   // 저장 전 고침은 보고 있는 탭에만 있다 — 탭을 옮기거나 반을 바꾸면 사라진다.
   const dirtyTab: DirtyTab | null =
-    tab === 'schedule' && scheduleDirty ? 'schedule' : tab === 'attendance' && attendanceDirty ? 'attendance' : null;
+    tab === 'crew' && crewDirty
+      ? 'crew'
+      : tab === 'schedule' && scheduleDirty
+        ? 'schedule'
+        : tab === 'attendance' && Object.values(dirtyBooks).some(Boolean)
+          ? 'attendance'
+          : null;
 
   // 스토리 칩을 고르면 그 Story 의 요소가 **보이는 탭**으로 옮겨 준다.
   // 「참석자 목록」을 골랐는데 정보 탭이 떠 있으면 명단 번호가 화면에 없어 대조할 수가 없다.
@@ -140,13 +175,16 @@ export function StudyConsole({ study }: { study: Study }) {
   // 아직 켜지 않은 스터디는 사이트에 없다 — 헤더에서 그 사실을 알린다.
   const draft = publishState(study) === 'draft';
 
-  /** 반을 만들거나 고친다. 일정이 바뀌면 **오늘 이후 회차만** 다시 깔린다 — 찍은 출석은 남는다. */
+  /** 반을 만들거나 이름을 바꾼다. 회차는 건드리지 않는다 — 회차는 일정 탭에서 일정을 정할 때 깔린다. */
   function saveClass(cls: StudyClass) {
-    setClasses((list) =>
-      list.some((c) => c.id === cls.id) ? list.map((c) => (c.id === cls.id ? cls : c)) : [...list, cls],
-    );
-    setMeetings((prev) => ({ ...prev, [cls.id]: applyRule(cls.id, prev[cls.id] ?? [], cls.rule, todayISO()) }));
-    setClassId(cls.id);
+    const isNew = !classes.some((c) => c.id === cls.id);
+    setClasses((list) => (isNew ? [...list, cls] : list.map((c) => (c.id === cls.id ? cls : c))));
+    if (isNew) setClassId(cls.id);
+  }
+
+  /** 반의 스터디 시간(요일 · 시각 · 시간대)을 정하거나 고친다. 회차는 건드리지 않는다 — 회차는 일정 표에서만 만든다. */
+  function saveRule(id: string, rule: ScheduleRule) {
+    setClasses((list) => list.map((c) => (c.id === id ? { ...c, rule } : c)));
   }
 
   function removeClass(id: string) {
@@ -168,6 +206,7 @@ export function StudyConsole({ study }: { study: Study }) {
     base: meetings[classId] ?? [],
     crew: active.filter((c) => assign[c.id] === classId),
     navigators,
+    left,
   });
 
   function requestClass(id: string) {
@@ -179,11 +218,19 @@ export function StudyConsole({ study }: { study: Study }) {
     setClassId(id);
   }
 
+  /** 출석 저장 때 함께 불린다 — 확인 창은 출석부가 띄운다. 중단 시각은 지금, 그 반 시간대 벽시계로. */
+  async function withdraw(tz: string, ids: string[]) {
+    // TODO(api): 출석 저장과 한 요청으로 — POST /api/admin/studies/{id}/attendances 의 withdrawals[]
+    await new Promise((r) => setTimeout(r, 200));
+    const now = wallParts(new Date(), tz);
+    setLeft((prev) => ({ ...prev, ...Object.fromEntries(ids.map((id) => [id, { at: `${now.date}T${now.time}` }])) }));
+  }
+
   /** 칸을 눌러 고친 값을 한 번에 반영한다. 한 칸마다 따로 보내지 않는다. */
-  async function saveAttendance(next: Record<string, Record<string, AttendanceStatus>>) {
+  async function saveAttendance(groupId: string, next: AttendanceBook) {
     // TODO(api): POST /api/admin/studies/{id}/attendances — body: { studyGroupId, updates[] }
     await new Promise((r) => setTimeout(r, 400));
-    setAttendance(next);
+    setBooks((prev) => ({ ...prev, [groupId]: next }));
   }
 
   function requestTab(next: TabKey) {
@@ -199,7 +246,8 @@ export function StudyConsole({ study }: { study: Study }) {
     if (!leave) return;
     const intent = leave;
     setLeave(null);
-    setAttendanceDirty(false);
+    setDirtyBooks({});
+    setCrewDirty(false);
     setTableDirty(false);
     setRulesDirty(false);
     if (intent.kind === 'tab') {
@@ -311,13 +359,10 @@ export function StudyConsole({ study }: { study: Study }) {
         {tab === 'crew' && (
           <CrewTab
             crew={crew}
-            captain={studyAuthor(study)}
-            captainClass={captainClass}
-            onAssignCaptain={setCaptainClass}
-            capacity={initial.capacity}
             classes={classes}
             assign={assign}
-            onAddClass={saveClass}
+            onSaveClass={saveClass}
+            onDirtyChange={setCrewDirty}
             onRemoveClass={removeClass}
             onAssign={(crewId, id) => setAssign((a) => ({ ...a, [crewId]: id }))}
             navigators={navigators}
@@ -331,36 +376,66 @@ export function StudyConsole({ study }: { study: Study }) {
             <div>
               <ClassPicker classes={classes} classId={classId} onClass={requestClass} anno='schedule:0' />
               {/* 반을 바꾸면 카드와 표를 함께 새로 연다 — 고치던 규칙·줄은 그 반의 것이다. 키는 감싼 쪽 하나에만 둔다 */}
-              <div key={view.cls.id}>
-                {/* 반 정보 카드 — 사용자 사이트 정보 카드와 같은 카드. 규칙은 그 분반과 같은 값이다 */}
-                <StudyInfoCard
-                  anno='schedule:13'
-                  className='mb-5'
-                  time={classTime(view.cls.rule)}
-                  navigator={view.navigatorNames}
-                  // 캡틴은 참여 여부와 상관없이 늘 연다 — 운영자가 채널과 자료를 확인하는 자리다
-                  discordHref={discordUrl(study)}
-                  driveHref={driveUrl(study)}
-                  rulesKey={view.key}
-                  canEdit
-                  onDirtyChange={setRulesDirty}
-                />
-                <ScheduleManager
-                  study={study}
-                  group={view.group}
-                  canEdit
-                  source={view.source}
-                  onDirtyChange={setTableDirty}
-                  startAdding={addOnOpen}
-                  onStartedAdding={() => setAddOnOpen(false)}
-                />
-              </div>
+              {!hasSchedule(view.cls) && view.meetings.length === 0 ? (
+                // 신청자 탭에서 제목만으로 만든 반 — 언제 모일지 정해야 회차와 출석부가 생긴다
+                <div data-anno='schedule:14' className='card px-6 py-10 text-center'>
+                  <p className='text-sm font-semibold text-fg'>아직 이 반의 스터디 시간이 없습니다.</p>
+                  <p className='mt-1.5 text-sm text-fg-muted'>
+                    요일 · 시각을 정한 뒤 일정 표의 「회차 추가」로 회차를 만듭니다. 그 요일 · 시각이 매주 반복으로
+                    채워집니다.
+                  </p>
+                  <Button
+                    size='sm'
+                    className='mt-4'
+                    leadingIcon={<CalendarPlus size={15} />}
+                    onClick={() => setRuleOpen(true)}
+                  >
+                    스터디 시간 정하기
+                  </Button>
+                </div>
+              ) : (
+                <div key={view.cls.id}>
+                  {/* 반 정보 카드 — 사용자 사이트 정보 카드와 같은 카드. 규칙은 그 분반과 같은 값이다 */}
+                  <StudyInfoCard
+                    anno='schedule:13'
+                    className='mb-5'
+                    time={classTime(view.cls.rule)}
+                    // 스터디 시간은 회차를 까는 값이라 일정과 같은 자리에서 고친다
+                    onEditTime={() => setRuleOpen(true)}
+                    navigator={view.navigatorNames}
+                    // 캡틴은 참여 여부와 상관없이 늘 연다 — 운영자가 채널과 자료를 확인하는 자리다
+                    discordHref={discordUrl(study)}
+                    driveHref={driveUrl(study)}
+                    rulesKey={view.key}
+                    canEdit
+                    onDirtyChange={setRulesDirty}
+                  />
+                  <ScheduleManager
+                    study={study}
+                    group={view.group}
+                    canEdit
+                    source={view.source}
+                    onDirtyChange={setTableDirty}
+                    startAdding={addOnOpen}
+                    onStartedAdding={() => setAddOnOpen(false)}
+                  />
+                </div>
+              )}
+              <ClassScheduleDialog
+                open={ruleOpen}
+                cls={view.cls}
+                onClose={() => setRuleOpen(false)}
+                onSave={(rule) => {
+                  saveRule(view.cls.id, rule);
+                  setRuleOpen(false);
+                }}
+              />
             </div>
           ) : (
             <div data-anno='schedule:11' className='card px-6 py-10 text-center'>
               <p className='text-sm font-semibold text-fg'>아직 반이 없습니다.</p>
               <p className='mt-1.5 text-sm text-fg-muted'>
-                신청자 탭에서 가능한 시간을 보고 반을 만들면 그 반의 일정을 관리할 수 있습니다.
+                신청자 탭에서 반을 만들면 여기서 그 반이 언제 모일지 정할 수 있습니다.
               </p>
               <Button
                 size='sm'
@@ -372,28 +447,94 @@ export function StudyConsole({ study }: { study: Study }) {
               </Button>
             </div>
           ))}
-        {tab === 'attendance' && (
-          <AttendanceTab
-            study={study}
-            crew={view?.crew ?? []}
-            classes={classes}
-            classId={classId}
-            onClass={requestClass}
-            meetings={view?.meetings ?? []}
-            attendance={attendance}
-            onSave={saveAttendance}
-            onDirtyChange={setAttendanceDirty}
-            onGoCrew={() => requestTab('crew')}
-            onAddMeeting={() => {
-              // 고친 출석이 남아 있으면 먼저 묻는다 — 창은 일정 탭에 바로 들어갈 때만 연다.
-              if (!dirtyTab) setAddOnOpen(true);
-              requestTab('schedule');
-            }}
-            presentersOf={view?.book.presentersOf}
-            notCounted={view?.book.notCounted}
-            headOf={view?.book.headOf}
-          />
-        )}
+        {tab === 'attendance' &&
+          (classes.length === 0 ? (
+            // 반이 없으면 출석부도 없다 — 안내와 갈 곳은 출석부 컴포넌트가 그린다
+            <AttendanceTab
+              study={study}
+              crew={[]}
+              classes={[]}
+              classId=''
+              onClass={() => {}}
+              meetings={[]}
+              attendance={NO_BOOK}
+              onSave={async () => {}}
+              onGoCrew={() => requestTab('crew')}
+            />
+          ) : (
+            // 반 고르기 없이 반별 출석부를 이어 보여 준다. 반마다 회차가 달라 표 하나로 합치지 않는다.
+            // 반마다 따로 고치고 저장한다
+            <div data-anno='attendance:0' className='flex flex-col gap-8'>
+              {classes.map((cls) => {
+                const v = classView({
+                  study,
+                  cls,
+                  base: meetings[cls.id] ?? [],
+                  crew: active.filter((c) => assign[c.id] === cls.id),
+                  navigators,
+                  left,
+                });
+                if (!v) return null;
+                // 중단한 사람은 맨 아래로. 누구나 골라 출석을 적용할 수 있고, 네비게이터는 참여 중단만 못 한다 —
+                // 네비게이터를 내보내려면 신청자 탭에서 역할을 크루로 바꾼 뒤 중단한다.
+                const rows = v.crew
+                  .map((c) => ({
+                    ...c,
+                    left: c.left && { label: '참여 중단', at: c.left.at },
+                    manageable: true,
+                    withdrawable: c.role !== 'navigator',
+                  }))
+                  .sort((a, b) => Number(Boolean(a.left)) - Number(Boolean(b.left)));
+                const instantOf = (m: ProtoMeeting) =>
+                  m.scheduledAt
+                    ? new Date(m.scheduledAt)
+                    : zonedInstant(m.date, m.time ?? v.group.startAt, v.group.timeZone);
+                return (
+                  <section key={cls.id}>
+                    <AttendanceTab
+                      study={study}
+                      crew={rows}
+                      classes={[cls]}
+                      classId={cls.id}
+                      onClass={() => {}}
+                      meetings={v.meetings}
+                      attendance={books[cls.id] ?? NO_BOOK}
+                      onSave={(next) => saveAttendance(cls.id, next)}
+                      onDirtyChange={(d) => setDirtyBooks((m) => (m[cls.id] === d ? m : { ...m, [cls.id]: d }))}
+                      onGoCrew={() => requestTab('crew')}
+                      onAddMeeting={() => {
+                        // 고친 출석이 남아 있으면 먼저 묻는다 — 창은 일정 탭에 바로 들어갈 때만 연다.
+                        // 스터디 시간이 없는 반은 회차 추가가 아니라 스터디 시간 정하기 창을 연다.
+                        if (!dirtyTab) {
+                          setClassId(cls.id);
+                          if (hasSchedule(cls)) setAddOnOpen(true);
+                          else setRuleOpen(true);
+                        }
+                        requestTab('schedule');
+                      }}
+                      presentersOf={v.book.presentersOf}
+                      notCounted={v.book.notCounted}
+                      headOf={v.book.headOf}
+                      onWithdraw={(ids) => withdraw(cls.rule.tz, ids)}
+                      startAt={v.group.startAt}
+                      // 제목 줄 — 반 제목 · 「전체 N · 선택 M」 · 오른쪽 KST/PDT (사용자 사이트 출석부와 같은 줄)
+                      title={classes.length > 1 ? classLabel(cls) : '출석'}
+                      toolbar={
+                        <SegmentTabs
+                          anno='attendance:11'
+                          label='회차 표시 시간대'
+                          value={zone}
+                          options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
+                          onChange={setZone}
+                        />
+                      }
+                      whenOf={(m) => wallParts(instantOf(m as ProtoMeeting), zone)}
+                    />
+                  </section>
+                );
+              })}
+            </div>
+          ))}
         {tab === 'form' && <ApplicationFormTab study={study} />}
         {tab === 'results' && <ResultsTab study={study} crew={crew} />}
         {tab === 'info' && <StudyInfoTab study={study} />}

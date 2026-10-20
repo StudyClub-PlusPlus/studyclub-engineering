@@ -1,4 +1,4 @@
-# StudyClub++ — 기획 메타
+# StudyClub — 기획 메타
 
 한 줄 정의: **개발자가 온라인으로 모여 함께 공부하는 스터디 클럽.** 크루가 스터디를 찾아 신청하고,
 캡틴이 스터디를 열고 굴린다. 모임은 디스코드에서 이뤄진다.
@@ -22,8 +22,21 @@
 | `_registry/policies.md` | **정책 라이브러리 목차.** 여러 Story 에 걸치는 규칙은 전부 여기 |
 | `_registry/policies/POL-####-*.md` | 정책 하나당 파일 하나 |
 | `_registry/stories.md` | Story 목록. 어떤 Story 에 기획서가 있고 없는지 |
-| `_registry/ia.md` | 화면 구조(IA-###). 화면마다 어느 Story 가 사는지, Story 없는 고아 화면 |
+| `_registry/informationarchitecture.md` | 화면 구조(IA-###). 화면마다 어느 Story 가 사는지, Story 없는 고아 화면 |
 | `stories/{story-name}/PRD.md` | Story 하나의 기획서 |
+
+## 개발할 때 읽는 순서
+
+`_registry/stories.md` 의 Story 한 줄이 입구다. 그 행의 PRD · 프로토 · Spec 링크를 따라간다.
+
+| 묻는 것 | 정본 |
+|---|---|
+| 무엇을 만드나, 언제 완료인가 | `stories/{story-name}/PRD.md` |
+| 여러 화면에 걸친 규칙 | `_registry/policies/POL-####` |
+| 어떻게 생겼나 | playground 프로토 |
+| API 경로 · 요청 · 응답 · 판정 필드 | `specs/{도메인}/spec.md` — PRD 의 API 표와 다르면 스펙을 따른다 |
+| DB 구조 | `docs/erd/` |
+| 문서에 아직 안 들어간 결정 | `docs/share/` 목록에서 **반영** 칸이 `됨`·`해당 없음` 이 아닌 건 |
 
 ## 쓰는 규칙
 

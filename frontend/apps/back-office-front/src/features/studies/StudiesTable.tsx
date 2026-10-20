@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   STUDY_CATEGORIES,
-  getStudyCrew,
   publishState,
   recruitState,
   toISODate,
@@ -196,9 +195,8 @@ function summarize(study: Study) {
     };
   }
 
-  const { crew, capacity } = getStudyCrew(study);
-  // 승인 대기는 없다(#171) — 신청한 사람이 곧 크루다
-  return { capacity, active: crew.length, applied: crew.length, pending: 0 };
+  // 인원을 모르면 0 — 예시 명단으로 메우지 않는다
+  return { capacity: study.recruitment?.capacity ?? 0, active: 0, applied: 0, pending: 0 };
 }
 
 function StatusTooltip({
@@ -246,13 +244,13 @@ function StatusTooltip({
           <span className='block'>{description}</span>
           {nextStep && <span className='mt-1 block text-neutral-300'>{nextStep}</span>}
           {label === '종료' && (
-            <span className='mt-1 block border-t border-white/15 pt-1 text-amber-300'>
+            <span className='mt-1 block border-t border-white/15 pt-1 text-warning-fg-inverse'>
               클럽: 채널을 다음 기수가 그대로 물려받아 지우지 않는다 — 지나간 기수는 여기 영구히 남고, 운영 종료로
               넘어갈 수 있는 건 이 프로그램의 최신 기수뿐이다.
             </span>
           )}
           {label === '운영 종료' && (
-            <span className='mt-1 block border-t border-white/15 pt-1 text-amber-300'>
+            <span className='mt-1 block border-t border-white/15 pt-1 text-warning-fg-inverse'>
               클럽: 이 프로그램의 최신 기수만 여기로 올 수 있다 — 지나간 기수는 채널을 물려주고 「종료」에 머무른다.
             </span>
           )}
