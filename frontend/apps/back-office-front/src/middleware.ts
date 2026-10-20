@@ -1,7 +1,8 @@
 // BO 전 페이지 로그인 게이트 — access 쿠키(bo_access_token) 없으면 /login 으로.
 import { NextRequest, NextResponse } from 'next/server';
 
-const ACCESS_COOKIE = 'bo_access_token';
+import { ACCESS_COOKIE } from '@/lib/cookie-names';
+import { legacyRedirectUrl } from '@/lib/legacy-domain';
 
 /**
  * 로컬 UI 작업용 게이트 우회.
@@ -18,6 +19,10 @@ const DEV_BYPASS = process.env.NODE_ENV === 'development' && process.env.BO_DEV_
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // 0) 옛 도메인으로 들어오면 같은 경로의 studyclub.life 로 영구 이동 (lib/legacy-domain.ts)
+  const legacy = legacyRedirectUrl(req.headers.get('x-forwarded-host') ?? req.headers.get('host'), pathname + req.nextUrl.search);
+  if (legacy) return NextResponse.redirect(legacy, 301);
 
   // 1) 로컬 개발 우회 모드
   if (DEV_BYPASS) {
@@ -59,6 +64,8 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
+  // 쿠키 이름이 런타임 env(AUTH_COOKIE_ENV)를 읽는다 — edge 는 빌드 때 값으로 굳으므로 node 에서 돈다
+  runtime: 'nodejs',
   // api, _next 정적 자원, 그리고 확장자가 있는 모든 정적 파일(mockServiceWorker.js, favicon.ico 등)만 게이트 제외
   matcher: ['/((?!api|_next/|.*\\..*).*)'],
 };

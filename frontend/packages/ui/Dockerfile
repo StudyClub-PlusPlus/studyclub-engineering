@@ -1,4 +1,4 @@
-# StudyClub++ design-system (Storybook) — nginx 정적 서빙
+# StudyClub design-system (Storybook) — nginx 정적 서빙
 # Build context = frontend/ (`docker build -f packages/ui/Dockerfile .`)
 
 # ---- builder ----

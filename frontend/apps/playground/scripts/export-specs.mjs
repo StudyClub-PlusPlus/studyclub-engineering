@@ -120,7 +120,10 @@ try {
     const start = mark('start', scope);
     const end = mark('end', scope);
     const body = `${start}\n\n${toMarkdown(spec)}\n\n${end}`;
-    const current = await readFile(prd, 'utf8');
+    // Windows 체크아웃(core.autocrlf)은 PRD 를 CRLF 로 받는다 — LF 로 맞춰 비교하고, 쓸 때는 원래 줄바꿈을 지킨다
+    const raw = await readFile(prd, 'utf8');
+    const eol = raw.includes('\r\n') ? '\r\n' : '\n';
+    const current = raw.replace(/\r\n/g, '\n');
     if (!current.includes(start)) {
       console.error(`✗ ${spec.prd} — PRD 에 ${start} 자리가 없다`);
       process.exitCode = 1;
@@ -130,7 +133,7 @@ try {
     if (next === current) continue;
       if (check) stale.push(`${spec.prd}/${scope}`);
       else {
-        await writeFile(prd, next);
+        await writeFile(prd, next.replace(/\n/g, eol));
         wrote += 1;
       }
     }

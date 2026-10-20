@@ -2,14 +2,19 @@ package com.studyclub.api.study;
 
 import com.studyclub.api.auth.security.RequireAdmin;
 import com.studyclub.api.discord.StudyDiscordLinkService;
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
 import com.studyclub.domain.study.StudyStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.Set;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -35,6 +40,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin/studies")
 public class AdminStudyController {
 
+    private static final Set<String> LIST_QUERY_PARAMETERS =
+            Set.of(
+                    "category",
+                    "studyKind",
+                    "status",
+                    "studyId",
+                    "visibility",
+                    "recruitStatus",
+                    "sort",
+                    "offset",
+                    "limit");
+
     private final BackofficeStudyListService backofficeStudyListService;
     private final StudyService studyService;
     private final StudyDiscordLinkService studyDiscordLinkService;
@@ -48,17 +65,44 @@ public class AdminStudyController {
         this.studyDiscordLinkService = studyDiscordLinkService;
     }
 
-    @Operation(summary = "백오피스 스터디 목록 조회", description = "ADMIN만 호출 가능. DRAFT 포함 전 상태를 반환한다.")
+    @Operation(
+            summary = "백오피스 스터디 목록 조회",
+            description =
+                    "ADMIN만 호출 가능. DRAFT 포함 전 상태. 모집 판정은 최신 회차 신청서 수 기준."
+                            + " visibility·recruitStatus·sort 는 대시보드 전체 보기용(specs/dashboard/spec.md 4.4).")
     @GetMapping
     public BackofficeStudyListResponse list(
             @RequestParam(required = false) StudyCategory category,
             @RequestParam(required = false) StudyKind studyKind,
             @RequestParam(required = false) StudyStatus status,
             @RequestParam(required = false) Long studyId,
+            @RequestParam(required = false) StudyVisibility visibility,
+            @RequestParam(required = false) RecruitStatus recruitStatus,
+            @RequestParam(required = false) BackofficeStudySort sort,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "20") int limit) {
+            @RequestParam(defaultValue = "20") int limit,
+            HttpServletRequest request) {
+        rejectEmptyListQuery(request);
         return backofficeStudyListService.getStudies(
-                new BackofficeStudyListFilter(category, studyKind, status, studyId), offset, limit);
+                new BackofficeStudyListFilter(
+                        category, studyKind, status, studyId, visibility, recruitStatus, sort),
+                offset,
+                limit);
+    }
+
+    /** 선택 Query는 생략할 수 있지만, 키를 보냈다면 빈 값은 유효한 필터가 아니다 (specs/dashboard/spec.md 4.4). */
+    private static void rejectEmptyListQuery(HttpServletRequest request) {
+        for (String name : LIST_QUERY_PARAMETERS) {
+            String[] values = request.getParameterValues(name);
+            if (values == null) {
+                continue;
+            }
+            for (String value : values) {
+                if (value == null || value.isBlank()) {
+                    throw new BusinessException(ErrorCode.INVALID_INPUT, name + " 값이 비어 있습니다.");
+                }
+            }
+        }
     }
 
     @Operation(summary = "백오피스 스터디 상세 조회", description = "ADMIN만 호출 가능. DRAFT 도 조회된다.")
@@ -89,8 +133,10 @@ public class AdminStudyController {
                             + " 보낸 필드만 반영한다.")
     @PatchMapping("/{studyId}")
     public ResponseEntity<Void> update(
-            @PathVariable Long studyId, @Valid @RequestBody StudyUpdateRequest request) {
-        studyService.updateFromBackOffice(studyId, request);
+            @PathVariable Long studyId,
+            @Valid @RequestBody StudyUpdateRequest request,
+            Authentication authentication) {
+        studyService.updateFromBackOffice((Long) authentication.getPrincipal(), studyId, request);
         return ResponseEntity.noContent().build();
     }
 

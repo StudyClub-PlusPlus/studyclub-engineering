@@ -1,15 +1,10 @@
-// StudyClub++ 콘텐츠 접근자.
-// 스터디 목록은 백엔드 API 에서 가져온다. API 실패 시 mock fallback.
-// 나머지(이벤트·운영자·멤버 등)는 아직 mock.
-import type { Study, StudyclubEvent, Operator, Member, Site, Announcement } from '@studyclub/mock';
-import {
-  studies as studiesData,
-  events as eventsData,
-  operators as operatorsData,
-  members as membersData,
-  site as siteData,
-  announcements as announcementsData,
-} from '@studyclub/mock';
+// StudyClub 콘텐츠 접근자.
+// 스터디는 백엔드 API 에서 가져온다. 실패하면 예시 데이터로 메우지 않고 빈 목록·null 을 준다 —
+// 화면은 빈 상태를 그린다(상세는 클라이언트가 404·500 에 반응한다).
+// 행사는 기능 개발 전이라 예시 데이터(@studyclub/mock events)를 그대로 보여 준다 — 실제 지난 행사들이다.
+// 운영진·공지는 아직 API 가 없어 빈 목록이다. 사이트 설정(디스코드 초대·커뮤니티 규모)은 상수로 둔다.
+import type { Study, StudyclubEvent, Operator, Site, Announcement } from '@studyclub/mock';
+import { events as eventsData, site as siteData } from '@studyclub/mock';
 
 import { fetchStudies, fetchStudy } from './api';
 
@@ -32,72 +27,40 @@ export type {
   Announcement,
 } from '@studyclub/mock';
 
-function sortByOrder<T extends { id: string; order?: number }>(items: T[]): T[] {
-  return [...items].sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.id.localeCompare(b.id));
-}
-
-/**
- * 공개 여부 — 공개일이 오늘 이후면 아직 노출하지 않는다. 공개일이 없으면 즉시 공개.
- *
- * ⚠️ 목록 페이지는 정적 생성되므로 이 판정은 **빌드 시점** 기준으로 굳는다.
- * 예약 공개가 자동으로 열리려면 재빌드 또는 동적 렌더가 필요하다.
- * TODO(api): 서버가 공개 여부를 계산해 내려주도록 전환.
- */
-function isPublished(s: { publish_at?: string }): boolean {
-  if (!s.publish_at) return true;
-  return s.publish_at <= new Date().toISOString().slice(0, 10);
-}
-
-/** 사용자 사이트용 스터디 목록 — API 우선, 실패 시 mock fallback. */
+/** 사용자 사이트용 스터디 목록. API 가 실패하면 빈 목록 — 예시 스터디로 메우지 않는다. */
 export async function getStudies(): Promise<Study[]> {
   try {
     return await fetchStudies();
   } catch (e) {
-    console.warn('[content] API fetch failed, falling back to mock:', e);
+    console.error('[content] GET /api/studies failed:', e);
+    return [];
   }
-  // fallback: mock 데이터
-  const withDate = studiesData.filter(isPublished).map((s) => ({
-    ...s,
-    date: s.date ?? (s.year ? `${s.year}-01-01` : undefined),
-  }));
-  return sortByOrder(withDate);
 }
-// TODO(api): GET /api/events — 행사 목록 연동
+
+// TODO(api): GET /api/events — 행사 API 가 생기면 연동. 그전까지는 mock 데이터.
 export async function getEvents(): Promise<StudyclubEvent[]> {
-  return sortByOrder(eventsData);
+  return [...eventsData].sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.id.localeCompare(b.id));
 }
 
-// TODO(api): GET /api/operators — 운영진 목록 연동
+// TODO(api): GET /api/operators — 운영진 API 가 생기면 연동. 빈 목록이면 소개 페이지가 섹션을 숨긴다.
 export async function getOperators(): Promise<Operator[]> {
-  return sortByOrder(operatorsData);
+  return [];
 }
 
-// TODO(api): GET /api/members — 멤버 목록 연동
-export async function getMembers(): Promise<Member[]> {
-  return sortByOrder(membersData);
-}
-
-// TODO(api): GET /api/studies/{studyId} — 스터디 단건 조회 연동
+/** 스터디 단건. API 가 실패하면 null — 메타데이터만 비고, 본문은 클라이언트가 404·500 을 그린다. */
 export async function getStudy(studyId: number): Promise<Study | null> {
   try {
     return await fetchStudy(studyId);
   } catch (e) {
-    console.warn('[content] getStudy API failed, falling back to mock:', e);
+    console.error(`[content] GET /api/studies/${studyId} failed:`, e);
+    return null;
   }
-  return (await getStudies()).find((s) => s.study_id === studyId) ?? null;
 }
 
-// TODO(api): GET /api/events/{id} — 행사 단건 조회 연동
 export async function getEvent(id: string): Promise<StudyclubEvent | null> {
   return (await getEvents()).find((e) => e.id === id) ?? null;
 }
 
-/** members 중 특정 study 에 참여하는 사람 */
-export async function getMembersByStudy(studyId: string): Promise<Member[]> {
-  return (await getMembers()).filter((mem) => (mem.studies ?? []).includes(studyId));
-}
-
-// TODO(api): GET /api/site — 사이트 메타데이터 연동
 export async function getSite(): Promise<Site> {
   return siteData;
 }
@@ -107,9 +70,10 @@ export async function getOperatorMap(): Promise<Record<string, Operator>> {
   return Object.fromEntries(ops.map((o) => [o.id, o]));
 }
 
-/** 공지사항 — TODO(api): GET /api/announcements — 고정(pinned) 먼저, 그다음 날짜 내림차순. */
+// TODO(api): GET /api/announcements — 공지 API 가 생기면 연동. 그전까지는 lib/notices.ts 의 실제 공지(고정 먼저, 날짜 내림차순).
 export async function getNotices(): Promise<Announcement[]> {
-  return [...announcementsData].sort(
-    (a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false) || b.date.localeCompare(a.date),
+  const { NOTICES } = await import('./notices');
+  return NOTICES.map((n) => ({ id: n.id, title: n.title, date: n.date, pinned: n.pinned, tag: n.tag, body: n.summary })).sort(
+    (a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.date.localeCompare(a.date),
   );
 }

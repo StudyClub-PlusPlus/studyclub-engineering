@@ -1,4 +1,4 @@
-# API Specs — StudyClub++
+# API Specs — StudyClub
 
 > 가이드: [spec-driven-development.md](../docs/backend-development-guide/spec-driven-development.md)
 >

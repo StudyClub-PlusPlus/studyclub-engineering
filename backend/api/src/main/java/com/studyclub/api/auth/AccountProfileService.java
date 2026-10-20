@@ -2,7 +2,9 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AccountDtos.MarketingConsentView;
 import com.studyclub.api.auth.dto.AccountDtos.UpdateProfileRequest;
+import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
+import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -10,6 +12,8 @@ import com.studyclub.domain.account.AccountConsent;
 import com.studyclub.domain.account.AccountConsentRepository;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.ConsentType;
+import com.studyclub.domain.storage.StorageObject;
+import com.studyclub.domain.storage.StoragePurpose;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -23,16 +27,31 @@ public class AccountProfileService {
 
     private final AccountRepository accountRepository;
     private final AccountConsentRepository accountConsentRepository;
+    private final UploadService uploadService;
 
     public AccountProfileService(
             AccountRepository accountRepository,
-            AccountConsentRepository accountConsentRepository) {
+            AccountConsentRepository accountConsentRepository,
+            UploadService uploadService) {
         this.accountRepository = accountRepository;
         this.accountConsentRepository = accountConsentRepository;
+        this.uploadService = uploadService;
+    }
+
+    @Transactional(readOnly = true)
+    public AccountSelfView get(Long accountId) {
+        Account account =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
+        return AccountSelfView.from(account);
     }
 
     @Transactional
-    public AccountView update(Long accountId, UpdateProfileRequest request) {
+    public AccountSelfView update(Long accountId, UpdateProfileRequest request) {
         Account account = requireAccountByIdForUpdate(accountId);
 
         String nickname = request.nickname().trim();
@@ -48,6 +67,35 @@ public class AccountProfileService {
             // 검사와 flush 사이에 다른 계정이 같은 닉네임을 먼저 가져간 경우의 마지막 방어선.
             throw new BusinessException(ErrorCode.CONFLICT, "이미 사용 중인 닉네임입니다.");
         }
+        return AccountSelfView.from(account);
+    }
+
+    /**
+     * 사진 연결. 트랜잭션 안: 계정 잠금 → 새 파일 조건부 UPDATE(0 행이면 400, 롤백) → 옛 주소가 우리 것이면 옛 행을 DELETING → 주소 갱신.
+     * 커밋 뒤: 옛 파일 삭제 → 행 삭제. 옛 주소가 구글 사진이거나 null 이면 우리 저장소에 없다 — DB 값만 바꾼다.
+     */
+    @Transactional
+    public AccountView changeProfileImage(Long accountId, Long fileId) {
+        Account account = requireAccountByIdForUpdate(accountId);
+        Instant now = Instant.now();
+        StorageObject attached =
+                uploadService.attach(fileId, accountId, StoragePurpose.PROFILE, now);
+        Optional<StorageObject> old =
+                uploadService.markDeletingByUrl(account.getProfileImgUrl(), accountId, now);
+        account.setProfileImgUrl(uploadService.publicUrl(attached));
+        uploadService.deleteAfterCommit(old.stream().toList());
+        return AccountView.from(account);
+    }
+
+    /** 사진 지우기. 구글 사진으로 되돌리지 않는다 — null 로. 사진이 원래 없어도 성공. */
+    @Transactional
+    public AccountView removeProfileImage(Long accountId) {
+        Account account = requireAccountByIdForUpdate(accountId);
+        Optional<StorageObject> old =
+                uploadService.markDeletingByUrl(
+                        account.getProfileImgUrl(), accountId, Instant.now());
+        account.setProfileImgUrl(null);
+        uploadService.deleteAfterCommit(old.stream().toList());
         return AccountView.from(account);
     }
 

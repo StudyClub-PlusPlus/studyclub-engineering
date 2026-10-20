@@ -237,7 +237,7 @@ function mapNicknameServerReason(reason: string, ko: boolean): string {
     return ko ? '닉네임을 입력해 주세요' : 'Enter a nickname.';
   }
   if (/2\s*~\s*20|2~20|길이|length|자여야|characters?/i.test(reason)) {
-    return ko ? '닉네임은 2~20자로 입력해 주세요' : 'Use 2–20 characters for your nickname.';
+    return ko ? '닉네임은 2~20자로 입력해 주세요' : 'Use 2 to 20 characters for your nickname.';
   }
   // 「밑줄만으로…」는 문자 규칙보다 먼저 — reason 에 '밑줄'이 들어 있어도 예약/불가 쪽으로 보낸다.
   if (

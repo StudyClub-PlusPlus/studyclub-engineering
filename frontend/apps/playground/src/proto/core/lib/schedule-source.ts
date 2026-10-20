@@ -77,3 +77,18 @@ export function classSource({
     remove: (id) => deleteMeetings(key, [id]),
   };
 }
+
+/**
+ * 참여 중단한 사람을 그 시점 뒤에 시작하는 회차의 발표자 칸에서 뺀다. 이미 시작한 회차의 발표 기록은 남긴다.
+ * TODO(api): 서버가 참여 중단(withdrawals[])과 같은 트랜잭션에서 비운다 — 프론트는 다시 읽기만 한다.
+ */
+export function dropPresenters(src: ScheduleSource, ids: string[], from: Date): void {
+  const gone = new Set(ids);
+  for (const m of src.meetings()) {
+    if (src.startOf(m).getTime() <= from.getTime()) continue;
+    const patch: MeetingPatch = {};
+    if (m.presenter1 && gone.has(m.presenter1)) patch.presenter1 = null;
+    if (m.presenter2 && gone.has(m.presenter2)) patch.presenter2 = null;
+    if (Object.keys(patch).length > 0) src.patch(m.id, patch);
+  }
+}

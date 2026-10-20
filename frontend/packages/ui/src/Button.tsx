@@ -57,6 +57,7 @@ export function Button({
         'relative inline-flex shrink-0 items-center justify-center rounded-control font-semibold',
         'transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out',
         'focus-visible:outline-none focus-visible:shadow-(--ring)',
+        'hover:cursor-pointer',
         // disabled 는 변형 색을 전부 덮는다 (§9-1)
         'disabled:pointer-events-none disabled:border-transparent disabled:bg-disabled-bg disabled:text-disabled-fg disabled:shadow-none',
         SIZE[size],

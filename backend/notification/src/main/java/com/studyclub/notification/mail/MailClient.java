@@ -8,6 +8,8 @@ package com.studyclub.notification.mail;
  * <p>구현체는 {@link SesMailClient} 하나뿐이다 — 발송 수단 자체를 갈아끼우는 게 아니라, "SES 호출"이라는 인프라 관심사를 도메인/스케줄러 로직에서
  * 분리하는 목적이라 여러 구현체를 상정한 전략 패턴은 아니다.
  *
+ * <p>{@code body} 가 태그로 시작하면 HTML 로 보고 텍스트 대체본을 붙여 보낸다({@link MailBody}).
+ *
  * @throws MailSendException 발송 실패
  */
 public interface MailClient {

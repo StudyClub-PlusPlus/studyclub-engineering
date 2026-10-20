@@ -119,10 +119,10 @@ export function MSWDevtool() {
             </button>
           </div>
 
-          {mockHandlerGroups.map((group) => {
+          {mockHandlerGroups.map((group, groupIndex) => {
             const isCollapsed = collapsed[group.baseUrl] ?? false;
             return (
-              <div key={group.baseUrl}>
+              <div key={`${group.baseUrl}-${groupIndex}`}>
                 {/* 그룹 헤더 — 클릭 시 아코디언 */}
                 <button
                   type="button"
