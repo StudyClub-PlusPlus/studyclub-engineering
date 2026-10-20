@@ -9,7 +9,7 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
-| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | 반. 반 이동 = 이 값 변경 |
+| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | **Y** | 반. 신청 직후에는 NULL(반 미배정) — 캡틴이 반을 만든 뒤 지정한다. 반 이동 = 이 값 변경 (2026-10-18, → [share 10-18](../share/2026-10-18-roster-on-apply.md)). 코드 컬럼명은 `STUDY_GROUP_ID` |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 비정규화 — "이 사람이 몇 기 멤버였는가" 조회용 (STUDY_CLASS_ID 로 도출 가능). 반 이동 시에도 같은 기수 안이면 불변 |
 | STATUS | VARCHAR(20) | N | 아래 |
 | PARTICIPANT_ROLE | VARCHAR(20) | N | 아래 |

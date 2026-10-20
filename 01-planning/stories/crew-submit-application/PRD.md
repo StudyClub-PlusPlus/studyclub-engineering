@@ -2,7 +2,7 @@
 
 기준 프로토타입: 스터디 신청 (playground 사용자 사이트 · 상세의 신청하기)
 
-관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)
+관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md) · [10-18 신청하면 명부에 바로 들어간다](../../../docs/share/2026-10-18-roster-on-apply.md)
 
 > 갱신: 2026-09-22 — 신청하기·찜은 목록에서 뺐다. 목록은 둘러보기 전용, 신청은 상세에서만 한다. [crew-browse-studies](../crew-browse-studies/PRD.md) 참고
 
@@ -279,7 +279,8 @@ erDiagram
 |---|---|---|---|
 | FE | core-front 신청 창 (`ApplyButton` · `ApplyDialog`) | 있음 — 폼 조회 · 내 신청 · 제출 API 연결 | 없음 |
 | FE | 디스코드 연동 (`ApplyDiscordGate`) | 있음 — 브라우저 저장소에만 남긴다 (`TODO(api)`) | 아래 API 가 생기면 연결 |
-| BE | `GET /api/studies/{studyId}/application-form` · `POST …/applications` | 구현완료 | 없음 |
+| BE | `GET /api/studies/{studyId}/application-form` | 구현완료 | 없음 |
+| BE | `POST /api/studies/{studyId}/applications` | 변경예정 — 신청만 저장하고 명부에 넣지 않는다. 그래서 정원이 차지 않는다 | 같은 트랜잭션에서 명부 편입(반 미배정) · `STUDY_GROUP_ID` NULL 허용 마이그레이션 (→ [share 10-18](../../../docs/share/2026-10-18-roster-on-apply.md)) |
 | BE | `GET /api/studies/{studyId}/applications/me` | 스펙확정 — **컨트롤러가 없다.** 신청 버튼이 이미 불러 실패하고, 이미 신청한 사람에게도 「신청하기」가 보인다 (제출하면 409) | 구현 |
 | BE | `PATCH /api/me` (별명 갱신) | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
 | BE | `POST /api/me/discord/link` | 스펙작성중 · 컨트롤러 없음 | [study-application 스펙](../../../specs/study-application/spec.md) 확정 → 구현 |
