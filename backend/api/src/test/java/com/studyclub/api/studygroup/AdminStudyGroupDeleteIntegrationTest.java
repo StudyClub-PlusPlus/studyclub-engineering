@@ -173,6 +173,26 @@ class AdminStudyGroupDeleteIntegrationTest {
     }
 
     @Test
+    @DisplayName("실패 - WITHDRAWN(참여 중단) 크루가 있어도 409 GROUP_NOT_EMPTY")
+    void rejectsWithdrawnParticipant() {
+        studyParticipantRepo.save(
+                StudyParticipant.builder()
+                        .accountId(MEMBER_ID)
+                        .studyGroupId(group.getId())
+                        .studyId(study.getId())
+                        .status(ParticipantStatus.WITHDRAWN)
+                        .participantRole(ParticipantRole.MEMBER)
+                        .joinedAt(Instant.now())
+                        .build());
+
+        var response = delete(ADMIN_ID, study.getId(), group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "GROUP_NOT_EMPTY");
+        assertThat(studyGroupRepo.findById(group.getId())).isPresent();
+    }
+
+    @Test
     @DisplayName("실패 - 없는 반 → 404 NOT_FOUND")
     void missingGroup() {
         var response = delete(ADMIN_ID, study.getId(), MISSING_ID);

@@ -292,7 +292,8 @@
 
 ### 서버 동작
 
-- `ACTIVE` · `PAUSED` · `COMPLETED` 명부 행이 하나라도 있으면 409 `GROUP_NOT_EMPTY` — 수료 크루가 어느 반이었는지 기록이 끊기지 않게 수료 크루가 있는 반도 지우지 않는다
+- `ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN` 명부 행이 하나라도 있으면 409 `GROUP_NOT_EMPTY` — 수료 · 참여 중단 크루가 어느 반이었는지 기록이 끊기지 않게 지우지 않는다. 참여 중단 크루의 반은 출석률(`LEFT_AT` 까지의 회차) 계산에도 쓰인다
+- 회원 탈퇴로 남은 `DELETED` 행만 있으면 지울 수 있다
 - 지우면 그 반의 회차 · 출석도 함께 지운다
 
 ### Response — 204 No Content
@@ -303,7 +304,7 @@
 |------|-----------|------|
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
-| 409 | GROUP_NOT_EMPTY | `ACTIVE` · `PAUSED` · `COMPLETED` 크루가 있음 |
+| 409 | GROUP_NOT_EMPTY | `ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN` 크루가 있음 |
 
 ---
 

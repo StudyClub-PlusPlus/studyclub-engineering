@@ -66,7 +66,7 @@ public class AdminStudyGroupService {
         return new StudyGroupUpdateResponse(group.getId(), group.getName());
     }
 
-    /** 반을 지운다. 활성 · 수료 명부 행이 하나라도 있으면 409 — 수료 크루의 반 기록이 끊기지 않게. 회차 · 출석도 함께 지운다. */
+    /** 반을 지운다. 탈퇴(DELETED) 밖의 명부 행이 하나라도 있으면 409 — 수료 · 참여 중단 크루의 반 기록이 끊기지 않게. 회차 · 출석도 함께 지운다. */
     @Transactional
     public void delete(Long studyId, Long groupId) {
         studyGroupRepository
@@ -78,7 +78,8 @@ public class AdminStudyGroupService {
                 List.of(
                         ParticipantStatus.ACTIVE,
                         ParticipantStatus.PAUSED,
-                        ParticipantStatus.COMPLETED))) {
+                        ParticipantStatus.COMPLETED,
+                        ParticipantStatus.WITHDRAWN))) {
             throw new BusinessException(ErrorCode.GROUP_NOT_EMPTY, "소속 크루가 있어 반을 삭제할 수 없습니다.");
         }
         studyAttendanceRepository.deleteByStudyGroupId(groupId);

@@ -41,7 +41,7 @@ public class AdminStudyGroupController {
 
     @Operation(
             summary = "반 삭제",
-            description = "ADMIN만 호출 가능. 활성·수료 크루가 있으면 409 GROUP_NOT_EMPTY. 회차·출석도 함께 지운다.")
+            description = "ADMIN만 호출 가능. 활성·수료·참여 중단 크루가 있으면 409 GROUP_NOT_EMPTY. 회차·출석도 함께 지운다.")
     @DeleteMapping("/{groupId}")
     public ResponseEntity<Void> delete(@PathVariable Long studyId, @PathVariable Long groupId) {
         adminStudyGroupService.delete(studyId, groupId);
