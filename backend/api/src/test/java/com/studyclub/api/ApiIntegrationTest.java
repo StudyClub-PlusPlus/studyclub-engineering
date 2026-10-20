@@ -69,9 +69,9 @@ class ApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 토큰 없이 /auth/me → 401 + errorCode UNAUTHORIZED (시큐리티가 막아도 같은 모양)")
+    @DisplayName("실패 - 토큰 없이 /api/me → 401 + errorCode UNAUTHORIZED (시큐리티가 막아도 같은 모양)")
     void unauthenticatedReturnsErrorResponse() {
-        var response = rest.getForEntity("/auth/me", Map.class);
+        var response = rest.getForEntity("/api/me", Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
@@ -160,7 +160,7 @@ class ApiIntegrationTest {
         assertThat(ok.getHeaders().getFirst("X-Request-Id")).isNotBlank();
 
         // 시큐리티가 끊는 요청도 식별자를 가져야 한다 — 장애는 대개 이쪽에서 난다
-        var unauthorized = rest.getForEntity("/auth/me", String.class);
+        var unauthorized = rest.getForEntity("/api/me", String.class);
         assertThat(unauthorized.getHeaders().getFirst("X-Request-Id")).isNotBlank();
     }
 }

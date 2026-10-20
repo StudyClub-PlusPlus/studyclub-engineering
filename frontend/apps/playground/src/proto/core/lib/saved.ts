@@ -51,13 +51,12 @@ export const EMPTY: Record<SavedFilter, { title: string; description: string }> 
 /**
  * 나와의 신청 관계. 찜과 참여는 다른 축이라 둘 다 있을 수 있다.
  * - none     : 신청하지 않음
- * - pending  : 승인 대기
- * - accepted : 참여 중(또는 참여했던)
+ * - accepted : 참여 중(또는 참여했던). 승인 대기는 없다 — 신청하면 곧 참여 (POL-0004)
  */
-export type Relation = 'none' | 'pending' | 'accepted';
+export type Relation = 'none' | 'accepted';
 
 export function relationOf(studyId: string): Relation {
   const app = getApplications().find((a) => a.studyId === studyId);
   if (!app) return 'none';
-  return app.status === 'accepted' ? 'accepted' : 'pending';
+  return 'accepted';
 }

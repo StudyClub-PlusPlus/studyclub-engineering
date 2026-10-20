@@ -2,6 +2,7 @@ package com.studyclub.api.auth;
 
 import com.studyclub.api.auth.dto.AccountDtos.MarketingConsentView;
 import com.studyclub.api.auth.dto.AccountDtos.UpdateProfileRequest;
+import com.studyclub.api.auth.dto.AuthDtos.AccountSelfView;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
@@ -37,8 +38,20 @@ public class AccountProfileService {
         this.uploadService = uploadService;
     }
 
+    @Transactional(readOnly = true)
+    public AccountSelfView get(Long accountId) {
+        Account account =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
+        return AccountSelfView.from(account);
+    }
+
     @Transactional
-    public AccountView update(Long accountId, UpdateProfileRequest request) {
+    public AccountSelfView update(Long accountId, UpdateProfileRequest request) {
         Account account = requireAccountByIdForUpdate(accountId);
 
         String nickname = request.nickname().trim();
@@ -54,7 +67,7 @@ public class AccountProfileService {
             // 검사와 flush 사이에 다른 계정이 같은 닉네임을 먼저 가져간 경우의 마지막 방어선.
             throw new BusinessException(ErrorCode.CONFLICT, "이미 사용 중인 닉네임입니다.");
         }
-        return AccountView.from(account);
+        return AccountSelfView.from(account);
     }
 
     /**

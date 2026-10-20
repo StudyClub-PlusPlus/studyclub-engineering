@@ -38,7 +38,7 @@ stateDiagram-v2
     PROCESSING --> PENDING : 재수거 (locked_at 타임아웃 — 인스턴스 재시작 등)
     PENDING --> CANCELLED : 수신 계정 탈퇴 — 발송 시도 전에 취소
     SENT --> [*]
-    FAILED --> PENDING : 운영자가 재발송 (예정 — 아래)
+    FAILED --> PENDING : 운영자가 재발송 (아래)
     FAILED --> [*]
     CANCELLED --> [*]
 ```
@@ -48,7 +48,7 @@ stateDiagram-v2
 전용이라 `CANCELLED` 에는 채우지 않는다. 트리거는 [user-leave spec](../../specs/user-leave/spec.md#알림-비식별화)
 의 `DELETE /api/me` 뿐이다.
 
-재발송(예정)은 운영자가 고른 `FAILED` 행을 **그 행 그대로** `PENDING` 으로 되돌린다 — 새 행을 만들지 않는다(알림 하나에 줄
+재발송은 운영자가 고른 `FAILED` 행을 **그 행 그대로** `PENDING` 으로 되돌린다 — 새 행을 만들지 않는다(알림 하나에 줄
 하나, 시도 이력 없음). `ERROR_TYPE`·`LOCKED_AT` 은 비워진다. **스키마 변경은 없다.**
 조건과 API 는 [spec](../../specs/notification/spec.md#재발송-가능-조건).
 
@@ -56,6 +56,6 @@ stateDiagram-v2
 
 - 인덱스 `idx_notification_status_created (STATUS, CREATED_AT)`, `idx_notification_recipient_user (RECIPIENT_USER_ID)`, `idx_notification_template (TEMPLATE_ID)`.
 - PAYLOAD 는 MySQL JSON. 이메일·닉네임 원문은 발송에만 사용하며 조회 응답에서 이메일을 마스킹한다.
-- PROCESSING 은 5분 초과 시 재수거한다. FAILED 는 **자동으로는 재시도하지 않는다**. 운영자가 고른 건만 그 행을 `PENDING` 으로 되돌려 재발송한다(예정).
+- PROCESSING 은 5분 초과 시 재수거한다. FAILED 는 **자동으로는 재시도하지 않는다**. 운영자가 고른 건만 그 행을 `PENDING` 으로 되돌려 재발송한다.
 - RECIPIENT_USER_ID·TEMPLATE_ID 는 애그리거트 사이 참조라 FK 를 걸지 않는다 — ID + 인덱스만
   ([database-guide.md 외래키 정책](../backend-development-guide/database-guide.md)). 엔티티 간에도 객체 연관 없이 ID 로만 참조한다.

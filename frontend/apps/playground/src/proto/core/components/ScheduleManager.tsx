@@ -517,7 +517,7 @@ export function ScheduleManager({
                           />
                         ) : // 제목이 없으면 「—」를 칸 가운데에 — 빈 칸 표시는 표 어디서나 가운데다
                         m.title ? (
-                          <span className='inline-block whitespace-pre-wrap break-words py-1.5'>{m.title}</span>
+                          <span className='inline-block whitespace-pre-wrap break-words py-1.5 align-middle text-center'>{m.title}</span>
                         ) : (
                           <span className='block py-1.5 text-center text-fg-muted'>-</span>
                         )}
