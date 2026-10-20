@@ -21,22 +21,24 @@ class NicknameAvailabilityServiceTest {
     private final AccountRepository accounts = mock(AccountRepository.class);
     private final NicknameAvailabilityService service = new NicknameAvailabilityService(accounts);
 
+    private static final Long ACCOUNT_ID = 7L;
+
     @Test
-    @DisplayName("공백 제거 후 원래 대소문자로 DB 비교에 넘긴다 — 가입 완료와 같은 기준")
+    @DisplayName("공백 제거 후 원래 대소문자로, 부른 사람의 계정을 뺀 DB 비교에 넘긴다 — 프로필 저장과 같은 기준")
     void trimsBeforeCheckingAvailability() {
-        when(accounts.existsByNicknameIgnoreCase("Journey")).thenReturn(false);
+        when(accounts.existsByNicknameIgnoreCaseAndIdNot("Journey", ACCOUNT_ID)).thenReturn(false);
 
-        assertThat(service.isAvailable("  Journey  ")).isTrue();
+        assertThat(service.isAvailable("  Journey  ", ACCOUNT_ID)).isTrue();
 
-        verify(accounts).existsByNicknameIgnoreCase("Journey");
+        verify(accounts).existsByNicknameIgnoreCaseAndIdNot("Journey", ACCOUNT_ID);
     }
 
     @Test
     @DisplayName("이미 사용 중인 유효한 닉네임은 오류 대신 사용 불가로 반환한다")
     void returnsFalseForTakenNickname() {
-        when(accounts.existsByNicknameIgnoreCase("Journey")).thenReturn(true);
+        when(accounts.existsByNicknameIgnoreCaseAndIdNot("Journey", ACCOUNT_ID)).thenReturn(true);
 
-        assertThat(service.isAvailable("Journey")).isFalse();
+        assertThat(service.isAvailable("Journey", ACCOUNT_ID)).isFalse();
     }
 
     @ParameterizedTest
@@ -55,7 +57,7 @@ class NicknameAvailabilityServiceTest {
             })
     @DisplayName("형식이 잘못된 값은 DB 조회 전에 거절한다 — 중복과 형식 오류를 구분한다")
     void rejectsInvalidInputBeforeQuerying(String value) {
-        assertThatThrownBy(() -> service.isAvailable(value))
+        assertThatThrownBy(() -> service.isAvailable(value, ACCOUNT_ID))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         error -> {

@@ -2,6 +2,7 @@
 
 import { meetingsOf } from '@core/lib/attendance';
 import { getUser } from '@core/lib/auth';
+import { getDiscordNickname } from '@core/lib/me';
 import { isKickoff, scheduleAccessOf, type ManageRole, type ScheduleRole } from '@core/lib/meetings';
 import { myGroupCrew } from '@core/lib/navigator-attendance';
 import type { Study } from '@studyclub/mock';
@@ -21,6 +22,10 @@ export type Participant = {
   role?: ManageRole;
   /** 스터디를 중단한 사람(하차·제명 구분 없이 「참여 중단」). `at` 은 중단 시각(yyyy-MM-ddTHH:mm, 분반 시간대). */
   left?: { at: string };
+  /** 동명이인 구분이 붙지 않은 닉네임 — 출석부 닉네임 열. `name` 은 발표자 고르기용으로 디스코드 닉네임이 붙을 수 있다. */
+  nickname?: string;
+  /** 스터디클럽++ 디스코드 서버 별명 — 출석부 「디스코드 닉네임」 열. */
+  discordNickname?: string;
 };
 
 /** 프로토의 「나」 — 분반 명부에 따로 없어 ID 를 고정한다. */
@@ -54,13 +59,22 @@ export function participantsOf(study: Study): Participant[] {
   const names = [myName(), ...crew.map((c) => c.name)];
   const dup = (name: string) => names.filter((n) => n === name).length > 1;
   return [
-    { id: ME_ID, name: myName(), me: true, role: myRole === 'crew' ? undefined : myRole },
+    {
+      id: ME_ID,
+      name: myName(),
+      nickname: myName(),
+      me: true,
+      role: myRole === 'crew' ? undefined : myRole,
+      discordNickname: getDiscordNickname(),
+    },
     ...crew.map((c, i) => ({
       id: c.id,
       name: dup(c.name) ? `${c.name} (${c.discordNickname ?? `#${i + 1}`})` : c.name,
+      nickname: c.name,
       // 프로토 가정 — 내가 네비게이터가 아니면 명부 첫 사람이 네비게이터다 (navigatorNameOf 와 같다).
       role: i === 0 && myRole !== 'navigator' ? ('navigator' as const) : undefined,
       left: leftOf(c.id, i),
+      discordNickname: c.discordNickname,
     })),
   ];
 }

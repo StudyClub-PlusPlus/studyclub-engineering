@@ -37,6 +37,9 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     /** 계정 권한별 수. 백오피스 회원 목록이 「마지막 캡틴」 잠금 사유를 계산할 때 쓴다 — 잠그지 않는 읽기다. */
     long countBySystemRole(SystemRole systemRole);
 
+    /** 온보딩 완료 회원 수 — 대시보드 커뮤니티 멤버 (specs/dashboard/spec.md 2-4). */
+    long countByOnboardingCompletedAtIsNotNull();
+
     /** 디스코드 유저 ID 다건 → 회원. DISCORD_ID 는 UNIQUE 라 유저당 최대 1행이다. */
     List<Account> findByDiscordIdIn(Collection<String> discordIds);
 

@@ -6,6 +6,7 @@ import { RegistrationNavigation } from '@core/components/RegistrationNavigation'
 import { SiteHeader } from '@core/components/SiteHeader';
 import { getSite } from '@core/lib/content';
 import { LOCALES, isLocale } from '@core/lib/i18n';
+import { Toaster } from '@studyclub/ui';
 
 export function generateStaticParams() {
   return LOCALES.map((locale) => ({ locale }));
@@ -31,6 +32,8 @@ export default async function LocaleLayout({
       </Suspense>
       <main className='flex-1'>{children}</main>
       <Footer locale={locale} />
+      {/* 문의 전송 뒤 내 문의로 돌아와 감사 알림을 띄운다 */}
+      <Toaster position='bottom-right' />
     </div>
   );
 }

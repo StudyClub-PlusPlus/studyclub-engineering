@@ -20,7 +20,7 @@ export type ProfilePayload = { nickname: string; timeZone: string };
 export type MarketingConsent = { agreed: boolean; agreedAt: string | null };
 
 /**
- * GET /auth/me — 편집에 들어갈 때 최신 값을 받는다. 다른 기기에서 먼저 바꿨으면 이 브라우저 세션에는 이전 값이 남아 있다.
+ * GET /api/me — 편집에 들어갈 때 최신 값을 받는다. 다른 기기에서 먼저 바꿨으면 이 브라우저 세션에는 이전 값이 남아 있다.
  *
  * 화면이 구독하는 값이 아니라 누를 때마다 새로 받아야 해서 `useQuery` 대신 부르는 함수를 돌려준다.
  */
@@ -29,13 +29,13 @@ export function useFetchLatestAccount(accountId: number) {
   return () =>
     queryClient.fetchQuery({
       queryKey: profileKeys.account(accountId),
-      queryFn: () => http<OnboardingAccount>('/auth/me'),
+      queryFn: () => http<OnboardingAccount>('/api/me'),
       // 기본 캐시 시간(1분)을 따르면 방금 받은 값을 다시 돌려준다 — 열 때마다 서버에 묻는다
       staleTime: 0,
     });
 }
 
-/** PATCH /api/me — 응답은 `GET /auth/me` 와 같은 모양이라 세션 user 를 이걸로 갱신한다. */
+/** PATCH /api/me — 응답은 `GET /api/me` 와 같은 모양이라 세션 user 를 이걸로 갱신한다. */
 export function useUpdateProfile() {
   return useMutation({
     mutationFn: (payload: ProfilePayload) =>

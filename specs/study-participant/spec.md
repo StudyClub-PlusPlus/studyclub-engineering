@@ -96,7 +96,7 @@
 3. `withdrawals[]` — `STATUS = WITHDRAWN`, `LEFT_AT = now()` (UTC). 지난 날짜로 소급하지 않는다
 4. 출석 행은 지우지 않는다. `SCHEDULED_AT > LEFT_AT` 인 회차는 출석률 집계에서 빠진다 — 시각으로 견주므로 같은 날 뒤 회차도 빠진다. 산식은 [attendance spec](../attendance/spec.md) 의 `upper_bound` 그대로
 5. 같은 요청에서 중단 대상의 `LEFT_AT` 뒤 회차 칸을 고쳐도 저장은 하되 집계에서 빠진다
-6. 앞으로의 발표자 배정은 그대로 둔다. 화면은 「이름 (참여 종료)」로 보이고 네비게이터가 바꾼다
+6. 앞으로의 발표자 배정은 그대로 둔다. 화면은 「이름 (참여 종료)」로 보이고 네비게이터가 바꾼다 — **바뀜 (2026-10-18, [share D7](../../docs/share/2026-10-18-schedule-attendance-feedback.md)): `LEFT_AT` 뒤 회차의 발표자에서 비운다. 이 줄은 BE 가 스펙을 고칠 때 바꾼다**
 
 ### 감사 로그
 
