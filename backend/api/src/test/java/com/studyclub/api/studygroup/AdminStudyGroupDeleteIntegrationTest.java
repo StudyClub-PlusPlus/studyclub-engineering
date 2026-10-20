@@ -63,6 +63,7 @@ class AdminStudyGroupDeleteIntegrationTest {
     @Autowired StudyAttendanceRepository studyAttendanceRepo;
 
     private Study study;
+    private StudyGroup defaultGroup;
     private StudyGroup group;
 
     @BeforeEach
@@ -85,7 +86,19 @@ class AdminStudyGroupDeleteIntegrationTest {
                                 .status(StudyStatus.DRAFT)
                                 .createdBy(ADMIN_ID)
                                 .build());
+        // 첫 반은 기본 반이라 지울 수 없다 — 삭제 대상은 두 번째 반
+        defaultGroup = studyGroupRepo.save(StudyGroup.create(study.getId(), "기본반"));
         group = studyGroupRepo.save(StudyGroup.create(study.getId(), "삭제반"));
+    }
+
+    @Test
+    @DisplayName("실패 - 기본 반(첫 반)은 명부가 비어 있어도 409 DEFAULT_GROUP_NOT_DELETABLE")
+    void rejectsDefaultGroup() {
+        var response = delete(ADMIN_ID, study.getId(), defaultGroup.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "DEFAULT_GROUP_NOT_DELETABLE");
+        assertThat(studyGroupRepo.findById(defaultGroup.getId())).isPresent();
     }
 
     @Test
