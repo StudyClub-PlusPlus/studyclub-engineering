@@ -282,7 +282,7 @@ erDiagram
 | BE | `GET /api/studies/{studyId}/application-form` · `POST …/applications` | 구현완료 | 없음 |
 | BE | `GET /api/studies/{studyId}/applications/me` | 스펙확정 — **컨트롤러가 없다.** 신청 버튼이 이미 불러 실패하고, 이미 신청한 사람에게도 「신청하기」가 보인다 (제출하면 409) | 구현 |
 | BE | `PATCH /api/me` (별명 갱신) | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
-| BE | `POST /api/me/discord/link` | 스펙작성중 · 컨트롤러 없음 | [study-application 스펙](../../../specs/study-application/spec.md) 확정 → 구현 |
+| BE | `POST /api/me/discord/link` | 구현완료 | 프론트 연결(DSC-04) |
 
 ### 유효값 검증 (Empty / MIN / MAX / ENUM)
 
