@@ -165,7 +165,7 @@ export default function Dashboard() {
           <div className='mb-3 flex items-baseline justify-between gap-3'>
             <h2 className='text-base font-bold'>
               모집중 스터디
-              <span className='tnum ml-2 text-[13px] font-medium text-fg-muted'>{recruiting.length}</span>
+              <span className='tnum ml-2 text-sm font-medium text-fg-muted'>{recruiting.length}</span>
             </h2>
             <Link href='/studies' className='text-xs font-medium text-brand'>
               전체 보기
@@ -204,7 +204,7 @@ export default function Dashboard() {
           <div className='mb-3 flex items-baseline justify-between gap-3'>
             <h2 className='text-base font-bold'>
               다가오는 행사
-              <span className='tnum ml-2 text-[13px] font-medium text-fg-muted'>{upcoming.length}</span>
+              <span className='tnum ml-2 text-sm font-medium text-fg-muted'>{upcoming.length}</span>
             </h2>
             <Link href='/events' className='text-xs font-medium text-brand'>
               전체 보기

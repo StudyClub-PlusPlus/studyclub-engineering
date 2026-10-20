@@ -371,7 +371,7 @@ function ProgramField({
                 role='radio'
                 aria-checked={value.kind === k}
                 onClick={() => onChange({ ...value, kind: k })}
-                className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
+                className={`h-8 rounded-pill border px-3 text-sm font-medium transition-colors ${
                   value.kind === k
                     ? 'border-brand bg-brand text-white'
                     : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
@@ -457,7 +457,7 @@ function ThumbnailField({
             className='h-16 w-16 shrink-0 rounded-control border border-border object-cover'
           />
         ) : (
-          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-[11px] text-fg-muted'>
+          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-xs text-fg-muted'>
             카테고리 기본값
           </div>
         )}

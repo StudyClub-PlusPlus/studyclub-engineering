@@ -131,7 +131,7 @@ function ApplicationReview({
   return (
     <section className='space-y-4' aria-label='신청자 심사'>
       <div>
-        <h2 className='text-[15px] font-bold'>신청자</h2>
+        <h2 className='text-sm font-bold'>신청자</h2>
         <p className='mt-1 text-sm text-fg-secondary'>
           정원 {data.capacity == null ? '제한 없음' : `${data.capacity}명`} · 신청 {applications.length}명 · 승인{' '}
           {counts.APPROVED}명 · 대기 {counts.PENDING}명

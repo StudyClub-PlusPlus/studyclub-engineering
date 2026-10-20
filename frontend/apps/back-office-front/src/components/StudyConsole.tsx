@@ -160,7 +160,7 @@ export function StudyConsole({ detail, mockStudy }: { detail: ApiStudyDetail; mo
           >
             {tb.label}
             {tb.key === 'crew' && pendingCount != null && pendingCount > 0 && (
-              <span className='ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[11px] font-bold text-warning-700'>
+              <span className='ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-xs font-bold text-warning-700'>
                 {pendingCount}
               </span>
             )}
@@ -207,14 +207,14 @@ function Stat({
     <div className='card px-4 py-3'>
       <p className='text-xs font-medium text-fg-muted'>{label}</p>
       <p
-        className={`mt-0.5 font-extrabold ${small ? 'truncate text-[15px] leading-7' : 'tnum text-xl'} ${
+        className={`mt-0.5 font-extrabold ${small ? 'truncate text-sm leading-7' : 'tnum text-xl'} ${
           tone === 'warn' ? 'text-warning-700' : 'text-fg'
         }`}
         title={small ? value : undefined}
       >
         {value}
       </p>
-      {sub && <p className='tnum -mt-0.5 text-[11px] font-medium text-fg-muted'>{sub}</p>}
+      {sub && <p className='tnum -mt-0.5 text-xs font-medium text-fg-muted'>{sub}</p>}
     </div>
   );
 }
