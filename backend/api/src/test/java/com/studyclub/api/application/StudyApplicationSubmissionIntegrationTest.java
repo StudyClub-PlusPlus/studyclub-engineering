@@ -50,8 +50,8 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 신청 제출은 신청서와 계정 별명을 저장하고 반 미배정으로 명부에 넣는다")
-    void submitsApplicationAndJoinsRosterWithoutGroup() {
+    @DisplayName("성공 - 신청 제출은 신청서와 계정 별명을 저장하고 기본 반 명부에 넣는다")
+    void submitsApplicationAndJoinsDefaultGroup() {
         var response =
                 rest.postForEntity(
                         "/api/studies/" + STUDY_ID + "/applications",
@@ -83,7 +83,8 @@ class StudyApplicationSubmissionIntegrationTest {
                 .singleElement()
                 .satisfies(
                         row -> {
-                            assertThat(row.get("STUDY_GROUP_ID")).isNull();
+                            assertThat(((Number) row.get("STUDY_GROUP_ID")).longValue())
+                                    .isEqualTo(GROUP_ID);
                             assertThat(row.get("STATUS")).isEqualTo("ACTIVE");
                             assertThat(row.get("PARTICIPANT_ROLE")).isEqualTo("MEMBER");
                         });
@@ -121,11 +122,40 @@ class StudyApplicationSubmissionIntegrationTest {
         assertThat(applicationCount()).isEqualTo(2L);
         assertThat(
                         jdbcTemplate.queryForObject(
-                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?"
-                                        + " AND STUDY_GROUP_ID IS NULL",
+                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_GROUP_ID = ?",
+                                Long.class,
+                                GROUP_ID))
+                .isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("성공 - 반이 없는 옛 스터디는 첫 신청 때 기본반을 만들어 넣는다")
+    void createsDefaultGroupForStudyWithoutGroup() {
+        jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE STUDY_ID = ?", STUDY_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(
+                        jdbcTemplate.queryForList(
+                                "SELECT ID FROM STUDY_GROUP WHERE STUDY_ID = ? AND NAME = '기본반'",
                                 Long.class,
                                 STUDY_ID))
-                .isEqualTo(2L);
+                .singleElement()
+                .satisfies(
+                        groupId ->
+                                assertThat(
+                                                jdbcTemplate.queryForObject(
+                                                        "SELECT STUDY_GROUP_ID FROM STUDY_PARTICIPANT"
+                                                                + " WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                                                        Long.class,
+                                                        STUDY_ID,
+                                                        LINKED_ACCOUNT_ID))
+                                        .isEqualTo(groupId));
     }
 
     @Test
@@ -415,6 +445,13 @@ class StudyApplicationSubmissionIntegrationTest {
                             Void.class);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(applicationCount()).isEqualTo(1L);
+            // 옛 명부 행을 되살린다 — 같은 반에 새 행을 만들면 유니크 제약에 걸린다
+            assertThat(
+                            jdbcTemplate.queryForList(
+                                    "SELECT STATUS FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?",
+                                    String.class,
+                                    STUDY_ID))
+                    .containsExactly("ACTIVE");
         }
     }
 

@@ -1,6 +1,6 @@
 # STUDY_PARTICIPANT — 명부
 
-반에 소속된 사람. 신청 제출 시 생기고, 출석·마이페이지·완주율의 기준이 된다.
+반에 소속된 사람. 신청 제출 시 기본 반으로 생기고, 출석·마이페이지·완주율의 기준이 된다.
 "운영자가 수동으로 옮기거나 복사하는 단계"를 없애는 테이블 — 제출 = 명부 편입.
 
 ## 컬럼
@@ -9,7 +9,7 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | ACCOUNT_ID | BIGINT FK → ACCOUNT | N | |
-| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | **Y** | 반. 신청 직후에는 NULL(반 미배정) — 캡틴이 반을 만든 뒤 지정한다. 반 이동 = 이 값 변경 (2026-10-18, → [share 10-18](../share/2026-10-18-roster-on-apply.md)). 코드 컬럼명은 `STUDY_GROUP_ID` |
+| STUDY_CLASS_ID | BIGINT FK → STUDY_CLASS | N | 반. 반 이동 = 이 값 변경 |
 | STUDY_COHORT_ID | BIGINT FK → STUDY_COHORT | N | 비정규화 — "이 사람이 몇 기 멤버였는가" 조회용 (STUDY_CLASS_ID 로 도출 가능). 반 이동 시에도 같은 기수 안이면 불변 |
 | STATUS | VARCHAR(20) | N | 아래 |
 | PARTICIPANT_ROLE | VARCHAR(20) | N | 아래 |

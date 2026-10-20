@@ -47,6 +47,9 @@ public class StudyGroup extends BaseEntity {
 
     static final int RULES_MAX_LENGTH = 500;
 
+    /** 스터디를 만들 때 같이 생기는 반의 이름. 캡틴이 반을 나누면 이름을 바꿔 쓴다. */
+    public static final String DEFAULT_NAME = "기본반";
+
     protected StudyGroup() {}
 
     public StudyGroup(
@@ -56,6 +59,14 @@ public class StudyGroup extends BaseEntity {
         this.startAt = startAt;
         this.timezone = timezone;
         this.capacity = capacity;
+    }
+
+    /**
+     * 기본 반 — 스터디를 만들 때 같이 만든다. 회차·출석·명부가 모두 반에 붙어서, 반이 없으면 신청자를 명부에 넣을 수도 일정을 짤 수도 없다. 시각·시간대는 캡틴이
+     * 일정 탭에서 정한다.
+     */
+    public static StudyGroup defaultOf(Long studyId) {
+        return new StudyGroup(studyId, DEFAULT_NAME, null, null, null);
     }
 
     public Long getId() {

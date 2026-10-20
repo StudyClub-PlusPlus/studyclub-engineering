@@ -13,6 +13,9 @@ public interface StudyGroupRepository extends JpaRepository<StudyGroup, Long> {
 
     List<StudyGroup> findByStudyId(Long studyId);
 
+    /** 기본 반 — 그 스터디에서 처음 만든 반. 신청자가 여기로 들어간다. */
+    Optional<StudyGroup> findFirstByStudyIdOrderByIdAsc(Long studyId);
+
     List<StudyGroup> findByStudyIdIn(Collection<Long> studyIds);
 
     void deleteByStudyId(Long studyId);

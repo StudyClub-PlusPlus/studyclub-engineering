@@ -82,7 +82,7 @@
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |
 | participants[].discordNickname | String | Y | 디스코드 서버 별명. 신청 때 받은 값으로 갱신된다. 없으면 null — 화면 「—」 | ACCOUNT.DISCORD_NICKNAME |
 | participants[].regionGroup | String | Y | `KR` · `NA` · `ETC` | ACCOUNT.REGION_GROUP |
-| participants[].groupId | Long | Y | 반 미배정이면 null | STUDY_PARTICIPANT.STUDY_GROUP_ID |
+| participants[].groupId | Long | N | 반. 신청 직후에는 기본 반 (2026-10-20) | STUDY_PARTICIPANT.STUDY_GROUP_ID |
 | participants[].participantRole | String | N | `LEADER` = 네비게이터 · `MEMBER` | STUDY_PARTICIPANT.PARTICIPANT_ROLE |
 | participants[].captain | Boolean | N | 이 행이 담당 캡틴이면 true — 「캡틴」 칩. 담당 캡틴은 신청했을 때만 행이 있다 | 계산: `STUDY.CREATED_BY = ACCOUNT_ID` |
 | participants[].status | String | N | `ACTIVE` · `PAUSED` · `WITHDRAWN` | STUDY_PARTICIPANT.STATUS |
@@ -160,7 +160,7 @@
 
 ### 서버 동작
 
-- 반이 비어 있는 행(신청 직후)도 같은 API 로 처음 반을 지정한다 — 「배정」과 「이동」을 가르지 않는다
+- 신청자는 기본 반에 들어와 있다. 반을 나누면 이 API 로 옮긴다
 - 반을 옮겨도 지난 출석은 그대로 둔다(출석은 회차에 붙어 있다)
 - 옛 반에서 맡은 **예정** 회차의 발표자 칸은 비운다 — [회차 스펙](../study-meeting/spec.md)
 - 새 반의 예정 회차 출석 행은 회차 생성 규칙대로 `ABSENT` 로 만든다
@@ -314,6 +314,6 @@
 ## 미확정
 
 - 보류(MVP 이후): 신청자 가능 시간 집계(`GET …/availability`) — 신청 폼의 가능한 시간 질문이 필수가 아니라 2026-10-14 에 화면과 함께 뺐다
-- ~~신청자를 명부(`STUDY_PARTICIPANT`)에 넣는 시점~~ → **신청 제출 때**, 반은 비워 둔다(`STUDY_GROUP_ID` NULL). 「크루의 반 지정」은 그 빈칸을 채우거나 바꾼다 (2026-10-18, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md))
+- ~~신청자를 명부(`STUDY_PARTICIPANT`)에 넣는 시점~~ → **신청 제출 때, 기본 반으로**. 기본 반은 스터디를 만들 때 생기는 첫 반(「기본반」)이고 지울 수 없다. 「크루의 반 지정」은 다른 반으로 옮긴다 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md))
 - ~~반 일정을 바꿀 때 지워지는 회차에 걸린 휴가 신청 처리~~ → 스터디 시간 수정이 회차를 지우지 않아 없어졌다 (2026-10-14)
 - [NEEDS CLARIFICATION] 명단 열람을 그 스터디의 네비게이터에게도 열지 (PRD 는 허용) — 연다면 사용자 사이트 경로를 따로 두고 이메일을 빼야 한다

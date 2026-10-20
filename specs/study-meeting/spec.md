@@ -206,7 +206,6 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 |------|-----------|------|
 | 401 | UNAUTHORIZED | 토큰 없음 |
 | 400 | INVALID_INPUT | `studyGroupId` 가 없는데 이 스터디 명부에 내가 없음 (캡틴 등) |
-| 400 | INVALID_INPUT | `studyGroupId` 가 없는데 내 명부 행의 반이 비어 있음 (신청 직후 반 미배정) — `아직 반이 배정되지 않았습니다.` |
 | 400 | INVALID_INPUT | `studyGroupId` 가 이 스터디 소속이 아님 |
 | 403 | FORBIDDEN | 그 분반 참여자도 캡틴도 아님 |
 | 404 | NOT_FOUND | 없는 `studyId` · 없는 `studyGroupId` |

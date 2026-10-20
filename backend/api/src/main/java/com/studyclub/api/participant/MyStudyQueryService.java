@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -64,24 +63,14 @@ public class MyStudyQueryService {
             return new MyStudyListResponse(List.of());
         }
         List<Long> studyIds = participants.stream().map(StudyParticipant::getStudyId).toList();
-        // 반 미배정(신청 직후) 행은 회차가 없다 — 스터디는 보여 주고 meetings 는 [] 로 둔다
-        List<Long> groupIds =
-                participants.stream()
-                        .map(StudyParticipant::getStudyGroupId)
-                        .filter(Objects::nonNull)
-                        .distinct()
-                        .toList();
+        List<Long> groupIds = participants.stream().map(StudyParticipant::getStudyGroupId).toList();
 
         Map<Long, Study> studyById =
                 studyRepository.findAllById(studyIds).stream()
                         .collect(Collectors.toMap(Study::getId, Function.identity()));
         Map<Long, List<StudyMeeting>> meetingsByGroupId =
-                groupIds.isEmpty()
-                        ? Map.of()
-                        : studyMeetingRepository
-                                .findByStudyGroupIdInOrderByScheduledAt(groupIds)
-                                .stream()
-                                .collect(Collectors.groupingBy(StudyMeeting::getStudyGroupId));
+                studyMeetingRepository.findByStudyGroupIdInOrderByScheduledAt(groupIds).stream()
+                        .collect(Collectors.groupingBy(StudyMeeting::getStudyGroupId));
         Map<Long, StudyAttendance> attendanceByMeetingId =
                 studyAttendanceRepository.findByAccountIdAndStudyIdIn(accountId, studyIds).stream()
                         .collect(
@@ -106,10 +95,7 @@ public class MyStudyQueryService {
                 continue;
             }
             List<StudyMeeting> meetings =
-                    participant.isGroupUnassigned()
-                            ? List.of()
-                            : meetingsByGroupId.getOrDefault(
-                                    participant.getStudyGroupId(), List.of());
+                    meetingsByGroupId.getOrDefault(participant.getStudyGroupId(), List.of());
             StudyProgram program = programs.get(study.getProgramId());
             if (program == null) {
                 continue;

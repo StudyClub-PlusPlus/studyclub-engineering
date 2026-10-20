@@ -105,7 +105,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 | items[].discordChannelUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DISCORD_CHANNEL_URL |
 | items[].driveUrl | String | Y | `relation = WITHDRAWN` 이면 **항상 null** | STUDY.DRIVE_URL |
 | items[].attendanceRate | Double | Y | 0~1. 분모 0 이면 null → 화면은 숫자를 숨김 | 계산: [출석 스펙 「출석률 산식」](../attendance/spec.md#출석률-산식)과 같은 계산기 |
-| items[].meetings | Array | N | 내 반 회차. `scheduledAt` 오름차순. 없으면 `[]` — 반 미배정(신청 직후)이면 스터디는 나오고 회차는 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 내 명부의 반) |
+| items[].meetings | Array | N | 내 반 회차. `scheduledAt` 오름차순. 없으면 `[]` | STUDY_MEETING (`STUDY_GROUP_ID` = 내 명부의 반) |
 | items[].meetings[].meetingId | Long | N | | STUDY_MEETING.ID |
 | items[].meetings[].sequence | Integer | N | 회차 번호. 1부터 | 계산: 반 안에서 `scheduledAt` 순번 |
 | items[].meetings[].scheduledAt | String (ISO 8601 UTC) | N | 예정 시각. 주간 칸·다음 회차·격자 머리 | STUDY_MEETING.SCHEDULED_AT |

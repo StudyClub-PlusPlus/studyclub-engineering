@@ -45,8 +45,7 @@ public class StudyParticipant extends BaseEntity {
     @Column(name = "ACCOUNT_ID", nullable = false)
     private Long accountId;
 
-    /** 반. 신청 직후에는 null(반 미배정) — 캡틴이 반을 만든 뒤 「크루의 반 지정」으로 채운다. */
-    @Column(name = "STUDY_GROUP_ID")
+    @Column(name = "STUDY_GROUP_ID", nullable = false)
     private Long studyGroupId;
 
     @Column(name = "STUDY_ID", nullable = false)
@@ -73,23 +72,32 @@ public class StudyParticipant extends BaseEntity {
     private Instant leftAt;
 
     /**
-     * 신청 제출 = 명부 편입. 반은 비워 둔다 — 신청하는 순간에는 반이 아직 없다 (docs/share/2026-10-18-roster-on-apply.md). 첫 반에
-     * 자동으로 넣지 않는다: 캡틴의 실제 배정과 다른 명부가 만들어진다 (09-30 결정).
+     * 신청 제출 = 명부 편입. 신청자는 그 스터디의 기본 반에 들어가고, 캡틴이 반을 나누면 「크루의 반 지정」으로 옮긴다
+     * (docs/share/2026-10-18-roster-on-apply.md).
      */
     public static StudyParticipant joinByApplication(
-            Long accountId, Long studyId, Instant joinedAt) {
+            Long accountId, Long studyId, Long studyGroupId, Instant joinedAt) {
         return StudyParticipant.builder()
                 .accountId(accountId)
                 .studyId(studyId)
+                .studyGroupId(studyGroupId)
                 .status(ParticipantStatus.ACTIVE)
                 .participantRole(ParticipantRole.MEMBER)
                 .joinedAt(joinedAt)
                 .build();
     }
 
-    /** 반이 아직 정해지지 않았다 — 반으로 거르는 조회(회차·출석부)에는 나오지 않는다. */
-    public boolean isGroupUnassigned() {
-        return studyGroupId == null;
+    /**
+     * 명부에서 빠졌던 사람이 같은 스터디에 다시 신청했다. 새 행을 만들면 그 사람의 옛 행과 반이 겹쳐 {@code UNIQUE(ACCOUNT_ID,
+     * STUDY_GROUP_ID)} 에 걸리므로 옛 행을 되살린다. 반은 그대로, 역할은 크루로 돌린다 — 네비게이터는 캡틴이 다시 정한다.
+     *
+     * <p>{@code joinedAt} 을 다시 신청한 시각으로 옮긴다. 빠져 있던 동안의 회차가 출석률 분모에 결석으로 들어가지 않게 한다.
+     */
+    public void rejoinByApplication(Instant joinedAt) {
+        this.status = ParticipantStatus.ACTIVE;
+        this.participantRole = ParticipantRole.MEMBER;
+        this.joinedAt = joinedAt;
+        this.leftAt = null;
     }
 
     /**

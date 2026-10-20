@@ -136,7 +136,6 @@ public class DiscordAttendanceService {
         Map<Long, List<String>> byGroupId = new LinkedHashMap<>();
         List<String> unmatched = new ArrayList<>();
         List<String> notParticipant = new ArrayList<>();
-        List<String> noGroup = new ArrayList<>();
 
         for (String discordUserId : discordUserIds.stream().distinct().toList()) {
             Long accountId = accountIdByDiscordId.get(discordUserId);
@@ -149,21 +148,16 @@ public class DiscordAttendanceService {
                 notParticipant.add(discordUserId);
                 continue;
             }
-            if (participant.isGroupUnassigned()) {
-                // 신청 직후라 반이 아직 없다 — 찍을 회차가 없으니 「모이는 중이 아님」과 같이 돌려준다
-                noGroup.add(discordUserId);
-                continue;
-            }
             byGroupId
                     .computeIfAbsent(participant.getStudyGroupId(), k -> new ArrayList<>())
                     .add(discordUserId);
         }
-        return new Classified(byGroupId, unmatched, notParticipant, noGroup, accountIdByDiscordId);
+        return new Classified(byGroupId, unmatched, notParticipant, accountIdByDiscordId);
     }
 
     private DiscordAttendanceResponse markByGroup(Classified classified, StudyDiscordLink link) {
         List<DiscordAttendanceResponse.MarkedGroup> groups = new ArrayList<>();
-        List<String> noMeeting = new ArrayList<>(classified.noGroup());
+        List<String> noMeeting = new ArrayList<>();
 
         // 반 id 오름차순으로 잠근다. 요청의 discordUserIds 순서를 그대로 따라가면 같은 사람들을
         // 순서만 바꿔 보낸 두 요청이 서로의 회차 잠금을 기다려 교착한다.
@@ -254,7 +248,6 @@ public class DiscordAttendanceService {
             Map<Long, List<String>> byGroupId,
             List<String> unmatched,
             List<String> notParticipant,
-            List<String> noGroup,
             Map<String, Long> accountIdByDiscordId) {}
 
     private record PickedMeeting(StudyMeeting meeting, boolean started) {}

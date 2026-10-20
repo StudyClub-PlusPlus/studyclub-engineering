@@ -101,7 +101,6 @@ cross-group 출석을 만들지 않고, 자기 반이 모이는 중이 아니면
 | 매칭됐지만 그 반 참가자가 아님 | 건너뛴다 | `notParticipant[]` |
 | 참가자지만 `STATUS` 가 `WITHDRAWN` | 건너뛴다 | `notParticipant[]` |
 | 참가자지만 그 반이 지금 모이는 중이 아님 | 건너뛴다 | `noMeeting[]` |
-| 참가자지만 반 미배정 (신청 직후) | 건너뛴다 — 찍을 회차가 없다 | `noMeeting[]` |
 | 참가자 (`ACTIVE` · `PAUSED`) | 그 사람의 반 회차에 출석 | `groups[].marked[]` |
 
 구경 온 운영진이 보이스에 있어도 출석이 생기지 않는다. 봇은 응답을 받아 채널에
@@ -222,7 +221,7 @@ CREATE TABLE STUDY_DISCORD_LINK (
 | `groups[].marked` | 그 반에서 출석 처리된 디스코드 유저 |
 | `unmatched` | 계정 연동이 안 된 유저 |
 | `notParticipant` | 연동은 됐지만 이 스터디 명부에 없는 유저 |
-| `noMeeting` | 명부에는 있지만 그 반이 지금 모이는 중이 아니거나 아직 반이 없는 유저 |
+| `noMeeting` | 명부에는 있지만 그 반이 지금 모이는 중이 아닌 유저 |
 
 전원이 `unmatched` 여도, `groups` 가 비어도 **200** 이다. 호출은 정상이고 찍을 대상이 없을 뿐이다.
 봇은 `groups[].marked` 를 합쳐 "N명 체크" 를 찍고, 나머지 세 목록은 이유별로 안내하면 된다.
