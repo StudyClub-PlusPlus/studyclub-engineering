@@ -116,7 +116,7 @@ flowchart LR
 |---|---|---|---|
 | FE | back-office-front `/notification-templates` 목록 | 있음 — 이벤트 · 채널 · 제목 · 마지막 수정 | 열 이름 「이벤트」 → 「알림 조건」 (완료 기준 1) |
 | FE | back-office-front `/notification-templates/[id]` 전문 | 있음 — 단건 API 없이 목록에서 고른다 | 없앰 — 목록에서 조건을 누르면 수정 팝업 (완료 기준 3) |
-| FE | 사이드바 「알림」 하나 · 템플릿 / 발송 이력 두 탭 | 없음 — 사이드바에 「알림 템플릿」만 | 「알림」 아래 두 탭으로 묶기. 프로토 주소는 `/notifications/templates` · `/notifications` |
+| FE | 사이드바 「알림」 하나 · 템플릿 / 발송 이력 두 탭 | 구현완료 — 사이드바 「알림」 한 메뉴, 두 탭 (템플릿은 기존 `/notification-templates`, 발송 이력은 `/notifications`) | 없음. 프로토 주소(`/notifications/templates`)와는 템플릿 경로만 다르다 |
 | FE | 템플릿 추가 버튼 · 추가 팝업 | 없음 | 프로토 `proto/console/notifications/templates` 대로. 모든 조건을 선택지로 (완료 기준 2·5) |
 | FE | 수정 팝업 · 삭제 확인 | 없음 | 추가 팝업과 같은 폼, 값이 채워진 채. 삭제는 팝업 안 확인 단계 (완료 기준 3·4) |
 | BE | `GET /api/admin/notification-templates` | 구현완료 — `AdminNotificationController` · 통합 테스트 있음 | 없음 |

@@ -2,6 +2,7 @@ package com.studyclub.notification;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,8 +40,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Optional<Notification> findByIdForUpdate(@Param("id") Long id);
 
     /**
-     * 백오피스 발송 이력 조회 — LIMIT/OFFSET 을 DB 에 위임한다. {@code eventType}/{@code status} 는 null 이면 필터를 적용하지
-     * 않는다(Enum 을 그대로 바인딩하지 않고 이름으로 비교하는 이유는 네이티브 쿼리라 Hibernate 의 enum 타입 추론을 못 받기 때문).
+     * 백오피스 발송 이력 조회 — LIMIT/OFFSET 을 DB 에 위임한다. 같은 시각에 만든 건이 많아도 페이지 경계에서 순서가 흔들리지 않게 {@code ID} 를
+     * 보조 정렬 키로 쓴다.
+     *
+     * <p>{@code eventType}/{@code status} 는 null 이면 필터를 적용하지 않는다(Enum 을 그대로 바인딩하지 않고 이름으로 비교하는 이유는
+     * 네이티브 쿼리라 Hibernate 의 enum 타입 추론을 못 받기 때문).
      */
     @Query(
             value =
@@ -49,7 +53,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             FROM NOTIFICATION
             WHERE (:eventType IS NULL OR EVENT_TYPE = :eventType)
               AND (:status IS NULL OR STATUS = :status)
-            ORDER BY CREATED_AT DESC
+            ORDER BY CREATED_AT DESC, ID DESC
             LIMIT :limit OFFSET :offset
             """,
             nativeQuery = true)
@@ -58,6 +62,20 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("status") String status,
             @Param("limit") int limit,
             @Param("offset") int offset);
+
+    /**
+     * 고른 ID 의 발송 이력 — 재발송을 접수한 건의 끝({@code SENT}·{@code FAILED})을 쫓을 때 쓴다. {@link #findPage} 와 같은
+     * 정렬이다.
+     */
+    List<Notification> findAllByIdInOrderByCreatedAtDescIdDesc(Collection<Long> ids);
+
+    /**
+     * 재발송 접수 전용 — 고른 행을 모두 잠그고 읽는다. {@link #findByIdForUpdate} 와 같은 이유다: 폴링이 같은 행을 클레임하거나 다른 캡틴이 같은
+     * 건을 누르는 중이면 그 트랜잭션이 끝날 때까지 기다린 뒤 <b>최신 상태</b>를 읽어야, 같은 줄이 두 번 나가지 않는다. ID 오름차순으로 잠가 교착을 피한다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select n from Notification n where n.id in :ids order by n.id asc")
+    List<Notification> findAllByIdInForUpdate(@Param("ids") Collection<Long> ids);
 
     /** {@link #findPage} 와 같은 필터로 전체 건수를 센다 — 응답의 {@code total} 필드용. */
     @Query(
