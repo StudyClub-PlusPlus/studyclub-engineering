@@ -17,8 +17,8 @@
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/role | 네비게이터 지정 · 해제 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/group | 크루의 반 지정 · 이동 | O (ADMIN) | 스펙작성중 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현중 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 스펙작성중 |
-| DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 스펙작성중 |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현중 (제목만) |
+| DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -252,9 +252,12 @@
 
 기간(시작일 · 종료일)은 받지 않는다. 반의 기간은 저장하지 않고 첫 회차 ~ 마지막 회차로 계산한다.
 
+> **구현 범위 (1차)**: 지금은 `name` 만 받고 응답도 `{ "groupId", "name" }` 이다. `daysOfWeek` · `startTime` · `timezone` 은 `DAYS_OF_WEEK` 마이그레이션(「데이터 변경」) 뒤에 붙인다.
+
 ### 서버 동작
 
 - 보낸 필드만 `NAME` · `DAYS_OF_WEEK` · `START_AT` · `TIMEZONE` 에 쓴다
+- 이름 중복 규칙은 「반 만들기」와 같다 — 같은 스터디의 다른 반과 이름(대소문자 무시)이 겹치면 409 `CONFLICT`. 지금 이름 그대로 보내면 통과
 - 회차 · 출석은 건드리지 않는다. 회차는 [회차 스펙](../study-meeting/spec.md)의 추가 · 수정 · 삭제로만 바뀐다
 - 이미 있는 회차의 시각은 따라 바뀌지 않는다 — 회차마다 `SCHEDULED_AT` 을 갖는다
 
@@ -271,6 +274,7 @@
 | 400 | INVALID_INPUT | 빈 바디 · 이름 길이 밖 · 요일 0개 · 요일 키 밖 · 시각 형식 밖 · 시간대 밖 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
+| 409 | CONFLICT | 이 스터디의 다른 반과 이름이 같음 |
 
 ### 킥오프
 
@@ -288,7 +292,7 @@
 
 ### 서버 동작
 
-- 활성 명부 행이 하나라도 있으면 409 `GROUP_NOT_EMPTY`
+- `ACTIVE` · `PAUSED` · `COMPLETED` 명부 행이 하나라도 있으면 409 `GROUP_NOT_EMPTY` — 수료 크루가 어느 반이었는지 기록이 끊기지 않게 수료 크루가 있는 반도 지우지 않는다
 - 지우면 그 반의 회차 · 출석도 함께 지운다
 
 ### Response — 204 No Content
@@ -299,7 +303,7 @@
 |------|-----------|------|
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
-| 409 | GROUP_NOT_EMPTY | 소속 크루가 있음 |
+| 409 | GROUP_NOT_EMPTY | `ACTIVE` · `PAUSED` · `COMPLETED` 크루가 있음 |
 
 ---
 

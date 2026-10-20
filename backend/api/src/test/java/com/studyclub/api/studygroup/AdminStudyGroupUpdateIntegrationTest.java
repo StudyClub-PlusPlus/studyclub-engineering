@@ -34,7 +34,8 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * 반 이름 바꾸기 ({@code POST /api/admin/studies/{studyId}/groups/{groupId}}) — specs/study-group/spec.md
+ * 반 이름 바꾸기 ({@code PATCH /api/admin/studies/{studyId}/groups/{groupId}}) —
+ * specs/study-group/spec.md
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -82,18 +83,21 @@ class AdminStudyGroupUpdateIntegrationTest {
     @Test
     @DisplayName("성공 - 이름을 바꾼다. 앞뒤 공백을 잘라 저장한다")
     void updatesName() {
-        var response = post(Map.of("name", "  새이름  "), ADMIN_ID, study.getId(), group.getId());
+        var response = patch(Map.of("name", "  새이름  "), ADMIN_ID, study.getId(), group.getId());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("groupId", group.getId().intValue())
+                .containsEntry("name", "새이름");
         assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getName()).isEqualTo("새이름");
     }
 
     @Test
-    @DisplayName("성공 - 같은 이름(대소문자 포함)으로 보내면 중복 검사 없이 그대로 204")
+    @DisplayName("성공 - 같은 이름(대소문자 포함)으로 보내면 중복 검사 없이 그대로 200")
     void sameNameIsAllowed() {
-        var response = post(Map.of("name", "원래반"), ADMIN_ID, study.getId(), group.getId());
+        var response = patch(Map.of("name", "원래반"), ADMIN_ID, study.getId(), group.getId());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getName()).isEqualTo("원래반");
     }
 
@@ -102,7 +106,7 @@ class AdminStudyGroupUpdateIntegrationTest {
     void duplicateNameWithOtherGroup() {
         studyGroupRepo.save(StudyGroup.create(study.getId(), "B반"));
 
-        var response = post(Map.of("name", "B반"), ADMIN_ID, study.getId(), group.getId());
+        var response = patch(Map.of("name", "B반"), ADMIN_ID, study.getId(), group.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).containsEntry("errorCode", "CONFLICT");
@@ -112,11 +116,11 @@ class AdminStudyGroupUpdateIntegrationTest {
     @Test
     @DisplayName("실패 - 이름이 공백뿐이거나 21자면 400 INVALID_INPUT")
     void invalidName() {
-        var blank = post(Map.of("name", "   "), ADMIN_ID, study.getId(), group.getId());
+        var blank = patch(Map.of("name", "   "), ADMIN_ID, study.getId(), group.getId());
         assertThat(blank.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(blank.getBody()).containsEntry("errorCode", "INVALID_INPUT");
 
-        var tooLong = post(Map.of("name", "가".repeat(21)), ADMIN_ID, study.getId(), group.getId());
+        var tooLong = patch(Map.of("name", "가".repeat(21)), ADMIN_ID, study.getId(), group.getId());
         assertThat(tooLong.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(tooLong.getBody()).containsEntry("errorCode", "INVALID_INPUT");
 
@@ -126,7 +130,7 @@ class AdminStudyGroupUpdateIntegrationTest {
     @Test
     @DisplayName("실패 - 없는 반 → 404 NOT_FOUND")
     void missingGroup() {
-        var response = post(Map.of("name", "새이름"), ADMIN_ID, study.getId(), MISSING_ID);
+        var response = patch(Map.of("name", "새이름"), ADMIN_ID, study.getId(), MISSING_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
@@ -135,17 +139,17 @@ class AdminStudyGroupUpdateIntegrationTest {
     @Test
     @DisplayName("실패 - 캡틴이 아니면 403, 토큰이 없으면 401")
     void permission() {
-        var member = post(Map.of("name", "새이름"), MEMBER_ID, study.getId(), group.getId());
+        var member = patch(Map.of("name", "새이름"), MEMBER_ID, study.getId(), group.getId());
         assertThat(member.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(member.getBody()).containsEntry("errorCode", "FORBIDDEN");
 
-        var anonymous = post(Map.of("name", "새이름"), null, study.getId(), group.getId());
+        var anonymous = patch(Map.of("name", "새이름"), null, study.getId(), group.getId());
         assertThat(anonymous.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(anonymous.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
     }
 
     @SuppressWarnings({"rawtypes"})
-    private ResponseEntity<Map> post(Object body, Long accountId, Object studyId, Object groupId) {
+    private ResponseEntity<Map> patch(Object body, Long accountId, Object studyId, Object groupId) {
         HttpHeaders headers = new HttpHeaders();
         if (accountId != null) {
             String email = accountRepository.findById(accountId).orElseThrow().getEmail();
@@ -153,7 +157,12 @@ class AdminStudyGroupUpdateIntegrationTest {
         }
         headers.setContentType(MediaType.APPLICATION_JSON);
         return rest.exchange(
-                URL, HttpMethod.POST, new HttpEntity<>(body, headers), Map.class, studyId, groupId);
+                URL,
+                HttpMethod.PATCH,
+                new HttpEntity<>(body, headers),
+                Map.class,
+                studyId,
+                groupId);
     }
 
     private void insertAccountIfAbsent(Long id, String nickname, String email, SystemRole role) {

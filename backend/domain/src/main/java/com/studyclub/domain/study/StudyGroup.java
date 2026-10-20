@@ -60,8 +60,8 @@ public class StudyGroup extends BaseEntity {
         return new StudyGroup(studyId, normalizeName(name), null, null, null);
     }
 
-    // 앞뒤 공백을 자르고 코드포인트로 센다 — 이모지 하나를 한 글자로
-    static String normalizeName(String name) {
+    /** 앞뒤 공백을 자르고 코드포인트로 센다 — 이모지 하나를 한 글자로. 비었거나 20자를 넘으면 400. */
+    public static String normalizeName(String name) {
         String trimmed = name == null ? "" : name.strip();
         if (trimmed.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "반 제목을 입력하세요.");

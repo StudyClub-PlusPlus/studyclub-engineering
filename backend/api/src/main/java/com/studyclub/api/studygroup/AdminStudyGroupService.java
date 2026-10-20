@@ -41,23 +41,32 @@ public class AdminStudyGroupService {
 
     /** 반 제목을 바꾼다. 같은 스터디 안에 같은 이름이 있으면 409. */
     @Transactional
-    public void update(Long studyId, Long groupId, String name) {
+    public StudyGroupUpdateResponse update(
+            Long studyId, Long groupId, StudyGroupUpdateRequest request) {
         StudyGroup group =
                 studyGroupRepository
                         .findById(groupId)
                         .filter(g -> g.getStudyId().equals(studyId))
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "반을 찾을 수 없습니다."));
+        // 엔티티를 바꾸기 전에 확인한다 — 먼저 바꾸면 조회 직전 자동 flush 가 제약 위반을 500 으로 낸다
+        String name = StudyGroup.normalizeName(request.name());
         // 이름 변경 없이 그대로면 중복 확인을 건너뛴다
-        String trimmed = name == null ? "" : name.strip();
-        if (!trimmed.equalsIgnoreCase(group.getName())
-                && studyGroupRepository.existsByStudyIdAndNameIgnoreCase(studyId, trimmed)) {
+        if (!name.equalsIgnoreCase(group.getName())
+                && studyGroupRepository.existsByStudyIdAndNameIgnoreCase(studyId, name)) {
             throw new BusinessException(ErrorCode.CONFLICT, DUPLICATE_NAME);
         }
-        group.changeName(name); // 길이·공백 최종 검증은 changeName 이 한다
+        group.changeName(name);
+        try {
+            studyGroupRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            // 확인과 저장 사이에 다른 요청이 같은 이름을 먼저 넣은 경우의 마지막 방어선 (uk_study_group_study_name)
+            throw new BusinessException(ErrorCode.CONFLICT, DUPLICATE_NAME);
+        }
+        return new StudyGroupUpdateResponse(group.getId(), group.getName());
     }
 
-    /** 반을 지운다. 활성 명부 행이 하나라도 있으면 409. 회차 · 출석도 함께 지운다. */
+    /** 반을 지운다. 활성 · 수료 명부 행이 하나라도 있으면 409 — 수료 크루의 반 기록이 끊기지 않게. 회차 · 출석도 함께 지운다. */
     @Transactional
     public void delete(Long studyId, Long groupId) {
         studyGroupRepository
@@ -65,7 +74,11 @@ public class AdminStudyGroupService {
                 .filter(g -> g.getStudyId().equals(studyId))
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "반을 찾을 수 없습니다."));
         if (studyParticipantRepository.existsByStudyGroupIdAndStatusIn(
-                groupId, List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED))) {
+                groupId,
+                List.of(
+                        ParticipantStatus.ACTIVE,
+                        ParticipantStatus.PAUSED,
+                        ParticipantStatus.COMPLETED))) {
             throw new BusinessException(ErrorCode.GROUP_NOT_EMPTY, "소속 크루가 있어 반을 삭제할 수 없습니다.");
         }
         studyAttendanceRepository.deleteByStudyGroupId(groupId);

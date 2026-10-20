@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,7 +41,7 @@ public class AdminStudyGroupController {
 
     @Operation(
             summary = "반 삭제",
-            description = "ADMIN만 호출 가능. 활성 크루가 있으면 409 GROUP_NOT_EMPTY. 회차·출석도 함께 지운다.")
+            description = "ADMIN만 호출 가능. 활성·수료 크루가 있으면 409 GROUP_NOT_EMPTY. 회차·출석도 함께 지운다.")
     @DeleteMapping("/{groupId}")
     public ResponseEntity<Void> delete(@PathVariable Long studyId, @PathVariable Long groupId) {
         adminStudyGroupService.delete(studyId, groupId);
@@ -48,12 +49,11 @@ public class AdminStudyGroupController {
     }
 
     @Operation(summary = "반 이름 바꾸기", description = "ADMIN만 호출 가능. 1~20자. 같은 스터디에 같은 이름이면 409.")
-    @PostMapping("/{groupId}")
-    public ResponseEntity<Void> update(
+    @PatchMapping("/{groupId}")
+    public StudyGroupUpdateResponse update(
             @PathVariable Long studyId,
             @PathVariable Long groupId,
-            @Valid @RequestBody StudyGroupCreateRequest request) {
-        adminStudyGroupService.update(studyId, groupId, request.name());
-        return ResponseEntity.noContent().build();
+            @Valid @RequestBody StudyGroupUpdateRequest request) {
+        return adminStudyGroupService.update(studyId, groupId, request);
     }
 }
