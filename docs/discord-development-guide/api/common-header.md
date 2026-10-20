@@ -50,7 +50,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 
 ## X-Discord-User-ID
 
-**Discord 유저 ID** (snowflake). StudyClub++ 의 `ACCOUNT.ID` 가 아니다 — 봇이 이 ID 로
+**Discord 유저 ID** (snowflake). StudyClub 의 `ACCOUNT.ID` 가 아니다 — 봇이 이 ID 로
 길드(Discord 서버) 멤버를 조회해야 하므로, 디스코드 쪽 식별자를 그대로 넘긴다.
 
 봇은 이 ID 로 두 가지를 한다:
@@ -98,7 +98,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 > **넘어가는 건 로그와 발신자 줄이다.** alert 채널에는 `발신: <@봇 ID>` 가 찍혀 봇 이름으로 보인다 —
 > 사람이 올린 것과 구분된다.
 
-> **나중에:** Discord 로그인 연동과 StudyClub++ 계정 ↔ Discord 유저 ID 매핑은 추후 추가한다.
+> **나중에:** Discord 로그인 연동과 StudyClub 계정 ↔ Discord 유저 ID 매핑은 추후 추가한다.
 > 현재 [`ACCOUNT_IDENTITY`](../../erd/ACCOUNT_IDENTITY.md) 의 `ISSUER` 는 `GOOGLE` / `APPLE`
 > 뿐이라, 그때까지 호출자는 이 헤더를 채울 수 없다.
 

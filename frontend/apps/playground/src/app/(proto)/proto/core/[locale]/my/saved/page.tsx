@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getUser } from '@core/lib/auth';
 import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
+import { PAGE } from '@core/lib/layout';
 import { getBookmarks, setBookmarked } from '@core/lib/me';
 import { type Study } from '@studyclub/mock';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
@@ -16,7 +17,7 @@ import { Heart } from 'lucide-react';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
- * 찜한 스터디 — 내 스터디 탭 줄의 페이지 이동 목적지.
+ * 찜한 스터디 — 내 스터디룸 탭 줄의 페이지 이동 목적지.
  * 참여 목록과 섞지 않는다.
  */
 export default function SavedStudiesPage() {
@@ -46,11 +47,11 @@ export default function SavedStudiesPage() {
   }
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
+    <div className={`${PAGE} pb-16 pt-10`}>
       <div className='flex items-center justify-between gap-3'>
         <h1 className='text-2xl font-extrabold tracking-tight'>찜한 스터디</h1>
         <Button variant='secondary' size='sm' onClick={() => router.push(`/proto/core/${locale}/my/joined`)}>
-          내 스터디
+          내 스터디룸
         </Button>
       </div>
       <p className='mt-1 text-sm text-fg-secondary'>하트로 담아 둔 스터디 {saved.length}개</p>

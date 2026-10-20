@@ -37,6 +37,12 @@
 5. 단위 및 통합 테스트, 전체 check, 빈 MySQL 마이그레이션 검증
 6. ERD·모듈 문서 및 스펙 상태 갱신
 
+## 실패 건 재발송 (2026-10-16)
+
+- 같은 행을 `FAILED` → `PENDING` 으로 되돌린다 — 새 행·새 컬럼·마이그레이션이 없다 ([spec](./spec.md#post-apiadminnotificationsresend))
+- 규칙은 엔티티가 가진다(`Notification.resendSkipReason`) — 목록의 `canResend` 와 재발송 접수가 같은 메서드에 같은 재료(남아 있는 수신 계정 ID)를 넘긴다
+- 접수는 `SELECT … FOR UPDATE`(id 오름차순)로 잠그고 줄마다 가려 부분 성공으로 돌려준다 — 동시에 눌러도 같은 줄이 두 번 나가지 않는다
+
 ## 의존성·후속
 
 - AWS SES SDK 추가는 구현 PR에서 합의한다.

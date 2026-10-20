@@ -2,120 +2,38 @@
 
 import Link from 'next/link';
 
-import {
-  MEMBER_REGIONS,
-  events,
-  getStudyCrew,
-  attendancePoint,
-  site,
-  studies,
-  type MemberRegion,
-} from '@studyclub/mock';
+import { site } from '@studyclub/mock';
 import { StatCard } from '@studyclub/ui';
-import { BookOpen, CalendarDays, TrendingUp, Users } from 'lucide-react';
+import { BookOpen, CalendarDays } from 'lucide-react';
 
-import { Card, CategoryBars, RegionDonut } from '@/components/DashboardCharts';
+import { Card } from '@/components/DashboardCharts';
 import { PageHeader, TableCard } from '@/components/ui';
 import { useStudies } from '@/features/studies/queries';
 import type { StudyRow } from '@/features/studies/types';
-import { tx, EVENT_TYPE_LABEL } from '@/lib/l10n';
+import { tx } from '@/lib/l10n';
 
 /**
  * 운영 대시보드.
  *
  * 지표는 **운영자가 손을 써야 하는지 알려주는 것**만 둔다. 모집중·진행중 같은 개수는 바로 아래
  * 목록이 이미 말해주므로 카드로 중복하지 않고 목록 우상단에 적는다.
+ *
+ * 활성 크루·출석률·분류별 출석률·거주지 분포는 집계 API 가 없어 준비 중으로 둔다 — 예전에는
+ * 예시 크루·출석으로 숫자를 만들었는데 실데이터와 섞여 보여서 걷어냈다.
+ * TODO(api): GET /api/admin/dashboard — specs/dashboard/spec.md
  */
 
-const TODAY = new Date().toISOString().slice(0, 10);
-
-/**
- * 현재 MSW/API 스터디 목록 기반으로 크루·출석을 순회해 필요한 집계를 뽑는다.
- * TODO(api): GET /api/admin/stats 또는 /api/dashboard — 백엔드 대시보드 집계 API 연동
- */
-function aggregate(studyRows: StudyRow[]) {
-  const regionCount: Record<MemberRegion, number> = { KR: 0, NA: 0, ETC: 0 };
-  const byCategory = new Map<string, { present: number; checked: number; crew: number }>();
-  let activeCrew = 0;
-  let present = 0;
-  let checked = 0;
-
-  const rowMap = new Map(studyRows.map((r) => [r.studyId, r]));
-
-  for (const study of studies) {
-    const row = rowMap.get(study.study_id);
-    if (!row) continue; // MSW 스터디 목록에 없으면 제외
-
-    const { crew, attendance } = getStudyCrew(study);
-    const active = crew;
-    const running = row.phase !== 'CLOSED';
-    const category = study.category ?? '기타';
-    const bucket = byCategory.get(category) ?? { present: 0, checked: 0, crew: 0 };
-
-    for (const c of active) {
-      bucket.crew += 1;
-      if (running) {
-        activeCrew += 1;
-        regionCount[c.region] += 1;
-      }
-      for (const v of Object.values(attendance[c.id] ?? {})) {
-        if (v === 'excused') continue;
-        checked += 1;
-        bucket.checked += 1;
-        const pt = attendancePoint(v);
-        present += pt;
-        bucket.present += pt;
-      }
-    }
-    byCategory.set(category, bucket);
-  }
-
-  const categories = [...byCategory.entries()]
-    .filter(([, v]) => v.checked > 0)
-    .map(([category, v]) => ({
-      category,
-      rate: Math.round((v.present / v.checked) * 100),
-      crew: v.crew,
-    }))
-    .sort((a, b) => b.rate - a.rate);
-
-  return {
-    activeCrew,
-    avgRate: checked === 0 ? 0 : Math.round((present / checked) * 100),
-    regions: MEMBER_REGIONS.map((r) => ({ key: r.key, count: regionCount[r.key] })),
-    categories,
-  };
+function Pending() {
+  return <p className='py-10 text-center text-sm text-fg-muted'>준비 중입니다.</p>;
 }
 
 export default function Dashboard() {
   const { data: studyPage } = useStudies({});
   const studyRows: StudyRow[] = studyPage?.rows ?? [];
 
-  const { activeCrew, avgRate, regions, categories } = aggregate(studyRows);
   const runningStudies = studyRows.filter((s) => s.phase !== 'CLOSED').length;
   const recruiting = studyRows.filter((s) => s.recruiting || s.phase === 'RECRUITING');
-  // TODO(api): GET /api/events — 다가오는 행사 API 연동 (현재 mock)
-  const upcoming = events
-    .filter((e) => e.date >= TODAY)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 6);
-
   const stats = [
-    {
-      label: '활성 크루',
-      value: activeCrew.toLocaleString(),
-      sub: '진행 중 스터디 기준',
-      href: '/studies',
-      icon: Users,
-    },
-    {
-      label: '평균 출석률',
-      value: `${avgRate}%`,
-      sub: '전 스터디 · 지각 포함',
-      href: '/studies',
-      icon: TrendingUp,
-    },
-    // 활성 크루와 같은 집합을 센다(종료되지 않은 스터디).
     {
       label: '진행 중 스터디',
       value: runningStudies,
@@ -136,7 +54,7 @@ export default function Dashboard() {
     <div>
       <PageHeader title='대시보드' />
 
-      <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+      <div className='grid gap-3 sm:grid-cols-2'>
         {stats.map((s) => (
           <Link key={s.label} href={s.href} className='group'>
             <StatCard
@@ -153,14 +71,14 @@ export default function Dashboard() {
       {/* 출석 지표: 분류별 출석률(막대) + 거주지 분포(도넛). 같은 높이로 나란히 둔다 */}
       <div className='mt-6 grid gap-4 lg:grid-cols-2'>
         <Card title='분류별 평균 출석률'>
-          <CategoryBars data={categories} />
+          <Pending />
         </Card>
         <Card title='크루 거주지 분포'>
-          <RegionDonut data={regions} />
+          <Pending />
         </Card>
       </div>
 
-      <div className='mt-6 grid gap-6 lg:grid-cols-2'>
+      <div className='mt-6'>
         <section>
           <div className='mb-3 flex items-baseline justify-between gap-3'>
             <h2 className='text-base font-bold'>

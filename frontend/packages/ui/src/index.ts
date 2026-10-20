@@ -48,9 +48,6 @@ export type { Toast, ToasterProps } from './Toast';
 export { StudyCard } from './StudyCard';
 export type { StudyCardProps } from './StudyCard';
 
-export { AttendanceTable, calculateAttendanceRate, attendanceRateColorClass } from './AttendanceTable';
-export type { AttendanceTableProps, AttendanceMember, AttendanceSession, AttendanceStatus } from './AttendanceTable';
-
 export { Tabs } from './Tabs';
 export type { TabsProps, TabItem } from './Tabs';
 
@@ -72,7 +69,7 @@ export { HotBadge } from './HotBadge';
 
 export { DiscordGlyph } from './DiscordGlyph';
 
-export { StudyThumb, categoryMeta, categoryGradient } from './StudyThumb';
+export { StudyThumb, categoryArtUrl, categoryMeta, categoryGradient, categoryTint } from './StudyThumb';
 export type { StudyThumbProps } from './StudyThumb';
 
 export {

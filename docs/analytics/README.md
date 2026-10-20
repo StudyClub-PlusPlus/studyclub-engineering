@@ -1,6 +1,6 @@
 # Analytics — Amplitude 연동 가이드
 
-StudyClub++ 프론트엔드 분석 도구로 **Amplitude**를 사용한다.
+StudyClub 프론트엔드 분석 도구로 **Amplitude**를 사용한다.
 이벤트 목록은 [`events.md`](events.md)에서 관리한다.
 
 ---

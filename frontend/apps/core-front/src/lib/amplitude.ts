@@ -10,7 +10,7 @@ let initialized = false;
 export function initAmplitude() {
   if (initialized) return;
   if (!API_KEY) {
-    console.warn('Amplitude API key missing — analytics disabled');
+    console.warn('Amplitude API key missing: analytics disabled');
     return;
   }
   initialized = true;

@@ -1,4 +1,5 @@
 import type { Locale } from '@core/lib/content';
+import { PAGE, READ } from '@core/lib/layout';
 import { LEGAL_TEXT, lx, type Block, type LegalDocument } from '@core/lib/legal';
 
 /**
@@ -9,42 +10,44 @@ import { LEGAL_TEXT, lx, type Block, type LegalDocument } from '@core/lib/legal'
  */
 export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }) {
   return (
-    <div className='mx-auto max-w-3xl px-6 py-14'>
-      <header data-anno='1'>
-        <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{lx(doc.title, locale)}</h1>
-        <p data-anno='1-1' className='mt-3 text-sm text-(--color-fg-muted)'>
-          {lx(LEGAL_TEXT.updatedAt, locale)} <time dateTime={doc.updatedAt}>{doc.updatedAt}</time>
-        </p>
-      </header>
+    <div className={`${PAGE} py-14`}>
+      <div className={READ}>
+        <header data-anno='1'>
+          <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{lx(doc.title, locale)}</h1>
+          <p data-anno='1-1' className='mt-3 text-sm text-(--color-fg-muted)'>
+            {lx(LEGAL_TEXT.updatedAt, locale)} <time dateTime={doc.updatedAt}>{doc.updatedAt}</time>
+          </p>
+        </header>
 
-      {doc.intro?.length ? (
-        <div data-anno='1-2' className='mt-8 flex flex-col gap-3'>
-          {doc.intro.map((b, i) => (
-            <BlockView key={i} block={b} locale={locale} />
+        {doc.intro?.length ? (
+          <div data-anno='1-2' className='mt-8 flex flex-col gap-3'>
+            {doc.intro.map((b, i) => (
+              <BlockView key={i} block={b} locale={locale} />
+            ))}
+          </div>
+        ) : null}
+
+        <div data-anno='2' className='mt-10 flex flex-col gap-10'>
+          {doc.sections.map((s, i) => (
+            <section key={s.id} id={s.id} className='scroll-mt-24'>
+              {s.chapter && s.chapter.ko !== doc.sections[i - 1]?.chapter?.ko ? (
+                <h2 className='mb-6 border-b border-(--color-border) pb-2 text-sm font-bold text-(--color-fg-muted)'>
+                  {lx(s.chapter, locale)}
+                </h2>
+              ) : null}
+              <h2 className='text-lg font-bold tracking-tight'>{lx(s.heading, locale)}</h2>
+              {s.blocks?.length ? (
+                <div className='mt-3 flex flex-col gap-3'>
+                  {s.blocks.map((b, i) => (
+                    <BlockView key={i} block={b} locale={locale} />
+                  ))}
+                </div>
+              ) : (
+                <p className='mt-2 text-[15px] italic text-(--color-fg-faint)'>{lx(LEGAL_TEXT.empty, locale)}</p>
+              )}
+            </section>
           ))}
         </div>
-      ) : null}
-
-      <div data-anno='2' className='mt-10 flex flex-col gap-10'>
-        {doc.sections.map((s, i) => (
-          <section key={s.id} id={s.id} className='scroll-mt-24'>
-            {s.chapter && s.chapter.ko !== doc.sections[i - 1]?.chapter?.ko ? (
-              <h2 className='mb-6 border-b border-(--color-border) pb-2 text-sm font-bold text-(--color-fg-muted)'>
-                {lx(s.chapter, locale)}
-              </h2>
-            ) : null}
-            <h2 className='text-lg font-bold tracking-tight'>{lx(s.heading, locale)}</h2>
-            {s.blocks?.length ? (
-              <div className='mt-3 flex flex-col gap-3'>
-                {s.blocks.map((b, i) => (
-                  <BlockView key={i} block={b} locale={locale} />
-                ))}
-              </div>
-            ) : (
-              <p className='mt-2 text-[15px] italic text-(--color-fg-faint)'>{lx(LEGAL_TEXT.empty, locale)}</p>
-            )}
-          </section>
-        ))}
       </div>
     </div>
   );

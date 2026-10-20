@@ -21,7 +21,9 @@ import com.studyclub.domain.study.StudyRepository;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +47,7 @@ public class StudyMeetingService {
     private static final String EDIT_FORBIDDEN = "이 분반의 회차를 관리할 권한이 없습니다.";
     private static final String VIEW_FORBIDDEN = "이 스터디의 일정을 볼 수 없습니다.";
     private static final String MEMBER_FORBIDDEN = "이 분반 참여자만 발표를 신청할 수 있습니다.";
+    static final int MAX_DELETE_IDS = 100;
 
     private final StudyRepository studyRepository;
     private final StudyGroupRepository studyGroupRepository;
@@ -244,14 +247,39 @@ public class StudyMeetingService {
         }
     }
 
+    /**
+     * 한 분반의 회차 여럿을 지운다 — 하나라도 막히면 아무것도 지우지 않는다 (specs/study-meeting/spec.md 결정 13). 잠금 순서는 단건 수정과
+     * 같다: 분반 → 분반 회차.
+     */
     @Transactional
-    public void delete(Long accountId, Long studyId, Long meetingId) {
-        LockedMeeting locked = lockMeetingForEdit(accountId, studyId, meetingId);
-        locked.meeting().assertDeletable(Instant.now());
+    public void deleteAll(
+            Long accountId, Long studyId, Long studyGroupId, Collection<Long> meetingIds) {
+        if (meetingIds == null || meetingIds.isEmpty() || meetingIds.contains(null)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "지울 회차를 골라 주세요.");
+        }
+        Set<Long> ids = new LinkedHashSet<>(meetingIds);
+        if (ids.size() > MAX_DELETE_IDS) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "회차는 한 번에 " + MAX_DELETE_IDS + "개까지 지웁니다.");
+        }
+        StudyGroup group = lockGroup(studyGroupId);
+        Study study = study(studyId);
+        if (!group.getStudyId().equals(studyId)) {
+            throw meetingNotFound();
+        }
+        studyCaptainGuard.assertCanEditGroup(
+                accountId, study.getCreatedBy(), studyGroupId, EDIT_FORBIDDEN);
+        List<StudyMeeting> meetings =
+                studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId);
+        // 없는 ID · 다른 분반 회차 · 잠금 대기 중 지워진 회차가 여기서 걸린다
+        List<StudyMeeting> targets = ids.stream().map(id -> find(meetings, id)).toList();
+        // 잠금을 기다리는 동안 예정 시각이 지날 수 있어 잠근 뒤에 잰다
+        new MeetingSchedule(group.getTimezone(), meetings).checkDelete(targets, Instant.now());
+
         // 출석 → 회차 외래키가 없어 DB 가 지워 주지 않는다. 휴가는 출석 행의 EXCUSED 라 함께 사라진다
         // 일괄 DELETE 가 영속성 컨텍스트를 비우므로 회차를 먼저 지운다 (DELETE 전에 flush 된다)
-        studyMeetingRepository.delete(locked.meeting());
-        studyAttendanceRepository.deleteByStudyMeetingId(meetingId);
+        studyMeetingRepository.deleteAll(targets);
+        studyAttendanceRepository.deleteByStudyMeetingIdIn(ids);
     }
 
     /** 크루가 빈 발표자 칸에 자기를 넣는다. 같은 칸에 동시에 신청하면 회차 잠금을 먼저 쥔 쪽이 이긴다. */

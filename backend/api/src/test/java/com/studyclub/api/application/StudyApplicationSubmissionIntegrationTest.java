@@ -640,7 +640,7 @@ class StudyApplicationSubmissionIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/auth/me",
+                        "/api/me",
                         org.springframework.http.HttpMethod.GET,
                         authenticatedRequest(LINKED_ACCOUNT_ID, Map.of()),
                         Map.class);
@@ -650,7 +650,7 @@ class StudyApplicationSubmissionIntegrationTest {
 
         var other =
                 rest.exchange(
-                        "/auth/me",
+                        "/api/me",
                         org.springframework.http.HttpMethod.GET,
                         authenticatedRequest(UNLINKED_ACCOUNT_ID, Map.of()),
                         Map.class);

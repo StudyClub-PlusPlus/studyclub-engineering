@@ -1,6 +1,6 @@
 # 캡틴은 운영 현황을 한 화면에서 볼 수 있다.
 
-기준 프로토타입: 운영 콘솔 › 대시보드 — https://playground.studyclub-plusplus.com/proto/console
+기준 프로토타입: 운영 콘솔 › 대시보드 — https://playground.studyclub.life/proto/console
 
 ## 1. 기본설명
 

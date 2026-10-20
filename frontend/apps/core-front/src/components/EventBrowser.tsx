@@ -24,7 +24,7 @@ import { useUrlState } from '@/lib/use-url-state';
 const TODAY = new Date().toISOString().slice(0, 10);
 
 type WhenTab = 'upcoming' | 'past' | 'all';
-const WHEN_ORDER: WhenTab[] = ['upcoming', 'past', 'all'];
+const WHEN_ORDER: WhenTab[] = ['all', 'upcoming', 'past'];
 
 const WHEN_LABEL: Record<WhenTab, { ko: string; en: string }> = {
   upcoming: { ko: '예정', en: 'Upcoming' },
@@ -35,7 +35,7 @@ const WHEN_LABEL: Record<WhenTab, { ko: string; en: string }> = {
 type TypeFilter = 'all' | 'meetup' | 'workshop' | 'talk' | 'online';
 
 /** URL 쿼리 — `?when=past&type=talk&q=…`. 기본값은 싣지 않는다. */
-const URL_DEFAULTS = { q: '', when: 'upcoming', type: 'all' };
+const URL_DEFAULTS = { q: '', when: 'all', type: 'all' };
 const URL_ALLOWED = { when: WHEN_ORDER, type: ['all', 'meetup', 'workshop', 'talk', 'online'] };
 
 function TypeChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -100,7 +100,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
 
   return (
     <div>
-      <div className='mb-3 flex items-center justify-between gap-3'>
+      <div className='mb-3 flex flex-wrap items-center justify-between gap-3'>
         <div role='tablist' className='inline-flex shrink-0 rounded-pill bg-surface-2 p-1'>
           {WHEN_ORDER.map((w) => {
             const on = when === w;
@@ -122,7 +122,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
           })}
         </div>
 
-        <div className='relative w-52 shrink-0'>
+        <div className='relative w-full sm:w-52 sm:shrink-0'>
           <Search
             size={15}
             className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-placeholder'

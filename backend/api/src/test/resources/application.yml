@@ -26,8 +26,8 @@ jwt:
 mail:
   notify:
     region: ap-northeast-2
-    sub-domain: notify.test.studyclub-plusplus.com
-    from-address: notify@test.studyclub-plusplus.com
+    sub-domain: notify.test.studyclub.life
+    from-address: notify@test.studyclub.life
     access-key-id: test-access-key
     secret-access-key: test-secret-key
 
