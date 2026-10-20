@@ -6,13 +6,15 @@ import Link from 'next/link';
 import { PageHeader, TableCard } from '@/components/ui';
 import { useNotificationTemplates } from '@/features/notification-templates/queries';
 import { CHANNEL_LABEL, EVENT_LABEL, fmtDateTime } from '@/features/notification-templates/types';
+import { NotificationTabs } from '@/features/notifications/components/NotificationTabs';
 
 export default function NotificationTemplatesPage() {
   const { data: templates, error, isPending } = useNotificationTemplates();
 
   return (
     <div>
-      <PageHeader title='알림 템플릿' subtitle='가입·신청 등 이벤트마다 나가는 메일·디스코드 문구' />
+      <PageHeader title='알림' subtitle='가입·신청 등 이벤트마다 나가는 메일·디스코드 문구' />
+      <NotificationTabs />
 
       {error && (
         <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-danger-fg'>
