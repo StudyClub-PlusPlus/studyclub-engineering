@@ -14,6 +14,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -349,6 +351,32 @@ class AdminStudyListIntegrationTest {
         var response =
                 rest.exchange(
                         "/api/admin/studies?sort=RECRUITMENT",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "category",
+                "studyKind",
+                "status",
+                "studyId",
+                "visibility",
+                "recruitStatus",
+                "sort",
+                "offset",
+                "limit"
+            })
+    @DisplayName("실패 - 목록 Query는 생략할 수 있지만 명시한 빈 값은 모두 400이다")
+    void rejectsEveryExplicitEmptyQuery(String parameter) {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?" + parameter + "=",
                         HttpMethod.GET,
                         authenticatedRequest(ADMIN_ID),
                         Map.class);

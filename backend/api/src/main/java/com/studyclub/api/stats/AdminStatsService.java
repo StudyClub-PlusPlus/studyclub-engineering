@@ -1,7 +1,6 @@
 package com.studyclub.api.stats;
 
 import com.studyclub.api.stats.AdminStatsResponses.AggregateError;
-import com.studyclub.api.stats.AdminStatsResponses.AttendanceComparison;
 import com.studyclub.api.stats.AdminStatsResponses.AttendanceTrendResponse;
 import com.studyclub.api.stats.AdminStatsResponses.CategoryCount;
 import com.studyclub.api.stats.AdminStatsResponses.CrewTimezonesResponse;
@@ -11,6 +10,12 @@ import com.studyclub.api.stats.AdminStatsResponses.StudyBoardResponse;
 import com.studyclub.api.stats.AdminStatsResponses.SummaryResponse;
 import com.studyclub.api.stats.AdminStatsResponses.TimeZoneGroup;
 import com.studyclub.api.stats.AdminStatsResponses.TrendPoint;
+import com.studyclub.api.stats.DashboardSummaryAggregateService.AttendanceResult;
+import com.studyclub.api.stats.DashboardSummaryAggregateService.ParticipationResult;
+import com.studyclub.api.study.BackofficeStudyListFilter;
+import com.studyclub.api.study.BackofficeStudyListResponse;
+import com.studyclub.api.study.BackofficeStudyListService;
+import com.studyclub.api.study.BackofficeStudySort;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -54,6 +59,8 @@ public class AdminStatsService {
 
     private final DashboardTimeZoneResolver timeZoneResolver;
     private final DashboardAttendanceAggregator attendanceAggregator;
+    private final DashboardSummaryAggregateService summaryAggregateService;
+    private final BackofficeStudyListService backofficeStudyListService;
     private final StudyParticipantRepository studyParticipantRepository;
     private final AccountRepository accountRepository;
     private final StudyRepository studyRepository;
@@ -63,6 +70,8 @@ public class AdminStatsService {
     public AdminStatsService(
             DashboardTimeZoneResolver timeZoneResolver,
             DashboardAttendanceAggregator attendanceAggregator,
+            DashboardSummaryAggregateService summaryAggregateService,
+            BackofficeStudyListService backofficeStudyListService,
             StudyParticipantRepository studyParticipantRepository,
             AccountRepository accountRepository,
             StudyRepository studyRepository,
@@ -70,6 +79,8 @@ public class AdminStatsService {
             StudyApplicationRepository studyApplicationRepository) {
         this.timeZoneResolver = timeZoneResolver;
         this.attendanceAggregator = attendanceAggregator;
+        this.summaryAggregateService = summaryAggregateService;
+        this.backofficeStudyListService = backofficeStudyListService;
         this.studyParticipantRepository = studyParticipantRepository;
         this.accountRepository = accountRepository;
         this.studyRepository = studyRepository;
@@ -77,41 +88,36 @@ public class AdminStatsService {
         this.studyApplicationRepository = studyApplicationRepository;
     }
 
+    @Transactional(
+            propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public SummaryResponse summary(String timeZoneQuery, Long accountId) {
         Instant asOf = Instant.now();
         ZoneId zone = timeZoneResolver.resolve(timeZoneQuery, accountId);
         Map<String, AggregateError> errors = new LinkedHashMap<>();
+        Map<String, Object> fields = new LinkedHashMap<>();
 
-        Long activeCrew = null;
-        Long activeEnrollments = null;
-        Double studiesPerCrew = null;
         try {
-            ActiveCrewStats crew = activeCrewStats();
-            activeCrew = crew.crewCount();
-            activeEnrollments = crew.enrollmentCount();
-            studiesPerCrew =
-                    crew.crewCount() == 0
-                            ? null
-                            : (double) crew.enrollmentCount() / crew.crewCount();
+            ParticipationResult participation = summaryAggregateService.participation();
+            fields.put("activeCrew", participation.activeCrew());
+            fields.put("activeEnrollments", participation.activeEnrollments());
+            fields.put("studiesPerCrew", participation.studiesPerCrew());
         } catch (RuntimeException e) {
             log.error("대시보드 participation 집계 실패", e);
             errors.put("participation", new AggregateError("INTERNAL_ERROR", "참여 정보를 불러오지 못했습니다."));
         }
 
-        Long communityMembers = null;
         try {
-            communityMembers = accountRepository.countByOnboardingCompletedAtIsNotNull();
+            fields.put("communityMembers", summaryAggregateService.communityMembers());
         } catch (RuntimeException e) {
             log.error("대시보드 communityMembers 집계 실패", e);
             errors.put(
                     "communityMembers", new AggregateError("INTERNAL_ERROR", "회원 정보를 불러오지 못했습니다."));
         }
 
-        Double attendanceRate = null;
-        AttendanceComparison comparison = null;
         try {
-            attendanceRate = attendanceAggregator.ratePercent(asOf, m -> true);
-            comparison = buildComparison(asOf, zone);
+            AttendanceResult attendance = summaryAggregateService.attendance(asOf, zone);
+            fields.put("attendanceRate", attendance.attendanceRate());
+            fields.put("attendanceComparison", attendance.attendanceComparison());
         } catch (RuntimeException e) {
             log.error("대시보드 attendance 집계 실패", e);
             errors.put("attendance", new AggregateError("INTERNAL_ERROR", "출석 정보를 불러오지 못했습니다."));
@@ -121,16 +127,7 @@ public class AdminStatsService {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "대시보드 요약을 불러오지 못했습니다.");
         }
 
-        return new SummaryResponse(
-                asOf,
-                zone.getId(),
-                activeCrew,
-                activeEnrollments,
-                studiesPerCrew,
-                communityMembers,
-                attendanceRate,
-                comparison,
-                errors);
+        return new SummaryResponse(asOf, zone.getId(), errors, fields);
     }
 
     public StudyBoardResponse studyBoard(
@@ -145,11 +142,10 @@ public class AdminStatsService {
         Instant asOf = Instant.now();
         ZoneId zone = timeZoneResolver.resolve(timeZoneQuery, accountId);
 
-        List<StudyBoardItem> ranked =
-                switch (view) {
-                    case ONGOING -> ongoingBoardItems(asOf);
-                    case RECRUITMENT -> recruitmentBoardItems(asOf);
-                };
+        if (view == StudyBoardView.ONGOING) {
+            return ongoingBoard(asOf, zone, limit);
+        }
+        List<StudyBoardItem> ranked = recruitmentBoardItems(asOf);
         long total = ranked.size();
         List<StudyBoardItem> items = ranked.stream().limit(limit).toList();
         return new StudyBoardResponse(asOf, zone.getId(), view, total, 0, limit, items);
@@ -261,51 +257,33 @@ public class AdminStatsService {
         return new StudiesByCategoryResponse(asOf, categories);
     }
 
-    private AttendanceComparison buildComparison(Instant asOf, ZoneId zone) {
-        LocalDate currentMonday =
-                asOf.atZone(zone)
-                        .toLocalDate()
-                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate previousMonday = currentMonday.minusWeeks(1);
-        Instant currentStart = currentMonday.atStartOfDay(zone).toInstant();
-        Instant previousStart = previousMonday.atStartOfDay(zone).toInstant();
-        Instant previousEnd = currentStart;
-
-        Double currentRate =
-                attendanceAggregator.ratePercent(
-                        asOf,
-                        DashboardAttendanceAggregator.scheduledBetween(
-                                currentStart, asOf.plusNanos(1)));
-        Double previousRate =
-                attendanceAggregator.ratePercent(
-                        asOf,
-                        DashboardAttendanceAggregator.scheduledBetween(previousStart, previousEnd));
-        Double delta =
-                currentRate == null || previousRate == null ? null : currentRate - previousRate;
-        return new AttendanceComparison(
-                currentMonday.toString(),
-                previousMonday.toString(),
-                currentRate,
-                previousRate,
-                delta);
-    }
-
-    private List<StudyBoardItem> ongoingBoardItems(Instant asOf) {
-        return studyRepository.findByStatus(StudyStatus.ONGOING).stream()
-                .sorted(
-                        Comparator.comparing(
-                                        Study::getTitle, Comparator.nullsLast(String::compareTo))
-                                .thenComparing(Study::getId))
-                .map(
-                        s ->
-                                new StudyBoardItem(
-                                        s.getId(),
-                                        s.getProgramId(),
-                                        s.getTitle(),
-                                        null,
-                                        null,
-                                        null))
-                .toList();
+    private StudyBoardResponse ongoingBoard(Instant asOf, ZoneId zone, int limit) {
+        BackofficeStudyListResponse page =
+                backofficeStudyListService.getStudies(
+                        new BackofficeStudyListFilter(
+                                null,
+                                null,
+                                StudyStatus.ONGOING,
+                                null,
+                                null,
+                                null,
+                                BackofficeStudySort.TITLE_ASC),
+                        0,
+                        limit);
+        List<StudyBoardItem> items =
+                page.items().stream()
+                        .map(
+                                study ->
+                                        new StudyBoardItem(
+                                                study.studyId(),
+                                                study.programId(),
+                                                study.title(),
+                                                null,
+                                                null,
+                                                null))
+                        .toList();
+        return new StudyBoardResponse(
+                asOf, zone.getId(), StudyBoardView.ONGOING, page.total(), 0, limit, items);
     }
 
     private List<StudyBoardItem> recruitmentBoardItems(Instant asOf) {

@@ -131,9 +131,34 @@ class AdminStatsIntegrationTest {
                         .findFirst()
                         .orElseThrow();
         assertThat(ours).containsEntry("title", "AAA 대시보드 진행중");
-        // ONGOING 보드의 모집 필드는 null — NON_NULL 직렬화면 키가 빠질 수 있다
-        assertThat(ours.get("recruitStatus")).isNull();
-        assertThat(ours.get("deadlineBadge")).isNull();
+        assertThat(ours)
+                .containsEntry("recruitStatus", null)
+                .containsEntry("recruitDeadlineAt", null)
+                .containsEntry("deadlineBadge", null);
+    }
+
+    @Test
+    @DisplayName("성공 - 진행중 보드는 전체 목록의 첫 최대 4건과 같은 DB 정렬을 쓴다")
+    void ongoingBoardMatchesAdminListOrder() {
+        var board =
+                rest.exchange(
+                        "/api/admin/stats/study-board?view=ONGOING",
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+        var list =
+                rest.exchange(
+                        "/api/admin/studies?status=ONGOING&sort=TITLE_ASC&offset=0&limit=20",
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+
+        assertThat(board.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyIds(board.getBody()))
+                .isEqualTo(studyIds(list.getBody()).stream().limit(4).toList());
+        assertThat(((Number) board.getBody().get("total")).longValue())
+                .isEqualTo(((Number) list.getBody().get("total")).longValue());
     }
 
     @Test
@@ -222,6 +247,12 @@ class AdminStatsIntegrationTest {
                 .map(g -> ((Number) g.get("count")).longValue())
                 .findFirst()
                 .orElse(0L);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Long> studyIds(Map<?, ?> body) {
+        return ((List<Map<String, Object>>) body.get("items"))
+                .stream().map(item -> ((Number) item.get("studyId")).longValue()).toList();
     }
 
     private HttpEntity<Void> auth(Long accountId) {

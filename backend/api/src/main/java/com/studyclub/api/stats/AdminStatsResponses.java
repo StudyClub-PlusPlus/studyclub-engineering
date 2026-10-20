@@ -1,6 +1,7 @@
 package com.studyclub.api.stats;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.StudyCategory;
 import java.time.Instant;
@@ -14,17 +15,21 @@ public final class AdminStatsResponses {
 
     public record AggregateError(String errorCode, String errorMessage) {}
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record SummaryResponse(
             Instant asOf,
             String timeZone,
-            Long activeCrew,
-            Long activeEnrollments,
-            Double studiesPerCrew,
-            Long communityMembers,
-            Double attendanceRate,
-            AttendanceComparison attendanceComparison,
-            Map<String, AggregateError> errors) {}
+            Map<String, AggregateError> errors,
+            @JsonIgnore Map<String, Object> aggregateFields) {
+
+        /**
+         * 성공한 집계 묶음만 최상위 필드로 펼친다. 성공했지만 대상이 없는 값은 map 안의 명시적 {@code null} 로 직렬화하고, 실패한 묶음은 map에 넣지
+         * 않아 필드를 생략한다.
+         */
+        @JsonAnyGetter
+        public Map<String, Object> aggregateFields() {
+            return aggregateFields;
+        }
+    }
 
     public record AttendanceComparison(
             String currentWeekStart,
@@ -42,7 +47,6 @@ public final class AdminStatsResponses {
             int limit,
             List<StudyBoardItem> items) {}
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record StudyBoardItem(
             Long studyId,
             Long programId,
