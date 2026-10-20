@@ -467,7 +467,7 @@ function ThumbnailField({
               type='button'
               onClick={thumb.pick}
               disabled={thumb.isUploading}
-              className='h-8 rounded-control border border-border-strong bg-bg px-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-surface-2 disabled:opacity-50'
+              className='h-8 rounded-control border border-border-strong bg-bg px-3 text-sm font-medium text-fg-secondary transition-colors hover:bg-surface-2 disabled:opacity-50'
             >
               {thumb.isUploading ? '올리는 중' : value.thumbnailUrl ? '다른 이미지로 바꾸기' : '이미지 업로드'}
             </button>
@@ -476,7 +476,7 @@ function ThumbnailField({
                 type='button'
                 onClick={() => onChange({ ...value, thumbnailUrl: '', thumbnailFileId: null })}
                 disabled={thumb.isUploading}
-                className='h-8 rounded-control border border-border-strong bg-bg px-3 text-[13px] font-medium text-fg-secondary transition-colors hover:bg-surface-2 disabled:opacity-50'
+                className='h-8 rounded-control border border-border-strong bg-bg px-3 text-sm font-medium text-fg-secondary transition-colors hover:bg-surface-2 disabled:opacity-50'
               >
                 제거
               </button>

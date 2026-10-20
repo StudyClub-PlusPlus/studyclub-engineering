@@ -44,11 +44,9 @@ public class UploadController {
     public UploadResponse uploadImage(
             Authentication authentication,
             @RequestPart(value = "file", required = false) MultipartFile file,
-            @RequestPart(value = "purpose", required = false) String purposePart,
-            @RequestParam(value = "purpose", required = false) String purposeParam)
+            @RequestParam(value = "purpose", required = false) String purpose)
             throws IOException {
         Long accountId = authenticatedAccountId(authentication);
-        String purpose = purposePart != null && !purposePart.isBlank() ? purposePart : purposeParam;
         StoragePurpose storagePurpose = parsePurpose(purpose);
         byte[] bytes = file == null ? new byte[0] : file.getBytes();
         UploadService.Uploaded uploaded = uploadService.upload(accountId, storagePurpose, bytes);
