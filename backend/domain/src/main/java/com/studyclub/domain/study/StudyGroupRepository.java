@@ -1,6 +1,7 @@
 package com.studyclub.domain.study;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 public interface StudyGroupRepository extends JpaRepository<StudyGroup, Long> {
 
     List<StudyGroup> findByStudyId(Long studyId);
+
+    List<StudyGroup> findByStudyIdIn(Collection<Long> studyIds);
 
     /** 같은 스터디에 같은 이름의 반이 있는지. 운영 DB 정렬이 대소문자를 가리지 않아 여기서도 무시한다. */
     boolean existsByStudyIdAndNameIgnoreCase(Long studyId, String name);

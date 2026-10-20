@@ -89,7 +89,7 @@
 
 1. principal 없으면 `401`
 2. 온보딩 미완료 → `403 ONBOARDING_REQUIRED`
-3. 온보딩·`/auth/me`·닉네임 availability·탈퇴 등 **의도적 미완료 허용** API에는 붙이지 않음 (표 D)
+3. 온보딩·`GET /api/me`·닉네임 availability·탈퇴 등 **의도적 미완료 허용** API에는 붙이지 않음 (표 D)
 
 ### 신청 폼 GET — 공개 분기 주의
 
@@ -141,7 +141,7 @@
 
 ### D. 가드 금지 (의도적)
 
-`POST /auth/social-login` · `POST /auth/refresh` · `GET /auth/me` · `POST /accounts/onboarding` · `GET /api/nicknames/availability` · **`GET /api/studies/{studyId}/application-form`** (공개 분기)
+`POST /auth/social-login` · `POST /auth/refresh` · `GET /api/me` · `POST /accounts/onboarding` · `GET /api/nicknames/availability` · **`GET /api/studies/{studyId}/application-form`** (공개 분기)
 
 ### E. 범위 밖 (참고)
 

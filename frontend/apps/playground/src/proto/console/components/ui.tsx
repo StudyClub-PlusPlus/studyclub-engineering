@@ -65,10 +65,24 @@ export function RowActions() {
   );
 }
 
-export function TableCard({ children, anno }: { children: ReactNode; anno?: string }) {
+/**
+ * `top` 을 주면 표 맨 위(카드 안)에 붙인다 — 일괄 수정 작업 바 자리. 그때 카드는 overflow-clip 이라
+ * 스크롤 상자가 생기지 않아 작업 바가 화면 위에 붙고, 가로 스크롤은 표만 한다.
+ */
+export function TableCard({ children, anno, top }: { children: ReactNode; anno?: string; top?: ReactNode }) {
+  if (!top) {
+    return (
+      <div data-anno={anno} className='card overflow-x-auto'>
+        <table className='bo-table'>{children}</table>
+      </div>
+    );
+  }
   return (
-    <div data-anno={anno} className='card overflow-x-auto'>
-      <table className='bo-table'>{children}</table>
+    <div data-anno={anno} className='card overflow-clip'>
+      {top}
+      <div className='overflow-x-auto'>
+        <table className='bo-table'>{children}</table>
+      </div>
     </div>
   );
 }

@@ -11,6 +11,14 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByStudyId(Long studyId);
 
+    /** 진행 중 기수의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용 (specs/dashboard/spec.md 2-1). */
+    @Query(
+            "SELECT p FROM StudyParticipant p, Study s"
+                    + " WHERE p.studyId = s.id"
+                    + " AND s.status = com.studyclub.domain.study.StudyStatus.ONGOING"
+                    + " AND p.status = com.studyclub.domain.participant.ParticipantStatus.ACTIVE")
+    List<StudyParticipant> findActiveInOngoingStudies();
+
     void deleteByStudyId(Long studyId);
 
     /** 내 스터디 목록(MyStudyQueryService)과 회원 탈퇴 익명화(AccountDeletionService) 공용 조회. */
