@@ -117,7 +117,7 @@
 | 창구 | 누가 | 왜 | 언제 |
 |---|---|---|---|
 | `POST /api/me/discord/link` (위 표) | 디스코드 스쿼드 | 모든 자동화의 출발점 | **지금** (B1) |
-| `GET /auth/me` 에 `discordLinked` 필드 추가 | 디스코드 스쿼드 | 화면이 연동 여부를 서버 값으로 알게 (아래 「화면·기능」 ①) | B1 과 같이 |
+| `GET /api/me` 에 `discordLinked` 필드 추가 | 디스코드 스쿼드 | 화면이 연동 여부를 서버 값으로 알게 (아래 「화면·기능」 ①) | B1 과 같이 |
 | ~~봇 「길드 멤버인가」 창구~~ | — | 필요 없어졌다 — 연동 때 OAuth 권한으로 확인한다 ([질문 2](#물어볼-것)) | — |
 | 봇 네비게이터 role 창구에 시스템 호출 허용 | 디스코드 스쿼드 | 네비게이터가 중단시킨 경우에도 회수 ([질문 5](#물어볼-것)) | DSC-06 |
 | 네비게이터 지정·해제, 참여 중단, 명부 편입 API | 스터디 스쿼드 | 이벤트를 발행할 자리 | 각 스펙대로 (STD-02~04) |
@@ -128,9 +128,9 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 
 | # | 화면·기능 | 파일 | 지금 | 해야 할 것 | 담당 |
 |---|---|---|---|---|---|
-| ① | 사이트 「신청하기」 버튼 | `core-front/src/components/ApplyButton.tsx` | 연동 여부를 **브라우저 저장소**(`localStorage` 의 `sc_discord`)로 판단한다. 서버의 `DISCORD_ID` 와 상관없다 | `GET /auth/me` 의 `discordLinked` 로 판단. 서버가 403 을 주면 연동 창을 여는 처리는 이미 있다 (`ApplyDialog` 의 `onRequireDiscord`) | 프론트 (B1 이후) |
+| ① | 사이트 「신청하기」 버튼 | `core-front/src/components/ApplyButton.tsx` | 연동 여부를 **브라우저 저장소**(`localStorage` 의 `sc_discord`)로 판단한다. 서버의 `DISCORD_ID` 와 상관없다 | `GET /api/me` 의 `discordLinked` 로 판단. 서버가 403 을 주면 연동 창을 여는 처리는 이미 있다 (`ApplyDialog` 의 `onRequireDiscord`) | 프론트 (B1 이후) |
 | ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | 0.4초 뒤 성공한 척하고 브라우저 저장소에 가짜 핸들(`jiwon_dev`)을 쓴다 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
-| ③ | 신청서의 디스코드 별명 칸 | `core-front/src/components/ApplyDialog.tsx` | 기본값을 브라우저 저장소에서 읽는다. 제출은 서버로 간다 ✅ | 스펙대로 `GET /auth/me` 의 `discordNickname` 에서 읽기 | 프론트 |
+| ③ | 신청서의 디스코드 별명 칸 | `core-front/src/components/ApplyDialog.tsx` | 기본값을 브라우저 저장소에서 읽는다. 제출은 서버로 간다 ✅ | 스펙대로 `GET /api/me` 의 `discordNickname` 에서 읽기 | 프론트 |
 | ④ | 백오피스 스터디 등록 | `back-office-front/src/components/StudyForm.tsx` | 등록은 된다. 디스코드 생성이 성공했는지 **알 수 없다** | 상세에 연결 여부 표시 + 실패 시 「디스코드 다시 연결」 버튼(`POST .../discord-link`) | 디스코드 스쿼드 (응답 필드) · 프론트 |
 | ⑤ | 스터디의 디스코드 링크 | 백오피스 `StudyForm` 입력 → 사이트 상세·내 스터디 표시 | 캡틴이 링크(`STUDY.DISCORD_CHANNEL_URL`)를 **손으로** 넣는다. 봇이 만든 채널과 따로 논다 | 봇이 만든 채널로 자동으로 채울지 정한다 (이번 범위 밖) | 기획 |
 | ⑥ | 신청 제출 (백엔드) | `StudyApplicationService.submit` | 봇을 안 부른다 | 질문 3 이 「제출 시」면 B3 구독자가 `study_application.submitted` 를 듣는다 | 디스코드 스쿼드 |
@@ -167,7 +167,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 - 에러: `code` 없음 400 · 다른 계정이 이미 쓰는 ID 409 · Discord 실패·타임아웃 502 (부분 저장 없음).
 - **새 설정값**: Discord OAuth 앱의 client id · client secret · redirect URI. 값은 내부 시크릿 저장소에만 두고 코드에는 `env` 이름만 쓴다.
 - 끝나면 풀리는 것: 신청 403, 스터디 생성 때 디스코드 건너뜀.
-- 같이 할 것: `GET /auth/me` 응답에 `discordLinked`(Boolean) 를 더한다. 화면은 지금 연동 여부를 브라우저 저장소로 판단한다 — 「판정은 서버가 내려준다」 규칙대로 서버 값을 주어야 한다. `DISCORD_ID` 자체는 싣지 않는다.
+- 같이 할 것: `GET /api/me` 응답에 `discordLinked`(Boolean) 를 더한다. 화면은 지금 연동 여부를 브라우저 저장소로 판단한다 — 「판정은 서버가 내려준다」 규칙대로 서버 값을 주어야 한다. `DISCORD_ID` 자체는 싣지 않는다.
 - 프론트는 `ApplyDiscordGate` 의 가짜 연동을 이 API 로, `ApplyButton` 의 판단을 `discordLinked` 로 바꾼다 ([화면·기능 ①②](#화면기능별-호출-현황)).
 
 ### B2. `DiscordBotClient` 확장
@@ -229,42 +229,42 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 
 ### 작업 목록 — 작업명
 
-작업을 나눠 줄 때 아래 **ID 와 작업명**을 그대로 이슈 제목으로 쓴다. 예: `[DSC-01] 디스코드 계정 연동 API`.
+작업을 나눠 줄 때 아래 **ID 와 작업명**을 그대로 이슈 제목으로 쓴다. 「담당 (제안)」은 2026-10-20 에 그 영역 코드를 만든 사람 기준으로 부탁드린 값이다 — 본인이 수락하면 확정한다. 예: `[DSC-01] 디스코드 계정 연동 API`.
 머리말 `[BE]` 백엔드 · `[FE]` 프론트 · `[BOT]` 디스코드 봇(`discord/`) · `[기획]` · `[스펙]`. 앞 절의 B1~B6 이 어느 작업인지는 「범위」 칸에 적었다.
 
 **공통 — 두 스쿼드가 같이**
 
-| ID | 작업명 | 범위 | 선행 |
-|---|---|---|---|
-| COM-01 | [스펙] 디스코드 연동 이벤트 3개 계약 합의 | [위 표](#먼저-같이-정할-것--이벤트-3개-주문서-양식)의 이름·페이로드를 domain-events 스펙에 올린다. 「구독자」 칸은 디스코드 스쿼드가 채운다 | — |
-| COM-02 | [기획] 디스코드 연동 Story(PRD) 작성 | 질문 1~5 의 답을 PRD 로. `stories.md` 에 한 줄 | 질문 답 |
-| COM-03 | [기획] 디스코드 연동 화면 — 자동 가입 안내 · 프로토 | 연동 버튼 → 동의 → 「서버에 들어갔어요 / 이미 들어와 있어요」 안내. playground 프로토까지 | 자동 가입 결정 (질문 2) |
+| ID | 작업명 | 범위 | 선행 | 담당 (제안) |
+|---|---|---|---|---|
+| COM-01 | [스펙] 디스코드 연동 이벤트 3개 계약 합의 | [위 표](#먼저-같이-정할-것--이벤트-3개-주문서-양식)의 이름·페이로드를 domain-events 스펙에 올린다. 「구독자」 칸은 디스코드 스쿼드가 채운다 | — | seeunrosypark |
+| COM-02 | [기획] 디스코드 연동 Story(PRD) 작성 | 질문 1~5 의 답을 PRD 로. `stories.md` 에 한 줄 | 질문 답 | seeunrosypark |
+| COM-03 | [기획] 디스코드 연동 화면 — 자동 가입 안내 · 프로토 | 연동 버튼 → 동의 → 「서버에 들어갔어요 / 이미 들어와 있어요」 안내. playground 프로토까지 | 자동 가입 결정 (질문 2) | seeunrosypark |
 
 **디스코드 스쿼드 — 주문서를 보고 반영한다**
 
-| ID | 작업명 | 범위 | 선행 |
-|---|---|---|---|
-| DSC-01 | [BE] 디스코드 계정 연동 API (`POST /api/me/discord/link`) | B1. Discord OAuth 앱 설정 · `DISCORD_ID`/`DISCORD_HANDLE` 저장 · **길드 멤버 확인**(질문 2, B6) · 스펙 확정 | — **가장 먼저** |
-| DSC-02 | [BE] `GET /auth/me` 에 `discordLinked` 추가 | user-onboarding 스펙 필드 추가 | DSC-01 |
-| DSC-03 | [BE] 회원가입(온보딩)에 디스코드 연동 단계 추가 | 질문 1 이 「가입 때」면. 온보딩 완료 조건에 연동을 넣는다. 온보딩 담당과 맞춘다 | DSC-01 · 질문 1 |
-| DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03 이면) 가입 화면. 프론트 담당에게 넘겨도 된다 | DSC-01 · DSC-02 |
-| DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **구현됨 — [PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276) 리뷰 대기** (채널 목록·메시지 메서드까지 들어 있다) | — |
-| DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | 질문 5. `roles.py` 의 navigator 두 창구 `allow_system=True` + 봇 문서 수정 | 질문 5 |
-| DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자 | DSC-05 · STD-02 |
-| DSC-08 | [BE] 네비게이터 지정·해제 시 네비게이터 role 부여·회수 | B4. `study_participant.role_changed` 구독자. **완료 조건: 회수는 그 사람이 다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만** (네비게이터 role 은 길드에 하나) | DSC-05 · DSC-06 · STD-03 |
-| DSC-09 | [BE] 참여 중단 시 스터디 role 회수 | B5. `study_participant.withdrawn` 구독자 · 네비게이터였으면 **DSC-08 과 같은 완료 조건**으로 네비게이터 role 도 (그 부분만 DSC-06 결정 뒤) | DSC-05 · STD-04 |
-| DSC-11 | [BE·BOT] 연동 때 길드 자동 가입 (`guilds.join`) | 자동 가입을 하기로 하면. 봇 토큰을 백엔드에 줄지 / 봇에 창구를 만들지 먼저 정한다 | DSC-01 · 질문 2 |
-| DSC-12 | [인프라] stage·운영에 `DISCORD_BOT_ID` 시크릿 추가 | #276 이 읽는 `discord.bot-id`. 값은 내부 시크릿 저장소에만 | #276 |
-| DSC-10 | [BE·FE] 백오피스 스터디 상세에 디스코드 연결 상태 · 「다시 연결」 버튼 | 화면·기능 ④. 상세 응답 필드 + `POST .../discord-link` 버튼. 화면은 프론트 담당 | — |
+| ID | 작업명 | 범위 | 선행 | 담당 (제안) |
+|---|---|---|---|---|
+| DSC-01 | [BE] 디스코드 계정 연동 API (`POST /api/me/discord/link`) | B1. Discord OAuth 앱 설정 · `DISCORD_ID`/`DISCORD_HANDLE` 저장 · **길드 멤버 확인**(질문 2, B6) · 스펙 확정 | — **가장 먼저** | j7hwang (OAuth 앱 등록) · doxxx93 (API) |
+| DSC-02 | [BE] `GET /api/me` 에 `discordLinked` 추가 | user-onboarding 스펙 필드 추가. 내 정보 조회는 #262 로 `/auth/me` → `/api/me` 로 옮겨졌다 | — `DISCORD_ID` 칸만 읽으므로 DSC-01 없이 할 수 있다 | hereokay |
+| DSC-03 | [BE] 회원가입(온보딩)에 디스코드 연동 단계 추가 | 질문 1 이 「가입 때」면. 온보딩 완료 조건에 연동을 넣는다. 온보딩 담당과 맞춘다 | DSC-01 · 질문 1 | Jeongyounghyeon (BE) · LeenaKim (FE) |
+| DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03 이면) 가입 화면. 프론트 담당에게 넘겨도 된다 | DSC-01 · DSC-02 | CLEO525 (#292) |
+| DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **구현됨 — [PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276) 리뷰 대기** (채널 목록·메시지 메서드까지 들어 있다) | — | j7hwang (#276) · 리뷰 doxxx93 |
+| DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | 질문 5. `roles.py` 의 navigator 두 창구 `allow_system=True` + 봇 문서 수정 | 질문 5 | j7hwang |
+| DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자 | DSC-05 · STD-02 | doxxx93 · j7hwang |
+| DSC-08 | [BE] 네비게이터 지정·해제 시 네비게이터 role 부여·회수 | B4. `study_participant.role_changed` 구독자. **완료 조건: 회수는 그 사람이 다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만** (네비게이터 role 은 길드에 하나) | DSC-05 · DSC-06 · STD-03 | doxxx93 · j7hwang |
+| DSC-09 | [BE] 참여 중단 시 스터디 role 회수 | B5. `study_participant.withdrawn` 구독자 · 네비게이터였으면 **DSC-08 과 같은 완료 조건**으로 네비게이터 role 도 (그 부분만 DSC-06 결정 뒤) | DSC-05 · STD-04 | doxxx93 · j7hwang |
+| DSC-11 | [BE·BOT] 연동 때 길드 자동 가입 (`guilds.join`) | 자동 가입을 하기로 하면. 봇 토큰을 백엔드에 줄지 / 봇에 창구를 만들지 먼저 정한다 | DSC-01 · 질문 2 | j7hwang |
+| DSC-12 | [인프라] stage·운영에 `DISCORD_BOT_ID` 시크릿 추가 | #276 이 읽는 `discord.bot-id`. 값은 내부 시크릿 저장소에만 | #276 | 인프라 담당 (민정님 · 준희님) |
+| DSC-10 | [BE·FE] 백오피스 스터디 상세에 디스코드 연결 상태 · 「다시 연결」 버튼 | 화면·기능 ④. 상세 응답 필드 + `POST .../discord-link` 버튼. 화면은 프론트 담당 | — | seeunrosypark |
 
 **스터디 스쿼드 — 주문서를 꽂는다**
 
-| ID | 작업명 | 범위 | 선행 |
-|---|---|---|---|
-| STD-01 | [기획] 명부 편입 시점 확정 — 신청 PRD 와 스펙 불일치 해소 | 질문 3. (가)면 신청 스펙 · `STUDY_GROUP_ID` NULL 허용 · [study-group 미결 사항](../../specs/study-group/spec.md)을 같이 고친다 | — |
-| STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서 | STD-01 · COM-01 |
-| STD-03 | [BE] 네비게이터 지정·해제 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants/{pid}/role` ([study-group](../../specs/study-group/spec.md)) | COM-01 |
-| STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)) | COM-01 |
+| ID | 작업명 | 범위 | 선행 | 담당 (제안) |
+|---|---|---|---|---|
+| STD-01 | [기획] 명부 편입 시점 확정 — 신청 PRD 와 스펙 불일치 해소 | 질문 3. (가)면 신청 스펙 · `STUDY_GROUP_ID` NULL 허용 · [study-group 미결 사항](../../specs/study-group/spec.md)을 같이 고친다 | — | seeunrosypark — 정함 (#296) |
+| STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서 | STD-01 · COM-01 | seeunrosypark (#296) |
+| STD-03 | [BE] 네비게이터 지정·해제 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants/{pid}/role` ([study-group](../../specs/study-group/spec.md)) | COM-01 | kimjiy9607 |
+| STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)) | COM-01 | seeunrosypark |
 
 **스터디 스쿼드가 하지 않는 것**: 봇 호출, 디스코드 ID 조회, 디스코드 실패 처리. 이벤트를 발행하면 끝이다. 구독자가 없어도 기능은 정상이다.
 **디스코드 스쿼드가 하지 않는 것**: 명부·네비게이터·중단 API 와 그 판정. 이벤트가 오면 반영만 한다.
@@ -300,7 +300,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
    - **추가로 알아둘 것**: 남을 길드에 넣는 디스코드 요청은 **봇 토큰**으로만 보낼 수 있다. 봇 토큰은 지금 봇(`discord/`)에만 있다. 자동 가입을 하면 ① 백엔드에도 봇 토큰을 주거나 ② 봇에 「길드에 넣어 줘」 창구를 하나 만든다. 어느 쪽인지 정해야 한다 → DSC-11
    - **상태: 확인 방식은 결정됨. 자동 가입 여부와 위 ①②는 회의에서 정한다.**
    - 연동한 뒤 길드를 나가면 그때는 모른다. role 을 붙일 때 봇이 `NOT_IN_GUILD` 를 돌려주므로 그 로그로 안다.
-   - 연동 여부 확인: 화면은 `GET /auth/me` 의 `discordLinked` 로 본다 (DSC-02).
+   - 연동 여부 확인: 화면은 `GET /api/me` 의 `discordLinked` 로 본다 (DSC-02).
 3. **신청하면 명부에 바로 들어가나? 스터디 role 은 언제 주나?** (기획 · 스터디 스쿼드)
    - 제안: 신청서 제출하면 명부에 들어가지 않는지 확인
    - **확인 결과: 기획(PRD)은 「들어간다」, 스펙·코드는 「안 들어간다」로 갈려 있다.** [왜 3번](#3-신청서-제출--스터디-role--언제-줄지가-안-정해졌다) 참고. 명부 행에 반이 꼭 있어야 하는데, 반은 신청 뒤에 만들기 때문이다.
