@@ -13,6 +13,7 @@ export type ClassCrew = Pick<Crew, 'id' | 'name'> & {
   role?: 'navigator';
   /** 참여 중단 — 그 시각(분반 시간대 yyyy-MM-ddTHH:mm) 뒤 회차는 출석 대상이 아니고 발표자로 고를 수 없다. */
   left?: { at: string };
+  discordNickname?: string;
 };
 
 export type ClassView = {
@@ -59,6 +60,7 @@ export function classView({
     name: c.name,
     role: navigators.includes(c.id) ? 'navigator' : undefined,
     left: left[c.id],
+    discordNickname: c.discordNickname,
   }));
   const source = classSource({ key, base, timeZone: cls.rule.tz, time, people: members });
   const meetings = source.meetings();
