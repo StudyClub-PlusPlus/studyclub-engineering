@@ -113,6 +113,11 @@ public class Study extends BaseEntity {
         this.discordChannelUrl = blankToNull(discordChannelUrl);
     }
 
+    /** 썸네일 주소. 올리기 API 가 준 우리 저장소 주소만 들어온다 — 외부 주소 문자열을 받지 않는다. {@code null} 이면 없음. */
+    public void changeThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
     public void changeDriveUrl(String driveUrl) {
         this.driveUrl = blankToNull(driveUrl);
     }
@@ -122,11 +127,20 @@ public class Study extends BaseEntity {
     }
 
     public boolean isClosingSoon(Instant recruitDeadlineAt) {
-        Instant now = Instant.now();
+        return isClosingSoon(recruitDeadlineAt, Instant.now());
+    }
+
+    /**
+     * 모집 임박 여부. {@code asOf} 는 집계 기준 시각이다 — 대시보드처럼 한 응답 안에서 같은 시계를 쓸 때 넘긴다.
+     *
+     * <p>조건: {@code OPEN} 이고 마감이 {@code asOf} 이후이며, {@code asOf} 로부터 3일(72시간) 미만이다. 정확히 72시간이면 임박이
+     * 아니다.
+     */
+    public boolean isClosingSoon(Instant recruitDeadlineAt, Instant asOf) {
         return status == StudyStatus.OPEN
                 && recruitDeadlineAt != null
-                && recruitDeadlineAt.isAfter(now)
-                && recruitDeadlineAt.isBefore(now.plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
+                && recruitDeadlineAt.isAfter(asOf)
+                && recruitDeadlineAt.isBefore(asOf.plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
     }
 
     /**
@@ -143,11 +157,21 @@ public class Study extends BaseEntity {
      */
     public RecruitStatus recruitStatus(
             long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
+        return recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity, Instant.now());
+    }
+
+    /**
+     * {@link #recruitStatus(long, Instant, Integer)} 와 같되 마감 판정에 {@code asOf} 를 쓴다 — 대시보드 집계 기준 시각.
+     */
+    public RecruitStatus recruitStatus(
+            long applicantCount,
+            Instant recruitDeadlineAt,
+            Integer recruitmentCapacity,
+            Instant asOf) {
         if (status != StudyStatus.OPEN) {
             return null;
         }
-        boolean deadlinePassed =
-                recruitDeadlineAt != null && !Instant.now().isBefore(recruitDeadlineAt);
+        boolean deadlinePassed = recruitDeadlineAt != null && !asOf.isBefore(recruitDeadlineAt);
         boolean capacityReached =
                 recruitmentCapacity != null && applicantCount >= recruitmentCapacity;
         return (deadlinePassed || capacityReached)

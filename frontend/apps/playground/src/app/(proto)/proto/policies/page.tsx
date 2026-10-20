@@ -144,7 +144,7 @@ export default function PolicyLibrary() {
           <Tr cells={['계정 권한', ACCOUNT_ROLES.map((r) => r.label).join(' · '), '캡틴이 유저 목록에서', 'ACCOUNT.SYSTEM_ROLE = ADMIN / MEMBER']} />
           <Tr cells={['스터디 역할', '네비게이터', '캡틴이 스터디 크루 명단에서', 'STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER']} />
         </Table>
-        <P>부반장은 두지 않는다. 스터디 안의 역할은 네비게이터 하나다.</P>
+        <P>보조 진행자 역할은 따로 두지 않는다. 스터디 안의 역할은 네비게이터 하나다.</P>
 
         {PERMISSION_GROUPS.map((group) => (
           <div key={group.key} className='mt-5'>

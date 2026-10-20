@@ -17,7 +17,7 @@ export function Footer({ locale }: { locale: Locale }) {
     <footer className='mt-20 border-t border-(--color-border)'>
       <div className='mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 sm:flex-row sm:items-end sm:justify-between'>
         <p className='text-xs text-(--color-fg-faint)'>
-          © {new Date().getFullYear()} StudyClub++ · preview · dummy data
+          © {new Date().getFullYear()} StudyClub · preview · dummy data
         </p>
 
         {/* data-anno 를 직접 달지 않는다 — 푸터는 모든 화면에 뜨므로 약관과 무관한 화면마다
@@ -29,6 +29,8 @@ export function Footer({ locale }: { locale: Locale }) {
           <Link href={`/proto/core/${locale}/privacy`} className='font-semibold hover:text-(--color-fg-muted)'>
             {m('nav.privacy', locale)}
           </Link>
+          {/* 가입하다 막힌 사람을 위한 운영 메일 — 링크·폼이 아니라 글자만 (문의·오류 신고는 로그인해야 쓴다) */}
+          <span className='select-all'>contact@studyclub.life</span>
         </div>
       </div>
     </footer>

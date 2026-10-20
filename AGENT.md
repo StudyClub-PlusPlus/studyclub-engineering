@@ -1,4 +1,4 @@
-# StudyClub++ · AI Agent Context
+# StudyClub · AI Agent Context
 
 이 파일은 Claude / Codex / 다른 AI agent 가 이 모노레포에서 작업할 때 따라야 할 컨텍스트와 개발 규약이다.
 
@@ -16,7 +16,7 @@
 
 ## 이게 뭐
 
-StudyClub++ 스터디 클럽 서비스. **frontend**(사용자향 core-front + 운영자향 back-office-front) + **backend**(Spring Boot 멀티모듈).
+StudyClub 스터디 클럽 서비스. **frontend**(사용자향 core-front + 운영자향 back-office-front) + **backend**(Spring Boot 멀티모듈).
 프론트는 현재 **MSW Mock API 및 mock 데이터**로 동작 (백엔드 API 붙으면 교체). 백엔드는 기본 스캐폴드 단계.
 
 ## 구조 (monorepo)
@@ -24,8 +24,8 @@ StudyClub++ 스터디 클럽 서비스. **frontend**(사용자향 core-front + �
 ```
 frontend/                # Node 워크스페이스(turbo) — 프론트 루트
   apps/
-    core-front/          # 사용자향 (studyclub-plusplus.com) — 랜딩/이벤트/스터디
-    back-office-front/   # 운영자향 (back-office.studyclub-plusplus.com) — 운영 콘솔
+    core-front/          # 사용자향 (studyclub.life) — 랜딩/이벤트/스터디
+    back-office-front/   # 운영자향 (back-office.studyclub.life) — 운영 콘솔
     playground/          # 디자인 컴포넌트 & 프로토타입 샌드박스
   packages/
     design/              # 디자인 토큰 & 정본 CSS (@studyclub/design — base, core, console)
@@ -125,6 +125,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   5. [`docs/share/`](docs/share/README.md) — 목록의 **반영** 칸이 `됨`·`해당 없음` 이 아닌 같은 도메인 건. 문서에 아직 안 들어간 결정이다
   - PRD 머리의 **`관련 결정:`** 줄이 그 화면에 걸린 share 결정이다. share 를 PRD 에 반영할 때 이 줄에 링크를 단다 — [share README §반영](docs/share/README.md#반영--결정이-기획-문서에-들어갔나)
   - **무엇이 이미 있고 무엇을 만들지**는 PRD §3 「개발 범위」 표에 있다. 스펙 상태나 PRD 를 고쳤으면 `node scripts/check-dev-scope.mjs` 로 코드와 어긋나지 않았는지 본다
+- **메일을 새로 만들거나 고치면 [`docs/mail-templates/README.md`](docs/mail-templates/README.md) 를 따른다** — 제목은 `[StudyClub] 무엇`, 본문 시안은 [`frontend/apps/playground/src/proto/mail/templates/`](frontend/apps/playground/src/proto/mail/templates/) 에 두고 가입메일(`user-registered-email.html`)을 복사해 시작한다 — playground `/proto/mail` 에서 고치며 바로 본다. 문구 정본은 DB 라 반영은 `V{n}` 마이그레이션(stage 는 Flyway off — 손으로 한 번)
 - **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.
   목록의 공유 칸은 **`공유전`** 으로 둔다 — 팀에는 모아서 한 번에 알리고 그때 `공유됨 (MM-DD)` 로 바꾼다 ([§공유](docs/share/README.md#공유--모아서-한-번에)).
@@ -144,7 +145,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   스테이지(`backend-develop` · `core-front-develop` · `back-office-front-develop`)가 배포되고,
   그때 처음 **기획·디자인이 눈으로 본다.** 내 브랜치에만 있으면 아무도 못 본 기능이다.
   에이전트는 작업을 마칠 때 **"`develop` 에 병합해서 스테이지에 올릴까요?" 를 먼저 묻는다** —
-  시키기를 기다리지 않는다. 확인 주소는 `stage.studyclub-plusplus.com`.
+  시키기를 기다리지 않는다. 확인 주소는 `stage.studyclub.life`.
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
 - 프론트 데이터는 지금 `frontend/packages/mock` 의 MSW 및 목 데이터로 동작. 데이터 수정: 스터디는 `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`. 실 API 교체 지점은 `// TODO(api)` 주석.
@@ -218,6 +219,8 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 | 인증 흐름 (OAuth·BFF) | [`docs/frontend-development-guide/auth-flow.md`](docs/frontend-development-guide/auth-flow.md) |
 | 관심사 분리 | [`docs/frontend-development-guide/separation-of-concerns.md`](docs/frontend-development-guide/separation-of-concerns.md) |
 | API 연동·에러/로딩 처리 | [`docs/frontend-development-guide/api-integration.md`](docs/frontend-development-guide/api-integration.md) |
+| **화면 문구·표기 (줄표 금지 등)** | [`docs/frontend-development-guide/ui-copy.md`](docs/frontend-development-guide/ui-copy.md) |
+| **화면 콘텐츠 폭 (PAGE·READ·FORM·DETAIL)** | [`docs/frontend-development-guide/layout.md`](docs/frontend-development-guide/layout.md) |
 
 #### FE 핵심 요약
 
@@ -226,6 +229,8 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 3. **Server Component 기본** — `'use client'` 는 인터랙션 필요한 말단에만
 4. **Mock 교체** — `// TODO(api)` 검색 → mock import 를 API 함수 호출로 교체
 5. **판정을 다시 하지 않는다** — `recruitStatus` 같은 응답 필드를 그린다. 날짜·숫자로 재계산 금지, 없으면 스펙에 요청 ([api-integration §판정](docs/frontend-development-guide/api-integration.md#판정을-다시-하지-않는다))
+6. **화면 문구에 줄표(em dash·en dash)를 쓰지 않는다**: 쌍점·쉼표·문장 나누기로. 대문자 자간 라벨(`LIFESTYLE`) 대신 칩과 같은 한글 이름. PR 전에 자기검사 0건 ([ui-copy](docs/frontend-development-guide/ui-copy.md))
+7. **폭은 네 가지 중에서만**: 바깥은 언제나 `PAGE`(max-w-6xl), 글은 `READ`, 폼은 `FORM`, 상세는 2단 `DETAIL_GRID`. 상수는 `src/lib/layout.ts` ([layout](docs/frontend-development-guide/layout.md))
 
 ---
 
@@ -240,12 +245,21 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 - 구독자는 발행하는 서비스와 다른 빈에 둔다 (같은 빈이면 `@Async` 가 무시된다)
 - 이메일은 `maskEmail` 로 가리고, 토큰·비밀번호·전화번호는 싣지 않는다
 
+## 이미지 업로드
+
+이미지가 필요한 기능은 새로 만들지 않고 공용 길을 쓴다 — 먼저 올려 `fileId` 를 받고, 기능 저장 API 가 그 번호로 연결한다.
+프론트는 `@studyclub/ui` 의 `useImageUpload`, 백엔드는 `UploadService.attach` · `markDeletingByUrl` · `deleteAfterCommit`.
+기능 API 는 이미지 주소 문자열을 받지 않는다. 로컬은 키 없이 로컬 저장소로 돈다.
+
+- 붙이는 법(새 용도 추가·교체·로컬 설정): [docs/flows/image-upload.md](./docs/flows/image-upload.md)
+- 계약: [specs/profile-image/spec.md](./specs/profile-image/spec.md)
+
 
 ## 관련
 
 - 승격 원본(도그푸딩): 내부 레포의 bakg 앱
 - 에픽: 내부 이슈 트래커의 `studyclub-plusplus-service-setup`
-- 도메인: studyclub-plusplus.com / stage / api / back-office / back-office-stage
+- 도메인: studyclub.life / stage / api / back-office / back-office-stage
 
 <!-- repo-kit:start -->
 ## 무엇을 어디에 쓰나 (repo-kit)

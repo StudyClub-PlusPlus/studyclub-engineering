@@ -4,12 +4,12 @@
 
 | 서브도메인 | 용도 | From 주소 | Config Set |
 |---|---|---|---|
-| `auth.studyclub-plusplus.com` | 인증/비번리셋/2FA | `no_reply@auth.studyclub-plusplus.com` | `studyclub-auth-default` |
-| `news.studyclub-plusplus.com` | 공지/뉴스레터 | `no_reply@news.studyclub-plusplus.com` | `studyclub-news-default` |
-| `notify.studyclub-plusplus.com` | 알림/리마인드 | `no_reply@notify.studyclub-plusplus.com` | `studyclub-notify-default` |
-| `order.studyclub-plusplus.com` | 결제/정산 | `no_reply@order.studyclub-plusplus.com` | `studyclub-order-default` |
-| `cs.studyclub-plusplus.com` | 고객지원 | `no_reply@cs.studyclub-plusplus.com` | `studyclub-cs-default` |
-| `studyclub-plusplus.com` | 범용 (트랜잭션) | `no_reply@studyclub-plusplus.com` | `studyclub-plusplus-com-default` |
+| `auth.studyclub.life` | 인증/비번리셋/2FA | `no_reply@auth.studyclub.life` | `studyclub-auth-default` |
+| `news.studyclub.life` | 공지/뉴스레터 | `no_reply@news.studyclub.life` | `studyclub-news-default` |
+| `notify.studyclub.life` | 알림/리마인드 | `no_reply@notify.studyclub.life` | `studyclub-notify-default` |
+| `order.studyclub.life` | 결제/정산 | `no_reply@order.studyclub.life` | `studyclub-order-default` |
+| `cs.studyclub.life` | 고객지원 | `no_reply@cs.studyclub.life` | `studyclub-cs-default` |
+| `studyclub.life` | 범용 (트랜잭션) | `no_reply@studyclub.life` | `studyclub-plusplus-com-default` |
 
 **왜 서브도메인을 나누나**: 대량 뉴스레터에서 스팸 신고를 받아도 인증 메일(`auth`) 평판이 오염되지 않는다.
 
@@ -71,7 +71,7 @@ const authSes = createSesClient(
 
 async function sendAuthEmail(to: string, subject: string, html: string) {
   await authSes.send(new SendEmailCommand({
-    FromEmailAddress: "no_reply@auth.studyclub-plusplus.com",
+    FromEmailAddress: "no_reply@auth.studyclub.life",
     Destination: { ToAddresses: [to] },
     Content: {
       Simple: {
@@ -92,7 +92,7 @@ const newsSes = createSesClient(
 
 async function sendNewsletter(to: string, subject: string, html: string) {
   await newsSes.send(new SendEmailCommand({
-    FromEmailAddress: "no_reply@news.studyclub-plusplus.com",
+    FromEmailAddress: "no_reply@news.studyclub.life",
     Destination: { ToAddresses: [to] },
     Content: {
       Simple: {

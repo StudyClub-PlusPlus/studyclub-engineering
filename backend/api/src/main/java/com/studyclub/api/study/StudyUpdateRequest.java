@@ -38,6 +38,11 @@ public class StudyUpdateRequest {
 
     private boolean driveUrlPresent;
 
+    /** 썸네일 — 올리기 API 가 준 번호. 키가 있고 {@code null} 이면 썸네일을 지운다. 백오피스 수정에서만 반영한다. */
+    private Long thumbnailFileId;
+
+    private boolean thumbnailFileIdPresent;
+
     @JsonCreator
     public StudyUpdateRequest() {}
 
@@ -154,5 +159,18 @@ public class StudyUpdateRequest {
     public void setDriveUrl(String driveUrl) {
         this.driveUrl = driveUrl;
         this.driveUrlPresent = true;
+    }
+
+    public Long thumbnailFileId() {
+        return thumbnailFileId;
+    }
+
+    public boolean thumbnailFileIdPresent() {
+        return thumbnailFileIdPresent;
+    }
+
+    public void setThumbnailFileId(Long thumbnailFileId) {
+        this.thumbnailFileId = thumbnailFileId;
+        this.thumbnailFileIdPresent = true;
     }
 }

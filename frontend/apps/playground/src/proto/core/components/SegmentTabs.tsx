@@ -1,6 +1,6 @@
 'use client';
 
-/** 알약 모양 구간 탭 — 내 스터디의 필터·KST/PDT, 스터디 관리 일정의 시간대가 같이 쓴다. */
+/** 알약 모양 구간 탭 — 내 스터디룸의 필터·KST/PDT, 스터디 관리 일정의 시간대가 같이 쓴다. */
 export function SegmentTabs<T extends string>({
   value,
   options,

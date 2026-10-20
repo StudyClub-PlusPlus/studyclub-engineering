@@ -1,4 +1,4 @@
-# StudyClub++ playground — Next.js (turbo + pnpm-workspace monorepo)
+# StudyClub playground — Next.js (turbo + pnpm-workspace monorepo)
 # Build context = repo 의 frontend/ (`docker build -f apps/playground/Dockerfile frontend`)
 #
 # core-front/Dockerfile 과 같은 구조. playground 는 NEXT_PUBLIC_* 를 안 쓰므로

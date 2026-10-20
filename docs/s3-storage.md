@@ -17,16 +17,22 @@ AWS_REGION=ap-northeast-2
 S3_BUCKET=studyclub-production
 AWS_ACCESS_KEY_ID=     # 인프라 담당자에게 요청
 AWS_SECRET_ACCESS_KEY= # 인프라 담당자에게 요청
+S3_PUBLIC_BASE_URL=    # 인프라 담당자에게 요청 (CloudFront 주소 + /studyclub)
 
 # ── Stage ──
 AWS_REGION=ap-northeast-2
 S3_BUCKET=studyclub-stage
 AWS_ACCESS_KEY_ID=     # 인프라 담당자에게 요청
 AWS_SECRET_ACCESS_KEY= # 인프라 담당자에게 요청
+S3_PUBLIC_BASE_URL=    # 인프라 담당자에게 요청 (CloudFront 주소 + /studyclub)
 ```
 
 > 키는 인프라 레포의 AWS IAM terraform 에서 `terraform output` 으로 꺼낸다 (인프라 담당자에게 요청).
 > **이 문서에 실제 키를 적지 않는다.**
+
+### 키 없이 로컬에서 개발하기
+
+로컬은 기본이 로컬 저장소(`STORAGE_LOCAL_ENABLED=true`)라 키 없이 돈다. 이미지 업로드를 새 화면에 붙이는 법·로컬 설정은 [flows/image-upload.md](flows/image-upload.md).
 
 ## 권한
 

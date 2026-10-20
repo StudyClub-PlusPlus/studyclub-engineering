@@ -3,8 +3,6 @@
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 
-import { studies } from '@studyclub/mock';
-
 import { StudyConsole } from '@/components/StudyConsole';
 import { useStudyDetail } from '@/features/studies/queries';
 import { ApiError } from '@/lib/http';
@@ -35,8 +33,5 @@ export default function StudyAdminDetail() {
     );
   }
 
-  // 출석 탭은 아직 목 데이터다 — 같은 ID 의 목 스터디가 있을 때만 쓴다
-  const mockStudy = studies.find((s) => s.id === String(data.id));
-
-  return <StudyConsole key={data.id} detail={data} mockStudy={mockStudy} />;
+  return <StudyConsole key={data.id} detail={data} />;
 }

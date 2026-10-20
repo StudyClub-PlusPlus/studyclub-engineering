@@ -101,7 +101,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
           href={`/proto/core/${locale}/my/joined`}
           className='mt-4 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline'
         >
-          내 스터디로
+          내 스터디룸으로
         </Link>
       </div>
     );
@@ -122,7 +122,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
           href={`/proto/core/${locale}/my/joined`}
           className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary hover:text-fg'
         >
-          <ArrowLeft size={15} /> 내 스터디
+          <ArrowLeft size={15} /> 내 스터디룸
         </Link>
 
         <header data-anno='manage:1' className='mt-3 flex flex-wrap items-start justify-between gap-3'>

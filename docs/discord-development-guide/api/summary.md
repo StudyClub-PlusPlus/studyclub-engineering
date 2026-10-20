@@ -46,7 +46,7 @@ Discord 서비스(`discord/`, FastAPI) HTTP API 의 **엔드포인트 한눈에 
 **ID 와 설정**
 
 - snowflake 는 경계에서 **항상 문자열**이고 `^[0-9]{17,20}$` 로 검증한다 (JS 정밀도 문제).
-- 이름에 `discord` 가 붙은 ID 는 StudyClub++ 가 아니라 **Discord 쪽 ID** 다.
+- 이름에 `discord` 가 붙은 ID 는 StudyClub 가 아니라 **Discord 쪽 ID** 다.
 - captain · navigator 역할, alert · announcement 채널은 길드에 **이미 있는** 것이고, 모두 **설정값으로 ID 를 받는다**
   (`DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` · `DISCORD_ALERT_CHANNEL_ID` · `DISCORD_ANNOUNCEMENT_CHANNEL_ID`).
   이름으로 찾지 않고, 못 찾으면 만들지 않고 404 로 실패한다 — 호출자가 고칠 수 없는 **서버·길드 설정 문제**다.

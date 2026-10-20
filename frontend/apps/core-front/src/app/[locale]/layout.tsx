@@ -68,9 +68,12 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className='h-full' suppressHydrationWarning>
       <head>
+        {/* Pretendard — 버전 고정(@latest 는 어느 날 바뀐다). dynamic-subset 은 화면에 쓰인 글자 묶음만 받아 첫 로딩이 가볍다 */}
+        <link rel='preconnect' href='https://cdn.jsdelivr.net' crossOrigin='anonymous' />
         <link
           rel='stylesheet'
-          href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable.min.css'
+          crossOrigin='anonymous'
+          href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css'
         />
       </head>
       <body className='min-h-full'>
@@ -82,7 +85,8 @@ export default async function LocaleLayout({
                 <SiteHeader locale={locale} discordUrl={site.discord_invite} mentoringUrl={site.mentoring_url} />
               </RegistrationNavigation>
             </Suspense>
-            <main className='flex-1'>{children}</main>
+            {/* 장식(히어로 글로우 등)이 화면 밖으로 번져 가로 스크롤을 만들지 않게 자른다. clip 은 sticky 를 깨지 않는다 */}
+            <main className='flex-1 overflow-x-clip'>{children}</main>
             <Footer locale={locale} site={site} />
             <Toaster position='bottom-center' />
           </div>

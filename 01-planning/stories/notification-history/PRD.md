@@ -1,6 +1,6 @@
 # 캡틴은 알림 발송 이력을 조회할 수 있다.
 
-기준 프로토타입: 운영 콘솔 › 알림 › 발송 이력 — https://playground.studyclub-plusplus.com/proto/console/notifications
+기준 프로토타입: 운영 콘솔 › 알림 › 발송 이력 — https://playground.studyclub.life/proto/console/notifications
 
 ## 1. 기본설명
 
