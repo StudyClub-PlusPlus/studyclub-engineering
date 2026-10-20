@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@studyclub/ui';
@@ -17,6 +18,7 @@ import { StudyCreateDialog } from './StudyCreateDialog';
  * "눌리지 않는 버튼"이 생겼다. 이 화면은 첫 렌더에 파라미터가 필요하지 않으므로 마운트 후 읽으면 충분하다.
  */
 export function StudyCreateButton({ label = '스터디 등록' }: { label?: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -45,9 +47,11 @@ export function StudyCreateButton({ label = '스터디 등록' }: { label?: stri
       </Button>
       <StudyCreateDialog
         open={open}
-        onCreated={() => {
-          // 새 등록은 DRAFT일 수 있으므로 기존 공개/상태 필터와 페이지를 버리고 전체 목록의 첫 페이지로 간다.
-          window.location.assign('/studies?status=all&publish=all&page=1');
+        onConfirmed={() => {
+          // 기본값은 URL에 싣지 않는다. 새 등록은 DRAFT일 수 있으므로 기본 목록의 첫 페이지로 간다.
+          router.push('/studies');
+          // 목록은 서버 컴포넌트가 가져오므로 생성 직후 최신 데이터를 다시 받는다.
+          router.refresh();
         }}
         onClose={() => {
           setOpen(false);

@@ -25,11 +25,11 @@ import { useCreateStudy } from '@/features/studies/queries';
 export function StudyCreateDialog({
   open,
   onClose,
-  onCreated,
+  onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
-  onCreated?: () => void;
+  onConfirmed?: () => void;
 }) {
   const [form, setForm] = useState<StudyFormValues>(EMPTY_FORM);
   const [errors, setErrors] = useState<StudyFormErrors>({});
@@ -67,7 +67,6 @@ export function StudyCreateDialog({
     try {
       await create.mutateAsync(formToCreatePayload(form));
       setDone(true);
-      onCreated?.();
     } catch (err) {
       // 서버가 `필드: 사유` 로 주면 그 칸에 붙이고, 아니면 입력값을 그대로 둔 채 위에 알린다
       const message = err instanceof Error ? err.message : '등록하지 못했습니다. 잠시 후 다시 시도해 주세요.';
@@ -85,7 +84,14 @@ export function StudyCreateDialog({
       size='lg'
       footer={
         done ? (
-          <Button onClick={close}>확인</Button>
+          <Button
+            onClick={() => {
+              close();
+              onConfirmed?.();
+            }}
+          >
+            확인
+          </Button>
         ) : (
           <>
             <Button variant='secondary' onClick={close} disabled={busy}>
