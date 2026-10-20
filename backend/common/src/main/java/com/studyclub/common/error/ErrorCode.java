@@ -14,6 +14,8 @@ public enum ErrorCode {
     INVALID_INPUT(400, "입력값이 올바르지 않습니다."),
     /** 소셜 로그인 제공자가 이메일을 안 줬거나 소유 확인이 안 됨 → 가입 불가. 프론트가 일반 400 과 다른 안내 화면으로 분기 */
     SOCIAL_LOGIN_EMAIL_REQUIRED(400, "확인된 이메일이 있는 계정으로만 가입할 수 있습니다."),
+    /** 참여 중단 대상에 호출자 자신이 들어 있음 — 스스로 그만두는 길은 따로다 (specs/study-participant) */
+    CANNOT_WITHDRAW_SELF(400, "자기 자신의 참여는 여기서 중단할 수 없습니다."),
     /** 인증 없음 / 토큰 무효·만료 */
     UNAUTHORIZED(401, "인증이 필요합니다."),
     /** 인증은 됐으나 권한 없음 */
@@ -46,6 +48,10 @@ public enum ErrorCode {
     PRESENTER_ALREADY_ASSIGNED(409, "이 회차에는 이미 발표자로 들어가 있습니다."),
     /** 내가 들어간 칸이 아닌데 빼려 함 (그 사이 네비게이터가 바꿨다). 화면은 목록을 다시 불러온다 */
     PRESENTER_NOT_ME(409, "내가 신청한 칸이 아닙니다."),
+    /** 명부 행이 활성(ACTIVE·PAUSED)이 아니다 — 완주·탈퇴한 행은 바꿀 수 없다 */
+    PARTICIPANT_NOT_ACTIVE(409, "참여 중인 명부 행이 아닙니다."),
+    /** 스터디가 끝났다(ENDED·CLOSED) — 명부를 더 바꾸지 않는다 */
+    STUDY_ENDED(409, "끝난 스터디입니다."),
     /** 외부 연동 실패 (구글 OAuth 미설정 등) */
     EXTERNAL_SERVICE_ERROR(503, "외부 서비스와 통신하지 못했습니다."),
     /** 예상하지 못한 서버 오류. 내부 사정은 절대 메시지에 담지 않는다 */

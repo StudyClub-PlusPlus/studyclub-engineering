@@ -172,8 +172,8 @@ erDiagram
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | core-front 스터디 일정 › 출석 참여 중단 | 없음 — 스터디 일정 화면이 자리만 있다 | [출석 수정](../navigator-edit-attendance/PRD.md#개발-범위)과 같은 화면에서 만든다 |
-| BE | `POST /api/studies/{studyId}/attendances` (`withdrawals[]`) | 스펙작성중 — 백엔드 요청에 `withdrawals` 가 없다 | 스펙 확정 → 구현 |
-| 기획 | 저장 경로 | 이 PRD 와 [study-participant 스펙](../../../specs/study-participant/spec.md)은 옛 경로 `/api/studies/{studyId}/attendances` 를 적었다. 출석 API 는 #241 · #244 에서 `/api/me/…` · `/api/admin/…` 로 나뉘었다 | 어느 경로에 `withdrawals[]` 를 더할지 정하고 스펙 · PRD 경로를 고친다 |
+| BE | `POST /api/me/studies/{studyId}/attendances` (`withdrawals[]`) | 구현완료 (2026-10-20) — 중단 · 발표자 정리 · 감사 로그 · `study_participant.withdrawn` 이벤트 | 없음 |
+| 기획 | 저장 경로 | 사용자 사이트 경로 `/api/me/…` 에만 더했다. 백오피스 경로는 `withdrawals` 를 400 으로 막는다 (2026-10-20, [스펙](../../../specs/study-participant/spec.md)) | 백오피스 출석 탭의 참여 중단은 그 화면을 만들 때 정한다 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 
@@ -191,7 +191,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| POST | `/api/studies/{studyId}/attendances` (`updates[]` + `withdrawals[]`) | 출석: 기존 출석 쓰기 권한 · 중단: 대상과 같은 분반의 네비게이터 · 담당 캡틴 |
+| POST | `/api/me/studies/{studyId}/attendances` (`updates[]` + `withdrawals[]`) | 출석: 기존 출석 쓰기 권한 · 중단: 대상과 같은 분반의 네비게이터 · 담당 캡틴 |
 
 새 엔드포인트 없이 출석 저장 요청에 `withdrawals[]` 를 더한다. 계약은 [study-participant/spec.md](../../../specs/study-participant/spec.md).
 
