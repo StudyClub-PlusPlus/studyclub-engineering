@@ -2,6 +2,7 @@
 
 한 기수 안의 시간대별 그룹 (예: 목요일반, 미주반). 참가자·회차·출석은 **분반**에 붙는다.
 분반이 하나뿐인 기수도 분반을 1개 만든다 — 그래야 나중에 반을 나눌 때 데이터가 안 움직인다.
+**스터디를 만들 때 「기본반」을 하나 같이 만든다.** 신청자는 그 스터디의 첫 반(id 최소 = 기본 반)에 들어간다. 기본 반은 이름을 바꿀 수 있고 지울 수 없다 (2026-10-20, → [share 10-18](../share/2026-10-18-roster-on-apply.md)).
 
 > **STUDY_ID → STUDY (기수) 참조.** 분반은 스터디 프로그램이 아니라 특정 기수에 속한다 —
 > 클럽 3기의 목요일반과 4기의 목요일반은 이름이 같아도 다른 행이다.
@@ -12,7 +13,7 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | STUDY_ID | BIGINT | N | STUDY 참조. 구 `STUDY_COHORT_ID` |
-| NAME | VARCHAR(255) | N | `목요일반` |
+| NAME | VARCHAR(255) | N | 반 제목. `A반` · `미국 금요일반`. 캡틴이 짓는다 — API 가 앞뒤 공백을 자르고 20자(코드포인트) 이하로 받는다 ([study-group 스펙](../../specs/study-group/spec.md)) |
 | START_AT | TIME | Y | 분반 정규 시작 시각 |
 | TIMEZONE | VARCHAR(64) | Y | IANA. 회차 시각 기준 시간대 |
 | CAPACITY | INT | Y | 분반 정원 |
@@ -30,5 +31,5 @@
 - 인덱스 `(STUDY_ID)` — `idx_study_group_study`
 
 ## 미확정
-- 요일(`WEEKDAY MON~SUN`) 컬럼 — 반복 회차 자동 생성하려면 필요.
+- `DAYS_OF_WEEK VARCHAR(255) NULL` 추가 예정 — 스터디 시간 수정 창과 회차 추가 기본 요일로 사용. 마이그레이션 미작성 ([study-group 스펙](../../specs/study-group/spec.md) 「데이터 변경」)
 - 멤버의 분반 이동은 STUDY_PARTICIPANT.STUDY_GROUP_ID 갱신 + 이력 남길지.

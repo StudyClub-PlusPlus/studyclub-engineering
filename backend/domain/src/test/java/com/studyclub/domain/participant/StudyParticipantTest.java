@@ -100,4 +100,20 @@ class StudyParticipantTest {
         assertThat(participant.getStatus()).isEqualTo(ParticipantStatus.DELETED);
         assertThat(participant.getLeftAt()).isEqualTo(withdrawnAt);
     }
+
+    @Test
+    @DisplayName("재신청 - 하차했던 행을 ACTIVE 크루로 되살리고 참여 시작을 재신청 시각으로 옮긴다")
+    void rejoinResetsStatusRoleAndJoinedAt() {
+        StudyParticipant participant =
+                participantWith(ParticipantStatus.WITHDRAWN, Instant.parse("2026-03-01T00:00:00Z"));
+        Instant rejoinedAt = Instant.parse("2026-10-20T00:00:00Z");
+
+        participant.rejoinByApplication(rejoinedAt);
+
+        assertThat(participant.getStatus()).isEqualTo(ParticipantStatus.ACTIVE);
+        assertThat(participant.getParticipantRole()).isEqualTo(ParticipantRole.MEMBER);
+        assertThat(participant.getJoinedAt()).isEqualTo(rejoinedAt);
+        assertThat(participant.getLeftAt()).isNull();
+        assertThat(participant.getStudyGroupId()).isEqualTo(1L);
+    }
 }
