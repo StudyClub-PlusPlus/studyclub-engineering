@@ -133,7 +133,7 @@ export function TemplatesTable() {
           confirmDelete ? (
             <>
               {/* 결정을 묻는 단계 — 안전한 쪽이 기본 포커스 (POL-0008) */}
-              <Button variant='secondary' data-autofocus onClick={() => setConfirmDelete(false)}>
+              <Button variant='secondary' autoFocus data-autofocus onClick={() => setConfirmDelete(false)}>
                 취소
               </Button>
               <Button variant='destructive' onClick={remove}>
