@@ -164,6 +164,14 @@ public class StudyMeeting extends BaseEntity {
         if (isStarted(now)) {
             return false;
         }
+        return clearPresenter(participantId);
+    }
+
+    public boolean releasePresenterAfterWithdrawal(Long participantId, Instant leftAt) {
+        return scheduledAt.isAfter(leftAt) && clearPresenter(participantId);
+    }
+
+    private boolean clearPresenter(Long participantId) {
         boolean changed = false;
         if (participantId.equals(presenter1ParticipantId)) {
             presenter1ParticipantId = null;

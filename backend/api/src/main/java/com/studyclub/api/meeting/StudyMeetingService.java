@@ -341,8 +341,9 @@ public class StudyMeetingService {
         }
         account(accountId);
         Long participantId =
-                studyParticipantRepository
-                        .findByStudyGroupIdAndAccountId(groupId, accountId)
+                studyParticipantRepository.findByStudyGroupIdForUpdate(groupId).stream()
+                        .filter(p -> accountId.equals(p.getAccountId()))
+                        .findFirst()
                         .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(StudyParticipant::getId)
                         .orElseThrow(
@@ -357,9 +358,8 @@ public class StudyMeetingService {
             return;
         }
         Set<Long> active =
-                studyParticipantRepository
-                        .findByStudyGroupIdAndStatusIn(groupId, StudyCaptainGuard.ROSTER_STATUSES)
-                        .stream()
+                studyParticipantRepository.findByStudyGroupIdForUpdate(groupId).stream()
+                        .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(StudyParticipant::getId)
                         .collect(Collectors.toSet());
         if (!active.containsAll(participantIds)) {

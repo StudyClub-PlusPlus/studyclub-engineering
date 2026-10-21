@@ -2,7 +2,6 @@ package com.studyclub.api.attendance;
 
 import com.studyclub.api.auth.security.RequireGroupRoster;
 import com.studyclub.api.auth.security.RequireOnboarding;
-import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,15 +26,11 @@ public class MyAttendanceController {
 
     private final AttendanceService attendanceService;
     private final AttendanceUpsertService attendanceUpsertService;
-    private final StudyCaptainGuard studyCaptainGuard;
 
     public MyAttendanceController(
-            AttendanceService attendanceService,
-            AttendanceUpsertService attendanceUpsertService,
-            StudyCaptainGuard studyCaptainGuard) {
+            AttendanceService attendanceService, AttendanceUpsertService attendanceUpsertService) {
         this.attendanceService = attendanceService;
         this.attendanceUpsertService = attendanceUpsertService;
-        this.studyCaptainGuard = studyCaptainGuard;
     }
 
     @Operation(
@@ -56,10 +51,8 @@ public class MyAttendanceController {
     }
 
     @Operation(
-            summary = "출석 생성/수정 (upsert) — 네비게이터",
-            description =
-                    "그 분반의 네비게이터(LEADER 역할)만 호출 가능. 분반 소속 LEADER가 아니면 403."
-                            + " studyGroupId는 body에 포함.")
+            summary = "출석 저장 · 참여 중단",
+            description = "studyGroupId로 분반을 지정한다. 참여 중단은 활성 네비게이터·담당 캡틴만 가능하며 출석과 함께 저장한다.")
     @SecurityRequirement(name = "bearerAuth")
     @RequireOnboarding
     @PostMapping
@@ -69,9 +62,7 @@ public class MyAttendanceController {
         if (auth == null || !(auth.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        studyCaptainGuard.assertCaptainOrNavigatorOfGroup(
-                accountId, studyId, request.studyGroupId(), "권한이 없습니다.");
-        attendanceUpsertService.upsert(studyId, request.studyGroupId(), request);
+        attendanceUpsertService.upsert(studyId, request.studyGroupId(), request, accountId, false);
         return ResponseEntity.noContent().build();
     }
 }

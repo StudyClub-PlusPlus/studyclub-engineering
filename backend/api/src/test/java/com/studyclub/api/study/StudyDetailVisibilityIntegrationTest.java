@@ -165,6 +165,31 @@ class StudyDetailVisibilityIntegrationTest {
     }
 
     @Test
+    @DisplayName("참여 중단한 캡틴도 링크를 받지 못한다 — 사용자 사이트에서는 중단 상태가 ADMIN보다 우선한다")
+    void withdrawnCaptainGetsNoLinks() {
+        Long studyId = createOpenStudyWithLinks("크루로 참여했다가 중단된 캡틴");
+        Long otherCaptainId = 8523L;
+        insertAccountIfAbsent(
+                otherCaptainId,
+                "withdrawn_captain@detail-test.com",
+                SystemRole.ADMIN,
+                Timestamp.from(Instant.now()));
+        insertParticipantIfAbsent(
+                studyId, otherCaptainId, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN);
+
+        var response = get(studyId, otherCaptainId);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("discordChannelUrl", null)
+                .containsEntry("driveUrl", null);
+        Long otherStudyId = createOpenStudyWithLinks("다른 스터디의 캡틴 권한");
+        assertThat(get(otherStudyId, otherCaptainId).getBody())
+                .containsEntry("discordChannelUrl", DISCORD_URL)
+                .containsEntry("driveUrl", DRIVE_URL);
+    }
+
+    @Test
     @DisplayName("성공 - 캡틴은 명부에 없어도 디스코드·자료실 링크를 받는다")
     void captainSeesLinks() {
         Long studyId = createOpenStudyWithLinks("캡틴이 보는 링크");

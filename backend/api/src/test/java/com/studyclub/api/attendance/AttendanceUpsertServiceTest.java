@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.attendance.AttendanceStatus;
@@ -36,6 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AttendanceUpsertServiceTest {
 
+    @Mock StudyCaptainGuard studyCaptainGuard;
     @Mock StudyRepository studyRepository;
     @Mock StudyGroupRepository studyGroupRepository;
     @Mock StudyParticipantRepository studyParticipantRepository;
@@ -61,9 +63,10 @@ class AttendanceUpsertServiceTest {
                         GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
-                                        MEETING_ID, PARTICIPANT_ID, "NOT_A_STATUS")));
+                                        MEETING_ID, PARTICIPANT_ID, "NOT_A_STATUS")),
+                        List.of());
 
-        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request))
+        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request, ACCOUNT_ID, true))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -80,9 +83,9 @@ class AttendanceUpsertServiceTest {
         var item =
                 new AttendanceUpsertRequest.AttendanceUpsertItem(
                         MEETING_ID, PARTICIPANT_ID, "PRESENT");
-        var request = new AttendanceUpsertRequest(GROUP_ID, List.of(item, item));
+        var request = new AttendanceUpsertRequest(GROUP_ID, List.of(item, item), List.of());
 
-        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request))
+        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request, ACCOUNT_ID, true))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -103,9 +106,10 @@ class AttendanceUpsertServiceTest {
                         GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
-                                        MEETING_ID, PARTICIPANT_ID, "PRESENT")));
+                                        MEETING_ID, PARTICIPANT_ID, "PRESENT")),
+                        List.of());
 
-        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request))
+        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request, ACCOUNT_ID, true))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -129,9 +133,10 @@ class AttendanceUpsertServiceTest {
                         GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
-                                        MEETING_ID, PARTICIPANT_ID, "PRESENT")));
+                                        MEETING_ID, PARTICIPANT_ID, "PRESENT")),
+                        List.of());
 
-        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request))
+        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request, ACCOUNT_ID, true))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -155,9 +160,10 @@ class AttendanceUpsertServiceTest {
                         GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
-                                        MEETING_ID, PARTICIPANT_ID, "PRESENT")));
+                                        MEETING_ID, PARTICIPANT_ID, "PRESENT")),
+                        List.of());
 
-        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request))
+        assertThatThrownBy(() -> service.upsert(STUDY_ID, GROUP_ID, request, ACCOUNT_ID, true))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(
                         e ->
@@ -177,7 +183,10 @@ class AttendanceUpsertServiceTest {
                         GROUP_ID,
                         List.of(
                                 new AttendanceUpsertRequest.AttendanceUpsertItem(
-                                        MEETING_ID, PARTICIPANT_ID, "late"))));
+                                        MEETING_ID, PARTICIPANT_ID, "late")),
+                        List.of()),
+                ACCOUNT_ID,
+                true);
 
         verify(attendanceRepository)
                 .upsertStatus(
@@ -197,7 +206,7 @@ class AttendanceUpsertServiceTest {
     private void givenGroupBelongsToStudy() {
         StudyGroup group = mock(StudyGroup.class);
         when(group.getStudyId()).thenReturn(STUDY_ID);
-        when(studyGroupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(studyGroupRepository.findByIdForUpdate(GROUP_ID)).thenReturn(Optional.of(group));
     }
 
     private StudyParticipant stubParticipant() {

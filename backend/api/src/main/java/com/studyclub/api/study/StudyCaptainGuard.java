@@ -98,6 +98,23 @@ public class StudyCaptainGuard {
         }
     }
 
+    public void assertCanWithdrawParticipant(Long accountId, Long createdBy, Long groupId) {
+        Account caller = account(accountId);
+        if (accountId.equals(createdBy)
+                || (createdBy == null && caller.getSystemRole() == SystemRole.ADMIN)) {
+            return;
+        }
+        boolean navigator =
+                studyParticipantRepository
+                        .findByStudyGroupIdAndAccountId(groupId, accountId)
+                        .filter(p -> p.getParticipantRole() == ParticipantRole.LEADER)
+                        .filter(p -> ROSTER_STATUSES.contains(p.getStatus()))
+                        .isPresent();
+        if (!navigator) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+    }
+
     /**
      * 사용자 사이트 「스터디 일정」 고치기 — <b>그 스터디를 만든 캡틴</b>({@code STUDY.CREATED_BY})이거나 그 분반 네비게이터(LEADER).
      * 다른 ADMIN 은 여기서 특별 대우하지 않는다 — 참여했으면 크루다. 운영자 전체 관리는 백오피스 몫 (specs/study-meeting/spec.md 결정 3).
@@ -172,13 +189,12 @@ public class StudyCaptainGuard {
                 .orElse(false);
     }
 
-    /**
-     * 디스코드 채널·자료실 링크를 볼 수 있는지 — 캡틴이거나, 참여 중단이 아닌 참여자. 네비게이터도 명부 행이라 참여 상태로 함께 걸러진다 — 하차한 네비게이터는 못
-     * 본다. 링크가 곧 입장권이라 공개 상세에서도 이 사람들에게만 채운다 (share/2026-09-30-study-detail-private-urls.md). 비로그인은
-     * {@code false}.
-     */
     public boolean canSeePrivateLinks(Long accountId, Long studyId) {
         if (accountId == null) {
+            return false;
+        }
+        if (studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
+                studyId, accountId, List.of(ParticipantStatus.WITHDRAWN))) {
             return false;
         }
         return studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(

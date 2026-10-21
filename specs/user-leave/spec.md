@@ -69,6 +69,7 @@
    - `ACCOUNT_LEAVE_REASON` 1행 insert (`reason`, `createdAt=now`). accountId 는 담지 않는다.
    - `ACCOUNT_IDENTITY` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 `UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID)` 에 걸려 [완료 기준 6](#완료-기준)이 깨진다).
    - `STUDY_PARTICIPANT` WHERE `ACCOUNT_ID=accountId` 전부 `STATUS=DELETED` + `LEFT_AT=now` 로 전환 (물리 삭제 아님 — 지우면 `STUDY_ATTENDANCE` 가 갈 곳을 잃어 출석률 집계에서 전체 이력이 빠진다). 이 사람이 맡고 있던 네비게이터 자리가 사라진다. 공동 네비게이터가 없었다면 그 스터디는 네비게이터가 없는 상태가 되고, 있었다면 그 사람만 남는다 — 어느 쪽이든 시스템은 구분하지 않고 똑같이 처리한다.
+   - 참여 중단·발표 신청과 경합하지 않도록 계정 잠금 후 소속 분반을 ID 오름차순으로 잠근다. 명부는 잠금 조회로 최신 상태를 읽고, 이미 기록된 `LEFT_AT`은 보존한다. 발표자 정리도 해당 분반 회차를 잠금 조회한 뒤 처리한다.
    - `STUDY_BOOKMARK` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
    - `STUDY_PROPOSAL_INTEREST` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (관심 표시 파기).
    - `NOTIFICATION` WHERE `RECIPIENT_USER_ID=accountId` 인 행의 `RECIPIENT_VALUE`·`PAYLOAD.nickname` 을 비식별 처리한다(행은 유지, 발송 이력 자체는 지우지 않는다). `STATUS=PENDING` 인 행은 추가로 `CANCELLED` 로 전환한다 — [알림 비식별화](#알림-비식별화) 참고.

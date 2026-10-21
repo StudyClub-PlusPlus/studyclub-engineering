@@ -91,7 +91,7 @@ export function deleteStudyMeeting(studyId: number, meetingId: number) {
 }
 
 export function getStudyAttendance(studyId: number, studyGroupId: number) {
-  return http<ApiAttendance>(`/api/me/studies/${studyId}/attendances?studyGroupId=${studyGroupId}`);
+  return http<ApiAttendance>(`/api/me/studies/${studyId}/attendances?studyGroupId=${studyGroupId}&includeWithdrawn=true`);
 }
 
 export function saveStudyAttendance(

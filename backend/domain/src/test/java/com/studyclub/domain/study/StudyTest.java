@@ -1,11 +1,16 @@
 package com.studyclub.domain.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class StudyTest {
 
@@ -233,5 +238,27 @@ class StudyTest {
 
     private Study getStudy(StudyStatus status, Integer capacity) {
         return Study.builder().programId(1L).status(status).build();
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = StudyStatus.class,
+            names = {"ENDED", "CLOSED"})
+    @DisplayName("끝난 스터디는 참여 중단을 거절한다 — 종료 이력을 변경하지 않는다")
+    void rejectsWithdrawalForEndedStudy(StudyStatus status) {
+        assertThatThrownBy(() -> getStudy(status).assertParticipationWithdrawalAllowed())
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.STUDY_ENDED));
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = StudyStatus.class,
+            names = {"DRAFT", "OPEN", "ONGOING"})
+    @DisplayName("종료 전 스터디는 참여 중단을 허용한다 — 대상과 호출 권한은 별도로 검사한다")
+    void permitsWithdrawalBeforeStudyEnds(StudyStatus status) {
+        getStudy(status).assertParticipationWithdrawalAllowed();
     }
 }

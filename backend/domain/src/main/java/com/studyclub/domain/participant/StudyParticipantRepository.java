@@ -1,9 +1,11 @@
 package com.studyclub.domain.participant;
 
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,6 +28,10 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM StudyParticipant p WHERE p.studyGroupId = :studyGroupId ORDER BY p.id")
+    List<StudyParticipant> findByStudyGroupIdForUpdate(@Param("studyGroupId") Long studyGroupId);
+
     List<StudyParticipant> findByStudyGroupIdAndStatusIn(
             Long studyGroupId, Collection<ParticipantStatus> statuses);
 
@@ -45,6 +51,20 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
             Long studyGroupId, Long accountId, Collection<ParticipantRole> participantRoles);
 
     List<StudyParticipant> findByIdInAndStudyId(Collection<Long> ids, Long studyId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "SELECT p FROM StudyParticipant p WHERE p.id IN :ids AND p.studyId = :studyId ORDER BY p.id")
+    List<StudyParticipant> findByIdInAndStudyIdForUpdate(
+            @Param("ids") Collection<Long> ids, @Param("studyId") Long studyId);
+
+    @Query(
+            "SELECT DISTINCT p.studyGroupId FROM StudyParticipant p WHERE p.accountId = :accountId AND p.studyGroupId IS NOT NULL ORDER BY p.studyGroupId")
+    List<Long> findStudyGroupIdsByAccountId(@Param("accountId") Long accountId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM StudyParticipant p WHERE p.accountId = :accountId ORDER BY p.id")
+    List<StudyParticipant> findByAccountIdForUpdate(@Param("accountId") Long accountId);
 
     boolean existsByAccountIdAndStudyIdAndParticipantRoleIn(
             Long accountId, Long studyId, Collection<ParticipantRole> roles);

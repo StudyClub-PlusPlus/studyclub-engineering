@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.studyclub.common.error.BusinessException;
@@ -13,9 +14,11 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.StudyGroupRepository;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -121,6 +124,17 @@ class StudyCaptainGuardTest {
                         e ->
                                 assertThat(((BusinessException) e).errorCode())
                                         .isEqualTo(ErrorCode.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("중단자는 시스템 권한을 조회하지 않고 링크를 차단한다 — ADMIN으로 우회하지 않는다")
+    void withdrawalTakesPrecedenceOverSystemRole() {
+        when(studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
+                        10L, 1L, List.of(ParticipantStatus.WITHDRAWN)))
+                .thenReturn(true);
+
+        assertThat(guard.canSeePrivateLinks(1L, 10L)).isFalse();
+        verifyNoInteractions(accountRepository);
     }
 
     private Account account(SystemRole role) {

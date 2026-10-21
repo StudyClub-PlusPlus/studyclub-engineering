@@ -1,5 +1,7 @@
 package com.studyclub.domain.study;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -90,6 +92,12 @@ public class Study extends BaseEntity {
     private static final long CLOSING_SOON_DAYS = 3;
     private static final Pattern PST_PATTERN = Pattern.compile("PST|PDT", Pattern.CASE_INSENSITIVE);
     private static final Pattern KST_PATTERN = Pattern.compile("KST", Pattern.CASE_INSENSITIVE);
+
+    public void assertParticipationWithdrawalAllowed() {
+        if (status == StudyStatus.ENDED || status == StudyStatus.CLOSED) {
+            throw new BusinessException(ErrorCode.STUDY_ENDED);
+        }
+    }
 
     public void update(
             String title,

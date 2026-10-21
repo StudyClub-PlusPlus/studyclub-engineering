@@ -8,6 +8,8 @@ import com.studyclub.common.error.ErrorCode;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class StudyMeetingTest {
 
@@ -210,5 +212,27 @@ class StudyMeetingTest {
 
     private static void assertCode(Throwable e, ErrorCode code) {
         assertThat(((BusinessException) e).errorCode()).isEqualTo(code);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {-1, 0, 1})
+    @DisplayName("중단 시각보다 뒤인 회차만 발표자를 비운다 — 같은 시각과 이전 기록은 보존한다")
+    void releasesOnlyMeetingsScheduledAfterWithdrawal(long seconds) {
+        var meeting = new StudyMeeting(1L, NOW.plusSeconds(seconds), null, null);
+        meeting.assignPresenters(7L, 8L);
+        assertThat(meeting.releasePresenterAfterWithdrawal(7L, NOW)).isEqualTo(seconds > 0);
+        assertThat(meeting.getPresenter1ParticipantId()).isEqualTo(seconds > 0 ? null : 7L);
+        assertThat(meeting.getPresenter2ParticipantId()).isEqualTo(8L);
+    }
+
+    @Test
+    @DisplayName("참여 중단은 예정 시각으로 판정한다 — 디스코드 조기 시작 여부와 구분한다")
+    void releasesScheduledPresenterEvenWhenOpenedEarly() {
+        var meeting = new StudyMeeting(1L, NOW.plusSeconds(60), NOW.minusSeconds(1), null);
+        meeting.assignPresenters(8L, 7L);
+        assertThat(meeting.releasePresenterAfterWithdrawal(7L, NOW)).isTrue();
+        assertThat(meeting.getPresenter1ParticipantId()).isEqualTo(8L);
+        assertThat(meeting.getPresenter2ParticipantId()).isNull();
+        assertThat(meeting.releasePresenterAfterWithdrawal(7L, NOW)).isFalse();
     }
 }

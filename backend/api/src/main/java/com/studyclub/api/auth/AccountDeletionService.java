@@ -19,6 +19,7 @@ import com.studyclub.domain.proposal.StudyProposal;
 import com.studyclub.domain.proposal.StudyProposalInterestRepository;
 import com.studyclub.domain.proposal.StudyProposalRepository;
 import com.studyclub.domain.proposal.StudyProposalStatus;
+import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.notification.Notification;
@@ -60,6 +61,7 @@ public class AccountDeletionService {
     private final AccountConsentRepository accountConsentRepository;
     private final AccountLeaveReasonRepository accountLeaveReasonRepository;
     private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyGroupRepository studyGroupRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyProposalRepository studyProposalRepository;
@@ -118,25 +120,22 @@ public class AccountDeletionService {
     }
 
     private void anonymizeParticipations(Long accountId) {
-        Instant deletedAt = Instant.now();
+        List<Long> groupIds = studyParticipantRepository.findStudyGroupIdsByAccountId(accountId);
+        for (Long groupId : groupIds) {
+            studyGroupRepository.findByIdForUpdate(groupId);
+        }
         List<StudyParticipant> participations =
-                studyParticipantRepository.findByAccountId(accountId);
+                studyParticipantRepository.findByAccountIdForUpdate(accountId);
+        Instant deletedAt = Instant.now();
         for (StudyParticipant participation : participations) {
             participation.markDeletedDueToAccountDeletion(deletedAt);
         }
-        releasePresenterSlots(participations, deletedAt);
-    }
-
-    // 떠난 사람이 맡은 예정 회차의 발표자 칸을 비운다 — 빈 칸이 다시 「신청」 으로 열린다. 지난 회차는 기록이라 둔다
-    // (specs/study-meeting/spec.md 구현 메모)
-    private void releasePresenterSlots(List<StudyParticipant> participations, Instant now) {
-        List<Long> participantIds = participations.stream().map(StudyParticipant::getId).toList();
-        if (participantIds.isEmpty()) {
-            return;
-        }
-        for (StudyMeeting meeting : studyMeetingRepository.findByPresenterIn(participantIds)) {
-            for (Long participantId : participantIds) {
-                meeting.releasePresenter(participantId, now);
+        for (Long groupId : groupIds) {
+            for (StudyMeeting meeting :
+                    studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)) {
+                for (StudyParticipant participation : participations) {
+                    meeting.releasePresenter(participation.getId(), deletedAt);
+                }
             }
         }
     }

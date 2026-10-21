@@ -1,5 +1,7 @@
 package com.studyclub.domain.participant;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -71,13 +73,30 @@ public class StudyParticipant extends BaseEntity {
     @Column(name = "LEFT_AT")
     private Instant leftAt;
 
-    /**
-     * 스터디 하차 — 명부에서 자발적으로 빠지는 경우. leftAt 을 기록해 AttendanceRateCalculator 가 이 시각 이전 회차만 집계에 포함하도록 한다.
-     * leftAt 이후 회차는 결석(0점)이 아니라 분모에서 제외된다 — "하차"와 "결석"이 섞이지 않는다.
-     */
-    public void markWithdrawn(Instant withdrawnAt) {
+    public boolean markWithdrawn(Instant withdrawnAt) {
+        assertWithdrawalStatus();
+        if (status == ParticipantStatus.WITHDRAWN) {
+            return false;
+        }
         this.status = ParticipantStatus.WITHDRAWN;
         this.leftAt = withdrawnAt;
+        return true;
+    }
+
+    public void assertWithdrawableBy(Long callerId, Long captainId) {
+        if (accountId.equals(callerId)) {
+            throw new BusinessException(ErrorCode.CANNOT_WITHDRAW_SELF);
+        }
+        if (participantRole == ParticipantRole.LEADER || accountId.equals(captainId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+        assertWithdrawalStatus();
+    }
+
+    private void assertWithdrawalStatus() {
+        if (status == ParticipantStatus.DELETED || status == ParticipantStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.PARTICIPANT_NOT_ACTIVE);
+        }
     }
 
     /**

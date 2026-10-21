@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -53,8 +54,10 @@ public class AdminAttendanceController {
     @RequireOnboarding
     @PostMapping
     public ResponseEntity<Void> upsertAttendances(
-            @PathVariable Long studyId, @RequestBody @Valid AttendanceUpsertRequest request) {
-        attendanceUpsertService.upsert(studyId, request.studyGroupId(), request);
+            @PathVariable Long studyId,
+            @RequestBody @Valid AttendanceUpsertRequest request,
+            @AuthenticationPrincipal Long accountId) {
+        attendanceUpsertService.upsert(studyId, request.studyGroupId(), request, accountId, true);
         return ResponseEntity.noContent().build();
     }
 }

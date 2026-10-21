@@ -246,13 +246,14 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 | 필드 | 타입 | 필수 | 검증 |
 |------|------|------|------|
 | studyGroupId | Long | Y | 출석을 기록할 분반 ID. 존재하지 않으면 404. studyId 소속이 아니면 400. updates의 모든 meetingId는 이 분반 소속이어야 함 |
-| updates | array | Y | 1개 이상. 빈 배열 → 400 |
+| updates | array | N | `withdrawals`와 모두 비면 400. 생략·null은 빈 배열로 처리 |
+| withdrawals | Long[] | N | 참여 중단할 명부 ID. 대상·권한은 [참여 중단 스펙](../study-participant/spec.md) |
 | updates[].meetingId | Long | Y | studyId에 속한 StudyMeeting.id여야 함 → 아니면 400 |
 | updates[].participantId | Long | Y | studyId에 속한 StudyParticipant.id여야 함 → 아니면 400 |
 | updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 400 |
 | updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 400 |
 
-> **추가 예정 (2026-10-07, 스펙작성중)** — 요청에 `withdrawals[]`(참여 중단할 명부 행 ID)를 더해, 출석부 「저장」 한 번에 출석과 참여 중단을 같은 트랜잭션으로 반영한다. 그때 「`updates` 빈 배열 → 400」은 「`updates` · `withdrawals` 가 모두 비면 400」이 된다. `withdrawals` 를 보내지 않는 호출은 지금과 같다. 필드 · 권한 · 대상 제한은 [참여 중단 스펙](../study-participant/spec.md).
+> 출석과 `withdrawals[]` 참여 중단을 한 트랜잭션으로 저장한다. 둘 다 비면 400이며, 출석만 보내는 기존 호출은 유지된다. 필드·권한·대상 제한·미래 회차 발표자 해제는 [참여 중단 스펙](../study-participant/spec.md)을 따른다.
 
 ### Response — 204 No Content
 
@@ -276,7 +277,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | updates가 빈 배열 |
+| 400 | INVALID_INPUT | updates와 withdrawals가 모두 빈 배열 |
 | 403 | FORBIDDEN | 캡틴(SYSTEM_ROLE=ADMIN)이 아님 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
@@ -297,7 +298,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 - **Method**: POST
 - **Path**: `/api/me/studies/{studyId}/attendances`
 - **인증**: 필요 — 그 분반의 네비게이터(`PARTICIPANT_ROLE=LEADER`). 다른 분반 LEADER 또는 분반 MEMBER는 403.
-- **설명**: 네비게이터가 자신이 맡은 분반의 출석을 수정. 요청 구조는 `/api/admin/…` POST와 동일. 인증은 어노테이션 가드 대신 코드에서 `assertCaptainOrNavigatorOfGroup` 으로 검사한다 (`studyGroupId`가 request body에 있어 인터셉터가 읽지 못하기 때문).
+- **설명**: 네비게이터가 자신이 맡은 분반의 출석을 수정. 요청 구조는 `/api/admin/…` POST와 동일. 권한은 분반 잠금 후 서비스에서 검사한다. 출석만 저장하면 기존 `assertCaptainOrNavigatorOfGroup`, 참여 중단을 포함하면 `assertCanWithdrawParticipant`를 적용한다.
 
 ### Path Parameters
 
