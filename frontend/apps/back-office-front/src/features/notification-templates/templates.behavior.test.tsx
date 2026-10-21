@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationTemplatesPage from '@/app/notification-templates/page';
@@ -33,10 +34,7 @@ function tpl(patch: Partial<NotificationTemplate> = {}): NotificationTemplate {
 }
 
 /** 서버 흉내 — 목록은 저장·삭제를 반영하고, 호출은 httpMock.mock.calls 로 확인한다. */
-function fakeServer(
-  initial: NotificationTemplate[],
-  failWith?: { method: string; status: number; message?: string },
-) {
+function fakeServer(initial: NotificationTemplate[], failWith?: { method: string; status: number; message?: string }) {
   let db = initial.map((t) => ({ ...t }));
   let nextId = Math.max(0, ...db.map((t) => t.id)) + 1;
   httpMock.mockImplementation(async (path, init) => {
@@ -60,10 +58,12 @@ function fakeServer(
 }
 
 function renderPage() {
-  const client = new QueryClient({ defaultOptions: {
+  const client = new QueryClient({
+    defaultOptions: {
       queries: { retry: false, gcTime: Infinity, staleTime: 60_000, refetchOnWindowFocus: false },
       mutations: { retry: false },
-    } });
+    },
+  });
   return render(
     <QueryClientProvider client={client}>
       <NotificationTemplatesPage />
@@ -111,7 +111,8 @@ describe('알림 템플릿 화면', () => {
     await screen.findByRole('button', { name: '회원가입' });
     fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     const add = within(dialog).getByRole('button', { name: '추가' }) as HTMLButtonElement;
     expect(add.disabled).toBe(true);
     expect((within(dialog).getByLabelText(/제목/) as HTMLInputElement).value).toBe('');
@@ -131,7 +132,8 @@ describe('알림 템플릿 화면', () => {
     await screen.findByRole('button', { name: '회원가입' });
     fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: ' 새 문구 ' } });
     fireEvent.change(within(dialog).getByLabelText(/본문/), { target: { value: BODY } });
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
@@ -152,7 +154,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('템플릿 수정')).toBeTruthy();
     expect((within(dialog).getByLabelText(/제목/) as HTMLInputElement).value).toBe('[StudyClub] 회원가입을 환영합니다');
     expect((within(dialog).getByLabelText(/본문/) as HTMLTextAreaElement).value).toBe(BODY);
@@ -163,7 +166,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '바뀐 제목' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
@@ -183,17 +187,20 @@ describe('알림 템플릿 화면', () => {
     expect(screen.queryByRole('button', { name: /삭제/ })).toBeNull();
     fireEvent.click(within(rows[1]!).getByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
     expect(within(dialog).getByText(/지난 발송 이력은 남습니다/)).toBeTruthy();
-    expect(within(dialog).getByRole('button', { name: '취소' }).hasAttribute('data-autofocus')).toBe(true);
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: '취소' }));
     expect(callsOf('DELETE')).toHaveLength(0);
 
-    // 취소하면 편집으로 돌아간다
-    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
+    // 기본 포커스에서 Enter를 누르면 삭제하지 않고 편집으로 돌아간다
+    await userEvent.setup().keyboard('{Enter}');
+    expect(callsOf('DELETE')).toHaveLength(0);
     expect(within(dialog).getByLabelText(/제목/)).toBeTruthy();
 
     fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: '취소' }));
     fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(callsOf('DELETE')[0]![0]).toBe(`${BASE}/1`);
@@ -206,7 +213,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '쓰던 제목' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
@@ -220,7 +228,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain('이미 삭제된 템플릿');
@@ -235,7 +244,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
     fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
 
@@ -249,7 +259,8 @@ describe('알림 템플릿 화면', () => {
     await screen.findByRole('button', { name: '회원가입' });
     fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '새 문구' } });
     fireEvent.change(within(dialog).getByLabelText(/본문/), { target: { value: '본문' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
@@ -270,7 +281,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     await waitFor(() => expect(callsOf('PUT')).toHaveLength(1));
 
@@ -286,7 +298,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     await waitFor(() => expect(callsOf('PUT')).toHaveLength(1));
     expect(callsOf('PUT')[0]![1]?.signal).toBeInstanceOf(AbortSignal);
@@ -302,7 +315,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain('저장하지 못했습니다');
@@ -317,8 +331,11 @@ describe('알림 템플릿 화면', () => {
     await screen.findByRole('button', { name: '회원가입' });
     fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
 
-    const dialog = await screen.findByRole('dialog');
-    const options = within(dialog).getAllByRole('option').map((o) => o.textContent);
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const options = within(dialog)
+      .getAllByRole('option')
+      .map((o) => o.textContent);
     expect(options).toEqual(['회원가입']);
   });
 
@@ -327,7 +344,8 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
-    const dialog = await screen.findByRole('dialog');
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect((await within(dialog).findByRole('alert')).textContent).toBe('제목과 본문을 입력해 주세요.');
@@ -342,5 +360,119 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     expect(await screen.findByText('서버 오류')).toBeTruthy();
     expect(screen.queryByText('등록된 템플릿이 없습니다.')).toBeNull();
+  });
+
+  it('편집 때마다 새로 조회하고 응답 전에는 이전 값으로 편집할 수 없다', async () => {
+    let release!: (value: NotificationTemplate[]) => void;
+    let gets = 0;
+    httpMock.mockImplementation(async () => {
+      if (++gets === 1) return [tpl({ subject: 'A' })];
+      return new Promise<NotificationTemplate[]>((resolve) => {
+        release = resolve;
+      });
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    expect(await screen.findByText('최신 템플릿을 불러오는 중…')).toBeTruthy();
+    expect(screen.queryByLabelText(/제목/)).toBeNull();
+    release([tpl({ subject: 'B' })]);
+    expect(((await screen.findByLabelText(/제목/)) as HTMLInputElement).value).toBe('B');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: '회원가입' }));
+    await waitFor(() => expect(gets).toBe(3));
+    expect(screen.queryByLabelText(/제목/)).toBeNull();
+    release([tpl({ subject: 'C' })]);
+    expect(((await screen.findByLabelText(/제목/)) as HTMLInputElement).value).toBe('C');
+  });
+
+  it('편집 조회 실패 시 이전 데이터를 노출하지 않고 다시 조회한다', async () => {
+    let gets = 0;
+    httpMock.mockImplementation(async () => {
+      if (++gets === 2) throw new ApiError(500, '조회 실패');
+      return [tpl({ subject: gets === 1 ? 'A' : 'B' })];
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    expect(await screen.findByText('템플릿을 불러오지 못했습니다.')).toBeTruthy();
+    expect(screen.queryByLabelText(/제목/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '다시 불러오기' }));
+    expect(((await screen.findByLabelText(/제목/)) as HTMLInputElement).value).toBe('B');
+  });
+
+  it('저장 중 모든 입력을 막고 실패하면 작성값을 유지하며 다시 활성화한다', async () => {
+    fakeServer([tpl()]);
+    const base = httpMock.getMockImplementation()!;
+    let reject!: (reason: Error) => void;
+    httpMock.mockImplementation(async (path, init) =>
+      init?.method === 'PUT'
+        ? new Promise((_resolve, fail) => {
+            reject = fail;
+          })
+        : base(path, init),
+    );
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    const subject = (await screen.findByLabelText(/제목/)) as HTMLInputElement;
+    fireEvent.change(subject, { target: { value: '작성 중' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(subject.disabled).toBe(true));
+    expect((screen.getByLabelText(/알림 조건/) as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByLabelText(/본문/) as HTMLTextAreaElement).disabled).toBe(true);
+    reject(new ApiError(500, '저장 실패'));
+    await screen.findByRole('alert');
+    expect(subject.disabled).toBe(false);
+    expect(subject.value).toBe('작성 중');
+    expect((screen.getByLabelText(/알림 조건/) as HTMLSelectElement).disabled).toBe(false);
+    expect((screen.getByLabelText(/본문/) as HTMLTextAreaElement).disabled).toBe(false);
+  });
+
+  it('최초 조회보다 추가가 먼저 성공하면 이전 요청을 취소하고 새 목록을 기다리지 않고 닫는다', async () => {
+    let first!: (value: NotificationTemplate[]) => void;
+    let latest!: (value: NotificationTemplate[]) => void;
+    let gets = 0;
+    let oldSignal: AbortSignal | undefined;
+    httpMock.mockImplementation(async (_path, init) => {
+      if (init?.method === 'POST') return tpl({ subject: '새 문구' });
+      if (++gets === 1) {
+        oldSignal = init?.signal as AbortSignal;
+        return new Promise<NotificationTemplate[]>((resolve) => {
+          first = resolve;
+        });
+      }
+      return new Promise<NotificationTemplate[]>((resolve) => {
+        latest = resolve;
+      });
+    });
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+    fireEvent.change(screen.getByLabelText(/제목/), { target: { value: '새 문구' } });
+    fireEvent.change(screen.getByLabelText(/본문/), { target: { value: BODY } });
+    fireEvent.click(screen.getByRole('button', { name: /^추가$/ }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(gets).toBe(2));
+    expect(oldSignal?.aborted).toBe(true);
+    latest([tpl({ subject: '새 문구' })]);
+    await screen.findByText('새 문구');
+    first([]);
+    await waitFor(() => expect(screen.queryByText('등록된 템플릿이 없습니다.')).toBeNull());
+    expect(screen.getByText('새 문구')).toBeTruthy();
+  });
+
+  it('저장 후 목록 갱신이 실패해도 팝업은 닫고 조회만 재시도한다', async () => {
+    fakeServer([tpl()]);
+    const base = httpMock.getMockImplementation()!;
+    let gets = 0;
+    httpMock.mockImplementation(async (path, init) => {
+      if ((!init?.method || init.method === 'GET') && ++gets === 3) throw new ApiError(500, '목록 실패');
+      return base(path, init);
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    fireEvent.change(await screen.findByLabelText(/제목/), { target: { value: '저장됨' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.click(await screen.findByRole('button', { name: '목록 다시 불러오기' }));
+    await screen.findByText('저장됨');
+    expect(callsOf('PUT')).toHaveLength(1);
   });
 });

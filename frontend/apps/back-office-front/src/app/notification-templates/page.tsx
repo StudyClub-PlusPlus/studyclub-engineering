@@ -14,14 +14,12 @@ import { NotificationTabs } from '@/features/notifications/components/Notificati
 import { channelLabel, eventLabel, formatStamp } from '@/features/notifications/labels';
 
 export default function NotificationTemplatesPage() {
-  const { data, error, isPending } = useNotificationTemplates();
+  const { data, error, isPending, isFetching, refetch } = useNotificationTemplates();
   /** null = 닫힘, 'new' = 추가, 템플릿 = 그 템플릿 수정 */
   const [target, setTarget] = useState<'new' | NotificationTemplate | null>(null);
 
   // 새로 더한 것이 맨 위에 선다 — 서버가 준 순서에 기대지 않고 화면에서 id 내림차순으로 놓는다
   const templates = useMemo(() => (data ? [...data].sort((a, b) => b.id - a.id) : undefined), [data]);
-  // 수정 중에 목록이 다시 읽혀도 팝업은 같은 템플릿을 가리키게 id 로 다시 찾는다
-  const editing = typeof target === 'object' && target ? (data?.find((t) => t.id === target.id) ?? target) : undefined;
 
   return (
     <div>
@@ -37,8 +35,21 @@ export default function NotificationTemplatesPage() {
 
       {error && (
         <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-danger-fg'>
-          {error.message}
+          <p>
+            {data
+              ? '목록을 갱신하지 못했습니다. 완료된 저장은 유지됩니다. 최신 목록을 다시 불러와 주세요.'
+              : error.message}
+          </p>
+          <Button variant='secondary' size='sm' onClick={() => void refetch()}>
+            목록 다시 불러오기
+          </Button>
         </div>
+      )}
+
+      {isFetching && !isPending && (
+        <p role='status' className='mb-3 text-sm text-fg-muted'>
+          목록 갱신 중…
+        </p>
       )}
 
       {isPending && (
@@ -82,7 +93,14 @@ export default function NotificationTemplatesPage() {
         </TableCard>
       )}
 
-      <TemplateDialog open={target !== null} onClose={() => setTarget(null)} template={editing} />
+      {target !== null && (
+        <TemplateDialog
+          key={target === 'new' ? 'new' : target.id}
+          open
+          onClose={() => setTarget(null)}
+          template={target === 'new' ? undefined : target}
+        />
+      )}
     </div>
   );
 }

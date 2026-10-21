@@ -13,7 +13,7 @@ import {
   type NotificationTrigger,
 } from '@console/lib/templates';
 import { Button, Input, Modal, Select, Textarea } from '@studyclub/ui';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 type Draft = { trigger: NotificationTrigger; subject: string; body: string };
 
@@ -22,29 +22,50 @@ const EMPTY: Draft = { trigger: 'USER_REGISTERED', subject: '', body: '' };
 /**
  * 알림 템플릿.
  *
- * 등록한 문구를 보고, 새 알림의 문구를 더한다. **고치는 길은 아직 없다** — 편집 API 가 없다.
+ * 등록한 문구를 보고, 추가·수정·삭제 흐름을 로컬 데이터로 확인한다.
  * 나가는 알림이 늘어날 때마다 코드를 고치지 않게, 문구는 운영자가 더할 수 있어야 한다.
  */
 export function TemplatesTable() {
   const [rows, setRows] = useState<NotificationTemplate[]>(seeded);
   const [open, setOpen] = useState<NotificationTemplate | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Draft>(EMPTY);
 
   // 조건 하나에 템플릿 하나다 — 같은 계기에 두 통을 보내지 않는다
-  const taken = new Set(rows.map((r) => r.trigger));
+  const taken = new Set(rows.filter((r) => r.id !== open?.id).map((r) => r.trigger));
   const free = TRIGGERS.filter((t) => !taken.has(t.value));
   const blocked = !draft.subject.trim() || !draft.body.trim() || taken.has(draft.trigger);
 
   function openAdd() {
     setDraft({ ...EMPTY, trigger: free[0]?.value ?? 'USER_REGISTERED' });
+    setOpen(null);
+    setConfirmDelete(false);
     setAdding(true);
+  }
+
+  function close() {
+    setOpen(null);
+    setAdding(false);
+    setConfirmDelete(false);
+  }
+
+  function edit(template: NotificationTemplate) {
+    setDraft({ trigger: template.trigger, subject: template.subject, body: template.body });
+    setConfirmDelete(false);
+    setAdding(false);
+    setOpen(template);
   }
 
   function add() {
     if (blocked) return;
     // 등록한 날이 곧 마지막 수정일이다 — 비어 있는 경우를 만들지 않는다
     const now = new Date().toISOString();
+    if (open) {
+      setRows((prev) => prev.map((row) => (row.id === open.id ? { ...row, ...draft, updatedAt: now } : row)));
+      close();
+      return;
+    }
     setRows((prev) => [
       // 채널은 메일 하나뿐이라 고르게 하지 않는다 — 고를 것이 하나면 묻지 않는다
       { id: Math.max(0, ...prev.map((r) => r.id)) + 1, ...draft, channel: 'EMAIL', updatedAt: now },
@@ -52,32 +73,6 @@ export function TemplatesTable() {
     ]);
     setDraft(EMPTY);
     setAdding(false);
-  }
-
-  if (open) {
-    return (
-      <div className='flex flex-col gap-3'>
-        <NotificationTabs />
-        <button
-          type='button'
-          onClick={() => setOpen(null)}
-          className='inline-flex w-fit items-center gap-1.5 text-sm font-medium text-fg-secondary hover:text-fg'
-        >
-          <ArrowLeft size={15} /> 알림 템플릿
-        </button>
-
-        <div data-anno='template:4' className='card'>
-          <Row label='알림 조건'>{TRIGGER_LABEL[open.trigger] ?? open.trigger}</Row>
-          <Row label='채널'>{TEMPLATE_CHANNEL_LABEL[open.channel] ?? open.channel}</Row>
-          <Row label='제목'>{open.subject}</Row>
-          <Row label='본문'>
-            {/* 치환 변수({{nickname}})가 그대로 보여야 한다 — 미리 채워 보여주면 원문을 알 수 없다 */}
-            <pre className='whitespace-pre-wrap break-words font-sans text-sm leading-relaxed'>{open.body}</pre>
-          </Row>
-          <Row label='마지막 수정'>{stamp(open.updatedAt)}</Row>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -104,7 +99,7 @@ export function TemplatesTable() {
           {rows.map((t) => (
             <tr key={t.id}>
               <td className='whitespace-nowrap'>
-                <Button variant='ghost' size='sm' className='-ml-2 font-semibold' onClick={() => setOpen(t)}>
+                <Button variant='ghost' size='sm' className='-ml-2 font-semibold' onClick={() => edit(t)}>
                   {TRIGGER_LABEL[t.trigger] ?? t.trigger}
                 </Button>
               </td>
@@ -117,62 +112,86 @@ export function TemplatesTable() {
       </TableCard>
 
       <Modal
-        open={adding}
-        onClose={() => setAdding(false)}
-        title='템플릿 추가'
-        /* 닫는 수단은 X 하나다 — 취소 버튼을 따로 두지 않는다 (POL-0008) */
+        open={adding || Boolean(open)}
+        onClose={close}
+        title={open ? '템플릿 수정' : '템플릿 추가'}
         footer={
-          <div className='flex justify-end'>
-            <Button onClick={add} disabled={blocked}>
-              추가
-            </Button>
-          </div>
+          confirmDelete ? (
+            <>
+              <Button variant='secondary' autoFocus data-autofocus onClick={() => setConfirmDelete(false)}>
+                취소
+              </Button>
+              <Button
+                variant='destructive'
+                onClick={() => {
+                  setRows((prev) => prev.filter((row) => row.id !== open?.id));
+                  close();
+                }}
+              >
+                삭제
+              </Button>
+            </>
+          ) : (
+            <>
+              {open && (
+                <button
+                  type='button'
+                  className='mr-auto text-sm font-semibold text-error-600'
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  템플릿 삭제
+                </button>
+              )}
+              <Button onClick={add} disabled={blocked}>
+                {open ? '저장' : '추가'}
+              </Button>
+            </>
+          )
         }
       >
-        <div data-anno='template:2-1' className='flex flex-col gap-4'>
-          {/* 알림은 이름이 아니라 이 조건으로 나간다 — 조건이 없으면 보낼 계기가 없다 */}
-          <Select
-            label='알림 조건'
-            required
-            value={draft.trigger}
-            onChange={(e) => setDraft({ ...draft, trigger: e.target.value as NotificationTrigger })}
-          >
-            {free.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </Select>
-          {free.length === 0 && (
-            <p className='-mt-2 text-xs text-fg-muted'>조건마다 템플릿이 이미 하나씩 있습니다.</p>
-          )}
-          <Input
-            label='제목'
-            required
-            value={draft.subject}
-            onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
-            placeholder='[StudyClub++] 새 스터디 모집이 시작됐습니다'
-          />
-          <Textarea
-            label='본문'
-            required
-            rows={8}
-            value={draft.body}
-            onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-            placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-            labelHint='{{nickname}} 으로 닉네임 삽입'
-          />
-        </div>
+        {confirmDelete && open ? (
+          <div className='py-6 text-center'>
+            <p className='text-sm font-semibold'>‘{TRIGGER_LABEL[open.trigger]}’ 알림 템플릿을 삭제합니다.</p>
+            <p className='mt-1 text-sm text-fg-secondary'>{open.subject}</p>
+            <p className='mt-3 text-sm text-fg-muted'>삭제하면 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.</p>
+          </div>
+        ) : (
+          <div data-anno='template:2-1' className='flex flex-col gap-4'>
+            {/* 알림은 이름이 아니라 이 조건으로 나간다 — 조건이 없으면 보낼 계기가 없다 */}
+            <Select
+              label='알림 조건'
+              required
+              value={draft.trigger}
+              onChange={(e) => setDraft({ ...draft, trigger: e.target.value as NotificationTrigger })}
+            >
+              {free.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </Select>
+            {free.length === 0 && (
+              <p className='-mt-2 text-xs text-fg-muted'>조건마다 템플릿이 이미 하나씩 있습니다.</p>
+            )}
+            <Input
+              label='제목'
+              required
+              value={draft.subject}
+              onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+              placeholder='[StudyClub++] 새 스터디 모집이 시작됐습니다'
+            />
+            <Textarea
+              label='본문'
+              required
+              rows={8}
+              value={draft.body}
+              onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+              placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
+              labelHint='{{nickname}} 으로 닉네임 삽입'
+            />
+          </div>
+        )}
       </Modal>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className='border-b border-border px-5 py-4 last:border-b-0'>
-      <div className='mb-1.5 text-xs font-semibold text-fg-muted'>{label}</div>
-      <div className='text-sm'>{children}</div>
     </div>
   );
 }

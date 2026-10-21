@@ -1,8 +1,8 @@
 /**
  * 알림 템플릿 (프로토 mock).
  *
- * **문구를 보는 화면이다.** 고치는 길은 두지 않는다 — 편집 API 가 없고, 지금 등록된 문구는
- * 마이그레이션이 넣은 한 건뿐이다.
+ * 문구의 추가·수정·삭제를 로컬 데이터로 미리 확인하는 화면이다.
+ * 실제 저장 API와는 연결하지 않는다.
  *
  * TODO(api): GET /api/admin/notification-templates
  */
@@ -20,9 +20,7 @@ export const TRIGGERS: { value: NotificationTrigger; label: string }[] = [
   { value: 'USER_WITHDRAWN', label: '회원 탈퇴' },
 ];
 
-export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
-  TRIGGERS.map((t) => [t.value, t.label]),
-);
+export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(TRIGGERS.map((t) => [t.value, t.label]));
 
 export type NotificationTemplate = {
   id: number;
