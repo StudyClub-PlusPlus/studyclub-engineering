@@ -62,7 +62,7 @@ STUDY_ATTENDANCE {
 
 - **Method**: GET
 - **Path**: `/api/me/studies/{studyId}/attendances` (크루·네비게이터·캡틴) / `/api/admin/studies/{studyId}/attendances` (캡틴 전용)
-- **인증**: 필요 (Bearer) — `/api/me`: 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. `/api/admin`: 캡틴(SYSTEM_ROLE=ADMIN)만. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다
+- **인증**: 필요 (Bearer) — `/api/me`: 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. `/api/admin`: 캡틴(SYSTEM_ROLE=ADMIN)만. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다 — **바뀜 (2026-10-18, [share D6](../../docs/share/2026-10-18-schedule-attendance-feedback.md)): 디스코드 닉네임(`discordNickname`)도 내린다. 이 줄은 BE 가 스펙을 고칠 때 바꾼다**
 - **설명**: 지정한 그룹의 명부(모든 회차 × 해당 그룹 참가자)를 기본으로 반환. `meetingId` 쿼리 파라미터로 특정 회차 하나만 필터링 가능 — 응답 구조는 동일, 내용만 좁아짐
 
 ### Path Parameters
@@ -246,13 +246,13 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 | 필드 | 타입 | 필수 | 검증 |
 |------|------|------|------|
 | studyGroupId | Long | Y | 출석을 기록할 분반 ID. 존재하지 않으면 404. studyId 소속이 아니면 400. updates의 모든 meetingId는 이 분반 소속이어야 함 |
-| updates | array | Y | 1개 이상. 빈 배열 → 400 |
+| updates | array | Y | 1개 이상. 빈 배열 → 400. **사용자 사이트 경로는 `withdrawals` 가 있으면 빈 배열이어도 된다** |
 | updates[].meetingId | Long | Y | studyId에 속한 StudyMeeting.id여야 함 → 아니면 400 |
 | updates[].participantId | Long | Y | studyId에 속한 StudyParticipant.id여야 함 → 아니면 400 |
 | updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 400 |
 | updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 400 |
 
-> **추가 예정 (2026-10-07, 스펙작성중)** — 요청에 `withdrawals[]`(참여 중단할 명부 행 ID)를 더해, 출석부 「저장」 한 번에 출석과 참여 중단을 같은 트랜잭션으로 반영한다. 그때 「`updates` 빈 배열 → 400」은 「`updates` · `withdrawals` 가 모두 비면 400」이 된다. `withdrawals` 를 보내지 않는 호출은 지금과 같다. 필드 · 권한 · 대상 제한은 [참여 중단 스펙](../study-participant/spec.md).
+> **`withdrawals[]` (2026-10-20 구현)** — 사용자 사이트 경로(`/api/me/…`)는 요청에 `withdrawals[]`(참여 중단할 명부 행 ID)를 받아, 출석부 「저장」 한 번에 출석과 참여 중단을 같은 트랜잭션으로 반영한다. 「`updates` 빈 배열 → 400」은 「`updates` · `withdrawals` 가 모두 비면 400」이 된다. `withdrawals` 를 보내지 않는 호출은 지금과 같다. 백오피스 경로(`/api/admin/…`)는 `withdrawals` 가 오면 400. 필드 · 권한 · 대상 제한은 [참여 중단 스펙](../study-participant/spec.md).
 
 ### Response — 204 No Content
 

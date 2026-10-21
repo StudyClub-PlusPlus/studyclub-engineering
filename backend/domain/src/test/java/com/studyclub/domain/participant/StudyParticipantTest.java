@@ -1,7 +1,10 @@
 package com.studyclub.domain.participant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +36,47 @@ class StudyParticipantTest {
     }
 
     @Test
+    @DisplayName("참여 중단 - ACTIVE·PAUSED 는 WITHDRAWN 이 되고 true")
+    void withdrawActiveOrPaused() {
+        Instant now = Instant.parse("2026-06-01T00:00:00Z");
+        for (ParticipantStatus status :
+                new ParticipantStatus[] {ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED}) {
+            StudyParticipant participant = participantWith(status, null);
+
+            assertThat(participant.withdraw(now)).isTrue();
+            assertThat(participant.getStatus()).isEqualTo(ParticipantStatus.WITHDRAWN);
+            assertThat(participant.getLeftAt()).isEqualTo(now);
+        }
+    }
+
+    @Test
+    @DisplayName("참여 중단 - 이미 WITHDRAWN 이면 leftAt 을 덮어쓰지 않고 false (멱등)")
+    void withdrawIsIdempotent() {
+        Instant withdrawnAt = Instant.parse("2026-03-01T00:00:00Z");
+        StudyParticipant participant = participantWith(ParticipantStatus.WITHDRAWN, withdrawnAt);
+
+        assertThat(participant.withdraw(Instant.parse("2026-06-01T00:00:00Z"))).isFalse();
+        assertThat(participant.getLeftAt()).isEqualTo(withdrawnAt);
+    }
+
+    @Test
+    @DisplayName("참여 중단 - 완주·탈퇴한 행은 PARTICIPANT_NOT_ACTIVE")
+    void withdrawRejectsFinishedRows() {
+        for (ParticipantStatus status :
+                new ParticipantStatus[] {ParticipantStatus.COMPLETED, ParticipantStatus.DELETED}) {
+            StudyParticipant participant = participantWith(status, null);
+
+            assertThatThrownBy(() -> participant.withdraw(Instant.now()))
+                    .isInstanceOfSatisfying(
+                            BusinessException.class,
+                            e ->
+                                    assertThat(e.errorCode())
+                                            .isEqualTo(ErrorCode.PARTICIPANT_NOT_ACTIVE));
+            assertThat(participant.getStatus()).isEqualTo(status);
+        }
+    }
+
+    @Test
     @DisplayName("회원 탈퇴 - ACTIVE(leftAt 없음)였다면 탈퇴 시각을 leftAt 으로 채운다")
     void setsLeftAtForActiveParticipant() {
         StudyParticipant participant = participantWith(ParticipantStatus.ACTIVE, null);
@@ -55,5 +99,21 @@ class StudyParticipantTest {
 
         assertThat(participant.getStatus()).isEqualTo(ParticipantStatus.DELETED);
         assertThat(participant.getLeftAt()).isEqualTo(withdrawnAt);
+    }
+
+    @Test
+    @DisplayName("재신청 - 하차했던 행을 ACTIVE 크루로 되살리고 참여 시작을 재신청 시각으로 옮긴다")
+    void rejoinResetsStatusRoleAndJoinedAt() {
+        StudyParticipant participant =
+                participantWith(ParticipantStatus.WITHDRAWN, Instant.parse("2026-03-01T00:00:00Z"));
+        Instant rejoinedAt = Instant.parse("2026-10-20T00:00:00Z");
+
+        participant.rejoinByApplication(rejoinedAt);
+
+        assertThat(participant.getStatus()).isEqualTo(ParticipantStatus.ACTIVE);
+        assertThat(participant.getParticipantRole()).isEqualTo(ParticipantRole.MEMBER);
+        assertThat(participant.getJoinedAt()).isEqualTo(rejoinedAt);
+        assertThat(participant.getLeftAt()).isNull();
+        assertThat(participant.getStudyGroupId()).isEqualTo(1L);
     }
 }

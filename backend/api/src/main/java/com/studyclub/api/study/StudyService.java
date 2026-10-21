@@ -121,6 +121,8 @@ public class StudyService {
                         .startAt(now)
                         .recruitDeadlineAt(request.recruitDeadline())
                         .build());
+        // 신청자가 들어갈 반 — 반을 나눌지는 신청자를 보고 캡틴이 정한다
+        studyGroupRepository.save(StudyGroup.defaultOf(study.getId()));
 
         return study.getId();
     }
