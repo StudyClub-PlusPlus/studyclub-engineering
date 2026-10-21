@@ -200,7 +200,7 @@ erDiagram
   - 고친 값을 원래대로 되돌리면 그 줄은 변경에서 빠진다
   - 저장하지 않은 채 다른 탭 · 링크로 가면 「저장하지 않은 변경이 있습니다」로 묻는다
 - **정책**: 한 칸 바꿀 때마다 저장하지 않는다 — 여러 명을 옮기는 도중의 어중간한 편성이 남는다. 일정 표 · 출석부와 같은 방식
-- **데이터**: PATCH …/participants/{participantId}/group · PATCH …/participants/{participantId}/role. 바뀐 줄만. 미구현
+- **데이터**: PATCH …/participants 한 번 — 바뀐 줄만 changes[] 로. 하나라도 거절되면 아무것도 바뀌지 않는다. 미구현
 
 #### 3-3 — 반 · 지역 필터
 
@@ -237,7 +237,7 @@ erDiagram
 |---|---|---|---|
 | FE | back-office-front 신청자 탭 | 있음 — 다른 화면. `ApplicationsTab`(신청 결과 API)으로 대기 · 승인 · 거절 심사 · 이전 참여 · 완주율 · 신청서를 보인다. `CrewTab` 은 mock 이고 쓰지 않는다 | 프로토대로 바꾼다 — 참여 크루 명단(디스코드 닉네임 · 이메일 · 지역 · 반 · 역할) · 반 · 지역 필터 · 체크박스 일괄 변경 · 저장 바. 심사 · 완주율 칸은 뺀다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
 | BE | `GET /api/admin/studies/{studyId}/applications` 의 `completionRate` | 구현완료 | 신청자 탭에서 쓰지 않는다. 다른 화면이 쓰지 않으면 응답에서 뺄지 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
-| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants/{id}/role` | 스펙작성중 · 컨트롤러 없음 | [study-group 스펙](../../../specs/study-group/spec.md) 확정 → 구현 |
+| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 스펙작성중 · 컨트롤러 없음 | [study-group 스펙](../../../specs/study-group/spec.md) 확정 → 구현 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 
@@ -266,7 +266,7 @@ erDiagram
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
 | GET | `/api/admin/studies/{studyId}/participants` | 캡틴 |
-| PATCH | `/api/admin/studies/{studyId}/participants/{participantId}/role` | 캡틴 |
+| PATCH | `/api/admin/studies/{studyId}/participants` — 반 · 역할 한 번에 | 캡틴 |
 
 계약은 [study-group/spec.md](../../../specs/study-group/spec.md).
 

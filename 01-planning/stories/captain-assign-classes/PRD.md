@@ -227,7 +227,7 @@ erDiagram
 | 분반 | NAME | 만들기 · 수정 |
 | 분반 | START_AT · TIMEZONE · 요일 | 스터디 시간 정하기 · 수정 (만들 때는 비어 있음). 기간은 두지 않는다 |
 | 회차 | `SCHEDULED_AT` · `TITLE` | 일정 표 「회차 추가」로만 — [회차 스펙](../../../specs/study-meeting/spec.md) |
-| 명부 | `STUDY_PARTICIPANT.STUDY_GROUP_ID` | 크루의 반 지정 |
+| 명부 | `STUDY_PARTICIPANT.STUDY_GROUP_ID` | 반 · 역할 한 번에 바꾸기 |
 
 ### 처리
 
@@ -247,7 +247,7 @@ erDiagram
 | --- | --- | --- |
 | POST | `/api/admin/studies/{studyId}/groups` | 캡틴 |
 | PATCH · DELETE | `/api/admin/studies/{studyId}/groups/{groupId}` | 캡틴 |
-| PATCH | `/api/admin/studies/{studyId}/participants/{participantId}/group` | 캡틴 |
+| PATCH | `/api/admin/studies/{studyId}/participants` — 반 · 역할 한 번에 (2026-10-21, 한 사람씩 API 를 합쳤다) | 캡틴 |
 
 계약은 [study-group/spec.md](../../../specs/study-group/spec.md).
 

@@ -176,7 +176,7 @@ export function CrewTab({
     setDraftNav({});
   }
   function save() {
-    // TODO(api): PATCH …/participants/{id}/group · PATCH …/participants/{id}/role — 바뀐 줄만 보낸다
+    // TODO(api): PATCH …/participants 한 번 — 바뀐 줄만 changes[] 로 보낸다
     for (const [id, classId] of Object.entries(draftClass)) onAssign(id, classId);
     for (const [id, nav] of Object.entries(draftNav)) if (nav !== navigators.includes(id)) onToggleNavigator(id);
     discard();

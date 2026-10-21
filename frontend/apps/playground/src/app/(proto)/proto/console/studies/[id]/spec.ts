@@ -127,7 +127,7 @@ export const ATTENDEE_SPEC: ScreenSpec = {
         '한 칸 바꿀 때마다 저장하지 않는다 — 여러 명을 옮기는 도중의 어중간한 편성이 남는다. 일정 표 · 출석부와 같은 방식',
       ],
       data: [
-        'PATCH …/participants/{participantId}/group · PATCH …/participants/{participantId}/role. 바뀐 줄만. 미구현',
+        'PATCH …/participants 한 번 — 바뀐 줄만 changes[] 로. 하나라도 거절되면 아무것도 바뀌지 않는다. 미구현',
       ],
     },
     {
