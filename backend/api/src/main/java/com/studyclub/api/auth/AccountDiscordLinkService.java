@@ -37,9 +37,10 @@ public class AccountDiscordLinkService {
     }
 
     private void save(Long accountId, DiscordUser user) {
+        // 잠가서 읽는다 — Account 는 버전 관리·@DynamicUpdate 가 없어 flush 가 전 칸을 쓰므로, 사이에 커밋된 프로필·권한 변경을 덮어쓴다
         Account account =
                 accountRepository
-                        .findById(accountId)
+                        .findByIdForUpdate(accountId)
                         .orElseThrow(
                                 () ->
                                         new BusinessException(

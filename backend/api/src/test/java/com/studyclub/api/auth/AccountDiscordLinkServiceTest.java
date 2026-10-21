@@ -50,7 +50,7 @@ class AccountDiscordLinkServiceTest {
 
     private Account givenAccount() {
         Account account = mock(Account.class);
-        when(accountRepository.findById(ACCOUNT_ID)).thenReturn(Optional.of(account));
+        when(accountRepository.findByIdForUpdate(ACCOUNT_ID)).thenReturn(Optional.of(account));
         return account;
     }
 
