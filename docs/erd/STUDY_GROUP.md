@@ -12,7 +12,7 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | |
 | STUDY_ID | BIGINT | N | STUDY 참조. 구 `STUDY_COHORT_ID` |
-| NAME | VARCHAR(255) | N | `목요일반` |
+| NAME | VARCHAR(255) | N | 반 제목. `A반` · `미국 금요일반`. 캡틴이 짓는다 — API 가 앞뒤 공백을 자르고 20자(코드포인트) 이하로 받는다 ([study-group 스펙](../../specs/study-group/spec.md)) |
 | START_AT | TIME | Y | 분반 정규 시작 시각 |
 | TIMEZONE | VARCHAR(64) | Y | IANA. 회차 시각 기준 시간대 |
 | CAPACITY | INT | Y | 분반 정원 |
@@ -30,5 +30,5 @@
 - 인덱스 `(STUDY_ID)` — `idx_study_group_study`
 
 ## 미확정
-- 요일(`WEEKDAY MON~SUN`) 컬럼 — 반복 회차 자동 생성하려면 필요.
+- `DAYS_OF_WEEK VARCHAR(255) NULL` 추가 예정 — 스터디 시간 수정 창과 회차 추가 기본 요일로 사용. 마이그레이션 미작성 ([study-group 스펙](../../specs/study-group/spec.md) 「데이터 변경」)
 - 멤버의 분반 이동은 STUDY_PARTICIPANT.STUDY_GROUP_ID 갱신 + 이력 남길지.

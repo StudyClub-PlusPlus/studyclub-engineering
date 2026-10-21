@@ -16,9 +16,9 @@
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/role | 네비게이터 지정 · 해제 | O (ADMIN) | 스펙작성중 |
 | PATCH | /api/admin/studies/{studyId}/participants/{participantId}/group | 크루의 반 지정 · 이동 | O (ADMIN) | 스펙작성중 |
-| POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 스펙작성중 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 스펙작성중 |
-| DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 스펙작성중 |
+| POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현중 |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현중 (제목만) |
+| DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -54,7 +54,7 @@
   "studyId": 3,
   "participantCount": 18,
   "recruitmentCapacity": 20,
-  "groups": [{ "groupId": 7, "name": "A반" }],
+  "groups": [{ "groupId": 7, "name": "A반", "canDelete": false }],
   "participants": [
     {
       "participantId": 41,
@@ -78,6 +78,7 @@
 | participantCount | Int | N | `ACTIVE` · `PAUSED` 행 수. 신청한 담당 캡틴도 크루와 같이 센다 | 계산 |
 | recruitmentCapacity | Int | Y | 정원. null 이면 제한 없음 | 최신 STUDY_RECRUITMENT.RECRUITMENT_CAPACITY |
 | groups[] | Array | N | 그 스터디의 분반 | STUDY_GROUP |
+| groups[].canDelete | Boolean | N | 이 반을 지울 수 있으면 true — 신청자 탭 「삭제」 버튼. `includeLeft` 와 상관없이 `DELETED` 밖의 명부 행(`ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN`)이 하나도 없을 때만 true. 「반 삭제」 API 와 같은 판정 | 계산 |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |
 | participants[].discordNickname | String | Y | 디스코드 서버 별명. 신청 때 받은 값으로 갱신된다. 없으면 null — 화면 「—」 | ACCOUNT.DISCORD_NICKNAME |
@@ -198,11 +199,12 @@
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| name | String | Y | 반 제목. 앞뒤 공백을 자르고 1~20자(코드포인트 기준) |
+| name | String | Y | 반 제목. 앞뒤 공백을 자르고 1~20자(코드포인트 기준). 같은 스터디에 같은 이름(대소문자 무시)의 반이 있으면 409 |
 
 ### 서버 동작
 
 - `START_AT` · `TIMEZONE` · 시작일 · 종료일 · 요일은 비운다
+- 이름 중복은 `UNIQUE(STUDY_ID, NAME)` 가 막는다. 운영 DB 정렬(`utf8mb4_unicode_ci`)이 대소문자를 가리지 않아 `A반` 과 `a반` 도 같은 이름이다 — 서버도 대소문자를 무시하고 먼저 확인한다. 확인과 저장 사이에 같은 이름이 먼저 들어오면 제약 위반을 409 로 바꾼다
 - 회차 · 출석 행은 만들지 않는다
 
 ### Response — 201
@@ -218,6 +220,7 @@
 | 400 | INVALID_INPUT | `name` 누락 · 공백뿐 · 20자 초과 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 |
+| 409 | CONFLICT | 이 스터디에 같은 이름의 반이 있음 — 화면은 `errorMessage` 를 입력칸 아래에 적는다 |
 
 ---
 
@@ -250,9 +253,12 @@
 
 기간(시작일 · 종료일)은 받지 않는다. 반의 기간은 저장하지 않고 첫 회차 ~ 마지막 회차로 계산한다.
 
+> **구현 범위 (1차)**: 지금은 `name` 만 받고 응답도 `{ "groupId", "name" }` 이다. `daysOfWeek` · `startTime` · `timezone` 은 `DAYS_OF_WEEK` 마이그레이션(「데이터 변경」) 뒤에 붙인다.
+
 ### 서버 동작
 
 - 보낸 필드만 `NAME` · `DAYS_OF_WEEK` · `START_AT` · `TIMEZONE` 에 쓴다
+- 이름 중복 규칙은 「반 만들기」와 같다 — 같은 스터디의 다른 반과 이름(대소문자 무시)이 겹치면 409 `CONFLICT`. 지금 이름 그대로 보내면 통과
 - 회차 · 출석은 건드리지 않는다. 회차는 [회차 스펙](../study-meeting/spec.md)의 추가 · 수정 · 삭제로만 바뀐다
 - 이미 있는 회차의 시각은 따라 바뀌지 않는다 — 회차마다 `SCHEDULED_AT` 을 갖는다
 
@@ -269,6 +275,7 @@
 | 400 | INVALID_INPUT | 빈 바디 · 이름 길이 밖 · 요일 0개 · 요일 키 밖 · 시각 형식 밖 · 시간대 밖 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
+| 409 | CONFLICT | 이 스터디의 다른 반과 이름이 같음 |
 
 ### 킥오프
 
@@ -286,7 +293,9 @@
 
 ### 서버 동작
 
-- 활성 명부 행이 하나라도 있으면 409 `GROUP_NOT_EMPTY`
+- 기본 반(그 스터디에서 처음 만든 반)은 명부가 비어 있어도 409 `DEFAULT_GROUP_NOT_DELETABLE` — 신청자가 들어가는 반이다 (2026-10-20)
+- `ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN` 명부 행이 하나라도 있으면 409 `GROUP_NOT_EMPTY` — 수료 · 참여 중단 크루가 어느 반이었는지 기록이 끊기지 않게 지우지 않는다. 참여 중단 크루의 반은 출석률(`LEFT_AT` 까지의 회차) 계산에도 쓰인다
+- 회원 탈퇴로 남은 `DELETED` 행만 있으면 지울 수 있다
 - 지우면 그 반의 회차 · 출석도 함께 지운다
 
 ### Response — 204 No Content
@@ -297,7 +306,8 @@
 |------|-----------|------|
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
-| 409 | GROUP_NOT_EMPTY | 소속 크루가 있음 |
+| 409 | DEFAULT_GROUP_NOT_DELETABLE | 기본 반 (명부가 비어 있어도) |
+| 409 | GROUP_NOT_EMPTY | `ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN` 크루가 있음 |
 
 ---
 
