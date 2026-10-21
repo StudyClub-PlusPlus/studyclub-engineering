@@ -108,12 +108,12 @@ class AccountDiscordLinkServiceTest {
     @DisplayName("길드_멤버가_아니면_트랜잭션을_열지_않는다")
     void 길드_멤버가_아니면_트랜잭션을_열지_않는다() {
         when(discordOAuthClient.exchange("code"))
-                .thenThrow(new BusinessException(ErrorCode.FORBIDDEN));
+                .thenThrow(new BusinessException(ErrorCode.DISCORD_NOT_IN_GUILD));
 
         assertThatThrownBy(() -> service.link(ACCOUNT_ID, "code"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.FORBIDDEN);
+                .isEqualTo(ErrorCode.DISCORD_NOT_IN_GUILD);
         verify(transactionTemplate, never()).executeWithoutResult(any());
     }
 

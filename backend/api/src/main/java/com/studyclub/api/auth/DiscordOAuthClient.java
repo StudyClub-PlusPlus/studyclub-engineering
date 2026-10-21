@@ -24,7 +24,7 @@ import org.springframework.web.client.RestClientResponseException;
  * {@link GoogleOAuthClient} 와 같은 모양이다. scope 는 {@code identify guilds.members.read}.
  *
  * <p>code·토큰·디스코드 ID 는 로그에 남기지 않는다. 디스코드가 거절하거나 닿지 않으면 {@link ErrorCode#EXTERNAL_SERVICE_ERROR}, 길드
- * 멤버가 아니면 {@link ErrorCode#FORBIDDEN}.
+ * 멤버가 아니면 {@link ErrorCode#DISCORD_NOT_IN_GUILD}.
  */
 @Component
 public class DiscordOAuthClient {
@@ -112,7 +112,7 @@ public class DiscordOAuthClient {
                         .toBodilessEntity();
             } catch (HttpClientErrorException.NotFound e) {
                 // 길드에 없는 사용자에게 디스코드는 404(Unknown Guild)를 준다
-                throw new BusinessException(ErrorCode.FORBIDDEN, "스터디클럽 디스코드 서버에 먼저 들어와 주세요.");
+                throw new BusinessException(ErrorCode.DISCORD_NOT_IN_GUILD);
             }
             return new DiscordUser(id, handle);
         } catch (RestClientResponseException e) {

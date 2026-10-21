@@ -96,14 +96,14 @@ class DiscordOAuthClientTest {
     }
 
     @Test
-    @DisplayName("길드_멤버가_아니면_403")
-    void 길드_멤버가_아니면_403() {
+    @DisplayName("길드_멤버가_아니면_DISCORD_NOT_IN_GUILD")
+    void 길드_멤버가_아니면_DISCORD_NOT_IN_GUILD() {
         respond("/users/@me/guilds/" + GUILD + "/member", 404, "{\"code\":10004}");
 
         assertThatThrownBy(() -> client.exchange("auth-code"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(ErrorCode.FORBIDDEN);
+                .isEqualTo(ErrorCode.DISCORD_NOT_IN_GUILD);
     }
 
     @Test
