@@ -50,6 +50,15 @@ google:
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
 
+# 디스코드 계정 연동 (specs/study-application 「디스코드 계정 연동」). 비어 있으면 연동만 503 EXTERNAL_SERVICE_ERROR.
+# guild-id 는 봇과 같은 DISCORD_GUILD_ID — 연동할 때 이 길드의 멤버인지 본다.
+discord:
+  guild-id: ${DISCORD_GUILD_ID:}
+  oauth:
+    client-id: ${DISCORD_OAUTH_CLIENT_ID:}
+    client-secret: ${DISCORD_OAUTH_CLIENT_SECRET:}
+    redirect-uri: ${DISCORD_OAUTH_REDIRECT_URI:}
+
 # 파일 저장소 (specs/profile-image/spec.md, docs/s3-storage.md). 키·버킷·주소는 env 로만.
 # 전부 비어 있어도 부팅된다 — 로컬처럼 키가 없는 환경에서는 올리기만 503 EXTERNAL_SERVICE_ERROR.
 # public-base-url 은 CloudFront 주소에 /studyclub 까지 (값은 인프라 담당자에게 요청).

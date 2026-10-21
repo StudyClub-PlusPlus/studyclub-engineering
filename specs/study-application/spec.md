@@ -31,7 +31,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 — 같은 트랜잭션에서 기본 반 명부 편입 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)) |
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙확정 — 컨트롤러가 없다 (2026-10-14 확인). 사이트 신청 버튼은 이미 부른다 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 구현완료 |
-| POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
+| POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -548,8 +548,12 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 |------|-----------|------|
 | 400 | INVALID_INPUT | `code` 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
+| 403 | DISCORD_NOT_IN_GUILD | 스터디클럽 디스코드 서버(길드) 멤버가 아님. 저장하지 않는다. 화면이 갈린다: 온보딩 권유 화면은 「나중에 연동하기」로 넘어가고, 신청 직전 연동 창은 서버 가입 안내(초대 링크는 프론트 상수 `site.discord_invite`)를 띄운다 |
 | 409 | CONFLICT | 그 `DISCORD_ID` 가 다른 계정에 이미 있음 (`UNIQUE(DISCORD_ID)`) |
-| 502 | BAD_GATEWAY | 디스코드 토큰 교환 실패·타임아웃. 폼을 열지 않는다. 연동 팝업에 잔류 |
+| 503 | EXTERNAL_SERVICE_ERROR | 디스코드 토큰 교환 실패·타임아웃, 서버에 OAuth 설정 없음. 폼을 열지 않는다. 연동 팝업에 잔류 |
+
+- 같은 계정이 같은 `DISCORD_ID` 로 다시 연동하면 204 (멱등). 핸들은 새 값으로 바뀐다.
+- 외부 실패는 다른 연동(구글·봇)과 같은 503 이다 (처음 적었던 502 에서 바꿈, #298).
 
 프로토는 OAuth 없이 화면에서 바로 연결한다. 실패 화면은 미구현.
 
@@ -563,6 +567,11 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 - 공급자: Discord OAuth
 - 서버가 인가 코드 → 액세스 토큰 → 사용자 식별. 화면에 `DISCORD_ID` 를 돌려주지 않는다
 - 실패·타임아웃 시 계정 컬럼을 부분 저장하지 않는다
+- OAuth scope: `identify` `guilds.members.read`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_GUILD_ID}/member` (404 면 멤버 아님)
+- `redirect_uri` 는 서버 설정(`DISCORD_OAUTH_REDIRECT_URI`) 고정. 요청에서 받지 않는다
+- `DISCORD_HANDLE` 은 디스코드 `username` (표시 이름 아님)
+- 디스코드 호출이 다 끝난 뒤 저장만 짧은 트랜잭션으로 감싼다 — 호출 중 DB 커넥션을 잡지 않는다
+- 설정: `DISCORD_OAUTH_CLIENT_ID` · `DISCORD_OAUTH_CLIENT_SECRET` · `DISCORD_OAUTH_REDIRECT_URI` · `DISCORD_GUILD_ID`
 
 ---
 

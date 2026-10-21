@@ -70,4 +70,10 @@ public final class AccountDtos {
      * 걸러져 {@code GlobalExceptionHandler} 가 400 INVALID_INPUT 으로 응답한다.
      */
     public record LeaveRequest(LeaveReason reason) {}
+
+    /**
+     * 디스코드 계정 연동 요청 (POST /api/me/discord/link). 바디에 {@code discordId}·{@code handle} 이 있어도 읽지 않는다
+     * — 값은 서버가 디스코드에서 받는다.
+     */
+    public record DiscordLinkRequest(@NotBlank(message = "code 는 필수입니다") String code) {}
 }
