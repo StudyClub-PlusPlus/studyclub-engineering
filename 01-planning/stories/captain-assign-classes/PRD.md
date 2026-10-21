@@ -231,7 +231,7 @@ erDiagram
 | --- | --- | --- |
 | POST | `/api/admin/studies/{studyId}/groups` | 캡틴 |
 | PATCH · DELETE | `/api/admin/studies/{studyId}/groups/{groupId}` | 캡틴 |
-| PATCH | `/api/admin/studies/{studyId}/participants/{participantId}/group` | 캡틴 |
+| PATCH | `/api/admin/studies/{studyId}/participants` — 반 · 역할 한 번에 (2026-10-21, 한 사람씩 API 를 합쳤다) | 캡틴 |
 
 계약은 [study-group/spec.md](../../../specs/study-group/spec.md).
 
