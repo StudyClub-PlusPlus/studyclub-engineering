@@ -6,6 +6,7 @@ import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,8 +50,8 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 신청 제출은 신청서와 계정 별명을 저장하고 명부는 만들지 않는다")
-    void submitsApplicationWithoutAssigningGroup() {
+    @DisplayName("성공 - 신청 제출은 신청서와 계정 별명을 저장하고 기본 반 명부에 넣는다")
+    void submitsApplicationAndJoinsDefaultGroup() {
         var response =
                 rest.postForEntity(
                         "/api/studies/" + STUDY_ID + "/applications",
@@ -74,12 +75,19 @@ class StudyApplicationSubmissionIntegrationTest {
                                 LINKED_ACCOUNT_ID))
                 .isEqualTo("새 별명");
         assertThat(
-                        jdbcTemplate.queryForObject(
-                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
-                                Long.class,
+                        jdbcTemplate.queryForList(
+                                "SELECT STUDY_GROUP_ID, STATUS, PARTICIPANT_ROLE FROM STUDY_PARTICIPANT"
+                                        + " WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
                                 STUDY_ID,
                                 LINKED_ACCOUNT_ID))
-                .isZero();
+                .singleElement()
+                .satisfies(
+                        row -> {
+                            assertThat(((Number) row.get("STUDY_GROUP_ID")).longValue())
+                                    .isEqualTo(GROUP_ID);
+                            assertThat(row.get("STATUS")).isEqualTo("ACTIVE");
+                            assertThat(row.get("PARTICIPANT_ROLE")).isEqualTo("MEMBER");
+                        });
         assertThat(
                         jdbcTemplate.queryForObject(
                                 "SELECT FORM_ANSWER FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ? AND ACCOUNT_ID = ?",
@@ -93,8 +101,9 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 분반 배정 전 신청서 수는 모집 정원을 초과할 수 있다")
-    void applicationsCanExceedCapacityBeforeAssignment() {
+    @DisplayName("실패 - 신청이 명부를 채우므로 정원(2)이 차면 세 번째 신청은 409이다")
+    void applicationsFillCapacity() {
+        List<HttpStatus> statuses = new ArrayList<>();
         for (long accountId = 10_650L; accountId < 10_653L; accountId++) {
             insertAccount(
                     accountId,
@@ -106,15 +115,47 @@ class StudyApplicationSubmissionIntegrationTest {
                             "/api/studies/" + STUDY_ID + "/applications",
                             authenticatedRequest(accountId, validRequest()),
                             Void.class);
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            statuses.add(HttpStatus.valueOf(response.getStatusCode().value()));
         }
-        assertThat(applicationCount()).isEqualTo(3L);
+        assertThat(statuses)
+                .containsExactly(HttpStatus.CREATED, HttpStatus.CREATED, HttpStatus.CONFLICT);
+        assertThat(applicationCount()).isEqualTo(2L);
         assertThat(
                         jdbcTemplate.queryForObject(
-                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?",
+                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_GROUP_ID = ?",
+                                Long.class,
+                                GROUP_ID))
+                .isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("성공 - 반이 없는 옛 스터디는 첫 신청 때 기본반을 만들어 넣는다")
+    void createsDefaultGroupForStudyWithoutGroup() {
+        jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE STUDY_ID = ?", STUDY_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(
+                        jdbcTemplate.queryForList(
+                                "SELECT ID FROM STUDY_GROUP WHERE STUDY_ID = ? AND NAME = '기본반'",
                                 Long.class,
                                 STUDY_ID))
-                .isZero();
+                .singleElement()
+                .satisfies(
+                        groupId ->
+                                assertThat(
+                                                jdbcTemplate.queryForObject(
+                                                        "SELECT STUDY_GROUP_ID FROM STUDY_PARTICIPANT"
+                                                                + " WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                                                        Long.class,
+                                                        STUDY_ID,
+                                                        LINKED_ACCOUNT_ID))
+                                        .isEqualTo(groupId));
     }
 
     @Test
@@ -404,6 +445,13 @@ class StudyApplicationSubmissionIntegrationTest {
                             Void.class);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(applicationCount()).isEqualTo(1L);
+            // 옛 명부 행을 되살린다 — 같은 반에 새 행을 만들면 유니크 제약에 걸린다
+            assertThat(
+                            jdbcTemplate.queryForList(
+                                    "SELECT STATUS FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?",
+                                    String.class,
+                                    STUDY_ID))
+                    .containsExactly("ACTIVE");
         }
     }
 
@@ -574,7 +622,7 @@ class StudyApplicationSubmissionIntegrationTest {
     @Test
     @DisplayName("실패 - 필수값 누락과 요일 상한 및 null 항목도 도메인 사유 코드로 응답한다")
     void usesConsistentDomainValidationMessages() {
-        List<Map<String, Object>> invalidBodies = new java.util.ArrayList<>();
+        List<Map<String, Object>> invalidBodies = new ArrayList<>();
         List<String> errors =
                 List.of(
                         "discordNickname: empty",

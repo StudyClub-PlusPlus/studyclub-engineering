@@ -7,7 +7,7 @@ import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
 import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
-import { Button, SelectionCount, TableActionBar } from '@studyclub/ui';
+import { Badge, Button, SelectionCount, TableActionBar } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
 /**
@@ -200,19 +200,20 @@ export function CrewTab({
             </Button>
           </span>
         </h2>
-        {classes.length === 0 && !adding ? (
-          <p className='mt-2 rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
-            아직 반이 없습니다. 「반 추가」로 반을 만들고 크루를 나눠 주세요.
-          </p>
-        ) : (
           <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
-            {classes.map((cls) => (
+            {classes.map((cls, i) => (
               <li key={cls.id} className='card px-4 py-3'>
                 {renaming?.id === cls.id ? (
                   editor(cls)
                 ) : (
                   <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
                     <span className='text-sm font-bold'>{classLabel(cls)}</span>
+                    {/* 첫 반 = 기본반. 스터디를 만들 때 생기고, 새로 신청한 크루가 여기로 들어온다 */}
+                    {i === 0 && (
+                      <span data-anno='class:1-5'>
+                        <Badge tone='neutral'>기본</Badge>
+                      </span>
+                    )}
                     <span className='tnum ml-auto text-sm text-fg-secondary'>
                       {active.filter((c) => assign[c.id] === cls.id).length}명
                     </span>
@@ -225,15 +226,19 @@ export function CrewTab({
                     >
                       수정
                     </Button>
-                    {/* 사람이 든 반은 지우지 않는다 — 그 반의 출석 기록까지 사라진다 */}
+                    {/* 기본반과 사람이 든 반은 지우지 않는다 — 기본반은 신청자가 들어올 곳이고, 사람이 든 반은 출석 기록까지 사라진다 */}
                     <Button
                       size='sm'
                       variant='danger'
                       data-anno='class:1-3'
                       aria-label={`${classLabel(cls)} 삭제`}
-                      disabled={active.some((c) => assign[c.id] === cls.id)}
+                      disabled={i === 0 || active.some((c) => assign[c.id] === cls.id)}
                       title={
-                        active.some((c) => assign[c.id] === cls.id) ? '크루가 있는 반은 지울 수 없습니다' : undefined
+                        i === 0
+                          ? '기본반은 지울 수 없습니다. 새로 신청한 크루가 들어오는 반입니다'
+                          : active.some((c) => assign[c.id] === cls.id)
+                            ? '크루가 있는 반은 지울 수 없습니다'
+                            : undefined
                       }
                       onClick={() => onRemoveClass(cls.id)}
                     >
@@ -246,7 +251,6 @@ export function CrewTab({
             {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
             {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
           </ul>
-        )}
       </section>
       <section data-anno='attendee:3'>
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>

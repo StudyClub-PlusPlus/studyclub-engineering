@@ -102,8 +102,17 @@ class AdminStudyGroupDeleteIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 빈 반 삭제 → 204, 반·회차·출석 모두 사라진다")
+    @DisplayName("성공 - 빈 반 삭제 → 204, 반·회차·탈퇴 회원의 출석이 사라진다")
     void deletesEmptyGroup() {
+        studyParticipantRepo.save(
+                StudyParticipant.builder()
+                        .accountId(ADMIN_ID)
+                        .studyGroupId(group.getId())
+                        .studyId(study.getId())
+                        .status(ParticipantStatus.DELETED)
+                        .participantRole(ParticipantRole.MEMBER)
+                        .joinedAt(Instant.now())
+                        .build());
         StudyMeeting meeting =
                 studyMeetingRepo.save(
                         StudyMeeting.schedule(
@@ -124,6 +133,40 @@ class AdminStudyGroupDeleteIntegrationTest {
         assertThat(studyMeetingRepo.findByStudyGroupIdOrderByScheduledAt(group.getId())).isEmpty();
         assertThat(studyAttendanceRepo.findByStudyMeetingIdIn(java.util.List.of(meeting.getId())))
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("실패 - 크루가 다른 반으로 옮겨 명부가 비어도, 지난 출석이 남았으면 409 GROUP_NOT_EMPTY")
+    void rejectsGroupWithMovedCrewAttendance() {
+        studyParticipantRepo.save(
+                StudyParticipant.builder()
+                        .accountId(MEMBER_ID)
+                        .studyGroupId(defaultGroup.getId())
+                        .studyId(study.getId())
+                        .status(ParticipantStatus.ACTIVE)
+                        .participantRole(ParticipantRole.MEMBER)
+                        .joinedAt(Instant.now())
+                        .build());
+        StudyMeeting meeting =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group.getId(), Instant.now().minusSeconds(86_400), "1회차"));
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_ATTENDANCE"
+                        + " (ACCOUNT_ID, STUDY_ID, STUDY_GROUP_ID, STUDY_MEETING_ID, STATUS, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, 'PRESENT', NOW(), NOW())",
+                MEMBER_ID,
+                study.getId(),
+                group.getId(),
+                meeting.getId());
+
+        var response = delete(ADMIN_ID, study.getId(), group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "GROUP_NOT_EMPTY");
+        assertThat(studyGroupRepo.findById(group.getId())).isPresent();
+        assertThat(studyAttendanceRepo.findByStudyMeetingIdIn(java.util.List.of(meeting.getId())))
+                .hasSize(1);
     }
 
     @Test

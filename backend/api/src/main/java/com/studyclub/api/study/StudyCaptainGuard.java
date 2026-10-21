@@ -99,6 +99,35 @@ public class StudyCaptainGuard {
     }
 
     /**
+     * 출석부에서 참여 중단 — <b>담당 캡틴</b>({@code STUDY.CREATED_BY}, NULL 이면 캡틴 누구나)이거나 <b>그 분반의 살아 있는
+     * 네비게이터</b>. 크루로 참여한 다른 캡틴은 막는다 — 출석 쓰기 가드({@link #assertCaptainOrNavigatorOfGroup})는 ADMIN 이면
+     * 누구나 통과시키므로 쓰지 않는다 (specs/study-participant/spec.md 권한).
+     *
+     * @return 담당 캡틴이면 true, 네비게이터면 false — 네비게이터는 같은 분반의 행만 중단할 수 있다
+     */
+    public boolean assertCanWithdrawInGroup(
+            Long accountId, Long studyCreatedBy, Long studyGroupId, String message) {
+        Account caller = account(accountId);
+        boolean ownerCaptain =
+                studyCreatedBy == null
+                        ? caller.getSystemRole() == SystemRole.ADMIN
+                        : accountId.equals(studyCreatedBy);
+        if (ownerCaptain) {
+            return true;
+        }
+        boolean navigator =
+                studyParticipantRepository
+                        .findByStudyGroupIdAndAccountId(studyGroupId, accountId)
+                        .filter(p -> p.getParticipantRole() == ParticipantRole.LEADER)
+                        .filter(p -> ROSTER_STATUSES.contains(p.getStatus()))
+                        .isPresent();
+        if (!navigator) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, message);
+        }
+        return false;
+    }
+
+    /**
      * 사용자 사이트 「스터디 일정」 고치기 — <b>그 스터디를 만든 캡틴</b>({@code STUDY.CREATED_BY})이거나 그 분반 네비게이터(LEADER).
      * 다른 ADMIN 은 여기서 특별 대우하지 않는다 — 참여했으면 크루다. 운영자 전체 관리는 백오피스 몫 (specs/study-meeting/spec.md 결정 3).
      */

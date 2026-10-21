@@ -68,7 +68,8 @@ public class AdminStudyGroupService {
 
     /**
      * 반을 지운다. 기본 반(스터디의 첫 반)은 명부가 비어 있어도 409 — 신청자가 들어가는 반이다. 탈퇴(DELETED) 밖의 명부 행이 하나라도 있으면 409 —
-     * 수료 · 참여 중단 크루의 반 기록이 끊기지 않게. 회차 · 출석도 함께 지운다.
+     * 수료 · 참여 중단 크루의 반 기록이 끊기지 않게. 명부가 비어도 탈퇴 회원 밖의 출석 행이 남았으면 409 — 반을 옮긴 크루의 지난 출석은 옛 반에 남는다. 회차와
+     * 탈퇴 회원의 출석 행만 함께 지운다.
      */
     @Transactional
     public void delete(Long studyId, Long groupId) {
@@ -92,6 +93,9 @@ public class AdminStudyGroupService {
                         ParticipantStatus.COMPLETED,
                         ParticipantStatus.WITHDRAWN))) {
             throw new BusinessException(ErrorCode.GROUP_NOT_EMPTY, "소속 크루가 있어 반을 삭제할 수 없습니다.");
+        }
+        if (studyAttendanceRepository.existsKeptByStudyGroupId(groupId)) {
+            throw new BusinessException(ErrorCode.GROUP_NOT_EMPTY, "출석 기록이 남아 있어 반을 삭제할 수 없습니다.");
         }
         studyAttendanceRepository.deleteByStudyGroupId(groupId);
         studyMeetingRepository.deleteByStudyGroupIdIn(List.of(groupId));
