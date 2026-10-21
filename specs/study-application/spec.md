@@ -28,7 +28,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | **폐기 — 코드에서 지운다** (2026-10-07). 네비게이터는 폼을 고치지 않고, 담당 캡틴은 백오피스 경로를 쓴다 | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 폐기 |
 | GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴 누구나) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
 | PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (담당 캡틴만) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
-| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
+| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 — 같은 트랜잭션에서 기본 반 명부 편입 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)) |
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙확정 — 컨트롤러가 없다 (2026-10-14 확인). 사이트 신청 버튼은 이미 부른다 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 구현완료 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
@@ -303,7 +303,7 @@ GET 신청 폼 조회와 같은 shape.
 - **Method**: POST
 - **Path**: `/api/studies/{studyId}/applications`
 - **인증**: 필요 — 로그인 회원. `ACCOUNT.DISCORD_ID` 가 있어야 한다 (화면 게이트만으로 끝내지 않는다)
-- **설명**: 열려 있는 모집 회차에 신청 1건을 만든다. 별명이 바뀌었으면 계정도 갱신한다. 분반과 명부는 캡틴이 신청 결과를 확인한 뒤 별도로 만든다.
+- **설명**: 열려 있는 모집 회차에 신청 1건을 만들고, **같은 트랜잭션에서 명부의 기본 반에 넣는다**. 별명이 바뀌었으면 계정도 갱신한다. 반을 나누면 캡틴이 옮긴다 (→ [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)).
 
 ### Request Body
 
@@ -326,15 +326,18 @@ GET 신청 폼 조회와 같은 shape.
 
    기존 기수 신청 여부는 모집 기간과 답변 검사보다 먼저 확인한다. 저장 후 마감된 요청의 재시도도 `409` 이미 신청으로 응답하며 새 행을 만들지 않는다.
    이 기수 명부에 `ACTIVE`·`PAUSED`로 있으면 신청할 수 없다. 기존 신청 확인 다음, 모집 기간 검사 전에 확인한다.
-   DB의 `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)`는 회차 안의 중복만 막는다. 기수 전체 중복을 막기 위해 계정 행을 잠근 상태에서 기존 신청 확인과 저장을 같은 트랜잭션으로 처리한다. 신청은 명부를 늘리지 않으므로 모집 회차 행은 잠그지 않는다.
+   DB의 `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)`는 회차 안의 중복만 막는다. 기수 전체 중복을 막기 위해 계정 행을 잠근 상태에서 기존 신청 확인과 저장을 같은 트랜잭션으로 처리한다. **신청이 명부를 늘리므로** 정원 검사와 명부 insert 사이에 다른 신청이 끼지 않게 모집 회차 행도 잠근다 (마지막 한 자리에 두 명이 동시에 들어오지 않게).
 2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. 공통 오류 응답의 `errorMessage`로 사유를 전달한다.
 3. `STUDY_APPLICATION` insert. `FORM_ANSWER` 저장
 
    저장된 신청 폼이 없거나 `questions`가 배열이 아닌 손상된 폼은 서버 오류로 차단한다. 정상적인 `questions: []`는 기본 문항만 제출할 수 있다.
-4. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
-5. 커밋. 이후 같은 기수 POST 는 `409`
+4. `STUDY_PARTICIPANT` insert — `STATUS = ACTIVE` · `PARTICIPANT_ROLE = MEMBER` · `STUDY_GROUP_ID = 기본 반`(그 스터디에서 id 가 가장 작은 반) · `JOINED_AT = 지금`
 
-덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않으며 신청 제출 시 명부를 만들지 않는다. 캡틴이 신청 결과를 보고 분반을 만든 뒤 참가자를 한 분반에 배정한다.
+   기본 반이 없는 옛 스터디는 이때 「기본반」을 만든다 (모집 회차 행을 잠근 뒤라 둘이 생기지 않는다). 이 스터디 명부에 `WITHDRAWN`·`COMPLETED`·`DELETED` 로 남은 행이 있으면 새 행 대신 그 행을 되살린다 — `ACTIVE`·`MEMBER`, 반은 그대로, `JOINED_AT = 지금`, `LEFT_AT = NULL` (같은 반에 새 행을 만들면 `UNIQUE(ACCOUNT_ID, STUDY_GROUP_ID)` 에 걸린다)
+5. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
+6. 커밋. 이후 같은 기수 POST 는 `409`
+
+덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않는다. **신청 제출 = 기본 반 명부 편입**이다. 캡틴이 신청 결과를 보고 반을 더 나누면 참가자를 새 반으로 옮긴다.
 
 ### Response — 201 Created (본문 없음)
 

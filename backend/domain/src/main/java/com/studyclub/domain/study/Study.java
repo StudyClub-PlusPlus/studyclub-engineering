@@ -225,6 +225,14 @@ public class Study extends BaseEntity {
         return status != StudyStatus.DRAFT;
     }
 
+    /**
+     * 운영자가 끝낸 스터디({@code ENDED} · {@code CLOSED}) — 명부를 더 바꾸지 않는다
+     * (specs/study-participant/spec.md).
+     */
+    public boolean isEnded() {
+        return status == StudyStatus.ENDED || status == StudyStatus.CLOSED;
+    }
+
     public void replaceApplicationForm(String applicationForm) {
         this.applicationForm = applicationForm;
     }
