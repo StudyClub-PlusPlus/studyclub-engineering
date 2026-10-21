@@ -18,6 +18,9 @@ public interface StudyGroupRepository extends JpaRepository<StudyGroup, Long> {
 
     List<StudyGroup> findByStudyIdIn(Collection<Long> studyIds);
 
+    /** 같은 스터디에 같은 이름의 반이 있는지. 운영 DB 정렬이 대소문자를 가리지 않아 여기서도 무시한다. */
+    boolean existsByStudyIdAndNameIgnoreCase(Long studyId, String name);
+
     void deleteByStudyId(Long studyId);
 
     /**
