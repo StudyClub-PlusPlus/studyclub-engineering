@@ -1,5 +1,7 @@
 package com.studyclub.domain.participant;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -107,6 +109,23 @@ public class StudyParticipant extends BaseEntity {
     public void markWithdrawn(Instant withdrawnAt) {
         this.status = ParticipantStatus.WITHDRAWN;
         this.leftAt = withdrawnAt;
+    }
+
+    /**
+     * 네비게이터·담당 캡틴이 출석부에서 참여를 중단시킨다 (specs/study-participant/spec.md). 이미 {@code WITHDRAWN} 이면 그대로
+     * 둔다 — {@code leftAt} 을 덮어쓰면 집계 분모가 바뀐다. 완주·탈퇴한 행은 바꿀 수 없다.
+     *
+     * @return 이번에 바뀌었으면 true, 이미 중단된 행이면 false
+     */
+    public boolean withdraw(Instant now) {
+        if (status == ParticipantStatus.WITHDRAWN) {
+            return false;
+        }
+        if (status != ParticipantStatus.ACTIVE && status != ParticipantStatus.PAUSED) {
+            throw new BusinessException(ErrorCode.PARTICIPANT_NOT_ACTIVE);
+        }
+        markWithdrawn(now);
+        return true;
     }
 
     /**
