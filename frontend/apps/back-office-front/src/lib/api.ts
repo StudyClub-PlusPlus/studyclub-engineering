@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 
 import { CATEGORY_DISPLAY, type Study, type StudyLifecycleStatus, type StudyStatus } from '@studyclub/mock';
 
+import { ACCESS_COOKIE } from '@/lib/cookie-names';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -63,7 +64,11 @@ function mapToStudy(api: ApiStudy): Study {
     format: 'online',
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     // 목록 API 는 프로그램 제목을 주지 않는다 — 목록은 P-ID 만 쓴다
-    program: { id: String(api.programId), title: { ko: '', en: '' }, kind: api.studyKind === 'CLUB' ? 'club' : 'study' },
+    program: {
+      id: String(api.programId),
+      title: { ko: '', en: '' },
+      kind: api.studyKind === 'CLUB' ? 'club' : 'study',
+    },
     category,
     schedule: api.timezone ? { ko: TIMEZONE_DISPLAY[api.timezone] ?? api.timezone, en: api.timezone } : undefined,
     date: api.startAt?.slice(0, 10),
@@ -84,7 +89,9 @@ function mapToStudy(api: ApiStudy): Study {
 }
 
 export async function fetchStudies(): Promise<Study[]> {
-  const cookieHeader = (await cookies()).toString();
+  // 쿠키를 통째로 넘기지 않는다 — 사이트(sc_) 쿠키도 같이 실려 API 가 다른 앱의 계정으로 판단한다(2026-10-16 stage /studies 403).
+  // 백오피스 액세스 토큰만 Authorization 으로 보낸다 (core-front bff 와 같은 방식)
+  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
   const maxRetries = 2;
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
@@ -92,7 +99,7 @@ export async function fetchStudies(): Promise<Study[]> {
     try {
       response = await fetch(API_BASE + '/api/admin/studies?offset=0&limit=1000', {
         cache: 'no-store',
-        headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
     } catch (error) {
       // Only retry connection failures from fetch, never parsing or mapping errors.

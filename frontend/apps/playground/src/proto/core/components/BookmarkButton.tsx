@@ -7,7 +7,7 @@ import { t } from '@core/lib/i18n';
 import { getBookmarks, setBookmarked } from '@core/lib/me';
 import { Heart } from 'lucide-react';
 
-/** 관심 스터디(하트). 저장은 `lib/me` 가 담당한다(마이페이지가 같은 목록을 읽는다). */
+/** 관심 스터디(하트). 저장은 `lib/me` 가 담당한다(찜한 스터디가 같은 목록을 읽는다). */
 
 export function BookmarkButton({
   studyId,

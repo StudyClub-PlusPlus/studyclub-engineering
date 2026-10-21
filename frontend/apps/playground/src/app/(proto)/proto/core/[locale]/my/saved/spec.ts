@@ -11,13 +11,13 @@ export const SPEC: ScreenSpec = {
     '크루가 이 화면에 오는 이유는 담아 둔 스터디를 다시 보고, 아직 신청할 수 있는 것을 고르는 것이다',
     '기본 탭은 모집중',
     '찜과 참여는 다른 축이다. 이미 참여 중인 스터디도 하트를 빼지 않으면 이 목록에 남는다',
-    '승인 대기·참여 중은 배지로만 보여 준다. 신청 폼은 이 화면에 두지 않는다',
+    '참여 중은 배지로만 보여 준다. 신청 폼은 이 화면에 두지 않는다',
     '모집 상태 탭은 스터디 진행(모집중·진행중·종료)이다. 마감일 경과 여부가 아니다',
     '시드는 전체가 10개를 넘기도록 채운다. 페이징을 보려고',
     '시드 모집중: Daily LeetCode · WeeklyX · System Design Interview · PyTorch AI · 얼리버드',
     '시드 진행중: Claude Code 소스 · DDIA 2판',
     '시드 종료: 합격을 부르는 이력서 · LeetCode150 2026 · Vibe Coding · Security Study · SQL for Data Analysis',
-    '시드 관계: 얼리버드·Claude Code·DDIA = 참여 중, PyTorch AI = 신청 대기',
+    '시드 관계: 얼리버드·Claude Code·DDIA·PyTorch AI = 참여 중',
     '저장은 브라우저(localStorage)에만 남는다. 기기·브라우저가 바뀌면 사라진다',
   ],
   entries: [
@@ -35,7 +35,7 @@ export const SPEC: ScreenSpec = {
     },
     {
       n: '2-1',
-      title: '내 스터디',
+      title: '내 스터디룸',
       display: ['진행 상태 탭 줄 오른쪽의 페이지 이동 버튼'],
       behavior: ['누르면 참여 중인 스터디 모음으로 간다'],
     },
@@ -89,7 +89,6 @@ export const SPEC: ScreenSpec = {
       title: '나와의 관계 · 신청',
       display: [
         '신청하지 않았고 모집중이면 버튼 "신청하기"',
-        '승인 대기면 배지 "신청 대기"',
         '참여 중이면 배지 "참여 중"',
         '신청하지 않았고 진행중·종료면 이 칸을 비운다',
       ],

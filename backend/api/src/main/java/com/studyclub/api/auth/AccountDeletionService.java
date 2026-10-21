@@ -1,5 +1,6 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -66,6 +67,7 @@ public class AccountDeletionService {
     private final StudyApplicationRepository studyApplicationRepository;
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper;
+    private final UploadService uploadService;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -109,6 +111,10 @@ public class AccountDeletionService {
 
         // 계정·프로필 삭제.
         accountRepository.delete(account);
+        // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 연결된·연결 안 된 파일을 DELETING 으로 찜하고
+        // 커밋 뒤 저장소에서 지운다. 지우기에 실패해도 탈퇴는 성공이고, 행이 남아 정리 배치가 다시 지운다 (specs/user-leave/spec.md 5단계).
+        uploadService.deleteAfterCommit(
+                uploadService.markDeletingByAccount(accountId, Instant.now()));
     }
 
     private void anonymizeParticipations(Long accountId) {

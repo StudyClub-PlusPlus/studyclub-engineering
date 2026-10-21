@@ -1,6 +1,6 @@
 # 캡틴은 등록된 스터디를 수정·삭제할 수 있다.
 
-기준 프로토타입: 운영 콘솔 › 스터디 › 스터디 상세 › 정보 탭 — https://playground.studyclub-plusplus.com/proto/console/studies
+기준 프로토타입: 운영 콘솔 › 스터디 › 스터디 상세 › 정보 탭 — https://playground.studyclub.life/proto/console/studies
 
 ## 1. 기본설명
 

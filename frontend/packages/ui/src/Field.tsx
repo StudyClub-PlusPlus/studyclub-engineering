@@ -1,7 +1,7 @@
 'use client';
 
-import { useId } from 'react';
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
+import type { ChangeEvent, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
@@ -72,17 +72,7 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   size?: InputSize;
 }
 
-export function Input({
-  label,
-  helper,
-  error,
-  required,
-  labelHint,
-  className,
-  id,
-  size = 'md',
-  ...rest
-}: InputProps) {
+export function Input({ label, helper, error, required, labelHint, className, id, size = 'md', ...rest }: InputProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   const invalid = Boolean(error);
@@ -109,6 +99,10 @@ const SELECT_SIZES: Record<SelectSize, string> = {
 
 export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'>, FieldMeta {
   size?: SelectSize;
+  /** 선택 컨트롤에 표시할 장식 아이콘. 기본값은 ChevronDown. */
+  icon?: ReactNode;
+  /** 아이콘 위치. 기본값은 오른쪽. */
+  iconPosition?: 'left' | 'right';
 }
 
 export function Select({
@@ -120,6 +114,8 @@ export function Select({
   className,
   id,
   size = 'md',
+  icon = <ChevronDown size={16} aria-hidden />,
+  iconPosition = 'right',
   ...rest
 }: SelectProps) {
   const autoId = useId();
@@ -133,19 +129,28 @@ export function Select({
           id={fieldId}
           required={required}
           aria-invalid={invalid || undefined}
-          className={controlClass(invalid, cx(SELECT_SIZES[size], 'appearance-none pr-9', className))}
+          className={controlClass(
+            invalid,
+            cx(SELECT_SIZES[size], 'appearance-none', iconPosition === 'left' ? 'pl-9 pr-3.5' : 'pr-9', className),
+          )}
         />
-        <ChevronDown
-          size={16}
-          className='pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted'
-          aria-hidden
-        />
+        <span
+          className={cx(
+            'pointer-events-none absolute top-1/2 -translate-y-1/2 text-fg-muted',
+            iconPosition === 'left' ? 'left-3' : 'right-3',
+          )}
+        >
+          {icon}
+        </span>
       </div>
     </FieldShell>
   );
 }
 
-export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement>, FieldMeta {}
+export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement>, FieldMeta {
+  /** true 이면 textarea 우하단에 현재 글자수 / maxLength 카운터를 표시한다. */
+  showCount?: boolean;
+}
 
 export function Textarea({
   label,
@@ -156,21 +161,74 @@ export function Textarea({
   className,
   id,
   rows = 4,
+  showCount,
+  value,
+  maxLength,
+  onChange,
   ...rest
 }: TextareaProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   const invalid = Boolean(error);
+
+  const controlled = value !== undefined;
+  const [uncontrolledLen, setUncontrolledLen] = useState(() => {
+    const init = rest.defaultValue;
+    return typeof init === 'string' ? init.length : 0;
+  });
+  const charCount = controlled ? String(value).length : uncontrolledLen;
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    if (!showCount) return;
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [charCount, showCount]);
+
+  function handleChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    if (!controlled) setUncontrolledLen(e.target.value.length);
+    onChange?.(e);
+  }
+
   return (
     <FieldShell label={label} helper={helper} error={error} required={required} labelHint={labelHint} htmlFor={fieldId}>
-      <textarea
-        {...rest}
-        id={fieldId}
-        rows={rows}
-        required={required}
-        aria-invalid={invalid || undefined}
-        className={controlClass(invalid, cx('py-2.5 leading-relaxed', className))}
-      />
+      {showCount ? (
+        <div className='relative'>
+          <textarea
+            {...rest}
+            ref={taRef}
+            value={value}
+            maxLength={maxLength}
+            id={fieldId}
+            rows={rows}
+            required={required}
+            aria-invalid={invalid || undefined}
+            onChange={handleChange}
+            className={controlClass(invalid, cx('pt-2.5 pb-5 leading-relaxed resize-none overflow-hidden', className))}
+          />
+          <span
+            aria-hidden
+            className='pointer-events-none absolute bottom-[5px] left-[1px] right-[1px] flex items-center justify-end rounded-b-control bg-transparent px-3.5 py-1.5 text-[11px] tabular-nums text-fg-placeholder'
+          >
+            {charCount}
+            {maxLength != null ? `/${maxLength}` : ''}
+          </span>
+        </div>
+      ) : (
+        <textarea
+          {...rest}
+          value={value}
+          maxLength={maxLength}
+          id={fieldId}
+          rows={rows}
+          required={required}
+          aria-invalid={invalid || undefined}
+          onChange={onChange}
+          className={controlClass(invalid, cx('py-2.5 leading-relaxed', className))}
+        />
+      )}
     </FieldShell>
   );
 }

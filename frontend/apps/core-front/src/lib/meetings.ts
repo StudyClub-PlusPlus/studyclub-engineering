@@ -27,55 +27,16 @@ export type NavigatorGroup = {
   name: string;
   timeZone: string;
   startAt: string;
+  weekdays?: number[];
 };
 
 export type ManageRole = 'navigator' | 'captain';
-export type ManageAccess = { role: ManageRole; group: NavigatorGroup };
 export const MANAGE_ROLE_LABEL: Record<ManageRole, string> = { navigator: '네비게이터', captain: '캡틴' };
 
 export type ScheduleRole = ManageRole | 'crew';
 export const SCHEDULE_ROLE_LABEL: Record<ScheduleRole, string> = { ...MANAGE_ROLE_LABEL, crew: '크루' };
 
-export type ScheduleAccess = { role: ScheduleRole; group: NavigatorGroup; canEdit: boolean };
-
-/**
- * 프로토 가정 — 로그인 회원은
- * - 11 (ddia-2nd) 의 네비게이터
- * - 1  (ai-paper-study) 의 담당 캡틴
- * TODO(api): GET /api/me/participations
- */
-const MANAGE_OF: Record<string, ManageAccess> = {
-  '11': {
-    role: 'navigator',
-    group: { id: '11-wed', name: '수요일반', timeZone: 'Asia/Seoul', startAt: '20:30' },
-  },
-  '1': {
-    role: 'captain',
-    group: { id: '1-thu', name: '목요일반', timeZone: 'Asia/Seoul', startAt: '20:00' },
-  },
-};
-
-export function manageAccessOf(studyId: string): ManageAccess | undefined {
-  return MANAGE_OF[studyId];
-}
-
 const DEFAULT_ZONE = 'Asia/Seoul';
-
-export function scheduleAccessOf(study: Study): ScheduleAccess {
-  const managed = manageAccessOf(study.id);
-  if (managed) return { ...managed, canEdit: true };
-  const clock = (study.schedule?.ko ?? '').match(/(\d{1,2}):(\d{2})/);
-  const startAt = clock ? `${clock[1].padStart(2, '0')}:${clock[2]}` : '20:00';
-  return {
-    role: 'crew',
-    group: { id: `${study.id}-main`, name: '참여 분반', timeZone: DEFAULT_ZONE, startAt },
-    canEdit: false,
-  };
-}
-
-export function zoneOfStudy(studyId: string): string {
-  return manageAccessOf(studyId)?.group.timeZone ?? DEFAULT_ZONE;
-}
 
 export const TITLE_MAX = 50;
 export const REPEAT_SPAN_DAYS = 31;
@@ -137,54 +98,6 @@ export function addMeetings(
   writeJSON(ADDED_KEY, store);
 }
 
-export function deleteMeetings(studyId: string, ids: string[]): void {
-  const added = readJSON<Stored>(ADDED_KEY);
-  const mine = added[studyId] ?? [];
-  const addedIds = new Set(mine.map((m) => m.id));
-  added[studyId] = mine.filter((m) => !ids.includes(m.id));
-  writeJSON(ADDED_KEY, added);
-
-  const deleted = readJSON<string>(DELETED_KEY);
-  deleted[studyId] = [...(deleted[studyId] ?? []), ...ids.filter((id) => !addedIds.has(id))];
-  writeJSON(DELETED_KEY, deleted);
-}
-
-export type MeetingPatch = {
-  date?: string;
-  time?: string;
-  title?: string;
-  presenter1?: string | null;
-  presenter2?: string | null;
-};
-
-export function patchMeeting(studyId: string, id: string, patch: MeetingPatch, timeZone: string): void {
-  const next: Edit = {};
-  if (patch.date && patch.time) next.scheduledAt = zonedInstant(patch.date, patch.time, timeZone).toISOString();
-  if (patch.title !== undefined) next.title = patch.title.trim() || undefined;
-  if (patch.presenter1 !== undefined) next.presenter1 = patch.presenter1 ?? undefined;
-  if (patch.presenter2 !== undefined) next.presenter2 = patch.presenter2 ?? undefined;
-  const merge = <T extends Edit>(row: T): T => {
-    const out = { ...row, ...next };
-    if (next.scheduledAt) {
-      delete out.date;
-      delete out.time;
-    }
-    return out;
-  };
-
-  const added = readJSON<Stored>(ADDED_KEY);
-  const mine = added[studyId] ?? [];
-  if (mine.some((m) => m.id === id)) {
-    added[studyId] = mine.map((m) => (m.id === id ? merge(m) : m));
-    writeJSON(ADDED_KEY, added);
-    return;
-  }
-  const edited = readEdits();
-  const prev = edited[studyId]?.[id] ?? {};
-  edited[studyId] = { ...(edited[studyId] ?? {}), [id]: merge(prev) };
-  writeJSON(EDITED_KEY, edited);
-}
-
 function readEdits(): Record<string, Record<string, Edit>> {
   if (typeof window === 'undefined') return {};
   try {
@@ -205,7 +118,12 @@ function withWall<T extends { scheduledAt?: string; date?: string; time?: string
 /* ── 킥오프 ─────────────────────────────────────────────────────────────── */
 
 export function isKickoff(m: StudyMeeting): boolean {
-  return (m as ProtoMeeting).kind === 'kickoff';
+  return (
+    (m as ProtoMeeting).kind === 'kickoff' ||
+    m.no === 0 ||
+    (m as { type?: string }).type === 'KICKOFF' ||
+    (m as ProtoMeeting).title === '킥오프'
+  );
 }
 
 export function meetingLabel(m: StudyMeeting): string {
@@ -220,7 +138,7 @@ function kickoffOf(base: StudyMeeting[], studyId: string): ProtoMeeting | undefi
 
 const wallKey = (m: StudyMeeting) => `${m.date} ${(m as ProtoMeeting).time ?? ''}`;
 
-export function withAdded(base: StudyMeeting[], studyId: string, zone = zoneOfStudy(studyId)): ProtoMeeting[] {
+export function withAdded(base: StudyMeeting[], studyId: string, zone = DEFAULT_ZONE): ProtoMeeting[] {
   const added = (readJSON<Stored>(ADDED_KEY)[studyId] ?? []).map(
     (m) => ({ ...withWall(m, zone), no: 0 }) as ProtoMeeting,
   );
@@ -236,16 +154,6 @@ export function withAdded(base: StudyMeeting[], studyId: string, zone = zoneOfSt
     .sort((a, b) => wallKey(a).localeCompare(wallKey(b)))
     .map((m, i) => ({ ...m, no: i + 1 }));
   return [...all.filter(isKickoff).map((m) => ({ ...m, no: 0 })), ...regular];
-}
-
-export function bookFromSchedule(meetings: ProtoMeeting[]) {
-  const byId = new Map(meetings.map((m) => [m.id, m]));
-  return {
-    presentersOf: (id: string) =>
-      [byId.get(id)?.presenter1, byId.get(id)?.presenter2].filter((p): p is string => Boolean(p)),
-    notCounted: new Set(meetings.filter(isKickoff).map((m) => m.id)),
-    headOf: (m: StudyMeeting) => (isKickoff(m) ? '킥오프' : `${m.no}회`),
-  };
 }
 
 /* ── 날짜·시각 ───────────────────────────────────────────────────────────── */
@@ -288,24 +196,6 @@ export function wallParts(instant: Date, iana: string): { date: string; time: st
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
-export function wallLabel(instant: Date, iana: string): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: iana,
-      month: 'numeric',
-      day: 'numeric',
-      weekday: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    })
-      .formatToParts(instant)
-      .map((p) => [p.type, p.value]),
-  );
-  const dow = DOW[['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday)];
-  return `${parts.month}/${parts.day}(${dow}) ${parts.hour}:${parts.minute}`;
-}
-
 export function scheduleLabel(instant: Date, iana: string): string {
   const { date, time } = wallParts(instant, iana);
   return `${date} ${time}`;
@@ -338,6 +228,10 @@ export function zoneTitle(iana: string): string {
 export function dayLabel(ymd: string): string {
   const [, m, d] = ymd.split('-').map(Number);
   return `${m}/${d}(${DOW[dowOf(ymd)]})`;
+}
+
+export function dateWithDow(ymd: string): string {
+  return `${ymd} (${DOW[dowOf(ymd)]})`;
 }
 
 export function dowOf(ymd: string): number {
@@ -506,5 +400,3 @@ export function discordUrl(study: Study): string | undefined {
 export function driveUrl(study: Study): string | undefined {
   return study.driveUrl ?? undefined;
 }
-
-

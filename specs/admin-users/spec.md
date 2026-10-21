@@ -65,7 +65,7 @@
 | PRD — 이메일이 담긴 목록은 운영 콘솔 API 로만 | 목록은 마스킹, 「보기」(`POST …/email-reveals`)로 한 명씩 원본, 볼 때마다 감사 로그 | PR #163 리뷰 — 운영진 결정. 기획 문서에는 아직 없다 |
 | PRD 미확정 — 권한 변경 이력을 남길지 | 감사 로그 `ADMIN_AUDIT_LOG` 에 `ROLE_CHANGE` 로 남긴다 | PR #163 리뷰 결정 |
 | — | 권한 변경 성공 뒤 디스코드 설정 안내, 역할별 권한표 `GET /api/admin/role-permissions` | PR #163 리뷰 · 리드 회의 결정, Notion 「역할별 기본 권한」 표 |
-| Notion — `role: captain \| crew` | 응답 `systemRole: ADMIN \| MEMBER` | DB enum 그대로 (`/auth/me` 의 `role` 과 같은 값). 필터 `role` 의 값과는 다르다 — 아래 [Query Parameters](#query-parameters) |
+| Notion — `role: captain \| crew` | 응답 `systemRole: ADMIN \| MEMBER` | DB enum 그대로 (`GET /api/me` 의 `role` 과 같은 값). 필터 `role` 의 값과는 다르다 — 아래 [Query Parameters](#query-parameters) |
 | Notion — `navigatorOf: string[]` (스터디 id) | `navigatorOf: [{ studyId, title }]` | 화면이 **이름**을 적는다. id 만 주면 프론트가 스터디를 또 조회해야 한다 |
 | Notion — `enrollment.navigator` 신규 필드 | 기존 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` | 이미 있는 컬럼이다 |
 | Notion — `name` (null 이면 이메일 로컬파트) | `name` = `ACCOUNT.NICKNAME`, 온보딩 전이면 null. 화면은 **마스킹된** 로컬파트를 적는다 | 온보딩 전 닉네임은 `account_<랜덤>` 임시값이라 사람 이름이 아니다. 원본 로컬파트를 쓰면 마스킹이 무너진다 |

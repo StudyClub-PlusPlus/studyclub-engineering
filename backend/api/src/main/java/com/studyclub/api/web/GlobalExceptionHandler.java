@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -56,6 +57,12 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ErrorResponse> handleInvalidRequest() {
         return respond(ErrorCode.INVALID_INPUT, null);
+    }
+
+    /** 올리기 상한(5MB) 초과. multipart 파싱 단계라 컨트롤러 전에 터진다 — 스펙 문구로 400. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadTooLarge() {
+        return respond(ErrorCode.INVALID_INPUT, "5MB 이하 파일만 올릴 수 있습니다.");
     }
 
     /**

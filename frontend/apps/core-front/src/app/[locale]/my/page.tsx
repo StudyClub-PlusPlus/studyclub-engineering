@@ -16,6 +16,7 @@ import { track } from '@/lib/analytics';
 import { getUser, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
+import { PAGE } from '@/lib/layout';
 import {
   cancelApplication,
   getApplications,
@@ -212,7 +213,7 @@ export default function MyPage() {
   }
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
+    <div className={`${PAGE} pb-16 pt-10`}>
       <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
 
       <ProfileCard user={user} locale={locale} onUserChange={setUser} />

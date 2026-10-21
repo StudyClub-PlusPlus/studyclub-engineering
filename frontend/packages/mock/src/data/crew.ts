@@ -7,25 +7,41 @@ import type {
   Study,
   StudyCrewData,
   StudyMeeting,
-} from "../types";
-import { attendancePoint, attendanceRate, LATE_WEIGHT } from "../utils";
+} from '../types';
+import { attendancePoint, attendanceRate, LATE_WEIGHT } from '../utils';
 
-export type {
-  AttendanceStatus,
-  Crew,
-  StudyMeeting,
-  StudyCrewData,
-  DemoCrewRelation,
-};
+export type { AttendanceStatus, Crew, StudyMeeting, StudyCrewData, DemoCrewRelation };
 export { LATE_WEIGHT, attendancePoint, attendanceRate };
 
 const CLEAN_NAMES = [
-  "지원", "민서", "도윤", "서연", "하준", "예린", "시우", "수아", "지호", "채원",
-  "건우", "유나", "민준", "소율", "준서", "다인", "현우", "지안", "태윤", "은서",
-  "성민", "가온", "루아", "세아", "정우",
+  '지원',
+  '민서',
+  '도윤',
+  '서연',
+  '하준',
+  '예린',
+  '시우',
+  '수아',
+  '지호',
+  '채원',
+  '건우',
+  '유나',
+  '민준',
+  '소율',
+  '준서',
+  '다인',
+  '현우',
+  '지안',
+  '태윤',
+  '은서',
+  '성민',
+  '가온',
+  '루아',
+  '세아',
+  '정우',
 ];
 
-const REGIONS: MemberRegion[] = ["KR", "KR", "KR", "NA", "KR", "NA", "ETC", "KR", "NA", "KR"];
+const REGIONS: MemberRegion[] = ['KR', 'KR', 'KR', 'NA', 'KR', 'NA', 'ETC', 'KR', 'NA', 'KR'];
 
 /**
  * 메일 아이디 — 이름을 로마자로 적은 모양.
@@ -34,14 +50,34 @@ const REGIONS: MemberRegion[] = ["KR", "KR", "KR", "NA", "KR", "NA", "ETC", "KR"
  * 알 수 없다. 사람마다 첫 글자와 길이가 달라야 화면이 실제처럼 읽힌다.
  * 도메인은 `example.com` 으로 둔다 — 공개 레포라 진짜로 보이는 주소를 적지 않는다.
  */
-const MAIL_DOMAINS = ["gmail.com", "naver.com", "kakao.com", "daum.net", "outlook.com"];
+const MAIL_DOMAINS = ['gmail.com', 'naver.com', 'kakao.com', 'daum.net', 'outlook.com'];
 
 const ROMAN: Record<string, string> = {
-  지원: "jiwon", 민서: "minseo", 도윤: "doyun", 서연: "seoyeon", 하준: "hajun",
-  예린: "yerin", 시우: "siwoo", 수아: "sua", 지호: "jiho", 채원: "chaewon",
-  건우: "gunwoo", 유나: "yuna", 민준: "minjun", 소율: "soyul", 준서: "junseo",
-  다인: "dain", 현우: "hyunwoo", 지안: "jian", 태윤: "taeyun", 은서: "eunseo",
-  성민: "seongmin", 가온: "gaon", 루아: "rua", 세아: "sea", 정우: "jungwoo",
+  지원: 'jiwon',
+  민서: 'minseo',
+  도윤: 'doyun',
+  서연: 'seoyeon',
+  하준: 'hajun',
+  예린: 'yerin',
+  시우: 'siwoo',
+  수아: 'sua',
+  지호: 'jiho',
+  채원: 'chaewon',
+  건우: 'gunwoo',
+  유나: 'yuna',
+  민준: 'minjun',
+  소율: 'soyul',
+  준서: 'junseo',
+  다인: 'dain',
+  현우: 'hyunwoo',
+  지안: 'jian',
+  태윤: 'taeyun',
+  은서: 'eunseo',
+  성민: 'seongmin',
+  가온: 'gaon',
+  루아: 'rua',
+  세아: 'sea',
+  정우: 'jungwoo',
 };
 
 /** 문자열 → 정수 해시. 같은 스터디는 항상 같은 명단을 만든다. */
@@ -59,9 +95,25 @@ function pick(seed: number, max: number): number {
   return Math.abs(Math.imul(seed ^ 0x9e3779b9, 2654435761)) % max;
 }
 
-const DISCORD_JOBS = ["SWE", "PM", "데이터 분석가", "백엔드 개발자", "프론트엔드 개발자", "대학원생", "ML 엔지니어", "디자이너"];
-const DISCORD_LOCATIONS = ["서울", "판교", "부산", "산호세", "뉴욕", "시애틀", "대전", "인천"];
-const DISCORD_TOPICS = ["시스템디자인", "알고리즘", "논문리딩", "커리어전환", "사이드프로젝트", "취업준비"];
+const DISCORD_JOBS = [
+  'SWE',
+  'PM',
+  '데이터 분석가',
+  '백엔드 개발자',
+  '프론트엔드 개발자',
+  '대학원생',
+  'ML 엔지니어',
+  '디자이너',
+];
+const DISCORD_LOCATIONS = ['서울', '판교', '부산', '산호세', '뉴욕', '시애틀', '대전', '인천'];
+const DISCORD_TOPICS = [
+  '시스템디자인',
+  '알고리즘',
+  '논문리딩',
+  '커리어전환',
+  '사이드프로젝트',
+  '취업준비',
+];
 
 /** 신청 시 받는 디스코드 서버 별명. 형식은 `DISCORD_NICKNAME_EXAMPLE` 예시(이름/직군/지역/관심사)와 같다. */
 function discordNicknameFor(name: string, seed: number): string {
@@ -73,11 +125,11 @@ function discordNicknameFor(name: string, seed: number): string {
 
 /** 단답형·장문형 질문에 채울 예시 답변. 질문 내용을 모르므로 지원 동기류로 범용화한다. */
 const TEXT_ANSWER_BANK = [
-  "관련 분야로 이직을 준비하고 있어서 체계적으로 공부할 계기가 필요했습니다.",
-  "혼자 하면 자꾸 미뤄서, 같이 진도를 맞출 사람들이 필요해 신청합니다.",
-  "실무에서 부족하다고 느낀 부분이라 이번 기회에 제대로 다지고 싶습니다.",
-  "최근 관심이 생긴 주제라 스터디원들과 의견을 나눠 보고 싶습니다.",
-  "학교에서 배운 내용을 실전 감각으로 이어가고 싶어 신청합니다.",
+  '관련 분야로 이직을 준비하고 있어서 체계적으로 공부할 계기가 필요했습니다.',
+  '혼자 하면 자꾸 미뤄서, 같이 진도를 맞출 사람들이 필요해 신청합니다.',
+  '실무에서 부족하다고 느낀 부분이라 이번 기회에 제대로 다지고 싶습니다.',
+  '최근 관심이 생긴 주제라 스터디원들과 의견을 나눠 보고 싶습니다.',
+  '학교에서 배운 내용을 실전 감각으로 이어가고 싶어 신청합니다.',
 ];
 
 /**
@@ -85,17 +137,20 @@ const TEXT_ANSWER_BANK = [
  *
  * TODO(api): GET /api/studies/{id}/cohorts/{cohortId}/applications 로 대체
  */
-function answersFor(questions: ApplicationQuestion[], seed: number): Record<string, string | string[]> {
+function answersFor(
+  questions: ApplicationQuestion[],
+  seed: number
+): Record<string, string | string[]> {
   const answers: Record<string, string | string[]> = {};
   questions.forEach((q, qi) => {
     const s = seed + qi * 211;
-    if (q.type === "text" || q.type === "textarea") {
+    if (q.type === 'text' || q.type === 'textarea') {
       answers[q.id] = TEXT_ANSWER_BANK[pick(s, TEXT_ANSWER_BANK.length)];
       return;
     }
     const options = q.options ?? [];
     if (options.length === 0) return;
-    if (q.type === "radio" || q.type === "select") {
+    if (q.type === 'radio' || q.type === 'select') {
       answers[q.id] = options[pick(s, options.length)];
       return;
     }
@@ -106,13 +161,13 @@ function answersFor(questions: ApplicationQuestion[], seed: number): Record<stri
   return answers;
 }
 
-const FALLBACK_DATE = "2026-08-01";
+const FALLBACK_DATE = '2026-08-01';
 
 /** 마감일 표기가 흔들리거나 비어 있어도(예: "상시") 회차 계산이 깨지지 않게 한다. */
 function baseDate(raw?: string): string {
   const m = raw?.trim().match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
   if (!m) return FALLBACK_DATE;
-  const iso = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  const iso = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
   return Number.isNaN(new Date(`${iso}T00:00:00Z`).getTime()) ? FALLBACK_DATE : iso;
 }
 
@@ -133,9 +188,9 @@ const KO_DOW: Record<string, number> = { 월: 1, 화: 2, 수: 3, 목: 4, 금: 5,
 
 /** 일정 문구에서 요일을 읽는다. "매일"의 일은 요일이 아니다. */
 function weekdaysOf(study: Study, seed: number): number[] {
-  const ko = study.schedule?.ko ?? "";
+  const ko = study.schedule?.ko ?? '';
   const found: number[] = [];
-  for (const name of ["월", "화", "수", "목", "금", "토"] as const) {
+  for (const name of ['월', '화', '수', '목', '금', '토'] as const) {
     if (ko.includes(name)) found.push(KO_DOW[name]);
   }
   if (/(?:매주|격주)\s*일|일요일/.test(ko)) found.push(0);
@@ -147,12 +202,15 @@ function dateOnWeek(monday: string, utcDow: number): string {
   return addDays(monday, utcDow === 0 ? 6 : utcDow - 1);
 }
 
-/** 월별 클럽 기수(id 가 `-g1`·`-g2`·`-g3`)는 그 달 안의 회차만 만든다. */
+/** 월별 클럽 기수(id 가 `-g1`·`-g2`·`-g3`)는 그 달 안의 회차만 만든다.
+ *  ongoing 기수에서 해당 월이 이미 지났으면 다음 4주 회차를 추가해 발표자 신청 테스트를 가능하게 한다. */
 function monthRangeMeetings(study: Study, seed: number): StudyMeeting[] | undefined {
   if (!study.date || !/-g[123]$/.test(study.id)) return undefined;
   const start = study.date;
-  const [y, mo] = start.split("-").map(Number);
-  const end = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10);
+  const [y, mo] = start.split('-').map(Number);
+  const monthEnd = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  const end = study.status === 'ongoing' && monthEnd < today ? addDays(monthEnd, 28) : monthEnd;
   const weekdays = weekdaysOf(study, seed);
   const meetings: StudyMeeting[] = [];
   let no = 1;
@@ -169,30 +227,28 @@ function addWeeks(iso: string, weeks: number): string {
   return addDays(iso, weeks * 7);
 }
 
-
-
-const LEFT_EARLY_IDS = new Set(["system-design-interview-ongoing"]);
-const FORCE_ACTIVE_IDS = new Set(["ai-paper-study"]);
+const LEFT_EARLY_IDS = new Set(['system-design-interview-ongoing']);
+const FORCE_ACTIVE_IDS = new Set(['ai-paper-study']);
 const MISS_ONE_IDS = new Set<string>();
-const PARTIAL_COMPLETE_IDS = new Set(["sql-for-data-analysis"]);
+const PARTIAL_COMPLETE_IDS = new Set(['sql-for-data-analysis']);
 
 export function demoCrewRelation(study: Study): DemoCrewRelation {
-  if (LEFT_EARLY_IDS.has(study.id)) return "left";
-  if (FORCE_ACTIVE_IDS.has(study.id)) return "active";
-  if (study.status === "closed") return "completed";
-  if (study.status === "recruiting") return "upcoming";
-  return "active";
+  if (LEFT_EARLY_IDS.has(study.id)) return 'left';
+  if (FORCE_ACTIVE_IDS.has(study.id)) return 'active';
+  if (study.status === 'closed') return 'completed';
+  if (study.status === 'recruiting') return 'upcoming';
+  return 'active';
 }
 
 function weeksOf(study: Study, seed: number): number {
-  const ko = study.schedule?.ko ?? "";
+  const ko = study.schedule?.ko ?? '';
   const weeks = ko.match(/(\d+)\s*주/);
   if (weeks) return Number(weeks[1]);
   // "4회" 같은 과정 길이만. "주 1회 회고"는 주기다.
   const times = ko.match(/·\s*(\d+)\s*회/);
   if (times) return Number(times[1]);
   // LeetCode150 전회 예시: 화·목 × 5주 = 10회
-  if (study.id === "leetcode150-2026") return 5;
+  if (study.id === 'leetcode150-2026') return 5;
   return 6 + pick(seed + 41, 3) * 2; // 6 · 8 · 10
 }
 
@@ -200,11 +256,11 @@ function weeksOf(study: Study, seed: number): number {
 function firstMondayOf(study: Study, weeks: number, seed: number, today: string): string {
   const thisMonday = mondayOf(today);
   const relation = demoCrewRelation(study);
-  if (relation === "completed") {
+  if (relation === 'completed') {
     // 마지막 주 = 지난주. 완주 회차가 오늘 이후에 남지 않게 한다.
     return addWeeks(mondayOf(addDays(today, -7)), 1 - weeks);
   }
-  if (relation === "upcoming") {
+  if (relation === 'upcoming') {
     return addWeeks(thisMonday, 1);
   }
   // 참여중·참여 중단: 지난주를 마지막으로 몇 주는 지나 있고, 최소 1주는 남긴다.
@@ -214,8 +270,15 @@ function firstMondayOf(study: Study, weeks: number, seed: number, today: string)
   return addWeeks(lastPastMonday, 1 - pastWeeks);
 }
 
-const ACTIVE_CYCLE: AttendanceStatus[] = ["present", "late", "present", "late", "absent", "excused"];
-const LEFT_CYCLE: AttendanceStatus[] = ["present", "late", "absent", "excused", "absent"];
+const ACTIVE_CYCLE: AttendanceStatus[] = [
+  'present',
+  'late',
+  'present',
+  'late',
+  'absent',
+  'excused',
+];
+const LEFT_CYCLE: AttendanceStatus[] = ['present', 'late', 'absent', 'excused', 'absent'];
 
 /**
  * 내 출석 시드. 회차 칸 · 출석률 · 완주 점수판이 같은 시드를 본다.
@@ -229,28 +292,28 @@ const LEFT_CYCLE: AttendanceStatus[] = ["present", "late", "absent", "excused", 
 export function demoMyAttendance(
   study: Study,
   meetings: StudyMeeting[],
-  today: string,
+  today: string
 ): Record<string, AttendanceStatus> {
   const row: Record<string, AttendanceStatus> = {};
   const relation = demoCrewRelation(study);
-  if (relation === "upcoming") return row;
+  if (relation === 'upcoming') return row;
 
-  if (relation === "completed") {
+  if (relation === 'completed') {
     if (PARTIAL_COMPLETE_IDS.has(study.id)) {
       const attended = Math.max(1, Math.round(meetings.length * 0.6));
       meetings.forEach((m, i) => {
-        row[m.id] = i < attended ? "present" : "absent";
+        row[m.id] = i < attended ? 'present' : 'absent';
       });
       return row;
     }
     const missOne = MISS_ONE_IDS.has(study.id);
     meetings.forEach((m, i) => {
-      row[m.id] = missOne && i === meetings.length - 1 ? "absent" : "present";
+      row[m.id] = missOne && i === meetings.length - 1 ? 'absent' : 'present';
     });
     return row;
   }
 
-  const cycle = relation === "left" ? LEFT_CYCLE : ACTIVE_CYCLE;
+  const cycle = relation === 'left' ? LEFT_CYCLE : ACTIVE_CYCLE;
   meetings
     .filter((m) => m.date < today)
     .forEach((m, i) => {
@@ -275,7 +338,10 @@ export function recruitCapacity(study: Study): number | undefined {
  * 회차는 **오늘까지 지난 것만 출석이 채워진다** — 앞으로 열릴 회차가 미리 체크돼 있으면
  * 운영자가 무엇을 해야 하는지 알 수 없다.
  */
-export function getStudyCrew(study: Study, today = new Date().toISOString().slice(0, 10)): StudyCrewData {
+export function getStudyCrew(
+  study: Study,
+  today = new Date().toISOString().slice(0, 10)
+): StudyCrewData {
   const seed = hash(study.id);
   // 운영자가 정한 모집 정원이 있으면 그것을, 없으면(제한 없음) 데모 명단 크기용 값을 쓴다.
   const capacity = recruitCapacity(study) ?? 12 + pick(seed, 3) * 4; // 12 · 16 · 20
@@ -291,7 +357,7 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
     crew.push({
       id: `${study.id}-c${i + 1}`,
       name,
-      email: `${ROMAN[name] ?? "member"}${pick(s + 1, 90) + 10}@${MAIL_DOMAINS[pick(s + 2, MAIL_DOMAINS.length)]}`,
+      email: `${ROMAN[name] ?? 'member'}${pick(s + 1, 90) + 10}@${MAIL_DOMAINS[pick(s + 2, MAIL_DOMAINS.length)]}`,
       region: REGIONS[pick(s + 5, REGIONS.length)],
       appliedAt: addWeeks(baseDate(study.recruitment?.deadline), -1 - pick(s + 9, 3)),
       pastStudies: past,
@@ -323,8 +389,15 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
 
   // 회차 생성 시 전원 ABSENT. 지난 회차에만 데모 상태를 덮는다. 미래 회차는 행을 두지 않아
   // 시작 전 결석이 화면에 안 나온다.
-  const DEMO_CYCLE: AttendanceStatus[] = ["present", "late", "present", "late", "absent", "excused"];
-  const attendance: StudyCrewData["attendance"] = {};
+  const DEMO_CYCLE: AttendanceStatus[] = [
+    'present',
+    'late',
+    'present',
+    'late',
+    'absent',
+    'excused',
+  ];
+  const attendance: StudyCrewData['attendance'] = {};
   for (const c of crew) {
     const row: Record<string, AttendanceStatus> = {};
     let past = 0;
@@ -339,8 +412,6 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
   return { capacity, crew, meetings, attendance };
 }
 
-
-
 /**
  * 인기 스터디 여부.
  *
@@ -348,7 +419,7 @@ export function getStudyCrew(study: Study, today = new Date().toISOString().slic
  * 조회수·북마크·신청 속도 중 무엇을 쓸지 정해지면 이 함수만 바꾸면 화면 전체가 따라온다.
  */
 export function isHotStudy(study: Study): boolean {
-  if (study.status !== "recruiting") return false;
+  if (study.status !== 'recruiting') return false;
   const { crew, capacity } = getStudyCrew(study);
   return crew.length / capacity >= 0.85;
 }

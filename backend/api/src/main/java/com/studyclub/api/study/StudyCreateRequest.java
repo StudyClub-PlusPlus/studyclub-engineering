@@ -20,6 +20,9 @@ import java.time.Instant;
  * </ul>
  *
  * <p>둘을 함께 보내면 400 이다 — specs/study/spec.md AC-6 · AC-7.
+ *
+ * <p>썸네일은 주소가 아니라 {@code POST /api/uploads/images} 가 준 번호({@code thumbnailFileId})로 받는다
+ * (docs/flows/image-upload.md). 비우면 썸네일 없음.
  */
 public record StudyCreateRequest(
         Long studyProgramId,
@@ -28,6 +31,6 @@ public record StudyCreateRequest(
         @NotBlank @Size(max = 255) String oneLineSummary,
         String description,
         @NotNull StudyCategory category,
-        String thumbnailUrl,
+        Long thumbnailFileId,
         Instant recruitDeadline,
         String schedule) {}
