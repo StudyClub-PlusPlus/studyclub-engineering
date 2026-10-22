@@ -97,6 +97,8 @@ public class AdminStudyGroupService {
         if (studyAttendanceRepository.existsKeptByStudyGroupId(groupId)) {
             throw new BusinessException(ErrorCode.GROUP_NOT_EMPTY, "출석 기록이 남아 있어 반을 삭제할 수 없습니다.");
         }
+        // STUDY_ATTENDANCE.STUDY_MEETING_ID 에는 DB-level FK 가 없다 (docs/erd/STUDY_ATTENDANCE.md).
+        // 따라서 attendance → meeting → group 순서는 안전하다.
         studyAttendanceRepository.deleteByStudyGroupId(groupId);
         studyMeetingRepository.deleteByStudyGroupIdIn(List.of(groupId));
         studyGroupRepository.deleteById(groupId);

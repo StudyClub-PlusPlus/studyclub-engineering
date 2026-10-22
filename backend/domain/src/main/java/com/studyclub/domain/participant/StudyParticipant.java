@@ -142,4 +142,9 @@ public class StudyParticipant extends BaseEntity {
             this.leftAt = deletedAt;
         }
     }
+
+    /** 스터디 역할을 바꾼다. ACTIVE·PAUSED 상태 검증은 서비스 레이어에서 한다. */
+    public void changeRole(ParticipantRole role) {
+        this.participantRole = role;
+    }
 }
