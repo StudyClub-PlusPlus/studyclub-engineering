@@ -220,7 +220,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 
 | 이벤트 (name) | 언제 발행 | 페이로드 | actor | 듣는 쪽이 하는 일 |
 |---|---|---|---|---|
-| `study_participant.joined` | 명부 행이 생겼을 때 (질문 3 이 「제출 시」면 이 이벤트 대신 기존 `study_application.submitted` 를 듣는다) | `studyId` · `participantId` · `accountId` | 명부에 넣은 사람 | B3 스터디 role 부여 |
+| `study_participant.joined` | 명부에 참여로 들어왔을 때 — 새 행·되살린 행 모두. 지금은 신청 제출 때다 (10-22, `submitted` 가 아니라 이 이벤트를 듣는다 — role 은 신청서가 아니라 명부를 따른다) | `studyId` · `participantId` · `accountId` · `participantRole` | 명부에 넣은 사람 (신청이면 본인) | B3 스터디 role 부여 |
 | `study_participant.role_changed` | 네비게이터 지정·해제 | `studyId` · `participantId` · `accountId` · `from` · `to` (`LEADER`/`MEMBER`) | 지정한 캡틴 (DSC-06 이 안 되면 이 사람 이름으로 봇을 부른다) | B4 네비게이터 role 부여·회수 |
 | `study_participant.withdrawn` | 참여 중단 (`withdrawals[]` 의 행마다 1개) | `studyId` · `participantId` · `accountId` · `participantRole` | 중단시킨 사람 | B5 스터디 role 회수 (+ 네비게이터였으면 네비게이터 role) |
 
@@ -262,7 +262,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | ID | 작업명 | 범위 | 선행 | 담당 (제안) |
 |---|---|---|---|---|
 | STD-01 | [기획] 명부 편입 시점 확정 — 신청 PRD 와 스펙 불일치 해소 | 질문 3. (가)면 신청 스펙 · `STUDY_GROUP_ID` NULL 허용 · [study-group 미결 사항](../../specs/study-group/spec.md)을 같이 고친다 | — | seeunrosypark — 정함 (#296) |
-| STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서 | STD-01 · COM-01 | seeunrosypark (#296) |
+| STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서. **명부 편입은 #296, `joined` 발행은 `feat/participant-joined-event` (10-22)** | STD-01 · COM-01 | seeunrosypark (#296) |
 | STD-03 | [BE] 반 · 역할 일괄 변경 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants` — 신청자 탭 「저장」 한 번, 하나라도 거절되면 전부 취소. 10-21 에 한 사람씩 API 를 합쳤다 ([study-group](../../specs/study-group/spec.md), [share](2026-10-21-participant-bulk-change.md)) | COM-01 | kimjiy9607 |
 | STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)) | COM-01 | seeunrosypark |
 
@@ -323,12 +323,20 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
      이렇게 하면 role 부여·회수 **네 창구 모두 시스템 호출**로 통일되고, 질문 4 도 사라진다.
    - **답 (디스코드 봇 담당, 10-20)**: 크루를 중단시키며 스터디 role 회수 → 지금 가능. 네비게이터 창구는 네비게이터 role 전용이라 캡틴으로 한정했다. 다만 스터디 정리(지금은 손으로) 때 시스템이 뗄 수 있어야 할 것 같다 — **회의에서 자세히 정하자.**
    - **상태: 회의 안건.** 정해질 때까지 DSC-06 · DSC-08 은 보류다. DSC-09 의 스터디 role 회수는 지금 만들어도 된다.
+6. **`role_changed` 는 어느 API 가 내고, 무엇을 담나?** (스터디 스쿼드 · 디스코드 스쿼드)
+   - 문서끼리 다르다 (10-22 확인):
+     - beta 에 머지된 [#299](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/299) 는 반 · 역할을 **한 번에 바꾸는 일괄 API** `PATCH /api/admin/studies/{id}/participants` 로 정했다 ([study-group](../../specs/study-group/spec.md))
+     - 머지되지 않은 `docs/discord-link-timing` 브랜치는 STD-03 을 **한 사람씩** `PATCH …/participants/{pid}/role` 로 적었다
+   - 일괄이면 저장 한 번에 **역할이 바뀐 행마다** 1개씩 낸다. 반만 바뀐 행은 내지 않는다 — 스터디 role 은 반이 아니라 스터디 단위라서. 「같은 값이면 안 낸다」가 일괄에서 더 중요해진다
+   - 함께 정할 것: 페이로드(`from` · `to` 만인가, `participantRole` 로 맞추나), actor(질문 5 에서 시스템 호출로 정하면 디스코드 쪽에는 필요 없다), 회수 조건(다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만 — DSC-08 완료 조건)
+   - 정해지면 STD-03 PR(kimjiy9607)에서 [domain-events](../../specs/domain-events/spec.md) 에 한 줄 추가한다. `joined` · `withdrawn` 과 같은 방식 — 디스코드 스쿼드가 리뷰하면 COM-01 합의다
+   - **상태: 회의 안건.** 질문 5 와 같은 자리에서 정한다.
 
 ## 영향 — 누가 무엇을 해야 하나
 
 - **기획**: 질문 1~5 의 제안을 팀과 확정한다 (COM-02). STD-01(명부 편입 시점)을 스터디 스쿼드와 정한다.
 - **두 스쿼드 공통**: COM-01 이벤트 3개 계약부터 합의한다.
-- **회의**: 질문 2 의 자동 가입 여부(DSC-11), 질문 5 의 네비게이터 role 시스템 호출(DSC-06)을 정한다.
+- **회의**: 질문 2 의 자동 가입 여부(DSC-11), 질문 5 의 네비게이터 role 시스템 호출(DSC-06), 질문 6 의 `role_changed` 발행 API · 페이로드를 정한다.
 - **디스코드 스쿼드**: DSC-05 는 #276 으로 올라와 있다 — 리뷰·머지하고 DSC-12 시크릿을 넣는다. DSC-01 · DSC-10 은 **지금 시작할 수 있다.** → [작업 목록](#작업-목록--작업명)
 - **스터디 스쿼드**: STD-03 · STD-04 는 COM-01 뒤에, STD-02 는 STD-01 뒤에 시작한다. → [작업 목록](#작업-목록--작업명)
 - **운영**: 스테이지에서 스터디를 만들어도 디스코드 채널이 안 생기는 게 지금은 정상이다. 버그로 올리지 않아도 된다.
