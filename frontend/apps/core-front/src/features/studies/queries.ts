@@ -47,9 +47,11 @@ export function useStudies(search: StudySearch, initial?: Study[]) {
 }
 
 /** TODO(api): GET /api/studies/{studyId} */
-export function useStudyDetail(studyId: number) {
+/** initial = 서버에서 미리 받은 값 — 첫 HTML 에 본문이 실리게 한다(크롤러는 JS 를 거의 안 돌린다) */
+export function useStudyDetail(studyId: number, initial?: Study | null) {
   return useQuery({
     queryKey: studyKeys.detail(studyId),
+    ...(initial ? { initialData: initial } : {}),
     queryFn: async () => {
       const detail = await http<ApiStudyDetail>(`/api/studies/${studyId}`);
       return toStudyFromDetail(detail);
