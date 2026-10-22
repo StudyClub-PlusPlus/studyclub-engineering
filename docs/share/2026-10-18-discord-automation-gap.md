@@ -251,9 +251,9 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03 이면) 가입 화면. 프론트 담당에게 넘겨도 된다 | DSC-01 · DSC-02 | CLEO525 (#292) |
 | DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **구현됨 — [PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276) 리뷰 대기** (채널 목록·메시지 메서드까지 들어 있다) | — | j7hwang (#276) · 리뷰 doxxx93 |
 | DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | 질문 5. `roles.py` 의 navigator 두 창구 `allow_system=True` + 봇 문서 수정 | 질문 5 | j7hwang |
-| DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자 | DSC-05 · STD-02 | doxxx93 · j7hwang |
+| DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자. **구현됨** — `StudyRoleSyncListener` (DSC-09 와 같은 구독자, 명부에 있으면 붙이고 없으면 뗀다) | DSC-05 · STD-02 | doxxx93 · j7hwang |
 | DSC-08 | [BE] 네비게이터 지정·해제 시 네비게이터 role 부여·회수 | B4. `study_participant.role_changed` 구독자. **완료 조건: 회수는 그 사람이 다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만** (네비게이터 role 은 길드에 하나) | DSC-05 · DSC-06 · STD-03 | doxxx93 · j7hwang |
-| DSC-09 | [BE] 참여 중단 시 스터디 role 회수 | B5. `study_participant.withdrawn` 구독자 · 네비게이터였으면 **DSC-08 과 같은 완료 조건**으로 네비게이터 role 도 (그 부분만 DSC-06 결정 뒤) | DSC-05 · STD-04 | doxxx93 · j7hwang |
+| DSC-09 | [BE] 참여 중단 시 스터디 role 회수 | B5. `study_participant.withdrawn` 구독자 · 네비게이터였으면 **DSC-08 과 같은 완료 조건**으로 네비게이터 role 도 (그 부분만 DSC-06 결정 뒤). **스터디 role 회수는 머지됨 (#315)** | DSC-05 · STD-04 | doxxx93 · j7hwang |
 | DSC-11 | [BE·BOT] 연동 때 길드 자동 가입 (`guilds.join`) | 자동 가입을 하기로 하면. 봇 토큰을 백엔드에 줄지 / 봇에 창구를 만들지 먼저 정한다 | DSC-01 · 질문 2 | j7hwang |
 | DSC-12 | [인프라] stage·운영에 `DISCORD_BOT_ID` 시크릿 추가 | #276 이 읽는 `discord.bot-id`. 값은 내부 시크릿 저장소에만 | #276 | 인프라 담당 (민정님 · 준희님) |
 | DSC-10 | [BE·FE] 백오피스 스터디 상세에 디스코드 연결 상태 · 「다시 연결」 버튼 | 화면·기능 ④. 상세 응답 필드 + `POST .../discord-link` 버튼. 화면은 프론트 담당 | — | seeunrosypark |
