@@ -1,6 +1,7 @@
 package com.studyclub.api.application;
 
 import com.studyclub.api.application.StudyApplicationRequests.SubmitStudyApplicationRequest;
+import com.studyclub.api.application.StudyApplicationResponses.MyStudyApplicationResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -26,6 +27,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -115,6 +117,33 @@ public class StudyApplicationService {
                         accountId,
                         account.getNickname()));
         return saved.getId();
+    }
+
+    // 열려 있는 모집 회차, 없으면 가장 최근 회차 — 백오피스 신청 결과 목록과 같은 회차를 본다
+    @Transactional(readOnly = true)
+    public MyStudyApplicationResponse findMine(Long accountId, Long studyId) {
+        if (!studyRepository.existsById(studyId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        return currentRecruitment(studyId)
+                .flatMap(
+                        recruitment ->
+                                studyApplicationRepository.findByRecruitmentIdAndAccountId(
+                                        recruitment.getId(), accountId))
+                .map(
+                        application ->
+                                new MyStudyApplicationResponse(
+                                        true, application.getId(), application.getCreatedAt()))
+                .orElse(MyStudyApplicationResponse.NOT_APPLIED);
+    }
+
+    private Optional<StudyRecruitment> currentRecruitment(Long studyId) {
+        return studyRecruitmentRepository.findOpenByStudyIdOrderByStartAtDesc(studyId).stream()
+                .findFirst()
+                .or(
+                        () ->
+                                studyRecruitmentRepository
+                                        .findFirstByStudyIdOrderByStartAtDescIdDesc(studyId));
     }
 
     private void checkCapacity(StudyRecruitment recruitment, Long studyId) {

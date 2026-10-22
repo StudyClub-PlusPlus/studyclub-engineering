@@ -1,6 +1,7 @@
 package com.studyclub.api.application;
 
 import com.studyclub.api.application.StudyApplicationRequests.SubmitStudyApplicationRequest;
+import com.studyclub.api.application.StudyApplicationResponses.MyStudyApplicationResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,6 +48,19 @@ public class StudyApplicationController {
         return ResponseEntity.created(
                         URI.create("/api/studies/" + studyId + "/applications/" + applicationId))
                 .build();
+    }
+
+    @Operation(
+            summary = "내 신청 여부 조회",
+            description =
+                    """
+                    열려 있는 모집 회차(없으면 가장 최근 회차)에 내 신청서가 있는지 반환합니다.
+                    신청하지 않았으면 applied=false이고 applicationId·submittedAt은 null입니다.""")
+    @GetMapping("/me")
+    public MyStudyApplicationResponse findMine(
+            @Parameter(description = "스터디 ID", example = "1") @PathVariable Long studyId,
+            Authentication authentication) {
+        return studyApplicationService.findMine(authenticatedAccountId(authentication), studyId);
     }
 
     private Long authenticatedAccountId(Authentication authentication) {

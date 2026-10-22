@@ -743,6 +743,88 @@ class StudyApplicationSubmissionIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 
+    @Test
+    @DisplayName("성공 - 신청한 회원의 내 신청 여부는 신청서 ID와 제출 시각을 준다")
+    void findsMyApplication() {
+        rest.postForEntity(
+                "/api/studies/" + STUDY_ID + "/applications",
+                authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                Void.class);
+        Long applicationId =
+                jdbcTemplate.queryForObject(
+                        "SELECT ID FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ? AND ACCOUNT_ID = ?",
+                        Long.class,
+                        RECRUITMENT_ID,
+                        LINKED_ACCOUNT_ID);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", true)
+                .containsEntry("applicationId", applicationId.intValue());
+        assertThat(Instant.parse((String) response.getBody().get("submittedAt")))
+                .isBefore(Instant.now().plusSeconds(1));
+    }
+
+    @Test
+    @DisplayName("성공 - 신청하지 않은 회원은 applied=false 이고 ID·제출 시각은 null이다")
+    void reportsNotApplied() {
+        var response = getMyApplication(STUDY_ID, UNLINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", false)
+                .containsEntry("applicationId", null)
+                .containsEntry("submittedAt", null);
+    }
+
+    @Test
+    @DisplayName("성공 - 열린 모집 회차가 없으면 가장 최근 회차의 신청을 본다")
+    void fallsBackToLatestRecruitmentAfterDeadline() {
+        rest.postForEntity(
+                "/api/studies/" + STUDY_ID + "/applications",
+                authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                Void.class);
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = ? WHERE ID = ?",
+                Timestamp.from(Instant.now().minusSeconds(1)),
+                RECRUITMENT_ID);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("applied", true);
+    }
+
+    @Test
+    @DisplayName("실패 - 토큰 없이 내 신청 여부를 물으면 401 + UNAUTHORIZED 이다")
+    void rejectsUnauthenticatedMyApplication() {
+        var response =
+                rest.getForEntity("/api/studies/" + STUDY_ID + "/applications/me", Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("실패 - 없는 스터디의 내 신청 여부는 404이다")
+    void rejectsMyApplicationOfUnknownStudy() {
+        var response = getMyApplication(999_999L, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
+    }
+
+    private org.springframework.http.ResponseEntity<Map> getMyApplication(
+            Long studyId, Long accountId) {
+        return rest.exchange(
+                "/api/studies/" + studyId + "/applications/me",
+                org.springframework.http.HttpMethod.GET,
+                authenticatedRequest(accountId, Map.of()),
+                Map.class);
+    }
+
     private void insertAccount(Long id, String email, String discordId, Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO ACCOUNT (ID, EMAIL, NICKNAME, SYSTEM_ROLE, TIME_ZONE, DISCORD_ID,"
