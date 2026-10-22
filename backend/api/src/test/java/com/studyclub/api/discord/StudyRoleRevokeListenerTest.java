@@ -27,6 +27,9 @@ import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.participant.StudyParticipantWithdrawn;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -120,6 +123,31 @@ class StudyRoleRevokeListenerTest {
         listener.onWithdrawn(EVENT);
 
         verify(bot, never()).removeRole(any(), any(), any(), any());
+    }
+
+    @Test
+    void 같은_사람의_회수는_한_번에_하나씩_봇을_부른다() throws Exception {
+        AtomicInteger inFlight = new AtomicInteger();
+        AtomicInteger maxInFlight = new AtomicInteger();
+        CountDownLatch bothInside = new CountDownLatch(2);
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList()))
+                .thenAnswer(
+                        inv -> {
+                            maxInFlight.accumulateAndGet(inFlight.incrementAndGet(), Math::max);
+                            // 잠금이 없으면 두 번째 호출이 이 안으로 들어와 겹친다 — 들어올 틈을 준다
+                            bothInside.countDown();
+                            bothInside.await(300, TimeUnit.MILLISECONDS);
+                            inFlight.decrementAndGet();
+                            return OK;
+                        });
+
+        Thread other = new Thread(() -> listener.onWithdrawn(EVENT));
+        other.start();
+        listener.onWithdrawn(EVENT);
+        other.join();
+
+        verify(bot, times(2)).removeRole(anyString(), anyString(), anyString(), anyList());
+        assertThat(maxInFlight.get()).isEqualTo(1);
     }
 
     @Test
