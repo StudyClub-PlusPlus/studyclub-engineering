@@ -342,7 +342,7 @@ public class StudyMeetingService {
         account(accountId);
         Long participantId =
                 studyParticipantRepository
-                        .findByStudyGroupIdAndAccountId(groupId, accountId)
+                        .findByStudyGroupIdAndAccountIdForUpdate(groupId, accountId)
                         .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(StudyParticipant::getId)
                         .orElseThrow(
@@ -351,15 +351,17 @@ public class StudyMeetingService {
         return new LockedPresenter(find(meetings, meetingId), participantId);
     }
 
-    // 발표자로 넣을 사람은 그 분반의 활성 참여자여야 한다 — 다른 분반·참여 중단한 사람은 400
+    // 발표자로 넣을 사람은 그 분반의 활성 참여자여야 한다 — 다른 분반·참여 중단한 사람은 400.
+    // 고른 행만 잠그고 읽는다 — 잠금을 기다리는 동안 커밋된 참여 중단을 놓치지 않게 (share 10-18 D7)
     private void assertActiveRoster(Long groupId, Set<Long> participantIds) {
         if (participantIds.isEmpty()) {
             return;
         }
         Set<Long> active =
                 studyParticipantRepository
-                        .findByStudyGroupIdAndStatusIn(groupId, StudyCaptainGuard.ROSTER_STATUSES)
+                        .findByIdInAndStudyGroupIdForUpdate(participantIds, groupId)
                         .stream()
+                        .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(StudyParticipant::getId)
                         .collect(Collectors.toSet());
         if (!active.containsAll(participantIds)) {
