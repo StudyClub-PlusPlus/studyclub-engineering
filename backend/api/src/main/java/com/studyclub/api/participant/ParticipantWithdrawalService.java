@@ -21,6 +21,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
@@ -63,15 +65,18 @@ public class ParticipantWithdrawalService {
      * 판정 순서는 스펙 그대로다 — 권한 없는 호출자가 403 · 404 차이로 다른 스터디의 명부 행을 알아내지 못하게, 호출자 판정(403)을 대상 판정(400)보다
      * 먼저 한다.
      *
-     * <p>분반 잠금을 트랜잭션의 첫 조회로 쥔다 — 회차 수정 · 발표 신청과 같은 「분반 잠금 → 권한 판정 → 회차 잠금」 순서다
-     * (specs/study-meeting/spec.md 「잠금」, share 10-18 D7). 그래야 동시에 들어온 발표 신청이 중단자를 다시 넣지 못한다.
+     * <p>잠금은 회차 수정 · 발표 신청과 같은 「분반 잠금 → 권한 판정 → 회차 잠금」 순서다 (specs/study-meeting/spec.md 「잠금」, share
+     * 10-18 D7). 그래야 동시에 들어온 발표 신청이 중단자를 다시 넣지 못한다. 담당 캡틴은 다른 분반의 행도 중단하므로, 요청한 분반과 대상이 속한 분반을
+     * <b>ID 오름차순</b>으로 모두 잠근다 — 회원 탈퇴 · 디스코드 출석도 여러 분반을 같은 순서로 잠가 서로 교착하지 않는다.
      */
     @Transactional
     public Prepared prepare(
             Long actorAccountId, Long studyId, Long studyGroupId, List<Long> participantIds) {
+        Set<Long> lockedGroupIds = lockGroups(studyId, studyGroupId, participantIds);
         StudyGroup group =
                 studyGroupRepository
-                        .findByIdForUpdate(studyGroupId)
+                        .findById(studyGroupId)
+                        .filter(g -> lockedGroupIds.contains(g.getId()))
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
         Study study =
@@ -99,6 +104,12 @@ public class ParticipantWithdrawalService {
                     ErrorCode.INVALID_INPUT, "withdrawals 의 명부 행이 이 스터디에 속하지 않습니다.");
         }
         List<StudyParticipant> targets = participantIds.stream().map(byId::get).toList();
+        // 분반을 잠그기 전에 읽은 소속과 달라졌다 — 그 사이 반을 옮겼다. 잠그지 않은 분반은 건드리지 않는다
+        if (targets.stream()
+                .map(StudyParticipant::getStudyGroupId)
+                .anyMatch(id -> id != null && !lockedGroupIds.contains(id))) {
+            throw new BusinessException(ErrorCode.CONFLICT, "명부가 바뀌었습니다. 다시 불러와 주세요.");
+        }
         if (!ownerCaptain
                 && targets.stream().anyMatch(p -> !studyGroupId.equals(p.getStudyGroupId()))) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "다른 분반의 참여자는 중단시킬 수 없습니다.");
@@ -110,7 +121,25 @@ public class ParticipantWithdrawalService {
         for (StudyParticipant target : targets) {
             assertWithdrawable(target, actorAccountId, study.getCreatedBy());
         }
+        // 회차도 분반과 같은 순서로 미리 잠근다 — 출석 쓰기 · 발표자 비우기가 뒤에서 다시 잠가도 기다리지 않는다
+        for (Long groupId : lockedGroupIds) {
+            studyMeetingRepository.findByStudyGroupIdForUpdate(groupId);
+        }
         return new Prepared(actorAccountId, targets);
+    }
+
+    // 요청한 분반 + 대상이 속한 이 스터디의 분반. 대상 소속은 잠그기 전에 읽으므로, 잠근 뒤 prepare 가 다시 확인한다
+    private Set<Long> lockGroups(Long studyId, Long studyGroupId, List<Long> participantIds) {
+        Set<Long> groupIds = new TreeSet<>();
+        groupIds.add(studyGroupId);
+        groupIds.addAll(
+                studyParticipantRepository.findStudyGroupIdsByIdInAndStudyId(
+                        participantIds, studyId));
+        Set<Long> locked = new TreeSet<>();
+        for (Long groupId : groupIds) {
+            studyGroupRepository.findByIdForUpdate(groupId).ifPresent(g -> locked.add(g.getId()));
+        }
+        return locked;
     }
 
     /** 이미 중단된 행은 건너뛴다 — {@code LEFT_AT} · 감사 로그 · 이벤트 모두 이번에 바뀐 행에만. */
