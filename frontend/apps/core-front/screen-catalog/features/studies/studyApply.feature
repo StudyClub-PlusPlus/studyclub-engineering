@@ -18,14 +18,20 @@ Feature: 스터디 신청 폼 (crew-submit-application)
   Scenario: 디스코드 연동 실패
     Given 디스코드 연동 모달이 열려 있다
     When "디스코드 연동하기"를 클릭했는데 POST /api/me/discord/link 가 실패한다
-    Then 연동 모달에 남아 실패 문구가 보인다 (409 는 다른 계정에 이미 연동, 그 밖은 다시 시도)
+    Then 연동 모달에 남아 실패 문구가 보인다 (409 는 다른 계정에 이미 연동, 503 등 그 밖은 다시 시도)
+
+  Scenario: 스터디클럽 디스코드 서버 미가입
+    Given 디스코드 연동 모달이 열려 있다
+    When "디스코드 연동하기"를 클릭했는데 POST /api/me/discord/link 가 403 DISCORD_NOT_IN_GUILD 를 준다
+    Then 연동 모달에 남아 서버 가입 안내와 "디스코드 서버 가입하기" 링크(site.discord_invite, 새 탭)가 보인다
+    And 가입한 뒤 "디스코드 연동하기"를 다시 누를 수 있다
 
   Scenario: 디스코드 연동 중 로그인 만료
     Given 디스코드 연동 모달이 열려 있다
     When "디스코드 연동하기"를 클릭했는데 POST /api/me/discord/link 가 401 을 준다
     Then 세션을 비우고 로그인 페이지(/ko/login?next=...)로 이동한다
 
-  Scenario: 디스코드 연동 준비 중 (DSC-01 배포 전)
+  Scenario: 디스코드 연동 준비 중 (OAuth 팝업 · 서버 시크릿 전)
     Given NEXT_PUBLIC_DISCORD_LINK_READY 가 꺼져 있다 (비우면 개발 서버에서만 켜진다)
     When 디스코드 미연동 사용자가 신청하기 버튼을 클릭한다
     Then 연동 모달에 "디스코드 연동은 준비 중입니다. 운영진에게 문의해 주세요." 가 보이고 버튼은 "닫기" 하나다

@@ -8,9 +8,10 @@ import { ApiError, http } from '@/lib/http';
 import { getQueryClient } from '@/lib/query-client';
 
 /**
- * 연동 API(DSC-01)가 서버에 있는가. 없으면 연동 창이 POST 를 보내지 않고 「준비 중」을 알린다.
+ * 연동 창이 진짜로 연동할 수 있는가. 연동 API(DSC-01, #298)는 있지만 화면에 디스코드 OAuth 팝업(DSC-04)이 없고
+ * 서버 OAuth 시크릿도 환경마다 따로 넣어야 한다. 꺼져 있으면 연동 창이 POST 를 보내지 않고 「준비 중」을 알린다.
  * NEXT_PUBLIC_DISCORD_LINK_READY 가 정하고, 비어 있으면 MSW 목이 도는 개발 서버에서만 켠다.
- * DSC-01 이 나오면 이 분기를 디스코드 OAuth 팝업으로 바꾼다.
+ * 팝업이 붙고 그 환경에 시크릿이 들어가면 켠다.
  */
 const DISCORD_LINK_READY_ENV = process.env.NEXT_PUBLIC_DISCORD_LINK_READY;
 export const DISCORD_LINK_READY = DISCORD_LINK_READY_ENV

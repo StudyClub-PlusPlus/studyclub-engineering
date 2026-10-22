@@ -34,7 +34,7 @@
 
 | 언제 | 봇이 할 일 | 봇 창구 | 그 시점의 백엔드 API | 봇 호출 |
 |---|---|---|---|---|
-| 회원가입 | 디스코드 가입 여부 확인 | **없음** | `POST /api/me/discord/link` — 스펙작성중, 코드 없음 | ❌ |
+| 회원가입 | 디스코드 가입 여부 확인 | **없음** | `POST /api/me/discord/link` — 구현완료 (#298) | ❌ |
 | 캡틴이 스터디 생성 | 채널·스터디 role 생성 | `POST /api/v1/studies` ✅ | `POST /api/admin/studies` — 구현완료 | ⚠️ 부르지만 디스코드 ID 가 없어 건너뜀 |
 | 크루가 신청서 제출 | 크루에게 스터디 role 부여 | `POST /api/v1/roles/{roleId}/users` ✅ | `POST /api/studies/{id}/applications` — 구현완료 | ❌ |
 | 캡틴이 네비게이터 선정 | 네비게이터 role 부여 | `POST /api/v1/roles/navigator/users` ✅ | `PATCH /api/admin/studies/{id}/participants` (반 · 역할 일괄, 10-21) — 스펙작성중, 코드 없음 | ❌ |
@@ -110,7 +110,7 @@
 |---|---|---|---|
 | `POST /api/discord/studies/{discordStudyId}/attendances` | 봇이 음성 채널 출석을 백엔드에 기록 | ✅ 구현완료 ([discord-attendance](../../specs/discord-attendance/spec.md)) | ✅ 봇 `/attendance` 명령 (`discord/app/backend_client.py`) |
 | `POST /api/admin/studies/{studyId}/discord-link` | 자동 생성이 실패한 스터디에 디스코드 다시 붙이기 | ✅ 구현완료 ([discord-study-link](../../specs/discord-study-link/spec.md)) | ❌ **백오피스 화면에 버튼이 없다.** 지금은 API 를 직접 불러야 한다 |
-| `POST /api/me/discord/link` | 디스코드 계정 연동 (`DISCORD_ID` 저장) | ❌ 스펙작성중, 코드 없음 | 🔶 사이트 연동 창이 부르게 바꿨다 (#292). API 가 나오기 전 운영·stage 는 부르지 않고 「준비 중」을 보인다 |
+| `POST /api/me/discord/link` | 디스코드 계정 연동 (`DISCORD_ID` 저장) | ✅ 구현완료 (#298) | 🔶 사이트 연동 창이 부르게 바꿨다 (#292). OAuth 팝업(DSC-04)이 붙기 전 운영·stage 는 부르지 않고 「준비 중」을 보인다 |
 
 ### 앞으로 만들 창구
 
@@ -129,7 +129,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | # | 화면·기능 | 파일 | 지금 | 해야 할 것 | 담당 |
 |---|---|---|---|---|---|
 | ① | 사이트 「신청하기」 버튼 | `core-front/src/components/ApplyButton.tsx` | 🔶 #292 — `GET /api/me` 의 `discordLinked` 로 판단한다. DSC-02 전에는 필드가 없어 폼을 열고, 제출 403 에서 연동 창을 연다 | `GET /api/me` 의 `discordLinked` 로 판단. 서버가 403 을 주면 연동 창을 여는 처리는 이미 있다 (`ApplyDialog` 의 `onRequireDiscord`) | 프론트 (B1 이후) |
-| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | 🔶 #292 — `POST /api/me/discord/link` 를 부른다. 아직 OAuth 팝업이 없어 코드는 자리표시값이고, DSC-01 전 운영·stage 는 `NEXT_PUBLIC_DISCORD_LINK_READY` 를 꺼 「준비 중」만 보인다 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
+| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | 🔶 #292 — `POST /api/me/discord/link` 를 부른다. 아직 OAuth 팝업이 없어 코드는 자리표시값이고, 운영·stage 는 `NEXT_PUBLIC_DISCORD_LINK_READY` 를 꺼 「준비 중」만 보인다. 403 길드 미가입이면 서버 가입 안내 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
 | ③ | 신청서의 디스코드 별명 칸 | `core-front/src/components/ApplyDialog.tsx` | 기본값을 브라우저 저장소에서 읽는다. 제출은 서버로 간다 ✅ | 스펙대로 `GET /api/me` 의 `discordNickname` 에서 읽기 | 프론트 |
 | ④ | 백오피스 스터디 등록 | `back-office-front/src/components/StudyForm.tsx` | 등록은 된다. 디스코드 생성이 성공했는지 **알 수 없다** | 상세에 연결 여부 표시 + 실패 시 「디스코드 다시 연결」 버튼(`POST .../discord-link`) | 디스코드 스쿼드 (응답 필드) · 프론트 |
 | ⑤ | 스터디의 디스코드 링크 | 백오피스 `StudyForm` 입력 → 사이트 상세·내 스터디 표시 | 캡틴이 링크(`STUDY.DISCORD_CHANNEL_URL`)를 **손으로** 넣는다. 봇이 만든 채널과 따로 논다 | 봇이 만든 채널로 자동으로 채울지 정한다 (이번 범위 밖) | 기획 |

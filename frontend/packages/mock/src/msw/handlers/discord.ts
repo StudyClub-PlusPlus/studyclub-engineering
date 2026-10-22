@@ -3,8 +3,9 @@ import { bypass, HttpResponse } from 'msw';
 import { mockClient, readSessionUser, type MockResolveContext } from '../utils';
 
 /**
- * 디스코드 연동 여부 — GET /api/me 의 `discordLinked` (DSC-02) · POST /api/me/discord/link (DSC-01).
- * 백엔드에 아직 없는 것만 목이 대신 답한다. GET /api/me 는 이미 있으니 기본은 진짜 응답에 `discordLinked` 만 덧붙인다.
+ * 디스코드 연동 여부 — GET /api/me 의 `discordLinked` (DSC-02) · POST /api/me/discord/link (DSC-01, #298).
+ * 백엔드에 아직 없거나 로컬에서 부를 수 없는 것만 목이 대신 답한다 — 연동 API 는 진짜 디스코드 인가 코드가 있어야 해서 목이 받는다.
+ * GET /api/me 는 이미 있으니 기본은 진짜 응답에 `discordLinked` 만 덧붙인다.
  * 연동하면 이 브라우저에 기억해 새로고침해도 연동된 채로 둔다.
  * 처음 상태를 바꾸려면 MSW 데브툴에서 프리셋을 고르거나 이 키를 지운다.
  */
@@ -46,7 +47,16 @@ function me(discordLinked: boolean) {
   return { ...sessionAccount(), createdAt: '2026-01-01T00:00:00Z', discordNickname: null, discordLinked };
 }
 
-/** 진짜 GET /api/me 응답에 `discordLinked` 만 덧붙인다. 401 등 실패는 그대로, 백엔드에 닿지 않으면 대체 응답. */
+/**
+ * core-front 개발 서버의 미리보기 세션(lib/preview.ts). 서버가 발급한 토큰이 없어 진짜 서버는 늘 401 을 준다.
+ * 진짜 회원 id 는 양수라 0 으로 가른다.
+ */
+const PREVIEW_ACCOUNT_ID = 0;
+
+/**
+ * 진짜 GET /api/me 응답에 `discordLinked` 만 덧붙인다. 401 등 실패는 그대로 넘긴다.
+ * 백엔드에 닿지 않거나, 미리보기 세션이라 401 이면 대체 응답 — 백엔드를 띄운 채로도 미리보기로 신청 흐름을 볼 수 있게.
+ */
 async function realMeWithLinked(request: Request): Promise<Response | ReturnType<typeof me>> {
   let real: Response;
   try {
@@ -54,6 +64,7 @@ async function realMeWithLinked(request: Request): Promise<Response | ReturnType
   } catch {
     return me(readLinked());
   }
+  if (real.status === 401 && readSessionUser()?.id === PREVIEW_ACCOUNT_ID) return me(readLinked());
   if (!real.ok) return real;
   return HttpResponse.json({ ...(await real.json()), discordLinked: readLinked() });
 }
@@ -103,9 +114,14 @@ export const discordLinkHandlers = mockClient.createHandlerGroup('/api/me/discor
         response: { errorCode: 'UNAUTHORIZED', errorMessage: '로그인이 필요합니다.' },
       },
       {
-        label: '디스코드 응답 실패 (502)',
-        status: 502,
-        response: { errorCode: 'BAD_GATEWAY', errorMessage: '디스코드 연동에 실패했습니다.' },
+        label: '디스코드 서버 미가입 (403)',
+        status: 403,
+        response: { errorCode: 'DISCORD_NOT_IN_GUILD', errorMessage: '스터디클럽 디스코드 서버 멤버가 아닙니다.' },
+      },
+      {
+        label: '디스코드 응답 실패 (503)',
+        status: 503,
+        response: { errorCode: 'EXTERNAL_SERVICE_ERROR', errorMessage: '디스코드 연동에 실패했습니다.' },
       },
     ],
   },

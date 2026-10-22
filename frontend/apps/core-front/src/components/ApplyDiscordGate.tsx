@@ -3,8 +3,9 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { site } from '@studyclub/mock';
 import { Button, Modal } from '@studyclub/ui';
-import { MessageCircle } from 'lucide-react';
+import { ExternalLink, MessageCircle } from 'lucide-react';
 
 import { clearSession, getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
@@ -13,13 +14,20 @@ import { ApiError } from '@/lib/http';
 import { t } from '@/lib/i18n';
 
 /**
- * 디스코드 OAuth 인가 코드. 디스코드 앱 등록·백엔드(DSC-01) 전이라 아직 팝업을 열지 않는다 —
+ * 디스코드 OAuth 인가 코드 자리. 연동 API(DSC-01, #298)는 있지만 화면에 OAuth 팝업이 아직 없다(DSC-04) —
  * DISCORD_LINK_READY 가 켜진 개발 서버에서만 보내고, MSW 목은 코드를 보지 않는다.
- * 백엔드가 붙으면 OAuth 팝업으로 받은 코드로 바꾼다.
+ * 팝업이 붙으면 거기서 받은 코드로 바꾼다.
  */
 const PENDING_OAUTH_CODE = 'pending-oauth';
 
-/** POST /api/me/discord/link 실패 문구. 401 은 로그인으로 보내고, 502(토큰 교환 실패) 등은 기본 문구. */
+function isNotInGuild(e: unknown) {
+  return e instanceof ApiError && e.status === 403 && (e.body as { errorCode?: string } | undefined)?.errorCode === 'DISCORD_NOT_IN_GUILD';
+}
+
+/**
+ * POST /api/me/discord/link 실패 문구. 401 은 로그인으로 보내고, 403 길드 미가입은 가입 안내(notInGuild)로 따로 보인다.
+ * 503(토큰 교환 실패·서버 설정 없음) 등은 기본 문구.
+ */
 function linkErrorCopy(e: unknown) {
   if (e instanceof ApiError && e.status === 409) {
     return {
@@ -52,11 +60,14 @@ export function ApplyDiscordGate({
   const pathname = usePathname();
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 403 DISCORD_NOT_IN_GUILD — 스터디클럽 디스코드 서버에 먼저 가입해야 한다 */
+  const [notInGuild, setNotInGuild] = useState(false);
 
   /** 세션이 끝났다 — 창에 남겨 두지 않고 신청하기와 같이 로그인으로 보낸다 */
   function goLogin() {
     clearSession();
     setError(null);
+    setNotInGuild(false);
     onClose();
     router.push(`/${locale}/login?next=${encodeURIComponent(pathname)}`);
   }
@@ -66,6 +77,7 @@ export function ApplyDiscordGate({
     if (!user) return goLogin();
     setLinking(true);
     setError(null);
+    setNotInGuild(false);
     try {
       await linkDiscord(user.id, PENDING_OAUTH_CODE);
       setLinking(false);
@@ -73,12 +85,14 @@ export function ApplyDiscordGate({
     } catch (e) {
       setLinking(false);
       if (e instanceof ApiError && e.status === 401) return goLogin();
+      if (isNotInGuild(e)) return setNotInGuild(true);
       setError(t(linkErrorCopy(e), locale));
     }
   }
 
   function handleClose() {
     setError(null);
+    setNotInGuild(false);
     onClose();
   }
 
@@ -115,6 +129,22 @@ export function ApplyDiscordGate({
           <p role='status' className='text-sm leading-relaxed text-fg-secondary'>
             {t({ ko: '디스코드 연동은 준비 중입니다. 운영진에게 문의해 주세요.', en: 'Discord connection is coming soon. Please contact the organizers.' }, locale)}
           </p>
+        )}
+        {notInGuild && (
+          <div role='alert' className='flex flex-col gap-2 rounded-control bg-surface-2 p-3'>
+            <p className='text-sm leading-relaxed text-fg'>
+              {t({ ko: '스터디클럽 디스코드 서버에 아직 가입하지 않았습니다. 서버에 가입한 뒤 다시 연동해 주세요.', en: 'You have not joined the StudyClub Discord server yet. Join the server, then connect again.' }, locale)}
+            </p>
+            <a
+              href={site.discord_invite}
+              target='_blank'
+              rel='noreferrer'
+              className='inline-flex items-center gap-1 self-start text-sm font-semibold text-brand hover:underline'
+            >
+              {t({ ko: '디스코드 서버 가입하기', en: 'Join the Discord server' }, locale)}
+              <ExternalLink size={14} aria-hidden />
+            </a>
+          </div>
         )}
         {error && (
           <p role='alert' className='text-xs text-error-700'>
