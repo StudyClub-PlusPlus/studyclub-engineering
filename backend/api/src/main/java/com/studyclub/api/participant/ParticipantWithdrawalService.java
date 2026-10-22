@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
@@ -61,19 +62,22 @@ public class ParticipantWithdrawalService {
     /**
      * 판정 순서는 스펙 그대로다 — 권한 없는 호출자가 403 · 404 차이로 다른 스터디의 명부 행을 알아내지 못하게, 호출자 판정(403)을 대상 판정(400)보다
      * 먼저 한다.
+     *
+     * <p>분반 잠금을 트랜잭션의 첫 조회로 쥔다 — 회차 수정 · 발표 신청과 같은 「분반 잠금 → 권한 판정 → 회차 잠금」 순서다
+     * (specs/study-meeting/spec.md 「잠금」, share 10-18 D7). 그래야 동시에 들어온 발표 신청이 중단자를 다시 넣지 못한다.
      */
     @Transactional
     public Prepared prepare(
             Long actorAccountId, Long studyId, Long studyGroupId, List<Long> participantIds) {
+        StudyGroup group =
+                studyGroupRepository
+                        .findByIdForUpdate(studyGroupId)
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
         Study study =
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        StudyGroup group =
-                studyGroupRepository
-                        .findById(studyGroupId)
-                        .orElseThrow(
-                                () -> new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
         if (!studyId.equals(group.getStudyId())) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
         }
@@ -86,7 +90,9 @@ public class ParticipantWithdrawalService {
                     ErrorCode.INVALID_INPUT, "withdrawals 에 같은 명부 행이 두 번 있습니다.");
         }
         Map<Long, StudyParticipant> byId =
-                studyParticipantRepository.findByIdInAndStudyId(participantIds, studyId).stream()
+                studyParticipantRepository
+                        .findByIdInAndStudyIdForUpdate(participantIds, studyId)
+                        .stream()
                         .collect(Collectors.toMap(StudyParticipant::getId, Function.identity()));
         if (byId.size() != participantIds.size()) {
             throw new BusinessException(
@@ -134,15 +140,23 @@ public class ParticipantWithdrawalService {
         return true;
     }
 
-    // 중단 시각 뒤에 시작하는 회차의 발표자 칸을 비운다 — 이미 시작한 회차의 발표 기록은 남는다 (share 10-18 D7)
+    // 중단 시각 뒤에 시작하는 회차의 발표자 칸을 비운다 — 이미 시작한 회차의 발표 기록은 남는다 (share 10-18 D7).
+    // 회차는 잠그고 읽는다. 디스코드 출석이 같은 잠금으로 회차를 시작하므로, 잠근 뒤에 「시작한 회차」 를 판정해야 한다
     private void releasePresenterSlots(List<StudyParticipant> withdrawn, Instant now) {
         List<Long> ids = withdrawn.stream().map(StudyParticipant::getId).toList();
-        if (ids.isEmpty()) {
-            return;
-        }
-        for (StudyMeeting meeting : studyMeetingRepository.findByPresenterIn(ids)) {
-            for (Long id : ids) {
-                meeting.releasePresenter(id, now);
+        List<Long> groupIds =
+                withdrawn.stream()
+                        .map(StudyParticipant::getStudyGroupId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .sorted()
+                        .toList();
+        for (Long groupId : groupIds) {
+            for (StudyMeeting meeting :
+                    studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)) {
+                for (Long id : ids) {
+                    meeting.releasePresenter(id, now);
+                }
             }
         }
     }

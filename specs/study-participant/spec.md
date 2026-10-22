@@ -4,6 +4,7 @@
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md)
 > 생성일: 2026-10-07
 > 상태: 구현완료 (2026-10-20)
+> 갱신: 2026-10-22 — 서버 동작에 잠금 순서(분반 → 명부 행 → 회차)를 적었다. 회원 탈퇴 · 발표 신청도 같은 잠금을 쓴다 (#301 에서 옮겨 옴)
 >
 > Story PRD:
 > - [네비게이터는 참여자를 스터디에서 제명할 수 있다.](../../01-planning/stories/navigator-withdraw-participant/PRD.md)
@@ -96,6 +97,8 @@
 ### 서버 동작
 
 1. 요청 전체를 **한 트랜잭션**으로 묶는다. 하나라도 거절되면 출석도 중단도 반영하지 않는다
+   - **잠금**: 요청한 분반을 트랜잭션의 첫 조회로 잠그고(`FOR UPDATE`), 중단 대상 명부 행도 잠그고 읽는다. 회차 수정 · 발표 신청 · 회원 탈퇴가 같은 분반 잠금과 같은 명부 행 잠금을 쓴다 — 동시에 들어온 발표 신청이 중단자를 다시 넣지 못하고, 회원 탈퇴의 `DELETED` 와 중단의 `LEFT_AT` 이 서로를 덮어쓰지 않는다 ([share D7](../../docs/share/2026-10-18-schedule-attendance-feedback.md), [회차 스펙 「잠금」](../study-meeting/spec.md))
+   - `LEFT_AT` 은 잠금을 얻은 **뒤**의 서버 시각이다. 발표자를 비울 회차도 잠근 뒤에 「시작했는지」 판정한다 — 디스코드 출석이 같은 회차 잠금으로 회차를 시작한다
 2. `updates[]` — 기존 출석 upsert 그대로
 3. `withdrawals[]` — `STATUS = WITHDRAWN`, `LEFT_AT = now()` (UTC). 지난 날짜로 소급하지 않는다
 4. 출석 행은 지우지 않는다. `SCHEDULED_AT > LEFT_AT` 인 회차는 출석률 집계에서 빠진다 — 시각으로 견주므로 같은 날 뒤 회차도 빠진다. 산식은 [attendance spec](../attendance/spec.md) 의 `upper_bound` 그대로
