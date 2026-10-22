@@ -3,7 +3,7 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
-> 상태: 스펙작성중
+> 상태: 구현중
 >
 > Story PRD:
 > - [캡틴은 개별 스터디의 참석자를 볼 수 있다.](../../01-planning/stories/captain-view-attendees/PRD.md)
@@ -99,82 +99,60 @@
 
 ---
 
-## 네비게이터 지정 · 해제
+## 역할·반 일괄 변경
 
 ### 기본 정보
 
 - **Method**: PATCH
-- **Path**: `/api/admin/studies/{studyId}/participants/{participantId}/role`
+- **Path**: `/api/admin/studies/{studyId}/participants`
 - **인증**: 필요 — ADMIN
-- **설명**: 명부 행의 스터디 역할을 바꾼다. 한 스터디(한 분반)에 네비게이터를 여러 명 둘 수 있다.
+- **설명**: 역할(네비게이터 지정 · 해제)과 반 이동을 한 번에 처리한다. 항목당 `participantRole` · `groupId` 중 하나 이상 필요하다.
 
 ### Request Body
 
 ```json
-{ "participantRole": "LEADER" }
+{
+  "changes": [
+    { "participantId": 41, "participantRole": "LEADER" },
+    { "participantId": 42, "groupId": 7 },
+    { "participantId": 43, "participantRole": "MEMBER", "groupId": 8 }
+  ]
+}
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| participantRole | String | Y | `LEADER` · `MEMBER` (부반장 `CO_LEADER` 는 2026-10-09 에 없앴다 — [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
+| changes | Array | Y | 1 ~ 200개 |
+| changes[].participantId | Long | Y | 그 스터디의 명부 행 ID |
+| changes[].participantRole | String | N | `LEADER` · `MEMBER` ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)). 없으면 역할 유지 |
+| changes[].groupId | Long | N | 이동할 반 ID (같은 스터디). 없으면 반 유지 |
 
 ### 서버 동작
 
-- 활성 행(`ACTIVE` · `PAUSED`)만 바꾼다. 아니면 409 `PARTICIPANT_NOT_ACTIVE`
-- 같은 값이면 그대로 200
+- **all-or-nothing** — 검증 실패 시 한 건도 반영하지 않는다
+- 중복 `participantId` 거부
+- 활성 행(`ACTIVE` · `PAUSED`)만 변경. 아니면 409 `PARTICIPANT_NOT_ACTIVE`
+- **역할**: 같은 값이면 no-op (멱등). 변경되면 `StudyParticipantRoleChanged` 이벤트 발행
+- **반 이동**: 같은 반이면 no-op. 옛 반 예정 회차의 발표자 칸 비움 · 새 반 예정 회차에 `ABSENT` 행 생성 (이미 행이 있으면 건너뜀). 지난 출석은 그대로 둔다
 
 ### Response — 200
 
 ```json
-{ "participantId": 41, "participantRole": "LEADER" }
+{
+  "participants": [
+    { "participantId": 41, "participantRole": "LEADER", "groupId": 7 },
+    { "participantId": 42, "participantRole": "MEMBER", "groupId": 7 }
+  ]
+}
 ```
+
+응답 순서는 요청 `changes` 순서를 따른다.
 
 ### Error Responses
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 값 누락 · 목록 밖 |
-| 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
-| 404 | NOT_FOUND | 없는 스터디 · 그 스터디의 명부 행이 아님 |
-| 409 | PARTICIPANT_NOT_ACTIVE | 하차 · 탈퇴한 행 |
-
----
-
-## 크루의 반 지정 · 이동
-
-### 기본 정보
-
-- **Method**: PATCH
-- **Path**: `/api/admin/studies/{studyId}/participants/{participantId}/group`
-- **인증**: 필요 — ADMIN
-
-### Request Body
-
-```json
-{ "groupId": 7 }
-```
-
-| 필드 | 타입 | 필수 | 설명 |
-|------|------|------|------|
-| groupId | Long | Y | 같은 스터디의 분반 |
-
-### 서버 동작
-
-- 반을 옮겨도 지난 출석은 그대로 둔다(출석은 회차에 붙어 있다)
-- 옛 반에서 맡은 **예정** 회차의 발표자 칸은 비운다 — [회차 스펙](../study-meeting/spec.md)
-- 새 반의 예정 회차 출석 행은 회차 생성 규칙대로 `ABSENT` 로 만든다
-
-### Response — 200
-
-```json
-{ "participantId": 41, "groupId": 7 }
-```
-
-### Error Responses
-
-| 상태 | errorCode | 조건 |
-|------|-----------|------|
-| 400 | INVALID_INPUT | `groupId` 누락 · 다른 스터디의 반 |
+| 400 | INVALID_INPUT | `changes` 빈 배열 · 200개 초과 · 중복 `participantId` · `participantRole` 과 `groupId` 둘 다 없음 · 다른 스터디의 반 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 명부 행 · 반 |
 | 409 | PARTICIPANT_NOT_ACTIVE | 하차 · 탈퇴한 행 |
@@ -313,7 +291,8 @@
 ## 데이터 변경 (필요)
 
 - `STUDY_GROUP` 에 `DAYS_OF_WEEK` (VARCHAR, NULL 허용) 추가 — 스터디 시간 수정 창과 「회차 추가」 기본 요일이 읽는다. 시작일 · 종료일 컬럼은 두지 않는다(기간은 회차에서 계산)
-- `ErrorCode` 에 `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` 추가
+
+> `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` — 구현완료, `ErrorCode` 에 추가됨.
 
 ## 프론트엔드 사용처
 
