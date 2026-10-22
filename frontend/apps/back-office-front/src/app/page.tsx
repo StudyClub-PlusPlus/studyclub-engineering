@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import { site } from '@studyclub/mock';
+import { site, type StudyclubEvent } from '@studyclub/mock';
 import { StatCard } from '@studyclub/ui';
 import { BookOpen, CalendarDays } from 'lucide-react';
 
@@ -10,7 +10,7 @@ import { Card } from '@/components/DashboardCharts';
 import { PageHeader, TableCard } from '@/components/ui';
 import { useStudies } from '@/features/studies/queries';
 import type { StudyRow } from '@/features/studies/types';
-import { tx } from '@/lib/l10n';
+import { EVENT_TYPE_LABEL, tx } from '@/lib/l10n';
 
 /**
  * 운영 대시보드.
@@ -30,6 +30,7 @@ function Pending() {
 export default function Dashboard() {
   const { data: studyPage } = useStudies({});
   const studyRows: StudyRow[] = studyPage?.rows ?? [];
+  const upcoming: StudyclubEvent[] = [];
 
   const runningStudies = studyRows.filter((s) => s.phase !== 'CLOSED').length;
   const recruiting = studyRows.filter((s) => s.recruiting || s.phase === 'RECRUITING');
@@ -100,7 +101,10 @@ export default function Dashboard() {
               {recruiting.map((s) => (
                 <tr key={s.studyId}>
                   <td className='max-w-0 truncate font-semibold'>
-                    <Link href={`/studies/${s.studyId}`} className='underline-offset-4 hover:text-brand hover:underline'>
+                    <Link
+                      href={`/studies/${s.studyId}`}
+                      className='underline-offset-4 hover:text-brand hover:underline'
+                    >
                       {s.title}
                     </Link>
                   </td>

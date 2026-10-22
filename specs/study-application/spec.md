@@ -508,6 +508,8 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 ### 프론트엔드 사용처
 
 - `frontend/apps/playground/src/proto/console/components/ResultsTab.tsx`
+- `frontend/apps/back-office-front/src/features/application-results/ApplicationResultsTab.tsx` — 신청 결과 탭. 질문별 집계·기타 답변·응답자별 표, 빈 상태·조회 실패·권한 오류를 처리한다. 보기는 URL에 저장하고 `recruitmentId`가 있으면 해당 회차를 조회한다.
+- 모집 회차 선택 드롭다운은 회차 목록 조회 계약이 없어 미구현이다. 현재 응답은 선택된 회차의 신청만 포함하므로 여기서 전체 회차를 추론하지 않는다.
 
 ---
 
