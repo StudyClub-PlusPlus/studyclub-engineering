@@ -31,6 +31,8 @@ class StudyApplicationSubmissionIntegrationTest {
     private static final Long STUDY_ID = 10_610L;
     private static final Long RECRUITMENT_ID = 10_620L;
     private static final Long GROUP_ID = 10_630L;
+    private static final Long PAST_RECRUITMENT_ID = 10_621L;
+    private static final Instant SUBMITTED_AT = Instant.parse("2026-09-19T12:00:00Z");
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -743,6 +745,110 @@ class StudyApplicationSubmissionIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 
+    @Test
+    @DisplayName("성공 - 신청한 회원의 내 신청 여부는 신청서 ID와 행 생성 시각을 준다")
+    void findsMyApplication() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", true)
+                .containsEntry("applicationId", 10_640)
+                .containsEntry("submittedAt", "2026-09-19T12:00:00Z");
+    }
+
+    @Test
+    @DisplayName("성공 - 신청하지 않은 회원은 applied=false 이고 ID·제출 시각은 null이다")
+    void reportsNotApplied() {
+        var response = getMyApplication(STUDY_ID, UNLINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", false)
+                .containsEntry("applicationId", null)
+                .containsEntry("submittedAt", null);
+    }
+
+    @Test
+    @DisplayName("성공 - 더 늦게 시작한 마감 회차가 있어도 열린 모집 회차의 신청을 본다")
+    void prefersOpenRecruitment() {
+        Instant now = Instant.now();
+        insertRecruitment(PAST_RECRUITMENT_ID, now.minusSeconds(30), now.minusSeconds(10));
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertApplication(10_641L, PAST_RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getBody()).containsEntry("applicationId", 10_640);
+    }
+
+    @Test
+    @DisplayName("성공 - 열린 모집 회차가 없으면 시작이 가장 늦은 회차의 신청을 본다")
+    void fallsBackToLatestRecruitmentAfterDeadline() {
+        Instant now = Instant.now();
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = ? WHERE ID = ?",
+                Timestamp.from(now.minusSeconds(1)),
+                RECRUITMENT_ID);
+        // ID 는 더 크지만 시작이 더 이른 회차 — ID 순으로 고르면 틀린다
+        insertRecruitment(PAST_RECRUITMENT_ID, now.minusSeconds(7200), now.minusSeconds(3600));
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertApplication(10_641L, PAST_RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("applicationId", 10_640);
+    }
+
+    @Test
+    @DisplayName("실패 - 탈퇴로 계정이 지워진 토큰은 남은 신청서를 조회하지 못하고 401이다")
+    void rejectsDeletedAccount() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        var issuedBeforeLeave = authenticatedRequest(LINKED_ACCOUNT_ID, Map.of());
+        jdbcTemplate.update("DELETE FROM ACCOUNT WHERE ID = ?", LINKED_ACCOUNT_ID);
+
+        var response =
+                rest.exchange(
+                        "/api/studies/" + STUDY_ID + "/applications/me",
+                        org.springframework.http.HttpMethod.GET,
+                        issuedBeforeLeave,
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("실패 - 토큰 없이 내 신청 여부를 물으면 401 + UNAUTHORIZED 이다")
+    void rejectsUnauthenticatedMyApplication() {
+        var response =
+                rest.getForEntity("/api/studies/" + STUDY_ID + "/applications/me", Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("실패 - 없는 스터디의 내 신청 여부는 404이다")
+    void rejectsMyApplicationOfUnknownStudy() {
+        var response = getMyApplication(999_999L, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
+    }
+
+    private org.springframework.http.ResponseEntity<Map> getMyApplication(
+            Long studyId, Long accountId) {
+        return rest.exchange(
+                "/api/studies/" + studyId + "/applications/me",
+                org.springframework.http.HttpMethod.GET,
+                authenticatedRequest(accountId, Map.of()),
+                Map.class);
+    }
+
     private void insertAccount(Long id, String email, String discordId, Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO ACCOUNT (ID, EMAIL, NICKNAME, SYSTEM_ROLE, TIME_ZONE, DISCORD_ID,"
@@ -843,6 +949,35 @@ class StudyApplicationSubmissionIntegrationTest {
                 now);
     }
 
+    private void insertRecruitment(Long id, Instant startAt, Instant deadlineAt) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_RECRUITMENT (ID, STUDY_ID, TITLE, DESCRIPTION, START_AT,"
+                        + " RECRUIT_DEADLINE_AT, RECRUITMENT_CAPACITY, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id,
+                STUDY_ID,
+                "다른 모집",
+                "모집 설명",
+                Timestamp.from(startAt),
+                Timestamp.from(deadlineAt),
+                2,
+                now,
+                now);
+    }
+
+    private void insertApplication(Long id, Long recruitmentId, Long accountId, Instant createdAt) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_APPLICATION (ID, ACCOUNT_ID, RECRUITMENT_ID, FORM_ANSWER,"
+                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, CAST(? AS JSON), ?, ?)",
+                id,
+                accountId,
+                recruitmentId,
+                "{}",
+                Timestamp.from(createdAt),
+                Timestamp.from(createdAt));
+    }
+
     private void insertGroup(Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY_GROUP (ID, STUDY_ID, NAME, START_AT, TIMEZONE, CAPACITY,"
@@ -860,7 +995,9 @@ class StudyApplicationSubmissionIntegrationTest {
     private void clean() {
         jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update(
-                "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ?", RECRUITMENT_ID);
+                "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID IN (?, ?)",
+                RECRUITMENT_ID,
+                PAST_RECRUITMENT_ID);
         jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID = ?", STUDY_ID);
