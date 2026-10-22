@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
+import { stubApiMe } from '../stubApiMe';
+
 // ── 세션 주입 헬퍼 ──────────────────────────────────────────────────────────
 
 async function seedSession(
@@ -12,6 +14,8 @@ async function seedSession(
   } = {},
 ) {
   const { authenticated = true, discordLinked = true, appliedStudyIds = [] } = options;
+
+  if (authenticated) await stubApiMe(page);
 
   await page.addInitScript(
     ({ auth, discord, applied }) => {
@@ -30,7 +34,7 @@ async function seedSession(
         localStorage.removeItem('sc_user');
       }
 
-      // 연동 여부는 GET /auth/me 의 discordLinked 다 — 개발 서버의 MSW 목이 이 값으로 답한다
+      // 연동 여부는 GET /api/me 의 discordLinked 다 — 개발 서버의 MSW 목이 진짜 응답에 이 값을 덧붙인다
       localStorage.setItem('msw-discord-linked', String(discord));
       if (discord) {
         localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));

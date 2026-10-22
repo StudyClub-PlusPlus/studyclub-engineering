@@ -1,6 +1,6 @@
 import { registerHandlers, type MockHandlerGroup } from '../utils';
 import { accountsHandlers } from './accounts';
-import { authMeHandlers, discordLinkHandlers } from './auth';
+import { meDiscordHandlers, discordLinkHandlers } from './discord';
 import { notificationTemplatesHandlers } from './notification-templates';
 import { notificationsHandlers } from './notifications';
 import { rolePermissionsHandlers } from './role-permissions';
@@ -12,7 +12,7 @@ import { studiesHandlers, adminStudiesHandlers, adminStudyProgramsHandlers } fro
 export { registerHandlers, type MockHandlerGroup } from '../utils';
 export { studiesHandlers, adminStudiesHandlers, adminStudyProgramsHandlers } from './studies';
 export { accountsHandlers, mockAdminAccounts } from './accounts';
-export { authMeHandlers, discordLinkHandlers, MOCK_DISCORD_LINKED_KEY } from './auth';
+export { meDiscordHandlers, discordLinkHandlers, MOCK_DISCORD_LINKED_KEY } from './discord';
 export { rolePermissionsHandlers, mockRolePermissions } from './role-permissions';
 export { meStudiesHandlers } from './me';
 export { studyMeetingsHandlers } from './meetings';
@@ -25,7 +25,7 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   adminStudiesHandlers,
   adminStudyProgramsHandlers,
   accountsHandlers,
-  authMeHandlers,
+  meDiscordHandlers,
   discordLinkHandlers,
   rolePermissionsHandlers,
   meStudiesHandlers,

@@ -6,13 +6,14 @@ import { Button, Modal } from '@studyclub/ui';
 import { MessageCircle } from 'lucide-react';
 
 import type { Locale } from '@/lib/content';
-import { linkDiscord } from '@/lib/discord';
+import { DISCORD_LINK_READY, linkDiscord } from '@/lib/discord';
 import { ApiError } from '@/lib/http';
 import { t } from '@/lib/i18n';
 
 /**
  * 디스코드 OAuth 인가 코드. 디스코드 앱 등록·백엔드(DSC-01) 전이라 아직 팝업을 열지 않는다 —
- * 개발 서버의 MSW 목은 코드를 보지 않는다. 백엔드가 붙으면 OAuth 팝업으로 받은 코드로 바꾼다.
+ * DISCORD_LINK_READY 가 켜진 개발 서버에서만 보내고, MSW 목은 코드를 보지 않는다.
+ * 백엔드가 붙으면 OAuth 팝업으로 받은 코드로 바꾼다.
  */
 const PENDING_OAUTH_CODE = 'pending-oauth';
 
@@ -33,7 +34,10 @@ function linkErrorCopy(e: unknown) {
   };
 }
 
-/** 신청 전 디스코드 연동 창. 서버가 연동을 저장해야(204) 신청 폼으로 넘어간다. */
+/**
+ * 신청 전 디스코드 연동 창. 서버가 연동을 저장해야(204) 신청 폼으로 넘어간다.
+ * 연동 API(DSC-01)가 없는 환경에서는 요청을 보내지 않고 준비 중이라고 알린다.
+ */
 export function ApplyDiscordGate({
   locale,
   open,
@@ -72,14 +76,20 @@ export function ApplyDiscordGate({
       onClose={linking ? () => {} : handleClose}
       title={t({ ko: '디스코드 연동', en: 'Connect Discord' }, locale)}
       footer={
-        <>
-          <Button variant='secondary' onClick={handleClose} disabled={linking}>
-            {t({ ko: '취소', en: 'Cancel' }, locale)}
+        DISCORD_LINK_READY ? (
+          <>
+            <Button variant='secondary' onClick={handleClose} disabled={linking}>
+              {t({ ko: '취소', en: 'Cancel' }, locale)}
+            </Button>
+            <Button onClick={connect} loading={linking} leadingIcon={<MessageCircle size={16} />}>
+              {t({ ko: '디스코드 연동하기', en: 'Connect Discord' }, locale)}
+            </Button>
+          </>
+        ) : (
+          <Button variant='secondary' onClick={handleClose}>
+            {t({ ko: '닫기', en: 'Close' }, locale)}
           </Button>
-          <Button onClick={connect} loading={linking} leadingIcon={<MessageCircle size={16} />}>
-            {t({ ko: '디스코드 연동하기', en: 'Connect Discord' }, locale)}
-          </Button>
-        </>
+        )
       }
     >
       <div className='flex flex-col gap-3 py-2'>
@@ -89,6 +99,11 @@ export function ApplyDiscordGate({
         <p className='text-sm leading-relaxed text-fg-secondary'>
           {t({ ko: '스터디는 디스코드에서 진행됩니다. 연동이 끝나면 신청 폼으로 이동합니다.', en: 'Studies run on Discord. After connecting, you continue to the application form.' }, locale)}
         </p>
+        {!DISCORD_LINK_READY && (
+          <p role='status' className='text-sm leading-relaxed text-fg-secondary'>
+            {t({ ko: '디스코드 연동은 준비 중입니다. 운영진에게 문의해 주세요.', en: 'Discord connection is coming soon. Please contact the organizers.' }, locale)}
+          </p>
+        )}
         {error && (
           <p role='alert' className='text-xs text-error-700'>
             {error}

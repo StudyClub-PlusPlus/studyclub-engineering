@@ -94,7 +94,7 @@ export function cancelApplication(studyId: string) {
 }
 
 /* ── 디스코드 서버 별명 ─────────────────────────────────────────────────────── */
-// 연동 여부는 여기 두지 않는다 — 서버(GET /auth/me 의 discordLinked)가 정본이다. lib/discord.ts
+// 연동 여부는 여기 두지 않는다 — 서버(GET /api/me 의 discordLinked)가 정본이다. lib/discord.ts
 
 export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자인';
 

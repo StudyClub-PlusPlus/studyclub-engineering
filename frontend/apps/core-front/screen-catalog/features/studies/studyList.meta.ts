@@ -77,7 +77,7 @@ export const studyScreenStates: ScreenStateDef[] = [
             role: 'MEMBER',
           },
         },
-        // 연동 여부는 GET /auth/me 의 discordLinked — 개발 서버의 MSW 목이 이 값으로 답한다
+        // 연동 여부는 GET /api/me 의 discordLinked — 개발 서버의 MSW 목이 진짜 응답에 이 값을 덧붙인다
         {
           key: 'msw-discord-linked',
           value: true,
@@ -103,7 +103,7 @@ export const studyScreenStates: ScreenStateDef[] = [
     id: 'study-apply--discord-gate',
     label: '디스코드 연동 모달 — 미연동 크루 (study_id=6)',
     pageId: 'study-detail',
-    rationale: 'GET /auth/me 의 discordLinked 가 false 인 크루가 신청하기를 누르면 신청 폼 대신 디스코드 연동 모달이 뜨는지 확인한다.',
+    rationale: 'GET /api/me 의 discordLinked 가 false 인 크루가 신청하기를 누르면 신청 폼 대신 디스코드 연동 모달이 뜨는지 확인한다.',
     recipe: {
       storage: [
         {

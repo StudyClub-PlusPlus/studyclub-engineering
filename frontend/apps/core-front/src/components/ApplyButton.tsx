@@ -24,7 +24,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const [alreadyApplied, setAlreadyApplied] = useState(false);
   const [deadlineLabel, setDeadlineLabel] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  /** GET /auth/me 로 연동 여부를 묻는 중 — 두 번 눌러 창이 겹치지 않게 막는다 */
+  /** GET /api/me 로 연동 여부를 묻는 중 — 두 번 눌러 창이 겹치지 않게 막는다 */
   const [checking, setChecking] = useState(false);
 
   const state = recruitState(study);

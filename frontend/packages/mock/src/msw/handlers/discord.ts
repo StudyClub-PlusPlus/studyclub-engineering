@@ -1,10 +1,10 @@
-import { HttpResponse } from 'msw';
+import { bypass, HttpResponse } from 'msw';
 
-import { mockClient } from '../utils';
+import { mockClient, type MockResolveContext } from '../utils';
 
 /**
- * 디스코드 연동 여부 — GET /auth/me 의 `discordLinked` (DSC-02) · POST /api/me/discord/link (DSC-01).
- * 백엔드가 아직 없어 목이 대신 답한다. 연동하면 이 브라우저에 기억해 새로고침해도 연동된 채로 둔다.
+ * 디스코드 연동 여부 — GET /api/me 의 `discordLinked` (DSC-02) · POST /api/me/discord/link (DSC-01).
+ * 백엔드에 아직 없는 것만 목이 대신 답한다. GET /api/me 는 이미 있으니 기본은 진짜 응답에 `discordLinked` 만 덧붙인다. 연동하면 이 브라우저에 기억해 새로고침해도 연동된 채로 둔다.
  * 처음 상태를 바꾸려면 MSW 데브툴에서 프리셋을 고르거나 이 키를 지운다.
  */
 export const MOCK_DISCORD_LINKED_KEY = 'msw-discord-linked';
@@ -27,7 +27,7 @@ function writeLinked(linked: boolean) {
   }
 }
 
-/** 로그인 세션(sc_user)을 그대로 돌려준다 — 마이페이지가 같은 응답으로 세션을 갱신하므로 남의 값이 끼면 안 된다. */
+/** 백엔드를 안 띄웠을 때 쓰는 대체 응답. 로그인 세션(sc_user)을 그대로 돌려준다 — 마이페이지가 같은 응답으로 세션을 갱신하므로 남의 값이 끼면 안 된다. */
 function sessionAccount() {
   const fallback = {
     id: 1,
@@ -51,12 +51,28 @@ function me(discordLinked: boolean) {
   return { ...sessionAccount(), createdAt: '2026-01-01T00:00:00Z', discordNickname: null, discordLinked };
 }
 
-export const authMeHandlers = mockClient.createHandlerGroup('/auth', [
+/** 진짜 GET /api/me 응답에 `discordLinked` 만 덧붙인다. 401 등 실패는 그대로, 백엔드에 닿지 않으면 대체 응답. */
+async function realMeWithLinked(request: Request): Promise<Response | ReturnType<typeof me>> {
+  let real: Response;
+  try {
+    real = await fetch(bypass(request));
+  } catch {
+    return me(readLinked());
+  }
+  if (!real.ok) return real;
+  return HttpResponse.json({ ...(await real.json()), discordLinked: readLinked() });
+}
+
+export const meDiscordHandlers = mockClient.createHandlerGroup('/api', [
   {
     method: 'GET',
     path: '/me',
     presets: [
-      { label: '정상 (연동 상태 기억)', status: 200, response: () => me(readLinked()) },
+      {
+        label: '실제 응답 + 연동 상태 기억',
+        status: 200,
+        response: ({ request }: MockResolveContext) => realMeWithLinked(request),
+      },
       { label: '디스코드 연동됨', status: 200, response: () => me(true) },
       { label: '디스코드 미연동', status: 200, response: () => me(false) },
       {
