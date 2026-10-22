@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { BulkSelect, CHECKBOX, SelectAll } from '@console/components/AttendanceTab';
+import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
@@ -346,6 +347,7 @@ export function CrewTab({
                 </th>
                 <th className='whitespace-nowrap'>닉네임</th>
                 <th className='whitespace-nowrap'>디스코드 닉네임</th>
+                <th className='whitespace-nowrap'>디스코드 연동</th>
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>지역</th>
                 <th className='whitespace-nowrap'>반</th>
@@ -370,6 +372,11 @@ export function CrewTab({
                   <td data-anno='attendee:3-4' className='whitespace-nowrap text-fg-secondary'>
                     {c.discordNickname || '-'}
                   </td>
+                  {/*
+                    별명은 **신청서에 적어 낸 이름**이라 적어 냈다고 이어진 것은 아니다.
+                    승인해도 계정이 안 이어져 있으면 들어오지 못하므로 그 사실을 옆 칸에 따로 적는다.
+                  */}
+                  <DiscordCell email={c.email} />
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
@@ -383,7 +390,7 @@ export function CrewTab({
               ))}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={7} className='text-center text-fg-muted'>
+                  <td colSpan={8} className='text-center text-fg-muted'>
                     {active.length === 0 ? '아직 크루가 없습니다.' : '조건에 맞는 크루가 없습니다.'}
                   </td>
                 </tr>
