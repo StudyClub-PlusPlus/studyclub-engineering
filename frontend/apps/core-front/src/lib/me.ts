@@ -22,6 +22,8 @@ const APPLICATION_KEY = 'sc_applications';
 /** 예전 프로토가 브라우저에 남긴 내 출석 기록. 출석은 이제 서버에 있다 — 탈퇴할 때 남은 값만 지운다. */
 const LEGACY_ATTENDANCE_KEY = 'sc_my_attendance';
 const DISCORD_NICK_KEY = 'sc_discord_nickname';
+/** 예전 프로토가 브라우저에 남긴 디스코드 연동 표시. 연동 여부는 이제 서버에 있다 — 탈퇴할 때 남은 값만 지운다. */
+const LEGACY_DISCORD_KEY = 'sc_discord';
 
 function readJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -171,13 +173,13 @@ export function seedDemoData() {
 }
 
 /**
- * 회원 탈퇴 — 이 브라우저에 남은 회원별 데이터(관심·신청·출석)를 지운다.
+ * 회원 탈퇴 — 이 브라우저에 남은 회원별 데이터(관심·신청·출석·옛 디스코드 표시)를 지운다.
  * 로그인 세션(sc_user)은 `logout()` 이 지운다. 데모 시드 키(SEED_KEY)는 일부러 남긴다 — 지우면 다음
  * 미리보기 진입 때 더미가 다시 채워져 탈퇴한 사람의 데이터처럼 보인다.
  */
 export function clearMyLocalData() {
   if (typeof window === 'undefined') return;
-  for (const key of [BOOKMARK_KEY, APPLICATION_KEY, LEGACY_ATTENDANCE_KEY]) {
+  for (const key of [BOOKMARK_KEY, APPLICATION_KEY, LEGACY_ATTENDANCE_KEY, LEGACY_DISCORD_KEY]) {
     try {
       localStorage.removeItem(key);
     } catch {

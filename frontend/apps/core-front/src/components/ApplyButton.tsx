@@ -1,8 +1,9 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 import { ApplyDialog } from '@/components/ApplyDialog';
@@ -11,7 +12,7 @@ import { useMyApplication } from '@/features/applications/queries';
 import { track } from '@/lib/analytics';
 import { clearSession, getUser } from '@/lib/auth';
 import type { Locale, Study } from '@/lib/content';
-import { fetchDiscordLinkState } from '@/lib/discord';
+import { fetchDiscordLinkState, forgetDiscordLinkState } from '@/lib/discord';
 import { t } from '@/lib/i18n';
 import { addApplication, getApplication } from '@/lib/me';
 import { recruitLabel, recruitState } from '@/lib/recruit';
@@ -26,6 +27,14 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const [ready, setReady] = useState(false);
   /** GET /api/me 로 연동 여부를 묻는 중 — 두 번 눌러 창이 겹치지 않게 막는다 */
   const [checking, setChecking] = useState(false);
+  /** 연동 여부를 기다리는 사이 페이지를 떠났으면 창을 열거나 이동하지 않는다 */
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const state = recruitState(study);
   const applyLabel = deadlineLabel ?? recruitLabel(state, locale);
@@ -70,14 +79,16 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
       },
     });
     const loginPath = `/${locale}/login?next=${encodeURIComponent(pathname)}`;
-    if (!getUser()) {
+    const user = getUser();
+    if (!user) {
       router.push(loginPath);
       return;
     }
     // 연동 여부는 서버(ACCOUNT.DISCORD_ID)가 정본이다. 모르면(조회 실패 · 필드 없음) 폼을 열고,
     // 제출이 403 으로 막히면 그때 연동 창을 연다(onRequireDiscord).
     setChecking(true);
-    const linkState = await fetchDiscordLinkState();
+    const linkState = await fetchDiscordLinkState(user.id);
+    if (!mounted.current) return;
     setChecking(false);
     if (linkState === 'unauthorized') {
       clearSession();
@@ -138,7 +149,14 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
       {doneLabel}
     </button>
   ) : (
-    <button type='button' onClick={requestApply} aria-busy={checking} className={`${card} ${live}`}>
+    <button
+      type='button'
+      onClick={requestApply}
+      disabled={checking}
+      aria-busy={checking}
+      className={`${card} ${live} gap-2 disabled:cursor-wait disabled:opacity-80`}
+    >
+      {checking && <Loader2 size={16} className='animate-spin' aria-hidden />}
       {applyLabel}
     </button>
   );
@@ -161,6 +179,8 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
         onSubmitted={handleSubmitted}
         onDeadline={(label) => setDeadlineLabel(label)}
         onRequireDiscord={() => {
+          const user = getUser();
+          if (user) forgetDiscordLinkState(user.id);
           setFormOpen(false);
           setDiscordOpen(true);
         }}

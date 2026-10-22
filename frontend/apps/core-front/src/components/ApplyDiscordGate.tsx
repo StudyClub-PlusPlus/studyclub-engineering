@@ -1,10 +1,12 @@
 'use client';
 
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Button, Modal } from '@studyclub/ui';
 import { MessageCircle } from 'lucide-react';
 
+import { clearSession, getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { DISCORD_LINK_READY, linkDiscord } from '@/lib/discord';
 import { ApiError } from '@/lib/http';
@@ -17,16 +19,13 @@ import { t } from '@/lib/i18n';
  */
 const PENDING_OAUTH_CODE = 'pending-oauth';
 
-/** POST /api/me/discord/link 실패 문구. 502(토큰 교환 실패) 등은 기본 문구. */
+/** POST /api/me/discord/link 실패 문구. 401 은 로그인으로 보내고, 502(토큰 교환 실패) 등은 기본 문구. */
 function linkErrorCopy(e: unknown) {
   if (e instanceof ApiError && e.status === 409) {
     return {
       ko: '이 디스코드 계정은 다른 StudyClub 계정에 이미 연동되어 있습니다.',
       en: 'This Discord account is already connected to another StudyClub account.',
     };
-  }
-  if (e instanceof ApiError && e.status === 401) {
-    return { ko: '로그인이 만료되었습니다. 다시 로그인해 주세요.', en: 'Your session has expired. Please log in again.' };
   }
   return {
     ko: '디스코드 연동을 완료하지 못했습니다. 다시 시도해 주세요.',
@@ -49,18 +48,31 @@ export function ApplyDiscordGate({
   onClose: () => void;
   onLinked: () => void;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** 세션이 끝났다 — 창에 남겨 두지 않고 신청하기와 같이 로그인으로 보낸다 */
+  function goLogin() {
+    clearSession();
+    setError(null);
+    onClose();
+    router.push(`/${locale}/login?next=${encodeURIComponent(pathname)}`);
+  }
+
   async function connect() {
+    const user = getUser();
+    if (!user) return goLogin();
     setLinking(true);
     setError(null);
     try {
-      await linkDiscord(PENDING_OAUTH_CODE);
+      await linkDiscord(user.id, PENDING_OAUTH_CODE);
       setLinking(false);
       onLinked();
     } catch (e) {
       setLinking(false);
+      if (e instanceof ApiError && e.status === 401) return goLogin();
       setError(t(linkErrorCopy(e), locale));
     }
   }

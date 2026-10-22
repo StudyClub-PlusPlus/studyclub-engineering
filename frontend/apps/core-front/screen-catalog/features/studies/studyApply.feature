@@ -10,17 +10,29 @@ Feature: 스터디 신청 폼 (crew-submit-application)
   Scenario: 디스코드 미연동 사용자의 신청 시도
     Given 로그인되어 있으나 GET /api/me 의 discordLinked 가 false 인 사용자
     When 신청하기 버튼을 클릭한다
-    Then 디스코드 연동 모달(ApplyDiscordGate)이 노출된다
+    Then GET /api/me 를 기다리는 동안 신청하기 버튼이 비활성이고 스피너가 돈다
+    And 디스코드 연동 모달(ApplyDiscordGate)이 노출된다
     When "디스코드 연동하기"를 클릭하고 POST /api/me/discord/link 가 204 를 준다
     Then 신청 폼(ApplyDialog)으로 자동으로 이동한다
 
   Scenario: 디스코드 연동 실패
     Given 디스코드 연동 모달이 열려 있다
     When "디스코드 연동하기"를 클릭했는데 POST /api/me/discord/link 가 실패한다
-    Then 연동 모달에 남아 실패 문구가 보인다 (409 는 다른 계정에 이미 연동, 401 은 다시 로그인, 그 밖은 다시 시도)
+    Then 연동 모달에 남아 실패 문구가 보인다 (409 는 다른 계정에 이미 연동, 그 밖은 다시 시도)
+
+  Scenario: 디스코드 연동 중 로그인 만료
+    Given 디스코드 연동 모달이 열려 있다
+    When "디스코드 연동하기"를 클릭했는데 POST /api/me/discord/link 가 401 을 준다
+    Then 세션을 비우고 로그인 페이지(/ko/login?next=...)로 이동한다
+
+  Scenario: 디스코드 연동 준비 중 (DSC-01 배포 전)
+    Given NEXT_PUBLIC_DISCORD_LINK_READY 가 꺼져 있다 (비우면 개발 서버에서만 켜진다)
+    When 디스코드 미연동 사용자가 신청하기 버튼을 클릭한다
+    Then 연동 모달에 "디스코드 연동은 준비 중입니다. 운영진에게 문의해 주세요." 가 보이고 버튼은 "닫기" 하나다
+    And POST /api/me/discord/link 를 보내지 않는다
 
   Scenario: 연동 여부를 알 수 없음
-    Given GET /api/me 조회가 실패하거나 응답에 discordLinked 가 없다
+    Given GET /api/me 조회가 실패하거나 8초 안에 답이 없거나 응답에 discordLinked 가 없다
     When 신청하기 버튼을 클릭한다
     Then 신청 폼을 연다 — 제출이 403 이면 그때 디스코드 연동 모달을 연다
 
