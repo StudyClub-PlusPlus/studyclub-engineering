@@ -71,6 +71,7 @@ class AttendanceWithdrawalConcurrencyIntegrationTest {
 
     private Study study;
     private StudyGroup group;
+    private StudyGroup otherGroup;
     private StudyParticipant participantB;
 
     @BeforeEach
@@ -115,6 +116,16 @@ class AttendanceWithdrawalConcurrencyIntegrationTest {
                                 "Asia/Seoul",
                                 10));
 
+        // 담당 캡틴이 다른 분반 화면에서 A반 행을 중단하는 경우 — 요청 분반(B반)의 ID 가 대상 분반보다 크다
+        otherGroup =
+                studyGroupRepository.save(
+                        new StudyGroup(
+                                study.getId(),
+                                "B반",
+                                Instant.now().minus(21, ChronoUnit.DAYS),
+                                "Asia/Seoul",
+                                10));
+
         Instant joinedAt = Instant.now().minus(21, ChronoUnit.DAYS);
         studyParticipantRepository.save(
                 StudyParticipant.builder()
@@ -138,7 +149,14 @@ class AttendanceWithdrawalConcurrencyIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"withdraw,delete", "delete,withdraw", "withdraw,signup", "signup,withdraw"})
+    @CsvSource({
+        "withdraw,delete",
+        "delete,withdraw",
+        "withdraw,signup",
+        "signup,withdraw",
+        "withdrawCrossGroup,delete",
+        "delete,withdrawCrossGroup"
+    })
     @DisplayName(
             "참여 중단 · 회원 탈퇴 · 발표 신청은 분반 잠금으로 줄을 선다 — 탈퇴 상태 · 중단 시각 · 발표자 배정을 덮어쓰지 않는다 (share 10-18 D7)")
     void serializesConflictingRequests(String firstAction, String secondAction) throws Exception {
@@ -176,7 +194,7 @@ class AttendanceWithdrawalConcurrencyIntegrationTest {
                                             .setParameter("accountId", inv.getArgument(0))
                                             .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                                             .getResultList();
-                            if (firstAction.equals("withdraw")) {
+                            if (firstAction.startsWith("withdraw")) {
                                 withdrawnAt.set(rows.getFirst().getLeftAt());
                             }
                             pauseFirst(firstAction, "delete", first, reached, release);
@@ -257,6 +275,12 @@ class AttendanceWithdrawalConcurrencyIntegrationTest {
                             study.getId(),
                             new AttendanceUpsertRequest(
                                     group.getId(), List.of(), List.of(participantB.getId())));
+            case "withdrawCrossGroup" ->
+                    attendanceUpsertService.saveFromSite(
+                            LEADER_ACCOUNT_ID,
+                            study.getId(),
+                            new AttendanceUpsertRequest(
+                                    otherGroup.getId(), List.of(), List.of(participantB.getId())));
             case "delete" -> accountDeletionService.deleteAccount(MEMBER_ACCOUNT_ID, null);
             case "signup" ->
                     studyMeetingService.signUpPresenter(
@@ -272,7 +296,7 @@ class AttendanceWithdrawalConcurrencyIntegrationTest {
             CountDownLatch reached,
             CountDownLatch release)
             throws InterruptedException {
-        if (expected.equals(actual) && first.getAndSet(false)) {
+        if (expected.startsWith(actual) && first.getAndSet(false)) {
             reached.countDown();
             if (!release.await(15, TimeUnit.SECONDS)) {
                 throw new IllegalStateException("잠금 해제 신호가 오지 않았습니다.");

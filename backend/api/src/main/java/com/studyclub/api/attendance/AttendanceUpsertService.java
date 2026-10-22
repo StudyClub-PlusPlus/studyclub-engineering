@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -51,8 +52,11 @@ public class AttendanceUpsertService {
     /**
      * 사용자 사이트 출석부 저장 — 출석 고치기와 참여 중단이 <b>한 트랜잭션</b>이다 (specs/study-participant/spec.md). 중단이 있으면 중단
      * 권한·대상을 먼저 다 본 뒤 출석을 쓰고 중단을 반영한다. 중단이 없으면 권한은 호출자(컨트롤러)가 출석 쓰기 가드로 본다.
+     *
+     * <p>{@code READ_COMMITTED} — 참여 중단은 대상의 분반을 알아낸 뒤 여러 분반을 잠근다. 기본 격리 수준이면 그 첫 조회의 스냅샷이 남아, 잠금을
+     * 기다리는 동안 커밋된 스터디 종료 · 역할 변경을 뒤 판정이 못 본다 ({@link ParticipantWithdrawalService#prepare}).
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void saveFromSite(Long actorAccountId, Long studyId, AttendanceUpsertRequest request) {
         if (!request.hasWithdrawals()) {
             upsert(studyId, request.studyGroupId(), request);

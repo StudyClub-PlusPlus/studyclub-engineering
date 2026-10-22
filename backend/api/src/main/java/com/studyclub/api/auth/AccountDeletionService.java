@@ -120,7 +120,7 @@ public class AccountDeletionService {
     }
 
     // 참여 중단 · 발표 신청과 같은 분반 잠금을 먼저 쥔다 — 그 사이에 커밋된 참여 중단의 상태 · LEFT_AT 을 덮어쓰지 않는다 (share 10-18 D7).
-    // 분반은 ID 오름차순으로 잠근다. 다른 요청은 분반을 하나만 잠그므로 서로 기다리다 교착하지 않는다
+    // 분반은 ID 오름차순으로 잠근다 — 여러 분반을 잠그는 곳(참여 중단 · 디스코드 출석)은 모두 이 순서여야 서로 교착하지 않는다
     private void anonymizeParticipations(Long accountId) {
         List<Long> groupIds = studyParticipantRepository.findStudyGroupIdsByAccountId(accountId);
         for (Long groupId : groupIds) {
