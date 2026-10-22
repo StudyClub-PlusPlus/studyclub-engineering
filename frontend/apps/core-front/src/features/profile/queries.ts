@@ -19,6 +19,9 @@ export type ProfilePayload = { nickname: string; timeZone: string };
 /** 마케팅 수신 동의 현재 값. 동의 기록이 없으면 `agreedAt` 은 null 이다. */
 export type MarketingConsent = { agreed: boolean; agreedAt: string | null };
 
+/** GET /api/me — 내 계정. 프로필 편집과 신청 버튼의 디스코드 연동 확인(lib/discord.ts)이 `profileKeys.account` 캐시를 같이 쓴다. */
+export const fetchAccount = () => http<OnboardingAccount>('/api/me');
+
 /**
  * GET /api/me — 편집에 들어갈 때 최신 값을 받는다. 다른 기기에서 먼저 바꿨으면 이 브라우저 세션에는 이전 값이 남아 있다.
  *
@@ -29,7 +32,7 @@ export function useFetchLatestAccount(accountId: number) {
   return () =>
     queryClient.fetchQuery({
       queryKey: profileKeys.account(accountId),
-      queryFn: () => http<OnboardingAccount>('/api/me'),
+      queryFn: fetchAccount,
       // 기본 캐시 시간(1분)을 따르면 방금 받은 값을 다시 돌려준다 — 열 때마다 서버에 묻는다
       staleTime: 0,
     });
@@ -47,7 +50,7 @@ export function useUpdateProfile() {
   });
 }
 
-/** PUT /api/me/profile-image — 올려 둔 번호를 프로필에 연결한다. 응답은 `GET /auth/me` 와 같은 모양이라 세션 user 를 이걸로 갱신한다. */
+/** PUT /api/me/profile-image — 올려 둔 번호를 프로필에 연결한다. 응답은 `GET /api/me` 와 같은 모양이라 세션 user 를 이걸로 갱신한다. */
 export function useAttachProfileImage() {
   return useMutation({
     mutationFn: (fileId: number) =>
