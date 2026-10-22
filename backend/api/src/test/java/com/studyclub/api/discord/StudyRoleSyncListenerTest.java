@@ -23,6 +23,7 @@ import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.discord.StudyDiscordLink;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.StudyParticipantJoined;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.participant.StudyParticipantWithdrawn;
 import java.util.List;
@@ -36,8 +37,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-/** 참여 중단 → 스터디 role 회수. 봇은 목이라 아무 데도 보내지 않는다. */
-class StudyRoleRevokeListenerTest {
+/** 명부 편입·참여 중단 → 스터디 role 을 명부에 맞춘다. 봇은 목이라 아무 데도 보내지 않는다. */
+class StudyRoleSyncListenerTest {
 
     private static final Long STUDY_ID = 10L;
     private static final Long ACCOUNT_ID = 7L;
@@ -48,6 +49,9 @@ class StudyRoleRevokeListenerTest {
     private static final StudyParticipantWithdrawn EVENT =
             new StudyParticipantWithdrawn(
                     EventMeta.now(1L), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER);
+    private static final StudyParticipantJoined JOINED =
+            new StudyParticipantJoined(
+                    EventMeta.now(ACCOUNT_ID), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER);
     private static final DiscordBotClient.RoleChangeResult OK =
             new DiscordBotClient.RoleChangeResult(1, List.of());
 
@@ -55,8 +59,8 @@ class StudyRoleRevokeListenerTest {
     private final StudyParticipantRepository participants = mock(StudyParticipantRepository.class);
     private final StudyDiscordLinkRepository links = mock(StudyDiscordLinkRepository.class);
     private final AccountRepository accounts = mock(AccountRepository.class);
-    private final StudyRoleRevokeListener listener =
-            new StudyRoleRevokeListener(bot, participants, links, accounts);
+    private final StudyRoleSyncListener listener =
+            new StudyRoleSyncListener(bot, participants, links, accounts);
 
     @BeforeEach
     void 연결된_스터디와_연동한_계정() {
@@ -116,13 +120,68 @@ class StudyRoleRevokeListenerTest {
     }
 
     @Test
-    void 그사이_명부에_다시_들어왔으면_role_을_두고_간다() {
-        when(participants.existsByStudyIdAndAccountIdAndStatusIn(any(), any(), any()))
-                .thenReturn(true);
+    void 중단_신호가_왔어도_그사이_명부에_다시_들어왔으면_role_을_붙인다() {
+        inRoster(true);
+        when(bot.assignRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
 
         listener.onWithdrawn(EVENT);
 
         verify(bot, never()).removeRole(any(), any(), any(), any());
+        verify(bot)
+                .assignRole(SYSTEM_ID, DISCORD_ROLE_ID, DISCORD_STUDY_ID, List.of(DISCORD_USER_ID));
+    }
+
+    @Test
+    void 편입되면_시스템_호출로_스터디_role_을_붙인다() {
+        inRoster(true);
+        when(bot.assignRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onJoined(JOINED);
+
+        verify(bot)
+                .assignRole(SYSTEM_ID, DISCORD_ROLE_ID, DISCORD_STUDY_ID, List.of(DISCORD_USER_ID));
+        verify(bot, never()).removeRole(any(), any(), any(), any());
+    }
+
+    @Test
+    void 편입_신호가_늦게_와서_이미_중단됐으면_role_을_뗀다() {
+        inRoster(false);
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onJoined(JOINED);
+
+        verify(bot, never()).assignRole(any(), any(), any(), any());
+        verify(bot)
+                .removeRole(SYSTEM_ID, DISCORD_ROLE_ID, DISCORD_STUDY_ID, List.of(DISCORD_USER_ID));
+    }
+
+    @Test
+    void 편입한_사람이_길드에_없어도_던지지_않는다() {
+        inRoster(true);
+        when(bot.assignRole(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(
+                        new DiscordBotClient.RoleChangeResult(
+                                0,
+                                List.of(
+                                        new DiscordBotClient.FailedUser(
+                                                DISCORD_USER_ID, "NOT_IN_GUILD"))));
+
+        assertThatCode(() -> listener.onJoined(JOINED)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void 편입한_계정이_미연동이면_건너뛴다() {
+        inRoster(true);
+        linkedAccount(null);
+
+        listener.onJoined(JOINED);
+
+        verify(bot, never()).assignRole(any(), any(), any(), any());
+    }
+
+    private void inRoster(boolean holds) {
+        when(participants.existsByStudyIdAndAccountIdAndStatusIn(any(), any(), any()))
+                .thenReturn(holds);
     }
 
     @Test
@@ -207,7 +266,7 @@ class StudyRoleRevokeListenerTest {
             ctx.registerBean(StudyParticipantRepository.class, () -> participants);
             ctx.registerBean(StudyDiscordLinkRepository.class, () -> links);
             ctx.registerBean(AccountRepository.class, () -> accounts);
-            ctx.register(TxEvents.class, AsyncConfig.class, StudyRoleRevokeListener.class);
+            ctx.register(TxEvents.class, AsyncConfig.class, StudyRoleSyncListener.class);
             ctx.refresh();
 
             ctx.publishEvent(EVENT);
