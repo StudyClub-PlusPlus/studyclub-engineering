@@ -412,7 +412,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 401 | UNAUTHORIZED | 미로그인 |
+| 401 | UNAUTHORIZED | 미로그인 · 탈퇴로 계정이 지워진 토큰 (신청서는 남으므로 막는다) |
 | 404 | NOT_FOUND | studyId 없음 |
 
 ### 프론트엔드 사용처

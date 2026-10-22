@@ -122,6 +122,10 @@ public class StudyApplicationService {
     // 열려 있는 모집 회차, 없으면 가장 최근 회차 — 백오피스 신청 결과 목록과 같은 회차를 본다
     @Transactional(readOnly = true)
     public MyStudyApplicationResponse findMine(Long accountId, Long studyId) {
+        // 탈퇴해도 신청서는 남는다 — 계정이 지워진 토큰으로는 조회하지 못하게 submit 과 같이 401
+        if (!accountRepository.existsById(accountId)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
         if (!studyRepository.existsById(studyId)) {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
