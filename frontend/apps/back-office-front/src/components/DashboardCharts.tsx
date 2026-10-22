@@ -32,7 +32,7 @@ export function Card({
   return (
     <section className='card px-6 py-5'>
       <div className='flex items-baseline justify-between gap-3'>
-        <h2 className='text-[15px] font-bold'>{title}</h2>
+        <h2 className='text-sm font-bold'>{title}</h2>
         {action}
       </div>
       <div className='mt-4'>{children}</div>
@@ -105,7 +105,7 @@ export function CategoryBars({ data }: { data: { category: string; rate: number;
     <ul className='flex flex-col gap-3'>
       {data.map((d) => (
         <li key={d.category} className='flex items-center gap-3'>
-          <span className='w-24 shrink-0 truncate text-[13px] font-medium text-fg-secondary' title={d.category}>
+          <span className='w-24 shrink-0 truncate text-sm font-medium text-fg-secondary' title={d.category}>
             {d.category}
           </span>
           <span className='h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
@@ -114,7 +114,7 @@ export function CategoryBars({ data }: { data: { category: string; rate: number;
               style={{ width: `${d.rate}%`, background: rateColor(d.rate) }}
             />
           </span>
-          <span className='tnum w-10 shrink-0 text-right text-[13px] font-bold text-fg'>{d.rate}%</span>
+          <span className='tnum w-10 shrink-0 text-right text-sm font-bold text-fg'>{d.rate}%</span>
           <span className='tnum w-14 shrink-0 text-right text-xs text-fg-muted'>{d.crew}명</span>
         </li>
       ))}

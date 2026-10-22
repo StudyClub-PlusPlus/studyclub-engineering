@@ -83,7 +83,7 @@ export default function Dashboard() {
           <div className='mb-3 flex items-baseline justify-between gap-3'>
             <h2 className='text-base font-bold'>
               모집중 스터디
-              <span className='tnum ml-2 text-[13px] font-medium text-fg-muted'>{recruiting.length}</span>
+              <span className='tnum ml-2 text-sm font-medium text-fg-muted'>{recruiting.length}</span>
             </h2>
             <Link href='/studies' className='text-xs font-medium text-brand'>
               전체 보기
@@ -118,6 +118,42 @@ export default function Dashboard() {
           </TableCard>
         </section>
 
+        <section>
+          <div className='mb-3 flex items-baseline justify-between gap-3'>
+            <h2 className='text-base font-bold'>
+              다가오는 행사
+              <span className='tnum ml-2 text-sm font-medium text-fg-muted'>{upcoming.length}</span>
+            </h2>
+            <Link href='/events' className='text-xs font-medium text-brand'>
+              전체 보기
+            </Link>
+          </div>
+          <TableCard>
+            <thead>
+              <tr>
+                <th>행사</th>
+                <th className='whitespace-nowrap'>타입</th>
+                <th className='whitespace-nowrap'>날짜</th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcoming.map((e) => (
+                <tr key={e.id}>
+                  <td className='max-w-0 truncate font-semibold'>{tx(e.title)}</td>
+                  <td className='whitespace-nowrap text-fg-secondary'>{EVENT_TYPE_LABEL[e.type] ?? e.type}</td>
+                  <td className='tnum whitespace-nowrap text-fg-secondary'>{e.date}</td>
+                </tr>
+              ))}
+              {upcoming.length === 0 && (
+                <tr>
+                  <td colSpan={3} className='text-center text-fg-muted'>
+                    예정된 행사가 없습니다.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </TableCard>
+        </section>
       </div>
     </div>
   );

@@ -26,9 +26,9 @@ export function CrewTab({ crew, capacity }: { crew: Crew[]; capacity: number }) 
   return (
     <div className='flex flex-col gap-6'>
       <section>
-        <h2 className='flex items-baseline gap-2 text-[15px] font-bold'>
+        <h2 className='flex items-baseline gap-2 text-sm font-bold'>
           참여 크루
-          <span className='tnum text-[13px] font-medium text-fg-muted'>
+          <span className='tnum text-sm font-medium text-fg-muted'>
             {crew.length}/{capacity}
           </span>
         </h2>

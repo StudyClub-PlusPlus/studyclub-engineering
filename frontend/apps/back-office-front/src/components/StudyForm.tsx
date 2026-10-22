@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Checkbox, Input, Select, Textarea, useImageUpload } from '@studyclub/ui';
 
@@ -281,9 +281,6 @@ function ProgramField({
   // 등록 모달에서만 부른다 — 정보 탭에서는 고를 일이 없어 요청하지 않는다
   const { data: clubs = [], isLoading } = useClubPrograms(mode === 'create');
 
-  // MVP: 클럽 미지원 — create 모드에서는 프로그램/종류 선택 불필요 (EMPTY_FORM 기본값 사용)
-  if (mode === 'create') return null;
-
   if (mode === 'edit') {
     return (
       <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-control border border-border bg-surface-2 px-3 py-2.5 text-sm'>
@@ -374,7 +371,7 @@ function ProgramField({
                 role='radio'
                 aria-checked={value.kind === k}
                 onClick={() => onChange({ ...value, kind: k })}
-                className={`h-8 rounded-pill border px-3 text-[13px] font-medium transition-colors ${
+                className={`h-8 rounded-pill border px-3 text-sm font-medium transition-colors ${
                   value.kind === k
                     ? 'border-brand bg-brand text-white'
                     : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
@@ -424,10 +421,12 @@ function ThumbnailField({
   value,
   error,
   onChange,
+  onUploadingChange,
 }: {
   value: StudyFormValues;
   error?: string;
   onChange: (next: StudyFormValues) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   // 올리는 동안 다른 칸을 고쳐도 덮어쓰지 않게 — 올리기가 끝난 시점의 폼 값에 썸네일만 얹는다
   const latest = useRef(value);
@@ -441,41 +440,52 @@ function ThumbnailField({
   });
   const shown = thumb.error ?? error;
 
+  useEffect(() => {
+    onUploadingChange?.(thumb.isUploading);
+    return () => onUploadingChange?.(false);
+  }, [thumb.isUploading, onUploadingChange]);
+
   return (
     <div className='flex flex-col gap-1.5'>
       <span className='text-sm font-medium text-fg'>썸네일</span>
-      <div className='flex items-center gap-4'>
+      <div className='flex items-center gap-3'>
         {value.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={value.thumbnailUrl} alt='' className='h-20 w-36 rounded-control object-cover' />
+          // eslint-disable-next-line @next/next/no-img-element -- 업로드 직후 URL 미리보기
+          <img
+            src={value.thumbnailUrl}
+            alt=''
+            className='h-16 w-16 shrink-0 rounded-control border border-border object-cover'
+          />
         ) : (
-          <div className='grid h-20 w-36 place-items-center rounded-control bg-surface-2 text-xs text-fg-muted'>
-            없음
+          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-xs text-fg-muted'>
+            카테고리 기본값
           </div>
         )}
-        <div className='flex items-center gap-3 text-sm'>
-          <button
-            type='button'
-            onClick={thumb.pick}
-            disabled={thumb.isUploading}
-            className='text-fg-secondary underline-offset-4 hover:text-fg hover:underline disabled:opacity-50'
-          >
-            {thumb.isUploading ? '올리는 중' : value.thumbnailUrl ? '바꾸기' : '이미지 고르기'}
-          </button>
-          {value.thumbnailUrl && (
+        <div className='flex flex-col gap-1'>
+          <div className='flex gap-1.5'>
             <button
               type='button'
-              onClick={() => onChange({ ...value, thumbnailUrl: '', thumbnailFileId: null })}
+              onClick={thumb.pick}
               disabled={thumb.isUploading}
-              className='text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline disabled:opacity-50'
+              className='h-8 rounded-control border border-border-strong bg-bg px-3 text-sm font-medium text-fg-secondary transition-colors hover:bg-surface-2 disabled:opacity-50'
             >
-              지우기
+              {thumb.isUploading ? '올리는 중' : value.thumbnailUrl ? '다른 이미지로 바꾸기' : '이미지 업로드'}
             </button>
-          )}
+            {value.thumbnailUrl && (
+              <button
+                type='button'
+                onClick={() => onChange({ ...value, thumbnailUrl: '', thumbnailFileId: null })}
+                disabled={thumb.isUploading}
+                className='h-8 rounded-control border border-border-strong bg-bg px-3 text-sm font-medium text-fg-secondary transition-colors hover:bg-surface-2 disabled:opacity-50'
+              >
+                제거
+              </button>
+            )}
+          </div>
+          <span className='text-xs text-fg-muted'>비우면 카테고리에 맞는 기본 이미지가 쓰입니다</span>
         </div>
         <input {...thumb.inputProps} className='hidden' aria-label='썸네일 파일' />
       </div>
-      <p className='text-xs text-fg-muted'>jpeg · png · webp, 5MB 이하. 저장해야 반영됩니다.</p>
       {shown && (
         <p role='alert' className='text-xs text-error-700'>
           {shown}
@@ -492,11 +502,13 @@ export function StudyForm({
   value,
   errors,
   onChange,
+  onUploadingChange,
   mode = 'create',
 }: {
   value: StudyFormValues;
   errors: StudyFormErrors;
   onChange: (next: StudyFormValues) => void;
+  onUploadingChange?: (uploading: boolean) => void;
   /** 등록이면 프로그램을 고르고, 수정이면 읽기 전용으로 보인다. */
   mode?: FormMode;
 }) {
@@ -528,7 +540,7 @@ export function StudyForm({
         labelHint={<CharCount len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
       />
 
-      <ThumbnailField value={value} error={errors.thumbnailUrl} onChange={onChange} />
+      <ThumbnailField value={value} error={errors.thumbnailUrl} onChange={onChange} onUploadingChange={onUploadingChange} />
 
       <Select
         label='카테고리'
