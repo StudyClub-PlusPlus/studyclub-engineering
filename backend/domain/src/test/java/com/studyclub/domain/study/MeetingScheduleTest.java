@@ -265,6 +265,41 @@ class MeetingScheduleTest {
                 .hasMessage("1회차, 3회차는 이미 시작해 지울 수 없습니다.");
     }
 
+    @Test
+    @DisplayName("킥오프를 처음 정할 때 — 1회차 현지 날짜보다 앞이면 통과, 같은 날이나 뒤면 INVALID_INPUT. 지난 시각도 받는다")
+    void kickoffMustPrecedeFirstRegular() {
+        var schedule =
+                new MeetingSchedule(
+                        "Asia/Seoul",
+                        List.of(meeting("2026-10-08T11:00:00Z"), meeting("2026-10-15T11:00:00Z")));
+
+        assertThatCode(() -> schedule.checkKickoff(null, Instant.parse("2026-09-01T11:00:00Z")))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> schedule.checkKickoff(null, Instant.parse("2026-10-08T01:00:00Z")))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("회차가 없는 반은 킥오프를 아무 날로 정할 수 있다")
+    void kickoffAnyDayWithoutMeetings() {
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of());
+
+        assertThatCode(() -> schedule.checkKickoff(null, Instant.parse("2026-10-08T11:00:00Z")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("킥오프를 옮길 때 지금 킥오프와 같은 날은 겹침이 아니다")
+    void movingKickoffIgnoresItself() {
+        StudyMeeting kickoff = kickoff("2026-10-07T11:00:00Z");
+        var schedule =
+                new MeetingSchedule(
+                        "Asia/Seoul", List.of(kickoff, meeting("2026-10-14T11:00:00Z")));
+
+        assertThatCode(() -> schedule.checkKickoff(kickoff, Instant.parse("2026-10-07T12:00:00Z")))
+                .doesNotThrowAnyException();
+    }
+
     private static StudyMeeting kickoff(String scheduledAt) {
         return StudyMeeting.kickoff(1L, Instant.parse(scheduledAt));
     }

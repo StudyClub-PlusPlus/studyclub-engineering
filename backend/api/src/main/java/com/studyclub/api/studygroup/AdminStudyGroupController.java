@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,5 +56,19 @@ public class AdminStudyGroupController {
             @PathVariable Long groupId,
             @Valid @RequestBody StudyGroupUpdateRequest request) {
         return adminStudyGroupService.update(studyId, groupId, request);
+    }
+
+    @Operation(
+            summary = "킥오프 정하기",
+            description =
+                    "ADMIN만 호출 가능. 반의 킥오프(0회차)를 만들거나 일자를 옮긴다. 1회차보다 앞, 다른 회차와 다른 날이어야 한다(400 · 409"
+                            + " MEETING_DATE_CONFLICT). 지난 시각도 받는다.")
+    @PutMapping("/{groupId}/kickoff")
+    public ResponseEntity<Void> setKickoff(
+            @PathVariable Long studyId,
+            @PathVariable Long groupId,
+            @Valid @RequestBody StudyGroupKickoffRequest request) {
+        adminStudyGroupService.setKickoff(studyId, groupId, request.scheduledAt());
+        return ResponseEntity.noContent().build();
     }
 }
