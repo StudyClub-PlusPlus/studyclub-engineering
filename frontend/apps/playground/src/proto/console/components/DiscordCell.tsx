@@ -12,7 +12,7 @@ export function DiscordCell({ email }: { email: string }) {
   return (
     <td className='whitespace-nowrap'>
       {handle ? (
-        <span className='text-fg-secondary'>@{handle}</span>
+        <span className='text-fg-secondary'>{handle}</span>
       ) : (
         <span className='text-xs font-semibold text-warning-700'>미연동</span>
       )}
