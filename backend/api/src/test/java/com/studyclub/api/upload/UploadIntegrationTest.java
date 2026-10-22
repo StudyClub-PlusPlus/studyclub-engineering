@@ -121,6 +121,20 @@ class UploadIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - purpose는 multipart 일반 문자열 필드로 받는다")
+    void acceptsPurposeAsMultipartTextField() {
+        Account account = seedOnboardedAccount();
+
+        var response = upload(account, UploadTestSupport.jpegWithGps(), "STUDY_THUMBNAIL");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long fileId = ((Number) response.getBody().get("fileId")).longValue();
+        StorageObject saved = storageObjectRepository.findById(fileId).orElseThrow();
+        assertThat(saved.getPurpose()).isEqualTo(StoragePurpose.STUDY_THUMBNAIL);
+        assertThat(saved.getObjectKey()).startsWith("gigs/thumbnails/");
+    }
+
+    @Test
     @DisplayName("실패 - 이름만 .jpg 인 텍스트는 400")
     void rejectsTextFile() {
         var response =

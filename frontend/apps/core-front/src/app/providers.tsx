@@ -13,6 +13,9 @@ import { getUser, USER_CHANGED_EVENT } from '@/lib/auth';
 import { getQueryClient } from '@/lib/query-client';
 
 const MSWProvider = dynamic(() => import('@studyclub/mock/msw').then((m) => m.MSWProvider), { ssr: false });
+// 목 서버는 개발 서버에서만. ssr:false 컴포넌트로 앱 전체를 감싸면 운영에서도 서버가 빈 껍데기만 보낸다
+// (BAILOUT_TO_CLIENT_SIDE_RENDERING — 검색엔진·AI 크롤러가 본문 0자를 받는다. 2026-10-22 실측)
+const USE_MSW = process.env.NODE_ENV === 'development';
 
 const loadWorker = () => import('msw/browser').then(({ setupWorker }) => setupWorker());
 
@@ -42,14 +45,18 @@ function MswQueryInvalidator() {
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => getQueryClient());
 
+  const app = (
+    <QueryClientProvider client={queryClient}>
+      <AmplitudeInit />
+      <PageViewTracker />
+      {USE_MSW && <MswQueryInvalidator />}
+      {children}
+    </QueryClientProvider>
+  );
+  if (!USE_MSW) return app;
   return (
     <MSWProvider mockHandlerGroups={mockHandlerGroups} loadWorker={loadWorker} fallback={null}>
-      <QueryClientProvider client={queryClient}>
-        <AmplitudeInit />
-        <PageViewTracker />
-        <MswQueryInvalidator />
-        {children}
-      </QueryClientProvider>
+      {app}
     </MSWProvider>
   );
 }

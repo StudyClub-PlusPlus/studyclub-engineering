@@ -36,7 +36,7 @@ export function Sidebar() {
 
   return (
     <aside className='sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg)] lg:flex'>
-      <div className='flex h-16 items-center gap-2 border-b border-[var(--color-border)] px-5 text-[15px] font-bold'>
+      <div className='flex h-16 items-center gap-2 border-b border-[var(--color-border)] px-5 text-sm font-bold'>
         <span
           className='grid h-7 w-7 place-items-center rounded-lg text-xs font-extrabold text-white'
           style={{ background: 'var(--color-fg)' }}
