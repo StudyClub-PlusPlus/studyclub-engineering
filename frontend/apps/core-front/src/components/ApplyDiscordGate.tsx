@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button, Modal } from '@studyclub/ui';
 import { MessageCircle } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { setDiscord } from '@/lib/me';
@@ -30,6 +31,7 @@ export function ApplyDiscordGate({
       // TODO(api): POST /api/me/discord/link
       await new Promise((r) => setTimeout(r, 400));
       setDiscord('jiwon_dev');
+      track({ name: 'My Discord Connected' });
       setLinking(false);
       onLinked();
     } catch {

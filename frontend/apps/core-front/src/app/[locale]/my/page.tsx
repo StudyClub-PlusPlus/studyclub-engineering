@@ -208,6 +208,7 @@ export default function MyPage() {
   }
 
   function handleUnbookmark(studyId: string) {
+    track({ name: 'Study Unbookmarked', props: { study_id: studyId, source: 'my_page' } });
     setBookmarked(studyId, false);
     setBookmarks(getBookmarks());
   }

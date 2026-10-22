@@ -73,6 +73,8 @@ services:
       STORAGE_LOCAL_PUBLIC_BASE_URL: http://localhost:${API_PORT:-28080}/local-storage
       # 봇 ↔ 백엔드 양방향 서비스 키 (같은 값). 비어 있으면 백엔드는 봇을 부르지 않는다 (specs/discord-study-link)
       DISCORD_API_KEY: ${DISCORD_API_KEY:-}
+      # 서버 분석 이벤트 (specs/analytics). 비어 있으면 보내지 않는다
+      AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
       DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
       # 디스코드 계정 연동 OAuth. 비어 있으면 연동만 503 (specs/study-application 「디스코드 계정 연동」)
       DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}

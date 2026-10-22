@@ -1,6 +1,6 @@
 import type { StudyStatus } from '@studyclub/mock';
 
-import { amplitude, analyticsEnabled } from '@/lib/amplitude';
+import { amplitude, analyticsEnabled, COMMON_PROPS, IS_PRODUCTION } from './amplitude';
 
 // ─── Shared shapes ────────────────────────────────────────────────────────────
 
@@ -40,6 +40,10 @@ export type AnalyticsEvent =
   | { name: 'Auth OAuth Cancelled'; props: { error: string } }
   | { name: 'Auth Login Completed'; props: { is_new_user: boolean; next_path: string } }
   | { name: 'Auth Login Failed'; props: { error_message: string; http_status: number } }
+  // 공통 규약 이벤트 — 서비스마다 같은 이름이라 서비스끼리 퍼널을 겹쳐 볼 수 있다.
+  // 가입 정본은 서버(user.registered)가 같은 이름으로 보낸다. 여기 것은 퍼널용 프론트 사본.
+  | { name: 'User Signed Up'; props: { method: 'google'; signup_surface: 'onboarding' } }
+  | { name: 'User Logged In'; props: { method: 'google' } }
 
   // ── Onboarding ───────────────────────────────────────────────────────────────
   | { name: 'Onboarding Started'; props: { suggested_nickname: boolean } }
@@ -62,8 +66,8 @@ export type AnalyticsEvent =
       name: 'Study Card Clicked';
       props: StudyBaseProps & { source: 'landing' | 'studies_list'; card_position: number };
     }
-  | { name: 'Study Bookmarked'; props: StudyBaseProps & { source: BookmarkSource } }
-  | { name: 'Study Unbookmarked'; props: StudyBaseProps & { source: BookmarkSource } }
+  | { name: 'Study Bookmarked'; props: { study_id: string; source: BookmarkSource } }
+  | { name: 'Study Unbookmarked'; props: { study_id: string; source: BookmarkSource } }
   | { name: 'Hero CTA Clicked'; props: { cta_type: 'discord' | 'studies' } }
   | {
       name: 'Event Card Clicked';
@@ -118,9 +122,108 @@ export type UserProperties = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// GA4 는 권장 이벤트 이름이어야 보고서가 붙는다 — 대응이 있는 것만 넘긴다 (규약 §2)
+const GA4_EVENT: Partial<Record<AnalyticsEvent['name'], string>> = {
+  'User Signed Up': 'sign_up',
+  'User Logged In': 'login',
+};
+
+type Gtag = (...args: unknown[]) => void;
+type Clarity = ((...args: unknown[]) => void) & { q?: unknown[][] };
+declare global {
+  interface Window {
+    gtag?: Gtag;
+    clarity?: Clarity;
+  }
+}
+
+const clarityEnabled = IS_PRODUCTION && Boolean(process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID);
+
+/** 스크립트가 아직 안 떴어도 큐에 쌓아 둔다 — Clarity 스니펫이 같은 큐(window.clarity.q)를 이어받는다. */
+function clarity(...args: unknown[]): void {
+  if (!clarityEnabled) return;
+  if (!window.clarity) {
+    const stub: Clarity = (...a: unknown[]) => {
+      (stub.q ??= []).push(a);
+    };
+    window.clarity = stub;
+  }
+  window.clarity(...args);
+}
+
 export function track(event: AnalyticsEvent): void {
-  if (typeof window === 'undefined' || !analyticsEnabled) return;
+  if (typeof window === 'undefined') return;
+  const ga = GA4_EVENT[event.name];
+  if (ga) window.gtag?.('event', ga, { ...COMMON_PROPS, ...event.props });
+  if (!analyticsEnabled) return;
   amplitude.track(event.name, event.props ?? {});
+}
+
+/** 같은 탭 세션에서 한 번만 보낸다 (새로고침·뒤로가기로 중복되는 노출 이벤트용). */
+export function trackOncePerSession(event: AnalyticsEvent, key: string = event.name): void {
+  if (typeof window === 'undefined') return;
+  const k = `sc_tracked:${key}`;
+  try {
+    if (sessionStorage.getItem(k)) return;
+    sessionStorage.setItem(k, '1');
+  } catch {
+    // 저장소가 막혀 있으면 중복을 감수하고 보낸다
+  }
+  track(event);
+}
+
+// ─── 첫 유입 (first touch) ───────────────────────────────────────────────────
+// 처음 들어온 utm·랜딩·referrer 를 기억해 두었다가 가입할 때 유저 속성으로 한 번만(setOnce) 붙인다.
+// 로그아웃(reset)하면 지운다 — 같은 브라우저의 다음 사람에게 앞사람 유입이 붙지 않게.
+
+const FIRST_TOUCH_KEY = 'sc_first_touch';
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
+
+export function captureFirstTouch(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (localStorage.getItem(FIRST_TOUCH_KEY)) return;
+    const qs = new URLSearchParams(window.location.search);
+    const touch: Record<string, string> = { acquisition_landing_path: window.location.pathname };
+    for (const k of UTM_KEYS) {
+      const v = qs.get(k);
+      if (v) touch[`acquisition_${k.slice(4)}`] = v.toLowerCase();
+    }
+    if (document.referrer) {
+      const host = new URL(document.referrer).hostname;
+      if (host !== window.location.hostname) touch.acquisition_referrer_host = host;
+    }
+    localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(touch));
+  } catch {
+    // 저장소가 막혀 있으면 첫 유입 없이 간다
+  }
+}
+
+function readFirstTouch(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(FIRST_TOUCH_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
+}
+
+function clearFirstTouch(): void {
+  try {
+    localStorage.removeItem(FIRST_TOUCH_KEY);
+  } catch {
+    // 무시
+  }
+}
+
+/** 가입 완료 지점 — 첫 유입을 유저 속성에 setOnce 로 남기고 `User Signed Up` 을 보낸다. */
+export function trackSignUp(): void {
+  if (typeof window === 'undefined') return;
+  if (analyticsEnabled) {
+    const identifyObj = new amplitude.Identify();
+    for (const [k, v] of Object.entries(readFirstTouch())) identifyObj.setOnce(k, v);
+    amplitude.identify(identifyObj);
+  }
+  track({ name: 'User Signed Up', props: { method: 'google', signup_surface: 'onboarding' } });
 }
 
 export function identifyUser(properties: Partial<UserProperties>): void {
@@ -139,9 +242,19 @@ export function identifyUser(properties: Partial<UserProperties>): void {
 export function syncAnalyticsUser(
   user: { id: number; timeZone?: string | null; onboardingCompletedAt?: string | null } | null,
 ): void {
-  if (typeof window === 'undefined' || !analyticsEnabled) return;
+  if (typeof window === 'undefined') return;
+  // Clarity: 회원 번호만 custom id 로 (friendly name 에 이름·이메일 금지)
+  if (user) {
+    clarity('identify', String(user.id));
+    clarity('set', 'service', COMMON_PROPS.service);
+    clarity('set', 'env', COMMON_PROPS.env);
+  }
+  if (!analyticsEnabled) return;
   if (!user) {
-    if (amplitude.getUserId()) amplitude.reset();
+    if (amplitude.getUserId()) {
+      amplitude.reset();
+      clearFirstTouch();
+    }
     return;
   }
   const userId = String(user.id);

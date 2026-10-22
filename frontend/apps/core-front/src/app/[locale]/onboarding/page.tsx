@@ -9,7 +9,7 @@ import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 
 import { OnboardingConsent } from '@/components/OnboardingConsent';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
-import { track } from '@/lib/analytics';
+import { track, trackSignUp } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { checkNicknameAvailability } from '@/lib/api/nicknames';
 import { completeOnboarding } from '@/lib/api/onboarding';
@@ -288,6 +288,8 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
       });
       setSuggestedNickname(null);
       clearDraft(accountId);
+      // 온보딩 최초 완료 = 가입 확정 (서버 user.registered 와 같은 지점)
+      trackSignUp();
       track({
         name: 'Onboarding Completed',
         props: {
