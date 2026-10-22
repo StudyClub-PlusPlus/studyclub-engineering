@@ -20,8 +20,8 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -66,27 +66,25 @@ public class ParticipantWithdrawalService {
      * 먼저 한다.
      *
      * <p>잠금은 회차 수정 · 발표 신청과 같은 「분반 잠금 → 권한 판정 → 회차 잠금」 순서다 (specs/study-meeting/spec.md 「잠금」, share
-     * 10-18 D7). 그래야 동시에 들어온 발표 신청이 중단자를 다시 넣지 못한다. 담당 캡틴은 다른 분반의 행도 중단하므로, 요청한 분반과 대상이 속한 분반을
-     * <b>ID 오름차순</b>으로 모두 잠근다 — 회원 탈퇴 · 디스코드 출석도 여러 분반을 같은 순서로 잠가 서로 교착하지 않는다.
-     *
-     * <p>대상의 분반은 잠그기 전에 읽어야 해서, 트랜잭션이 {@code READ_COMMITTED} 여야 한다 ({@link
-     * com.studyclub.api.attendance.AttendanceUpsertService#saveFromSite}). 기본(REPEATABLE READ)이면 첫
-     * 조회 때 잡힌 스냅샷이 남아, 잠금을 기다리는 동안 끝난 스터디 · 빠진 네비게이터를 뒤 판정이 보지 못한다.
+     * 10-18 D7). 그래야 동시에 들어온 발표 신청이 중단자를 다시 넣지 못한다. 담당 캡틴은 다른 분반의 행도 중단하므로, 트랜잭션의 첫 조회로 <b>이 스터디의
+     * 분반을 모두</b> ID 오름차순으로 잠근다 — 대상이 어느 분반인지 잠그기 전에 읽지 않아도 되고, 회원 탈퇴 · 디스코드 출석과 같은 순서라 교착하지 않는다.
      */
     @Transactional
     public Prepared prepare(
             Long actorAccountId, Long studyId, Long studyGroupId, List<Long> participantIds) {
-        Map<Long, StudyGroup> lockedGroups = lockGroups(studyId, studyGroupId, participantIds);
-        StudyGroup group = lockedGroups.get(studyGroupId);
-        if (group == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다.");
-        }
+        Map<Long, StudyGroup> lockedGroups =
+                studyGroupRepository.findByStudyIdForUpdate(studyId).stream()
+                        .collect(Collectors.toMap(StudyGroup::getId, Function.identity()));
         Study study =
                 studyRepository
                         .findById(studyId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        if (!studyId.equals(group.getStudyId())) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
+        if (!lockedGroups.containsKey(studyGroupId)) {
+            if (studyGroupRepository.existsById(studyGroupId)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT, "studyGroupId가 이 스터디에 속하지 않습니다.");
+            }
+            throw new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다.");
         }
         boolean ownerCaptain =
                 studyCaptainGuard.assertCanWithdrawInGroup(
@@ -106,12 +104,6 @@ public class ParticipantWithdrawalService {
                     ErrorCode.INVALID_INPUT, "withdrawals 의 명부 행이 이 스터디에 속하지 않습니다.");
         }
         List<StudyParticipant> targets = participantIds.stream().map(byId::get).toList();
-        // 분반을 잠그기 전에 읽은 소속과 달라졌다 — 그 사이 반을 옮겼다(반 이동, #299 예정). 잠그지 않은 분반은 건드리지 않는다
-        if (targets.stream()
-                .map(StudyParticipant::getStudyGroupId)
-                .anyMatch(id -> id != null && !lockedGroups.containsKey(id))) {
-            throw new BusinessException(ErrorCode.CONFLICT, "명부가 바뀌었습니다. 다시 불러와 주세요.");
-        }
         if (!ownerCaptain
                 && targets.stream().anyMatch(p -> !studyGroupId.equals(p.getStudyGroupId()))) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "다른 분반의 참여자는 중단시킬 수 없습니다.");
@@ -123,27 +115,18 @@ public class ParticipantWithdrawalService {
         for (StudyParticipant target : targets) {
             assertWithdrawable(target, actorAccountId, study.getCreatedBy());
         }
-        // 회차도 분반과 같은 순서로 미리 잠근다 — 출석 쓰기 · 발표자 비우기가 뒤에서 다시 잠가도 이미 쥐고 있어 기다리지 않는다
-        List<Long> groupIds = List.copyOf(lockedGroups.keySet());
+        // 회차는 요청한 분반 · 대상 분반만 ID 오름차순으로 미리 잠근다 — 디스코드 출석과 같은 순서. 출석 쓰기 · 발표자 비우기가 뒤에서 다시 잠가도 기다리지
+        // 않는다
+        Set<Long> groupIds = new TreeSet<>();
+        groupIds.add(studyGroupId);
+        targets.stream()
+                .map(StudyParticipant::getStudyGroupId)
+                .filter(Objects::nonNull)
+                .forEach(groupIds::add);
         for (Long groupId : groupIds) {
             studyMeetingRepository.findByStudyGroupIdForUpdate(groupId);
         }
-        return new Prepared(actorAccountId, targets, groupIds);
-    }
-
-    // 요청한 분반 + 대상이 속한 이 스터디의 분반을 ID 오름차순으로 잠근다. 대상 소속은 잠그기 전에 읽으므로, 잠근 뒤 prepare 가 다시 확인한다
-    private Map<Long, StudyGroup> lockGroups(
-            Long studyId, Long studyGroupId, List<Long> participantIds) {
-        Set<Long> groupIds = new TreeSet<>();
-        groupIds.add(studyGroupId);
-        groupIds.addAll(
-                studyParticipantRepository.findStudyGroupIdsByIdInAndStudyId(
-                        participantIds, studyId));
-        Map<Long, StudyGroup> locked = new TreeMap<>();
-        for (Long groupId : groupIds) {
-            studyGroupRepository.findByIdForUpdate(groupId).ifPresent(g -> locked.put(groupId, g));
-        }
-        return locked;
+        return new Prepared(actorAccountId, targets, List.copyOf(groupIds));
     }
 
     /** 이미 중단된 행은 건너뛴다 — {@code LEFT_AT} · 감사 로그 · 이벤트 모두 이번에 바뀐 행에만. */
@@ -210,7 +193,7 @@ public class ParticipantWithdrawalService {
         }
     }
 
-    /** 검증을 마친 중단 대상과 잠근 분반(ID 오름차순) — {@link #apply} 에 그대로 넘긴다. */
+    /** 검증을 마친 중단 대상과 회차를 잠근 분반(ID 오름차순) — {@link #apply} 에 그대로 넘긴다. */
     public record Prepared(
             Long actorAccountId, List<StudyParticipant> targets, List<Long> lockedGroupIds) {}
 }

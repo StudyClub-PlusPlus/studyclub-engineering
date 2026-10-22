@@ -71,13 +71,6 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByIdInAndStudyId(Collection<Long> ids, Long studyId);
 
-    /** 참여 중단이 잠글 분반 — 대상 명부 행이 속한 이 스터디의 분반. */
-    @Query(
-            "SELECT DISTINCT p.studyGroupId FROM StudyParticipant p"
-                    + " WHERE p.id IN :ids AND p.studyId = :studyId AND p.studyGroupId IS NOT NULL")
-    List<Long> findStudyGroupIdsByIdInAndStudyId(
-            @Param("ids") Collection<Long> ids, @Param("studyId") Long studyId);
-
     /** 참여 중단 대상 · 발표자 후보를 잠그고 최신 값으로 읽는다 — 회원 탈퇴 · 발표 신청과 같은 행을 두고 직렬화한다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(

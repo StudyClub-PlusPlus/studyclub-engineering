@@ -30,4 +30,12 @@ public interface StudyGroupRepository extends JpaRepository<StudyGroup, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT g FROM StudyGroup g WHERE g.id = :id")
     Optional<StudyGroup> findByIdForUpdate(@Param("id") Long id);
+
+    /**
+     * 한 스터디의 분반을 ID 오름차순으로 모두 잠근다. 참여 중단은 담당 캡틴이 다른 분반 행도 고르므로, 대상을 읽기 전에 첫 조회로 이 스터디의 분반을 다 쥔다 —
+     * 여러 분반을 잠그는 곳(회원 탈퇴 · 디스코드 출석)과 같은 순서라 서로 교착하지 않는다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT g FROM StudyGroup g WHERE g.studyId = :studyId ORDER BY g.id")
+    List<StudyGroup> findByStudyIdForUpdate(@Param("studyId") Long studyId);
 }
