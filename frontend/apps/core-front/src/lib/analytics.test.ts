@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { captureFirstTouch } from './analytics';
+import { captureFirstTouch, readGaClientId } from './analytics';
 
 // 첫 유입은 가입 때 setOnce 로 한 번만 붙는다. 두 번째 방문이 덮어쓰면 광고 성과가 엉뚱한 채널로 간다.
 describe('captureFirstTouch', () => {
@@ -17,5 +17,12 @@ describe('captureFirstTouch', () => {
       acquisition_source: 'instagram',
       acquisition_medium: 'paid_social',
     });
+  });
+});
+
+describe('readGaClientId', () => {
+  it('_ga 쿠키에서 client_id 만 꺼내고, 없으면 undefined', () => {
+    expect(readGaClientId('a=1; _ga=GA1.1.123456789.1700000000; b=2')).toBe('123456789.1700000000');
+    expect(readGaClientId('_gat=1')).toBeUndefined();
   });
 });

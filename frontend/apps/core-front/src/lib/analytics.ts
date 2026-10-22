@@ -123,8 +123,8 @@ export type UserProperties = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 // GA4 는 권장 이벤트 이름이어야 보고서가 붙는다 — 대응이 있는 것만 넘긴다 (규약 §2)
+// sign_up 은 서버(Measurement Protocol)가 보낸다 — 여기서도 보내면 GA4 에 두 번 잡힌다
 const GA4_EVENT: Partial<Record<AnalyticsEvent['name'], string>> = {
-  'User Signed Up': 'sign_up',
   'User Logged In': 'login',
 };
 
@@ -213,6 +213,13 @@ function clearFirstTouch(): void {
   } catch {
     // 무시
   }
+}
+
+/** GA4 client_id — `_ga` 쿠키 `GA1.1.<a>.<b>` 의 `<a>.<b>`. 없으면 undefined (서버가 합성 id 로 보낸다). */
+export function readGaClientId(
+  cookie: string = typeof document === 'undefined' ? '' : document.cookie,
+): string | undefined {
+  return /(?:^|;\s*)_ga=GA\d+\.\d+\.(\d+\.\d+)/.exec(cookie)?.[1];
 }
 
 /** 가입 완료 지점 — 첫 유입을 유저 속성에 setOnce 로 남기고 `User Signed Up` 을 보낸다. */

@@ -9,7 +9,7 @@ import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 
 import { OnboardingConsent } from '@/components/OnboardingConsent';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
-import { track, trackSignUp } from '@/lib/analytics';
+import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { checkNicknameAvailability } from '@/lib/api/nicknames';
 import { completeOnboarding } from '@/lib/api/onboarding';
@@ -276,6 +276,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
         marketingAgreed: draft.marketingAgreed,
         nickname: draft.nickname.trim(),
         timeZone: draft.timeZone,
+        gaClientId: readGaClientId(),
       });
       setUser({
         id: account.id,

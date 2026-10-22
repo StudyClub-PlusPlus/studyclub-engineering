@@ -118,6 +118,11 @@ ops:
 amplitude:
   api-key: ${AMPLITUDE_API_KEY:}
 
+# 같은 사실(가입·활성화)을 GA4 Measurement Protocol 로도 보낸다. 둘 중 하나라도 비면 보내지 않는다.
+ga4:
+  measurement-id: ${GA4_MEASUREMENT_ID:}
+  api-secret: ${GA4_API_SECRET:}
+
 # 세 env 가 다 비어 있으면 동작이 지금과 완전히 동일하다 (콘솔 텍스트, 파일 안 씀).
 #
 # 로컬·compose 는 콘솔 텍스트를 그대로 쓴다. k8s 는 LOG_JSON_CONSOLE=ecs 만 주입한다 —

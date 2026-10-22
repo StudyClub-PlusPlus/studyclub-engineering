@@ -11,6 +11,7 @@
 |---|---|---|---|
 | Amplitude | 이벤트 퍼널·리텐션 | 키가 있으면 (stage·production 프로젝트가 따로) | `NEXT_PUBLIC_AMPLITUDE_API_KEY` (프론트) · `AMPLITUDE_API_KEY` (서버) |
 | GA4 | 유입 채널·페이지 조회 | **production 빌드에서만** | `NEXT_PUBLIC_GA_MEASUREMENT_ID` |
+| GA4 (서버, Measurement Protocol) | 가입·활성화 키 이벤트 | 두 env 가 다 있을 때 | `GA4_MEASUREMENT_ID` · `GA4_API_SECRET` |
 | Microsoft Clarity | 세션 녹화·히트맵 | **production 빌드에서만** | `NEXT_PUBLIC_CLARITY_PROJECT_ID` |
 
 - production 판정은 빌드 인자 `NEXT_PUBLIC_APP_ENV=production` (main 배포만). stage 는 `stage`
@@ -44,12 +45,13 @@
 | 행동 | Amplitude | GA4 | 속성 | 보내는 곳 | 지점 |
 |---|---|---|---|---|---|
 | 페이지 조회 | `Page Viewed` (수동, `page_name`) | `page_view` (자동, SPA 이동 포함) | page_name, locale | front | `PageViewTracker` |
-| 가입 | `User Signed Up` | `sign_up` | method=`google`, signup_surface=`onboarding` | **server 정본** + front 퍼널 사본 | 온보딩 최초 완료 (`user.registered`) |
+| 가입 | `User Signed Up` | `sign_up` | method=`google`, signup_surface=`onboarding` | **server 정본** (GA4: server(MP)) + front 퍼널 사본 (Amplitude 만) | 온보딩 최초 완료 (`user.registered`) |
 | 로그인 | `User Logged In` | `login` | method=`google` | front | 온보딩을 마친 회원의 로그인 완료 |
-| 활성화 | `Activated` | — | activation_action=`study_applied`, study_id | server | 계정의 **첫** 스터디 신청 저장 (`study_application.submitted`) |
+| 활성화 | `Activated` | `activated` | activation_action=`study_applied`, study_id (GA4 는 activation_action 만) | server (GA4: server(MP)) | 계정의 **첫** 스터디 신청 저장 (`study_application.submitted`) |
 
 - 서버 이벤트 `insert_id` 는 결정적이다: `user_signed_up_account_{id}` · `activated_account_{id}` — 재전송돼도 Amplitude 가 중복을 지운다
 - 서버는 커밋 뒤·비동기로 보내고 실패는 삼킨다 ([domain-events](../domain-events/spec.md))
+- GA4 서버 전송 client_id: 가입 = 온보딩 요청 바디 `gaClientId`(`_ga` 쿠키). 없으면, 그리고 활성화는 항상 합성 `srv.<회원 번호>` — **유입 귀속 안 됨**
 - 활성화 정의는 가설이다 — 4주 코호트로 확정한다
 
 ## 서비스 이벤트 (front)

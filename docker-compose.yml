@@ -75,6 +75,8 @@ services:
       DISCORD_API_KEY: ${DISCORD_API_KEY:-}
       # 서버 분석 이벤트 (specs/analytics). 비어 있으면 보내지 않는다
       AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
+      GA4_MEASUREMENT_ID: ${GA4_MEASUREMENT_ID:-}
+      GA4_API_SECRET: ${GA4_API_SECRET:-}
       DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
       # 디스코드 계정 연동 OAuth. 비어 있으면 연동만 503 (specs/study-application 「디스코드 계정 연동」)
       DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}

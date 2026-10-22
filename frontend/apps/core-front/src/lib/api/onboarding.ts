@@ -8,6 +8,8 @@ export type OnboardingPayload = {
   marketingAgreed: boolean;
   nickname: string;
   timeZone: string;
+  /** GA4 client_id — 서버 sign_up(Measurement Protocol)의 유입 귀속용. 선택. */
+  gaClientId?: string;
 };
 
 /** 온보딩 완료 응답 — AccountView. */

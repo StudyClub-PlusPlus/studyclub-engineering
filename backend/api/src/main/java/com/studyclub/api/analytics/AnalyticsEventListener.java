@@ -12,7 +12,8 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * 도메인 이벤트를 Amplitude 서버 이벤트로 옮긴다 (specs/analytics/spec.md). 서버가 정본이라 애드블록·탭 닫힘에 빠지지 않는다.
+ * 도메인 이벤트를 Amplitude 서버 이벤트로 옮긴다 (GA4 Measurement Protocol 로도 sign_up·activated 를 함께 보낸다)
+ * (specs/analytics/spec.md). 서버가 정본이라 애드블록·탭 닫힘에 빠지지 않는다.
  *
  * <ul>
  *   <li>{@code user.registered} → {@code User Signed Up}
@@ -28,11 +29,15 @@ public class AnalyticsEventListener {
     private static final Logger log = LoggerFactory.getLogger(AnalyticsEventListener.class);
 
     private final AmplitudeClient amplitude;
+    private final Ga4Client ga4;
     private final StudyApplicationRepository applicationRepository;
 
     public AnalyticsEventListener(
-            AmplitudeClient amplitude, StudyApplicationRepository applicationRepository) {
+            AmplitudeClient amplitude,
+            Ga4Client ga4,
+            StudyApplicationRepository applicationRepository) {
         this.amplitude = amplitude;
+        this.ga4 = ga4;
         this.applicationRepository = applicationRepository;
     }
 
@@ -46,6 +51,7 @@ public class AnalyticsEventListener {
                     "user_signed_up_account_" + event.accountId(),
                     event.meta().occurredAt(),
                     Map.of("method", "google", "signup_surface", "onboarding"));
+            ga4.send("sign_up", event.accountId(), event.gaClientId(), Map.of("method", "google"));
         } catch (RuntimeException e) {
             log.warn(
                     "amplitude: 가입 이벤트 실패 eventId={} ({})",
@@ -57,7 +63,7 @@ public class AnalyticsEventListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onStudyApplicationSubmitted(StudyApplicationSubmitted event) {
-        if (!amplitude.enabled()) {
+        if (!amplitude.enabled() && !ga4.enabled()) {
             return;
         }
         try {
@@ -75,6 +81,12 @@ public class AnalyticsEventListener {
                             "study_applied",
                             "study_id",
                             String.valueOf(event.studyId())));
+            // 사용자 요청 맥락이 없어 합성 client_id — GA4 유입 귀속은 안 된다
+            ga4.send(
+                    "activated",
+                    event.accountId(),
+                    null,
+                    Map.of("activation_action", "study_applied"));
         } catch (RuntimeException e) {
             log.warn(
                     "amplitude: 활성화 이벤트 실패 eventId={} ({})",
