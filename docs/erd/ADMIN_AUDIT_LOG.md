@@ -11,11 +11,11 @@
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| ACTOR_ACCOUNT_ID | BIGINT | N | 행위한 캡틴. [ACCOUNT](./ACCOUNT.md) ID. FK 없음 |
+| ACTOR_ACCOUNT_ID | BIGINT | N | 행위한 사람 — 캡틴, `WITHDRAW` 는 네비게이터도. [ACCOUNT](./ACCOUNT.md) ID. FK 없음 |
 | ACTION | VARCHAR(20) | N | 아래 |
 | TARGET_ACCOUNT_ID | BIGINT | N | 대상 회원. [ACCOUNT](./ACCOUNT.md) ID. FK 없음 |
-| BEFORE_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 전 `SYSTEM_ROLE`. 그 밖의 ACTION 은 NULL |
-| AFTER_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 후 `SYSTEM_ROLE`. 그 밖의 ACTION 은 NULL |
+| BEFORE_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 전 `SYSTEM_ROLE` · `WITHDRAW` 의 중단 직전 상태. 그 밖의 ACTION 은 NULL |
+| AFTER_VALUE | VARCHAR(20) | Y | `ROLE_CHANGE` 의 변경 후 `SYSTEM_ROLE` · `WITHDRAW` 의 명부 행 ID. 그 밖의 ACTION 은 NULL |
 | CREATED_AT / UPDATED_AT | DATETIME | N | `BaseEntity`. CREATED_AT 이 행위 시각. UPDATED_AT 은 갱신되지 않는다 (insert-only) |
 
 ## 관계
@@ -35,6 +35,7 @@
 |---|---|---|
 | `EMAIL_REVEAL` | 백오피스 회원 목록에서 한 명의 이메일 원본을 봤다 | NULL / NULL |
 | `ROLE_CHANGE` | 계정 권한(`SYSTEM_ROLE`)을 바꿨다. 값이 실제로 바뀐 경우만 | `MEMBER` / `ADMIN` 등 |
+| `WITHDRAW` | 출석부에서 참여를 중단시켰다 ([study-participant](../../specs/study-participant/spec.md)). 이번에 중단된 행만. 행위자는 **네비게이터일 수도 있다** | 중단 직전 상태(`ACTIVE` · `PAUSED`) / 중단된 명부 행 ID — 한 사람이 스터디 여럿에 있어 계정 ID 만으로는 어느 행인지 모른다 |
 
 ## 제약
 

@@ -1,6 +1,7 @@
 package com.studyclub.api.application;
 
 import com.studyclub.api.application.StudyApplicationRequests.SubmitStudyApplicationRequest;
+import com.studyclub.api.application.StudyApplicationResponses.MyStudyApplicationResponse;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -13,15 +14,20 @@ import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.application.StudyApplicationSubmitted;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyGroup;
+import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -44,6 +50,7 @@ public class StudyApplicationService {
     private final ObjectMapper objectMapper;
     private final StudyParticipantRepository studyParticipantRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final StudyGroupRepository studyGroupRepository;
 
     public StudyApplicationService(
             StudyRepository studyRepository,
@@ -52,7 +59,8 @@ public class StudyApplicationService {
             StudyParticipantRepository studyParticipantRepository,
             AccountRepository accountRepository,
             ObjectMapper objectMapper,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            StudyGroupRepository studyGroupRepository) {
         this.studyRepository = studyRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.accountRepository = accountRepository;
@@ -60,6 +68,7 @@ public class StudyApplicationService {
         this.objectMapper = objectMapper;
         this.studyParticipantRepository = studyParticipantRepository;
         this.eventPublisher = eventPublisher;
+        this.studyGroupRepository = studyGroupRepository;
     }
 
     @Transactional
@@ -98,6 +107,7 @@ public class StudyApplicationService {
                         .build();
 
         StudyApplication saved = studyApplicationRepository.save(application);
+        joinRoster(accountId, studyId);
         account.changeDiscordNickname(answer.discordNickname());
         eventPublisher.publishEvent(
                 StudyApplicationSubmitted.of(
@@ -109,6 +119,37 @@ public class StudyApplicationService {
         return saved.getId();
     }
 
+    // 열려 있는 모집 회차, 없으면 가장 최근 회차 — 백오피스 신청 결과 목록과 같은 회차를 본다
+    @Transactional(readOnly = true)
+    public MyStudyApplicationResponse findMine(Long accountId, Long studyId) {
+        // 탈퇴해도 신청서는 남는다 — 계정이 지워진 토큰으로는 조회하지 못하게 submit 과 같이 401
+        if (!accountRepository.existsById(accountId)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        if (!studyRepository.existsById(studyId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        return currentRecruitment(studyId)
+                .flatMap(
+                        recruitment ->
+                                studyApplicationRepository.findByRecruitmentIdAndAccountId(
+                                        recruitment.getId(), accountId))
+                .map(
+                        application ->
+                                new MyStudyApplicationResponse(
+                                        true, application.getId(), application.getCreatedAt()))
+                .orElse(MyStudyApplicationResponse.NOT_APPLIED);
+    }
+
+    private Optional<StudyRecruitment> currentRecruitment(Long studyId) {
+        return studyRecruitmentRepository.findOpenByStudyIdOrderByStartAtDesc(studyId).stream()
+                .findFirst()
+                .or(
+                        () ->
+                                studyRecruitmentRepository
+                                        .findFirstByStudyIdOrderByStartAtDescIdDesc(studyId));
+    }
+
     private void checkCapacity(StudyRecruitment recruitment, Long studyId) {
         long activeCrewCount =
                 studyParticipantRepository.countByStudyIdAndStatusAndParticipantRoleIn(
@@ -118,10 +159,41 @@ public class StudyApplicationService {
         }
     }
 
+    // 신청이 명부를 늘리므로 회차 행을 잠근 뒤 정원을 센다 — 마지막 한 자리에 두 명이 동시에 들어오지 않게.
+    // 잠금 순서는 계정 → 모집 회차. 다른 경로도 이 순서를 따라야 교착하지 않는다
     private StudyRecruitment openRecruitment(Long studyId) {
-        return studyRecruitmentRepository.findOpenByStudyIdOrderByStartAtDesc(studyId).stream()
-                .findFirst()
+        Long recruitmentId =
+                studyRecruitmentRepository.findOpenByStudyIdOrderByStartAtDesc(studyId).stream()
+                        .findFirst()
+                        .map(StudyRecruitment::getId)
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.CONFLICT, "모집이 마감되었습니다."));
+        return studyRecruitmentRepository
+                .findByIdForUpdate(recruitmentId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CONFLICT, "모집이 마감되었습니다."));
+    }
+
+    // 신청 제출 = 명부 편입. 기본 반에 넣고, 반을 나누면 캡틴이 옮긴다.
+    // 이 스터디 명부에서 빠졌던 사람(ACTIVE·PAUSED 는 앞에서 409)은 옛 행을 되살린다
+    private void joinRoster(Long accountId, Long studyId) {
+        Instant now = Instant.now();
+        studyParticipantRepository
+                .findFirstByStudyIdAndAccountId(studyId, accountId)
+                .ifPresentOrElse(
+                        former -> former.rejoinByApplication(now),
+                        () ->
+                                studyParticipantRepository.save(
+                                        StudyParticipant.joinByApplication(
+                                                accountId, studyId, defaultGroupId(studyId), now)));
+    }
+
+    // 기본 반이 없는 스터디(기본 반을 만들기 전에 등록된 것)는 첫 신청 때 만든다.
+    // 모집 회차 행을 잠근 뒤라 같은 스터디의 첫 신청 둘이 기본 반을 두 개 만들지 않는다
+    private Long defaultGroupId(Long studyId) {
+        return studyGroupRepository
+                .findFirstByStudyIdOrderByIdAsc(studyId)
+                .orElseGet(() -> studyGroupRepository.save(StudyGroup.defaultOf(studyId)))
+                .getId();
     }
 
     private StudyApplicationAnswer normalizeAnswer(

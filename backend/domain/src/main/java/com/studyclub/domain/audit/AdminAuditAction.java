@@ -5,5 +5,10 @@ public enum AdminAuditAction {
     /** 백오피스 회원 목록에서 한 명의 이메일 원본을 봤다. BEFORE/AFTER 없음. */
     EMAIL_REVEAL,
     /** 계정 권한(SYSTEM_ROLE)이 실제로 바뀌었다. BEFORE/AFTER 에 변경 전후 값. */
-    ROLE_CHANGE
+    ROLE_CHANGE,
+    /**
+     * 출석부에서 참여를 중단시켰다 (specs/study-participant/spec.md). 행위자는 네비게이터일 수도 있다. BEFORE 에 중단 직전
+     * 상태(ACTIVE·PAUSED), AFTER 에 중단된 명부 행 ID.
+     */
+    WITHDRAW
 }

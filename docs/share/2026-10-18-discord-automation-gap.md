@@ -37,7 +37,7 @@
 | 회원가입 | 디스코드 가입 여부 확인 | **없음** | `POST /api/me/discord/link` — 스펙작성중, 코드 없음 | ❌ |
 | 캡틴이 스터디 생성 | 채널·스터디 role 생성 | `POST /api/v1/studies` ✅ | `POST /api/admin/studies` — 구현완료 | ⚠️ 부르지만 디스코드 ID 가 없어 건너뜀 |
 | 크루가 신청서 제출 | 크루에게 스터디 role 부여 | `POST /api/v1/roles/{roleId}/users` ✅ | `POST /api/studies/{id}/applications` — 구현완료 | ❌ |
-| 캡틴이 네비게이터 선정 | 네비게이터 role 부여 | `POST /api/v1/roles/navigator/users` ✅ | `PATCH /api/admin/studies/{id}/participants/{pid}/role` — 스펙작성중, 코드 없음 | ❌ |
+| 캡틴이 네비게이터 선정 | 네비게이터 role 부여 | `POST /api/v1/roles/navigator/users` ✅ | `PATCH /api/admin/studies/{id}/participants` (반 · 역할 일괄, 10-21) — 스펙작성중, 코드 없음 | ❌ |
 | 참여 중단 | 스터디 role 회수 | `DELETE /api/v1/roles/{roleId}/users` ✅ | `POST /api/studies/{id}/attendances` 의 `withdrawals[]` — 스펙작성중, 코드 없음 | ❌ |
 
 ### 1. 디스코드 ID 가 저장되지 않는다 — 다른 문제는 전부 여기서 시작된다
@@ -69,7 +69,7 @@
 
 ### 4. 네비게이터 선정 → 네비게이터 role
 
-- 지정 API 는 스펙만 있다 (`PATCH .../participants/{pid}/role`, [study-group 스펙](../../specs/study-group/spec.md)). 그 스펙에 디스코드 이야기는 없다.
+- 지정 API 는 스펙만 있다 (`PATCH .../participants` — 반 · 역할 일괄, [study-group 스펙](../../specs/study-group/spec.md)). 그 스펙에 디스코드 이야기는 없다.
 - 봇은 이 창구를 **디스코드에서 captain role 을 가진 사람**의 요청으로만 받는다. 시스템 호출은 안 된다.
   그래서 지정하는 캡틴 본인 계정에도 디스코드 ID 가 있어야 한다.
 - 네비게이터 role 은 길드에 하나다. 스터디 A 에서 해제됐다고 떼면 스터디 B 의 네비게이터 권한도 같이 사라진다.
@@ -263,7 +263,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 |---|---|---|---|---|
 | STD-01 | [기획] 명부 편입 시점 확정 — 신청 PRD 와 스펙 불일치 해소 | 질문 3. (가)면 신청 스펙 · `STUDY_GROUP_ID` NULL 허용 · [study-group 미결 사항](../../specs/study-group/spec.md)을 같이 고친다 | — | seeunrosypark — 정함 (#296) |
 | STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서 | STD-01 · COM-01 | seeunrosypark (#296) |
-| STD-03 | [BE] 네비게이터 지정·해제 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants/{pid}/role` ([study-group](../../specs/study-group/spec.md)) | COM-01 | kimjiy9607 |
+| STD-03 | [BE] 반 · 역할 일괄 변경 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants` — 신청자 탭 「저장」 한 번, 하나라도 거절되면 전부 취소. 10-21 에 한 사람씩 API 를 합쳤다 ([study-group](../../specs/study-group/spec.md), [share](2026-10-21-participant-bulk-change.md)) | COM-01 | kimjiy9607 |
 | STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)) | COM-01 | seeunrosypark |
 
 **스터디 스쿼드가 하지 않는 것**: 봇 호출, 디스코드 ID 조회, 디스코드 실패 처리. 이벤트를 발행하면 끝이다. 구독자가 없어도 기능은 정상이다.

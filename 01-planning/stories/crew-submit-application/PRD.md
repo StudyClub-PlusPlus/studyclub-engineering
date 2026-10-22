@@ -2,7 +2,7 @@
 
 기준 프로토타입: 스터디 신청 (playground 사용자 사이트 · 상세의 신청하기)
 
-관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)
+관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md) · [10-18 신청하면 기본반 명부에 들어간다](../../../docs/share/2026-10-18-roster-on-apply.md)
 
 > 갱신: 2026-09-22 — 신청하기·찜은 목록에서 뺐다. 목록은 둘러보기 전용, 신청은 상세에서만 한다. [crew-browse-studies](../crew-browse-studies/PRD.md) 참고
 
@@ -279,10 +279,11 @@ erDiagram
 |---|---|---|---|
 | FE | core-front 신청 창 (`ApplyButton` · `ApplyDialog`) | 있음 — 폼 조회 · 내 신청 · 제출 API 연결 | 없음 |
 | FE | 디스코드 연동 (`ApplyDiscordGate`) | 있음 — 브라우저 저장소에만 남긴다 (`TODO(api)`) | 아래 API 가 생기면 연결 |
-| BE | `GET /api/studies/{studyId}/application-form` · `POST …/applications` | 구현완료 | 없음 |
-| BE | `GET /api/studies/{studyId}/applications/me` | 스펙확정 — **컨트롤러가 없다.** 신청 버튼이 이미 불러 실패하고, 이미 신청한 사람에게도 「신청하기」가 보인다 (제출하면 409) | 구현 |
+| BE | `GET /api/studies/{studyId}/application-form` | 구현완료 | 없음 |
+| BE | `POST /api/studies/{studyId}/applications` | 구현완료 — 같은 트랜잭션에서 기본 반 명부 편입, 모집 회차 행 잠금 (→ [share 10-18](../../../docs/share/2026-10-18-roster-on-apply.md)) | 없음 |
+| BE | `GET /api/studies/{studyId}/applications/me` | 구현완료 | 없음 |
 | BE | `PATCH /api/me` (별명 갱신) | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
-| BE | `POST /api/me/discord/link` | 스펙작성중 · 컨트롤러 없음 | [study-application 스펙](../../../specs/study-application/spec.md) 확정 → 구현 |
+| BE | `POST /api/me/discord/link` | 구현완료 | 프론트 연결(DSC-04) |
 
 ### 유효값 검증 (Empty / MIN / MAX / ENUM)
 
@@ -351,11 +352,11 @@ min/max 필드 없음. 길이·개수 상한은 유효값 표.
 - 서버는 `DISCORD_ID`가 없으면 신청을 받지 않는다. 화면 게이트만으로 끝내지 않는다
 - `403`이면 저장하지 않고 연동 팝업을 연다. 카피는 연동 없음과 같다
 - 폼을 열 때 `GET /api/studies/{id}/application-form`. 실패·시간 초과면 신청하지 않는다. `다시 시도`
-- 저장: 신청 1건. `STUDY_APPLICATION.RECRUITMENT_ID` = 그 기수에서 열려 있는 모집 회차. 별명이 바뀌었으면 계정 갱신. 같은 트랜잭션에서 명부 편입
+- 저장: 신청 1건. `STUDY_APPLICATION.RECRUITMENT_ID` = 그 기수에서 열려 있는 모집 회차. 별명이 바뀌었으면 계정 갱신. 같은 트랜잭션에서 명부 편입 — 스터디의 기본반으로 (반을 나누면 캡틴이 옮긴다)
 - 신청 취소·승인·거절 없음. 대기·취소 상태값을 두지 않는다. 신청을 없앨 때는 `STUDY_APPLICATION` 행을 삭제하고, 제출 때 만든 명부 행도 같이 삭제한다
 - 중복: 같은 기수에 신청 행이 있으면 저장하지 않음
 - 모집: 열려 있는 `STUDY_RECRUITMENT`가 없거나 마감이면 저장하지 않음. 화면 CTA `모집 마감`
-- 정원: `STUDY_COHORT.CAPACITY`만 본다. 비교 대상은 그 기수 명부 활성 인원(`STUDY_PARTICIPANT` 중 `WITHDRAWN` 제외). 가득이면 저장하지 않음. 화면 CTA는 `정원 마감`. 반은 신청 이후에 정해지므로 반 정원은 보지 않음. 대기열 없음
+- 정원: `STUDY_COHORT.CAPACITY`만 본다. 비교 대상은 그 기수 명부 활성 인원(`STUDY_PARTICIPANT` 중 `WITHDRAWN` 제외). 가득이면 저장하지 않음. 화면 CTA는 `정원 마감`. 신청자는 모두 기본반으로 들어오고 반은 나중에 나누므로 반 정원은 보지 않음. 대기열 없음
 - 완료: 신청 행이 생긴 뒤 완료 팝업
 - 시간 초과·통신 끊김·5xx는 제출 실패와 같다. 재시도는 클라이언트가 같은 POST를 다시 보낸다. 이미 저장된 뒤의 재시도는 `409` 이미 신청 → 완료 화면. `409` 마감·정원은 폼을 닫고 CTA를 바꾼다
 - 실패 응답·로그·에러 리포트에 별명·폼 답·`DISCORD_ID`·`DISCORD_HANDLE` 원문을 넣지 않는다. 필드명과 사유 코드만 남긴다
