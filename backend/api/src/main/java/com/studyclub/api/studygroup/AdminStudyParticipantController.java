@@ -28,16 +28,16 @@ public class AdminStudyParticipantController {
     }
 
     @Operation(
-            summary = "반·역할 한 번에 바꾸기",
+            summary = "역할·반 한 번에 바꾸기",
             description =
                     "ADMIN만 호출 가능. 신청자 탭 「저장」. all-or-nothing 트랜잭션."
-                            + " 반 이동 시 옛 반 예정 회차 발표자 칸 비우기 + 출석 삭제, 새 반 예정 회차 ABSENT 생성.")
+                            + " 반 이동 시 옛 반 예정 회차 발표자 칸 비우기 + 새 반 예정 회차 ABSENT 생성.")
     @PatchMapping
-    public BulkUpdateParticipantResponse bulkUpdateRoles(
+    public BulkUpdateParticipantResponse bulkUpdate(
             @PathVariable Long studyId,
             @Valid @RequestBody BulkUpdateParticipantRequest request,
             Authentication authentication) {
         Long actorAccountId = (Long) authentication.getPrincipal();
-        return adminStudyParticipantService.bulkUpdateRoles(studyId, request, actorAccountId);
+        return adminStudyParticipantService.bulkUpdate(studyId, request, actorAccountId);
     }
 }

@@ -147,4 +147,9 @@ public class StudyParticipant extends BaseEntity {
     public void changeRole(ParticipantRole role) {
         this.participantRole = role;
     }
+
+    /** 소속 반을 옮긴다. ACTIVE·PAUSED 상태 검증·부수효과(발표자 정리·출석 생성)는 서비스 레이어에서 한다. */
+    public void changeGroup(Long newGroupId) {
+        this.studyGroupId = newGroupId;
+    }
 }
