@@ -347,7 +347,7 @@ export function CrewTab({
                 </th>
                 <th className='whitespace-nowrap'>닉네임</th>
                 <th className='whitespace-nowrap'>디스코드 닉네임</th>
-                <th className='whitespace-nowrap'>디스코드 아이디</th>
+                <th className='whitespace-nowrap'>디스코드</th>
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>지역</th>
                 <th className='whitespace-nowrap'>반</th>
