@@ -72,48 +72,49 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
     label: '내 스터디 출석 — 크루 (읽기 전용 출석 격자)',
     pageId: 'my-joined-attendance',
     rationale:
-      '일반 크루 권한으로 출석 탭 접속 시 백오피스 출석 링크와 하단 작업 바가 노출되지 않고 읽기 전용 표가 렌더링되는지 확인한다.',
+      '일반 크루 권한으로 출석 탭 접속 시 백오피스 출석부 버튼과 작업 바가 노출되지 않고 읽기 전용 표(닉네임 · 디스코드 닉네임 열)가 렌더링되는지 확인한다.',
     recipe: {
       storage: CREW_STORAGE,
       render: { url: '/ko/my/joined/3/schedule/attendance' },
     },
     viewports: ['desktop', 'mobile'],
     assertions: {
-      visible: ['h2:has-text("출석")'],
-      hidden: ['button:has-text("백오피스 출석 (전체 참여자)")', 'button:has-text("출석 적용")'],
+      visible: ['h2:has-text("출석")', 'button[aria-label="발표 표시 설명"]'],
+      hidden: ['button:has-text("백오피스 출석부")', 'select[aria-label="바꿀 출석 상태"]'],
     },
     screenshot: { fullPage: true },
   },
   {
     id: 'my-joined-attendance--navigator',
-    label: '내 스터디 출석 — 네비게이터 (출석 격자 & 일괄 적용)',
+    label: '내 스터디 출석 — 네비게이터 (출석 격자 & 일괄 변경)',
     pageId: 'my-joined-attendance',
     rationale:
-      '네비게이터 권한으로 출석 탭에 접속했을 때 출석 격자 및 일괄 출석 적용 바가 렌더링되고, 백오피스 링크는 없는지 확인한다.',
+      '네비게이터 권한으로 출석 탭에 접속했을 때 출석 격자와 표 맨 위 작업 바(「적용」 버튼 없는 일괄 변경)가 렌더링되고, 백오피스 출석부 버튼은 없는지 확인한다.',
     recipe: {
       storage: CREW_STORAGE,
       render: { url: '/ko/my/joined/11/schedule/attendance' },
     },
     viewports: ['desktop', 'mobile'],
     assertions: {
-      visible: ['[role="region"]', 'button:has-text("출석 적용")'],
-      hidden: ['button:has-text("백오피스 출석 (전체 참여자)")'],
+      visible: ['[role="region"]', 'select[aria-label="바꿀 출석 상태"]'],
+      hidden: ['button:has-text("백오피스 출석부")', 'button:has-text("출석 적용")'],
     },
     screenshot: { fullPage: true },
   },
   {
     id: 'my-joined-attendance--captain',
-    label: '내 스터디 출석 — 캡틴 (출석 격자 & 백오피스 출석 링크)',
+    label: '내 스터디 출석 — 캡틴 (출석 격자 & 백오피스 출석부)',
     pageId: 'my-joined-attendance',
     rationale:
-      '캡틴 권한으로 출석 탭에 접속했을 때 백오피스 출석 이동 버튼, 전체 출석 격자, 일괄 출석 적용 바가 렌더링되는지 확인한다.',
+      '캡틴 권한으로 출석 탭에 접속했을 때 정보 카드 바로가기 줄 맨 앞의 백오피스 출석부 버튼, 출석 격자, 표 맨 위 작업 바가 렌더링되는지 확인한다.',
     recipe: {
       storage: CREW_STORAGE,
       render: { url: '/ko/my/joined/1/schedule/attendance' },
     },
     viewports: ['desktop', 'mobile'],
     assertions: {
-      visible: ['button:has-text("백오피스 출석 (전체 참여자)")', '[role="region"]', 'button:has-text("출석 적용")'],
+      visible: ['button:has-text("백오피스 출석부")', '[role="region"]', 'select[aria-label="바꿀 출석 상태"]'],
+      hidden: ['button:has-text("출석 적용")'],
     },
     screenshot: { fullPage: true },
   },

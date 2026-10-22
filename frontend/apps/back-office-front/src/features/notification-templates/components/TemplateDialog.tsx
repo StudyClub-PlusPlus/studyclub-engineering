@@ -8,6 +8,7 @@ import {
   useCreateNotificationTemplate,
   useDeleteNotificationTemplate,
   useInvalidateTemplates,
+  useNotificationTemplateForEdit,
   useUpdateNotificationTemplate,
 } from '@/features/notification-templates/queries';
 import {
@@ -30,7 +31,30 @@ const GONE = '이미 삭제된 템플릿입니다. 목록을 새로 불러왔습
  * 않는다 — 제목·본문 칸이 곧 전문이라 치환 변수(`{{nickname}}`)와 줄바꿈도 원문 그대로다.
  * 삭제도 이 안에서 한다 — 목록 행에 삭제 버튼을 두면 스치듯 눌러 지우는 사고가 난다.
  */
-export function TemplateDialog({
+export function TemplateDialog(props: { open: boolean; onClose: () => void; template?: NotificationTemplate }) {
+  const fresh = useNotificationTemplateForEdit(props.template?.id);
+  if (!props.template) return <TemplateEditor {...props} />;
+  const loading = fresh.isPending || !fresh.isFetchedAfterMount;
+  if (loading || fresh.isError || !fresh.data) {
+    return (
+      <Modal open={props.open} onClose={props.onClose} title='템플릿 수정'>
+        {loading ? (
+          <p role='status'>최신 템플릿을 불러오는 중…</p>
+        ) : (
+          <div>
+            <p role='alert'>{fresh.isError ? '템플릿을 불러오지 못했습니다.' : '이미 삭제된 템플릿입니다.'}</p>
+            <Button variant='secondary' onClick={() => void fresh.refetch()}>
+              다시 불러오기
+            </Button>
+          </div>
+        )}
+      </Modal>
+    );
+  }
+  return <TemplateEditor {...props} template={fresh.data} />;
+}
+
+function TemplateEditor({
   open,
   onClose,
   template,
@@ -124,7 +148,13 @@ export function TemplateDialog({
         confirmDelete ? (
           <>
             {/* 결정을 묻는 단계 — 안전한 쪽이 기본 포커스 (POL-0008) */}
-            <Button variant='secondary' data-autofocus onClick={() => setConfirmDelete(false)} disabled={busy}>
+            <Button
+              variant='secondary'
+              autoFocus
+              data-autofocus
+              onClick={() => setConfirmDelete(false)}
+              disabled={busy}
+            >
               취소
             </Button>
             <Button variant='destructive' onClick={destroy} loading={remove.isPending}>
@@ -164,6 +194,7 @@ export function TemplateDialog({
           {/* 알림은 이름이 아니라 이 조건으로 나간다 — 조건이 없으면 보낼 계기가 없다 */}
           <Select
             label='알림 조건'
+            disabled={busy}
             required
             value={draft.eventType}
             onChange={(e) => setDraft({ ...draft, eventType: e.target.value })}
@@ -176,6 +207,7 @@ export function TemplateDialog({
           </Select>
           <Input
             label='제목'
+            disabled={busy}
             required
             value={draft.subject}
             onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
@@ -184,6 +216,7 @@ export function TemplateDialog({
           {/* 치환 변수({{nickname}})는 원문 그대로 둔다 — 미리 채워 보여주면 원문을 알 수 없다 */}
           <Textarea
             label='본문'
+            disabled={busy}
             required
             rows={10}
             value={draft.body}

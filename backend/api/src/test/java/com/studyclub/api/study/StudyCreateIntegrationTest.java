@@ -51,7 +51,7 @@ class StudyCreateIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - ADMIN 이 필수 항목만 채우면 201 + STUDY·STUDY_RECRUITMENT 행이 생성된다")
+    @DisplayName("성공 - ADMIN 이 필수 항목만 채우면 201 + STUDY·STUDY_RECRUITMENT·기본반 행이 생성된다")
     void adminCreatesStudy() {
         Map<String, Object> body =
                 Map.of(
@@ -77,6 +77,13 @@ class StudyCreateIntegrationTest {
         var recruitment = recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId);
         assertThat(recruitment).isPresent();
         assertThat(recruitment.get().getRecruitDeadlineAt()).isNull();
+
+        assertThat(
+                        jdbcTemplate.queryForList(
+                                "SELECT NAME FROM STUDY_GROUP WHERE STUDY_ID = ?",
+                                String.class,
+                                studyId))
+                .containsExactly("기본반");
     }
 
     @Test

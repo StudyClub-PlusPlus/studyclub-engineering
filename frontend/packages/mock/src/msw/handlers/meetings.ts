@@ -226,15 +226,16 @@ function responseFor({
     })),
   };
   const baseMeetings = meetingState.get(study.study_id) ?? response.meetings;
-  const meetings = baseMeetings.map((m) => ({
-    ...m,
-    presenter1: m.presenter1
-      ? { ...m.presenter1, active: !withdrawnSet.has(m.presenter1.participantId) }
-      : null,
-    presenter2: m.presenter2
-      ? { ...m.presenter2, active: !withdrawnSet.has(m.presenter2.participantId) }
-      : null,
-  }));
+  // 참여 중단한 사람은 아직 시작하지 않은 회차의 발표자에서 빠진다(10-18 D7). 지난 회차의 발표 기록은 남긴다
+  const presenterOf = (p: MeetingRow['presenter1'], started: boolean) => {
+    if (!p) return null;
+    const active = !withdrawnSet.has(p.participantId);
+    return active || started ? { ...p, active } : null;
+  };
+  const meetings = baseMeetings.map((m) => {
+    const started = new Date(m.scheduledAt).getTime() <= Date.now();
+    return { ...m, presenter1: presenterOf(m.presenter1, started), presenter2: presenterOf(m.presenter2, started) };
+  });
   return { ...response, participants, meetings };
 }
 

@@ -86,6 +86,8 @@ function responseFor({
   let participants: Array<{
     participantId: number;
     displayName: string;
+    /** 스터디클럽 디스코드 서버 별명 — 출석부 「디스코드 닉네임」 열. 회원 탈퇴면 null. */
+    discordNickname: string | null;
     participantRole: string;
     captain: boolean;
     participantStatus: string;
@@ -99,6 +101,7 @@ function responseFor({
       {
         participantId: 1,
         displayName: myName,
+        discordNickname: null,
         participantRole: 'MEMBER',
         captain: true,
         participantStatus: withdrawnSet.has(1) ? 'WITHDRAWN' : 'ACTIVE',
@@ -109,6 +112,7 @@ function responseFor({
       {
         participantId: 2,
         displayName: '가온',
+        discordNickname: gaonCrew?.discordNickname ?? null,
         participantRole: 'LEADER',
         captain: false,
         participantStatus: withdrawnSet.has(2) ? 'WITHDRAWN' : 'ACTIVE',
@@ -123,6 +127,7 @@ function responseFor({
           return {
             participantId,
             displayName: person.name,
+            discordNickname: person.discordNickname ?? null,
             participantRole: 'MEMBER',
             captain: false,
             participantStatus: withdrawnSet.has(participantId) ? 'WITHDRAWN' : 'ACTIVE',
@@ -137,6 +142,7 @@ function responseFor({
       {
         participantId: 1,
         displayName: myName,
+        discordNickname: null,
         participantRole: 'LEADER',
         captain: false,
         participantStatus: withdrawnSet.has(1) ? 'WITHDRAWN' : 'ACTIVE',
@@ -149,6 +155,7 @@ function responseFor({
         return {
           participantId,
           displayName: person.name,
+          discordNickname: person.discordNickname ?? null,
           participantRole: 'MEMBER',
           captain: false,
           participantStatus: withdrawnSet.has(participantId) ? 'WITHDRAWN' : 'ACTIVE',
@@ -163,6 +170,7 @@ function responseFor({
       {
         participantId: 1,
         displayName: myName,
+        discordNickname: null,
         participantRole: 'MEMBER',
         captain: false,
         participantStatus: withdrawnSet.has(1) ? 'WITHDRAWN' : 'ACTIVE',
@@ -173,6 +181,7 @@ function responseFor({
       {
         participantId: 2,
         displayName: '소율',
+        discordNickname: soyulCrew?.discordNickname ?? null,
         participantRole: 'LEADER',
         captain: false,
         participantStatus: withdrawnSet.has(2) ? 'WITHDRAWN' : 'ACTIVE',
@@ -187,6 +196,7 @@ function responseFor({
           return {
             participantId,
             displayName: person.name,
+            discordNickname: person.discordNickname ?? null,
             participantRole: 'MEMBER',
             captain: false,
             participantStatus: withdrawnSet.has(participantId) ? 'WITHDRAWN' : 'ACTIVE',

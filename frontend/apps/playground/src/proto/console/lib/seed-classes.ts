@@ -19,7 +19,7 @@ type ExtraClass = {
   tz: StudyTz;
 };
 
-/** 처음 반의 제목. 사용자 사이트 분반 mock 과 같은 이름을 쓴다. 없으면 「1반」. */
+/** 처음 반(기본반)의 제목. 사용자 사이트 분반 mock 과 같은 이름을 쓴다 — 캡틴이 기본반 이름을 바꾼 상태. 없으면 「기본반」. */
 const FIRST_TITLES: Record<string, string> = { 'ddia-2nd': '수요일반', 'ai-paper-study': '목요일반' };
 
 const EXTRA_CLASSES: Record<string, ExtraClass[]> = {
@@ -63,7 +63,7 @@ export function seedClasses(
 ): SeededClasses {
   const first: StudyClass = {
     id: firstId,
-    title: FIRST_TITLES[study.id] ?? '1반',
+    title: FIRST_TITLES[study.id] ?? '기본반',
     rule: ruleFromMeetings(study, initial.meetings),
   };
   const extras = EXTRA_CLASSES[study.id] ?? [];

@@ -83,7 +83,7 @@ Response 200 그대로. `account.role` 은 이미 실려 있다(`AuthDtos.Accoun
 
 ### 바뀌지 않는 것
 
-`GET /auth/me`, `POST /auth/refresh` 그대로. 백오피스는 refresh 를 안 쓴다(쿠키에 access 만 심는다).
+`GET /api/me`, `POST /auth/refresh` 그대로. 백오피스는 refresh 를 안 쓴다(쿠키에 access 만 심는다).
 
 ## 백엔드 구현 지점
 

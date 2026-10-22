@@ -104,7 +104,7 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
 
   test('로그인 회원 접속 시 제목, 주간 일정 그리드, 기본 "참여중" 탭이 렌더링된다', async ({ page }) => {
     await page.goto('/ko/my/joined');
-    await expect(page.locator('h1')).toHaveText('내 스터디');
+    await expect(page.locator('h1')).toHaveText('내 스터디룸');
 
     // 주간 일정 영역 확인
     const weekHeading = page.locator('section h2');
@@ -177,7 +177,7 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
 
     // /ko/my/joined/:id/schedule 경로로 이동 확인
     await expect(page).toHaveURL(/\/ko\/my\/joined\/\d+\/schedule/);
-    await expect(page.getByRole('main').getByRole('link', { name: '내 스터디' })).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: '내 스터디룸' })).toBeVisible();
     await expect(page.getByRole('link', { name: '일정' })).toBeVisible();
     await expect(page.getByRole('link', { name: '출석' })).toBeVisible();
     await expect(page.locator('table').first()).toBeVisible();
@@ -188,8 +188,8 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
     await expect(page.getByRole('heading', { level: 2, name: /출석/ })).toBeVisible();
     await expect(page.getByText('출석률')).toBeVisible();
 
-    // 내 스터디 링크 클릭 시 내 스터디 목록으로 복귀 확인
-    await page.getByRole('main').getByRole('link', { name: '내 스터디' }).click();
+    // 내 스터디룸 링크 클릭 시 내 스터디룸 목록으로 복귀 확인
+    await page.getByRole('main').getByRole('link', { name: '내 스터디룸' }).click();
     await expect(page).toHaveURL(/\/ko\/my\/joined/);
   });
 });
@@ -209,3 +209,64 @@ test.describe('내 스터디 상세 — 출석 탭 모바일 반응형', () => {
   });
 });
 
+
+test.describe('내 스터디 상세 — 출석 탭 (10-18 기획 변경)', () => {
+  test('닉네임 · 디스코드 닉네임 열이 있고, 「적용」 버튼 없이 출석 상태를 고르면 바로 반영된다', async ({ page }) => {
+    await loginAsCrew(page);
+    await page.goto('/ko/my/joined/11/schedule/attendance');
+
+    await expect(page.getByText('닉네임', { exact: true })).toBeVisible();
+    await expect(page.getByText('디스코드 닉네임', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '출석 적용' })).toHaveCount(0);
+
+    const status = page.getByRole('combobox', { name: '바꿀 출석 상태' });
+    await expect(status).toBeDisabled();
+
+    // 0번은 머리 줄 전체 선택, 1번은 나(네비게이터), 2번부터 크루
+    await page.getByRole('checkbox').nth(2).check();
+    await expect(status).toBeEnabled();
+    // 크루의 킥오프 칸은 비어 있다 — 「출석」을 고르면 반드시 바뀐다
+    const meeting = page.getByRole('combobox', { name: '바꿀 회차' });
+    await meeting.selectOption({ index: 0 });
+    await status.selectOption('present');
+
+    // 고르는 즉시 저장 전 변경이 생기고, 드롭다운은 처음 글로 돌아온다
+    await expect(page.getByRole('button', { name: '변경 취소' })).toBeVisible();
+    await expect(status).toHaveValue('');
+  });
+
+  test('참여 중단을 고르면 줄에 되돌리기 버튼이 붙고 작업 바에 「중단 예정 n명」이 보인다', async ({ page }) => {
+    await loginAsCrew(page);
+    await page.goto('/ko/my/joined/11/schedule/attendance');
+
+    const crewBox = page.getByRole('checkbox').nth(2);
+    const name = ((await crewBox.getAttribute('aria-label')) ?? '').replace(/ 선택$/, '');
+    await crewBox.check();
+    await page.getByRole('button', { name: '참여 중단' }).click();
+
+    await expect(page.getByText('중단 예정 1명')).toBeVisible();
+    const undo = page.getByRole('button', { name: `${name} 중단 예정 취소` });
+    await expect(undo).toBeVisible();
+
+    await undo.click();
+    await expect(page.getByText('중단 예정 1명')).toHaveCount(0);
+  });
+
+  test('출석 제목 옆 「?」를 누르면 발표 표시 설명이 열린다', async ({ page }) => {
+    await loginAsCrew(page);
+    await page.goto('/ko/my/joined/11/schedule/attendance');
+
+    await page.getByRole('button', { name: '발표 표시 설명' }).click();
+    await expect(page.getByRole('dialog', { name: '발표 표시 설명' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: '발표 표시 설명' })).toHaveCount(0);
+  });
+
+  test('캡틴은 정보 카드에서 「백오피스 출석부」 버튼을 본다', async ({ page }) => {
+    await loginAsCrew(page);
+    await page.goto('/ko/my/joined/1/schedule/attendance');
+
+    await expect(page.getByRole('button', { name: '백오피스 출석부' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /백오피스 출석 \(전체 참여자\)/ })).toHaveCount(0);
+  });
+});

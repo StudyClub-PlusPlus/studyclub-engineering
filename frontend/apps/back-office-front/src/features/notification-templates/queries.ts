@@ -19,23 +19,43 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 export const TEMPLATE_REQUEST_TIMEOUT_MS = 15_000;
 const timeout = () => AbortSignal.timeout(TEMPLATE_REQUEST_TIMEOUT_MS);
 
-function fetchNotificationTemplates(): Promise<NotificationTemplate[]> {
-  return http<NotificationTemplate[]>(BASE);
+function fetchNotificationTemplates({ signal }: { signal: AbortSignal }): Promise<NotificationTemplate[]> {
+  return http<NotificationTemplate[]>(BASE, { signal });
 }
 
 export function useNotificationTemplates() {
   return useQuery({
     queryKey: notificationTemplateKeys.list(),
     queryFn: fetchNotificationTemplates,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
-/** 저장이 끝나면 목록을 다시 읽는다 — 마지막 수정 시각과 순서는 서버가 정한 값을 그린다. */
+/** 편집 시작 때마다 서버에서 읽는다. 단건 API가 없어 목록에서 해당 ID를 찾는다. */
+export function useNotificationTemplateForEdit(id?: number) {
+  return useQuery({
+    queryKey: ['notification-template-editor', id],
+    queryFn: async ({ signal }) => {
+      const list = await fetchNotificationTemplates({ signal });
+      return list.find((template) => template.id === id) ?? null;
+    },
+    enabled: id !== undefined,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** 저장은 조회를 기다리지 않는다. 이전 응답을 취소한 뒤 저장 이후의 목록을 새로 요청한다. */
 export function useInvalidateTemplates() {
   const queryClient = useQueryClient();
-  // promise 를 돌려주지 않는다 — 저장은 이미 끝났는데 목록 재조회가 끝날 때까지 팝업이 열려 있게 된다
   return () => {
-    void queryClient.invalidateQueries({ queryKey: notificationTemplateKeys.all });
+    void (async () => {
+      await queryClient.cancelQueries({ queryKey: notificationTemplateKeys.all });
+      await queryClient.invalidateQueries({ queryKey: notificationTemplateKeys.all });
+    })();
   };
 }
 

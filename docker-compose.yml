@@ -74,6 +74,11 @@ services:
       # 봇 ↔ 백엔드 양방향 서비스 키 (같은 값). 비어 있으면 백엔드는 봇을 부르지 않는다 (specs/discord-study-link)
       DISCORD_API_KEY: ${DISCORD_API_KEY:-}
       DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
+      # 디스코드 계정 연동 OAuth. 비어 있으면 연동만 503 (specs/study-application 「디스코드 계정 연동」)
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      DISCORD_OAUTH_CLIENT_ID: ${DISCORD_OAUTH_CLIENT_ID:-}
+      DISCORD_OAUTH_CLIENT_SECRET: ${DISCORD_OAUTH_CLIENT_SECRET:-}
+      DISCORD_OAUTH_REDIRECT_URI: ${DISCORD_OAUTH_REDIRECT_URI:-}
     ports:
       - "${API_PORT:-28080}:8080"
     healthcheck:

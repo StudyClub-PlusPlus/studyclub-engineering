@@ -129,7 +129,7 @@ navigator 고정 둘은 **captain 만**, 아무 역할 둘은 **captain · 시�
 |------|------|------|------|
 | 채널 | 경로로 호출자가 고름 | alert 채널 고정 | announcement 채널 고정 |
 | 용도 | 스터디 채널 안내 | captain 이 조치할 운영 알림 | 길드 전체 공지 |
-| 호출 권한 | captain · navigator | captain · navigator | captain |
+| 호출 권한 | captain · navigator | captain · 시스템 | captain |
 | 추가 바디 | `discordStudyId`, `discordUserIds` (최대 40명, 빈 배열 허용) | — | — |
 | 맨 위에 붙는 줄 | `발신: <@요청자>` + 멘션 줄 | `발신: <@요청자>` | `@everyone` |
 | 알림이 울리는 대상 | `discordUserIds` 의 유저만 | 없음 | `@everyone` |

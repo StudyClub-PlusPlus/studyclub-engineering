@@ -1,6 +1,7 @@
 package com.studyclub.domain.study;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,14 @@ import org.springframework.data.repository.query.Param;
 public interface StudyGroupRepository extends JpaRepository<StudyGroup, Long> {
 
     List<StudyGroup> findByStudyId(Long studyId);
+
+    /** 기본 반 — 그 스터디에서 처음 만든 반. 신청자가 여기로 들어간다. */
+    Optional<StudyGroup> findFirstByStudyIdOrderByIdAsc(Long studyId);
+
+    List<StudyGroup> findByStudyIdIn(Collection<Long> studyIds);
+
+    /** 같은 스터디에 같은 이름의 반이 있는지. 운영 DB 정렬이 대소문자를 가리지 않아 여기서도 무시한다. */
+    boolean existsByStudyIdAndNameIgnoreCase(Long studyId, String name);
 
     void deleteByStudyId(Long studyId);
 

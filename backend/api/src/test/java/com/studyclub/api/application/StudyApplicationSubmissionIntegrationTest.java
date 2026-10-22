@@ -6,6 +6,7 @@ import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,8 @@ class StudyApplicationSubmissionIntegrationTest {
     private static final Long STUDY_ID = 10_610L;
     private static final Long RECRUITMENT_ID = 10_620L;
     private static final Long GROUP_ID = 10_630L;
+    private static final Long PAST_RECRUITMENT_ID = 10_621L;
+    private static final Instant SUBMITTED_AT = Instant.parse("2026-09-19T12:00:00Z");
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
@@ -49,8 +52,8 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 신청 제출은 신청서와 계정 별명을 저장하고 명부는 만들지 않는다")
-    void submitsApplicationWithoutAssigningGroup() {
+    @DisplayName("성공 - 신청 제출은 신청서와 계정 별명을 저장하고 기본 반 명부에 넣는다")
+    void submitsApplicationAndJoinsDefaultGroup() {
         var response =
                 rest.postForEntity(
                         "/api/studies/" + STUDY_ID + "/applications",
@@ -74,12 +77,19 @@ class StudyApplicationSubmissionIntegrationTest {
                                 LINKED_ACCOUNT_ID))
                 .isEqualTo("새 별명");
         assertThat(
-                        jdbcTemplate.queryForObject(
-                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
-                                Long.class,
+                        jdbcTemplate.queryForList(
+                                "SELECT STUDY_GROUP_ID, STATUS, PARTICIPANT_ROLE FROM STUDY_PARTICIPANT"
+                                        + " WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
                                 STUDY_ID,
                                 LINKED_ACCOUNT_ID))
-                .isZero();
+                .singleElement()
+                .satisfies(
+                        row -> {
+                            assertThat(((Number) row.get("STUDY_GROUP_ID")).longValue())
+                                    .isEqualTo(GROUP_ID);
+                            assertThat(row.get("STATUS")).isEqualTo("ACTIVE");
+                            assertThat(row.get("PARTICIPANT_ROLE")).isEqualTo("MEMBER");
+                        });
         assertThat(
                         jdbcTemplate.queryForObject(
                                 "SELECT FORM_ANSWER FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ? AND ACCOUNT_ID = ?",
@@ -93,8 +103,9 @@ class StudyApplicationSubmissionIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 분반 배정 전 신청서 수는 모집 정원을 초과할 수 있다")
-    void applicationsCanExceedCapacityBeforeAssignment() {
+    @DisplayName("실패 - 신청이 명부를 채우므로 정원(2)이 차면 세 번째 신청은 409이다")
+    void applicationsFillCapacity() {
+        List<HttpStatus> statuses = new ArrayList<>();
         for (long accountId = 10_650L; accountId < 10_653L; accountId++) {
             insertAccount(
                     accountId,
@@ -106,15 +117,47 @@ class StudyApplicationSubmissionIntegrationTest {
                             "/api/studies/" + STUDY_ID + "/applications",
                             authenticatedRequest(accountId, validRequest()),
                             Void.class);
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            statuses.add(HttpStatus.valueOf(response.getStatusCode().value()));
         }
-        assertThat(applicationCount()).isEqualTo(3L);
+        assertThat(statuses)
+                .containsExactly(HttpStatus.CREATED, HttpStatus.CREATED, HttpStatus.CONFLICT);
+        assertThat(applicationCount()).isEqualTo(2L);
         assertThat(
                         jdbcTemplate.queryForObject(
-                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?",
+                                "SELECT COUNT(*) FROM STUDY_PARTICIPANT WHERE STUDY_GROUP_ID = ?",
+                                Long.class,
+                                GROUP_ID))
+                .isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("성공 - 반이 없는 옛 스터디는 첫 신청 때 기본반을 만들어 넣는다")
+    void createsDefaultGroupForStudyWithoutGroup() {
+        jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE STUDY_ID = ?", STUDY_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(
+                        jdbcTemplate.queryForList(
+                                "SELECT ID FROM STUDY_GROUP WHERE STUDY_ID = ? AND NAME = '기본반'",
                                 Long.class,
                                 STUDY_ID))
-                .isZero();
+                .singleElement()
+                .satisfies(
+                        groupId ->
+                                assertThat(
+                                                jdbcTemplate.queryForObject(
+                                                        "SELECT STUDY_GROUP_ID FROM STUDY_PARTICIPANT"
+                                                                + " WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                                                        Long.class,
+                                                        STUDY_ID,
+                                                        LINKED_ACCOUNT_ID))
+                                        .isEqualTo(groupId));
     }
 
     @Test
@@ -404,6 +447,13 @@ class StudyApplicationSubmissionIntegrationTest {
                             Void.class);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             assertThat(applicationCount()).isEqualTo(1L);
+            // 옛 명부 행을 되살린다 — 같은 반에 새 행을 만들면 유니크 제약에 걸린다
+            assertThat(
+                            jdbcTemplate.queryForList(
+                                    "SELECT STATUS FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?",
+                                    String.class,
+                                    STUDY_ID))
+                    .containsExactly("ACTIVE");
         }
     }
 
@@ -574,7 +624,7 @@ class StudyApplicationSubmissionIntegrationTest {
     @Test
     @DisplayName("실패 - 필수값 누락과 요일 상한 및 null 항목도 도메인 사유 코드로 응답한다")
     void usesConsistentDomainValidationMessages() {
-        List<Map<String, Object>> invalidBodies = new java.util.ArrayList<>();
+        List<Map<String, Object>> invalidBodies = new ArrayList<>();
         List<String> errors =
                 List.of(
                         "discordNickname: empty",
@@ -640,7 +690,7 @@ class StudyApplicationSubmissionIntegrationTest {
 
         var response =
                 rest.exchange(
-                        "/auth/me",
+                        "/api/me",
                         org.springframework.http.HttpMethod.GET,
                         authenticatedRequest(LINKED_ACCOUNT_ID, Map.of()),
                         Map.class);
@@ -650,7 +700,7 @@ class StudyApplicationSubmissionIntegrationTest {
 
         var other =
                 rest.exchange(
-                        "/auth/me",
+                        "/api/me",
                         org.springframework.http.HttpMethod.GET,
                         authenticatedRequest(UNLINKED_ACCOUNT_ID, Map.of()),
                         Map.class);
@@ -693,6 +743,110 @@ class StudyApplicationSubmissionIntegrationTest {
                         Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    @DisplayName("성공 - 신청한 회원의 내 신청 여부는 신청서 ID와 행 생성 시각을 준다")
+    void findsMyApplication() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", true)
+                .containsEntry("applicationId", 10_640)
+                .containsEntry("submittedAt", "2026-09-19T12:00:00Z");
+    }
+
+    @Test
+    @DisplayName("성공 - 신청하지 않은 회원은 applied=false 이고 ID·제출 시각은 null이다")
+    void reportsNotApplied() {
+        var response = getMyApplication(STUDY_ID, UNLINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", false)
+                .containsEntry("applicationId", null)
+                .containsEntry("submittedAt", null);
+    }
+
+    @Test
+    @DisplayName("성공 - 더 늦게 시작한 마감 회차가 있어도 열린 모집 회차의 신청을 본다")
+    void prefersOpenRecruitment() {
+        Instant now = Instant.now();
+        insertRecruitment(PAST_RECRUITMENT_ID, now.minusSeconds(30), now.minusSeconds(10));
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertApplication(10_641L, PAST_RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getBody()).containsEntry("applicationId", 10_640);
+    }
+
+    @Test
+    @DisplayName("성공 - 열린 모집 회차가 없으면 시작이 가장 늦은 회차의 신청을 본다")
+    void fallsBackToLatestRecruitmentAfterDeadline() {
+        Instant now = Instant.now();
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = ? WHERE ID = ?",
+                Timestamp.from(now.minusSeconds(1)),
+                RECRUITMENT_ID);
+        // ID 는 더 크지만 시작이 더 이른 회차 — ID 순으로 고르면 틀린다
+        insertRecruitment(PAST_RECRUITMENT_ID, now.minusSeconds(7200), now.minusSeconds(3600));
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertApplication(10_641L, PAST_RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("applicationId", 10_640);
+    }
+
+    @Test
+    @DisplayName("실패 - 탈퇴로 계정이 지워진 토큰은 남은 신청서를 조회하지 못하고 401이다")
+    void rejectsDeletedAccount() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        var issuedBeforeLeave = authenticatedRequest(LINKED_ACCOUNT_ID, Map.of());
+        jdbcTemplate.update("DELETE FROM ACCOUNT WHERE ID = ?", LINKED_ACCOUNT_ID);
+
+        var response =
+                rest.exchange(
+                        "/api/studies/" + STUDY_ID + "/applications/me",
+                        org.springframework.http.HttpMethod.GET,
+                        issuedBeforeLeave,
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("실패 - 토큰 없이 내 신청 여부를 물으면 401 + UNAUTHORIZED 이다")
+    void rejectsUnauthenticatedMyApplication() {
+        var response =
+                rest.getForEntity("/api/studies/" + STUDY_ID + "/applications/me", Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("실패 - 없는 스터디의 내 신청 여부는 404이다")
+    void rejectsMyApplicationOfUnknownStudy() {
+        var response = getMyApplication(999_999L, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
+    }
+
+    private org.springframework.http.ResponseEntity<Map> getMyApplication(
+            Long studyId, Long accountId) {
+        return rest.exchange(
+                "/api/studies/" + studyId + "/applications/me",
+                org.springframework.http.HttpMethod.GET,
+                authenticatedRequest(accountId, Map.of()),
+                Map.class);
     }
 
     private void insertAccount(Long id, String email, String discordId, Timestamp now) {
@@ -795,6 +949,35 @@ class StudyApplicationSubmissionIntegrationTest {
                 now);
     }
 
+    private void insertRecruitment(Long id, Instant startAt, Instant deadlineAt) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_RECRUITMENT (ID, STUDY_ID, TITLE, DESCRIPTION, START_AT,"
+                        + " RECRUIT_DEADLINE_AT, RECRUITMENT_CAPACITY, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id,
+                STUDY_ID,
+                "다른 모집",
+                "모집 설명",
+                Timestamp.from(startAt),
+                Timestamp.from(deadlineAt),
+                2,
+                now,
+                now);
+    }
+
+    private void insertApplication(Long id, Long recruitmentId, Long accountId, Instant createdAt) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_APPLICATION (ID, ACCOUNT_ID, RECRUITMENT_ID, FORM_ANSWER,"
+                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, CAST(? AS JSON), ?, ?)",
+                id,
+                accountId,
+                recruitmentId,
+                "{}",
+                Timestamp.from(createdAt),
+                Timestamp.from(createdAt));
+    }
+
     private void insertGroup(Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY_GROUP (ID, STUDY_ID, NAME, START_AT, TIMEZONE, CAPACITY,"
@@ -812,7 +995,9 @@ class StudyApplicationSubmissionIntegrationTest {
     private void clean() {
         jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update(
-                "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ?", RECRUITMENT_ID);
+                "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID IN (?, ?)",
+                RECRUITMENT_ID,
+                PAST_RECRUITMENT_ID);
         jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID = ?", STUDY_ID);

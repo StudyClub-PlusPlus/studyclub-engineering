@@ -11,6 +11,14 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByStudyId(Long studyId);
 
+    /** 진행 중 기수의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용 (specs/dashboard/spec.md 2-1). */
+    @Query(
+            "SELECT p FROM StudyParticipant p, Study s"
+                    + " WHERE p.studyId = s.id"
+                    + " AND s.status = com.studyclub.domain.study.StudyStatus.ONGOING"
+                    + " AND p.status = com.studyclub.domain.participant.ParticipantStatus.ACTIVE")
+    List<StudyParticipant> findActiveInOngoingStudies();
+
     void deleteByStudyId(Long studyId);
 
     /** 내 스터디 목록(MyStudyQueryService)과 회원 탈퇴 익명화(AccountDeletionService) 공용 조회. */
@@ -19,6 +27,9 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     List<StudyParticipant> findByStudyGroupId(Long studyGroupId);
 
     List<StudyParticipant> findByStudyGroupIdAndStatusIn(
+            Long studyGroupId, Collection<ParticipantStatus> statuses);
+
+    boolean existsByStudyGroupIdAndStatusIn(
             Long studyGroupId, Collection<ParticipantStatus> statuses);
 
     /** 한 기수 안 여러 반 동시 소속은 금지라 많아야 하나다. 회차 관리 화면이 분반을 지정하지 않았을 때 쓴다. */

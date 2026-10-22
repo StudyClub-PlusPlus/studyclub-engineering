@@ -395,7 +395,7 @@ private StudyDetailResponse toDetail(Study study) {
 - **Method**: POST
 - **Path**: `/api/admin/studies` — `AdminStudyController`. 옛 `POST /api/studies` 는 없앴다
 - **인증**: 필요 — `ACCOUNT.SYSTEM_ROLE=ADMIN` 만 (`assertCaptain`) (지금 단계에서는 **캡틴 = 운영자**. 일반 회원에게 셀프서비스로 캡틴 자격을 여는 건 이후 Story)
-- **설명**: 캡틴(=ADMIN)이 새 스터디(`STUDY_PROGRAM.STUDY_KIND` 는 요청의 `studyKind`, 기본 `STUDY`, `STATUS=DRAFT`)를 등록한다. 프로그램은 따로 등록하지 않는다 — 새 프로그램이면 첫 기수와 함께 만들고, 클럽의 새 기수는 `studyProgramId` 로 붙인다. `STUDY_RECRUITMENT` 행 1개를 항상 함께 생성한다. `recruitDeadline` 은 필수다 — 상시 모집은 없다.
+- **설명**: 캡틴(=ADMIN)이 새 스터디(`STUDY_PROGRAM.STUDY_KIND` 는 요청의 `studyKind`, 기본 `STUDY`, `STATUS=DRAFT`)를 등록한다. 프로그램은 따로 등록하지 않는다 — 새 프로그램이면 첫 기수와 함께 만들고, 클럽의 새 기수는 `studyProgramId` 로 붙인다. `STUDY_RECRUITMENT` 행 1개와 **기본 반**(`STUDY_GROUP`, 이름 「기본반」) 1개를 항상 함께 생성한다 — 신청자가 들어갈 반이다 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)). `recruitDeadline` 은 필수다 — 상시 모집은 없다.
 
 ### Request Body
 

@@ -109,7 +109,7 @@ function PresenterCell({
       {name}
     </span>
   ) : (
-    <span className='block text-center text-fg-muted'>—</span>
+    <span className='block text-center text-fg-muted'>-</span>
   );
 }
 
@@ -144,7 +144,8 @@ function AddMeetingForm({
   onAdded: (input: { dates: string[]; time: string; title: string }) => void;
 }) {
   const [draft, setDraft] = useState<MeetingDraft>(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    // 오늘은 반 시간대 기준 — toISOString 은 UTC 라 KST 오전 9시 전에는 하루 전이 된다
+    const today = wallParts(new Date(), group.timeZone).date;
     const regular = existing.filter((m) => !isKickoff(m));
     if (regular.length === 0 && group.weekdays && group.weekdays.length > 0) {
       const days = group.weekdays;
@@ -347,7 +348,7 @@ function AddMeetingForm({
                 </li>
                 {plan.skipped.length > 0 && (
                   <li className='text-warning-700'>
-                    건너뜀 <b className='tnum'>{plan.skipped.length}</b>개 —{' '}
+                    건너뜀 <b className='tnum'>{plan.skipped.length}</b>개:{' '}
                     {plan.skipped.map((s) => `${dayLabel(s.date)} ${s.reason}`).join(', ')}
                   </li>
                 )}
@@ -409,6 +410,8 @@ export function ScheduleTab({
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [announce, setAnnounce] = useState<string | null>(null);
+  /** 저장 · 삭제 요청 중 — 두 번 눌러 회차가 두 번 생기지 않게 잠근다. */
+  const [saving, setSaving] = useState(false);
 
   const apiMeetings = apiMeetingsOf(meetingData, group);
   const pendingMeetings: ProtoMeeting[] = pendingAdds.map((m) => ({
@@ -500,6 +503,13 @@ export function ScheduleTab({
 
     return list;
   }, [meetingData, attendanceData, myParticipantId]);
+  /**
+   * 회차가 시작했는지 — 저장된 일자 · 시각을 반 시간대 벽시계로 읽는다.
+   * `new Date('yyyy-MM-ddTHH:mm')` 는 브라우저 시간대로 읽혀 PDT 사용자가 KST 반을 보면 16시간 어긋난다.
+   * 고치는 중인 값(draft)이 아니라 저장된 값으로 본다 — 일자를 지난날로 고치는 순간 칸이 잠기면 안 된다.
+   */
+  const startedOf = (m: ProtoMeeting) => zonedInstant(m.date, m.time ?? group.startAt, group.timeZone) <= new Date();
+
   const value = (m: ProtoMeeting) =>
     drafts[m.id] ?? {
       date: m.date,
@@ -581,8 +591,7 @@ export function ScheduleTab({
   /** 킥오프·시작한 회차는 체크박스 없음 — 출석이 걸려 있어 지우지 않는다 */
   const deletable = canEdit
     ? meetings.filter((m) => {
-        const started = new Date(`${m.date}T${value(m).time}`) <= new Date();
-        return !isKickoff(m) && !started;
+        return !isKickoff(m) && !startedOf(m);
       })
     : [];
   const picked = deletable.filter((m) => checked.has(m.id));
@@ -598,6 +607,7 @@ export function ScheduleTab({
   }
 
   async function remove() {
+    if (saving) return;
     setBulkConfirm(false);
     const ids = picked.map((m) => m.id);
     // pending은 로컬에서만 제거, 저장된 것은 API 삭제
@@ -614,8 +624,17 @@ export function ScheduleTab({
       });
     }
     if (apiIds.length > 0) {
-      await Promise.all(apiIds.map((id) => deleteStudyMeeting(Number(study.id), Number(id))));
+      setSaving(true);
+      try {
+        await Promise.all(apiIds.map((id) => deleteStudyMeeting(Number(study.id), Number(id))));
+      } catch {
+        setNotice('회차를 지우지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+        await refetchMeetings();
+        setSaving(false);
+        return;
+      }
       await refetchMeetings();
+      setSaving(false);
     }
     setChecked(new Set());
     setAnnounce(
@@ -625,6 +644,9 @@ export function ScheduleTab({
   }
 
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    setNotice(null);
     const pendingByTitle = new Map<string, PendingMeeting[]>();
     pendingAdds.forEach((m) => {
       const draft = drafts[m.id];
@@ -632,44 +654,59 @@ export function ScheduleTab({
       cur.push({ ...m, ...(draft ? { date: draft.date, time: draft.time, title: draft.title } : {}) });
       pendingByTitle.set(draft?.title ?? m.title, cur);
     });
-    await Promise.all(
-      [...pendingByTitle.entries()].map(([title, rows]) =>
-        createStudyMeetings(Number(study.id), {
-          studyGroupId: groupId,
-          scheduledAts: rows.map((r) => zonedInstant(r.date, r.time, group.timeZone).toISOString()),
-          title: title || undefined,
-        }),
-      ),
-    );
-    await Promise.all(
-      Object.entries(drafts)
-        .filter(([id]) => !pendingIds.has(id))
-        .map(([id, draft]) =>
-          updateStudyMeeting(Number(study.id), Number(id), {
-            scheduledAt: zonedInstant(draft.date, draft.time, group.timeZone).toISOString(),
-            title: draft.title,
-            presenter1ParticipantId: draft.presenter1 ? Number(draft.presenter1) : null,
-            presenter2ParticipantId: draft.presenter2 ? Number(draft.presenter2) : null,
-          }),
-        ),
-    );
+    try {
+      if (pendingByTitle.size > 0) {
+        await Promise.all(
+          [...pendingByTitle.entries()].map(([title, rows]) =>
+            createStudyMeetings(Number(study.id), {
+              studyGroupId: groupId,
+              scheduledAts: rows.map((r) => zonedInstant(r.date, r.time, group.timeZone).toISOString()),
+              title: title || undefined,
+            }),
+          ),
+        );
+        // 만든 회차는 바로 비운다 — 뒤의 수정이 실패해 다시 저장해도 같은 회차를 또 만들지 않게
+        setPendingAdds([]);
+        setDrafts((cur) => Object.fromEntries(Object.entries(cur).filter(([id]) => !pendingIds.has(id))));
+      }
+      await Promise.all(
+        Object.entries(drafts)
+          .filter(([id]) => !pendingIds.has(id))
+          .map(([id, draft]) =>
+            updateStudyMeeting(Number(study.id), Number(id), {
+              scheduledAt: zonedInstant(draft.date, draft.time, group.timeZone).toISOString(),
+              title: draft.title,
+              presenter1ParticipantId: draft.presenter1 ? Number(draft.presenter1) : null,
+              presenter2ParticipantId: draft.presenter2 ? Number(draft.presenter2) : null,
+            }),
+          ),
+      );
+    } catch {
+      // 고친 값은 그대로 두어 다시 저장할 수 있게 한다. 이미 반영된 것이 있을 수 있어 목록은 다시 읽는다
+      setNotice('일정을 저장하지 못했습니다. 잠시 뒤 다시 저장해 주세요.');
+      await refetchMeetings();
+      setSaving(false);
+      return;
+    }
     await refetchMeetings();
     setDrafts({});
     setPendingAdds([]);
     setAnnounce(meetings.length === 1 ? '회차를 저장했습니다.' : `회차 ${meetings.length}개를 저장했습니다.`);
     setRevision((n) => n + 1);
+    setSaving(false);
   };
 
   return (
     <div className='space-y-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
+        {/* 표 제목 「일정」 (10-18 D10) — 제목 옆은 개수만, 고른 수는 작업 바에 */}
         <h2 className='text-base font-bold'>
-          회차
+          일정
           <span className='tnum ml-2 text-sm font-medium text-fg-muted'>
             전체 {meetings.filter((m) => !isKickoff(m)).length} · 예정{' '}
             {
               meetings.filter(
-                (m) => !isKickoff(m) && new Date(`${m.date}T${value(m).time ?? group.startAt}`) > new Date(),
+                (m) => !isKickoff(m) && !startedOf(m),
               ).length
             }
           </span>
@@ -760,6 +797,7 @@ export function ScheduleTab({
                       <Button
                         variant='ghost'
                         size='sm'
+                        disabled={saving}
                         onClick={() => {
                           setDrafts({});
                           setPendingAdds([]);
@@ -768,7 +806,7 @@ export function ScheduleTab({
                         변경 취소
                       </Button>
                     )}
-                    <Button size='sm' disabled={!dirty || errorCount > 0} onClick={save}>
+                    <Button size='sm' loading={saving} disabled={!dirty || errorCount > 0} onClick={() => void save()}>
                       저장
                     </Button>
                   </>
@@ -830,7 +868,7 @@ export function ScheduleTab({
               <tbody>
                 {meetings.map((m) => {
                   const v = value(m);
-                  const started = new Date(`${m.date}T${v.time}`) <= new Date();
+                  const started = startedOf(m);
                   const shown = shownWall(v);
                   const errors = errorsOf(m);
                   const changed = Boolean(drafts[m.id]) || pendingIds.has(m.id);
@@ -904,12 +942,12 @@ export function ScheduleTab({
                             className='w-full px-2 py-1'
                           />
                         ) : (
-                          v.title || <span className='block text-center text-fg-muted'>—</span>
+                          v.title || <span className='block text-center text-fg-muted'>-</span>
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>
                         {isKickoff(m) ? (
-                          <span className='block text-center text-fg-muted'>—</span>
+                          <span className='block text-center text-fg-muted'>-</span>
                         ) : canEdit && !started ? (
                           <Select
                             aria-label={`${meetingLabel(m)} 발표자 1`}
@@ -953,7 +991,7 @@ export function ScheduleTab({
                       </td>
                       <td className='px-2 py-3 text-center'>
                         {isKickoff(m) ? (
-                          <span className='block text-center text-fg-muted'>—</span>
+                          <span className='block text-center text-fg-muted'>-</span>
                         ) : canEdit && !started ? (
                           <Select
                             aria-label={`${meetingLabel(m)} 발표자 2`}
@@ -1015,7 +1053,7 @@ export function ScheduleTab({
             <Button variant='secondary' data-autofocus onClick={() => setBulkConfirm(false)}>
               취소
             </Button>
-            <Button variant='destructive' onClick={() => void remove()}>
+            <Button variant='destructive' loading={saving} onClick={() => void remove()}>
               삭제
             </Button>
           </>
