@@ -79,6 +79,25 @@ public interface StudyAttendanceRepository extends JpaRepository<StudyAttendance
     void deleteByStudyId(Long studyId);
 
     /**
+     * 반을 지워도 되는지 — 그 반에 탈퇴 회원 밖의 출석 행이 남았는지 본다. 다른 반으로 옮긴 크루의 지난 출석은 옛 반에 남으므로 명부가 비어도 true 일 수 있다
+     * (specs/study-group/spec.md 「반 삭제」).
+     */
+    @Query(
+            """
+            SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END FROM StudyAttendance a
+            WHERE a.studyGroupId = :studyGroupId
+              AND NOT EXISTS (
+                  SELECT p.id FROM StudyParticipant p
+                  WHERE p.studyId = a.studyId AND p.accountId = a.accountId
+                    AND p.status = com.studyclub.domain.participant.ParticipantStatus.DELETED)
+            """)
+    boolean existsKeptByStudyGroupId(@Param("studyGroupId") Long studyGroupId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM StudyAttendance a WHERE a.studyGroupId = :studyGroupId")
+    void deleteByStudyGroupId(@Param("studyGroupId") Long studyGroupId);
+
+    /**
      * 회차의 출석을 한 문장으로 지운다. 파생 deleteBy 는 SELECT 뒤 한 건씩 지우는데, 그 SELECT 는 트랜잭션 스냅샷을 읽어 잠금 대기 중에 다른 요청이
      * 넣은 출석을 빠뜨린다. DELETE 문은 커밋된 최신 행을 본다.
      */

@@ -183,16 +183,52 @@ class AccountProfileIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 화면 목록에 없는 시간대도 저장한다 — 서버는 존재하는 IANA ID 를 전부 받는다")
-    void savesTimeZoneOutsideScreenList() {
+    @DisplayName("실패 - 존재하는 IANA ID 라도 화면 목록에 없는 시간대는 400 — 서버도 시간대 정책의 목록으로 막는다")
+    void rejectsTimeZoneOutsideScreenList() {
         String nickname = uniqueNickname();
         Account account = seedOnboardedAccount(nickname);
 
         var response = patchProfile(account, nickname, "Asia/Tokyo");
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        // 메시지는 "필드: 문구" 꼴 — 존재하지 않는 ID 와 같은 문구라 화면이 구분할 필요가 없다
+        assertThat(response.getBody().get("errorMessage"))
+                .asString()
+                .contains("timeZone: 고를 수 있는 타임존이 아닙니다");
         assertThat(accountRepository.findById(account.getId()).orElseThrow().getTimeZone())
-                .isEqualTo("Asia/Tokyo");
+                .isEqualTo("Asia/Seoul");
+    }
+
+    @Test
+    @DisplayName("성공 - 막기 전에 목록 밖 시간대로 저장된 계정도 조회는 그대로 된다 — 검증은 저장할 때만 본다")
+    void returnsPreviouslySavedTimeZoneOutsideScreenList() {
+        Account account = seedUnonboardedAccount();
+        account.completeOnboarding(uniqueNickname(), "Asia/Tokyo", Instant.now());
+        account = accountRepository.save(account);
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("timeZone", "Asia/Tokyo");
+    }
+
+    @Test
+    @DisplayName("실패 - 막기 전에 목록 밖 시간대로 저장된 계정은 그 값 그대로 다시 저장해도 400 — 넷 중 하나를 골라야 한다")
+    void rejectsPreviouslySavedTimeZoneOutsideScreenList() {
+        String nickname = uniqueNickname();
+        Account account = seedUnonboardedAccount();
+        account.completeOnboarding(nickname, "Asia/Tokyo", Instant.now());
+        account = accountRepository.save(account);
+
+        var response = patchProfile(account, uniqueNickname(), "Asia/Tokyo");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        assertThat(response.getBody().get("errorMessage")).asString().contains("timeZone");
+        Account saved = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(saved.getNickname()).isEqualTo(nickname);
+        assertThat(saved.getTimeZone()).isEqualTo("Asia/Tokyo");
     }
 
     @Test

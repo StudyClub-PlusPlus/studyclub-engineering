@@ -1,6 +1,7 @@
 package com.studyclub.domain.audit;
 
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -88,5 +89,23 @@ public class AdminAuditLog extends BaseEntity {
                 targetAccountId,
                 before.name(),
                 after.name());
+    }
+
+    /**
+     * 참여 중단. 이번에 실제로 중단된 행만 남긴다 — 이미 중단된 행은 호출자가 거른다. 사유는 받지도 남기지도 않는다 (하차 · 제명을 가르지 않는다).
+     *
+     * <p>BEFORE 에 중단 직전 상태, AFTER 에 중단된 명부 행 ID 를 둔다. 한 사람이 스터디 여럿에 있으므로 계정 ID 만으로는 어느 행인지 모른다.
+     */
+    public static AdminAuditLog withdraw(
+            Long actorAccountId,
+            Long targetAccountId,
+            Long participantId,
+            ParticipantStatus before) {
+        return new AdminAuditLog(
+                actorAccountId,
+                AdminAuditAction.WITHDRAW,
+                targetAccountId,
+                before.name(),
+                String.valueOf(participantId));
     }
 }

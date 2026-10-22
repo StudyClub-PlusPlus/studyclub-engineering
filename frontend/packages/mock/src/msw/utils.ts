@@ -93,15 +93,20 @@ export function currentUserName(request?: Request): string {
       if (header.trim()) return header.trim();
     }
   }
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = window.localStorage.getItem('sc_user') ?? window.localStorage.getItem('user');
-      if (raw) {
-        const u = JSON.parse(raw);
-        const name = (u?.nickname || u?.name || '').trim();
-        if (name) return name;
-      }
-    } catch {}
-  }
+  const u = readSessionUser();
+  const name = String(u?.nickname || u?.name || '').trim();
+  if (name) return name;
   return '테스트';
+}
+
+/** 앱이 브라우저에 둔 로그인 세션 user. 옛 프로토의 `user` 키도 읽는다. 없거나 깨졌으면 null. */
+export function readSessionUser(): Record<string, unknown> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem('sc_user') ?? window.localStorage.getItem('user');
+    const u: unknown = raw ? JSON.parse(raw) : null;
+    return u && typeof u === 'object' ? (u as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
 }
