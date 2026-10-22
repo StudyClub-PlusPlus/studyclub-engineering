@@ -347,7 +347,7 @@ export function CrewTab({
                 </th>
                 <th className='whitespace-nowrap'>닉네임</th>
                 <th className='whitespace-nowrap'>디스코드 닉네임</th>
-                <th className='whitespace-nowrap'>디스코드 연동</th>
+                <th className='whitespace-nowrap'>디스코드 아이디</th>
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>지역</th>
                 <th className='whitespace-nowrap'>반</th>
@@ -373,8 +373,8 @@ export function CrewTab({
                     {c.discordNickname || '-'}
                   </td>
                   {/*
-                    별명은 **신청서에 적어 낸 이름**이라 적어 냈다고 이어진 것은 아니다.
-                    승인해도 계정이 안 이어져 있으면 들어오지 못하므로 그 사실을 옆 칸에 따로 적는다.
+                    별명은 **신청서에 적어 낸 이름**이고 이쪽은 **계정 그 자체**다. 둘은 다를 수 있다 —
+                    별명으로 찾다 못 찾는 일이 생기므로 핸들을 옆에 함께 적는다.
                   */}
                   <DiscordCell email={c.email} />
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>

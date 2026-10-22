@@ -400,7 +400,7 @@ export function UsersTable() {
             <tr>
               <th className='w-[18%] whitespace-nowrap'>이름</th>
               <th className='w-[32%]'>이메일</th>
-              <th className='w-[9%] whitespace-nowrap'>디스코드</th>
+              <th className='w-[11%] whitespace-nowrap'>디스코드</th>
               <th className='w-[12%] whitespace-nowrap'>권한</th>
               <th className='whitespace-nowrap'>네비게이터</th>
               <th className='whitespace-nowrap'>가입일</th>
@@ -414,7 +414,7 @@ export function UsersTable() {
                   {m.status === 'dormant' && <span className='ml-1.5 text-xs text-fg-muted'>휴면</span>}
                 </td>
                 <EmailCell email={m.email} />
-                {/* 스터디가 디스코드에서 돌아간다 — 연동이 안 된 사람은 권한을 올려도 합류하지 못한다 */}
+                {/* 스터디가 디스코드에서 돌아간다 — 이어져 있지 않으면 권한을 올려도 합류하지 못한다 */}
                 <DiscordCell email={m.email} />
                 <td>
                   <RoleBadgeSelect
