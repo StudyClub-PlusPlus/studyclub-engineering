@@ -35,7 +35,7 @@ function Cell({ status, onClick }: { status: AttendanceStatus | undefined; onCli
       type='button'
       onClick={onClick}
       title='눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'
-      className={`h-8 w-full rounded-sm border text-[11px] font-bold transition-colors ${
+      className={`h-8 w-full rounded-sm border text-xs font-bold transition-colors ${
         status ? CELL_STYLE[status] : 'border-dashed border-border bg-surface text-fg-muted hover:border-border-interactive hover:bg-surface-2'
       }`}
     >
@@ -70,9 +70,9 @@ export function AttendanceTab({
   return (
     <div>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <h2 className='text-[15px] font-bold'>
+        <h2 className='text-sm font-bold'>
           출석부
-          <span className='ml-2 text-[13px] font-medium text-fg-muted'>
+          <span className='ml-2 text-sm font-medium text-fg-muted'>
             크루 {crew.length} · 회차 {meetings.length}
           </span>
         </h2>
@@ -91,9 +91,9 @@ export function AttendanceTab({
               {meetings.map((s) => (
                 <th
                   key={s.id}
-                  className='tnum w-[3.6rem] px-1 py-2 text-center text-[11px] font-semibold text-fg-secondary'
+                  className='tnum w-[3.6rem] px-1 py-2 text-center text-xs font-semibold text-fg-secondary'
                 >
-                  {s.no}회<span className='block text-[10px] font-medium text-fg-muted'>{s.date.slice(5)}</span>
+                  {s.no}회<span className='block text-xs font-medium text-fg-muted'>{s.date.slice(5)}</span>
                 </th>
               ))}
               <th className='px-3 py-2 text-right text-xs font-semibold text-fg-muted'>출석률</th>
