@@ -8,7 +8,9 @@ import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.participant.StudyParticipantWithdrawn;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +25,9 @@ import org.springframework.util.StringUtils;
  *
  * <p>커밋 뒤·별도 스레드에서 돈다 — 봇은 최대 30초 걸린다. 어떻게 실패해도 던지지 않는다: 중단은 이미 커밋됐고, 남은 role 은 운영자가 손으로 뗀다. 봇 role
  * 창구가 멱등이라 같은 신호가 두 번 와도 안전하다. 신호 순서는 뒤바뀔 수 있으므로({@code withdrawn} 직후 다시 편입) 봇을 부르기 전에 명부를 다시 본다.
+ *
+ * <p>같은 스터디·계정의 role 변경은 {@link #roleLock} 으로 줄 세운다. 잠금 안에서 최신 명부를 읽고 봇을 부르므로, 커밋마다 구독자가 하나씩 뒤따르는 한
+ * 마지막 구독자가 최신 상태를 반영한다. 스터디 role 부여(DSC-07)도 같은 잠금을 잡아야 회수와 엇갈리지 않는다.
  */
 @Component
 public class StudyRoleRevokeListener {
@@ -30,6 +35,12 @@ public class StudyRoleRevokeListener {
     private static final Logger log = LoggerFactory.getLogger(StudyRoleRevokeListener.class);
     private static final List<ParticipantStatus> HOLDS_ROLE =
             List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED);
+    // shortcut: JVM 안 잠금이라 API 인스턴스가 하나일 때만 줄이 선다, 여러 대로 늘리면 DB 잠금이나 outbox 로 바꾼다
+    private static final Object[] ROLE_LOCKS = new Object[64];
+
+    static {
+        Arrays.setAll(ROLE_LOCKS, i -> new Object());
+    }
 
     private final DiscordBotClient discordBotClient;
     private final StudyParticipantRepository studyParticipantRepository;
@@ -55,7 +66,9 @@ public class StudyRoleRevokeListener {
             return;
         }
         try {
-            revokeStudyRole(event);
+            synchronized (roleLock(event.studyId(), event.accountId())) {
+                revokeStudyRole(event);
+            }
         } catch (BusinessException e) {
             log.warn(
                     "withdrawn {}: 스터디 {} 계정 {} 스터디 role 회수 실패, 손으로 뗀다: {}",
@@ -118,5 +131,10 @@ public class StudyRoleRevokeListener {
                 event.meta().eventId(),
                 event.studyId(),
                 event.accountId());
+    }
+
+    /** 같은 스터디·계정의 스터디 role 을 바꾸는 구독자가 잡는 잠금. */
+    static Object roleLock(Long studyId, Long accountId) {
+        return ROLE_LOCKS[Math.floorMod(Objects.hash(studyId, accountId), ROLE_LOCKS.length)];
     }
 }
