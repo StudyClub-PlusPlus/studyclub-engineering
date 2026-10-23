@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Checkbox, Input, Select, Textarea, useImageUpload } from '@studyclub/ui';
+import { Checkbox, Input, Textarea, useImageUpload } from '@studyclub/ui';
 
 import { useClubPrograms } from '@/features/studies/queries';
 import {
@@ -495,6 +495,45 @@ function ThumbnailField({
   );
 }
 
+const MARKDOWN_HINT =
+  '마크다운을 쓸 수 있습니다: # 제목, **굵게**, *기울임*, ~~취소선~~, `코드`, [링크](url), 1. 순서 목록, - 목록';
+
+/**
+ * 카테고리 — **한 개만** 고른다(`STUDY.CATEGORY` 는 단일 값). playground 프로토와 같이 칩으로 펼쳐 둔다 —
+ * 열한 개뿐이라 드롭다운을 열어 확인하는 것보다 고른 것이 그 자리에서 보이는 편이 빠르다.
+ */
+function CategoryField({ value, error, onChange }: { value: string; error?: string; onChange: (next: string) => void }) {
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <span className='text-sm font-medium text-neutral-800'>
+        카테고리
+        <span className='ml-0.5 text-error-600'>*</span>
+      </span>
+      <div role='radiogroup' aria-label='카테고리' className='flex flex-wrap gap-1.5'>
+        {CATEGORY_OPTIONS.map((c) => {
+          const on = value === c.value;
+          return (
+            <button
+              key={c.value}
+              type='button'
+              role='radio'
+              aria-checked={on}
+              // 이미 고른 것을 다시 누르면 풀리지 않는다 — 카테고리는 필수다
+              onClick={() => onChange(c.value)}
+              className={`rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors ${
+                on ? 'border-brand bg-brand text-white' : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+              }`}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className='text-xs font-medium text-error-600'>{error}</p>}
+    </div>
+  );
+}
+
 const DATE_INPUT =
   'h-10 w-[9.5rem] shrink-0 rounded-control border border-border bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
 
@@ -542,27 +581,14 @@ export function StudyForm({
 
       <ThumbnailField value={value} error={errors.thumbnailUrl} onChange={onChange} onUploadingChange={onUploadingChange} />
 
-      <Select
-        label='카테고리'
-        required
-        value={value.category}
-        onChange={(ev) => set('category', ev.target.value)}
-        error={errors.category}
-      >
-        <option value=''>선택하세요</option>
-        {CATEGORY_OPTIONS.map((c) => (
-          <option key={c.value} value={c.value}>
-            {c.label}
-          </option>
-        ))}
-      </Select>
+      <CategoryField value={value.category} error={errors.category} onChange={(next) => set('category', next)} />
 
       <Textarea
         label='상세 설명'
-        rows={6}
+        rows={8}
         value={value.description}
         onChange={(ev) => set('description', ev.target.value)}
-        placeholder='스터디 목표, 진행 방식, 참가 대상, 특이사항을 적어 주세요. 마크다운을 쓸 수 있습니다.'
+        helper={MARKDOWN_HINT}
       />
 
       <Input

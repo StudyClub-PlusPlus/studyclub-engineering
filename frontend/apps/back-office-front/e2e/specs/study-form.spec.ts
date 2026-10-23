@@ -13,7 +13,7 @@ test('진행 시작일이 모집 마감일보다 빠르면 등록을 막는다',
 
   await page.getByRole('textbox', { name: '제목', exact: true }).fill('날짜 검증 스터디');
   await page.getByRole('textbox', { name: '한 줄 소개', exact: true }).fill('모집 마감 후에 시작합니다.');
-  await page.getByRole('combobox', { name: '카테고리', exact: true }).selectOption('DATA');
+  await page.getByRole('radiogroup', { name: '카테고리', exact: true }).getByRole('radio', { name: '데이터' }).click();
   await page.locator('#deadline').fill('2026-11-10');
 
   const startAt = page.locator('#startAt');
