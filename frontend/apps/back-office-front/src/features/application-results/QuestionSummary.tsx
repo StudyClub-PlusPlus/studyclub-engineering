@@ -20,7 +20,7 @@ export function QuestionSummary({
           {index + 1}. {question.label || '(제목 없음)'}
         </h3>
         <span className='text-sm text-fg-muted'>
-          {TYPE_LABEL[type]} · {answeredCount}명 응답
+          {TYPE_LABEL[type] ?? '질문'} · {answeredCount}명 응답
         </span>
       </div>
       {answeredCount === 0 ? (
@@ -47,7 +47,11 @@ export function QuestionSummary({
           )}
           {texts.length > 0 && (
             <div className={choice ? 'mt-4' : undefined}>
-              {choice && <h4 className='mb-2 text-sm font-semibold'>기타 답변</h4>}
+              {choice && (
+                <h4 className='mb-2 text-sm font-semibold'>
+                  {question.allowOther ? '기타 답변' : '현재 보기에 없는 답변'}
+                </h4>
+              )}
               <ol className='list-decimal space-y-2 pl-5 text-sm text-fg-secondary'>
                 {texts.map((answer, answerIndex) => (
                   <li key={answerIndex} className='whitespace-pre-wrap break-words'>

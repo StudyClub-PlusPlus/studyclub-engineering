@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { answerText, summarizeAnswers } from './answers';
+import { answerText, answerValues, summarizeAnswers } from './answers';
 import type { ApplicationResult, ResultQuestion } from './types';
 
 const question: ResultQuestion = { id: 'q', label: '질문', type: 'CHECKBOX', options: ['A', 'B'], allowOther: true };
@@ -15,6 +15,14 @@ function applications(values: (string | string[] | undefined)[]): ApplicationRes
 }
 
 describe('신청 답변 집계', () => {
+  it('문자열이 아닌 값은 제외하고 중복 보기는 한 번만 집계한다', () => {
+    expect(answerValues(['A', null, 1, {}, '  ', '첫 줄\n둘째 줄'])).toEqual(['A', '첫 줄\n둘째 줄']);
+    expect(answerValues(null)).toEqual([]);
+    expect(answerValues(1)).toEqual([]);
+    expect(summarizeAnswers({ ...question, options: ['A', 'A'] }, applications(['A'])).tallies).toEqual([
+      { option: 'A', count: 1 },
+    ]);
+  });
   it('공백과 미응답은 제외하고 복수 선택은 선택지별로 한 사람씩 센다', () => {
     const summary = summarizeAnswers(
       question,
@@ -40,6 +48,6 @@ describe('신청 답변 집계', () => {
       answer,
     ]);
     expect(answerText(answer)).toBe(answer);
-    expect(answerText([])).toBe('—');
+    expect(answerText([])).toBe('-');
   });
 });

@@ -11,6 +11,7 @@ import { useUrlState } from '@/lib/use-url-state';
 const DEFAULTS = { resultsView: 'summary', recruitmentId: '' };
 const ALLOWED = { resultsView: ['summary', 'individual'] };
 const ERROR_MESSAGES: Record<number, string> = {
+  400: '모집 회차를 확인해 주세요.',
   401: '로그인이 필요합니다.',
   403: '이 스터디의 신청 결과를 볼 권한이 없습니다.',
   404: '스터디를 찾을 수 없습니다.',
@@ -31,27 +32,42 @@ export function ApplicationResultsTab({
   onEditForm: () => void;
 }) {
   const [filters, setFilters] = useUrlState(DEFAULTS, ALLOWED);
-  const query = useApplicationResults(studyId, filters.recruitmentId || undefined);
+  const recruitmentId = filters.recruitmentId;
+  const validRecruitment =
+    recruitmentId === '' ||
+    (/^[1-9]\d{0,18}$/.test(recruitmentId) && (recruitmentId.length < 19 || recruitmentId <= '9223372036854775807'));
+  const query = useApplicationResults(studyId, recruitmentId || undefined, validRecruitment);
+  if (!validRecruitment)
+    return (
+      <div className='py-10 text-center'>
+        <p role='alert' className='text-sm text-fg-secondary'>
+          모집 회차를 확인해 주세요.
+        </p>
+        <Button variant='secondary' className='mt-3' onClick={() => setFilters({ recruitmentId: '' })}>
+          현재 모집 회차 보기
+        </Button>
+      </div>
+    );
   if (query.isPending)
     return (
       <p role='status' className='py-10 text-center text-sm text-fg-muted'>
         불러오는 중
       </p>
     );
-  if (query.error) {
-    const status = query.error instanceof ApiError ? query.error.status : undefined;
+  const status = query.error instanceof ApiError ? query.error.status : undefined;
+  if (query.error && (!query.data || [400, 401, 403, 404, 422].includes(status ?? 0))) {
     const message = ERROR_MESSAGES[status ?? 0] ?? '결과를 불러오지 못했습니다. 다시 시도해 주세요.';
     return (
       <div className='py-10 text-center'>
         <p role='alert' className='text-sm text-fg-secondary'>
           {message}
         </p>
-        {![401, 403, 404, 422].includes(status ?? 0) && (
+        {![400, 401, 403, 404, 422].includes(status ?? 0) && (
           <Button variant='secondary' className='mt-3' onClick={() => void query.refetch()}>
             다시 시도
           </Button>
         )}
-        {status === 422 && (
+        {(status === 400 || status === 422) && (
           <Button variant='secondary' className='mt-3' onClick={() => setFilters({ recruitmentId: '' })}>
             현재 모집 회차 보기
           </Button>
@@ -60,9 +76,19 @@ export function ApplicationResultsTab({
     );
   }
   const data = query.data;
+  if (!data) return null;
+  const refreshError = query.error && (
+    <div role='alert' className='text-sm text-fg-secondary'>
+      결과를 새로 불러오지 못했습니다. 이전 결과를 표시합니다.
+      <Button variant='secondary' size='sm' onClick={() => void query.refetch()}>
+        다시 시도
+      </Button>
+    </div>
+  );
   if (data.questions.length === 0)
     return (
       <div className='rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
+        {refreshError}
         <p>이 스터디는 신청 폼에 추가 질문이 없습니다.</p>
         {canEditForm && (
           <Button variant='secondary' className='mt-3' onClick={onEditForm}>
@@ -73,6 +99,7 @@ export function ApplicationResultsTab({
     );
   return (
     <div className='min-w-0 space-y-5'>
+      {refreshError}
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <p className='text-sm text-fg-muted'>
           응답자 <span className='tnum font-bold text-fg'>{data.respondentCount}</span>명

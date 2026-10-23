@@ -21,12 +21,12 @@ export function RespondentsTable({ data }: { data: ApplicationResultsResponse })
           <tr key={application.id}>
             <td>
               <span className='block w-48 truncate font-semibold' title={application.discordNickname ?? undefined}>
-                {application.discordNickname || '—'}
+                {application.discordNickname || '-'}
               </span>
             </td>
             <td>
               <span className='block w-56 truncate' title={application.email ?? undefined}>
-                {application.email || '—'}
+                {application.email || '-'}
               </span>
             </td>
             {data.questions.map((question) => (

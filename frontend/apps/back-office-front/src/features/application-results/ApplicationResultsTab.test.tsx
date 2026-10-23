@@ -50,6 +50,45 @@ afterEach(() => {
 });
 
 describe('신청 결과', () => {
+  it.each(['abc', '-1', '0', '1.5', '9223372036854775808'])(
+    '잘못된 회차 %s는 요청하지 않고 복구 버튼을 제공한다',
+    async (id) => {
+      url.search = `tab=results&recruitmentId=${id}`;
+      const { fetch } = mount();
+      expect(screen.getByRole('alert')).toHaveTextContent('모집 회차를 확인');
+      expect(fetch).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole('button', { name: '현재 모집 회차 보기' }));
+      expect(url.replace).toHaveBeenCalledWith('/studies/20?tab=results', { scroll: false });
+    },
+  );
+
+  it('재조회가 실패해도 기존 표를 유지하고 다시 시도할 수 있다', async () => {
+    url.search = 'resultsView=individual';
+    const { fetch, client } = mount();
+    await screen.findByText('one@example.com');
+    fetch.mockImplementation(() => Promise.resolve(new Response('{}', { status: 500 })));
+    await act(async () => {
+      await client.invalidateQueries();
+    });
+    expect(screen.getByText('one@example.com')).toBeVisible();
+    expect(await screen.findByRole('alert')).toHaveTextContent('이전 결과를 표시합니다');
+    fetch.mockImplementation(() => Promise.resolve(new Response(JSON.stringify(data))));
+    await userEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  });
+
+  it('기타를 허용하지 않는 보기 밖 답변은 구분해서 표시한다', async () => {
+    mount({ ...data, questions: [{ ...data.questions[0]!, allowOther: false }] });
+    expect(await screen.findByText('현재 보기에 없는 답변')).toBeVisible();
+    expect(screen.getByText('직접 쓴 답')).toBeVisible();
+    expect(screen.queryByText('기타 답변')).not.toBeInTheDocument();
+  });
+
+  it('알 수 없는 질문 유형은 기본 라벨과 원래 답변을 표시한다', async () => {
+    mount({ ...data, questions: [{ ...data.questions[1]!, type: 'DATE' as never }] });
+    expect(await screen.findByText('질문 · 1명 응답')).toBeVisible();
+    expect(screen.getByText('첫 줄 둘째 줄')).toBeVisible();
+  });
   it('질문별 집계는 복수 선택과 기타 답을 세고 개인정보를 노출하지 않는다', async () => {
     mount();
     const section = await screen.findByRole('region', { name: '1. 관심 분야' });
@@ -67,7 +106,7 @@ describe('신청 결과', () => {
     const { fetch } = mount();
     expect(await screen.findByText('별명1')).toBeVisible();
     expect(screen.getByText('백엔드, 프론트, 직접 쓴 답')).toBeVisible();
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('-').length).toBeGreaterThan(0);
     expect(fetch.mock.calls[0][0]).toContain('/applications?recruitmentId=7');
     await userEvent.click(screen.getByRole('tab', { name: '질문별' }));
     expect(url.replace).toHaveBeenCalledWith('/studies/20?tab=results&recruitmentId=7', { scroll: false });

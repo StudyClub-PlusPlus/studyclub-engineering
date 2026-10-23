@@ -53,6 +53,16 @@ test('신청 결과 질문별·응답자별 전환, 새로고침과 모바일 �
         json: {
           id: 20,
           title: '신청 결과 테스트',
+          oneLineSummary: '신청 결과 조회 테스트',
+          description: null,
+          curriculum: null,
+          schedule: null,
+          thumbnailUrl: null,
+          startAt: null,
+          endAt: null,
+          recruitDeadlineAt: null,
+          discordChannelUrl: null,
+          driveUrl: null,
           category: 'AI_ML',
           studyKind: 'STUDY',
           status: 'OPEN',
@@ -61,7 +71,7 @@ test('신청 결과 질문별·응답자별 전환, 새로고침과 모바일 �
         },
       });
   });
-  await page.goto('/studies/20?tab=results');
+  await page.goto('/studies/20?tab=results&recruitmentId=7');
   await expect(page.getByText('응답자 1명')).toBeVisible();
   await expect(page.getByText('기타 답변 내용')).toBeVisible();
   await expect(page.getByText('crew@example.com')).toHaveCount(0);
@@ -80,4 +90,9 @@ test('신청 결과 질문별·응답자별 전환, 새로고침과 모바일 �
   await page.screenshot({ path: 'test-results/application-results-summary.png', fullPage: true });
   expect(requests.length).toBeGreaterThan(0);
   expect(requests.every((method) => method === 'GET')).toBe(true);
+  await page.getByRole('tab', { name: '응답자별' }).click();
+  await page.getByRole('button', { name: '정보', exact: true }).click();
+  await expect(page).not.toHaveURL(/recruitmentId|resultsView/);
+  await page.getByRole('button', { name: '신청 결과', exact: true }).click();
+  await expect(page.getByRole('tab', { name: '질문별' })).toHaveAttribute('aria-selected', 'true');
 });

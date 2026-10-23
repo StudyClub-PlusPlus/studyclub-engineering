@@ -10,12 +10,13 @@ export const applicationResultKeys = {
     [...applicationResultKeys.all(studyId), recruitmentId ?? 'current'] as const,
 };
 
-export function useApplicationResults(studyId: number, recruitmentId?: string) {
+export function useApplicationResults(studyId: number, recruitmentId?: string, enabled = true) {
   return useQuery({
     queryKey: applicationResultKeys.list(studyId, recruitmentId),
     queryFn: ({ signal }) =>
       http<ApplicationResultsResponse>(`/api/admin/studies/${studyId}/applications${qs({ recruitmentId })}`, {
-        signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)]),
+        signal,
       }),
+    enabled,
   });
 }
