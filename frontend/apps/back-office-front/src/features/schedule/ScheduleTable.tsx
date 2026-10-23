@@ -32,6 +32,7 @@ export function ScheduleTable({
   group,
   meetings,
   people,
+  pickable = people,
   onSave,
   onAdd,
   onSetKickoff,
@@ -42,7 +43,10 @@ export function ScheduleTable({
 }: {
   group: ScheduleGroup;
   meetings: Meeting[];
+  /** 발표자 칸에 이름을 적을 사람 — 참여를 중단한 사람도 지난 회차의 발표 기록에 남는다. */
   people: Person[];
+  /** 발표자로 새로 고를 수 있는 사람. 없으면 `people`. 참여를 중단한 사람은 빠진다. */
+  pickable?: Person[];
   onSave: (patches: Record<string, MeetingPatch>) => void;
   onAdd: (input: { dates: string[]; time: string; title: string }) => void;
   onSetKickoff: (input: { date: string; time: string }) => void;
@@ -321,7 +325,7 @@ export function ScheduleTable({
                         <PresenterSelect
                           label={`${meetingLabel(m)} ${slot === 'presenter1' ? '발표자1' : '발표자2'}`}
                           placeholder={slot === 'presenter1' ? '발표자 1' : '발표자 2'}
-                          people={people}
+                          people={pickable}
                           value={v[slot]}
                           onChange={(id) => change(m, { [slot]: id })}
                         />
