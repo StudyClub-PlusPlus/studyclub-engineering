@@ -101,7 +101,6 @@ public class AdminStudyGroupService {
         if (studyAttendanceRepository.existsKeptByStudyGroupId(groupId)) {
             throw new BusinessException(ErrorCode.GROUP_NOT_EMPTY, "출석 기록이 남아 있어 반을 삭제할 수 없습니다.");
         }
-
         studyAttendanceRepository.deleteByStudyGroupId(groupId);
         studyMeetingRepository.deleteByStudyGroupIdIn(List.of(groupId));
         studyGroupRepository.deleteById(groupId);

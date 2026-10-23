@@ -6,11 +6,13 @@ import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.attendance.AttendanceStatus;
+import com.studyclub.domain.attendance.StudyAttendance;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.participant.StudyParticipantRoleChanged;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyGroup;
@@ -26,6 +28,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +37,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -42,6 +47,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * 역할·반 일괄 변경 ({@code PATCH /api/admin/studies/{studyId}/participants}) — specs/study-group/spec.md
@@ -69,6 +75,7 @@ class AdminStudyParticipantBulkIntegrationTest {
     @Autowired StudyParticipantRepository studyParticipantRepo;
     @Autowired StudyMeetingRepository studyMeetingRepo;
     @Autowired StudyAttendanceRepository studyAttendanceRepo;
+    @Autowired RoleChangedEvents roleChangedEvents;
 
     private StudyProgram program;
     private Study study;
@@ -81,6 +88,7 @@ class AdminStudyParticipantBulkIntegrationTest {
     @BeforeEach
     void setUp() {
         rest.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
+        roleChangedEvents.received.clear();
         insertAccountIfAbsent(ADMIN_ID, "벌크캡틴", "admin@bulk-test.com", SystemRole.ADMIN);
         insertAccountIfAbsent(MEMBER_ID, "벌크비캡틴", "member@bulk-test.com", SystemRole.MEMBER);
         insertAccountIfAbsent(CREW1_ID, "벌크크루1", "crew1@bulk-test.com", SystemRole.MEMBER);
@@ -140,6 +148,10 @@ class AdminStudyParticipantBulkIntegrationTest {
     void tearDown() {
         // 파생 삭제(derived delete)는 직접 트랜잭션이 없으면 실패하므로 JDBC로 정리한다.
         jdbcTemplate.update("DELETE FROM STUDY_ATTENDANCE WHERE STUDY_ID = ?", study.getId());
+        jdbcTemplate.update(
+                "DELETE FROM ADMIN_AUDIT_LOG WHERE TARGET_ACCOUNT_ID IN (?, ?)",
+                CREW1_ID,
+                CREW2_ID);
         // STUDY_GROUP_ID 직접 지정 대신 서브쿼리로 — 이 study 에 속한 모든 반의 회차를 커버한다.
         jdbcTemplate.update(
                 "DELETE FROM STUDY_MEETING WHERE STUDY_GROUP_ID IN"
@@ -525,6 +537,246 @@ class AdminStudyParticipantBulkIntegrationTest {
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
+    // ── 리뷰 반영: 출석 정리 · 메시지 · 감사 로그 · 이벤트 ─────────────────────────
+
+    @Test
+    @DisplayName("성공 - 반 이동 시 옛 반 예정 회차 출석은 상태와 상관없이 지우고, 지난 회차 출석은 남긴다")
+    void groupChangeClearsOldGroupUpcomingAttendance() {
+        StudyMeeting past =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group.getId(), Instant.now().minusSeconds(3600), "지난 회차"));
+        StudyMeeting upcomingAbsent =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group.getId(), Instant.now().plusSeconds(3600), "예정 회차 1"));
+        StudyMeeting upcomingExcused =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group.getId(), Instant.now().plusSeconds(7200), "예정 회차 2"));
+        saveAttendance(past, CREW1_ID, AttendanceStatus.PRESENT);
+        saveAttendance(upcomingAbsent, CREW1_ID, AttendanceStatus.ABSENT);
+        saveAttendance(upcomingExcused, CREW1_ID, AttendanceStatus.EXCUSED);
+        saveAttendance(upcomingAbsent, CREW2_ID, AttendanceStatus.ABSENT);
+
+        var response =
+                patch(
+                        Map.of(
+                                "changes",
+                                List.of(
+                                        Map.of(
+                                                "participantId",
+                                                crew1.getId(),
+                                                "groupId",
+                                                group2.getId()))),
+                        ADMIN_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyAttendanceRepo.findByStudyMeetingIdAndAccountId(past.getId(), CREW1_ID))
+                .isPresent();
+        assertThat(
+                        studyAttendanceRepo.findByStudyMeetingIdAndAccountId(
+                                upcomingAbsent.getId(), CREW1_ID))
+                .isEmpty();
+        assertThat(
+                        studyAttendanceRepo.findByStudyMeetingIdAndAccountId(
+                                upcomingExcused.getId(), CREW1_ID))
+                .isEmpty();
+        // 남는 사람의 출석은 건드리지 않는다
+        assertThat(
+                        studyAttendanceRepo.findByStudyMeetingIdAndAccountId(
+                                upcomingAbsent.getId(), CREW2_ID))
+                .isPresent();
+    }
+
+    @Test
+    @DisplayName("성공 - 여러 명을 예정 회차 여럿인 반으로 옮기면 사람 × 회차마다 ABSENT 하나, 이미 있던 행은 그대로")
+    void groupChangeCreatesAbsentForEveryArrivalOnce() {
+        StudyMeeting m1 =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group2.getId(), Instant.now().plusSeconds(3600), "B반 예정 1"));
+        StudyMeeting m2 =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(
+                                group2.getId(), Instant.now().plusSeconds(7200), "B반 예정 2"));
+        // 예전에 B반에 있다가 돌아오는 경우 — 사전 휴가가 남아 있다
+        saveAttendance(m1, CREW1_ID, AttendanceStatus.EXCUSED);
+
+        var response =
+                patch(
+                        Map.of(
+                                "changes",
+                                List.of(
+                                        Map.of(
+                                                "participantId",
+                                                crew1.getId(),
+                                                "groupId",
+                                                group2.getId()),
+                                        Map.of(
+                                                "participantId",
+                                                crew2.getId(),
+                                                "groupId",
+                                                group2.getId()))),
+                        ADMIN_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(attendanceStatus(m1, CREW1_ID)).isEqualTo(AttendanceStatus.EXCUSED);
+        assertThat(attendanceStatus(m2, CREW1_ID)).isEqualTo(AttendanceStatus.ABSENT);
+        assertThat(attendanceStatus(m1, CREW2_ID)).isEqualTo(AttendanceStatus.ABSENT);
+        assertThat(attendanceStatus(m2, CREW2_ID)).isEqualTo(AttendanceStatus.ABSENT);
+    }
+
+    @Test
+    @DisplayName("성공 - 옮긴 뒤 빈 옛 반은 예정 회차 출석이 정리돼 지울 수 있다")
+    void emptiedGroupIsDeletableAfterMove() {
+        StudyGroup group3 = studyGroupRepo.save(StudyGroup.create(study.getId(), "벌크C반"));
+        try {
+            patch(
+                    Map.of(
+                            "changes",
+                            List.of(
+                                    Map.of(
+                                            "participantId",
+                                            crew1.getId(),
+                                            "groupId",
+                                            group3.getId()))),
+                    ADMIN_ID,
+                    study.getId());
+            StudyMeeting upcoming =
+                    studyMeetingRepo.save(
+                            StudyMeeting.schedule(
+                                    group3.getId(), Instant.now().plusSeconds(3600), "C반 예정"));
+            saveAttendance(upcoming, CREW1_ID, AttendanceStatus.ABSENT);
+
+            patch(
+                    Map.of(
+                            "changes",
+                            List.of(
+                                    Map.of(
+                                            "participantId",
+                                            crew1.getId(),
+                                            "groupId",
+                                            group2.getId()))),
+                    ADMIN_ID,
+                    study.getId());
+
+            assertThat(
+                            adminExchange(
+                                            "/api/admin/studies/{studyId}/groups/{groupId}",
+                                            HttpMethod.DELETE,
+                                            study.getId(),
+                                            group3.getId())
+                                    .getStatusCode())
+                    .isEqualTo(HttpStatus.NO_CONTENT);
+        } finally {
+            jdbcTemplate.update(
+                    "DELETE FROM STUDY_MEETING WHERE STUDY_GROUP_ID = ?", group3.getId());
+            jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE ID = ?", group3.getId());
+        }
+    }
+
+    @Test
+    @DisplayName("실패 - 거절된 participantId 를 errorMessage 에 적고, 아무것도 바꾸지 않는다")
+    void errorMessageNamesParticipant() {
+        var notActive =
+                patch(
+                        Map.of(
+                                "changes",
+                                List.of(
+                                        Map.of(
+                                                "participantId",
+                                                crew1.getId(),
+                                                "participantRole",
+                                                "LEADER"),
+                                        Map.of(
+                                                "participantId",
+                                                withdrawnCrew.getId(),
+                                                "participantRole",
+                                                "LEADER"))),
+                        ADMIN_ID,
+                        study.getId());
+        var missing =
+                patch(
+                        Map.of(
+                                "changes",
+                                List.of(
+                                        Map.of(
+                                                "participantId",
+                                                MISSING_ID,
+                                                "participantRole",
+                                                "LEADER"))),
+                        ADMIN_ID,
+                        study.getId());
+
+        assertThat(notActive.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat((String) notActive.getBody().get("errorMessage"))
+                .contains(String.valueOf(withdrawnCrew.getId()));
+        assertThat(studyParticipantRepo.findById(crew1.getId()).orElseThrow().getParticipantRole())
+                .isEqualTo(ParticipantRole.MEMBER);
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat((String) missing.getBody().get("errorMessage"))
+                .contains(String.valueOf(MISSING_ID));
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM ADMIN_AUDIT_LOG WHERE TARGET_ACCOUNT_ID = ?",
+                                Long.class,
+                                CREW1_ID))
+                .isZero();
+        assertThat(roleChangedEvents.received).isEmpty();
+    }
+
+    @Test
+    @DisplayName("성공 - 역할이 바뀐 행만 감사 로그 한 줄과 role_changed 하나")
+    void roleChangeWritesAuditLogAndEvent() {
+        var response =
+                patch(
+                        Map.of(
+                                "changes",
+                                List.of(
+                                        Map.of(
+                                                "participantId",
+                                                crew1.getId(),
+                                                "participantRole",
+                                                "LEADER"),
+                                        // 같은 역할로 보내며 반만 바꾸는 줄은 남기지 않는다
+                                        Map.of(
+                                                "participantId",
+                                                crew2.getId(),
+                                                "participantRole",
+                                                "MEMBER",
+                                                "groupId",
+                                                group2.getId()))),
+                        ADMIN_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<String, Object>> logs =
+                jdbcTemplate.queryForList(
+                        "SELECT ACTOR_ACCOUNT_ID, ACTION, TARGET_ACCOUNT_ID, BEFORE_VALUE, AFTER_VALUE"
+                                + " FROM ADMIN_AUDIT_LOG WHERE TARGET_ACCOUNT_ID IN (?, ?)",
+                        CREW1_ID,
+                        CREW2_ID);
+        assertThat(logs).hasSize(1);
+        assertThat(logs.getFirst())
+                .containsEntry("ACTOR_ACCOUNT_ID", ADMIN_ID)
+                .containsEntry("ACTION", "PARTICIPANT_ROLE")
+                .containsEntry("TARGET_ACCOUNT_ID", CREW1_ID)
+                .containsEntry("BEFORE_VALUE", "MEMBER")
+                .containsEntry("AFTER_VALUE", String.valueOf(crew1.getId()));
+
+        assertThat(roleChangedEvents.received).hasSize(1);
+        StudyParticipantRoleChanged event = roleChangedEvents.received.getFirst();
+        assertThat(event.name()).isEqualTo(StudyParticipantRoleChanged.NAME);
+        assertThat(event.participantId()).isEqualTo(crew1.getId());
+        assertThat(event.accountId()).isEqualTo(CREW1_ID);
+        assertThat(event.previousRole()).isEqualTo(ParticipantRole.MEMBER);
+        assertThat(event.newRole()).isEqualTo(ParticipantRole.LEADER);
+        assertThat(event.meta().actorId()).isEqualTo(String.valueOf(ADMIN_ID));
+    }
+
     // ── 헬퍼 ─────────────────────────────────────────────────────────────────
 
     @SuppressWarnings({"rawtypes"})
@@ -537,6 +789,34 @@ class AdminStudyParticipantBulkIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         return rest.exchange(
                 URL, HttpMethod.PATCH, new HttpEntity<>(body, headers), Map.class, studyId);
+    }
+
+    /** 캡틴(ADMIN_ID)으로 다른 백오피스 API 를 부른다. */
+    @SuppressWarnings({"rawtypes"})
+    private ResponseEntity<Map> adminExchange(
+            String url, HttpMethod method, Object... uriVariables) {
+        HttpHeaders headers = new HttpHeaders();
+        String email = accountRepository.findById(ADMIN_ID).orElseThrow().getEmail();
+        headers.setBearerAuth(jwt.issueAccess(String.valueOf(ADMIN_ID), email));
+        return rest.exchange(url, method, new HttpEntity<>(headers), Map.class, uriVariables);
+    }
+
+    private void saveAttendance(StudyMeeting meeting, Long accountId, AttendanceStatus status) {
+        studyAttendanceRepo.save(
+                StudyAttendance.builder()
+                        .accountId(accountId)
+                        .studyId(study.getId())
+                        .studyGroupId(meeting.getStudyGroupId())
+                        .studyMeetingId(meeting.getId())
+                        .status(status)
+                        .build());
+    }
+
+    private AttendanceStatus attendanceStatus(StudyMeeting meeting, Long accountId) {
+        return studyAttendanceRepo
+                .findByStudyMeetingIdAndAccountId(meeting.getId(), accountId)
+                .orElseThrow()
+                .getStatus();
     }
 
     private void insertAccountIfAbsent(Long id, String nickname, String email, SystemRole role) {
@@ -556,5 +836,23 @@ class AdminStudyParticipantBulkIntegrationTest {
                 now,
                 now,
                 now);
+    }
+
+    @TestConfiguration
+    static class EventCapture {
+        @Bean
+        RoleChangedEvents roleChangedEvents() {
+            return new RoleChangedEvents();
+        }
+    }
+
+    /** 커밋 뒤 받은 role_changed — 운영 구독자(DSC-08)와 같은 시점에 받는다. */
+    static class RoleChangedEvents {
+        final List<StudyParticipantRoleChanged> received = new CopyOnWriteArrayList<>();
+
+        @TransactionalEventListener
+        void on(StudyParticipantRoleChanged event) {
+            received.add(event);
+        }
     }
 }
