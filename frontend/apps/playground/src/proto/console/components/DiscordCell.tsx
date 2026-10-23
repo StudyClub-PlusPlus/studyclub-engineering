@@ -11,11 +11,11 @@ import { Eye, EyeOff } from 'lucide-react';
  * 미연동이 손댈 거리라 눈에 들어와야 하고, 이어진 줄은 조용해야 한다 — **글자가 이미 다르므로**
  * 표식을 덧붙이지 않는다. 색만으로 가르는 것이 아니다: 「미연동」이라고 적혀 있다.
  *
- * `reveal` 이면 이어진 줄에 눈 아이콘이 서고, 누른 줄만 핸들을 펼친다. 같은 버튼으로 다시 가린다.
- * 명단을 늘 펼쳐 두지 않는 이유는 이메일과 같다 ([POL-0007]) — 화면을 띄운 채 자리를 비우거나
- * 화면을 공유할 때 수십 명의 계정이 한꺼번에 드러난다. 펼친 것은 그 줄에만 남는다.
+ * 이어진 줄에는 눈 아이콘이 서고, **누른 줄만** 아이디를 펼친다. 같은 버튼으로 다시 가린다.
+ * 늘 펼쳐 두지 않는 이유는 이메일과 같다 ([POL-0007]) — 화면을 띄운 채 자리를 비우거나 화면을
+ * 공유할 때 수십 명의 계정이 한꺼번에 드러난다. 펼친 것은 그 줄에만 남는다.
  */
-export function DiscordCell({ email, reveal = false }: { email: string; reveal?: boolean }) {
+export function DiscordCell({ email }: { email: string }) {
   const handle = discordHandle(email);
   const [shown, setShown] = useState(false);
 
@@ -23,14 +23,6 @@ export function DiscordCell({ email, reveal = false }: { email: string; reveal?:
     return (
       <td className='whitespace-nowrap'>
         <span className='text-xs font-semibold text-warning-700'>미연동</span>
-      </td>
-    );
-  }
-
-  if (!reveal) {
-    return (
-      <td className='whitespace-nowrap'>
-        <span className='text-fg-secondary'>{handle}</span>
       </td>
     );
   }
