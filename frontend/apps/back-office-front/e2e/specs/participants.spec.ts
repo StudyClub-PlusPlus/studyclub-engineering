@@ -28,9 +28,9 @@ function participants() {
     participantCount: 3,
     recruitmentCapacity: 10,
     groups: [
-      { groupId: 1, name: '기본반', canDelete: false },
-      { groupId: 2, name: '목요일반', canDelete: false },
-      { groupId: 3, name: '금요일반', canDelete: true },
+      { groupId: 1, name: '기본반', isDefault: true, canDelete: false },
+      { groupId: 2, name: '목요일반', isDefault: false, canDelete: false },
+      { groupId: 3, name: '금요일반', isDefault: false, canDelete: true },
     ],
     participants: [
       {
@@ -130,7 +130,7 @@ async function mockParticipants(
       return;
     }
     if (url.endsWith('/groups') && method === 'POST') {
-      const group = { groupId: 4, name: request.postDataJSON().name as string, canDelete: true };
+      const group = { groupId: 4, name: request.postDataJSON().name as string, isDefault: false, canDelete: true };
       response.groups.push(group);
       await route.fulfill({ status: 201, json: group });
       return;

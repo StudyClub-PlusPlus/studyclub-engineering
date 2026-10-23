@@ -3,6 +3,7 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
+> 갱신: 2026-10-23 — 참여 명단 `groups[].isDefault` 추가 (기본 반 칩을 서버 판정으로)
 > 갱신: 2026-10-21 — 한 사람씩 바꾸던 `PATCH …/{participantId}/role` · `…/group` 을 일괄 `PATCH …/participants` 하나로 합쳤다
 > 상태: 스펙작성중
 >
@@ -54,7 +55,7 @@
   "studyId": 3,
   "participantCount": 18,
   "recruitmentCapacity": 20,
-  "groups": [{ "groupId": 7, "name": "A반", "canDelete": false }],
+  "groups": [{ "groupId": 7, "name": "A반", "isDefault": true, "canDelete": false }],
   "participants": [
     {
       "participantId": 41,
@@ -77,7 +78,8 @@
 |------|------|------|------|------|
 | participantCount | Int | N | `ACTIVE` · `PAUSED` 행 수. 신청한 담당 캡틴도 크루와 같이 센다 | 계산 |
 | recruitmentCapacity | Int | Y | 정원. null 이면 제한 없음 | 최신 STUDY_RECRUITMENT.RECRUITMENT_CAPACITY |
-| groups[] | Array | N | 그 스터디의 분반 | STUDY_GROUP |
+| groups[] | Array | N | 그 스터디의 분반. 만든 순서(`ID` 오름차순) | STUDY_GROUP |
+| groups[].isDefault | Boolean | N | 기본 반(그 스터디에서 처음 만든 반)이면 true — 「기본」 칩. 「반 삭제」의 `DEFAULT_GROUP_NOT_DELETABLE` 과 같은 판정 | 계산 |
 | groups[].canDelete | Boolean | N | 이 반을 지울 수 있으면 true — 신청자 탭 「삭제」 버튼. `includeLeft` 와 상관없이 `DELETED` 밖의 명부 행(`ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN`)도, 탈퇴 회원 밖의 출석 행도 하나도 없을 때만 true. 기본 반은 늘 false. 「반 삭제」 API 와 같은 판정 | 계산 |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |

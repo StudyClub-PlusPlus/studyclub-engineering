@@ -1,6 +1,7 @@
 export interface StudyGroup {
   groupId: number;
   name: string;
+  isDefault: boolean;
   canDelete: boolean;
 }
 

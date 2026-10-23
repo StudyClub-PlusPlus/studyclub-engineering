@@ -19,7 +19,6 @@ export function GroupsSection({
   const [editing, setEditing] = useState<number | 'new' | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const deletion = useDeleteGroup(studyId);
-  const groups = [...data.groups].sort((a, b) => a.groupId - b.groupId);
   const target = data.groups.find((group) => group.groupId === deleting);
   const busy = disabled || deletion.isPending;
   return (
@@ -55,14 +54,14 @@ export function GroupsSection({
           반 추가
         </Button>
       </div>
-      {groups.map((group, index) => (
+      {data.groups.map((group) => (
         <div key={group.groupId} className='card p-4'>
           {editing === group.groupId ? (
             <GroupEditor studyId={studyId} group={group} onClose={() => setEditing(null)} />
           ) : (
             <div className='flex items-center gap-3'>
               <span className='font-semibold'>{group.name}</span>
-              {index === 0 && <Badge>기본</Badge>}
+              {group.isDefault && <Badge>기본</Badge>}
               <span className='text-sm text-fg-muted'>
                 {
                   data.participants.filter(

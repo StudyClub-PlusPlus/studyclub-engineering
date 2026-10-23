@@ -3,10 +3,12 @@
 import { useState } from 'react';
 
 import { Badge, Button, Checkbox, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
+import { useIsMutating } from '@tanstack/react-query';
+
 
 import { DiscardGroupChangesDialog } from './DiscardGroupChangesDialog';
 import { GroupsSection } from './GroupsSection';
-import { useParticipants } from './queries';
+import { participantKeys, useParticipants } from './queries';
 import type { ParticipantsResponse } from './types';
 import { useGroupAssignment } from './use-group-assignment';
 import { TableCard } from '@/components/ui';
@@ -75,15 +77,28 @@ function ParticipantAssignment({
     cancelNavigation,
     confirmNavigation,
   } = useGroupAssignment(studyId, data.participants, onDirtyChange);
-  const busy = saving;
+  // 반 생성·수정·삭제 중에도 배정은 잠근다(지워지는 반으로 옮기지 않게). 이동 차단은 배정 저장만 본다.
+  const groupSaving = useIsMutating({ mutationKey: participantKeys.groups(studyId) }) > 0;
+  const busy = saving || groupSaving;
   const rows = data.participants.filter(
     (p) => (region === 'all' || p.regionGroup === region) && (group === 'all' || String(p.groupId) === group),
   );
   const editable = rows.filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED');
   const picked = editable.filter((p) => selected.includes(p.participantId));
+  // 스펙: 배정 실패 응답의 errorMessage 에 걸린 participantId 를 적는다.
+  const failedIds = new Set(
+    mutation.error instanceof ApiError
+      ? [...mutation.error.message.matchAll(/\bparticipantId\s*[:=]?\s*(\d+)\b/g)].map((m) => Number(m[1]))
+      : [],
+  );
   return (
     <div className='space-y-8'>
-      <DiscardGroupChangesDialog open={navigationPending} onClose={cancelNavigation} onConfirm={confirmNavigation} />
+      <DiscardGroupChangesDialog
+        open={navigationPending}
+        busy={saving}
+        onClose={cancelNavigation}
+        onConfirm={confirmNavigation}
+      />
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
       <section aria-label='참여 크루' className='space-y-3'>
         <div className='space-y-2'>
@@ -206,9 +221,7 @@ function ParticipantAssignment({
           <tbody>
             {rows.map((p) => {
               const active = p.status === 'ACTIVE' || p.status === 'PAUSED';
-              const failed =
-                mutation.error instanceof ApiError &&
-                new RegExp(`\\bparticipantId\\s*[:=]?\\s*${p.participantId}\\b`).test(mutation.error.message);
+              const failed = failedIds.has(p.participantId);
               return (
                 <tr
                   key={p.participantId}

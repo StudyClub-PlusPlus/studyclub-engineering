@@ -41,9 +41,9 @@ const data: ParticipantsResponse = {
   participantCount: 2,
   recruitmentCapacity: 10,
   groups: [
-    { groupId: 1, name: '기본반', canDelete: false },
-    { groupId: 2, name: '목요일반', canDelete: false },
-    { groupId: 3, name: '빈반', canDelete: true },
+    { groupId: 1, name: '기본반', isDefault: true, canDelete: false },
+    { groupId: 2, name: '목요일반', isDefault: false, canDelete: false },
+    { groupId: 3, name: '빈반', isDefault: false, canDelete: true },
   ],
   participants: [
     {
@@ -126,7 +126,7 @@ describe('참여자 반 편성', () => {
     await screen.findByText('저장했습니다.');
     expect(client.getQueryState(otherKey)?.isInvalidated).toBe(false);
   });
-  it('서버 목록 순서와 무관하게 가장 먼저 만든 반에 기본 배지를 표시한다', async () => {
+  it('서버 목록 순서와 무관하게 서버가 기본으로 표시한 반에 기본 배지를 표시한다', async () => {
     mount({ ...data, groups: [...data.groups].reverse() });
     const badge = await screen.findByText('기본');
     expect(badge.parentElement).toHaveTextContent('기본반');
@@ -284,7 +284,7 @@ describe('참여자 반 편성', () => {
     const response = structuredClone(data);
     const fetch = mount(response, async (url, init) => {
       if (init.method === 'POST') {
-        response.groups.push({ groupId: 4, name: JSON.parse(init.body as string).name, canDelete: true });
+        response.groups.push({ groupId: 4, name: JSON.parse(init.body as string).name, isDefault: false, canDelete: true });
         return reply({ groupId: 4, name: '새반' }, 201);
       }
       if (init.method === 'PATCH') {
@@ -387,5 +387,38 @@ describe('참여자 반 편성', () => {
     const clean = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(clean);
     expect(clean.defaultPrevented).toBe(false);
+  });
+
+  it('배정 변경 없이 반 제목을 저장하는 중에는 이동을 막지 않는다', async () => {
+    let finish!: (response: Response) => void;
+    mount(data, () => new Promise<Response>((resolve) => (finish = resolve)));
+    await userEvent.click(await screen.findByRole('button', { name: '반 추가' }));
+    await userEvent.type(screen.getByRole('textbox', { name: '반 제목' }), '새반{Enter}');
+    try {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    } finally {
+      await act(async () => finish(reply({ groupId: 4, name: '새반' }, 201)));
+    }
+  });
+
+  it('배정 저장 중 링크를 누르면 모달을 띄우고 저장이 끝나야 이동할 수 있다', async () => {
+    let finish!: (response: Response) => void;
+    mount(data, () => new Promise<Response>((resolve) => (finish = resolve)));
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 반' }), '2');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    const link = document.createElement('a');
+    link.href = '/studies';
+    document.body.append(link);
+    try {
+      await userEvent.click(link);
+      expect(screen.getByRole('dialog', { name: '변경을 취소하고 이동' })).toBeVisible();
+      expect(screen.getByRole('button', { name: '변경 취소 후 이동' })).toBeDisabled();
+    } finally {
+      await act(async () => finish(reply({ participants: [{ participantId: 41, groupId: 2 }] })));
+      link.remove();
+    }
+    await waitFor(() => expect(screen.getByRole('button', { name: '변경 취소 후 이동' })).toBeEnabled());
   });
 });

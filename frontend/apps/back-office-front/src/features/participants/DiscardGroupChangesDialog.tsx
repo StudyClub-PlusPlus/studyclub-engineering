@@ -4,10 +4,12 @@ export function DiscardGroupChangesDialog({
   open,
   onClose,
   onConfirm,
+  busy = false,
 }: {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  busy?: boolean;
 }) {
   return (
     <Modal
@@ -19,7 +21,7 @@ export function DiscardGroupChangesDialog({
           <Button variant='secondary' onClick={onClose}>
             계속 편집
           </Button>
-          <Button variant='danger' onClick={onConfirm}>
+          <Button variant='danger' disabled={busy} onClick={onConfirm}>
             변경 취소 후 이동
           </Button>
         </>

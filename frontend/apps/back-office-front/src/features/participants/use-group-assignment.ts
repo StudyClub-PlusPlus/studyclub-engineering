@@ -29,13 +29,12 @@ export function useGroupAssignment(
   if (Object.keys(drafts).length !== Object.keys(pendingChanges).length) setDrafts(drafts);
   const [notice, setNotice] = useState('');
   const mutation = useSaveGroupAssignments(studyId);
-  const saving = useIsMutating({ mutationKey: participantKeys.list(studyId) }) > 0;
+  const saving = useIsMutating({ mutationKey: participantKeys.assignments(studyId) }) > 0;
   const dirty = Object.keys(drafts).length > 0;
   useEffect(() => {
     if (!dirty && !saving) return;
-    return blockHistoryNavigation((resume) => {
-      if (!saving) setPendingHistory(() => resume);
-    });
+    // 저장 중에도 이동을 기록해 두고 창을 띄운다. 「변경 취소 후 이동」은 저장이 끝나야 눌린다.
+    return blockHistoryNavigation((resume) => setPendingHistory(() => resume));
   }, [dirty, saving]);
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -65,7 +64,6 @@ export function useGroupAssignment(
       if (destination.origin !== window.location.origin || destination.href === window.location.href) return;
       event.preventDefault();
       event.stopPropagation();
-      if (saving) return;
       setPendingHref(destination.pathname + destination.search + destination.hash);
     };
     window.addEventListener('beforeunload', beforeUnload);

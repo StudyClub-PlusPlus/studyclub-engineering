@@ -34,7 +34,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const [pendingTab, setPendingTab] = useState<TabKey | null>(null);
   const [savingForm, setSavingForm] = useState(false);
   const [dirtyParticipants, setDirtyParticipants] = useState(false);
-  const savingParticipants = useIsMutating({ mutationKey: participantKeys.list(detail.id) }) > 0;
+  const savingParticipants = useIsMutating({ mutationKey: participantKeys.assignments(detail.id) }) > 0;
 
   const participantQuery = useParticipants(detail.id, tab === 'crew');
   const participantCount = participantQuery.data?.participantCount;
@@ -48,6 +48,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
     <div>
       <DiscardGroupChangesDialog
         open={pendingTab !== null}
+        busy={savingParticipants}
         onClose={() => setPendingTab(null)}
         onConfirm={() => {
           if (savingParticipants) return;
