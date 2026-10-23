@@ -77,7 +77,7 @@ function useMe(locale: Locale, next: string): string | null | undefined {
   return me;
 }
 
-export function MyFeedbackList({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
+export function MyFeedbackList({ locale }: { locale: Locale }) {
   const router = useRouter();
   const base = `/proto/core/${locale}/my/feedbacks`;
   const me = useMe(locale, base);
@@ -173,7 +173,6 @@ export function MyFeedbackList({ locale, discordUrl }: { locale: Locale; discord
           if (me) setRows(listMyFeedbacks(me));
           setPage(1);
         }}
-        discordUrl={discordUrl}
       />
     </div>
   );

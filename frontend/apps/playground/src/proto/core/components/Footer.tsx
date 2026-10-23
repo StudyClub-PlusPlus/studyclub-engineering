@@ -12,8 +12,8 @@ import { m } from '@core/lib/i18n';
  *
  * 그래서 푸터에는 **여기에만 있는 것**만 남긴다.
  *
- * 「의견 보내기」는 예외다. 위에도 있지만 **프로필을 눌러야 나오는 자리**라, 로그인해서 쓰다
- * 막힌 사람이 찾지 못한다. 할 말이 생겼을 때 사람이 내려다보는 곳은 화면 맨 아래다.
+ * 「문의·오류 신고」는 예외다. 프로필 드롭다운에 있던 것을 **이리로 옮겼다** — 눌러야 나오는
+ * 자리라 할 말이 생긴 사람이 찾지 못했다. 사람이 내려다보는 곳은 화면 맨 아래다.
  */
 export function Footer({ locale }: { locale: Locale }) {
   return (
@@ -27,6 +27,7 @@ export function Footer({ locale }: { locale: Locale }) {
           {/* 쓰는 창이 바로 열린다. 로그인하지 않았으면 로그인으로 보낸다 */}
           <Link
             href={`/proto/core/${locale}/my/feedbacks?write=1`}
+            data-anno='feedback:1'
             className='text-xs font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'
           >
             {m('nav.feedback', locale)}
