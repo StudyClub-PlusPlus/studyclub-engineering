@@ -47,7 +47,7 @@ export default defineConfig({
     {
       command: 'npm run dev',
       cwd: APP_ROOT,
-      url: APP_ORIGIN,
+      url: `${APP_ORIGIN}/studies`,
       env: { BO_DEV_BYPASS_AUTH: '1', API_BASE_URL: `http://127.0.0.1:${API_MOCK_PORT}` },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

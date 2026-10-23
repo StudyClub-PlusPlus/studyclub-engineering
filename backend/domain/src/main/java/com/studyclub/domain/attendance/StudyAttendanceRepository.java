@@ -105,6 +105,22 @@ public interface StudyAttendanceRepository extends JpaRepository<StudyAttendance
     @Query("DELETE FROM StudyAttendance a WHERE a.studyMeetingId = :studyMeetingId")
     int deleteByStudyMeetingId(@Param("studyMeetingId") Long studyMeetingId);
 
+    /** 반 이동 — 새 반 예정 회차에 이미 출석 행이 있는 (회차, 계정) 을 한 번에 찾는다. */
+    List<StudyAttendance> findByStudyMeetingIdInAndAccountIdIn(
+            Collection<Long> studyMeetingIds, Collection<Long> accountIds);
+
+    /**
+     * 반 이동 — 옛 반 예정 회차에서 떠나는 사람들의 출석 행을 상태와 상관없이 한 문장으로 지운다 (specs/study-group/spec.md 「반 · 역할 한 번에
+     * 바꾸기」 5.2). 영속성 컨텍스트는 비우지 않는다 — 호출자가 잠가 둔 명부 · 회차를 이어서 고친다.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(
+            "DELETE FROM StudyAttendance a"
+                    + " WHERE a.studyMeetingId IN :studyMeetingIds AND a.accountId IN :accountIds")
+    int deleteByStudyMeetingIdInAndAccountIdIn(
+            @Param("studyMeetingIds") Collection<Long> studyMeetingIds,
+            @Param("accountIds") Collection<Long> accountIds);
+
     /** 여러 회차의 출석을 한 문장으로 지운다 — 회차 일괄 삭제용. 위와 같은 이유로 DELETE 문이다. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM StudyAttendance a WHERE a.studyMeetingId IN :studyMeetingIds")

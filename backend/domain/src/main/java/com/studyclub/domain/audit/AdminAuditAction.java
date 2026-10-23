@@ -10,5 +10,10 @@ public enum AdminAuditAction {
      * 출석부에서 참여를 중단시켰다 (specs/study-participant/spec.md). 행위자는 네비게이터일 수도 있다. BEFORE 에 중단 직전
      * 상태(ACTIVE·PAUSED), AFTER 에 중단된 명부 행 ID.
      */
-    WITHDRAW
+    WITHDRAW,
+    /**
+     * 백오피스 신청자 탭에서 명부 행의 역할(네비게이터)을 바꿨다 (specs/study-group/spec.md). BEFORE 에 변경 전 역할, AFTER 에 명부 행
+     * ID. 역할은 {@code LEADER} · {@code MEMBER} 둘뿐이라 변경 후 값은 BEFORE 의 반대다.
+     */
+    PARTICIPANT_ROLE
 }

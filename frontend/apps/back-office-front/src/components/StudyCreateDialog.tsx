@@ -22,13 +22,23 @@ import { useCreateStudy } from '@/features/studies/queries';
  * 운영자가 화면마다 다른 것을 외워야 한다. 다른 점은 프로그램 칸뿐이다 — 등록에서만 고를 수 있어
  * `mode` 로 가른다.
  */
-export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function StudyCreateDialog({
+  open,
+  onClose,
+  onConfirmed,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirmed?: () => void;
+}) {
   const [form, setForm] = useState<StudyFormValues>(EMPTY_FORM);
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const create = useCreateStudy();
   const saving = create.isPending;
+  const busy = saving || uploading;
 
   useEffect(() => {
     if (!open) return;
@@ -39,6 +49,7 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
   }, [open]);
 
   function close() {
+    if (busy) return;
     setForm(EMPTY_FORM);
     setErrors({});
     setFailure(null);
@@ -47,6 +58,7 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
   }
 
   async function handleSubmit() {
+    if (busy) return;
     const e = validateStudyForm(form);
     setErrors(e);
     if (Object.keys(e).length > 0) return;
@@ -72,13 +84,20 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
       size='lg'
       footer={
         done ? (
-          <Button onClick={close}>확인</Button>
+          <Button
+            onClick={() => {
+              close();
+              onConfirmed?.();
+            }}
+          >
+            확인
+          </Button>
         ) : (
           <>
-            <Button variant='secondary' onClick={close} disabled={saving}>
+            <Button variant='secondary' onClick={close} disabled={busy}>
               취소
             </Button>
-            <Button onClick={handleSubmit} loading={saving}>
+            <Button onClick={handleSubmit} loading={saving} disabled={busy}>
               등록
             </Button>
           </>
@@ -94,7 +113,10 @@ export function StudyCreateDialog({ open, onClose }: { open: boolean; onClose: (
           {failure && (
             <p className='mb-3 rounded-control bg-error-50 px-3 py-2 text-sm text-error-700'>{failure}</p>
           )}
-          <StudyForm mode='create' value={form} errors={errors} onChange={setForm} />
+          {uploading && <p role='status' className='mb-3 text-sm text-fg-muted'>썸네일 업로드 중입니다.</p>}
+          <fieldset disabled={busy} className='min-w-0'>
+            <StudyForm mode='create' value={form} errors={errors} onChange={setForm} onUploadingChange={setUploading} />
+          </fieldset>
         </>
       )}
     </Modal>

@@ -22,6 +22,8 @@ public interface StudyMeetingRepository extends JpaRepository<StudyMeeting, Long
             "SELECT m FROM StudyMeeting m WHERE m.studyGroupId = :studyGroupId ORDER BY m.scheduledAt")
     List<StudyMeeting> findByStudyGroupIdForUpdate(@Param("studyGroupId") Long studyGroupId);
 
+    boolean existsByStudyGroupIdAndMeetingType(Long studyGroupId, MeetingType meetingType);
+
     List<StudyMeeting> findByStudyGroupIdInOrderByScheduledAt(Collection<Long> studyGroupIds);
 
     @Query(

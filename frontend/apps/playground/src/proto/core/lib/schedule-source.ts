@@ -5,6 +5,7 @@ import {
   addMeetings,
   deleteMeetings,
   patchMeeting,
+  setKickoff,
   withAdded,
   zonedInstant,
   type MeetingPatch,
@@ -31,6 +32,8 @@ export type ScheduleSource = {
   add: (input: { dates: string[]; time: string; title?: string }) => void;
   patch: (id: string, patch: MeetingPatch) => void;
   remove: (id: string) => void;
+  /** 킥오프를 정하거나 옮긴다. 백오피스(캡틴)만 있다: 사용자 사이트의 네비게이터는 킥오프를 고치지 않는다. */
+  setKickoff?: (date: string, time: string) => void;
 };
 
 /** 사용자 사이트 — 내 분반. 시간대는 분반 시간대. */
@@ -75,6 +78,7 @@ export function classSource({
     add: (input) => addMeetings(key, { ...input, timeZone }),
     patch: (id, patch) => patchMeeting(key, id, patch, timeZone),
     remove: (id) => deleteMeetings(key, [id]),
+    setKickoff: (date, time) => setKickoff(key, date, time, timeZone),
   };
 }
 
