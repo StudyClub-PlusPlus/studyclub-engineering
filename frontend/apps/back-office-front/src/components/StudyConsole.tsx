@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { Badge, Button, Modal } from '@studyclub/ui';
+import { useIsMutating } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 
 import { StudyInfoTab } from '@/components/StudyInfoTab';
 import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
 import { ApplicationResultsTab } from '@/features/application-results/ApplicationResultsTab';
-import { ApplicationsTab } from '@/features/applications/ApplicationsTab';
-import { useApplications } from '@/features/applications/queries';
+import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
+import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
+import { participantKeys, useParticipants } from '@/features/participants/queries';
 import { ScheduleTab } from '@/features/schedule/ScheduleTab';
 import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
 import { useUrlState } from '@/lib/use-url-state';
@@ -28,11 +30,16 @@ const TABS = [
 const TAB_DEFAULTS = { tab: 'info' };
 const TAB_ALLOWED = { tab: TABS.map(({ key }) => key) };
 
+type TabKey = (typeof TABS)[number]['key'];
+
 const categoryLabel = (code: string) => CATEGORY_OPTIONS.find((c) => c.value === code)?.label ?? code;
 
 export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const [{ tab }, setUrl] = useUrlState(TAB_DEFAULTS, TAB_ALLOWED);
+  const [pendingTab, setPendingTab] = useState<TabKey | null>(null);
   const [savingForm, setSavingForm] = useState(false);
+  const [dirtyParticipants, setDirtyParticipants] = useState(false);
+  const savingParticipants = useIsMutating({ mutationKey: participantKeys.assignments(detail.id) }) > 0;
   const router = useRouter();
   // 일정 탭의 저장 전 고침(일정 표 · 규칙). 탭 · 반 · 링크를 누르면 나가기 전에 한 번 묻는다
   const [scheduleDirty, setScheduleDirty] = useState(false);
@@ -131,9 +138,8 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
     window.history.back();
   }, [scheduleDirty]);
 
-  const applicationQuery = useApplications(detail.id, tab === 'crew');
-  const applications = applicationQuery.isError ? undefined : applicationQuery.data?.applications;
-  const pendingCount = applications?.filter((application) => application.status === 'PENDING').length;
+  const participantQuery = useParticipants(detail.id, tab === 'crew');
+  const participantCount = participantQuery.data?.participantCount;
   const open = detail.recruitStatus === 'RECRUITING';
   const deadline = detail.recruitDeadlineAt
     ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
@@ -142,6 +148,17 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
 
   return (
     <div>
+      <DiscardGroupChangesDialog
+        open={pendingTab !== null}
+        busy={savingParticipants}
+        onClose={() => setPendingTab(null)}
+        onConfirm={() => {
+          if (savingParticipants) return;
+          if (pendingTab) setUrl({ tab: pendingTab }, { reset: true });
+          setPendingTab(null);
+          setDirtyParticipants(false);
+        }}
+      />
       <Link
         href='/studies'
         className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg'
@@ -159,7 +176,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
             {unpublished && (
               <>
                 <span className='text-fg-muted'>·</span>
-                <span className='font-semibold text-warning-700'>비공개 — 사용자 사이트에 안 보임</span>
+                <span className='font-semibold text-warning-700'>비공개: 사용자 사이트에 안 보임</span>
               </>
             )}
           </p>
@@ -173,16 +190,14 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
       </header>
 
       {/* 운영자가 매일 확인하는 숫자 — 탭을 옮겨 다니지 않아도 보이게 위에 둔다 */}
-      <div className='mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4'>
+      <div className='mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3'>
         <Stat label='진행 일정' value={detail.schedule || '미정 · 신청자 조율'} small />
-        {/* TODO(api): 참석자·출석률 — 출석 명부 API 가 분반(studyGroupId)을 받는데 상세 응답에 분반이 없다 */}
-        <Stat label='참석자' value='—' sub={detail.capacity == null ? '정원 제한 없음' : `정원 ${detail.capacity}명`} />
         <Stat
-          label='승인 대기'
-          value={pendingCount == null ? '—' : `${pendingCount}`}
-          tone={pendingCount ? 'warn' : undefined}
+          label='참석자'
+          value={participantCount == null ? '-' : String(participantCount)}
+          sub={detail.capacity == null ? '정원 제한 없음' : `정원 ${detail.capacity}명`}
         />
-        <Stat label='출석률' value='—' />
+        <Stat label='출석률' value='-' />
       </div>
 
       <nav className='mt-6 flex gap-1 border-b border-border'>
@@ -190,35 +205,30 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
           <button
             key={tb.key}
             type='button'
-            disabled={savingForm}
+            disabled={savingForm || savingParticipants}
             onClick={() => {
-              if (tb.key !== tab) guard(() => setUrl({ tab: tb.key }, { reset: true }));
+              if (tb.key === tab) return;
+              // 신청자 탭(반 편성)과 일정 탭은 저장 전 고침을 따로 묻는다 — 한 번에 한 탭만 열려 있다
+              if (dirtyParticipants) setPendingTab(tb.key);
+              else guard(() => setUrl({ tab: tb.key }, { reset: true }));
             }}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
             }`}
           >
             {tb.label}
-            {tb.key === 'crew' && pendingCount != null && pendingCount > 0 && (
-              <span className='ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-xs font-bold text-warning-700'>
-                {pendingCount}
-              </span>
-            )}
           </button>
         ))}
       </nav>
 
       <div className='mt-5'>
         {tab === 'results' && (
-          <ApplicationResultsTab
-            studyId={detail.id}
-            onEditForm={() => setUrl({ tab: 'form' }, { reset: true })}
-          />
+          <ApplicationResultsTab studyId={detail.id} onEditForm={() => setUrl({ tab: 'form' }, { reset: true })} />
         )}
         {tab === 'attendance' && (
           <div className='card px-6 py-10 text-center text-sm text-fg-muted'>출석 관리는 준비 중입니다.</div>
         )}
-        {tab === 'crew' && <ApplicationsTab studyId={detail.id} />}
+        {tab === 'crew' && <ParticipantsTab studyId={detail.id} onDirtyChange={setDirtyParticipants} />}
         {tab === 'schedule' && <ScheduleTab detail={detail} onDirtyChange={setScheduleDirty} guard={guard} />}
         {tab === 'form' && <ApplicationFormTab study={detail} onSavingChange={setSavingForm} />}
         {tab === 'info' && <StudyInfoTab detail={detail} onSavingChange={setSavingForm} />}

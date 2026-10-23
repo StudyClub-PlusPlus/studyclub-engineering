@@ -20,7 +20,7 @@ import {
   saveRules,
   setKickoff,
 } from './store';
-import { useApplications } from '@/features/applications/queries';
+import { useParticipants } from '@/features/participants/queries';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
 /**
@@ -61,22 +61,21 @@ export function ScheduleTab({
   }, [tableDirty, rulesDirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
 
-  // 발표자로 고를 수 있는 사람 — 승인된 신청자. 지금은 반이 「기본반」 하나라 모두 그 반이다.
-  // TODO(api): 참여 명단(GET /api/admin/studies/{id}/participants)의 그 반 사람으로. 네비게이터도 거기서 온다.
-  const applications = useApplications(studyId);
+  // 발표자로 고를 수 있는 사람 — 참여 명단의 활동 중 · 휴식 중인 사람 (회차 스펙 participants 와 같은 범위).
+  // TODO(api): 반 목록이 서버 반 ID 와 이어지면 그 반 사람만. 지금은 반이 「기본반」 하나라 모두 그 반이다. 네비게이터도 거기서 온다.
+  const participants = useParticipants(studyId);
   const people = useMemo<Person[]>(() => {
-    const approved = (applications.data?.applications ?? []).filter((a) => a.status === 'APPROVED');
+    const active = (participants.data?.participants ?? []).filter(
+      (p) => p.status === 'ACTIVE' || p.status === 'PAUSED',
+    );
     const count = new Map<string, number>();
-    for (const a of approved) count.set(a.applicantName, (count.get(a.applicantName) ?? 0) + 1);
+    for (const p of active) count.set(p.nickname, (count.get(p.nickname) ?? 0) + 1);
     // 이름이 겹치는 사람은 디스코드 닉네임을 붙여 가른다
-    return approved.map((a) => ({
-      id: `a${a.id}`,
-      name:
-        (count.get(a.applicantName) ?? 0) > 1 && a.discordNickname
-          ? `${a.applicantName} (${a.discordNickname})`
-          : a.applicantName,
+    return active.map((p) => ({
+      id: `p${p.participantId}`,
+      name: (count.get(p.nickname) ?? 0) > 1 && p.discordNickname ? `${p.nickname} (${p.discordNickname})` : p.nickname,
     }));
-  }, [applications.data]);
+  }, [participants.data]);
 
   const onTableDirty = useCallback((d: boolean) => setTableDirty(d), []);
   const onRulesDirty = useCallback((d: boolean) => setRulesDirty(d), []);

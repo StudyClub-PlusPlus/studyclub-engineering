@@ -3,6 +3,7 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
+> 갱신: 2026-10-23 — 참여 명단 `groups[].isDefault` 추가 (기본 반 칩을 서버 판정으로)
 > 갱신: 2026-10-21 — 한 사람씩 바꾸던 `PATCH …/{participantId}/role` · `…/group` 을 일괄 `PATCH …/participants` 하나로 합쳤다
 > 상태: 스펙작성중
 >
@@ -15,7 +16,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 스펙작성중 |
-| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 스펙작성중 |
+| PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현중 |
 | PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현중 (제목만) |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현중 |
@@ -54,7 +55,7 @@
   "studyId": 3,
   "participantCount": 18,
   "recruitmentCapacity": 20,
-  "groups": [{ "groupId": 7, "name": "A반", "canDelete": false }],
+  "groups": [{ "groupId": 7, "name": "A반", "isDefault": true, "canDelete": false }],
   "participants": [
     {
       "participantId": 41,
@@ -77,7 +78,8 @@
 |------|------|------|------|------|
 | participantCount | Int | N | `ACTIVE` · `PAUSED` 행 수. 신청한 담당 캡틴도 크루와 같이 센다 | 계산 |
 | recruitmentCapacity | Int | Y | 정원. null 이면 제한 없음 | 최신 STUDY_RECRUITMENT.RECRUITMENT_CAPACITY |
-| groups[] | Array | N | 그 스터디의 분반 | STUDY_GROUP |
+| groups[] | Array | N | 그 스터디의 분반. 만든 순서(`ID` 오름차순) | STUDY_GROUP |
+| groups[].isDefault | Boolean | N | 기본 반(그 스터디에서 처음 만든 반)이면 true — 「기본」 칩. 「반 삭제」의 `DEFAULT_GROUP_NOT_DELETABLE` 과 같은 판정 | 계산 |
 | groups[].canDelete | Boolean | N | 이 반을 지울 수 있으면 true — 신청자 탭 「삭제」 버튼. `includeLeft` 와 상관없이 `DELETED` 밖의 명부 행(`ACTIVE` · `PAUSED` · `COMPLETED` · `WITHDRAWN`)도, 탈퇴 회원 밖의 출석 행도 하나도 없을 때만 true. 기본 반은 늘 false. 「반 삭제」 API 와 같은 판정 | 계산 |
 | participants[].participantId | Long | N | | STUDY_PARTICIPANT.ID |
 | participants[].nickname · email | String | N | 이메일은 이 백오피스 응답에만 | ACCOUNT |
@@ -142,6 +144,7 @@
       - 반 행: 회차 추가·수정·삭제도 반 행을 잠근다([회차 스펙 「잠금」](../study-meeting/spec.md#잠금)). 옮기는 동안 반에 회차가 새로 생기거나 지워지지 않는다
       - 회차 행: 디스코드 출석이 같은 잠금으로 회차를 자동 시작한다. 잠근 뒤에 「예정 회차」를 판정해야 판정 직후 회차가 시작되는 일이 없다
       - 순서를 반 id 오름차순으로 고정한다 — 디스코드 출석도 반 id 오름차순으로 회차를 잠근다. 순서가 다르면 서로를 기다리며 멈춘다
+     - 구현: 참여 중단과 같은 「분반 → 명부 행 → 회차」 순서다 — 트랜잭션의 첫 조회로 이 스터디의 분반을 모두 id 오름차순으로 잠그고(`findByStudyIdForUpdate`), 대상 명부 행을 잠가 최신 상태로 읽은 뒤(`findByIdInAndStudyIdForUpdate`) 1~4 를 검증하고, 옛 반 · 새 반의 회차를 잠근다. 그래야 검증과 이동 사이에 참여 중단이 끼어들지 못한다 ([share 10-18 D7](../../docs/share/2026-10-18-schedule-attendance-feedback.md))
    2. **옛 반의 예정 회차 출석 행을 지운다** — 상태(`ABSENT`·`EXCUSED` 등)와 상관없이
       - 예정 회차 = 잠금을 얻은 **뒤** 시각으로 아직 시작하지 않은 회차 (`START_AT IS NULL AND SCHEDULED_AT > now()`). 회차 목록의 `started = false` 와 같은 기준이다
       - 이유: 그 사람은 이제 그 회차에 오지 않는다. 남겨 두면 옛 반 출석 집계(대시보드)에 그 사람이 결석으로 섞이고, 화면 명단에는 없는 사람의 행이 된다
@@ -154,7 +157,7 @@
 
    > 비유: 학원에서 반을 옮기면 **지난 수업 출석부**는 옛 반에 그대로 남고, **다음 수업부터** 새 반 출석부에 이름이 올라간다. 옛 반 출석부의 앞으로 칸은 지운다.
 6. 지금 값과 같은 필드는 건너뛴다 — 같은 값만 보낸 줄도 200
-7. 역할이 실제로 바뀐 줄마다 `study_participant.role_changed` 를 발행한다 (`from` · `to`). 반만 바뀐 줄은 발행하지 않는다. 구독자(디스코드 네비게이터 role, DSC-08)는 커밋 뒤에 받는다 — 페이로드는 [domain-events](../domain-events/spec.md) 에 COM-01 로 올린다
+7. 역할이 실제로 바뀐 줄마다 [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) 한 줄(`ACTION = PARTICIPANT_ROLE` · `BEFORE` = 변경 전 역할 · `AFTER` = 명부 행 ID)을 같은 트랜잭션에 남기고, `study_participant.role_changed` 를 발행한다 (`previousRole` · `newRole`). 반만 바뀐 줄은 발행하지 않는다. 구독자(디스코드 네비게이터 role, DSC-08)는 커밋 뒤에 받는다 — 페이로드는 [domain-events](../domain-events/spec.md) 에 COM-01 로 올린다
 
 ### Response — 200
 
@@ -320,7 +323,9 @@
 
 ## 프론트엔드 사용처
 
-- back-office-front 스터디 상세 — 신청자 탭(명단 · 역할 · 반 만들기 · 반 제목 수정 · 일괄 변경) (미구현 — 지금 신청자 탭은 신청 심사 화면) · 일정 탭(스터디 시간 정하기 · 수정 — 화면은 있고 브라우저 저장소에 남는다. 이 API 가 시간 칸을 받으면 붙인다). 프로토: playground `console/studies/{id}`
+- back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/ParticipantsTab.tsx`: 명단 · 반 생성/제목 수정/삭제 · 개별/일괄 반 변경 후 저장. 역할은 표시만 한다. 참여 명단 GET · 일괄 PATCH는 위 계약에 연결했으며 BE 구현 후 실제 연동 검증이 필요하다.
+- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정은 화면은 있고 브라우저 저장소에 남는다. 이 API 가 시간 칸을 받으면 붙인다
+- 역할 변경은 미구현. 프로토: playground `console/studies/{id}`
 
 ## 미확정
 

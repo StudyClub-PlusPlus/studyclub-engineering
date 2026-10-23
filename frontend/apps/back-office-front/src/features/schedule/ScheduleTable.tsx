@@ -290,9 +290,7 @@ export function ScheduleTable({
                       aria-label='지울 수 있는 회차 전체 선택'
                       checked={allChecked}
                       disabled={deletable.length === 0}
-                      ref={(el) => {
-                        if (el) el.indeterminate = picked.length > 0 && !allChecked;
-                      }}
+                      indeterminate={picked.length > 0 && !allChecked}
                       onChange={() => setChecked(allChecked ? new Set() : new Set(deletable.map((m) => m.id)))}
                     />
                   </th>

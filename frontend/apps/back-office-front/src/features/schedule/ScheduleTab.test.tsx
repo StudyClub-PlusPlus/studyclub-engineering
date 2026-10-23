@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ScheduleTab } from './ScheduleTab';
-import type { ApplicationsResponse } from '@/features/applications/types';
+import type { Participant, ParticipantsResponse } from '@/features/participants/types';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
 const detail = {
@@ -15,32 +15,29 @@ const detail = {
   driveUrl: null,
 } as ApiStudyDetail;
 
-const applicant = (id: number, name: string, status: 'APPROVED' | 'PENDING') => ({
-  id,
-  recruitmentId: 3,
-  status,
-  applicantName: name,
+const participant = (id: number, nickname: string, status: Participant['status']): Participant => ({
+  participantId: id,
+  accountId: id,
+  nickname,
   discordNickname: null,
-  email: null,
-  submittedAt: '2026-10-08T23:30:00Z',
-  previousParticipationCount: 0,
-  completionRate: null,
-  availableDays: [],
-  scheduleAgreed: null,
-  answers: {},
+  email: `${id}@example.com`,
+  regionGroup: 'KR',
+  groupId: 1,
+  participantRole: 'MEMBER',
+  status,
+  captain: false,
+  joinedAt: '2026-10-08T23:30:00Z',
 });
 
-const applications: ApplicationsResponse = {
-  respondentCount: 3,
-  capacity: null,
-  canApprove: true,
-  approvalBlockedReason: null,
-  announcementUrl: null,
-  questions: [],
-  applications: [
-    applicant(1, '김크루', 'APPROVED'),
-    applicant(2, '이크루', 'APPROVED'),
-    applicant(3, '박대기', 'PENDING'),
+const participants: ParticipantsResponse = {
+  studyId: 107,
+  participantCount: 2,
+  recruitmentCapacity: null,
+  groups: [{ groupId: 1, name: '기본반', isDefault: true, canDelete: false }],
+  participants: [
+    participant(1, '김크루', 'ACTIVE'),
+    participant(2, '이크루', 'PAUSED'),
+    participant(3, '박중단', 'WITHDRAWN'),
   ],
 };
 
@@ -71,7 +68,7 @@ function memoryStorage(): Storage {
 
 beforeEach(() => {
   vi.stubGlobal('localStorage', memoryStorage());
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(applications))));
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(participants))));
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -156,13 +153,13 @@ describe('일정 탭', () => {
     expect(within(dialog).getByLabelText(/일자/)).toHaveValue('2020-01-01');
   });
 
-  it('발표자는 승인된 신청자 중에서 고르고, 같은 사람을 두 칸에 넣으면 저장이 막힌다', async () => {
+  it('발표자는 참여 명단의 활동 · 휴식 중인 사람 중에서 고르고, 같은 사람을 두 칸에 넣으면 저장이 막힌다', async () => {
     const { onDirtyChange } = mount();
     await setTimeAndAddMeetings();
 
     const p1 = await screen.findByRole('combobox', { name: '1회차 발표자1' });
     await waitFor(() => expect(within(p1).getAllByRole('option')).toHaveLength(3));
-    expect(within(p1).queryByRole('option', { name: '박대기' })).not.toBeInTheDocument();
+    expect(within(p1).queryByRole('option', { name: '박중단' })).not.toBeInTheDocument();
 
     await userEvent.selectOptions(p1, '김크루');
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '1회차 발표자2' }), '김크루');
@@ -175,7 +172,7 @@ describe('일정 탭', () => {
     await userEvent.click(screen.getByRole('button', { name: '저장' }));
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     expect(onDirtyChange).toHaveBeenLastCalledWith(false);
-    expect(screen.getByRole('combobox', { name: '1회차 발표자2' })).toHaveValue('a2');
+    expect(screen.getByRole('combobox', { name: '1회차 발표자2' })).toHaveValue('p2');
   });
 
   it('칸 아래 오류 문구를 스크린리더가 그 칸의 설명으로 읽는다', async () => {

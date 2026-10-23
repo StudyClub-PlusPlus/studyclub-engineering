@@ -143,9 +143,7 @@ public class AccountDeletionService {
         for (Long groupId : groupIds) {
             for (StudyMeeting meeting :
                     studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)) {
-                for (Long participantId : participantIds) {
-                    meeting.releasePresenter(participantId, now);
-                }
+                meeting.releasePresenters(participantIds, now);
             }
         }
     }

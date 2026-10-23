@@ -86,7 +86,7 @@ packages/ui/src/
 ## 스토리 기본 구조
 
 ```tsx
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { Button } from './Button';
 
@@ -310,7 +310,7 @@ decorators: [(Story: React.FC) => <div><Story /></div>]
 가장 대표적인 컴포넌트를 `component` 로 지정하고, 나머지는 `render` 에서 직접 사용한다.
 
 ```ts
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { FieldShell, Input, Select, Textarea } from './Field';
 
