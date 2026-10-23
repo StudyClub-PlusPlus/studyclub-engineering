@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ClassPicker } from '@console/components/ClassPicker';
 import { hasSchedule, type StudyClass } from '@console/lib/classes';
 import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
-import { Badge, Button, Modal, SelectionCount, TableActionBar } from '@studyclub/ui';
+import { Badge, Button, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
 import { CalendarPlus, CircleHelp, Mic, Undo2 } from 'lucide-react';
 
 /**
@@ -218,13 +218,6 @@ const MEETING_COL = 'w-[3.6rem]';
 const RATE_COL = 'w-14 sm:w-20';
 
 /**
- * 작업 바 드롭다운. 고른 사람이 없으면 잠기고 버튼과 같은 비활성 회색(`disabled-bg` · `disabled-fg`)이 된다 —
- * 고르기 전에는 바 전체가 옅은 회색, 한 명이라도 고르면 살아난다 (출석부 · 참여 크루 공통).
- */
-export const SELECT_CLASS =
-  'h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-fg focus-visible:outline-none focus-visible:shadow-(--ring) disabled:cursor-not-allowed disabled:border-transparent disabled:bg-disabled-bg disabled:text-disabled-fg';
-
-/**
  * 출석부 제목 옆 「?」 — 칸 왼쪽 위 마이크가 무엇인지 알려 준다. 누르면 열고, 바깥 · Esc 로 닫는다.
  * 늘 펼쳐 두는 안내문은 두지 않는다(조작 안내 문구 없음) — 궁금한 사람만 연다.
  */
@@ -312,9 +305,9 @@ export function BulkSelect({
     if (v) onPick(v);
   }
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
-      className={SELECT_CLASS}
       disabled={disabled}
       value={pending}
       onPointerDown={() => {
@@ -338,7 +331,7 @@ export function BulkSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -609,9 +602,9 @@ export function AttendanceTab({
                   selecting ? (
                     <>
                       <SelectionCount count={selected.length} unit='명' />
-                      <select
+                      <Select
+                        size='sm'
                         aria-label='바꿀 회차'
-                        className={SELECT_CLASS}
                         disabled={selected.length === 0}
                         value={meetingId}
                         onChange={(e) => setBulkMeeting(e.target.value)}
@@ -621,7 +614,7 @@ export function AttendanceTab({
                             {`${headOf ? headOf(s) : `${s.no}회`} · ${dayOf(s)}`}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       {/* 「적용」 버튼 없이 고르면 바뀐다(키보드는 Enter 로 확정) — 늘 「출석 상태」로 돌아와 같은 값을 또 고를 수 있다 */}
                       <BulkSelect
                         label='바꿀 출석 상태'

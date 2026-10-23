@@ -37,7 +37,16 @@ export interface FieldShellProps {
 }
 
 /** 라벨 + 컨트롤 + helper/error 를 묶는다. error 가 있으면 helper 대신 error 를 보여준다. */
-export function FieldShell({ label, helper, error, required, labelHint, htmlFor, messageId, children }: FieldShellProps) {
+export function FieldShell({
+  label,
+  helper,
+  error,
+  required,
+  labelHint,
+  htmlFor,
+  messageId,
+  children,
+}: FieldShellProps) {
   const message = error ?? helper;
   return (
     <div className='flex flex-col gap-1.5'>
@@ -85,9 +94,22 @@ const INPUT_SIZES: Record<InputSize, string> = {
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>, FieldMeta {
   size?: InputSize;
+  /** 칸 오른쪽 끝에 붙는 단위 글자(「명」 · 「원」 등). 입력값이 그 앞에서 멈추도록 오른쪽 여백을 비운다. */
+  suffix?: ReactNode;
 }
 
-export function Input({ label, helper, error, required, labelHint, className, id, size = 'md', ...rest }: InputProps) {
+export function Input({
+  label,
+  helper,
+  error,
+  required,
+  labelHint,
+  className,
+  id,
+  size = 'md',
+  suffix,
+  ...rest
+}: InputProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   const invalid = Boolean(error);
@@ -102,14 +124,21 @@ export function Input({ label, helper, error, required, labelHint, className, id
       htmlFor={fieldId}
       messageId={messageId}
     >
-      <input
-        {...rest}
-        id={fieldId}
-        required={required}
-        aria-invalid={invalid || undefined}
-        aria-describedby={ariaDescribedBy}
-        className={controlClass(invalid, cx(INPUT_SIZES[size], className))}
-      />
+      <div className='relative'>
+        <input
+          {...rest}
+          id={fieldId}
+          required={required}
+          aria-invalid={invalid || undefined}
+          aria-describedby={ariaDescribedBy}
+          className={controlClass(invalid, cx(INPUT_SIZES[size], suffix != null && 'pr-9', className))}
+        />
+        {suffix != null && (
+          <span className='pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-sm text-fg-muted'>
+            {suffix}
+          </span>
+        )}
+      </div>
     </FieldShell>
   );
 }

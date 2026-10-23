@@ -45,7 +45,7 @@ function mount(onDirtyChange = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <ScheduleTab detail={detail} onDirtyChange={onDirtyChange} guard={(go) => go()} />
+      <ScheduleTab detail={detail} groupId='' onGroup={vi.fn()} onDirtyChange={onDirtyChange} guard={(go) => go()} />
     </QueryClientProvider>,
   );
   return { onDirtyChange };
@@ -209,5 +209,36 @@ describe('일정 탭', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
 
     expect(screen.getByText('전체 3 · 예정 3')).toBeVisible();
+  });
+
+  it('신청자 탭의 서버 반이 둘이면 반 칩이 서고, 발표자는 그 반 사람만 고른다', async () => {
+    const twoGroups: ParticipantsResponse = {
+      ...participants,
+      groups: [
+        { groupId: 1, name: '목요일반', isDefault: true, canDelete: false },
+        { groupId: 2, name: '금요일반', isDefault: false, canDelete: false },
+      ],
+      participants: [participant(1, '김크루', 'ACTIVE'), { ...participant(2, '이크루', 'ACTIVE'), groupId: 2 }],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(twoGroups))));
+    const onGroup = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <ScheduleTab detail={detail} groupId='' onGroup={onGroup} onDirtyChange={vi.fn()} guard={(go) => go()} />
+      </QueryClientProvider>,
+    );
+
+    // 처음엔 첫 반(목요일반) — 고른 칩이 채워진다
+    const thu = await screen.findByRole('button', { name: '목요일반' });
+    expect(thu).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(screen.getByRole('button', { name: '금요일반' }));
+    expect(onGroup).toHaveBeenCalledWith('2');
+
+    await setTimeAndAddMeetings();
+    const p1 = screen.getByRole('combobox', { name: '1회차 발표자1' });
+    await waitFor(() => expect(within(p1).getAllByRole('option')).toHaveLength(2));
+    expect(within(p1).getByRole('option', { name: '김크루' })).toBeInTheDocument();
+    expect(within(p1).queryByRole('option', { name: '이크루' })).not.toBeInTheDocument();
   });
 });
