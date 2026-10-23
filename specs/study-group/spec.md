@@ -282,7 +282,7 @@
 
 ### 킥오프
 
-반 일정이 회차를 만들지 않으므로 킥오프도 여기서 만들지 않는다. **킥오프가 없는 분반에 처음 정규 회차를 추가할 때** 회차 추가 API 가 첫 회차 한 주 전 같은 시각에 `MEETING_TYPE = KICKOFF` 회차를 함께 만든다 — [회차 스펙 결정 11](../study-meeting/spec.md#결정-사항). 회차 스펙 반영 필요.
+반 만들기도, 회차 추가도 킥오프를 만들지 않는다. **캡틴이 백오피스 일정 탭에서 「킥오프 정하기」로 정한다** — `PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff`, [회차 스펙 「킥오프 정하기」](../study-meeting/spec.md#킥오프-정하기-백오피스) (2026-10-22, [share](../../docs/share/2026-10-22-kickoff-by-captain.md)).
 
 ---
 

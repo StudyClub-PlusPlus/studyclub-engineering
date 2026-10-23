@@ -13,7 +13,7 @@ export function handleUnauthorized(error: Error) {
   if (!(error instanceof ApiError) || error.status !== 401) return;
   clearSession();
   if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-    window.location.href = '/login';
+    window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
   }
 }
 

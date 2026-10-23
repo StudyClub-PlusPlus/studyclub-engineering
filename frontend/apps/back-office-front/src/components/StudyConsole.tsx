@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 
 import { StudyInfoTab } from '@/components/StudyInfoTab';
 import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
+import { ApplicationResultsTab } from '@/features/application-results/ApplicationResultsTab';
 import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
 import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
@@ -18,6 +19,7 @@ import { useUrlState } from '@/lib/use-url-state';
 const TABS = [
   { key: 'info', label: '정보' },
   { key: 'form', label: '신청 폼' },
+  { key: 'results', label: '신청 결과' },
   { key: 'crew', label: '신청자' },
   { key: 'attendance', label: '출석' },
 ] as const;
@@ -52,7 +54,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
         onClose={() => setPendingTab(null)}
         onConfirm={() => {
           if (savingParticipants) return;
-          if (pendingTab) setUrl({ tab: pendingTab });
+          if (pendingTab) setUrl({ tab: pendingTab }, { reset: true });
           setPendingTab(null);
           setDirtyParticipants(false);
         }}
@@ -105,8 +107,9 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
             type='button'
             disabled={savingForm || savingParticipants}
             onClick={() => {
-              if (tb.key !== tab && dirtyParticipants) setPendingTab(tb.key);
-              else setUrl({ tab: tb.key });
+              if (tb.key === tab) return;
+              if (dirtyParticipants) setPendingTab(tb.key);
+              else setUrl({ tab: tb.key }, { reset: true });
             }}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
@@ -118,6 +121,12 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
       </nav>
 
       <div className='mt-5'>
+        {tab === 'results' && (
+          <ApplicationResultsTab
+            studyId={detail.id}
+            onEditForm={() => setUrl({ tab: 'form' }, { reset: true })}
+          />
+        )}
         {tab === 'attendance' && (
           <div className='card px-6 py-10 text-center text-sm text-fg-muted'>출석 관리는 준비 중입니다.</div>
         )}

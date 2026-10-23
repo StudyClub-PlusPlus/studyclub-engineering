@@ -46,6 +46,7 @@ import { Plus, X } from 'lucide-react';
  * - 크루: 본다. 빈 발표자 칸에만 자기 이름을 넣고 뺄 수 있다(선착순) — 바로 저장된다.
  *
  * 킥오프는 0회차로 맨 위에 둔다. 지우지 않고, 발표자가 없고, 출석률에 넣지 않는다.
+ * 킥오프 일자는 캡틴이 백오피스에서 「킥오프 정하기」로 정한다(`source.setKickoff`). 표에서는 고치지 않는다.
  * 시작한 회차(흐린 줄)는 고치거나 지우지 않는다 — 출석이 찍혀 있다.
  *
  * 백오피스는 같은 표를 반마다 쓴다 — `source` 로 고른 반의 회차를 넘긴다. 없으면 사용자 사이트의 내 분반.
@@ -73,6 +74,7 @@ export function ScheduleManager({
 }) {
   const src = source ?? studySource(study, group.timeZone);
   const [adding, setAdding] = useState(canEdit && startAdding);
+  const [settingKickoff, setSettingKickoff] = useState(false);
   // 일괄 삭제 — 고른 예정 정규 회차. 확인 모달은 한 회차 삭제와 같은 창을 쓴다
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
@@ -95,6 +97,9 @@ export function ScheduleManager({
   const now = Date.now();
   const meetings = src.meetings();
   const regular = meetings.filter((m) => !isKickoff(m));
+  const kickoffRow = meetings.find(isKickoff);
+  // 킥오프는 캡틴만 정한다. 백오피스가 넘긴 반에만 있다
+  const canSetKickoff = canEdit && Boolean(src.setKickoff);
   const people = src.people;
   const nameOf = (id?: string) => people.find((p) => p.id === id)?.name;
   const started = (m: ProtoMeeting) => src.startOf(m).getTime() <= now;
@@ -268,6 +273,13 @@ export function ScheduleManager({
             options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
             onChange={setZone}
           />
+          {canSetKickoff && (
+            <span data-anno='schedule:10-1'>
+              <Button size='sm' variant='secondary' onClick={() => setSettingKickoff(true)}>
+                {kickoffRow ? '킥오프 수정' : '킥오프 정하기'}
+              </Button>
+            </span>
+          )}
           {canEdit && (
             // 고른 것과 상관없는 일이라 작업 바가 아니라 제목 줄에 둔다 — 신청자 탭 「반 추가」와 같은 자리
             <span data-anno='schedule:2'>
@@ -297,6 +309,19 @@ export function ScheduleManager({
           onAdded={(label) => {
             setAdding(false);
             setAnnounce(`회차를 추가했습니다. ${label}`);
+            refresh();
+          }}
+        />
+      )}
+
+      {settingKickoff && (
+        <KickoffForm
+          source={src}
+          group={group}
+          onCancel={() => setSettingKickoff(false)}
+          onSaved={(label) => {
+            setSettingKickoff(false);
+            setAnnounce(`킥오프를 정했습니다. ${label}`);
             refresh();
           }}
         />
@@ -392,7 +417,8 @@ export function ScheduleManager({
                   const v = valueOf(m);
                   const errors = errorsOf(m);
                   const changed = changedIds.includes(m.id);
-                  const editable = canEdit && !past;
+                  // 킥오프는 표에서 고치지 않는다. 캡틴이 「킥오프 정하기」로만 (사용자 사이트에서는 아무도)
+                  const editable = canEdit && !past && !kickoff;
                   const wall = shownWall(v);
                   const cell = 'border-t border-border px-2 py-1.5 align-top';
 
@@ -453,6 +479,7 @@ export function ScheduleManager({
                   const row = (
                     <tr
                       key={m.id}
+                      title={canEdit && kickoff && !canSetKickoff ? '킥오프 일정은 캡틴이 정합니다.' : undefined}
                       className={cx(
                         // 시작한 회차는 흐린 글자 — 상태 열 없이도 고칠 수 없는 줄임을 알린다.
                         past && 'text-fg-muted',
@@ -692,6 +719,89 @@ function PresenterSelect({
 }
 
 /* ── 회차 추가 (반복 포함) ──────────────────────────────────────────────────── */
+
+/**
+ * 캡틴이 반의 킥오프(0회차)를 정하거나 옮긴다. 1회차보다 앞이어야 한다. 지난 날도 받는다: 운영 중인 반의 킥오프를 나중에 적는다.
+ * 처음 값은 지금 킥오프, 없으면 1회차 한 주 전 · 반의 스터디 시각.
+ */
+function KickoffForm({
+  source,
+  group,
+  onCancel,
+  onSaved,
+}: {
+  source: ScheduleSource;
+  group: NavigatorGroup;
+  onCancel: () => void;
+  onSaved: (label: string) => void;
+}) {
+  const meetings = source.meetings();
+  const current = meetings.find(isKickoff);
+  const firstRegular = meetings.find((m) => !isKickoff(m));
+  const [date, setDate] = useState(
+    () => current?.date || (firstRegular ? addDaysYmd(firstRegular.date, -7) : new Date().toISOString().slice(0, 10)),
+  );
+  const [time, setTime] = useState(() => current?.time ?? group.startAt);
+  const [touched, setTouched] = useState(false);
+
+  const errors: { date?: string; time?: string } = {
+    date: !date
+      ? '일자를 정해 주세요.'
+      : firstRegular && date >= firstRegular.date
+        ? `킥오프는 1회차(${dayLabel(firstRegular.date)})보다 앞이어야 합니다.`
+        : undefined,
+    time: !time ? '시각을 정해 주세요.' : undefined,
+  };
+  const shown: typeof errors = touched ? errors : {};
+
+  function submit() {
+    setTouched(true);
+    if (errors.date || errors.time) return;
+    source.setKickoff?.(date, time);
+    onSaved(wallLabel(zonedInstant(date, time, group.timeZone), group.timeZone));
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onCancel}
+      title={current ? '킥오프 수정' : '킥오프 정하기'}
+      description={`${group.name} · ${zoneTitle(group.timeZone)} 기준`}
+      footer={
+        <>
+          <Button variant='secondary' onClick={onCancel}>
+            취소
+          </Button>
+          <Button onClick={submit}>저장</Button>
+        </>
+      }
+    >
+      <div data-anno='schedule:10-1' className='flex flex-col gap-4 py-2'>
+        <p className='text-sm text-fg-secondary'>
+          규칙·일정·발표자를 정하는 첫 모임입니다. 네비게이터는 이 날을 고칠 수 없습니다.
+        </p>
+        <div className='grid gap-3 sm:grid-cols-[10rem_8rem]'>
+          <Input
+            type='date'
+            label='일자'
+            required
+            value={date}
+            error={shown.date}
+            onChange={(ev) => setDate(ev.target.value)}
+          />
+          <Input
+            type='time'
+            label={`시작 시각 (${zoneLabel(group.timeZone)})`}
+            required
+            value={time}
+            error={shown.time}
+            onChange={(ev) => setTime(ev.target.value)}
+          />
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function AddForm({
   source,
