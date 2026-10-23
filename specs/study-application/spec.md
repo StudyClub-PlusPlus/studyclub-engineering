@@ -335,7 +335,8 @@ GET 신청 폼 조회와 같은 shape.
 
    기본 반이 없는 옛 스터디는 이때 「기본반」을 만든다 (모집 회차 행을 잠근 뒤라 둘이 생기지 않는다). 이 스터디 명부에 `WITHDRAWN`·`COMPLETED`·`DELETED` 로 남은 행이 있으면 새 행 대신 그 행을 되살린다 — `ACTIVE`·`MEMBER`, 반은 그대로, `JOINED_AT = 지금`, `LEFT_AT = NULL` (같은 반에 새 행을 만들면 `UNIQUE(ACCOUNT_ID, STUDY_GROUP_ID)` 에 걸린다)
 5. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
-6. 커밋. 이후 같은 기수 POST 는 `409`
+6. 도메인 이벤트 `study_application.submitted` 와 `study_participant.joined` 를 발행한다 — 4단계에서 들어온 명부 행(새 행·되살린 행 모두)으로 낸다. 구독자는 커밋 뒤에 받는다 ([domain-events](../domain-events/spec.md)). 디스코드 스터디 role 부여(DSC-07)가 `joined` 를 듣는다
+7. 커밋. 이후 같은 기수 POST 는 `409`
 
 덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않는다. **신청 제출 = 기본 반 명부 편입**이다. 캡틴이 신청 결과를 보고 반을 더 나누면 참가자를 새 반으로 옮긴다.
 
