@@ -7,6 +7,8 @@ public interface StudyDiscordLinkRepository extends JpaRepository<StudyDiscordLi
 
     Optional<StudyDiscordLink> findByDiscordStudyId(String discordStudyId);
 
+    Optional<StudyDiscordLink> findByStudyId(Long studyId);
+
     boolean existsByStudyId(Long studyId);
 
     void deleteByStudyId(Long studyId);
