@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { toPayload, type ApplicationFormValues } from './schema';
 import type { ApplicationFormResponse } from './types';
+import { applicationKeys } from '@/features/applications/queries';
 import { studyKeys } from '@/features/studies/queries';
 import { http } from '@/lib/http';
 
@@ -29,6 +30,7 @@ export function useSaveApplicationForm(studyId: number) {
       }),
     onSuccess: (data) => {
       client.setQueryData(applicationFormKeys.detail(studyId), data);
+      return client.invalidateQueries({ queryKey: applicationKeys.list(studyId) });
     },
   });
 }
