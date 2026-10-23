@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Checkbox, Input, Textarea, useImageUpload } from '@studyclub/ui';
+import { Checkbox, Input, Select, Textarea, useImageUpload } from '@studyclub/ui';
 
 import { useClubPrograms } from '@/features/studies/queries';
 import {
@@ -387,12 +387,11 @@ function ProgramField({
         </div>
       ) : (
         <div className='flex flex-col gap-1.5'>
-          <select
+          <Select
             aria-label='프로그램 선택'
             value={value.programId}
             onChange={(ev) => void selectProgram(ev.target.value)}
             disabled={isLoading || prefilling}
-            className='h-10 rounded-control border border-border bg-bg px-3 text-sm outline-none focus:border-border-interactive'
           >
             <option value=''>{isLoading ? '불러오는 중…' : '클럽을 고르세요'}</option>
             {clubs.map((c) => (
@@ -400,7 +399,7 @@ function ProgramField({
                 {c.title}
               </option>
             ))}
-          </select>
+          </Select>
           <p className='text-xs text-fg-muted'>
             {prefilling
               ? '최신 기수의 내용을 불러오는 중…'
@@ -457,8 +456,13 @@ function ThumbnailField({
             className='h-16 w-16 shrink-0 rounded-control border border-border object-cover'
           />
         ) : (
-          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-xs text-fg-muted'>
-            카테고리 기본값
+          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-center text-xs leading-tight text-fg-muted'>
+            {/* flex 상자 안이라 글과 <br /> 이 따로 놓이지 않게 한 덩이로 감싼다 */}
+            <span>
+              카테고리
+              <br />
+              기본값
+            </span>
           </div>
         )}
         <div className='flex flex-col gap-1'>
@@ -502,7 +506,15 @@ const MARKDOWN_HINT =
  * 카테고리 — **한 개만** 고른다(`STUDY.CATEGORY` 는 단일 값). playground 프로토와 같이 칩으로 펼쳐 둔다 —
  * 열한 개뿐이라 드롭다운을 열어 확인하는 것보다 고른 것이 그 자리에서 보이는 편이 빠르다.
  */
-function CategoryField({ value, error, onChange }: { value: string; error?: string; onChange: (next: string) => void }) {
+function CategoryField({
+  value,
+  error,
+  onChange,
+}: {
+  value: string;
+  error?: string;
+  onChange: (next: string) => void;
+}) {
   return (
     <div className='flex flex-col gap-1.5'>
       <span className='text-sm font-medium text-neutral-800'>
@@ -521,7 +533,9 @@ function CategoryField({ value, error, onChange }: { value: string; error?: stri
               // 이미 고른 것을 다시 누르면 풀리지 않는다 — 카테고리는 필수다
               onClick={() => onChange(c.value)}
               className={`rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors ${
-                on ? 'border-brand bg-brand text-white' : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
+                on
+                  ? 'border-brand bg-brand text-white'
+                  : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'
               }`}
             >
               {c.label}
@@ -535,7 +549,7 @@ function CategoryField({ value, error, onChange }: { value: string; error?: stri
 }
 
 const DATE_INPUT =
-  'h-10 w-[9.5rem] shrink-0 rounded-control border border-border bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
+  'h-10 w-full rounded-control border border-border bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-[var(--ring)]';
 
 export function StudyForm({
   value,
@@ -579,7 +593,12 @@ export function StudyForm({
         labelHint={<CharCount len={value.summary.trim().length} max={SUMMARY_RECOMMENDED} />}
       />
 
-      <ThumbnailField value={value} error={errors.thumbnailUrl} onChange={onChange} onUploadingChange={onUploadingChange} />
+      <ThumbnailField
+        value={value}
+        error={errors.thumbnailUrl}
+        onChange={onChange}
+        onUploadingChange={onUploadingChange}
+      />
 
       <CategoryField value={value.category} error={errors.category} onChange={(next) => set('category', next)} />
 
@@ -621,7 +640,9 @@ export function StudyForm({
           value={value.capacity}
           onChange={(ev) => set('capacity', ev.target.value.replace(/[^\d]/g, ''))}
           disabled={value.unlimited}
-          placeholder={value.unlimited ? '제한 없음' : '명'}
+          placeholder={value.unlimited ? '제한 없음' : undefined}
+          // 「제한 없음」을 풀면 숫자 뒤에 단위를 붙여 둔다
+          suffix={value.unlimited ? undefined : '명'}
           error={errors.capacity}
           labelHint={
             <Checkbox
@@ -634,27 +655,30 @@ export function StudyForm({
         />
       </div>
 
-      <div className='flex flex-col gap-1.5'>
-        <label htmlFor='startAt' className='text-sm font-medium text-neutral-800'>
-          진행 시작일
-        </label>
-        <input
-          id='startAt'
-          type='date'
-          min={value.deadline || undefined}
-          value={value.startAt}
-          onChange={(ev) => set('startAt', ev.target.value)}
-          className={DATE_INPUT}
-          aria-invalid={Boolean(errors.startAt)}
-          aria-describedby={errors.startAt ? 'startAt-error' : undefined}
-        />
-        {errors.startAt ? (
-          <p id='startAt-error' className='text-xs font-medium text-error-600'>
-            {errors.startAt}
-          </p>
-        ) : (
-          <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
-        )}
+      {/* 모집 마감일과 같은 두 칸 그리드 — 왼쪽 칸에 서서 마감일과 너비가 같다 */}
+      <div className='grid gap-3 sm:grid-cols-2'>
+        <div className='flex flex-col gap-1.5'>
+          <label htmlFor='startAt' className='text-sm font-medium text-neutral-800'>
+            진행 시작일
+          </label>
+          <input
+            id='startAt'
+            type='date'
+            min={value.deadline || undefined}
+            value={value.startAt}
+            onChange={(ev) => set('startAt', ev.target.value)}
+            className={DATE_INPUT}
+            aria-invalid={Boolean(errors.startAt)}
+            aria-describedby={errors.startAt ? 'startAt-error' : undefined}
+          />
+          {errors.startAt ? (
+            <p id='startAt-error' className='text-xs font-medium text-error-600'>
+              {errors.startAt}
+            </p>
+          ) : (
+            <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
+          )}
+        </div>
       </div>
 
       <Input
