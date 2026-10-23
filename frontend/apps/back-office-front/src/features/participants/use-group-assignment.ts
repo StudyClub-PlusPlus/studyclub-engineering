@@ -26,6 +26,8 @@ export function useGroupAssignment(
       );
     }),
   );
+  // 재조회로 무의미해진 변경은 state 에서도 지운다. 남겨 두면 서버 반이 다시 바뀔 때 되살아난다.
+  // 렌더 중 갱신은 React 의 「props 에 맞춰 state 조정」 패턴이고, 길이가 같아지면 멈춘다.
   if (Object.keys(drafts).length !== Object.keys(pendingChanges).length) setDrafts(drafts);
   const [notice, setNotice] = useState('');
   const mutation = useSaveGroupAssignments(studyId);
