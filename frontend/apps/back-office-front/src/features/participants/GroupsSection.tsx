@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Badge, Button } from '@studyclub/ui';
+import { Badge, Button, Modal } from '@studyclub/ui';
 
 import { GroupEditor } from './GroupEditor';
 import { useDeleteGroup } from './queries';
@@ -17,17 +17,45 @@ export function GroupsSection({
   disabled: boolean;
 }) {
   const [editing, setEditing] = useState<number | 'new' | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
   const deletion = useDeleteGroup(studyId);
+  const groups = [...data.groups].sort((a, b) => a.groupId - b.groupId);
+  const target = data.groups.find((group) => group.groupId === deleting);
   const busy = disabled || deletion.isPending;
   return (
     <section aria-label='반 편성' className='space-y-3'>
+      <Modal
+        open={target !== undefined}
+        onClose={() => {
+          if (!deletion.isPending) setDeleting(null);
+        }}
+        title='반 삭제'
+        footer={
+          <>
+            <Button variant='secondary' disabled={deletion.isPending} onClick={() => setDeleting(null)}>
+              취소
+            </Button>
+            <Button
+              variant='danger'
+              disabled={busy || !target?.canDelete}
+              onClick={() => {
+                if (target) deletion.mutate(target.groupId, { onSettled: () => setDeleting(null) });
+              }}
+            >
+              삭제하기
+            </Button>
+          </>
+        }
+      >
+        <p>「{target?.name}」 반을 삭제하시겠습니까? 연결된 회차도 삭제되며 되돌릴 수 없습니다.</p>
+      </Modal>
       <div className='flex items-center justify-between'>
         <h2 className='font-bold'>반 {data.groups.length}개</h2>
         <Button size='sm' disabled={busy || editing !== null} onClick={() => setEditing('new')}>
           반 추가
         </Button>
       </div>
-      {data.groups.map((group, index) => (
+      {groups.map((group, index) => (
         <div key={group.groupId} className='card p-4'>
           {editing === group.groupId ? (
             <GroupEditor studyId={studyId} group={group} onClose={() => setEditing(null)} />
@@ -59,7 +87,10 @@ export function GroupsSection({
                   disabled={busy || editing !== null || !group.canDelete}
                   aria-label={`${group.name} 삭제`}
                   title={!group.canDelete ? '기본반이거나 크루·출석 기록이 있는 반은 지울 수 없습니다.' : undefined}
-                  onClick={() => deletion.mutate(group.groupId)}
+                  onClick={() => {
+                    deletion.reset();
+                    setDeleting(group.groupId);
+                  }}
                 >
                   삭제
                 </Button>

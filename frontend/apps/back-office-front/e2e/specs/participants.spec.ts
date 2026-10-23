@@ -167,6 +167,7 @@ test('참여자 반 편성: 반 생성·수정·삭제와 일괄 이동을 저�
   await page.getByRole('textbox', { name: '반 제목' }).fill('주말반');
   await page.getByRole('region', { name: '반 편성' }).getByRole('button', { name: '저장' }).click();
   await page.getByRole('button', { name: '주말반 삭제' }).click();
+  await page.getByRole('button', { name: '삭제하기' }).click();
   await expect(page.getByRole('button', { name: '주말반 삭제' })).toHaveCount(0);
 
   await page.getByRole('checkbox', { name: '김크루 선택' }).check();
@@ -228,4 +229,52 @@ test('저장 응답이 유실되어도 변경을 보존하고 재시도한다', 
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('저장했습니다.');
   expect(attempts).toBe(2);
+});
+
+for (const direction of ['back', 'forward'] as const) {
+  test(`브라우저 ${direction} 이동을 취소하면 변경을 유지하고 확인하면 이동한다`, async ({ page, context }) => {
+    await mockParticipants(context);
+    await page.goto('/studies/20?tab=crew');
+    await expect(page.getByRole('combobox', { name: '김크루 반' })).toBeVisible();
+    if (direction === 'back') {
+      await page.evaluate(() => {
+        history.replaceState(history.state, '', '?tab=info');
+        history.pushState(history.state, '', '?tab=crew');
+      });
+    } else {
+      await page.evaluate(() => history.pushState(history.state, '', '?tab=info'));
+      await expect(page).toHaveURL(/tab=info/);
+      await page.goBack();
+    }
+    await page.getByRole('combobox', { name: '김크루 반' }).selectOption('3');
+    await page.evaluate((direction) => history[direction](), direction);
+    await expect(page.getByRole('dialog', { name: '변경을 취소하고 이동' })).toBeVisible();
+    await expect(page).toHaveURL(/tab=crew/);
+    await page.getByRole('button', { name: '계속 편집' }).click();
+    await expect(page.getByRole('combobox', { name: '김크루 반' })).toHaveValue('3');
+    await page.evaluate((direction) => history[direction](), direction);
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page).toHaveURL(/tab=crew/);
+    await page.getByRole('button', { name: '변경 취소 후 이동' }).click();
+    await expect(page).toHaveURL(/tab=info/);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+}
+
+test('응답 유실 후 재조회로 저장이 확인되면 불필요한 변경을 정리한다', async ({ page, context }) => {
+  await page.clock.install();
+  await mockParticipants(context, async (route, response) => {
+    response.participants[0]!.groupId = 3;
+    await route.abort('failed');
+  });
+  await page.goto('/studies/20?tab=crew');
+  await page.getByRole('combobox', { name: '김크루 반' }).selectOption('3');
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await expect(page.getByRole('alert').filter({ hasText: '저장하지 못했습니다' })).toBeVisible();
+  await page.clock.fastForward(61_000);
+  await context.setOffline(true);
+  await context.setOffline(false);
+  await expect(page.getByRole('button', { name: '저장', exact: true })).toBeDisabled();
+  await expect(page.getByRole('combobox', { name: '김크루 반' })).toHaveValue('3');
+  await expect(page.getByRole('button', { name: '변경 취소', exact: true })).toHaveCount(0);
 });

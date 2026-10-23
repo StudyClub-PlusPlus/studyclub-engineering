@@ -21,6 +21,10 @@ export const Checked: Story = {
   render: () => <Checkbox label='동의합니다' defaultChecked />,
 };
 
+export const Indeterminate: Story = {
+  render: () => <Checkbox label='전체 선택' indeterminate />,
+};
+
 export const Disabled: Story = {
   render: () => <Checkbox label='동의합니다' disabled />,
 };

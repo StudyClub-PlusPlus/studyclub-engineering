@@ -46,26 +46,16 @@ export function ParticipantsTab({
         </Button>
       </div>
     );
-  return (
-    <ParticipantAssignment
-      key={studyId}
-      studyId={studyId}
-      data={query.data}
-      refreshing={query.isFetching}
-      onDirtyChange={onDirtyChange}
-    />
-  );
+  return <ParticipantAssignment key={studyId} studyId={studyId} data={query.data} onDirtyChange={onDirtyChange} />;
 }
 
 function ParticipantAssignment({
   studyId,
   data,
-  refreshing,
   onDirtyChange,
 }: {
   studyId: number;
   data: ParticipantsResponse;
-  refreshing: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [filters, setFilters] = useUrlState(FILTER_DEFAULTS, FILTER_ALLOWED);
@@ -81,11 +71,11 @@ function ParticipantAssignment({
     change,
     discard,
     save,
-    pendingHref,
+    navigationPending,
     cancelNavigation,
     confirmNavigation,
   } = useGroupAssignment(studyId, data.participants, onDirtyChange);
-  const busy = saving || refreshing;
+  const busy = saving;
   const rows = data.participants.filter(
     (p) => (region === 'all' || p.regionGroup === region) && (group === 'all' || String(p.groupId) === group),
   );
@@ -93,7 +83,7 @@ function ParticipantAssignment({
   const picked = editable.filter((p) => selected.includes(p.participantId));
   return (
     <div className='space-y-8'>
-      <DiscardGroupChangesDialog open={pendingHref !== null} onClose={cancelNavigation} onConfirm={confirmNavigation} />
+      <DiscardGroupChangesDialog open={navigationPending} onClose={cancelNavigation} onConfirm={confirmNavigation} />
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
       <section aria-label='참여 크루' className='space-y-3'>
         <div className='space-y-2'>
@@ -155,8 +145,14 @@ function ParticipantAssignment({
                       ))}
                     </Select>
                   )}
-                  {selected.length > 0 && (
-                    <Button variant='ghost' size='sm' onClick={() => setSelected([])}>
+                  {picked.length > 0 && (
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      onClick={() =>
+                        setSelected((ids) => ids.filter((id) => !editable.some((p) => p.participantId === id)))
+                      }
+                    >
                       선택 해제
                     </Button>
                   )}
@@ -183,16 +179,20 @@ function ParticipantAssignment({
           <thead>
             <tr>
               <th>
-                <input
-                  type='checkbox'
-                  className='h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)'
+                <Checkbox
+                  label=''
                   aria-label='보이는 크루 전체 선택'
                   checked={editable.length > 0 && picked.length === editable.length}
-                  ref={(element) => {
-                    if (element) element.indeterminate = picked.length > 0 && picked.length < editable.length;
-                  }}
+                  indeterminate={picked.length > 0 && picked.length < editable.length}
                   disabled={busy || editable.length === 0}
-                  onChange={(e) => setSelected(e.target.checked ? editable.map((p) => p.participantId) : [])}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setSelected((ids) =>
+                      checked
+                        ? [...new Set([...ids, ...editable.map((p) => p.participantId)])]
+                        : ids.filter((id) => !editable.some((p) => p.participantId === id)),
+                    );
+                  }}
                 />
               </th>
               <th>닉네임</th>
@@ -208,7 +208,7 @@ function ParticipantAssignment({
               const active = p.status === 'ACTIVE' || p.status === 'PAUSED';
               const failed =
                 mutation.error instanceof ApiError &&
-                new RegExp(`\\b${p.participantId}\\b`).test(mutation.error.message);
+                new RegExp(`\\bparticipantId\\s*[:=]?\\s*${p.participantId}\\b`).test(mutation.error.message);
               return (
                 <tr
                   key={p.participantId}

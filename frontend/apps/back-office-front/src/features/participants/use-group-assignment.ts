@@ -5,6 +5,7 @@ import { useIsMutating } from '@tanstack/react-query';
 
 import { participantKeys, useSaveGroupAssignments } from './queries';
 import type { Participant } from './types';
+import { blockHistoryNavigation } from '@/lib/history-guard';
 
 export function useGroupAssignment(
   studyId: number,
@@ -13,11 +14,29 @@ export function useGroupAssignment(
 ) {
   const router = useRouter();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Record<number, number>>({});
+  const [pendingHistory, setPendingHistory] = useState<(() => void) | null>(null);
+  const [pendingChanges, setDrafts] = useState<Record<number, number>>({});
+  const drafts = Object.fromEntries(
+    Object.entries(pendingChanges).filter(([id, groupId]) => {
+      const participant = participants.find((p) => p.participantId === Number(id));
+      return (
+        participant &&
+        (participant.status === 'ACTIVE' || participant.status === 'PAUSED') &&
+        participant.groupId !== groupId
+      );
+    }),
+  );
+  if (Object.keys(drafts).length !== Object.keys(pendingChanges).length) setDrafts(drafts);
   const [notice, setNotice] = useState('');
   const mutation = useSaveGroupAssignments(studyId);
   const saving = useIsMutating({ mutationKey: participantKeys.list(studyId) }) > 0;
   const dirty = Object.keys(drafts).length > 0;
+  useEffect(() => {
+    if (!dirty && !saving) return;
+    return blockHistoryNavigation((resume) => {
+      if (!saving) setPendingHistory(() => resume);
+    });
+  }, [dirty, saving]);
   useEffect(() => {
     onDirtyChange?.(dirty);
     return () => onDirtyChange?.(false);
@@ -88,7 +107,14 @@ export function useGroupAssignment(
     );
   }
   function confirmNavigation() {
-    if (!pendingHref || saving) return;
+    if (saving) return;
+    if (pendingHistory) {
+      discard();
+      setPendingHistory(null);
+      pendingHistory();
+      return;
+    }
+    if (!pendingHref) return;
     const href = pendingHref;
     discard();
     setPendingHref(null);
@@ -103,8 +129,11 @@ export function useGroupAssignment(
     change,
     discard,
     save,
-    pendingHref,
-    cancelNavigation: () => setPendingHref(null),
+    navigationPending: pendingHref !== null || pendingHistory !== null,
+    cancelNavigation: () => {
+      setPendingHref(null);
+      setPendingHistory(null);
+    },
     confirmNavigation,
   };
 }

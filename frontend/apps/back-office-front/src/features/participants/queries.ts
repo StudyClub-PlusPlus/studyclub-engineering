@@ -9,9 +9,13 @@ export const participantKeys = {
 };
 
 async function handleParticipantError(client: QueryClient, studyId: number, error: Error) {
-  if (!(error instanceof ApiError) || error.status !== 403) return;
-  await client.cancelQueries({ queryKey: participantKeys.list(studyId) });
-  client.setQueryData(participantKeys.list(studyId), null);
+  if (!(error instanceof ApiError)) return;
+  if (error.status === 401 || error.status === 403) {
+    await client.cancelQueries({ queryKey: participantKeys.list(studyId) });
+    client.setQueryData(participantKeys.list(studyId), null);
+  } else if (error.status >= 400 && error.status < 500) {
+    await client.invalidateQueries({ queryKey: participantKeys.list(studyId) });
+  }
 }
 
 export function useParticipants(studyId: number, enabled = true) {
@@ -46,7 +50,7 @@ export function useSaveGroupAssignments(studyId: number) {
             })),
           },
       );
-      return client.invalidateQueries({ queryKey: studyKeys.all });
+      return client.invalidateQueries({ queryKey: studyKeys.detail(studyId) });
     },
   });
 }
@@ -65,7 +69,7 @@ export function useEditGroup(studyId: number) {
           body: JSON.stringify({ name }),
         },
       ),
-    onSuccess: () => client.invalidateQueries({ queryKey: studyKeys.all }),
+    onSuccess: () => client.invalidateQueries({ queryKey: studyKeys.detail(studyId) }),
   });
 }
 
@@ -76,9 +80,6 @@ export function useDeleteGroup(studyId: number) {
     onError: (error) => handleParticipantError(client, studyId, error),
     mutationFn: (groupId: number) =>
       http<null>(`/api/admin/studies/${studyId}/groups/${groupId}`, { method: 'DELETE' }),
-    onSettled: (_, error) => {
-      if (error instanceof ApiError && error.status === 403) return;
-      return client.invalidateQueries({ queryKey: studyKeys.all });
-    },
+    onSuccess: () => client.invalidateQueries({ queryKey: studyKeys.detail(studyId) }),
   });
 }

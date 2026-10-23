@@ -87,7 +87,7 @@ describe('스터디 수정·삭제 API 연결', () => {
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     finish(Response.json({ errorMessage: '업로드 실패' }, { status: 500 }));
     await screen.findByText('업로드 실패');
-    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toBeEnabled());
     expect(screen.getByRole('button', { name: '이미지 업로드' })).toBeEnabled();
     expect(mutations()).toHaveLength(0);
   });

@@ -8,6 +8,7 @@ import { Button, Toaster } from '@studyclub/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { USER_KEY } from '@/lib/auth';
+import { trackHistoryNavigation } from '@/lib/history-guard';
 import { isMockApiEnabled } from '@/lib/mock-api';
 import { getQueryClient } from '@/lib/query-client';
 
@@ -27,6 +28,7 @@ function MswQueryInvalidator() {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
+  useEffect(trackHistoryNavigation, []);
   const [queryClient] = useState(() => getQueryClient());
 
   const [sessionChanged, setSessionChanged] = useState(false);
