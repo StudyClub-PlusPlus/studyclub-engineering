@@ -7,7 +7,7 @@
   - 01-planning/stories/navigator-register-sessions/PRD.md — 됨
   - 01-planning/stories/captain-assign-classes/PRD.md — 됨 (완료 기준 8-1 · 8-2 · 데이터)
   - playground 스터디 운영 일정 탭 · 사용자 사이트 스터디 일정 — 됨
-  - backend — 됨 (`PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff`, 사이트 회차 수정은 킥오프면 403)
+  - backend — 됨 (`PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff` · 백오피스 회차 목록 `GET /api/admin/studies/{studyId}/groups/{groupId}/meetings`, 사이트 회차 수정은 킥오프면 403)
   - core-front 스터디 일정 — 됨 (킥오프 줄 읽기 전용)
   - back-office-front 일정 탭 — 안 됨 (일정 탭 자체가 아직 없다)
 ---
@@ -48,5 +48,6 @@
 
 ## 남은 것
 
-- **back-office-front 일정 탭**: 실제 백오피스 앱에는 일정 탭이 아직 없다(프로토만 있다). 일정 탭을 만들 때 「킥오프 정하기」도 함께 붙인다. 서버 API 는 준비됐다.
+- **back-office-front 일정 탭**: 실제 백오피스 앱에는 일정 탭이 아직 없다(작업 중). 일정 탭을 만들 때 「킥오프 정하기」도 함께 붙인다. 서버 API(회차 목록 · 킥오프 정하기)는 준비됐다.
+- **백오피스 회차 추가 · 수정 · 삭제**: 사이트 API 는 스터디를 만든 캡틴만 통과한다. 다른 캡틴이 백오피스에서 회차를 고치려면 `/api/admin` 쓰기 API 가 필요하다 — 정하지 않았다.
 - 운영 중인 반의 킥오프를 한꺼번에 채울지(데이터 백필)는 정하지 않았다. 지금은 캡틴이 반마다 정한다.

@@ -347,6 +347,66 @@ class StudyMeetingIntegrationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("성공 - 백오피스 회차 목록: 스터디를 만들지 않은 캡틴도 반의 회차를 킥오프 · 번호와 함께 본다 (사이트 목록과 같은 응답)")
+    void adminListsGroupMeetings() {
+        studyMeetingRepo.save(
+                StudyMeeting.kickoff(group.getId(), Instant.now().minus(3, ChronoUnit.DAYS)));
+
+        ResponseEntity<Map> response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        null,
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<String, Object>> meetings =
+                (List<Map<String, Object>>) response.getBody().get("meetings");
+        assertThat(meetings).extracting(m -> m.get("number")).containsExactly(0, 1, 2);
+        assertThat(meetings)
+                .extracting(m -> m.get("type"))
+                .containsExactly("KICKOFF", "REGULAR", "REGULAR");
+        Map<String, Object> me = (Map<String, Object>) response.getBody().get("me");
+        assertThat(me).containsEntry("canEdit", true).containsEntry("participantId", null);
+    }
+
+    @Test
+    @DisplayName("실패 - 백오피스 회차 목록: 크루(캡틴 아님)는 403, 다른 스터디의 반 · 없는 반은 404")
+    void adminListPermissionAndNotFound() {
+        var crew =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        null,
+                        MEMBER_ID,
+                        study.getId(),
+                        group.getId());
+        var missing =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        null,
+                        CAPTAIN_ID,
+                        study.getId(),
+                        999_999_993L);
+        var otherStudy =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        null,
+                        CAPTAIN_ID,
+                        999_999_992L,
+                        group.getId());
+
+        assertThat(crew.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(otherStudy.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     @DisplayName("성공 - 반복(2개 이상)으로 만든 회차는 같은 묶음 ID, 한 번 만든 회차는 없음")
     void storesSeriesId() {
         var repeat =

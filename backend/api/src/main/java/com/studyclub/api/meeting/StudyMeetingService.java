@@ -90,7 +90,29 @@ public class StudyMeetingService {
         boolean canEdit =
                 studyCaptainGuard.assertCanViewGroup(
                         accountId, study.getCreatedBy(), groupId, VIEW_FORBIDDEN);
+        return listView(study, group, accountId, canEdit);
+    }
 
+    /**
+     * 백오피스 일정 탭 — 캡틴(ADMIN)은 어느 스터디의 어느 반이든 본다. 사이트 목록과 같은 응답 · 같은 계산이다 (킥오프 여부 · 번호 · 시작 여부).
+     * {@code me} 는 명부와 상관없이 {@code participantId = null}, {@code canEdit = true}.
+     */
+    @Transactional(readOnly = true)
+    public StudyMeetingListResponse adminList(Long studyId, Long groupId) {
+        Study study = study(studyId);
+        StudyGroup group =
+                studyGroupRepository
+                        .findById(groupId)
+                        .filter(g -> g.getStudyId().equals(studyId))
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
+        return listView(study, group, null, true);
+    }
+
+    // 사이트 · 백오피스 목록이 함께 쓴다. accountId 가 null 이면 내 명부 행을 찾지 않는다
+    private StudyMeetingListResponse listView(
+            Study study, StudyGroup group, Long accountId, boolean canEdit) {
+        Long groupId = group.getId();
         List<StudyParticipant> roster = studyParticipantRepository.findByStudyGroupId(groupId);
         List<StudyMeeting> meetings =
                 studyMeetingRepository.findByStudyGroupIdOrderByScheduledAt(groupId);
@@ -143,7 +165,7 @@ public class StudyMeetingService {
                         .orElse(null);
         Long myParticipantId =
                 roster.stream()
-                        .filter(p -> accountId.equals(p.getAccountId()))
+                        .filter(p -> p.getAccountId().equals(accountId))
                         .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(StudyParticipant::getId)
                         .findFirst()

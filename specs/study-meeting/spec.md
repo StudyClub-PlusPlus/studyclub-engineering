@@ -22,6 +22,7 @@
 | PUT | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 (빈 칸에 나) | O (그 분반 참여자) | 구현중 |
 | DELETE | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 취소 (내 이름 빼기) | O (그 분반 참여자) | 구현중 |
 | PUT | /api/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 | O (그 분반 네비게이터 · 캡틴) | 구현중 |
+| GET | /api/admin/studies/{studyId}/groups/{groupId}/meetings | 반 회차 목록 (백오피스 일정 탭 — 킥오프 · 발표자 포함) | O (ADMIN) | 구현중 |
 | PUT | /api/admin/studies/{studyId}/groups/{groupId}/kickoff | 킥오프 정하기 · 옮기기 (백오피스 일정 탭) | O (ADMIN) | 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -562,6 +563,38 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ---
 
+## 반 회차 목록 (백오피스)
+
+### 기본 정보
+
+- **Method**: GET
+- **Path**: `/api/admin/studies/{studyId}/groups/{groupId}/meetings`
+- **인증**: 필요 (ADMIN — 캡틴)
+- **설명**: 백오피스 일정 탭이 고른 반의 회차를 읽는다. 캡틴은 **어느 스터디의 어느 반이든** 본다 — 사이트 목록(`GET /api/studies/{studyId}/meetings`)은 스터디를 만든 캡틴 · 그 분반 참여자만 봐서 다른 캡틴이 만든 스터디는 403 이다.
+
+### Response — 200
+
+사이트 「분반 회차 목록」과 **같은 응답 · 같은 계산**이다 (킥오프 `type = KICKOFF` · `number = 0`, 정규 회차 번호, `started`, 제목, 발표자, 발표자 후보, 규칙). 다른 점은 `me` 하나:
+
+| 필드 | 값 |
+|------|----|
+| me.participantId | 늘 null — 명부와 상관없이 캡틴으로 본다 |
+| me.canEdit | 늘 true |
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 토큰 없음 |
+| 403 | FORBIDDEN | 캡틴(ADMIN)이 아님 |
+| 404 | NOT_FOUND | 없는 스터디 · 없는 반 · 다른 스터디의 반 |
+
+### 프론트엔드 사용처
+
+- back-office-front 일정 탭 (작업 중) — 반을 고르면 이걸로 표를 그린다. 킥오프가 없으면(`type = KICKOFF` 인 회차 없음) 「킥오프 정하기」, 있으면 「킥오프 수정」
+
+---
+
 ## 킥오프 정하기 (백오피스)
 
 ### 기본 정보
@@ -640,6 +673,8 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - 백오피스 회차 관리 (`/api/admin/...`)
 
 ## 미확정
+
+- [NEEDS CLARIFICATION] 백오피스 회차 추가 · 수정 · 삭제 — 사이트 API 는 스터디를 만든 캡틴만 통과해 다른 캡틴은 백오피스에서 회차를 고칠 수 없다. `/api/admin/...` 쓰기 API 를 만들지, 백오피스는 만든 캡틴만 고치게 할지 (2026-10-23, PR #312 코멘트)
 
 - ~~이미 운영 중인 분반에 킥오프 회차를 소급해 만들지~~ → 캡틴이 백오피스에서 지난 날로도 정한다 (2026-10-22)
 - [NEEDS CLARIFICATION] 한 사람이 맡을 수 있는 발표 수에 상한을 둘지 — 지금은 두지 않는다.
