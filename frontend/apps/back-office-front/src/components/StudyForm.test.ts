@@ -156,6 +156,7 @@ describe('formToCreatePayload', () => {
     expect(payload).not.toHaveProperty('schedule');
     expect(payload).not.toHaveProperty('description');
   });
+
 });
 
 describe('serverErrorToField', () => {

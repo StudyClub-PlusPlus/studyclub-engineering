@@ -77,9 +77,10 @@ export const studyScreenStates: ScreenStateDef[] = [
             role: 'MEMBER',
           },
         },
+        // 연동 여부는 GET /api/me 의 discordLinked — 개발 서버의 MSW 목이 진짜 응답에 이 값을 덧붙인다
         {
-          key: 'sc_discord',
-          value: { linked: true, username: 'test#0001' },
+          key: 'msw-discord-linked',
+          value: true,
         },
         {
           key: 'sc_discord_nickname',
@@ -95,6 +96,37 @@ export const studyScreenStates: ScreenStateDef[] = [
     viewports: ['desktop', 'mobile'],
     assertions: {
       visible: ['[role="dialog"]', '[role="dialog"] h2:has-text("스터디 신청")'],
+    },
+    screenshot: { fullPage: false },
+  },
+  {
+    id: 'study-apply--discord-gate',
+    label: '디스코드 연동 모달 — 미연동 크루 (study_id=6)',
+    pageId: 'study-detail',
+    rationale: 'GET /api/me 의 discordLinked 가 false 인 크루가 신청하기를 누르면 신청 폼 대신 디스코드 연동 모달이 뜨는지 확인한다.',
+    recipe: {
+      storage: [
+        {
+          key: 'sc_user',
+          value: {
+            id: 1,
+            email: 'test@test.com',
+            nickname: '테스트',
+            picture: null,
+            role: 'MEMBER',
+          },
+        },
+        { key: 'msw-discord-linked', value: false },
+      ],
+      render: { url: '/ko/studies/6' },
+      steps: [
+        { action: 'click', selector: 'button:has-text("신청하기")' },
+        { action: 'wait', ms: 500 },
+      ],
+    },
+    viewports: ['desktop', 'mobile'],
+    assertions: {
+      visible: ['[role="dialog"]', '[role="dialog"] h2:has-text("디스코드 연동")'],
     },
     screenshot: { fullPage: false },
   },

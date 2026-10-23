@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.StudyParticipantJoined;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,11 +19,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -38,11 +44,13 @@ class StudyApplicationSubmissionIntegrationTest {
     @Autowired JwtService jwtService;
     @Autowired AccountRepository accountRepository;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired JoinedEvents joinedEvents;
 
     @BeforeEach
     void seed() {
         rest.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
         clean();
+        joinedEvents.received.clear();
         Timestamp now = Timestamp.from(Instant.now());
         insertAccount(LINKED_ACCOUNT_ID, "submit-linked@example.com", "discord-linked", now);
         insertAccount(UNLINKED_ACCOUNT_ID, "submit-unlinked@example.com", null, now);
@@ -100,6 +108,91 @@ class StudyApplicationSubmissionIntegrationTest {
                 .contains("\"availableDays\":[\"mon\",\"wed\"]")
                 .contains("\"scheduleAgreed\":true")
                 .contains("\"reason\":\"함께 읽고 싶습니다.\"");
+    }
+
+    @Test
+    @DisplayName("성공 - 명부에 들어온 행마다 study_participant.joined 를 커밋 뒤 한 번 낸다")
+    void publishesJoinedForNewRosterRow() {
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long participantId =
+                jdbcTemplate.queryForObject(
+                        "SELECT ID FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                        Long.class,
+                        STUDY_ID,
+                        LINKED_ACCOUNT_ID);
+        assertThat(joinedEvents.received)
+                .singleElement()
+                .satisfies(
+                        event -> {
+                            assertThat(event.name()).isEqualTo("study_participant.joined");
+                            assertThat(event.studyId()).isEqualTo(STUDY_ID);
+                            assertThat(event.participantId()).isEqualTo(participantId);
+                            assertThat(event.aggregateId())
+                                    .isEqualTo(String.valueOf(participantId));
+                            assertThat(event.accountId()).isEqualTo(LINKED_ACCOUNT_ID);
+                            assertThat(event.participantRole()).isEqualTo(ParticipantRole.MEMBER);
+                            assertThat(event.meta().actorId())
+                                    .isEqualTo(String.valueOf(LINKED_ACCOUNT_ID));
+                        });
+    }
+
+    @Test
+    @DisplayName("성공 - 빠졌던 옛 명부 행을 되살려도 그 행으로 joined 를 낸다")
+    void publishesJoinedForRejoinedRosterRow() {
+        insertParticipant(LINKED_ACCOUNT_ID, "WITHDRAWN", "LEADER");
+        Long formerId =
+                jdbcTemplate.queryForObject(
+                        "SELECT ID FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                        Long.class,
+                        STUDY_ID,
+                        LINKED_ACCOUNT_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // 되살리면 역할은 크루로 돌아간다 — 네비게이터 role 은 캡틴이 다시 정할 때 붙는다
+        assertThat(joinedEvents.received)
+                .singleElement()
+                .satisfies(
+                        event -> {
+                            assertThat(event.participantId()).isEqualTo(formerId);
+                            assertThat(event.participantRole()).isEqualTo(ParticipantRole.MEMBER);
+                        });
+    }
+
+    @Test
+    @DisplayName("실패 - 신청이 거절되면 명부가 그대로라 joined 를 내지 않는다")
+    void doesNotPublishJoinedWhenRejected() {
+        var unlinked =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(UNLINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+        assertThat(unlinked.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(joinedEvents.received).isEmpty();
+
+        rest.postForEntity(
+                "/api/studies/" + STUDY_ID + "/applications",
+                authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                Void.class);
+        joinedEvents.received.clear();
+        var duplicate =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+        assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(joinedEvents.received).isEmpty();
     }
 
     @Test
@@ -1006,5 +1099,22 @@ class StudyApplicationSubmissionIntegrationTest {
                 "DELETE FROM ACCOUNT WHERE ID IN (?, ?, 10650, 10651, 10652)",
                 LINKED_ACCOUNT_ID,
                 UNLINKED_ACCOUNT_ID);
+    }
+
+    @TestConfiguration
+    static class EventCapture {
+        @Bean
+        JoinedEvents joinedEvents() {
+            return new JoinedEvents();
+        }
+    }
+
+    static class JoinedEvents {
+        final List<StudyParticipantJoined> received = new CopyOnWriteArrayList<>();
+
+        @TransactionalEventListener
+        void on(StudyParticipantJoined event) {
+            received.add(event);
+        }
     }
 }

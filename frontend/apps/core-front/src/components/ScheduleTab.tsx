@@ -873,10 +873,13 @@ export function ScheduleTab({
                   const errors = errorsOf(m);
                   const changed = Boolean(drafts[m.id]) || pendingIds.has(m.id);
                   const canDelete = !isKickoff(m) && !started;
+                  // 킥오프는 캡틴이 백오피스에서 정한다 — 이 화면에서는 고치지 않는다 (회차 스펙 결정 11)
+                  const editable = canEdit && !started && !isKickoff(m);
                   const confirming = bulkConfirm && checked.has(m.id);
                   return (
                     <tr
                       key={m.id}
+                      title={canEdit && isKickoff(m) ? '킥오프 일정은 캡틴이 정합니다.' : undefined}
                       className={cx(
                         'border-t border-border',
                         started && 'text-fg-muted',
@@ -900,7 +903,7 @@ export function ScheduleTab({
                       )}
                       <td className='px-4 py-3 text-center font-bold'>{m.no === 0 ? '0' : `${m.no}`}</td>
                       <td className='px-2 py-3 text-center'>
-                        {canEdit && !started ? (
+                        {editable ? (
                           <Input
                             type='date'
                             aria-label={`${meetingLabel(m)} 일자 (${zoneLabel(zone)})`}
@@ -915,7 +918,7 @@ export function ScheduleTab({
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>
-                        {canEdit && !started ? (
+                        {editable ? (
                           <Input
                             type='time'
                             aria-label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
@@ -930,7 +933,7 @@ export function ScheduleTab({
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>
-                        {canEdit && !started ? (
+                        {editable ? (
                           <Input
                             aria-label={`${meetingLabel(m)} 제목`}
                             size='sm'
