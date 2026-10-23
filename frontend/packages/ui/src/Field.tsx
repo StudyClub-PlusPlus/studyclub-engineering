@@ -31,11 +31,13 @@ export interface FieldShellProps {
   /** 라벨 우측에 붙는 짧은 보조 문구(글자수 권장·단위 등). helper 와 달리 줄을 차지하지 않는다. */
   labelHint?: ReactNode;
   htmlFor?: string;
+  /** helper/error 문구의 id. 컨트롤이 `aria-describedby` 로 가리켜 스크린리더가 문구를 함께 읽는다. */
+  messageId?: string;
   children: ReactNode;
 }
 
 /** 라벨 + 컨트롤 + helper/error 를 묶는다. error 가 있으면 helper 대신 error 를 보여준다. */
-export function FieldShell({ label, helper, error, required, labelHint, htmlFor, children }: FieldShellProps) {
+export function FieldShell({ label, helper, error, required, labelHint, htmlFor, messageId, children }: FieldShellProps) {
   const message = error ?? helper;
   return (
     <div className='flex flex-col gap-1.5'>
@@ -53,12 +55,25 @@ export function FieldShell({ label, helper, error, required, labelHint, htmlFor,
         </div>
       )}
       {children}
-      {message && <p className={cx('text-xs', error ? 'text-danger-fg' : 'text-fg-muted')}>{message}</p>}
+      {message && (
+        <p id={messageId} className={cx('text-xs', error ? 'text-danger-fg' : 'text-fg-muted')}>
+          {message}
+        </p>
+      )}
     </div>
   );
 }
 
 type FieldMeta = Pick<FieldShellProps, 'label' | 'helper' | 'error' | 'required' | 'labelHint'>;
+
+/**
+ * helper/error 문구를 컨트롤에 잇는다. 문구가 있을 때만 id 를 만들고, 부르는 쪽이 넘긴 `aria-describedby` 뒤에 붙인다.
+ * 라벨 없이 `aria-label` 만 쓰는 표 칸도 오류 문구를 읽게 된다.
+ */
+function describedBy(fieldId: string, meta: Pick<FieldMeta, 'error' | 'helper'>, external?: string) {
+  const messageId = meta.error || meta.helper ? `${fieldId}-message` : undefined;
+  return { messageId, ariaDescribedBy: [external, messageId].filter(Boolean).join(' ') || undefined };
+}
 
 export type InputSize = 'sm' | 'md' | 'lg';
 
@@ -76,13 +91,23 @@ export function Input({ label, helper, error, required, labelHint, className, id
   const autoId = useId();
   const fieldId = id ?? autoId;
   const invalid = Boolean(error);
+  const { messageId, ariaDescribedBy } = describedBy(fieldId, { error, helper }, rest['aria-describedby']);
   return (
-    <FieldShell label={label} helper={helper} error={error} required={required} labelHint={labelHint} htmlFor={fieldId}>
+    <FieldShell
+      label={label}
+      helper={helper}
+      error={error}
+      required={required}
+      labelHint={labelHint}
+      htmlFor={fieldId}
+      messageId={messageId}
+    >
       <input
         {...rest}
         id={fieldId}
         required={required}
         aria-invalid={invalid || undefined}
+        aria-describedby={ariaDescribedBy}
         className={controlClass(invalid, cx(INPUT_SIZES[size], className))}
       />
     </FieldShell>
@@ -121,14 +146,24 @@ export function Select({
   const autoId = useId();
   const fieldId = id ?? autoId;
   const invalid = Boolean(error);
+  const { messageId, ariaDescribedBy } = describedBy(fieldId, { error, helper }, rest['aria-describedby']);
   return (
-    <FieldShell label={label} helper={helper} error={error} required={required} labelHint={labelHint} htmlFor={fieldId}>
+    <FieldShell
+      label={label}
+      helper={helper}
+      error={error}
+      required={required}
+      labelHint={labelHint}
+      htmlFor={fieldId}
+      messageId={messageId}
+    >
       <div className='relative'>
         <select
           {...rest}
           id={fieldId}
           required={required}
           aria-invalid={invalid || undefined}
+          aria-describedby={ariaDescribedBy}
           className={controlClass(
             invalid,
             cx(SELECT_SIZES[size], 'appearance-none', iconPosition === 'left' ? 'pl-9 pr-3.5' : 'pr-9', className),
@@ -170,6 +205,7 @@ export function Textarea({
   const autoId = useId();
   const fieldId = id ?? autoId;
   const invalid = Boolean(error);
+  const { messageId, ariaDescribedBy } = describedBy(fieldId, { error, helper }, rest['aria-describedby']);
 
   const controlled = value !== undefined;
   const [uncontrolledLen, setUncontrolledLen] = useState(() => {
@@ -193,7 +229,15 @@ export function Textarea({
   }
 
   return (
-    <FieldShell label={label} helper={helper} error={error} required={required} labelHint={labelHint} htmlFor={fieldId}>
+    <FieldShell
+      label={label}
+      helper={helper}
+      error={error}
+      required={required}
+      labelHint={labelHint}
+      htmlFor={fieldId}
+      messageId={messageId}
+    >
       {showCount ? (
         <div className='relative'>
           <textarea
@@ -205,6 +249,7 @@ export function Textarea({
             rows={rows}
             required={required}
             aria-invalid={invalid || undefined}
+            aria-describedby={ariaDescribedBy}
             onChange={handleChange}
             className={controlClass(invalid, cx('pt-2.5 pb-5 leading-relaxed resize-none overflow-hidden', className))}
           />
@@ -225,6 +270,7 @@ export function Textarea({
           rows={rows}
           required={required}
           aria-invalid={invalid || undefined}
+          aria-describedby={ariaDescribedBy}
           onChange={onChange}
           className={controlClass(invalid, cx('py-2.5 leading-relaxed', className))}
         />
