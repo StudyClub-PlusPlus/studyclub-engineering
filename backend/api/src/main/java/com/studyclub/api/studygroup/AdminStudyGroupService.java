@@ -5,10 +5,14 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.MeetingSchedule;
+import com.studyclub.domain.study.MeetingType;
 import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
+import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.domain.study.StudyRepository;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -101,6 +105,36 @@ public class AdminStudyGroupService {
         studyAttendanceRepository.deleteByStudyGroupId(groupId);
         studyMeetingRepository.deleteByStudyGroupIdIn(List.of(groupId));
         studyGroupRepository.deleteById(groupId);
+    }
+
+    /**
+     * 반의 킥오프(0회차)를 정하거나 옮긴다 (specs/study-meeting/spec.md 결정 11). 없으면 만들고, 있으면 일자만 바꾼다. 지난 시각도 받는다 —
+     * 이미 운영 중인 반의 킥오프를 나중에 적는다. 출석 행은 깔지 않는다 — 킥오프는 기록이 없으면 빈 칸이고, 디스코드 출석·출석부 저장이 행을 만든다.
+     */
+    @Transactional
+    public void setKickoff(Long studyId, Long groupId, Instant scheduledAt) {
+        // 회차 API 와 같은 순서로 잠근다 — 분반 먼저, 트랜잭션의 첫 조회로
+        StudyGroup group =
+                studyGroupRepository
+                        .findByIdForUpdate(groupId)
+                        .filter(g -> g.getStudyId().equals(studyId))
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.NOT_FOUND, "반을 찾을 수 없습니다."));
+        // 옮길 때만 회차 행을 잠근다 — 디스코드가 같은 킥오프를 시작시키며 쓴 시작 시각을 옛 값으로 덮지 않게. 처음 만들 때는 잠그지 않는다: 회차 없는 두
+        // 반이 같은 gap 을 잡고 서로의 INSERT 를 기다리다 교착한다 (회차 추가와 같은 이유)
+        List<StudyMeeting> meetings =
+                studyMeetingRepository.existsByStudyGroupIdAndMeetingType(
+                                groupId, MeetingType.KICKOFF)
+                        ? studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)
+                        : studyMeetingRepository.findByStudyGroupIdOrderByScheduledAt(groupId);
+        StudyMeeting kickoff =
+                meetings.stream().filter(StudyMeeting::isKickoff).findFirst().orElse(null);
+        new MeetingSchedule(group.getTimezone(), meetings).checkKickoff(kickoff, scheduledAt);
+        if (kickoff == null) {
+            studyMeetingRepository.save(StudyMeeting.kickoff(groupId, scheduledAt));
+        } else {
+            kickoff.rescheduleKickoff(scheduledAt);
+        }
     }
 
     /** 제목만으로 반을 만든다. 회차·출석은 만들지 않는다 — 회차는 회차 추가 API 로만 생긴다. */

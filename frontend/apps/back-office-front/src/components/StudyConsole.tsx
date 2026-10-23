@@ -1,37 +1,35 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { Badge } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
 
 import { StudyInfoTab } from '@/components/StudyInfoTab';
 import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
+import { ApplicationResultsTab } from '@/features/application-results/ApplicationResultsTab';
 import { ApplicationsTab } from '@/features/applications/ApplicationsTab';
 import { useApplications } from '@/features/applications/queries';
 import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
+import { useUrlState } from '@/lib/use-url-state';
 
 const TABS = [
   { key: 'info', label: '정보' },
   { key: 'form', label: '신청 폼' },
+  { key: 'results', label: '신청 결과' },
   { key: 'crew', label: '신청자' },
   { key: 'attendance', label: '출석' },
 ] as const;
 
-type TabKey = (typeof TABS)[number]['key'];
+const TAB_DEFAULTS = { tab: 'info' };
+const TAB_ALLOWED = { tab: TABS.map(({ key }) => key) };
 
 const categoryLabel = (code: string) => CATEGORY_OPTIONS.find((c) => c.value === code)?.label ?? code;
 
 export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
-  const [tab, setTab] = useState<TabKey>('info');
+  const [{ tab }, setUrl] = useUrlState(TAB_DEFAULTS, TAB_ALLOWED);
   const [savingForm, setSavingForm] = useState(false);
-
-  useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get('tab');
-    if (!TABS.some(({ key }) => key === requested)) return;
-    setTab(requested as TabKey);
-  }, []);
 
   const applicationQuery = useApplications(detail.id, tab === 'crew');
   const applications = applicationQuery.isError ? undefined : applicationQuery.data?.applications;
@@ -78,11 +76,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
       <div className='mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4'>
         <Stat label='진행 일정' value={detail.schedule || '미정 · 신청자 조율'} small />
         {/* TODO(api): 참석자·출석률 — 출석 명부 API 가 분반(studyGroupId)을 받는데 상세 응답에 분반이 없다 */}
-        <Stat
-          label='참석자'
-          value='—'
-          sub={detail.capacity == null ? '정원 제한 없음' : `정원 ${detail.capacity}명`}
-        />
+        <Stat label='참석자' value='—' sub={detail.capacity == null ? '정원 제한 없음' : `정원 ${detail.capacity}명`} />
         <Stat
           label='승인 대기'
           value={pendingCount == null ? '—' : `${pendingCount}`}
@@ -97,14 +91,16 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
             key={tb.key}
             type='button'
             disabled={savingForm}
-            onClick={() => setTab(tb.key)}
+            onClick={() => {
+              if (tb.key !== tab) setUrl({ tab: tb.key }, { reset: true });
+            }}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
             }`}
           >
             {tb.label}
             {tb.key === 'crew' && pendingCount != null && pendingCount > 0 && (
-              <span className='ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-[11px] font-bold text-warning-700'>
+              <span className='ml-1.5 rounded-full bg-warning-100 px-1.5 py-0.5 text-xs font-bold text-warning-700'>
                 {pendingCount}
               </span>
             )}
@@ -113,12 +109,18 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
       </nav>
 
       <div className='mt-5'>
+        {tab === 'results' && (
+          <ApplicationResultsTab
+            studyId={detail.id}
+            onEditForm={() => setUrl({ tab: 'form' }, { reset: true })}
+          />
+        )}
         {tab === 'attendance' && (
           <div className='card px-6 py-10 text-center text-sm text-fg-muted'>출석 관리는 준비 중입니다.</div>
         )}
         {tab === 'crew' && <ApplicationsTab studyId={detail.id} />}
         {tab === 'form' && <ApplicationFormTab study={detail} onSavingChange={setSavingForm} />}
-        {tab === 'info' && <StudyInfoTab detail={detail} />}
+        {tab === 'info' && <StudyInfoTab detail={detail} onSavingChange={setSavingForm} />}
       </div>
     </div>
   );
@@ -142,14 +144,14 @@ function Stat({
     <div className='card px-4 py-3'>
       <p className='text-xs font-medium text-fg-muted'>{label}</p>
       <p
-        className={`mt-0.5 font-extrabold ${small ? 'truncate text-[15px] leading-7' : 'tnum text-xl'} ${
+        className={`mt-0.5 font-extrabold ${small ? 'truncate text-sm leading-7' : 'tnum text-xl'} ${
           tone === 'warn' ? 'text-warning-700' : 'text-fg'
         }`}
         title={small ? value : undefined}
       >
         {value}
       </p>
-      {sub && <p className='tnum -mt-0.5 text-[11px] font-medium text-fg-muted'>{sub}</p>}
+      {sub && <p className='tnum -mt-0.5 text-xs font-medium text-fg-muted'>{sub}</p>}
     </div>
   );
 }

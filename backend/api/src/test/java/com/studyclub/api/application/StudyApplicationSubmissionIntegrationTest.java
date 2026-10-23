@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.StudyParticipantJoined;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,11 +19,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -31,16 +37,20 @@ class StudyApplicationSubmissionIntegrationTest {
     private static final Long STUDY_ID = 10_610L;
     private static final Long RECRUITMENT_ID = 10_620L;
     private static final Long GROUP_ID = 10_630L;
+    private static final Long PAST_RECRUITMENT_ID = 10_621L;
+    private static final Instant SUBMITTED_AT = Instant.parse("2026-09-19T12:00:00Z");
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwtService;
     @Autowired AccountRepository accountRepository;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired JoinedEvents joinedEvents;
 
     @BeforeEach
     void seed() {
         rest.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
         clean();
+        joinedEvents.received.clear();
         Timestamp now = Timestamp.from(Instant.now());
         insertAccount(LINKED_ACCOUNT_ID, "submit-linked@example.com", "discord-linked", now);
         insertAccount(UNLINKED_ACCOUNT_ID, "submit-unlinked@example.com", null, now);
@@ -98,6 +108,91 @@ class StudyApplicationSubmissionIntegrationTest {
                 .contains("\"availableDays\":[\"mon\",\"wed\"]")
                 .contains("\"scheduleAgreed\":true")
                 .contains("\"reason\":\"함께 읽고 싶습니다.\"");
+    }
+
+    @Test
+    @DisplayName("성공 - 명부에 들어온 행마다 study_participant.joined 를 커밋 뒤 한 번 낸다")
+    void publishesJoinedForNewRosterRow() {
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long participantId =
+                jdbcTemplate.queryForObject(
+                        "SELECT ID FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                        Long.class,
+                        STUDY_ID,
+                        LINKED_ACCOUNT_ID);
+        assertThat(joinedEvents.received)
+                .singleElement()
+                .satisfies(
+                        event -> {
+                            assertThat(event.name()).isEqualTo("study_participant.joined");
+                            assertThat(event.studyId()).isEqualTo(STUDY_ID);
+                            assertThat(event.participantId()).isEqualTo(participantId);
+                            assertThat(event.aggregateId())
+                                    .isEqualTo(String.valueOf(participantId));
+                            assertThat(event.accountId()).isEqualTo(LINKED_ACCOUNT_ID);
+                            assertThat(event.participantRole()).isEqualTo(ParticipantRole.MEMBER);
+                            assertThat(event.meta().actorId())
+                                    .isEqualTo(String.valueOf(LINKED_ACCOUNT_ID));
+                        });
+    }
+
+    @Test
+    @DisplayName("성공 - 빠졌던 옛 명부 행을 되살려도 그 행으로 joined 를 낸다")
+    void publishesJoinedForRejoinedRosterRow() {
+        insertParticipant(LINKED_ACCOUNT_ID, "WITHDRAWN", "LEADER");
+        Long formerId =
+                jdbcTemplate.queryForObject(
+                        "SELECT ID FROM STUDY_PARTICIPANT WHERE STUDY_ID = ? AND ACCOUNT_ID = ?",
+                        Long.class,
+                        STUDY_ID,
+                        LINKED_ACCOUNT_ID);
+
+        var response =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        // 되살리면 역할은 크루로 돌아간다 — 네비게이터 role 은 캡틴이 다시 정할 때 붙는다
+        assertThat(joinedEvents.received)
+                .singleElement()
+                .satisfies(
+                        event -> {
+                            assertThat(event.participantId()).isEqualTo(formerId);
+                            assertThat(event.participantRole()).isEqualTo(ParticipantRole.MEMBER);
+                        });
+    }
+
+    @Test
+    @DisplayName("실패 - 신청이 거절되면 명부가 그대로라 joined 를 내지 않는다")
+    void doesNotPublishJoinedWhenRejected() {
+        var unlinked =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(UNLINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+        assertThat(unlinked.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(joinedEvents.received).isEmpty();
+
+        rest.postForEntity(
+                "/api/studies/" + STUDY_ID + "/applications",
+                authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                Void.class);
+        joinedEvents.received.clear();
+        var duplicate =
+                rest.postForEntity(
+                        "/api/studies/" + STUDY_ID + "/applications",
+                        authenticatedRequest(LINKED_ACCOUNT_ID, validRequest()),
+                        Void.class);
+        assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(joinedEvents.received).isEmpty();
     }
 
     @Test
@@ -743,6 +838,110 @@ class StudyApplicationSubmissionIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     }
 
+    @Test
+    @DisplayName("성공 - 신청한 회원의 내 신청 여부는 신청서 ID와 행 생성 시각을 준다")
+    void findsMyApplication() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", true)
+                .containsEntry("applicationId", 10_640)
+                .containsEntry("submittedAt", "2026-09-19T12:00:00Z");
+    }
+
+    @Test
+    @DisplayName("성공 - 신청하지 않은 회원은 applied=false 이고 ID·제출 시각은 null이다")
+    void reportsNotApplied() {
+        var response = getMyApplication(STUDY_ID, UNLINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("applied", false)
+                .containsEntry("applicationId", null)
+                .containsEntry("submittedAt", null);
+    }
+
+    @Test
+    @DisplayName("성공 - 더 늦게 시작한 마감 회차가 있어도 열린 모집 회차의 신청을 본다")
+    void prefersOpenRecruitment() {
+        Instant now = Instant.now();
+        insertRecruitment(PAST_RECRUITMENT_ID, now.minusSeconds(30), now.minusSeconds(10));
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertApplication(10_641L, PAST_RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getBody()).containsEntry("applicationId", 10_640);
+    }
+
+    @Test
+    @DisplayName("성공 - 열린 모집 회차가 없으면 시작이 가장 늦은 회차의 신청을 본다")
+    void fallsBackToLatestRecruitmentAfterDeadline() {
+        Instant now = Instant.now();
+        jdbcTemplate.update(
+                "UPDATE STUDY_RECRUITMENT SET RECRUIT_DEADLINE_AT = ? WHERE ID = ?",
+                Timestamp.from(now.minusSeconds(1)),
+                RECRUITMENT_ID);
+        // ID 는 더 크지만 시작이 더 이른 회차 — ID 순으로 고르면 틀린다
+        insertRecruitment(PAST_RECRUITMENT_ID, now.minusSeconds(7200), now.minusSeconds(3600));
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        insertApplication(10_641L, PAST_RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+
+        var response = getMyApplication(STUDY_ID, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("applicationId", 10_640);
+    }
+
+    @Test
+    @DisplayName("실패 - 탈퇴로 계정이 지워진 토큰은 남은 신청서를 조회하지 못하고 401이다")
+    void rejectsDeletedAccount() {
+        insertApplication(10_640L, RECRUITMENT_ID, LINKED_ACCOUNT_ID, SUBMITTED_AT);
+        var issuedBeforeLeave = authenticatedRequest(LINKED_ACCOUNT_ID, Map.of());
+        jdbcTemplate.update("DELETE FROM ACCOUNT WHERE ID = ?", LINKED_ACCOUNT_ID);
+
+        var response =
+                rest.exchange(
+                        "/api/studies/" + STUDY_ID + "/applications/me",
+                        org.springframework.http.HttpMethod.GET,
+                        issuedBeforeLeave,
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("실패 - 토큰 없이 내 신청 여부를 물으면 401 + UNAUTHORIZED 이다")
+    void rejectsUnauthenticatedMyApplication() {
+        var response =
+                rest.getForEntity("/api/studies/" + STUDY_ID + "/applications/me", Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("실패 - 없는 스터디의 내 신청 여부는 404이다")
+    void rejectsMyApplicationOfUnknownStudy() {
+        var response = getMyApplication(999_999L, LINKED_ACCOUNT_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
+    }
+
+    private org.springframework.http.ResponseEntity<Map> getMyApplication(
+            Long studyId, Long accountId) {
+        return rest.exchange(
+                "/api/studies/" + studyId + "/applications/me",
+                org.springframework.http.HttpMethod.GET,
+                authenticatedRequest(accountId, Map.of()),
+                Map.class);
+    }
+
     private void insertAccount(Long id, String email, String discordId, Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO ACCOUNT (ID, EMAIL, NICKNAME, SYSTEM_ROLE, TIME_ZONE, DISCORD_ID,"
@@ -843,6 +1042,35 @@ class StudyApplicationSubmissionIntegrationTest {
                 now);
     }
 
+    private void insertRecruitment(Long id, Instant startAt, Instant deadlineAt) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_RECRUITMENT (ID, STUDY_ID, TITLE, DESCRIPTION, START_AT,"
+                        + " RECRUIT_DEADLINE_AT, RECRUITMENT_CAPACITY, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id,
+                STUDY_ID,
+                "다른 모집",
+                "모집 설명",
+                Timestamp.from(startAt),
+                Timestamp.from(deadlineAt),
+                2,
+                now,
+                now);
+    }
+
+    private void insertApplication(Long id, Long recruitmentId, Long accountId, Instant createdAt) {
+        jdbcTemplate.update(
+                "INSERT INTO STUDY_APPLICATION (ID, ACCOUNT_ID, RECRUITMENT_ID, FORM_ANSWER,"
+                        + " CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, CAST(? AS JSON), ?, ?)",
+                id,
+                accountId,
+                recruitmentId,
+                "{}",
+                Timestamp.from(createdAt),
+                Timestamp.from(createdAt));
+    }
+
     private void insertGroup(Timestamp now) {
         jdbcTemplate.update(
                 "INSERT INTO STUDY_GROUP (ID, STUDY_ID, NAME, START_AT, TIMEZONE, CAPACITY,"
@@ -860,7 +1088,9 @@ class StudyApplicationSubmissionIntegrationTest {
     private void clean() {
         jdbcTemplate.update("DELETE FROM STUDY_PARTICIPANT WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update(
-                "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID = ?", RECRUITMENT_ID);
+                "DELETE FROM STUDY_APPLICATION WHERE RECRUITMENT_ID IN (?, ?)",
+                RECRUITMENT_ID,
+                PAST_RECRUITMENT_ID);
         jdbcTemplate.update("DELETE FROM STUDY_GROUP WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY_RECRUITMENT WHERE STUDY_ID = ?", STUDY_ID);
         jdbcTemplate.update("DELETE FROM STUDY WHERE ID = ?", STUDY_ID);
@@ -869,5 +1099,22 @@ class StudyApplicationSubmissionIntegrationTest {
                 "DELETE FROM ACCOUNT WHERE ID IN (?, ?, 10650, 10651, 10652)",
                 LINKED_ACCOUNT_ID,
                 UNLINKED_ACCOUNT_ID);
+    }
+
+    @TestConfiguration
+    static class EventCapture {
+        @Bean
+        JoinedEvents joinedEvents() {
+            return new JoinedEvents();
+        }
+    }
+
+    static class JoinedEvents {
+        final List<StudyParticipantJoined> received = new CopyOnWriteArrayList<>();
+
+        @TransactionalEventListener
+        void on(StudyParticipantJoined event) {
+            received.add(event);
+        }
     }
 }

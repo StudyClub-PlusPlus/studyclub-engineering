@@ -29,7 +29,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴 누구나) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
 | PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (담당 캡틴만) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
 | POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 — 같은 트랜잭션에서 기본 반 명부 편입 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)) |
-| GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙확정 — 컨트롤러가 없다 (2026-10-14 확인). 사이트 신청 버튼은 이미 부른다 |
+| GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 구현완료 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
 
@@ -335,7 +335,8 @@ GET 신청 폼 조회와 같은 shape.
 
    기본 반이 없는 옛 스터디는 이때 「기본반」을 만든다 (모집 회차 행을 잠근 뒤라 둘이 생기지 않는다). 이 스터디 명부에 `WITHDRAWN`·`COMPLETED`·`DELETED` 로 남은 행이 있으면 새 행 대신 그 행을 되살린다 — `ACTIVE`·`MEMBER`, 반은 그대로, `JOINED_AT = 지금`, `LEFT_AT = NULL` (같은 반에 새 행을 만들면 `UNIQUE(ACCOUNT_ID, STUDY_GROUP_ID)` 에 걸린다)
 5. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
-6. 커밋. 이후 같은 기수 POST 는 `409`
+6. 도메인 이벤트 `study_application.submitted` 와 `study_participant.joined` 를 발행한다 — 4단계에서 들어온 명부 행(새 행·되살린 행 모두)으로 낸다. 구독자는 커밋 뒤에 받는다 ([domain-events](../domain-events/spec.md)). 디스코드 스터디 role 부여(DSC-07)가 `joined` 를 듣는다
+7. 커밋. 이후 같은 기수 POST 는 `409`
 
 덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않는다. **신청 제출 = 기본 반 명부 편입**이다. 캡틴이 신청 결과를 보고 반을 더 나누면 참가자를 새 반으로 옮긴다.
 
@@ -406,13 +407,13 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 |------|------|------|------|------|
 | applied | Boolean | N | | 계산: 해당 회차에 내 `STUDY_APPLICATION` 존재 |
 | applicationId | Long | Y | `applied=false` 이면 null | STUDY_APPLICATION.ID |
-| submittedAt | String | Y | 행 생성 시각. 컬럼이 없으면 ID 순서의 대용을 쓰지 말고 null | 구현 시 created_at. ERD 에 생성시각 컬럼이 없으면 [NEEDS CLARIFICATION] |
+| submittedAt | String | Y | 행 생성 시각. `applied=false` 이면 null | STUDY_APPLICATION.CREATED_AT (`BaseEntity`) |
 
 ### Error Responses
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 401 | UNAUTHORIZED | 미로그인 |
+| 401 | UNAUTHORIZED | 미로그인 · 탈퇴로 계정이 지워진 토큰 (신청서는 남으므로 막는다) |
 | 404 | NOT_FOUND | studyId 없음 |
 
 ### 프론트엔드 사용처
@@ -508,6 +509,8 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 ### 프론트엔드 사용처
 
 - `frontend/apps/playground/src/proto/console/components/ResultsTab.tsx`
+- `frontend/apps/back-office-front/src/features/application-results/ApplicationResultsTab.tsx` — 신청 결과 탭. 질문별 집계·기타 답변·응답자별 표, 빈 상태·조회 실패·권한 오류를 처리한다. 보기는 URL에 저장하고 `recruitmentId`가 있으면 해당 회차를 조회한다.
+- 모집 회차 선택 드롭다운은 회차 목록 조회 계약이 없어 미구현이다. 현재 응답은 선택된 회차의 신청만 포함하므로 여기서 전체 회차를 추론하지 않는다.
 
 ---
 
@@ -606,6 +609,5 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 - [NEEDS CLARIFICATION] `FORM_ANSWER` JSON 유지 vs `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 정규화 — ERD README 와 같음. 이 스펙은 JSON 으로 구현한다
 - [NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간
-- [NEEDS CLARIFICATION] `STUDY_APPLICATION` 생성시각 컬럼. 없으면 `applications/me.submittedAt` 은 null
 - [NEEDS CLARIFICATION] 열려 있는 모집 회차가 동시에 둘이면 어느 회차에 붙일지. 지금은 1건이라고 가정
 - [NEEDS CLARIFICATION] 결과 목록에서 명부 `WITHDRAWN` 인 사람의 신청을 뺄지. ERD 는 신청 행에 거절 상태가 없음

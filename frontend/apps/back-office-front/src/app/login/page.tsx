@@ -14,10 +14,15 @@ export default function BackOfficeLoginPage() {
   );
 }
 
+/** `next` 는 누구나 고칠 수 있다 — 이 사이트 안 경로(`/` 하나로 시작)만 받는다. `//x`·`/\x` 는 다른 사이트로 간다. */
+function safeNext(next: string | null): string {
+  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/';
+}
+
 function BackOfficeLoginForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const next = search.get('next') ?? '/';
+  const next = safeNext(search.get('next'));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

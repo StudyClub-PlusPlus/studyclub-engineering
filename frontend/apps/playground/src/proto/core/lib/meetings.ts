@@ -254,14 +254,24 @@ export function meetingLabel(m: StudyMeeting): string {
 }
 
 /**
- * 분반마다 하나 있는 킥오프(0회차). 규칙·일정·발표자를 정하는 첫 모임이다.
- * mock 에는 킥오프가 없어 첫 회차 한 주 전에 하나 둔다. 지우지 않고, 일자·시각·제목만 고친다.
- * TODO(api): 킥오프가 없는 분반에 처음 정규 회차를 추가할 때 서버가 킥오프 회차(`MEETING_TYPE = KICKOFF`)를 첫 회차 한 주 전에 함께 만든다.
+ * 분반마다 하나 있는 킥오프(0회차). 규칙·일정·발표자를 정하는 첫 모임이다. 캡틴이 백오피스 일정 탭에서 정한다.
+ * mock 에는 킥오프가 없어 처음부터 회차가 있던 반은 첫 회차 한 주 전에 하나 둔다. 캡틴이 이미 정해 둔 것으로 본다.
+ * 「회차 추가」는 킥오프를 만들지 않는다. 지우지 않고, 네비게이터는 고치지 않는다.
  */
 function kickoffOf(base: StudyMeeting[], studyId: string): ProtoMeeting | undefined {
   const first = [...base].sort((a, b) => a.date.localeCompare(b.date))[0];
   if (!first) return undefined;
   return { id: `${studyId}-kickoff`, no: 0, date: addDaysYmd(first.date, -7), kind: 'kickoff', title: '킥오프' };
+}
+
+const kickoffId = (studyId: string) => `${studyId}-kickoff`;
+
+/**
+ * 캡틴이 반의 킥오프를 정하거나 옮긴다. 일자·시각은 반 벽시계로 받는다. 지난 날도 받는다: 운영 중인 반의 킥오프를 나중에 적는다.
+ * TODO(api): PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff, body: { scheduledAt } (UTC). 없으면 만들고 있으면 옮긴다.
+ */
+export function setKickoff(studyId: string, date: string, time: string, timeZone: string): void {
+  patchMeeting(studyId, kickoffId(studyId), { date, time }, timeZone);
 }
 
 const wallKey = (m: StudyMeeting) => `${m.date} ${(m as ProtoMeeting).time ?? ''}`;
@@ -278,8 +288,12 @@ export function withAdded(base: StudyMeeting[], studyId: string, zone = zoneOfSt
   );
   const deleted = new Set(readJSON<string>(DELETED_KEY)[studyId] ?? []);
   const edits = readEdits()[studyId] ?? {};
-  // 처음부터 회차가 있던 반은 그 첫 회차로, 회차 없이 만든 반은 「회차 추가」로 처음 만든 회차로 킥오프를 둔다
-  const kickoff = kickoffOf(base.length > 0 ? base : added, studyId);
+  // 처음부터 회차가 있던 반은 그 첫 회차로 킥오프를 둔다. 회차 없이 만든 반은 캡틴이 「킥오프 정하기」로 정했을 때만 있다
+  const kickoff =
+    kickoffOf(base, studyId) ??
+    (edits[kickoffId(studyId)]
+      ? ({ id: kickoffId(studyId), no: 0, date: '', kind: 'kickoff', title: '킥오프' } as ProtoMeeting)
+      : undefined);
   const kept: ProtoMeeting[] = [...(kickoff ? [kickoff] : []), ...base]
     .filter((m) => !deleted.has(m.id))
     .map((m) => (edits[m.id] ? ({ ...m, ...withWall(edits[m.id], zone) } as ProtoMeeting) : m));
