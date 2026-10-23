@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { BookOpen, CalendarDays, LayoutDashboard, LogOut, Mail, Users } from 'lucide-react';
 
 import { Button } from './Button';
