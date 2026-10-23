@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import {
@@ -35,7 +35,7 @@ import {
 import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import type { Study } from '@studyclub/mock';
-import { AutoTextarea, Button, Input, Modal, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
 
 /**
@@ -402,10 +402,10 @@ export function ScheduleManager({
                   <th className='w-40 px-2 py-3'>일자</th>
                   <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
                   <th className={cx('px-2 py-3', compact ? 'w-60' : 'min-w-[16rem]')}>제목</th>
-                  <th data-anno='schedule:9' className={cx('px-2 py-3 text-center', compact ? 'w-28' : 'w-36')}>
+                  <th data-anno='schedule:9' className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>
                     발표자1
                   </th>
-                  <th className={cx('px-2 py-3 text-center', compact ? 'w-28' : 'w-36')}>발표자2</th>
+                  <th className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>발표자2</th>
                 </tr>
               </thead>
               <tbody>
@@ -489,7 +489,7 @@ export function ScheduleManager({
                       )}
                     >
                       {canEdit && (
-                        <td className='border-t border-border py-2.5 pl-4 align-top'>
+                        <td className='border-t border-border py-2.5 pl-4 align-middle'>
                           {!kickoff && !past && (
                             <input
                               type='checkbox'
@@ -503,7 +503,7 @@ export function ScheduleManager({
                       )}
                       <td
                         data-anno={kickoff ? 'schedule:10' : undefined}
-                        className='tnum border-t border-border px-4 py-2.5 text-center align-top font-bold'
+                        className='tnum border-t border-border px-4 py-2.5 text-center align-middle font-bold'
                       >
                         {m.no}
                         {past && <span className='sr-only'> (지난 회차 · 고칠 수 없음)</span>}
@@ -544,7 +544,9 @@ export function ScheduleManager({
                           />
                         ) : // 제목이 없으면 「—」를 칸 가운데에 — 빈 칸 표시는 표 어디서나 가운데다
                         m.title ? (
-                          <span className='inline-block whitespace-pre-wrap break-words py-1.5 align-middle text-center'>{m.title}</span>
+                          <span className='inline-block whitespace-pre-wrap break-words py-1.5 align-middle text-center'>
+                            {m.title}
+                          </span>
                         ) : (
                           <span className='block py-1.5 text-center text-fg-muted'>-</span>
                         )}
@@ -613,10 +615,7 @@ function cn(...parts: string[]): string {
 
 /** 회차 선택 체크박스 — 출석부 체크박스와 같은 모양. */
 const CHECKBOX =
-  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
-
-const FIELD =
-  'h-8 w-full rounded-control border bg-bg px-2 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand/60';
+  'block h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 function CellInput({
   type = 'text',
@@ -633,26 +632,18 @@ function CellInput({
   error?: string;
   onChange: (value: string) => void;
 }) {
-  const errorId = useId();
   return (
-    <div>
-      <input
-        type={type}
-        aria-label={label}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        value={value}
-        placeholder={placeholder}
-        maxLength={type === 'text' ? TITLE_MAX + 10 : undefined}
-        onChange={(ev) => onChange(ev.target.value)}
-        className={cx(FIELD, error ? 'border-error-500' : 'border-border-strong')}
-      />
-      {error && (
-        <p id={errorId} className='mt-1 text-[11px] leading-snug text-error-700'>
-          {error}
-        </p>
-      )}
-    </div>
+    <Input
+      size='sm'
+      type={type}
+      aria-label={label}
+      value={value}
+      placeholder={placeholder}
+      maxLength={type === 'text' ? TITLE_MAX + 10 : undefined}
+      error={error}
+      onChange={(ev) => onChange(ev.target.value)}
+      className='px-2'
+    />
   );
 }
 
@@ -668,19 +659,16 @@ function TitleInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <div>
-      <AutoTextarea
-        label={label}
-        value={value}
-        placeholder='제목'
-        maxLength={TITLE_MAX + 10}
-        singleLine
-        invalid={Boolean(error)}
-        className='min-h-8 px-2 py-1 leading-snug'
-        onChange={onChange}
-      />
-      {error && <p className='mt-1 text-[11px] leading-snug text-error-700'>{error}</p>}
-    </div>
+    <Input
+      size='sm'
+      aria-label={label}
+      value={value}
+      placeholder='제목'
+      maxLength={TITLE_MAX + 10}
+      error={error}
+      onChange={(ev) => onChange(ev.target.value)}
+      className='px-2'
+    />
   );
 }
 
@@ -699,11 +687,12 @@ function PresenterSelect({
   onChange: (id: string) => void;
 }) {
   return (
-    <select
+    <Select
       aria-label={label}
+      size='sm'
       value={value}
       onChange={(ev) => onChange(ev.target.value)}
-      className={cx(FIELD, 'border-border-strong', !value && 'text-fg-muted')}
+      className={cx('w-full max-w-none', !value && 'text-fg-muted')}
     >
       <option value=''>{placeholder}</option>
       {/* 중단한 사람은 고를 수 없다. 이미 배정돼 있으면 그 칸에만 「(참여 종료)」로 남겨 보인다 — 빈 칸처럼 보이면 안 된다 */}
@@ -714,7 +703,7 @@ function PresenterSelect({
             {p.me ? `${p.name} (나)` : p.left ? `${p.name} (참여 종료)` : p.name}
           </option>
         ))}
-    </select>
+    </Select>
   );
 }
 

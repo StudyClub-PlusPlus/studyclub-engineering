@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { classLabel, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE, STUDY_TZS, WEEKDAY_LABELS, otherClock, tzAbbr, type ScheduleRule } from '@console/lib/schedule';
-import { Button, Modal } from '@studyclub/ui';
+import { Button, Input, Modal } from '@studyclub/ui';
 
 /**
  * 반의 스터디 시간(요일 · 시각 · 시간대) — 일정 탭에서 연다.
@@ -103,13 +103,15 @@ export function ClassScheduleDialog({
               스터디 시간
             </label>
             <div className='flex flex-wrap items-center gap-2'>
-              <input
-                type='time'
-                id='rule-time'
-                value={rule.time}
-                onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
-                className='h-10 w-[10rem] rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
-              />
+              <div className='w-40'>
+                <Input
+                  size='sm'
+                  type='time'
+                  id='rule-time'
+                  value={rule.time}
+                  onChange={(ev) => setRule({ ...rule, time: ev.target.value })}
+                />
+              </div>
               {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
               <div role='group' aria-label='시간대' className='flex gap-1'>
                 {STUDY_TZS.map((tz) => {

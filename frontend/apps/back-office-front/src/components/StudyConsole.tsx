@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
-import { Badge } from '@studyclub/ui';
+import { Badge, Button, Modal } from '@studyclub/ui';
 import { ArrowLeft } from 'lucide-react';
 
 import { StudyInfoTab } from '@/components/StudyInfoTab';
@@ -11,6 +12,7 @@ import { ApplicationFormTab } from '@/features/application-form/ApplicationFormT
 import { ApplicationResultsTab } from '@/features/application-results/ApplicationResultsTab';
 import { ApplicationsTab } from '@/features/applications/ApplicationsTab';
 import { useApplications } from '@/features/applications/queries';
+import { ScheduleTab } from '@/features/schedule/ScheduleTab';
 import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
 import { useUrlState } from '@/lib/use-url-state';
 
@@ -19,6 +21,7 @@ const TABS = [
   { key: 'form', label: '신청 폼' },
   { key: 'results', label: '신청 결과' },
   { key: 'crew', label: '신청자' },
+  { key: 'schedule', label: '일정' },
   { key: 'attendance', label: '출석' },
 ] as const;
 
@@ -30,6 +33,103 @@ const categoryLabel = (code: string) => CATEGORY_OPTIONS.find((c) => c.value ===
 export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const [{ tab }, setUrl] = useUrlState(TAB_DEFAULTS, TAB_ALLOWED);
   const [savingForm, setSavingForm] = useState(false);
+  const router = useRouter();
+  // 일정 탭의 저장 전 고침(일정 표 · 규칙). 탭 · 반 · 링크를 누르면 나가기 전에 한 번 묻는다
+  const [scheduleDirty, setScheduleDirty] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const pendingLeave = useRef<(() => void) | null>(null);
+  /** 뒤로가기를 붙잡으려고 쌓아 둔 같은 주소의 기록 칸이 지금 맨 위에 있는가. */
+  const guardEntry = useRef(false);
+  /** 새로고침 · 창 닫기 · 페이지 밖 이동 때 브라우저가 물을까. 「나가기」를 고르면 바로 끈다 — 두 번 묻지 않게. */
+  const unloadGuard = useRef(false);
+  useEffect(() => {
+    unloadGuard.current = scheduleDirty;
+  }, [scheduleDirty]);
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (!unloadGuard.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+
+  /** 저장하지 않은 고침이 있으면 확인 창을 띄우고, 없으면 바로 간다. */
+  function guard(go: () => void) {
+    if (!scheduleDirty) {
+      go();
+      return;
+    }
+    pendingLeave.current = go;
+    setLeaving(true);
+  }
+
+  function confirmLeave() {
+    const go = pendingLeave.current;
+    pendingLeave.current = null;
+    unloadGuard.current = false;
+    setLeaving(false);
+    setScheduleDirty(false);
+    go?.();
+  }
+
+  // 옆 메뉴 · 목록 링크도 같은 확인을 거친다. 새 창 · 수정키 클릭은 그대로 둔다
+  useEffect(() => {
+    if (!scheduleDirty) return;
+    function onClick(e: MouseEvent) {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      const el = (e.target as Element | null)?.closest?.('a[href]');
+      if (!(el instanceof HTMLAnchorElement) || el.target === '_blank' || el.hasAttribute('download')) return;
+      const href = el.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+      const url = new URL(href, window.location.href);
+      if (url.origin === window.location.origin && url.pathname === window.location.pathname) return;
+      e.preventDefault();
+      e.stopPropagation();
+      pendingLeave.current = () => {
+        // 뒤로가기용 기록 칸이 남아 있으면 그 칸을 새 주소로 갈아 끼운다 — 나간 뒤 뒤로가기 한 번에 이 화면으로 온다
+        const replace = guardEntry.current;
+        guardEntry.current = false;
+        if (url.origin !== window.location.origin) {
+          if (replace) window.location.replace(url.href);
+          else window.location.assign(url.href);
+          return;
+        }
+        const path = `${url.pathname}${url.search}${url.hash}`;
+        if (replace) router.replace(path);
+        else router.push(path);
+      };
+      setLeaving(true);
+    }
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [scheduleDirty, router]);
+
+  // 브라우저 뒤로가기도 같은 확인을 거친다. 저장 전 고침이 생기면 같은 주소의 기록 칸을 하나 더 쌓아 두고,
+  // 뒤로가기가 그 칸을 지우면(화면은 그대로) 묻는다. Next 라우터가 읽는 history.state 를 그대로 복사해야
+  // 라우터가 낯선 기록으로 보고 새로고침하지 않는다.
+  useEffect(() => {
+    if (!scheduleDirty || leaving) return;
+    if (!guardEntry.current) {
+      window.history.pushState(window.history.state, '', window.location.href);
+      guardEntry.current = true;
+    }
+    function onPopState() {
+      guardEntry.current = false;
+      pendingLeave.current = () => window.history.back();
+      setLeaving(true);
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [scheduleDirty, leaving]);
+
+  // 저장하거나 고침을 버려 깨끗해졌으면 쌓아 둔 기록 칸을 걷는다 — 남겨 두면 뒤로가기를 두 번 눌러야 나간다
+  useEffect(() => {
+    if (scheduleDirty || !guardEntry.current) return;
+    guardEntry.current = false;
+    window.history.back();
+  }, [scheduleDirty]);
 
   const applicationQuery = useApplications(detail.id, tab === 'crew');
   const applications = applicationQuery.isError ? undefined : applicationQuery.data?.applications;
@@ -92,7 +192,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
             type='button'
             disabled={savingForm}
             onClick={() => {
-              if (tb.key !== tab) setUrl({ tab: tb.key }, { reset: true });
+              if (tb.key !== tab) guard(() => setUrl({ tab: tb.key }, { reset: true }));
             }}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
@@ -119,9 +219,26 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
           <div className='card px-6 py-10 text-center text-sm text-fg-muted'>출석 관리는 준비 중입니다.</div>
         )}
         {tab === 'crew' && <ApplicationsTab studyId={detail.id} />}
+        {tab === 'schedule' && <ScheduleTab detail={detail} onDirtyChange={setScheduleDirty} guard={guard} />}
         {tab === 'form' && <ApplicationFormTab study={detail} onSavingChange={setSavingForm} />}
         {tab === 'info' && <StudyInfoTab detail={detail} onSavingChange={setSavingForm} />}
       </div>
+
+      <Modal
+        open={leaving}
+        onClose={() => setLeaving(false)}
+        title='저장하지 않은 변경이 있습니다'
+        footer={
+          <>
+            <Button variant='secondary' onClick={confirmLeave}>
+              저장하지 않고 나가기
+            </Button>
+            <Button onClick={() => setLeaving(false)}>이 화면에 머물기</Button>
+          </>
+        }
+      >
+        <p className='text-sm text-fg-secondary'>저장을 누르지 않으면 고친 일정·규칙이 사라집니다.</p>
+      </Modal>
     </div>
   );
 }

@@ -20,6 +20,8 @@ export interface SegmentedProps<T extends string = string> {
   shape?: 'rounded' | 'pill';
   fullWidth?: boolean;
   className?: string;
+  /** 탭 묶음의 이름 — 스크린리더가 무엇을 고르는 탭인지 읽는다 (예: 「일정 표시 시간대」). */
+  'aria-label'?: string;
 }
 
 /**
@@ -38,6 +40,7 @@ export function Segmented<T extends string = string>({
   shape = 'rounded',
   fullWidth = false,
   className,
+  'aria-label': ariaLabel,
 }: SegmentedProps<T>) {
   const [internalValue, setInternalValue] = useState<T>(defaultValue ?? options[0]?.value as T);
   const currentValue = value !== undefined ? value : internalValue;
@@ -57,6 +60,7 @@ export function Segmented<T extends string = string>({
   return (
     <div
       role='tablist'
+      aria-label={ariaLabel}
       className={cx(
         'inline-flex items-center gap-1 bg-surface-2 p-1',
         trackRadius,
