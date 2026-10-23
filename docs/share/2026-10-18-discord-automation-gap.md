@@ -246,7 +246,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | ID | 작업명 | 범위 | 선행 | 담당 (제안) |
 |---|---|---|---|---|
 | DSC-01 | [BE] 디스코드 계정 연동 API (`POST /api/me/discord/link`) | B1. Discord OAuth 앱 설정 · `DISCORD_ID`/`DISCORD_HANDLE` 저장 · **길드 멤버 확인**(질문 2, B6) · 스펙 확정 | — **가장 먼저** | j7hwang (OAuth 앱 등록) · doxxx93 (API) |
-| DSC-02 | [BE] `GET /api/me` 에 `discordLinked` 추가 | user-onboarding 스펙 필드 추가. 내 정보 조회는 #262 로 `/auth/me` → `/api/me` 로 옮겨졌다 | — `DISCORD_ID` 칸만 읽으므로 DSC-01 없이 할 수 있다 | hereokay |
+| DSC-02 | [BE] `GET /api/me` 에 `discordLinked` 추가 | user-onboarding 스펙 필드 추가. 내 정보 조회는 #262 로 `/auth/me` → `/api/me` 로 옮겨졌다. **구현됨 — `feat/me-discord-linked`** (ID 는 내리지 않고 연동 여부만. 신청 403 과 같은 `Account.isDiscordLinked()`) | — `DISCORD_ID` 칸만 읽으므로 DSC-01 없이 할 수 있다 | hereokay |
 | DSC-03 | [BE] 회원가입(온보딩)에 디스코드 연동 단계 추가 | 질문 1 이 「가입 때」면. 온보딩 완료 조건에 연동을 넣는다. 온보딩 담당과 맞춘다 | DSC-01 · 질문 1 | Jeongyounghyeon (BE) · LeenaKim (FE) |
 | DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03 이면) 가입 화면. 프론트 담당에게 넘겨도 된다 | DSC-01 · DSC-02 | CLEO525 (#292) |
 | DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **구현됨 — [PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276) 리뷰 대기** (채널 목록·메시지 메서드까지 들어 있다) | — | j7hwang (#276) · 리뷰 doxxx93 |
