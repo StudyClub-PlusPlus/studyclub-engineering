@@ -414,8 +414,9 @@ export function UsersTable() {
                   {m.status === 'dormant' && <span className='ml-1.5 text-xs text-fg-muted'>휴면</span>}
                 </td>
                 <EmailCell email={m.email} />
-                {/* 스터디가 디스코드에서 돌아간다 — 이어져 있지 않으면 권한을 올려도 합류하지 못한다 */}
-                <DiscordCell email={m.email} />
+                {/* 스터디가 디스코드에서 돌아간다 — 이어져 있지 않으면 권한을 올려도 합류하지 못한다.
+                    아이디는 가린 채로 두고 필요한 줄만 펼친다 — 이메일과 같은 규칙 (POL-0007) */}
+                <DiscordCell email={m.email} reveal />
                 <td>
                   <RoleBadgeSelect
                     role={m.account}
