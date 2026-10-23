@@ -266,7 +266,10 @@ export function FeedbackDialog({
           {/* 이미지 첨부 — 선택. 오류는 스크린샷이 있으면 재현이 쉽다 */}
           <div data-anno='feedback:5-1' className='flex flex-col gap-1.5'>
             <span className='flex items-baseline justify-between text-sm font-medium text-neutral-800'>
-              이미지 첨부 <span className='font-normal text-fg-muted'>(선택)</span>
+              {/* 라벨과 (선택)을 한 덩어리로 묶는다 — 따로 두면 양끝 정렬이 둘 사이를 벌려 놓는다 */}
+              <span>
+                이미지 첨부 <span className='font-normal text-fg-muted'>(선택)</span>
+              </span>
               <span className='tnum text-xs font-normal text-fg-placeholder'>
                 {draft.images.length}/{IMAGE_MAX_COUNT}
               </span>
