@@ -1,21 +1,25 @@
 import { isKickoff, type GroupTime, type Meeting, type ScheduleGroup } from './meetings';
-import { addDaysYmd, wallParts, zonedInstant } from './time';
+import { wallParts, zonedInstant } from './time';
 
 /**
  * 일정 탭의 저장소 — **지금은 브라우저(localStorage)에만 남는다.**
  *
- * 백오피스가 반·회차를 다루는 `/api/admin` API 가 아직 없다. 사용자 사이트 회차 API(`/api/studies/{id}/meetings`)는
- * 그 스터디를 만든 캡틴과 그 반 네비게이터만 통과해서(specs/study-meeting/spec.md 결정 3) 백오피스가 쓸 수 없고,
- * 반 목록 API(`GET /api/admin/studies/{id}/participants`)도 스펙 작성 중이다.
+ * 서버 API 는 반쪽만 있다 (beta, PR #312):
+ *  - 읽기  GET /api/admin/studies/{studyId}/groups/{groupId}/meetings — 캡틴이면 어느 스터디 · 어느 반이든.
+ *          사이트 목록과 같은 응답이다. 화면 모양으로 바꾸는 건 `api.ts` 의 `toMeetings`.
+ *  - 킥오프 PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff — `api.ts` 의 `useSetKickoff`.
+ * 둘 다 서버의 반 ID 를 경로에 받는데, 반 목록 API(`GET /api/admin/studies/{id}/participants`)가 아직 없어
+ * 백오피스는 그 ID 를 모른다. 그래서 화면은 아직 이 파일을 쓴다.
+ *
+ * 회차 추가 · 수정 · 삭제는 사이트 API(`/api/studies/{id}/meetings`)만 있고, 그 스터디를 만든 캡틴만 통과한다 —
+ * 다른 캡틴은 403. 백오피스 쓰기 API(`/api/admin/...`)는 스펙 미확정이다 (specs/study-meeting/spec.md 「미확정」).
  *
  * 화면은 이 파일의 함수만 부른다. API 가 생기면 여기만 바꾼다.
- * TODO(api): GET    /api/admin/studies/{studyId}/participants — groups[] (반 목록)
+ * TODO(api): GET    /api/admin/studies/{studyId}/participants — groups[].groupId (반 목록, 스펙 작성 중)
+ *                   ← 이게 오면 읽기 · 킥오프를 서버로
  *            PATCH  /api/admin/studies/{studyId}/groups/{groupId} — daysOfWeek · startTime · timezone
- *            GET    /api/admin/studies/{studyId}/meetings?studyGroupId= — 회차 · 발표자 · 규칙
- *            POST   /api/admin/studies/{studyId}/meetings — { studyGroupId, scheduledAts[](UTC), title? }
- *            PUT    /api/admin/studies/{studyId}/meetings/{meetingId} — 시각 · 제목 · 바꾼 발표자 칸
- *            DELETE /api/admin/studies/{studyId}/meetings — { studyGroupId, meetingIds[] } 전부 아니면 하나도
- *            PUT    /api/admin/studies/{studyId}/groups/{groupId}/rules
+ *                   (경로는 있지만 지금은 name 만 받는다. 시간 칸은 DAYS_OF_WEEK 마이그레이션 뒤)
+ *            회차 추가 · 수정 · 삭제 · 규칙 — 백오피스 쓰기 API 미정
  */
 
 type StoredMeeting = {
@@ -106,10 +110,7 @@ export function listMeetings(studyId: number, group: ScheduleGroup): Meeting[] {
   return [...kickoff, ...regular];
 }
 
-/**
- * 회차를 더한다. 킥오프가 없는 반에 처음 정규 회차를 더하면 첫 회차 한 주 전에 킥오프를 함께 만든다 —
- * 서버가 할 일이다(PRD §3 데이터 「종류」).
- */
+/** 회차를 더한다. 킥오프는 만들지 않는다 — 캡틴이 「킥오프 정하기」로 정한다 (spec 결정 11, share 10-22). */
 export function addMeetings(
   studyId: number,
   group: ScheduleGroup,
@@ -120,18 +121,27 @@ export function addMeetings(
   const seriesId = input.dates.length > 1 ? `r${stamp}` : undefined;
   const at = (date: string) => zonedInstant(date, input.time, group.time.tz).toISOString();
   update(studyId, (book) => {
-    const rows = book.meetings[group.id] ?? [];
     const added: StoredMeeting[] = input.dates.map((date, i) => ({
       id: `m${stamp}-${i}`,
       scheduledAt: at(date),
       title,
       seriesId,
     }));
-    if (!rows.some(isKickoff)) {
-      const first = [...input.dates].sort()[0];
-      added.push({ id: `m${stamp}-k`, kind: 'kickoff', scheduledAt: at(addDaysYmd(first, -7)), title: '킥오프' });
-    }
-    book.meetings[group.id] = [...rows, ...added];
+    book.meetings[group.id] = [...(book.meetings[group.id] ?? []), ...added];
+  });
+}
+
+/**
+ * 킥오프를 정하거나 옮긴다 — 없으면 만들고, 있으면 시각만 바꾼다(ID 그대로라 찍은 출석이 따라온다).
+ * 서버: PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff `{ scheduledAt }`.
+ */
+export function setKickoff(studyId: number, group: ScheduleGroup, input: { date: string; time: string }) {
+  const scheduledAt = zonedInstant(input.date, input.time, group.time.tz).toISOString();
+  update(studyId, (book) => {
+    const rows = book.meetings[group.id] ?? [];
+    book.meetings[group.id] = rows.some(isKickoff)
+      ? rows.map((m) => (isKickoff(m) ? { ...m, scheduledAt } : m))
+      : [...rows, { id: `m${Date.now()}-k`, kind: 'kickoff', scheduledAt, title: '킥오프' }];
   });
 }
 

@@ -769,7 +769,7 @@ function KickoffForm({
         <p className='text-sm text-fg-secondary'>
           규칙·일정·발표자를 정하는 첫 모임입니다. 네비게이터는 이 날을 고칠 수 없습니다.
         </p>
-        <div className='grid gap-3 sm:grid-cols-[10rem_8rem]'>
+        <div className='grid gap-3 sm:grid-cols-2'>
           <Input
             type='date'
             label='일자'
@@ -895,7 +895,7 @@ function AddForm({
       }
     >
       <div data-anno='schedule:7' className='flex flex-col gap-4 py-2'>
-        <div className='grid gap-3 sm:grid-cols-[10rem_8rem]'>
+        <div className='grid gap-3 sm:grid-cols-2'>
           <div data-anno='schedule:7-1'>
             <Input
               type='date'

@@ -18,6 +18,7 @@ import {
   patchMeetings,
   saveGroupTime,
   saveRules,
+  setKickoff,
 } from './store';
 import { useApplications } from '@/features/applications/queries';
 import type { ApiStudyDetail } from '@/features/studies/types';
@@ -138,6 +139,10 @@ export function ScheduleTab({
             onDirtyChange={onTableDirty}
             onAdd={(input) => {
               addMeetings(studyId, group, input);
+              refresh();
+            }}
+            onSetKickoff={(input) => {
+              setKickoff(studyId, group, input);
               refresh();
             }}
             onSave={(patches) => {

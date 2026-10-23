@@ -25,3 +25,13 @@ Feature: 스터디 관리
     Given /studies/1 에 접속한다
     When "정보" 탭을 클릭한다
     Then 스터디 메타 정보가 보인다
+
+  Scenario: 스터디 상세 — 일정 탭, 스터디 시간 없는 반
+    Given /studies/1?tab=schedule 에 접속한다
+    Then 「아직 이 반의 스터디 시간이 없습니다.」 안내와 「스터디 시간 정하기」 버튼이 보인다
+
+  Scenario: 스터디 상세 — 일정 탭, 킥오프 · 회차 있는 반
+    Given 기본반에 킥오프와 지난 정규 회차 3개가 저장돼 있다 (localStorage bo_schedule:1)
+    And /studies/1?tab=schedule 에 접속한다
+    Then 정보 카드와 일정 표가 보인다
+    And 킥오프가 0회차로 맨 위에 있고 제목 줄 버튼은 「킥오프 수정」이다

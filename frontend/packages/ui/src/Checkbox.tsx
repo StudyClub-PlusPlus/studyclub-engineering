@@ -1,12 +1,15 @@
 'use client';
 
 import { useId } from 'react';
-import type { InputHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 
 import { cx } from './cx';
 
-/** design-system.md §9-2 계열 — 체크박스. 라벨 클릭으로도 토글되며 포커스 링을 공유한다. */
-export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+/**
+ * design-system.md §9-2 계열 — 체크박스. 라벨 클릭으로도 토글되며 포커스 링을 공유한다.
+ * `ref` 는 안쪽 input 에 닿는다(React 19) — 표의 전체 선택처럼 `indeterminate` 를 켤 때 쓴다.
+ */
+export interface CheckboxProps extends Omit<ComponentPropsWithRef<'input'>, 'type'> {
   label: string;
 }
 

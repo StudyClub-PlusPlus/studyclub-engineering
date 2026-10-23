@@ -118,7 +118,7 @@ export function AddMeetingDialog({
       }
     >
       <div className='flex flex-col gap-4 py-2'>
-        <div className='grid gap-3 sm:grid-cols-[10rem_8rem]'>
+        <div className='grid gap-3 sm:grid-cols-2'>
           <Input
             type='date'
             label={draft.repeat === 'none' ? '일자' : '시작 일자'}

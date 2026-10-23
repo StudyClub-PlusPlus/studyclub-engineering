@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Button, Input, Modal, Segmented, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Button, Checkbox, Input, Modal, Segmented, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
 import { AddMeetingDialog } from './AddMeetingDialog';
+import { KickoffDialog } from './KickoffDialog';
 import {
   isKickoff,
   meetingLabel,
@@ -24,6 +25,7 @@ import { dateWithDow, dayLabel, DISPLAY_ZONES, wallParts, zonedInstant, zoneLabe
  *
  * 예정 회차의 칸(일자 · 시각 · 제목 · 발표자)을 바로 고치고, 여러 줄을 「저장」으로 한 번에 보낸다.
  * 지우는 길은 체크박스 하나다. 킥오프와 시작한 회차(흐린 줄)는 고치거나 지울 수 없다 — 출석이 걸려 있다.
+ * 킥오프 일자는 표가 아니라 제목 줄의 「킥오프 정하기 · 수정」으로만 정한다 (spec 결정 11).
  * 백오피스는 옆 메뉴 때문에 본문이 좁아 제목 · 발표자 열을 좁혀 가로 스크롤 없이 둔다 (share 10-18 D12).
  */
 export function ScheduleTable({
@@ -32,6 +34,7 @@ export function ScheduleTable({
   people,
   onSave,
   onAdd,
+  onSetKickoff,
   onDelete,
   onDirtyChange,
   startAdding = false,
@@ -42,6 +45,7 @@ export function ScheduleTable({
   people: Person[];
   onSave: (patches: Record<string, MeetingPatch>) => void;
   onAdd: (input: { dates: string[]; time: string; title: string }) => void;
+  onSetKickoff: (input: { date: string; time: string }) => void;
   onDelete: (ids: string[]) => void;
   onDirtyChange: (dirty: boolean) => void;
   /** 열자마자 회차 추가 창을 띄운다. */
@@ -50,6 +54,7 @@ export function ScheduleTable({
 }) {
   const tz = group.time.tz;
   const [adding, setAdding] = useState(startAdding);
+  const [settingKickoff, setSettingKickoff] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
   /** 화면 문구 없이 스크린리더에만 결과를 알린다. */
@@ -62,7 +67,9 @@ export function ScheduleTable({
 
   const now = Date.now();
   const regular = meetings.filter((m) => !isKickoff(m));
-  const started = (m: Meeting) => new Date(m.scheduledAt).getTime() <= now;
+  const hasKickoff = meetings.some(isKickoff);
+  // 서버는 디스코드에서 일찍 시작한 회차도 시작으로 본다 — 시각이 안 됐어도 고치거나 지우지 않는다
+  const started = (m: Meeting) => m.started === true || new Date(m.scheduledAt).getTime() <= now;
   const upcomingCount = regular.filter((m) => !started(m)).length;
 
   const saved = (m: Meeting): RowDraft => ({
@@ -98,7 +105,6 @@ export function ScheduleTable({
     onDirtyChange(dirty);
   }, [dirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
-
 
   function change(m: Meeting, patch: Partial<RowDraft>) {
     if (!bases.current[m.id]) bases.current[m.id] = saved(m);
@@ -191,6 +197,9 @@ export function ScheduleTable({
             options={DISPLAY_ZONES.map((z) => ({ value: z.iana as string, label: z.label }))}
             onChange={setZone}
           />
+          <Button size='sm' variant='secondary' onClick={() => setSettingKickoff(true)}>
+            {hasKickoff ? '킥오프 수정' : '킥오프 정하기'}
+          </Button>
           {/* 고른 것과 상관없는 일이라 작업 바가 아니라 제목 줄에 둔다 */}
           <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
             회차 추가
@@ -211,6 +220,19 @@ export function ScheduleTable({
             onAdd(input);
             setAdding(false);
             setAnnounce(`회차를 추가했습니다. ${label}`);
+          }}
+        />
+      )}
+
+      {settingKickoff && (
+        <KickoffDialog
+          group={group}
+          existing={meetings}
+          onCancel={() => setSettingKickoff(false)}
+          onSave={(input, label) => {
+            onSetKickoff(input);
+            setSettingKickoff(false);
+            setAnnounce(`킥오프를 정했습니다. ${label}`);
           }}
         />
       )}
@@ -263,10 +285,9 @@ export function ScheduleTable({
               <thead>
                 <tr className='text-left text-xs font-semibold text-fg-muted'>
                   <th className='w-10 py-3 pl-4'>
-                    <input
-                      type='checkbox'
+                    <Checkbox
+                      label=''
                       aria-label='지울 수 있는 회차 전체 선택'
-                      className={CHECKBOX}
                       checked={allChecked}
                       disabled={deletable.length === 0}
                       ref={(el) => {
@@ -290,7 +311,8 @@ export function ScheduleTable({
                   const shown = wallParts(new Date(m.scheduledAt), zone);
                   const v = valueOf(m);
                   const errors = errorsOf(m);
-                  const editable = !past;
+                  // 킥오프는 표에서 고치지 않는다 — 「킥오프 정하기 · 수정」으로만
+                  const editable = !past && !kickoff;
                   const wall = shownWall(v);
                   const cell = 'border-t border-border px-2 py-1.5 align-top';
 
@@ -324,10 +346,9 @@ export function ScheduleTable({
                     >
                       <td className='border-t border-border py-2.5 pl-4 align-middle'>
                         {!kickoff && !past && (
-                          <input
-                            type='checkbox'
+                          <Checkbox
+                            label=''
                             aria-label={`${meetingLabel(m)} 선택`}
-                            className={CHECKBOX}
                             checked={checked.has(m.id)}
                             onChange={() => toggle(m.id)}
                           />
@@ -433,10 +454,6 @@ function sameRow(a: RowDraft, b: RowDraft): boolean {
     a.presenter2 === b.presenter2
   );
 }
-
-/** 회차 선택 체크박스 — 출석부 체크박스와 같은 모양. */
-const CHECKBOX =
-  'block h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 function CellInput({
   type,

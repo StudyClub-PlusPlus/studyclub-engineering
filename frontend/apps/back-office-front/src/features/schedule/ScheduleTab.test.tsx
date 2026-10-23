@@ -110,17 +110,50 @@ describe('일정 탭', () => {
     expect(screen.getByText('아직 회차가 없습니다. 「회차 추가」로 만드세요.')).toBeVisible();
   });
 
-  it('반복으로 회차를 만들면 킥오프가 한 주 전에 함께 생기고, 정규 회차만 센다', async () => {
+  it('회차 추가는 킥오프를 만들지 않고, 정규 회차만 센다', async () => {
     mount();
     await setTimeAndAddMeetings();
 
     expect(screen.getByText('전체 5 · 예정 5')).toBeVisible();
     const rows = screen.getAllByRole('row').slice(1);
-    expect(rows).toHaveLength(6);
-    expect(within(rows[0]).getByText('0')).toBeVisible();
-    // 킥오프는 지울 수 없고 발표자가 없다
-    expect(within(rows[0]).queryByRole('checkbox')).not.toBeInTheDocument();
-    expect(within(rows[0]).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(rows).toHaveLength(5);
+    expect(within(rows[0]).getByText('1')).toBeVisible();
+    expect(screen.getByRole('button', { name: '킥오프 정하기' })).toBeVisible();
+  });
+
+  it('킥오프는 「킥오프 정하기」로만 정한다 — 1회차보다 앞이어야 하고, 표에서는 고치지 않는다', async () => {
+    mount();
+    await setTimeAndAddMeetings();
+    const first = (screen.getByLabelText('1회차 일자 (KST)') as HTMLInputElement).value;
+
+    await userEvent.click(screen.getByRole('button', { name: '킥오프 정하기' }));
+    let dialog = screen.getByRole('dialog', { name: '킥오프 정하기' });
+    // 처음 값은 1회차 한 주 전 · 반의 스터디 시각
+    expect(within(dialog).getByLabelText(/일자/)).not.toHaveValue(first);
+    expect(within(dialog).getByLabelText(/시작 시각/)).toHaveValue('20:30');
+
+    const date = within(dialog).getByLabelText(/일자/);
+    await userEvent.clear(date);
+    await userEvent.type(date, first);
+    await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(within(dialog).getByText('이 날에는 이미 1회차가 있습니다.')).toBeVisible();
+
+    await userEvent.clear(date);
+    await userEvent.type(date, '2020-01-01');
+    await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    // 지난 날도 받는다. 킥오프는 맨 위 0회차 — 지울 수 없고, 칸을 고치지 않고, 발표자가 없다
+    const kickoff = screen.getAllByRole('row')[1];
+    expect(within(kickoff).getByText('0')).toBeVisible();
+    expect(within(kickoff).queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(within(kickoff).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(kickoff).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.getByText('전체 5 · 예정 5')).toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: '킥오프 수정' }));
+    dialog = screen.getByRole('dialog', { name: '킥오프 수정' });
+    expect(within(dialog).getByLabelText(/일자/)).toHaveValue('2020-01-01');
   });
 
   it('발표자는 승인된 신청자 중에서 고르고, 같은 사람을 두 칸에 넣으면 저장이 막힌다', async () => {

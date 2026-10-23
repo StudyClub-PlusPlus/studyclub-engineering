@@ -88,7 +88,7 @@ export function GroupTimeDialog({
             스터디 시간
           </label>
           <div className='flex flex-wrap items-center gap-2'>
-            <div className='w-40'>
+            <div className='w-48'>
               <Input
                 size='sm'
                 type='time'
@@ -126,8 +126,9 @@ export function GroupTimeDialog({
             <span className='font-medium text-error-600'>요일을 하나 이상 골라 주세요.</span>
           ) : (
             <span className='text-fg-muted'>
-              스터디 시간만 {editing ? '바꿉니다. 이미 있는 회차는 그대로입니다' : '정합니다'}. 회차는 일정 표의 「회차
-              추가」로 만듭니다.
+              스터디 시간만 {editing ? '바꿉니다. 이미 있는 회차는 그대로입니다' : '정합니다'}.
+              <br />
+              회차는 일정 표의 「회차 추가」로 만듭니다.
             </span>
           )}
         </p>

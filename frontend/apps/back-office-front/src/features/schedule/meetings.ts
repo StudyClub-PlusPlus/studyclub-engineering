@@ -39,6 +39,8 @@ export type Meeting = {
   /** 발표자 — 그 반 참가자 ID. 비었으면 ''. */
   presenter1: string;
   presenter2: string;
+  /** 서버가 판정한 「시작한 회차」 — 시각이 지났거나 디스코드에서 일찍 시작했다. 없으면 시각으로만 본다. */
+  started?: boolean;
 };
 
 /** 발표자로 고를 수 있는 그 반 참가자. */
@@ -176,7 +178,7 @@ export function planDraft(
   return { errors, plan: { dates: keep, skipped } };
 }
 
-/** 회차 한 줄을 고칠 때의 검사. 자기 자신과는 겹침을 따지지 않는다. */
+/** 회차 한 줄을 고칠 때의 검사. 자기 자신과는 겹침을 따지지 않는다. 킥오프는 표에서 고치지 않는다 — `validateKickoff`. */
 export function validateEdit(
   edit: { date: string; time: string; title: string },
   selfId: string,
@@ -185,15 +187,24 @@ export function validateEdit(
   now = new Date(),
 ): DraftErrors {
   const others = existing.filter((m) => m.id !== selfId);
-  const errors = planDraft({ ...edit, repeat: 'none', until: '', weekdays: [] }, others, timeZone, now).errors;
-  const self = existing.find((m) => m.id === selfId);
-  const firstRegular = others
-    .filter((m) => !isKickoff(m))
-    .map((m) => m.date)
-    .sort()[0];
-  if (self && isKickoff(self) && !errors.date && firstRegular && edit.date >= firstRegular) {
+  return planDraft({ ...edit, repeat: 'none', until: '', weekdays: [] }, others, timeZone, now).errors;
+}
+
+/**
+ * 「킥오프 정하기 · 수정」 검사. 지난 날도 받는다 — 운영 중인 반의 킥오프를 나중에 적는다.
+ * 1회차 날이나 그 뒤면 막고(서버 400), 다른 회차와 같은 날이면 막는다(서버 409 MEETING_DATE_CONFLICT).
+ */
+export function validateKickoff(input: { date: string; time: string }, existing: Dated[]): DraftErrors {
+  const errors: DraftErrors = {};
+  if (!input.date) errors.date = '일자를 정해 주세요.';
+  if (!input.time) errors.time = '시작 시각을 정해 주세요.';
+  if (errors.date) return errors;
+  const regular = existing.filter((m) => !isKickoff(m));
+  const firstRegular = regular.map((m) => m.date).sort()[0];
+  const same = regular.find((m) => m.date === input.date);
+  if (same) errors.date = `이 날에는 이미 ${meetingLabel(same)}가 있습니다.`;
+  else if (firstRegular && input.date >= firstRegular)
     errors.date = `킥오프는 1회차(${dayLabel(firstRegular)})보다 앞이어야 합니다.`;
-  }
   return errors;
 }
 

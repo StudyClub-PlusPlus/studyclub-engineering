@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { planDraft, previewOf, validateEdit, type Meeting, type MeetingDraft } from './meetings';
+import { planDraft, previewOf, validateEdit, validateKickoff, type Meeting, type MeetingDraft } from './meetings';
 import { wallParts, zonedInstant } from './time';
 
 const NOW = new Date('2026-10-22T00:00:00Z');
@@ -98,19 +98,31 @@ describe('회차 추가 검사', () => {
 });
 
 describe('회차 수정 검사', () => {
-  it('킥오프는 1회차보다 앞이어야 한다', () => {
-    expect(validateEdit({ date: '2026-11-04', time: '19:00', title: '' }, 'k', existing, KST, NOW).date).toBe(
-      '이 날에는 이미 1회차가 있습니다.',
-    );
-    expect(validateEdit({ date: '2026-11-05', time: '19:00', title: '' }, 'k', existing, KST, NOW).date).toBe(
-      '킥오프는 1회차(11/4(수))보다 앞이어야 합니다.',
-    );
-  });
-
   it('자기 자신과는 겹침을 따지지 않는다. 제목은 50자까지', () => {
     expect(validateEdit({ date: '2026-11-04', time: '21:00', title: '' }, 'm1', existing, KST, NOW)).toEqual({});
     expect(
       validateEdit({ date: '2026-11-04', time: '21:00', title: '가'.repeat(51) }, 'm1', existing, KST, NOW).title,
     ).toBe('제목은 50자까지 쓸 수 있습니다.');
+  });
+});
+
+describe('킥오프 정하기 검사', () => {
+  it('1회차 날이나 그 뒤면 막는다. 다른 회차와 같은 날도 막는다', () => {
+    expect(validateKickoff({ date: '2026-11-04', time: '19:00' }, existing).date).toBe(
+      '이 날에는 이미 1회차가 있습니다.',
+    );
+    expect(validateKickoff({ date: '2026-11-05', time: '19:00' }, existing).date).toBe(
+      '킥오프는 1회차(11/4(수))보다 앞이어야 합니다.',
+    );
+  });
+
+  it('지난 날도, 지금 킥오프와 같은 날도 받는다. 정규 회차가 없으면 아무 날이나', () => {
+    expect(validateKickoff({ date: '2020-01-01', time: '19:00' }, existing)).toEqual({});
+    expect(validateKickoff({ date: '2026-10-28', time: '21:00' }, existing)).toEqual({});
+    expect(validateKickoff({ date: '2027-01-01', time: '19:00' }, [])).toEqual({});
+    expect(validateKickoff({ date: '', time: '' }, [])).toEqual({
+      date: '일자를 정해 주세요.',
+      time: '시작 시각을 정해 주세요.',
+    });
   });
 });
