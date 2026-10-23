@@ -169,9 +169,8 @@ public class ParticipantWithdrawalService {
         for (Long groupId : lockedGroupIds) {
             for (StudyMeeting meeting :
                     studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)) {
-                for (StudyParticipant participant : withdrawn) {
-                    meeting.releasePresenter(participant.getId(), now);
-                }
+                meeting.releasePresenters(
+                        withdrawn.stream().map(StudyParticipant::getId).toList(), now);
             }
         }
     }

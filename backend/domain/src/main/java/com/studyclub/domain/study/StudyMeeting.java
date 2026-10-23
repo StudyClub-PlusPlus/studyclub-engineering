@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Collection;
 
 @Entity
 @Table(
@@ -185,6 +186,13 @@ public class StudyMeeting extends BaseEntity {
             changed = true;
         }
         return changed;
+    }
+
+    /** {@link #releasePresenter} 를 여러 명에게 — 분반을 떠나는 사람이 여럿일 때 (참여 중단 · 회원 탈퇴 · 반 이동). */
+    public void releasePresenters(Collection<Long> participantIds, Instant now) {
+        for (Long participantId : participantIds) {
+            releasePresenter(participantId, now);
+        }
     }
 
     private void assertPresenterSlotOpen(int slot, Instant now) {

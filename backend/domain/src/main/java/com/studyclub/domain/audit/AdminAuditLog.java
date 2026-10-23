@@ -1,6 +1,7 @@
 package com.studyclub.domain.audit;
 
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
@@ -104,6 +105,22 @@ public class AdminAuditLog extends BaseEntity {
         return new AdminAuditLog(
                 actorAccountId,
                 AdminAuditAction.WITHDRAW,
+                targetAccountId,
+                before.name(),
+                String.valueOf(participantId));
+    }
+
+    /**
+     * 명부 행의 역할 변경. 실제로 바뀐 행만 남긴다 — 같은 역할 요청은 호출자가 거른다.
+     *
+     * <p>BEFORE 에 변경 전 역할, AFTER 에 명부 행 ID 를 둔다 — {@link #withdraw} 와 같은 이유. 역할은 둘뿐이라 변경 후 값은
+     * BEFORE 의 반대다.
+     */
+    public static AdminAuditLog participantRoleChange(
+            Long actorAccountId, Long targetAccountId, Long participantId, ParticipantRole before) {
+        return new AdminAuditLog(
+                actorAccountId,
+                AdminAuditAction.PARTICIPANT_ROLE,
                 targetAccountId,
                 before.name(),
                 String.valueOf(participantId));
