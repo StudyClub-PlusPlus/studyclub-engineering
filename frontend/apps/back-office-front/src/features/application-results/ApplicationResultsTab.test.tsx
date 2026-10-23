@@ -31,14 +31,14 @@ const data: ApplicationResultsResponse = {
     { id: 2, recruitmentId: 7, discordNickname: '별명2', email: null, answers: { choice: ['백엔드'], empty: [] } },
   ],
 };
-function mount(response = data, status = 200, canEditForm = false) {
+function mount(response = data, status = 200) {
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), { status }));
   vi.stubGlobal('fetch', fetch);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const onEditForm = vi.fn();
   const view = render(
     <QueryClientProvider client={client}>
-      <ApplicationResultsTab studyId={20} canEditForm={canEditForm} onEditForm={onEditForm} />
+      <ApplicationResultsTab studyId={20} onEditForm={onEditForm} />
     </QueryClientProvider>,
   );
   return { fetch, client, onEditForm, ...view };
@@ -111,14 +111,12 @@ describe('신청 결과', () => {
     await userEvent.click(screen.getByRole('tab', { name: '질문별' }));
     expect(url.replace).toHaveBeenCalledWith('/studies/20?tab=results&recruitmentId=7', { scroll: false });
   });
-  it.each([true, false])('추가 질문이 없으면 모집 전(%s)에만 질문 추가를 안내한다', async (canEdit) => {
-    const { onEditForm } = mount({ ...data, questions: [] }, 200, canEdit);
+  it('추가 질문이 없으면 질문 추가를 안내한다 — 고칠 수 있는지는 저장 때 서버가 판정한다', async () => {
+    const { onEditForm } = mount({ ...data, questions: [] });
     await screen.findByText('이 스터디는 신청 폼에 추가 질문이 없습니다.');
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-    if (canEdit) {
-      await userEvent.click(screen.getByRole('button', { name: '신청 폼에서 질문 추가' }));
-      expect(onEditForm).toHaveBeenCalledOnce();
-    } else expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '신청 폼에서 질문 추가' }));
+    expect(onEditForm).toHaveBeenCalledOnce();
   });
   it('신청이 없으면 빈 상태를 표시한다', async () => {
     mount({ ...data, respondentCount: 0, applications: [] });

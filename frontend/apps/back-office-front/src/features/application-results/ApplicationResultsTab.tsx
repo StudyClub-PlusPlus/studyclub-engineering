@@ -22,15 +22,7 @@ const VIEW_OPTIONS = [
   { value: 'individual', label: '응답자별' },
 ];
 
-export function ApplicationResultsTab({
-  studyId,
-  canEditForm,
-  onEditForm,
-}: {
-  studyId: number;
-  canEditForm: boolean;
-  onEditForm: () => void;
-}) {
+export function ApplicationResultsTab({ studyId, onEditForm }: { studyId: number; onEditForm: () => void }) {
   const [filters, setFilters] = useUrlState(DEFAULTS, ALLOWED);
   const recruitmentId = filters.recruitmentId;
   const validRecruitment =
@@ -55,14 +47,15 @@ export function ApplicationResultsTab({
       </p>
     );
   const status = query.error instanceof ApiError ? query.error.status : undefined;
-  if (query.error && (!query.data || [400, 401, 403, 404, 422].includes(status ?? 0))) {
+  const known = status !== undefined && status in ERROR_MESSAGES;
+  if (query.error && (!query.data || known)) {
     const message = ERROR_MESSAGES[status ?? 0] ?? '결과를 불러오지 못했습니다. 다시 시도해 주세요.';
     return (
       <div className='py-10 text-center'>
         <p role='alert' className='text-sm text-fg-secondary'>
           {message}
         </p>
-        {![400, 401, 403, 404, 422].includes(status ?? 0) && (
+        {!known && (
           <Button variant='secondary' className='mt-3' onClick={() => void query.refetch()}>
             다시 시도
           </Button>
@@ -90,11 +83,10 @@ export function ApplicationResultsTab({
       <div className='rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
         {refreshError}
         <p>이 스터디는 신청 폼에 추가 질문이 없습니다.</p>
-        {canEditForm && (
-          <Button variant='secondary' className='mt-3' onClick={onEditForm}>
-            신청 폼에서 질문 추가
-          </Button>
-        )}
+        {/* 고칠 수 있는지는 서버가 저장 때 판정한다(403·409 면 폼이 읽기 전용이 된다). 상태로 다시 판정하지 않는다. */}
+        <Button variant='secondary' className='mt-3' onClick={onEditForm}>
+          신청 폼에서 질문 추가
+        </Button>
       </div>
     );
   return (

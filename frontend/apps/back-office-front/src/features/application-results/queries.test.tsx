@@ -7,10 +7,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { applicationResultKeys } from './queries';
 import { useSaveApplicationForm } from '@/features/application-form/queries';
 import { toFormValues } from '@/features/application-form/schema';
+import { applicationKeys } from '@/features/applications/queries';
 
 afterEach(() => vi.unstubAllGlobals());
 
-it('신청 폼 저장 후 해당 스터디의 모든 모집 회차 결과를 갱신 대상으로 만든다', async () => {
+it('신청 폼 저장 후 해당 스터디의 신청자 목록과 모든 모집 회차 결과를 갱신 대상으로 만든다', async () => {
   const client = new QueryClient();
   const current = applicationResultKeys.list(20);
   const previous = applicationResultKeys.list(20, '7');
@@ -31,4 +32,9 @@ it('신청 폼 저장 후 해당 스터디의 모든 모집 회차 결과를 갱
   expect(client.getQueryState(current)?.isInvalidated).toBe(true);
   expect(client.getQueryState(previous)?.isInvalidated).toBe(true);
   expect(client.getQueryState(unrelated)?.isInvalidated).toBe(false);
+});
+
+it('현재 회차 결과는 신청자 탭과 같은 캐시를 쓰고, 고른 회차는 그 아래에 둔다', () => {
+  expect(applicationResultKeys.list(20)).toEqual(applicationKeys.list(20));
+  expect(applicationResultKeys.list(20, '7').slice(0, -1)).toEqual(applicationKeys.list(20));
 });

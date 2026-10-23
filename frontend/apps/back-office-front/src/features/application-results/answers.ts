@@ -1,9 +1,10 @@
 import type { ApplicationResult, ResultQuestion } from './types';
 
 export function answerValues(value: unknown): string[] {
-  return (Array.isArray(value) ? value : [value]).filter(
-    (answer): answer is string => typeof answer === 'string' && answer.trim() !== '',
-  );
+  return (Array.isArray(value) ? value : [value])
+    .filter((answer): answer is string => typeof answer === 'string')
+    .map((answer) => answer.trim())
+    .filter((answer) => answer !== '');
 }
 
 export function answerText(value: string | string[] | undefined): string {
@@ -14,7 +15,7 @@ export function summarizeAnswers(question: ResultQuestion, applications: Applica
     .map((application) => answerValues(application.answers[question.id]))
     .filter((values) => values.length > 0);
   const choice = ['RADIO', 'CHECKBOX', 'SELECT'].includes(question.type);
-  const options = [...new Set(question.options ?? [])];
+  const options = [...new Set((question.options ?? []).map((option) => option.trim()))];
   const tallies = options.map((option) => ({
     option,
     count: answers.filter((values) => values.includes(option)).length,

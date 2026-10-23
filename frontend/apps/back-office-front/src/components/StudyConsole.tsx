@@ -22,7 +22,7 @@ const TABS = [
   { key: 'attendance', label: '출석' },
 ] as const;
 
-const TAB_DEFAULTS = { tab: 'info', resultsView: '', recruitmentId: '' };
+const TAB_DEFAULTS = { tab: 'info' };
 const TAB_ALLOWED = { tab: TABS.map(({ key }) => key) };
 
 const categoryLabel = (code: string) => CATEGORY_OPTIONS.find((c) => c.value === code)?.label ?? code;
@@ -92,7 +92,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
             type='button'
             disabled={savingForm}
             onClick={() => {
-              if (tb.key !== tab) setUrl({ tab: tb.key, resultsView: '', recruitmentId: '' });
+              if (tb.key !== tab) setUrl({ tab: tb.key }, { reset: true });
             }}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
@@ -112,8 +112,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
         {tab === 'results' && (
           <ApplicationResultsTab
             studyId={detail.id}
-            canEditForm={detail.status === 'DRAFT'}
-            onEditForm={() => setUrl({ tab: 'form', resultsView: '', recruitmentId: '' })}
+            onEditForm={() => setUrl({ tab: 'form' }, { reset: true })}
           />
         )}
         {tab === 'attendance' && (

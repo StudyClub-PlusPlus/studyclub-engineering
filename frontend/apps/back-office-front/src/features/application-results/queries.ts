@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { ApplicationResultsResponse } from './types';
-import { studyKeys } from '@/features/studies/queries';
+import { applicationKeys } from '@/features/applications/queries';
 import { http, qs } from '@/lib/http';
 
+// 신청자 탭과 같은 API 다. 현재 회차는 같은 키를 쓰고 회차를 고르면 그 아래에 둬서, 한쪽을 갱신하면 둘 다 갱신된다.
 export const applicationResultKeys = {
-  all: (studyId: number) => [...studyKeys.detail(studyId), 'application-results'] as const,
+  all: (studyId: number) => applicationKeys.list(studyId),
   list: (studyId: number, recruitmentId?: string) =>
-    [...applicationResultKeys.all(studyId), recruitmentId ?? 'current'] as const,
+    recruitmentId ? ([...applicationKeys.list(studyId), recruitmentId] as const) : applicationKeys.list(studyId),
 };
 
 export function useApplicationResults(studyId: number, recruitmentId?: string, enabled = true) {

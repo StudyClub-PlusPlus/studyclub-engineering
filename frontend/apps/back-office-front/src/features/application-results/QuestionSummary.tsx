@@ -49,7 +49,7 @@ export function QuestionSummary({
             <div className={choice ? 'mt-4' : undefined}>
               {choice && (
                 <h4 className='mb-2 text-sm font-semibold'>
-                  {question.allowOther ? '기타 답변' : '현재 보기에 없는 답변'}
+                  {question.allowOther ? '기타 · 현재 보기에 없는 답변' : '현재 보기에 없는 답변'}
                 </h4>
               )}
               <ol className='list-decimal space-y-2 pl-5 text-sm text-fg-secondary'>

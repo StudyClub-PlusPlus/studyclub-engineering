@@ -41,6 +41,14 @@ describe('신청 답변 집계', () => {
     expect(summary.tallies[0].count).toBe(1);
     expect(summary.texts).toEqual(['직접 입력']);
   });
+  it('앞뒤 공백이 달라도 같은 보기로 센다', () => {
+    const summary = summarizeAnswers({ ...question, options: ['A', ' B '] }, applications([['A '], ' B', '  A']));
+    expect(summary.tallies).toEqual([
+      { option: 'A', count: 2 },
+      { option: 'B', count: 1 },
+    ]);
+    expect(summary.texts).toEqual([]);
+  });
   it('긴 답변의 줄바꿈과 동일한 답변을 낸 사람 수를 보존한다', () => {
     const answer = '첫 줄\n둘째 줄';
     expect(summarizeAnswers({ ...question, type: 'TEXTAREA' }, applications([answer, answer])).texts).toEqual([
