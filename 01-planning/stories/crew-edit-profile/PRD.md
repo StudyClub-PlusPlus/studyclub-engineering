@@ -225,7 +225,7 @@ erDiagram
 |---|---|---|---|
 | FE | core-front `/my` 내 정보 (`ProfileCard`) | 있음 — 닉네임 · 시간대 저장, 마케팅 수신 API 연결 | 디스코드 칸 (아래 API 가 생기면) |
 | BE | `PATCH /api/me` · 마케팅 수신 `GET` · `PUT` | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
-| BE | `POST /api/me/discord/link` | 스펙작성중 · 컨트롤러 없음 | [crew-submit-application](../crew-submit-application/PRD.md#개발-범위)과 같은 일 |
+| BE | `POST /api/me/discord/link` | 구현완료 | [crew-submit-application](../crew-submit-application/PRD.md#개발-범위)과 같은 일 |
 
 ### 데이터
 

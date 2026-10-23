@@ -41,6 +41,8 @@ flowchart LR
 
 <!-- spec:start template -->
 
+> 삭제 확인 단계에서는 취소 버튼에 실제 포커스가 잡히며 Enter로 편집 화면에 돌아간다
+>
 > 문구를 **보고, 더하고, 고치고, 지운다.** 추가 팝업이 곧 편집 팝업이다 — 전문을 보는 화면을 따로 두지 않는다
 >
 > 발송 이력과 같은 화면의 두 탭이다 — 사이드바 「알림」 하나 아래 들어간다
@@ -114,11 +116,10 @@ flowchart LR
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front `/notification-templates` 목록 | 있음 — 이벤트 · 채널 · 제목 · 마지막 수정 | 열 이름 「이벤트」 → 「알림 조건」 (완료 기준 1) |
-| FE | back-office-front `/notification-templates/[id]` 전문 | 있음 — 단건 API 없이 목록에서 고른다 | 없앰 — 목록에서 조건을 누르면 수정 팝업 (완료 기준 3) |
+| FE | back-office-front `/notification-templates` 목록 | 구현완료 — 알림 조건 · 채널 · 제목 · 마지막 수정 | 없음 |
+| FE | back-office-front `/notification-templates/[id]` 전문 | 없앰 — 목록에서 조건을 누르면 수정 팝업 | 없음 |
 | FE | 사이드바 「알림」 하나 · 템플릿 / 발송 이력 두 탭 | 구현완료 — 사이드바 「알림」 한 메뉴, 두 탭 (템플릿은 기존 `/notification-templates`, 발송 이력은 `/notifications`) | 없음. 프로토 주소(`/notifications/templates`)와는 템플릿 경로만 다르다 |
-| FE | 템플릿 추가 버튼 · 추가 팝업 | 없음 | 프로토 `proto/console/notifications/templates` 대로. 모든 조건을 선택지로 (완료 기준 2·5) |
-| FE | 수정 팝업 · 삭제 확인 | 없음 | 추가 팝업과 같은 폼, 값이 채워진 채. 삭제는 팝업 안 확인 단계 (완료 기준 3·4) |
+| FE | 템플릿 추가 · 수정 팝업 · 삭제 확인 | 구현완료 — 추가 팝업이 곧 수정 팝업, 삭제는 팝업 안 확인 단계. 조건 선택지는 BE 이벤트가 있는 「회원가입」만. API 는 MSW (`TODO(api)`) | BE `POST`·`PUT`·`DELETE` 가 붙으면 실제 호출 확인. 「회원 탈퇴」는 BE 이벤트가 생길 때 선택지 한 줄 추가 |
 | BE | `GET /api/admin/notification-templates` | 구현완료 — `AdminNotificationController` · 통합 테스트 있음 | 없음 |
 | BE | `POST /api/admin/notification-templates` | 없음 · **스펙 없음** | [notification 스펙](../../../specs/notification/spec.md)에 계약부터 쓴다 → 구현 |
 | BE | `PUT` · `DELETE /api/admin/notification-templates/{id}` | 없음 · **스펙 없음** | 스펙 → 구현. 삭제해도 발송 이력은 남긴다 — 이력이 템플릿을 참조하면 끊기지 않게 |

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { stubApiMe } from '../stubApiMe';
+
 // ─── 페이지 로드 ───────────────────────────────────────────────────────────────
 
 test.describe('홈', () => {
@@ -125,6 +127,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
 
   test('로그인 + 디스코드 연동 시 신청 다이얼로그 열림', async ({ page }) => {
     // 클라이언트 인증 및 디스코드 연동 세션 주입
+    await stubApiMe(page);
     await page.addInitScript(() => {
       localStorage.setItem(
         'sc_user',
@@ -136,7 +139,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           role: 'MEMBER',
         }),
       );
-      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('msw-discord-linked', 'true');
       localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
     });
 
@@ -147,6 +150,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
   });
 
   test('폼 미제출 시 에러 메시지 표시', async ({ page }) => {
+    await stubApiMe(page);
     await page.addInitScript(() => {
       localStorage.setItem(
         'sc_user',
@@ -158,7 +162,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           role: 'MEMBER',
         }),
       );
-      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('msw-discord-linked', 'true');
       localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
     });
 
@@ -173,6 +177,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
   });
 
   test('Esc 키로 다이얼로그 닫힘', async ({ page }) => {
+    await stubApiMe(page);
     await page.addInitScript(() => {
       localStorage.setItem(
         'sc_user',
@@ -184,7 +189,7 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           role: 'MEMBER',
         }),
       );
-      localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
+      localStorage.setItem('msw-discord-linked', 'true');
       localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
     });
 
