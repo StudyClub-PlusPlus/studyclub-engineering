@@ -240,7 +240,7 @@ erDiagram
 |---|---|---|---|
 | FE | back-office-front 신청자 탭 | 있음 — 다른 화면. `ApplicationsTab`(신청 결과 API)으로 대기 · 승인 · 거절 심사 · 이전 참여 · 완주율 · 신청서를 보인다. `CrewTab` 은 mock 이고 쓰지 않는다 | 프로토대로 바꾼다 — 참여 크루 명단(디스코드 닉네임 · 이메일 · 지역 · 반 · 역할) · 반 · 지역 필터 · 체크박스 일괄 변경 · 저장 바. 심사 · 완주율 칸은 뺀다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
 | BE | `GET /api/admin/studies/{studyId}/applications` 의 `completionRate` | 구현완료 | 신청자 탭에서 쓰지 않는다. 다른 화면이 쓰지 않으면 응답에서 뺄지 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
-| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 스펙작성중 · 컨트롤러 없음 | [study-group 스펙](../../../specs/study-group/spec.md) 확정 → 구현 |
+| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 구현완료 · 구현완료 | 없음 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 

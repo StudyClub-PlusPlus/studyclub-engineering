@@ -13,6 +13,10 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByStudyId(Long studyId);
 
+    /** 백오피스 참여 명단 — 고른 상태의 행만 (specs/study-group/spec.md 「참여 명단」). */
+    List<StudyParticipant> findByStudyIdAndStatusIn(
+            Long studyId, Collection<ParticipantStatus> statuses);
+
     /** 진행 중 기수의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용 (specs/dashboard/spec.md 2-1). */
     @Query(
             "SELECT p FROM StudyParticipant p, Study s"
