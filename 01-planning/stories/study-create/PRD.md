@@ -272,7 +272,7 @@ erDiagram
 
 - 범위 밖: 공개, 수정·삭제, 신청 폼, 반 편성, 커리큘럼·후기·통계 입력
 - 썸네일은 고르면 바로 올리고(`thumbnailFileId`) 저장 때 스터디에 붙인다
-- 시간대는 `STUDY.TIMEZONE`(V41) 에 저장한다. 비우면 미정
+- 시간대는 `STUDY.TIMEZONE`(V40) 에 저장한다. 비우면 미정
 
 ## 3. 시스템 요건
 
@@ -286,7 +286,7 @@ erDiagram
 |---|---|---|---|
 | FE | back-office-front 「스터디 등록」 창 (`StudyCreateDialog`) | 있음 — `POST /api/admin/studies` 연결 · 시간대 · 썸네일 칸 | 없음 |
 | BE | `POST /api/admin/studies` | 구현완료 | 없음 |
-| BE | 시간대 · 썸네일 저장 | 구현완료 — `STUDY.TIMEZONE`(V41) · `thumbnailFileId` ([study 스펙](../../../specs/study/spec.md)) | 없음 |
+| BE | 시간대 · 썸네일 저장 | 구현완료 — `STUDY.TIMEZONE`(V40) · `thumbnailFileId` ([study 스펙](../../../specs/study/spec.md)) | 없음 |
 
 ### 데이터
 

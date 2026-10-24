@@ -16,7 +16,7 @@
 > 갱신: 2026-09-29 — **작성자(`CREATED_BY`) 추가 (제안 단계, 백엔드 미반영)**: 스터디를 등록한 계정을 서버가 기록한다. 운영 콘솔 목록에 「작성자」 열을 넣고 「출석률」 열을 뺐다 — [captain-list-all-studies PRD](../../01-planning/stories/captain-list-all-studies/PRD.md)
 > 갱신: 2026-09-30 — 스터디 상세 FE 구현 완료(`StudyDetailView` + `useStudyDetail` 훅이 `GET /api/studies/{studyId}` 를 직접 호출). `sort` 파라미터 없음 확정 — 목록은 항상 최신순 고정.
 > 갱신: 2026-10-05 — 스키마 정리 반영(V26~V30): 정원은 최신 모집 회차(`RECRUITMENT_CAPACITY`), `SLUG`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT` 삭제, `CREATED_BY` 추가. 목록 단계 필터도 최신 회차 신청 수 기준
-> 갱신: 2026-10-24 — `timezone` 구현(V41 `STUDY.TIMEZONE`). 등록·수정(사이트·백오피스)이 받고 상세가 준다. 목록·시간대 필터는 고른 값이 있으면 그 값, 없으면 `schedule` 문구로 판정한다
+> 갱신: 2026-10-24 — `timezone` 구현(V40 `STUDY.TIMEZONE`). 등록·수정(사이트·백오피스)이 받고 상세가 준다. 목록·시간대 필터는 고른 값이 있으면 그 값, 없으면 `schedule` 문구로 판정한다
 
 ## 엔드포인트 목록
 
@@ -646,7 +646,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
   키를 빼면 그대로 둔다. 나머지 필드는 `null` 이면 바꾸지 않는다
 - **정원은 최신 모집 회차의 `STUDY_RECRUITMENT.RECRUITMENT_CAPACITY` 에 저장한다** (V26 에서 `STUDY.CAPACITY` 를 옮기고 삭제).
   목록 응답·목록 단계 필터(JPQL)·상세의 모집 상태 판정이 모두 같은 회차의 정원과 신청 수를 비교한다. 모집 회차가 없으면 정원 수정은 404 다
-- `timezone` 은 `STUDY.TIMEZONE`(V41) 에 저장한다. `KST`·`PST`·`BOTH` 밖의 값은 본문 변환 단계에서 400 이다(필드 사유 없이 `INVALID_INPUT`) — `category` 와 같다
+- `timezone` 은 `STUDY.TIMEZONE`(V40) 에 저장한다. `KST`·`PST`·`BOTH` 밖의 값은 본문 변환 단계에서 400 이다(필드 사유 없이 `INVALID_INPUT`) — `category` 와 같다
 - 운영 콘솔(정보 탭)은 **바뀐 칸만** 보낸다. 마감이 지난 스터디의 다른 칸을 고칠 때 지난 `recruitDeadline` 을 다시 보내면 400 이다
 - 프론트엔드 사용처: `frontend/apps/back-office-front/src/components/StudyInfoTab.tsx` (DELETE 도 같은 파일) — 호출은 `features/studies/queries.ts` `useUpdateStudy`. `/api/admin/studies/{studyId}` 로 옮긴다
 
