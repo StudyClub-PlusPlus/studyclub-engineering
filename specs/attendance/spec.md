@@ -174,9 +174,11 @@ STUDY_ATTENDANCE {
 ```
 개인 출석률(participant) =
   분모 = 0이면 null ("–")
-  else Σ(가중치) / countable_meetings
+  else Σ(가중치) / checked_meetings
 
-가중치: PRESENT=1.0, EXCUSED=1.0, LATE=0.5, ABSENT=0
+가중치: PRESENT=1.0, LATE=0.5, ABSENT=0
+checked_meetings = countable_meetings 중 출석 행이 PRESENT · LATE · ABSENT 인 회차
+                   // 휴가(EXCUSED)는 분모에서 뺀다 · 출석 행이 없는 회차(미체크)도 세지 않는다
 upper_bound = participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED') ? now() : participant.left_at
 countable_meetings = 스터디의 미팅 중
   meeting_type = 'REGULAR'            // 킥오프는 출석만 남기고 출석률에서 뺀다 (study-meeting 스펙 결정 11)
@@ -193,7 +195,9 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 분모에서 아예 제외된다** — 하차 이후까지 결석으로 깔면 "하차"와 "결석"이라는 서로 다른 사실이 같은
 숫자로 섞인다(2026-10-01, 회원 탈퇴 구현 중 수정).
 
-검증: 수아(출석·지각) = (1+0.5)/2 = 75%, 시우(출석만) = 1/1 = 100%.
+검증: 수아(출석·지각) = (1+0.5)/2 = 75%, 시우(출석만) = 1/1 = 100%, 하린(출석·휴가·결석) = 1/2 = 50%, 휴가만 = null(「–」).
+
+> 2026-10-24 — 출석명부 PRD 3-4 에 맞췄다: 분모는 체크된 회차뿐, 휴가는 분모에서 뺀다. 전에는 휴가를 출석(1.0)으로, 출석 행이 없는 회차를 결석(0)으로 셌다. 화면 미리보기(core-front · 백오피스)와 대시보드가 같은 식을 쓴다 (`AttendanceRateCalculator`).
 추가 검증(하차): 10회차 중 1~3회 출석 후 하차 → upper_bound=3회차 → 3/3=100%. 1~5회 중 3회 출석 후
 하차 → 3/5=60%. (하차 이후 회차를 결석으로 깔면 3/10=30%가 되어 결석과 하차가 섞인다.)
 
