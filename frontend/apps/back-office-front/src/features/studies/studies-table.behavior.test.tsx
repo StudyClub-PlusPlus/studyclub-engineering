@@ -2,7 +2,8 @@ import type { Study } from '@studyclub/mock';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { StudiesTable, entryFilters } from '@/features/studies/StudiesTable';
+import { entryFilters } from '@/features/studies/list-filters';
+import { StudiesTable } from '@/features/studies/StudiesTable';
 
 // 목록은 필터·정렬을 URL 로 든다(useUrlState). 테스트에는 Next 라우터가 없어 메모리 URL 로 대신한다.
 const memoryUrl = vi.hoisted(() => {
@@ -108,7 +109,7 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
 
   it('모집중 전체 보기 — 개설만, 모집중 먼저 마감 시각 순(없으면 끝), 그다음 마감. 주소는 목록 필터로 바뀐다', async () => {
     memoryUrl.set('view=recruitment');
-    render(<StudiesTable studies={STUDIES} />);
+    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
 
     expect(titles()).toEqual(['모집 이른 시각', '모집 늦은 시각', '모집 마감 없음', '마감 지남', '마감 정원']);
     await waitFor(() => expect(urlParams()).toEqual({ status: 'OPEN', sort: 'recruitment' }));
@@ -116,7 +117,7 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
 
   it('카테고리 진행중 — 그 카테고리의 진행 중을 이름순으로', async () => {
     memoryUrl.set('view=ongoing&category=AI_ML');
-    render(<StudiesTable studies={STUDIES} />);
+    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
 
     expect(titles()).toEqual(['가 진행', '하 진행']);
     await waitFor(() =>
@@ -126,14 +127,14 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
 
   it('카테고리 누적 — 작성 중을 뺀 전체를 최근 등록순으로', () => {
     memoryUrl.set('view=cumulative&category=DATA');
-    render(<StudiesTable studies={STUDIES} />);
+    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
 
     expect(titles()).toEqual(['나 진행']);
   });
 
   it('모집 마감순에서 상태를 「개설」이 아닌 것으로 바꾸면 최근 등록순이 된다', async () => {
     memoryUrl.set('status=OPEN&sort=recruitment');
-    render(<StudiesTable studies={STUDIES} />);
+    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
 
     fireEvent.change(screen.getByDisplayValue('개설'), { target: { value: 'all' } });
     await waitFor(() => expect(urlParams()).toEqual({ sort: 'id' }));
@@ -142,13 +143,13 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
 
   it('카테고리 없이 들어와도 주소를 목록 필터로 옮겨 적는다 — 진행중 · 누적', async () => {
     memoryUrl.set('view=ongoing');
-    const { unmount } = render(<StudiesTable studies={STUDIES} />);
+    const { unmount } = render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
     expect(titles()).toEqual(['가 진행', '나 진행', '하 진행']);
     await waitFor(() => expect(urlParams()).toEqual({ status: 'ONGOING', sort: 'title' }));
     unmount();
 
     memoryUrl.set('view=cumulative');
-    render(<StudiesTable studies={STUDIES} />);
+    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
     await waitFor(() => expect(urlParams()).toEqual({ publish: 'live', sort: 'id' }));
   });
 
@@ -156,7 +157,7 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
     memoryUrl.set('view=ongoing&category=AI_ML');
     // 옮겨 적기가 아직 안 된 상태를 만든다
     vi.mocked(window.history.replaceState).mockImplementation(() => {});
-    render(<StudiesTable studies={STUDIES} />);
+    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
 
     fireEvent.change(screen.getByDisplayValue('종류 전체'), { target: { value: 'club' } });
     expect(urlParams()).toEqual({ category: 'AI · ML', status: 'ONGOING', publish: 'live', sort: 'title', kind: 'club' });
@@ -170,7 +171,7 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
       study(40, '가 같은 마감', { recruitment: { status: 'open', deadline: '2026-09-18T14:59:00Z' } }),
     ];
     memoryUrl.set('status=ONGOING&sort=title');
-    const { unmount } = render(<StudiesTable studies={tied} />);
+    const { unmount } = render(<StudiesTable list={{ mode: 'all', studies: tied }} />);
     expect(screen.getAllByRole('link').map((a) => a.getAttribute('href')).filter((h) => h?.startsWith('/studies/'))).toEqual([
       '/studies/30',
       '/studies/31',
@@ -178,7 +179,7 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
     unmount();
 
     memoryUrl.set('status=OPEN&sort=recruitment');
-    render(<StudiesTable studies={tied} />);
+    render(<StudiesTable list={{ mode: 'all', studies: tied }} />);
     expect(screen.getAllByRole('link').map((a) => a.textContent).filter((t) => t?.includes('같은 마감'))).toEqual([
       '가 같은 마감',
       '나 같은 마감',
@@ -187,17 +188,59 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
 
   it('모집 마감순은 「개설」일 때만 고를 수 있다', () => {
     memoryUrl.set('status=ONGOING');
-    render(<StudiesTable studies={STUDIES} />);
+    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
 
     const options = [...screen.getByRole('combobox', { name: '정렬' }).querySelectorAll('option')].map((o) => o.textContent);
     expect(options).toEqual(['기본 순서', '이름순', '최근 등록순']);
   });
 
   it('주소에 view 가 없으면 지금까지처럼 기본 순서로 그린다 — 주소를 건드리지 않는다', () => {
-    render(<StudiesTable studies={STUDIES} />);
+    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
 
     // 기본 순서는 이 PR 전과 같다 — 마감일이 오늘 이후인(여기서는 마감 없는) 모집중이 맨 앞
     expect(titles()[0]).toBe('모집 마감 없음');
     expect(memoryUrl.get()).toBe('');
+  });
+});
+
+describe('서버가 자른 한 페이지 (list.mode = server)', () => {
+  const page2 = [ongoing(21, '하 서버 순서'), ongoing(22, '가 서버 순서')];
+
+  it('서버가 준 순서 그대로 그리고, 개수와 페이지는 total 로 센다', () => {
+    memoryUrl.set('status=ONGOING&sort=title&page=2');
+    render(<StudiesTable list={{ mode: 'server', studies: page2, total: 45, offset: 20, limit: 20 }} />);
+
+    // 화면에서 다시 정렬하지 않는다 — 이름순이어도 서버가 준 대로
+    expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual(['하 서버 순서', '가 서버 순서']);
+    expect(screen.getByText('45개')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2페이지' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: '3페이지' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '4페이지' })).toBeNull();
+  });
+
+  it('페이지를 넘기면 조건을 두고 page 만 바꾸고, 필터를 바꾸면 1페이지로', () => {
+    memoryUrl.set('status=ONGOING&sort=title&page=2');
+    render(<StudiesTable list={{ mode: 'server', studies: page2, total: 45, offset: 20, limit: 20 }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '3페이지' }));
+    expect(urlParams()).toEqual({ status: 'ONGOING', sort: 'title', page: '3' });
+
+    fireEvent.change(screen.getByDisplayValue('종류 전체'), { target: { value: 'club' } });
+    expect(urlParams()).toEqual({ status: 'ONGOING', sort: 'title', kind: 'club' });
+  });
+
+  it('끝을 넘는 주소면 서버가 준 마지막 페이지를 현재 페이지로 그린다', () => {
+    memoryUrl.set('status=ONGOING&sort=title&page=9');
+    render(<StudiesTable list={{ mode: 'server', studies: page2, total: 22, offset: 20, limit: 20 }} />);
+
+    expect(screen.getByRole('button', { name: '2페이지' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('조건에 맞는 것이 없으면 빈 표 문구', () => {
+    memoryUrl.set('status=ONGOING&sort=title');
+    render(<StudiesTable list={{ mode: 'server', studies: [], total: 0, offset: 0, limit: 20 }} />);
+
+    expect(screen.getByText('조건에 맞는 스터디가 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText('0개')).toBeInTheDocument();
   });
 });

@@ -5,8 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
-  CATEGORY_DISPLAY,
-  STUDY_CATEGORIES,
   publishState,
   recruitState,
   toISODate,
@@ -17,6 +15,25 @@ import {
 import { Badge, Select, cx, type BadgeTone } from '@studyclub/ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+import {
+  CATEGORY_OPTIONS,
+  KIND_OPTIONS,
+  LIST_PAGE_SIZE,
+  PUBLISH_OPTIONS,
+  RECRUIT_OPTIONS,
+  STATUS_OPTIONS,
+  URL_ALLOWED,
+  URL_DEFAULTS,
+  effectiveSort,
+  entryFilters,
+  sortOptionsFor,
+  type KindFilter,
+  type PublishFilter,
+  type RecruitFilter,
+  type SortOrder,
+  type StudyListData,
+  type StudyStatusFilter,
+} from '@/features/studies/list-filters';
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
@@ -31,112 +48,10 @@ import './studies-table.css';
  *
  * 행에 편집·삭제 버튼을 두지 않는다. 스터디 이름을 누르면 **운영 페이지**로 들어가고, 거기서
  * 크루 승인·출석·정보 수정을 모두 한다.
- */
-
-const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: '주제 전체' },
-  ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
-];
-
-type StudyStatusFilter = 'all' | StudyLifecycleStatus;
-type KindFilter = 'all' | 'study' | 'club';
-type RecruitFilter = 'all' | 'apply' | 'closed';
-type PublishFilter = 'all' | 'live' | 'draft';
-
-// "전체" 항목에 축 이름을 붙인다 — 필터가 한 줄에 나란히 서면 어떤 축인지 라벨 없이 알아야 한다.
-const STATUS_OPTIONS: { value: StudyStatusFilter; label: string }[] = [
-  { value: 'all', label: '상태 전체' },
-  { value: 'DRAFT', label: '작성 중' },
-  { value: 'OPEN', label: '개설' },
-  { value: 'ONGOING', label: '진행 중' },
-  { value: 'ENDED', label: '종료' },
-  { value: 'CLOSED', label: '운영 종료' },
-];
-
-const KIND_OPTIONS: { value: KindFilter; label: string }[] = [
-  { value: 'all', label: '종류 전체' },
-  { value: 'study', label: '스터디' },
-  { value: 'club', label: '클럽' },
-];
-
-const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
-  { value: 'all', label: '모집 전체' },
-  { value: 'apply', label: '모집중' },
-  { value: 'closed', label: '마감' },
-];
-
-const PUBLISH_OPTIONS: { value: PublishFilter; label: string }[] = [
-  { value: 'all', label: '공개 전체' },
-  { value: 'live', label: '공개' },
-  { value: 'draft', label: '미공개' },
-];
-
-/**
- * 정렬. `all` 은 이 목록의 기본 순서(모집중 먼저, 마감 빠른 순)다. 나머지는 대시보드 「전체 보기」·카테고리 행이
- * 여는 순서와 같다 (specs/dashboard 4.4 — TITLE_ASC · RECRUITMENT · ID_DESC). 보드에 보인 4건이 이 목록의 첫 4건이어야 한다.
- */
-type SortOrder = 'all' | 'title' | 'recruitment' | 'id';
-
-const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
-  { value: 'all', label: '기본 순서' },
-  { value: 'title', label: '이름순' },
-  { value: 'recruitment', label: '모집 마감순' },
-  { value: 'id', label: '최근 등록순' },
-];
-
-/** 모집 마감순은 「개설」 스터디에만 뜻이 있다 — 다른 상태면 최근 등록순으로 바꾼다 (spec 4.4). */
-function sortOptionsFor(status: StudyStatusFilter) {
-  return status === 'OPEN' ? SORT_OPTIONS : SORT_OPTIONS.filter((o) => o.value !== 'recruitment');
-}
-
-function effectiveSort(sort: SortOrder, status: StudyStatusFilter): SortOrder {
-  return sort === 'recruitment' && status !== 'OPEN' ? 'id' : sort;
-}
-
-/** URL 쿼리 — `?category=…&status=OPEN&recruit=apply&noForm=1&page=2`. 기본값은 싣지 않는다. */
-const URL_DEFAULTS = {
-  q: '',
-  category: 'all',
-  status: 'all',
-  kind: 'all',
-  recruit: 'all',
-  publish: 'all',
-  noForm: '',
-  sort: 'all',
-  view: '',
-  page: '1',
-};
-const URL_ALLOWED = {
-  category: CATEGORY_OPTIONS.map((o) => o.value),
-  status: STATUS_OPTIONS.map((o) => o.value),
-  kind: KIND_OPTIONS.map((o) => o.value),
-  recruit: RECRUIT_OPTIONS.map((o) => o.value),
-  publish: PUBLISH_OPTIONS.map((o) => o.value),
-  noForm: ['1'],
-  sort: SORT_OPTIONS.map((o) => o.value),
-};
-
-/**
- * 대시보드에서 들어오는 주소 (specs/dashboard 3 · 6 · 4.4). `?view=ongoing&category=AI_ML` 처럼 보기와
- * 카테고리 **코드**를 받는다. 이 목록의 필터·정렬로 바꿔 주소를 다시 쓰고, 나머지 조건(검색·종류·모집·신청 폼)은 비운다.
- * 모르는 view 면 null, 모르는 카테고리 코드면 카테고리를 걸지 않는다.
  *
- * | view | 필터 · 정렬 |
- * |---|---|
- * | ongoing | 진행 중 · 이름순 (카테고리가 있으면 + 공개) |
- * | recruitment | 개설 · 모집 마감순 |
- * | cumulative | 공개 · 최근 등록순 (카테고리 행에서만) |
+ * 받은 목록이 서버가 자른 한 페이지면(`list.mode === 'server'`) 그대로 그리고, 전체면 여기서 거르고 정렬해 자른다
+ * (어느 쪽으로 받을지는 list-filters 의 serverListQuery).
  */
-export function entryFilters(view: string | null, categoryCode: string | null): Partial<typeof URL_DEFAULTS> | null {
-  if (view !== 'ongoing' && view !== 'recruitment' && view !== 'cumulative') return null;
-  const category = (categoryCode && CATEGORY_DISPLAY[categoryCode]) || 'all';
-  const reset = { view: '', q: '', kind: 'all', recruit: 'all', noForm: '', page: '1', category };
-  if (view === 'ongoing') {
-    return { ...reset, status: 'ONGOING', publish: category === 'all' ? 'all' : 'live', sort: 'title' };
-  }
-  if (view === 'recruitment') return { ...reset, status: 'OPEN', publish: 'all', sort: 'recruitment' };
-  return { ...reset, status: 'all', publish: 'live', sort: 'id' };
-}
 
 /** 문자열 비교 — 서버 정렬(제목 → 기수 ID)과 같은 결과가 나오도록 로캘을 타지 않는다. */
 function compareText(a: string, b: string): number {
@@ -370,7 +285,7 @@ function displayDate(value?: string) {
   return toISODate(value) ?? '—';
 }
 
-export function StudiesTable({ studies }: { studies: Study[] }) {
+export function StudiesTable({ list }: { list: StudyListData }) {
   // 조건·페이지는 URL 이 정본이다 — 운영 페이지에 들어갔다 뒤로 와도 걸어 둔 조건이 그대로다.
   // 조건을 바꾸면 페이지는 1로 돌아간다(같은 set 에서 함께 바꾼다).
   const [urlFilters, setUrlFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
@@ -420,7 +335,10 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
     }
   };
 
+  const studies = list.studies;
   const rows = useMemo(() => {
+    // 서버가 이미 거르고 정렬했다 — 다시 거르면 서버와 다른 뜻의 조건(「마감」 등)이 섞인다
+    if (list.mode === 'server') return studies;
     const q = query.trim().toLowerCase();
     return (
       studies
@@ -439,12 +357,14 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         })
         .sort(COMPARATOR[sort])
     );
-  }, [studies, query, category, studyStatus, kind, recruit, publish, noFormOnly, sort]);
+  }, [list.mode, studies, query, category, studyStatus, kind, recruit, publish, noFormOnly, sort]);
 
-  const pageSize = 20;
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const pageRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const total = list.mode === 'server' ? list.total : rows.length;
+  const pageCount = Math.max(1, Math.ceil(total / LIST_PAGE_SIZE));
+  // 서버 페이지는 서버가 실제로 준 위치를 따른다 — 끝을 넘는 주소면 서버가 마지막 페이지를 줬다(lib/api.ts)
+  const currentPage = list.mode === 'server' ? Math.floor(list.offset / list.limit) + 1 : Math.min(page, pageCount);
+  const pageRows =
+    list.mode === 'server' ? rows : rows.slice((currentPage - 1) * LIST_PAGE_SIZE, currentPage * LIST_PAGE_SIZE);
 
   return (
     <div>
@@ -524,7 +444,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           options={sortOptionsFor(studyStatus)}
           label='정렬'
         />
-        <span className='ml-auto shrink-0 whitespace-nowrap text-xs text-fg-muted'>{rows.length}개</span>
+        <span className='ml-auto shrink-0 whitespace-nowrap text-xs text-fg-muted'>{total}개</span>
       </div>
 
       <div className='card'>
@@ -626,7 +546,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                   </tr>
                 );
               })}
-              {rows.length === 0 && (
+              {pageRows.length === 0 && (
                 <tr>
                   <td colSpan={13} className='text-center text-fg-muted'>
                     조건에 맞는 스터디가 없습니다.

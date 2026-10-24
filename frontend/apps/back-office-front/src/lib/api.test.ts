@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchStudies } from '@/lib/api';
+import { fetchStudies, fetchStudyListPage } from '@/lib/api';
 
 vi.mock('next/headers', () => ({
   // 사이트 쿠키(sc_)가 같이 있어도 백오피스 토큰만 꺼내 보내는지 본다
@@ -115,5 +115,36 @@ describe('fetchStudies — 서버는 한 번에 100건까지 준다', () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ errorCode: 'INVALID_INPUT' }), { status: 400 }));
 
     await expect(fetchStudies()).rejects.toThrow('스터디 목록을 불러오지 못했습니다. (400)');
+  });
+});
+
+describe('fetchStudyListPage — 서버가 거르고 정렬한 한 페이지', () => {
+  it('받은 Query 그대로 한 번 부르고 total · offset · limit 을 넘긴다', async () => {
+    serverWith(45);
+
+    const page = await fetchStudyListPage('status=ONGOING&sort=TITLE_ASC&offset=20&limit=20');
+
+    expect(requested()).toEqual(['?status=ONGOING&sort=TITLE_ASC&offset=20&limit=20']);
+    expect(page).toMatchObject({ mode: 'server', total: 45, offset: 20, limit: 20 });
+    expect(page.studies.map((s) => s.study_id)).toEqual(Array.from({ length: 20 }, (_, i) => i + 21));
+  });
+
+  it('끝을 넘는 페이지면 마지막 페이지를 다시 받는다', async () => {
+    serverWith(22);
+
+    const page = await fetchStudyListPage('sort=ID_DESC&offset=80&limit=20');
+
+    expect(requested()).toEqual(['?sort=ID_DESC&offset=80&limit=20', '?sort=ID_DESC&offset=20&limit=20']);
+    expect(page).toMatchObject({ total: 22, offset: 20 });
+    expect(page.studies).toHaveLength(2);
+  });
+
+  it('조건에 맞는 것이 없으면(total 0) 다시 부르지 않는다', async () => {
+    serverWith(0);
+
+    const page = await fetchStudyListPage('sort=ID_DESC&offset=40&limit=20');
+
+    expect(requested()).toHaveLength(1);
+    expect(page).toMatchObject({ total: 0, studies: [] });
   });
 });
