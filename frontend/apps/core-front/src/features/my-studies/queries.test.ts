@@ -11,6 +11,7 @@ const base = {
   endAt: null,
   relation: 'ONGOING' as const,
   participantRole: 'LEADER' as const,
+  captain: false,
   discordChannelUrl: null,
   driveUrl: null,
   attendanceRate: 1,
@@ -50,6 +51,6 @@ describe('toJoinedStudy', () => {
 
   it('담당 캡틴이면 LEADER 여부와 상관없이 캡틴이다', () => {
     expect(toJoinedStudy({ ...base, participantRole: 'MEMBER', captain: true }).role).toBe('captain');
-    expect(toJoinedStudy({ ...base, participantRole: 'MEMBER' }).role).toBe('crew');
+    expect(toJoinedStudy({ ...base, participantRole: 'MEMBER', captain: false }).role).toBe('crew');
   });
 });
