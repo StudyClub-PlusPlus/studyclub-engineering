@@ -217,7 +217,8 @@ public StudyListResponse list(@RequestParam(defaultValue = "0") int offset,
 | PUT | `/api/me/profile-image` | 올려 둔 파일 번호를 프로필 사진으로 연결 (교체 포함), 온보딩 완료 필요 | O |
 | DELETE | `/api/me/profile-image` | 프로필 사진 지우기 — 사진이 없어도 200, 온보딩 완료 필요 | O |
 | GET · POST | `/api/studies/{studyId}/meetings` | 분반 회차 목록 · 추가 ([스펙](../../../specs/study-meeting/spec.md)) | O |
-| PUT · DELETE | `/api/studies/{studyId}/meetings/{meetingId}` | 회차 수정 · 삭제 | O |
+| PUT | `/api/studies/{studyId}/meetings/{meetingId}` | 회차 수정 | O |
+| DELETE | `/api/studies/{studyId}/meetings` | 회차 삭제 (본문 `studyGroupId` · `meetingIds`, 일괄) | O |
 | POST | `/auth/social-login` | 구글 OAuth 로그인 (미가입 시 자동가입) | X |
 | POST | `/auth/refresh` | access token 재발급 | X |
 | GET | `/api/nicknames/availability?value={nickname}` | 실제 DB의 닉네임 사용 가능 여부 (`{available}`), 부른 사람의 계정은 제외, 온보딩 미완료도 허용 | O |

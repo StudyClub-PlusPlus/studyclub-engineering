@@ -59,6 +59,11 @@ export const InputDisabled: Story = {
   render: () => <Input label='가입일' defaultValue='2024-01-01' disabled />,
 };
 
+export const InputSuffix: Story = {
+  name: 'Input / 단위',
+  render: () => <Input label='모집 정원' inputMode='numeric' defaultValue='20' suffix='명' />,
+};
+
 export const SelectDefault: Story = {
   name: 'Select / 기본',
   render: () => (
