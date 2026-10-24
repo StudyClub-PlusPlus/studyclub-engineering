@@ -20,14 +20,27 @@ import {
 } from '@/proto/lib/feedback';
 
 /**
- * 문의·오류 신고 작성 팝업 — 「내 문의」 목록의 [문의하기] 가 연다.
+ * 문의·오류 신고 작성 팝업 — 푸터의 「문의·오류 신고」와 「내 문의」 목록의 [문의하기] 가 연다.
  *
  * 목록에서 열고 전송하면 닫히며, 방금 쓴 건이 같은 목록 맨 위에 선다. 로그인은 목록이 이미 확인했다.
  * 입력·설정 팝업 규칙(POL-0008) — X 와 전송 하나, 취소 없음. 닫으면 입력은 사라지고 묻지 않는다.
  * 자동으로 함께 가는 것은 브라우저·OS 와 화면 크기뿐 — 화면 경로는 모으지 않는다.
- * 이미지 첨부는 선택 — 3장까지, 장당 5MB. 고르거나 끌어 놓거나 ⌘V 로 붙여 넣는다(스크린샷).
+ * 이미지 첨부는 선택 — 3장까지, 장당 5MB. 고르거나 끌어 놓거나 붙여 넣는다(스크린샷).
+ * 붙여넣기 단축키는 **보는 사람의 기기대로** 적는다 — 맥은 ⌘V, 나머지는 Ctrl+V.
  * TODO(api): POST /api/feedbacks — 인증 필수, 서버가 사용자 기준 rate limit
  */
+
+/**
+ * 붙여넣기 단축키 — 맥만 ⌘V 다. 서버에서는 기기를 알 수 없으므로 **Ctrl+V 로 그려 두고**
+ * 그려진 뒤에 맥이면 바꾼다. 처음부터 ⌘V 로 두면 윈도우·리눅스 쓰는 사람이 더 많이 틀린 글을 본다.
+ */
+function usePasteKey(): string {
+  const [key, setKey] = useState('Ctrl+V');
+  useEffect(() => {
+    if (/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) setKey('⌘V');
+  }, []);
+  return key;
+}
 
 type Draft = { type: FeedbackType | ''; title: string; body: string; images: string[] };
 const EMPTY: Draft = { type: '', title: '', body: '', images: [] };
@@ -66,15 +79,14 @@ export function FeedbackDialog({
   open,
   onClose,
   onSent,
-  discordUrl,
 }: {
   open: boolean;
   onClose: () => void;
   /** 전송된 뒤 — 목록을 다시 읽는다 */
   onSent: () => void;
-  discordUrl: string;
 }) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const pasteKey = usePasteKey();
   const [touched, setTouched] = useState(false);
   const [sending, setSending] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -97,13 +109,13 @@ export function FeedbackDialog({
       title.length < TITLE_MIN
         ? `제목을 ${TITLE_MIN}자 이상 입력해 주세요.`
         : title.length > TITLE_MAX
-          ? `제목은 ${TITLE_MAX}자까지 쓸 수 있어요.`
+          ? `제목은 ${TITLE_MAX}자를 넘을 수 없습니다.`
           : undefined,
     body:
       body.length < BODY_MIN
         ? `내용을 ${BODY_MIN}자 이상 입력해 주세요.`
         : body.length > BODY_MAX
-          ? `내용은 ${BODY_MAX}자까지 쓸 수 있어요.`
+          ? `내용은 ${BODY_MAX}자를 넘을 수 없습니다.`
           : undefined,
   };
   const invalid = Boolean(errors.type || errors.title || errors.body);
@@ -112,27 +124,27 @@ export function FeedbackDialog({
     setImageError(null);
     const room = IMAGE_MAX_COUNT - draft.images.length;
     if (room <= 0) {
-      setImageError(`이미지는 ${IMAGE_MAX_COUNT}장까지 붙일 수 있어요.`);
+      setImageError(`이미지는 최대 ${IMAGE_MAX_COUNT}장까지 첨부할 수 있습니다.`);
       return;
     }
     const ok: File[] = [];
     for (const f of files) {
       if (!IMAGE_TYPES.includes(f.type)) {
-        setImageError('PNG · JPG · WEBP · GIF 이미지만 붙일 수 있어요.');
+        setImageError('PNG, JPG, WEBP, GIF 이미지만 첨부할 수 있습니다.');
         continue;
       }
       if (f.size > IMAGE_MAX_BYTES) {
-        setImageError('이미지는 한 장에 5MB까지 붙일 수 있어요.');
+        setImageError('5MB 이하 이미지만 첨부할 수 있습니다.');
         continue;
       }
       ok.push(f);
     }
-    if (ok.length > room) setImageError(`이미지는 ${IMAGE_MAX_COUNT}장까지 붙일 수 있어요.`);
+    if (ok.length > room) setImageError(`이미지는 최대 ${IMAGE_MAX_COUNT}장까지 첨부할 수 있습니다.`);
     try {
       const next = await Promise.all(ok.slice(0, room).map(shrink));
       setDraft((d) => ({ ...d, images: [...d.images, ...next].slice(0, IMAGE_MAX_COUNT) }));
     } catch {
-      setImageError('이미지를 읽지 못했어요. 다른 파일로 시도해 주세요.');
+      setImageError('이미지를 읽지 못했습니다. 다른 파일을 선택해 주세요.');
     }
   }
 
@@ -185,7 +197,7 @@ export function FeedbackDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title='문의하기'
+      title='문의·오류 신고'
       size='lg'
       footer={
         <Button data-anno='feedback:5' onClick={send} loading={sending} disabled={sending}>
@@ -249,25 +261,15 @@ export function FeedbackDialog({
               error={touched ? errors.body : undefined}
               labelHint={<Count len={body.length} min={BODY_MIN} max={BODY_MAX} />}
             />
-            {draft.type === 'question' && (
-              <p data-anno='feedback:4-1' className='mt-2 rounded-control bg-surface-2 px-3 py-2 text-sm text-fg-secondary'>
-                문의는 디스코드 채널에서 더 빨리 답변받으실 수 있어요.{' '}
-                <a
-                  href={discordUrl}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='font-semibold text-brand underline-offset-2 hover:underline'
-                >
-                  디스코드 채널 열기
-                </a>
-              </p>
-            )}
           </div>
 
           {/* 이미지 첨부 — 선택. 오류는 스크린샷이 있으면 재현이 쉽다 */}
           <div data-anno='feedback:5-1' className='flex flex-col gap-1.5'>
             <span className='flex items-baseline justify-between text-sm font-medium text-neutral-800'>
-              이미지 첨부
+              {/* 라벨과 (선택)을 한 덩어리로 묶는다 — 따로 두면 양끝 정렬이 둘 사이를 벌려 놓는다 */}
+              <span>
+                이미지 첨부 <span className='font-normal text-fg-muted'>(선택)</span>
+              </span>
               <span className='tnum text-xs font-normal text-fg-placeholder'>
                 {draft.images.length}/{IMAGE_MAX_COUNT}
               </span>
@@ -306,7 +308,7 @@ export function FeedbackDialog({
                   }`}
                 >
                   <ImagePlus size={18} />
-                  <span>눌러서 고르거나 끌어 놓기 · ⌘V 붙여넣기</span>
+                  <span>클릭하거나 드래그하여 첨부 · {pasteKey}로 붙여넣기</span>
                 </button>
               )}
             </div>
@@ -322,7 +324,7 @@ export function FeedbackDialog({
               }}
             />
             <p className={`text-xs ${imageError ? 'text-error-700' : 'text-fg-muted'}`}>
-              {imageError ?? `선택 · ${IMAGE_MAX_COUNT}장까지, 한 장에 5MB · PNG · JPG · WEBP · GIF`}
+              {imageError ?? `최대 ${IMAGE_MAX_COUNT}장, 장당 5MB · PNG, JPG, WEBP, GIF`}
             </p>
           </div>
         </div>
