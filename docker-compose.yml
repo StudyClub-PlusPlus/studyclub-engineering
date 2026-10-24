@@ -1,4 +1,4 @@
-# StudyClub++ 로컬 개발 스택 — mysql + api + frontend(core 4700 / back-office 4701 / playground 4702) + discord
+# StudyClub 로컬 개발 스택 — mysql + api + frontend(core 4700 / back-office 4701 / playground 4702) + discord
 #
 #   cp .env.example .env               # 처음 한 번. 구글 OAuth 값은 담당자(@titaniper)에게 DM 으로 받는다
 #   docker compose up -d --build       # 전체 기동 → http://localhost:4700
@@ -74,6 +74,11 @@ services:
       # 봇 ↔ 백엔드 양방향 서비스 키 (같은 값). 비어 있으면 백엔드는 봇을 부르지 않는다 (specs/discord-study-link)
       DISCORD_API_KEY: ${DISCORD_API_KEY:-}
       DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
+      # 디스코드 계정 연동 OAuth. 비어 있으면 연동만 503 (specs/study-application 「디스코드 계정 연동」)
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      DISCORD_OAUTH_CLIENT_ID: ${DISCORD_OAUTH_CLIENT_ID:-}
+      DISCORD_OAUTH_CLIENT_SECRET: ${DISCORD_OAUTH_CLIENT_SECRET:-}
+      DISCORD_OAUTH_REDIRECT_URI: ${DISCORD_OAUTH_REDIRECT_URI:-}
     ports:
       - "${API_PORT:-28080}:8080"
     healthcheck:
@@ -110,9 +115,9 @@ services:
       # ── 운영 API 에 붙이기 (화면만 볼 때) ──────────────────────────────────────────
       # 위 세 줄 대신 아래를 쓰고 `docker compose up -d --no-deps frontend` 로 frontend 만 띄운다.
       # 콜백은 운영 페이지가 받아 localhost 로그인 창으로 code 를 넘긴다. ⚠️ 운영 데이터 — 쓰기는 실제로 반영된다.
-      # API_BASE_URL: https://api.studyclub-plusplus.com
-      # NEXT_PUBLIC_API_BASE_URL: https://api.studyclub-plusplus.com
-      # NEXT_PUBLIC_OAUTH_REDIRECT_URI: https://studyclub-plusplus.com/api/auth/callback
+      # API_BASE_URL: https://api.studyclub.life
+      # NEXT_PUBLIC_API_BASE_URL: https://api.studyclub.life
+      # NEXT_PUBLIC_OAUTH_REDIRECT_URI: https://studyclub.life/api/auth/callback
       # ── stage ──────────────────────────────────────────────────────────────────
       # stage API 는 외부 주소가 없다 (클러스터 내부 전용). stage 로 확인할 일은 담당자(@titaniper)에게 문의.
     ports:

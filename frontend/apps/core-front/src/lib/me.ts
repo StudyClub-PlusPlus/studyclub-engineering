@@ -2,7 +2,6 @@
 
 import type { MemberRegion } from '@studyclub/mock';
 
-import { clearMyAttendance } from './attendance';
 import { getUser } from './auth';
 import { API_BASE } from './http';
 
@@ -20,8 +19,11 @@ import { API_BASE } from './http';
 
 const BOOKMARK_KEY = 'sc_bookmarks';
 const APPLICATION_KEY = 'sc_applications';
-const DISCORD_KEY = 'sc_discord';
+/** 예전 프로토가 브라우저에 남긴 내 출석 기록. 출석은 이제 서버에 있다 — 탈퇴할 때 남은 값만 지운다. */
+const LEGACY_ATTENDANCE_KEY = 'sc_my_attendance';
 const DISCORD_NICK_KEY = 'sc_discord_nickname';
+/** 예전 프로토가 브라우저에 남긴 디스코드 연동 표시. 연동 여부는 이제 서버에 있다 — 탈퇴할 때 남은 값만 지운다. */
+const LEGACY_DISCORD_KEY = 'sc_discord';
 
 function readJSON<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -93,18 +95,8 @@ export function cancelApplication(studyId: string) {
   );
 }
 
-/* ── 디스코드 연결 ───────────────────────────────────────────────────────── */
-
-export type DiscordLink = { handle: string } | null;
-
-export function getDiscord(): DiscordLink {
-  const v = readJSON<string>(DISCORD_KEY, '');
-  return v ? { handle: v } : null;
-}
-
-export function setDiscord(handle: string | null) {
-  writeJSON(DISCORD_KEY, handle ?? '');
-}
+/* ── 디스코드 서버 별명 ─────────────────────────────────────────────────────── */
+// 연동 여부는 여기 두지 않는다 — 서버(GET /api/me 의 discordLinked)가 정본이다. lib/discord.ts
 
 export const DISCORD_NICKNAME_EXAMPLE = '홍길동/SWE/산호세/시스템디자인';
 
@@ -181,20 +173,19 @@ export function seedDemoData() {
 }
 
 /**
- * 회원 탈퇴 — 이 브라우저에 남은 회원별 데이터(관심·신청·출석)를 지운다.
+ * 회원 탈퇴 — 이 브라우저에 남은 회원별 데이터(관심·신청·출석·옛 디스코드 표시)를 지운다.
  * 로그인 세션(sc_user)은 `logout()` 이 지운다. 데모 시드 키(SEED_KEY)는 일부러 남긴다 — 지우면 다음
  * 미리보기 진입 때 더미가 다시 채워져 탈퇴한 사람의 데이터처럼 보인다.
  */
 export function clearMyLocalData() {
   if (typeof window === 'undefined') return;
-  for (const key of [BOOKMARK_KEY, APPLICATION_KEY]) {
+  for (const key of [BOOKMARK_KEY, APPLICATION_KEY, LEGACY_ATTENDANCE_KEY, LEGACY_DISCORD_KEY]) {
     try {
       localStorage.removeItem(key);
     } catch {
       // 저장소 접근 실패해도 탈퇴 흐름은 막지 않는다
     }
   }
-  clearMyAttendance();
 }
 
 /* ── 맡은 진행 중인 스터디 (회원 탈퇴 경고) ──────────────────────────────────── */

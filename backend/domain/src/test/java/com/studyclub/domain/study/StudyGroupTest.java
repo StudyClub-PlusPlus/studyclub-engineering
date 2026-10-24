@@ -59,4 +59,38 @@ class StudyGroupTest {
     private static void assertCode(Throwable e, ErrorCode code) {
         assertThat(((BusinessException) e).errorCode()).isEqualTo(code);
     }
+
+    @Test
+    @DisplayName("반 만들기 — 앞뒤 공백을 자르고, 스터디 시간·정원·규칙은 비운다")
+    void createTrimsNameAndLeavesScheduleEmpty() {
+        StudyGroup group = StudyGroup.create(1L, "  A반  ");
+
+        assertThat(group.getName()).isEqualTo("A반");
+        assertThat(group.getStartAt()).isNull();
+        assertThat(group.getTimezone()).isNull();
+        assertThat(group.getCapacity()).isNull();
+        assertThat(group.getRules()).isNull();
+    }
+
+    @Test
+    @DisplayName("반 만들기 — 20자는 코드포인트로 센다. 이모지가 섞인 20자는 통과, 21자는 INVALID_INPUT")
+    void nameLengthCountsCodePoints() {
+        String twenty = "\uD83D\uDE80".repeat(10) + "가".repeat(10); // 🚀 x10 — char 로는 30자
+
+        assertThat(StudyGroup.create(1L, twenty).getName()).isEqualTo(twenty);
+        assertThatThrownBy(() -> StudyGroup.create(1L, twenty + "가"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(
+                        e ->
+                                assertThat(((BusinessException) e).errorCode())
+                                        .isEqualTo(ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("반 만들기 — 공백뿐이거나 null 이면 INVALID_INPUT")
+    void blankNameRejected() {
+        assertThatThrownBy(() -> StudyGroup.create(1L, "   "))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> StudyGroup.create(1L, null)).isInstanceOf(BusinessException.class);
+    }
 }

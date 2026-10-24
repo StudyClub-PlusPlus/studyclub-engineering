@@ -10,10 +10,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 한 분반의 회차 일정 규칙 — 같은 날 중복 금지 · 한 번에 31일 · 지난 시각 금지 (specs/study-meeting/spec.md).
@@ -80,13 +82,53 @@ public class MeetingSchedule {
      * 옛 분반은 순서 규칙이 없다.
      */
     public void checkReschedule(StudyMeeting target, Instant scheduledAt) {
-        LocalDate day = localDate(scheduledAt);
         if (target.isKickoff()) {
-            assertBeforeFirstRegular(day, target);
-        } else {
-            assertAfterKickoff(day, target);
+            checkKickoff(target, scheduledAt);
+            return;
         }
+        LocalDate day = localDate(scheduledAt);
+        assertAfterKickoff(day, target);
         assertDayFree(day, target);
+    }
+
+    /**
+     * 캡틴이 킥오프를 정하거나 옮길 때 (결정 11) — 1회차보다 앞, 다른 회차와 다른 날. 지난 시각도 받는다: 이미 운영 중인 반의 킥오프를 나중에 적는다.
+     *
+     * @param current 지금 킥오프. 처음 정하면 null
+     */
+    public void checkKickoff(StudyMeeting current, Instant scheduledAt) {
+        LocalDate day = localDate(scheduledAt);
+        assertBeforeFirstRegular(day, current);
+        assertDayFree(day, current);
+    }
+
+    /**
+     * 고른 회차들을 한꺼번에 지울 수 있는지 — 하나라도 막히면 전부 거절한다 (결정 13). 킥오프는 분반마다 반드시 하나 있어 지우지 않고, 시작한 회차는 출석이 있어
+     * 지우지 않는다. 시작한 회차가 여럿이면 번호를 모두 적어 화면이 어느 줄인지 알린다. {@code targets} 는 이 일정의 회차여야 한다.
+     */
+    public void checkDelete(Collection<StudyMeeting> targets, Instant now) {
+        if (targets.stream().anyMatch(StudyMeeting::isKickoff)) {
+            throw new BusinessException(ErrorCode.KICKOFF_NOT_DELETABLE, "킥오프는 지울 수 없습니다.");
+        }
+        Map<StudyMeeting, Integer> numbers = numbersByMeeting();
+        List<Integer> started =
+                targets.stream().filter(m -> m.isStarted(now)).map(numbers::get).sorted().toList();
+        if (!started.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.MEETING_ALREADY_STARTED,
+                    started.stream().map(n -> n + "회차").collect(Collectors.joining(", "))
+                            + "는 이미 시작해 지울 수 없습니다.");
+        }
+    }
+
+    // 저장 전 회차(ID 없음)도 셀 수 있게 객체로 짝짓는다
+    private Map<StudyMeeting, Integer> numbersByMeeting() {
+        Map<StudyMeeting, Integer> numbers = new IdentityHashMap<>();
+        int next = 1;
+        for (StudyMeeting meeting : meetings) {
+            numbers.put(meeting, meeting.isKickoff() ? 0 : next++);
+        }
+        return numbers;
     }
 
     /**

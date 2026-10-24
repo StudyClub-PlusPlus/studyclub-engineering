@@ -75,6 +75,7 @@ class StudyMeetingIntegrationTest {
 
     private Study study;
     private StudyGroup group;
+    private StudyGroup otherGroup;
     private StudyMeeting pastMeeting;
     private StudyMeeting futureMeeting;
     private StudyParticipant member;
@@ -133,7 +134,7 @@ class StudyMeetingIntegrationTest {
                                 Instant.parse("2026-09-03T11:00:00Z"),
                                 "Asia/Seoul",
                                 10));
-        var otherGroup = studyGroupRepo.save(new StudyGroup(study.getId(), "미주반", null, null, 10));
+        otherGroup = studyGroupRepo.save(new StudyGroup(study.getId(), "미주반", null, null, 10));
 
         pastMeeting =
                 studyMeetingRepo.save(
@@ -249,11 +250,14 @@ class StudyMeetingIntegrationTest {
         var delete =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/meetings/{meetingId}",
-                        null,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId",
+                                group.getId(),
+                                "meetingIds",
+                                List.of(kickoff.getId())),
                         LEADER_ID,
-                        study.getId(),
-                        kickoff.getId());
+                        study.getId());
         assertThat(delete.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(delete.getBody()).containsEntry("errorCode", "KICKOFF_NOT_DELETABLE");
     }
@@ -278,6 +282,128 @@ class StudyMeetingIntegrationTest {
                         study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("성공 - 회차 없는 분반에 회차를 추가해도 킥오프는 만들지 않는다 — 캡틴이 백오피스에서 정한다")
+    void addingMeetingsDoesNotCreateKickoff() {
+        var body =
+                Map.of(
+                        "studyGroupId",
+                        otherGroup.getId(),
+                        "scheduledAts",
+                        List.of(daysFromNowAt(10).toString(), daysFromNowAt(17).toString()));
+
+        var response =
+                exchange(
+                        HttpMethod.POST,
+                        "/api/studies/{studyId}/meetings",
+                        body,
+                        OTHER_GROUP_LEADER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(studyMeetingRepo.findByStudyGroupIdOrderByScheduledAt(otherGroup.getId()))
+                .hasSize(2)
+                .noneMatch(StudyMeeting::isKickoff);
+    }
+
+    @Test
+    @DisplayName("실패 - 사이트에서 킥오프를 고치면 403 — 네비게이터도, 스터디를 만든 캡틴도. 킥오프는 백오피스에서 캡틴이 정한다")
+    void kickoffNotEditableOnSite() {
+        StudyMeeting kickoff =
+                studyMeetingRepo.save(
+                        StudyMeeting.kickoff(
+                                group.getId(), Instant.now().minus(3, ChronoUnit.DAYS)));
+        var body =
+                Map.of(
+                        "scheduledAt",
+                        Instant.now().minus(2, ChronoUnit.DAYS).toString(),
+                        "title",
+                        "킥오프");
+
+        var leader =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/meetings/{meetingId}",
+                        body,
+                        LEADER_ID,
+                        study.getId(),
+                        kickoff.getId());
+        var creator =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/studies/{studyId}/meetings/{meetingId}",
+                        body,
+                        CREATOR_ID,
+                        study.getId(),
+                        kickoff.getId());
+
+        assertThat(leader.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(leader.getBody()).containsEntry("errorCode", "FORBIDDEN");
+        assertThat(creator.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(studyMeetingRepo.findById(kickoff.getId()).orElseThrow().getScheduledAt())
+                .isEqualTo(kickoff.getScheduledAt());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("성공 - 백오피스 회차 목록: 스터디를 만들지 않은 캡틴도 반의 회차를 킥오프 · 번호와 함께 본다 (사이트 목록과 같은 응답)")
+    void adminListsGroupMeetings() {
+        studyMeetingRepo.save(
+                StudyMeeting.kickoff(group.getId(), Instant.now().minus(3, ChronoUnit.DAYS)));
+
+        ResponseEntity<Map> response =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        null,
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Map<String, Object>> meetings =
+                (List<Map<String, Object>>) response.getBody().get("meetings");
+        assertThat(meetings).extracting(m -> m.get("number")).containsExactly(0, 1, 2);
+        assertThat(meetings)
+                .extracting(m -> m.get("type"))
+                .containsExactly("KICKOFF", "REGULAR", "REGULAR");
+        Map<String, Object> me = (Map<String, Object>) response.getBody().get("me");
+        assertThat(me).containsEntry("canEdit", true).containsEntry("participantId", null);
+    }
+
+    @Test
+    @DisplayName("실패 - 백오피스 회차 목록: 크루(캡틴 아님)는 403, 다른 스터디의 반 · 없는 반은 404")
+    void adminListPermissionAndNotFound() {
+        var crew =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        null,
+                        MEMBER_ID,
+                        study.getId(),
+                        group.getId());
+        var missing =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        null,
+                        CAPTAIN_ID,
+                        study.getId(),
+                        999_999_993L);
+        var otherStudy =
+                exchange(
+                        HttpMethod.GET,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        null,
+                        CAPTAIN_ID,
+                        999_999_992L,
+                        group.getId());
+
+        assertThat(crew.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(otherStudy.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
@@ -570,16 +696,137 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/meetings/{meetingId}",
-                        null,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId",
+                                group.getId(),
+                                "meetingIds",
+                                List.of(futureMeeting.getId())),
                         LEADER_ID,
-                        study.getId(),
-                        futureMeeting.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(studyMeetingRepo.findById(futureMeeting.getId())).isEmpty();
         assertThat(studyAttendanceRepo.findByStudyMeetingIdIn(List.of(futureMeeting.getId())))
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("성공 - 일괄 삭제는 고른 회차와 그 출석·휴가를 한 번에 지우고, 고르지 않은 회차는 둔다")
+    void bulkDeletesMeetingsWithAttendance() {
+        StudyMeeting another =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(group.getId(), daysFromNowAt(10), null));
+        excused(futureMeeting, MEMBER_ID);
+        excused(another, MEMBER_ID);
+
+        var response =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId(), another.getId())),
+                        LEADER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(studyMeetingRepo.findAllById(List.of(futureMeeting.getId(), another.getId())))
+                .isEmpty();
+        assertThat(
+                        studyAttendanceRepo.findByStudyMeetingIdIn(
+                                List.of(futureMeeting.getId(), another.getId())))
+                .isEmpty();
+        assertThat(studyMeetingRepo.findById(pastMeeting.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("실패 - 일괄 삭제에 시작한 회차가 섞이면 409 MEETING_ALREADY_STARTED, 회차 번호를 알리고 아무것도 지우지 않는다")
+    void bulkDeleteIsAllOrNothing() {
+        excused(futureMeeting, MEMBER_ID);
+
+        var response =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId(), pastMeeting.getId())),
+                        LEADER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody())
+                .containsEntry("errorCode", "MEETING_ALREADY_STARTED")
+                .containsEntry("errorMessage", "1회차는 이미 시작해 지울 수 없습니다.");
+        assertThat(studyMeetingRepo.findById(futureMeeting.getId())).isPresent();
+        assertThat(studyAttendanceRepo.findByStudyMeetingIdIn(List.of(futureMeeting.getId())))
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("실패 - 일괄 삭제에 없는 회차가 섞이면 404, 나머지도 지우지 않는다")
+    void bulkDeleteWithMissingMeeting() {
+        var response =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId(), 999_999L)),
+                        LEADER_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(studyMeetingRepo.findById(futureMeeting.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("실패 - 다른 분반 회차 ID 는 이 분반 목록에 없어 없는 회차로 본다 → 404, 나머지도 지우지 않는다")
+    void bulkDeleteAcrossGroups() {
+        StudyMeeting otherGroupMeeting =
+                studyMeetingRepo.save(
+                        StudyMeeting.schedule(otherGroup.getId(), daysFromNowAt(4), null));
+
+        var response =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds",
+                                        List.of(futureMeeting.getId(), otherGroupMeeting.getId())),
+                        CREATOR_ID,
+                        study.getId());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
+        assertThat(studyMeetingRepo.findById(futureMeeting.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("실패 - 일괄 삭제에 회차를 안 고르면 400, 크루는 403")
+    void bulkDeleteValidationAndPermission() {
+        var empty =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of("studyGroupId", group.getId(), "meetingIds", List.of()),
+                        LEADER_ID,
+                        study.getId());
+        assertThat(empty.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(empty.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+
+        var member =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId())),
+                        MEMBER_ID,
+                        study.getId());
+        assertThat(member.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
@@ -663,11 +910,12 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/meetings/{meetingId}",
-                        null,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId", group.getId(),
+                                "meetingIds", List.of(futureMeeting.getId())),
                         OTHER_GROUP_LEADER_ID,
-                        study.getId(),
-                        futureMeeting.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
@@ -700,11 +948,10 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/meetings/{meetingId}",
-                        null,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of("studyGroupId", group.getId(), "meetingIds", List.of(999_999L)),
                         LEADER_ID,
-                        study.getId(),
-                        999_999L);
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("errorCode", "NOT_FOUND");
@@ -716,11 +963,14 @@ class StudyMeetingIntegrationTest {
         var response =
                 exchange(
                         HttpMethod.DELETE,
-                        "/api/studies/{studyId}/meetings/{meetingId}",
-                        null,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId",
+                                group.getId(),
+                                "meetingIds",
+                                List.of(pastMeeting.getId())),
                         LEADER_ID,
-                        study.getId(),
-                        pastMeeting.getId());
+                        study.getId());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).containsEntry("errorCode", "MEETING_ALREADY_STARTED");

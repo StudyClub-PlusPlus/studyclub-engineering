@@ -1,4 +1,4 @@
-# StudyClub++ Discord
+# StudyClub Discord
 
 Baseline Discord bot + FastAPI service in Python. The Discord client and the HTTP
 API run concurrently on one asyncio event loop, so neither blocks the other.

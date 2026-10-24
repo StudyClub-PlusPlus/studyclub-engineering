@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { RULES_MAX, getRules, saveRules } from '@core/lib/schedule-board';
-import { AutoTextarea, Button, cx } from '@studyclub/ui';
+import { Button, Textarea, cx } from '@studyclub/ui';
 
 /**
  * 스터디 규칙 (STUDY_GROUP.RULES) — 분반마다 하나.
@@ -61,30 +61,26 @@ export function RulesEditor({
       <h3 className='text-sm font-bold text-fg'>스터디 규칙</h3>
       {canEdit ? (
         <div className='mt-2 flex flex-col gap-2'>
-          <AutoTextarea
-            label='스터디 규칙'
+          <Textarea
+            aria-label='스터디 규칙'
             value={draft}
             placeholder='킥오프에서 정한 규칙을 적어 두세요. 발표 방식 · 지각 기준 · 소요 시간 등'
             maxLength={RULES_MAX}
-            minRows={4}
-            className='px-3 py-2 leading-relaxed'
-            onChange={setDraft}
+            rows={4}
+            showCount
+            className='bg-surface-1 leading-relaxed'
+            onChange={(e) => setDraft(e.target.value)}
           />
-          <div className='flex items-center justify-between gap-2'>
-            <span className='tnum text-xs text-fg-muted'>
-              {draft.length}/{RULES_MAX}
-            </span>
-            {changed && (
-              <span className='flex gap-2'>
-                <Button variant='secondary' size='sm' onClick={() => setDraft(rules)}>
-                  취소
-                </Button>
-                <Button size='sm' onClick={save}>
-                  저장
-                </Button>
-              </span>
-            )}
-          </div>
+          {changed && (
+            <div className='flex justify-end gap-2'>
+              <Button variant='secondary' size='sm' onClick={() => setDraft(rules)}>
+                취소
+              </Button>
+              <Button size='sm' onClick={save}>
+                저장
+              </Button>
+            </div>
+          )}
         </div>
       ) : rules ? (
         <>

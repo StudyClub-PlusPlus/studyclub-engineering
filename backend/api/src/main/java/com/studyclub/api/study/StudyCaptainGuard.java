@@ -65,10 +65,7 @@ public class StudyCaptainGuard {
         if (account(accountId).getSystemRole() == SystemRole.ADMIN) {
             return;
         }
-        boolean navigator =
-                studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        studyId, accountId, NAVIGATOR_ROLES);
-        if (!navigator) {
+        if (!isActiveNavigatorOfStudy(accountId, studyId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN, message);
         }
     }
@@ -90,12 +87,49 @@ public class StudyCaptainGuard {
         if (account(accountId).getSystemRole() == SystemRole.ADMIN) {
             return;
         }
+        if (!isActiveNavigatorOfGroup(accountId, studyGroupId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, message);
+        }
+    }
+
+    /**
+     * 출석부에서 참여 중단 — <b>담당 캡틴</b>({@code STUDY.CREATED_BY}, NULL 이면 캡틴 누구나)이거나 <b>그 분반의 살아 있는
+     * 네비게이터</b>. 크루로 참여한 다른 캡틴은 막는다 — 출석 쓰기 가드({@link #assertCaptainOrNavigatorOfGroup})는 ADMIN 이면
+     * 누구나 통과시키므로 쓰지 않는다 (specs/study-participant/spec.md 권한).
+     *
+     * @return 담당 캡틴이면 true, 네비게이터면 false — 네비게이터는 같은 분반의 행만 중단할 수 있다
+     */
+    public boolean assertCanWithdrawInGroup(
+            Long accountId, Long studyCreatedBy, Long studyGroupId, String message) {
+        if (isOwnerCaptain(accountId, account(accountId), studyCreatedBy)) {
+            return true;
+        }
         boolean navigator =
-                studyParticipantRepository.existsByStudyGroupIdAndAccountIdAndParticipantRoleIn(
-                        studyGroupId, accountId, NAVIGATOR_ROLES);
+                studyParticipantRepository
+                        .findByStudyGroupIdAndAccountId(studyGroupId, accountId)
+                        .filter(p -> p.getParticipantRole() == ParticipantRole.LEADER)
+                        .filter(p -> ROSTER_STATUSES.contains(p.getStatus()))
+                        .isPresent();
         if (!navigator) {
             throw new BusinessException(ErrorCode.FORBIDDEN, message);
         }
+        return false;
+    }
+
+    /**
+     * 백오피스 출석부에서 참여 중단 — <b>담당 캡틴</b>({@code STUDY.CREATED_BY}, NULL 이면 캡틴 누구나)만. 백오피스는 캡틴만 들어오지만,
+     * 담당이 아닌 캡틴은 출석만 고친다 (specs/study-participant/spec.md 권한, 2026-10-23 기획 결정).
+     */
+    public void assertOwnerCaptain(Long accountId, Long studyCreatedBy, String message) {
+        if (!isOwnerCaptain(accountId, account(accountId), studyCreatedBy)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, message);
+        }
+    }
+
+    private static boolean isOwnerCaptain(Long accountId, Account caller, Long studyCreatedBy) {
+        return studyCreatedBy == null
+                ? caller.getSystemRole() == SystemRole.ADMIN
+                : accountId.equals(studyCreatedBy);
     }
 
     /**
@@ -105,8 +139,7 @@ public class StudyCaptainGuard {
     public boolean canEditGroup(Long accountId, Long studyCreatedBy, Long studyGroupId) {
         account(accountId);
         return accountId.equals(studyCreatedBy)
-                || studyParticipantRepository.existsByStudyGroupIdAndAccountIdAndParticipantRole(
-                        studyGroupId, accountId, ParticipantRole.LEADER);
+                || isActiveNavigatorOfGroup(accountId, studyGroupId);
     }
 
     public void assertCanEditGroup(
@@ -166,10 +199,25 @@ public class StudyCaptainGuard {
                 .map(
                         account ->
                                 account.getSystemRole() == SystemRole.ADMIN
-                                        || studyParticipantRepository
-                                                .existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                                                        studyId, accountId, NAVIGATOR_ROLES))
+                                        || isActiveNavigatorOfStudy(accountId, studyId))
                 .orElse(false);
+    }
+
+    /*
+     * 네비게이터 권한은 살아 있는 명부 행(ACTIVE · PAUSED)의 LEADER 에만 준다. 백오피스에서 담당 캡틴이 네비게이터를 중단시키면 그 행은
+     * WITHDRAWN · LEADER 로 남는다 — 역할을 MEMBER 로 내리지 않는 것은 중단 직전 역할을 withdrawn 이벤트가 실어야 하기 때문이다 (DSC-06
+     * 네비게이터 role 회수). 그래서 역할만 보지 않고 상태도 본다.
+     */
+    private boolean isActiveNavigatorOfStudy(Long accountId, Long studyId) {
+        return studyParticipantRepository
+                .existsByStudyIdAndAccountIdAndParticipantRoleInAndStatusIn(
+                        studyId, accountId, NAVIGATOR_ROLES, ROSTER_STATUSES);
+    }
+
+    private boolean isActiveNavigatorOfGroup(Long accountId, Long studyGroupId) {
+        return studyParticipantRepository
+                .existsByStudyGroupIdAndAccountIdAndParticipantRoleInAndStatusIn(
+                        studyGroupId, accountId, NAVIGATOR_ROLES, ROSTER_STATUSES);
     }
 
     /**

@@ -13,9 +13,9 @@
     "packages/ui": 0
   },
   "fontPx": {
-    "core-front": 58,
-    "back-office-front": 13,
-    "playground/proto": 77,
-    "packages/ui": 6
+    "core-front": 43,
+    "back-office-front": 0,
+    "playground/proto": 75,
+    "packages/ui": 4
   }
 }

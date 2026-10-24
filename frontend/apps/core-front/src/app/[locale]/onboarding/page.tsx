@@ -70,7 +70,7 @@ function OnboardingScreen() {
             {locale === 'ko' ? 'Google 계정 연결 완료' : 'Google account connected'}
           </div>
           <h1 className='break-keep text-2xl font-bold tracking-tight sm:text-[28px]'>
-            {locale === 'ko' ? 'StudyClub++에 오신 것을 환영해요' : 'Welcome to StudyClub++'}
+            {locale === 'ko' ? 'StudyClub에 오신 것을 환영해요' : 'Welcome to StudyClub'}
           </h1>
         </header>
         {ready && accountId != null ? (
@@ -187,7 +187,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
         : {
             text: ko
               ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
-              : '2–20 characters · Korean, letters, numbers, underscore (_)',
+              : '2 to 20 characters · Korean, letters, numbers, underscore (_)',
             tone: 'muted',
           }
       : nickFormatError
@@ -206,7 +206,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
                 : {
                     text: ko
                       ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
-                      : '2–20 characters · Korean, letters, numbers, underscore (_)',
+                      : '2 to 20 characters · Korean, letters, numbers, underscore (_)',
                     tone: 'muted',
                   };
 

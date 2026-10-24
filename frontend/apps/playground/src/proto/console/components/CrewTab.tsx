@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
-import { CHECKBOX, SELECT_CLASS, SelectAll } from '@console/components/AttendanceTab';
+import { BulkSelect, CHECKBOX, SelectAll } from '@console/components/AttendanceTab';
+import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
 import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
-import { Button, SelectionCount, TableActionBar } from '@studyclub/ui';
+import { Badge, Button, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
 /**
@@ -143,10 +144,9 @@ export function CrewTab({
     setSaved(false);
     setDraftNav((d) => withDraft(d, id, nav === navigators.includes(id) ? undefined : nav));
   }
-  // 여러 명을 골라 반 · 역할을 한 번에 — 고른 값은 저장 전 변경에 얹히고, 「저장」으로 반영한다(출석부 일괄 적용과 같은 방식)
+  // 여러 명을 골라 반 · 역할을 한 번에 — 고르는 즉시 저장 전 변경에 얹히고, 「저장」으로 반영한다(출석부 일괄 변경과 같은 방식).
+  // 「적용」 버튼은 두지 않는다 — 드롭다운에서 고른 것이 곧 적용이다 (2026-10-17 기획 결정)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
-  const [bulkClass, setBulkClass] = useState('');
-  const [bulkRole, setBulkRole] = useState<'' | 'crew' | 'navigator'>('');
   const [announce, setAnnounce] = useState('');
   // 보이는 줄만 센다 — 필터로 숨긴 사람까지 바뀌면 안 된다
   const selected = shown.filter((c) => checkedIds.has(c.id));
@@ -162,16 +162,14 @@ export function CrewTab({
   function pickAll() {
     setCheckedIds(allPicked ? new Set() : new Set(shown.map((c) => c.id)));
   }
-  function applyBulk() {
-    if (!bulkClass && !bulkRole) return;
+  /** 고른 사람 모두의 반 또는 역할을 바꾼다. 선택은 그대로 둔다 — 반과 역할을 이어서 바꿀 수 있게. */
+  function applyBulk(change: { classId?: string; role?: 'crew' | 'navigator' }) {
+    if (selected.length === 0) return;
     for (const c of selected) {
-      if (bulkClass) pickClass(c.id, bulkClass);
-      if (bulkRole) pickRole(c.id, bulkRole === 'navigator');
+      if (change.classId) pickClass(c.id, change.classId);
+      if (change.role) pickRole(c.id, change.role === 'navigator');
     }
     setAnnounce(`${selected.length}명에 적용했습니다. 저장을 눌러야 반영됩니다.`);
-    setCheckedIds(new Set());
-    setBulkClass('');
-    setBulkRole('');
   }
 
   function discard() {
@@ -179,7 +177,7 @@ export function CrewTab({
     setDraftNav({});
   }
   function save() {
-    // TODO(api): PATCH …/participants/{id}/group · PATCH …/participants/{id}/role — 바뀐 줄만 보낸다
+    // TODO(api): PATCH …/participants 한 번 — 바뀐 줄만 changes[] 로 보낸다
     for (const [id, classId] of Object.entries(draftClass)) onAssign(id, classId);
     for (const [id, nav] of Object.entries(draftNav)) if (nav !== navigators.includes(id)) onToggleNavigator(id);
     discard();
@@ -203,53 +201,57 @@ export function CrewTab({
             </Button>
           </span>
         </h2>
-        {classes.length === 0 && !adding ? (
-          <p className='mt-2 rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
-            아직 반이 없습니다. 「반 추가」로 반을 만들고 크루를 나눠 주세요.
-          </p>
-        ) : (
-          <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
-            {classes.map((cls) => (
-              <li key={cls.id} className='card px-4 py-3'>
-                {renaming?.id === cls.id ? (
-                  editor(cls)
-                ) : (
-                  <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
-                    <span className='text-sm font-bold'>{classLabel(cls)}</span>
-                    <span className='tnum ml-auto text-sm text-fg-secondary'>
-                      {active.filter((c) => assign[c.id] === cls.id).length}명
+        <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
+          {classes.map((cls, i) => (
+            <li key={cls.id} className='card px-4 py-3'>
+              {renaming?.id === cls.id ? (
+                editor(cls)
+              ) : (
+                <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
+                  <span className='text-sm font-bold'>{classLabel(cls)}</span>
+                  {/* 첫 반 = 기본반. 스터디를 만들 때 생기고, 새로 신청한 크루가 여기로 들어온다 */}
+                  {i === 0 && (
+                    <span data-anno='class:1-5'>
+                      <Badge tone='neutral'>기본</Badge>
                     </span>
-                    <Button
-                      size='sm'
-                      variant='secondary'
-                      data-anno='class:1-2'
-                      aria-label={`${classLabel(cls)} 수정`}
-                      onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
-                    >
-                      수정
-                    </Button>
-                    {/* 사람이 든 반은 지우지 않는다 — 그 반의 출석 기록까지 사라진다 */}
-                    <Button
-                      size='sm'
-                      variant='danger'
-                      data-anno='class:1-3'
-                      aria-label={`${classLabel(cls)} 삭제`}
-                      disabled={active.some((c) => assign[c.id] === cls.id)}
-                      title={
-                        active.some((c) => assign[c.id] === cls.id) ? '크루가 있는 반은 지울 수 없습니다' : undefined
-                      }
-                      onClick={() => onRemoveClass(cls.id)}
-                    >
-                      삭제
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-            {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
-            {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
-          </ul>
-        )}
+                  )}
+                  <span className='tnum ml-auto text-sm text-fg-secondary'>
+                    {active.filter((c) => assign[c.id] === cls.id).length}명
+                  </span>
+                  <Button
+                    size='sm'
+                    variant='secondary'
+                    data-anno='class:1-2'
+                    aria-label={`${classLabel(cls)} 수정`}
+                    onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
+                  >
+                    수정
+                  </Button>
+                  {/* 기본반과 사람이 든 반은 지우지 않는다 — 기본반은 신청자가 들어올 곳이고, 사람이 든 반은 출석 기록까지 사라진다 */}
+                  <Button
+                    size='sm'
+                    variant='danger'
+                    data-anno='class:1-3'
+                    aria-label={`${classLabel(cls)} 삭제`}
+                    disabled={i === 0 || active.some((c) => assign[c.id] === cls.id)}
+                    title={
+                      i === 0
+                        ? '기본반은 지울 수 없습니다. 새로 신청한 크루가 들어오는 반입니다'
+                        : active.some((c) => assign[c.id] === cls.id)
+                          ? '크루가 있는 반은 지울 수 없습니다'
+                          : undefined
+                    }
+                    onClick={() => onRemoveClass(cls.id)}
+                  >
+                    삭제
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+          {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
+          {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
+        </ul>
       </section>
       <section data-anno='attendee:3'>
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
@@ -278,7 +280,61 @@ export function CrewTab({
           />
         </div>
         <div className='mt-2'>
-          <TableCard>
+          <TableCard
+            top={
+              // 표 맨 위 작업 바 — 한 줄. 왼쪽은 고른 크루에 하는 일, 오른쪽은 저장 (POL-0008). 일정 · 출석 표와 같은 자리 · 같은 모양
+              active.length > 0 ? (
+                <TableActionBar
+                  className='top-[var(--table-action-bar-top,4rem)] bottom-auto border-b border-border bg-surface-raised px-4'
+                  data-anno='attendee:3-7'
+                  selection={
+                    <>
+                      <SelectionCount count={selected.length} unit='명' />
+                      {classes.length > 1 && (
+                        <BulkSelect
+                          label='바꿀 반'
+                          placeholder='반 변경'
+                          options={classes.map((c) => ({ value: c.id, label: classLabel(c) }))}
+                          disabled={selected.length === 0}
+                          onPick={(v) => applyBulk({ classId: v })}
+                        />
+                      )}
+                      <BulkSelect
+                        label='바꿀 역할'
+                        placeholder='역할 변경'
+                        options={[
+                          { value: 'crew', label: '크루' },
+                          { value: 'navigator', label: '네비게이터' },
+                        ]}
+                        disabled={selected.length === 0}
+                        onPick={(v) => applyBulk({ role: v as 'crew' | 'navigator' })}
+                      />
+                      {selected.length > 0 && (
+                        <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
+                          선택 해제
+                        </Button>
+                      )}
+                    </>
+                  }
+                  save={
+                    <span data-anno='attendee:3-5' className='flex items-center gap-2'>
+                      <span role='status' className='text-xs text-fg-muted'>
+                        {saved && changed === 0 ? '저장했습니다.' : ''}
+                      </span>
+                      {changed > 0 && (
+                        <Button variant='ghost' size='sm' onClick={discard}>
+                          변경 취소
+                        </Button>
+                      )}
+                      <Button size='sm' onClick={save} disabled={changed === 0}>
+                        저장
+                      </Button>
+                    </span>
+                  }
+                />
+              ) : undefined
+            }
+          >
             <thead>
               <tr>
                 <th data-anno='attendee:3-6' className='w-8'>
@@ -289,8 +345,9 @@ export function CrewTab({
                     onChange={pickAll}
                   />
                 </th>
-                <th className='whitespace-nowrap'>이름</th>
+                <th className='whitespace-nowrap'>닉네임</th>
                 <th className='whitespace-nowrap'>디스코드 닉네임</th>
+                <th className='whitespace-nowrap'>디스코드</th>
                 <th>이메일</th>
                 <th className='whitespace-nowrap'>지역</th>
                 <th className='whitespace-nowrap'>반</th>
@@ -313,8 +370,13 @@ export function CrewTab({
                   <td className='whitespace-nowrap font-semibold'>{c.name}</td>
                   {/* 디스코드에서 이 사람을 찾을 때 쓰는 이름 — 신청할 때 받은 서버 별명 */}
                   <td data-anno='attendee:3-4' className='whitespace-nowrap text-fg-secondary'>
-                    {c.discordNickname || '—'}
+                    {c.discordNickname || '-'}
                   </td>
+                  {/*
+                    별명은 **신청서에 적어 낸 이름**이고 이쪽은 **계정 그 자체**다. 둘은 다를 수 있다.
+                    아이디는 가린 채로 두고 필요한 줄만 펼친다 — 유저 목록과 같은 규칙 (POL-0007).
+                  */}
+                  <DiscordCell email={c.email} />
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
@@ -328,7 +390,7 @@ export function CrewTab({
               ))}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={7} className='text-center text-fg-muted'>
+                  <td colSpan={8} className='text-center text-fg-muted'>
                     {active.length === 0 ? '아직 크루가 없습니다.' : '조건에 맞는 크루가 없습니다.'}
                   </td>
                 </tr>
@@ -339,73 +401,6 @@ export function CrewTab({
         <p className='sr-only' aria-live='polite'>
           {announce}
         </p>
-        {/* 표 하단 작업 바 — 한 줄. 왼쪽은 고른 크루에 하는 일, 오른쪽은 저장 (POL-0008 「표 하단 작업 바」) */}
-        {active.length > 0 && (
-          <TableActionBar
-            className='mt-1'
-            data-anno='attendee:3-7'
-            selection={
-              <>
-                <SelectionCount count={selected.length} unit='명' />
-                {classes.length > 1 && (
-                  <select
-                    aria-label='바꿀 반'
-                    className={SELECT_CLASS}
-                    value={bulkClass}
-                    disabled={selected.length === 0}
-                    onChange={(e) => setBulkClass(e.target.value)}
-                  >
-                    <option value=''>반 변경</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {classLabel(c)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <select
-                  aria-label='바꿀 역할'
-                  className={SELECT_CLASS}
-                  value={bulkRole}
-                  disabled={selected.length === 0}
-                  onChange={(e) => setBulkRole(e.target.value as typeof bulkRole)}
-                >
-                  <option value=''>역할 변경</option>
-                  <option value='crew'>크루</option>
-                  <option value='navigator'>네비게이터</option>
-                </select>
-                <Button
-                  size='sm'
-                  variant='secondary'
-                  onClick={applyBulk}
-                  disabled={selected.length === 0 || (!bulkClass && !bulkRole)}
-                >
-                  적용
-                </Button>
-                {selected.length > 0 && (
-                  <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
-                    선택 해제
-                  </Button>
-                )}
-              </>
-            }
-            save={
-              <span data-anno='attendee:3-5' className='flex items-center gap-2'>
-                <span role='status' className='text-xs text-fg-muted'>
-                  {saved && changed === 0 ? '저장했습니다.' : ''}
-                </span>
-                {changed > 0 && (
-                  <Button variant='ghost' size='sm' onClick={discard}>
-                    변경 취소
-                  </Button>
-                )}
-                <Button size='sm' onClick={save} disabled={changed === 0}>
-                  저장
-                </Button>
-              </span>
-            }
-          />
-        )}
       </section>
     </div>
   );
@@ -430,18 +425,20 @@ function RolePick({
   onChange: (navigator: boolean) => void;
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={`${name} 역할`}
       value={navigator ? 'navigator' : 'crew'}
       onChange={(ev) => onChange(ev.target.value === 'navigator')}
       // 네비게이터는 몇 안 된다 — 긴 명단에서 바로 눈에 띄게 테두리를 칠한다
-      className={`h-8 rounded-control border bg-bg px-2 text-sm outline-none focus:border-brand focus:shadow-[var(--ring)] ${
-        navigator ? 'border-brand font-semibold text-fg' : 'border-border-strong text-neutral-900'
-      }`}
+      className={cx(
+        'w-auto',
+        navigator ? 'border-brand font-semibold text-fg' : 'border-border-strong text-neutral-900',
+      )}
     >
       <option value='crew'>크루</option>
       <option value='navigator'>네비게이터</option>
-    </select>
+    </Select>
   );
 }
 
@@ -469,13 +466,16 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? label : `${label} 전체`}</option>
       {options.map((o) => (
@@ -483,7 +483,7 @@ function FilterSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -500,17 +500,18 @@ function ClassPick({
   if (classes.length === 0) return <span className='text-xs text-fg-muted'>반 없음</span>;
   if (classes.length === 1) return <span className='text-sm text-fg-secondary'>{classLabel(classes[0]!)}</span>;
   return (
-    <select
+    <Select
+      size='sm'
       aria-label='반'
       value={value ?? classes[0]!.id}
       onChange={(ev) => onChange(ev.target.value)}
-      className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+      className='w-auto text-neutral-900'
     >
       {classes.map((c) => (
         <option key={c.id} value={c.id}>
           {classLabel(c)}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

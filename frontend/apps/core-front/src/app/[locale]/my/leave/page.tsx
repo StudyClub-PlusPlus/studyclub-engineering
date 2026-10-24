@@ -16,7 +16,7 @@ import { clearMyLocalData, getActiveNavigatorStudies, type ActiveNavigatorStudy 
 
 const UNKNOWN_WARNING_TITLE = '담당 스터디 여부를 확인하지 못했습니다';
 const UNKNOWN_WARNING_BODY =
-  '네트워크 오류 등으로 맡고 있는 스터디가 있는지 확인하지 못했습니다. 확인되기 전에는 탈퇴할 수 없습니다 — 다시 확인해 주세요.';
+  '네트워크 오류 등으로 맡고 있는 스터디가 있는지 확인하지 못했습니다. 확인되기 전에는 탈퇴할 수 없습니다. 다시 확인해 주세요.';
 
 const REASON_OPTIONS: { value: LeaveReason; label: string }[] = [
   { value: 'NO_DESIRED_STUDY', label: '원하는 스터디 없음' },

@@ -59,7 +59,9 @@ public final class AuthDtos {
             String createdAt,
             String timeZone,
             String onboardingCompletedAt,
-            String discordNickname) {
+            String discordNickname,
+            /** ACCOUNT.DISCORD_ID 가 있는가. ID 자체는 내리지 않는다. */
+            boolean discordLinked) {
 
         public static AccountSelfView from(Account account) {
             AccountView view = AccountView.from(account);
@@ -72,7 +74,8 @@ public final class AuthDtos {
                     view.createdAt(),
                     view.timeZone(),
                     view.onboardingCompletedAt(),
-                    account.getDiscordNickname());
+                    account.getDiscordNickname(),
+                    account.isDiscordLinked());
         }
     }
 

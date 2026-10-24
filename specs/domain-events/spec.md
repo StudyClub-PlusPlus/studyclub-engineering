@@ -54,6 +54,9 @@ ops 알림처럼 잃어도 되는 부수효과에 맞다. 잃으면 안 되는 �
 |---|---|---|---|---|---|
 | `user.registered` | `UserRegisteredEvent` (domain.account) | 온보딩 최초 완료 = 가입 확정. 계정당 1회 | `account` · accountId · 본인 | `accountId` | `UserRegisteredNotificationListener` (웰컴메일 행 생성, 동기) · `OpsAlertListener` (@Async) |
 | `study_application.submitted` | `StudyApplicationSubmitted` (domain.application) | 스터디 신청 저장 | `study_application` · applicationId · 신청자 | `applicationId` · `studyId` · `studyTitle` · `accountId` · `applicantNickname` | `OpsAlertListener` (@Async) |
+| `study_participant.joined` | `StudyParticipantJoined` (domain.participant) | 명부에 참여(`ACTIVE`)로 들어옴 — 새 행이든 빠졌던 옛 행을 되살렸든 행마다 1개. 지금 입구는 신청 제출 하나다 ([study-application](../study-application/spec.md) 신청 제출 4단계). 명부 입구는 디스코드 연동을 먼저 검사하므로 이 사람에게는 디스코드 ID 가 있다 | `study_participant` · participantId · 명부에 넣은 사람 (신청이면 본인) | `studyId` · `participantId` · `accountId` · `participantRole`(들어온 때, 신청이면 `MEMBER`) | `StudyRoleSyncListener` — 디스코드 스터디 role 을 명부에 맞춘다 (DSC-07) |
+| `study_participant.role_changed` | `StudyParticipantRoleChanged` (domain.participant) | 백오피스 「반 · 역할 한 번에 바꾸기」에서 역할이 실제로 바뀐 명부 행마다 1개. 반만 바뀐 행 · 같은 역할로 보낸 행은 발행하지 않는다 ([study-group](../study-group/spec.md)) | `study_participant` · participantId · 바꾼 캡틴 | `studyId` · `participantId` · `accountId` · `previousRole` · `newRole` | 없음 — 디스코드 네비게이터 role 부여·회수(DSC-08)가 붙을 자리 |
+| `study_participant.withdrawn` | `StudyParticipantWithdrawn` (domain.participant) | 출석부에서 참여 중단 — 이번에 중단된 명부 행마다 1개. 이미 중단된 행은 발행하지 않는다 ([study-participant](../study-participant/spec.md)) | `study_participant` · participantId · 중단시킨 네비게이터·담당 캡틴 | `studyId` · `participantId` · `accountId` · `participantRole`(중단 직전) | `StudyRoleSyncListener` — 디스코드 스터디 role 을 명부에 맞춘다 (DSC-09). 네비게이터 role 회수는 DSC-06 결정 뒤 |
 
 가입 이벤트는 새로 만들지 않고 기존 `UserRegisteredEvent` 를 그대로 쓴다 — 같은 사실에 이벤트가 둘이면 구독자가 어느 쪽을 들을지 갈린다.
 

@@ -229,6 +229,77 @@ class MeetingScheduleTest {
                 .doesNotThrowAnyException();
     }
 
+    @Test
+    @DisplayName("일괄 삭제 — 시작 전 정규 회차만 고르면 통과")
+    void deletesFutureRegularMeetings() {
+        StudyMeeting a = meeting("2026-10-08T11:00:00Z");
+        StudyMeeting b = meeting("2026-10-15T11:00:00Z");
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(a, b));
+
+        assertThatCode(() -> schedule.checkDelete(List.of(a, b), NOW)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("일괄 삭제 — 킥오프가 섞이면 KICKOFF_NOT_DELETABLE")
+    void bulkDeleteRejectsKickoff() {
+        StudyMeeting kickoff = kickoff("2026-10-07T11:00:00Z");
+        StudyMeeting first = meeting("2026-10-14T11:00:00Z");
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(kickoff, first));
+
+        assertThatThrownBy(() -> schedule.checkDelete(List.of(first, kickoff), NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.KICKOFF_NOT_DELETABLE));
+    }
+
+    @Test
+    @DisplayName("일괄 삭제 — 시작한 회차가 섞이면 MEETING_ALREADY_STARTED, 막힌 회차 번호를 모두 적는다")
+    void bulkDeleteNamesStartedMeetings() {
+        StudyMeeting kickoff = kickoff("2026-09-17T11:00:00Z");
+        StudyMeeting first = meeting("2026-09-24T11:00:00Z"); // 지남
+        StudyMeeting second = meeting("2026-10-08T11:00:00Z");
+        StudyMeeting third = meeting("2026-10-15T11:00:00Z");
+        third.start(Instant.parse("2026-10-01T23:00:00Z")); // 디스코드가 일찍 연 회차
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of(kickoff, first, second, third));
+
+        assertThatThrownBy(() -> schedule.checkDelete(List.of(third, second, first), NOW))
+                .satisfies(e -> assertCode(e, ErrorCode.MEETING_ALREADY_STARTED))
+                .hasMessage("1회차, 3회차는 이미 시작해 지울 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("킥오프를 처음 정할 때 — 1회차 현지 날짜보다 앞이면 통과, 같은 날이나 뒤면 INVALID_INPUT. 지난 시각도 받는다")
+    void kickoffMustPrecedeFirstRegular() {
+        var schedule =
+                new MeetingSchedule(
+                        "Asia/Seoul",
+                        List.of(meeting("2026-10-08T11:00:00Z"), meeting("2026-10-15T11:00:00Z")));
+
+        assertThatCode(() -> schedule.checkKickoff(null, Instant.parse("2026-09-01T11:00:00Z")))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> schedule.checkKickoff(null, Instant.parse("2026-10-08T01:00:00Z")))
+                .satisfies(e -> assertCode(e, ErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    @DisplayName("회차가 없는 반은 킥오프를 아무 날로 정할 수 있다")
+    void kickoffAnyDayWithoutMeetings() {
+        var schedule = new MeetingSchedule("Asia/Seoul", List.of());
+
+        assertThatCode(() -> schedule.checkKickoff(null, Instant.parse("2026-10-08T11:00:00Z")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("킥오프를 옮길 때 지금 킥오프와 같은 날은 겹침이 아니다")
+    void movingKickoffIgnoresItself() {
+        StudyMeeting kickoff = kickoff("2026-10-07T11:00:00Z");
+        var schedule =
+                new MeetingSchedule(
+                        "Asia/Seoul", List.of(kickoff, meeting("2026-10-14T11:00:00Z")));
+
+        assertThatCode(() -> schedule.checkKickoff(kickoff, Instant.parse("2026-10-07T12:00:00Z")))
+                .doesNotThrowAnyException();
+    }
+
     private static StudyMeeting kickoff(String scheduledAt) {
         return StudyMeeting.kickoff(1L, Instant.parse(scheduledAt));
     }

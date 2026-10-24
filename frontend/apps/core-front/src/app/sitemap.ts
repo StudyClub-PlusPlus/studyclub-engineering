@@ -22,6 +22,8 @@ const STATIC_PATHS: {
   { path: '/studies', priority: 0.9, changeFrequency: 'daily' },
   { path: '/events', priority: 0.7, changeFrequency: 'weekly' },
   { path: '/notices', priority: 0.6, changeFrequency: 'weekly' },
+  { path: '/terms', priority: 0.2, changeFrequency: 'yearly' },
+  { path: '/privacy', priority: 0.2, changeFrequency: 'yearly' },
   { path: '/guide', priority: 0.5, changeFrequency: 'monthly' },
   { path: '/about', priority: 0.5, changeFrequency: 'monthly' },
 ];

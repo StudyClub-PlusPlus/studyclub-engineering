@@ -31,19 +31,20 @@ const C = {
   slate: ['var(--color-neutral-800)', 'var(--color-neutral-600)'] as Duo,
 };
 
-type Meta = { icon: LucideIcon; label: string; color: Duo };
+// art = 카테고리 스팟 이미지 slug — 앱 public 의 /study-art/study-<art>.webp (zapp-design:icon 으로 생성, 원본은 내부 design/assets/icons).
+type Meta = { icon: LucideIcon; label: string; color: Duo; art?: string };
 
-const AI_ML: Meta = { icon: Brain, label: 'AI · ML', color: C.violet };
-const ALGORITHM: Meta = { icon: Puzzle, label: 'CS', color: C.blue };
-const DATA: Meta = { icon: Database, label: 'DATA', color: C.teal };
-const SOFTWARE: Meta = { icon: Code2, label: 'DEV', color: C.indigo };
-const CAREER: Meta = { icon: MessagesSquare, label: 'CAREER', color: C.amber };
-const BOOK_CLUB: Meta = { icon: BookOpen, label: 'BOOK CLUB', color: C.amber };
-const LANGUAGE: Meta = { icon: Languages, label: 'LANGUAGE', color: C.emerald };
-const LIFESTYLE: Meta = { icon: Sunrise, label: 'LIFESTYLE', color: C.rose };
-const PRODUCT: Meta = { icon: Package, label: '기획', color: C.violet };
-const BUSINESS: Meta = { icon: Briefcase, label: 'BUSINESS', color: C.slate };
-const OTHER: Meta = { icon: Hash, label: 'ETC', color: C.slate };
+const AI_ML: Meta = { icon: Brain, label: 'AI · ML', color: C.violet, art: 'ai_ml' };
+const ALGORITHM: Meta = { icon: Puzzle, label: '알고리즘', color: C.blue, art: 'algorithm' };
+const DATA: Meta = { icon: Database, label: '데이터', color: C.teal, art: 'data' };
+const SOFTWARE: Meta = { icon: Code2, label: '소프트웨어 개발', color: C.indigo, art: 'software' };
+const CAREER: Meta = { icon: MessagesSquare, label: '커리어', color: C.amber, art: 'career' };
+const BOOK_CLUB: Meta = { icon: BookOpen, label: '북클럽', color: C.amber, art: 'book_club' };
+const LANGUAGE: Meta = { icon: Languages, label: '어학', color: C.emerald, art: 'language' };
+const LIFESTYLE: Meta = { icon: Sunrise, label: '라이프스타일', color: C.rose, art: 'lifestyle' };
+const PRODUCT: Meta = { icon: Package, label: '기획 · PM', color: C.violet, art: 'product' };
+const BUSINESS: Meta = { icon: Briefcase, label: '비즈니스', color: C.slate, art: 'business' };
+const OTHER: Meta = { icon: Hash, label: '기타', color: C.slate, art: 'other' };
 
 /**
  * 공식 카테고리 11개 — API enum 값과 화면 표기(`@studyclub/mock` 의 `CATEGORY_DISPLAY`) 둘 다 받는다.
@@ -89,25 +90,28 @@ const LEGACY_RULES: (Meta & { match: string[] })[] = [
   { ...DATA, match: ['데이터', 'data', 'sql', 'db', '디비'] },
   {
     icon: Server,
-    label: 'BACKEND',
+    label: '백엔드',
     color: C.indigo,
+    art: 'backend',
     match: ['백엔드', 'backend', 'spring', 'django', 'express', 'nest'],
   },
   {
     icon: Monitor,
-    label: 'FRONTEND',
+    label: '프론트엔드',
     color: C.blue,
+    art: 'frontend',
     match: ['프론트엔드', 'frontend', 'react', 'vue', 'angular', 'next'],
   },
   {
     icon: Smartphone,
-    label: 'MOBILE',
+    label: '모바일',
     color: C.teal,
+    art: 'mobile',
     match: ['모바일', 'mobile', 'ios', 'android', 'flutter', 'swift', 'kotlin'],
   },
   { ...PRODUCT, match: ['기획', 'planning', '프로덕트', 'product', '그로스', 'growth'] },
-  { icon: Package, label: 'PM', color: C.violet, match: ['pm', '프로젝트 매니'] },
-  { icon: Palette, label: 'DESIGN', color: C.rose, match: ['디자인', 'design', 'figma', 'ui', 'ux'] },
+  { icon: Package, label: 'PM', color: C.violet, art: 'product', match: ['pm', '프로젝트 매니'] },
+  { icon: Palette, label: '디자인', color: C.rose, art: 'design', match: ['디자인', 'design', 'figma', 'ui', 'ux'] },
   { ...CAREER, match: ['커리어', 'career', '취업', 'resume', '이력서', 'interview', '인터뷰', '면접'] },
   { ...BUSINESS, match: ['비즈니스', 'business', 'article', '아티클', '시장', '산업'] },
   { ...BOOK_CLUB, match: ['북클럽', 'book', '독서', '리딩'] },
@@ -167,13 +171,32 @@ function pick(category?: string): Meta {
   const canonical = CANONICAL[key];
   if (canonical) return canonical;
   for (const { match, ...meta } of LEGACY_RULES) if (match.some((m) => hasKeyword(key, m))) return meta;
-  const label = (category ?? 'STUDY').toUpperCase().slice(0, 10);
+  const label = (category ?? '스터디').trim().slice(0, 12);
   return { icon: Hash, label, color: FALLBACK[hash(label) % FALLBACK.length]! };
 }
 
 /** 카테고리 → 아이콘·라벨·색. 카드 헤더에서 재사용. */
 export function categoryMeta(category?: string): Meta {
   return pick(category);
+}
+
+/** 카테고리 스팟 이미지 URL. 없는 카테고리(자유입력 fallback)는 undefined — 그때는 lucide 아이콘을 쓴다. */
+export function categoryArtUrl(category?: string): string | undefined {
+  const { art } = pick(category);
+  return art ? `/study-art/study-${art}.webp` : undefined;
+}
+
+/**
+ * 카테고리 옅은 틴트 바탕 + 진한 글자색. 카드 헤더용.
+ * 진한 그라디언트 위에 인디고 3D 스팟 이미지를 얹으면 서로 싸워 탁해 보인다(2026-10-18 stage 캡처) —
+ * 바탕을 밝게 두고 카테고리 색은 글자·옅은 면으로만 남긴다.
+ */
+export function categoryTint(category?: string): { background: string; ink: string } {
+  const [from, to] = pick(category).color;
+  return {
+    background: `linear-gradient(135deg, color-mix(in oklab, ${to} 10%, white), color-mix(in oklab, ${to} 24%, white))`,
+    ink: from,
+  };
 }
 
 /** 카테고리 색 그라디언트 CSS 값. */
@@ -199,18 +222,23 @@ export function StudyThumb({ image, category, className = '' }: StudyThumbProps)
     return <img src={image} alt='' className={`${base} object-cover ${className}`} />;
   }
 
-  const { icon: Icon, label, color } = pick(category);
-  const [from, to] = color;
-
+  const { icon: Icon, label } = pick(category);
+  const artUrl = categoryArtUrl(category);
+  const { background, ink } = categoryTint(category);
   return (
-    <div
-      className={`${base} flex items-center gap-3 px-5 ${className}`}
-      style={{ background: `linear-gradient(120deg, ${from}, ${to})` }}
-      aria-hidden='true'
-    >
-      <Icon className='pointer-events-none absolute -right-3 -bottom-4 text-white/15' size={104} strokeWidth={1.25} />
-      <Icon className='relative shrink-0 text-white' size={22} strokeWidth={1.75} />
-      <span className='relative text-[13px] font-bold uppercase tracking-[0.14em] text-white/90'>{label}</span>
+    <div className={`${base} flex items-center gap-3 px-5 ${className}`} style={{ background }} aria-hidden='true'>
+      {artUrl ? (
+        <span
+          className='pointer-events-none absolute right-3 top-1/2 aspect-square h-[92%] -translate-y-1/2 bg-contain bg-center bg-no-repeat'
+          style={{ backgroundImage: `url(${artUrl})` }}
+        />
+      ) : (
+        <Icon className='pointer-events-none absolute -right-3 -bottom-4 opacity-15' style={{ color: ink }} size={104} strokeWidth={1.25} />
+      )}
+      <Icon className='relative shrink-0' style={{ color: ink }} size={22} strokeWidth={1.75} />
+      <span className='relative text-sm font-semibold' style={{ color: ink }}>
+        {label}
+      </span>
     </div>
   );
 }

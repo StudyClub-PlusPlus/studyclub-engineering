@@ -2,7 +2,7 @@
   "name": "studyclub-engineering",
   "version": "0.0.1",
   "private": true,
-  "description": "StudyClub++ 코드 모노레포 (public) — core-front / back-office-front",
+  "description": "StudyClub 코드 모노레포 (public) — core-front / back-office-front",
   "workspaces": [
     "apps/*",
     "packages/*"

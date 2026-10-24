@@ -75,7 +75,7 @@ export function useCreateStudy() {
   });
 }
 
-/** TODO(api): PATCH /api/studies/{studyId} */
+/** 바뀐 필드만 관리자 수정 API에 보낸다. */
 export function useUpdateStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -90,7 +90,7 @@ export function useUpdateStudy(studyId: number) {
   });
 }
 
-/** TODO(api): DELETE /api/studies/{studyId} */
+/** 삭제 성공 후 상세 캐시를 제거하고 목록과 다음 기수 기본값을 갱신한다. */
 export function useDeleteStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -98,6 +98,7 @@ export function useDeleteStudy(studyId: number) {
     onSuccess: () => {
       // 지워진 상세를 다시 불러오면 404 다 — 무효화하지 않고 캐시에서 뺀다
       queryClient.removeQueries({ queryKey: studyKeys.detail(studyId) });
+      void queryClient.invalidateQueries({ queryKey: programKeys.all });
       return queryClient.invalidateQueries({ queryKey: [...studyKeys.all, 'list'] });
     },
   });

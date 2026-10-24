@@ -23,8 +23,8 @@ import {
   type Study,
   type StudyKind,
 } from '@studyclub/mock';
-import { Badge, Button, Modal, Pagination } from '@studyclub/ui';
-import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'lucide-react';
+import { Badge, Button, Modal, Pagination, Select, cx } from '@studyclub/ui';
+import { Check, GripVertical, Minus, RotateCcw } from 'lucide-react';
 
 /**
  * 스터디 관리 목록.
@@ -52,9 +52,7 @@ import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'l
  * 크루 명단·출석·정보 수정을 모두 한다.
  */
 
-const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
-];
+const CATEGORY_OPTIONS: { value: string; label: string }[] = [...STUDY_CATEGORIES.map((c) => ({ value: c, label: c }))];
 
 type RecruitFilter = 'all' | 'apply' | 'closed';
 type PublishFilter = 'all' | 'live' | 'draft';
@@ -103,13 +101,16 @@ function FilterSelect<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? label : '전체'}</option>
       {options.map((o) => (
@@ -117,20 +118,23 @@ function FilterSelect<T extends string>({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
 /** 카테고리 셀렉트. `STUDY.CATEGORY` 가 단일 값이라 단일 선택 드롭다운으로 고정한다. */
 function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label='카테고리'
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? '카테고리' : '전체'}</option>
       {CATEGORY_OPTIONS.map((o) => (
@@ -138,7 +142,7 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -315,34 +319,31 @@ function compareBy(sort: NonNullable<SortState>, a: Study, b: Study): number {
 }
 
 /**
- * 컬럼 머리의 위·아래 화살표. 누르면 그 방향으로 정렬하고, 이미 눌린 화살표를 다시 누르면 정렬을 푼다
- * (기본 순서 — 모집중 먼저, 마감이 가까운 순 — 로 돌아간다).
+ * 정렬하는 컬럼 머리 — **이름을 누른다.** 처음 누르면 오름차순, 다시 누르면 내림차순, 또 누르면 오름차순.
+ * 화살표를 그리지 않는다 — 열마다 작은 화살표 두 개가 서면 머리 줄이 어수선하다.
+ * 지금 정렬 중인 열은 이름이 강조색이다.
  */
-function SortArrows({
+function SortLabel({
   label,
   active,
   onChange,
+  anno,
 }: {
   label: string;
   active: SortDir | null;
-  onChange: (dir: SortDir | null) => void;
+  onChange: (dir: SortDir) => void;
+  anno?: string;
 }) {
-  const arrow = (dir: SortDir, Icon: typeof ChevronUp, name: string) => (
+  return (
     <button
       type='button'
-      aria-label={`${label} ${name} 정렬`}
-      aria-pressed={active === dir}
-      onClick={() => onChange(active === dir ? null : dir)}
-      className={`rounded-sm p-0 leading-none ${active === dir ? 'text-brand' : 'text-fg-placeholder hover:text-fg-secondary'}`}
+      data-anno={anno}
+      onClick={() => onChange(active === 'asc' ? 'desc' : 'asc')}
+      aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
+      className={`whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline ${active ? 'text-brand' : ''}`}
     >
-      <Icon size={11} strokeWidth={2.5} />
+      {label}
     </button>
-  );
-  return (
-    <span data-anno='list:9' className='inline-flex flex-col'>
-      {arrow('asc', ChevronUp, '오름차순')}
-      {arrow('desc', ChevronDown, '내림차순')}
-    </span>
   );
 }
 
@@ -378,7 +379,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
   const [publish, setPublish] = useState<PublishFilter>('all');
   const [noFormOnly, setNoFormOnly] = useState(false);
-  const [sort, setSort] = useState<SortState>(null);
+  // 기본 순서도 한 열의 정렬이다 — 모집 상태 오름차순(모집중 먼저). 같은 상태끼리는 마감이 가까운 순.
+  // 처음부터 그 열을 강조해 두어, 지금 무엇으로 줄 세웠는지 늘 보이게 한다.
+  const [sort, setSort] = useState<SortState>({ key: 'recruit', dir: 'asc' });
   const [page, setPage] = useState(1);
   const [order, setOrder] = useState<ColumnKey[]>(DEFAULT_ORDER);
   const [dragKey, setDragKey] = useState<ColumnKey | null>(null);
@@ -605,26 +608,20 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             <thead>
               <tr>
                 <th data-anno='program:1' className='whitespace-nowrap'>
-                  <span className='inline-flex items-center gap-1'>
-                    P-ID
-                    <span data-anno='program:2'>
-                      <SortArrows
-                        label='P-ID'
-                        active={sort?.key === 'program' ? sort.dir : null}
-                        onChange={(d) => applySort('program', d)}
-                      />
-                    </span>
-                  </span>
+                  <SortLabel
+                    anno='program:2'
+                    label='P-ID'
+                    active={sort?.key === 'program' ? sort.dir : null}
+                    onChange={(d) => applySort('program', d)}
+                  />
                 </th>
                 <th>
-                  <span className='inline-flex items-center gap-1'>
-                    스터디
-                    <SortArrows
-                      label='스터디'
-                      active={sort?.key === 'title' ? sort.dir : null}
-                      onChange={(d) => applySort('title', d)}
-                    />
-                  </span>
+                  <SortLabel
+                    anno='list:9'
+                    label='스터디'
+                    active={sort?.key === 'title' ? sort.dir : null}
+                    onChange={(d) => applySort('title', d)}
+                  />
                 </th>
                 {columns.map((c, i) => (
                   <th
@@ -641,8 +638,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
                   >
                     <span className='inline-flex items-center gap-1'>
                       <GripVertical size={12} className='cursor-grab text-fg-placeholder' aria-hidden='true' />
-                      {c.label}
-                      <SortArrows
+                      <SortLabel
                         label={c.label}
                         active={sort?.key === c.key ? sort.dir : null}
                         onChange={(d) => applySort(c.key, d)}

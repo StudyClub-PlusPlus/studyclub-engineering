@@ -17,8 +17,8 @@ Next.js App Router 기반. Turborepo 로 세 개 앱 + 공유 패키지를 관�
 ```
 frontend/
 ├── apps/
-│   ├── core-front/           # 사용자향 (studyclub-plusplus.com) :4700
-│   ├── back-office-front/    # 운영자향 (back-office.studyclub-plusplus.com) :4701
+│   ├── core-front/           # 사용자향 (studyclub.life) :4700
+│   ├── back-office-front/    # 운영자향 (back-office.studyclub.life) :4701
 │   └── playground/           # 컴포넌트 개발·실험용 :4702
 ├── packages/
 │   ├── design/               # 디자인 시스템 토큰 & 정본 CSS (@studyclub/design)
@@ -49,7 +49,7 @@ frontend/
 
 | 항목 | 값 |
 |------|-----|
-| 도메인 | studyclub-plusplus.com |
+| 도메인 | studyclub.life |
 | 포트 | 4700 |
 | 주요 기능 | 랜딩, 스터디 목록, 이벤트, 마이페이지, 구글 로그인 |
 | i18n | `[locale]` 동적 라우트 (ko/en) |
@@ -58,7 +58,7 @@ frontend/
 
 | 항목 | 값 |
 |------|-----|
-| 도메인 | back-office.studyclub-plusplus.com |
+| 도메인 | back-office.studyclub.life |
 | 포트 | 4701 |
 | 주요 기능 | 스터디 관리, 이벤트 관리, 회원 관리, 구글 로그인 |
 

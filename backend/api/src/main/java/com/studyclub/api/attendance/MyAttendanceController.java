@@ -56,10 +56,11 @@ public class MyAttendanceController {
     }
 
     @Operation(
-            summary = "출석 생성/수정 (upsert) — 네비게이터",
+            summary = "출석 생성/수정 (upsert) · 참여 중단 — 네비게이터",
             description =
                     "그 분반의 네비게이터(LEADER 역할)만 호출 가능. 분반 소속 LEADER가 아니면 403."
-                            + " studyGroupId는 body에 포함.")
+                            + " studyGroupId는 body에 포함. withdrawals(명부 행 ID)가 있으면 같은 트랜잭션에서 참여를 중단한다 —"
+                            + " 그 분반의 살아 있는 네비게이터 · 담당 캡틴만 (specs/study-participant).")
     @SecurityRequirement(name = "bearerAuth")
     @RequireOnboarding
     @PostMapping
@@ -69,9 +70,12 @@ public class MyAttendanceController {
         if (auth == null || !(auth.getPrincipal() instanceof Long accountId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        studyCaptainGuard.assertCaptainOrNavigatorOfGroup(
-                accountId, studyId, request.studyGroupId(), "권한이 없습니다.");
-        attendanceUpsertService.upsert(studyId, request.studyGroupId(), request);
+        // 참여 중단이 있으면 더 좁은 권한(담당 캡틴 · 그 분반 네비게이터)을 서비스가 스펙 판정 순서대로 본다
+        if (!request.hasWithdrawals()) {
+            studyCaptainGuard.assertCaptainOrNavigatorOfGroup(
+                    accountId, studyId, request.studyGroupId(), "권한이 없습니다.");
+        }
+        attendanceUpsertService.saveFromSite(accountId, studyId, request);
         return ResponseEntity.noContent().build();
     }
 }
