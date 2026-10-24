@@ -175,10 +175,57 @@ class MyStudyIntegrationTest {
                 .containsEntry("attendanceStatus", "PRESENT");
     }
 
+    @Test
+    @DisplayName("성공 - 내가 만든 스터디에 신청했으면 captain true, 남이 만든 스터디는 false, 신청 안 한 내 스터디는 없다")
+    void flagsCaptainOnlyForStudiesICreated() {
+        Long mine =
+                enroll(
+                        "내가 만든",
+                        now.minus(DAY.multipliedBy(7)),
+                        ParticipantStatus.ACTIVE,
+                        MEMBER_ID);
+        Long others =
+                enroll("남이 만든", now.minus(DAY.multipliedBy(7)), ParticipantStatus.ACTIVE, OTHER_ID);
+        Long notApplied = createStudy("신청 안 함", now.minus(DAY.multipliedBy(7)), MEMBER_ID).getId();
+
+        List<Map<String, Object>> items = items(MEMBER_ID);
+
+        assertThat(items)
+                .extracting(i -> ((Number) i.get("studyId")).longValue())
+                .containsExactlyInAnyOrder(mine, others)
+                .doesNotContain(notApplied);
+        // 담당 캡틴도 명부 값은 크루와 같다 — 역할은 MEMBER
+        assertThat(item(items, mine))
+                .containsEntry("captain", true)
+                .containsEntry("participantRole", "MEMBER");
+        assertThat(item(items, others)).containsEntry("captain", false);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     /** 스터디 · 반 · MEMBER_ID 명부 한 줄. 명부 편입은 10일 전. */
     private Long enroll(String title, Instant startAt, ParticipantStatus status) {
+        return enroll(title, startAt, status, null);
+    }
+
+    private Long enroll(String title, Instant startAt, ParticipantStatus status, Long createdBy) {
+        Study study = createStudy(title, startAt, createdBy);
+        StudyGroup group =
+                studyGroupRepository.save(
+                        new StudyGroup(study.getId(), "수요일반", startAt, "Asia/Seoul", 10));
+        studyParticipantRepository.save(
+                StudyParticipant.builder()
+                        .accountId(MEMBER_ID)
+                        .studyId(study.getId())
+                        .studyGroupId(group.getId())
+                        .status(status)
+                        .participantRole(ParticipantRole.MEMBER)
+                        .joinedAt(now.minus(DAY.multipliedBy(10)))
+                        .build());
+        return study.getId();
+    }
+
+    private Study createStudy(String title, Instant startAt, Long createdBy) {
         // 종류는 프로그램이 갖는다 — 응답의 studyKind 가 여기서 온다
         StudyProgram program =
                 studyProgramRepository.save(
@@ -194,20 +241,9 @@ class MyStudyIntegrationTest {
                                 .startAt(startAt)
                                 .discordChannelUrl(DISCORD_URL)
                                 .driveUrl(DRIVE_URL)
+                                .createdBy(createdBy)
                                 .build());
-        StudyGroup group =
-                studyGroupRepository.save(
-                        new StudyGroup(study.getId(), "수요일반", startAt, "Asia/Seoul", 10));
-        studyParticipantRepository.save(
-                StudyParticipant.builder()
-                        .accountId(MEMBER_ID)
-                        .studyId(study.getId())
-                        .studyGroupId(group.getId())
-                        .status(status)
-                        .participantRole(ParticipantRole.MEMBER)
-                        .joinedAt(now.minus(DAY.multipliedBy(10)))
-                        .build());
-        return study.getId();
+        return study;
     }
 
     private StudyParticipant participant(Long accountId, Long studyId) {
