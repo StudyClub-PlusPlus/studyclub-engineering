@@ -2,6 +2,7 @@ package com.studyclub.api.study;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.studyclub.domain.study.StudyCategory;
+import com.studyclub.domain.study.StudyTimezone;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 
@@ -10,9 +11,9 @@ import java.time.Instant;
  *
  * <p>title·oneLineSummary·description·category·recruitDeadline·schedule 은 null 이면 바꾸지 않는다.
  *
- * <p>capacity·startAt·discordChannelUrl·driveUrl 은 스펙상 {@code null} 이 "제한 없음·미정으로 되돌림"이다. 그래서 "키를 안
- * 보냄"과 "null 을 보냄"을 구분해야 하고, record 로는 둘이 같아진다. Jackson 은 JSON 에 키가 있을 때만 setter 를 부르므로 setter 가
- * {@code *Present} 표시를 남긴다.
+ * <p>capacity·startAt·timezone·discordChannelUrl·driveUrl 은 스펙상 {@code null} 이 "제한 없음·미정으로 되돌림"이다.
+ * 그래서 "키를 안 보냄"과 "null 을 보냄"을 구분해야 하고, record 로는 둘이 같아진다. Jackson 은 JSON 에 키가 있을 때만 setter 를 부르므로
+ * setter 가 {@code *Present} 표시를 남긴다.
  */
 public class StudyUpdateRequest {
 
@@ -29,6 +30,8 @@ public class StudyUpdateRequest {
     private boolean capacityPresent;
     private Instant startAt;
     private boolean startAtPresent;
+    private StudyTimezone timezone;
+    private boolean timezonePresent;
 
     @Size(max = 2048) private String discordChannelUrl;
 
@@ -101,6 +104,14 @@ public class StudyUpdateRequest {
         return startAtPresent;
     }
 
+    public StudyTimezone timezone() {
+        return timezone;
+    }
+
+    public boolean timezonePresent() {
+        return timezonePresent;
+    }
+
     public String discordChannelUrl() {
         return discordChannelUrl;
     }
@@ -149,6 +160,11 @@ public class StudyUpdateRequest {
     public void setStartAt(Instant startAt) {
         this.startAt = startAt;
         this.startAtPresent = true;
+    }
+
+    public void setTimezone(StudyTimezone timezone) {
+        this.timezone = timezone;
+        this.timezonePresent = true;
     }
 
     public void setDiscordChannelUrl(String discordChannelUrl) {
