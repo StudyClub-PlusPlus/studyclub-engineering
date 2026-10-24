@@ -412,6 +412,8 @@ describe('한 건 재발송', () => {
   });
 
   it('요청이 서버에 닿지 못하면 한 건도 나가지 않은 것이다 — 상태는 실패 그대로, 아이콘을 되살리고 「다시 시도」를 띄운다', async () => {
+    // ID 7 을 「대기」로 둔 채 끝난다. 실제 타이머면 끝 추적이 다음 테스트까지 살아남아 그 테스트의 ID 7 을 읽고 토스트를 띄운다
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const server: ServerOpts = { resendFails: true };
     fakeServer([row({ id: 7, status: 'FAILED', sentAt: null, canResend: true })], server);
     renderPage();
