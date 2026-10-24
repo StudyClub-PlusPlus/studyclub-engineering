@@ -53,6 +53,53 @@ class NotificationTest {
     }
 
     @Test
+    @DisplayName("redactPii: 웰컴메일은 닉네임을 비우고, 공지 메일처럼 닉네임 키가 없는 행에는 빈 키를 만들지 않는다")
+    void redactPii_onlyWhenNicknameKeyExists() {
+        Notification welcome = pending();
+        Notification notice =
+                Notification.pendingImmediate(
+                        NotificationEventType.STUDY_NOTICE,
+                        NotificationChannel.EMAIL,
+                        "user@example.com",
+                        1L,
+                        10L,
+                        Map.of("title", "공지"),
+                        77L);
+
+        welcome.redactPii("[탈퇴한 계정]");
+        notice.redactPii("[탈퇴한 계정]");
+
+        assertThat(welcome.getRecipientValue()).isEqualTo("[탈퇴한 계정]");
+        assertThat(welcome.getPayload()).containsEntry("nickname", null);
+        assertThat(notice.getRecipientValue()).isEqualTo("[탈퇴한 계정]");
+        assertThat(notice.getPayload()).doesNotContainKey("nickname").containsEntry("title", "공지");
+    }
+
+    @Test
+    @DisplayName("redactSenderName: 보낸 사람 이름만 바꾸고 제목·본문은 그대로, 보낸 사람 키가 없는 행은 건드리지 않는다")
+    void redactSenderName() {
+        Notification notice =
+                Notification.pendingImmediate(
+                        NotificationEventType.STUDY_NOTICE,
+                        NotificationChannel.EMAIL,
+                        "user@example.com",
+                        1L,
+                        10L,
+                        Map.of("senderName", "태윤", "title", "공지", "body", "본문"),
+                        77L);
+        Notification welcome = pending();
+
+        notice.redactSenderName("탈퇴한 회원");
+        welcome.redactSenderName("탈퇴한 회원");
+
+        assertThat(notice.getPayload())
+                .containsEntry("senderName", "탈퇴한 회원")
+                .containsEntry("title", "공지")
+                .containsEntry("body", "본문");
+        assertThat(welcome.getPayload()).doesNotContainKey("senderName");
+    }
+
+    @Test
     @DisplayName("PENDING -> PROCESSING -> SENT 정상 전이")
     void markProcessing_thenMarkSent() {
         Notification notification = pending();

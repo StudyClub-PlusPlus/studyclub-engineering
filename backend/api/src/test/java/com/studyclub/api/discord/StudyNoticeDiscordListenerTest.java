@@ -225,6 +225,43 @@ class StudyNoticeDiscordListenerTest {
         }
 
         @Test
+        @DisplayName(
+                "이어서 올리는 글이 일반 예외(BusinessException 이 아닌 것)로 실패해도 첫 글이 올라갔으면 SENT — 이미 전달된 공지를 실패로 보이지 않는다")
+        void followUpFailsWithPlainException() {
+            when(recorder.prepare(NOTICE_ID)).thenReturn(Optional.of(plan("짧게", people(60))));
+            when(bot.getStudyChannels(REQUESTER, DISCORD_STUDY_ID))
+                    .thenReturn(List.of(channel(CHANNEL_ID, DiscordBotClient.ChannelType.TEXT)));
+            org.mockito.Mockito.doNothing()
+                    .doThrow(new IllegalStateException("연결이 끊겼다"))
+                    .when(bot)
+                    .sendMessage(anyString(), anyString(), anyString(), anyString(), anyList());
+
+            listener.onSent(event(true));
+
+            ArgumentCaptor<java.util.Collection<Long>> mentioned =
+                    ArgumentCaptor.forClass(java.util.Collection.class);
+            verify(recorder).markSent(eq(NOTICE_ID), mentioned.capture());
+            assertThat(mentioned.getValue()).hasSize(40);
+            verify(recorder, never()).markFailed(any());
+        }
+
+        @Test
+        @DisplayName("첫 글부터 일반 예외로 실패하면 FAILED")
+        void firstPostFailsWithPlainException() {
+            when(recorder.prepare(NOTICE_ID)).thenReturn(Optional.of(plan("본문", people(2))));
+            when(bot.getStudyChannels(REQUESTER, DISCORD_STUDY_ID))
+                    .thenReturn(List.of(channel(CHANNEL_ID, DiscordBotClient.ChannelType.TEXT)));
+            doThrow(new IllegalStateException("연결이 끊겼다"))
+                    .when(bot)
+                    .sendMessage(anyString(), anyString(), anyString(), anyString(), anyList());
+
+            listener.onSent(event(true));
+
+            verify(recorder).markFailed(NOTICE_ID);
+            verify(recorder, never()).markSent(any(), anyCollection());
+        }
+
+        @Test
         @DisplayName("예상 못 한 예외도 삼키고 FAILED 로 남긴다 — 이미 커밋된 공지를 되돌리지 않는다")
         void unexpectedException() {
             when(recorder.prepare(NOTICE_ID)).thenReturn(Optional.of(plan("본문", people(2))));

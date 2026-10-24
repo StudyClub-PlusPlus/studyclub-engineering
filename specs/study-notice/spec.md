@@ -92,8 +92,8 @@ sequenceDiagram
 | recipients[].discordLinked | Boolean | N | 디스코드를 연동했는가. 아니면 멘션에서 빠진다 | 계산: `ACCOUNT.DISCORD_ID IS NOT NULL` |
 | discord.available | Boolean | N | 디스코드로 보낼 수 있는가 | 계산: 봇 설정 · `STUDY_DISCORD_LINK` 존재 · 보내는 사람의 `DISCORD_ID` 존재 |
 | discord.unavailableReason | String | Y | `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED`. 가능하면 null | 위 계산 |
-| canSend | Boolean | N | 지금 보낼 수 있는가 | 계산: `StudyNotice.sendBlock(...)` 이 없음 |
-| blockedReason | String | Y | `COOLDOWN` · `DAILY_LIMIT`. 보낼 수 있으면 null | 계산: `StudyNotice.sendBlock(...)` |
+| canSend | Boolean | N | 지금 보낼 수 있는가. 끝난 스터디도 `false` 다 — 보내기가 409 로 거절하는 것과 같은 판정이다 | 계산: `StudyNotice.sendBlock(...)` 이 없음 |
+| blockedReason | String | Y | `STUDY_ENDED`(끝난 스터디) · `COOLDOWN` · `DAILY_LIMIT`. 이 순서로 판정한다. 보낼 수 있으면 null | 계산: `StudyNotice.sendBlock(...)` |
 | nextAvailableAt | String(ISO-8601) | Y | `COOLDOWN` 일 때 다시 보낼 수 있는 시각 | 계산: 직전 발송 + 1분 |
 | remainingToday | Integer | N | 오늘(KST) 남은 횟수 | 계산: 30 − 오늘 이 반이 보낸 수 |
 
@@ -156,14 +156,15 @@ sequenceDiagram
 2. `StudyNotice.sendBlock(lastSentAt, todayCount, now)` 로 한도를 판정한다. 막히면 429
 3. `participantIds` 가 모두 이 반의 `ACTIVE`·`PAUSED` 인지 확인한다. 하나라도 아니면 400 (일부만 보내지 않는다)
 4. 공지와 수신자를 저장하고 `study_notice.sent` 를 발행한다
-5. `BEFORE_COMMIT` 리스너가 `EMAIL` 이 있으면 받는 사람마다 `NOTIFICATION` 행(`STUDY_NOTICE`/`EMAIL`, `PENDING`)을 같은 트랜잭션에 만든다. 템플릿이 없으면 예외 → 전체 롤백
+5. `BEFORE_COMMIT` 리스너가 `EMAIL` 이 있으면 받는 사람마다 `NOTIFICATION` 행(`STUDY_NOTICE`/`EMAIL`, `PENDING`)을 같은 트랜잭션에 만든다. 템플릿이 없으면 예외 → 전체 롤백.
+   받는 사람의 **계정 행은 잠그지 않고** 읽는다 — 탈퇴는 계정 → 반 순서로 잠그는데 보내기는 반을 먼저 잠그므로, 계정까지 잠그면 순서가 뒤집혀 교착이 난다. 이미 쥔 반 행 락이 같은 반 멤버의 탈퇴와 직렬화한다
 6. 커밋 뒤 `AFTER_COMMIT @Async` 리스너가 `DISCORD` 가 있으면 봇을 부른다
 
 ### Error Responses
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 제목·본문 길이 위반, 채널 없음·중복, 받는 사람 없음·중복, 받는 사람이 이 반의 `ACTIVE`·`PAUSED` 가 아님 |
+| 400 | INVALID_INPUT | 제목·본문 길이 위반, 채널 없음·중복, 받는 사람 없음·중복·501명 이상, 받는 사람이 이 반의 `ACTIVE`·`PAUSED` 가 아님 |
 | 401 | UNAUTHORIZED | 로그인 아님 |
 | 403 | FORBIDDEN | compose 와 같음 |
 | 404 | NOT_FOUND | 스터디·반 없음 |
@@ -222,7 +223,7 @@ sequenceDiagram
 | items[].email.requested | Boolean | N | 메일을 골랐는가 | STUDY_NOTICE.SEND_EMAIL |
 | items[].email.pending / sent / failed | Integer | N | 받는 사람 수 기준. `PENDING`·`PROCESSING` 은 pending, `CANCELLED` 는 세지 않는다 | 계산: NOTIFICATION(`REFERENCE_ID`=noticeId) 를 STATUS 별로 센 값. 메일을 안 골랐으면 0 |
 | items[].discord.requested | Boolean | N | 디스코드를 골랐는가 | STUDY_NOTICE.SEND_DISCORD |
-| items[].discord.status | String | N | `NOT_REQUESTED` · `PENDING` · `SENT` · `SKIPPED` · `FAILED` | STUDY_NOTICE.DISCORD_STATUS |
+| items[].discord.status | String | N | `NOT_REQUESTED` · `PENDING` · `SENT` · `SKIPPED` · `FAILED`. **보낸 지 10분이 넘은 `PENDING` 은 `FAILED` 로 내려준다** (서버 재시작 · 비동기 큐 넘침으로 작업이 사라진 경우). DB 값은 그대로 두며, 작업이 뒤늦게 끝나면 `SENT` 로 기록되어 저절로 바로잡힌다 | 계산: `StudyNotice.effectiveDiscordStatus(...)` |
 | items[].discord.skipReason | String | Y | `SKIPPED` 일 때만. `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED` · `NO_TEXT_CHANNEL` | STUDY_NOTICE.DISCORD_SKIP_REASON |
 | items[].discord.mentionedCount | Integer | N | 멘션된 사람 수 (연동한 사람) | 계산: `DISCORD_MENTIONED = true` 인 수 |
 
@@ -259,6 +260,7 @@ sequenceDiagram
 - 로그에 제목·본문·이메일·디스코드 ID 를 싣지 않는다. `noticeId` · 수신자 수 · 상태만 남긴다. 봇 예외는 메시지를 남기지 않고 클래스 이름만 남긴다 (HTTP 클라이언트 예외 메시지에 API 키가 실릴 수 있다)
 - 메일 템플릿 렌더러는 한 번만 훑어 치환한다. 공지 본문 안의 `{{title}}` 같은 글이 다른 자리를 덮어쓰지 못한다 (`NotificationTemplateRenderer`)
 - ops 알림은 보내지 않는다 — 운영자가 초반에 알아야 할 사실(가입·신청·승인·실패)이 아니다 ([ops-alerts](../ops-alerts/spec.md))
+- 보낸 사람이 탈퇴하면 받은 사람들의 `NOTIFICATION` 행에서 `PAYLOAD.senderName` 을 「탈퇴한 회원」으로 치환한다. 제목·본문은 보낸 사람이 직접 쓴 공지 내용이라 그대로 둔다 ([user-leave](../user-leave/spec.md#스터디-공지를-보낸-사람이-탈퇴하는-경우))
 - 받는 사람이 탈퇴하면 `NOTIFICATION` 행은 [탈퇴 비식별](../user-leave/spec.md#알림-비식별화)을 따른다. `STUDY_NOTICE_RECIPIENT` 는 `ACCOUNT_ID` 만 가진 ID 참조라 손대지 않는다 — `ACCOUNT` 가 지워지면 되짚을 수 없어 자연히 비식별이다 (`STUDY_ATTENDANCE` 와 같은 원칙)
 - 보낸 사람이 탈퇴하면 `SENDER_ACCOUNT_ID` 도 되짚을 수 없고, 기록에는 「탈퇴한 회원」으로 보인다
 

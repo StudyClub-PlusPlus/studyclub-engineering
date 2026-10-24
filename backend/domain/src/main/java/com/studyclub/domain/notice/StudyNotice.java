@@ -43,6 +43,15 @@ public class StudyNotice extends BaseEntity {
     public static final int TITLE_MAX_LENGTH = 60;
     public static final int BODY_MAX_LENGTH = 1500;
 
+    /** 한 번에 보낼 수 있는 받는 사람 수 — 한 트랜잭션에서 만드는 메일 행 수를 막는 상한이다. 반 정원은 이보다 훨씬 작다. */
+    public static final int MAX_RECIPIENTS = 500;
+
+    /**
+     * 디스코드 발송은 커밋 뒤 비동기로 시작한다. 이 시간이 지나도 {@code PENDING} 이면 작업이 사라진 것(서버 재시작 · 비동기 큐 넘침)으로 보고 응답에서
+     * 실패로 내려준다. 봇 호출 최대 30초에 여러 번 나눠 보내는 경우와 큐 지연을 충분히 덮는 값이다.
+     */
+    public static final Duration DISCORD_PENDING_TIMEOUT = Duration.ofMinutes(10);
+
     /** 같은 반의 직전 발송 뒤 이만큼 지나야 다시 보낸다 — 두 번 눌림·반복 호출을 막는다. */
     public static final Duration COOLDOWN = Duration.ofMinutes(1);
 
@@ -143,6 +152,10 @@ public class StudyNotice extends BaseEntity {
         if (distinct.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "받는 사람을 한 명 이상 골라 주세요.");
         }
+        if (distinct.size() > MAX_RECIPIENTS) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "받는 사람은 한 번에 " + MAX_RECIPIENTS + "명까지 고를 수 있습니다.");
+        }
         return new StudyNotice(
                 studyId,
                 studyGroupId,
@@ -158,13 +171,18 @@ public class StudyNotice extends BaseEntity {
     public record SendBlock(SendBlockReason reason, Instant nextAvailableAt) {}
 
     /**
-     * 같은 반이 지금 공지를 보낼 수 있는가. 보내기 화면(compose)과 보내기 요청(send)이 <b>같은 메서드·같은 재료</b>(직전 발송 시각, 오늘 보낸 수)로
-     * 판정한다. 걸리지 않으면 비어 있다.
+     * 같은 반이 지금 공지를 보낼 수 있는가. 보내기 화면(compose)과 보내기 요청(send)이 <b>같은 메서드·같은 재료</b>(스터디가 끝났는가, 직전 발송
+     * 시각, 오늘 보낸 수)로 판정한다. 끝난 스터디가 가장 먼저고, 그다음 쿨다운, 하루 한도다. 걸리지 않으면 비어 있다.
      *
+     * @param studyEnded 스터디가 끝났는가 ({@code Study#isEnded})
      * @param lastSentAt 이 반의 직전 발송 시각. 처음이면 null
      * @param todayCount 이 반이 오늘(한국 시간 0시부터) 보낸 수
      */
-    public static Optional<SendBlock> sendBlock(Instant lastSentAt, long todayCount, Instant now) {
+    public static Optional<SendBlock> sendBlock(
+            boolean studyEnded, Instant lastSentAt, long todayCount, Instant now) {
+        if (studyEnded) {
+            return Optional.of(new SendBlock(SendBlockReason.STUDY_ENDED, null));
+        }
         if (lastSentAt != null && now.isBefore(lastSentAt.plus(COOLDOWN))) {
             return Optional.of(new SendBlock(SendBlockReason.COOLDOWN, lastSentAt.plus(COOLDOWN)));
         }
@@ -177,6 +195,21 @@ public class StudyNotice extends BaseEntity {
     /** 오늘(한국 시간)이 시작된 시각 — 하루 한도를 세는 기준이다. */
     public static Instant startOfToday(Instant now) {
         return now.atZone(KST).toLocalDate().atStartOfDay(KST).toInstant();
+    }
+
+    /**
+     * 응답에 내려줄 디스코드 결과. 저장된 값이 {@code PENDING} 인데 보낸 지 {@link #DISCORD_PENDING_TIMEOUT} 이 지났으면
+     * {@code FAILED} 로 바꿔 준다 — 작업이 사라져 영원히 「대기」로 남는 것을 막는다. DB 값은 건드리지 않는다. 뒤늦게 작업이 끝나면 그때 {@code
+     * SENT} 로 기록되어 화면이 저절로 바로잡힌다.
+     */
+    public static DiscordDeliveryStatus effectiveDiscordStatus(
+            DiscordDeliveryStatus stored, Instant createdAt, Instant now) {
+        if (stored == DiscordDeliveryStatus.PENDING
+                && createdAt != null
+                && !now.isBefore(createdAt.plus(DISCORD_PENDING_TIMEOUT))) {
+            return DiscordDeliveryStatus.FAILED;
+        }
+        return stored;
     }
 
     /** 오늘 남은 횟수. */

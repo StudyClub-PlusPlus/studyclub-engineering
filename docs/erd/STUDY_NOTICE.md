@@ -67,6 +67,8 @@ stateDiagram-v2
 ```
 
 `DISCORD_SKIP_REASON`: `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED` · `NO_TEXT_CHANNEL`.
+**`PENDING` 이 보낸 지 10분을 넘기면** 서버가 응답에서만 `FAILED` 로 내려준다 (DB 값은 그대로 — 서버 재시작 · 비동기 큐 넘침으로 작업이 사라진 경우를 「대기」로 굳히지 않으려는 것이다). 작업이 뒤늦게 끝나면 그때 `SENT` 로 기록된다.
+
 `SKIPPED`(우리가 못 보낸 것)와 `FAILED`(보냈는데 안 된 것)를 가른다 — 운영자가 할 일이 다르다.
 
 ## 마이그레이션

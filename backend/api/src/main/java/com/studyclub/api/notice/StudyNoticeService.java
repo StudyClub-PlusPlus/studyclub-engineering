@@ -115,7 +115,7 @@ public class StudyNoticeService {
         Account sender = accountRepository.findById(accountId).orElse(null);
         Optional<DiscordSkipReason> unavailable = discordGate.unavailableReason(studyId, sender);
         Instant now = Instant.now();
-        Optional<StudyNotice.SendBlock> block = sendBlock(groupId, now);
+        Optional<StudyNotice.SendBlock> block = sendBlock(study, groupId, now);
         return new StudyNoticeComposeResponse(
                 recipients,
                 new StudyNoticeComposeResponse.Discord(
@@ -142,7 +142,7 @@ public class StudyNoticeService {
         }
 
         Instant now = Instant.now();
-        sendBlock(groupId, now)
+        sendBlock(study, groupId, now)
                 .ifPresent(
                         block -> {
                             throw new BusinessException(
@@ -187,6 +187,7 @@ public class StudyNoticeService {
             return new StudyNoticeListResponse(List.of(), total, start, pageSize);
         }
 
+        Instant now = Instant.now();
         List<Long> ids = notices.stream().map(StudyNotice::getId).toList();
         Map<Long, StudyNoticeRepository.RecipientCount> recipientCounts =
                 studyNoticeRepository.countRecipients(ids).stream()
@@ -219,7 +220,10 @@ public class StudyNoticeService {
                                                     n.isSendEmail(), mail[0], mail[1], mail[2]),
                                             new StudyNoticeListResponse.Discord(
                                                     n.isSendDiscord(),
-                                                    n.getDiscordStatus(),
+                                                    StudyNotice.effectiveDiscordStatus(
+                                                            n.getDiscordStatus(),
+                                                            n.getCreatedAt(),
+                                                            now),
                                                     n.getDiscordSkipReason(),
                                                     rc == null ? 0 : rc.getMentioned()));
                                 })
@@ -245,13 +249,13 @@ public class StudyNoticeService {
     }
 
     /** compose 와 send 가 같은 재료(직전 발송 시각 · 오늘 보낸 수)로 {@link StudyNotice#sendBlock} 를 부른다. */
-    private Optional<StudyNotice.SendBlock> sendBlock(Long groupId, Instant now) {
+    private Optional<StudyNotice.SendBlock> sendBlock(Study study, Long groupId, Instant now) {
         Instant lastSentAt =
                 studyNoticeRepository
                         .findFirstByStudyGroupIdOrderByCreatedAtDescIdDesc(groupId)
                         .map(StudyNotice::getCreatedAt)
                         .orElse(null);
-        return StudyNotice.sendBlock(lastSentAt, todayCount(groupId, now), now);
+        return StudyNotice.sendBlock(study.isEnded(), lastSentAt, todayCount(groupId, now), now);
     }
 
     private long todayCount(Long groupId, Instant now) {
@@ -261,6 +265,7 @@ public class StudyNoticeService {
 
     private static String blockedMessage(SendBlockReason reason) {
         return switch (reason) {
+            case STUDY_ENDED -> "끝난 스터디라 공지를 보낼 수 없습니다.";
             case COOLDOWN -> "방금 공지를 보냈습니다. 1분 뒤에 다시 보낼 수 있습니다.";
             case DAILY_LIMIT ->
                     "오늘 보낼 수 있는 공지 횟수(" + StudyNotice.DAILY_LIMIT + "회)를 모두 썼습니다. 내일 다시 보낼 수 있습니다.";

@@ -10,6 +10,8 @@ import {
   limitNote,
   mailResultLabel,
   mentionedCount,
+  nextRefetchDelay,
+  pruneSelection,
   statusCounts,
   toggleOne,
   toggleVisible,
@@ -72,6 +74,14 @@ describe('받는 사람 고르기', () => {
     expect([...selected]).toEqual([1]);
   });
 
+  it('다시 받은 명단에서 사라진 사람은 선택에서 걷어낸다', () => {
+    const stale = new Set([1, 2, 99]);
+
+    expect([...pruneSelection(stale, recipients)]).toEqual([1, 2]);
+    expect([...pruneSelection(new Set([99]), recipients)]).toEqual([]);
+    expect([...stale]).toEqual([1, 2, 99]);
+  });
+
   it('멘션되는 사람은 고른 사람 중 디스코드를 연동한 사람이다', () => {
     expect(mentionedCount(recipients, new Set([1, 2, 3, 4]))).toBe(3);
     expect(mentionedCount(recipients, new Set([4]))).toBe(0);
@@ -112,6 +122,30 @@ describe('쓰기와 보내기 가능 여부', () => {
   });
 });
 
+describe('쿨다운이 끝나는 때 다시 받기 nextRefetchDelay', () => {
+  const now = Date.parse('2026-10-23T03:00:00Z');
+
+  it('쿨다운이면 끝나는 시각까지 남은 시간에 0.5초를 더한다', () => {
+    const delay = nextRefetchDelay({ blockedReason: 'COOLDOWN', nextAvailableAt: '2026-10-23T03:00:45Z' }, now);
+
+    expect(delay).toBe(45_500);
+  });
+
+  it('이미 지난 시각이면 곧바로(0.5초 뒤) 다시 받는다', () => {
+    expect(nextRefetchDelay({ blockedReason: 'COOLDOWN', nextAvailableAt: '2026-10-23T02:59:00Z' }, now)).toBe(500);
+  });
+
+  it('쿨다운이 아니면(보낼 수 있음 · 하루 한도 · 끝난 스터디) 다시 받지 않는다', () => {
+    expect(nextRefetchDelay({ blockedReason: null, nextAvailableAt: null }, now)).toBe(false);
+    expect(nextRefetchDelay({ blockedReason: 'DAILY_LIMIT', nextAvailableAt: null }, now)).toBe(false);
+    expect(nextRefetchDelay({ blockedReason: 'STUDY_ENDED', nextAvailableAt: null }, now)).toBe(false);
+  });
+
+  it('시각을 읽을 수 없으면 다시 받지 않는다', () => {
+    expect(nextRefetchDelay({ blockedReason: 'COOLDOWN', nextAvailableAt: 'not-a-date' }, now)).toBe(false);
+  });
+});
+
 describe('안내 문구', () => {
   it('디스코드를 못 쓰는 이유를 서버 사유대로 말한다', () => {
     expect(discordUnavailableMessage('SENDER_NOT_LINKED')).toContain('내 디스코드가 연동되어 있지 않아');
@@ -131,12 +165,20 @@ describe('안내 문구', () => {
     expect(limitNote(compose({ remainingToday: 6 }))).toBeNull();
   });
 
+  it('끝난 스터디는 한도 안내보다 먼저 말하고, 보낼 수 없다고 한다', () => {
+    const ended = compose({ canSend: false, blockedReason: 'STUDY_ENDED', remainingToday: 0 });
+
+    expect(limitNote(ended)).toBe('끝난 스터디라 새 공지를 보낼 수 없습니다.');
+    expect(canSubmit({ title: '제목', body: '본문', channels: ['EMAIL'], selectedCount: 2 }, ended)).toBe(false);
+  });
+
   it('줄표를 쓰지 않는다 (화면 문구 규칙)', () => {
     const texts = [
       discordUnavailableMessage('SENDER_NOT_LINKED'),
       discordUnavailableMessage('BOT_NOT_CONFIGURED'),
       discordUnavailableMessage('NO_DISCORD_CHANNEL'),
       limitNote(compose({ canSend: false, blockedReason: 'DAILY_LIMIT', remainingToday: 0 })) ?? '',
+      limitNote(compose({ canSend: false, blockedReason: 'STUDY_ENDED' })) ?? '',
     ];
     for (const text of texts) expect(text).not.toMatch(/[\u2014\u2013\u3161]/);
   });

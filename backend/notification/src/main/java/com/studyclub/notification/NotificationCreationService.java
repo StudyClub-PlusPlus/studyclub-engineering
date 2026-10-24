@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -77,8 +79,10 @@ public class NotificationCreationService {
      * <p>{@link Propagation#REQUIRED}: 새 트랜잭션을 열지 않고 공지를 저장하는 트랜잭션에 참여한다 — 공지와 메일 행이 함께 커밋되거나 함께
      * 롤백된다 (그래서 {@code BEFORE_COMMIT} 구독자가 부른다). 템플릿·공지가 없으면 예외를 던져 공지 전체를 되돌린다.
      *
-     * <p>받는 사람의 계정 행을 ID 오름차순으로 잠그고 읽는다 — 회원 탈퇴(AccountDeletionService)가 같은 행을 잠그므로 둘이 직렬화된다. 탈퇴가
-     * 먼저면 계정이 없어 그 사람 몫은 만들지 않고, 이쪽이 먼저면 탈퇴가 기다렸다가 방금 만든 행까지 비식별화한다.
+     * <p>받는 사람의 계정 행은 <b>잠그지 않고</b> 읽는다. 탈퇴(AccountDeletionService)는 계정 행을 먼저 잠그고 반 행을 나중에 잠그는데, 공지
+     * 보내기는 반 행을 먼저 잠그므로 여기서 계정 행까지 잠그면 순서가 뒤집혀 교착이 난다. 잠그지 않아도 안전하다. 보내기가 쥔 <b>반 행 락</b>이 같은 반 멤버의
+     * 탈퇴와 직렬화한다(탈퇴는 반을 잠그고 명부를 {@code DELETED} 로 바꾼 뒤에야 끝나고, 보내기는 반을 잠근 뒤 명부를 읽는다). 이미 없는 계정은 그 사람
+     * 몫을 만들지 않는다.
      *
      * @return 만든 메일 행 수
      */
@@ -134,9 +138,12 @@ public class NotificationCreationService {
                         .sorted()
                         .toList();
         List<Notification> rows = new ArrayList<>();
+        Map<Long, Account> accounts =
+                accountRepository.findAllById(accountIds).stream()
+                        .collect(Collectors.toMap(Account::getId, Function.identity()));
         for (Long accountId : accountIds) {
-            Optional<Account> account = accountRepository.findByIdForUpdate(accountId);
-            if (account.isEmpty()) {
+            Account account = accounts.get(accountId);
+            if (account == null) {
                 log.info("공지 메일 건너뜀, 계정이 이미 없다. noticeId={}", noticeId);
                 continue;
             }
@@ -144,7 +151,7 @@ public class NotificationCreationService {
                     Notification.pendingImmediate(
                             NotificationEventType.STUDY_NOTICE,
                             NotificationChannel.EMAIL,
-                            account.get().getEmail(),
+                            account.getEmail(),
                             accountId,
                             template.getId(),
                             payload,

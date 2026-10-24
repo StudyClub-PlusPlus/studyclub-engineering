@@ -195,9 +195,24 @@ public class Notification extends BaseEntity {
      */
     public void redactPii(String maskedRecipientValue) {
         this.recipientValue = maskedRecipientValue;
-        Map<String, Object> redactedPayload = new HashMap<>(this.payload);
-        redactedPayload.put("nickname", null);
-        this.payload = redactedPayload;
+        // 웰컴메일에만 닉네임이 있다 — 공지 메일처럼 없는 행에 빈 키를 새로 만들지 않는다
+        if (this.payload.containsKey("nickname")) {
+            Map<String, Object> redactedPayload = new HashMap<>(this.payload);
+            redactedPayload.put("nickname", null);
+            this.payload = redactedPayload;
+        }
+    }
+
+    /**
+     * 회원 탈퇴 — 보낸 사람이 탈퇴하면 그가 보낸 공지 메일의 보낸 사람 이름을 비식별화한다. 받은 사람의 발송 이력에 탈퇴한 사람의 닉네임이 남지 않게 한다.
+     * 제목·본문은 보낸 사람이 직접 쓴 공지 내용이라 그대로 둔다 (specs/study-notice/spec.md).
+     */
+    public void redactSenderName(String placeholder) {
+        if (this.payload.containsKey("senderName")) {
+            Map<String, Object> redactedPayload = new HashMap<>(this.payload);
+            redactedPayload.put("senderName", placeholder);
+            this.payload = redactedPayload;
+        }
     }
 
     /**

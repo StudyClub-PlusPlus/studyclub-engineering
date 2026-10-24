@@ -13,7 +13,7 @@ import { MOCK_DISCORD_LINKED_KEY } from './discord';
 
 export type ApiDiscordSkipReason = 'BOT_NOT_CONFIGURED' | 'NO_DISCORD_CHANNEL' | 'SENDER_NOT_LINKED' | 'NO_TEXT_CHANNEL';
 export type ApiDiscordStatus = 'NOT_REQUESTED' | 'PENDING' | 'SENT' | 'SKIPPED' | 'FAILED';
-export type ApiBlockedReason = 'COOLDOWN' | 'DAILY_LIMIT';
+export type ApiBlockedReason = 'STUDY_ENDED' | 'COOLDOWN' | 'DAILY_LIMIT';
 
 export type ApiNoticeRecipient = {
   participantId: number;
@@ -310,6 +310,12 @@ export const studyNoticesHandlers = mockClient.createHandlerGroup('/api/studies'
           compose({ canSend: false, blockedReason: 'DAILY_LIMIT', nextAvailableAt: null, remainingToday: 0 })(ctx),
       },
       {
+        label: '끝난 스터디 (STUDY_ENDED)',
+        status: 200,
+        response: (ctx: MockResolveContext) =>
+          compose({ canSend: false, blockedReason: 'STUDY_ENDED', nextAvailableAt: null })(ctx),
+      },
+      {
         label: '받는 사람 없음 (명단 비어 있음)',
         status: 200,
         response: (ctx: MockResolveContext) => ({ ...compose()(ctx), recipients: [] }),
@@ -330,6 +336,11 @@ export const studyNoticesHandlers = mockClient.createHandlerGroup('/api/studies'
           errorCode: 'STUDY_NOTICE_RATE_LIMITED',
           errorMessage: '방금 공지를 보냈습니다. 1분 뒤에 다시 보낼 수 있습니다.',
         },
+      },
+      {
+        label: '409 끝난 스터디',
+        status: 409,
+        response: { errorCode: 'STUDY_ENDED', errorMessage: '끝난 스터디입니다.' },
       },
       { label: '400 입력 오류', status: 400, response: invalidInput },
       { label: '403 권한 없음', status: 403, response: forbidden },

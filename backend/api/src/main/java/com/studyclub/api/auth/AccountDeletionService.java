@@ -13,6 +13,7 @@ import com.studyclub.domain.account.LeaveReason;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.notice.StudyNoticeRepository;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.proposal.StudyProposal;
@@ -23,6 +24,7 @@ import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.notification.Notification;
+import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
 import java.time.Instant;
@@ -54,6 +56,10 @@ public class AccountDeletionService {
     // 계정이라 원본을 더는 알 수 없다"는 같은 의미라 하나로 둔다. 따로 선언하면 나중에 문구를 바꿀 때
     // 한쪽만 고칠 위험이 있다.
     private static final String MASKED_PLACEHOLDER = "[탈퇴한 계정]";
+
+    /** 공지 메일의 보낸 사람 이름 자리 — 기록 목록이 탈퇴한 보낸 사람에게 쓰는 이름과 같다. */
+    private static final String WITHDRAWN_SENDER_NAME = "탈퇴한 회원";
+
     private static final String EMPTY_FORM_ANSWER = "{}";
 
     private final AccountRepository accountRepository;
@@ -68,6 +74,7 @@ public class AccountDeletionService {
     private final StudyProposalInterestRepository studyProposalInterestRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final NotificationRepository notificationRepository;
+    private final StudyNoticeRepository studyNoticeRepository;
     private final ObjectMapper objectMapper;
     private final UploadService uploadService;
 
@@ -110,6 +117,9 @@ public class AccountDeletionService {
 
         // 알림 이력 — 이메일 원문·닉네임 스냅샷만 비식별화하고 행(발송 이력)은 남긴다.
         redactNotifications(accountId);
+
+        // 이 계정이 보낸 공지 — 받은 사람들의 메일 행에서 보낸 사람 이름을 비식별화한다 (specs/study-notice/spec.md).
+        redactSentNoticeMails(accountId);
 
         // 계정·프로필 삭제.
         accountRepository.delete(account);
@@ -183,6 +193,18 @@ public class AccountDeletionService {
         }
         log.warn("FORM_ANSWER 가 JSON 객체가 아니라 전체를 비웁니다. applicationId={}", applicationId);
         return EMPTY_FORM_ANSWER;
+    }
+
+    private void redactSentNoticeMails(Long accountId) {
+        List<Long> noticeIds = studyNoticeRepository.findIdsBySenderAccountId(accountId);
+        if (noticeIds.isEmpty()) {
+            return;
+        }
+        for (Notification notification :
+                notificationRepository.findByReferenceIdsForUpdate(
+                        NotificationEventType.STUDY_NOTICE, noticeIds)) {
+            notification.redactSenderName(WITHDRAWN_SENDER_NAME);
+        }
     }
 
     private void redactNotifications(Long accountId) {

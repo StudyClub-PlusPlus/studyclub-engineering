@@ -73,6 +73,16 @@ class StudyNoticeTest {
         }
 
         @Test
+        @DisplayName("받는 사람은 500명까지 된다. 501명이면 거절한다")
+        void recipientCap() {
+            List<Long> many = java.util.stream.LongStream.rangeClosed(1, 500).boxed().toList();
+            List<Long> tooMany = java.util.stream.LongStream.rangeClosed(1, 501).boxed().toList();
+
+            assertThat(notice("제목", "본문", true, false, many).getRecipients()).hasSize(500);
+            assertInvalid(() -> notice("제목", "본문", true, false, tooMany));
+        }
+
+        @Test
         @DisplayName("실패 - 보낼 곳이 없거나 받는 사람이 없으면 거절한다")
         void noChannelOrRecipient() {
             assertInvalid(() -> notice("제목", "본문", false, false, List.of(10L)));
@@ -97,7 +107,7 @@ class StudyNoticeTest {
         @Test
         @DisplayName("처음 보내면 막히지 않는다")
         void firstSend() {
-            assertThat(StudyNotice.sendBlock(null, 0, now)).isEmpty();
+            assertThat(StudyNotice.sendBlock(false, null, 0, now)).isEmpty();
         }
 
         @Test
@@ -105,7 +115,7 @@ class StudyNoticeTest {
         void cooldown() {
             Instant last = now.minusSeconds(59);
 
-            assertThat(StudyNotice.sendBlock(last, 1, now))
+            assertThat(StudyNotice.sendBlock(false, last, 1, now))
                     .hasValueSatisfying(
                             b -> {
                                 assertThat(b.reason()).isEqualTo(SendBlockReason.COOLDOWN);
@@ -116,7 +126,7 @@ class StudyNoticeTest {
         @Test
         @DisplayName("직전 발송 정확히 60초 뒤는 통과한다")
         void exactlyOneMinute() {
-            assertThat(StudyNotice.sendBlock(now.minusSeconds(60), 1, now)).isEmpty();
+            assertThat(StudyNotice.sendBlock(false, now.minusSeconds(60), 1, now)).isEmpty();
         }
 
         @Test
@@ -124,8 +134,8 @@ class StudyNoticeTest {
         void dailyLimit() {
             Instant last = now.minusSeconds(3600);
 
-            assertThat(StudyNotice.sendBlock(last, 29, now)).isEmpty();
-            assertThat(StudyNotice.sendBlock(last, 30, now))
+            assertThat(StudyNotice.sendBlock(false, last, 29, now)).isEmpty();
+            assertThat(StudyNotice.sendBlock(false, last, 30, now))
                     .hasValueSatisfying(
                             b -> {
                                 assertThat(b.reason()).isEqualTo(SendBlockReason.DAILY_LIMIT);
@@ -136,9 +146,23 @@ class StudyNoticeTest {
         @Test
         @DisplayName("COOLDOWN 과 DAILY_LIMIT 이 겹치면 COOLDOWN 이 먼저다")
         void cooldownFirst() {
-            assertThat(StudyNotice.sendBlock(now.minusSeconds(10), 30, now))
+            assertThat(StudyNotice.sendBlock(false, now.minusSeconds(10), 30, now))
                     .hasValueSatisfying(
                             b -> assertThat(b.reason()).isEqualTo(SendBlockReason.COOLDOWN));
+        }
+
+        @Test
+        @DisplayName("끝난 스터디는 STUDY_ENDED — 쿨다운·하루 한도보다 먼저 판정한다")
+        void studyEndedFirst() {
+            assertThat(StudyNotice.sendBlock(true, null, 0, now))
+                    .hasValueSatisfying(
+                            b -> {
+                                assertThat(b.reason()).isEqualTo(SendBlockReason.STUDY_ENDED);
+                                assertThat(b.nextAvailableAt()).isNull();
+                            });
+            assertThat(StudyNotice.sendBlock(true, now.minusSeconds(10), 30, now))
+                    .hasValueSatisfying(
+                            b -> assertThat(b.reason()).isEqualTo(SendBlockReason.STUDY_ENDED));
         }
 
         @Test
@@ -156,6 +180,51 @@ class StudyNoticeTest {
             assertThat(StudyNotice.remainingToday(0)).isEqualTo(30);
             assertThat(StudyNotice.remainingToday(29)).isEqualTo(1);
             assertThat(StudyNotice.remainingToday(45)).isZero();
+        }
+    }
+
+    @Nested
+    @DisplayName("디스코드 대기가 굳었을 때 effectiveDiscordStatus")
+    class EffectiveDiscordStatus {
+
+        private final Instant createdAt = Instant.parse("2026-10-23T03:00:00Z");
+
+        @Test
+        @DisplayName("보낸 지 9분 59초까지는 PENDING 그대로, 10분이 되면 FAILED 로 내려준다")
+        void pendingTimesOutAtTenMinutes() {
+            assertThat(
+                            StudyNotice.effectiveDiscordStatus(
+                                    DiscordDeliveryStatus.PENDING,
+                                    createdAt,
+                                    createdAt.plusSeconds(599)))
+                    .isEqualTo(DiscordDeliveryStatus.PENDING);
+            assertThat(
+                            StudyNotice.effectiveDiscordStatus(
+                                    DiscordDeliveryStatus.PENDING,
+                                    createdAt,
+                                    createdAt.plusSeconds(600)))
+                    .isEqualTo(DiscordDeliveryStatus.FAILED);
+        }
+
+        @Test
+        @DisplayName("PENDING 이 아니면 시간이 지나도 저장된 값 그대로다")
+        void otherStatusesUntouched() {
+            Instant later = createdAt.plusSeconds(3600);
+            for (DiscordDeliveryStatus s : DiscordDeliveryStatus.values()) {
+                if (s == DiscordDeliveryStatus.PENDING) {
+                    continue;
+                }
+                assertThat(StudyNotice.effectiveDiscordStatus(s, createdAt, later)).isEqualTo(s);
+            }
+        }
+
+        @Test
+        @DisplayName("보낸 시각을 모르면(null) 저장된 값 그대로")
+        void unknownCreatedAt() {
+            assertThat(
+                            StudyNotice.effectiveDiscordStatus(
+                                    DiscordDeliveryStatus.PENDING, null, createdAt))
+                    .isEqualTo(DiscordDeliveryStatus.PENDING);
         }
     }
 

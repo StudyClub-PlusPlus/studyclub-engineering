@@ -8,9 +8,11 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.studyclub.api.auth.AccountDeletionService;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.api.discord.DiscordBotClient;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.LeaveReason;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.discord.StudyDiscordLink;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
@@ -101,6 +103,7 @@ class StudyNoticeIntegrationTest {
     @Autowired NotificationRepository notificationRepo;
     @Autowired NotificationTemplateRepository templateRepo;
     @Autowired TransactionTemplate tx;
+    @Autowired AccountDeletionService accountDeletionService;
 
     @MockitoBean DiscordBotClient bot;
 
@@ -465,6 +468,96 @@ class StudyNoticeIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "STUDY_ENDED");
     }
 
+    @Test
+    @DisplayName(
+            "성공 - 끝난 스터디는 compose 가 canSend=false · STUDY_ENDED 를 준다 (보내기도 409 라 화면과 어긋나지 않는다)")
+    void composeOnEndedStudy() {
+        jdbcTemplate.update(
+                "UPDATE STUDY SET STATUS = ? WHERE ID = ?",
+                StudyStatus.CLOSED.name(),
+                study.getId());
+
+        Map<String, Object> compose = get(compose(), LEADER_ID).getBody();
+
+        assertThat(compose)
+                .containsEntry("canSend", false)
+                .containsEntry("blockedReason", "STUDY_ENDED")
+                .containsEntry("nextAvailableAt", null);
+        // 끝난 스터디에서도 보낸 공지 기록은 본다
+        assertThat(get(collection(), LEADER_ID).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("성공 - 디스코드 대기가 10분을 넘으면 기록에서 실패로 내려준다. 9분이면 대기 그대로. DB 값은 바뀌지 않는다")
+    void stalePendingDiscordShownAsFailed() {
+        StudyNotice stale = pendingDiscordNotice("오래된 대기");
+        StudyNotice fresh = pendingDiscordNotice("방금");
+        setCreatedAt(stale.getId(), Instant.now().minus(11, ChronoUnit.MINUTES));
+        setCreatedAt(fresh.getId(), Instant.now().minus(9, ChronoUnit.MINUTES));
+
+        List<Map<String, Object>> items =
+                (List<Map<String, Object>>) get(collection(), LEADER_ID).getBody().get("items");
+
+        Map<String, Object> staleItem = byTitle(items, "오래된 대기");
+        Map<String, Object> freshItem = byTitle(items, "방금");
+        assertThat((Map<String, Object>) staleItem.get("discord"))
+                .containsEntry("status", "FAILED");
+        assertThat((Map<String, Object>) freshItem.get("discord"))
+                .containsEntry("status", "PENDING");
+        assertThat(studyNoticeRepo.findById(stale.getId()).orElseThrow().getDiscordStatus())
+                .isEqualTo(DiscordDeliveryStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("성공 - 보낸 사람이 탈퇴하면 받은 사람들의 메일 행에서 보낸 사람 이름만 「탈퇴한 회원」으로 바뀐다 (제목·본문은 그대로)")
+    void senderDeletionRedactsSenderNameInMails() {
+        post(collection(), sendBody("공지 제목", "공지 본문", List.of("EMAIL"), member, paused), LEADER_ID);
+        assertThat(noticeMails())
+                .allSatisfy(n -> assertThat(n.getPayload()).containsEntry("senderName", "네비게이터"));
+
+        accountDeletionService.deleteAccount(LEADER_ID, LeaveReason.OTHER);
+
+        List<Notification> mails = noticeMails();
+        assertThat(mails).hasSize(2);
+        assertThat(mails)
+                .allSatisfy(
+                        n ->
+                                assertThat(n.getPayload())
+                                        .containsEntry("senderName", "탈퇴한 회원")
+                                        .containsEntry("title", "공지 제목")
+                                        .containsEntry("body", "공지 본문")
+                                        .doesNotContainKey("nickname"));
+        // 받는 사람의 주소는 그대로다 (받는 사람이 탈퇴한 것이 아니다)
+        assertThat(mails)
+                .extracting(Notification::getRecipientValue)
+                .containsExactlyInAnyOrder("member@notice-test.com", "paused@notice-test.com");
+    }
+
+    @Test
+    @DisplayName("성공 - 받는 사람이 탈퇴하면 그 사람 행의 주소만 가려지고 공지 payload 에 빈 nickname 키가 생기지 않는다")
+    void recipientDeletionRedactsOnlyAddress() {
+        post(collection(), sendBody("제목", "본문", List.of("EMAIL"), member, paused), LEADER_ID);
+
+        accountDeletionService.deleteAccount(MEMBER_ID, LeaveReason.OTHER);
+
+        List<Notification> mails = noticeMails();
+        Notification gone =
+                mails.stream()
+                        .filter(n -> MEMBER_ID.equals(n.getRecipientUserId()))
+                        .findFirst()
+                        .orElseThrow();
+        Notification kept =
+                mails.stream()
+                        .filter(n -> PAUSED_ID.equals(n.getRecipientUserId()))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(gone.getRecipientValue()).isEqualTo("[탈퇴한 계정]");
+        assertThat(gone.getPayload())
+                .doesNotContainKey("nickname")
+                .containsEntry("senderName", "네비게이터");
+        assertThat(kept.getRecipientValue()).isEqualTo("paused@notice-test.com");
+    }
+
     // ── 권한 ─────────────────────────────────────────────────────────────────────
 
     @Test
@@ -668,6 +761,30 @@ class StudyNoticeIntegrationTest {
                                 .filter(StudyNoticeRecipient::isDiscordMentioned)
                                 .map(StudyNoticeRecipient::getAccountId)
                                 .toList());
+    }
+
+    private StudyNotice pendingDiscordNotice(String title) {
+        return studyNoticeRepo.save(
+                StudyNotice.create(
+                        study.getId(),
+                        group.getId(),
+                        LEADER_ID,
+                        title,
+                        "본문",
+                        false,
+                        true,
+                        List.of(MEMBER_ID)));
+    }
+
+    private void setCreatedAt(Long noticeId, Instant at) {
+        jdbcTemplate.update(
+                "UPDATE STUDY_NOTICE SET CREATED_AT = ? WHERE ID = ?",
+                Timestamp.from(at),
+                noticeId);
+    }
+
+    private static Map<String, Object> byTitle(List<Map<String, Object>> items, String title) {
+        return items.stream().filter(i -> title.equals(i.get("title"))).findFirst().orElseThrow();
     }
 
     private void linkDiscord() {

@@ -29,6 +29,18 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("recipientUserId") Long recipientUserId);
 
     /**
+     * 회원 탈퇴 — 이 계정이 보낸 공지({@code REFERENCE_ID})의 메일 행을 잠그고 조회한다(보낸 사람 이름 비식별화). {@link
+     * #findByRecipientUserIdForUpdate} 와 같은 이유로 {@code FOR UPDATE} 다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "select n from Notification n where n.eventType = :eventType"
+                    + " and n.referenceId in :referenceIds order by n.id")
+    List<Notification> findByReferenceIdsForUpdate(
+            @Param("eventType") NotificationEventType eventType,
+            @Param("referenceIds") Collection<Long> referenceIds);
+
+    /**
      * 완료 처리(markSent/markFailed) 전용 — 행을 잠근다({@code AccountRepository.findByEmailForUpdate} 와 같은
      * 이유). 일반 {@code findById} 는 트랜잭션 시작 시점의 스냅샷을 읽을 뿐이라, 이 값을 읽어 자바에서 상태·lockedAt 을 확인한 뒤 저장하는 사이에
      * 다른 트랜잭션(재수거 등)이 같은 행을 먼저 바꿔도 알아채지 못하고 덮어쓸 수 있다 — 확인과 갱신이 원자적이지 않다는 리뷰 지적. {@code FOR UPDATE}

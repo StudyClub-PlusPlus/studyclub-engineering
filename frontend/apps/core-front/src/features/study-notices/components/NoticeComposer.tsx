@@ -13,6 +13,7 @@ import {
   effectiveChannels,
   limitNote,
   mentionedCount,
+  pruneSelection,
   statusCounts,
   toggleOne,
   toggleVisible,
@@ -52,14 +53,16 @@ export function NoticeComposer({
   }, [studyId, groupId]);
 
   const { recipients, discord } = compose;
+  // 다시 받은 명단에서 사라진 사람은 선택에서 뺀다. 모든 계산과 제출은 이 집합으로 한다
+  const picked = useMemo(() => pruneSelection(selected, recipients), [selected, recipients]);
   const counts = useMemo(() => statusCounts(recipients), [recipients]);
   const visible = visibleRecipients(recipients, filter);
-  const visiblePicked = visible.filter((r) => selected.has(r.participantId)).length;
+  const visiblePicked = visible.filter((r) => picked.has(r.participantId)).length;
 
   const effective = effectiveChannels(channels, discord.available);
-  const problems = draftProblems({ title, body, channels: effective, selectedCount: selected.size });
+  const problems = draftProblems({ title, body, channels: effective, selectedCount: picked.size });
   const submittable = canSubmit(
-    { title, body, channels: effective, selectedCount: selected.size },
+    { title, body, channels: effective, selectedCount: picked.size },
     compose,
   );
   const note = limitNote(compose);
@@ -74,7 +77,7 @@ export function NoticeComposer({
         title: title.trim(),
         body: body.trim(),
         channels: effective,
-        participantIds: recipients.filter((r) => selected.has(r.participantId)).map((r) => r.participantId),
+        participantIds: recipients.filter((r) => picked.has(r.participantId)).map((r) => r.participantId),
       },
       {
         onSuccess: () => {
@@ -154,7 +157,7 @@ export function NoticeComposer({
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <h2 className='text-base font-bold text-fg'>받는 사람</h2>
           <p className='text-sm text-fg-secondary' aria-live='polite'>
-            {selected.size}명 선택
+            {picked.size}명 선택
           </p>
         </div>
 
@@ -186,7 +189,7 @@ export function NoticeComposer({
             <li key={r.participantId} className='flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5'>
               <Checkbox
                 label={r.displayName}
-                checked={selected.has(r.participantId)}
+                checked={picked.has(r.participantId)}
                 onChange={(e) => setSelected((cur) => toggleOne(cur, r.participantId, e.target.checked))}
               />
               <span className='flex flex-wrap items-center gap-1.5'>
@@ -225,12 +228,12 @@ export function NoticeComposer({
       >
         <div className='space-y-2 text-sm text-fg-secondary'>
           <p>
-            <strong className='text-fg'>{selected.size}명</strong>에게 보냅니다. 보낸 공지는 고치거나 거둘 수 없습니다.
+            <strong className='text-fg'>{picked.size}명</strong>에게 보냅니다. 보낸 공지는 고치거나 거둘 수 없습니다.
           </p>
           <ul className='list-disc pl-5'>
-            {effective.includes('EMAIL') && <li>메일: {selected.size}명에게 한 통씩</li>}
+            {effective.includes('EMAIL') && <li>메일: {picked.size}명에게 한 통씩</li>}
             {effective.includes('DISCORD') && (
-              <li>디스코드: 로비 채널에 글 한 건, {mentionedCount(recipients, selected)}명 멘션 (미연동 제외)</li>
+              <li>디스코드: 로비 채널에 글 한 건, {mentionedCount(recipients, picked)}명 멘션 (미연동 제외)</li>
             )}
             {channels.includes('DISCORD') && !discord.available && <li>디스코드는 보내지 않습니다.</li>}
           </ul>

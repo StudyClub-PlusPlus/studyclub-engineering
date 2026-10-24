@@ -18,6 +18,10 @@ public interface StudyNoticeRepository extends JpaRepository<StudyNotice, Long> 
 
     long countByStudyGroupId(Long studyGroupId);
 
+    /** 회원 탈퇴 — 이 계정이 보낸 공지의 ID. 받은 사람들의 메일 행에서 보낸 사람 이름을 비식별화할 때 쓴다. */
+    @Query("SELECT n.id FROM StudyNotice n WHERE n.senderAccountId = :senderAccountId")
+    List<Long> findIdsBySenderAccountId(@Param("senderAccountId") Long senderAccountId);
+
     /** 스터디를 지울 때 — 받는 사람 행까지 함께 지운다. */
     void deleteByStudyId(Long studyId);
 

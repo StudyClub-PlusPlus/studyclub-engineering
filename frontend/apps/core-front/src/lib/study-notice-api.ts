@@ -6,7 +6,8 @@ export type NoticeChannel = 'EMAIL' | 'DISCORD';
 export type NoticeParticipantStatus = 'ACTIVE' | 'PAUSED';
 export type DiscordSkipReason = 'BOT_NOT_CONFIGURED' | 'NO_DISCORD_CHANNEL' | 'SENDER_NOT_LINKED' | 'NO_TEXT_CHANNEL';
 export type DiscordStatus = 'NOT_REQUESTED' | 'PENDING' | 'SENT' | 'SKIPPED' | 'FAILED';
-export type NoticeBlockedReason = 'COOLDOWN' | 'DAILY_LIMIT';
+/** 끝난 스터디(`STUDY_ENDED`)가 가장 먼저, 그다음 쿨다운, 하루 한도. */
+export type NoticeBlockedReason = 'STUDY_ENDED' | 'COOLDOWN' | 'DAILY_LIMIT';
 
 export type ApiNoticeRecipient = {
   /** 보낼 때 `participantIds` 에 넣는 값 (STUDY_PARTICIPANT.ID). */

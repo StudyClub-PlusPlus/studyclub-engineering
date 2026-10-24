@@ -95,18 +95,21 @@ public class StudyNoticeDiscordListener {
                 posted++;
                 mentioned.addAll(batch.accountIds());
             }
-        } catch (BusinessException e) {
+        } catch (RuntimeException e) {
+            // 메시지는 봇 응답을 옮긴 BusinessException 일 때만 남긴다 — 다른 HTTP 클라이언트 예외 메시지에는 헤더 값(API 키)이 실릴 수
+            // 있다
+            String cause = e instanceof BusinessException ? e.getMessage() : e.getClass().getName();
             if (posted == 0) {
-                log.warn("공지 {} 디스코드 발송 실패, 손으로 알린다: {}", plan.noticeId(), e.getMessage());
+                log.warn("공지 {} 디스코드 발송 실패, 손으로 알린다: {}", plan.noticeId(), cause);
                 recorder.markFailed(plan.noticeId());
                 return;
             }
-            // 첫 글은 올라갔는데 이어서 올리는 글이 실패했다 — 공지 자체는 전달됐으니 보냄으로 두고, 멘션하지 못한 사람은 로그로만 남긴다
+            // 첫 글은 올라갔는데 이어서 올리는 글이 실패했다. 공지 자체는 전달됐으니 보냄으로 두고, 멘션하지 못한 사람은 로그로만 남긴다
             log.warn(
                     "공지 {} 디스코드 이어서 올리기 실패, {}명만 멘션했다: {}",
                     plan.noticeId(),
                     mentioned.size(),
-                    e.getMessage());
+                    cause);
         }
         recorder.markSent(plan.noticeId(), mentioned);
     }

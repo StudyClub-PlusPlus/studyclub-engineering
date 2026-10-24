@@ -70,6 +70,29 @@ export function draftProblems(draft: Draft) {
   };
 }
 
+/**
+ * 다시 받은 명단에 더는 없는 사람(중단·탈퇴 등)을 선택에서 걷어낸다. 걷어내지 않으면 「N명 선택」과 확인 창의 인원이 부풀고, 모두 사라지면 빈 목록을
+ * 보내 400 이 난다.
+ */
+export function pruneSelection(selected: ReadonlySet<number>, recipients: ApiNoticeRecipient[]): Set<number> {
+  const present = new Set(recipients.map((r) => r.participantId));
+  return new Set([...selected].filter((id) => present.has(id)));
+}
+
+/**
+ * 쿨다운이 끝나는 때 화면 값(compose)을 다시 받을 때까지의 밀리초. 다시 받을 때가 없으면 false.
+ * 다시 받지 않으면 시각이 지나도 서버가 준 `canSend=false` 가 그대로라 버튼이 안 풀린다. 시각이 막 지난 순간에 서버가 아직 막고 있을 수 있어 조금 더 기다린다.
+ */
+export function nextRefetchDelay(
+  compose: Pick<ApiNoticeCompose, 'blockedReason' | 'nextAvailableAt'>,
+  now: number = Date.now(),
+): number | false {
+  if (compose.blockedReason !== 'COOLDOWN' || !compose.nextAvailableAt) return false;
+  const at = Date.parse(compose.nextAvailableAt);
+  if (Number.isNaN(at)) return false;
+  return Math.max(0, at - now) + 500;
+}
+
 /** 서버가 보낼 수 있다고 한 때(`canSend`)에만, 글과 보낼 곳과 받는 사람이 갖춰졌을 때 보낼 수 있다. */
 export function canSubmit(draft: Draft, compose: Pick<ApiNoticeCompose, 'canSend'>): boolean {
   const p = draftProblems(draft);
@@ -113,6 +136,7 @@ export function clock(iso: string, locale = 'ko-KR'): string {
 
 /** 보내기 줄 왼쪽의 한 줄 안내. 사유와 시각은 서버가 준 값을 그대로 쓴다. 안내할 것이 없으면 null. */
 export function limitNote(compose: ApiNoticeCompose): string | null {
+  if (compose.blockedReason === 'STUDY_ENDED') return '끝난 스터디라 새 공지를 보낼 수 없습니다.';
   if (compose.blockedReason === 'COOLDOWN' && compose.nextAvailableAt) {
     return `방금 공지를 보냈습니다. ${clock(compose.nextAvailableAt)} 이후에 다시 보낼 수 있습니다.`;
   }
