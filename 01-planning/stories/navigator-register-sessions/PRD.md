@@ -366,11 +366,12 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/my/joined/[id]/schedule` (일정 · 정보 · 규칙 · 출석) | 없음 — 「준비 중」 자리만 있다. 회차 데이터는 브라우저 mock (`lib/meetings.ts`) | 프로토 스터디 일정대로 만들고 아래 API 에 연결한다. 「이후 반복 모두」 버튼은 넣지 않는다 |
-| BE | 회차 `GET` · `POST` · `PUT` · `DELETE`, 발표자, 규칙 저장 | 구현중 | [study-meeting 스펙](../../../specs/study-meeting/spec.md#구현-메모) 마무리 |
+| FE | core-front `/my/joined/[id]/schedule` (일정 · 정보 · 규칙 · 출석) | 있음 (#278) — 일정 · 정보 · 규칙 · 출석 탭을 아래 API 에 연결 (`lib/joined-detail-api.ts`). 다만 회차 삭제는 회차마다 `DELETE …/meetings/{meetingId}` 를 부르는데 백엔드에 그 경로가 없다 | 삭제를 백엔드 일괄 삭제 한 번으로 부르게 고친다 (아래 BE 줄). 그 밖은 10-18 변경 표 |
+| BE | 회차 `GET` · `POST` · `PUT` · `DELETE`, 발표자, 규칙 저장 | 조회 · 추가 · 수정 · 발표자 · 규칙 구현완료. 삭제는 구현중 — 코드는 `DELETE /api/studies/{studyId}/meetings` + 바디(`studyGroupId` · `meetingIds`) 하나뿐이라 스펙의 두 경로와 다르다 | 삭제 경로를 스펙 · 코드 · FE 하나로 맞춘다 ([study-meeting 스펙](../../../specs/study-meeting/spec.md)) |
 | BE | `GET /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업

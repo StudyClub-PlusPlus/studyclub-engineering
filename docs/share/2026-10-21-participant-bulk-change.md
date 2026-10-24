@@ -7,7 +7,7 @@
   - 01-planning/stories/captain-assign-classes/PRD.md API 표 — 됨 (이 PR)
   - playground `console/studies/{id}` spec · CrewTab TODO — 됨 (이 PR)
   - docs/share/2026-10-18-discord-automation-gap.md STD-03 — 됨 (이 PR)
-  - backend 일괄 변경 API — 아직 (STD-03)
+  - backend 일괄 변경 API — 됨 (#303)
 ---
 
 # 신청자 탭의 반 · 역할 변경은 한 번에 저장한다 — API 도 한 사람씩이 아니라 한 번이다
