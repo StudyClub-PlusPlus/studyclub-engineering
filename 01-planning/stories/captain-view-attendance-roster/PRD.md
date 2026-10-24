@@ -341,9 +341,11 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 출석 탭 (`AttendanceTab`) | 있음 — **mock**. 같은 ID 의 mock 스터디가 없으면 빈 화면 (`StudyConsole` 의 `TODO(api)`) | 아래 API 에 연결한다 |
-| BE | `GET /api/admin/studies/{studyId}/attendances` | 구현중 — 컨트롤러는 있고 통합 테스트가 없다 | 통합 테스트를 붙이고 스펙 상태를 구현완료로 |
-| BE | `POST /api/admin/studies/{studyId}/attendances` | 구현완료 — `withdrawals[]` 없음 | 백오피스 참여 중단을 위해 사이트 출석 저장과 같은 `withdrawals[]` 를 받는다 ([참여 중단 스펙](../../../specs/study-participant/spec.md)) (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
+| FE | back-office-front 출석 탭 (`features/attendance/AttendanceTab`) | 있음 — 아래 API 에 연결 (2026-10-23). 반 칩 · 선택 · 일괄 변경 · 참여 중단 · 격자 · 저장 · 나가기 확인 | 없음 |
+| BE | `GET /api/admin/studies/{studyId}/attendances` | 구현완료 | 없음 |
+| BE | `POST /api/admin/studies/{studyId}/attendances` | 구현완료 — `withdrawals[]` 받음 (담당 캡틴 · 크루 · 네비게이터) | 없음 |
+
+> **2026-10-23 기획 결정**: 백오피스 출석부에서 **담당 캡틴**이 크루와 **네비게이터**의 참여를 중단시킬 수 있다. 사용자 사이트는 그대로(네비게이터는 크루만). 그래서 아래 생성 블록(`spec:start attendance`)의 「네비게이터가 섞이면 참여 중단이 잠긴다」 는 백오피스에서 더는 맞지 않는다 — playground `spec.ts` 는 다음 기획 손질 때 고친다 ([참여 중단 스펙](../../../specs/study-participant/spec.md) 「백오피스 경로」)
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 
