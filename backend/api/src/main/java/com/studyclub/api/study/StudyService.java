@@ -1,6 +1,7 @@
 package com.studyclub.api.study;
 
 import com.studyclub.api.application.StudyApplicationFormService;
+import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.AccountRepository;
@@ -9,6 +10,7 @@ import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.storage.StoragePurpose;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
@@ -52,6 +54,7 @@ public class StudyService {
     private final StudyCaptainGuard studyCaptainGuard;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
     private final StudyApplicationFormService studyApplicationFormService;
+    private final UploadService uploadService;
 
     public StudyService(
             StudyRepository studyRepository,
@@ -66,7 +69,8 @@ public class StudyService {
             StudyBookmarkRepository studyBookmarkRepository,
             StudyCaptainGuard studyCaptainGuard,
             StudyDiscordLinkRepository studyDiscordLinkRepository,
-            StudyApplicationFormService studyApplicationFormService) {
+            StudyApplicationFormService studyApplicationFormService,
+            UploadService uploadService) {
         this.studyRepository = studyRepository;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
@@ -80,6 +84,7 @@ public class StudyService {
         this.studyCaptainGuard = studyCaptainGuard;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
         this.studyApplicationFormService = studyApplicationFormService;
+        this.uploadService = uploadService;
     }
 
     @Transactional
@@ -102,7 +107,8 @@ public class StudyService {
                                 .description(request.description())
                                 .category(request.category())
                                 .status(StudyStatus.DRAFT)
-                                .thumbnailUrl(request.thumbnailUrl())
+                                .thumbnailUrl(
+                                        attachThumbnail(request.thumbnailFileId(), accountId, now))
                                 .schedule(request.schedule())
                                 .createdBy(accountId)
                                 .build());
@@ -115,6 +121,8 @@ public class StudyService {
                         .startAt(now)
                         .recruitDeadlineAt(request.recruitDeadline())
                         .build());
+        // 신청자가 들어갈 반 — 반을 나눌지는 신청자를 보고 캡틴이 정한다
+        studyGroupRepository.save(StudyGroup.defaultOf(study.getId()));
 
         return study.getId();
     }
@@ -166,10 +174,36 @@ public class StudyService {
         applyUpdate(study, request);
     }
 
-    /** 백오피스 — 권한은 {@code @RequireAdmin} 가 검사한다. */
+    /** 백오피스 — 권한은 {@code @RequireAdmin} 가 검사한다. 썸네일은 백오피스에서만 바꾼다. */
     @Transactional
-    public void updateFromBackOffice(Long studyId, StudyUpdateRequest request) {
-        applyUpdate(findStudy(studyId), request);
+    public void updateFromBackOffice(Long accountId, Long studyId, StudyUpdateRequest request) {
+        Study study = findStudy(studyId);
+        applyUpdate(study, request);
+        if (request.thumbnailFileIdPresent()) {
+            replaceThumbnail(
+                    study, attachThumbnail(request.thumbnailFileId(), accountId, Instant.now()));
+        }
+    }
+
+    /** 올려 둔 번호를 썸네일로 연결하고 주소를 돌려준다. 번호가 없으면 null (썸네일 없음). */
+    private String attachThumbnail(Long fileId, Long accountId, Instant now) {
+        if (fileId == null) {
+            return null;
+        }
+        return uploadService.publicUrl(
+                uploadService.attach(fileId, accountId, StoragePurpose.STUDY_THUMBNAIL, now));
+    }
+
+    /**
+     * 썸네일 주소를 바꾸고 옛 파일은 커밋 뒤 지운다. 주인 조건 대신 용도 조건으로 찜한다 — 썸네일은 운영자 여럿이 고치는 자원이라, A 가 올린 것을 B 가 바꿔도
+     * 지워져야 한다. 스터디를 고칠 권한은 호출자가 이미 확인했다.
+     */
+    private void replaceThumbnail(Study study, String newUrl) {
+        var old =
+                uploadService.markDeletingByUrlForPurpose(
+                        study.getThumbnailUrl(), StoragePurpose.STUDY_THUMBNAIL, Instant.now());
+        study.changeThumbnailUrl(newUrl);
+        uploadService.deleteAfterCommit(old.stream().toList());
     }
 
     // 수정 본문 — 권한을 검사하지 않는다. 진입 메서드가 검사한 뒤에만 부른다
@@ -226,8 +260,15 @@ public class StudyService {
     @Transactional
     public void delete(Long studyId) {
         // 잠가서 조회한다 — 봇 응답을 기다리던 디스코드 연결 저장과 엇갈려 지운 스터디에 연결이 남지 않게
-        if (studyRepository.findByIdForUpdate(studyId).isEmpty()) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다.");
+        Study study =
+                studyRepository
+                        .findByIdForUpdate(studyId)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND, "스터디를 찾을 수 없습니다."));
+        if (study.getThumbnailUrl() != null) {
+            replaceThumbnail(study, null);
         }
 
         List<Long> groupIds =

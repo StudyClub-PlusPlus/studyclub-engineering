@@ -33,7 +33,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 /**
- * PATCH /api/me — 성공 + 실패 코어 (specs/profile-edit/spec.md). 닉네임 형식 규칙의 세부는 {@link
+ * GET·PATCH /api/me — 성공 + 실패 코어 (specs/profile-edit/spec.md). 닉네임 형식 규칙의 세부는 {@link
  * NicknamePolicyTest} 가 단위로 덮는다. 여기서는 온보딩과 다른 규칙 하나, "지금 쓰는 자기 닉네임은 중복이 아니다" 를 지킨다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -83,8 +83,70 @@ class AccountProfileIntegrationTest {
                 "/api/me", HttpMethod.PATCH, new HttpEntity<>(body, headers), Map.class);
     }
 
+    @SuppressWarnings("rawtypes")
+    private ResponseEntity<Map> getMe(Account account) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(jwt.issueAccess(String.valueOf(account.getId()), account.getEmail()));
+        return rest.exchange("/api/me", HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+    }
+
     @Test
-    @DisplayName("성공 - 닉네임·타임존을 저장하고 바뀐 AccountView 를 돌려준다")
+    @DisplayName("성공 - GET /api/me 는 저장된 닉네임·타임존·온보딩 완료 시각을 돌려준다")
+    void returnsMe() {
+        String nickname = uniqueNickname();
+        Account account = seedOnboardedAccount(nickname);
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("nickname", nickname);
+        assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
+        assertThat(response.getBody()).containsEntry("email", account.getEmail());
+        assertThat(response.getBody()).containsKey("discordNickname");
+        assertThat(response.getBody().get("onboardingCompletedAt")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("성공 - 디스코드를 연동한 계정은 discordLinked 가 true 이고 디스코드 ID·핸들은 내리지 않는다")
+    void returnsDiscordLinked() {
+        Account account = seedOnboardedAccount(uniqueNickname());
+        String discordId = "d" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        account.linkDiscord(discordId, "crew_handle");
+        accountRepository.save(account);
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("discordLinked", true);
+        assertThat(response.getBody()).doesNotContainKeys("discordId", "discordHandle");
+        assertThat(response.getBody().values()).doesNotContain(discordId, "crew_handle");
+    }
+
+    @Test
+    @DisplayName("성공 - 디스코드를 연동하지 않은 계정은 discordLinked 가 false 다 — 필드가 빠지지 않는다")
+    void returnsDiscordUnlinked() {
+        Account account = seedOnboardedAccount(uniqueNickname());
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("discordLinked", false);
+    }
+
+    @Test
+    @DisplayName("성공 - 온보딩 미완료 계정도 GET /api/me 는 403 이 아니라 200 이다 — 프론트가 이 응답으로 온보딩 화면으로 보낸다")
+    void returnsMeBeforeOnboarding() {
+        Account account = seedUnonboardedAccount();
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("email", account.getEmail());
+        assertThat(response.getBody().get("onboardingCompletedAt")).isNull();
+    }
+
+    @Test
+    @DisplayName("성공 - 닉네임·타임존을 저장하고 바뀐 AccountSelfView 를 돌려준다 — GET /api/me 와 같은 모양")
     void updatesNicknameAndTimeZone() {
         Account account = seedOnboardedAccount(uniqueNickname());
         String newNickname = uniqueNickname();
@@ -95,6 +157,7 @@ class AccountProfileIntegrationTest {
         assertThat(response.getBody()).containsEntry("nickname", newNickname);
         assertThat(response.getBody()).containsEntry("timeZone", "America/Vancouver");
         assertThat(response.getBody()).containsEntry("email", account.getEmail());
+        assertThat(response.getBody()).containsKey("discordNickname");
 
         Account saved = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(saved.getNickname()).isEqualTo(newNickname);
@@ -147,16 +210,52 @@ class AccountProfileIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 화면 목록에 없는 시간대도 저장한다 — 서버는 존재하는 IANA ID 를 전부 받는다")
-    void savesTimeZoneOutsideScreenList() {
+    @DisplayName("실패 - 존재하는 IANA ID 라도 화면 목록에 없는 시간대는 400 — 서버도 시간대 정책의 목록으로 막는다")
+    void rejectsTimeZoneOutsideScreenList() {
         String nickname = uniqueNickname();
         Account account = seedOnboardedAccount(nickname);
 
         var response = patchProfile(account, nickname, "Asia/Tokyo");
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        // 메시지는 "필드: 문구" 꼴 — 존재하지 않는 ID 와 같은 문구라 화면이 구분할 필요가 없다
+        assertThat(response.getBody().get("errorMessage"))
+                .asString()
+                .contains("timeZone: 고를 수 있는 타임존이 아닙니다");
         assertThat(accountRepository.findById(account.getId()).orElseThrow().getTimeZone())
-                .isEqualTo("Asia/Tokyo");
+                .isEqualTo("Asia/Seoul");
+    }
+
+    @Test
+    @DisplayName("성공 - 막기 전에 목록 밖 시간대로 저장된 계정도 조회는 그대로 된다 — 검증은 저장할 때만 본다")
+    void returnsPreviouslySavedTimeZoneOutsideScreenList() {
+        Account account = seedUnonboardedAccount();
+        account.completeOnboarding(uniqueNickname(), "Asia/Tokyo", Instant.now());
+        account = accountRepository.save(account);
+
+        var response = getMe(account);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("timeZone", "Asia/Tokyo");
+    }
+
+    @Test
+    @DisplayName("실패 - 막기 전에 목록 밖 시간대로 저장된 계정은 그 값 그대로 다시 저장해도 400 — 넷 중 하나를 골라야 한다")
+    void rejectsPreviouslySavedTimeZoneOutsideScreenList() {
+        String nickname = uniqueNickname();
+        Account account = seedUnonboardedAccount();
+        account.completeOnboarding(nickname, "Asia/Tokyo", Instant.now());
+        account = accountRepository.save(account);
+
+        var response = patchProfile(account, uniqueNickname(), "Asia/Tokyo");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+        assertThat(response.getBody().get("errorMessage")).asString().contains("timeZone");
+        Account saved = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(saved.getNickname()).isEqualTo(nickname);
+        assertThat(saved.getTimeZone()).isEqualTo("Asia/Tokyo");
     }
 
     @Test
@@ -265,6 +364,33 @@ class AccountProfileIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).containsEntry("errorCode", "ONBOARDING_REQUIRED");
+    }
+
+    @Test
+    @DisplayName("실패 - 온보딩 미완료 계정은 프로필 사진 연결·지우기도 403 ONBOARDING_REQUIRED")
+    void rejectsUnonboardedAccountOnProfileImage() {
+        Account account = seedUnonboardedAccount();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(jwt.issueAccess(String.valueOf(account.getId()), account.getEmail()));
+
+        // 가드가 메서드마다 붙어 있어 사진 엔드포인트만 빠질 수 있다 — 둘 다 따로 확인한다.
+        var put =
+                rest.exchange(
+                        "/api/me/profile-image",
+                        HttpMethod.PUT,
+                        new HttpEntity<>(Map.of("fileId", 1), headers),
+                        Map.class);
+        var delete =
+                rest.exchange(
+                        "/api/me/profile-image",
+                        HttpMethod.DELETE,
+                        new HttpEntity<>(headers),
+                        Map.class);
+
+        assertThat(put.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(put.getBody()).containsEntry("errorCode", "ONBOARDING_REQUIRED");
+        assertThat(delete.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(delete.getBody()).containsEntry("errorCode", "ONBOARDING_REQUIRED");
     }
 
     @Test

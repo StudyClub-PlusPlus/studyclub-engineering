@@ -42,6 +42,12 @@ public final class AccountDtos {
             @NotBlank(message = "닉네임은 필수입니다") @ValidNickname String nickname,
             @NotBlank(message = "타임존은 필수입니다") @ValidTimeZone String timeZone) {}
 
+    /**
+     * 프로필 사진 연결 요청 (PUT /api/me/profile-image). 번호만 받는다 — 주소 문자열을 받으면 외부 이미지·추적 픽셀을 꽂을 수 있다. 검증
+     * 어노테이션을 안 붙이는 이유: 번호가 없든 틀리든 서비스가 같은 문구로 400 을 낸다 — 어떤 번호가 존재하는지 응답으로 알 수 없게.
+     */
+    public record UpdateProfileImageRequest(Long fileId) {}
+
     /** 마케팅 수신 동의 변경 요청 (PUT /api/me/marketing-consent). false 도 정상값이라 누락만 막는다. */
     public record UpdateMarketingConsentRequest(
             @NotNull(message = "마케팅 수신 동의 여부는 필수입니다") Boolean agreed) {}
@@ -64,4 +70,10 @@ public final class AccountDtos {
      * 걸러져 {@code GlobalExceptionHandler} 가 400 INVALID_INPUT 으로 응답한다.
      */
     public record LeaveRequest(LeaveReason reason) {}
+
+    /**
+     * 디스코드 계정 연동 요청 (POST /api/me/discord/link). 바디에 {@code discordId}·{@code handle} 이 있어도 읽지 않는다
+     * — 값은 서버가 디스코드에서 받는다.
+     */
+    public record DiscordLinkRequest(@NotBlank(message = "code 는 필수입니다") String code) {}
 }

@@ -27,6 +27,17 @@ class SesMailClientTest {
         assertThat(request.message().subject().data()).isEqualTo("가입 환영");
         assertThat(request.message().body().text().data()).isEqualTo("홍길동님 환영합니다.");
         assertThat(request.message().body().text().charset()).isEqualTo("UTF-8");
+        assertThat(request.message().body().html()).isNull();
+    }
+
+    @Test
+    @DisplayName("HTML 본문은 text/html 과 태그를 걷은 text/plain 을 함께 보낸다")
+    void sendsHtmlWithTextAlternative() {
+        SendEmailRequest request = sendAndCapture("welcome-notify", "<p>홍길동님 <b>환영</b>합니다.</p>");
+
+        assertThat(request.message().body().html().data()).isEqualTo("<p>홍길동님 <b>환영</b>합니다.</p>");
+        assertThat(request.message().body().html().charset()).isEqualTo("UTF-8");
+        assertThat(request.message().body().text().data()).isEqualTo("홍길동님 환영합니다.");
     }
 
     @Test
@@ -38,6 +49,10 @@ class SesMailClientTest {
     }
 
     private SendEmailRequest sendAndCapture(String configurationSetName) {
+        return sendAndCapture(configurationSetName, "홍길동님 환영합니다.");
+    }
+
+    private SendEmailRequest sendAndCapture(String configurationSetName, String body) {
         SesClient sesClient = mock(SesClient.class);
         SesClientBuilder builder = mock(SesClientBuilder.class, RETURNS_SELF);
         when(builder.build()).thenReturn(sesClient);
@@ -54,7 +69,7 @@ class SesMailClientTest {
 
         try (var sesFactory = mockStatic(SesClient.class)) {
             sesFactory.when(SesClient::builder).thenReturn(builder);
-            mailClient.send(MailCategory.NOTIFY, "gildong@example.com", "가입 환영", "홍길동님 환영합니다.");
+            mailClient.send(MailCategory.NOTIFY, "gildong@example.com", "가입 환영", body);
         } finally {
             mailClient.close();
         }

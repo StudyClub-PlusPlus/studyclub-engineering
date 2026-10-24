@@ -29,11 +29,29 @@ function messageOf(body: unknown, status: number): string {
   return `요청에 실패했습니다 (${status})`;
 }
 
+function currentClientNickname(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem('sc_user') ?? window.localStorage.getItem('user');
+    if (!raw) return null;
+    const user = JSON.parse(raw);
+    return user?.nickname || user?.name || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  const nickname = currentClientNickname();
+  if (nickname) {
+    headers.set('x-user-nickname', encodeURIComponent(nickname));
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     cache: 'no-store',
     credentials: 'include',
     ...init,
+    headers,
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(res.status, messageOf(body, res.status), body);

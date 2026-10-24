@@ -1,5 +1,7 @@
 package com.studyclub.domain.participant;
 
+import com.studyclub.common.error.BusinessException;
+import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -72,12 +74,58 @@ public class StudyParticipant extends BaseEntity {
     private Instant leftAt;
 
     /**
+     * 신청 제출 = 명부 편입. 신청자는 그 스터디의 기본 반에 들어가고, 캡틴이 반을 나누면 「크루의 반 지정」으로 옮긴다
+     * (docs/share/2026-10-18-roster-on-apply.md).
+     */
+    public static StudyParticipant joinByApplication(
+            Long accountId, Long studyId, Long studyGroupId, Instant joinedAt) {
+        return StudyParticipant.builder()
+                .accountId(accountId)
+                .studyId(studyId)
+                .studyGroupId(studyGroupId)
+                .status(ParticipantStatus.ACTIVE)
+                .participantRole(ParticipantRole.MEMBER)
+                .joinedAt(joinedAt)
+                .build();
+    }
+
+    /**
+     * 명부에서 빠졌던 사람이 같은 스터디에 다시 신청했다. 새 행을 만들면 그 사람의 옛 행과 반이 겹쳐 {@code UNIQUE(ACCOUNT_ID,
+     * STUDY_GROUP_ID)} 에 걸리므로 옛 행을 되살린다. 반은 그대로, 역할은 크루로 돌린다 — 네비게이터는 캡틴이 다시 정한다.
+     *
+     * <p>{@code joinedAt} 을 다시 신청한 시각으로 옮긴다. 빠져 있던 동안의 회차가 출석률 분모에 결석으로 들어가지 않게 한다.
+     */
+    public void rejoinByApplication(Instant joinedAt) {
+        this.status = ParticipantStatus.ACTIVE;
+        this.participantRole = ParticipantRole.MEMBER;
+        this.joinedAt = joinedAt;
+        this.leftAt = null;
+    }
+
+    /**
      * 스터디 하차 — 명부에서 자발적으로 빠지는 경우. leftAt 을 기록해 AttendanceRateCalculator 가 이 시각 이전 회차만 집계에 포함하도록 한다.
      * leftAt 이후 회차는 결석(0점)이 아니라 분모에서 제외된다 — "하차"와 "결석"이 섞이지 않는다.
      */
     public void markWithdrawn(Instant withdrawnAt) {
         this.status = ParticipantStatus.WITHDRAWN;
         this.leftAt = withdrawnAt;
+    }
+
+    /**
+     * 네비게이터·담당 캡틴이 출석부에서 참여를 중단시킨다 (specs/study-participant/spec.md). 이미 {@code WITHDRAWN} 이면 그대로
+     * 둔다 — {@code leftAt} 을 덮어쓰면 집계 분모가 바뀐다. 완주·탈퇴한 행은 바꿀 수 없다.
+     *
+     * @return 이번에 바뀌었으면 true, 이미 중단된 행이면 false
+     */
+    public boolean withdraw(Instant now) {
+        if (status == ParticipantStatus.WITHDRAWN) {
+            return false;
+        }
+        if (status != ParticipantStatus.ACTIVE && status != ParticipantStatus.PAUSED) {
+            throw new BusinessException(ErrorCode.PARTICIPANT_NOT_ACTIVE);
+        }
+        markWithdrawn(now);
+        return true;
     }
 
     /**
@@ -93,5 +141,15 @@ public class StudyParticipant extends BaseEntity {
         if (this.leftAt == null) {
             this.leftAt = deletedAt;
         }
+    }
+
+    /** 스터디 역할을 바꾼다. ACTIVE·PAUSED 상태 검증은 서비스 레이어에서 한다. */
+    public void changeRole(ParticipantRole role) {
+        this.participantRole = role;
+    }
+
+    /** 소속 반을 옮긴다. ACTIVE·PAUSED 상태 검증·부수효과(발표자 정리·출석 생성)는 서비스 레이어에서 한다. */
+    public void changeGroup(Long newGroupId) {
+        this.studyGroupId = newGroupId;
     }
 }

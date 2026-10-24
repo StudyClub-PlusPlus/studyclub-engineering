@@ -3,7 +3,7 @@
 역할 하나를 여러 유저에게서 한 요청으로 뗀다. 스터디 종료·탈퇴 때 [`assign-role`](assign-role.md) 로
 붙였던 역할을 회수하는 용도다. 붙이는 것의 짝이라 계약 대부분이 같고, **다른 곳만** 이 문서에 자세히 적는다.
 
-> ⚠️ **아직 구현 전이다.** 이 문서는 구현할 계약이다.
+> ✅ **구현됨** — `discord/app/api/routes/roles.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
 > **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다.
 
@@ -24,7 +24,7 @@ DELETE /api/v1/roles/{discordRoleId}/users
 
 | 위치 | 이름 | 타입 | 필수 | 설명 |
 |------|------|------|------|------|
-| 경로 | `discordRoleId` | string | O | 뗄 **Discord 역할 ID**(snowflake). `create-study` 가 돌려준 `discordRoleId` 가 여기 들어간다 |
+| 경로 | `discordRoleId` | string | O | 뗄 **Discord 역할 ID**(snowflake). `create-study` 가 돌려준 `discordRoleId` 가 여기 들어간다. captain · navigator · `@everyone` 은 안 된다 |
 
 ```jsonc
 {
@@ -36,19 +36,22 @@ DELETE /api/v1/roles/{discordRoleId}/users
 | 필드 | 타입 | 필수 | 제약 |
 |------|------|------|------|
 | `discordStudyId` | string | O | snowflake. **로깅·추적용** — [assign-role 과 같다](assign-role.md#discordstudyid-의-역할) |
-| `discordUserIds` | string[] | O | snowflake 배열. 1개 이상, 중복은 무시. 상한은 [미정](#미정-사항) |
+| `discordUserIds` | string[] | O | snowflake 배열. 1개 이상, 중복은 무시. **최대 100개** (중복 제거 후) |
 
 **바디를 싣는 DELETE 다.** HTTP 가 금지하지는 않지만 중간 프록시가 버리는 경우가 있다 —
 이 서비스는 백엔드가 내부에서 직접 부르므로 그 경로에 프록시가 없다.
 
 헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다.
 
-**captain 역할을 가진 멤버만 호출할 수 있다.** [`create-study`](create-study.md#요청) ·
-[`assign-role`](assign-role.md#요청) 과 같은 규칙이다 — 없으면 **403**.
+**captain 역할을 가진 멤버, 또는 [시스템](common-header.md#시스템-호출)만 호출할 수 있다.**
+[`assign-role`](assign-role.md#요청) 과 같은 규칙이다 — captain 이 아닌 멤버면 **403**.
 
 모든 ID 는 문자열이고 `^[0-9]{17,20}$` 로 검증한다.
 
-**`discordRoleId` 는 제한하지 않는다.** 올바른 `discordStudyId` · `discordRoleId` 쌍을 보내는 건 백엔드
+**captain · navigator · `@everyone` 역할은 뗄 수 없다** (**400**) — [assign-role 과 같은 셋](assign-role.md#배정할-수-있는-역할의-범위)이다.
+navigator 는 [`remove-navigator-role`](remove-navigator-role.md) 로 뗀다. 막으려면 두 역할 ID 를 알아야 하므로
+시스템 호출이어도 `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 가 비어 있으면 **409** 다.
+그 밖의 `discordRoleId` 는 제한하지 않는다. 올바른 `discordStudyId` · `discordRoleId` 쌍을 보내는 건 백엔드
 책임이다 — [assign-role 의 역할 범위](assign-role.md#배정할-수-있는-역할의-범위) 와 같은 신뢰 모델이다.
 
 ## 성공 응답
@@ -85,14 +88,20 @@ DELETE /api/v1/roles/{discordRoleId}/users
 | **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
 | **502** | `X-Discord-User-ID` 멤버 조회 중 Discord 가 거부하거나 5xx — 대상은 아직 건드리지 않았다 |
 
+시스템 호출은 요청자를 조회하지 않으므로 위의 403 · 404 · 502 가 나지 않는다.
+
 ### 이 엔드포인트에서 나는 것
 
 | 상태 | 언제 | 원인 |
 |------|------|------|
-| **400** | `discordRoleId` · `discordUserId` · `discordStudyId` 가 snowflake 형식이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
-| **400** | `discordStudyId` 쿼리가 없음 | 위와 같음 |
+| **400** | `discordRoleId` · `discordStudyId` · `discordUserIds` 의 원소가 snowflake 형식이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
+| **400** | `discordStudyId` 가 없음 | 위와 같음 |
+| **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
+| **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
+| **400** | `discordRoleId` 가 captain · navigator · `@everyone` 역할 | [요청](#요청) 참고. 역할이 길드에 있는지보다 먼저 본다 |
 | **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제. 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
 | **404** | `discordRoleId` 에 해당하는 역할이 길드에 없음 | [아래](#역할이-없으면-404-다) 참고 |
+| **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
 `discordUserIds` 의 유저가 **길드 멤버가 아니어도 에러가 아니다** — [아래](#길드에-없는-유저는-성공이다) 참고.
@@ -110,11 +119,15 @@ Discord 에는 "역할을 여러 명에게서 한 번에" 가 없다. **유저 �
 [assign-role](assign-role.md#부분-실패와-재시도) 과 같고, **기우는 방향만 다르다.**
 
 **규칙 1 — 역할이 없으면 아무것도 하지 않는다.** 역할을 먼저 해석하고, 없으면
-[404](#역할이-없으면-404-다) 다. 유저는 미리 해석하지 않는다 — 아래 참고.
+[404](#역할이-없으면-404-다) 다. 유저는 미리 "길드에 있나" 를 판정하지 않는다 — 아래 참고.
 
 **규칙 2 — 한 명이 실패해도 나머지를 계속 뗀다.** 멈추면 뒤에 남은 유저들이 재시도가 올 때까지
 계속 접근권을 가진다. 이미 뗀 유저에게 역할을 다시 붙여 "되돌리지" 않는다 — 방금 뗀 사람에게
 접근권을 다시 주는 건 회수 요청의 의도와 정반대다.
+
+단, **Discord 와의 연결 자체가 끊기면 거기서 멈춘다** — 연결 리셋 · 끊김 · 타임아웃은 다음 유저에게도 똑같이
+나고 한 명마다 몇 분씩 걸릴 수 있다. 그 유저와 아직 시도하지 않은 유저를 모두 `failed` 에 `DISCORD_REJECTED`
+로 담고 200 으로 답한다 ([assign-role](assign-role.md#부분-실패와-재시도) 과 같다). (2026-10-15 결정)
 
 **규칙 3 — 재시도는 전체를 다시 보내도 되고, `failed` 만 보내도 된다.** 회수는 **멱등**이다.
 역할이 없는 멤버에게서 떼도 Discord 는 204 를 돌려준다.
@@ -142,7 +155,9 @@ assign-role 은 길드에 없는 유저를 `failed` 에 `NOT_IN_GUILD` 로 담�
   *실제 멤버*에게서 역할을 떼지 않고 성공으로 세게 되는데, 그건 역할이 남아 있는데 성공이라고
   말하는 것이다.
   assign-role 에서 캐시 누락은 `failed` 에 남아 눈에 띄지만, 여기서는 **조용한 거짓 성공**이 된다.
-  그래서 유저를 미리 해석하지 않고 한 명씩 Discord 에 보낸다.
+  그래서 멤버 캐시는 **회수를 보낼 멤버 객체를 얻는 데만** 쓴다 — 캐시에 있으면 바로 회수를 보내고,
+  없으면 Discord 에 그 멤버를 물은 뒤 보낸다. 어느 쪽이든 "길드에 없다" 는 Discord 가 `Unknown Member` 로
+  답했을 때만 내린다.
 
 ### 역할이 없으면 404 다
 

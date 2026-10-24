@@ -1,5 +1,6 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -18,6 +19,7 @@ import com.studyclub.domain.proposal.StudyProposal;
 import com.studyclub.domain.proposal.StudyProposalInterestRepository;
 import com.studyclub.domain.proposal.StudyProposalRepository;
 import com.studyclub.domain.proposal.StudyProposalStatus;
+import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.notification.Notification;
@@ -59,6 +61,7 @@ public class AccountDeletionService {
     private final AccountConsentRepository accountConsentRepository;
     private final AccountLeaveReasonRepository accountLeaveReasonRepository;
     private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyGroupRepository studyGroupRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyProposalRepository studyProposalRepository;
@@ -66,6 +69,7 @@ public class AccountDeletionService {
     private final StudyApplicationRepository studyApplicationRepository;
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper;
+    private final UploadService uploadService;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -109,28 +113,37 @@ public class AccountDeletionService {
 
         // 계정·프로필 삭제.
         accountRepository.delete(account);
+        // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 연결된·연결 안 된 파일을 DELETING 으로 찜하고
+        // 커밋 뒤 저장소에서 지운다. 지우기에 실패해도 탈퇴는 성공이고, 행이 남아 정리 배치가 다시 지운다 (specs/user-leave/spec.md 5단계).
+        uploadService.deleteAfterCommit(
+                uploadService.markDeletingByAccount(accountId, Instant.now()));
     }
 
+    // 참여 중단 · 발표 신청과 같은 분반 잠금을 먼저 쥔다 — 그 사이에 커밋된 참여 중단의 상태 · LEFT_AT 을 덮어쓰지 않는다 (share 10-18 D7).
+    // 분반은 ID 오름차순으로 잠근다 — 여러 분반을 잠그는 참여 중단도 이 순서다. 디스코드 출석은 분반이 아니라 회차만, 같은 분반 ID 오름차순으로 잠근다
     private void anonymizeParticipations(Long accountId) {
-        Instant deletedAt = Instant.now();
+        List<Long> groupIds = studyParticipantRepository.findStudyGroupIdsByAccountId(accountId);
+        for (Long groupId : groupIds) {
+            studyGroupRepository.findByIdForUpdate(groupId);
+        }
         List<StudyParticipant> participations =
-                studyParticipantRepository.findByAccountId(accountId);
+                studyParticipantRepository.findByAccountIdForUpdate(accountId);
+        Instant deletedAt = Instant.now();
         for (StudyParticipant participation : participations) {
             participation.markDeletedDueToAccountDeletion(deletedAt);
         }
-        releasePresenterSlots(participations, deletedAt);
+        releasePresenterSlots(groupIds, participations, deletedAt);
     }
 
     // 떠난 사람이 맡은 예정 회차의 발표자 칸을 비운다 — 빈 칸이 다시 「신청」 으로 열린다. 지난 회차는 기록이라 둔다
-    // (specs/study-meeting/spec.md 구현 메모)
-    private void releasePresenterSlots(List<StudyParticipant> participations, Instant now) {
+    // (specs/study-meeting/spec.md 구현 메모). 회차는 잠근 뒤에 「시작한 회차」 를 판정한다 — 디스코드 출석이 같은 잠금으로 회차를 시작한다
+    private void releasePresenterSlots(
+            List<Long> groupIds, List<StudyParticipant> participations, Instant now) {
         List<Long> participantIds = participations.stream().map(StudyParticipant::getId).toList();
-        if (participantIds.isEmpty()) {
-            return;
-        }
-        for (StudyMeeting meeting : studyMeetingRepository.findByPresenterIn(participantIds)) {
-            for (Long participantId : participantIds) {
-                meeting.releasePresenter(participantId, now);
+        for (Long groupId : groupIds) {
+            for (StudyMeeting meeting :
+                    studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)) {
+                meeting.releasePresenters(participantIds, now);
             }
         }
     }

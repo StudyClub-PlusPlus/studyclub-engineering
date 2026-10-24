@@ -6,7 +6,8 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 > ⚠️ **일부만 구현됐다.** 헤더 검사는 `discord/app/api/headers.py` 의 FastAPI 의존성이고, 지금은
 > `POST /api/v1/studies` · `GET /api/v1/studies/{discordStudyId}/channels` ·
 > `POST /api/v1/channels/alert/msg` · `POST /api/v1/channels/announcement/msg` ·
-> `POST /api/v1/channels/{discordChannelId}/msg` 에만 걸려 있다. `health` 는 여전히 인증 없이 열려 있고,
+> `POST /api/v1/channels/{discordChannelId}/msg` · `POST` · `DELETE /api/v1/roles/navigator/users` ·
+> `POST` · `DELETE /api/v1/roles/{discordRoleId}/users` 에만 걸려 있다. `health` 는 여전히 인증 없이 열려 있고,
 > 없는 경로에 401 을 우선하는 동작도 아직 없다 (`discord/README.md` 참고).
 
 ## Table of Contents
@@ -49,7 +50,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 
 ## X-Discord-User-ID
 
-**Discord 유저 ID** (snowflake). StudyClub++ 의 `ACCOUNT.ID` 가 아니다 — 봇이 이 ID 로
+**Discord 유저 ID** (snowflake). StudyClub 의 `ACCOUNT.ID` 가 아니다 — 봇이 이 ID 로
 길드(Discord 서버) 멤버를 조회해야 하므로, 디스코드 쪽 식별자를 그대로 넘긴다.
 
 봇은 이 ID 로 두 가지를 한다:
@@ -88,8 +89,8 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 - 이 ID 로 온 요청은 **멤버 조회도 역할 검사도 하지 않는다.** 봇은 역할을 가질 멤버가 아니고,
   호출자가 백엔드라는 건 `X-API-Key` 가 이미 보장했다. 신뢰 경계는 그대로 `X-API-Key` 다.
 - **아무 엔드포인트나 되는 건 아니다.** 시스템 호출을 받는 곳은
-  [`send-alert-message`](send-alert-message.md#요청) 와
-  [`get-study-channels`](get-study-channels.md#요청) 둘뿐이다. 나머지는 봇 ID 로 불러도 **403** 이다 —
+  [`send-alert-message`](send-alert-message.md#요청) · [`get-study-channels`](get-study-channels.md#요청) ·
+  [`assign-role`](assign-role.md#요청) · [`remove-role`](remove-role.md#요청) 넷뿐이다. 나머지는 봇 ID 로 불러도 **403** 이다 —
   스터디 생성이나 공지처럼 사람이 책임질 액션은 captain 이 부른다.
 - **`DISCORD_BOT_ID` 가 비어 있으면 시스템 호출은 없다.** 봇 ID 로 와도 평범한 멤버처럼 역할을 따지므로,
   설정이 비었다고 문이 열리지 않는다 (`DISCORD_API_KEY` 와 같은 결).
@@ -97,7 +98,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 > **넘어가는 건 로그와 발신자 줄이다.** alert 채널에는 `발신: <@봇 ID>` 가 찍혀 봇 이름으로 보인다 —
 > 사람이 올린 것과 구분된다.
 
-> **나중에:** Discord 로그인 연동과 StudyClub++ 계정 ↔ Discord 유저 ID 매핑은 추후 추가한다.
+> **나중에:** Discord 로그인 연동과 StudyClub 계정 ↔ Discord 유저 ID 매핑은 추후 추가한다.
 > 현재 [`ACCOUNT_IDENTITY`](../../erd/ACCOUNT_IDENTITY.md) 의 `ISSUER` 는 `GOOGLE` / `APPLE`
 > 뿐이라, 그때까지 호출자는 이 헤더를 채울 수 없다.
 

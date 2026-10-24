@@ -14,7 +14,7 @@ import { attendancePoint, type Study, type StudyMeeting } from '@studyclub/mock'
 /**
  * 크루가 보는 출석 기록 — **본인 기록만**.
  *
- * 출석 확정은 반장 디스코드 명령. 이 화면은 조회·휴가.
+ * 출석 확정은 네비게이터 디스코드 명령. 이 화면은 조회·휴가.
  *
  * TODO(api): GET /api/studies/{id}/attendance/me
  */

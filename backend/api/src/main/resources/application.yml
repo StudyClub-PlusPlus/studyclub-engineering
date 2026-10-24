@@ -1,9 +1,18 @@
 server:
   port: 8080
+  tomcat:
+    # 5MB 초과로 거부한 요청의 남은 본문을 끝까지 읽는다. 기본값(2MB)이면 Tomcat 이 연결을 끊어
+    # 브라우저가 400 응답 대신 네트워크 오류를 본다. multipart max-request-size 와 같은 값.
+    max-swallow-size: 6MB
 
 spring:
   config:
     import: classpath:notification.yml
+  # 이미지 올리기 상한 — 파일 5MB, 요청(파일 + purpose 파트) 6MB. 넘치면 400 INVALID_INPUT.
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   application:
     name: studyclub-api
   # PUBLIC 레포 — 비밀번호/호스트는 env 로만 주입 (docker-compose → .env, 로컬 host 는 `set -a; source ../.env`).
@@ -40,6 +49,47 @@ google:
   client-id: ${GOOGLE_CLIENT_ID:}
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
+
+# 디스코드 계정 연동 (specs/study-application 「디스코드 계정 연동」). 비어 있으면 연동만 503 EXTERNAL_SERVICE_ERROR.
+# guild-id 는 봇과 같은 DISCORD_GUILD_ID — 연동할 때 이 길드의 멤버인지 본다.
+discord:
+  guild-id: ${DISCORD_GUILD_ID:}
+  oauth:
+    client-id: ${DISCORD_OAUTH_CLIENT_ID:}
+    client-secret: ${DISCORD_OAUTH_CLIENT_SECRET:}
+    redirect-uri: ${DISCORD_OAUTH_REDIRECT_URI:}
+
+# 파일 저장소 (specs/profile-image/spec.md, docs/s3-storage.md). 키·버킷·주소는 env 로만.
+# 전부 비어 있어도 부팅된다 — 로컬처럼 키가 없는 환경에서는 올리기만 503 EXTERNAL_SERVICE_ERROR.
+# public-base-url 은 CloudFront 주소에 /studyclub 까지 (값은 인프라 담당자에게 요청).
+storage:
+  s3:
+    region: ${AWS_REGION:}
+    bucket: ${S3_BUCKET:}
+    access-key-id: ${AWS_ACCESS_KEY_ID:}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
+    public-base-url: ${S3_PUBLIC_BASE_URL:}
+  # 로컬 개발용 — 키 없이 사진 기능을 끝까지 돌려 본다. 켜면 S3 대신 로컬 폴더에 쓰고 API 가 /local-storage/** 로 내준다.
+  # 운영에서는 켜지 않는다 (꺼져 있어야 키가 빠졌을 때 503 으로 드러난다).
+  local:
+    enabled: ${STORAGE_LOCAL_ENABLED:false}
+    dir: ${STORAGE_LOCAL_DIR:${java.io.tmpdir}/studyclub-storage}
+    public-base-url: ${STORAGE_LOCAL_PUBLIC_BASE_URL:http://localhost:8080/local-storage}
+
+# 이미지 올리기 (specs/profile-image/spec.md). 전부 제안값 — env 없이 기본값으로 두고 테스트에서 줄여 쓴다.
+upload:
+  pending-limit: 20              # 연결 안 한 파일이 계정에 이만큼이면 더 못 올린다
+  pending-retention-hours: 24    # 이 시간 지나도 연결 없으면 정리 배치가 지운다
+  cleanup:
+    enabled: true
+    fixed-delay-ms: 3600000      # 한 시간
+
+# 인증 쿠키 (JwtAuthFilter). stage·운영·사이트·백오피스가 같은 상위 도메인에 쿠키를 심으므로
+# - cookie-env: 쿠키 이름에 넣을 환경 이름. stage 만 "stage" (sc_stage_access_token). 운영·로컬은 비워 기존 이름
+# - back-office-origins: 여기서 온 요청은 bo_ 쿠키만, 그 밖의 브라우저 요청은 sc_ 쿠키만 읽는다
+auth:
+  cookie-env: ${AUTH_COOKIE_ENV:}
+  back-office-origins: ${BACK_OFFICE_ORIGINS:http://localhost:4701}
 
 # JWT 서명키 (운영은 내부 시크릿 SSOT → env 주입, 레포 평문 금지)
 jwt:

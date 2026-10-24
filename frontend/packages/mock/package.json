@@ -2,7 +2,7 @@
   "name": "@studyclub/mock",
   "version": "0.0.1",
   "private": true,
-  "description": "StudyClub++ MSW (Mock Service Worker) Mock API 계층 + 공유 mock 데이터 + 도메인 타입 및 유틸리티",
+  "description": "StudyClub MSW (Mock Service Worker) Mock API 계층 + 공유 mock 데이터 + 도메인 타입 및 유틸리티",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {

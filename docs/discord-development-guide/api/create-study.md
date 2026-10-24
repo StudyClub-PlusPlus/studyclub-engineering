@@ -68,7 +68,7 @@ captain 역할 보유 여부를 확인하고, 없으면 **403** 이다. captain 
 | `discordStudyId` | string | 생성된 **카테고리의 Discord 채널 ID**(snowflake) |
 | `discordRoleId` | string | 생성된 **역할의 Discord 역할 ID**(snowflake) |
 
-이름에 `discord` 를 붙인 건 **StudyClub++ 쪽 ID 가 아니라 Discord 쪽 ID** 임을 못 박기 위해서다.
+이름에 `discord` 를 붙인 건 **StudyClub 쪽 ID 가 아니라 Discord 쪽 ID** 임을 못 박기 위해서다.
 
 **둘 다 문자열이다** — snowflake 는 64비트라 JSON 숫자로 내보내면 JS 호출자에서 정밀도가
 깨진다 ([common-header.md](common-header.md#x-discord-user-id) 와 같은 규칙).

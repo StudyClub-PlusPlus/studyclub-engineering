@@ -10,7 +10,7 @@ public final class StudyApplicationRequests {
 
     @Schema(description = "스터디 신청 제출 요청")
     public record SubmitStudyApplicationRequest(
-            @Schema(description = "스터디클럽++ 디스코드 서버 별명", example = "홍길동/SWE/서울/백엔드")
+            @Schema(description = "스터디클럽 디스코드 서버 별명", example = "홍길동/SWE/서울/백엔드")
                     String discordNickname,
             @Schema(description = "참여 가능한 요일 key", example = "[\"mon\", \"wed\"]")
                     List<String> availableDays,

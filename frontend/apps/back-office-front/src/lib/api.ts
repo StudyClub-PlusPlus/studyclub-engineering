@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 
 import { CATEGORY_DISPLAY, type Study, type StudyLifecycleStatus, type StudyStatus } from '@studyclub/mock';
 
+import { ACCESS_COOKIE } from '@/lib/cookie-names';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -63,7 +64,11 @@ function mapToStudy(api: ApiStudy): Study {
     format: 'online',
     kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     // 목록 API 는 프로그램 제목을 주지 않는다 — 목록은 P-ID 만 쓴다
-    program: { id: String(api.programId), title: { ko: '', en: '' }, kind: api.studyKind === 'CLUB' ? 'club' : 'study' },
+    program: {
+      id: String(api.programId),
+      title: { ko: '', en: '' },
+      kind: api.studyKind === 'CLUB' ? 'club' : 'study',
+    },
     category,
     schedule: api.timezone ? { ko: TIMEZONE_DISPLAY[api.timezone] ?? api.timezone, en: api.timezone } : undefined,
     date: api.startAt?.slice(0, 10),
@@ -83,16 +88,33 @@ function mapToStudy(api: ApiStudy): Study {
   };
 }
 
+// 서버가 limit 을 1~100 으로 막는다(BackofficeStudyListService.validate) — 100 개씩 끝까지 읽는다
+const STUDIES_PAGE_SIZE = 100;
+
 export async function fetchStudies(): Promise<Study[]> {
-  const cookieHeader = (await cookies()).toString();
+  // 쿠키를 통째로 넘기지 않는다 — 사이트(sc_) 쿠키도 같이 실려 API 가 다른 앱의 계정으로 판단한다(2026-10-16 stage /studies 403).
+  // 백오피스 액세스 토큰만 Authorization 으로 보낸다 (core-front bff 와 같은 방식)
+  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
+  const items: ApiStudy[] = [];
+
+  for (let offset = 0; ; offset += STUDIES_PAGE_SIZE) {
+    const page = await fetchStudiesPage(token, offset);
+    items.push(...page.items);
+    if (page.items.length < STUDIES_PAGE_SIZE || items.length >= page.total) break;
+  }
+
+  return items.map(mapToStudy);
+}
+
+async function fetchStudiesPage(token: string | undefined, offset: number): Promise<ApiPage> {
   const maxRetries = 2;
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     let response: Response;
     try {
-      response = await fetch(API_BASE + '/api/admin/studies?offset=0&limit=1000', {
+      response = await fetch(API_BASE + '/api/admin/studies?offset=' + offset + '&limit=' + STUDIES_PAGE_SIZE, {
         cache: 'no-store',
-        headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
     } catch (error) {
       // Only retry connection failures from fetch, never parsing or mapping errors.
@@ -111,8 +133,7 @@ export async function fetchStudies(): Promise<Study[]> {
       throw new Error('스터디 목록을 불러오지 못했습니다. (' + response.status + ')');
     }
 
-    const page = (await response.json()) as ApiPage;
-    return page.items.map(mapToStudy);
+    return (await response.json()) as ApiPage;
   }
 
   throw new Error('스터디 목록을 불러오지 못했습니다.');

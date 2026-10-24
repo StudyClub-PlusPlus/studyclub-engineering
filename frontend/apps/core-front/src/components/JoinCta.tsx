@@ -34,7 +34,7 @@ export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: st
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src='/join-qr.png'
-            alt='StudyClub++ Discord QR'
+            alt='StudyClub Discord QR'
             width={132}
             height={132}
             className='h-[132px] w-[132px]'
