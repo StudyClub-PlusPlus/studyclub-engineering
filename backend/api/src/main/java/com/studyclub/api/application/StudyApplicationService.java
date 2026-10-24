@@ -78,7 +78,7 @@ public class StudyApplicationService {
                 accountRepository
                         .findByIdForUpdate(accountId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
-        if (account.getDiscordId() == null || account.getDiscordId().isBlank()) {
+        if (!account.isDiscordLinked()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "디스코드 연동이 필요합니다.");
         }
 

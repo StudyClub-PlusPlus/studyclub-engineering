@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { FeedbackDialog } from '@core/components/Feedback';
@@ -77,13 +77,15 @@ function useMe(locale: Locale, next: string): string | null | undefined {
   return me;
 }
 
-export function MyFeedbackList({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
+export function MyFeedbackList({ locale }: { locale: Locale }) {
   const router = useRouter();
   const base = `/proto/core/${locale}/my/feedbacks`;
   const me = useMe(locale, base);
   const [rows, setRows] = useState<Feedback[] | null>(null);
   const [page, setPage] = useState(1);
-  const [writing, setWriting] = useState(false);
+  // 푸터의 「의견 보내기」는 **쓰러 온 사람**이다. 목록을 보여 주고 한 번 더 누르게 하지 않는다
+  const write = useSearchParams()?.get('write') === '1';
+  const [writing, setWriting] = useState(write);
 
   useEffect(() => {
     if (me) setRows(listMyFeedbacks(me));
@@ -171,7 +173,6 @@ export function MyFeedbackList({ locale, discordUrl }: { locale: Locale; discord
           if (me) setRows(listMyFeedbacks(me));
           setPage(1);
         }}
-        discordUrl={discordUrl}
       />
     </div>
   );

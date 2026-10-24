@@ -221,7 +221,7 @@ erDiagram
 |---|---|---|---|
 | FE | back-office-front 신청자 탭의 반 만들기 · 반 목록 · 크루의 반 | 있음 (#302) — 반 만들기 · 이름 바꾸기 · 삭제 · 크루 반 지정 (`features/participants`). 명단은 `GET …/participants` 를 부르는데 그 API 는 아직 없다 (아래) | 없음 |
 | FE | back-office-front 일정 탭의 반 일정 · 킥오프 정하기 | 없음 | 아래 회차 목록 · 킥오프 API 에 연결한다 |
-| BE | 반 `POST` · `PATCH` · `DELETE` · 크루 반 지정 | 반 `POST` · `DELETE` 구현완료. `PATCH` 는 제목만. 반 지정 일괄 `PATCH …/participants` 구현완료 (#303). 명단 `GET …/participants` 는 구현 진행 중 | `PATCH` 스터디 시간 · 명단 `GET` ([study-group 스펙](../../../specs/study-group/spec.md)) |
+| BE | 반 `POST` · `PATCH` · `DELETE` · 크루 반 지정 | 반 `POST` · `DELETE` 구현완료. `PATCH` 는 제목만. 반 지정 일괄 `PATCH …/participants` 구현완료 (#303). 명단 `GET …/participants` 구현완료 (#324) | `PATCH` 스터디 시간 ([study-group 스펙](../../../specs/study-group/spec.md)) |
 | BE | `PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff` · 반 회차 목록 `GET …/groups/{groupId}/meetings` | 구현완료 (#312) | 없음 |
 
 ### 데이터

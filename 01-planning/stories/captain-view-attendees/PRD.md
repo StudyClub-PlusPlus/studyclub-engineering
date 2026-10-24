@@ -145,8 +145,9 @@ erDiagram
 - **내용**: 닉네임 · 디스코드 닉네임 · 디스코드 · 이메일 · 지역 · 반 · 역할
 - **정책**
   - 신청한 사람이 곧 크루다. 캡틴도 신청했으면 여기 크루와 같은 줄로 나온다
-  - **별명 옆에 계정 핸들을 따로 적는다** — 별명은 신청서에 적어 낸 글자이고 핸들은 계정 그 자체다. **둘은 다를 수 있다**: 별명으로 찾다 못 찾는 일이 생긴다
-  - 이어져 있지 않으면 「미연동」이다 — 승인해도 들어오지 못한다. 표기는 유저 목록과 같다
+  - **디스코드 칸은 「연동」 아니면 「미연동」이다** — 이어져 있지 않으면 승인해도 들어오지 못한다
+  - **아이디는 가린 채로 두고, 눈 아이콘을 누른 줄만 펼친다. 같은 버튼으로 다시 가린다** — 유저 목록과 같은 규칙이다 ([POL-0007](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0007-account-data.md))
+  - 별명은 신청서에 적어 낸 글자이고 아이디는 계정 그 자체다 — **둘은 다를 수 있다**: 별명으로 찾다 못 찾는 일이 생긴다
 - **데이터**: 참여 건
 
 #### 3-1 — 참여 크루 제목
@@ -241,7 +242,7 @@ erDiagram
 |---|---|---|---|
 | FE | back-office-front 신청자 탭 | 있음 (#302) — `ParticipantsTab`: 참여 크루 명단 · 체크박스 반 · 역할 일괄 변경 · 저장 바. `ApplicationsTab` 은 지웠다. `CrewTab` 은 mock 이고 쓰지 않는다 | 명단 `GET` 이 생기면 실제 응답으로 확인. 그 밖은 10-18 변경 표 |
 | BE | `GET /api/admin/studies/{studyId}/applications` 의 `completionRate` | 구현완료 | 신청자 탭에서 쓰지 않는다. 다른 화면이 쓰지 않으면 응답에서 뺄지 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
-| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 스펙작성중 (`GET` — 구현 진행 중) · `PATCH` 구현완료 (#303) | `GET` 구현 — FE 가 이미 부른다 ([study-group 스펙](../../../specs/study-group/spec.md)) |
+| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 구현완료 (#324) · 구현완료 (#303) | 없음 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 

@@ -100,7 +100,7 @@ flowchart LR
 
 - **내용**: 제목 「회차 삭제」 · 「N회차(9/23(수))를 지울까요?」(하나) 또는 「회차 n개(3회차, 4회차…)를 지울까요?」(여럿) · 「뒤 회차 번호는 당겨집니다. 되돌릴 수 없습니다.」 · 「취소」 · 「삭제」. 지울 줄은 붉게 칠해 어느 회차인지 보인다
 - **동작**
-  - 「삭제」 — 고른 회차를 한꺼번에 지운다(API 는 회차마다 DELETE). 반복으로 만든 회차도 고른 것만 지운다. 지우는 줄의 저장하지 않은 고침도 함께 버린다. 결과 문구는 두지 않는다 — 줄이 사라지는 것이 결과다. 스크린리더에만 알린다
+  - 「삭제」 — 고른 회차를 한꺼번에 지운다(API 는 일괄 삭제 한 번). 반복으로 만든 회차도 고른 것만 지운다. 지우는 줄의 저장하지 않은 고침도 함께 버린다. 결과 문구는 두지 않는다 — 줄이 사라지는 것이 결과다. 스크린리더에만 알린다
   - 「취소」 · X · Esc 는 닫기만 한다. 기본 포커스는 「취소」 (POL-0008)
 - **정책**: 「이후 반복 모두」 는 두지 않는다. 반복 묶음 ID 는 저장하지만 묶음 단위 삭제는 범위 밖이다
 - **조건**: 회차를 고르고 「삭제」를 눌렀을 때
@@ -370,8 +370,8 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/my/joined/[id]/schedule` (일정 · 정보 · 규칙 · 출석) | 있음 (#278) — 일정 · 정보 · 규칙 · 출석 탭을 아래 API 에 연결 (`lib/joined-detail-api.ts`). 다만 회차 삭제는 회차마다 `DELETE …/meetings/{meetingId}` 를 부르는데 백엔드에 그 경로가 없다 | 삭제를 백엔드 일괄 삭제 한 번으로 부르게 고친다 (아래 BE 줄). 그 밖은 10-18 변경 표 |
-| BE | 회차 `GET` · `POST` · `PUT` · `DELETE`, 발표자, 규칙 저장 | 조회 · 추가 · 수정 · 발표자 · 규칙 구현완료. 삭제는 구현중 — 코드는 `DELETE /api/studies/{studyId}/meetings` + 바디(`studyGroupId` · `meetingIds`) 하나뿐이라 스펙의 두 경로와 다르다 | 삭제 경로를 스펙 · 코드 · FE 하나로 맞춘다 ([study-meeting 스펙](../../../specs/study-meeting/spec.md)) |
+| FE | core-front `/my/joined/[id]/schedule` (일정 · 정보 · 규칙 · 출석) | 있음 (#278) — 일정 · 정보 · 규칙 · 출석 탭을 아래 API 에 연결 (`lib/joined-detail-api.ts`). 회차 삭제는 고른 회차를 일괄 삭제 한 번으로 부른다 (#330) | 10-18 변경 표 |
+| BE | 회차 `GET` · `POST` · `PUT` · `DELETE`, 발표자, 규칙 저장 | 구현완료 — 삭제는 `DELETE /api/studies/{studyId}/meetings` + 바디(`studyGroupId` · `meetingIds`) 하나로 맞췄다 (#330, [study-meeting 스펙](../../../specs/study-meeting/spec.md)) | 없음 |
 | BE | `GET /api/me/studies/{studyId}/attendances` | 구현완료 | 없음 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
@@ -422,7 +422,7 @@ erDiagram
 | GET | `/api/studies/{studyId}/meetings` 분반 회차 목록 (발표자·규칙 포함) | 그 분반 참여자 · 캡틴 |
 | POST | `/api/studies/{studyId}/meetings` 회차 추가 | 그 분반 네비게이터 · 캡틴 |
 | PUT | `/api/studies/{studyId}/meetings/{meetingId}` 회차 수정 (시각·제목·발표자) | 그 분반 네비게이터 · 캡틴 |
-| DELETE | `/api/studies/{studyId}/meetings/{meetingId}` 회차 삭제 | 그 분반 네비게이터 · 캡틴 |
+| DELETE | `/api/studies/{studyId}/meetings` 회차 삭제 — 본문 `studyGroupId` · `meetingIds`, 한 분반의 회차 하나 이상을 한 번에 | 그 분반 네비게이터 · 캡틴 |
 | PUT · DELETE | `/api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me` 발표 신청·취소 | 그 분반 참여자 |
 | PUT | `/api/studies/{studyId}/groups/{groupId}/rules` 규칙 저장 | 그 분반 네비게이터 · 캡틴 |
 | GET | `/api/me/studies/{studyId}/attendances` 분반 출석부 | 그 분반 참여자(조회) · 네비게이터 · 캡틴 |

@@ -136,6 +136,11 @@ public class Account extends BaseEntity {
         return discordHandle;
     }
 
+    /** 디스코드 연동 여부. {@code GET /api/me} 의 {@code discordLinked} 와 신청 제출의 403 이 같은 판정을 쓴다. */
+    public boolean isDiscordLinked() {
+        return discordId != null && !discordId.isBlank();
+    }
+
     /**
      * 디스코드 계정 연동. 값은 서버가 디스코드에서 받은 것만 넘긴다 — 클라이언트가 보낸 ID·핸들을 쓰지 않는다. 다른 계정이 그 ID 를 쓰는지는 호출자가 먼저 본다
      * ({@code UNIQUE(DISCORD_ID)}).

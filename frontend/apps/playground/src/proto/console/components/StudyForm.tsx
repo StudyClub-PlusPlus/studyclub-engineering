@@ -14,7 +14,7 @@ import {
   type StudyKind,
   type StudyTimezone,
 } from '@studyclub/mock';
-import { Checkbox, Input, Textarea } from '@studyclub/ui';
+import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -195,7 +195,8 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
   if (!f.category) e.category = '카테고리를 선택하세요.';
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
-  if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim())) e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
+  if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim()))
+    e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
   const isUrl = (v: string) => /^https?:\/\/.+/i.test(v.trim());
   if (f.discordUrl.trim() && !isUrl(f.discordUrl)) e.discordUrl = 'http(s):// 로 시작하는 주소를 입력하세요.';
   if (f.driveUrl.trim() && !isUrl(f.driveUrl)) e.driveUrl = 'http(s):// 로 시작하는 주소를 입력하세요.';
@@ -301,7 +302,7 @@ export function StudyForm({
             type='date'
             value={value.deadline}
             onChange={(ev) => set('deadline', ev.target.value)}
-            className='h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+            className='h-10 w-full rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
           />
           {errors.deadline && <p className='text-xs font-medium text-error-600'>{errors.deadline}</p>}
         </div>
@@ -313,7 +314,9 @@ export function StudyForm({
             value={value.capacity}
             onChange={(ev) => set('capacity', ev.target.value.replace(/[^\d]/g, ''))}
             disabled={value.unlimited}
-            placeholder={value.unlimited ? '제한 없음' : '명'}
+            placeholder={value.unlimited ? '제한 없음' : undefined}
+            // 「제한 없음」을 풀면 숫자 뒤에 단위를 붙여 둔다
+            suffix={value.unlimited ? undefined : '명'}
             error={errors.capacity}
             labelHint={
               <span data-anno='10-1'>
@@ -343,7 +346,7 @@ export function StudyForm({
             type='date'
             value={value.startAt}
             onChange={(ev) => set('startAt', ev.target.value)}
-            className='h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+            className='h-10 w-full rounded-control border border-border-strong bg-bg px-3 text-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
           />
           <span className='text-xs text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
         </div>
@@ -405,8 +408,13 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
           // eslint-disable-next-line @next/next/no-img-element -- blob: 미리보기는 next/image 최적화 대상이 아니다
           <img src={value} alt='' className='h-16 w-16 shrink-0 rounded-control border border-border object-cover' />
         ) : (
-          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-[11px] text-fg-muted'>
-            카테고리 기본값
+          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-center text-[11px] leading-tight text-fg-muted'>
+            {/* flex 상자 안이라 글과 <br /> 이 따로 놓이지 않게 한 덩이로 감싼다 */}
+            <span>
+              카테고리
+              <br />
+              기본값
+            </span>
           </div>
         )}
         <div className='flex flex-col gap-1'>
@@ -626,7 +634,7 @@ function ProgramField({
         </div>
       ) : (
         <div className='flex flex-col gap-1.5'>
-          <select
+          <Select
             aria-label='프로그램 선택'
             value={value.programId}
             // 프로그램을 고르면 제목은 프로그램 제목, 소개·설명·카테고리는 최신 기수의 것으로 채운다
@@ -637,7 +645,6 @@ function ProgramField({
                   : { ...value, programId: '', kind: 'club' },
               )
             }
-            className='h-10 rounded-control border border-border-strong bg-bg px-3 text-sm outline-none focus:border-brand'
           >
             <option value=''>클럽을 고르세요</option>
             {clubs.map((p) => (
@@ -645,7 +652,7 @@ function ProgramField({
                 {tx(p.title)}
               </option>
             ))}
-          </select>
+          </Select>
           <p className='text-xs text-fg-muted'>
             새 기수를 붙일 수 있는 것은 클럽뿐입니다. 스터디는 기수가 1개이고, 종류는 한 번 정하면 바꿀 수 없습니다.
           </p>
