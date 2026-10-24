@@ -86,8 +86,13 @@ export function updateStudyMeeting(
   });
 }
 
-export function deleteStudyMeeting(studyId: number, meetingId: number) {
-  return http<void>(`/api/studies/${studyId}/meetings/${meetingId}`, { method: 'DELETE' });
+/** 한 분반의 회차 여럿을 한 번에 지운다 — 전부 지우거나 하나도 안 지운다 (시작한 회차 · 킥오프가 섞이면 409). */
+export function deleteStudyMeetings(studyId: number, studyGroupId: number, meetingIds: number[]) {
+  return http<void>(`/api/studies/${studyId}/meetings`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ studyGroupId, meetingIds }),
+  });
 }
 
 export function getStudyAttendance(studyId: number, studyGroupId: number) {
