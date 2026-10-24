@@ -77,7 +77,8 @@ export default function StudyManageNoticesPage() {
     return () => clearInterval(t);
   }, [study, group]);
 
-  const recipients = compose?.recipients ?? [];
+  // 값이 없을 때마다 새 빈 배열을 만들면 아래 useMemo 가 매 렌더 다시 계산된다 — compose 가 바뀔 때만 만든다
+  const recipients = useMemo(() => compose?.recipients ?? [], [compose]);
   const counts = useMemo(
     () => ({
       ALL: recipients.length,
