@@ -373,8 +373,8 @@ export function CrewTab({
                     {c.discordNickname || '-'}
                   </td>
                   {/*
-                    별명은 **신청서에 적어 낸 이름**이고 이쪽은 **계정 그 자체**다. 둘은 다를 수 있다 —
-                    별명으로 찾다 못 찾는 일이 생기므로 핸들을 옆에 함께 적는다.
+                    별명은 **신청서에 적어 낸 이름**이고 이쪽은 **계정 그 자체**다. 둘은 다를 수 있다.
+                    아이디는 가린 채로 두고 필요한 줄만 펼친다 — 유저 목록과 같은 규칙 (POL-0007).
                   */}
                   <DiscordCell email={c.email} />
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>

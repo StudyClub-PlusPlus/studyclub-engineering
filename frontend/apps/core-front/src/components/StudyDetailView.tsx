@@ -7,7 +7,7 @@ import { ArrowLeft, CalendarClock, Globe, Rocket, Users } from 'lucide-react';
 
 import { ApplyButton } from '@/components/ApplyButton';
 import { useStudyDetail } from '@/features/studies/queries';
-import type { Locale } from '@/lib/content';
+import type { Locale, Study } from '@/lib/content';
 import { ApiError } from '@/lib/http';
 import { m, t } from '@/lib/i18n';
 import { JsonLd, breadcrumbJsonLd, courseJsonLd } from '@/lib/jsonld';
@@ -16,8 +16,8 @@ import { recruitBadge, studyStartValue, studyTimezoneLabel, toISODate } from '@/
 import { SITE_URL } from '@/lib/seo';
 
 /** TODO(api): GET /api/studies/{id} — 스터디 상세 조회 */
-export function StudyDetailView({ id, locale }: { id: number; locale: Locale }) {
-  const { data: study, error, isPending } = useStudyDetail(id);
+export function StudyDetailView({ id, locale, initial }: { id: number; locale: Locale; initial?: Study | null }) {
+  const { data: study, error, isPending } = useStudyDetail(id, initial);
 
   if (isPending) {
     return (

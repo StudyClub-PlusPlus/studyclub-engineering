@@ -421,7 +421,7 @@ erDiagram
 | GET | `/api/studies/{studyId}/meetings` 분반 회차 목록 (발표자·규칙 포함) | 그 분반 참여자 · 캡틴 |
 | POST | `/api/studies/{studyId}/meetings` 회차 추가 | 그 분반 네비게이터 · 캡틴 |
 | PUT | `/api/studies/{studyId}/meetings/{meetingId}` 회차 수정 (시각·제목·발표자) | 그 분반 네비게이터 · 캡틴 |
-| DELETE | `/api/studies/{studyId}/meetings/{meetingId}` 회차 삭제 | 그 분반 네비게이터 · 캡틴 |
+| DELETE | `/api/studies/{studyId}/meetings` 회차 삭제 — 본문 `studyGroupId` · `meetingIds`, 한 분반의 회차 하나 이상을 한 번에 | 그 분반 네비게이터 · 캡틴 |
 | PUT · DELETE | `/api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me` 발표 신청·취소 | 그 분반 참여자 |
 | PUT | `/api/studies/{studyId}/groups/{groupId}/rules` 규칙 저장 | 그 분반 네비게이터 · 캡틴 |
 | GET | `/api/me/studies/{studyId}/attendances` 분반 출석부 | 그 분반 참여자(조회) · 네비게이터 · 캡틴 |
