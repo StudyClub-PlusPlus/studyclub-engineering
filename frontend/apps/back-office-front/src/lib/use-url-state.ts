@@ -11,6 +11,8 @@ import { useCallback } from 'react';
  * - `allowed` 에 없는 값은 기본값으로 되돌린다 — URL 은 누구나 고칠 수 있다
  * - `router.replace` 로 바꾼다 — 조건마다 기록이 쌓이면 뒤로 가기가 한 단계씩 되돌아간다
  * - `{ reset: true }` 면 `patch` 밖의 쿼리를 모두 버린다 — 탭을 바꿀 때 앞 탭의 조건이 따라가지 않게
+ * - `{ shallow: true }` 면 주소만 바꾸고 서버 컴포넌트를 다시 그리지 않는다(`history.replaceState` —
+ *   Next 가 `useSearchParams` 와 맞춰 준다). 화면이 이미 그린 조건을 주소에 옮겨 적을 때 쓴다
  *
  * `defaults`·`allowed` 는 모듈 상수로 넘긴다(렌더마다 새 객체면 `set` 이 매번 바뀐다).
  * 이 훅을 쓰는 컴포넌트는 정적 프리렌더되는 페이지라면 `<Suspense>` 안에 둔다(Next 요구사항).
@@ -32,7 +34,7 @@ export function useUrlState<T extends Record<string, string>>(
   }
 
   const set = useCallback(
-    (patch: Partial<T>, { reset = false }: { reset?: boolean } = {}) => {
+    (patch: Partial<T>, { reset = false, shallow = false }: { reset?: boolean; shallow?: boolean } = {}) => {
       const next = new URLSearchParams(reset ? '' : params.toString());
       for (const key in patch) {
         const value = patch[key];
@@ -40,7 +42,9 @@ export function useUrlState<T extends Record<string, string>>(
         else next.set(key, value);
       }
       const query = next.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      const url = query ? `${pathname}?${query}` : pathname;
+      if (shallow) window.history.replaceState(null, '', url);
+      else router.replace(url, { scroll: false });
     },
     [params, router, pathname, defaults],
   );
