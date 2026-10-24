@@ -32,7 +32,8 @@
 | ID | BIGINT PK | N | |
 | NOTICE_ID | BIGINT FK → STUDY_NOTICE | N | |
 | ACCOUNT_ID | BIGINT | N | ID 참조([ACCOUNT](./ACCOUNT.md)). 보낸 시점 명부의 사람 |
-| DISCORD_MENTIONED | BOOLEAN | N | 디스코드 글에서 멘션됐는가 (`DISCORD_ID` 가 있었는가). 메일만 보냈으면 false |
+| DISCORD_MENTIONED | BOOLEAN | N | 디스코드 글에서 멘션됐는가. 봇이 글을 올린 뒤에 표시한다 — 보내기 전·건너뜀·실패는 false |
+| CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 
 `UNIQUE(NOTICE_ID, ACCOUNT_ID)`.
 

@@ -123,6 +123,8 @@ erDiagram
     bigint NOTICE_ID FK
     bigint ACCOUNT_ID
     boolean DISCORD_MENTIONED
+    datetime CREATED_AT
+    datetime UPDATED_AT
   }
 
   NOTIFICATION_TEMPLATE {

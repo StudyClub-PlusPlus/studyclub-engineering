@@ -214,17 +214,17 @@ flowchart LR
 
 ### 개발 범위
 
-> 2026-10-23 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> 2026-10-23 `study-notification` 브랜치 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front 스터디 일정 › 공지 탭 (`/my/joined/{id}/schedule/notice`) | 없음 — playground 프로토만 있다 | 탭·보내기 폼·받는 사람 고르기·확인 창·기록 구현, MSW 목, API 연결 |
-| BE | `GET /api/studies/{studyId}/groups/{groupId}/notices/compose` | 스펙작성중 | 구현 — 후보·디스코드 가능 여부·발송 한도 판정 |
-| BE | `POST /api/studies/{studyId}/groups/{groupId}/notices` | 스펙작성중 | 구현 — 공지 저장 · 메일 아웃박스 행(같은 트랜잭션) · 디스코드 비동기 호출 |
-| BE | `GET /api/studies/{studyId}/groups/{groupId}/notices` | 스펙작성중 | 구현 — 보낸 공지 기록 |
-| BE | `STUDY_NOTICE` · `STUDY_NOTICE_RECIPIENT` 테이블 · `NOTIFICATION.REFERENCE_ID` | 없음 | `V40`·`V41` 마이그레이션, 메일 템플릿 시드 |
+| FE | core-front 스터디 일정 › 공지 탭 (`/my/joined/{id}/schedule/notice`) | 구현완료 — 탭(캡틴·네비게이터만), 보내기 폼, 받는 사람 고르기, 확인 창, 기록, MSW 프리셋 | 없음. stage 에서 실제로 보내 보며 확인한다 |
+| BE | `GET /api/studies/{studyId}/groups/{groupId}/notices/compose` | 구현완료 | 없음 |
+| BE | `POST /api/studies/{studyId}/groups/{groupId}/notices` | 구현완료 | 없음 |
+| BE | `GET /api/studies/{studyId}/groups/{groupId}/notices` | 구현완료 | 없음 |
+| BE | `STUDY_NOTICE` · `STUDY_NOTICE_RECIPIENT` 테이블 · `NOTIFICATION.REFERENCE_ID` | 구현완료 — `V40`·`V41`(템플릿 시드 포함). 빈 MySQL 에 적용하고 `validate` 로 부팅까지 확인 | stage 는 Flyway 가 꺼져 있어 `V41` 의 템플릿 INSERT 를 손으로 한 번 넣는다 |
 | 외부 | 디스코드 봇 `POST /api/v1/channels/{id}/msg` | 있음 — 백엔드 클라이언트 메서드도 있으나 부르는 곳이 없다 | 호출 주체 확정 (stage 에서 확인) |
 | 기획 | 디스코드 스쿼드와 조율 | 미착수 | stage 에서 보내 보며 맞추고 `docs/share/` 에 한 건 |
 
@@ -280,7 +280,7 @@ flowchart LR
 ### 현재 백엔드와 차이
 
 - 공지 발송은 새 기능이라 어긋나는 것은 없다
-- `ErrorCode` 에 429 가 없어 `STUDY_NOTICE_RATE_LIMITED` 를 새로 둔다
+- `ErrorCode.STUDY_NOTICE_RATE_LIMITED(429)` 를 새로 두었다
 - 봇의 메시지 보내기가 시스템 호출을 받지 않고, 네비게이터 길드 역할(DSC-08)이 자동으로 주어지지 않아 **지금은 디스코드가 403 으로 건너뛰어질 수 있다**
 
 ## 4. 미확정

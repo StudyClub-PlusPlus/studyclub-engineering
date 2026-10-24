@@ -3,7 +3,7 @@
 > ERD: [STUDY_NOTICE](../../docs/erd/STUDY_NOTICE.md) · [NOTIFICATION](../../docs/erd/NOTIFICATION.md)
 > 정책: [POL-0010](../../01-planning/_registry/policies/POL-0010-study-notice.md) · [POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)
 > 생성일: 2026-10-23
-> 상태: 스펙작성중
+> 상태: 구현완료
 >
 > Story PRD:
 > - [네비게이터는 스터디별 공지를 등록할 수 있다. (ST-016)](../../01-planning/stories/navigator-study-notice/PRD.md)
@@ -16,9 +16,9 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/studies/{studyId}/groups/{groupId}/notices/compose | 보내기 화면에 필요한 값 (후보·디스코드 가능 여부·발송 한도) | 필요 (반 네비게이터·담당 캡틴) | 스펙작성중 |
-| POST | /api/studies/{studyId}/groups/{groupId}/notices | 공지 보내기 | 필요 (같음) | 스펙작성중 |
-| GET | /api/studies/{studyId}/groups/{groupId}/notices | 보낸 공지 기록 | 필요 (같음) | 스펙작성중 |
+| GET | /api/studies/{studyId}/groups/{groupId}/notices/compose | 보내기 화면에 필요한 값 (후보·디스코드 가능 여부·발송 한도) | 필요 (반 네비게이터·담당 캡틴) | 구현완료 |
+| POST | /api/studies/{studyId}/groups/{groupId}/notices | 공지 보내기 | 필요 (같음) | 구현완료 |
+| GET | /api/studies/{studyId}/groups/{groupId}/notices | 보낸 공지 기록 | 필요 (같음) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -170,7 +170,7 @@ sequenceDiagram
 | 409 | STUDY_ENDED | 끝난 스터디 |
 | 429 | STUDY_NOTICE_RATE_LIMITED | 직전 발송 1분 안(`COOLDOWN`) 또는 오늘 30회 초과(`DAILY_LIMIT`). 메시지에 사유와 `nextAvailableAt` |
 
-> `ErrorCode` 에 429 가 없다. `STUDY_NOTICE_RATE_LIMITED(429, ...)` 를 새로 둔다.
+> `ErrorCode.STUDY_NOTICE_RATE_LIMITED(429)` 를 새로 두었다. `ErrorCode.fromStatus(429)` 도 이 코드를 돌려준다 (프레임워크가 던진 429 가 따로 없다).
 
 ---
 
@@ -243,12 +243,12 @@ sequenceDiagram
 | 단계 | 호출 | 비고 |
 |---|---|---|
 | 1 | `getStudyChannels(requesterId, discordStudyId)` | `STUDY_DISCORD_LINK.DISCORD_STUDY_ID`. 종류가 `TEXT` 인 채널(로비)을 고른다 |
-| 2 | `sendMessage(requesterId, channelId, discordStudyId, msg, mentionUserIds)` | 멘션은 40명씩 나눠 여러 번. 첫 건에만 제목·본문을 싣고 나머지는 「이어서」 멘션만 |
+| 2 | `sendMessage(requesterId, channelId, discordStudyId, msg, mentionUserIds)` | 첫 글에 제목·본문과 멘션을 함께 올린다. 봇은 발신 줄 + 멘션 줄 + 본문을 합쳐 2,000자를 넘으면 거절하므로 **본문이 길면 첫 글의 멘션 수를 줄인다** (본문이 가장 길 때 16명). 남은 사람은 「이어서 알림」 글로 40명씩 멘션한다 |
 
 - `msg` 는 `📢 [{반 이름}] {제목}` + 빈 줄 + 본문. `@everyone`·`@here` 는 봇이 지운다
 - 멘션 대상은 받는 사람 중 `ACCOUNT.DISCORD_ID` 가 있는 사람만이다
 - `requesterId` 는 **보내는 사람의 `DISCORD_ID`** 다. 한 곳(`resolveRequester`)에서 정한다 — 봇 정책이 바뀌면 이 한 곳만 고친다
-- 호출 실패(`BusinessException`)는 `FAILED` 로 두고 WARN 로그에 `noticeId` 와 `eventId` 를 남긴다. 사용자 응답에는 영향이 없다
+- 첫 글을 봇이 거절하면(`BusinessException`) `FAILED` 로 두고 WARN 로그를 남긴다. 첫 글은 올라갔는데 이어서 올리는 글이 실패하면 공지는 전달됐으니 `SENT` 로 두고, 멘션된 사람만 기록한다. 사용자 응답에는 영향이 없다
 - 재시도는 하지 않는다. 봇은 중복을 막지 않으므로 자동 재시도가 같은 글을 두 번 올릴 수 있다
 
 ---
@@ -256,14 +256,15 @@ sequenceDiagram
 ## 개인정보
 
 - 응답에 **이메일을 싣지 않는다.** 메일 주소는 서버가 `ACCOUNT` 에서 읽어 아웃박스 행에 스냅샷한다
-- 로그에 제목·본문·이메일·디스코드 ID 를 싣지 않는다. `noticeId` · 수신자 수 · 상태만 남긴다
+- 로그에 제목·본문·이메일·디스코드 ID 를 싣지 않는다. `noticeId` · 수신자 수 · 상태만 남긴다. 봇 예외는 메시지를 남기지 않고 클래스 이름만 남긴다 (HTTP 클라이언트 예외 메시지에 API 키가 실릴 수 있다)
+- 메일 템플릿 렌더러는 한 번만 훑어 치환한다. 공지 본문 안의 `{{title}}` 같은 글이 다른 자리를 덮어쓰지 못한다 (`NotificationTemplateRenderer`)
 - ops 알림은 보내지 않는다 — 운영자가 초반에 알아야 할 사실(가입·신청·승인·실패)이 아니다 ([ops-alerts](../ops-alerts/spec.md))
 - 받는 사람이 탈퇴하면 `NOTIFICATION` 행은 [탈퇴 비식별](../user-leave/spec.md#알림-비식별화)을 따른다. `STUDY_NOTICE_RECIPIENT` 는 `ACCOUNT_ID` 만 가진 ID 참조라 손대지 않는다 — `ACCOUNT` 가 지워지면 되짚을 수 없어 자연히 비식별이다 (`STUDY_ATTENDANCE` 와 같은 원칙)
 - 보낸 사람이 탈퇴하면 `SENDER_ACCOUNT_ID` 도 되짚을 수 없고, 기록에는 「탈퇴한 회원」으로 보인다
 
 ## 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/app/[locale]/my/joined/[id]/schedule/notice/page.tsx` (예정)
+- `frontend/apps/core-front/src/app/[locale]/my/joined/[id]/schedule/notice/page.tsx`
 - 프로토: playground `/proto/core/ko/my/joined/{id}/schedule/notice`
 
 ## 미확정
