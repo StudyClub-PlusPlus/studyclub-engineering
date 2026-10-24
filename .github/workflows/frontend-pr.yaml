@@ -1,0 +1,31 @@
+name: frontend-PR-CI
+
+# core-front·back-office-front 의 push CI 는 develop/main 에서만 돈다.
+# beta 로 가는 PR 에서 타입 에러와 테스트 회귀를 잡으려고 PR 단계에서 한 번 더 돌린다.
+on:
+  pull_request:
+    paths:
+      - 'frontend/apps/core-front/**'
+      - 'frontend/apps/back-office-front/**'
+      - 'frontend/packages/**'
+      - 'frontend/package.json'
+      - 'frontend/pnpm-lock.yaml'
+      - '.github/workflows/frontend-pr.yaml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - run: npx turbo run lint typecheck test --filter=core-front --filter=back-office-front
+        working-directory: frontend
