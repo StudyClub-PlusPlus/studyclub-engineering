@@ -4,6 +4,9 @@ import { CATEGORY_DISPLAY } from '@studyclub/mock';
 
 export type StudyPhase = 'RECRUITING' | 'ONGOING' | 'CLOSED';
 
+/** 기준 시간대 (STUDY.TIMEZONE). `BOTH` = 동시 진행(KST·PST). */
+export type StudyTimezone = 'KST' | 'PST' | 'BOTH';
+
 export type ApiStudySummary = {
   studyId: number;
   title: string;
@@ -11,7 +14,7 @@ export type ApiStudySummary = {
   category: string;
   studyKind: 'STUDY' | 'CLUB';
   schedule: string | null;
-  timezone: 'KST' | 'PST' | 'BOTH';
+  timezone: StudyTimezone;
   phase: StudyPhase;
   capacity: number | null;
   currentApplicants: number;
@@ -69,6 +72,8 @@ export type ApiStudyDetail = {
   curriculum: string | null;
   capacity: number | null;
   schedule: string | null;
+  /** 운영자가 고른 값 그대로. null = 미정 — 일정 문구로 추정한 값이 아니다. */
+  timezone: StudyTimezone | null;
   recruitDeadlineAt: string | null;
   startAt: string | null;
   endAt: string | null;
@@ -99,6 +104,8 @@ export type StudyCreatePayload = {
   category: string;
   recruitDeadline: string;
   schedule?: string;
+  /** 비우면 미정. */
+  timezone?: StudyTimezone;
   capacity?: number | null;
   startAt?: string | null;
   discordChannelUrl?: string | null;
@@ -118,6 +125,8 @@ export type StudyUpdatePayload = {
   category?: string;
   recruitDeadline?: string;
   schedule?: string;
+  /** `null` 이면 미정으로 되돌린다. */
+  timezone?: StudyTimezone | null;
   capacity?: number | null;
   startAt?: string | null;
   discordChannelUrl?: string | null;

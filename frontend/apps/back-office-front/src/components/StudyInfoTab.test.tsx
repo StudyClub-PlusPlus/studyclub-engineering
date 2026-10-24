@@ -14,7 +14,7 @@ const original: ApiStudyDetail = {
   id: 7, programId: 3, programTitle: '테스트 프로그램', title: '기존 제목',
   oneLineSummary: '소개', description: null, category: 'AI_ML', studyKind: 'STUDY',
   thumbnailUrl: null, status: 'DRAFT', recruitStatus: 'RECRUIT_CLOSED', curriculum: null,
-  capacity: null, schedule: null, recruitDeadlineAt: '2020-01-01T14:59:59Z',
+  capacity: null, schedule: null, timezone: null, recruitDeadlineAt: '2020-01-01T14:59:59Z',
   startAt: null, endAt: null, discordChannelUrl: null, driveUrl: null,
 };
 
@@ -107,6 +107,16 @@ describe('스터디 수정·삭제 API 연결', () => {
     expect(client.getQueryData(['studies', 'detail', 7])).toMatchObject({ title: '새 제목' });
     expect(router.refresh).toHaveBeenCalledOnce();
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('저장된 시간대를 골라 둔 채 열고, 바꾼 시간대만 PATCH 한다', async () => {
+    detail = { ...original, timezone: 'PST' };
+    const user = await open();
+    expect(screen.getByRole('radio', { name: 'PST' })).toHaveAttribute('aria-checked', 'true');
+    await user.click(screen.getByRole('radio', { name: '동시 진행(KST·PST)' }));
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장되었습니다.');
+    expect(JSON.parse(mutations()[0][1].body)).toEqual({ timezone: 'BOTH' });
   });
 
   it('수정 실패 시 입력을 유지하고 성공 안내나 목록 갱신을 하지 않는다', async () => {
