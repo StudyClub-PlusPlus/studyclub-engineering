@@ -87,6 +87,7 @@
 - **판정 순서 · 잠금 · 감사 로그 · 이벤트**: 아래 그대로 (`ParticipantWithdrawalService.prepareForBackOffice`)
 - **디스코드**: 스터디 role 은 지금 `study_participant.withdrawn` 구독자(DSC-09)가 뗀다. 중단된 사람이 네비게이터면 네비게이터 role 도 떼야 하는데 **아직 하지 않는다** — DSC-06(봇 네비게이터 창구) 뒤에 같은 구독자에 붙인다. 이벤트의 `participantRole = LEADER` 로 가른다
 - 네비게이터를 중단하면 그 분반에 네비게이터가 없을 수 있다. 서버는 막지 않는다 — 새 네비게이터는 신청자 탭에서 캡틴이 정한다
+- **중단된 네비게이터의 권한**: 행은 `WITHDRAWN` · `LEADER` 로 남는다 — 역할을 `MEMBER` 로 내리지 않는다(이벤트가 중단 직전 역할을 실어야 DSC-06 이 네비게이터 role 을 뗀다). 대신 네비게이터 권한은 **살아 있는 명부 행(`ACTIVE` · `PAUSED`)의 `LEADER`** 에만 준다 — 사이트 출석 저장 · 출석부 · 회차 추가 · 수정 · 삭제 · 비공개 상세 모두 403 / 404 (`StudyCaptainGuard`, 2026-10-24 #325 리뷰)
 
 ### 판정 순서
 

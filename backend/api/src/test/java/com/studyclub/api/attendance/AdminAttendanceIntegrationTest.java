@@ -353,6 +353,61 @@ class AdminAttendanceIntegrationTest {
         assertThat(statusOf(navA)).isEqualTo(ParticipantStatus.ACTIVE);
     }
 
+    @Test
+    @DisplayName("백오피스에서 중단된 네비게이터는 역할이 LEADER 로 남아도 사이트 운영 권한이 없다 → 출석 저장 · 출석부 · 회차 추가 403")
+    void withdrawnNavigatorLosesSitePermissions() {
+        assertThat(post(body(groupA, List.of(), List.of(navA.getId())), OWNER_ID).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        StudyParticipant reloaded = studyParticipantRepo.findById(navA.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(ParticipantStatus.WITHDRAWN);
+        // 중단 직전 역할은 남긴다 — withdrawn 이벤트가 싣고, DSC-06 네비게이터 role 회수가 쓴다
+        assertThat(reloaded.getParticipantRole()).isEqualTo(ParticipantRole.LEADER);
+
+        var save =
+                rest.exchange(
+                        "/api/me/studies/{studyId}/attendances",
+                        HttpMethod.POST,
+                        authenticatedRequest(
+                                body(groupA, List.of(update(meeting, crew1, "LATE")), null),
+                                NAV_A_ID),
+                        Map.class,
+                        study.getId());
+        assertError(save, HttpStatus.FORBIDDEN, "FORBIDDEN");
+
+        var roster =
+                rest.exchange(
+                        "/api/me/studies/{studyId}/attendances?studyGroupId={groupId}",
+                        HttpMethod.GET,
+                        authenticatedRequest(null, NAV_A_ID),
+                        Map.class,
+                        study.getId(),
+                        groupA.getId());
+        assertError(roster, HttpStatus.FORBIDDEN, "FORBIDDEN");
+
+        var addMeeting =
+                rest.exchange(
+                        "/api/studies/{studyId}/meetings",
+                        HttpMethod.POST,
+                        authenticatedRequest(
+                                Map.of(
+                                        "studyGroupId",
+                                        groupA.getId(),
+                                        "scheduledAts",
+                                        List.of(
+                                                Instant.now()
+                                                        .plus(3, ChronoUnit.DAYS)
+                                                        .truncatedTo(ChronoUnit.SECONDS)
+                                                        .toString())),
+                                NAV_A_ID),
+                        Map.class,
+                        study.getId());
+        assertError(addMeeting, HttpStatus.FORBIDDEN, "FORBIDDEN");
+
+        assertThat(studyAttendanceRepo.findAll())
+                .singleElement()
+                .satisfies(a -> assertThat(a.getStatus()).isEqualTo(AttendanceStatus.PRESENT));
+    }
+
     /** 요청은 서버 스레드에서 처리되므로 커밋 뒤 구독자 하나를 붙여 실제 구독자와 같은 시점에 받는다. */
     @TestConfiguration
     static class EventCapture {

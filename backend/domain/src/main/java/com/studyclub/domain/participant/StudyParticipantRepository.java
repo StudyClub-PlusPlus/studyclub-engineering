@@ -67,11 +67,18 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     Optional<StudyParticipant> findByStudyGroupIdAndAccountIdForUpdate(
             @Param("studyGroupId") Long studyGroupId, @Param("accountId") Long accountId);
 
-    boolean existsByStudyGroupIdAndAccountIdAndParticipantRole(
-            Long studyGroupId, Long accountId, ParticipantRole participantRole);
+    /** 살아 있는 네비게이터인지 — 권한 판정용. 중단된 LEADER 행은 권한이 없다 (StudyCaptainGuard). */
+    boolean existsByStudyIdAndAccountIdAndParticipantRoleInAndStatusIn(
+            Long studyId,
+            Long accountId,
+            Collection<ParticipantRole> participantRoles,
+            Collection<ParticipantStatus> statuses);
 
-    boolean existsByStudyGroupIdAndAccountIdAndParticipantRoleIn(
-            Long studyGroupId, Long accountId, Collection<ParticipantRole> participantRoles);
+    boolean existsByStudyGroupIdAndAccountIdAndParticipantRoleInAndStatusIn(
+            Long studyGroupId,
+            Long accountId,
+            Collection<ParticipantRole> participantRoles,
+            Collection<ParticipantStatus> statuses);
 
     List<StudyParticipant> findByIdInAndStudyId(Collection<Long> ids, Long studyId);
 
@@ -106,9 +113,6 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     List<Object[]> countCapacityHoldersByStudyIds(
             @Param("studyIds") Collection<Long> studyIds,
             @Param("roles") Collection<ParticipantRole> roles);
-
-    boolean existsByStudyIdAndAccountIdAndParticipantRoleIn(
-            Long studyId, Long accountId, Collection<ParticipantRole> participantRoles);
 
     boolean existsByStudyIdAndAccountIdAndStatusIn(
             Long studyId, Long accountId, Collection<ParticipantStatus> statuses);

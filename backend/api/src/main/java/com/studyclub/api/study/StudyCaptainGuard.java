@@ -65,10 +65,7 @@ public class StudyCaptainGuard {
         if (account(accountId).getSystemRole() == SystemRole.ADMIN) {
             return;
         }
-        boolean navigator =
-                studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        studyId, accountId, NAVIGATOR_ROLES);
-        if (!navigator) {
+        if (!isActiveNavigatorOfStudy(accountId, studyId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN, message);
         }
     }
@@ -90,10 +87,7 @@ public class StudyCaptainGuard {
         if (account(accountId).getSystemRole() == SystemRole.ADMIN) {
             return;
         }
-        boolean navigator =
-                studyParticipantRepository.existsByStudyGroupIdAndAccountIdAndParticipantRoleIn(
-                        studyGroupId, accountId, NAVIGATOR_ROLES);
-        if (!navigator) {
+        if (!isActiveNavigatorOfGroup(accountId, studyGroupId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN, message);
         }
     }
@@ -145,8 +139,7 @@ public class StudyCaptainGuard {
     public boolean canEditGroup(Long accountId, Long studyCreatedBy, Long studyGroupId) {
         account(accountId);
         return accountId.equals(studyCreatedBy)
-                || studyParticipantRepository.existsByStudyGroupIdAndAccountIdAndParticipantRole(
-                        studyGroupId, accountId, ParticipantRole.LEADER);
+                || isActiveNavigatorOfGroup(accountId, studyGroupId);
     }
 
     public void assertCanEditGroup(
@@ -206,10 +199,25 @@ public class StudyCaptainGuard {
                 .map(
                         account ->
                                 account.getSystemRole() == SystemRole.ADMIN
-                                        || studyParticipantRepository
-                                                .existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                                                        studyId, accountId, NAVIGATOR_ROLES))
+                                        || isActiveNavigatorOfStudy(accountId, studyId))
                 .orElse(false);
+    }
+
+    /*
+     * 네비게이터 권한은 살아 있는 명부 행(ACTIVE · PAUSED)의 LEADER 에만 준다. 백오피스에서 담당 캡틴이 네비게이터를 중단시키면 그 행은
+     * WITHDRAWN · LEADER 로 남는다 — 역할을 MEMBER 로 내리지 않는 것은 중단 직전 역할을 withdrawn 이벤트가 실어야 하기 때문이다 (DSC-06
+     * 네비게이터 role 회수). 그래서 역할만 보지 않고 상태도 본다.
+     */
+    private boolean isActiveNavigatorOfStudy(Long accountId, Long studyId) {
+        return studyParticipantRepository
+                .existsByStudyIdAndAccountIdAndParticipantRoleInAndStatusIn(
+                        studyId, accountId, NAVIGATOR_ROLES, ROSTER_STATUSES);
+    }
+
+    private boolean isActiveNavigatorOfGroup(Long accountId, Long studyGroupId) {
+        return studyParticipantRepository
+                .existsByStudyGroupIdAndAccountIdAndParticipantRoleInAndStatusIn(
+                        studyGroupId, accountId, NAVIGATOR_ROLES, ROSTER_STATUSES);
     }
 
     /**
