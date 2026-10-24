@@ -1,0 +1,146 @@
+// 공지 탭의 순수 규칙 — 고르기 · 길이 · 안내 문구. 서버가 내려준 값을 읽어 그릴 문장만 만들고, 판정(보낼 수 있는가 · 한도)은 다시 하지 않는다.
+import type {
+  ApiNoticeCompose,
+  ApiNoticeItem,
+  ApiNoticeRecipient,
+  DiscordSkipReason,
+  NoticeChannel,
+  NoticeParticipantStatus,
+} from '@/lib/study-notice-api';
+
+/** POL-0010. 서버가 같은 값으로 검증한다. */
+export const NOTICE_LIMITS = { title: 60, body: 1500 } as const;
+
+export type StatusFilter = 'ALL' | NoticeParticipantStatus;
+
+/** 처음에는 참여 중(ACTIVE) 전원이 골라져 있다. 쉬는 중은 비어 있다. */
+export function defaultSelection(recipients: ApiNoticeRecipient[]): Set<number> {
+  return new Set(recipients.filter((r) => r.participantStatus === 'ACTIVE').map((r) => r.participantId));
+}
+
+export function visibleRecipients(recipients: ApiNoticeRecipient[], filter: StatusFilter): ApiNoticeRecipient[] {
+  return filter === 'ALL' ? recipients : recipients.filter((r) => r.participantStatus === filter);
+}
+
+export function statusCounts(recipients: ApiNoticeRecipient[]): Record<StatusFilter, number> {
+  return {
+    ALL: recipients.length,
+    ACTIVE: recipients.filter((r) => r.participantStatus === 'ACTIVE').length,
+    PAUSED: recipients.filter((r) => r.participantStatus === 'PAUSED').length,
+  };
+}
+
+/**
+ * 보이는(거른) 사람만 켜거나 끈다. 보이지 않는 사람의 선택은 건드리지 않는다. 거르기는 보이는 줄을 좁힐 뿐 이미 고른 사람을 지우지 않는다.
+ */
+export function toggleVisible(selected: ReadonlySet<number>, visible: ApiNoticeRecipient[], on: boolean): Set<number> {
+  const next = new Set(selected);
+  for (const r of visible) {
+    if (on) next.add(r.participantId);
+    else next.delete(r.participantId);
+  }
+  return next;
+}
+
+export function toggleOne(selected: ReadonlySet<number>, id: number, on: boolean): Set<number> {
+  const next = new Set(selected);
+  if (on) next.add(id);
+  else next.delete(id);
+  return next;
+}
+
+/** 디스코드 글에서 멘션되는 사람 수 — 고른 사람 중 디스코드를 연동한 사람. */
+export function mentionedCount(recipients: ApiNoticeRecipient[], selected: ReadonlySet<number>): number {
+  return recipients.filter((r) => selected.has(r.participantId) && r.discordLinked).length;
+}
+
+export type Draft = { title: string; body: string; channels: NoticeChannel[]; selectedCount: number };
+
+/** 앞뒤 공백을 자른 길이. 서버도 같은 기준으로 센다. */
+export const lengthOf = (value: string) => value.trim().length;
+
+export function draftProblems(draft: Draft) {
+  const titleLen = lengthOf(draft.title);
+  const bodyLen = lengthOf(draft.body);
+  return {
+    titleLen,
+    bodyLen,
+    titleOver: titleLen > NOTICE_LIMITS.title,
+    bodyOver: bodyLen > NOTICE_LIMITS.body,
+  };
+}
+
+/** 서버가 보낼 수 있다고 한 때(`canSend`)에만, 글과 보낼 곳과 받는 사람이 갖춰졌을 때 보낼 수 있다. */
+export function canSubmit(draft: Draft, compose: Pick<ApiNoticeCompose, 'canSend'>): boolean {
+  const p = draftProblems(draft);
+  return (
+    compose.canSend &&
+    p.titleLen > 0 &&
+    !p.titleOver &&
+    p.bodyLen > 0 &&
+    !p.bodyOver &&
+    draft.channels.length > 0 &&
+    draft.selectedCount > 0
+  );
+}
+
+/** 보낼 곳을 서버 값에 맞춘다 — 디스코드를 못 쓰는 상태에서 고른 디스코드는 뺀다. */
+export function effectiveChannels(channels: NoticeChannel[], discordAvailable: boolean): NoticeChannel[] {
+  return discordAvailable ? channels : channels.filter((c) => c !== 'DISCORD');
+}
+
+const DISCORD_UNAVAILABLE: Record<DiscordSkipReason, string> = {
+  BOT_NOT_CONFIGURED: '디스코드 봇이 연결되어 있지 않아 보낼 수 없습니다.',
+  NO_DISCORD_CHANNEL: '이 스터디에 디스코드 채널이 만들어져 있지 않아 보낼 수 없습니다.',
+  SENDER_NOT_LINKED: '내 디스코드가 연동되어 있지 않아 보낼 수 없습니다.',
+  NO_TEXT_CHANNEL: '디스코드 텍스트 채널을 찾지 못해 보낼 수 없습니다.',
+};
+
+export const discordUnavailableMessage = (reason: DiscordSkipReason | null) =>
+  reason ? DISCORD_UNAVAILABLE[reason] : '디스코드로 보낼 수 없습니다.';
+
+const SKIP_LABEL: Record<DiscordSkipReason, string> = {
+  BOT_NOT_CONFIGURED: '봇 미연결',
+  NO_DISCORD_CHANNEL: '스터디 디스코드 채널 없음',
+  SENDER_NOT_LINKED: '보낸 사람 디스코드 미연동',
+  NO_TEXT_CHANNEL: '텍스트 채널 없음',
+};
+
+/** 한국 시간이 아니라 보는 사람의 시간대로 HH:mm. */
+export function clock(iso: string, locale = 'ko-KR'): string {
+  return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+/** 보내기 줄 왼쪽의 한 줄 안내. 사유와 시각은 서버가 준 값을 그대로 쓴다. 안내할 것이 없으면 null. */
+export function limitNote(compose: ApiNoticeCompose): string | null {
+  if (compose.blockedReason === 'COOLDOWN' && compose.nextAvailableAt) {
+    return `방금 공지를 보냈습니다. ${clock(compose.nextAvailableAt)} 이후에 다시 보낼 수 있습니다.`;
+  }
+  if (compose.blockedReason === 'DAILY_LIMIT') {
+    return '오늘 보낼 수 있는 횟수를 모두 썼습니다. 내일 다시 보낼 수 있습니다.';
+  }
+  if (compose.remainingToday <= 5) return `오늘 ${compose.remainingToday}번 더 보낼 수 있습니다.`;
+  return null;
+}
+
+export function mailResultLabel(email: ApiNoticeItem['email']): string | null {
+  if (!email.requested) return null;
+  return `메일 · 대기 ${email.pending} · 완료 ${email.sent} · 실패 ${email.failed}`;
+}
+
+/** 건너뜀(우리가 못 보냄)과 실패(보냈는데 안 됨)를 가른다. */
+export function discordResultLabel(discord: ApiNoticeItem['discord']): string | null {
+  if (!discord.requested) return null;
+  switch (discord.status) {
+    case 'SENT':
+      return `디스코드 · 완료 (멘션 ${discord.mentionedCount}명)`;
+    case 'SKIPPED':
+      return `디스코드 · 건너뜀 (${discord.skipReason ? SKIP_LABEL[discord.skipReason] : '사유 없음'})`;
+    case 'FAILED':
+      return '디스코드 · 실패';
+    case 'PENDING':
+      return '디스코드 · 대기';
+    default:
+      return null;
+  }
+}
