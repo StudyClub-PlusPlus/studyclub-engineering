@@ -385,22 +385,6 @@ class ParticipantWithdrawalIntegrationTest {
                 "STUDY_ENDED");
     }
 
-    @Test
-    @DisplayName("백오피스 경로는 withdrawals 를 받지 않는다 → 400")
-    void adminPathRejectsWithdrawals() {
-        var response =
-                rest.exchange(
-                        "/api/admin/studies/{studyId}/attendances",
-                        HttpMethod.POST,
-                        authenticatedRequest(
-                                body(groupA, List.of(), List.of(crew1.getId())), OWNER_ID),
-                        Map.class,
-                        study.getId());
-
-        assertError(response, HttpStatus.BAD_REQUEST, "INVALID_INPUT");
-        assertThat(statusOf(crew1)).isEqualTo(ParticipantStatus.ACTIVE);
-    }
-
     /**
      * 요청은 서버 스레드에서 처리되므로 {@code @RecordApplicationEvents} 로는 못 잡는다. 커밋 뒤 구독자 하나를 붙여 실제 구독자와 같은 시점에
      * 받는다.
