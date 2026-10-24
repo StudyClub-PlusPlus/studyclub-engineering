@@ -107,12 +107,7 @@ public class StudyCaptainGuard {
      */
     public boolean assertCanWithdrawInGroup(
             Long accountId, Long studyCreatedBy, Long studyGroupId, String message) {
-        Account caller = account(accountId);
-        boolean ownerCaptain =
-                studyCreatedBy == null
-                        ? caller.getSystemRole() == SystemRole.ADMIN
-                        : accountId.equals(studyCreatedBy);
-        if (ownerCaptain) {
+        if (isOwnerCaptain(accountId, account(accountId), studyCreatedBy)) {
             return true;
         }
         boolean navigator =
@@ -125,6 +120,22 @@ public class StudyCaptainGuard {
             throw new BusinessException(ErrorCode.FORBIDDEN, message);
         }
         return false;
+    }
+
+    /**
+     * 백오피스 출석부에서 참여 중단 — <b>담당 캡틴</b>({@code STUDY.CREATED_BY}, NULL 이면 캡틴 누구나)만. 백오피스는 캡틴만 들어오지만,
+     * 담당이 아닌 캡틴은 출석만 고친다 (specs/study-participant/spec.md 권한, 2026-10-23 기획 결정).
+     */
+    public void assertOwnerCaptain(Long accountId, Long studyCreatedBy, String message) {
+        if (!isOwnerCaptain(accountId, account(accountId), studyCreatedBy)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, message);
+        }
+    }
+
+    private static boolean isOwnerCaptain(Long accountId, Account caller, Long studyCreatedBy) {
+        return studyCreatedBy == null
+                ? caller.getSystemRole() == SystemRole.ADMIN
+                : accountId.equals(studyCreatedBy);
     }
 
     /**
