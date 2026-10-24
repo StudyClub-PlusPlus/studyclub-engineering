@@ -3,8 +3,6 @@ package com.studyclub.api.studygroup;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
-import com.studyclub.domain.participant.ParticipantStatus;
-import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.study.MeetingSchedule;
 import com.studyclub.domain.study.MeetingType;
 import com.studyclub.domain.study.StudyGroup;
@@ -28,19 +26,19 @@ public class AdminStudyGroupService {
     private final StudyGroupRepository studyGroupRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
-    private final StudyParticipantRepository studyParticipantRepository;
+    private final StudyGroupDeletability studyGroupDeletability;
 
     public AdminStudyGroupService(
             StudyRepository studyRepository,
             StudyGroupRepository studyGroupRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository,
-            StudyParticipantRepository studyParticipantRepository) {
+            StudyGroupDeletability studyGroupDeletability) {
         this.studyRepository = studyRepository;
         this.studyGroupRepository = studyGroupRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
-        this.studyParticipantRepository = studyParticipantRepository;
+        this.studyGroupDeletability = studyGroupDeletability;
     }
 
     /** 반 제목을 바꾼다. 같은 스터디 안에 같은 이름이 있으면 409. */
@@ -81,26 +79,31 @@ public class AdminStudyGroupService {
                 .findById(groupId)
                 .filter(g -> g.getStudyId().equals(studyId))
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "반을 찾을 수 없습니다."));
-        boolean isDefaultGroup =
+        Long defaultGroupId =
                 studyGroupRepository
                         .findFirstByStudyIdOrderByIdAsc(studyId)
-                        .map(g -> g.getId().equals(groupId))
-                        .orElse(false);
-        if (isDefaultGroup) {
-            throw new BusinessException(ErrorCode.DEFAULT_GROUP_NOT_DELETABLE, "기본 반은 삭제할 수 없습니다.");
-        }
-        if (studyParticipantRepository.existsByStudyGroupIdAndStatusIn(
-                groupId,
-                List.of(
-                        ParticipantStatus.ACTIVE,
-                        ParticipantStatus.PAUSED,
-                        ParticipantStatus.COMPLETED,
-                        ParticipantStatus.WITHDRAWN))) {
-            throw new BusinessException(ErrorCode.GROUP_NOT_EMPTY, "소속 크루가 있어 반을 삭제할 수 없습니다.");
-        }
-        if (studyAttendanceRepository.existsKeptByStudyGroupId(groupId)) {
-            throw new BusinessException(ErrorCode.GROUP_NOT_EMPTY, "출석 기록이 남아 있어 반을 삭제할 수 없습니다.");
-        }
+                        .map(StudyGroup::getId)
+                        .orElse(null);
+        // 참여 명단 groups[].canDelete 와 같은 판정 — 버튼과 삭제가 어긋나지 않게
+        studyGroupDeletability
+                .blocker(groupId, defaultGroupId)
+                .ifPresent(
+                        blocker -> {
+                            throw switch (blocker) {
+                                case DEFAULT_GROUP ->
+                                        new BusinessException(
+                                                ErrorCode.DEFAULT_GROUP_NOT_DELETABLE,
+                                                "기본 반은 삭제할 수 없습니다.");
+                                case ROSTER ->
+                                        new BusinessException(
+                                                ErrorCode.GROUP_NOT_EMPTY,
+                                                "소속 크루가 있어 반을 삭제할 수 없습니다.");
+                                case ATTENDANCE ->
+                                        new BusinessException(
+                                                ErrorCode.GROUP_NOT_EMPTY,
+                                                "출석 기록이 남아 있어 반을 삭제할 수 없습니다.");
+                            };
+                        });
         studyAttendanceRepository.deleteByStudyGroupId(groupId);
         studyMeetingRepository.deleteByStudyGroupIdIn(List.of(groupId));
         studyGroupRepository.deleteById(groupId);
