@@ -137,11 +137,12 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front 스터디 일정 › 발표자 칩 | 없음 — 스터디 일정 화면이 자리만 있다 | [회차 등록](../navigator-register-sessions/PRD.md#개발-범위)과 같은 화면에서 만든다 |
-| BE | `GET …/meetings` · `PUT` · `DELETE …/presenters/{slot}/me` | 구현중 | [study-meeting 스펙](../../../specs/study-meeting/spec.md#구현-메모) 마무리 |
+| FE | core-front 스터디 일정 › 발표자 칩 | 있음 (#278) — 일정 탭 발표자 칩이 신청 · 취소 API 를 부른다 | 10-18 변경 표 |
+| BE | `GET …/meetings` · `PUT` · `DELETE …/presenters/{slot}/me` | 구현완료 | 없음 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 
