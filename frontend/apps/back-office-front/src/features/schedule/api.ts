@@ -1,45 +1,12 @@
-// 일정 탭의 서버 API — 반 회차 목록 · 킥오프 정하기 (specs/study-meeting/spec.md 「반 회차 목록 (백오피스)」 · 「킥오프 정하기 (백오피스)」).
-//
-// 둘 다 서버의 반 ID(`groupId`, Long)를 경로에 받는다. 백오피스는 아직 그 ID 를 모른다 — 반 목록 API
-// (`GET /api/admin/studies/{id}/participants`)가 스펙 작성 중이다. 그래서 화면은 아직 `store.ts` 를 쓰고,
-// 반 목록이 오면 `ScheduleTab` 이 이 훅으로 바꾼다.
+// 일정 탭의 서버 상태 — 응답을 화면 모양으로 바꾸고(`toMeetings` · `toPeople` · `toUpdateBody`), React Query 로 읽고 쓴다.
+// 서버 호출 자체는 `repository.ts` 에 있다.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { Meeting, Person } from './meetings';
-import { wallParts } from './time';
+import scheduleRepository, { type ApiGroupMeetings, type MeetingUpdatePayload } from './repository';
+import type { MeetingPatch } from './store';
+import { wallParts, zonedInstant } from './time';
 import { studyKeys } from '@/features/studies/queries';
-import { http } from '@/lib/http';
-
-type ApiPresenter = { participantId: number; name: string; active?: boolean };
-
-type ApiMeeting = {
-  id: number;
-  type: 'KICKOFF' | 'REGULAR';
-  /** 킥오프 0, 정규 회차는 일정순으로 1부터 — 서버가 센다. */
-  number: number;
-  scheduledAt: string;
-  title: string | null;
-  presenter1: ApiPresenter | null;
-  presenter2: ApiPresenter | null;
-  started: boolean;
-};
-
-/** 사이트 `GET /api/studies/{id}/meetings` 와 같은 응답. 백오피스는 `me` 가 늘 `{ participantId: null, canEdit: true }`. */
-export type ApiGroupMeetings = {
-  studyGroup: {
-    id: number;
-    name: string;
-    /** IANA. 비어 있으면 서버가 `Asia/Seoul` 로 채운다. */
-    timezone: string;
-    startTime: string | null;
-    navigatorName: string | null;
-    rules: string | null;
-  };
-  me: { participantId: number | null; canEdit: boolean };
-  /** 발표자 후보 — 그 반 활성 참여자, 이름순. */
-  participants: { participantId: number; name: string }[];
-  meetings: ApiMeeting[];
-};
 
 /** 응답 → 표의 회차. 일자 · 시각은 반 시간대 벽시계로 바꾼다. */
 export function toMeetings(res: ApiGroupMeetings): Meeting[] {
@@ -68,33 +35,87 @@ export function toPeople(res: ApiGroupMeetings): Person[] {
   return [...byId].map(([id, name]) => ({ id, name }));
 }
 
+/** 회차를 고친 뒤 — 표와 출석부 열이 같이 바뀐다. */
+function useRefetchMeetings(studyId: number, groupId: number) {
+  const client = useQueryClient();
+  return () => client.invalidateQueries({ queryKey: scheduleKeys.group(studyId, groupId) });
+}
+
 export const scheduleKeys = {
-  meetings: (studyId: number, groupId: number) =>
-    [...studyKeys.detail(studyId), 'groups', groupId, 'meetings'] as const,
+  /** 반 하나의 회차 · 출석 — 회차를 고치면 출석부 열도 바뀌어 둘을 같이 다시 읽는다. */
+  group: (studyId: number, groupId: number) => [...studyKeys.detail(studyId), 'groups', groupId] as const,
+  meetings: (studyId: number, groupId: number) => [...scheduleKeys.group(studyId, groupId), 'meetings'] as const,
+  attendance: (studyId: number, groupId: number) => [...scheduleKeys.group(studyId, groupId), 'attendance'] as const,
 };
 
 export function useGroupMeetings(studyId: number, groupId: number | undefined) {
   return useQuery({
     queryKey: scheduleKeys.meetings(studyId, groupId ?? 0),
-    queryFn: ({ signal }) =>
-      http<ApiGroupMeetings>(`/api/admin/studies/${studyId}/groups/${groupId}/meetings`, { signal }),
+    queryFn: ({ signal }) => scheduleRepository.fetchMeetings(studyId, groupId!, signal),
     enabled: groupId !== undefined,
   });
 }
 
-/**
- * 킥오프를 정하거나 옮긴다 — 없으면 만들고 있으면 시각만 바꾼다. 204.
- * 400 은 1회차 날이나 그 뒤, 409 `MEETING_DATE_CONFLICT` 는 다른 회차와 같은 날 — 둘 다 `validateKickoff` 가 먼저 막는다.
- */
+/** 킥오프를 정하거나 옮긴다. `scheduledAt` 은 UTC ISO. */
 export function useSetKickoff(studyId: number, groupId: number) {
-  const client = useQueryClient();
+  const refetch = useRefetchMeetings(studyId, groupId);
   return useMutation({
-    mutationFn: (scheduledAt: string) =>
-      http<null>(`/api/admin/studies/${studyId}/groups/${groupId}/kickoff`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduledAt }),
+    mutationFn: (scheduledAt: string) => scheduleRepository.setKickoff(studyId, groupId, scheduledAt),
+    onSettled: refetch,
+  });
+}
+
+/** 회차 추가 — 일자 · 시각은 반 시간대 벽시계로 받아 UTC 로 펼쳐 보낸다. */
+export function useAddMeetings(studyId: number, groupId: number, tz: string) {
+  const refetch = useRefetchMeetings(studyId, groupId);
+  return useMutation({
+    mutationFn: (input: { dates: string[]; time: string; title?: string }) =>
+      scheduleRepository.createMeetings(studyId, groupId, {
+        scheduledAts: input.dates.map((d) => zonedInstant(d, input.time, tz).toISOString()),
+        title: input.title?.trim() || null,
       }),
-    onSettled: () => client.invalidateQueries({ queryKey: scheduleKeys.meetings(studyId, groupId) }),
+    onSettled: refetch,
+  });
+}
+
+/** 표의 고친 줄 → 수정 본문. 발표자 칸은 넘긴 것만 싣는다 — 그 사이 크루가 신청한 칸을 덮지 않는다. */
+export function toUpdateBody(patch: MeetingPatch, tz: string): MeetingUpdatePayload {
+  const presenter = (v: string | null) => (v ? Number(v) : null);
+  return {
+    scheduledAt: zonedInstant(patch.date, patch.time, tz).toISOString(),
+    title: patch.title.trim() || null,
+    ...(patch.presenter1 !== undefined && { presenter1ParticipantId: presenter(patch.presenter1) }),
+    ...(patch.presenter2 !== undefined && { presenter2ParticipantId: presenter(patch.presenter2) }),
+  };
+}
+
+/** 회차 수정 — 서버는 한 번에 한 회차라 고친 줄마다 부른다. 하나라도 실패하면 오류로 본다. */
+export function useUpdateMeetings(studyId: number, groupId: number, tz: string) {
+  const refetch = useRefetchMeetings(studyId, groupId);
+  return useMutation({
+    mutationFn: (patches: Record<string, MeetingPatch>) =>
+      Promise.all(
+        Object.entries(patches).map(([id, patch]) =>
+          scheduleRepository.updateMeeting(studyId, groupId, Number(id), toUpdateBody(patch, tz)),
+        ),
+      ),
+    onSettled: refetch,
+  });
+}
+
+export function useDeleteMeetings(studyId: number, groupId: number) {
+  const refetch = useRefetchMeetings(studyId, groupId);
+  return useMutation({
+    mutationFn: (ids: string[]) => scheduleRepository.deleteMeetings(studyId, groupId, ids.map(Number)),
+    onSettled: refetch,
+  });
+}
+
+/** 비운 규칙은 null 로 — 서버가 지운다. */
+export function useSaveRules(studyId: number, groupId: number) {
+  const refetch = useRefetchMeetings(studyId, groupId);
+  return useMutation({
+    mutationFn: (rules: string) => scheduleRepository.saveRules(studyId, groupId, rules.trim() || null),
+    onSettled: refetch,
   });
 }
