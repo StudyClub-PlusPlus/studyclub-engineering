@@ -324,7 +324,8 @@
 ## 프론트엔드 사용처
 
 - back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/ParticipantsTab.tsx`: 명단 · 반 생성/제목 수정/삭제 · 개별/일괄 반 변경 후 저장. 역할은 표시만 한다. 참여 명단 GET · 일괄 PATCH는 위 계약에 연결했으며 BE 구현 후 실제 연동 검증이 필요하다.
-- 역할 변경과 일정 탭의 스터디 시간 설정/수정은 미구현. 프로토: playground `console/studies/{id}`
+- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정은 화면은 있고 브라우저 저장소에 남는다. 이 API 가 시간 칸을 받으면 붙인다
+- 역할 변경은 미구현. 프로토: playground `console/studies/{id}`
 
 ## 미확정
 

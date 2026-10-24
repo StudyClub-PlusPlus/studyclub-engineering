@@ -538,7 +538,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ### 프론트엔드 사용처
 
-- back-office-front 일정 탭 (작업 중) — 반을 고르면 이걸로 표를 그린다. 킥오프가 없으면(`type = KICKOFF` 인 회차 없음) 「킥오프 정하기」, 있으면 「킥오프 수정」
+- back-office-front 일정 탭 — 반을 고르면 이걸로 표를 그린다. **화면은 있고 아직 연결하지 않았다** — 반 목록 API(`GET /api/admin/studies/{studyId}/participants`)가 없어 반 ID 를 모른다. 지금 표는 브라우저 저장소를 읽고, 호출 · 응답 변환은 `features/schedule/api.ts`(`useGroupMeetings` · `toMeetings`)에 있다. 킥오프가 없으면(`type = KICKOFF` 인 회차 없음) 「킥오프 정하기」, 있으면 「킥오프 수정」
 
 ---
 
@@ -592,7 +592,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 ### 프론트엔드 사용처
 
 - 프로토타입: playground 운영 콘솔 › 스터디 운영 › 일정 탭 「킥오프 정하기 · 수정」
-- back-office-front 일정 탭 (미구현 — 일정 탭 자체가 아직 없다)
+- back-office-front 일정 탭 「킥오프 정하기 · 수정」(`features/schedule/KickoffDialog.tsx`) — 화면은 있고 지금은 브라우저 저장소에 남는다. 이 API 호출(`features/schedule/api.ts` `useSetKickoff`)은 반 목록 API 가 생기면 붙인다
 
 ---
 

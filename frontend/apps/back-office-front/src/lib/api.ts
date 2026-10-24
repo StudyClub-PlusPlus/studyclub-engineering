@@ -88,16 +88,31 @@ function mapToStudy(api: ApiStudy): Study {
   };
 }
 
+// 서버가 limit 을 1~100 으로 막는다(BackofficeStudyListService.validate) — 100 개씩 끝까지 읽는다
+const STUDIES_PAGE_SIZE = 100;
+
 export async function fetchStudies(): Promise<Study[]> {
   // 쿠키를 통째로 넘기지 않는다 — 사이트(sc_) 쿠키도 같이 실려 API 가 다른 앱의 계정으로 판단한다(2026-10-16 stage /studies 403).
   // 백오피스 액세스 토큰만 Authorization 으로 보낸다 (core-front bff 와 같은 방식)
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;
+  const items: ApiStudy[] = [];
+
+  for (let offset = 0; ; offset += STUDIES_PAGE_SIZE) {
+    const page = await fetchStudiesPage(token, offset);
+    items.push(...page.items);
+    if (page.items.length < STUDIES_PAGE_SIZE || items.length >= page.total) break;
+  }
+
+  return items.map(mapToStudy);
+}
+
+async function fetchStudiesPage(token: string | undefined, offset: number): Promise<ApiPage> {
   const maxRetries = 2;
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     let response: Response;
     try {
-      response = await fetch(API_BASE + '/api/admin/studies?offset=0&limit=1000', {
+      response = await fetch(API_BASE + '/api/admin/studies?offset=' + offset + '&limit=' + STUDIES_PAGE_SIZE, {
         cache: 'no-store',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
@@ -118,8 +133,7 @@ export async function fetchStudies(): Promise<Study[]> {
       throw new Error('스터디 목록을 불러오지 못했습니다. (' + response.status + ')');
     }
 
-    const page = (await response.json()) as ApiPage;
-    return page.items.map(mapToStudy);
+    return (await response.json()) as ApiPage;
   }
 
   throw new Error('스터디 목록을 불러오지 못했습니다.');

@@ -12,7 +12,7 @@ import {
   type Study,
   type StudyLifecycleStatus,
 } from '@studyclub/mock';
-import { Badge, type BadgeTone } from '@studyclub/ui';
+import { Badge, Select, cx, type BadgeTone } from '@studyclub/ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { STATUS_LABEL, tx } from '@/lib/l10n';
@@ -159,19 +159,22 @@ function FilterSelect<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={`h-9 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -353,13 +356,14 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           모집중/마감은 상태가 아니라 모집 시작일·종료일과 정원으로 계산합니다
         </span>
       </div>
-      <div className='mb-5 flex flex-wrap items-center gap-2'>
+      {/* 필터는 한 줄에 둔다. 좁으면 줄바꿈하지 않고 옆으로 넘긴다 (프로토 명세 list:4) */}
+      <div className='mb-5 flex flex-nowrap items-center gap-2 overflow-x-auto'>
         <input
           type='search'
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='제목 · 한 줄 소개 검색'
-          className='h-9 w-[188px] rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
+          className='h-9 w-[188px] shrink-0 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand'
         />
         <FilterSelect
           value={category}
@@ -382,7 +386,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           onChange={(v) => setFilters({ publish: v, page: '1' })}
           options={PUBLISH_OPTIONS}
         />
-        <label className='inline-flex h-9 cursor-pointer items-center gap-2 rounded-control border border-border-strong bg-surface px-3 text-sm text-fg-secondary'>
+        <label className='inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-control border border-border-strong bg-surface px-3 text-sm text-fg-secondary'>
           <input
             type='checkbox'
             checked={noFormOnly}
@@ -402,7 +406,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           </span>
           신청 폼 없는 것만
         </label>
-        <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
+        <span className='ml-auto shrink-0 whitespace-nowrap text-xs text-fg-muted'>{rows.length}개</span>
       </div>
 
       <div className='card'>
