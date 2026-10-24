@@ -454,10 +454,11 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/my/joined` | 있음 — 공개 스터디 목록(`GET /api/studies`)과 브라우저 mock 으로 그린다 (`TODO(api)`) | `GET /api/me/studies` 로 바꾸고 역할 · 참여 상태 · 다음 회차를 응답 값으로 그린다 |
+| FE | core-front `/my/joined` | 있음 (#226) — `GET /api/me/studies` 로 그린다 (`features/my-studies/queries.ts`) | 「캡틴」 배지는 아래 `captain` 플래그가 생기면 응답 값으로 |
 | BE | `GET /api/me/studies` | 구현완료 · `captain` 플래그 없음 | 명부 행에 `captain` 플래그 추가 |
 | BE | 주간 일정용 회차 (아래 API 표의 `GET /api/me/studies/{id}/meetings`) | 스펙 없음 · 컨트롤러 없음 | `GET /api/me/studies` 응답으로 충분한지 먼저 정한다 → 모자라면 [my-studies 스펙](../../../specs/my-studies/spec.md)에 더한다 |
 

@@ -3,7 +3,7 @@
 > ERD: [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > Story PRD: [회차 등록](../../01-planning/stories/navigator-register-sessions/PRD.md) · [크루 발표자 신청](../../01-planning/stories/crew-apply-presenter/PRD.md)
 > 생성일: 2026-10-02
-> 상태: 구현중 (2026-10-07 — 백엔드)
+> 상태: 구현중 (2026-10-07 — 백엔드) · 2026-10-23 — 삭제 2개 말고 구현완료. 삭제는 코드 경로가 스펙과 다르다 (아래 표)
 >
 > Story PRD:
 > - [네비게이터로서, 스터디 회차를 등록할 수 있다](../../01-planning/stories/navigator-register-sessions/PRD.md)
@@ -14,15 +14,15 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/studies/{studyId}/meetings | 분반 회차 목록 (발표자 · 규칙 포함) | O (그 분반 참여자 · 캡틴) | 구현중 |
-| POST | /api/studies/{studyId}/meetings | 회차 추가 (한 번 · 반복) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
-| PUT | /api/studies/{studyId}/meetings/{meetingId} | 회차 수정 (시각 · 제목 · 발표자) | O (그 분반 네비게이터 · 캡틴) | 구현중 |
+| GET | /api/studies/{studyId}/meetings | 분반 회차 목록 (발표자 · 규칙 포함) | O (그 분반 참여자 · 캡틴) | 구현완료 |
+| POST | /api/studies/{studyId}/meetings | 회차 추가 (한 번 · 반복) | O (그 분반 네비게이터 · 캡틴) | 구현완료 |
+| PUT | /api/studies/{studyId}/meetings/{meetingId} | 회차 수정 (시각 · 제목 · 발표자) | O (그 분반 네비게이터 · 캡틴) | 구현완료 |
 | DELETE | /api/studies/{studyId}/meetings | 회차 삭제 — 한 분반의 회차 하나 이상을 한 번에 (본문 `studyGroupId` · `meetingIds`, 전부 아니면 하나도) | O (그 분반 네비게이터 · 캡틴) | 구현완료 |
-| PUT | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 (빈 칸에 나) | O (그 분반 참여자) | 구현중 |
-| DELETE | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 취소 (내 이름 빼기) | O (그 분반 참여자) | 구현중 |
-| PUT | /api/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 | O (그 분반 네비게이터 · 캡틴) | 구현중 |
-| GET | /api/admin/studies/{studyId}/groups/{groupId}/meetings | 반 회차 목록 (백오피스 일정 탭 — 킥오프 · 발표자 포함) | O (ADMIN) | 구현중 |
-| PUT | /api/admin/studies/{studyId}/groups/{groupId}/kickoff | 킥오프 정하기 · 옮기기 (백오피스 일정 탭) | O (ADMIN) | 구현중 |
+| PUT | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 (빈 칸에 나) | O (그 분반 참여자) | 구현완료 |
+| DELETE | /api/studies/{studyId}/meetings/{meetingId}/presenters/{slot}/me | 발표 신청 취소 (내 이름 빼기) | O (그 분반 참여자) | 구현완료 |
+| PUT | /api/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 | O (그 분반 네비게이터 · 캡틴) | 구현완료 |
+| GET | /api/admin/studies/{studyId}/groups/{groupId}/meetings | 반 회차 목록 (백오피스 일정 탭 — 킥오프 · 발표자 포함) | O (ADMIN) | 구현완료 |
+| PUT | /api/admin/studies/{studyId}/groups/{groupId}/kickoff | 킥오프 정하기 · 옮기기 (백오피스 일정 탭) | O (ADMIN) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
