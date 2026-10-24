@@ -64,6 +64,8 @@ public enum ErrorCode {
     PRESENTER_NOT_ME(409, "내가 신청한 칸이 아닙니다."),
     /** 스터디가 끝났다(ENDED·CLOSED) — 명부를 더 바꾸지 않는다 */
     STUDY_ENDED(409, "끝난 스터디입니다."),
+    /** 스터디 공지를 너무 자주 보냈다 — 같은 반 직전 발송 1분 안, 또는 하루 한도 (specs/study-notice). 화면은 보내기를 끄고 사유를 보여 준다 */
+    STUDY_NOTICE_RATE_LIMITED(429, "공지를 너무 자주 보냈습니다. 잠시 뒤에 다시 보내 주세요."),
     /** 외부 연동 실패 (구글 OAuth 미설정 등) */
     EXTERNAL_SERVICE_ERROR(503, "외부 서비스와 통신하지 못했습니다."),
     /** 예상하지 못한 서버 오류. 내부 사정은 절대 메시지에 담지 않는다 */

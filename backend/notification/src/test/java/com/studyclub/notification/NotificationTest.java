@@ -35,6 +35,24 @@ class NotificationTest {
     }
 
     @Test
+    @DisplayName("만든 쪽의 ID 참조(referenceId)를 줄 수 있고, 안 주면 null")
+    void pendingImmediate_referenceId() {
+        Notification withReference =
+                Notification.pendingImmediate(
+                        NotificationEventType.STUDY_NOTICE,
+                        NotificationChannel.EMAIL,
+                        "user@example.com",
+                        1L,
+                        10L,
+                        Map.of("title", "공지"),
+                        77L);
+
+        assertThat(withReference.getReferenceId()).isEqualTo(77L);
+        assertThat(withReference.getEventType()).isEqualTo(NotificationEventType.STUDY_NOTICE);
+        assertThat(pending().getReferenceId()).isNull();
+    }
+
+    @Test
     @DisplayName("PENDING -> PROCESSING -> SENT 정상 전이")
     void markProcessing_thenMarkSent() {
         Notification notification = pending();

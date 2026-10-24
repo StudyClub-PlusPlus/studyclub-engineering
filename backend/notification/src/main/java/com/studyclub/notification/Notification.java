@@ -30,7 +30,10 @@ import org.hibernate.type.SqlTypes;
 @Table(
         name = "NOTIFICATION",
         indexes = {
-            @Index(name = "idx_notification_status_created", columnList = "STATUS, CREATED_AT")
+            @Index(name = "idx_notification_status_created", columnList = "STATUS, CREATED_AT"),
+            @Index(
+                    name = "idx_notification_event_reference",
+                    columnList = "EVENT_TYPE, REFERENCE_ID")
         })
 @Getter
 public class Notification extends BaseEntity {
@@ -57,6 +60,13 @@ public class Notification extends BaseEntity {
     /** ID 참조 — {@code NotificationTemplate} 은 별도 애그리거트라 객체 참조(@ManyToOne)로 물지 않는다. */
     @Column(name = "TEMPLATE_ID", nullable = false)
     private Long templateId;
+
+    /**
+     * 이 알림을 만든 쪽의 ID 참조 — {@code STUDY_NOTICE} 면 {@code STUDY_NOTICE.ID}. 공지별 메일 결과를 세는 키다. 웰컴메일은
+     * null. 다른 애그리거트라 FK 는 없다.
+     */
+    @Column(name = "REFERENCE_ID")
+    private Long referenceId;
 
     /** Hibernate 7 이 Jackson 3(이 프로젝트가 쓰는 버전)을 자동 인식해 직렬화한다 — 커스텀 컨버터 불필요. */
     @JdbcTypeCode(SqlTypes.JSON)
@@ -89,13 +99,15 @@ public class Notification extends BaseEntity {
             String recipientValue,
             Long recipientUserId,
             Long templateId,
-            Map<String, Object> payload) {
+            Map<String, Object> payload,
+            Long referenceId) {
         this.eventType = eventType;
         this.recipientType = recipientType;
         this.recipientValue = recipientValue;
         this.recipientUserId = recipientUserId;
         this.templateId = templateId;
         this.payload = payload;
+        this.referenceId = referenceId;
         this.status = NotificationStatus.PENDING;
     }
 
@@ -107,8 +119,36 @@ public class Notification extends BaseEntity {
             Long recipientUserId,
             Long templateId,
             Map<String, Object> payload) {
+        return pendingImmediate(
+                eventType,
+                recipientType,
+                recipientValue,
+                recipientUserId,
+                templateId,
+                payload,
+                null);
+    }
+
+    /**
+     * {@link #pendingImmediate(NotificationEventType, NotificationChannel, String, Long, Long,
+     * Map)} 에 만든 쪽의 ID 참조를 더한다.
+     */
+    public static Notification pendingImmediate(
+            NotificationEventType eventType,
+            NotificationChannel recipientType,
+            String recipientValue,
+            Long recipientUserId,
+            Long templateId,
+            Map<String, Object> payload,
+            Long referenceId) {
         return new Notification(
-                eventType, recipientType, recipientValue, recipientUserId, templateId, payload);
+                eventType,
+                recipientType,
+                recipientValue,
+                recipientUserId,
+                templateId,
+                payload,
+                referenceId);
     }
 
     /** 폴링 스케줄러가 클레임(SELECT ... FOR UPDATE SKIP LOCKED + UPDATE)한 직후 반영하는 상태. */

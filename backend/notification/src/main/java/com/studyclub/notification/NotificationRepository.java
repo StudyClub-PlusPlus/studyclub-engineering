@@ -90,6 +90,20 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     long countFiltered(@Param("eventType") String eventType, @Param("status") String status);
 
     /**
+     * 공지별 메일 결과 — {@code REFERENCE_ID} 를 키로 상태별 건수를 한 번에 센다 (기록 목록이 공지마다 조회하지 않게 — N+1). 건수가 0인 상태는
+     * 행이 없다.
+     */
+    @Query(
+            "SELECT new com.studyclub.notification.NotificationStatusCount("
+                    + "n.referenceId, n.status, COUNT(n))"
+                    + " FROM Notification n"
+                    + " WHERE n.eventType = :eventType AND n.referenceId IN :referenceIds"
+                    + " GROUP BY n.referenceId, n.status")
+    List<NotificationStatusCount> countByReferenceAndStatus(
+            @Param("eventType") NotificationEventType eventType,
+            @Param("referenceIds") Collection<Long> referenceIds);
+
+    /**
      * 다중 서버 환경에서 같은 PENDING 행을 두 인스턴스가 동시에 집어가지 않도록 잠근다. InnoDB 가 행 락 획득을 원자적으로 처리하므로 이 SELECT 자체가
      * 클레임이다 — 애플리케이션이 조율할 필요가 없다 (specs/notification/spec.md).
      *
