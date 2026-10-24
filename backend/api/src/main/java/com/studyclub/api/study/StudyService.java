@@ -9,6 +9,7 @@ import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
+import com.studyclub.domain.notice.StudyNoticeRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.storage.StoragePurpose;
 import com.studyclub.domain.study.Study;
@@ -53,6 +54,7 @@ public class StudyService {
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyCaptainGuard studyCaptainGuard;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
+    private final StudyNoticeRepository studyNoticeRepository;
     private final StudyApplicationFormService studyApplicationFormService;
     private final UploadService uploadService;
 
@@ -69,6 +71,7 @@ public class StudyService {
             StudyBookmarkRepository studyBookmarkRepository,
             StudyCaptainGuard studyCaptainGuard,
             StudyDiscordLinkRepository studyDiscordLinkRepository,
+            StudyNoticeRepository studyNoticeRepository,
             StudyApplicationFormService studyApplicationFormService,
             UploadService uploadService) {
         this.studyRepository = studyRepository;
@@ -83,6 +86,7 @@ public class StudyService {
         this.studyBookmarkRepository = studyBookmarkRepository;
         this.studyCaptainGuard = studyCaptainGuard;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
+        this.studyNoticeRepository = studyNoticeRepository;
         this.studyApplicationFormService = studyApplicationFormService;
         this.uploadService = uploadService;
     }
@@ -284,6 +288,8 @@ public class StudyService {
             studyMeetingRepository.deleteByStudyGroupIdIn(groupIds);
         }
         studyAttendanceRepository.deleteByStudyId(studyId);
+        // 보낸 공지 기록 — 받는 사람 행까지 함께 지운다. 메일 발송 이력(NOTIFICATION)은 발송 이력이라 남긴다
+        studyNoticeRepository.deleteByStudyId(studyId);
         studyGroupRepository.deleteByStudyId(studyId);
         studyParticipantRepository.deleteByStudyId(studyId);
         if (!recruitmentIds.isEmpty()) {

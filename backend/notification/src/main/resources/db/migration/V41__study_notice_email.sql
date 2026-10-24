@@ -1,0 +1,95 @@
+-- V41 — 스터디 공지 메일 (STUDY_NOTICE · EMAIL) (specs/study-notice/spec.md)
+--   * NOTIFICATION.REFERENCE_ID: 이 알림을 만든 쪽의 ID 참조. 공지 메일이면 STUDY_NOTICE.ID — 공지별 메일 결과(대기·완료·실패)를 세는 키다.
+--     웰컴메일은 NULL. 다른 애그리거트라 FK 는 없다.
+--   * 템플릿 본문은 HTML 시안이다 (frontend/apps/playground/src/proto/mail/templates/study-notice-email.html — 시안 정본,
+--     playground /proto/mail 에서 편집·미리보기). 치환 값 {{studyTitle}} {{groupName}} {{senderName}} {{title}} {{body}} 는
+--     렌더러가 HTML 이스케이프해서 끼운다(NotificationTemplateRenderer). 본문 줄바꿈은 시안의 white-space:pre-line 이 살린다.
+--   * 제목은 「[StudyClub] 무엇」 규칙 (docs/mail-templates/README.md §제목 규칙). studyTitle 은 서버가 25자로 잘라 넣어 제목이 40자를 넘지 않는다.
+--   * stage 는 Flyway 가 꺼져 있어 이 파일이 돌지 않는다. 같은 내용을 손으로 한 번 넣는다(PR 본문의 stage SQL).
+ALTER TABLE NOTIFICATION
+    ADD COLUMN REFERENCE_ID BIGINT NULL AFTER TEMPLATE_ID,
+    ADD INDEX idx_notification_event_reference (EVENT_TYPE, REFERENCE_ID);
+
+INSERT INTO NOTIFICATION_TEMPLATE (EVENT_TYPE, CHANNEL, SUBJECT, BODY, UPDATED_BY_ADMIN_ID, CREATED_AT, UPDATED_AT)
+VALUES (
+    'STUDY_NOTICE',
+    'EMAIL',
+    '[StudyClub] {{studyTitle}} 공지',
+    '<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>[StudyClub] {{studyTitle}} 공지</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F5F7FF;">
+<!-- 미리보기 문구: 받은편지함 목록에서 제목 옆에 보인다 -->
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F5F7FF;">{{senderName}}님이 {{groupName}}에 공지를 보냈습니다: {{title}}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F7FF;">
+  <tr>
+    <td align="center" style="padding:32px 12px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+        <!-- 워드마크 (이미지 차단 메일함에서도 보이도록 글자로) -->
+        <tr>
+          <td style="padding:0 8px 16px 8px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#282A43;letter-spacing:-0.2px;">
+            StudyClub
+          </td>
+        </tr>
+        <!-- 본문 카드 -->
+        <tr>
+          <td style="background-color:#FFFFFF;border:1px solid #E2E1E9;border-radius:12px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="height:4px;line-height:4px;font-size:0;background-color:#5267D8;border-radius:12px 12px 0 0;">&nbsp;</td>
+              </tr>
+              <tr>
+                <td style="padding:36px 40px 8px 40px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;">
+                  <p style="margin:0 0 8px 0;font-size:13px;line-height:20px;font-weight:600;color:#5267D8;">{{studyTitle}} · {{groupName}}</p>
+                  <h1 style="margin:0 0 20px 0;font-size:24px;line-height:34px;font-weight:700;color:#282A43;letter-spacing:-0.4px;">{{title}}</h1>
+                  <!-- 보낸 사람이 쓴 줄바꿈이 HTML 에서도 보이도록 pre-line. 값은 서버가 이스케이프해서 끼운다 -->
+                  <p style="margin:0 0 28px 0;font-size:16px;line-height:26px;color:#626476;white-space:pre-line;">{{body}}</p>
+                </td>
+              </tr>
+              <!-- 버튼: 표 셀에 배경을 칠해 이미지 없이도 버튼 모양이 유지된다 -->
+              <tr>
+                <td style="padding:0 40px 36px 40px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td align="center" bgcolor="#5267D8" style="border-radius:8px;background-color:#5267D8;">
+                        <a href="https://studyclub.life/my/joined" target="_blank" style="display:inline-block;padding:14px 28px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:8px;">내 스터디 보러 가기</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 40px;"><div style="height:1px;line-height:1px;font-size:0;background-color:#E2E1E9;">&nbsp;</div></td>
+              </tr>
+              <tr>
+                <td style="padding:24px 40px 32px 40px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;font-size:14px;line-height:22px;color:#626476;">
+                  <p style="margin:0 0 12px 0;">이 공지는 {{senderName}}님이 보냈습니다. 이 메일에 회신하지 말고, 궁금한 점은 {{senderName}}님이나 스터디 디스코드 채널에 문의해 주세요.</p>
+                  <p style="margin:0;color:#282A43;">감사합니다.<br>StudyClub 드림</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- 법적 고지: 왜 이 메일을 받았는지 -->
+        <tr>
+          <td style="padding:20px 8px 0 8px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;font-size:12px;line-height:18px;color:#6C6D7F;">
+            이 메일은 회원님이 참여 중인 스터디 {{studyTitle}}({{groupName}})의 운영 안내로 발송되었습니다.<br>
+            © StudyClub · <a href="https://studyclub.life" target="_blank" style="color:#6C6D7F;text-decoration:underline;">studyclub.life</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>',
+    NULL,
+    UTC_TIMESTAMP(6),
+    UTC_TIMESTAMP(6)
+);

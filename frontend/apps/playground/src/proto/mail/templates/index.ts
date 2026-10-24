@@ -20,4 +20,17 @@ export const MAIL_TEMPLATES: MailTemplateMeta[] = [
     subject: '[StudyClub] 회원가입을 환영합니다',
     sample: { nickname: '스터디메이트' },
   },
+  {
+    key: 'study-notice-email',
+    name: '스터디 반 공지 (STUDY_NOTICE)',
+    // studyTitle 은 서버가 25자로 잘라 넣는다 — 제목 전체가 40자를 넘지 않게 ([StudyClub] 12자 + 공지)
+    subject: '[StudyClub] {{studyTitle}} 공지',
+    sample: {
+      studyTitle: 'DDIA 2판 읽기',
+      groupName: '수요일반',
+      senderName: '태윤',
+      title: '이번 주 모임 장소가 바뀌었어요',
+      body: '수요일 20:30 모임은 온라인으로 진행합니다.\n링크는 디스코드 로비 채널에 올려 둘게요.',
+    },
+  },
 ];
