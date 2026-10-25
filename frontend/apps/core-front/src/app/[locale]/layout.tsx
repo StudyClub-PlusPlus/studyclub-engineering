@@ -32,6 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   return {
+    verification: { other: { 'naver-site-verification': '704d84f239ac8c0255ff0d16fff86b95ce6138c9' } },
     metadataBase: new URL(SITE_URL),
     title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
     description: m('seo.site_description', locale),

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { Heart } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { getBookmarks, setBookmarked } from '@/lib/me';
@@ -14,11 +15,14 @@ export function BookmarkButton({
   studyId,
   locale,
   tone = 'onColor',
+  source = 'detail',
 }: {
   studyId: string;
   locale: Locale;
   /** onColor = 컬러 배너 위, plain = 흰 배경 위 */
   tone?: 'onColor' | 'plain';
+  /** 어느 화면의 하트인지 — 분석용 */
+  source?: 'card_landing' | 'card_list' | 'detail';
 }) {
   // 서버 렌더 결과와 어긋나지 않도록 마운트 후에만 실제 상태를 반영한다
   const [marked, setMarked] = useState(false);
@@ -36,6 +40,7 @@ export function BookmarkButton({
     const next = !marked;
     setMarked(next);
     setBookmarked(studyId, next);
+    track({ name: next ? 'Study Bookmarked' : 'Study Unbookmarked', props: { study_id: studyId, source } });
   }
 
   const label = t(

@@ -8,7 +8,7 @@ import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
 import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
-import { Badge, Button, SelectionCount, TableActionBar } from '@studyclub/ui';
+import { Badge, Button, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
 /**
@@ -201,57 +201,57 @@ export function CrewTab({
             </Button>
           </span>
         </h2>
-          <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
-            {classes.map((cls, i) => (
-              <li key={cls.id} className='card px-4 py-3'>
-                {renaming?.id === cls.id ? (
-                  editor(cls)
-                ) : (
-                  <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
-                    <span className='text-sm font-bold'>{classLabel(cls)}</span>
-                    {/* 첫 반 = 기본반. 스터디를 만들 때 생기고, 새로 신청한 크루가 여기로 들어온다 */}
-                    {i === 0 && (
-                      <span data-anno='class:1-5'>
-                        <Badge tone='neutral'>기본</Badge>
-                      </span>
-                    )}
-                    <span className='tnum ml-auto text-sm text-fg-secondary'>
-                      {active.filter((c) => assign[c.id] === cls.id).length}명
+        <ul data-anno='class:1-1' className='mt-2 flex flex-col gap-2'>
+          {classes.map((cls, i) => (
+            <li key={cls.id} className='card px-4 py-3'>
+              {renaming?.id === cls.id ? (
+                editor(cls)
+              ) : (
+                <div className='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
+                  <span className='text-sm font-bold'>{classLabel(cls)}</span>
+                  {/* 첫 반 = 기본반. 스터디를 만들 때 생기고, 새로 신청한 크루가 여기로 들어온다 */}
+                  {i === 0 && (
+                    <span data-anno='class:1-5'>
+                      <Badge tone='neutral'>기본</Badge>
                     </span>
-                    <Button
-                      size='sm'
-                      variant='secondary'
-                      data-anno='class:1-2'
-                      aria-label={`${classLabel(cls)} 수정`}
-                      onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
-                    >
-                      수정
-                    </Button>
-                    {/* 기본반과 사람이 든 반은 지우지 않는다 — 기본반은 신청자가 들어올 곳이고, 사람이 든 반은 출석 기록까지 사라진다 */}
-                    <Button
-                      size='sm'
-                      variant='danger'
-                      data-anno='class:1-3'
-                      aria-label={`${classLabel(cls)} 삭제`}
-                      disabled={i === 0 || active.some((c) => assign[c.id] === cls.id)}
-                      title={
-                        i === 0
-                          ? '기본반은 지울 수 없습니다. 새로 신청한 크루가 들어오는 반입니다'
-                          : active.some((c) => assign[c.id] === cls.id)
-                            ? '크루가 있는 반은 지울 수 없습니다'
-                            : undefined
-                      }
-                      onClick={() => onRemoveClass(cls.id)}
-                    >
-                      삭제
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-            {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
-            {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
-          </ul>
+                  )}
+                  <span className='tnum ml-auto text-sm text-fg-secondary'>
+                    {active.filter((c) => assign[c.id] === cls.id).length}명
+                  </span>
+                  <Button
+                    size='sm'
+                    variant='secondary'
+                    data-anno='class:1-2'
+                    aria-label={`${classLabel(cls)} 수정`}
+                    onClick={() => setRenaming({ id: cls.id, title: cls.title, touched: false })}
+                  >
+                    수정
+                  </Button>
+                  {/* 기본반과 사람이 든 반은 지우지 않는다 — 기본반은 신청자가 들어올 곳이고, 사람이 든 반은 출석 기록까지 사라진다 */}
+                  <Button
+                    size='sm'
+                    variant='danger'
+                    data-anno='class:1-3'
+                    aria-label={`${classLabel(cls)} 삭제`}
+                    disabled={i === 0 || active.some((c) => assign[c.id] === cls.id)}
+                    title={
+                      i === 0
+                        ? '기본반은 지울 수 없습니다. 새로 신청한 크루가 들어오는 반입니다'
+                        : active.some((c) => assign[c.id] === cls.id)
+                          ? '크루가 있는 반은 지울 수 없습니다'
+                          : undefined
+                    }
+                    onClick={() => onRemoveClass(cls.id)}
+                  >
+                    삭제
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+          {/* 「반 추가」 — 목록 맨 아래 새 카드가 입력칸으로 열린다. 저장해야 반이 생긴다 */}
+          {adding && <li className='card px-4 py-3'>{editor(undefined)}</li>}
+        </ul>
       </section>
       <section data-anno='attendee:3'>
         <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
@@ -373,8 +373,8 @@ export function CrewTab({
                     {c.discordNickname || '-'}
                   </td>
                   {/*
-                    별명은 **신청서에 적어 낸 이름**이고 이쪽은 **계정 그 자체**다. 둘은 다를 수 있다 —
-                    별명으로 찾다 못 찾는 일이 생기므로 핸들을 옆에 함께 적는다.
+                    별명은 **신청서에 적어 낸 이름**이고 이쪽은 **계정 그 자체**다. 둘은 다를 수 있다.
+                    아이디는 가린 채로 두고 필요한 줄만 펼친다 — 유저 목록과 같은 규칙 (POL-0007).
                   */}
                   <DiscordCell email={c.email} />
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
@@ -425,18 +425,20 @@ function RolePick({
   onChange: (navigator: boolean) => void;
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={`${name} 역할`}
       value={navigator ? 'navigator' : 'crew'}
       onChange={(ev) => onChange(ev.target.value === 'navigator')}
       // 네비게이터는 몇 안 된다 — 긴 명단에서 바로 눈에 띄게 테두리를 칠한다
-      className={`h-8 rounded-control border bg-bg px-2 text-sm outline-none focus:border-brand focus:shadow-[var(--ring)] ${
-        navigator ? 'border-brand font-semibold text-fg' : 'border-border-strong text-neutral-900'
-      }`}
+      className={cx(
+        'w-auto',
+        navigator ? 'border-brand font-semibold text-fg' : 'border-border-strong text-neutral-900',
+      )}
     >
       <option value='crew'>크루</option>
       <option value='navigator'>네비게이터</option>
-    </select>
+    </Select>
   );
 }
 
@@ -464,13 +466,16 @@ function FilterSelect({
   options: { value: string; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? label : `${label} 전체`}</option>
       {options.map((o) => (
@@ -478,7 +483,7 @@ function FilterSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -495,17 +500,18 @@ function ClassPick({
   if (classes.length === 0) return <span className='text-xs text-fg-muted'>반 없음</span>;
   if (classes.length === 1) return <span className='text-sm text-fg-secondary'>{classLabel(classes[0]!)}</span>;
   return (
-    <select
+    <Select
+      size='sm'
       aria-label='반'
       value={value ?? classes[0]!.id}
       onChange={(ev) => onChange(ev.target.value)}
-      className='h-8 rounded-control border border-border-strong bg-bg px-2 text-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
+      className='w-auto text-neutral-900'
     >
       {classes.map((c) => (
         <option key={c.id} value={c.id}>
           {classLabel(c)}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

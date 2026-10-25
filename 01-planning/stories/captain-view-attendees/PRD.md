@@ -145,8 +145,9 @@ erDiagram
 - **내용**: 닉네임 · 디스코드 닉네임 · 디스코드 · 이메일 · 지역 · 반 · 역할
 - **정책**
   - 신청한 사람이 곧 크루다. 캡틴도 신청했으면 여기 크루와 같은 줄로 나온다
-  - **별명 옆에 계정 핸들을 따로 적는다** — 별명은 신청서에 적어 낸 글자이고 핸들은 계정 그 자체다. **둘은 다를 수 있다**: 별명으로 찾다 못 찾는 일이 생긴다
-  - 이어져 있지 않으면 「미연동」이다 — 승인해도 들어오지 못한다. 표기는 유저 목록과 같다
+  - **디스코드 칸은 「연동」 아니면 「미연동」이다** — 이어져 있지 않으면 승인해도 들어오지 못한다
+  - **아이디는 가린 채로 두고, 눈 아이콘을 누른 줄만 펼친다. 같은 버튼으로 다시 가린다** — 유저 목록과 같은 규칙이다 ([POL-0007](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0007-account-data.md))
+  - 별명은 신청서에 적어 낸 글자이고 아이디는 계정 그 자체다 — **둘은 다를 수 있다**: 별명으로 찾다 못 찾는 일이 생긴다
 - **데이터**: 참여 건
 
 #### 3-1 — 참여 크루 제목
@@ -235,12 +236,13 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 신청자 탭 | 있음 — 다른 화면. `ApplicationsTab`(신청 결과 API)으로 대기 · 승인 · 거절 심사 · 이전 참여 · 완주율 · 신청서를 보인다. `CrewTab` 은 mock 이고 쓰지 않는다 | 프로토대로 바꾼다 — 참여 크루 명단(디스코드 닉네임 · 이메일 · 지역 · 반 · 역할) · 반 · 지역 필터 · 체크박스 일괄 변경 · 저장 바. 심사 · 완주율 칸은 뺀다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
+| FE | back-office-front 신청자 탭 | 있음 (#302) — `ParticipantsTab`: 참여 크루 명단 · 체크박스 반 · 역할 일괄 변경 · 저장 바. `ApplicationsTab` 은 지웠다. `CrewTab` 은 mock 이고 쓰지 않는다 | 명단 `GET` 이 생기면 실제 응답으로 확인. 그 밖은 10-18 변경 표 |
 | BE | `GET /api/admin/studies/{studyId}/applications` 의 `completionRate` | 구현완료 | 신청자 탭에서 쓰지 않는다. 다른 화면이 쓰지 않으면 응답에서 뺄지 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
-| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 스펙작성중 · 컨트롤러 없음 | [study-group 스펙](../../../specs/study-group/spec.md) 확정 → 구현 |
+| BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 구현완료 (#324) · 구현완료 (#303) | 없음 |
 
 #### 10-18 기획 변경: FE / BE 추가 작업
 

@@ -4,25 +4,20 @@
 // 여기서는 **이 기능을 고치는 사람이 이 파일만 열면 되는 것**이 더 중요하다.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import {
-  toRow,
-  type ApiStudyDetail,
-  type ApiStudyPage,
-  type ApiStudyProgram,
-  type StudyCreatePayload,
-  type StudyFilter,
-  type StudyRow,
-  type StudyUpdatePayload,
+import type {
+  ApiStudyDetail,
+  ApiStudyProgram,
+  StudyCreatePayload,
+  StudyUpdatePayload,
 } from '@/features/studies/types';
-import { http, qs } from '@/lib/http';
+import { http } from '@/lib/http';
 
 /**
  * 키는 넓은 것에서 좁은 것으로 쌓는다 — `['studies']` 를 무효화하면 아래가 전부 딸려 간다.
- * 필터를 키에 넣으므로 조건이 바뀌면 자연히 다른 캐시가 된다.
+ * 목록은 서버 컴포넌트가 직접 받는다(`lib/api.ts`) — 여기에는 상세·등록·수정만 있다.
  */
 export const studyKeys = {
   all: ['studies'] as const,
-  list: (filter: StudyFilter) => [...studyKeys.all, 'list', filter] as const,
   detail: (studyId: number) => [...studyKeys.all, 'detail', studyId] as const,
 };
 
@@ -43,34 +38,6 @@ export function useClubPrograms(enabled: boolean) {
       http<{ items: ApiStudyProgram[] }>('/api/admin/study-programs?studyKind=CLUB'),
     select: (page) => page.items,
     enabled,
-  });
-}
-
-/**
- * ⚠️ 규약 예외 — 백오피스는 `/api/admin` 을 불러야 하지만, 목록은 아직 **사용자 사이트용 목록 API** 를 쓴다.
- * 그래서 **공개된 스터디만** 온다(숨김·DRAFT 제외).
- * `GET /api/admin/studies` 가 status·페이지·total 을 지원하므로 교체할 수 있다 (PR #146 로 구현 완료).
- * 전환 시 `fetchStudies`·`toRow` 와 함께 ApiStudySummary 타입도
- * BackofficeStudyListResponse.StudySummary 에 맞게 바꾼다:
- * status(5단계)·recruitmentCapacity·recruitmentStartAt·hasApplicationForm 추가,
- * slug·phase·currentApplicants·closingSoon 제거.
- */
-function fetchStudies(filter: StudyFilter): Promise<ApiStudyPage> {
-  return http<ApiStudyPage>(
-    `/api/studies${qs({ keyword: filter.keyword, category: filter.category, status: filter.phase, limit: 100 })}`,
-  );
-}
-
-export function useStudies(filter: StudyFilter) {
-  return useQuery({
-    queryKey: studyKeys.list(filter),
-    queryFn: () => fetchStudies(filter),
-    select: (page): { rows: StudyRow[]; total: number } => ({
-      rows: page.items.map(toRow),
-      total: page.total,
-    }),
-    // 타이핑 중 이전 결과를 지우지 않는다 — 목록이 깜빡이면 지금 뭘 보고 있었는지 잃는다.
-    placeholderData: (previous) => previous,
   });
 }
 
