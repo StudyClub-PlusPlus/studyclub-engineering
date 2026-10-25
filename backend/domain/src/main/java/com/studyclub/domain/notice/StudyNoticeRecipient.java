@@ -7,6 +7,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * 공지를 받는 사람 한 명. {@link StudyNotice} 애그리거트 안에서만 만들고 바꾼다.
@@ -16,6 +19,8 @@ import jakarta.persistence.Table;
  */
 @Entity
 @Table(name = "STUDY_NOTICE_RECIPIENT")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StudyNoticeRecipient extends BaseEntity {
 
     @Id
@@ -29,18 +34,8 @@ public class StudyNoticeRecipient extends BaseEntity {
     @Column(name = "DISCORD_MENTIONED", nullable = false)
     private boolean discordMentioned;
 
-    protected StudyNoticeRecipient() {}
-
     StudyNoticeRecipient(Long accountId) {
         this.accountId = accountId;
-    }
-
-    public Long getAccountId() {
-        return accountId;
-    }
-
-    public boolean isDiscordMentioned() {
-        return discordMentioned;
     }
 
     void markMentioned() {

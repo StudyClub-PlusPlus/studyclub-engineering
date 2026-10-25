@@ -24,6 +24,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * 네비게이터(담당 캡틴)가 한 반의 팀원에게 보낸 공지 한 건 (specs/study-notice/spec.md, POL-0010).
@@ -38,6 +41,8 @@ import java.util.Set;
                 @Index(
                         name = "idx_study_notice_group_created",
                         columnList = "STUDY_GROUP_ID, CREATED_AT"))
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StudyNotice extends BaseEntity {
 
     public static final int TITLE_MAX_LENGTH = 60;
@@ -93,11 +98,10 @@ public class StudyNotice extends BaseEntity {
     @Column(name = "DISCORD_SKIP_REASON", length = 30)
     private DiscordSkipReason discordSkipReason;
 
+    @Getter(AccessLevel.NONE)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "NOTICE_ID", nullable = false, updatable = false)
     private List<StudyNoticeRecipient> recipients = new ArrayList<>();
-
-    protected StudyNotice() {}
 
     private StudyNotice(
             Long studyId,
@@ -246,46 +250,7 @@ public class StudyNotice extends BaseEntity {
         }
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public Long getStudyId() {
-        return studyId;
-    }
-
-    public Long getStudyGroupId() {
-        return studyGroupId;
-    }
-
-    public Long getSenderAccountId() {
-        return senderAccountId;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public String getBody() {
-        return body;
-    }
-
-    public boolean isSendEmail() {
-        return sendEmail;
-    }
-
-    public boolean isSendDiscord() {
-        return sendDiscord;
-    }
-
-    public DiscordDeliveryStatus getDiscordStatus() {
-        return discordStatus;
-    }
-
-    public DiscordSkipReason getDiscordSkipReason() {
-        return discordSkipReason;
-    }
-
+    /** 받는 사람은 방어 복사로 내준다 — 바깥에서 목록을 바꾸지 못하게 (루트를 거쳐서만 바꾼다). */
     public List<StudyNoticeRecipient> getRecipients() {
         return List.copyOf(recipients);
     }
