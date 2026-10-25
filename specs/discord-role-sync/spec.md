@@ -5,15 +5,15 @@
 > 봇 계약: [discord-development-guide/api/summary.md](../../docs/discord-development-guide/api/summary.md)
 > 결정: [share 10-24 디스코드 스쿼드 합의](../../docs/share/2026-10-24-discord-squad-agreement.md) 결정 7 · 8, 물어볼 것 1 · 5
 > 생성일: 2026-10-26
-> 상태: 구현중
+> 상태: 구현완료
 > 작업: DSC-16 (봇 쪽 DSC-14 · DSC-15)
 
 ## 엔드포인트 목록
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| POST | /api/discord/role-changes | 디스코드에서 captain · navigator role 이 바뀌었다 (한 건) | `X-API-Key` (봇) | 구현중 |
-| PUT | /api/discord/role-members | 지금 captain · navigator role 을 가진 사람 전체 (하루 한 번) | `X-API-Key` (봇) | 구현중 |
+| POST | /api/discord/role-changes | 디스코드에서 captain · navigator role 이 바뀌었다 (한 건) | `X-API-Key` (봇) | 구현완료 |
+| PUT | /api/discord/role-members | 지금 captain · navigator role 을 가진 사람 전체 (하루 한 번) | `X-API-Key` (봇) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -69,7 +69,7 @@
 |------|------|------|------|
 | discordUserId | String | Y | snowflake (`^[0-9]{17,20}$`) |
 | role | String | Y | `CAPTAIN` \| `NAVIGATOR` |
-| change | String | Y | `ADDED` \| `REMOVED`. 로그에만 쓴다 — 판정은 웹 기준만 본다 |
+| change | String | Y | `ADDED` \| `REMOVED`. 바뀐 뒤 상태다 — 웹 기준과 같으면 할 일이 없고, 다르면 웹 기준으로 되돌린다 |
 | occurredAt | String (ISO-8601) | Y | 디스코드에서 바뀐 시각. 로그에만 쓴다 |
 
 같은 알림이 두 번 와도 안전하다 — 웹 기준으로 다시 맞출 뿐이고, 봇 role 창구도 멱등이다.
