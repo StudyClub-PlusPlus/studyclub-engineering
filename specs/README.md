@@ -20,6 +20,7 @@
 | 회원 관리 (백오피스) | [admin-users/](./admin-users/) | 스펙작성중 | `/api/admin/users` — 회원 목록 · 계정 권한(캡틴↔크루) 변경. 기획: [회원 목록](../01-planning/stories/captain-list-users/PRD.md) · [권한](../01-planning/stories/captain-grant-roles/PRD.md) |
 | 참여 중단 (사용자 사이트) | [study-participant/](./study-participant/) | 스펙작성중 | 출석 저장 `POST /api/studies/{studyId}/attendances` 에 `withdrawals[]` 추가 — 네비게이터가 출석부 저장 한 번에 출석과 참여 중단. 기획: [참여 중단](../01-planning/stories/navigator-withdraw-participant/PRD.md) |
 | 분반 · 참여 명단 (백오피스) | [study-group/](./study-group/) | 스펙작성중 | 참여 명단 · 네비게이터 지정 · 가능 시간 집계 · 반 만들기·수정·삭제 · 반 지정. 기획: [참석자](../01-planning/stories/captain-view-attendees/PRD.md) · [반 편성](../01-planning/stories/captain-assign-classes/PRD.md) |
+| 사이트 공지 | [site-notice/](./site-notice/) | 스펙작성중 | `/api/notices` 읽기(비로그인 허용) · `/api/admin/notices` 등록·수정·소프트 삭제. 기획: [캡틴 공지 작성](../01-planning/stories/captain-post-notice/PRD.md) · [크루 공지 열람](../01-planning/stories/crew-view-notices/PRD.md) |
 
 ## 도메인 외 스펙
 
