@@ -218,6 +218,9 @@ public class Account extends BaseEntity {
         if (systemRole == SystemRole.ADMIN && adminCount <= 1) {
             return RoleChangeBlockedReason.LAST_ADMIN_REQUIRED;
         }
+        if (systemRole == SystemRole.MEMBER && !isDiscordLinked()) {
+            return RoleChangeBlockedReason.DISCORD_LINK_REQUIRED;
+        }
         return null;
     }
 
