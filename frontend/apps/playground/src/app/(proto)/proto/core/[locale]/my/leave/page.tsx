@@ -1,10 +1,11 @@
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
-import { getUser, type SessionUser } from '@core/lib/auth';
+import { clearSession, getUser, type SessionUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
+import { resetMemberData } from '@core/lib/me';
 import { Button } from '@studyclub/ui';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
@@ -18,7 +19,7 @@ const REASONS = ['원하는 스터디 없음', '스터디 참여가 부담됨', 
 /**
  * 회원 탈퇴.
  *
- * 읽을 것은 두 줄(되돌릴 수 없음 · 재가입해도 기록은 없음)뿐이다. 그 아래 사유 한 칸과 버튼.
+ * 되돌릴 수 없음 · 재가입 시 기록 · 홈페이지 디스코드 연동 정보 삭제를 안내한다.
  * 맡은 스터디가 있는 사람에게만 버튼 아래로 경고가 서고, 거기서 한 번 더 묻는다.
  *
  * TODO(api): DELETE /api/me — 지금은 화면에서만 처리한다. 담당 스터디 여부도 서버가 판정해야 한다.
@@ -41,6 +42,15 @@ function LeavePageInner() {
   const [pending, setPending] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState('');
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (leaveTimer.current) clearTimeout(leaveTimer.current); }, []);
+
+  function cancelLeave() {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    leaveTimer.current = null;
+    setPending(false);
+    setConfirming(false);
+  }
 
   const allStudies = useMswStudies();
 
@@ -59,8 +69,14 @@ function LeavePageInner() {
   }, [locale, router]);
 
   function leave() {
+    if (leaveTimer.current) return;
     setPending(true);
-    setTimeout(() => router.replace(`/proto/core/${locale}`), 800);
+    leaveTimer.current = setTimeout(() => {
+      leaveTimer.current = null;
+      resetMemberData();
+      clearSession();
+      router.replace(`/proto/core/${locale}`);
+    }, 800);
   }
 
   if (!user) return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
@@ -71,7 +87,7 @@ function LeavePageInner() {
 
       <button
         type='button'
-        onClick={() => router.push(`/proto/core/${locale}/my`)}
+        onClick={() => { cancelLeave(); router.push(`/proto/core/${locale}/my`); }}
         className='mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-fg-muted hover:text-fg'
       >
         <ArrowLeft size={15} /> 마이페이지
@@ -82,6 +98,7 @@ function LeavePageInner() {
         <ul className='mt-3 flex flex-col gap-1.5 text-sm leading-relaxed text-fg-secondary'>
           <li>· 탈퇴는 즉시 처리되며 되돌릴 수 없습니다.</li>
           <li>· 같은 구글 계정으로 다시 가입할 수 있지만, 지난 기록은 돌아오지 않습니다.</li>
+          <li>· 회원 탈퇴 시 홈페이지에 저장된 디스코드 연동 정보도 삭제됩니다.</li>
         </ul>
       </header>
 
@@ -123,7 +140,7 @@ function LeavePageInner() {
           {confirming && (
             <div className='mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-warning-400/50 pt-4'>
               <p className='mr-auto text-sm font-bold text-fg'>그래도 탈퇴하시겠습니까?</p>
-              <Button variant='secondary' onClick={() => setConfirming(false)}>
+              <Button variant='secondary' onClick={cancelLeave}>
                 탈퇴 취소
               </Button>
               <Button variant='destructive' loading={pending} onClick={leave}>
@@ -134,7 +151,7 @@ function LeavePageInner() {
         </section>
       )}
       <div data-anno='leave:4' className='mt-7 flex flex-wrap items-center justify-end gap-3'>
-        <Button variant='secondary' onClick={() => router.push(`/proto/core/${locale}/my`)}>
+        <Button variant='secondary' onClick={() => { cancelLeave(); router.push(`/proto/core/${locale}/my`); }}>
           취소
         </Button>
         <Button

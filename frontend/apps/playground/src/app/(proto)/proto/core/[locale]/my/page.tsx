@@ -8,8 +8,10 @@ import { useEffect, useState } from 'react';
 
 
 import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { useDiscordLink } from '@core/components/useDiscordLink';
 import { getUser, type SessionUser } from '@core/lib/auth';
 import { type Locale } from '@core/lib/content';
+import { hasDiscordParticipation } from '@core/lib/discord-preview';
 import { PAGE } from '@core/lib/layout';
 import {
   getDiscord,
@@ -50,6 +52,8 @@ export default function MyPage() {
   const [timeZone, setTimeZoneState] = useState('Asia/Seoul');
   const [name, setName] = useState('');
   const [discord, setDiscordState] = useState<DiscordLink>(null);
+  const [disconnectBlocked, setDisconnectBlocked] = useState(false);
+  const { linking, error: discordError, connect } = useDiscordLink(locale);
   // 인라인 편집 — 고치는 값 옆에서 바로 고친다. 항목이 둘뿐이라 따로 지면을 열 일이 아니다.
   // 닉네임만 따로 고친다 — 검사(형식·중복)가 있어 확정 단계가 필요하다. 나머지 줄은 누르면 바로 저장된다
   const [editing, setEditing] = useState(false);
@@ -158,13 +162,19 @@ export default function MyPage() {
   }
 
   function connectDiscord() {
-    // TODO(api): 디스코드 OAuth 로 교체
-    setDiscord('jiwon_dev');
-    setDiscordState(getDiscord());
-    flash('discord');
+    connect(() => {
+      setDiscordState(getDiscord());
+      setDisconnectBlocked(false);
+      flash('discord');
+    });
   }
 
   function disconnectDiscord() {
+    if (hasDiscordParticipation()) {
+      setDisconnectBlocked(true);
+      return;
+    }
+    setDisconnectBlocked(false);
     setDiscord(null);
     setDiscordState(null);
     flash('discord');
@@ -253,6 +263,8 @@ export default function MyPage() {
           </Field>
 
           <Field label='디스코드' anno='profile:4' saved={savedRow === 'discord'}>
+            <div className='min-w-0 flex-1'>
+            <div className='flex flex-wrap items-center gap-2'>
             {discord ? (
               <>
                 <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
@@ -263,11 +275,26 @@ export default function MyPage() {
             ) : (
               <>
                 <span className='text-fg-muted'>연결 안 됨</span>
-                <Button size='sm' variant='secondary' onClick={connectDiscord}>
+                <Button size='sm' variant='secondary' onClick={connectDiscord} loading={linking}>
                   연결하기
                 </Button>
               </>
             )}
+            </div>
+            {discordError && <p data-anno='profile:4-2' role='alert' className='mt-3 text-sm text-error-700'>{discordError}</p>}
+            {disconnectBlocked && (
+              <div data-anno='profile:4-1' className='mt-3 rounded-control bg-error-50 p-3 text-sm'>
+                <p role='alert' className='leading-relaxed text-error-700'>
+                  참여 중인 스터디가 있어 디스코드 연결을 해제할 수 없어요.
+                  <br />연결을 해제하려면 참여 중인 모든 스터디의 참여를 중단한 뒤 다시 시도해 주세요.
+                  <br />참여 중단 방법은 해당 스터디 운영진에게 문의해 주세요.
+                </p>
+                <Link href={`/proto/core/${locale}/my/joined`} className='mt-2 inline-flex min-h-9 items-center font-semibold text-fg underline underline-offset-4'>
+                  내 스터디 확인하기
+                </Link>
+              </div>
+            )}
+            </div>
           </Field>
 
           {/*
