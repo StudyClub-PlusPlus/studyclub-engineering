@@ -252,7 +252,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | DSC-03 | [BE·FE] 가입 화면에 **선택** 디스코드 연동 단계 추가 | 질문 1 결정(10-23): 가입 때 연동을 받을 수 있게 하되 **건너뛸 수 있다.** 온보딩 완료 조건에는 넣지 않는다. 신청 때 연동 필수는 그대로. **결정됨(기획) — 온보딩 담당과 맞출 것** | DSC-01 | Jeongyounghyeon (BE) · LeenaKim (FE) |
 | DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03) 가입 화면의 선택 연동. 프론트 담당에게 넘겨도 된다. **신청 연동 창 연결은 머지됨 (#292)** — OAuth 팝업 · 가입 화면은 남음 | DSC-01 · DSC-02 | CLEO525 (#292) |
 | DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **머지됨 ([PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276))** (채널 목록·메시지 메서드까지 들어 있다) | — | j7hwang (#276) · 리뷰 doxxx93 |
-| DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | 질문 5. `roles.py` 의 navigator 두 창구 `allow_system=True` + 봇 문서 수정. 백오피스 출석부에서 담당 캡틴이 네비게이터를 중단시키는 경우(10-23 제품 결정)도 이 결정을 기다린다 | 질문 5 (회의) | j7hwang |
+| DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | **10-24: 봇이 요청자 검사를 없애 할 일 없음 ([share 10-24](2026-10-24-discord-bot-no-caller-check.md))** · 질문 5. `roles.py` 의 navigator 두 창구 `allow_system=True` + 봇 문서 수정. 백오피스 출석부에서 담당 캡틴이 네비게이터를 중단시키는 경우(10-23 제품 결정)도 이 결정을 기다린다 | 질문 5 (회의) | j7hwang |
 | DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자. **머지됨 (#316)** — `StudyRoleSyncListener` (DSC-09 와 같은 구독자, 명부에 있으면 붙이고 없으면 뗀다) | DSC-05 · STD-02 | doxxx93 · j7hwang |
 | DSC-08 | [BE] 네비게이터 지정·해제 시 네비게이터 role 부여·회수 | B4. `study_participant.role_changed`(`previousRole` · `newRole`, #303) 구독자. **완료 조건: 회수는 그 사람이 다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만** (네비게이터 role 은 길드에 하나). 발행 쪽(STD-03)은 됨 | DSC-05 ✅ · DSC-06 · STD-03 ✅ · 질문 6 | doxxx93 · j7hwang |
 | DSC-09 | [BE] 참여 중단 시 스터디 role 회수 | B5. `study_participant.withdrawn` 구독자 · 네비게이터였으면 **DSC-08 과 같은 완료 조건**으로 네비게이터 role 도 (그 부분만 DSC-06 결정 뒤). **스터디 role 회수는 머지됨 (#315)** — 백오피스 출석부 중단(진행 중)도 같은 이벤트라 따로 할 것 없다 | DSC-05 · STD-04 | doxxx93 · j7hwang |
@@ -328,6 +328,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
      네비게이터에게 직접 열면 네비게이터가 다른 사람의 네비게이터 권한을 떼거나 붙일 수 있다. 시스템으로 열면 「누가 할 수 있나」는 백엔드가 이미 판정한 뒤라 안전하다.
      이렇게 하면 role 부여·회수 **네 창구 모두 시스템 호출**로 통일되고, 질문 4 도 사라진다.
    - **답 (디스코드 봇 담당, 10-20)**: 크루를 중단시키며 스터디 role 회수 → 지금 가능. 네비게이터 창구는 네비게이터 role 전용이라 캡틴으로 한정했다. 다만 스터디 정리(지금은 손으로) 때 시스템이 뗄 수 있어야 할 것 같다 — **회의에서 자세히 정하자.**
+   - **10-24: 봇이 요청자 검사를 없앴다 — 네비게이터 role 창구도 시스템 호출을 받는다 ([share 10-24](2026-10-24-discord-bot-no-caller-check.md)).** 아래는 그 전 상태다.
    - **상태: 회의 안건.** 정해질 때까지 DSC-06 · DSC-08 은 보류다. DSC-09 의 스터디 role 회수는 머지됐다 (#315). (10-23 기획: 아직 회의에서 협의 필요)
    - 10-23 제품 결정으로 **백오피스 출석부에서 담당 캡틴도 크루 · 네비게이터의 참여를 중단시킨다** (구현 진행 중, `feat/backoffice-attendance`). 네비게이터가 중단되면 스터디 role 은 회수되지만, 네비게이터 role 회수는 이 질문(DSC-06)이 정해진 뒤다.
 6. **`role_changed` 는 어느 API 가 내고, 무엇을 담나?** (스터디 스쿼드 · 디스코드 스쿼드)

@@ -28,11 +28,9 @@ POST /api/v1/roles/{discordRoleId}/users
 
 헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다.
 
-**captain 역할을 가진 멤버, 또는 [시스템](common-header.md#시스템-호출)만 호출할 수 있다.**
-멤버가 부르면 [`create-study`](create-study.md#요청) 와 같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를
-조회해 captain 역할 보유 여부를 확인하고, 없으면 **403** 이다. captain 역할은 길드에 **이미 존재하는** 역할이고,
-찾지 못하면 배정하지 말고 실패한다. 백엔드가 `X-Discord-User-ID` 에 `DISCORD_BOT_ID` 를 실어 부르면 멤버 조회도
-역할 검사도 하지 않는다 — 스터디 참가 확정처럼 백엔드가 스스로 처리하는 배정이 이 경로를 쓴다.
+**봇은 요청자를 검사하지 않는다.** 누가 역할을 배정시킬 수 있는지는 백엔드가 호출 전에 정한다
+([공통 헤더](common-header.md#x-discord-user-id)). 스터디 참가 확정처럼 백엔드가 스스로 처리하는 배정은
+`X-Discord-User-ID` 에 `DISCORD_BOT_ID` 를 싣는다 ([시스템 호출](common-header.md#시스템-호출)).
 
 ```jsonc
 {
@@ -70,7 +68,7 @@ POST /api/v1/roles/{discordRoleId}/users
 | navigator (`DISCORD_NAVIGATOR_ROLE_ID`) | 전용 엔드포인트가 있다 — [assign-navigator-role](assign-navigator-role.md) · [remove-navigator-role](remove-navigator-role.md) |
 | `@everyone` (역할 ID = 길드 ID) | 모든 멤버가 이미 갖고 있고, Discord 도 붙이고 떼는 걸 거부한다 |
 
-막으려면 두 ID 를 알아야 하므로, 시스템 호출이어도 `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 가
+막으려면 두 ID 를 알아야 하므로, `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 가
 비어 있으면 **409** 다 — 설정이 비었다고 그 역할이 열리지 않는다. (2026-10-14 결정)
 
 그 밖의 역할은 **제한하지 않는다** — 길드에 있고 봇이 붙일 수 있으면 배정한다.
@@ -129,14 +127,9 @@ POST /api/v1/roles/{discordRoleId}/users
 
 | 상태 | 언제 |
 |------|------|
-| **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 — 이 엔드포인트는 captain 확인 때문에 필수다 |
+| **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 |
 | **400** | `Idempotency-Key` 없음 |
 | **401** | `X-API-Key` 없음 또는 불일치 |
-| **403** | 요청자에게 captain 역할이 없음 |
-| **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
-| **502** | `X-Discord-User-ID` 멤버 조회 중 Discord 가 거부하거나 5xx — 대상은 아직 건드리지 않았다 |
-
-시스템 호출은 요청자를 조회하지 않으므로 위의 403 · 404 · 502 가 나지 않는다.
 
 ### 이 엔드포인트에서 나는 것
 
@@ -146,16 +139,14 @@ POST /api/v1/roles/{discordRoleId}/users
 | **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
 | **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
 | **400** | `discordRoleId` 가 captain · navigator · `@everyone` 역할 | [배정할 수 있는 역할의 범위](#배정할-수-있는-역할의-범위). 역할이 길드에 있는지보다 먼저 본다 |
-| **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
 | **404** | `discordRoleId` 에 해당하는 역할이 길드에 없음 | 이미 지워졌거나 애초에 없는 ID. 아무 유저도 건드리지 않는다 |
 | **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **502** | 캐시에 없는 대상 유저를 Discord 에 물었는데 답이 없음 | 아직 아무도 건드리지 않았다. 그대로 재시도해도 안전하다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
-503 · 502 는 **재시도 가능**하다. 400 · 401 · 403 은 조건이 바뀌기 전에는 재시도해도 같다.
+503 · 502 는 **재시도 가능**하다. 400 · 401 은 조건이 바뀌기 전에는 재시도해도 같다.
 404 는 역할이 다시 생기면 통한다. **길드에 없는 유저는 더 이상 404 가 아니다** —
 [성공 응답](#성공-응답)의 `failed` 로 나간다.
-captain 역할 404 는 호출자가 고칠 수 없다 — 길드의 역할이나 서버 설정을 고쳐야 풀린다.
 
 > **역할 서열(role hierarchy)은 재시도해도 소용없다.** Discord 는 봇이 **자기 최상위
 > 역할보다 위에 있는 역할**을 남에게 붙이는 걸 막고, 관리형 역할(다른 봇의 역할, 부스터 역할)도
