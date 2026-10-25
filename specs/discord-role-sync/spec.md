@@ -129,7 +129,7 @@
 - `X-Discord-User-ID` 는 시스템 아이디(`DISCORD_BOT_ID`)다. 사람이 시킨 일이 아니다.
 - navigator 창구의 `discordStudyId` 는 봇이 로그에만 쓰는 값이라, 특정 스터디가 아닌 이 일에는 **길드 ID(`DISCORD_GUILD_ID`)** 를 싣는다.
 - 봇 설정 · `DISCORD_BOT_ID` · `DISCORD_GUILD_ID` 중 하나라도 없으면 맞추지 않고 경고 로그만 남긴다.
-- 봇이 navigator 창구를 시스템 아이디로 받는 것은 DSC-13(#343) 뒤다. 그전에는 되돌리기가 봇에서 거절되고 경고 로그가 남는다.
+- 봇 navigator 창구는 DSC-13(#343)부터 시스템 아이디로 부를 수 있다.
 - 실패는 던지지 않는다. 다음 날 명단이 다시 맞춘다.
 
 ## 미확정

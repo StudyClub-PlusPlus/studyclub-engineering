@@ -24,7 +24,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * 명부 편입({@code study_participant.joined}, DSC-07)·참여 중단({@code study_participant.withdrawn},
- * DSC-09)이 커밋되면 그 사람의 디스코드 스터디 role 을 명부에 맞춘다 — 명부에 있으면(ACTIVE·PAUSED) 붙이고, 없으면 뗀다. 시스템 호출이다.
+ * DSC-09)이 커밋되면 그 사람의 디스코드 스터디 role 을 명부에 맞춘다 — 명부에 있으면(ACTIVE·PAUSED) 붙이고, 없으면 뗀다. 시스템 아이디로 부른다.
  *
  * <p>커밋 뒤·별도 스레드에서 돈다 — 봇은 최대 30초 걸린다. 어떻게 실패해도 던지지 않는다: 명부는 이미 커밋됐고, 어긋난 role 은 운영자가 손으로 맞춘다. 봇
  * role 창구가 멱등이라 같은 신호가 두 번 와도 안전하다. 신호 순서는 뒤바뀔 수 있으므로({@code joined} 직후 {@code withdrawn}) 이벤트가 아니라
@@ -72,8 +72,8 @@ public class StudyRoleSyncListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onWithdrawn(StudyParticipantWithdrawn event) {
         sync(event.name(), event.meta(), event.studyId(), event.accountId(), event.discordUserId());
-        // TODO(DSC-06): participantRole 이 LEADER 면 네비게이터 role 도 뗀다 — 다른 진행 중 스터디 어디에서도 활성 LEADER 가
-        //  아닐 때만 (DSC-08 완료 조건). 봇 네비게이터 창구가 시스템 호출을 받기로 정해진 뒤에 붙인다.
+        // TODO(DSC-08): participantRole 이 LEADER 면 네비게이터 role 도 뗀다 — 다른 진행 중 스터디 어디에서도 활성 LEADER 가
+        //  아닐 때만. 봇 네비게이터 창구는 DSC-13(#343)부터 시스템 아이디로 부를 수 있다.
     }
 
     private void sync(

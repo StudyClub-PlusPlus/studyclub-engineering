@@ -29,9 +29,9 @@ import org.springframework.web.client.RestClientResponseException;
  * <p>API 키는 봇 → 백엔드 방향과 같은 {@code discord.api-key} 다 (봇 계약이 양방향 같은 값으로 정했다). 주소·키 둘 중 하나라도 비어 있으면
  * {@link #isConfigured()} 가 false 이고, 호출하지 않는다.
  *
- * <p>{@code requesterId} 는 {@code X-Discord-User-ID} 로 나가는 요청자의 디스코드 유저 ID 다. 사람 대신 백엔드가 부르는 시스템
- * 호출이면 {@link #systemUserId()} 를 넘긴다 (common-header.md#시스템-호출). 스터디 단위 권한(그 스터디의 captain 인지, 대상이
- * 멤버인지)은 봇이 보지 않으므로 호출하는 쪽이 먼저 확인한다.
+ * <p>{@code requesterId} 는 {@code X-Discord-User-ID} 로 나가는 요청자의 디스코드 유저 ID 다. 사람 대신 백엔드가 부르면 시스템
+ * 아이디({@link #systemUserId()})를 넘긴다 (common-header.md). 봇은 이 ID 로 권한을 보지 않고 메시지의 발신자 줄에만 쓴다 — 누가 시킬
+ * 수 있는지는 호출하는 쪽이 먼저 확인한다.
  *
  * <p>재시도하지 않는다. 봇이 거절하거나 닿지 않으면 {@link ErrorCode#EXTERNAL_SERVICE_ERROR} 로 던진다.
  */
@@ -65,8 +65,8 @@ public class DiscordBotClient {
     }
 
     /**
-     * 시스템 호출의 {@code requesterId}. 봇과 같은 {@code DISCORD_BOT_ID} 다. 비어 있으면 시스템 호출을 할 수 없다 — 봇도 그 ID
-     * 를 평범한 멤버로 다루므로 설정이 비었다고 문이 열리지 않는다.
+     * 사람 대신 백엔드가 부를 때의 {@code requesterId}(시스템 아이디). 봇 자신의 유저 ID 인 {@code DISCORD_BOT_ID} 다. 비어 있으면
+     * 던진다 — 봇은 health 를 뺀 모든 요청에 이 헤더를 요구한다.
      */
     public String systemUserId() {
         if (!StringUtils.hasText(botId)) {
@@ -79,7 +79,7 @@ public class DiscordBotClient {
     /**
      * 카테고리·채널·역할을 만든다. 재시도하지 않는다 — 봇은 같은 이름의 두 번째 요청에 409 를 주므로 재시도로는 ID 를 받을 수 없다.
      *
-     * @param discordUserId captain 역할을 가진 길드 멤버. 봇이 이 사람으로 권한을 본다
+     * @param discordUserId 스터디를 만든 캡틴의 디스코드 유저 ID. 봇은 형식만 검사하고 쓰지 않는다
      */
     public CreatedStudy createStudy(String studyName, String discordUserId) {
         String idempotencyKey = UUID.randomUUID().toString();
@@ -102,7 +102,7 @@ public class DiscordBotClient {
                             } catch (HttpClientErrorException.Conflict e) {
                                 String detail = e.getResponseBodyAsString();
                                 log.warn("create-study {}: 봇 409 {}", idempotencyKey, detail);
-                                // 봇의 409 는 이름 중복만이 아니다 — 길드·captain 역할 설정이 없어도 409 다 (detail 로 구분,
+                                // 봇의 409 는 이름 중복만이 아니다 — 길드 설정이 없어도 409 다 (detail 로 구분,
                                 // create-study.md). 설정 문제에 "이름을 바꾸라" 고 안내하면 고칠 수 없는 걸 고치라는 말이 된다
                                 if (!detail.contains("with this name")) {
                                     throw new BusinessException(
@@ -209,7 +209,7 @@ public class DiscordBotClient {
                 discordRoleId);
     }
 
-    /** navigator 역할을 붙인다. captain 만 부를 수 있다 (시스템 호출 불가). */
+    /** navigator 역할을 붙인다. 시스템 아이디로도 부를 수 있다. */
     public RoleChangeResult assignNavigatorRole(
             String requesterId, String discordStudyId, List<String> discordUserIds) {
         return changeRole(
@@ -223,7 +223,7 @@ public class DiscordBotClient {
     }
 
     /**
-     * navigator 역할을 뗀다. captain 만 부를 수 있다. navigator 역할은 길드 전체에 하나라, 유저가 <b>남은 어떤 스터디에서도</b>
+     * navigator 역할을 뗀다. 시스템 아이디로도 부를 수 있다. navigator 역할은 길드 전체에 하나라, 유저가 <b>남은 어떤 스터디에서도</b>
      * navigator 가 아닐 때만 부른다.
      */
     public RoleChangeResult removeNavigatorRole(
@@ -239,8 +239,8 @@ public class DiscordBotClient {
     }
 
     /**
-     * 스터디 텍스트 채널에 올린다. captain · navigator 만. 채널이 {@code discordStudyId} 카테고리 바로 아래인지만 봇이 보므로, 스터디에
-     * 맞는 쌍을 보내는 건 호출하는 쪽 책임이다. 중복 전송은 막지 않는다.
+     * 스터디 텍스트 채널에 올린다. 채널이 {@code discordStudyId} 카테고리 바로 아래인지만 봇이 보므로, 스터디에 맞는 쌍을 보내는 건 호출하는 쪽
+     * 책임이다. 중복 전송은 막지 않는다.
      *
      * @param mentionUserIds 알림을 울릴 유저. 빈 리스트면 멘션 없이 올린다
      */
@@ -275,13 +275,13 @@ public class DiscordBotClient {
                                 .toBodilessEntity());
     }
 
-    /** alert 채널에 운영 알림을 올린다. captain · 시스템만. 멘션은 알림을 울리지 않는다. */
+    /** alert 채널에 운영 알림을 올린다. 멘션은 알림을 울리지 않는다. */
     public void sendAlertMessage(String requesterId, String msg) {
         sendFixedChannelMessage(
                 "send-alert-message", "alert 전송", requesterId, "/api/v1/channels/alert/msg", msg);
     }
 
-    /** announcement 채널에 {@code @everyone} 공지를 올린다. captain 만 (시스템 호출 불가). */
+    /** announcement 채널에 {@code @everyone} 공지를 올린다. 누가 올릴 수 있는지는 호출하는 쪽이 정한다. */
     public void sendAnnouncementMessage(String requesterId, String msg) {
         sendFixedChannelMessage(
                 "send-announcement-message",
