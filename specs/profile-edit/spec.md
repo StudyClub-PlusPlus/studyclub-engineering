@@ -11,7 +11,7 @@
 - core-front 마이페이지의 `ProfileDialog` 는 이름·거주 지역을 브라우저 localStorage(`sc_display_name`·`sc_region`)에만 저장한다. 서버로 가지 않고, 기기가 바뀌면 사라진다.
 - 백엔드에 계정 수정 API 가 없다. ACCOUNT 의 닉네임·시간대는 `POST /accounts/onboarding` 때 한 번 정해지고 그 뒤 바꿀 길이 없다. `Account` 에 시간대 setter 도 없다.
 - 닉네임 확인 `GET /api/nicknames/availability` 는 있다. 본인이 지금 쓰는 닉네임도 "사용 중" 으로 답한다 — 온보딩 스펙이 마이페이지 판정을 별도 계약으로 남겨 뒀다.
-- 디스코드 확인(2026-10-25 beta d74c6c84): `POST /api/me/discord/link` 구현. `GET /api/me`는 discordLinked·discordNickname을 반환하며 discordHandle 응답 및 연결 해제 API는 미구현.
+- 디스코드 확인(2026-10-26): `POST`·`DELETE /api/me/discord/link` 구현. `GET /api/me`는 discordLinked·discordHandle·discordNickname을 반환한다.
 - 마케팅 수신 동의는 온보딩 때 `ACCOUNT_CONSENT` 에 한 행 저장되고 끝이다. 현재 값을 읽는 API 도, 바꾸는 API 도 없다. 회원 데이터 정책은 변경 지면을 마이페이지로 적어 뒀다.
 
 ## 범위
@@ -92,10 +92,11 @@
 
 ### `GET /api/me` (옮김)
 
-로그인한 본인의 `AccountSelfView`. 편집에 들어갈 때 최신 값을 받으려고 부른다. 온보딩 미완료 계정도 부를 수 있다 — 프론트가 이 응답의 `onboardingCompletedAt` 으로 온보딩 화면으로 보낼지 정한다. 응답은 온보딩 스펙의 `AccountView` 필드에 아래 두 줄을 더한 모양이다. `PATCH /api/me` 응답도 같은 모양이다.
+로그인한 본인의 `AccountSelfView`. 편집에 들어갈 때 최신 값을 받으려고 부른다. 온보딩 미완료 계정도 부를 수 있다 — 프론트가 이 응답의 `onboardingCompletedAt` 으로 온보딩 화면으로 보낼지 정한다. 응답은 온보딩 스펙의 `AccountView` 필드에 아래 세 줄을 더한 모양이다. `PATCH /api/me` 응답도 같은 모양이다.
 
 - `discordNickname` — 스터디 신청에서 제출한 서버 별명. 없으면 null.
-- `discordLinked` — 디스코드 계정 연동 여부(boolean). `ACCOUNT.DISCORD_ID` 가 있으면 true. ID·핸들은 내리지 않는다. 신청 버튼이 연동 창을 띄울지 이 값으로 정한다 (DSC-02).
+- `discordLinked` — 디스코드 계정 연동 여부(boolean). `ACCOUNT.DISCORD_ID` 가 있으면 true. ID 는 내리지 않는다. 신청 버튼이 연동 창을 띄울지 이 값으로 정한다 (DSC-02).
+- `discordHandle` — 연동한 디스코드 `username`. 마이페이지의 「연결된 계정」 표시용. 미연동이면 null. 서버 별명 `discordNickname` 과 다른 값이다.
 
 | 상태 | errorCode | 조건 |
 |---|---|---|
@@ -219,7 +220,7 @@ Response `200 OK` — 조회와 같은 모양이고 저장된 값이 실린다.
 - **조회 경로를 `/api/me` 로 옮기기** — 완료. `GET /auth/me` 는 없애고 `GET /api/me` 로 받는다. 스터디 상세 이슈와 모바일 이슈가 기다리던 경로다.
 - **마케팅 수신 동의 화면** — 프로토 수정본이 나오면 위치·문구를 맞춘다. API 는 그대로다.
 - **약관 버전이 오를 때** — 지금 `MARKETING` 버전은 1.0 하나다. 개정 때 이전 버전 동의를 새 버전으로 넘길지는 그때 정한다.
-- **디스코드 연결·해제** — 연결 API 구현완료. `AccountSelfView.discordHandle` 추가 및 연결 해제 API는 담당 스쿼드와 계약 확정 후 구현. 시안은 아래 화면 계약 참조.
+- **디스코드 연결·해제** — API 구현완료. 연결·해제는 [study-application](../study-application/spec.md#디스코드-연결-해제), 계정 이름은 `GET /api/me` 의 `discordHandle`. core-front 화면 연결이 남았다. 시안은 아래 화면 계약 참조.
 - **확인 API 의 본인 제외** — 완료. 확인 API 가 저장 API 와 같은 조회를 써서 부른 사람의 계정을 빼고 본다. 온보딩 화면은 영향 없다.
 - **NFC 정규화** — 정책은 NFC 비교인데 서버는 대소문자 무시까지다. 도입하려면 확인 API·최종 검사·기존 데이터를 한 번에 봐야 한다. 온보딩 스펙과 같은 유보.
 - **서버 시간대 검증을 화면 목록으로 막기** — 완료. `@ValidTimeZone` 검증기가 넷 중 하나인지 본다.
@@ -238,6 +239,7 @@ Response `200 OK` — 조회와 같은 모양이고 저장된 값이 실린다.
 | 2026-10-13 | 구현과 맞춤 — `GET /api/me` 계약 추가(`discordNickname` 포함, `PATCH` 응답도 같은 모양), 편집 진입 실패 시 안 열림, 저장 중 잠금, 동의 변경 결과 알림·서버 사유 표시 | 구현 PR 리뷰에서 바뀐 동작이 스펙에 없었다 |
 | 2026-10-13 | 서버 시간대 검증을 화면과 같은 넷으로 막는다 — 온보딩·프로필 수정 공통 | 시간대 정책은 정해진 목록만 허용하고, 반 편성이 이 값으로 갈린다. 화면만 막으면 API 로는 아무 값이나 들어온다 |
 | 2026-10-23 | `GET`·`PATCH /api/me` 응답에 `discordLinked` 추가 — 디스코드 ID 는 내리지 않는다 | 신청 버튼이 제출 403 전에 연동 창을 띄우려면 연동 여부가 필요하다 ([share DSC-02](../../docs/share/2026-10-18-discord-automation-gap.md)) |
+| 2026-10-26 | `GET`·`PATCH /api/me` 응답에 `discordHandle` 추가, 연결 해제 `DELETE /api/me/discord/link` 구현 | 마이페이지가 연결된 계정 이름과 해제 버튼을 보여 준다 (아래 「디스코드 연결 화면 계약」) |
 
 
 ## 디스코드 연결 화면 계약 (2026-10-25)
@@ -248,16 +250,16 @@ Playground 시안 반영 범위. 아래 제안 필드와 해제 API는 현재 �
 |---|---|---|
 | 연결 | `POST /api/me/discord/link` 구현완료 | 실제 OAuth 화면 및 연결 성공 후 내 정보 재조회 |
 | 연결 여부 | `GET /api/me`의 `discordLinked` 구현완료 | 버튼 상태 연결 |
-| 계정 이름 | `ACCOUNT.DISCORD_HANDLE` 저장, 내 정보 응답에는 없음 | 본인 응답에 nullable `discordHandle` 추가 |
-| 해제 | API 미구현 | 담당 스쿼드에서 경로·오류 코드 확정, 서버 참여 상태 검증과 해제 구현 |
+| 계정 이름 | `GET /api/me`의 nullable `discordHandle` 구현완료 | 화면 표시 연결 |
+| 해제 | `DELETE /api/me/discord/link` 구현완료 — 참여 중이면 409 `DISCORD_UNLINK_BLOCKED` | 버튼·차단 문구 연결 |
 
 - 본인의 마이페이지에 연결된 계정 이름과 연결 해제 표시. 미연결 시 연결하기 표시.
-- 계정 이름은 `discordHandle` 사용 예정. 스터디클럽 서버 별명 `discordNickname`과 구분. 숫자 Discord ID는 화면 표시 대상에서 제외.
+- 계정 이름은 `discordHandle` 사용. 스터디클럽 서버 별명 `discordNickname`과 구분. 숫자 Discord ID는 화면 표시 대상에서 제외.
 - 연결 실패·인증 취소 시 미연결 유지, 오류 안내 및 재시도 제공.
 - 참여 중인 스터디가 하나 이상이면 연결 해제 거절, 연결 상태·계정 이름 유지.
 - 차단 문구: 「참여 중인 스터디가 있어 디스코드 연결을 해제할 수 없어요. 연결을 해제하려면 참여 중인 모든 스터디의 참여를 중단한 뒤 다시 시도해 주세요.」
 - 후속 행동: 「참여 중단 방법은 해당 스터디 운영진에게 문의해 주세요.」와 「내 스터디 확인하기」 링크(내 스터디룸).
 - Playground 판정은 내 스터디룸과 같은 `lifeStatus`: 시작 전 확정·참여 중 포함, 완주·참여 중단 제외. 조회 불가한 참여 기록은 해제 허용으로 간주하지 않음.
-- 서버의 ACTIVE·PAUSED 등 참여 상태와 스터디 종료 상태 매핑은 API 담당자와 확정 필요. 휴식 상태를 포함하는 방향 검토.
-- 실서비스는 서버에서 로그인 본인의 참여 상태를 최종 판정. 조회와 해제 사이 신규 참여가 생기는 경우까지 원자적으로 처리.
+- 서버는 명부 행이 ACTIVE·PAUSED(휴식 포함)인 스터디가 하나라도 있으면 거절한다. 내 스터디룸이 「시작 전·참여 중」으로 보여 주는 행과 같은 기준이다.
+- 실서비스는 서버에서 로그인 본인의 참여 상태를 최종 판정. 계정 행을 잠근 뒤 명부를 보므로 조회와 해제 사이 신규 참여(신청 제출)가 끼어들지 못한다.
 - 회원 탈퇴는 별도 계정 삭제 계약 적용. 디스코드 단독 해제 제한을 탈퇴 차단으로 재사용하지 않음.

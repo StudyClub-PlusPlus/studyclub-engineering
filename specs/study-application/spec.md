@@ -32,6 +32,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 구현완료 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
+| DELETE | /api/me/discord/link | 디스코드 연결 해제 | O (로그인) | 마이페이지 디스코드 연결 ([profile-edit](../profile-edit/spec.md#디스코드-연결-화면-계약-2026-10-25)) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -543,7 +544,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 ### Response — 204 No Content
 
-연결 여부는 이후 `GET /api/me`의 `discordLinked`로 확인한다. 핸들은 서버에 저장되지만 현재 본인 조회 응답에 없으며 `discordHandle` 응답 추가가 필요하다.
+연결 여부는 이후 `GET /api/me`의 `discordLinked`로, 연결된 계정 이름은 `discordHandle`로 확인한다.
 
 ### Error Responses
 
@@ -576,6 +577,33 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 - 디스코드 호출이 다 끝난 뒤 저장만 짧은 트랜잭션으로 감싼다 — 호출 중 DB 커넥션을 잡지 않는다
 - 설정: `DISCORD_OAUTH_CLIENT_ID` · `DISCORD_OAUTH_CLIENT_SECRET` · `DISCORD_OAUTH_REDIRECT_URI` · `DISCORD_GUILD_ID`
 
+## 디스코드 연결 해제
+
+> 화면: 마이페이지 디스코드 줄 — [profile-edit 「디스코드 연결 화면 계약」](../profile-edit/spec.md#디스코드-연결-화면-계약-2026-10-25)
+
+### 기본 정보
+
+- **Method**: DELETE
+- **Path**: `/api/me/discord/link`
+- **인증**: 필요 — 로그인 본인
+- **설명**: `ACCOUNT.DISCORD_ID` · `DISCORD_HANDLE` 을 비운다. 신청 때 받은 서버 별명 `DISCORD_NICKNAME` 은 연동과 따로라 남긴다. 디스코드는 부르지 않는다.
+
+### Response — 204 No Content
+
+- 연동하지 않은 계정도 204 (멱등).
+- 해제 뒤 다시 신청하려면 연동부터 다시 한다 (신청 제출 403).
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 미로그인 |
+| 409 | DISCORD_UNLINK_BLOCKED | 명부 행이 `ACTIVE` · `PAUSED` 인 스터디가 하나라도 있다. 연동은 그대로 둔다. 화면은 차단 문구와 「내 스터디 확인하기」를 띄운다 |
+
+- 참여 중 판정은 내 스터디룸이 「시작 전 · 참여 중」으로 보여 주는 행과 같다. `WITHDRAWN` · `COMPLETED` 는 막지 않는다.
+- 계정 행을 잠근 뒤 명부를 본다. 명부에 들어오는 길은 신청 제출뿐이고 그것도 계정을 먼저 잠그므로, 확인과 해제 사이에 새 참여가 끼어들지 못한다.
+- 캡틴(`ADMIN`)의 해제는 막지 않는다. 「연동한 사람만 캡틴」(STD-05)은 권한을 줄 때 보는 규칙이라 그 작업에서 함께 정한다.
+
 ---
 
 ## 권한 요약
@@ -589,6 +617,7 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 | 내 신청 여부 | 로그인 본인 | 서버 |
 | 신청 결과 조회 | 캡틴 누구나 (네비게이터 불가) | 서버 |
 | 디스코드 연동 | 로그인 본인 | 서버 |
+| 디스코드 연결 해제 | 로그인 본인, 참여 중인 스터디 없음 | 서버 |
 | 미로그인 신청 | 거절 | 서버. 프로토는 로그인 가정 |
 
 ---
