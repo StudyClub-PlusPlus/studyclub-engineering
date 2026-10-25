@@ -37,6 +37,7 @@ export type ApiStudyDetail = {
   capacity: number | null;
   recruitDeadlineAt: string | null;
   schedule: string | null;
+  timezone: 'KST' | 'PST' | 'BOTH' | null;
   startAt: string | null;
   endAt: string | null;
   discordChannelUrl: string | null;
@@ -122,6 +123,7 @@ export function studyToApiStudyDetail(s: Study): ApiStudyDetail {
     capacity: s.seats?.total ?? null,
     recruitDeadlineAt: isoDate(s.recruitment?.deadline),
     schedule: s.schedule?.ko ?? null,
+    timezone: toTimezone(s.timezone),
     startAt: isoDate(s.startAt),
     endAt: isoDate(s.date),
     discordChannelUrl: s.discord_url ?? null,
