@@ -114,6 +114,9 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
             @Param("studyIds") Collection<Long> studyIds,
             @Param("roles") Collection<ParticipantRole> roles);
 
+    /** 디스코드 연결 해제 차단 — 어느 스터디든 참여 중인 행이 있는가 (AccountDiscordLinkService). */
+    boolean existsByAccountIdAndStatusIn(Long accountId, Collection<ParticipantStatus> statuses);
+
     boolean existsByStudyIdAndAccountIdAndStatusIn(
             Long studyId, Long accountId, Collection<ParticipantStatus> statuses);
 

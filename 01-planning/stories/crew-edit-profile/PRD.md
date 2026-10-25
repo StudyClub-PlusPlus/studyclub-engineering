@@ -185,7 +185,7 @@ erDiagram
 
 ### 개발 범위
 
-> 2026-10-25 `beta` d74c6c84 기준 (디스코드 흐름 확인). **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> 2026-10-26 기준 (디스코드 연결 해제·계정 이름 API 반영). **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
 
@@ -195,9 +195,9 @@ erDiagram
 | BE | `PATCH /api/me` · 마케팅 수신 `GET` · `PUT` | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
 | BE | `POST /api/me/discord/link` | 구현완료 | [crew-submit-application](../crew-submit-application/PRD.md#개발-범위)과 같은 일 |
 | Playground | 디스코드 연결·해제·차단·실패 | 구현 · 브라우저 시뮬레이션 | 없음 |
-| BE | `GET /api/me` 계정 이름 | discordLinked 있음, discordHandle 응답 없음 | 본인 응답에 nullable discordHandle 추가 |
-| BE | 디스코드 연결 해제 | API 미구현 | 경로·오류 계약 확정 및 서버 참여 상태 검증 |
-| 기획 | 해제 차단 참여 상태 | Playground는 시작 전 확정·참여 중 포함, 완주·중단 제외 | 휴식 상태 등 서버 상태 매핑을 API 담당자와 확정 |
+| BE | `GET /api/me` | 구현완료 — nullable `discordHandle` 포함 | 없음 |
+| BE | `DELETE /api/me/discord/link` | 구현완료 — 참여 중이면 409 `DISCORD_UNLINK_BLOCKED` ([스펙](../../../specs/study-application/spec.md#디스코드-연결-해제)) | 없음 |
+| 기획 | 해제 차단 참여 상태 | 서버는 명부 `ACTIVE`·`PAUSED`(휴식 포함)면 막는다. Playground는 시작 전 확정·참여 중 포함, 완주·중단 제외 | Playground 시안 문구의 「API 담당자 확인 필요」 정리 (spec.ts) |
 
 ### 데이터
 
