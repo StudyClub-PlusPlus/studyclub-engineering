@@ -27,8 +27,8 @@ type ApiMyStudy = {
   endAt: string | null;
   relation: Relation;
   participantRole: 'MEMBER' | 'LEADER' | null;
-  /** 담당 캡틴 — 스펙상 「추가 필요」라 아직 안 올 수 있다. */
-  captain?: boolean;
+  /** 담당 캡틴 — 이 스터디를 만든 캡틴(`STUDY.CREATED_BY = 나`). 신청했을 때만 명부에 있다. */
+  captain: boolean;
   discordChannelUrl: string | null;
   driveUrl: string | null;
   attendanceRate: number | null;

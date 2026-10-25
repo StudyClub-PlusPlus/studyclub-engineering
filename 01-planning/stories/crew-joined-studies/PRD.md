@@ -458,8 +458,8 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/my/joined` | 있음 (#226) — `GET /api/me/studies` 로 그린다 (`features/my-studies/queries.ts`) | 「캡틴」 배지는 아래 `captain` 플래그가 생기면 응답 값으로 |
-| BE | `GET /api/me/studies` | 구현완료 · `captain` 플래그 없음 | 명부 행에 `captain` 플래그 추가 |
+| FE | core-front `/my/joined` | 있음 (#226) — `GET /api/me/studies` 로 그린다 (`features/my-studies/queries.ts`). 역할(`captain` · `participantRole`) · 참여 상태 · 다음 회차는 응답 값 | 없음 |
+| BE | `GET /api/me/studies` | 구현완료 — 명부 행에 `captain` 플래그 (#326) | 없음 |
 | BE | 주간 일정용 회차 (아래 API 표의 `GET /api/me/studies/{id}/meetings`) | 스펙 없음 · 컨트롤러 없음 | `GET /api/me/studies` 응답으로 충분한지 먼저 정한다 → 모자라면 [my-studies 스펙](../../../specs/my-studies/spec.md)에 더한다 |
 
 ### 데이터
@@ -498,7 +498,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/me/studies` | 로그인. 명부 참여 스터디만(담당 캡틴도 신청했을 때만). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그(추가 필요). [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴) |
+| GET | `/api/me/studies` | 로그인. 명부 참여 스터디만(담당 캡틴도 신청했을 때만). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그. [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴) |
 | GET | `/api/me/studies/{id}/meetings` | 해당 명부 |
 | GET | `/auth/me` | 거주 지역 등 |
 

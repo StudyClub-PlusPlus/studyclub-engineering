@@ -2,7 +2,7 @@
 
 > ERD: [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY](../../docs/erd/STUDY.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > 생성일: 2026-09-30
-> 상태: 구현완료 (프론트 core-front `/my/joined` 구현 완료. 담당 캡틴 `captain` 플래그는 추가 필요)
+> 상태: 구현완료 (프론트 core-front `/my/joined` 구현 완료)
 >
 > Story PRD:
 > - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../01-planning/stories/crew-joined-studies/PRD.md)
@@ -14,7 +14,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/me/studies | 내 스터디 — 명부에 있는 스터디 전부 + 회차별 내 출석 | O | 구현완료 · `captain` 플래그 추가 필요 |
+| GET | /api/me/studies | 내 스터디 — 명부에 있는 스터디 전부 + 회차별 내 출석 | O | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
