@@ -276,7 +276,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서. **명부 편입은 #296, `joined` 발행은 머지됨 (#310)** | STD-01 · COM-01 | seeunrosypark (#296 · #310) |
 | STD-03 | [BE] 반 · 역할 일괄 변경 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants` — 신청자 탭 「저장」 한 번, 하나라도 거절되면 전부 취소. 10-21 에 한 사람씩 API 를 합쳤다 ([study-group](../../specs/study-group/spec.md), [share](2026-10-21-participant-bulk-change.md)). **머지됨 (#303)** — 페이로드 `previousRole` · `newRole`, 감사 로그 `PARTICIPANT_ROLE` | COM-01 | kimjiy9607 (#303) |
 | STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/me/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)). **머지됨 (#297)**. 백오피스 출석부에서 담당 캡틴이 중단시키는 길도 머지됨 (#325, 10-23 제품 결정) | COM-01 | seeunrosypark (#297 · #325) |
-| STD-05 | [BE] 🆕 디스코드 연동한 사람만 캡틴으로 올린다 | 10-24 회의. `PATCH /api/admin/users/{accountId}/system-role` 이 캡틴으로 올릴 때 미연동이면 거절. 백오피스 회원 목록 배지 잠금 이유에도 같은 값. [admin-users](../../specs/admin-users/spec.md) 스펙 | — | seeunrosypark |
+| STD-05 | [BE] 🆕 디스코드 연동한 사람만 캡틴으로 올린다 | 10-24 회의. `PATCH /api/admin/users/{accountId}/system-role` 이 캡틴으로 올릴 때 미연동이면 거절. 백오피스 회원 목록 배지 잠금 이유에도 같은 값. [admin-users](../../specs/admin-users/spec.md) 스펙. **10-26 구현 (`DISCORD_LINK_REQUIRED`) — 캡틴은 연결 해제도 막는다** | — | doxxx93 (세은님 대신, 10-26 분배 스레드) |
 | STD-06 | [BE] 🆕 디스코드 API 호출 기록 — 스터디 생성 · navigator role 부여 · 회수 | 10-24 회의. COM-04 와 같은 부품에 한 번에 | 기록 형태 ([share 10-24](2026-10-24-discord-squad-agreement.md) 물어볼 것 2) | 스터디 스쿼드 |
 
 **스터디 스쿼드가 하지 않는 것**: 봇 호출, 디스코드 ID 조회, 디스코드 실패 처리. 이벤트를 발행하면 끝이다. 구독자가 없어도 기능은 정상이다.

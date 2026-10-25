@@ -83,10 +83,38 @@ class AdminAccountRoleServiceTest {
     }
 
     @Test
+    @DisplayName("디스코드 미연동 크루를 캡틴으로 올리면 DISCORD_LINK_REQUIRED — 값도 감사 기록도 그대로")
+    void rejectsPromotingUnlinkedMember() {
+        Account target = account(TARGET_ID, SystemRole.MEMBER);
+        givenAdmins(account(ACTOR_ID, SystemRole.ADMIN));
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.ADMIN))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.DISCORD_LINK_REQUIRED));
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.MEMBER);
+        verify(auditRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("디스코드 미연동 캡틴을 크루로 내리는 것은 막지 않는다 — 연동 규칙은 올릴 때만 본다")
+    void demotesUnlinkedAdmin() {
+        Account target = account(TARGET_ID, SystemRole.ADMIN);
+        givenAdmins(account(ACTOR_ID, SystemRole.ADMIN), target);
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+
+        service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER);
+
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.MEMBER);
+    }
+
+    @Test
     @DisplayName("크루를 올리는 것은 캡틴 수와 상관없이 통과한다")
     void promotionIgnoresAdminCount() {
         Account actor = account(ACTOR_ID, SystemRole.ADMIN);
         Account target = account(TARGET_ID, SystemRole.MEMBER);
+        target.linkDiscord("1327394882193880002", "crew");
         givenAdmins(actor);
         when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
 

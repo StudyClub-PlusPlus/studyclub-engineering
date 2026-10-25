@@ -4,7 +4,7 @@
 반영:
   - docs/share/2026-10-18-discord-automation-gap.md — 됨 (질문 4 · 5 · 6, DSC-06 · 08 · 09, 새 작업 DSC-13 ~ 16 · STD-05 · 06 · COM-04)
   - docs/share/2026-10-23-planning-decisions.md — 됨 (질문 5 · 6 행)
-  - specs/admin-users/spec.md 계정 권한 변경 — 안 됨 (STD-05 구현 PR 에서)
+  - specs/admin-users/spec.md 계정 권한 변경 — 됨 (STD-05, `DISCORD_LINK_REQUIRED`)
   - docs/discord-development-guide/api/common-header.md 「시스템 호출」 · 봇 창구 문서들의 권한 칸 — 안 됨 (DSC-06 · DSC-13, 디스코드 스쿼드)
 ---
 

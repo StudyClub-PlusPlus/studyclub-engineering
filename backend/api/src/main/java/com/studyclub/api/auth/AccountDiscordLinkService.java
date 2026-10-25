@@ -5,6 +5,7 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import java.util.List;
@@ -45,6 +46,8 @@ public class AccountDiscordLinkService {
      * 참여 중(ACTIVE·PAUSED)인 스터디가 하나라도 있으면 거절한다 — 내 스터디룸이 「시작 전·참여 중」으로 보여 주는 행과 같다. 연동하지 않은 계정은 할 일
      * 없이 204 (멱등).
      *
+     * <p>캡틴(ADMIN)도 거절한다 — 캡틴은 디스코드 연동이 필수다.
+     *
      * <p>계정 행을 잠근 뒤 명부를 본다. 명부에 들어오는 길은 신청 제출뿐이고 그것도 계정을 먼저 잠그므로, 확인과 해제 사이에 새 참여가 끼어들지 못한다.
      */
     @Transactional
@@ -58,6 +61,11 @@ public class AccountDiscordLinkService {
                                                 ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
         if (!account.isDiscordLinked()) {
             return;
+        }
+        // 캡틴은 디스코드 연동이 필수다 — 해제하려면 먼저 크루로 내려가야 한다 (STD-05)
+        if (account.getSystemRole() == SystemRole.ADMIN) {
+            throw new BusinessException(
+                    ErrorCode.DISCORD_LINK_REQUIRED, "캡틴은 디스코드 연결을 해제할 수 없습니다.");
         }
         if (studyParticipantRepository.existsByAccountIdAndStatusIn(
                 accountId, List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED))) {
