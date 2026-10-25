@@ -85,10 +85,6 @@ Discord 서비스는 이 값을 읽지 않는다 — 봇에게 봇 ID 는 다른
 - 달라지는 건 **발신자 줄**이다. alert 채널에는 `발신: <@봇 ID>` 가 찍혀 봇 이름으로 보인다 —
   사람이 올린 것과 구분된다.
 
-> **나중에:** Discord 로그인 연동과 StudyClub 계정 ↔ Discord 유저 ID 매핑은 추후 추가한다.
-> 현재 [`ACCOUNT_IDENTITY`](../../erd/ACCOUNT_IDENTITY.md) 의 `ISSUER` 는 `GOOGLE` / `APPLE`
-> 뿐이라, 그때까지 호출자는 이 헤더를 채울 수 없다.
-
 ## Idempotency-Key
 
 **요청 식별자다 — 로그에서 요청을 추적하는 데 쓴다.** 서버는 이 키를 저장하지 않고, 같은 키가 다시 와도
