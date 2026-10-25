@@ -317,7 +317,8 @@ export function ProfileCard({
   if (editing) cardClass = 'card mt-5';
 
   return (
-    <section className={cardClass}>
+    // 이메일·사진·닉네임이 보이는 카드 — Clarity 녹화에서 가린다
+    <section className={cardClass} data-clarity-mask='true'>
       <div className='flex items-start justify-between gap-4 px-6 pt-5'>
         {/* 프로토에 사진이 없어 위치·문구는 임시. 고른 즉시 반영되는 별도 동작이라 저장 버튼과 묶지 않는다 */}
         <div className='flex shrink-0 flex-col items-center gap-2'>
