@@ -13,6 +13,10 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
 
     List<StudyParticipant> findByStudyId(Long studyId);
 
+    /** 백오피스 참여 명단 — 고른 상태의 행만 (specs/study-group/spec.md 「참여 명단」). */
+    List<StudyParticipant> findByStudyIdAndStatusIn(
+            Long studyId, Collection<ParticipantStatus> statuses);
+
     /** 진행 중 기수의 ACTIVE 참여 명부. 대시보드 활성 크루·1인당 참여·시간대 분포용 (specs/dashboard/spec.md 2-1). */
     @Query(
             "SELECT p FROM StudyParticipant p, Study s"
@@ -63,11 +67,18 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     Optional<StudyParticipant> findByStudyGroupIdAndAccountIdForUpdate(
             @Param("studyGroupId") Long studyGroupId, @Param("accountId") Long accountId);
 
-    boolean existsByStudyGroupIdAndAccountIdAndParticipantRole(
-            Long studyGroupId, Long accountId, ParticipantRole participantRole);
+    /** 살아 있는 네비게이터인지 — 권한 판정용. 중단된 LEADER 행은 권한이 없다 (StudyCaptainGuard). */
+    boolean existsByStudyIdAndAccountIdAndParticipantRoleInAndStatusIn(
+            Long studyId,
+            Long accountId,
+            Collection<ParticipantRole> participantRoles,
+            Collection<ParticipantStatus> statuses);
 
-    boolean existsByStudyGroupIdAndAccountIdAndParticipantRoleIn(
-            Long studyGroupId, Long accountId, Collection<ParticipantRole> participantRoles);
+    boolean existsByStudyGroupIdAndAccountIdAndParticipantRoleInAndStatusIn(
+            Long studyGroupId,
+            Long accountId,
+            Collection<ParticipantRole> participantRoles,
+            Collection<ParticipantStatus> statuses);
 
     List<StudyParticipant> findByIdInAndStudyId(Collection<Long> ids, Long studyId);
 
@@ -102,9 +113,6 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
     List<Object[]> countCapacityHoldersByStudyIds(
             @Param("studyIds") Collection<Long> studyIds,
             @Param("roles") Collection<ParticipantRole> roles);
-
-    boolean existsByStudyIdAndAccountIdAndParticipantRoleIn(
-            Long studyId, Long accountId, Collection<ParticipantRole> participantRoles);
 
     boolean existsByStudyIdAndAccountIdAndStatusIn(
             Long studyId, Long accountId, Collection<ParticipantStatus> statuses);

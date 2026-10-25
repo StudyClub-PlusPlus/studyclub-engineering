@@ -6,10 +6,11 @@ import type { Study } from '@studyclub/mock';
 import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Mic, Plus, X } from 'lucide-react';
 
+import { ApiError } from '@/lib/http';
 import { meetingRows } from '@/lib/joined-detail';
 import {
   createStudyMeetings,
-  deleteStudyMeeting,
+  deleteStudyMeetings,
   registerPresenter,
   unregisterPresenter,
   updateStudyMeeting,
@@ -626,9 +627,14 @@ export function ScheduleTab({
     if (apiIds.length > 0) {
       setSaving(true);
       try {
-        await Promise.all(apiIds.map((id) => deleteStudyMeeting(Number(study.id), Number(id))));
-      } catch {
-        setNotice('회차를 지우지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+        await deleteStudyMeetings(Number(study.id), groupId, apiIds.map(Number));
+      } catch (e) {
+        // 409 는 막힌 회차 번호를 적어 준다 — 아무것도 지워지지 않았으니 목록을 다시 받아 시작한 줄을 잠근다
+        setNotice(
+          e instanceof ApiError && e.status === 409
+            ? e.message
+            : '회차를 지우지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+        );
         await refetchMeetings();
         setSaving(false);
         return;
@@ -704,11 +710,7 @@ export function ScheduleTab({
           일정
           <span className='tnum ml-2 text-sm font-medium text-fg-muted'>
             전체 {meetings.filter((m) => !isKickoff(m)).length} · 예정{' '}
-            {
-              meetings.filter(
-                (m) => !isKickoff(m) && !startedOf(m),
-              ).length
-            }
+            {meetings.filter((m) => !isKickoff(m) && !startedOf(m)).length}
           </span>
         </h2>
 

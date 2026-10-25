@@ -58,9 +58,35 @@ public class AttendanceUpsertService {
             upsert(studyId, request.studyGroupId(), request);
             return;
         }
-        ParticipantWithdrawalService.Prepared withdrawals =
+        saveWithWithdrawals(
+                studyId,
+                request,
                 participantWithdrawalService.prepare(
-                        actorAccountId, studyId, request.studyGroupId(), request.withdrawals());
+                        actorAccountId, studyId, request.studyGroupId(), request.withdrawals()));
+    }
+
+    /**
+     * 백오피스 출석부 저장 — 사용자 사이트와 같은 한 트랜잭션이다. 출석만이면 {@code @RequireAdmin} 을 통과한 캡틴 누구나, 중단이 있으면 담당 캡틴만
+     * · 대상에 네비게이터도 (2026-10-23 기획 결정, specs/study-participant/spec.md).
+     */
+    @Transactional
+    public void saveFromBackOffice(
+            Long actorAccountId, Long studyId, AttendanceUpsertRequest request) {
+        if (!request.hasWithdrawals()) {
+            upsert(studyId, request.studyGroupId(), request);
+            return;
+        }
+        saveWithWithdrawals(
+                studyId,
+                request,
+                participantWithdrawalService.prepareForBackOffice(
+                        actorAccountId, studyId, request.studyGroupId(), request.withdrawals()));
+    }
+
+    private void saveWithWithdrawals(
+            Long studyId,
+            AttendanceUpsertRequest request,
+            ParticipantWithdrawalService.Prepared withdrawals) {
         if (!request.updates().isEmpty()) {
             writeUpdates(studyId, request.studyGroupId(), request.updates());
         }
@@ -70,7 +96,7 @@ public class AttendanceUpsertService {
     /**
      * 권한은 호출자(컨트롤러)가 검사한다. 어드민 경로는 {@code @RequireAdmin}, 사용자 경로는 {@code
      * studyCaptainGuard.assertCaptainOrNavigatorOfGroup} 으로 각각 처리한다. 참여 중단({@code withdrawals})은 받지
-     * 않는다 — 사용자 사이트는 {@link #saveFromSite} 를 쓴다.
+     * 않는다 — 중단이 있으면 {@link #saveFromSite} · {@link #saveFromBackOffice} 를 쓴다.
      */
     @Transactional
     public void upsert(Long studyId, Long studyGroupId, AttendanceUpsertRequest request) {

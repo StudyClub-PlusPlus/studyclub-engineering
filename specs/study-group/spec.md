@@ -15,11 +15,11 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 스펙작성중 |
+| GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
-| POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현중 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현중 (제목만) |
-| DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현중 |
+| POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현완료 |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현중 (제목만 구현완료. 스터디 시간은 아직) |
+| DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -324,7 +324,8 @@
 ## 프론트엔드 사용처
 
 - back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/ParticipantsTab.tsx`: 명단 · 반 생성/제목 수정/삭제 · 개별/일괄 반 변경 후 저장. 역할은 표시만 한다. 참여 명단 GET · 일괄 PATCH는 위 계약에 연결했으며 BE 구현 후 실제 연동 검증이 필요하다.
-- 역할 변경과 일정 탭의 스터디 시간 설정/수정은 미구현. 프로토: playground `console/studies/{id}`
+- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정은 화면은 있고 브라우저 저장소에 남는다. 이 API 가 시간 칸을 받으면 붙인다
+- 역할 변경은 미구현. 프로토: playground `console/studies/{id}`
 
 ## 미확정
 
