@@ -138,6 +138,15 @@ public class StudyRoleSyncListener {
             log.info("{} {}: 계정 {} 은 디스코드 미연동", eventName, meta.eventId(), accountId);
             return;
         }
+        if (!holds && heldByAnotherAccount(discordUserId.get(), accountId, studyId)) {
+            log.info(
+                    "{} {}: 스터디 {} 계정 {} 의 디스코드 ID 는 이 스터디에 참여 중인 다른 계정으로 옮겨 가 role 을 둔다",
+                    eventName,
+                    meta.eventId(),
+                    studyId,
+                    accountId);
+            return;
+        }
 
         String requesterId = discordBotClient.systemUserId();
         String roleId = link.get().getDiscordRoleId();
@@ -167,6 +176,18 @@ public class StudyRoleSyncListener {
                 studyId,
                 accountId,
                 action);
+    }
+
+    // 연결 해제 뒤 같은 디스코드 ID 를 다른 계정이 연동해 이 스터디에 들어왔으면, 옛 계정의 중단으로 그 role 을 떼지 않는다
+    private boolean heldByAnotherAccount(String discordUserId, Long accountId, Long studyId) {
+        return accountRepository
+                .findByDiscordId(discordUserId)
+                .filter(owner -> !owner.getId().equals(accountId))
+                .filter(
+                        owner ->
+                                studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
+                                        studyId, owner.getId(), HOLDS_ROLE))
+                .isPresent();
     }
 
     /** 같은 스터디·계정의 스터디 role 을 바꾸는 구독자가 잡는 잠금. */

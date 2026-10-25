@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -126,6 +127,27 @@ class StudyRoleSyncListenerTest {
 
         verify(bot)
                 .removeRole(SYSTEM_ID, DISCORD_ROLE_ID, DISCORD_STUDY_ID, List.of(DISCORD_USER_ID));
+    }
+
+    @Test
+    void 옛_ID_가_이_스터디에_참여_중인_다른_계정에_연동됐으면_떼지_않는다() {
+        linkedAccount(null);
+        Account other = mock(Account.class);
+        when(other.getId()).thenReturn(99L);
+        when(accounts.findByDiscordId(DISCORD_USER_ID)).thenReturn(Optional.of(other));
+        when(participants.existsByStudyIdAndAccountIdAndStatusIn(eq(STUDY_ID), eq(99L), anyList()))
+                .thenReturn(true);
+
+        listener.onWithdrawn(
+                new StudyParticipantWithdrawn(
+                        EventMeta.now(1L),
+                        STUDY_ID,
+                        100L,
+                        ACCOUNT_ID,
+                        ParticipantRole.MEMBER,
+                        DISCORD_USER_ID));
+
+        verify(bot, never()).removeRole(any(), any(), any(), any());
     }
 
     @Test
