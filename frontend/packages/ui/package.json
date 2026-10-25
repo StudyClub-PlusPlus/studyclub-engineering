@@ -43,9 +43,9 @@
     "prettier": "^3.5.3",
     "react": "^19",
     "react-dom": "^19",
-    "storybook": "^9.1.7",
+    "storybook": "^9.1.21",
     "typescript": "^5",
-    "vite": "^6.3.5"
+    "vite": "^6.4.4"
   },
   "prettier": "@studyclub/prettier-config"
 }

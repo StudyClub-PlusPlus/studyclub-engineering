@@ -3,6 +3,7 @@ import { accountsHandlers } from "./accounts";
 import { meDiscordHandlers, discordLinkHandlers } from "./discord";
 import { notificationTemplatesHandlers } from "./notification-templates";
 import { notificationsHandlers } from "./notifications";
+import { studyNoticesHandlers } from "./notices";
 import { rolePermissionsHandlers } from "./role-permissions";
 import { meStudiesHandlers } from "./me";
 import { studyMeetingsHandlers } from "./meetings";
@@ -39,6 +40,7 @@ export {
   mockNotificationTemplates,
 } from "./notification-templates";
 export { notificationsHandlers, resetMockNotifications } from "./notifications";
+export { studyNoticesHandlers, resetMockNotices } from "./notices";
 
 export const mockHandlerGroups: MockHandlerGroup[] = [
   studiesHandlers,
@@ -50,6 +52,7 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   rolePermissionsHandlers,
   meStudiesHandlers,
   studyMeetingsHandlers,
+  studyNoticesHandlers,
   attendanceHandlers,
   adminParticipantsHandlers,
   notificationTemplatesHandlers,

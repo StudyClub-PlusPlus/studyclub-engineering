@@ -7,6 +7,7 @@
 | 템플릿 | 언제 | 치환 변수 | 시안 원본 |
 |---|---|---|---|
 | `USER_REGISTERED` · `EMAIL` | 회원가입 직후 즉시 | `{{nickname}}` | [user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) |
+| `STUDY_NOTICE` · `EMAIL` | 네비게이터가 반 공지를 보낼 때 | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | [study-notice-email.html](../../frontend/apps/playground/src/proto/mail/templates/study-notice-email.html) |
 
 - 시안 원본은 `{{nickname}}` 이 그대로 있는 **DB 에 들어갈 본문**이다. 템플릿 목록·제목·예시 값은 [`templates/index.ts`](../../frontend/apps/playground/src/proto/mail/templates/index.ts) 에 있다
 - `/proto/mail` — 왼쪽 목록 → 가운데 HTML 편집 → 오른쪽 미리보기(예시 값을 채워 서버와 같은 규칙으로 렌더). **고친 HTML 은 저장되지 않는다** — 「HTML 복사」로 이 파일에 붙여 PR 을 낸다
