@@ -7,6 +7,7 @@ import { site } from '@studyclub/mock';
 import { Button, Modal } from '@studyclub/ui';
 import { ExternalLink, MessageCircle } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
 import { clearSession, getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { DISCORD_LINK_READY, linkDiscord } from '@/lib/discord';
@@ -80,6 +81,7 @@ export function ApplyDiscordGate({
     setNotInGuild(false);
     try {
       await linkDiscord(user.id, PENDING_OAUTH_CODE);
+      track({ name: 'My Discord Connected' });
       setLinking(false);
       onLinked();
     } catch (e) {

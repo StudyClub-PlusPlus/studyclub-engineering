@@ -221,6 +221,11 @@ public class Study extends BaseEntity {
         return StudyTimezone.BOTH;
     }
 
+    /** 담당 캡틴 — 이 스터디를 만든 캡틴(POL-0001). */
+    public boolean isCreatedBy(Long accountId) {
+        return createdBy != null && createdBy.equals(accountId);
+    }
+
     public boolean isPubliclyVisible() {
         return status != StudyStatus.DRAFT;
     }
