@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { CalendarDays, Search } from 'lucide-react';
 
 import { Checkbox } from './Checkbox';
@@ -57,6 +57,11 @@ export const InputError: Story = {
 export const InputDisabled: Story = {
   name: 'Input / 비활성',
   render: () => <Input label='가입일' defaultValue='2024-01-01' disabled />,
+};
+
+export const InputSuffix: Story = {
+  name: 'Input / 단위',
+  render: () => <Input label='모집 정원' inputMode='numeric' defaultValue='20' suffix='명' />,
 };
 
 export const SelectDefault: Story = {

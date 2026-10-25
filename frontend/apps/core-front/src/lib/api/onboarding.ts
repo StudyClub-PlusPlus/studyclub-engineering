@@ -22,6 +22,8 @@ export type OnboardingAccount = {
   createdAt?: string;
   timeZone: string | null;
   onboardingCompletedAt: string | null;
+  /** 디스코드 연동 여부(ACCOUNT.DISCORD_ID). GET /api/me 에만 있고, 백엔드 DSC-02 배포 전에는 오지 않는다. */
+  discordLinked?: boolean | null;
 };
 
 export function completeOnboarding(payload: OnboardingPayload): Promise<OnboardingAccount> {

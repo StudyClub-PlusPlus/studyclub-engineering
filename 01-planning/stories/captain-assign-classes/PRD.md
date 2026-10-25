@@ -2,7 +2,7 @@
 
 기준 프로토타입: 스터디 운영 — 신청자 탭 반 편성 (playground 운영 콘솔 · 스터디 운영)
 
-관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md) · [10-18 신청하면 기본반 명부에 들어간다](../../../docs/share/2026-10-18-roster-on-apply.md)
+관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md) · [10-22 킥오프는 캡틴이 정한다](../../../docs/share/2026-10-22-kickoff-by-captain.md) · [10-18 신청하면 기본반 명부에 들어간다](../../../docs/share/2026-10-18-roster-on-apply.md)
 
 ## 1. 기본설명
 
@@ -32,7 +32,8 @@ flowchart LR
 6. 크루 없는 반만 삭제
 7. 반이 없을 때 다음 할 일 안내
 8. 일정 탭에서 스터디 시간 없는 반에 「스터디 시간 정하기」 → 요일 · 시각 · 시간대만 저장. 회차는 만들지 않음
-8-1. 회차는 일정 표 「회차 추가」로만 생성. 회차 없는 반은 스터디 요일 매주 반복 · 시각으로 채워져 열림. 처음 정규 회차와 함께 킥오프 생성
+8-1. 회차는 일정 표 「회차 추가」로만 생성. 회차 없는 반은 스터디 요일 매주 반복 · 시각으로 채워져 열림. 회차 추가는 킥오프를 만들지 않음
+8-2. 킥오프는 캡틴이 일정 탭 「킥오프 정하기 · 수정」으로 일자 · 시각을 정함. 1회차보다 앞, 지난 날도 가능. 네비게이터는 고칠 수 없음
 9. 일정 탭 반 정보 카드의 스터디 시간 「수정」 — 요일·시각·시간대만 변경. 회차 추가·재생성 없음
 10. 반의 기간은 저장하지 않음 — 첫 회차 ~ 마지막 회차
 10. 캡틴 전용 명단 줄 없음. 참여하려는 캡틴은 신청 폼 제출 후 크루와 같은 줄로 표시
@@ -214,11 +215,14 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 신청자 탭의 반 만들기 · 반 목록 · 크루의 반, 일정 탭의 반 일정 | 없음 | 프로토대로 만든다 |
-| BE | 반 `POST` · `PATCH` · `DELETE` · 크루 반 지정 | 스펙작성중 · 컨트롤러 없음 | [study-group 스펙](../../../specs/study-group/spec.md) 확정 → 구현 |
+| FE | back-office-front 신청자 탭의 반 만들기 · 반 목록 · 크루의 반 | 있음 (#302) — 반 만들기 · 이름 바꾸기 · 삭제 · 크루 반 지정 (`features/participants`). 명단은 `GET …/participants` 를 부르는데 그 API 는 아직 없다 (아래) | 없음 |
+| FE | back-office-front 일정 탭의 반 일정 · 킥오프 정하기 | 없음 | 아래 회차 목록 · 킥오프 API 에 연결한다 |
+| BE | 반 `POST` · `PATCH` · `DELETE` · 크루 반 지정 | 반 `POST` · `DELETE` 구현완료. `PATCH` 는 제목만. 반 지정 일괄 `PATCH …/participants` 구현완료 (#303). 명단 `GET …/participants` 구현완료 (#324) | `PATCH` 스터디 시간 ([study-group 스펙](../../../specs/study-group/spec.md)) |
+| BE | `PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff` · 반 회차 목록 `GET …/groups/{groupId}/meetings` | 구현완료 (#312) | 없음 |
 
 ### 데이터
 
@@ -227,6 +231,7 @@ erDiagram
 | 분반 | NAME | 만들기 · 수정 |
 | 분반 | START_AT · TIMEZONE · 요일 | 스터디 시간 정하기 · 수정 (만들 때는 비어 있음). 기간은 두지 않는다 |
 | 회차 | `SCHEDULED_AT` · `TITLE` | 일정 표 「회차 추가」로만 — [회차 스펙](../../../specs/study-meeting/spec.md) |
+| 킥오프 | `MEETING_TYPE = KICKOFF` · `SCHEDULED_AT` | 일정 탭 「킥오프 정하기 · 수정」으로만 (캡틴) — [회차 스펙 「킥오프 정하기」](../../../specs/study-meeting/spec.md#킥오프-정하기-백오피스) |
 | 명부 | `STUDY_PARTICIPANT.STUDY_GROUP_ID` | 반 · 역할 한 번에 바꾸기 |
 
 ### 처리

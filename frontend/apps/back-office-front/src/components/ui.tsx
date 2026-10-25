@@ -66,10 +66,28 @@ export function RowActions() {
   );
 }
 
-export function TableCard({ children, tableClassName }: { children: ReactNode; tableClassName?: string }) {
+export function TableCard({
+  children,
+  tableClassName,
+  top,
+}: {
+  children: ReactNode;
+  tableClassName?: string;
+  top?: ReactNode;
+}) {
+  if (!top) {
+    return (
+      <div className='card overflow-x-auto'>
+        <table className={'bo-table ' + (tableClassName ?? '')}>{children}</table>
+      </div>
+    );
+  }
   return (
-    <div className='card overflow-x-auto'>
-      <table className={'bo-table ' + (tableClassName ?? '')}>{children}</table>
+    <div className='card overflow-clip'>
+      {top}
+      <div className='overflow-x-auto'>
+        <table className={'bo-table ' + (tableClassName ?? '')}>{children}</table>
+      </div>
     </div>
   );
 }

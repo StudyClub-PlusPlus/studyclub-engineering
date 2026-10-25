@@ -5,7 +5,7 @@ import { notFound, useParams } from 'next/navigation';
 
 import { ArrowLeft } from 'lucide-react';
 
-import { ApplicationsTab } from '@/features/applications/ApplicationsTab';
+import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
 import { useStudyDetail } from '@/features/studies/queries';
 
 export default function StudyApplicantsPage() {
@@ -25,7 +25,7 @@ export default function StudyApplicantsPage() {
       <h1 className='mb-6 mt-3 text-2xl font-extrabold tracking-tight'>
         {study.data?.title ? `${study.data.title} 신청자` : '스터디 신청자'}
       </h1>
-      <ApplicationsTab key={studyId} studyId={studyId} />
+      <ParticipantsTab key={studyId} studyId={studyId} />
     </div>
   );
 }

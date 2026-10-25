@@ -23,7 +23,7 @@ import {
   type Study,
   type StudyKind,
 } from '@studyclub/mock';
-import { Badge, Button, Modal, Pagination } from '@studyclub/ui';
+import { Badge, Button, Modal, Pagination, Select, cx } from '@studyclub/ui';
 import { Check, GripVertical, Minus, RotateCcw } from 'lucide-react';
 
 /**
@@ -52,9 +52,7 @@ import { Check, GripVertical, Minus, RotateCcw } from 'lucide-react';
  * 크루 명단·출석·정보 수정을 모두 한다.
  */
 
-const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
-];
+const CATEGORY_OPTIONS: { value: string; label: string }[] = [...STUDY_CATEGORIES.map((c) => ({ value: c, label: c }))];
 
 type RecruitFilter = 'all' | 'apply' | 'closed';
 type PublishFilter = 'all' | 'live' | 'draft';
@@ -103,13 +101,16 @@ function FilterSelect<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? label : '전체'}</option>
       {options.map((o) => (
@@ -117,20 +118,23 @@ function FilterSelect<T extends string>({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
 /** 카테고리 셀렉트. `STUDY.CATEGORY` 가 단일 값이라 단일 선택 드롭다운으로 고정한다. */
 function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label='카테고리'
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? '카테고리' : '전체'}</option>
       {CATEGORY_OPTIONS.map((o) => (
@@ -138,7 +142,7 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 

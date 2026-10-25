@@ -6,10 +6,11 @@ import type { Study } from '@studyclub/mock';
 import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Mic, Plus, X } from 'lucide-react';
 
+import { ApiError } from '@/lib/http';
 import { meetingRows } from '@/lib/joined-detail';
 import {
   createStudyMeetings,
-  deleteStudyMeeting,
+  deleteStudyMeetings,
   registerPresenter,
   unregisterPresenter,
   updateStudyMeeting,
@@ -626,9 +627,14 @@ export function ScheduleTab({
     if (apiIds.length > 0) {
       setSaving(true);
       try {
-        await Promise.all(apiIds.map((id) => deleteStudyMeeting(Number(study.id), Number(id))));
-      } catch {
-        setNotice('회차를 지우지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+        await deleteStudyMeetings(Number(study.id), groupId, apiIds.map(Number));
+      } catch (e) {
+        // 409 는 막힌 회차 번호를 적어 준다 — 아무것도 지워지지 않았으니 목록을 다시 받아 시작한 줄을 잠근다
+        setNotice(
+          e instanceof ApiError && e.status === 409
+            ? e.message
+            : '회차를 지우지 못했습니다. 잠시 뒤 다시 시도해 주세요.',
+        );
         await refetchMeetings();
         setSaving(false);
         return;
@@ -704,11 +710,7 @@ export function ScheduleTab({
           일정
           <span className='tnum ml-2 text-sm font-medium text-fg-muted'>
             전체 {meetings.filter((m) => !isKickoff(m)).length} · 예정{' '}
-            {
-              meetings.filter(
-                (m) => !isKickoff(m) && !startedOf(m),
-              ).length
-            }
+            {meetings.filter((m) => !isKickoff(m) && !startedOf(m)).length}
           </span>
         </h2>
 
@@ -873,10 +875,13 @@ export function ScheduleTab({
                   const errors = errorsOf(m);
                   const changed = Boolean(drafts[m.id]) || pendingIds.has(m.id);
                   const canDelete = !isKickoff(m) && !started;
+                  // 킥오프는 캡틴이 백오피스에서 정한다 — 이 화면에서는 고치지 않는다 (회차 스펙 결정 11)
+                  const editable = canEdit && !started && !isKickoff(m);
                   const confirming = bulkConfirm && checked.has(m.id);
                   return (
                     <tr
                       key={m.id}
+                      title={canEdit && isKickoff(m) ? '킥오프 일정은 캡틴이 정합니다.' : undefined}
                       className={cx(
                         'border-t border-border',
                         started && 'text-fg-muted',
@@ -900,7 +905,7 @@ export function ScheduleTab({
                       )}
                       <td className='px-4 py-3 text-center font-bold'>{m.no === 0 ? '0' : `${m.no}`}</td>
                       <td className='px-2 py-3 text-center'>
-                        {canEdit && !started ? (
+                        {editable ? (
                           <Input
                             type='date'
                             aria-label={`${meetingLabel(m)} 일자 (${zoneLabel(zone)})`}
@@ -915,7 +920,7 @@ export function ScheduleTab({
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>
-                        {canEdit && !started ? (
+                        {editable ? (
                           <Input
                             type='time'
                             aria-label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
@@ -930,7 +935,7 @@ export function ScheduleTab({
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>
-                        {canEdit && !started ? (
+                        {editable ? (
                           <Input
                             aria-label={`${meetingLabel(m)} 제목`}
                             size='sm'

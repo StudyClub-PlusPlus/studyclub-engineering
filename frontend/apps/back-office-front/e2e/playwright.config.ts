@@ -40,14 +40,14 @@ export default defineConfig({
     {
       command: 'node e2e/mock-api.mjs',
       cwd: APP_ROOT,
-      url: `http://127.0.0.1:${API_MOCK_PORT}/api/admin/studies?offset=0&limit=1000`,
+      url: `http://127.0.0.1:${API_MOCK_PORT}/api/admin/studies?offset=0&limit=100`,
       reuseExistingServer: false,
       timeout: 30_000,
     },
     {
       command: 'npm run dev',
       cwd: APP_ROOT,
-      url: APP_ORIGIN,
+      url: `${APP_ORIGIN}/studies`,
       env: { BO_DEV_BYPASS_AUTH: '1', API_BASE_URL: `http://127.0.0.1:${API_MOCK_PORT}` },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

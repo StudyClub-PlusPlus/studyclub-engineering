@@ -16,7 +16,7 @@
   - 네비게이터 role: **길드 전체에 하나**. 여러 스터디가 같이 쓴다
 - **디스코드 ID**: 디스코드가 사람마다 붙인 숫자 번호. 봇은 닉네임이 아니라 **이 번호로** 사람을 찾는다. 우리 DB 의 `ACCOUNT.DISCORD_ID` 칸에 들어간다.
 - **명부**(`STUDY_PARTICIPANT`): 그 스터디에 실제로 참여하는 사람 목록. 신청서(`STUDY_APPLICATION`)와는 다른 표다.
-  신청하면 명부에 들어가는지는 **문서끼리 말이 다르다** — PRD 는 「들어간다」, 스펙·코드는 「안 들어간다」 ([질문 3](#물어볼-것)).
+  신청하면 **같은 트랜잭션에서 명부의 기본 반에 들어간다** (#296, 10-20 결정 — [질문 3](#물어볼-것)).
 - **커밋 후 호출**: DB 저장이 확정된 **다음에** 봇을 부르는 방식. 봇이 실패해도 우리 쪽 작업은 성공으로 남는다. 스터디 생성이 이미 이렇게 한다.
 - 비유하면 봇은 **열쇠 담당 직원**이다. 열쇠(role)를 만들고 나눠 주고 거둘 준비는 끝났다.
   그런데 접수처(백엔드)가 직원을 부르는 건 "방을 새로 만들 때" 한 번뿐이다. 게다가 손님 명단에 **손님 번호(디스코드 ID)가 비어 있어서**
@@ -34,11 +34,11 @@
 
 | 언제 | 봇이 할 일 | 봇 창구 | 그 시점의 백엔드 API | 봇 호출 |
 |---|---|---|---|---|
-| 회원가입 | 디스코드 가입 여부 확인 | **없음** | `POST /api/me/discord/link` — 스펙작성중, 코드 없음 | ❌ |
+| 회원가입 | 디스코드 가입 여부 확인 | **없음** | `POST /api/me/discord/link` — 구현완료 (#298) | ❌ |
 | 캡틴이 스터디 생성 | 채널·스터디 role 생성 | `POST /api/v1/studies` ✅ | `POST /api/admin/studies` — 구현완료 | ⚠️ 부르지만 디스코드 ID 가 없어 건너뜀 |
-| 크루가 신청서 제출 | 크루에게 스터디 role 부여 | `POST /api/v1/roles/{roleId}/users` ✅ | `POST /api/studies/{id}/applications` — 구현완료 | ❌ |
-| 캡틴이 네비게이터 선정 | 네비게이터 role 부여 | `POST /api/v1/roles/navigator/users` ✅ | `PATCH /api/admin/studies/{id}/participants` (반 · 역할 일괄, 10-21) — 스펙작성중, 코드 없음 | ❌ |
-| 참여 중단 | 스터디 role 회수 | `DELETE /api/v1/roles/{roleId}/users` ✅ | `POST /api/studies/{id}/attendances` 의 `withdrawals[]` — 스펙작성중, 코드 없음 | ❌ |
+| 크루가 신청서 제출 | 크루에게 스터디 role 부여 | `POST /api/v1/roles/{roleId}/users` ✅ | `POST /api/studies/{id}/applications` — 구현완료 | ✅ 10-23: 명부 편입 때 `joined` 발행(#310) → `StudyRoleSyncListener`(#316) |
+| 캡틴이 네비게이터 선정 | 네비게이터 role 부여 | `POST /api/v1/roles/navigator/users` ✅ | `PATCH /api/admin/studies/{id}/participants` (반 · 역할 일괄, 10-21) — 구현완료 (#303) | ❌ `role_changed` 는 나간다. 구독자(DSC-08)는 질문 5 · 6 뒤 |
+| 참여 중단 | 스터디 role 회수 | `DELETE /api/v1/roles/{roleId}/users` ✅ | `POST /api/me/studies/{id}/attendances` 의 `withdrawals[]` — 구현완료 (#297) | ✅ 10-23: 스터디 role 회수 (#315). 네비게이터 role 은 DSC-06 뒤 |
 
 ### 1. 디스코드 ID 가 저장되지 않는다 — 다른 문제는 전부 여기서 시작된다
 
@@ -65,11 +65,13 @@
   - [신청 PRD](../../01-planning/stories/crew-submit-application/PRD.md) §처리: 「저장 … **같은 트랜잭션에서 명부 편입**」. 정원도 명부 인원으로 센다
   - [신청 스펙](../../specs/study-application/spec.md) §신청 제출: 「신청 제출 시 **명부를 만들지 않는다**」 (커밋 「신청 시 분반 배정 제거」에서 바뀜). 코드도 이쪽이다
 - 갈린 이유: 명부 행에는 **반이 꼭 있어야 한다**(`STUDY_PARTICIPANT.STUDY_GROUP_ID` NOT NULL). 그런데 반은 신청자를 보고 나서 캡틴이 만든다 ([반 편성 PRD](../../01-planning/stories/captain-assign-classes/PRD.md) 「반은 모집 전에 만들 수 없다」). 신청하는 순간에는 넣을 반이 없다.
-- 그래서 지금은 **신청해도 명부에 아무도 안 들어간다.** 정원 검사도 명부 인원을 세므로 **정원이 영영 차지 않는다.** → [질문 3](#물어볼-것)
+- 그래서 10-18 당시에는 **신청해도 명부에 아무도 안 들어갔다.** 정원 검사도 명부 인원을 세므로 **정원이 영영 차지 않았다.** → [질문 3](#물어볼-것)
+- **결정됨 (10-20, #296)**: 신청 즉시 명부의 **기본 반**에 넣는다. 반을 나누면 캡틴이 옮긴다. role 은 제출 때 `study_participant.joined` 로 준다 (#310).
 
 ### 4. 네비게이터 선정 → 네비게이터 role
 
 - 지정 API 는 스펙만 있다 (`PATCH .../participants` — 반 · 역할 일괄, [study-group 스펙](../../specs/study-group/spec.md)). 그 스펙에 디스코드 이야기는 없다.
+  - **10-23: 구현됨 (#303).** 역할이 바뀐 행마다 `study_participant.role_changed`(`previousRole` · `newRole`)를 내고, 감사 로그 `PARTICIPANT_ROLE` 을 남긴다. 듣는 쪽(DSC-08)은 아직 없다.
 - 봇은 이 창구를 **디스코드에서 captain role 을 가진 사람**의 요청으로만 받는다. 시스템 호출은 안 된다.
   그래서 지정하는 캡틴 본인 계정에도 디스코드 ID 가 있어야 한다.
 - 네비게이터 role 은 길드에 하나다. 스터디 A 에서 해제됐다고 떼면 스터디 B 의 네비게이터 권한도 같이 사라진다.
@@ -77,6 +79,7 @@
 ### 5. 참여 중단 → role 회수
 
 - 중단은 출석 저장 API 의 `withdrawals[]` 로 하기로 스펙이 잡혀 있다 ([study-participant 스펙](../../specs/study-participant/spec.md)). 코드는 없다.
+  - **10-23: 구현됨 (#297)** — `study_participant.withdrawn` 발행. 스터디 role 회수 구독자도 머지됨 (#315, DSC-09).
   이 스펙에도 디스코드 이야기는 없다.
 - 하차 표시 메서드(`StudyParticipant.markWithdrawn`)는 있지만 부르는 곳이 없다.
 - 중단은 **네비게이터도** 할 수 있다. 그런데 네비게이터 role 회수는 캡틴만 부를 수 있다. 네비게이터인 크루가 중단되면 스터디 role 은 회수되지만 **네비게이터 role 은 남는다.** → [질문 5](#물어볼-것)
@@ -110,7 +113,7 @@
 |---|---|---|---|
 | `POST /api/discord/studies/{discordStudyId}/attendances` | 봇이 음성 채널 출석을 백엔드에 기록 | ✅ 구현완료 ([discord-attendance](../../specs/discord-attendance/spec.md)) | ✅ 봇 `/attendance` 명령 (`discord/app/backend_client.py`) |
 | `POST /api/admin/studies/{studyId}/discord-link` | 자동 생성이 실패한 스터디에 디스코드 다시 붙이기 | ✅ 구현완료 ([discord-study-link](../../specs/discord-study-link/spec.md)) | ❌ **백오피스 화면에 버튼이 없다.** 지금은 API 를 직접 불러야 한다 |
-| `POST /api/me/discord/link` | 디스코드 계정 연동 (`DISCORD_ID` 저장) | ❌ 스펙작성중, 코드 없음 | ❌ 사이트 연동 창이 불러야 하는데 가짜로 성공한다 |
+| `POST /api/me/discord/link` | 디스코드 계정 연동 (`DISCORD_ID` 저장) | ✅ 구현완료 (#298) | 🔶 사이트 연동 창이 부르게 바꿨다 (#292). OAuth 팝업(DSC-04)이 붙기 전 운영·stage 는 부르지 않고 「준비 중」을 보인다 |
 
 ### 앞으로 만들 창구
 
@@ -120,7 +123,7 @@
 | `GET /api/me` 에 `discordLinked` 필드 추가 | 디스코드 스쿼드 | 화면이 연동 여부를 서버 값으로 알게 (아래 「화면·기능」 ①) | B1 과 같이 |
 | ~~봇 「길드 멤버인가」 창구~~ | — | 필요 없어졌다 — 연동 때 OAuth 권한으로 확인한다 ([질문 2](#물어볼-것)) | — |
 | 봇 네비게이터 role 창구에 시스템 호출 허용 | 디스코드 스쿼드 | 네비게이터가 중단시킨 경우에도 회수 ([질문 5](#물어볼-것)) | DSC-06 |
-| 네비게이터 지정·해제, 참여 중단, 명부 편입 API | 스터디 스쿼드 | 이벤트를 발행할 자리 | 각 스펙대로 (STD-02~04) |
+| 네비게이터 지정·해제, 참여 중단, 명부 편입 API | 스터디 스쿼드 | 이벤트를 발행할 자리 | **됨** — STD-02 #310 · STD-03 #303 · STD-04 #297 |
 
 ## 화면·기능별 호출 현황
 
@@ -128,14 +131,14 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 
 | # | 화면·기능 | 파일 | 지금 | 해야 할 것 | 담당 |
 |---|---|---|---|---|---|
-| ① | 사이트 「신청하기」 버튼 | `core-front/src/components/ApplyButton.tsx` | 연동 여부를 **브라우저 저장소**(`localStorage` 의 `sc_discord`)로 판단한다. 서버의 `DISCORD_ID` 와 상관없다 | `GET /api/me` 의 `discordLinked` 로 판단. 서버가 403 을 주면 연동 창을 여는 처리는 이미 있다 (`ApplyDialog` 의 `onRequireDiscord`) | 프론트 (B1 이후) |
-| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | 0.4초 뒤 성공한 척하고 브라우저 저장소에 가짜 핸들(`jiwon_dev`)을 쓴다 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
+| ① | 사이트 「신청하기」 버튼 | `core-front/src/components/ApplyButton.tsx` | ✅ #292 · #327 — `GET /api/me` 의 `discordLinked` 로 판단한다 (미연동이면 폼 대신 연동 창) | `GET /api/me` 의 `discordLinked` 로 판단. 서버가 403 을 주면 연동 창을 여는 처리는 이미 있다 (`ApplyDialog` 의 `onRequireDiscord`) | 프론트 (B1 이후) |
+| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | 🔶 #292 — `POST /api/me/discord/link` 를 부른다. 아직 OAuth 팝업이 없어 코드는 자리표시값이고, 운영·stage 는 `NEXT_PUBLIC_DISCORD_LINK_READY` 를 꺼 「준비 중」만 보인다. 403 길드 미가입이면 서버 가입 안내 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
 | ③ | 신청서의 디스코드 별명 칸 | `core-front/src/components/ApplyDialog.tsx` | 기본값을 브라우저 저장소에서 읽는다. 제출은 서버로 간다 ✅ | 스펙대로 `GET /api/me` 의 `discordNickname` 에서 읽기 | 프론트 |
 | ④ | 백오피스 스터디 등록 | `back-office-front/src/components/StudyForm.tsx` | 등록은 된다. 디스코드 생성이 성공했는지 **알 수 없다** | 상세에 연결 여부 표시 + 실패 시 「디스코드 다시 연결」 버튼(`POST .../discord-link`) | 디스코드 스쿼드 (응답 필드) · 프론트 |
 | ⑤ | 스터디의 디스코드 링크 | 백오피스 `StudyForm` 입력 → 사이트 상세·내 스터디 표시 | 캡틴이 링크(`STUDY.DISCORD_CHANNEL_URL`)를 **손으로** 넣는다. 봇이 만든 채널과 따로 논다 | 봇이 만든 채널로 자동으로 채울지 정한다 (이번 범위 밖) | 기획 |
-| ⑥ | 신청 제출 (백엔드) | `StudyApplicationService.submit` | 봇을 안 부른다 | 질문 3 이 「제출 시」면 B3 구독자가 `study_application.submitted` 를 듣는다 | 디스코드 스쿼드 |
-| ⑦ | 네비게이터 지정·해제 (백엔드) | 없음 | API 자체가 없다 | API + `role_changed` 발행 → B4 구독자 | 스터디 → 디스코드 |
-| ⑧ | 참여 중단 (백엔드) | 없음 | API 자체가 없다 | API + `withdrawn` 발행 → B5 구독자 | 스터디 → 디스코드 |
+| ⑥ | 신청 제출 (백엔드) | `StudyApplicationService.submit` | ✅ 10-23 — 명부 편입 때 `study_participant.joined` 발행(#310), `StudyRoleSyncListener` 가 스터디 role 을 붙인다(#316) | 없음 | 디스코드 스쿼드 |
+| ⑦ | 네비게이터 지정·해제 (백엔드) | `PATCH /api/admin/studies/{id}/participants` | 🔶 API · `role_changed` 발행은 됨 (#303). 구독자 없음 | B4 구독자 (DSC-08) — 질문 5 · 6 뒤 | 디스코드 스쿼드 |
+| ⑧ | 참여 중단 (백엔드) | 출석 저장 `withdrawals[]` | 🔶 API · `withdrawn` 발행 (#297) · 스터디 role 회수 (#315) 됨. 네비게이터였던 사람의 네비게이터 role 은 남는다 | 네비게이터 role 회수 — DSC-06 결정 뒤. 백오피스 출석부 중단(진행 중)도 같은 이벤트를 낸다 | 디스코드 스쿼드 |
 | ⑨ | 회원 탈퇴 (백엔드) | `AccountDeletionService` | 디스코드 role 이 그대로 남는다 | 이번 범위 밖 — [user-leave 스펙](../../specs/user-leave/spec.md)이 「디스코드 스쿼드와 별도로 맞춘다」고 적어 두었다 | 디스코드 스쿼드 |
 | ⑩ | 백오피스 회원 권한 변경 | `back-office-front/src/features/users/` | 「디스코드 설정은 운영자에게 문의」 안내만 띄운다 | **바꾸지 않는다** — 10-04 에 손으로 하기로 정했다 ([admin-users 스펙](../../specs/admin-users/spec.md)) | — |
 
@@ -220,7 +223,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 
 | 이벤트 (name) | 언제 발행 | 페이로드 | actor | 듣는 쪽이 하는 일 |
 |---|---|---|---|---|
-| `study_participant.joined` | 명부 행이 생겼을 때 (질문 3 이 「제출 시」면 이 이벤트 대신 기존 `study_application.submitted` 를 듣는다) | `studyId` · `participantId` · `accountId` | 명부에 넣은 사람 | B3 스터디 role 부여 |
+| `study_participant.joined` | 명부에 참여로 들어왔을 때 — 새 행·되살린 행 모두. 지금은 신청 제출 때다 (10-22, `submitted` 가 아니라 이 이벤트를 듣는다 — role 은 신청서가 아니라 명부를 따른다) | `studyId` · `participantId` · `accountId` · `participantRole` | 명부에 넣은 사람 (신청이면 본인) | B3 스터디 role 부여 |
 | `study_participant.role_changed` | 네비게이터 지정·해제 | `studyId` · `participantId` · `accountId` · `from` · `to` (`LEADER`/`MEMBER`) | 지정한 캡틴 (DSC-06 이 안 되면 이 사람 이름으로 봇을 부른다) | B4 네비게이터 role 부여·회수 |
 | `study_participant.withdrawn` | 참여 중단 (`withdrawals[]` 의 행마다 1개) | `studyId` · `participantId` · `accountId` · `participantRole` | 중단시킨 사람 | B5 스터디 role 회수 (+ 네비게이터였으면 네비게이터 role) |
 
@@ -244,15 +247,15 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 
 | ID | 작업명 | 범위 | 선행 | 담당 (제안) |
 |---|---|---|---|---|
-| DSC-01 | [BE] 디스코드 계정 연동 API (`POST /api/me/discord/link`) | B1. Discord OAuth 앱 설정 · `DISCORD_ID`/`DISCORD_HANDLE` 저장 · **길드 멤버 확인**(질문 2, B6) · 스펙 확정 | — **가장 먼저** | j7hwang (OAuth 앱 등록) · doxxx93 (API) |
-| DSC-02 | [BE] `GET /api/me` 에 `discordLinked` 추가 | user-onboarding 스펙 필드 추가. 내 정보 조회는 #262 로 `/auth/me` → `/api/me` 로 옮겨졌다 | — `DISCORD_ID` 칸만 읽으므로 DSC-01 없이 할 수 있다 | hereokay |
-| DSC-03 | [BE] 회원가입(온보딩)에 디스코드 연동 단계 추가 | 질문 1 이 「가입 때」면. 온보딩 완료 조건에 연동을 넣는다. 온보딩 담당과 맞춘다 | DSC-01 · 질문 1 | Jeongyounghyeon (BE) · LeenaKim (FE) |
-| DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03 이면) 가입 화면. 프론트 담당에게 넘겨도 된다 | DSC-01 · DSC-02 | CLEO525 (#292) |
-| DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **구현됨 — [PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276) 리뷰 대기** (채널 목록·메시지 메서드까지 들어 있다) | — | j7hwang (#276) · 리뷰 doxxx93 |
-| DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | 질문 5. `roles.py` 의 navigator 두 창구 `allow_system=True` + 봇 문서 수정 | 질문 5 | j7hwang |
-| DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자 | DSC-05 · STD-02 | doxxx93 · j7hwang |
-| DSC-08 | [BE] 네비게이터 지정·해제 시 네비게이터 role 부여·회수 | B4. `study_participant.role_changed` 구독자. **완료 조건: 회수는 그 사람이 다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만** (네비게이터 role 은 길드에 하나) | DSC-05 · DSC-06 · STD-03 | doxxx93 · j7hwang |
-| DSC-09 | [BE] 참여 중단 시 스터디 role 회수 | B5. `study_participant.withdrawn` 구독자 · 네비게이터였으면 **DSC-08 과 같은 완료 조건**으로 네비게이터 role 도 (그 부분만 DSC-06 결정 뒤) | DSC-05 · STD-04 | doxxx93 · j7hwang |
+| DSC-01 | [BE] 디스코드 계정 연동 API (`POST /api/me/discord/link`) | B1. Discord OAuth 앱 설정 · `DISCORD_ID`/`DISCORD_HANDLE` 저장 · **길드 멤버 확인**(질문 2, B6) · 스펙 확정. **머지됨 (#298)** | — **가장 먼저** | j7hwang (OAuth 앱 등록) · doxxx93 (API) |
+| DSC-02 | [BE] `GET /api/me` 에 `discordLinked` 추가 | user-onboarding 스펙 필드 추가. 내 정보 조회는 #262 로 `/auth/me` → `/api/me` 로 옮겨졌다. **머지됨 (#327)** (ID 는 내리지 않고 연동 여부만. 신청 403 과 같은 `Account.isDiscordLinked()`) | — `DISCORD_ID` 칸만 읽으므로 DSC-01 없이 할 수 있다 | hereokay |
+| DSC-03 | [BE·FE] 가입 화면에 **선택** 디스코드 연동 단계 추가 | 질문 1 결정(10-23): 가입 때 연동을 받을 수 있게 하되 **건너뛸 수 있다.** 온보딩 완료 조건에는 넣지 않는다. 신청 때 연동 필수는 그대로. **결정됨(기획) — 온보딩 담당과 맞출 것** | DSC-01 | Jeongyounghyeon (BE) · LeenaKim (FE) |
+| DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03) 가입 화면의 선택 연동. 프론트 담당에게 넘겨도 된다. **신청 연동 창 연결은 머지됨 (#292)** — OAuth 팝업 · 가입 화면은 남음 | DSC-01 · DSC-02 | CLEO525 (#292) |
+| DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **머지됨 ([PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276))** (채널 목록·메시지 메서드까지 들어 있다) | — | j7hwang (#276) · 리뷰 doxxx93 |
+| DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | 질문 5. `roles.py` 의 navigator 두 창구 `allow_system=True` + 봇 문서 수정. 백오피스 출석부에서 담당 캡틴이 네비게이터를 중단시키는 경우(10-23 제품 결정)도 이 결정을 기다린다 | 질문 5 (회의) | j7hwang |
+| DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자. **머지됨 (#316)** — `StudyRoleSyncListener` (DSC-09 와 같은 구독자, 명부에 있으면 붙이고 없으면 뗀다) | DSC-05 · STD-02 | doxxx93 · j7hwang |
+| DSC-08 | [BE] 네비게이터 지정·해제 시 네비게이터 role 부여·회수 | B4. `study_participant.role_changed`(`previousRole` · `newRole`, #303) 구독자. **완료 조건: 회수는 그 사람이 다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만** (네비게이터 role 은 길드에 하나). 발행 쪽(STD-03)은 됨 | DSC-05 ✅ · DSC-06 · STD-03 ✅ · 질문 6 | doxxx93 · j7hwang |
+| DSC-09 | [BE] 참여 중단 시 스터디 role 회수 | B5. `study_participant.withdrawn` 구독자 · 네비게이터였으면 **DSC-08 과 같은 완료 조건**으로 네비게이터 role 도 (그 부분만 DSC-06 결정 뒤). **스터디 role 회수는 머지됨 (#315)** — 백오피스 출석부 중단(진행 중)도 같은 이벤트라 따로 할 것 없다 | DSC-05 · STD-04 | doxxx93 · j7hwang |
 | DSC-11 | [BE·BOT] 연동 때 길드 자동 가입 (`guilds.join`) | 자동 가입을 하기로 하면. 봇 토큰을 백엔드에 줄지 / 봇에 창구를 만들지 먼저 정한다 | DSC-01 · 질문 2 | j7hwang |
 | DSC-12 | [인프라] stage·운영에 `DISCORD_BOT_ID` 시크릿 추가 | #276 이 읽는 `discord.bot-id`. 값은 내부 시크릿 저장소에만 | #276 | 인프라 담당 (민정님 · 준희님) |
 | DSC-10 | [BE·FE] 백오피스 스터디 상세에 디스코드 연결 상태 · 「다시 연결」 버튼 | 화면·기능 ④. 상세 응답 필드 + `POST .../discord-link` 버튼. 화면은 프론트 담당 | — | seeunrosypark |
@@ -262,9 +265,9 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | ID | 작업명 | 범위 | 선행 | 담당 (제안) |
 |---|---|---|---|---|
 | STD-01 | [기획] 명부 편입 시점 확정 — 신청 PRD 와 스펙 불일치 해소 | 질문 3. (가)면 신청 스펙 · `STUDY_GROUP_ID` NULL 허용 · [study-group 미결 사항](../../specs/study-group/spec.md)을 같이 고친다 | — | seeunrosypark — 정함 (#296) |
-| STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서 | STD-01 · COM-01 | seeunrosypark (#296) |
-| STD-03 | [BE] 반 · 역할 일괄 변경 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants` — 신청자 탭 「저장」 한 번, 하나라도 거절되면 전부 취소. 10-21 에 한 사람씩 API 를 합쳤다 ([study-group](../../specs/study-group/spec.md), [share](2026-10-21-participant-bulk-change.md)) | COM-01 | kimjiy9607 |
-| STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)) | COM-01 | seeunrosypark |
+| STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서. **명부 편입은 #296, `joined` 발행은 머지됨 (#310)** | STD-01 · COM-01 | seeunrosypark (#296 · #310) |
+| STD-03 | [BE] 반 · 역할 일괄 변경 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants` — 신청자 탭 「저장」 한 번, 하나라도 거절되면 전부 취소. 10-21 에 한 사람씩 API 를 합쳤다 ([study-group](../../specs/study-group/spec.md), [share](2026-10-21-participant-bulk-change.md)). **머지됨 (#303)** — 페이로드 `previousRole` · `newRole`, 감사 로그 `PARTICIPANT_ROLE` | COM-01 | kimjiy9607 (#303) |
+| STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/me/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)). **머지됨 (#297)**. 백오피스 출석부에서 담당 캡틴이 중단시키는 길은 진행 중 (`feat/backoffice-attendance`, 10-23 제품 결정) | COM-01 | seeunrosypark (#297) |
 
 **스터디 스쿼드가 하지 않는 것**: 봇 호출, 디스코드 ID 조회, 디스코드 실패 처리. 이벤트를 발행하면 끝이다. 구독자가 없어도 기능은 정상이다.
 **디스코드 스쿼드가 하지 않는 것**: 명부·네비게이터·중단 API 와 그 판정. 이벤트가 오면 반영만 한다.
@@ -289,6 +292,8 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
    - 지금 화면과 스펙: 신청할 때 연동 창을 띄운다 (`ApplyDiscordGate`). 자동화 목록: 「회원가입 시 확인」
    - **제안: 회원가입 때 받는다.** → DSC-03
    - 함께 정할 것: **이미 가입한 회원**은 연동 없이 가입했다. 그래서 신청할 때의 연동 창(`ApplyDiscordGate`)은 지우지 않고 남겨 둔다. 디스코드를 안 쓰는 사람은 가입할 수 없게 된다.
+   - **상태: 신청 때 연동 필수는 결정됨** — 미연동이면 신청 API 가 403 (#298 연동 API · #292 화면). 가입 때도 받을지(DSC-03)는 아직 열려 있다.
+   - **결정됨 (기획, 10-23 seeunrosypark)**: 회원가입 때도 연동을 받을 수 있게 한다. 단 **선택**이다 — 건너뛸 수 있다. 신청 때 연동 필수는 그대로다. 그래서 「디스코드를 안 쓰는 사람은 가입할 수 없다」는 위 걱정은 사라진다. → DSC-03 은 「가입 화면에 선택 연동 단계」. **온보딩 담당과 맞출 것** ([share 10-23](2026-10-23-planning-decisions.md))
 2. **연동은 어떻게 하고, 연동 확인은 어떻게 하나?** (기획 · 디스코드 스쿼드)
    - **제안: (나) 우리 서버(길드)에 들어와 있어야 한다.**
    - 연동하는 법: 「디스코드로 연결」 버튼 → 디스코드 로그인·동의 화면 → 돌아온 인가 코드를 서버가 받아 디스코드 ID 를 저장한다 (DSC-01).
@@ -298,7 +303,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
      - 자동 가입은 화면 뒤에서 조용히 일어난다. 동의 화면을 안 읽고 누르는 사람도 있으니 **「디스코드 서버에 들어갔어요」를 화면에서 알려 줘야 한다** → COM-03
      - 이미 길드에 있는 사람은 디스코드 응답 코드가 다르다 (새로 들어감 `201` · 이미 있음 `204`). 화면 문구를 둘로 나눈다
    - **추가로 알아둘 것**: 남을 길드에 넣는 디스코드 요청은 **봇 토큰**으로만 보낼 수 있다. 봇 토큰은 지금 봇(`discord/`)에만 있다. 자동 가입을 하면 ① 백엔드에도 봇 토큰을 주거나 ② 봇에 「길드에 넣어 줘」 창구를 하나 만든다. 어느 쪽인지 정해야 한다 → DSC-11
-   - **상태: 확인 방식은 결정됨. 자동 가입 여부와 위 ①②는 회의에서 정한다.**
+   - **상태: 확인 방식은 결정됨. 자동 가입 여부와 위 ①②는 회의에서 정한다.** (10-23 기획: 아직 회의에서 협의 필요 — 회의 안건 그대로)
    - 연동한 뒤 길드를 나가면 그때는 모른다. role 을 붙일 때 봇이 `NOT_IN_GUILD` 를 돌려주므로 그 로그로 안다.
    - 연동 여부 확인: 화면은 `GET /api/me` 의 `discordLinked` 로 본다 (DSC-02).
 3. **신청하면 명부에 바로 들어가나? 스터디 role 은 언제 주나?** (기획 · 스터디 스쿼드)
@@ -309,6 +314,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
      - **(가) PRD 대로 — 신청 즉시 명부에 넣고, 반은 비워 둔다** (`STUDY_GROUP_ID` 를 NULL 허용으로). 반은 캡틴이 나중에 채운다. 정원 검사가 그대로 맞고, role 도 **제출 때** 줄 수 있다 (자동화 목록과 같다). 반 편성 스펙의 「크루의 반 지정」 API 도 이미 명부 행이 있다고 가정하고 있다
      - (나) 스펙대로 — 반에 배정할 때 명부에 넣는다. 정원을 신청 수로 세도록 바꿔야 하고, role 은 **반 배정 때** 준다
    - **권하는 쪽: (가).** PRD · 정원 규칙 · 반 지정 API · 자동화 목록이 모두 이쪽을 가정하고 있어서 고칠 곳이 가장 적다. 대신 신청 스펙과 `STUDY_PARTICIPANT` 테이블(마이그레이션), 반이 없는 명부 행을 읽는 화면(출석부 등)을 고쳐야 한다. → STD-01
+   - **상태: 결정됨 (10-20, #296)** — (가)로 하되 반을 비우지 않고 **기본 반**에 넣는다 (기본 반이 없으면 그때 만든다). `STUDY_GROUP_ID` 는 NOT NULL 그대로. 반을 나누면 캡틴이 옮긴다 ([신청 스펙](../../specs/study-application/spec.md) 신청 제출 · [share 10-18](2026-10-18-roster-on-apply.md)). role 은 제출 때 `study_participant.joined` 로 준다 (#310).
 4. **디스코드를 연동하지 않은 캡틴의 네비게이터 지정을 막나?** (기획)
    - 제안: 회원가입 때 연동하면 문제 없지 않나?
    - **답: 새로 가입하는 사람은 그렇다. 하지만 이미 가입한 캡틴은 연동이 없을 수 있다.**
@@ -322,13 +328,25 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
      네비게이터에게 직접 열면 네비게이터가 다른 사람의 네비게이터 권한을 떼거나 붙일 수 있다. 시스템으로 열면 「누가 할 수 있나」는 백엔드가 이미 판정한 뒤라 안전하다.
      이렇게 하면 role 부여·회수 **네 창구 모두 시스템 호출**로 통일되고, 질문 4 도 사라진다.
    - **답 (디스코드 봇 담당, 10-20)**: 크루를 중단시키며 스터디 role 회수 → 지금 가능. 네비게이터 창구는 네비게이터 role 전용이라 캡틴으로 한정했다. 다만 스터디 정리(지금은 손으로) 때 시스템이 뗄 수 있어야 할 것 같다 — **회의에서 자세히 정하자.**
-   - **상태: 회의 안건.** 정해질 때까지 DSC-06 · DSC-08 은 보류다. DSC-09 의 스터디 role 회수는 지금 만들어도 된다.
+   - **상태: 회의 안건.** 정해질 때까지 DSC-06 · DSC-08 은 보류다. DSC-09 의 스터디 role 회수는 머지됐다 (#315). (10-23 기획: 아직 회의에서 협의 필요)
+   - 10-23 제품 결정으로 **백오피스 출석부에서 담당 캡틴도 크루 · 네비게이터의 참여를 중단시킨다** (구현 진행 중, `feat/backoffice-attendance`). 네비게이터가 중단되면 스터디 role 은 회수되지만, 네비게이터 role 회수는 이 질문(DSC-06)이 정해진 뒤다.
+6. **`role_changed` 는 어느 API 가 내고, 무엇을 담나?** (스터디 스쿼드 · 디스코드 스쿼드)
+   - 문서끼리 다르다 (10-22 확인):
+     - beta 에 머지된 [#299](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/299) 는 반 · 역할을 **한 번에 바꾸는 일괄 API** `PATCH /api/admin/studies/{id}/participants` 로 정했다 ([study-group](../../specs/study-group/spec.md))
+     - 머지되지 않은 `docs/discord-link-timing` 브랜치는 STD-03 을 **한 사람씩** `PATCH …/participants/{pid}/role` 로 적었다
+   - 일괄이면 저장 한 번에 **역할이 바뀐 행마다** 1개씩 낸다. 반만 바뀐 행은 내지 않는다 — 스터디 role 은 반이 아니라 스터디 단위라서. 「같은 값이면 안 낸다」가 일괄에서 더 중요해진다
+   - 함께 정할 것: 페이로드(`from` · `to` 만인가, `participantRole` 로 맞추나), actor(질문 5 에서 시스템 호출로 정하면 디스코드 쪽에는 필요 없다), 회수 조건(다른 진행 중 스터디 어디에서도 활성 `LEADER` 가 아닐 때만 — DSC-08 완료 조건)
+   - 정해지면 STD-03 PR(kimjiy9607)에서 [domain-events](../../specs/domain-events/spec.md) 에 한 줄 추가한다. `joined` · `withdrawn` 과 같은 방식 — 디스코드 스쿼드가 리뷰하면 COM-01 합의다
+   - **10-23: 발행 쪽은 #303 으로 머지됐다.** 일괄 API 가 역할이 바뀐 행마다 1개 낸다. 페이로드는 `previousRole` · `newRole` ([domain-events](../../specs/domain-events/spec.md)). 감사 로그 `PARTICIPANT_ROLE` 도 남긴다.
+   - 남은 것: 디스코드 스쿼드 확인(이 페이로드로 DSC-08 을 붙일 수 있나) · 회수 조건 — 다른 진행 중 스터디에서 활성 `LEADER` 면 네비게이터 role 을 떼지 않는다.
+   - **상태: 회의 안건.** (10-23 기획: 아직 회의에서 협의 필요.) 질문 5 와 같은 자리에서 정한다.
 
 ## 영향 — 누가 무엇을 해야 하나
 
-- **기획**: 질문 1~5 의 제안을 팀과 확정한다 (COM-02). STD-01(명부 편입 시점)을 스터디 스쿼드와 정한다.
+- **기획**: 질문 1 은 결정됨 (10-23 — 가입 때 선택 연동, DSC-03). 온보딩 담당과 화면 · 범위를 맞춘다. 질문 2 · 4 · 5 · 6 은 회의에서 확정한다 (COM-02). 질문 3(STD-01)은 결정됨 (#296).
+- **제품 (협의 필요)**: 반 이동 때 옛 반 예정 회차의 사전 휴가(`EXCUSED`)를 지우는 지금 스펙 동작([study-group 스펙](../../specs/study-group/spec.md) 반 이동 2)을 유지할지 정한다 ([share 10-23](2026-10-23-planning-decisions.md)).
 - **두 스쿼드 공통**: COM-01 이벤트 3개 계약부터 합의한다.
-- **회의**: 질문 2 의 자동 가입 여부(DSC-11), 질문 5 의 네비게이터 role 시스템 호출(DSC-06)을 정한다.
-- **디스코드 스쿼드**: DSC-05 는 #276 으로 올라와 있다 — 리뷰·머지하고 DSC-12 시크릿을 넣는다. DSC-01 · DSC-10 은 **지금 시작할 수 있다.** → [작업 목록](#작업-목록--작업명)
-- **스터디 스쿼드**: STD-03 · STD-04 는 COM-01 뒤에, STD-02 는 STD-01 뒤에 시작한다. → [작업 목록](#작업-목록--작업명)
+- **회의**: 질문 2 의 자동 가입 여부(DSC-11), 질문 5 의 네비게이터 role 시스템 호출(DSC-06), 질문 6 의 남은 것(디스코드 스쿼드 확인 · 회수 조건)을 정한다. 발행 API · 페이로드는 #303 으로 정해졌다.
+- **디스코드 스쿼드**: DSC-01(#298) · DSC-05(#276) · DSC-07(#316) · DSC-09 스터디 role(#315)은 머지됐다. DSC-12 시크릿을 넣고, DSC-10 을 이어 간다. DSC-06 · DSC-08 은 회의 뒤. DSC-03 은 질문 1 결정대로 온보딩 담당과 맞춘다. → [작업 목록](#작업-목록--작업명)
+- **스터디 스쿼드**: STD-02(#310) · STD-03(#303) · STD-04(#297) 모두 머지됐다. 남은 것은 백오피스 출석부의 캡틴 참여 중단(진행 중, `feat/backoffice-attendance`) — 같은 `withdrawn` 이벤트를 낸다. → [작업 목록](#작업-목록--작업명)
 - **운영**: 스테이지에서 스터디를 만들어도 디스코드 채널이 안 생기는 게 지금은 정상이다. 버그로 올리지 않아도 된다.

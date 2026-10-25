@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import {
@@ -35,7 +35,7 @@ import {
 import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import type { Study } from '@studyclub/mock';
-import { AutoTextarea, Button, Input, Modal, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
 
 /**
@@ -46,6 +46,7 @@ import { Plus, X } from 'lucide-react';
  * - 크루: 본다. 빈 발표자 칸에만 자기 이름을 넣고 뺄 수 있다(선착순) — 바로 저장된다.
  *
  * 킥오프는 0회차로 맨 위에 둔다. 지우지 않고, 발표자가 없고, 출석률에 넣지 않는다.
+ * 킥오프 일자는 캡틴이 백오피스에서 「킥오프 정하기」로 정한다(`source.setKickoff`). 표에서는 고치지 않는다.
  * 시작한 회차(흐린 줄)는 고치거나 지우지 않는다 — 출석이 찍혀 있다.
  *
  * 백오피스는 같은 표를 반마다 쓴다 — `source` 로 고른 반의 회차를 넘긴다. 없으면 사용자 사이트의 내 분반.
@@ -73,6 +74,7 @@ export function ScheduleManager({
 }) {
   const src = source ?? studySource(study, group.timeZone);
   const [adding, setAdding] = useState(canEdit && startAdding);
+  const [settingKickoff, setSettingKickoff] = useState(false);
   // 일괄 삭제 — 고른 예정 정규 회차. 확인 모달은 한 회차 삭제와 같은 창을 쓴다
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
@@ -95,6 +97,9 @@ export function ScheduleManager({
   const now = Date.now();
   const meetings = src.meetings();
   const regular = meetings.filter((m) => !isKickoff(m));
+  const kickoffRow = meetings.find(isKickoff);
+  // 킥오프는 캡틴만 정한다. 백오피스가 넘긴 반에만 있다
+  const canSetKickoff = canEdit && Boolean(src.setKickoff);
   const people = src.people;
   const nameOf = (id?: string) => people.find((p) => p.id === id)?.name;
   const started = (m: ProtoMeeting) => src.startOf(m).getTime() <= now;
@@ -268,6 +273,13 @@ export function ScheduleManager({
             options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
             onChange={setZone}
           />
+          {canSetKickoff && (
+            <span data-anno='schedule:10-1'>
+              <Button size='sm' variant='secondary' onClick={() => setSettingKickoff(true)}>
+                {kickoffRow ? '킥오프 수정' : '킥오프 정하기'}
+              </Button>
+            </span>
+          )}
           {canEdit && (
             // 고른 것과 상관없는 일이라 작업 바가 아니라 제목 줄에 둔다 — 신청자 탭 「반 추가」와 같은 자리
             <span data-anno='schedule:2'>
@@ -297,6 +309,19 @@ export function ScheduleManager({
           onAdded={(label) => {
             setAdding(false);
             setAnnounce(`회차를 추가했습니다. ${label}`);
+            refresh();
+          }}
+        />
+      )}
+
+      {settingKickoff && (
+        <KickoffForm
+          source={src}
+          group={group}
+          onCancel={() => setSettingKickoff(false)}
+          onSaved={(label) => {
+            setSettingKickoff(false);
+            setAnnounce(`킥오프를 정했습니다. ${label}`);
             refresh();
           }}
         />
@@ -377,10 +402,10 @@ export function ScheduleManager({
                   <th className='w-40 px-2 py-3'>일자</th>
                   <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
                   <th className={cx('px-2 py-3', compact ? 'w-60' : 'min-w-[16rem]')}>제목</th>
-                  <th data-anno='schedule:9' className={cx('px-2 py-3 text-center', compact ? 'w-28' : 'w-36')}>
+                  <th data-anno='schedule:9' className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>
                     발표자1
                   </th>
-                  <th className={cx('px-2 py-3 text-center', compact ? 'w-28' : 'w-36')}>발표자2</th>
+                  <th className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>발표자2</th>
                 </tr>
               </thead>
               <tbody>
@@ -392,7 +417,8 @@ export function ScheduleManager({
                   const v = valueOf(m);
                   const errors = errorsOf(m);
                   const changed = changedIds.includes(m.id);
-                  const editable = canEdit && !past;
+                  // 킥오프는 표에서 고치지 않는다. 캡틴이 「킥오프 정하기」로만 (사용자 사이트에서는 아무도)
+                  const editable = canEdit && !past && !kickoff;
                   const wall = shownWall(v);
                   const cell = 'border-t border-border px-2 py-1.5 align-top';
 
@@ -453,6 +479,7 @@ export function ScheduleManager({
                   const row = (
                     <tr
                       key={m.id}
+                      title={canEdit && kickoff && !canSetKickoff ? '킥오프 일정은 캡틴이 정합니다.' : undefined}
                       className={cx(
                         // 시작한 회차는 흐린 글자 — 상태 열 없이도 고칠 수 없는 줄임을 알린다.
                         past && 'text-fg-muted',
@@ -462,7 +489,7 @@ export function ScheduleManager({
                       )}
                     >
                       {canEdit && (
-                        <td className='border-t border-border py-2.5 pl-4 align-top'>
+                        <td className='border-t border-border py-2.5 pl-4 align-middle'>
                           {!kickoff && !past && (
                             <input
                               type='checkbox'
@@ -476,7 +503,7 @@ export function ScheduleManager({
                       )}
                       <td
                         data-anno={kickoff ? 'schedule:10' : undefined}
-                        className='tnum border-t border-border px-4 py-2.5 text-center align-top font-bold'
+                        className='tnum border-t border-border px-4 py-2.5 text-center align-middle font-bold'
                       >
                         {m.no}
                         {past && <span className='sr-only'> (지난 회차 · 고칠 수 없음)</span>}
@@ -517,7 +544,9 @@ export function ScheduleManager({
                           />
                         ) : // 제목이 없으면 「—」를 칸 가운데에 — 빈 칸 표시는 표 어디서나 가운데다
                         m.title ? (
-                          <span className='inline-block whitespace-pre-wrap break-words py-1.5 align-middle text-center'>{m.title}</span>
+                          <span className='inline-block whitespace-pre-wrap break-words py-1.5 align-middle text-center'>
+                            {m.title}
+                          </span>
                         ) : (
                           <span className='block py-1.5 text-center text-fg-muted'>-</span>
                         )}
@@ -586,10 +615,7 @@ function cn(...parts: string[]): string {
 
 /** 회차 선택 체크박스 — 출석부 체크박스와 같은 모양. */
 const CHECKBOX =
-  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
-
-const FIELD =
-  'h-8 w-full rounded-control border bg-bg px-2 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand/60';
+  'block h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 function CellInput({
   type = 'text',
@@ -606,26 +632,18 @@ function CellInput({
   error?: string;
   onChange: (value: string) => void;
 }) {
-  const errorId = useId();
   return (
-    <div>
-      <input
-        type={type}
-        aria-label={label}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        value={value}
-        placeholder={placeholder}
-        maxLength={type === 'text' ? TITLE_MAX + 10 : undefined}
-        onChange={(ev) => onChange(ev.target.value)}
-        className={cx(FIELD, error ? 'border-error-500' : 'border-border-strong')}
-      />
-      {error && (
-        <p id={errorId} className='mt-1 text-[11px] leading-snug text-error-700'>
-          {error}
-        </p>
-      )}
-    </div>
+    <Input
+      size='sm'
+      type={type}
+      aria-label={label}
+      value={value}
+      placeholder={placeholder}
+      maxLength={type === 'text' ? TITLE_MAX + 10 : undefined}
+      error={error}
+      onChange={(ev) => onChange(ev.target.value)}
+      className='px-2'
+    />
   );
 }
 
@@ -641,19 +659,16 @@ function TitleInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <div>
-      <AutoTextarea
-        label={label}
-        value={value}
-        placeholder='제목'
-        maxLength={TITLE_MAX + 10}
-        singleLine
-        invalid={Boolean(error)}
-        className='min-h-8 px-2 py-1 leading-snug'
-        onChange={onChange}
-      />
-      {error && <p className='mt-1 text-[11px] leading-snug text-error-700'>{error}</p>}
-    </div>
+    <Input
+      size='sm'
+      aria-label={label}
+      value={value}
+      placeholder='제목'
+      maxLength={TITLE_MAX + 10}
+      error={error}
+      onChange={(ev) => onChange(ev.target.value)}
+      className='px-2'
+    />
   );
 }
 
@@ -672,11 +687,12 @@ function PresenterSelect({
   onChange: (id: string) => void;
 }) {
   return (
-    <select
+    <Select
       aria-label={label}
+      size='sm'
       value={value}
       onChange={(ev) => onChange(ev.target.value)}
-      className={cx(FIELD, 'border-border-strong', !value && 'text-fg-muted')}
+      className={cx('w-full max-w-none', !value && 'text-fg-muted')}
     >
       <option value=''>{placeholder}</option>
       {/* 중단한 사람은 고를 수 없다. 이미 배정돼 있으면 그 칸에만 「(참여 종료)」로 남겨 보인다 — 빈 칸처럼 보이면 안 된다 */}
@@ -687,11 +703,94 @@ function PresenterSelect({
             {p.me ? `${p.name} (나)` : p.left ? `${p.name} (참여 종료)` : p.name}
           </option>
         ))}
-    </select>
+    </Select>
   );
 }
 
 /* ── 회차 추가 (반복 포함) ──────────────────────────────────────────────────── */
+
+/**
+ * 캡틴이 반의 킥오프(0회차)를 정하거나 옮긴다. 1회차보다 앞이어야 한다. 지난 날도 받는다: 운영 중인 반의 킥오프를 나중에 적는다.
+ * 처음 값은 지금 킥오프, 없으면 1회차 한 주 전 · 반의 스터디 시각.
+ */
+function KickoffForm({
+  source,
+  group,
+  onCancel,
+  onSaved,
+}: {
+  source: ScheduleSource;
+  group: NavigatorGroup;
+  onCancel: () => void;
+  onSaved: (label: string) => void;
+}) {
+  const meetings = source.meetings();
+  const current = meetings.find(isKickoff);
+  const firstRegular = meetings.find((m) => !isKickoff(m));
+  const [date, setDate] = useState(
+    () => current?.date || (firstRegular ? addDaysYmd(firstRegular.date, -7) : new Date().toISOString().slice(0, 10)),
+  );
+  const [time, setTime] = useState(() => current?.time ?? group.startAt);
+  const [touched, setTouched] = useState(false);
+
+  const errors: { date?: string; time?: string } = {
+    date: !date
+      ? '일자를 정해 주세요.'
+      : firstRegular && date >= firstRegular.date
+        ? `킥오프는 1회차(${dayLabel(firstRegular.date)})보다 앞이어야 합니다.`
+        : undefined,
+    time: !time ? '시각을 정해 주세요.' : undefined,
+  };
+  const shown: typeof errors = touched ? errors : {};
+
+  function submit() {
+    setTouched(true);
+    if (errors.date || errors.time) return;
+    source.setKickoff?.(date, time);
+    onSaved(wallLabel(zonedInstant(date, time, group.timeZone), group.timeZone));
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onCancel}
+      title={current ? '킥오프 수정' : '킥오프 정하기'}
+      description={`${group.name} · ${zoneTitle(group.timeZone)} 기준`}
+      footer={
+        <>
+          <Button variant='secondary' onClick={onCancel}>
+            취소
+          </Button>
+          <Button onClick={submit}>저장</Button>
+        </>
+      }
+    >
+      <div data-anno='schedule:10-1' className='flex flex-col gap-4 py-2'>
+        <p className='text-sm text-fg-secondary'>
+          규칙·일정·발표자를 정하는 첫 모임입니다. 네비게이터는 이 날을 고칠 수 없습니다.
+        </p>
+        <div className='grid gap-3 sm:grid-cols-2'>
+          <Input
+            type='date'
+            label='일자'
+            required
+            value={date}
+            error={shown.date}
+            onChange={(ev) => setDate(ev.target.value)}
+          />
+          <Input
+            type='time'
+            label={`시작 시각 (${zoneLabel(group.timeZone)})`}
+            required
+            value={time}
+            error={shown.time}
+            onChange={(ev) => setTime(ev.target.value)}
+          />
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function AddForm({
   source,
@@ -796,7 +895,7 @@ function AddForm({
       }
     >
       <div data-anno='schedule:7' className='flex flex-col gap-4 py-2'>
-        <div className='grid gap-3 sm:grid-cols-[10rem_8rem]'>
+        <div className='grid gap-3 sm:grid-cols-2'>
           <div data-anno='schedule:7-1'>
             <Input
               type='date'

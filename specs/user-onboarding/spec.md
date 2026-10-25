@@ -147,7 +147,7 @@ ACCOUNT_IDENTITY
 
 ### `GET /api/me`
 
-응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
+응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `discordLinked`(boolean)는 `ACCOUNT.DISCORD_ID`가 있으면 true, 없으면 false다 — 디스코드 ID·핸들 자체는 내리지 않는다. 신청 제출의 미연동 403과 같은 판정(`Account.isDiscordLinked()`)이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
 
 ### `GET /api/nicknames/availability`
 
