@@ -207,6 +207,19 @@ const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
 const SEED_VERSION = 12;
 
+/** A newly registered preview member must not inherit the demo member's studies or Discord. */
+export function resetMemberData() {
+  writeJSON(SEED_KEY, SEED_VERSION);
+  writeJSON(APPLICATION_KEY, []);
+  writeJSON(BOOKMARK_KEY, []);
+  writeJSON(DISCORD_KEY, '');
+  writeJSON(DISCORD_NICK_KEY, '');
+  writeJSON(NAME_KEY, '');
+  writeJSON(ZONE_KEY, '');
+  writeJSON(REGION_KEY, 'KR');
+  writeJSON(MARKETING_KEY, false);
+}
+
 function accepted(studyId: string, appliedAt: string): Application {
   return { studyId, appliedAt, status: 'accepted', region: 'KR' };
 }
