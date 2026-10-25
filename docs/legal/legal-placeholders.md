@@ -133,7 +133,7 @@ contact@studyclub.life
 | 오브젝트 스토리지 | Cloudflare R2 | 리전 고정 개념 약함 / 미국 법인 | 행 추가 — "파일 저장·보관" | ⭕ **행 추가 필수** | 제2조에 업로드 파일 항목 추가 |
 | 알림톡 | NHN 클라우드 | 국내 | 행 추가 — "알림톡 발송" | ❌ 국내 | **제2조에 휴대전화번호 추가 + 별도 동의** |
 | 이용 분석 | Amplitude | 미국 | ✅ 반영 (2026-10-14) — "서비스 이용 통계 분석" | ✅ 반영 — 행 추가 | 제1조 제5호 · 제2조 4 비고 · 제4조 보유기간 · 제13조 쿠키 |
-| 이용 분석 | Google Analytics 4 · Microsoft Clarity | 미국 | ✅ 확정 (2026-10-25) — 시행 2026-11-01 | ✅ 반영 — 행 2개 추가 | 제2조 4 분석 도구 표 · 제4조 보유기간 · 제13조 쿠키 표 · Microsoft Advertising 고지 · 시행일 |
+| 이용 분석 | Google Analytics 4 · Microsoft Clarity | 미국 | ✅ 확정 (2026-10-25) — 시행 2026-10-25 | ✅ 반영 — 행 2개 추가 | 제2조 4 분석 도구 표 · 제4조 보유기간 · 제13조 쿠키 표 · Microsoft Advertising 고지 · 시행일 |
 
 ### Amplitude — 붙은 날 고친 것 (2026-10-14, core-front `legal.ts`)
 
@@ -156,7 +156,7 @@ contact@studyclub.life
 - ★ **시행일·사전 공지** — 방침 제16조(처리방침의 변경)대로 시행 전 공지가 필요하다. production 배포 전에 시행일을 정한다
 - ⚠️ 연락처 `privacy@amplitude.com` 검증, 제8조 법적 근거(제28조의8 제1항 제3호 가목) 법무 확인
 
-### GA4 · Clarity — 확정 (2026-10-25, 시행 2026-11-01)
+### GA4 · Clarity — 확정 (2026-10-25, 시행 2026-10-25)
 
 그로스 계측 PR(GA4·Clarity, production 빌드만)과 같이 나가는 개정이다. 법무 자리는 아래 값으로 확정했다.
 
@@ -166,7 +166,7 @@ contact@studyclub.life
 - 회원 번호와 함께 기록되는 이용 분석 정보는 개인정보로 취급
 - Microsoft Advertising 고지 문단 유지
 - 국내 이용자 대상 쿠키 사전 동의 창은 두지 않고 거부 방법을 고지
-- 시행일 2026-11-01 (7일 전 공지)
+- 시행일 2026-10-25 (2026-10-25 결정으로 공지 기간 없이 당김. 처음 안은 2026-11-01·7일 전 공지)
 
 - Clarity 는 회원 번호를 `identify` 로 붙이고, 프로필 카드는 `data-clarity-mask` 로 가린다. 마스킹 모드(Strict/Balanced)는 Clarity 프로젝트 설정에서 확인
 - Clarity 이용약관상 Microsoft Advertising 고지 문장을 제13조에 넣었다
