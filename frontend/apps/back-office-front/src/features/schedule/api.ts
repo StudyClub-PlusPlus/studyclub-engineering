@@ -89,16 +89,35 @@ export function toUpdateBody(patch: MeetingPatch, tz: string): MeetingUpdatePayl
   };
 }
 
-/** 회차 수정 — 서버는 한 번에 한 회차라 고친 줄마다 부른다. 하나라도 실패하면 오류로 본다. */
+/** 저장하지 못한 회차가 있다 — `failedIds` 줄의 고침은 표에 남는다. 문구는 첫 실패의 서버 문구다. */
+export class MeetingSaveError extends Error {
+  readonly failedIds: string[];
+
+  constructor(failedIds: string[], cause: unknown) {
+    super(cause instanceof Error ? cause.message : '');
+    this.name = 'MeetingSaveError';
+    this.failedIds = failedIds;
+  }
+}
+
+/**
+ * 회차 수정 — 서버는 한 번에 한 회차라 고친 줄마다 부른다. **모두 끝난 뒤** 실패한 회차를 모아 던진다 —
+ * 첫 실패에서 끝내면 다시 읽기가 늦게 끝난 저장보다 먼저 돌아, 그 회차가 옛 값으로 남는다.
+ */
 export function useUpdateMeetings(studyId: number, groupId: number, tz: string) {
   const refetch = useRefetchMeetings(studyId, groupId);
   return useMutation({
-    mutationFn: (patches: Record<string, MeetingPatch>) =>
-      Promise.all(
-        Object.entries(patches).map(([id, patch]) =>
+    mutationFn: async (patches: Record<string, MeetingPatch>) => {
+      const entries = Object.entries(patches);
+      const results = await Promise.allSettled(
+        entries.map(([id, patch]) =>
           scheduleRepository.updateMeeting(studyId, groupId, Number(id), toUpdateBody(patch, tz)),
         ),
-      ),
+      );
+      const failed = entries.filter((_, i) => results[i].status === 'rejected').map(([id]) => id);
+      const first = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+      if (first) throw new MeetingSaveError(failed, first.reason);
+    },
     onSettled: refetch,
   });
 }

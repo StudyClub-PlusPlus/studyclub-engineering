@@ -6,6 +6,7 @@ import { Button, toast } from '@studyclub/ui';
 import { CalendarPlus } from 'lucide-react';
 
 import {
+  MeetingSaveError,
   toMeetings,
   toPeople,
   useAddMeetings,
@@ -61,7 +62,7 @@ export function ScheduleTab({
   const [rev, setRev] = useState(0);
 
   // 신청자 탭에서 만든 서버 반 — 둘 이상이면 반 칩이 선다
-  const { groups } = useScheduleGroups(studyId, rev);
+  const { groups, error: groupsError } = useScheduleGroups(studyId, rev);
   const picked = groups.find((g) => g.id === groupId) ?? groups[0];
   const serverGroupId = picked ? Number(picked.id) : undefined;
   const query = useGroupMeetings(studyId, serverGroupId);
@@ -110,7 +111,14 @@ export function ScheduleTab({
   /** 서버가 막으면(403 · 409 · 400) 그 문구를 그대로 띄운다 — 표는 다시 읽어 서버 값으로 돌아간다. */
   const onError = (fallback: string) => (err: Error) => toast.error(err.message || fallback);
 
-  if (!group) return null;
+  // 반 목록(참여 명단)을 못 읽으면 빈 화면이 아니라 그 사실을 말한다
+  if (!group) {
+    return groupsError ? (
+      <p role='alert' className='card px-6 py-10 text-center text-sm text-fg-muted'>
+        {groupsError.message || '반 목록을 불러오지 못했습니다.'}
+      </p>
+    ) : null;
+  }
   if (!query.data) {
     return (
       <div>
@@ -164,7 +172,15 @@ export function ScheduleTab({
                 onError: onError('킥오프를 정하지 못했습니다.'),
               })
             }
-            onSave={(patches) => updateMeetings.mutate(patches, { onError: onError('회차를 저장하지 못했습니다.') })}
+            onSave={(patches) =>
+              updateMeetings.mutateAsync(patches).then(
+                () => [],
+                (err: Error) => {
+                  onError('회차를 저장하지 못했습니다.')(err);
+                  return err instanceof MeetingSaveError ? err.failedIds : Object.keys(patches);
+                },
+              )
+            }
             onDelete={(ids) => deleteMeetings.mutate(ids, { onError: onError('회차를 지우지 못했습니다.') })}
           />
         </div>

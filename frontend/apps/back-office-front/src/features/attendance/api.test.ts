@@ -33,6 +33,28 @@ describe('출석 명부 변환', () => {
     expect(toBook(res)).toEqual({ '1': { '11': 'excused' } });
   });
 
+  it('시작 전 회차의 결석은 비운다 — 서버가 회차를 추가할 때 미리 만든 값이다', () => {
+    const res: ApiAttendance = {
+      study: { id: 1, title: '', participantCount: 1, totalMeetings: 2, avgAttendanceRate: null },
+      meetings: [
+        { id: 11, scheduledAt: '2026-01-08T11:00:00Z' },
+        { id: 12, scheduledAt: '2026-01-15T11:00:00Z' },
+      ],
+      participants: [
+        participant(1, [
+          { meetingId: 11, status: 'ABSENT' },
+          { meetingId: 12, status: 'ABSENT' },
+        ]),
+        participant(2, [{ meetingId: 12, status: 'EXCUSED' }]),
+      ],
+    };
+    // 11 은 지났고 12 는 아직이다 — 12 의 결석만 빈칸, 미리 낸 휴가는 남는다
+    expect(toBook(res, new Date('2026-01-10T00:00:00Z'))).toEqual({
+      '1': { '11': 'absent' },
+      '2': { '12': 'excused' },
+    });
+  });
+
   it('지금 열에서 바뀐 칸만 보내고, 미체크로 되돌린 칸은 따로 센다 — 서버는 칸을 비우지 못한다', () => {
     const saved = { '1': { '11': 'absent' as const, '12': 'present' as const, '99': 'late' as const } };
     const next = { '1': { '11': 'late' as const, '99': 'present' as const }, '2': { '12': 'excused' as const } };

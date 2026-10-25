@@ -23,13 +23,19 @@ const TO_API = Object.fromEntries(Object.entries(FROM_API).map(([k, v]) => [v, k
   ApiStatus
 >;
 
-/** 응답 → 출석부(참가자 ID → 회차 ID → 상태). 미입력(null) 칸은 비운다. ID 는 회차 표와 같이 문자열이다. */
-export function toBook(res: ApiAttendance): AttendanceBook {
+/**
+ * 응답 → 출석부(참가자 ID → 회차 ID → 상태). ID 는 회차 표와 같이 문자열이다.
+ * 미입력(null) 칸과 **시작 전 회차의 결석** 칸은 비운다 — 서버는 회차를 추가할 때 시작 전 회차에도 결석(`ABSENT`)을 미리 만든다.
+ */
+export function toBook(res: ApiAttendance, now: Date = new Date()): AttendanceBook {
+  const upcoming = new Set(res.meetings.filter((m) => Date.parse(m.scheduledAt) > now.getTime()).map((m) => m.id));
+  const shown = (a: { meetingId: number; status: ApiStatus | null }) =>
+    a.status !== null && !(a.status === 'ABSENT' && upcoming.has(a.meetingId));
   return Object.fromEntries(
     res.participants.map((p) => [
       String(p.participantId),
       Object.fromEntries(
-        p.attendances.filter((a) => a.status).map((a) => [String(a.meetingId), FROM_API[a.status as ApiStatus]]),
+        p.attendances.filter(shown).map((a) => [String(a.meetingId), FROM_API[a.status as ApiStatus]]),
       ),
     ]),
   );

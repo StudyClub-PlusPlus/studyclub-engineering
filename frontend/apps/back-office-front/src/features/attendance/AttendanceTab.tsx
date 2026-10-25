@@ -53,7 +53,7 @@ export function AttendanceTab({
   const studyId = detail.id;
 
   // 신청자 탭에서 만든 서버 반 — 둘 이상이면 반 칩이 선다
-  const { groups, loading } = useScheduleGroups(studyId);
+  const { groups, loading, error: groupsError } = useScheduleGroups(studyId);
   const group = groups.find((g) => g.id === groupId) ?? groups[0];
   const serverGroupId = group ? Number(group.id) : undefined;
   const meetingsQuery = useGroupMeetings(studyId, serverGroupId);
@@ -75,6 +75,7 @@ export function AttendanceTab({
         discordNickname: nick.get(String(p.participantId)) ?? null,
         ...(p.participantRole === 'LEADER' && { role: 'navigator' as const }),
         leftAt: p.leftAt ?? undefined,
+        serverRate: p.attendanceRate,
       }))
       .sort((a, b) => Number(Boolean(a.leftAt)) - Number(Boolean(b.leftAt)));
   }, [attendanceQuery.data, crew]);
@@ -96,6 +97,15 @@ export function AttendanceTab({
   );
 
   if (loading) return null;
+
+  // 반 목록(참여 명단)을 못 읽었다 — 「아직 반이 없습니다」와 반 만들기를 보이면 반이 사라진 것처럼 보인다
+  if (!group && groupsError) {
+    return (
+      <p role='alert' className='card px-6 py-10 text-center text-sm text-fg-muted'>
+        {groupsError.message || '반 목록을 불러오지 못했습니다.'}
+      </p>
+    );
+  }
 
   // 반이 없으면 출석부도 없다. 그 사실과 갈 곳을 같이 말한다
   if (!group) {

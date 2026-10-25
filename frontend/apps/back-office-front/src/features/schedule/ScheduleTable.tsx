@@ -47,7 +47,8 @@ export function ScheduleTable({
   people: Person[];
   /** 발표자로 새로 고를 수 있는 사람. 없으면 `people`. 참여를 중단한 사람은 빠진다. */
   pickable?: Person[];
-  onSave: (patches: Record<string, MeetingPatch>) => void;
+  /** 저장하지 못한 회차 ID 로 끝난다 — 그 줄의 고침은 남긴다. */
+  onSave: (patches: Record<string, MeetingPatch>) => Promise<string[]>;
   onAdd: (input: { dates: string[]; time: string; title: string }) => void;
   onSetKickoff: (input: { date: string; time: string }) => void;
   onDelete: (ids: string[]) => void;
@@ -137,7 +138,7 @@ export function ScheduleTable({
     change(m, wallParts(zonedInstant(next.date, next.time, zone), tz));
   }
 
-  function saveAll() {
+  async function saveAll() {
     if (!dirty || errorCount > 0) return;
     const patches: Record<string, MeetingPatch> = {};
     for (const id of changedIds) {
@@ -152,9 +153,16 @@ export function ScheduleTable({
         ...(v.presenter2 !== before?.presenter2 && { presenter2: v.presenter2 || null }),
       };
     }
-    onSave(patches);
-    setAnnounce(`회차 ${changedIds.length}개를 저장했습니다.`);
-    clearDrafts();
+    const failed = new Set(await onSave(patches));
+    // 저장하지 못한 줄은 고침을 남긴다 — 고쳐서 다시 저장하거나 되돌릴 수 있게. 저장한 줄만 비운다
+    const done = changedIds.filter((id) => !failed.has(id));
+    for (const id of done) delete bases.current[id];
+    setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => failed.has(id))));
+    setAnnounce(
+      failed.size === 0
+        ? `회차 ${done.length}개를 저장했습니다.`
+        : `회차 ${done.length}개를 저장했고, ${failed.size}개는 저장하지 못해 고친 값을 남겨 두었습니다.`,
+    );
   }
 
   function remove(targets: Meeting[]) {
