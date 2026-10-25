@@ -114,6 +114,22 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
             @Param("studyIds") Collection<Long> studyIds,
             @Param("roles") Collection<ParticipantRole> roles);
 
+    /**
+     * 웹 기준 navigator 의 디스코드 ID — 진행 중 스터디(OPEN · ONGOING) 어디서든 명부가 LEADER · (ACTIVE · PAUSED)이고
+     * 디스코드를 연동한 계정. navigator role 은 길드에 하나라 「다른 진행 중 스터디에서 활성 LEADER 면 떼지 않는다」(DSC-08)와 같은 식이다
+     * (specs/discord-role-sync/spec.md).
+     */
+    @Query(
+            "SELECT DISTINCT a.discordId FROM StudyParticipant p, Study s, Account a"
+                    + " WHERE p.studyId = s.id AND p.accountId = a.id"
+                    + " AND p.participantRole = com.studyclub.domain.participant.ParticipantRole.LEADER"
+                    + " AND p.status IN (com.studyclub.domain.participant.ParticipantStatus.ACTIVE,"
+                    + " com.studyclub.domain.participant.ParticipantStatus.PAUSED)"
+                    + " AND s.status IN (com.studyclub.domain.study.StudyStatus.OPEN,"
+                    + " com.studyclub.domain.study.StudyStatus.ONGOING)"
+                    + " AND a.discordId IS NOT NULL AND a.discordId <> ''")
+    List<String> findNavigatorDiscordIds();
+
     /** 디스코드 연결 해제 차단 — 어느 스터디든 참여 중인 행이 있는가 (AccountDiscordLinkService). */
     boolean existsByAccountIdAndStatusIn(Long accountId, Collection<ParticipantStatus> statuses);
 
