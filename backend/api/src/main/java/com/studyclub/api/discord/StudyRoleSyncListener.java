@@ -65,25 +65,30 @@ public class StudyRoleSyncListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onJoined(StudyParticipantJoined event) {
-        sync(event.name(), event.meta(), event.studyId(), event.accountId());
+        sync(event.name(), event.meta(), event.studyId(), event.accountId(), null);
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onWithdrawn(StudyParticipantWithdrawn event) {
-        sync(event.name(), event.meta(), event.studyId(), event.accountId());
+        sync(event.name(), event.meta(), event.studyId(), event.accountId(), event.discordUserId());
         // TODO(DSC-06): participantRole 이 LEADER 면 네비게이터 role 도 뗀다 — 다른 진행 중 스터디 어디에서도 활성 LEADER 가
         //  아닐 때만 (DSC-08 완료 조건). 봇 네비게이터 창구가 시스템 호출을 받기로 정해진 뒤에 붙인다.
     }
 
-    private void sync(String eventName, EventMeta meta, Long studyId, Long accountId) {
+    private void sync(
+            String eventName,
+            EventMeta meta,
+            Long studyId,
+            Long accountId,
+            String discordIdAtWithdrawal) {
         if (!discordBotClient.isConfigured()) {
             log.info("{} {}: 스터디 role 맞추기 건너뜀, 봇 설정 없음", eventName, meta.eventId());
             return;
         }
         try {
             synchronized (roleLock(studyId, accountId)) {
-                syncStudyRole(eventName, meta, studyId, accountId);
+                syncStudyRole(eventName, meta, studyId, accountId, discordIdAtWithdrawal);
             }
         } catch (BusinessException e) {
             log.warn(
@@ -105,25 +110,35 @@ public class StudyRoleSyncListener {
         }
     }
 
-    private void syncStudyRole(String eventName, EventMeta meta, Long studyId, Long accountId) {
+    private void syncStudyRole(
+            String eventName,
+            EventMeta meta,
+            Long studyId,
+            Long accountId,
+            String discordIdAtWithdrawal) {
         Optional<StudyDiscordLink> link = studyDiscordLinkRepository.findByStudyId(studyId);
         if (link.isEmpty()) {
             log.info("{} {}: 스터디 {} 는 디스코드 연결 없음", eventName, meta.eventId(), studyId);
             return;
         }
+        boolean holds =
+                studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
+                        studyId, accountId, HOLDS_ROLE);
+        // 뗄 때는 중단 시점의 ID 가 먼저다 — 그사이 연결을 해제했으면 지금 계정에는 ID 가 없다
         Optional<String> discordUserId =
-                accountRepository
-                        .findById(accountId)
-                        .map(Account::getDiscordId)
-                        .filter(StringUtils::hasText);
+                Optional.ofNullable(holds ? null : discordIdAtWithdrawal)
+                        .filter(StringUtils::hasText)
+                        .or(
+                                () ->
+                                        accountRepository
+                                                .findById(accountId)
+                                                .map(Account::getDiscordId)
+                                                .filter(StringUtils::hasText));
         if (discordUserId.isEmpty()) {
             log.info("{} {}: 계정 {} 은 디스코드 미연동", eventName, meta.eventId(), accountId);
             return;
         }
 
-        boolean holds =
-                studyParticipantRepository.existsByStudyIdAndAccountIdAndStatusIn(
-                        studyId, accountId, HOLDS_ROLE);
         String requesterId = discordBotClient.systemUserId();
         String roleId = link.get().getDiscordRoleId();
         String discordStudyId = link.get().getDiscordStudyId();

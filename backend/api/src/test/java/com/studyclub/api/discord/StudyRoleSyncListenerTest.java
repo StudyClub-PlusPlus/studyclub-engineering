@@ -48,7 +48,7 @@ class StudyRoleSyncListenerTest {
     private static final String DISCORD_ROLE_ID = "1327394882193883140";
     private static final StudyParticipantWithdrawn EVENT =
             new StudyParticipantWithdrawn(
-                    EventMeta.now(1L), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER);
+                    EventMeta.now(1L), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER, null);
     private static final StudyParticipantJoined JOINED =
             new StudyParticipantJoined(
                     EventMeta.now(ACCOUNT_ID), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER);
@@ -108,6 +108,24 @@ class StudyRoleSyncListenerTest {
         listener.onWithdrawn(EVENT);
 
         verify(bot, never()).removeRole(any(), any(), any(), any());
+    }
+
+    @Test
+    void 구독자가_돌기_전에_연결을_해제했으면_중단_시점의_ID_에서_뗀다() {
+        linkedAccount(null);
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onWithdrawn(
+                new StudyParticipantWithdrawn(
+                        EventMeta.now(1L),
+                        STUDY_ID,
+                        100L,
+                        ACCOUNT_ID,
+                        ParticipantRole.MEMBER,
+                        DISCORD_USER_ID));
+
+        verify(bot)
+                .removeRole(SYSTEM_ID, DISCORD_ROLE_ID, DISCORD_STUDY_ID, List.of(DISCORD_USER_ID));
     }
 
     @Test
