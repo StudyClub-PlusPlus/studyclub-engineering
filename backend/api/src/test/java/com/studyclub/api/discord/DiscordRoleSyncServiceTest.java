@@ -150,6 +150,21 @@ class DiscordRoleSyncServiceTest {
     }
 
     @Test
+    void 명단을_처리하는_사이_네비게이터가_된_사람은_떼지_않는다() {
+        // 처음 읽을 때는 STRANGER 가 웹 navigator 가 아니었고, 회수 직전에 다시 읽으니 지정돼 있다
+        when(participants.findNavigatorDiscordIds())
+                .thenReturn(List.of(NAVIGATOR))
+                .thenReturn(List.of(NAVIGATOR, STRANGER));
+
+        service(true)
+                .reconcileMembers(
+                        new DiscordRoleMembersRequest(
+                                Instant.now(), List.of(), List.of(NAVIGATOR, STRANGER)));
+
+        verify(bot, never()).removeNavigatorRole(any(), any(), any());
+    }
+
+    @Test
     void 봇_설정이나_길드_ID_가_없으면_건너뛴다() {
         new DiscordRoleSyncService(bot, participants, accounts, "", true)
                 .reconcileChange(change(STRANGER, Role.NAVIGATOR, Change.ADDED));

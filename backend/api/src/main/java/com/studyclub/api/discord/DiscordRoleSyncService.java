@@ -134,7 +134,15 @@ public class DiscordRoleSyncService {
         }
         String requesterId = discordBotClient.systemUserId();
         for (int from = 0; from < users.size(); from += BATCH) {
-            List<String> batch = users.subList(from, Math.min(from + BATCH, users.size()));
+            // 부르기 직전에 웹 기준을 다시 읽는다 — 앞 묶음을 처리하는 사이 네비게이터로 지정 · 해제된 사람을 낡은 기준으로 건드리지 않게
+            Set<String> now = new HashSet<>(studyParticipantRepository.findNavigatorDiscordIds());
+            List<String> batch =
+                    users.subList(from, Math.min(from + BATCH, users.size())).stream()
+                            .filter(id -> now.contains(id) == assign)
+                            .toList();
+            if (batch.isEmpty()) {
+                continue;
+            }
             try {
                 // navigator role 은 길드에 하나라 스터디가 없다 — discordStudyId 는 봇이 로그에만 쓰므로 길드 ID 를 싣는다
                 DiscordBotClient.RoleChangeResult result =
