@@ -5,9 +5,11 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { OnboardingConsent } from '@core/components/OnboardingConsent';
+import { OnboardingDiscord } from '@core/components/OnboardingDiscord';
 import { TimeZonePicker } from '@core/components/TimeZonePicker';
 import { getUser, setUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
+import { resetMemberData, setTimeZone, setMarketing } from '@core/lib/me';
 import { checkNicknameAvailability } from '@core/lib/nickname-availability';
 import {
   clearDrafts,
@@ -42,18 +44,23 @@ function OnboardingScreen() {
   const search = useSearchParams();
   const router = useRouter();
   const next = returnPath(search.get('next'), locale);
+  const discordStep = search.get('step') === 'discord';
   const forcedPreview = search.has('scenario');
   const candidate = search.get('scenario');
   const scenario = ONBOARDING_SCENARIOS.find((value) => value === candidate) ?? 'default';
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (getUser()?.onboardingCompletedAt && !forcedPreview) {
+    if (discordStep) {
+      setReady(true);
+    } else if (getUser()?.onboardingCompletedAt && !forcedPreview) {
       router.replace(next);
     } else {
       setReady(true);
     }
-  }, [forcedPreview, next, router]);
+  }, [discordStep, forcedPreview, next, router]);
+
+  if (discordStep) return <OnboardingDiscord locale={locale} next={next} />;
 
   return (
     <div className='min-h-[80vh] bg-surface-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12'>
@@ -241,6 +248,9 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
         return;
       }
       // Playground completion only. Never send a real consent or registration request.
+      resetMemberData();
+      setTimeZone(draft.timeZone);
+      setMarketing(draft.marketingAgreed);
       setUser({
         id: -1001,
         email: 'crew@example.com',
@@ -256,7 +266,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
       } catch {
         /* Optional toast. */
       }
-      router.replace(next);
+      router.replace(`/proto/core/${locale}/onboarding?step=discord&next=${encodeURIComponent(next)}`);
     }, 900);
   }
 
