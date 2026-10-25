@@ -64,6 +64,8 @@ function LoginForm() {
           }
         }
         track({ name: 'Auth Login Completed', props: { is_new_user: false, next_path: next } });
+        // 가입(온보딩)을 마친 회원의 로그인만 센다 — 새 회원은 온보딩 완료가 `User Signed Up` 이다
+        track({ name: 'User Logged In', props: { method: 'google' } });
         router.replace(next);
       } catch (e) {
         track({ name: 'Auth Login Failed', props: { error_message: String(e), http_status: httpStatus } });

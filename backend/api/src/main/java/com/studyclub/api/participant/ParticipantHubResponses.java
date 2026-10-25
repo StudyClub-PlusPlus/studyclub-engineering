@@ -32,6 +32,7 @@ public final class ParticipantHubResponses {
             MyStudyRelation relation,
             ParticipantStatus participantStatus,
             ParticipantRole participantRole,
+            boolean captain,
             String discordChannelUrl,
             String driveUrl,
             Double attendanceRate,
