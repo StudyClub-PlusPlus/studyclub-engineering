@@ -29,7 +29,7 @@ public class StudyNoticeDiscordGate {
     /**
      * 보낼 수 없는 이유. 보낼 수 있으면 비어 있다.
      *
-     * @param sender 보내는 사람. 이미 탈퇴해 없으면 null — 연동하지 않은 것과 같이 본다
+     * @param sender 보내는 사람. 이미 탈퇴해 없으면 null — 연동하지 않은 것과 같이 본다. 연동하지 않았어도 봇 ID 가 있으면 시스템 호출로 보낸다
      */
     public Optional<DiscordSkipReason> unavailableReason(Long studyId, Account sender) {
         if (!discordBotClient.isConfigured()) {
@@ -38,18 +38,24 @@ public class StudyNoticeDiscordGate {
         if (!studyDiscordLinkRepository.existsByStudyId(studyId)) {
             return Optional.of(DiscordSkipReason.NO_DISCORD_CHANNEL);
         }
-        if (sender == null || !StringUtils.hasText(sender.getDiscordId())) {
+        // 연동하지 않은 사람은 시스템 ID(봇 ID)로 대신 보낸다. 봇 ID 도 없을 때만 보낼 길이 없다
+        if (!isLinked(sender) && !discordBotClient.canCallAsSystem()) {
             return Optional.of(DiscordSkipReason.SENDER_NOT_LINKED);
         }
         return Optional.empty();
     }
 
+    /** 보내는 사람이 디스코드를 연동했는가. 이미 탈퇴해 없으면 연동하지 않은 것과 같이 본다. */
+    public boolean isLinked(Account sender) {
+        return sender != null && StringUtils.hasText(sender.getDiscordId());
+    }
+
     /**
-     * 봇을 부를 때 {@code X-Discord-User-ID} 에 넣는 값. 봇의 메시지 보내기가 지금 시스템 호출을 받지 않아 <b>보내는 사람 본인의 디스코드
-     * ID</b> 다. 정책이 바뀌어 시스템 호출로 보내게 되면 이 한 곳만 {@code discordBotClient.systemUserId()} 로 바꾼다
-     * (specs/study-notice/spec.md 미확정).
+     * 봇을 부를 때 {@code X-Discord-User-ID} 에 넣는 값. 봇은 이 값으로 아무것도 검사하지 않고 메시지 맨 위 「발신」 줄만 만든다. 그래서 연동한
+     * 사람은 <b>본인 디스코드 ID</b> 로 불러 발신 줄에 본인이 보이게 하고, 연동하지 않은 사람은 <b>시스템 ID(봇 ID)</b> 로 부른다 — 이때는 발신
+     * 줄이 봇 이름이라 보낸 사람 이름을 본문에 따로 넣는다 ({@link StudyNoticeDiscordListener}).
      */
     public String requesterId(Account sender) {
-        return sender.getDiscordId();
+        return isLinked(sender) ? sender.getDiscordId() : discordBotClient.systemUserId();
     }
 }

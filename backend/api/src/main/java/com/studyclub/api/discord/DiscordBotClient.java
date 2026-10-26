@@ -64,6 +64,11 @@ public class DiscordBotClient {
         return StringUtils.hasText(botUrl) && StringUtils.hasText(apiKey);
     }
 
+    /** 시스템 아이디로 부를 수 있는가 — {@code DISCORD_BOT_ID} 가 설정돼 있다. */
+    public boolean canCallAsSystem() {
+        return botId != null && !botId.isBlank();
+    }
+
     /**
      * 사람 대신 백엔드가 부를 때의 {@code requesterId}(시스템 아이디). 봇 자신의 유저 ID 인 {@code DISCORD_BOT_ID} 다. 비어 있으면
      * 던진다 — 봇은 health 를 뺀 모든 요청에 이 헤더를 요구한다.

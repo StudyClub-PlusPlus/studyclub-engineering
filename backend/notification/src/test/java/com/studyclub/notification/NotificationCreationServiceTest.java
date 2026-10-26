@@ -112,6 +112,7 @@ class NotificationCreationServiceTest {
                         n -> {
                             assertThat(n.getStatus()).isEqualTo(NotificationStatus.PENDING);
                             assertThat(n.getReferenceId()).isEqualTo(NOTICE_ID);
+                            assertThat(n.getSenderAccountId()).isEqualTo(99L);
                             assertThat(n.getPayload())
                                     .containsEntry("senderName", "닉네임99")
                                     .containsEntry("groupName", "수요일반")

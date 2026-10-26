@@ -57,8 +57,20 @@ class StudyNoticeDiscordListenerTest {
 
     private static StudyNoticeDiscordRecorder.Plan plan(
             String body, Map<Long, String> mentionable) {
+        return plan(body, null, mentionable);
+    }
+
+    private static StudyNoticeDiscordRecorder.Plan plan(
+            String body, String senderName, Map<Long, String> mentionable) {
         return new StudyNoticeDiscordRecorder.Plan(
-                NOTICE_ID, "제목", body, "수요일반", REQUESTER, DISCORD_STUDY_ID, mentionable);
+                NOTICE_ID,
+                "제목",
+                body,
+                "수요일반",
+                senderName,
+                REQUESTER,
+                DISCORD_STUDY_ID,
+                mentionable);
     }
 
     private static DiscordBotClient.StudyChannel channel(
@@ -116,13 +128,60 @@ class StudyNoticeDiscordListenerTest {
         }
 
         @Test
+        @DisplayName("시스템 ID 로 보낼 때는 보낸 사람 이름을 모든 글에 적고, 본문이 가장 길어도 2,000자 안이다")
+        void senderNameIsInEveryPostAndFitsLimit() {
+            var p = plan("가".repeat(1500), "닉네임".repeat(7), people(100));
+
+            var batches = StudyNoticeDiscordListener.batches(p);
+
+            assertThat(batches).hasSizeGreaterThan(1);
+            batches.forEach(
+                    b -> {
+                        assertThat(b.message()).contains("-# 수요일반 · 보낸 사람 " + "닉네임".repeat(7));
+                        assertThat(botLength(REQUESTER, b.discordIds(), b.message()))
+                                .isLessThanOrEqualTo(2000);
+                    });
+            assertThat(batches.get(1).message()).contains("이어서");
+        }
+
+        @Test
+        @DisplayName("본인 ID 로 보낼 때(보낸 사람 이름 없음)는 본문에 이름 줄이 없다")
+        void noSenderLineWhenLinked() {
+            var batches = StudyNoticeDiscordListener.batches(plan("본문", Map.of()));
+
+            assertThat(batches.get(0).message()).doesNotContain("보낸 사람");
+        }
+
+        @Test
+        @DisplayName("제목에 줄바꿈이 있어도 헤더 한 줄로 올린다 (서식이 깨지지 않게)")
+        void titleStaysOneLine() {
+            var p = plan("본문\n둘째 줄", null, Map.of());
+            var withBreak =
+                    new StudyNoticeDiscordRecorder.Plan(
+                            p.noticeId(),
+                            "제목\n둘째\t줄",
+                            p.body(),
+                            p.groupName(),
+                            null,
+                            p.requesterDiscordId(),
+                            p.discordStudyId(),
+                            p.mentionable());
+
+            String message = StudyNoticeDiscordListener.batches(withBreak).get(0).message();
+
+            assertThat(message).startsWith("## 📢 제목 둘째 줄\n-# 수요일반\n>>> 본문\n둘째 줄");
+        }
+
+        @Test
         @DisplayName("멘션할 사람이 없으면 글 한 건만, 멘션 없이")
         void nobodyToMention() {
             var batches = StudyNoticeDiscordListener.batches(plan("본문", Map.of()));
 
             assertThat(batches).hasSize(1);
             assertThat(batches.get(0).discordIds()).isEmpty();
-            assertThat(batches.get(0).message()).startsWith("📢 [수요일반] 제목").contains("본문");
+            assertThat(batches.get(0).message())
+                    .startsWith("## 📢 제목\n-# 수요일반\n>>> ")
+                    .contains("본문");
         }
     }
 

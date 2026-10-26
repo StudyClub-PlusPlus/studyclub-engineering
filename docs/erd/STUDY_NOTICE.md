@@ -32,7 +32,7 @@
 | ID | BIGINT PK | N | |
 | NOTICE_ID | BIGINT FK → STUDY_NOTICE | N | |
 | ACCOUNT_ID | BIGINT | N | ID 참조([ACCOUNT](./ACCOUNT.md)). 보낸 시점 명부의 사람 |
-| DISCORD_MENTIONED | BOOLEAN | N | 디스코드 글에서 멘션됐는가. 봇이 글을 올린 뒤에 표시한다 — 보내기 전·건너뜀·실패는 false |
+| DISCORD_MENTIONED | BOOLEAN | N | 디스코드 글에서 멘션을 **요청했는가**. 봇이 글을 올린 뒤에 표시한다 — 보내기 전·건너뜀·실패는 false. 봇은 길드를 떠난 사람을 멘션에서 빼고도 204 를 주고 누구를 뺐는지 알려 주지 않아, 실제 알림을 받은 사람보다 많을 수 있다 |
 | CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 
 `UNIQUE(NOTICE_ID, ACCOUNT_ID)`.
@@ -73,4 +73,4 @@ stateDiagram-v2
 
 ## 마이그레이션
 
-`V40__study_notice.sql` (domain). 메일 쪽 `NOTIFICATION.REFERENCE_ID` 와 템플릿 시드는 `V41__study_notice_email.sql` (notification).
+`V41__study_notice.sql` (domain). 메일 쪽 `NOTIFICATION.REFERENCE_ID` 와 템플릿 시드는 `V42__study_notice_email.sql` (notification).

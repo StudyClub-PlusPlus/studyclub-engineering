@@ -79,12 +79,15 @@ public class StudyNoticeDiscordRecorder {
                 accountRepository.findAllById(recipientIds).stream()
                         .filter(a -> StringUtils.hasText(a.getDiscordId()))
                         .collect(Collectors.toMap(Account::getId, Account::getDiscordId));
+        // 연동하지 않은 사람은 봇 이름으로 올라가므로 보낸 사람 이름을 본문에 넣는다. 연동한 사람은 발신 줄에 본인이 보인다
+        String senderName = !gate.isLinked(sender) && sender != null ? sender.getNickname() : null;
         return Optional.of(
                 new Plan(
                         notice.getId(),
                         notice.getTitle(),
                         notice.getBody(),
                         groupName,
+                        senderName,
                         gate.requesterId(sender),
                         link.getDiscordStudyId(),
                         recipientIds.stream()
@@ -117,6 +120,8 @@ public class StudyNoticeDiscordRecorder {
     }
 
     /**
+     * @param senderName 본문에 적을 보낸 사람 이름. 연동하지 않아 시스템 ID 로 보낼 때만 채우고, 본인 ID 로 보내면 null (발신 줄에 본인이
+     *     보인다). 탈퇴해 없으면 null
      * @param mentionable 멘션할 사람 — 계정 ID → 디스코드 ID. 받는 사람 중 디스코드를 연동한 사람만, 고른 순서대로
      */
     public record Plan(
@@ -124,6 +129,7 @@ public class StudyNoticeDiscordRecorder {
             String title,
             String body,
             String groupName,
+            String senderName,
             String requesterDiscordId,
             String discordStudyId,
             Map<Long, String> mentionable) {}

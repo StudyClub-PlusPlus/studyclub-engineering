@@ -89,6 +89,7 @@ class StudyNoticeIntegrationTest {
     private static final String MEMBER_DISCORD_ID = "1327394882193886102";
     private static final String DISCORD_STUDY_ID = "1327394882193883136";
     private static final String CHANNEL_ID = "1327394882193883200";
+    private static final String SYSTEM_DISCORD_ID = "1327394882193880001";
 
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwt;
@@ -252,9 +253,15 @@ class StudyNoticeIntegrationTest {
                 .containsEntry("available", true)
                 .containsEntry("unavailableReason", null);
 
+        // 연동하지 않았어도 봇 ID 가 없으면 보낼 길이 없다 (봇 ID 가 있으면 아래 테스트처럼 시스템 ID 로 간다)
         jdbcTemplate.update("UPDATE ACCOUNT SET DISCORD_ID = NULL WHERE ID = ?", LEADER_ID);
         assertThat((Map<String, Object>) get(compose(), LEADER_ID).getBody().get("discord"))
                 .containsEntry("unavailableReason", "SENDER_NOT_LINKED");
+
+        when(bot.canCallAsSystem()).thenReturn(true);
+        assertThat((Map<String, Object>) get(compose(), LEADER_ID).getBody().get("discord"))
+                .containsEntry("available", true)
+                .containsEntry("unavailableReason", null);
     }
 
     // ── 보내기 ────────────────────────────────────────────────────────────────────
@@ -357,7 +364,72 @@ class StudyNoticeIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 보내는 사람이 디스코드를 연동하지 않았으면 건너뛰고(SKIPPED) 사유를 남긴다. 메일은 그대로 나간다")
+    @DisplayName("성공 - 디스코드를 연동하지 않은 사람은 시스템 ID 로 보내고, 본문 앞에 보낸 사람 이름을 적는다")
+    void discordSentAsSystemWhenSenderNotLinked() {
+        linkDiscord();
+        when(bot.isConfigured()).thenReturn(true);
+        when(bot.canCallAsSystem()).thenReturn(true);
+        when(bot.systemUserId()).thenReturn(SYSTEM_DISCORD_ID);
+        jdbcTemplate.update("UPDATE ACCOUNT SET DISCORD_ID = NULL WHERE ID = ?", LEADER_ID);
+        when(bot.getStudyChannels(SYSTEM_DISCORD_ID, DISCORD_STUDY_ID))
+                .thenReturn(
+                        List.of(
+                                new DiscordBotClient.StudyChannel(
+                                        CHANNEL_ID, "로비-공지", DiscordBotClient.ChannelType.TEXT)));
+
+        ResponseEntity<Map> response =
+                post(
+                        collection(),
+                        sendBody("디스코드 공지", "본문", List.of("DISCORD"), member),
+                        LEADER_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long noticeId = ((Number) response.getBody().get("noticeId")).longValue();
+        org.mockito.ArgumentCaptor<String> message =
+                org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(bot, timeout(5000))
+                .sendMessage(
+                        eq(SYSTEM_DISCORD_ID),
+                        eq(CHANNEL_ID),
+                        eq(DISCORD_STUDY_ID),
+                        message.capture(),
+                        eq(List.of(MEMBER_DISCORD_ID)));
+        // 발신 줄은 봇 이름이라, 보낸 사람은 본문에 글자로 적는다
+        assertThat(message.getValue()).contains("보낸 사람 네비게이터");
+        waitUntil(
+                () ->
+                        studyNoticeRepo.findById(noticeId).orElseThrow().getDiscordStatus()
+                                == DiscordDeliveryStatus.SENT);
+    }
+
+    @Test
+    @DisplayName("성공 - 연동한 사람은 본인 ID 로 보내고 본문에 이름을 따로 적지 않는다 (발신 줄에 본인이 보인다)")
+    void linkedSenderDoesNotRepeatNameInBody() {
+        linkDiscord();
+        when(bot.isConfigured()).thenReturn(true);
+        when(bot.canCallAsSystem()).thenReturn(true);
+        when(bot.getStudyChannels(LEADER_DISCORD_ID, DISCORD_STUDY_ID))
+                .thenReturn(
+                        List.of(
+                                new DiscordBotClient.StudyChannel(
+                                        CHANNEL_ID, "로비-공지", DiscordBotClient.ChannelType.TEXT)));
+
+        post(collection(), sendBody("디스코드 공지", "본문", List.of("DISCORD"), member), LEADER_ID);
+
+        org.mockito.ArgumentCaptor<String> message =
+                org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(bot, timeout(5000))
+                .sendMessage(
+                        eq(LEADER_DISCORD_ID),
+                        eq(CHANNEL_ID),
+                        eq(DISCORD_STUDY_ID),
+                        message.capture(),
+                        eq(List.of(MEMBER_DISCORD_ID)));
+        assertThat(message.getValue()).doesNotContain("보낸 사람");
+    }
+
+    @Test
+    @DisplayName("성공 - 연동하지 않았고 봇 ID 도 없으면 건너뛰고(SKIPPED) 사유를 남긴다. 메일은 그대로 나간다")
     void discordSkippedWhenSenderNotLinked() {
         linkDiscord();
         when(bot.isConfigured()).thenReturn(true);
@@ -531,6 +603,24 @@ class StudyNoticeIntegrationTest {
         assertThat(mails)
                 .extracting(Notification::getRecipientValue)
                 .containsExactlyInAnyOrder("member@notice-test.com", "paused@notice-test.com");
+    }
+
+    @Test
+    @DisplayName("성공 - 메일 행에 보낸 사람 ID 가 실린다. 스터디가 지워져 공지가 사라진 뒤에 보낸 사람이 탈퇴해도 이름이 비식별화된다")
+    void senderDeletionRedactsMailsEvenAfterStudyDeleted() {
+        post(collection(), sendBody("공지 제목", "공지 본문", List.of("EMAIL"), member, paused), LEADER_ID);
+        assertThat(noticeMails())
+                .allSatisfy(n -> assertThat(n.getSenderAccountId()).isEqualTo(LEADER_ID));
+
+        // 스터디 삭제가 공지를 먼저 지운다 — 메일 행은 남고, 공지 ID 로는 보낸 사람을 되짚을 수 없다
+        tx.executeWithoutResult(status -> studyNoticeRepo.deleteByStudyId(study.getId()));
+        assertThat(studyNoticeRepo.findIdsBySenderAccountId(LEADER_ID)).isEmpty();
+
+        accountDeletionService.deleteAccount(LEADER_ID, LeaveReason.OTHER);
+
+        assertThat(noticeMails())
+                .hasSize(2)
+                .allSatisfy(n -> assertThat(n.getPayload()).containsEntry("senderName", "탈퇴한 회원"));
     }
 
     @Test

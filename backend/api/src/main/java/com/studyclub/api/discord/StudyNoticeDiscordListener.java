@@ -128,15 +128,24 @@ public class StudyNoticeDiscordListener {
      * 길 때 16명). 남은 사람은 「이어서」 글로 40명씩 멘션한다. 멘션할 사람이 없으면 글 한 건만 올린다.
      */
     static List<Batch> batches(StudyNoticeDiscordRecorder.Plan plan) {
-        String head = "📢 [" + plan.groupName() + "] " + plan.title();
-        String first = head + "\n\n" + plan.body();
+        // 디스코드 마크다운: 제목은 헤더(##), 반 이름과 보낸 사람은 작은 글자(-#) 한 줄, 본문은 인용 블록(>>>)이다.
+        // 제목 · 반 이름 · 이름은 한 줄이어야 서식이 깨지지 않아 줄바꿈을 공백으로 바꾼다
+        String title = "## 📢 " + oneLine(plan.title());
+        // 시스템 ID 로 보내면 발신 줄이 봇 이름이다. 보낸 사람은 글자로 적는다(멘션이 아니라 알림은 가지 않는다)
+        String meta =
+                "-# "
+                        + oneLine(plan.groupName())
+                        + (plan.senderName() == null
+                                ? ""
+                                : " · 보낸 사람 " + oneLine(plan.senderName()));
+        String first = title + "\n" + meta + "\n>>> " + plan.body();
         int room = Math.max(0, (MESSAGE_LIMIT - SENDER_LINE - first.length()) / PER_MENTION);
         int firstMentions = Math.min(MAX_MENTIONS, room);
 
         List<Map.Entry<Long, String>> people = new ArrayList<>(plan.mentionable().entrySet());
         List<Batch> result = new ArrayList<>();
         result.add(batch(first, people.subList(0, Math.min(firstMentions, people.size()))));
-        String followUp = head + " (이어서 알림)";
+        String followUp = title + " (이어서 알림)\n" + meta;
         for (int from = firstMentions; from < people.size(); from += MAX_MENTIONS) {
             result.add(
                     batch(
@@ -144,6 +153,10 @@ public class StudyNoticeDiscordListener {
                             people.subList(from, Math.min(from + MAX_MENTIONS, people.size()))));
         }
         return result;
+    }
+
+    private static String oneLine(String text) {
+        return text.replaceAll("\\s+", " ").trim();
     }
 
     private static Batch batch(String message, List<Map.Entry<Long, String>> people) {

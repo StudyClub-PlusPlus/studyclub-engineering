@@ -6,9 +6,13 @@
 --     렌더러가 HTML 이스케이프해서 끼운다(NotificationTemplateRenderer). 본문 줄바꿈은 시안의 white-space:pre-line 이 살린다.
 --   * 제목은 「[StudyClub] 무엇」 규칙 (docs/mail-templates/README.md §제목 규칙). studyTitle 은 서버가 25자로 잘라 넣어 제목이 40자를 넘지 않는다.
 --   * stage 는 Flyway 가 꺼져 있어 이 파일이 돌지 않는다. 같은 내용을 손으로 한 번 넣는다(PR 본문의 stage SQL).
+--   * NOTIFICATION.SENDER_ACCOUNT_ID: 이 알림을 보낸 사람의 ACCOUNT.ID 참조(공지 메일만, 나머지 NULL). 보낸 사람이 탈퇴하면 이 값으로
+--     그가 보낸 메일 행을 찾아 보낸 사람 이름을 비식별화한다. 공지(STUDY_NOTICE)는 스터디 삭제로 사라질 수 있어 REFERENCE_ID 로는 되짚지 못한다.
 ALTER TABLE NOTIFICATION
     ADD COLUMN REFERENCE_ID BIGINT NULL AFTER TEMPLATE_ID,
-    ADD INDEX idx_notification_event_reference (EVENT_TYPE, REFERENCE_ID);
+    ADD COLUMN SENDER_ACCOUNT_ID BIGINT NULL AFTER REFERENCE_ID,
+    ADD INDEX idx_notification_event_reference (EVENT_TYPE, REFERENCE_ID),
+    ADD INDEX idx_notification_sender (SENDER_ACCOUNT_ID);
 
 INSERT INTO NOTIFICATION_TEMPLATE (EVENT_TYPE, CHANNEL, SUBJECT, BODY, UPDATED_BY_ADMIN_ID, CREATED_AT, UPDATED_AT)
 VALUES (

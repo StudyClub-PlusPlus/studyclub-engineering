@@ -157,7 +157,7 @@ export function discordResultLabel(discord: ApiNoticeItem['discord']): string | 
   if (!discord.requested) return null;
   switch (discord.status) {
     case 'SENT':
-      return `디스코드 · 완료 (멘션 ${discord.mentionedCount}명)`;
+      return `디스코드 · 완료 (멘션 ${discord.mentionedCount}명 요청)`;
     case 'SKIPPED':
       return `디스코드 · 건너뜀 (${discord.skipReason ? SKIP_LABEL[discord.skipReason] : '사유 없음'})`;
     case 'FAILED':

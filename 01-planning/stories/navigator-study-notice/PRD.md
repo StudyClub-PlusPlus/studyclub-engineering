@@ -208,7 +208,7 @@ flowchart LR
 
 - **범위 밖** — 예약 발송 · 공지 수정·삭제·회수 · 반 멤버가 읽는 공지 목록 · 첨부파일 · 멤버별 수신 확인(읽음) · 스터디 전체(여러 반) 한 번에 보내기 · 디스코드 DM
 - **디스코드는 DM이 아니라 스터디 채널 글 + 멘션이다.** 봇에 DM 기능이 없고, 스팸·DM 차단 처리가 따로 필요해서 정했다. 채널은 스터디 단위라 반 구분은 멘션이 한다
-- **디스코드는 stage 에서 직접 보내 보며 디스코드 스쿼드와 맞춘다** — 보낼 채널 · 호출 주체(보내는 사람 본인 vs 시스템 호출 허용) · 40명 초과 분할은 [스펙 미확정](../../../specs/study-notice/spec.md#미확정)
+- **디스코드는 stage 에서 직접 보내 보며 디스코드 스쿼드와 맞춘다** — 보낼 채널 · 40명 초과 분할은 [스펙 미확정](../../../specs/study-notice/spec.md#미확정). 호출 주체는 정했다: 연동한 사람은 본인 ID, 연동하지 않은 사람은 시스템 ID(본문에 보낸 사람 이름)
 - **미구현** — 서버 연동. 프로토는 서버 판정(한도·디스코드 가능 여부·메일 결과)을 흉내 낸다
 
 ---
@@ -227,7 +227,7 @@ flowchart LR
 | BE | `GET /api/studies/{studyId}/groups/{groupId}/notices/compose` | 구현완료 | 없음 |
 | BE | `POST /api/studies/{studyId}/groups/{groupId}/notices` | 구현완료 | 없음 |
 | BE | `GET /api/studies/{studyId}/groups/{groupId}/notices` | 구현완료 | 없음 |
-| BE | `STUDY_NOTICE` · `STUDY_NOTICE_RECIPIENT` 테이블 · `NOTIFICATION.REFERENCE_ID` | 구현완료 — `V40`·`V41`(템플릿 시드 포함). 빈 MySQL 에 적용하고 `validate` 로 부팅까지 확인 | stage 는 Flyway 가 꺼져 있어 `V41` 의 템플릿 INSERT 를 손으로 한 번 넣는다 |
+| BE | `STUDY_NOTICE` · `STUDY_NOTICE_RECIPIENT` 테이블 · `NOTIFICATION.REFERENCE_ID` | 구현완료 — `V41`·`V42`(템플릿 시드 포함, `NOTIFICATION.SENDER_ACCOUNT_ID` 추가). 빈 MySQL 에 적용하고 `validate` 로 부팅까지 확인 | stage 는 Flyway 가 꺼져 있어 `V42` 의 템플릿 INSERT 를 손으로 한 번 넣는다 |
 | 외부 | 디스코드 봇 `POST /api/v1/channels/{id}/msg` | 있음 — 백엔드 클라이언트 메서드도 있으나 부르는 곳이 없다 | 호출 주체 확정 (stage 에서 확인) |
 | 기획 | 디스코드 스쿼드와 조율 | 미착수 | stage 에서 보내 보며 맞추고 `docs/share/` 에 한 건 |
 
@@ -259,7 +259,7 @@ flowchart LR
 | 오늘 30회 초과 | 429 같음. 내일(KST 0시) 다시 |
 | 받는 사람이 이 반의 참여 중·쉬는 중이 아님 | 400. **일부만 보내지 않고** 전체를 거절한다 |
 | 메일 행 만들기 실패 | 공지 저장까지 모두 롤백한다 — 「공지는 있는데 메일 행이 없는」 상태를 만들지 않는다 |
-| 디스코드를 못 씀 (봇 미연결 · 채널 없음 · 보내는 사람 미연동) | 건너뛰고 기록에 `SKIPPED` + 사유. 메일은 그대로 나간다 |
+| 디스코드를 못 씀 (봇 미연결 · 채널 없음 · 보내는 사람 미연동이면서 봇 ID 도 없음) | 건너뛰고 기록에 `SKIPPED` + 사유. 메일은 그대로 나간다 |
 | 디스코드 봇이 거절·응답 없음 | 기록에 `FAILED`. 자동 재시도 없음 — 봇이 중복을 막지 않는다 |
 | 받는 사람이 디스코드 미연동 | 그 사람만 멘션에서 빠진다. 메일은 간다 |
 | 끝난 스터디 | compose 가 `canSend=false` · `STUDY_ENDED` 를 준다. 화면은 「끝난 스터디라 새 공지를 보낼 수 없습니다.」를 보여 주고 보내기를 끈다. 보내기를 그래도 부르면 409 `STUDY_ENDED`. 기록은 본다 |
@@ -289,7 +289,7 @@ flowchart LR
 
 - 공지 발송은 새 기능이라 어긋나는 것은 없다
 - `ErrorCode.STUDY_NOTICE_RATE_LIMITED(429)` 를 새로 두었다
-- 봇의 메시지 보내기가 시스템 호출을 받지 않고, 네비게이터 길드 역할(DSC-08)이 자동으로 주어지지 않아 **지금은 디스코드가 403 으로 건너뛰어질 수 있다**
+- 봇은 #343 이후 호출자 검사를 하지 않아 길드 네비게이터 역할(DSC-08)이 없어도 보낼 수 있다. 다만 stage 의 봇이 그 버전인지, `DISCORD_BOT_ID` 가 설정돼 있는지 확인해야 한다
 
 ## 4. 미확정
 

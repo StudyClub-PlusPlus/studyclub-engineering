@@ -371,8 +371,9 @@ LOCKED 아님)로 잠그고 읽는다 — 폴링 스케줄러가 같은 순간 P
 
 ### 스터디 공지를 보낸 사람이 탈퇴하는 경우
 
-반 공지를 보낸 사람이 탈퇴하면, 그가 보낸 공지([study-notice](../study-notice/spec.md))의 메일 행(`NOTIFICATION`, `EVENT_TYPE=STUDY_NOTICE`, `REFERENCE_ID`=그 공지의 ID)에서
-`PAYLOAD.senderName` 을 「탈퇴한 회원」으로 치환한다. 받은 사람의 발송 이력에 탈퇴한 사람의 닉네임이 남지 않게 하려는 것이다. 위 수신자 비식별화와 같은 이유로 대상 행을
+반 공지를 보낸 사람이 탈퇴하면, 그가 보낸 공지([study-notice](../study-notice/spec.md))의 메일 행(`NOTIFICATION`, `EVENT_TYPE=STUDY_NOTICE`, `SENDER_ACCOUNT_ID`=탈퇴하는 계정)에서
+`PAYLOAD.senderName` 을 「탈퇴한 회원」으로 치환한다. 보낸 사람 ID 는 메일 행에 직접 있어서, 공지가 스터디 삭제로 사라진 뒤에도 찾는다. 보낸 사람 ID 를 싣기 전에 만든 옛 행(`SENDER_ACCOUNT_ID` NULL)은
+공지(`REFERENCE_ID`)를 거쳐 찾는다. 받은 사람의 발송 이력에 탈퇴한 사람의 닉네임이 남지 않게 하려는 것이다. 위 수신자 비식별화와 같은 이유로 대상 행을
 `SELECT ... FOR UPDATE` 로 잠그고 읽고, 같은 트랜잭션에서 처리한다. **제목·본문은 보낸 사람이 직접 쓴 공지 내용이라 그대로 둔다.** 이미 받은 메일 수신함의 이름은 되돌릴 수 없다.
 `STUDY_NOTICE.SENDER_ACCOUNT_ID` 는 ID 참조뿐이라 계정이 지워지면 사람을 되짚을 수 없고, 공지 기록 목록은 보낸 사람을 「탈퇴한 회원」으로 보여 준다.
 

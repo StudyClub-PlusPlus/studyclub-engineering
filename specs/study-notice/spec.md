@@ -91,7 +91,7 @@ sequenceDiagram
 | recipients[].participantStatus | String | N | `ACTIVE` · `PAUSED`. 이 둘만 후보다 | STUDY_PARTICIPANT.STATUS |
 | recipients[].discordLinked | Boolean | N | 디스코드를 연동했는가. 아니면 멘션에서 빠진다 | 계산: `ACCOUNT.DISCORD_ID IS NOT NULL` |
 | discord.available | Boolean | N | 디스코드로 보낼 수 있는가 | 계산: 봇 설정 · `STUDY_DISCORD_LINK` 존재 · 보내는 사람의 `DISCORD_ID` 존재 |
-| discord.unavailableReason | String | Y | `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED`. 가능하면 null | 위 계산 |
+| discord.unavailableReason | String | Y | `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED`(보내는 사람이 연동하지 않았고 봇 ID `DISCORD_BOT_ID` 도 없어 대신 보낼 수도 없을 때). 가능하면 null | 위 계산 |
 | canSend | Boolean | N | 지금 보낼 수 있는가. 끝난 스터디도 `false` 다 — 보내기가 409 로 거절하는 것과 같은 판정이다 | 계산: `StudyNotice.sendBlock(...)` 이 없음 |
 | blockedReason | String | Y | `STUDY_ENDED`(끝난 스터디) · `COOLDOWN` · `DAILY_LIMIT`. 이 순서로 판정한다. 보낼 수 있으면 null | 계산: `StudyNotice.sendBlock(...)` |
 | nextAvailableAt | String(ISO-8601) | Y | `COOLDOWN` 일 때 다시 보낼 수 있는 시각 | 계산: 직전 발송 + 1분 |
@@ -225,7 +225,7 @@ sequenceDiagram
 | items[].discord.requested | Boolean | N | 디스코드를 골랐는가 | STUDY_NOTICE.SEND_DISCORD |
 | items[].discord.status | String | N | `NOT_REQUESTED` · `PENDING` · `SENT` · `SKIPPED` · `FAILED`. **보낸 지 10분이 넘은 `PENDING` 은 `FAILED` 로 내려준다** (서버 재시작 · 비동기 큐 넘침으로 작업이 사라진 경우). DB 값은 그대로 두며, 작업이 뒤늦게 끝나면 `SENT` 로 기록되어 저절로 바로잡힌다 | 계산: `StudyNotice.effectiveDiscordStatus(...)` |
 | items[].discord.skipReason | String | Y | `SKIPPED` 일 때만. `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED` · `NO_TEXT_CHANNEL` | STUDY_NOTICE.DISCORD_SKIP_REASON |
-| items[].discord.mentionedCount | Integer | N | 멘션된 사람 수 (연동한 사람) | 계산: `DISCORD_MENTIONED = true` 인 수 |
+| items[].discord.mentionedCount | Integer | N | 멘션을 요청한 사람 수 (연동한 사람). 봇은 길드를 떠난 사람을 멘션에서 빼고도 204 를 주고 누구를 뺐는지 알려 주지 않으므로, 실제 알림을 받은 수보다 많을 수 있다 | 계산: `DISCORD_MENTIONED = true` 인 수 |
 
 메일을 센 값은 **목록 한 번에 `GROUP BY` 로 센다** (공지마다 쿼리하지 않는다 — N+1).
 
@@ -246,9 +246,10 @@ sequenceDiagram
 | 1 | `getStudyChannels(requesterId, discordStudyId)` | `STUDY_DISCORD_LINK.DISCORD_STUDY_ID`. 종류가 `TEXT` 인 채널(로비)을 고른다 |
 | 2 | `sendMessage(requesterId, channelId, discordStudyId, msg, mentionUserIds)` | 첫 글에 제목·본문과 멘션을 함께 올린다. 봇은 발신 줄 + 멘션 줄 + 본문을 합쳐 2,000자를 넘으면 거절하므로 **본문이 길면 첫 글의 멘션 수를 줄인다** (본문이 가장 길 때 16명). 남은 사람은 「이어서 알림」 글로 40명씩 멘션한다 |
 
-- `msg` 는 `📢 [{반 이름}] {제목}` + 빈 줄 + 본문. `@everyone`·`@here` 는 봇이 지운다
+- `msg` 는 디스코드 마크다운으로 짠다: `## 📢 {제목}` (헤더) + `-# {반 이름}` (작은 글자) + `>>> {본문}` (인용 블록). 제목·반 이름·이름은 한 줄이어야 서식이 깨지므로 줄바꿈과 연속 공백을 한 칸으로 줄인다. `@everyone`·`@here` 는 봇이 지운다. 봇은 이 위에 `발신:` 줄과 멘션 줄을 붙인다(글쓴이는 늘 봇이다). 보내는 사람이 디스코드를 연동하지 않아 시스템 ID 로 보낼 때는 작은 글자 줄이 `-# {반 이름} · 보낸 사람 {닉네임}` 이 된다(멘션이 아니라 글자). 이어서 올리는 글은 `## 📢 {제목} (이어서 알림)` 과 같은 작은 글자 줄만 둔다
 - 멘션 대상은 받는 사람 중 `ACCOUNT.DISCORD_ID` 가 있는 사람만이다
-- `requesterId` 는 **보내는 사람의 `DISCORD_ID`** 다. 한 곳(`resolveRequester`)에서 정한다 — 봇 정책이 바뀌면 이 한 곳만 고친다
+- `requesterId` 는 한 곳(`StudyNoticeDiscordGate.requesterId`)에서 정한다. 봇은 #343 이후 이 값으로 길드 멤버·역할을 검사하지 않고 메시지 맨 위 `발신:` 줄만 만든다. 그래서 **연동한 사람은 본인 `DISCORD_ID`**(발신 줄에 본인이 보인다), **연동하지 않은 사람은 시스템 ID(`DISCORD_BOT_ID`)** 로 부른다. 발신 줄은 봇 이름이 되므로 보낸 사람 이름은 본문에 적는다. 권한은 봇이 아니라 백엔드(`assertCanEditGroup`)가 유일하게 지킨다
+- 건너뛰는 경우는 봇 미설정 · 스터디 디스코드 채널 없음 · (연동하지 않았고 `DISCORD_BOT_ID` 도 없음) · 로비 텍스트 채널 없음이다
 - 첫 글을 봇이 거절하면(`BusinessException`) `FAILED` 로 두고 WARN 로그를 남긴다. 첫 글은 올라갔는데 이어서 올리는 글이 실패하면 공지는 전달됐으니 `SENT` 로 두고, 멘션된 사람만 기록한다. 사용자 응답에는 영향이 없다
 - 재시도는 하지 않는다. 봇은 중복을 막지 않으므로 자동 재시도가 같은 글을 두 번 올릴 수 있다
 
@@ -271,6 +272,7 @@ sequenceDiagram
 
 ## 미확정
 
-- [NEEDS CLARIFICATION] **디스코드 호출 주체.** 봇의 메시지 보내기는 지금 캡틴·네비게이터 호출만 받고 시스템 호출을 받지 않는다. 보내는 사람의 길드 네비게이터 역할이 아직 자동으로 주어지지 않아(DSC-08) 403 으로 건너뛰어질 수 있다. stage 에서 직접 보내 보며 디스코드 스쿼드와 맞춘다 — 보낼 채널, 호출 주체(본인 vs 시스템 허용), 40명 초과 분할
+- ~~디스코드 호출 주체~~ → 해소. 봇이 #343 으로 호출자 검사를 없앴다. 연동한 사람은 본인 ID, 연동하지 않은 사람은 시스템 ID 로 보낸다 ([근거](#디스코드-발송)). 남은 확인은 stage 에 `DISCORD_BOT_ID` 가 설정돼 있는지와 배포된 봇이 #343 을 반영했는지다
+- [NEEDS CLARIFICATION] stage 에서 직접 보내 보며 디스코드 스쿼드와 맞춘다 — 보낼 채널, 40명 초과 분할
 - [NEEDS CLARIFICATION] 로비 채널 판별. 지금은 종류가 `TEXT` 인 채널 하나라는 가정이다 (채널 ID 는 저장하지 않는다 — [STUDY_DISCORD_LINK](../../docs/erd/STUDY_DISCORD_LINK.md))
 - [OPEN] 메일 SES 카테고리. 지금은 `NOTIFY` 를 쓴다. 공지·뉴스레터 성격이라 `news` 가 맞지만 환경 설정이 새로 필요해 이번 범위에서 뺀다

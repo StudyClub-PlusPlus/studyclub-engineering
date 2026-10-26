@@ -203,7 +203,7 @@ describe('기록의 채널별 결과', () => {
   });
 
   it('디스코드는 완료·건너뜀·실패·대기를 가른다. 건너뜀에는 사유가 붙는다', () => {
-    expect(discordResultLabel(item().discord)).toBe('디스코드 · 완료 (멘션 2명)');
+    expect(discordResultLabel(item().discord)).toBe('디스코드 · 완료 (멘션 2명 요청)');
     expect(
       discordResultLabel({ requested: true, status: 'SKIPPED', skipReason: 'SENDER_NOT_LINKED', mentionedCount: 0 }),
     ).toBe('디스코드 · 건너뜀 (보낸 사람 디스코드 미연동)');

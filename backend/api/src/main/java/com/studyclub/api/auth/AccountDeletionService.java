@@ -28,7 +28,9 @@ import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -195,14 +197,19 @@ public class AccountDeletionService {
         return EMPTY_FORM_ANSWER;
     }
 
+    // 보낸 사람 ID 는 메일 행에 직접 있어서, 공지가 스터디 삭제로 사라졌어도 찾는다. 보낸 사람 ID 를 싣기 전에 만든 옛 행은 공지를 거쳐 찾는다
     private void redactSentNoticeMails(Long accountId) {
+        Set<Notification> sentMails =
+                new LinkedHashSet<>(
+                        notificationRepository.findBySenderAccountIdForUpdate(
+                                NotificationEventType.STUDY_NOTICE, accountId));
         List<Long> noticeIds = studyNoticeRepository.findIdsBySenderAccountId(accountId);
-        if (noticeIds.isEmpty()) {
-            return;
+        if (!noticeIds.isEmpty()) {
+            sentMails.addAll(
+                    notificationRepository.findByReferenceIdsForUpdate(
+                            NotificationEventType.STUDY_NOTICE, noticeIds));
         }
-        for (Notification notification :
-                notificationRepository.findByReferenceIdsForUpdate(
-                        NotificationEventType.STUDY_NOTICE, noticeIds)) {
+        for (Notification notification : sentMails) {
             notification.redactSenderName(WITHDRAWN_SENDER_NAME);
         }
     }

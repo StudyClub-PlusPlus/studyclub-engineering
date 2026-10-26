@@ -155,7 +155,8 @@ public class NotificationCreationService {
                             accountId,
                             template.getId(),
                             payload,
-                            noticeId));
+                            noticeId,
+                            notice.getSenderAccountId()));
         }
         notificationRepository.saveAll(rows);
         return rows.size();
