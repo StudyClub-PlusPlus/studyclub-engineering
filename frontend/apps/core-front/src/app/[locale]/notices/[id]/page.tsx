@@ -1,131 +1,134 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArrowLeft, ArrowRight, CalendarDays, Pin, Tag } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { Pill } from '@/components/StatusBadge';
-import type { Locale } from '@/lib/content';
+import { NoticeDate } from '@/components/NoticeDate';
+import type { ApiSiteNoticeSummary } from '@/lib/api';
+import { autolink } from '@/lib/autolink';
+import { getNotice, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
-import { DETAIL_ASIDE, DETAIL_GRID, PAGE, READ } from '@/lib/layout';
-import { NOTICES, getNotice } from '@/lib/notices';
+import { PAGE, READ } from '@/lib/layout';
 import { pageMetadata } from '@/lib/seo';
 
-export function generateStaticParams() {
-  return NOTICES.map((n) => ({ id: n.id }));
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ locale: Locale; id: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale; id: string }>;
+}): Promise<Metadata> {
   const { locale, id } = await params;
-  const n = getNotice(id);
+  const n = await getNotice(id);
   if (!n) return {};
-  return pageMetadata({ locale, path: `/notices/${id}`, title: t(n.title, locale), description: t(n.summary, locale) });
+  return pageMetadata({
+    locale,
+    path: `/notices/${id}`,
+    title: n.title,
+    description: n.body.replace(/\s+/g, ' ').trim().slice(0, 155),
+  });
 }
 
-/** 공지 상세 — 브이크래프트 소식 상세처럼 배너 없는 제목형 머리 + 소제목 위계가 분명한 본문 */
+/** 공지 상세 — 제목 · 게시일 · 본문, 아래에 이전·다음 공지와 목록으로. 본문은 평문이고 주소만 링크로 바꾼다. */
 export default async function NoticeDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
-  const n = getNotice(id);
+  const n = await getNotice(id);
   if (!n) notFound();
+  const base = `/${locale}/notices`;
 
   return (
     <div className={`${PAGE} py-12`}>
-      <Link
-        href={`/${locale}/notices`}
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-(--color-fg-muted) hover:text-(--color-fg)'
-      >
-        <ArrowLeft size={15} /> {m('notices.title', locale)}
+      <Link href={base} className='text-sm font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'>
+        {m('notices.title', locale)}
       </Link>
 
-      <div className={`mt-4 ${DETAIL_GRID}`}>
-        {/* 본문 — 스터디·행사 상세와 같은 머리 카드. 글줄은 READ 폭 */}
-        <article className='card overflow-hidden p-0'>
-          <header
-            className='flex flex-col gap-3 px-6 pb-7 pt-6 sm:px-10'
-            style={{ background: 'linear-gradient(135deg, var(--color-brand-subtle), color-mix(in oklab, var(--color-brand) 12%, white))' }}
-          >
-            <div className='flex items-center gap-2'>
-              {n.tag && <Pill>{m(`notice_tag.${n.tag}`, locale)}</Pill>}
-              {n.pinned && (
-                <span className='inline-flex items-center gap-1 text-xs font-semibold' style={{ color: 'var(--color-brand)' }}>
-                  <Pin size={13} /> {t({ ko: '고정', en: 'Pinned' }, locale)}
-                </span>
-              )}
-            </div>
-            <h1 className={`${READ} text-2xl font-bold leading-[1.3] tracking-tight sm:text-3xl`}>{t(n.title, locale)}</h1>
-            <p className={`${READ} text-base leading-relaxed text-(--color-fg-muted)`}>{t(n.summary, locale)}</p>
-          </header>
+      <article className='mt-3 border-t-2 border-(--color-fg)'>
+        <header className='border-b border-(--color-border) px-2 py-6'>
+          <h1 className='break-words text-xl font-bold leading-[1.4] tracking-tight'>{n.title}</h1>
+          <NoticeDate iso={n.publishedAt} className='mt-2 block text-sm tabular-nums text-(--color-fg-muted)' />
+        </header>
+        {/* 긴 공백·긴 주소가 들어와도 넘치지 않게 — pre-wrap + 단어 중간 줄바꿈 허용 */}
+        <div
+          className={`${READ} min-h-40 whitespace-pre-wrap break-words px-2 py-10 text-base leading-[1.85] text-(--color-fg) [overflow-wrap:anywhere]`}
+        >
+          {autolink(n.body)}
+        </div>
+      </article>
 
-          <div className={`${READ} flex flex-col gap-4 px-6 py-8 text-base leading-[1.85] text-(--color-fg) sm:px-10`}>
-            {n.blocks.map((b, i) => {
-              if ('h' in b)
-                return (
-                  <h2 key={i} className='mt-6 border-l-[3px] pl-3 text-lg font-bold tracking-tight' style={{ borderColor: 'var(--color-brand)' }}>
-                    {t(b.h, locale)}
-                  </h2>
-                );
-              if ('p' in b) return <p key={i}>{t(b.p, locale)}</p>;
-              if ('ul' in b)
-                return (
-                  <ul key={i} className='flex flex-col gap-1.5 rounded-xl bg-(--color-surface-subtle) px-5 py-4'>
-                    {b.ul.map((li, j) => (
-                      <li key={j} className='flex items-start gap-2'>
-                        <span className='mt-3 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-brand)' }} />
-                        {t(li, locale)}
-                      </li>
-                    ))}
-                  </ul>
-                );
-              return (
-                <Link
-                  key={i}
-                  href={`/${locale}${b.link.href}`}
-                  className='inline-flex w-fit items-center gap-1 text-base font-semibold text-(--color-brand) hover:underline'
-                >
-                  {t(b.link.label, locale)} <ArrowRight size={15} />
-                </Link>
-              );
-            })}
-          </div>
-        </article>
+      <nav
+        aria-label={t({ ko: '다른 공지', en: 'Other notices' }, locale)}
+        className='border-y border-(--color-border)'
+      >
+        <NeighborRow
+          label={t({ ko: '다음 공지', en: 'Next' }, locale)}
+          empty={t({ ko: '다음 공지가 없습니다', en: 'No next notice' }, locale)}
+          neighbor={n.newer}
+          base={base}
+          icon={<ChevronUp size={15} />}
+        />
+        <NeighborRow
+          label={t({ ko: '이전 공지', en: 'Previous' }, locale)}
+          empty={t({ ko: '이전 공지가 없습니다', en: 'No previous notice' }, locale)}
+          neighbor={n.older}
+          base={base}
+          icon={<ChevronDown size={15} />}
+        />
+      </nav>
 
-        {/* 오른쪽 — 게시 정보와 다음 행동 */}
-        <aside className={`card overflow-hidden p-0 ${DETAIL_ASIDE}`}>
-          <dl className='flex flex-col divide-y divide-(--color-border)'>
-            <div className='flex items-center gap-3 px-6 py-4'>
-              <CalendarDays size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
-              <div>
-                <dt className='text-xs text-(--color-fg-muted)'>{t({ ko: '게시일', en: 'Posted' }, locale)}</dt>
-                <dd className='font-semibold tabular-nums'>{n.date}</dd>
-              </div>
-            </div>
-            {n.tag && (
-              <div className='flex items-center gap-3 px-6 py-4'>
-                <Tag size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
-                <div>
-                  <dt className='text-xs text-(--color-fg-muted)'>{t({ ko: '분류', en: 'Type' }, locale)}</dt>
-                  <dd className='font-semibold'>{m(`notice_tag.${n.tag}`, locale)}</dd>
-                </div>
-              </div>
-            )}
-          </dl>
-          <div className='flex flex-col gap-2 border-t border-(--color-border) bg-(--color-surface-subtle) p-5'>
-            <Link
-              href={`/${locale}/studies`}
-              className='inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-white'
-              style={{ background: 'var(--color-brand)' }}
-            >
-              {t({ ko: '모집 중인 스터디 보기', en: 'See open studies' }, locale)} <ArrowRight size={15} />
-            </Link>
-            <Link
-              href={`/${locale}/notices`}
-              className='inline-flex items-center justify-center rounded-full border border-(--color-border) bg-(--color-bg) px-5 py-2.5 text-sm font-semibold'
-            >
-              {t({ ko: '다른 공지 보기', en: 'All notices' }, locale)}
-            </Link>
-          </div>
-        </aside>
+      <div className='mt-8 flex justify-end'>
+        <Link
+          href={base}
+          className='inline-flex items-center rounded-full border border-(--color-border) bg-(--color-bg) px-6 py-2.5 text-sm font-semibold hover:bg-(--color-surface-subtle)'
+        >
+          {t({ ko: '목록으로', en: 'Back to list' }, locale)}
+        </Link>
       </div>
     </div>
+  );
+}
+
+/** 이전·다음 한 줄 — 이동할 공지의 제목과 게시일. 없으면 흐린 안내만 */
+function NeighborRow({
+  label,
+  empty,
+  neighbor,
+  base,
+  icon,
+}: {
+  label: string;
+  empty: string;
+  /** 이동할 공지. 목록의 끝이면 null */
+  neighbor: ApiSiteNoticeSummary | null;
+  base: string;
+  icon: React.ReactNode;
+}) {
+  const head = (
+    <span className='inline-flex w-24 shrink-0 items-center gap-1 text-sm font-semibold text-(--color-fg-muted)'>
+      {icon}
+      {label}
+    </span>
+  );
+  if (!neighbor) {
+    return (
+      <div
+        aria-disabled='true'
+        className='flex items-center gap-4 px-2 py-4 opacity-50 [&+*]:border-t [&+*]:border-(--color-border)'
+      >
+        {head}
+        <span className='text-sm text-(--color-fg-muted)'>{empty}</span>
+      </div>
+    );
+  }
+  return (
+    <Link
+      href={`${base}/${neighbor.noticeId}`}
+      className='flex items-center gap-4 px-2 py-4 transition-colors hover:bg-(--color-surface-subtle) [&+*]:border-t [&+*]:border-(--color-border)'
+    >
+      {head}
+      <span className='min-w-0 flex-1 truncate text-sm font-semibold'>{neighbor.title}</span>
+      <NoticeDate
+        iso={neighbor.publishedAt}
+        className='hidden shrink-0 text-sm tabular-nums text-(--color-fg-muted) sm:block'
+      />
+    </Link>
   );
 }
