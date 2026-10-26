@@ -1,0 +1,28 @@
+name: discord-PR-CI
+
+# discord 의 push CI 는 develop/main 에서만 돈다. beta 로 가는 PR 에서 테스트 회귀를 잡으려고 PR 단계에서 돌린다.
+on:
+  pull_request:
+    paths:
+      - 'discord/**'
+      - '.github/workflows/discord-pr.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            discord/requirements.txt
+            discord/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+        working-directory: discord
+      - run: pytest
+        working-directory: discord
