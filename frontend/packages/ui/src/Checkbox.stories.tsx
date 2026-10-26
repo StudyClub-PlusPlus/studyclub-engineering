@@ -1,4 +1,4 @@
-import type { StoryObj } from '@storybook/react';
+import type { StoryObj } from '@storybook/react-vite';
 import { Checkbox } from './Checkbox';
 
 const meta = {
@@ -19,6 +19,10 @@ export const Default: Story = {
 
 export const Checked: Story = {
   render: () => <Checkbox label='동의합니다' defaultChecked />,
+};
+
+export const Indeterminate: Story = {
+  render: () => <Checkbox label='전체 선택' indeterminate />,
 };
 
 export const Disabled: Story = {

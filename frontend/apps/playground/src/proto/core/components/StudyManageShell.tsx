@@ -111,7 +111,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const captain = role === 'captain';
   const tabs = [
     { href: base, label: '일정' },
-    { href: `${base}/attendance`, label: '출석부' },
+    { href: `${base}/attendance`, label: '출석' },
   ];
 
   return (

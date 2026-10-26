@@ -13,12 +13,14 @@ import discord
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.api.guild import caller_guild
+from app.api.guild import resolve_guild
 from app.api.headers import discord_user_id, idempotency_key, require_api_key
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["studies"], dependencies=[Depends(require_api_key)])
+router = APIRouter(
+    tags=["studies"], dependencies=[Depends(require_api_key), Depends(discord_user_id)]
+)
 
 TEXT_CHANNEL_PREFIX = "로비-"
 VOICE_CHANNEL_PREFIX = "공부방-"
@@ -42,7 +44,6 @@ class CreateStudyRequest(BaseModel):
 async def create_study(
     request: Request,
     body: CreateStudyRequest,
-    user_id: int = Depends(discord_user_id),
     key: str = Depends(idempotency_key),
 ) -> dict:
     """Create the study, or undo whatever part of it was made and fail.
@@ -50,7 +51,7 @@ async def create_study(
     Everything that can be checked is checked before the name is reserved, and
     the name is reserved before anything is sent to Discord.
     """
-    guild = await caller_guild(request, user_id, allow_navigator=False, allow_system=False)
+    guild = resolve_guild(request)
 
     # guild.categories is sorted by position, so a duplicated name resolves to the topmost.
     anchor_name = request.app.state.new_study_anchor_name
@@ -129,10 +130,9 @@ async def create_study(
 async def get_study_channels(
     request: Request,
     discordStudyId: str = Path(pattern=r"^[0-9]{17,20}$"),
-    user_id: int = Depends(discord_user_id),
 ) -> list[dict]:
     """List the text and voice channels the bot can see under the study's category."""
-    guild = await caller_guild(request, user_id, allow_navigator=True, allow_system=True)
+    guild = resolve_guild(request)
 
     channel = guild.get_channel(int(discordStudyId))
     if channel is None or not channel.permissions_for(guild.me).view_channel:

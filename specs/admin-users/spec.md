@@ -65,7 +65,7 @@
 | PRD — 이메일이 담긴 목록은 운영 콘솔 API 로만 | 목록은 마스킹, 「보기」(`POST …/email-reveals`)로 한 명씩 원본, 볼 때마다 감사 로그 | PR #163 리뷰 — 운영진 결정. 기획 문서에는 아직 없다 |
 | PRD 미확정 — 권한 변경 이력을 남길지 | 감사 로그 `ADMIN_AUDIT_LOG` 에 `ROLE_CHANGE` 로 남긴다 | PR #163 리뷰 결정 |
 | — | 권한 변경 성공 뒤 디스코드 설정 안내, 역할별 권한표 `GET /api/admin/role-permissions` | PR #163 리뷰 · 리드 회의 결정, Notion 「역할별 기본 권한」 표 |
-| Notion — `role: captain \| crew` | 응답 `systemRole: ADMIN \| MEMBER` | DB enum 그대로 (`/auth/me` 의 `role` 과 같은 값). 필터 `role` 의 값과는 다르다 — 아래 [Query Parameters](#query-parameters) |
+| Notion — `role: captain \| crew` | 응답 `systemRole: ADMIN \| MEMBER` | DB enum 그대로 (`GET /api/me` 의 `role` 과 같은 값). 필터 `role` 의 값과는 다르다 — 아래 [Query Parameters](#query-parameters) |
 | Notion — `navigatorOf: string[]` (스터디 id) | `navigatorOf: [{ studyId, title }]` | 화면이 **이름**을 적는다. id 만 주면 프론트가 스터디를 또 조회해야 한다 |
 | Notion — `enrollment.navigator` 신규 필드 | 기존 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` | 이미 있는 컬럼이다 |
 | Notion — `name` (null 이면 이메일 로컬파트) | `name` = `ACCOUNT.NICKNAME`, 온보딩 전이면 null. 화면은 **마스킹된** 로컬파트를 적는다 | 온보딩 전 닉네임은 `account_<랜덤>` 임시값이라 사람 이름이 아니다. 원본 로컬파트를 쓰면 마스킹이 무너진다 |
@@ -197,7 +197,8 @@
 |---|---|---|
 | `CANNOT_CHANGE_OWN_ROLE` | 이 행이 요청자 본인 | 자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요. |
 | `LAST_ADMIN_REQUIRED` | 이 행이 `ADMIN` 이고 `ADMIN` 이 1명뿐 | 마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요. |
-| `null` | 위 둘 다 아님 | — |
+| `DISCORD_LINK_REQUIRED` | 이 행이 `MEMBER` 이고 디스코드 미연동(`ACCOUNT.DISCORD_ID` 없음) — 캡틴은 연동이 필수다 (10-24 회의, STD-05) | 디스코드를 연동한 회원만 캡틴이 될 수 있습니다. |
+| `null` | 위 셋 다 아님 | — |
 
 > 요청자는 언제나 `ADMIN` 이므로, `ADMIN` 이 1명이면 그 1명은 요청자 본인이라 `CANNOT_CHANGE_OWN_ROLE` 가 먼저 걸린다. 목록에서 `LAST_ADMIN_REQUIRED` 이 보이는 일은 사실상 없다. **마지막 캡틴을 실제로 지키는 것은 `PATCH` 의 잠금 판정**이다 — 캡틴 둘이 동시에 서로를 내리는 경우 ([아래](#처리-규칙)).
 
@@ -325,6 +326,7 @@
 3. 대상이 요청자 본인이면 `409 CANNOT_CHANGE_OWN_ROLE`. 값이 같아도 막는다.
 4. 대상의 현재 값과 요청 값이 같으면 **아무것도 바꾸지 않고 200**. 감사 기록도 남기지 않는다 (중복 클릭·재시도에 안전).
 5. `ADMIN → MEMBER` 이고 1 에서 센 `ADMIN` 수가 1 이하이면 `409 LAST_ADMIN_REQUIRED`.
+   - `MEMBER → ADMIN` 이고 대상이 디스코드 미연동이면 `409 DISCORD_LINK_REQUIRED`. 내림은 연동과 상관없다 — 이미 캡틴인 미연동자도 내릴 수 있다.
 6. `Account` 의 상태 변경 메서드로 바꾼다 (setter 금지 — 규칙 3·5 는 서비스가 판정하고, 엔티티는 값 전이만 책임진다).
 7. `ADMIN_AUDIT_LOG` 에 `(ACTOR_ACCOUNT_ID = 요청자, ACTION = ROLE_CHANGE, TARGET_ACCOUNT_ID = 대상, BEFORE_VALUE, AFTER_VALUE)` 한 행을 쓴다. 6 과 같은 트랜잭션이라 기록 없이 권한만 바뀌는 일은 없다.
 
@@ -381,6 +383,7 @@
 | 404 | NOT_FOUND | `accountId` 에 해당하는 계정 없음 (탈퇴 등) |
 | 409 | CANNOT_CHANGE_OWN_ROLE | **신규.** 대상이 요청자 본인 — 「자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요.」 |
 | 409 | LAST_ADMIN_REQUIRED | **신규.** 마지막 `ADMIN` 을 `MEMBER` 로 내리려 함 — 「마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요.」 |
+| 409 | DISCORD_LINK_REQUIRED | 디스코드 미연동 `MEMBER` 를 `ADMIN` 으로 올리려 함 — 「디스코드를 연동한 회원만 캡틴이 될 수 있습니다.」 (2026-10-26, STD-05) |
 
 - 두 신규 코드는 `ErrorCode` 에 `CONFLICT` 뒤로 추가한다 (`fromStatus(409)` 는 첫 409 인 `CONFLICT` 를 써야 한다).
 - 이름이 목록의 `roleChangeBlockedReason` 값과 같은 사유를 가리킨다 — 화면이 잠그는 이유와 서버가 거절하는 이유가 하나의 어휘다.

@@ -18,7 +18,11 @@ export type ApiAdminAccount = {
   navigatorOf: { studyId: number; title: string }[];
   dormant: boolean;
   joinedAt: string;
-  roleChangeBlockedReason: 'CANNOT_CHANGE_OWN_ROLE' | 'LAST_ADMIN_REQUIRED' | null;
+  roleChangeBlockedReason:
+    | 'CANNOT_CHANGE_OWN_ROLE'
+    | 'LAST_ADMIN_REQUIRED'
+    | 'DISCORD_LINK_REQUIRED'
+    | null;
 };
 
 export type ApiAdminAccountPage = {

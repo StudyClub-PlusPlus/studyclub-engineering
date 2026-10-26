@@ -2,6 +2,7 @@ package com.studyclub.api.study;
 
 import com.studyclub.domain.study.StudyCategory;
 import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyTimezone;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -23,6 +24,8 @@ import java.time.Instant;
  *
  * <p>썸네일은 주소가 아니라 {@code POST /api/uploads/images} 가 준 번호({@code thumbnailFileId})로 받는다
  * (docs/flows/image-upload.md). 비우면 썸네일 없음.
+ *
+ * <p>{@code timezone} 은 KST·PST·BOTH 중 하나이고 비우면 미정이다. 그 밖의 값은 역직렬화에서 400.
  */
 public record StudyCreateRequest(
         Long studyProgramId,
@@ -33,4 +36,5 @@ public record StudyCreateRequest(
         @NotNull StudyCategory category,
         Long thumbnailFileId,
         Instant recruitDeadline,
-        String schedule) {}
+        String schedule,
+        StudyTimezone timezone) {}

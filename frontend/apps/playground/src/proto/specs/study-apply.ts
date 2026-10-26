@@ -16,7 +16,7 @@ export const APPLY_SPEC: ScreenSpec = {
   scope: 'apply',
   notes: [
     '신청 결과는 화면 상태(localStorage)로만 남는다 — POST /api/studies/{id}/applications 가 아직 없다',
-    '제출하면 마이페이지 "승인 대기" 목록에 즉시 반영된다. 취소도 거기서 한다 — 이 다이얼로그 범위 밖',
+    '제출하면 곧 참여다 — 승인 대기가 없다 (POL-0004). 내 스터디룸에 바로 나온다',
     '이미 제출한 신청서는 수정할 수 없다. 같은 스터디의 신청하기는 「신청 완료」로 바뀌고 폼이 다시 열리지 않는다',
     '이름·이메일은 이 폼에 두지 않는다 — 로그인 계정에서 읽기만 한다',
     '디스코드 계정 연동은 폼을 열기 전에 확인한다. 서버 별명은 모든 신청 폼에 항상 포함되는 기본 질문이라 캡틴이 지우거나 타입을 바꿀 수 없다',
@@ -131,42 +131,7 @@ export const APPLY_SPEC: ScreenSpec = {
 };
 
 /** 스터디 신청 전 디스코드 연동. */
-export const DISCORD_GATE_SPEC: ScreenSpec = {
-  screen: '스터디 신청',
-  chip: '디스코드 연동',
-  scope: 'discord',
-  notes: [
-    '상세의 신청하기를 누르면 로그인 여부, 그다음 디스코드 연동 여부를 본다 — 이 팝업은 로그인한 뒤에만 뜬다',
-    '이미 연동돼 있으면 이 팝업을 건너뛰고 신청 폼이 열린다',
-    '프로토는 OAuth 대신 화면에서 바로 연결한다 — POST /api/me/discord/link 가 아직 없다',
-    '마이페이지에서 연결을 해제하면 이 게이트를 다시 볼 수 있다',
-  ],
-  entries: [
-    {
-      n: '1',
-      title: '연동 필수 안내',
-      display: [
-        '"스터디 신청 전 디스코드 연동은 필수입니다."',
-        '스터디가 디스코드에서 진행된다는 설명',
-      ],
-      policy: ['연동이 끝나기 전에는 신청 폼을 열지 않는다'],
-      when: '디스코드가 연동되지 않은 채로 신청하기를 눌렀을 때',
-    },
-    {
-      n: '2',
-      title: '디스코드 연동하기 버튼',
-      behavior: ['누르면 연동을 마친 뒤 신청 폼을 연다'],
-      data: ['setDiscord() — 프로토는 고정 핸들 jiwon_dev'],
-      when: '디스코드 연동 팝업이 열려 있을 때',
-    },
-    {
-      n: '3',
-      title: '취소 버튼',
-      behavior: ['누르면 연동하지 않고 팝업을 닫는다. 신청 폼은 열리지 않는다'],
-      when: '디스코드 연동 팝업이 열려 있을 때',
-    },
-  ],
-};
+export { SPEC as DISCORD_GATE_SPEC } from '@/app/(proto)/proto/core/[locale]/studies/discord/spec';
 
 /** 스터디 신청 완료 랜딩 팝업. */
 export const APPLY_COMPLETE_SPEC: ScreenSpec = {

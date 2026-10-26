@@ -2,7 +2,7 @@
 
 기준 프로토타입: 내 스터디 (playground 사용자 사이트 · 참여 모음)
 
-관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)
+관련 결정: [10-14 백오피스 신청자 탭 정리](../../../docs/share/2026-10-14-class-title-and-captain-applies.md) · [10-18 일정·출석 화면 피드백](../../../docs/share/2026-10-18-schedule-attendance-feedback.md)
 
 ## 1. 기본설명
 
@@ -269,14 +269,14 @@ erDiagram
 ### 비고
 
 - 범위 밖: 찜 목록 본문, 출석·지각 확정, 캡틴 출석명부, 참여 중단 사유 표기, 휴가 신청·취소
-- 스토리 `크루는 스터디별 출석 기록을 볼 수 있다` 는 스터디 일정의 출석부 탭으로 옮겼다 ([crew-view-attendance-record](../crew-view-attendance-record/PRD.md) · [회차 등록 PRD](../navigator-register-sessions/PRD.md) 13)
+- 스토리 `크루는 스터디별 출석 기록을 볼 수 있다` 는 스터디 일정의 출석 탭으로 옮겼다 ([crew-view-attendance-record](../crew-view-attendance-record/PRD.md) · [회차 등록 PRD](../navigator-register-sessions/PRD.md) 13)
 - 크루 화면에 `참여 중단`이라는 말은 쓰지 않음. 카드 상태 배지는 `종료`
 - 명칭: 참여 상태·타임존은 탭. 전회 출석은 점수판 `n/n` 으로 읽음. 검색용 태그는 이 목록에 없음
 - 회차의 영어 식별자는 `meeting` (`STUDY_MEETING`). 로그인 `SESSION`과 구분
 - 목록의 정본은 명부(`STUDY_PARTICIPANT`). 신청 제출 시 명부가 생긴다
 - 프로토는 기수·반을 두지 않고 스터디 한 장에 기간·채널·자료를 붙임. 서버는 기수·반으로 읽음
 - 프로토 `accepted` · `recruiting` / `ongoing` / `closed` 는 mock 값. ERD 값은 아래 표
-- 참여 상태 탭·페이지 번호는 주소에 안 남김. 옛 출석 기록 주소(`/my/joined/{id}/attendance`)는 스터디 일정의 출석부 탭으로 보낸다
+- 참여 상태 탭·페이지 번호는 주소에 안 남김. 옛 출석 기록 주소(`/my/joined/{id}/attendance`)는 스터디 일정의 출석 탭으로 보낸다
 
 <!-- spec:start screen -->
 
@@ -296,7 +296,7 @@ erDiagram
 >
 > 시드는 전체·참여 종료가 10개를 넘기도록 채운다. 페이징을 보려고
 >
-> 승인(accepted)된 신청만 모은다. 승인 대기는 마이페이지에 남긴다
+> 신청한 스터디를 모은다. 승인 대기는 없다 — 신청하면 곧 참여다 (POL-0004)
 >
 > 카드와 주간 칸은 모집공고 상세가 아니라 그 스터디의 스터디 일정으로 간다. 출석 기록 · 출석률 · 디스코드 · 자료실은 스터디 일정에 있다. 이 화면에 두지 않는다
 >
@@ -454,11 +454,12 @@ erDiagram
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/my/joined` | 있음 — 공개 스터디 목록(`GET /api/studies`)과 브라우저 mock 으로 그린다 (`TODO(api)`) | `GET /api/me/studies` 로 바꾸고 역할 · 참여 상태 · 다음 회차를 응답 값으로 그린다 |
-| BE | `GET /api/me/studies` | 구현완료 · `captain` 플래그 없음 | 명부 행에 `captain` 플래그 추가 |
+| FE | core-front `/my/joined` | 있음 (#226) — `GET /api/me/studies` 로 그린다 (`features/my-studies/queries.ts`). 역할(`captain` · `participantRole`) · 참여 상태 · 다음 회차는 응답 값 | 없음 |
+| BE | `GET /api/me/studies` | 구현완료 — 명부 행에 `captain` 플래그 (#326) | 없음 |
 | BE | 주간 일정용 회차 (아래 API 표의 `GET /api/me/studies/{id}/meetings`) | 스펙 없음 · 컨트롤러 없음 | `GET /api/me/studies` 응답으로 충분한지 먼저 정한다 → 모자라면 [my-studies 스펙](../../../specs/my-studies/spec.md)에 더한다 |
 
 ### 데이터
@@ -497,7 +498,7 @@ erDiagram
 
 | 메서드 | 경로 | 권한 |
 | --- | --- | --- |
-| GET | `/api/me/studies` | 로그인. 명부 참여 스터디만(담당 캡틴도 신청했을 때만). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그(추가 필요). [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴) |
+| GET | `/api/me/studies` | 로그인. 명부 참여 스터디만(담당 캡틴도 신청했을 때만). 스터디마다 내 역할을 함께 — 네비게이터는 `participantRole`, 캡틴은 `STUDY.CREATED_BY = 나` 로 판정한 `captain` 플래그. [내 스터디 스펙](../../../specs/my-studies/spec.md#담당-캡틴) |
 | GET | `/api/me/studies/{id}/meetings` | 해당 명부 |
 | GET | `/auth/me` | 거주 지역 등 |
 

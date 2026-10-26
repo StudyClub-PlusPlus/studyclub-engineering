@@ -271,8 +271,8 @@ erDiagram
 ### 비고
 
 - 범위 밖: 공개, 수정·삭제, 신청 폼, 반 편성, 커리큘럼·후기·통계 입력
-- 미구현: 썸네일 업로드 API 가 없다. 고른 파일은 화면 미리보기로만 남는다
-- 미구현: 시간대를 저장할 컬럼이 콘솔 폼에 아직 없다
+- 썸네일은 고르면 바로 올리고(`thumbnailFileId`) 저장 때 스터디에 붙인다
+- 시간대는 `STUDY.TIMEZONE`(V40) 에 저장한다. 비우면 미정
 
 ## 3. 시스템 요건
 
@@ -284,9 +284,9 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 「스터디 등록」 창 (`StudyCreateDialog`) | 있음 — `POST /api/admin/studies` 연결 | 시간대 · 썸네일 칸 (BE 가 생기면) |
+| FE | back-office-front 「스터디 등록」 창 (`StudyCreateDialog`) | 있음 — `POST /api/admin/studies` 연결 · 시간대 · 썸네일 칸 | 없음 |
 | BE | `POST /api/admin/studies` | 구현완료 | 없음 |
-| BE | 시간대 · 썸네일 저장 | 없음 — [study 스펙](../../../specs/study/spec.md)이 `timezone` 을 「백엔드 미반영」으로 적는다. 썸네일 업로드 API 없음 | 컬럼 · 업로드 계약을 스펙에 쓴다 → 구현 |
+| BE | 시간대 · 썸네일 저장 | 구현완료 — `STUDY.TIMEZONE`(V40) · `thumbnailFileId` ([study 스펙](../../../specs/study/spec.md)) | 없음 |
 
 ### 데이터
 

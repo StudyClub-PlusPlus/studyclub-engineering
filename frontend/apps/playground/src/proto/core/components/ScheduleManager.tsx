@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { SegmentTabs } from '@core/components/SegmentTabs';
 import {
@@ -35,7 +35,7 @@ import {
 import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import type { Study } from '@studyclub/mock';
-import { AutoTextarea, Button, Input, Modal, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
 
 /**
@@ -46,6 +46,7 @@ import { Plus, X } from 'lucide-react';
  * - 크루: 본다. 빈 발표자 칸에만 자기 이름을 넣고 뺄 수 있다(선착순) — 바로 저장된다.
  *
  * 킥오프는 0회차로 맨 위에 둔다. 지우지 않고, 발표자가 없고, 출석률에 넣지 않는다.
+ * 킥오프 일자는 캡틴이 백오피스에서 「킥오프 정하기」로 정한다(`source.setKickoff`). 표에서는 고치지 않는다.
  * 시작한 회차(흐린 줄)는 고치거나 지우지 않는다 — 출석이 찍혀 있다.
  *
  * 백오피스는 같은 표를 반마다 쓴다 — `source` 로 고른 반의 회차를 넘긴다. 없으면 사용자 사이트의 내 분반.
@@ -57,6 +58,7 @@ export function ScheduleManager({
   onDirtyChange,
   source,
   startAdding = false,
+  compact = false,
   onStartedAdding,
 }: {
   study: Study;
@@ -67,9 +69,12 @@ export function ScheduleManager({
   /** 열자마자 회차 추가 창을 띄운다 — 백오피스 출석 탭의 「회차 추가」가 이리로 보낸다. */
   startAdding?: boolean;
   onStartedAdding?: () => void;
+  /** 제목 · 발표자 열을 좁힌다 — 백오피스는 옆에 메뉴가 있어 본문이 좁다. 가로 스크롤 없이 들어가게. */
+  compact?: boolean;
 }) {
   const src = source ?? studySource(study, group.timeZone);
   const [adding, setAdding] = useState(canEdit && startAdding);
+  const [settingKickoff, setSettingKickoff] = useState(false);
   // 일괄 삭제 — 고른 예정 정규 회차. 확인 모달은 한 회차 삭제와 같은 창을 쓴다
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
@@ -92,6 +97,9 @@ export function ScheduleManager({
   const now = Date.now();
   const meetings = src.meetings();
   const regular = meetings.filter((m) => !isKickoff(m));
+  const kickoffRow = meetings.find(isKickoff);
+  // 킥오프는 캡틴만 정한다. 백오피스가 넘긴 반에만 있다
+  const canSetKickoff = canEdit && Boolean(src.setKickoff);
   const people = src.people;
   const nameOf = (id?: string) => people.find((p) => p.id === id)?.name;
   const started = (m: ProtoMeeting) => src.startOf(m).getTime() <= now;
@@ -250,9 +258,10 @@ export function ScheduleManager({
   return (
     <div className='flex flex-col gap-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <h2 data-anno='schedule:1' className='text-[15px] font-bold'>
-          회차
-          <span className='ml-2 text-[13px] font-medium text-fg-muted'>
+        {/* 출석 탭 제목 줄과 같은 모양 — 제목 옆은 개수만, 고른 수는 작업 바에 */}
+        <h2 data-anno='schedule:1' className='text-base font-bold'>
+          일정
+          <span className='tnum ml-2 text-sm font-medium text-fg-muted'>
             전체 {regular.length} · 예정 {upcomingCount}
           </span>
         </h2>
@@ -264,6 +273,13 @@ export function ScheduleManager({
             options={DISPLAY_ZONES.map((z) => ({ key: z.iana, label: z.label }))}
             onChange={setZone}
           />
+          {canSetKickoff && (
+            <span data-anno='schedule:10-1'>
+              <Button size='sm' variant='secondary' onClick={() => setSettingKickoff(true)}>
+                {kickoffRow ? '킥오프 수정' : '킥오프 정하기'}
+              </Button>
+            </span>
+          )}
           {canEdit && (
             // 고른 것과 상관없는 일이라 작업 바가 아니라 제목 줄에 둔다 — 신청자 탭 「반 추가」와 같은 자리
             <span data-anno='schedule:2'>
@@ -298,225 +314,256 @@ export function ScheduleManager({
         />
       )}
 
+      {settingKickoff && (
+        <KickoffForm
+          source={src}
+          group={group}
+          onCancel={() => setSettingKickoff(false)}
+          onSaved={(label) => {
+            setSettingKickoff(false);
+            setAnnounce(`킥오프를 정했습니다. ${label}`);
+            refresh();
+          }}
+        />
+      )}
+
       {meetings.length === 0 ? (
         <p className='card px-6 py-10 text-center text-sm text-fg-muted'>
           {canEdit ? '아직 회차가 없습니다. 아래 「회차 추가」로 만드세요.' : '아직 회차가 없습니다.'}
         </p>
       ) : (
-        <div data-anno='schedule:3' className='card overflow-x-auto'>
-          <table className='w-full min-w-[66rem] border-separate border-spacing-0 text-sm'>
-            <thead>
-              <tr className='text-left text-xs font-semibold text-fg-muted'>
-                {canEdit && (
-                  <th data-anno='schedule:3-6' className='w-10 py-3 pl-4'>
-                    <input
-                      type='checkbox'
-                      aria-label='지울 수 있는 회차 전체 선택'
-                      className={CHECKBOX}
-                      checked={allChecked}
-                      disabled={deletable.length === 0}
-                      ref={(el) => {
-                        if (el) el.indeterminate = picked.length > 0 && !allChecked;
-                      }}
-                      onChange={() => setChecked(allChecked ? new Set() : new Set(deletable.map((m) => m.id)))}
-                    />
-                  </th>
-                )}
-                <th className='w-24 px-4 py-3'>회차</th>
-                <th className='w-40 px-2 py-3'>일자</th>
-                <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
-                <th className='min-w-[16rem] px-2 py-3'>제목</th>
-                <th data-anno='schedule:9' className='w-36 px-2 py-3'>
-                  발표자1
-                </th>
-                <th className='w-36 px-2 py-3'>발표자2</th>
-              </tr>
-            </thead>
-            <tbody>
-              {meetings.flatMap((m) => {
-                const past = started(m);
-                const kickoff = isKickoff(m);
-                const start = src.startOf(m);
-                const shown = wallParts(start, zone);
-                const v = valueOf(m);
-                const errors = errorsOf(m);
-                const changed = changedIds.includes(m.id);
-                const editable = canEdit && !past;
-                const wall = shownWall(v);
-                const cell = 'border-t border-border px-2 py-1.5 align-top';
-
-                const presenterCell = (slot: 'presenter1' | 'presenter2') => {
-                  if (kickoff) return <span className='text-fg-muted'>-</span>;
-                  if (editable) {
-                    return (
-                      <PresenterSelect
-                        label={`${meetingLabel(m)} ${slot === 'presenter1' ? '발표자1' : '발표자2'}`}
-                        placeholder={slot === 'presenter1' ? '발표자 1' : '발표자 2'}
-                        people={people}
-                        value={v[slot]}
-                        onChange={(id) => change(m, { [slot]: id })}
+        // overflow-clip — 카드 모서리는 자르되 스크롤 상자는 만들지 않는다. 그래야 작업 바가 화면 위에 붙는다
+        <div data-anno='schedule:3' className='card overflow-clip'>
+          {canEdit && (
+            // 표 맨 위 작업 바 — 한 줄. 왼쪽은 고른 회차 삭제, 오른쪽은 저장 (POL-0008). 출석부와 같은 자리 · 같은 모양.
+            // 삭제는 늘 보인다 — 체크해야 나타나면 지우는 방법을 찾을 수 없다. 고르기 전에는 잠겨 있고 이유를 말한다
+            <TableActionBar
+              className='top-[var(--table-action-bar-top,4rem)] bottom-auto border-b border-border bg-surface-raised px-4'
+              data-anno='schedule:3-7'
+              selection={
+                <>
+                  <SelectionCount count={picked.length} unit='개' />
+                  <Button
+                    size='sm'
+                    variant='danger'
+                    disabled={picked.length === 0}
+                    title={picked.length === 0 ? '지울 회차를 왼쪽 체크박스로 고르세요' : undefined}
+                    onClick={() => setBulkConfirm(true)}
+                  >
+                    삭제
+                  </Button>
+                  {picked.length > 0 && (
+                    <Button size='sm' variant='ghost' onClick={() => setChecked(new Set())}>
+                      선택 해제
+                    </Button>
+                  )}
+                </>
+              }
+              save={
+                <span data-anno='schedule:6' className='flex items-center gap-2'>
+                  {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
+                  {dirty && (
+                    <Button variant='ghost' size='sm' onClick={clearDrafts}>
+                      변경 취소
+                    </Button>
+                  )}
+                  <Button size='sm' onClick={saveAll} disabled={!dirty || errorCount > 0}>
+                    저장
+                  </Button>
+                </span>
+              }
+            />
+          )}
+          <div className='overflow-x-auto'>
+            <table
+              className={cx(
+                'w-full border-separate border-spacing-0 text-sm',
+                compact ? 'min-w-[56rem]' : 'min-w-[66rem]',
+              )}
+            >
+              <thead>
+                <tr className='text-left text-xs font-semibold text-fg-muted'>
+                  {canEdit && (
+                    <th data-anno='schedule:3-6' className='w-10 py-3 pl-4'>
+                      <input
+                        type='checkbox'
+                        aria-label='지울 수 있는 회차 전체 선택'
+                        className={CHECKBOX}
+                        checked={allChecked}
+                        disabled={deletable.length === 0}
+                        ref={(el) => {
+                          if (el) el.indeterminate = picked.length > 0 && !allChecked;
+                        }}
+                        onChange={() => setChecked(allChecked ? new Set() : new Set(deletable.map((m) => m.id)))}
                       />
-                    );
-                  }
-                  const id = m[slot];
-                  const other = slot === 'presenter1' ? m.presenter2 : m.presenter1;
-                  const which = slot === 'presenter1' ? '발표자1' : '발표자2';
-                  // 크루의 선착순 신청 — 빈 칸은 포인트 색 실선 칩 「신청」, 내 이름은 강조 칩 + × 로 취소.
-                  if (!canEdit && !past && !id && other !== ME_ID) {
-                    return (
-                      <button
-                        type='button'
-                        data-anno='schedule:9-1'
-                        aria-label={`${meetingLabel(m)} ${which} 신청`}
-                        onClick={() => sign(m, slot, true)}
-                        className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand text-xs font-semibold text-brand transition-colors hover:bg-brand-subtle'
-                      >
-                        신청
-                      </button>
-                    );
-                  }
-                  if (!canEdit && !past && id === ME_ID) {
-                    return (
-                      <span className='inline-flex h-7 max-w-full items-center gap-1 rounded-pill bg-brand-subtle pl-2.5 pr-1 text-xs font-bold text-brand'>
-                        <span className='truncate'>{nameOf(id)}</span>
+                    </th>
+                  )}
+                  <th className='w-24 px-4 py-3 text-center'>회차</th>
+                  <th className='w-40 px-2 py-3'>일자</th>
+                  <th className='w-28 px-2 py-3'>시각 ({zoneLabel(zone)})</th>
+                  <th className={cx('px-2 py-3', compact ? 'w-60' : 'min-w-[16rem]')}>제목</th>
+                  <th data-anno='schedule:9' className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>
+                    발표자1
+                  </th>
+                  <th className={cx('px-2 py-3 text-center', compact ? 'w-32' : 'w-36')}>발표자2</th>
+                </tr>
+              </thead>
+              <tbody>
+                {meetings.flatMap((m) => {
+                  const past = started(m);
+                  const kickoff = isKickoff(m);
+                  const start = src.startOf(m);
+                  const shown = wallParts(start, zone);
+                  const v = valueOf(m);
+                  const errors = errorsOf(m);
+                  const changed = changedIds.includes(m.id);
+                  // 킥오프는 표에서 고치지 않는다. 캡틴이 「킥오프 정하기」로만 (사용자 사이트에서는 아무도)
+                  const editable = canEdit && !past && !kickoff;
+                  const wall = shownWall(v);
+                  const cell = 'border-t border-border px-2 py-1.5 align-top';
+
+                  const presenterCell = (slot: 'presenter1' | 'presenter2') => {
+                    if (kickoff) return <span className='inline-block py-1.5 text-fg-muted'>-</span>;
+                    if (editable) {
+                      return (
+                        <PresenterSelect
+                          label={`${meetingLabel(m)} ${slot === 'presenter1' ? '발표자1' : '발표자2'}`}
+                          placeholder={slot === 'presenter1' ? '발표자 1' : '발표자 2'}
+                          people={people}
+                          value={v[slot]}
+                          onChange={(id) => change(m, { [slot]: id })}
+                        />
+                      );
+                    }
+                    const id = m[slot];
+                    const other = slot === 'presenter1' ? m.presenter2 : m.presenter1;
+                    const which = slot === 'presenter1' ? '발표자1' : '발표자2';
+                    // 크루의 선착순 신청 — 빈 칸은 포인트 색 실선 칩 「신청」, 내 이름은 강조 칩 + × 로 취소.
+                    if (!canEdit && !past && !id && other !== ME_ID) {
+                      return (
                         <button
                           type='button'
-                          aria-label={`${meetingLabel(m)} ${which} 신청 취소`}
-                          title='신청 취소'
-                          onClick={() => sign(m, slot, false)}
-                          className='grid h-6 w-6 shrink-0 place-items-center rounded-full hover:bg-brand hover:text-on-brand'
+                          data-anno='schedule:9-1'
+                          aria-label={`${meetingLabel(m)} ${which} 신청`}
+                          onClick={() => sign(m, slot, true)}
+                          className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand text-xs font-semibold text-brand transition-colors hover:bg-brand-subtle'
                         >
-                          <X size={12} strokeWidth={2.5} aria-hidden />
+                          신청
                         </button>
+                      );
+                    }
+                    if (!canEdit && !past && id === ME_ID) {
+                      return (
+                        // 「신청」 칩과 같은 너비(칸 너비) — 신청 전후로 칸 모양이 바뀌지 않는다. 이름은 가운데, ×는 오른쪽 끝
+                        <span className='inline-flex h-7 w-full items-center gap-1 rounded-pill bg-brand-subtle pl-6 pr-0.5 text-xs font-bold text-brand'>
+                          <span className='min-w-0 flex-1 truncate text-center'>{nameOf(id)}</span>
+                          <button
+                            type='button'
+                            aria-label={`${meetingLabel(m)} ${which} 신청 취소`}
+                            title='신청 취소'
+                            onClick={() => sign(m, slot, false)}
+                            className='grid h-6 w-6 shrink-0 place-items-center rounded-full hover:bg-brand hover:text-on-brand'
+                          >
+                            <X size={12} strokeWidth={2.5} aria-hidden />
+                          </button>
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className={cx('inline-block py-1.5', !nameOf(id) && 'text-fg-muted')}>
+                        {nameOf(id) ?? '-'}
                       </span>
                     );
-                  }
-                  return nameOf(id) ?? <span className='text-fg-muted'>-</span>;
-                };
+                  };
 
-                const row = (
-                  <tr
-                    key={m.id}
-                    className={cx(
-                      // 시작한 회차는 흐린 글자 — 상태 열 없이도 고칠 수 없는 줄임을 알린다.
-                      past && 'text-fg-muted',
-                      kickoff && 'bg-surface-1',
-                      changed && 'bg-brand-subtle/40',
-                      bulkConfirm && checked.has(m.id) && 'bg-error-50',
-                    )}
-                  >
-                    {canEdit && (
-                      <td className='border-t border-border py-2.5 pl-4 align-top'>
-                        {!kickoff && !past && (
-                          <input
-                            type='checkbox'
-                            aria-label={`${meetingLabel(m)} 선택`}
-                            className={CHECKBOX}
-                            checked={checked.has(m.id)}
-                            onChange={() => toggle(m.id)}
+                  const row = (
+                    <tr
+                      key={m.id}
+                      title={canEdit && kickoff && !canSetKickoff ? '킥오프 일정은 캡틴이 정합니다.' : undefined}
+                      className={cx(
+                        // 시작한 회차는 흐린 글자 — 상태 열 없이도 고칠 수 없는 줄임을 알린다.
+                        past && 'text-fg-muted',
+                        kickoff && 'bg-surface-1',
+                        changed && 'bg-brand-subtle/40',
+                        bulkConfirm && checked.has(m.id) && 'bg-error-50',
+                      )}
+                    >
+                      {canEdit && (
+                        <td className='border-t border-border py-2.5 pl-4 align-middle'>
+                          {!kickoff && !past && (
+                            <input
+                              type='checkbox'
+                              aria-label={`${meetingLabel(m)} 선택`}
+                              className={CHECKBOX}
+                              checked={checked.has(m.id)}
+                              onChange={() => toggle(m.id)}
+                            />
+                          )}
+                        </td>
+                      )}
+                      <td
+                        data-anno={kickoff ? 'schedule:10' : undefined}
+                        className='tnum border-t border-border px-4 py-2.5 text-center align-middle font-bold'
+                      >
+                        {m.no}
+                        {past && <span className='sr-only'> (지난 회차 · 고칠 수 없음)</span>}
+                      </td>
+                      <td className={cn(cell, 'tnum')}>
+                        {editable ? (
+                          <CellInput
+                            type='date'
+                            label={`${meetingLabel(m)} 일자 (${zoneLabel(zone)})`}
+                            value={wall.date}
+                            error={errors.date}
+                            onChange={(date) => changeWall(m, { date })}
                           />
+                        ) : (
+                          <span className='inline-block whitespace-nowrap py-1.5'>{dateWithDow(shown.date)}</span>
                         )}
                       </td>
-                    )}
-                    <td
-                      data-anno={kickoff ? 'schedule:10' : undefined}
-                      className='tnum border-t border-border px-4 py-2.5 align-top font-bold'
-                    >
-                      {m.no}
-                      {past && <span className='sr-only'> (지난 회차 · 고칠 수 없음)</span>}
-                    </td>
-                    <td className={cn(cell, 'tnum')}>
-                      {editable ? (
-                        <CellInput
-                          type='date'
-                          label={`${meetingLabel(m)} 일자 (${zoneLabel(zone)})`}
-                          value={wall.date}
-                          error={errors.date}
-                          onChange={(date) => changeWall(m, { date })}
-                        />
-                      ) : (
-                        <span className='inline-block whitespace-nowrap py-1.5'>{dateWithDow(shown.date)}</span>
-                      )}
-                    </td>
-                    <td className={cn(cell, 'tnum')}>
-                      {editable ? (
-                        <CellInput
-                          type='time'
-                          label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
-                          value={wall.time}
-                          error={errors.time}
-                          onChange={(time) => changeWall(m, { time })}
-                        />
-                      ) : (
-                        <span className='inline-block py-1.5'>{shown.time}</span>
-                      )}
-                    </td>
-                    <td className={cell}>
-                      {editable ? (
-                        <TitleInput
-                          label={`${meetingLabel(m)} 제목`}
-                          value={v.title}
-                          error={errors.title}
-                          onChange={(title) => change(m, { title })}
-                        />
-                      ) : (
-                        <span className='inline-block whitespace-pre-wrap break-words py-1.5'>
-                          {m.title ?? <span className='text-fg-muted'>-</span>}
-                        </span>
-                      )}
-                    </td>
-                    <td className={cell}>{presenterCell('presenter1')}</td>
-                    <td className={cell}>
-                      {presenterCell('presenter2')}
-                      {errors.presenter2 && <p className='mt-1 text-[11px] text-error-700'>{errors.presenter2}</p>}
-                    </td>
-                  </tr>
-                );
-                return [row];
-              })}
-            </tbody>
-          </table>
+                      <td className={cn(cell, 'tnum')}>
+                        {editable ? (
+                          <CellInput
+                            type='time'
+                            label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
+                            value={wall.time}
+                            error={errors.time}
+                            onChange={(time) => changeWall(m, { time })}
+                          />
+                        ) : (
+                          <span className='inline-block py-1.5'>{shown.time}</span>
+                        )}
+                      </td>
+                      <td className={cell}>
+                        {editable ? (
+                          <TitleInput
+                            label={`${meetingLabel(m)} 제목`}
+                            value={v.title}
+                            error={errors.title}
+                            onChange={(title) => change(m, { title })}
+                          />
+                        ) : // 제목이 없으면 「—」를 칸 가운데에 — 빈 칸 표시는 표 어디서나 가운데다
+                        m.title ? (
+                          <span className='inline-block whitespace-pre-wrap break-words py-1.5 align-middle text-center'>
+                            {m.title}
+                          </span>
+                        ) : (
+                          <span className='block py-1.5 text-center text-fg-muted'>-</span>
+                        )}
+                      </td>
+                      <td className={cn(cell, 'text-center')}>{presenterCell('presenter1')}</td>
+                      <td className={cn(cell, 'text-center')}>
+                        {presenterCell('presenter2')}
+                        {errors.presenter2 && <p className='mt-1 text-[11px] text-error-700'>{errors.presenter2}</p>}
+                      </td>
+                    </tr>
+                  );
+                  return [row];
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      )}
-
-      {canEdit && (
-        // 표 하단 작업 바 — 한 줄. 왼쪽은 고른 회차 삭제, 오른쪽은 저장 (POL-0008 「표 하단 작업 바」).
-        // 삭제는 늘 보인다 — 체크해야 나타나면 지우는 방법을 찾을 수 없다. 고르기 전에는 잠겨 있고 이유를 말한다
-        <TableActionBar
-          data-anno='schedule:3-7'
-          selection={
-            <>
-              <SelectionCount count={picked.length} unit='개' />
-              <Button
-                size='sm'
-                variant='danger'
-                disabled={picked.length === 0}
-                title={picked.length === 0 ? '지울 회차를 왼쪽 체크박스로 고르세요' : undefined}
-                onClick={() => setBulkConfirm(true)}
-              >
-                삭제
-              </Button>
-              {picked.length > 0 && (
-                <Button size='sm' variant='ghost' onClick={() => setChecked(new Set())}>
-                  선택 해제
-                </Button>
-              )}
-            </>
-          }
-          save={
-            <span data-anno='schedule:6' className='flex items-center gap-2'>
-              {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
-              {dirty && (
-                <Button variant='ghost' size='sm' onClick={clearDrafts}>
-                  변경 취소
-                </Button>
-              )}
-              <Button size='sm' onClick={saveAll} disabled={!dirty || errorCount > 0}>
-                저장
-              </Button>
-            </span>
-          }
-        />
       )}
 
       {/* 결정을 묻는 모달 — 취소가 기본 포커스. Enter 로 지워지면 안 된다 (POL-0008). 회차는 체크박스로 골라서만 지운다 */}
@@ -568,10 +615,7 @@ function cn(...parts: string[]): string {
 
 /** 회차 선택 체크박스 — 출석부 체크박스와 같은 모양. */
 const CHECKBOX =
-  'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
-
-const FIELD =
-  'h-8 w-full rounded-control border bg-bg px-2 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand/60';
+  'block h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
 
 function CellInput({
   type = 'text',
@@ -588,26 +632,18 @@ function CellInput({
   error?: string;
   onChange: (value: string) => void;
 }) {
-  const errorId = useId();
   return (
-    <div>
-      <input
-        type={type}
-        aria-label={label}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        value={value}
-        placeholder={placeholder}
-        maxLength={type === 'text' ? TITLE_MAX + 10 : undefined}
-        onChange={(ev) => onChange(ev.target.value)}
-        className={cx(FIELD, error ? 'border-error-500' : 'border-border-strong')}
-      />
-      {error && (
-        <p id={errorId} className='mt-1 text-[11px] leading-snug text-error-700'>
-          {error}
-        </p>
-      )}
-    </div>
+    <Input
+      size='sm'
+      type={type}
+      aria-label={label}
+      value={value}
+      placeholder={placeholder}
+      maxLength={type === 'text' ? TITLE_MAX + 10 : undefined}
+      error={error}
+      onChange={(ev) => onChange(ev.target.value)}
+      className='px-2'
+    />
   );
 }
 
@@ -623,19 +659,16 @@ function TitleInput({
   onChange: (value: string) => void;
 }) {
   return (
-    <div>
-      <AutoTextarea
-        label={label}
-        value={value}
-        placeholder='제목'
-        maxLength={TITLE_MAX + 10}
-        singleLine
-        invalid={Boolean(error)}
-        className='min-h-8 px-2 py-1 leading-snug'
-        onChange={onChange}
-      />
-      {error && <p className='mt-1 text-[11px] leading-snug text-error-700'>{error}</p>}
-    </div>
+    <Input
+      size='sm'
+      aria-label={label}
+      value={value}
+      placeholder='제목'
+      maxLength={TITLE_MAX + 10}
+      error={error}
+      onChange={(ev) => onChange(ev.target.value)}
+      className='px-2'
+    />
   );
 }
 
@@ -654,11 +687,12 @@ function PresenterSelect({
   onChange: (id: string) => void;
 }) {
   return (
-    <select
+    <Select
       aria-label={label}
+      size='sm'
       value={value}
       onChange={(ev) => onChange(ev.target.value)}
-      className={cx(FIELD, 'border-border-strong', !value && 'text-fg-muted')}
+      className={cx('w-full max-w-none', !value && 'text-fg-muted')}
     >
       <option value=''>{placeholder}</option>
       {/* 중단한 사람은 고를 수 없다. 이미 배정돼 있으면 그 칸에만 「(참여 종료)」로 남겨 보인다 — 빈 칸처럼 보이면 안 된다 */}
@@ -669,11 +703,94 @@ function PresenterSelect({
             {p.me ? `${p.name} (나)` : p.left ? `${p.name} (참여 종료)` : p.name}
           </option>
         ))}
-    </select>
+    </Select>
   );
 }
 
 /* ── 회차 추가 (반복 포함) ──────────────────────────────────────────────────── */
+
+/**
+ * 캡틴이 반의 킥오프(0회차)를 정하거나 옮긴다. 1회차보다 앞이어야 한다. 지난 날도 받는다: 운영 중인 반의 킥오프를 나중에 적는다.
+ * 처음 값은 지금 킥오프, 없으면 1회차 한 주 전 · 반의 스터디 시각.
+ */
+function KickoffForm({
+  source,
+  group,
+  onCancel,
+  onSaved,
+}: {
+  source: ScheduleSource;
+  group: NavigatorGroup;
+  onCancel: () => void;
+  onSaved: (label: string) => void;
+}) {
+  const meetings = source.meetings();
+  const current = meetings.find(isKickoff);
+  const firstRegular = meetings.find((m) => !isKickoff(m));
+  const [date, setDate] = useState(
+    () => current?.date || (firstRegular ? addDaysYmd(firstRegular.date, -7) : new Date().toISOString().slice(0, 10)),
+  );
+  const [time, setTime] = useState(() => current?.time ?? group.startAt);
+  const [touched, setTouched] = useState(false);
+
+  const errors: { date?: string; time?: string } = {
+    date: !date
+      ? '일자를 정해 주세요.'
+      : firstRegular && date >= firstRegular.date
+        ? `킥오프는 1회차(${dayLabel(firstRegular.date)})보다 앞이어야 합니다.`
+        : undefined,
+    time: !time ? '시각을 정해 주세요.' : undefined,
+  };
+  const shown: typeof errors = touched ? errors : {};
+
+  function submit() {
+    setTouched(true);
+    if (errors.date || errors.time) return;
+    source.setKickoff?.(date, time);
+    onSaved(wallLabel(zonedInstant(date, time, group.timeZone), group.timeZone));
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onCancel}
+      title={current ? '킥오프 수정' : '킥오프 정하기'}
+      description={`${group.name} · ${zoneTitle(group.timeZone)} 기준`}
+      footer={
+        <>
+          <Button variant='secondary' onClick={onCancel}>
+            취소
+          </Button>
+          <Button onClick={submit}>저장</Button>
+        </>
+      }
+    >
+      <div data-anno='schedule:10-1' className='flex flex-col gap-4 py-2'>
+        <p className='text-sm text-fg-secondary'>
+          규칙·일정·발표자를 정하는 첫 모임입니다. 네비게이터는 이 날을 고칠 수 없습니다.
+        </p>
+        <div className='grid gap-3 sm:grid-cols-2'>
+          <Input
+            type='date'
+            label='일자'
+            required
+            value={date}
+            error={shown.date}
+            onChange={(ev) => setDate(ev.target.value)}
+          />
+          <Input
+            type='time'
+            label={`시작 시각 (${zoneLabel(group.timeZone)})`}
+            required
+            value={time}
+            error={shown.time}
+            onChange={(ev) => setTime(ev.target.value)}
+          />
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function AddForm({
   source,
@@ -778,7 +895,7 @@ function AddForm({
       }
     >
       <div data-anno='schedule:7' className='flex flex-col gap-4 py-2'>
-        <div className='grid gap-3 sm:grid-cols-[10rem_8rem]'>
+        <div className='grid gap-3 sm:grid-cols-2'>
           <div data-anno='schedule:7-1'>
             <Input
               type='date'

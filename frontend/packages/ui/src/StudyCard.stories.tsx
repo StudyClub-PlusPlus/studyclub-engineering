@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { CalendarClock, Globe, Rocket } from 'lucide-react';
 
 import { StudyCard } from './StudyCard';

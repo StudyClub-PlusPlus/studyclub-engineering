@@ -1,5 +1,6 @@
 package com.studyclub.api.attendance;
 
+import com.studyclub.api.participant.ParticipantWithdrawalService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.attendance.AttendanceStatus;
@@ -30,30 +31,93 @@ public class AttendanceUpsertService {
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
+    private final ParticipantWithdrawalService participantWithdrawalService;
 
     public AttendanceUpsertService(
             StudyRepository studyRepository,
             StudyGroupRepository studyGroupRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyMeetingRepository studyMeetingRepository,
-            StudyAttendanceRepository studyAttendanceRepository) {
+            StudyAttendanceRepository studyAttendanceRepository,
+            ParticipantWithdrawalService participantWithdrawalService) {
         this.studyRepository = studyRepository;
         this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
+        this.participantWithdrawalService = participantWithdrawalService;
+    }
+
+    /**
+     * 사용자 사이트 출석부 저장 — 출석 고치기와 참여 중단이 <b>한 트랜잭션</b>이다 (specs/study-participant/spec.md). 중단이 있으면 중단
+     * 권한·대상을 먼저 다 본 뒤 출석을 쓰고 중단을 반영한다. 중단이 없으면 권한은 호출자(컨트롤러)가 출석 쓰기 가드로 본다.
+     */
+    @Transactional
+    public void saveFromSite(Long actorAccountId, Long studyId, AttendanceUpsertRequest request) {
+        if (!request.hasWithdrawals()) {
+            upsert(studyId, request.studyGroupId(), request);
+            return;
+        }
+        saveWithWithdrawals(
+                studyId,
+                request,
+                participantWithdrawalService.prepare(
+                        actorAccountId, studyId, request.studyGroupId(), request.withdrawals()));
+    }
+
+    /**
+     * 백오피스 출석부 저장 — 사용자 사이트와 같은 한 트랜잭션이다. 출석만이면 {@code @RequireAdmin} 을 통과한 캡틴 누구나, 중단이 있으면 담당 캡틴만
+     * · 대상에 네비게이터도 (2026-10-23 기획 결정, specs/study-participant/spec.md).
+     */
+    @Transactional
+    public void saveFromBackOffice(
+            Long actorAccountId, Long studyId, AttendanceUpsertRequest request) {
+        if (!request.hasWithdrawals()) {
+            upsert(studyId, request.studyGroupId(), request);
+            return;
+        }
+        saveWithWithdrawals(
+                studyId,
+                request,
+                participantWithdrawalService.prepareForBackOffice(
+                        actorAccountId, studyId, request.studyGroupId(), request.withdrawals()));
+    }
+
+    private void saveWithWithdrawals(
+            Long studyId,
+            AttendanceUpsertRequest request,
+            ParticipantWithdrawalService.Prepared withdrawals) {
+        if (!request.updates().isEmpty()) {
+            writeUpdates(studyId, request.studyGroupId(), request.updates());
+        }
+        participantWithdrawalService.apply(withdrawals);
     }
 
     /**
      * 권한은 호출자(컨트롤러)가 검사한다. 어드민 경로는 {@code @RequireAdmin}, 사용자 경로는 {@code
-     * studyCaptainGuard.assertCaptainOrNavigatorOfGroup} 으로 각각 처리한다.
+     * studyCaptainGuard.assertCaptainOrNavigatorOfGroup} 으로 각각 처리한다. 참여 중단({@code withdrawals})은 받지
+     * 않는다 — 중단이 있으면 {@link #saveFromSite} · {@link #saveFromBackOffice} 를 쓴다.
      */
     @Transactional
     public void upsert(Long studyId, Long studyGroupId, AttendanceUpsertRequest request) {
+        if (request.hasWithdrawals()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "이 경로는 참여 중단(withdrawals)을 받지 않습니다.");
+        }
+        if (request.updates().isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "updates 와 withdrawals 가 모두 비었습니다.");
+        }
+        writeUpdates(studyId, studyGroupId, request.updates());
+    }
+
+    private void writeUpdates(
+            Long studyId,
+            Long studyGroupId,
+            List<AttendanceUpsertRequest.AttendanceUpsertItem> upsertRequests) {
         validateStudyExists(studyId);
         validateGroupBelongsToStudy(studyId, studyGroupId);
 
-        List<AttendanceUpsertRequest.AttendanceUpsertItem> upsertRequests = request.updates();
         ValidRequestContext validRequestContext = validateRequests(upsertRequests);
 
         validateMeetingsBelongToGroup(validRequestContext.meetingIds(), studyId, studyGroupId);

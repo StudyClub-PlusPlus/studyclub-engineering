@@ -53,7 +53,11 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
                 UserRegisteredEvent 발행 → 알림팀 → 웰컴메일
                      │
                      ▼
-                홈 (next 있으면 거기)
+                디스코드 연결 선택 (지금 연결 / 나중에 하기)
+                     │
+                     ├─ 연결 성공 → 홈 또는 안전한 next (신청 중이면 해당 신청 폼)
+                     ├─ 연결 실패·취소 → 안내 유지, 재시도·나중에 하기
+                     └─ 나중에 하기 → 홈 또는 원래 상세 (다시 신청할 때 연결 확인)
 ```
 
 - 토큰은 신규·미완료·완료 전부에서 발급한다. 단, 동일 이메일의 기존 ACCOUNT가 발견되어 `ACCOUNT_LINK_REQUIRED`가 반환된 경우에는 발급하지 않는다. **온보딩 미완료도 로그인 상태**다. 쓸 수 있는 게 적을 뿐.
@@ -103,7 +107,7 @@ ACCOUNT_IDENTITY
 - **개인정보 수집·이용** — 필수. `true` 아니면 거부. `ACCOUNT_CONSENT` `PRIVACY_POLICY`
 - **마케팅 수신** — 동의 여부는 선택이지만 요청 필드는 필수. `false`도 정상값이며 `ACCOUNT_CONSENT` `MARKETING`에 거부 이력을 남긴다
 - **닉네임** — 필수. trim 후 2~20자, **중복 불가**. 모든 언어의 글자·숫자·밑줄(`_`)만 허용하고 공백·줄바꿈·그 외 특수문자는 허용하지 않는다. 밑줄만으로 구성할 수 없으며 영문 대소문자는 구분하지 않는다. `운영진`·`관리자`·`admin` 등 공식 계정으로 오해할 수 있는 이름과 `account_` 접두사는 사용할 수 없다. `ACCOUNT.NICKNAME`
-- **타임존** — 필수. IANA ID (`ZoneId.of()` 통과). `ACCOUNT.TIME_ZONE`
+- **타임존** — 필수. 시간대 정책이 고를 수 있다고 정한 목록 중 하나 — `Asia/Seoul` · `America/New_York` · `America/Vancouver` · `America/Los_Angeles`. 온보딩 화면 드롭다운과 같은 넷이고, 존재하는 IANA ID 라도 목록에 없으면 `400 INVALID_INPUT`. 프로필 수정이 같은 검증기를 쓴다. `ACCOUNT.TIME_ZONE`
 - **만 14세 이상 확인** — 필수. `age14Confirmed=true`만 허용하며 `false`·`null`·누락은 `400 INVALID_INPUT`. 본인의 연령 확인 진술을 검증하는 항목이며 실제 나이 인증은 아니다. 별도 약관 문서·버전·DB 컬럼·`ACCOUNT_CONSENT` 행은 만들지 않는다.
 
 약관 버전은 클라이언트가 안 보낸다. **서버가 현재 게시 버전을 붙인다.**
@@ -121,7 +125,7 @@ ACCOUNT_IDENTITY
 | Method | Path | 설명 | 인증 | 상태 |
 |---|---|---|---|---|
 | POST | `/auth/social-login` | 구글 로그인. 신규면 ACCOUNT+ACCOUNT_IDENTITY 생성, 기존이면 조회. 동일 이메일 충돌 시 `ACCOUNT_LINK_REQUIRED`를 반환하며 토큰을 발급하지 않음 | X | 구현완료 |
-| GET | `/auth/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용 | O (미완료도 가능) | 구현완료 |
+| GET | `/api/me` | 현재 사용자 조회 — 온보딩 완료 여부 판단용. 처음엔 `/auth/me` 였고 프로필 수정 뒤 마이페이지 경로로 옮겼다 | O (미완료도 가능) | 구현완료 |
 | GET | `/api/nicknames/availability` | 입력 중 닉네임 사용 가능 여부 조회 | O (미완료도 가능) | 구현완료 |
 | POST | `/accounts/onboarding` | 만 14세 이상 확인 후 온보딩 완료 처리 (약관 3종 + 닉네임 + 타임존, 한 트랜잭션) | O (미완료도 가능) | 구현완료 |
 
@@ -145,18 +149,18 @@ ACCOUNT_IDENTITY
 - 이메일 없음 / `email_verified != true` → `400 SOCIAL_LOGIN_EMAIL_REQUIRED`. 프론트는 이 코드로 "가입 불가 안내" 화면을 다른 400 케이스와 구분해 분기한다.
 - 처음 보는 `(issuer, sub)`이지만 동일 이메일의 ACCOUNT가 이미 있음 → `409 ACCOUNT_LINK_REQUIRED`. ACCOUNT·ACCOUNT_IDENTITY를 생성하거나 JWT를 발급하지 않는다. 프론트는 기존 로그인 수단으로 로그인한 뒤 계정을 연결하라고 안내한다.
 
-### `GET /auth/me`
+### `GET /api/me`
 
-응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
+응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `discordLinked`(boolean)는 `ACCOUNT.DISCORD_ID`가 있으면 true, 없으면 false다. 연동한 디스코드 `username` 은 `discordHandle`(미연동이면 null)로 내리고, 디스코드 ID 자체는 내리지 않는다. 신청 제출의 미연동 403과 같은 판정(`Account.isDiscordLinked()`)이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
 
 ### `GET /api/nicknames/availability`
 
 온보딩에서 닉네임을 입력하는 동안 실제 DB의 사용 여부를 조회한다. 쿼리 `value`는 필수 문자열이며 예시는 `/api/nicknames/availability?value=Journey`다. 클라이언트는 쿼리 값을 URL 인코딩한다.
 
 - 인증된 사용자만 호출할 수 있고, 온보딩 미완료 사용자도 허용한다. Google 로그인 후 사용하는 기능이므로 기획 PR #75의 비로그인 공개 제안 대신 기존 JWT 인증을 사용한다. `@RequireOnboarding`은 적용하지 않는다.
-- `NicknamePolicy.normalize()`로 앞뒤 공백을 제거하고 같은 클래스의 형식 규칙을 검사한 뒤, `AccountRepository.existsByNicknameIgnoreCase()`로 중복을 조회한다. 가입 완료 때와 같은 비교 기준을 사용한다.
+- `NicknamePolicy.normalize()`로 앞뒤 공백을 제거하고 같은 클래스의 형식 규칙을 검사한 뒤, `AccountRepository.existsByNicknameIgnoreCaseAndIdNot()`로 부른 사람의 계정을 뺀 중복을 조회한다. 가입 완료 때와 같은 비교 기준을 사용한다.
 - 현재 기준은 모든 언어의 글자·숫자·밑줄을 허용하며 대소문자를 구분하지 않는다. Playground의 예시 목록과 NFC 변환은 서버의 판정 기준이 아니다. NFC 정책을 도입하려면 조회·최종 검사·기존 데이터를 함께 검토한다.
-- 조회는 닉네임을 예약하거나 계정·동의 기록을 저장하지 않는다. 로그인한 본인의 이름도 이미 DB에 있으면 사용 중으로 반환한다. 마이페이지의 본인 닉네임 유지 여부 판정은 별도 계약이다.
+- 조회는 닉네임을 예약하거나 계정·동의 기록을 저장하지 않는다. 로그인한 본인의 현재 닉네임은 사용 가능으로 반환한다 — 온보딩 중에는 임시 닉네임(`account_` 접두사)이라 형식 검사에서 먼저 걸리고, 마이페이지에서 표기만 바꿀 때 화면이 막히지 않는다.
 
 응답:
 
@@ -184,7 +188,7 @@ ACCOUNT_IDENTITY
   "privacyPolicyAgreed": true,    // 필수, true 아니면 거부
   "marketingAgreed": false,       // 필수, false도 유효 (거부 이력 남김)
   "nickname": "jinjoong",         // 필수, 닉네임 규칙 적용
-  "timeZone": "Asia/Seoul"        // 필수, ZoneId.of() 통과하는 IANA ID
+  "timeZone": "Asia/Seoul"        // 필수, 고를 수 있는 넷 중 하나
 }
 ```
 
@@ -271,7 +275,6 @@ ACCOUNT_IDENTITY
 
 ## 미확정 (팀 결정)
 
-- **완료 후 어디로** — 홈, `next` 있으면 `next`. 마이페이지로 보내 프로필 이미지 유도하는 안도 있다.
 - **`ACCOUNT.EMAIL` 변경** — 자유 입력은 PRD 대로 안 함. 대신 **연결된 제공자 이메일 중 선택**은 허용하자는 제안 (애플 절 참고). 안 하면 애플(중계) 먼저 가입한 사람은 구글을 연결해도 알림을 영영 중계로 받는다. 자유 입력을 열려면 `UNIQUE(EMAIL)` 충돌 + 변경 인증 메일이 따라온다.
 
 ## 한계 / 후속
@@ -281,3 +284,14 @@ ACCOUNT_IDENTITY
 - 구글·애플 **명시적 연결**(마이페이지 "계정 연결") — 애플과 같이.
 - 프로필 이미지·마이페이지 수정 API 는 별도.
 - 웰컴메일 실패 재시도는 알림팀. 여기선 "1회 발행" 까지.
+
+
+## 가입 완료 후 디스코드 연결 선택 (화면 계약)
+
+- `POST /accounts/onboarding` 성공으로 홈페이지 가입 완료 확정 후 연결 선택 안내.
+- 「스터디는 디스코드에서 진행돼요. 지금 연결할까요?」와 「지금 연결 / 나중에 하기」 제공.
+- 연결 실패·인증 취소·나중에 하기에도 가입 완료 상태 유지.
+- 연결 API는 `POST /api/me/discord/link` 재사용. 실제 OAuth 검증 및 연결 결과 조회는 후속 FE 작업.
+- 스터디 신청에서 진입한 경우 안전한 내부 복귀 주소와 선택 스터디 유지. 연결 성공 시 해당 신청 폼, 나중에 하기는 상세 화면으로 복귀.
+- 나중에 하기를 선택한 회원은 이후 신청하기를 누를 때 연결 확인.
+- Playground는 `?step=discord`와 안전한 `next`로 시뮬레이션. 실제 API 변경·운영 배포는 이 시안 반영 범위에서 제외.
