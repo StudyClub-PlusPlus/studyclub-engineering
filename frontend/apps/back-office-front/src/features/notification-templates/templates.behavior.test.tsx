@@ -486,7 +486,7 @@ describe('알림 템플릿 화면', () => {
     expect(await screen.findByText('템플릿을 불러오지 못했습니다.')).toBeTruthy();
     expect(screen.queryByLabelText(/제목/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '다시 불러오기' }));
-    expect(((await screen.findByLabelText(/제목/)) as HTMLInputElement).value).toBe('B');
+    await waitFor(() => expect(screen.getByLabelText(/제목/)).toHaveValue('B'));
   });
 
   it('저장 중 모든 입력을 막고 실패하면 작성값을 유지하며 다시 활성화한다', async () => {
