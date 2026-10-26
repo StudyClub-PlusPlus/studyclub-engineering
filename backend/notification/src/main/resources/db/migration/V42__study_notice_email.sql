@@ -1,4 +1,4 @@
--- V41 — 스터디 공지 메일 (STUDY_NOTICE · EMAIL) (specs/study-notice/spec.md)
+-- V42 — 스터디 공지 메일 (STUDY_NOTICE · EMAIL) (specs/study-notice/spec.md)
 --   * NOTIFICATION.REFERENCE_ID: 이 알림을 만든 쪽의 ID 참조. 공지 메일이면 STUDY_NOTICE.ID — 공지별 메일 결과(대기·완료·실패)를 세는 키다.
 --     웰컴메일은 NULL. 다른 애그리거트라 FK 는 없다.
 --   * 템플릿 본문은 HTML 시안이다 (frontend/apps/playground/src/proto/mail/templates/study-notice-email.html — 시안 정본,

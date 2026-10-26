@@ -64,7 +64,7 @@
 | ST-030 | 캡틴은 알림 템플릿을 추가, 수정, 삭제할 수 있다. | 캡틴 | [PRD](../stories/notification-template/PRD.md) | [콘솔 › 알림 › 알림 템플릿](https://playground.studyclub.life/proto/console/notifications/templates) | [notification](../../specs/notification/spec.md) | | 프로토는 보기·추가·수정·삭제. 수정·삭제 API 는 미구현 |
 | ST-031 | 캡틴은 알림 발송 이력을 볼 수 있다. | 캡틴 |  |  | | 폐기 | ST-030 에 합쳤다가 다시 갈랐다 — 지금은 ST-032 |
 | ST-032 | 캡틴은 알림 발송 이력을 조회할 수 있다. | 캡틴 | [PRD](../stories/notification-history/PRD.md) | [콘솔 › 알림 › 발송 이력](https://playground.studyclub.life/proto/console/notifications) | [notification](../../specs/notification/spec.md) | | 실패 건 재발송 포함 |
-| ST-033 | 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | 캡틴 | [PRD](../stories/captain-post-notice/PRD.md) | [콘솔 › 공지](https://playground.studyclub.life/proto/console/notices) | | | 스펙 없음 — API·테이블부터. 스터디별 공지(ST-016)와 다르다 |
-| ST-034 | 크루는 스터디클럽 공지를 확인할 수 있다. | 크루 | [PRD](../stories/crew-view-notices/PRD.md) | [사이트 › 공지](https://playground.studyclub.life/proto/core/ko/notices) | | | 비로그인 방문자도 본다. ST-033 과 같은 데이터 |
+| ST-033 | 캡틴은 스터디클럽 웹사이트에 공지를 올릴 수 있다. | 캡틴 | [PRD](../stories/captain-post-notice/PRD.md) | [콘솔 › 공지](https://playground.studyclub.life/proto/console/notices) | [site-notice](../../specs/site-notice/spec.md) | | 스터디별 공지(ST-016)와 다르다 |
+| ST-034 | 크루는 스터디클럽 공지를 확인할 수 있다. | 크루 | [PRD](../stories/crew-view-notices/PRD.md) | [사이트 › 공지](https://playground.studyclub.life/proto/core/ko/notices) | [site-notice](../../specs/site-notice/spec.md) | | 비로그인 방문자도 본다. ST-033 과 같은 데이터 |
 | ST-035 | 크루는 캡틴에게 문의/오류신고를 제출할 수 있다. | 크루 | [PRD](../stories/crew-submit-feedback/PRD.md) | [사이트 › 내 문의](https://playground.studyclub.life/proto/core/ko/my/feedbacks) | | | 로그인 필수. 스펙 없음 — API·테이블부터 |
 | ST-036 | 캡틴은 유저가 제출한 문의/오류신고를 조회할 수 있다. | 캡틴 | [PRD](../stories/captain-view-feedbacks/PRD.md) | [콘솔 › 문의·오류 신고](https://playground.studyclub.life/proto/console/feedbacks) | | | 상태 · 회신 · 캡틴 전용 메모. 회신 알림은 알림 조건 「문의 회신」 |

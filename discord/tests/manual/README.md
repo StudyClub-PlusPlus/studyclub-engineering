@@ -114,11 +114,10 @@ Next 가 `code` 를 Spring 에 넘기고 **Spring 이** 교환·계정 매핑·�
 - `Idempotency-Key` — 요청마다 새 UUID v4 (`GET` 에는 붙이지 않는다)
 
 상단 토글로 헤더를 일부러 빠뜨리거나 틀리게 보낼 수 있다. 문서가 규정하는 것의 절반이
-400 / 401 / 403 동작이라, 그 경로를 손으로 밟을 수 있어야 한다.
+400 / 401 동작이라, 그 경로를 손으로 밟을 수 있어야 한다.
 
-**시스템 호출**([common-header.md](../../../docs/discord-development-guide/api/common-header.md#시스템-호출))은
-`X-Discord-User-ID` 덮어쓰기 칸에 서비스의 `DISCORD_BOT_ID` 값을 넣어 보낸다. 받는 곳은 `get-study-channels` ·
-`send-alert-message` · `assign-role` · `remove-role` 넷뿐이고, 나머지는 **403** 이다.
+봇은 호출자의 역할을 보지 않는다 — 누가 부를 수 있는지는 백엔드가 정한다. 덮어쓰기 칸에 아무 ID 를
+넣어도 요청은 같게 처리되고, 바뀌는 것은 `send-message` · `send-alert-message` 의 `발신:` 줄뿐이다.
 
 ## 나중에
 

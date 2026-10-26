@@ -7,8 +7,9 @@ import { mockHandlerGroups } from '@studyclub/mock/msw';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { PageViewTracker } from '@/components/PageViewTracker';
+import { ThirdPartyAnalytics } from '@/components/ThirdPartyAnalytics';
 import { initAmplitude } from '@/lib/amplitude';
-import { syncAnalyticsUser } from '@/lib/analytics';
+import { captureFirstTouch, syncAnalyticsUser } from '@/lib/analytics';
 import { getUser, USER_CHANGED_EVENT } from '@/lib/auth';
 import { getQueryClient } from '@/lib/query-client';
 
@@ -22,6 +23,7 @@ const loadWorker = () => import('msw/browser').then(({ setupWorker }) => setupWo
 function AmplitudeInit() {
   useEffect(() => {
     initAmplitude();
+    captureFirstTouch();
     // 로그인·로그아웃·프로필 저장이 모두 세션 user 를 바꾸며 이 이벤트를 쏜다 — 여기 한 곳에서 맞춘다
     const sync = () => syncAnalyticsUser(getUser());
     sync();
@@ -47,6 +49,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   const app = (
     <QueryClientProvider client={queryClient}>
+      <ThirdPartyAnalytics />
       <AmplitudeInit />
       <PageViewTracker />
       {USE_MSW && <MswQueryInvalidator />}

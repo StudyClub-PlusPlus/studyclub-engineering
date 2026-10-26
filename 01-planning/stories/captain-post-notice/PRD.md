@@ -131,8 +131,8 @@ flowchart LR
 |---|---|---|---|
 | FE | back-office-front 사이드바 「공지」 | 없음 | 유저와 알림 사이에 메뉴 추가. 아이콘은 메가폰 (완료 기준 1) |
 | FE | back-office-front `/notices` 목록 · 등록·편집 팝업 · 삭제 | 없음 | 프로토 `proto/console/notices` 대로 (완료 기준 2~7) |
-| BE | 공지 테이블 | 없음 | 제목 · 본문 · 작성자(ACCOUNT_ID) · 게시 시각 · 마지막 수정 · `DELETED_AT` |
-| BE | 공지 API | 없음 · **스펙 없음** | `specs/` 에 계약부터 쓴다 → 구현. 아래 표 |
+| BE | 공지 테이블 | 없음 — ERD 문서만 있다 | `SITE_NOTICE` — 제목 · 본문 · 작성자(ACCOUNT_ID) · 등록 시각(= 게시 시각) · 마지막 수정 · `REMOVED_AT` |
+| BE | 공지 API | 스펙작성중 — 코드 없음 | [site-notice 스펙](../../../specs/site-notice/spec.md)대로 구현. 아래 표 |
 
 - **범위 밖** — 본문 서식(굵게·밑줄·목록·링크) · 분류 · 상단 고정 · 예약 게시 · 초안 · 알림 메일 · 이미지 업로드 · 영어 본문 · 조회수
 

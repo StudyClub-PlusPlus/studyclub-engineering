@@ -1,5 +1,5 @@
--- V40 — 스터디 공지 발송 기록 (specs/study-notice/spec.md, docs/erd/STUDY_NOTICE.md)
--- 네비게이터(담당 캡틴)가 한 반의 팀원에게 보낸 공지 한 건과 받는 사람. 메일 결과는 NOTIFICATION 행(V41)에서 센다.
+-- V41 — 스터디 공지 발송 기록 (specs/study-notice/spec.md, docs/erd/STUDY_NOTICE.md)
+-- 네비게이터(담당 캡틴)가 한 반의 팀원에게 보낸 공지 한 건과 받는 사람. 메일 결과는 NOTIFICATION 행(V42)에서 센다.
 --
 -- STUDY / STUDY_GROUP / ACCOUNT 는 다른 애그리거트라 FK 를 걸지 않는다 (ID 컬럼 + 인덱스만 — database-guide.md 「외래키 정책」).
 -- 회원이 탈퇴해 ACCOUNT 가 지워져도 기록은 남고, 남은 ID 로는 사람을 되짚을 수 없다.

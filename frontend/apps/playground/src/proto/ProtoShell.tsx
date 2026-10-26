@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
+import { DiscordPreviewToolbar } from '@core/components/DiscordPreviewToolbar';
 import { RegistrationFeedback, RegistrationPreviewToolbar } from '@core/components/RegistrationPreview';
 import { getUser } from '@core/lib/auth';
 import { enterPreview } from '@core/lib/preview';
@@ -73,6 +74,7 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
         <Suspense fallback={null}>
           <RegistrationPreviewToolbar />
         </Suspense>
+        <DiscordPreviewToolbar />
 
         {children}
 

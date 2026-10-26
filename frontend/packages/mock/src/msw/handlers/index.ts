@@ -1,5 +1,6 @@
 import { registerHandlers, type MockHandlerGroup } from "../utils";
 import { accountsHandlers } from "./accounts";
+import { adminStatsHandlers } from "./admin-stats";
 import { meDiscordHandlers, discordLinkHandlers } from "./discord";
 import { notificationTemplatesHandlers } from "./notification-templates";
 import { notificationsHandlers } from "./notifications";
@@ -22,6 +23,7 @@ export {
   adminStudyProgramsHandlers,
 } from "./studies";
 export { accountsHandlers, mockAdminAccounts } from "./accounts";
+export { adminStatsHandlers } from "./admin-stats";
 export {
   meDiscordHandlers,
   discordLinkHandlers,
@@ -57,6 +59,7 @@ export const mockHandlerGroups: MockHandlerGroup[] = [
   adminParticipantsHandlers,
   notificationTemplatesHandlers,
   notificationsHandlers,
+  adminStatsHandlers,
 ];
 
 export const handlers = mockHandlerGroups.flatMap((group) =>

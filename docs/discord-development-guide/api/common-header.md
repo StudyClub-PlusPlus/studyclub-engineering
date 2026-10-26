@@ -26,7 +26,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 |------|------|------|
 | `Content-Type` | 바디가 있을 때 | `application/json` |
 | `X-API-Key` | O | `<서비스 간 인증 키>` |
-| `X-Discord-User-ID` | 조건부 — 길드 내 자격 검사가 필요한 요청 | `327394882193883136` |
+| `X-Discord-User-ID` | O | `327394882193883136` |
 | `Idempotency-Key` | 상태를 바꾸는 요청(`POST`/`PUT`/`PATCH`/`DELETE`) | `9f1c...` (UUID v4) |
 
 앞의 `Content-Type` 만 일반적인 헤더고, 나머지 셋은 이 서비스의 커스텀 헤더다.
@@ -50,20 +50,17 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 
 ## X-Discord-User-ID
 
-**Discord 유저 ID** (snowflake). StudyClub 의 `ACCOUNT.ID` 가 아니다 — 봇이 이 ID 로
-길드(Discord 서버) 멤버를 조회해야 하므로, 디스코드 쪽 식별자를 그대로 넘긴다.
+**요청자의 Discord 유저 ID** (snowflake). StudyClub 의 `ACCOUNT.ID` 가 아니다 — 메시지에
+`<@ID>` 로 찍혀 Discord 가 이름으로 그려 주므로, 디스코드 쪽 식별자를 그대로 넘긴다.
 
-봇은 이 ID 로 두 가지를 한다:
+**봇은 이 ID 로 아무것도 검사하지 않는다.** 길드 멤버인지도, captain · navigator 역할이 있는지도
+보지 않는다. 누가 이 요청을 시킬 수 있는지는 **백엔드가 호출 전에** 정한다 — 봇은 `X-API-Key` 로
+백엔드가 부른 것인지만 확인한다. 이 ID 를 쓰는 곳은 **발신자 줄** 하나다 —
+[`send-message`](send-message.md) · [`send-alert-message`](send-alert-message.md) 는 메시지 맨 위에
+`발신: <@ID>` 를 붙인다.
 
-1. **정보 추출** — 길드 멤버 정보(닉네임·역할·가입 시각 등)를 읽는다.
-2. **자격 검사** — 그 멤버가 요청한 액션을 길드 안에서 수행할 자격이 있는지 확인한다.
-   자격 기준(어떤 역할·채널 권한이 필요한지)은 엔드포인트마다 다르므로 각 엔드포인트 문서에 적는다.
-
-즉 **인증은 `X-API-Key`, 길드 내 인가는 `X-Discord-User-ID` 로 봇이** 한다. 이 헤더 자체는
-호출자가 주장하는 값이라 인증 수단이 아니다 — 신뢰 경계는 `X-API-Key` 가 긋는다.
-
-- 길드 내 자격 검사가 필요한 요청에는 **항상 필수**다. 사람이 시킨 요청이 아니어도 생략하지 않는다 —
-  [시스템 호출](#시스템-호출) 참고.
+- **모든 엔드포인트에 필수**다 (`health` 제외). 쓰지 않는 엔드포인트도 받는다 — 사람이 시킨 요청이
+  아니어도 생략하지 않는다 ([시스템 호출](#시스템-호출) 참고).
 - **엔드포인트 경계에서 snowflake 는 항상 문자열이다** — 요청 헤더도, 응답 바디에 실어 보낼 때도.
   64비트라 JS `number` 로 담으면 정밀도가 깨진다 (2^53 초과).
 - 숫자가 아니면 **400**, 필요한데 없으면 **400**. 검증은 `^[0-9]{17,20}$` 로 한다 —
@@ -73,8 +70,6 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
   내부 코드는 `int` 를 들고 다니고, 파싱 실패는 거기서 400 이 된다 — 호출 직전마다 변환하면
   같은 파싱과 에러 처리를 엔드포인트마다 반복하게 된다. `config.py` 가 
   `DISCORD_BOT_CHANNEL_ID` 을 시작 시점에 한 번 파싱해 `int` 로 들고 있는 것과 같은 결.
-- 그 유저가 길드에 없으면 **404**, 있지만 자격이 없으면 **403**
-  (봇이 채널을 못 찾을 때 404 를 쓰는 `POST /api/v1/channels/alert/msg` 와 같은 결).
 - **넘기는 건 이 ID 까지다** — 이름·이메일 같은 개인정보는 헤더로도 로그로도 넘기지 않는다.
 
 ### 시스템 호출
@@ -83,24 +78,12 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 그 알림은 navigator 가 직접 올리는 게 아니라 **백엔드가** [`send-alert-message`](send-alert-message.md)
 로 올린다.
 
-이때 백엔드는 `X-Discord-User-ID` 에 **봇 자신의 유저 ID** 를 싣는다. 환경변수 `DISCORD_BOT_ID` 이고,
-백엔드와 Discord 서비스가 같은 값을 읽는다.
+이때 백엔드는 `X-Discord-User-ID` 에 **봇 자신의 유저 ID** 를 싣는다. 백엔드 환경변수 `DISCORD_BOT_ID` 다.
+Discord 서비스는 이 값을 읽지 않는다 — 봇에게 봇 ID 는 다른 ID 와 다를 게 없다.
 
-- 이 ID 로 온 요청은 **멤버 조회도 역할 검사도 하지 않는다.** 봇은 역할을 가질 멤버가 아니고,
-  호출자가 백엔드라는 건 `X-API-Key` 가 이미 보장했다. 신뢰 경계는 그대로 `X-API-Key` 다.
-- **아무 엔드포인트나 되는 건 아니다.** 시스템 호출을 받는 곳은
-  [`send-alert-message`](send-alert-message.md#요청) · [`get-study-channels`](get-study-channels.md#요청) ·
-  [`assign-role`](assign-role.md#요청) · [`remove-role`](remove-role.md#요청) 넷뿐이다. 나머지는 봇 ID 로 불러도 **403** 이다 —
-  스터디 생성이나 공지처럼 사람이 책임질 액션은 captain 이 부른다.
-- **`DISCORD_BOT_ID` 가 비어 있으면 시스템 호출은 없다.** 봇 ID 로 와도 평범한 멤버처럼 역할을 따지므로,
-  설정이 비었다고 문이 열리지 않는다 (`DISCORD_API_KEY` 와 같은 결).
-
-> **넘어가는 건 로그와 발신자 줄이다.** alert 채널에는 `발신: <@봇 ID>` 가 찍혀 봇 이름으로 보인다 —
-> 사람이 올린 것과 구분된다.
-
-> **나중에:** Discord 로그인 연동과 StudyClub 계정 ↔ Discord 유저 ID 매핑은 추후 추가한다.
-> 현재 [`ACCOUNT_IDENTITY`](../../erd/ACCOUNT_IDENTITY.md) 의 `ISSUER` 는 `GOOGLE` / `APPLE`
-> 뿐이라, 그때까지 호출자는 이 헤더를 채울 수 없다.
+- 시스템 호출이라고 봇이 다르게 처리하는 것은 없다. 어떤 엔드포인트를 백엔드 이름으로 부를지는 백엔드가 정한다.
+- 달라지는 건 **발신자 줄**이다. alert 채널에는 `발신: <@봇 ID>` 가 찍혀 봇 이름으로 보인다 —
+  사람이 올린 것과 구분된다.
 
 ## Idempotency-Key
 

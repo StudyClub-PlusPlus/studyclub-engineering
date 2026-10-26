@@ -62,7 +62,8 @@ class StudyListJpqlDao implements StudyListDao {
                     + ") THEN 0"
                     + " ELSE 2 END";
 
-    private static final String TIMEZONE =
+    /** 고른 값이 없는 스터디만 일정 문구로 판정한다 — {@code Study#timezone()} 과 같은 순서. */
+    private static final String SCHEDULE_TIMEZONE =
             "CASE"
                     + " WHEN UPPER(s.schedule) LIKE '%PST%' OR UPPER(s.schedule) LIKE '%PDT%'"
                     + "   THEN 'PST'"
@@ -120,8 +121,12 @@ class StudyListJpqlDao implements StudyListDao {
             params.put("keyword", keyword);
         }
         if (filter.timezone() != null) {
-            conditions.add(TIMEZONE + " = :timezone");
-            params.put("timezone", filter.timezone().name());
+            conditions.add(
+                    "(s.timezone = :timezone OR (s.timezone IS NULL AND "
+                            + SCHEDULE_TIMEZONE
+                            + " = :scheduleTimezone))");
+            params.put("timezone", filter.timezone());
+            params.put("scheduleTimezone", filter.timezone().name());
         }
         if (filter.phase() != null) {
             conditions.add(PHASE_RANK + " = :phaseRank");

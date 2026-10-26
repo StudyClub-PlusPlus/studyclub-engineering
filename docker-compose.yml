@@ -73,7 +73,15 @@ services:
       STORAGE_LOCAL_PUBLIC_BASE_URL: http://localhost:${API_PORT:-28080}/local-storage
       # 봇 ↔ 백엔드 양방향 서비스 키 (같은 값). 비어 있으면 백엔드는 봇을 부르지 않는다 (specs/discord-study-link)
       DISCORD_API_KEY: ${DISCORD_API_KEY:-}
+      # 서버 분석 이벤트 (specs/analytics). 비어 있으면 보내지 않는다
+      AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
+      GA4_MEASUREMENT_ID: ${GA4_MEASUREMENT_ID:-}
+      GA4_API_SECRET: ${GA4_API_SECRET:-}
       DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
+      # 시스템 호출의 X-Discord-User-ID (봇 자신의 유저 ID). 비어 있으면 스터디 role 동기화가 실패한다 (DiscordBotClient.systemUserId)
+      DISCORD_BOT_ID: ${DISCORD_BOT_ID:-}
+      # 디스코드 role 어긋남을 되돌릴지. 기본은 로그만 (specs/discord-role-sync)
+      DISCORD_ROLE_SYNC_ENFORCE: ${DISCORD_ROLE_SYNC_ENFORCE:-false}
       # 디스코드 계정 연동 OAuth. 비어 있으면 연동만 503 (specs/study-application 「디스코드 계정 연동」)
       DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
       DISCORD_OAUTH_CLIENT_ID: ${DISCORD_OAUTH_CLIENT_ID:-}

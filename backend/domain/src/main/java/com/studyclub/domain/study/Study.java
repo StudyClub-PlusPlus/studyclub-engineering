@@ -81,6 +81,11 @@ public class Study extends BaseEntity {
     @Column(length = 255)
     private String schedule;
 
+    /** 운영자가 고른 기준 시간대. {@code null} = 미정 — 판정은 {@link #timezone()}. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "TIMEZONE", length = 10)
+    private StudyTimezone timezone;
+
     @Column(name = "PUBLISH_AT")
     private Instant publishAt;
 
@@ -102,6 +107,11 @@ public class Study extends BaseEntity {
         if (description != null) this.description = description;
         if (category != null) this.category = category;
         if (schedule != null) this.schedule = schedule;
+    }
+
+    /** 기준 시간대. {@code null} 이면 미정으로 되돌린다. */
+    public void changeTimezone(StudyTimezone timezone) {
+        this.timezone = timezone;
     }
 
     /** 진행 시작일. {@code null} 이면 미정. */
@@ -204,11 +214,15 @@ public class Study extends BaseEntity {
     }
 
     /**
-     * 진행 시간대를 일정 문구({@code SCHEDULE})의 표기로 판정한다. PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시
-     * 모집이다.
+     * 목록·필터가 쓰는 진행 시간대. 운영자가 고른 값({@code TIMEZONE})이 있으면 그대로 쓴다. 없으면(컬럼 전 데이터) 일정 문구({@code
+     * SCHEDULE})의 표기로 판정한다 — PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시 모집이다.
+     *
+     * <p>목록 필터({@code StudyListJpqlDao.TIMEZONE})가 같은 순서로 판정한다 — 한쪽만 고치면 필터와 표시가 어긋난다.
      */
-    // ponytail: 자유 텍스트 판정 — 표기가 흔들리면 틀린다. 운영에서 문제가 되면 TIMEZONE 컬럼으로 올린다
     public StudyTimezone timezone() {
+        if (timezone != null) {
+            return timezone;
+        }
         if (schedule == null) {
             return StudyTimezone.BOTH;
         }
@@ -219,6 +233,11 @@ public class Study extends BaseEntity {
             return StudyTimezone.KST;
         }
         return StudyTimezone.BOTH;
+    }
+
+    /** 담당 캡틴 — 이 스터디를 만든 캡틴(POL-0001). */
+    public boolean isCreatedBy(Long accountId) {
+        return createdBy != null && createdBy.equals(accountId);
     }
 
     public boolean isPubliclyVisible() {

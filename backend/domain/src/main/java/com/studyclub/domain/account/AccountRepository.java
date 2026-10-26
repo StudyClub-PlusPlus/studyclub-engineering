@@ -40,6 +40,13 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     /** 온보딩 완료 회원 수 — 대시보드 커뮤니티 멤버 (specs/dashboard/spec.md 2-4). */
     long countByOnboardingCompletedAtIsNotNull();
 
+    /** 웹 기준 captain 의 디스코드 ID — 디스코드를 연동한 ADMIN (specs/discord-role-sync/spec.md). */
+    @Query(
+            "select a.discordId from Account a where a.systemRole ="
+                    + " com.studyclub.domain.account.SystemRole.ADMIN"
+                    + " and a.discordId is not null and a.discordId <> ''")
+    List<String> findCaptainDiscordIds();
+
     /** 디스코드 유저 ID 다건 → 회원. DISCORD_ID 는 UNIQUE 라 유저당 최대 1행이다. */
     List<Account> findByDiscordIdIn(Collection<String> discordIds);
 
