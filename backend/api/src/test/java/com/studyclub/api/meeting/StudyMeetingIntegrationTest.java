@@ -407,6 +407,163 @@ class StudyMeetingIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 백오피스 회차 추가: 스터디를 만들지 않은 캡틴도 추가하고, 활성 참여자 출석이 ABSENT 로 생긴다 (사이트와 같은 규칙)")
+    void adminCreatesMeetings() {
+        var body =
+                Map.of(
+                        "scheduledAts",
+                        List.of(daysFromNowAt(10).toString(), daysFromNowAt(17).toString()),
+                        "title",
+                        "2장");
+
+        var site =
+                exchange(
+                        HttpMethod.POST,
+                        "/api/studies/{studyId}/meetings",
+                        Map.of(
+                                "studyGroupId",
+                                group.getId(),
+                                "scheduledAts",
+                                body.get("scheduledAts")),
+                        CAPTAIN_ID,
+                        study.getId());
+        var admin =
+                exchange(
+                        HttpMethod.POST,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        body,
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId());
+
+        // 사이트 API 는 만든 캡틴만 — 백오피스는 캡틴이면 누구나
+        assertThat(site.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(admin.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        List<StudyMeeting> added =
+                studyMeetingRepo.findByStudyGroupIdOrderByScheduledAt(group.getId()).stream()
+                        .filter(m -> "2장".equals(m.getTitle()))
+                        .toList();
+        assertThat(added).hasSize(2);
+        // 네비게이터 · 크루 · 쉼 — 회차마다 3명
+        assertThat(studyAttendanceRepo.findAll())
+                .filteredOn(
+                        a -> added.stream().anyMatch(m -> m.getId().equals(a.getStudyMeetingId())))
+                .hasSize(6)
+                .allMatch(a -> a.getStatus() == AttendanceStatus.ABSENT);
+    }
+
+    @Test
+    @DisplayName("성공 - 백오피스 회차 수정 · 일괄 삭제 · 규칙 저장: 스터디를 만들지 않은 캡틴도 한다")
+    void adminUpdatesDeletesAndSavesRules() {
+        var update =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings/{meetingId}",
+                        Map.of(
+                                "scheduledAt", daysFromNowAt(4).toString(),
+                                "title", "3장",
+                                "presenter1ParticipantId", member.getId()),
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId(),
+                        futureMeeting.getId());
+        assertThat(update.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        StudyMeeting updated = studyMeetingRepo.findById(futureMeeting.getId()).orElseThrow();
+        assertThat(updated.getTitle()).isEqualTo("3장");
+        assertThat(updated.getPresenter1ParticipantId()).isEqualTo(member.getId());
+
+        var rules =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/rules",
+                        Map.of("rules", "발표 1시간"),
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId());
+        assertThat(rules.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(studyGroupRepo.findById(group.getId()).orElseThrow().getRules())
+                .isEqualTo("발표 1시간");
+
+        var delete =
+                exchange(
+                        HttpMethod.DELETE,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/meetings",
+                        Map.of("meetingIds", List.of(futureMeeting.getId())),
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId());
+        assertThat(delete.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(studyMeetingRepo.findById(futureMeeting.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName(
+            "실패 - 백오피스 회차 쓰기: 토큰 없음 401, 크루 403, 빈 본문 400, 다른 반 회차 · 다른 스터디의 반 404, 시작한 회차 409")
+    void adminWriteFailures() {
+        String meetingsUrl = "/api/admin/studies/{studyId}/groups/{groupId}/meetings";
+        var noToken =
+                rest.exchange(
+                        meetingsUrl,
+                        HttpMethod.POST,
+                        new HttpEntity<>(
+                                Map.of("scheduledAts", List.of(daysFromNowAt(10).toString()))),
+                        Map.class,
+                        study.getId(),
+                        group.getId());
+        var crew =
+                exchange(
+                        HttpMethod.POST,
+                        meetingsUrl,
+                        Map.of("scheduledAts", List.of(daysFromNowAt(10).toString())),
+                        MEMBER_ID,
+                        study.getId(),
+                        group.getId());
+        var empty =
+                exchange(
+                        HttpMethod.POST,
+                        meetingsUrl,
+                        Map.of("scheduledAts", List.of()),
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId());
+        // 경로의 반과 회차의 반이 다르다
+        var otherGroupMeeting =
+                exchange(
+                        HttpMethod.PUT,
+                        meetingsUrl + "/{meetingId}",
+                        Map.of("scheduledAt", daysFromNowAt(4).toString()),
+                        CAPTAIN_ID,
+                        study.getId(),
+                        otherGroup.getId(),
+                        futureMeeting.getId());
+        var otherStudy =
+                exchange(
+                        HttpMethod.PUT,
+                        "/api/admin/studies/{studyId}/groups/{groupId}/rules",
+                        Map.of("rules", "x"),
+                        CAPTAIN_ID,
+                        999_999_992L,
+                        group.getId());
+        var started =
+                exchange(
+                        HttpMethod.PUT,
+                        meetingsUrl + "/{meetingId}",
+                        Map.of("scheduledAt", daysFromNowAt(4).toString()),
+                        CAPTAIN_ID,
+                        study.getId(),
+                        group.getId(),
+                        pastMeeting.getId());
+
+        assertThat(noToken.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(crew.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(empty.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(otherGroupMeeting.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(otherStudy.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(started.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(started.getBody()).containsEntry("errorCode", "MEETING_ALREADY_STARTED");
+    }
+
+    @Test
     @DisplayName("성공 - 반복(2개 이상)으로 만든 회차는 같은 묶음 ID, 한 번 만든 회차는 없음")
     void storesSeriesId() {
         var repeat =

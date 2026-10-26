@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { toMeetings, toPeople, type ApiGroupMeetings } from './api';
+import { toMeetings, toPeople } from './api';
+import type { ApiGroupMeetings } from './repository';
 
 const res: ApiGroupMeetings = {
   studyGroup: {

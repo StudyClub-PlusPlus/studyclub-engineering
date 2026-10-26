@@ -16,7 +16,8 @@ import type { AttendanceBook as Book, AttendanceStatus } from '@/features/schedu
  * 회차별 화면을 따로 두면 한 사람이 몇 번 빠졌는지 보려면 회차를 하나씩 열어야 한다.
  *
  * 칸을 눌러도 저장하지 않는다. 여러 칸을 고친 뒤 **저장**을 눌러 한 번에 반영한다.
- * 출석률은 칸을 바꿀 때 화면에서 다시 계산한다 — 저장 전 미리보기다. 분모는 **체크된 정규 회차만**.
+ * 출석률은 서버 값(`attendanceRate`)을 보인다. 칸을 고친 줄만 화면에서 다시 계산한다 — 저장 전 미리보기다.
+ * 미리보기의 분모는 **체크된 정규 회차만**이고, 시작 전 회차는 빠진다 (서버 산식과 같게).
  * 머리 줄 · 진행 기간 · 조작 안내 · 결과 문구는 두지 않는다 — 탭 이름과 표가 이미 말해 준다.
  * 크루 · 발표 횟수(왼쪽)와 출석률(오른쪽)은 고정하고 회차 열만 가로로 스크롤한다. 회차 칸 너비는 모두 같다.
  */
@@ -30,6 +31,8 @@ export type BookRow = {
   role?: 'navigator';
   /** 참여 중단 시각(UTC ISO). 이 뒤에 시작하는 회차는 「-」 · 출석률 제외. */
   leftAt?: string;
+  /** 서버 출석률(0 ~ 1). null 은 분모 0 — 「-」. 고친 칸이 없는 줄은 이 값을 보인다. */
+  serverRate?: number | null;
 };
 
 /** 출석부 한 열. */
@@ -499,10 +502,17 @@ export function AttendanceBook({
               {rows.map((r) => {
                 // 중단한 사람은 중단 시각 뒤에 시작한 회차를 칸에서 비우고 출석률에서도 뺀다
                 const gone = (c: BookColumn) => Boolean(r.leftAt && c.scheduledAt > r.leftAt);
-                const rate = attendanceRateOf(
-                  draft[r.id],
-                  columns.filter((c) => !c.notCounted && !gone(c)).map((c) => c.id),
-                );
+                // 고친 칸이 없으면 서버 값 — 산식은 서버가 정본이다. 고쳤으면 시작한 회차만으로 미리 계산한다
+                const edited = columnIds.some((id) => draft[r.id]?.[id] !== attendance[r.id]?.[id]);
+                const rate =
+                  !edited && r.serverRate !== undefined
+                    ? r.serverRate === null
+                      ? undefined
+                      : Math.round(r.serverRate * 100)
+                    : attendanceRateOf(
+                        draft[r.id],
+                        columns.filter((c) => !c.notCounted && !gone(c) && c.scheduledAt <= nowIso).map((c) => c.id),
+                      );
                 const presented = columns.filter((c) => c.presenters.includes(r.id)).length;
                 // 중단 예정 — 줄 전체를 옅은 빨강으로. 고정 열도 같은 바탕이어야 줄이 끊겨 보이지 않는다
                 const pendingLeave = withdrawIds.includes(r.id);
