@@ -35,6 +35,7 @@
 ## 제약
 
 - 인덱스 `idx_site_notice_removed_id (REMOVED_AT, ID)` — 사이트 목록(`WHERE REMOVED_AT IS NULL ORDER BY ID DESC`)과 이웃 공지(`ID > :id` 최소 · `ID < :id` 최대)가 탄다
+- `AUTHOR_ACCOUNT_ID` 에는 인덱스를 두지 않는다 — 규약은 다른 애그리거트 참조에 인덱스를 두라고 하지만, 작성자로 공지를 찾는 조회가 없고 닉네임은 `ACCOUNT` 기본키로 조인해서 쓰일 자리가 없다. 작성자 검색이 생기면 그때 추가한다
 - 물리 삭제하지 않는다. 지우기는 `REMOVED_AT` 갱신 한 번이다
 - 쓰기(등록·수정·삭제)는 캡틴만. 읽기는 비로그인 포함 누구나 — 인가는 API 가 본다
 
