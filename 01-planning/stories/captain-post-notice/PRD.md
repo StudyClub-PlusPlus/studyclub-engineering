@@ -54,8 +54,6 @@ flowchart LR
 > **공개 단계가 없다** — 등록하면 곧 사이트에 올라간다. 분류·상단 고정·알림 메일도 두지 않는다
 >
 > 네비게이터의 스터디별 공지(ST-016)와는 다른 기능이다
->
-> 미구현 — 공지를 저장할 테이블·API 가 없다. 지금은 화면 상태로만 처리한다
 
 ### 1 — 제목 검색
 
@@ -67,7 +65,7 @@ flowchart LR
 - **내용**: 헤더 오른쪽 버튼
 - **동작**: 누르면 등록 팝업이 열린다. 등록하면 목록 맨 위에 서고 사이트 공지에도 바로 올라간다
 - **정책**: 입력·설정 팝업이라 취소 버튼을 두지 않는다. 닫는 길은 X 와 Esc (POL-0008)
-- **데이터**: `POST /api/admin/notices` — 미구현
+- **데이터**: `POST /api/admin/notices`
 
 #### 2-1 — 제목
 
@@ -84,7 +82,7 @@ flowchart LR
   - 제목·본문이 비면 그 칸 아래 사유가 뜨고 등록되지 않는다
   - 등록 — 「사이트 공지에 바로 올라갑니다」. 저장 — 「사이트 공지에 바로 반영됩니다」
 - **정책**: 작성자는 받지 않는다 — 로그인한 캡틴으로 정해진다
-- **데이터**: `PATCH /api/admin/notices/{id}` — 미구현
+- **데이터**: `PATCH /api/admin/notices/{id}`
 
 #### 2-6 — 공지 삭제
 
@@ -93,7 +91,7 @@ flowchart LR
 - **정책**
   - **목록 행에 삭제 버튼을 두지 않는다** — 스치듯 눌러 지운다. 저장 버튼과도 떨어뜨린다
   - **소프트 삭제다** — 화면에서는 사라지고 되돌리는 길도 없지만, 행은 지우지 않고 삭제 시각만 남긴다
-- **데이터**: `DELETE /api/admin/notices/{id}` — 미구현. `DELETED_AT` 기록
+- **데이터**: `DELETE /api/admin/notices/{id}`. `REMOVED_AT` 기록
 
 ### 3 — 공지 목록
 
@@ -125,14 +123,14 @@ flowchart LR
 
 ### 개발 범위
 
-> 2026-10-18 `beta` 기준. **지금 → 할 일**만 적는다.
+> 2026-10-25 `beta` 기준. **지금 → 할 일**만 적는다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 사이드바 「공지」 | 없음 | 유저와 알림 사이에 메뉴 추가. 아이콘은 메가폰 (완료 기준 1) |
-| FE | back-office-front `/notices` 목록 · 등록·편집 팝업 · 삭제 | 없음 | 프로토 `proto/console/notices` 대로 (완료 기준 2~7) |
-| BE | 공지 테이블 | 없음 — ERD 문서만 있다 | `SITE_NOTICE` — 제목 · 본문 · 작성자(ACCOUNT_ID) · 등록 시각(= 게시 시각) · 마지막 수정 · `REMOVED_AT` |
-| BE | 공지 API | 스펙작성중 — 코드 없음 | [site-notice 스펙](../../../specs/site-notice/spec.md)대로 구현. 아래 표 |
+| FE | back-office-front 사이드바 「공지」 | 있음 — 알림 아래, 아이콘 메가폰 | 없음 |
+| FE | back-office-front `/notices` 목록 · 등록·편집 팝업 · 삭제 | 있음 — `features/site-notices` 가 API 연결 | 없음 |
+| BE | 공지 테이블 | `SITE_NOTICE` 있음 (V41) | 없음 |
+| BE | 공지 API | 구현완료 — [site-notice 스펙](../../../specs/site-notice/spec.md). 아래 표 | 없음 |
 
 - **범위 밖** — 본문 서식(굵게·밑줄·목록·링크) · 분류 · 상단 고정 · 예약 게시 · 초안 · 알림 메일 · 이미지 업로드 · 영어 본문 · 조회수
 
@@ -145,7 +143,7 @@ flowchart LR
 | GET | `/api/admin/notices` | 콘솔 공지 목록 — 작성자 포함 |
 | POST | `/api/admin/notices` | 공지 등록 — 제목 · 본문. 작성자는 토큰에서 정한다 |
 | PATCH | `/api/admin/notices/{id}` | 공지 수정 — 제목 · 본문. 마지막 수정 갱신 |
-| DELETE | `/api/admin/notices/{id}` | 공지 삭제 — `DELETED_AT` 기록 |
+| DELETE | `/api/admin/notices/{id}` | 공지 삭제 — `REMOVED_AT` 기록 |
 
 - 권한: `/api/admin/**` 는 캡틴 ([POL-0001](../../_registry/policies/POL-0001-roles.md)). 라우팅만으로 막지 않고 서버가 검증한다
 
