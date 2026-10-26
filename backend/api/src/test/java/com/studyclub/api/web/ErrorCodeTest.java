@@ -33,7 +33,13 @@ class ErrorCodeTest {
     @DisplayName("모르는 4xx 는 INVALID_INPUT — 클라이언트 잘못을 서버 오류로 보고하지 않는다")
     void unknownClientErrorIsNotServerError() {
         assertThat(ErrorCode.fromStatus(418)).isEqualTo(ErrorCode.INVALID_INPUT);
-        assertThat(ErrorCode.fromStatus(429)).isEqualTo(ErrorCode.INVALID_INPUT);
+        assertThat(ErrorCode.fromStatus(422)).isEqualTo(ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
+    @DisplayName("429 는 TOO_MANY_REQUESTS — 문의 제출 rate limit 이 쓰는 코드라 프레임워크가 낸 429 도 같은 코드로 되돌린다")
+    void tooManyRequests() {
+        assertThat(ErrorCode.fromStatus(429)).isEqualTo(ErrorCode.TOO_MANY_REQUESTS);
     }
 
     @Test

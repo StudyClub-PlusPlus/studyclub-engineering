@@ -13,6 +13,7 @@ import com.studyclub.domain.account.LeaveReason;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
+import com.studyclub.domain.feedback.FeedbackImageRepository;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.proposal.StudyProposal;
@@ -68,6 +69,7 @@ public class AccountDeletionService {
     private final StudyProposalInterestRepository studyProposalInterestRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final NotificationRepository notificationRepository;
+    private final FeedbackImageRepository feedbackImageRepository;
     private final ObjectMapper objectMapper;
     private final UploadService uploadService;
 
@@ -111,9 +113,13 @@ public class AccountDeletionService {
         // 알림 이력 — 이메일 원문·닉네임 스냅샷만 비식별화하고 행(발송 이력)은 남긴다.
         redactNotifications(accountId);
 
+        // 문의·오류 신고 — 문의 행은 남기고(「탈퇴한 사용자」) 첨부 이미지 행만 지운다. 파일은 아래 찜하기에 같이 걸린다
+        // (specs/feedback/spec.md 「탈퇴 때」).
+        feedbackImageRepository.deleteAllByFeedbackAccountId(accountId);
+
         // 계정·프로필 삭제.
         accountRepository.delete(account);
-        // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 연결된·연결 안 된 파일을 DELETING 으로 찜하고
+        // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 프로필 사진 · 문의 첨부 · 연결 안 된 파일을 DELETING 으로 찜하고
         // 커밋 뒤 저장소에서 지운다. 지우기에 실패해도 탈퇴는 성공이고, 행이 남아 정리 배치가 다시 지운다 (specs/user-leave/spec.md 5단계).
         uploadService.deleteAfterCommit(
                 uploadService.markDeletingByAccount(accountId, Instant.now()));

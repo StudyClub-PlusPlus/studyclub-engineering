@@ -174,7 +174,10 @@ public class UploadService {
         return Optional.empty();
     }
 
-    /** 탈퇴 — 그 계정의 프로필 사진과 연결 안 된 파일을 찜하고 돌려준다. 스터디 썸네일 등 자원에 붙은 파일은 남긴다. 호출자의 트랜잭션 안에서 부른다. */
+    /**
+     * 탈퇴 — 그 계정의 프로필 사진 · 문의 첨부 이미지와 연결 안 된 파일을 찜하고 돌려준다. 스터디 썸네일 등 자원에 붙은 파일은 남긴다. 호출자의 트랜잭션 안에서
+     * 부른다.
+     */
     public List<StorageObject> markDeletingByAccount(Long accountId, Instant now) {
         repository.markDeletingByAccountId(accountId, now);
         return repository.findAllByAccountIdAndStatus(accountId, StorageObjectStatus.DELETING);

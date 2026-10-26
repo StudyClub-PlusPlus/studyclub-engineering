@@ -10,7 +10,7 @@
 |---|---|---|---|
 | ID | BIGINT PK | N | 파일 번호. 저장 API 가 이 번호를 받아 연결한다 |
 | ACCOUNT_ID | BIGINT | N | 올린 사람. ID 참조([ACCOUNT](./ACCOUNT.md), FK 없음). 연결할 때 「올린 사람 = 요청한 사람」 확인에 쓴다 |
-| PURPOSE | VARCHAR(20) | N | `PROFILE` / `STUDY_THUMBNAIL`. 폴더를 정하고, 연결할 때 칸과 맞는지 본다 |
+| PURPOSE | VARCHAR(20) | N | `PROFILE` / `STUDY_THUMBNAIL` / `FEEDBACK`(문의 첨부, [FEEDBACK_IMAGE](./FEEDBACK_IMAGE.md)). 폴더를 정하고, 연결할 때 칸과 맞는지 본다 |
 | PROVIDER | VARCHAR(20) | N | 파일이 있는 저장소. `S3` / `R2`. 지금은 `S3` 만 쓴다. 지우기가 이 값으로 저장소 구현을 고른다 |
 | OBJECT_KEY | VARCHAR(512) UK | N | 저장소 안의 위치. `gigs/profiles/<UUID>.webp` 꼴. 교체·지우기가 주소에서 키를 뽑아 이 행을 찾는다 |
 | CONTENT_TYPE | VARCHAR(40) | N | 판정한 형식. `image/jpeg` / `image/png` / `image/webp` |
@@ -21,7 +21,7 @@
 
 ## 관계
 
-- N : 1 [ACCOUNT](./ACCOUNT.md), ID 참조뿐 FK 는 없다(애그리거트 간 참조 — database-guide.md 외래키 정책). 탈퇴 시 그 계정의 `ATTACHED`·`PENDING` 행을 `DELETING` 으로 넘기고 커밋 뒤 지운다.
+- N : 1 [ACCOUNT](./ACCOUNT.md), ID 참조뿐 FK 는 없다(애그리거트 간 참조 — database-guide.md 외래키 정책). 탈퇴 시 그 계정의 `PENDING` 행과 `PROFILE`·`FEEDBACK` 용도의 `ATTACHED` 행을 `DELETING` 으로 넘기고 커밋 뒤 지운다.
 - 기능 쪽 테이블과는 잇지 않는다. `ACCOUNT.PROFILE_IMG_URL`·`STUDY.THUMBNAIL_URL` 에 적힌 주소에서 키를 뽑아 `OBJECT_KEY` 로 찾는다.
 
 ## 상태 — STATUS
