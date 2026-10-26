@@ -8,12 +8,13 @@ import {
   TEMPLATE_CHANNEL_LABEL,
   TRIGGERS,
   TRIGGER_LABEL,
-  templates as seeded,
   type NotificationTemplate,
   type NotificationTrigger,
 } from '@console/lib/templates';
-import { Button, Input, Modal, Select, Textarea } from '@studyclub/ui';
+import { Button, Input, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
+
+import { toPreviewDocument } from '@/proto/mail/render';
 
 type Draft = { trigger: NotificationTrigger; subject: string; body: string };
 
@@ -25,17 +26,18 @@ const EMPTY: Draft = { trigger: 'USER_REGISTERED', subject: '', body: '' };
  * 문구를 보고, 더하고, 고치고, 지운다. 나가는 알림이 늘 때마다 코드를 고치지 않게 문구는 운영자가 다룬다.
  *
  * **추가 팝업이 곧 편집 팝업이다** — 행사 팝업과 같은 규칙. 목록에서 조건을 누르면 값이 채워진 채 열린다.
- * 전문을 보는 화면을 따로 두지 않는다 — 팝업의 제목·본문 칸이 곧 전문이다. 같은 문구를 보기용·수정용
- * 두 모양으로 보여주지 않는다.
+ * 같은 팝업에서 본문 원문을 편집하고, 미리보기 탭으로 아직 저장하지 않은 메일 모양을 확인한다.
+ * 미리보기에서도 치환 변수는 원문 그대로 보여준다. 저장할 draft 의 HTML·줄바꿈도 그대로 둔다.
  * 삭제도 팝업 안에서 한다 — 목록 행에 삭제 버튼을 두면 스치듯 눌러 지우는 사고가 난다.
  *
  * TODO(api): POST /api/admin/notification-templates · PUT·DELETE /api/admin/notification-templates/{id}
  */
-export function TemplatesTable() {
-  const [rows, setRows] = useState<NotificationTemplate[]>(seeded);
+export function TemplatesTable({ initialTemplates }: { initialTemplates: NotificationTemplate[] }) {
+  const [rows, setRows] = useState<NotificationTemplate[]>(initialTemplates);
   /** null = 닫힘, 'new' = 추가, 숫자 = 그 id 편집 */
   const [target, setTarget] = useState<'new' | number | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [bodyTab, setBodyTab] = useState('edit');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const editing = typeof target === 'number';
@@ -44,12 +46,14 @@ export function TemplatesTable() {
 
   function openAdd() {
     setDraft(EMPTY);
+    setBodyTab('edit');
     setConfirmDelete(false);
     setTarget('new');
   }
 
   function openEdit(t: NotificationTemplate) {
     setDraft({ trigger: t.trigger, subject: t.subject, body: t.body });
+    setBodyTab('edit');
     setConfirmDelete(false);
     setTarget(t.id);
   }
@@ -128,6 +132,7 @@ export function TemplatesTable() {
         open={target !== null}
         onClose={close}
         title={editing ? '템플릿 수정' : '템플릿 추가'}
+        size='lg'
         /* 닫는 수단은 X 하나다 — 취소 버튼을 따로 두지 않는다 (POL-0008) */
         footer={
           confirmDelete ? (
@@ -192,16 +197,58 @@ export function TemplatesTable() {
               onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
               placeholder='[StudyClub] 새 스터디 모집이 시작됐습니다'
             />
-            {/* 치환 변수({{nickname}})는 원문 그대로 둔다 — 미리 채워 보여주면 원문을 알 수 없다 */}
-            <Textarea
-              label='본문'
-              required
-              rows={10}
-              value={draft.body}
-              onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-              placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-              labelHint='{{nickname}} 으로 닉네임 삽입'
-            />
+            <div data-anno='template:2-3'>
+              <Tabs
+                activeKey={bodyTab}
+                onChange={setBodyTab}
+                items={[
+                  {
+                    key: 'edit',
+                    label: '본문 편집',
+                    content: (
+                      <div role='tabpanel' aria-label='본문 편집'>
+                        <Textarea
+                          label='본문'
+                          required
+                          rows={12}
+                          value={draft.body}
+                          onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                          placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
+                          helper='{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'preview',
+                    label: '미리보기',
+                    content: (
+                      <div role='tabpanel' aria-label='미리보기' className='flex flex-col gap-3'>
+                        <div className='rounded-card border border-border bg-surface-1 px-4 py-3'>
+                          <span className='text-xs text-fg-muted'>메일 제목</span>
+                          <p className='break-words text-sm font-semibold text-ink'>
+                            {draft.subject.trim() ? draft.subject : '제목을 입력해 주세요.'}
+                          </p>
+                        </div>
+                        {draft.body.trim() ? (
+                          /* 기존 메일 시안과 같은 렌더러를 쓰고, 스크립트·폼·팝업은 허용하지 않는다. */
+                          <iframe
+                            title='메일 본문 미리보기'
+                            sandbox=''
+                            srcDoc={toPreviewDocument(draft.body)}
+                            className='h-[28rem] w-full rounded-card border border-border bg-white'
+                          />
+                        ) : (
+                          <div className='flex min-h-64 items-center justify-center rounded-card border border-border bg-surface-1 p-6 text-center text-sm text-fg-muted'>
+                            본문을 입력하면 여기에 미리보기가 표시됩니다.
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </div>
           </div>
         )}
       </Modal>
