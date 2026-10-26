@@ -10,9 +10,9 @@ import { IS_INDEXABLE } from '@/lib/seo';
 export type SocialId = 'instagram' | 'x' | 'kakao' | 'linkedin';
 
 export const SOCIAL_CHANNELS: { id: SocialId; label: L10n; href: string }[] = [
-  // TODO(운영진): X·링크드인은 계정을 열면 주소만 채운다
-  { id: 'instagram', label: { ko: '인스타그램', en: 'Instagram' }, href: 'https://www.instagram.com/studyclub_plusplus/' },
-  { id: 'x', label: { ko: 'X', en: 'X' }, href: '' },
+  // TODO(운영진): 링크드인은 계정을 열면 주소만 채운다
+  { id: 'instagram', label: { ko: '인스타그램', en: 'Instagram' }, href: 'https://www.instagram.com/studyclub.life/' },
+  { id: 'x', label: { ko: 'X', en: 'X' }, href: 'https://x.com/studyclub_life' },
   { id: 'kakao', label: { ko: '카카오톡 채널', en: 'KakaoTalk channel' }, href: 'https://pf.kakao.com/_CjiSX' },
   { id: 'linkedin', label: { ko: '링크드인', en: 'LinkedIn' }, href: '' },
 ];
