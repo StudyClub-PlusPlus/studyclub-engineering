@@ -9,6 +9,7 @@ import {
   CATEGORY_OPTIONS,
   type ApiStudyDetail,
   type StudyCreatePayload,
+  type StudyTimezone,
   type StudyUpdatePayload,
 } from '@/features/studies/types';
 import { ApiError, http } from '@/lib/http';
@@ -25,7 +26,6 @@ import { uploadImage } from '@/lib/upload';
  * - 진행 형식(온/오프라인): 전 스터디 온라인 운영이라 선택지가 무의미
  * - 모집 시작일: 마감일만 관리 (모집 상태 판정 축이 마감일 하나) — 진행 시작일과는 다른 값이다
  * - 상시 모집·공개일: 없다. 마감일은 필수이고, 공개는 운영자가 직접 켠다
- * - 시간대: 저장할 컬럼이 아직 없다
  *
  * **프로그램은 따로 등록하지 않고 이 폼에서 함께 다룬다.** 프로그램은 제목·종류뿐이고 기수 없는 프로그램은
  * 의미가 없다(docs/erd/STUDY_PROGRAM.md). 등록 모드에서는 「새 프로그램」(첫 기수와 함께 만든다) 또는
@@ -70,6 +70,8 @@ export type StudyFormValues = {
   capacity: string;
   unlimited: boolean;
   schedule: string;
+  /** STUDY.TIMEZONE. 빈 문자열 = 미정. 「진행 일정」 문구와 다른 축 — KST·PST·동시 진행 중 하나를 고른다. */
+  timezone: StudyTimezone | '';
   /** 진행 시작일 YYYY-MM-DD (KST). 모임이 실제로 시작하는 날 — 마감일·진행 일정 문구와는 다른 값. */
   startAt: string;
   discordUrl: string;
@@ -93,6 +95,7 @@ export const EMPTY_FORM: StudyFormValues = {
   capacity: '',
   unlimited: true,
   schedule: '',
+  timezone: '',
   startAt: '',
   discordUrl: '',
   driveUrl: '',
@@ -133,6 +136,7 @@ export function detailToForm(d: ApiStudyDetail): StudyFormValues {
     capacity: d.capacity == null ? '' : String(d.capacity),
     unlimited: d.capacity == null,
     schedule: d.schedule ?? '',
+    timezone: d.timezone ?? '',
     startAt: toKstDate(d.startAt),
     discordUrl: d.discordChannelUrl ?? '',
     driveUrl: d.driveUrl ?? '',
@@ -156,6 +160,7 @@ export function formToPayload(form: StudyFormValues, initial: StudyFormValues): 
   if (changed('description')) p.description = form.description;
   if (changed('category')) p.category = form.category;
   if (changed('schedule')) p.schedule = form.schedule.trim();
+  if (changed('timezone')) p.timezone = form.timezone || null;
   if (changed('deadline')) p.recruitDeadline = deadlineToIso(form.deadline);
   if (changed('capacity') || changed('unlimited')) {
     p.capacity = form.unlimited ? null : Number(form.capacity.trim());
@@ -188,6 +193,7 @@ export function formToCreatePayload(form: StudyFormValues): StudyCreatePayload {
   else payload.studyKind = form.kind;
   if (form.description.trim()) payload.description = form.description;
   if (form.schedule.trim()) payload.schedule = form.schedule.trim();
+  if (form.timezone) payload.timezone = form.timezone;
   if (form.thumbnailFileId !== null) payload.thumbnailFileId = form.thumbnailFileId;
   return payload;
 }
@@ -248,7 +254,8 @@ function CharCount({ len, max }: { len: number; max: number }) {
  *
  * 마감일·진행 일정·정원·진행 시작일은 기수마다 달라 비운다. 반대로 **디스코드 채널·드라이브 주소는 물려받는다**
  * — 클럽은 기수가 바뀌어도 채널을 새로 파지 않고 같은 채널을 계속 쓴다(채널은 사실 기수가 아니라 프로그램
- * 단위 자원이다). 새 채널로 바꿨다면 그 칸만 고치면 된다.
+ * 단위 자원이다). 새 채널로 바꿨다면 그 칸만 고치면 된다. **시간대도 같은 이유로 물려받는다** — 기수가
+ * 바뀌었다고 클럽이 다른 시간대로 옮겨가지는 않는다.
  */
 function cohortDefaults(latest: ApiStudyDetail): Partial<StudyFormValues> {
   return {
@@ -257,7 +264,54 @@ function cohortDefaults(latest: ApiStudyDetail): Partial<StudyFormValues> {
     category: latest.category,
     discordUrl: latest.discordChannelUrl ?? '',
     driveUrl: latest.driveUrl ?? '',
+    timezone: latest.timezone ?? '',
   };
+}
+
+const TIMEZONE_OPTIONS: { key: StudyTimezone | ''; label: string }[] = [
+  { key: '', label: '미정' },
+  { key: 'KST', label: 'KST' },
+  { key: 'PST', label: 'PST' },
+  { key: 'BOTH', label: '동시 진행(KST·PST)' },
+];
+
+/**
+ * 시간대 — **선택 입력.** 「진행 일정」(요일·시간 문구)과는 다른 축이다 — 어느 시간대를 기준으로
+ * 도는가 하나만 고르고, 몇 시인지는 진행 일정이 말한다.
+ *
+ * 「미정」을 명시적인 선택지로 둔다 — 셋 중 하나를 강제하면 모르는데 아는 것처럼 값이 채워진다.
+ */
+function TimezoneField({
+  value,
+  onChange,
+}: {
+  value: StudyTimezone | '';
+  onChange: (next: StudyTimezone | '') => void;
+}) {
+  return (
+    <div className='flex flex-col gap-1.5'>
+      <span className='text-sm font-medium text-neutral-800'>시간대</span>
+      <div role='radiogroup' aria-label='시간대' className='flex flex-wrap gap-1'>
+        {TIMEZONE_OPTIONS.map((o) => (
+          <button
+            key={o.key || 'unset'}
+            type='button'
+            role='radio'
+            aria-checked={value === o.key}
+            onClick={() => onChange(o.key)}
+            className={`h-8 rounded-pill border px-3 text-sm font-medium transition-colors ${
+              value === o.key
+                ? 'border-brand bg-brand text-white'
+                : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:bg-surface-2'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <span className='text-xs text-fg-muted'>모임이 실제로 도는 요일·시간은 「진행 일정」에 적습니다</span>
+    </div>
+  );
 }
 
 /**
@@ -617,6 +671,8 @@ export function StudyForm({
         placeholder='매주 목 20:00 · 8주 과정'
         labelHint='비우면 신청 화면에 일정 미정으로 안내합니다'
       />
+
+      <TimezoneField value={value.timezone} onChange={(next) => set('timezone', next)} />
 
       <div className='grid gap-3 sm:grid-cols-2'>
         <div className='flex flex-col gap-1.5'>

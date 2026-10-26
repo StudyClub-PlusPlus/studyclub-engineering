@@ -7,6 +7,20 @@ import static org.mockito.Mockito.when;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.participant.StudyParticipant;
+import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.Study;
+import com.studyclub.domain.study.StudyCategory;
+import com.studyclub.domain.study.StudyGroup;
+import com.studyclub.domain.study.StudyGroupRepository;
+import com.studyclub.domain.study.StudyKind;
+import com.studyclub.domain.study.StudyProgram;
+import com.studyclub.domain.study.StudyProgramRepository;
+import com.studyclub.domain.study.StudyRepository;
+import com.studyclub.domain.study.StudyStatus;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -19,12 +33,13 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-/** POST /api/me/discord/link — 성공 1건 + 실패 코어 (testing-guide.md). 디스코드 왕복만 가짜다. */
+/** POST · DELETE /api/me/discord/link — 성공 1건 + 실패 코어 (testing-guide.md). 디스코드 왕복만 가짜다. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 class AccountDiscordLinkIntegrationTest {
@@ -34,6 +49,10 @@ class AccountDiscordLinkIntegrationTest {
     @Autowired TestRestTemplate rest;
     @Autowired JwtService jwt;
     @Autowired AccountRepository accountRepository;
+    @Autowired StudyProgramRepository studyProgramRepository;
+    @Autowired StudyRepository studyRepository;
+    @Autowired StudyGroupRepository studyGroupRepository;
+    @Autowired StudyParticipantRepository studyParticipantRepository;
     @MockitoBean DiscordOAuthClient discordOAuthClient;
 
     @BeforeEach
@@ -114,6 +133,157 @@ class AccountDiscordLinkIntegrationTest {
     @DisplayName("401 - 로그인하지 않으면 UNAUTHORIZED")
     void unauthorizedWithoutLogin() {
         ResponseEntity<Map> res = post(null, Map.of("code", "good-code"));
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    private Account seedLinkedAccount() {
+        Account account = seedAccount();
+        account.linkDiscord(randomSnowflake(), "crew_handle");
+        account.changeDiscordNickname("서버별명");
+        return accountRepository.save(account);
+    }
+
+    private void seedParticipant(Account account, ParticipantStatus status) {
+        StudyProgram program =
+                studyProgramRepository.save(
+                        StudyProgram.builder().title("해제 테스트").studyKind(StudyKind.STUDY).build());
+        Study study =
+                studyRepository.save(
+                        Study.builder()
+                                .programId(program.getId())
+                                .title("해제 테스트 스터디")
+                                .oneLineSummary("테스트용")
+                                .category(StudyCategory.ALGORITHM)
+                                .description("설명")
+                                .status(StudyStatus.ONGOING)
+                                .startAt(Instant.now())
+                                .build());
+        StudyGroup group = studyGroupRepository.save(StudyGroup.defaultOf(study.getId()));
+        studyParticipantRepository.save(
+                StudyParticipant.builder()
+                        .accountId(account.getId())
+                        .studyId(study.getId())
+                        .studyGroupId(group.getId())
+                        .status(status)
+                        .participantRole(ParticipantRole.MEMBER)
+                        .joinedAt(Instant.now())
+                        .build());
+    }
+
+    private ResponseEntity<Map> delete(Account account) {
+        HttpHeaders headers = new HttpHeaders();
+        if (account != null) {
+            headers.setBearerAuth(
+                    jwt.issueAccess(String.valueOf(account.getId()), account.getEmail()));
+        }
+        return rest.exchange(PATH, HttpMethod.DELETE, new HttpEntity<>(headers), Map.class);
+    }
+
+    @Test
+    @DisplayName("해제 성공 - 참여가 끝난 스터디만 있으면 ID·핸들을 지우고 서버 별명은 남긴다")
+    void unlinksWhenNoOngoingParticipation() {
+        Account account = seedLinkedAccount();
+        seedParticipant(account, ParticipantStatus.WITHDRAWN);
+
+        ResponseEntity<Map> res = delete(account);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        Account saved = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(saved.getDiscordId()).isNull();
+        assertThat(saved.getDiscordHandle()).isNull();
+        assertThat(saved.getDiscordNickname()).isEqualTo("서버별명");
+    }
+
+    @Test
+    @DisplayName("해제 성공 - 연동하지 않은 계정도 204 (멱등)")
+    void unlinkIsIdempotent() {
+        ResponseEntity<Map> res = delete(seedAccount());
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
+    @DisplayName("해제 409 - 휴식(PAUSED) 중인 스터디도 참여 중이라 DISCORD_UNLINK_BLOCKED, 연동은 그대로")
+    void blocksUnlinkWhileParticipating() {
+        Account account = seedLinkedAccount();
+        seedParticipant(account, ParticipantStatus.PAUSED);
+
+        ResponseEntity<Map> res = delete(account);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(res.getBody()).containsEntry("errorCode", "DISCORD_UNLINK_BLOCKED");
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().getDiscordId())
+                .isEqualTo(account.getDiscordId());
+    }
+
+    @Test
+    @DisplayName("갈아타기 409 - 참여 중이면 다른 디스코드 ID 로 덮어쓰지 못한다, 연동은 그대로")
+    void blocksRelinkToAnotherIdWhileParticipating() {
+        Account account = seedLinkedAccount();
+        seedParticipant(account, ParticipantStatus.ACTIVE);
+        when(discordOAuthClient.exchange(anyString()))
+                .thenReturn(new DiscordOAuthClient.DiscordUser(randomSnowflake(), "new_handle"));
+
+        ResponseEntity<Map> res = post(account, Map.of("code", "good-code"));
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(res.getBody()).containsEntry("errorCode", "DISCORD_UNLINK_BLOCKED");
+        Account saved = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(saved.getDiscordId()).isEqualTo(account.getDiscordId());
+        assertThat(saved.getDiscordHandle()).isEqualTo("crew_handle");
+    }
+
+    @Test
+    @DisplayName("다시 연동 성공 - 참여 중이어도 같은 디스코드 ID 면 핸들만 새로 쓴다")
+    void relinkSameIdWhileParticipatingRefreshesHandle() {
+        Account account = seedLinkedAccount();
+        seedParticipant(account, ParticipantStatus.ACTIVE);
+        when(discordOAuthClient.exchange(anyString()))
+                .thenReturn(new DiscordOAuthClient.DiscordUser(account.getDiscordId(), "renamed"));
+
+        ResponseEntity<Map> res = post(account, Map.of("code", "good-code"));
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().getDiscordHandle())
+                .isEqualTo("renamed");
+    }
+
+    @Test
+    @DisplayName("갈아타기 성공 - 참여가 끝났으면 다른 디스코드 ID 로 바꿀 수 있다")
+    void relinksToAnotherIdWhenNotParticipating() {
+        Account account = seedLinkedAccount();
+        seedParticipant(account, ParticipantStatus.WITHDRAWN);
+        String newId = randomSnowflake();
+        when(discordOAuthClient.exchange(anyString()))
+                .thenReturn(new DiscordOAuthClient.DiscordUser(newId, "new_handle"));
+
+        ResponseEntity<Map> res = post(account, Map.of("code", "good-code"));
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().getDiscordId())
+                .isEqualTo(newId);
+    }
+
+    @Test
+    @DisplayName("해제 409 - 캡틴은 DISCORD_LINK_REQUIRED, 연동은 그대로")
+    void blocksUnlinkForCaptain() {
+        Account account = seedLinkedAccount();
+        account.changeSystemRole(SystemRole.ADMIN);
+        accountRepository.save(account);
+
+        ResponseEntity<Map> res = delete(account);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(res.getBody()).containsEntry("errorCode", "DISCORD_LINK_REQUIRED");
+        assertThat(accountRepository.findById(account.getId()).orElseThrow().getDiscordId())
+                .isEqualTo(account.getDiscordId());
+    }
+
+    @Test
+    @DisplayName("해제 401 - 로그인하지 않으면 UNAUTHORIZED")
+    void unlinkUnauthorizedWithoutLogin() {
+        ResponseEntity<Map> res = delete(null);
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }

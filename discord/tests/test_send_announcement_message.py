@@ -9,12 +9,9 @@ from app.api.server import create_app
 from app.config import Settings
 
 GUILD_ID = 100000000000000001
-CAPTAIN_ROLE_ID = 100000000000000002
-NAVIGATOR_ROLE_ID = 100000000000000003
 ALERT_CHANNEL_ID = 1327394882193883140
 ANNOUNCEMENT_CHANNEL_ID = 1327394882193883141
 USER_ID = "327394882193883136"
-BOT_ID = "427394882193883136"
 API_KEY = "test-api-key"
 HEADERS = {
     "X-API-Key": API_KEY,
@@ -38,25 +35,19 @@ def _channel(channel_id, *, spec=discord.TextChannel, visible=True, mention_ever
 
 
 class FakeGuild:
-    """A guild with one member, an announcement channel, and an alert channel."""
+    """A guild the caller is not a member of, with an announcement channel and an alert channel."""
 
     def __init__(
         self,
         *,
-        member_roles=(CAPTAIN_ROLE_ID,),
-        roles=(CAPTAIN_ROLE_ID, NAVIGATOR_ROLE_ID),
         channel_spec=discord.TextChannel,
         channel_visible=True,
         mention_everyone=True,
         alert_channel=True,
     ):
         self.me = Mock(name="bot member")
-        self.roles = {role_id: Mock(id=role_id) for role_id in roles}
-        self.member = Mock()
-        self.member.get_role.side_effect = (
-            lambda rid: self.roles.get(rid) if rid in member_roles else None
-        )
-        self.fetch_member = AsyncMock(return_value=self.member)
+        # Who may call is the backend's to decide, so the caller is never looked up.
+        self.fetch_member = AsyncMock(side_effect=_discord_error(discord.NotFound, 404))
         self.channel = _channel(
             ANNOUNCEMENT_CHANNEL_ID,
             spec=channel_spec,
@@ -67,9 +58,6 @@ class FakeGuild:
         self.channels = {self.channel.id: self.channel}
         if alert_channel:
             self.channels[self.alert.id] = self.alert
-
-    def get_role(self, role_id):
-        return self.roles.get(role_id)
 
     def get_channel(self, channel_id):
         return self.channels.get(channel_id)
@@ -85,8 +73,6 @@ def _bot(guild=None, ready=True) -> Mock:
 def _client(bot, tmp_path, **overrides) -> TestClient:
     values = {
         "guild_id": GUILD_ID,
-        "captain_role_id": CAPTAIN_ROLE_ID,
-        "navigator_role_id": NAVIGATOR_ROLE_ID,
         "alert_channel_id": ALERT_CHANNEL_ID,
         "announcement_channel_id": ANNOUNCEMENT_CHANNEL_ID,
         "api_key": API_KEY,
@@ -115,7 +101,7 @@ def test_send_announcement_message_posts_under_an_everyone_line(tmp_path):
     assert response.content == b""
     assert _sent(guild) == f"@everyone\n{MSG}"
     assert "발신" not in _sent(guild)
-    guild.fetch_member.assert_awaited_once_with(int(USER_ID))
+    guild.fetch_member.assert_not_awaited()
 
 
 def test_send_announcement_message_notifies_everyone_and_nobody_else(tmp_path):
@@ -231,54 +217,6 @@ def test_send_announcement_message_rejects_bad_headers(headers, tmp_path):
     guild.channel.send.assert_not_awaited()
 
 
-def test_send_announcement_message_by_a_navigator_is_forbidden(tmp_path):
-    """An announcement reaches every member, so unlike an alert it is captain only."""
-    guild = FakeGuild(member_roles=(NAVIGATOR_ROLE_ID,))
-
-    response = _post(_client(_bot(guild), tmp_path))
-
-    assert response.status_code == 403
-    guild.channel.send.assert_not_awaited()
-
-
-def test_send_announcement_message_without_a_navigator_role_configured_still_works(tmp_path):
-    """The navigator setting is never read here, so leaving it unset is not a 409."""
-    guild = FakeGuild(roles=(CAPTAIN_ROLE_ID,))
-
-    response = _post(_client(_bot(guild), tmp_path, navigator_role_id=None))
-
-    assert response.status_code == 204
-
-
-def test_send_announcement_message_with_a_missing_captain_role_is_not_found(tmp_path):
-    guild = FakeGuild(member_roles=(), roles=())
-
-    response = _post(_client(_bot(guild), tmp_path))
-
-    assert response.status_code == 404
-    assert "captain role" in response.json()["detail"]
-    guild.channel.send.assert_not_awaited()
-
-
-def test_send_announcement_message_by_non_member_is_not_found(tmp_path):
-    guild = FakeGuild()
-    guild.fetch_member.side_effect = _discord_error(discord.NotFound, 404)
-
-    response = _post(_client(_bot(guild), tmp_path))
-
-    assert response.status_code == 404
-    assert "not a member" in response.json()["detail"]
-
-
-def test_send_announcement_message_when_member_lookup_fails_is_bad_gateway(tmp_path):
-    guild = FakeGuild()
-    guild.fetch_member.side_effect = _discord_error()
-
-    response = _post(_client(_bot(guild), tmp_path))
-
-    assert response.status_code == 502
-
-
 def test_send_announcement_message_with_unknown_channel_is_not_found(tmp_path):
     response = _post(
         _client(_bot(FakeGuild()), tmp_path, announcement_channel_id=ANNOUNCEMENT_CHANNEL_ID + 9)
@@ -305,7 +243,7 @@ def test_send_announcement_message_to_a_non_text_channel_is_not_found(tmp_path):
     guild.channel.send.assert_not_awaited()
 
 
-@pytest.mark.parametrize("missing", ["guild_id", "captain_role_id", "announcement_channel_id"])
+@pytest.mark.parametrize("missing", ["guild_id", "announcement_channel_id"])
 def test_send_announcement_message_without_configuration_conflicts(missing, tmp_path):
     response = _post(_client(_bot(FakeGuild()), tmp_path, **{missing: None}))
 
@@ -412,12 +350,7 @@ def test_send_announcement_message_survives_a_dropped_warning_connection(tmp_pat
     assert "could not warn the alert channel" in caplog.text
 
 
-def test_send_announcement_message_as_the_bot_is_forbidden(tmp_path):
-    """An announcement rings the whole guild, so only a captain sends one -- not the system."""
-    guild = FakeGuild(member_roles=())
-    headers = {**HEADERS, "X-Discord-User-ID": BOT_ID}
+def test_send_announcement_message_needs_no_role_configuration(tmp_path):
+    response = _post(_client(_bot(FakeGuild()), tmp_path, captain_role_id=None, navigator_role_id=None))
 
-    response = _post(_client(_bot(guild), tmp_path, bot_id=int(BOT_ID)), headers=headers)
-
-    assert response.status_code == 403
-    guild.channel.send.assert_not_awaited()
+    assert response.status_code == 204

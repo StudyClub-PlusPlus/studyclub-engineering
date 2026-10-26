@@ -47,8 +47,8 @@ async def check(ctx: commands.Context, settings: Settings) -> bool:
 
     An unset ``DISCORD_BOT_CHANNEL_ID`` refuses every command everywhere rather
     than accepting them anywhere, the same way an unset
-    ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door in ``may_update`` and
-    ``caller_guild``: a missing setting never means "open".
+    ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door in ``may_update``: a missing
+    setting never means "open".
 
     The refusal is sent in whatever channel was used -- a line of noise there,
     but a command that answers with silence reads as a bot that is down. A DM

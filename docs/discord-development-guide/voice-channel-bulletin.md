@@ -227,7 +227,7 @@ async def prime_the_board() -> None:
   ([`create-study`](api/create-study.md) · [`send-alert-message`](api/send-alert-message.md)),
   갱신 한 번이 **히스토리 읽기 + 메시지 수정**으로 Discord rate limit 을 쓴다. 게시판은 전원이 보는 물건이라
   아무나 다시 쓰게 두지 않는다. navigator 까지 허용하려면 `may_update` 를 넓히면 된다.
-- `DISCORD_CAPTAIN_ROLE_ID` 가 **비어 있으면 거부**한다 — API 쪽 `caller_guild` 와 같은 태도로, 설정이
+- `DISCORD_CAPTAIN_ROLE_ID` 가 **비어 있으면 거부**한다 — 설정이
   없다는 게 문 열림을 뜻하지 않는다. DM 에서는 멤버도 역할도 없으니 역시 거부다.
 - `DISCORD_BULLETIN_CHANNEL_ID` 가 없으면 **기능이 꺼져 있다고 답장**한다. 그 경우 `refresh` 는 로그만
   남기고 끝나서, 답장이 없으면 부른 사람은 갱신된 줄 안다.

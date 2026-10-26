@@ -110,6 +110,7 @@ public class StudyService {
                                 .thumbnailUrl(
                                         attachThumbnail(request.thumbnailFileId(), accountId, now))
                                 .schedule(request.schedule())
+                                .timezone(request.timezone())
                                 .createdBy(accountId)
                                 .build());
 
@@ -238,6 +239,7 @@ public class StudyService {
                 request.category(),
                 request.schedule());
         if (request.startAtPresent()) study.changeStartAt(request.startAt());
+        if (request.timezonePresent()) study.changeTimezone(request.timezone());
         if (request.discordChannelUrlPresent()) {
             study.changeDiscordChannelUrl(request.discordChannelUrl());
         }

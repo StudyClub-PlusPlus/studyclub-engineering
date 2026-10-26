@@ -4,7 +4,7 @@ Two of them take the channel from configuration, one takes it from the caller.
 
 Contracts: docs/discord-development-guide/api/send-alert-message.md,
 send-announcement-message.md, and send-message.md next to them. They differ in
-who may call, what goes above the message, and who gets notified.
+what goes above the message and who gets notified.
 """
 
 from __future__ import annotations
@@ -17,13 +17,15 @@ import discord
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.api.guild import caller_guild
+from app.api.guild import resolve_guild
 from app.api.headers import discord_user_id, idempotency_key, require_api_key
 from app.config import Settings
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["channels"], dependencies=[Depends(require_api_key)])
+router = APIRouter(
+    tags=["channels"], dependencies=[Depends(require_api_key), Depends(discord_user_id)]
+)
 
 # Discord caps a message at 2000 characters and the sender line comes off that
 # budget, so the caller's share is what is left with room to spare.
@@ -124,9 +126,7 @@ async def send_alert_message(
             status_code=400, detail="msg is empty once @everyone and @here are removed"
         )
 
-    # Captain only: a navigator never raises an alert by hand -- what would
-    # have been theirs is the backend calling as the system.
-    guild = await caller_guild(request, user_id, allow_navigator=False, allow_system=True)
+    guild = resolve_guild(request)
 
     channel_id = request.app.state.settings.alert_channel_id
     channel, _ = resolve_configured_channel(guild, channel_id, "alert")
@@ -198,7 +198,6 @@ async def warn_mention_everyone_missing(
 async def send_announcement_message(
     request: Request,
     body: SendAnnouncementRequest,
-    user_id: int = Depends(discord_user_id),
     key: str = Depends(idempotency_key),
 ) -> Response:
     """Post the caller's message to ``DISCORD_ANNOUNCEMENT_CHANNEL_ID`` under an @everyone line.
@@ -214,11 +213,7 @@ async def send_announcement_message(
             status_code=400, detail="msg is empty once @everyone and @here are removed"
         )
 
-    # Captain only: an announcement reaches every member, so a navigator may
-    # not send one.
-    guild = await caller_guild(
-        request, user_id, allow_navigator=False, allow_system=False
-    )
+    guild = resolve_guild(request)
 
     settings = request.app.state.settings
     channel, permissions = resolve_configured_channel(
@@ -421,7 +416,7 @@ async def send_channel_message(
             status_code=400, detail="msg is empty once @everyone and @here are removed"
         )
 
-    guild = await caller_guild(request, user_id, allow_navigator=True, allow_system=False)
+    guild = resolve_guild(request)
 
     channel_id = int(discordChannelId)
     study_id = int(body.discordStudyId)

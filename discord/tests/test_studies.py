@@ -10,7 +10,6 @@ from app.api.server import create_app
 from app.config import Settings
 
 GUILD_ID = 100000000000000001
-CAPTAIN_ROLE_ID = 100000000000000002
 USER_ID = "327394882193883136"
 API_KEY = "test-api-key"
 HEADERS = {
@@ -32,13 +31,11 @@ def _created(obj_id: int) -> Mock:
 
 
 class FakeGuild:
-    """A guild with one captain member, recording what gets created."""
+    """A guild the caller is not a member of, recording what gets created."""
 
     def __init__(
         self,
         *,
-        captain=True,
-        captain_role_exists=True,
         categories=(DEFAULT_NEW_STUDY_ANCHOR_NAME,),
     ):
         self.category = _created(11)
@@ -54,19 +51,13 @@ class FakeGuild:
 
         self.default_role = Mock(name="@everyone")
         self.me = Mock(name="bot member")
-        self.captain_role = Mock(id=CAPTAIN_ROLE_ID)
-        self.member = Mock()
-        self.member.get_role.return_value = self.captain_role if captain else None
-        self.fetch_member = AsyncMock(return_value=self.member)
-        self._captain_role_exists = captain_role_exists
+        # Who may call is the backend's to decide, so the caller is never looked up.
+        self.fetch_member = AsyncMock(side_effect=_discord_error(discord.NotFound, 404))
         self.categories = [Mock() for _ in categories]
         for category, n in zip(self.categories, categories):
             category.name = n
         # discord.utils.get reads attributes, so only the names need to be real.
         self.anchor = self.categories[0] if self.categories else None
-
-    def get_role(self, role_id):
-        return self.captain_role if self._captain_role_exists and role_id == CAPTAIN_ROLE_ID else None
 
 
 def _bot(guild=None, ready=True) -> Mock:
@@ -84,7 +75,6 @@ def db_path(tmp_path):
 def _client(bot, db_path, **overrides) -> TestClient:
     values = {
         "guild_id": GUILD_ID,
-        "captain_role_id": CAPTAIN_ROLE_ID,
         "api_key": API_KEY,
         "db_path": db_path,
     }
@@ -123,7 +113,7 @@ def test_create_study_creates_category_channels_and_role(db_path):
 
     assert response.status_code == 201
     assert response.json() == {"discordStudyId": "11", "discordRoleId": "14"}
-    guild.fetch_member.assert_awaited_once_with(int(USER_ID))
+    guild.fetch_member.assert_not_awaited()
     guild.create_category.assert_awaited_once_with("알고리즘 스터디")
     guild.category.move.assert_awaited_once_with(after=guild.anchor)
     guild.category.create_text_channel.assert_awaited_once()
@@ -298,12 +288,11 @@ def test_create_study_before_connect_is_unavailable(db_path):
     assert response.status_code == 503
 
 
-@pytest.mark.parametrize("missing", ["guild_id", "captain_role_id"])
-def test_create_study_without_configuration_conflicts(missing, db_path):
-    response = _post(_client(_bot(FakeGuild()), db_path, **{missing: None}))
+def test_create_study_without_configuration_conflicts(db_path):
+    response = _post(_client(_bot(FakeGuild()), db_path, guild_id=None))
 
     assert response.status_code == 409
-    assert missing.upper() in response.json()["detail"]
+    assert "DISCORD_GUILD_ID" in response.json()["detail"]
 
 
 def test_create_study_with_unknown_guild_is_not_found(db_path):
@@ -311,37 +300,6 @@ def test_create_study_with_unknown_guild_is_not_found(db_path):
 
     assert response.status_code == 404
     assert "guild" in response.json()["detail"]
-
-
-def test_create_study_by_non_member_is_not_found(db_path):
-    guild = FakeGuild()
-    guild.fetch_member.side_effect = _discord_error(discord.NotFound, 404)
-
-    response = _post(_client(_bot(guild), db_path))
-
-    assert response.status_code == 404
-    assert "not a member" in response.json()["detail"]
-
-
-def test_create_study_without_captain_role_in_guild_is_not_found(db_path):
-    """A missing captain role is a guild setup problem, not the caller's -- and it is never created."""
-    guild = FakeGuild(captain_role_exists=False)
-
-    response = _post(_client(_bot(guild), db_path))
-
-    assert response.status_code == 404
-    assert "captain role" in response.json()["detail"]
-    guild.create_role.assert_not_awaited()
-
-
-def test_create_study_by_non_captain_is_forbidden(db_path):
-    guild = FakeGuild(captain=False)
-
-    response = _post(_client(_bot(guild), db_path))
-
-    assert response.status_code == 403
-    guild.create_category.assert_not_awaited()
-    assert _status(db_path, "알고리즘 스터디") is None
 
 
 def test_create_study_twice_conflicts(db_path):
