@@ -59,7 +59,7 @@ export default function MyPage() {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
   /** 방금 저장된 줄 — 잠깐 「저장됨」을 띄운다 */
-  const [savedRow, setSavedRow] = useState<'name' | 'zone' | 'discord' | 'marketing' | null>(null);
+  const [savedRow, setSavedRow] = useState<'name' | 'zone' | 'discord' | null>(null);
   const [composing, setComposing] = useState(false);
   const [marketing, setMarketingState] = useState(false);
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
@@ -125,7 +125,7 @@ export default function MyPage() {
   }
 
 
-  function flash(row: 'name' | 'zone' | 'discord' | 'marketing') {
+  function flash(row: 'name' | 'zone' | 'discord') {
     setSavedRow(row);
     window.setTimeout(() => setSavedRow((cur) => (cur === row ? null : cur)), 1800);
   }
@@ -158,7 +158,7 @@ export default function MyPage() {
     // TODO(api): PUT /api/me/marketing-consent — 실패하면 이전 값으로 되돌리고 사유를 보여준다
     setMarketingState(on);
     setMarketing(on);
-    flash('marketing');
+    // 「저장됨」을 띄우지 않는다 — 체크 상태가 곧 결과다
   }
 
   function connectDiscord() {
@@ -306,7 +306,8 @@ export default function MyPage() {
             가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다. 가입 화면에만 두면 바꿀 수 없다.
             가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
           */}
-          <Field label='마케팅 수신' anno='profile:5' saved={savedRow === 'marketing'}>
+          {/* 체크박스는 **상태가 곧 결과**다 — 켜졌는지 꺼졌는지가 보이므로 「저장됨」이 할 말이 없다 */}
+          <Field label='마케팅 수신' anno='profile:5' saved={false}>
             <Checkbox
               label='스터디 소식과 행사 안내를 이메일로 받기'
               checked={marketing}
