@@ -59,7 +59,7 @@ export default function MyPage() {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
   /** 방금 저장된 줄 — 잠깐 「저장됨」을 띄운다 */
-  const [savedRow, setSavedRow] = useState<'name' | 'zone' | 'discord' | 'marketing' | null>(null);
+  const [savedRow, setSavedRow] = useState<'name' | 'zone' | 'discord' | null>(null);
   const [composing, setComposing] = useState(false);
   const [marketing, setMarketingState] = useState(false);
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
@@ -125,7 +125,7 @@ export default function MyPage() {
   }
 
 
-  function flash(row: 'name' | 'zone' | 'discord' | 'marketing') {
+  function flash(row: 'name' | 'zone' | 'discord') {
     setSavedRow(row);
     window.setTimeout(() => setSavedRow((cur) => (cur === row ? null : cur)), 1800);
   }
@@ -158,7 +158,7 @@ export default function MyPage() {
     // TODO(api): PUT /api/me/marketing-consent — 실패하면 이전 값으로 되돌리고 사유를 보여준다
     setMarketingState(on);
     setMarketing(on);
-    flash('marketing');
+    // 「저장됨」을 띄우지 않는다 — 체크 상태가 곧 결과다
   }
 
   function connectDiscord() {
@@ -284,10 +284,15 @@ export default function MyPage() {
             {discordError && <p data-anno='profile:4-2' role='alert' className='mt-3 text-sm text-error-700'>{discordError}</p>}
             {disconnectBlocked && (
               <div data-anno='profile:4-1' className='mt-3 rounded-control bg-error-50 p-3 text-sm'>
+                {/*
+                  첫 줄(「해제할 수 없어요」)은 뺀다 — 눌렀는데 안 됐다는 건 화면이 이미 말한다.
+                  남길 것은 **그래서 무엇을 해야 하는가**다.
+                  **「해당 스터디」를 떼어 「운영진」으로 둔다** — 스터디마다 배정된 운영진이라는
+                  개념이 아직 없다. 참여 중단은 백오피스에서만 되고 백오피스는 캡틴만 들어온다.
+                */}
                 <p role='alert' className='leading-relaxed text-error-700'>
-                  참여 중인 스터디가 있어 디스코드 연결을 해제할 수 없어요.
-                  <br />연결을 해제하려면 참여 중인 모든 스터디의 참여를 중단한 뒤 다시 시도해 주세요.
-                  <br />참여 중단 방법은 해당 스터디 운영진에게 문의해 주세요.
+                  참여 중인 모든 스터디의 참여를 중단한 뒤 다시 시도해 주세요.
+                  <br />참여 중단은 운영진에게 문의해 주세요.
                 </p>
                 <Link href={`/proto/core/${locale}/my/joined`} className='mt-2 inline-flex min-h-9 items-center font-semibold text-fg underline underline-offset-4'>
                   내 스터디 확인하기
@@ -301,7 +306,8 @@ export default function MyPage() {
             가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다. 가입 화면에만 두면 바꿀 수 없다.
             가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
           */}
-          <Field label='마케팅 수신' anno='profile:5' saved={savedRow === 'marketing'}>
+          {/* 체크박스는 **상태가 곧 결과**다 — 켜졌는지 꺼졌는지가 보이므로 「저장됨」이 할 말이 없다 */}
+          <Field label='마케팅 수신' anno='profile:5' saved={false}>
             <Checkbox
               label='스터디 소식과 행사 안내를 이메일로 받기'
               checked={marketing}
