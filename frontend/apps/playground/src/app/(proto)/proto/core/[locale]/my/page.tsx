@@ -287,12 +287,13 @@ export default function MyPage() {
                 {/*
                   첫 줄(「해제할 수 없어요」)은 뺀다 — 눌렀는데 안 됐다는 건 화면이 이미 말한다.
                   남길 것은 **그래서 무엇을 해야 하는가**다.
-                  **「해당 스터디」를 떼어 「운영진」으로 둔다** — 스터디마다 배정된 운영진이라는
-                  개념이 아직 없다. 참여 중단은 백오피스에서만 되고 백오피스는 캡틴만 들어온다.
+                  **「캡틴」이라고 부른다** — 스터디마다 배정된 운영진이라는 개념이 아직 없고,
+                  참여 중단은 백오피스에서만 되는데 백오피스는 캡틴만 들어온다. 화면에서 사람을
+                  가리킬 때는 역할 이름(캡틴 · 네비게이터 · 크루)으로 적는다.
                 */}
                 <p role='alert' className='leading-relaxed text-error-700'>
                   참여 중인 모든 스터디의 참여를 중단한 뒤 다시 시도해 주세요.
-                  <br />참여 중단은 운영진에게 문의해 주세요.
+                  <br />참여 중단은 캡틴에게 문의해 주세요.
                 </p>
                 <Link href={`/proto/core/${locale}/my/joined`} className='mt-2 inline-flex min-h-9 items-center font-semibold text-fg underline underline-offset-4'>
                   내 스터디 확인하기
