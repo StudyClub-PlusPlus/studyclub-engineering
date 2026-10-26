@@ -115,6 +115,7 @@ export function NavAuth({ locale }: { locale: Locale }) {
             <Heart size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'Saved' : '찜한 스터디'}
           </Link>
+          {/* 「문의·오류 신고」는 푸터에 있다 — 눌러야 나오는 자리에 두면 할 말이 생긴 사람이 찾지 못한다 */}
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
             type='button'

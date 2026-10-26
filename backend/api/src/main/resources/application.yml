@@ -50,6 +50,15 @@ google:
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
 
+# 디스코드 계정 연동 (specs/study-application 「디스코드 계정 연동」). 비어 있으면 연동만 503 EXTERNAL_SERVICE_ERROR.
+# guild-id 는 봇과 같은 DISCORD_GUILD_ID — 연동할 때 이 길드의 멤버인지 본다.
+discord:
+  guild-id: ${DISCORD_GUILD_ID:}
+  oauth:
+    client-id: ${DISCORD_OAUTH_CLIENT_ID:}
+    client-secret: ${DISCORD_OAUTH_CLIENT_SECRET:}
+    redirect-uri: ${DISCORD_OAUTH_REDIRECT_URI:}
+
 # 파일 저장소 (specs/profile-image/spec.md, docs/s3-storage.md). 키·버킷·주소는 env 로만.
 # 전부 비어 있어도 부팅된다 — 로컬처럼 키가 없는 환경에서는 올리기만 503 EXTERNAL_SERVICE_ERROR.
 # public-base-url 은 CloudFront 주소에 /studyclub 까지 (값은 인프라 담당자에게 요청).
@@ -103,6 +112,16 @@ scalar:
 ops:
   discord-webhook-url: ${OPS_DISCORD_WEBHOOK_URL:}
   env: ${APP_ENV:local}
+
+# 서버 분석 이벤트 (specs/analytics/spec.md) — Amplitude HTTP V2. 키가 비면 아무것도 보내지 않는다 — 로컬·테스트 기본값.
+# 환경 표시는 위 ops.env(APP_ENV) 를 같이 쓴다. 키는 레포에 적지 않고 env 로만 주입한다.
+amplitude:
+  api-key: ${AMPLITUDE_API_KEY:}
+
+# 같은 사실(가입·활성화)을 GA4 Measurement Protocol 로도 보낸다. 둘 중 하나라도 비면 보내지 않는다.
+ga4:
+  measurement-id: ${GA4_MEASUREMENT_ID:}
+  api-secret: ${GA4_API_SECRET:}
 
 # 세 env 가 다 비어 있으면 동작이 지금과 완전히 동일하다 (콘솔 텍스트, 파일 안 씀).
 #

@@ -25,6 +25,7 @@ export const MESSAGES: Dict = {
   'nav.about': { ko: '소개', en: 'About' },
   'nav.mentoring': { ko: '멘토링', en: 'Mentoring' },
   'nav.join': { ko: '디스코드 합류', en: 'Join Discord' },
+  'nav.feedback': { ko: '문의·오류 신고', en: 'Contact · report a bug' },
   'nav.terms': { ko: '이용약관', en: 'Terms' },
   'nav.privacy': { ko: '개인정보처리방침', en: 'Privacy' },
 
@@ -69,10 +70,6 @@ export const MESSAGES: Dict = {
   },
 
   'notices.title': { ko: '공지사항', en: 'Notices' },
-  'notices.subtitle': {
-    ko: '모집·개편·밋업 등 최신 소식.',
-    en: 'Latest news: recruiting, updates, and meetups.',
-  },
   'notice_tag.notice': { ko: '공지', en: 'Notice' },
   'notice_tag.update': { ko: '업데이트', en: 'Update' },
   'notice_tag.recruit': { ko: '모집', en: 'Recruiting' },

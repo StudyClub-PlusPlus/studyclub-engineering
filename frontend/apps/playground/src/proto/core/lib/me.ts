@@ -56,12 +56,10 @@ export function setBookmarked(studyId: string, on: boolean) {
 /* ── 스터디 신청 ─────────────────────────────────────────────────────────── */
 
 /**
- * 신청 상태.
- * - pending  : 운영진 확인 대기
- * - accepted : 승인 — 참여 중
- * 승인은 운영자 콘솔에서 처리하므로, 서버가 붙기 전까지는 pending 만 생긴다.
+ * 신청 상태 — **승인 단계가 없다** (POL-0004). 신청서를 내면 곧 참여다.
+ * 예전 미리보기에 남은 'pending' 값은 읽을 때 참여로 본다.
  */
-export type ApplicationStatus = 'pending' | 'accepted';
+export type ApplicationStatus = 'accepted';
 
 export type Application = {
   studyId: string;
@@ -75,7 +73,7 @@ export type Application = {
 };
 
 export function getApplications(): Application[] {
-  return readJSON<Application[]>(APPLICATION_KEY, []);
+  return readJSON<Application[]>(APPLICATION_KEY, []).map((a) => ({ ...a, status: 'accepted' }));
 }
 
 export function getApplication(studyId: string): Application | undefined {
@@ -207,7 +205,20 @@ export function setDiscordNickname(nickname: string) {
  */
 const SEED_KEY = 'sc_demo_seed';
 /** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 11;
+const SEED_VERSION = 12;
+
+/** A newly registered preview member must not inherit the demo member's studies or Discord. */
+export function resetMemberData() {
+  writeJSON(SEED_KEY, SEED_VERSION);
+  writeJSON(APPLICATION_KEY, []);
+  writeJSON(BOOKMARK_KEY, []);
+  writeJSON(DISCORD_KEY, '');
+  writeJSON(DISCORD_NICK_KEY, '');
+  writeJSON(NAME_KEY, '');
+  writeJSON(ZONE_KEY, '');
+  writeJSON(REGION_KEY, 'KR');
+  writeJSON(MARKETING_KEY, false);
+}
 
 function accepted(studyId: string, appliedAt: string): Application {
   return { studyId, appliedAt, status: 'accepted', region: 'KR' };
@@ -237,7 +248,7 @@ export function seedDemoData() {
       {
         studyId: 'pytorch-ai-coding',
         appliedAt: '2026-08-14',
-        status: 'pending',
+        status: 'accepted',
         region: 'KR',
         cells: ['mon', 'wed', 'sun'],
         motivation: 'PyTorch로 직접 구현해보고 싶어 신청합니다.',

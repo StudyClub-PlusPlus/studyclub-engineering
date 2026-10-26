@@ -10,6 +10,7 @@ import { ChevronDown, DoorOpen, LogOut, UserRound } from 'lucide-react';
 
 import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
+import { announceMenuOpen, closeOnOtherMenu } from '@/lib/header-menus';
 import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
 export function NavAuth({ locale }: { locale: Locale }) {
@@ -19,6 +20,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // 다른 헤더 메뉴가 열리면 닫는다 (lib/header-menus.ts)
+  useEffect(() => closeOnOtherMenu('avatar', () => setOpen(false)), []);
 
   useEffect(() => {
     // 미리보기 세션은 정의가 바뀌었을 수 있어 맞춰서 읽는다
@@ -81,7 +85,10 @@ export function NavAuth({ locale }: { locale: Locale }) {
     <div className='relative' ref={ref}>
       <button
         type='button'
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => {
+          if (!v) announceMenuOpen('avatar');
+          return !v;
+        })}
         className='flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-[var(--color-surface-subtle)]'
       >
         {user.picture ? (

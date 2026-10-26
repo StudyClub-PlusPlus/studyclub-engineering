@@ -8,6 +8,8 @@ export type OnboardingPayload = {
   marketingAgreed: boolean;
   nickname: string;
   timeZone: string;
+  /** GA4 client_id — 서버 sign_up(Measurement Protocol)의 유입 귀속용. 선택. */
+  gaClientId?: string;
 };
 
 /** 온보딩 완료 응답 — AccountView. */
@@ -20,6 +22,8 @@ export type OnboardingAccount = {
   createdAt?: string;
   timeZone: string | null;
   onboardingCompletedAt: string | null;
+  /** 디스코드 연동 여부(ACCOUNT.DISCORD_ID). GET /api/me 에만 있고, 백엔드 DSC-02 배포 전에는 오지 않는다. */
+  discordLinked?: boolean | null;
 };
 
 export function completeOnboarding(payload: OnboardingPayload): Promise<OnboardingAccount> {

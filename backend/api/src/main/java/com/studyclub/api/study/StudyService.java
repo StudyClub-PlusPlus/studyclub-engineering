@@ -110,6 +110,7 @@ public class StudyService {
                                 .thumbnailUrl(
                                         attachThumbnail(request.thumbnailFileId(), accountId, now))
                                 .schedule(request.schedule())
+                                .timezone(request.timezone())
                                 .createdBy(accountId)
                                 .build());
 
@@ -121,6 +122,8 @@ public class StudyService {
                         .startAt(now)
                         .recruitDeadlineAt(request.recruitDeadline())
                         .build());
+        // 신청자가 들어갈 반 — 반을 나눌지는 신청자를 보고 캡틴이 정한다
+        studyGroupRepository.save(StudyGroup.defaultOf(study.getId()));
 
         return study.getId();
     }
@@ -236,6 +239,7 @@ public class StudyService {
                 request.category(),
                 request.schedule());
         if (request.startAtPresent()) study.changeStartAt(request.startAt());
+        if (request.timezonePresent()) study.changeTimezone(request.timezone());
         if (request.discordChannelUrlPresent()) {
             study.changeDiscordChannelUrl(request.discordChannelUrl());
         }

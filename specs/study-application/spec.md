@@ -28,10 +28,11 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | PUT | /api/studies/{studyId}/application-form | 신청 폼 저장 (사용자 사이트) | **폐기 — 코드에서 지운다** (2026-10-07). 네비게이터는 폼을 고치지 않고, 담당 캡틴은 백오피스 경로를 쓴다 | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 폐기 |
 | GET | /api/admin/studies/{studyId}/application-form | 신청 폼 조회 (백오피스) | O (캡틴 누구나) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
 | PUT | /api/admin/studies/{studyId}/application-form | 신청 폼 저장 (백오피스) | O (담당 캡틴만) | 캡틴은 스터디 신청용 폼을 작성할 수 있다 | 구현완료 |
-| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
-| GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙확정 — 컨트롤러가 없다 (2026-10-14 확인). 사이트 신청 버튼은 이미 부른다 |
+| POST | /api/studies/{studyId}/applications | 신청 제출 | O (로그인 + 디스코드 연동) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 — 같은 트랜잭션에서 기본 반 명부 편입 (2026-10-20, → [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)) |
+| GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 구현완료 |
-| POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 스펙작성중 |
+| POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
+| DELETE | /api/me/discord/link | 디스코드 연결 해제 | O (로그인) | 마이페이지 디스코드 연결 ([profile-edit](../profile-edit/spec.md#디스코드-연결-화면-계약-2026-10-25)) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -165,7 +166,7 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 
 이름·이메일은 신청 폼에 두지 않는다. 계정에서 읽기만 한다.
 
-별명 기본값은 로그인 본인의 `GET /auth/me` 응답에 있는 `discordNickname`에서 읽는다. null이면 빈 칸으로 표시한다. 공개 신청 폼 조회 응답에 계정별 별명을 포함하지 않는다.
+별명 기본값은 로그인 본인의 `GET /api/me` 응답에 있는 `discordNickname`에서 읽는다. null이면 빈 칸으로 표시한다. 공개 신청 폼 조회 응답에 계정별 별명을 포함하지 않는다.
 
 ---
 
@@ -303,7 +304,7 @@ GET 신청 폼 조회와 같은 shape.
 - **Method**: POST
 - **Path**: `/api/studies/{studyId}/applications`
 - **인증**: 필요 — 로그인 회원. `ACCOUNT.DISCORD_ID` 가 있어야 한다 (화면 게이트만으로 끝내지 않는다)
-- **설명**: 열려 있는 모집 회차에 신청 1건을 만든다. 별명이 바뀌었으면 계정도 갱신한다. 분반과 명부는 캡틴이 신청 결과를 확인한 뒤 별도로 만든다.
+- **설명**: 열려 있는 모집 회차에 신청 1건을 만들고, **같은 트랜잭션에서 명부의 기본 반에 넣는다**. 별명이 바뀌었으면 계정도 갱신한다. 반을 나누면 캡틴이 옮긴다 (→ [share 10-18](../../docs/share/2026-10-18-roster-on-apply.md)).
 
 ### Request Body
 
@@ -326,15 +327,19 @@ GET 신청 폼 조회와 같은 shape.
 
    기존 기수 신청 여부는 모집 기간과 답변 검사보다 먼저 확인한다. 저장 후 마감된 요청의 재시도도 `409` 이미 신청으로 응답하며 새 행을 만들지 않는다.
    이 기수 명부에 `ACTIVE`·`PAUSED`로 있으면 신청할 수 없다. 기존 신청 확인 다음, 모집 기간 검사 전에 확인한다.
-   DB의 `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)`는 회차 안의 중복만 막는다. 기수 전체 중복을 막기 위해 계정 행을 잠근 상태에서 기존 신청 확인과 저장을 같은 트랜잭션으로 처리한다. 신청은 명부를 늘리지 않으므로 모집 회차 행은 잠그지 않는다.
+   DB의 `UNIQUE(RECRUITMENT_ID, ACCOUNT_ID)`는 회차 안의 중복만 막는다. 기수 전체 중복을 막기 위해 계정 행을 잠근 상태에서 기존 신청 확인과 저장을 같은 트랜잭션으로 처리한다. **신청이 명부를 늘리므로** 정원 검사와 명부 insert 사이에 다른 신청이 끼지 않게 모집 회차 행도 잠근다 (마지막 한 자리에 두 명이 동시에 들어오지 않게).
 2. 유효값 표 검사. 한 필드라도 실패하면 저장하지 않는다. 공통 오류 응답의 `errorMessage`로 사유를 전달한다.
 3. `STUDY_APPLICATION` insert. `FORM_ANSWER` 저장
 
    저장된 신청 폼이 없거나 `questions`가 배열이 아닌 손상된 폼은 서버 오류로 차단한다. 정상적인 `questions: []`는 기본 문항만 제출할 수 있다.
-4. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
-5. 커밋. 이후 같은 기수 POST 는 `409`
+4. `STUDY_PARTICIPANT` insert — `STATUS = ACTIVE` · `PARTICIPANT_ROLE = MEMBER` · `STUDY_GROUP_ID = 기본 반`(그 스터디에서 id 가 가장 작은 반) · `JOINED_AT = 지금`
 
-덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않으며 신청 제출 시 명부를 만들지 않는다. 캡틴이 신청 결과를 보고 분반을 만든 뒤 참가자를 한 분반에 배정한다.
+   기본 반이 없는 옛 스터디는 이때 「기본반」을 만든다 (모집 회차 행을 잠근 뒤라 둘이 생기지 않는다). 이 스터디 명부에 `WITHDRAWN`·`COMPLETED`·`DELETED` 로 남은 행이 있으면 새 행 대신 그 행을 되살린다 — `ACTIVE`·`MEMBER`, 반은 그대로, `JOINED_AT = 지금`, `LEFT_AT = NULL` (같은 반에 새 행을 만들면 `UNIQUE(ACCOUNT_ID, STUDY_GROUP_ID)` 에 걸린다)
+5. `ACCOUNT.DISCORD_NICKNAME` 을 제출 별명으로 갱신
+6. 도메인 이벤트 `study_application.submitted` 와 `study_participant.joined` 를 발행한다 — 4단계에서 들어온 명부 행(새 행·되살린 행 모두)으로 낸다. 구독자는 커밋 뒤에 받는다 ([domain-events](../domain-events/spec.md)). 디스코드 스터디 role 부여(DSC-07)가 `joined` 를 듣는다
+7. 커밋. 이후 같은 기수 POST 는 `409`
+
+덮어쓰기 없음. 승인·거절 상태값 없음. 신청자는 분반을 선택하지 않는다. **신청 제출 = 기본 반 명부 편입**이다. 캡틴이 신청 결과를 보고 반을 더 나누면 참가자를 새 반으로 옮긴다.
 
 ### Response — 201 Created (본문 없음)
 
@@ -403,13 +408,13 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 |------|------|------|------|------|
 | applied | Boolean | N | | 계산: 해당 회차에 내 `STUDY_APPLICATION` 존재 |
 | applicationId | Long | Y | `applied=false` 이면 null | STUDY_APPLICATION.ID |
-| submittedAt | String | Y | 행 생성 시각. 컬럼이 없으면 ID 순서의 대용을 쓰지 말고 null | 구현 시 created_at. ERD 에 생성시각 컬럼이 없으면 [NEEDS CLARIFICATION] |
+| submittedAt | String | Y | 행 생성 시각. `applied=false` 이면 null | STUDY_APPLICATION.CREATED_AT (`BaseEntity`) |
 
 ### Error Responses
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 401 | UNAUTHORIZED | 미로그인 |
+| 401 | UNAUTHORIZED | 미로그인 · 탈퇴로 계정이 지워진 토큰 (신청서는 남으므로 막는다) |
 | 404 | NOT_FOUND | studyId 없음 |
 
 ### 프론트엔드 사용처
@@ -505,6 +510,8 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 ### 프론트엔드 사용처
 
 - `frontend/apps/playground/src/proto/console/components/ResultsTab.tsx`
+- `frontend/apps/back-office-front/src/features/application-results/ApplicationResultsTab.tsx` — 신청 결과 탭. 질문별 집계·기타 답변·응답자별 표, 빈 상태·조회 실패·권한 오류를 처리한다. 보기는 URL에 저장하고 `recruitmentId`가 있으면 해당 회차를 조회한다.
+- 모집 회차 선택 드롭다운은 회차 목록 조회 계약이 없어 미구현이다. 현재 응답은 선택된 회차의 신청만 포함하므로 여기서 전체 회차를 추론하지 않는다.
 
 ---
 
@@ -537,7 +544,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 ### Response — 204 No Content
 
-핸들은 이후 계정 조회에서 읽는다.
+연결 여부는 이후 `GET /api/me`의 `discordLinked`로, 연결된 계정 이름은 `discordHandle`로 확인한다.
 
 ### Error Responses
 
@@ -545,10 +552,14 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 |------|-----------|------|
 | 400 | INVALID_INPUT | `code` 없음 |
 | 401 | UNAUTHORIZED | 미로그인 |
+| 403 | DISCORD_NOT_IN_GUILD | 스터디클럽 디스코드 서버(길드) 멤버가 아님. 저장하지 않는다. 화면이 갈린다: 온보딩 권유 화면은 「나중에 연동하기」로 넘어가고, 신청 직전 연동 창은 서버 가입 안내(초대 링크는 프론트 상수 `site.discord_invite`)를 띄운다 |
 | 409 | CONFLICT | 그 `DISCORD_ID` 가 다른 계정에 이미 있음 (`UNIQUE(DISCORD_ID)`) |
-| 502 | BAD_GATEWAY | 디스코드 토큰 교환 실패·타임아웃. 폼을 열지 않는다. 연동 팝업에 잔류 |
+| 503 | EXTERNAL_SERVICE_ERROR | 디스코드 토큰 교환 실패·타임아웃, 서버에 OAuth 설정 없음. 폼을 열지 않는다. 연동 팝업에 잔류 |
 
-프로토는 OAuth 없이 화면에서 바로 연결한다. 실패 화면은 미구현.
+- 같은 계정이 같은 `DISCORD_ID` 로 다시 연동하면 204 (멱등). 핸들은 새 값으로 바뀐다.
+- 외부 실패는 다른 연동(구글·봇)과 같은 503 이다 (처음 적었던 502 에서 바꿈, #298).
+
+Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이션한다. 실패 시 미연결 유지, 오류 안내와 재시도 제공.
 
 ### 프론트엔드 사용처
 
@@ -560,6 +571,39 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 - 공급자: Discord OAuth
 - 서버가 인가 코드 → 액세스 토큰 → 사용자 식별. 화면에 `DISCORD_ID` 를 돌려주지 않는다
 - 실패·타임아웃 시 계정 컬럼을 부분 저장하지 않는다
+- OAuth scope: `identify` `guilds.members.read`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_GUILD_ID}/member` (404 면 멤버 아님)
+- `redirect_uri` 는 서버 설정(`DISCORD_OAUTH_REDIRECT_URI`) 고정. 요청에서 받지 않는다
+- `DISCORD_HANDLE` 은 디스코드 `username` (표시 이름 아님)
+- 디스코드 호출이 다 끝난 뒤 저장만 짧은 트랜잭션으로 감싼다 — 호출 중 DB 커넥션을 잡지 않는다
+- 설정: `DISCORD_OAUTH_CLIENT_ID` · `DISCORD_OAUTH_CLIENT_SECRET` · `DISCORD_OAUTH_REDIRECT_URI` · `DISCORD_GUILD_ID`
+
+## 디스코드 연결 해제
+
+> 화면: 마이페이지 디스코드 줄 — [profile-edit 「디스코드 연결 화면 계약」](../profile-edit/spec.md#디스코드-연결-화면-계약-2026-10-25)
+
+### 기본 정보
+
+- **Method**: DELETE
+- **Path**: `/api/me/discord/link`
+- **인증**: 필요 — 로그인 본인
+- **설명**: `ACCOUNT.DISCORD_ID` · `DISCORD_HANDLE` 을 비운다. 신청 때 받은 서버 별명 `DISCORD_NICKNAME` 은 연동과 따로라 남긴다. 디스코드는 부르지 않는다.
+
+### Response — 204 No Content
+
+- 연동하지 않은 계정도 204 (멱등).
+- 해제 뒤 다시 신청하려면 연동부터 다시 한다 (신청 제출 403).
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 미로그인 |
+| 409 | DISCORD_LINK_REQUIRED | 캡틴(`ADMIN`)이다. 연동은 그대로 둔다 |
+| 409 | DISCORD_UNLINK_BLOCKED | 명부 행이 `ACTIVE` · `PAUSED` 인 스터디가 하나라도 있다. 연동은 그대로 둔다. 화면은 차단 문구와 「내 스터디 확인하기」를 띄운다 |
+
+- 참여 중 판정은 내 스터디룸이 「시작 전 · 참여 중」으로 보여 주는 행과 같다. `WITHDRAWN` · `COMPLETED` 는 막지 않는다.
+- 계정 행을 잠근 뒤 명부를 본다. 명부에 들어오는 길은 신청 제출뿐이고 그것도 계정을 먼저 잠그므로, 확인과 해제 사이에 새 참여가 끼어들지 못한다.
+- 캡틴(`ADMIN`)은 해제할 수 없다 — `409 DISCORD_LINK_REQUIRED`. 캡틴은 디스코드 연동이 필수다 ([admin-users](../admin-users/spec.md), STD-05). 해제하려면 먼저 크루로 내려가야 한다. 참여 중 판정보다 먼저 본다.
 
 ---
 
@@ -574,6 +618,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 | 내 신청 여부 | 로그인 본인 | 서버 |
 | 신청 결과 조회 | 캡틴 누구나 (네비게이터 불가) | 서버 |
 | 디스코드 연동 | 로그인 본인 | 서버 |
+| 디스코드 연결 해제 | 로그인 본인, 참여 중인 스터디 없음 | 서버 |
 | 미로그인 신청 | 거절 | 서버. 프로토는 로그인 가정 |
 
 ---
@@ -594,6 +639,15 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 - [NEEDS CLARIFICATION] `FORM_ANSWER` JSON 유지 vs `STUDY_QUESTION` + `STUDY_APPLICATION_ANSWER` 정규화 — ERD README 와 같음. 이 스펙은 JSON 으로 구현한다
 - [NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간
-- [NEEDS CLARIFICATION] `STUDY_APPLICATION` 생성시각 컬럼. 없으면 `applications/me.submittedAt` 은 null
 - [NEEDS CLARIFICATION] 열려 있는 모집 회차가 동시에 둘이면 어느 회차에 붙일지. 지금은 1건이라고 가정
 - [NEEDS CLARIFICATION] 결과 목록에서 명부 `WITHDRAWN` 인 사람의 신청을 뺄지. ERD 는 신청 행에 거절 상태가 없음
+
+
+## 디스코드 연결 후 신청 복귀 (화면 계약)
+
+- 신청하기에서 로그인 → 온보딩 → 디스코드 연결이 필요해도 선택한 스터디 유지.
+- 로그인·가입 완료 여부와 연결 여부 확인 후 해당 신청 폼 열기. 중간에 모집이 마감됐거나 이미 신청한 경우 기존 신청 가능 여부 판정 우선.
+- 가입 직후 연결 선택에서 나중에 하기를 누르면 선택한 스터디 상세로 복귀. 다시 신청하기를 누를 때 연결 필수 안내.
+- Playground는 숫자 study_id 상세 URL의 `apply=1`을 소비하여 폼 열기. 새로고침 시 자동 반복 방지를 위해 소비 후 제거.
+- 연결 실패·인증 취소는 오류 안내 후 재시도 가능. 신청 폼은 연결 성공 후 열기.
+- 실제 OAuth에서는 검증된 state 및 내부 복귀 주소만 사용. 클라이언트의 연동 플래그와 무관하게 신청 API의 서버 연동 검증 유지.

@@ -82,13 +82,24 @@ public class MeetingSchedule {
      * 옛 분반은 순서 규칙이 없다.
      */
     public void checkReschedule(StudyMeeting target, Instant scheduledAt) {
-        LocalDate day = localDate(scheduledAt);
         if (target.isKickoff()) {
-            assertBeforeFirstRegular(day, target);
-        } else {
-            assertAfterKickoff(day, target);
+            checkKickoff(target, scheduledAt);
+            return;
         }
+        LocalDate day = localDate(scheduledAt);
+        assertAfterKickoff(day, target);
         assertDayFree(day, target);
+    }
+
+    /**
+     * 캡틴이 킥오프를 정하거나 옮길 때 (결정 11) — 1회차보다 앞, 다른 회차와 다른 날. 지난 시각도 받는다: 이미 운영 중인 반의 킥오프를 나중에 적는다.
+     *
+     * @param current 지금 킥오프. 처음 정하면 null
+     */
+    public void checkKickoff(StudyMeeting current, Instant scheduledAt) {
+        LocalDate day = localDate(scheduledAt);
+        assertBeforeFirstRegular(day, current);
+        assertDayFree(day, current);
     }
 
     /**

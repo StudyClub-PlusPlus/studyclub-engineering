@@ -26,6 +26,7 @@ const detail: ApiStudyDetail = {
   curriculum: null,
   capacity: null,
   schedule: '매주 목 20:00',
+  timezone: 'KST',
   // KST 10월 1일 23:59:59 = UTC 10월 1일 14:59:59
   recruitDeadlineAt: '2026-10-01T14:59:59Z',
   // KST 10월 15일 00:00 = UTC 10월 14일 15:00 — UTC 로 자르면 하루 앞당겨진다
@@ -48,6 +49,11 @@ describe('detailToForm', () => {
     expect(form.capacity).toBe('');
     expect(form.description).toBe('');
     expect(form.driveUrl).toBe('');
+  });
+
+  it('시간대는 응답 값 그대로, 없으면 미정(빈 값)으로 연다', () => {
+    expect(detailToForm(detail).timezone).toBe('KST');
+    expect(detailToForm({ ...detail, timezone: null }).timezone).toBe('');
   });
 });
 
@@ -80,6 +86,11 @@ describe('formToPayload', () => {
   it('비운 주소·시작일은 null 로 보내 서버 값도 비운다', () => {
     const form: StudyFormValues = { ...initial, discordUrl: '  ', startAt: '' };
     expect(formToPayload(form, initial)).toEqual({ discordChannelUrl: null, startAt: null });
+  });
+
+  it('시간대를 바꾸면 값을, 미정으로 돌리면 null 을 보낸다', () => {
+    expect(formToPayload({ ...initial, timezone: 'BOTH' }, initial)).toEqual({ timezone: 'BOTH' });
+    expect(formToPayload({ ...initial, timezone: '' }, initial)).toEqual({ timezone: null });
   });
 });
 
@@ -155,7 +166,13 @@ describe('formToCreatePayload', () => {
     const payload = formToCreatePayload(base);
     expect(payload).not.toHaveProperty('schedule');
     expect(payload).not.toHaveProperty('description');
+    expect(payload).not.toHaveProperty('timezone');
   });
+
+  it('고른 시간대를 싣는다', () => {
+    expect(formToCreatePayload({ ...base, timezone: 'PST' }).timezone).toBe('PST');
+  });
+
 });
 
 describe('serverErrorToField', () => {

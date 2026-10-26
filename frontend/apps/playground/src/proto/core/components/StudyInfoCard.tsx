@@ -29,11 +29,13 @@ function LinkButton({ label, href, icon }: { label: string; href: string; icon: 
  * 무엇을 보일지는 부르는 쪽이 정한다 — 카드는 받은 값을 그릴 뿐이다.
  *
  * 번호는 `anno` 하나를 받아 카드 · `-1` 규칙 · `-2` 접기 · `-3` 시간 수정으로 붙인다.
+ * `leadingAction` 은 오른쪽 바로가기 줄의 맨 앞(「디스코드」 왼쪽)에 붙는다 — 사용자 사이트 캡틴의 「백오피스 출석부」.
  */
 export function StudyInfoCard({
   time,
   onEditTime,
   navigator,
+  leadingAction,
   discordHref,
   driveHref,
   rulesKey,
@@ -48,6 +50,8 @@ export function StudyInfoCard({
   onEditTime?: () => void;
   /** 네비게이터 이름. 없으면 부르는 쪽이 「미지정」 등으로 넘긴다. */
   navigator: string;
+  /** 바로가기 줄 맨 앞(「디스코드」 왼쪽)에 붙일 버튼. */
+  leadingAction?: ReactNode;
   /** 비면 그 버튼을 두지 않는다. */
   discordHref?: string;
   driveHref?: string;
@@ -90,6 +94,7 @@ export function StudyInfoCard({
         </dl>
         {/* 시트 머리에 적어 두던 두 주소. 참가자·운영자에게만 보이는 화면이라 그대로 연다 (share 09-30) */}
         <div className='flex flex-wrap gap-1.5'>
+          {leadingAction}
           {discordHref && <LinkButton label='디스코드' href={discordHref} icon={<DiscordGlyph size={15} />} />}
           {driveHref && (
             <LinkButton

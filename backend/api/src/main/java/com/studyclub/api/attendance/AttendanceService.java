@@ -143,8 +143,7 @@ public class AttendanceService {
                 totalDenominator += (long) numeratorDenominatorPair[1];
             }
 
-            boolean captain =
-                    study.getCreatedBy() != null && study.getCreatedBy().equals(p.getAccountId());
+            boolean captain = study.isCreatedBy(p.getAccountId());
 
             participantAttendances.add(
                     new AttendanceResponse.ParticipantAttendance(

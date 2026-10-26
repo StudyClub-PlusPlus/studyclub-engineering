@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Repository;
 
-/** 백오피스 스터디 목록 — DRAFT 포함 전 상태를 반환한다. 공개 목록({@link StudyListJpqlDao})과 달리 단계·모집 상태 계산이 없다. */
+/** 백오피스 스터디 목록 — DRAFT 포함 전 상태를 반환한다. */
 @Repository
 class BackofficeStudyJpqlDao implements BackofficeStudyDao {
 
@@ -19,7 +19,7 @@ class BackofficeStudyJpqlDao implements BackofficeStudyDao {
     @Override
     public List<Study> getStudies(BackofficeStudyListFilter filter, int offset, int limit) {
         Assembled where = assemble(filter);
-        String jpql = "SELECT s FROM Study s" + where.jpql() + " ORDER BY s.id DESC";
+        String jpql = "SELECT s FROM Study s" + where.jpql() + orderBy(filter);
         TypedQuery<Study> query = em.createQuery(jpql, Study.class);
         where.params().forEach(query::setParameter);
         query.setFirstResult(Math.max(offset, 0));
@@ -36,6 +36,15 @@ class BackofficeStudyJpqlDao implements BackofficeStudyDao {
         return query.getSingleResult();
     }
 
+    @Override
+    public List<Study> getAllMatching(BackofficeStudyListFilter filter) {
+        Assembled where = assemble(filter);
+        String jpql = "SELECT s FROM Study s" + where.jpql() + " ORDER BY s.id DESC";
+        TypedQuery<Study> query = em.createQuery(jpql, Study.class);
+        where.params().forEach(query::setParameter);
+        return query.getResultList();
+    }
+
     private record Assembled(String jpql, Map<String, Object> params) {}
 
     private static Assembled assemble(BackofficeStudyListFilter filter) {
@@ -46,7 +55,6 @@ class BackofficeStudyJpqlDao implements BackofficeStudyDao {
             conditions.add("s.category = :category");
             params.put("category", filter.category());
         }
-        // 종류는 프로그램이 갖는다 — 기수에는 컬럼이 없어 프로그램을 거쳐 거른다
         if (filter.studyKind() != null) {
             conditions.add(
                     "s.programId IN (SELECT p.id FROM StudyProgram p WHERE p.studyKind ="
@@ -61,8 +69,20 @@ class BackofficeStudyJpqlDao implements BackofficeStudyDao {
             conditions.add("s.id = :studyId");
             params.put("studyId", filter.studyId());
         }
+        if (filter.visibility() == StudyVisibility.PUBLIC) {
+            conditions.add("s.status <> com.studyclub.domain.study.StudyStatus.DRAFT");
+        } else if (filter.visibility() == StudyVisibility.PRIVATE) {
+            conditions.add("s.status = com.studyclub.domain.study.StudyStatus.DRAFT");
+        }
 
         String jpql = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
         return new Assembled(jpql, params);
+    }
+
+    private static String orderBy(BackofficeStudyListFilter filter) {
+        return switch (filter.effectiveSort()) {
+            case TITLE_ASC -> " ORDER BY s.title ASC, s.id ASC";
+            case ID_DESC, RECRUITMENT -> " ORDER BY s.id DESC";
+        };
     }
 }

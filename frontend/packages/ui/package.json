@@ -13,7 +13,7 @@
     "build-storybook": "storybook build",
     "format": "prettier --cache --write .",
     "lint": "eslint . --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",
@@ -43,9 +43,9 @@
     "prettier": "^3.5.3",
     "react": "^19",
     "react-dom": "^19",
-    "storybook": "^9.1.7",
+    "storybook": "^9.1.21",
     "typescript": "^5",
-    "vite": "^6.3.5"
+    "vite": "^6.4.4"
   },
   "prettier": "@studyclub/prettier-config"
 }

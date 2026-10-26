@@ -138,9 +138,9 @@ export function makeApplySchema({
     .object({
       discordNickname: z.string(),
       days: z.array(z.string()),
-      answers: z.record(z.union([z.string(), z.array(z.string())])).default({}),
-      otherSelected: z.record(z.boolean()).optional().default({}),
-      otherTexts: z.record(z.string()).optional().default({}),
+      answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])).default({}),
+      otherSelected: z.record(z.string(), z.boolean()).optional().default({}),
+      otherTexts: z.record(z.string(), z.string()).optional().default({}),
       agreed: z.boolean().optional().default(false),
     })
     .superRefine((val, ctx) => {

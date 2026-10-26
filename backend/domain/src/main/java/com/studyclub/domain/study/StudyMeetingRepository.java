@@ -22,6 +22,8 @@ public interface StudyMeetingRepository extends JpaRepository<StudyMeeting, Long
             "SELECT m FROM StudyMeeting m WHERE m.studyGroupId = :studyGroupId ORDER BY m.scheduledAt")
     List<StudyMeeting> findByStudyGroupIdForUpdate(@Param("studyGroupId") Long studyGroupId);
 
+    boolean existsByStudyGroupIdAndMeetingType(Long studyGroupId, MeetingType meetingType);
+
     List<StudyMeeting> findByStudyGroupIdInOrderByScheduledAt(Collection<Long> studyGroupIds);
 
     @Query(
@@ -34,10 +36,4 @@ public interface StudyMeetingRepository extends JpaRepository<StudyMeeting, Long
     Optional<Long> findStudyGroupIdById(@Param("id") Long id);
 
     void deleteByStudyGroupIdIn(Collection<Long> studyGroupIds);
-
-    /** 이 명부 행들이 발표자로 들어간 회차. 참여자가 떠날 때 예정 회차의 발표자 칸을 비우려고 쓴다. */
-    @Query(
-            "SELECT m FROM StudyMeeting m WHERE m.presenter1ParticipantId IN :participantIds"
-                    + " OR m.presenter2ParticipantId IN :participantIds")
-    List<StudyMeeting> findByPresenterIn(@Param("participantIds") Collection<Long> participantIds);
 }

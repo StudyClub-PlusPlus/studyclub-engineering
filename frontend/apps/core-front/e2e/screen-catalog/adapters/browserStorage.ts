@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import type { StorageSeed } from '../../../screen-catalog/types';
+import { stubApiMe } from '../../stubApiMe';
 
 /**
  * localStorage에 seed 데이터를 주입한다.
@@ -22,6 +23,9 @@ export async function seedBrowserStorage(page: Page, seeds: StorageSeed[]): Prom
       path: '/',
     },
   ]);
+
+  // 로그인 세션을 시드하면 진짜 GET /api/me 도 그 세션처럼 답하게 한다
+  if (seeds.some(({ key }) => key === 'sc_user')) await stubApiMe(page);
 
   await page.goto(`${origin}/ko`, { waitUntil: 'domcontentloaded' });
 

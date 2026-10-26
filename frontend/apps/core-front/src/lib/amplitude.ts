@@ -5,6 +5,13 @@ const API_KEY = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY;
 /** 키가 없으면 SDK 를 아예 부르지 않는다 — init 전 호출은 SDK 큐에 쌓이기만 하고 비워지지 않는다. */
 export const analyticsEnabled = Boolean(API_KEY);
 
+/** 빌드 인자로 박힌다 (`production`·`stage`). GA4·Clarity 는 production 에서만 로드한다. */
+export const APP_ENV = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
+export const IS_PRODUCTION = APP_ENV === 'production';
+
+/** 모든 이벤트에 붙는 공통 속성 — 서비스 공통 트래킹 규약 §3 */
+export const COMMON_PROPS = { service: 'studyclub', env: APP_ENV, event_version: '1.0.0' } as const;
+
 let initialized = false;
 
 export function initAmplitude() {
@@ -33,7 +40,7 @@ export function initAmplitude() {
     type: 'enrichment',
     execute: async (event) => {
       const locale = window.location.pathname.startsWith('/en') ? 'en' : 'ko';
-      event.event_properties = { platform: 'web', locale, ...event.event_properties };
+      event.event_properties = { ...COMMON_PROPS, platform: 'web', locale, ...event.event_properties };
       return event;
     },
   });

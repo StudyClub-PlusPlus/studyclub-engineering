@@ -3,8 +3,10 @@ import Link from 'next/link';
 
 import { ArrowUpRight } from 'lucide-react';
 
+import { SocialIcons } from './SocialLinks';
 import type { Locale, Site } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+
 
 export function Footer({ locale, site }: { locale: Locale; site: Site }) {
   return (
@@ -30,6 +32,7 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
           </p>
         </div>
         <div className='flex flex-col gap-3 text-sm sm:items-end'>
+          <SocialIcons locale={locale} />
           <div className='flex flex-wrap gap-x-6 gap-y-2 text-(--color-fg-muted)'>
             <Link href={`/${locale}/studies`} className='hover:text-(--color-fg)'>
               {m('nav.studies', locale)}

@@ -8,6 +8,8 @@ import { Button, Toaster } from '@studyclub/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { USER_KEY } from '@/lib/auth';
+import { trackHistoryNavigation } from '@/lib/history-guard';
+import { isMockApiEnabled } from '@/lib/mock-api';
 import { getQueryClient } from '@/lib/query-client';
 
 const MSWProvider = dynamic(() => import('@studyclub/mock/msw').then((m) => m.MSWProvider), { ssr: false });
@@ -26,6 +28,7 @@ function MswQueryInvalidator() {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
+  useEffect(trackHistoryNavigation, []);
   const [queryClient] = useState(() => getQueryClient());
 
   const [sessionChanged, setSessionChanged] = useState(false);
@@ -54,13 +57,20 @@ export function Providers({ children }: { children: ReactNode }) {
     );
   }
 
+  const mockEnabled = isMockApiEnabled();
+  const content = (
+    <QueryClientProvider client={queryClient}>
+      {mockEnabled && <MswQueryInvalidator />}
+      {children}
+      <Toaster position='bottom-center' />
+    </QueryClientProvider>
+  );
+
+  if (!mockEnabled) return content;
+
   return (
-    <MSWProvider mockHandlerGroups={mockHandlerGroups} loadWorker={loadWorker} fallback={null}>
-      <QueryClientProvider client={queryClient}>
-        <MswQueryInvalidator />
-        {children}
-        <Toaster position='bottom-center' />
-      </QueryClientProvider>
+    <MSWProvider enabled mockHandlerGroups={mockHandlerGroups} loadWorker={loadWorker} fallback={null}>
+      {content}
     </MSWProvider>
   );
 }

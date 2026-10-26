@@ -16,7 +16,7 @@ app/
     routes/channels.py # POST /api/v1/channels/{id|alert|announcement}/msg (send-message and friends)
     routes/roles.py    # POST/DELETE /api/v1/roles/{id|navigator}/users (give/take a role)
     headers.py         # common request headers (X-API-Key, X-Discord-User-ID, Idempotency-Key)
-    guild.py           # resolves the caller in the guild and checks their role
+    guild.py           # resolves the one guild the endpoints act in
   study_reservations.py  # SQLite study-name reservations for create-study
   backend_client.py      # the one place that calls OUT, to the StudyClub backend
   voice_activity_log.py  # SQLite last join/leave date per voice channel
@@ -85,9 +85,13 @@ healthcheck passes on an API-only run.
 
 `health` is unauthenticated, so do not expose port 4800 beyond a trusted network.
 
+The bot does not check who a request is for. `X-API-Key` says the backend sent it,
+and the backend decides who may do what before it calls. `X-Discord-User-ID` is
+still required on every endpoint, but only shows up as the `발신:` sender line on
+the alert and study-channel messages.
+
 Create a study (contract: `docs/discord-development-guide/api/create-study.md`).
-Needs `DISCORD_GUILD_ID`, `DISCORD_CAPTAIN_ROLE_ID`, and `DISCORD_API_KEY` set,
-and a caller who has the captain role:
+Needs `DISCORD_GUILD_ID` and `DISCORD_API_KEY` set:
 
 ```bash
 curl -X POST http://localhost:4800/api/v1/studies \
@@ -103,9 +107,7 @@ reserved in SQLite at `data/discord.sqlite3` (fixed in `app/config.py`); in
 Docker that directory is the `studyclub-discord-data` volume.
 
 List a study's text and voice channels (contract:
-`docs/discord-development-guide/api/get-study-channels.md`). Also needs
-`DISCORD_NAVIGATOR_ROLE_ID`, and a caller with the captain or navigator role
-(or `DISCORD_BOT_ID`, see below):
+`docs/discord-development-guide/api/get-study-channels.md`):
 
 ```bash
 curl http://localhost:4800/api/v1/studies/1327394882193883136/channels \
@@ -115,8 +117,7 @@ curl http://localhost:4800/api/v1/studies/1327394882193883136/channels \
 
 Post an operational alert (contract:
 `docs/discord-development-guide/api/send-alert-message.md`). Needs
-`DISCORD_ALERT_CHANNEL_ID`, and a caller with the captain role -- a navigator
-cannot raise one by hand:
+`DISCORD_ALERT_CHANNEL_ID`:
 
 ```bash
 curl -X POST http://localhost:4800/api/v1/channels/alert/msg \
@@ -132,17 +133,13 @@ without it *every* request fails with `502`, so fix the channel permission rathe
 than retry. `@everyone` and `@here` are removed from `msg`, and nothing the
 message contains ever notifies anyone.
 
-The backend also raises alerts on its own behalf rather than a member's. It says
-so by sending `DISCORD_BOT_ID` as `X-Discord-User-ID`, and such a request skips
-the member and role lookup entirely -- `X-API-Key` has already established who
-the caller is. The same goes for listing a study's channels and for giving or
-taking a study role. No other endpoint accepts it, and leaving `DISCORD_BOT_ID` unset means no request is ever a system
-call.
+The backend also raises alerts on its own behalf rather than a member's. It
+sends the bot's own ID (its `DISCORD_BOT_ID`) as `X-Discord-User-ID`, so the
+sender line names the bot. The bot treats that ID like any other.
 
 Post a guild-wide announcement (contract:
 `docs/discord-development-guide/api/send-announcement-message.md`). Needs
-`DISCORD_ANNOUNCEMENT_CHANNEL_ID`, and a caller with the captain role --
-navigators cannot send one:
+`DISCORD_ANNOUNCEMENT_CHANNEL_ID`:
 
 ```bash
 curl -X POST http://localhost:4800/api/v1/channels/announcement/msg \
@@ -162,7 +159,7 @@ note in the alert channel.
 
 Post to a channel of a study, mentioning whoever should be notified (contract:
 `docs/discord-development-guide/api/send-message.md`). The caller picks the
-channel, and either the captain or the navigator role may call:
+channel:
 
 ```bash
 curl -X POST http://localhost:4800/api/v1/channels/1327394882193883137/msg \
@@ -178,8 +175,7 @@ curl -X POST http://localhost:4800/api/v1/channels/1327394882193883137/msg \
 Answers `204` with no body. The channel must sit directly under the
 `discordStudyId` category, but that check only compares the two IDs in the
 request: it does not check that the category belongs to a study, so it is no
-defense against a navigator -- whose role is guild-wide -- reaching a channel
-outside their study. Staying inside study channels rests on the backend sending
+defense against a message reaching a channel outside the study. Staying inside study channels rests on the backend sending
 a pair from its own records.
 Only the users in `discordUserIds` (at most 40) are notified; the sender line,
 anything typed into `msg`, and a `@everyone` that somehow survived stripping all
@@ -190,8 +186,7 @@ channel, so a `502` means that one channel's permissions, not every request.
 
 Give the navigator role to users, or take it back (contracts:
 `docs/discord-development-guide/api/assign-navigator-role.md` and
-`remove-navigator-role.md`). Needs `DISCORD_NAVIGATOR_ROLE_ID`, and a caller
-with the captain role. `POST` gives, `DELETE` takes, with the same body:
+`remove-navigator-role.md`). Needs `DISCORD_NAVIGATOR_ROLE_ID`. `POST` gives, `DELETE` takes, with the same body:
 
 ```bash
 curl -X POST http://localhost:4800/api/v1/roles/navigator/users \
@@ -215,11 +210,11 @@ calls `DELETE` only when the user is a navigator in none of them. The bot needs
 Give or take a study's own role -- the `discordRoleId` create-study returned --
 the same way (contracts: `docs/discord-development-guide/api/assign-role.md` and
 `remove-role.md`), at `/api/v1/roles/{discordRoleId}/users` with the same body
-and answer. A captain or the system (`DISCORD_BOT_ID`) may call. The captain,
+and answer. The captain,
 navigator, and `@everyone` roles are refused with `400`: captain is handed out
 by hand and navigator has the endpoints above. Refusing them takes both role
 IDs, so `DISCORD_CAPTAIN_ROLE_ID` and `DISCORD_NAVIGATOR_ROLE_ID` must be set
-even for a system call (`409` otherwise). The fixed `navigator` path is
+(`409` otherwise). The fixed `navigator` path is
 registered before this one, or it would be taken for a role ID.
 
 ## Bot commands

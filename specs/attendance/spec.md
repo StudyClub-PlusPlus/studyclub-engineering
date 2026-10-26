@@ -4,6 +4,7 @@
 > Story PRD: [출석명부](../../01-planning/stories/captain-view-attendance-roster/PRD.md) · [네비게이터 출석 수정](../../01-planning/stories/navigator-edit-attendance/PRD.md) · [크루 출석 기록](../../01-planning/stories/crew-view-attendance-record/PRD.md) · [대시보드 출석률](../../01-planning/stories/console-dashboard/PRD.md)
 > 생성일: 2026-09-15
 > 상태: 스펙확정
+> 갱신: 2026-10-23 — 백오피스 경로 조회에 통합 테스트를 붙여 구현완료. 백오피스 저장도 `withdrawals[]` 를 받는다 — 담당 캡틴이 크루 · 네비게이터를 중단 (2026-10-23 기획 결정)
 
 ## 엔드포인트 목록
 
@@ -11,8 +12,8 @@
 |--------|------|------|------|------|
 | GET | /api/me/studies/{studyId}/attendances | 출석 명부 조회 | O (그 분반 참여자·네비게이터·캡틴) | 구현완료 |
 | POST | /api/me/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (네비게이터 — 그 분반 LEADER) | 구현완료 |
-| GET | /api/admin/studies/{studyId}/attendances | 출석 명부 조회 | O (캡틴) | 구현중 — 컨트롤러는 있고 통합 테스트가 없다 |
-| POST | /api/admin/studies/{studyId}/attendances | 출석 생성/수정 (upsert) | O (캡틴) | 구현완료 |
+| GET | /api/admin/studies/{studyId}/attendances | 출석 명부 조회 | O (캡틴) | 구현완료 |
+| POST | /api/admin/studies/{studyId}/attendances | 출석 생성/수정 (upsert) · 참여 중단 | O (캡틴 — 중단은 담당 캡틴만) | 구현완료 |
 
 > 이번 스코프는 명부 화면을 띄우는 데 필요한 **조회 1개 + 생성 1개** API만 다룬다. 세션 취소, 휴가 신청·승인, 정정 이력 조회 등 나머지 CRUD는 별도 스펙.
 > `[OPEN]` = 캡틴 확정 전 제안 기본값 / 팀 확인 필요.
@@ -62,7 +63,7 @@ STUDY_ATTENDANCE {
 
 - **Method**: GET
 - **Path**: `/api/me/studies/{studyId}/attendances` (크루·네비게이터·캡틴) / `/api/admin/studies/{studyId}/attendances` (캡틴 전용)
-- **인증**: 필요 (Bearer) — `/api/me`: 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. `/api/admin`: 캡틴(SYSTEM_ROLE=ADMIN)만. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다
+- **인증**: 필요 (Bearer) — `/api/me`: 그 분반의 활성 참여자(크루 포함, 조회만) · 네비게이터 · 캡틴. 다른 분반은 403. `/api/admin`: 캡틴(SYSTEM_ROLE=ADMIN)만. 참여자 이름은 닉네임만 내린다 — 이메일·디스코드 ID 는 내리지 않는다 — **바뀜 (2026-10-18, [share D6](../../docs/share/2026-10-18-schedule-attendance-feedback.md)): 디스코드 닉네임(`discordNickname`)도 내린다. 이 줄은 BE 가 스펙을 고칠 때 바꾼다**
 - **설명**: 지정한 그룹의 명부(모든 회차 × 해당 그룹 참가자)를 기본으로 반환. `meetingId` 쿼리 파라미터로 특정 회차 하나만 필터링 가능 — 응답 구조는 동일, 내용만 좁아짐
 
 ### Path Parameters
@@ -174,9 +175,11 @@ STUDY_ATTENDANCE {
 ```
 개인 출석률(participant) =
   분모 = 0이면 null ("–")
-  else Σ(가중치) / countable_meetings
+  else Σ(가중치) / checked_meetings
 
-가중치: PRESENT=1.0, EXCUSED=1.0, LATE=0.5, ABSENT=0
+가중치: PRESENT=1.0, LATE=0.5, ABSENT=0
+checked_meetings = countable_meetings 중 출석 행이 PRESENT · LATE · ABSENT 인 회차
+                   // 휴가(EXCUSED)는 분모에서 뺀다 · 출석 행이 없는 회차(미체크)도 세지 않는다
 upper_bound = participant.status IN ('ACTIVE', 'PAUSED', 'COMPLETED') ? now() : participant.left_at
 countable_meetings = 스터디의 미팅 중
   meeting_type = 'REGULAR'            // 킥오프는 출석만 남기고 출석률에서 뺀다 (study-meeting 스펙 결정 11)
@@ -193,7 +196,9 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 분모에서 아예 제외된다** — 하차 이후까지 결석으로 깔면 "하차"와 "결석"이라는 서로 다른 사실이 같은
 숫자로 섞인다(2026-10-01, 회원 탈퇴 구현 중 수정).
 
-검증: 수아(출석·지각) = (1+0.5)/2 = 75%, 시우(출석만) = 1/1 = 100%.
+검증: 수아(출석·지각) = (1+0.5)/2 = 75%, 시우(출석만) = 1/1 = 100%, 하린(출석·휴가·결석) = 1/2 = 50%, 휴가만 = null(「–」).
+
+> 2026-10-24 — 출석명부 PRD 3-4 에 맞췄다: 분모는 체크된 회차뿐, 휴가는 분모에서 뺀다. 전에는 휴가를 출석(1.0)으로, 출석 행이 없는 회차를 결석(0)으로 셌다. 화면 미리보기(core-front · 백오피스)와 대시보드가 같은 식을 쓴다 (`AttendanceRateCalculator`).
 추가 검증(하차): 10회차 중 1~3회 출석 후 하차 → upper_bound=3회차 → 3/3=100%. 1~5회 중 3회 출석 후
 하차 → 3/5=60%. (하차 이후 회차를 결석으로 깔면 3/10=30%가 되어 결석과 하차가 섞인다.)
 
@@ -246,13 +251,13 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 | 필드 | 타입 | 필수 | 검증 |
 |------|------|------|------|
 | studyGroupId | Long | Y | 출석을 기록할 분반 ID. 존재하지 않으면 404. studyId 소속이 아니면 400. updates의 모든 meetingId는 이 분반 소속이어야 함 |
-| updates | array | Y | 1개 이상. 빈 배열 → 400 |
+| updates | array | Y | 1개 이상. 빈 배열 → 400. **`withdrawals` 가 있으면 빈 배열이어도 된다** (두 경로 모두) |
 | updates[].meetingId | Long | Y | studyId에 속한 StudyMeeting.id여야 함 → 아니면 400 |
 | updates[].participantId | Long | Y | studyId에 속한 StudyParticipant.id여야 함 → 아니면 400 |
 | updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 400 |
 | updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 400 |
 
-> **추가 예정 (2026-10-07, 스펙작성중)** — 요청에 `withdrawals[]`(참여 중단할 명부 행 ID)를 더해, 출석부 「저장」 한 번에 출석과 참여 중단을 같은 트랜잭션으로 반영한다. 그때 「`updates` 빈 배열 → 400」은 「`updates` · `withdrawals` 가 모두 비면 400」이 된다. `withdrawals` 를 보내지 않는 호출은 지금과 같다. 필드 · 권한 · 대상 제한은 [참여 중단 스펙](../study-participant/spec.md).
+> **`withdrawals[]` (2026-10-20 구현)** — 사용자 사이트 경로(`/api/me/…`)는 요청에 `withdrawals[]`(참여 중단할 명부 행 ID)를 받아, 출석부 「저장」 한 번에 출석과 참여 중단을 같은 트랜잭션으로 반영한다. 「`updates` 빈 배열 → 400」은 「`updates` · `withdrawals` 가 모두 비면 400」이 된다. `withdrawals` 를 보내지 않는 호출은 지금과 같다. ~~백오피스 경로(`/api/admin/…`)는 `withdrawals` 가 오면 400.~~ → **바뀜 (2026-10-23 기획 결정)**: 백오피스 경로도 `withdrawals[]` 를 받는다. 중단은 **담당 캡틴**만, 대상은 크루 · 네비게이터. `withdrawals` 없이 출석만 고치는 것은 지금처럼 캡틴 누구나. 필드 · 권한 · 대상 제한은 [참여 중단 스펙](../study-participant/spec.md).
 
 ### Response — 204 No Content
 
@@ -277,7 +282,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 400 | INVALID_INPUT | updates가 빈 배열 |
-| 403 | FORBIDDEN | 캡틴(SYSTEM_ROLE=ADMIN)이 아님 |
+| 403 | FORBIDDEN | 캡틴(SYSTEM_ROLE=ADMIN)이 아님 · `withdrawals` 가 있는데 담당 캡틴이 아님 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |
 | 400 | INVALID_INPUT | updates[].participantId가 스터디 소속 아님 |

@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Collection;
 
 @Entity
 @Table(
@@ -84,13 +85,24 @@ public class StudyMeeting extends BaseEntity {
         return meeting;
     }
 
-    /** 분반의 킥오프(0회차). 분반을 만들 때 함께 만든다 — 일자는 네비게이터가 나중에 고친다. 반 만들기 API 가 생기면 거기서 부른다 (구현 메모). */
+    /**
+     * 분반의 킥오프(0회차). 캡틴이 백오피스 일정 탭에서 정한다 — 정규 회차 추가는 킥오프를 만들지 않는다 (specs/study-meeting/spec.md 결정
+     * 11).
+     */
     public static StudyMeeting kickoff(Long studyGroupId, Instant scheduledAt) {
         StudyMeeting meeting =
                 new StudyMeeting(studyGroupId, MeetingSchedule.storable(scheduledAt), null, null);
         meeting.title = KICKOFF_TITLE;
         meeting.meetingType = MeetingType.KICKOFF;
         return meeting;
+    }
+
+    /** 킥오프 일자를 옮긴다. 캡틴만, 지난 시각도 받는다 — 순서 · 같은 날은 {@link MeetingSchedule#checkKickoff} 가 본다. */
+    public void rescheduleKickoff(Instant scheduledAt) {
+        if (!isKickoff()) {
+            throw new IllegalStateException("킥오프가 아닙니다: " + id);
+        }
+        this.scheduledAt = MeetingSchedule.storable(scheduledAt);
     }
 
     public boolean isKickoff() {
@@ -174,6 +186,13 @@ public class StudyMeeting extends BaseEntity {
             changed = true;
         }
         return changed;
+    }
+
+    /** {@link #releasePresenter} 를 여러 명에게 — 분반을 떠나는 사람이 여럿일 때 (참여 중단 · 회원 탈퇴 · 반 이동). */
+    public void releasePresenters(Collection<Long> participantIds, Instant now) {
+        for (Long participantId : participantIds) {
+            releasePresenter(participantId, now);
+        }
     }
 
     private void assertPresenterSlotOpen(int slot, Instant now) {

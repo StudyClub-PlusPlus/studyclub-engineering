@@ -15,7 +15,7 @@
 | CITY | VARCHAR(100) | Y | |
 | REGION_GROUP | VARCHAR(20) | Y | 권역 — `KR` / `NA` / `ETC`. 회차 시간대 묶음용 |
 | SYSTEM_ROLE | VARCHAR(20) | N | 아래 |
-| TIME_ZONE | VARCHAR(64) | Y | IANA (`Asia/Seoul`, `America/Los_Angeles`) |
+| TIME_ZONE | VARCHAR(64) | Y | IANA. 허용 값은 화면 드롭다운과 같은 넷 — `Asia/Seoul` · `America/New_York` · `America/Vancouver` · `America/Los_Angeles` |
 | DISCORD_ID | VARCHAR(64) | Y | 디스코드 내부 식별자 (snowflake) |
 | DISCORD_HANDLE | VARCHAR(64) | Y | 표시용 핸들 |
 | DISCORD_NICKNAME | VARCHAR(100) | Y | 스터디클럽 서버 별명 (이름/직무/지역/관심주제). 없으면 스터디 신청 시 필수 입력 |

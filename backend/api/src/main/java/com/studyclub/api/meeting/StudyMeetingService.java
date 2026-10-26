@@ -46,6 +46,7 @@ public class StudyMeetingService {
     private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
     private static final String EDIT_FORBIDDEN = "이 분반의 회차를 관리할 권한이 없습니다.";
     private static final String VIEW_FORBIDDEN = "이 스터디의 일정을 볼 수 없습니다.";
+    private static final String KICKOFF_FORBIDDEN = "킥오프 일정은 캡틴이 백오피스에서 정합니다.";
     private static final String MEMBER_FORBIDDEN = "이 분반 참여자만 발표를 신청할 수 있습니다.";
     static final int MAX_DELETE_IDS = 100;
 
@@ -89,7 +90,29 @@ public class StudyMeetingService {
         boolean canEdit =
                 studyCaptainGuard.assertCanViewGroup(
                         accountId, study.getCreatedBy(), groupId, VIEW_FORBIDDEN);
+        return listView(study, group, accountId, canEdit);
+    }
 
+    /**
+     * 백오피스 일정 탭 — 캡틴(ADMIN)은 어느 스터디의 어느 반이든 본다. 사이트 목록과 같은 응답 · 같은 계산이다 (킥오프 여부 · 번호 · 시작 여부).
+     * {@code me} 는 명부와 상관없이 {@code participantId = null}, {@code canEdit = true}.
+     */
+    @Transactional(readOnly = true)
+    public StudyMeetingListResponse adminList(Long studyId, Long groupId) {
+        Study study = study(studyId);
+        StudyGroup group =
+                studyGroupRepository
+                        .findById(groupId)
+                        .filter(g -> g.getStudyId().equals(studyId))
+                        .orElseThrow(
+                                () -> new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다."));
+        return listView(study, group, null, true);
+    }
+
+    // 사이트 · 백오피스 목록이 함께 쓴다. accountId 가 null 이면 내 명부 행을 찾지 않는다
+    private StudyMeetingListResponse listView(
+            Study study, StudyGroup group, Long accountId, boolean canEdit) {
+        Long groupId = group.getId();
         List<StudyParticipant> roster = studyParticipantRepository.findByStudyGroupId(groupId);
         List<StudyMeeting> meetings =
                 studyMeetingRepository.findByStudyGroupIdOrderByScheduledAt(groupId);
@@ -142,7 +165,7 @@ public class StudyMeetingService {
                         .orElse(null);
         Long myParticipantId =
                 roster.stream()
-                        .filter(p -> accountId.equals(p.getAccountId()))
+                        .filter(p -> p.getAccountId().equals(accountId))
                         .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(StudyParticipant::getId)
                         .findFirst()
@@ -190,6 +213,7 @@ public class StudyMeetingService {
 
         // 반복(2개 이상)은 묶음 ID 를 남긴다 — 나중의 묶음 단위 수정·삭제를 위해 (결정 2)
         String seriesId = request.scheduledAts().size() > 1 ? UUID.randomUUID().toString() : null;
+        // 킥오프는 여기서 만들지 않는다 — 캡틴이 백오피스에서 정한다 (결정 11)
         List<StudyMeeting> created =
                 studyMeetingRepository.saveAll(
                         // 예정 시각 오름차순으로 넣는다. 디스코드 출석은 여러 분반의 회차를 차례로 잠그는데, 그 잠금이 이 분반 앞 gap 을 쥔 상태에서
@@ -230,6 +254,10 @@ public class StudyMeetingService {
             Long accountId, Long studyId, Long meetingId, StudyMeetingRequests.Update request) {
         LockedMeeting locked = lockMeetingForEdit(accountId, studyId, meetingId);
         StudyMeeting meeting = locked.meeting();
+        // 킥오프는 캡틴이 백오피스에서만 정한다 — 이 사이트 API 는 스터디를 만든 캡틴도 막는다 (결정 11)
+        if (meeting.isKickoff()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, KICKOFF_FORBIDDEN);
+        }
         // 잠금을 기다리는 동안 예정 시각이 지날 수 있어 잠근 뒤에 잰다
         meeting.reschedule(request.getScheduledAt(), request.getTitle(), Instant.now());
         locked.schedule().checkReschedule(meeting, request.getScheduledAt());
@@ -342,7 +370,7 @@ public class StudyMeetingService {
         account(accountId);
         Long participantId =
                 studyParticipantRepository
-                        .findByStudyGroupIdAndAccountId(groupId, accountId)
+                        .findByStudyGroupIdAndAccountIdForUpdate(groupId, accountId)
                         .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(StudyParticipant::getId)
                         .orElseThrow(
@@ -351,15 +379,17 @@ public class StudyMeetingService {
         return new LockedPresenter(find(meetings, meetingId), participantId);
     }
 
-    // 발표자로 넣을 사람은 그 분반의 활성 참여자여야 한다 — 다른 분반·참여 중단한 사람은 400
+    // 발표자로 넣을 사람은 그 분반의 활성 참여자여야 한다 — 다른 분반·참여 중단한 사람은 400.
+    // 고른 행만 잠그고 읽는다 — 잠금을 기다리는 동안 커밋된 참여 중단을 놓치지 않게 (share 10-18 D7)
     private void assertActiveRoster(Long groupId, Set<Long> participantIds) {
         if (participantIds.isEmpty()) {
             return;
         }
         Set<Long> active =
                 studyParticipantRepository
-                        .findByStudyGroupIdAndStatusIn(groupId, StudyCaptainGuard.ROSTER_STATUSES)
+                        .findByIdInAndStudyGroupIdForUpdate(participantIds, groupId)
                         .stream()
+                        .filter(p -> StudyCaptainGuard.ROSTER_STATUSES.contains(p.getStatus()))
                         .map(StudyParticipant::getId)
                         .collect(Collectors.toSet());
         if (!active.containsAll(participantIds)) {

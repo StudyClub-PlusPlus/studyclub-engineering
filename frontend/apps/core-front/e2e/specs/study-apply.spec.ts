@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
+import { stubApiMe } from '../stubApiMe';
+
 // ── 세션 주입 헬퍼 ──────────────────────────────────────────────────────────
 
 async function seedSession(
@@ -12,6 +14,8 @@ async function seedSession(
   } = {},
 ) {
   const { authenticated = true, discordLinked = true, appliedStudyIds = [] } = options;
+
+  if (authenticated) await stubApiMe(page);
 
   await page.addInitScript(
     ({ auth, discord, applied }) => {
@@ -30,11 +34,11 @@ async function seedSession(
         localStorage.removeItem('sc_user');
       }
 
+      // 연동 여부는 GET /api/me 의 discordLinked 다 — 개발 서버의 MSW 목이 진짜 응답에 이 값을 덧붙인다
+      localStorage.setItem('msw-discord-linked', String(discord));
       if (discord) {
-        localStorage.setItem('sc_discord', JSON.stringify({ linked: true, username: 'test#0001' }));
         localStorage.setItem('sc_discord_nickname', JSON.stringify('테스트크루'));
       } else {
-        localStorage.removeItem('sc_discord');
         localStorage.removeItem('sc_discord_nickname');
       }
 
@@ -107,7 +111,7 @@ test.describe('크루 스터디 신청 E2E 플로우 (PRD: crew-submit-applicati
     const discordModal = page.getByRole('dialog');
     await expect(discordModal).toBeVisible();
 
-    // 디스코드 연동하기 버튼 클릭 (모의 연동 완료)
+    // 디스코드 연동하기 → POST /api/me/discord/link (MSW 목이 204)
     const linkBtn = discordModal.getByRole('button', { name: /디스코드 연동하기/i });
     await linkBtn.click();
 
@@ -248,18 +252,21 @@ test.describe('크루 스터디 신청 E2E 플로우 (PRD: crew-submit-applicati
     // 신청 제출 클릭
     await dialog.getByRole('button', { name: /^신청$|^Apply$/i }).click();
 
-    // 완료 다이얼로그 오픈 확인 (PRD: "스터디 신청 완료")
+    // 완료 다이얼로그 오픈 확인
     const completeDialog = page.getByRole('dialog');
     await expect(completeDialog).toBeVisible();
-    await expect(completeDialog.getByRole('heading', { name: /스터디 신청 완료/i })).toBeVisible();
-    await expect(completeDialog.getByText(/내 스터디로 이동할까요/i)).toBeVisible();
+    await expect(completeDialog.getByRole('heading', { name: /스터디 신청/i })).toBeVisible();
+    await expect(completeDialog.getByText(/신청이 접수되었습니다/i)).toBeVisible();
 
-    // "내 스터디 보러 가기" 버튼 확인
-    const myStudiesBtn = completeDialog.getByRole('button', { name: /내 스터디 보러 가기/i });
+    // "내 스터디룸 보러 가기" 버튼 확인
+    const myStudiesBtn = completeDialog.getByRole('button', { name: /내 스터디룸 보러 가기/i });
     await expect(myStudiesBtn).toBeVisible();
 
     // 닫기 버튼 클릭 시 완료 다이얼로그 닫힘
-    await completeDialog.getByRole('button', { name: /닫기|Close/i }).first().click();
+    await completeDialog
+      .getByRole('button', { name: /닫기|Close/i })
+      .first()
+      .click();
     await expect(completeDialog).not.toBeVisible();
 
     // 신청 후 상세 화면의 버튼이 '신청 완료'로 변경되었는지 확인
