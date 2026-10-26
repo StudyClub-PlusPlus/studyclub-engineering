@@ -303,7 +303,8 @@ describe('제목 줄 · KPI', () => {
     respond({ summary: serverError() });
     await act(() => client.refetchQueries({ queryKey: ['dashboard', 'summary'] }));
 
-    expect(within(kpi('2-1')).getByText(LOAD_FAILED)).toBeInTheDocument();
+    // 쿼리 알림은 setTimeout(0) 으로 미뤄진다 — act 가 끝나도 아직 안 그려졌을 수 있다
+    expect(await within(kpi('2-1')).findByText(LOAD_FAILED)).toBeInTheDocument();
     expect(screen.queryByText('128')).toBeNull();
     expect(screen.getByText('전기간 기준')).toBeInTheDocument();
   });
