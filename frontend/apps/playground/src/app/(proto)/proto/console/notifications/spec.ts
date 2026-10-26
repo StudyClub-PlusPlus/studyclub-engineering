@@ -46,6 +46,16 @@ export const SPEC: ScreenSpec = {
       ],
     },
     {
+      n: '1-3',
+      title: '시간대 안내',
+      display: ['표 오른쪽 위 ⓘ. 누르면 「표의 시각은 내 시간대 기준입니다 (Asia/Seoul · GMT+9)」'],
+      policy: [
+        '**한 줄로 깔아 두지 않는다** — 늘 보이지만 거의 쓰이지 않는 글이 표 위에 자리를 차지한다. 궁금할 때만 열어 본다',
+        '줄마다 약칭을 달지 않는다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md)) — 스무 줄이면 같은 말이 스무 번이다',
+        '시간대 이름은 **보는 사람의 브라우저**가 정한다. 운영자가 고르는 값이 아니다',
+      ],
+    },
+    {
       n: '2',
       title: '이력 표',
       display: ['요청 시각 · 알림 조건 · 채널 · 수신 주소 · 상태 · 발송 시각'],
