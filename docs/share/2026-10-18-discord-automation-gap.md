@@ -265,7 +265,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | DSC-13 | [BOT] 🆕 봇 API 권한 체크 제거 · 「시스템 아이디」 용어 | 10-24 회의. 권한은 백엔드가 본다(SSOT). `X-Discord-User-ID` 는 그대로 받되 디스코드 메시지 보낸 사람 용도로만 쓴다. DSC-06 을 포함한다. 봇 문서 `common-header.md` 「시스템 호출」도 고친다 | — | 디스코드 스쿼드 |
 | DSC-14 | [BOT] 🆕 captain · navigator role 변경을 웹에 알림 | 10-24 회의. 이 두 role 의 인원이 바뀔 때만 보낸다 | 받는 창구 모양 · 웹이 할 일 ([share 10-24](2026-10-24-discord-squad-agreement.md) 물어볼 것 1 · 5) | 디스코드 스쿼드 |
 | DSC-15 | [BOT] 🆕 하루 한 번 captain · navigator 전체 명단 보내기 | 10-24 회의. 이미 하루 한 번 도는 모니터링 작업에 얹는다. 하루 늦게 맞는 건 감수한다 | DSC-14 와 같음 | 디스코드 스쿼드 |
-| DSC-16 | [BE] 🆕 디스코드 → 웹 role 알림 받는 창구 | DSC-14 · DSC-15 를 받는다. 출석 창구처럼 API 키로 인증. 같은 알림이 두 번 와도 안전하게 | [share 10-24](2026-10-24-discord-squad-agreement.md) 물어볼 것 1 · 5 | 스터디 스쿼드 (제안) |
+| DSC-16 | [BE] 🆕 디스코드 → 웹 role 알림 받는 창구 | DSC-14 · DSC-15 를 받는다. 출석 창구처럼 API 키로 인증. 같은 알림이 두 번 와도 안전하게. **10-26 구현** — `POST /api/discord/role-changes` · `PUT /api/discord/role-members` ([discord-role-sync](../../specs/discord-role-sync/spec.md)). 맞추기는 `DISCORD_ROLE_SYNC_ENFORCE` 를 켜야 한다 (기본 기록만) | 물어볼 것 1 · 5 — 10-26 결정. navigator 되돌리기는 DSC-13(#343) 뒤 | doxxx93 |
 | DSC-10 | [BE·FE] 백오피스 스터디 상세에 디스코드 연결 상태 · 「다시 연결」 버튼 | 화면·기능 ④. 상세 응답 필드 + `POST .../discord-link` 버튼. 화면은 프론트 담당 | — | seeunrosypark |
 
 **스터디 스쿼드 — 주문서를 꽂는다**
@@ -276,7 +276,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서. **명부 편입은 #296, `joined` 발행은 머지됨 (#310)** | STD-01 · COM-01 | seeunrosypark (#296 · #310) |
 | STD-03 | [BE] 반 · 역할 일괄 변경 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants` — 신청자 탭 「저장」 한 번, 하나라도 거절되면 전부 취소. 10-21 에 한 사람씩 API 를 합쳤다 ([study-group](../../specs/study-group/spec.md), [share](2026-10-21-participant-bulk-change.md)). **머지됨 (#303)** — 페이로드 `previousRole` · `newRole`, 감사 로그 `PARTICIPANT_ROLE` | COM-01 | kimjiy9607 (#303) |
 | STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/me/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)). **머지됨 (#297)**. 백오피스 출석부에서 담당 캡틴이 중단시키는 길도 머지됨 (#325, 10-23 제품 결정) | COM-01 | seeunrosypark (#297 · #325) |
-| STD-05 | [BE] 🆕 디스코드 연동한 사람만 캡틴으로 올린다 | 10-24 회의. `PATCH /api/admin/users/{accountId}/system-role` 이 캡틴으로 올릴 때 미연동이면 거절. 백오피스 회원 목록 배지 잠금 이유에도 같은 값. [admin-users](../../specs/admin-users/spec.md) 스펙 | — | seeunrosypark |
+| STD-05 | [BE] 🆕 디스코드 연동한 사람만 캡틴으로 올린다 | 10-24 회의. `PATCH /api/admin/users/{accountId}/system-role` 이 캡틴으로 올릴 때 미연동이면 거절. 백오피스 회원 목록 배지 잠금 이유에도 같은 값. [admin-users](../../specs/admin-users/spec.md) 스펙. **10-26 구현 (`DISCORD_LINK_REQUIRED`) — 캡틴은 연결 해제도 막는다** | — | doxxx93 (세은님 대신, 10-26 분배 스레드) |
 | STD-06 | [BE] 🆕 디스코드 API 호출 기록 — 스터디 생성 · navigator role 부여 · 회수 | 10-24 회의. COM-04 와 같은 부품에 한 번에 | 기록 형태 ([share 10-24](2026-10-24-discord-squad-agreement.md) 물어볼 것 2) | 스터디 스쿼드 |
 
 **스터디 스쿼드가 하지 않는 것**: 봇 호출, 디스코드 ID 조회, 디스코드 실패 처리. 이벤트를 발행하면 끝이다. 구독자가 없어도 기능은 정상이다.

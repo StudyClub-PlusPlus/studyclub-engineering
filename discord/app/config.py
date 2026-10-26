@@ -42,10 +42,6 @@ class Settings:
     # DISCORD_NAVIGATOR_ROLE_ID: the existing role that, like captain, may read
     # a study's channels.
     navigator_role_id: int | None = None
-    # DISCORD_BOT_ID: the bot's own user ID. The backend sends it as
-    # X-Discord-User-ID on the endpoints it calls as the system rather than on
-    # a member's behalf. ``None`` means no caller is ever the system.
-    bot_id: int | None = None
     # DISCORD_ALERT_CHANNEL_ID: the existing channel operational alerts go to.
     alert_channel_id: int | None = None
     # DISCORD_ANNOUNCEMENT_CHANNEL_ID: the existing channel guild-wide
@@ -112,7 +108,6 @@ def load_settings(
         guild_id=_parse_id(env, "DISCORD_GUILD_ID"),
         captain_role_id=_parse_id(env, "DISCORD_CAPTAIN_ROLE_ID"),
         navigator_role_id=_parse_id(env, "DISCORD_NAVIGATOR_ROLE_ID"),
-        bot_id=_parse_id(env, "DISCORD_BOT_ID"),
         alert_channel_id=_parse_id(env, "DISCORD_ALERT_CHANNEL_ID"),
         announcement_channel_id=_parse_id(env, "DISCORD_ANNOUNCEMENT_CHANNEL_ID"),
         bulletin_channel_id=_parse_id(env, "DISCORD_BULLETIN_CHANNEL_ID"),

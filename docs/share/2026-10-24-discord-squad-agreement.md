@@ -4,7 +4,7 @@
 반영:
   - docs/share/2026-10-18-discord-automation-gap.md — 됨 (질문 4 · 5 · 6, DSC-06 · 08 · 09, 새 작업 DSC-13 ~ 16 · STD-05 · 06 · COM-04)
   - docs/share/2026-10-23-planning-decisions.md — 됨 (질문 5 · 6 행)
-  - specs/admin-users/spec.md 계정 권한 변경 — 안 됨 (STD-05 구현 PR 에서)
+  - specs/admin-users/spec.md 계정 권한 변경 — 됨 (STD-05, `DISCORD_LINK_REQUIRED`)
   - docs/discord-development-guide/api/common-header.md 「시스템 호출」 · 봇 창구 문서들의 권한 칸 — 안 됨 (DSC-06 · DSC-13, 디스코드 스쿼드)
 ---
 
@@ -55,6 +55,7 @@
      - (나) 기록 · 알림만 — 운영 채널이나 백오피스에 「어긋남」을 띄우고 사람이 고친다
      - (다) 백엔드가 확인한 뒤 웹을 바꾼다 — 무엇을 확인하면 바꾸는지 규칙이 필요하다
    - **제안: (가).** 「권한은 백엔드가 본다」와 가장 잘 맞는다. 처음에는 (나)로 기록만 하다가 (가)로 넘어가도 된다.
+   - **10-26 결정됨 (준희 · 도율, #02-squad-discord)**: (가). 백엔드가 어긋나면 봇 navigator 창구로 맞춘다. captain 은 봇에 창구가 없어 경고 로그만. 봇은 자기 API 로 바꾼 role 은 알리지 않는다. 처음에는 `DISCORD_ROLE_SYNC_ENFORCE` 를 꺼서 (나)처럼 기록만 한다 — 지난 기수 navigator role 이 한꺼번에 떨어지지 않게 → [discord-role-sync 스펙](../../specs/discord-role-sync/spec.md)
    - 「여기만 권한 확인이 필요하므로」가 (가) · (다) 중 어느 뜻인지 확인이 필요하다.
 2. **호출 기록은 어디에 남기나?** (기획 · 두 스쿼드)
    - 서버 로그(지금 쓰는 로그 · Grafana)에 정해진 모양으로 남긴다 → 작다. 코드만 고친다
@@ -71,6 +72,7 @@
    - 백엔드에 봇 → 백엔드 창구가 새로 생긴다. 출석 창구(`POST /api/discord/studies/{discordStudyId}/attendances`)처럼 API 키로 인증한다.
    - 정할 것: 바뀐 한 건(누가 · 어떤 role · 붙음/떨어짐 · 언제)과 하루 한 번 전체 명단의 요청 모양. 같은 알림이 두 번 와도 안전해야 한다.
    - 담당: 백엔드 창구는 스터디 스쿼드가 만드는 걸 제안한다 (명부 · 권한 판정이 여기 있다).
+   - **10-26 결정됨**: `POST /api/discord/role-changes` (한 건) · `PUT /api/discord/role-members` (하루 한 번 명단), 둘 다 `204` 이고 응답 본문이 없다. 담당 도율 (DSC-16) → [discord-role-sync 스펙](../../specs/discord-role-sync/spec.md)
 
 ## 영향 — 누가 무엇을 해야 하나
 

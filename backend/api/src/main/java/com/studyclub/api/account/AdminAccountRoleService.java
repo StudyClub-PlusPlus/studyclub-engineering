@@ -64,6 +64,11 @@ public class AdminAccountRoleService {
             throw new BusinessException(ErrorCode.LAST_ADMIN_REQUIRED);
         }
 
+        // 5-1. 디스코드 미연동 크루는 캡틴으로 올릴 수 없다 — 값이 다르고 대상이 크루면 곧 올리는 요청이다
+        if (blocked == RoleChangeBlockedReason.DISCORD_LINK_REQUIRED) {
+            throw new BusinessException(ErrorCode.DISCORD_LINK_REQUIRED);
+        }
+
         // 6~7. 값 전이와 감사 기록은 같은 트랜잭션 — 기록 없이 권한만 바뀌는 일이 없다
         target.changeSystemRole(newRole);
         adminAuditLogRepository.save(

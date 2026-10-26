@@ -478,6 +478,17 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 디스코드 미연동 크루 행은 roleChangeBlockedReason 이 DISCORD_LINK_REQUIRED")
+    void unlinkedMemberRowIsBlocked() {
+        jdbcTemplate.update("UPDATE ACCOUNT SET DISCORD_ID = NULL WHERE ID = ?", CREW_ID);
+
+        var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
+
+        assertThat(itemById(response.getBody(), CREW_ID))
+                .containsEntry("roleChangeBlockedReason", "DISCORD_LINK_REQUIRED");
+    }
+
+    @Test
     @DisplayName("성공 - 본인 행은 roleChangeBlockedReason 이 CANNOT_CHANGE_OWN_ROLE 이고 나머지는 null")
     void selfRowIsBlocked() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
@@ -624,8 +635,8 @@ class AdminAccountListIntegrationTest {
         Timestamp created = Timestamp.from(createdAt);
         jdbcTemplate.update(
                 "INSERT INTO ACCOUNT (ID, EMAIL, NICKNAME, SYSTEM_ROLE, TIME_ZONE,"
-                        + " ONBOARDING_COMPLETED_AT, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        + " ONBOARDING_COMPLETED_AT, CREATED_AT, UPDATED_AT, DISCORD_ID)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 id,
                 "acctlist-" + id + "@example.com",
                 PREFIX + id,
@@ -633,7 +644,9 @@ class AdminAccountListIntegrationTest {
                 "Asia/Seoul",
                 onboarded ? created : null,
                 created,
-                created);
+                created,
+                // 연동해 둔다 — 미연동 크루는 DISCORD_LINK_REQUIRED 로 잠긴다 (따로 본다)
+                "acctlist-" + id);
     }
 
     private void insertStudy(long id, String title, Instant now) {
