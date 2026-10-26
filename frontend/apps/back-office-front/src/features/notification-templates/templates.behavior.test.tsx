@@ -121,7 +121,7 @@ describe('알림 템플릿 화면', () => {
     expect(within(dialog).getByText(/\{\{nickname\}\} 으로 닉네임 삽입/)).toBeTruthy();
 
     fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '   ' } });
-    fireEvent.change(within(dialog).getByLabelText(/본문/), { target: { value: '본문' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '본문' } });
     expect(add.disabled).toBe(true);
     expect(callsOf('POST')).toHaveLength(0);
   });
@@ -135,7 +135,7 @@ describe('알림 템플릿 화면', () => {
     await screen.findByLabelText(/제목/);
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: ' 새 문구 ' } });
-    fireEvent.change(within(dialog).getByLabelText(/본문/), { target: { value: BODY } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: BODY } });
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -158,7 +158,7 @@ describe('알림 템플릿 화면', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('템플릿 수정')).toBeTruthy();
     expect((within(dialog).getByLabelText(/제목/) as HTMLInputElement).value).toBe('[StudyClub] 회원가입을 환영합니다');
-    expect((within(dialog).getByLabelText(/본문/) as HTMLTextAreaElement).value).toBe(BODY);
+    expect((within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement).value).toBe(BODY);
   });
 
   it('수정하고 저장하면 PUT 으로 보낸다 (채널 없음)', async () => {
@@ -176,6 +176,96 @@ describe('알림 템플릿 화면', () => {
     expect(path).toBe(`${BASE}/1`);
     expect(JSON.parse(String(init?.body))).toEqual({ eventType: 'USER_REGISTERED', subject: '바뀐 제목', body: BODY });
     await screen.findByText('바뀐 제목');
+  });
+
+  it('저장 전 HTML과 모든 변수를 미리 보고, 미리보기에서 저장해도 입력 원문을 보낸다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('tab', { name: '본문 편집' })).toHaveAttribute('aria-selected', 'true');
+
+    const subject = '[StudyClub] {{studyTitle}} 안내';
+    const body =
+      '  <!DOCTYPE html><html><body><h1>안녕하세요, {{nickname}}님</h1>\n<p>{{newVariable}}</p></body></html>';
+    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: subject } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: body } });
+    const reads = callsOf('GET').length;
+    fireEvent.click(within(dialog).getByRole('tab', { name: '미리보기' }));
+
+    const preview = within(dialog).getByRole('tabpanel', { name: '미리보기' });
+    expect(within(preview).getByText(subject)).toBeTruthy();
+    const frame = within(preview).getByTitle('메일 본문 미리보기');
+    expect(frame).toHaveAttribute('srcdoc', body);
+    expect(frame).toHaveAttribute('sandbox', '');
+    expect(callsOf('GET')).toHaveLength(reads);
+    expect(callsOf('PUT')).toHaveLength(0);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(JSON.parse(String(callsOf('PUT')[0]![1]?.body))).toEqual({ eventType: 'USER_REGISTERED', subject, body });
+  });
+
+  it('일반 텍스트의 태그 모양 글자를 실행하지 않고 줄바꿈과 변수 원문을 표시한다', async () => {
+    const body = '안녕하세요, {{nickname}}님.\n\n<img src="x" onerror="alert(1)"> & \'{{unknown}}\'';
+    fakeServer([tpl({ subject: '<b>{{nickname}}</b>', body })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    await screen.findByLabelText(/제목/);
+    fireEvent.click(screen.getByRole('tab', { name: '미리보기' }));
+
+    const preview = screen.getByRole('tabpanel', { name: '미리보기' });
+    const subject = within(preview).getByText('<b>{{nickname}}</b>');
+    expect(subject.querySelector('b')).toBeNull();
+    const frame = within(preview).getByTitle('메일 본문 미리보기') as HTMLIFrameElement;
+    const document = new DOMParser().parseFromString(frame.srcdoc, 'text/html');
+    expect(document.body.textContent).toBe(body);
+    expect(document.body.style.whiteSpace).toBe('pre-wrap');
+    expect(document.querySelector('img')).toBeNull();
+  });
+
+  it('탭 전환과 삭제 취소는 작성값을 유지하고, 다시 열면 본문 편집부터 시작한다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = '<p>{{newVariable}} 수정 중</p>';
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: body } });
+    fireEvent.click(within(dialog).getByRole('tab', { name: '미리보기' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
+    expect(within(dialog).getByTitle('메일 본문 미리보기')).toHaveAttribute('srcdoc', body);
+    fireEvent.click(within(dialog).getByRole('tab', { name: '본문 편집' }));
+    expect(within(dialog).getByRole('textbox', { name: /본문/ })).toHaveValue(body);
+    fireEvent.click(within(dialog).getByRole('tab', { name: '미리보기' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '닫기' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '회원가입' }));
+    await screen.findByLabelText(/제목/);
+    expect(screen.getByRole('tab', { name: '본문 편집' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('textbox', { name: /본문/ })).toHaveValue(BODY);
+    expect(callsOf('PUT')).toHaveLength(0);
+    expect(callsOf('DELETE')).toHaveLength(0);
+  });
+
+  it('추가 팝업의 빈 미리보기는 입력 안내를 보여주고, 돌아오면 작성한 내용이 남는다', async () => {
+    fakeServer([]);
+    renderPage();
+    await screen.findByText('등록된 템플릿이 없습니다.');
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+    fireEvent.click(screen.getByRole('tab', { name: '미리보기' }));
+    expect(screen.getByText('제목을 입력해 주세요.')).toBeTruthy();
+    expect(screen.getByText('본문을 입력하면 여기에 미리보기가 표시됩니다.')).toBeTruthy();
+    expect(screen.queryByTitle('메일 본문 미리보기')).toBeNull();
+    expect(screen.getByRole('button', { name: '추가' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('tab', { name: '본문 편집' }));
+    fireEvent.change(screen.getByRole('textbox', { name: /본문/ }), { target: { value: BODY } });
+    fireEvent.click(screen.getByRole('tab', { name: '미리보기' }));
+    fireEvent.click(screen.getByRole('tab', { name: '본문 편집' }));
+    expect(screen.getByRole('textbox', { name: /본문/ })).toHaveValue(BODY);
+    expect(callsOf('POST')).toHaveLength(0);
   });
 
   it('삭제: 확인 단계로 바뀌고 취소가 기본 포커스이며, 삭제하면 목록에서 빠진다', async () => {
@@ -262,7 +352,7 @@ describe('알림 템플릿 화면', () => {
     await screen.findByLabelText(/제목/);
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '새 문구' } });
-    fireEvent.change(within(dialog).getByLabelText(/본문/), { target: { value: '본문' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '본문' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
 
     const alert = await within(dialog).findByRole('alert');
@@ -396,7 +486,7 @@ describe('알림 템플릿 화면', () => {
     expect(await screen.findByText('템플릿을 불러오지 못했습니다.')).toBeTruthy();
     expect(screen.queryByLabelText(/제목/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '다시 불러오기' }));
-    expect(((await screen.findByLabelText(/제목/)) as HTMLInputElement).value).toBe('B');
+    await waitFor(() => expect(screen.getByLabelText(/제목/)).toHaveValue('B'));
   });
 
   it('저장 중 모든 입력을 막고 실패하면 작성값을 유지하며 다시 활성화한다', async () => {
@@ -417,13 +507,13 @@ describe('알림 템플릿 화면', () => {
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
     await waitFor(() => expect(subject.disabled).toBe(true));
     expect((screen.getByLabelText(/알림 조건/) as HTMLSelectElement).disabled).toBe(true);
-    expect((screen.getByLabelText(/본문/) as HTMLTextAreaElement).disabled).toBe(true);
+    expect((screen.getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement).disabled).toBe(true);
     reject(new ApiError(500, '저장 실패'));
     await screen.findByRole('alert');
     expect(subject.disabled).toBe(false);
     expect(subject.value).toBe('작성 중');
     expect((screen.getByLabelText(/알림 조건/) as HTMLSelectElement).disabled).toBe(false);
-    expect((screen.getByLabelText(/본문/) as HTMLTextAreaElement).disabled).toBe(false);
+    expect((screen.getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement).disabled).toBe(false);
   });
 
   it('최초 조회보다 추가가 먼저 성공하면 이전 요청을 취소하고 새 목록을 기다리지 않고 닫는다', async () => {
@@ -446,7 +536,7 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
     fireEvent.change(screen.getByLabelText(/제목/), { target: { value: '새 문구' } });
-    fireEvent.change(screen.getByLabelText(/본문/), { target: { value: BODY } });
+    fireEvent.change(screen.getByRole('textbox', { name: /본문/ }), { target: { value: BODY } });
     fireEvent.click(screen.getByRole('button', { name: /^추가$/ }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(gets).toBe(2));
