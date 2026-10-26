@@ -22,6 +22,13 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
           </p>
           <p className='mt-1 flex flex-wrap items-center gap-x-3 text-xs text-(--color-fg-faint)'>
             <span>© {new Date().getFullYear()} StudyClub</span>
+            {/* 문의·오류 신고 — 쓰는 창이 바로 열린다. 로그인하지 않았으면 로그인으로 보낸다 (specs/feedback 「진입점」) */}
+            <Link
+              href={`/${locale}/my/feedbacks?write=1`}
+              className='font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'
+            >
+              {m('nav.feedback', locale)}
+            </Link>
             <Link href={`/${locale}/terms`} className='hover:text-(--color-fg)'>
               {t({ ko: '이용약관', en: 'Terms' }, locale)}
             </Link>
@@ -29,6 +36,8 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
             <Link href={`/${locale}/privacy`} className='font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'>
               {t({ ko: '개인정보처리방침', en: 'Privacy Policy' }, locale)}
             </Link>
+            {/* 가입하다 막힌 사람을 위한 운영 메일 — 링크·폼이 아니라 글자만 (문의·오류 신고는 온보딩을 마쳐야 쓴다) */}
+            <span className='select-all'>contact@studyclub.life</span>
           </p>
         </div>
         <div className='flex flex-col gap-3 text-sm sm:items-end'>
