@@ -72,14 +72,46 @@ function daysText(days: string[]): string {
     .join(' · ');
 }
 
-/** 요일별 몇 명이 되는지 — 지역(시간대)별로 나눠 쌓는다. 같은 「화」라도 서울과 북미는 다른 날 다른 시각이다 */
+/**
+ * 요일별 몇 명이 되는지 — **지역을 나눠 따로 센다.**
+ *
+ * 같은 「화요일」이라도 서울의 화요일 저녁과 북미의 화요일 저녁은 **다른 시각이고 대개 다른 날**이다.
+ * 한 막대에 쌓아 두면 「화요일이 제일 많다」가 나오는데, 정작 그 화요일에 한국은 저녁이고 북미는
+ * 새벽이라 **아무도 못 모이는 날**이 뽑힌다. 반을 나눠 여는 스터디라면 더욱 각각의 최다 요일이
+ * 필요하다.
+ *
+ * 한쪽 지역만 신청했으면 **그 하나만 그린다** — 비교할 상대가 없는 빈 칸을 세워 두지 않는다.
+ */
+function DayBars({ crew, max }: { crew: Crew[]; max: number }) {
+  const rows = DAYS.map((d) => ({ ...d, n: crew.filter((c) => dummyDays(c).includes(d.key)).length }));
+  const best = Math.max(...rows.map((r) => r.n));
+  return (
+    <ul className='flex flex-col gap-1'>
+      {rows.map((r) => (
+        <li key={r.key} className='flex items-center gap-3 px-1 py-1'>
+          <span className={`w-6 shrink-0 text-sm ${r.n === best && best > 0 ? 'font-bold text-fg' : 'font-medium text-fg-secondary'}`}>
+            {r.label}
+          </span>
+          <span className='flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
+            <span className='block h-full bg-brand' style={{ width: `${(r.n / max) * 100}%` }} />
+          </span>
+          <span className='tnum w-10 shrink-0 text-right text-sm'>
+            <span className={r.n === best && best > 0 ? 'font-bold text-fg' : 'text-fg-secondary'}>{r.n}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function AvailableDaysSummary({ crew }: { crew: Crew[] }) {
-  const rows = DAYS.map((d) => {
-    const who = crew.filter((c) => dummyDays(c).includes(d.key));
-    return { ...d, kr: who.filter((c) => c.region !== 'NA').length, na: who.filter((c) => c.region === 'NA').length };
-  });
-  const max = Math.max(1, ...rows.map((r) => r.kr + r.na));
-  const best = Math.max(...rows.map((r) => r.kr + r.na));
+  const kr = crew.filter((c) => c.region !== 'NA');
+  const na = crew.filter((c) => c.region === 'NA');
+  const groups = [
+    { key: 'KR', label: '한국', people: kr },
+    { key: 'NA', label: '북미', people: na },
+  ].filter((g) => g.people.length > 0);
+  // 막대 길이는 **각 지역 안에서** 견준다 — 인원이 다른 두 지역을 같은 자로 재면 적은 쪽이 늘 짧다
   return (
     <Card
       anno='results:5'
@@ -90,34 +122,20 @@ function AvailableDaysSummary({ crew }: { crew: Crew[] }) {
         </span>
       }
     >
-      <ul className='flex flex-col gap-1'>
-        {rows.map((r) => {
-          const total = r.kr + r.na;
-          return (
-            <li key={r.key} className='flex items-center gap-3 px-1 py-1'>
-              <span className={`w-8 shrink-0 text-sm ${total === best ? 'font-bold text-fg' : 'font-medium text-fg-secondary'}`}>
-                {r.label}
-              </span>
-              <span className='flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
-                <span className='block h-full bg-brand' style={{ width: `${(r.kr / max) * 100}%` }} />
-                <span className='block h-full bg-warning-500' style={{ width: `${(r.na / max) * 100}%` }} />
-              </span>
-              <span className='tnum w-28 shrink-0 text-right text-sm text-fg-secondary'>
-                <span className='font-bold text-fg'>{total}명</span> ({r.kr} · {r.na})
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      <p className='mt-3 flex items-center gap-3 text-xs text-fg-muted'>
-        <span className='inline-flex items-center gap-1'>
-          <span className='h-2 w-2 rounded-full bg-brand' /> 한국
-        </span>
-        <span className='inline-flex items-center gap-1'>
-          <span className='h-2 w-2 rounded-full bg-warning-500' /> 북미
-        </span>
-        <span>· 요일만 받는다 — 몇 시에 되는지는 알 수 없다</span>
-      </p>
+      <div className={`grid gap-x-8 gap-y-4 ${groups.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+        {groups.map((g) => (
+          <section key={g.key}>
+            {groups.length > 1 && (
+              <h4 className='mb-1 flex items-baseline gap-1.5 text-sm font-bold text-fg'>
+                {g.label}
+                <span className='tnum text-xs font-medium text-fg-muted'>{g.people.length}명</span>
+              </h4>
+            )}
+            <DayBars crew={g.people} max={Math.max(1, g.people.length)} />
+          </section>
+        ))}
+      </div>
+      <p className='mt-3 text-xs text-fg-muted'>요일만 받는다 — 몇 시에 되는지는 알 수 없다</p>
     </Card>
   );
 }
