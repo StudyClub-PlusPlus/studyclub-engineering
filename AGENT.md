@@ -17,7 +17,7 @@
 ## 이게 뭐
 
 StudyClub 스터디 클럽 서비스. **frontend**(사용자향 core-front + 운영자향 back-office-front) + **backend**(Spring Boot 멀티모듈).
-프론트는 현재 **MSW Mock API 및 mock 데이터**로 동작 (백엔드 API 붙으면 교체). 백엔드는 기본 스캐폴드 단계.
+core-front·back-office-front 는 **실제 백엔드 API** 로 동작하고, 백엔드는 stage·prod 에 배포된다. MSW mock 은 개발 모드에서만 켜진다 (core-front 는 `next dev` 면 항상, back-office-front 는 `NEXT_PUBLIC_API_MOCKING=enabled` 일 때만). playground 는 mock 으로 동작.
 
 ## 구조 (monorepo)
 
@@ -148,7 +148,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   시키기를 기다리지 않는다. 확인 주소는 `stage.studyclub.life`.
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
-- 프론트 데이터는 지금 `frontend/packages/mock` 의 MSW 및 목 데이터로 동작. 데이터 수정: 스터디는 `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`. 실 API 교체 지점은 `// TODO(api)` 주석.
+- 개발 모드·playground 의 목 데이터는 `frontend/packages/mock` 에 있다. 데이터 수정: 스터디는 `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`. 실 API 교체 지점은 `// TODO(api)` 주석.
 - PR 은 CODEOWNERS(@titaniper) 승인 후에만 main 머지 (외부 기여자 포함).
 - CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
   **playground 만 `beta` 브랜치에서 배포된다** (`playground-beta.yaml`) — 프로토타입이라 main 을 기다리지 않는다.
