@@ -52,7 +52,7 @@ export function OnboardingDiscord({ locale, next }: { locale: Locale; next: stri
             {ko ? '지금 연결' : 'Connect now'}
           </Button>
           <Button data-anno='onboarding-discord:3' size='lg' variant='secondary' onClick={() => { cancel(); router.replace(withoutApplyIntent(next)); }}>
-            {ko ? '스터디 신청할 때 하기' : 'When I apply for a study'}
+            {ko ? '스터디 먼저 둘러보기' : 'Browse studies first'}
           </Button>
         </div>
       </section>

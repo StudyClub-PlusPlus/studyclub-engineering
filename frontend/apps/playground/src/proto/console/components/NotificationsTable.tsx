@@ -17,7 +17,7 @@ import {
   queryNotifications,
   type NotificationStatus,
 } from '@console/lib/notifications';
-import { Badge, Button, Modal, Pagination, toast } from '@studyclub/ui';
+import { Badge, Button, Modal, Pagination, Select, toast } from '@studyclub/ui';
 import { Loader2, RotateCw } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
@@ -366,12 +366,13 @@ function FilterSelect<T extends string>({
   onChange: (next: 'all' | T) => void;
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as 'all' | T)}
-      className='h-9 rounded-control border border-border-strong bg-bg px-3 type-body-sm disabled:bg-surface-2'
+      className='h-9 w-auto shrink-0 disabled:bg-surface-2'
     >
       <option value='all'>{value === 'all' ? label : '전체'}</option>
       {options.map((o) => (
@@ -379,7 +380,7 @@ function FilterSelect<T extends string>({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 

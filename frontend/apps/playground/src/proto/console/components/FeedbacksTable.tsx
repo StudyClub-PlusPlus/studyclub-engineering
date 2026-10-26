@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { PageHeader } from '@console/components/ui';
-import { Badge, Button, Pagination } from '@studyclub/ui';
+import { Badge, Button, Pagination, Select, cx } from '@studyclub/ui';
 
 import {
   FEEDBACK_STATUSES,
@@ -61,13 +61,15 @@ function FilterSelect<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T | 'all')}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? label : '전체'}</option>
       {options.map((o) => (
@@ -75,7 +77,7 @@ function FilterSelect<T extends string>({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
