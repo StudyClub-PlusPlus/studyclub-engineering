@@ -190,7 +190,8 @@ describe('일정 탭', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '1회차 발표자2' }), '이크루');
     await userEvent.click(screen.getByRole('button', { name: '저장' }));
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+    // 초안은 PUT 과 다시 읽기가 끝난 뒤에 비워진다
+    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false));
     // 고친 줄 하나만 PUT — 발표자는 명부 행 ID
     const put = server.calls.filter((c) => c.method === 'PUT');
     expect(put).toHaveLength(1);
