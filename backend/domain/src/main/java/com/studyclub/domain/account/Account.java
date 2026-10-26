@@ -150,6 +150,12 @@ public class Account extends BaseEntity {
         this.discordHandle = discordHandle;
     }
 
+    /** 디스코드 연결 해제. 신청할 때 받은 서버 별명({@code discordNickname})은 연동과 따로라 남긴다. */
+    public void unlinkDiscord() {
+        this.discordId = null;
+        this.discordHandle = null;
+    }
+
     public String getDiscordNickname() {
         return discordNickname;
     }
@@ -211,6 +217,9 @@ public class Account extends BaseEntity {
         }
         if (systemRole == SystemRole.ADMIN && adminCount <= 1) {
             return RoleChangeBlockedReason.LAST_ADMIN_REQUIRED;
+        }
+        if (systemRole == SystemRole.MEMBER && !isDiscordLinked()) {
+            return RoleChangeBlockedReason.DISCORD_LINK_REQUIRED;
         }
         return null;
     }

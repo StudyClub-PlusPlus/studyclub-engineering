@@ -31,13 +31,11 @@ FAILED = "공부방 게시판을 갱신하지 못했습니다. alert 채널과 �
 def may_update(ctx: commands.Context, settings: Settings) -> bool:
     """Whether ``ctx.author`` may rewrite the board: a captain, inside the guild.
 
-    Captain only, like every other write this service performs. A refresh costs
-    a history read and an edit against Discord's rate limits, so it is not left
-    open to the whole guild -- and the board is what every member reads.
+    Captain only. A refresh costs a history read and an edit against Discord's
+    rate limits, so it is not left open to the whole guild -- and the board is what every member reads.
 
-    An unset ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door rather than opening it,
-    the same way ``caller_guild`` treats it on the API side. In a DM there is no
-    member and no role, so there is nobody to check.
+    An unset ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door rather than opening it.
+    In a DM there is no member and no role, so there is nobody to check.
     """
     if ctx.guild is None or settings.captain_role_id is None:
         return False

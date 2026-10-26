@@ -7,7 +7,16 @@ on:
     paths:
       - 'frontend/apps/core-front/**'
       - 'frontend/packages/**'
+      # pnpm-lock.yaml·package.json·turbo.json·tsconfig.base.json 같은 루트 설정
+      - 'frontend/*'
+      - '.github/workflows/core-front-main.yaml'
   workflow_dispatch:
+
+# 배포가 겹쳐 오래된 빌드가 최신 이미지를 덮어쓰지 않게 직렬화한다.
+# 도중 취소는 하지 않는다 — SSH 배포가 어디까지 됐는지 알 수 없게 된다.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   lint:
@@ -63,6 +72,7 @@ jobs:
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
             NEXT_PUBLIC_OAUTH_REDIRECT_URI=${{ secrets.NEXT_PUBLIC_OAUTH_REDIRECT_URI }}
             NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ secrets.NEXT_PUBLIC_AMPLITUDE_API_KEY }}
+            NEXT_PUBLIC_BACKOFFICE_URL=https://back-office.studyclub.life
             NEXT_PUBLIC_APP_ENV=production
             NEXT_PUBLIC_GA_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_GA_MEASUREMENT_ID }}
             NEXT_PUBLIC_CLARITY_PROJECT_ID=${{ secrets.NEXT_PUBLIC_CLARITY_PROJECT_ID }}

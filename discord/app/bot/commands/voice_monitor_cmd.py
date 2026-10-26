@@ -41,9 +41,8 @@ def may_check(ctx: commands.Context, settings: Settings) -> bool:
     studies look dead, which is for whoever runs the guild to act on rather than
     something to drop into any channel on request.
 
-    An unset ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door rather than opening it,
-    the same way ``caller_guild`` treats it on the API side. In a DM there is no
-    member and no role, so there is nobody to check.
+    An unset ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door rather than opening it.
+    In a DM there is no member and no role, so there is nobody to check.
     """
     if ctx.guild is None or settings.captain_role_id is None:
         return False

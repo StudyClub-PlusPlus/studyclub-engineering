@@ -42,10 +42,10 @@ DELETE /api/v1/roles/navigator/users
 
 헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다.
 
-**captain 역할을 가진 멤버만 호출할 수 있다.** [`assign-navigator-role`](assign-navigator-role.md#요청) ·
-[`remove-role`](remove-role.md#요청) 과 같은 규칙이다 — 없으면 **403**.
+**봇은 요청자를 검사하지 않는다.** [`assign-navigator-role`](assign-navigator-role.md#요청) ·
+[`remove-role`](remove-role.md#요청) 과 같다 — 누가 navigator 를 떼게 할 수 있는지는 백엔드가 호출 전에 정한다.
 
-captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 역할이고, 둘 다 **설정값으로 역할 ID 를
+navigator 역할은 길드에 **이미 존재하는** 역할이고, **설정값으로 역할 ID 를
 받아** 찾는다 ([assign-navigator-role](assign-navigator-role.md#요청) 과 같다). 찾지 못하면 회수하지 말고 실패한다.
 
 모든 ID 는 문자열이고 `^[0-9]{17,20}$` 로 검증한다.
@@ -75,12 +75,9 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 
 | 상태 | 언제 |
 |------|------|
-| **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 — 이 엔드포인트는 captain 확인 때문에 필수다 |
+| **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 |
 | **400** | `Idempotency-Key` 없음 |
 | **401** | `X-API-Key` 없음 또는 불일치 |
-| **403** | 요청자에게 captain 역할이 없음 |
-| **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
-| **502** | `X-Discord-User-ID` 멤버 조회 중 Discord 가 거부하거나 5xx — 대상은 아직 건드리지 않았다 |
 
 ### 이 엔드포인트에서 나는 것
 
@@ -90,20 +87,17 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 | **400** | `discordStudyId` 가 없음 | 위와 같음 |
 | **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
 | **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
-| **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제. 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
 | **404** | navigator 역할을 길드에서 찾지 못함 | [아래](#navigator-역할이-없으면-404-다) 참고 |
-| **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
+| **409** | `DISCORD_GUILD_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
-
-요청자가 captain 이 아니면 navigator 역할 설정이 깨져 있어도 **403** 이 먼저 나간다 — 요청자 확인이 navigator 역할 확인보다 앞선다.
 
 `discordUserIds` 의 유저가 **길드 멤버가 아니어도 에러가 아니다** — [remove-role 과 같다](remove-role.md#길드에-없는-유저는-성공이다).
 판단도 같은 방식으로 캐시가 아니라 Discord 의 `Unknown Member` 응답으로 한다. 멤버 캐시는 **회수를 보낼
 멤버 객체를 얻는 데만** 쓴다 — 캐시에 있으면 바로 회수를 보내고, 없으면 Discord 에 그 멤버를 물은 뒤 보낸다.
 어느 쪽이든 "길드에 없다" 는 Discord 가 `Unknown Member` 로 답했을 때만 내린다.
 
-503 · 502 는 **재시도 가능**하다. 400 · 401 · 403 은 조건이 바뀌기 전에는 재시도해도 같다.
-captain · navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의 역할이나 서버 설정을 고쳐야 풀린다.
+503 은 **재시도 가능**하다. 400 · 401 은 조건이 바뀌기 전에는 재시도해도 같다.
+navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의 역할이나 서버 설정을 고쳐야 풀린다.
 
 역할 서열과 429 는 [assign-navigator-role](assign-navigator-role.md#이-엔드포인트에서-나는-것) 과 같다 —
 봇 역할이 navigator 보다 아래면 **모든 요청이** 전원 `failed`(`DISCORD_REJECTED`) 로 끝난다. 서열 제한은
@@ -133,7 +127,7 @@ captain · navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의
 그래서 **부를지 말지는 백엔드가 판단한다.** 유저가 **남은 어떤 스터디에서도 navigator 가 아닐 때만** 부른다.
 봇은 요청이 오면 그대로 뗀다. 잘못 부른 경우는 로그의 `discordStudyId` · `discordUserId` 로 추적한다.
 
-같은 이유로, 요청자 captain 이 **그 스터디의 captain 인지도 확인하지 않는다** — captain 역할 역시 길드 전체에 하나다.
+요청자가 **그 스터디의 captain 인지도 확인하지 않는다** — 요청자 검사는 모두 백엔드가 호출 전에 한다.
 
 ### navigator 역할이 없으면 404 다
 

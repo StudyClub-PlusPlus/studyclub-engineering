@@ -37,7 +37,7 @@ git ls-tree --name-only origin/develop backend/domain/src/main/resources/db/migr
 git diff --name-only --diff-filter=A origin/develop...origin/<브랜치> -- backend/domain/src/main/resources/db/migration/
 ```
 
-- **새 마이그레이션은 stage DB 에 바로 실행되고 되돌리지 않는다.** 번호가 develop 마지막+1 이 아니면 멈추고 사람에게 묻는다
+- **stage 는 Flyway off — `V*.sql` 은 stage 에서 실행되지 않는다.** 스키마는 Hibernate(`update`)가 엔티티로 맞추고, 데이터 마이그레이션(INSERT·UPDATE)은 손으로 한 번 넣어야 한다([database-guide §환경별](../../../docs/backend-development-guide/database-guide.md)). 번호가 develop 마지막+1 이 아니면 prod 에서 충돌하니 멈추고 사람에게 묻는다
 - 이 브랜치가 stage 의 무엇을 바꾸는지(새 env 가 필요한가 등) PR 본문의 「머지 전 확인」을 읽는다. stage 서버 env 는 인프라 레포 소관이다 — 없으면 사람에게 알린다
 
 ### 2. 로컬에서 합친다
@@ -106,7 +106,7 @@ git checkout <브랜치>
 |---|---|
 | 합친 커밋 | `[무엇(SHA)](커밋 URL)` |
 | 워크플로 | 이름 / 결과 / 걸린 시간 |
-| 마이그레이션 | 새로 실행된 번호, 없으면 없음 |
+| 마이그레이션 | 새 번호와 stage 에 손으로 넣어야 할 데이터 마이그레이션, 없으면 없음 |
 | stage 확인 | 무엇을 눌러 봤나 · 결과 |
 | 남은 것 | env 누락 · 실패한 워크플로 등 |
 
