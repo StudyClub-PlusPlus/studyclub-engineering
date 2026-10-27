@@ -98,7 +98,7 @@ jobs:
         continue-on-error: true
         env:
           STRATA_TOKEN: ${{ secrets.STRATA_TOKEN }}
-          STRATA_API: https://strata-api.igniter.im
+          STRATA_API: https://strata-api.studyclub.life
           STRATA_PROJECT: faccbf09-16da-4012-aeca-6595dadf39c6/projects/fa485ab4-54ec-43bc-a9b5-9b330d30687c
           SOURCE: studyclub-engineering:backend
           PR: ${{ github.event.pull_request.number }}
