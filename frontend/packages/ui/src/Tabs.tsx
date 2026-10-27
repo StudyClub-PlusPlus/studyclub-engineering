@@ -58,8 +58,8 @@ export function Tabs({ items, activeKey, defaultActiveKey, onChange, className }
               aria-selected={isActive}
               onClick={() => handleTabClick(tab.key, tab.disabled)}
               className={cx(
-                'relative -mb-px flex items-center whitespace-nowrap px-4 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
-                isActive ? 'font-semibold text-primary-dark' : 'font-medium text-fg-muted hover:text-fg',
+                'relative -mb-px flex items-center whitespace-nowrap px-4 py-2.5 type-label-lg transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
+                isActive ? 'font-semibold text-primary-dark' : 'font-semibold text-fg-muted hover:text-fg',
                 tab.disabled && 'cursor-not-allowed opacity-40 hover:text-fg-muted',
               )}
             >
@@ -68,7 +68,7 @@ export function Tabs({ items, activeKey, defaultActiveKey, onChange, className }
               {tab.badge !== undefined && (
                 <span
                   className={cx(
-                    'ml-1.5 inline-flex items-center rounded-pill px-1.5 py-0.5 text-xs font-semibold',
+                    'ml-1.5 inline-flex items-center rounded-pill px-1.5 py-0.5 type-label-sm',
                     isActive ? 'bg-primary-light text-primary-dark' : 'bg-surface-2 text-fg-muted',
                   )}
                 >

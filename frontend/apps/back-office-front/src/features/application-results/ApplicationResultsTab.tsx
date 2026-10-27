@@ -32,7 +32,7 @@ export function ApplicationResultsTab({ studyId, onEditForm }: { studyId: number
   if (!validRecruitment)
     return (
       <div className='py-10 text-center'>
-        <p role='alert' className='text-sm text-fg-secondary'>
+        <p role='alert' className='type-body-sm text-fg-secondary'>
           모집 회차를 확인해 주세요.
         </p>
         <Button variant='secondary' className='mt-3' onClick={() => setFilters({ recruitmentId: '' })}>
@@ -42,7 +42,7 @@ export function ApplicationResultsTab({ studyId, onEditForm }: { studyId: number
     );
   if (query.isPending)
     return (
-      <p role='status' className='py-10 text-center text-sm text-fg-muted'>
+      <p role='status' className='py-10 text-center type-body-sm text-fg-muted'>
         불러오는 중
       </p>
     );
@@ -52,7 +52,7 @@ export function ApplicationResultsTab({ studyId, onEditForm }: { studyId: number
     const message = ERROR_MESSAGES[status ?? 0] ?? '결과를 불러오지 못했습니다. 다시 시도해 주세요.';
     return (
       <div className='py-10 text-center'>
-        <p role='alert' className='text-sm text-fg-secondary'>
+        <p role='alert' className='type-body-sm text-fg-secondary'>
           {message}
         </p>
         {!known && (
@@ -71,7 +71,7 @@ export function ApplicationResultsTab({ studyId, onEditForm }: { studyId: number
   const data = query.data;
   if (!data) return null;
   const refreshError = query.error && (
-    <div role='alert' className='text-sm text-fg-secondary'>
+    <div role='alert' className='type-body-sm text-fg-secondary'>
       결과를 새로 불러오지 못했습니다. 이전 결과를 표시합니다.
       <Button variant='secondary' size='sm' onClick={() => void query.refetch()}>
         다시 시도
@@ -80,7 +80,7 @@ export function ApplicationResultsTab({ studyId, onEditForm }: { studyId: number
   );
   if (data.questions.length === 0)
     return (
-      <div className='rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
+      <div className='rounded-card border border-dashed border-border px-4 py-6 text-center type-body-sm text-fg-muted'>
         {refreshError}
         <p>이 스터디는 신청 폼에 추가 질문이 없습니다.</p>
         {/* 고칠 수 있는지는 서버가 저장 때 판정한다(403·409 면 폼이 읽기 전용이 된다). 상태로 다시 판정하지 않는다. */}
@@ -93,8 +93,8 @@ export function ApplicationResultsTab({ studyId, onEditForm }: { studyId: number
     <div className='min-w-0 space-y-5'>
       {refreshError}
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <p className='text-sm text-fg-muted'>
-          응답자 <span className='tnum font-bold text-fg'>{data.respondentCount}</span>명
+        <p className='type-body-sm text-fg-muted'>
+          응답자 <span className='tnum font-semibold text-fg'>{data.respondentCount}</span>명
         </p>
         <Segmented
           options={VIEW_OPTIONS}
@@ -104,7 +104,7 @@ export function ApplicationResultsTab({ studyId, onEditForm }: { studyId: number
         />
       </div>
       {data.applications.length === 0 ? (
-        <p className='rounded-card border border-dashed border-border px-4 py-6 text-center text-sm text-fg-muted'>
+        <p className='rounded-card border border-dashed border-border px-4 py-6 text-center type-body-sm text-fg-muted'>
           아직 들어온 신청이 없습니다.
         </p>
       ) : filters.resultsView === 'summary' ? (

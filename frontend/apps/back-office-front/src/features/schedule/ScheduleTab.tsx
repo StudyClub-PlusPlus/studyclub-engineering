@@ -114,7 +114,7 @@ export function ScheduleTab({
   // 반 목록(참여 명단)을 못 읽으면 빈 화면이 아니라 그 사실을 말한다
   if (!group) {
     return groupsError ? (
-      <p role='alert' className='card px-6 py-10 text-center text-sm text-fg-muted'>
+      <p role='alert' className='card px-6 py-10 text-center type-body-sm text-fg-muted'>
         {groupsError.message || '반 목록을 불러오지 못했습니다.'}
       </p>
     ) : null;
@@ -123,7 +123,7 @@ export function ScheduleTab({
     return (
       <div>
         <GroupPicker groups={groups} groupId={group.id} onPick={(id) => guard(() => onGroup(id))} />
-        <p role={query.isError ? 'alert' : 'status'} className='card px-6 py-10 text-center text-sm text-fg-muted'>
+        <p role={query.isError ? 'alert' : 'status'} className='card px-6 py-10 text-center type-body-sm text-fg-muted'>
           {query.isError ? query.error.message : '회차를 불러오는 중입니다.'}
         </p>
       </div>
@@ -137,8 +137,8 @@ export function ScheduleTab({
       {noTime ? (
         // 막 만든 반 — 언제 모일지 정해야 회차와 출석부가 생긴다
         <div className='card px-6 py-10 text-center'>
-          <p className='text-sm font-semibold text-fg'>아직 이 반의 스터디 시간이 없습니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>
+          <p className='type-label-lg text-fg'>아직 이 반의 스터디 시간이 없습니다.</p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
             요일 · 시각을 정한 뒤 일정 표의 「회차 추가」로 회차를 만듭니다. 그 요일 · 시각이 매주 반복으로 채워집니다.
           </p>
           <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={() => setTimeOpen(true)}>

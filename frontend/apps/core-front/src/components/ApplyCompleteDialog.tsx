@@ -53,7 +53,7 @@ export function ApplyCompleteDialog({
         </div>
       }
     >
-      <div className='flex flex-col gap-2 py-4 text-sm leading-relaxed'>
+      <div className='flex flex-col gap-2 py-4 type-body-sm'>
         <p className='text-fg'>
           {t({ ko: '스터디 신청이 완료되었습니다. 내 스터디룸으로 이동할까요?', en: 'Your application is in. Go to My studies?' }, locale)}
         </p>

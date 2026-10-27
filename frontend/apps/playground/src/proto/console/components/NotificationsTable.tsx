@@ -184,7 +184,7 @@ export function NotificationsTable() {
           options={STATUS_FILTERS}
           onChange={changeFilter}
         />
-        <span data-anno='history:1-1' className='tnum text-sm text-fg-secondary'>
+        <span data-anno='history:1-1' className='tnum type-body-sm text-fg-secondary'>
           총 {total.toLocaleString()}건
         </span>
         {/*
@@ -272,7 +272,7 @@ export function NotificationsTable() {
           {phase === 'ready' && items.length === 0 && (
             <tr>
               <td colSpan={6} className='py-16 text-center'>
-                <p className='text-sm text-fg-muted'>
+                <p className='type-body-sm text-fg-muted'>
                   {filtered ? '선택한 조건의 발송 이력이 없습니다.' : '아직 알림 발송 이력이 없습니다.'}
                 </p>
                 {filtered && (
@@ -287,7 +287,7 @@ export function NotificationsTable() {
           {phase === 'error' && (
             <tr>
               <td colSpan={6} className='py-16 text-center'>
-                <p className='text-sm text-fg-secondary'>발송 이력을 불러오지 못했습니다. 다시 시도해 주세요.</p>
+                <p className='type-body-sm text-fg-secondary'>발송 이력을 불러오지 못했습니다. 다시 시도해 주세요.</p>
                 <Button size='sm' variant='secondary' className='mt-3' onClick={() => setPhase('loading')}>
                   다시 시도
                 </Button>
@@ -322,7 +322,7 @@ export function NotificationsTable() {
           </>
         }
       >
-        <p className='text-sm text-fg-secondary'>
+        <p className='type-body-sm text-fg-secondary'>
           발송 실패한 알림 <strong className='tnum font-semibold text-fg'>{allFailed.length.toLocaleString()}건</strong>
           을 재발송합니다. 보내고 나면 되돌릴 수 없습니다.
         </p>
@@ -348,7 +348,7 @@ function TimezoneNote() {
       .find((part) => part.type === 'timeZoneName')?.value;
     setZone(offset ? `${id} · ${offset}` : id);
   }, []);
-  return <p className='min-h-5 text-xs text-fg-muted'>{zone && `표의 시각은 내 시간대 기준입니다 (${zone})`}</p>;
+  return <p className='min-h-5 type-label-sm text-fg-muted'>{zone && `표의 시각은 내 시간대 기준입니다 (${zone})`}</p>;
 }
 
 /** 거르는 칸 하나. 고르기 전에는 축 이름이 보이고, 고른 뒤에는 「전체」로 되돌릴 수 있다. */
@@ -371,7 +371,7 @@ function FilterSelect<T extends string>({
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as 'all' | T)}
-      className='h-9 rounded-control border border-border-strong bg-bg px-3 text-sm disabled:bg-surface-2'
+      className='h-9 rounded-control border border-border-strong bg-bg px-3 type-body-sm disabled:bg-surface-2'
     >
       <option value='all'>{value === 'all' ? label : '전체'}</option>
       {options.map((o) => (

@@ -32,7 +32,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
     <div className={`${PAGE} py-12`}>
       <Link
         href={`/${locale}/notices`}
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-(--color-fg-muted) hover:text-(--color-fg)'
+        className='inline-flex items-center gap-1.5 type-label-lg text-(--color-fg-muted) hover:text-(--color-fg)'
       >
         <ArrowLeft size={15} /> {m('notices.title', locale)}
       </Link>
@@ -47,20 +47,20 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
             <div className='flex items-center gap-2'>
               {n.tag && <Pill>{m(`notice_tag.${n.tag}`, locale)}</Pill>}
               {n.pinned && (
-                <span className='inline-flex items-center gap-1 text-xs font-semibold' style={{ color: 'var(--color-brand)' }}>
+                <span className='inline-flex items-center gap-1 type-label-sm' style={{ color: 'var(--color-brand)' }}>
                   <Pin size={13} /> {t({ ko: '고정', en: 'Pinned' }, locale)}
                 </span>
               )}
             </div>
-            <h1 className={`${READ} text-2xl font-bold leading-[1.3] tracking-tight sm:text-3xl`}>{t(n.title, locale)}</h1>
-            <p className={`${READ} text-base leading-relaxed text-(--color-fg-muted)`}>{t(n.summary, locale)}</p>
+            <h1 className={`${READ} type-headline-lg`}>{t(n.title, locale)}</h1>
+            <p className={`${READ} type-body-md text-(--color-fg-muted)`}>{t(n.summary, locale)}</p>
           </header>
 
-          <div className={`${READ} flex flex-col gap-4 px-6 py-8 text-base leading-[1.85] text-(--color-fg) sm:px-10`}>
+          <div className={`${READ} flex flex-col gap-4 px-6 py-8 type-body-md text-(--color-fg) sm:px-10`}>
             {n.blocks.map((b, i) => {
               if ('h' in b)
                 return (
-                  <h2 key={i} className='mt-6 border-l-[3px] pl-3 text-lg font-bold tracking-tight' style={{ borderColor: 'var(--color-brand)' }}>
+                  <h2 key={i} className='mt-6 border-l-[3px] pl-3 type-title-md' style={{ borderColor: 'var(--color-brand)' }}>
                     {t(b.h, locale)}
                   </h2>
                 );
@@ -80,7 +80,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
                 <Link
                   key={i}
                   href={`/${locale}${b.link.href}`}
-                  className='inline-flex w-fit items-center gap-1 text-base font-semibold text-(--color-brand) hover:underline'
+                  className='inline-flex w-fit items-center gap-1 type-label-lg text-(--color-brand) hover:underline'
                 >
                   {t(b.link.label, locale)} <ArrowRight size={15} />
                 </Link>
@@ -95,7 +95,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
             <div className='flex items-center gap-3 px-6 py-4'>
               <CalendarDays size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
               <div>
-                <dt className='text-xs text-(--color-fg-muted)'>{t({ ko: '게시일', en: 'Posted' }, locale)}</dt>
+                <dt className='type-label-sm text-(--color-fg-muted)'>{t({ ko: '게시일', en: 'Posted' }, locale)}</dt>
                 <dd className='font-semibold tabular-nums'>{n.date}</dd>
               </div>
             </div>
@@ -103,7 +103,7 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
               <div className='flex items-center gap-3 px-6 py-4'>
                 <Tag size={18} className='shrink-0' style={{ color: 'var(--color-brand)' }} />
                 <div>
-                  <dt className='text-xs text-(--color-fg-muted)'>{t({ ko: '분류', en: 'Type' }, locale)}</dt>
+                  <dt className='type-label-sm text-(--color-fg-muted)'>{t({ ko: '분류', en: 'Type' }, locale)}</dt>
                   <dd className='font-semibold'>{m(`notice_tag.${n.tag}`, locale)}</dd>
                 </div>
               </div>
@@ -112,14 +112,14 @@ export default async function NoticeDetail({ params }: { params: Promise<{ local
           <div className='flex flex-col gap-2 border-t border-(--color-border) bg-(--color-surface-subtle) p-5'>
             <Link
               href={`/${locale}/studies`}
-              className='inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-white'
+              className='inline-flex items-center justify-center gap-1.5 rounded-full px-5 py-2.5 type-label-lg text-white'
               style={{ background: 'var(--color-brand)' }}
             >
               {t({ ko: '모집 중인 스터디 보기', en: 'See open studies' }, locale)} <ArrowRight size={15} />
             </Link>
             <Link
               href={`/${locale}/notices`}
-              className='inline-flex items-center justify-center rounded-full border border-(--color-border) bg-(--color-bg) px-5 py-2.5 text-sm font-semibold'
+              className='inline-flex items-center justify-center rounded-full border border-(--color-border) bg-(--color-bg) px-5 py-2.5 type-label-lg'
             >
               {t({ ko: '다른 공지 보기', en: 'All notices' }, locale)}
             </Link>

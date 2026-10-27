@@ -27,7 +27,7 @@ function LinkButton({ label, href, icon }: { label: string; href: string; icon: 
       target='_blank'
       rel='noopener noreferrer'
       title={href}
-      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 text-sm font-semibold text-fg-secondary hover:bg-surface-2 hover:text-fg'
+      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 type-label-lg text-fg-secondary hover:bg-surface-2 hover:text-fg'
     >
       {icon}
       {label}
@@ -91,7 +91,7 @@ export function StudyInfoCard({
   return (
     <section className='card px-5 py-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <dl className='flex flex-wrap gap-x-6 gap-y-1 text-sm'>
+        <dl className='flex flex-wrap gap-x-6 gap-y-1 type-body-sm'>
           <div className='flex gap-2'>
             <dt className='text-fg-muted'>스터디 시간</dt>
             <dd className='tnum font-semibold text-fg'>{time}</dd>
@@ -130,7 +130,7 @@ export function StudyInfoCard({
 
       <div hidden={!open} className='mt-3 border-t border-border pt-3'>
         <div className='flex items-center justify-between'>
-          <h2 className='text-sm font-bold'>스터디 규칙</h2>
+          <h2 className='type-label-lg'>스터디 규칙</h2>
         </div>
         {canEdit ? (
           <Textarea
@@ -142,13 +142,13 @@ export function StudyInfoCard({
               setRules(e.target.value);
               onDirty(e.target.value !== saved);
             }}
-            className='mt-2 min-h-28 resize-y bg-surface-1 text-sm leading-relaxed'
+            className='mt-2 min-h-28 resize-y bg-surface-1 type-body-sm'
           />
         ) : (
           <div className='mt-2'>
             <p
               ref={rulesRef}
-              className={`whitespace-pre-line text-sm leading-relaxed text-fg-secondary${rulesExpanded ? '' : ' line-clamp-4'}`}
+              className={`whitespace-pre-line type-body-sm text-fg-secondary${rulesExpanded ? '' : ' line-clamp-4'}`}
             >
               {rules || '아직 규칙이 없습니다.'}
             </p>
@@ -156,7 +156,7 @@ export function StudyInfoCard({
               <button
                 type='button'
                 onClick={() => setRulesExpanded((v) => !v)}
-                className='mt-1 text-xs font-semibold text-brand underline-offset-2 hover:underline'
+                className='mt-1 type-label-lg text-brand underline-offset-2 hover:underline'
               >
                 {rulesExpanded ? '접기' : '모두 보기'}
               </button>
@@ -166,7 +166,7 @@ export function StudyInfoCard({
         {canEdit && rules !== saved && (
           <div className='mt-2 flex flex-wrap items-center justify-end gap-2'>
             {rulesError && (
-              <p role='status' className='mr-auto text-xs font-semibold text-error-700'>
+              <p role='status' className='mr-auto type-label-sm text-error-700'>
                 {rulesError}
               </p>
             )}

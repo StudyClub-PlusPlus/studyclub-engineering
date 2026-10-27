@@ -130,7 +130,7 @@ export function HistoryNotice({
 }) {
   return (
     <div className='flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center'>
-      <p className='text-sm text-fg-secondary'>{children}</p>
+      <p className='type-body-sm text-fg-secondary'>{children}</p>
       {action}
     </div>
   );

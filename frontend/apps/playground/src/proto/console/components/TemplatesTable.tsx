@@ -120,7 +120,7 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={4} className='py-10 text-center text-sm text-fg-muted'>
+              <td colSpan={4} className='py-10 text-center type-body-sm text-fg-muted'>
                 등록된 템플릿이 없습니다.
               </td>
             </tr>
@@ -153,7 +153,7 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
                   type='button'
                   data-anno='template:2-2'
                   onClick={() => setConfirmDelete(true)}
-                  className='mr-auto h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline'
+                  className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline'
                 >
                   템플릿 삭제
                 </button>
@@ -167,11 +167,11 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
       >
         {confirmDelete && current ? (
           <div className='py-6 text-center'>
-            <p className='text-sm font-semibold text-fg'>
+            <p className='type-label-lg text-fg'>
               ‘{TRIGGER_LABEL[current.trigger] ?? current.trigger}’ 알림 템플릿을 삭제합니다.
             </p>
-            <p className='mt-1 text-sm text-fg-secondary'>{current.subject}</p>
-            <p className='mt-3 text-sm text-fg-muted'>
+            <p className='mt-1 type-body-sm text-fg-secondary'>{current.subject}</p>
+            <p className='mt-3 type-body-sm text-fg-muted'>
               이 문구로는 더 이상 메일이 나가지 않으며 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.
             </p>
           </div>
@@ -225,8 +225,8 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
                     content: (
                       <div role='tabpanel' aria-label='미리보기' className='flex flex-col gap-3'>
                         <div className='rounded-card border border-border bg-surface-1 px-4 py-3'>
-                          <span className='text-xs text-fg-muted'>메일 제목</span>
-                          <p className='break-words text-sm font-semibold text-ink'>
+                          <span className='type-label-sm text-fg-muted'>메일 제목</span>
+                          <p className='break-words type-label-lg text-ink'>
                             {draft.subject.trim() ? draft.subject : '제목을 입력해 주세요.'}
                           </p>
                         </div>
@@ -239,7 +239,7 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
                             className='h-[28rem] w-full rounded-card border border-border bg-white'
                           />
                         ) : (
-                          <div className='flex min-h-64 items-center justify-center rounded-card border border-border bg-surface-1 p-6 text-center text-sm text-fg-muted'>
+                          <div className='flex min-h-64 items-center justify-center rounded-card border border-border bg-surface-1 p-6 text-center type-body-sm text-fg-muted'>
                             본문을 입력하면 여기에 미리보기가 표시됩니다.
                           </div>
                         )}

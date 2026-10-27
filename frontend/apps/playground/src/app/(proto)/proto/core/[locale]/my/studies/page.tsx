@@ -82,13 +82,13 @@ export default function MyStudiesPage() {
   }, [mineIds, allStudies]);
 
   if (!ready) {
-    return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+    return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
   return (
     <div className={`${PAGE} pb-16 pt-8`}>
       <ScreenSpecRegistrar spec={SPEC} />
-      <h1 data-anno='1' className='text-2xl font-extrabold tracking-tight'>
+      <h1 data-anno='1' className='type-headline-lg'>
         내 스터디룸
       </h1>
 
@@ -103,7 +103,7 @@ export default function MyStudiesPage() {
             key={tb.key}
             type='button'
             onClick={() => setTab(tb.key)}
-            className={`rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${
+            className={`rounded-pill px-4 py-1.5 type-label-lg transition-colors ${
               tab === tb.key ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'
             }`}
           >
@@ -113,7 +113,7 @@ export default function MyStudiesPage() {
       </nav>
 
       {mine.length === 0 ? (
-        <p className='mt-8 rounded-card border border-dashed border-border px-6 py-10 text-center text-sm text-fg-secondary'>
+        <p className='mt-8 rounded-card border border-dashed border-border px-6 py-10 text-center type-body-sm text-fg-secondary'>
           참여 중인 스터디가 없습니다.{' '}
           <Link href={`/proto/core/${locale}/studies`} className='font-semibold text-brand underline-offset-4 hover:underline'>
             스터디 둘러보기
@@ -168,13 +168,13 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
         <Link
           data-anno='3-1'
           href={userStudyPath(locale, study)}
-          className='block truncate font-bold text-fg underline-offset-4 hover:underline'
+          className='block truncate font-semibold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}
         </Link>
         <p
           data-anno='3-2'
-          className='mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-fg-secondary'
+          className='mt-0.5 flex items-center gap-1.5 truncate type-body-sm text-fg-secondary'
         >
           <span className='shrink-0 text-fg-muted'>{label}</span>
           <span className='text-fg-muted'>·</span>
@@ -193,7 +193,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
         (status ? (
           <span
             data-anno='3-3'
-            className={`shrink-0 rounded-pill px-3 py-1.5 text-xs font-bold ${STATUS_STYLE[status]}`}
+            className={`shrink-0 rounded-pill px-3 py-1.5 type-label-sm ${STATUS_STYLE[status]}`}
           >
             {STATUS_LABEL[status]}
           </span>
@@ -204,7 +204,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
               onClick={() => act('in')}
               disabled={!canCheckIn(study, meeting)}
               data-anno='3-4'
-              className='rounded-pill bg-brand px-4 py-2 text-[13px] font-bold text-on-brand transition-colors hover:bg-brand-hover disabled:bg-neutral-200 disabled:text-neutral-400'
+              className='rounded-pill bg-brand px-4 py-2 type-label-lg text-on-brand transition-colors hover:bg-brand-hover disabled:bg-neutral-200 disabled:text-neutral-400'
             >
               출석
             </button>
@@ -212,7 +212,7 @@ function TodayCard({ study, locale, onChange }: { study: Study; locale: Locale; 
               type='button'
               onClick={() => act('leave')}
               data-anno='3-5'
-              className='rounded-pill border border-border-strong px-4 py-2 text-[13px] font-bold text-fg-secondary transition-colors hover:bg-surface-2'
+              className='rounded-pill border border-border-strong px-4 py-2 type-label-lg text-fg-secondary transition-colors hover:bg-surface-2'
             >
               휴가
             </button>
@@ -235,26 +235,26 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
       <div className='flex items-baseline justify-between gap-3'>
         <Link
           href={userStudyPath(locale, study)}
-          className='min-w-0 truncate font-bold text-fg underline-offset-4 hover:underline'
+          className='min-w-0 truncate font-semibold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}
         </Link>
-        <span data-anno='4-1' className='tnum shrink-0 text-sm font-bold text-fg'>
+        <span data-anno='4-1' className='tnum shrink-0 type-label-lg text-fg'>
           {rate === undefined ? <span className='text-fg-muted'>-</span> : `${rate}%`}
         </span>
       </div>
 
       <div data-anno='4-2' className='no-scrollbar mt-3 overflow-x-auto'>
-        <table className='w-full border-separate border-spacing-1 text-sm'>
+        <table className='w-full border-separate border-spacing-1 type-body-sm'>
           <thead>
             <tr>
               {meetings.map((m) => (
                 <th
                   key={m.id}
-                  className='tnum w-[3.4rem] px-0 pb-1 text-center text-[11px] font-semibold text-fg-secondary'
+                  className='tnum w-[3.4rem] px-0 pb-1 text-center type-label-sm text-fg-secondary'
                 >
                   {isKickoff(m) ? '킥오프' : `${m.no}회`}
-                  <span className='block text-[10px] font-medium text-fg-muted'>{m.date.slice(5)}</span>
+                  <span className='block type-label-sm text-fg-muted'>{m.date.slice(5)}</span>
                 </th>
               ))}
             </tr>
@@ -267,7 +267,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
                   <td key={m.id} className='p-0'>
                     <span
                       title={`${meetingLabel(m)} ${m.date}`}
-                      className={`grid h-8 w-full place-items-center rounded-sm text-[11px] font-bold ${
+                      className={`grid h-8 w-full place-items-center rounded-sm type-label-sm ${
                         status ? STATUS_STYLE[status] : 'border border-dashed border-border-strong text-fg-muted'
                       }`}
                     >

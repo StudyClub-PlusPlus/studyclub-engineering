@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 
 const HEADER_CLASS: Record<number, string> = {
-  1: 'text-lg font-bold',
-  2: 'text-base font-bold',
-  3: 'text-sm font-bold',
-  4: 'text-sm font-semibold',
-  5: 'text-sm font-semibold',
-  6: 'text-xs font-semibold',
+  1: 'type-title-md',
+  2: 'type-title-md',
+  3: 'type-label-lg',
+  4: 'type-label-lg',
+  5: 'type-label-lg',
+  6: 'type-label-sm',
 };
 
 /**
@@ -39,7 +39,7 @@ function formatInline(text: string, keyPrefix: string): ReactNode[] {
       }
     } else if (m[5] !== undefined) {
       nodes.push(
-        <code key={key} className='rounded-xs bg-surface-2 px-1 py-0.5 font-mono text-[0.85em]'>
+        <code key={key} className='rounded-xs bg-surface-2 px-1 py-0.5 font-mono type-label-sm'>
           {m[5]}
         </code>,
       );
@@ -87,7 +87,7 @@ export function MarkdownLite({ text, className }: { text: string; className?: st
         codeBuffer = [];
       } else {
         blocks.push(
-          <pre key={`code-${idx}`} className='overflow-x-auto rounded-control bg-surface-2 px-3 py-2 text-xs'>
+          <pre key={`code-${idx}`} className='overflow-x-auto rounded-control bg-surface-2 px-3 py-2 type-label-sm'>
             <code className='font-mono'>{codeBuffer.join('\n')}</code>
           </pre>,
         );

@@ -49,7 +49,7 @@ function FilterOption({
       onClick={onClick}
       aria-pressed={active}
       // 테두리로 칸을 나눈다 — 배경색만으로는 흰 바탕에서 칩 경계가 보이지 않는다
-      className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+      className={`flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
         active
           ? 'border-brand bg-brand text-on-brand'
           : 'border-border bg-bg text-fg-secondary hover:border-border-interactive hover:text-fg'
@@ -81,7 +81,7 @@ function FilterSelect<T extends string>({
     <Select
       value={value}
       onChange={(event) => onChange(event.target.value as T)}
-      className='h-9 w-fit rounded-lg border border-border bg-bg text-sm font-semibold text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
+      className='h-9 w-fit rounded-lg border border-border bg-bg type-label-lg text-fg outline-none transition-[border-color,box-shadow] focus:border-border-interactive focus:shadow-(--ring)'
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -199,7 +199,7 @@ export function StudyBrowser({
                     }
                     setFilters({ status: option.value });
                   }}
-                  className={`whitespace-nowrap rounded-pill px-4 py-1.5 text-sm font-bold transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
+                  className={`whitespace-nowrap rounded-pill px-4 py-1.5 type-label-lg transition-colors ${active ? 'bg-bg text-fg shadow-sm' : 'text-fg-secondary hover:text-fg'}`}
                 >
                   {option.label}
                 </button>
@@ -221,7 +221,7 @@ export function StudyBrowser({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && commitSearch()}
               placeholder={m('filter.search_studies', locale)}
-              className='h-9 min-w-0 flex-1 bg-transparent pl-3 pr-2 text-sm outline-none'
+              className='h-9 min-w-0 flex-1 bg-transparent pl-3 pr-2 type-label-lg outline-none'
             />
             {(input || hasQuery) && (
               <button
@@ -268,7 +268,7 @@ export function StudyBrowser({
       {/* Grid */}
       {failed ? (
         <div className='flex min-h-[240px] items-center justify-center'>
-          <p className='text-base font-bold text-fg-secondary'>
+          <p className='type-title-md text-fg-secondary'>
             {t(
               {
                 ko: '스터디 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
@@ -289,21 +289,21 @@ export function StudyBrowser({
         </div>
       ) : hasQuery ? (
         <div className='flex min-h-[240px] flex-col items-center justify-center gap-4 text-center'>
-          <p className='text-base font-bold text-fg-secondary'>
+          <p className='type-title-md text-fg-secondary'>
             <span className='text-fg'>&quot;{query.trim()}&quot;</span>
             {t({ ko: '에 해당하는 스터디를 찾을 수 없어요', en: ': no studies found' }, locale)}
           </p>
           <button
             type='button'
             onClick={clearSearch}
-            className='rounded-pill border border-border px-4 py-1.5 text-sm font-semibold text-fg-secondary hover:border-border-interactive hover:text-fg'
+            className='rounded-pill border border-border px-4 py-1.5 type-label-lg text-fg-secondary hover:border-border-interactive hover:text-fg'
           >
             {t({ ko: '검색어 지우기', en: 'Clear search' }, locale)}
           </button>
         </div>
       ) : (
         <div className='flex min-h-[240px] items-center justify-center'>
-          <p className='text-base font-bold text-[var(--color-fg-muted)]'>{m('filter.none', locale)}</p>
+          <p className='type-title-md text-[var(--color-fg-muted)]'>{m('filter.none', locale)}</p>
         </div>
       )}
     </div>
