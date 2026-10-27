@@ -266,18 +266,17 @@ class AccountDiscordLinkIntegrationTest {
     }
 
     @Test
-    @DisplayName("해제 409 - 캡틴은 DISCORD_LINK_REQUIRED, 연동은 그대로")
-    void blocksUnlinkForCaptain() {
+    @DisplayName("해제 204 - 캡틴도 해제할 수 있다 (2026-10-27, 캡틴에게 연동은 필수가 아니다)")
+    void unlinksCaptain() {
         Account account = seedLinkedAccount();
         account.changeSystemRole(SystemRole.ADMIN);
         accountRepository.save(account);
 
         ResponseEntity<Map> res = delete(account);
 
-        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(res.getBody()).containsEntry("errorCode", "DISCORD_LINK_REQUIRED");
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         assertThat(accountRepository.findById(account.getId()).orElseThrow().getDiscordId())
-                .isEqualTo(account.getDiscordId());
+                .isNull();
     }
 
     @Test

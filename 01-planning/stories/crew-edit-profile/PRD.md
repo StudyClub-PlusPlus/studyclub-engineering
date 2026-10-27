@@ -196,7 +196,7 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/my` 내 정보 (`ProfileCard`) | 있음 — 닉네임 · 시간대 저장, 마케팅 수신 API 연결 | 계정 이름·연결·해제·참여 중 차단 안내 연결 |
+| FE | core-front `/my` 내 정보 (`ProfileCard`) | 있음 — 닉네임 · 시간대 저장, 마케팅 수신 API 연결. 디스코드 줄(`DiscordRow`)은 `@계정 이름` · 연결하기(OAuth 팝업) · 연결 해제 · 참여 중 차단 안내(4-1) · 실패·취소(4-2) 연결 (2026-10-27) | 없음 |
 | BE | `PATCH /api/me` · 마케팅 수신 `GET` · `PUT` | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
 | BE | `POST /api/me/discord/link` | 구현완료 | [crew-submit-application](../crew-submit-application/PRD.md#개발-범위)과 같은 일 |
 | Playground | 디스코드 연결·해제·차단·실패 | 구현 · 브라우저 시뮬레이션 | 없음 |
@@ -243,6 +243,6 @@ erDiagram
 ## 4. 비고
 
 - **구현 지시** — Playground는 브라우저에만 저장. 실제 프로필 저장 API와 분리
-- **미구현** — 내 정보의 discordHandle 응답 및 디스코드 연결 해제 API
+- **구현완료** — 내 정보의 discordHandle 응답 · 디스코드 연결 해제 API (#348) · 마이페이지 화면 (#369)
 - **구현 지시** — 해제 제한은 서버 최종 판정. 조회와 해제 사이 참여 상태 변경까지 검증
 - **구현 지시** — 사용자 직접 참여 중단 화면은 별도 범위. 내 스터디룸 확인 및 해당 스터디 운영진 문의 안내

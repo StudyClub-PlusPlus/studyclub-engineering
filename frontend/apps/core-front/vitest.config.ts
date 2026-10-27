@@ -3,6 +3,8 @@ import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  // tsconfig paths 의 '@/*' 와 같게 — '@/' 로 다른 모듈을 부르는 lib 도 테스트할 수 있게
+  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],

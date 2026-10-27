@@ -12,8 +12,19 @@ Feature: 스터디 신청 폼 (crew-submit-application)
     When 신청하기 버튼을 클릭한다
     Then GET /api/me 를 기다리는 동안 신청하기 버튼이 비활성이고 스피너가 돈다
     And 디스코드 연동 모달(ApplyDiscordGate)이 노출된다
-    When "디스코드 연동하기"를 클릭하고 POST /api/me/discord/link 가 204 를 준다
+    When "디스코드 연동하기"를 클릭하면 디스코드 인가 팝업이 열린다 (client id 없는 개발 서버는 팝업 없이 목 코드)
+    And 팝업이 돌려준 code 로 POST /api/me/discord/link 가 204 를 준다
     Then 신청 폼(ApplyDialog)으로 자동으로 이동한다
+
+  Scenario: 디스코드 인가 팝업을 닫거나 취소
+    Given 디스코드 연동 모달이 열려 있다
+    When 인가 팝업을 그냥 닫거나 디스코드에서 취소한다
+    Then 문구 없이 연동 모달에 남고 "디스코드 연동하기"를 다시 누를 수 있다
+
+  Scenario: 디스코드 인가 팝업 차단
+    Given 브라우저가 팝업을 막는다
+    When "디스코드 연동하기"를 클릭한다
+    Then 연동 모달에 "디스코드 창이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요." 가 보인다
 
   Scenario: 디스코드 연동 실패
     Given 디스코드 연동 모달이 열려 있다
@@ -31,8 +42,8 @@ Feature: 스터디 신청 폼 (crew-submit-application)
     When "디스코드 연동하기"를 클릭했는데 POST /api/me/discord/link 가 401 을 준다
     Then 세션을 비우고 로그인 페이지(/ko/login?next=...)로 이동한다
 
-  Scenario: 디스코드 연동 준비 중 (OAuth 팝업 · 서버 시크릿 전)
-    Given NEXT_PUBLIC_DISCORD_LINK_READY 가 꺼져 있다 (비우면 개발 서버에서만 켜진다)
+  Scenario: 디스코드 연동 준비 중 (그 환경에 디스코드 client id 가 없음)
+    Given NEXT_PUBLIC_DISCORD_CLIENT_ID 가 비어 있다 (개발 서버는 비어도 켜진다)
     When 디스코드 미연동 사용자가 신청하기 버튼을 클릭한다
     Then 연동 모달에 "디스코드 연동은 준비 중입니다. 운영진에게 문의해 주세요." 가 보이고 버튼은 "닫기" 하나다
     And POST /api/me/discord/link 를 보내지 않는다
