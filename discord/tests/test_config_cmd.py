@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import ANY, AsyncMock, Mock
 
 import discord
 import pytest
@@ -145,7 +145,7 @@ async def test_config_print_sends_the_lines_to_a_captain():
 
     await config_cmd.config_print(ctx, _settings(), environ)
 
-    ctx.send.assert_awaited_once_with("`DISCORD_CONFIG_CAPTAIN_ROLE_ID`: @captain")
+    ctx.send.assert_awaited_once_with("`DISCORD_CONFIG_CAPTAIN_ROLE_ID`: @captain", allowed_mentions=ANY)
 
 
 async def test_config_print_says_so_when_nothing_is_set():
@@ -154,7 +154,21 @@ async def test_config_print_says_so_when_nothing_is_set():
 
     await config_cmd.config_print(ctx, _settings(), {"DISCORD_TOKEN": "t"})
 
-    ctx.send.assert_awaited_once_with(config_cmd.NOTHING_SET)
+    ctx.send.assert_awaited_once_with(config_cmd.NOTHING_SET, allowed_mentions=ANY)
+
+
+async def test_config_print_pings_nobody_even_if_a_name_reads_as_a_mention():
+    """Role and member names are guild-controlled: a role named ``here`` prints as ``@here``."""
+    ctx = _ctx()
+    here = Mock(spec=discord.Role)
+    here.name = "here"
+    ctx.guild.get_role.side_effect = lambda rid: here if rid == CAPTAIN_ROLE_ID else None
+
+    await config_cmd.config_print(ctx, _settings(), {"DISCORD_CONFIG_CAPTAIN_ROLE_ID": str(CAPTAIN_ROLE_ID)})
+
+    assert ctx.send.await_args.args == ("`DISCORD_CONFIG_CAPTAIN_ROLE_ID`: @here",)
+    allowed = ctx.send.await_args.kwargs["allowed_mentions"]
+    assert (allowed.everyone, allowed.users, allowed.roles) == (False, False, False)
 
 
 async def test_config_print_refuses_a_member_without_the_captain_role():
