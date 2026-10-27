@@ -13,8 +13,7 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 
 /**
- * 알림 문구. DB 에 저장해 문구 수정마다 PR·배포가 필요해지는 걸 피한다(specs/notification/spec.md) — 백오피스 편집 화면은 별도 기능이라 이번
- * 구현은 마이그레이션 시딩이 유일한 등록 경로다.
+ * 알림 문구. DB 에 저장해 문구 수정마다 PR·배포가 필요해지는 걸 피한다(specs/notification/spec.md) — 백오피스에서 캡틴이 추가·수정·삭제한다.
  */
 @Entity
 @Table(
@@ -45,15 +44,13 @@ public class NotificationTemplate extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String body;
 
-    /** 편집 화면이 아직 없어 이번 구현에서는 항상 null(마이그레이션이 만든 행). */
+    /** 추가·수정한 캡틴의 계정 ID. 마이그레이션이 만든 행은 null. */
     @Column(name = "UPDATED_BY_ADMIN_ID")
     private Long updatedByAdminId;
 
     protected NotificationTemplate() {}
 
-    /**
-     * 지금은 마이그레이션 시딩이 유일한 실제 등록 경로지만(편집 화면 없음), 테스트가 DB 마이그레이션 없이(H2) 템플릿 행을 만들 수 있어야 해서 생성자는 열어 둔다.
-     */
+    /** 테스트가 DB 마이그레이션 없이(H2) 템플릿 행을 만들 수 있어야 해서 생성자는 열어 둔다. 백오피스는 {@link #create} 를 쓴다. */
     public NotificationTemplate(
             NotificationEventType eventType,
             NotificationChannel channel,
@@ -63,5 +60,22 @@ public class NotificationTemplate extends BaseEntity {
         this.channel = channel;
         this.subject = subject;
         this.body = body;
+    }
+
+    /** 백오피스에서 추가한다. 채널은 지금 보낼 수 있는 메일뿐이라 호출자가 고르지 않는다. */
+    public static NotificationTemplate create(
+            NotificationEventType eventType, String subject, String body, Long adminId) {
+        NotificationTemplate template =
+                new NotificationTemplate(eventType, NotificationChannel.EMAIL, subject, body);
+        template.updatedByAdminId = adminId;
+        return template;
+    }
+
+    /** 백오피스에서 조건·제목·본문을 통째로 바꾼다. 채널은 바뀌지 않는다. */
+    public void edit(NotificationEventType eventType, String subject, String body, Long adminId) {
+        this.eventType = eventType;
+        this.subject = subject;
+        this.body = body;
+        this.updatedByAdminId = adminId;
     }
 }

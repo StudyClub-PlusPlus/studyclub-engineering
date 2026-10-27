@@ -20,6 +20,32 @@ export type TemplateDraft = {
   body: string;
 };
 
+/** 제목 최대 글자 수. 서버의 `SUBJECT VARCHAR(255)` 와 같다. */
+export const SUBJECT_MAX_LENGTH = 255;
+
+/** 본문 최대 크기(UTF-8 바이트). 서버의 `BODY TEXT` 한도와 같다 — 글자 수가 아니라 바이트라 한글은 3바이트로 센다. */
+export const BODY_MAX_BYTES = 65_535;
+
+const encoder = new TextEncoder();
+
+export function utf8Bytes(text: string): number {
+  return encoder.encode(text).length;
+}
+
+/** 한도를 넘으면 한도 안에 들어가는 앞부분만 남긴다. 글자 한가운데서 자르지 않는다. */
+export function clampToUtf8Bytes(text: string, maxBytes: number): string {
+  if (utf8Bytes(text) <= maxBytes) return text;
+  let used = 0;
+  let kept = '';
+  for (const char of text) {
+    const size = utf8Bytes(char);
+    if (used + size > maxBytes) break;
+    used += size;
+    kept += char;
+  }
+  return kept;
+}
+
 /**
  * 팝업에서 고를 수 있는 알림 조건 코드. **조건이 곧 그 알림의 이름이다** — 이름을 따로 받지 않는다.
  * 저장되는 이벤트 코드는 이 선택이 정하고, 화면에 적는 이름은 목록과 같은 `eventLabel` 한 곳에서 온다.

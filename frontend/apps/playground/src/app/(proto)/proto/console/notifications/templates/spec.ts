@@ -31,7 +31,7 @@ export const SPEC: ScreenSpec = {
         '**나가는 알림이 늘 때마다 코드를 고치지 않게 한다** — 문구는 운영자가 더한다',
         '등록한 날이 곧 마지막 수정일이다 — 비어 있는 경우를 만들지 않는다',
       ],
-      data: ['`POST /api/admin/notification-templates` — 미구현'],
+      data: ['`POST /api/admin/notification-templates` — 구현완료'],
     },
     {
       n: '2-1',
@@ -47,7 +47,7 @@ export const SPEC: ScreenSpec = {
         '본문 칸 아래에 `{{nickname}}` 으로 닉네임을 삽입할 수 있고 HTML·일반 텍스트를 입력할 수 있음을 안내한다',
         '**채널을 고르게 하지 않는다** — 지금 보낼 수 있는 것은 메일뿐이다. 디스코드가 열리면 그때 칸을 더한다',
       ],
-      data: ['`PUT /api/admin/notification-templates/{id}` — 미구현'],
+      data: ['`PUT /api/admin/notification-templates/{id}` — 구현완료'],
     },
     {
       n: '2-2',
@@ -59,7 +59,7 @@ export const SPEC: ScreenSpec = {
         '**되돌릴 수 없다** — 확인 단계가 막는다. 필요하면 다시 추가한다',
         '지우면 그 문구로는 더 이상 메일이 나가지 않는다. **지난 발송 이력은 남는다**',
       ],
-      data: ['`DELETE /api/admin/notification-templates/{id}` — 미구현'],
+      data: ['`DELETE /api/admin/notification-templates/{id}` — 구현완료'],
     },
     {
       n: '2-3',

@@ -1,6 +1,6 @@
 # NOTIFICATION_TEMPLATE — 알림 템플릿
 
-이벤트·채널별 메일 문구를 저장한다. V14 마이그레이션이 웰컴메일 한 건을 시딩하며 편집 API는 별도 기능이다.
+이벤트·채널별 메일 문구를 저장한다. V14 마이그레이션이 웰컴메일 한 건을 시딩하고, 캡틴이 백오피스에서 추가·수정·삭제한다(`/api/admin/notification-templates`).
 
 > 스펙: [notification](../../specs/notification/spec.md)
 
@@ -14,7 +14,7 @@
 | SUBJECT | VARCHAR(255) | N | |
 | BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함 |
 | UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
-| UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조([ACCOUNT](./ACCOUNT.md), FK 없음) — 편집 화면이 아직 없어 이번 구현에서는 항상 NULL(마이그레이션이 만든 행) |
+| UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조([ACCOUNT](./ACCOUNT.md), FK 없음) — 추가·수정한 캡틴. 마이그레이션이 만든 행은 NULL |
 | CREATED_AT | DATETIME(6) | N | BaseEntity 생성 시각 |
 
 ## 관계
@@ -31,6 +31,8 @@
 - `UNIQUE(EVENT_TYPE, CHANNEL)`.
 - 인덱스 `idx_notification_template_updated_by_admin (UPDATED_BY_ADMIN_ID)`.
 - 이번 이벤트는 USER_REGISTERED, 채널은 EMAIL 뿐이다.
-- 수정 관리자 ID는 현재 NULL이며 SUBJECT/BODY 의 `{{nickname}}` 을 발송 시 치환한다.
+- SUBJECT/BODY 의 `{{nickname}}` 을 발송 시 치환한다.
+- 입력 한도(API 검증): SUBJECT 255자, BODY UTF-8 65,535바이트(`TEXT` 한도).
+- 템플릿을 지워도 NOTIFICATION 이력은 남는다(TEMPLATE_ID 는 FK 없는 ID 참조).
 - UPDATED_BY_ADMIN_ID 는 애그리거트 사이 참조라 FK 를 걸지 않는다 — ID + 인덱스만
   ([database-guide.md 외래키 정책](../backend-development-guide/database-guide.md)). 엔티티 간에도 객체 연관 없이 ID 로만 참조한다.

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationTemplatesPage from '@/app/notification-templates/page';
-import type { NotificationTemplate } from '@/features/notification-templates/types';
+import { clampToUtf8Bytes, utf8Bytes, type NotificationTemplate } from '@/features/notification-templates/types';
 import { ApiError, http } from '@/lib/http';
 
 // 서버는 http 한 곳으로 막는다 — 경로·메서드·바디까지 함께 확인한다.
@@ -427,6 +427,54 @@ describe('알림 템플릿 화면', () => {
       .getAllByRole('option')
       .map((o) => o.textContent);
     expect(options).toEqual(['회원가입']);
+  });
+
+  it('제목은 255자까지만 쓸 수 있고 글자 수를 보여 준다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const subject = within(dialog).getByLabelText(/제목/) as HTMLInputElement;
+    expect(subject.maxLength).toBe(255);
+    fireEvent.change(subject, { target: { value: '가나다' } });
+    expect(within(dialog).getByText('3 / 255자')).toBeTruthy();
+  });
+
+  it('본문은 UTF-8 65,535바이트까지만 받고 바이트 수를 보여 준다 — 글자 수가 아니다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+
+    fireEvent.change(body, { target: { value: '가나다' } });
+    expect(within(dialog).getByText('9 / 65,535바이트')).toBeTruthy();
+
+    // 한글 3바이트 × 21,845 = 65,535바이트 — 한도까지는 그대로 들어간다
+    const atLimit = '가'.repeat(21_845);
+    fireEvent.change(body, { target: { value: atLimit } });
+    expect(body.value).toBe(atLimit);
+    expect(within(dialog).getByText('65,535 / 65,535바이트')).toBeTruthy();
+
+    // 1바이트만 더해도 받지 않는다
+    fireEvent.change(body, { target: { value: atLimit + 'a' } });
+    expect(body.value).toBe(atLimit);
+
+    // 붙여 넣은 긴 글은 한도까지만 남고, 글자 한가운데서 잘리지 않는다
+    fireEvent.change(body, { target: { value: '가'.repeat(30_000) } });
+    expect(body.value).toBe(atLimit);
+  });
+
+  it('clampToUtf8Bytes 는 4바이트 글자(이모지)도 반으로 자르지 않는다', () => {
+    expect(clampToUtf8Bytes('ab😀', 5)).toBe('ab');
+    expect(clampToUtf8Bytes('ab😀', 6)).toBe('ab😀');
+    expect(utf8Bytes('가😀a')).toBe(8);
   });
 
   it('입력 오류(4xx)는 서버가 준 이유를 그대로 보여 준다', async () => {

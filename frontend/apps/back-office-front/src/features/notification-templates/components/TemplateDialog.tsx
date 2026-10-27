@@ -13,7 +13,11 @@ import {
   useUpdateNotificationTemplate,
 } from '@/features/notification-templates/queries';
 import {
+  BODY_MAX_BYTES,
+  SUBJECT_MAX_LENGTH,
   TEMPLATE_CONDITIONS,
+  clampToUtf8Bytes,
+  utf8Bytes,
   type NotificationTemplate,
   type TemplateDraft,
 } from '@/features/notification-templates/types';
@@ -213,6 +217,8 @@ function TemplateEditor({
             label='제목'
             disabled={busy}
             required
+            maxLength={SUBJECT_MAX_LENGTH}
+            labelHint={`${draft.subject.length.toLocaleString()} / ${SUBJECT_MAX_LENGTH.toLocaleString()}자`}
             value={draft.subject}
             onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
             placeholder='[StudyClub] 회원가입을 환영합니다'
@@ -231,8 +237,10 @@ function TemplateEditor({
                       disabled={busy}
                       required
                       rows={12}
+                      labelHint={`${utf8Bytes(draft.body).toLocaleString()} / ${BODY_MAX_BYTES.toLocaleString()}바이트`}
                       value={draft.body}
-                      onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                      // 한도를 넘는 입력은 받지 않는다 — 붙여 넣은 긴 글은 한도까지만 남는다
+                      onChange={(e) => setDraft({ ...draft, body: clampToUtf8Bytes(e.target.value, BODY_MAX_BYTES) })}
                       placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
                       helper='{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
                     />

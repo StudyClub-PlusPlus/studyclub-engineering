@@ -64,7 +64,7 @@ flowchart LR
 - **정책**
   - **나가는 알림이 늘 때마다 코드를 고치지 않게 한다** — 문구는 운영자가 더한다
   - 등록한 날이 곧 마지막 수정일이다 — 비어 있는 경우를 만들지 않는다
-- **데이터**: `POST /api/admin/notification-templates` — 미구현
+- **데이터**: `POST /api/admin/notification-templates` — 구현완료
 
 #### 2-1 — 추가·수정 팝업
 
@@ -80,7 +80,7 @@ flowchart LR
   - **팝업을 열면 본문 편집 탭부터 보인다.** 제목·본문 입력칸의 HTML, 치환 변수(`{{nickname}}`), 줄바꿈은 원문 그대로
   - 본문 칸 아래에 `{{nickname}}` 으로 닉네임을 삽입할 수 있고 HTML·일반 텍스트를 입력할 수 있음을 안내한다
   - **채널을 고르게 하지 않는다** — 지금 보낼 수 있는 것은 메일뿐이다. 디스코드가 열리면 그때 칸을 더한다
-- **데이터**: `PUT /api/admin/notification-templates/{id}` — 미구현
+- **데이터**: `PUT /api/admin/notification-templates/{id}` — 구현완료
 
 #### 2-2 — 템플릿 삭제
 
@@ -90,7 +90,7 @@ flowchart LR
   - **목록 행에 삭제 버튼을 두지 않는다** — 스치듯 눌러 지우는 사고가 난다. 저장 버튼과도 떨어뜨린다
   - **되돌릴 수 없다** — 확인 단계가 막는다. 필요하면 다시 추가한다
   - 지우면 그 문구로는 더 이상 메일이 나가지 않는다. **지난 발송 이력은 남는다**
-- **데이터**: `DELETE /api/admin/notification-templates/{id}` — 미구현
+- **데이터**: `DELETE /api/admin/notification-templates/{id}` — 구현완료
 
 #### 2-3 — 본문 편집과 미리보기
 
@@ -130,6 +130,7 @@ flowchart LR
 
 ### 개발 범위
 
+> 2026-10-27 갱신: BE 추가·수정·삭제 구현(조건당 한 건). 아래 「같은 조건 템플릿 여럿」·「회원 탈퇴」 두 행이 남은 일이다.
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 이 표는 「할 일」이 모두 「없음」이 된다.
 > 2026-10-22: 본문 미리보기를 Playground에 먼저 추가했다. 2026-10-26: 백오피스 팝업에도 반영하고 로컬에서 확인했다. 아래 미리보기 두 행은 이 작업 기준이다.
 
@@ -138,12 +139,12 @@ flowchart LR
 | FE | back-office-front `/notification-templates` 목록 | 구현완료 — 알림 조건 · 채널 · 제목 · 마지막 수정 | 없음 |
 | FE | back-office-front `/notification-templates/[id]` 전문 | 없앰 — 목록에서 조건을 누르면 수정 팝업 | 없음 |
 | FE | 사이드바 「알림」 하나 · 템플릿 / 발송 이력 두 탭 | 구현완료 — 사이드바 「알림」 한 메뉴, 두 탭 (템플릿은 기존 `/notification-templates`, 발송 이력은 `/notifications`) | 없음. 프로토 주소(`/notifications/templates`)와는 템플릿 경로만 다르다 |
-| FE | 템플릿 추가 · 수정 팝업 · 삭제 확인 | 구현완료 — 추가 팝업이 곧 수정 팝업, 삭제는 팝업 안 확인 단계. 조건 선택지는 BE 이벤트가 있는 「회원가입」만. API 는 MSW (`TODO(api)`) | BE `POST`·`PUT`·`DELETE` 가 붙으면 실제 호출 확인. 「회원 탈퇴」는 BE 이벤트가 생길 때 선택지 한 줄 추가 |
+| FE | 템플릿 추가 · 수정 팝업 · 삭제 확인 | 구현완료 — 추가 팝업이 곧 수정 팝업, 삭제는 팝업 안 확인 단계. 조건 선택지는 BE 이벤트가 있는 「회원가입」만. 제목 255자 · 본문 65,535바이트(UTF-8)를 넘게 쓸 수 없고 사용량을 보여 준다. 실제 API 호출 (MSW 는 개발 모드 목) | 「회원 탈퇴」는 BE 이벤트가 생길 때 선택지 한 줄 추가 |
 | FE | Playground 알림 템플릿 팝업의 본문 편집 · 미리보기 | 구현완료 — 저장 전 제목·본문, HTML·일반 텍스트, 치환 변수 원문 표시. 회원가입 예시는 기존 메일 시안 HTML 사용 | 없음 |
 | FE | back-office-front 알림 템플릿 팝업의 본문 편집 · 미리보기 | 구현완료 — 저장 전 제목·본문, HTML·일반 텍스트, 치환 변수 원문 표시. 탭 전환 시 작성값과 저장 원문 보존 (로컬 확인) | 없음 |
 | BE | `GET /api/admin/notification-templates` | 구현완료 — `AdminNotificationController` · 통합 테스트 있음 | 없음 |
-| BE | `POST /api/admin/notification-templates` | 없음 · **스펙 없음** | [notification 스펙](../../../specs/notification/spec.md)에 계약부터 쓴다 → 구현 |
-| BE | `PUT` · `DELETE /api/admin/notification-templates/{id}` | 없음 · **스펙 없음** | 스펙 → 구현. 삭제해도 발송 이력은 남긴다 — 이력이 템플릿을 참조하면 끊기지 않게 |
+| BE | `POST /api/admin/notification-templates` | 구현완료 — 조건당 한 건, 이미 있으면 409. 제목 255자 · 본문 65,535바이트 검증 · 통합 테스트 있음 ([스펙](../../../specs/notification/spec.md)) | 없음 |
+| BE | `PUT` · `DELETE /api/admin/notification-templates/{id}` | 구현완료 — 삭제해도 발송 이력은 남는다(이력은 템플릿을 ID 로만 참조) · 통합 테스트 있음 | 없음 |
 | BE | 같은 조건 템플릿 여럿 | 없음 — `UNIQUE(EVENT_TYPE, CHANNEL)` 제약, 발송은 한 건 | 제약 제거 마이그레이션 · 조건 발생 시 그 조건의 템플릿 모두 발송 (완료 기준 5) |
 | BE | 알림 조건 「회원 탈퇴」 | 없음 — `NotificationEventType` 이 `USER_REGISTERED` 하나뿐. 탈퇴는 이벤트를 내지 않는다 | 탈퇴 이벤트 발행 · `USER_WITHDRAWN`(가칭) 추가 · 리스너 (완료 기준 4) |
 
