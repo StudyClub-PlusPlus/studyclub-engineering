@@ -150,11 +150,6 @@ export const discordLinkHandlers = mockClient.createHandlerGroup('/api/me/discor
         status: 409,
         response: { errorCode: 'DISCORD_UNLINK_BLOCKED', errorMessage: '참여 중인 스터디가 있어 디스코드 연결을 해제할 수 없습니다.' },
       },
-      {
-        label: '캡틴이라 해제 불가 (409)',
-        status: 409,
-        response: { errorCode: 'DISCORD_LINK_REQUIRED', errorMessage: '캡틴은 디스코드 연결을 해제할 수 없습니다.' },
-      },
     ],
   },
 ]);

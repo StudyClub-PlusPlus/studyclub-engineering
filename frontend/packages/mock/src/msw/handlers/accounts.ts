@@ -21,8 +21,10 @@ export type ApiAdminAccount = {
   roleChangeBlockedReason:
     | 'CANNOT_CHANGE_OWN_ROLE'
     | 'LAST_ADMIN_REQUIRED'
-    | 'DISCORD_LINK_REQUIRED'
     | null;
+  discordLinked: boolean;
+  /** 디스코드 username. 미연동이면 null */
+  discordHandle: string | null;
 };
 
 export type ApiAdminAccountPage = {
@@ -42,6 +44,7 @@ type MockAccountRecord = {
   /** 참여 중인 스터디 수 — 정렬과 dormant 판정에 쓴다. */
   participating: number;
   joinedAt: string;
+  discordHandle: string | null;
 };
 
 /** 목에서 「로그인한 캡틴」으로 치는 계정. 이 행은 CANNOT_CHANGE_OWN_ROLE 로 잠긴다. */
@@ -185,6 +188,8 @@ function buildAccounts(): MockAccountRecord[] {
       navigatorOf,
       participating: Math.max(base, navigatorOf.length),
       joinedAt: new Date(Date.UTC(2026, 0, 5, 3, 41, 9) + id * 5 * DAY).toISOString().replace('.000Z', 'Z'),
+      // 3의 배수는 디스코드 미연동 — 캡틴도 미연동일 수 있다
+      discordHandle: id % 3 === 0 ? null : `${LOCALS[i]}_dc`,
     };
   });
 }
@@ -219,6 +224,8 @@ function toApi(a: MockAccountRecord, accounts: MockAccountRecord[]): ApiAdminAcc
     dormant: a.participating === 0,
     joinedAt: a.joinedAt,
     roleChangeBlockedReason: blockedReason(a, accounts),
+    discordLinked: a.discordHandle !== null,
+    discordHandle: a.discordHandle,
   };
 }
 

@@ -119,7 +119,7 @@ export function forgetDiscordLinkState(accountId: number) {
 }
 
 /**
- * DELETE /api/me/discord/link — 응답 204. 참여 중이면 409 DISCORD_UNLINK_BLOCKED, 캡틴이면 409 DISCORD_LINK_REQUIRED.
+ * DELETE /api/me/discord/link — 응답 204. 참여 중이면 409 DISCORD_UNLINK_BLOCKED.
  * 다음 신청 때 연동 창이 다시 떠야 하므로 계정 캐시를 버린다.
  */
 export async function unlinkDiscord(accountId: number): Promise<void> {

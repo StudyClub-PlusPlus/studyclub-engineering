@@ -46,11 +46,7 @@ function linkFailure(e: unknown): Notice {
 }
 
 function unlinkFailure(e: unknown): Notice {
-  const code = errorCode(e);
-  if (code === 'DISCORD_UNLINK_BLOCKED') return { kind: 'blocked' };
-  if (code === 'DISCORD_LINK_REQUIRED') {
-    return { kind: 'error', text: '캡틴은 디스코드 연결을 유지해야 해요. 크루로 바뀐 뒤에 해제할 수 있어요.' };
-  }
+  if (errorCode(e) === 'DISCORD_UNLINK_BLOCKED') return { kind: 'blocked' };
   return { kind: 'error', text: '연결을 해제하지 못했어요. 잠시 후 다시 시도해 주세요.' };
 }
 

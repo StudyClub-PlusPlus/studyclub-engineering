@@ -619,12 +619,11 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 401 | UNAUTHORIZED | 미로그인 |
-| 409 | DISCORD_LINK_REQUIRED | 캡틴(`ADMIN`)이다. 연동은 그대로 둔다 |
 | 409 | DISCORD_UNLINK_BLOCKED | 명부 행이 `ACTIVE` · `PAUSED` 인 스터디가 하나라도 있다. 연동은 그대로 둔다. 화면은 차단 문구와 「내 스터디 확인하기」를 띄운다 |
 
 - 참여 중 판정은 내 스터디룸이 「시작 전 · 참여 중」으로 보여 주는 행과 같다. `WITHDRAWN` · `COMPLETED` 는 막지 않는다.
 - 계정 행을 잠근 뒤 명부를 본다. 명부에 들어오는 길은 신청 제출뿐이고 그것도 계정을 먼저 잠그므로, 확인과 해제 사이에 새 참여가 끼어들지 못한다.
-- 캡틴(`ADMIN`)은 해제할 수 없다 — `409 DISCORD_LINK_REQUIRED`. 캡틴은 디스코드 연동이 필수다 ([admin-users](../admin-users/spec.md), STD-05). 해제하려면 먼저 크루로 내려가야 한다. 참여 중 판정보다 먼저 본다.
+- 캡틴(`ADMIN`)도 크루와 같은 규칙으로 해제한다 (2026-10-27 — 그전에는 `409 DISCORD_LINK_REQUIRED` 로 막았다. [share 10-27](../../docs/share/2026-10-27-captain-discord-optional.md)).
 
 ---
 
