@@ -96,7 +96,7 @@ class AdminAccountRoleServiceTest {
     }
 
     @Test
-    @DisplayName("디스코드 미연동 캡틴을 크루로 내리는 것은 막지 않는다 — 연동 규칙은 올릴 때만 본다")
+    @DisplayName("디스코드 미연동 캡틴도 크루로 내린다 — 권한 변경은 디스코드 연동을 보지 않는다")
     void demotesUnlinkedAdmin() {
         Account target = account(TARGET_ID, SystemRole.ADMIN);
         givenAdmins(account(ACTOR_ID, SystemRole.ADMIN), target);

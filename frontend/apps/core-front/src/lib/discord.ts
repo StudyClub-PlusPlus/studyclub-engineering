@@ -20,6 +20,8 @@ export const DISCORD_LINK_READY = Boolean(DISCORD_CLIENT_ID) || process.env.NODE
 export const DISCORD_CALLBACK_PATH = '/api/auth/discord/callback';
 /** 콜백 페이지가 opener 로 보내는 메시지 표식 (구글 로그인 'studyclub-oauth' 와 섞이지 않게) */
 export const DISCORD_OAUTH_SOURCE = 'studyclub-discord-oauth';
+/** 팝업을 열어 둔 채 답이 없으면 이만큼 뒤에 닫고 취소로 본다 — 연동 창이 「처리 중」에 갇히지 않게 */
+const POPUP_TIMEOUT_MS = 5 * 60_000;
 /** client id 없는 개발 서버에서 보내는 자리값. MSW 목은 코드를 보지 않는다 */
 const MOCK_OAUTH_CODE = 'mock-oauth';
 
@@ -60,6 +62,7 @@ export function requestDiscordCode(): Promise<string> {
     function done() {
       window.removeEventListener('message', onMessage);
       clearInterval(closedTimer);
+      clearTimeout(deadline);
     }
     function onMessage(ev: MessageEvent) {
       const data = ev.data;
@@ -75,6 +78,11 @@ export function requestDiscordCode(): Promise<string> {
       done();
       reject(new DiscordPopupError('cancelled'));
     }, 500);
+    const deadline = setTimeout(() => {
+      done();
+      popup.close();
+      reject(new DiscordPopupError('cancelled'));
+    }, POPUP_TIMEOUT_MS);
     window.addEventListener('message', onMessage);
   });
 }

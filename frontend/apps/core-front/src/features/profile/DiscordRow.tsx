@@ -11,13 +11,7 @@ import { ExternalLink } from 'lucide-react';
 import { fetchAccount, profileKeys } from '@/features/profile/queries';
 import { track } from '@/lib/analytics';
 import type { Locale } from '@/lib/content';
-import {
-  DISCORD_LINK_READY,
-  DiscordPopupError,
-  linkDiscord,
-  requestDiscordCode,
-  unlinkDiscord,
-} from '@/lib/discord';
+import { DISCORD_LINK_READY, DiscordPopupError, linkDiscord, requestDiscordCode, unlinkDiscord } from '@/lib/discord';
 import { ApiError } from '@/lib/http';
 import { getQueryClient } from '@/lib/query-client';
 
@@ -39,6 +33,8 @@ function linkFailure(e: unknown): Notice {
     };
   }
   if (errorCode(e) === 'DISCORD_NOT_IN_GUILD') return { kind: 'notInGuild' };
+  // 참여 중에 다른 디스코드 계정으로 갈아타려 함 (POL-0007) — 해제가 막힐 때와 같은 안내
+  if (errorCode(e) === 'DISCORD_UNLINK_BLOCKED') return { kind: 'blocked' };
   if (e instanceof ApiError && e.status === 409) {
     return { kind: 'error', text: '이 디스코드 계정은 다른 StudyClub 계정에 이미 연결돼 있어요.' };
   }

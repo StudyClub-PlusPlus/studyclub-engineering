@@ -29,6 +29,12 @@ function linkErrorCopy(e: unknown) {
       en: 'The Discord window was blocked. Allow pop-ups in your browser and try again.',
     };
   }
+  if (e instanceof ApiError && (e.body as { errorCode?: string } | undefined)?.errorCode === 'DISCORD_UNLINK_BLOCKED') {
+    return {
+      ko: '참여 중인 스터디가 있어 다른 디스코드 계정으로 바꿀 수 없습니다. 참여 중단은 캡틴에게 문의해 주세요.',
+      en: 'You cannot switch Discord accounts while you are in a study. Ask a captain to end your participation first.',
+    };
+  }
   if (e instanceof ApiError && e.status === 409) {
     return {
       ko: '이 디스코드 계정은 다른 StudyClub 계정에 이미 연동되어 있습니다.',

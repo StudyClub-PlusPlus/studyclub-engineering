@@ -71,3 +71,24 @@ describe('requestDiscordCode', () => {
     await expect(result).rejects.toMatchObject({ reason: 'cancelled' });
   });
 });
+
+describe('requestDiscordCode 시간 제한', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it('5분 동안 답이 없으면 팝업을 닫고 cancelled', async () => {
+    vi.useFakeTimers();
+    const popup = { closed: false, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    const { requestDiscordCode } = await load();
+    const result = requestDiscordCode();
+
+    vi.advanceTimersByTime(5 * 60_000);
+
+    await expect(result).rejects.toMatchObject({ reason: 'cancelled' });
+    expect(popup.close).toHaveBeenCalled();
+  });
+});

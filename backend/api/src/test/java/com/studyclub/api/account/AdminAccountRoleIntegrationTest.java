@@ -63,7 +63,7 @@ class AdminAccountRoleIntegrationTest {
         insertAccount(MEMBER_REQUESTER_ID, SystemRole.MEMBER, now);
         insertAccount(TARGET_MEMBER_ID, SystemRole.MEMBER, now);
         insertAccount(OTHER_ADMIN_ID, SystemRole.ADMIN, now);
-        // 캡틴으로 올릴 대상은 디스코드를 연동해 둔다 (STD-05). MEMBER_REQUESTER_ID 는 미연동
+        // TARGET_MEMBER_ID 는 연동, MEMBER_REQUESTER_ID 는 미연동 — 권한 변경은 둘 다 된다 (promotesUnlinkedMember)
         jdbcTemplate.update(
                 "UPDATE ACCOUNT SET DISCORD_ID = ? WHERE ID = ?",
                 "rolechange-" + TARGET_MEMBER_ID,

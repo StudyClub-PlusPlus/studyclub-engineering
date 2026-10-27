@@ -3,14 +3,23 @@ import { expect, test, type Page } from '@playwright/test';
 import { stubApiMe } from '../stubApiMe';
 
 // 마이페이지 디스코드 줄 (crew-edit-profile §4). 연동 상태와 연동·해제 응답은 개발 서버 MSW 목이 답한다
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api.studyclub-plusplus.com';
+// 목 핸들러 키는 앱이 읽는 API 주소를 앞에 붙인다. 테스트 프로세스는 그 값을 모를 수 있어 쓸 만한 키를 다 넣는다
+const DELETE_KEYS = [
+  '',
+  process.env.NEXT_PUBLIC_API_BASE_URL,
+  'https://api.studyclub-plusplus.com',
+  'https://api.studyclub.life',
+  'http://localhost:28080',
+]
+  .filter((base): base is string => base !== undefined)
+  .map((base) => `DELETE:${base}/api/me/discord/link`);
 
 async function openMyPage(page: Page, { linked, deletePreset }: { linked: boolean; deletePreset?: string }) {
   await stubApiMe(page);
   // 미들웨어는 로그인 쿠키가 있는지만 본다
   await page.context().addCookies([{ name: 'sc_access_token', value: 'e2e', url: 'http://localhost:4700' }]);
   await page.addInitScript(
-    ({ linked, deletePreset, key }) => {
+    ({ linked, deletePreset, keys }) => {
       localStorage.setItem(
         'sc_user',
         JSON.stringify({
@@ -25,10 +34,11 @@ async function openMyPage(page: Page, { linked, deletePreset }: { linked: boolea
       );
       localStorage.setItem('msw-discord-linked', String(linked));
       if (deletePreset) {
-        localStorage.setItem('msw-handler-config', JSON.stringify({ [key]: { presetLabel: deletePreset, enabled: true } }));
+        const cfg = { presetLabel: deletePreset, enabled: true };
+        localStorage.setItem('msw-handler-config', JSON.stringify(Object.fromEntries(keys.map((k) => [k, cfg]))));
       }
     },
-    { linked, deletePreset, key: `DELETE:${API_BASE}/api/me/discord/link` },
+    { linked, deletePreset, keys: DELETE_KEYS },
   );
   await page.goto('/ko/my');
 }
