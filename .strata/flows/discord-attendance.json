@@ -1,0 +1,13 @@
+{
+  "name": "디스코드 출석 체크",
+  "trigger": "POST /api/discord/studies/{discordStudyId}/attendances (봇, X-API-Key)",
+  "spec": "specs/discord-attendance/spec.md",
+  "steps": [
+    { "external": "discord", "note": "반장이 공부방 채팅에서 !출석체크 → 봇이 접속자 스냅샷을 보낸다" },
+    { "table": "STUDY_DISCORD_LINK", "op": "read", "note": "디스코드 카테고리 → 스터디" },
+    { "table": "ACCOUNT", "op": "read", "note": "discordUserId → ACCOUNT.DISCORD_ID → 계정. 없으면 unmatched" },
+    { "table": "STUDY_PARTICIPANT", "op": "read", "note": "그 반 참가자인가 (ACTIVE · PAUSED)" },
+    { "table": "STUDY_MEETING", "op": "lock", "note": "지금 모이는 회차를 백엔드가 고른다. 예정 회차 자동 시작만 잠금" },
+    { "table": "STUDY_ATTENDANCE", "op": "upsert", "note": "PRESENT — ABSENT·없는 행만. LATE·EXCUSED 는 덮지 않는다 (한 문장 upsert)" }
+  ]
+}

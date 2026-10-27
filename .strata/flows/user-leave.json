@@ -1,0 +1,19 @@
+{
+  "name": "회원 탈퇴",
+  "trigger": "DELETE /api/me",
+  "spec": "specs/user-leave/spec.md",
+  "steps": [
+    { "table": "ACCOUNT", "op": "read", "note": "본인 계정. 이후 전부 한 트랜잭션" },
+    { "table": "ACCOUNT_LEAVE_REASON", "op": "insert", "note": "사유만 — accountId 는 담지 않는다" },
+    { "table": "ACCOUNT_IDENTITY", "op": "delete", "note": "로그인 수단 파기 (재가입 가능하게)" },
+    { "table": "STUDY_PARTICIPANT", "op": "update", "note": "DELETED + LEFT_AT — 물리 삭제하면 출석 이력이 사라진다" },
+    { "table": "STUDY_BOOKMARK", "op": "delete" },
+    { "table": "STUDY_PROPOSAL_INTEREST", "op": "delete" },
+    { "table": "NOTIFICATION", "op": "update", "note": "받는 사람 비식별화, PENDING 은 CANCELLED" },
+    { "table": "STUDY_PROPOSAL", "op": "update", "note": "OPEN → CLOSED" },
+    { "table": "STUDY_APPLICATION", "op": "update", "note": "FORM_ANSWER.discordNickname 마스킹" },
+    { "table": "ACCOUNT_CONSENT", "op": "delete" },
+    { "table": "ACCOUNT", "op": "delete", "note": "프로필 파기. 사진 주소는 먼저 읽어 둔다" },
+    { "table": "STORAGE_OBJECT", "op": "update", "note": "올린 사진 DELETING → 커밋 뒤 S3 파일과 행 삭제" }
+  ]
+}

@@ -1,0 +1,33 @@
+# 지도 위층(문서 · 개념 · 흐름)을 Strata 로 보낸다 — specs/*/spec.md · docs/erd · docs/flows 와 .strata/concepts.json · .strata/flows/*.json.
+# 테이블과 잇는 건 Strata 가 읽을 때 한다. 적힌 테이블이 DB 구조에 없으면 경고로 찍는다(실패는 아니다).
+# beta push 가 지도의 기준이다. AGENT.md §작업 룰 「.strata」
+name: strata-knowledge
+
+on:
+  pull_request:
+    branches: [beta, develop, main]
+    paths: ['specs/**', 'docs/erd/**', 'docs/flows/**', '.strata/concepts.json', '.strata/flows/**', 'scripts/strata/collect-knowledge.cjs', '.github/workflows/strata-knowledge.yaml']
+  push:
+    branches: [beta]
+    paths: ['specs/**', 'docs/erd/**', 'docs/flows/**', '.strata/concepts.json', '.strata/flows/**']
+  workflow_dispatch:
+
+jobs:
+  knowledge:
+    # 포크 PR 에는 시크릿이 없다
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Strata 에 올리기
+        env:
+          STRATA_API: https://strata-api.studyclub.life
+          STRATA_TOKEN: ${{ secrets.STRATA_TOKEN }}
+          STRATA_PROJECT: faccbf09-16da-4012-aeca-6595dadf39c6/projects/fa485ab4-54ec-43bc-a9b5-9b330d30687c
+          BASE_BRANCH: beta
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/strata/collect-knowledge.cjs
