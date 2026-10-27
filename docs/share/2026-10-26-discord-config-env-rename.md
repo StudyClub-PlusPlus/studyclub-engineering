@@ -41,7 +41,7 @@
 | `DISCORD_ALERT_CHANNEL_ID` | `DISCORD_CONFIG_ALERT_CHANNEL_ID` |
 | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` | `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID` |
 | `DISCORD_BULLETIN_CHANNEL_ID` | `DISCORD_CONFIG_BULLETIN_CHANNEL_ID` |
-| `DISCORD_ANCHOR_CHANNEL_ID` | `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` |
+| 신규 (기존에는 `===== New Study =====` 이름으로 검색) | `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` — 배포 전에 기존 구분선 카테고리의 ID 를 찾아 새로 설정한다. 비우면 게시판·활동 감시가 중단되고 새 스터디는 목록 맨 위에 생긴다 |
 | `DISCORD_BOT_ID` | `DISCORD_CONFIG_BOT_ID` — 봇 자신의 유저 ID. 서버에서 누구나 볼 수 있는 값이라 숨길 이유가 없다 |
 
 - **규칙: `DISCORD_CONFIG_` 는 보여줘도 되는 ID 에만 붙인다.** 시크릿 · URL 에는 절대 붙이지 않는다.
