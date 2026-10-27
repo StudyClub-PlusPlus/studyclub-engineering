@@ -11,6 +11,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { TimeZonePicker, zoneName } from '@/components/TimeZonePicker';
+import { DiscordRow } from '@/features/profile/DiscordRow';
 import { isSameNickname } from '@/features/profile/nickname';
 import { initialOf } from '@/features/profile/photo';
 import {
@@ -328,14 +329,14 @@ export function ProfileCard({
           ) : (
             <div
               aria-hidden='true'
-              className='grid h-16 w-16 place-items-center rounded-full bg-surface-2 text-2xl font-bold text-fg-secondary'
+              className='grid h-16 w-16 place-items-center rounded-full bg-surface-2 type-headline-sm text-fg-secondary'
             >
               {initialOf(user.nickname, user.email)}
             </div>
           )}
           {/* 미리보기 세션은 서버가 모르는 계정이라 사진 버튼을 두지 않는다 */}
           {!preview && (
-            <div className='flex items-center gap-2 text-xs'>
+            <div className='flex items-center gap-2 type-label-sm'>
               <button
                 type='button'
                 onClick={photo.pick}
@@ -375,7 +376,7 @@ export function ProfileCard({
               />
               <p
                 id='profile-nickname-help'
-                className={`mt-2 flex items-center gap-1.5 text-xs ${toneClass(line.tone)}`}
+                className={`mt-2 flex items-center gap-1.5 type-label-sm ${toneClass(line.tone)}`}
               >
                 {line.tone === 'ok' && <Check size={13} aria-hidden='true' />}
                 {line.text}
@@ -384,8 +385,8 @@ export function ProfileCard({
           )}
           {!editing && (
             <>
-              <p className='truncate text-xl font-extrabold tracking-tight text-fg'>{user.nickname ?? user.email}</p>
-              <p className='mt-0.5 truncate text-sm text-fg-muted'>{user.email}</p>
+              <p className='truncate type-title-lg text-fg'>{user.nickname ?? user.email}</p>
+              <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>
             </>
           )}
         </div>
@@ -405,13 +406,13 @@ export function ProfileCard({
       </div>
 
       {photo.error && (
-        <p role='alert' className='px-6 pt-2 text-xs text-error-700'>
+        <p role='alert' className='px-6 pt-2 type-label-sm text-error-700'>
           {photo.error}
         </p>
       )}
 
       {/* 값은 이름과 값 두 줄로만 세운다 — 칸을 나눠 담으면 몇 안 되는 값이 표처럼 보인다 */}
-      <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-baseline gap-x-6 gap-y-3 px-6 pb-5 text-sm'>
+      <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-baseline gap-x-6 gap-y-3 px-6 pb-5 type-body-sm'>
         <dt className='text-fg-muted'>시간대</dt>
         <dd className='min-w-0'>
           {editing && (
@@ -429,9 +430,7 @@ export function ProfileCard({
           {!editing && <span className='font-semibold text-fg'>{zoneLabel}</span>}
         </dd>
 
-        {/* 연결·해제는 디스코드 연결 API 가 나온 뒤에 붙인다 */}
-        <dt className='text-fg-muted'>디스코드</dt>
-        <dd className='font-semibold text-fg-muted'>연결 안 됨</dd>
+        <DiscordRow accountId={user.id} locale={locale} preview={preview} onExpired={() => setProblem('expired')} />
 
         <dt className='text-fg-muted'>수신 동의</dt>
         <dd className='min-w-0'>
@@ -445,14 +444,14 @@ export function ProfileCard({
               })
             }
           />
-          <p className='mt-1 text-xs text-fg-muted'>스터디 소식과 행사 안내를 이메일로 보내드려요</p>
+          <p className='mt-1 type-label-sm text-fg-muted'>스터디 소식과 행사 안내를 이메일로 보내드려요</p>
           {consent.isError && (
-            <p role='alert' className='mt-1 text-xs text-error-700'>
+            <p role='alert' className='mt-1 type-label-sm text-error-700'>
               수신 동의 상태를 불러오지 못했습니다. 새로고침해 주세요
             </p>
           )}
           {changeConsent.isError && (
-            <p role='alert' className='mt-1 text-xs text-error-700'>
+            <p role='alert' className='mt-1 type-label-sm text-error-700'>
               {consentChangeError}
             </p>
           )}
@@ -460,7 +459,7 @@ export function ProfileCard({
       </dl>
 
       {problem === 'expired' && (
-        <p role='alert' className='border-t border-border px-6 py-3 text-xs text-error-700'>
+        <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
           로그인 시간이 만료됐어요.{' '}
           <Link
             href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/my`)}`}
@@ -472,12 +471,12 @@ export function ProfileCard({
         </p>
       )}
       {problem === 'load' && (
-        <p role='alert' className='border-t border-border px-6 py-3 text-xs text-error-700'>
+        <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
           내 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요
         </p>
       )}
       {problem === 'server' && (
-        <p role='alert' className='border-t border-border px-6 py-3 text-xs text-error-700'>
+        <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
           저장하지 못했습니다. 잠시 후 다시 시도해 주세요
         </p>
       )}
@@ -486,7 +485,7 @@ export function ProfileCard({
       <div className='flex items-center justify-between gap-3 border-t border-border px-6 py-3'>
         <Link
           href={`/${locale}/my/leave`}
-          className='text-xs text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
+          className='type-label-sm text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
         >
           회원 탈퇴
         </Link>

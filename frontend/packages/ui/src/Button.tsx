@@ -20,9 +20,9 @@ const VARIANT: Record<ButtonVariant, string> = {
 
 /* h32/40/48 — sm 은 시각 높이를 유지한 채 ::after 로 44px 터치 타깃을 확보한다. */
 const SIZE: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-sm gap-1.5',
-  md: 'h-10 px-4 text-sm gap-2',
-  lg: 'h-12 px-5 text-base gap-2',
+  sm: 'h-8 px-3 type-label-lg gap-1.5',
+  md: 'h-10 px-4 type-label-lg gap-2',
+  lg: 'h-12 px-5 type-label-lg gap-2',
 };
 
 const HIT_AREA = "after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:-translate-y-1/2 after:content-['']";
@@ -54,7 +54,7 @@ export function Button({
       disabled={isDisabled}
       aria-busy={loading || undefined}
       className={cx(
-        'relative inline-flex shrink-0 items-center justify-center rounded-control font-semibold',
+        'relative inline-flex shrink-0 items-center justify-center rounded-control',
         'transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out',
         'focus-visible:outline-none focus-visible:shadow-(--ring)',
         'hover:cursor-pointer',

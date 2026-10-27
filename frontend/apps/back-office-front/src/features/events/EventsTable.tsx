@@ -49,7 +49,7 @@ function FilterSelect<T extends string>({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={`h-9 rounded-control border bg-surface px-3 text-sm outline-none focus:border-brand ${
+      className={`h-9 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
         value === 'all' ? 'border-border text-fg-secondary' : 'border-border-strong font-semibold text-fg'
       }`}
     >
@@ -107,11 +107,11 @@ export function EventsTable({ events }: { events: StudyclubEvent[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='행사명 · 한 줄 소개 검색'
-          className='h-9 w-56 rounded-control border border-border bg-surface px-3 text-sm outline-none focus:border-border-interactive'
+          className='h-9 w-56 rounded-control border border-border bg-surface px-3 type-body-sm outline-none focus:border-border-interactive'
         />
         <FilterSelect value={type} onChange={(v) => setFilters({ type: v })} options={TYPE_OPTIONS} />
         <FilterSelect value={when} onChange={(v) => setFilters({ when: v })} options={WHEN_OPTIONS} />
-        <span className='ml-auto text-xs text-fg-muted'>{rows.length}개</span>
+        <span className='ml-auto type-label-sm text-fg-muted'>{rows.length}개</span>
       </div>
 
       <TableCard>

@@ -53,7 +53,11 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
                 UserRegisteredEvent 발행 → 알림팀 → 웰컴메일
                      │
                      ▼
-                홈 (next 있으면 거기)
+                디스코드 연결 선택 (지금 연결 / 나중에 하기)
+                     │
+                     ├─ 연결 성공 → 홈 또는 안전한 next (신청 중이면 해당 신청 폼)
+                     ├─ 연결 실패·취소 → 안내 유지, 재시도·나중에 하기
+                     └─ 나중에 하기 → 홈 또는 원래 상세 (다시 신청할 때 연결 확인)
 ```
 
 - 토큰은 신규·미완료·완료 전부에서 발급한다. 단, 동일 이메일의 기존 ACCOUNT가 발견되어 `ACCOUNT_LINK_REQUIRED`가 반환된 경우에는 발급하지 않는다. **온보딩 미완료도 로그인 상태**다. 쓸 수 있는 게 적을 뿐.
@@ -147,7 +151,7 @@ ACCOUNT_IDENTITY
 
 ### `GET /api/me`
 
-응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `discordLinked`(boolean)는 `ACCOUNT.DISCORD_ID`가 있으면 true, 없으면 false다 — 디스코드 ID·핸들 자체는 내리지 않는다. 신청 제출의 미연동 403과 같은 판정(`Account.isDiscordLinked()`)이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
+응답은 DB에 저장된 정보만 담는 `AccountSelfView`를 사용한다. 기존 계정 응답 필드에 본인의 `discordNickname`을 포함하며 값이 없으면 null이다. `discordLinked`(boolean)는 `ACCOUNT.DISCORD_ID`가 있으면 true, 없으면 false다. 연동한 디스코드 `username` 은 `discordHandle`(미연동이면 null)로 내리고, 디스코드 ID 자체는 내리지 않는다. 신청 제출의 미연동 403과 같은 판정(`Account.isDiscordLinked()`)이다. `onboardingCompletedAt`·`timeZone`은 포함하고 `suggestedNickname`은 포함하지 않는다. 미완료 사용자도 호출 가능하다. 계정 목록용 `AccountView`에는 서버 별명을 추가하지 않는다.
 
 ### `GET /api/nicknames/availability`
 
@@ -271,7 +275,6 @@ ACCOUNT_IDENTITY
 
 ## 미확정 (팀 결정)
 
-- **완료 후 어디로** — 홈, `next` 있으면 `next`. 마이페이지로 보내 프로필 이미지 유도하는 안도 있다.
 - **`ACCOUNT.EMAIL` 변경** — 자유 입력은 PRD 대로 안 함. 대신 **연결된 제공자 이메일 중 선택**은 허용하자는 제안 (애플 절 참고). 안 하면 애플(중계) 먼저 가입한 사람은 구글을 연결해도 알림을 영영 중계로 받는다. 자유 입력을 열려면 `UNIQUE(EMAIL)` 충돌 + 변경 인증 메일이 따라온다.
 
 ## 한계 / 후속
@@ -281,3 +284,14 @@ ACCOUNT_IDENTITY
 - 구글·애플 **명시적 연결**(마이페이지 "계정 연결") — 애플과 같이.
 - 프로필 이미지·마이페이지 수정 API 는 별도.
 - 웰컴메일 실패 재시도는 알림팀. 여기선 "1회 발행" 까지.
+
+
+## 가입 완료 후 디스코드 연결 선택 (화면 계약)
+
+- `POST /accounts/onboarding` 성공으로 홈페이지 가입 완료 확정 후 연결 선택 안내.
+- 「스터디는 디스코드에서 진행돼요. 지금 연결할까요?」와 「지금 연결 / 나중에 하기」 제공.
+- 연결 실패·인증 취소·나중에 하기에도 가입 완료 상태 유지.
+- 연결 API는 `POST /api/me/discord/link` 재사용. 실제 OAuth 검증 및 연결 결과 조회는 후속 FE 작업.
+- 스터디 신청에서 진입한 경우 안전한 내부 복귀 주소와 선택 스터디 유지. 연결 성공 시 해당 신청 폼, 나중에 하기는 상세 화면으로 복귀.
+- 나중에 하기를 선택한 회원은 이후 신청하기를 누를 때 연결 확인.
+- Playground는 `?step=discord`와 안전한 `next`로 시뮬레이션. 실제 API 변경·운영 배포는 이 시안 반영 범위에서 제외.

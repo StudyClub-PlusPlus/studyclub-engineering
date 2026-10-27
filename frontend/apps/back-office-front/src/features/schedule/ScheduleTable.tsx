@@ -47,7 +47,8 @@ export function ScheduleTable({
   people: Person[];
   /** 발표자로 새로 고를 수 있는 사람. 없으면 `people`. 참여를 중단한 사람은 빠진다. */
   pickable?: Person[];
-  onSave: (patches: Record<string, MeetingPatch>) => void;
+  /** 저장하지 못한 회차 ID 로 끝난다 — 그 줄의 고침은 남긴다. */
+  onSave: (patches: Record<string, MeetingPatch>) => Promise<string[]>;
   onAdd: (input: { dates: string[]; time: string; title: string }) => void;
   onSetKickoff: (input: { date: string; time: string }) => void;
   onDelete: (ids: string[]) => void;
@@ -66,6 +67,8 @@ export function ScheduleTable({
   /** 줄을 처음 고칠 때의 저장값. 저장할 때 발표자 칸이 「내가 바꾼 것」인지 이것과 견준다. */
   const bases = useRef<Record<string, RowDraft>>({});
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
+  /** 저장 요청이 끝나기 전까지 다시 누르지 못하게 한다 — 같은 PUT 이 두 번 나간다. */
+  const [saving, setSaving] = useState(false);
   /** 표의 일자·시각을 어느 시간대로 보일지. 처음엔 반 시간대. */
   const [zone, setZone] = useState<string>(tz);
 
@@ -137,11 +140,13 @@ export function ScheduleTable({
     change(m, wallParts(zonedInstant(next.date, next.time, zone), tz));
   }
 
-  function saveAll() {
-    if (!dirty || errorCount > 0) return;
+  async function saveAll() {
+    if (saving || !dirty || errorCount > 0) return;
     const patches: Record<string, MeetingPatch> = {};
+    const sent: Record<string, RowDraft> = {};
     for (const id of changedIds) {
       const v = drafts[id];
+      sent[id] = v;
       const before = bases.current[id];
       // 발표자 칸은 고치기 시작할 때와 달라진 것만 보낸다 — 그 사이 크루가 신청한 칸을 옛 값(빈칸)으로 덮지 않는다.
       patches[id] = {
@@ -152,9 +157,28 @@ export function ScheduleTable({
         ...(v.presenter2 !== before?.presenter2 && { presenter2: v.presenter2 || null }),
       };
     }
-    onSave(patches);
-    setAnnounce(`회차 ${changedIds.length}개를 저장했습니다.`);
-    clearDrafts();
+    setSaving(true);
+    let failed: Set<string>;
+    try {
+      failed = new Set(await onSave(patches));
+    } finally {
+      setSaving(false);
+    }
+    // 저장하지 못한 줄은 고침을 남긴다 — 고쳐서 다시 저장하거나 되돌릴 수 있게. 저장한 줄만 비운다.
+    // 저장을 기다리는 동안 다시 고친 줄(보낸 값과 다른 초안)도 남긴다
+    const done = changedIds.filter((id) => !failed.has(id));
+    // 저장한 줄의 서버 값은 이제 보낸 값이다 — 남는 초안의 발표자 칸은 이것과 견준다
+    for (const id of done) bases.current[id] = sent[id];
+    setDrafts((d) => {
+      const cleared = done.filter((id) => d[id] === sent[id]);
+      for (const id of cleared) delete bases.current[id];
+      return Object.fromEntries(Object.entries(d).filter(([id]) => !cleared.includes(id)));
+    });
+    setAnnounce(
+      failed.size === 0
+        ? `회차 ${done.length}개를 저장했습니다.`
+        : `회차 ${done.length}개를 저장했고, ${failed.size}개는 저장하지 못해 고친 값을 남겨 두었습니다.`,
+    );
   }
 
   function remove(targets: Meeting[]) {
@@ -186,9 +210,9 @@ export function ScheduleTable({
   return (
     <div className='flex flex-col gap-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <h2 className='text-base font-bold'>
+        <h2 className='type-title-md'>
           일정
-          <span className='tnum ml-2 text-sm font-medium text-fg-muted'>
+          <span className='tnum ml-2 type-label-lg text-fg-muted'>
             전체 {regular.length} · 예정 {upcomingCount}
           </span>
         </h2>
@@ -242,7 +266,7 @@ export function ScheduleTable({
       )}
 
       {meetings.length === 0 ? (
-        <p className='card px-6 py-10 text-center text-sm text-fg-muted'>
+        <p className='card px-6 py-10 text-center type-body-sm text-fg-muted'>
           아직 회차가 없습니다. 「회차 추가」로 만드세요.
         </p>
       ) : (
@@ -272,22 +296,22 @@ export function ScheduleTable({
             }
             save={
               <span className='flex items-center gap-2'>
-                {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
+                {errorCount > 0 && <p className='mr-1 type-label-sm text-error-700'>고칠 칸 {errorCount}개</p>}
                 {dirty && (
-                  <Button variant='ghost' size='sm' onClick={clearDrafts}>
+                  <Button variant='ghost' size='sm' onClick={clearDrafts} disabled={saving}>
                     변경 취소
                   </Button>
                 )}
-                <Button size='sm' onClick={saveAll} disabled={!dirty || errorCount > 0}>
+                <Button size='sm' onClick={saveAll} disabled={saving || !dirty || errorCount > 0}>
                   저장
                 </Button>
               </span>
             }
           />
           <div className='overflow-x-auto'>
-            <table className='w-full min-w-[56rem] border-separate border-spacing-0 text-sm'>
+            <table className='w-full min-w-[56rem] border-separate border-spacing-0 type-body-sm'>
               <thead>
-                <tr className='text-left text-xs font-semibold text-fg-muted'>
+                <tr className='text-left type-label-sm text-fg-muted'>
                   <th className='w-10 py-3 pl-4'>
                     <Checkbox
                       label=''
@@ -356,7 +380,7 @@ export function ScheduleTable({
                           />
                         )}
                       </td>
-                      <td className='tnum border-t border-border px-4 py-2.5 text-center align-middle font-bold'>
+                      <td className='tnum border-t border-border px-4 py-2.5 text-center align-middle font-semibold'>
                         {m.no}
                         {past && <span className='sr-only'> (지난 회차 · 고칠 수 없음)</span>}
                       </td>
@@ -403,7 +427,7 @@ export function ScheduleTable({
                       <td className={cx(cell, 'text-center')}>{presenterCell('presenter1')}</td>
                       <td className={cx(cell, 'text-center')}>
                         {presenterCell('presenter2')}
-                        {errors.presenter2 && <p className='mt-1 text-xs text-error-700'>{errors.presenter2}</p>}
+                        {errors.presenter2 && <p className='mt-1 type-label-sm text-error-700'>{errors.presenter2}</p>}
                       </td>
                     </tr>
                   );
@@ -430,7 +454,7 @@ export function ScheduleTable({
           </>
         }
       >
-        <p className='text-sm text-fg-secondary'>
+        <p className='type-body-sm text-fg-secondary'>
           {toDelete.length === 1
             ? `${meetingLabel(toDelete[0])}(${dayLabel(toDelete[0].date)})를 지울까요?`
             : `회차 ${toDelete.length}개(${toDelete.map((m) => meetingLabel(m)).join(', ')})를 지울까요?`}{' '}

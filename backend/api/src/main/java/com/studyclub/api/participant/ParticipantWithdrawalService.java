@@ -3,6 +3,8 @@ package com.studyclub.api.participant;
 import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.audit.AdminAuditLogRepository;
 import com.studyclub.domain.participant.ParticipantRole;
@@ -46,6 +48,7 @@ public class ParticipantWithdrawalService {
     private final AdminAuditLogRepository adminAuditLogRepository;
     private final StudyCaptainGuard studyCaptainGuard;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccountRepository accountRepository;
 
     public ParticipantWithdrawalService(
             StudyRepository studyRepository,
@@ -54,7 +57,8 @@ public class ParticipantWithdrawalService {
             StudyMeetingRepository studyMeetingRepository,
             AdminAuditLogRepository adminAuditLogRepository,
             StudyCaptainGuard studyCaptainGuard,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            AccountRepository accountRepository) {
         this.studyRepository = studyRepository;
         this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
@@ -62,6 +66,7 @@ public class ParticipantWithdrawalService {
         this.adminAuditLogRepository = adminAuditLogRepository;
         this.studyCaptainGuard = studyCaptainGuard;
         this.eventPublisher = eventPublisher;
+        this.accountRepository = accountRepository;
     }
 
     /**
@@ -167,9 +172,19 @@ public class ParticipantWithdrawalService {
                         .filter(target -> withdrawOne(prepared.actorAccountId(), target, now))
                         .toList();
         releasePresenterSlots(prepared.lockedGroupIds(), withdrawn, now);
+        Map<Long, String> discordIds =
+                accountRepository
+                        .findAllById(
+                                withdrawn.stream().map(StudyParticipant::getAccountId).toList())
+                        .stream()
+                        .filter(Account::isDiscordLinked)
+                        .collect(Collectors.toMap(Account::getId, Account::getDiscordId));
         for (StudyParticipant participant : withdrawn) {
             eventPublisher.publishEvent(
-                    StudyParticipantWithdrawn.of(prepared.actorAccountId(), participant));
+                    StudyParticipantWithdrawn.of(
+                            prepared.actorAccountId(),
+                            participant,
+                            discordIds.get(participant.getAccountId())));
         }
     }
 

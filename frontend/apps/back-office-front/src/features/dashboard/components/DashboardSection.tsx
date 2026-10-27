@@ -32,8 +32,8 @@ export function DashboardSection({
   return (
     <section className='card px-6 py-5'>
       <div className='flex flex-wrap items-baseline gap-x-2 gap-y-1'>
-        <h2 className='text-base font-bold'>{title}</h2>
-        {note && <span className='text-xs text-fg-muted'>{note}</span>}
+        <h2 className='type-title-md'>{title}</h2>
+        {note && <span className='type-label-sm text-fg-muted'>{note}</span>}
         {action && <div className='ml-auto'>{action}</div>}
       </div>
       <div className='mt-4'>{children}</div>
@@ -43,7 +43,7 @@ export function DashboardSection({
 
 /** 카드 안 가운데 안내 — 빈 상태와 실패에 같이 쓴다. 높이를 지켜 화면이 들썩이지 않게 한다. */
 export function CardMessage({ children, minHeight = 'min-h-32' }: { children: ReactNode; minHeight?: string }) {
-  return <p className={`flex items-center justify-center text-center text-sm text-fg-muted ${minHeight}`}>{children}</p>;
+  return <p className={`flex items-center justify-center text-center type-body-sm text-fg-muted ${minHeight}`}>{children}</p>;
 }
 
 /** 로딩 자리 — 카드 크기를 지키는 회색 막대 (spec 2.4 권장). */

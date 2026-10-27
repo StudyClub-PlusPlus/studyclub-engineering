@@ -9,4 +9,5 @@ public enum RoleChangeBlockedReason {
     CANNOT_CHANGE_OWN_ROLE,
     /** 남은 마지막 캡틴(ADMIN)이다 — 내리면 백오피스에 들어갈 사람이 없다. */
     LAST_ADMIN_REQUIRED
+    // 디스코드 미연동 크루를 막던 DISCORD_LINK_REQUIRED 는 2026-10-27 뺐다 — 캡틴에게 디스코드 연동은 필수가 아니다
 }

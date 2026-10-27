@@ -172,9 +172,17 @@ class AccountTest {
     }
 
     @Test
-    @DisplayName("권한 변경 가능 여부 — 크루는 캡틴 수와 상관없이 올릴 수 있다")
+    @DisplayName("권한 변경 가능 여부 — 디스코드를 연동한 크루는 캡틴 수와 상관없이 올릴 수 있다")
     void memberIsNeverBlockedByAdminCount() {
         Account crew = accountWithId(3L, SystemRole.MEMBER);
+        crew.linkDiscord("1327394882193880003", "crew");
         assertThat(crew.roleChangeBlockedReason(1L, 1)).isNull();
+    }
+
+    @Test
+    @DisplayName("권한 변경 가능 여부 — 디스코드 연동 여부와 상관없다 (2026-10-27, 캡틴에게 연동은 필수가 아니다)")
+    void unlinkedAccountsAreNotBlocked() {
+        assertThat(accountWithId(3L, SystemRole.MEMBER).roleChangeBlockedReason(1L, 2)).isNull();
+        assertThat(accountWithId(4L, SystemRole.ADMIN).roleChangeBlockedReason(1L, 2)).isNull();
     }
 }

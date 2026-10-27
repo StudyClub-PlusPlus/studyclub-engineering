@@ -95,7 +95,7 @@ function NotificationHistory() {
           onChange={(next) => setFilters({ status: next, page: '1' })}
         />
         {/* 지금 조건에 걸린 전체 건수다 — 보이는 20건이 아니다. 못 읽었을 때는 숨긴다(0건으로 보이지 않게) */}
-        <span className='tnum text-sm text-fg-secondary' data-testid='history-total'>
+        <span className='tnum type-body-sm text-fg-secondary' data-testid='history-total'>
           {data && !error && `총 ${data.total.toLocaleString()}건`}
         </span>
         {showResendAll && (
@@ -182,7 +182,7 @@ function FilterSelect({
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className='h-9 rounded-control border border-border-strong bg-surface px-3 text-sm outline-none focus:border-brand disabled:bg-surface-2'
+      className='h-9 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand disabled:bg-surface-2'
     >
       <option value='ALL'>{value === 'ALL' ? label : '전체'}</option>
       {options.map((o) => (

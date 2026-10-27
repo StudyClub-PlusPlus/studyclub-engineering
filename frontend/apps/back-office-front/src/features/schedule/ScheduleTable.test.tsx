@@ -62,4 +62,28 @@ describe('일정 표', () => {
     expect(all).toBeChecked();
     expect(all.indeterminate).toBe(false);
   });
+  it('저장하지 못한 회차는 고친 값을 남기고, 저장한 회차만 비운다', async () => {
+    const onSave = vi.fn().mockResolvedValue(['42']);
+    render(
+      <ScheduleTable
+        group={group}
+        meetings={[meeting('41', 1, '2099-01-01T11:00:00Z'), meeting('42', 2, '2099-01-08T11:00:00Z')]}
+        people={[]}
+        onSave={onSave}
+        onAdd={vi.fn()}
+        onSetKickoff={vi.fn()}
+        onDelete={vi.fn()}
+        onDirtyChange={vi.fn()}
+      />,
+    );
+
+    await userEvent.type(screen.getByLabelText('1회차 제목'), '1장');
+    await userEvent.type(screen.getByLabelText('2회차 제목'), '2장');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(await screen.findByText(/회차 1개를 저장했고, 1개는 저장하지 못해/)).toBeInTheDocument();
+    expect(screen.getByLabelText('1회차 제목')).toHaveValue('');
+    expect(screen.getByLabelText('2회차 제목')).toHaveValue('2장');
+  });
 });

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -48,7 +49,7 @@ class StudyRoleSyncListenerTest {
     private static final String DISCORD_ROLE_ID = "1327394882193883140";
     private static final StudyParticipantWithdrawn EVENT =
             new StudyParticipantWithdrawn(
-                    EventMeta.now(1L), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER);
+                    EventMeta.now(1L), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER, null);
     private static final StudyParticipantJoined JOINED =
             new StudyParticipantJoined(
                     EventMeta.now(ACCOUNT_ID), STUDY_ID, 100L, ACCOUNT_ID, ParticipantRole.MEMBER);
@@ -106,6 +107,45 @@ class StudyRoleSyncListenerTest {
         linkedAccount(null);
 
         listener.onWithdrawn(EVENT);
+
+        verify(bot, never()).removeRole(any(), any(), any(), any());
+    }
+
+    @Test
+    void 구독자가_돌기_전에_연결을_해제했으면_중단_시점의_ID_에서_뗀다() {
+        linkedAccount(null);
+        when(bot.removeRole(anyString(), anyString(), anyString(), anyList())).thenReturn(OK);
+
+        listener.onWithdrawn(
+                new StudyParticipantWithdrawn(
+                        EventMeta.now(1L),
+                        STUDY_ID,
+                        100L,
+                        ACCOUNT_ID,
+                        ParticipantRole.MEMBER,
+                        DISCORD_USER_ID));
+
+        verify(bot)
+                .removeRole(SYSTEM_ID, DISCORD_ROLE_ID, DISCORD_STUDY_ID, List.of(DISCORD_USER_ID));
+    }
+
+    @Test
+    void 옛_ID_가_이_스터디에_참여_중인_다른_계정에_연동됐으면_떼지_않는다() {
+        linkedAccount(null);
+        Account other = mock(Account.class);
+        when(other.getId()).thenReturn(99L);
+        when(accounts.findByDiscordId(DISCORD_USER_ID)).thenReturn(Optional.of(other));
+        when(participants.existsByStudyIdAndAccountIdAndStatusIn(eq(STUDY_ID), eq(99L), anyList()))
+                .thenReturn(true);
+
+        listener.onWithdrawn(
+                new StudyParticipantWithdrawn(
+                        EventMeta.now(1L),
+                        STUDY_ID,
+                        100L,
+                        ACCOUNT_ID,
+                        ParticipantRole.MEMBER,
+                        DISCORD_USER_ID));
 
         verify(bot, never()).removeRole(any(), any(), any(), any());
     }

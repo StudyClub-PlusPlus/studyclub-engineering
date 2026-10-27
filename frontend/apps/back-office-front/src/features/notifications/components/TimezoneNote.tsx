@@ -21,7 +21,7 @@ export function TimezoneNote() {
   }, []);
 
   return (
-    <p className='mb-2 min-h-5 text-xs text-fg-muted' data-testid='timezone-note'>
+    <p className='mb-2 min-h-5 type-label-sm text-fg-muted' data-testid='timezone-note'>
       {zone && `표의 시각은 내 시간대 기준입니다 (${zone})`}
     </p>
   );

@@ -105,15 +105,15 @@ export function StudyCreateDialog({
       }
     >
       {done ? (
-        <p className='py-6 text-center text-sm text-fg-muted'>
+        <p className='py-6 text-center type-body-sm text-fg-muted'>
           등록되었습니다. 비공개 상태로 만들어지며, 모집을 시작하면 사이트에 공개됩니다.
         </p>
       ) : (
         <>
           {failure && (
-            <p className='mb-3 rounded-control bg-error-50 px-3 py-2 text-sm text-error-700'>{failure}</p>
+            <p className='mb-3 rounded-control bg-error-50 px-3 py-2 type-body-sm text-error-700'>{failure}</p>
           )}
-          {uploading && <p role='status' className='mb-3 text-sm text-fg-muted'>썸네일 업로드 중입니다.</p>}
+          {uploading && <p role='status' className='mb-3 type-body-sm text-fg-muted'>썸네일 업로드 중입니다.</p>}
           <fieldset disabled={busy} className='min-w-0'>
             <StudyForm mode='create' value={form} errors={errors} onChange={setForm} onUploadingChange={setUploading} />
           </fieldset>

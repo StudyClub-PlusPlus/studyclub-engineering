@@ -29,7 +29,7 @@ export function ApplicationFormTab({
 
   if (query.isPending)
     return (
-      <p role='status' className='py-10 text-center text-sm text-fg-muted'>
+      <p role='status' className='py-10 text-center type-body-sm text-fg-muted'>
         불러오는 중
       </p>
     );
@@ -43,7 +43,7 @@ export function ApplicationFormTab({
           : '신청 폼을 불러오지 못했습니다. 다시 시도해 주세요.';
     return (
       <div className='py-10 text-center'>
-        <p role='alert' className='text-sm text-fg-secondary'>
+        <p role='alert' className='type-body-sm text-fg-secondary'>
           {message}
         </p>
         {code !== 403 && code !== 404 && code !== 401 && (

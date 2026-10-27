@@ -33,16 +33,16 @@ export function KpiCard({
       data-anno={anno}
       className='card h-full px-5 py-4 transition-[border-color,box-shadow] duration-fast ease-out group-hover:border-border-strong group-hover:shadow-sm'
     >
-      <div className='text-[13px] font-medium text-fg-muted'>{label}</div>
+      <div className='type-label-lg text-fg-muted'>{label}</div>
       <div className='mt-1.5 flex items-baseline gap-2'>
-        <span className='tnum text-2xl font-extrabold tracking-tight'>{value}</span>
+        <span className='tnum type-headline-sm'>{value}</span>
         {delta !== undefined && (
           <span data-anno={anno ? `${anno}-1` : undefined}>
             <Delta value={delta} unit={deltaUnit} downIsBad={downIsBad} />
           </span>
         )}
       </div>
-      <div className='mt-1 text-xs text-fg-muted'>{sub}</div>
+      <div className='mt-1 type-label-sm text-fg-muted'>{sub}</div>
     </div>
   );
 
@@ -57,11 +57,11 @@ export function KpiCard({
 
 function Delta({ value, unit, downIsBad }: { value: number; unit: string; downIsBad: boolean }) {
   if (value === 0) {
-    return <span className='tnum text-xs font-semibold text-fg-muted'>–0{unit}</span>;
+    return <span className='tnum type-label-sm text-fg-muted'>–0{unit}</span>;
   }
   const good = downIsBad ? value > 0 : value < 0;
   return (
-    <span className={`tnum text-xs font-bold ${good ? 'text-success-700' : 'text-error-700'}`}>
+    <span className={`tnum type-label-sm ${good ? 'text-success-700' : 'text-error-700'}`}>
       {value > 0 ? '▲' : '▼'}
       {Math.abs(value)}
       {unit}

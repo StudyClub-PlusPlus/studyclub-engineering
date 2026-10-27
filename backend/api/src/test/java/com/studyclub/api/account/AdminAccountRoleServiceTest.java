@@ -83,10 +83,36 @@ class AdminAccountRoleServiceTest {
     }
 
     @Test
+    @DisplayName("디스코드 미연동 크루도 캡틴으로 올린다 — 연동은 필수가 아니다 (2026-10-27)")
+    void promotesUnlinkedMember() {
+        Account target = account(TARGET_ID, SystemRole.MEMBER);
+        givenAdmins(account(ACTOR_ID, SystemRole.ADMIN));
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+
+        service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.ADMIN);
+
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.ADMIN);
+        verify(auditRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("디스코드 미연동 캡틴도 크루로 내린다 — 권한 변경은 디스코드 연동을 보지 않는다")
+    void demotesUnlinkedAdmin() {
+        Account target = account(TARGET_ID, SystemRole.ADMIN);
+        givenAdmins(account(ACTOR_ID, SystemRole.ADMIN), target);
+        when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
+
+        service.changeSystemRole(ACTOR_ID, TARGET_ID, SystemRole.MEMBER);
+
+        assertThat(target.getSystemRole()).isEqualTo(SystemRole.MEMBER);
+    }
+
+    @Test
     @DisplayName("크루를 올리는 것은 캡틴 수와 상관없이 통과한다")
     void promotionIgnoresAdminCount() {
         Account actor = account(ACTOR_ID, SystemRole.ADMIN);
         Account target = account(TARGET_ID, SystemRole.MEMBER);
+        target.linkDiscord("1327394882193880002", "crew");
         givenAdmins(actor);
         when(accountRepository.findByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(target));
 

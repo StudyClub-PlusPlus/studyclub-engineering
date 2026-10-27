@@ -78,8 +78,12 @@ services:
       GA4_MEASUREMENT_ID: ${GA4_MEASUREMENT_ID:-}
       GA4_API_SECRET: ${GA4_API_SECRET:-}
       DISCORD_BOT_URL: ${DISCORD_BOT_URL:-http://discord:4800}
+      # 시스템 호출의 X-Discord-User-ID (봇 자신의 유저 ID). 비어 있으면 스터디 role 동기화가 실패한다 (DiscordBotClient.systemUserId)
+      DISCORD_CONFIG_BOT_ID: ${DISCORD_CONFIG_BOT_ID:-}
+      # 디스코드 role 어긋남을 되돌릴지. 기본은 로그만 (specs/discord-role-sync)
+      DISCORD_ROLE_SYNC_ENFORCE: ${DISCORD_ROLE_SYNC_ENFORCE:-false}
       # 디스코드 계정 연동 OAuth. 비어 있으면 연동만 503 (specs/study-application 「디스코드 계정 연동」)
-      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      DISCORD_CONFIG_GUILD_ID: ${DISCORD_CONFIG_GUILD_ID:-}
       DISCORD_OAUTH_CLIENT_ID: ${DISCORD_OAUTH_CLIENT_ID:-}
       DISCORD_OAUTH_CLIENT_SECRET: ${DISCORD_OAUTH_CLIENT_SECRET:-}
       DISCORD_OAUTH_REDIRECT_URI: ${DISCORD_OAUTH_REDIRECT_URI:-}
@@ -116,6 +120,8 @@ services:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:${API_PORT:-28080}
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       NEXT_PUBLIC_OAUTH_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:4700/api/auth/callback}
+      # 디스코드 연동 팝업 client id. 비면 개발 서버는 팝업 없이 목 코드를 보낸다 (백엔드에 OAuth 설정이 없으면 503)
+      NEXT_PUBLIC_DISCORD_CLIENT_ID: ${DISCORD_OAUTH_CLIENT_ID:-}
       # ── 운영 API 에 붙이기 (화면만 볼 때) ──────────────────────────────────────────
       # 위 세 줄 대신 아래를 쓰고 `docker compose up -d --no-deps frontend` 로 frontend 만 띄운다.
       # 콜백은 운영 페이지가 받아 localhost 로그인 창으로 code 를 넘긴다. ⚠️ 운영 데이터 — 쓰기는 실제로 반영된다.

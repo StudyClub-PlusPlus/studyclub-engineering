@@ -5,9 +5,11 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { OnboardingConsent } from '@core/components/OnboardingConsent';
+import { OnboardingDiscord } from '@core/components/OnboardingDiscord';
 import { TimeZonePicker } from '@core/components/TimeZonePicker';
 import { getUser, setUser } from '@core/lib/auth';
 import type { Locale } from '@core/lib/content';
+import { resetMemberData, setTimeZone, setMarketing } from '@core/lib/me';
 import { checkNicknameAvailability } from '@core/lib/nickname-availability';
 import {
   clearDrafts,
@@ -42,29 +44,34 @@ function OnboardingScreen() {
   const search = useSearchParams();
   const router = useRouter();
   const next = returnPath(search.get('next'), locale);
+  const discordStep = search.get('step') === 'discord';
   const forcedPreview = search.has('scenario');
   const candidate = search.get('scenario');
   const scenario = ONBOARDING_SCENARIOS.find((value) => value === candidate) ?? 'default';
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (getUser()?.onboardingCompletedAt && !forcedPreview) {
+    if (discordStep) {
+      setReady(true);
+    } else if (getUser()?.onboardingCompletedAt && !forcedPreview) {
       router.replace(next);
     } else {
       setReady(true);
     }
-  }, [forcedPreview, next, router]);
+  }, [discordStep, forcedPreview, next, router]);
+
+  if (discordStep) return <OnboardingDiscord locale={locale} next={next} />;
 
   return (
     <div className='min-h-[80vh] bg-surface-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12'>
       <ScreenSpecRegistrar spec={SPEC} />
       <div className='mx-auto max-w-[540px]'>
         <header className='mb-7 text-center' data-anno='1'>
-          <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 text-xs font-medium text-primary-700'>
+          <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 type-label-sm text-primary-700'>
             <Check size={13} aria-hidden='true' />
             {locale === 'ko' ? 'Google 계정 연결 완료' : 'Google account connected'}
           </div>
-          <h1 className='break-keep text-2xl font-bold tracking-tight sm:text-[28px]'>
+          <h1 className='break-keep type-headline-lg sm:type-headline-lg'>
             {locale === 'ko' ? 'StudyClub에 오신 것을 환영해요' : 'Welcome to StudyClub'}
           </h1>
         </header>
@@ -79,7 +86,7 @@ function OnboardingScreen() {
           <div
             aria-busy='true'
             role='status'
-            className='rounded-card border border-border bg-bg p-8 text-sm text-fg-muted'
+            className='rounded-card border border-border bg-bg p-8 type-body-sm text-fg-muted'
           >
             {locale === 'ko' ? '가입 정보를 확인하고 있어요…' : 'Loading your profile…'}
           </div>
@@ -241,6 +248,9 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
         return;
       }
       // Playground completion only. Never send a real consent or registration request.
+      resetMemberData();
+      setTimeZone(draft.timeZone);
+      setMarketing(draft.marketingAgreed);
       setUser({
         id: -1001,
         email: 'crew@example.com',
@@ -256,7 +266,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
       } catch {
         /* Optional toast. */
       }
-      router.replace(next);
+      router.replace(`/proto/core/${locale}/onboarding?step=discord&next=${encodeURIComponent(next)}`);
     }, 900);
   }
 
@@ -271,11 +281,11 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
         <div
           data-anno='6'
           role='alert'
-          className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 text-sm text-error-700'
+          className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 type-body-sm text-error-700'
         >
           <div className='flex items-start gap-2'>
             <AlertCircle size={17} className='mt-0.5 shrink-0' />
-            <p className='leading-relaxed'>
+            <p className=''>
               {problem === 'expired'
                 ? ko
                   ? '로그인 시간이 만료됐어요. 다시 로그인하면 입력하던 내용을 이어서 작성할 수 있어요.'
@@ -322,7 +332,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
             id='nickname-help'
             data-anno='2-1'
             role={nickLine.tone === 'error' ? 'alert' : undefined}
-            className={`mt-2 flex items-center gap-1.5 text-xs leading-relaxed ${
+            className={`mt-2 flex items-center gap-1.5 type-label-sm ${
               nickLine.tone === 'ok' ? 'text-success-700' : nickLine.tone === 'error' ? 'text-error-700' : 'text-fg-muted'
             }`}
           >
@@ -346,11 +356,11 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
         />
 
         <section className='border-t border-border pt-6'>
-          <h2 className='mb-4 text-base font-semibold'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
+          <h2 className='mb-4 type-title-md'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
           {!ko && (
             <p
               role='note'
-              className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 text-xs leading-relaxed text-fg-muted'
+              className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 type-label-sm text-fg-muted'
             >
               The documents below are currently available in Korean. English versions have not been provided yet.
             </p>

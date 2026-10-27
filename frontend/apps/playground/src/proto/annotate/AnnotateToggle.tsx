@@ -17,7 +17,7 @@ export function AnnotateToggle() {
       onClick={toggle}
       disabled={!has}
       title={has ? '설명 켜기/끄기 (A)' : '이 화면은 아직 설명이 없습니다'}
-      className='fixed bottom-3 left-1/2 z-[80] -translate-x-1/2 rounded-full px-4 py-2.5 text-[13px] font-bold shadow-lg transition-colors disabled:cursor-not-allowed'
+      className='fixed bottom-3 left-1/2 z-[80] -translate-x-1/2 rounded-full px-4 py-2.5 type-label-lg shadow-lg transition-colors disabled:cursor-not-allowed'
       style={{
         background: !has ? 'var(--color-surface-2)' : on ? 'var(--color-fg)' : 'var(--color-brand)',
         color: !has ? 'var(--color-fg-muted)' : '#fff',

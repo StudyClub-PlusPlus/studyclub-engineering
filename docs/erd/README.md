@@ -49,6 +49,7 @@ erDiagram
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
   ACCOUNT_LEAVE_REASON
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
+  ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
@@ -80,6 +81,7 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
+  ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
   NOTIFICATION {
     bigint ID PK
@@ -174,6 +176,16 @@ erDiagram
     varchar  AFTER_VALUE          "ROLE_CHANGE 의 변경 후 SYSTEM_ROLE"
     datetime CREATED_AT           "행위 시각"
     datetime UPDATED_AT
+  }
+
+  SITE_NOTICE {
+    bigint   ID                PK "게시 순서"
+    varchar  TITLE
+    text     BODY                 "서식 없는 글"
+    bigint   AUTHOR_ACCOUNT_ID    "등록한 캡틴. FK 없음"
+    datetime REMOVED_AT           "소프트 삭제. NULL = 게시 중"
+    datetime CREATED_AT           "게시 시각"
+    datetime UPDATED_AT           "마지막 수정"
   }
 
   STUDY_PROGRAM {
@@ -354,6 +366,7 @@ erDiagram
 
 | 알림 | [NOTIFICATION](./NOTIFICATION.md) | 알림 발송 이력 | `STATUS`, `ERROR_TYPE` |
 | 알림 | [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md) | 이벤트별 메일 문구 | — |
+| 공지 | [SITE_NOTICE](./SITE_NOTICE.md) | 사이트 전체 공지 — 콘솔이 쓰고 사이트가 읽는다 | `REMOVED_AT` (소프트 삭제) |
 
 
 ## ERD 추가·변경 절차

@@ -41,7 +41,7 @@ const REPEAT_OPTIONS: { key: Repeat; label: string }[] = [
 /** 월요일부터 — 주간 일정과 같은 순서. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-const CHIP = 'h-9 rounded-control border text-sm font-semibold transition-colors';
+const CHIP = 'h-9 rounded-control border type-label-lg transition-colors';
 const chipTone = (on: boolean) =>
   on ? 'border-brand bg-brand text-white' : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2';
 
@@ -138,7 +138,7 @@ export function AddMeetingDialog({
         </div>
 
         <div className='flex flex-col gap-1.5'>
-          <span className='text-sm font-medium text-neutral-800'>반복</span>
+          <span className='type-label-lg text-neutral-800'>반복</span>
           <div role='group' aria-label='반복' className='flex flex-wrap gap-1.5'>
             {REPEAT_OPTIONS.map((o) => (
               <button
@@ -168,7 +168,7 @@ export function AddMeetingDialog({
                   </button>
                 ))}
               </div>
-              {errors.weekdays && <p className='text-xs text-error-700'>{errors.weekdays}</p>}
+              {errors.weekdays && <p className='type-label-sm text-error-700'>{errors.weekdays}</p>}
             </div>
           )}
         </div>
@@ -198,10 +198,10 @@ export function AddMeetingDialog({
           onChange={(ev) => change({ title: ev.target.value })}
         />
 
-        <div className='rounded-control border border-border px-3.5 py-2.5 text-sm'>
+        <div className='rounded-control border border-border px-3.5 py-2.5 type-body-sm'>
           {plan && preview && first ? (
             <>
-              <p className='font-bold text-fg'>
+              <p className='font-semibold text-fg'>
                 {plan.dates.length === 1 ? (
                   <>
                     <span className='tnum'>{preview.from}</span>회차로 추가됩니다
@@ -216,7 +216,7 @@ export function AddMeetingDialog({
                   </>
                 )}
               </p>
-              <ul className='mt-1 flex flex-col gap-0.5 text-xs text-fg-secondary'>
+              <ul className='mt-1 flex flex-col gap-0.5 type-label-sm text-fg-secondary'>
                 {plan.dates.length > 1 && (
                   <li className='tnum'>
                     {dayLabel(first)} ~ {dayLabel(plan.dates[plan.dates.length - 1])}
@@ -242,7 +242,7 @@ export function AddMeetingDialog({
               </ul>
             </>
           ) : touched && errors.form ? (
-            <p className='font-medium text-error-700'>{errors.form}</p>
+            <p className='font-semibold text-error-700'>{errors.form}</p>
           ) : (
             <p className='text-fg-muted'>
               일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.

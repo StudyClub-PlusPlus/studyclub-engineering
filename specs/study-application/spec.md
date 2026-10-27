@@ -32,6 +32,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 | GET | /api/studies/{studyId}/applications/me | 내 신청 여부 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
 | GET | /api/admin/studies/{studyId}/applications | 신청 결과 목록 | O (캡틴 누구나) | 캡틴은 스터디 신청서 결과를 모아볼 수 있다 | 구현완료 |
 | POST | /api/me/discord/link | 디스코드 계정 연동 | O (로그인) | 크루는 스터디 신청 폼을 제출할 수 있다 | 구현완료 |
+| DELETE | /api/me/discord/link | 디스코드 연결 해제 | O (로그인) | 마이페이지 디스코드 연결 ([profile-edit](../profile-edit/spec.md#디스코드-연결-화면-계약-2026-10-25)) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -543,7 +544,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 ### Response — 204 No Content
 
-핸들은 이후 계정 조회에서 읽는다.
+연결 여부는 이후 `GET /api/me`의 `discordLinked`로, 연결된 계정 이름은 `discordHandle`로 확인한다.
 
 ### Error Responses
 
@@ -553,16 +554,38 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 | 401 | UNAUTHORIZED | 미로그인 |
 | 403 | DISCORD_NOT_IN_GUILD | 스터디클럽 디스코드 서버(길드) 멤버가 아님. 저장하지 않는다. 화면이 갈린다: 온보딩 권유 화면은 「나중에 연동하기」로 넘어가고, 신청 직전 연동 창은 서버 가입 안내(초대 링크는 프론트 상수 `site.discord_invite`)를 띄운다 |
 | 409 | CONFLICT | 그 `DISCORD_ID` 가 다른 계정에 이미 있음 (`UNIQUE(DISCORD_ID)`) |
+| 409 | DISCORD_UNLINK_BLOCKED | 이미 다른 디스코드 계정이 연동돼 있고 참여 중인 스터디가 있다 — 갈아타기 거절 (POL-0007). 연동은 그대로 둔다 |
 | 503 | EXTERNAL_SERVICE_ERROR | 디스코드 토큰 교환 실패·타임아웃, 서버에 OAuth 설정 없음. 폼을 열지 않는다. 연동 팝업에 잔류 |
 
 - 같은 계정이 같은 `DISCORD_ID` 로 다시 연동하면 204 (멱등). 핸들은 새 값으로 바뀐다.
 - 외부 실패는 다른 연동(구글·봇)과 같은 503 이다 (처음 적었던 502 에서 바꿈, #298).
 
-프로토는 OAuth 없이 화면에서 바로 연결한다. 실패 화면은 미구현.
+Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이션한다. 실패 시 미연결 유지, 오류 안내와 재시도 제공.
+
+### 화면 흐름 (DSC-04, 2026-10-27)
+
+```
+「디스코드 연동하기」 ─ window.open ─▶ discord.com/oauth2/authorize (scope identify guilds.members.read, state)
+                                              │ 승인
+                                              ▼
+                <사이트>/api/auth/discord/callback ─ postMessage({code, state}) ─▶ 연동 창 ─▶ POST /api/me/discord/link
+```
+
+- 팝업은 클릭과 같은 틱에 연다 (await 뒤면 브라우저가 차단한다). 차단되면 「팝업을 허용한 뒤 다시」 문구
+- 연동 창은 **같은 출처 · 표식 `studyclub-discord-oauth` · 이번에 만든 `state`** 가 모두 맞는 메시지만 받는다
+- 창을 닫거나 디스코드에서 취소하면(`error=access_denied`) 문구 없이 연동 창에 남는다
+- `redirect_uri` 는 `<사이트 주소>/api/auth/discord/callback`. 서버 `DISCORD_OAUTH_REDIRECT_URI` · Discord 개발자 포털 Redirects 와 글자까지 같아야 토큰 교환이 된다
+- 켜는 조건: 프론트 빌드에 `NEXT_PUBLIC_DISCORD_CLIENT_ID` 가 있으면 켠다. 없으면 「준비 중」. 개발 서버는 client id 없이 목 코드로 켠다
+
+### 퍼널·계측
+
+- 단계: 활성화 (신청 직전 게이트 — 연동이 막히면 신청이 없다)
+- 이벤트: 바뀌지 않는다. `My Discord Connected` (front) 는 이제 실제 연동 성공에서만 난다
+- 기대: 신청 버튼 클릭 대비 신청 제출 전환이 0 에서 회복. A/B 없음
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/components/ApplyDiscordGate.tsx`
+- `frontend/apps/core-front/src/components/ApplyDiscordGate.tsx` — 팝업은 `src/lib/discord.ts` 의 `requestDiscordCode`, 착지점은 `src/app/api/auth/discord/callback/route.ts`
 - `frontend/apps/playground/src/proto/core/components/ApplyDiscordGate.tsx`
 
 ### 외부 연동 (SYS-02)
@@ -570,11 +593,38 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 - 공급자: Discord OAuth
 - 서버가 인가 코드 → 액세스 토큰 → 사용자 식별. 화면에 `DISCORD_ID` 를 돌려주지 않는다
 - 실패·타임아웃 시 계정 컬럼을 부분 저장하지 않는다
-- OAuth scope: `identify` `guilds.members.read`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_GUILD_ID}/member` (404 면 멤버 아님)
+- OAuth scope: `identify` `guilds.members.read`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_CONFIG_GUILD_ID}/member` (404 면 멤버 아님)
 - `redirect_uri` 는 서버 설정(`DISCORD_OAUTH_REDIRECT_URI`) 고정. 요청에서 받지 않는다
 - `DISCORD_HANDLE` 은 디스코드 `username` (표시 이름 아님)
 - 디스코드 호출이 다 끝난 뒤 저장만 짧은 트랜잭션으로 감싼다 — 호출 중 DB 커넥션을 잡지 않는다
-- 설정: `DISCORD_OAUTH_CLIENT_ID` · `DISCORD_OAUTH_CLIENT_SECRET` · `DISCORD_OAUTH_REDIRECT_URI` · `DISCORD_GUILD_ID`
+- 설정: `DISCORD_OAUTH_CLIENT_ID` · `DISCORD_OAUTH_CLIENT_SECRET` · `DISCORD_OAUTH_REDIRECT_URI` · `DISCORD_CONFIG_GUILD_ID`
+
+## 디스코드 연결 해제
+
+> 화면: 마이페이지 디스코드 줄 — [profile-edit 「디스코드 연결 화면 계약」](../profile-edit/spec.md#디스코드-연결-화면-계약-2026-10-25)
+
+### 기본 정보
+
+- **Method**: DELETE
+- **Path**: `/api/me/discord/link`
+- **인증**: 필요 — 로그인 본인
+- **설명**: `ACCOUNT.DISCORD_ID` · `DISCORD_HANDLE` 을 비운다. 신청 때 받은 서버 별명 `DISCORD_NICKNAME` 은 연동과 따로라 남긴다. 디스코드는 부르지 않는다.
+
+### Response — 204 No Content
+
+- 연동하지 않은 계정도 204 (멱등).
+- 해제 뒤 다시 신청하려면 연동부터 다시 한다 (신청 제출 403).
+
+### Error Responses
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 미로그인 |
+| 409 | DISCORD_UNLINK_BLOCKED | 명부 행이 `ACTIVE` · `PAUSED` 인 스터디가 하나라도 있다. 연동은 그대로 둔다. 화면은 차단 문구와 「내 스터디 확인하기」를 띄운다 |
+
+- 참여 중 판정은 내 스터디룸이 「시작 전 · 참여 중」으로 보여 주는 행과 같다. `WITHDRAWN` · `COMPLETED` 는 막지 않는다.
+- 계정 행을 잠근 뒤 명부를 본다. 명부에 들어오는 길은 신청 제출뿐이고 그것도 계정을 먼저 잠그므로, 확인과 해제 사이에 새 참여가 끼어들지 못한다.
+- 캡틴(`ADMIN`)도 크루와 같은 규칙으로 해제한다 (2026-10-27 — 그전에는 `409 DISCORD_LINK_REQUIRED` 로 막았다. [share 10-27](../../docs/share/2026-10-27-captain-discord-optional.md)).
 
 ---
 
@@ -589,6 +639,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 | 내 신청 여부 | 로그인 본인 | 서버 |
 | 신청 결과 조회 | 캡틴 누구나 (네비게이터 불가) | 서버 |
 | 디스코드 연동 | 로그인 본인 | 서버 |
+| 디스코드 연결 해제 | 로그인 본인, 참여 중인 스터디 없음 | 서버 |
 | 미로그인 신청 | 거절 | 서버. 프로토는 로그인 가정 |
 
 ---
@@ -611,3 +662,13 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 - [NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간
 - [NEEDS CLARIFICATION] 열려 있는 모집 회차가 동시에 둘이면 어느 회차에 붙일지. 지금은 1건이라고 가정
 - [NEEDS CLARIFICATION] 결과 목록에서 명부 `WITHDRAWN` 인 사람의 신청을 뺄지. ERD 는 신청 행에 거절 상태가 없음
+
+
+## 디스코드 연결 후 신청 복귀 (화면 계약)
+
+- 신청하기에서 로그인 → 온보딩 → 디스코드 연결이 필요해도 선택한 스터디 유지.
+- 로그인·가입 완료 여부와 연결 여부 확인 후 해당 신청 폼 열기. 중간에 모집이 마감됐거나 이미 신청한 경우 기존 신청 가능 여부 판정 우선.
+- 가입 직후 연결 선택에서 나중에 하기를 누르면 선택한 스터디 상세로 복귀. 다시 신청하기를 누를 때 연결 필수 안내.
+- Playground는 숫자 study_id 상세 URL의 `apply=1`을 소비하여 폼 열기. 새로고침 시 자동 반복 방지를 위해 소비 후 제거.
+- 연결 실패·인증 취소는 오류 안내 후 재시도 가능. 신청 폼은 연결 성공 후 열기.
+- 실제 OAuth에서는 검증된 state 및 내부 복귀 주소만 사용. 클라이언트의 연동 플래그와 무관하게 신청 API의 서버 연동 검증 유지.
