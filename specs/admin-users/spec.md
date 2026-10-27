@@ -560,6 +560,10 @@
 - 감사 기록 쓰기가 실패하면 이메일을 돌려주지 않고 권한도 바뀌지 않는다 — 저장소를 실패시키는 테스트로 확인한다.
 - 마스킹 유틸 — 일반 · `@` 앞 1자 · `@` 없음 · null.
 
+## 퍼널·계측
+
+해당 없음 — 백오피스 회원 관리라 트래킹 플랜 대상(사용자 사이트) 밖이다. 이벤트도 지표 변화도 없다.
+
 ## 범위 밖
 
 - 네비게이터 지정·해제 — 스터디 크루 명단 소관 ([study-group](../study-group/spec.md) · [captain-view-attendees](../../01-planning/stories/captain-view-attendees/PRD.md))
