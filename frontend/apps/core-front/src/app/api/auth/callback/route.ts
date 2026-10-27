@@ -6,9 +6,11 @@ import { NextRequest } from 'next/server';
  * code 를 받아도 되는 opener. 백오피스도 이 콜백을 같이 쓴다(GCP 에 core-front 주소만 등록).
  * 로컬 두 주소는 로컬 화면을 운영 콜백에 붙여 볼 때용이다(docker-compose 「운영 API 에 붙이기」).
  * 여기 없는 사이트가 팝업을 열면 postMessage 가 버려진다 — '*' 였을 때는 아무 사이트나 인가 code 를 받을 수 있었다.
+ * env 로 받지 않는다 — NEXT_PUBLIC_BACKOFFICE_URL 은 빌드 인자라 서버 라우트 실행 때는 비어 있다(stage 실측 2026-10-27).
  */
 const OPENER_ORIGINS = [
-  new URL(process.env.NEXT_PUBLIC_BACKOFFICE_URL ?? 'http://localhost:4701').origin,
+  'https://back-office.studyclub.life',
+  'https://back-office-stage.studyclub.life',
   'http://localhost:4700',
   'http://localhost:4701',
 ];

@@ -18,6 +18,7 @@ describe('구글 OAuth 콜백', () => {
     const html = await (await GET(new NextRequest('http://localhost/api/auth/callback?code=c'))).text();
 
     expect(html).not.toContain('"*"');
-    expect(html).toContain('http://localhost:4701');
+    expect(html).toContain('https://back-office-stage.studyclub.life');
+    expect(html).toContain('https://back-office.studyclub.life');
   });
 });

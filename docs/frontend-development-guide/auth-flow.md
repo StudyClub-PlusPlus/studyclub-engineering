@@ -40,11 +40,12 @@
 
 ### /api/auth/callback 보안 주의
 
-`postMessage` 의 `targetOrigin` 에 `"*"` 를 쓰지 않는다. 쓰면 아무 사이트나 이 팝업을 열어 Google 인가 코드를 받는다. 받는 쪽은 core-front 자기 출처 · 백오피스(`NEXT_PUBLIC_BACKOFFICE_URL`) · 로컬 4700/4701 로 한정한다. 쿼리값을 `<script>` 에 넣을 때는 `<` 를 `\u003c` 로 이스케이프한다 (`</script>` 탈출 방지).
+`postMessage` 의 `targetOrigin` 에 `"*"` 를 쓰지 않는다. 쓰면 아무 사이트나 이 팝업을 열어 Google 인가 코드를 받는다. 받는 쪽은 core-front 자기 출처 · 백오피스(운영·stage 주소) · 로컬 4700/4701 로 한정한다. 쿼리값을 `<script>` 에 넣을 때는 `<` 를 `\u003c` 로 이스케이프한다 (`</script>` 탈출 방지).
 
 ```typescript
 // app/api/auth/callback/route.ts
-const OPENER_ORIGINS = [new URL(process.env.NEXT_PUBLIC_BACKOFFICE_URL ?? 'http://localhost:4701').origin, 'http://localhost:4700', 'http://localhost:4701'];
+// env 가 아니라 주소를 적는다 — NEXT_PUBLIC_* 는 빌드 인자라 서버 라우트 실행 때 비어 있다
+const OPENER_ORIGINS = ['https://back-office.studyclub.life', 'https://back-office-stage.studyclub.life', 'http://localhost:4700', 'http://localhost:4701'];
 // [window.location.origin, ...OPENER_ORIGINS] 각각으로 postMessage — 맞지 않는 출처는 브라우저가 버린다
 ```
 
