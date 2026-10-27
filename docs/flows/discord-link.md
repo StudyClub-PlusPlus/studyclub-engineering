@@ -24,7 +24,7 @@
 |---|---|
 | 팝업 열기 · 메시지 받기 | core-front `src/lib/discord.ts` `requestDiscordCode` |
 | 착지점 | core-front `src/app/api/auth/discord/callback/route.ts` |
-| 연동 창 | core-front `src/components/ApplyDiscordGate.tsx` |
+| 연동 진입점 | core-front `src/components/ApplyDiscordGate.tsx` (신청 직전) · `src/features/profile/DiscordRow.tsx` (마이페이지, 해제 포함) |
 | 코드 교환 · 저장 | backend `AccountDiscordLinkService` · `DiscordOAuthClient` |
 
 - 화면은 디스코드 ID 를 보내지 않는다. 서버가 code 로 디스코드에 직접 묻는다

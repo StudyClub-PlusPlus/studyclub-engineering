@@ -118,6 +118,15 @@ export function forgetDiscordLinkState(accountId: number) {
   void getQueryClient().invalidateQueries({ queryKey: profileKeys.account(accountId) });
 }
 
+/**
+ * DELETE /api/me/discord/link — 응답 204. 참여 중이면 409 DISCORD_UNLINK_BLOCKED, 캡틴이면 409 DISCORD_LINK_REQUIRED.
+ * 다음 신청 때 연동 창이 다시 떠야 하므로 계정 캐시를 버린다.
+ */
+export async function unlinkDiscord(accountId: number): Promise<void> {
+  await http<null>('/api/me/discord/link', { method: 'DELETE' });
+  await getQueryClient().invalidateQueries({ queryKey: profileKeys.account(accountId) });
+}
+
 /** POST /api/me/discord/link — 인가 코드만 보낸다. 디스코드 식별자·핸들은 서버가 직접 받는다. 응답 204. */
 export async function linkDiscord(accountId: number, code: string): Promise<void> {
   await http<null>('/api/me/discord/link', {

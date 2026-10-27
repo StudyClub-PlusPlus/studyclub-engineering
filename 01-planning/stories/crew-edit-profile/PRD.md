@@ -196,7 +196,7 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/my` 내 정보 (`ProfileCard`) | 있음 — 닉네임 · 시간대 저장, 마케팅 수신 API 연결 | 계정 이름·연결·해제·참여 중 차단 안내 연결 |
+| FE | core-front `/my` 내 정보 (`ProfileCard`) | 있음 — 닉네임 · 시간대 저장, 마케팅 수신 API 연결. 디스코드 줄(`DiscordRow`)은 `@계정 이름` · 연결하기(OAuth 팝업) · 연결 해제 · 참여 중 차단 안내(4-1) · 실패·취소(4-2) 연결 (2026-10-27) | 없음 |
 | BE | `PATCH /api/me` · 마케팅 수신 `GET` · `PUT` | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
 | BE | `POST /api/me/discord/link` | 구현완료 | [crew-submit-application](../crew-submit-application/PRD.md#개발-범위)과 같은 일 |
 | Playground | 디스코드 연결·해제·차단·실패 | 구현 · 브라우저 시뮬레이션 | 없음 |

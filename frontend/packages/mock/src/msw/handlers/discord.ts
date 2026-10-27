@@ -10,6 +10,7 @@ import { mockClient, readSessionUser, type MockResolveContext } from '../utils';
  * 처음 상태를 바꾸려면 MSW 데브툴에서 프리셋을 고르거나 이 키를 지운다.
  */
 export const MOCK_DISCORD_LINKED_KEY = 'msw-discord-linked';
+const MOCK_DISCORD_HANDLE = 'jiwon_dev';
 
 function readLinked(): boolean {
   if (typeof window === 'undefined') return false;
@@ -44,7 +45,13 @@ function sessionAccount() {
 }
 
 function me(discordLinked: boolean) {
-  return { ...sessionAccount(), createdAt: '2026-01-01T00:00:00Z', discordNickname: null, discordLinked };
+  return {
+    ...sessionAccount(),
+    createdAt: '2026-01-01T00:00:00Z',
+    discordNickname: null,
+    discordLinked,
+    discordHandle: discordLinked ? MOCK_DISCORD_HANDLE : null,
+  };
 }
 
 /**
@@ -66,7 +73,8 @@ async function realMeWithLinked(request: Request): Promise<Response | ReturnType
   }
   if (real.status === 401 && readSessionUser()?.id === PREVIEW_ACCOUNT_ID) return me(readLinked());
   if (!real.ok) return real;
-  return HttpResponse.json({ ...(await real.json()), discordLinked: readLinked() });
+  const linked = readLinked();
+  return HttpResponse.json({ ...(await real.json()), discordLinked: linked, discordHandle: linked ? MOCK_DISCORD_HANDLE : null });
 }
 
 export const meDiscordHandlers = mockClient.createHandlerGroup('/api', [
@@ -122,6 +130,30 @@ export const discordLinkHandlers = mockClient.createHandlerGroup('/api/me/discor
         label: '디스코드 응답 실패 (503)',
         status: 503,
         response: { errorCode: 'EXTERNAL_SERVICE_ERROR', errorMessage: '디스코드 연동에 실패했습니다.' },
+      },
+    ],
+  },
+  {
+    method: 'DELETE',
+    path: '/link',
+    presets: [
+      {
+        label: '해제 성공',
+        status: 204,
+        response: () => {
+          writeLinked(false);
+          return new HttpResponse(null, { status: 204 });
+        },
+      },
+      {
+        label: '참여 중이라 해제 불가 (409)',
+        status: 409,
+        response: { errorCode: 'DISCORD_UNLINK_BLOCKED', errorMessage: '참여 중인 스터디가 있어 디스코드 연결을 해제할 수 없습니다.' },
+      },
+      {
+        label: '캡틴이라 해제 불가 (409)',
+        status: 409,
+        response: { errorCode: 'DISCORD_LINK_REQUIRED', errorMessage: '캡틴은 디스코드 연결을 해제할 수 없습니다.' },
       },
     ],
   },
