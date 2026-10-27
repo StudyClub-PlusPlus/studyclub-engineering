@@ -117,7 +117,7 @@ def test_load_settings_study_settings_default_to_unset(caplog):
                 "DISCORD_CONFIG_ALERT_CHANNEL_ID": "also-not-an-id",
                 "DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID": "",
                 "DISCORD_CONFIG_BULLETIN_CHANNEL_ID": "nor-this",
-                "DISCORD_CONFIG_ANCHOR_CHANNEL_ID": "===== New Study =====",
+                "DISCORD_CONFIG_ANCHOR_CHANNEL_ID": "구분선",
                 "DISCORD_API_KEY": "  ",
             },
             load_dotenv_file=False,
@@ -135,7 +135,7 @@ def test_load_settings_study_settings_default_to_unset(caplog):
     assert "not-an-id" in caplog.text
     assert "nor-this" in caplog.text
     # A category name where the ID belongs is refused, not matched by name.
-    assert "===== New Study =====" in caplog.text
+    assert "구분선" in caplog.text
 
 
 def test_backend_base_url_is_read_from_api_base_url():

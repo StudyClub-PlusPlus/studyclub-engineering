@@ -58,7 +58,7 @@ def _category(name, voice_channels=()) -> Mock:
 
 def _anchor() -> Mock:
     """The divider category, found by its ID; the name is only for the eye."""
-    category = _category("===== New Study =====")
+    category = _category("구분선")
     category.id = ANCHOR_ID
     return category
 

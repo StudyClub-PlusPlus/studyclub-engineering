@@ -37,7 +37,7 @@ class FakeGuild:
     def __init__(
         self,
         *,
-        categories=((ANCHOR_ID, "===== New Study ====="),),
+        categories=((ANCHOR_ID, "구분선"),),
     ):
         self.category = _created(11)
         self.text = _created(12)
@@ -153,7 +153,7 @@ def test_create_study_voice_channel_is_visible_to_all_but_joinable_by_the_study_
 
 def test_create_study_goes_below_the_configured_reference_category(db_path):
     """The reference category is found by its ID, wherever it sits and whatever it is named."""
-    guild = FakeGuild(categories=((21, "===== New Study ====="), (22, "--- studies ---")))
+    guild = FakeGuild(categories=((21, "구분선"), (22, "--- studies ---")))
 
     response = _post(_client(_bot(guild), db_path, anchor_channel_id=22))
 
@@ -163,7 +163,7 @@ def test_create_study_goes_below_the_configured_reference_category(db_path):
 
 def test_create_study_without_reference_category_goes_to_the_top(db_path, caplog):
     """A missing reference category does not block creation; it is logged and the study goes on top."""
-    guild = FakeGuild(categories=((21, "===== New Study ====="),))
+    guild = FakeGuild(categories=((21, "구분선"),))
 
     with caplog.at_level("WARNING"):
         response = _post(_client(_bot(guild), db_path))
@@ -340,7 +340,7 @@ def test_create_study_while_same_name_is_processing_conflicts(db_path):
 
 def test_create_study_with_existing_category_conflicts_and_frees_the_name(db_path):
     """A category made outside this service blocks the name without leaving a reservation."""
-    guild = FakeGuild(categories=[(ANCHOR_ID, "===== New Study ====="), (21, "알고리즘 스터디")])
+    guild = FakeGuild(categories=[(ANCHOR_ID, "구분선"), (21, "알고리즘 스터디")])
 
     response = _post(_client(_bot(guild), db_path))
 

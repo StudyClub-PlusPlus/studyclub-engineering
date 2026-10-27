@@ -39,7 +39,7 @@
 | 용어 | 뜻 |
 |------|-----|
 | **카테고리(category)** | Discord 사이드바에서 채널들을 묶는 접이식 그룹. 스터디 하나 = 카테고리 하나다 ([create-study](api/create-study.md)) |
-| **앵커(anchor) 카테고리** | ID 가 `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` 인 **구분선 역할의 빈 카테고리** (길드에서는 `===== New Study =====` 라는 이름이다). `create_study` 는 새 스터디 카테고리를 **이 바로 아래**에 끼워 넣는다 ([`studies.py`](../../discord/app/api/routes/studies.py)) |
+| **앵커(anchor) 카테고리** | ID 가 `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` 인 **구분선 역할의 빈 카테고리**. `create_study` 는 새 스터디 카테고리를 **이 바로 아래**에 끼워 넣는다 ([`studies.py`](../../discord/app/api/routes/studies.py)) |
 | **음성 채널(voice channel)** | 공부방. 스터디마다 `공부방-{스터디명}` 으로 하나 생긴다 |
 | **채널 멘션** | 메시지에 `<#채널ID>` 라고 쓰면 Discord 가 **채널 이름이 적힌 클릭 가능한 칩**으로 렌더한다. 음성 채널도 된다 — 누르면 그 공부방으로 이동한다 |
 | **게시판(bulletin) 채널** | 이 기능이 쓰는 텍스트 채널. **메시지가 항상 딱 하나**고, 봇과 운영진만 쓸 수 있어서 학교 게시판처럼 동작한다 |

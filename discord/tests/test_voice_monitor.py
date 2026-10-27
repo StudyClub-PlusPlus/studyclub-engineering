@@ -52,7 +52,7 @@ def _category(name, voice_channels=()) -> Mock:
 
 def _anchor() -> Mock:
     """The divider category, found by its ID; the name is only for the eye."""
-    category = _category("===== New Study =====")
+    category = _category("구분선")
     category.id = ANCHOR_ID
     return category
 
@@ -140,7 +140,7 @@ def test_collect_finds_the_anchor_by_id_not_name():
     """Same rule as create_study and the bulletin, so all three agree."""
     guild = FakeGuild(
         categories=[
-            _category("===== New Study =====", [_voice(1, "회의실")]),
+            _category("구분선", [_voice(1, "회의실")]),
             _anchor(),
             _category("알고리즘 스터디", [_voice(2)]),
         ]

@@ -58,10 +58,10 @@ tests/                 # pytest unit tests
   that same refusal; the service always starts either way. It is read once at
   startup, so changing it means `docker compose up -d discord`
   (a restart alone will not re-read `.env`).
-  `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` is the ID of the empty divider category (named
-  `===== New Study =====` in the guild) that new studies go right below. Leave
-  it empty and new studies go to the top of the sidebar, while the bulletin and
-  the activity monitor stop and say so in the alert channel.
+  `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` is the ID of the empty divider category
+  that new studies go right below. Leave it empty and new studies go to the top
+  of the sidebar, while the bulletin and the activity monitor stop and say so in
+  the alert channel.
 - **Calling the backend** — `!출석체크` is the only thing here that calls *out*.
   It reads `API_BASE_URL` (the same key the frontends use; `docker-compose.yml`
   overrides it to the internal `http://api:8080` for this service too) and
