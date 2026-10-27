@@ -48,7 +48,7 @@ export default function PolicyLibrary() {
 
   return (
     <div className='mx-auto max-w-5xl px-6 py-10'>
-      <h1 className='text-2xl font-extrabold tracking-tight'>정책 라이브러리</h1>
+      <h1 className='type-headline-lg'>정책 라이브러리</h1>
 
       <div className='mt-6 grid gap-8 lg:grid-cols-[9rem_1fr]'>
         {/* 묶음은 왼쪽에 세로로 — 메뉴와 같은 자리라 눈이 먼저 간다 */}
@@ -62,7 +62,7 @@ export default function PolicyLibrary() {
                   setGroup(g.key);
                   setActive(g.sections[0]);
                 }}
-                className='rounded-lg px-3 py-2 text-left text-sm transition-colors'
+                className='rounded-lg px-3 py-2 text-left type-label-lg transition-colors'
                 style={
                   g.key === group
                     ? { background: 'var(--color-brand-subtle)', color: 'var(--color-brand)', fontWeight: 600 }
@@ -86,7 +86,7 @@ export default function PolicyLibrary() {
                 key={title}
                 href={`#${ANCHOR[title]}`}
                 onClick={() => setActive(title)}
-                className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                className={`-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors ${
                   active === title
                     ? 'border-brand text-fg'
                     : 'border-transparent text-fg-muted hover:text-fg-secondary'
@@ -108,7 +108,7 @@ export default function PolicyLibrary() {
       {show('카테고리') && <Section title='카테고리' pol='POL-0003' file='POL-0003-study-fields.md'>
         <div className='flex flex-wrap gap-1.5'>
           {STUDY_CATEGORIES.map((c) => (
-            <span key={c} className='rounded-pill border border-border px-3 py-1 text-[13px] text-fg-secondary'>
+            <span key={c} className='rounded-pill border border-border px-3 py-1 type-body-sm text-fg-secondary'>
               {c}
             </span>
           ))}
@@ -148,9 +148,9 @@ export default function PolicyLibrary() {
 
         {PERMISSION_GROUPS.map((group) => (
           <div key={group.key} className='mt-5'>
-            <h3 className='text-sm font-bold'>
+            <h3 className='type-title-md'>
               {group.label}
-              {group.note && <span className='ml-2 font-medium text-fg-muted'>{group.note}</span>}
+              {group.note && <span className='ml-2 font-semibold text-fg-muted'>{group.note}</span>}
             </h3>
             <Table head={['하는 일', ...group.roles.map((r) => ROLE_LABEL[r])]}>
               {PERMISSIONS.filter((p) => p.group === group.key).map((p) => (
@@ -267,12 +267,12 @@ function Section({ title, pol, file, children }: { title: string; pol: string; f
   return (
     <section id={ANCHOR[title]} className='mt-10 scroll-mt-6 first:mt-0'>
       <div className='flex items-baseline gap-2'>
-        <h2 className='text-lg font-bold tracking-tight'>{title}</h2>
+        <h2 className='type-title-md'>{title}</h2>
         <a
           href={`${REPO}/${file}`}
           target='_blank'
           rel='noreferrer'
-          className='text-xs font-semibold text-brand underline-offset-4 hover:underline'
+          className='type-label-sm text-brand underline-offset-4 hover:underline'
         >
           {pol}
         </a>
@@ -303,7 +303,7 @@ function Tr({ cells }: { cells: React.ReactNode[] }) {
   return (
     <tr>
       {cells.map((c, i) => (
-        <td key={i} className={i === 0 ? 'font-medium' : 'text-fg-secondary'}>
+        <td key={i} className={i === 0 ? 'font-semibold' : 'text-fg-secondary'}>
           {c}
         </td>
       ))}
@@ -312,5 +312,5 @@ function Tr({ cells }: { cells: React.ReactNode[] }) {
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p className='mt-3 text-sm leading-relaxed text-fg-secondary'>{children}</p>;
+  return <p className='mt-3 type-body-sm text-fg-secondary'>{children}</p>;
 }

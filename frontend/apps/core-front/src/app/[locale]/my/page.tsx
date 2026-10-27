@@ -57,11 +57,11 @@ function StudyRow({ study, locale, right }: { study: Study; locale: Locale; righ
       <div className='min-w-0 flex-1'>
         <Link
           href={`/${locale}/studies/${study.id}`}
-          className='block truncate font-bold text-fg underline-offset-4 hover:underline'
+          className='block truncate font-semibold text-fg underline-offset-4 hover:underline'
         >
           {t(study.title, locale)}
         </Link>
-        <p className='mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-fg-secondary'>
+        <p className='mt-0.5 flex items-center gap-1.5 truncate type-body-sm text-fg-secondary'>
           <span className='shrink-0 text-fg-muted'>{label}</span>
           <span className='text-fg-muted'>·</span>
           <CalendarClock size={12} strokeWidth={1.75} className='shrink-0' />
@@ -77,9 +77,9 @@ function StudyRow({ study, locale, right }: { study: Study; locale: Locale; righ
 function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
     <section className='card mt-6 px-6 py-5'>
-      <h2 className='flex items-baseline gap-2 text-[15px] font-bold text-fg'>
+      <h2 className='flex items-baseline gap-2 type-title-lg text-fg'>
         {title}
-        <span className='tnum text-[13px] font-medium text-fg-muted'>{count}</span>
+        <span className='tnum type-label-lg text-fg-muted'>{count}</span>
       </h2>
       <div className='mt-2'>{children}</div>
     </section>
@@ -109,12 +109,12 @@ function ArchiveTabs({
             key={t.key}
             type='button'
             onClick={() => setActive(t.key)}
-            className={`-mb-px border-b-2 px-3 pb-2.5 text-[15px] font-bold transition-colors ${
+            className={`-mb-px border-b-2 px-3 pb-2.5 type-label-lg transition-colors ${
               active === t.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
             }`}
           >
             {t.label}
-            <span className='tnum ml-1.5 text-[13px] font-medium text-fg-muted'>{t.count}</span>
+            <span className='tnum ml-1.5 type-label-lg text-fg-muted'>{t.count}</span>
           </button>
         ))}
       </div>
@@ -134,7 +134,7 @@ function ExpandableList({ children, initial = 5 }: { children: React.ReactNode[]
         <button
           type='button'
           onClick={() => setAll(true)}
-          className='mt-3 w-full rounded-control border border-border py-2 text-[13px] font-semibold text-fg-secondary transition-colors hover:bg-surface-2'
+          className='mt-3 w-full rounded-control border border-border py-2 type-label-lg text-fg-secondary transition-colors hover:bg-surface-2'
         >
           {hidden}개 더 보기
         </button>
@@ -144,7 +144,7 @@ function ExpandableList({ children, initial = 5 }: { children: React.ReactNode[]
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className='py-6 text-center text-sm text-fg-secondary'>{children}</p>;
+  return <p className='py-6 text-center type-body-sm text-fg-secondary'>{children}</p>;
 }
 
 export default function MyPage() {
@@ -190,7 +190,7 @@ export default function MyPage() {
     .reverse();
 
   if (!ready || !user) {
-    return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+    return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
   function handleCancel(studyId: string) {
@@ -215,7 +215,7 @@ export default function MyPage() {
 
   return (
     <div className={`${PAGE} pb-16 pt-10`}>
-      <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
+      <h1 className='type-headline-lg'>마이페이지</h1>
 
       <ProfileCard user={user} locale={locale} onUserChange={setUser} />
 
@@ -236,12 +236,12 @@ export default function MyPage() {
                 locale={locale}
                 right={
                   <div className='flex shrink-0 items-center gap-3'>
-                    <p className='tnum text-[11px] text-fg-muted'>{app.appliedAt} 신청</p>
+                    <p className='tnum type-label-sm text-fg-muted'>{app.appliedAt} 신청</p>
                     {/* 승인 전에는 회원이 스스로 물릴 수 있어야 한다 */}
                     <button
                       type='button'
                       onClick={() => handleCancel(study.id)}
-                      className='text-xs font-semibold text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
+                      className='type-label-lg text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
                     >
                       취소
                     </button>
@@ -264,7 +264,7 @@ export default function MyPage() {
                 study={study}
                 locale={locale}
                 right={
-                  <span className='shrink-0 rounded-pill bg-recruiting-bg px-2.5 py-1 text-[11px] font-bold text-recruiting-fg'>
+                  <span className='shrink-0 rounded-pill bg-recruiting-bg px-2.5 py-1 type-label-sm text-recruiting-fg'>
                     진행 중
                   </span>
                 }
@@ -295,10 +295,10 @@ export default function MyPage() {
                     locale={locale}
                     right={
                       <div className='shrink-0 text-right'>
-                        <span className='inline-flex rounded-pill bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-fg-secondary'>
+                        <span className='inline-flex rounded-pill bg-surface-2 px-2.5 py-1 type-label-sm text-fg-secondary'>
                           완료
                         </span>
-                        <p className='tnum mt-1 text-[11px] text-fg-muted'>{app.appliedAt} 참여</p>
+                        <p className='tnum mt-1 type-label-sm text-fg-muted'>{app.appliedAt} 참여</p>
                       </div>
                     }
                   />
@@ -316,7 +316,7 @@ export default function MyPage() {
                   locale={locale}
                   right={
                     <div className='flex shrink-0 items-center gap-3'>
-                      <span className='text-xs font-medium text-fg-secondary'>
+                      <span className='type-label-sm text-fg-secondary'>
                         {recruitState(s) === 'apply' ? '모집중' : '모집 마감'}
                       </span>
                       <button

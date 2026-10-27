@@ -96,7 +96,7 @@ export default function LeavePage() {
   }
 
   if (!ready) {
-    return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+    return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
   return (
@@ -104,14 +104,14 @@ export default function LeavePage() {
       <button
         type='button'
         onClick={() => router.push(`/${locale}/my`)}
-        className='mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-fg-muted hover:text-fg'
+        className='mb-6 inline-flex items-center gap-1.5 type-label-lg text-fg-muted hover:text-fg'
       >
         <ArrowLeft size={15} /> 마이페이지
       </button>
 
       <header>
-        <h1 className='text-2xl font-bold tracking-tight'>회원 탈퇴</h1>
-        <p className='mt-2 text-sm leading-relaxed text-fg-secondary'>
+        <h1 className='type-headline-lg'>회원 탈퇴</h1>
+        <p className='mt-2 type-body-sm text-fg-secondary'>
           탈퇴는 즉시 처리되며 되돌릴 수 없습니다.
           <br />
           같은 구글 계정으로 다시 가입할 수 있지만, 지난 기록은 돌아오지 않습니다.
@@ -135,10 +135,10 @@ export default function LeavePage() {
       </div>
 
       {(requiresConfirmation || blockedByCheckFailure) && (
-        <section className='mt-6 rounded-card border border-warning-300 bg-warning-50 px-5 py-4 text-sm'>
+        <section className='mt-6 rounded-card border border-warning-300 bg-warning-50 px-5 py-4 type-body-sm'>
           {hasNavigatorWarning ? (
             <>
-              <p className='flex items-center gap-2 font-bold text-fg'>
+              <p className='flex items-center gap-2 font-semibold text-fg'>
                 <AlertTriangle size={16} className='shrink-0 text-warning-700' /> 맡고 있는 스터디가{' '}
                 {navigatorStudies.length}개 있습니다
               </p>
@@ -147,16 +147,16 @@ export default function LeavePage() {
                   <li key={s.studyId}>· {s.title}</li>
                 ))}
               </ul>
-              <p className='mt-2 leading-relaxed text-fg'>
+              <p className='mt-2 text-fg'>
                 캡틴에게 탈퇴 사실을 꼭 공유해 주시길 바랍니다.
               </p>
             </>
           ) : (
             <>
-              <p className='flex items-center gap-2 font-bold text-fg'>
+              <p className='flex items-center gap-2 font-semibold text-fg'>
                 <AlertTriangle size={16} className='shrink-0 text-warning-700' /> {UNKNOWN_WARNING_TITLE}
               </p>
-              <p className='mt-2 leading-relaxed text-fg'>{UNKNOWN_WARNING_BODY}</p>
+              <p className='mt-2 text-fg'>{UNKNOWN_WARNING_BODY}</p>
               <div className='mt-3 flex justify-end'>
                 <Button
                   variant='secondary'
@@ -172,7 +172,7 @@ export default function LeavePage() {
 
           {confirming && (
             <div className='mt-4 border-t border-warning-300 pt-4'>
-              <p className='font-bold text-fg'>그래도 탈퇴하시겠습니까?</p>
+              <p className='font-semibold text-fg'>그래도 탈퇴하시겠습니까?</p>
               <div className='mt-3 flex justify-end gap-2'>
                 <Button variant='secondary' size='sm' onClick={() => setConfirming(false)}>
                   탈퇴 취소
@@ -186,11 +186,11 @@ export default function LeavePage() {
         </section>
       )}
 
-      {error && <p className='mt-4 text-sm text-error-700'>{error}</p>}
+      {error && <p className='mt-4 type-body-sm text-error-700'>{error}</p>}
 
       {!(requiresConfirmation && confirming) && (
         <div className='mt-7 flex flex-wrap items-center justify-end gap-x-3 gap-y-2'>
-          <p className='mr-auto text-xs text-fg-muted'>
+          <p className='mr-auto type-label-sm text-fg-muted'>
             {blockedByCheckFailure
               ? '담당 스터디 확인이 끝나야 탈퇴할 수 있습니다.'
               : '탈퇴는 즉시 처리되며 되돌릴 수 없습니다.'}

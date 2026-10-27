@@ -6,6 +6,7 @@
 
 @import "./tokens.css";
 @import "./compat.css";
+@import "./typography.css";
 
 html {
   color-scheme: light;

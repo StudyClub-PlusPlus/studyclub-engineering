@@ -85,8 +85,8 @@ export function ProfileDialog({
         />
 
         <div>
-          <p className='text-sm font-medium text-neutral-800'>이메일</p>
-          <p className='mt-1.5 text-sm text-fg-secondary'>{email}</p>
+          <p className='type-label-lg text-neutral-800'>이메일</p>
+          <p className='mt-1.5 type-body-sm text-fg-secondary'>{email}</p>
         </div>
 
         <Input
@@ -98,7 +98,7 @@ export function ProfileDialog({
         />
 
         <div>
-          <p className='text-sm font-medium text-neutral-800'>거주 지역</p>
+          <p className='type-label-lg text-neutral-800'>거주 지역</p>
           <div className='mt-2 flex flex-wrap gap-1.5'>
             {MEMBER_REGIONS.map((r) => (
               <button
@@ -106,12 +106,12 @@ export function ProfileDialog({
                 type='button'
                 onClick={() => setDraftRegion(r.key)}
                 aria-pressed={draftRegion === r.key}
-                className={`rounded-pill px-4 py-1.5 text-[13px] font-semibold transition-colors ${
+                className={`rounded-pill px-4 py-1.5 type-label-lg transition-colors ${
                   draftRegion === r.key ? 'bg-brand text-on-brand' : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
                 }`}
               >
                 {t(r.label, locale)}
-                <span className='ml-1.5 text-[11px] opacity-70'>{r.tzLabel}</span>
+                <span className='ml-1.5 type-label-sm opacity-70'>{r.tzLabel}</span>
               </button>
             ))}
           </div>

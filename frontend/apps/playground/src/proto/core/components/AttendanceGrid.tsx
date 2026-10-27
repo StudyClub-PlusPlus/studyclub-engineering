@@ -39,7 +39,7 @@ export function AttendanceGrid({
   action?: ReactNode;
 }) {
   if (book.meetings.length === 0) {
-    return <p className='py-3 text-center text-sm text-fg-secondary'>아직 회차가 없습니다.</p>;
+    return <p className='py-3 text-center type-body-sm text-fg-secondary'>아직 회차가 없습니다.</p>;
   }
 
   const rows = chunkMeetings(book.meetings, MEETING_COLS);
@@ -55,9 +55,9 @@ export function AttendanceGrid({
             const live = Boolean(action && m.id === actionMeetingId && !status);
             return (
               <div key={m.id} className='min-w-0 text-center'>
-                <p data-anno={headAnno} className='tnum text-[10px] font-semibold text-fg-secondary'>
+                <p data-anno={headAnno} className='tnum type-label-sm text-fg-secondary'>
                   {isKickoff(m) ? '킥오프' : `${m.no}회`}
-                  <span className='block font-medium text-fg-muted'>
+                  <span className='block font-semibold text-fg-muted'>
                     {meetingDayLabel(meetingWallDate(study, m, wallTz))}
                   </span>
                 </p>
@@ -68,7 +68,7 @@ export function AttendanceGrid({
                     data-anno={cellAnno}
                     title={label ? `${meetingLabel(m)} ${label}` : meetingLabel(m)}
                     className={cx(
-                      'mt-0.5 block min-h-[1.625rem] truncate rounded-sm px-0.5 py-1 text-[10px] font-bold',
+                      'mt-0.5 block min-h-[1.625rem] truncate rounded-sm px-0.5 py-1 type-label-sm',
                       status ? BOOK_STYLE[status] : 'border border-dashed border-border-strong',
                     )}
                   >

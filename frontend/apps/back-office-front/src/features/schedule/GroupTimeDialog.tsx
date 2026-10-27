@@ -7,7 +7,7 @@ import { Button, Input, Modal } from '@studyclub/ui';
 import { hasTime, type GroupTime, type ScheduleGroup } from './meetings';
 import { DOW_LABEL, otherClock, STUDY_TZS, tzAbbr } from './time';
 
-const CHIP = 'h-10 rounded-control border text-sm font-semibold transition-colors';
+const CHIP = 'h-10 rounded-control border type-label-lg transition-colors';
 const chipTone = (on: boolean) =>
   on ? 'border-brand bg-brand text-white' : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2';
 
@@ -59,7 +59,7 @@ export function GroupTimeDialog({
     >
       <div className='flex flex-col gap-4 py-2'>
         <div className='flex flex-col gap-2'>
-          <span id='group-time-days' className='text-sm font-medium text-neutral-800'>
+          <span id='group-time-days' className='type-label-lg text-neutral-800'>
             스터디 요일
           </span>
           <div
@@ -84,7 +84,7 @@ export function GroupTimeDialog({
         </div>
 
         <div className='flex flex-col gap-2'>
-          <label htmlFor='group-time-clock' className='text-sm font-medium text-neutral-800'>
+          <label htmlFor='group-time-clock' className='type-label-lg text-neutral-800'>
             스터디 시간
           </label>
           <div className='flex flex-wrap items-center gap-2'>
@@ -97,15 +97,17 @@ export function GroupTimeDialog({
                 onChange={(ev) => setTime({ ...time, time: ev.target.value })}
               />
             </div>
-            {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
+            {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다.
+                시간대는 서버 반의 것으로 고정이다 — 회차를 그 시간대로 저장한다. TODO(api): 반 PATCH 가 timezone 을 받으면 연다 */}
             <div role='group' aria-label='시간대' className='flex gap-1'>
               {STUDY_TZS.map((tz) => (
                 <button
                   key={tz.key}
                   type='button'
                   aria-pressed={time.tz === tz.key}
+                  disabled={tz.key !== group.time.tz}
                   onClick={() => setTime({ ...time, tz: tz.key })}
-                  className={`${CHIP} px-3 ${chipTone(time.tz === tz.key)}`}
+                  className={`${CHIP} px-3 ${chipTone(time.tz === tz.key)} disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   {tz.label} <span className='opacity-70'>{tzAbbr(tz.key)}</span>
                 </button>
@@ -116,14 +118,14 @@ export function GroupTimeDialog({
 
         {/* 반대편 시각을 같이 적는다 — 목 21:00 KST 는 미국에서 수요일이다 */}
         {other && (
-          <p className='text-xs text-fg-muted'>
+          <p className='type-label-sm text-fg-muted'>
             {STUDY_TZS.find((t) => t.key !== time.tz)?.label} 기준 <b className='font-semibold'>{other}</b>
           </p>
         )}
 
-        <p id='group-time-msg' role='status' className='text-xs'>
+        <p id='group-time-msg' role='status' className='type-label-sm'>
           {touched && !valid ? (
-            <span className='font-medium text-error-600'>요일을 하나 이상 골라 주세요.</span>
+            <span className='font-semibold text-error-600'>요일을 하나 이상 골라 주세요.</span>
           ) : (
             <span className='text-fg-muted'>
               스터디 시간만 {editing ? '바꿉니다. 이미 있는 회차는 그대로입니다' : '정합니다'}.

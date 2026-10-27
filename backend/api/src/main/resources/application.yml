@@ -51,9 +51,12 @@ google:
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
 
 # 디스코드 계정 연동 (specs/study-application 「디스코드 계정 연동」). 비어 있으면 연동만 503 EXTERNAL_SERVICE_ERROR.
-# guild-id 는 봇과 같은 DISCORD_GUILD_ID — 연동할 때 이 길드의 멤버인지 본다.
+# guild-id 는 봇과 같은 DISCORD_CONFIG_GUILD_ID — 연동할 때 이 길드의 멤버인지 본다.
+# bot-id 는 시스템 호출의 X-Discord-User-ID (DiscordBotClient). DISCORD_CONFIG_* 는 이름이 property 와
+# 어긋나 Spring 이 env 를 저절로 붙여 주지 않으니 여기서 직접 잇는다.
 discord:
-  guild-id: ${DISCORD_GUILD_ID:}
+  guild-id: ${DISCORD_CONFIG_GUILD_ID:}
+  bot-id: ${DISCORD_CONFIG_BOT_ID:}
   oauth:
     client-id: ${DISCORD_OAUTH_CLIENT_ID:}
     client-secret: ${DISCORD_OAUTH_CLIENT_SECRET:}

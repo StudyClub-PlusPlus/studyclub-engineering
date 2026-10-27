@@ -12,13 +12,17 @@ GUILD_ID = 100000000000000001
 BULLETIN_CHANNEL_ID = 200000000000000001
 ALERT_CHANNEL_ID = 200000000000000002
 BOT_USER_ID = 300000000000000001
-ANCHOR = bulletin.DEFAULT_NEW_STUDY_ANCHOR_NAME
+ANCHOR_ID = 400000000000000001
+# 2026-09-29 20:00 in Los Angeles (PDT).
+NOW = datetime.datetime(2026, 9, 30, 3, 0, tzinfo=datetime.timezone.utc)
+HEADER = "마지막 갱신: 2026-09-29 20:00 PDT"
 
 
 def _settings(**overrides) -> Settings:
     return Settings(
         **{
             "guild_id": GUILD_ID,
+            "anchor_channel_id": ANCHOR_ID,
             "bulletin_channel_id": BULLETIN_CHANNEL_ID,
             "alert_channel_id": ALERT_CHANNEL_ID,
             **overrides,
@@ -40,6 +44,13 @@ def _category(name, voice_channels=()) -> Mock:
     category = Mock(spec=discord.CategoryChannel)
     category.name = name
     category.voice_channels = list(voice_channels)
+    return category
+
+
+def _anchor() -> Mock:
+    """The divider category, found by its ID; the name is only for the eye."""
+    category = _category("구분선")
+    category.id = ANCHOR_ID
     return category
 
 
@@ -77,7 +88,7 @@ class FakeGuild:
             if categories is not None
             else [
                 _category("운영진 전용", [_voice(1)]),
-                _category(ANCHOR),
+                _anchor(),
                 _category("알고리즘 스터디", [_voice(2), _voice(3)]),
                 _category("CS 전공", [_voice(4)]),
             ]
@@ -109,17 +120,26 @@ def _bot(guild) -> Mock:
 
 def test_build_bulletin_renders_one_line_per_study():
     """Each study is ``name : <#id> - <#id>``, in the order it was given."""
-    content, omitted = bulletin.build_bulletin([("알고리즘 스터디", [2, 3]), ("CS 전공", [4])])
+    content, omitted = bulletin.build_bulletin([("알고리즘 스터디", [2, 3]), ("CS 전공", [4])], NOW)
 
-    assert content == "알고리즘 스터디 : <#2> - <#3>\nCS 전공 : <#4>"
+    assert content == f"{HEADER}\n알고리즘 스터디 : <#2> - <#3>\nCS 전공 : <#4>"
     assert omitted == 0
+
+
+def test_build_bulletin_opens_with_the_refresh_time_in_the_clubs_timezone():
+    """The first line says when the list was true, in Los Angeles time."""
+    winter = datetime.datetime(2026, 12, 1, 4, 0, tzinfo=datetime.timezone.utc)
+
+    content, _ = bulletin.build_bulletin([("CS 전공", [4])], winter)
+
+    assert content.split("\n")[0] == "마지막 갱신: 2026-11-30 20:00 PST"
 
 
 def test_build_bulletin_skips_categories_without_a_voice_channel():
     """A line nobody can click only makes the board longer, so it is left out."""
-    content, _ = bulletin.build_bulletin([("공부방 없음", []), ("CS 전공", [4])])
+    content, _ = bulletin.build_bulletin([("공부방 없음", []), ("CS 전공", [4])], NOW)
 
-    assert content == "CS 전공 : <#4>"
+    assert content == f"{HEADER}\nCS 전공 : <#4>"
 
 
 @pytest.mark.parametrize(
@@ -127,9 +147,9 @@ def test_build_bulletin_skips_categories_without_a_voice_channel():
 )
 def test_build_bulletin_with_nothing_to_list_says_so(categories):
     """Discord refuses an empty message, and a stale list would be clicked."""
-    content, omitted = bulletin.build_bulletin(categories)
+    content, omitted = bulletin.build_bulletin(categories, NOW)
 
-    assert content == bulletin.EMPTY_BULLETIN
+    assert content == f"{HEADER}\n{bulletin.EMPTY_BULLETIN}"
     assert omitted == 0
 
 
@@ -138,13 +158,14 @@ def test_build_bulletin_truncates_whole_lines_and_counts_what_it_dropped():
     # Each line is ~60 characters, so 2000 fits far fewer than 100 of them.
     categories = [(f"스터디 {i:03d}", [100000000000000000 + i]) for i in range(100)]
 
-    content, omitted = bulletin.build_bulletin(categories)
+    content, omitted = bulletin.build_bulletin(categories, NOW)
 
     assert len(content) <= bulletin.MAX_MSG
     assert omitted > 0
+    assert content.startswith(f"{HEADER}\n")
     assert content.endswith(bulletin.TRUNCATED_NOTICE.format(count=omitted))
-    # Whole lines only: every line but the notice is one a caller would recognise.
-    kept = content.split("\n")[:-1]
+    # Whole lines only: every line but the header and notice is one a caller would recognise.
+    kept = content.split("\n")[1:-1]
     assert len(kept) == 100 - omitted
     assert all(line in [f"스터디 {i:03d} : <#{100000000000000000 + i}>" for i in range(100)] for line in kept)
 
@@ -152,16 +173,18 @@ def test_build_bulletin_truncates_whole_lines_and_counts_what_it_dropped():
 def test_build_bulletin_at_the_cap_keeps_the_line_and_one_over_drops_it():
     """The boundary: a board that exactly fits is untouched, one character more is not.
 
-    A single line too long for the cap leaves nothing but the notice -- there is
-    no half of a line worth publishing.
+    The header shares the cap. A single line too long for what is left leaves
+    nothing but the notice -- there is no half of a line worth publishing.
     """
-    categories = [("A" * 1997, [1])]  # "A"*1997 + " : " + "<#1>" == 2004 -> too long
-    over, omitted_over = bulletin.build_bulletin(categories)
-    assert omitted_over == 1
-    assert over == bulletin.TRUNCATED_NOTICE.format(count=1)
+    room = bulletin.MAX_MSG - len(HEADER) - 1 - len(" : <#1>")
 
-    categories = [("A" * (bulletin.MAX_MSG - len(" : <#1>")), [1])]
-    exact, omitted_exact = bulletin.build_bulletin(categories)
+    categories = [("A" * (room + 1), [1])]
+    over, omitted_over = bulletin.build_bulletin(categories, NOW)
+    assert omitted_over == 1
+    assert over == f"{HEADER}\n{bulletin.TRUNCATED_NOTICE.format(count=1)}"
+
+    categories = [("A" * room, [1])]
+    exact, omitted_exact = bulletin.build_bulletin(categories, NOW)
     assert len(exact) == bulletin.MAX_MSG
     assert omitted_exact == 0
 
@@ -173,7 +196,7 @@ def test_collect_categories_takes_everything_below_the_anchor():
     """The anchor and everything above it are left out; order is the sidebar's."""
     guild = FakeGuild()
 
-    assert bulletin.collect_categories(guild, ANCHOR) == [
+    assert bulletin.collect_categories(guild, ANCHOR_ID) == [
         ("알고리즘 스터디", [2, 3]),
         ("CS 전공", [4]),
     ]
@@ -183,43 +206,51 @@ def test_collect_categories_without_the_anchor_returns_none():
     """Without the anchor there is no telling a study from a staff category."""
     guild = FakeGuild(categories=[_category("운영진 전용", [_voice(1)])])
 
-    assert bulletin.collect_categories(guild, ANCHOR) is None
+    assert bulletin.collect_categories(guild, ANCHOR_ID) is None
 
 
-def test_collect_categories_uses_the_topmost_duplicate_anchor():
-    """Same rule as create_study, so both features anchor to one category."""
+def test_collect_categories_without_a_configured_anchor_returns_none():
+    """An unset DISCORD_CONFIG_ANCHOR_CHANNEL_ID is as good as a missing anchor."""
+    assert bulletin.collect_categories(FakeGuild(), None) is None
+
+
+def test_collect_categories_with_the_id_of_a_non_category_returns_none():
+    """A voice channel's ID is not an anchor, even though the channel exists."""
+    assert bulletin.collect_categories(FakeGuild(), 2) is None
+
+
+def test_collect_categories_finds_the_anchor_by_id_not_name():
+    """A category that only shares the anchor's name is not the anchor."""
     guild = FakeGuild(
         categories=[
-            _category(ANCHOR),
+            _category("구분선", [_voice(1)]),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2)]),
-            _category(ANCHOR),
-            _category("CS 전공", [_voice(4)]),
         ]
     )
 
-    names = [name for name, _ in bulletin.collect_categories(guild, ANCHOR)]
-    assert names == ["알고리즘 스터디", ANCHOR, "CS 전공"]
+    assert bulletin.collect_categories(guild, ANCHOR_ID) == [("알고리즘 스터디", [2])]
 
 
 def test_collect_categories_drops_voice_channels_the_bot_cannot_see():
     """An invisible channel renders as a broken link, so it is not listed."""
     guild = FakeGuild(
         categories=[
-            _category(ANCHOR),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2), _voice(3, visible=False)]),
         ]
     )
 
-    assert bulletin.collect_categories(guild, ANCHOR) == [("알고리즘 스터디", [2])]
+    assert bulletin.collect_categories(guild, ANCHOR_ID) == [("알고리즘 스터디", [2])]
 
 
 def test_collect_categories_keeps_a_study_with_no_visible_voice_channel():
     """Filtering happens here; whether the study earns a line is build_bulletin's call."""
     guild = FakeGuild(
-        categories=[_category(ANCHOR), _category("알고리즘 스터디", [_voice(2, visible=False)])]
+        categories=[_anchor(), _category("알고리즘 스터디", [_voice(2, visible=False)])]
     )
 
-    assert bulletin.collect_categories(guild, ANCHOR) == [("알고리즘 스터디", [])]
+    assert bulletin.collect_categories(guild, ANCHOR_ID) == [("알고리즘 스터디", [])]
 
 
 # --- find_own_message ------------------------------------------------------
@@ -259,7 +290,9 @@ async def test_refresh_sends_when_the_board_does_not_exist_yet():
 
     guild.bulletin_channel.send.assert_awaited_once()
     content, kwargs = guild.bulletin_channel.send.await_args
-    assert content[0] == "알고리즘 스터디 : <#2> - <#3>\nCS 전공 : <#4>"
+    header, board = content[0].split("\n", 1)
+    assert header.startswith("마지막 갱신: ")
+    assert board == "알고리즘 스터디 : <#2> - <#3>\nCS 전공 : <#4>"
     # Nobody is notified by the board, not even by a category named @everyone.
     assert kwargs["allowed_mentions"].everyone is False
 
@@ -274,7 +307,7 @@ async def test_refresh_edits_the_existing_board_instead_of_posting_again():
     assert await bulletin.refresh(_bot(guild), _settings()) is True
 
     existing.edit.assert_awaited_once()
-    assert existing.edit.await_args.kwargs["content"].startswith("알고리즘 스터디 : ")
+    assert existing.edit.await_args.kwargs["content"].split("\n")[1].startswith("알고리즘 스터디 : ")
     guild.bulletin_channel.send.assert_not_awaited()
 
 
@@ -313,7 +346,18 @@ async def test_refresh_leaves_the_board_alone_when_the_anchor_is_missing():
 
     guild.bulletin_channel.send.assert_not_awaited()
     guild.alert_channel.send.assert_awaited_once()
-    assert ANCHOR in guild.alert_channel.send.await_args[0][0]
+    assert str(ANCHOR_ID) in guild.alert_channel.send.await_args[0][0]
+
+
+async def test_refresh_leaves_the_board_alone_without_a_configured_anchor():
+    """An unset anchor gets the same treatment as a missing one: no board, an alert."""
+    guild = FakeGuild()
+
+    assert await bulletin.refresh(_bot(guild), _settings(anchor_channel_id=None)) is False
+
+    guild.bulletin_channel.send.assert_not_awaited()
+    guild.alert_channel.send.assert_awaited_once()
+    assert "DISCORD_CONFIG_ANCHOR_CHANNEL_ID" in guild.alert_channel.send.await_args[0][0]
 
 
 async def test_refresh_reports_missing_permissions_without_raising():
@@ -396,7 +440,7 @@ async def test_refresh_survives_an_unreadable_history():
 async def test_refresh_reports_truncation_after_posting_the_board():
     """The board goes up first: a partial list beats no list, but someone is told."""
     guild = FakeGuild(
-        categories=[_category(ANCHOR)]
+        categories=[_anchor()]
         + [_category(f"스터디 {i:03d}", [_voice(100000000000000000 + i)]) for i in range(100)]
     )
 
@@ -478,4 +522,4 @@ async def test_register_without_a_channel_does_not_start_a_loop(caplog):
     with caplog.at_level("WARNING"):
         bulletin.register(bot, _settings(bulletin_channel_id=None))
 
-    assert "DISCORD_BULLETIN_CHANNEL_ID" in caplog.text
+    assert "DISCORD_CONFIG_BULLETIN_CHANNEL_ID" in caplog.text

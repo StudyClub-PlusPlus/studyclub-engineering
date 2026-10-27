@@ -131,7 +131,7 @@ export function ApplicationFormEditor({
           account={{ name: '홍길동', email: 'applicant@example.com' }}
         />
         {(errors.title || errors.description) && (
-          <p role='alert' className='text-sm text-error-700'>
+          <p role='alert' className='type-body-sm text-error-700'>
             {errors.title?.message ?? errors.description?.message}
           </p>
         )}
@@ -259,7 +259,7 @@ export function ApplicationFormEditor({
                     <QuestionFillView q={question} ghost />
                   )}
                   {issue?.options && (
-                    <p role='alert' className='text-sm text-error-700'>
+                    <p role='alert' className='type-body-sm text-error-700'>
                       {issue.options.message ?? issue.options.root?.message ?? '선택지를 하나 이상 넣어 주세요.'}
                     </p>
                   )}
@@ -337,12 +337,12 @@ export function ApplicationFormEditor({
       </fieldset>
       <div className='flex items-center gap-3 pt-1'>
         {message && (
-          <p role='alert' className='text-sm text-error-700'>
+          <p role='alert' className='type-body-sm text-error-700'>
             {message}
           </p>
         )}
         {saved && !isDirty && (
-          <p role='status' className='text-sm font-medium text-success-700'>
+          <p role='status' className='type-label-lg text-success-700'>
             저장되었습니다.
           </p>
         )}

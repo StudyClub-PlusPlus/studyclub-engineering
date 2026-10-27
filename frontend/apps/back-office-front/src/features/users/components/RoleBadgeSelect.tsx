@@ -73,7 +73,7 @@ export function RoleBadgeSelect({
     return (
       <span aria-busy='true' className='inline-flex items-center gap-2 opacity-70'>
         {badge}
-        <span className='text-xs text-fg-muted'>변경 중</span>
+        <span className='type-label-sm text-fg-muted'>변경 중</span>
       </span>
     );
   }

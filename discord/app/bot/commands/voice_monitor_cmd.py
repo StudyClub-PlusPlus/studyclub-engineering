@@ -15,8 +15,9 @@ import sqlite3
 
 import discord
 from discord.ext import commands
+from fastapi import HTTPException
 
-from app.api.routes.studies import DEFAULT_NEW_STUDY_ANCHOR_NAME
+from app.api.routes.channels import resolve_configured_channel
 from app.bot import voice_monitor
 from app.bot.commands import command_channel
 from app.config import Settings
@@ -25,11 +26,12 @@ from app.voice_activity_log import VoiceActivityLog
 logger = logging.getLogger(__name__)
 
 NOT_ALLOWED = "이 명령은 captain 역할을 가진 멤버만 쓸 수 있습니다."
-DISABLED = "DISCORD_GUILD_ID 가 설정되지 않아 공부방 활동 감시 기능이 꺼져 있습니다."
+DISABLED = "DISCORD_CONFIG_GUILD_ID 가 설정되지 않아 공부방 활동 감시 기능이 꺼져 있습니다."
 NO_GUILD = "봇이 길드를 찾지 못했습니다. 로그를 확인해 주세요."
+# Sent both as the reply and to the alert channel.
 NO_ANCHOR = (
-    f"기준 카테고리 `{DEFAULT_NEW_STUDY_ANCHOR_NAME}` 를 찾지 못해 공부방 목록을 만들 수 "
-    "없습니다. 카테고리가 지워졌거나 이름이 바뀌었는지 확인해 주세요."
+    "기준 카테고리(DISCORD_CONFIG_ANCHOR_CHANNEL_ID={anchor_id})가 설정되지 않았거나 찾을 수 없어 "
+    "공부방 목록을 만들 수 없습니다. 카테고리 ID 가 맞는지, 카테고리가 지워지지 않았는지 확인해 주세요."
 )
 FAILED = "공부방 활동 기록을 읽지 못했습니다. 로그를 확인해 주세요."
 
@@ -41,7 +43,7 @@ def may_check(ctx: commands.Context, settings: Settings) -> bool:
     studies look dead, which is for whoever runs the guild to act on rather than
     something to drop into any channel on request.
 
-    An unset ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door rather than opening it.
+    An unset ``DISCORD_CONFIG_CAPTAIN_ROLE_ID`` shuts the door rather than opening it.
     In a DM there is no member and no role, so there is nobody to check.
     """
     if ctx.guild is None or settings.captain_role_id is None:
@@ -81,13 +83,26 @@ async def check_voice_channels(
         return
 
     logger.info("checkVoiceChannels: requested by user %s", ctx.author.id)
-    categories = voice_monitor.collect_study_voice_channels(guild, DEFAULT_NEW_STUDY_ANCHOR_NAME)
+    categories = voice_monitor.collect_study_voice_channels(guild, settings.anchor_channel_id)
     if categories is None:
         logger.error(
-            "checkVoiceChannels: reference category %r not found",
-            DEFAULT_NEW_STUDY_ANCHOR_NAME,
+            "checkVoiceChannels: reference category %s unset or not found",
+            settings.anchor_channel_id,
         )
-        await ctx.send(NO_ANCHOR)
+        message = NO_ANCHOR.format(anchor_id=settings.anchor_channel_id)
+        await ctx.send(message)
+        # The caller may not be the one who fixes the setting, so whoever reads
+        # the alert channel hears about it too. An unset alert channel was
+        # already warned about at startup.
+        if settings.alert_channel_id is not None:
+            try:
+                alert_channel, _ = resolve_configured_channel(
+                    guild, settings.alert_channel_id, "alert"
+                )
+            except HTTPException as exc:
+                logger.error("checkVoiceChannels: %s", exc.detail)
+            else:
+                await voice_monitor.send_to_alert(alert_channel, message)
         return
 
     now = voice_monitor.now_utc()
@@ -105,7 +120,9 @@ async def check_voice_channels(
     # asked for, so it is split rather than cut. No mentions, for the same reason
     # as the alert: the lines are category and channel names, so a study named
     # ``@everyone`` would ring the whole guild.
-    for message in voice_monitor.build_activity_report(voice_monitor.build_entries(categories, rows)):
+    for message in voice_monitor.build_activity_report(
+        voice_monitor.build_entries(categories, rows), now
+    ):
         await ctx.send(message, allowed_mentions=discord.AllowedMentions.none())
 
 

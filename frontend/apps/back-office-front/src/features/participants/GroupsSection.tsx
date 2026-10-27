@@ -49,7 +49,7 @@ export function GroupsSection({
         <p>「{target?.name}」 반을 삭제하시겠습니까? 연결된 회차도 삭제되며 되돌릴 수 없습니다.</p>
       </Modal>
       <div className='flex items-center justify-between'>
-        <h2 className='font-bold'>반 {data.groups.length}개</h2>
+        <h2 className='font-semibold'>반 {data.groups.length}개</h2>
         <Button size='sm' disabled={busy || editing !== null} onClick={() => setEditing('new')}>
           반 추가
         </Button>
@@ -62,7 +62,7 @@ export function GroupsSection({
             <div className='flex items-center gap-3'>
               <span className='font-semibold'>{group.name}</span>
               {group.isDefault && <Badge>기본</Badge>}
-              <span className='text-sm text-fg-muted'>
+              <span className='type-body-sm text-fg-muted'>
                 {
                   data.participants.filter(
                     (p) => p.groupId === group.groupId && (p.status === 'ACTIVE' || p.status === 'PAUSED'),
@@ -104,10 +104,10 @@ export function GroupsSection({
         </div>
       )}
       {data.groups.length === 0 && (
-        <p className='text-sm text-fg-muted'>아직 반이 없습니다. 「반 추가」로 반을 만들고 크루를 나눠 주세요.</p>
+        <p className='type-body-sm text-fg-muted'>아직 반이 없습니다. 「반 추가」로 반을 만들고 크루를 나눠 주세요.</p>
       )}
       {deletion.error && (
-        <p role='alert' className='text-sm text-error-600'>
+        <p role='alert' className='type-body-sm text-error-600'>
           {deletion.error instanceof ApiError
             ? deletion.error.message
             : '반을 삭제하지 못했습니다. 다시 시도해 주세요.'}

@@ -11,5 +11,5 @@ export default function AttendanceRedirectPage() {
   useEffect(() => {
     router.replace(id ? `/${locale}/my/joined/${id}/schedule/attendance` : `/${locale}/my/joined`);
   }, [id, locale, router]);
-  return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+  return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
 }

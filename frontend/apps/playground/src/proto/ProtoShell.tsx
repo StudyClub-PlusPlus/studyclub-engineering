@@ -17,8 +17,6 @@ const LINKS = [
   { href: '/proto/console', match: '/proto/console', label: '운영 콘솔' },
   // 화면 뒤에 깔린 값과 규칙. 개발이 「상태가 몇 종이더라」를 물을 때 여는 자리다.
   { href: '/proto/policies', match: '/proto/policies', label: '정책 라이브러리' },
-  // DB 에 있는 알림 메일 문구를 실제 모양으로. 디자이너가 메일을 볼 유일한 자리다.
-  { href: '/proto/mail', match: '/proto/mail', label: '메일 템플릿' },
 ];
 
 /**
@@ -46,8 +44,8 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
     <AnnotateProvider>
       <div className='proto-stack'>
         <div className='border-b border-[var(--color-border)] bg-[var(--color-fg)] text-white'>
-          <div className='mx-auto flex min-h-10 max-w-none flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2 text-[12px]'>
-            <Link href='/' className='font-bold opacity-70 transition-opacity hover:opacity-100'>
+          <div className='mx-auto flex min-h-10 max-w-none flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2 type-label-sm'>
+            <Link href='/' className='font-semibold opacity-70 transition-opacity hover:opacity-100'>
               ← playground
             </Link>
             <nav className='flex items-center gap-4'>
@@ -58,7 +56,7 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
                     key={l.href}
                     href={l.href}
                     className='transition-opacity'
-                    style={{ opacity: active ? 1 : 0.6, fontWeight: active ? 700 : 400 }}
+                    style={{ opacity: active ? 1 : 0.6, fontWeight: active ? 600 : 400 }}
                   >
                     {l.label}
                   </Link>

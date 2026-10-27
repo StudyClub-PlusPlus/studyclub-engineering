@@ -111,8 +111,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
   return (
     <div className='mx-auto max-w-6xl px-6 py-14'>
       <header className='max-w-2xl'>
-        <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('guide.title', locale)}</h1>
-        <p className='mt-3 text-lg text-[var(--color-fg-muted)]'>{m('guide.subtitle', locale)}</p>
+        <h1 className='type-headline-lg sm:type-headline-lg'>{m('guide.title', locale)}</h1>
+        <p className='mt-3 type-body-lg text-[var(--color-fg-muted)] type-prose'>{m('guide.subtitle', locale)}</p>
       </header>
 
       {/* 목차 */}
@@ -121,7 +121,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
           <a
             key={s.id}
             href={`#${s.id}`}
-            className='inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:text-[var(--color-fg)]'
+            className='inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-1.5 type-label-lg text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:text-[var(--color-fg)]'
           >
             <s.icon size={14} style={{ color: 'var(--color-brand)' }} />
             {t(s.title, locale)}
@@ -132,7 +132,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       {/* 스터디 클럽이란? */}
       <SectionHeading section={SECTIONS[0]} locale={locale} />
       <div className='card p-8'>
-        <p className='max-w-3xl text-[15px] leading-relaxed text-[var(--color-fg)]'>
+        <p className='max-w-3xl type-body-sm text-[var(--color-fg)]'>
           {t(
             {
               ko: `StudyClub 는 미국·캐나다·한국의 개발자 ${site.community.member_count.toLocaleString()}명 이상이 함께하는 글로벌 스터디 커뮤니티입니다. 여러 스터디가 모인 '풀(pool)'로, 누구나 공부하고 싶은 주제로 스터디를 제안하고 운영할 수 있습니다. 디스코드에서 모든 스터디와 이벤트가 운영됩니다.`,
@@ -148,8 +148,8 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       <div className='grid gap-3 sm:grid-cols-3'>
         {roles.map((r) => (
           <Link key={r.id} href={`/proto/core/${locale}/about#${r.id}`} className='card card-hover p-5'>
-            <div className='text-base font-bold'>{t(r.name, locale)}</div>
-            <p className='mt-1.5 text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>{t(r.desc, locale)}</p>
+            <div className='type-title-md'>{t(r.name, locale)}</div>
+            <p className='mt-1.5 type-body-sm text-[var(--color-fg-muted)]'>{t(r.desc, locale)}</p>
           </Link>
         ))}
       </div>
@@ -160,12 +160,12 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
         {joinSteps.map((step, i) => (
           <li key={i} className='card flex items-start gap-3 p-5'>
             <span
-              className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold text-white'
+              className='grid h-7 w-7 shrink-0 place-items-center rounded-full type-label-lg text-white'
               style={{ background: 'var(--color-brand)' }}
             >
               {i + 1}
             </span>
-            <span className='text-[15px] leading-relaxed text-[var(--color-fg)]'>{t(step, locale)}</span>
+            <span className='type-body-sm text-[var(--color-fg)]'>{t(step, locale)}</span>
           </li>
         ))}
       </ol>
@@ -176,12 +176,12 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
         {proposeSteps.map((step, i) => (
           <li key={i} className='card flex items-start gap-3 p-5'>
             <span
-              className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold text-white'
+              className='grid h-7 w-7 shrink-0 place-items-center rounded-full type-label-lg text-white'
               style={{ background: 'var(--color-brand)' }}
             >
               {i + 1}
             </span>
-            <span className='text-[15px] leading-relaxed text-[var(--color-fg)]'>{t(step, locale)}</span>
+            <span className='type-body-sm text-[var(--color-fg)]'>{t(step, locale)}</span>
           </li>
         ))}
       </ol>
@@ -191,11 +191,11 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
       <div className='flex flex-col gap-3'>
         {faqs.map((f, i) => (
           <details key={i} className='card group p-5'>
-            <summary className='flex cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-semibold text-[var(--color-fg)]'>
+            <summary className='flex cursor-pointer list-none items-center justify-between gap-3 type-label-lg text-[var(--color-fg)]'>
               {t(f.q, locale)}
               <span className='text-[var(--color-fg-faint)] transition-transform group-open:rotate-45'>+</span>
             </summary>
-            <p className='mt-3 text-[15px] leading-relaxed text-[var(--color-fg-muted)]'>{t(f.a, locale)}</p>
+            <p className='mt-3 type-body-sm text-[var(--color-fg-muted)]'>{t(f.a, locale)}</p>
           </details>
         ))}
       </div>
@@ -209,7 +209,7 @@ export default async function GuidePage({ params }: { params: Promise<{ locale: 
 
 function SectionHeading({ section, locale }: { section: Section; locale: Locale }) {
   return (
-    <h2 id={section.id} className='mb-4 mt-12 flex scroll-mt-20 items-center gap-2 text-xl font-bold tracking-tight'>
+    <h2 id={section.id} className='mb-4 mt-12 flex scroll-mt-20 items-center gap-2 type-title-lg'>
       <section.icon size={20} style={{ color: 'var(--color-brand)' }} />
       {t(section.title, locale)}
     </h2>
