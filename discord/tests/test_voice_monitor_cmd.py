@@ -117,9 +117,10 @@ async def test_check_voice_channels_prints_one_line_per_room(log):
 
     ctx.send.assert_awaited_once()
     lines = ctx.send.await_args[0][0].split("\n")
-    assert lines[0] == "알고리즘 스터디 - 공부방-알고리즘 : 2026-08-20"
+    assert lines[0].startswith("마지막 갱신: ")
+    assert lines[1] == "알고리즘 스터디 - 공부방-알고리즘 : 2026-08-20"
     # Never joined: the room says how long that has been true instead.
-    assert lines[1].startswith("알고리즘 스터디 - 공부방-2조 : 기록 없음 (관찰 시작 ")
+    assert lines[2].startswith("알고리즘 스터디 - 공부방-2조 : 기록 없음 (관찰 시작 ")
 
 
 async def test_check_voice_channels_registers_rooms_it_has_not_seen(log):
@@ -223,7 +224,7 @@ async def test_check_voice_channels_with_no_rooms_below_the_anchor(log):
     )
 
     ctx.send.assert_awaited_once()
-    assert ctx.send.await_args[0][0] == voice_monitor.EMPTY_REPORT
+    assert ctx.send.await_args[0][0].endswith(f"\n{voice_monitor.EMPTY_REPORT}")
 
 
 async def test_check_voice_channels_splits_a_long_list_over_several_messages(log):

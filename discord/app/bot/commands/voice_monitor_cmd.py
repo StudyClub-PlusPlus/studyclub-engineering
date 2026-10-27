@@ -120,7 +120,9 @@ async def check_voice_channels(
     # asked for, so it is split rather than cut. No mentions, for the same reason
     # as the alert: the lines are category and channel names, so a study named
     # ``@everyone`` would ring the whole guild.
-    for message in voice_monitor.build_activity_report(voice_monitor.build_entries(categories, rows)):
+    for message in voice_monitor.build_activity_report(
+        voice_monitor.build_entries(categories, rows), now
+    ):
         await ctx.send(message, allowed_mentions=discord.AllowedMentions.none())
 
 

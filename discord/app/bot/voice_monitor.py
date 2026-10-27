@@ -52,6 +52,8 @@ ALERT_HEADER = (
     "{weeks}주({days}일) 이상 입·퇴장이 없는 공부방이 {count}개 있습니다. (기준일: {today})"
 )
 TRUNCATED_NOTICE = "…외 {count}개는 !checkVoiceChannels 로 확인해 주세요."
+# First line of the report, so a reply scrolled back to later says when it was true.
+UPDATED_AT = "마지막 갱신: {time}"
 
 
 def now_utc() -> datetime.datetime:
@@ -163,8 +165,12 @@ def format_line(entry: tuple[str, str, str]) -> str:
     return f"{category} - {channel} : {label}"
 
 
-def build_activity_report(entries: list[tuple[str, str, str]]) -> list[str]:
+def build_activity_report(
+    entries: list[tuple[str, str, str]], now: datetime.datetime
+) -> list[str]:
     """Render every channel as one or more messages within Discord's cap.
+
+    The first message opens with the time of the reading (``now``).
 
     Split rather than truncated: this is what the caller asked to see in full,
     so cutting it defeats the command. The alert is the other way round -- it is
@@ -173,18 +179,19 @@ def build_activity_report(entries: list[tuple[str, str, str]]) -> list[str]:
     A single line cannot exceed the cap on its own: Discord caps a category and
     a channel name at 100 characters each.
     """
+    header = UPDATED_AT.format(time=now.astimezone(DISPLAY_TZ).strftime("%Y-%m-%d %H:%M %Z"))
     if not entries:
-        return [EMPTY_REPORT]
+        return [f"{header}\n{EMPTY_REPORT}"]
 
     messages: list[str] = []
-    current: list[str] = []
-    length = 0
+    current: list[str] = [header]
+    length = len(header)
     for line in map(format_line, entries):
-        if current and length + len(line) + 1 > MAX_MSG:
+        if length + len(line) + 1 > MAX_MSG:
             messages.append("\n".join(current))
             current, length = [line], len(line)
         else:
-            length += len(line) + (1 if current else 0)
+            length += len(line) + 1
             current.append(line)
     messages.append("\n".join(current))
     return messages

@@ -282,6 +282,7 @@ voice channels as clickable links, so a member reaches their 공부방 without
 scrolling the sidebar:
 
 ```
+마지막 갱신: 2026-10-26 20:00 PDT
 알고리즘 스터디 : <#1327394882193883138> - <#1327394882193883139>
 CS 전공 스터디 : <#1327394882193883142>
 ```

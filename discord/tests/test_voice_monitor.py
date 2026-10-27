@@ -17,6 +17,7 @@ ANCHOR_ID = 400000000000000001
 NOW = datetime.datetime(2026, 9, 30, 3, 0, tzinfo=datetime.timezone.utc)
 # 2026-09-30 03:00Z is 2026-09-29 20:00 Pacific -- the date the club would say.
 PACIFIC_TODAY = "2026-09-29"
+HEADER = "마지막 갱신: 2026-09-29 20:00 PDT"
 
 
 def _settings(**overrides) -> Settings:
@@ -223,24 +224,37 @@ def _entries(count=2):
 def test_build_activity_report_uses_a_colon_before_the_date():
     """``카테고리 - 공부방 : 날짜``: a dash everywhere hides where the name ends."""
     report = voice_monitor.build_activity_report(
-        [("알고리즘 스터디", "공부방-알고리즘 스터디", "2026-08-20")]
+        [("알고리즘 스터디", "공부방-알고리즘 스터디", "2026-08-20")], NOW
     )
 
-    assert report == ["알고리즘 스터디 - 공부방-알고리즘 스터디 : 2026-08-20"]
+    assert report == [f"{HEADER}\n알고리즘 스터디 - 공부방-알고리즘 스터디 : 2026-08-20"]
+
+
+def test_build_activity_report_opens_with_the_reading_time_in_the_clubs_timezone():
+    winter = datetime.datetime(2026, 12, 1, 4, 0, tzinfo=datetime.timezone.utc)
+
+    report = voice_monitor.build_activity_report(_entries(), winter)
+
+    assert report[0].split("\n")[0] == "마지막 갱신: 2026-11-30 20:00 PST"
 
 
 def test_build_activity_report_with_nothing_to_list_says_so():
     """Discord refuses an empty message."""
-    assert voice_monitor.build_activity_report([]) == [voice_monitor.EMPTY_REPORT]
+    assert voice_monitor.build_activity_report([], NOW) == [
+        f"{HEADER}\n{voice_monitor.EMPTY_REPORT}"
+    ]
 
 
 def test_build_activity_report_splits_rather_than_truncates():
     """The caller asked for the whole list, so none of it is dropped."""
-    report = voice_monitor.build_activity_report(_entries(200))
+    report = voice_monitor.build_activity_report(_entries(200), NOW)
 
     assert len(report) > 1
     assert all(len(message) <= voice_monitor.MAX_MSG for message in report)
-    assert sum(len(message.split("\n")) for message in report) == 200
+    # The header opens the first message only.
+    assert report[0].startswith(f"{HEADER}\n")
+    assert not any(message.startswith("마지막 갱신") for message in report[1:])
+    assert sum(len(message.split("\n")) for message in report) == 200 + 1
 
 
 def test_build_inactivity_alert_heads_the_list_with_the_count_and_the_date():

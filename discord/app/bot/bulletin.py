@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 # discord.py recomputes the next occurrence each time, so the PST/PDT switch
 # takes care of itself -- 20:00 local either way, which is what was asked for.
 BULLETIN_TIME = datetime.time(hour=20, tzinfo=ZoneInfo("America/Los_Angeles"))
+# The header's time is the club's own, like the schedule above.
+DISPLAY_TZ = ZoneInfo("America/Los_Angeles")
 
 # Discord's hard cap on a message.
 MAX_MSG = 2000
@@ -40,32 +42,41 @@ MAX_MSG = 2000
 # list up instead would have people clicking rooms that are gone.
 EMPTY_BULLETIN = "지금 열린 공부방이 없습니다."
 TRUNCATED_NOTICE = "…외 {count}개 스터디는 사이드바에서 확인해 주세요."
+# First line of the board, so a reader can tell a stale list from today's.
+UPDATED_AT = "마지막 갱신: {time}"
 # The channel holds one message, so the bot's own is within the first few even
 # after a moderator posts. Reading further costs another API call per 100.
 HISTORY_LIMIT = 50
 
 
-def build_bulletin(categories: list[tuple[str, list[int]]]) -> tuple[str, int]:
+def build_bulletin(
+    categories: list[tuple[str, list[int]]], now: datetime.datetime
+) -> tuple[str, int]:
     """Render ``(category name, voice channel ids)`` pairs as the board's text.
 
-    Returns the text and how many studies did not fit. ``<#id>`` is a channel
+    Returns the text and how many studies did not fit. The first line is the
+    time of this refresh (``now``); the studies follow. ``<#id>`` is a channel
     mention: Discord renders the channel's current name, so a renamed room does
     not leave a stale label on the board.
 
     A category with no voice channel gets no line -- a line with nothing to
     click only makes the board longer.
     """
+    header = UPDATED_AT.format(time=now.astimezone(DISPLAY_TZ).strftime("%Y-%m-%d %H:%M %Z"))
+    # The header shares the cap with the list.
+    limit = MAX_MSG - len(header) - 1
+
     lines = [
         f"{name} : " + " - ".join(f"<#{channel_id}>" for channel_id in voice_ids)
         for name, voice_ids in categories
         if voice_ids
     ]
     if not lines:
-        return EMPTY_BULLETIN, 0
+        return f"{header}\n{EMPTY_BULLETIN}", 0
 
     content = "\n".join(lines)
-    if len(content) <= MAX_MSG:
-        return content, 0
+    if len(content) <= limit:
+        return f"{header}\n{content}", 0
 
     # Over the cap. Whole lines are kept and the rest are counted in a closing
     # notice -- cutting mid-line would leave a broken link, which is worse than
@@ -77,13 +88,13 @@ def build_bulletin(categories: list[tuple[str, list[int]]]) -> tuple[str, int]:
     length = 0
     for line in lines:
         added = len(line) + (1 if kept else 0)
-        if length + added > MAX_MSG - reserve:
+        if length + added > limit - reserve:
             break
         kept.append(line)
         length += added
 
     omitted = len(lines) - len(kept)
-    return "\n".join(kept + [TRUNCATED_NOTICE.format(count=omitted)]), omitted
+    return "\n".join([header] + kept + [TRUNCATED_NOTICE.format(count=omitted)]), omitted
 
 
 def collect_categories(
@@ -244,7 +255,9 @@ async def _refresh(bot: commands.Bot, settings: Settings) -> bool:
         )
         return False
 
-    content, omitted = build_bulletin(categories)
+    content, omitted = build_bulletin(
+        categories, datetime.datetime.now(datetime.timezone.utc)
+    )
 
     # Checked rather than left to the search: Discord answers a history request
     # without this permission with an empty list, not a 403, so the board would
