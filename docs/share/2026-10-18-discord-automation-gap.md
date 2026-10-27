@@ -135,7 +135,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | # | 화면·기능 | 파일 | 지금 | 해야 할 것 | 담당 |
 |---|---|---|---|---|---|
 | ① | 사이트 「신청하기」 버튼 | `core-front/src/components/ApplyButton.tsx` | ✅ #292 · #327 — `GET /api/me` 의 `discordLinked` 로 판단한다 (미연동이면 폼 대신 연동 창) | `GET /api/me` 의 `discordLinked` 로 판단. 서버가 403 을 주면 연동 창을 여는 처리는 이미 있다 (`ApplyDialog` 의 `onRequireDiscord`) | 프론트 (B1 이후) |
-| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | 🔶 #292 — `POST /api/me/discord/link` 를 부른다. 아직 OAuth 팝업이 없어 코드는 자리표시값이고, 운영·stage 는 `NEXT_PUBLIC_DISCORD_LINK_READY` 를 꺼 「준비 중」만 보인다. 403 길드 미가입이면 서버 가입 안내 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
+| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | ✅ #292 · DSC-04 — 디스코드 OAuth 팝업으로 받은 코드로 `POST /api/me/discord/link` 를 부른다. 빌드에 `NEXT_PUBLIC_DISCORD_CLIENT_ID` 가 없는 환경은 「준비 중」만 보인다. 403 길드 미가입이면 서버 가입 안내 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
 | ③ | 신청서의 디스코드 별명 칸 | `core-front/src/components/ApplyDialog.tsx` | 기본값을 브라우저 저장소에서 읽는다. 제출은 서버로 간다 ✅ | 스펙대로 `GET /api/me` 의 `discordNickname` 에서 읽기 | 프론트 |
 | ④ | 백오피스 스터디 등록 | `back-office-front/src/components/StudyForm.tsx` | 등록은 된다. 디스코드 생성이 성공했는지 **알 수 없다** | 상세에 연결 여부 표시 + 실패 시 「디스코드 다시 연결」 버튼(`POST .../discord-link`) | 디스코드 스쿼드 (응답 필드) · 프론트 |
 | ⑤ | 스터디의 디스코드 링크 | 백오피스 `StudyForm` 입력 → 사이트 상세·내 스터디 표시 | 캡틴이 링크(`STUDY.DISCORD_CHANNEL_URL`)를 **손으로** 넣는다. 봇이 만든 채널과 따로 논다 | 봇이 만든 채널로 자동으로 채울지 정한다 (이번 범위 밖) | 기획 |
@@ -254,7 +254,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | DSC-01 | [BE] 디스코드 계정 연동 API (`POST /api/me/discord/link`) | B1. Discord OAuth 앱 설정 · `DISCORD_ID`/`DISCORD_HANDLE` 저장 · **길드 멤버 확인**(질문 2, B6) · 스펙 확정. **머지됨 (#298)** | — **가장 먼저** | j7hwang (OAuth 앱 등록) · doxxx93 (API) |
 | DSC-02 | [BE] `GET /api/me` 에 `discordLinked` 추가 | user-onboarding 스펙 필드 추가. 내 정보 조회는 #262 로 `/auth/me` → `/api/me` 로 옮겨졌다. **머지됨 (#327)** (ID 는 내리지 않고 연동 여부만. 신청 403 과 같은 `Account.isDiscordLinked()`) | — `DISCORD_ID` 칸만 읽으므로 DSC-01 없이 할 수 있다 | hereokay |
 | DSC-03 | [BE·FE] 가입 화면에 **선택** 디스코드 연동 단계 추가 | 질문 1 결정(10-23): 가입 때 연동을 받을 수 있게 하되 **건너뛸 수 있다.** 온보딩 완료 조건에는 넣지 않는다. 신청 때 연동 필수는 그대로. **결정됨(기획) — 온보딩 담당과 맞출 것** | DSC-01 | Jeongyounghyeon (BE) · LeenaKim (FE) |
-| DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03) 가입 화면의 선택 연동. 프론트 담당에게 넘겨도 된다. **신청 연동 창 연결은 머지됨 (#292)** — OAuth 팝업 · 가입 화면은 남음 | DSC-01 · DSC-02 | CLEO525 (#292) |
+| DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03) 가입 화면의 선택 연동. 프론트 담당에게 넘겨도 된다. **신청 연동 창 연결은 머지됨 (#292)** · OAuth 팝업은 10-27 PR — 가입 화면(DSC-03)은 남음. 운영·stage 에 client id · 시크릿 · Redirects 를 넣어야 켜진다 | DSC-01 · DSC-02 | CLEO525 (#292) |
 | DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **머지됨 ([PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276))** (채널 목록·메시지 메서드까지 들어 있다) | — | j7hwang (#276) · 리뷰 doxxx93 |
 | DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | 질문 5. **10-24 결정됨 — DSC-13 에 합친다** (봇 API 권한 체크를 모두 지운다). 백오피스 출석부의 담당 캡틴 중단(#325)도 이걸로 navigator role 을 회수한다 | — | j7hwang |
 | DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자. **머지됨 (#316)** — `StudyRoleSyncListener` (DSC-09 와 같은 구독자, 명부에 있으면 붙이고 없으면 뗀다) | DSC-05 · STD-02 | doxxx93 · j7hwang |

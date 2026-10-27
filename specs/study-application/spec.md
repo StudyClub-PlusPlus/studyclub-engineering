@@ -561,9 +561,30 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이션한다. 실패 시 미연결 유지, 오류 안내와 재시도 제공.
 
+### 화면 흐름 (DSC-04, 2026-10-27)
+
+```
+「디스코드 연동하기」 ─ window.open ─▶ discord.com/oauth2/authorize (scope identify guilds.members.read, state)
+                                              │ 승인
+                                              ▼
+                <사이트>/api/auth/discord/callback ─ postMessage({code, state}) ─▶ 연동 창 ─▶ POST /api/me/discord/link
+```
+
+- 팝업은 클릭과 같은 틱에 연다 (await 뒤면 브라우저가 차단한다). 차단되면 「팝업을 허용한 뒤 다시」 문구
+- 연동 창은 **같은 출처 · 표식 `studyclub-discord-oauth` · 이번에 만든 `state`** 가 모두 맞는 메시지만 받는다
+- 창을 닫거나 디스코드에서 취소하면(`error=access_denied`) 문구 없이 연동 창에 남는다
+- `redirect_uri` 는 `<사이트 주소>/api/auth/discord/callback`. 서버 `DISCORD_OAUTH_REDIRECT_URI` · Discord 개발자 포털 Redirects 와 글자까지 같아야 토큰 교환이 된다
+- 켜는 조건: 프론트 빌드에 `NEXT_PUBLIC_DISCORD_CLIENT_ID` 가 있으면 켠다. 없으면 「준비 중」. 개발 서버는 client id 없이 목 코드로 켠다
+
+### 퍼널·계측
+
+- 단계: 활성화 (신청 직전 게이트 — 연동이 막히면 신청이 없다)
+- 이벤트: 바뀌지 않는다. `My Discord Connected` (front) 는 이제 실제 연동 성공에서만 난다
+- 기대: 신청 버튼 클릭 대비 신청 제출 전환이 0 에서 회복. A/B 없음
+
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/components/ApplyDiscordGate.tsx`
+- `frontend/apps/core-front/src/components/ApplyDiscordGate.tsx` — 팝업은 `src/lib/discord.ts` 의 `requestDiscordCode`, 착지점은 `src/app/api/auth/discord/callback/route.ts`
 - `frontend/apps/playground/src/proto/core/components/ApplyDiscordGate.tsx`
 
 ### 외부 연동 (SYS-02)

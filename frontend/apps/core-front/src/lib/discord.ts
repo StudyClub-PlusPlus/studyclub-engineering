@@ -7,16 +7,77 @@ import type { OnboardingAccount } from '@/lib/api/onboarding';
 import { ApiError, http } from '@/lib/http';
 import { getQueryClient } from '@/lib/query-client';
 
+/** 디스코드 OAuth 앱 client id. 공개값이다 — 시크릿(DISCORD_OAUTH_CLIENT_SECRET)은 서버에만 있다. */
+const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ?? '';
+
 /**
- * 연동 창이 진짜로 연동할 수 있는가. 연동 API(DSC-01, #298)는 있지만 화면에 디스코드 OAuth 팝업(DSC-04)이 없고
- * 서버 OAuth 시크릿도 환경마다 따로 넣어야 한다. 꺼져 있으면 연동 창이 POST 를 보내지 않고 「준비 중」을 알린다.
- * NEXT_PUBLIC_DISCORD_LINK_READY 가 정하고, 비어 있으면 MSW 목이 도는 개발 서버에서만 켠다.
- * 팝업이 붙고 그 환경에 시크릿이 들어가면 켠다.
+ * 연동 창이 진짜로 연동할 수 있는가. client id 가 들어간 환경이면 켠다 — 그 환경의 서버 OAuth 시크릿과 같이 넣는다.
+ * 꺼져 있으면 연동 창이 POST 를 보내지 않고 「준비 중」을 알린다. 개발 서버는 client id 없이도 MSW 목으로 켠다.
  */
-const DISCORD_LINK_READY_ENV = process.env.NEXT_PUBLIC_DISCORD_LINK_READY;
-export const DISCORD_LINK_READY = DISCORD_LINK_READY_ENV
-  ? DISCORD_LINK_READY_ENV === 'true'
-  : process.env.NODE_ENV === 'development';
+export const DISCORD_LINK_READY = Boolean(DISCORD_CLIENT_ID) || process.env.NODE_ENV === 'development';
+
+/** 팝업이 돌아오는 곳. 서버 DISCORD_OAUTH_REDIRECT_URI 와 Discord 개발자 포털에 등록한 값이 이것과 글자까지 같아야 한다. */
+export const DISCORD_CALLBACK_PATH = '/api/auth/discord/callback';
+/** 콜백 페이지가 opener 로 보내는 메시지 표식 (구글 로그인 'studyclub-oauth' 와 섞이지 않게) */
+export const DISCORD_OAUTH_SOURCE = 'studyclub-discord-oauth';
+/** client id 없는 개발 서버에서 보내는 자리값. MSW 목은 코드를 보지 않는다 */
+const MOCK_OAUTH_CODE = 'mock-oauth';
+
+/** blocked: 팝업 차단 · cancelled: 창을 닫았거나 디스코드에서 취소 */
+export class DiscordPopupError extends Error {
+  constructor(readonly reason: 'blocked' | 'cancelled') {
+    super(`discord oauth ${reason}`);
+  }
+}
+
+/**
+ * 디스코드 인가 팝업을 열고 돌아온 code 를 준다. 팝업 차단을 피하려면 **클릭 핸들러 안에서 await 전에** 부른다.
+ * 메시지는 같은 출처 · 우리 표식 · 이번에 만든 state 가 모두 맞을 때만 받는다 (다른 창이 code 를 끼워 넣지 못하게).
+ */
+export function requestDiscordCode(): Promise<string> {
+  if (!DISCORD_CLIENT_ID) return Promise.resolve(MOCK_OAUTH_CODE);
+
+  const state = crypto.randomUUID();
+  const params = new URLSearchParams({
+    client_id: DISCORD_CLIENT_ID,
+    redirect_uri: window.location.origin + DISCORD_CALLBACK_PATH,
+    response_type: 'code',
+    scope: 'identify guilds.members.read',
+    state,
+  });
+  const w = 480;
+  const h = 720;
+  const left = window.screenX + (window.outerWidth - w) / 2;
+  const top = window.screenY + (window.outerHeight - h) / 2;
+  const popup = window.open(
+    `https://discord.com/oauth2/authorize?${params.toString()}`,
+    'studyclub-discord-link',
+    `width=${w},height=${h},left=${left},top=${top}`,
+  );
+  if (!popup) return Promise.reject(new DiscordPopupError('blocked'));
+
+  return new Promise((resolve, reject) => {
+    function done() {
+      window.removeEventListener('message', onMessage);
+      clearInterval(closedTimer);
+    }
+    function onMessage(ev: MessageEvent) {
+      const data = ev.data;
+      if (ev.origin !== window.location.origin || data?.source !== DISCORD_OAUTH_SOURCE || data.state !== state) return;
+      done();
+      popup?.close();
+      if (data.code) resolve(String(data.code));
+      else reject(new DiscordPopupError('cancelled'));
+    }
+    // 사용자가 팝업을 그냥 닫으면 메시지가 오지 않는다
+    const closedTimer = setInterval(() => {
+      if (!popup.closed) return;
+      done();
+      reject(new DiscordPopupError('cancelled'));
+    }, 500);
+    window.addEventListener('message', onMessage);
+  });
+}
 
 /**
  * 연동 여부.
