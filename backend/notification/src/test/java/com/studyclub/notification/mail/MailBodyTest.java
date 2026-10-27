@@ -54,8 +54,8 @@ class MailBodyTest {
 
         assertThat(text)
                 .contains("안녕하세요, {{nickname}}님.\n가입을 환영합니다!")
-                .contains("StudyClub++ 바로가기 (https://studyclub-plusplus.com)")
-                .contains("support@studyclub-plusplus.com으로 연락해 주세요.")
-                .doesNotContain("<", "&nbsp;", "[StudyClub++] 회원가입을 환영합니다");
+                .contains("StudyClub 바로가기 (https://studyclub.life)")
+                .contains("support@studyclub.life으로 연락해 주세요.")
+                .doesNotContain("<", "&nbsp;", "[StudyClub] 회원가입을 환영합니다");
     }
 }

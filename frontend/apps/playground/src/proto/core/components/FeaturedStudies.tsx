@@ -41,7 +41,7 @@ export function FeaturedStudies({
           {t({ ko: '전체 보기', en: 'View all' }, locale)} →
         </Link>
       </div>
-      <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+      <div className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3'>
         {featured.map((s) => (
           <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
         ))}

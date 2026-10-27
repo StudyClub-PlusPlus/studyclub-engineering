@@ -26,15 +26,12 @@ POST /api/v1/channels/announcement/msg
 
 헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다 (로그 추적용 — [중복 전송과 재시도](#중복-전송과-재시도) 참고).
 
-**captain 역할을 가진 멤버만 호출할 수 있다.** [`create-study`](create-study.md#요청) ·
-[`assign-role`](assign-role.md#요청) 과 같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를 조회해
-captain 역할 보유 여부를 확인하고, 없으면 **403** 이다. navigator 도, 시스템(백엔드)도 호출할 수 없다 —
-길드 전체에 울리는 공지는 사람이 책임지고 보낸다 ([시스템 호출](common-header.md#시스템-호출)).
+**봇은 요청자를 검사하지 않는다.** 누가 길드 전체 공지를 보낼 수 있는지는 백엔드가 호출 전에 정한다
+([공통 헤더](common-header.md#x-discord-user-id)). 공지에는 발신자 줄이 없으므로 `X-Discord-User-ID` 는 쓰이지 않는다.
 
-captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는** 것이다. 이 엔드포인트는 어느 것도
-만들지 않고, 찾지 못하면 보내지 말고 실패한다. 둘 다 **설정값으로 ID 를 받는다**
-(예: `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_ANNOUNCEMENT_CHANNEL_ID`) — 이름으로 찾지 않는다.
-`DISCORD_BULLETIN_CHANNEL_ID` 과 같은 방식이다.
+announcement 채널은 길드에 **이미 존재하는** 것이다. 이 엔드포인트는 만들지 않고, 찾지 못하면 보내지 말고 실패한다.
+**설정값 `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID` 로 ID 를 받는다** — 이름으로 찾지 않는다.
+`DISCORD_CONFIG_BULLETIN_CHANNEL_ID` 과 같은 방식이다.
 
 ```jsonc
 { "msg": "알고리즘 스터디 2기 모집을 시작합니다. 신청은 이번 주 금요일까지입니다." }
@@ -85,11 +82,9 @@ captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는
 
 | 상태 | 언제 |
 |------|------|
-| **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 — 이 엔드포인트는 captain 확인 때문에 필수다 |
+| **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 |
 | **400** | `Idempotency-Key` 없음 |
 | **401** | `X-API-Key` 없음 또는 불일치 |
-| **403** | 요청자에게 captain 역할이 없음 |
-| **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
 
 ### 이 엔드포인트에서 나는 것
 
@@ -98,15 +93,13 @@ captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는
 | **400** | `msg` 누락 · 문자열이 아님 · 빈 문자열 · 공백만 있음 | 요청자 잘못. 그대로 재시도해도 실패한다. 빈 공지로 `@everyone` 만 울리게 두지 않는다 |
 | **400** | `@everyone` · `@here` 를 지우고 나니 비었거나 공백만 남음 | 위와 같음 |
 | **400** | `msg` 가 1990자 초과 | 위와 같음. 잘라서 보내지 않는다 — 공지 뒷부분이 조용히 사라진다. 길이는 **가공 전** 값으로 잰다 |
-| **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
-| **404** | announcement 채널을 봇이 찾지 못함, 또는 그 ID 가 메시지를 올릴 수 있는 채널(텍스트 · 공지 채널)이 아님 | 위와 같은 **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨 |
-| **409** | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
+| **404** | announcement 채널을 봇이 찾지 못함, 또는 그 ID 가 메시지를 올릴 수 있는 채널(텍스트 · 공지 채널)이 아님 | **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨 |
+| **409** | `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
 | **502** | Discord 가 전송을 거부 | 봇 권한 부족(announcement 채널의 `Send Messages`), 그 밖의 Discord 5xx |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
-503 · Discord 5xx 502 는 **재시도 가능**하다. 400 · 401 · 403 은 조건이 바뀌기 전에는 재시도해도 같다.
-멤버 404 는 그 유저가 길드에 들어오면 통한다.
-역할 · 채널 404, 설정 409, 권한 502 는 호출자가 고칠 수 없다 — 길드나 서버 설정을 고쳐야 풀린다.
+503 · Discord 5xx 502 는 **재시도 가능**하다. 400 · 401 은 조건이 바뀌기 전에는 재시도해도 같다.
+채널 404, 설정 409, 권한 502 는 호출자가 고칠 수 없다 — 길드나 서버 설정을 고쳐야 풀린다.
 
 > **권한 부족 502 는 "가끔" 이 아니라 "항상" 이다.** 채널이 하나로 고정이라, 봇에게 `Send Messages`
 > 권한이 없으면 **모든 요청이** 502 로 실패한다. 재시도로는 풀리지 않고 채널 권한을 고쳐야 한다.
@@ -126,7 +119,7 @@ captain 역할과 announcement 채널은 둘 다 길드에 **이미 존재하는
 1. 전송 전에 `channel.permissions_for(guild.me).mention_everyone` 으로 권한을 확인해 둔다.
    **없어도 막지 않는다** — 알림이 안 울릴 뿐 공지 내용은 전달된다.
 2. 공지를 [평소대로](#올리는-메시지) 올린다.
-3. 공지 전송이 성공했고 1번에서 권한이 없었으면, **alert 채널**(`DISCORD_ALERT_CHANNEL_ID`,
+3. 공지 전송이 성공했고 1번에서 권한이 없었으면, **alert 채널**(`DISCORD_CONFIG_ALERT_CHANNEL_ID`,
    [send-alert-message](send-alert-message.md#요청) 와 같은 채널)에 아래 메시지를 올린다.
 
 ```
@@ -150,7 +143,7 @@ Discord 호출은 **한 번**(메시지 전송)뿐이라 부분 적용 상태는
 메시지 전송은 멱등이 아니어서, 같은 요청을 두 번 실행하면 길드 전체에 `@everyone` 알림이 두 번 울린다.
 alert 보다 중복의 비용이 크다.
 
-1. **먼저 다 확인하고, 그 다음에 보낸다** — 요청자 멤버 · captain 역할 · announcement 채널을 먼저
+1. **먼저 다 확인하고, 그 다음에 보낸다** — `msg` · 길드 · announcement 채널을 먼저
    해석하고, 하나라도 문제가 있으면 아무것도 보내지 않고 실패한다. `Mention Everyone` 권한은 확인만 하고
    막지 않는다 ([위](#mention-everyone-권한이-없을-때) 참고).
 2. **서버는 중복 요청을 막지 않는다.** `Idempotency-Key` 는 [로그 추적용](common-header.md#idempotency-key)이라,
@@ -166,13 +159,12 @@ alert 보다 중복의 비용이 크다.
 | | [send-alert-message](send-alert-message.md) | send-announcement-message |
 |------|------|------|
 | 경로 | `/channels/alert/msg` | `/channels/announcement/msg` |
-| 호출 권한 | captain **또는** 시스템(백엔드) | captain 만 — 시스템도 안 된다 |
 | 발신자 줄 | `발신: <@id>` 를 맨 위에 붙임 | **붙이지 않음** |
 | 맨 위 줄 | 발신자 줄 | `@everyone` |
 | 알림 | `AllowedMentions.none()` — 아무것도 안 울림 | `@everyone` 만 울림 |
 | `msg` 상한 | 1900자 | 1990자 |
 | 추가 권한 | 없음 | `Mention Everyone` (없으면 공지는 올리고 alert 채널에 알림) |
-| 설정값 | `DISCORD_ALERT_CHANNEL_ID` · captain 역할 · `DISCORD_BOT_ID` | `DISCORD_ANNOUNCEMENT_CHANNEL_ID` · captain 역할 · (권한 알림용) `DISCORD_ALERT_CHANNEL_ID` |
+| 설정값 | `DISCORD_CONFIG_ALERT_CHANNEL_ID` | `DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID` · (권한 알림용) `DISCORD_CONFIG_ALERT_CHANNEL_ID` |
 
 ## 미정 사항
 

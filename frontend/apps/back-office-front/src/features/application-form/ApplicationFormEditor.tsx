@@ -21,7 +21,7 @@ import { applicationFormSchema, type ApplicationFormValues } from './schema';
 const HEADER_ID = '__form-header__';
 const DISCORD_QUESTION: ApplicationQuestion = {
   id: 'discord',
-  label: '[스터디 클럽++] 디스코드 서버 별명',
+  label: '[스터디클럽] 디스코드 서버 별명',
   type: 'text',
   required: true,
   placeholder: '홍길동/SWE/산호세/시스템디자인',

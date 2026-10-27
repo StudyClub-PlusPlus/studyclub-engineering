@@ -81,6 +81,11 @@ public class Study extends BaseEntity {
     @Column(length = 255)
     private String schedule;
 
+    /** 운영자가 고른 기준 시간대. {@code null} = 미정 — 판정은 {@link #timezone()}. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "TIMEZONE", length = 10)
+    private StudyTimezone timezone;
+
     @Column(name = "PUBLISH_AT")
     private Instant publishAt;
 
@@ -102,6 +107,11 @@ public class Study extends BaseEntity {
         if (description != null) this.description = description;
         if (category != null) this.category = category;
         if (schedule != null) this.schedule = schedule;
+    }
+
+    /** 기준 시간대. {@code null} 이면 미정으로 되돌린다. */
+    public void changeTimezone(StudyTimezone timezone) {
+        this.timezone = timezone;
     }
 
     /** 진행 시작일. {@code null} 이면 미정. */
@@ -127,11 +137,20 @@ public class Study extends BaseEntity {
     }
 
     public boolean isClosingSoon(Instant recruitDeadlineAt) {
-        Instant now = Instant.now();
+        return isClosingSoon(recruitDeadlineAt, Instant.now());
+    }
+
+    /**
+     * 모집 임박 여부. {@code asOf} 는 집계 기준 시각이다 — 대시보드처럼 한 응답 안에서 같은 시계를 쓸 때 넘긴다.
+     *
+     * <p>조건: {@code OPEN} 이고 마감이 {@code asOf} 이후이며, {@code asOf} 로부터 3일(72시간) 미만이다. 정확히 72시간이면 임박이
+     * 아니다.
+     */
+    public boolean isClosingSoon(Instant recruitDeadlineAt, Instant asOf) {
         return status == StudyStatus.OPEN
                 && recruitDeadlineAt != null
-                && recruitDeadlineAt.isAfter(now)
-                && recruitDeadlineAt.isBefore(now.plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
+                && recruitDeadlineAt.isAfter(asOf)
+                && recruitDeadlineAt.isBefore(asOf.plus(CLOSING_SOON_DAYS, ChronoUnit.DAYS));
     }
 
     /**
@@ -148,11 +167,21 @@ public class Study extends BaseEntity {
      */
     public RecruitStatus recruitStatus(
             long applicantCount, Instant recruitDeadlineAt, Integer recruitmentCapacity) {
+        return recruitStatus(applicantCount, recruitDeadlineAt, recruitmentCapacity, Instant.now());
+    }
+
+    /**
+     * {@link #recruitStatus(long, Instant, Integer)} 와 같되 마감 판정에 {@code asOf} 를 쓴다 — 대시보드 집계 기준 시각.
+     */
+    public RecruitStatus recruitStatus(
+            long applicantCount,
+            Instant recruitDeadlineAt,
+            Integer recruitmentCapacity,
+            Instant asOf) {
         if (status != StudyStatus.OPEN) {
             return null;
         }
-        boolean deadlinePassed =
-                recruitDeadlineAt != null && !Instant.now().isBefore(recruitDeadlineAt);
+        boolean deadlinePassed = recruitDeadlineAt != null && !asOf.isBefore(recruitDeadlineAt);
         boolean capacityReached =
                 recruitmentCapacity != null && applicantCount >= recruitmentCapacity;
         return (deadlinePassed || capacityReached)
@@ -185,11 +214,15 @@ public class Study extends BaseEntity {
     }
 
     /**
-     * 진행 시간대를 일정 문구({@code SCHEDULE})의 표기로 판정한다. PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시
-     * 모집이다.
+     * 목록·필터가 쓰는 진행 시간대. 운영자가 고른 값({@code TIMEZONE})이 있으면 그대로 쓴다. 없으면(컬럼 전 데이터) 일정 문구({@code
+     * SCHEDULE})의 표기로 판정한다 — PST·PDT 가 있으면 PST, KST 가 있으면 KST, 둘 다 없으면 두 지역 동시 모집이다.
+     *
+     * <p>목록 필터({@code StudyListJpqlDao.TIMEZONE})가 같은 순서로 판정한다 — 한쪽만 고치면 필터와 표시가 어긋난다.
      */
-    // ponytail: 자유 텍스트 판정 — 표기가 흔들리면 틀린다. 운영에서 문제가 되면 TIMEZONE 컬럼으로 올린다
     public StudyTimezone timezone() {
+        if (timezone != null) {
+            return timezone;
+        }
         if (schedule == null) {
             return StudyTimezone.BOTH;
         }
@@ -202,8 +235,21 @@ public class Study extends BaseEntity {
         return StudyTimezone.BOTH;
     }
 
+    /** 담당 캡틴 — 이 스터디를 만든 캡틴(POL-0001). */
+    public boolean isCreatedBy(Long accountId) {
+        return createdBy != null && createdBy.equals(accountId);
+    }
+
     public boolean isPubliclyVisible() {
         return status != StudyStatus.DRAFT;
+    }
+
+    /**
+     * 운영자가 끝낸 스터디({@code ENDED} · {@code CLOSED}) — 명부를 더 바꾸지 않는다
+     * (specs/study-participant/spec.md).
+     */
+    public boolean isEnded() {
+        return status == StudyStatus.ENDED || status == StudyStatus.CLOSED;
     }
 
     public void replaceApplicationForm(String applicationForm) {

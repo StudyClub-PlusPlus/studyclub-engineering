@@ -1,23 +1,27 @@
 'use client';
 
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { ScheduleTab } from '@/components/ScheduleTab';
+import { useManage } from '@/components/StudyManageShell';
+import { useStudyAttendance, useStudyMeetings } from '@/features/studies/queries';
 
-import { ArrowLeft } from 'lucide-react';
-
-export default function StudySchedulePage() {
-  const params = useParams();
-  const locale = (params?.locale as string) ?? 'ko';
+export default function StudyManageSchedulePage() {
+  const { study, group, groupId, canEdit, setDirty } = useManage();
+  const meetingQuery = useStudyMeetings(Number(study.id), groupId);
+  const attendanceQuery = useStudyAttendance(Number(study.id), groupId);
+  async function refetchAll() {
+    await Promise.all([meetingQuery.refetch(), attendanceQuery.refetch()]);
+  }
 
   return (
-    <div className='mx-auto max-w-6xl px-6 pb-16 pt-8'>
-      <Link
-        href={`/${locale}/my/joined`}
-        className='inline-flex items-center gap-1.5 type-label-lg text-fg-secondary hover:text-fg'
-      >
-        <ArrowLeft size={15} /> 내 스터디
-      </Link>
-      <p className='mt-16 text-center type-body-sm text-fg-secondary'>스터디 일정 화면을 준비 중입니다.</p>
-    </div>
+    <ScheduleTab
+      study={study}
+      group={group}
+      groupId={groupId}
+      meetingData={meetingQuery.data}
+      attendanceData={attendanceQuery.data}
+      refetchMeetings={refetchAll}
+      canEdit={canEdit}
+      onDirty={setDirty}
+    />
   );
 }

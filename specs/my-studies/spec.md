@@ -2,7 +2,7 @@
 
 > ERD: [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY](../../docs/erd/STUDY.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > 생성일: 2026-09-30
-> 상태: 구현완료 (프론트 core-front `/my/joined` 구현 완료. 담당 캡틴 `captain` 플래그는 추가 필요)
+> 상태: 구현완료 (프론트 core-front `/my/joined` 구현 완료)
 >
 > Story PRD:
 > - [크루로서, 내가 참여 중인 스터디를 모아 볼 수 있다](../../01-planning/stories/crew-joined-studies/PRD.md)
@@ -14,7 +14,7 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| GET | /api/me/studies | 내 스터디 — 명부에 있는 스터디 전부 + 회차별 내 출석 | O | 구현완료 · `captain` 플래그 추가 필요 |
+| GET | /api/me/studies | 내 스터디 — 명부에 있는 스터디 전부 + 회차별 내 출석 | O | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -179,7 +179,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 
 ### 미확정
 
-- 출석률에서 휴가(`EXCUSED`)는 **출석과 똑같이 센다**(1회 = 1.0) — #146(2026-09-30 머지)이 계산기·출석 스펙·ERD 를 이렇게 맞췄다. PRD §4-8 의 "휴가 회차는 계산에서 뺀다" 와 열린 #147 문서는 바뀌기 전 기준이다. 휴가 신청 자체는 MVP 이후(디스코드 09-08)라 `EXCUSED` 는 반장 정정으로만 생긴다
+- 출석률에서 휴가(`EXCUSED`)는 **분모에서 뺀다**, 출석 행이 없는 회차도 세지 않는다 — PRD §4-8 기준 (2026-10-24 기획 결정. 전에는 #146 이 휴가를 출석과 같이 1.0 으로 셌다). 휴가 신청 자체는 MVP 이후(디스코드 09-08)라 `EXCUSED` 는 반장 정정으로만 생긴다
 - [NEEDS CLARIFICATION] 명부 `PAUSED` 의 탭·배지 (PRD §4 미확정과 같음)
 - [NEEDS CLARIFICATION] 클럽 디스코드 초대(로비) URL 은 지금 프론트 mock `site.discord_invite`(`frontend/packages/mock/src/index.ts`)에 있다. 서버 설정으로 옮길지만 미정 — 옮기기 전까지 이 응답에 넣지 않는다
 - [NEEDS CLARIFICATION] 회차 예정 길이. 컬럼이 없어 120분으로 본다(프로토 가정). 반·스터디마다 다르면 예정 종료 컬럼이 필요하다

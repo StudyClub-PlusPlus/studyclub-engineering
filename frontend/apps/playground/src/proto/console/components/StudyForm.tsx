@@ -14,7 +14,7 @@ import {
   type StudyKind,
   type StudyTimezone,
 } from '@studyclub/mock';
-import { Checkbox, Input, Textarea } from '@studyclub/ui';
+import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
@@ -42,13 +42,23 @@ export const TIMEZONE_LABEL: Record<StudyTimezone, string> = { KST: 'KST', PST: 
 export type FormMode = 'create' | 'edit';
 
 /**
- * 카드 제목 권장 길이 = **말줄임이 나지 않는 최대 글자수**.
+ * 제목 한도 = **카드에서 잘리지 않는 길이**. 글자 수가 아니라 **폭**으로 센다.
  *
- * 근거: 카드 제목 영역 315px · 24px extrabold · 2줄 clamp 조건에서
- * 무작위 한글 제목 5,000건을 렌더해 측정 → 25자부터 3줄로 넘어가 말줄임 발생,
- * 24자까지는 초과 0건. 어절이 길수록(띄어쓰기가 적을수록) 먼저 넘친다.
+ * 한글 한 자는 영문 두 자만큼 넓다. 글자 수로 재면 「한글이면 20자, 영어면 40자」라는 두 규칙이
+ * 생기는데, 「최신 LLM Advanced 스터디」처럼 섞인 제목은 어느 쪽으로 셀지 정할 수 없다.
+ * 폭 하나로 재면 규칙도 하나고 섞인 제목도 저절로 맞는다 — **한글 20자 = 영문 40자 = 폭 40**.
+ *
+ * 근거: 카드 제목 영역 315px · 24px extrabold · 2줄 clamp 조건에서 무작위 한글 제목 5,000건을
+ * 렌더해 측정 → 25자(폭 50)부터 3줄로 넘어가 말줄임 발생. 폭 40 은 그보다 안쪽이다.
  */
-export const TITLE_RECOMMENDED = 24;
+export const TITLE_MAX_WIDTH = 40;
+
+/** 한글·전각은 2, 그 밖은 1. 세는 법은 화면과 서버가 같아야 한다. */
+export function titleWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) w += /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 2 : 1;
+  return w;
+}
 /** 카드 한 줄 소개가 줄바꿈 없이 한 줄로 유지되는 최대 글자수. */
 export const SUMMARY_RECOMMENDED = 25;
 
@@ -191,11 +201,12 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   const e: StudyFormErrors = {};
   if (f.programMode === 'existing' && !f.programId) e.programId = '기수를 추가할 프로그램을 고르세요.';
   if (!f.title.trim()) e.title = '제목을 입력하세요.';
-  else if (f.title.trim().length > 60) e.title = '60자 이내로 입력하세요.';
+  else if (titleWidth(f.title.trim()) > TITLE_MAX_WIDTH) e.title = '한글 20자(영문 40자) 이내로 입력하세요.';
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
   if (!f.category) e.category = '카테고리를 선택하세요.';
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
-  if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim())) e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
+  if (!f.unlimited && !/^[1-9]\d*$/.test(f.capacity.trim()))
+    e.capacity = '1 이상의 정수로 입력하세요. 제한이 없으면 「제한 없음」을 체크하세요.';
   const isUrl = (v: string) => /^https?:\/\/.+/i.test(v.trim());
   if (f.discordUrl.trim() && !isUrl(f.discordUrl)) e.discordUrl = 'http(s):// 로 시작하는 주소를 입력하세요.';
   if (f.driveUrl.trim() && !isUrl(f.driveUrl)) e.driveUrl = 'http(s):// 로 시작하는 주소를 입력하세요.';
@@ -242,7 +253,7 @@ export function StudyForm({
           onChange={(ev) => set('title', ev.target.value)}
           placeholder='AI 논문 스터디'
           error={errors.title}
-          labelHint={<CharCount anno='2-1' len={value.title.trim().length} max={TITLE_RECOMMENDED} />}
+          labelHint={<CharCount anno='2-1' len={titleWidth(value.title.trim())} max={TITLE_MAX_WIDTH} />}
         />
       </div>
 
@@ -301,7 +312,7 @@ export function StudyForm({
             type='date'
             value={value.deadline}
             onChange={(ev) => set('deadline', ev.target.value)}
-            className='h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+            className='h-10 w-full rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
           />
           {errors.deadline && <p className='type-label-sm text-error-600'>{errors.deadline}</p>}
         </div>
@@ -313,7 +324,9 @@ export function StudyForm({
             value={value.capacity}
             onChange={(ev) => set('capacity', ev.target.value.replace(/[^\d]/g, ''))}
             disabled={value.unlimited}
-            placeholder={value.unlimited ? '제한 없음' : '명'}
+            placeholder={value.unlimited ? '제한 없음' : undefined}
+            // 「제한 없음」을 풀면 숫자 뒤에 단위를 붙여 둔다
+            suffix={value.unlimited ? undefined : '명'}
             error={errors.capacity}
             labelHint={
               <span data-anno='10-1'>
@@ -343,7 +356,7 @@ export function StudyForm({
             type='date'
             value={value.startAt}
             onChange={(ev) => set('startAt', ev.target.value)}
-            className='h-10 w-[9.5rem] shrink-0 rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
+            className='h-10 w-full rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none transition-[border-color,box-shadow] focus:border-brand focus:shadow-[var(--ring)]'
           />
           <span className='type-label-sm text-fg-muted'>모임이 실제로 시작하는 날. 미정이면 비워 둡니다</span>
         </div>
@@ -405,8 +418,13 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
           // eslint-disable-next-line @next/next/no-img-element -- blob: 미리보기는 next/image 최적화 대상이 아니다
           <img src={value} alt='' className='h-16 w-16 shrink-0 rounded-control border border-border object-cover' />
         ) : (
-          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong type-label-sm text-fg-muted'>
-            카테고리 기본값
+          <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-control border border-dashed border-border-strong text-center type-label-sm text-fg-muted'>
+            {/* flex 상자 안이라 글과 <br /> 이 따로 놓이지 않게 한 덩이로 감싼다 */}
+            <span>
+              카테고리
+              <br />
+              기본값
+            </span>
           </div>
         )}
         <div className='flex flex-col gap-1'>
@@ -626,7 +644,7 @@ function ProgramField({
         </div>
       ) : (
         <div className='flex flex-col gap-1.5'>
-          <select
+          <Select
             aria-label='프로그램 선택'
             value={value.programId}
             // 프로그램을 고르면 제목은 프로그램 제목, 소개·설명·카테고리는 최신 기수의 것으로 채운다
@@ -637,7 +655,6 @@ function ProgramField({
                   : { ...value, programId: '', kind: 'club' },
               )
             }
-            className='h-10 rounded-control border border-border-strong bg-bg px-3 type-body-sm outline-none focus:border-brand'
           >
             <option value=''>클럽을 고르세요</option>
             {clubs.map((p) => (
@@ -645,7 +662,7 @@ function ProgramField({
                 {tx(p.title)}
               </option>
             ))}
-          </select>
+          </Select>
           <p className='type-label-sm text-fg-muted'>
             새 기수를 붙일 수 있는 것은 클럽뿐입니다. 스터디는 기수가 1개이고, 종류는 한 번 정하면 바꿀 수 없습니다.
           </p>

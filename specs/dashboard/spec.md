@@ -1,10 +1,10 @@
 # 운영 대시보드 화면·API Spec
 
-> Playground: [운영 콘솔 대시보드](https://playground.studyclub-plusplus.com/proto/console)
+> Playground: [운영 콘솔 대시보드](https://playground.studyclub.life/proto/console)
 > Story PRD: [캡틴은 운영 현황을 한 화면에서 볼 수 있다](../../01-planning/stories/console-dashboard/PRD.md) (ST-002) — 화면이 무엇을 하는지·완료 기준은 PRD 가 정본
 > 작성일: 2026-09-16 · 수정일: 2026-10-07
 > 대상: 캡틴용 운영 콘솔. 이 문서는 구현할 화면·집계·API 계약을 정의한다.
-> 상태: 구현·리뷰 전. 논의 중인 정책과 변경 조건은 해당 화면과 7절에 기록한다.
+> 상태: 백엔드 API 5개 구현완료 (2026-10-23 확인 — `AdminStatsController` · `AdminStatsIntegrationTest`). 논의 중인 정책과 변경 조건은 해당 화면과 7절에 기록한다.
 
 ## 1. 기준 화면과 용어
 
@@ -160,24 +160,24 @@
 | 참여 상태별 상한 | `ACTIVE / PAUSED / COMPLETED`: `asOf`. `WITHDRAWN / DELETED`: `LEFT_AT` |
 | 회차 조건 | `JOINED_AT <= SCHEDULED_AT <= 집계 상한`. 양쪽 경계 포함 |
 | 떠난 시각 누락 | `WITHDRAWN / DELETED`인데 `LEFT_AT`이 없으면 해당 참여자의 기록 전체 제외 |
-| 출석 점수 | `PRESENT = 1`, `EXCUSED = 1`, `LATE = 0.5`, `ABSENT = 0` |
-| 미입력 | 대상 회차의 출석 행이 없어도 분모에 포함. 점수는 0 |
+| 출석 점수 | `PRESENT = 1`, `LATE = 0.5`, `ABSENT = 0`. `EXCUSED` 는 분모에서 뺀다 |
+| 미입력 | 대상 회차의 출석 행이 없으면 분모에 넣지 않는다 (체크되지 않은 회차) |
 | 분모 0 | API `null`. 화면 ‘—’, ‘집계할 출석 대상이 없습니다.’ |
-| 분모가 있고 모두 결석·미입력 | `0%` |
+| 분모가 있고 모두 결석 | `0%` |
 
 ```text
-집계 대상 수 = 참여 상태·회차 조건을 만족하는 회원 × 소속 반 회차 수
-환산 출석수 = PRESENT 수 + EXCUSED 수 + 0.5 × LATE 수
+집계 대상 수 = 참여 상태·회차 조건을 만족하는 회원 × 소속 반 회차 중 출석 행이 PRESENT · LATE · ABSENT 인 것
+환산 출석수 = PRESENT 수 + 0.5 × LATE 수
 출석률 = 100 × 환산 출석수 / 집계 대상 수
 ```
 
-**적용 근거:** 스터디 스쿼드와 논의하여 스터디 팀의 공통 출석 계산식을 그대로 적용하기로 했다. 사용자 화면과 대시보드는 같은 집계 대상·기간·기준 시각에서 같은 출석률을 제공해야 한다. PRD의 ‘휴가는 분모에서 뺀다’는 기준과 차이가 있으나, 이 문서는 공통 계산식에 따라 `EXCUSED`를 분자·분모에 각각 1로 포함한다.
+**적용 근거:** 사용자 화면과 대시보드는 같은 집계 대상·기간·기준 시각에서 같은 출석률을 제공해야 한다 — 같은 계산기(`AttendanceRateCalculator`)를 쓴다. 2026-10-24 기획 결정으로 공통 계산식을 PRD 기준(분모는 체크된 회차뿐, 휴가는 분모에서 뺀다)으로 바꿨다. 전에는 `EXCUSED` 를 분자·분모에 각각 1로, 미입력을 분모에 넣었다 ([attendance 스펙 출석률 산식](../attendance/spec.md)).
 
-- `EXCUSED`·결석·미입력도 집계 대상 수에 포함한다. 출석 행만 세어 분모를 만들지 않는다.
+- 결석은 집계 대상 수에 포함한다. `EXCUSED`·미입력은 넣지 않는다.
 - 합류 전·집계 상한 이후 회차는 제외한다. 실제 시작·종료나 출석 입력 완료를 조건으로 추가하지 않는다.
 - 회원 탈퇴 후에도 보존된 참여 명부의 탈퇴 전 출석·결석을 포함한다. 현재 계정 존재 여부로 출석 대상을 제한하지 않는다.
 - 이미 하차한 회원은 기존 `LEFT_AT`을 유지한다. 떠난 이후 회차는 집계 대상에서 제외한다.
-- 다른 반 참석은 소속 반에 저장된 `EXCUSED`로 인정한다. 다른 반의 출석 기록을 별도로 더하지 않는다.
+- 다른 반 참석은 소속 반에 `EXCUSED` 로 남는다 — 출석률에서는 빠진다(분모에서 뺌). 다른 반의 출석 기록을 별도로 더하지 않는다.
 - 취소·미개최 회차에 별도 제외 조건을 추가하지 않는다. 위 회차 조건을 만족하면 공통 출석 계산에 포함한다.
 
 서버는 평균 출석률·전주 대비·12주 추세에 `AttendanceRateCalculator.components()`를 공통으로 사용한다. 대상 참여자의 분자와 분모를 각각 합산한다. 반·기수별 출석률을 단순 평균하지 않는다.
@@ -371,12 +371,12 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 | Method | Path | 화면·용도 | 상태 |
 |---|---|---|---|
-| GET | `/api/admin/stats/summary` | 1-1, 2: KPI·주간 비교 | 스펙작성중 |
-| GET | `/api/admin/stats/study-board` | 3-1, 3-2: 보드별 미리보기 | 스펙작성중 |
+| GET | `/api/admin/stats/summary` | 1-1, 2: KPI·주간 비교 | 구현완료 |
+| GET | `/api/admin/stats/study-board` | 3-1, 3-2: 보드별 미리보기 | 구현완료 |
 | GET | `/api/admin/studies` | 전체 보기·카테고리별 목록 | 구현완료 |
-| GET | `/api/admin/stats/crew-timezones` | 4: 활성 크루 시간대 분포 | 스펙작성중 |
-| GET | `/api/admin/stats/attendance-trend` | 5, 5-1: 12주 추세·평균 | 스펙작성중 |
-| GET | `/api/admin/stats/studies-by-category` | 6: 진행중·누적 개수 | 스펙작성중 |
+| GET | `/api/admin/stats/crew-timezones` | 4: 활성 크루 시간대 분포 | 구현완료 |
+| GET | `/api/admin/stats/attendance-trend` | 5, 5-1: 12주 추세·평균 | 구현완료 |
+| GET | `/api/admin/stats/studies-by-category` | 6: 진행중·누적 개수 | 구현완료 |
 
 - 모든 API는 `Authorization: Bearer <JWT>` 인증과 `@RequireAdmin` 검사를 적용한다.
 - Path Parameter·Request Body는 없다. Query는 각 API 표를 따른다.
@@ -726,8 +726,8 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | points | Array | N | 정확히 12개. 날짜 오름차순, 빈 주도 포함 |
 | points[].weekStart | Date | N | 응답 timeZone 기준 각 주의 월요일 날짜. 회차 SCHEDULED_AT을 이 시간대로 변환해 귀속 주를 정함 |
 | points[].isCurrentWeek | Boolean | N | asOf가 속한 주인지. 마지막 점만 true |
-| points[].weightedAttended | Double | N | 2-2의 대상 중 PRESENT 수 + EXCUSED 수 + 0.5 × LATE 수. 0.5 단위를 유지 |
-| points[].eligibleCount | Long | N | 2-2의 회원 × 회차 집계 대상 수. EXCUSED·미입력·ABSENT 포함 |
+| points[].weightedAttended | Double | N | 2-2의 대상 중 PRESENT 수 + 0.5 × LATE 수. 0.5 단위를 유지 |
+| points[].eligibleCount | Long | N | 2-2의 회원 × 회차 집계 대상 수 — 출석 행이 PRESENT · LATE · ABSENT 인 것. EXCUSED·미입력 제외 |
 | points[].rate | Double | Y | 100 × weightedAttended / eligibleCount. 분모 0이면 null |
 
 데이터가 없어도 12개 점을 반환한다. 빈 주는 `weightedAttended=0, eligibleCount=0, rate=null`이다. 일부 주의 실패를 `null`로 바꾸지 않는다. `weeks`가 12가 아니면 400이다.
@@ -767,7 +767,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | 집계 단위 | 회원은 `ACCOUNT_ID`, 참여는 `(ACCOUNT_ID, STUDY_ID)`, 기수는 `STUDY.ID`로 중복 제거 |
 | 진행 상태·명부 | `ONGOING`·실제 `ACTIVE` 명부만 활성 집계. 신청만 한 회원과 시작일만 지난 `OPEN` 기수는 제외 |
 | 출석 참여 기간 | `JOINED_AT`·집계 상한 경계 포함. 탈퇴·하차 전 기록 보존. `LEFT_AT` 누락 시 해당 참여자 제외 |
-| 출석 점수·빈 값 | 모두 `EXCUSED`면 100%. 결석·미입력만 있으면 0%. 분모 0이면 `null` |
+| 출석 점수·빈 값 | 모두 `EXCUSED` 거나 미입력이면 분모 0 → `null`. 결석만 있으면 0% |
 | 공통 계산 | 같은 대상·시각이면 기존 출석 계산과 분자·분모 일치. 백분율 변환은 서버에서 한 번만 수행 |
 | 시간대 선택 | 브라우저 우선. 감지 실패는 회원 설정 → UTC. 명시한 무효 값은 대체하지 않고 400 |
 | 주간 경계 | 월요일 경계·서머타임 반영. `weekStart` 날짜를 UTC로 재해석하지 않음 |

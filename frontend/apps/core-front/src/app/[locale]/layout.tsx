@@ -32,6 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   return {
+    verification: { other: { 'naver-site-verification': '704d84f239ac8c0255ff0d16fff86b95ce6138c9' } },
     metadataBase: new URL(SITE_URL),
     title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
     description: m('seo.site_description', locale),
@@ -68,9 +69,12 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className='h-full' suppressHydrationWarning>
       <head>
+        {/* Pretendard — 버전 고정(@latest 는 어느 날 바뀐다). dynamic-subset 은 화면에 쓰인 글자 묶음만 받아 첫 로딩이 가볍다 */}
+        <link rel='preconnect' href='https://cdn.jsdelivr.net' crossOrigin='anonymous' />
         <link
           rel='stylesheet'
-          href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/variable/pretendardvariable.min.css'
+          crossOrigin='anonymous'
+          href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css'
         />
       </head>
       <body className='min-h-full'>

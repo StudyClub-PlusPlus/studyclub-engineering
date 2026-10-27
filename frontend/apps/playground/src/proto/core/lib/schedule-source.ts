@@ -5,6 +5,7 @@ import {
   addMeetings,
   deleteMeetings,
   patchMeeting,
+  setKickoff,
   withAdded,
   zonedInstant,
   type MeetingPatch,
@@ -31,6 +32,8 @@ export type ScheduleSource = {
   add: (input: { dates: string[]; time: string; title?: string }) => void;
   patch: (id: string, patch: MeetingPatch) => void;
   remove: (id: string) => void;
+  /** 킥오프를 정하거나 옮긴다. 백오피스(캡틴)만 있다: 사용자 사이트의 네비게이터는 킥오프를 고치지 않는다. */
+  setKickoff?: (date: string, time: string) => void;
 };
 
 /** 사용자 사이트 — 내 분반. 시간대는 분반 시간대. */
@@ -75,5 +78,21 @@ export function classSource({
     add: (input) => addMeetings(key, { ...input, timeZone }),
     patch: (id, patch) => patchMeeting(key, id, patch, timeZone),
     remove: (id) => deleteMeetings(key, [id]),
+    setKickoff: (date, time) => setKickoff(key, date, time, timeZone),
   };
+}
+
+/**
+ * 참여 중단한 사람을 그 시점 뒤에 시작하는 회차의 발표자 칸에서 뺀다. 이미 시작한 회차의 발표 기록은 남긴다.
+ * TODO(api): 서버가 참여 중단(withdrawals[])과 같은 트랜잭션에서 비운다 — 프론트는 다시 읽기만 한다.
+ */
+export function dropPresenters(src: ScheduleSource, ids: string[], from: Date): void {
+  const gone = new Set(ids);
+  for (const m of src.meetings()) {
+    if (src.startOf(m).getTime() <= from.getTime()) continue;
+    const patch: MeetingPatch = {};
+    if (m.presenter1 && gone.has(m.presenter1)) patch.presenter1 = null;
+    if (m.presenter2 && gone.has(m.presenter2)) patch.presenter2 = null;
+    if (Object.keys(patch).length > 0) src.patch(m.id, patch);
+  }
 }

@@ -45,6 +45,7 @@ export function RegistrationPreviewToolbar() {
   const search = useSearchParams();
   const router = useRouter();
   if (!/\/(login|onboarding)$/.test(path)) return null;
+  if (search.get('step') === 'discord') return null;
   const locale = path.includes('/core/en/') ? 'en' : 'ko';
   const ko = locale === 'ko';
   const onboarding = path.endsWith('/onboarding');

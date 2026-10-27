@@ -9,7 +9,7 @@ import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 
 import { OnboardingConsent } from '@/components/OnboardingConsent';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
-import { track } from '@/lib/analytics';
+import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { checkNicknameAvailability } from '@/lib/api/nicknames';
 import { completeOnboarding } from '@/lib/api/onboarding';
@@ -70,7 +70,7 @@ function OnboardingScreen() {
             {locale === 'ko' ? 'Google 계정 연결 완료' : 'Google account connected'}
           </div>
           <h1 className='break-keep type-headline-lg sm:type-headline-lg'>
-            {locale === 'ko' ? 'StudyClub++에 오신 것을 환영해요' : 'Welcome to StudyClub++'}
+            {locale === 'ko' ? 'StudyClub에 오신 것을 환영해요' : 'Welcome to StudyClub'}
           </h1>
         </header>
         {ready && accountId != null ? (
@@ -187,7 +187,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
         : {
             text: ko
               ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
-              : '2–20 characters · Korean, letters, numbers, underscore (_)',
+              : '2 to 20 characters · Korean, letters, numbers, underscore (_)',
             tone: 'muted',
           }
       : nickFormatError
@@ -206,7 +206,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
                 : {
                     text: ko
                       ? '2~20자 · 한글, 영문, 숫자, 밑줄(_)'
-                      : '2–20 characters · Korean, letters, numbers, underscore (_)',
+                      : '2 to 20 characters · Korean, letters, numbers, underscore (_)',
                     tone: 'muted',
                   };
 
@@ -276,6 +276,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
         marketingAgreed: draft.marketingAgreed,
         nickname: draft.nickname.trim(),
         timeZone: draft.timeZone,
+        gaClientId: readGaClientId(),
       });
       setUser({
         id: account.id,
@@ -288,6 +289,8 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
       });
       setSuggestedNickname(null);
       clearDraft(accountId);
+      // 온보딩 최초 완료 = 가입 확정 (서버 user.registered 와 같은 지점)
+      trackSignUp();
       track({
         name: 'Onboarding Completed',
         props: {

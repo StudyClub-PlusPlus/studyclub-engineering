@@ -11,15 +11,15 @@ import { getMyAttendance, meetingWindow, meetingsOf } from '@core/lib/attendance
 import { bookFromSchedule, DISPLAY_ZONES, wallParts } from '@core/lib/meetings';
 import { getGroupAttendance, saveGroupAttendance, type AttendanceBook } from '@core/lib/navigator-attendance';
 import { ME_ID, participantsOf, withdrawParticipant } from '@core/lib/schedule-board';
+import { dropPresenters, studySource } from '@core/lib/schedule-source';
 import { Button } from '@studyclub/ui';
-import { ExternalLink } from 'lucide-react';
 
 import { ATTENDANCE_SPEC, MANAGE_SPEC } from '../spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
 
 /**
  * 출석부 — 백오피스 출석부와 같은 격자. 다른 점은 범위뿐이다: 여기는 **내 분반의 참여자만**.
- * 스터디 전체 참여자는 백오피스 출석부에서 본다 — 캡틴에게는 그리로 가는 버튼을 둔다.
+ * 다른 반은 백오피스 출석부에서 반 칩으로 골라 본다 — 캡틴에게는 정보 카드 바로가기 줄 맨 앞(「디스코드」 왼쪽)에 그리로 가는 버튼을 둔다.
  *
  * 구글 시트처럼 출석과 발표를 한 격자에 보인다. 발표는 일정의 발표자1·2에서 가져온다.
  * 크루는 분반 전원의 기록을 보기만 한다. 킥오프 열은 출석률에 넣지 않는다.
@@ -32,7 +32,7 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
  */
 export default function StudyManageAttendancePage() {
   const router = useRouter();
-  const { study, group, locale, captain, canEdit, setDirty } = useManage();
+  const { study, group, locale, canEdit, setDirty } = useManage();
   const [book, setBook] = useState<AttendanceBook | null>(null);
   /** 회차 머리를 어느 시간대로 보일지. 일정 탭과 같다 — 처음엔 분반 시간대, 탭에 없는 시간대면 KST. */
   const [zone, setZone] = useState<string>(
@@ -41,7 +41,7 @@ export default function StudyManageAttendancePage() {
   /** 중단·재개 뒤 다시 그려 명단을 새로 읽는다 — 프로토는 브라우저 저장소에서 읽는다. */
   const [, rerender] = useState(0);
 
-  // 프로토의 「나」는 분반 명부 밖에 있다 — 내 출석 기록(내 스터디 카드와 같은 값)을 내 줄에 채운다.
+  // 프로토의 「나」는 분반 명부 밖에 있다 — 내 출석 기록(내 스터디룸 카드와 같은 값)을 내 줄에 채운다.
   useEffect(() => {
     const group = getGroupAttendance(study);
     setBook(group[ME_ID] ? group : { ...group, [ME_ID]: { ...getMyAttendance(study.id) } });
@@ -53,6 +53,8 @@ export default function StudyManageAttendancePage() {
   const crew = participantsOf(study)
     .map((p) => ({
       ...p,
+      // 닉네임 열에는 닉네임만 — 동명이인은 옆 「디스코드 닉네임」 열이 가른다
+      name: p.nickname ?? p.name,
       left: p.left && { label: '참여 중단', at: p.left.at },
       manageable: true,
       withdrawable: !p.me && !p.role,
@@ -64,6 +66,8 @@ export default function StudyManageAttendancePage() {
     // TODO(api): 출석 저장과 한 요청으로 — POST /api/studies/{studyId}/attendances 의 withdrawals[]
     await new Promise((r) => setTimeout(r, 200));
     for (const id of ids) withdrawParticipant(study.id, id);
+    // 중단한 뒤에 시작하는 회차의 발표자 칸은 비운다 — 이미 지난 회차의 발표 기록은 남긴다
+    dropPresenters(studySource(study, group.timeZone), ids, new Date());
     rerender((v) => v + 1);
   }
   const { presentersOf, notCounted, headOf } = bookFromSchedule(meetings);
@@ -81,21 +85,6 @@ export default function StudyManageAttendancePage() {
     <>
       <ScreenSpecRegistrar spec={MANAGE_SPEC} />
       <ScreenSpecRegistrar spec={ATTENDANCE_SPEC} />
-
-      {captain && (
-        <div className='mb-4 flex justify-end'>
-          <span data-anno='book:2'>
-            <Button
-              size='sm'
-              variant='secondary'
-              trailingIcon={<ExternalLink size={14} />}
-              onClick={() => router.push(`/proto/console/studies/${study.study_id}?tab=attendance`)}
-            >
-              백오피스 출석부 (전체 참여자)
-            </Button>
-          </span>
-        </div>
-      )}
 
       {meetings.length === 0 ? (
         <div data-anno='book:4' className='card px-6 py-10 text-center'>
@@ -142,7 +131,6 @@ export default function StudyManageAttendancePage() {
           />
         </div>
       ) : null}
-
     </>
   );
 }

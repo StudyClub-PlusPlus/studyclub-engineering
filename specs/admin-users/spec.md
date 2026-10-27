@@ -65,7 +65,7 @@
 | PRD — 이메일이 담긴 목록은 운영 콘솔 API 로만 | 목록은 마스킹, 「보기」(`POST …/email-reveals`)로 한 명씩 원본, 볼 때마다 감사 로그 | PR #163 리뷰 — 운영진 결정. 기획 문서에는 아직 없다 |
 | PRD 미확정 — 권한 변경 이력을 남길지 | 감사 로그 `ADMIN_AUDIT_LOG` 에 `ROLE_CHANGE` 로 남긴다 | PR #163 리뷰 결정 |
 | — | 권한 변경 성공 뒤 디스코드 설정 안내, 역할별 권한표 `GET /api/admin/role-permissions` | PR #163 리뷰 · 리드 회의 결정, Notion 「역할별 기본 권한」 표 |
-| Notion — `role: captain \| crew` | 응답 `systemRole: ADMIN \| MEMBER` | DB enum 그대로 (`/auth/me` 의 `role` 과 같은 값). 필터 `role` 의 값과는 다르다 — 아래 [Query Parameters](#query-parameters) |
+| Notion — `role: captain \| crew` | 응답 `systemRole: ADMIN \| MEMBER` | DB enum 그대로 (`GET /api/me` 의 `role` 과 같은 값). 필터 `role` 의 값과는 다르다 — 아래 [Query Parameters](#query-parameters) |
 | Notion — `navigatorOf: string[]` (스터디 id) | `navigatorOf: [{ studyId, title }]` | 화면이 **이름**을 적는다. id 만 주면 프론트가 스터디를 또 조회해야 한다 |
 | Notion — `enrollment.navigator` 신규 필드 | 기존 `STUDY_PARTICIPANT.PARTICIPANT_ROLE = LEADER` | 이미 있는 컬럼이다 |
 | Notion — `name` (null 이면 이메일 로컬파트) | `name` = `ACCOUNT.NICKNAME`, 온보딩 전이면 null. 화면은 **마스킹된** 로컬파트를 적는다 | 온보딩 전 닉네임은 `account_<랜덤>` 임시값이라 사람 이름이 아니다. 원본 로컬파트를 쓰면 마스킹이 무너진다 |
@@ -139,7 +139,9 @@
       "navigatorOf": [],
       "dormant": true,
       "joinedAt": "2026-08-12T03:41:09Z",
-      "roleChangeBlockedReason": "CANNOT_CHANGE_OWN_ROLE"
+      "roleChangeBlockedReason": "CANNOT_CHANGE_OWN_ROLE",
+      "discordLinked": true,
+      "discordHandle": "gaon_dc"
     },
     {
       "id": 18,
@@ -152,7 +154,9 @@
       ],
       "dormant": false,
       "joinedAt": "2026-09-01T11:00:00Z",
-      "roleChangeBlockedReason": null
+      "roleChangeBlockedReason": null,
+      "discordLinked": false,
+      "discordHandle": null
     },
     {
       "id": 27,
@@ -162,7 +166,9 @@
       "navigatorOf": [],
       "dormant": true,
       "joinedAt": "2026-09-30T08:15:42Z",
-      "roleChangeBlockedReason": null
+      "roleChangeBlockedReason": null,
+      "discordLinked": true,
+      "discordHandle": "dc_user"
     }
   ],
   "total": 134,
@@ -184,6 +190,8 @@
 | items[].dormant | Boolean | N | 「휴면」 표기. 계정 상태가 아니라 참여 이력으로 판정한다 | 계산: 참여 중인 스터디 수 = 0 |
 | items[].joinedAt | String | N | 가입일. UTC ISO 8601 | ACCOUNT.CREATED_AT |
 | items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수)` — 권한 변경 API 의 거절도 같은 메서드 |
+| items[].discordLinked | Boolean | N | 디스코드 계정 연동 여부 — 목록 「디스코드」 칸 (2026-10-27) | 계산: `ACCOUNT.DISCORD_ID` 있음 |
+| items[].discordHandle | String | Y | 연동한 디스코드 username(표시 이름 아님). 미연동이면 null. 숫자 디스코드 ID 는 내보내지 않는다 | ACCOUNT.DISCORD_HANDLE |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면의 「총 N명」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
 | limit | Integer | N | 요청 값 그대로 | |
@@ -198,6 +206,8 @@
 | `CANNOT_CHANGE_OWN_ROLE` | 이 행이 요청자 본인 | 자기 역할은 스스로 바꿀 수 없습니다. 다른 캡틴에게 요청하세요. |
 | `LAST_ADMIN_REQUIRED` | 이 행이 `ADMIN` 이고 `ADMIN` 이 1명뿐 | 마지막 캡틴입니다. 먼저 다른 캡틴을 세우세요. |
 | `null` | 위 둘 다 아님 | — |
+
+> 2026-10-27 `DISCORD_LINK_REQUIRED`(디스코드 미연동 크루는 캡틴으로 못 올림, STD-05)를 뺐다. 캡틴에게 디스코드 연동은 필수가 아니다 — [share 10-27](../../docs/share/2026-10-27-captain-discord-optional.md)
 
 > 요청자는 언제나 `ADMIN` 이므로, `ADMIN` 이 1명이면 그 1명은 요청자 본인이라 `CANNOT_CHANGE_OWN_ROLE` 가 먼저 걸린다. 목록에서 `LAST_ADMIN_REQUIRED` 이 보이는 일은 사실상 없다. **마지막 캡틴을 실제로 지키는 것은 `PATCH` 의 잠금 판정**이다 — 캡틴 둘이 동시에 서로를 내리는 경우 ([아래](#처리-규칙)).
 
@@ -325,6 +335,7 @@
 3. 대상이 요청자 본인이면 `409 CANNOT_CHANGE_OWN_ROLE`. 값이 같아도 막는다.
 4. 대상의 현재 값과 요청 값이 같으면 **아무것도 바꾸지 않고 200**. 감사 기록도 남기지 않는다 (중복 클릭·재시도에 안전).
 5. `ADMIN → MEMBER` 이고 1 에서 센 `ADMIN` 수가 1 이하이면 `409 LAST_ADMIN_REQUIRED`.
+   - 디스코드 연동 여부는 보지 않는다 — 올림도 내림도 (2026-10-27, 그전에는 미연동 크루를 올리면 `409 DISCORD_LINK_REQUIRED`).
 6. `Account` 의 상태 변경 메서드로 바꾼다 (setter 금지 — 규칙 3·5 는 서비스가 판정하고, 엔티티는 값 전이만 책임진다).
 7. `ADMIN_AUDIT_LOG` 에 `(ACTOR_ACCOUNT_ID = 요청자, ACTION = ROLE_CHANGE, TARGET_ACCOUNT_ID = 대상, BEFORE_VALUE, AFTER_VALUE)` 한 행을 쓴다. 6 과 같은 트랜잭션이라 기록 없이 권한만 바뀌는 일은 없다.
 

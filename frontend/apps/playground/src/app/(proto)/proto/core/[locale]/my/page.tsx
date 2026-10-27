@@ -4,161 +4,44 @@
 // 여기서도 클라이언트 세션(sc_user)이 없으면 /login 으로 보낸다(방어적).
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 
-import { TimeZonePicker, zoneName } from '@core/components/TimeZonePicker';
+import { TimeZonePicker } from '@core/components/TimeZonePicker';
+import { useDiscordLink } from '@core/components/useDiscordLink';
 import { getUser, type SessionUser } from '@core/lib/auth';
-import { userStudyPath, type Locale } from '@core/lib/content';
-import { t } from '@core/lib/i18n';
+import { type Locale } from '@core/lib/content';
+import { hasDiscordParticipation } from '@core/lib/discord-preview';
+import { PAGE } from '@core/lib/layout';
 import {
-  cancelApplication,
-  getApplications,
-  getBookmarks,
   getDiscord,
   getDisplayName,
   getMarketing,
   getTimeZone,
   seedDemoData,
   setDiscord,
-  setBookmarked,
   setMarketing,
   setDisplayName,
   setTimeZone,
-  type Application,
   type DiscordLink,
 } from '@core/lib/me';
 import { checkNicknameAvailability, normalizeNickname } from '@core/lib/nickname-availability';
 import { nicknameError } from '@core/lib/onboarding';
 import { IS_DEV, syncPreview } from '@core/lib/preview';
-import { recruitState } from '@core/lib/recruit';
-import { type Study } from '@studyclub/mock';
-import { categoryGradient, categoryMeta } from '@studyclub/ui';
-import { Button } from '@studyclub/ui';
-import { CalendarClock, Heart, Pencil } from 'lucide-react';
+import { Button, Checkbox } from '@studyclub/ui';
+import { Check, Pencil } from 'lucide-react';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';
-import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
- * 마이페이지.
+ * 마이페이지 — 내 정보만 다룬다.
  *
- * 스터디를 **회원 입장에서 처리해야 할 순서대로** 나눈다: 승인 대기 → 참여 중 → (참여 이력 ·
- * 관심). 한 목록에 상태 배지만 섞어 두면 "내가 지금 뭘 하고 있는지"를 회원이 직접 읽어내야 한다.
- *
- * 앞의 둘은 펼쳐 두고 뒤의 둘은 탭으로 묶는다 — 앞의 둘은 개수가 늘지 않고, 뒤의 둘만 쌓인다.
- *
- * 참여 중과 참여 이력을 가르는 것은 신청 상태가 아니라 **스터디가 끝났는지** 여부다.
+ * 스터디 목록은 두지 않는다. 참여 중·참여 종료는 내 스터디룸, 관심은 찜한 스터디가 맡는다.
+ * 신청에는 승인 대기가 없다 (POL-0004) — 신청하면 곧 참여라 따로 기다리는 목록이 필요 없다.
  *
  * 거주 지역은 내 정보에 있다. 신청 시 참여 가능 요일과 함께 남겨, 운영자가 어느 시간대 응답인지 알게 한다.
  */
-
-/** 목록 한 줄 — 카테고리 색 막대로 어느 분야인지 한눈에 구분한다(목록 카드와 같은 색 규칙). */
-function StudyRow({ study, locale, right }: { study: Study; locale: Locale; right?: React.ReactNode }) {
-  const { icon: Icon, label } = categoryMeta(study.category);
-  return (
-    <li className='flex items-center gap-4 border-b border-border py-3.5 last:border-b-0'>
-      <span
-        className='grid h-10 w-10 shrink-0 place-items-center rounded-card text-white'
-        style={{ background: categoryGradient(study.category) }}
-        aria-hidden='true'
-      >
-        <Icon size={17} strokeWidth={1.75} />
-      </span>
-      <div className='min-w-0 flex-1'>
-        <Link
-          href={userStudyPath(locale, study)}
-          className='block truncate font-semibold text-fg underline-offset-4 hover:underline'
-        >
-          {t(study.title, locale)}
-        </Link>
-        <p className='mt-0.5 flex items-center gap-1.5 truncate type-body-sm text-fg-secondary'>
-          <span className='shrink-0 text-fg-muted'>{label}</span>
-          <span className='text-fg-muted'>·</span>
-          <CalendarClock size={12} strokeWidth={1.75} className='shrink-0' />
-          {/* 일정 미정은 빈칸이 아니라 정책 — 신청자 응답으로 정한다 */}
-          <span className='truncate'>{study.schedule ? t(study.schedule, locale) : '일정 미정 · 신청자와 조율'}</span>
-        </p>
-      </div>
-      {right}
-    </li>
-  );
-}
-
-function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
-  return (
-    <section className='card mt-6 px-6 py-5'>
-      <h2 className='flex items-baseline gap-2 type-title-lg text-fg'>
-        {title}
-        <span className='tnum type-label-lg text-fg-muted'>{count}</span>
-      </h2>
-      <div className='mt-2'>{children}</div>
-    </section>
-  );
-}
-
-/**
- * 쌓이는 목록(참여 이력·관심 스터디)은 탭 하나로 묶는다.
- *
- * 넷을 모두 세로로 늘어놓으면 스터디가 쌓일수록 페이지가 끝없이 길어진다. 반대로 넷을 전부
- * 탭으로 만들면 "승인 대기가 있는지"를 보려고 탭을 눌러야 한다 — **지금 할 일은 펼쳐 두고,
- * 쌓이기만 하는 것만 접는다.**
- */
-function ArchiveTabs({
-  tabs,
-  children,
-}: {
-  tabs: { key: string; label: string; count: number }[];
-  children: (key: string) => React.ReactNode;
-}) {
-  const [active, setActive] = useState(tabs[0].key);
-  return (
-    <section className='card mt-6 px-6 py-5'>
-      <div className='flex gap-1 border-b border-border'>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type='button'
-            onClick={() => setActive(t.key)}
-            className={`-mb-px border-b-2 px-3 pb-2.5 type-label-lg transition-colors ${
-              active === t.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
-            }`}
-          >
-            {t.label}
-            <span className='tnum ml-1.5 type-label-lg text-fg-muted'>{t.count}</span>
-          </button>
-        ))}
-      </div>
-      <div className='mt-2'>{children(active)}</div>
-    </section>
-  );
-}
-
-/** 길어지는 목록은 일부만 보이고 나머지는 눌러서 편다. */
-function ExpandableList({ children, initial = 5 }: { children: React.ReactNode[]; initial?: number }) {
-  const [all, setAll] = useState(false);
-  const hidden = children.length - initial;
-  return (
-    <>
-      <ul>{all ? children : children.slice(0, initial)}</ul>
-      {hidden > 0 && !all && (
-        <button
-          type='button'
-          onClick={() => setAll(true)}
-          className='mt-3 w-full rounded-control border border-border py-2 type-label-lg text-fg-secondary transition-colors hover:bg-surface-2'
-        >
-          {hidden}개 더 보기
-        </button>
-      )}
-    </>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className='py-6 text-center type-body-sm text-fg-secondary'>{children}</p>;
-}
-
 export default function MyPage() {
   const params = useParams();
   const router = useRouter();
@@ -167,17 +50,18 @@ export default function MyPage() {
   const [ready, setReady] = useState(false);
 
   const [timeZone, setTimeZoneState] = useState('Asia/Seoul');
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [discord, setDiscordState] = useState<DiscordLink>(null);
+  const [disconnectBlocked, setDisconnectBlocked] = useState(false);
+  const { linking, error: discordError, connect } = useDiscordLink(locale);
   // 인라인 편집 — 고치는 값 옆에서 바로 고친다. 항목이 둘뿐이라 따로 지면을 열 일이 아니다.
+  // 닉네임만 따로 고친다 — 검사(형식·중복)가 있어 확정 단계가 필요하다. 나머지 줄은 누르면 바로 저장된다
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
-  const [draftZone, setDraftZone] = useState('Asia/Seoul');
+  /** 방금 저장된 줄 — 잠깐 「저장됨」을 띄운다 */
+  const [savedRow, setSavedRow] = useState<'name' | 'zone' | 'discord' | null>(null);
   const [composing, setComposing] = useState(false);
   const [marketing, setMarketingState] = useState(false);
-  const [draftMarketing, setDraftMarketing] = useState(false);
   const [nickStatus, setNickStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
 
   useEffect(() => {
@@ -191,26 +75,10 @@ export default function MyPage() {
     setUser(u);
     setName(getDisplayName() ?? u.nickname ?? u.email);
     setTimeZoneState(getTimeZone());
-    setApplications(getApplications());
-    setBookmarks(getBookmarks());
     setDiscordState(getDiscord());
     setMarketingState(getMarketing());
     setReady(true);
   }, [locale, router]);
-
-  const allStudies = useMswStudies();
-  const byId = useMemo(() => new Map(allStudies.map((s) => [s.id, s])), [allStudies]);
-  const joined = applications
-    .map((a) => ({ app: a, study: byId.get(a.studyId) }))
-    .filter((x): x is { app: Application; study: Study } => Boolean(x.study))
-    .sort((a, b) => b.app.appliedAt.localeCompare(a.app.appliedAt));
-  const pending = joined.filter((x) => x.app.status === 'pending');
-  const active = joined.filter((x) => x.app.status === 'accepted' && x.study.status !== 'closed');
-  const past = joined.filter((x) => x.app.status === 'accepted' && x.study.status === 'closed');
-  const marked = bookmarks
-    .map((id) => byId.get(id))
-    .filter((s): s is Study => Boolean(s))
-    .reverse();
 
   const trimmedName = draftName.trim();
   const unchangedName = normalizeNickname(trimmedName) === normalizeNickname(name);
@@ -251,325 +119,261 @@ export default function MyPage() {
 
   const nameBlocked = Boolean(nameFormatError) || nickStatus === 'taken' || nickStatus === 'checking';
 
-  const zoneLabel = zoneName(timeZone, locale) ?? timeZone;
 
   if (!ready || !user) {
     return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
 
+  function flash(row: 'name' | 'zone' | 'discord') {
+    setSavedRow(row);
+    window.setTimeout(() => setSavedRow((cur) => (cur === row ? null : cur)), 1800);
+  }
+
   function openEditor() {
     setDraftName(name);
-    setDraftZone(timeZone);
-    setDraftMarketing(marketing);
     setEditing(true);
   }
 
-  function save() {
+  function saveName() {
     if (nameBlocked) return;
-    setName(trimmedName);
-    setDisplayName(trimmedName);
-    setTimeZoneState(draftZone);
-    setTimeZone(draftZone);
-    setMarketingState(draftMarketing);
-    setMarketing(draftMarketing);
+    if (!unchangedName) {
+      // TODO(api): PATCH /api/me { nickname, timeZone } — 시간대는 지금 값을 같이 보낸다
+      setName(trimmedName);
+      setDisplayName(trimmedName);
+      flash('name');
+    }
     setEditing(false);
   }
 
+  function changeZone(zone: string) {
+    if (zone === timeZone) return;
+    // TODO(api): PATCH /api/me { nickname, timeZone } — 닉네임은 지금 값을 같이 보낸다
+    setTimeZoneState(zone);
+    setTimeZone(zone);
+    flash('zone');
+  }
+
+  function changeMarketing(on: boolean) {
+    // TODO(api): PUT /api/me/marketing-consent — 실패하면 이전 값으로 되돌리고 사유를 보여준다
+    setMarketingState(on);
+    setMarketing(on);
+    // 「저장됨」을 띄우지 않는다 — 체크 상태가 곧 결과다
+  }
+
   function connectDiscord() {
-    // TODO(api): 디스코드 OAuth 로 교체
-    setDiscord('jiwon_dev');
-    setDiscordState(getDiscord());
+    connect(() => {
+      setDiscordState(getDiscord());
+      setDisconnectBlocked(false);
+      flash('discord');
+    });
   }
 
   function disconnectDiscord() {
+    if (hasDiscordParticipation()) {
+      setDisconnectBlocked(true);
+      return;
+    }
+    setDisconnectBlocked(false);
     setDiscord(null);
     setDiscordState(null);
-  }
-
-  function handleCancel(studyId: string) {
-    cancelApplication(studyId);
-    setApplications(getApplications());
-  }
-
-  function handleUnbookmark(studyId: string) {
-    setBookmarked(studyId, false);
-    setBookmarks(getBookmarks());
+    flash('discord');
   }
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-10'>
+    <div className={`${PAGE} pb-16 pt-10`}>
       <h1 className='type-headline-lg'>마이페이지</h1>
 
       <ScreenSpecRegistrar spec={SPEC} />
-      {/* 내 정보 — 닉네임·이메일·나의 시간대. 고치는 건 한 곳(수정 팝업)에서 한다 */}
-      {/* 내 정보 — 이름줄 하나, 값줄 셋. 값을 가로로 늘어놓아야 카드가 비어 보이지 않는다 */}
-      {/* 내 정보 — 보기와 편집이 같은 카드 안에서 바뀐다. 고칠 것이 셋뿐이라 지면을 옮길 일이 아니다 */}
-      {/* 편집 중에는 넘치게 둔다 — 시간대 메뉴가 카드 밖으로 열린다 */}
-      <section data-anno='profile:1' className={`card mt-5 ${editing ? '' : 'overflow-hidden'}`}>
-        <div className='flex items-start justify-between gap-4 px-6 pt-5'>
-          <div className='min-w-0 flex-1'>
-            {editing ? (
-              /*
-                보던 자리에서 고친다 — 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다.
-                블록을 새로 쌓으면 아래 값들이 밀려 같은 카드가 다른 화면처럼 보인다.
-              */
-              <div data-anno='profile:2' className='min-w-0'>
-                <div className='flex items-center gap-2'>
-                  <input
-                    value={draftName}
-                    onChange={(e) => setDraftName(e.target.value)}
-                    onCompositionStart={() => setComposing(true)}
-                    onCompositionEnd={() => setComposing(false)}
-                    autoFocus
-                    aria-label='닉네임'
-                    /* 테두리 대신 밑줄 — 입력칸을 상자로 만들면 그 줄만 키가 커져 카드 전체가 달라 보인다 */
-                    className='min-w-0 flex-1 border-0 border-b border-border-strong bg-transparent p-0 type-body-md text-fg outline-none focus:border-brand'
-                  />
-                  <span className='tnum shrink-0 type-label-sm text-fg-placeholder'>{trimmedName.length}/20</span>
-                </div>
-                <p
-                  className={`mt-0.5 truncate type-body-sm ${
-                    nameLine.tone === 'ok'
-                      ? 'text-success-700'
-                      : nameLine.tone === 'error'
-                        ? 'text-error-700'
-                        : 'text-fg-muted'
-                  }`}
-                >
-                  {nameLine.text}
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className='truncate type-title-lg text-fg'>{name}</p>
-                <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>
-              </>
-            )}
-          </div>
-
-          {!editing && (
-            <button
-              type='button'
-              data-anno='profile:1-1'
-              onClick={openEditor}
-              title='내 정보 수정'
-              aria-label='내 정보 수정'
-              className='grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border-strong text-fg-secondary transition-colors hover:bg-surface-2 hover:text-fg'
-            >
-              <Pencil size={15} />
-            </button>
-          )}
-        </div>
-
-        {/* 값은 이름과 값 두 줄로만 세운다 — 칸을 나눠 담으면 둘뿐인 값이 표처럼 보인다 */}
-        <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-center gap-x-6 gap-y-2 px-6 pb-5 type-body-sm'>
-          <dt className='flex min-h-8 items-center text-fg-muted'>시간대</dt>
-          <dd data-anno='profile:3' className='flex min-h-8 min-w-0 items-center'>
-            {editing ? (
-              <div className='max-w-xs'>
-                <TimeZonePicker value={draftZone} onChange={setDraftZone} locale={locale} hideLabel compact />
-              </div>
-            ) : (
-              <span className='font-semibold text-fg'>{zoneLabel}</span>
-            )}
-          </dd>
-
-          <dt className='flex min-h-8 items-center text-fg-muted'>디스코드</dt>
-          <dd data-anno='profile:4' className='flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
-            {discord ? (
-              <>
-                <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
-                {editing && (
-                  <button
-                    type='button'
-                    onClick={disconnectDiscord}
-                    className='type-label-lg text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
-                  >
-                    연결 해제
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <span className='font-semibold text-fg-muted'>연결 안 됨</span>
-                {editing && (
-                  <button
-                    type='button'
-                    onClick={connectDiscord}
-                    className='type-label-lg text-brand underline-offset-4 hover:underline'
-                  >
-                    연결하기
-                  </button>
-                )}
-              </>
-            )}
-          </dd>
-
-          {/*
-            가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다 — 가입 화면에만 두면 바꿀 수 없다.
-            가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
-          */}
-          <dt className='flex min-h-8 items-center text-fg-muted'>마케팅 수신</dt>
-          <dd data-anno='profile:5' className='flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
-            {editing ? (
-              <label className='inline-flex cursor-pointer items-center gap-2'>
+      {/*
+        내 정보 — 줄마다 스스로 저장된다. 카드 전체를 편집 모드로 바꾸지 않는다:
+        닉네임·시간대는 저장 버튼을, 마케팅·디스코드는 누르는 즉시를 따르면 한 카드에 저장 방식이 둘이 된다.
+        닉네임만 검사가 있어 그 자리에서 고치고 확정한다.
+      */}
+      {/* 고칠 값이 넷뿐이라 페이지 폭을 다 쓰지 않는다 — 넓히면 이름과 값·동작 사이가 멀어진다 */}
+      <section data-anno='profile:1' className='card mt-5 max-w-xl'>
+        <div className='px-6 pb-5 pt-6'>
+          {editing ? (
+            /* 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다 — 카드 높이가 그대로다 */
+            <div data-anno='profile:2'>
+              <div className='flex items-center gap-2'>
                 <input
-                  type='checkbox'
-                  checked={draftMarketing}
-                  onChange={(ev) => setDraftMarketing(ev.target.checked)}
-                  className='h-4 w-4 accent-[var(--color-brand)]'
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onCompositionStart={() => setComposing(true)}
+                  onCompositionEnd={() => setComposing(false)}
+                  onKeyDown={(e) => {
+                    if (composing) return;
+                    if (e.key === 'Enter') saveName();
+                    if (e.key === 'Escape') setEditing(false);
+                  }}
+                  autoFocus
+                  maxLength={20}
+                  aria-label='닉네임'
+                  /* 테두리 대신 밑줄 — 상자로 만들면 그 줄만 키가 커져 카드가 달라 보인다 */
+                  className='min-w-0 flex-1 border-0 border-b-2 border-brand bg-transparent p-0 pb-0.5 type-title-lg text-fg outline-none'
                 />
-                <span className='type-body-sm text-fg'>스터디 소식과 행사 안내를 이메일로 받기</span>
-              </label>
-            ) : (
-              <span className='font-semibold text-fg'>{marketing ? '받음 · 이메일' : '받지 않음'}</span>
-            )}
-          </dd>
-        </dl>
-
-        {/* 닫는 줄 — 무거운 동작은 왼쪽 끝, 주액션은 오른쪽 끝 */}
-        <div className='flex min-h-14 items-center justify-between gap-3 border-t border-border px-6 py-3'>
-          <Link
-            data-anno='profile:7'
-            href={`/proto/core/${locale}/my/leave`}
-            className='type-label-sm text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
-          >
-            회원 탈퇴
-          </Link>
-          <div data-anno='profile:6' className='flex items-center gap-2'>
-            {editing && (
-              <>
+                <span className='tnum shrink-0 type-label-sm text-fg-placeholder'>{trimmedName.length}/20</span>
                 <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
                   취소
                 </Button>
-                <Button size='sm' onClick={save} disabled={nameBlocked}>
+                <Button size='sm' onClick={saveName} disabled={nameBlocked}>
                   저장
+                </Button>
+              </div>
+              <p
+                className={`mt-1 truncate type-body-sm ${
+                  nameLine.tone === 'ok'
+                    ? 'text-success-700'
+                    : nameLine.tone === 'error'
+                      ? 'text-error-700'
+                      : 'text-fg-muted'
+                }`}
+              >
+                {nameLine.text}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className='flex min-w-0 items-center gap-1.5'>
+                <p className='truncate type-title-lg text-fg'>{name}</p>
+                {/* 고치는 자리는 고칠 값 바로 옆 — 카드 모서리의 버튼은 무엇을 고치는지 읽히지 않는다 */}
+                <button
+                  type='button'
+                  data-anno='profile:1-1'
+                  onClick={openEditor}
+                  title='닉네임 수정'
+                  aria-label='닉네임 수정'
+                  className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+                >
+                  <Pencil size={14} />
+                </button>
+                <Saved show={savedRow === 'name'} />
+              </div>
+              <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>
+            </div>
+          )}
+        </div>
+
+        <dl className='divide-y divide-border border-t border-border type-body-sm'>
+          <Field label='시간대' anno='profile:3' saved={savedRow === 'zone'}>
+            <div className='w-full sm:w-52'>
+              <TimeZonePicker value={timeZone} onChange={changeZone} locale={locale} hideLabel compact />
+            </div>
+          </Field>
+
+          <Field label='디스코드' anno='profile:4' saved={savedRow === 'discord'}>
+            <div className='min-w-0 flex-1'>
+            <div className='flex flex-wrap items-center gap-2'>
+            {discord ? (
+              <>
+                <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
+                <Button size='sm' variant='ghost' onClick={disconnectDiscord}>
+                  연결 해제
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className='text-fg-muted'>연결 안 됨</span>
+                <Button size='sm' variant='secondary' onClick={connectDiscord} loading={linking}>
+                  연결하기
                 </Button>
               </>
             )}
-          </div>
-        </div>
+            </div>
+            {discordError && <p data-anno='profile:4-2' role='alert' className='mt-3 type-body-sm text-error-700'>{discordError}</p>}
+            {disconnectBlocked && (
+              <div data-anno='profile:4-1' className='mt-3 rounded-control bg-error-50 p-3 type-body-sm'>
+                {/*
+                  첫 줄(「해제할 수 없어요」)은 뺀다 — 눌렀는데 안 됐다는 건 화면이 이미 말한다.
+                  남길 것은 **그래서 무엇을 해야 하는가**다.
+                  **「캡틴」이라고 부른다** — 스터디마다 배정된 운영진이라는 개념이 아직 없고,
+                  참여 중단은 백오피스에서만 되는데 백오피스는 캡틴만 들어온다. 화면에서 사람을
+                  가리킬 때는 역할 이름(캡틴 · 네비게이터 · 크루)으로 적는다.
+                */}
+                <p role='alert' className='leading-relaxed text-error-700'>
+                  참여 중인 모든 스터디의 참여를 중단한 뒤 다시 시도해 주세요.
+                  <br />참여 중단은 캡틴에게 문의해 주세요.
+                </p>
+                <Link href={`/proto/core/${locale}/my/joined`} className='mt-2 inline-flex min-h-9 items-center font-semibold text-fg underline underline-offset-4'>
+                  내 스터디 확인하기
+                </Link>
+              </div>
+            )}
+            </div>
+          </Field>
+
+          {/*
+            가입 때 받는 선택 동의라 끄고 켜는 길이 있어야 한다. 가입 화면에만 두면 바꿀 수 없다.
+            가입 완료·탈퇴 안내는 이 값과 무관하게 나간다.
+          */}
+          {/* 체크박스는 **상태가 곧 결과**다 — 켜졌는지 꺼졌는지가 보이므로 「저장됨」이 할 말이 없다 */}
+          <Field label='마케팅 수신' anno='profile:5' saved={false}>
+            <Checkbox
+              label='스터디 소식과 행사 안내를 이메일로 받기'
+              checked={marketing}
+              onChange={(ev) => changeMarketing(ev.target.checked)}
+            />
+          </Field>
+        </dl>
+
       </section>
 
-      <Section title='승인 대기' count={pending.length}>
-        {pending.length === 0 ? (
-          <Empty>
-            승인을 기다리는 신청이 없습니다.{' '}
-            <Link href={`/proto/core/${locale}/studies`} className='font-semibold text-brand underline-offset-4 hover:underline'>
-              스터디 둘러보기
-            </Link>
-          </Empty>
-        ) : (
-          <ul>
-            {pending.map(({ app, study }) => (
-              <StudyRow
-                key={study.id}
-                study={study}
-                locale={locale}
-                right={
-                  <div className='flex shrink-0 items-center gap-3'>
-                    <p className='tnum type-label-sm text-fg-muted'>{app.appliedAt} 신청</p>
-                    {/* 승인 전에는 회원이 스스로 물릴 수 있어야 한다 */}
-                    <button
-                      type='button'
-                      onClick={() => handleCancel(study.id)}
-                      className='type-label-lg text-fg-muted underline-offset-4 hover:text-error-600 hover:underline'
-                    >
-                      취소
-                    </button>
-                  </div>
-                }
-              />
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      <Section title='참여 중인 스터디' count={active.length}>
-        {active.length === 0 ? (
-          <Empty>참여 중인 스터디가 없습니다.</Empty>
-        ) : (
-          <ul>
-            {active.map(({ study }) => (
-              <StudyRow
-                key={study.id}
-                study={study}
-                locale={locale}
-                right={
-                  <span className='shrink-0 rounded-pill bg-recruiting-bg px-2.5 py-1 type-label-sm text-recruiting-fg'>
-                    진행 중
-                  </span>
-                }
-              />
-            ))}
-          </ul>
-        )}
-      </Section>
-
-      {/* 쌓이기만 하는 두 목록 — 탭으로 묶어 페이지가 길어지지 않게 한다 */}
-      <ArchiveTabs
-        // 관심이 앞 — 다시 열어볼 일이 더 잦고, 참여 이력은 굳이 찾아보는 기록이다
-        tabs={[
-          { key: 'saved', label: '관심 스터디', count: marked.length },
-          { key: 'past', label: '참여 이력', count: past.length },
-        ]}
-      >
-        {(key) =>
-          key === 'past' ? (
-            past.length === 0 ? (
-              <Empty>아직 완료한 스터디가 없습니다.</Empty>
-            ) : (
-              <ExpandableList>
-                {past.map(({ app, study }) => (
-                  <StudyRow
-                    key={study.id}
-                    study={study}
-                    locale={locale}
-                    right={
-                      <div className='shrink-0 text-right'>
-                        <span className='inline-flex rounded-pill bg-surface-2 px-2.5 py-1 type-label-sm text-fg-secondary'>
-                          완료
-                        </span>
-                        <p className='tnum mt-1 type-label-sm text-fg-muted'>{app.appliedAt} 참여</p>
-                      </div>
-                    }
-                  />
-                ))}
-              </ExpandableList>
-            )
-          ) : marked.length === 0 ? (
-            <Empty>스터디 카드의 하트를 누르면 여기에 모입니다.</Empty>
-          ) : (
-            <ExpandableList>
-              {marked.map((s) => (
-                <StudyRow
-                  key={s.id}
-                  study={s}
-                  locale={locale}
-                  right={
-                    <div className='flex shrink-0 items-center gap-3'>
-                      <span className='type-label-sm text-fg-secondary'>
-                        {recruitState(s) === 'apply' ? '모집중' : '모집 마감'}
-                      </span>
-                      <button
-                        type='button'
-                        onClick={() => handleUnbookmark(s.id)}
-                        aria-label='관심 스터디에서 빼기'
-                        title='관심 스터디에서 빼기'
-                        className='grid h-8 w-8 place-items-center rounded-full text-error-500 transition-colors hover:bg-surface-2'
-                      >
-                        <Heart size={16} strokeWidth={2} className='fill-current' />
-                      </button>
-                    </div>
-                  }
-                />
-              ))}
-            </ExpandableList>
-          )
-        }
-      </ArchiveTabs>
-
+      {/* 찾을 수 있되 눈에 띄지 않게 — 카드 안 한 줄을 통째로 내주면 링크 하나에 무게가 실린다 */}
+      <div className='mt-3 max-w-xl px-1'>
+        <Link
+          data-anno='profile:7'
+          href={`/proto/core/${locale}/my/leave`}
+          className='type-label-sm text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
+        >
+          회원 탈퇴
+        </Link>
+      </div>
     </div>
+  );
+}
+
+/** 내 정보 한 줄 — 이름은 왼쪽 고정 폭, 값과 동작은 오른쪽. 줄마다 스스로 저장된다. */
+function Field({
+  label,
+  anno,
+  saved,
+  children,
+}: {
+  label: string;
+  anno: string;
+  saved: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className='flex min-h-14 flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:gap-0'>
+      {/* 이름 칸은 고정 폭 — 값이 이름 바로 옆에서 시작해 한 줄로 읽힌다 */}
+      <dt className='shrink-0 whitespace-nowrap font-medium text-fg-secondary sm:w-28'>{label}</dt>
+      <dd data-anno={anno} className='flex min-w-0 flex-1 items-center gap-2'>
+        {children}
+        {/* 저장 표시는 줄 끝 — 값 옆에 두면 값이 밀려 움직인다 */}
+        <span className='ml-auto shrink-0'>
+          <Saved show={saved} />
+        </span>
+      </dd>
+    </div>
+  );
+}
+
+/** 저장 직후 잠깐 뜨는 표시 — 즉시 저장되는 줄이 정말 저장됐는지 알 수 있게 */
+function Saved({ show }: { show: boolean }) {
+  return (
+    <span
+      aria-live='polite'
+      className={`inline-flex items-center gap-0.5 type-label-sm text-success-700 transition-opacity duration-300 ${
+        show ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      {show && (
+        <>
+          <Check size={12} strokeWidth={3} /> 저장됨
+        </>
+      )}
+    </span>
   );
 }

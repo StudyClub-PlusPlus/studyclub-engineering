@@ -8,11 +8,12 @@ import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 import { clearSession } from '@/lib/auth';
 import { ApiError } from '@/lib/http';
 
-function handleUnauthorized(error: Error) {
+/** 로그인 만료(401)의 공통 처리 — 세션을 지우고 로그인 화면으로 보낸다. react-query 를 거치지 않는 호출도 이것을 부른다. */
+export function handleUnauthorized(error: Error) {
   if (!(error instanceof ApiError) || error.status !== 401) return;
   clearSession();
   if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-    window.location.href = '/login';
+    window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
   }
 }
 

@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { MyStudiesLink } from '@core/components/MyStudiesLink';
@@ -28,13 +29,8 @@ export function SiteHeader({
     <header className='sticky top-0 z-30 border-b border-(--color-border) bg-[color-mix(in_srgb,var(--color-bg)_82%,transparent)] backdrop-blur-md'>
       <div className='mx-auto flex h-16 max-w-6xl items-center gap-7 px-6'>
         <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 type-title-md'>
-          <span
-            className='grid h-7 w-7 place-items-center rounded-lg type-label-lg text-white'
-            style={{ background: 'var(--color-brand)' }}
-          >
-            S
-          </span>
-          StudyClub++
+          <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
+          StudyClub
         </Link>
 
         <NavLinks

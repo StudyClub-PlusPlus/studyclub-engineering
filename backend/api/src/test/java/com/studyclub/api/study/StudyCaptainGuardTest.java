@@ -49,8 +49,8 @@ class StudyCaptainGuardTest {
     void navigatorPassesSitePath() {
         Account member = account(SystemRole.MEMBER);
         when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
-        when(studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        anyLong(), anyLong(), any(Collection.class)))
+        when(studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleInAndStatusIn(
+                        anyLong(), anyLong(), any(Collection.class), any(Collection.class)))
                 .thenReturn(true);
 
         assertThatCode(() -> guard.assertCaptainOrNavigator(1L, 10L, "권한이 없습니다."))
@@ -62,8 +62,8 @@ class StudyCaptainGuardTest {
     void neitherIsForbidden() {
         Account member = account(SystemRole.MEMBER);
         when(accountRepository.findById(1L)).thenReturn(Optional.of(member));
-        when(studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleIn(
-                        anyLong(), anyLong(), any(Collection.class)))
+        when(studyParticipantRepository.existsByStudyIdAndAccountIdAndParticipantRoleInAndStatusIn(
+                        anyLong(), anyLong(), any(Collection.class), any(Collection.class)))
                 .thenReturn(false);
 
         assertThatThrownBy(() -> guard.assertCaptainOrNavigator(1L, 10L, "스터디 수정 권한이 없습니다."))

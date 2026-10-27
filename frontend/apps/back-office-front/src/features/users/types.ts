@@ -20,6 +20,9 @@ export type ApiAdminAccount = {
   dormant: boolean;
   joinedAt: string;
   roleChangeBlockedReason: RoleChangeBlockedReason | null;
+  discordLinked: boolean;
+  /** 연동한 디스코드 username (표시 이름 아님). 미연동이면 null. 숫자 ID 는 내려오지 않는다 */
+  discordHandle: string | null;
 };
 
 export type ApiAdminAccountPage = {

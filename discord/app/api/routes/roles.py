@@ -20,13 +20,15 @@ import discord
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, Field, field_validator
 
-from app.api.guild import caller_guild
+from app.api.guild import resolve_guild
 from app.api.headers import discord_user_id, idempotency_key, require_api_key
 from app.config import Settings
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["roles"], dependencies=[Depends(require_api_key)])
+router = APIRouter(
+    tags=["roles"], dependencies=[Depends(require_api_key), Depends(discord_user_id)]
+)
 
 # One member query takes at most 100 IDs, and every user is a Discord call of
 # their own, so this is also the worst-case response time.
@@ -63,7 +65,7 @@ def resolve_navigator_role(guild: discord.Guild, settings: Settings) -> discord.
     server setup problem the caller cannot fix.
     """
     if settings.navigator_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_NAVIGATOR_ROLE_ID configured")
+        raise HTTPException(status_code=409, detail="no DISCORD_CONFIG_NAVIGATOR_ROLE_ID configured")
     role = guild.get_role(settings.navigator_role_id)
     if role is None:
         raise HTTPException(
@@ -78,14 +80,13 @@ def resolve_study_role(guild: discord.Guild, settings: Settings, role_id: int) -
 
     Captain is handed out by hand, navigator has endpoints of its own, and
     @everyone (whose ID is the guild's) is every member already, so none of the
-    three pass. Both role IDs must be configured even for a system caller, whom
-    ``caller_guild`` never checks against them: an unset one would let its role
-    through rather than keep it out.
+    three pass. Both role IDs must be configured: an unset one would let its
+    role through rather than keep it out.
     """
     if settings.captain_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_CAPTAIN_ROLE_ID configured")
+        raise HTTPException(status_code=409, detail="no DISCORD_CONFIG_CAPTAIN_ROLE_ID configured")
     if settings.navigator_role_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_NAVIGATOR_ROLE_ID configured")
+        raise HTTPException(status_code=409, detail="no DISCORD_CONFIG_NAVIGATOR_ROLE_ID configured")
     if role_id in (settings.captain_role_id, settings.navigator_role_id, guild.id):
         raise HTTPException(
             status_code=400, detail=f"role {role_id} cannot be changed through this endpoint"
@@ -283,7 +284,6 @@ def respond(
 async def assign_navigator_role(
     request: Request,
     body: RoleUsersRequest,
-    user_id: int = Depends(discord_user_id),
     key: str = Depends(idempotency_key),
 ) -> dict:
     """Give the navigator role to the users, as many as are in the guild.
@@ -291,7 +291,7 @@ async def assign_navigator_role(
     The role is guild-wide: ``discordStudyId`` is only logged, and whether the
     users belong to that study is for the backend to have checked.
     """
-    guild = await caller_guild(request, user_id, allow_navigator=False, allow_system=False)
+    guild = resolve_guild(request)
     role = resolve_navigator_role(guild, request.app.state.settings)
     operation = "assign-navigator-role"
     succeeded, failed = await assign_role(guild, role, body.discordUserIds, operation, key)
@@ -302,7 +302,6 @@ async def assign_navigator_role(
 async def remove_navigator_role(
     request: Request,
     body: RoleUsersRequest,
-    user_id: int = Depends(discord_user_id),
     key: str = Depends(idempotency_key),
 ) -> dict:
     """Take the navigator role from the users.
@@ -311,7 +310,7 @@ async def remove_navigator_role(
     study at once. The bot cannot tell which studies those are; the backend
     calls this only once the user is a navigator in none of them.
     """
-    guild = await caller_guild(request, user_id, allow_navigator=False, allow_system=False)
+    guild = resolve_guild(request)
     role = resolve_navigator_role(guild, request.app.state.settings)
     operation = "remove-navigator-role"
     succeeded, failed = await remove_role(guild, role, body.discordUserIds, operation, key)
@@ -326,7 +325,6 @@ async def assign_study_role(
     request: Request,
     body: RoleUsersRequest,
     discordRoleId: str = Path(pattern=r"^[0-9]{17,20}$"),
-    user_id: int = Depends(discord_user_id),
     key: str = Depends(idempotency_key),
 ) -> dict:
     """Give the role in the path to the users, as many as are in the guild.
@@ -334,7 +332,7 @@ async def assign_study_role(
     Whether the role belongs to ``discordStudyId`` is not checked: the backend
     sends the pair create-study gave it, and the study ID is only logged.
     """
-    guild = await caller_guild(request, user_id, allow_navigator=False, allow_system=True)
+    guild = resolve_guild(request)
     role = resolve_study_role(guild, request.app.state.settings, int(discordRoleId))
     operation = "assign-role"
     succeeded, failed = await assign_role(guild, role, body.discordUserIds, operation, key)
@@ -346,11 +344,10 @@ async def remove_study_role(
     request: Request,
     body: RoleUsersRequest,
     discordRoleId: str = Path(pattern=r"^[0-9]{17,20}$"),
-    user_id: int = Depends(discord_user_id),
     key: str = Depends(idempotency_key),
 ) -> dict:
     """Take the role in the path from the users."""
-    guild = await caller_guild(request, user_id, allow_navigator=False, allow_system=True)
+    guild = resolve_guild(request)
     role = resolve_study_role(guild, request.app.state.settings, int(discordRoleId))
     operation = "remove-role"
     succeeded, failed = await remove_role(guild, role, body.discordUserIds, operation, key)

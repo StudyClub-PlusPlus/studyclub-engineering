@@ -18,7 +18,10 @@ function dateParts(iso: string, locale: Locale) {
 
 // 행사 목록의 한 "행". (카드 그리드가 아니라 리스트형)
 export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Locale }) {
-  const { mon, day, year, time } = dateParts(event.date, locale);
+  const parts = dateParts(event.date, locale);
+  // 연도만 아는 행사는 월·일을 지어내지 않는다 — 박스에 연도만
+  const { mon, day, year, time } =
+    event.datePrecision === 'year' ? { mon: '', day: parts.year, year: '', time: '' } : parts;
   return (
     <Link
       href={`/proto/core/${locale}/events/${event.id}`}
@@ -29,7 +32,7 @@ export function EventRow({ event, locale }: { event: StudyclubEvent; locale: Loc
         className='flex w-14 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 text-center'
         style={{ background: 'var(--color-brand-subtle)', color: 'var(--color-brand)' }}
       >
-        <span className='type-label-sm uppercase'>{mon}</span>
+        {mon && <span className='type-label-sm'>{mon}</span>}
         <span className='type-title-md'>{day}</span>
         {year && <span className='mt-0.5 type-label-sm opacity-70'>{year}</span>}
       </div>

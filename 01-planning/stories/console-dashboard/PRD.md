@@ -1,6 +1,7 @@
 # 캡틴은 운영 현황을 한 화면에서 볼 수 있다.
 
-기준 프로토타입: 운영 콘솔 › 대시보드 — https://playground.studyclub-plusplus.com/proto/console
+기준 프로토타입: 운영 콘솔 › 대시보드 — https://playground.studyclub.life/proto/console
+관련 결정: [10-15 대시보드 주간 출석률의 「주」를 어느 시계로 자를까](../../../docs/share/2026-10-15-dashboard-week-boundary.md) · [10-15 대시보드 화면 표시는 PRD 를 따른다](../../../docs/share/2026-10-15-dashboard-display-follows-prd.md)
 
 ## 1. 기본설명
 
@@ -132,7 +133,7 @@
 - **내용**: 최근 12주 출석률이 어떻게 움직였는가. 주 단위로, 시간 순서대로
 - **동작**: 한 주를 집으면 그 주의 출석률과 밑재료를 알린다 — 「2026-08-24 주 · 출석률 68% (출석 412 / 대상 606)」
 - **정책**
-  - **주의 경계는 한국 시간 기준이다** — 한국 월요일 새벽 회차는 다른 시계로는 아직 일요일이라, 기준이 없으면 같은 회차가 보는 사람마다 다른 주에 들어간다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md))
+  - **주의 경계는 보는 사람의 시간대 기준이다** — 대시보드를 연 사람의 시간대에서 월요일 00:00 부터 한 주로 묶는다. 그래서 운영진의 시간대에 따라 주간 출석률이 다를 수 있다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md)) (→ [share 10-15](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/docs/share/2026-10-15-dashboard-week-boundary.md))
   - **체크된 회차가 없는 주는 값이 없는 것으로 다룬다. 0% 로 알리지 않는다** — 쉬어간 주가 폭락으로 보이면 없는 문제를 찾게 된다
   - 값이 한 주뿐이어도 그 값을 알린다 — 이어지는 선이 없을 뿐이다
   - 값이 하나도 없을 때만 그 사실을 적는다
@@ -182,7 +183,7 @@
 - **범위 밖** — 스터디 관리 · 반 편성 · 출석 명부 · 유저 관리 · 행사 기능
 - **미구현** — 위젯별 로딩·오류 상태. 지금은 한 번에 그려진다
 - 상태 이름은 [POL-0002](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0002-study-status.md) 를 따른다 — 작성 중 · 개설 · 진행 중 · 종료 · 운영 종료. 스터디 목록의 상태 축과 같은 값이다
-- **집계 기준은 주현님 명세(PR #90 `specs/dashboard/spec.md`)와 맞춰야 한다** — ACTIVE 고유 회원·PAUSED 제외·한국 시간 주간 비교 등
+- **집계 기준은 주현님 명세(PR #90 `specs/dashboard/spec.md`)와 맞춰야 한다** — ACTIVE 고유 회원·PAUSED 제외·보는 사람의 시간대 주간 비교 등
 
 ---
 
@@ -193,12 +194,13 @@
 > 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
+> 2026-10-23 갱신 — FE · BE 「지금」을 머지된 PR 로 다시 봤다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front `/` 대시보드 | 있음 — 스터디 목록만 API, KPI · 추세 · 분포 · 행사는 mock (`app/page.tsx` 의 `TODO(api)`) | 아래 통계 API 가 생기는 대로 mock 을 걷어 낸다 |
+| FE | back-office-front `/` 대시보드 | 있음 — 스터디 목록만 API, KPI · 추세 · 분포 · 행사는 mock (`app/page.tsx` 의 `TODO(api)`) | 아래 통계 API(구현완료)로 mock 을 걷어 낸다 |
 | BE | `GET /api/admin/studies` | 구현완료 | 없음 |
-| BE | `GET /api/admin/stats/summary` · `study-board` · `crew-timezones` · `attendance-trend` · `studies-by-category` | 스펙작성중 · 컨트롤러 없음 | [dashboard 스펙](../../../specs/dashboard/spec.md) 확정 → 구현 |
+| BE | `GET /api/admin/stats/summary` · `study-board` · `crew-timezones` · `attendance-trend` · `studies-by-category` | 구현완료 — `AdminStatsController` · `AdminStatsIntegrationTest` | 없음 |
 | BE | 예정 행사 | 없음 — 행사 API 가 없다 | 범위를 정한다 (행사 스토리 없음) |
 
 ### 데이터 관계
@@ -244,8 +246,9 @@ erDiagram
 >
 > 출석률 식은 출석 명부·회원 화면과 **같은 모듈**을 쓴다. 한 곳에서만 계산하고 모든 화면이 공유한다.
 >
-> **주의 경계는 한국 시간이다** — 한국 월요일 새벽 회차는 다른 시계로는 아직 일요일이라, 기준이
-> 없으면 같은 회차가 보는 사람마다 다른 주에 들어간다 ([POL-0006](../../_registry/policies/POL-0006-timezone.md)).
+> **주의 경계는 보는 사람의 시간대다** — 대시보드를 연 사람의 시간대에서 월요일 00:00 부터 한 주로 묶는다.
+> 한국 월요일 새벽 회차는 뉴욕에서는 아직 일요일이라, 운영진의 시간대에 따라 주간 출석률이 다를 수 있다
+> ([POL-0006](../../_registry/policies/POL-0006-timezone.md)) (→ [share 10-15](../../../docs/share/2026-10-15-dashboard-week-boundary.md)).
 
 ### API · 권한
 

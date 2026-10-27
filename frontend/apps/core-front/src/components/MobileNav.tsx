@@ -8,6 +8,7 @@ import { ArrowUpRight, Menu, X } from 'lucide-react';
 
 import { getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
+import { announceMenuOpen, closeOnOtherMenu } from '@/lib/header-menus';
 import { t } from '@/lib/i18n';
 
 /**
@@ -32,6 +33,9 @@ export function MobileNav({
   const [signedIn, setSignedIn] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  // 다른 헤더 메뉴가 열리면 닫는다 (lib/header-menus.ts)
+  useEffect(() => closeOnOtherMenu('mobile-nav', () => setOpen(false)), []);
+
   useEffect(() => setSignedIn(Boolean(getUser())), [open]);
 
   // 이동하면 닫는다
@@ -55,7 +59,7 @@ export function MobileNav({
   }, [open]);
 
   const all = signedIn
-    ? [...links, { href: `/${locale}/my/joined`, label: t({ ko: '내 스터디', en: 'My studies' }, locale) }]
+    ? [...links, { href: `/${locale}/my/joined`, label: t({ ko: '내 스터디룸', en: 'My study room' }, locale) }]
     : links;
   const focusRing = 'focus-visible:outline-none focus-visible:shadow-(--ring)';
 
@@ -64,7 +68,10 @@ export function MobileNav({
       <button
         ref={buttonRef}
         type='button'
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => {
+          if (!v) announceMenuOpen('mobile-nav');
+          return !v;
+        })}
         aria-label={open ? t({ ko: '메뉴 닫기', en: 'Close menu' }, locale) : t({ ko: '메뉴 열기', en: 'Open menu' }, locale)}
         aria-expanded={open}
         aria-controls='mobile-nav'

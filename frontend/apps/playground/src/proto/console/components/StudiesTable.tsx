@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle';
 import { LifecycleBadge } from '@console/components/LifecycleBadge';
-import { KIND_LABEL, TIMEZONE_LABEL } from '@console/components/StudyForm';
+import { TIMEZONE_LABEL } from '@console/components/StudyForm';
 import { tx } from '@console/lib/l10n';
 import { studyAuthor } from '@console/lib/users';
 import {
@@ -21,21 +21,19 @@ import {
   todayISO,
   type LifecycleState,
   type Study,
-  type StudyKind,
 } from '@studyclub/mock';
-import { Badge, Button, Modal, Pagination } from '@studyclub/ui';
-import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'lucide-react';
+import { Badge, Button, Modal, Pagination, Select, cx } from '@studyclub/ui';
+import { Check, Minus } from 'lucide-react';
 
 /**
  * 스터디 관리 목록.
  *
  * **칼럼은 등록 폼에 있는 항목으로만 짠다.** 운영자가 입력할 수 없는 값(연도)은
- * 영원히 비거나 더미로 남으므로 목록에 두지 않는다. 제목·카테고리·종류·시간대·모집 상태·참여 인원·공개 상태·스터디 시작일·
+ * 영원히 비거나 더미로 남으므로 목록에 두지 않는다. 제목·카테고리·시간대·모집 상태·참여 인원·공개 상태·스터디 시작일·
  * 모집 마감일이 보이고, 여기에 스터디 상태(5단계)가 더해진다. 한 줄 소개·진행 일정(자유 텍스트)은 목록에 두지
  * 않는다 — 진행 일정은 신청 화면에 알리는 문구일 뿐 운영자가 목록에서 훑어볼 값이 아니고, 정렬·필터도 못 건다.
  * 언제 시작하는지가 궁금하면 **스터디 시작일**(`STUDY.START_AT`, 정렬 가능한 날짜)을 본다.
- * 종류(스터디/클럽)는 새 프로그램을 등록할 때 정하고 그 뒤로는 바꾸지 못하는 값이다 — 기수(이 목록의
- * 한 행)가 아니라 프로그램의 속성이지만, 운영자가 목록에서 클럽만 걸러 보는 일이 많아 컬럼·필터로 둔다.
+ * 종류(스터디/클럽)는 목록에 두지 않는다 — 칼럼도 거르는 칸도 없다.
  * 시간대(KST/PST/동시 진행)는 등록 폼에서 운영자가 직접 고르는 값이다 — 값이 없으면 「미정」이다.
  * 모집 상태는 「모집 종료일」과 「모집 정원」에서, 지원 현황의 분모는 「모집 정원」(비우면 제한 없음)에서 나온다.
  * 공개 상태는 등록 폼이 아니라 이 목록에서 켠다 — **모집 시작 일자가 있으면 공개**다.
@@ -45,30 +43,26 @@ import { Check, ChevronUp, ChevronDown, GripVertical, Minus, RotateCcw } from 'l
  * 필터는 **사용자 사이트 목록과 같은 모양**이다 — 선택지가 적은 축은 드롭다운이 아니라 세그먼트 탭으로,
  * 눌러 보기 전에 무엇이 걸려 있는지 보이게 한다. 카테고리는 `STUDY.CATEGORY` 가 단일 값이라 드롭다운 단일 선택이다.
  *
- * 컬럼 순서는 운영자가 바꿀 수 있다. **프로그램 ID › 스터디(제목) 두 칸은 맨 앞에 고정**한다 — 행이 어느 스터디인지 잃으면
- * 나머지 칸을 읽을 수 없고, 프로그램이 스터디를 묶는 위계라 그 앞에 온다.
+ * 칼럼 순서는 고정이다 — 운영자가 끌어서 바꾸지 않는다. 프로그램 ID › 스터디(제목) 두 칸이 맨 앞이다.
  *
  * 행에 편집·삭제 버튼을 두지 않는다. 스터디 이름을 누르면 **운영 페이지**로 들어가고, 거기서
  * 크루 명단·출석·정보 수정을 모두 한다.
  */
 
-const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  ...STUDY_CATEGORIES.map((c) => ({ value: c, label: c })),
-];
+const CATEGORY_OPTIONS: { value: string; label: string }[] = [...STUDY_CATEGORIES.map((c) => ({ value: c, label: c }))];
 
 type RecruitFilter = 'all' | 'apply' | 'closed';
 type PublishFilter = 'all' | 'live' | 'draft';
+type FormFilter = 'all' | 'has' | 'none';
+const FORM_OPTIONS: { value: FormFilter; label: string }[] = [
+  { value: 'has', label: '있음' },
+  { value: 'none', label: '없음' },
+];
 const PAGE_SIZE = 20;
 
 type StatusFilter = 'all' | LifecycleState;
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   ...LIFECYCLE_ORDER.map((s) => ({ value: s, label: LIFECYCLE_LABEL[s] })),
-];
-
-type KindFilter = 'all' | StudyKind;
-const KIND_OPTIONS: { value: KindFilter; label: string }[] = [
-  { value: 'study', label: KIND_LABEL.study },
-  { value: 'club', label: KIND_LABEL.club },
 ];
 
 const RECRUIT_OPTIONS: { value: RecruitFilter; label: string }[] = [
@@ -103,13 +97,16 @@ function FilterSelect<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? label : '전체'}</option>
       {options.map((o) => (
@@ -117,20 +114,23 @@ function FilterSelect<T extends string>({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
 /** 카테고리 셀렉트. `STUDY.CATEGORY` 가 단일 값이라 단일 선택 드롭다운으로 고정한다. */
 function CategorySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label='카테고리'
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`h-9 shrink-0 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       <option value='all'>{value === 'all' ? '카테고리' : '전체'}</option>
       {CATEGORY_OPTIONS.map((o) => (
@@ -138,7 +138,7 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (v: stri
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -160,7 +160,6 @@ function startedOn(s: Study): string | undefined {
 type ColumnKey =
   | 'status'
   | 'category'
-  | 'kind'
   | 'timezone'
   | 'recruitStart'
   | 'recruitEnd'
@@ -196,13 +195,6 @@ const COLUMNS: Column[] = [
     label: '카테고리',
     cellClass: 'whitespace-nowrap text-fg-secondary',
     render: ({ s }) => <CategoryCell categories={categoriesOf(s)} />,
-  },
-  {
-    key: 'kind',
-    label: '종류',
-    cellClass: 'whitespace-nowrap text-fg-secondary',
-    anno: 'list:2-2',
-    render: ({ s }) => (s.program?.kind ? KIND_LABEL[s.program.kind] : <span className='text-fg-muted'>—</span>),
   },
   {
     key: 'timezone',
@@ -294,7 +286,6 @@ const SORT_VALUE: Record<SortKey, (s: Study) => string | number | undefined> = {
   title: (s) => tx(s.title),
   status: (s) => LIFECYCLE_ORDER.indexOf(lifecycleState(s)),
   category: (s) => categoriesOf(s)[0],
-  kind: (s) => s.program?.kind,
   timezone: (s) => s.timezone,
   recruitStart: (s) => startedOn(s),
   recruitEnd: (s) => toISODate(s.recruitment?.deadline),
@@ -315,58 +306,32 @@ function compareBy(sort: NonNullable<SortState>, a: Study, b: Study): number {
 }
 
 /**
- * 컬럼 머리의 위·아래 화살표. 누르면 그 방향으로 정렬하고, 이미 눌린 화살표를 다시 누르면 정렬을 푼다
- * (기본 순서 — 모집중 먼저, 마감이 가까운 순 — 로 돌아간다).
+ * 정렬하는 컬럼 머리 — **이름을 누른다.** 처음 누르면 오름차순, 다시 누르면 내림차순, 또 누르면 오름차순.
+ * 화살표를 그리지 않는다 — 열마다 작은 화살표 두 개가 서면 머리 줄이 어수선하다.
+ * 지금 정렬 중인 열은 이름이 강조색이다.
  */
-function SortArrows({
+function SortLabel({
   label,
   active,
   onChange,
+  anno,
 }: {
   label: string;
   active: SortDir | null;
-  onChange: (dir: SortDir | null) => void;
+  onChange: (dir: SortDir) => void;
+  anno?: string;
 }) {
-  const arrow = (dir: SortDir, Icon: typeof ChevronUp, name: string) => (
+  return (
     <button
       type='button'
-      aria-label={`${label} ${name} 정렬`}
-      aria-pressed={active === dir}
-      onClick={() => onChange(active === dir ? null : dir)}
-      className={`rounded-sm p-0 ${active === dir ? 'text-brand' : 'text-fg-placeholder hover:text-fg-secondary'}`}
+      data-anno={anno}
+      onClick={() => onChange(active === 'asc' ? 'desc' : 'asc')}
+      aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
+      className={`whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline ${active ? 'text-brand' : ''}`}
     >
-      <Icon size={11} strokeWidth={2.5} />
+      {label}
     </button>
   );
-  return (
-    <span data-anno='list:9' className='inline-flex flex-col'>
-      {arrow('asc', ChevronUp, '오름차순')}
-      {arrow('desc', ChevronDown, '내림차순')}
-    </span>
-  );
-}
-
-const DEFAULT_ORDER: ColumnKey[] = COLUMNS.map((c) => c.key);
-const ORDER_STORAGE_KEY = 'studyclub.console.studies.columns';
-
-/** 저장된 순서를 읽는다. 컬럼이 늘거나 줄었어도 깨지지 않게 알려진 키만 남기고 빠진 것은 뒤에 붙인다. */
-function loadOrder(): ColumnKey[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) ?? 'null');
-    if (!Array.isArray(raw)) return DEFAULT_ORDER;
-    const known = raw.filter((k): k is ColumnKey => DEFAULT_ORDER.includes(k));
-    return [...known, ...DEFAULT_ORDER.filter((k) => !known.includes(k))];
-  } catch {
-    return DEFAULT_ORDER;
-  }
-}
-
-function move<T>(list: T[], from: number, to: number): T[] {
-  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return list;
-  const next = [...list];
-  const [item] = next.splice(from, 1);
-  next.splice(to, 0, item);
-  return next;
 }
 
 export function StudiesTable({ studies }: { studies: Study[] }) {
@@ -374,14 +339,13 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [status, setStatus] = useState<StatusFilter>('all');
-  const [kind, setKind] = useState<KindFilter>('all');
   const [recruit, setRecruit] = useState<RecruitFilter>('all');
   const [publish, setPublish] = useState<PublishFilter>('all');
-  const [noFormOnly, setNoFormOnly] = useState(false);
-  const [sort, setSort] = useState<SortState>(null);
+  const [form, setForm] = useState<FormFilter>('all');
+  // 기본 순서도 한 열의 정렬이다 — 모집 상태 오름차순(모집중 먼저). 같은 상태끼리는 마감이 가까운 순.
+  // 처음부터 그 열을 강조해 두어, 지금 무엇으로 줄 세웠는지 늘 보이게 한다.
+  const [sort, setSort] = useState<SortState>({ key: 'recruit', dir: 'asc' });
   const [page, setPage] = useState(1);
-  const [order, setOrder] = useState<ColumnKey[]>(DEFAULT_ORDER);
-  const [dragKey, setDragKey] = useState<ColumnKey | null>(null);
   // 가로 스크롤바를 표 위에도 둔다 — 행이 많으면 아래로 내려가야 스크롤바가 보인다.
   const topScrollRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
@@ -414,25 +378,9 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
     dst.scrollLeft = src.scrollLeft;
   }
 
-  // 저장된 순서는 마운트 뒤에 읽는다 — 서버 렌더와 첫 클라이언트 렌더가 같아야 한다.
-  useEffect(() => setOrder(loadOrder()), []);
 
-  function changeOrder(next: ColumnKey[]) {
-    setOrder(next);
-    try {
-      localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // 저장이 막혀 있어도(시크릿 창 등) 이번 화면에서는 순서가 바뀐다
-    }
-  }
-
-  // 컬럼을 뺐다 넣었다 하는 동안 localStorage 에 남은 옛 컬럼 키(예: 삭제된 'schedule')가
-  // 있어도 죽지 않도록 존재하지 않는 키는 걸러낸다 — order 는 loadOrder() 가 이미 걸러주지만
-  // 방어적으로 한 번 더 막는다.
-  const columns = order
-    .map((k) => COLUMNS.find((c) => c.key === k))
-    .filter((c): c is (typeof COLUMNS)[number] => c !== undefined);
-  const isDefaultOrder = order.every((k, i) => k === DEFAULT_ORDER[i]);
+  // 칼럼 순서는 고정이다 — 운영자가 바꾸지 않는다
+  const columns = COLUMNS;
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -442,10 +390,10 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
         .filter((s) => {
           if (category !== 'all' && !categoriesOf(s).includes(category)) return false;
           if (status !== 'all' && lifecycleState(s) !== status) return false;
-          if (kind !== 'all' && s.program?.kind !== kind) return false;
           if (recruit !== 'all' && recruitState(s) !== recruit) return false;
           if (publish !== 'all' && publishState(s) !== publish) return false;
-          if (noFormOnly && applyFormUrl(s)) return false;
+          if (form === 'has' && !applyFormUrl(s)) return false;
+          if (form === 'none' && applyFormUrl(s)) return false;
           if (q) {
             const hay = `${tx(s.title)} ${categoriesOf(s).join(' ')}`.toLowerCase();
             if (!hay.includes(q)) return false;
@@ -468,7 +416,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           return da.localeCompare(db);
         })
     );
-  }, [studies, patch, query, category, status, kind, recruit, publish, noFormOnly, sort]);
+  }, [studies, patch, query, category, status, recruit, publish, form, sort]);
 
   // 필터·정렬이 바뀌어 페이지 수가 줄어도 빈 페이지가 남지 않게 현재 페이지를 눌러 준다.
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -494,7 +442,7 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
   return (
     <div>
       {/* 필터는 한 줄에 둔다. 좁으면 줄바꿈하지 않고 옆으로 넘긴다. */}
-      <div data-anno='list:4' className='mb-5 flex flex-nowrap items-center gap-2 overflow-x-auto'>
+      <div data-anno='list:4' className='mb-3 flex flex-nowrap items-center gap-2 overflow-x-auto'>
         <input
           type='search'
           value={query}
@@ -524,15 +472,6 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
           />
         </span>
         <FilterSelect
-          label='종류'
-          value={kind}
-          onChange={(v) => {
-            setKind(v);
-            setPage(1);
-          }}
-          options={KIND_OPTIONS}
-        />
-        <FilterSelect
           label='모집'
           value={recruit}
           onChange={(v) => {
@@ -552,45 +491,22 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             options={PUBLISH_OPTIONS}
           />
         </span>
-        <button
-          data-anno='list:5'
-          type='button'
-          role='switch'
-          aria-checked={noFormOnly}
-          onClick={() => {
-            setNoFormOnly((v) => !v);
-            setPage(1);
-          }}
-          className={`inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-control border px-3 type-label-lg transition-colors ${
-            noFormOnly ? 'border-brand font-semibold text-fg' : 'border-border-strong text-fg-secondary'
-          }`}
-        >
-          <span
-            aria-hidden='true'
-            className={`relative h-4 w-7 rounded-pill transition-colors ${noFormOnly ? 'bg-brand' : 'bg-neutral-300'}`}
-          >
-            <span
-              className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${noFormOnly ? 'left-3.5' : 'left-0.5'}`}
-            />
-          </span>
-          신청 폼 없는 것만
-        </button>
+        {/* 다른 거르는 칸과 같은 드롭다운 — 있음·없음 둘 다 거른다 */}
+        <span data-anno='list:5' className='shrink-0'>
+          <FilterSelect
+            label='신청 폼'
+            value={form}
+            onChange={(v) => {
+              setForm(v);
+              setPage(1);
+            }}
+            options={FORM_OPTIONS}
+          />
+        </span>
         <span className='ml-auto shrink-0 pl-2 type-label-sm text-fg-muted'>{rows.length}개</span>
       </div>
 
-      <div className='mb-2 flex h-6 items-center justify-end'>
-        {!isDefaultOrder && (
-          <button
-            type='button'
-            onClick={() => changeOrder(DEFAULT_ORDER)}
-            className='inline-flex items-center gap-1 type-label-lg text-fg-muted hover:text-fg'
-          >
-            <RotateCcw size={12} /> 컬럼 순서 초기화
-          </button>
-        )}
-      </div>
-
-      <div data-anno='list:6' className='card'>
+      <div className='card'>
         <div
           ref={topScrollRef}
           onScroll={() => syncScroll('top')}
@@ -605,44 +521,25 @@ export function StudiesTable({ studies }: { studies: Study[] }) {
             <thead>
               <tr>
                 <th data-anno='program:1' className='whitespace-nowrap'>
-                  <span className='inline-flex items-center gap-1'>
-                    P-ID
-                    <span data-anno='program:2'>
-                      <SortArrows
-                        label='P-ID'
-                        active={sort?.key === 'program' ? sort.dir : null}
-                        onChange={(d) => applySort('program', d)}
-                      />
-                    </span>
-                  </span>
+                  <SortLabel
+                    anno='program:2'
+                    label='P-ID'
+                    active={sort?.key === 'program' ? sort.dir : null}
+                    onChange={(d) => applySort('program', d)}
+                  />
                 </th>
                 <th>
-                  <span className='inline-flex items-center gap-1'>
-                    스터디
-                    <SortArrows
-                      label='스터디'
-                      active={sort?.key === 'title' ? sort.dir : null}
-                      onChange={(d) => applySort('title', d)}
-                    />
-                  </span>
+                  <SortLabel
+                    anno='list:9'
+                    label='스터디'
+                    active={sort?.key === 'title' ? sort.dir : null}
+                    onChange={(d) => applySort('title', d)}
+                  />
                 </th>
-                {columns.map((c, i) => (
-                  <th
-                    key={c.key}
-                    draggable
-                    onDragStart={() => setDragKey(c.key)}
-                    onDragEnd={() => setDragKey(null)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => {
-                      if (dragKey) changeOrder(move(order, order.indexOf(dragKey), i));
-                      setDragKey(null);
-                    }}
-                    className={`group whitespace-nowrap ${dragKey === c.key ? 'opacity-40' : ''}`}
-                  >
+                {columns.map((c) => (
+                  <th key={c.key} className='whitespace-nowrap'>
                     <span className='inline-flex items-center gap-1'>
-                      <GripVertical size={12} className='cursor-grab text-fg-placeholder' aria-hidden='true' />
-                      {c.label}
-                      <SortArrows
+                      <SortLabel
                         label={c.label}
                         active={sort?.key === c.key ? sort.dir : null}
                         onChange={(d) => applySort(c.key, d)}

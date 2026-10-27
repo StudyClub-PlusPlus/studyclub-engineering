@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { MarkdownLite } from './MarkdownLite';
 
@@ -52,7 +52,7 @@ export const CodeBlock: Story = {
 export const Link: Story = {
   name: '링크',
   render: () => (
-    <MarkdownLite text='[StudyClub++ 바로가기](https://studyclub-plusplus.com) 에서 확인하세요.' />
+    <MarkdownLite text='[StudyClub 바로가기](https://studyclub.life) 에서 확인하세요.' />
   ),
 };
 

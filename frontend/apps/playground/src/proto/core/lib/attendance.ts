@@ -13,14 +13,14 @@ import {
 /**
  * 회원 본인의 출석.
  *
- * **휴가는 크루가 신청한다.** 지금 참석은 디스코드 채널만 연다. 출석 확정은 반장 디스코드 명령.
+ * **휴가는 크루가 신청한다.** 지금 참석은 디스코드 채널만 연다. 출석 확정은 네비게이터 디스코드 명령.
  *
  * - 지금 참석 버튼은 예정 시작 30분 전부터 활성 — 누르면 디스코드로 간다. 출석으로 저장하지 않는다
  * - 회차 생성 시 전원 ABSENT. 시작 전 화면은 결석을 그리지 않는다
  * - 휴가는 미리 알리는 것이라 언제든 신청 가능
  * - 휴가 취소는 회차 시작 전까지만. 거두면 ABSENT로 돌아가고, 시작 전이면 칸은 비어 보인다
  *
- * TODO(api): POST/DELETE 휴가는 크루. 출석 PRESENT/LATE 는 반장 연동
+ * TODO(api): POST/DELETE 휴가는 크루. 출석 PRESENT/LATE 는 네비게이터 연동
  */
 
 const KEY = 'sc_my_attendance';
@@ -109,7 +109,7 @@ const LATE_AFTER_MIN = 15;
 /** 시작 이 시간 전부터 참석 버튼이 켜진다. */
 const CHECKIN_OPEN_BEFORE_MIN = 30;
 
-/** 예정 창 (SCHEDULED_AT). 실제 STARTS_AT/ENDS_AT는 반장이 열 때. 프로토는 예정이 곧 창이다. */
+/** 예정 창 (SCHEDULED_AT). 실제 STARTS_AT/ENDS_AT는 네비게이터가 열 때. 프로토는 예정이 곧 창이다. */
 export function meetingWindow(study: Study, meeting: StudyMeeting) {
   const proto = meeting as ProtoMeeting;
   let start: Date;
@@ -154,7 +154,7 @@ export function resolveStatus(
   return raw;
 }
 
-/** 반장이 출석을 찍는 흐름의 프로토 흉내. 내 스터디 지금 참석은 이 함수를 부르지 않는다. */
+/** 네비게이터가 출석을 찍는 흐름의 프로토 흉내. 내 스터디룸 지금 참석은 이 함수를 부르지 않는다. */
 export function checkIn(study: Study, meeting: StudyMeeting, now = new Date()): MyStatus | undefined {
   if (!canCheckIn(study, meeting, now)) return undefined;
   const { start } = meetingWindow(study, meeting);

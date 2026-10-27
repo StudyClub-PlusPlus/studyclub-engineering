@@ -181,7 +181,7 @@ class StudyDiscordLinkIntegrationTest {
     @Test
     @DisplayName("실패_봇_설정이_없어서_난_409_는_이름_충돌이_아니라_503")
     void 실패_봇_설정이_없어서_난_409_는_이름_충돌이_아니라_503() {
-        bot.respond(409, "{\"detail\":\"no DISCORD_GUILD_ID configured\"}");
+        bot.respond(409, "{\"detail\":\"no DISCORD_CONFIG_GUILD_ID configured\"}");
         Long studyId = createStudy("알고리즘 스터디");
 
         var response =

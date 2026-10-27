@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/content';
+import { PAGE, READ } from '@/lib/layout';
 import { LEGAL_TEXT, lx, type Block, type LegalDocument } from '@/lib/legal';
 
 /**
@@ -9,7 +10,8 @@ import { LEGAL_TEXT, lx, type Block, type LegalDocument } from '@/lib/legal';
  */
 export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }) {
   return (
-    <div className='mx-auto max-w-3xl px-6 py-14'>
+    <div className={`${PAGE} py-14`}>
+      <div className={READ}>
       <header data-anno='1'>
         <h1 className='type-headline-lg sm:type-headline-lg'>{lx(doc.title, locale)}</h1>
         <p data-anno='1-1' className='mt-3 type-body-sm text-(--color-fg-muted)'>
@@ -45,6 +47,7 @@ export function LegalDoc({ doc, locale }: { doc: LegalDocument; locale: Locale }
             )}
           </section>
         ))}
+      </div>
       </div>
     </div>
   );

@@ -478,6 +478,24 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 행마다 디스코드 연동 여부와 계정 이름. 미연동 크루도 권한 배지는 잠기지 않는다")
+    void rowsCarryDiscordLink() {
+        jdbcTemplate.update("UPDATE ACCOUNT SET DISCORD_ID = NULL WHERE ID = ?", CREW_ID);
+        jdbcTemplate.update(
+                "UPDATE ACCOUNT SET DISCORD_HANDLE = 'captain_h' WHERE ID = ?", ADMIN_ID);
+
+        var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
+
+        assertThat(itemById(response.getBody(), CREW_ID))
+                .containsEntry("roleChangeBlockedReason", null)
+                .containsEntry("discordLinked", false)
+                .containsEntry("discordHandle", null);
+        assertThat(itemById(response.getBody(), ADMIN_ID))
+                .containsEntry("discordLinked", true)
+                .containsEntry("discordHandle", "captain_h");
+    }
+
+    @Test
     @DisplayName("성공 - 본인 행은 roleChangeBlockedReason 이 CANNOT_CHANGE_OWN_ROLE 이고 나머지는 null")
     void selfRowIsBlocked() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
@@ -624,8 +642,8 @@ class AdminAccountListIntegrationTest {
         Timestamp created = Timestamp.from(createdAt);
         jdbcTemplate.update(
                 "INSERT INTO ACCOUNT (ID, EMAIL, NICKNAME, SYSTEM_ROLE, TIME_ZONE,"
-                        + " ONBOARDING_COMPLETED_AT, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        + " ONBOARDING_COMPLETED_AT, CREATED_AT, UPDATED_AT, DISCORD_ID)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 id,
                 "acctlist-" + id + "@example.com",
                 PREFIX + id,
@@ -633,7 +651,9 @@ class AdminAccountListIntegrationTest {
                 "Asia/Seoul",
                 onboarded ? created : null,
                 created,
-                created);
+                created,
+                // 연동해 둔다 — 미연동 행은 따로 본다 (rowsCarryDiscordLink)
+                "acctlist-" + id);
     }
 
     private void insertStudy(long id, String title, Instant now) {

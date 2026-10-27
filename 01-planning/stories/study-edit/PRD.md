@@ -1,6 +1,6 @@
 # 캡틴은 등록된 스터디를 수정·삭제할 수 있다.
 
-기준 프로토타입: 운영 콘솔 › 스터디 › 스터디 상세 › 정보 탭 — https://playground.studyclub-plusplus.com/proto/console/studies
+기준 프로토타입: 운영 콘솔 › 스터디 › 스터디 상세 › 정보 탭 — https://playground.studyclub.life/proto/console/studies
 
 ## 1. 기본설명
 
@@ -99,7 +99,7 @@
 >
 > 저장은 바뀐 칸만 보낸다 — 마감이 지난 스터디의 다른 칸을 고칠 때 지난 마감일을 다시 보내면 「미래여야 함」으로 거절된다
 >
-> 시간대·썸네일은 실제 콘솔 폼에 아직 없다 — 저장할 컬럼과 업로드 API 가 없다
+> 시간대·썸네일도 실제 콘솔 폼에서 저장한다 — 시간대는 KST·PST·동시 진행·미정 중 하나
 >
 > 항목별 입력 규칙은 스터디 등록 Story 소관이다
 
@@ -167,7 +167,7 @@
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | back-office-front 정보 탭 (`StudyInfoTab`) | 있음 — 수정 · 삭제 API 연결 | `features/studies/queries.ts` 의 낡은 `TODO(api)` 두 줄 지우기 (이미 `/api/admin` 경로를 쓴다) |
-| BE | `PATCH` · `DELETE /api/admin/studies/{studyId}` | 구현완료 (`timezone` 제외) | 시간대 저장 — [study-create](../study-create/PRD.md#개발-범위)와 같은 일 |
+| BE | `PATCH` · `DELETE /api/admin/studies/{studyId}` | 구현완료 | 없음 |
 
 ### 데이터
 

@@ -22,7 +22,7 @@ import { EventRow } from './EventCard';
 const TODAY = new Date().toISOString().slice(0, 10);
 
 type WhenTab = 'upcoming' | 'past' | 'all';
-const WHEN_ORDER: WhenTab[] = ['upcoming', 'past', 'all'];
+const WHEN_ORDER: WhenTab[] = ['all', 'upcoming', 'past'];
 
 const WHEN_LABEL: Record<WhenTab, { ko: string; en: string }> = {
   upcoming: { ko: '예정', en: 'Upcoming' },
@@ -51,7 +51,7 @@ function TypeChip({ active, onClick, children }: { active: boolean; onClick: () 
 
 export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; locale: Locale }) {
   const [query, setQuery] = useState('');
-  const [when, setWhen] = useState<WhenTab>('upcoming');
+  const [when, setWhen] = useState<WhenTab>('all');
   const [type, setType] = useState<TypeFilter>('all');
 
   /** 시점 탭을 제외한 조건만 적용한 집합 — 탭별 건수의 기준. */

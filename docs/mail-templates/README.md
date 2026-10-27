@@ -1,35 +1,36 @@
 # 메일 템플릿 시안
 
 알림 메일 문구의 **정본은 DB**(`NOTIFICATION_TEMPLATE`)다. 시안 HTML 은 **playground 안**
-[`proto/mail/templates/`](../../frontend/apps/playground/src/proto/mail/templates/) 에 두고, 디자이너는 playground `/proto/mail` 에서 HTML 을 고치며 바로 본다.
+[`proto/mail/templates/`](../../frontend/apps/playground/src/proto/mail/templates/) 에 두고, 디자이너는 playground 「운영 콘솔 → 알림 → 알림 템플릿」(`/proto/console/notifications/templates`)의 추가·수정 팝업에서 HTML 을 고치며 미리 본다.
 웰컴메일 시안은 오너 승인 후 `V38__user_registered_email_html.sql` 로 적용했다(아래 「적용」).
 
-| 템플릿 | 언제 | 치환 변수 | 시안 원본 |
-|---|---|---|---|
-| `USER_REGISTERED` · `EMAIL` | 회원가입 직후 즉시 | `{{nickname}}` | [user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) |
+| 템플릿 | 언제 | 제목 | 치환 변수 | 시안 원본 |
+|---|---|---|---|---|
+| `USER_REGISTERED` · `EMAIL` | 회원가입 직후 즉시 | `[StudyClub] 회원가입을 환영합니다` | `{{nickname}}` | [user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) |
 
-- 시안 원본은 `{{nickname}}` 이 그대로 있는 **DB 에 들어갈 본문**이다. 템플릿 목록·제목·예시 값은 [`templates/index.ts`](../../frontend/apps/playground/src/proto/mail/templates/index.ts) 에 있다
-- `/proto/mail` — 왼쪽 목록 → 가운데 HTML 편집 → 오른쪽 미리보기(예시 값을 채워 서버와 같은 규칙으로 렌더). **고친 HTML 은 저장되지 않는다** — 「HTML 복사」로 이 파일에 붙여 PR 을 낸다
+- 시안 원본은 `{{nickname}}` 이 그대로 있는 **DB 에 들어갈 본문**이다. 제목·치환 변수는 위 표를 참고한다
+- 추가·수정 팝업의 **본문 편집 → 미리보기**로 HTML 을 확인한다. 치환 변수는 예시 값으로 바꾸지 않고 원문 그대로 표시한다. 회원가입 시안은 기본 예시로 불러오며, 다른 시안은 본문 편집 칸에 붙여 넣어 확인할 수 있다
+- 프로토에서 추가·저장한 내용은 현재 화면에서만 유지되고 새로고침하면 사라진다. 반영할 HTML 은 본문 편집 칸에서 복사해 시안 파일에 붙여 PR 을 낸다
 - playground 는 DB 를 읽지 않는다. DB 에 지금 무엇이 있는지는 백오피스 「알림 템플릿」에서 본다
 
 ## 제목 규칙
 
-모든 알림 메일 제목은 **`[StudyClub++] 무엇`** 이다.
+모든 알림 메일 제목은 **`[StudyClub] 무엇`** 이다.
 
 | 좋다 | 나쁘다 | 왜 |
 |---|---|---|
-| `[StudyClub++] 회원가입을 환영합니다` | `StudyClub++에 오신 걸 환영합니다` | 받은편지함 목록에서 보낸 곳이 맨 앞에 와야 한다 |
-| `[StudyClub++] DDIA 2판 신청이 접수됐어요` | `[StudyClub++] 안내` | 「무엇」은 열기 전에 내용을 알 수 있게 — 스터디 이름 같은 구체값을 넣는다 |
-| `[StudyClub++] 내일 20:30 첫 모임이 있어요` | `[StudyClub++] 🔔 중요!! 꼭 확인` | 이모지·느낌표·「중요」 는 스팸 점수를 올린다 |
+| `[StudyClub] 회원가입을 환영합니다` | `StudyClub에 오신 걸 환영합니다` | 받은편지함 목록에서 보낸 곳이 맨 앞에 와야 한다 |
+| `[StudyClub] DDIA 2판 신청이 접수됐어요` | `[StudyClub] 안내` | 「무엇」은 열기 전에 내용을 알 수 있게 — 스터디 이름 같은 구체값을 넣는다 |
+| `[StudyClub] 내일 20:30 첫 모임이 있어요` | `[StudyClub] 🔔 중요!! 꼭 확인` | 이모지·느낌표·「중요」 는 스팸 점수를 올린다 |
 
-- 대괄호 안은 서비스 이름 **`StudyClub++` 고정** — 기능명(`[출석]`)·환경명(`[stage]`)을 넣지 않는다
+- 대괄호 안은 서비스 이름 **`StudyClub` 고정** — 기능명(`[출석]`)·환경명(`[stage]`)을 넣지 않는다
 - 「무엇」은 40자 안 · 마침표 없음 · 해요체/합니다체는 본문과 맞춘다
 - 치환 변수(`{{studyTitle}}` 등)는 「무엇」 안에만 쓴다 — 제목은 이스케이프하지 않는 텍스트다
 - HTML 본문의 `<title>` 도 제목과 같은 문자열로 둔다
 
 ## 본문 — 가입메일을 기준으로 쓴다
 
-새 메일은 **[user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) 를 복사해서** 시작한다 — 같은 폴더에 새 파일을 두고 `index.ts` 에 한 줄 추가하면 `/proto/mail` 목록에 뜬다. 구조를 새로 짜지 않는다.
+새 메일은 **[user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) 를 복사해서** 시작한다 — 같은 폴더에 새 파일을 두고 위 시안 목록에 제목·치환 변수·파일 링크를 추가한다. HTML 은 알림 템플릿 팝업에 붙여 넣어 미리 본다. 구조를 새로 짜지 않는다.
 
 ```
 워드마크 (ink, 18px 굵게)  ← 그대로
@@ -66,4 +67,4 @@ HTML 본문은 아래 세 가지와 **같이** 나가야 깨지지 않는다 —
 
 - **stage 는 Flyway 가 꺼져 있다**(Hibernate `update`). V38 이 돌지 않으므로 같은 본문을 손으로 한 번 넣는다 — stage 에는 V14 시딩도 안 돌아
   행 자체가 없으므로 "없으면 INSERT, 있으면 UPDATE" 로 쓴다
-- 새 템플릿을 HTML 로 만들 때도 같은 순서다: playground `templates/` 에 시안 → `/proto/mail` 로 확인 → `V{n}` 마이그레이션(작은따옴표는 두 번)
+- 새 템플릿을 HTML 로 만들 때도 같은 순서다: playground `templates/` 에 시안 → 알림 템플릿 팝업의 미리보기로 확인 → `V{n}` 마이그레이션(작은따옴표는 두 번)

@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
-import { setDiscord } from '@core/lib/me';
 import { Button, Modal } from '@studyclub/ui';
 import { MessageCircle } from 'lucide-react';
+
+import { useDiscordLink } from './useDiscordLink';
 
 /**
  * 스터디 신청 전 디스코드 연동 확인.
@@ -26,29 +25,25 @@ export function ApplyDiscordGate({
   onClose: () => void;
   onLinked: () => void;
 }) {
-  const [linking, setLinking] = useState(false);
-
-  async function connect() {
-    setLinking(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setDiscord('jiwon_dev');
-    setLinking(false);
-    onLinked();
+  const { linking, error, connect, cancel } = useDiscordLink(locale);
+  function close() {
+    cancel();
+    onClose();
   }
 
   return (
     <Modal
       open={open}
-      onClose={linking ? () => {} : onClose}
+      onClose={close}
       title={t({ ko: '디스코드 연동', en: 'Connect Discord' }, locale)}
       footer={
         <>
-          <Button data-anno='discord:3' variant='secondary' onClick={onClose} disabled={linking}>
+          <Button data-anno='discord:3' variant='secondary' onClick={close}>
             {t({ ko: '취소', en: 'Cancel' }, locale)}
           </Button>
           <Button
             data-anno='discord:2'
-            onClick={connect}
+            onClick={() => connect(onLinked)}
             loading={linking}
             leadingIcon={<MessageCircle size={16} />}
           >
@@ -58,6 +53,7 @@ export function ApplyDiscordGate({
       }
     >
       <div data-anno='discord:1' className='flex flex-col gap-3 py-2'>
+        {error && <p role='alert' data-anno='discord:4' className='type-body-sm text-error-700'>{error}</p>}
         <p className='type-label-lg text-fg'>
           {t(
             { ko: '스터디 신청 전 디스코드 연동은 필수입니다.', en: 'You must connect Discord before applying.' },

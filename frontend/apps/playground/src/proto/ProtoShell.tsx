@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
+import { DiscordPreviewToolbar } from '@core/components/DiscordPreviewToolbar';
 import { RegistrationFeedback, RegistrationPreviewToolbar } from '@core/components/RegistrationPreview';
 import { getUser } from '@core/lib/auth';
 import { enterPreview } from '@core/lib/preview';
@@ -16,8 +17,6 @@ const LINKS = [
   { href: '/proto/console', match: '/proto/console', label: '운영 콘솔' },
   // 화면 뒤에 깔린 값과 규칙. 개발이 「상태가 몇 종이더라」를 물을 때 여는 자리다.
   { href: '/proto/policies', match: '/proto/policies', label: '정책 라이브러리' },
-  // DB 에 있는 알림 메일 문구를 실제 모양으로. 디자이너가 메일을 볼 유일한 자리다.
-  { href: '/proto/mail', match: '/proto/mail', label: '메일 템플릿' },
 ];
 
 /**
@@ -73,6 +72,7 @@ export function ProtoShell({ children }: { children: React.ReactNode }) {
         <Suspense fallback={null}>
           <RegistrationPreviewToolbar />
         </Suspense>
+        <DiscordPreviewToolbar />
 
         {children}
 

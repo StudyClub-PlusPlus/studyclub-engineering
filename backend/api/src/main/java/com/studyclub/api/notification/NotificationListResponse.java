@@ -4,6 +4,7 @@ import com.studyclub.common.privacy.EmailMasking;
 import com.studyclub.notification.Notification;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 public record NotificationListResponse(
         List<NotificationSummary> items, long total, int offset, int limit) {
@@ -16,9 +17,12 @@ public record NotificationListResponse(
             String status,
             Long templateId,
             Instant sentAt,
-            Instant createdAt) {
+            Instant createdAt,
+            boolean canResend) {
 
-        public static NotificationSummary from(Notification notification) {
+        /** {@code existingAccountIds} 는 재발송 판정 재료다 — 재발송 접수와 같은 쿼리로 센 값을 넘긴다. */
+        public static NotificationSummary from(
+                Notification notification, Set<Long> existingAccountIds) {
             return new NotificationSummary(
                     notification.getId(),
                     notification.getEventType().name(),
@@ -27,7 +31,8 @@ public record NotificationListResponse(
                     notification.getStatus().name(),
                     notification.getTemplateId(),
                     notification.getSentAt(),
-                    notification.getCreatedAt());
+                    notification.getCreatedAt(),
+                    notification.canResend(existingAccountIds));
         }
     }
 }

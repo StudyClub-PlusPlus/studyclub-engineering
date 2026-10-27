@@ -64,6 +64,8 @@ function LoginForm() {
           }
         }
         track({ name: 'Auth Login Completed', props: { is_new_user: false, next_path: next } });
+        // 가입(온보딩)을 마친 회원의 로그인만 센다 — 새 회원은 온보딩 완료가 `User Signed Up` 이다
+        track({ name: 'User Logged In', props: { method: 'google' } });
         router.replace(next);
       } catch (e) {
         track({ name: 'Auth Login Failed', props: { error_message: String(e), http_status: httpStatus } });
@@ -111,8 +113,8 @@ function LoginForm() {
 
   return (
     <div className='mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 py-16 text-center'>
-      <h1 className='type-headline-lg'>StudyClub++ 로그인</h1>
-      <p className='mt-2 type-body-sm text-fg-muted'>로그인하면 수강생 페이지(내 스터디)를 볼 수 있어요.</p>
+      <h1 className='type-headline-lg'>StudyClub 로그인</h1>
+      <p className='mt-2 type-body-sm text-fg-muted'>로그인하면 내 스터디룸에서 참여한 스터디를 볼 수 있어요.</p>
 
       <button
         type='button'

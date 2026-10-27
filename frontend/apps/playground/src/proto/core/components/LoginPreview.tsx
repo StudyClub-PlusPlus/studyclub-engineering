@@ -93,7 +93,7 @@ function LoginForm({
       <div className='w-full max-w-[420px]'>
         <div className='mb-8 text-center' data-anno='1'>
           <h1 className='type-headline-lg'>
-            {ko ? 'StudyClub++ 로그인' : 'Log in to StudyClub++'}
+            {ko ? 'StudyClub 로그인' : 'Log in to StudyClub'}
           </h1>
           <p className='mt-3 type-body-sm text-fg-muted'>
             {ko ? '함께 배우고 성장하는 스터디를 만나보세요.' : 'Find your people. Learn and grow together.'}

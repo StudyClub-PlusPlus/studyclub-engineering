@@ -1,10 +1,12 @@
 package com.studyclub.domain.study;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,6 +28,14 @@ public interface StudyRecruitmentRepository extends JpaRepository<StudyRecruitme
                     + "AND recruitment.recruitDeadlineAt > CURRENT_TIMESTAMP "
                     + "ORDER BY recruitment.startAt DESC, recruitment.id DESC")
     List<StudyRecruitment> findOpenByStudyIdOrderByStartAtDesc(@Param("studyId") Long studyId);
+
+    /**
+     * 신청 제출 전용 — 모집 회차 행을 잠그고 읽는다. 신청이 명부를 늘리므로 정원 검사와 명부 insert 사이에 다른 신청이 끼면 마지막 한 자리에 두 명이 들어간다.
+     * 같은 회차 신청을 이 행으로 줄 세운다 (specs/study-application/spec.md 신청 제출 1).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT recruitment FROM StudyRecruitment recruitment WHERE recruitment.id = :id")
+    Optional<StudyRecruitment> findByIdForUpdate(@Param("id") Long id);
 
     Optional<StudyRecruitment> findFirstByStudyIdOrderByStartAtDescIdDesc(Long studyId);
 

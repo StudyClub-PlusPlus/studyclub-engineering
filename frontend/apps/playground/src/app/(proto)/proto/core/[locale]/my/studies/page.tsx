@@ -22,6 +22,7 @@ import {
 import { getUser } from '@core/lib/auth';
 import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
+import { PAGE } from '@core/lib/layout';
 import { getApplications } from '@core/lib/me';
 import { isKickoff, meetingLabel } from '@core/lib/meetings';
 import { type Study } from '@studyclub/mock';
@@ -33,7 +34,7 @@ import { ScreenSpecRegistrar } from '@/proto/annotate';
 import { useMswStudies } from '@/proto/lib/use-msw-studies';
 
 /**
- * 내 스터디.
+ * 내 스터디룸.
  *
  * 회원이 매주 하는 일은 **오늘 출석을 찍는 것** 하나라서, 그 버튼이 페이지 첫 화면에 있어야 한다.
  * 지난 출석은 따져볼 때만 보므로 탭 뒤에 둔다.
@@ -74,7 +75,7 @@ export default function MyStudiesPage() {
 
   const allStudies = useMswStudies();
 
-  /** 승인되어 참여 중인 스터디만. 신청 대기·종료된 스터디는 출석할 일이 없다. */
+  /** 참여 중인 스터디만. 종료된 스터디는 출석할 일이 없다. */
   const mine = useMemo<Study[]>(() => {
     const byId = new Map(allStudies.map((s) => [s.id, s]));
     return mineIds.map((id) => byId.get(id)).filter((s): s is Study => s !== undefined && s.status !== 'closed');
@@ -85,10 +86,10 @@ export default function MyStudiesPage() {
   }
 
   return (
-    <div className='mx-auto max-w-3xl px-6 pb-16 pt-8'>
+    <div className={`${PAGE} pb-16 pt-8`}>
       <ScreenSpecRegistrar spec={SPEC} />
       <h1 data-anno='1' className='type-headline-lg'>
-        내 스터디
+        내 스터디룸
       </h1>
 
       <nav data-anno='2' className='mt-5 inline-flex rounded-pill bg-surface-2 p-1'>
@@ -239,7 +240,7 @@ function AttendanceCard({ study, locale }: { study: Study; locale: Locale }) {
           {t(study.title, locale)}
         </Link>
         <span data-anno='4-1' className='tnum shrink-0 type-label-lg text-fg'>
-          {rate === undefined ? <span className='text-fg-muted'>—</span> : `${rate}%`}
+          {rate === undefined ? <span className='text-fg-muted'>-</span> : `${rate}%`}
         </span>
       </div>
 

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { TableCard } from '@console/components/ui';
-import { maskEmail } from '@console/lib/mask';
 import {
   EVENT_FILTERS,
   EVENT_LABEL,
@@ -18,8 +17,8 @@ import {
   queryNotifications,
   type NotificationStatus,
 } from '@console/lib/notifications';
-import { Badge, Button, Modal, toast } from '@studyclub/ui';
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, RotateCw } from 'lucide-react';
+import { Badge, Button, Modal, Pagination, toast } from '@studyclub/ui';
+import { Loader2, RotateCw } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
 type EventFilter = 'all' | (typeof EVENT_FILTERS)[number]['value'];
@@ -55,6 +54,8 @@ export function NotificationsTable() {
     [filter, eventType, offset, rows, keep],
   );
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // 조건이 하나라도 걸려 있으면 「거른 결과 없음」이고, 하나도 없으면 「이력 없음」이다
+  const filtered = filter !== 'all' || eventType !== 'all';
   // 거른 조건에 걸린 **실패 건 전체**. 보고 있는 페이지에 한정하지 않는다
   const allFailed = useMemo(() => (filter === 'FAILED' ? failedIds(eventType, rows) : []), [filter, eventType, rows]);
 
@@ -149,6 +150,13 @@ export function NotificationsTable() {
     setPage(1);
   }
 
+  function resetFilters() {
+    setFilter('all');
+    setEventType('all');
+    setKeep(new Set());
+    setPage(1);
+  }
+
   function changeEvent(next: EventFilter) {
     setEventType(next);
     setKeep(new Set());
@@ -198,6 +206,8 @@ export function NotificationsTable() {
         )}
       </div>
 
+      <TimezoneNote />
+
       <TableCard anno='history:2'>
         <thead>
           <tr>
@@ -227,8 +237,8 @@ export function NotificationsTable() {
                 <td className='tnum whitespace-nowrap text-fg-secondary'>{stamp(row.createdAt)}</td>
                 <td className='whitespace-nowrap'>{EVENT_LABEL[row.eventType] ?? row.eventType}</td>
                 <td className='whitespace-nowrap text-fg-secondary'>메일</td>
-                {/* 가린 채로 두고 필요한 줄만 펼친다 — 유저 목록과 같은 규칙 (POL-0007) */}
-                <EmailCell email={row.recipientValue} />
+                {/* 서버가 가린 값을 그대로 쓴다 — 전체 주소를 보는 길을 두지 않는다 */}
+                <td className='truncate text-fg-secondary'>{row.recipientValue}</td>
                 <td>
                   <span className='inline-flex items-center gap-1.5'>
                     <Badge tone={STATUS_TONE[row.status] ?? 'neutral'} dot className='whitespace-nowrap font-semibold'>
@@ -263,10 +273,10 @@ export function NotificationsTable() {
             <tr>
               <td colSpan={6} className='py-16 text-center'>
                 <p className='type-body-sm text-fg-muted'>
-                  {filter === 'all' ? '아직 알림 발송 이력이 없습니다.' : '선택한 상태의 발송 이력이 없습니다.'}
+                  {filtered ? '선택한 조건의 발송 이력이 없습니다.' : '아직 알림 발송 이력이 없습니다.'}
                 </p>
-                {filter !== 'all' && (
-                  <Button size='sm' variant='secondary' className='mt-3' onClick={() => changeFilter('all')}>
+                {filtered && (
+                  <Button size='sm' variant='secondary' className='mt-3' onClick={resetFilters}>
                     전체 보기
                   </Button>
                 )}
@@ -318,56 +328,27 @@ export function NotificationsTable() {
         </p>
       </Modal>
 
-      {total > 0 && (
-        <div data-anno='history:3' className='flex items-center justify-center gap-4 pt-1'>
-          {/* 아이콘만 둔다 — 앞뒤로 넘긴다는 뜻은 화살표가 이미 말한다 */}
-          <Button
-            size='sm'
-            variant='ghost'
-            aria-label='이전 페이지'
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            <ChevronLeft size={16} />
-          </Button>
-          <span className='tnum type-body-sm text-fg-secondary'>
-            {page} / {pages}
-          </span>
-          <Button
-            size='sm'
-            variant='ghost'
-            aria-label='다음 페이지'
-            disabled={page >= pages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <ChevronRight size={16} />
-          </Button>
-        </div>
-      )}
+      {/* 이력이 한 건이라도 있을 때만 — 공용 페이지 이동(이전 · 페이지 번호 · 다음). 한 페이지뿐이면 그리지 않는다 */}
+      {total > 0 && <Pagination data-anno='history:3' page={page} total={pages} onChange={setPage} className='pt-1' />}
     </div>
   );
 }
 
-/** 수신 주소 — 가린 채로 두고, 눈 아이콘을 누른 줄만 펼친다. 펼친 것은 그 줄에만 남는다. */
-function EmailCell({ email }: { email: string }) {
-  const [shown, setShown] = useState(false);
-  return (
-    <td className='truncate text-fg-secondary'>
-      <span className='inline-flex items-center gap-1.5'>
-        <span title={shown ? email : undefined}>{shown ? email : maskEmail(email)}</span>
-        {/* 같은 자리의 같은 버튼이 다시 가린다 — 펼친 줄을 되돌릴 길이 없으면 옆사람이 볼 때까지 남는다 */}
-        <button
-          type='button'
-          onClick={() => setShown((v) => !v)}
-          aria-label={shown ? '전체 주소 가리기' : '전체 주소 보기'}
-          title={shown ? '가리기' : '전체 주소 보기'}
-          className='grid h-6 w-6 shrink-0 place-items-center rounded-control text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-        >
-          {shown ? <EyeOff size={14} /> : <Eye size={14} />}
-        </button>
-      </span>
-    </td>
-  );
+/**
+ * 표의 시각이 **어느 시간대 기준인지** 한 번만 밝힌다 (POL-0006). 줄마다 약칭을 달면 같은 말이 스무 번 반복된다 —
+ * 기준은 위에서 한 번 말하고 각 줄에는 시각만 적는다.
+ */
+function TimezoneNote() {
+  const [zone, setZone] = useState('');
+  // 시간대는 브라우저만 안다 — 서버에서 그린 화면과 어긋나지 않게 마운트 뒤에 채운다(한 줄 높이는 미리 지킨다)
+  useEffect(() => {
+    const id = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const offset = new Intl.DateTimeFormat('ko-KR', { timeZoneName: 'short' })
+      .formatToParts(new Date())
+      .find((part) => part.type === 'timeZoneName')?.value;
+    setZone(offset ? `${id} · ${offset}` : id);
+  }, []);
+  return <p className='min-h-5 type-label-sm text-fg-muted'>{zone && `표의 시각은 내 시간대 기준입니다 (${zone})`}</p>;
 }
 
 /** 거르는 칸 하나. 고르기 전에는 축 이름이 보이고, 고른 뒤에는 「전체」로 되돌릴 수 있다. */

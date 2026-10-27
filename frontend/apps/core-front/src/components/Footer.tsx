@@ -1,9 +1,12 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { ArrowUpRight } from 'lucide-react';
 
+import { SocialIcons } from './SocialLinks';
 import type { Locale, Site } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
+
 
 export function Footer({ locale, site }: { locale: Locale; site: Site }) {
   return (
@@ -11,22 +14,25 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
       <div className='mx-auto flex max-w-6xl flex-col gap-6 px-6 py-12 sm:flex-row sm:items-end sm:justify-between'>
         <div>
           <div className='flex items-center gap-2 type-title-md'>
-            <span
-              className='grid h-7 w-7 place-items-center rounded-lg type-label-lg text-white'
-              style={{ background: 'var(--color-brand)' }}
-            >
-              S
-            </span>
-            StudyClub++
+            <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
+            StudyClub
           </div>
           <p className='mt-3 type-body-sm text-(--color-fg-muted)'>
-            {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count}+
+            {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count.toLocaleString()}+
           </p>
-          <p className='mt-1 type-label-sm text-(--color-fg-faint)'>
-            © {new Date().getFullYear()} StudyClub++
+          <p className='mt-1 flex flex-wrap items-center gap-x-3 type-label-sm text-(--color-fg-faint)'>
+            <span>© {new Date().getFullYear()} StudyClub</span>
+            <Link href={`/${locale}/terms`} className='hover:text-(--color-fg)'>
+              {t({ ko: '이용약관', en: 'Terms' }, locale)}
+            </Link>
+            {/* 개인정보처리방침은 법적으로 눈에 띄게 둔다 — 굵게 */}
+            <Link href={`/${locale}/privacy`} className='font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'>
+              {t({ ko: '개인정보처리방침', en: 'Privacy Policy' }, locale)}
+            </Link>
           </p>
         </div>
         <div className='flex flex-col gap-3 type-body-sm sm:items-end'>
+          <SocialIcons locale={locale} />
           <div className='flex flex-wrap gap-x-6 gap-y-2 text-(--color-fg-muted)'>
             <Link href={`/${locale}/studies`} className='hover:text-(--color-fg)'>
               {m('nav.studies', locale)}

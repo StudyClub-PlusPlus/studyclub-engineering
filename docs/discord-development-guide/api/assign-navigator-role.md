@@ -26,15 +26,11 @@ POST /api/v1/roles/navigator/users
 
 헤더는 [공통 헤더](common-header.md) 전부 — `Idempotency-Key` 는 **필수**다.
 
-**captain 역할을 가진 멤버만 호출할 수 있다.** [`create-study`](create-study.md#요청) ·
-[`assign-role`](assign-role.md#요청) 과 같은 규칙이다 — 봇이 `X-Discord-User-ID` 로 길드 멤버를 조회해
-captain 역할 보유 여부를 확인하고, 없으면 **403** 이다.
+**봇은 요청자를 검사하지 않는다.** [`assign-role`](assign-role.md#요청) 과 같다 — 누가 navigator 를
+붙이게 할 수 있는지는 백엔드가 호출 전에 정한다.
 
-captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 역할이다. 이 엔드포인트는 둘 중
-어느 것도 만들지 않고, 찾지 못하면 배정하지 말고 실패한다.
-
-**navigator 역할은 captain 역할과 같은 방식으로 찾는다** — 설정값(예: `DISCORD_NAVIGATOR_ROLE_ID`)으로
-역할 ID 를 받는다. 이름으로 찾지 않는다 (길드에서 역할 이름이 바뀌거나 동명 역할이 생기면 조용히 깨진다).
+navigator 역할은 길드에 **이미 존재하는** 역할이다. 이 엔드포인트는 만들지 않고, 찾지 못하면 배정하지 말고 실패한다.
+설정값 `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 로 역할 ID 를 받는다. 이름으로 찾지 않는다 (길드에서 역할 이름이 바뀌거나 동명 역할이 생기면 조용히 깨진다).
 
 ```jsonc
 {
@@ -75,12 +71,9 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 
 | 상태 | 언제 |
 |------|------|
-| **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 — 이 엔드포인트는 captain 확인 때문에 필수다 |
+| **400** | `X-Discord-User-ID` 가 없거나 snowflake 형식이 아님 |
 | **400** | `Idempotency-Key` 없음 |
 | **401** | `X-API-Key` 없음 또는 불일치 |
-| **403** | 요청자에게 captain 역할이 없음 |
-| **404** | `X-Discord-User-ID` 가 그 길드의 멤버가 아님 |
-| **502** | `X-Discord-User-ID` 멤버 조회 중 Discord 가 거부하거나 5xx — 대상은 아직 건드리지 않았다 |
 
 ### 이 엔드포인트에서 나는 것
 
@@ -90,17 +83,14 @@ captain 역할과 navigator 역할은 둘 다 길드에 **이미 존재하는** 
 | **400** | `discordStudyId` 가 없음 | 위와 같음 |
 | **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
 | **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
-| **404** | captain 역할을 길드에서 찾지 못함 | 서버·길드 설정 문제(역할이 지워졌거나 잘못 지정됨). 요청자와 무관하므로 403 이 아니다. `detail` 로 다른 404 와 구분한다 |
-| **404** | navigator 역할을 길드에서 찾지 못함 | captain 404 와 같은 **서버·길드 설정 문제**다. 호출자가 보낸 값이 아니므로 호출자가 고칠 수 없다. `detail` 로 다른 404 와 구분한다 |
-| **409** | `DISCORD_GUILD_ID` · `DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
+| **404** | navigator 역할을 길드에서 찾지 못함 | **서버·길드 설정 문제**(역할이 지워졌거나 잘못 지정됨)다. 호출자가 보낸 값이 아니므로 호출자가 고칠 수 없다. `detail` 로 다른 404 와 구분한다 |
+| **409** | `DISCORD_CONFIG_GUILD_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **502** | 캐시에 없는 대상 유저를 Discord 에 물었는데 답이 없음 | 아직 아무도 건드리지 않았다. 그대로 재시도해도 안전하다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
-요청자가 captain 이 아니면 navigator 역할 설정이 깨져 있어도 **403** 이 먼저 나간다 — 요청자 확인이 navigator 역할 확인보다 앞선다.
-
-503 · 502 는 **재시도 가능**하다. 400 · 401 · 403 은 조건이 바뀌기 전에는 재시도해도 같다.
+503 · 502 는 **재시도 가능**하다. 400 · 401 은 조건이 바뀌기 전에는 재시도해도 같다.
 **길드에 없는 유저는 404 가 아니다** — [성공 응답](#성공-응답)의 `failed` 로 나간다.
-captain · navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의 역할이나 서버 설정을 고쳐야 풀린다.
+navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의 역할이나 서버 설정을 고쳐야 풀린다.
 
 역할 서열(재시도로 안 풀림)과 429(밖으로 안 나가고 느려짐)는
 [assign-role](assign-role.md#이-엔드포인트에서-나는-것) 과 같다.
@@ -114,7 +104,7 @@ captain · navigator 역할 404 는 호출자가 고칠 수 없다 — 길드의
 [assign-role 의 규칙](assign-role.md#부분-실패와-재시도)을 그대로 따른다. 유저 한 명당 Discord 호출이
 한 번 나가므로(`PUT /guilds/{guild}/members/{user}/roles/{navigator-role}`) 요청 도중 끊길 수 있다.
 
-1. **역할이 없으면 아무것도 하지 않는다. 유저가 없으면 그 사람만 뺀다** — captain · navigator 역할과
+1. **역할이 없으면 아무것도 하지 않는다. 유저가 없으면 그 사람만 뺀다** — navigator 역할과
    모든 유저를 먼저 해석한다. 역할이 없으면 아무것도 하지 않고 404, 길드에 없는 유저는 `failed` 에
    `NOT_IN_GUILD` 로 담고 나머지를 붙인다. 유저는 **멤버 캐시에서 먼저** 찾고(봇이 `members` intent 로
    캐시를 채운다), 캐시에 없는 유저만 Discord 에 한 번에 묻는다.
@@ -135,7 +125,7 @@ assign-role 은 `discordRoleId` 를 받고 **어떤 역할이든** 붙인다 —
 
 - 경로·바디에 역할 ID 가 없고, `discordRoleId` 형식 400 · 역할 없음 404 가 **navigator 역할 없음 404** 하나로 바뀐다.
   이 404 는 호출자가 보낸 값 때문이 아니라 **서버 설정 문제**다.
-- captain 이 이 엔드포인트로 navigator 외의 역할을 붙일 방법은 없다.
+- 이 엔드포인트로 navigator 외의 역할을 붙일 방법은 없다.
 
 ### navigator 는 스터디별 역할이 아니다
 
@@ -144,8 +134,7 @@ navigator 역할은 **길드 전체에 하나**다. `discordStudyId` 는 로그�
 
 - 봇은 대상 유저가 **그 스터디의 멤버인지 확인하지 않는다.** 그 정보의 주인은 백엔드다
   ([assign-role 의 신뢰 모델](assign-role.md#배정할-수-있는-역할의-범위) 과 같은 결).
-- 요청자 captain 이 **그 스터디의 captain 인지도 확인하지 않는다.** captain 역할 역시 길드 전체에 하나라,
-  봇이 볼 수 있는 건 "captain 역할이 있다" 까지다. 스터디 단위 권한 검사가 필요하면 백엔드가 호출 전에 한다.
+- 요청자가 **그 스터디의 captain 인지도 확인하지 않는다** — 요청자 검사는 모두 백엔드가 호출 전에 한다.
 
 ### 경로 충돌
 

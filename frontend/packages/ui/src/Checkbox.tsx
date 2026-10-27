@@ -8,9 +8,10 @@ import { cx } from './cx';
 /** design-system.md §9-2 계열 — 체크박스. 라벨 클릭으로도 토글되며 포커스 링을 공유한다. */
 export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: string;
+  indeterminate?: boolean;
 }
 
-export function Checkbox({ label, className, id, ...rest }: CheckboxProps) {
+export function Checkbox({ label, className, id, indeterminate = false, ...rest }: CheckboxProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   return (
@@ -19,6 +20,9 @@ export function Checkbox({ label, className, id, ...rest }: CheckboxProps) {
         {...rest}
         id={fieldId}
         type='checkbox'
+        ref={(element) => {
+          if (element) element.indeterminate = indeterminate;
+        }}
         className='h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)'
       />
       <span className='type-label-lg text-ink'>{label}</span>

@@ -297,7 +297,7 @@ export function ApplyDialog({
         addApplication({
           studyId: study.id,
           appliedAt: new Date().toISOString().slice(0, 10),
-          status: 'pending',
+          status: 'accepted',
           region: myRegion,
           cells: days,
         });
@@ -312,7 +312,7 @@ export function ApplyDialog({
         addApplication({
           studyId: study.id,
           appliedAt: new Date().toISOString().slice(0, 10),
-          status: 'pending',
+          status: 'accepted',
           region: myRegion,
           cells: days,
         });

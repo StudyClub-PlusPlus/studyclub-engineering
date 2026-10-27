@@ -30,7 +30,7 @@ function pageWindow(page: number, total: number): (number | 'gap')[] {
  * design-system.md §9-8 Pagination.
  *
  * - 숫자/화살표 버튼: h-8 min-w-8, rounded-control
- * - active: bg-surface-2 font-bold text-fg
+ * - active: bg-surface-2 font-semibold text-fg
  * - inactive: text-fg-muted hover:bg-surface-2
  */
 export function Pagination({ page, total, onChange, className, ...rest }: PaginationProps) {

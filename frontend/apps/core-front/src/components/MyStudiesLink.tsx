@@ -23,7 +23,7 @@ export function MyStudiesLink({ locale }: { locale: Locale }) {
       href={`/${locale}/my/joined`}
       className='hidden rounded-full border border-border px-4 py-2 type-label-lg text-fg transition-colors hover:border-border-interactive hover:bg-surface-2 sm:block'
     >
-      {t({ ko: '내 스터디', en: 'My studies' }, locale)}
+      {t({ ko: '내 스터디룸', en: 'My study room' }, locale)}
     </Link>
   );
 }

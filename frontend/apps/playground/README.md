@@ -1,10 +1,10 @@
 # playground — 디자인 샌드박스
 
 디자이너·기획자가 **실제 서비스 컴포넌트로** 화면을 조립해 보는 곳입니다.
-여기서 무엇을 깨뜨려도 `studyclub-plusplus.com` 배포는 영향을 받지 않습니다.
+여기서 무엇을 깨뜨려도 `studyclub.life` 배포는 영향을 받지 않습니다.
 
 - 로컬: http://localhost:4702
-- 배포(예정): https://playground.studyclub-plusplus.com — `main` 에 머지되면 자동 반영
+- 배포(예정): https://playground.studyclub.life — `main` 에 머지되면 자동 반영
 
 ---
 
@@ -32,7 +32,7 @@ pnpm --filter playground run dev
 ## 화면 하나 추가하기
 
 > 여기는 컴포넌트를 조립해 보는 **연습 화면**입니다. 유저스토리 프로토타입은 [`/proto`](#프로토-proto) 아래에 만들고,
-> 순서는 [`/prototype` 스킬](../../../.claude/skills/prototype.md)을 따릅니다.
+> 순서는 [`/prototype` 스킬](../../../.claude/skills/prototype/SKILL.md)을 따릅니다.
 
 ```bash
 cd "studyclub-engineering/frontend/apps/playground/src/app/(site)/screens"

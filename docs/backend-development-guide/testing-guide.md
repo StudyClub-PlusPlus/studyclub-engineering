@@ -56,7 +56,7 @@ src/test/java/com/studyclub/{module}/...
 
 ```java
 @Test
-@DisplayName("실패 - 토큰 없이 /auth/me → 401 + errorCode UNAUTHORIZED (시큐리티가 막아도 같은 모양)")
+@DisplayName("실패 - 토큰 없이 /api/me → 401 + errorCode UNAUTHORIZED (시큐리티가 막아도 같은 모양)")
 void unauthenticatedReturnsErrorResponse() { ... }
 
 @Test
@@ -136,9 +136,9 @@ class ApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("실패 - 토큰 없이 /auth/me → 401 + errorCode UNAUTHORIZED")
+    @DisplayName("실패 - 토큰 없이 /api/me → 401 + errorCode UNAUTHORIZED")
     void unauthenticatedReturnsErrorResponse() {
-        var response = rest.getForEntity("/auth/me", Map.class);
+        var response = rest.getForEntity("/api/me", Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
