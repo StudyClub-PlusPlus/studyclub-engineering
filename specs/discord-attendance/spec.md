@@ -246,6 +246,10 @@ CREATE TABLE STUDY_DISCORD_LINK (
 - **봇 없이 전부 돌아간다.** 마이그레이션은 빈 MySQL 8 + `ddl-auto=validate` 부팅으로 따로 확인했다
   (`backend-migration-check` 와 같은 절차)
 
+## 퍼널·계측
+
+해당 없음 — 디스코드 일괄 출석은 봇 → 서버 수신이라 분석 이벤트가 없다.
+
 ## 미확정
 
 - ~~**`STUDY_DISCORD_LINK` 행을 누가 만드는가.**~~ 해소됐다 — 스터디 등록이 봇의

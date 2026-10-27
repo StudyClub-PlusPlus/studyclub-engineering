@@ -170,6 +170,10 @@ recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_C
 | `domain/.../StudyCohortTest` | 판정 규칙 단위 — 마감 시각 정확히 now / 1초 전 / 경과, 정원 도달·초과, `recruitmentCapacity` null, `DRAFT`·`CLOSED` → null |
 | `api/.../StudyRecruitStatusIntegrationTest` | 목록·상세 응답에 필드가 실제로 실리는지, `REJECTED`·`WITHDRAWN`·`WAITLISTED` 가 정원을 안 차지하는지 |
 
+## 퍼널·계측
+
+해당 없음 — 모집 상태 판정에 전용 이벤트가 없다. 마감된 스터디는 신청 버튼이 막혀 `Study Apply CTA Clicked` 이후 단계가 줄어든다.
+
 ## 미확정
 
 - ~~`UPCOMING`(모집예정)~~ → **폐지**: 예약 공개는 없다. 공개 = 모집 시작이라 캡틴이 모집을 시작하는 순간(`STATUS: DRAFT → OPEN`) 모집도 함께 시작되고, `DRAFT` 는 목록에 나오지 않는다. 그래서 모집예정으로 판정할 구간이 없다

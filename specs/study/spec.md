@@ -742,3 +742,9 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 - 저장 위치는 `STUDY.APPLICATION_FORM` (기수). 신청 행은 `STUDY_APPLICATION.RECRUITMENT_ID` (모집 회차)
 - 이름·이메일은 폼에 두지 않고 계정에서 읽는다. 디스코드 별명·참여 요일은 플랫폼 기본 문항
 - 질문 설명은 여러 줄 마크다운 원문
+
+## 퍼널·계측
+
+- 단계: 유입 → 활성화 (탐색 · 상세 · 신청 진입)
+- 이벤트 (front, 이 API 를 쓰는 화면): `Study Filter Tab Changed` · `Study Category Filtered` · `Study Searched` · `Study Card Clicked` · `Hero CTA Clicked`, 신청 진입은 `Study Apply *` ([study-application](../study-application/spec.md))
+- 이 문서로 바뀌는 이벤트는 없다. A/B 없음

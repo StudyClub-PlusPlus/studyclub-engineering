@@ -60,6 +60,13 @@ Spring POST /auth/social-login { code, provider, platform }
 - core `/[locale]/my`(수강생 A8) 신규 — 미로그인 `/login` 바운스, 로그인 시 account + 내 스터디(당분간 mock).
 - BO 전 페이지 로그인 게이트(미들웨어), `platform=BACK_OFFICE` 는 BO Next 라우트에서 강제. 응답 `user.role` 이 ADMIN 아니면 쿠키를 안 심는다(2차 차단).
 
+## 퍼널·계측
+
+- 단계: 가입 · 재방문 (로그인 화면)
+- 이벤트 (front): `Auth Google Login Clicked` · `Auth OAuth Cancelled` · `Auth Login Completed{is_new_user}` · `Auth Login Failed`, 온보딩을 마친 회원은 `User Logged In` / `login`
+- 가입 확정은 여기가 아니라 온보딩 완료다 (`User Signed Up`, [user-onboarding](../user-onboarding/spec.md))
+- 이 문서로 바뀌는 이벤트는 없다. A/B 없음
+
 ## 한계 / 후속
 
 - admin 컨트롤러 **롤가드는 후속** (zapp 도 미룸) — 로그인 게이트는 `SYSTEM_ROLE=ADMIN` 으로 옮겼고, 로그인 이후 요청의 ADMIN 가드(요청마다 DB 조회)는 후속.
