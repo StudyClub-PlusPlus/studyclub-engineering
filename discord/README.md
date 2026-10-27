@@ -28,6 +28,7 @@ app/
     commands/test_cmd.py           # testCmd command
     commands/bulletin_cmd.py       # updateBulletin command
     commands/voice_monitor_cmd.py  # checkVoiceChannels command
+    commands/config_cmd.py         # config print command
     commands/attendance_cmd.py  # !출석체크 command
     commands/help_cmd.py           # the !help menu, grouped by category
 tests/                 # pytest unit tests
@@ -237,6 +238,7 @@ guild has one scrollback to check when something went wrong.
 |---------|----------|-----|------|
 | `!updateBulletin` | Captain | captain | rewrites the [bulletin](#voice-channel-bulletin) now instead of waiting for 8PM |
 | `!checkVoiceChannels` | Captain | captain | prints every 공부방's last activity date ([monitor](#voice-channel-activity-monitor)) |
+| `!config print` | Captain | captain | prints every `DISCORD_CONFIG_*` setting the bot started with: roles by name, channels as links, categories, the server, and users by name. What an ID is comes from looking it up in the guild, not from its name. Anything without that prefix — tokens, keys, URLs — is never shown |
 | `!출석체크` | Navigator | the 반's 반장(navigator) — the backend checks, not the bot | marks everyone in the 공부방 present ([출석체크](#출석체크)) |
 | `!help` | ETC | anyone | lists the commands above, grouped by this Category column |
 | `!testCmd` | ETC | anyone in the command channel | replies `testCmd OK ✅` — proves the bot hears and answers |

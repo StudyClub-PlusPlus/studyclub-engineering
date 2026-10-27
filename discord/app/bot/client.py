@@ -9,6 +9,7 @@ from app.bot import bulletin, voice_monitor
 from app.bot.commands import (
     attendance_cmd,
     bulletin_cmd,
+    config_cmd,
     help_cmd,
     test_cmd,
     voice_monitor_cmd,
@@ -35,7 +36,7 @@ def create_bot(settings: Settings) -> commands.Bot:
             command_attrs={"help": "이 도움말을 보여줍니다."},
         ),
     )
-    # testCmd, updateBulletin, and checkVoiceChannels gate themselves on
+    # testCmd, updateBulletin, checkVoiceChannels, and config gate themselves on
     # DISCORD_CONFIG_BOT_CHANNEL_ID; attendance is the documented voice-chat exception.
     test_cmd.register(bot, settings)
     # Hooks the bulletin refresh onto ``setup_hook``; it starts once the bot has
@@ -47,4 +48,5 @@ def create_bot(settings: Settings) -> commands.Bot:
     voice_monitor.register(bot, settings)
     voice_monitor_cmd.register(bot, settings)
     attendance_cmd.register(bot, settings)
+    config_cmd.register(bot, settings)
     return bot
