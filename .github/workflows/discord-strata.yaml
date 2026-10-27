@@ -1,0 +1,56 @@
+# 디스코드 봇의 SQLite 구조(ERD)를 Strata 로 보낸다 — file 방식: DB 를 띄우지 않고 discord/.strata/schema.json 을 그대로 보낸다.
+# 그 파일이 실제 CREATE TABLE 과 맞는지는 discord-PR-CI 의 pytest(tests/test_strata_schema.py)가 막는다.
+# PR 이면 beta 대비 전·후를 코멘트로 남긴다. beta push 는 비교 기준 스냅샷이다.
+name: discord-strata
+
+on:
+  pull_request:
+    branches: [beta, develop, main]
+    paths: ['discord/app/**', 'discord/.strata/**', '.github/workflows/discord-strata.yaml']
+  push:
+    branches: [beta]
+    paths: ['discord/.strata/**']
+  workflow_dispatch:
+
+env:
+  STRATA_API: https://strata-api.studyclub.life
+  STRATA_PROJECT: faccbf09-16da-4012-aeca-6595dadf39c6/projects/fa485ab4-54ec-43bc-a9b5-9b330d30687c
+  SOURCE: studyclub-engineering:discord
+  SCHEMA: discord/.strata/schema.json
+
+jobs:
+  schema:
+    # 포크 PR 에는 시크릿이 없다
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Strata 에 올리기
+        env:
+          STRATA_TOKEN: ${{ secrets.STRATA_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          jq -n --slurpfile erd "$SCHEMA" --arg source "$SOURCE" --arg repo "$GITHUB_REPOSITORY" --arg branch "$branch" \
+            --arg sha "${HEAD_SHA:-$GITHUB_SHA}" --arg pr "$PR" --arg url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR" \
+            '{source:$source, repo:$repo, branch:$branch, baseBranch:"beta", sha:$sha, method:"file", erd:$erd[0]}
+             + (if $pr != "" then {pr:($pr|tonumber), prUrl:$url} else {} end)' > body.json
+          code=$(curl -s -o res.json -w '%{http_code}' -X POST "$STRATA_API/teams/$STRATA_PROJECT/schema/snapshots" \
+            -H "authorization: Bearer $STRATA_TOKEN" -H 'content-type: application/json' --data-binary @body.json)
+          if [ "${code:0:1}" != 2 ]; then echo "::error::Strata 가 $code 로 거절 — $(head -c 300 res.json)"; exit 1; fi
+          jq -r .comment res.json > comment.md
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+      - name: PR 코멘트 (있으면 고치고 없으면 만든다)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"<!-- strata:schema -->\") and contains(\"### DB 구조 · $SOURCE\")) | .id" | head -1)
+          if [ -n "$id" ]; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comment.md >/dev/null
+          else gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@comment.md >/dev/null; fi

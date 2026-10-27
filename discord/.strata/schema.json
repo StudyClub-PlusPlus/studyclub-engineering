@@ -1,0 +1,75 @@
+{
+  "engine": "sqlite 3",
+  "tables": [
+    {
+      "name": "study_reservation",
+      "columns": [
+        {
+          "name": "study_name",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "study_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "role_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "fks": [],
+      "indexes": []
+    },
+    {
+      "name": "voice_channel_activity",
+      "columns": [
+        {
+          "name": "channel_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "first_seen_at",
+          "type": "text",
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "last_activity_at",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "last_alerted_at",
+          "type": "text",
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "fks": [],
+      "indexes": []
+    }
+  ]
+}

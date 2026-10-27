@@ -154,6 +154,9 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   **playground 만 `beta` 브랜치에서 배포된다** (`playground-beta.yaml`) — 프로토타입이라 main 을 기다리지 않는다.
   `backend-PR-CI` 는 PR 마다 `./gradlew check` 를 돌린다 — 컴파일 실패·포맷 위반이 머지되는 걸 막는 게이트.
   `backend-migration-check` 는 PR 마다 빈 MySQL 에 마이그레이션을 적용해 본다 — 여기서 깨지면 `V*.sql` 을 고친다.
+- **디스코드 봇의 `CREATE TABLE` 을 고치면 같은 커밋에서 `discord/.strata/schema.json` 도 다시 뽑는다** —
+  `cd discord && python -m tests.test_strata_schema > .strata/schema.json`. 봇은 백엔드 MySQL 과 별개로 SQLite 테이블을 쓰고,
+  Strata(DB 구조 지도)는 이 파일을 그대로 읽는다(`discord-strata`). 파일이 실제 테이블과 다르면 `discord-PR-CI` 의 pytest 가 막는다.
 
 ---
 
