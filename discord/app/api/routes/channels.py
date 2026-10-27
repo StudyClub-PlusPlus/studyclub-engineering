@@ -88,7 +88,7 @@ def resolve_configured_channel(
     """
     if channel_id is None:
         raise HTTPException(
-            status_code=409, detail=f"no DISCORD_{label.upper()}_CHANNEL_ID configured"
+            status_code=409, detail=f"no DISCORD_CONFIG_{label.upper()}_CHANNEL_ID configured"
         )
 
     channel = guild.get_channel(channel_id)
