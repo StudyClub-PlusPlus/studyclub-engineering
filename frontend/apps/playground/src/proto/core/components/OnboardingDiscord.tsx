@@ -44,9 +44,7 @@ export function OnboardingDiscord({ locale, next }: { locale: Locale; next: stri
           <h1 className='text-2xl font-bold leading-snug'>
             {ko ? '스터디는 디스코드에서 진행돼요. 지금 연결할까요?' : 'Studies happen on Discord. Connect now?'}
           </h1>
-          <p className='mt-4 text-sm leading-relaxed text-fg-secondary'>
-            {ko ? '지금 연결하거나, 스터디를 신청할 때 연결할 수 있어요.' : 'Connect now, or when you apply for a study.'}
-          </p>
+          {/* 부제를 두지 않는다 — 아래 두 버튼이 「언제 연결하나」를 이미 말한다 */}
         </div>
         {error && <p data-anno='onboarding-discord:4' role='alert' className='mt-5 text-sm text-error-700'>{error}</p>}
         <div className='mt-7 flex flex-col gap-3'>
@@ -54,7 +52,7 @@ export function OnboardingDiscord({ locale, next }: { locale: Locale; next: stri
             {ko ? '지금 연결' : 'Connect now'}
           </Button>
           <Button data-anno='onboarding-discord:3' size='lg' variant='secondary' onClick={() => { cancel(); router.replace(withoutApplyIntent(next)); }}>
-            {ko ? '나중에 하기' : 'Maybe later'}
+            {ko ? '스터디 신청할 때 하기' : 'When I apply for a study'}
           </Button>
         </div>
       </section>

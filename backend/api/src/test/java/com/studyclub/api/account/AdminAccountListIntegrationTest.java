@@ -478,14 +478,21 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 디스코드 미연동 크루 행은 roleChangeBlockedReason 이 DISCORD_LINK_REQUIRED")
-    void unlinkedMemberRowIsBlocked() {
+    @DisplayName("성공 - 행마다 디스코드 연동 여부와 계정 이름. 미연동 크루도 권한 배지는 잠기지 않는다")
+    void rowsCarryDiscordLink() {
         jdbcTemplate.update("UPDATE ACCOUNT SET DISCORD_ID = NULL WHERE ID = ?", CREW_ID);
+        jdbcTemplate.update(
+                "UPDATE ACCOUNT SET DISCORD_HANDLE = 'captain_h' WHERE ID = ?", ADMIN_ID);
 
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
         assertThat(itemById(response.getBody(), CREW_ID))
-                .containsEntry("roleChangeBlockedReason", "DISCORD_LINK_REQUIRED");
+                .containsEntry("roleChangeBlockedReason", null)
+                .containsEntry("discordLinked", false)
+                .containsEntry("discordHandle", null);
+        assertThat(itemById(response.getBody(), ADMIN_ID))
+                .containsEntry("discordLinked", true)
+                .containsEntry("discordHandle", "captain_h");
     }
 
     @Test
@@ -645,7 +652,7 @@ class AdminAccountListIntegrationTest {
                 onboarded ? created : null,
                 created,
                 created,
-                // 연동해 둔다 — 미연동 크루는 DISCORD_LINK_REQUIRED 로 잠긴다 (따로 본다)
+                // 연동해 둔다 — 미연동 행은 따로 본다 (rowsCarryDiscordLink)
                 "acctlist-" + id);
     }
 

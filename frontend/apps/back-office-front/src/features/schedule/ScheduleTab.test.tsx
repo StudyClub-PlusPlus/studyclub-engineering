@@ -4,6 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeServer } from './fake-server';
 import { ScheduleTab } from './ScheduleTab';
 import type { Participant, ParticipantsResponse } from '@/features/participants/types';
 import type { ApiStudyDetail } from '@/features/studies/types';
@@ -66,14 +67,17 @@ function memoryStorage(): Storage {
   };
 }
 
+let server: ReturnType<typeof fakeServer>;
+
 beforeEach(() => {
   vi.stubGlobal('localStorage', memoryStorage());
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(participants))));
+  server = fakeServer({ participants });
+  vi.stubGlobal('fetch', vi.fn(server.fetch));
 });
 afterEach(() => vi.unstubAllGlobals());
 
 async function setTimeAndAddMeetings() {
-  await userEvent.click(screen.getByRole('button', { name: '스터디 시간 정하기' }));
+  await userEvent.click(await screen.findByRole('button', { name: '스터디 시간 정하기' }));
   const timeDialog = screen.getByRole('dialog');
   await userEvent.click(within(timeDialog).getByRole('button', { name: '수' }));
   await userEvent.type(within(timeDialog).getByLabelText('스터디 시간'), '20:30');
@@ -85,12 +89,14 @@ async function setTimeAndAddMeetings() {
   expect(within(addDialog).getByRole('button', { name: '매주' })).toHaveAttribute('aria-pressed', 'true');
   expect(within(addDialog).getByRole('button', { name: '수요일' })).toHaveAttribute('aria-pressed', 'true');
   await userEvent.click(within(addDialog).getByRole('button', { name: '회차 5개 추가' }));
+  // 서버에 넣고 다시 읽은 표
+  await screen.findByText('전체 5 · 예정 5');
 }
 
 describe('일정 탭', () => {
   it('스터디 시간이 없는 반은 안내부터 보이고, 정하면 정보 카드와 빈 일정 표가 나온다', async () => {
     mount();
-    expect(screen.getByText('아직 이 반의 스터디 시간이 없습니다.')).toBeVisible();
+    expect(await screen.findByText('아직 이 반의 스터디 시간이 없습니다.')).toBeVisible();
 
     await userEvent.click(screen.getByRole('button', { name: '스터디 시간 정하기' }));
     const dialog = screen.getByRole('dialog');
@@ -107,10 +113,17 @@ describe('일정 탭', () => {
     expect(screen.getByText('아직 회차가 없습니다. 「회차 추가」로 만드세요.')).toBeVisible();
   });
 
-  it('회차 추가는 킥오프를 만들지 않고, 정규 회차만 센다', async () => {
+  it('회차 추가는 킥오프를 만들지 않고, 정규 회차만 센다 — 반 시간대로 펼친 시각을 한 요청에 보낸다', async () => {
     mount();
     await setTimeAndAddMeetings();
 
+    const post = server.calls.find((c) => c.method === 'POST');
+    expect(post?.path).toBe('/api/admin/studies/107/groups/1/meetings');
+    expect(post?.body).toMatchObject({ title: null });
+    const ats = (post?.body as { scheduledAts: string[] }).scheduledAts;
+    expect(ats).toHaveLength(5);
+    // 수요일 20:30 KST = 11:30 UTC
+    expect(ats.every((at) => at.endsWith('T11:30:00.000Z'))).toBe(true);
     expect(screen.getByText('전체 5 · 예정 5')).toBeVisible();
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(5);
@@ -139,8 +152,14 @@ describe('일정 탭', () => {
     await userEvent.type(date, '2020-01-01');
     await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(server.calls.find((c) => c.path.endsWith('/kickoff'))).toMatchObject({
+      method: 'PUT',
+      path: '/api/admin/studies/107/groups/1/kickoff',
+      body: { scheduledAt: '2020-01-01T11:30:00.000Z' },
+    });
 
     // 지난 날도 받는다. 킥오프는 맨 위 0회차 — 지울 수 없고, 칸을 고치지 않고, 발표자가 없다
+    await screen.findByRole('button', { name: '킥오프 수정' });
     const kickoff = screen.getAllByRole('row')[1];
     expect(within(kickoff).getByText('0')).toBeVisible();
     expect(within(kickoff).queryByRole('checkbox')).not.toBeInTheDocument();
@@ -171,8 +190,14 @@ describe('일정 탭', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: '1회차 발표자2' }), '이크루');
     await userEvent.click(screen.getByRole('button', { name: '저장' }));
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
-    expect(screen.getByRole('combobox', { name: '1회차 발표자2' })).toHaveValue('p2');
+    // 초안은 PUT 과 다시 읽기가 끝난 뒤에 비워진다
+    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false));
+    // 고친 줄 하나만 PUT — 발표자는 명부 행 ID
+    const put = server.calls.filter((c) => c.method === 'PUT');
+    expect(put).toHaveLength(1);
+    expect(put[0].path).toMatch(/^\/api\/admin\/studies\/107\/groups\/1\/meetings\/\d+$/);
+    expect(put[0].body).toMatchObject({ presenter1ParticipantId: 1, presenter2ParticipantId: 2 });
+    await waitFor(() => expect(screen.getByRole('combobox', { name: '1회차 발표자2' })).toHaveValue('2'));
   });
 
   it('칸 아래 오류 문구를 스크린리더가 그 칸의 설명으로 읽는다', async () => {
@@ -208,7 +233,10 @@ describe('일정 탭', () => {
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '취소' })).toHaveFocus());
     await userEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
 
-    expect(screen.getByText('전체 3 · 예정 3')).toBeVisible();
+    expect(await screen.findByText('전체 3 · 예정 3')).toBeVisible();
+    const del = server.calls.find((c) => c.method === 'DELETE');
+    expect(del?.path).toBe('/api/admin/studies/107/groups/1/meetings');
+    expect((del?.body as { meetingIds: number[] }).meetingIds).toHaveLength(2);
   });
 
   it('신청자 탭의 서버 반이 둘이면 반 칩이 서고, 발표자는 그 반 사람만 고른다', async () => {
@@ -220,7 +248,8 @@ describe('일정 탭', () => {
       ],
       participants: [participant(1, '김크루', 'ACTIVE'), { ...participant(2, '이크루', 'ACTIVE'), groupId: 2 }],
     };
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(twoGroups))));
+    server = fakeServer({ participants: twoGroups });
+    vi.stubGlobal('fetch', vi.fn(server.fetch));
     const onGroup = vi.fn();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
@@ -236,6 +265,7 @@ describe('일정 탭', () => {
     expect(onGroup).toHaveBeenCalledWith('2');
 
     await setTimeAndAddMeetings();
+    expect(server.calls.find((c) => c.method === 'POST')?.path).toBe('/api/admin/studies/107/groups/1/meetings');
     const p1 = screen.getByRole('combobox', { name: '1회차 발표자1' });
     await waitFor(() => expect(within(p1).getAllByRole('option')).toHaveLength(2));
     expect(within(p1).getByRole('option', { name: '김크루' })).toBeInTheDocument();

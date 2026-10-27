@@ -1,16 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import { Button, Segmented } from '@studyclub/ui';
+import { Button, Segmented, toast } from '@studyclub/ui';
 import { CalendarPlus } from 'lucide-react';
 
+import { toBook, toUpdates, useGroupAttendance, useSaveAttendance } from './api';
 import { AttendanceBook, type BookColumn, type BookRow } from './AttendanceBook';
+import { toMeetings, useGroupMeetings } from '@/features/schedule/api';
 import { useCrew } from '@/features/schedule/crew';
 import { GroupPicker } from '@/features/schedule/GroupPicker';
 import { useScheduleGroups } from '@/features/schedule/groups';
 import { hasTime, isKickoff } from '@/features/schedule/meetings';
-import { getAttendance, getWithdrawn, listMeetings, saveAttendance, withdrawPeople } from '@/features/schedule/store';
 import { DISPLAY_ZONES, wallParts } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
@@ -21,7 +22,8 @@ import type { ApiStudyDetail } from '@/features/studies/types';
  * 열은 그 반의 회차다 — 일정 탭에서 더하고 고친 회차가 그대로 열이 된다. 회차는 여기서 만들지 않는다.
  * 반 칩으로 한 반씩 본다. 모든 반을 이어 보는 전체 보기는 두지 않는다 (2026-10-17 기획 결정).
  *
- * 저장은 일정 탭처럼 브라우저에만 남는다 — `features/schedule/store.ts` 참고.
+ * 줄(참가자) · 칸(출석)은 출석 명부 API, 열(회차)은 일정 탭과 같은 반 회차 목록이다 — `./api.ts` · `features/schedule/api.ts`.
+ * 저장은 바뀐 칸만 `updates[]` 로, 참여 중단은 `withdrawals[]` 로 한 요청에 보낸다.
  */
 export function AttendanceTab({
   detail,
@@ -49,28 +51,34 @@ export function AttendanceTab({
   onAddMeeting: () => void;
 }) {
   const studyId = detail.id;
-  /** 저장소가 localStorage 라 렌더 트리거가 없다 — 바꿀 때마다 올려 다시 읽는다. */
-  const [rev, setRev] = useState(0);
 
   // 신청자 탭에서 만든 서버 반 — 둘 이상이면 반 칩이 선다
-  const groups = useScheduleGroups(studyId, rev);
+  const { groups, loading, error: groupsError } = useScheduleGroups(studyId);
   const group = groups.find((g) => g.id === groupId) ?? groups[0];
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- rev 가 바뀌면 저장소를 다시 읽는다
-  const meetings = useMemo(() => (group ? listMeetings(studyId, group) : []), [studyId, group, rev]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- rev 가 바뀌면 저장소를 다시 읽는다
-  const attendance = useMemo(() => (group ? getAttendance(studyId, group.id) : {}), [studyId, group, rev]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- rev 가 바뀌면 저장소를 다시 읽는다
-  const left = useMemo(() => (group ? getWithdrawn(studyId, group.id) : {}), [studyId, group, rev]);
+  const serverGroupId = group ? Number(group.id) : undefined;
+  const meetingsQuery = useGroupMeetings(studyId, serverGroupId);
+  const attendanceQuery = useGroupAttendance(studyId, serverGroupId);
+  const meetings = useMemo(() => (meetingsQuery.data ? toMeetings(meetingsQuery.data) : []), [meetingsQuery.data]);
+  const attendance = useMemo(() => (attendanceQuery.data ? toBook(attendanceQuery.data) : {}), [attendanceQuery.data]);
   const crew = useCrew(studyId, group?.id);
+  const save = useSaveAttendance(studyId, serverGroupId ?? 0);
 
-  // 중단한 사람은 맨 아래로. 누구나 골라 출석을 바꿀 수 있고, 네비게이터는 참여 중단만 못 한다 (역할은 참여 명단의 LEADER).
-  const rows = useMemo<BookRow[]>(
-    () =>
-      crew
-        .map((c) => ({ id: c.id, name: c.name, discordNickname: c.discordNickname, role: c.role, leftAt: left[c.id] }))
-        .sort((a, b) => Number(Boolean(a.leftAt)) - Number(Boolean(b.leftAt))),
-    [crew, left],
-  );
+  // 줄은 출석 명부(중단한 사람 포함). 디스코드 닉네임은 참여 명단에서 붙인다 — 명부 응답에는 없다.
+  // 중단한 사람은 맨 아래로. 누구나 골라 출석을 바꿀 수 있고, 네비게이터는 참여 중단이 잠긴다 —
+  // 신청자 탭에서 네비게이터 권한을 회수(크루로)한 뒤 중단한다. 역할은 명부의 LEADER.
+  const rows = useMemo<BookRow[]>(() => {
+    const nick = new Map(crew.map((c) => [c.id, c.discordNickname]));
+    return (attendanceQuery.data?.participants ?? [])
+      .map((p) => ({
+        id: String(p.participantId),
+        name: p.displayName,
+        discordNickname: nick.get(String(p.participantId)) ?? null,
+        ...(p.participantRole === 'LEADER' && { role: 'navigator' as const }),
+        leftAt: p.leftAt ?? undefined,
+        serverRate: p.attendanceRate,
+      }))
+      .sort((a, b) => Number(Boolean(a.leftAt)) - Number(Boolean(b.leftAt)));
+  }, [attendanceQuery.data, crew]);
 
   const columns = useMemo<BookColumn[]>(
     () =>
@@ -87,6 +95,17 @@ export function AttendanceTab({
       }),
     [meetings, zone],
   );
+
+  if (loading) return null;
+
+  // 반 목록(참여 명단)을 못 읽었다 — 「아직 반이 없습니다」와 반 만들기를 보이면 반이 사라진 것처럼 보인다
+  if (!group && groupsError) {
+    return (
+      <p role='alert' className='card px-6 py-10 text-center text-sm text-fg-muted'>
+        {groupsError.message || '반 목록을 불러오지 못했습니다.'}
+      </p>
+    );
+  }
 
   // 반이 없으면 출석부도 없다. 그 사실과 갈 곳을 같이 말한다
   if (!group) {
@@ -107,7 +126,14 @@ export function AttendanceTab({
     <div>
       <GroupPicker groups={groups} groupId={group.id} onPick={(id) => guard(() => onGroup(id))} />
 
-      {meetings.length === 0 ? (
+      {!meetingsQuery.data || !attendanceQuery.data ? (
+        <p
+          role={meetingsQuery.isError || attendanceQuery.isError ? 'alert' : 'status'}
+          className='card px-6 py-10 text-center text-sm text-fg-muted'
+        >
+          {(meetingsQuery.error ?? attendanceQuery.error)?.message ?? '출석부를 불러오는 중입니다.'}
+        </p>
+      ) : meetings.length === 0 ? (
         // 반은 있는데 회차가 없다 — 회차는 일정 탭에서 만든다. 반 칩은 위에 남겨 다른 반으로 옮길 수 있게 한다
         <div className='card px-6 py-10 text-center'>
           <p className='text-sm font-semibold text-fg'>
@@ -131,10 +157,18 @@ export function AttendanceTab({
           attendance={attendance}
           onDirtyChange={onDirtyChange}
           onSave={(next, withdrawIds) => {
-            // 출석이 먼저, 이어 참여 중단 — 서버에서는 한 요청 · 한 트랜잭션이다
-            saveAttendance(studyId, group.id, next);
-            if (withdrawIds.length > 0) withdrawPeople(studyId, group.id, withdrawIds);
-            setRev((n) => n + 1);
+            const { updates, cleared } = toUpdates(
+              attendance,
+              next,
+              columns.map((c) => c.id),
+            );
+            // 서버는 칸을 비우지 못한다 — 미체크로 되돌린 칸은 저장하지 않고 알린다
+            if (cleared > 0) toast.error(`미체크로 되돌린 ${cleared}칸은 저장할 수 없어 그대로 둡니다.`);
+            if (updates.length === 0 && withdrawIds.length === 0) return;
+            save.mutate(
+              { updates, withdrawals: withdrawIds.map(Number) },
+              { onError: (err) => toast.error(err.message || '출석부를 저장하지 못했습니다.') },
+            );
           }}
           toolbar={
             <Segmented

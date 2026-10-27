@@ -1,7 +1,6 @@
 
 import { StudiesTableContainer } from '@console/components/StudiesTableContainer';
 import { StudyCreateButton } from '@console/components/StudyCreateButton';
-import { StudyStatusGuide } from '@console/components/StudyStatusGuide';
 import { PageHeader } from '@console/components/ui';
 
 import { SPECS } from './spec';
@@ -16,7 +15,6 @@ export default function StudiesAdmin() {
         <ScreenSpecRegistrar key={spec.chip ?? spec.screen} spec={spec} />
       ))}
       <PageHeader title='스터디 관리' action={<StudyCreateButton />} />
-      <StudyStatusGuide />
       <StudiesTableContainer />
     </div>
   );

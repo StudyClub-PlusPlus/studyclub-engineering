@@ -157,7 +157,7 @@
 
 - `frontend/apps/playground/src/proto/console/components/AttendanceTab.tsx` 의 저장 (프로토 — `// TODO(api)`)
 - `frontend/apps/core-front/src/lib/joined-detail-api.ts` · `AttendanceTabContent.tsx` — 사용자 사이트 출석 탭 저장
-- `frontend/apps/back-office-front/src/features/attendance/` — 백오피스 출석 탭 저장 (담당 캡틴이 아니면 서버 403 을 그대로 보여 준다)
+- `frontend/apps/back-office-front/src/features/attendance/` — 백오피스 출석 탭 저장 (담당 캡틴이 아니면 서버 403 을 그대로 보여 준다). 네비게이터는 화면에서 참여 중단을 잠근다 — 신청자 탭에서 권한을 회수한 뒤 중단한다 (2026-10-24, [출석부 PRD](../../01-planning/stories/captain-view-attendance-roster/PRD.md) 개발 범위)
 
 ## 미확정
 

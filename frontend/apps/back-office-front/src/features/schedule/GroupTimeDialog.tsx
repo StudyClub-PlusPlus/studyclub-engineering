@@ -97,15 +97,17 @@ export function GroupTimeDialog({
                 onChange={(ev) => setTime({ ...time, time: ev.target.value })}
               />
             </div>
-            {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다 */}
+            {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다.
+                시간대는 서버 반의 것으로 고정이다 — 회차를 그 시간대로 저장한다. TODO(api): 반 PATCH 가 timezone 을 받으면 연다 */}
             <div role='group' aria-label='시간대' className='flex gap-1'>
               {STUDY_TZS.map((tz) => (
                 <button
                   key={tz.key}
                   type='button'
                   aria-pressed={time.tz === tz.key}
+                  disabled={tz.key !== group.time.tz}
                   onClick={() => setTime({ ...time, tz: tz.key })}
-                  className={`${CHIP} px-3 ${chipTone(time.tz === tz.key)}`}
+                  className={`${CHIP} px-3 ${chipTone(time.tz === tz.key)} disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   {tz.label} <span className='opacity-70'>{tzAbbr(tz.key)}</span>
                 </button>

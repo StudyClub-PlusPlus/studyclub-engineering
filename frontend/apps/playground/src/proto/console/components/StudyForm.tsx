@@ -42,13 +42,23 @@ export const TIMEZONE_LABEL: Record<StudyTimezone, string> = { KST: 'KST', PST: 
 export type FormMode = 'create' | 'edit';
 
 /**
- * 카드 제목 권장 길이 = **말줄임이 나지 않는 최대 글자수**.
+ * 제목 한도 = **카드에서 잘리지 않는 길이**. 글자 수가 아니라 **폭**으로 센다.
  *
- * 근거: 카드 제목 영역 315px · 24px extrabold · 2줄 clamp 조건에서
- * 무작위 한글 제목 5,000건을 렌더해 측정 → 25자부터 3줄로 넘어가 말줄임 발생,
- * 24자까지는 초과 0건. 어절이 길수록(띄어쓰기가 적을수록) 먼저 넘친다.
+ * 한글 한 자는 영문 두 자만큼 넓다. 글자 수로 재면 「한글이면 20자, 영어면 40자」라는 두 규칙이
+ * 생기는데, 「최신 LLM Advanced 스터디」처럼 섞인 제목은 어느 쪽으로 셀지 정할 수 없다.
+ * 폭 하나로 재면 규칙도 하나고 섞인 제목도 저절로 맞는다 — **한글 20자 = 영문 40자 = 폭 40**.
+ *
+ * 근거: 카드 제목 영역 315px · 24px extrabold · 2줄 clamp 조건에서 무작위 한글 제목 5,000건을
+ * 렌더해 측정 → 25자(폭 50)부터 3줄로 넘어가 말줄임 발생. 폭 40 은 그보다 안쪽이다.
  */
-export const TITLE_RECOMMENDED = 24;
+export const TITLE_MAX_WIDTH = 40;
+
+/** 한글·전각은 2, 그 밖은 1. 세는 법은 화면과 서버가 같아야 한다. */
+export function titleWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) w += /[\u1100-\u11FF\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(ch) ? 2 : 1;
+  return w;
+}
 /** 카드 한 줄 소개가 줄바꿈 없이 한 줄로 유지되는 최대 글자수. */
 export const SUMMARY_RECOMMENDED = 25;
 
@@ -191,7 +201,7 @@ export function validateStudyForm(f: StudyFormValues): StudyFormErrors {
   const e: StudyFormErrors = {};
   if (f.programMode === 'existing' && !f.programId) e.programId = '기수를 추가할 프로그램을 고르세요.';
   if (!f.title.trim()) e.title = '제목을 입력하세요.';
-  else if (f.title.trim().length > 60) e.title = '60자 이내로 입력하세요.';
+  else if (titleWidth(f.title.trim()) > TITLE_MAX_WIDTH) e.title = '한글 20자(영문 40자) 이내로 입력하세요.';
   if (!f.summary.trim()) e.summary = '한 줄 소개를 입력하세요.';
   if (!f.category) e.category = '카테고리를 선택하세요.';
   if (!f.deadline) e.deadline = '모집 마감일을 입력하세요.';
@@ -243,7 +253,7 @@ export function StudyForm({
           onChange={(ev) => set('title', ev.target.value)}
           placeholder='AI 논문 스터디'
           error={errors.title}
-          labelHint={<CharCount anno='2-1' len={value.title.trim().length} max={TITLE_RECOMMENDED} />}
+          labelHint={<CharCount anno='2-1' len={titleWidth(value.title.trim())} max={TITLE_MAX_WIDTH} />}
         />
       </div>
 
