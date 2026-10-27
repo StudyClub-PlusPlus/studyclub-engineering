@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AttendanceTab } from './AttendanceTab';
 import type { Participant, ParticipantsResponse } from '@/features/participants/types';
+import { fakeServer, type FakeMeeting } from '@/features/schedule/fake-server';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
 const detail = { id: 107, title: 'DDIA 2판', discordChannelUrl: null, driveUrl: null } as ApiStudyDetail;
@@ -42,24 +43,17 @@ const participants: ParticipantsResponse = {
   ],
 };
 
-const KEY = `bo_schedule:${detail.id}`;
-
 /** 킥오프 · 지난 1회차 · 아직 오지 않은 2회차(발표자 김크루). */
+const seeded: FakeMeeting[] = [
+  { id: 10, groupId: 1, type: 'KICKOFF', scheduledAt: '2026-01-01T11:00:00.000Z', title: '킥오프' },
+  { id: 11, groupId: 1, scheduledAt: '2026-01-08T11:00:00.000Z' },
+  { id: 12, groupId: 1, scheduledAt: '2099-01-08T11:00:00.000Z', presenter1: 1 },
+];
+
+let server: ReturnType<typeof fakeServer>;
+
 function seedMeetings() {
-  localStorage.setItem(
-    KEY,
-    JSON.stringify({
-      groups: [{ id: '1', title: '기본반', time: { weekdays: [3], time: '20:00', tz: 'Asia/Seoul' } }],
-      meetings: {
-        '1': [
-          { id: 'k', kind: 'kickoff', scheduledAt: '2026-01-01T11:00:00.000Z', title: '킥오프' },
-          { id: 'm1', scheduledAt: '2026-01-08T11:00:00.000Z' },
-          { id: 'm2', scheduledAt: '2099-01-08T11:00:00.000Z', presenter1: 'p1' },
-        ],
-      },
-      rules: {},
-    }),
-  );
+  server.state.meetings = structuredClone(seeded);
 }
 
 function mount() {
@@ -101,7 +95,9 @@ function memoryStorage(): Storage {
 
 beforeEach(() => {
   vi.stubGlobal('localStorage', memoryStorage());
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(participants))));
+  // 박중단은 지난해에 참여를 중단했다 — 명부 조회(includeWithdrawn=true)에 흐린 줄로 온다
+  server = fakeServer({ participants, leftAt: { 3: '2025-12-01T00:00:00.000Z' } });
+  vi.stubGlobal('fetch', vi.fn(server.fetch));
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -121,18 +117,20 @@ function cellsOf(row: HTMLElement) {
 describe('출석 탭', () => {
   it('회차가 없는 반은 일정 탭으로 보낸다 — 스터디 시간이 없으면 스터디 시간부터', async () => {
     const { onAddMeeting } = mount();
-    expect(screen.getByText('이 반은 아직 스터디 시간이 없습니다.')).toBeVisible();
+    expect(await screen.findByText('이 반은 아직 스터디 시간이 없습니다.')).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: '스터디 시간 정하러 가기' }));
     expect(onAddMeeting).toHaveBeenCalled();
   });
 
-  it('참여 명단의 활동 · 휴식 중인 사람이 줄, 그 반 회차가 열이다 — 발표 횟수는 일정의 발표자에서 센다', async () => {
+  it('출석 명부의 사람이 줄(중단한 사람은 맨 아래), 그 반 회차가 열이다 — 발표 횟수는 일정의 발표자에서 센다', async () => {
     seedMeetings();
     mount();
 
     const kim = await rowOf('김크루');
-    expect(screen.getByText('전체 2')).toBeVisible();
-    expect(screen.queryByText('박중단')).not.toBeInTheDocument();
+    expect(server.calls.some((c) => c.path === '/api/admin/studies/107/attendances')).toBe(true);
+    const park = await rowOf('박중단');
+    expect(within(park).getByText('참여 중단')).toBeInTheDocument();
+    expect(within(park).queryByRole('checkbox')).not.toBeInTheDocument();
     // 넓은 화면은 옆 열(가리키면 전체), 휴대폰은 닉네임 아래
     expect(within(kim).getByTitle('kim_dev')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /킥오프/ })).toBeVisible();
@@ -161,8 +159,18 @@ describe('출석 탭', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '저장' }));
     expect(onDirtyChange).toHaveBeenLastCalledWith(false);
-    expect(cellsOf(await rowOf('김크루'))[1]).toHaveAccessibleName('지각');
-    expect(JSON.parse(localStorage.getItem(KEY)!).attendance['1'].p1).toEqual({ k: 'present', m1: 'late' });
+    await waitFor(async () => expect(cellsOf(await rowOf('김크루'))[1]).toHaveAccessibleName('지각'));
+    // 바뀐 칸만 한 요청에 — 상태는 대문자
+    const post = server.calls.find((c) => c.method === 'POST');
+    expect(post?.path).toBe('/api/admin/studies/107/attendances');
+    expect(post?.body).toEqual({
+      studyGroupId: 1,
+      updates: [
+        { meetingId: 10, participantId: 1, status: 'PRESENT' },
+        { meetingId: 11, participantId: 1, status: 'LATE' },
+      ],
+      withdrawals: [],
+    });
   });
 
   it('고른 사람의 한 회차를 한 번에 바꾼다 — 고르기 전에는 잠겨 있다', async () => {
@@ -196,17 +204,20 @@ describe('출석 탭', () => {
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '취소' })).toHaveFocus());
     await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
+    expect(server.calls.find((c) => c.method === 'POST')?.body).toEqual({
+      studyGroupId: 1,
+      updates: [],
+      withdrawals: [1],
+    });
+    await waitFor(async () => expect(within(await rowOf('김크루')).getByText('참여 중단')).toBeInTheDocument());
     const kim = await rowOf('김크루');
-    expect(within(kim).getByText('참여 중단')).toBeInTheDocument();
     expect(within(kim).queryByRole('checkbox')).not.toBeInTheDocument();
-    // 지난 회차 칸은 남고, 아직 오지 않은 2회차는 「-」
+    // 지난 회차 칸은 남고, 아직 오지 않은 2회차는 「-」 — 서버가 그 회차 발표자에서도 뺐다
     expect(cellsOf(kim)).toHaveLength(2);
-    const saved = JSON.parse(localStorage.getItem(KEY)!);
-    expect(saved.withdrawn['1'].p1).toBeTruthy();
-    expect(saved.meetings['1'].find((m: { id: string }) => m.id === 'm2').presenter1).toBeUndefined();
+    expect(server.state.meetings.find((m) => m.id === 12)?.presenter1).toBeNull();
   });
 
-  it('네비게이터는 역할 칩이 붙고, 고른 사람에 섞이면 참여 중단이 잠긴다 — 출석 일괄 변경은 된다', async () => {
+  it('네비게이터는 역할 칩이 붙고, 고른 사람에 섞이면 참여 중단이 잠긴다 — 신청자 탭에서 권한을 회수한 뒤 중단한다', async () => {
     seedMeetings();
     mount();
     const lee = await rowOf('이크루');

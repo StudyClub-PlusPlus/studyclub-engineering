@@ -554,6 +554,7 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 | 401 | UNAUTHORIZED | 미로그인 |
 | 403 | DISCORD_NOT_IN_GUILD | 스터디클럽 디스코드 서버(길드) 멤버가 아님. 저장하지 않는다. 화면이 갈린다: 온보딩 권유 화면은 「나중에 연동하기」로 넘어가고, 신청 직전 연동 창은 서버 가입 안내(초대 링크는 프론트 상수 `site.discord_invite`)를 띄운다 |
 | 409 | CONFLICT | 그 `DISCORD_ID` 가 다른 계정에 이미 있음 (`UNIQUE(DISCORD_ID)`) |
+| 409 | DISCORD_UNLINK_BLOCKED | 이미 다른 디스코드 계정이 연동돼 있고 참여 중인 스터디가 있다 — 갈아타기 거절 (POL-0007). 연동은 그대로 둔다 |
 | 503 | EXTERNAL_SERVICE_ERROR | 디스코드 토큰 교환 실패·타임아웃, 서버에 OAuth 설정 없음. 폼을 열지 않는다. 연동 팝업에 잔류 |
 
 - 같은 계정이 같은 `DISCORD_ID` 로 다시 연동하면 204 (멱등). 핸들은 새 값으로 바뀐다.
@@ -561,9 +562,30 @@ ERD 의 신청 행에는 거절 상태가 없다. 모든 행이 제출 완료다
 
 Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이션한다. 실패 시 미연결 유지, 오류 안내와 재시도 제공.
 
+### 화면 흐름 (DSC-04, 2026-10-27)
+
+```
+「디스코드 연동하기」 ─ window.open ─▶ discord.com/oauth2/authorize (scope identify guilds.members.read, state)
+                                              │ 승인
+                                              ▼
+                <사이트>/api/auth/discord/callback ─ postMessage({code, state}) ─▶ 연동 창 ─▶ POST /api/me/discord/link
+```
+
+- 팝업은 클릭과 같은 틱에 연다 (await 뒤면 브라우저가 차단한다). 차단되면 「팝업을 허용한 뒤 다시」 문구
+- 연동 창은 **같은 출처 · 표식 `studyclub-discord-oauth` · 이번에 만든 `state`** 가 모두 맞는 메시지만 받는다
+- 창을 닫거나 디스코드에서 취소하면(`error=access_denied`) 문구 없이 연동 창에 남는다
+- `redirect_uri` 는 `<사이트 주소>/api/auth/discord/callback`. 서버 `DISCORD_OAUTH_REDIRECT_URI` · Discord 개발자 포털 Redirects 와 글자까지 같아야 토큰 교환이 된다
+- 켜는 조건: 프론트 빌드에 `NEXT_PUBLIC_DISCORD_CLIENT_ID` 가 있으면 켠다. 없으면 「준비 중」. 개발 서버는 client id 없이 목 코드로 켠다
+
+### 퍼널·계측
+
+- 단계: 활성화 (신청 직전 게이트 — 연동이 막히면 신청이 없다)
+- 이벤트: 바뀌지 않는다. `My Discord Connected` (front) 는 이제 실제 연동 성공에서만 난다
+- 기대: 신청 버튼 클릭 대비 신청 제출 전환이 0 에서 회복. A/B 없음
+
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/components/ApplyDiscordGate.tsx`
+- `frontend/apps/core-front/src/components/ApplyDiscordGate.tsx` — 팝업은 `src/lib/discord.ts` 의 `requestDiscordCode`, 착지점은 `src/app/api/auth/discord/callback/route.ts`
 - `frontend/apps/playground/src/proto/core/components/ApplyDiscordGate.tsx`
 
 ### 외부 연동 (SYS-02)
@@ -598,12 +620,11 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
 | 401 | UNAUTHORIZED | 미로그인 |
-| 409 | DISCORD_LINK_REQUIRED | 캡틴(`ADMIN`)이다. 연동은 그대로 둔다 |
 | 409 | DISCORD_UNLINK_BLOCKED | 명부 행이 `ACTIVE` · `PAUSED` 인 스터디가 하나라도 있다. 연동은 그대로 둔다. 화면은 차단 문구와 「내 스터디 확인하기」를 띄운다 |
 
 - 참여 중 판정은 내 스터디룸이 「시작 전 · 참여 중」으로 보여 주는 행과 같다. `WITHDRAWN` · `COMPLETED` 는 막지 않는다.
 - 계정 행을 잠근 뒤 명부를 본다. 명부에 들어오는 길은 신청 제출뿐이고 그것도 계정을 먼저 잠그므로, 확인과 해제 사이에 새 참여가 끼어들지 못한다.
-- 캡틴(`ADMIN`)은 해제할 수 없다 — `409 DISCORD_LINK_REQUIRED`. 캡틴은 디스코드 연동이 필수다 ([admin-users](../admin-users/spec.md), STD-05). 해제하려면 먼저 크루로 내려가야 한다. 참여 중 판정보다 먼저 본다.
+- 캡틴(`ADMIN`)도 크루와 같은 규칙으로 해제한다 (2026-10-27 — 그전에는 `409 DISCORD_LINK_REQUIRED` 로 막았다. [share 10-27](../../docs/share/2026-10-27-captain-discord-optional.md)).
 
 ---
 

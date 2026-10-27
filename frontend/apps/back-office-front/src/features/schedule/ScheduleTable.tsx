@@ -47,7 +47,8 @@ export function ScheduleTable({
   people: Person[];
   /** 발표자로 새로 고를 수 있는 사람. 없으면 `people`. 참여를 중단한 사람은 빠진다. */
   pickable?: Person[];
-  onSave: (patches: Record<string, MeetingPatch>) => void;
+  /** 저장하지 못한 회차 ID 로 끝난다 — 그 줄의 고침은 남긴다. */
+  onSave: (patches: Record<string, MeetingPatch>) => Promise<string[]>;
   onAdd: (input: { dates: string[]; time: string; title: string }) => void;
   onSetKickoff: (input: { date: string; time: string }) => void;
   onDelete: (ids: string[]) => void;
@@ -66,6 +67,8 @@ export function ScheduleTable({
   /** 줄을 처음 고칠 때의 저장값. 저장할 때 발표자 칸이 「내가 바꾼 것」인지 이것과 견준다. */
   const bases = useRef<Record<string, RowDraft>>({});
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
+  /** 저장 요청이 끝나기 전까지 다시 누르지 못하게 한다 — 같은 PUT 이 두 번 나간다. */
+  const [saving, setSaving] = useState(false);
   /** 표의 일자·시각을 어느 시간대로 보일지. 처음엔 반 시간대. */
   const [zone, setZone] = useState<string>(tz);
 
@@ -137,11 +140,13 @@ export function ScheduleTable({
     change(m, wallParts(zonedInstant(next.date, next.time, zone), tz));
   }
 
-  function saveAll() {
-    if (!dirty || errorCount > 0) return;
+  async function saveAll() {
+    if (saving || !dirty || errorCount > 0) return;
     const patches: Record<string, MeetingPatch> = {};
+    const sent: Record<string, RowDraft> = {};
     for (const id of changedIds) {
       const v = drafts[id];
+      sent[id] = v;
       const before = bases.current[id];
       // 발표자 칸은 고치기 시작할 때와 달라진 것만 보낸다 — 그 사이 크루가 신청한 칸을 옛 값(빈칸)으로 덮지 않는다.
       patches[id] = {
@@ -152,9 +157,28 @@ export function ScheduleTable({
         ...(v.presenter2 !== before?.presenter2 && { presenter2: v.presenter2 || null }),
       };
     }
-    onSave(patches);
-    setAnnounce(`회차 ${changedIds.length}개를 저장했습니다.`);
-    clearDrafts();
+    setSaving(true);
+    let failed: Set<string>;
+    try {
+      failed = new Set(await onSave(patches));
+    } finally {
+      setSaving(false);
+    }
+    // 저장하지 못한 줄은 고침을 남긴다 — 고쳐서 다시 저장하거나 되돌릴 수 있게. 저장한 줄만 비운다.
+    // 저장을 기다리는 동안 다시 고친 줄(보낸 값과 다른 초안)도 남긴다
+    const done = changedIds.filter((id) => !failed.has(id));
+    // 저장한 줄의 서버 값은 이제 보낸 값이다 — 남는 초안의 발표자 칸은 이것과 견준다
+    for (const id of done) bases.current[id] = sent[id];
+    setDrafts((d) => {
+      const cleared = done.filter((id) => d[id] === sent[id]);
+      for (const id of cleared) delete bases.current[id];
+      return Object.fromEntries(Object.entries(d).filter(([id]) => !cleared.includes(id)));
+    });
+    setAnnounce(
+      failed.size === 0
+        ? `회차 ${done.length}개를 저장했습니다.`
+        : `회차 ${done.length}개를 저장했고, ${failed.size}개는 저장하지 못해 고친 값을 남겨 두었습니다.`,
+    );
   }
 
   function remove(targets: Meeting[]) {
@@ -274,11 +298,11 @@ export function ScheduleTable({
               <span className='flex items-center gap-2'>
                 {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
                 {dirty && (
-                  <Button variant='ghost' size='sm' onClick={clearDrafts}>
+                  <Button variant='ghost' size='sm' onClick={clearDrafts} disabled={saving}>
                     변경 취소
                   </Button>
                 )}
-                <Button size='sm' onClick={saveAll} disabled={!dirty || errorCount > 0}>
+                <Button size='sm' onClick={saveAll} disabled={saving || !dirty || errorCount > 0}>
                   저장
                 </Button>
               </span>

@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import type { Person } from './meetings';
 import { useParticipants } from '@/features/participants/queries';
 
-/** 그 반 참가자 — 발표자 후보이자 출석부의 한 줄. */
+/** 그 반 참가자 — 발표자 후보이자 출석부의 한 줄. ID 는 명부 행 ID(`participantId`) 문자열 — 회차 발표자 · 출석부와 같다. */
 export type CrewMember = Person & {
   /** 디스코드 서버 별명. 없으면 null. */
   discordNickname: string | null;
@@ -25,15 +25,9 @@ export function useCrew(studyId: number, groupId?: string): CrewMember[] {
     () =>
       (participants.data?.participants ?? [])
         .filter((p) => p.status === 'ACTIVE' || p.status === 'PAUSED')
-        // 서버 반이면 그 반 사람만. 저장소의 「기본반」(서버 반 목록 없음)이면 모두
-        .filter(
-          (p) =>
-            !groupId ||
-            !participants.data?.groups.some((g) => String(g.groupId) === groupId) ||
-            String(p.groupId) === groupId,
-        )
+        .filter((p) => !groupId || String(p.groupId) === groupId)
         .map((p) => ({
-          id: `p${p.participantId}`,
+          id: String(p.participantId),
           name: p.nickname,
           discordNickname: p.discordNickname,
           ...(p.participantRole === 'LEADER' && { role: 'navigator' as const }),

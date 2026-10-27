@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { EventBrowser } from '@/components/EventBrowser';
+import { FollowStrip } from '@/components/SocialLinks';
 import { getEvents, type Locale } from '@/lib/content';
 import { m } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
@@ -34,6 +35,7 @@ export default async function EventsPage({
   return (
     <div className='mx-auto max-w-6xl px-6 pb-14 pt-6'>
       <EventBrowser events={byDateDesc} locale={locale} />
+      <FollowStrip locale={locale} />
     </div>
   );
 }

@@ -100,7 +100,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
     en: `StudyClub was created in early 2024 to solve these two problems. It is a pool of study groups where anyone can propose a study, recruit members, and run it. Today more than ${site.community.member_count.toLocaleString()} engineers across the US, Canada, and Korea are part of it.`,
   };
 
-  // 이야기 — 출처: 운영진 「스터디클럽 소개」 문서(인원·지역·운영진 수는 2025-08 기준), 운영진 설명.
+  // 이야기 — 출처: 운영진 「스터디클럽 소개」 문서(인원·지역은 2025-08 기준), 운영진 설명.
   const story: { art: string; when: L10n; title: L10n; body: L10n }[] = [
     {
       art: 'region-us',
@@ -116,8 +116,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       when: { ko: '북미 전역', en: 'Across North America' },
       title: { ko: '캐나다와 유럽까지', en: 'Canada, then Europe' },
       body: {
-        ko: '캐나다, 그리고 스위스·독일에서도 함께해요. 북미에만 운영진 15명이 있어요.',
-        en: 'Members join from Canada, Switzerland, and Germany. North America alone has 15 Captains.',
+        ko: '캐나다, 그리고 스위스·독일에서도 함께해요.',
+        en: 'Members join from Canada, Switzerland, and Germany.',
       },
     },
     {
@@ -125,8 +125,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       when: { ko: '그리고 한국', en: 'And Korea' },
       title: { ko: '한국으로 진출', en: 'Expanding to Korea' },
       body: {
-        ko: '한국에서도 운영진 7명이 함께 스터디를 열고, 한국 크루와 북미 크루가 한 스터디에서 만나요.',
-        en: 'Seven Captains in Korea open studies too, where Korean and North American crew meet in one group.',
+        ko: '한국에서도 스터디가 열리고, 한국 크루와 북미 크루가 한 스터디에서 만나요.',
+        en: 'Studies open in Korea too, where Korean and North American crew meet in one group.',
       },
     },
   ];

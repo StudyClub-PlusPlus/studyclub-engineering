@@ -292,12 +292,12 @@ erDiagram
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
 | FE | core-front 신청 창 (`ApplyButton` · `ApplyDialog`) | 있음 — 폼 조회 · 내 신청 · 제출 API 연결 | 없음 |
-| FE | 디스코드 연동 (`ApplyDiscordGate`) | 있음 — 연동 여부는 `GET /api/me` 의 `discordLinked`(DSC-02, #327), 연동은 `POST /api/me/discord/link` 를 부른다. 디스코드 OAuth 팝업이 아직 없어 `NEXT_PUBLIC_DISCORD_LINK_READY` 를 끈 환경(운영·stage)은 「준비 중」만 보인다 (#292) | OAuth 팝업으로 받은 코드를 보내고 플래그를 켠다 (DSC-04) |
+| FE | 디스코드 연동 (`ApplyDiscordGate`) | 있음 — 연동 여부는 `GET /api/me` 의 `discordLinked`(DSC-02, #327), 연동은 디스코드 OAuth 팝업으로 받은 코드로 `POST /api/me/discord/link` 를 부른다 (#292, DSC-04). 빌드에 `NEXT_PUBLIC_DISCORD_CLIENT_ID` 가 없는 환경은 「준비 중」만 보인다 | 운영·stage 에 client id · 서버 OAuth 시크릿 · Discord Redirects 를 넣는다 |
 | BE | `GET /api/studies/{studyId}/application-form` | 구현완료 | 없음 |
 | BE | `POST /api/studies/{studyId}/applications` | 구현완료 — 같은 트랜잭션에서 기본 반 명부 편입, 모집 회차 행 잠금 (→ [share 10-18](../../../docs/share/2026-10-18-roster-on-apply.md)) | 없음 |
 | BE | `GET /api/studies/{studyId}/applications/me` | 구현완료 | 없음 |
 | BE | `PATCH /api/me` (별명 갱신) | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
-| BE | `POST /api/me/discord/link` | 구현완료 | 프론트 연결(DSC-04) |
+| BE | `POST /api/me/discord/link` | 구현완료 — 프론트 OAuth 팝업 연결됨 (DSC-04, #369) | 없음 |
 | Playground | 가입 후 선택·신청 복귀·연결 실패 | 구현 · 브라우저 시뮬레이션 | 없음 |
 
 ### 유효값 검증 (Empty / MIN / MAX / ENUM)

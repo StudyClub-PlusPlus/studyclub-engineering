@@ -11,6 +11,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { TimeZonePicker, zoneName } from '@/components/TimeZonePicker';
+import { DiscordRow } from '@/features/profile/DiscordRow';
 import { isSameNickname } from '@/features/profile/nickname';
 import { initialOf } from '@/features/profile/photo';
 import {
@@ -429,9 +430,7 @@ export function ProfileCard({
           {!editing && <span className='font-semibold text-fg'>{zoneLabel}</span>}
         </dd>
 
-        {/* 연결·해제는 디스코드 연결 API 가 나온 뒤에 붙인다 */}
-        <dt className='text-fg-muted'>디스코드</dt>
-        <dd className='font-semibold text-fg-muted'>연결 안 됨</dd>
+        <DiscordRow accountId={user.id} locale={locale} preview={preview} onExpired={() => setProblem('expired')} />
 
         <dt className='text-fg-muted'>수신 동의</dt>
         <dd className='min-w-0'>

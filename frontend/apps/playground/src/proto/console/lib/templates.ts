@@ -1,7 +1,7 @@
 /**
  * 알림 템플릿 (프로토 mock).
  *
- * 문구를 보고·더하고·고치고·지운다. 지금 등록된 문구는 마이그레이션이 넣은 한 건뿐이다.
+ * 문구를 보고·더하고·고치고·지운다. 회원가입은 메일 시안 HTML, 문의 회신은 일반 텍스트 예시다.
  *
  * TODO(api): GET·POST /api/admin/notification-templates · PUT·DELETE /api/admin/notification-templates/{id}
  */
@@ -21,9 +21,7 @@ export const TRIGGERS: { value: NotificationTrigger; label: string }[] = [
   { value: 'FEEDBACK_REPLIED', label: '문의 회신' },
 ];
 
-export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(
-  TRIGGERS.map((t) => [t.value, t.label]),
-);
+export const TRIGGER_LABEL: Record<string, string> = Object.fromEntries(TRIGGERS.map((t) => [t.value, t.label]));
 
 export type NotificationTemplate = {
   id: number;
@@ -42,25 +40,14 @@ export type NotificationTemplate = {
 
 export const TEMPLATE_CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일' };
 
-export const templates: NotificationTemplate[] = [
+/** 회원가입 HTML 은 서버 페이지에서 기존 메일 시안 파일을 읽어 전달한다. */
+export const createTemplates = (welcomeBody: string): NotificationTemplate[] => [
   {
     id: 1,
     trigger: 'USER_REGISTERED',
     channel: 'EMAIL',
     subject: '[StudyClub] 회원가입을 환영합니다',
-    body: `안녕하세요, {{nickname}}님.
-
-StudyClub 회원가입이 완료되었습니다.
-가입을 환영합니다!
-
-StudyClub 바로가기
-
-이 메일은 회원님의 가입 요청에 따라 가입 완료 사실을 안내하기 위해 발송되었습니다.
-
-직접 가입하지 않으셨거나 계정 관련 문의가 있다면 contact@studyclub.life으로 연락해 주세요.
-
-감사합니다.
-StudyClub 드림`,
+    body: welcomeBody,
     updatedAt: '2026-09-12T00:00:00Z',
   },
   {
