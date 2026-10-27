@@ -593,11 +593,11 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 - 공급자: Discord OAuth
 - 서버가 인가 코드 → 액세스 토큰 → 사용자 식별. 화면에 `DISCORD_ID` 를 돌려주지 않는다
 - 실패·타임아웃 시 계정 컬럼을 부분 저장하지 않는다
-- OAuth scope: `identify` `guilds.members.read`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_GUILD_ID}/member` (404 면 멤버 아님)
+- OAuth scope: `identify` `guilds.members.read`. 길드 멤버 확인은 사용자 토큰으로 `GET /users/@me/guilds/{DISCORD_CONFIG_GUILD_ID}/member` (404 면 멤버 아님)
 - `redirect_uri` 는 서버 설정(`DISCORD_OAUTH_REDIRECT_URI`) 고정. 요청에서 받지 않는다
 - `DISCORD_HANDLE` 은 디스코드 `username` (표시 이름 아님)
 - 디스코드 호출이 다 끝난 뒤 저장만 짧은 트랜잭션으로 감싼다 — 호출 중 DB 커넥션을 잡지 않는다
-- 설정: `DISCORD_OAUTH_CLIENT_ID` · `DISCORD_OAUTH_CLIENT_SECRET` · `DISCORD_OAUTH_REDIRECT_URI` · `DISCORD_GUILD_ID`
+- 설정: `DISCORD_OAUTH_CLIENT_ID` · `DISCORD_OAUTH_CLIENT_SECRET` · `DISCORD_OAUTH_REDIRECT_URI` · `DISCORD_CONFIG_GUILD_ID`
 
 ## 디스코드 연결 해제
 
