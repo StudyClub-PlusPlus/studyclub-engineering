@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 
-import { Button, Input, Modal, Select, Textarea } from '@studyclub/ui';
+import { Button, Input, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
 
+import { TemplatePreview } from '@/features/notification-templates/components/TemplatePreview';
 import {
   useCreateNotificationTemplate,
   useDeleteNotificationTemplate,
@@ -28,7 +29,7 @@ const GONE = '이미 삭제된 템플릿입니다. 목록을 새로 불러왔습
  * 알림 템플릿 추가·수정 팝업.
  *
  * **추가 팝업이 곧 수정 팝업이다.** 목록에서 조건을 누르면 값이 채워진 채 열린다. 전문을 보는 화면을 따로 두지
- * 않는다 — 제목·본문 칸이 곧 전문이라 치환 변수(`{{nickname}}`)와 줄바꿈도 원문 그대로다.
+ * 않는다 — 본문 편집·미리보기를 오가며 저장 전 내용을 확인한다. 치환 변수와 저장 원문은 그대로 둔다.
  * 삭제도 이 안에서 한다 — 목록 행에 삭제 버튼을 두면 스치듯 눌러 지우는 사고가 난다.
  */
 export function TemplateDialog(props: { open: boolean; onClose: () => void; template?: NotificationTemplate }) {
@@ -37,7 +38,7 @@ export function TemplateDialog(props: { open: boolean; onClose: () => void; temp
   const loading = fresh.isPending || !fresh.isFetchedAfterMount;
   if (loading || fresh.isError || !fresh.data) {
     return (
-      <Modal open={props.open} onClose={props.onClose} title='템플릿 수정'>
+      <Modal open={props.open} onClose={props.onClose} title='템플릿 수정' size='lg'>
         {loading ? (
           <p role='status'>최신 템플릿을 불러오는 중…</p>
         ) : (
@@ -66,6 +67,7 @@ function TemplateEditor({
 }) {
   const editing = Boolean(template);
   const [draft, setDraft] = useState<TemplateDraft>(EMPTY);
+  const [bodyTab, setBodyTab] = useState('edit');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** 서버에 이미 없는 템플릿 — 저장·삭제를 더 보내지 않는다. */
@@ -81,6 +83,7 @@ function TemplateEditor({
   useEffect(() => {
     if (!open) return;
     setDraft(template ? { eventType: template.eventType, subject: template.subject, body: template.body } : EMPTY);
+    setBodyTab('edit');
     setConfirmDelete(false);
     setError(null);
     setGone(false);
@@ -143,6 +146,7 @@ function TemplateEditor({
         if (!busy) onClose();
       }}
       title={editing ? '템플릿 수정' : '템플릿 추가'}
+      size='lg'
       /* 닫는 수단은 X 하나다 — 취소 버튼을 따로 두지 않는다 (POL-0008) */
       footer={
         confirmDelete ? (
@@ -213,16 +217,38 @@ function TemplateEditor({
             onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
             placeholder='[StudyClub] 회원가입을 환영합니다'
           />
-          {/* 치환 변수({{nickname}})는 원문 그대로 둔다 — 미리 채워 보여주면 원문을 알 수 없다 */}
-          <Textarea
-            label='본문'
-            disabled={busy}
-            required
-            rows={10}
-            value={draft.body}
-            onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-            placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-            labelHint='{{nickname}} 으로 닉네임 삽입'
+          <Tabs
+            activeKey={bodyTab}
+            onChange={setBodyTab}
+            items={[
+              {
+                key: 'edit',
+                label: '본문 편집',
+                content: (
+                  <div role='tabpanel' aria-label='본문 편집'>
+                    <Textarea
+                      label='본문'
+                      disabled={busy}
+                      required
+                      rows={12}
+                      value={draft.body}
+                      onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                      placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
+                      helper='{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: 'preview',
+                label: '미리보기',
+                content: (
+                  <div role='tabpanel' aria-label='미리보기'>
+                    <TemplatePreview subject={draft.subject} body={draft.body} />
+                  </div>
+                ),
+              },
+            ]}
           />
         </div>
       )}

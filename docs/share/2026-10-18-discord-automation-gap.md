@@ -43,7 +43,7 @@
 ### 1. 디스코드 ID 가 저장되지 않는다 — 다른 문제는 전부 여기서 시작된다
 
 - `ACCOUNT.DISCORD_ID` 칸은 있다. 그런데 **값을 넣는 코드가 없다** (`Account.java` 에 읽는 메서드만 있음).
-- 연동 API `POST /api/me/discord/link` 는 스펙만 있다 ([study-application 스펙 §디스코드 계정 연동](../../specs/study-application/spec.md)).
+- 연동 API `POST /api/me/discord/link` 는 스펙만 있다 ([study-application 스펙 §디스코드 계정 연동](../../specs/study-application/spec.md)). — 10-21 구현 (#298), 10-27 화면 OAuth 팝업 연결 (#369)
 - 사용자 사이트의 「디스코드 연동」 버튼은 **가짜다.** 0.4초 기다렸다가 성공한 척한다
   (`frontend/apps/core-front/src/components/ApplyDiscordGate.tsx` — `TODO(api)`).
 - 그래서 벌어지는 일:
@@ -115,7 +115,7 @@
 |---|---|---|---|
 | `POST /api/discord/studies/{discordStudyId}/attendances` | 봇이 음성 채널 출석을 백엔드에 기록 | ✅ 구현완료 ([discord-attendance](../../specs/discord-attendance/spec.md)) | ✅ 봇 `/attendance` 명령 (`discord/app/backend_client.py`) |
 | `POST /api/admin/studies/{studyId}/discord-link` | 자동 생성이 실패한 스터디에 디스코드 다시 붙이기 | ✅ 구현완료 ([discord-study-link](../../specs/discord-study-link/spec.md)) | ❌ **백오피스 화면에 버튼이 없다.** 지금은 API 를 직접 불러야 한다 |
-| `POST /api/me/discord/link` | 디스코드 계정 연동 (`DISCORD_ID` 저장) | ✅ 구현완료 (#298) | 🔶 사이트 연동 창이 부르게 바꿨다 (#292). OAuth 팝업(DSC-04)이 붙기 전 운영·stage 는 부르지 않고 「준비 중」을 보인다 |
+| `POST /api/me/discord/link` | 디스코드 계정 연동 (`DISCORD_ID` 저장) | ✅ 구현완료 (#298) | ✅ 사이트 연동 창 · 마이페이지가 OAuth 팝업으로 부른다 (#292 · #369). 빌드에 client id 가 없는 환경은 「준비 중」 |
 
 ### 앞으로 만들 창구
 
@@ -135,7 +135,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | # | 화면·기능 | 파일 | 지금 | 해야 할 것 | 담당 |
 |---|---|---|---|---|---|
 | ① | 사이트 「신청하기」 버튼 | `core-front/src/components/ApplyButton.tsx` | ✅ #292 · #327 — `GET /api/me` 의 `discordLinked` 로 판단한다 (미연동이면 폼 대신 연동 창) | `GET /api/me` 의 `discordLinked` 로 판단. 서버가 403 을 주면 연동 창을 여는 처리는 이미 있다 (`ApplyDialog` 의 `onRequireDiscord`) | 프론트 (B1 이후) |
-| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | 🔶 #292 — `POST /api/me/discord/link` 를 부른다. 아직 OAuth 팝업이 없어 코드는 자리표시값이고, 운영·stage 는 `NEXT_PUBLIC_DISCORD_LINK_READY` 를 꺼 「준비 중」만 보인다. 403 길드 미가입이면 서버 가입 안내 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
+| ② | 사이트 「디스코드 연동」 창 | `core-front/src/components/ApplyDiscordGate.tsx` | ✅ #292 · DSC-04 — 디스코드 OAuth 팝업으로 받은 코드로 `POST /api/me/discord/link` 를 부른다. 빌드에 `NEXT_PUBLIC_DISCORD_CLIENT_ID` 가 없는 환경은 「준비 중」만 보인다. 403 길드 미가입이면 서버 가입 안내 | Discord 로그인 창 → 돌아온 `code` 로 `POST /api/me/discord/link` | 프론트 (B1 이후) |
 | ③ | 신청서의 디스코드 별명 칸 | `core-front/src/components/ApplyDialog.tsx` | 기본값을 브라우저 저장소에서 읽는다. 제출은 서버로 간다 ✅ | 스펙대로 `GET /api/me` 의 `discordNickname` 에서 읽기 | 프론트 |
 | ④ | 백오피스 스터디 등록 | `back-office-front/src/components/StudyForm.tsx` | 등록은 된다. 디스코드 생성이 성공했는지 **알 수 없다** | 상세에 연결 여부 표시 + 실패 시 「디스코드 다시 연결」 버튼(`POST .../discord-link`) | 디스코드 스쿼드 (응답 필드) · 프론트 |
 | ⑤ | 스터디의 디스코드 링크 | 백오피스 `StudyForm` 입력 → 사이트 상세·내 스터디 표시 | 캡틴이 링크(`STUDY.DISCORD_CHANNEL_URL`)를 **손으로** 넣는다. 봇이 만든 채널과 따로 논다 | 봇이 만든 채널로 자동으로 채울지 정한다 (이번 범위 밖) | 기획 |
@@ -254,7 +254,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | DSC-01 | [BE] 디스코드 계정 연동 API (`POST /api/me/discord/link`) | B1. Discord OAuth 앱 설정 · `DISCORD_ID`/`DISCORD_HANDLE` 저장 · **길드 멤버 확인**(질문 2, B6) · 스펙 확정. **머지됨 (#298)** | — **가장 먼저** | j7hwang (OAuth 앱 등록) · doxxx93 (API) |
 | DSC-02 | [BE] `GET /api/me` 에 `discordLinked` 추가 | user-onboarding 스펙 필드 추가. 내 정보 조회는 #262 로 `/auth/me` → `/api/me` 로 옮겨졌다. **머지됨 (#327)** (ID 는 내리지 않고 연동 여부만. 신청 403 과 같은 `Account.isDiscordLinked()`) | — `DISCORD_ID` 칸만 읽으므로 DSC-01 없이 할 수 있다 | hereokay |
 | DSC-03 | [BE·FE] 가입 화면에 **선택** 디스코드 연동 단계 추가 | 질문 1 결정(10-23): 가입 때 연동을 받을 수 있게 하되 **건너뛸 수 있다.** 온보딩 완료 조건에는 넣지 않는다. 신청 때 연동 필수는 그대로. **결정됨(기획) — 온보딩 담당과 맞출 것** | DSC-01 | Jeongyounghyeon (BE) · LeenaKim (FE) |
-| DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03) 가입 화면의 선택 연동. 프론트 담당에게 넘겨도 된다. **신청 연동 창 연결은 머지됨 (#292)** — OAuth 팝업 · 가입 화면은 남음 | DSC-01 · DSC-02 | CLEO525 (#292) |
+| DSC-04 | [FE] 가입·신청 화면의 디스코드 연동 창 실제 연결 | 화면·기능 ①②③ — `ApplyDiscordGate` · `ApplyButton` · `ApplyDialog` 별명 기본값 + (DSC-03) 가입 화면의 선택 연동. 프론트 담당에게 넘겨도 된다. **신청 연동 창 연결은 머지됨 (#292)** · OAuth 팝업은 10-27 PR — 가입 화면(DSC-03)은 남음. 운영·stage 에 client id · 시크릿 · Redirects 를 넣어야 켜진다 | DSC-01 · DSC-02 | CLEO525 (#292) |
 | DSC-05 | [BE] `DiscordBotClient` 에 role 부여·회수 메서드 추가 | B2. 메서드 4개 + `DISCORD_BOT_ID` 설정. **머지됨 ([PR #276](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/276))** (채널 목록·메시지 메서드까지 들어 있다) | — | j7hwang (#276) · 리뷰 doxxx93 |
 | DSC-06 | [BOT] 네비게이터 role 창구에 시스템 호출 허용 | 질문 5. **10-24 결정됨 — DSC-13 에 합친다** (봇 API 권한 체크를 모두 지운다). 백오피스 출석부의 담당 캡틴 중단(#325)도 이걸로 navigator role 을 회수한다 | — | j7hwang |
 | DSC-07 | [BE] 크루 편입 시 스터디 role 부여 | B3. `study_participant.joined` 구독자. **머지됨 (#316)** — `StudyRoleSyncListener` (DSC-09 와 같은 구독자, 명부에 있으면 붙이고 없으면 뗀다) | DSC-05 · STD-02 | doxxx93 · j7hwang |
@@ -276,7 +276,7 @@ API 를 불러야 하는데 안 부르거나, 다른 것을 보고 있는 곳이
 | STD-02 | [BE] 명부 편입 + `study_participant.joined` 발행 | STD-01 에서 정한 시점에 명부 행을 만든다. (가)면 신청 제출 트랜잭션 안에서. **명부 편입은 #296, `joined` 발행은 머지됨 (#310)** | STD-01 · COM-01 | seeunrosypark (#296 · #310) |
 | STD-03 | [BE] 반 · 역할 일괄 변경 API + `study_participant.role_changed` 발행 | `PATCH /api/admin/studies/{id}/participants` — 신청자 탭 「저장」 한 번, 하나라도 거절되면 전부 취소. 10-21 에 한 사람씩 API 를 합쳤다 ([study-group](../../specs/study-group/spec.md), [share](2026-10-21-participant-bulk-change.md)). **머지됨 (#303)** — 페이로드 `previousRole` · `newRole`, 감사 로그 `PARTICIPANT_ROLE` | COM-01 | kimjiy9607 (#303) |
 | STD-04 | [BE] 참여 중단(`withdrawals[]`) + `study_participant.withdrawn` 발행 | `POST /api/me/studies/{id}/attendances` ([study-participant](../../specs/study-participant/spec.md)). **머지됨 (#297)**. 백오피스 출석부에서 담당 캡틴이 중단시키는 길도 머지됨 (#325, 10-23 제품 결정) | COM-01 | seeunrosypark (#297 · #325) |
-| STD-05 | [BE] 🆕 디스코드 연동한 사람만 캡틴으로 올린다 | 10-24 회의. `PATCH /api/admin/users/{accountId}/system-role` 이 캡틴으로 올릴 때 미연동이면 거절. 백오피스 회원 목록 배지 잠금 이유에도 같은 값. [admin-users](../../specs/admin-users/spec.md) 스펙. **10-26 구현 (`DISCORD_LINK_REQUIRED`) — 캡틴은 연결 해제도 막는다** | — | doxxx93 (세은님 대신, 10-26 분배 스레드) |
+| STD-05 | [BE] 🆕 디스코드 연동한 사람만 캡틴으로 올린다 | 10-24 회의. `PATCH /api/admin/users/{accountId}/system-role` 이 캡틴으로 올릴 때 미연동이면 거절. 백오피스 회원 목록 배지 잠금 이유에도 같은 값. [admin-users](../../specs/admin-users/spec.md) 스펙. **10-26 구현 (`DISCORD_LINK_REQUIRED`) — 캡틴은 연결 해제도 막는다** · **10-27 번복 — 연동 없이도 캡틴, 캡틴도 해제 가능 ([share 10-27](2026-10-27-captain-discord-optional.md))** | — | doxxx93 (세은님 대신, 10-26 분배 스레드) |
 | STD-06 | [BE] 🆕 디스코드 API 호출 기록 — 스터디 생성 · navigator role 부여 · 회수 | 10-24 회의. COM-04 와 같은 부품에 한 번에 | 기록 형태 ([share 10-24](2026-10-24-discord-squad-agreement.md) 물어볼 것 2) | 스터디 스쿼드 |
 
 **스터디 스쿼드가 하지 않는 것**: 봇 호출, 디스코드 ID 조회, 디스코드 실패 처리. 이벤트를 발행하면 끝이다. 구독자가 없어도 기능은 정상이다.

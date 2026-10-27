@@ -5,7 +5,6 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import java.util.List;
@@ -26,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class AccountDiscordLinkService {
 
     private static final String CONFLICT_MESSAGE = "이 디스코드 계정은 다른 계정에 이미 연동되어 있습니다.";
+    private static final String RELINK_BLOCKED_MESSAGE = "참여 중인 스터디가 있어 디스코드 계정을 바꿀 수 없습니다.";
 
     private final DiscordOAuthClient discordOAuthClient;
     private final AccountRepository accountRepository;
@@ -46,8 +46,6 @@ public class AccountDiscordLinkService {
      * 참여 중(ACTIVE·PAUSED)인 스터디가 하나라도 있으면 거절한다 — 내 스터디룸이 「시작 전·참여 중」으로 보여 주는 행과 같다. 연동하지 않은 계정은 할 일
      * 없이 204 (멱등).
      *
-     * <p>캡틴(ADMIN)도 거절한다 — 캡틴은 디스코드 연동이 필수다.
-     *
      * <p>계정 행을 잠근 뒤 명부를 본다. 명부에 들어오는 길은 신청 제출뿐이고 그것도 계정을 먼저 잠그므로, 확인과 해제 사이에 새 참여가 끼어들지 못한다.
      */
     @Transactional
@@ -62,16 +60,15 @@ public class AccountDiscordLinkService {
         if (!account.isDiscordLinked()) {
             return;
         }
-        // 캡틴은 디스코드 연동이 필수다 — 해제하려면 먼저 크루로 내려가야 한다 (STD-05)
-        if (account.getSystemRole() == SystemRole.ADMIN) {
-            throw new BusinessException(
-                    ErrorCode.DISCORD_LINK_REQUIRED, "캡틴은 디스코드 연결을 해제할 수 없습니다.");
-        }
-        if (studyParticipantRepository.existsByAccountIdAndStatusIn(
-                accountId, List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED))) {
+        if (isParticipating(accountId)) {
             throw new BusinessException(ErrorCode.DISCORD_UNLINK_BLOCKED);
         }
         account.unlinkDiscord();
+    }
+
+    private boolean isParticipating(Long accountId) {
+        return studyParticipantRepository.existsByAccountIdAndStatusIn(
+                accountId, List.of(ParticipantStatus.ACTIVE, ParticipantStatus.PAUSED));
     }
 
     private void save(Long accountId, DiscordUser user) {
@@ -83,6 +80,12 @@ public class AccountDiscordLinkService {
                                 () ->
                                         new BusinessException(
                                                 ErrorCode.UNAUTHORIZED, "유저를 찾을 수 없습니다."));
+        // 다른 디스코드 계정으로 갈아타기는 해제와 같이 막는다 — 옛 계정에 스터디 role 이 남고 새 계정엔 없다 (POL-0007)
+        if (account.isDiscordLinked()
+                && !account.getDiscordId().equals(user.id())
+                && isParticipating(accountId)) {
+            throw new BusinessException(ErrorCode.DISCORD_UNLINK_BLOCKED, RELINK_BLOCKED_MESSAGE);
+        }
         // 같은 계정이 같은 ID 로 다시 연동하면 핸들만 새로 쓰고 성공한다 (멱등)
         accountRepository
                 .findByDiscordId(user.id())

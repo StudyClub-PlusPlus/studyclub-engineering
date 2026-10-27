@@ -21,6 +21,8 @@ function account(patch: Partial<ApiAdminAccount>): ApiAdminAccount {
     dormant: false,
     joinedAt: '2026-09-01T11:00:00Z',
     roleChangeBlockedReason: null,
+    discordLinked: false,
+    discordHandle: null,
     ...patch,
   };
 }
@@ -217,5 +219,24 @@ describe('PermissionTables', () => {
     const row = screen.getByText('무언가').closest('tr')!;
     expect(within(row).getAllByLabelText('허용')).toHaveLength(1);
     expect(within(row).getAllByLabelText('없음')).toHaveLength(1);
+  });
+});
+
+describe('UsersTable 디스코드 칸', () => {
+  it('연동했으면 @username, 아니면 미연동', () => {
+    render(
+      withQuery(
+        <UsersTable
+          rows={[
+            account({ id: 1, discordLinked: true, discordHandle: 'haneul_dc' }),
+            account({ id: 2, name: '바다', discordLinked: false, discordHandle: null }),
+          ]}
+          revealed={new Map()}
+          onReveal={() => {}}
+        />,
+      ),
+    );
+    expect(screen.getByText('@haneul_dc')).toBeInTheDocument();
+    expect(screen.getByText('미연동')).toBeInTheDocument();
   });
 });
