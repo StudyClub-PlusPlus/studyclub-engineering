@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { NextRequest } from 'next/server';
+
 import { describe, expect, it } from 'vitest';
 
 import { GET } from './route';
