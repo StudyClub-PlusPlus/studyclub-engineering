@@ -53,6 +53,10 @@ tests/                 # pytest unit tests
   that same refusal; the service always starts either way. It is read once at
   startup, so changing it means `docker compose up -d discord`
   (a restart alone will not re-read `.env`).
+  `DISCORD_ANCHOR_CHANNEL_ID` is the ID of the empty divider category (named
+  `===== New Study =====` in the guild) that new studies go right below. Leave
+  it empty and new studies go to the top of the sidebar, while the bulletin and
+  the activity monitor stop and say so in the alert channel.
 - **Calling the backend** — `!출석체크` is the only thing here that calls *out*.
   It reads `API_BASE_URL` (the same key the frontends use; `docker-compose.yml`
   overrides it to the internal `http://api:8080` for this service too) and
@@ -282,9 +286,10 @@ scrolling the sidebar:
 CS 전공 스터디 : <#1327394882193883142>
 ```
 
-One line per category below the `===== New Study =====` category -- the same
-category `create-study` places new studies under. Without it the bot leaves the
-board alone rather than risk publishing operational categories.
+One line per category below the anchor category, `DISCORD_ANCHOR_CHANNEL_ID`
+-- the same category `create-study` places new studies under. With it unset or
+not found the bot leaves the board alone and tells the alert channel, rather
+than risk publishing operational categories.
 
 It refreshes once a day at 20:00 America/Los_Angeles -- 8PM local through the
 PST/PDT switch -- and once more whenever the bot starts, so a deploy does not
@@ -342,9 +347,9 @@ A captain can see the whole picture at any time, quiet or not:
   영어 회화 - 공부방-영어 회화 : 기록 없음 (관찰 시작 2026-08-25)
 ```
 
-Both outputs cover the voice channels below the `===== New Study =====`
-category; without that category nothing is judged, since there would be no
-telling a study from an operational one. A channel deleted from the guild loses
+Both outputs cover the voice channels below the `DISCORD_ANCHOR_CHANNEL_ID`
+category; with it unset or not found nothing is judged and the alert channel is
+told, since there would be no telling a study from an operational one. A channel deleted from the guild loses
 its row, and a channel nobody has used yet is measured from the day the bot
 first saw it -- a 공부방 created yesterday is never reported.
 

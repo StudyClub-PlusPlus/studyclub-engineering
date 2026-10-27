@@ -12,13 +12,14 @@ GUILD_ID = 100000000000000001
 BULLETIN_CHANNEL_ID = 200000000000000001
 ALERT_CHANNEL_ID = 200000000000000002
 BOT_USER_ID = 300000000000000001
-ANCHOR = bulletin.DEFAULT_NEW_STUDY_ANCHOR_NAME
+ANCHOR_ID = 400000000000000001
 
 
 def _settings(**overrides) -> Settings:
     return Settings(
         **{
             "guild_id": GUILD_ID,
+            "anchor_channel_id": ANCHOR_ID,
             "bulletin_channel_id": BULLETIN_CHANNEL_ID,
             "alert_channel_id": ALERT_CHANNEL_ID,
             **overrides,
@@ -40,6 +41,13 @@ def _category(name, voice_channels=()) -> Mock:
     category = Mock(spec=discord.CategoryChannel)
     category.name = name
     category.voice_channels = list(voice_channels)
+    return category
+
+
+def _anchor() -> Mock:
+    """The divider category, found by its ID; the name is only for the eye."""
+    category = _category("===== New Study =====")
+    category.id = ANCHOR_ID
     return category
 
 
@@ -77,7 +85,7 @@ class FakeGuild:
             if categories is not None
             else [
                 _category("운영진 전용", [_voice(1)]),
-                _category(ANCHOR),
+                _anchor(),
                 _category("알고리즘 스터디", [_voice(2), _voice(3)]),
                 _category("CS 전공", [_voice(4)]),
             ]
@@ -173,7 +181,7 @@ def test_collect_categories_takes_everything_below_the_anchor():
     """The anchor and everything above it are left out; order is the sidebar's."""
     guild = FakeGuild()
 
-    assert bulletin.collect_categories(guild, ANCHOR) == [
+    assert bulletin.collect_categories(guild, ANCHOR_ID) == [
         ("알고리즘 스터디", [2, 3]),
         ("CS 전공", [4]),
     ]
@@ -183,43 +191,51 @@ def test_collect_categories_without_the_anchor_returns_none():
     """Without the anchor there is no telling a study from a staff category."""
     guild = FakeGuild(categories=[_category("운영진 전용", [_voice(1)])])
 
-    assert bulletin.collect_categories(guild, ANCHOR) is None
+    assert bulletin.collect_categories(guild, ANCHOR_ID) is None
 
 
-def test_collect_categories_uses_the_topmost_duplicate_anchor():
-    """Same rule as create_study, so both features anchor to one category."""
+def test_collect_categories_without_a_configured_anchor_returns_none():
+    """An unset DISCORD_ANCHOR_CHANNEL_ID is as good as a missing anchor."""
+    assert bulletin.collect_categories(FakeGuild(), None) is None
+
+
+def test_collect_categories_with_the_id_of_a_non_category_returns_none():
+    """A voice channel's ID is not an anchor, even though the channel exists."""
+    assert bulletin.collect_categories(FakeGuild(), 2) is None
+
+
+def test_collect_categories_finds_the_anchor_by_id_not_name():
+    """A category that only shares the anchor's name is not the anchor."""
     guild = FakeGuild(
         categories=[
-            _category(ANCHOR),
+            _category("===== New Study =====", [_voice(1)]),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2)]),
-            _category(ANCHOR),
-            _category("CS 전공", [_voice(4)]),
         ]
     )
 
-    names = [name for name, _ in bulletin.collect_categories(guild, ANCHOR)]
-    assert names == ["알고리즘 스터디", ANCHOR, "CS 전공"]
+    assert bulletin.collect_categories(guild, ANCHOR_ID) == [("알고리즘 스터디", [2])]
 
 
 def test_collect_categories_drops_voice_channels_the_bot_cannot_see():
     """An invisible channel renders as a broken link, so it is not listed."""
     guild = FakeGuild(
         categories=[
-            _category(ANCHOR),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2), _voice(3, visible=False)]),
         ]
     )
 
-    assert bulletin.collect_categories(guild, ANCHOR) == [("알고리즘 스터디", [2])]
+    assert bulletin.collect_categories(guild, ANCHOR_ID) == [("알고리즘 스터디", [2])]
 
 
 def test_collect_categories_keeps_a_study_with_no_visible_voice_channel():
     """Filtering happens here; whether the study earns a line is build_bulletin's call."""
     guild = FakeGuild(
-        categories=[_category(ANCHOR), _category("알고리즘 스터디", [_voice(2, visible=False)])]
+        categories=[_anchor(), _category("알고리즘 스터디", [_voice(2, visible=False)])]
     )
 
-    assert bulletin.collect_categories(guild, ANCHOR) == [("알고리즘 스터디", [])]
+    assert bulletin.collect_categories(guild, ANCHOR_ID) == [("알고리즘 스터디", [])]
 
 
 # --- find_own_message ------------------------------------------------------
@@ -313,7 +329,18 @@ async def test_refresh_leaves_the_board_alone_when_the_anchor_is_missing():
 
     guild.bulletin_channel.send.assert_not_awaited()
     guild.alert_channel.send.assert_awaited_once()
-    assert ANCHOR in guild.alert_channel.send.await_args[0][0]
+    assert str(ANCHOR_ID) in guild.alert_channel.send.await_args[0][0]
+
+
+async def test_refresh_leaves_the_board_alone_without_a_configured_anchor():
+    """An unset anchor gets the same treatment as a missing one: no board, an alert."""
+    guild = FakeGuild()
+
+    assert await bulletin.refresh(_bot(guild), _settings(anchor_channel_id=None)) is False
+
+    guild.bulletin_channel.send.assert_not_awaited()
+    guild.alert_channel.send.assert_awaited_once()
+    assert "DISCORD_ANCHOR_CHANNEL_ID" in guild.alert_channel.send.await_args[0][0]
 
 
 async def test_refresh_reports_missing_permissions_without_raising():
@@ -396,7 +423,7 @@ async def test_refresh_survives_an_unreadable_history():
 async def test_refresh_reports_truncation_after_posting_the_board():
     """The board goes up first: a partial list beats no list, but someone is told."""
     guild = FakeGuild(
-        categories=[_category(ANCHOR)]
+        categories=[_anchor()]
         + [_category(f"스터디 {i:03d}", [_voice(100000000000000000 + i)]) for i in range(100)]
     )
 

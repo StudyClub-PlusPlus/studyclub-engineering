@@ -220,13 +220,13 @@ CREATE TABLE IF NOT EXISTS voice_channel_activity (
 ```python
 # app/bot/voice_monitor.py -- bulletin.collect_categories 와 같은 규칙, 반환형만 다르다
 def collect_study_voice_channels(
-    guild: discord.Guild, anchor_name: str
+    guild: discord.Guild, anchor_id: int | None
 ) -> list[tuple[discord.CategoryChannel, list[discord.VoiceChannel]]] | None:
-    """앵커 아래 (카테고리, 보이는 음성채널들). 앵커가 없으면 None."""
+    """앵커 아래 (카테고리, 보이는 음성채널들). 앵커가 설정되지 않았거나 없으면 None."""
 ```
 
 - 규칙은 [게시판 문서](voice-channel-bulletin.md#어떤-음성-채널을-모으나)와 **글자 그대로 동일하다**:
-  position 순, 같은 이름이면 맨 위가 앵커, 앵커 자신은 제외,
+  position 순, 앵커는 `DISCORD_ANCHOR_CHANNEL_ID` 의 ID 로 찾음, 앵커 자신은 제외,
   `permissions_for(guild.me).view_channel` 인 채널만. 다른 점은 ID 대신 **채널 객체**를 준다는 것뿐이다
   (리포트에 이름이 필요하다).
 - **[`bulletin.py`](../../discord/app/bot/bulletin.py) 는 건드리지 않는다.** 그래서 게시판 쪽 무회귀를
@@ -299,7 +299,7 @@ INACTIVITY = datetime.timedelta(weeks=3)                                        
 ```
 
 - **captain 전용** (#2). `DISCORD_CAPTAIN_ROLE_ID` 가 비어 있으면 거부하고, DM 도 거부한다.
-- 앵커를 못 찾으면 **그렇다고 답장한다** (조용히 빈 목록을 주면 "공부방이 없다" 로 읽힌다).
+- 앵커가 설정되지 않았거나 못 찾으면 **그렇다고 답장하고 alert 채널에도 같은 내용을 보낸다** (조용히 빈 목록을 주면 "공부방이 없다" 로 읽힌다. 설정을 고칠 사람이 명령을 친 captain 이 아닐 수 있다).
 - 보고할 공부방이 하나도 없으면 `지금 앵커 아래에 공부방이 없습니다.` 한 줄. 빈 메시지는 Discord 가 거부한다.
 - **2000자를 넘으면 여러 메시지로 나눠 보낸다** — 알림과 다른 선택이다. 알림은 "이상이 있다" 는 신호라서
   잘려도 목적을 이루지만, 이 명령은 **전체를 보려고** 부른 것이라서 자르면 부른 이유가 없어진다.

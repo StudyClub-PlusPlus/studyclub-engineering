@@ -51,6 +51,12 @@ class Settings:
     # that links every study's voice channels. ``None`` disables the bulletin
     # refresh loop; nothing else changes.
     bulletin_channel_id: int | None = None
+    # DISCORD_ANCHOR_CHANNEL_ID: the existing empty category that divides the
+    # studies from the operational categories above it. New studies go right
+    # below it, and everything below it is a study to the bulletin and the voice
+    # monitor. ``None`` puts new studies at the top of the sidebar, and makes the
+    # bulletin and the voice monitor stop and say so in the alert channel.
+    anchor_channel_id: int | None = None
     # DISCORD_API_KEY: the X-API-Key callers must send. ``None`` rejects every
     # request to a protected route, so a missing key never means "open".
     api_key: str | None = None
@@ -111,6 +117,7 @@ def load_settings(
         alert_channel_id=_parse_id(env, "DISCORD_ALERT_CHANNEL_ID"),
         announcement_channel_id=_parse_id(env, "DISCORD_ANNOUNCEMENT_CHANNEL_ID"),
         bulletin_channel_id=_parse_id(env, "DISCORD_BULLETIN_CHANNEL_ID"),
+        anchor_channel_id=_parse_id(env, "DISCORD_ANCHOR_CHANNEL_ID"),
         api_key=api_key or None,
         backend_base_url=backend_base_url or None,
     )

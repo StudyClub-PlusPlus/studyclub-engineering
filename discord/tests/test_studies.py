@@ -5,11 +5,12 @@ import discord
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.routes.studies import DEFAULT_NEW_STUDY_ANCHOR_NAME, MAX_STUDY_NAME
+from app.api.routes.studies import MAX_STUDY_NAME
 from app.api.server import create_app
 from app.config import Settings
 
 GUILD_ID = 100000000000000001
+ANCHOR_ID = 100000000000000002
 USER_ID = "327394882193883136"
 API_KEY = "test-api-key"
 HEADERS = {
@@ -36,7 +37,7 @@ class FakeGuild:
     def __init__(
         self,
         *,
-        categories=(DEFAULT_NEW_STUDY_ANCHOR_NAME,),
+        categories=((ANCHOR_ID, "===== New Study ====="),),
     ):
         self.category = _created(11)
         self.text = _created(12)
@@ -54,9 +55,10 @@ class FakeGuild:
         # Who may call is the backend's to decide, so the caller is never looked up.
         self.fetch_member = AsyncMock(side_effect=_discord_error(discord.NotFound, 404))
         self.categories = [Mock() for _ in categories]
-        for category, n in zip(self.categories, categories):
+        for category, (category_id, n) in zip(self.categories, categories):
+            category.id = category_id
             category.name = n
-        # discord.utils.get reads attributes, so only the names need to be real.
+        # discord.utils.get reads attributes, so only the IDs and names need to be real.
         self.anchor = self.categories[0] if self.categories else None
 
 
@@ -77,6 +79,7 @@ def _client(bot, db_path, **overrides) -> TestClient:
         "guild_id": GUILD_ID,
         "api_key": API_KEY,
         "db_path": db_path,
+        "anchor_channel_id": ANCHOR_ID,
     }
     settings = Settings(**{**values, **overrides})
     return TestClient(create_app(settings, bot))
@@ -148,13 +151,11 @@ def test_create_study_voice_channel_is_visible_to_all_but_joinable_by_the_study_
     guild.voice.set_permissions.assert_awaited_once_with(guild.role, connect=True)
 
 
-def test_create_study_goes_below_the_current_reference_category(db_path):
-    """The reference name is read per request, so changing it at runtime takes effect."""
-    guild = FakeGuild(categories=("===== Old =====", "--- studies ---"))
-    client = _client(_bot(guild), db_path)
-    client.app.state.new_study_anchor_name = "--- studies ---"
+def test_create_study_goes_below_the_configured_reference_category(db_path):
+    """The reference category is found by its ID, wherever it sits and whatever it is named."""
+    guild = FakeGuild(categories=((21, "===== New Study ====="), (22, "--- studies ---")))
 
-    response = _post(client)
+    response = _post(_client(_bot(guild), db_path, anchor_channel_id=22))
 
     assert response.status_code == 201
     guild.category.move.assert_awaited_once_with(after=guild.categories[1])
@@ -162,14 +163,26 @@ def test_create_study_goes_below_the_current_reference_category(db_path):
 
 def test_create_study_without_reference_category_goes_to_the_top(db_path, caplog):
     """A missing reference category does not block creation; it is logged and the study goes on top."""
-    guild = FakeGuild(categories=("other",))
+    guild = FakeGuild(categories=((21, "===== New Study ====="),))
 
     with caplog.at_level("WARNING"):
         response = _post(_client(_bot(guild), db_path))
 
     assert response.status_code == 201
     guild.category.move.assert_awaited_once_with(beginning=True)
-    assert DEFAULT_NEW_STUDY_ANCHOR_NAME in caplog.text
+    assert str(ANCHOR_ID) in caplog.text
+
+
+def test_create_study_without_configured_reference_goes_to_the_top_quietly(db_path, caplog):
+    """An unset DISCORD_ANCHOR_CHANNEL_ID is a choice, so the study goes on top without a warning."""
+    guild = FakeGuild()
+
+    with caplog.at_level("WARNING"):
+        response = _post(_client(_bot(guild), db_path, anchor_channel_id=None))
+
+    assert response.status_code == 201
+    guild.category.move.assert_awaited_once_with(beginning=True)
+    assert "reference category" not in caplog.text
 
 
 def test_create_study_rolls_back_when_the_move_fails(db_path):
@@ -327,7 +340,7 @@ def test_create_study_while_same_name_is_processing_conflicts(db_path):
 
 def test_create_study_with_existing_category_conflicts_and_frees_the_name(db_path):
     """A category made outside this service blocks the name without leaving a reservation."""
-    guild = FakeGuild(categories=[DEFAULT_NEW_STUDY_ANCHOR_NAME, "알고리즘 스터디"])
+    guild = FakeGuild(categories=[(ANCHOR_ID, "===== New Study ====="), (21, "알고리즘 스터디")])
 
     response = _post(_client(_bot(guild), db_path))
 

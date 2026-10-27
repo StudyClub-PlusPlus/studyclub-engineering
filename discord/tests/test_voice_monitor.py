@@ -13,7 +13,7 @@ from app.voice_activity_log import Activity, VoiceActivityLog
 GUILD_ID = 100000000000000001
 OTHER_GUILD_ID = 100000000000000009
 ALERT_CHANNEL_ID = 200000000000000002
-ANCHOR = voice_monitor.DEFAULT_NEW_STUDY_ANCHOR_NAME
+ANCHOR_ID = 400000000000000001
 NOW = datetime.datetime(2026, 9, 30, 3, 0, tzinfo=datetime.timezone.utc)
 # 2026-09-30 03:00Z is 2026-09-29 20:00 Pacific -- the date the club would say.
 PACIFIC_TODAY = "2026-09-29"
@@ -21,7 +21,12 @@ PACIFIC_TODAY = "2026-09-29"
 
 def _settings(**overrides) -> Settings:
     return Settings(
-        **{"guild_id": GUILD_ID, "alert_channel_id": ALERT_CHANNEL_ID, **overrides}
+        **{
+            "guild_id": GUILD_ID,
+            "alert_channel_id": ALERT_CHANNEL_ID,
+            "anchor_channel_id": ANCHOR_ID,
+            **overrides,
+        }
     )
 
 
@@ -44,6 +49,13 @@ def _category(name, voice_channels=()) -> Mock:
     return category
 
 
+def _anchor() -> Mock:
+    """The divider category, found by its ID; the name is only for the eye."""
+    category = _category("===== New Study =====")
+    category.id = ANCHOR_ID
+    return category
+
+
 def _text_channel(channel_id) -> Mock:
     channel = Mock(spec=discord.TextChannel, id=channel_id)
     channel.permissions_for.return_value = Mock(view_channel=True)
@@ -62,7 +74,7 @@ class FakeGuild:
             if categories is not None
             else [
                 _category("운영진 전용", [_voice(1, "회의실")]),
-                _category(ANCHOR),
+                _anchor(),
                 _category("알고리즘 스터디", [_voice(2), _voice(3, "공부방-2조")]),
                 _category("CS 전공", [_voice(4, "공부방-CS")]),
             ]
@@ -98,7 +110,7 @@ def test_collect_takes_everything_below_the_anchor():
     """The anchor and everything above it are left out; order is the sidebar's."""
     guild = FakeGuild()
 
-    collected = voice_monitor.collect_study_voice_channels(guild, ANCHOR)
+    collected = voice_monitor.collect_study_voice_channels(guild, ANCHOR_ID)
 
     assert [(category.name, [v.id for v in voices]) for category, voices in collected] == [
         ("알고리즘 스터디", [2, 3]),
@@ -110,34 +122,43 @@ def test_collect_without_the_anchor_returns_none():
     """Without the anchor the staff meeting room would be judged as a study."""
     guild = FakeGuild(categories=[_category("운영진 전용", [_voice(1)])])
 
-    assert voice_monitor.collect_study_voice_channels(guild, ANCHOR) is None
+    assert voice_monitor.collect_study_voice_channels(guild, ANCHOR_ID) is None
 
 
-def test_collect_uses_the_topmost_duplicate_anchor():
+def test_collect_without_a_configured_anchor_returns_none():
+    """An unset DISCORD_ANCHOR_CHANNEL_ID is as good as a missing anchor."""
+    assert voice_monitor.collect_study_voice_channels(FakeGuild(), None) is None
+
+
+def test_collect_with_the_id_of_a_non_category_returns_none():
+    """A voice channel's ID is not an anchor, even though the channel exists."""
+    assert voice_monitor.collect_study_voice_channels(FakeGuild(), 2) is None
+
+
+def test_collect_finds_the_anchor_by_id_not_name():
     """Same rule as create_study and the bulletin, so all three agree."""
     guild = FakeGuild(
         categories=[
-            _category(ANCHOR),
+            _category("===== New Study =====", [_voice(1, "회의실")]),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2)]),
-            _category(ANCHOR),
-            _category("CS 전공", [_voice(4)]),
         ]
     )
 
-    collected = voice_monitor.collect_study_voice_channels(guild, ANCHOR)
-    assert [category.name for category, _ in collected] == ["알고리즘 스터디", ANCHOR, "CS 전공"]
+    collected = voice_monitor.collect_study_voice_channels(guild, ANCHOR_ID)
+    assert [category.name for category, _ in collected] == ["알고리즘 스터디"]
 
 
 def test_collect_drops_voice_channels_the_bot_cannot_see():
     """A channel the bot cannot see is one it cannot record activity for either."""
     guild = FakeGuild(
         categories=[
-            _category(ANCHOR),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2), _voice(3, visible=False)]),
         ]
     )
 
-    collected = voice_monitor.collect_study_voice_channels(guild, ANCHOR)
+    collected = voice_monitor.collect_study_voice_channels(guild, ANCHOR_ID)
     assert [v.id for _, voices in collected for v in voices] == [2]
 
 
@@ -436,7 +457,7 @@ async def test_check_inactivity_credits_an_occupied_room_before_judging(log):
     """Someone who joined a month ago and never left is still using the room."""
     guild = FakeGuild(
         categories=[
-            _category(ANCHOR),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2, occupied=True)]),
         ]
     )
@@ -454,7 +475,18 @@ async def test_check_inactivity_judges_nothing_without_the_anchor(log):
     await voice_monitor.check_inactivity(_bot(guild), _settings(), log)
 
     guild.alert_channel.send.assert_awaited_once()
-    assert ANCHOR in guild.alert_channel.send.await_args[0][0]
+    assert str(ANCHOR_ID) in guild.alert_channel.send.await_args[0][0]
+    assert log.rows() == {}
+
+
+async def test_check_inactivity_judges_nothing_without_a_configured_anchor(log):
+    """An unset anchor gets the same treatment as a missing one: nothing judged, an alert."""
+    guild = FakeGuild()
+
+    await voice_monitor.check_inactivity(_bot(guild), _settings(anchor_channel_id=None), log)
+
+    guild.alert_channel.send.assert_awaited_once()
+    assert "DISCORD_ANCHOR_CHANNEL_ID" in guild.alert_channel.send.await_args[0][0]
     assert log.rows() == {}
 
 
@@ -471,7 +503,7 @@ async def test_check_inactivity_without_an_alert_channel_id_still_takes_the_snap
     """A room nobody joins gets its row now, not on the day the channel is configured."""
     guild = FakeGuild(
         categories=[
-            _category(ANCHOR),
+            _anchor(),
             _category("알고리즘 스터디", [_voice(2, occupied=True), _voice(3, "공부방-2조")]),
         ]
     )

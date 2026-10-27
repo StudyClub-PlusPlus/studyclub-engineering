@@ -23,7 +23,6 @@ from discord.ext import commands, tasks
 from fastapi import HTTPException
 
 from app.api.routes.channels import resolve_configured_channel
-from app.api.routes.studies import DEFAULT_NEW_STUDY_ANCHOR_NAME
 from app.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -88,9 +87,9 @@ def build_bulletin(categories: list[tuple[str, list[int]]]) -> tuple[str, int]:
 
 
 def collect_categories(
-    guild: discord.Guild, anchor_name: str
+    guild: discord.Guild, anchor_id: int | None
 ) -> list[tuple[str, list[int]]] | None:
-    """List the studies below the anchor category, or ``None`` if it is gone.
+    """List the studies below the anchor category, or ``None`` if it is unset or gone.
 
     Everything under the anchor is a study: ``create_study`` puts each new
     category directly below it, and nothing else is placed there. Returning
@@ -99,11 +98,11 @@ def collect_categories(
     staff channels on a board every member reads.
 
     ``guild.categories`` is sorted by position and is rebuilt on each access, so
-    it is read once. A duplicated anchor name resolves to the topmost, which is
-    the one ``create_study`` anchors to.
+    it is read once. An ID naming a channel that is not a category is not in it,
+    so it counts as gone.
     """
     categories = guild.categories
-    anchor = discord.utils.get(categories, name=anchor_name)
+    anchor = discord.utils.get(categories, id=anchor_id)
     if anchor is None:
         return None
 
@@ -193,11 +192,6 @@ async def refresh(bot: commands.Bot, settings: Settings) -> bool:
     sent to the alert channel; it is what ``!updateBulletin`` answers with. A
     board that went up truncated is still ``True`` -- it was rewritten, and the
     alert channel hears about what did not fit.
-
-    The anchor name is read from the constant rather than from
-    ``app.state.new_study_anchor_name``: the two are always equal today, and the
-    command that will change the anchor at runtime has to give both readers one
-    source when it lands (see the plan's 미정 사항 2).
     """
     try:
         return await _refresh(bot, settings)
@@ -235,17 +229,18 @@ async def _refresh(bot: commands.Bot, settings: Settings) -> bool:
         )
         return False
 
-    categories = collect_categories(guild, DEFAULT_NEW_STUDY_ANCHOR_NAME)
+    categories = collect_categories(guild, settings.anchor_channel_id)
     if categories is None:
         logger.error(
-            "bulletin: reference category %r not found, leaving the board untouched",
-            DEFAULT_NEW_STUDY_ANCHOR_NAME,
+            "bulletin: reference category %s unset or not found, leaving the board untouched",
+            settings.anchor_channel_id,
         )
         await notify_alert_channel(
             guild,
             settings,
-            f"기준 카테고리 `{DEFAULT_NEW_STUDY_ANCHOR_NAME}` 를 찾지 못해 "
-            "공부방 게시판을 갱신하지 않았습니다. 카테고리가 지워졌거나 이름이 바뀌었는지 확인해 주세요.",
+            f"기준 카테고리(DISCORD_ANCHOR_CHANNEL_ID={settings.anchor_channel_id})가 "
+            "설정되지 않았거나 찾을 수 없어 공부방 게시판을 갱신하지 않았습니다. "
+            "카테고리 ID 가 맞는지, 카테고리가 지워지지 않았는지 확인해 주세요.",
         )
         return False
 
