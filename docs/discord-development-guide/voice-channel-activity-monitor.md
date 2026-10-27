@@ -101,7 +101,7 @@ CS 전공 스터디 - 공부방-CS 전공 스터디 : 2026-09-30
 
 | # | 질문 | 결정 / 추천 | 왜 이쪽인가 / 다른 선택지 |
 |---|------|------|--------------------------|
-| 1 | 알림을 **어디로** 보내나 | **`DISCORD_ALERT_CHANNEL_ID` 재사용** (새 환경변수 없음) | 이건 운영 알림이고, alert 채널은 이미 그 용도로 있다. 새 채널을 쓰려면 env var·README·배포 설정이 같이 늘어난다. 나중에 분리하고 싶으면 `DISCORD_VOICE_ALERT_CHANNEL_ID` 를 추가하고 없으면 alert 로 떨어지게 하면 된다 |
+| 1 | 알림을 **어디로** 보내나 | **`DISCORD_CONFIG_ALERT_CHANNEL_ID` 재사용** (새 환경변수 없음) | 이건 운영 알림이고, alert 채널은 이미 그 용도로 있다. 새 채널을 쓰려면 env var·README·배포 설정이 같이 늘어난다. 나중에 분리하고 싶으면 `DISCORD_VOICE_ALERT_CHANNEL_ID` 를 추가하고 없으면 alert 로 떨어지게 하면 된다 |
 | 2 | `!checkVoiceChannels` 는 **누가** 쓸 수 있나 | **captain 전용** (`!updateBulletin` 과 동일) | 길드 전체의 활동 현황을 한 번에 뿌리는 명령이다. "우리 스터디가 죽은 것으로 보인다" 는 정보가 아무 채널에서나 나오면 곤란하다. `may_update` 와 같은 모양으로 `may_check` 를 둔다. 전원 허용으로 바꾸려면 검사 한 줄을 지우면 된다 |
 | 3 | 무활동 기준은 **얼마**이고, 환경변수로 뺄까 | ✅ **3주 — 상수 `INACTIVITY = timedelta(weeks=3)`** | 처음 요청은 4주였는데 2026-09-30 리뷰에서 **3주로 줄였다**: 한 달을 기다리면 이미 스터디가 흩어진 뒤다. 환경변수로 빼지 않는 건 게시판의 갱신 시각과 같은 판단이다 — 요청에 없었고, 바뀌면 상수 한 줄을 고치는 게 싸다 |
 | 4 | 활동 기록이 **없는** 채널의 3주는 언제부터? | ✅ **관찰 시작일(`first_seen_at`)부터** | epoch 부터 세면 배포 첫날 모든 공부방이 알림에 실린다. 채널 생성일(`channel.created_at`)을 쓰는 방법도 있는데, **그러면 배포 전부터 있던 방이 곧바로 3주 초과**로 잡힌다. "우리가 본 날부터" 가 우리가 실제로 아는 사실이다 |
@@ -121,9 +121,9 @@ CS 전공 스터디 - 공부방-CS 전공 스터디 : 2026-09-30
 
 | 기존 환경변수 | 이 기능에서의 뜻 | 비우면 |
 |----------------|------------------|--------|
-| `DISCORD_GUILD_ID` | 기록·점검 대상 길드 | 기록도 점검도 안 한다 (경고 로그 1회) |
-| `DISCORD_ALERT_CHANNEL_ID` | 알림이 가는 채널 | **기록은 계속한다 — 점검 루프도 돌지만 스냅샷만 찍고 보고는 하지 않는다** (경고 로그 1회) |
-| `DISCORD_CAPTAIN_ROLE_ID` | `!checkVoiceChannels` 를 쓸 수 있는 역할 | 명령을 **거부**한다 (`may_update` 와 같은 태도) |
+| `DISCORD_CONFIG_GUILD_ID` | 기록·점검 대상 길드 | 기록도 점검도 안 한다 (경고 로그 1회) |
+| `DISCORD_CONFIG_ALERT_CHANNEL_ID` | 알림이 가는 채널 | **기록은 계속한다 — 점검 루프도 돌지만 스냅샷만 찍고 보고는 하지 않는다** (경고 로그 1회) |
+| `DISCORD_CONFIG_CAPTAIN_ROLE_ID` | `!checkVoiceChannels` 를 쓸 수 있는 역할 | 명령을 **거부**한다 (`may_update` 와 같은 태도) |
 
 - **"기록" 과 "알림" 의 켜짐 조건이 다르다.** alert 채널이 없다고 기록까지 멈추면, 나중에 채널을 설정한
   날부터 다시 3주를 기다려야 한다. 기록은 값이 싸고 되돌릴 수 없는 손실을 막는다.
@@ -226,7 +226,7 @@ def collect_study_voice_channels(
 ```
 
 - 규칙은 [게시판 문서](voice-channel-bulletin.md#어떤-음성-채널을-모으나)와 **글자 그대로 동일하다**:
-  position 순, 앵커는 `DISCORD_ANCHOR_CHANNEL_ID` 의 ID 로 찾음, 앵커 자신은 제외,
+  position 순, 앵커는 `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` 의 ID 로 찾음, 앵커 자신은 제외,
   `permissions_for(guild.me).view_channel` 인 채널만. 다른 점은 ID 대신 **채널 객체**를 준다는 것뿐이다
   (리포트에 이름이 필요하다).
 - **[`bulletin.py`](../../discord/app/bot/bulletin.py) 는 건드리지 않는다.** 그래서 게시판 쪽 무회귀를
@@ -298,7 +298,7 @@ INACTIVITY = datetime.timedelta(weeks=3)                                        
   영어 회화 - 공부방-영어 회화 : 기록 없음 (관찰 시작 2026-08-25)
 ```
 
-- **captain 전용** (#2). `DISCORD_CAPTAIN_ROLE_ID` 가 비어 있으면 거부하고, DM 도 거부한다.
+- **captain 전용** (#2). `DISCORD_CONFIG_CAPTAIN_ROLE_ID` 가 비어 있으면 거부하고, DM 도 거부한다.
 - 앵커가 설정되지 않았거나 못 찾으면 **그렇다고 답장하고 alert 채널에도 같은 내용을 보낸다** (조용히 빈 목록을 주면 "공부방이 없다" 로 읽힌다. 설정을 고칠 사람이 명령을 친 captain 이 아닐 수 있다).
 - 보고할 공부방이 하나도 없으면 `지금 앵커 아래에 공부방이 없습니다.` 한 줄. 빈 메시지는 Discord 가 거부한다.
 - **2000자를 넘으면 여러 메시지로 나눠 보낸다** — 알림과 다른 선택이다. 알림은 "이상이 있다" 는 신호라서
@@ -326,8 +326,8 @@ INACTIVITY = datetime.timedelta(weeks=3)                                        
 
 | 상황 | 하는 일 |
 |------|---------|
-| `DISCORD_GUILD_ID` 없음 | 경고 로그 1회, 리스너·루프 모두 미동작 |
-| `DISCORD_ALERT_CHANNEL_ID` 없음 | 경고 로그 1회, **기록은 계속** (매일 스냅샷 포함), 보고만 생략 |
+| `DISCORD_CONFIG_GUILD_ID` 없음 | 경고 로그 1회, 리스너·루프 모두 미동작 |
+| `DISCORD_CONFIG_ALERT_CHANNEL_ID` 없음 | 경고 로그 1회, **기록은 계속** (매일 스냅샷 포함), 보고만 생략 |
 | 앵커 카테고리 없음 | 에러 로그 + alert 통지, **판정하지 않음** |
 | alert 채널을 못 찾음 / 권한 없음 | 에러 로그 (통지할 곳이 그 채널이므로 로그가 전부다). 못 찾은 경우에도 **스냅샷은 찍는다** |
 | 삭제 이벤트 처리 중 sqlite 오류 | `logger.exception` 으로 삼킨다. 남은 행은 보고에 섞이지 않으므로 **지우지 못한 것이 오류로 이어지지 않는다** |

@@ -210,7 +210,7 @@ def test_collect_categories_without_the_anchor_returns_none():
 
 
 def test_collect_categories_without_a_configured_anchor_returns_none():
-    """An unset DISCORD_ANCHOR_CHANNEL_ID is as good as a missing anchor."""
+    """An unset DISCORD_CONFIG_ANCHOR_CHANNEL_ID is as good as a missing anchor."""
     assert bulletin.collect_categories(FakeGuild(), None) is None
 
 
@@ -357,7 +357,7 @@ async def test_refresh_leaves_the_board_alone_without_a_configured_anchor():
 
     guild.bulletin_channel.send.assert_not_awaited()
     guild.alert_channel.send.assert_awaited_once()
-    assert "DISCORD_ANCHOR_CHANNEL_ID" in guild.alert_channel.send.await_args[0][0]
+    assert "DISCORD_CONFIG_ANCHOR_CHANNEL_ID" in guild.alert_channel.send.await_args[0][0]
 
 
 async def test_refresh_reports_missing_permissions_without_raising():
@@ -522,4 +522,4 @@ async def test_register_without_a_channel_does_not_start_a_loop(caplog):
     with caplog.at_level("WARNING"):
         bulletin.register(bot, _settings(bulletin_channel_id=None))
 
-    assert "DISCORD_BULLETIN_CHANNEL_ID" in caplog.text
+    assert "DISCORD_CONFIG_BULLETIN_CHANNEL_ID" in caplog.text

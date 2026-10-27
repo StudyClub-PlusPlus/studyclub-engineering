@@ -365,7 +365,7 @@ async def _check_inactivity(
 ) -> None:
     """:func:`check_inactivity` without the catch-all. Handles the failures it expects."""
     if settings.guild_id is None:
-        logger.error("voice monitor: no DISCORD_GUILD_ID configured, skipping the check")
+        logger.error("voice monitor: no DISCORD_CONFIG_GUILD_ID configured, skipping the check")
         return
     guild = bot.get_guild(settings.guild_id)
     if guild is None:
@@ -394,7 +394,7 @@ async def _check_inactivity(
         if alert_channel is not None:
             await send_to_alert(
                 alert_channel,
-                f"기준 카테고리(DISCORD_ANCHOR_CHANNEL_ID={settings.anchor_channel_id})가 "
+                f"기준 카테고리(DISCORD_CONFIG_ANCHOR_CHANNEL_ID={settings.anchor_channel_id})가 "
                 "설정되지 않았거나 찾을 수 없어 공부방 활동을 점검하지 않았습니다. "
                 "카테고리 ID 가 맞는지, 카테고리가 지워지지 않았는지 확인해 주세요.",
             )
@@ -454,7 +454,7 @@ def register(bot: commands.Bot, settings: Settings) -> tasks.Loop | None:
     """
     if settings.guild_id is None:
         logger.warning(
-            "DISCORD_GUILD_ID is not set - voice channel activity is not being recorded"
+            "DISCORD_CONFIG_GUILD_ID is not set - voice channel activity is not being recorded"
         )
         return None
 
@@ -475,7 +475,7 @@ def register(bot: commands.Bot, settings: Settings) -> tasks.Loop | None:
 
     if settings.alert_channel_id is None:
         logger.warning(
-            "DISCORD_ALERT_CHANNEL_ID is not set - voice channel activity is recorded "
+            "DISCORD_CONFIG_ALERT_CHANNEL_ID is not set - voice channel activity is recorded "
             "but never reported"
         )
 

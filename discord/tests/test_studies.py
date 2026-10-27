@@ -174,7 +174,7 @@ def test_create_study_without_reference_category_goes_to_the_top(db_path, caplog
 
 
 def test_create_study_without_configured_reference_goes_to_the_top_quietly(db_path, caplog):
-    """An unset DISCORD_ANCHOR_CHANNEL_ID is a choice, so the study goes on top without a warning."""
+    """An unset DISCORD_CONFIG_ANCHOR_CHANNEL_ID is a choice, so the study goes on top without a warning."""
     guild = FakeGuild()
 
     with caplog.at_level("WARNING"):
@@ -305,7 +305,7 @@ def test_create_study_without_configuration_conflicts(db_path):
     response = _post(_client(_bot(FakeGuild()), db_path, guild_id=None))
 
     assert response.status_code == 409
-    assert "DISCORD_GUILD_ID" in response.json()["detail"]
+    assert "DISCORD_CONFIG_GUILD_ID" in response.json()["detail"]
 
 
 def test_create_study_with_unknown_guild_is_not_found(db_path):

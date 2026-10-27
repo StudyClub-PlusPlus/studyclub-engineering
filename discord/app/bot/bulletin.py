@@ -1,6 +1,6 @@
 """The voice-channel bulletin board.
 
-One message in ``DISCORD_BULLETIN_CHANNEL_ID`` lists every study's voice
+One message in ``DISCORD_CONFIG_BULLETIN_CHANNEL_ID`` lists every study's voice
 channels as clickable links, so a member reaches their 공부방 without scrolling
 the sidebar. The message is rewritten in place once a
 day at 20:00 America/Los_Angeles, and on demand via ``!updateBulletin``.
@@ -218,7 +218,7 @@ async def refresh(bot: commands.Bot, settings: Settings) -> bool:
 async def _refresh(bot: commands.Bot, settings: Settings) -> bool:
     """:func:`refresh` without the catch-all. Handles the failures it expects."""
     if settings.guild_id is None:
-        logger.error("bulletin: no DISCORD_GUILD_ID configured, skipping the refresh")
+        logger.error("bulletin: no DISCORD_CONFIG_GUILD_ID configured, skipping the refresh")
         return False
     guild = bot.get_guild(settings.guild_id)
     if guild is None:
@@ -249,7 +249,7 @@ async def _refresh(bot: commands.Bot, settings: Settings) -> bool:
         await notify_alert_channel(
             guild,
             settings,
-            f"기준 카테고리(DISCORD_ANCHOR_CHANNEL_ID={settings.anchor_channel_id})가 "
+            f"기준 카테고리(DISCORD_CONFIG_ANCHOR_CHANNEL_ID={settings.anchor_channel_id})가 "
             "설정되지 않았거나 찾을 수 없어 공부방 게시판을 갱신하지 않았습니다. "
             "카테고리 ID 가 맞는지, 카테고리가 지워지지 않았는지 확인해 주세요.",
         )
@@ -322,7 +322,7 @@ def register(bot: commands.Bot, settings: Settings) -> tasks.Loop | None:
     """
     if settings.bulletin_channel_id is None:
         logger.warning(
-            "DISCORD_BULLETIN_CHANNEL_ID is not set - the voice channel bulletin is disabled"
+            "DISCORD_CONFIG_BULLETIN_CHANNEL_ID is not set - the voice channel bulletin is disabled"
         )
         return None
 

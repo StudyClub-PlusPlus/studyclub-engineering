@@ -26,11 +26,11 @@ from app.voice_activity_log import VoiceActivityLog
 logger = logging.getLogger(__name__)
 
 NOT_ALLOWED = "이 명령은 captain 역할을 가진 멤버만 쓸 수 있습니다."
-DISABLED = "DISCORD_GUILD_ID 가 설정되지 않아 공부방 활동 감시 기능이 꺼져 있습니다."
+DISABLED = "DISCORD_CONFIG_GUILD_ID 가 설정되지 않아 공부방 활동 감시 기능이 꺼져 있습니다."
 NO_GUILD = "봇이 길드를 찾지 못했습니다. 로그를 확인해 주세요."
 # Sent both as the reply and to the alert channel.
 NO_ANCHOR = (
-    "기준 카테고리(DISCORD_ANCHOR_CHANNEL_ID={anchor_id})가 설정되지 않았거나 찾을 수 없어 "
+    "기준 카테고리(DISCORD_CONFIG_ANCHOR_CHANNEL_ID={anchor_id})가 설정되지 않았거나 찾을 수 없어 "
     "공부방 목록을 만들 수 없습니다. 카테고리 ID 가 맞는지, 카테고리가 지워지지 않았는지 확인해 주세요."
 )
 FAILED = "공부방 활동 기록을 읽지 못했습니다. 로그를 확인해 주세요."
@@ -43,7 +43,7 @@ def may_check(ctx: commands.Context, settings: Settings) -> bool:
     studies look dead, which is for whoever runs the guild to act on rather than
     something to drop into any channel on request.
 
-    An unset ``DISCORD_CAPTAIN_ROLE_ID`` shuts the door rather than opening it.
+    An unset ``DISCORD_CONFIG_CAPTAIN_ROLE_ID`` shuts the door rather than opening it.
     In a DM there is no member and no role, so there is nobody to check.
     """
     if ctx.guild is None or settings.captain_role_id is None:

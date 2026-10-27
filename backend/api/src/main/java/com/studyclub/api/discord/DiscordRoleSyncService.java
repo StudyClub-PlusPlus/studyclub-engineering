@@ -127,7 +127,7 @@ public class DiscordRoleSyncService {
         }
         if (!discordBotClient.isConfigured() || !StringUtils.hasText(guildId)) {
             log.warn(
-                    "디스코드 navigator role {} 대상 {}명 건너뜀, 봇 설정 또는 DISCORD_GUILD_ID 없음",
+                    "디스코드 navigator role {} 대상 {}명 건너뜀, 봇 설정 또는 DISCORD_CONFIG_GUILD_ID 없음",
                     action,
                     users.size());
             return;

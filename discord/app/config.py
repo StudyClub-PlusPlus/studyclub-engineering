@@ -3,6 +3,10 @@
 Every setting comes from the environment (populated from ``.env`` in
 development), so a deployment is fully described by its env vars.
 
+Every Discord ID setting -- guild, channels, roles -- is named
+``DISCORD_CONFIG_*``. That prefix marks a value as safe to show, so it never
+goes on a secret or a URL.
+
 ``command_prefix``, ``log_level``, and ``db_path`` are not read from the
 environment -- they are effectively fixed for a deployment, so change their
 defaults below.
@@ -29,29 +33,29 @@ class Settings:
     # and README.md.
     api_port: int = 4800
     log_level: str = "INFO"
-    # DISCORD_BOT_CHANNEL_ID: the one text channel the bot takes commands from.
+    # DISCORD_CONFIG_BOT_CHANNEL_ID: the one text channel the bot takes commands from.
     # Command usage is kept to a single channel because it is mostly moderators
     # calling them. ``None`` refuses every command everywhere -- a missing
     # setting never means "any channel". Captured at startup, so changing it
     # needs a restart.
     command_channel_id: int | None = None
-    # DISCORD_GUILD_ID: the one guild studies are created in.
+    # DISCORD_CONFIG_GUILD_ID: the one guild studies are created in.
     guild_id: int | None = None
-    # DISCORD_CAPTAIN_ROLE_ID: the existing role allowed to create studies.
+    # DISCORD_CONFIG_CAPTAIN_ROLE_ID: the existing role allowed to create studies.
     captain_role_id: int | None = None
-    # DISCORD_NAVIGATOR_ROLE_ID: the existing role that, like captain, may read
+    # DISCORD_CONFIG_NAVIGATOR_ROLE_ID: the existing role that, like captain, may read
     # a study's channels.
     navigator_role_id: int | None = None
-    # DISCORD_ALERT_CHANNEL_ID: the existing channel operational alerts go to.
+    # DISCORD_CONFIG_ALERT_CHANNEL_ID: the existing channel operational alerts go to.
     alert_channel_id: int | None = None
-    # DISCORD_ANNOUNCEMENT_CHANNEL_ID: the existing channel guild-wide
+    # DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID: the existing channel guild-wide
     # announcements go to.
     announcement_channel_id: int | None = None
-    # DISCORD_BULLETIN_CHANNEL_ID: the existing channel holding the one message
+    # DISCORD_CONFIG_BULLETIN_CHANNEL_ID: the existing channel holding the one message
     # that links every study's voice channels. ``None`` disables the bulletin
     # refresh loop; nothing else changes.
     bulletin_channel_id: int | None = None
-    # DISCORD_ANCHOR_CHANNEL_ID: the existing empty category that divides the
+    # DISCORD_CONFIG_ANCHOR_CHANNEL_ID: the existing empty category that divides the
     # studies from the operational categories above it. New studies go right
     # below it, and everything below it is a study to the bulletin and the voice
     # monitor. ``None`` puts new studies at the top of the sidebar, and makes the
@@ -110,14 +114,14 @@ def load_settings(
 
     return Settings(
         discord_token=token or None,
-        command_channel_id=_parse_id(env, "DISCORD_BOT_CHANNEL_ID"),
-        guild_id=_parse_id(env, "DISCORD_GUILD_ID"),
-        captain_role_id=_parse_id(env, "DISCORD_CAPTAIN_ROLE_ID"),
-        navigator_role_id=_parse_id(env, "DISCORD_NAVIGATOR_ROLE_ID"),
-        alert_channel_id=_parse_id(env, "DISCORD_ALERT_CHANNEL_ID"),
-        announcement_channel_id=_parse_id(env, "DISCORD_ANNOUNCEMENT_CHANNEL_ID"),
-        bulletin_channel_id=_parse_id(env, "DISCORD_BULLETIN_CHANNEL_ID"),
-        anchor_channel_id=_parse_id(env, "DISCORD_ANCHOR_CHANNEL_ID"),
+        command_channel_id=_parse_id(env, "DISCORD_CONFIG_BOT_CHANNEL_ID"),
+        guild_id=_parse_id(env, "DISCORD_CONFIG_GUILD_ID"),
+        captain_role_id=_parse_id(env, "DISCORD_CONFIG_CAPTAIN_ROLE_ID"),
+        navigator_role_id=_parse_id(env, "DISCORD_CONFIG_NAVIGATOR_ROLE_ID"),
+        alert_channel_id=_parse_id(env, "DISCORD_CONFIG_ALERT_CHANNEL_ID"),
+        announcement_channel_id=_parse_id(env, "DISCORD_CONFIG_ANNOUNCEMENT_CHANNEL_ID"),
+        bulletin_channel_id=_parse_id(env, "DISCORD_CONFIG_BULLETIN_CHANNEL_ID"),
+        anchor_channel_id=_parse_id(env, "DISCORD_CONFIG_ANCHOR_CHANNEL_ID"),
         api_key=api_key or None,
         backend_base_url=backend_base_url or None,
     )

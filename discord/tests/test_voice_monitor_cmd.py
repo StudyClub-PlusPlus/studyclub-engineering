@@ -153,7 +153,7 @@ async def test_check_voice_channels_refuses_outside_the_command_channel(log):
 
 
 async def test_check_voice_channels_refuses_when_no_command_channel_is_configured(log):
-    """An unset DISCORD_BOT_CHANNEL_ID refuses everywhere rather than allowing anywhere."""
+    """An unset DISCORD_CONFIG_BOT_CHANNEL_ID refuses everywhere rather than allowing anywhere."""
     ctx = _ctx()
     store = Mock()
 

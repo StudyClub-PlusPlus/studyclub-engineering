@@ -473,7 +473,7 @@ def test_send_message_without_configuration_conflicts(tmp_path):
     response = _post(_client(_bot(FakeGuild()), tmp_path, guild_id=None))
 
     assert response.status_code == 409
-    assert "DISCORD_GUILD_ID" in response.json()["detail"]
+    assert "DISCORD_CONFIG_GUILD_ID" in response.json()["detail"]
 
 
 def test_send_message_with_unknown_guild_is_not_found(tmp_path):

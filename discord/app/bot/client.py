@@ -36,7 +36,7 @@ def create_bot(settings: Settings) -> commands.Bot:
         ),
     )
     # testCmd, updateBulletin, and checkVoiceChannels gate themselves on
-    # DISCORD_BOT_CHANNEL_ID; attendance is the documented voice-chat exception.
+    # DISCORD_CONFIG_BOT_CHANNEL_ID; attendance is the documented voice-chat exception.
     test_cmd.register(bot, settings)
     # Hooks the bulletin refresh onto ``setup_hook``; it starts once the bot has
     # logged in, not here.

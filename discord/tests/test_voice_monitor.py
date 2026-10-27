@@ -127,7 +127,7 @@ def test_collect_without_the_anchor_returns_none():
 
 
 def test_collect_without_a_configured_anchor_returns_none():
-    """An unset DISCORD_ANCHOR_CHANNEL_ID is as good as a missing anchor."""
+    """An unset DISCORD_CONFIG_ANCHOR_CHANNEL_ID is as good as a missing anchor."""
     assert voice_monitor.collect_study_voice_channels(FakeGuild(), None) is None
 
 
@@ -500,7 +500,7 @@ async def test_check_inactivity_judges_nothing_without_a_configured_anchor(log):
     await voice_monitor.check_inactivity(_bot(guild), _settings(anchor_channel_id=None), log)
 
     guild.alert_channel.send.assert_awaited_once()
-    assert "DISCORD_ANCHOR_CHANNEL_ID" in guild.alert_channel.send.await_args[0][0]
+    assert "DISCORD_CONFIG_ANCHOR_CHANNEL_ID" in guild.alert_channel.send.await_args[0][0]
     assert log.rows() == {}
 
 
@@ -686,7 +686,7 @@ async def test_register_without_an_alert_channel_still_records(caplog):
 
     # The loop is what takes the daily snapshot, so it is built all the same.
     assert loop is not None
-    assert "DISCORD_ALERT_CHANNEL_ID" in caplog.text
+    assert "DISCORD_CONFIG_ALERT_CHANNEL_ID" in caplog.text
     assert len(bot.add_listener.call_args_list) == 2
 
 
@@ -696,5 +696,5 @@ async def test_register_without_a_guild_records_nothing(caplog):
     with caplog.at_level("WARNING"):
         assert voice_monitor.register(bot, _settings(guild_id=None)) is None
 
-    assert "DISCORD_GUILD_ID" in caplog.text
+    assert "DISCORD_CONFIG_GUILD_ID" in caplog.text
     bot.add_listener.assert_not_called()

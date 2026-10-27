@@ -5,7 +5,7 @@
 
 > 구현: `discord/app/api/routes/studies.py`.
 > 공통 요청 헤더는 [`common-header.md`](common-header.md) 를 따른다.
-> **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다 — 설정값 `DISCORD_GUILD_ID` 로 지정한다.
+> **대상 길드는 하나로 고정**이라 요청에 길드를 넘기지 않는다 — 설정값 `DISCORD_CONFIG_GUILD_ID` 로 지정한다.
 
 ## Table of Contents
 
@@ -46,7 +46,7 @@ POST /api/v1/studies
 4. 스터디 전용 **역할** 1개
 5. 음성 채널 권한에 4번 역할의 **접속**을 연다 — 결과적으로 음성 채널은 모두에게 보이고 이 역할만 들어갈 수 있다
 
-**기준 카테고리**는 길드에 **이미 있는** 카테고리로, `DISCORD_ANCHOR_CHANNEL_ID` 의 **ID 로** 찾는다 (이름은 보지 않는다).
+**기준 카테고리**는 길드에 **이미 있는** 카테고리로, `DISCORD_CONFIG_ANCHOR_CHANNEL_ID` 의 **ID 로** 찾는다 (이름은 보지 않는다).
 비어 있으면 카테고리 목록 **맨 위**로 옮긴다. ID 가 있는데 그 카테고리를 찾지 못해도 실패하지 않는다 — 경고 로그를 남기고
 **맨 위**로 옮긴다.
 
@@ -93,8 +93,8 @@ POST /api/v1/studies
 | **400** | `studyName` 누락·공백·96자 초과, 또는 바디가 JSON 이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
 | **409** | 같은 `studyName` 의 스터디가 이미 있거나 만드는 중임 | 중복 요청 차단. SQLite 예약과 Discord 의 동명 카테고리로 판단한다 — [중복 요청](#중복-요청) 참고. Discord 자체는 동명 카테고리를 허용하므로 직접 확인해야 한다 |
 | **502** | Discord 가 생성을 거부 | 봇 권한 부족(`Manage Channels` / `Manage Roles`), 길드 한도 초과(채널 500개, 역할 250개), 그 밖의 Discord 5xx |
-| **409** | `DISCORD_GUILD_ID` 설정 없음 | 서버 설정 문제. `detail` 로 중복 409 와 구분한다 |
-| **404** | 봇이 `DISCORD_GUILD_ID` 길드를 찾지 못함 | 서버 설정 문제(ID 오타, 봇이 그 길드에 없음) |
+| **409** | `DISCORD_CONFIG_GUILD_ID` 설정 없음 | 서버 설정 문제. `detail` 로 중복 409 와 구분한다 |
+| **404** | 봇이 `DISCORD_CONFIG_GUILD_ID` 길드를 찾지 못함 | 서버 설정 문제(ID 오타, 봇이 그 길드에 없음) |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
 503 · 502 는 **재시도 가능**하다. 400 · 401 · 404 는 조건이 바뀌기 전에는 재시도해도 같다.

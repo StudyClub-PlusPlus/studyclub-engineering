@@ -23,7 +23,7 @@ def resolve_guild(request: Request) -> discord.Guild:
 
     settings = request.app.state.settings
     if settings.guild_id is None:
-        raise HTTPException(status_code=409, detail="no DISCORD_GUILD_ID configured")
+        raise HTTPException(status_code=409, detail="no DISCORD_CONFIG_GUILD_ID configured")
 
     guild = bot.get_guild(settings.guild_id)
     if guild is None:
