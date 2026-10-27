@@ -119,7 +119,6 @@ back-office 에서 로그인 버튼을 누르면:
 | 변수 | 설명 | 위치 |
 |------|------|------|
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth Client ID | `.env.local` |
-| `NEXT_PUBLIC_APP_URL` | 앱 도메인 (postMessage targetOrigin, e.g. `http://localhost:4700`) | `.env.local` |
 | `API_BASE_URL` | 백엔드 API 주소 | `.env.local` |
 
 `NEXT_PUBLIC_` 접두사 변수만 클라이언트 번들에 포함됨. 시크릿은 절대 `NEXT_PUBLIC_` 으로 시작하지 않도록 주의.

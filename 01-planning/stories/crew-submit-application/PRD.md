@@ -297,7 +297,7 @@ erDiagram
 | BE | `POST /api/studies/{studyId}/applications` | 구현완료 — 같은 트랜잭션에서 기본 반 명부 편입, 모집 회차 행 잠금 (→ [share 10-18](../../../docs/share/2026-10-18-roster-on-apply.md)) | 없음 |
 | BE | `GET /api/studies/{studyId}/applications/me` | 구현완료 | 없음 |
 | BE | `PATCH /api/me` (별명 갱신) | 있음 · 엔드포인트 표가 있는 스펙 없음 | [profile-edit 스펙](../../../specs/profile-edit/spec.md)에 표를 둔다 |
-| BE | `POST /api/me/discord/link` | 구현완료 | 프론트 연결(DSC-04) |
+| BE | `POST /api/me/discord/link` | 구현완료 — 프론트 OAuth 팝업 연결됨 (DSC-04, #369) | 없음 |
 | Playground | 가입 후 선택·신청 복귀·연결 실패 | 구현 · 브라우저 시뮬레이션 | 없음 |
 
 ### 유효값 검증 (Empty / MIN / MAX / ENUM)

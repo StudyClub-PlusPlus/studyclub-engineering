@@ -45,12 +45,12 @@
 
 ## 콜백 페이지 규칙 (구글 로그인 콜백도 같다)
 
-- 쿼리값을 `<script>` 에 넣을 때 `<` 를 `<` 로 바꾼다 (`</script>` 탈출 방지)
+- 쿼리값을 `<script>` 에 넣을 때 `<` 를 `\u003c` 로 바꾼다 (`</script>` 탈출 방지)
 - `postMessage` 대상에 `"*"` 를 쓰지 않는다. 디스코드는 자기 출처, 구글은 자기 출처 · 운영/stage 백오피스 · 로컬 4700/4701
 - 허용 출처를 `NEXT_PUBLIC_*` 로 받지 않는다. 빌드 인자라 서버 라우트 실행 때 비어 있다 (stage 실측 2026-10-27)
 
 ## 실측 (2026-10-27, stage)
 
 - `GET /api/auth/discord/callback` 200, `postMessage(data, window.location.origin)`
-- 구글 콜백 `code=</script>…` 는 `</script` 로 이스케이프되어 나온다
+- 구글 콜백 `code=</script>…` 는 `\u003c/script` 로 이스케이프되어 나온다
 - stage 에 OAuth 키가 들어가기 전이라 실제 디스코드 왕복은 아직 못 봤다

@@ -139,7 +139,9 @@
       "navigatorOf": [],
       "dormant": true,
       "joinedAt": "2026-08-12T03:41:09Z",
-      "roleChangeBlockedReason": "CANNOT_CHANGE_OWN_ROLE"
+      "roleChangeBlockedReason": "CANNOT_CHANGE_OWN_ROLE",
+      "discordLinked": true,
+      "discordHandle": "gaon_dc"
     },
     {
       "id": 18,
@@ -152,7 +154,9 @@
       ],
       "dormant": false,
       "joinedAt": "2026-09-01T11:00:00Z",
-      "roleChangeBlockedReason": null
+      "roleChangeBlockedReason": null,
+      "discordLinked": false,
+      "discordHandle": null
     },
     {
       "id": 27,
@@ -162,7 +166,9 @@
       "navigatorOf": [],
       "dormant": true,
       "joinedAt": "2026-09-30T08:15:42Z",
-      "roleChangeBlockedReason": null
+      "roleChangeBlockedReason": null,
+      "discordLinked": true,
+      "discordHandle": "dc_user"
     }
   ],
   "total": 134,
