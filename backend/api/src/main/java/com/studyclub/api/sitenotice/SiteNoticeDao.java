@@ -8,4 +8,9 @@ interface SiteNoticeDao {
 
     /** 사이트 목록 — 살아 있는 공지를 {@code ID DESC} 로. */
     List<SiteNotice> findAlive(int offset, int limit);
+
+    /** 콘솔 목록 — 검색·정렬이 적용된 살아 있는 공지. */
+    List<SiteNotice> findForAdmin(AdminSiteNoticeListFilter filter, int offset, int limit);
+
+    long countForAdmin(AdminSiteNoticeListFilter filter);
 }

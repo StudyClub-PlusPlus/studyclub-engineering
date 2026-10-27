@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 사용자 사이트의 사이트 공지 읽기 — 비로그인 포함 누구나 (specs/site-notice/spec.md). */
+/**
+ * 사용자 사이트의 사이트 공지 읽기 — 비로그인 포함 누구나 (specs/site-notice/spec.md). 콘솔은 {@link
+ * AdminSiteNoticeController} 를 쓴다 — 관객이 다른 경로는 섞지 않는다.
+ */
 @Tag(name = "사이트 공지", description = "캡틴이 올린 사이트 전체 공지를 읽는다")
 @RestController
 @RequestMapping("/api/notices")
