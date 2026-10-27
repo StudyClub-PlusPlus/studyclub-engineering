@@ -8,11 +8,15 @@ on:
       - 'frontend/apps/playground/**'
       - 'frontend/packages/**'
       - '01-planning/stories/**'
+      # pnpm-lock.yaml·package.json·turbo.json·tsconfig.base.json 같은 루트 설정
+      - 'frontend/*'
+      - '.github/workflows/playground-beta.yaml'
   pull_request:
     paths:
       - 'frontend/apps/playground/**'
       - 'frontend/packages/**'
       - '01-planning/stories/**'
+      - 'frontend/*'
       - '.github/workflows/playground-beta.yaml'
   workflow_dispatch:
 

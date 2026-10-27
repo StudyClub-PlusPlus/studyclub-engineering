@@ -75,6 +75,8 @@ function account(patch: Partial<ApiAdminAccount> = {}): ApiAdminAccount {
     dormant: false,
     joinedAt: '2026-09-01T11:00:00Z',
     roleChangeBlockedReason: null,
+    discordLinked: false,
+    discordHandle: null,
     ...patch,
   };
 }

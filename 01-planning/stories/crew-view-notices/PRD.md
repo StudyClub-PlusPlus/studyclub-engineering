@@ -97,7 +97,7 @@ flowchart LR
 |---|---|---|---|
 | FE | core-front `/notices` 목록 | 없음 — 프로토만 있다 | 프로토 `proto/core/[locale]/notices` 대로. 비로그인 접근 허용 (완료 기준 1·2) |
 | FE | core-front `/notices/{id}` 상세 | 없음 | 평문 · URL 링크 · 이전·다음 · 목록으로 (완료 기준 3~6) |
-| BE | `GET /api/notices` · `GET /api/notices/{id}` | 없음 · **스펙 없음** | 스펙 → 구현. 삭제 건 제외, 상세는 404. [captain-post-notice](../captain-post-notice/PRD.md) 의 공지 테이블을 쓴다 |
+| BE | `GET /api/notices` · `GET /api/notices/{id}` | 스펙작성중 — 코드 없음 | [site-notice 스펙](../../../specs/site-notice/spec.md)대로 구현. 삭제 건 제외, 상세는 404. [captain-post-notice](../captain-post-notice/PRD.md) 의 공지 테이블을 쓴다 |
 
 - **범위 밖** — 댓글 · 반응 · 새 공지 뱃지 · 알림 메일 · 검색
 

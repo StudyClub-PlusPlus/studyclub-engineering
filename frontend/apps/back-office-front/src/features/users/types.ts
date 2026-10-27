@@ -5,7 +5,7 @@
 export type SystemRole = 'ADMIN' | 'MEMBER';
 
 /** 이 행의 권한을 지금 바꿀 수 없는 이유. 판정은 서버가 하고 화면은 문구만 띄운다. */
-export type RoleChangeBlockedReason = 'CANNOT_CHANGE_OWN_ROLE' | 'LAST_ADMIN_REQUIRED' | 'DISCORD_LINK_REQUIRED';
+export type RoleChangeBlockedReason = 'CANNOT_CHANGE_OWN_ROLE' | 'LAST_ADMIN_REQUIRED';
 
 export type ApiAdminAccount = {
   id: number;
@@ -20,6 +20,9 @@ export type ApiAdminAccount = {
   dormant: boolean;
   joinedAt: string;
   roleChangeBlockedReason: RoleChangeBlockedReason | null;
+  discordLinked: boolean;
+  /** 연동한 디스코드 username (표시 이름 아님). 미연동이면 null. 숫자 ID 는 내려오지 않는다 */
+  discordHandle: string | null;
 };
 
 export type ApiAdminAccountPage = {

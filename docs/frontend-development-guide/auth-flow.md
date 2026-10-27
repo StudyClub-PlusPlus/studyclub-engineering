@@ -25,7 +25,7 @@
 3. Google OAuth Consent → 팝업 창의 /api/auth/callback 으로 code 전달
    ↓
 4. /api/auth/callback (Route Handler, 팝업 창)
-   → window.opener.postMessage({ source: "studyclub-oauth", code }, NEXT_PUBLIC_APP_URL)
+   → window.opener.postMessage({ source: "studyclub-oauth", code }, <허용 출처>)
    → 팝업 창 닫기 (window.close())
    ↓
 5. 부모 창 message 이벤트 수신 (login/page.tsx)
@@ -40,12 +40,13 @@
 
 ### /api/auth/callback 보안 주의
 
-`postMessage` 의 `targetOrigin` 은 반드시 `NEXT_PUBLIC_APP_URL` 로 고정한다. `"*"` 를 쓰면 다른 탭에 열린 악성 페이지가 Google 인가 코드를 수신할 수 있다.
+`postMessage` 의 `targetOrigin` 에 `"*"` 를 쓰지 않는다. 쓰면 아무 사이트나 이 팝업을 열어 Google 인가 코드를 받는다. 받는 쪽은 core-front 자기 출처 · 백오피스(운영·stage 주소) · 로컬 4700/4701 로 한정한다. 쿼리값을 `<script>` 에 넣을 때는 `<` 를 `\u003c` 로 이스케이프한다 (`</script>` 탈출 방지).
 
 ```typescript
 // app/api/auth/callback/route.ts
-const appOrigin = process.env.NEXT_PUBLIC_APP_URL || "*";
-window.opener.postMessage(data, appOrigin);
+// env 가 아니라 주소를 적는다 — NEXT_PUBLIC_* 는 빌드 인자라 서버 라우트 실행 때 비어 있다
+const OPENER_ORIGINS = ['https://back-office.studyclub.life', 'https://back-office-stage.studyclub.life', 'http://localhost:4700', 'http://localhost:4701'];
+// [window.location.origin, ...OPENER_ORIGINS] 각각으로 postMessage — 맞지 않는 출처는 브라우저가 버린다
 ```
 
 ### BFF Route Handler 역할 (social/login)
@@ -118,7 +119,6 @@ back-office 에서 로그인 버튼을 누르면:
 | 변수 | 설명 | 위치 |
 |------|------|------|
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth Client ID | `.env.local` |
-| `NEXT_PUBLIC_APP_URL` | 앱 도메인 (postMessage targetOrigin, e.g. `http://localhost:4700`) | `.env.local` |
 | `API_BASE_URL` | 백엔드 API 주소 | `.env.local` |
 
 `NEXT_PUBLIC_` 접두사 변수만 클라이언트 번들에 포함됨. 시크릿은 절대 `NEXT_PUBLIC_` 으로 시작하지 않도록 주의.

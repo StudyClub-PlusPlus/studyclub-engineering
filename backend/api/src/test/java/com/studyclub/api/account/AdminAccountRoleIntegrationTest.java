@@ -63,7 +63,7 @@ class AdminAccountRoleIntegrationTest {
         insertAccount(MEMBER_REQUESTER_ID, SystemRole.MEMBER, now);
         insertAccount(TARGET_MEMBER_ID, SystemRole.MEMBER, now);
         insertAccount(OTHER_ADMIN_ID, SystemRole.ADMIN, now);
-        // 캡틴으로 올릴 대상은 디스코드를 연동해 둔다 (STD-05). MEMBER_REQUESTER_ID 는 미연동
+        // TARGET_MEMBER_ID 는 연동, MEMBER_REQUESTER_ID 는 미연동 — 권한 변경은 둘 다 된다 (promotesUnlinkedMember)
         jdbcTemplate.update(
                 "UPDATE ACCOUNT SET DISCORD_ID = ? WHERE ID = ?",
                 "rolechange-" + TARGET_MEMBER_ID,
@@ -76,13 +76,12 @@ class AdminAccountRoleIntegrationTest {
     }
 
     @Test
-    @DisplayName("409 - 디스코드 미연동 크루를 캡틴으로 올리면 DISCORD_LINK_REQUIRED, 값은 그대로")
-    void rejectsPromotingUnlinkedMember() {
+    @DisplayName("성공 - 디스코드 미연동 크루도 캡틴으로 올린다 (2026-10-27, 연동은 필수가 아니다)")
+    void promotesUnlinkedMember() {
         var response = patch(MEMBER_REQUESTER_ID, ADMIN_ID, "ADMIN");
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).containsEntry("errorCode", "DISCORD_LINK_REQUIRED");
-        assertThat(roleOf(MEMBER_REQUESTER_ID)).isEqualTo("MEMBER");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(roleOf(MEMBER_REQUESTER_ID)).isEqualTo("ADMIN");
     }
 
     @Test

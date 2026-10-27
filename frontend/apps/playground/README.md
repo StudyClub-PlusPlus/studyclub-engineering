@@ -32,7 +32,7 @@ pnpm --filter playground run dev
 ## 화면 하나 추가하기
 
 > 여기는 컴포넌트를 조립해 보는 **연습 화면**입니다. 유저스토리 프로토타입은 [`/proto`](#프로토-proto) 아래에 만들고,
-> 순서는 [`/prototype` 스킬](../../../.claude/skills/prototype.md)을 따릅니다.
+> 순서는 [`/prototype` 스킬](../../../.claude/skills/prototype/SKILL.md)을 따릅니다.
 
 ```bash
 cd "studyclub-engineering/frontend/apps/playground/src/app/(site)/screens"

@@ -30,12 +30,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 사용자 사이트 「스터디 일정」 — 분반 회차 조회·추가·수정·삭제, 발표 신청, 규칙 저장 (specs/study-meeting/spec.md).
+ * 사용자 사이트 「스터디 일정」 — 분반 회차 조회·추가·수정·삭제, 발표 신청, 규칙 저장 (specs/study-meeting/spec.md). 백오피스 일정 탭의 회차
+ * 쓰기 · 규칙({@code admin*})도 같은 코드를 탄다 — 권한만 {@link EditAccess} 로 갈린다.
  *
  * <p>쓰기는 분반 행 → 분반 회차 순으로 잠근 뒤 검증한다. 디스코드 출석이 같은 회차 잠금으로 회차를 자동 시작하므로, 잠금을 쥔 뒤에 「시작한 회차」 를 판정해야 판정
  * 직후 디스코드가 그 회차를 여는 일이 없다.
@@ -194,40 +196,55 @@ public class StudyMeetingService {
 
     @Transactional
     public void create(Long accountId, Long studyId, StudyMeetingRequests.Create request) {
+        createMeetings(
+                studyId,
+                request.studyGroupId(),
+                request.scheduledAts(),
+                request.title(),
+                site(accountId, EDIT_FORBIDDEN, this::notThisStudy));
+    }
+
+    /** 백오피스 회차 추가 — 캡틴이면 어느 반이든. 반은 경로로 받는다. */
+    @Transactional
+    public void adminCreate(Long studyId, Long groupId, StudyMeetingRequests.AdminCreate request) {
+        createMeetings(studyId, groupId, request.scheduledAts(), request.title(), adminAccess);
+    }
+
+    private void createMeetings(
+            Long studyId,
+            Long groupId,
+            List<Instant> scheduledAts,
+            String title,
+            EditAccess access) {
         // 분반 잠금을 트랜잭션의 첫 조회로 둔다. REPEATABLE READ 스냅샷은 첫 일반 조회 때 잡히므로, 잠금을 쥔 뒤에 읽어야 먼저 끝난 같은 분반 추가가
         // 보인다
-        StudyGroup group = lockGroup(request.studyGroupId());
+        StudyGroup group = lockGroup(groupId);
         Study study = study(studyId);
         if (!group.getStudyId().equals(studyId)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "이 스터디의 분반이 아닙니다.");
+            throw access.wrongStudy().get();
         }
-        studyCaptainGuard.assertCanEditGroup(
-                accountId, study.getCreatedBy(), group.getId(), EDIT_FORBIDDEN);
+        access.assertCanEdit(study, group.getId());
 
         // 회차 행은 잠그지 않는다 — 분반 잠금이 이미 줄을 세운다. 회차 범위를 FOR UPDATE 로 잡으면 회차 없는 두 분반이 같은 인덱스 끝 gap 을 함께
         // 잡고 서로의 INSERT 를 기다리다 교착한다. 추가는 시작 판정이 없어 디스코드 잠금과 맞출 일도 없다
         List<StudyMeeting> existing =
                 studyMeetingRepository.findByStudyGroupIdOrderByScheduledAt(group.getId());
-        new MeetingSchedule(group.getTimezone(), existing)
-                .checkAdd(request.scheduledAts(), Instant.now());
+        new MeetingSchedule(group.getTimezone(), existing).checkAdd(scheduledAts, Instant.now());
 
         // 반복(2개 이상)은 묶음 ID 를 남긴다 — 나중의 묶음 단위 수정·삭제를 위해 (결정 2)
-        String seriesId = request.scheduledAts().size() > 1 ? UUID.randomUUID().toString() : null;
+        String seriesId = scheduledAts.size() > 1 ? UUID.randomUUID().toString() : null;
         // 킥오프는 여기서 만들지 않는다 — 캡틴이 백오피스에서 정한다 (결정 11)
         List<StudyMeeting> created =
                 studyMeetingRepository.saveAll(
                         // 예정 시각 오름차순으로 넣는다. 디스코드 출석은 여러 분반의 회차를 차례로 잠그는데, 그 잠금이 이 분반 앞 gap 을 쥔 상태에서
                         // 뒤쪽 회차를 먼저 넣어 두면 디스코드는 그 미커밋 행을, 이쪽은 앞쪽 gap 을 서로 기다려 교착한다. 앞에서부터 넣으면 아무 행도
                         // 넣기 전에 기다린다
-                        request.scheduledAts().stream()
+                        scheduledAts.stream()
                                 .sorted()
                                 .map(
                                         at ->
                                                 StudyMeeting.schedule(
-                                                        group.getId(),
-                                                        at,
-                                                        request.title(),
-                                                        seriesId))
+                                                        group.getId(), at, title, seriesId))
                                 .toList());
         // 시작 전 ABSENT 는 결석이 아니다 — 내 스터디는 빈칸으로 보이고, 출석률은 지난 회차만 센다
         List<StudyParticipant> roster =
@@ -252,9 +269,25 @@ public class StudyMeetingService {
     @Transactional
     public void update(
             Long accountId, Long studyId, Long meetingId, StudyMeetingRequests.Update request) {
-        LockedMeeting locked = lockMeetingForEdit(accountId, studyId, meetingId);
+        updateMeeting(
+                lockMeetingForEdit(
+                        studyId,
+                        null,
+                        meetingId,
+                        site(accountId, EDIT_FORBIDDEN, this::meetingNotFound)),
+                request);
+    }
+
+    /** 백오피스 회차 수정 — 캡틴이면 어느 반이든. 경로의 반 회차가 아니면 404. 킥오프는 「킥오프 정하기」로만 (사이트와 같다). */
+    @Transactional
+    public void adminUpdate(
+            Long studyId, Long groupId, Long meetingId, StudyMeetingRequests.Update request) {
+        updateMeeting(lockMeetingForEdit(studyId, groupId, meetingId, adminAccess), request);
+    }
+
+    private void updateMeeting(LockedMeeting locked, StudyMeetingRequests.Update request) {
         StudyMeeting meeting = locked.meeting();
-        // 킥오프는 캡틴이 백오피스에서만 정한다 — 이 사이트 API 는 스터디를 만든 캡틴도 막는다 (결정 11)
+        // 킥오프는 「킥오프 정하기」(PUT …/kickoff)로만 정한다 — 사이트 · 백오피스 회차 수정 모두 막는다. 스터디를 만든 캡틴도 (결정 11)
         if (meeting.isKickoff()) {
             throw new BusinessException(ErrorCode.FORBIDDEN, KICKOFF_FORBIDDEN);
         }
@@ -282,6 +315,21 @@ public class StudyMeetingService {
     @Transactional
     public void deleteAll(
             Long accountId, Long studyId, Long studyGroupId, Collection<Long> meetingIds) {
+        deleteMeetings(
+                studyId,
+                studyGroupId,
+                meetingIds,
+                site(accountId, EDIT_FORBIDDEN, this::meetingNotFound));
+    }
+
+    /** 백오피스 회차 일괄 삭제 — 캡틴이면 어느 반이든. 반은 경로로 받는다. */
+    @Transactional
+    public void adminDeleteAll(Long studyId, Long groupId, Collection<Long> meetingIds) {
+        deleteMeetings(studyId, groupId, meetingIds, adminAccess);
+    }
+
+    private void deleteMeetings(
+            Long studyId, Long studyGroupId, Collection<Long> meetingIds, EditAccess access) {
         if (meetingIds == null || meetingIds.isEmpty() || meetingIds.contains(null)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "지울 회차를 골라 주세요.");
         }
@@ -293,10 +341,9 @@ public class StudyMeetingService {
         StudyGroup group = lockGroup(studyGroupId);
         Study study = study(studyId);
         if (!group.getStudyId().equals(studyId)) {
-            throw meetingNotFound();
+            throw access.wrongStudy().get();
         }
-        studyCaptainGuard.assertCanEditGroup(
-                accountId, study.getCreatedBy(), studyGroupId, EDIT_FORBIDDEN);
+        access.assertCanEdit(study, studyGroupId);
         List<StudyMeeting> meetings =
                 studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId);
         // 없는 ID · 다른 분반 회차 · 잠금 대기 중 지워진 회차가 여기서 걸린다
@@ -325,13 +372,26 @@ public class StudyMeetingService {
 
     @Transactional
     public void saveRules(Long accountId, Long studyId, Long groupId, String rules) {
+        changeRules(
+                studyId,
+                groupId,
+                rules,
+                site(accountId, "이 분반의 규칙을 고칠 권한이 없습니다.", this::notThisStudy));
+    }
+
+    /** 백오피스 규칙 저장 — 캡틴이면 어느 반이든. */
+    @Transactional
+    public void adminSaveRules(Long studyId, Long groupId, String rules) {
+        changeRules(studyId, groupId, rules, adminAccess);
+    }
+
+    private void changeRules(Long studyId, Long groupId, String rules, EditAccess access) {
         StudyGroup group = lockGroup(groupId);
         Study study = study(studyId);
         if (!group.getStudyId().equals(studyId)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "이 스터디의 분반이 아닙니다.");
+            throw access.wrongStudy().get();
         }
-        studyCaptainGuard.assertCanEditGroup(
-                accountId, study.getCreatedBy(), groupId, "이 분반의 규칙을 고칠 권한이 없습니다.");
+        access.assertCanEdit(study, groupId);
         group.changeRules(rules);
     }
 
@@ -339,18 +399,22 @@ public class StudyMeetingService {
      * 회차를 엔티티로 읽기 전에 분반부터 잠근다. 먼저 읽어 두면 잠근 뒤 다시 조회해도 영속성 컨텍스트의 낡은 값(START_AT 등)이 남는다. 다른 스터디의 회차는
      * 없는 회차로 본다 (404).
      */
-    private LockedMeeting lockMeetingForEdit(Long accountId, Long studyId, Long meetingId) {
+    private LockedMeeting lockMeetingForEdit(
+            Long studyId, Long expectedGroupId, Long meetingId, EditAccess access) {
         Long groupId =
                 studyMeetingRepository
                         .findStudyGroupIdById(meetingId)
                         .orElseThrow(this::meetingNotFound);
+        // 백오피스는 반을 경로로 받는다 — 다른 반의 회차는 없는 회차로 본다
+        if (expectedGroupId != null && !expectedGroupId.equals(groupId)) {
+            throw meetingNotFound();
+        }
         StudyGroup group = lockGroup(groupId);
         Study study = study(studyId);
         if (!group.getStudyId().equals(studyId)) {
             throw meetingNotFound();
         }
-        studyCaptainGuard.assertCanEditGroup(
-                accountId, study.getCreatedBy(), groupId, EDIT_FORBIDDEN);
+        access.assertCanEdit(study, groupId);
         List<StudyMeeting> meetings = studyMeetingRepository.findByStudyGroupIdForUpdate(groupId);
         return new LockedMeeting(
                 find(meetings, meetingId), new MeetingSchedule(group.getTimezone(), meetings));
@@ -461,6 +525,52 @@ public class StudyMeetingService {
     private BusinessException meetingNotFound() {
         return new BusinessException(ErrorCode.NOT_FOUND, "회차를 찾을 수 없습니다.");
     }
+
+    private BusinessException notThisStudy() {
+        return new BusinessException(ErrorCode.INVALID_INPUT, "이 스터디의 분반이 아닙니다.");
+    }
+
+    private BusinessException groupNotFound() {
+        return new BusinessException(ErrorCode.NOT_FOUND, "분반을 찾을 수 없습니다.");
+    }
+
+    /**
+     * 회차 쓰기 · 규칙의 권한 — 사이트는 그 스터디를 만든 캡틴 · 그 분반 네비게이터({@link
+     * StudyCaptainGuard#assertCanEditGroup}), 백오피스는 컨트롤러의 {@code @RequireAdmin} 이 이미 봤다. 다른 스터디의 반일
+     * 때 던질 예외도 관객마다 다르다 — 사이트는 회차 추가 · 규칙 400 · 수정 · 삭제 404, 백오피스는 모두 404 (기존 백오피스 목록 · 킥오프와 같다).
+     */
+    private interface EditAccess {
+        void assertCanEdit(Study study, Long groupId);
+
+        Supplier<BusinessException> wrongStudy();
+    }
+
+    private EditAccess site(
+            Long accountId, String forbidden, Supplier<BusinessException> wrongStudy) {
+        return new EditAccess() {
+            @Override
+            public void assertCanEdit(Study study, Long groupId) {
+                studyCaptainGuard.assertCanEditGroup(
+                        accountId, study.getCreatedBy(), groupId, forbidden);
+            }
+
+            @Override
+            public Supplier<BusinessException> wrongStudy() {
+                return wrongStudy;
+            }
+        };
+    }
+
+    private final EditAccess adminAccess =
+            new EditAccess() {
+                @Override
+                public void assertCanEdit(Study study, Long groupId) {}
+
+                @Override
+                public Supplier<BusinessException> wrongStudy() {
+                    return StudyMeetingService.this::groupNotFound;
+                }
+            };
 
     private record LockedMeeting(StudyMeeting meeting, MeetingSchedule schedule) {}
 
