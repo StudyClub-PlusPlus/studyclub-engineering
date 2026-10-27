@@ -18,7 +18,7 @@ export type ApiAdminFeedback = {
   /** 제출자. 늘 있다(로그인해야 보낸다). */
   submitter: ApiFeedbackPerson;
   status: FeedbackStatus;
-  /** 완료 처리자(첫 회신을 보낸 캡틴). 완료가 아니면 null — 화면 「—」. */
+  /** 완료 처리자(첫 회신을 보낸 캡틴). 완료가 아니면 null — 화면 「-」. */
   doneBy: ApiFeedbackPerson | null;
 };
 

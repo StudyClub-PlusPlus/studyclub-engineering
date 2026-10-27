@@ -48,7 +48,7 @@ export function personLabel(person: ApiFeedbackPerson): string {
 }
 
 /** 표·상세에서 값이 없을 때. */
-export const EMPTY_VALUE = '—';
+export const EMPTY_VALUE = '-';
 
 /** 화면 크기 — 「390 × 844」. 화면이 안 보냈으면 빈 값. */
 export function viewportLabel(viewport: ApiAdminFeedbackDetail['viewport']): string {

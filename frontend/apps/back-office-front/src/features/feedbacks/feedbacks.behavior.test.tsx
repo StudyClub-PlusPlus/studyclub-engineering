@@ -118,7 +118,7 @@ beforeEach(() => {
 });
 
 describe('운영 목록', () => {
-  it('유형·상태는 문구로, 탈퇴한 제출자·완료 처리자는 「탈퇴한 사용자」, 완료가 아니면 「—」로 적는다', async () => {
+  it('유형·상태는 문구로, 탈퇴한 제출자·완료 처리자는 「탈퇴한 사용자」, 완료가 아니면 「-」로 적는다', async () => {
     httpMock.mockResolvedValue(
       page(
         [
@@ -139,7 +139,7 @@ describe('운영 목록', () => {
     expect(within(rows[0]!).getByText('오류 신고')).toBeInTheDocument();
     expect(within(rows[0]!).getByText('도윤')).toBeInTheDocument();
     expect(within(rows[0]!).getByText('미확인')).toBeInTheDocument();
-    expect(within(rows[0]!).getByText('—')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('-')).toBeInTheDocument();
     // 2줄: 제출자 탈퇴, 완료 처리자 있음
     expect(within(rows[1]!).getByText('문의')).toBeInTheDocument();
     expect(within(rows[1]!).getByText('탈퇴한 사용자')).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('운영 목록', () => {
     // 3줄: 완료 처리자가 탈퇴
     expect(within(rows[2]!).getByText('개선 의견')).toBeInTheDocument();
     expect(within(rows[2]!).getByText('탈퇴한 사용자')).toBeInTheDocument();
-    expect(within(rows[2]!).queryByText('—')).not.toBeInTheDocument();
+    expect(within(rows[2]!).queryByText('-')).not.toBeInTheDocument();
 
     // 제목은 한 줄로 자르고, 가리키면 전체 제목이 뜬다
     expect(within(rows[1]!).getByText('클럽이랑 스터디는 뭐가 다른가요')).toHaveAttribute('title', '클럽이랑 스터디는 뭐가 다른가요');
@@ -316,13 +316,13 @@ describe('운영 상세', () => {
     expect(within(dialog).getByRole('img', { name: '첨부 이미지 2' })).toHaveAttribute('src', 'https://cdn.example/b.webp');
   });
 
-  it('첨부가 없으면 칸을 두지 않고, 모르는 브라우저·화면 크기는 「—」, 탈퇴한 제출자는 「탈퇴한 사용자」', async () => {
+  it('첨부가 없으면 칸을 두지 않고, 모르는 브라우저·화면 크기는 「-」, 탈퇴한 제출자는 「탈퇴한 사용자」', async () => {
     detailServer(detail({ browser: null, viewport: null, submitter: { nickname: null } }), async () => detail());
     renderWith(<FeedbackDetailPage />);
     await screen.findByTestId('feedback-content');
 
     expect(screen.queryByRole('button', { name: /크게 보기/ })).not.toBeInTheDocument();
-    expect(screen.getAllByText('—')).toHaveLength(2);
+    expect(screen.getAllByText('-')).toHaveLength(2);
     expect(screen.getByText('탈퇴한 사용자', { exact: false })).toBeInTheDocument();
   });
 

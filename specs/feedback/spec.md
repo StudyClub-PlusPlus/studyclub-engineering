@@ -495,7 +495,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | items[].submitter | Object | N | 제출자. 늘 있다 (로그인해야 보낸다) | |
 | items[].submitter.nickname | String | Y | **null 이면 탈퇴** — 화면 「탈퇴한 사용자」 | ACCOUNT.NICKNAME (계산: `ACCOUNT_ID` 로 찾은 행이 없으면 null) |
 | items[].status | String | N | `NEW` \| `SEEN` \| `DONE` | FEEDBACK.STATUS |
-| items[].doneBy | Object | Y | 완료 처리자(첫 회신을 보낸 캡틴). **완료가 아니면 null** — 화면 「—」 | |
+| items[].doneBy | Object | Y | 완료 처리자(첫 회신을 보낸 캡틴). **완료가 아니면 null** — 화면 「-」 | |
 | items[].doneBy.nickname | String | Y | null 이면 그 캡틴이 탈퇴 — 화면 「탈퇴한 사용자」 | ACCOUNT.NICKNAME (`DONE_BY_ACCOUNT_ID`) |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면 「총 n건」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
@@ -573,7 +573,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | content | String | N | 평문 — 문자 그대로 출력 | FEEDBACK.CONTENT |
 | images | Array | N | 없으면 `[]` — 화면은 칸을 두지 않는다 | FEEDBACK_IMAGE (`DISPLAY_ORDER`) |
 | images[].url | String | N | | FEEDBACK_IMAGE.IMAGE_URL |
-| browser | String | Y | 「Chrome 141 · macOS」. 모르면 null — 화면 「—」 | FEEDBACK.BROWSER |
+| browser | String | Y | 「Chrome 141 · macOS」. 모르면 null — 화면 「-」 | FEEDBACK.BROWSER |
 | viewport | Object | Y | 화면이 안 보냈으면 null. 화면은 「390 × 844」 로 적는다 | |
 | viewport.width | Integer | N | | FEEDBACK.VIEWPORT_WIDTH |
 | viewport.height | Integer | N | | FEEDBACK.VIEWPORT_HEIGHT |
