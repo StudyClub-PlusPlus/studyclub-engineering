@@ -108,7 +108,10 @@ async def config_print(
 
     logger.info("config print: requested by user %s", ctx.author.id)
     lines = build_lines(ctx.guild, environ)
-    await ctx.send("\n".join(lines) if lines else NOTHING_SET)
+    await ctx.send(
+        "\n".join(lines) if lines else NOTHING_SET,
+        allowed_mentions=discord.AllowedMentions.none(),
+    )
 
 
 def register(bot: commands.Bot, settings: Settings) -> None:
