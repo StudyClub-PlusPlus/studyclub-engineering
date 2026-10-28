@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.studyclub.api.auth.AccountDeletionService;
 import com.studyclub.api.auth.JwtService;
 import com.studyclub.api.discord.DiscordBotClient;
+import com.studyclub.api.study.StudyService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.LeaveReason;
 import com.studyclub.domain.account.SystemRole;
@@ -46,6 +47,9 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -71,7 +75,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:h2:mem:study-notice;MODE=MySQL;DB_CLOSE_DELAY=-1")
+        properties =
+                "spring.datasource.url=jdbc:h2:mem:study-notice;MODE=MySQL;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000")
 @AutoConfigureTestRestTemplate
 class StudyNoticeIntegrationTest {
 
@@ -105,6 +110,7 @@ class StudyNoticeIntegrationTest {
     @Autowired NotificationTemplateRepository templateRepo;
     @Autowired TransactionTemplate tx;
     @Autowired AccountDeletionService accountDeletionService;
+    @Autowired StudyService studyService;
 
     @MockitoBean DiscordBotClient bot;
 
@@ -621,6 +627,74 @@ class StudyNoticeIntegrationTest {
         assertThat(noticeMails())
                 .hasSize(2)
                 .allSatisfy(n -> assertThat(n.getPayload()).containsEntry("senderName", "탈퇴한 회원"));
+    }
+
+    @Test
+    @DisplayName("동시성 - 보낸 사람(담당 캡틴)이 탈퇴하는 중에는 발송이 기다리고, 탈퇴가 끝나면 401 로 거절되어 닉네임이 담긴 메일 행이 남지 않는다")
+    void sendWaitsForSenderWithdrawal() throws Exception {
+        AtomicReference<CompletableFuture<ResponseEntity<Map>>> send = new AtomicReference<>();
+
+        // 탈퇴가 쥐는 첫 잠금(계정 행)을 쥐고 있는 동안 발송을 시작한다. 만든 캡틴은 명부에 없어 반 잠금으로는 서로 막히지 않는다
+        tx.executeWithoutResult(
+                status -> {
+                    accountRepository.findByIdForUpdate(CREATOR_ID).orElseThrow();
+                    send.set(
+                            CompletableFuture.supplyAsync(
+                                    () ->
+                                            post(
+                                                    collection(),
+                                                    sendBody("제목", "본문", List.of("EMAIL"), member),
+                                                    CREATOR_ID)));
+                    pause(700);
+                    assertThat(send.get().isDone())
+                            .as("계정 행을 쥐고 있는 동안 발송은 끝나면 안 된다 (잠그지 않고 앞서 읽으면 탈퇴 뒤에 닉네임을 싣는다)")
+                            .isFalse();
+                    accountDeletionService.deleteAccount(CREATOR_ID, LeaveReason.OTHER);
+                });
+
+        ResponseEntity<Map> response = send.get().get(10, TimeUnit.SECONDS);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(studyNoticeRepo.findAll()).isEmpty();
+        assertThat(noticeMails()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("동시성 - 스터디를 지우는 중에 저장되던 공지도 스터디와 함께 지워진다 (삭제가 반을 먼저 잠그고 공지를 지운다)")
+    void studyDeletionAlsoRemovesNoticeSavedByInFlightSend() throws Exception {
+        AtomicReference<CompletableFuture<Void>> deletion = new AtomicReference<>();
+
+        // 발송은 반 행을 잠그고 공지를 저장한다. 그 저장이 아직 커밋되기 전에 스터디 삭제가 시작된 상황을 만든다
+        tx.executeWithoutResult(
+                status -> {
+                    studyGroupRepo.findByIdForUpdate(group.getId()).orElseThrow();
+                    studyNoticeRepo.save(
+                            StudyNotice.create(
+                                    study.getId(),
+                                    group.getId(),
+                                    LEADER_ID,
+                                    "저장 중인 공지",
+                                    "본문",
+                                    true,
+                                    false,
+                                    List.of(MEMBER_ID)));
+                    deletion.set(
+                            CompletableFuture.runAsync(() -> studyService.delete(study.getId())));
+                    pause(700);
+                    assertThat(deletion.get().isDone()).as("삭제는 반 잠금을 기다린다").isFalse();
+                });
+
+        deletion.get().get(10, TimeUnit.SECONDS);
+        // 반 잠금을 먼저 잡은 삭제가 발송의 커밋을 기다렸다가 공지를 지우므로 남지 않는다
+        assertThat(studyNoticeRepo.findAll()).isEmpty();
+        assertThat(studyRepo.findById(study.getId())).isEmpty();
+    }
+
+    private static void pause(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Test

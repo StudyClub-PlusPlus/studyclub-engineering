@@ -10,6 +10,7 @@ import {
   limitNote,
   mailResultLabel,
   mentionedCount,
+  composeView,
   mergeNoticePages,
   nextNoticeOffset,
   nextRefetchDelay,
@@ -251,5 +252,26 @@ describe('보낸 공지 기록 이어 붙이기', () => {
   it('쪽을 받는 사이 새 공지가 생겨 경계가 밀려도 같은 공지를 한 번만 보여 준다', () => {
     const merged = mergeNoticePages([page(0, [10, 9, 8], 6), page(3, [8, 7, 6], 6)]);
     expect(merged.map((n) => n.noticeId)).toEqual([10, 9, 8, 7, 6]);
+  });
+});
+
+describe('보내기 화면 판정 composeView', () => {
+  it('처음 받는 중이면 불러오는 중, 처음부터 못 받으면 오류', () => {
+    expect(composeView({ hasData: false, isError: false })).toEqual({ kind: 'loading' });
+    expect(composeView({ hasData: false, isError: true, errorStatus: 500 })).toEqual({ kind: 'error' });
+  });
+
+  it('값이 있으면 폼을 그린다', () => {
+    expect(composeView({ hasData: true, isError: false })).toEqual({ kind: 'form', staleError: false });
+  });
+
+  it('작성 중에 다시 받기가 실패해도 폼을 걷지 않고 안내만 더한다 (제목 · 본문이 사라지지 않게)', () => {
+    expect(composeView({ hasData: true, isError: true, errorStatus: 500 })).toEqual({ kind: 'form', staleError: true });
+    expect(composeView({ hasData: true, isError: true, errorStatus: null })).toEqual({ kind: 'form', staleError: true });
+  });
+
+  it('권한이 없어진 것(403)은 값이 있어도 안내 화면으로 바꾼다', () => {
+    expect(composeView({ hasData: true, isError: true, errorStatus: 403 })).toEqual({ kind: 'forbidden' });
+    expect(composeView({ hasData: false, isError: true, errorStatus: 403 })).toEqual({ kind: 'forbidden' });
   });
 });

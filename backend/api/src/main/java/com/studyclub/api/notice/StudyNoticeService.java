@@ -129,6 +129,12 @@ public class StudyNoticeService {
     @Transactional
     public StudyNoticeSendResponse send(
             Long accountId, Long studyId, Long groupId, StudyNoticeRequests.Send request) {
+        // 보낸 사람 계정을 반보다 먼저 잠근다 (탈퇴가 쥐는 순서, 계정 → 반, 와 같아 교착이 없다). 담당 캡틴은 명부에 없어 탈퇴가 반을 잠그지
+        // 않으므로, 이 잠금이 없으면 탈퇴가 끝난 뒤에 이 발송의 메일 행이 앞서 읽은 닉네임을 싣는다. 탈퇴가 먼저면 401 이고, 발송이 먼저면
+        // 탈퇴가 이 발송의 메일 행까지 비식별화한다
+        accountRepository
+                .findByIdForUpdate(accountId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
         // 같은 반의 동시 발송을 줄 세운다 — 한도 판정과 저장 사이에 다른 발송이 끼어들지 못한다
         StudyGroup group =
                 studyGroupRepository

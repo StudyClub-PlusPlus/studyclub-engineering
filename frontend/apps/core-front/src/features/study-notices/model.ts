@@ -84,6 +84,25 @@ export function pruneSelection(selected: ReadonlySet<number>, recipients: ApiNot
  * 쿨다운이 끝나는 때 화면 값(compose)을 다시 받을 때까지의 밀리초. 다시 받을 때가 없으면 false.
  * 다시 받지 않으면 시각이 지나도 서버가 준 `canSend=false` 가 그대로라 버튼이 안 풀린다. 시각이 막 지난 순간에 서버가 아직 막고 있을 수 있어 조금 더 기다린다.
  */
+/**
+ * 보내기 화면을 무엇으로 그릴지. 이미 받은 값이 있으면 다시 받기가 실패해도 폼을 그대로 둔다 — 폼을 걷으면 제목 · 본문이 컴포넌트 안의
+ * 상태라 사라진다(쿨다운이 끝나 자동으로 다시 받다가 실패하는 경우). 권한이 없어진 것(403)만 안내 화면으로 바꾼다.
+ *
+ * - `loading`: 처음 받는 중 · `error`: 처음부터 못 받음 · `forbidden`: 권한 없음
+ * - `form`: 폼을 그린다. `staleError` 가 true 면 최신 값을 못 받았다는 안내를 폼 위에 함께 보인다
+ */
+export type ComposeView =
+  | { kind: 'loading' }
+  | { kind: 'error' }
+  | { kind: 'forbidden' }
+  | { kind: 'form'; staleError: boolean };
+
+export function composeView(state: { hasData: boolean; isError: boolean; errorStatus?: number | null }): ComposeView {
+  if (state.isError && state.errorStatus === 403) return { kind: 'forbidden' };
+  if (state.hasData) return { kind: 'form', staleError: state.isError };
+  return state.isError ? { kind: 'error' } : { kind: 'loading' };
+}
+
 /** 보낸 공지 기록 한 쪽의 크기. 서버가 한 번에 주는 최대(50)보다 작아야 「더 보기」가 이어진다. */
 export const NOTICE_PAGE = 20;
 

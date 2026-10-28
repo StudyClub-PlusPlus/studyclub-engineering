@@ -5,6 +5,7 @@ import { Button } from '@studyclub/ui';
 import { useManage } from '@/components/StudyManageShell';
 import { NoticeComposer } from '@/features/study-notices/components/NoticeComposer';
 import { NoticeHistory } from '@/features/study-notices/components/NoticeHistory';
+import { composeView } from '@/features/study-notices/model';
 import { useNoticeCompose } from '@/features/study-notices/queries';
 import { ApiError } from '@/lib/http';
 import { FORM } from '@/lib/layout';
@@ -21,14 +22,19 @@ export default function StudyManageNoticePage() {
   if (!canEdit) {
     return <Message title='공지는 네비게이터와 캡틴만 보낼 수 있습니다.' body='보낸 공지는 메일과 디스코드로 받습니다.' />;
   }
-  if (compose.isPending) {
+  const view = composeView({
+    hasData: compose.data !== undefined,
+    isError: compose.isError,
+    errorStatus: compose.error instanceof ApiError ? compose.error.status : null,
+  });
+  if (view.kind === 'loading') {
     return <p className='py-16 text-center text-sm text-fg-secondary'>불러오는 중…</p>;
   }
-  if (compose.isError) {
-    const forbidden = compose.error instanceof ApiError && compose.error.status === 403;
-    return forbidden ? (
-      <Message title='공지는 네비게이터와 캡틴만 보낼 수 있습니다.' body='보낸 공지는 메일과 디스코드로 받습니다.' />
-    ) : (
+  if (view.kind === 'forbidden') {
+    return <Message title='공지는 네비게이터와 캡틴만 보낼 수 있습니다.' body='보낸 공지는 메일과 디스코드로 받습니다.' />;
+  }
+  if (view.kind === 'error' || !compose.data) {
+    return (
       <Message title='보내기 화면을 불러오지 못했습니다.' body='잠시 뒤에 다시 시도해 주세요.'>
         <Button className='mt-4' size='sm' variant='secondary' onClick={() => compose.refetch()}>
           다시 시도
@@ -39,6 +45,14 @@ export default function StudyManageNoticePage() {
 
   return (
     <div className={`${FORM} space-y-6`}>
+      {view.staleError && (
+        <div role='alert' className='card flex items-center justify-between gap-3 px-4 py-3 text-sm text-fg-secondary'>
+          <span>최신 상태를 불러오지 못했습니다. 쓰던 내용은 그대로 있습니다.</span>
+          <Button size='sm' variant='secondary' onClick={() => compose.refetch()}>
+            다시 시도
+          </Button>
+        </div>
+      )}
       <NoticeComposer studyId={studyId} groupId={groupId} compose={compose.data} />
       <NoticeHistory studyId={studyId} groupId={groupId} />
     </div>
