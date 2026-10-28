@@ -419,7 +419,7 @@ def test_without_the_navigator_setting_conflicts_and_changes_nothing(method, tmp
     response = _call(_client(_bot(guild), tmp_path, navigator_role_id=None), method)
 
     assert response.status_code == 409
-    assert "DISCORD_NAVIGATOR_ROLE_ID" in response.json()["detail"]
+    assert "DISCORD_CONFIG_NAVIGATOR_ROLE_ID" in response.json()["detail"]
     assert _changes(guild, method) == []
 
 
@@ -557,7 +557,7 @@ def test_study_role_refuses_captain_navigator_and_everyone(method, role_id, tmp_
 @both
 @pytest.mark.parametrize(
     "missing, setting",
-    [("captain_role_id", "DISCORD_CAPTAIN_ROLE_ID"), ("navigator_role_id", "DISCORD_NAVIGATOR_ROLE_ID")],
+    [("captain_role_id", "DISCORD_CONFIG_CAPTAIN_ROLE_ID"), ("navigator_role_id", "DISCORD_CONFIG_NAVIGATOR_ROLE_ID")],
 )
 def test_study_role_without_a_role_setting_conflicts(method, missing, setting, tmp_path):
     guild = FakeGuild()

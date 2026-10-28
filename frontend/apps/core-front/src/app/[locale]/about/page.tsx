@@ -173,12 +173,12 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   return (
     <div className='mx-auto max-w-6xl px-6 py-14'>
       <header className='max-w-2xl'>
-        <h1 className='text-3xl font-extrabold tracking-tight sm:text-4xl'>{m('about.title', locale)}</h1>
-        <p className='mt-3 text-lg text-[var(--color-fg-muted)]'>{m('about.subtitle', locale)}</p>
+        <h1 className='type-headline-lg sm:type-headline-lg'>{m('about.title', locale)}</h1>
+        <p className='mt-3 type-body-lg text-[var(--color-fg-muted)] type-prose'>{m('about.subtitle', locale)}</p>
       </header>
 
       <div className='card mt-10 p-8'>
-        <div className='flex max-w-3xl flex-col gap-4 text-lg leading-loose text-[var(--color-fg)]'>
+        <div className='flex max-w-3xl flex-col gap-4 type-body-lg text-[var(--color-fg)]'>
           {intro.map((p, i) => (
             <p key={i}>{t(p, locale)}</p>
           ))}
@@ -186,13 +186,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         <div className='mt-6 grid gap-4 md:grid-cols-2'>
           {problems.map((pr, i) => (
             <div key={i} className='rounded-xl border border-[var(--color-border)] p-5'>
-              <h3 className='text-base font-bold text-[var(--color-fg)]'>
+              <h3 className='type-title-md text-[var(--color-fg)]'>
                 <span style={{ color: 'var(--color-brand)' }}>{i + 1}. </span>
                 {t(pr.q, locale)}
               </h3>
               <ul className='mt-3 flex flex-col gap-2'>
                 {pr.a.map((line, j) => (
-                  <li key={j} className='flex items-start gap-2 text-base leading-relaxed text-[var(--color-fg-muted)]'>
+                  <li key={j} className='flex items-start gap-2 type-body-md text-[var(--color-fg-muted)]'>
                     <span className='mt-2.5 h-1 w-1 shrink-0 rounded-full bg-[var(--color-fg-faint)]' />
                     {t(line, locale)}
                   </li>
@@ -201,13 +201,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
             </div>
           ))}
         </div>
-        <p className='mt-6 max-w-3xl text-lg font-semibold leading-loose text-[var(--color-fg)]'>{t(outro, locale)}</p>
+        <p className='mt-6 max-w-3xl type-title-md text-[var(--color-fg)]'>{t(outro, locale)}</p>
       </div>
 
       {/* 우리의 이야기 — 실리콘밸리에서 시작해 한국까지 */}
       <div className='mt-10'>
-        <h2 className='text-xl font-bold tracking-tight'>{t({ ko: '실리콘밸리에서 시작했어요', en: 'It started in Silicon Valley' }, locale)}</h2>
-        <p className='mt-2 max-w-3xl text-base leading-relaxed text-[var(--color-fg-muted)]'>
+        <h2 className='type-title-lg'>{t({ ko: '실리콘밸리에서 시작했어요', en: 'It started in Silicon Valley' }, locale)}</h2>
+        <p className='mt-2 max-w-3xl type-body-md text-[var(--color-fg-muted)]'>
           {t(
             {
               ko: '베이 에어리어에서 일하는 한인 엔지니어들이 같이 공부하려고 모인 것이 시작이에요. 미국을 중심으로 자라 캐나다와 한국까지 넓어졌고, 지금은 시차를 넘어 함께 공부하며 서로의 경험과 기회를 나눠요.',
@@ -220,15 +220,15 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           {story.map((st) => (
             <li key={st.art} className='card flex flex-col gap-3 p-6'>
               <Image src={`/about-art/${st.art}.webp`} alt='' width={64} height={64} className='h-16 w-16' />
-              <div className='text-sm font-semibold text-[var(--color-brand)]'>{t(st.when, locale)}</div>
-              <div className='text-lg font-bold tracking-tight'>{t(st.title, locale)}</div>
-              <p className='text-base leading-relaxed text-[var(--color-fg-muted)]'>{t(st.body, locale)}</p>
+              <div className='type-label-lg text-[var(--color-brand)]'>{t(st.when, locale)}</div>
+              <div className='type-title-md'>{t(st.title, locale)}</div>
+              <p className='type-body-md text-[var(--color-fg-muted)]'>{t(st.body, locale)}</p>
             </li>
           ))}
         </ol>
         <ul className='mt-4 grid gap-3 sm:grid-cols-3'>
           {networking.map((n, i) => (
-            <li key={i} className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-base leading-relaxed'>
+            <li key={i} className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 type-body-md'>
               <span className='font-semibold'>{t(n.title, locale)}</span>
               <span className='text-[var(--color-fg-muted)]'> {t(n.body, locale)}</span>
             </li>
@@ -238,8 +238,8 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
       {/* 역할 — 크루 · 네비게이터 · 캡틴 */}
       <div className='mt-10'>
-        <h2 className='text-xl font-bold tracking-tight'>{m('about.roles_title', locale)}</h2>
-        <p className='mt-2 max-w-3xl text-base leading-relaxed text-[var(--color-fg-muted)]'>
+        <h2 className='type-title-lg'>{m('about.roles_title', locale)}</h2>
+        <p className='mt-2 max-w-3xl type-body-md text-[var(--color-fg-muted)]'>
           {m('about.roles_body', locale)}
         </p>
         <div className='mt-5 grid gap-4 md:grid-cols-3'>
@@ -251,11 +251,11 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
               style={{ background: 'var(--color-brand-subtle)', borderColor: 'var(--color-brand-subtle)' }}
             >
               <Image src={`/about-art/role-${r.id}.webp`} alt='' width={72} height={72} className='h-18 w-18' />
-              <h3 className='mt-3 text-lg font-bold tracking-tight'>{t(r.name, locale)}</h3>
-              <p className='mt-1 text-sm font-medium text-[var(--color-brand)]'>{t(r.tagline, locale)}</p>
+              <h3 className='mt-3 type-title-md'>{t(r.name, locale)}</h3>
+              <p className='mt-1 type-label-lg text-[var(--color-brand)]'>{t(r.tagline, locale)}</p>
               <ul className='mt-4 flex flex-col gap-2.5'>
                 {r.points.map((p, i) => (
-                  <li key={i} className='flex items-start gap-2 text-base leading-relaxed text-[var(--color-fg)]'>
+                  <li key={i} className='flex items-start gap-2 type-body-md text-[var(--color-fg)]'>
                     <span className='mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-brand)' }} />
                     {t(p, locale)}
                   </li>
@@ -269,13 +269,13 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       {/* 캡틴 (운영진) 소개 */}
       {operators.length > 0 && (
         <div className='mt-10'>
-          <h2 className='mb-4 text-xl font-bold tracking-tight'>{m('about.operators', locale)}</h2>
+          <h2 className='mb-4 type-title-lg'>{m('about.operators', locale)}</h2>
           <div className='grid gap-4 sm:grid-cols-2'>
             {operators.map((op) => (
               <div key={op.id} className='card p-6'>
-                <div className='text-base font-bold'>{t(op.name, locale)}</div>
-                <div className='mt-0.5 text-sm font-medium text-[var(--color-brand)]'>{t(op.role, locale)}</div>
-                <p className='mt-2.5 text-sm leading-relaxed text-[var(--color-fg-muted)]'>{t(op.bio, locale)}</p>
+                <div className='type-title-md'>{t(op.name, locale)}</div>
+                <div className='mt-0.5 type-label-lg text-[var(--color-brand)]'>{t(op.role, locale)}</div>
+                <p className='mt-2.5 type-body-sm text-[var(--color-fg-muted)]'>{t(op.bio, locale)}</p>
               </div>
             ))}
           </div>
@@ -284,11 +284,11 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
       {/* 어디서 함께하나 — 지도 + 지역별 시간대 */}
       <div className='mt-10'>
-        <h2 className='flex items-center gap-2 text-xl font-bold tracking-tight'>
+        <h2 className='flex items-center gap-2 type-title-lg'>
           <Globe2 size={20} style={{ color: 'var(--color-brand)' }} />
           {t({ ko: '어디서 함께하나요', en: 'Where we are' }, locale)}
         </h2>
-        <p className='mt-2 mb-4 max-w-3xl text-base leading-relaxed text-[var(--color-fg-muted)]'>
+        <p className='mt-2 mb-4 max-w-3xl type-body-md text-[var(--color-fg-muted)]'>
           {t(
             {
               ko: '미국 서부부터 동부, 캐나다, 한국, 유럽까지. 시차가 달라도 같은 스터디에서 만나요.',
@@ -302,7 +302,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
       {/* 지금 각 지역의 시간 */}
       <div className='mt-10'>
-        <h2 className='mb-4 text-xl font-bold tracking-tight'>{t({ ko: '지금, 각 지역의 시간', en: 'Right now, around the world' }, locale)}</h2>
+        <h2 className='mb-4 type-title-lg'>{t({ ko: '지금, 각 지역의 시간', en: 'Right now, around the world' }, locale)}</h2>
         <RegionClocks locale={locale} />
       </div>
 

@@ -46,7 +46,7 @@ export function EmailCell({
           disabled={reveal.isPending}
           aria-busy={reveal.isPending}
           aria-label={`${displayName} 이메일 보기`}
-          className='shrink-0 text-xs font-semibold text-brand hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60'
+          className='shrink-0 type-label-lg text-brand hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60'
         >
           {reveal.isPending ? '확인 중…' : '보기'}
         </button>

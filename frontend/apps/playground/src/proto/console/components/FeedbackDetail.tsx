@@ -55,7 +55,7 @@ export function FeedbackDetail({ id }: { id: string }) {
   if (f === undefined) return <div className='h-60 animate-pulse rounded-card bg-surface-2' />;
   if (f === null)
     return (
-      <div className='py-20 text-center text-sm text-fg-muted'>
+      <div className='py-20 text-center type-body-sm text-fg-muted'>
         삭제되었거나 없는 문의·오류 신고입니다.{' '}
         <Link href='/proto/console/feedbacks' className='font-semibold text-brand hover:underline'>
           목록으로
@@ -105,7 +105,7 @@ export function FeedbackDetail({ id }: { id: string }) {
     <div className='flex flex-col gap-4'>
       <Link
         href='/proto/console/feedbacks'
-        className='inline-flex w-fit items-center gap-1 text-sm font-medium text-fg-secondary hover:text-fg'
+        className='inline-flex w-fit items-center gap-1 type-label-lg text-fg-secondary hover:text-fg'
       >
         <ChevronLeft size={15} /> 목록으로
       </Link>
@@ -115,13 +115,13 @@ export function FeedbackDetail({ id }: { id: string }) {
           <div className='min-w-0'>
             <div className='flex min-w-0 items-center gap-2'>
               <Badge tone={TYPE_TONE[f.type]}>{FEEDBACK_TYPE_LABEL[f.type]}</Badge>
-              <h1 className='min-w-0 break-words text-xl font-extrabold tracking-tight'>{f.title}</h1>
+              <h1 className='min-w-0 break-words type-headline-md'>{f.title}</h1>
             </div>
-            <p className='tnum mt-1.5 text-sm text-fg-muted'>
+            <p className='tnum mt-1.5 type-body-sm text-fg-muted'>
               {submitterLabel(f)} · {stamp(f.createdAt)}
             </p>
           </div>
-          <div data-anno='feedback-admin:3' className='flex shrink-0 items-center gap-2 text-sm text-fg-secondary'>
+          <div data-anno='feedback-admin:3' className='flex shrink-0 items-center gap-2 type-body-sm text-fg-secondary'>
             상태
             <StatusPicker value={f.status} onChange={changeStatus} />
           </div>
@@ -129,7 +129,7 @@ export function FeedbackDetail({ id }: { id: string }) {
 
         {/* 평문 — 태그도 글자 그대로. 긴 줄이 카드 밖으로 넘치지 않게 */}
         <section className='px-6 py-5'>
-          <p className='whitespace-pre-wrap break-words text-base leading-relaxed text-fg [overflow-wrap:anywhere]'>{f.body}</p>
+          <p className='whitespace-pre-wrap break-words type-body-md text-fg [overflow-wrap:anywhere]'>{f.body}</p>
         </section>
 
         {f.images && f.images.length > 0 && (
@@ -152,7 +152,7 @@ export function FeedbackDetail({ id }: { id: string }) {
         )}
 
         <section data-anno='feedback-admin:4' className='px-6 py-5'>
-          <dl className='grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5 text-sm'>
+          <dl className='grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5 type-body-sm'>
             <dt className='text-fg-muted'>브라우저</dt>
             <dd className='text-fg'>{describeAgent(f.userAgent)}</dd>
             <dt className='text-fg-muted'>화면 크기</dt>
@@ -165,10 +165,10 @@ export function FeedbackDetail({ id }: { id: string }) {
           {f.reply && !editingReply ? (
             <>
               <div className='flex items-baseline justify-between gap-3'>
-                <span className='text-sm font-medium text-neutral-800'>회신</span>
-                <span className='tnum text-xs text-fg-muted'>{stamp(f.reply.at)} 보냄</span>
+                <span className='type-label-lg text-neutral-800'>회신</span>
+                <span className='tnum type-label-sm text-fg-muted'>{stamp(f.reply.at)} 보냄</span>
               </div>
-              <p className='mt-2 whitespace-pre-wrap break-words rounded-control bg-surface-2 px-4 py-3 text-sm leading-relaxed text-fg [overflow-wrap:anywhere]'>
+              <p className='mt-2 whitespace-pre-wrap break-words rounded-control bg-surface-2 px-4 py-3 type-body-sm text-fg [overflow-wrap:anywhere]'>
                 {f.reply.body}
               </p>
               <div className='mt-2 flex justify-end'>
@@ -274,7 +274,7 @@ function StatusPicker({ value, onChange }: { value: FeedbackStatus; onChange: (n
         aria-expanded={open}
         aria-label={`상태 ${FEEDBACK_STATUSES.find((s) => s.value === value)?.label} — 바꾸기`}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1 rounded-pill py-1 pl-2.5 pr-1.5 text-xs font-semibold ring-1 ring-transparent transition hover:ring-border-strong ${STATUS_CLASS[value]}`}
+        className={`inline-flex items-center gap-1 rounded-pill py-1 pl-2.5 pr-1.5 type-label-sm ring-1 ring-transparent transition hover:ring-border-strong ${STATUS_CLASS[value]}`}
       >
         {FEEDBACK_STATUSES.find((s) => s.value === value)?.label}
         <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />

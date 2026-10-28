@@ -180,10 +180,9 @@ class AccountTest {
     }
 
     @Test
-    @DisplayName("권한 변경 가능 여부 — 디스코드 미연동 크루는 DISCORD_LINK_REQUIRED, 미연동 캡틴은 잠그지 않는다")
-    void unlinkedMemberIsBlocked() {
-        assertThat(accountWithId(3L, SystemRole.MEMBER).roleChangeBlockedReason(1L, 2))
-                .isEqualTo(RoleChangeBlockedReason.DISCORD_LINK_REQUIRED);
+    @DisplayName("권한 변경 가능 여부 — 디스코드 연동 여부와 상관없다 (2026-10-27, 캡틴에게 연동은 필수가 아니다)")
+    void unlinkedAccountsAreNotBlocked() {
+        assertThat(accountWithId(3L, SystemRole.MEMBER).roleChangeBlockedReason(1L, 2)).isNull();
         assertThat(accountWithId(4L, SystemRole.ADMIN).roleChangeBlockedReason(1L, 2)).isNull();
     }
 }

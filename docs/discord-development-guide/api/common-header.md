@@ -69,7 +69,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 - `int` 변환은 **요청 경계에서 한 번** 한다 (FastAPI 의존성). discord.py 는 `int` 를 받으므로
   내부 코드는 `int` 를 들고 다니고, 파싱 실패는 거기서 400 이 된다 — 호출 직전마다 변환하면
   같은 파싱과 에러 처리를 엔드포인트마다 반복하게 된다. `config.py` 가 
-  `DISCORD_BOT_CHANNEL_ID` 을 시작 시점에 한 번 파싱해 `int` 로 들고 있는 것과 같은 결.
+  `DISCORD_CONFIG_BOT_CHANNEL_ID` 을 시작 시점에 한 번 파싱해 `int` 로 들고 있는 것과 같은 결.
 - **넘기는 건 이 ID 까지다** — 이름·이메일 같은 개인정보는 헤더로도 로그로도 넘기지 않는다.
 
 ### 시스템 호출
@@ -78,7 +78,7 @@ Discord 서비스(`discord/`, FastAPI)의 HTTP API 를 호출할 때 붙이는 *
 그 알림은 navigator 가 직접 올리는 게 아니라 **백엔드가** [`send-alert-message`](send-alert-message.md)
 로 올린다.
 
-이때 백엔드는 `X-Discord-User-ID` 에 **봇 자신의 유저 ID** 를 싣는다. 백엔드 환경변수 `DISCORD_BOT_ID` 다.
+이때 백엔드는 `X-Discord-User-ID` 에 **봇 자신의 유저 ID** 를 싣는다. 백엔드 환경변수 `DISCORD_CONFIG_BOT_ID` 다.
 Discord 서비스는 이 값을 읽지 않는다 — 봇에게 봇 ID 는 다른 ID 와 다를 게 없다.
 
 - 시스템 호출이라고 봇이 다르게 처리하는 것은 없다. 어떤 엔드포인트를 백엔드 이름으로 부를지는 백엔드가 정한다.

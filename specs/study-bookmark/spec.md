@@ -151,6 +151,13 @@
 
 ---
 
+## 퍼널·계측
+
+- 단계: 활성화 앞 (탐색 → 신청 사이의 관심 표시)
+- 이벤트 (front): `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) — 하트 버튼 · 마이페이지 관심 스터디
+- 지금 화면은 이 API 대신 브라우저 저장소에 북마크를 둔다 (`core-front/src/lib/me.ts` TODO). 이벤트는 그것과 상관없이 클릭에서 난다
+- 이 문서로 바뀌는 이벤트는 없다. A/B 없음
+
 ## 변경이력
 
 | 날짜 | 변경 | 근거 |

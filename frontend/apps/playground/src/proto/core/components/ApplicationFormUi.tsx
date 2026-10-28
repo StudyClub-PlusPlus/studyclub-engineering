@@ -37,12 +37,12 @@ export function formCardClass(active?: boolean) {
 }
 
 const HEADER_CLASS: Record<number, string> = {
-  1: 'text-lg font-bold',
-  2: 'text-base font-bold',
-  3: 'text-sm font-bold',
-  4: 'text-sm font-semibold',
-  5: 'text-sm font-semibold',
-  6: 'text-xs font-semibold',
+  1: 'type-title-md',
+  2: 'type-title-md',
+  3: 'type-label-lg',
+  4: 'type-label-lg',
+  5: 'type-label-lg',
+  6: 'type-label-sm',
 };
 
 export const MARKDOWN_HINT =
@@ -74,7 +74,7 @@ function formatInline(text: string, keyPrefix: string): ReactNode[] {
       );
     } else if (m[5] !== undefined) {
       nodes.push(
-        <code key={key} className='rounded-xs bg-surface-2 px-1 py-0.5 font-mono text-[0.85em]'>
+        <code key={key} className='rounded-xs bg-surface-2 px-1 py-0.5 font-mono type-label-sm'>
           {m[5]}
         </code>,
       );
@@ -122,7 +122,7 @@ export function MarkdownLite({ text, className }: { text: string; className?: st
         codeBuffer = [];
       } else {
         blocks.push(
-          <pre key={`code-${idx}`} className='overflow-x-auto rounded-control bg-surface-2 px-3 py-2 text-xs'>
+          <pre key={`code-${idx}`} className='overflow-x-auto rounded-control bg-surface-2 px-3 py-2 type-label-sm'>
             <code className='font-mono'>{codeBuffer.join('\n')}</code>
           </pre>,
         );
@@ -236,14 +236,14 @@ export function FormHeaderCard({
         </div>
       ) : (
         <>
-          <h2 className='text-xl font-bold tracking-tight text-fg'>{title}</h2>
-          {summary && <MarkdownLite text={summary} className='mt-2 text-sm leading-relaxed text-fg-secondary' />}
+          <h2 className='type-title-lg text-fg'>{title}</h2>
+          {summary && <MarkdownLite text={summary} className='mt-2 type-body-sm text-fg-secondary' />}
         </>
       )}
 
       {account && (
-        <p className='mt-4 text-sm text-fg'>
-          <span className='font-medium'>{account.name}</span>
+        <p className='mt-4 type-body-sm text-fg'>
+          <span className='font-semibold'>{account.name}</span>
           <span className='text-fg-muted'> · {account.email}</span>
         </p>
       )}
@@ -253,7 +253,7 @@ export function FormHeaderCard({
 
 export function OptionMarker({ type, index }: { type: ApplicationQuestionType; index?: number }) {
   if (type === 'select') {
-    return <span className='w-5 shrink-0 text-center text-xs tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>;
+    return <span className='w-5 shrink-0 text-center type-label-sm tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>;
   }
   if (type === 'checkbox') {
     return <span className='h-4 w-4 shrink-0 rounded-xs border border-border-strong' aria-hidden />;
@@ -308,7 +308,7 @@ export function OptionEditor({
               onAddAfter(i);
             }}
             placeholder={`옵션 ${i + 1}`}
-            className='h-9 min-w-0 flex-1 border-0 border-b border-transparent bg-transparent px-1 text-sm text-neutral-900 placeholder:text-fg-placeholder transition-[border-color] hover:border-border focus:border-brand focus:outline-none'
+            className='h-9 min-w-0 flex-1 border-0 border-b border-transparent bg-transparent px-1 type-body-md text-neutral-900 placeholder:text-fg-placeholder transition-[border-color] hover:border-border focus:border-brand focus:outline-none'
           />
           <button
             type='button'
@@ -325,7 +325,7 @@ export function OptionEditor({
       {allowOther && showOther && (
         <div className='flex items-center gap-2'>
           <OptionMarker type={type} />
-          <span className='h-9 flex-1 px-1 text-sm text-fg-muted'>기타…</span>
+          <span className='h-9 flex-1 px-1 type-body-sm text-fg-muted'>기타…</span>
           <button
             type='button'
             aria-label='기타 삭제'
@@ -339,13 +339,13 @@ export function OptionEditor({
 
       <div className='flex items-center gap-2 pt-0.5'>
         <OptionMarker type={type} index={options.length} />
-        <button type='button' onClick={onAdd} className='text-sm font-medium text-brand hover:underline'>
+        <button type='button' onClick={onAdd} className='type-label-lg text-brand hover:underline'>
           옵션 추가
         </button>
         {showOther && !allowOther && (
           <>
-            <span className='text-xs text-fg-muted'>또는</span>
-            <button type='button' onClick={() => onToggleOther(true)} className='text-sm font-medium text-brand hover:underline'>
+            <span className='type-label-sm text-fg-muted'>또는</span>
+            <button type='button' onClick={() => onToggleOther(true)} className='type-label-lg text-brand hover:underline'>
               「기타」 추가
             </button>
           </>
@@ -359,7 +359,7 @@ export function OptionEditor({
 function QuestionLabel({ label, required, description }: { label: string; required?: boolean; description?: string }) {
   return (
     <div className='flex flex-col gap-0.5'>
-      <p className='text-sm font-medium text-neutral-800'>
+      <p className='type-label-lg text-neutral-800'>
         {label}
         {required && (
           <span className='ml-0.5 text-error-600' aria-hidden='true'>
@@ -367,7 +367,7 @@ function QuestionLabel({ label, required, description }: { label: string; requir
           </span>
         )}
       </p>
-      {description && <MarkdownLite text={description} className='text-xs leading-relaxed text-fg-muted' />}
+      {description && <MarkdownLite text={description} className='type-label-sm text-fg-muted' />}
     </div>
   );
 }
@@ -449,17 +449,17 @@ export function QuestionFillView({
                 onChange={() => onChange?.(o)}
                 className='h-4 w-4 shrink-0 border-border-strong accent-(--color-brand)'
               />
-              <span className='text-sm text-neutral-800'>{o}</span>
+              <span className='type-body-sm text-neutral-800'>{o}</span>
             </label>
           ))}
           {q.allowOther && (
             <label className={`inline-flex items-center gap-2 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
               <input type='radio' name={q.id} disabled={locked} className='h-4 w-4 shrink-0 border-border-strong accent-(--color-brand)' />
-              <span className='text-sm text-neutral-800'>기타:</span>
+              <span className='type-body-sm text-neutral-800'>기타:</span>
               <input
                 disabled={locked}
                 maxLength={OTHER_ANSWER_MAX}
-                className='h-8 min-w-0 flex-1 border-0 border-b border-border bg-transparent px-1 text-sm'
+                className='h-8 min-w-0 flex-1 border-0 border-b border-border bg-transparent px-1 type-body-md'
               />
             </label>
           )}

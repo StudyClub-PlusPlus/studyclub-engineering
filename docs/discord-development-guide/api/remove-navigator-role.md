@@ -88,7 +88,7 @@ navigator 역할은 길드에 **이미 존재하는** 역할이고, **설정값�
 | **400** | `discordUserIds` 가 없거나 빈 배열 | 위와 같음. "아무것도 안 함" 을 200 으로 돌려주지 않는다 — 호출자 쪽 버그일 가능성이 높다 |
 | **400** | `discordUserIds` 가 중복을 뺀 뒤 100개 초과 | 위와 같음. 나눠서 보낸다 |
 | **404** | navigator 역할을 길드에서 찾지 못함 | [아래](#navigator-역할이-없으면-404-다) 참고 |
-| **409** | `DISCORD_GUILD_ID` · `DISCORD_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
+| **409** | `DISCORD_CONFIG_GUILD_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID` 설정이 없음 | 서버 설정 누락. `detail` 이 빠진 설정 이름을 말한다 |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 
 `discordUserIds` 의 유저가 **길드 멤버가 아니어도 에러가 아니다** — [remove-role 과 같다](remove-role.md#길드에-없는-유저는-성공이다).

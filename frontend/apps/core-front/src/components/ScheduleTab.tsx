@@ -80,7 +80,7 @@ function PresenterCell({
           type='button'
           aria-label={`${label} 신청`}
           onClick={() => onSign(true)}
-          className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand text-xs font-semibold text-brand transition-colors hover:bg-brand-subtle'
+          className='inline-flex h-7 w-full items-center justify-center rounded-pill border border-brand type-label-lg text-brand transition-colors hover:bg-brand-subtle'
         >
           신청
         </button>
@@ -88,7 +88,7 @@ function PresenterCell({
     }
     if (slotValue === myId) {
       return (
-        <span className='relative inline-flex h-7 w-full min-w-0 items-center rounded-pill bg-brand-subtle px-1 text-xs font-bold text-brand'>
+        <span className='relative inline-flex h-7 w-full min-w-0 items-center rounded-pill bg-brand-subtle px-1 type-label-sm text-brand'>
           <span className='flex-1 truncate text-center'>{name}</span>
           <button
             type='button'
@@ -242,7 +242,7 @@ function AddMeetingForm({
         </div>
 
         <div className='flex flex-col gap-1.5'>
-          <span className='text-sm font-medium text-ink'>반복</span>
+          <span className='type-label-lg text-ink'>반복</span>
           <div role='group' aria-label='반복' className='flex flex-wrap gap-1.5'>
             {repeatOptions.map((o) => {
               const on = draft.repeat === o.key;
@@ -253,7 +253,7 @@ function AddMeetingForm({
                   aria-pressed={on}
                   onClick={() => change({ repeat: o.key })}
                   className={cx(
-                    'h-9 rounded-control border px-3 text-sm font-semibold transition-colors',
+                    'h-9 rounded-control border px-3 type-label-lg transition-colors',
                     on
                       ? 'border-brand bg-brand text-white'
                       : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2',
@@ -277,7 +277,7 @@ function AddMeetingForm({
                       aria-label={`${DOW_LABEL[d]}요일`}
                       onClick={() => toggleWeekday(d)}
                       className={cx(
-                        'h-9 w-9 rounded-control border text-sm font-semibold transition-colors',
+                        'h-9 w-9 rounded-control border type-label-lg transition-colors',
                         on
                           ? 'border-brand bg-brand text-white'
                           : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2',
@@ -288,7 +288,7 @@ function AddMeetingForm({
                   );
                 })}
               </div>
-              {errors.weekdays && <p className='text-xs text-error-700'>{errors.weekdays}</p>}
+              {errors.weekdays && <p className='type-label-sm text-error-700'>{errors.weekdays}</p>}
             </div>
           )}
         </div>
@@ -318,10 +318,10 @@ function AddMeetingForm({
           onChange={(ev) => change({ title: ev.target.value })}
         />
 
-        <div className='rounded-control border border-border px-3.5 py-2.5 text-sm'>
+        <div className='rounded-control border border-border px-3.5 py-2.5 type-body-sm'>
           {plan && preview && first ? (
             <>
-              <p className='font-bold text-fg'>
+              <p className='font-semibold text-fg'>
                 {plan.dates.length === 1 ? (
                   <>
                     <span className='tnum'>{preview.from}</span>회차로 추가됩니다
@@ -336,7 +336,7 @@ function AddMeetingForm({
                   </>
                 )}
               </p>
-              <ul className='mt-1 flex flex-col gap-0.5 text-xs text-fg-secondary'>
+              <ul className='mt-1 flex flex-col gap-0.5 type-label-sm text-fg-secondary'>
                 {plan.dates.length > 1 && (
                   <li className='tnum'>
                     {dayLabel(first)} ~ {dayLabel(plan.dates[plan.dates.length - 1]!)}
@@ -362,7 +362,7 @@ function AddMeetingForm({
               </ul>
             </>
           ) : touched && errors.form ? (
-            <p className='font-medium text-error-700'>{errors.form}</p>
+            <p className='font-semibold text-error-700'>{errors.form}</p>
           ) : (
             <p className='text-fg-muted'>
               일자와 시작 시각을 정하면 몇 회차가 되는지 보여 드립니다. 반복은 시작부터 {REPEAT_SPAN_DAYS}일까지.
@@ -706,9 +706,9 @@ export function ScheduleTab({
     <div className='space-y-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         {/* 표 제목 「일정」 (10-18 D10) — 제목 옆은 개수만, 고른 수는 작업 바에 */}
-        <h2 className='text-base font-bold'>
+        <h2 className='type-title-md'>
           일정
-          <span className='tnum ml-2 text-sm font-medium text-fg-muted'>
+          <span className='tnum ml-2 type-label-lg text-fg-muted'>
             전체 {meetings.filter((m) => !isKickoff(m)).length} · 예정{' '}
             {meetings.filter((m) => !isKickoff(m) && !startedOf(m)).length}
           </span>
@@ -729,7 +729,7 @@ export function ScheduleTab({
                   size='sm'
                   type='button'
                   onClick={() => setZone(z.iana)}
-                  className='rounded-pill px-3 py-1.5 text-xs font-bold'
+                  className='rounded-pill px-3 py-1.5 type-label-sm'
                 >
                   {z.label}
                 </Button>
@@ -740,7 +740,7 @@ export function ScheduleTab({
       </div>
 
       {notice && (
-        <p role='status' className='rounded-control bg-warning-50 px-3 py-2 text-sm font-semibold text-warning-700'>
+        <p role='status' className='rounded-control bg-warning-50 px-3 py-2 type-label-lg text-warning-700'>
           {notice}
         </p>
       )}
@@ -765,7 +765,7 @@ export function ScheduleTab({
       )}
 
       {meetings.length === 0 ? (
-        <div className='card px-6 py-10 text-center text-sm text-fg-muted'>아직 회차가 없습니다.</div>
+        <div className='card px-6 py-10 text-center type-body-sm text-fg-muted'>아직 회차가 없습니다.</div>
       ) : (
         <div className='card overflow-clip'>
           {/* 액션바 + 컬럼 헤더 — sticky로 함께 고정, overflow-x-auto 밖에 위치 */}
@@ -794,7 +794,7 @@ export function ScheduleTab({
                 }
                 save={
                   <>
-                    {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
+                    {errorCount > 0 && <p className='mr-1 type-label-sm text-error-700'>고칠 칸 {errorCount}개</p>}
                     {dirty && (
                       <Button
                         variant='ghost'
@@ -817,7 +817,7 @@ export function ScheduleTab({
             )}
             {/* 헤더 테이블 — 바디 테이블과 가로 스크롤 동기화 */}
             <div ref={headerScrollRef} className='overflow-x-hidden'>
-              <table className='w-full min-w-240 table-fixed border-separate border-spacing-0 text-sm'>
+              <table className='w-full min-w-240 table-fixed border-separate border-spacing-0 type-body-sm'>
                 <colgroup>
                   {canEdit && <col className='w-10' />}
                   <col className='w-[6%]' />
@@ -828,7 +828,7 @@ export function ScheduleTab({
                   <col className='w-[13%]' />
                 </colgroup>
                 <thead>
-                  <tr className='text-left text-xs font-semibold text-fg-muted'>
+                  <tr className='text-left type-label-sm text-fg-muted'>
                     {canEdit && (
                       <th className='border-b border-border py-3 pl-4 align-middle'>
                         <input
@@ -857,7 +857,7 @@ export function ScheduleTab({
           </div>
           {/* 바디 스크롤 컨테이너 */}
           <div ref={bodyScrollRef} className='overflow-x-auto'>
-            <table className='w-full min-w-240 table-fixed border-separate border-spacing-0 text-sm'>
+            <table className='w-full min-w-240 table-fixed border-separate border-spacing-0 type-body-sm'>
               <colgroup>
                 {canEdit && <col className='w-10' />}
                 <col className='w-[6%]' />
@@ -903,7 +903,7 @@ export function ScheduleTab({
                           )}
                         </td>
                       )}
-                      <td className='px-4 py-3 text-center font-bold'>{m.no === 0 ? '0' : `${m.no}`}</td>
+                      <td className='px-4 py-3 text-center font-semibold'>{m.no === 0 ? '0' : `${m.no}`}</td>
                       <td className='px-2 py-3 text-center'>
                         {editable ? (
                           <Input
@@ -1064,7 +1064,7 @@ export function ScheduleTab({
           </>
         }
       >
-        <p className='text-sm text-fg-secondary'>
+        <p className='type-body-sm text-fg-secondary'>
           {picked.length === 1
             ? `${meetingLabel(picked[0]!)}(${dayLabel(picked[0]!.date)})를 지울까요?`
             : `회차 ${picked.length}개(${picked.map((m) => meetingLabel(m)).join(', ')})를 지울까요?`}{' '}

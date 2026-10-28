@@ -33,7 +33,7 @@ export function Card({
   return (
     <section data-anno={anno} className='card px-6 py-5'>
       <div className='flex items-baseline justify-between gap-3'>
-        <h2 className='text-[15px] font-bold'>{title}</h2>
+        <h2 className='type-title-md'>{title}</h2>
         {action}
       </div>
       <div className='mt-4'>{children}</div>
@@ -84,12 +84,12 @@ export function RegionDonut({ data }: { data: { key: MemberRegion; count: number
                 aria-hidden='true'
               />
               {/* 지역 이름과 시간대는 한 덩어리다 — 줄여야 할 때는 여백을 먼저 줄이고 이 칸은 지킨다 */}
-              <span className='flex-1 whitespace-nowrap text-sm font-medium text-fg'>
+              <span className='flex-1 whitespace-nowrap type-label-lg text-fg'>
                 {meta?.label.ko ?? d.key}
-                <span className='ml-1.5 text-xs text-fg-muted'>{meta?.tzLabel}</span>
+                <span className='ml-1.5 type-label-sm text-fg-muted'>{meta?.tzLabel}</span>
               </span>
-              <span className='tnum shrink-0 text-sm font-bold text-fg'>{pct}%</span>
-              <span className='tnum w-12 shrink-0 text-right text-xs text-fg-muted'>{d.count}명</span>
+              <span className='tnum shrink-0 type-label-lg text-fg'>{pct}%</span>
+              <span className='tnum w-12 shrink-0 text-right type-label-sm text-fg-muted'>{d.count}명</span>
             </li>
           );
         })}
@@ -135,7 +135,7 @@ export function CategoryStudyCard({ data }: { data: CategoryCount[] }) {
               type='button'
               aria-pressed={scope === key}
               onClick={() => setScope(key)}
-              className={`rounded-pill px-2.5 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-pill px-2.5 py-1 type-label-lg transition-colors ${
                 scope === key ? 'bg-surface-2 text-fg' : 'text-fg-muted hover:text-fg-secondary'
               }`}
             >
@@ -146,7 +146,7 @@ export function CategoryStudyCard({ data }: { data: CategoryCount[] }) {
       }
     >
       {rows.length === 0 ? (
-        <p className='py-6 text-center text-sm text-fg-muted'>해당하는 스터디가 없습니다.</p>
+        <p className='py-6 text-center type-body-sm text-fg-muted'>해당하는 스터디가 없습니다.</p>
       ) : (
         <ul className='flex flex-col gap-1'>
           {rows.map((d) => (
@@ -157,7 +157,7 @@ export function CategoryStudyCard({ data }: { data: CategoryCount[] }) {
                 aria-label={`${d.category} ${scope === 'running' ? '진행중' : '누적'} 스터디 ${d.count}개`}
                 className='flex items-center gap-3 rounded-control px-1 py-1.5 transition-colors hover:bg-surface-2'
               >
-                <span className='w-24 shrink-0 truncate text-[13px] font-medium text-fg-secondary' title={d.category}>
+                <span className='w-24 shrink-0 truncate type-label-lg text-fg-secondary' title={d.category}>
                   {d.category}
                 </span>
                 <span className='h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
@@ -166,7 +166,7 @@ export function CategoryStudyCard({ data }: { data: CategoryCount[] }) {
                     style={{ width: `${(d.count / most) * 100}%`, background: 'var(--color-primary-600)' }}
                   />
                 </span>
-                <span className='tnum w-10 shrink-0 text-right text-[13px] font-bold text-fg'>{d.count}개</span>
+                <span className='tnum w-10 shrink-0 text-right type-label-lg text-fg'>{d.count}개</span>
               </Link>
             </li>
           ))}
@@ -186,7 +186,7 @@ export function AttendanceTrend({ points }: { points: TrendPoint[] }) {
   const withData = points.filter((p) => p.rate !== null);
   // 값이 한 주뿐이어도 그 점을 찍는다 — 선이 없을 뿐 「얼마였는지」는 여전히 말할 수 있다.
   if (withData.length === 0) {
-    return <p className='py-10 text-center text-sm text-fg-muted'>아직 출석 기록이 없습니다.</p>;
+    return <p className='py-10 text-center type-body-sm text-fg-muted'>아직 출석 기록이 없습니다.</p>;
   }
 
   const W = 320;
@@ -214,7 +214,7 @@ export function AttendanceTrend({ points }: { points: TrendPoint[] }) {
       */}
       <div className='relative pr-16'>
         <span
-          className='tnum absolute right-0 -translate-y-1/2 text-[11px] font-bold text-fg-muted'
+          className='tnum absolute right-0 -translate-y-1/2 type-label-sm text-fg-muted'
           style={{ top: `${100 - avg}%` }}
         >
           평균 {avg}%
@@ -255,7 +255,7 @@ export function AttendanceTrend({ points }: { points: TrendPoint[] }) {
         </svg>
       </div>
 
-      <div className='mt-1 flex justify-between pr-16 text-[11px] text-fg-muted'>
+      <div className='mt-1 flex justify-between pr-16 type-label-sm text-fg-muted'>
         {points.map((p, i) => (
           <span key={p.weekStart} className='tnum'>
             {i % 4 === 0 ? p.weekStart.slice(5) : ''}

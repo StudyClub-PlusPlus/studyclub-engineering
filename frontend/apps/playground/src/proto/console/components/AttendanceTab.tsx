@@ -115,7 +115,7 @@ function Cell({
         role='img'
         aria-label={label}
         title={label}
-        className={`relative grid h-8 w-full place-items-center rounded-sm text-[11px] font-bold ${
+        className={`relative grid h-8 w-full place-items-center rounded-sm type-label-sm ${
           status ? CELL_STYLE[status] : 'bg-surface-1 text-fg-muted'
         }`}
       >
@@ -142,7 +142,7 @@ function Cell({
       // 가리킬 때는 조작 방법만 — 저장 상태는 테두리 강조가 보여 준다(스크린리더는 aria-label 로 듣는다).
       // 평소에는 테두리 없이 색만 — 고치고 저장하기 전인 칸에만 그 상태 색 테두리를 두른다.
       title={readOnly ? label : '눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'}
-      className={`relative h-8 w-full rounded-sm text-[11px] font-bold transition-colors ${
+      className={`relative h-8 w-full rounded-sm type-label-lg transition-colors ${
         status ? CELL_STYLE[status] : 'bg-surface-1 text-fg-muted hover:bg-surface-2'
       } ${changed ? `ring-2 ${status ? CHANGED_RING[status] : 'ring-border-strong'}` : ''}`}
     >
@@ -256,10 +256,10 @@ function PresenterHelp() {
           id='presenter-help'
           role='dialog'
           aria-label='발표 표시 설명'
-          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card sm:left-0 border border-border bg-surface-raised p-3 text-left text-xs font-normal leading-relaxed text-fg-secondary shadow-md'
+          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card sm:left-0 border border-border bg-surface-raised p-3 text-left type-label-sm text-fg-secondary shadow-md'
         >
           <p className='flex items-center gap-1.5 font-semibold text-fg'>
-            <span className='relative grid h-8 w-[3.6rem] shrink-0 place-items-center rounded-sm bg-success-100 text-xs font-bold text-success-700'>
+            <span className='relative grid h-8 w-[3.6rem] shrink-0 place-items-center rounded-sm bg-success-100 type-label-sm text-success-700'>
               <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
               출석
             </span>
@@ -541,8 +541,8 @@ export function AttendanceTab({
   if (!cls) {
     return (
       <div data-anno='attendance:5' className='card px-6 py-10 text-center'>
-        <p className='text-sm font-semibold text-fg'>아직 반이 없습니다.</p>
-        <p className='mt-1.5 text-sm text-fg-muted'>
+        <p className='type-label-lg text-fg'>아직 반이 없습니다.</p>
+        <p className='mt-1.5 type-body-sm text-fg-muted'>
           신청자 탭에서 반을 만들고 일정 탭에서 일정을 정하면 그 반의 출석부가 만들어집니다.
         </p>
         <Button size='sm' className='mt-4' leadingIcon={<CalendarPlus size={15} />} onClick={onGoCrew}>
@@ -559,10 +559,10 @@ export function AttendanceTab({
       {meetings.length === 0 ? (
         // 반은 있는데 회차가 없다 — 회차는 일정 탭에서 만든다. 반 고르기는 위에 남겨 다른 반으로 옮길 수 있게 한다.
         <div data-anno='attendance:5' className='card px-6 py-10 text-center'>
-          <p className='text-sm font-semibold text-fg'>
+          <p className='type-label-lg text-fg'>
             {hasSchedule(cls) ? '이 반에는 아직 회차가 없습니다.' : '이 반은 아직 스터디 시간이 없습니다.'}
           </p>
-          <p className='mt-1.5 text-sm text-fg-muted'>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
             {hasSchedule(cls)
               ? '일정 탭에서 회차를 추가하면 이 반의 출석부가 만들어집니다.'
               : '일정 탭에서 스터디 시간을 정하고 회차를 추가하면 출석부가 만들어집니다.'}
@@ -578,9 +578,9 @@ export function AttendanceTab({
           {title && (
             <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
               {/* 제목 옆은 전체 인원만 — 고른 수는 작업 바의 「n명 선택」이 말한다 */}
-              <h2 data-anno='book:3-10' className='text-base font-bold'>
+              <h2 data-anno='book:3-10' className='type-title-md'>
                 {title}
-                <span className='tnum ml-2 text-sm font-medium text-fg-muted'>전체 {crew.length}</span>
+                <span className='tnum ml-2 type-label-lg text-fg-muted'>전체 {crew.length}</span>
                 {/* 발표가 표에 섞여 있을 때만 — 마이크 표시가 무엇인지 */}
                 {presentersOf && (
                   <span data-anno='book:3-3 attendance:3-6' className='ml-1'>
@@ -639,13 +639,13 @@ export function AttendanceTab({
                       )}
                       {withdrawIds.length > 0 && (
                         // 몇 명이 중단 예정인지는 여기 한 번만 — 줄마다 칩을 붙이지 않는다
-                        <span data-anno='book:3-8' className='tnum text-xs font-semibold text-error-700'>
+                        <span data-anno='book:3-8' className='tnum type-label-sm text-error-700'>
                           중단 예정 {withdrawIds.length}명
                         </span>
                       )}
                       {blockedNames.length > 0 && (
                         // 왜 잠겼는지 버튼 줄 끝에 — 운영진의 역할은 백오피스에서 캡틴이 바꾼다.
-                        <span id='withdraw-blocked' data-anno='book:3-12' className='text-xs text-fg-muted'>
+                        <span id='withdraw-blocked' data-anno='book:3-12' className='type-label-sm text-fg-muted'>
                           네비게이터는 참여 중단할 수 없습니다. 캡틴에게 문의하세요.
                         </span>
                       )}
@@ -676,12 +676,12 @@ export function AttendanceTab({
               크루와 킥오프 사이는 붙고, 마지막 회차와 출석률 사이가 벌어진다.
             */}
             <div className='overflow-x-auto'>
-              <table className='w-full table-fixed border-separate border-spacing-0 text-sm'>
+              <table className='w-full table-fixed border-separate border-spacing-0 type-body-sm'>
                 <thead>
                   <tr>
                     <th
                       data-anno='attendance:3-1'
-                      className={`sticky left-0 z-[1] ${NAME_COL} bg-surface-raised px-4 py-3 text-left text-xs font-semibold text-fg-muted`}
+                      className={`sticky left-0 z-[1] ${NAME_COL} bg-surface-raised px-4 py-3 text-left type-label-sm text-fg-muted`}
                     >
                       <span className='flex items-center gap-3'>
                         {selecting && (
@@ -697,14 +697,14 @@ export function AttendanceTab({
                       </span>
                     </th>
                     <th
-                      className={`sticky ${DISCORD_COL} z-[1] whitespace-nowrap bg-surface-raised px-3 py-3 text-left text-xs font-semibold text-fg-muted`}
+                      className={`sticky ${DISCORD_COL} z-[1] whitespace-nowrap bg-surface-raised px-3 py-3 text-left type-label-sm text-fg-muted`}
                     >
                       디스코드 닉네임
                     </th>
                     {presentersOf && (
                       <th
                         data-anno='attendance:3-5 book:3-5'
-                        className={`sticky ${PRESENT_COL} z-[1] whitespace-nowrap bg-surface-raised px-2 py-2 text-center text-[11px] font-semibold text-fg-muted`}
+                        className={`sticky ${PRESENT_COL} z-[1] whitespace-nowrap bg-surface-raised px-2 py-2 text-center type-label-sm text-fg-muted`}
                         title='일정의 발표자1·2로 맡은 횟수'
                       >
                         <span className='sm:hidden'>발표</span>
@@ -715,17 +715,17 @@ export function AttendanceTab({
                       <th
                         key={s.id}
                         data-anno='attendance:3-2'
-                        className={`tnum ${MEETING_COL} px-1 py-2 text-center text-[11px] font-semibold text-fg-secondary`}
+                        className={`tnum ${MEETING_COL} px-1 py-2 text-center type-label-sm text-fg-secondary`}
                       >
                         {headOf ? headOf(s) : `${s.no}회`}
                         {/* 일자만 — 시각은 일정 탭에 있다. 고른 시간대(KST/PDT)의 날짜다 */}
-                        <span className='block text-[10px] font-medium text-fg-muted'>{dayOf(s)}</span>
+                        <span className='block type-label-sm text-fg-muted'>{dayOf(s)}</span>
                       </th>
                     ))}
                     <th aria-hidden />
                     <th
                       data-anno='attendance:3-4'
-                      className={`sticky right-0 z-[1] ${RATE_COL} whitespace-nowrap bg-surface-raised px-3 py-2 text-center text-xs font-semibold text-fg-muted`}
+                      className={`sticky right-0 z-[1] ${RATE_COL} whitespace-nowrap bg-surface-raised px-3 py-2 text-center type-label-sm text-fg-muted`}
                     >
                       출석률
                     </th>
@@ -782,7 +782,7 @@ export function AttendanceTab({
                                 {c.name}
                               </span>
                               {c.discordNickname && (
-                                <span className='block truncate text-xs font-normal text-fg-muted sm:hidden'>
+                                <span className='block truncate type-label-sm text-fg-muted sm:hidden'>
                                   {c.discordNickname}
                                 </span>
                               )}
@@ -816,7 +816,7 @@ export function AttendanceTab({
                                 />
                                 <span
                                   aria-hidden
-                                  className='pointer-events-none absolute left-full top-1/2 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded-sm bg-fg px-2 py-1 text-xs font-semibold text-bg opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'
+                                  className='pointer-events-none absolute left-full top-1/2 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded-sm bg-fg px-2 py-1 type-label-sm text-bg opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'
                                 >
                                   중단 예정 취소
                                 </span>
@@ -837,7 +837,7 @@ export function AttendanceTab({
                         </td>
                         {presentersOf && (
                           <td
-                            className={`tnum sticky ${PRESENT_COL} z-[1] border-t border-border ${rowBg} px-2 py-1.5 text-center text-xs font-semibold text-fg-secondary`}
+                            className={`tnum sticky ${PRESENT_COL} z-[1] border-t border-border ${rowBg} px-2 py-1.5 text-center type-label-sm text-fg-secondary`}
                           >
                             {presented || <span className='text-fg-muted'>0</span>}
                           </td>
@@ -846,7 +846,7 @@ export function AttendanceTab({
                           gone(s) ? (
                             <td
                               key={s.id}
-                              className={`${MEETING_COL} border-t border-border px-1 py-1.5 text-center text-xs text-fg-muted`}
+                              className={`${MEETING_COL} border-t border-border px-1 py-1.5 text-center type-label-sm text-fg-muted`}
                             >
                               -
                             </td>
@@ -869,7 +869,7 @@ export function AttendanceTab({
                         )}
                         <td aria-hidden className='border-t border-border' />
                         <td
-                          className={`tnum sticky right-0 z-[1] ${RATE_COL} whitespace-nowrap border-t border-border ${rowBg} px-3 py-1.5 text-center font-bold`}
+                          className={`tnum sticky right-0 z-[1] ${RATE_COL} whitespace-nowrap border-t border-border ${rowBg} px-3 py-1.5 text-center font-semibold`}
                         >
                           {rate === undefined ? (
                             <span className='text-fg-muted'>-</span>
@@ -923,7 +923,7 @@ export function AttendanceTab({
               </>
             }
           >
-            <p className='mb-3 text-sm text-fg'>
+            <p className='mb-3 type-body-sm text-fg'>
               <span className='font-semibold'>참여 중단</span> {withdrawNames.join(', ')}
               {pending > 0 && (
                 <>
@@ -932,7 +932,7 @@ export function AttendanceTab({
                 </>
               )}
             </p>
-            <ul className='list-disc space-y-1 pl-5 text-sm text-fg-secondary'>
+            <ul className='list-disc space-y-1 pl-5 type-body-sm text-fg-secondary'>
               <li>지금까지의 출석 기록은 그대로 남습니다.</li>
               <li>지금 뒤에 시작하는 회차는 「-」로 비고 출석률에서 빠집니다.</li>
               <li>더는 스터디 디스코드 채널 · 드라이브 링크를 볼 수 없고, 앞으로 맡은 회차의 발표자에서 빠집니다.</li>

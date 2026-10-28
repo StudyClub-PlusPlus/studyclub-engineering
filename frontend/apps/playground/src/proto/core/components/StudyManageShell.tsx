@@ -90,16 +90,16 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   // TODO(api): 참가자가 아닌 사람은 서버가 403 을 준다. 프로토는 찾은 스터디면 크루로 들인다.
   const access = study ? scheduleAccessOf(study) : undefined;
 
-  if (!ready) return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+  if (!ready) return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
 
   if (!study || !access) {
     return (
       <div className='mx-auto max-w-3xl px-6 py-16 text-center'>
-        <p className='font-bold text-fg'>이 스터디의 일정을 볼 수 없습니다.</p>
-        <p className='mt-1.5 text-sm text-fg-muted'>참여 중인 스터디만 여기서 일정을 봅니다.</p>
+        <p className='font-semibold text-fg'>이 스터디의 일정을 볼 수 없습니다.</p>
+        <p className='mt-1.5 type-body-sm text-fg-muted'>참여 중인 스터디만 여기서 일정을 봅니다.</p>
         <Link
           href={`/proto/core/${locale}/my/joined`}
-          className='mt-4 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline'
+          className='mt-4 inline-block type-label-lg text-brand underline-offset-4 hover:underline'
         >
           내 스터디룸으로
         </Link>
@@ -122,14 +122,14 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
       <div className='mx-auto max-w-6xl px-6 pb-16 pt-8'>
         <Link
           href={`/proto/core/${locale}/my/joined`}
-          className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary hover:text-fg'
+          className='inline-flex items-center gap-1.5 type-label-lg text-fg-secondary hover:text-fg'
         >
           <ArrowLeft size={15} /> 내 스터디룸
         </Link>
 
         <header data-anno='manage:1' className='mt-3 flex flex-wrap items-start justify-between gap-3'>
           <div className='min-w-0'>
-            <h1 className='text-2xl font-extrabold tracking-tight'>{t(study.title, locale === 'en' ? 'en' : 'ko')}</h1>
+            <h1 className='type-headline-lg'>{t(study.title, locale === 'en' ? 'en' : 'ko')}</h1>
           </div>
         </header>
 
@@ -146,7 +146,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
                 href={tb.href}
                 aria-current={on ? 'page' : undefined}
                 className={cx(
-                  '-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors',
+                  '-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors',
                   on ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary',
                 )}
               >
@@ -181,7 +181,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
           </>
         }
       >
-        <p className='text-sm text-fg-secondary'>
+        <p className='type-body-sm text-fg-secondary'>
           저장을 누르지 않으면 고친 내용이 사라집니다. 나가기 전에 저장해 주세요.
         </p>
       </Modal>

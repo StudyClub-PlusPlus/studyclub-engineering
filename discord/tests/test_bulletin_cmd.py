@@ -106,7 +106,7 @@ async def test_update_bulletin_refuses_outside_the_command_channel():
 
 
 async def test_update_bulletin_refuses_when_no_command_channel_is_configured():
-    """An unset DISCORD_BOT_CHANNEL_ID refuses everywhere rather than allowing anywhere."""
+    """An unset DISCORD_CONFIG_BOT_CHANNEL_ID refuses everywhere rather than allowing anywhere."""
     ctx = _ctx()
 
     refresh = await _run(ctx, _settings(command_channel_id=None))
