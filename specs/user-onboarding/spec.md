@@ -73,10 +73,13 @@ MVP 는 **구글만** (기획 08/31). 애플은 같은 구조로 붙을 수 있�
 1. email 없음 / email_verified ≠ true                  → 가입 불가
 2. ACCOUNT_IDENTITY(issuer, sub) 있음                   → 그 ACCOUNT
 3. ACCOUNT_IDENTITY(issuer, sub) 없음 + 동일 email 있음 → 409 ACCOUNT_LINK_REQUIRED
+   예외: 그 ACCOUNT 에 로그인 수단이 하나도 없으면(#49 이전 가입) 이 구글 계정을 붙이고 그 ACCOUNT 로 로그인 (2026-10-28)
 4. ACCOUNT_IDENTITY(issuer, sub) 없음 + 동일 email 없음 → ACCOUNT + ACCOUNT_IDENTITY 신규
 ```
 
 보안을 위해 이메일이 같다는 이유만으로 기존 ACCOUNT에 로그인 수단을 자동 연결하지 않는다. 처음 보는 `(issuer, sub)`인데 동일 이메일의 ACCOUNT가 이미 있으면 새 ACCOUNT를 만들거나 JWT를 발급하지 않고 `409 ACCOUNT_LINK_REQUIRED`를 반환한다. Google·Apple 계정 연결은 기존 로그인 수단으로 로그인한 상태에서 사용자가 명시적으로 진행하며, MVP 이후 별도 기능으로 구현한다.
+
+**예외 — 로그인 수단이 없는 레거시 계정 (2026-10-28).** 소셜 로그인 식별을 `(issuer, sub)` 로 바꾸기(#49) 전에 가입한 계정은 `ACCOUNT_IDENTITY` 가 하나도 없다. 다른 수단으로 들어올 길이 없어 409 면 영영 못 들어온다(운영 초기 캡틴 2명이 그랬다). 그 계정에 한해, 구글이 소유를 확인한 같은 이메일로 들어오면(1단계) 이 구글 계정을 붙인다. 로그인 수단이 하나라도 있는 계정은 그대로 409 다 — 이미 주인이 정해진 계정에 다른 사람이 끼어드는 길은 열지 않는다.
 
 예 — 진중이 구글로 가입하고, 나중에 애플도 연결한 상태:
 

@@ -211,8 +211,8 @@ class SocialLoginIntegrationTest {
     @Test
     @DisplayName("실패 - 처음 보는 sub 인데 같은 이메일 계정이 있으면 409 ACCOUNT_LINK_REQUIRED, 아무것도 만들지 않는다")
     void unknownSubWithExistingEmailIsConflict() {
-        // given — 그 이메일로 이미 가입된 계정 (identity 없이 ACCOUNT 만 있는 레거시 계정도 같은 케이스)
-        accounts.save(new Account(EMAIL, "account_existing000", null, SystemRole.MEMBER));
+        // given — 그 이메일로 이미 가입된 계정. 다른 구글 계정(SUB)이 붙어 있다
+        seedAccount(SystemRole.MEMBER, Instant.parse("2026-09-01T00:00:00Z"));
         googleReturns("another-sub", EMAIL, "홍길동");
 
         // when
@@ -223,7 +223,29 @@ class SocialLoginIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "ACCOUNT_LINK_REQUIRED");
         assertThat(response.getBody()).doesNotContainKey("accessToken");
         assertThat(accounts.count()).isEqualTo(1);
-        assertThat(identities.count()).isZero();
+        assertThat(identities.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("성공 - 로그인 수단이 하나도 없는 레거시 계정(#49 이전 가입)은 같은 이메일의 구글 계정을 붙이고 그 계정으로 로그인")
+    void legacyAccountWithoutIdentityIsLinked() {
+        // given — ACCOUNT 만 있고 ACCOUNT_IDENTITY 가 없다. 운영의 초기 캡틴 계정이 이렇다 (2026-10-28 확인)
+        Account legacy =
+                accounts.save(new Account(EMAIL, "account_legacy00000", null, SystemRole.ADMIN));
+        googleReturns(SUB, RAW_EMAIL, "홍길동");
+
+        // when
+        var response = login();
+
+        // then — 200 + 토큰, 새 계정 없음, 그 계정에 구글 식별 정보 한 행
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsKey("accessToken");
+        assertThat(accounts.count()).isEqualTo(1);
+        AccountIdentity linked =
+                identities.findByIssuerAndProviderAccountId(Issuer.GOOGLE, SUB).orElseThrow();
+        assertThat(linked.getAccountId()).isEqualTo(legacy.getId());
+        assertThat(accounts.findById(legacy.getId()).orElseThrow().getSystemRole())
+                .isEqualTo(SystemRole.ADMIN);
     }
 
     @Test

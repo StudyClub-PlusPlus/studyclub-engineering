@@ -59,7 +59,17 @@ public class AccountRegistrar {
 
         // 분기 2 — 모르는 sub 인데 같은 이메일 계정이 있음: 새 계정을 만들면 한 사람이 계정 둘.
         // 스펙은 409 + 아무것도 생성·발급하지 않음.
-        if (accountRepository.findByEmail(email).isPresent()) {
+        Optional<Account> sameEmail = accountRepository.findByEmail(email);
+        if (sameEmail.isPresent()) {
+            Account legacy = sameEmail.get();
+            // 예외 — 소셜 로그인(#49) 전에 가입해 로그인 수단이 하나도 없는 계정. 다른 수단으로 들어올 길이 없어 409 면 영영 못 들어온다.
+            // 구글이 이메일 소유를 확인했으니(분기 전에 검사) 이 구글 계정을 붙인다. 수단이 하나라도 있으면 지금처럼 409 다
+            if (!accountIdentityRepository.existsByAccountId(legacy.getId())) {
+                accountIdentityRepository.save(
+                        new AccountIdentity(
+                                legacy.getId(), Issuer.GOOGLE, g.sub(), g.email(), Instant.now()));
+                return legacy;
+            }
             throw new BusinessException(ErrorCode.ACCOUNT_LINK_REQUIRED, "이미 가입된 이메일입니다.");
         }
 
