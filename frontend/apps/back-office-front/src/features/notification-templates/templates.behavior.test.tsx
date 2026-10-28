@@ -1,3 +1,4 @@
+import { toast } from '@studyclub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,7 +16,14 @@ vi.mock('@/lib/http', async (importOriginal) => ({
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/notification-templates' }));
 
+// 토스트는 DOM 이 아니라 호출로 확인한다 (Toaster 를 마운트하지 않는다).
+vi.mock('@studyclub/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@studyclub/ui')>();
+  return { ...actual, toast: Object.assign(vi.fn(), { error: vi.fn() }) };
+});
+
 const httpMock = vi.mocked(http);
+const toastErrorMock = vi.mocked(toast.error);
 const BASE = '/api/admin/notification-templates';
 
 const BODY = '안녕하세요, {{nickname}}님.\n\n가입을 환영합니다!';
@@ -76,6 +84,7 @@ const callsOf = (method: string) => httpMock.mock.calls.filter(([, init]) => (in
 describe('알림 템플릿 화면', () => {
   beforeEach(() => {
     httpMock.mockReset();
+    toastErrorMock.mockClear();
   });
 
   it('열은 알림 조건 · 채널 · 제목 · 마지막 수정이다', async () => {
@@ -475,6 +484,26 @@ describe('알림 템플릿 화면', () => {
     expect(clampToUtf8Bytes('ab😀', 5)).toBe('ab');
     expect(clampToUtf8Bytes('ab😀', 6)).toBe('ab😀');
     expect(utf8Bytes('가😀a')).toBe(8);
+  });
+
+  it('이미 있는 조건(409)은 토스트로 알리고, 팝업 안에는 오류를 띄우지 않고 입력을 유지한다', async () => {
+    const message = '이미 이 알림 조건의 템플릿이 있습니다. 기존 템플릿을 수정하세요.';
+    fakeServer([tpl()], { method: 'POST', status: 409, message });
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '중복 제목' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '중복 본문' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
+
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith(message));
+    // 팝업은 열린 채 값이 남고, 인라인 오류는 없다. 다시 눌러 볼 수 있다
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    expect((within(dialog).getByLabelText(/제목/) as HTMLInputElement).value).toBe('중복 제목');
+    expect((within(dialog).getByRole('button', { name: '추가' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('입력 오류(4xx)는 서버가 준 이유를 그대로 보여 준다', async () => {

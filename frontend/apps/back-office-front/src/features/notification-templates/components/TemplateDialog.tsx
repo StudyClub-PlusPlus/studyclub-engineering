@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Button, Input, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
+import { Button, Input, Modal, Select, Tabs, Textarea, toast } from '@studyclub/ui';
 
 import { TemplatePreview } from '@/features/notification-templates/components/TemplatePreview';
 import {
@@ -28,6 +28,7 @@ const EMPTY: TemplateDraft = { eventType: TEMPLATE_CONDITIONS[0].value, subject:
 const SAVE_FAILED = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const DELETE_FAILED = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const GONE = '이미 삭제된 템플릿입니다. 목록을 새로 불러왔습니다.';
+const DUPLICATE = '이미 이 알림 조건의 템플릿이 있습니다. 기존 템플릿을 수정하세요.';
 
 /**
  * 알림 템플릿 추가·수정 팝업.
@@ -109,6 +110,11 @@ function TemplateEditor({
       setError(GONE);
       void refresh();
       return true;
+    }
+    // 이미 있는 조건(409)은 입력을 고치는 문제가 아니라 알림이다 — 토스트로 알리고 팝업은 그대로 둔다
+    if (err instanceof ApiError && err.status === 409) {
+      toast.error(err.message || DUPLICATE);
+      return false;
     }
     // 4xx 는 서버가 이유를 말해 준다(입력 오류 등) — 다시 눌러도 같은 결과라 그 말을 그대로 보여 준다
     const reason = err instanceof ApiError && err.status >= 400 && err.status < 500 ? err.message : null;
