@@ -7,14 +7,15 @@ import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationTemplate;
 import com.studyclub.notification.NotificationTemplateRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 백오피스의 알림 템플릿 추가·수정·삭제 (specs/notification/spec.md). 같은 조건에 템플릿은 한 건뿐이다 — 사전 조회로 친절한 409 를 주고, 동시에
- * 온 요청은 {@code UNIQUE(EVENT_TYPE, CHANNEL)} 위반을 같은 409 로 바꾼다. 지워도 발송 이력은 건드리지 않는다(이력은 템플릿을 ID 로만
- * 참조한다).
+ * 온 요청은 {@code UNIQUE(EVENT_TYPE, CHANNEL)} 위반(유일 제약 위반만)을 같은 409 로 바꾼다. 지워도 발송 이력은 건드리지 않는다(이력은
+ * 템플릿을 ID 로만 참조한다).
  */
 @Service
 @RequiredArgsConstructor
@@ -68,8 +69,22 @@ public class NotificationTemplateCommandService {
         try {
             return notificationTemplateRepository.saveAndFlush(template);
         } catch (DataIntegrityViolationException e) {
-            throw alreadyExists();
+            // 유일 제약 위반만 「이미 있음」이다. NOT NULL·길이 같은 다른 위반은 검증이 놓친 버그라 409 로 가리지 않는다
+            if (isUniqueViolation(e)) {
+                throw alreadyExists();
+            }
+            throw e;
         }
+    }
+
+    private static boolean isUniqueViolation(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && violation.getKind() == ConstraintViolationException.ConstraintKind.UNIQUE) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static BusinessException alreadyExists() {

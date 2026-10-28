@@ -3,6 +3,7 @@ package com.studyclub.api.notification;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.api.auth.JwtService;
+import com.studyclub.common.error.BusinessException;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
@@ -12,8 +13,14 @@ import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationTemplate;
 import com.studyclub.notification.NotificationTemplateRepository;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +47,7 @@ class AdminNotificationTemplateWriteIntegrationTest {
     @Autowired AccountRepository accountRepository;
     @Autowired NotificationRepository notificationRepository;
     @Autowired NotificationTemplateRepository notificationTemplateRepository;
+    @Autowired NotificationTemplateCommandService commandService;
 
     private Account admin;
 
@@ -187,6 +195,48 @@ class AdminNotificationTemplateWriteIntegrationTest {
                         NotificationTemplateResponse.class);
         assertThat(ok.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(ok.getBody().body()).hasSize(21_845);
+    }
+
+    @Test
+    @DisplayName("동시에 추가해도 하나만 만들어지고 나머지는 409 — 유일 제약 위반이 500 이 되지 않는다")
+    void concurrentCreateYieldsOneAndConflicts() throws Exception {
+        int threads = 8;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch go = new CountDownLatch(1);
+        List<Future<String>> results = new ArrayList<>();
+        try {
+            for (int i = 0; i < threads; i++) {
+                results.add(
+                        pool.submit(
+                                () -> {
+                                    ready.countDown();
+                                    go.await();
+                                    try {
+                                        commandService.create(admin.getId(), request("제목", "본문"));
+                                        return "CREATED";
+                                    } catch (BusinessException e) {
+                                        return e.errorCode().name();
+                                    } catch (Exception e) {
+                                        return e.getClass().getSimpleName();
+                                    }
+                                }));
+            }
+            ready.await();
+            go.countDown();
+            List<String> outcomes = new ArrayList<>();
+            for (Future<String> result : results) {
+                outcomes.add(result.get());
+            }
+
+            assertThat(outcomes.stream().filter("CREATED"::equals)).hasSize(1);
+            assertThat(outcomes.stream().filter(o -> !"CREATED".equals(o)))
+                    .hasSize(threads - 1)
+                    .containsOnly("CONFLICT");
+            assertThat(notificationTemplateRepository.count()).isEqualTo(1);
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     // ───────────── PUT ─────────────
