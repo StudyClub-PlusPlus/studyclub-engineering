@@ -3,6 +3,10 @@ package com.studyclub.api.discord;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.sun.net.httpserver.HttpServer;
@@ -14,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 class DiscordBotClientTest {
 
@@ -27,6 +32,7 @@ class DiscordBotClientTest {
 
     private HttpServer server;
     private DiscordBotClient client;
+    private ListAppender<ILoggingEvent> logAppender;
 
     // 가짜 봇이 받은 마지막 요청과 돌려줄 응답
     private String receivedMethod;
@@ -70,11 +76,15 @@ class DiscordBotClientTest {
         client =
                 new DiscordBotClient(
                         "http://127.0.0.1:" + server.getAddress().getPort(), API_KEY, BOT_ID);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        ((Logger) LoggerFactory.getLogger(DiscordBotClient.class)).addAppender(logAppender);
     }
 
     @AfterEach
     void tearDown() {
         server.stop(0);
+        ((Logger) LoggerFactory.getLogger(DiscordBotClient.class)).detachAppender(logAppender);
     }
 
     private void respond(int status, String body) {
@@ -139,6 +149,19 @@ class DiscordBotClientTest {
         assertThat(receivedUserId).isEqualTo(CAPTAIN);
         assertThat(receivedIdempotencyKey).isNotBlank();
         assertThat(receivedBody).contains("\"studyName\":\"알고리즘 스터디\"");
+        assertThat(logAppender.list)
+                .anyMatch(
+                        e ->
+                                e.getLevel() == Level.INFO
+                                        && e.getFormattedMessage().contains("op=create-study")
+                                        && e.getFormattedMessage().contains("result=ok"));
+        assertThat(logAppender.list)
+                .anyMatch(
+                        e ->
+                                e.getLevel() == Level.INFO
+                                        && e.getFormattedMessage().contains("op=create-study")
+                                        && e.getFormattedMessage()
+                                                .contains("discordStudyId=" + STUDY));
     }
 
     @Test
@@ -292,5 +315,12 @@ class DiscordBotClientTest {
                 .hasMessageNotContaining("1327394882193889999")
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.EXTERNAL_SERVICE_ERROR);
+        assertThat(logAppender.list)
+                .anyMatch(
+                        e ->
+                                e.getLevel() == Level.WARN
+                                        && e.getFormattedMessage()
+                                                .contains("op=send-announcement-message")
+                                        && e.getFormattedMessage().contains("result=HTTP-403"));
     }
 }
