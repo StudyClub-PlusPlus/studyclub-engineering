@@ -16,7 +16,7 @@ import {
   BODY_MAX_BYTES,
   SUBJECT_MAX_LENGTH,
   TEMPLATE_CONDITIONS,
-  clampToUtf8Bytes,
+  applyBodyEdit,
   utf8Bytes,
   type NotificationTemplate,
   type TemplateDraft,
@@ -28,6 +28,7 @@ const EMPTY: TemplateDraft = { eventType: TEMPLATE_CONDITIONS[0].value, subject:
 const SAVE_FAILED = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const DELETE_FAILED = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const GONE = '이미 삭제된 템플릿입니다. 목록을 새로 불러왔습니다.';
+const BODY_LIMIT = `본문은 ${BODY_MAX_BYTES.toLocaleString()}바이트까지 입력할 수 있습니다.`;
 const DUPLICATE = '이미 이 알림 조건의 템플릿이 있습니다. 기존 템플릿을 수정하세요.';
 
 /**
@@ -246,7 +247,16 @@ function TemplateEditor({
                       labelHint={`${utf8Bytes(draft.body).toLocaleString()} / ${BODY_MAX_BYTES.toLocaleString()}바이트`}
                       value={draft.body}
                       // 한도를 넘는 입력은 받지 않는다 — 붙여 넣은 긴 글은 한도까지만 남는다
-                      onChange={(e) => setDraft({ ...draft, body: clampToUtf8Bytes(e.target.value, BODY_MAX_BYTES) })}
+                      onChange={(e) => {
+                        const field = e.target;
+                        const edit = applyBodyEdit(draft.body, field.value, BODY_MAX_BYTES);
+                        setDraft({ ...draft, body: edit.value });
+                        if (edit.caret === null) return;
+                        toast(BODY_LIMIT, { id: 'template-body-limit' });
+                        // 값을 되돌리면 커서가 끝으로 튄다 — 친 자리로 돌려 놓는다
+                        const caret = edit.caret;
+                        requestAnimationFrame(() => field.setSelectionRange(caret, caret));
+                      }}
                       placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
                       helper='{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
                     />

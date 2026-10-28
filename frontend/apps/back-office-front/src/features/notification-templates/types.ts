@@ -46,6 +46,39 @@ export function clampToUtf8Bytes(text: string, maxBytes: number): string {
   return kept;
 }
 
+export type BodyEdit = {
+  value: string;
+  /** 한도에 걸려 값을 고쳤을 때, 커서를 돌려 놓을 자리. 고치지 않았으면 null. */
+  caret: number | null;
+};
+
+/**
+ * 본문 입력이 한도를 넘지 않게 고친다. 이전 값과 비교해 **바뀐 가운데 부분만** 줄인다 — 끝을 자르면 가운데에 친 글자 대신
+ * 멀쩡한 본문 끝이 지워진다. 한 글자를 쳤는데 들어갈 자리가 없으면 그 글자만 받지 않고, 긴 글을 붙여 넣으면 들어가는 만큼만 남는다.
+ */
+export function applyBodyEdit(prev: string, next: string, maxBytes: number): BodyEdit {
+  if (utf8Bytes(next) <= maxBytes) return { value: next, caret: null };
+
+  const shared = Math.min(prev.length, next.length);
+  let head = 0;
+  while (head < shared && prev[head] === next[head]) head++;
+  let tail = 0;
+  while (tail < shared - head && prev[prev.length - 1 - tail] === next[next.length - 1 - tail]) tail++;
+  // 이모지 같은 두 칸짜리 글자의 반쪽에서 나누지 않는다
+  while (head > 0 && isHighSurrogate(next.charCodeAt(head - 1))) head--;
+  while (tail > 0 && isLowSurrogate(next.charCodeAt(next.length - tail))) tail--;
+
+  const before = next.slice(0, head);
+  const after = next.slice(next.length - tail);
+  const inserted = next.slice(head, next.length - tail);
+  const room = Math.max(0, maxBytes - utf8Bytes(before) - utf8Bytes(after));
+  const kept = clampToUtf8Bytes(inserted, room);
+  return { value: before + kept + after, caret: head + kept.length };
+}
+
+const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
+const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff;
+
 /**
  * 팝업에서 고를 수 있는 알림 조건 코드. **조건이 곧 그 알림의 이름이다** — 이름을 따로 받지 않는다.
  * 저장되는 이벤트 코드는 이 선택이 정하고, 화면에 적는 이름은 목록과 같은 `eventLabel` 한 곳에서 온다.

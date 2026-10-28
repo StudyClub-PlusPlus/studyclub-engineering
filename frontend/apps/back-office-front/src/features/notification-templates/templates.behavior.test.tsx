@@ -5,7 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationTemplatesPage from '@/app/notification-templates/page';
-import { clampToUtf8Bytes, utf8Bytes, type NotificationTemplate } from '@/features/notification-templates/types';
+import {
+  applyBodyEdit,
+  clampToUtf8Bytes,
+  utf8Bytes,
+  type NotificationTemplate,
+} from '@/features/notification-templates/types';
 import { ApiError, http } from '@/lib/http';
 
 // 서버는 http 한 곳으로 막는다 — 경로·메서드·바디까지 함께 확인한다.
@@ -23,6 +28,7 @@ vi.mock('@studyclub/ui', async (importOriginal) => {
 });
 
 const httpMock = vi.mocked(http);
+const toastMock = vi.mocked(toast);
 const toastErrorMock = vi.mocked(toast.error);
 const BASE = '/api/admin/notification-templates';
 
@@ -84,6 +90,7 @@ const callsOf = (method: string) => httpMock.mock.calls.filter(([, init]) => (in
 describe('알림 템플릿 화면', () => {
   beforeEach(() => {
     httpMock.mockReset();
+    toastMock.mockClear();
     toastErrorMock.mockClear();
   });
 
@@ -478,6 +485,62 @@ describe('알림 템플릿 화면', () => {
     // 붙여 넣은 긴 글은 한도까지만 남고, 글자 한가운데서 잘리지 않는다
     fireEvent.change(body, { target: { value: '가'.repeat(30_000) } });
     expect(body.value).toBe(atLimit);
+  });
+
+  it('한도에서 본문 가운데에 글자를 치면 그 글자만 받지 않고 본문 끝은 지워지지 않는다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+    const full = '가'.repeat(21_844) + 'END'; // 65,535바이트
+    fireEvent.change(body, { target: { value: full } });
+    expect(body.value).toBe(full);
+
+    fireEvent.change(body, { target: { value: full.slice(0, 10) + 'a' + full.slice(10) } });
+
+    expect(body.value).toBe(full);
+    expect(toastMock).toHaveBeenCalledWith(expect.stringContaining('65,535바이트'), { id: 'template-body-limit' });
+  });
+
+  it('한도를 넘는 글을 가운데에 붙여 넣으면 들어가는 만큼만 남고 앞뒤 본문은 그대로다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+    const base = '가'.repeat(21_000) + 'END'; // 63,003바이트
+    fireEvent.change(body, { target: { value: base } });
+
+    fireEvent.change(body, { target: { value: base.slice(0, 100) + '나'.repeat(5_000) + base.slice(100) } });
+
+    expect(utf8Bytes(body.value)).toBeLessThanOrEqual(65_535);
+    expect(body.value.startsWith(base.slice(0, 100))).toBe(true);
+    expect(body.value.endsWith('END')).toBe(true);
+    expect(body.value).toContain('나'.repeat(844)); // 남은 2,532바이트 = 844글자
+    expect(toastMock).toHaveBeenCalledWith(expect.stringContaining('65,535바이트'), { id: 'template-body-limit' });
+  });
+
+  it('applyBodyEdit: 한도 안이면 그대로, 넘으면 바뀐 가운데만 줄이고 커서 자리를 돌려 준다', () => {
+    expect(applyBodyEdit('abc', 'abXc', 10)).toEqual({ value: 'abXc', caret: null });
+    // 가운데에 한 글자: 들어갈 자리가 없어 그 글자만 받지 않는다
+    expect(applyBodyEdit('abcd', 'abXcd', 4)).toEqual({ value: 'abcd', caret: 2 });
+    // 가운데에 긴 글: 들어가는 만큼만 남고 앞뒤는 그대로다
+    expect(applyBodyEdit('abcd', 'abXYZcd', 5)).toEqual({ value: 'abXcd', caret: 3 });
+    // 같은 글자를 반복해 쳐도 앞뒤를 겹쳐 세지 않는다
+    expect(applyBodyEdit('aaaa', 'aaaaa', 4)).toEqual({ value: 'aaaa', caret: 4 });
+  });
+
+  it('applyBodyEdit: 이모지를 반으로 나누지 않는다', () => {
+    const edit = applyBodyEdit('a😀b', 'a😀😁b', 6);
+    expect(edit.value).toBe('a😀b');
+    expect(utf8Bytes(edit.value)).toBeLessThanOrEqual(6);
   });
 
   it('clampToUtf8Bytes 는 4바이트 글자(이모지)도 반으로 자르지 않는다', () => {
