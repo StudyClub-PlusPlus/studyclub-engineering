@@ -3,7 +3,7 @@
 > ERD: [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md)
 > Story PRD: [회차 등록](../../01-planning/stories/navigator-register-sessions/PRD.md) · [크루 발표자 신청](../../01-planning/stories/crew-apply-presenter/PRD.md)
 > 생성일: 2026-10-02
-> 상태: 구현중 (2026-10-07 — 백엔드) · 2026-10-23 — 삭제 2개 말고 구현완료. 삭제는 코드 경로가 스펙과 다르다 (아래 표)
+> 상태: 구현중 (2026-10-07 — 백엔드) · 2026-10-23 — 삭제 2개 말고 구현완료. 삭제는 코드 경로가 스펙과 다르다 (아래 표) · 2026-10-24 — 백오피스 회차 쓰기 · 규칙 추가 (아래 「백오피스 회차 쓰기 · 규칙」)
 >
 > Story PRD:
 > - [네비게이터로서, 스터디 회차를 등록할 수 있다](../../01-planning/stories/navigator-register-sessions/PRD.md)
@@ -23,6 +23,10 @@
 | PUT | /api/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 | O (그 분반 네비게이터 · 캡틴) | 구현완료 |
 | GET | /api/admin/studies/{studyId}/groups/{groupId}/meetings | 반 회차 목록 (백오피스 일정 탭 — 킥오프 · 발표자 포함) | O (ADMIN) | 구현완료 |
 | PUT | /api/admin/studies/{studyId}/groups/{groupId}/kickoff | 킥오프 정하기 · 옮기기 (백오피스 일정 탭) | O (ADMIN) | 구현완료 |
+| POST | /api/admin/studies/{studyId}/groups/{groupId}/meetings | 회차 추가 (백오피스 일정 탭 — 사이트 회차 추가와 같은 규칙) | O (ADMIN) | 구현완료 |
+| PUT | /api/admin/studies/{studyId}/groups/{groupId}/meetings/{meetingId} | 회차 수정 (백오피스 — 시각 · 제목 · 발표자) | O (ADMIN) | 구현완료 |
+| DELETE | /api/admin/studies/{studyId}/groups/{groupId}/meetings | 회차 일괄 삭제 (백오피스 — 본문 `meetingIds`) | O (ADMIN) | 구현완료 |
+| PUT | /api/admin/studies/{studyId}/groups/{groupId}/rules | 스터디 규칙 저장 (백오피스) | O (ADMIN) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -50,7 +54,7 @@ PRD 「4. 미확정」 을 아래로 닫는다. 1~6 · 9~12 는 기획(세은님
 
 ### 경로
 
-- 사용자 사이트(내 스터디 → 스터디 일정)가 부르므로 `/api` 아래, `/api/admin` 이 아니다 ([endpoint-convention](../../docs/backend-development-guide/api/endpoint-convention.md#관객으로-경로를-가른다--apiadmin)). 캡틴(ADMIN)도 같은 경로로 통과한다. 백오피스 화면이 회차를 다루게 되면 그때 `/api/admin/...` 를 따로 만든다.
+- 사용자 사이트(내 스터디 → 스터디 일정)가 부르므로 `/api` 아래, `/api/admin` 이 아니다 ([endpoint-convention](../../docs/backend-development-guide/api/endpoint-convention.md#관객으로-경로를-가른다--apiadmin)). 백오피스 일정 탭은 `/api/admin/studies/{studyId}/groups/{groupId}/...` 를 따로 부른다 — 아래 「백오피스 회차 쓰기 · 규칙」. 규칙(날짜 · 잠금 · 출석 행)은 같고 권한만 다르다
 - 출석과 같은 모양을 따른다 — `/api/studies/{studyId}/attendances` 처럼 스터디 아래 하위 리소스, 분반은 `studyGroupId` 로 지정. 회차 ID 가 전역 고유라 `/study-groups/{groupId}` 를 경로에 끼우지 않는다.
 - 수정은 `PUT` — 시각·제목은 늘 함께 보내 전체 교체한다. 발표자 두 칸만 예외로, **바꾼 칸만 보내고 빠진 칸은 그대로 둔다**(아래 회차 수정). 화면을 연 사이 크루가 신청한 칸을 옛 값으로 덮지 않기 위해서다.
 
@@ -538,7 +542,7 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ### 프론트엔드 사용처
 
-- back-office-front 일정 탭 — 반을 고르면 이걸로 표를 그린다. **화면은 있고 아직 연결하지 않았다** — 반 목록 API(`GET /api/admin/studies/{studyId}/participants`)가 없어 반 ID 를 모른다. 지금 표는 브라우저 저장소를 읽고, 호출 · 응답 변환은 `features/schedule/api.ts`(`useGroupMeetings` · `toMeetings`)에 있다. 킥오프가 없으면(`type = KICKOFF` 인 회차 없음) 「킥오프 정하기」, 있으면 「킥오프 수정」
+- back-office-front 일정 탭 — 반을 고르면 이걸로 표를 그린다 (`features/schedule/api.ts` 의 `useGroupMeetings` · `toMeetings`). 반 ID 는 참여 명단 `groups[]` 에서 받는다. 출석 탭도 같은 응답으로 출석부 열을 그린다. 킥오프가 없으면(`type = KICKOFF` 인 회차 없음) 「킥오프 정하기」, 있으면 「킥오프 수정」. 회차 추가 · 수정 · 삭제 · 규칙은 아래 「백오피스 회차 쓰기 · 규칙」을 부른다
 
 ---
 
@@ -592,7 +596,58 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 ### 프론트엔드 사용처
 
 - 프로토타입: playground 운영 콘솔 › 스터디 운영 › 일정 탭 「킥오프 정하기 · 수정」
-- back-office-front 일정 탭 「킥오프 정하기 · 수정」(`features/schedule/KickoffDialog.tsx`) — 화면은 있고 지금은 브라우저 저장소에 남는다. 이 API 호출(`features/schedule/api.ts` `useSetKickoff`)은 반 목록 API 가 생기면 붙인다
+- back-office-front 일정 탭 「킥오프 정하기 · 수정」(`features/schedule/KickoffDialog.tsx` → `features/schedule/api.ts` `useSetKickoff`)
+
+---
+
+## 백오피스 회차 쓰기 · 규칙
+
+### 기본 정보
+
+| Method | Path | 같은 기능 (사이트) |
+|--------|------|------|
+| POST | `/api/admin/studies/{studyId}/groups/{groupId}/meetings` | [회차 추가](#회차-추가) |
+| PUT | `/api/admin/studies/{studyId}/groups/{groupId}/meetings/{meetingId}` | [회차 수정](#회차-수정) |
+| DELETE | `/api/admin/studies/{studyId}/groups/{groupId}/meetings` | [회차 삭제 (일괄)](#회차-삭제-일괄) |
+| PUT | `/api/admin/studies/{studyId}/groups/{groupId}/rules` | [스터디 규칙 저장](#스터디-규칙-저장) |
+
+- **인증**: 필요 (ADMIN — 캡틴). **어느 스터디의 어느 반이든** 고친다 — 사이트 API 는 그 스터디를 만든 캡틴 · 그 반 네비게이터만 통과해, 다른 캡틴은 백오피스에서 회차를 고칠 수 없었다 (2026-10-24).
+- **설명**: 백오피스 일정 탭이 부른다. 동작 · 검증 · 잠금 · 출석 행(추가 시 ABSENT 생성, 삭제 시 출석 · 휴가 삭제)은 사이트 API 와 **같은 서비스 코드**다. 다른 것은 권한과, 반을 경로로 받는다는 것뿐이다.
+
+### Path Parameters
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|----------|------|------|------|
+| studyId | Long | Y | 스터디 ID |
+| groupId | Long | Y | 반 ID. 이 스터디 소속이어야 한다 |
+| meetingId | Long | Y (수정) | 회차 ID. 이 반의 회차여야 한다 |
+
+### Request Body
+
+반 ID 는 경로에 있어 본문에 `studyGroupId` 를 받지 않는다. 나머지 필드는 사이트와 같다.
+
+| API | 본문 |
+|-----|------|
+| 추가 | `{ "scheduledAts": ["2026-10-08T11:00:00Z"], "title": "1장" }` — 사이트 회차 추가에서 `studyGroupId` 를 뺀 것 |
+| 수정 | 사이트 회차 수정과 같다 — `scheduledAt` · `title` · `presenter1ParticipantId` · `presenter2ParticipantId` (발표자는 키가 없으면 그대로, `null` 이면 비운다) |
+| 삭제 | `{ "meetingIds": [41, 42] }` — 사이트 일괄 삭제에서 `studyGroupId` 를 뺀 것 |
+| 규칙 | `{ "rules": "..." }` — 사이트와 같다 |
+
+### Response — 204 No Content
+
+### Error Responses
+
+사이트 API 의 오류에서 「네비게이터도 캡틴도 아님 → 403」 대신 아래 권한 줄이 들어간다. 날짜 · 시작 · 킥오프 · 길이 오류(400 · 409 `MEETING_DATE_CONFLICT` · 409 `MEETING_ALREADY_STARTED` · 킥오프 수정 403)는 사이트와 같다.
+
+| 상태 | errorCode | 조건 |
+|------|-----------|------|
+| 401 | UNAUTHORIZED | 토큰 없음 |
+| 403 | FORBIDDEN | 캡틴(ADMIN)이 아님 |
+| 404 | NOT_FOUND | 없는 반 · 다른 스터디의 반 · (수정 · 삭제) 이 반의 회차가 아님 |
+
+### 프론트엔드 사용처
+
+- back-office-front 일정 탭 — 「회차 추가」 · 표 「저장」 · 「삭제」 · 정보 카드 규칙 저장 (`features/schedule/repository.ts`)
 
 ---
 
@@ -617,11 +672,10 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - 묶음(`SERIES_ID`) 단위 삭제·수정 · 목록의 반복 표시 (결정 2 — 묶음 ID 는 저장해 둔다). 고른 회차 일괄 삭제는 결정 13
 - 출석부 편집 — [명부·출석](../attendance/spec.md)
 - 회차 취소 표현(`CANCELED_AT`) — 지금은 삭제만 있다
-- 백오피스 회차 관리 (`/api/admin/...`)
 
 ## 미확정
 
-- [NEEDS CLARIFICATION] 백오피스 회차 추가 · 수정 · 삭제 — 사이트 API 는 스터디를 만든 캡틴만 통과해 다른 캡틴은 백오피스에서 회차를 고칠 수 없다. `/api/admin/...` 쓰기 API 를 만들지, 백오피스는 만든 캡틴만 고치게 할지 (2026-10-23, PR #312 코멘트)
+- ~~백오피스 회차 추가 · 수정 · 삭제 — `/api/admin/...` 쓰기 API 를 만들지~~ → 만든다. 캡틴이면 어느 반이든 (2026-10-24, 위 「백오피스 회차 쓰기 · 규칙」)
 
 - ~~이미 운영 중인 분반에 킥오프 회차를 소급해 만들지~~ → 캡틴이 백오피스에서 지난 날로도 정한다 (2026-10-22)
 - [NEEDS CLARIFICATION] 한 사람이 맡을 수 있는 발표 수에 상한을 둘지 — 지금은 두지 않는다.

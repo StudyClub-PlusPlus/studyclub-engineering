@@ -2,7 +2,7 @@
 --   * NOTIFICATION.REFERENCE_ID: 이 알림을 만든 쪽의 ID 참조. 공지 메일이면 STUDY_NOTICE.ID — 공지별 메일 결과(대기·완료·실패)를 세는 키다.
 --     웰컴메일은 NULL. 다른 애그리거트라 FK 는 없다.
 --   * 템플릿 본문은 HTML 시안이다 (frontend/apps/playground/src/proto/mail/templates/study-notice-email.html — 시안 정본,
---     playground /proto/mail 에서 편집·미리보기). 치환 값 {{studyTitle}} {{groupName}} {{senderName}} {{title}} {{body}} 는
+--     백오피스·playground 알림 템플릿 팝업의 본문 편집 → 미리보기로 확인). 치환 값 {{studyTitle}} {{groupName}} {{senderName}} {{title}} {{body}} 는
 --     렌더러가 HTML 이스케이프해서 끼운다(NotificationTemplateRenderer). 본문 줄바꿈은 시안의 white-space:pre-line 이 살린다.
 --   * 제목은 「[StudyClub] 무엇」 규칙 (docs/mail-templates/README.md §제목 규칙). studyTitle 은 서버가 25자로 잘라 넣어 제목이 40자를 넘지 않는다.
 --   * stage 는 Flyway 가 꺼져 있어 이 파일이 돌지 않는다. 같은 내용을 손으로 한 번 넣는다(PR 본문의 stage SQL).

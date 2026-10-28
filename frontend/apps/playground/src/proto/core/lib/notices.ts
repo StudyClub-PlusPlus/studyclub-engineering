@@ -30,7 +30,7 @@ export const NOTICES: Notice[] = [
       en: 'In November, StudyClub opens a new website under its new name at studyclub.life, where you can find a study and apply right away.',
     },
     blocks: [
-      { p: { ko: '안녕하세요, 스터디클럽 운영진입니다.', en: 'Hello from the StudyClub organizers.' } },
+      { p: { ko: '안녕하세요, 스터디클럽 캡틴입니다.', en: 'Hello from the StudyClub organizers.' } },
       {
         p: {
           ko: '2024년 초 실리콘밸리에서 몇 명이 모여 시작한 스터디 모임이, 이제 미국·캐나다·한국의 개발자 2,800명 넘게 함께하는 커뮤니티가 되었어요. 그동안 디스코드와 구글 폼으로 스터디를 찾고 신청해 주신 모든 분께 감사드려요.',

@@ -17,7 +17,7 @@
 ## 이게 뭐
 
 StudyClub 스터디 클럽 서비스. **frontend**(사용자향 core-front + 운영자향 back-office-front) + **backend**(Spring Boot 멀티모듈).
-프론트는 현재 **MSW Mock API 및 mock 데이터**로 동작 (백엔드 API 붙으면 교체). 백엔드는 기본 스캐폴드 단계.
+core-front·back-office-front 는 **실제 백엔드 API** 로 동작하고, 백엔드는 stage·prod 에 배포된다. MSW mock 은 개발 모드에서만 켜진다 (core-front 는 `next dev` 면 항상, back-office-front 는 `NEXT_PUBLIC_API_MOCKING=enabled` 일 때만). playground 는 mock 으로 동작.
 
 ## 구조 (monorepo)
 
@@ -125,7 +125,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   5. [`docs/share/`](docs/share/README.md) — 목록의 **반영** 칸이 `됨`·`해당 없음` 이 아닌 같은 도메인 건. 문서에 아직 안 들어간 결정이다
   - PRD 머리의 **`관련 결정:`** 줄이 그 화면에 걸린 share 결정이다. share 를 PRD 에 반영할 때 이 줄에 링크를 단다 — [share README §반영](docs/share/README.md#반영--결정이-기획-문서에-들어갔나)
   - **무엇이 이미 있고 무엇을 만들지**는 PRD §3 「개발 범위」 표에 있다. 스펙 상태나 PRD 를 고쳤으면 `node scripts/check-dev-scope.mjs` 로 코드와 어긋나지 않았는지 본다
-- **메일을 새로 만들거나 고치면 [`docs/mail-templates/README.md`](docs/mail-templates/README.md) 를 따른다** — 제목은 `[StudyClub] 무엇`, 본문 시안은 [`frontend/apps/playground/src/proto/mail/templates/`](frontend/apps/playground/src/proto/mail/templates/) 에 두고 가입메일(`user-registered-email.html`)을 복사해 시작한다 — playground `/proto/mail` 에서 고치며 바로 본다. 문구 정본은 DB 라 반영은 `V{n}` 마이그레이션(stage 는 Flyway off — 손으로 한 번)
+- **메일을 새로 만들거나 고치면 [`docs/mail-templates/README.md`](docs/mail-templates/README.md) 를 따른다** — 제목은 `[StudyClub] 무엇`, 본문 시안은 [`frontend/apps/playground/src/proto/mail/templates/`](frontend/apps/playground/src/proto/mail/templates/) 에 두고 가입메일(`user-registered-email.html`)을 복사해 시작한다 — playground `/proto/console/notifications/templates` 의 추가·수정 팝업에서 본문 편집과 미리보기를 오가며 확인한다. 문구 정본은 DB 라 반영은 `V{n}` 마이그레이션(stage 는 Flyway off — 손으로 한 번)
 - **팀에 물을 것·정해진 것은 `docs/share/` 에** — 팀원의 결정·답변이 필요하거나, 정해져서 팀이 알아야 하는 것은
   `docs/share/YYYY-MM-DD-<주제>.md` 한 건으로 남기고 [`docs/share/README.md`](docs/share/README.md) 목록에 한 줄 추가한다.
   목록의 공유 칸은 **`공유전`** 으로 둔다 — 팀에는 모아서 한 번에 알리고 그때 `공유됨 (MM-DD)` 로 바꾼다 ([§공유](docs/share/README.md#공유--모아서-한-번에)).
@@ -148,7 +148,7 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   시키기를 기다리지 않는다. 확인 주소는 `stage.studyclub.life`.
 - **PUBLIC 레포** — 위 민감정보 금지 규칙 최우선.
 - 외부 라이브러리 임의 추가 금지 — 합의 필수.
-- 프론트 데이터는 지금 `frontend/packages/mock` 의 MSW 및 목 데이터로 동작. 데이터 수정: 스터디는 `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`. 실 API 교체 지점은 `// TODO(api)` 주석.
+- 개발 모드·playground 의 목 데이터는 `frontend/packages/mock` 에 있다. 데이터 수정: 스터디는 `src/data/studies/` (`recruiting.ts`, `ongoing.ts`, `closed-*.ts`), 크루는 `src/data/crew.ts`, 커뮤니티·행사·공지는 `src/data/community.ts`. 실 API 교체 지점은 `// TODO(api)` 주석.
 - PR 은 CODEOWNERS(@titaniper) 승인 후에만 main 머지 (외부 기여자 포함).
 - CI: 프론트=`.github/workflows/{core,back-office}-front-*` (context `frontend/`), 백엔드=`backend-*`.
   **playground 만 `beta` 브랜치에서 배포된다** (`playground-beta.yaml`) — 프로토타입이라 main 을 기다리지 않는다.
