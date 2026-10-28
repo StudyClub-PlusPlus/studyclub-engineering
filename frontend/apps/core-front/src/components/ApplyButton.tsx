@@ -15,6 +15,7 @@ import type { Locale, Study } from '@/lib/content';
 import { fetchDiscordLinkState, forgetDiscordLinkState } from '@/lib/discord';
 import { t } from '@/lib/i18n';
 import { addApplication, getApplication } from '@/lib/me';
+import { withApplyIntent, withoutApplyIntent } from '@/lib/onboarding';
 import { recruitLabel, recruitState } from '@/lib/recruit';
 
 export function ApplyButton({ study, locale }: { study: Study; locale: Locale }) {
@@ -29,6 +30,8 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const [checking, setChecking] = useState(false);
   /** 연동 여부를 기다리는 사이 페이지를 떠났으면 창을 열거나 이동하지 않는다 */
   const mounted = useRef(true);
+  /** apply=1 복귀 소비는 한 번만 — 의존성이 바뀌어도 폼을 다시 열지 않는다 */
+  const consumedApplyIntent = useRef(false);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -59,6 +62,41 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     }
   }, [study.id, myApp]);
 
+  // 로그인·온보딩·디스코드 연결에서 돌아온 신청 의도(apply=1)를 소비한다.
+  useEffect(() => {
+    if (consumedApplyIntent.current || !ready) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('apply') !== '1') return;
+    consumedApplyIntent.current = true;
+    const clean = withoutApplyIntent(`${url.pathname}${url.search}${url.hash}`);
+    router.replace(clean, { scroll: false });
+
+    const user = getUser();
+    if (!user?.onboardingCompletedAt) return;
+    if (state === 'closed' || Boolean(getApplication(study.id)) || myApp?.applied) return;
+
+    let cancelled = false;
+    void (async () => {
+      setChecking(true);
+      const linkState = await fetchDiscordLinkState(user.id);
+      if (cancelled || !mounted.current) return;
+      setChecking(false);
+      if (linkState === 'unauthorized') {
+        clearSession();
+        router.push(`/${locale}/login?next=${encodeURIComponent(withApplyIntent(pathname))}`);
+        return;
+      }
+      if (linkState === 'unlinked') {
+        setDiscordOpen(true);
+        return;
+      }
+      setFormOpen(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, state, study.id, myApp?.applied, pathname, locale, router]);
+
   const isClosed = state === 'closed' || Boolean(deadlineLabel);
 
   const card = 'inline-flex items-center rounded-pill px-8 py-3 type-label-lg';
@@ -78,10 +116,15 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
         has_external_form: false,
       },
     });
-    const loginPath = `/${locale}/login?next=${encodeURIComponent(pathname)}`;
+    const nextWithApply = withApplyIntent(pathname);
+    const loginPath = `/${locale}/login?next=${encodeURIComponent(nextWithApply)}`;
     const user = getUser();
     if (!user) {
       router.push(loginPath);
+      return;
+    }
+    if (!user.onboardingCompletedAt) {
+      router.push(`/${locale}/onboarding?next=${encodeURIComponent(nextWithApply)}`);
       return;
     }
     // 연동 여부는 서버(ACCOUNT.DISCORD_ID)가 정본이다. 모르면(조회 실패 · 필드 없음) 폼을 열고,

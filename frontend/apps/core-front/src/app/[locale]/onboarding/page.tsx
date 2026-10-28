@@ -8,6 +8,7 @@ import { Button, Input } from '@studyclub/ui';
 import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 
 import { OnboardingConsent } from '@/components/OnboardingConsent';
+import { OnboardingDiscord } from '@/components/OnboardingDiscord';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
 import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
@@ -42,10 +43,15 @@ function OnboardingScreen() {
   const search = useSearchParams();
   const router = useRouter();
   const next = returnPath(search.get('next'), locale);
+  const discordStep = search.get('step') === 'discord';
   const [ready, setReady] = useState(false);
   const [accountId, setAccountId] = useState<number | null>(null);
 
   useEffect(() => {
+    if (discordStep) {
+      setReady(true);
+      return;
+    }
     const user = getUser();
     if (!user) {
       router.replace(
@@ -59,7 +65,9 @@ function OnboardingScreen() {
     }
     setAccountId(user.id);
     setReady(true);
-  }, [locale, next, router]);
+  }, [discordStep, locale, next, router]);
+
+  if (discordStep) return <OnboardingDiscord locale={locale} next={next} />;
 
   return (
     <div className='min-h-[80vh] bg-surface-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12'>
@@ -298,7 +306,8 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
           marketing_agreed: draft.marketingAgreed,
         },
       });
-      router.replace(next);
+      // 가입 완료와 디스코드 연결은 독립 — 연결 선택 단계로 보낸다 (DSC-03)
+      router.replace(`/${locale}/onboarding?step=discord&next=${encodeURIComponent(next)}`);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
