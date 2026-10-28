@@ -38,6 +38,25 @@ export function buildGoogleAuthUrl(): string {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
+/** 애플 Services ID — 공개 식별자. 돌아올 주소는 Apple Developer 에 등록된 것만 받는다(studyclub.life · stage). 로컬은 애플이 localhost 를 안 받아 쓸 수 없다 */
+export const APPLE_WEB_CLIENT_ID = 'life.studyclub.web';
+
+export function appleRedirectUri(): string {
+  return `${window.location.origin}/api/auth/apple/callback`;
+}
+
+/** 브라우저에서 애플 authorize URL (팝업으로 연다). name·email 을 받으려면 form_post 여야 한다 */
+export function buildAppleAuthUrl(): string {
+  const params = new URLSearchParams({
+    client_id: APPLE_WEB_CLIENT_ID,
+    redirect_uri: appleRedirectUri(),
+    response_type: 'code',
+    scope: 'name email',
+    response_mode: 'form_post',
+  });
+  return `https://appleid.apple.com/auth/authorize?${params.toString()}`;
+}
+
 export function isConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 }

@@ -37,13 +37,14 @@ export type AnalyticsEvent =
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
   | { name: 'Auth Google Login Clicked'; props: { popup_blocked: boolean } }
+  | { name: 'Auth Apple Login Clicked'; props: { popup_blocked: boolean } }
   | { name: 'Auth OAuth Cancelled'; props: { error: string } }
   | { name: 'Auth Login Completed'; props: { is_new_user: boolean; next_path: string } }
   | { name: 'Auth Login Failed'; props: { error_message: string; http_status: number } }
   // 공통 규약 이벤트 — 서비스마다 같은 이름이라 서비스끼리 퍼널을 겹쳐 볼 수 있다.
   // 가입 정본은 서버(user.registered)가 같은 이름으로 보낸다. 여기 것은 퍼널용 프론트 사본.
   | { name: 'User Signed Up'; props: { method: 'google'; signup_surface: 'onboarding' } }
-  | { name: 'User Logged In'; props: { method: 'google' } }
+  | { name: 'User Logged In'; props: { method: 'google' | 'apple' } }
 
   // ── Onboarding ───────────────────────────────────────────────────────────────
   | { name: 'Onboarding Started'; props: { suggested_nickname: boolean } }

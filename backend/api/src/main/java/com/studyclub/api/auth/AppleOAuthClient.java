@@ -33,6 +33,10 @@ import tools.jackson.databind.ObjectMapper;
  * 사람을 읽는다. id_token 은 우리 서버가 TLS 로 애플에게서 직접 받은 것이라 서명 검증 대신 {@code iss}·{@code aud} 만 확인한다 (OIDC
  * Core 3.1.3.7). {@link GoogleOAuthClient}·{@link DiscordOAuthClient} 와 같은 모양이다.
  *
+ * <p>client ID 가 둘이다 — iOS 앱은 번들 ID({@code apple.client-id}), 사이트는 Services ID({@code
+ * apple.web-client-id}). 사이트는 authorize 때 쓴 redirect_uri 를 교환에도 실어야 한다. 같은 .p8 키가 둘 다 서명한다(Services
+ * ID 가 번들 ID 에 묶여 있다).
+ *
  * <p>client secret 은 고정 문자열이 아니라 .p8 키로 서명한 짧은 JWT 다. 요청마다 새로 만든다. code·토큰은 로그에 남기지 않는다.
  */
 @Component
@@ -46,6 +50,7 @@ public class AppleOAuthClient {
     private final String teamId;
     private final String keyId;
     private final String clientId;
+    private final String webClientId;
     private final String privateKey;
     private final RestClient restClient;
 
@@ -54,11 +59,13 @@ public class AppleOAuthClient {
             @Value("${apple.team-id:}") String teamId,
             @Value("${apple.key-id:}") String keyId,
             @Value("${apple.client-id:}") String clientId,
+            @Value("${apple.web-client-id:}") String webClientId,
             @Value("${apple.private-key:}") String privateKey) {
         this.apiUrl = apiUrl;
         this.teamId = teamId;
         this.keyId = keyId;
         this.clientId = clientId;
+        this.webClientId = webClientId;
         this.privateKey = privateKey;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(3));
@@ -66,10 +73,17 @@ public class AppleOAuthClient {
         this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
-    public SocialUser exchange(String code) {
-        MultiValueMap<String, String> form = form();
+    /**
+     * @param redirectUri 사이트만 — authorize 때 쓴 콜백. null 이면 iOS 앱
+     */
+    public SocialUser exchange(String code, String redirectUri) {
+        String client = redirectUri == null ? clientId : webClientId;
+        MultiValueMap<String, String> form = form(client);
         form.add("grant_type", "authorization_code");
         form.add("code", code);
+        if (redirectUri != null) {
+            form.add("redirect_uri", redirectUri);
+        }
 
         Map<?, ?> token;
         try {
@@ -83,7 +97,7 @@ public class AppleOAuthClient {
         }
 
         Map<?, ?> claims = payload(idToken);
-        if (!AUDIENCE.equals(claims.get("iss")) || !clientId.equals(claims.get("aud"))) {
+        if (!AUDIENCE.equals(claims.get("iss")) || !client.equals(claims.get("aud"))) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "애플 id_token 의 발급자·대상이 다릅니다.");
         }
         return new SocialUser(
@@ -97,30 +111,38 @@ public class AppleOAuthClient {
                 asString(token.get("refresh_token")));
     }
 
-    /** 탈퇴 — 애플 쪽 연결을 끊는다. 실패해도 탈퇴는 막지 않는다 (사용자는 애플 설정에서 직접 끊을 수 있다). */
+    /**
+     * 탈퇴 — 애플 쪽 연결을 끊는다. 토큰이 앱·사이트 중 어느 client 로 발급됐는지 저장하지 않아서 설정된 client 로 둘 다 보낸다 (다른 client 의
+     * 토큰은 애플이 무시한다). 실패해도 탈퇴는 막지 않는다 — 사용자는 애플 설정에서 직접 끊을 수 있다.
+     */
     public void revoke(String refreshToken) {
-        try {
-            MultiValueMap<String, String> form = form();
-            form.add("token", refreshToken);
-            form.add("token_type_hint", "refresh_token");
-            post("/auth/revoke", form);
-        } catch (RuntimeException e) {
-            log.warn("애플 토큰 revoke 실패 — 탈퇴는 계속한다: {}", e.getClass().getSimpleName());
+        for (String client : new String[] {clientId, webClientId}) {
+            if (!StringUtils.hasText(client)) {
+                continue;
+            }
+            try {
+                MultiValueMap<String, String> form = form(client);
+                form.add("token", refreshToken);
+                form.add("token_type_hint", "refresh_token");
+                post("/auth/revoke", form);
+            } catch (RuntimeException e) {
+                log.warn("애플 토큰 revoke 실패 — 탈퇴는 계속한다: {}", e.getClass().getSimpleName());
+            }
         }
     }
 
-    private MultiValueMap<String, String> form() {
+    private MultiValueMap<String, String> form(String client) {
         if (!StringUtils.hasText(teamId)
                 || !StringUtils.hasText(keyId)
-                || !StringUtils.hasText(clientId)
+                || !StringUtils.hasText(client)
                 || !StringUtils.hasText(privateKey)) {
             throw new BusinessException(
                     ErrorCode.EXTERNAL_SERVICE_ERROR,
-                    "애플 로그인이 설정되지 않았습니다 (APPLE_TEAM_ID/KEY_ID/CLIENT_ID/PRIVATE_KEY).");
+                    "애플 로그인이 설정되지 않았습니다 (APPLE_TEAM_ID/KEY_ID/CLIENT_ID/WEB_CLIENT_ID/PRIVATE_KEY).");
         }
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-        form.add("client_id", clientId);
-        form.add("client_secret", clientSecret());
+        form.add("client_id", client);
+        form.add("client_secret", clientSecret(client));
         return form;
     }
 
@@ -135,14 +157,14 @@ public class AppleOAuthClient {
     }
 
     /** 애플 규격 — ES256, kid=키 ID, iss=팀 ID, sub=client ID, aud=애플. 수명은 최대 6개월이지만 요청마다 만들어 5분이면 된다. */
-    String clientSecret() {
+    String clientSecret(String client) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .header()
                 .keyId(keyId)
                 .and()
                 .issuer(teamId)
-                .subject(clientId)
+                .subject(client)
                 .audience()
                 .add(AUDIENCE)
                 .and()

@@ -1,8 +1,10 @@
 package com.studyclub.api.analytics;
 
+import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.UserRegisteredEvent;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.application.StudyApplicationSubmitted;
+import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,33 +33,45 @@ public class AnalyticsEventListener {
     private final AmplitudeClient amplitude;
     private final Ga4Client ga4;
     private final StudyApplicationRepository applicationRepository;
+    private final AccountIdentityRepository identityRepository;
 
     public AnalyticsEventListener(
             AmplitudeClient amplitude,
             Ga4Client ga4,
-            StudyApplicationRepository applicationRepository) {
+            StudyApplicationRepository applicationRepository,
+            AccountIdentityRepository identityRepository) {
         this.amplitude = amplitude;
         this.ga4 = ga4;
         this.applicationRepository = applicationRepository;
+        this.identityRepository = identityRepository;
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onUserRegistered(UserRegisteredEvent event) {
         try {
+            String method = signupMethod(event.accountId());
             amplitude.send(
                     "User Signed Up",
                     event.accountId(),
                     "user_signed_up_account_" + event.accountId(),
                     event.meta().occurredAt(),
-                    Map.of("method", "google", "signup_surface", "onboarding"));
-            ga4.send("sign_up", event.accountId(), event.gaClientId(), Map.of("method", "google"));
+                    Map.of("method", method, "signup_surface", "onboarding"));
+            ga4.send("sign_up", event.accountId(), event.gaClientId(), Map.of("method", method));
         } catch (RuntimeException e) {
             log.warn(
                     "amplitude: 가입 이벤트 실패 eventId={} ({})",
                     event.meta().eventId(),
                     e.getClass().getSimpleName());
         }
+    }
+
+    /** 가입한 로그인 수단 (google·apple). 가입 시점엔 수단이 하나뿐이다. 못 찾으면 google — 애플 이전 가입은 전부 구글이다 */
+    private String signupMethod(Long accountId) {
+        return identityRepository.findByAccountId(accountId).stream()
+                .findFirst()
+                .map(identity -> identity.getIssuer().name().toLowerCase(Locale.ROOT))
+                .orElse("google");
     }
 
     @Async

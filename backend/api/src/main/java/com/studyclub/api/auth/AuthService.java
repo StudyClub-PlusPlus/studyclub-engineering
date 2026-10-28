@@ -39,6 +39,7 @@ public class AuthService {
     // @Transactional 없음 — findOrRegister 가 실패한 트랜잭션을 버리고 새로 열어 재시도해야 한다.
     /**
      * @param provider {@code google}(생략 포함) 또는 {@code apple}
+     * @param redirectOverride 구글: null 이면 웹 콜백, iOS 는 빈 문자열. 애플: 사이트는 콜백, iOS 는 null
      * @param name 애플만 — 앱이 첫 인가에서 받은 이름. 애플은 이름을 그때 한 번만 준다
      */
     public AuthResponse socialLogin(
@@ -49,7 +50,7 @@ public class AuthService {
         boolean apple = PROVIDER_APPLE.equalsIgnoreCase(provider);
         SocialUser g =
                 apple
-                        ? appleOAuthClient.exchange(code)
+                        ? appleOAuthClient.exchange(code, redirectOverride)
                         : googleOAuthClient.exchange(code, redirectOverride);
 
         // 특이 케이스 — Gmail 은 항상 검증돼 있고, 외부 이메일로 만든 구글 계정 중 소유 확인을 안 끝낸 경우만 여기 걸린다.

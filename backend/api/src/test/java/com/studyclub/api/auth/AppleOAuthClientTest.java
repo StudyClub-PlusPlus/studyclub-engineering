@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 class AppleOAuthClientTest {
 
     private static final String CLIENT_ID = "life.studyclub";
+    private static final String WEB_CLIENT_ID = "life.studyclub.web";
 
     private HttpServer server;
     private KeyPair keys;
@@ -90,13 +91,14 @@ class AppleOAuthClientTest {
 
     private AppleOAuthClient client() {
         String pkcs8 = Base64.getEncoder().encodeToString(keys.getPrivate().getEncoded());
-        return new AppleOAuthClient(apiUrl, "TEAM123456", "KEY1234567", CLIENT_ID, pkcs8);
+        return new AppleOAuthClient(
+                apiUrl, "TEAM123456", "KEY1234567", CLIENT_ID, WEB_CLIENT_ID, pkcs8);
     }
 
     @Test
     @DisplayName("성공 - code 를 교환해 id_token 의 sub·이메일과 refresh token 을 돌려준다")
     void exchange() {
-        SocialUser user = client().exchange("apple-code");
+        SocialUser user = client().exchange("apple-code", null);
 
         assertThat(user.issuer()).isEqualTo(Issuer.APPLE);
         assertThat(user.sub()).isEqualTo("apple-sub-1");
@@ -112,7 +114,7 @@ class AppleOAuthClientTest {
     @Test
     @DisplayName("성공 - client secret 은 .p8 키로 서명한 ES256 JWT (kid=키 ID, iss=팀, sub=번들 ID, aud=애플)")
     void clientSecretIsSignedJwt() {
-        client().exchange("apple-code");
+        client().exchange("apple-code", null);
 
         String secret = receivedForms.get("/auth/token").get("client_secret");
         Jws<Claims> jws =
@@ -130,7 +132,7 @@ class AppleOAuthClientTest {
         respondToken(
                 "{\"iss\":\"https://appleid.apple.com\",\"aud\":\"other.app\",\"sub\":\"x\",\"email\":\"a@b.c\"}");
 
-        assertThatThrownBy(() -> client().exchange("apple-code"))
+        assertThatThrownBy(() -> client().exchange("apple-code", null))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.UNAUTHORIZED);
@@ -142,7 +144,7 @@ class AppleOAuthClientTest {
         statuses.put("/auth/token", 400);
         bodies.put("/auth/token", "{\"error\":\"invalid_grant\"}");
 
-        assertThatThrownBy(() -> client().exchange("used-code"))
+        assertThatThrownBy(() -> client().exchange("used-code", null))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.UNAUTHORIZED);
@@ -151,9 +153,9 @@ class AppleOAuthClientTest {
     @Test
     @DisplayName("실패 - 설정이 비어 있으면 503")
     void notConfigured() {
-        AppleOAuthClient empty = new AppleOAuthClient(apiUrl, "", "", "", "");
+        AppleOAuthClient empty = new AppleOAuthClient(apiUrl, "", "", "", "", "");
 
-        assertThatThrownBy(() -> empty.exchange("apple-code"))
+        assertThatThrownBy(() -> empty.exchange("apple-code", null))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(ErrorCode.EXTERNAL_SERVICE_ERROR);
@@ -169,7 +171,48 @@ class AppleOAuthClientTest {
 
         statuses.put("/auth/revoke", 500);
         assertThatCode(() -> client().revoke("apple-refresh-1")).doesNotThrowAnyException();
-        assertThatCode(() -> new AppleOAuthClient(apiUrl, "", "", "", "").revoke("t"))
+        assertThatCode(() -> new AppleOAuthClient(apiUrl, "", "", "", "", "").revoke("t"))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName(
+            "성공 - 사이트는 Services ID 와 authorize 때 쓴 redirect_uri 로 교환하고, aud 도 Services ID 로 본다")
+    void webExchangeUsesServicesId() {
+        respondToken(
+                "{\"iss\":\"https://appleid.apple.com\",\"aud\":\""
+                        + WEB_CLIENT_ID
+                        + "\",\"sub\":\"apple-sub-1\",\"email\":\"a@b.c\",\"email_verified\":true}");
+
+        SocialUser user =
+                client().exchange("web-code", "https://studyclub.life/api/auth/apple/callback");
+
+        assertThat(user.sub()).isEqualTo("apple-sub-1");
+        assertThat(user.emailVerified()).isTrue(); // boolean true 도 받는다
+        assertThat(receivedForms.get("/auth/token"))
+                .containsEntry("client_id", WEB_CLIENT_ID)
+                .containsEntry("redirect_uri", "https://studyclub.life/api/auth/apple/callback");
+        String secret = receivedForms.get("/auth/token").get("client_secret");
+        assertThat(
+                        Jwts.parser()
+                                .verifyWith(keys.getPublic())
+                                .build()
+                                .parseSignedClaims(secret)
+                                .getPayload()
+                                .getSubject())
+                .isEqualTo(WEB_CLIENT_ID);
+    }
+
+    @Test
+    @DisplayName("실패 - 앱 토큰(aud=번들 ID)을 사이트 교환으로 받으면 401")
+    void webRejectsAppAudience() {
+        assertThatThrownBy(
+                        () ->
+                                client().exchange(
+                                                "web-code",
+                                                "https://studyclub.life/api/auth/apple/callback"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).errorCode())
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
     }
 }

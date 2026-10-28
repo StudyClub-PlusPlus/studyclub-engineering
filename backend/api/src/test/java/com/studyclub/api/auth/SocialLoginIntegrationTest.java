@@ -353,7 +353,7 @@ class SocialLoginIntegrationTest {
     @SuppressWarnings("unchecked")
     void appleFirstLoginRegisters() {
         // given — 애플이 비공개 릴레이 이메일로 답한다. 이름은 id_token 에 없어서 앱이 따로 보낸다
-        when(apple.exchange("apple-code"))
+        when(apple.exchange("apple-code", null))
                 .thenReturn(
                         new SocialUser(
                                 Issuer.APPLE,
