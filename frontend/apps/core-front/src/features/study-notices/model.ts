@@ -2,6 +2,7 @@
 import type {
   ApiNoticeCompose,
   ApiNoticeItem,
+  ApiNoticeList,
   ApiNoticeRecipient,
   DiscordSkipReason,
   NoticeChannel,
@@ -83,6 +84,31 @@ export function pruneSelection(selected: ReadonlySet<number>, recipients: ApiNot
  * 쿨다운이 끝나는 때 화면 값(compose)을 다시 받을 때까지의 밀리초. 다시 받을 때가 없으면 false.
  * 다시 받지 않으면 시각이 지나도 서버가 준 `canSend=false` 가 그대로라 버튼이 안 풀린다. 시각이 막 지난 순간에 서버가 아직 막고 있을 수 있어 조금 더 기다린다.
  */
+/** 보낸 공지 기록 한 쪽의 크기. 서버가 한 번에 주는 최대(50)보다 작아야 「더 보기」가 이어진다. */
+export const NOTICE_PAGE = 20;
+
+/** 지금까지 불러온 쪽들을 한 줄로 잇는다. 쪽을 받는 사이에 새 공지가 생겨 경계가 밀리면 같은 공지가 두 쪽에 올 수 있어 한 번만 남긴다. */
+export function mergeNoticePages(pages: ApiNoticeList[]): ApiNoticeItem[] {
+  const seen = new Set<number>();
+  const items: ApiNoticeItem[] = [];
+  for (const page of pages) {
+    for (const item of page.items) {
+      if (seen.has(item.noticeId)) continue;
+      seen.add(item.noticeId);
+      items.push(item);
+    }
+  }
+  return items;
+}
+
+/** 다음 쪽의 시작 위치. 더 받을 것이 없으면 undefined. 서버가 쪽을 잘라 주어도(최대 50) 받은 개수만큼 이어 간다. */
+export function nextNoticeOffset(pages: ApiNoticeList[]): number | undefined {
+  const last = pages[pages.length - 1];
+  if (!last || last.items.length === 0) return undefined;
+  const loaded = last.offset + last.items.length;
+  return loaded < last.total ? loaded : undefined;
+}
+
 export function nextRefetchDelay(
   compose: Pick<ApiNoticeCompose, 'blockedReason' | 'nextAvailableAt'>,
   now: number = Date.now(),

@@ -10,6 +10,8 @@ import {
   limitNote,
   mailResultLabel,
   mentionedCount,
+  mergeNoticePages,
+  nextNoticeOffset,
   nextRefetchDelay,
   pruneSelection,
   statusCounts,
@@ -17,7 +19,7 @@ import {
   toggleVisible,
   visibleRecipients,
 } from './model';
-import type { ApiNoticeCompose, ApiNoticeItem, ApiNoticeRecipient } from '@/lib/study-notice-api';
+import type { ApiNoticeCompose, ApiNoticeItem, ApiNoticeList, ApiNoticeRecipient } from '@/lib/study-notice-api';
 
 
 const person = (
@@ -216,5 +218,38 @@ describe('기록의 채널별 결과', () => {
     expect(
       discordResultLabel({ requested: false, status: 'NOT_REQUESTED', skipReason: null, mentionedCount: 0 }),
     ).toBeNull();
+  });
+});
+
+describe('보낸 공지 기록 이어 붙이기', () => {
+  const noticeAt = (noticeId: number): ApiNoticeItem => ({ ...base, noticeId });
+  const base = {} as ApiNoticeItem;
+  const page = (offset: number, ids: number[], total: number): ApiNoticeList => ({
+    items: ids.map(noticeAt),
+    total,
+    offset,
+    limit: 20,
+  });
+
+  it('다음 쪽은 받은 개수에서 시작하고, 다 받으면 없다', () => {
+    expect(nextNoticeOffset([page(0, [1, 2, 3], 5)])).toBe(3);
+    expect(nextNoticeOffset([page(0, [1, 2, 3], 5), page(3, [4, 5], 5)])).toBeUndefined();
+  });
+
+  it('서버가 쪽을 50 에서 잘라 줘도 51건부터 이어 받는다 (같은 쪽을 되풀이하지 않는다)', () => {
+    const first = page(0, Array.from({ length: 50 }, (_, i) => i + 1), 55);
+    expect(nextNoticeOffset([first])).toBe(50);
+    const second = page(50, [51, 52, 53, 54, 55], 55);
+    expect(nextNoticeOffset([first, second])).toBeUndefined();
+  });
+
+  it('받은 것이 하나도 없으면 더 받지 않는다', () => {
+    expect(nextNoticeOffset([])).toBeUndefined();
+    expect(nextNoticeOffset([page(0, [], 0)])).toBeUndefined();
+  });
+
+  it('쪽을 받는 사이 새 공지가 생겨 경계가 밀려도 같은 공지를 한 번만 보여 준다', () => {
+    const merged = mergeNoticePages([page(0, [10, 9, 8], 6), page(3, [8, 7, 6], 6)]);
+    expect(merged.map((n) => n.noticeId)).toEqual([10, 9, 8, 7, 6]);
   });
 });

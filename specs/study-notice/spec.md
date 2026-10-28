@@ -270,6 +270,10 @@ sequenceDiagram
 - `frontend/apps/core-front/src/app/[locale]/my/joined/[id]/schedule/notice/page.tsx`
 - 프로토: playground `/proto/core/ko/my/joined/{id}/schedule/notice`
 
+## 퍼널·계측
+
+해당 없음 — 운영 안내(공지) 기능이라 가입·활성화 이벤트를 만들지 않고, 추가하거나 바꾸는 계측 이벤트도 없다. 공지가 재방문에 주는 영향은 이번에 측정하지 않는다.
+
 ## 미확정
 
 - ~~디스코드 호출 주체~~ → 해소. 봇이 #343 으로 호출자 검사를 없앴다. 연동한 사람은 본인 ID, 연동하지 않은 사람은 시스템 ID 로 보낸다 ([근거](#디스코드-발송)). 남은 확인은 stage 에 `DISCORD_BOT_ID` 가 설정돼 있는지와 배포된 봇이 #343 을 반영했는지다

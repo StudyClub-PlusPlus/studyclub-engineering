@@ -1,15 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button, cx } from '@studyclub/ui';
 
 
-import { discordResultLabel, mailResultLabel } from '../model';
+import { discordResultLabel, mailResultLabel, mergeNoticePages } from '../model';
 import { useNotices } from '../queries';
 import type { ApiNoticeItem } from '@/lib/study-notice-api';
-
-const PAGE = 20;
 
 /** 보는 사람의 시간대로 「월/일 시:분」. */
 const when = (iso: string) =>
@@ -20,8 +18,8 @@ const when = (iso: string) =>
  * 「완료」는 메일을 보냈다는 뜻이지 받았다는 뜻이 아니다 (POL-0009).
  */
 export function NoticeHistory({ studyId, groupId }: { studyId: number; groupId: number }) {
-  const [limit, setLimit] = useState(PAGE);
-  const query = useNotices(studyId, groupId, limit);
+  const query = useNotices(studyId, groupId);
+  const items = useMemo(() => (query.data ? mergeNoticePages(query.data.pages) : []), [query.data]);
   const [open, setOpen] = useState<Set<number>>(new Set());
 
   function toggle(id: number) {
@@ -48,21 +46,26 @@ export function NoticeHistory({ studyId, groupId }: { studyId: number; groupId: 
         </div>
       )}
 
-      {query.data && query.data.items.length === 0 && (
+      {query.data && items.length === 0 && (
         <p className='py-10 text-center text-sm text-fg-muted'>아직 보낸 공지가 없습니다.</p>
       )}
 
-      {query.data && query.data.items.length > 0 && (
+      {query.data && items.length > 0 && (
         <>
           <ul className='mt-3 divide-y divide-border'>
-            {query.data.items.map((n) => (
+            {items.map((n) => (
               <NoticeRow key={n.noticeId} notice={n} expanded={open.has(n.noticeId)} onToggle={() => toggle(n.noticeId)} />
             ))}
           </ul>
-          {query.data.total > query.data.items.length && (
+          {query.hasNextPage && (
             <div className='mt-3 text-center'>
-              <Button variant='secondary' size='sm' onClick={() => setLimit((l) => l + PAGE)}>
-                더 보기
+              <Button
+                variant='secondary'
+                size='sm'
+                disabled={query.isFetchingNextPage}
+                onClick={() => query.fetchNextPage()}
+              >
+                {query.isFetchingNextPage ? '불러오는 중…' : '더 보기'}
               </Button>
             </div>
           )}

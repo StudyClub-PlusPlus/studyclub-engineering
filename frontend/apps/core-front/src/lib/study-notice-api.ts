@@ -70,6 +70,6 @@ export function sendNotice(studyId: number, groupId: number, body: ApiNoticeSend
   });
 }
 
-export function getNotices(studyId: number, groupId: number, limit: number) {
-  return http<ApiNoticeList>(`${base(studyId, groupId)}?offset=0&limit=${limit}`);
+export function getNotices(studyId: number, groupId: number, offset: number, limit: number) {
+  return http<ApiNoticeList>(`${base(studyId, groupId)}?offset=${offset}&limit=${limit}`);
 }
