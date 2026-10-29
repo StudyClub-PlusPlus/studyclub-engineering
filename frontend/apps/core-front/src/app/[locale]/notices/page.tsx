@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
 import { NoticeDate } from '@/components/NoticeDate';
+import { NoticesRetryButton } from '@/components/NoticesRetryButton';
 import { getNotices, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 import { PAGE } from '@/lib/layout';
@@ -36,14 +37,23 @@ export default async function NoticesPage({
   // `?page=N` → 1 이상의 정수. 숫자가 아니거나 1 미만이면 1쪽
   let page = Math.floor(Number(raw));
   if (!Number.isFinite(page) || page < 1) page = 1;
-  const { items, total } = await getNotices((page - 1) * NOTICE_PAGE_SIZE, NOTICE_PAGE_SIZE);
-  const pageCount = Math.max(1, Math.ceil(total / NOTICE_PAGE_SIZE));
+  const result = await getNotices((page - 1) * NOTICE_PAGE_SIZE, NOTICE_PAGE_SIZE);
+  // 조회 실패는 쪽 수를 모른다 — 없는 쪽 404 를 내지 않고 쪽 번호도 그리지 않는다
+  let pageCount = 1;
+  if (result !== null) pageCount = Math.max(1, Math.ceil(result.total / NOTICE_PAGE_SIZE));
   // 마지막 쪽을 넘긴 주소는 없는 쪽이다 — 「공지가 없다」 로 보이면 안 된다
-  if (page > pageCount) notFound();
+  if (page > pageCount && result !== null) notFound();
   const base = `/${locale}/notices`;
 
   let rows: React.ReactNode;
-  if (items.length === 0) {
+  if (result === null) {
+    rows = (
+      <div className='border-b border-(--color-border) py-20 text-center'>
+        <p className='text-sm text-(--color-fg-muted)'>{m('notices.error', locale)}</p>
+        <NoticesRetryButton label={m('notices.retry', locale)} />
+      </div>
+    );
+  } else if (result.items.length === 0) {
     rows = (
       <p className='border-b border-(--color-border) py-20 text-center text-sm text-(--color-fg-muted)'>
         {m('notices.empty', locale)}
@@ -52,7 +62,7 @@ export default async function NoticesPage({
   } else {
     rows = (
       <ul>
-        {items.map((n) => (
+        {result.items.map((n) => (
           <li key={n.noticeId} className='border-b border-(--color-border)'>
             <Link
               href={`${base}/${n.noticeId}`}

@@ -78,13 +78,13 @@ export async function getOperatorMap(): Promise<Record<string, Operator>> {
   return Object.fromEntries(ops.map((o) => [o.id, o]));
 }
 
-/** 사이트 공지 목록 한 쪽. API 가 실패하면 빈 목록 — 화면은 빈 상태를 그린다. */
-export async function getNotices(offset: number, limit: number): Promise<ApiPage<ApiSiteNoticeSummary>> {
+/** 사이트 공지 목록 한 쪽. API 가 실패하면 null — 빈 목록으로 주면 화면이 「공지 없음」·없는 쪽 404 와 구분하지 못한다. */
+export async function getNotices(offset: number, limit: number): Promise<ApiPage<ApiSiteNoticeSummary> | null> {
   try {
     return await fetchNotices(offset, limit);
   } catch (e) {
     console.error('[content] GET /api/notices failed:', e);
-    return { items: [], total: 0, offset, limit };
+    return null;
   }
 }
 

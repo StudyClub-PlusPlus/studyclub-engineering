@@ -105,6 +105,8 @@ export const MESSAGES: Dict = {
 
   'notices.title': { ko: '공지사항', en: 'Notices' },
   'notices.empty': { ko: '등록된 공지가 없습니다.', en: 'No notices yet.' },
+  'notices.error': { ko: '공지를 불러오지 못했습니다. 다시 시도해 주세요.', en: 'Could not load notices. Please try again.' },
+  'notices.retry': { ko: '다시 시도', en: 'Try again' },
 
   'status.recruiting': { ko: '모집 중', en: 'Recruiting' },
   'status.ongoing': { ko: '진행 중', en: 'Ongoing' },
