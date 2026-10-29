@@ -5,10 +5,12 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountConsentRepository;
+import com.studyclub.domain.account.AccountIdentity;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountLeaveReason;
 import com.studyclub.domain.account.AccountLeaveReasonRepository;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.LeaveReason;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
@@ -79,6 +81,7 @@ public class AccountDeletionService {
     private final StudyNoticeRepository studyNoticeRepository;
     private final ObjectMapper objectMapper;
     private final UploadService uploadService;
+    private final AppleOAuthClient appleOAuthClient;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -91,6 +94,14 @@ public class AccountDeletionService {
 
         // 사유는 계정과 잇지 않고 값만 쌓는다 — 집계용이라 개인과 이어질 필요가 없다.
         accountLeaveReasonRepository.save(new AccountLeaveReason(reason));
+
+        // 애플 연결 해제 — 앱스토어 심사 5.1.1(v). 실패해도 탈퇴는 계속한다 (AppleOAuthClient.revoke).
+        for (AccountIdentity identity : accountIdentityRepository.findByAccountId(accountId)) {
+            if (identity.getIssuer() == Issuer.APPLE
+                    && identity.getProviderRefreshToken() != null) {
+                appleOAuthClient.revoke(identity.getProviderRefreshToken());
+            }
+        }
 
         // 로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID) 에 걸린다.
         accountIdentityRepository.deleteByAccountId(accountId);

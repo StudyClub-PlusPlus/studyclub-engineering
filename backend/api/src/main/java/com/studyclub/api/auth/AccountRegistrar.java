@@ -1,13 +1,11 @@
 package com.studyclub.api.auth;
 
-import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountIdentity;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.SystemRole;
 import java.time.Instant;
 import java.util.Optional;
@@ -33,20 +31,20 @@ public class AccountRegistrar {
     }
 
     /**
-     * 사람을 찾는 키는 {@code (GOOGLE, sub)} 다. 이메일은 바뀔 수 있고 제공자가 여럿일 수 있어서 키로 못 쓴다. 이메일은 "이미 있는 사람이 다른
+     * 사람을 찾는 키는 {@code (issuer, sub)} 다. 이메일은 바뀔 수 있고 제공자가 여럿일 수 있어서 키로 못 쓴다. 이메일은 "이미 있는 사람이 다른
      * 수단으로 들어왔나" 충돌 감지에만 쓴다.
      *
-     * @param email 소문자 정규화된 이메일 (조회·충돌 감지용). 제공자 원본은 {@code g.email()}
+     * @param email 소문자 정규화된 이메일 (조회·충돌 감지용). 제공자 원본은 {@code u.email()}
      */
     @Transactional
-    public Account findOrRegister(GoogleUser g, String email) {
+    public Account findOrRegister(SocialUser u, String email) {
         Optional<AccountIdentity> existing =
-                accountIdentityRepository.findByIssuerAndProviderAccountId(Issuer.GOOGLE, g.sub());
+                accountIdentityRepository.findByIssuerAndProviderAccountId(u.issuer(), u.sub());
 
         // 분기 1 — 아는 사람: 마지막 로그인 시각만 갱신. @Transactional 안이라 save() 없이 dirty checking 으로 반영된다.
         if (existing.isPresent()) {
             AccountIdentity identity = existing.get();
-            identity.recordLogin(Instant.now());
+            identity.recordLogin(Instant.now(), u.refreshToken());
             return accountRepository
                     .findById(identity.getAccountId())
                     // FK ON DELETE CASCADE 라 이론상 불가능. 그래도 조용히 넘기지 않고 500 으로 드러낸다.
@@ -69,20 +67,25 @@ public class AccountRegistrar {
         Account account =
                 accountRepository.save(
                         new Account(
-                                email, uniqueTemporaryNickname(), g.picture(), SystemRole.MEMBER));
+                                email, uniqueTemporaryNickname(), u.picture(), SystemRole.MEMBER));
         // PROVIDER_EMAIL 은 제공자가 준 원본 그대로. 정규화값은 ACCOUNT.EMAIL 에 있다.
         accountIdentityRepository.save(
                 new AccountIdentity(
-                        account.getId(), Issuer.GOOGLE, g.sub(), g.email(), Instant.now()));
+                        account.getId(),
+                        u.issuer(),
+                        u.sub(),
+                        u.email(),
+                        Instant.now(),
+                        u.refreshToken()));
         return account;
     }
 
     /** 백오피스 로그인 — 조회 전용 */
     @Transactional
-    public Account findAdmin(GoogleUser g) {
+    public Account findAdmin(SocialUser u) {
         AccountIdentity identity =
                 accountIdentityRepository
-                        .findByIssuerAndProviderAccountId(Issuer.GOOGLE, g.sub())
+                        .findByIssuerAndProviderAccountId(u.issuer(), u.sub())
                         // 부트스트랩이 "core-front 로그인 → SQL 승격" 순서라 계정부터 만들라고 알려준다.
                         .orElseThrow(
                                 () ->
