@@ -16,13 +16,13 @@ export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: st
       <div className='relative flex flex-col items-center gap-8 sm:flex-row sm:justify-between'>
         {/* 좌: 문구 + 버튼 */}
         <div className='text-center sm:text-left'>
-          <h2 className='text-2xl font-bold text-white sm:text-3xl'>{m('common.join_cta_title', locale)}</h2>
-          <p className='mt-3 max-w-xl text-[15px] leading-relaxed text-white/85'>{m('common.join_cta_body', locale)}</p>
+          <h2 className='type-headline-sm text-white sm:type-headline-md'>{m('common.join_cta_title', locale)}</h2>
+          <p className='mt-3 max-w-xl type-body-sm text-white/85'>{m('common.join_cta_body', locale)}</p>
           <a
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold shadow-sm transition-transform hover:scale-[1.03]'
+            className='mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 type-label-lg shadow-sm transition-transform hover:scale-[1.03]'
             style={{ color: 'var(--color-brand)' }}
           >
             <MessageCircle size={17} /> {m('nav.join', locale)}
@@ -39,7 +39,7 @@ export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: st
             height={132}
             className='h-[132px] w-[132px]'
           />
-          <div className='mt-1.5 text-[11px] font-semibold text-[var(--color-fg-muted)]'>
+          <div className='mt-1.5 type-label-sm text-[var(--color-fg-muted)]'>
             {m('common.join_qr', locale)}
           </div>
         </div>

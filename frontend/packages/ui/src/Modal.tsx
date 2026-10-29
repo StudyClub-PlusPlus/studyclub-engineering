@@ -122,8 +122,8 @@ export function Modal({
       >
         <header className='flex items-start gap-3 border-b border-border px-6 py-4'>
           <div className='flex min-w-0 flex-1 flex-col gap-1'>
-            <h2 className='text-lg font-bold tracking-tight text-ink'>{title}</h2>
-            {description && <p className='text-sm text-fg-muted'>{description}</p>}
+            <h2 className='type-title-md text-ink'>{title}</h2>
+            {description && <p className='type-body-sm text-fg-muted'>{description}</p>}
           </div>
           {headerEnd}
           {/* 닫기는 늘 우상단 X 다. 제목이 무엇이든 같은 자리에 선다 */}

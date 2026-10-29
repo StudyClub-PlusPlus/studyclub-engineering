@@ -273,6 +273,13 @@ ACCOUNT_IDENTITY
 - 이메일은 **매번** 온다 → "이메일 없음" 거부에 걸릴 일이 사실상 없다.
 - '이메일 가리기' 면 중계 주소가 온다 → 위에서 정한 대로 그대로 저장.
 
+## 퍼널·계측
+
+- 단계: 가입
+- 이벤트 (front): `Onboarding Started` · `Onboarding Nickname Submitted` · `Onboarding Nickname Conflict` · `Onboarding Consents Agreed` · `Onboarding Completed`
+- 가입 확정 `User Signed Up` / `sign_up` 은 **서버 정본** (`user.registered` 커밋 뒤, insert_id `user_signed_up_account_{id}`). 프론트는 Amplitude 퍼널 사본만 보낸다
+- 이 문서로 바뀌는 이벤트는 없다. A/B 없음
+
 ## 미확정 (팀 결정)
 
 - **`ACCOUNT.EMAIL` 변경** — 자유 입력은 PRD 대로 안 함. 대신 **연결된 제공자 이메일 중 선택**은 허용하자는 제안 (애플 절 참고). 안 하면 애플(중계) 먼저 가입한 사람은 구글을 연결해도 알림을 영영 중계로 받는다. 자유 입력을 열려면 `UNIQUE(EMAIL)` 충돌 + 변경 인증 메일이 따라온다.

@@ -184,7 +184,7 @@ function TemplateEditor({
                 type='button'
                 onClick={() => setConfirmDelete(true)}
                 disabled={busy || gone}
-                className='mr-auto h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
+                className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
               >
                 템플릿 삭제
               </button>
@@ -198,9 +198,9 @@ function TemplateEditor({
     >
       {confirmDelete && template ? (
         <div className='py-6 text-center'>
-          <p className='text-sm font-semibold text-fg'>‘{eventLabel(template.eventType)}’ 알림 템플릿을 삭제합니다.</p>
-          <p className='mt-1 text-sm text-fg-secondary'>{template.subject}</p>
-          <p className='mt-3 text-sm text-fg-muted'>
+          <p className='type-label-lg text-fg'>‘{eventLabel(template.eventType)}’ 알림 템플릿을 삭제합니다.</p>
+          <p className='mt-1 type-body-sm text-fg-secondary'>{template.subject}</p>
+          <p className='mt-3 type-body-sm text-fg-muted'>
             이 문구로는 더 이상 메일이 나가지 않으며 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.
           </p>
         </div>
@@ -277,7 +277,7 @@ function TemplateEditor({
         </div>
       )}
       {error && (
-        <p role='alert' className='mt-3 text-sm text-danger-fg'>
+        <p role='alert' className='mt-3 type-body-sm text-danger-fg'>
           {error}
         </p>
       )}

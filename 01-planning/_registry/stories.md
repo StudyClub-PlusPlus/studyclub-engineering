@@ -9,9 +9,9 @@
 | ST | 37 |
 | EP | 1 |
 | FN | 1 |
-| IA | 38 |
+| IA | 39 |
 | SRC | 1 |
-| POL | 10 |
+| POL | 11 |
 
 <!--
 발급 절차: next 값을 읽어 ID 를 만들고, 같은 커밋에서 next 를 +1 한다.
@@ -47,7 +47,7 @@
 | ST-013 | 크루는 회원에서 탈퇴할 수 있다. | 크루 | [PRD](../stories/crew-leave/PRD.md) | [회원 탈퇴](https://playground.studyclub.life/proto/core/ko/my/leave) | [user-leave](../../specs/user-leave/spec.md) | | |
 | ST-014 | 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | 크루 | [PRD](../stories/crew-view-terms-privacy/PRD.md) | [이용약관](https://playground.studyclub.life/proto/core/ko/terms) | | | |
 | ST-015 | 네비게이터는 스터디 회차를 등록할 수 있다. | 네비게이터 | [PRD](../stories/navigator-register-sessions/PRD.md) | [내 스터디 › 스터디 일정](https://playground.studyclub.life/proto/core/ko/my/joined) | [study-meeting](../../specs/study-meeting/spec.md) | | 일정 · 출석 · 규칙 · 킥오프 |
-| ST-016 | 네비게이터는 스터디별 공지를 등록할 수 있다. | 네비게이터 |  |  | | | 프로토타입 없음 — PRD 작성 전 |
+| ST-016 | 네비게이터는 스터디별 공지를 등록할 수 있다. | 네비게이터 | [PRD](../stories/navigator-study-notice/PRD.md) | [내 스터디 › 스터디 일정 › 공지](https://playground.studyclub.life/proto/core/ko/my/joined) | [study-notice](../../specs/study-notice/spec.md) | | 「등록」은 반 팀원에게 메일·디스코드로 **보내는 것**으로 정했다 ([POL-0010](policies/POL-0010-study-notice.md)). 멤버가 읽는 공지 목록은 없다 |
 | ST-017 | 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | 네비게이터 | [PRD](../stories/navigator-edit-attendance/PRD.md) | [내 스터디 › 스터디 일정 › 출석](https://playground.studyclub.life/proto/core/ko/my/joined) | [attendance](../../specs/attendance/spec.md) · [discord-attendance](../../specs/discord-attendance/spec.md) | | |
 | ST-018 | 네비게이터는 참여자를 스터디에서 제명할 수 있다. | 네비게이터 | [PRD](../stories/navigator-withdraw-participant/PRD.md) | [내 스터디 › 스터디 일정 › 출석](https://playground.studyclub.life/proto/core/ko/my/joined) | [study-participant](../../specs/study-participant/spec.md) · [attendance](../../specs/attendance/spec.md) | | 화면은 「참여 중단」 — 하차·제명을 가르지 않는다. 되돌리지 않는다 |
 | ST-019 | 캡틴은 백오피스에 접근할 수 있다. | 캡틴 |  |  | | 폐기 | Story 가 아니다 — 화면에서 하는 일이 아니라 모든 콘솔 화면에 걸리는 조건이다. 접근 판정은 [POL-0001](policies/POL-0001-roles.md), 로그인 흐름·에러는 [back-office-login](../../specs/back-office-login/spec.md) 소관 |

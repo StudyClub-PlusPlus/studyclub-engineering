@@ -3,7 +3,8 @@
 > ERD: [NOTIFICATION](../../docs/erd/NOTIFICATION.md), [NOTIFICATION_TEMPLATE](../../docs/erd/NOTIFICATION_TEMPLATE.md)
 > 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) (트리거 쪽 계약) · [authz-guards/spec.md](../authz-guards/spec.md) (백오피스 인가) · [user-leave/spec.md](../user-leave/spec.md) (탈퇴 시 알림 비식별화)
 > Story PRD: [알림 템플릿](../../01-planning/stories/notification-template/PRD.md) (ST-030) · [발송 이력](../../01-planning/stories/notification-history/PRD.md) (ST-032)
-> 정책: [POL-0009 알림](../../01-planning/_registry/policies/POL-0009-notification.md) · [POL-0008 화면 공통 규칙](../../01-planning/_registry/policies/POL-0008-screen-rules.md)
+> 정책: [POL-0009 알림](../../01-planning/_registry/policies/POL-0009-notification.md)
+> 같은 아웃박스·폴러로 나가는 두 번째 알림: 반 공지(`STUDY_NOTICE`) — [study-notice/spec.md](../study-notice/spec.md). 이 문서의 `NOTIFICATION` 컬럼에 `REFERENCE_ID` 가 더해진다 ([ERD](../../docs/erd/NOTIFICATION.md)) · [POL-0008 화면 공통 규칙](../../01-planning/_registry/policies/POL-0008-screen-rules.md)
 > 생성일: 2026-09-12 · 상태: 구현중
 > 갱신: 2026-10-27 — **템플릿 추가·수정·삭제**(`POST`·`PUT`·`DELETE /api/admin/notification-templates`) 계약 추가. 같은 조건에 템플릿은 한 건뿐이다(`UNIQUE(EVENT_TYPE, CHANNEL)` 유지) — 여럿·회원 탈퇴 조건은 이 갱신의 대상이 아니다
 > 갱신: 2026-10-11 — 발송 이력 화면(FE)이 쓰는 API 확정, **실패 건 재발송**(`POST /api/admin/notifications/resend`) 추가. 재발송은 **새 행을 만들지 않고 그 행을 `PENDING` 으로 되돌린다** — 백엔드·발송 이력 화면(FE) 모두 구현완료(2026-10-16~18)

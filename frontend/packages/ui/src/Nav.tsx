@@ -44,7 +44,7 @@ export function Nav({
         {...rest}
       >
         {brand && (
-          <div className='flex h-16 shrink-0 items-center border-b border-border px-5 text-[15px] font-bold'>
+          <div className='flex h-16 shrink-0 items-center border-b border-border px-5 type-label-lg'>
             {brand}
           </div>
         )}
@@ -59,7 +59,7 @@ export function Nav({
             );
 
             const itemClass = cx(
-              'flex items-center gap-2.5 rounded-control px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
+              'flex items-center gap-2.5 rounded-control px-3 py-2 type-label-lg transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
               item.active
                 ? 'bg-primary-light font-semibold text-primary-dark'
                 : 'text-fg-muted hover:bg-surface-2 hover:text-fg',
@@ -103,12 +103,12 @@ export function Nav({
       {...rest}
     >
       <div className='flex w-full items-center justify-between gap-6'>
-        {brand && <div className='shrink-0 font-bold'>{brand}</div>}
+        {brand && <div className='shrink-0 font-semibold'>{brand}</div>}
 
         <nav className='flex items-center gap-6'>
           {items.map((item) => {
             const itemClass = cx(
-              'flex items-center gap-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
+              'flex items-center gap-1.5 type-label-lg transition-colors focus-visible:outline-none focus-visible:shadow-(--ring)',
               item.active ? 'font-semibold text-fg' : 'text-fg-muted hover:text-fg',
               item.disabled && 'cursor-not-allowed opacity-40 hover:text-fg-muted',
             );

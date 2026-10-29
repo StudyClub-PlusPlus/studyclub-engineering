@@ -15,7 +15,7 @@ function LinkButton({ label, href, icon }: { label: string; href: string; icon: 
       target='_blank'
       rel='noopener noreferrer'
       title={href}
-      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 text-sm font-semibold text-fg-secondary hover:bg-surface-2 hover:text-fg'
+      className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 type-label-lg text-fg-secondary hover:bg-surface-2 hover:text-fg'
     >
       {icon}
       {label}
@@ -69,7 +69,7 @@ export function GroupInfoCard({
   return (
     <section className='card mb-5 px-5 py-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <dl className='flex flex-wrap gap-x-6 gap-y-1 text-sm'>
+        <dl className='flex flex-wrap gap-x-6 gap-y-1 type-body-sm'>
           <div className='flex gap-2'>
             <dt className='text-fg-muted'>스터디 시간</dt>
             <dd className='tnum font-semibold text-fg'>{time}</dd>
@@ -78,7 +78,7 @@ export function GroupInfoCard({
                 type='button'
                 aria-label='스터디 시간 수정'
                 onClick={onEditTime}
-                className='text-sm font-semibold text-brand underline-offset-2 hover:underline'
+                className='type-label-lg text-brand underline-offset-2 hover:underline'
               >
                 수정
               </button>
@@ -114,7 +114,7 @@ export function GroupInfoCard({
 
       {/* 접어도 본문을 지우지 않고 숨긴다 — aria-controls 가 가리킬 곳이 늘 있고, 저장하지 않은 글도 남는다 */}
       <div id={bodyId} hidden={!expanded} className='mt-3 border-t border-border pt-3'>
-        <h3 className='text-sm font-bold text-fg'>스터디 규칙</h3>
+        <h3 className='type-title-md text-fg'>스터디 규칙</h3>
         <div className='mt-2 flex flex-col gap-2'>
           <Textarea
             aria-label='스터디 규칙'

@@ -123,7 +123,7 @@ export function DiscordRow({
       </Button>
     );
   } else if (!preview) {
-    action = <span className='text-xs text-fg-muted'>디스코드 연결은 준비 중이에요</span>;
+    action = <span className='type-label-sm text-fg-muted'>디스코드 연결은 준비 중이에요</span>;
   }
 
   return (
@@ -135,12 +135,12 @@ export function DiscordRow({
           {action}
         </div>
         {notice?.kind === 'error' && (
-          <p role='alert' className='mt-1 text-xs text-error-700'>
+          <p role='alert' className='mt-1 type-label-sm text-error-700'>
             {notice.text}
           </p>
         )}
         {notice?.kind === 'notInGuild' && (
-          <div role='alert' className='mt-2 flex flex-col gap-1.5 rounded-control bg-surface-2 p-3 text-xs'>
+          <div role='alert' className='mt-2 flex flex-col gap-1.5 rounded-control bg-surface-2 p-3 type-label-sm'>
             <p className='leading-relaxed text-fg'>스터디클럽 디스코드 서버에 먼저 들어온 뒤 다시 연결해 주세요.</p>
             <a
               href={site.discord_invite}
@@ -155,7 +155,7 @@ export function DiscordRow({
         )}
         {/* 4-1: 「해제할 수 없어요」는 적지 않는다. 그대로인 화면이 이미 말한다. 남길 말은 그래서 무엇을 해야 하는가 */}
         {notice?.kind === 'blocked' && (
-          <div className='mt-2 rounded-control bg-error-50 p-3 text-xs'>
+          <div className='mt-2 rounded-control bg-error-50 p-3 type-label-sm'>
             <p role='alert' className='leading-relaxed text-error-700'>
               참여 중인 모든 스터디의 참여를 중단한 뒤 다시 시도해 주세요.
               <br />

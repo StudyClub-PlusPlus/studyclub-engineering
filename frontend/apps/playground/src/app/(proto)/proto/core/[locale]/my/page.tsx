@@ -121,7 +121,7 @@ export default function MyPage() {
 
 
   if (!ready || !user) {
-    return <div className='px-6 py-16 text-center text-sm text-fg-secondary'>불러오는 중…</div>;
+    return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
   }
 
 
@@ -182,7 +182,7 @@ export default function MyPage() {
 
   return (
     <div className={`${PAGE} pb-16 pt-10`}>
-      <h1 className='text-2xl font-extrabold tracking-tight'>마이페이지</h1>
+      <h1 className='type-headline-lg'>마이페이지</h1>
 
       <ScreenSpecRegistrar spec={SPEC} />
       {/*
@@ -211,9 +211,9 @@ export default function MyPage() {
                   maxLength={20}
                   aria-label='닉네임'
                   /* 테두리 대신 밑줄 — 상자로 만들면 그 줄만 키가 커져 카드가 달라 보인다 */
-                  className='min-w-0 flex-1 border-0 border-b-2 border-brand bg-transparent p-0 pb-0.5 text-xl font-extrabold tracking-tight text-fg outline-none'
+                  className='min-w-0 flex-1 border-0 border-b-2 border-brand bg-transparent p-0 pb-0.5 type-title-lg text-fg outline-none'
                 />
-                <span className='tnum shrink-0 text-xs text-fg-placeholder'>{trimmedName.length}/20</span>
+                <span className='tnum shrink-0 type-label-sm text-fg-placeholder'>{trimmedName.length}/20</span>
                 <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
                   취소
                 </Button>
@@ -222,7 +222,7 @@ export default function MyPage() {
                 </Button>
               </div>
               <p
-                className={`mt-1 truncate text-sm ${
+                className={`mt-1 truncate type-body-sm ${
                   nameLine.tone === 'ok'
                     ? 'text-success-700'
                     : nameLine.tone === 'error'
@@ -236,7 +236,7 @@ export default function MyPage() {
           ) : (
             <div>
               <div className='flex min-w-0 items-center gap-1.5'>
-                <p className='truncate text-xl font-extrabold tracking-tight text-fg'>{name}</p>
+                <p className='truncate type-title-lg text-fg'>{name}</p>
                 {/* 고치는 자리는 고칠 값 바로 옆 — 카드 모서리의 버튼은 무엇을 고치는지 읽히지 않는다 */}
                 <button
                   type='button'
@@ -250,12 +250,12 @@ export default function MyPage() {
                 </button>
                 <Saved show={savedRow === 'name'} />
               </div>
-              <p className='mt-0.5 truncate text-sm text-fg-muted'>{user.email}</p>
+              <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>
             </div>
           )}
         </div>
 
-        <dl className='divide-y divide-border border-t border-border text-sm'>
+        <dl className='divide-y divide-border border-t border-border type-body-sm'>
           <Field label='시간대' anno='profile:3' saved={savedRow === 'zone'}>
             <div className='w-full sm:w-52'>
               <TimeZonePicker value={timeZone} onChange={changeZone} locale={locale} hideLabel compact />
@@ -281,9 +281,9 @@ export default function MyPage() {
               </>
             )}
             </div>
-            {discordError && <p data-anno='profile:4-2' role='alert' className='mt-3 text-sm text-error-700'>{discordError}</p>}
+            {discordError && <p data-anno='profile:4-2' role='alert' className='mt-3 type-body-sm text-error-700'>{discordError}</p>}
             {disconnectBlocked && (
-              <div data-anno='profile:4-1' className='mt-3 rounded-control bg-error-50 p-3 text-sm'>
+              <div data-anno='profile:4-1' className='mt-3 rounded-control bg-error-50 p-3 type-body-sm'>
                 {/*
                   첫 줄(「해제할 수 없어요」)은 뺀다 — 눌렀는데 안 됐다는 건 화면이 이미 말한다.
                   남길 것은 **그래서 무엇을 해야 하는가**다.
@@ -324,7 +324,7 @@ export default function MyPage() {
         <Link
           data-anno='profile:7'
           href={`/proto/core/${locale}/my/leave`}
-          className='text-xs text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
+          className='type-label-sm text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
         >
           회원 탈퇴
         </Link>
@@ -365,7 +365,7 @@ function Saved({ show }: { show: boolean }) {
   return (
     <span
       aria-live='polite'
-      className={`inline-flex items-center gap-0.5 text-xs font-semibold text-success-700 transition-opacity duration-300 ${
+      className={`inline-flex items-center gap-0.5 type-label-sm text-success-700 transition-opacity duration-300 ${
         show ? 'opacity-100' : 'opacity-0'
       }`}
     >

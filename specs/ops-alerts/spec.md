@@ -54,3 +54,7 @@
 - `OpsAlertListenerTest` — 발행 → 리스너(`event-` 스레드) → notifier, notifier 가 던져도 발행자에게 새지 않는 것을 본다 (notifier 는 목)
 
 실제 디스코드로는 보내지 않는다.
+
+## 퍼널·계측
+
+해당 없음 — 가입 · 신청을 운영 채널에 알리지만 Amplitude · GA4 로 보내는 기능은 아니다. 이벤트는 [analytics](../analytics/spec.md) 의 서버 전송이 따로 맡는다.

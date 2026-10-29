@@ -131,10 +131,10 @@ function PresenterHelp() {
           id='presenter-help'
           role='dialog'
           aria-label='발표 표시 설명'
-          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-border bg-surface-raised p-3 text-left text-xs font-normal leading-relaxed text-fg-secondary shadow-md sm:left-0'
+          className='absolute -left-24 top-full z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-border bg-surface-raised p-3 text-left type-label-sm text-fg-secondary shadow-md sm:left-0'
         >
           <p className='flex items-center gap-1.5 font-semibold text-fg'>
-            <span className='relative grid h-8 w-14 shrink-0 place-items-center rounded-sm bg-success-100 text-xs font-bold text-success-700'>
+            <span className='relative grid h-8 w-14 shrink-0 place-items-center rounded-sm bg-success-100 type-label-sm text-success-700'>
               <Mic size={10} strokeWidth={2.5} aria-hidden className='absolute left-0.5 top-0.5 text-brand' />
               출석
             </span>
@@ -433,7 +433,7 @@ export function AttendanceTabContent({
   if (meetings.length === 0) {
     return (
       <div className='card px-6 py-10 text-center'>
-        <p className='text-sm font-semibold'>아직 회차가 없습니다.</p>
+        <p className='type-label-lg'>아직 회차가 없습니다.</p>
         {canEdit && (
           <Button size='sm' className='mt-4' variant='secondary' onClick={() => history.back()}>
             일정으로 가기
@@ -449,9 +449,9 @@ export function AttendanceTabContent({
       <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
         {/* 「?」는 제목 밖에 둔다 — 제목 안에 두면 설명 글이 제목 이름에 섞인다 */}
         <div className='flex items-center gap-1'>
-          <h2 className='text-base font-bold'>
+          <h2 className='type-title-md'>
             출석
-            <span className='tnum ml-2 text-sm font-medium text-fg-muted'>전체 {people.length}</span>
+            <span className='tnum ml-2 type-label-lg text-fg-muted'>전체 {people.length}</span>
           </h2>
           <PresenterHelp />
         </div>
@@ -465,7 +465,7 @@ export function AttendanceTabContent({
                 size='sm'
                 type='button'
                 onClick={() => setZone(z.iana)}
-                className='rounded-pill px-3 py-1.5 text-xs font-bold'
+                className='rounded-pill px-3 py-1.5 type-label-sm'
               >
                 {z.label}
               </Button>
@@ -516,10 +516,10 @@ export function AttendanceTabContent({
                   </Button>
                   {withdrawIds.length > 0 && (
                     // 몇 명이 중단 예정인지는 여기 한 번만 — 줄마다 칩을 붙이지 않는다 (10-18 D8)
-                    <span className='tnum text-xs font-semibold text-error-700'>중단 예정 {withdrawIds.length}명</span>
+                    <span className='tnum type-label-sm text-error-700'>중단 예정 {withdrawIds.length}명</span>
                   )}
                   {blockedNames.length > 0 && (
-                    <span className='w-full text-xs text-fg-muted sm:w-auto'>
+                    <span className='w-full type-label-sm text-fg-muted sm:w-auto'>
                       네비게이터는 참여 중단할 수 없습니다. 캡틴에게 문의하세요.
                     </span>
                   )}
@@ -545,10 +545,10 @@ export function AttendanceTabContent({
             />
           )}
           {/* 컬럼 헤더 행 */}
-          <div className='flex text-sm'>
+          <div className='flex type-body-sm'>
             <div className='flex shrink-0'>
               <div
-                className={`flex ${NAME_COL} items-center border-b border-border px-1.5 py-3 text-left text-xs font-semibold text-fg-muted sm:px-4`}
+                className={`flex ${NAME_COL} items-center border-b border-border px-1.5 py-3 text-left type-label-sm text-fg-muted sm:px-4`}
               >
                 <span className='flex items-center gap-1.5 sm:gap-3'>
                   {canEdit && (
@@ -567,12 +567,12 @@ export function AttendanceTabContent({
                 </span>
               </div>
               <div
-                className={`${DISCORD_COL} items-center whitespace-nowrap border-b border-border px-3 py-3 text-left text-xs font-semibold text-fg-muted`}
+                className={`${DISCORD_COL} items-center whitespace-nowrap border-b border-border px-3 py-3 text-left type-label-sm text-fg-muted`}
               >
                 디스코드 닉네임
               </div>
               <div
-                className={`flex ${PRESENT_COL} items-center justify-center whitespace-nowrap border-b border-border px-1 py-2 text-xs font-semibold text-fg-muted sm:px-2`}
+                className={`flex ${PRESENT_COL} items-center justify-center whitespace-nowrap border-b border-border px-1 py-2 type-label-sm text-fg-muted sm:px-2`}
                 title='일정의 발표자1·2로 맡은 횟수'
               >
                 <span className='sm:hidden'>발표</span>
@@ -588,16 +588,16 @@ export function AttendanceTabContent({
                 {meetings.map((m) => (
                   <div
                     key={m.id}
-                    className={`tnum flex ${MEETING_COL} flex-col items-center justify-center py-2 text-xs font-semibold text-fg-secondary`}
+                    className={`tnum flex ${MEETING_COL} flex-col items-center justify-center py-2 type-label-sm text-fg-secondary`}
                   >
                     {headOf(m)}
-                    <span className='block text-xs font-medium text-fg-muted'>{dayOf(m)}</span>
+                    <span className='block type-label-sm text-fg-muted'>{dayOf(m)}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div
-              className={`flex ${RATE_COL} shrink-0 items-center justify-center whitespace-nowrap border-b border-border px-1 py-2 text-xs font-semibold text-fg-muted sm:px-3`}
+              className={`flex ${RATE_COL} shrink-0 items-center justify-center whitespace-nowrap border-b border-border px-1 py-2 type-label-sm text-fg-muted sm:px-3`}
             >
               출석률
             </div>
@@ -620,7 +620,7 @@ export function AttendanceTabContent({
             // 중단 예정 — 줄 전체를 옅은 빨강으로 (10-18 D8). 칩을 붙이면 좁은 닉네임 칸이 가려진다
             <div
               key={p.id}
-              className={`flex items-stretch border-b border-border text-sm ${pending ? 'bg-error-50' : 'bg-surface-raised'}`}
+              className={`flex items-stretch border-b border-border type-body-sm ${pending ? 'bg-error-50' : 'bg-surface-raised'}`}
             >
               {/* 고정: 닉네임 + 디스코드 닉네임 + 발표 횟수 */}
               <div className='flex shrink-0'>
@@ -651,7 +651,7 @@ export function AttendanceTabContent({
                         {p.name}
                       </span>
                       {p.discordNickname && (
-                        <span className='block truncate text-xs font-normal text-fg-muted sm:hidden'>
+                        <span className='block truncate type-label-sm text-fg-muted sm:hidden'>
                           {p.discordNickname}
                         </span>
                       )}
@@ -684,7 +684,7 @@ export function AttendanceTabContent({
                         />
                         <span
                           aria-hidden
-                          className='pointer-events-none absolute left-full top-1/2 z-10 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded-sm bg-fg px-2 py-1 text-xs font-semibold text-bg opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'
+                          className='pointer-events-none absolute left-full top-1/2 z-10 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded-sm bg-fg px-2 py-1 type-label-sm text-bg opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'
                         >
                           중단 예정 취소
                         </span>
@@ -703,7 +703,7 @@ export function AttendanceTabContent({
                   )}
                 </div>
                 <div
-                  className={`flex ${PRESENT_COL} items-center justify-center whitespace-nowrap px-1 py-1.5 text-xs font-semibold text-fg-secondary sm:px-2`}
+                  className={`flex ${PRESENT_COL} items-center justify-center whitespace-nowrap px-1 py-1.5 type-label-sm text-fg-secondary sm:px-2`}
                 >
                   {(() => {
                     const n = meetings.filter((m) => !gone(m) && presentersOf(m.id).includes(p.id)).length;
@@ -724,7 +724,7 @@ export function AttendanceTabContent({
                     gone(m) ? (
                       <div
                         key={m.id}
-                        className={`flex ${MEETING_COL} items-center justify-center py-1.5 text-xs text-fg-muted`}
+                        className={`flex ${MEETING_COL} items-center justify-center py-1.5 type-label-sm text-fg-muted`}
                       >
                         -
                       </div>
@@ -738,7 +738,7 @@ export function AttendanceTabContent({
                           if (!canEdit) {
                             return (
                               <span
-                                className={`relative grid h-8 w-full place-items-center rounded-sm text-xs font-bold ${
+                                className={`relative grid h-8 w-full place-items-center rounded-sm type-label-sm ${
                                   status ? STATUS_STYLE[status] : 'bg-surface-1 text-fg-muted'
                                 }`}
                               >
@@ -768,7 +768,7 @@ export function AttendanceTabContent({
                                 });
                               }}
                               title='눌러서 출석 → 지각 → 결석 → 휴가 → 미체크'
-                              className={`relative h-8 w-full rounded-sm text-xs font-bold transition-colors ${
+                              className={`relative h-8 w-full rounded-sm type-label-lg transition-colors ${
                                 status
                                   ? // 중단 예정 줄은 바탕이 옅은 빨강이라 결석 칸이 묻힌다 — 한 단계 진하게
                                     `${pending && status === 'absent' ? 'bg-error-100 text-error-700' : STATUS_STYLE[status]}${
@@ -797,7 +797,7 @@ export function AttendanceTabContent({
               </div>
               {/* 고정: 출석률 */}
               <div
-                className={`tnum flex ${RATE_COL} shrink-0 items-center justify-center whitespace-nowrap px-1 py-1.5 font-bold sm:px-3`}
+                className={`tnum flex ${RATE_COL} shrink-0 items-center justify-center whitespace-nowrap px-1 py-1.5 font-semibold sm:px-3`}
               >
                 {rate === undefined ? (
                   <span className='text-fg-muted'>-</span>
@@ -861,7 +861,7 @@ export function AttendanceTabContent({
           </>
         }
       >
-        <p className='mb-3 text-sm text-fg'>
+        <p className='mb-3 type-body-sm text-fg'>
           <span className='font-semibold'>참여 중단</span> {withdrawNames.join(', ')}
           {pendingCount > 0 && (
             <>
@@ -870,7 +870,7 @@ export function AttendanceTabContent({
             </>
           )}
         </p>
-        <ul className='list-disc space-y-1 pl-5 text-sm text-fg-secondary'>
+        <ul className='list-disc space-y-1 pl-5 type-body-sm text-fg-secondary'>
           <li>지금까지의 출석 기록은 그대로 남습니다.</li>
           <li>지금 뒤에 시작하는 회차는 「-」로 비고 출석률에서 빠집니다.</li>
           <li>더는 스터디 디스코드 채널 · 드라이브 링크를 볼 수 없고, 앞으로 맡은 회차의 발표자에서 빠집니다.</li>

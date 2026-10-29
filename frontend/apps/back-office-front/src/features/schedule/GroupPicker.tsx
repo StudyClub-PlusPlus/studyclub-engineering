@@ -22,7 +22,7 @@ export function GroupPicker({
           type='button'
           aria-pressed={g.id === groupId}
           onClick={() => g.id !== groupId && onPick(g.id)}
-          className={`rounded-pill border px-3 py-1.5 text-sm font-semibold transition-colors ${
+          className={`rounded-pill border px-3 py-1.5 type-label-lg transition-colors ${
             g.id === groupId
               ? 'border-brand bg-brand text-white'
               : 'border-border-strong bg-bg text-fg-secondary hover:bg-surface-2'

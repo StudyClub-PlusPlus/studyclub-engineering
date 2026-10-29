@@ -159,6 +159,10 @@
 - `frontend/apps/core-front/src/lib/joined-detail-api.ts` · `AttendanceTabContent.tsx` — 사용자 사이트 출석 탭 저장
 - `frontend/apps/back-office-front/src/features/attendance/` — 백오피스 출석 탭 저장 (담당 캡틴이 아니면 서버 403 을 그대로 보여 준다). 네비게이터는 화면에서 참여 중단을 잠근다 — 신청자 탭에서 권한을 회수한 뒤 중단한다 (2026-10-24, [출석부 PRD](../../01-planning/stories/captain-view-attendance-roster/PRD.md) 개발 범위)
 
+## 퍼널·계측
+
+해당 없음 — 참여 중단에 분석 이벤트가 없다. 크루가 신청을 취소하는 `My Application Cancelled` 와는 다른 흐름이다.
+
 ## 미확정
 
 - [NEEDS CLARIFICATION] 중단당한 사람에게 알림(메일 · 디스코드 DM)을 보낼지. 지금은 보내지 않는다 — 네비게이터가 디스코드에서 말한다

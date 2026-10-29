@@ -3,8 +3,9 @@
 > ERD: [ACCOUNT](../../docs/erd/ACCOUNT.md), [ACCOUNT_IDENTITY](../../docs/erd/ACCOUNT_IDENTITY.md), [ACCOUNT_CONSENT](../../docs/erd/ACCOUNT_CONSENT.md), [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md), [STUDY_ATTENDANCE](../../docs/erd/STUDY_ATTENDANCE.md), [STUDY_REVIEW](../../docs/erd/STUDY_REVIEW.md), [STUDY_PROPOSAL](../../docs/erd/STUDY_PROPOSAL.md), [STUDY_PROPOSAL_INTEREST](../../docs/erd/STUDY_PROPOSAL_INTEREST.md), [STUDY_BOOKMARK](../../docs/erd/STUDY_BOOKMARK.md), [NOTIFICATION](../../docs/erd/NOTIFICATION.md)
 > Story PRD: [회원 탈퇴](../../01-planning/stories/crew-leave/PRD.md)
 > 프로토타입: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/leave` (`/proto/core/ko/my/leave`)
-> 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) — 완료 뒤 같은 계정 재가입은 온보딩 흐름 그대로 탄다. [notification/spec.md](../notification/spec.md) — NOTIFICATION 스냅샷 비식별화가 이 스펙과 맞물린다. [study-application/spec.md](../study-application/spec.md) — FORM_ANSWER.discordNickname 비식별화가 이 스펙과 맞물린다. `frontend/apps/playground/src/proto/core/lib/legal.ts` — 이용약관 제11조·개인정보처리방침 제4·9조 (법령상 보존 근거). [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) — 회원 데이터와 탈퇴 정책 (이 스펙과 같은 내용의 기획 정본).
+> 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) — 완료 뒤 같은 계정 재가입은 온보딩 흐름 그대로 탄다. [notification/spec.md](../notification/spec.md) — NOTIFICATION 스냅샷 비식별화가 이 스펙과 맞물린다. [study-application/spec.md](../study-application/spec.md) — FORM_ANSWER.discordNickname 비식별화가 이 스펙과 맞물린다. `frontend/apps/playground/src/proto/core/lib/legal.ts` — 이용약관 제11조·개인정보처리방침 제4·9조 (법령상 보존 근거). [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) — 회원 데이터와 탈퇴 정책 (이 스펙과 같은 내용의 기획 정본). [feedback/spec.md](../feedback/spec.md#탈퇴-때) — 문의 첨부 이미지 파기가 이 스펙과 맞물린다.
 > 생성일: 2026-09-19
+> 갱신: 2026-10-26 — 문의·오류 신고(`FEEDBACK`) 추가. 첨부 이미지는 파기, 문의 행은 남긴다 (PR #341 리뷰)
 > 상태: 스펙작성중
 
 ## 엔드포인트 목록
@@ -74,10 +75,11 @@
    - `NOTIFICATION` WHERE `RECIPIENT_USER_ID=accountId` 인 행의 `RECIPIENT_VALUE`·`PAYLOAD.nickname` 을 비식별 처리한다(행은 유지, 발송 이력 자체는 지우지 않는다). `STATUS=PENDING` 인 행은 추가로 `CANCELLED` 로 전환한다 — [알림 비식별화](#알림-비식별화) 참고.
    - `STUDY_PROPOSAL` WHERE `PROPOSER_ACCOUNT_ID=accountId` AND `STATUS=OPEN` → `STATUS=CLOSED` 로 전환한다. `CONTENT`·`PROPOSED_AT` 은 그대로 둔다. `ACCEPTED`/`REJECTED`/이미 `CLOSED` 인 행은 이미 종결 상태라 건드리지 않는다 — [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) 참고.
    - `STUDY_APPLICATION` WHERE `ACCOUNT_ID=accountId` 인 행의 `FORM_ANSWER.discordNickname` 을 고정 마스킹 값으로 치환한다(`availableDays`·`scheduleAgreed`·`answers` 는 그대로 둔다). 행 자체는 지우지 않는다 — [STUDY_APPLICATION 의 FORM_ANSWER.discordNickname](#study_application-의-form_answerdiscordnickname) 참고.
+   - `FEEDBACK` WHERE `ACCOUNT_ID=accountId` 의 `FEEDBACK_IMAGE` 를 모아, 가리키는 `STORAGE_OBJECT` 를 `DELETING` 으로 바꾸고 `FEEDBACK_IMAGE` 행을 물리 삭제한다 (문의 첨부 이미지 파기). `FEEDBACK` 행 자체는 남긴다 — [문의·오류 신고 스펙 「탈퇴 때」](../feedback/spec.md#탈퇴-때).
    - `ACCOUNT_CONSENT` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (동의 이력 파기). Flyway 스키마에는 `fk_account_consent_account ... ON DELETE CASCADE` 가 있지만, stage(Hibernate `ddl-auto: update`)·테스트(H2)는 FK 없이 스키마를 만들어 cascade 에 기댈 수 없으므로 코드가 명시적으로 지운다.
    - `ACCOUNT` 행 삭제 (프로필 파기). 지우기 전에 `PROFILE_IMG_URL` 을 읽어 둔다.
    - `STUDY_ATTENDANCE`·`STUDY_REVIEW`·(방금 `discordNickname` 만 마스킹한) `STUDY_APPLICATION`·(방금 `CLOSED` 로 바뀐) `STUDY_PROPOSAL` 은 이 이상 **행 자체를 더 건드리지 않는다.** 이들의 `ACCOUNT_ID`/`PROPOSER_ACCOUNT_ID` 는 FK 가 아니라 인덱스뿐이라(`database-guide.md` 외래키 정책) DB 무결성 오류 없이 그대로 남고, 참조할 `ACCOUNT` 행 자체가 없어져 더는 사람으로 되짚을 수 없다 — 이것으로 "개인을 식별할 수 없도록 처리한 뒤 남긴다"가 성립한다. 별도 컬럼 변경(NULL 처리 등)이 필요 없다. 조회 계층은 이 ID 로 `ACCOUNT` 조회가 실패하면 "탈퇴한 회원"으로 표시한다(신규 요구사항 — 기존에 이런 실패 케이스를 다루지 않았다면 이번에 추가).
-5. 같은 트랜잭션 안에서 읽어 둔 `PROFILE_IMG_URL` 이 우리가 올린 사진(공개 주소 접두어로 시작)이면 그 `STORAGE_OBJECT` 행을 `DELETING` 으로 바꾼다. 이 계정의 연결 안 된(`PENDING`) 업로드도 전부 `DELETING` 으로. 구글 사진 주소·`null` 이면 건너뛴다. **커밋 뒤** `DELETING` 행의 S3 파일과 행을 지운다 — [프로필 사진 스펙](../profile-image/spec.md) 의 업로드 서비스를 그대로 부른다. 지우기에 실패해도 탈퇴는 성공으로 답한다. 행이 `DELETING` 으로 남아 정리 배치가 한 시간 뒤 다시 지운다. S3 호출은 트랜잭션 밖이다 — 외부 호출 동안 DB 잠금을 잡지 않는다.
+5. 같은 트랜잭션 안에서 읽어 둔 `PROFILE_IMG_URL` 이 우리가 올린 사진(공개 주소 접두어로 시작)이면 그 `STORAGE_OBJECT` 행을 `DELETING` 으로 바꾼다. 이 계정의 연결 안 된(`PENDING`) 업로드도 전부 `DELETING` 으로. 구글 사진 주소·`null` 이면 건너뛴다. 4 에서 `DELETING` 으로 바꾼 문의 첨부 이미지도 같이 지운다. **커밋 뒤** `DELETING` 행의 S3 파일과 행을 지운다 — [프로필 사진 스펙](../profile-image/spec.md) 의 업로드 서비스를 그대로 부른다. 지우기에 실패해도 탈퇴는 성공으로 답한다. 행이 `DELETING` 으로 남아 정리 배치가 한 시간 뒤 다시 지운다. S3 호출은 트랜잭션 밖이다 — 외부 호출 동안 DB 잠금을 잡지 않는다.
 6. `204 No Content`.
 
 ### 발급된 토큰은 서버가 무효화하지 못한다 — 알려진 한계
@@ -305,6 +307,8 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 | `STUDY_APPLICATION` (신청서 답변) | 보존, 단 `FORM_ANSWER.discordNickname` 만 비식별 | 나머지는 `STUDY_ATTENDANCE` 와 동일 매커니즘. `discordNickname` 은 행에 직접 박힌 PII 라 별도 마스킹 필요 — [상세](#study_application-의-form_answerdiscordnickname) |
 | `STUDY_PROPOSAL` (제안 본문) | `STATUS=OPEN` 인 것만 `CLOSED` 로 전환, 행·본문 보존 | [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) — 제3자 관심 표시 보호 |
 | `NOTIFICATION` (알림 이력) | 보존 + PII 필드만 비식별 | [알림 비식별화](#알림-비식별화) |
+| 문의 첨부 이미지 (S3 `gigs/feedbacks/…`, `STORAGE_OBJECT` 행, `FEEDBACK_IMAGE` 행) | 트랜잭션 안에서 `STORAGE_OBJECT` 를 `DELETING`·`FEEDBACK_IMAGE` 삭제, 커밋 뒤 S3 파일·행 삭제 | 프로필 사진과 같은 이유 — 주소만 지우면 파일이 공개 주소에 남는다 (2026-10-26, PR #341) |
+| `FEEDBACK` (문의·오류 신고 본문·회신·메모) | 보존, 손대지 않음 | `STUDY_REVIEW` 와 같은 매커니즘으로 자동 비식별 — 운영 화면에는 「탈퇴한 사용자」. 본문에 사람이 직접 쓴 개인정보가 남을 수 있는 점도 같다 (2026-10-26, PR #341) |
 | 탈퇴 사유 | `ACCOUNT_LEAVE_REASON` 신규 1행, 계정과 미연결 | "사유만 쌓는다" |
 
 `STUDY_REVIEW`·`STUDY_ATTENDANCE` 는 같은 근거로 같은 처리를 받는다 — FK 없는 인덱스 컬럼이라
@@ -368,6 +372,14 @@ LOCKED 아님)로 잠그고 읽는다 — 폴링 스케줄러가 같은 순간 P
   하는가"까지만 정의하고, "어떻게(이벤트 vs 직접 리포지토리 호출)"는 plan.md 에서 정한다.
 - **동기 처리**를 전제로 한다 — 온보딩의 `UserRegisteredEvent`처럼 커밋 후 비동기로 미루면, 그 사이
   프로세스가 죽었을 때 "탈퇴했는데 이메일이 아직 남아있는" 창이 생겨 "즉시 파기"와 어긋난다.
+
+### 스터디 공지를 보낸 사람이 탈퇴하는 경우
+
+반 공지를 보낸 사람이 탈퇴하면, 그가 보낸 공지([study-notice](../study-notice/spec.md))의 메일 행(`NOTIFICATION`, `EVENT_TYPE=STUDY_NOTICE`, `SENDER_ACCOUNT_ID`=탈퇴하는 계정)에서
+`PAYLOAD.senderName` 을 「탈퇴한 회원」으로 치환한다. 보낸 사람 ID 는 메일 행에 직접 있어서, 공지가 스터디 삭제로 사라진 뒤에도 찾는다. 보낸 사람 ID 를 싣기 전에 만든 옛 행(`SENDER_ACCOUNT_ID` NULL)은
+공지(`REFERENCE_ID`)를 거쳐 찾는다. 받은 사람의 발송 이력에 탈퇴한 사람의 닉네임이 남지 않게 하려는 것이다. 위 수신자 비식별화와 같은 이유로 대상 행을
+`SELECT ... FOR UPDATE` 로 잠그고 읽고, 같은 트랜잭션에서 처리한다. **제목·본문은 보낸 사람이 직접 쓴 공지 내용이라 그대로 둔다.** 이미 받은 메일 수신함의 이름은 되돌릴 수 없다.
+`STUDY_NOTICE.SENDER_ACCOUNT_ID` 는 ID 참조뿐이라 계정이 지워지면 사람을 되짚을 수 없고, 공지 기록 목록은 보낸 사람을 「탈퇴한 회원」으로 보여 준다.
 
 ## 네비게이터 경고 — 왜 막지 않는가
 

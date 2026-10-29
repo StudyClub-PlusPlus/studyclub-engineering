@@ -65,12 +65,12 @@ export function StudyInfoTab({ study }: { study: Study }) {
           data-anno='edit:3'
           onClick={() => setConfirmDelete(true)}
           disabled={saving}
-          className='h-10 text-sm font-semibold text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
+          className='h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
         >
           스터디 삭제
         </button>
         <div className='ml-auto flex items-center gap-3'>
-          {saved && <span className='text-sm font-medium text-success-700'>저장되었습니다.</span>}
+          {saved && <span className='type-label-lg text-success-700'>저장되었습니다.</span>}
           <span data-anno='edit:2'>
             <Button onClick={save} loading={saving}>
               저장
@@ -96,8 +96,8 @@ export function StudyInfoTab({ study }: { study: Study }) {
         }
       >
         <div className='py-6 text-center'>
-          <p className='text-sm font-semibold text-fg'>‘{form.title}’ 스터디를 삭제합니다.</p>
-          <p className='mt-1.5 text-sm text-fg-muted'>크루 명단과 출석 기록도 함께 사라지며 되돌릴 수 없습니다.</p>
+          <p className='type-label-lg text-fg'>‘{form.title}’ 스터디를 삭제합니다.</p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>크루 명단과 출석 기록도 함께 사라지며 되돌릴 수 없습니다.</p>
         </div>
       </Modal>
     </div>

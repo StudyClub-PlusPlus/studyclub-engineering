@@ -2,6 +2,8 @@ package com.studyclub.notification;
 
 import com.studyclub.notification.mail.MailBody;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,14 +16,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotificationTemplateRenderer {
 
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(\\w+)}}");
+
+    /**
+     * 템플릿을 <b>한 번만</b> 훑어 치환한다. 치환한 값 안에 {@code {{title}}} 같은 글이 들어 있어도 다시 치환하지 않는다 — 스터디 공지처럼 보내는
+     * 사람이 쓴 글이 값으로 들어오면 순서대로 바꾸는 방식은 본문이 다른 자리를 덮어쓸 수 있다.
+     */
     public String render(String template, Map<String, Object> payload) {
         boolean html = MailBody.isHtml(template);
-        String rendered = template;
-        for (Map.Entry<String, Object> entry : payload.entrySet()) {
-            String value = String.valueOf(entry.getValue());
-            rendered = rendered.replace("{{" + entry.getKey() + "}}", html ? escape(value) : value);
-        }
-        return rendered;
+        return PLACEHOLDER
+                .matcher(template)
+                .replaceAll(
+                        match -> {
+                            String key = match.group(1);
+                            if (!payload.containsKey(key)) {
+                                return Matcher.quoteReplacement(match.group());
+                            }
+                            String value = String.valueOf(payload.get(key));
+                            return Matcher.quoteReplacement(html ? escape(value) : value);
+                        });
     }
 
     private static String escape(String value) {
