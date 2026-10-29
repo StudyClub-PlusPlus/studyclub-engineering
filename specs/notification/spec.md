@@ -355,7 +355,7 @@ stateDiagram-v2
 | `USER_REGISTERED` (회원가입) | `{{nickname}}` | 알림 행을 만들지 못하고 에러 로그만 남긴다. 가입은 영향이 없다(`AFTER_COMMIT`) |
 | `STUDY_NOTICE` (스터디 공지) | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | **메일을 포함한 공지는 저장 자체가 롤백된다**(메일 행 생성이 공지와 같은 트랜잭션 `BEFORE_COMMIT` — `IllegalStateException`). 메일과 디스코드를 함께 보내는 공지는 커밋이 없어 디스코드 글도 올라가지 않는다. 디스코드만 보내는 공지는 템플릿을 조회하지 않아 영향이 없다 ([study-notice 스펙](../study-notice/spec.md)) |
 
-- 서버는 마지막 템플릿의 삭제·조건 변경을 막지 않는다. 대신 백오피스 삭제 확인이 위 영향을 조건별로 알린다. 본문 칸 아래 안내도 그 조건의 치환 변수를 알린다.
+- 서버는 마지막 템플릿의 삭제·조건 변경을 막지 않는다. 대신 백오피스 삭제 확인이 위 영향을 조건별로 알린다. 본문 칸 아래 안내도 그 조건의 치환 변수를 알린다. (→ [share 10-29](../../docs/share/2026-10-29-notification-template-ops-rules.md))
   서버가 조건에 없는 치환 변수를 막지는 않는다 — 렌더러는 모르는 `{{x}}` 를 그대로 남기므로, 조건을 바꾸면 변수가 맞지 않는 문구가 저장될 수 있다 (후속)
 
 ### `GET /api/admin/notifications`

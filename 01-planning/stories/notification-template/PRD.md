@@ -2,6 +2,8 @@
 
 기준 프로토타입: 운영 콘솔 › 알림 › 알림 템플릿 — https://playground.studyclub.life/proto/console/notifications/templates
 
+관련 결정: [10-29 알림 템플릿 삭제는 서버가 막지 않는다 — 운영 규칙으로 다룬다](../../../docs/share/2026-10-29-notification-template-ops-rules.md)
+
 ## 1. 기본설명
 
 회원에게 **무엇을 보내는지**를 정하는 자리다. 조건이 곧 그 알림의 이름이고, 같은 조건에 템플릿을
