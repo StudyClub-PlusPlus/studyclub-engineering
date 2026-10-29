@@ -124,9 +124,9 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/commits" --paginate \
-            --jq '[.[] | { sha, message: .commit.message, author: .commit.author.name, committedAt: .commit.author.date }]' | jq -s add > commits.json
+            --jq '[.[] | { sha, message: .commit.message[0:500], committedAt: .commit.author.date }]' | jq -s 'add | .[-500:]' > commits.json
           gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq \
-            '{ repo: .base.repo.full_name, number, title, url: .html_url, body: (.body // ""),
+            '{ repo: .base.repo.full_name, number, title, url: .html_url, body: ((.body // "")[0:200000]),
                state: (if .merged_at then "merged" elif .state == "closed" then "closed" else "open" end),
                baseBranch: .base.ref, headBranch: .head.ref, headSha: .head.sha, mergedAt: .merged_at }' > pr.json
           jq --slurpfile c commits.json '. + { commits: $c[0] }' pr.json > body.json
