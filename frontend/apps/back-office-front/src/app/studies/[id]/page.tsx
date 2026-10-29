@@ -19,14 +19,14 @@ export default function StudyAdminDetail() {
 
   const { data, error, isPending } = useStudyDetail(studyId);
 
-  if (isPending) return <p className='py-10 text-center text-sm text-fg-muted'>불러오는 중…</p>;
+  if (isPending) return <p className='py-10 text-center type-body-sm text-fg-muted'>불러오는 중…</p>;
 
   if (error) {
     const missing = error instanceof ApiError && error.status === 404;
     return (
       <div className='py-10 text-center'>
-        <p className='text-sm text-fg-secondary'>{missing ? '스터디를 찾을 수 없습니다.' : error.message}</p>
-        <Link href='/studies' className='mt-3 inline-block text-sm font-semibold text-brand hover:underline'>
+        <p className='type-body-sm text-fg-secondary'>{missing ? '스터디를 찾을 수 없습니다.' : error.message}</p>
+        <Link href='/studies' className='mt-3 inline-block type-label-lg text-brand hover:underline'>
           스터디 관리로 돌아가기
         </Link>
       </div>

@@ -34,7 +34,7 @@ export default function NotificationTemplatesPage() {
       />
 
       {error && (
-        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 text-sm text-danger-fg'>
+        <div className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-6 type-body-sm text-danger-fg'>
           <p>
             {data
               ? '목록을 갱신하지 못했습니다. 완료된 저장은 유지됩니다. 최신 목록을 다시 불러와 주세요.'
@@ -47,19 +47,19 @@ export default function NotificationTemplatesPage() {
       )}
 
       {isFetching && !isPending && (
-        <p role='status' className='mb-3 text-sm text-fg-muted'>
+        <p role='status' className='mb-3 type-body-sm text-fg-muted'>
           목록 갱신 중…
         </p>
       )}
 
       {isPending && (
-        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-fg-muted)]'>
+        <div className='rounded-xl border border-[var(--color-border)] p-8 text-center type-body-sm text-[var(--color-fg-muted)]'>
           불러오는 중…
         </div>
       )}
 
       {templates?.length === 0 && (
-        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center text-sm text-[var(--color-fg-muted)]'>
+        <div className='rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center type-body-sm text-[var(--color-fg-muted)]'>
           등록된 템플릿이 없습니다.
         </div>
       )}

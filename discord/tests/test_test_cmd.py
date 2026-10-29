@@ -61,7 +61,7 @@ async def test_respond_refuses_outside_the_command_channel():
 
 @pytest.mark.asyncio
 async def test_respond_refuses_when_no_command_channel_is_configured():
-    """An unset DISCORD_BOT_CHANNEL_ID refuses everywhere rather than allowing anywhere."""
+    """An unset DISCORD_CONFIG_BOT_CHANNEL_ID refuses everywhere rather than allowing anywhere."""
     ctx = _ctx()
 
     await respond(ctx, _settings(command_channel_id=None))

@@ -210,9 +210,9 @@ export function ScheduleTable({
   return (
     <div className='flex flex-col gap-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <h2 className='text-base font-bold'>
+        <h2 className='type-title-md'>
           일정
-          <span className='tnum ml-2 text-sm font-medium text-fg-muted'>
+          <span className='tnum ml-2 type-label-lg text-fg-muted'>
             전체 {regular.length} · 예정 {upcomingCount}
           </span>
         </h2>
@@ -266,7 +266,7 @@ export function ScheduleTable({
       )}
 
       {meetings.length === 0 ? (
-        <p className='card px-6 py-10 text-center text-sm text-fg-muted'>
+        <p className='card px-6 py-10 text-center type-body-sm text-fg-muted'>
           아직 회차가 없습니다. 「회차 추가」로 만드세요.
         </p>
       ) : (
@@ -296,7 +296,7 @@ export function ScheduleTable({
             }
             save={
               <span className='flex items-center gap-2'>
-                {errorCount > 0 && <p className='mr-1 text-xs text-error-700'>고칠 칸 {errorCount}개</p>}
+                {errorCount > 0 && <p className='mr-1 type-label-sm text-error-700'>고칠 칸 {errorCount}개</p>}
                 {dirty && (
                   <Button variant='ghost' size='sm' onClick={clearDrafts} disabled={saving}>
                     변경 취소
@@ -309,9 +309,9 @@ export function ScheduleTable({
             }
           />
           <div className='overflow-x-auto'>
-            <table className='w-full min-w-[56rem] border-separate border-spacing-0 text-sm'>
+            <table className='w-full min-w-[56rem] border-separate border-spacing-0 type-body-sm'>
               <thead>
-                <tr className='text-left text-xs font-semibold text-fg-muted'>
+                <tr className='text-left type-label-sm text-fg-muted'>
                   <th className='w-10 py-3 pl-4'>
                     <Checkbox
                       label=''
@@ -380,7 +380,7 @@ export function ScheduleTable({
                           />
                         )}
                       </td>
-                      <td className='tnum border-t border-border px-4 py-2.5 text-center align-middle font-bold'>
+                      <td className='tnum border-t border-border px-4 py-2.5 text-center align-middle font-semibold'>
                         {m.no}
                         {past && <span className='sr-only'> (지난 회차 · 고칠 수 없음)</span>}
                       </td>
@@ -427,7 +427,7 @@ export function ScheduleTable({
                       <td className={cx(cell, 'text-center')}>{presenterCell('presenter1')}</td>
                       <td className={cx(cell, 'text-center')}>
                         {presenterCell('presenter2')}
-                        {errors.presenter2 && <p className='mt-1 text-xs text-error-700'>{errors.presenter2}</p>}
+                        {errors.presenter2 && <p className='mt-1 type-label-sm text-error-700'>{errors.presenter2}</p>}
                       </td>
                     </tr>
                   );
@@ -454,7 +454,7 @@ export function ScheduleTable({
           </>
         }
       >
-        <p className='text-sm text-fg-secondary'>
+        <p className='type-body-sm text-fg-secondary'>
           {toDelete.length === 1
             ? `${meetingLabel(toDelete[0])}(${dayLabel(toDelete[0].date)})를 지울까요?`
             : `회차 ${toDelete.length}개(${toDelete.map((m) => meetingLabel(m)).join(', ')})를 지울까요?`}{' '}

@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHeader title='대시보드' action={<p className='tnum text-xs text-fg-muted'>전기간 기준{readAt}</p>} />
+      <PageHeader title='대시보드' action={<p className='tnum type-label-sm text-fg-muted'>전기간 기준{readAt}</p>} />
 
       <KpiCards summary={summary} />
 

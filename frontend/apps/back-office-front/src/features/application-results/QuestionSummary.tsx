@@ -19,19 +19,19 @@ export function QuestionSummary({
         <h3 className='min-w-0 break-words font-semibold'>
           {index + 1}. {question.label || '(제목 없음)'}
         </h3>
-        <span className='text-sm text-fg-muted'>
+        <span className='type-body-sm text-fg-muted'>
           {TYPE_LABEL[type] ?? '질문'} · {answeredCount}명 응답
         </span>
       </div>
       {answeredCount === 0 ? (
-        <p className='text-sm text-fg-muted'>아직 답이 없습니다.</p>
+        <p className='type-body-sm text-fg-muted'>아직 답이 없습니다.</p>
       ) : (
         <>
           {choice && (
             <ul className='space-y-2'>
               {tallies.map(({ option, count }) => (
                 <li key={option} className='flex items-center gap-3'>
-                  <span className='w-32 shrink-0 truncate text-sm text-fg-secondary' title={option}>
+                  <span className='w-32 shrink-0 truncate type-body-sm text-fg-secondary' title={option}>
                     {option}
                   </span>
                   <span aria-hidden='true' className='h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
@@ -40,7 +40,7 @@ export function QuestionSummary({
                       style={{ width: `${(count / maximum) * 100}%` }}
                     />
                   </span>
-                  <span className='tnum shrink-0 text-sm font-semibold'>{count}명</span>
+                  <span className='tnum shrink-0 type-label-lg'>{count}명</span>
                 </li>
               ))}
             </ul>
@@ -48,11 +48,11 @@ export function QuestionSummary({
           {texts.length > 0 && (
             <div className={choice ? 'mt-4' : undefined}>
               {choice && (
-                <h4 className='mb-2 text-sm font-semibold'>
+                <h4 className='mb-2 type-label-lg'>
                   {question.allowOther ? '기타 · 현재 보기에 없는 답변' : '현재 보기에 없는 답변'}
                 </h4>
               )}
-              <ol className='list-decimal space-y-2 pl-5 text-sm text-fg-secondary'>
+              <ol className='list-decimal space-y-2 pl-5 type-body-sm text-fg-secondary'>
                 {texts.map((answer, answerIndex) => (
                   <li key={answerIndex} className='whitespace-pre-wrap break-words'>
                     {answer}

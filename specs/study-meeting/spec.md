@@ -665,6 +665,10 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - `SERIES_ID` 컬럼은 새 마이그레이션 `V{n}__add_study_meeting_series_id.sql` 로 더한다. `n` 은 머지 시점 beta 최신 번호의 다음이다 — 열린 PR 여럿이 V26 을 쓰고 있어 번호를 미리 박지 않는다. 기존 행은 null 로 둔다 — 이미 만든 반복 회차는 묶을 근거가 없다. 응답에는 아직 내보내지 않는다(쓰는 화면이 없다).
 - #174 가 `Study` 에서 `slug`·`capacity`·`isHidden`·`studyDeliveryFormat` 을 지우고 `phase()`·`recruitStatus()` 에 `recruitmentCapacity` 인자를 더한다. 구현 전에 머지 여부를 확인하고 rebase 한 뒤 테스트 픽스처를 맞춘다.
 
+## 퍼널·계측
+
+해당 없음 — 회차 · 발표 신청에 분석 이벤트가 없다. 지표 변화도 기대하지 않는다.
+
 ## 범위 밖
 
 - 회차 변경 알림 (결정 4)
@@ -680,5 +684,3 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 - ~~이미 운영 중인 분반에 킥오프 회차를 소급해 만들지~~ → 캡틴이 백오피스에서 지난 날로도 정한다 (2026-10-22)
 - [NEEDS CLARIFICATION] 한 사람이 맡을 수 있는 발표 수에 상한을 둘지 — 지금은 두지 않는다.
 - [NEEDS CLARIFICATION] 발표자1이 빠진 날 발표자2가 대신한 것을 따로 기록할지 — 지금은 일정의 발표자를 고쳐서 남긴다.
-
-

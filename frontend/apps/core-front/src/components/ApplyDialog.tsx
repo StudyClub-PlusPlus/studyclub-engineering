@@ -42,25 +42,25 @@ function StudyFormHeader({
       />
       <section className={`${formCardClass()} mt-3`}>
         {cats.length > 0 && (
-          <p className='text-[11px] font-bold uppercase tracking-[0.14em] text-fg-muted'>{cats.join(' · ')}</p>
+          <p className='type-label-sm uppercase text-fg-muted'>{cats.join(' · ')}</p>
         )}
-        <dl className={`${cats.length > 0 ? 'mt-3' : ''} flex flex-col gap-2 text-sm`}>
+        <dl className={`${cats.length > 0 ? 'mt-3' : ''} flex flex-col gap-2 type-body-sm`}>
           <div className='flex items-start gap-2'>
-            <dt className='shrink-0 font-medium text-fg'>{m('common.schedule', locale)}</dt>
+            <dt className='shrink-0 font-semibold text-fg'>{m('common.schedule', locale)}</dt>
             <dd className='flex items-center gap-1.5 text-fg-secondary'>
               <CalendarClock size={13} strokeWidth={1.75} className='shrink-0' />
               {schedule}
             </dd>
           </div>
           <div className='flex items-start gap-2'>
-            <dt className='shrink-0 font-medium text-fg'>{m('detail.deadline', locale)}</dt>
+            <dt className='shrink-0 font-semibold text-fg'>{m('detail.deadline', locale)}</dt>
             <dd className='text-fg-secondary'>{deadlineLabel}</dd>
           </div>
         </dl>
         {form?.detail && (
           <div className='mt-4 border-t border-border pt-4'>
-            <p className='text-sm font-bold text-fg'>{m('common.about_study', locale)}</p>
-            <p className='mt-2 whitespace-pre-line text-sm leading-[1.75] text-fg-secondary'>{form.detail}</p>
+            <p className='type-label-lg text-fg'>{m('common.about_study', locale)}</p>
+            <p className='mt-2 whitespace-pre-line type-body-sm text-fg-secondary'>{form.detail}</p>
           </div>
         )}
       </section>
@@ -193,7 +193,7 @@ export function ApplyDialog({
   function FieldHint({ field }: { field: string }) {
     if (invalidKey !== field || !error) return null;
     return (
-      <p role='alert' className='mt-2 text-xs text-error-700'>
+      <p role='alert' className='mt-2 type-label-sm text-error-700'>
         {error}
       </p>
     );
@@ -444,7 +444,7 @@ export function ApplyDialog({
       }
     >
       {done ? (
-        <p className='py-6 text-center text-sm text-fg-secondary'>
+        <p className='py-6 text-center type-body-sm text-fg-secondary'>
           {t(
             {
               ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.',
@@ -458,11 +458,11 @@ export function ApplyDialog({
           <div className='flex flex-col gap-3'>
             {formLoading ? (
               <div className='flex flex-col items-center justify-center py-16 text-center'>
-                <p className='text-sm text-fg-secondary'>{t({ ko: '불러오는 중…', en: 'Loading…' }, locale)}</p>
+                <p className='type-body-sm text-fg-secondary'>{t({ ko: '불러오는 중…', en: 'Loading…' }, locale)}</p>
               </div>
             ) : formError ? (
               <div className='flex flex-col items-center justify-center gap-3 py-16 text-center'>
-                <p className='text-sm text-fg-secondary'>
+                <p className='type-body-sm text-fg-secondary'>
                   {t(
                     {
                       ko: '신청 폼을 불러오지 못했습니다. 다시 시도해 주세요.',
@@ -492,7 +492,7 @@ export function ApplyDialog({
                 </section>
 
                 <section ref={daysRef} tabIndex={-1} className={`${cardClass('days')} outline-none`}>
-                  <p className='text-sm font-medium text-neutral-800'>
+                  <p className='type-label-lg text-neutral-800'>
                     {t({ ko: '참여 가능한 요일', en: 'Days you can join' }, locale)}
                     <span className='ml-0.5 text-error-600'>*</span>
                   </p>
@@ -580,7 +580,7 @@ export function ApplyDialog({
 
                 {submitError && (
                   <div role='alert' className='flex items-center gap-3 rounded-xl bg-error-50 px-4 py-3'>
-                    <p className='flex-1 text-sm text-error-700'>{submitError}</p>
+                    <p className='flex-1 type-body-sm text-error-700'>{submitError}</p>
                     <Button variant='secondary' onClick={submit} disabled={saving}>
                       {t({ ko: '다시 시도', en: 'Retry' }, locale)}
                     </Button>

@@ -81,7 +81,7 @@ function CategoryBars({ data, scope }: { data: ApiStudiesByCategory; scope: Cate
               aria-label={`${label} ${scopeName} 스터디 ${formatCount(row.count)}개 — 목록 보기`}
               className='flex items-center gap-3 rounded-control px-1 py-1.5 transition-colors hover:bg-surface-2'
             >
-              <span className='w-28 shrink-0 truncate text-sm font-medium text-fg-secondary' title={label}>
+              <span className='w-28 shrink-0 truncate type-label-lg text-fg-secondary' title={label}>
                 {label}
               </span>
               <span className='h-2.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-2'>
@@ -90,7 +90,7 @@ function CategoryBars({ data, scope }: { data: ApiStudiesByCategory; scope: Cate
                   style={{ width: `${(row.count / most) * 100}%`, background: 'var(--color-primary-600)' }}
                 />
               </span>
-              <span className='tnum w-12 shrink-0 text-right text-sm font-bold text-fg'>{formatCount(row.count)}개</span>
+              <span className='tnum w-12 shrink-0 text-right type-label-lg text-fg'>{formatCount(row.count)}개</span>
             </Link>
           </li>
         );

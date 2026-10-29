@@ -102,7 +102,7 @@ function ParticipantAssignment({
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
       <section aria-label='참여 크루' className='space-y-3'>
         <div className='space-y-2'>
-          <h2 className='font-bold'>참여 크루 {data.participantCount}명</h2>
+          <h2 className='font-semibold'>참여 크루 {data.participantCount}명</h2>
           <div className='flex flex-wrap gap-2'>
             {data.groups.length > 1 && (
               <Select aria-label='반 필터' value={group} onChange={(e) => setFilters({ group: e.target.value })}>
@@ -125,7 +125,7 @@ function ParticipantAssignment({
           </div>
         </div>
         {mutation.error && (
-          <p role='alert' className='text-sm text-error-600'>
+          <p role='alert' className='type-body-sm text-error-600'>
             {mutation.error instanceof ApiError
               ? mutation.error.message
               : '반 변경을 저장하지 못했습니다. 변경 내용을 확인하고 다시 시도해 주세요.'}
@@ -175,7 +175,7 @@ function ParticipantAssignment({
               }
               save={
                 <>
-                  <span role='status' className='text-sm text-fg-muted'>
+                  <span role='status' className='type-body-sm text-fg-muted'>
                     {notice}
                   </span>
                   {dirty && (

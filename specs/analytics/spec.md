@@ -45,8 +45,8 @@
 | 행동 | Amplitude | GA4 | 속성 | 보내는 곳 | 지점 |
 |---|---|---|---|---|---|
 | 페이지 조회 | `Page Viewed` (수동, `page_name`) | `page_view` (자동, SPA 이동 포함) | page_name, locale | front | `PageViewTracker` |
-| 가입 | `User Signed Up` | `sign_up` | method=`google`, signup_surface=`onboarding` | **server 정본** (GA4: server(MP)) + front 퍼널 사본 (Amplitude 만) | 온보딩 최초 완료 (`user.registered`) |
-| 로그인 | `User Logged In` | `login` | method=`google` | front | 온보딩을 마친 회원의 로그인 완료 |
+| 가입 | `User Signed Up` | `sign_up` | method=`google`·`apple`, signup_surface=`onboarding` | **server 정본** (GA4: server(MP)) + front 퍼널 사본 (Amplitude 만) | 온보딩 최초 완료 (`user.registered`) |
+| 로그인 | `User Logged In` | `login` | method=`google`·`apple` | front | 온보딩을 마친 회원의 로그인 완료 |
 | 활성화 | `Activated` | `activated` | activation_action=`study_applied`, study_id (GA4 는 activation_action 만) | server (GA4: server(MP)) | 계정의 **첫** 스터디 신청 저장 (`study_application.submitted`) |
 
 - 서버 이벤트 `insert_id` 는 결정적이다: `user_signed_up_account_{id}` · `activated_account_{id}` — 재전송돼도 Amplitude 가 중복을 지운다
@@ -58,7 +58,7 @@
 
 | 이벤트 | 지점 |
 |---|---|
-| `Auth Google Login Clicked` · `Auth OAuth Cancelled` · `Auth Login Completed{is_new_user}` · `Auth Login Failed` | 로그인 화면 |
+| `Auth Google Login Clicked` · `Auth Apple Login Clicked` · `Auth OAuth Cancelled` · `Auth Login Completed{is_new_user}` · `Auth Login Failed` | 로그인 화면 |
 | `Onboarding Started` · `Onboarding Nickname Submitted` · `Onboarding Nickname Conflict` · `Onboarding Consents Agreed` · `Onboarding Completed` | 온보딩 |
 | `Study Filter Tab Changed` · `Study Category Filtered` · `Study Searched` · `Study Card Clicked` · `Hero CTA Clicked` · `Event Card Clicked` | 탐색 |
 | `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) | 하트 버튼 · 마이페이지 관심 스터디 |
