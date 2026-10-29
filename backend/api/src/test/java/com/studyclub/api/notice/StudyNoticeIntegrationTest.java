@@ -686,6 +686,11 @@ class StudyNoticeIntegrationTest {
         deletion.get().get(10, TimeUnit.SECONDS);
         // 반 잠금을 먼저 잡은 삭제가 발송의 커밋을 기다렸다가 공지를 지우므로 남지 않는다
         assertThat(studyNoticeRepo.findAll()).isEmpty();
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM STUDY_NOTICE_RECIPIENT", Integer.class))
+                .as("받는 사람 행도 함께 지워진다")
+                .isZero();
         assertThat(studyRepo.findById(study.getId())).isEmpty();
     }
 
