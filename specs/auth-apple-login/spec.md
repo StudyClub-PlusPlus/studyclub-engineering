@@ -70,7 +70,7 @@ Next /api/auth/social/login → POST /auth/social-login { code, provider: "apple
 
 ### 스키마
 
-`ACCOUNT_IDENTITY.PROVIDER_REFRESH_TOKEN` 추가 (V41). [ERD](../../docs/erd/ACCOUNT_IDENTITY.md)
+`ACCOUNT_IDENTITY.PROVIDER_REFRESH_TOKEN` 추가 (V43). [ERD](../../docs/erd/ACCOUNT_IDENTITY.md)
 
 ## 퍼널·계측
 
