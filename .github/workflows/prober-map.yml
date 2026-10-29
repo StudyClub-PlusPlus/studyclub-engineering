@@ -4,14 +4,14 @@ name: prober-map
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened, closed]
   push:
     branches: [beta]
   workflow_dispatch:
 
 jobs:
   changes:
-    # 포크 PR 에는 시크릿이 없다. 닫힘 · 제목 수정은 지도를 다시 올리지 않는다
+    # 포크 PR 에는 시크릿이 없다. 닫힘은 지도를 다시 올리지 않는다
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,7 +32,7 @@ jobs:
         run: |
           if [ "$EVENT" = workflow_dispatch ]; then for kv in discord_schema=true knowledge=true; do echo "$kv" >> "$GITHUB_OUTPUT"; done; exit 0; fi
           if [ "$EVENT" = pull_request ]; then
-            if [ "$FORK" = true ] || [ "$ACTION" = closed ] || [ "$ACTION" = edited ]; then : > files.txt
+            if [ "$FORK" = true ] || [ "$ACTION" = closed ]; then : > files.txt
             else gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only > files.txt; fi
           else
             gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --jq '.files[].filename' > files.txt || echo .github/workflows/prober-map.yml > files.txt
@@ -131,4 +131,5 @@ jobs:
                baseBranch: .base.ref, headBranch: .head.ref, headSha: .head.sha, mergedAt: .merged_at }' > pr.json
           jq --slurpfile c commits.json '. + { commits: $c[0] }' pr.json > body.json
           curl -fsS -X PUT "$PROBER_API/teams/$PROBER_PROJECT/prs" \
-            -H "authorization: Bearer $PROBER_TOKEN" -H 'content-type: application/json' --data @body.json >/dev/null
+            -H "authorization: Bearer $PROBER_TOKEN" -H 'content-type: application/json' --data @body.json >/dev/null \
+            || echo "::warning::Prober PR 올리기 실패 — PR 화면 API 가 아직 없거나 Prober 가 응답하지 않음"
