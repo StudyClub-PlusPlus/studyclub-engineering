@@ -6,13 +6,14 @@
 > 정책: [POL-0009 알림](../../01-planning/_registry/policies/POL-0009-notification.md)
 > 같은 아웃박스·폴러로 나가는 두 번째 알림: 반 공지(`STUDY_NOTICE`) — [study-notice/spec.md](../study-notice/spec.md). 이 문서의 `NOTIFICATION` 컬럼에 `REFERENCE_ID` 가 더해진다 ([ERD](../../docs/erd/NOTIFICATION.md)) · [POL-0008 화면 공통 규칙](../../01-planning/_registry/policies/POL-0008-screen-rules.md)
 > 생성일: 2026-09-12 · 상태: 구현중
+> 갱신: 2026-10-27 — **템플릿 추가·수정·삭제**(`POST`·`PUT`·`DELETE /api/admin/notification-templates`) 계약 추가. 같은 조건에 템플릿은 한 건뿐이다(`UNIQUE(EVENT_TYPE, CHANNEL)` 유지) — 여럿·회원 탈퇴 조건은 이 갱신의 대상이 아니다
 > 갱신: 2026-10-11 — 발송 이력 화면(FE)이 쓰는 API 확정, **실패 건 재발송**(`POST /api/admin/notifications/resend`) 추가. 재발송은 **새 행을 만들지 않고 그 행을 `PENDING` 으로 되돌린다** — 백엔드·발송 이력 화면(FE) 모두 구현완료(2026-10-16~18)
 
 ## 범위
 
 알림 시스템 전체(모집 시작·마감임박·신청접수·승인/거절·세션리마인드·출석경고, 디스코드, 묶어보내기,
-자동 재시도, 참가자 수신설정 화면)는 이 스펙의 대상이 아니다. 백오피스는 **조회**(템플릿·발송 이력)만
-이번 스펙에 포함하고, 갱신(2026-10-11)으로 **실패 건 재발송**도 포함한다. 템플릿 편집은 대상이 아니다.
+자동 재시도, 참가자 수신설정 화면)는 이 스펙의 대상이 아니다. 백오피스는 **조회**(템플릿·발송 이력)를
+이번 스펙에 포함하고, 갱신(2026-10-11)으로 **실패 건 재발송**, 갱신(2026-10-27)으로 **템플릿 추가·수정·삭제**도 포함한다.
 
 이 스펙은 **회원가입 완료 → 웰컴메일 발송 1건**을 처음이자 유일한 구현 대상으로 다룬다. 다만 이 기능이
 `NOTIFICATION`/`NOTIFICATION_TEMPLATE` 테이블을 새로 만드는 첫 사례이므로, 두 테이블의 스키마는 향후
@@ -21,11 +22,14 @@
 
 발송 자체는 이벤트 리스너 + 폴링 스케줄러로만 동작하는 백그라운드 기능이라 공개 API 가 없지만,
 백오피스에서 템플릿·발송 이력을 **조회**하고 실패한 건을 **다시 보낼** 수 있어야 한다는 요구가 있어
-API 3개(조회 2 + 재발송 1)를 이번 스펙에 포함한다 — [백오피스 — 알림 조회와 실패 건 재발송](#백오피스--알림-조회와-실패-건-재발송).
+API 6개(조회 2 + 재발송 1 + 템플릿 쓰기 3)를 이번 스펙에 포함한다 — [백오피스 — 알림 조회와 실패 건 재발송](#백오피스--알림-조회와-실패-건-재발송).
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | GET | `/api/admin/notification-templates` | 알림 템플릿 목록 조회 | O (`@RequireAdmin`) | 구현완료 |
+| POST | `/api/admin/notification-templates` | 알림 템플릿 추가 — 조건당 한 건, 이미 있으면 409 | O (`@RequireAdmin`) | 구현완료 |
+| PUT | `/api/admin/notification-templates/{id}` | 알림 템플릿 수정 — 조건·제목·본문 | O (`@RequireAdmin`) | 구현완료 |
+| DELETE | `/api/admin/notification-templates/{id}` | 알림 템플릿 삭제 — 발송 이력은 남는다 | O (`@RequireAdmin`) | 구현완료 |
 | GET | `/api/admin/notifications` | 발송 이력 조회 — 행마다 `canResend` 추가, `ids` 로 재발송한 건의 끝을 쫓는다 | O (`@RequireAdmin`) | 구현완료 |
 | POST | `/api/admin/notifications/resend` | 실패 건 재발송 — 고른 FAILED 행을 그 행 그대로 PENDING 으로 되돌린다. 줄마다 가려 접수(`accepted`)·제외(`skipped`)를 돌려준다. 접수까지만 응답 | O (`@RequireAdmin`) | 구현완료 |
 
@@ -181,21 +185,20 @@ WHERE status = 'PROCESSING'
 ### NOTIFICATION_TEMPLATE
 
 문구를 코드/파일로 관리하면 문구 하나 고칠 때마다 PR·배포가 필요해진다는 이유로 DB 저장으로 정한다
-(알림 설계 문서에서 이미 검토·확정). 백오피스에서 **조회는 이번 구현에 포함**하지만(아래
-[백오피스 — 알림 조회](#백오피스--알림-조회와-실패-건-재발송)), **편집 화면은 별도 기능** — 이번 구현은
-마이그레이션으로 웰컴메일 템플릿 1행만 시딩한다.
+(알림 설계 문서에서 이미 검토·확정). 백오피스에서 **조회·추가·수정·삭제**를 한다(아래
+[백오피스 — 알림 조회](#백오피스--알림-조회와-실패-건-재발송)). 웰컴메일 템플릿 1행은 마이그레이션이 시딩한다.
 
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` |
+| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` · `STUDY_NOTICE` |
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
 | BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함. 태그(`<`)로 시작하면 HTML 본문 — 아래 [본문 형식](#본문-형식--html--텍스트-대체본) |
 | UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
-| UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음) — 편집 화면이 아직 없어 이번 구현에서는 항상 NULL(마이그레이션이 만든 행) |
+| UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음) — 추가·수정한 캡틴. 마이그레이션이 만든 행은 NULL |
 
-- `UNIQUE(EVENT_TYPE, CHANNEL)`
+- `UNIQUE(EVENT_TYPE, CHANNEL)` — 같은 조건에 템플릿은 한 건뿐이다. 추가·수정이 이 제약을 건드리면 409
 - RECIPIENT_USER_ID·TEMPLATE_ID·UPDATED_BY_ADMIN_ID 는 애그리거트 사이 참조라 FK 를 걸지 않는다 — ID + 인덱스만
   ([database-guide.md 외래키 정책](../../docs/backend-development-guide/database-guide.md)).
 
@@ -230,7 +233,7 @@ stateDiagram-v2
 ## 백오피스 — 알림 조회와 실패 건 재발송
 
 "백오피스에서 템플릿과 발송 주소(수신처)를 볼 수 있어야 한다"는 요구를 읽기 전용 API 2개로 반영한다.
-조회 두 개는 읽기 전용이고, **재발송은 FAILED 행을 `PENDING` 으로 되돌리는 쓰기**다. 템플릿 **편집**은 없다.
+조회 두 개는 읽기 전용이고, **재발송은 FAILED 행을 `PENDING` 으로 되돌리는 쓰기**다. 갱신(2026-10-27)으로 **템플릿 추가·수정·삭제**도 여기에 있다.
 
 인증은 기존 백오피스 로그인 플로우(`POST /auth/social-login`, `platform=BACK_OFFICE`)를 그대로 쓴다 —
 이 스펙이 새 권한 체계를 만들지는 않는다.
@@ -273,7 +276,7 @@ stateDiagram-v2
 | subject | String | N | | NOTIFICATION_TEMPLATE.SUBJECT |
 | body | String | N | 플레이스홀더(`{{nickname}}`)가 그대로 포함된 원문 | NOTIFICATION_TEMPLATE.BODY |
 | updatedAt | String | N | ISO-8601 UTC | NOTIFICATION_TEMPLATE.UPDATED_AT |
-| updatedByAdminId | Long | Y | 편집 화면이 없어 이번 구현에서는 항상 `null` | NOTIFICATION_TEMPLATE.UPDATED_BY_ADMIN_ID |
+| updatedByAdminId | Long | Y | 추가·수정한 캡틴의 계정 ID. 시딩된 행은 `null` | NOTIFICATION_TEMPLATE.UPDATED_BY_ADMIN_ID |
 
 **Error Responses**:
 
@@ -281,6 +284,79 @@ stateDiagram-v2
 |---|---|---|
 | 401 | UNAUTHORIZED | 토큰 없음/만료 |
 | 403 | FORBIDDEN | 로그인은 됐지만 `SYSTEM_ROLE = ADMIN`(캡틴)이 아님 — `@RequireAdmin` |
+
+### `POST /api/admin/notification-templates`
+
+- **인증**: 필요 — `@RequireAdmin` (캡틴만)
+- **설명**: 알림 템플릿을 추가한다. 채널은 요청에 없다 — 지금 보낼 수 있는 것은 메일뿐이라 서버가 `EMAIL` 로 정한다.
+  같은 조건(`eventType`)에 이미 템플릿이 있으면 추가하지 않는다 (`UNIQUE(EVENT_TYPE, CHANNEL)`)
+
+```json
+{ "eventType": "USER_REGISTERED", "subject": "[StudyClub] 회원가입을 환영합니다", "body": "안녕하세요, {{nickname}}님..." }
+```
+
+| 필드 | 타입 | 필수 | 검증 |
+|---|---|---|---|
+| eventType | String | O | `NotificationEventType` 값. 모르는 값은 400 |
+| subject | String | O | 공백뿐이면 400. **255자 이하** (`SUBJECT VARCHAR(255)`, 글자 수) |
+| body | String | O | 공백뿐이면 400. **UTF-8 65,535바이트 이하** (`BODY TEXT` 의 한도 — 글자 수가 아니라 바이트다. 넘으면 DB 가 오류를 내거나 잘라 저장하므로 서버가 먼저 막는다) |
+
+- 앞뒤 공백은 그대로 저장한다 (본문은 HTML 이라 의미가 있을 수 있다). 제목은 화면이 `trim` 해서 보낸다
+- 수정자(`updatedByAdminId`)는 토큰의 계정 ID 로 채운다
+
+**Response 201**: `GET` 목록의 한 항목과 같은 모양 (`id`, `eventType`, `channel`, `subject`, `body`, `updatedAt`, `updatedByAdminId`)
+
+**Error Responses**:
+
+| 상태 | errorCode | 조건 |
+|---|---|---|
+| 400 | INVALID_INPUT | 검증 실패 (필수 누락, 길이 초과, 모르는 `eventType`) |
+| 401 | UNAUTHORIZED | 토큰 없음/만료 |
+| 403 | FORBIDDEN | 캡틴이 아님 |
+| 409 | CONFLICT | 그 조건에 이미 템플릿이 있음. 동시에 두 요청이 와도 하나만 만들어진다 |
+
+### `PUT /api/admin/notification-templates/{id}`
+
+- **인증**: 필요 — `@RequireAdmin` (캡틴만)
+- **설명**: 템플릿의 조건·제목·본문을 통째로 바꾼다. 조건도 바꿀 수 있다. 수정자와 마지막 수정(`updatedAt`)이 갱신된다
+- **Request / 검증**: `POST` 와 같다
+- **Response 200**: `POST` 의 응답과 같은 모양
+
+**Error Responses**:
+
+| 상태 | errorCode | 조건 |
+|---|---|---|
+| 400 | INVALID_INPUT | 검증 실패 |
+| 401 / 403 | UNAUTHORIZED / FORBIDDEN | 인증 없음 / 캡틴이 아님 |
+| 404 | NOT_FOUND | 없는 ID (이미 삭제됨) |
+| 409 | CONFLICT | 바꾸려는 조건에 이미 다른 템플릿이 있음 (조건이 `USER_REGISTERED`·`STUDY_NOTICE` 둘이라 통합 테스트로 덮는다) |
+
+- 내용이 하나도 바뀌지 않은 저장은 `updatedAt` 을 바꾸지 않을 수 있다 (JPA 가 변경을 감지하지 못한다)
+
+### `DELETE /api/admin/notification-templates/{id}`
+
+- **인증**: 필요 — `@RequireAdmin` (캡틴만)
+- **설명**: 템플릿을 지운다. 되돌릴 수 없다. **발송 이력(`NOTIFICATION`)은 지우지 않는다** — 이력은 템플릿을 ID 로만
+  참조하고 FK 가 없다
+- **Response 204**: 바디 없음
+
+**Error Responses**:
+
+| 상태 | errorCode | 조건 |
+|---|---|---|
+| 401 / 403 | UNAUTHORIZED / FORBIDDEN | 인증 없음 / 캡틴이 아님 |
+| 404 | NOT_FOUND | 없는 ID |
+
+- 지운 뒤의 동작: 그 템플릿을 가리키는 `PENDING` 알림은 발송 때 `TEMPLATE_MISSING` 으로 실패한다(재발송해도 같다).
+  그 조건의 유일한 템플릿을 지우면 이후 이벤트에 어떤 일이 생기는지는 조건마다 다르다 — 아래 표
+
+| 조건 | 치환 변수 | 템플릿이 없으면 |
+|---|---|---|
+| `USER_REGISTERED` (회원가입) | `{{nickname}}` | 알림 행을 만들지 못하고 에러 로그만 남긴다. 가입은 영향이 없다(`AFTER_COMMIT`) |
+| `STUDY_NOTICE` (스터디 공지) | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | **메일을 포함한 공지는 저장 자체가 롤백된다**(메일 행 생성이 공지와 같은 트랜잭션 `BEFORE_COMMIT` — `IllegalStateException`). 메일과 디스코드를 함께 보내는 공지는 커밋이 없어 디스코드 글도 올라가지 않는다. 디스코드만 보내는 공지는 템플릿을 조회하지 않아 영향이 없다 ([study-notice 스펙](../study-notice/spec.md)) |
+
+- 서버는 마지막 템플릿의 삭제·조건 변경을 막지 않는다. 대신 백오피스 삭제 확인이 위 영향을 조건별로 알린다. 본문 칸 아래 안내도 그 조건의 치환 변수를 알린다. (→ [share 10-29](../../docs/share/2026-10-29-notification-template-ops-rules.md))
+  서버가 조건에 없는 치환 변수를 막지는 않는다 — 렌더러는 모르는 `{{x}}` 를 그대로 남기므로, 조건을 바꾸면 변수가 맞지 않는 문구가 저장될 수 있다 (후속)
 
 ### `GET /api/admin/notifications`
 
@@ -635,7 +711,7 @@ API의 `application.yml`은 `spring.config.import: classpath:notification.yml`�
 | 디스코드 채널 | "지금은 메일만, 추후 고려"(코멘트) |
 | FR-05 묶어 보내기(다이제스트) | 웰컴메일은 수신자가 매번 다른 개인이라 그룹 크기가 항상 1 — 적용 대상 자체가 없다 |
 | 참가자 수신설정 화면 | 웰컴메일은 수신거부 대상이 아닌 안내 메일 — 별도 스펙 |
-| 백오피스 **편집**(템플릿 수정) | 조회와 실패 건 재발송은 포함([백오피스 — 알림 조회와 실패 건 재발송](#백오피스--알림-조회와-실패-건-재발송))했지만 템플릿 편집은 별도 스펙 |
+| 같은 조건에 템플릿 여럿 · 회원 탈퇴 조건 | 템플릿 추가·수정·삭제는 포함([백오피스 — 알림 조회와 실패 건 재발송](#백오피스--알림-조회와-실패-건-재발송))했지만 조건당 한 건이다(`UNIQUE(EVENT_TYPE, CHANNEL)`). 여럿은 제약 제거와 발송 로직 변경이, 탈퇴는 이벤트 신설이 필요해 별도 작업 (PRD ST-030 완료 기준 5) |
 | 자동 재시도 · 재발송 취소 · 실패 사유 상세 화면 | 재발송은 운영자가 고른 건만 한 번씩 되돌린다. 자동 재시도·취소는 없고, `ERROR_TYPE` 은 응답에 내지 않는다 |
 | 자동 재수집형 실패 알림(디스코드 운영 알림 등) | 알림 설계 문서에서도 검토 후 안 붙이기로 확정 |
 
@@ -651,11 +727,16 @@ API의 `application.yml`은 `spring.config.import: classpath:notification.yml`�
   ([docs/share](../../docs/share/2026-10-11-notification-resend.md))
 - **발송 이력 PRD 의 문장 하나** — "재발송은 새 건을 만든다"가 "그 줄을 되돌린다"(POL-0009)와 모순이다. 기획이 고친다
 
+## 퍼널·계측
+
+해당 없음 — 운영자가 문구를 관리하는 백오피스 기능이라 사용자 퍼널과 이벤트를 바꾸지 않는다.
+
 ## 한계 / 후속
 
 - **MVP 이후 — 동시 재발송 중 전체 실패 건 수집 누락 방지** ([PR #268 리뷰 합의](https://github.com/StudyClub-PlusPlus/studyclub-engineering/pull/268#discussion_r4317681873)). 현재 FE는 실패 목록을 `offset` 기반으로 100건씩 조회해 재발송 가능한 ID를 모으고, 중복을 제거하며 새 ID가 나오지 않을 때까지 최대 5회 처음부터 다시 훑는다. 다른 운영자가 수집 도중 계속 재발송하면 `FAILED` 목록이 줄어들어 아직 읽지 않은 항목이 앞으로 당겨지므로, 이 보완으로도 일부 대상이 누락될 수 있다. 누락된 건은 실패 목록에 남아 있어 전체 재발송을 한 번 더 실행하면 다시 수집할 수 있다. MVP에서는 이 한계를 수용하고, 이후 **커서 페이지네이션 또는 서버 조건 기반 재발송** 등 BE 변경으로 누락을 방지하는 방식을 PRD와 함께 협의한다. 구체적인 API 계약과 대상 범위는 후속 작업에서 확정한다.
 - 나머지 5개 알림 이벤트(모집 시작·마감임박·신청접수·승인/거절·세션리마인드·출석경고), 디스코드 채널, 자동/수동 재시도, 묶어 보내기, 참가자 수신설정 화면 — 전부 별도 스펙.
-- 백오피스 **조회**(템플릿 목록·발송 이력)와 **실패 건 재발송**은 이번 스펙에 포함하지만, **템플릿 편집**은 별도 스펙.
+- 백오피스 **조회**(템플릿 목록·발송 이력), **실패 건 재발송**, **템플릿 추가·수정·삭제**는 이번 스펙에 포함하지만, 같은 조건에 템플릿 여럿·회원 탈퇴 조건은 별도 작업.
+- **같은 조건에 템플릿 여럿을 허용하는 작업이 남아 있다** (PRD ST-030 완료 기준 5). 그때 `UNIQUE(EVENT_TYPE, CHANNEL)` 제약과 추가·수정의 409 검사를 걷어내고, 조건이 생기면 그 조건의 템플릿을 모두 발송하도록 `NotificationCreationService`(지금은 `findByEventTypeAndChannel` 한 건)를 바꾼다. **백오피스 목(mock) 데이터(`frontend/packages/mock/src/msw/handlers/notification-templates.ts`)는 이미 같은 조건 템플릿 2건을 담고 있어 지금의 서버 계약과 어긋난다** — 위 작업 때 함께 맞춘다 (이번에는 코드를 고치지 않는다).
 - 재발송은 **누가 언제 눌렀는지 남기지 않는다** — 같은 행을 되돌리므로 남길 자리가 없고(`ADMIN_AUDIT_LOG` 는 계정 대상), 시도 이력을 남기지 않는 것이 기획이다. 필요해지면 별도 스펙.
 - 이 스펙 이후 두 번째 이벤트를 구현할 때 `NotificationSender` 전략 패턴·`RecipientResolver` 도입, 그리고 `notification` 모듈이 아직 `domain` 에 직접 의존하는 부분(진짜 서버 분리 시 끊어야 할 지점)을 재검토한다(알림 설계 문서 참고).
 - **스케줄러 중복 실행 방지 — `@Lock` vs `ShedLock`(리뷰 코멘트, PR #82).** 지금은 `NotificationRepository.findByIdForUpdate`(`@Lock(PESSIMISTIC_WRITE)`)로 `markSent`/`markFailed`의 확인·갱신만 원자적으로 묶어 데이터 정합성을 지킨다. 이건 "같은 행을 두 서버가 동시에 잘못 덮어쓰지 않는다"는 보장이지, "같은 스케줄 작업 자체를 한 서버만 실행한다"는 보장은 아니다 — 서버가 여러 대면 `@Scheduled` 폴링이 인스턴스마다 독립적으로 돈다. 서버가 실제로 여러 대가 될 때 어느 쪽으로 갈지는 그때의 요구사항에 달려 있다: 메일량이 늘어 여러 서버가 나눠 처리하는 게 유리하면 지금의 `@Lock` 방식을 그대로 확장하고, 메일량은 적지만 운영을 단순화하고 중복 실행 자체를 막는 게 더 중요해지면 `ShedLock` 같은 분산 락으로 스케줄러를 아예 한 인스턴스만 돌게 한다.

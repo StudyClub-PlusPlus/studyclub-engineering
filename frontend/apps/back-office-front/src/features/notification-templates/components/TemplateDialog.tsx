@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Button, Input, Modal, Select, Tabs, Textarea } from '@studyclub/ui';
+import { Button, Input, Modal, Select, Tabs, Textarea, toast } from '@studyclub/ui';
 
 import { TemplatePreview } from '@/features/notification-templates/components/TemplatePreview';
 import {
@@ -13,7 +13,13 @@ import {
   useUpdateNotificationTemplate,
 } from '@/features/notification-templates/queries';
 import {
+  BODY_MAX_BYTES,
+  SUBJECT_MAX_LENGTH,
   TEMPLATE_CONDITIONS,
+  applyBodyEdit,
+  bodyHelp,
+  deleteImpact,
+  utf8Bytes,
   type NotificationTemplate,
   type TemplateDraft,
 } from '@/features/notification-templates/types';
@@ -24,6 +30,8 @@ const EMPTY: TemplateDraft = { eventType: TEMPLATE_CONDITIONS[0].value, subject:
 const SAVE_FAILED = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const DELETE_FAILED = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const GONE = '이미 삭제된 템플릿입니다. 목록을 새로 불러왔습니다.';
+const BODY_LIMIT = `본문은 ${BODY_MAX_BYTES.toLocaleString()}바이트까지 입력할 수 있습니다.`;
+const DUPLICATE = '이미 이 알림 조건의 템플릿이 있습니다. 기존 템플릿을 수정하세요.';
 
 /**
  * 알림 템플릿 추가·수정 팝업.
@@ -79,6 +87,7 @@ function TemplateEditor({
   const refresh = useInvalidateTemplates();
   const busy = create.isPending || update.isPending || remove.isPending;
   const blocked = !draft.subject.trim() || !draft.body.trim();
+  const impact = template ? deleteImpact(template.eventType) : null;
 
   useEffect(() => {
     if (!open) return;
@@ -105,6 +114,11 @@ function TemplateEditor({
       setError(GONE);
       void refresh();
       return true;
+    }
+    // 이미 있는 조건(409)은 입력을 고치는 문제가 아니라 알림이다 — 토스트로 알리고 팝업은 그대로 둔다
+    if (err instanceof ApiError && err.status === 409) {
+      toast.error(err.message || DUPLICATE);
+      return false;
     }
     // 4xx 는 서버가 이유를 말해 준다(입력 오류 등) — 다시 눌러도 같은 결과라 그 말을 그대로 보여 준다
     const reason = err instanceof ApiError && err.status >= 400 && err.status < 500 ? err.message : null;
@@ -192,6 +206,7 @@ function TemplateEditor({
           <p className='mt-3 type-body-sm text-fg-muted'>
             이 문구로는 더 이상 메일이 나가지 않으며 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.
           </p>
+          {impact && <p className='mt-2 type-body-sm text-danger-fg'>{impact}</p>}
         </div>
       ) : (
         <div className='flex flex-col gap-4'>
@@ -213,6 +228,8 @@ function TemplateEditor({
             label='제목'
             disabled={busy}
             required
+            maxLength={SUBJECT_MAX_LENGTH}
+            labelHint={`${draft.subject.length.toLocaleString()} / ${SUBJECT_MAX_LENGTH.toLocaleString()}자`}
             value={draft.subject}
             onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
             placeholder='[StudyClub] 회원가입을 환영합니다'
@@ -231,10 +248,21 @@ function TemplateEditor({
                       disabled={busy}
                       required
                       rows={12}
+                      labelHint={`${utf8Bytes(draft.body).toLocaleString()} / ${BODY_MAX_BYTES.toLocaleString()}바이트`}
                       value={draft.body}
-                      onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                      // 한도를 넘는 입력은 받지 않는다 — 붙여 넣은 긴 글은 한도까지만 남는다
+                      onChange={(e) => {
+                        const field = e.target;
+                        const edit = applyBodyEdit(draft.body, field.value, BODY_MAX_BYTES);
+                        setDraft({ ...draft, body: edit.value });
+                        if (edit.caret === null) return;
+                        toast(BODY_LIMIT, { id: 'template-body-limit' });
+                        // 값을 되돌리면 커서가 끝으로 튄다 — 친 자리로 돌려 놓는다
+                        const caret = edit.caret;
+                        requestAnimationFrame(() => field.setSelectionRange(caret, caret));
+                      }}
                       placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-                      helper='{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                      helper={bodyHelp(draft.eventType)}
                     />
                   </div>
                 ),
