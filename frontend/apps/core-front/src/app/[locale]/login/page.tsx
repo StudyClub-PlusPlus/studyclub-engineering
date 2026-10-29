@@ -4,7 +4,15 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 import { track } from '@/lib/analytics';
-import { appleRedirectUri, buildAppleAuthUrl, buildGoogleAuthUrl, isConfigured, setSuggestedNickname, setUser } from '@/lib/auth';
+import {
+  appleRedirectUri,
+  buildAppleAuthUrl,
+  buildGoogleAuthUrl,
+  isConfigured,
+  setLoginMethod,
+  setSuggestedNickname,
+  setUser,
+} from '@/lib/auth';
 import type { SessionUser } from '@/lib/auth';
 import {
   LOGIN_NOT_CONFIGURED_MESSAGE,
@@ -57,6 +65,7 @@ function LoginForm() {
         if (data.account) {
           const account = data.account as SessionUser;
           setUser(account);
+          setLoginMethod(provider);
           if (typeof data.suggestedNickname === 'string' && data.suggestedNickname.trim()) {
             setSuggestedNickname(data.suggestedNickname.trim());
           } else {

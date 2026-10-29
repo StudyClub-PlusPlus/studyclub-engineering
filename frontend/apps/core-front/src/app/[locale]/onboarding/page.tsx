@@ -13,7 +13,7 @@ import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { checkNicknameAvailability } from '@/lib/api/nicknames';
 import { completeOnboarding } from '@/lib/api/onboarding';
-import { getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/lib/auth';
+import { getLoginMethod, getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import {
   clearDraft,
@@ -290,7 +290,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
       setSuggestedNickname(null);
       clearDraft(accountId);
       // 온보딩 최초 완료 = 가입 확정 (서버 user.registered 와 같은 지점)
-      trackSignUp();
+      trackSignUp(getLoginMethod());
       track({
         name: 'Onboarding Completed',
         props: {

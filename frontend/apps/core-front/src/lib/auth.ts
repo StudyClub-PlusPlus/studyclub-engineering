@@ -11,6 +11,7 @@ export const PLATFORM = 'CORE';
 export { ACCESS_COOKIE, REFRESH_COOKIE } from './cookie-names';
 const USER_KEY = `${STORAGE_PREFIX}user`;
 const SUGGESTED_NICKNAME_KEY = `${STORAGE_PREFIX}suggested_nickname`;
+const LOGIN_METHOD_KEY = `${STORAGE_PREFIX}login_method`;
 
 /** UI 세션용 회원 스냅샷. localStorage 키는 sc_user 로 유지한다. */
 export type SessionUser = {
@@ -158,4 +159,25 @@ export async function deleteAccount(reason: LeaveReason | null): Promise<DeleteA
 
   await logout();
   return { ok: true };
+}
+
+export type LoginMethod = 'google' | 'apple';
+
+/** 이번 로그인 수단 — 온보딩 완료 때 `User Signed Up` 의 method 로 쓴다. 없으면 google(애플 이전 가입은 전부 구글이다) */
+export function getLoginMethod(): LoginMethod {
+  if (typeof window === 'undefined') return 'google';
+  try {
+    return window.sessionStorage.getItem(LOGIN_METHOD_KEY) === 'apple' ? 'apple' : 'google';
+  } catch {
+    return 'google';
+  }
+}
+
+export function setLoginMethod(value: LoginMethod): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(LOGIN_METHOD_KEY, value);
+  } catch {
+    // sessionStorage 를 못 쓰면 google 로 센다
+  }
 }

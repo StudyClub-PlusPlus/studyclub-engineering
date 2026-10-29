@@ -77,7 +77,7 @@ Next /api/auth/social/login → POST /auth/social-login { code, provider: "apple
 - 단계: 가입 · 재방문 (앱 로그인 화면)
 - `User Signed Up`(server) · `User Logged In`(front) 의 `method` 에 `apple` 이 생긴다 — 서버는 가입한 계정의 로그인 수단(ACCOUNT_IDENTITY.ISSUER)을 읽는다
 - 사이트에 `Auth Apple Login Clicked{popup_blocked}` 추가. 표는 [analytics](../analytics/spec.md)
-- 온보딩 화면의 front `User Signed Up` 사본은 아직 `method=google` 고정 — 후속
+- 온보딩 화면의 front `User Signed Up` 사본도 로그인 때 남긴 수단(sessionStorage `sc_login_method`)을 읽는다
 - A/B 없음
 
 ## 한계 / 후속
