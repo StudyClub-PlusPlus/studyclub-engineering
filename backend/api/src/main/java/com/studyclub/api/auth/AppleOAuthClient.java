@@ -100,6 +100,11 @@ public class AppleOAuthClient {
         if (!AUDIENCE.equals(claims.get("iss")) || !client.equals(claims.get("aud"))) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "애플 id_token 의 발급자·대상이 다릅니다.");
         }
+        if (claims.get("email") == null) {
+            // 값이 아니라 claim 이름만 남긴다. 애플은 scope 없이 한 번 동의한 Apple ID 에 다시 묻지 않고 email 을 계속 빼서 보낸다 —
+            // 사용자가 Apple ID 설정에서 이 앱을 「사용 중단」해야 다시 묻는다
+            log.warn("애플 id_token 에 email 없음 — client={} claims={}", client, claims.keySet());
+        }
         return new SocialUser(
                 Issuer.APPLE,
                 asString(claims.get("sub")),
