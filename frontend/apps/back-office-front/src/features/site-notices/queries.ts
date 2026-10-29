@@ -46,6 +46,8 @@ export function useSiteNotice(noticeId: number | null) {
     queryKey: siteNoticeKeys.detail(noticeId ?? 0),
     queryFn: () => http<ApiSiteNoticeDetail>(`/api/admin/notices/${noticeId}`),
     enabled: noticeId !== null,
+    // 열 때마다 서버 최신값으로 채운다. 앱 기본 캐시(1분)를 따르면 다시 열 때 새로 묻지 않아 팝업이 '불러오는 중'에 멈춘다
+    staleTime: 0,
   });
 }
 

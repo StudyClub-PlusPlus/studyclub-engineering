@@ -68,8 +68,9 @@ function pageOf(items: ApiSiteNotice[], total = items.length, offset = 0): ApiSi
   return { items, total, offset, limit: 20 };
 }
 
-function renderPage() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+/** `staleTime` 을 넘기면 앱 기본 캐시(1분)처럼 받은 값을 한동안 다시 묻지 않는 상태로 그린다. */
+function renderPage(staleTime = 0) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime }, mutations: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
@@ -276,6 +277,22 @@ describe('공지 등록·편집 팝업', () => {
       ([path, init]) => String(path) === '/api/admin/notices/21' && !init?.method,
     );
     expect(detailGets).toHaveLength(1);
+  });
+
+  it('편집 팝업을 닫았다가 1분 안에 다시 열어도 한 건을 새로 받아 폼을 보인다', async () => {
+    const detail: ApiSiteNoticeDetail = { ...notice(), body: '본문' };
+    serveList(pageOf([notice()]), detail);
+    renderPage(60_000);
+    const detailCalls = () => httpMock.mock.calls.filter(([path]) => path === '/api/admin/notices/12');
+
+    fireEvent.click(await screen.findByRole('button', { name: '11월 스터디 모집 일정 안내' }));
+    await screen.findByLabelText(/본문/);
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    fireEvent.click(screen.getByRole('button', { name: '11월 스터디 모집 일정 안내' }));
+    expect(await screen.findByLabelText(/본문/)).toBeTruthy();
+    expect(detailCalls()).toHaveLength(2);
   });
 
   it('편집을 열 때 한 건을 받지 못하면 폼 대신 실패 문구를 보이고 저장할 수 없다', async () => {
