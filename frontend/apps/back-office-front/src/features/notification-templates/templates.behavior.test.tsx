@@ -431,6 +431,67 @@ describe('알림 템플릿 화면', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
+  it('삭제 확인은 그 조건의 알림에 생기는 일을 알린다 — 회원가입은 웰컴 메일이 멈춘다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    expect(within(dialog).getByText('삭제하면 새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.')).toBeTruthy();
+    expect(within(dialog).getByText(/지난 발송 이력은 남습니다/)).toBeTruthy();
+  });
+
+  it('스터디 공지 템플릿의 삭제 확인은 메일 포함 공지가 막히고 디스코드만 보내는 공지는 영향이 없다고 알린다', async () => {
+    fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    const impact = within(dialog).getByText(/메일을 포함한 스터디 공지를 보낼 수 없습니다/);
+    expect(impact.textContent).toContain('디스코드에도 올라가지 않으며');
+    expect(impact.textContent).toContain('디스코드만 보내는 공지는 영향이 없습니다');
+    expect(callsOf('DELETE')).toHaveLength(0);
+  });
+
+  it('모르는 조건의 삭제 확인에는 영향 안내를 덧붙이지 않고 본문 안내도 변수 없이 일반 문구만 보인다', async () => {
+    fakeServer([tpl({ id: 3, eventType: 'SOMETHING_NEW' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'SOMETHING_NEW' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('HTML과 일반 텍스트를 입력할 수 있습니다.')).toBeTruthy();
+    expect(within(dialog).queryByText(/닉네임 삽입/)).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    expect(within(dialog).getByText(/지난 발송 이력은 남습니다/)).toBeTruthy();
+    expect(within(dialog).queryByText(/삭제하면 /)).toBeNull();
+  });
+
+  it('본문 안내는 고른 조건에 맞는 치환 변수를 알려 주고 조건을 바꾸면 따라 바뀐다', async () => {
+    fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const help = within(dialog).getByText(/\{\{studyTitle\}\} 스터디 이름/);
+    for (const variable of ['studyTitle', 'groupName', 'senderName', 'title', 'body']) {
+      expect(help.textContent).toContain(`{{${variable}}}`);
+    }
+    expect(within(dialog).queryByText(/닉네임 삽입/)).toBeNull();
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+    expect(within(dialog).getByText(/\{\{nickname\}\} 으로 닉네임 삽입/)).toBeTruthy();
+    expect(within(dialog).queryByText(/스터디 이름/)).toBeNull();
+  });
+
   it('조건 선택지의 이름은 목록과 같은 곳에서 온다', async () => {
     fakeServer([tpl()]);
     renderPage();
@@ -442,7 +503,33 @@ describe('알림 템플릿 화면', () => {
     const options = within(dialog)
       .getAllByRole('option')
       .map((o) => o.textContent);
-    expect(options).toEqual(['회원가입']);
+    expect(options).toEqual(['회원가입', '스터디 공지']);
+  });
+
+  it('지운 스터디 공지 템플릿은 추가 팝업에서 조건을 골라 다시 만든다', async () => {
+    fakeServer([tpl({ id: 1 })]); // 스터디 공지 템플릿이 없는 상태
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
+    // 조건을 고르면 본문 안내도 그 조건의 치환 변수로 바뀐다
+    expect(within(dialog).getByText(/\{\{studyTitle\}\} 스터디 이름/)).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '[StudyClub] {{studyTitle}} 공지' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '{{title}}' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const [path, init] = callsOf('POST')[0]!;
+    expect(path).toBe(BASE);
+    expect(JSON.parse(String(init?.body))).toEqual({
+      eventType: 'STUDY_NOTICE',
+      subject: '[StudyClub] {{studyTitle}} 공지',
+      body: '{{title}}',
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: '스터디 공지' })).toBeTruthy());
   });
 
   it('제목은 255자까지만 쓸 수 있고 글자 수를 보여 준다', async () => {

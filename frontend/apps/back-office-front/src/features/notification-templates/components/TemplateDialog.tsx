@@ -17,6 +17,8 @@ import {
   SUBJECT_MAX_LENGTH,
   TEMPLATE_CONDITIONS,
   applyBodyEdit,
+  bodyHelp,
+  deleteImpact,
   utf8Bytes,
   type NotificationTemplate,
   type TemplateDraft,
@@ -85,6 +87,7 @@ function TemplateEditor({
   const refresh = useInvalidateTemplates();
   const busy = create.isPending || update.isPending || remove.isPending;
   const blocked = !draft.subject.trim() || !draft.body.trim();
+  const impact = template ? deleteImpact(template.eventType) : null;
 
   useEffect(() => {
     if (!open) return;
@@ -203,6 +206,7 @@ function TemplateEditor({
           <p className='mt-3 type-body-sm text-fg-muted'>
             이 문구로는 더 이상 메일이 나가지 않으며 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.
           </p>
+          {impact && <p className='mt-2 type-body-sm text-danger-fg'>{impact}</p>}
         </div>
       ) : (
         <div className='flex flex-col gap-4'>
@@ -258,7 +262,7 @@ function TemplateEditor({
                         requestAnimationFrame(() => field.setSelectionRange(caret, caret));
                       }}
                       placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-                      helper='{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                      helper={bodyHelp(draft.eventType)}
                     />
                   </div>
                 ),
