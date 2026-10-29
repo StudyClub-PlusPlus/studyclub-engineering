@@ -30,7 +30,8 @@
 
 - `UNIQUE(EVENT_TYPE, CHANNEL)`.
 - 인덱스 `idx_notification_template_updated_by_admin (UPDATED_BY_ADMIN_ID)`.
-- 이번 이벤트는 USER_REGISTERED, 채널은 EMAIL 뿐이다.
+- 이벤트는 USER_REGISTERED · STUDY_NOTICE(V42 시딩), 채널은 EMAIL 뿐이다. 조건마다 템플릿은 한 건이다.
+- 템플릿이 없을 때의 영향은 조건마다 다르다 — STUDY_NOTICE 는 메일을 포함한 공지가 롤백된다([notification 스펙](../../specs/notification/spec.md)).
 - SUBJECT/BODY 의 `{{nickname}}` 을 발송 시 치환한다.
 - 입력 한도(API 검증): SUBJECT 255자, BODY UTF-8 65,535바이트(`TEXT` 한도).
 - 템플릿을 지워도 NOTIFICATION 이력은 남는다(TEMPLATE_ID 는 FK 없는 ID 참조).

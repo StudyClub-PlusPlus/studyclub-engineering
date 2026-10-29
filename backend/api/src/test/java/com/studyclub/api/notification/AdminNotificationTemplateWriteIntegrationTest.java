@@ -80,6 +80,15 @@ class AdminNotificationTemplateWriteIntegrationTest {
                 NotificationEventType.USER_REGISTERED, subject, body);
     }
 
+    private NotificationTemplate seedStudyNotice() {
+        return notificationTemplateRepository.save(
+                NotificationTemplate.create(
+                        NotificationEventType.STUDY_NOTICE,
+                        "[StudyClub] {{studyTitle}} 공지",
+                        "{{title}}",
+                        null));
+    }
+
     private NotificationTemplateResponse createTemplate() {
         var response =
                 testRestTemplate.exchange(
@@ -268,6 +277,86 @@ class AdminNotificationTemplateWriteIntegrationTest {
                 notificationTemplateRepository.findById(created.id()).orElseThrow();
         assertThat(saved.getSubject()).isEqualTo("새 제목");
         assertThat(saved.getUpdatedByAdminId()).isEqualTo(other.getId());
+    }
+
+    @Test
+    @DisplayName("다른 템플릿이 쓰는 조건으로 바꾸려 하면 수정이 409 CONFLICT — 값은 그대로")
+    void updateRejectsConditionTakenByAnotherTemplate() {
+        var created = createTemplate();
+        seedStudyNotice();
+
+        var response =
+                testRestTemplate.exchange(
+                        PATH + "/" + created.id(),
+                        HttpMethod.PUT,
+                        asAdmin(
+                                new NotificationTemplateRequest(
+                                        NotificationEventType.STUDY_NOTICE, "옮김", "옮긴 본문")),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsEntry("errorCode", "CONFLICT");
+        NotificationTemplate saved =
+                notificationTemplateRepository.findById(created.id()).orElseThrow();
+        assertThat(saved.getEventType()).isEqualTo(NotificationEventType.USER_REGISTERED);
+        assertThat(saved.getSubject()).isEqualTo("환영합니다");
+    }
+
+    @Test
+    @DisplayName("조건은 그대로 두고 수정하면 다른 조건의 템플릿이 있어도 200 — 자기 자신과는 충돌하지 않는다")
+    void updateKeepingConditionIgnoresOtherConditions() {
+        var created = createTemplate();
+        seedStudyNotice();
+
+        var response =
+                testRestTemplate.exchange(
+                        PATH + "/" + created.id(),
+                        HttpMethod.PUT,
+                        asAdmin(request("새 제목", "새 본문")),
+                        NotificationTemplateResponse.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().subject()).isEqualTo("새 제목");
+    }
+
+    @Test
+    @DisplayName("비어 있는 조건으로는 옮길 수 있고, 옮기면 원래 조건이 비어 다시 추가할 수 있다")
+    void updateMovesTemplateToFreeCondition() {
+        var created = createTemplate();
+
+        var moved =
+                testRestTemplate.exchange(
+                        PATH + "/" + created.id(),
+                        HttpMethod.PUT,
+                        asAdmin(
+                                new NotificationTemplateRequest(
+                                        NotificationEventType.STUDY_NOTICE, "옮김", "옮긴 본문")),
+                        NotificationTemplateResponse.class);
+        assertThat(moved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(moved.getBody().eventType()).isEqualTo("STUDY_NOTICE");
+
+        createTemplate(); // USER_REGISTERED 가 비어 있으니 추가된다
+        assertThat(notificationTemplateRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("스터디 공지 조건도 같은 규칙이다 — 없으면 추가되고 이미 있으면 409")
+    void studyNoticeFollowsSameRule() {
+        var request =
+                new NotificationTemplateRequest(
+                        NotificationEventType.STUDY_NOTICE, "[StudyClub] 공지", "본문");
+
+        var first =
+                testRestTemplate.exchange(
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(request),
+                        NotificationTemplateResponse.class);
+        var second = testRestTemplate.exchange(PATH, HttpMethod.POST, asAdmin(request), Map.class);
+
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(first.getBody().eventType()).isEqualTo("STUDY_NOTICE");
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test

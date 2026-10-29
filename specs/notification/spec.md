@@ -191,7 +191,7 @@ WHERE status = 'PROCESSING'
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` |
+| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` · `STUDY_NOTICE` |
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
 | BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함. 태그(`<`)로 시작하면 HTML 본문 — 아래 [본문 형식](#본문-형식--html--텍스트-대체본) |
@@ -329,7 +329,7 @@ stateDiagram-v2
 | 400 | INVALID_INPUT | 검증 실패 |
 | 401 / 403 | UNAUTHORIZED / FORBIDDEN | 인증 없음 / 캡틴이 아님 |
 | 404 | NOT_FOUND | 없는 ID (이미 삭제됨) |
-| 409 | CONFLICT | 바꾸려는 조건에 이미 다른 템플릿이 있음 |
+| 409 | CONFLICT | 바꾸려는 조건에 이미 다른 템플릿이 있음 (조건이 `USER_REGISTERED`·`STUDY_NOTICE` 둘이라 통합 테스트로 덮는다) |
 
 - 내용이 하나도 바뀌지 않은 저장은 `updatedAt` 을 바꾸지 않을 수 있다 (JPA 가 변경을 감지하지 못한다)
 
@@ -348,7 +348,15 @@ stateDiagram-v2
 | 404 | NOT_FOUND | 없는 ID |
 
 - 지운 뒤의 동작: 그 템플릿을 가리키는 `PENDING` 알림은 발송 때 `TEMPLATE_MISSING` 으로 실패한다(재발송해도 같다).
-  그 조건의 유일한 템플릿을 지우면 이후 이벤트는 알림 행을 만들지 못하고 에러 로그만 남긴다
+  그 조건의 유일한 템플릿을 지우면 이후 이벤트에 어떤 일이 생기는지는 조건마다 다르다 — 아래 표
+
+| 조건 | 치환 변수 | 템플릿이 없으면 |
+|---|---|---|
+| `USER_REGISTERED` (회원가입) | `{{nickname}}` | 알림 행을 만들지 못하고 에러 로그만 남긴다. 가입은 영향이 없다(`AFTER_COMMIT`) |
+| `STUDY_NOTICE` (스터디 공지) | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | **메일을 포함한 공지는 저장 자체가 롤백된다**(메일 행 생성이 공지와 같은 트랜잭션 `BEFORE_COMMIT` — `IllegalStateException`). 메일과 디스코드를 함께 보내는 공지는 커밋이 없어 디스코드 글도 올라가지 않는다. 디스코드만 보내는 공지는 템플릿을 조회하지 않아 영향이 없다 ([study-notice 스펙](../study-notice/spec.md)) |
+
+- 서버는 마지막 템플릿의 삭제·조건 변경을 막지 않는다. 대신 백오피스 삭제 확인이 위 영향을 조건별로 알린다. 본문 칸 아래 안내도 그 조건의 치환 변수를 알린다.
+  서버가 조건에 없는 치환 변수를 막지는 않는다 — 렌더러는 모르는 `{{x}}` 를 그대로 남기므로, 조건을 바꾸면 변수가 맞지 않는 문구가 저장될 수 있다 (후속)
 
 ### `GET /api/admin/notifications`
 
