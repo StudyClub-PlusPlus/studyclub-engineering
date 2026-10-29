@@ -541,6 +541,7 @@ mail:
     from-address: ${MAIL_AUTH_FROM_ADDRESS:}
     access-key-id: ${MAIL_AUTH_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_AUTH_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_AUTH_REPLY_TO_ADDRESS:}
   news:
     configuration-set-name: ${MAIL_NEWS_CONFIGURATION_SET_NAME:}
     region: ${MAIL_NEWS_REGION:}
@@ -548,6 +549,7 @@ mail:
     from-address: ${MAIL_NEWS_FROM_ADDRESS:}
     access-key-id: ${MAIL_NEWS_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_NEWS_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_NEWS_REPLY_TO_ADDRESS:}
   notify:
     configuration-set-name: ${MAIL_NOTIFY_CONFIGURATION_SET_NAME:}
     region: ${MAIL_NOTIFY_REGION:}
@@ -555,6 +557,7 @@ mail:
     from-address: ${MAIL_NOTIFY_FROM_ADDRESS:}
     access-key-id: ${MAIL_NOTIFY_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_NOTIFY_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_NOTIFY_REPLY_TO_ADDRESS:}
   order:
     configuration-set-name: ${MAIL_ORDER_CONFIGURATION_SET_NAME:}
     region: ${MAIL_ORDER_REGION:}
@@ -562,6 +565,7 @@ mail:
     from-address: ${MAIL_ORDER_FROM_ADDRESS:}
     access-key-id: ${MAIL_ORDER_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_ORDER_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_ORDER_REPLY_TO_ADDRESS:}
   cs:
     configuration-set-name: ${MAIL_CS_CONFIGURATION_SET_NAME:}
     region: ${MAIL_CS_REGION:}
@@ -569,6 +573,7 @@ mail:
     from-address: ${MAIL_CS_FROM_ADDRESS:}
     access-key-id: ${MAIL_CS_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_CS_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_CS_REPLY_TO_ADDRESS:}
 ```
 
 - 카테고리별로 `region` · `sub-domain`(예: `notify.studyclub.life`) · `from-address` · SES
@@ -654,3 +659,9 @@ API의 `application.yml`은 `spring.config.import: classpath:notification.yml`�
 - 재발송은 **누가 언제 눌렀는지 남기지 않는다** — 같은 행을 되돌리므로 남길 자리가 없고(`ADMIN_AUDIT_LOG` 는 계정 대상), 시도 이력을 남기지 않는 것이 기획이다. 필요해지면 별도 스펙.
 - 이 스펙 이후 두 번째 이벤트를 구현할 때 `NotificationSender` 전략 패턴·`RecipientResolver` 도입, 그리고 `notification` 모듈이 아직 `domain` 에 직접 의존하는 부분(진짜 서버 분리 시 끊어야 할 지점)을 재검토한다(알림 설계 문서 참고).
 - **스케줄러 중복 실행 방지 — `@Lock` vs `ShedLock`(리뷰 코멘트, PR #82).** 지금은 `NotificationRepository.findByIdForUpdate`(`@Lock(PESSIMISTIC_WRITE)`)로 `markSent`/`markFailed`의 확인·갱신만 원자적으로 묶어 데이터 정합성을 지킨다. 이건 "같은 행을 두 서버가 동시에 잘못 덮어쓰지 않는다"는 보장이지, "같은 스케줄 작업 자체를 한 서버만 실행한다"는 보장은 아니다 — 서버가 여러 대면 `@Scheduled` 폴링이 인스턴스마다 독립적으로 돈다. 서버가 실제로 여러 대가 될 때 어느 쪽으로 갈지는 그때의 요구사항에 달려 있다: 메일량이 늘어 여러 서버가 나눠 처리하는 게 유리하면 지금의 `@Lock` 방식을 그대로 확장하고, 메일량은 적지만 운영을 단순화하고 중복 실행 자체를 막는 게 더 중요해지면 `ShedLock` 같은 분산 락으로 스케줄러를 아예 한 인스턴스만 돌게 한다.
+
+### 발신 주소·답장 주소 (2026-10-29)
+
+- `from-address` 는 표시 이름을 붙일 수 있다 — `StudyClub <no_reply@notify.studyclub.life>`. stage 는 `StudyClub Stage` 로 받는 쪽에서 구분된다
+- 발신 도메인은 `notify.studyclub.life`(본문 링크·사이트와 같은 도메인). 애플 비공개 릴레이로 가려면 이 도메인과 봉투 도메인(`bounce.notify.studyclub.life`)이 Apple Developer Email Sources 에 등록돼 있어야 한다 — [auth-apple-login](../auth-apple-login/spec.md)
+- `reply-to-address` 가 있으면 SES `ReplyToAddresses` 로 싣는다. 비우면 싣지 않는다. 값은 받는 사람이 실제로 열어 보는 주소만
