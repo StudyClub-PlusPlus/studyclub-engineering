@@ -52,10 +52,11 @@ export function buildAppleAuthUrl(): string {
     client_id: APPLE_WEB_CLIENT_ID,
     redirect_uri: appleRedirectUri(),
     response_type: 'code',
-    scope: 'name email',
     response_mode: 'form_post',
   });
-  return `https://appleid.apple.com/auth/authorize?${params.toString()}`;
+  // scope 의 공백은 %20 이어야 한다 — URLSearchParams 가 만드는 '+' 를 애플은 공백으로 읽지 않아
+  // 이름·이메일을 요청하지 않은 것으로 처리한다(선택 화면 없음, id_token 에 email 없음 → 가입 거절)
+  return `https://appleid.apple.com/auth/authorize?${params.toString()}&scope=name%20email`;
 }
 
 export function isConfigured(): boolean {
