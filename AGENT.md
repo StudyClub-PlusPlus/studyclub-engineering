@@ -154,12 +154,12 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
   **playground 만 `beta` 브랜치에서 배포된다** (`playground-beta.yaml`) — 프로토타입이라 main 을 기다리지 않는다.
   `backend-PR-CI` 는 PR 마다 `./gradlew check` 를 돌린다 — 컴파일 실패·포맷 위반이 머지되는 걸 막는 게이트.
   `backend-migration-check` 는 PR 마다 빈 MySQL 에 마이그레이션을 적용해 본다 — 여기서 깨지면 `V*.sql` 을 고친다.
-- **디스코드 봇의 `CREATE TABLE` 을 고치면 같은 커밋에서 `discord/.strata/schema.json` 도 다시 뽑는다** —
-  `cd discord && python -m tests.test_strata_schema > .strata/schema.json`. 봇은 백엔드 MySQL 과 별개로 SQLite 테이블을 쓰고,
-  Strata(DB 구조 지도)는 이 파일을 그대로 읽는다(`discord-strata`). 파일이 실제 테이블과 다르면 `discord-PR-CI` 의 pytest 가 막는다.
-- **`.strata/` 는 Strata 지도의 위층이다** — `concepts.json` 은 테이블을 개념 묶음으로 나누고 이름으로 못 찾는 관계(`CREATED_BY` → ACCOUNT, 디스코드 snowflake 등)를 적는다.
+- **디스코드 봇의 `CREATE TABLE` 을 고치면 같은 커밋에서 `discord/.prober/map/schema.json` 도 다시 뽑는다** —
+  `cd discord && python -m tests.test_prober_schema > .prober/map/schema.json`. 봇은 백엔드 MySQL 과 별개로 SQLite 테이블을 쓰고,
+  Prober(DB 구조 지도)는 이 파일을 그대로 읽는다(`prober-map`). 파일이 실제 테이블과 다르면 `discord-PR-CI` 의 pytest 가 막는다.
+- **`.prober/map/` 는 Prober 지도의 위층이다** — `concepts.json` 은 테이블을 개념 묶음으로 나누고 이름으로 못 찾는 관계(`CREATED_BY` → ACCOUNT, 디스코드 snowflake 등)를 적는다.
   `flows/*.json` 은 흐름 하나의 단계 순서(테이블 · op · 이벤트 · 시스템 밖). 테이블을 추가·삭제·이름 변경했거나 스펙의 처리 순서를 바꿨으면 같은 PR 에서 고친다.
-  `strata-knowledge` CI 가 스펙·`docs/erd`·`docs/flows` 와 함께 올리고, DB 구조에 없는 테이블을 가리키면 경고를 찍는다.
+  `prober-map` CI 가 스펙·`docs/erd`·`docs/flows` 와 함께 올리고, DB 구조에 없는 테이블을 가리키면 경고를 찍는다.
 
 ---
 

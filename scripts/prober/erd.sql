@@ -1,4 +1,4 @@
--- 현재 DB 의 구조를 erd.json 한 덩어리로 — 언어·ORM 무관 (mysql CLI 만 있으면 된다). Strata specs/schema — 이 파일은 Strata 수집기 사본
+-- 현재 DB 의 구조를 erd.json 한 덩어리로 — 언어·ORM 무관 (mysql CLI 만 있으면 된다). specs/schema §수집기
 --   mysql --default-character-set=utf8mb4 -h <host> -u <user> -p<pw> <db> -N -B -r < erd.sql > erd.json
 --   (문자셋을 안 주면 한글 default 가 ?? 로 깨진다)
 -- 순서가 필요한 배열은 GROUP_CONCAT … ORDER BY 로 만든다 — JSON_ARRAYAGG 는 순서를 보장하지 않는다

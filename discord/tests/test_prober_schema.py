@@ -1,12 +1,12 @@
-"""discord/.strata/schema.json matches the tables the bot really creates.
+"""discord/.prober/map/schema.json matches the tables the bot really creates.
 
-Strata (the DB-structure map) reads that file as-is; nothing here runs a DB in CI
+Prober (the DB-structure map) reads that file as-is; nothing here runs a DB in CI
 for it. So the file is hand- (or AI-) maintained next to the CREATE TABLE
 statements, and this test is what keeps the two from drifting: it lets each
 store create its table in a scratch SQLite file and compares PRAGMA output.
 
 After changing a CREATE TABLE, regenerate with:
-    python -m tests.test_strata_schema > .strata/schema.json
+    python -m tests.test_prober_schema > .prober/map/schema.json
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from pathlib import Path
 from app.study_reservations import StudyReservations
 from app.voice_activity_log import VoiceActivityLog
 
-SCHEMA = Path(__file__).resolve().parents[1] / ".strata" / "schema.json"
+SCHEMA = Path(__file__).resolve().parents[1] / ".prober" / "map" / "schema.json"
 STORES = (StudyReservations, VoiceActivityLog)
 
 
@@ -49,7 +49,7 @@ def actual() -> dict:
 
 def test_schema_file_matches_the_tables_the_bot_creates():
     assert json.loads(SCHEMA.read_text()) == actual(), (
-        "discord/.strata/schema.json is stale -- run: python -m tests.test_strata_schema > .strata/schema.json"
+        "discord/.prober/map/schema.json is stale -- run: python -m tests.test_prober_schema > .prober/map/schema.json"
     )
 
 

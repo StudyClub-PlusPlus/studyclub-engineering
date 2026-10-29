@@ -1,0 +1,134 @@
+# 시스템 지도를 Prober 로 보낸다 — DB 구조 · 위층(문서 · 개념 · 흐름) · PR. prober:connect (Strata 연결을 다시 깐 것)
+# 고친 파일에 따라 job 을 고른다(changes). PR 열림 · 고침 · 닫힘 · 머지는 pr job 이 Prober PR 화면에 올린다
+name: prober-map
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, closed]
+  push:
+    branches: [beta]
+  workflow_dispatch:
+
+jobs:
+  changes:
+    # 포크 PR 에는 시크릿이 없다. 닫힘 · 제목 수정은 지도를 다시 올리지 않는다
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      discord_schema: ${{ steps.f.outputs.discord_schema }}
+      knowledge: ${{ steps.f.outputs.knowledge }}
+    steps:
+      - id: f
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then for kv in discord_schema=true knowledge=true; do echo "$kv" >> "$GITHUB_OUTPUT"; done; exit 0; fi
+          if [ "$EVENT" = pull_request ]; then
+            if [ "$FORK" = true ] || [ "$ACTION" = closed ] || [ "$ACTION" = edited ]; then : > files.txt
+            else gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only > files.txt; fi
+          else
+            gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --jq '.files[].filename' > files.txt || echo .github/workflows/prober-map.yml > files.txt
+          fi
+          echo "discord_schema=$(grep -qE '^discord/app/.*|^discord/\.prober/map/.*|^\.github/workflows/prober-map\.yml$' files.txt && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "knowledge=$(grep -qE '^specs/.*|^docs/erd/.*|^docs/flows/.*|^\.prober/map/concepts\.json$|^\.prober/map/flows/.*|^scripts/prober/collect-knowledge\.cjs$|^scripts/prober/collect-knowledge\.cjs$|^\.github/workflows/prober-map\.yml$' files.txt && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  # 디스코드 봇의 SQLite 구조(ERD)를 Prober 로 보낸다 — file 방식: DB 를 띄우지 않고 discord/.prober/map/schema.json 을 그대로 보낸다.
+  # 그 파일이 실제 CREATE TABLE 과 맞는지는 discord-PR-CI 의 pytest(tests/test_prober_schema.py)가 막는다.
+  # PR 이면 beta 대비 전·후를 코멘트로 남긴다. beta push 는 비교 기준 스냅샷이다.
+  discord-schema:
+    needs: changes
+    if: needs.changes.outputs.discord_schema == 'true'
+    runs-on: ubuntu-latest
+    env:
+      PROBER_API: https://api.prober.im
+      PROBER_PROJECT: 8a05d363-c757-4bba-90f1-680083d7527b/projects/47d37bd7-a00a-4c6b-9ae9-37aa60f43dfc
+      SOURCE: studyclub-engineering:discord
+      SCHEMA: discord/.prober/map/schema.json
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prober 에 올리기
+        env:
+          PROBER_TOKEN: ${{ secrets.PROBER_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          jq -n --slurpfile erd "$SCHEMA" --arg source "$SOURCE" --arg repo "$GITHUB_REPOSITORY" --arg branch "$branch" \
+            --arg sha "${HEAD_SHA:-$GITHUB_SHA}" --arg pr "$PR" --arg url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR" \
+            '{source:$source, repo:$repo, branch:$branch, baseBranch:"beta", sha:$sha, method:"file", erd:$erd[0]}
+             + (if $pr != "" then {pr:($pr|tonumber), prUrl:$url} else {} end)' > body.json
+          code=$(curl -s -o res.json -w '%{http_code}' -X POST "$PROBER_API/teams/$PROBER_PROJECT/schema/snapshots" \
+            -H "authorization: Bearer $PROBER_TOKEN" -H 'content-type: application/json' --data-binary @body.json)
+          if [ "${code:0:1}" != 2 ]; then echo "::error::Prober 가 $code 로 거절 — $(head -c 300 res.json)"; exit 1; fi
+          jq -r .comment res.json > comment.md
+          cat comment.md >> "$GITHUB_STEP_SUMMARY"
+      - name: PR 코멘트 (있으면 고치고 없으면 만든다)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | (startswith(\"<!-- prober:schema -->\") or startswith(\"<!-- strata:schema -->\")) and contains(\"### DB 구조 · $SOURCE\")) | .id" | head -1)
+          if [ -n "$id" ]; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comment.md >/dev/null
+          else gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@comment.md >/dev/null; fi
+
+  # 지도 위층(문서 · 개념 · 흐름)을 Prober 로 보낸다 — specs/*/spec.md · docs/erd · docs/flows 와 .prober/map/concepts.json · .prober/map/flows/*.json.
+  # 테이블과 잇는 건 Prober 가 읽을 때 한다. 적힌 테이블이 DB 구조에 없으면 경고로 찍는다(실패는 아니다).
+  # beta push 가 지도의 기준이다. AGENT.md §작업 룰 「.prober/map」
+  knowledge:
+    needs: changes
+    if: needs.changes.outputs.knowledge == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prober 에 올리기
+        env:
+          PROBER_API: https://api.prober.im
+          PROBER_TOKEN: ${{ secrets.PROBER_TOKEN }}
+          PROBER_PROJECT: 8a05d363-c757-4bba-90f1-680083d7527b/projects/47d37bd7-a00a-4c6b-9ae9-37aa60f43dfc
+          BASE_BRANCH: beta
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/prober/collect-knowledge.cjs
+
+  pr:
+    # PR 화면 — 열림 · 고침 · 닫힘 · 머지. PUT 은 같은 repo · number 면 한 행
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    continue-on-error: true # Prober 가 죽어도 PR 을 막지 않는다
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: PR 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBER_API: https://api.prober.im
+          PROBER_TOKEN: ${{ secrets.PROBER_TOKEN }}
+          PROBER_PROJECT: 8a05d363-c757-4bba-90f1-680083d7527b/projects/47d37bd7-a00a-4c6b-9ae9-37aa60f43dfc
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/commits" --paginate \
+            --jq '[.[] | { sha, message: .commit.message, author: .commit.author.name, committedAt: .commit.author.date }]' | jq -s add > commits.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq \
+            '{ repo: .base.repo.full_name, number, title, url: .html_url, body: (.body // ""),
+               state: (if .merged_at then "merged" elif .state == "closed" then "closed" else "open" end),
+               baseBranch: .base.ref, headBranch: .head.ref, headSha: .head.sha, mergedAt: .merged_at }' > pr.json
+          jq --slurpfile c commits.json '. + { commits: $c[0] }' pr.json > body.json
+          curl -fsS -X PUT "$PROBER_API/teams/$PROBER_PROJECT/prs" \
+            -H "authorization: Bearer $PROBER_TOKEN" -H 'content-type: application/json' --data @body.json >/dev/null

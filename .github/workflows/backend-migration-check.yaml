@@ -89,35 +89,35 @@ jobs:
           done
           echo "❌ 120초 안에 안 떴다"; cat boot.log; kill $pid; exit 1
 
-      # 방금 빈 DB 에 Flyway 가 만든 스키마 = 이 커밋의 진짜 DB 구조. 그대로 읽어 Strata(ERD 지도)로 보낸다.
+      # 방금 빈 DB 에 Flyway 가 만든 스키마 = 이 커밋의 진짜 DB 구조. 그대로 읽어 Prober(ERD 지도)로 보낸다.
       # PR 이면 beta 대비 바뀐 테이블·컬럼과 위험한 변경(컬럼 삭제 · default 없는 NOT NULL …)을 코멘트로 남긴다.
       # 포크 PR 은 시크릿이 없어 건너뛴다. 실패해도 검증 게이트는 막지 않는다
-      - name: DB 구조를 Strata 로 (ERD)
-        id: strata
+      - name: DB 구조를 Prober 로 (ERD)
+        id: prober
         if: success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         continue-on-error: true
         env:
-          STRATA_TOKEN: ${{ secrets.STRATA_TOKEN }}
-          STRATA_API: https://strata-api.studyclub.life
-          STRATA_PROJECT: a6cb62a5-1e29-4d59-b76a-5ceba5119580/projects/fa485ab4-54ec-43bc-a9b5-9b330d30687c
+          PROBER_TOKEN: ${{ secrets.PROBER_TOKEN }}
+          PROBER_API: https://api.prober.im
+          PROBER_PROJECT: 8a05d363-c757-4bba-90f1-680083d7527b/projects/47d37bd7-a00a-4c6b-9ae9-37aa60f43dfc
           SOURCE: studyclub-engineering:backend
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          mysql --default-character-set=utf8mb4 -h 127.0.0.1 -P 3306 -u studyclub -pci-studyclub studyclub -N -B -r < scripts/strata/erd.sql > erd.json
+          mysql --default-character-set=utf8mb4 -h 127.0.0.1 -P 3306 -u studyclub -pci-studyclub studyclub -N -B -r < scripts/prober/erd.sql > erd.json
           branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           jq -n --slurpfile erd erd.json --arg source "$SOURCE" --arg repo "$GITHUB_REPOSITORY" --arg branch "$branch" \
             --arg sha "${HEAD_SHA:-$GITHUB_SHA}" --arg pr "$PR" --arg url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$PR" \
             '{source:$source, repo:$repo, branch:$branch, baseBranch:"beta", sha:$sha, method:"introspect", erd:$erd[0]}
              + (if $pr != "" then {pr:($pr|tonumber), prUrl:$url} else {} end)' > body.json
-          code=$(curl -s -o res.json -w '%{http_code}' -X POST "$STRATA_API/teams/$STRATA_PROJECT/schema/snapshots" \
-            -H "authorization: Bearer $STRATA_TOKEN" -H 'content-type: application/json' --data-binary @body.json)
-          if [ "${code:0:1}" != 2 ]; then echo "::warning::Strata 가 $code 로 거절 — $(head -c 300 res.json)"; exit 1; fi
+          code=$(curl -s -o res.json -w '%{http_code}' -X POST "$PROBER_API/teams/$PROBER_PROJECT/schema/snapshots" \
+            -H "authorization: Bearer $PROBER_TOKEN" -H 'content-type: application/json' --data-binary @body.json)
+          if [ "${code:0:1}" != 2 ]; then echo "::warning::Prober 가 $code 로 거절 — $(head -c 300 res.json)"; exit 1; fi
           jq -r .comment res.json > comment.md
           cat comment.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: ERD 변경 PR 코멘트 (있으면 고치고 없으면 만든다)
-        if: steps.strata.outcome == 'success' && github.event_name == 'pull_request'
+        if: steps.prober.outcome == 'success' && github.event_name == 'pull_request'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -125,7 +125,7 @@ jobs:
           SOURCE: studyclub-engineering:backend
         run: |
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
-            --jq ".[] | select(.body | startswith(\"<!-- strata:schema -->\") and contains(\"### DB 구조 · $SOURCE\")) | .id" | head -1)
+            --jq ".[] | select(.body | (startswith(\"<!-- prober:schema -->\") or startswith(\"<!-- strata:schema -->\")) and contains(\"### DB 구조 · $SOURCE\")) | .id" | head -1)
           if [ -n "$id" ]; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@comment.md >/dev/null
           else gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@comment.md >/dev/null; fi
 
