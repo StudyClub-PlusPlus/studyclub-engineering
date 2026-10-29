@@ -26,6 +26,7 @@
 | IA-009 | 내 스터디 | `/my/joined` | IA-007 | ST-009 | 주간 일정 · 정렬 · 역할 필터 |
 | IA-010 | 스터디 일정 — 일정 탭 | `/my/joined/{id}/schedule` | IA-009 | ST-015 · ST-011 | 정보 카드 · 규칙 · 회차 표(선택 · 일괄 삭제) · 발표 신청 |
 | IA-011 | 스터디 일정 — 출석 탭 | `/my/joined/{id}/schedule/attendance` | IA-010 | ST-017 · ST-010 · ST-018 | 고치기 · 참여 중단(캡틴·네비게이터) · 보기(크루). 옛 `/my/joined/{id}/attendance` 는 여기로 보낸다 |
+| IA-038 | 스터디 일정 — 공지 탭 | `/my/joined/{id}/schedule/notice` | IA-010 | ST-016 | 받는 사람 고르기 · 메일·디스코드 보내기 · 보낸 공지 기록(캡틴·네비게이터만 보인다) |
 | IA-012 | 찜한 스터디 | `/my/saved` | IA-007 | — | **고아** — 찜 Story 가 없다 (스펙: `specs/study-bookmark`). 내 스터디에서 버튼은 뺐다 |
 | IA-013 | 옛 내 스터디(출석) | `/my/studies` | IA-007 | — | **고아** — 내 스터디(IA-009) 이전 화면. 정리 대상 |
 | IA-036 | 내 문의 | `/my/feedbacks` · `/my/feedbacks/{id}` | IA-007 | ST-035 | 목록 · 문의하기 팝업 · 상세(답변). 프로필 드롭다운에서 들어온다 |
@@ -62,7 +63,7 @@
 
 | Story | 들어갈 자리(안) |
 |---|---|
-| ST-016 네비게이터는 스터디별 공지를 등록할 수 있다. | IA-010 스터디 일정 (공지 탭 또는 정보 카드) |
+| (없음) | |
 
 ## 페이지별 유저스토리
 
@@ -86,6 +87,7 @@
 | IA-010 | 스터디 일정 — 일정 탭 | ST-015 네비게이터는 스터디 회차를 등록할 수 있다. | [navigator-register-sessions](../stories/navigator-register-sessions/PRD.md) |
 | | | ST-011 크루는 발표자를 신청할 수 있다. | [crew-apply-presenter](../stories/crew-apply-presenter/PRD.md) |
 | IA-011 | 스터디 일정 — 출석 탭 | ST-017 네비게이터는 스터디별 출석 상태를 수정할 수 있다. | [navigator-edit-attendance](../stories/navigator-edit-attendance/PRD.md) |
+| IA-038 | 스터디 일정 — 공지 탭 | ST-016 네비게이터는 스터디별 공지를 등록할 수 있다. | [navigator-study-notice](../stories/navigator-study-notice/PRD.md) |
 | | | ST-010 크루는 스터디별 출석 기록을 볼 수 있다. | [crew-view-attendance-record](../stories/crew-view-attendance-record/PRD.md) |
 | | | ST-018 네비게이터는 참여자를 스터디에서 제명할 수 있다. | [navigator-withdraw-participant](../stories/navigator-withdraw-participant/PRD.md) |
 | IA-014 | 이용약관 | ST-014 크루는 이용약관과 개인정보처리방침을 확인할 수 있다. | [crew-view-terms-privacy](../stories/crew-view-terms-privacy/PRD.md) |
@@ -134,6 +136,7 @@ IA-001 홈 /
 │  ├─ IA-009 내 스터디 /my/joined
 │  │  └─ IA-010 스터디 일정 — 일정 /my/joined/{id}/schedule
 │  │     └─ IA-011 스터디 일정 — 출석 …/schedule/attendance
+│  │     └─ IA-038 스터디 일정 — 공지 …/schedule/notice
 │  ├─ IA-012 찜한 스터디 /my/saved            (고아)
 │  ├─ IA-013 옛 내 스터디 /my/studies         (고아)
 │  └─ IA-036 내 문의 /my/feedbacks
