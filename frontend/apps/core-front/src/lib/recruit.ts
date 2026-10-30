@@ -55,26 +55,32 @@ export function studyStartValue(study: Study, locale: Locale): string {
 }
 
 /**
- * 스터디가 도는 시간대 — 목록 필터·목록/상세 표기가 **같은 판정**을 쓰도록 여기서 단일 정의한다.
- * 일정·킥오프 문구에 표기가 없으면 `both`(동시 모집)로 본다.
+ * 스터디가 도는 시간대 — 목록/상세 표기가 **같은 판정**을 쓰도록 여기서 단일 정의한다.
+ * 운영자가 고른 값(`STUDY.TIMEZONE`)이 있으면 그대로 쓴다. 값이 없으면 일정·킥오프 문구의
+ * `KST` / `PST`·`PDT` 표기로 추정하고, 그마저 없으면 모른다(`undefined`).
+ *
+ * 목록 응답은 서버가 이미 판정한 값을 주고(값이 없고 표기도 없으면 `BOTH`), 상세 응답은 저장된 값만 준다(#328).
  */
 export type StudyTimezone = 'KST' | 'PST' | 'both';
 
-export function studyTimezone(study: Study): StudyTimezone {
+export function studyTimezone(study: Study): StudyTimezone | undefined {
+  if (study.timezone) return study.timezone;
   const text = [study.schedule?.ko, study.schedule?.en, study.recruitment?.kickoff].filter(Boolean).join(' ');
   if (/PST|PDT/i.test(text)) return 'PST';
   if (/KST/i.test(text)) return 'KST';
-  return 'both';
+  return undefined;
 }
 
 const TIMEZONE_LABEL: Record<StudyTimezone, { ko: string; en: string }> = {
   KST: { ko: 'KST', en: 'KST' },
   PST: { ko: 'PST', en: 'PST' },
-  both: { ko: '동시 모집(KST·PST)', en: 'Multiple timezones (KST·PST)' },
+  both: { ko: '동시 진행(KST·PST)', en: 'Multiple timezones (KST·PST)' },
 };
 
+/** 목록 카드·상세의 시간대 문구. 모르는 시간대를 「동시 진행」이라 단정하지 않는다 — `시간대 미정`. */
 export function studyTimezoneLabel(study: Study, locale: Locale): string {
-  return t(TIMEZONE_LABEL[studyTimezone(study)], locale);
+  const tz = studyTimezone(study);
+  return t(tz ? TIMEZONE_LABEL[tz] : { ko: '시간대 미정', en: 'Timezone TBD' }, locale);
 }
 
 /**

@@ -110,6 +110,8 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
   const tabs = [
     { href: base, label: '일정' },
     { href: `${base}/attendance`, label: '출석' },
+    // 공지는 보내는 사람(캡틴·네비게이터)만 쓴다. 반 멤버가 읽는 공지 목록은 없다 (POL-0010)
+    ...(canEdit ? [{ href: `${base}/notice`, label: '공지' }] : []),
   ];
 
   return (

@@ -7,6 +7,7 @@
 | 템플릿 | 언제 | 제목 | 치환 변수 | 시안 원본 |
 |---|---|---|---|---|
 | `USER_REGISTERED` · `EMAIL` | 회원가입 직후 즉시 | `[StudyClub] 회원가입을 환영합니다` | `{{nickname}}` | [user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) |
+| `STUDY_NOTICE` · `EMAIL` | 네비게이터가 반 공지를 보낼 때 | `[StudyClub] {{studyTitle}} 공지` | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | [study-notice-email.html](../../frontend/apps/playground/src/proto/mail/templates/study-notice-email.html) |
 
 - 시안 원본은 `{{nickname}}` 이 그대로 있는 **DB 에 들어갈 본문**이다. 제목·치환 변수는 위 표를 참고한다
 - 추가·수정 팝업의 **본문 편집 → 미리보기**로 HTML 을 확인한다. 치환 변수는 예시 값으로 바꾸지 않고 원문 그대로 표시한다. 회원가입 시안은 기본 예시로 불러오며, 다른 시안은 본문 편집 칸에 붙여 넣어 확인할 수 있다

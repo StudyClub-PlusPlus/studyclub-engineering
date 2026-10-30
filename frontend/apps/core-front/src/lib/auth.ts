@@ -11,6 +11,7 @@ export const PLATFORM = 'CORE';
 export { ACCESS_COOKIE, REFRESH_COOKIE } from './cookie-names';
 const USER_KEY = `${STORAGE_PREFIX}user`;
 const SUGGESTED_NICKNAME_KEY = `${STORAGE_PREFIX}suggested_nickname`;
+const LOGIN_METHOD_KEY = `${STORAGE_PREFIX}login_method`;
 
 /** UI 세션용 회원 스냅샷. localStorage 키는 sc_user 로 유지한다. */
 export type SessionUser = {
@@ -36,6 +37,26 @@ export function buildGoogleAuthUrl(): string {
     access_type: 'online',
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+/** 애플 Services ID — 공개 식별자. 돌아올 주소는 Apple Developer 에 등록된 것만 받는다(studyclub.life · stage). 로컬은 애플이 localhost 를 안 받아 쓸 수 없다 */
+export const APPLE_WEB_CLIENT_ID = 'life.studyclub.web';
+
+export function appleRedirectUri(): string {
+  return `${window.location.origin}/api/auth/apple/callback`;
+}
+
+/** 브라우저에서 애플 authorize URL (팝업으로 연다). name·email 을 받으려면 form_post 여야 한다 */
+export function buildAppleAuthUrl(): string {
+  const params = new URLSearchParams({
+    client_id: APPLE_WEB_CLIENT_ID,
+    redirect_uri: appleRedirectUri(),
+    response_type: 'code',
+    response_mode: 'form_post',
+  });
+  // scope 의 공백은 %20 이어야 한다 — URLSearchParams 가 만드는 '+' 를 애플은 공백으로 읽지 않아
+  // 이름·이메일을 요청하지 않은 것으로 처리한다(선택 화면 없음, id_token 에 email 없음 → 가입 거절)
+  return `https://appleid.apple.com/auth/authorize?${params.toString()}&scope=name%20email`;
 }
 
 export function isConfigured(): boolean {
@@ -139,4 +160,25 @@ export async function deleteAccount(reason: LeaveReason | null): Promise<DeleteA
 
   await logout();
   return { ok: true };
+}
+
+export type LoginMethod = 'google' | 'apple';
+
+/** 이번 로그인 수단 — 온보딩 완료 때 `User Signed Up` 의 method 로 쓴다. 없으면 google(애플 이전 가입은 전부 구글이다) */
+export function getLoginMethod(): LoginMethod {
+  if (typeof window === 'undefined') return 'google';
+  try {
+    return window.sessionStorage.getItem(LOGIN_METHOD_KEY) === 'apple' ? 'apple' : 'google';
+  } catch {
+    return 'google';
+  }
+}
+
+export function setLoginMethod(value: LoginMethod): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(LOGIN_METHOD_KEY, value);
+  } catch {
+    // sessionStorage 를 못 쓰면 google 로 센다
+  }
 }

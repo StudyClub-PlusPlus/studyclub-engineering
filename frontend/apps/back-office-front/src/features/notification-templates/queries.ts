@@ -59,7 +59,6 @@ export function useInvalidateTemplates() {
   };
 }
 
-// TODO(api): POST·PUT·DELETE /api/admin/notification-templates — 백엔드 구현 전이라 계약은 기획 PRD 의 API 표 기준이다.
 export function useCreateNotificationTemplate() {
   const invalidate = useInvalidateTemplates();
   return useMutation({

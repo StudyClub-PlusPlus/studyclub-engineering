@@ -11,7 +11,9 @@ const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_UR
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const { code, redirectUri } = body ?? {};
+  const { code, redirectUri, name } = body ?? {};
+  // 제공자는 둘만 받는다 — 그 밖의 값은 구글로 본다
+  const provider = body?.provider === 'apple' ? 'apple' : 'google';
   if (!code) {
     return NextResponse.json({ message: 'code 가 필요합니다.' }, { status: 400 });
   }
@@ -22,7 +24,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       // platform 서버측 강제
-      body: JSON.stringify({ code, provider: 'google', platform: PLATFORM, redirectUri }),
+      body: JSON.stringify({ code, provider, platform: PLATFORM, redirectUri, name }),
     });
   } catch {
     return NextResponse.json(
