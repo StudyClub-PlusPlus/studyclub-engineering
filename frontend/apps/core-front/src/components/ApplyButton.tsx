@@ -61,7 +61,7 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
 
   const isClosed = state === 'closed' || Boolean(deadlineLabel);
 
-  const card = 'inline-flex items-center rounded-pill px-8 py-3 type-label-lg';
+  const card = 'inline-flex items-center justify-center rounded-pill px-8 py-3 type-label-lg';
   const live =
     'bg-brand text-on-brand shadow-sm transition-[background-color,transform] hover:bg-brand-hover hover:scale-[1.02] focus-visible:outline-none focus-visible:shadow-(--ring)';
   const idle = 'bg-surface-2 text-fg-placeholder';
