@@ -10,12 +10,12 @@ import { ApplyDialog } from '@/components/ApplyDialog';
 import { ApplyDiscordGate } from '@/components/ApplyDiscordGate';
 import { useMyApplication } from '@/features/applications/queries';
 import { track } from '@/lib/analytics';
+import { shouldWaitForMyApplication } from '@/lib/apply-intent-resume';
 import { clearSession, getUser } from '@/lib/auth';
 import type { Locale, Study } from '@/lib/content';
 import { fetchDiscordLinkState, forgetDiscordLinkState } from '@/lib/discord';
 import { t } from '@/lib/i18n';
 import { addApplication, getApplication } from '@/lib/me';
-import { shouldWaitForMyApplication } from '@/lib/apply-intent-resume';
 import { withApplyIntent, withoutApplyIntent } from '@/lib/onboarding';
 import { recruitLabel, recruitState } from '@/lib/recruit';
 

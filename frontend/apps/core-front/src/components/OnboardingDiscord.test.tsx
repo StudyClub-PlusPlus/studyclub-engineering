@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const replace = vi.fn();
 const invalidateQueries = vi.fn(async () => undefined);
-const linkDiscordMock = vi.fn(async (_accountId: number, _code: string) => undefined);
+const linkDiscordMock = vi.fn(async () => undefined);
 const requestDiscordCodeMock = vi.fn(async () => 'oauth-code');
-const fetchDiscordLinkStateMock = vi.fn(async (_accountId: number) => 'unlinked' as const);
+const fetchDiscordLinkStateMock = vi.fn(async () => 'unlinked' as const);
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push: vi.fn() }),
@@ -32,8 +32,8 @@ vi.mock('@/lib/discord', () => ({
       super(reason);
     }
   },
-  fetchDiscordLinkState: (accountId: number) => fetchDiscordLinkStateMock(accountId),
-  linkDiscord: (accountId: number, code: string) => linkDiscordMock(accountId, code),
+  fetchDiscordLinkState: (...args: [number]) => fetchDiscordLinkStateMock(...args),
+  linkDiscord: (...args: [number, string]) => linkDiscordMock(...args),
   requestDiscordCode: () => requestDiscordCodeMock(),
 }));
 

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const httpMock = vi.fn(async (_path: string, _init?: RequestInit) => null);
+const httpMock = vi.fn(async () => null);
 const setQueryData = vi.fn();
 const invalidateQueries = vi.fn(async () => undefined);
 
 vi.mock('./http', () => ({
-  http: (path: string, init?: RequestInit) => httpMock(path, init),
+  http: (...args: [string, RequestInit?]) => httpMock(...args),
   ApiError: class ApiError extends Error {
     constructor(
       readonly status: number,
