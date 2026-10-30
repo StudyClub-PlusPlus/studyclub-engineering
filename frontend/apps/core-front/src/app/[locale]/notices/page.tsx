@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
 import { NoticeDate } from '@/components/NoticeDate';
-import { NoticesRetryButton } from '@/components/NoticesRetryButton';
+import { NoticesLoadError } from '@/components/NoticesLoadError';
 import { getNotices, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 import { PAGE } from '@/lib/layout';
@@ -49,8 +49,7 @@ export default async function NoticesPage({
   if (result === null) {
     rows = (
       <div className='border-b border-(--color-border) py-20 text-center'>
-        <p className='text-sm text-(--color-fg-muted)'>{m('notices.error', locale)}</p>
-        <NoticesRetryButton label={m('notices.retry', locale)} />
+        <NoticesLoadError message={m('notices.error', locale)} retry={m('notices.retry', locale)} />
       </div>
     );
   } else if (result.items.length === 0) {

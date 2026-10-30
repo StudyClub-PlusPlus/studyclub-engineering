@@ -88,7 +88,12 @@ export async function getNotices(offset: number, limit: number): Promise<ApiPage
   }
 }
 
-/** 공지 한 건. 없거나 삭제됐으면 null(화면이 404). 서버 장애는 던진다 — 없는 공지로 위장하지 않는다. */
-export async function getNotice(noticeId: string): Promise<ApiSiteNoticeDetail | null> {
-  return fetchNotice(noticeId);
+/** 공지 한 건. 없거나 삭제됐으면 null(화면이 404). 서버 장애면 'failed' — 없는 공지로 위장하지 않고 화면이 오류 안내를 그린다. */
+export async function getNotice(noticeId: string): Promise<ApiSiteNoticeDetail | null | 'failed'> {
+  try {
+    return await fetchNotice(noticeId);
+  } catch (e) {
+    console.error(`[content] GET /api/notices/${noticeId} failed:`, e);
+    return 'failed';
+  }
 }

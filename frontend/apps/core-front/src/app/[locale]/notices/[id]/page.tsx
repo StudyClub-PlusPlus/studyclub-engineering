@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { NoticeDate } from '@/components/NoticeDate';
+import { NoticesLoadError } from '@/components/NoticesLoadError';
 import type { ApiSiteNoticeSummary } from '@/lib/api';
 import { autolink } from '@/lib/autolink';
 import { getNotice, type Locale } from '@/lib/content';
@@ -19,6 +20,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, id } = await params;
   const n = await getNotice(id);
+  // 조회 실패면 목록과 같은 제목 — 오류 안내 화면이 공지 제목 없이 뜬다
+  if (n === 'failed') return { title: m('notices.title', locale) };
   if (!n) return {};
   return pageMetadata({
     locale,
@@ -32,8 +35,23 @@ export async function generateMetadata({
 export default async function NoticeDetail({ params }: { params: Promise<{ locale: Locale; id: string }> }) {
   const { locale, id } = await params;
   const n = await getNotice(id);
-  if (!n) notFound();
   const base = `/${locale}/notices`;
+  if (n === 'failed') {
+    return (
+      <div className={`${PAGE} py-12`}>
+        <Link href={base} className='text-sm font-semibold text-(--color-fg-muted) hover:text-(--color-fg)'>
+          {m('notices.title', locale)}
+        </Link>
+        {/* 목록의 오류 안내와 같은 모양 — 게시판 윗줄 아래에 안내 한 칸 */}
+        <div className='mt-3 border-t-2 border-(--color-fg)'>
+          <div className='border-b border-(--color-border) py-20 text-center'>
+            <NoticesLoadError message={m('notices.error', locale)} retry={m('notices.retry', locale)} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (!n) notFound();
 
   return (
     <div className={`${PAGE} py-12`}>
