@@ -15,6 +15,7 @@ import type { Locale, Study } from '@/lib/content';
 import { fetchDiscordLinkState, forgetDiscordLinkState } from '@/lib/discord';
 import { t } from '@/lib/i18n';
 import { addApplication, getApplication } from '@/lib/me';
+import { shouldWaitForMyApplication } from '@/lib/apply-intent-resume';
 import { withApplyIntent, withoutApplyIntent } from '@/lib/onboarding';
 import { recruitLabel, recruitState } from '@/lib/recruit';
 
@@ -44,7 +45,9 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
   const doneLabel = t({ ko: '신청 완료', en: 'Applied' }, locale);
 
   const isUser = Boolean(getUser());
-  const { data: myApp } = useMyApplication(study.study_id, isUser);
+  // isFetched: apply=1 복귀 때 신청 여부 조회가 끝나기 전에 의도를 소비하면, myApp 갱신으로
+  // effect 가 재실행·cancel 되고 버튼이 로딩에 갇힌다 (#376 리뷰).
+  const { data: myApp, isFetched: myAppFetched } = useMyApplication(study.study_id, isUser);
 
   useEffect(() => {
     setReady(true);
@@ -67,6 +70,9 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     if (consumedApplyIntent.current || !ready) return;
     const url = new URL(window.location.href);
     if (url.searchParams.get('apply') !== '1') return;
+    // 로그인 사용자는 내 신청 조회가 끝난 뒤에만 소비한다 — 신청 여부를 먼저 판정한다
+    if (shouldWaitForMyApplication(isUser, myAppFetched)) return;
+
     consumedApplyIntent.current = true;
     const clean = withoutApplyIntent(`${url.pathname}${url.search}${url.hash}`);
     router.replace(clean, { scroll: false });
@@ -78,24 +84,28 @@ export function ApplyButton({ study, locale }: { study: Study; locale: Locale })
     let cancelled = false;
     void (async () => {
       setChecking(true);
-      const linkState = await fetchDiscordLinkState(user.id);
-      if (cancelled || !mounted.current) return;
-      setChecking(false);
-      if (linkState === 'unauthorized') {
-        clearSession();
-        router.push(`/${locale}/login?next=${encodeURIComponent(withApplyIntent(pathname))}`);
-        return;
+      try {
+        const linkState = await fetchDiscordLinkState(user.id);
+        if (cancelled || !mounted.current) return;
+        if (linkState === 'unauthorized') {
+          clearSession();
+          router.push(`/${locale}/login?next=${encodeURIComponent(withApplyIntent(pathname))}`);
+          return;
+        }
+        if (linkState === 'unlinked') {
+          setDiscordOpen(true);
+          return;
+        }
+        setFormOpen(true);
+      } finally {
+        // cancel·언마운트여도 로딩을 푼다 — consumed 만 남고 checking 이 true 로 남는 경우를 막는다
+        if (mounted.current) setChecking(false);
       }
-      if (linkState === 'unlinked') {
-        setDiscordOpen(true);
-        return;
-      }
-      setFormOpen(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, [ready, state, study.id, myApp?.applied, pathname, locale, router]);
+  }, [ready, state, study.id, myApp?.applied, myAppFetched, isUser, pathname, locale, router]);
 
   const isClosed = state === 'closed' || Boolean(deadlineLabel);
 

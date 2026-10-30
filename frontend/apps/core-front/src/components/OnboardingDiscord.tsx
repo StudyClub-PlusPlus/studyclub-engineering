@@ -1,12 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { site } from '@studyclub/mock';
 import { Button } from '@studyclub/ui';
 import { CheckCircle2, ExternalLink, MessageCircle } from 'lucide-react';
 
+import { profileKeys } from '@/features/profile/queries';
 import { track } from '@/lib/analytics';
 import { clearSession, getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
@@ -19,6 +20,7 @@ import {
 } from '@/lib/discord';
 import { ApiError } from '@/lib/http';
 import { withoutApplyIntent } from '@/lib/onboarding';
+import { getQueryClient } from '@/lib/query-client';
 
 function errorCode(e: unknown) {
   return e instanceof ApiError ? (e.body as { errorCode?: string } | undefined)?.errorCode : undefined;
@@ -36,6 +38,15 @@ export function OnboardingDiscord({ locale, next }: { locale: Locale; next: stri
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notInGuild, setNotInGuild] = useState(false);
+  /** 팝업 인증 중에 다른 페이지로 떠나면 나중에 router.replace(next) 하지 않는다 */
+  const onPage = useRef(true);
+
+  useEffect(() => {
+    onPage.current = true;
+    return () => {
+      onPage.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const user = getUser();
@@ -95,8 +106,12 @@ export function OnboardingDiscord({ locale, next }: { locale: Locale; next: stri
     setNotInGuild(false);
     try {
       await linkDiscord(user.id, await code);
+      // linkDiscord 가 캐시를 무효화하지만, 마이페이지로 가기 전에 한 번 더 맞춰 둔다 (DiscordRow 와 동일)
+      await getQueryClient().invalidateQueries({ queryKey: profileKeys.account(user.id) });
       track({ name: 'My Discord Connected' });
       setLinking(false);
+      // 팝업을 연 채 다른 페이지로 이동했으면 목적지로 끌어가지 않는다
+      if (!onPage.current) return;
       router.replace(next);
     } catch (e) {
       setLinking(false);
