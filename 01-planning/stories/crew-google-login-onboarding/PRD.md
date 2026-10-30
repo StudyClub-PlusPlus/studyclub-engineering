@@ -284,16 +284,16 @@ erDiagram
 
 ### 개발 범위
 
-> 2026-10-25 `beta` d74c6c84 기준 (디스코드 흐름 확인). **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> 2026-10-28 `beta` 기준 (온보딩 연결 선택 · 신청 복귀). **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | core-front `/login` · `/onboarding` | 있음 — 구글 로그인 · 닉네임 확인 · 온보딩 API 연결 | 가입 완료 후 연결 선택 및 신청 복귀 연결 |
+| FE | core-front `/login` · `/onboarding` | 있음 — 구글 로그인 · 닉네임 확인 · 온보딩 API · 가입 후 연결 선택(`?step=discord`) · 신청 `apply=1` 복귀 | 없음 |
 | BE | `POST /auth/social-login` · `GET /api/me` · `GET /api/nicknames/availability` · `POST /accounts/onboarding` | 구현완료 | 없음 |
 | Playground | 가입 후 연결 선택 | 구현 · 브라우저 시뮬레이션 | 없음 |
-| BE | `POST /api/me/discord/link` | 구현완료 | OAuth 화면 연결 |
+| BE | `POST /api/me/discord/link` | 구현완료 — 프론트 OAuth 팝업 연결됨 (DSC-04) | 없음 |
 
 ### 데이터
 
