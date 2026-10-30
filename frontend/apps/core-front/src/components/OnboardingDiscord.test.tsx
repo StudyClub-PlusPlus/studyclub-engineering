@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 const replace = vi.fn();
 const invalidateQueries = vi.fn(async () => undefined);
-const linkDiscordMock = vi.fn(async () => undefined);
+const linkDiscordMock: Mock<(accountId: number, code: string) => Promise<undefined>> = vi.fn(
+  async () => undefined,
+);
 const requestDiscordCodeMock = vi.fn(async () => 'oauth-code');
-const fetchDiscordLinkStateMock = vi.fn(async () => 'unlinked' as const);
+const fetchDiscordLinkStateMock: Mock<(accountId: number) => Promise<'unlinked'>> = vi.fn(
+  async () => 'unlinked' as const,
+);
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push: vi.fn() }),
@@ -32,8 +36,8 @@ vi.mock('@/lib/discord', () => ({
       super(reason);
     }
   },
-  fetchDiscordLinkState: (...args: [number]) => fetchDiscordLinkStateMock(...args),
-  linkDiscord: (...args: [number, string]) => linkDiscordMock(...args),
+  fetchDiscordLinkState: (accountId: number) => fetchDiscordLinkStateMock(accountId),
+  linkDiscord: (accountId: number, code: string) => linkDiscordMock(accountId, code),
   requestDiscordCode: () => requestDiscordCodeMock(),
 }));
 
