@@ -53,4 +53,31 @@ class NotificationTemplateRendererTest {
 
         assertThat(result).isEqualTo("<b>&님 환영");
     }
+
+    @Test
+    @DisplayName("값 안에 들어 있는 {{키}} 는 다시 치환하지 않는다 — 공지 본문이 제목 자리를 덮어쓰지 못한다")
+    void render_doesNotExpandPlaceholdersInsideValues() {
+        String result =
+                renderer.render(
+                        "<h1>{{title}}</h1><p>{{body}}</p>",
+                        Map.of("title", "안내", "body", "{{title}} 를 쓰면 안 된다"));
+
+        assertThat(result).isEqualTo("<h1>안내</h1><p>{{title}} 를 쓰면 안 된다</p>");
+    }
+
+    @Test
+    @DisplayName("값에 $ · 역슬래시가 있어도 그대로 들어간다")
+    void render_valueWithRegexSpecialCharacters() {
+        String result = renderer.render("{{body}}", Map.of("body", "가격 $1 \\ 끝"));
+
+        assertThat(result).isEqualTo("가격 $1 \\ 끝");
+    }
+
+    @Test
+    @DisplayName("공지 본문의 줄바꿈은 HTML 이스케이프 뒤에도 그대로 남는다 (시안의 white-space:pre-line 이 살린다)")
+    void render_htmlTemplate_keepsNewlinesAndEscapesTags() {
+        String result = renderer.render("<p>{{body}}</p>", Map.of("body", "첫 줄\n<b>둘째</b>"));
+
+        assertThat(result).isEqualTo("<p>첫 줄\n&lt;b&gt;둘째&lt;/b&gt;</p>");
+    }
 }

@@ -30,7 +30,11 @@ import org.hibernate.type.SqlTypes;
 @Table(
         name = "NOTIFICATION",
         indexes = {
-            @Index(name = "idx_notification_status_created", columnList = "STATUS, CREATED_AT")
+            @Index(name = "idx_notification_status_created", columnList = "STATUS, CREATED_AT"),
+            @Index(
+                    name = "idx_notification_event_reference",
+                    columnList = "EVENT_TYPE, REFERENCE_ID"),
+            @Index(name = "idx_notification_sender", columnList = "SENDER_ACCOUNT_ID")
         })
 @Getter
 public class Notification extends BaseEntity {
@@ -57,6 +61,20 @@ public class Notification extends BaseEntity {
     /** ID 참조 — {@code NotificationTemplate} 은 별도 애그리거트라 객체 참조(@ManyToOne)로 물지 않는다. */
     @Column(name = "TEMPLATE_ID", nullable = false)
     private Long templateId;
+
+    /**
+     * 이 알림을 만든 쪽의 ID 참조 — {@code STUDY_NOTICE} 면 {@code STUDY_NOTICE.ID}. 공지별 메일 결과를 세는 키다. 웰컴메일은
+     * null. 다른 애그리거트라 FK 는 없다.
+     */
+    @Column(name = "REFERENCE_ID")
+    private Long referenceId;
+
+    /**
+     * 이 알림을 보낸 사람의 계정 ID 참조 — 공지 메일만 채운다. 보낸 사람이 탈퇴하면 이 값으로 그가 보낸 메일 행을 찾아 이름을 비식별화한다. {@code
+     * REFERENCE_ID} 의 공지는 스터디 삭제로 사라질 수 있어, 그 경로로는 되짚을 수 없다.
+     */
+    @Column(name = "SENDER_ACCOUNT_ID")
+    private Long senderAccountId;
 
     /** Hibernate 7 이 Jackson 3(이 프로젝트가 쓰는 버전)을 자동 인식해 직렬화한다 — 커스텀 컨버터 불필요. */
     @JdbcTypeCode(SqlTypes.JSON)
@@ -89,13 +107,17 @@ public class Notification extends BaseEntity {
             String recipientValue,
             Long recipientUserId,
             Long templateId,
-            Map<String, Object> payload) {
+            Map<String, Object> payload,
+            Long referenceId,
+            Long senderAccountId) {
         this.eventType = eventType;
         this.recipientType = recipientType;
         this.recipientValue = recipientValue;
         this.recipientUserId = recipientUserId;
         this.templateId = templateId;
         this.payload = payload;
+        this.referenceId = referenceId;
+        this.senderAccountId = senderAccountId;
         this.status = NotificationStatus.PENDING;
     }
 
@@ -107,8 +129,58 @@ public class Notification extends BaseEntity {
             Long recipientUserId,
             Long templateId,
             Map<String, Object> payload) {
+        return pendingImmediate(
+                eventType,
+                recipientType,
+                recipientValue,
+                recipientUserId,
+                templateId,
+                payload,
+                null);
+    }
+
+    /**
+     * {@link #pendingImmediate(NotificationEventType, NotificationChannel, String, Long, Long,
+     * Map)} 에 만든 쪽의 ID 참조를 더한다.
+     */
+    public static Notification pendingImmediate(
+            NotificationEventType eventType,
+            NotificationChannel recipientType,
+            String recipientValue,
+            Long recipientUserId,
+            Long templateId,
+            Map<String, Object> payload,
+            Long referenceId) {
+        return pendingImmediate(
+                eventType,
+                recipientType,
+                recipientValue,
+                recipientUserId,
+                templateId,
+                payload,
+                referenceId,
+                null);
+    }
+
+    /** 위 메서드에 보낸 사람의 계정 ID 를 더한다 — 보낸 사람이 있는 알림(공지 메일)이 쓴다. */
+    public static Notification pendingImmediate(
+            NotificationEventType eventType,
+            NotificationChannel recipientType,
+            String recipientValue,
+            Long recipientUserId,
+            Long templateId,
+            Map<String, Object> payload,
+            Long referenceId,
+            Long senderAccountId) {
         return new Notification(
-                eventType, recipientType, recipientValue, recipientUserId, templateId, payload);
+                eventType,
+                recipientType,
+                recipientValue,
+                recipientUserId,
+                templateId,
+                payload,
+                referenceId,
+                senderAccountId);
     }
 
     /** 폴링 스케줄러가 클레임(SELECT ... FOR UPDATE SKIP LOCKED + UPDATE)한 직후 반영하는 상태. */
@@ -155,9 +227,24 @@ public class Notification extends BaseEntity {
      */
     public void redactPii(String maskedRecipientValue) {
         this.recipientValue = maskedRecipientValue;
-        Map<String, Object> redactedPayload = new HashMap<>(this.payload);
-        redactedPayload.put("nickname", null);
-        this.payload = redactedPayload;
+        // 웰컴메일에만 닉네임이 있다 — 공지 메일처럼 없는 행에 빈 키를 새로 만들지 않는다
+        if (this.payload.containsKey("nickname")) {
+            Map<String, Object> redactedPayload = new HashMap<>(this.payload);
+            redactedPayload.put("nickname", null);
+            this.payload = redactedPayload;
+        }
+    }
+
+    /**
+     * 회원 탈퇴 — 보낸 사람이 탈퇴하면 그가 보낸 공지 메일의 보낸 사람 이름을 비식별화한다. 받은 사람의 발송 이력에 탈퇴한 사람의 닉네임이 남지 않게 한다.
+     * 제목·본문은 보낸 사람이 직접 쓴 공지 내용이라 그대로 둔다 (specs/study-notice/spec.md).
+     */
+    public void redactSenderName(String placeholder) {
+        if (this.payload.containsKey("senderName")) {
+            Map<String, Object> redactedPayload = new HashMap<>(this.payload);
+            redactedPayload.put("senderName", placeholder);
+            this.payload = redactedPayload;
+        }
     }
 
     /**

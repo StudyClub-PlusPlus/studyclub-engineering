@@ -1,10 +1,16 @@
+import { toast } from '@studyclub/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NotificationTemplatesPage from '@/app/notification-templates/page';
-import type { NotificationTemplate } from '@/features/notification-templates/types';
+import {
+  applyBodyEdit,
+  clampToUtf8Bytes,
+  utf8Bytes,
+  type NotificationTemplate,
+} from '@/features/notification-templates/types';
 import { ApiError, http } from '@/lib/http';
 
 // 서버는 http 한 곳으로 막는다 — 경로·메서드·바디까지 함께 확인한다.
@@ -15,7 +21,15 @@ vi.mock('@/lib/http', async (importOriginal) => ({
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/notification-templates' }));
 
+// 토스트는 DOM 이 아니라 호출로 확인한다 (Toaster 를 마운트하지 않는다).
+vi.mock('@studyclub/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@studyclub/ui')>();
+  return { ...actual, toast: Object.assign(vi.fn(), { error: vi.fn() }) };
+});
+
 const httpMock = vi.mocked(http);
+const toastMock = vi.mocked(toast);
+const toastErrorMock = vi.mocked(toast.error);
 const BASE = '/api/admin/notification-templates';
 
 const BODY = '안녕하세요, {{nickname}}님.\n\n가입을 환영합니다!';
@@ -76,6 +90,8 @@ const callsOf = (method: string) => httpMock.mock.calls.filter(([, init]) => (in
 describe('알림 템플릿 화면', () => {
   beforeEach(() => {
     httpMock.mockReset();
+    toastMock.mockClear();
+    toastErrorMock.mockClear();
   });
 
   it('열은 알림 조건 · 채널 · 제목 · 마지막 수정이다', async () => {
@@ -415,6 +431,67 @@ describe('알림 템플릿 화면', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
+  it('삭제 확인은 그 조건의 알림에 생기는 일을 알린다 — 회원가입은 웰컴 메일이 멈춘다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    expect(within(dialog).getByText('삭제하면 새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.')).toBeTruthy();
+    expect(within(dialog).getByText(/지난 발송 이력은 남습니다/)).toBeTruthy();
+  });
+
+  it('스터디 공지 템플릿의 삭제 확인은 메일 포함 공지가 막히고 디스코드만 보내는 공지는 영향이 없다고 알린다', async () => {
+    fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    const impact = within(dialog).getByText(/메일을 포함한 스터디 공지를 보낼 수 없습니다/);
+    expect(impact.textContent).toContain('디스코드에도 올라가지 않으며');
+    expect(impact.textContent).toContain('디스코드만 보내는 공지는 영향이 없습니다');
+    expect(callsOf('DELETE')).toHaveLength(0);
+  });
+
+  it('모르는 조건의 삭제 확인에는 영향 안내를 덧붙이지 않고 본문 안내도 변수 없이 일반 문구만 보인다', async () => {
+    fakeServer([tpl({ id: 3, eventType: 'SOMETHING_NEW' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'SOMETHING_NEW' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('HTML과 일반 텍스트를 입력할 수 있습니다.')).toBeTruthy();
+    expect(within(dialog).queryByText(/닉네임 삽입/)).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    expect(within(dialog).getByText(/지난 발송 이력은 남습니다/)).toBeTruthy();
+    expect(within(dialog).queryByText(/삭제하면 /)).toBeNull();
+  });
+
+  it('본문 안내는 고른 조건에 맞는 치환 변수를 알려 주고 조건을 바꾸면 따라 바뀐다', async () => {
+    fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const help = within(dialog).getByText(/\{\{studyTitle\}\} 스터디 이름/);
+    for (const variable of ['studyTitle', 'groupName', 'senderName', 'title', 'body']) {
+      expect(help.textContent).toContain(`{{${variable}}}`);
+    }
+    expect(within(dialog).queryByText(/닉네임 삽입/)).toBeNull();
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+    expect(within(dialog).getByText(/\{\{nickname\}\} 으로 닉네임 삽입/)).toBeTruthy();
+    expect(within(dialog).queryByText(/스터디 이름/)).toBeNull();
+  });
+
   it('조건 선택지의 이름은 목록과 같은 곳에서 온다', async () => {
     fakeServer([tpl()]);
     renderPage();
@@ -426,7 +503,157 @@ describe('알림 템플릿 화면', () => {
     const options = within(dialog)
       .getAllByRole('option')
       .map((o) => o.textContent);
-    expect(options).toEqual(['회원가입']);
+    expect(options).toEqual(['회원가입', '스터디 공지']);
+  });
+
+  it('지운 스터디 공지 템플릿은 추가 팝업에서 조건을 골라 다시 만든다', async () => {
+    fakeServer([tpl({ id: 1 })]); // 스터디 공지 템플릿이 없는 상태
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
+    // 조건을 고르면 본문 안내도 그 조건의 치환 변수로 바뀐다
+    expect(within(dialog).getByText(/\{\{studyTitle\}\} 스터디 이름/)).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '[StudyClub] {{studyTitle}} 공지' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '{{title}}' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const [path, init] = callsOf('POST')[0]!;
+    expect(path).toBe(BASE);
+    expect(JSON.parse(String(init?.body))).toEqual({
+      eventType: 'STUDY_NOTICE',
+      subject: '[StudyClub] {{studyTitle}} 공지',
+      body: '{{title}}',
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: '스터디 공지' })).toBeTruthy());
+  });
+
+  it('제목은 255자까지만 쓸 수 있고 글자 수를 보여 준다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const subject = within(dialog).getByLabelText(/제목/) as HTMLInputElement;
+    expect(subject.maxLength).toBe(255);
+    fireEvent.change(subject, { target: { value: '가나다' } });
+    expect(within(dialog).getByText('3 / 255자')).toBeTruthy();
+  });
+
+  it('본문은 UTF-8 65,535바이트까지만 받고 바이트 수를 보여 준다 — 글자 수가 아니다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+
+    fireEvent.change(body, { target: { value: '가나다' } });
+    expect(within(dialog).getByText('9 / 65,535바이트')).toBeTruthy();
+
+    // 한글 3바이트 × 21,845 = 65,535바이트 — 한도까지는 그대로 들어간다
+    const atLimit = '가'.repeat(21_845);
+    fireEvent.change(body, { target: { value: atLimit } });
+    expect(body.value).toBe(atLimit);
+    expect(within(dialog).getByText('65,535 / 65,535바이트')).toBeTruthy();
+
+    // 1바이트만 더해도 받지 않는다
+    fireEvent.change(body, { target: { value: atLimit + 'a' } });
+    expect(body.value).toBe(atLimit);
+
+    // 붙여 넣은 긴 글은 한도까지만 남고, 글자 한가운데서 잘리지 않는다
+    fireEvent.change(body, { target: { value: '가'.repeat(30_000) } });
+    expect(body.value).toBe(atLimit);
+  });
+
+  it('한도에서 본문 가운데에 글자를 치면 그 글자만 받지 않고 본문 끝은 지워지지 않는다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+    const full = '가'.repeat(21_844) + 'END'; // 65,535바이트
+    fireEvent.change(body, { target: { value: full } });
+    expect(body.value).toBe(full);
+
+    fireEvent.change(body, { target: { value: full.slice(0, 10) + 'a' + full.slice(10) } });
+
+    expect(body.value).toBe(full);
+    expect(toastMock).toHaveBeenCalledWith(expect.stringContaining('65,535바이트'), { id: 'template-body-limit' });
+  });
+
+  it('한도를 넘는 글을 가운데에 붙여 넣으면 들어가는 만큼만 남고 앞뒤 본문은 그대로다', async () => {
+    fakeServer([tpl()]);
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    const body = within(dialog).getByRole('textbox', { name: /본문/ }) as HTMLTextAreaElement;
+    const base = '가'.repeat(21_000) + 'END'; // 63,003바이트
+    fireEvent.change(body, { target: { value: base } });
+
+    fireEvent.change(body, { target: { value: base.slice(0, 100) + '나'.repeat(5_000) + base.slice(100) } });
+
+    expect(utf8Bytes(body.value)).toBeLessThanOrEqual(65_535);
+    expect(body.value.startsWith(base.slice(0, 100))).toBe(true);
+    expect(body.value.endsWith('END')).toBe(true);
+    expect(body.value).toContain('나'.repeat(844)); // 남은 2,532바이트 = 844글자
+    expect(toastMock).toHaveBeenCalledWith(expect.stringContaining('65,535바이트'), { id: 'template-body-limit' });
+  });
+
+  it('applyBodyEdit: 한도 안이면 그대로, 넘으면 바뀐 가운데만 줄이고 커서 자리를 돌려 준다', () => {
+    expect(applyBodyEdit('abc', 'abXc', 10)).toEqual({ value: 'abXc', caret: null });
+    // 가운데에 한 글자: 들어갈 자리가 없어 그 글자만 받지 않는다
+    expect(applyBodyEdit('abcd', 'abXcd', 4)).toEqual({ value: 'abcd', caret: 2 });
+    // 가운데에 긴 글: 들어가는 만큼만 남고 앞뒤는 그대로다
+    expect(applyBodyEdit('abcd', 'abXYZcd', 5)).toEqual({ value: 'abXcd', caret: 3 });
+    // 같은 글자를 반복해 쳐도 앞뒤를 겹쳐 세지 않는다
+    expect(applyBodyEdit('aaaa', 'aaaaa', 4)).toEqual({ value: 'aaaa', caret: 4 });
+  });
+
+  it('applyBodyEdit: 이모지를 반으로 나누지 않는다', () => {
+    const edit = applyBodyEdit('a😀b', 'a😀😁b', 6);
+    expect(edit.value).toBe('a😀b');
+    expect(utf8Bytes(edit.value)).toBeLessThanOrEqual(6);
+  });
+
+  it('clampToUtf8Bytes 는 4바이트 글자(이모지)도 반으로 자르지 않는다', () => {
+    expect(clampToUtf8Bytes('ab😀', 5)).toBe('ab');
+    expect(clampToUtf8Bytes('ab😀', 6)).toBe('ab😀');
+    expect(utf8Bytes('가😀a')).toBe(8);
+  });
+
+  it('이미 있는 조건(409)은 토스트로 알리고, 팝업 안에는 오류를 띄우지 않고 입력을 유지한다', async () => {
+    const message = '이미 이 알림 조건의 템플릿이 있습니다. 기존 템플릿을 수정하세요.';
+    fakeServer([tpl()], { method: 'POST', status: 409, message });
+    renderPage();
+    await screen.findByRole('button', { name: '회원가입' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '중복 제목' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '중복 본문' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
+
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith(message));
+    // 팝업은 열린 채 값이 남고, 인라인 오류는 없다. 다시 눌러 볼 수 있다
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    expect((within(dialog).getByLabelText(/제목/) as HTMLInputElement).value).toBe('중복 제목');
+    expect((within(dialog).getByRole('button', { name: '추가' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('입력 오류(4xx)는 서버가 준 이유를 그대로 보여 준다', async () => {

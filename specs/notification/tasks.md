@@ -43,3 +43,21 @@
 - [x] T031 재발송 UI — `canResend` 인 줄에만 한 건 재발송, 전체 재발송(목록 `status=FAILED&limit=100` 으로 id 를 모아 100건씩), 끝 추적(`?ids=`)과 토스트
 - [x] T032 MSW 핸들러 · 동작 테스트
 
+
+## 알림 템플릿 추가·수정·삭제 (2026-10-27)
+
+> Spec: [템플릿 쓰기 API](./spec.md#post-apiadminnotification-templates) · 마이그레이션 없음 — 조건당 한 건이라 `UNIQUE(EVENT_TYPE, CHANNEL)` 를 그대로 둔다. 같은 조건 여럿·회원 탈퇴 조건은 이 범위 밖
+
+### 백엔드
+
+- [x] T040 `NotificationTemplate.create()` · `edit()` — 채널은 메일 고정, 수정자(`UPDATED_BY_ADMIN_ID`) 기록
+- [x] T041 `NotificationTemplateRequest` — 제목 255자, 본문 UTF-8 65,535바이트(`TEXT` 한도) 검증
+- [x] T042 `NotificationTemplateCommandService` — 같은 조건이 있으면 409(사전 조회 + 동시 요청의 `UNIQUE` 위반 변환), 없는 ID 404
+- [x] T043 `POST`(201)·`PUT`(200)·`DELETE`(204) `/api/admin/notification-templates` — 삭제해도 발송 이력은 남는다
+- [x] T044 테스트 — 엔티티 단위, 통합(성공·409·400·404·401/403, 바이트 경계, 삭제 후 이력 유지)
+- [x] T045 `./gradlew check`
+
+### 프론트
+
+- [x] T050 팝업 입력 제한 — 제목 255자(`maxLength`), 본문 65,535바이트(한도를 넘는 입력은 받지 않고 사용량 표시)
+- [x] T051 `TODO(api)` 제거, MSW 에 409 프리셋 추가, 동작 테스트

@@ -50,6 +50,15 @@ google:
   client-secret: ${GOOGLE_CLIENT_SECRET:}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:4700/api/auth/callback}
 
+# 애플 로그인 (specs/auth-apple-login). client-id 는 앱 번들 ID, web-client-id 는 사이트 Services ID. 키는 .p8 원문 또는 본문 한 줄.
+# 비어 있어도 부팅된다 — 애플 로그인만 503 EXTERNAL_SERVICE_ERROR.
+apple:
+  team-id: ${APPLE_TEAM_ID:}
+  key-id: ${APPLE_KEY_ID:}
+  client-id: ${APPLE_CLIENT_ID:}
+  web-client-id: ${APPLE_WEB_CLIENT_ID:}
+  private-key: ${APPLE_PRIVATE_KEY:}
+
 # 디스코드 계정 연동 (specs/study-application 「디스코드 계정 연동」). 비어 있으면 연동만 503 EXTERNAL_SERVICE_ERROR.
 # guild-id 는 봇과 같은 DISCORD_CONFIG_GUILD_ID — 연동할 때 이 길드의 멤버인지 본다.
 # bot-id 는 시스템 호출의 X-Discord-User-ID (DiscordBotClient). DISCORD_CONFIG_* 는 이름이 property 와
