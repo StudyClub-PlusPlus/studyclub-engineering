@@ -376,10 +376,10 @@ public class DiscordBotClient {
      * 설정을 확인하고 호출한 뒤, 결과를 로깅하고 실패를 {@link BusinessException} 으로 바꾼다. {@code call} 이 던진 {@link
      * BusinessException} 은 로깅 후 그대로 나간다.
      *
-     * <p>성공: INFO {@code op={} requester={} studyId={} result=ok elapsedMs={}}
+     * <p>성공: INFO {@code op={} requester={} studyId={} status=ok elapsedMs={}}
      *
-     * <p>실패: WARN {@code op={} requester={} studyId={} result={HTTP-상태|에러코드|봇_응답없음|요청생성_오류}
-     * elapsedMs={}}
+     * <p>실패: WARN {@code op={} requester={} studyId={} status=failure
+     * reason={HTTP-상태|에러코드|봇_응답없음|요청생성_오류} elapsedMs={}}
      *
      * @param op 로그·에러 메시지에 실을 엔드포인트 이름 (문서 파일 이름)
      * @param action 에러 메시지에 실을 한글 이름
@@ -403,7 +403,7 @@ public class DiscordBotClient {
         try {
             T result = call.get();
             log.info(
-                    "op={} requester={} studyId={} result=ok elapsedMs={}",
+                    "op={} requester={} studyId={} status=ok elapsedMs={}",
                     op,
                     requesterId,
                     discordStudyId,
@@ -411,7 +411,7 @@ public class DiscordBotClient {
             return result;
         } catch (BusinessException e) {
             log.warn(
-                    "op={} requester={} studyId={} result={} elapsedMs={}",
+                    "op={} requester={} studyId={} status=failure reason={} elapsedMs={}",
                     op,
                     requesterId,
                     discordStudyId,
@@ -421,7 +421,7 @@ public class DiscordBotClient {
         } catch (RestClientResponseException e) {
             // 봇 detail 에는 길드·역할 ID 같은 봇 내부 사정이 들어 있다. 응답에는 싣지 않고 로그에만 남긴다
             log.warn(
-                    "op={} requester={} studyId={} result=HTTP-{} elapsedMs={}",
+                    "op={} requester={} studyId={} status=failure reason=HTTP-{} elapsedMs={}",
                     op,
                     requesterId,
                     discordStudyId,
@@ -432,7 +432,7 @@ public class DiscordBotClient {
                     "디스코드 봇이 " + action + " 요청을 거절했습니다 (" + e.getStatusCode().value() + ").");
         } catch (RestClientException e) {
             log.warn(
-                    "op={} requester={} studyId={} result=봇_응답없음 elapsedMs={}",
+                    "op={} requester={} studyId={} status=failure reason=봇_응답없음 elapsedMs={}",
                     op,
                     requesterId,
                     discordStudyId,
@@ -441,7 +441,7 @@ public class DiscordBotClient {
         } catch (IllegalArgumentException e) {
             // 헤더 값이 잘못되면(키 끝의 개행 등) JDK 가 값을 통째로 메시지에 실어 던진다. 메시지를 버려야 키가 로그에 남지 않는다
             log.warn(
-                    "op={} requester={} studyId={} result=요청생성_오류 elapsedMs={}",
+                    "op={} requester={} studyId={} status=failure reason=요청생성_오류 elapsedMs={}",
                     op,
                     requesterId,
                     discordStudyId,

@@ -157,6 +157,27 @@
 봇의 에러 `detail` 은 응답에 싣지 않는다 (길드·역할 ID 같은 봇 내부 사정이다). 서버 로그에만 남긴다.
 예상 밖 예외는 메시지를 로그에 남기지 않는다 — 키 끝에 개행이 붙으면 JDK 가 헤더 값(= API 키)을 통째로 예외 메시지에 싣는다.
 
+## 봇 호출 로그 (STD-06)
+
+`DiscordBotClient.execute()` 가 모든 봇 호출을 중계하며 아래 포맷으로 남긴다.
+
+| 상황 | 레벨 | 포맷 |
+|------|------|------|
+| 성공 | INFO | `op={} requester={} studyId={} status=ok elapsedMs={}` |
+| 실패 | WARN | `op={} requester={} studyId={} status=failure reason={} elapsedMs={}` |
+
+- `op`: 봇 엔드포인트 이름 — `create-study` · `assign-role` · `remove-role` · `assign-navigator-role` · `remove-navigator-role` · `get-study-channels` · `send-message` · `send-alert-message` · `send-announcement-message`
+- `requester`: `X-Discord-User-ID` 값 (캡틴 디스코드 ID 또는 시스템 아이디)
+- `studyId`: `discordStudyId` (없으면 `null`)
+- `reason`: `CONFLICT` · `EXTERNAL_SERVICE_ERROR` · `HTTP-{상태코드}` · `봇_응답없음` · `요청생성_오류`
+
+남기지 않는 것: 메시지 본문, API 키, Discord 토큰.
+
+스터디 생성에는 성공 후 ID 쌍 로그가 하나 더 붙는다:
+```
+INFO op=create-study discordStudyId={} discordRoleId={}
+```
+
 ## 봇 호출 — 백엔드가 보내는 것
 
 ```

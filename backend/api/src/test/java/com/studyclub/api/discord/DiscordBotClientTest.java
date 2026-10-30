@@ -154,7 +154,7 @@ class DiscordBotClientTest {
                         e ->
                                 e.getLevel() == Level.INFO
                                         && e.getFormattedMessage().contains("op=create-study")
-                                        && e.getFormattedMessage().contains("result=ok"));
+                                        && e.getFormattedMessage().contains("status=ok"));
         assertThat(logAppender.list)
                 .anyMatch(
                         e ->
@@ -321,6 +321,7 @@ class DiscordBotClientTest {
                                 e.getLevel() == Level.WARN
                                         && e.getFormattedMessage()
                                                 .contains("op=send-announcement-message")
-                                        && e.getFormattedMessage().contains("result=HTTP-403"));
+                                        && e.getFormattedMessage()
+                                                .contains("status=failure reason=HTTP-403"));
     }
 }
