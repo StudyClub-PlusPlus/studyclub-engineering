@@ -323,7 +323,7 @@ export function NotificationsTable() {
           {/* 아이콘만 둔다 — 앞뒤로 넘긴다는 뜻은 화살표가 이미 말한다 */}
           <Button
             size='sm'
-            variant='ghost'
+            variant='tertiary'
             aria-label='이전 페이지'
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
@@ -335,7 +335,7 @@ export function NotificationsTable() {
           </span>
           <Button
             size='sm'
-            variant='ghost'
+            variant='tertiary'
             aria-label='다음 페이지'
             disabled={page >= pages}
             onClick={() => setPage((p) => p + 1)}

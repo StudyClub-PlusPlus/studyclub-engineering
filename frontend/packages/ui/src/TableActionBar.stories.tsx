@@ -1,4 +1,4 @@
-import type { StoryObj } from '@storybook/react';
+import type { StoryObj } from '@storybook/react-vite';
 
 import { Button } from './Button';
 import { SelectionCount, TableActionBar } from './TableActionBar';
@@ -42,14 +42,14 @@ export const SelectedAndDirty: Story = {
           <Button size='sm' variant='danger'>
             참여 중단
           </Button>
-          <Button size='sm' variant='ghost'>
+          <Button size='sm' variant='tertiary'>
             선택 해제
           </Button>
         </>
       }
       save={
         <>
-          <Button size='sm' variant='ghost'>
+          <Button size='sm' variant='tertiary'>
             변경 취소
           </Button>
           <Button size='sm'>저장</Button>

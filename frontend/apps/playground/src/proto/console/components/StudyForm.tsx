@@ -414,7 +414,9 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
             <button
               type='button'
               onClick={() => inputRef.current?.click()}
-              className='h-8 rounded-control border border-border-strong bg-bg px-3 type-label-lg text-fg-secondary transition-colors hover:bg-surface-2'
+              className='sc-button type-label-sm'
+              data-variant='secondary'
+              data-size='sm'
             >
               {value ? '다른 이미지로 바꾸기' : '이미지 업로드'}
             </button>
@@ -422,7 +424,9 @@ function ThumbnailField({ value, onChange }: { value: string; onChange: (next: s
               <button
                 type='button'
                 onClick={remove}
-                className='h-8 rounded-control border border-border-strong bg-bg px-3 type-label-lg text-fg-secondary transition-colors hover:bg-surface-2'
+                className='sc-button type-label-sm'
+                data-variant='tertiary'
+                data-size='sm'
               >
                 제거
               </button>

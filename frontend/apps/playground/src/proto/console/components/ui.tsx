@@ -54,7 +54,7 @@ export function RowActions() {
   return (
     <div className='flex justify-end gap-1.5'>
       {/* TODO(api): wire to api.studyclub-plusplus.com — 편집 */}
-      <Button variant='ghost' size='sm' disabled>
+      <Button variant='tertiary' size='sm' disabled>
         편집
       </Button>
       {/* TODO(api): wire to api.studyclub-plusplus.com — 삭제 */}

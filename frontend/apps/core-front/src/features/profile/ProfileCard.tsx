@@ -491,7 +491,7 @@ export function ProfileCard({
         </Link>
         {editing && (
           <div className='flex items-center gap-2'>
-            <Button size='sm' variant='ghost' onClick={closeEditor} disabled={saving}>
+            <Button size='sm' variant='tertiary' onClick={closeEditor} disabled={saving}>
               취소
             </Button>
             <Button size='sm' onClick={save} disabled={blocked} loading={saving}>

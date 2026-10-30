@@ -45,15 +45,18 @@ export default async function Landing({ params }: { params: Promise<{ locale: Lo
             href={site.discord_invite}
             target='_blank'
             rel='noreferrer'
-            className='group inline-flex items-center gap-2 rounded-full px-6 py-3 type-label-lg text-white shadow-sm transition-transform hover:scale-[1.02]'
-            style={{ background: 'var(--color-brand)' }}
+            className='sc-button type-label-lg gap-2'
+            data-variant='primary'
+            data-size='lg'
           >
             {m('hero.cta', locale)}
-            <ArrowRight size={17} className='transition-transform group-hover:translate-x-0.5' />
+            <ArrowRight size={20} aria-hidden='true' />
           </a>
           <Link
             href={`/proto/core/${locale}/studies`}
-            className='rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg)] px-6 py-3 type-label-lg shadow-sm transition-colors hover:bg-[var(--color-surface-subtle)]'
+            className='sc-button type-label-lg'
+            data-variant='secondary'
+            data-size='lg'
           >
             {m('hero.cta_studies', locale)}
           </Link>
@@ -114,7 +117,7 @@ function SectionHead({
         <h2 className='type-title-lg'>{title}</h2>
         {subtitle && <p className='mt-1 type-body-sm text-[var(--color-fg-muted)]'>{subtitle}</p>}
       </div>
-      <Link href={href} className='shrink-0 type-label-lg text-[var(--color-brand)] hover:underline'>
+      <Link href={href} className='sc-button type-label-lg' data-variant='tertiary' data-size='md'>
         {more} →
       </Link>
     </div>

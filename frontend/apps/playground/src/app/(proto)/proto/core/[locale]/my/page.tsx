@@ -440,7 +440,7 @@ export default function MyPage() {
           <div data-anno='profile:6' className='flex items-center gap-2'>
             {editing && (
               <>
-                <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
+                <Button size='sm' variant='tertiary' onClick={() => setEditing(false)}>
                   취소
                 </Button>
                 <Button size='sm' onClick={save} disabled={nameBlocked}>

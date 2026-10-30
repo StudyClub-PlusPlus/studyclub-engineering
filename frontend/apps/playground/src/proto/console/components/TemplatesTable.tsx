@@ -104,7 +104,7 @@ export function TemplatesTable() {
           {rows.map((t) => (
             <tr key={t.id}>
               <td className='whitespace-nowrap'>
-                <Button variant='ghost' size='sm' className='-ml-2 font-semibold' onClick={() => setOpen(t)}>
+                <Button variant='tertiary' size='sm' className='-ml-2' onClick={() => setOpen(t)}>
                   {TRIGGER_LABEL[t.trigger] ?? t.trigger}
                 </Button>
               </td>

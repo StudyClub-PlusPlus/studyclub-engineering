@@ -276,7 +276,7 @@ function ApplicationReview({
                       <Button
                         type='button'
                         size='sm'
-                        variant='ghost'
+                        variant='tertiary'
                         aria-label={`${application.applicantName} 신청서 ${isExpanded ? '접기' : '펼치기'}`}
                         aria-expanded={isExpanded}
                         aria-controls={`application-${application.id}`}

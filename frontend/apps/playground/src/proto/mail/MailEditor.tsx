@@ -69,7 +69,7 @@ export function MailEditor({ templates }: { templates: Template[] }) {
             {copied && <span className='text-xs text-fg-muted'>복사했어요</span>}
             <Button
               size='sm'
-              variant='ghost'
+              variant='tertiary'
               disabled={!dirty}
               onClick={() =>
                 setEdits((prev) => {
