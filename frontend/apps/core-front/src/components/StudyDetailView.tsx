@@ -115,8 +115,9 @@ export function StudyDetailView({ id, locale, initial }: { id: number; locale: L
         {study.description && (
           <div className='px-6 py-7 sm:px-8'>
             <h2 className='type-title-lg text-fg'>{m('common.about_study', locale)}</h2>
-            {/* 운영 콘솔 등록·수정 폼이 마크다운을 받는다 — 프로토와 같은 렌더러로 그린다 */}
+            {/* 운영 콘솔 등록·수정 폼이 마크다운을 받는다 — 프로토와 같은 렌더러로 그린다. 빈 줄로 나눈 문단은 그대로 띄운다 */}
             <MarkdownLite
+              keepBlankLines
               text={t(study.description, locale)}
               className='mt-3 whitespace-pre-line type-body-md text-fg-secondary type-prose'
             />
