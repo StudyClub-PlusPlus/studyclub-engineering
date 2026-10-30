@@ -152,12 +152,12 @@ sequenceDiagram
 
 ### 처리 규칙
 
-1. 반 행을 잠근다 (같은 반의 동시 발송을 줄세운다)
-2. `StudyNotice.sendBlock(lastSentAt, todayCount, now)` 로 한도를 판정한다. 막히면 429
+1. 보낸 사람 계정 행을 잠근 뒤 반 행을 잠근다. 탈퇴와 같은 계정 → 반 순서라 교착이 없고, 반 행 락이 같은 반의 동시 발송을 줄 세운다
+2. `StudyNotice.sendBlock(studyEnded, lastSentAt, todayCount, now)` 로 판정한다. 끝난 스터디면 409, 한도에 막히면 429
 3. `participantIds` 가 모두 이 반의 `ACTIVE`·`PAUSED` 인지 확인한다. 하나라도 아니면 400 (일부만 보내지 않는다)
 4. 공지와 수신자를 저장하고 `study_notice.sent` 를 발행한다
 5. `BEFORE_COMMIT` 리스너가 `EMAIL` 이 있으면 받는 사람마다 `NOTIFICATION` 행(`STUDY_NOTICE`/`EMAIL`, `PENDING`)을 같은 트랜잭션에 만든다. 템플릿이 없으면 예외 → 전체 롤백.
-   받는 사람의 **계정 행은 잠그지 않고** 읽는다 — 탈퇴는 계정 → 반 순서로 잠그는데 보내기는 반을 먼저 잠그므로, 계정까지 잠그면 순서가 뒤집혀 교착이 난다. 이미 쥔 반 행 락이 같은 반 멤버의 탈퇴와 직렬화한다
+   받는 사람의 **계정 행은 잠그지 않고** 읽는다 — 이미 반 행을 쥔 뒤라 받는 사람 계정까지 잠그면 반 → 계정 순서가 되어, 계정 → 반 순서로 잠그는 탈퇴와 교착이 난다. 이미 쥔 반 행 락이 같은 반 멤버의 탈퇴와 직렬화한다
 6. 커밋 뒤 `AFTER_COMMIT @Async` 리스너가 `DISCORD` 가 있으면 봇을 부른다
 
 ### Error Responses
@@ -267,7 +267,8 @@ sequenceDiagram
 
 ## 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/app/[locale]/my/joined/[id]/schedule/notice/page.tsx`
+- `frontend/apps/core-front/src/app/[locale]/my/joined/[id]/schedule/notice/page.tsx` — 탭 화면은 `features/study-notices/components/NoticeTab.tsx`
+- `frontend/apps/core-front/src/features/study-notices/queries.ts` · `frontend/apps/core-front/src/lib/study-notice-api.ts` — 세 엔드포인트 호출
 - 프로토: playground `/proto/core/ko/my/joined/{id}/schedule/notice`
 
 ## 퍼널·계측
@@ -276,7 +277,7 @@ sequenceDiagram
 
 ## 미확정
 
-- ~~디스코드 호출 주체~~ → 해소. 봇이 #343 으로 호출자 검사를 없앴다. 연동한 사람은 본인 ID, 연동하지 않은 사람은 시스템 ID 로 보낸다 ([근거](#디스코드-발송)). 남은 확인은 stage 에 `DISCORD_BOT_ID` 가 설정돼 있는지와 배포된 봇이 #343 을 반영했는지다
+- ~~디스코드 호출 주체~~ → 해소. 봇이 #343 으로 호출자 검사를 없앴다. 연동한 사람은 본인 ID, 연동하지 않은 사람은 시스템 ID 로 보낸다 ([근거](#디스코드-호출)). 남은 확인은 stage 에 `DISCORD_BOT_ID` 가 설정돼 있는지와 배포된 봇이 #343 을 반영했는지다
 - [NEEDS CLARIFICATION] stage 에서 직접 보내 보며 디스코드 스쿼드와 맞춘다 — 보낼 채널, 40명 초과 분할
 - [NEEDS CLARIFICATION] 로비 채널 판별. 지금은 종류가 `TEXT` 인 채널 하나라는 가정이다 (채널 ID 는 저장하지 않는다 — [STUDY_DISCORD_LINK](../../docs/erd/STUDY_DISCORD_LINK.md))
 - [OPEN] 메일 SES 카테고리. 지금은 `NOTIFY` 를 쓴다. 공지·뉴스레터 성격이라 `news` 가 맞지만 환경 설정이 새로 필요해 이번 범위에서 뺀다

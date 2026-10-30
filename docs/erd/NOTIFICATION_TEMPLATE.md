@@ -12,7 +12,7 @@
 | EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` · `STUDY_NOTICE` |
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
-| BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함 |
+| BODY | TEXT | N | 치환 변수 포함 — `USER_REGISTERED` 는 `{{nickname}}`, `STUDY_NOTICE` 는 `{{studyTitle}}`·`{{groupName}}`·`{{senderName}}`·`{{title}}`·`{{body}}` |
 | UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 | UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조([ACCOUNT](./ACCOUNT.md), FK 없음) — 추가·수정한 캡틴. 마이그레이션이 만든 행은 NULL |
 | CREATED_AT | DATETIME(6) | N | BaseEntity 생성 시각 |
@@ -32,7 +32,7 @@
 - 인덱스 `idx_notification_template_updated_by_admin (UPDATED_BY_ADMIN_ID)`.
 - 이벤트는 USER_REGISTERED · STUDY_NOTICE(V42 시딩), 채널은 EMAIL 뿐이다. 조건마다 템플릿은 한 건이다.
 - 템플릿이 없을 때의 영향은 조건마다 다르다 — STUDY_NOTICE 는 메일을 포함한 공지가 롤백된다([notification 스펙](../../specs/notification/spec.md)).
-- SUBJECT/BODY 의 `{{nickname}}` 을 발송 시 치환한다.
+- SUBJECT/BODY 의 `{{변수}}` 를 발송 시 `NOTIFICATION.PAYLOAD` 값으로 치환한다.
 - 입력 한도(API 검증): SUBJECT 255자, BODY UTF-8 65,535바이트(`TEXT` 한도).
 - 템플릿을 지워도 NOTIFICATION 이력은 남는다(TEMPLATE_ID 는 FK 없는 ID 참조).
 - UPDATED_BY_ADMIN_ID 는 애그리거트 사이 참조라 FK 를 걸지 않는다 — ID + 인덱스만

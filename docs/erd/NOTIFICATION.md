@@ -1,6 +1,6 @@
 # NOTIFICATION — 알림 발송 이력
 
-알림 수신처·닉네임 스냅샷과 발송 상태를 저장한다. 온보딩 커밋 이후 별도 트랜잭션으로 생성한다.
+알림 수신처·닉네임 스냅샷과 발송 상태를 저장한다. 웰컴메일은 온보딩 커밋 이후 별도 트랜잭션으로, 반 공지 메일은 공지를 저장하는 트랜잭션 안(`BEFORE_COMMIT`)에서 생성한다.
 
 > 스펙: [notification](../../specs/notification/spec.md)
 
@@ -27,7 +27,7 @@
 ## 관계
 
 - N : 1 [ACCOUNT](./ACCOUNT.md), ID 참조뿐 FK 는 없다(애그리거트 간 참조 — database-guide.md 외래키 정책). 계정이 삭제돼도 RECIPIENT_USER_ID 는 DB 가 자동으로 지워주지 않는다.
-- N : 1 [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md), 마찬가지로 ID 참조뿐이라 사용 중인 템플릿도 삭제될 수 있다 — 편집 화면이 없어 이번 구현에서는 실제로 일어나지 않는다.
+- N : 1 [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md), 마찬가지로 ID 참조뿐이라 사용 중인 템플릿도 삭제될 수 있다 — 백오피스에서 템플릿을 지워도 이미 만든 발송 이력은 남는다.
 
 ## 상태 — STATUS
 
