@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const replace = vi.fn();
 const invalidateQueries = vi.fn(async () => undefined);
-const linkDiscord = vi.fn(async () => undefined);
-const requestDiscordCode = vi.fn(async () => 'oauth-code');
-const fetchDiscordLinkState = vi.fn(async () => 'unlinked' as const);
+const linkDiscordMock = vi.fn(async (_accountId: number, _code: string) => undefined);
+const requestDiscordCodeMock = vi.fn(async () => 'oauth-code');
+const fetchDiscordLinkStateMock = vi.fn(async (_accountId: number) => 'unlinked' as const);
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push: vi.fn() }),
@@ -32,9 +32,9 @@ vi.mock('@/lib/discord', () => ({
       super(reason);
     }
   },
-  fetchDiscordLinkState: (...args: unknown[]) => fetchDiscordLinkState(...args),
-  linkDiscord: (...args: unknown[]) => linkDiscord(...args),
-  requestDiscordCode: (...args: unknown[]) => requestDiscordCode(...args),
+  fetchDiscordLinkState: (accountId: number) => fetchDiscordLinkStateMock(accountId),
+  linkDiscord: (accountId: number, code: string) => linkDiscordMock(accountId, code),
+  requestDiscordCode: () => requestDiscordCodeMock(),
 }));
 
 vi.mock('@/lib/analytics', () => ({ track: vi.fn() }));
@@ -51,10 +51,12 @@ describe('OnboardingDiscord', () => {
   beforeEach(() => {
     replace.mockReset();
     invalidateQueries.mockClear();
-    linkDiscord.mockClear();
-    requestDiscordCode.mockClear();
-    fetchDiscordLinkState.mockReset();
-    fetchDiscordLinkState.mockResolvedValue('unlinked');
+    linkDiscordMock.mockReset();
+    linkDiscordMock.mockResolvedValue(undefined);
+    requestDiscordCodeMock.mockClear();
+    requestDiscordCodeMock.mockResolvedValue('oauth-code');
+    fetchDiscordLinkStateMock.mockReset();
+    fetchDiscordLinkStateMock.mockResolvedValue('unlinked');
   });
 
   afterEach(() => {
@@ -70,7 +72,7 @@ describe('OnboardingDiscord', () => {
     await user.click(screen.getByRole('button', { name: '지금 연결' }));
 
     await waitFor(() => {
-      expect(linkDiscord).toHaveBeenCalledWith(7, 'oauth-code');
+      expect(linkDiscordMock).toHaveBeenCalledWith(7, 'oauth-code');
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['profile', 'account', 7] });
       expect(replace).toHaveBeenCalledWith('/ko/my');
     });
@@ -78,10 +80,10 @@ describe('OnboardingDiscord', () => {
 
   it('팝업 인증 중에 페이지를 떠나면 next 로 이동하지 않는다', async () => {
     let finishLink!: () => void;
-    linkDiscord.mockImplementation(
+    linkDiscordMock.mockImplementation(
       () =>
-        new Promise<void>((resolve) => {
-          finishLink = resolve;
+        new Promise<undefined>((resolve) => {
+          finishLink = () => resolve(undefined);
         }),
     );
 
@@ -91,7 +93,7 @@ describe('OnboardingDiscord', () => {
 
     await screen.findByRole('button', { name: '지금 연결' });
     await user.click(screen.getByRole('button', { name: '지금 연결' }));
-    await waitFor(() => expect(linkDiscord).toHaveBeenCalled());
+    await waitFor(() => expect(linkDiscordMock).toHaveBeenCalled());
 
     unmount();
     finishLink();

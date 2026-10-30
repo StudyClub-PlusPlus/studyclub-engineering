@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const http = vi.fn(async () => null);
+const httpMock = vi.fn(async (_path: string, _init?: RequestInit) => null);
 const setQueryData = vi.fn();
 const invalidateQueries = vi.fn(async () => undefined);
 
 vi.mock('./http', () => ({
-  http: (...args: unknown[]) => http(...args),
+  http: (path: string, init?: RequestInit) => httpMock(path, init),
   ApiError: class ApiError extends Error {
     constructor(
       readonly status: number,
@@ -31,7 +31,7 @@ vi.mock('@/features/profile/queries', () => ({
 
 describe('linkDiscord', () => {
   beforeEach(() => {
-    http.mockClear();
+    httpMock.mockClear();
     setQueryData.mockClear();
     invalidateQueries.mockClear();
   });
@@ -40,7 +40,7 @@ describe('linkDiscord', () => {
     const { linkDiscord } = await import('./discord');
     await linkDiscord(12, 'code-abc');
 
-    expect(http).toHaveBeenCalledWith('/api/me/discord/link', expect.objectContaining({ method: 'POST' }));
+    expect(httpMock).toHaveBeenCalledWith('/api/me/discord/link', expect.objectContaining({ method: 'POST' }));
     expect(setQueryData).toHaveBeenCalled();
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['profile', 'account', 12] });
   });
