@@ -17,12 +17,6 @@ importers:
 
   apps/back-office-front:
     dependencies:
-      '@studyclub/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@studyclub/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
       '@hookform/resolvers':
         specifier: ^5.9.1
         version: 5.9.1(@standard-schema/spec@1.1.0)(react-hook-form@7.89.0(@types/react@19.3.0)(react@19.2.4))(zod@4.6.6)
@@ -32,9 +26,15 @@ importers:
       '@studyclub/mock':
         specifier: workspace:*
         version: link:../../packages/mock
+      '@studyclub/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@studyclub/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@studyclub/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@tanstack/react-query':
         specifier: ^5.81.5
         version: 5.104.0(react@19.2.4)
@@ -117,12 +117,6 @@ importers:
 
   apps/core-front:
     dependencies:
-      '@studyclub/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@studyclub/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
       '@amplitude/analytics-browser':
         specifier: ^2
         version: 2.47.4
@@ -135,9 +129,15 @@ importers:
       '@studyclub/mock':
         specifier: workspace:*
         version: link:../../packages/mock
+      '@studyclub/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@studyclub/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@studyclub/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@tanstack/react-query':
         specifier: ^5.81.5
         version: 5.104.0(react@19.2.4)
@@ -220,21 +220,21 @@ importers:
 
   apps/playground:
     dependencies:
-      '@studyclub/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@studyclub/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
       '@studyclub/design':
         specifier: workspace:*
         version: link:../../packages/design
       '@studyclub/mock':
         specifier: workspace:*
         version: link:../../packages/mock
+      '@studyclub/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@studyclub/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@studyclub/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       lucide-react:
         specifier: ^0.460.0
         version: 0.460.0(react@19.2.4)
@@ -371,6 +371,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
 
+  packages/types: {}
+
   packages/ui:
     dependencies:
       '@radix-ui/react-dialog':
@@ -447,8 +449,6 @@ importers:
         specifier: ^6.4.5
         version: 6.4.5(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)
 
-  packages/types: {}
-
   packages/utils:
     dependencies:
       '@studyclub/types':
@@ -460,8 +460,7 @@ importers:
     devDependencies:
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@20.19.43)(jsdom@26.1.0)(msw@2.15.0(@types/node@20.19.43)(typescript@5.9.3))(vite@6.4.4(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0))
-
+        version: 4.1.11(@types/node@20.19.43)(jsdom@26.1.0)(msw@2.15.0(@types/node@20.19.43)(typescript@5.9.3))(vite@6.4.5(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0))
 
 packages:
 
