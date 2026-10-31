@@ -20,14 +20,10 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
-import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
-import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyCategory;
-import com.studyclub.domain.study.StudyRecruitment;
-import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.DayOfWeek;
@@ -64,8 +60,6 @@ public class AdminStatsService {
     private final StudyParticipantRepository studyParticipantRepository;
     private final AccountRepository accountRepository;
     private final StudyRepository studyRepository;
-    private final StudyRecruitmentRepository studyRecruitmentRepository;
-    private final StudyApplicationRepository studyApplicationRepository;
 
     public AdminStatsService(
             DashboardTimeZoneResolver timeZoneResolver,
@@ -74,9 +68,7 @@ public class AdminStatsService {
             BackofficeStudyListService backofficeStudyListService,
             StudyParticipantRepository studyParticipantRepository,
             AccountRepository accountRepository,
-            StudyRepository studyRepository,
-            StudyRecruitmentRepository studyRecruitmentRepository,
-            StudyApplicationRepository studyApplicationRepository) {
+            StudyRepository studyRepository) {
         this.timeZoneResolver = timeZoneResolver;
         this.attendanceAggregator = attendanceAggregator;
         this.summaryAggregateService = summaryAggregateService;
@@ -84,8 +76,6 @@ public class AdminStatsService {
         this.studyParticipantRepository = studyParticipantRepository;
         this.accountRepository = accountRepository;
         this.studyRepository = studyRepository;
-        this.studyRecruitmentRepository = studyRecruitmentRepository;
-        this.studyApplicationRepository = studyApplicationRepository;
     }
 
     @Transactional(
@@ -145,10 +135,7 @@ public class AdminStatsService {
         if (view == StudyBoardView.ONGOING) {
             return ongoingBoard(asOf, zone, limit);
         }
-        List<StudyBoardItem> ranked = recruitmentBoardItems(asOf);
-        long total = ranked.size();
-        List<StudyBoardItem> items = ranked.stream().limit(limit).toList();
-        return new StudyBoardResponse(asOf, zone.getId(), view, total, 0, limit, items);
+        return recruitmentBoard(asOf, zone, limit);
     }
 
     public CrewTimezonesResponse crewTimezones() {
@@ -269,7 +256,8 @@ public class AdminStatsService {
                                 null,
                                 BackofficeStudySort.TITLE_ASC),
                         0,
-                        limit);
+                        limit,
+                        asOf);
         List<StudyBoardItem> items =
                 page.items().stream()
                         .map(
@@ -286,60 +274,48 @@ public class AdminStatsService {
                 asOf, zone.getId(), StudyBoardView.ONGOING, page.total(), 0, limit, items);
     }
 
-    private List<StudyBoardItem> recruitmentBoardItems(Instant asOf) {
-        List<Study> open = studyRepository.findByStatus(StudyStatus.OPEN);
-        if (open.isEmpty()) {
-            return List.of();
-        }
-        List<Long> studyIds = open.stream().map(Study::getId).toList();
-        Map<Long, StudyRecruitment> latest =
-                studyRecruitmentRepository.findLatestByStudyIdIn(studyIds).stream()
-                        .collect(
-                                Collectors.toMap(
-                                        StudyRecruitment::getStudyId, r -> r, (a, b) -> a));
-        List<Long> recruitmentIds = latest.values().stream().map(StudyRecruitment::getId).toList();
-        Map<Long, Long> appCounts =
-                recruitmentIds.isEmpty()
-                        ? Map.of()
-                        : studyApplicationRepository.countByRecruitmentIdIn(recruitmentIds).stream()
-                                .collect(
-                                        Collectors.toMap(
-                                                row -> (Long) row[0], row -> (Long) row[1]));
-
-        List<StudyBoardItem> items = new ArrayList<>();
-        for (Study study : open) {
-            StudyRecruitment recruitment = latest.get(study.getId());
-            Instant deadline = recruitment == null ? null : recruitment.getRecruitDeadlineAt();
-            Integer capacity = recruitment == null ? null : recruitment.getRecruitmentCapacity();
-            long applicants =
-                    recruitment == null ? 0L : appCounts.getOrDefault(recruitment.getId(), 0L);
-            RecruitStatus status = study.recruitStatus(applicants, deadline, capacity, asOf);
-            if (status == null) {
-                continue;
-            }
-            // RECRUITING / RECRUIT_CLOSED 모두 보드에 포함
-            items.add(
-                    new StudyBoardItem(
-                            study.getId(),
-                            study.getProgramId(),
-                            study.getTitle(),
-                            status,
-                            deadline,
-                            deadlineBadge(study, applicants, deadline, capacity, asOf)));
-        }
-        items.sort(recruitmentBoardComparator());
-        return items;
-    }
-
-    static Comparator<StudyBoardItem> recruitmentBoardComparator() {
-        return Comparator.comparingInt(
-                        (StudyBoardItem s) -> s.recruitStatus() == RecruitStatus.RECRUITING ? 0 : 1)
-                .thenComparing(s -> s.recruitDeadlineAt() == null ? 1 : 0)
-                .thenComparing(
-                        StudyBoardItem::recruitDeadlineAt,
-                        Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(StudyBoardItem::title, Comparator.nullsLast(String::compareTo))
-                .thenComparing(StudyBoardItem::studyId);
+    /** 모집 보드와 전체 보기는 같은 DB 정렬을 사용한다. 전체 후보를 메모리에 적재하지 않는다. */
+    private StudyBoardResponse recruitmentBoard(Instant asOf, ZoneId zone, int limit) {
+        BackofficeStudyListResponse page =
+                backofficeStudyListService.getStudies(
+                        new BackofficeStudyListFilter(
+                                null,
+                                null,
+                                StudyStatus.OPEN,
+                                null,
+                                null,
+                                null,
+                                BackofficeStudySort.RECRUITMENT),
+                        0,
+                        limit,
+                        asOf);
+        Map<Long, Study> studies =
+                studyRepository
+                        .findAllById(
+                                page.items().stream()
+                                        .map(BackofficeStudyListResponse.StudySummary::studyId)
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(Study::getId, s -> s));
+        List<StudyBoardItem> items =
+                page.items().stream()
+                        .map(
+                                s ->
+                                        new StudyBoardItem(
+                                                s.studyId(),
+                                                s.programId(),
+                                                s.title(),
+                                                s.recruitStatus(),
+                                                s.recruitDeadlineAt(),
+                                                deadlineBadge(
+                                                        studies.get(s.studyId()),
+                                                        s.currentApplicants(),
+                                                        s.recruitDeadlineAt(),
+                                                        s.recruitmentCapacity(),
+                                                        asOf)))
+                        .toList();
+        return new StudyBoardResponse(
+                asOf, zone.getId(), StudyBoardView.RECRUITMENT, page.total(), 0, limit, items);
     }
 
     static DashboardDeadlineBadge deadlineBadge(

@@ -162,6 +162,29 @@ class AdminStatsIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 모집 보드와 전체 보기는 같은 DB 필터·정렬을 사용한다")
+    void recruitmentBoardMatchesAdminListOrder() {
+        var board =
+                rest.exchange(
+                        "/api/admin/stats/study-board?view=RECRUITMENT",
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+        var list =
+                rest.exchange(
+                        "/api/admin/studies?status=OPEN&sort=RECRUITMENT&offset=0&limit=20",
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+        assertThat(board.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyIds(board.getBody()))
+                .isEqualTo(studyIds(list.getBody()).stream().limit(4).toList());
+        assertThat(((Number) board.getBody().get("total")).longValue())
+                .isEqualTo(((Number) list.getBody().get("total")).longValue());
+    }
+
+    @Test
     @DisplayName("성공 - study-board RECRUITMENT 는 신청서 수로 정원 마감·CLOSING_SOON")
     void recruitmentBoardCapacityAndClosingSoon() {
         var response =
