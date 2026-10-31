@@ -298,7 +298,7 @@ erDiagram
 ### 데이터
 
 - 요청 필드와 검증은 [study/spec.md 스터디 등록](../../../specs/study/spec.md#스터디-등록) 이 정본이다
-- 서버가 채우는 값: `STUDY.STATUS = DRAFT`, 새 프로그램이면 `STUDY_PROGRAM.TITLE = title`. `STUDY_RECRUITMENT.START_AT` 은 비워 둔다 — 공개(= 모집 시작)할 때 채운다. 채워 두면 신청 폼이 「모집이 시작되어」로 잠긴다 (V46)
+- 서버가 채우는 값: `STUDY.STATUS = DRAFT`, 새 프로그램이면 `STUDY_PROGRAM.TITLE = title`. `STUDY_RECRUITMENT.START_AT` 은 비워 둔다 — 공개(= 모집 시작)할 때 채운다. 채워 두면 신청 폼이 「모집이 시작되어」로 잠긴다 (V49)
 - 모집 회차(`STUDY_RECRUITMENT`) 1행을 늘 함께 만든다
 
 ### 처리
