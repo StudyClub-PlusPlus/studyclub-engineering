@@ -745,15 +745,13 @@ class StudyNoticeIntegrationTest {
                                     jsonHeaders()),
                             Map.class);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
         }
-        assertThat(
-                        rest.exchange(
-                                        collection(),
-                                        HttpMethod.GET,
-                                        new HttpEntity<>(jsonHeaders()),
-                                        Map.class)
-                                .getStatusCode())
-                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        var history =
+                rest.exchange(
+                        collection(), HttpMethod.GET, new HttpEntity<>(jsonHeaders()), Map.class);
+        assertThat(history.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(history.getBody()).containsEntry("errorCode", "UNAUTHORIZED");
     }
 
     @Test

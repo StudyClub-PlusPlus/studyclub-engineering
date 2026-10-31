@@ -138,13 +138,14 @@ public class NotificationCreationService {
                         .sorted()
                         .toList();
         List<Notification> rows = new ArrayList<>();
+        int skipped = 0;
         Map<Long, Account> accounts =
                 accountRepository.findAllById(accountIds).stream()
                         .collect(Collectors.toMap(Account::getId, Function.identity()));
         for (Long accountId : accountIds) {
             Account account = accounts.get(accountId);
             if (account == null) {
-                log.info("공지 메일 건너뜀, 계정이 이미 없다. noticeId={}", noticeId);
+                skipped++;
                 continue;
             }
             rows.add(
@@ -157,6 +158,9 @@ public class NotificationCreationService {
                             payload,
                             noticeId,
                             notice.getSenderAccountId()));
+        }
+        if (skipped > 0) {
+            log.info("공지 메일 {}명 건너뜀, 계정이 이미 없다. noticeId={}", skipped, noticeId);
         }
         notificationRepository.saveAll(rows);
         return rows.size();

@@ -5,7 +5,6 @@ import com.studyclub.domain.discord.StudyDiscordLinkRepository;
 import com.studyclub.domain.notice.DiscordSkipReason;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 /**
  * 스터디 공지를 디스코드로 보낼 수 있는가 — 보내기 화면(compose)과 비동기 발송이 <b>같은 메서드</b>로 판정한다. 화면이 보내기 전에 보여 준 사유와 실제로
@@ -47,7 +46,7 @@ public class StudyNoticeDiscordGate {
 
     /** 보내는 사람이 디스코드를 연동했는가. 이미 탈퇴해 없으면 연동하지 않은 것과 같이 본다. */
     public boolean isLinked(Account sender) {
-        return sender != null && StringUtils.hasText(sender.getDiscordId());
+        return sender != null && sender.isDiscordLinked();
     }
 
     /**

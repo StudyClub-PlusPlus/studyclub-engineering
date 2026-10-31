@@ -168,12 +168,14 @@ WHERE status = 'PROCESSING'
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | 이번 구현에서 쓰는 값은 `USER_REGISTERED` 뿐. 다른 5종은 코드에 없음 |
+| EVENT_TYPE | VARCHAR(40) | N | 쓰는 값은 `USER_REGISTERED`(웰컴메일)와 `STUDY_NOTICE`(반 공지, [study-notice](../study-notice/spec.md)) 둘. 다른 종류는 코드에 없음 |
 | RECIPIENT_TYPE | VARCHAR(20) | N | 이번 구현에서 쓰는 값은 `EMAIL` 뿐. `DISCORD` 는 정의하지 않는다 |
 | RECIPIENT_VALUE | VARCHAR(255) | N | 발송 시점 이메일 스냅샷 (나중에 회원이 이메일을 바꿔도 이 값은 그대로) |
-| RECIPIENT_USER_ID | BIGINT | N | ID 참조(ACCOUNT, FK 없음 — 애그리거트 간 참조는 ID+인덱스만) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
+| RECIPIENT_USER_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음 — 애그리거트 간 참조는 ID+인덱스만) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
 | TEMPLATE_ID | BIGINT | N | ID 참조(NOTIFICATION_TEMPLATE, FK 없음) |
-| PAYLOAD | JSON | N | `{"nickname": "..."}`. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
+| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 STUDY_NOTICE.ID (FK 없음). 웰컴메일은 NULL |
+| SENDER_ACCOUNT_ID | BIGINT | Y | 보낸 사람의 ACCOUNT.ID 참조 (FK 없음). 공지 메일만 채운다 — 보낸 사람이 탈퇴하면 이 값으로 그가 보낸 메일 행을 찾아 보낸 사람 이름을 비식별화한다 |
+| PAYLOAD | JSON | N | `USER_REGISTERED` 는 `{"nickname": "..."}`, `STUDY_NOTICE` 는 `{"studyTitle","groupName","senderName","title","body"}`. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
 | STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED`/`CANCELLED` |
 | LOCKED_AT | DATETIME(6) | Y | PROCESSING 전환 시각. 재수거 판단 기준이자 클레임 토큰 — 재수거로 값이 바뀌면 이전 클레임의 완료 처리를 무시한다 |
 | ERROR_TYPE | VARCHAR(30) | Y | FAILED 일 때만. `TEMPLATE_MISSING`/`INVALID_RECIPIENT`/`PROVIDER_ERROR`/`UNKNOWN`. 자동 재시도 판단에는 안 쓴다(이번 구현엔 자동 재시도가 없음) — 실패 원인을 나중에 사람이 보기 위한 값 |
@@ -195,7 +197,7 @@ WHERE status = 'PROCESSING'
 | EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` · `STUDY_NOTICE` |
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
-| BODY | TEXT | N | `{{nickname}}` 플레이스홀더 포함. 태그(`<`)로 시작하면 HTML 본문 — 아래 [본문 형식](#본문-형식--html--텍스트-대체본) |
+| BODY | TEXT | N | 치환 변수는 조건마다 다르다 — `USER_REGISTERED` 는 `{{nickname}}`, `STUDY_NOTICE` 는 `{{studyTitle}}`·`{{groupName}}`·`{{senderName}}`·`{{title}}`·`{{body}}`. 태그(`<`)로 시작하면 HTML 본문 — 아래 [본문 형식](#본문-형식--html--텍스트-대체본) |
 | UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 | UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음) — 추가·수정한 캡틴. 마이그레이션이 만든 행은 NULL |
 
@@ -535,12 +537,13 @@ stateDiagram-v2
 
 ### 프론트엔드 사용처
 
-- 알림 템플릿 목록·상세(읽기 전용): `frontend/apps/back-office-front/src/app/notification-templates/` →
-  `GET /api/admin/notification-templates`
+- 알림 템플릿 목록·추가·수정·삭제: `frontend/apps/back-office-front/src/app/notification-templates/` ·
+  `frontend/apps/back-office-front/src/features/notification-templates/queries.ts` →
+  `GET`·`POST /api/admin/notification-templates`, `PUT`·`DELETE /api/admin/notification-templates/{id}`
+  - `frontend/packages/mock/src/msw/handlers/notification-templates.ts` (MSW)
 - 발송 이력 화면(구현완료 2026-10-16): [PRD (ST-032)](../../01-planning/stories/notification-history/PRD.md)
   - 사이드바는 「알림」 **한 메뉴**이고 그 안에서 「알림 템플릿」·「발송 이력」 **두 탭**으로 가른다(기획 PRD·playground 와 같은 모양).
-    발송 이력은 `/notifications`, 템플릿 목록·상세는 기존 `/notification-templates` 를 유지한다 — 템플릿 화면에는 탭 줄만 얹었고
-    동작은 바꾸지 않았다(템플릿 추가 등은 이번 범위 밖)
+    발송 이력은 `/notifications`, 템플릿은 기존 `/notification-templates` 를 유지한다
   - `frontend/apps/back-office-front/src/app/notifications/page.tsx` (필터·페이지는 URL 쿼리 — `useUrlState`)
   - `frontend/apps/back-office-front/src/features/notifications/queries.ts` → `GET /api/admin/notifications`, `POST /api/admin/notifications/resend`
   - `frontend/packages/mock/src/msw/handlers/notifications.ts` (MSW)

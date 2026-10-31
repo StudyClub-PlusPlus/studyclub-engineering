@@ -65,7 +65,7 @@
 
 ## 같은 조건에 템플릿 여럿 (2026-10-30)
 
-> Spec: [갱신 2026-10-30](./spec.md) · 마이그레이션 V44 (번호는 병합 직전에 beta 최신으로 다시 확인) · 회원 탈퇴 조건은 이 범위 밖
+> Spec: [갱신 2026-10-30](./spec.md) · 마이그레이션 V45 예정 (V44 는 반 공지 수신자 유니크 키 이름 변경에 사용. 번호는 구현 PR 병합 직전에 beta 최신으로 다시 확인) · 회원 탈퇴 조건은 이 범위 밖
 
 ### 스펙·문서
 
@@ -75,7 +75,7 @@
 
 ### 백엔드
 
-- [ ] T063 V44 — `uk_notification_template_event_channel` 제거, `(EVENT_TYPE, CHANNEL)` 일반 인덱스. 엔티티의 `@UniqueConstraint` 도 같이 바꾼다 (stage 는 SQL 을 손으로 한 번)
+- [ ] T063 V45 — `uk_notification_template_event_channel` 제거, `(EVENT_TYPE, CHANNEL)` 일반 인덱스. 엔티티의 `@UniqueConstraint` 도 같이 바꾼다 (stage 는 SQL 을 손으로 한 번)
 - [ ] T064 `NotificationTemplateRepository` — 조건의 템플릿 목록(`id` 오름차순)·건수 조회, `findByEventTypeAndChannel` 제거
 - [ ] T065 `NotificationCreationService` — 웰컴(템플릿 수만큼 행, 0개면 로그만)·공지(수신자 × 템플릿, 0개면 롤백)
 - [ ] T066 `NotificationTemplateCommandService` — `rejectIfTaken`·유일 제약 → 409 변환 제거

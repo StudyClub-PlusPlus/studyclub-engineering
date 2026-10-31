@@ -149,7 +149,7 @@ flowchart LR
 | BE | `GET /api/admin/notification-templates` | 구현완료 — `AdminNotificationController` · 통합 테스트 있음 | 없음 |
 | BE | `POST /api/admin/notification-templates` | 구현완료 — 조건당 한 건, 이미 있으면 409. 제목 255자 · 본문 65,535바이트 검증 · 통합 테스트 있음 ([스펙](../../../specs/notification/spec.md)) | 409 제거(같은 조건·같은 제목도 막지 않는다) |
 | BE | `PUT` · `DELETE /api/admin/notification-templates/{id}` | 구현완료 — 삭제해도 발송 이력은 남는다(이력은 템플릿을 ID 로만 참조) · 통합 테스트 있음 | `PUT` 의 409 제거 |
-| BE | 같은 조건 템플릿 여럿 | 없음 — `UNIQUE(EVENT_TYPE, CHANNEL)` 제약, 발송은 한 건 | 제약 제거 마이그레이션(V44) · 조건 발생 시 그 조건의 템플릿 모두 발송(수신자 × 템플릿) · 스터디 공지 메일 건수는 받는 사람 수 기준 유지 (완료 기준 5) |
+| BE | 같은 조건 템플릿 여럿 | 없음 — `UNIQUE(EVENT_TYPE, CHANNEL)` 제약, 발송은 한 건 | 제약 제거 마이그레이션(V45) · 조건 발생 시 그 조건의 템플릿 모두 발송(수신자 × 템플릿) · 스터디 공지 메일 건수는 받는 사람 수 기준 유지 (완료 기준 5) |
 | BE | 알림 조건 「회원 탈퇴」 | 없음 — `NotificationEventType` 이 `USER_REGISTERED` · `STUDY_NOTICE` 둘뿐. 탈퇴는 이벤트를 내지 않는다 | 탈퇴 이벤트 발행 · `USER_WITHDRAWN`(가칭) 추가 · 리스너 (완료 기준 4) |
 
 - **범위 밖** — 메일 외 채널, 삭제 되돌리기

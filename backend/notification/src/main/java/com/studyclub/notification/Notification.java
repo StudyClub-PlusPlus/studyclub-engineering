@@ -23,8 +23,8 @@ import org.hibernate.type.SqlTypes;
 /**
  * "이벤트가 발생했다는 사실"과 "실제로 언제·누구에게·어떻게 보냈는지"를 기록하는 아웃박스(outbox) 레코드 (specs/notification/spec.md).
  *
- * <p>재시도 체인(root_notification_id·final_status·retry_count 등)은 이번 구현에 없다 — 자동/수동 재시도 자체를 아직 만들지 않았기
- * 때문이다. 그 기능이 실제로 생길 때 컬럼을 추가한다.
+ * <p>재시도 체인(root_notification_id·final_status·retry_count 등)은 없다 — 백오피스의 수동 재발송은 새 행을 만들지 않고 그 행을
+ * {@code PENDING} 으로 되돌린다. 자동 재시도가 생길 때 컬럼을 추가한다.
  */
 @Entity
 @Table(
