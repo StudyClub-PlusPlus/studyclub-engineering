@@ -10,6 +10,11 @@ public interface FeedbackImageRepository extends JpaRepository<FeedbackImage, Lo
 
     List<FeedbackImage> findAllByFeedbackIdOrderByDisplayOrderAsc(Long feedbackId);
 
+    /** 보유 기간 만료 — FK cascade 가 없는 환경에서도 첨부 행을 명시적으로 지운다. */
+    @Modifying(flushAutomatically = true)
+    @Query("delete from FeedbackImage i where i.feedbackId = :feedbackId")
+    int deleteAllByFeedbackId(@Param("feedbackId") Long feedbackId);
+
     /**
      * 탈퇴 — 그 계정이 낸 문의의 첨부 이미지 행을 지운다. 파일(STORAGE_OBJECT)은 업로드 서비스가 같은 트랜잭션에서 {@code DELETING} 으로
      * 찜하고 커밋 뒤 지운다 (specs/user-leave/spec.md).

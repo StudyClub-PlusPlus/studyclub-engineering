@@ -125,6 +125,8 @@
 
 ### 감사 로그
 
+신규 기록은 접속 IP와 당시 `PARTICIPANT_ROLE`·`PARTICIPANT_ID`도 저장한다. MEMBER 중단은 1년(2년 의무 대상이면 설정 변경), LEADER 중단은 권한 말소이므로 3년 보관한다. 역할이 없는 과거 로그는 자동 삭제를 보류한다. [공통 정리 스펙](../data-retention/spec.md)을 따른다.
+
 이번에 중단된 행마다 [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) 한 줄 — `ACTION = WITHDRAW` · `ACTOR` = 호출자 · `TARGET` = 중단된 사람 · `BEFORE` = 중단 직전 상태 · `AFTER` = 명부 행 ID · 시각. 출석 저장과 **같은 트랜잭션**이다. 이미 중단된 행은 남기지 않는다. 이름 · 이메일은 남기지 않는다. 사유는 받지도 남기지도 않는다 — 하차 · 제명을 가르지 않는다 ([출석부 PRD](../../01-planning/stories/navigator-edit-attendance/PRD.md) §2-1).
 
 ### Response — 204 No Content

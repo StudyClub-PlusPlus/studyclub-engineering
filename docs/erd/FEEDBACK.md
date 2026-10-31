@@ -48,4 +48,5 @@ stateDiagram-v2
 
 - 인덱스 `idx_feedback_account_created (ACCOUNT_ID, CREATED_AT)` — 내 문의 목록 · rate limit(계정당 60초 1건 · 24시간 20건)
 - 인덱스 `idx_feedback_created (CREATED_AT)` — 운영 목록 정렬
-- 삭제 컬럼은 없다 — 지우는 기능이 없다. 탈퇴해도 행은 남는다(첨부 이미지만 파기 — [user-leave](../../specs/user-leave/spec.md))
+- 삭제 컬럼은 없다. 첫 답변(`REPLIED_AT`)부터 1년, 미답변은 접수(`CREATED_AT`)부터 1년 후 행을 물리 삭제한다. 서버가 하루에 한 번 확인한다. 회신·메모 수정과 탈퇴는 기한을 바꾸지 않는다 ([보유 기간 결정](../share/2026-10-31-feedback-retention.md))
+- 탈퇴 때는 첨부 이미지만 먼저 파기하고 문의 행은 위 기한까지 남긴다 — [user-leave](../../specs/user-leave/spec.md)

@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -110,6 +111,13 @@ public class Feedback extends BaseEntity {
 
     public boolean isAnswered() {
         return replyContent != null;
+    }
+
+    /** 첫 회신부터 달력상 1년. 미답변이면 접수부터 센다. 수정 시각은 보유 기간에 영향을 주지 않는다. */
+    public boolean isRetentionExpired(Instant now) {
+        Instant start = repliedAt == null ? getCreatedAt() : repliedAt;
+        Instant expiresAt = start.atOffset(ZoneOffset.UTC).plusYears(1).toInstant();
+        return !expiresAt.isAfter(now);
     }
 
     /** 제출자에게 보이는 상태. 운영 단계(미확인 · 확인)는 묶어서 「접수」다. */

@@ -1,5 +1,6 @@
 package com.studyclub.api.account;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -7,7 +8,6 @@ import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.RoleChangeBlockedReason;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.audit.AdminAuditLog;
-import com.studyclub.domain.audit.AdminAuditLogRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminAccountRoleService {
 
     private final AccountRepository accountRepository;
-    private final AdminAuditLogRepository adminAuditLogRepository;
+    private final AdminAuditRecorder auditRecorder;
 
     public AdminAccountRoleService(
-            AccountRepository accountRepository, AdminAuditLogRepository adminAuditLogRepository) {
+            AccountRepository accountRepository, AdminAuditRecorder auditRecorder) {
         this.accountRepository = accountRepository;
-        this.adminAuditLogRepository = adminAuditLogRepository;
+        this.auditRecorder = auditRecorder;
     }
 
     /** specs/admin-users/spec.md 「계정 권한 변경 › 처리 규칙」 1~7 을 그 순서대로 한 트랜잭션에서 판정한다. */
@@ -66,8 +66,7 @@ public class AdminAccountRoleService {
 
         // 6~7. 값 전이와 감사 기록은 같은 트랜잭션 — 기록 없이 권한만 바뀌는 일이 없다
         target.changeSystemRole(newRole);
-        adminAuditLogRepository.save(
-                AdminAuditLog.roleChange(actorId, target.getId(), before, newRole));
+        auditRecorder.record(AdminAuditLog.roleChange(actorId, target.getId(), before, newRole));
         return new AdminAccountRoleResponse(target.getId(), newRole);
     }
 }
