@@ -21,5 +21,14 @@ export function useRevealedDiscordHandles(listVersion: number) {
     [listVersion],
   );
 
-  return { handles: state.handles, reveal };
+  const hide = useCallback((accountId: number) => {
+    setState((prev) => {
+      if (!prev.handles.has(accountId)) return prev;
+      const handles = new Map(prev.handles);
+      handles.delete(accountId);
+      return { ...prev, handles };
+    });
+  }, []);
+
+  return { handles: state.handles, reveal, hide };
 }

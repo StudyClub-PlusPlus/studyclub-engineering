@@ -39,14 +39,18 @@ export function UsersTable({
   rows,
   revealed,
   onReveal,
+  onHide,
   revealedDiscord,
   onRevealDiscord,
+  onHideDiscord,
 }: {
   rows: ApiAdminAccount[];
   revealed: ReadonlyMap<number, string>;
   onReveal: (accountId: number, email: string) => void;
+  onHide: (accountId: number) => void;
   revealedDiscord: ReadonlyMap<number, string>;
   onRevealDiscord: (accountId: number, handle: string) => void;
+  onHideDiscord: (accountId: number) => void;
 }) {
   return (
     <TableCard>
@@ -74,6 +78,7 @@ export function UsersTable({
                 maskedEmail={a.maskedEmail}
                 revealedEmail={revealed.get(a.id)}
                 onReveal={onReveal}
+                onHide={onHide}
               />
             </td>
             <td>
@@ -86,6 +91,7 @@ export function UsersTable({
                 linked={a.discordLinked}
                 revealedHandle={revealedDiscord.get(a.id)}
                 onReveal={onRevealDiscord}
+                onHide={onHideDiscord}
               />
             </td>
             {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
