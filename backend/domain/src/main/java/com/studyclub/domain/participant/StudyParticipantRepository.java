@@ -130,6 +130,22 @@ public interface StudyParticipantRepository extends JpaRepository<StudyParticipa
                     + " AND a.discordId IS NOT NULL AND a.discordId <> ''")
     List<String> findNavigatorDiscordIds();
 
+    /**
+     * 이 계정이 진행 중 스터디(OPEN · ONGOING) 어디서든 LEADER · (ACTIVE · PAUSED) 인지 — navigator role 보유 판정용.
+     * navigator role 은 길드에 하나라, 스터디 하나에서 LEADER 가 아니어도 다른 진행 중 스터디에서 LEADER 면 role 을 유지한다 (DSC-08 ·
+     * DSC-09, specs/discord-study-link/spec.md).
+     */
+    @Query(
+            "SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END"
+                    + " FROM StudyParticipant p, Study s"
+                    + " WHERE p.studyId = s.id AND p.accountId = :accountId"
+                    + " AND p.participantRole = com.studyclub.domain.participant.ParticipantRole.LEADER"
+                    + " AND p.status IN (com.studyclub.domain.participant.ParticipantStatus.ACTIVE,"
+                    + " com.studyclub.domain.participant.ParticipantStatus.PAUSED)"
+                    + " AND s.status IN (com.studyclub.domain.study.StudyStatus.OPEN,"
+                    + " com.studyclub.domain.study.StudyStatus.ONGOING)")
+    boolean existsActiveNavigatorInAnyActiveStudy(@Param("accountId") Long accountId);
+
     /** 디스코드 연결 해제 차단 — 어느 스터디든 참여 중인 행이 있는가 (AccountDiscordLinkService). */
     boolean existsByAccountIdAndStatusIn(Long accountId, Collection<ParticipantStatus> statuses);
 

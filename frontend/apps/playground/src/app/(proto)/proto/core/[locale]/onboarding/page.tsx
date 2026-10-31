@@ -14,7 +14,7 @@ import { checkNicknameAvailability } from '@core/lib/nickname-availability';
 import {
   clearDrafts,
   initialDraft,
-  isValidTimeZone,
+  isOnboardingTimeZone,
   nicknameError,
   ONBOARDING_SCENARIOS,
   returnPath,
@@ -168,7 +168,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
   // 「확인 중」에도 누를 수 있어야 한다 — 400ms 를 기다렸다 누르게 하면 다 채운 사람이 멈춰 선다.
   // 중복으로 판명된 값만 막는다.
   const valid =
-    !nicknameError(draft.nickname, locale) && nickStatus !== 'taken' && isValidTimeZone(draft.timeZone) && requiredAgreed;
+    !nicknameError(draft.nickname, locale) && nickStatus !== 'taken' && isOnboardingTimeZone(draft.timeZone) && requiredAgreed;
   /**
    * 닉네임 칸 아래 한 줄. **자리를 하나만 쓴다** — 상태마다 줄을 더하면 아래가 밀린다.
    * 형식 오류는 친 순간 보여주고, 중복 여부는 형식이 맞은 뒤에만 말한다.
@@ -347,7 +347,7 @@ function OnboardingForm({ locale, scenario, next }: { locale: Locale; scenario: 
           locale={locale}
           disabled={disabled}
           error={
-            touched && !isValidTimeZone(draft.timeZone)
+            touched && !isOnboardingTimeZone(draft.timeZone)
               ? ko
                 ? '일정에 사용할 시간대를 선택해 주세요.'
                 : 'Choose a time zone for your schedule.'

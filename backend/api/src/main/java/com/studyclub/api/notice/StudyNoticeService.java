@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 /**
  * 스터디 공지 유스케이스 조립 (specs/study-notice/spec.md). 규칙은 엔티티가 안다 — 제목·본문 길이와 발송 한도는 {@link StudyNotice},
@@ -58,7 +57,7 @@ public class StudyNoticeService {
     private final StudyNoticeRepository studyNoticeRepository;
     private final NotificationRepository notificationRepository;
     private final StudyCaptainGuard studyCaptainGuard;
-    private final StudyNoticeDiscordGate discordGate;
+    private final StudyNoticeDiscordGate studyNoticeDiscordGate;
     private final ApplicationEventPublisher eventPublisher;
 
     public StudyNoticeService(
@@ -69,7 +68,7 @@ public class StudyNoticeService {
             StudyNoticeRepository studyNoticeRepository,
             NotificationRepository notificationRepository,
             StudyCaptainGuard studyCaptainGuard,
-            StudyNoticeDiscordGate discordGate,
+            StudyNoticeDiscordGate studyNoticeDiscordGate,
             ApplicationEventPublisher eventPublisher) {
         this.studyRepository = studyRepository;
         this.studyGroupRepository = studyGroupRepository;
@@ -78,7 +77,7 @@ public class StudyNoticeService {
         this.studyNoticeRepository = studyNoticeRepository;
         this.notificationRepository = notificationRepository;
         this.studyCaptainGuard = studyCaptainGuard;
-        this.discordGate = discordGate;
+        this.studyNoticeDiscordGate = studyNoticeDiscordGate;
         this.eventPublisher = eventPublisher;
     }
 
@@ -108,12 +107,13 @@ public class StudyNoticeService {
                                             a.getNickname(),
                                             p.getParticipantRole().name(),
                                             p.getStatus().name(),
-                                            StringUtils.hasText(a.getDiscordId()));
+                                            a.isDiscordLinked());
                                 })
                         .toList();
 
         Account sender = accountRepository.findById(accountId).orElse(null);
-        Optional<DiscordSkipReason> unavailable = discordGate.unavailableReason(studyId, sender);
+        Optional<DiscordSkipReason> unavailable =
+                studyNoticeDiscordGate.unavailableReason(studyId, sender);
         Instant now = Instant.now();
         Optional<StudyNotice.SendBlock> block = sendBlock(study, groupId, now);
         return new StudyNoticeComposeResponse(
@@ -143,17 +143,13 @@ public class StudyNoticeService {
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "반을 찾을 수 없습니다."));
         Study study = findStudy(studyId);
         assertAccess(accountId, study, group);
-        if (study.isEnded()) {
-            throw new BusinessException(ErrorCode.STUDY_ENDED);
-        }
 
+        // 끝난 스터디(409)와 한도(429)를 compose 와 같은 판정 하나로 거절한다
         Instant now = Instant.now();
         sendBlock(study, groupId, now)
                 .ifPresent(
                         block -> {
-                            throw new BusinessException(
-                                    ErrorCode.STUDY_NOTICE_RATE_LIMITED,
-                                    blockedMessage(block.reason()));
+                            throw blocked(block.reason());
                         });
 
         Set<NoticeChannel> channels = new HashSet<>(request.channels());
@@ -269,12 +265,19 @@ public class StudyNoticeService {
                 groupId, StudyNotice.startOfToday(now));
     }
 
-    private static String blockedMessage(SendBlockReason reason) {
+    private static BusinessException blocked(SendBlockReason reason) {
         return switch (reason) {
-            case STUDY_ENDED -> "끝난 스터디라 공지를 보낼 수 없습니다.";
-            case COOLDOWN -> "방금 공지를 보냈습니다. 1분 뒤에 다시 보낼 수 있습니다.";
+            case STUDY_ENDED -> new BusinessException(ErrorCode.STUDY_ENDED);
+            case COOLDOWN ->
+                    new BusinessException(
+                            ErrorCode.STUDY_NOTICE_RATE_LIMITED,
+                            "방금 공지를 보냈습니다. 1분 뒤에 다시 보낼 수 있습니다.");
             case DAILY_LIMIT ->
-                    "오늘 보낼 수 있는 공지 횟수(" + StudyNotice.DAILY_LIMIT + "회)를 모두 썼습니다. 내일 다시 보낼 수 있습니다.";
+                    new BusinessException(
+                            ErrorCode.STUDY_NOTICE_RATE_LIMITED,
+                            "오늘 보낼 수 있는 공지 횟수("
+                                    + StudyNotice.DAILY_LIMIT
+                                    + "회)를 모두 썼습니다. 내일 다시 보낼 수 있습니다.");
         };
     }
 

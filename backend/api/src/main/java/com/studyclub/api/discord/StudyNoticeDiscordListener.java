@@ -41,12 +41,13 @@ public class StudyNoticeDiscordListener {
     static final int MAX_MENTIONS = 40;
 
     private final DiscordBotClient discordBotClient;
-    private final StudyNoticeDiscordRecorder recorder;
+    private final StudyNoticeDiscordRecorder studyNoticeDiscordRecorder;
 
     public StudyNoticeDiscordListener(
-            DiscordBotClient discordBotClient, StudyNoticeDiscordRecorder recorder) {
+            DiscordBotClient discordBotClient,
+            StudyNoticeDiscordRecorder studyNoticeDiscordRecorder) {
         this.discordBotClient = discordBotClient;
-        this.recorder = recorder;
+        this.studyNoticeDiscordRecorder = studyNoticeDiscordRecorder;
     }
 
     @Async
@@ -70,7 +71,8 @@ public class StudyNoticeDiscordListener {
     }
 
     private void deliver(StudyNoticeSent event) {
-        Optional<StudyNoticeDiscordRecorder.Plan> prepared = recorder.prepare(event.noticeId());
+        Optional<StudyNoticeDiscordRecorder.Plan> prepared =
+                studyNoticeDiscordRecorder.prepare(event.noticeId());
         if (prepared.isEmpty()) {
             return; // 건너뜀으로 이미 기록했거나, 처리할 것이 없다
         }
@@ -78,7 +80,8 @@ public class StudyNoticeDiscordListener {
 
         Optional<String> channelId = lobbyChannelId(plan);
         if (channelId.isEmpty()) {
-            recorder.markSkipped(plan.noticeId(), DiscordSkipReason.NO_TEXT_CHANNEL);
+            studyNoticeDiscordRecorder.markSkipped(
+                    plan.noticeId(), DiscordSkipReason.NO_TEXT_CHANNEL);
             return;
         }
 
@@ -100,18 +103,25 @@ public class StudyNoticeDiscordListener {
             // 있다
             String cause = e instanceof BusinessException ? e.getMessage() : e.getClass().getName();
             if (posted == 0) {
-                log.warn("공지 {} 디스코드 발송 실패, 손으로 알린다: {}", plan.noticeId(), cause);
-                recorder.markFailed(plan.noticeId());
+                log.warn(
+                        "{} {}: 공지 {} 디스코드 발송 실패, 손으로 알린다: {}",
+                        event.name(),
+                        event.meta().eventId(),
+                        plan.noticeId(),
+                        cause);
+                studyNoticeDiscordRecorder.markFailed(plan.noticeId());
                 return;
             }
             // 첫 글은 올라갔는데 이어서 올리는 글이 실패했다. 공지 자체는 전달됐으니 보냄으로 두고, 멘션하지 못한 사람은 로그로만 남긴다
             log.warn(
-                    "공지 {} 디스코드 이어서 올리기 실패, {}명만 멘션했다: {}",
+                    "{} {}: 공지 {} 디스코드 이어서 올리기 실패, {}명만 멘션했다: {}",
+                    event.name(),
+                    event.meta().eventId(),
                     plan.noticeId(),
                     mentioned.size(),
                     cause);
         }
-        recorder.markSent(plan.noticeId(), mentioned);
+        studyNoticeDiscordRecorder.markSent(plan.noticeId(), mentioned);
     }
 
     private Optional<String> lobbyChannelId(StudyNoticeDiscordRecorder.Plan plan) {
@@ -168,9 +178,14 @@ public class StudyNoticeDiscordListener {
 
     private void markFailedQuietly(StudyNoticeSent event) {
         try {
-            recorder.markFailed(event.noticeId());
+            studyNoticeDiscordRecorder.markFailed(event.noticeId());
         } catch (RuntimeException e) {
-            log.warn("공지 {} 디스코드 실패 기록도 못 남겼다 ({})", event.noticeId(), e.getClass().getName());
+            log.warn(
+                    "{} {}: 공지 {} 디스코드 실패 기록도 못 남겼다 ({})",
+                    event.name(),
+                    event.meta().eventId(),
+                    event.noticeId(),
+                    e.getClass().getName());
         }
     }
 

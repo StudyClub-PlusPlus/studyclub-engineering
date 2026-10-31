@@ -24,7 +24,6 @@ import { useSendNotice } from '../queries';
 import { ApiError } from '@/lib/http';
 import type { ApiNoticeCompose, NoticeChannel } from '@/lib/study-notice-api';
 
-
 /**
  * 공지 쓰기 + 받는 사람 고르기 + 보내기. 판정(보낼 수 있는가 · 디스코드가 되는가 · 한도)은 서버가 내려준 `compose` 값을 그리기만 한다.
  * 한 번 보낸 공지는 고치거나 거두지 못해서, 보내기 전에 받는 사람 수와 보낼 곳을 적은 창으로 한 번 더 묻는다 (POL-0010).
@@ -61,10 +60,7 @@ export function NoticeComposer({
 
   const effective = effectiveChannels(channels, discord.available);
   const problems = draftProblems({ title, body, channels: effective, selectedCount: picked.size });
-  const submittable = canSubmit(
-    { title, body, channels: effective, selectedCount: picked.size },
-    compose,
-  );
+  const submittable = canSubmit({ title, body, channels: effective, selectedCount: picked.size }, compose);
   const note = limitNote(compose);
 
   function setChannel(channel: NoticeChannel, on: boolean) {
@@ -103,7 +99,7 @@ export function NoticeComposer({
   return (
     <div className='space-y-6'>
       <section className='card space-y-5 p-5 sm:p-6'>
-        <h2 className='text-base font-bold text-fg'>공지 쓰기</h2>
+        <h2 className='type-title-md text-fg'>공지 쓰기</h2>
 
         <div>
           <Input
@@ -113,7 +109,7 @@ export function NoticeComposer({
             placeholder='예: 이번 주 모임 장소가 바뀌었어요'
             error={problems.titleOver ? `제목은 ${NOTICE_LIMITS.title}자까지 쓸 수 있습니다.` : undefined}
           />
-          <p className={cx('mt-1 text-right text-xs', problems.titleOver ? 'text-error-700' : 'text-fg-muted')}>
+          <p className={cx('mt-1 text-right type-label-sm', problems.titleOver ? 'text-error-700' : 'text-fg-muted')}>
             {problems.titleLen} / {NOTICE_LIMITS.title}
           </p>
         </div>
@@ -125,15 +121,17 @@ export function NoticeComposer({
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder='팀원에게 전할 내용을 적어 주세요.'
-            error={problems.bodyOver ? `본문은 ${NOTICE_LIMITS.body.toLocaleString()}자까지 쓸 수 있습니다.` : undefined}
+            error={
+              problems.bodyOver ? `본문은 ${NOTICE_LIMITS.body.toLocaleString()}자까지 쓸 수 있습니다.` : undefined
+            }
           />
-          <p className={cx('mt-1 text-right text-xs', problems.bodyOver ? 'text-error-700' : 'text-fg-muted')}>
+          <p className={cx('mt-1 text-right type-label-sm', problems.bodyOver ? 'text-error-700' : 'text-fg-muted')}>
             {problems.bodyLen.toLocaleString()} / {NOTICE_LIMITS.body.toLocaleString()}
           </p>
         </div>
 
         <fieldset>
-          <legend className='mb-2 text-sm font-semibold text-fg'>보낼 곳</legend>
+          <legend className='mb-2 type-label-lg text-fg'>보낼 곳</legend>
           <div className='flex flex-wrap gap-x-6 gap-y-2'>
             <Checkbox
               label='메일'
@@ -148,15 +146,15 @@ export function NoticeComposer({
             />
           </div>
           {!discord.available && (
-            <p className='mt-2 text-sm text-fg-muted'>{discordUnavailableMessage(discord.unavailableReason)}</p>
+            <p className='mt-2 type-body-sm text-fg-muted'>{discordUnavailableMessage(discord.unavailableReason)}</p>
           )}
         </fieldset>
       </section>
 
       <section className='card p-5 sm:p-6'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
-          <h2 className='text-base font-bold text-fg'>받는 사람</h2>
-          <p className='text-sm text-fg-secondary' aria-live='polite'>
+          <h2 className='type-title-md text-fg'>받는 사람</h2>
+          <p className='type-body-sm text-fg-secondary' aria-live='polite'>
             {picked.size}명 선택
           </p>
         </div>
@@ -183,7 +181,7 @@ export function NoticeComposer({
 
         <ul className='mt-3 divide-y divide-border rounded-control border border-border'>
           {visible.length === 0 && (
-            <li className='px-4 py-6 text-center text-sm text-fg-muted'>이 상태의 팀원이 없습니다.</li>
+            <li className='px-4 py-6 text-center type-body-sm text-fg-muted'>이 상태의 팀원이 없습니다.</li>
           )}
           {visible.map((r) => (
             <li key={r.participantId} className='flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5'>
@@ -203,7 +201,7 @@ export function NoticeComposer({
       </section>
 
       <div className='flex flex-wrap items-center justify-between gap-3'>
-        <p className='text-sm text-fg-secondary' aria-live='polite'>
+        <p className='type-body-sm text-fg-secondary' aria-live='polite'>
           {note}
         </p>
         <Button disabled={!submittable} loading={send.isPending} onClick={() => setConfirming(true)}>
@@ -217,7 +215,7 @@ export function NoticeComposer({
         title='공지를 보낼까요?'
         footer={
           <>
-            <Button variant='secondary' disabled={send.isPending} onClick={() => setConfirming(false)}>
+            <Button variant='secondary' data-autofocus disabled={send.isPending} onClick={() => setConfirming(false)}>
               취소
             </Button>
             <Button loading={send.isPending} onClick={submit}>
@@ -226,7 +224,7 @@ export function NoticeComposer({
           </>
         }
       >
-        <div className='space-y-2 text-sm text-fg-secondary'>
+        <div className='space-y-2 type-body-sm text-fg-secondary'>
           <p>
             <strong className='text-fg'>{picked.size}명</strong>에게 보냅니다. 보낸 공지는 고치거나 거둘 수 없습니다.
           </p>
