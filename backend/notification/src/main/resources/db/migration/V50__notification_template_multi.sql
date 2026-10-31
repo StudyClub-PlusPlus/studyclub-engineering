@@ -1,4 +1,4 @@
--- V46 — 같은 조건에 알림 템플릿 여럿 (specs/notification/spec.md, PRD ST-030 완료 기준 5)
+-- V50 — 같은 조건에 알림 템플릿 여럿 (specs/notification/spec.md, PRD ST-030 완료 기준 5)
 --   * NOTIFICATION_TEMPLATE 의 UNIQUE(EVENT_TYPE, CHANNEL) 을 걷어낸다. 같은 조건에 템플릿을 여럿 둘 수 있고, 그 조건이 생기면 모두 발송한다.
 --     같은 조건·같은 제목도 막지 않는다 (운영 규칙: docs/share/2026-10-29-notification-template-ops-rules.md).
 --   * 조건의 템플릿 목록을 읽는 조회(EVENT_TYPE, CHANNEL)는 일반 인덱스가 받는다.

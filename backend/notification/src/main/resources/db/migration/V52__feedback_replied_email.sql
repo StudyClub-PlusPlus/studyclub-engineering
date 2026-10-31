@@ -1,4 +1,4 @@
--- V48: 첫 문의 회신 알림. 본문은 playground HTML 시안과 동일하다.
+-- V52: 첫 문의 회신 알림. 본문은 playground HTML 시안과 동일하다.
 -- stage 는 Flyway off 이므로 이 SQL 을 한 번 적용한다. 기존 운영 템플릿은 덮어쓰지 않는다.
 -- 답변 본문 없이 nickname · feedbackUrl 만 치환한다. 과거 회신 알림은 만들지 않는다.
 INSERT INTO NOTIFICATION_TEMPLATE (EVENT_TYPE, CHANNEL, SUBJECT, BODY, CREATED_AT, UPDATED_AT)

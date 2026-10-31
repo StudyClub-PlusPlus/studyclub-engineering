@@ -1,5 +1,4 @@
 // 문의·오류 신고 — 제출 · 내 문의 목록 · 내 문의 상세 (specs/feedback/spec.md). 키·fetcher·훅을 한곳에. 브라우저가 백엔드를 직접 부른다.
-// vitest 에 @ 별칭이 없어 상대 경로로 부른다.
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {

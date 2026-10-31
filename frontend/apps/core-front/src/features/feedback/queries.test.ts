@@ -11,14 +11,12 @@ import {
 import { API_BASE, ApiError } from '../../lib/http';
 
 function respond(status: number, body: unknown) {
-  return vi
-    .fn()
-    .mockResolvedValue({
-      ok: status >= 200 && status < 300,
-      status,
-      json: async () => body,
-      text: async () => JSON.stringify(body),
-    });
+  return vi.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+  });
 }
 
 afterEach(() => {
