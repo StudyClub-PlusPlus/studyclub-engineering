@@ -25,6 +25,7 @@ export const MESSAGES: Dict = {
   'nav.about': { ko: '소개', en: 'About' },
   'nav.mentoring': { ko: '멘토링', en: 'Mentoring' },
   'nav.join': { ko: '디스코드 합류', en: 'Join Discord' },
+  'nav.feedback': { ko: '문의·오류 신고', en: 'Contact · report a bug' },
 
   'issue.label': { ko: 'StudyClub · Vol.1', en: 'StudyClub · Vol.1' },
 

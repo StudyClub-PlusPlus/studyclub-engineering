@@ -1,0 +1,80 @@
+-- V48: 첫 문의 회신 알림. 본문은 playground HTML 시안과 동일하다.
+-- stage 는 Flyway off 이므로 이 SQL 을 한 번 적용한다. 기존 운영 템플릿은 덮어쓰지 않는다.
+-- 답변 본문 없이 nickname · feedbackUrl 만 치환한다. 과거 회신 알림은 만들지 않는다.
+INSERT INTO NOTIFICATION_TEMPLATE (EVENT_TYPE, CHANNEL, SUBJECT, BODY, CREATED_AT, UPDATED_AT)
+SELECT 'FEEDBACK_REPLIED', 'EMAIL', '[StudyClub] 문의에 답변이 등록됐어요',
+'<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>[StudyClub] 문의에 답변이 등록됐어요</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F5F7FF;">
+<!-- 미리보기 문구: 받은편지함 목록에서 제목 옆에 보인다 -->
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F5F7FF;">남겨주신 문의에 답변이 등록됐어요. 로그인 후 답변을 확인해 주세요.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F7FF;">
+  <tr>
+    <td align="center" style="padding:32px 12px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+        <!-- 워드마크 (이미지 차단 메일함에서도 보이도록 글자로) -->
+        <tr>
+          <td style="padding:0 8px 16px 8px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#282A43;letter-spacing:-0.2px;">
+            StudyClub
+          </td>
+        </tr>
+        <!-- 본문 카드 -->
+        <tr>
+          <td style="background-color:#FFFFFF;border:1px solid #E2E1E9;border-radius:12px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="height:4px;line-height:4px;font-size:0;background-color:#5267D8;border-radius:12px 12px 0 0;">&nbsp;</td>
+              </tr>
+              <tr>
+                <td style="padding:36px 40px 8px 40px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;">
+                  <p style="margin:0 0 8px 0;font-size:13px;line-height:20px;font-weight:600;color:#5267D8;">문의 답변 등록</p>
+                  <h1 style="margin:0 0 20px 0;font-size:24px;line-height:34px;font-weight:700;color:#282A43;letter-spacing:-0.4px;">안녕하세요, {{nickname}}님.</h1>
+                  <p style="margin:0 0 28px 0;font-size:16px;line-height:26px;color:#626476;">남겨주신 문의에 답변이 등록됐어요.<br>아래 버튼을 눌러 답변을 확인해 주세요.</p>
+                </td>
+              </tr>
+              <!-- 버튼: 표 셀에 배경을 칠해 이미지 없이도 버튼 모양이 유지된다 -->
+              <tr>
+                <td style="padding:0 40px 36px 40px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td align="center" bgcolor="#5267D8" style="border-radius:8px;background-color:#5267D8;">
+                        <a href="{{feedbackUrl}}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:8px;">답변 확인하기</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 40px;"><div style="height:1px;line-height:1px;font-size:0;background-color:#E2E1E9;">&nbsp;</div></td>
+              </tr>
+              <tr>
+                <td style="padding:24px 40px 32px 40px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;font-size:14px;line-height:22px;color:#626476;">
+                  <p style="margin:0 0 12px 0;">답변을 확인하기 어려우시면 <a href="mailto:support@studyclub.life" style="color:#5267D8;text-decoration:underline;">support@studyclub.life</a>으로 연락해 주세요.</p>
+                  <p style="margin:0;color:#282A43;">감사합니다.<br>StudyClub 드림</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- 법적 고지: 왜 이 메일을 받았는지 -->
+        <tr>
+          <td style="padding:20px 8px 0 8px;font-family:-apple-system,BlinkMacSystemFont,''Apple SD Gothic Neo'',''Malgun Gothic'',''맑은 고딕'',''Noto Sans KR'',sans-serif;font-size:12px;line-height:18px;color:#6C6D7F;">
+            이 메일은 회원님이 접수하신 문의의 답변 등록을 안내하기 위해 발송되었습니다.<br>
+            © StudyClub · <a href="https://studyclub.life" target="_blank" style="color:#6C6D7F;text-decoration:underline;">studyclub.life</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+', CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6)
+WHERE NOT EXISTS (SELECT 1 FROM NOTIFICATION_TEMPLATE WHERE EVENT_TYPE = 'FEEDBACK_REPLIED' AND CHANNEL = 'EMAIL');

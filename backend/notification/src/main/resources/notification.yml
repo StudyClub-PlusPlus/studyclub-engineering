@@ -42,6 +42,12 @@ mail:
     reply-to-address: ${MAIL_CS_REPLY_TO_ADDRESS:}
 
 notification:
+  # 명시한 주소가 우선한다. 없으면 기존 APP_ENV 에 맞는 공개 사이트로 연결한다.
+  site-base-url: ${NOTIFICATION_SITE_BASE_URL:${notification.site-origins.${APP_ENV:local}}}
+  site-origins:
+    local: http://localhost:4700
+    stage: https://stage.studyclub.life
+    production: https://studyclub.life
   polling:
     fixed-delay-ms: ${NOTIFICATION_POLLING_FIXED_DELAY_MS:30000}
     batch-size: ${NOTIFICATION_POLLING_BATCH_SIZE:100}

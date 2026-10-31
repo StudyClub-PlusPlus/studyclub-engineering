@@ -266,6 +266,42 @@ class AccountDeletionIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 같은 조건에 템플릿이 여럿이라 한 사람에게 알림 행이 여러 개여도 모두 비식별화되고 PENDING 은 모두 취소된다")
+    void deletesAccountRedactsEveryNotificationRowOfTheRecipient() {
+        Account account = seedAccount();
+        Long accountId = account.getId();
+        Notification firstTemplateRow = pendingWelcome(account, 1L);
+        Notification secondTemplateRow = pendingWelcome(account, 2L);
+
+        var response =
+                rest.exchange(
+                        "/api/me",
+                        HttpMethod.DELETE,
+                        authenticatedBody(account, Map.of("reason", "NO_DESIRED_STUDY")),
+                        Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        for (Notification row : List.of(firstTemplateRow, secondTemplateRow)) {
+            Notification reloaded = notificationRepository.findById(row.getId()).orElseThrow();
+            assertThat(reloaded.getRecipientValue()).isNotEqualTo(account.getEmail());
+            assertThat(reloaded.getPayload().get("nickname")).isNull();
+            assertThat(reloaded.getStatus()).isEqualTo(NotificationStatus.CANCELLED);
+            assertThat(reloaded.getRecipientUserId()).isEqualTo(accountId);
+        }
+    }
+
+    private Notification pendingWelcome(Account account, Long templateId) {
+        return notificationRepository.save(
+                Notification.pendingImmediate(
+                        NotificationEventType.USER_REGISTERED,
+                        NotificationChannel.EMAIL,
+                        account.getEmail(),
+                        account.getId(),
+                        templateId,
+                        Map.of("nickname", account.getNickname())));
+    }
+
+    @Test
     @DisplayName("성공 - 배열 FORM_ANSWER가 있어도 탈퇴는 막히지 않고 내용을 비운다")
     void deletesAccountEvenWithArrayFormAnswer() {
         Account account = seedAccount();

@@ -227,7 +227,7 @@ public class Notification extends BaseEntity {
      */
     public void redactPii(String maskedRecipientValue) {
         this.recipientValue = maskedRecipientValue;
-        // 웰컴메일에만 닉네임이 있다 — 공지 메일처럼 없는 행에 빈 키를 새로 만들지 않는다
+        // 웰컴·문의 회신 메일의 닉네임을 지운다 — 공지 메일처럼 없는 행에 빈 키를 새로 만들지 않는다
         if (this.payload.containsKey("nickname")) {
             Map<String, Object> redactedPayload = new HashMap<>(this.payload);
             redactedPayload.put("nickname", null);

@@ -3,7 +3,6 @@ package com.studyclub.api.notification;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.studyclub.api.auth.JwtService;
-import com.studyclub.common.error.BusinessException;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
@@ -124,17 +123,34 @@ class AdminNotificationTemplateWriteIntegrationTest {
     }
 
     @Test
-    @DisplayName("같은 조건에 이미 템플릿이 있으면 추가가 409 CONFLICT")
-    void createRejectsTakenCondition() {
-        createTemplate();
+    @DisplayName("같은 조건에 이미 템플릿이 있어도 추가된다 — 다른 제목도 같은 제목도 201, 모두 남는다")
+    void createAllowsManyTemplatesPerCondition() {
+        var first = createTemplate();
 
-        var response =
+        var differentSubject =
                 testRestTemplate.exchange(
-                        PATH, HttpMethod.POST, asAdmin(request("또 하나", "본문")), Map.class);
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(request("또 하나", "본문")),
+                        NotificationTemplateResponse.class);
+        var sameSubject =
+                testRestTemplate.exchange(
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(request("환영합니다", "다른 본문")),
+                        NotificationTemplateResponse.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).containsEntry("errorCode", "CONFLICT");
-        assertThat(notificationTemplateRepository.count()).isEqualTo(1);
+        assertThat(differentSubject.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(sameSubject.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(
+                        notificationTemplateRepository
+                                .findAllByEventTypeAndChannelOrderByIdAsc(
+                                        NotificationEventType.USER_REGISTERED,
+                                        NotificationChannel.EMAIL)
+                                .stream()
+                                .map(NotificationTemplate::getId))
+                .containsExactly(
+                        first.id(), differentSubject.getBody().id(), sameSubject.getBody().id());
     }
 
     @Test
@@ -207,8 +223,8 @@ class AdminNotificationTemplateWriteIntegrationTest {
     }
 
     @Test
-    @DisplayName("동시에 추가해도 하나만 만들어지고 나머지는 409 — 유일 제약 위반이 500 이 되지 않는다")
-    void concurrentCreateYieldsOneAndConflicts() throws Exception {
+    @DisplayName("같은 조건에 동시에 추가해도 모두 만들어진다 — 어느 요청도 409 나 500 이 되지 않는다")
+    void concurrentCreateAllSucceed() throws Exception {
         int threads = 8;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         CountDownLatch ready = new CountDownLatch(threads);
@@ -224,8 +240,6 @@ class AdminNotificationTemplateWriteIntegrationTest {
                                     try {
                                         commandService.create(admin.getId(), request("제목", "본문"));
                                         return "CREATED";
-                                    } catch (BusinessException e) {
-                                        return e.errorCode().name();
                                     } catch (Exception e) {
                                         return e.getClass().getSimpleName();
                                     }
@@ -238,11 +252,8 @@ class AdminNotificationTemplateWriteIntegrationTest {
                 outcomes.add(result.get());
             }
 
-            assertThat(outcomes.stream().filter("CREATED"::equals)).hasSize(1);
-            assertThat(outcomes.stream().filter(o -> !"CREATED".equals(o)))
-                    .hasSize(threads - 1)
-                    .containsOnly("CONFLICT");
-            assertThat(notificationTemplateRepository.count()).isEqualTo(1);
+            assertThat(outcomes).hasSize(threads).containsOnly("CREATED");
+            assertThat(notificationTemplateRepository.count()).isEqualTo(threads);
         } finally {
             pool.shutdownNow();
         }
@@ -280,10 +291,10 @@ class AdminNotificationTemplateWriteIntegrationTest {
     }
 
     @Test
-    @DisplayName("다른 템플릿이 쓰는 조건으로 바꾸려 하면 수정이 409 CONFLICT — 값은 그대로")
-    void updateRejectsConditionTakenByAnotherTemplate() {
+    @DisplayName("다른 템플릿이 쓰는 조건으로 바꿔도 수정된다 — 200, 두 템플릿이 그 조건에 함께 남는다")
+    void updateMovesIntoConditionUsedByAnotherTemplate() {
         var created = createTemplate();
-        seedStudyNotice();
+        var notice = seedStudyNotice();
 
         var response =
                 testRestTemplate.exchange(
@@ -292,14 +303,18 @@ class AdminNotificationTemplateWriteIntegrationTest {
                         asAdmin(
                                 new NotificationTemplateRequest(
                                         NotificationEventType.STUDY_NOTICE, "옮김", "옮긴 본문")),
-                        Map.class);
+                        NotificationTemplateResponse.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).containsEntry("errorCode", "CONFLICT");
-        NotificationTemplate saved =
-                notificationTemplateRepository.findById(created.id()).orElseThrow();
-        assertThat(saved.getEventType()).isEqualTo(NotificationEventType.USER_REGISTERED);
-        assertThat(saved.getSubject()).isEqualTo("환영합니다");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().eventType()).isEqualTo("STUDY_NOTICE");
+        assertThat(
+                        notificationTemplateRepository
+                                .findAllByEventTypeAndChannelOrderByIdAsc(
+                                        NotificationEventType.STUDY_NOTICE,
+                                        NotificationChannel.EMAIL)
+                                .stream()
+                                .map(NotificationTemplate::getId))
+                .containsExactly(created.id(), notice.getId());
     }
 
     @Test
@@ -320,7 +335,7 @@ class AdminNotificationTemplateWriteIntegrationTest {
     }
 
     @Test
-    @DisplayName("비어 있는 조건으로는 옮길 수 있고, 옮기면 원래 조건이 비어 다시 추가할 수 있다")
+    @DisplayName("비어 있는 조건으로 옮길 수 있고, 옮기면 원래 조건이 비어도 다시 추가할 수 있다")
     void updateMovesTemplateToFreeCondition() {
         var created = createTemplate();
 
@@ -340,7 +355,7 @@ class AdminNotificationTemplateWriteIntegrationTest {
     }
 
     @Test
-    @DisplayName("스터디 공지 조건도 같은 규칙이다 — 없으면 추가되고 이미 있으면 409")
+    @DisplayName("스터디 공지 조건도 같은 규칙이다 — 이미 있어도 추가된다")
     void studyNoticeFollowsSameRule() {
         var request =
                 new NotificationTemplateRequest(
@@ -352,11 +367,17 @@ class AdminNotificationTemplateWriteIntegrationTest {
                         HttpMethod.POST,
                         asAdmin(request),
                         NotificationTemplateResponse.class);
-        var second = testRestTemplate.exchange(PATH, HttpMethod.POST, asAdmin(request), Map.class);
+        var second =
+                testRestTemplate.exchange(
+                        PATH,
+                        HttpMethod.POST,
+                        asAdmin(request),
+                        NotificationTemplateResponse.class);
 
         assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(first.getBody().eventType()).isEqualTo("STUDY_NOTICE");
-        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(second.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(second.getBody().id()).isNotEqualTo(first.getBody().id());
     }
 
     @Test

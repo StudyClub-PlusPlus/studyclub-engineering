@@ -8,11 +8,14 @@
 |---|---|---|---|---|
 | `USER_REGISTERED` · `EMAIL` | 회원가입 직후 즉시 | `[StudyClub] 회원가입을 환영합니다` | `{{nickname}}` | [user-registered-email.html](../../frontend/apps/playground/src/proto/mail/templates/user-registered-email.html) |
 | `STUDY_NOTICE` · `EMAIL` | 네비게이터가 반 공지를 보낼 때 | `[StudyClub] {{studyTitle}} 공지` | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | [study-notice-email.html](../../frontend/apps/playground/src/proto/mail/templates/study-notice-email.html) |
+| `FEEDBACK_REPLIED` · `EMAIL` | 문의에 첫 답변을 등록할 때 (수정은 제외) | `[StudyClub] 문의에 답변이 등록됐어요` | `{{nickname}}` `{{feedbackUrl}}` | [feedback-replied-email.html](../../frontend/apps/playground/src/proto/mail/templates/feedback-replied-email.html) |
 
 - 시안 원본은 `{{nickname}}` 이 그대로 있는 **DB 에 들어갈 본문**이다. 제목·치환 변수는 위 표를 참고한다
-- 추가·수정 팝업의 **본문 편집 → 미리보기**로 HTML 을 확인한다. 치환 변수는 예시 값으로 바꾸지 않고 원문 그대로 표시한다. 회원가입 시안은 기본 예시로 불러오며, 다른 시안은 본문 편집 칸에 붙여 넣어 확인할 수 있다
+- 추가·수정 팝업의 **본문 편집 → 미리보기**로 HTML 을 확인한다. 치환 변수는 예시 값으로 바꾸지 않고 원문 그대로 표시한다. 회원가입·문의 회신 시안은 기본 예시로 불러오며, 다른 시안은 본문 편집 칸에 붙여 넣어 확인할 수 있다
 - 프로토에서 추가·저장한 내용은 현재 화면에서만 유지되고 새로고침하면 사라진다. 반영할 HTML 은 본문 편집 칸에서 복사해 시안 파일에 붙여 PR 을 낸다
 - playground 는 DB 를 읽지 않는다. DB 에 지금 무엇이 있는지는 백오피스 「알림 템플릿」에서 본다
+
+문의 회신 시안은 가입메일의 카드·버튼 디자인을 사용한다. 답변 본문·첨부 이미지·캡틴 메모는 메일에 넣지 않고, 로그인 후 해당 문의의 답변을 확인하도록 안내한다. `{{feedbackUrl}}` 은 `NOTIFICATION_SITE_BASE_URL` 과 `/ko/my/feedbacks/{id}` 로 만든 전체 URL 이다. `V48__feedback_replied_email.sql` 이 같은 HTML을 등록하고, 첫 회신 트랜잭션에서 알림을 예약한다.
 
 ## 제목 규칙
 
@@ -69,3 +72,10 @@ HTML 본문은 아래 세 가지와 **같이** 나가야 깨지지 않는다 —
 - **stage 는 Flyway 가 꺼져 있다**(Hibernate `update`). V38 이 돌지 않으므로 같은 본문을 손으로 한 번 넣는다 — stage 에는 V14 시딩도 안 돌아
   행 자체가 없으므로 "없으면 INSERT, 있으면 UPDATE" 로 쓴다
 - 새 템플릿을 HTML 로 만들 때도 같은 순서다: playground `templates/` 에 시안 → 알림 템플릿 팝업의 미리보기로 확인 → `V{n}` 마이그레이션(작은따옴표는 두 번)
+
+## 문의 회신 배포
+
+- `NOTIFICATION_SITE_BASE_URL` 을 명시하면 그 주소가 우선한다. 없으면 기존 `APP_ENV` 에 따라 로컬(`local`, 미설정 포함) `http://localhost:4700`, stage `https://stage.studyclub.life`, 운영(`production`) `https://studyclub.life` 를 사용한다. 다른 환경 이름은 주소를 명시해야 한다. 프로토의 localhost:4713 주소를 넣지 않는다.
+- #373 문의 구현이 전제다. 기존 V41 이 반 공지 마이그레이션과 충돌하여 미병합 문의 스키마를 `V47__feedback.sql` 로 옮겼다. V46 은 같은 조건의 복수 템플릿이다.
+- Flyway 를 쓰는 환경은 V47·V48 을 적용한다. stage 는 Hibernate 가 문의 테이블을 만들고, `backend/notification/src/main/resources/db/migration/V48__feedback_replied_email.sql` 을 한 번 실행해 템플릿을 등록한다. 또는 백오피스 알림 템플릿에서 「문의 회신」 조건으로 같은 제목·HTML을 등록한다. 기존 문의 회신 템플릿이 있으면 중복 등록하거나 덮어쓰지 않는다.
+- HTML과 기존 메일 클라이언트의 일반 텍스트 대체본을 함께 보낸다. 과거 문의를 대상으로 알림을 생성하는 작업은 없다.

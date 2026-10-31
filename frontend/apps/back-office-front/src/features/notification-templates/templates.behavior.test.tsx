@@ -449,6 +449,121 @@ describe('알림 템플릿 화면', () => {
     expect(within(dialog).getByText(/지난 발송 이력은 남습니다/)).toBeTruthy();
   });
 
+  it('같은 조건에 다른 템플릿이 남으면 삭제 확인은 이 템플릿의 메일만 멈춘다고 알리고 조건별 영향은 보이지 않는다', async () => {
+    fakeServer([tpl(), tpl({ id: 2, subject: '[StudyClub] 첫 스터디를 찾아보세요' })]);
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: '회원가입' }))[0]);
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    const impact = within(dialog).getByText(/이 템플릿의 메일만 더 이상 나가지 않습니다/);
+    expect(impact.textContent).toContain('같은 조건의 다른 템플릿 1개는 계속 나갑니다');
+    expect(within(dialog).queryByText('삭제하면 새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.')).toBeNull();
+    expect(impact.className).not.toContain('text-danger-fg');
+  });
+
+  it('하나를 지워 마지막만 남으면 삭제 확인이 다시 그 조건의 알림이 멈춘다고 알린다', async () => {
+    fakeServer([tpl(), tpl({ id: 2, subject: '[StudyClub] 첫 스터디를 찾아보세요' })]);
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: '회원가입' }))[0]);
+    await screen.findByLabelText(/제목/);
+    let dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '삭제' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // 하나가 남는다 — 이제 이 템플릿이 그 조건의 마지막이다
+    fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
+    await screen.findByLabelText(/제목/);
+    dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    const impact = within(dialog).getByText('삭제하면 새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.');
+    expect(impact.className).toContain('text-danger-fg');
+    expect(within(dialog).queryByText(/다른 템플릿/)).toBeNull();
+  });
+
+  it('다른 조건의 템플릿은 세지 않는다 — 스터디 공지가 하나뿐이면 회원가입 템플릿이 둘이어도 공지 삭제는 조건별 영향을 알린다', async () => {
+    fakeServer([
+      tpl(),
+      tpl({ id: 2, subject: '둘째 환영 메일' }),
+      tpl({ id: 3, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' }),
+    ]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+
+    expect(within(dialog).getByText(/메일을 포함한 스터디 공지를 보낼 수 없습니다/)).toBeTruthy();
+    expect(within(dialog).queryByText(/다른 템플릿/)).toBeNull();
+  });
+
+  it('조건의 마지막 템플릿을 다른 조건으로 바꾸려 하면 저장 전에 그 조건의 알림이 멈춘다고 알리고, 되돌리면 사라진다', async () => {
+    fakeServer([tpl(), tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '스터디 공지' }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+
+    // 열었을 때는 조건을 바꾸지 않았으니 안내가 없다
+    expect(within(dialog).queryByRole('status')).toBeNull();
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+    const warning = within(dialog).getByRole('status');
+    expect(warning.textContent).toContain('‘스터디 공지’ 조건의 마지막입니다');
+    expect(warning.textContent).toContain('조건을 바꿔 저장하면 메일을 포함한 스터디 공지를 보낼 수 없습니다');
+    expect(warning.className).toContain('text-danger-fg');
+    // 서버가 막지 않으니 저장은 막지 않는다
+    expect((within(dialog).getByRole('button', { name: '저장' }) as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
+    expect(within(dialog).queryByRole('status')).toBeNull();
+  });
+
+  it('같은 조건에 다른 템플릿이 남아 있으면 조건을 바꿔도 안내하지 않는다', async () => {
+    fakeServer([
+      tpl({ id: 1, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' }),
+      tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] 새 공지가 도착했어요' }),
+    ]);
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: '스터디 공지' }))[0]);
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+
+    expect(within(dialog).queryByRole('status')).toBeNull();
+  });
+
+  it('템플릿을 새로 추가할 때는 조건을 골라도 안내하지 않는다 — 떠나는 조건이 없다', async () => {
+    fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
+    renderPage();
+    await screen.findByRole('button', { name: '스터디 공지' });
+    fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'STUDY_NOTICE' } });
+    fireEvent.change(within(dialog).getByLabelText(/알림 조건/), { target: { value: 'USER_REGISTERED' } });
+
+    expect(within(dialog).queryByRole('status')).toBeNull();
+  });
+
+  it('문의 회신은 링크 변수를 안내하고 마지막 템플릿 삭제가 첫 답변을 막는다고 알린다', async () => {
+    fakeServer([tpl({ eventType: 'FEEDBACK_REPLIED', subject: '[StudyClub] 문의에 답변이 등록됐어요' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '문의 회신' }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(/feedbackUrl/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    expect(within(dialog).getByText(/문의에 첫 답변을 등록할 수 없습니다/)).toBeInTheDocument();
+  });
+
   it('스터디 공지 템플릿의 삭제 확인은 메일 포함 공지가 막히고 디스코드만 보내는 공지는 영향이 없다고 알린다', async () => {
     fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
     renderPage();
@@ -508,7 +623,7 @@ describe('알림 템플릿 화면', () => {
     const options = within(dialog)
       .getAllByRole('option')
       .map((o) => o.textContent);
-    expect(options).toEqual(['회원가입', '스터디 공지']);
+    expect(options).toEqual(['회원가입', '스터디 공지', '문의 회신']);
   });
 
   it('지운 스터디 공지 템플릿은 추가 팝업에서 조건을 골라 다시 만든다', async () => {
@@ -641,24 +756,27 @@ describe('알림 템플릿 화면', () => {
     expect(utf8Bytes('가😀a')).toBe(8);
   });
 
-  it('이미 있는 조건(409)은 토스트로 알리고, 팝업 안에는 오류를 띄우지 않고 입력을 유지한다', async () => {
-    const message = '이미 이 알림 조건의 템플릿이 있습니다. 기존 템플릿을 수정하세요.';
-    fakeServer([tpl()], { method: 'POST', status: 409, message });
+  it('이미 템플릿이 있는 조건에도 추가된다 — 같은 조건 템플릿이 목록에 함께 서고 오류 토스트는 없다', async () => {
+    fakeServer([tpl()]);
     renderPage();
     await screen.findByRole('button', { name: '회원가입' });
     fireEvent.click(screen.getByRole('button', { name: /템플릿 추가/ }));
 
     await screen.findByLabelText(/제목/);
     const dialog = screen.getByRole('dialog');
-    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '중복 제목' } });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '중복 본문' } });
+    fireEvent.change(within(dialog).getByLabelText(/제목/), { target: { value: '둘째 환영 메일' } });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /본문/ }), { target: { value: '둘째 본문' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith(message));
-    // 팝업은 열린 채 값이 남고, 인라인 오류는 없다. 다시 눌러 볼 수 있다
-    expect(within(dialog).queryByRole('alert')).toBeNull();
-    expect((within(dialog).getByLabelText(/제목/) as HTMLInputElement).value).toBe('중복 제목');
-    expect((within(dialog).getByRole('button', { name: '추가' }) as HTMLButtonElement).disabled).toBe(false);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(JSON.parse(String(callsOf('POST')[0][1]?.body))).toEqual({
+      eventType: 'USER_REGISTERED',
+      subject: '둘째 환영 메일',
+      body: '둘째 본문',
+    });
+    expect(await screen.findByText('둘째 환영 메일')).toBeTruthy();
+    expect(screen.getByText('[StudyClub] 회원가입을 환영합니다')).toBeTruthy();
+    expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
   it('입력 오류(4xx)는 서버가 준 이유를 그대로 보여 준다', async () => {
