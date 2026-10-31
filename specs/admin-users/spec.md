@@ -1,6 +1,7 @@
 # 백오피스 회원 API Spec — 회원 목록 · 개인정보 보기 · 계정 권한 변경
 
 > 갱신: 2026-10-31 — 디스코드 아이디도 이메일과 같은 개별 열람·감사 기록 방식으로 제공한다. 목록에는 연동 여부만 보낸다.
+> 갱신: 2026-10-31 — 이메일·디스코드 모두 플레이그라운드의 눈 아이콘 보기·가리기를 반영한다. 가리면 원본을 지우고, 다시 열 때 새 요청과 감사 기록을 남긴다.
 
 > ERD: [ACCOUNT](../../docs/erd/ACCOUNT.md), [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md), [STUDY](../../docs/erd/STUDY.md), [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) (신규)
 > 생성일: 2026-10-01
@@ -18,7 +19,7 @@
 >
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) — 계정 권한(캡틴·크루)과 스터디 역할(네비게이터)은 다른 층이다
 > 관련: [authz-guards/spec.md](../authz-guards/spec.md) — 인가는 이 스펙을 따른다. [back-office-login/spec.md](../back-office-login/spec.md) — 「2단계 — 역할 부여」를 이 스펙이 받는다. [user-leave/spec.md](../user-leave/spec.md) — 탈퇴 계정은 물리 삭제라 목록에 나오지 않는다
-> 기준 프로토타입: playground 운영 콘솔 › 유저 (`frontend/apps/playground/src/proto/console/components/UsersTable.tsx`, `lib/roles.ts`). 이메일 「보기」는 playground 반영 전이다 — 화면 모양은 반영되면 그것을 따른다
+> 기준 프로토타입: playground 운영 콘솔 › 유저 (`frontend/apps/playground/src/proto/console/components/UsersTable.tsx`, `components/DiscordCell.tsx`, `lib/roles.ts`). 이메일·디스코드 열람은 눈 아이콘으로 열고 다시 가리는 모양을 따른다.
 
 ## 엔드포인트 목록
 
@@ -280,9 +281,10 @@ Query Parameters / Request Body 없음.
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/back-office-front/src/features/users/components/DiscordCell.tsx`: 미연동은 「미연동」만, 연동 상태는 「연동」과 「보기」를 표시한다.
-- 클릭 중에는 해당 버튼을 비활성화하고 「확인 중…」으로 표시한다. 성공하면 그 줄에 `@username`을 보여주고 버튼은 없앤다. 실패하면 가린 상태를 유지하고 오류를 안내한다.
-- 원본은 페이지 state에만 보관한다. 이메일과 같이 목록 데이터 갱신·화면 이탈 시 비우고, 다시 보려면 새 요청으로 새 감사 기록을 남긴다. 별도 「가리기」 버튼·시간 제한은 추가하지 않는다.
+- `frontend/apps/back-office-front/src/features/users/components/DiscordCell.tsx`: 미연동은 「미연동」만, 연동 상태는 「연동」과 눈 아이콘을 표시한다. 버튼의 접근성 이름·툴팁으로 보기·가리기를 구분한다.
+- 클릭 중에는 해당 버튼을 비활성화하고 로딩 아이콘과 스크린리더용 「확인 중…」을 표시한다. 성공하면 그 줄에 `@username`을 보여주고 눈 가림 아이콘으로 바꾼다. 실패하면 가린 상태를 유지하고 오류를 안내한다.
+- 눈 가림 아이콘을 누르면 해당 원본을 페이지 state에서 즉시 지운다. 가리기는 API를 호출하지 않으며, 다시 눈 아이콘을 누르면 새 요청으로 새 감사 기록을 남긴 뒤 원본을 보여준다.
+- 원본은 페이지 state에만 보관한다. 이메일과 같이 목록 데이터 갱신·화면 이탈 시에도 비운다. 시간 제한은 추가하지 않는다.
 - 이메일 보기와 독립적으로 동작한다. 원본을 목록·mutation 캐시, URL, localStorage에 남기지 않는다.
 
 ### 미확정
@@ -346,7 +348,8 @@ Query Parameters / Request Body 없음.
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/back-office-front/src/app/users/page.tsx` — 이메일 칸 옆 「보기」. 누르면 그 줄에 처리 중을 표시하고 중복 클릭을 막는다 (권한 변경과 같은 원칙). 성공하면 그 줄의 이메일을 원본으로 바꿔 보여준다
+- `frontend/apps/back-office-front/src/app/users/page.tsx` — 이메일 칸 옆 눈 아이콘. 누르면 해당 버튼을 비활성화하고 로딩 아이콘과 스크린리더용 「확인 중…」을 표시한다. 성공하면 그 줄의 이메일과 눈 가림 아이콘을 보여준다.
+- 눈 가림 아이콘을 누르면 해당 이메일 원본을 페이지 state에서 즉시 지우고 마스킹 상태로 돌아간다. 가리기는 API를 호출하지 않는다. 다시 열 때는 `POST …/email-reveals`를 새로 호출하여 감사 기록을 남긴다. 디스코드 열람·가리기와 독립적으로 동작한다.
   - 받은 원본은 **그 화면의 메모리에만** 둔다. 쿼리 캐시에 오래 두거나 URL·localStorage 에 넣지 않는다
   - 목록을 다시 받거나 화면을 떠나면 다시 가려진다. 다시 보려면 다시 누른다(다시 기록된다)
   - 실패하면 가린 값을 그대로 두고 `errorMessage` 를 토스트로 띄운다
@@ -654,8 +657,8 @@ Query Parameters / Request Body 없음.
 ## 미확정
 
 - [NEEDS CLARIFICATION] **감사 로그 보관 기간** — 운영진 확인 중. 개인정보 접속기록은 1년 이상 보관하라는 기준(개인정보의 안전성 확보조치 기준)이 있는 것으로 알고 있어 그 이상을 제안한다. 근거 조항은 확인 뒤 여기에 적는다
-- 「변경 중」·「보기」 처리 중·실패 안내의 화면 모양 — 디자인에서 정한다. API 계약에는 영향 없음. 정해지기 전까지 실패는 `errorMessage` 토스트
-- 이메일 「보기」·마스킹·감사 로그는 아직 기획 문서(Notion·PRD)에 없다 — 기획 반영은 기획 쪽에서
+- 권한 「변경 중」·실패 안내의 화면 모양 — 디자인에서 정한다. API 계약에는 영향 없음. 정해지기 전까지 실패는 `errorMessage` 토스트. 이메일·디스코드 열람 아이콘과 처리 중 표시는 위 프론트엔드 사용처를 따른다.
+- 이메일·디스코드 열람·가리기와 감사 기록은 Story PRD에 반영했다. Notion 반영 여부는 별도 확인한다.
 - **이메일 검색 방식** — PRD 는 닉네임·이메일 부분 일치, 이 스펙은 이메일 전체 일치(PR #163 합의, 마스킹과 함께). 기획 반영 대기 ([기획 문서와 다른 곳](#기획-문서와-다른-곳))
 - **권한표에 POL-0001 「신청 폼 · 신청 결과」 표를 넣을지** — 기획 확인 대기. 지금은 넣지 않는다 ([권한표](#역할별-기본-권한표-조회)). 넣기로 하면 서버 정의에 그룹 추가 + 화면 열 이름표에 「담당 캡틴」·「다른 캡틴」
 - ~~반 편성 전 담당 캡틴을 「참여 중」으로 볼지~~ → 보지 않는다. 담당 캡틴은 신청했을 때만 참여다 (POL-0001, 2026-10-14)
