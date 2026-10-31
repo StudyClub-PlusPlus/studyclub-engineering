@@ -725,7 +725,7 @@ export function ScheduleTab({
               return (
                 <Button
                   key={z.iana}
-                  variant={zone === z.iana ? 'secondary' : 'ghost'}
+                  variant={zone === z.iana ? 'secondary' : 'tertiary'}
                   size='sm'
                   type='button'
                   onClick={() => setZone(z.iana)}
@@ -786,7 +786,7 @@ export function ScheduleTab({
                       삭제
                     </Button>
                     {picked.length > 0 && (
-                      <Button size='sm' variant='ghost' onClick={() => setChecked(new Set())}>
+                      <Button size='sm' variant='tertiary' onClick={() => setChecked(new Set())}>
                         선택 해제
                       </Button>
                     )}
@@ -797,7 +797,7 @@ export function ScheduleTab({
                     {errorCount > 0 && <p className='mr-1 type-label-sm text-error-700'>고칠 칸 {errorCount}개</p>}
                     {dirty && (
                       <Button
-                        variant='ghost'
+                        variant='tertiary'
                         size='sm'
                         disabled={saving}
                         onClick={() => {

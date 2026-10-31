@@ -214,7 +214,7 @@ export default function MyPage() {
                   className='min-w-0 flex-1 border-0 border-b-2 border-brand bg-transparent p-0 pb-0.5 type-title-lg text-fg outline-none'
                 />
                 <span className='tnum shrink-0 type-label-sm text-fg-placeholder'>{trimmedName.length}/20</span>
-                <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
+                <Button size='sm' variant='tertiary' onClick={() => setEditing(false)}>
                   취소
                 </Button>
                 <Button size='sm' onClick={saveName} disabled={nameBlocked}>
@@ -268,7 +268,7 @@ export default function MyPage() {
             {discord ? (
               <>
                 <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
-                <Button size='sm' variant='ghost' onClick={disconnectDiscord}>
+                <Button size='sm' variant='tertiary' onClick={disconnectDiscord}>
                   연결 해제
                 </Button>
               </>

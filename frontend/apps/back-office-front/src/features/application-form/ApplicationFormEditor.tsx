@@ -272,7 +272,7 @@ export function ApplicationFormEditor({
                     <Button
                       type='button'
                       size='sm'
-                      variant='ghost'
+                      variant='tertiary'
                       leadingIcon={<Trash2 size={13} />}
                       onClick={(event) => {
                         event.stopPropagation();

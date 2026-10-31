@@ -5,32 +5,16 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx';
 
 /** design-system.md §9-1 */
-export type ButtonVariant = 'primary' | 'tonal' | 'secondary' | 'ghost' | 'danger' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger' | 'destructive';
 export type ButtonSize = 'sm' | 'md' | 'lg';
-
-const VARIANT: Record<ButtonVariant, string> = {
-  primary: 'bg-brand text-on-brand shadow-xs hover:bg-brand-hover active:bg-brand-active',
-  tonal: 'bg-primary-light text-primary-dark hover:brightness-[0.97]',
-  secondary: 'bg-surface-raised text-ink border border-border hover:bg-page-bg hover:border-border-interactive',
-  ghost: 'bg-transparent text-text-secondary hover:bg-cloud',
-  /** 지우기 · 내보내기를 **여는** 버튼 — 테두리. 되돌릴 수 없는 마지막 확인은 destructive(채움)가 받는다. */
-  danger: 'bg-surface-raised text-danger-fg border border-danger-fg hover:bg-danger-bg',
-  destructive: 'bg-danger-fg text-on-primary shadow-xs hover:brightness-90',
-};
-
-/* h32/40/48 — sm 은 시각 높이를 유지한 채 ::after 로 44px 터치 타깃을 확보한다. */
-const SIZE: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 type-label-lg gap-1.5',
-  md: 'h-10 px-4 type-label-lg gap-2',
-  lg: 'h-12 px-5 type-label-lg gap-2',
-};
-
-const HIT_AREA = "after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:-translate-y-1/2 after:content-['']";
+export type ButtonState = 'default' | 'error';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** 라벨과 폭을 유지한 채 스피너만 덧붙인다 (§9-1). */
+  /** 실패 문구는 버튼 근처에서 role=alert 및 aria-describedby로 연결한다. */
+  state?: ButtonState;
+  /** 레이블과 아이콘을 유지하며 중복 실행을 막는다. 상태 표시는 사용처의 외부 role=status 영역에서 담당한다. */
   loading?: boolean;
   leadingIcon?: ReactNode;
   trailingIcon?: ReactNode;
@@ -39,45 +23,57 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({
   variant = 'primary',
   size = 'md',
+  state = 'default',
   loading = false,
   leadingIcon,
   trailingIcon,
   disabled,
   className,
   children,
+  'aria-disabled': ariaDisabled,
   ...rest
 }: ButtonProps) {
-  const isDisabled = disabled || loading;
+  const isDisabled = Boolean(disabled || loading || ariaDisabled === true || ariaDisabled === 'true');
   return (
     <button
       {...rest}
       disabled={isDisabled}
+      aria-disabled={ariaDisabled}
       aria-busy={loading || undefined}
-      className={cx(
-        'relative inline-flex shrink-0 items-center justify-center rounded-control',
-        'transition-[background-color,border-color,box-shadow,transform] duration-fast ease-out',
-        'focus-visible:outline-none focus-visible:shadow-(--ring)',
-        'hover:cursor-pointer',
-        // disabled 는 변형 색을 전부 덮는다 (§9-1)
-        'disabled:pointer-events-none disabled:border-transparent disabled:bg-disabled-bg disabled:text-disabled-fg disabled:shadow-none',
-        SIZE[size],
-        size === 'sm' && HIT_AREA,
-        VARIANT[variant],
-        className,
-      )}
+      data-variant={variant}
+      data-size={size}
+      data-state={state}
+      data-loading={loading || undefined}
+      className={cx('sc-button', size === 'sm' ? 'type-label-sm' : 'type-label-lg', className)}
     >
-      {loading ? <Spinner /> : leadingIcon}
-      {children}
-      {trailingIcon}
+      <span className='sc-button-content'>
+        {leadingIcon && (
+          <span className='sc-button-icon' aria-hidden='true'>
+            {leadingIcon}
+          </span>
+        )}
+        {children}
+        {trailingIcon && (
+          <span className='sc-button-icon' aria-hidden='true'>
+            {trailingIcon}
+          </span>
+        )}
+      </span>
     </button>
   );
 }
 
-function Spinner() {
+export interface IconButtonProps extends Omit<ButtonProps, 'leadingIcon' | 'trailingIcon' | 'children'> {
+  icon: ReactNode;
+  'aria-label': string;
+}
+
+export function IconButton({ icon, className, ...rest }: IconButtonProps) {
   return (
-    <svg className='h-4 w-4 shrink-0 animate-spin' viewBox='0 0 16 16' fill='none' aria-hidden='true'>
-      <circle cx='8' cy='8' r='6.5' stroke='currentColor' strokeOpacity='0.25' strokeWidth='2.5' />
-      <path d='M14.5 8A6.5 6.5 0 0 0 8 1.5' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' />
-    </svg>
+    <Button {...rest} className={cx('sc-icon-button', className)}>
+      <span className='sc-button-icon' aria-hidden='true'>
+        {icon}
+      </span>
+    </Button>
   );
 }

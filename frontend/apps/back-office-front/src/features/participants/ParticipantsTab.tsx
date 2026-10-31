@@ -162,7 +162,7 @@ function ParticipantAssignment({
                   )}
                   {picked.length > 0 && (
                     <Button
-                      variant='ghost'
+                      variant='tertiary'
                       size='sm'
                       onClick={() =>
                         setSelected((ids) => ids.filter((id) => !editable.some((p) => p.participantId === id)))
@@ -179,7 +179,7 @@ function ParticipantAssignment({
                     {notice}
                   </span>
                   {dirty && (
-                    <Button variant='ghost' size='sm' disabled={busy} onClick={discard}>
+                    <Button variant='tertiary' size='sm' disabled={busy} onClick={discard}>
                       변경 취소
                     </Button>
                   )}

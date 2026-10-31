@@ -15,6 +15,7 @@ import {
   FilterChip,
   HotBadge,
   Input,
+  IconButton,
   Modal,
   Pagination,
   Segmented,
@@ -28,7 +29,7 @@ import {
 import type { BadgeTone, ButtonSize, ButtonVariant } from '@studyclub/ui';
 import { CalendarDays, Search, Users } from 'lucide-react';
 
-const VARIANTS: ButtonVariant[] = ['primary', 'tonal', 'secondary', 'ghost', 'destructive'];
+const VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'tertiary', 'danger', 'destructive'];
 const SIZES: ButtonSize[] = ['sm', 'md', 'lg'];
 const STATUS_TONES: BadgeTone[] = ['recruiting', 'closingsoon', 'inprogress', 'closed', 'ended'];
 const ROLE_TONES: BadgeTone[] = ['captain', 'navigator', 'member'];
@@ -68,13 +69,16 @@ export default function ComponentsCatalog() {
         </p>
       </header>
 
-      <Case title='Button' note='variant 5종 × size 3종. disabled 상태도 함께.'>
+      <Case
+        title='Button'
+        note='variant 5종 × size 3종. Hover·Pressed·키보드 Focus도 직접 확인하세요. sm은 label-sm, md/lg는 label-lg.'
+      >
         <div className='space-y-3'>
           {SIZES.map((size) => (
             <div key={size} className='flex flex-wrap items-center gap-2'>
               <span className='w-8 type-label-sm text-[var(--color-fg-muted)]'>{size}</span>
               {VARIANTS.map((v) => (
-                <Button key={v} variant={v} size={size}>
+                <Button key={v} variant={v} size={size} className='w-[120px] shrink-0'>
                   {v}
                 </Button>
               ))}
@@ -83,11 +87,57 @@ export default function ComponentsCatalog() {
           <div className='flex flex-wrap items-center gap-2 pt-1'>
             <span className='w-8 type-label-sm text-[var(--color-fg-muted)]'>off</span>
             {VARIANTS.map((v) => (
-              <Button key={v} variant={v} disabled>
+              <Button key={v} variant={v} disabled className='w-[120px] shrink-0'>
                 {v}
               </Button>
             ))}
           </div>
+        </div>
+      </Case>
+
+      <Case
+        title='Button states'
+        note='Error는 variant별 스타일을 비교합니다. Loading은 레이블을 유지하고 중복 클릭을 막으며, 처리 상태는 버튼 밖에서 안내합니다.'
+      >
+        <div className='space-y-4 p-2'>
+          <div className='flex flex-wrap items-center gap-4'>
+            <Button leadingIcon={<Search />}>스터디 검색</Button>
+            <div className='flex items-center gap-2'>
+              <Button loading>저장</Button>
+              <span role='status' className='type-body-sm text-fg-muted'>저장 중…</span>
+            </div>
+          </div>
+          <p id='catalog-save-error' role='alert' className='type-body-sm text-danger-fg'>
+            저장하지 못했어요. 잠시 후 다시 시도해 주세요.
+          </p>
+          <div className='flex flex-wrap items-center gap-4'>
+            {VARIANTS.map((variant) => (
+              <div key={variant} className='flex flex-col items-start gap-2'>
+                <span className='type-label-sm text-fg-muted'>{variant}</span>
+                <Button variant={variant} state='error' aria-describedby='catalog-save-error'>
+                  저장
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Case>
+
+      <Case title='모바일 CTA' note='375px에서도 한 줄 레이블을 유지하고, 작은 화면에서 전체 너비로 표시합니다.'>
+        <Button size='lg' className='w-full sm:w-auto'>스터디 참여 신청 내용을 저장하기</Button>
+      </Case>
+
+      <Case
+        title='IconButton'
+        note='sm 32 / md 40 / lg 48px. aria-label 필수. 터치 환경에서는 클릭 영역을 양축 44px 이상 확보합니다.'
+      >
+        <div className='flex flex-wrap items-center gap-4 p-2'>
+          {SIZES.map((size) => (
+            <IconButton key={size} size={size} variant='tertiary' aria-label='검색' icon={<Search />} />
+          ))}
+          <IconButton aria-label='검색' icon={<Search />} loading />
+          <IconButton aria-label='검색' icon={<Search />} state='error' />
+          <IconButton aria-label='검색' icon={<Search />} disabled />
         </div>
       </Case>
 
@@ -382,7 +432,7 @@ export default function ComponentsCatalog() {
           <Button variant='secondary' size='sm' onClick={() => toast.error('모집 정원이 마감되었습니다.')}>
             에러 토스트
           </Button>
-          <Button variant='ghost' size='sm' onClick={() => toast('기본 안내 알림입니다.')}>
+          <Button variant='tertiary' size='sm' onClick={() => toast('기본 안내 알림입니다.')}>
             기본 토스트
           </Button>
         </div>
@@ -393,7 +443,7 @@ export default function ComponentsCatalog() {
           icon={<Search size={24} />}
           title='조건에 맞는 스터디가 없어요'
           description='필터를 줄이거나 다른 키워드로 찾아보세요.'
-          action={<Button variant='tonal'>필터 초기화</Button>}
+          action={<Button variant='tertiary'>필터 초기화</Button>}
         />
       </Case>
 
