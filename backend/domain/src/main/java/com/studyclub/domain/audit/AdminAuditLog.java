@@ -78,6 +78,12 @@ public class AdminAuditLog extends BaseEntity {
                 actorAccountId, AdminAuditAction.EMAIL_REVEAL, targetAccountId, null, null);
     }
 
+    /** 디스코드 아이디 보기. 원문을 저장하지 않고 요청자·대상만 기록한다. */
+    public static AdminAuditLog discordReveal(Long actorAccountId, Long targetAccountId) {
+        return new AdminAuditLog(
+                actorAccountId, AdminAuditAction.DISCORD_REVEAL, targetAccountId, null, null);
+    }
+
     /**
      * 계정 권한 변경. 값이 실제로 바뀐 경우에만 남긴다 — 같은 값 요청인지는 호출자(서비스)가 전이 전에 {@code before == after} 로 걸러 이 팩토리를
      * 부르지 않는다.

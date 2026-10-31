@@ -11,6 +11,7 @@ import { AccountRoleCell } from '@/features/users/components/AccountRoleCell';
 import { RoleBadgeSelect } from '@/features/users/components/RoleBadgeSelect';
 import { DISCORD_NOTICE } from '@/features/users/labels';
 import type { ApiAdminAccount, ApiAdminAccountPage } from '@/features/users/types';
+import { useRevealedDiscordHandles } from '@/features/users/use-revealed-discord-handles';
 import { useRevealedEmails } from '@/features/users/use-revealed-emails';
 import { ApiError, http } from '@/lib/http';
 
@@ -76,7 +77,6 @@ function account(patch: Partial<ApiAdminAccount> = {}): ApiAdminAccount {
     joinedAt: '2026-09-01T11:00:00Z',
     roleChangeBlockedReason: null,
     discordLinked: false,
-    discordHandle: null,
     ...patch,
   };
 }
@@ -197,6 +197,113 @@ describe('이메일 보기', () => {
     });
     await waitFor(() => expect(screen.queryByText(SECRET)).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: '하늘 이메일 보기' })).toBeInTheDocument();
+  });
+});
+
+describe('디스코드 보기', () => {
+  const HANDLE = 'sample_crew';
+  const revealCalls = () => httpMock.mock.calls.filter(([p]) => String(p).includes('/discord-reveals'));
+
+  function route(reveal: () => Promise<unknown>) {
+    httpMock.mockImplementation(async (path) => {
+      if (String(path).includes('/discord-reveals')) return reveal();
+      if (String(path).includes('/email-reveals')) return { id: 18, email: SECRET };
+      return pageOf([
+        account({ discordLinked: true }),
+        account({ id: 19, name: '나래', discordLinked: true }),
+        account({ id: 20, name: '바다', discordLinked: false }),
+      ]);
+    });
+  }
+
+  it('보기 전에는 원본이 없고, 처리 중 중복 클릭을 막으며 성공한 줄만 펼친다', async () => {
+    const d = deferred<{ id: number; discordHandle: string }>();
+    route(() => d.promise);
+    const { client } = renderWith(<UsersAdmin />);
+    const button = await screen.findByRole('button', { name: '하늘 디스코드 아이디 보기' });
+    expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '바다 디스코드 아이디 보기' })).not.toBeInTheDocument();
+    fireEvent.click(button);
+    // 같은 틱에 다시 눌러도 서버 요청은 한 번이다.
+    fireEvent.click(button);
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(button).toHaveTextContent('확인 중…');
+    expect(screen.getByRole('button', { name: '나래 디스코드 아이디 보기' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '하늘 이메일 보기' })).toBeEnabled();
+    expect(revealCalls()).toHaveLength(1);
+    expect(revealCalls()[0]).toEqual(['/api/admin/users/18/discord-reveals', { method: 'POST' }]);
+
+    await act(async () => d.resolve({ id: 18, discordHandle: HANDLE }));
+    expect(await screen.findByText(`@${HANDLE}`)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '하늘 디스코드 아이디 보기' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '나래 디스코드 아이디 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '하늘 이메일 보기' })).toBeInTheDocument();
+    await waitFor(() => expect(client.getMutationCache().getAll()).toHaveLength(0));
+    expect(
+      JSON.stringify(
+        client
+          .getQueryCache()
+          .getAll()
+          .map((q) => q.state.data),
+      ),
+    ).not.toContain(HANDLE);
+  });
+
+  it('실패하면 원본은 숨겨두고 오류를 안내하며 다시 시도할 수 있다', async () => {
+    route(() => Promise.reject(new ApiError(500, '열람 기록을 저장하지 못했습니다.')));
+    renderWith(<UsersAdmin />);
+    const button = await screen.findByRole('button', { name: '하늘 디스코드 아이디 보기' });
+    fireEvent.click(button);
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('열람 기록을 저장하지 못했습니다.'));
+    expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument();
+    await waitFor(() => expect(button).toBeEnabled());
+  });
+
+  it('이메일과 독립적으로 펼치고, 목록 갱신 후 다시 보기는 새 요청을 보낸다', async () => {
+    route(() => Promise.resolve({ id: 18, discordHandle: HANDLE }));
+    const { client } = renderWith(<UsersAdmin />);
+    fireEvent.click(await screen.findByRole('button', { name: '하늘 이메일 보기' }));
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+    expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '하늘 디스코드 아이디 보기' }));
+    expect(await screen.findByText(`@${HANDLE}`)).toBeInTheDocument();
+    expect(screen.getByText(SECRET)).toBeInTheDocument();
+
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['users'] });
+    });
+    await waitFor(() => expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument());
+    expect(screen.queryByText(SECRET)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '하늘 디스코드 아이디 보기' }));
+    expect(await screen.findByText(`@${HANDLE}`)).toBeInTheDocument();
+    expect(revealCalls()).toHaveLength(2);
+    expect(screen.queryByText(SECRET)).not.toBeInTheDocument();
+  });
+
+  it('목록 갱신 전 요청이 늦게 끝나도 새 목록에서 원본을 펼치지 않는다', async () => {
+    const d = deferred<{ id: number; discordHandle: string }>();
+    route(() => d.promise);
+    const { client } = renderWith(<UsersAdmin />);
+    fireEvent.click(await screen.findByRole('button', { name: '하늘 디스코드 아이디 보기' }));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['users'] });
+    });
+    await act(async () => d.resolve({ id: 18, discordHandle: HANDLE }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '하늘 디스코드 아이디 보기' })).toBeEnabled());
+    expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument();
+    await waitFor(() => expect(client.getMutationCache().getAll()).toHaveLength(0));
+  });
+
+  it('같은 목록에서는 원본을 유지하고 목록 버전이 바뀌면 이전 결과도 버린다', () => {
+    const { result, rerender } = renderHook(({ v }) => useRevealedDiscordHandles(v), { initialProps: { v: 1 } });
+    const oldReveal = result.current.reveal;
+    act(() => oldReveal(18, HANDLE));
+    rerender({ v: 1 });
+    expect(result.current.handles.get(18)).toBe(HANDLE);
+    rerender({ v: 2 });
+    expect(result.current.handles.size).toBe(0);
+    act(() => oldReveal(18, HANDLE));
+    expect(result.current.handles.size).toBe(0);
   });
 });
 

@@ -5,6 +5,7 @@ import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient 
 import { DISCORD_NOTICE } from '@/features/users/labels';
 import type {
   ApiAdminAccountPage,
+  ApiDiscordReveal,
   ApiEmailReveal,
   ApiRoleChange,
   ApiRolePermissions,
@@ -27,6 +28,7 @@ export const userKeys = {
    */
   roleChange: (accountId: number) => [...userKeys.all, 'role-change', accountId] as const,
   emailReveal: (accountId: number) => [...userKeys.all, 'email-reveal', accountId] as const,
+  discordReveal: (accountId: number) => [...userKeys.all, 'discord-reveal', accountId] as const,
 };
 
 /** 목록 요청 경로. 값이 없는 조건은 넣지 않는다. `role=ALL` 은 기본값이라 싣지 않는다. */
@@ -114,6 +116,25 @@ export function useChangeAccountRole(accountId: number) {
   const isPending = useIsMutating({ mutationKey }) > 0;
   return {
     mutate: mutation.mutate,
+    isPending,
+    isBusy: () => queryClient.isMutating({ mutationKey }) > 0,
+  };
+}
+
+/** 이메일과 같은 개별 열람. 원본은 페이지 state로 옮긴 뒤 reset하여 캐시에 남기지 않는다. */
+export function useRevealDiscord(accountId: number) {
+  const queryClient = useQueryClient();
+  const mutationKey = userKeys.discordReveal(accountId);
+  const mutation = useMutation({
+    mutationKey,
+    gcTime: 0,
+    mutationFn: () => http<ApiDiscordReveal>(`/api/admin/users/${accountId}/discord-reveals`, { method: 'POST' }),
+    onError: (err) => toast.error(err.message || '디스코드 아이디를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+  });
+  const isPending = useIsMutating({ mutationKey }) > 0;
+  return {
+    mutate: mutation.mutate,
+    reset: mutation.reset,
     isPending,
     isBusy: () => queryClient.isMutating({ mutationKey }) > 0,
   };
