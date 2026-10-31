@@ -75,6 +75,8 @@ export const studyScreenStates: ScreenStateDef[] = [
             nickname: '테스트',
             picture: null,
             role: 'MEMBER',
+            // 가입을 마친 회원 — 없으면 「신청하기」가 온보딩으로 보낸다
+            onboardingCompletedAt: '2026-08-01T00:00:00Z',
           },
         },
         // 연동 여부는 GET /api/me 의 discordLinked — 개발 서버의 MSW 목이 진짜 응답에 이 값을 덧붙인다
@@ -114,6 +116,8 @@ export const studyScreenStates: ScreenStateDef[] = [
             nickname: '테스트',
             picture: null,
             role: 'MEMBER',
+            // 가입을 마친 회원 — 없으면 「신청하기」가 온보딩으로 보낸다
+            onboardingCompletedAt: '2026-08-01T00:00:00Z',
           },
         },
         { key: 'msw-discord-linked', value: false },

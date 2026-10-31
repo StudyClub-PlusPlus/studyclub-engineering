@@ -139,7 +139,7 @@ export function ApplyDiscordGate({
         </p>
         {!DISCORD_LINK_READY && (
           <p role='status' className='type-body-sm text-fg-secondary'>
-            {t({ ko: '디스코드 연동은 준비 중입니다. 운영진에게 문의해 주세요.', en: 'Discord connection is coming soon. Please contact the organizers.' }, locale)}
+            {t({ ko: '디스코드 연동은 준비 중입니다. 캡틴에게 문의해 주세요.', en: 'Discord connection is coming soon. Please contact a captain.' }, locale)}
           </p>
         )}
         {notInGuild && (

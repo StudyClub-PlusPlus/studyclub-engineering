@@ -10,7 +10,8 @@ export type ApiMeetingList = {
     navigatorName: string | null;
     rules: string | null;
   };
-  me: { participantId: number | null; canEdit: boolean; captain?: boolean };
+  me: { participantId: number | null; canEdit: boolean };
+  /** 실제 API `ParticipantView` 는 participantId · name 뿐. 아래 셋은 아직 내리지 않는다 — 참여 중단은 출석 응답으로 안다 */
   participants: Array<{
     participantId: number;
     name: string;
@@ -48,7 +49,8 @@ export type ApiAttendance = {
     captain: boolean;
     participantStatus: string;
     leftAt: string | null;
-    attendances: Array<{ meetingId: number; status: string }>;
+    /** status null = 미체크 (specs/attendance) */
+    attendances: Array<{ meetingId: number; status: string | null }>;
     attendanceRate: number | null;
   }>;
 };

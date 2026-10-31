@@ -27,7 +27,7 @@ export const studyKeys = {
 
 /**
  * 목록. 공개 API 라 로그인 없이도 받는다.
- * TODO(api): GET /api/studies
+ * GET /api/studies
  *
  * `initial` 은 서버가 기본 조건으로 이미 받아 둔 첫 화면이다 — 같은 조건이면 요청을 한 번 더 보내지
  * 않도록 `initialData` 로 심는다. 필터를 건드리면 키가 달라져 자연히 새로 받는다.
@@ -46,7 +46,7 @@ export function useStudies(search: StudySearch, initial?: Study[]) {
   });
 }
 
-/** TODO(api): GET /api/studies/{studyId} */
+/** 상세. GET /api/studies/{studyId} */
 /** initial = 서버에서 미리 받은 값 — 첫 HTML 에 본문이 실리게 한다(크롤러는 JS 를 거의 안 돌린다) */
 export function useStudyDetail(studyId: number, initial?: Study | null) {
   return useQuery({

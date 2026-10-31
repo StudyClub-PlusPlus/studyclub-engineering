@@ -43,11 +43,28 @@ function calcRate(row: Record<string, MyStatus | undefined> | undefined, skipIds
   return total === 0 ? undefined : Math.round((scored / total) * 100);
 }
 
-function buildCells(data: ApiAttendance | undefined): Record<string, Record<string, MyStatus | undefined>> {
+/**
+ * 응답 → 출석 칸. 미입력(null) 칸과 **시작 전 회차의 결석** 칸은 비운다 — 서버는 회차를 추가할 때 시작 전 회차에도
+ * 결석(`ABSENT`)을 미리 만든다. 비운 칸은 키를 두지 않아 미체크로 그려지고 출석률에서도 빠진다.
+ * 백오피스 출석부(`back-office-front/src/features/attendance/api.ts` toBook)와 같은 규칙.
+ */
+function buildCells(
+  data: ApiAttendance | undefined,
+  now: Date = new Date(),
+): Record<string, Record<string, MyStatus | undefined>> {
+  const upcoming = new Set(
+    (data?.meetings ?? []).filter((m) => Date.parse(m.scheduledAt) > now.getTime()).map((m) => m.id),
+  );
   return Object.fromEntries(
     (data?.participants ?? []).map((p) => [
       String(p.participantId),
-      Object.fromEntries(p.attendances.map((a) => [String(a.meetingId), a.status.toLowerCase() as MyStatus])),
+      Object.fromEntries(
+        p.attendances.flatMap((a) =>
+          a.status && !(a.status === 'ABSENT' && upcoming.has(a.meetingId))
+            ? [[String(a.meetingId), a.status.toLowerCase() as MyStatus]]
+            : [],
+        ),
+      ),
     ]),
   );
 }

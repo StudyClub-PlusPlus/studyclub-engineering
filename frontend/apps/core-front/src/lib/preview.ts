@@ -1,7 +1,6 @@
 'use client';
 
 import { getUser, setUser, type SessionUser } from '@/lib/auth';
-import { seedDemoData } from '@/lib/me';
 
 /**
  * 프로토타입 미리보기 세션 — **로컬 개발 서버에서만** 쓰인다.
@@ -42,10 +41,9 @@ export function syncPreview(): SessionUser | null {
   return u;
 }
 
-/** 미리보기로 들어간다 — 세션을 넣고 더미를 채운다. */
+/** 미리보기로 들어간다 — 세션만 넣는다. 화면 데이터는 MSW(켜 둔 핸들러)나 API 가 준다. */
 export function enterPreview() {
   setUser(PREVIEW_USER);
   // 미들웨어가 존재 여부만 보는 게이트 쿠키. 서버가 발급하는 진짜 토큰이 아니다.
   document.cookie = 'sc_access_token=dev-preview; path=/';
-  seedDemoData();
 }
