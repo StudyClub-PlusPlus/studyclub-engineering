@@ -184,7 +184,7 @@ export function ApplicationFormTab({ study }: { study: Study }) {
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-2xl flex-col gap-3'>
+    <div className='flex w-full flex-col gap-3'>
       <div data-anno='form:1'>
         <FormHeaderCard
           cardRef={(el) => {

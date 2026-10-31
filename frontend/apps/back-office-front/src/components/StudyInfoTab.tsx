@@ -15,6 +15,7 @@ import {
   type StudyFormErrors,
   type StudyFormValues,
 } from '@/components/StudyForm';
+import { studiesListHref } from '@/features/studies/list-return';
 import { useDeleteStudy, useUpdateStudy } from '@/features/studies/queries';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
@@ -89,7 +90,8 @@ export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetai
     if (busy) return;
     remove.mutate(undefined, {
       onSuccess: () => {
-        router.replace('/studies');
+        // 걸어 둔 필터 · 페이지로 돌아간다
+        router.replace(studiesListHref());
         router.refresh();
       },
     });
