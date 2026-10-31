@@ -5,6 +5,7 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountConsentRepository;
+import com.studyclub.domain.account.AccountDeleted;
 import com.studyclub.domain.account.AccountIdentity;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountLeaveReason;
@@ -16,6 +17,8 @@ import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.notice.StudyNoticeRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.proposal.StudyProposal;
@@ -35,6 +38,7 @@ import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
@@ -82,6 +86,7 @@ public class AccountDeletionService {
     private final ObjectMapper objectMapper;
     private final UploadService uploadService;
     private final AppleOAuthClient appleOAuthClient;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -114,7 +119,7 @@ public class AccountDeletionService {
         // 섞이는 것을 막기 위해 이 시각 이전 회차는 집계에 남기고 이후 회차만 제외한다(AttendanceRateCalculator).
         // 맡고 있던 네비게이터 자리도 이걸로 함께 사라진다. 공동 네비게이터가 남아 있는지는 판정하지 않는다
         // (인계 필요 여부는 시스템이 계산하지 않는다는 정책).
-        anonymizeParticipations(accountId);
+        List<StudyParticipant> onRoster = anonymizeParticipations(accountId);
 
         // 관심 표시 파기.
         studyBookmarkRepository.deleteByAccountId(accountId);
@@ -134,6 +139,14 @@ public class AccountDeletionService {
         // 이 계정이 보낸 공지 — 받은 사람들의 메일 행에서 보낸 사람 이름을 비식별화한다 (specs/study-notice/spec.md).
         redactSentNoticeMails(accountId);
 
+        // 운영자 알림 — 탈퇴는 디스코드 role 을 떼지 않아 운영자가 손으로 정리한다. 계정 값은 지우기 전에 담는다
+        // (specs/ops-alerts/spec.md).
+        eventPublisher.publishEvent(
+                AccountDeleted.of(
+                        account,
+                        onRoster.stream().map(StudyParticipant::getStudyId).distinct().toList(),
+                        onRoster.stream()
+                                .anyMatch(p -> p.getParticipantRole() == ParticipantRole.LEADER)));
         // 계정·프로필 삭제.
         accountRepository.delete(account);
         // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 연결된·연결 안 된 파일을 DELETING 으로 찜하고
@@ -144,18 +157,27 @@ public class AccountDeletionService {
 
     // 참여 중단 · 발표 신청과 같은 분반 잠금을 먼저 쥔다 — 그 사이에 커밋된 참여 중단의 상태 · LEFT_AT 을 덮어쓰지 않는다 (share 10-18 D7).
     // 분반은 ID 오름차순으로 잠근다 — 여러 분반을 잠그는 참여 중단도 이 순서다. 디스코드 출석은 분반이 아니라 회차만, 같은 분반 ID 오름차순으로 잠근다
-    private void anonymizeParticipations(Long accountId) {
+    // 표시하기 직전에 명부에 있던(ACTIVE·PAUSED) 행을 돌려준다 — 디스코드 role 이 남아 있을 수 있는 곳이다
+    private List<StudyParticipant> anonymizeParticipations(Long accountId) {
         List<Long> groupIds = studyParticipantRepository.findStudyGroupIdsByAccountId(accountId);
         for (Long groupId : groupIds) {
             studyGroupRepository.findByIdForUpdate(groupId);
         }
         List<StudyParticipant> participations =
                 studyParticipantRepository.findByAccountIdForUpdate(accountId);
+        List<StudyParticipant> onRoster =
+                participations.stream()
+                        .filter(
+                                p ->
+                                        p.getStatus() == ParticipantStatus.ACTIVE
+                                                || p.getStatus() == ParticipantStatus.PAUSED)
+                        .toList();
         Instant deletedAt = Instant.now();
         for (StudyParticipant participation : participations) {
             participation.markDeletedDueToAccountDeletion(deletedAt);
         }
         releasePresenterSlots(groupIds, participations, deletedAt);
+        return onRoster;
     }
 
     // 떠난 사람이 맡은 예정 회차의 발표자 칸을 비운다 — 빈 칸이 다시 「신청」 으로 열린다. 지난 회차는 기록이라 둔다

@@ -19,7 +19,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 /**
  * 공지의 디스코드 발송이 DB 를 읽고 쓰는 짧은 트랜잭션들. 봇 호출(최대 30초)은 트랜잭션 밖에서 해야 해서, 읽기({@link #prepare})와 결과 기록을 따로
@@ -32,19 +31,19 @@ public class StudyNoticeDiscordRecorder {
     private final StudyGroupRepository studyGroupRepository;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
     private final AccountRepository accountRepository;
-    private final StudyNoticeDiscordGate gate;
+    private final StudyNoticeDiscordGate studyNoticeDiscordGate;
 
     public StudyNoticeDiscordRecorder(
             StudyNoticeRepository studyNoticeRepository,
             StudyGroupRepository studyGroupRepository,
             StudyDiscordLinkRepository studyDiscordLinkRepository,
             AccountRepository accountRepository,
-            StudyNoticeDiscordGate gate) {
+            StudyNoticeDiscordGate studyNoticeDiscordGate) {
         this.studyNoticeRepository = studyNoticeRepository;
         this.studyGroupRepository = studyGroupRepository;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
         this.accountRepository = accountRepository;
-        this.gate = gate;
+        this.studyNoticeDiscordGate = studyNoticeDiscordGate;
     }
 
     /**
@@ -60,7 +59,7 @@ public class StudyNoticeDiscordRecorder {
         }
         Account sender = accountRepository.findById(notice.getSenderAccountId()).orElse(null);
         Optional<DiscordSkipReason> unavailable =
-                gate.unavailableReason(notice.getStudyId(), sender);
+                studyNoticeDiscordGate.unavailableReason(notice.getStudyId(), sender);
         if (unavailable.isPresent()) {
             notice.markDiscordSkipped(unavailable.get());
             return Optional.empty();
@@ -77,10 +76,13 @@ public class StudyNoticeDiscordRecorder {
         // 디스코드를 연동하지 않은 사람은 멘션에서 빠진다 — 글은 올라가지만 그 사람은 알림을 받지 못한다 (메일은 간다)
         Map<Long, String> discordIds =
                 accountRepository.findAllById(recipientIds).stream()
-                        .filter(a -> StringUtils.hasText(a.getDiscordId()))
+                        .filter(Account::isDiscordLinked)
                         .collect(Collectors.toMap(Account::getId, Account::getDiscordId));
         // 연동하지 않은 사람은 봇 이름으로 올라가므로 보낸 사람 이름을 본문에 넣는다. 연동한 사람은 발신 줄에 본인이 보인다
-        String senderName = !gate.isLinked(sender) && sender != null ? sender.getNickname() : null;
+        String senderName =
+                !studyNoticeDiscordGate.isLinked(sender) && sender != null
+                        ? sender.getNickname()
+                        : null;
         return Optional.of(
                 new Plan(
                         notice.getId(),
@@ -88,7 +90,7 @@ public class StudyNoticeDiscordRecorder {
                         notice.getBody(),
                         groupName,
                         senderName,
-                        gate.requesterId(sender),
+                        studyNoticeDiscordGate.requesterId(sender),
                         link.getDiscordStudyId(),
                         recipientIds.stream()
                                 .filter(discordIds::containsKey)

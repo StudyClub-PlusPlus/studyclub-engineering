@@ -106,7 +106,7 @@ export function CrewTab({
             className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
           />
           <div className='ml-auto flex shrink-0 gap-1.5'>
-            <Button type='button' size='sm' variant='ghost' onClick={() => setRenaming(null)}>
+            <Button type='button' size='sm' variant='tertiary' onClick={() => setRenaming(null)}>
               취소
             </Button>
             <Button type='submit' size='sm'>
@@ -310,7 +310,7 @@ export function CrewTab({
                         onPick={(v) => applyBulk({ role: v as 'crew' | 'navigator' })}
                       />
                       {selected.length > 0 && (
-                        <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
+                        <Button size='sm' variant='tertiary' onClick={() => setCheckedIds(new Set())}>
                           선택 해제
                         </Button>
                       )}
@@ -322,7 +322,7 @@ export function CrewTab({
                         {saved && changed === 0 ? '저장했습니다.' : ''}
                       </span>
                       {changed > 0 && (
-                        <Button variant='ghost' size='sm' onClick={discard}>
+                        <Button variant='tertiary' size='sm' onClick={discard}>
                           변경 취소
                         </Button>
                       )}

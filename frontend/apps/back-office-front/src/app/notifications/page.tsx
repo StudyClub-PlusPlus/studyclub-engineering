@@ -5,7 +5,7 @@
 // 필터·페이지는 URL 쿼리가 정본이다 — 새로고침·뒤로 가기에도 남는다.
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
-import { Button, Pagination } from '@studyclub/ui';
+import { Button, Pagination, Select } from '@studyclub/ui';
 import { RotateCw } from 'lucide-react';
 
 import { PageHeader } from '@/components/ui';
@@ -134,7 +134,11 @@ function NotificationHistory() {
         <HistoryNotice
           action={
             filtered && (
-              <Button size='sm' variant='secondary' onClick={() => setFilters({ event: 'ALL', status: 'ALL', page: '1' })}>
+              <Button
+                size='sm'
+                variant='secondary'
+                onClick={() => setFilters({ event: 'ALL', status: 'ALL', page: '1' })}
+              >
                 전체 보기
               </Button>
             )
@@ -146,7 +150,12 @@ function NotificationHistory() {
 
       {/* 이력이 한 건이라도 있을 때만 — 0건이면 줄 자체를 그리지 않는다 */}
       {data && !error && data.total > 0 && (
-        <Pagination page={page} total={pageCount} onChange={(next) => setFilters({ page: String(next) })} className='mt-4' />
+        <Pagination
+          page={page}
+          total={pageCount}
+          onChange={(next) => setFilters({ page: String(next) })}
+          className='mt-4'
+        />
       )}
 
       <ResendAllDialog
@@ -177,12 +186,13 @@ function FilterSelect({
   onChange: (next: string) => void;
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       aria-label={label}
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className='h-9 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand disabled:bg-surface-2'
+      className='h-9 w-auto border-border-strong'
     >
       <option value='ALL'>{value === 'ALL' ? label : '전체'}</option>
       {options.map((o) => (
@@ -190,6 +200,6 @@ function FilterSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Badge, Button, Card, EmptyState, cx, Select } from '@studyclub/ui';
+import { Badge, Button, IconButton, Card, EmptyState, cx, Select } from '@studyclub/ui';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -169,13 +169,9 @@ function WeekStrip({
         </h2>
         <div className='flex items-center gap-2'>
           <span className='type-label-sm text-fg-muted'>내 시간대: {scheduleZoneTitle(wallTz, locale)}</span>
-          <div className='flex items-center'>
-            <Button variant='ghost' size='sm' aria-label='이전 주' onClick={onPrev}>
-              <ChevronLeft size={16} />
-            </Button>
-            <Button variant='ghost' size='sm' aria-label='다음 주' onClick={onNext}>
-              <ChevronRight size={16} />
-            </Button>
+          <div className='flex items-center gap-3'>
+            <IconButton variant='tertiary' size='sm' aria-label='이전 주' onClick={onPrev} icon={<ChevronLeft />} />
+            <IconButton variant='tertiary' size='sm' aria-label='다음 주' onClick={onNext} icon={<ChevronRight />} />
           </div>
         </div>
       </div>
@@ -231,7 +227,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
   return (
     <nav className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page <= 1}
         leadingIcon={<ChevronLeft size={16} />}
@@ -257,7 +253,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
         );
       })}
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page >= pages}
         trailingIcon={<ChevronRight size={16} />}

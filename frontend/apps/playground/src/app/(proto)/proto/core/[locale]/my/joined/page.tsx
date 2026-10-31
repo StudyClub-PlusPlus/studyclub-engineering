@@ -33,7 +33,7 @@ import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { type Study } from '@studyclub/mock';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
-import { Badge, Button, Card, EmptyState, Select, cx } from '@studyclub/ui';
+import { Badge, Button, IconButton, Card, EmptyState, Select, cx } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { MEETING_SPEC, SPEC } from './spec';
@@ -175,13 +175,9 @@ function WeekStrip({
             {locale === 'ko' ? '내 시간대: ' : 'My time zone: '}
             {scheduleZoneTitle(wallTz, locale)}
           </p>
-          <div className='flex items-center'>
-            <Button variant='ghost' size='sm' aria-label='이전 주' onClick={onPrev}>
-              <ChevronLeft size={16} />
-            </Button>
-            <Button variant='ghost' size='sm' aria-label='다음 주' onClick={onNext}>
-              <ChevronRight size={16} />
-            </Button>
+          <div className='flex items-center gap-3'>
+            <IconButton variant='tertiary' size='sm' aria-label='이전 주' onClick={onPrev} icon={<ChevronLeft />} />
+            <IconButton variant='tertiary' size='sm' aria-label='다음 주' onClick={onNext} icon={<ChevronRight />} />
           </div>
         </div>
       </div>
@@ -238,7 +234,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
   return (
     <nav data-anno='5' className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page <= 1}
         leadingIcon={<ChevronLeft size={16} />}
@@ -264,7 +260,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
         );
       })}
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page >= pages}
         trailingIcon={<ChevronRight size={16} />}

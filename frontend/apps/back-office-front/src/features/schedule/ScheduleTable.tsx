@@ -288,7 +288,7 @@ export function ScheduleTable({
                   삭제
                 </Button>
                 {picked.length > 0 && (
-                  <Button size='sm' variant='ghost' onClick={() => setChecked(new Set())}>
+                  <Button size='sm' variant='tertiary' onClick={() => setChecked(new Set())}>
                     선택 해제
                   </Button>
                 )}
@@ -298,7 +298,7 @@ export function ScheduleTable({
               <span className='flex items-center gap-2'>
                 {errorCount > 0 && <p className='mr-1 type-label-sm text-error-700'>고칠 칸 {errorCount}개</p>}
                 {dirty && (
-                  <Button variant='ghost' size='sm' onClick={clearDrafts} disabled={saving}>
+                  <Button variant='tertiary' size='sm' onClick={clearDrafts} disabled={saving}>
                     변경 취소
                   </Button>
                 )}

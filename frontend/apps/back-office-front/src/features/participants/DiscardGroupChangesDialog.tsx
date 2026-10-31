@@ -27,7 +27,7 @@ export function DiscardGroupChangesDialog({
         </>
       }
     >
-      <p>저장하지 않은 반 변경이 있습니다. 변경을 취소하고 이동하시겠습니까?</p>
+      <p>저장하지 않은 반 · 역할 변경이 있습니다. 변경을 취소하고 이동하시겠습니까?</p>
     </Modal>
   );
 }

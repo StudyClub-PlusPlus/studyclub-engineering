@@ -355,7 +355,8 @@ public class StudyService {
                                                 ErrorCode.NOT_FOUND, "스터디 프로그램을 찾을 수 없습니다.")),
                 applicantCount(latestRecruitment),
                 recruitDeadlineAt,
-                recruitmentCapacity);
+                recruitmentCapacity,
+                studyDiscordLinkRepository.existsByStudyId(study.getId()));
     }
 
     @Transactional
