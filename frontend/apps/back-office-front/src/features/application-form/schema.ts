@@ -1,8 +1,8 @@
-import type { ApplicationQuestionType } from '@studyclub/mock';
+import type { ApplicationQuestionType } from '@studyclub/types';
 import { z } from 'zod';
 
-import { allowsOther, needsOptions } from './question';
-import type { ApiQuestion, ApplicationFormResponse } from './types';
+import { allowsOther, needsOptions } from '@/features/application-form/question';
+import type { ApiQuestion, ApplicationFormResponse } from '@/features/application-form/types';
 
 const singleLine = (value: string) => value.replace(/[\r\n\t]/g, ' ').trim();
 const shortText = z.string().transform(singleLine).pipe(z.string().max(200, '200자 이내로 입력해 주세요.'));

@@ -7,8 +7,9 @@ import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
-import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
+import { type Crew } from '@studyclub/types';
 import { Badge, Button, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { MEMBER_REGIONS } from '@studyclub/utils';
 import { Plus } from 'lucide-react';
 
 /**

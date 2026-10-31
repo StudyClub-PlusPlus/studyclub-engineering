@@ -78,7 +78,12 @@ function TrendChart({ trend }: { trend: ApiAttendanceTrend }) {
       {/* 오른쪽에 평균 라벨 자리를 비워 둔다 — 선 위에 겹치면 마지막 주 값을 가린다 */}
       <div className='pr-16'>
         <div className='relative h-36'>
-          <svg viewBox='0 0 100 100' preserveAspectRatio='none' className='absolute inset-0 h-full w-full' aria-hidden='true'>
+          <svg
+            viewBox='0 0 100 100'
+            preserveAspectRatio='none'
+            className='absolute inset-0 h-full w-full'
+            aria-hidden='true'
+          >
             {[0, 50, 100].map((v) => (
               <line
                 key={v}

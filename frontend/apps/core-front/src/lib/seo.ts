@@ -2,9 +2,9 @@
 //
 // 페이지마다 손으로 쓰면 반드시 어긋난다(로케일 하나 빠뜨리거나 canonical 에 절대경로를 박거나).
 // 여기 함수만 쓰면 metadataBase 기준 상대경로로 일관되게 나온다.
+import type { Locale } from '@studyclub/types';
 import type { Metadata } from 'next';
 
-import type { Locale } from './content';
 import { DEFAULT_LOCALE, LOCALES } from './i18n';
 
 /** 색인해도 되는 유일한 호스트. 여기 말고 다른 곳에 뜬 우리 사이트는 전부 색인 금지다. */

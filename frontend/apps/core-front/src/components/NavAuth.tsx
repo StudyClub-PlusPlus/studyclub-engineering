@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
 import { ChevronDown, DoorOpen, Heart, LogOut, UserRound } from 'lucide-react';
 
-import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/features/auth/auth';
+import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/features/auth/preview';
 import { announceMenuOpen, closeOnOtherMenu } from '@/lib/header-menus';
-import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
 export function NavAuth({ locale }: { locale: Locale }) {
   const router = useRouter();

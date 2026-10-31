@@ -3,7 +3,8 @@
 // httpOnly 로 심어 미들웨어 게이팅에 쓰고, 토큰/유저는 클라이언트로도 반환.
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ACCESS_COOKIE, REFRESH_COOKIE, PLATFORM } from '@/lib/auth';
+import { ACCESS_COOKIE, REFRESH_COOKIE, PLATFORM } from '@/features/auth/auth';
+import { socialLoginResponseSchema } from '@/features/auth/response-schema';
 import { accessCookie, refreshCookie } from '@/lib/cookies';
 
 // 서버(컨테이너) 내부에서 백엔드에 닿는 URL. 브라우저용 NEXT_PUBLIC_API_BASE_URL 과 구분.
@@ -33,10 +34,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const data = await upstream.json().catch(() => ({}));
+  const raw = await upstream.json().catch(() => null);
   if (!upstream.ok) {
-    return NextResponse.json(data, { status: upstream.status });
+    return NextResponse.json(raw, { status: upstream.status });
   }
+
+  const parsed = socialLoginResponseSchema.safeParse(raw);
+  if (!parsed.success) return NextResponse.json({ message: '백엔드 응답 형식이 올바르지 않습니다.' }, { status: 502 });
+  const data = parsed.data;
 
   // 로그인 응답: account + suggestedNickname (스펙 정합)
   const res = NextResponse.json({

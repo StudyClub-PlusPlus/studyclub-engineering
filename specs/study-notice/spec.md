@@ -268,7 +268,7 @@ sequenceDiagram
 ## 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/my/joined/[id]/schedule/notice/page.tsx` — 탭 화면은 `features/study-notices/components/NoticeTab.tsx`
-- `frontend/apps/core-front/src/features/study-notices/queries.ts` · `frontend/apps/core-front/src/lib/study-notice-api.ts` — 세 엔드포인트 호출
+- `frontend/apps/core-front/src/features/study-notices/queries.ts` · `frontend/apps/core-front/src/features/study-notices/repository.ts` — 세 엔드포인트 호출
 - 프로토: playground `/proto/core/ko/my/joined/{id}/schedule/notice`
 
 ## 퍼널·계측

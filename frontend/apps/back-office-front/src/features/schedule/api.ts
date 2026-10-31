@@ -1,12 +1,14 @@
-// 일정 탭의 서버 상태 — 응답을 화면 모양으로 바꾸고(`toMeetings` · `toPeople` · `toUpdateBody`), React Query 로 읽고 쓴다.
-// 서버 호출 자체는 `repository.ts` 에 있다.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { Meeting, Person } from './meetings';
-import scheduleRepository, { type ApiGroupMeetings, type MeetingUpdatePayload } from './repository';
-import type { MeetingPatch } from './store';
-import { wallParts, zonedInstant } from './time';
+import scheduleRepository from './repository';
+import type { Meeting, Person } from '@/features/schedule/meetings';
+import { type ApiGroupMeetings, type MeetingUpdatePayload } from '@/features/schedule/repository';
+import type { MeetingPatch } from '@/features/schedule/store';
+import { wallParts, zonedInstant } from '@/features/schedule/time';
 import { studyKeys } from '@/features/studies/queries';
+
+// 일정 탭의 서버 상태 — 응답을 화면 모양으로 바꾸고(`toMeetings` · `toPeople` · `toUpdateBody`), React Query 로 읽고 쓴다.
+// 서버 호출 자체는 `repository.ts` 에 있다.
 
 /** 응답 → 표의 회차. 일자 · 시각은 반 시간대 벽시계로 바꾼다. */
 export function toMeetings(res: ApiGroupMeetings): Meeting[] {

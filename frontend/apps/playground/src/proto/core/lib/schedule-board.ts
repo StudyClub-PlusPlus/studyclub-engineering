@@ -5,7 +5,7 @@ import { getUser } from '@core/lib/auth';
 import { getDiscordNickname } from '@core/lib/me';
 import { isKickoff, scheduleAccessOf, type ManageRole, type ScheduleRole } from '@core/lib/meetings';
 import { myGroupCrew } from '@core/lib/navigator-attendance';
-import type { Study } from '@studyclub/mock';
+import type { Study } from '@studyclub/types';
 
 /**
  * 스터디 일정 화면이 구글 시트 출석부에서 옮겨 온 것 — 참가자(발표자 후보)와 스터디 규칙.

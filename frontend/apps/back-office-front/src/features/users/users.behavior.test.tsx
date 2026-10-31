@@ -246,7 +246,7 @@ describe('디스코드 보기', () => {
     expect(screen.getByRole('button', { name: '나래 디스코드 아이디 보기' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '하늘 이메일 보기' })).toBeEnabled();
     expect(revealCalls()).toHaveLength(1);
-    expect(revealCalls()[0]).toEqual(['/api/admin/users/18/discord-reveals', { method: 'POST' }]);
+    expect(revealCalls()[0]).toEqual(['/api/admin/users/18/discord-reveals', expect.anything(), { method: 'POST' }]);
 
     await act(async () => d.resolve({ id: 18, discordHandle: HANDLE }));
     expect(await screen.findByText(`@${HANDLE}`)).toBeInTheDocument();
@@ -430,7 +430,7 @@ describe('권한 변경', () => {
     expect(toastMock).not.toHaveBeenCalled();
     const patch = httpMock.mock.calls.find(([p]) => String(p).includes('/system-role'))!;
     expect(patch[0]).toBe('/api/admin/users/18/system-role');
-    expect(patch[1]).toMatchObject({ method: 'PATCH', body: JSON.stringify({ systemRole: 'ADMIN' }) });
+    expect(patch[2]).toMatchObject({ method: 'PATCH', body: JSON.stringify({ systemRole: 'ADMIN' }) });
 
     const before = listCalls().length;
     await act(async () => d.resolve({ id: 18, systemRole: 'ADMIN' }));

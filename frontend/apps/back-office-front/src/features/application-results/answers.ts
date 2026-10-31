@@ -1,4 +1,4 @@
-import type { ApplicationResult, ResultQuestion } from './types';
+import type { ApplicationResult, ResultQuestion } from '@/features/application-results/types';
 
 export function answerValues(value: unknown): string[] {
   return (Array.isArray(value) ? value : [value])

@@ -20,7 +20,7 @@ import { DiscordNicknameField, DISCORD_NICKNAME_LABEL } from '@core/components/D
 import { getUser } from '@core/lib/auth';
 import { DISCORD_NICKNAME_EXAMPLE, getDiscordNickname, getDisplayName } from '@core/lib/me';
 import { PREVIEW_USER } from '@core/lib/preview';
-import type { ApplicationQuestion, ApplicationQuestionType, Study } from '@studyclub/mock';
+import type { ApplicationQuestion, ApplicationQuestionType, Study } from '@studyclub/types';
 import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 

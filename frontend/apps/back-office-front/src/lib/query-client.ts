@@ -1,12 +1,13 @@
+import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
+
+import { clearSession } from '@/features/auth/auth';
+import { ApiError } from '@/lib/http';
+
 // QueryClient 생성 — 서버는 요청마다 새로, 브라우저는 모듈 싱글턴 하나.
 //
 // 서버에서 하나를 공유하면 **사용자 A 의 캐시가 B 에게 보인다.** 반대로 브라우저에서 매 렌더
 // 새로 만들면 캐시가 매번 날아간다. 그래서 환경에 따라 다르게 만든다 (TanStack Advanced SSR 가이드).
 // `useState` 로 만들지 않는 것도 같은 가이드의 권고다 — suspense 경계가 없으면 첫 렌더에서 버려진다.
-import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
-
-import { clearSession } from '@/lib/auth';
-import { ApiError } from '@/lib/http';
 
 /** 로그인 만료(401)의 공통 처리 — 세션을 지우고 로그인 화면으로 보낸다. react-query 를 거치지 않는 호출도 이것을 부른다. */
 export function handleUnauthorized(error: Error) {

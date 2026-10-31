@@ -1,3 +1,8 @@
+import { z } from 'zod';
+const appleNameSchema = z.object({
+  name: z.object({ firstName: z.string().optional(), lastName: z.string().optional() }).optional(),
+});
+
 // 애플 로그인 착지점 (specs/auth-apple-login). scope 에 name·email 을 넣으면 애플은 GET 이 아니라
 // form_post(POST) 로 code 를 보낸다. 팝업에서 열리며, code 와 첫 인가에만 오는 이름을 로그인 페이지로
 // postMessage 하고 창을 닫는다. 구글 콜백(../../callback)과 같은 모양이고, 백오피스는 애플을 쓰지 않아 자기 오리진에만 보낸다.
@@ -6,7 +11,7 @@
 function nameFrom(user: FormDataEntryValue | null): string {
   if (typeof user !== 'string') return '';
   try {
-    const name = (JSON.parse(user) as { name?: { firstName?: string; lastName?: string } }).name;
+    const name = appleNameSchema.parse(JSON.parse(user)).name;
     return [name?.firstName, name?.lastName].filter(Boolean).join(' ').trim();
   } catch {
     return '';

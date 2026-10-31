@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Input, Modal } from '@studyclub/ui';
+import { useForm } from 'react-hook-form';
 
-import { hasTime, type GroupTime, type ScheduleGroup } from './meetings';
-import { DOW_LABEL, otherClock, STUDY_TZS, tzAbbr } from './time';
+import { groupTimeSchema, type GroupTimeValues } from '@/features/schedule/form-schemas';
+import { hasTime, type GroupTime, type ScheduleGroup } from '@/features/schedule/meetings';
+import { DOW_LABEL, otherClock, STUDY_TZS, tzAbbr } from '@/features/schedule/time';
 
 const CHIP = 'h-10 rounded-control border type-label-lg transition-colors';
 const chipTone = (on: boolean) =>
@@ -29,23 +30,29 @@ export function GroupTimeDialog({
   onSave: (time: GroupTime) => void;
 }) {
   const editing = hasTime(group);
-  const [time, setTime] = useState<GroupTime>(() =>
-    editing ? group.time : { weekdays: [], time: '', tz: group.time.tz },
-  );
-  const [touched, setTouched] = useState(false);
+  const {
+    watch,
+    setValue,
+    handleSubmit,
+    formState: { errors, isSubmitted: touched },
+  } = useForm<GroupTimeValues>({
+    resolver: zodResolver(groupTimeSchema),
+    defaultValues: editing ? group.time : { weekdays: [], time: '', tz: group.time.tz },
+  });
+  const time = watch();
+  const valid = !errors.weekdays;
 
-  const valid = time.weekdays.length > 0;
   const other = otherClock(time.weekdays, time.time, time.tz);
 
   function toggleDay(d: number) {
     const on = time.weekdays.includes(d);
-    setTime({ ...time, weekdays: (on ? time.weekdays.filter((x) => x !== d) : [...time.weekdays, d]).sort() });
+    setValue('weekdays', (on ? time.weekdays.filter((x) => x !== d) : [...time.weekdays, d]).sort(), {
+      shouldDirty: true,
+      shouldValidate: touched,
+    });
   }
 
-  function save() {
-    setTouched(true);
-    if (valid) onSave(time);
-  }
+  const save = handleSubmit(onSave);
 
   return (
     <Modal
@@ -94,7 +101,7 @@ export function GroupTimeDialog({
                 type='time'
                 id='group-time-clock'
                 value={time.time}
-                onChange={(ev) => setTime({ ...time, time: ev.target.value })}
+                onChange={(ev) => setValue('time', ev.target.value, { shouldDirty: true, shouldValidate: touched })}
               />
             </div>
             {/* 선택지가 둘뿐이라 칩으로 나란히 둔다 — 펼쳐야 보이는 목록에 둘을 숨길 이유가 없다.
@@ -106,7 +113,7 @@ export function GroupTimeDialog({
                   type='button'
                   aria-pressed={time.tz === tz.key}
                   disabled={tz.key !== group.time.tz}
-                  onClick={() => setTime({ ...time, tz: tz.key })}
+                  onClick={() => setValue('tz', tz.key, { shouldDirty: true, shouldValidate: touched })}
                   className={`${CHIP} px-3 ${chipTone(time.tz === tz.key)} disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   {tz.label} <span className='opacity-70'>{tzAbbr(tz.key)}</span>

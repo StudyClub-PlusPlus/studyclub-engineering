@@ -5,8 +5,8 @@ import { notFound, useParams } from 'next/navigation';
 
 import { Button } from '@studyclub/ui';
 
-import { StudyConsole } from '@/components/StudyConsole';
 import { useStudyDetail } from '@/features/studies/queries';
+import { StudyConsole } from '@/features/studies/StudyConsole';
 import { ApiError } from '@/lib/http';
 
 /**
@@ -42,7 +42,15 @@ export default function StudyAdminDetail() {
       {error && (
         <div role='alert' className='mb-4 flex items-center gap-3 type-body-sm text-error-600'>
           최신 정보를 불러오지 못했습니다. 마지막으로 확인한 정보를 표시합니다.
-          <Button variant='secondary' disabled={isFetching} onClick={() => { void refetch(); }}>다시 조회</Button>
+          <Button
+            variant='secondary'
+            disabled={isFetching}
+            onClick={() => {
+              void refetch();
+            }}
+          >
+            다시 조회
+          </Button>
         </div>
       )}
       <StudyConsole key={data.id} detail={data} />

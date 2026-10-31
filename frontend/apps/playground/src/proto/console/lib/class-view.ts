@@ -1,7 +1,7 @@
 import { classLabel, type StudyClass } from '@console/lib/classes';
 import { bookFromSchedule, type NavigatorGroup, type ProtoMeeting } from '@core/lib/meetings';
 import { classSource, type ScheduleSource } from '@core/lib/schedule-source';
-import type { Crew, Study, StudyMeeting } from '@studyclub/mock';
+import type { Crew, Study, StudyMeeting } from '@studyclub/types';
 
 /** 처음부터 있던 반 — 사용자 사이트의 그 분반과 같은 회차·규칙을 본다. */
 export const FIRST_CLASS = 'c1';

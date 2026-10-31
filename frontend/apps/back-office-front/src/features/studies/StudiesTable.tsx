@@ -4,15 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  publishState,
-  recruitState,
-  toISODate,
-  applyFormUrl,
-  type Study,
-  type StudyLifecycleStatus,
-} from '@studyclub/mock';
+import { type Study, type StudyLifecycleStatus } from '@studyclub/types';
 import { Badge, Pagination, Select, cx, type BadgeTone } from '@studyclub/ui';
+import { applyFormUrl, publishState, recruitState, toISODate } from '@studyclub/utils';
 
 import {
   CATEGORY_OPTIONS,
@@ -41,7 +35,6 @@ import { PublishConfirmDialog, type PublishTarget } from '@/features/studies/Pub
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
-
 import './studies-table.css';
 
 /**
@@ -288,7 +281,10 @@ function SortLabel({ label, active, onClick }: { label: string; active: SortDir 
       type='button'
       onClick={onClick}
       aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
-      className={cx('whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline', active && 'text-brand')}
+      className={cx(
+        'whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline',
+        active && 'text-brand',
+      )}
     >
       {label}
     </button>
@@ -437,10 +433,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     const search = searchParams.toString();
     rememberStudiesListSearch(search ? `?${search}` : '');
   }, [searchParams]);
-  const entry = useMemo(
-    () => entryFilters(searchParams.get('view'), searchParams.get('category')),
-    [searchParams],
-  );
+  const entry = useMemo(() => entryFilters(searchParams.get('view'), searchParams.get('category')), [searchParams]);
   // 주소만 바꾼다(shallow) — router.replace 면 서버 컴포넌트가 목록 전체를 한 번 더 받는다
   useEffect(() => {
     if (entry) setUrlFilters(entry, { shallow: true });
@@ -485,28 +478,29 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     // 서버가 이미 거르고 정렬했다 — 다시 거르면 서버와 다른 뜻의 조건(「마감」 등)이 섞인다
     if (list.mode === 'server') return studies;
     const q = query.trim().toLowerCase();
-    return (
-      studies
-        .filter((s) => {
-          if (category !== 'all' && s.category !== category) return false;
-          if (studyStatus !== 'all' && lifecycleStatusOf(s) !== studyStatus) return false;
-          if (recruit !== 'all' && recruitState(s) !== recruit) return false;
-          if (publish !== 'all' && publishState(s) !== publish) return false;
-          if (form !== 'all' && hasApplicationFormOf(s) !== (form === 'has')) return false;
-          if (q) {
-            const hay = `${tx(s.title)} ${tx(s.summary)} ${s.category ?? ''}`.toLowerCase();
-            if (!hay.includes(q)) return false;
-          }
-          return true;
-        })
-        .sort(comparatorOf(sort))
-    );
+    return studies
+      .filter((s) => {
+        if (category !== 'all' && s.category !== category) return false;
+        if (studyStatus !== 'all' && lifecycleStatusOf(s) !== studyStatus) return false;
+        if (recruit !== 'all' && recruitState(s) !== recruit) return false;
+        if (publish !== 'all' && publishState(s) !== publish) return false;
+        if (form !== 'all' && hasApplicationFormOf(s) !== (form === 'has')) return false;
+        if (q) {
+          const hay = `${tx(s.title)} ${tx(s.summary)} ${s.category ?? ''}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      })
+      .sort(comparatorOf(sort));
   }, [list.mode, studies, query, category, studyStatus, recruit, publish, form, sort]);
   const headerSort = headerSortOf(sort);
   /** 열 이름을 누른다 — 오름차순, 다시 누르면 내림차순 (PRD 9). 정렬을 바꾸면 1페이지로 */
   const sortBy = (key: SortColumn) => setFilters({ sort: nextSortFor(sort, key), page: '1' });
   const th = (key: SortColumn, label: string, className = 'whitespace-nowrap') => (
-    <th className={className} aria-sort={headerSort?.key === key ? (headerSort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+    <th
+      className={className}
+      aria-sort={headerSort?.key === key ? (headerSort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
       <SortLabel label={label} active={headerSort?.key === key ? headerSort.dir : null} onClick={() => sortBy(key)} />
     </th>
   );
@@ -646,7 +640,9 @@ export function StudiesTable({ list }: { list: StudyListData }) {
                       {applied}
                       <span className='text-fg-muted'>{capacity === undefined ? ' · 제한 없음' : `/${capacity}`}</span>
                     </td>
-                    <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>{toISODate(s.date) ?? '미정'}</td>
+                    <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
+                      {toISODate(s.date) ?? '미정'}
+                    </td>
                     <td
                       className='whitespace-nowrap text-center type-body-sm'
                       aria-label={hasApplicationFormOf(s) ? '신청 폼 있음' : '신청 폼 없음'}
@@ -678,7 +674,12 @@ export function StudiesTable({ list }: { list: StudyListData }) {
           </table>
         </div>
         {/* 이전 · 다음 · 번호(많으면 「…」). 한 페이지에 다 들어가면 그리지 않는다 (PRD 8) */}
-        <Pagination className='border-t border-border px-4 py-3' page={currentPage} total={pageCount} onChange={setPage} />
+        <Pagination
+          className='border-t border-border px-4 py-3'
+          page={currentPage}
+          total={pageCount}
+          onChange={setPage}
+        />
       </div>
 
       <PublishConfirmDialog target={confirm} onClose={() => setConfirm(null)} />

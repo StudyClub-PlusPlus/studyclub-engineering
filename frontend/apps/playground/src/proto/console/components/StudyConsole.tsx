@@ -24,20 +24,10 @@ import { StudyInfoCard } from '@core/components/StudyInfoCard';
 import { discordUrl, driveUrl } from '@core/lib/joined';
 import { DISPLAY_ZONES, wallParts, zonedInstant, type ProtoMeeting } from '@core/lib/meetings';
 import { dropPresenters } from '@core/lib/schedule-source';
-import {
-  attendanceRate,
-  getStudyCrew,
-  applyFormUrl,
-  lifecycleState,
-  publishState,
-  recruitState,
-  toISODate,
-  todayISO,
-  type AttendanceStatus,
-  type Crew,
-  type Study,
-} from '@studyclub/mock';
+import { getStudyCrew } from '@studyclub/mock';
+import { type AttendanceStatus, type Crew, type Study } from '@studyclub/types';
 import { Badge, Button, Modal } from '@studyclub/ui';
+import { attendanceRate, applyFormUrl, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
 import { ArrowLeft, CalendarPlus, Plus } from 'lucide-react';
 
 import { useAnnotate } from '@/proto/annotate';

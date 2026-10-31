@@ -1,7 +1,8 @@
+import type { Locale } from '@studyclub/types';
 import type { Metadata } from 'next';
 
-import { StudyBrowser } from '@/components/StudyBrowser';
-import { getOperatorMap, type Locale } from '@/lib/content';
+import { getOperatorMap } from '@/features/community/server';
+import { StudyBrowser } from '@/features/studies/StudyBrowser';
 import { m } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 

@@ -1,6 +1,9 @@
+// PRD 부분 연결: BO-ST-001-S01/S03 (등록 창·날짜 검증 일부)
+// 전체 대응표: docs/frontend-development-guide/admin-e2e-prd-map.md
 import { expect, test } from '@playwright/test';
 
-test('진행 시작일이 모집 마감일보다 빠르면 등록을 막는다', async ({ page }) => {
+test('진행 시작일이 모집 마감일보다 빠르면 등록을 막는다', async ({ page, context }) => {
+  await context.route('**/api/admin/study-programs?*', (route) => route.fulfill({ json: { items: [] } }));
   let createRequests = 0;
   page.on('request', (request) => {
     if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/admin/studies') {

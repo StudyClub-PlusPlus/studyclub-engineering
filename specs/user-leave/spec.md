@@ -100,7 +100,7 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 호출하도록 후속 작업한다.
 
 - **프론트가 할 수 있는 것**: 탈퇴 성공 직후 로그인 중인 **이 브라우저**에서는 즉시 로그아웃 상태로
-  만든다. `frontend/apps/core-front/src/lib/auth.ts` 의 `logout()`(localStorage 사용자 정보 제거 +
+  만든다. `frontend/apps/core-front/src/features/auth/auth.ts` 의 `logout()`(localStorage 사용자 정보 제거 +
   `POST /api/auth/logout` 으로 httpOnly 쿠키 제거)을 탈퇴 성공 콜백에서 그대로 호출한다 — 새 로직을
   만들지 않고 로그아웃과 동일한 정리를 재사용한다. 단, 이건 "이 브라우저의 흔적 정리"일 뿐 다른
   기기에 남아 있는 토큰이나 탈취된 토큰까지 막지는 못한다.
@@ -127,9 +127,9 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/components/ProfileDialog.tsx` — "내 정보 수정" 모달(현재 이름·거주지역 편집) 콘텐츠 맨 아래, footer 위에 탈퇴 진입 링크 추가. `/my/page.tsx` 의 "내 정보 수정" 버튼이 이미 로그아웃 버튼 바로 옆에 있으므로, 그 버튼 자체나 그 옆이 아니라 **버튼을 눌러 연 모달 안**에 둬야 PRD 의 "헤더 메뉴에 두면 로그아웃 옆에서 잘못 눌린다"는 경고를 지킨다
+- `frontend/apps/core-front/src/features/profile/ProfileCard.tsx` — 카드 밖 아래에 탈퇴 진입 링크. (최초 구현 당시에는 `components/ProfileDialog.tsx` "내 정보 수정" 모달(현재 이름·거주지역 편집) 콘텐츠 맨 아래, footer 위에 탈퇴 진입 링크 추가. `/my/page.tsx` 의 "내 정보 수정" 버튼이 이미 로그아웃 버튼 바로 옆에 있으므로, 그 버튼 자체나 그 옆이 아니라 **버튼을 눌러 연 모달 안**에 둬야 PRD 의 "헤더 메뉴에 두면 로그아웃 옆에서 잘못 눌린다"는 경고를 지킨다)
 - `frontend/apps/core-front/src/app/[locale]/my/leave/page.tsx` — 신규 탈퇴 화면 (프로토타입과 같은 경로 패턴). 모달이 아닌 별도 지면이다 — 이 모달에서 링크를 누르면 모달이 닫히고 이 경로로 이동한다
-- `frontend/apps/core-front/src/lib/me.ts` — `TODO(api): DELETE /api/me`
+- `frontend/apps/core-front/src/features/auth/auth.ts` — `deleteAccount(reason)` 가 `DELETE /api/me` 를 부른다
 - 참고 UX: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/leave/page.tsx` (구 프로토타입 — 맡은 스터디가 있으면 막는 옛 정책이라 본 스펙과 화면 구성이 다르다. 안내 문구·레이아웃만 참고하고 "막는다" 로직은 가져오지 않는다)
 
 ---
@@ -152,7 +152,7 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 ### 프론트 판정 로직
 
 ```ts
-// frontend/apps/core-front/src/lib/me.ts: getActiveNavigatorStudies()
+// frontend/apps/core-front/src/features/account/repository.ts: getActiveNavigatorStudies()
 items.filter(
   (s) => s.relation === 'ONGOING' && s.participantRole === 'LEADER',
 )

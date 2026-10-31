@@ -1,14 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import type { Locale } from '@studyclub/types';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { NoticeDate } from '@/components/NoticeDate';
-import { NoticesLoadError } from '@/components/NoticesLoadError';
-import type { ApiSiteNoticeSummary } from '@/lib/api';
+import { NoticeDate } from '@/features/site-notices/NoticeDate';
+import { NoticesLoadError } from '@/features/site-notices/NoticesLoadError';
+import { getNotice } from '@/features/site-notices/server';
+import type { ApiSiteNoticeSummary } from '@/features/site-notices/types';
 import { autolink } from '@/lib/autolink';
-import { getNotice, type Locale } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 import { PAGE, READ } from '@/lib/layout';
 import { pageMetadata } from '@/lib/seo';

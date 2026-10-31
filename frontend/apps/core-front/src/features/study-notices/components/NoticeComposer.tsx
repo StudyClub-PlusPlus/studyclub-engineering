@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Badge, Button, Checkbox, Input, Modal, Segmented, Textarea, cx, toast } from '@studyclub/ui';
+import { useForm } from 'react-hook-form';
 
+import { noticeFormSchema, type NoticeFormValues } from '../form-schema';
 import {
   NOTICE_LIMITS,
   canSubmit,
@@ -21,8 +24,8 @@ import {
   type StatusFilter,
 } from '../model';
 import { useSendNotice } from '../queries';
+import type { ApiNoticeCompose, NoticeChannel } from '@/features/study-notices/types';
 import { ApiError } from '@/lib/http';
-import type { ApiNoticeCompose, NoticeChannel } from '@/lib/study-notice-api';
 
 /**
  * 공지 쓰기 + 받는 사람 고르기 + 보내기. 판정(보낼 수 있는가 · 디스코드가 되는가 · 한도)은 서버가 내려준 `compose` 값을 그리기만 한다.
@@ -38,11 +41,26 @@ export function NoticeComposer({
   compose: ApiNoticeCompose;
 }) {
   const send = useSendNotice(studyId, groupId);
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [channels, setChannels] = useState<NoticeChannel[]>(['EMAIL']);
+  const submitting = useRef(false);
+  const { watch, setValue, handleSubmit, getValues } = useForm<NoticeFormValues>({
+    defaultValues: {
+      title: '',
+      body: '',
+      channels: ['EMAIL'],
+      participantIds: [...defaultSelection(compose.recipients)],
+    },
+    resolver: zodResolver(noticeFormSchema(compose)),
+    mode: 'onChange',
+  });
+  const { title, body, channels, participantIds } = watch();
+  const selected = useMemo(() => new Set(participantIds), [participantIds]);
+  const setTitle = (value: string) => setValue('title', value, { shouldDirty: true, shouldValidate: true });
+  const setBody = (value: string) => setValue('body', value, { shouldDirty: true, shouldValidate: true });
+  const setSelected = (value: Set<number> | ((current: Set<number>) => Set<number>)) => {
+    const next = typeof value === 'function' ? value(new Set(getValues('participantIds'))) : value;
+    setValue('participantIds', [...next], { shouldDirty: true, shouldValidate: true });
+  };
   const [filter, setFilter] = useState<StatusFilter>('ALL');
-  const [selected, setSelected] = useState<Set<number>>(() => defaultSelection(compose.recipients));
   const [confirming, setConfirming] = useState(false);
 
   // 다른 반으로 바뀌면 후보도 달라진다. 같은 반에서 다시 받은 값으로는 고른 사람을 지우지 않는다.
@@ -64,19 +82,27 @@ export function NoticeComposer({
   const note = limitNote(compose);
 
   function setChannel(channel: NoticeChannel, on: boolean) {
-    setChannels((cur) => (on ? [...cur.filter((c) => c !== channel), channel] : cur.filter((c) => c !== channel)));
+    const current = getValues('channels');
+    setValue(
+      'channels',
+      on ? [...current.filter((c) => c !== channel), channel] : current.filter((c) => c !== channel),
+      { shouldDirty: true, shouldValidate: true },
+    );
   }
 
-  function submit() {
+  const submit = handleSubmit((values) => {
+    if (send.isPending || submitting.current) return;
+    submitting.current = true;
     send.mutate(
       {
-        title: title.trim(),
-        body: body.trim(),
-        channels: effective,
-        participantIds: recipients.filter((r) => picked.has(r.participantId)).map((r) => r.participantId),
+        title: values.title.trim(),
+        body: values.body.trim(),
+        channels: effectiveChannels(values.channels, discord.available),
+        participantIds: [...pruneSelection(new Set(values.participantIds), recipients)],
       },
       {
         onSuccess: () => {
+          submitting.current = false;
           setConfirming(false);
           toast.success('공지를 보냈습니다.');
           // 쓴 글만 비운다. 보낼 곳과 받는 사람은 다음 공지에도 그대로 쓰는 일이 많다
@@ -84,6 +110,7 @@ export function NoticeComposer({
           setBody('');
         },
         onError: (error) => {
+          submitting.current = false;
           setConfirming(false);
           // 한도에 걸렸다: 글은 지우지 않고, 다시 받은 화면 값(사유와 시각)이 안내를 갱신한다
           if (error instanceof ApiError && error.status === 429) {
@@ -94,7 +121,7 @@ export function NoticeComposer({
         },
       },
     );
-  }
+  });
 
   return (
     <div className='space-y-6'>
@@ -204,7 +231,7 @@ export function NoticeComposer({
         <p className='type-body-sm text-fg-secondary' aria-live='polite'>
           {note}
         </p>
-        <Button disabled={!submittable} loading={send.isPending} onClick={() => setConfirming(true)}>
+        <Button disabled={!submittable} loading={send.isPending} onClick={handleSubmit(() => setConfirming(true))}>
           공지 보내기
         </Button>
       </div>
