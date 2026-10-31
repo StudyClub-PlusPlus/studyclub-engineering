@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchStudies, fetchStudyListPage } from '@/features/studies/server';
+import { fetchStudyListPage } from '@/features/studies/server';
 
 vi.mock('next/headers', () => ({
   // 사이트 쿠키(sc_)가 같이 있어도 백오피스 토큰만 꺼내 보내는지 본다
@@ -56,75 +56,38 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('fetchStudies — 서버는 한 번에 100건까지 준다', () => {
-  it('total 까지 100건씩 나눠 받아 하나로 합친다', async () => {
-    serverWith(230);
-
-    const studies = await fetchStudies();
-
-    expect(requested()).toEqual(['?offset=0&limit=100', '?offset=100&limit=100', '?offset=200&limit=100']);
-    expect(studies).toHaveLength(230);
-    expect(studies.map((s) => s.study_id)).toEqual(Array.from({ length: 230 }, (_, i) => i + 1));
-  });
-
-  it('100건 이하면 한 번만 부른다 — 백오피스 토큰만 Authorization 으로 보낸다', async () => {
-    serverWith(7);
-
-    await fetchStudies();
-
-    expect(requested()).toEqual(['?offset=0&limit=100']);
-    expect(fetchMock.mock.calls[0]![1]!.headers).toEqual({ Authorization: 'Bearer bo-token' });
-  });
-
-  it('모집 마감은 시각까지 둔다 — 모집 마감순이 같은 날 안에서도 시각으로 가른다', async () => {
-    serverWith(1);
-
-    const [first] = await fetchStudies();
-
-    expect(first!.recruitment?.deadline).toBe('2026-09-18T14:59:00Z');
-  });
-
-  it('받는 사이 행이 밀려 같은 스터디가 두 번 와도 하나만 남긴다', async () => {
-    fetchMock.mockImplementation(async (input) => {
-      const offset = Number(new URL(String(input)).searchParams.get('offset'));
-      // 첫 장 1~100, 둘째 장은 한 칸 밀려 100~198 — 100 이 두 번 온다
-      const ids =
-        offset === 0 ? Array.from({ length: 100 }, (_, i) => i + 1) : Array.from({ length: 99 }, (_, i) => i + 100);
-      return new Response(JSON.stringify({ items: ids.map(apiStudy), total: 199, offset, limit: 100 }), {
-        status: 200,
-      });
-    });
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const studies = await fetchStudies();
-
-    expect(studies).toHaveLength(198);
-    expect(new Set(studies.map((s) => s.study_id)).size).toBe(198);
-    expect(console.warn).toHaveBeenCalled();
-  });
-
-  it('잠깐 끊긴 연결(503)은 다시 시도한다', async () => {
-    serverWith(3);
-    const ok = fetchMock.getMockImplementation()!;
-    fetchMock.mockImplementationOnce(async () => new Response('', { status: 503 }));
-    fetchMock.mockImplementation(ok);
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-
-    const studies = await fetchStudies();
-
-    vi.useRealTimers();
-    expect(studies).toHaveLength(3);
-    expect(requested()).toEqual(['?offset=0&limit=100', '?offset=0&limit=100']);
-  });
-
-  it('서버가 거절하면 상태 코드와 함께 실패한다', async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ errorCode: 'INVALID_INPUT' }), { status: 400 }));
-
-    await expect(fetchStudies()).rejects.toThrow('스터디 목록을 불러오지 못했습니다. (400)');
-  });
-});
-
 describe('fetchStudyListPage — 서버가 거르고 정렬한 한 페이지', () => {
+  it('전체가 1만 건을 넘어도 조건에 맞는 한 페이지만 요청한다', async () => {
+    serverWith(10001);
+    const query =
+      'keyword=AI&recruitFilter=NOT_RECRUITING&hasApplicationForm=false&sort=APPLICANTS_DESC&offset=0&limit=20';
+    const page = await fetchStudyListPage(query);
+    expect(requested()).toEqual(['?' + query]);
+    expect(page.studies).toHaveLength(20);
+    expect(page.total).toBe(10001);
+    expect(fetchMock.mock.calls[0]![1]!.headers).toEqual({ Authorization: 'Bearer bo-token' });
+    expect(page.studies[0]!.recruitment?.deadline).toBe('2026-09-18T14:59:00Z');
+  });
+
+  it('연결이 잠깐 끊기면 같은 페이지만 재시도한다', async () => {
+    serverWith(3);
+    fetchMock.mockImplementationOnce(async () => new Response('', { status: 503 }));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const page = await fetchStudyListPage('sort=RECRUITMENT_FIRST&offset=0&limit=20');
+      expect(page.studies).toHaveLength(3);
+      expect(requested()).toEqual(Array(2).fill('?sort=RECRUITMENT_FIRST&offset=0&limit=20'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('서버가 거절하면 실패하고 전체 조회로 우회하지 않는다', async () => {
+    fetchMock.mockResolvedValue(new Response('', { status: 400 }));
+    await expect(fetchStudyListPage('offset=0&limit=20')).rejects.toThrow('(400)');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('받은 Query 그대로 한 번 부르고 total · offset · limit 을 넘긴다', async () => {
     serverWith(45);
 
