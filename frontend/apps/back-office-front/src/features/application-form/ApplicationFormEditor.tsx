@@ -104,7 +104,7 @@ export function ApplicationFormEditor({
 
   return (
     <form
-      className='mx-auto flex w-full max-w-2xl flex-col gap-3'
+      className='flex w-full flex-col gap-3'
       onSubmit={(event) => {
         void submit(event).catch(() => {});
       }}
