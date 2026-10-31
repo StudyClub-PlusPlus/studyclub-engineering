@@ -85,6 +85,8 @@ describe('시간대', () => {
       endAt: null,
       discordChannelUrl: null,
       driveUrl: null,
+      programTitle: null,
+      discordLinked: false,
     };
     expect(toStudyFromDetail(detail).timezone).toBe('PST');
     expect(toStudyFromDetail({ ...detail, timezone: null }).timezone).toBeUndefined();
