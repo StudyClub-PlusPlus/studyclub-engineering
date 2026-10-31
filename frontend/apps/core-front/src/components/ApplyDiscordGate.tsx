@@ -7,7 +7,6 @@ import { site } from '@studyclub/mock';
 import { Button, Modal } from '@studyclub/ui';
 import { ExternalLink, MessageCircle } from 'lucide-react';
 
-import { track } from '@/lib/analytics';
 import { clearSession, getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { DISCORD_LINK_READY, DiscordPopupError, linkDiscord, requestDiscordCode } from '@/lib/discord';
@@ -88,8 +87,7 @@ export function ApplyDiscordGate({
     setError(null);
     setNotInGuild(false);
     try {
-      await linkDiscord(user.id, await code);
-      track({ name: 'My Discord Connected' });
+      await linkDiscord(user.id, code, 'apply_gate');
       setLinking(false);
       onLinked();
     } catch (e) {

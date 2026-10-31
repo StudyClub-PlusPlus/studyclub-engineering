@@ -3,6 +3,7 @@
 // 백엔드(DSC-01·DSC-02) 전에는 개발 서버의 MSW 목(packages/mock handlers/discord.ts)이 답한다.
 
 import { fetchAccount, profileKeys } from '@/features/profile/queries';
+import { track, type DiscordConnectFailReason, type DiscordLinkSource } from '@/lib/analytics';
 import type { OnboardingAccount } from '@/lib/api/onboarding';
 import { ApiError, http } from '@/lib/http';
 import { getQueryClient } from '@/lib/query-client';
@@ -135,13 +136,40 @@ export async function unlinkDiscord(accountId: number): Promise<void> {
   await getQueryClient().invalidateQueries({ queryKey: profileKeys.account(accountId) });
 }
 
-/** POST /api/me/discord/link — 인가 코드만 보낸다. 디스코드 식별자·핸들은 서버가 직접 받는다. 응답 204. */
-export async function linkDiscord(accountId: number, code: string): Promise<void> {
-  await http<null>('/api/me/discord/link', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
-  });
+function connectFailReason(e: unknown): DiscordConnectFailReason {
+  if (e instanceof DiscordPopupError) return e.reason === 'blocked' ? 'popup_blocked' : 'cancelled';
+  if (!(e instanceof ApiError)) return 'error';
+  if (e.status === 401) return 'session_expired';
+  if ((e.body as { errorCode?: string } | undefined)?.errorCode === 'DISCORD_NOT_IN_GUILD') return 'not_in_guild';
+  if (e.status === 409) return 'already_linked';
+  return 'error';
+}
+
+/**
+ * POST /api/me/discord/link — 인가 코드만 보낸다. 디스코드 식별자·핸들은 서버가 직접 받는다. 응답 204.
+ * `code` 는 {@link requestDiscordCode} 의 Promise 를 그대로 받는다 — 팝업 단계 실패(취소·차단)도 여기서 센다.
+ * `My Discord Connected` · `Discord Connect Failed` 는 여기서만 보낸다 — 연동하는 화면이 늘어도 빠지지 않게.
+ */
+export async function linkDiscord(
+  accountId: number,
+  code: string | Promise<string>,
+  source: DiscordLinkSource,
+): Promise<void> {
+  try {
+    const resolved = await code;
+    await http<null>('/api/me/discord/link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: resolved }),
+    });
+  } catch (e) {
+    track({
+      name: 'Discord Connect Failed',
+      props: { source, reason: connectFailReason(e), http_status: e instanceof ApiError ? e.status : null },
+    });
+    throw e;
+  }
+  track({ name: 'My Discord Connected', props: { source } });
   // 캐시가 아직 미연동이면 1분 안에 다시 누를 때 연동 창이 또 뜬다
   getQueryClient().setQueryData<OnboardingAccount>(profileKeys.account(accountId), (prev) =>
     prev ? { ...prev, discordLinked: true } : prev,

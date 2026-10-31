@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vite
 
 const replace = vi.fn();
 const invalidateQueries = vi.fn(async () => undefined);
-const linkDiscordMock: Mock<(accountId: number, code: string) => Promise<undefined>> = vi.fn(
+const linkDiscordMock: Mock<(accountId: number, code: string, source: string) => Promise<undefined>> = vi.fn(
   async () => undefined,
 );
 const requestDiscordCodeMock = vi.fn(async () => 'oauth-code');
@@ -37,7 +37,8 @@ vi.mock('@/lib/discord', () => ({
     }
   },
   fetchDiscordLinkState: (accountId: number) => fetchDiscordLinkStateMock(accountId),
-  linkDiscord: (accountId: number, code: string) => linkDiscordMock(accountId, code),
+  linkDiscord: async (accountId: number, code: string | Promise<string>, source: string) =>
+    linkDiscordMock(accountId, await code, source),
   requestDiscordCode: () => requestDiscordCodeMock(),
 }));
 
@@ -76,7 +77,7 @@ describe('OnboardingDiscord', () => {
     await user.click(screen.getByRole('button', { name: '지금 연결' }));
 
     await waitFor(() => {
-      expect(linkDiscordMock).toHaveBeenCalledWith(7, 'oauth-code');
+      expect(linkDiscordMock).toHaveBeenCalledWith(7, 'oauth-code', 'onboarding');
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['profile', 'account', 7] });
       expect(replace).toHaveBeenCalledWith('/ko/my');
     });

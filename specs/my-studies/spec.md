@@ -188,4 +188,7 @@ PRD 「API (예정)」의 `GET /api/me/studies/{id}/meetings` 는 두지 않는�
 
 ## 퍼널·계측
 
-해당 없음 — 추가 · 변경 이벤트가 없다. 화면 조회는 공통 `Page Viewed` / `page_view` 로만 잡힌다.
+- 단계: 재방문
+- 화면 조회는 공통 `Page Viewed` (`page_name`=`my_studies` · `study_room_schedule` · `study_room_attendance` · `study_room_notice`, 스터디룸은 `study_id` 함께)
+- 이벤트 (front): 정보 카드 「디스코드」 버튼에 `Study Discord Opened{study_id}`. 발표 신청은 [study-meeting](../study-meeting/spec.md)
+- A/B 없음

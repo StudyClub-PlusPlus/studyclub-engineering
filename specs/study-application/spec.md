@@ -580,7 +580,7 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 ### 퍼널·계측
 
 - 단계: 활성화 (신청 직전 게이트 — 연동이 막히면 신청이 없다)
-- 이벤트: 바뀌지 않는다. `My Discord Connected` (front) 는 이제 실제 연동 성공에서만 난다
+- 이벤트: `My Discord Connected{source=apply_gate}` (front) — 실제 연동 성공에서만 난다. `source` 로 온보딩·마이페이지 연동과 가른다. 실패는 `Discord Connect Failed{source=apply_gate, reason}` — 신청 직전에 서버 미가입(`not_in_guild`)으로 막히는 비율을 본다
 - 기대: 신청 버튼 클릭 대비 신청 제출 전환이 0 에서 회복. A/B 없음
 
 ### 프론트엔드 사용처
