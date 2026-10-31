@@ -59,8 +59,8 @@ function UsersAdminContent() {
   );
 
   const { data, error, isPending, isPlaceholderData, dataUpdatedAt } = useUsers(filter);
-  const { emails, reveal } = useRevealedEmails(dataUpdatedAt);
-  const { handles, reveal: revealDiscord } = useRevealedDiscordHandles(dataUpdatedAt);
+  const { emails, reveal, hide } = useRevealedEmails(dataUpdatedAt);
+  const { handles, reveal: revealDiscord, hide: hideDiscord } = useRevealedDiscordHandles(dataUpdatedAt);
 
   // 권한을 바꾼 뒤 필터 결과가 줄면 지금 페이지가 범위 밖일 수 있다(서버는 빈 items + 실제 total).
   // 에러가 아니므로 total 로 마지막 페이지를 계산해 다시 부른다(결과가 아예 없으면 첫 페이지).
@@ -126,8 +126,10 @@ function UsersAdminContent() {
             rows={data.items}
             revealed={emails}
             onReveal={reveal}
+            onHide={hide}
             revealedDiscord={handles}
             onRevealDiscord={revealDiscord}
+            onHideDiscord={hideDiscord}
           />
         )
       )}

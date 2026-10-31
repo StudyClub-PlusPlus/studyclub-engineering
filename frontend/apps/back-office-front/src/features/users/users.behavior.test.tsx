@@ -128,6 +128,21 @@ describe('useRevealedEmails — 목록이 바뀌면 다시 가린다', () => {
     rerender({ v: 2 });
     expect(result.current.emails.size).toBe(0);
   });
+
+  it('가린 이메일은 보관소에서 지우고 이전 목록의 늦은 응답도 버린다', () => {
+    const { result, rerender } = renderHook(({ v }) => useRevealedEmails(v), { initialProps: { v: 1 } });
+    const oldReveal = result.current.reveal;
+    act(() => {
+      oldReveal(18, SECRET);
+      oldReveal(19, 'other@example.com');
+    });
+    act(() => result.current.hide(18));
+    expect(result.current.emails.has(18)).toBe(false);
+    expect(result.current.emails.get(19)).toBe('other@example.com');
+    rerender({ v: 2 });
+    act(() => oldReveal(18, SECRET));
+    expect(result.current.emails.size).toBe(0);
+  });
 });
 
 describe('이메일 보기', () => {
@@ -305,6 +320,91 @@ describe('디스코드 보기', () => {
     act(() => oldReveal(18, HANDLE));
     expect(result.current.handles.size).toBe(0);
   });
+
+  it('가린 디스코드 원본은 보관소에서 지우고 다른 회원은 유지한다', () => {
+    const { result } = renderHook(() => useRevealedDiscordHandles(1));
+    act(() => {
+      result.current.reveal(18, HANDLE);
+      result.current.reveal(19, 'other_crew');
+    });
+    act(() => result.current.hide(18));
+    expect(result.current.handles.has(18)).toBe(false);
+    expect(result.current.handles.get(19)).toBe('other_crew');
+  });
+});
+
+describe('개인정보 열람 아이콘 토글', () => {
+  it.each([
+    {
+      label: '이메일',
+      path: 'email-reveals',
+      field: 'email',
+      value: SECRET,
+      next: 'changed@example.com',
+      prefix: '',
+      other: '디스코드 아이디',
+    },
+    {
+      label: '디스코드 아이디',
+      path: 'discord-reveals',
+      field: 'discordHandle',
+      value: 'sample_crew',
+      next: 'changed_crew',
+      prefix: '@',
+      other: '이메일',
+    },
+  ])(
+    '$label: 가리기는 요청 없이 원본을 지우고 다시 열기는 새 요청으로만 보여준다',
+    async ({ label, path, field, value, next, prefix, other }) => {
+      const user = userEvent.setup();
+      let requests = 0;
+      httpMock.mockImplementation(async (url) => {
+        if (String(url).endsWith(`/${path}`)) {
+          requests += 1;
+          if (requests === 2) throw new ApiError(500, '열람 기록을 저장하지 못했습니다.');
+          return { id: 18, [field]: requests === 1 ? value : next };
+        }
+        if (String(url).endsWith('/email-reveals')) return { id: 18, email: SECRET };
+        if (String(url).endsWith('/discord-reveals')) return { id: 18, discordHandle: 'other_handle' };
+        return pageOf([account({ discordLinked: true }), account({ id: 19, name: '나래', discordLinked: true })]);
+      });
+      const { client } = renderWith(<UsersAdmin />);
+      await user.click(await screen.findByRole('button', { name: `하늘 ${other} 보기` }));
+      expect(await screen.findByRole('button', { name: `하늘 ${other} 가리기` })).toBeEnabled();
+      await user.click(screen.getByRole('button', { name: `하늘 ${label} 보기` }));
+      expect(await screen.findByText(`${prefix}${value}`)).toBeInTheDocument();
+      const hide = screen.getByRole('button', { name: `하늘 ${label} 가리기` });
+      expect(hide).toHaveFocus();
+      // 같은 버튼의 키보드 조작으로도 가릴 수 있다.
+      await user.keyboard('{Enter}');
+      expect(screen.queryByText(`${prefix}${value}`)).not.toBeInTheDocument();
+      expect(screen.queryByTitle(`${prefix}${value}`)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: `하늘 ${label} 보기` })).toHaveFocus();
+      expect(screen.getByRole('button', { name: `하늘 ${other} 가리기` })).toBeEnabled();
+      expect(screen.getByRole('button', { name: `나래 ${label} 보기` })).toBeEnabled();
+      expect(requests).toBe(1);
+
+      // 가리기 뒤 실패한 열람은 보관했던 원본을 다시 보여주면 안 된다.
+      await user.click(screen.getByRole('button', { name: `하늘 ${label} 보기` }));
+      await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('열람 기록을 저장하지 못했습니다.'));
+      expect(screen.queryByText(`${prefix}${value}`)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: `하늘 ${label} 보기` })).toBeEnabled();
+      expect(requests).toBe(2);
+
+      await user.click(screen.getByRole('button', { name: `하늘 ${label} 보기` }));
+      expect(await screen.findByText(`${prefix}${next}`)).toBeInTheDocument();
+      expect(requests).toBe(3);
+      await waitFor(() => expect(client.getMutationCache().getAll()).toHaveLength(0));
+      expect(
+        JSON.stringify(
+          client
+            .getQueryCache()
+            .getAll()
+            .map((query) => query.state.data),
+        ),
+      ).not.toContain(next);
+    },
+  );
 });
 
 describe('권한 변경', () => {

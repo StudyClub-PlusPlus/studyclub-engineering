@@ -78,8 +78,10 @@ describe('UsersTable', () => {
           rows={[account({ id: 27, name: null, maskedEmail: 'n***@example.com', dormant: true })]}
           revealed={new Map()}
           onReveal={() => {}}
+          onHide={() => {}}
           revealedDiscord={new Map()}
           onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
@@ -91,19 +93,22 @@ describe('UsersTable', () => {
     expect(within(row).getByRole('button', { name: 'n*** 이메일 보기' })).toBeInTheDocument();
   });
 
-  it('받아 둔 원본이 있는 줄만 원본을 보이고 「보기」가 사라진다', () => {
+  it('받아 둔 원본이 있는 줄만 원본과 가리기 아이콘을 보인다', () => {
     render(
       withQuery(
         <UsersTable
           rows={[account({ id: 18 }), account({ id: 19, name: '나래', maskedEmail: 'n***@example.com' })]}
           revealed={new Map([[18, 'haneul@example.com']])}
           onReveal={() => {}}
+          onHide={() => {}}
           revealedDiscord={new Map()}
           onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
     expect(screen.getByText('haneul@example.com')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '하늘 이메일 가리기' })).toBeInTheDocument();
     expect(screen.getByText('n***@example.com')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /이메일 보기/ })).toHaveLength(1);
   });
@@ -122,8 +127,10 @@ describe('UsersTable', () => {
           ]}
           revealed={new Map()}
           onReveal={() => {}}
+          onHide={() => {}}
           revealedDiscord={new Map()}
           onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
@@ -138,8 +145,10 @@ describe('UsersTable', () => {
           rows={[]}
           revealed={new Map()}
           onReveal={() => {}}
+          onHide={() => {}}
           revealedDiscord={new Map()}
           onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
@@ -153,8 +162,10 @@ describe('UsersTable', () => {
           rows={[account({ id: 3, systemRole: 'ADMIN', roleChangeBlockedReason: 'CANNOT_CHANGE_OWN_ROLE' })]}
           revealed={new Map()}
           onReveal={() => {}}
+          onHide={() => {}}
           revealedDiscord={new Map()}
           onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
@@ -247,8 +258,10 @@ describe('UsersTable 디스코드 칸', () => {
           rows={[account({ id: 1, discordLinked: true }), account({ id: 2, name: '바다', discordLinked: false })]}
           revealed={new Map()}
           onReveal={() => {}}
+          onHide={() => {}}
           revealedDiscord={new Map()}
           onRevealDiscord={() => {}}
+          onHideDiscord={() => {}}
         />,
       ),
     );
