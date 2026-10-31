@@ -82,18 +82,18 @@ const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff;
 const BODY_FORMAT_HELP = 'HTML과 일반 텍스트를 입력할 수 있습니다.';
 
 /**
- * 조건별 안내. 치환 변수는 서버가 그 조건의 알림을 만들 때 넣는 값이고, 삭제 영향은 그 템플릿이 없을 때 서버가 하는 일이다
+ * 조건별 안내. 치환 변수는 서버가 그 조건의 알림을 만들 때 넣는 값이고, 영향(`stopEffect`)은 그 조건에 템플릿이 하나도 없을 때 서버가 하는 일이다
  * (specs/notification/spec.md). 서버에 조건이 늘면 여기에 한 줄을 더한다 — 모르는 조건은 안내 없이 일반 문구만 보인다.
  */
-const CONDITION_GUIDE: Record<string, { bodyHelp: string; deleteImpact: string }> = {
+const CONDITION_GUIDE: Record<string, { bodyHelp: string; stopEffect: string }> = {
   USER_REGISTERED: {
     bodyHelp: `{{nickname}} 으로 닉네임 삽입. ${BODY_FORMAT_HELP}`,
-    deleteImpact: '삭제하면 새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.',
+    stopEffect: '새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.',
   },
   STUDY_NOTICE: {
     bodyHelp: `{{studyTitle}} 스터디 이름, {{groupName}} 반 이름, {{senderName}} 보낸 사람, {{title}} 공지 제목, {{body}} 공지 본문을 삽입할 수 있습니다. ${BODY_FORMAT_HELP}`,
-    deleteImpact:
-      '삭제하면 메일을 포함한 스터디 공지를 보낼 수 없습니다. 메일과 디스코드를 함께 보내는 공지는 디스코드에도 올라가지 않으며, 디스코드만 보내는 공지는 영향이 없습니다.',
+    stopEffect:
+      '메일을 포함한 스터디 공지를 보낼 수 없습니다. 메일과 디스코드를 함께 보내는 공지는 디스코드에도 올라가지 않으며, 디스코드만 보내는 공지는 영향이 없습니다.',
   },
 };
 
@@ -102,9 +102,32 @@ export function bodyHelp(eventType: string): string {
   return CONDITION_GUIDE[eventType]?.bodyHelp ?? BODY_FORMAT_HELP;
 }
 
-/** 삭제 확인 단계에서 그 조건의 알림에 어떤 일이 생기는지. 모르는 조건이면 null. */
-export function deleteImpact(eventType: string): string | null {
-  return CONDITION_GUIDE[eventType]?.deleteImpact ?? null;
+/** 삭제 확인의 영향 안내. `severe` 는 그 조건의 알림이 멈추는 경우다 — 빨간 글씨로 보인다. */
+export type DeleteImpact = { message: string; severe: boolean };
+
+/**
+ * 삭제 확인 단계에서 그 조건의 알림에 어떤 일이 생기는지. `sameConditionCount` 는 그 조건의 템플릿 수(지우려는 것 포함)다.
+ * 같은 조건에 다른 템플릿이 남으면 이 템플릿의 메일만 멈추고, 마지막이면 조건별 영향이다. 모르는 조건의 마지막은 null.
+ */
+export function deleteImpact(eventType: string, sameConditionCount: number): DeleteImpact | null {
+  if (sameConditionCount > 1) {
+    return {
+      message: `이 템플릿의 메일만 더 이상 나가지 않습니다. 같은 조건의 다른 템플릿 ${sameConditionCount - 1}개는 계속 나갑니다.`,
+      severe: false,
+    };
+  }
+  const effect = CONDITION_GUIDE[eventType]?.stopEffect;
+  return effect ? { message: `삭제하면 ${effect}`, severe: true } : null;
+}
+
+/**
+ * 수정 팝업에서 이 템플릿의 조건을 **다른 조건으로 바꿀 때**의 영향 안내. 원래 조건(`eventType`)에서 이 템플릿이 마지막이면 옮기는 순간 그
+ * 조건에 템플릿이 하나도 없게 된다 — 삭제와 같은 결과다(서버는 조건 변경도 막지 않는다). 다른 템플릿이 남거나 모르는 조건이면 null.
+ */
+export function moveImpact(eventType: string, label: string, sameConditionCount: number): string | null {
+  if (sameConditionCount > 1) return null;
+  const effect = CONDITION_GUIDE[eventType]?.stopEffect;
+  return effect ? `이 템플릿이 ‘${label}’ 조건의 마지막입니다. 조건을 바꿔 저장하면 ${effect}` : null;
 }
 
 /**
@@ -112,7 +135,7 @@ export function deleteImpact(eventType: string): string | null {
  * 저장되는 이벤트 코드는 이 선택이 정하고, 화면에 적는 이름은 목록과 같은 `eventLabel` 한 곳에서 온다.
  * 백엔드에 이벤트가 있는 조건만 둔다. 회원 탈퇴는 BE 이벤트가 생길 때 코드 한 줄을 더하고 `labels.ts` 에 이름을 단다.
  * 스터디 공지도 둔다 — 시드된 템플릿을 지우면 메일을 포함한 공지가 막히는데, 선택지가 없으면 화면에서 다시 만들 길이 없다.
- * 이미 템플릿이 있는 조건을 고르면 서버가 409 로 알린다(조건당 한 건).
+ * 이미 템플릿이 있는 조건도 고를 수 있다 — 같은 조건에 템플릿을 여럿 두면 그 조건이 생길 때 모두 나간다.
  */
 const SELECTABLE_EVENTS = ['USER_REGISTERED', 'STUDY_NOTICE'];
 

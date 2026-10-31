@@ -42,7 +42,10 @@ public class NotificationCreationService {
 
     static final String WITHDRAWN_SENDER_NAME = "탈퇴한 회원";
 
-    /** 계정이나 템플릿이 없으면 로그를 남기고 종료한다. */
+    /**
+     * 웰컴메일 행을 만든다. 같은 조건({@code USER_REGISTERED})에 템플릿이 여럿이면 템플릿마다 한 행이고, 한 트랜잭션이라 전부 만들어지거나 전부 안
+     * 만들어진다. 계정이나 템플릿이 없으면 로그를 남기고 종료한다.
+     */
     // AFTER_COMMIT 에는 원래 트랜잭션 자원이 남아 있다. 별도 트랜잭션을 열어 INSERT 를 커밋한다.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createWelcomeEmailNotification(Long accountId) {
@@ -54,30 +57,35 @@ public class NotificationCreationService {
             return;
         }
 
-        Optional<NotificationTemplate> template =
-                notificationTemplateRepository.findByEventTypeAndChannel(
+        List<NotificationTemplate> templates =
+                notificationTemplateRepository.findAllByEventTypeAndChannelOrderByIdAsc(
                         NotificationEventType.USER_REGISTERED, NotificationChannel.EMAIL);
-        if (template.isEmpty()) {
+        if (templates.isEmpty()) {
             log.error("USER_REGISTERED/EMAIL 알림 템플릿을 찾을 수 없습니다. accountId={}", accountId);
             return;
         }
 
-        Notification notification =
-                Notification.pendingImmediate(
-                        NotificationEventType.USER_REGISTERED,
-                        NotificationChannel.EMAIL,
-                        account.get().getEmail(),
-                        accountId,
-                        template.get().getId(),
-                        Map.of("nickname", account.get().getNickname()));
-        notificationRepository.save(notification);
+        Map<String, Object> payload = Map.of("nickname", account.get().getNickname());
+        List<Notification> rows =
+                templates.stream()
+                        .map(
+                                template ->
+                                        Notification.pendingImmediate(
+                                                NotificationEventType.USER_REGISTERED,
+                                                NotificationChannel.EMAIL,
+                                                account.get().getEmail(),
+                                                accountId,
+                                                template.getId(),
+                                                payload))
+                        .toList();
+        notificationRepository.saveAll(rows);
     }
 
     /**
-     * 공지를 받는 사람마다 {@code STUDY_NOTICE} 메일 행을 만든다.
+     * 공지를 받는 사람마다, {@code STUDY_NOTICE} 조건의 템플릿마다 메일 행을 만든다 — 템플릿이 둘이면 한 사람에게 두 행이다.
      *
      * <p>{@link Propagation#REQUIRED}: 새 트랜잭션을 열지 않고 공지를 저장하는 트랜잭션에 참여한다 — 공지와 메일 행이 함께 커밋되거나 함께
-     * 롤백된다 (그래서 {@code BEFORE_COMMIT} 구독자가 부른다). 템플릿·공지가 없으면 예외를 던져 공지 전체를 되돌린다.
+     * 롤백된다 (그래서 {@code BEFORE_COMMIT} 구독자가 부른다). 템플릿이 하나도 없거나 공지가 없으면 예외를 던져 공지 전체를 되돌린다.
      *
      * <p>받는 사람의 계정 행은 <b>잠그지 않고</b> 읽는다. 탈퇴(AccountDeletionService)는 계정 행을 먼저 잠그고 반 행을 나중에 잠그는데, 공지
      * 보내기는 반 행을 먼저 잠그므로 여기서 계정 행까지 잠그면 순서가 뒤집혀 교착이 난다. 잠그지 않아도 안전하다. 보내기가 쥔 <b>반 행 락</b>이 같은 반 멤버의
@@ -95,15 +103,13 @@ public class NotificationCreationService {
                                 () ->
                                         new IllegalStateException(
                                                 "공지를 찾을 수 없습니다. noticeId=" + noticeId));
-        NotificationTemplate template =
-                notificationTemplateRepository
-                        .findByEventTypeAndChannel(
-                                NotificationEventType.STUDY_NOTICE, NotificationChannel.EMAIL)
-                        .orElseThrow(
-                                () ->
-                                        new IllegalStateException(
-                                                "STUDY_NOTICE/EMAIL 알림 템플릿이 없습니다. noticeId="
-                                                        + noticeId));
+        List<NotificationTemplate> templates =
+                notificationTemplateRepository.findAllByEventTypeAndChannelOrderByIdAsc(
+                        NotificationEventType.STUDY_NOTICE, NotificationChannel.EMAIL);
+        if (templates.isEmpty()) {
+            throw new IllegalStateException(
+                    "STUDY_NOTICE/EMAIL 알림 템플릿이 없습니다. noticeId=" + noticeId);
+        }
         Study study =
                 studyRepository
                         .findById(notice.getStudyId())
@@ -148,16 +154,18 @@ public class NotificationCreationService {
                 skipped++;
                 continue;
             }
-            rows.add(
-                    Notification.pendingImmediate(
-                            NotificationEventType.STUDY_NOTICE,
-                            NotificationChannel.EMAIL,
-                            account.getEmail(),
-                            accountId,
-                            template.getId(),
-                            payload,
-                            noticeId,
-                            notice.getSenderAccountId()));
+            for (NotificationTemplate template : templates) {
+                rows.add(
+                        Notification.pendingImmediate(
+                                NotificationEventType.STUDY_NOTICE,
+                                NotificationChannel.EMAIL,
+                                account.getEmail(),
+                                accountId,
+                                template.getId(),
+                                payload,
+                                noticeId,
+                                notice.getSenderAccountId()));
+            }
         }
         if (skipped > 0) {
             log.info("공지 메일 {}명 건너뜀, 계정이 이미 없다. noticeId={}", skipped, noticeId);

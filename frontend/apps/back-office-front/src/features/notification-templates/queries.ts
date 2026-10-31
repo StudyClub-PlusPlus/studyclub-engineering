@@ -37,13 +37,18 @@ export function useNotificationTemplates() {
   });
 }
 
-/** 편집 시작 때마다 서버에서 읽는다. 단건 API가 없어 목록에서 해당 ID를 찾는다. */
+/** 편집할 템플릿과, 그 조건(알림 조건)에 있는 템플릿 수(자기 자신 포함). 삭제 확인의 영향 안내를 가르는 재료다. */
+export type TemplateForEdit = { template: NotificationTemplate; sameConditionCount: number };
+
+/** 편집 시작 때마다 서버에서 읽는다. 단건 API가 없어 목록에서 해당 ID를 찾고, 같은 조건의 템플릿 수도 그 목록에서 센다. */
 export function useNotificationTemplateForEdit(id?: number) {
   return useQuery({
     queryKey: notificationTemplateKeys.editor(id),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal }): Promise<TemplateForEdit | null> => {
       const list = await fetchNotificationTemplates({ signal });
-      return list.find((template) => template.id === id) ?? null;
+      const template = list.find((item) => item.id === id);
+      if (!template) return null;
+      return { template, sameConditionCount: list.filter((item) => item.eventType === template.eventType).length };
     },
     enabled: id !== undefined,
     staleTime: 0,

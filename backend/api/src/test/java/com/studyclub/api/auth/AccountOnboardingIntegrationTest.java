@@ -105,12 +105,12 @@ class AccountOnboardingIntegrationTest {
      */
     @BeforeEach
     void seedWelcomeEmailTemplateIfMissing() {
-        boolean exists =
+        boolean missing =
                 notificationTemplateRepository
-                        .findByEventTypeAndChannel(
+                        .findAllByEventTypeAndChannelOrderByIdAsc(
                                 NotificationEventType.USER_REGISTERED, NotificationChannel.EMAIL)
-                        .isPresent();
-        if (!exists) {
+                        .isEmpty();
+        if (missing) {
             notificationTemplateRepository.save(
                     new NotificationTemplate(
                             NotificationEventType.USER_REGISTERED,
