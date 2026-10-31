@@ -216,7 +216,7 @@ const { mutate } = useMutation({
 
 - `lib/http.ts`는 백엔드의 `errorMessage` 또는 인증 라우트의 `message`를 `ApiError`로 변환한다. 화면은 필요하면 상태 코드별 안내 문구를 선택한다. 신청 폼의 403·409 등이 예다.
 - core-front의 QueryCache는 조회 401에서 UI 세션을 비운다. 공개 화면은 강제 이동하지 않는다.
-- 백오피스의 QueryCache·MutationCache는 401에서 세션·캐시를 비우고 로그인으로 이동한다.
+- 백오피스의 QueryCache·MutationCache는 401에서 세션·캐시와 httpOnly 쿠키를 정리한 뒤 로그인으로 이동한다. 동시 실패는 한 번만 처리하며 로그아웃 요청이 실패하거나 10초를 넘겨도 로그인 화면에 머물 수 있다.
 - 기본 `http()` 호출에는 자동 refresh·재시도가 없다. core-front 가입·닉네임 확인은 네 번째 인자 `{ refreshOnUnauthorized: true }`로 한 번 갱신·재시도한다. [인증 흐름](auth-flow.md)을 참고한다.
 
 ## 서버 컴포넌트로 충분한 경우
