@@ -22,7 +22,9 @@ export function RegistrationNavigation({ children, locale }: { children: React.R
       <div className='mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-6'>
         <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 type-title-md'>
           <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
-          StudyClub
+          <span>
+            Study<span className='text-[#FF805C]'>Club</span>
+          </span>
         </Link>
         <Link
           href={switchUrl}

@@ -13,10 +13,51 @@
 
 import type { Locale, Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
+import { isValidZone, scheduleZoneTitle } from '@core/lib/schedule-timezone';
+import { formattingZone } from '@core/lib/time-zone-rules';
 import { recruitState, todayISO, toISODate, type RecruitState } from '@studyclub/mock';
 
 export { recruitState, toISODate };
 export type { RecruitState };
+
+/** 확정된 모임의 날짜·시각·원본 시간대가 모두 있어야 변환한다. 날짜만 있는 startAt은 대상이 아니다. */
+export function confirmedRecruitSchedule(study: Study, locale: Locale, viewerZone: string) {
+  const schedule = study.confirmedSchedule;
+  if (!schedule || !isValidZone(schedule.timeZone) || !isValidZone(viewerZone)) return undefined;
+  // 오프셋 없는 날짜·시각을 실행 중인 기기의 시간대로 해석하지 않는다.
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/.test(schedule.scheduledAt))
+    return undefined;
+  const at = new Date(schedule.scheduledAt);
+  if (!Number.isFinite(at.getTime())) return undefined;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat(locale === 'ko' ? 'ko-KR' : 'en-US', {
+      timeZone: formattingZone(viewerZone, at),
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(at)
+      .map((p) => [p.type, p.value]),
+  );
+  return {
+    label: `${parts.year}-${parts.month}-${parts.day} (${parts.weekday}) ${parts.hour}:${parts.minute}`,
+    zone: scheduleZoneTitle(viewerZone, locale, at),
+  };
+}
+
+/** 별도 미리보기 주소에서만 쓰는 확정 일정 예시. 공개 시드의 미정 일정을 확정으로 바꾸지 않는다. */
+export function withConfirmedScheduleExample(study: Study): Study {
+  return study.id === 'ai-paper-study'
+    ? {
+        ...study,
+        confirmedSchedule: { scheduledAt: '2027-01-07T11:00:00Z', timeZone: 'Asia/Seoul' },
+      }
+    : study;
+}
 
 /** 카드 CTA 문구 — 행동을 지시한다. */
 const CTA_LABEL: Record<RecruitState, { ko: string; en: string }> = {
@@ -74,13 +115,13 @@ export function studyTimezone(study: Study): StudyTimezone {
 /**
  * 카드·상세에 보이는 시간대 문구. **명시된 시간대만 사실대로 말한다.**
  *
- * 운영자가 고른 값이면 `BOTH` 도 「동시 진행(KST·PST)」이다. 고른 값 없이 `studyTimezone()` 이 `both` 를 낸 것은
+ * 운영자가 고른 값이면 `BOTH` 도 「동시 진행(KST·PT)」이다. 고른 값 없이 `studyTimezone()` 이 `both` 를 낸 것은
  * "동시에 진행한다"가 아니라 "일정 문구에 표기가 없다"는 뜻이라, 필터 버킷 이름과 달리 「시간대 미정」으로 남긴다.
  */
 const TIMEZONE_DISPLAY_LABEL: Record<StudyTimezone, { ko: string; en: string }> = {
   KST: { ko: 'KST', en: 'KST' },
-  PST: { ko: 'PST', en: 'PST' },
-  both: { ko: '동시 진행(KST·PST)', en: 'Multiple timezones (KST·PST)' },
+  PST: { ko: 'PT', en: 'PT' },
+  both: { ko: '동시 진행(KST·PT)', en: 'Multiple timezones (KST·PT)' },
 };
 
 const UNKNOWN_TIMEZONE_LABEL = { ko: '시간대 미정', en: 'Timezone TBD' };
@@ -110,9 +151,7 @@ export function recruitBadge(study: Study, locale: Locale): { label: string; dot
   if (!deadline) {
     return { label: t({ ko: '모집중 (미정)', en: 'Open (TBD)' }, locale), dotClass: 'bg-recruiting-dot' };
   }
-  const days = Math.round(
-    (Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${todayISO()}T00:00:00Z`)) / 86_400_000,
-  );
+  const days = Math.round((Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${todayISO()}T00:00:00Z`)) / 86_400_000);
   const dLabel = days <= 0 ? 'D-DAY' : `D-${days}`;
   const closingSoon = days <= 3;
   return {

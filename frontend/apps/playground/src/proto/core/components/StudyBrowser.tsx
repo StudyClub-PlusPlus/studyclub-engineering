@@ -35,7 +35,7 @@ const CATEGORY_OPTIONS: { value: string; label: string }[] = [
 ];
 const TIMEZONE_OPTIONS: { value: TimezoneFilter; label: string }[] = [
   { value: 'KST', label: 'KST' },
-  { value: 'PST', label: 'PST' },
+  { value: 'PST', label: 'PT' },
   { value: 'both', label: '동시 모집' },
 ];
 
@@ -122,10 +122,12 @@ export function StudyBrowser({
   studies: initialStudies,
   locale,
   leads,
+  schedulePreview = false,
 }: {
   studies: Study[];
   locale: Locale;
   leads: Record<string, Operator>;
+  schedulePreview?: boolean;
 }) {
   const [studies, setStudies] = useState<Study[]>(initialStudies);
   const [input, setInput] = useState('');
@@ -283,7 +285,13 @@ export function StudyBrowser({
       {filtered.length > 0 ? (
         <div data-anno='5' className='grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3'>
           {filtered.map((s) => (
-            <StudyListCard key={s.id} study={s} locale={locale} lead={s.lead ? leads[s.lead] : undefined} />
+            <StudyListCard
+              schedulePreview={schedulePreview}
+              key={s.id}
+              study={s}
+              locale={locale}
+              lead={s.lead ? leads[s.lead] : undefined}
+            />
           ))}
         </div>
       ) : hasQuery ? (
