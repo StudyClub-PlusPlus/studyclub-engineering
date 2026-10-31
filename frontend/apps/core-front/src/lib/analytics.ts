@@ -1,4 +1,5 @@
-import type { StudyStatus } from '@studyclub/mock';
+import type { StudyStatus } from '@studyclub/types';
+import { z } from 'zod';
 
 import { amplitude, analyticsEnabled, COMMON_PROPS, IS_PRODUCTION } from './amplitude';
 
@@ -237,7 +238,7 @@ export function captureFirstTouch(): void {
 
 function readFirstTouch(): Record<string, string> {
   try {
-    return JSON.parse(localStorage.getItem(FIRST_TOUCH_KEY) ?? '{}');
+    return z.record(z.string(), z.string()).parse(JSON.parse(localStorage.getItem(FIRST_TOUCH_KEY) ?? '{}'));
   } catch {
     return {};
   }

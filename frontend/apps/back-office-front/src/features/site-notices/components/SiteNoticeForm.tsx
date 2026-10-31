@@ -13,14 +13,6 @@ export const EMPTY_NOTICE: SiteNoticePayload = { title: '', body: '' };
 
 export type SiteNoticeFormErrors = Partial<Record<keyof SiteNoticePayload, string>>;
 
-/** 빈 칸 검사는 화면이 먼저 한다. 길이 상한은 서버 400 이 두 번째 방어선이다. */
-export function validateSiteNoticeForm(f: SiteNoticePayload): SiteNoticeFormErrors {
-  const e: SiteNoticeFormErrors = {};
-  if (!f.title.trim()) e.title = '제목을 입력하세요.';
-  if (!f.body.trim()) e.body = '본문을 입력하세요.';
-  return e;
-}
-
 /** 서버 검증 메시지(`title: 제목은 200자까지입니다.`)를 칸 오류로 바꾼다. 못 바꾸면 null. */
 export function serverErrorToNoticeField(message: string): SiteNoticeFormErrors | null {
   const m = /^(title|body):\s*(.+)$/.exec(message);

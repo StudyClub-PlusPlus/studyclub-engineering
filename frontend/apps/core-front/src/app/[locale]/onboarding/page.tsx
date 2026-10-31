@@ -2,20 +2,16 @@
 
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { Locale } from '@studyclub/types';
 import { Button, Input } from '@studyclub/ui';
 import { AlertCircle, ArrowRight, Check } from 'lucide-react';
+import { useForm, useWatch } from 'react-hook-form';
 
-import { OnboardingConsent } from '@/components/OnboardingConsent';
-import { OnboardingDiscord } from '@/components/OnboardingDiscord';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
-import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
-import { ApiError } from '@/lib/api/client';
-import { checkNicknameAvailability } from '@/lib/api/nicknames';
-import { completeOnboarding } from '@/lib/api/onboarding';
-import { getLoginMethod, getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import { getLoginMethod, getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/features/auth/auth';
 import {
   clearDraft,
   hasOnboardingFieldErrors,
@@ -27,7 +23,14 @@ import {
   saveDraft,
   type OnboardingDraft,
   type OnboardingFieldErrors,
-} from '@/lib/onboarding';
+} from '@/features/onboarding/model';
+import { OnboardingConsent } from '@/features/onboarding/OnboardingConsent';
+import { OnboardingDiscord } from '@/features/onboarding/OnboardingDiscord';
+import { completeOnboarding } from '@/features/onboarding/repository';
+import { makeOnboardingSchema, type OnboardingFormValues } from '@/features/onboarding/schema';
+import { checkNicknameAvailability } from '@/features/profile/nickname-repository';
+import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
+import { ApiError } from '@/lib/http';
 
 export default function OnboardingPage() {
   return (
@@ -100,10 +103,18 @@ function OnboardingScreen() {
 function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: string; accountId: number }) {
   const ko = locale === 'ko';
   const router = useRouter();
-  const [draft, setDraft] = useState<OnboardingDraft>(() => initialDraft(accountId, getSuggestedNickname()));
+  const schema = makeOnboardingSchema(locale);
+  const { control, setValue, handleSubmit } = useForm<OnboardingFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { ...initialDraft(accountId, getSuggestedNickname()), ageConfirmed: false },
+  });
+  const values = useWatch({ control });
+  const { ageConfirmed, draft } = useMemo(() => {
+    const { ageConfirmed, ...draft } = values as OnboardingFormValues;
+    return { ageConfirmed, draft };
+  }, [values]);
   const [touched, setTouched] = useState(false);
   const [composing, setComposing] = useState(false);
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
   /** expired | input(400) | server(500 등) */
   const [problem, setProblem] = useState<'expired' | 'input' | 'server' | null>(null);
   const [fieldErrors, setFieldErrors] = useState<OnboardingFieldErrors>({});
@@ -117,8 +128,8 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
     saveDraft(accountId, draft);
   }, [accountId, draft]);
 
-  function update<K extends keyof OnboardingDraft>(field: K, value: OnboardingDraft[K]) {
-    setDraft((previous) => ({ ...previous, [field]: value }));
+  function update(field: keyof OnboardingDraft, value: OnboardingDraft[keyof OnboardingDraft]) {
+    setValue(field, value, { shouldDirty: true });
     if (field === 'nickname') {
       setFieldErrors((previous) => ({ ...previous, nickname: undefined }));
     } else if (field === 'timeZone') {
@@ -180,11 +191,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
     prevRequiredAgreed.current = requiredAgreed;
   }, [requiredAgreed, draft.termsOfServiceAgreed, draft.privacyPolicyAgreed, draft.marketingAgreed]);
 
-  const valid =
-    !nicknameError(draft.nickname, locale) &&
-    nickStatus !== 'taken' &&
-    isOnboardingTimeZone(draft.timeZone) &&
-    requiredAgreed;
+  const valid = schema.safeParse({ ...draft, ageConfirmed }).success && nickStatus !== 'taken';
 
   /** 서버 닉네임 오류가 있으면 초록「사용 가능」을 빨간 오류로 교체한다. */
   const nickLine: { text: string; tone: 'muted' | 'error' | 'ok' } = fieldErrors.nickname
@@ -251,10 +258,13 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    send();
+    setTouched(true);
+    void handleSubmit(send)();
   }
 
-  sendRef.current = send;
+  sendRef.current = () => {
+    void handleSubmit(send)();
+  };
 
   async function send() {
     if (submitting.current || disabled) return;
@@ -434,10 +444,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
         <section className='border-t border-border pt-6'>
           <h2 className='mb-4 type-title-md'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
           {!ko && (
-            <p
-              role='note'
-              className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 type-label-sm text-fg-muted'
-            >
+            <p role='note' className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 type-label-sm text-fg-muted'>
               The documents below are currently available in Korean. English versions have not been provided yet.
             </p>
           )}
@@ -452,7 +459,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
             }}
             onChange={(key, value) => {
               if (key === 'age') {
-                setAgeConfirmed(value);
+                setValue('ageConfirmed', value, { shouldDirty: true });
                 setFieldErrors((previous) => ({ ...previous, consent: undefined }));
                 return;
               }

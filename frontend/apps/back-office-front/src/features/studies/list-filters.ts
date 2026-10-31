@@ -1,4 +1,5 @@
-import { CATEGORY_DISPLAY, STUDY_CATEGORIES, type Study, type StudyLifecycleStatus } from '@studyclub/mock';
+import { type Study, type StudyLifecycleStatus } from '@studyclub/types';
+import { CATEGORY_DISPLAY, STUDY_CATEGORIES } from '@studyclub/utils';
 
 /**
  * 스터디 관리 목록의 필터·정렬·페이지 — 서버 컴포넌트(`app/studies/page.tsx`)와 화면(`StudiesTable`)이 같이 쓴다.
@@ -179,7 +180,11 @@ const CATEGORY_CODE: Record<string, string> = Object.fromEntries(
   Object.entries(CATEGORY_DISPLAY).map(([code, label]) => [label, code]),
 );
 
-const SERVER_SORT: Partial<Record<SortOrder, string>> = { title: 'TITLE_ASC', recruitment: 'RECRUITMENT', id: 'ID_DESC' };
+const SERVER_SORT: Partial<Record<SortOrder, string>> = {
+  title: 'TITLE_ASC',
+  recruitment: 'RECRUITMENT',
+  id: 'ID_DESC',
+};
 
 /**
  * 목록 필터 → `GET /api/admin/studies` Query (specs/dashboard 4.4). 서버에 없는 조건이 걸려 있으면 null — 전체를 받아 화면이 거른다.

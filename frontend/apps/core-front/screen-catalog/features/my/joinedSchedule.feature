@@ -1,3 +1,5 @@
+# PRD 연결 정본: docs/frontend-development-guide/core-e2e-prd-map.md
+# 설명용 명세. 실제 실행 범위는 .meta.ts의 assertions·steps이며 전체 행동 완료를 뜻하지 않는다.
 Feature: 내 스터디 상세 — 일정 및 출석 (navigator-register-sessions, navigator-edit-attendance, crew-apply-presenter)
 
   Background:

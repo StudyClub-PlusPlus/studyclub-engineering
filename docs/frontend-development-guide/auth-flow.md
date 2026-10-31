@@ -1,124 +1,76 @@
-# Authentication Flow (Frontend)
+# 프론트엔드 인증 흐름
 
-## Table of Contents
+기준: 2026-10-31 작업 트리. 일반 API 호출은 [API 연동 가이드](api-integration.md), 테스트 인증은 [E2E 가이드](e2e-guide.md)를 참고한다.
 
-- [개요](#개요)
-- [Google OAuth 흐름 — 팝업 패턴](#google-oauth-흐름--팝업-패턴)
-- [세션 저장 구조](#세션-저장-구조)
-- [리프레시 토큰](#리프레시-토큰)
-- [미들웨어](#미들웨어)
-- [back-office 인증](#back-office-인증)
-- [환경변수](#환경변수)
+## 로그인과 코드 교환
 
-## 개요
+core-front는 Google·Apple, back-office-front는 Google 로그인을 제공한다. 두 앱 모두 팝업으로 인가 코드를 받은 뒤 앱의 Route Handler에서 백엔드와 교환한다.
 
-두 앱 모두 Google OAuth 로 로그인한다. 리다이렉트가 아닌 **팝업(popup) 패턴**을 사용한다. 팝업 창에서 Google 인증을 완료한 뒤 `postMessage` 로 부모 창에 code 를 전달하고 창을 닫는다.
+1. 두 앱의 `src/features/auth/auth.ts`가 OAuth authorize URL을 만들고 로그인 페이지가 `window.open()`으로 연다. Google URL을 만드는 별도 GET API는 없다.
+2. Google 팝업은 core-front의 `/api/auth/callback`에 도착한다. 백오피스도 `NEXT_PUBLIC_OAUTH_REDIRECT_URI`로 같은 콜백을 사용한다.
+3. 콜백은 `{ source: 'studyclub-oauth', code, error }`를 허용된 opener 출처로 `postMessage`하고 닫는다.
+4. 부모 창은 `/api/auth/social/login`에 코드와 redirect URI를 POST한다.
+5. Route Handler는 백엔드 **`POST /auth/social-login`**을 호출한다. 플랫폼은 서버에서 core-front `CORE`, 백오피스 `BACK_OFFICE`로 고정한다.
+6. 토큰은 httpOnly 쿠키에 설정한다. JSON에는 `account`만 반환하며 core-front는 `suggestedNickname`도 반환한다. 토큰을 localStorage에 저장하지 않는다.
+7. core-front는 온보딩 미완료 회원을 `/{locale}/onboarding`으로 보낸다. 백오피스는 로그인 응답의 `account.role === 'ADMIN'`도 검사한다.
 
-## Google OAuth 흐름 — 팝업 패턴
+Apple은 core-front의 `/api/auth/apple/callback`이 `form_post` 응답을 받고, 같은 코드 교환 라우트에 `provider: 'apple'`을 전달한다. 로컬 로그인 지원 여부는 앱의 Apple 설정과 등록된 redirect URI를 확인한다.
 
-```
-1. 로그인 버튼 클릭
-   ↓
-2. window.open() — 팝업 창 열기
-   → /api/auth/social/login?provider=google 로 Google Consent URL 생성 후 리다이렉트
-   ↓
-3. Google OAuth Consent → 팝업 창의 /api/auth/callback 으로 code 전달
-   ↓
-4. /api/auth/callback (Route Handler, 팝업 창)
-   → window.opener.postMessage({ source: "studyclub-oauth", code }, <허용 출처>)
-   → 팝업 창 닫기 (window.close())
-   ↓
-5. 부모 창 message 이벤트 수신 (login/page.tsx)
-   → origin 검증 후 code 추출
-   → POST /api/auth/social/login { provider: "google", code }
-   ↓
-6. /api/auth/social/login (BFF Route Handler)
-   → 백엔드 POST /auth/social/login 호출
-   → 응답 데이터를 쿠키 + localStorage 에 이중 저장
-   → JSON { user } 반환
-```
+### 팝업 메시지 검증의 현재 범위
 
-### /api/auth/callback 보안 주의
+Google 콜백의 발신 대상은 자기 출처, 운영·stage 백오피스, 로컬 4700/4701이다. `targetOrigin: '*'`를 쓰지 않으며 스크립트에 삽입하는 값의 `<`를 이스케이프한다.
 
-`postMessage` 의 `targetOrigin` 에 `"*"` 를 쓰지 않는다. 쓰면 아무 사이트나 이 팝업을 열어 Google 인가 코드를 받는다. 받는 쪽은 core-front 자기 출처 · 백오피스(운영·stage 주소) · 로컬 4700/4701 로 한정한다. 쿼리값을 `<script>` 에 넣을 때는 `<` 를 `\u003c` 로 이스케이프한다 (`</script>` 탈출 방지).
+현재 두 로그인 페이지의 수신 핸들러는 `data.source === 'studyclub-oauth'`를 확인한다. **`event.origin`·`event.source` 검증은 구현되어 있지 않다.** 콜백의 발신 대상 제한과 수신측 출처 검증을 같은 것으로 설명하지 않는다.
 
-```typescript
-// app/api/auth/callback/route.ts
-// env 가 아니라 주소를 적는다 — NEXT_PUBLIC_* 는 빌드 인자라 서버 라우트 실행 때 비어 있다
-const OPENER_ORIGINS = ['https://back-office.studyclub.life', 'https://back-office-stage.studyclub.life', 'http://localhost:4700', 'http://localhost:4701'];
-// [window.location.origin, ...OPENER_ORIGINS] 각각으로 postMessage — 맞지 않는 출처는 브라우저가 버린다
-```
+## 쿠키와 UI 세션
 
-### BFF Route Handler 역할 (social/login)
+| 저장소 | core-front | back-office-front | 용도 |
+|---|---|---|---|
+| httpOnly access 쿠키 | `sc_access_token` | `bo_access_token` | API 인증·미들웨어 게이트, 경로 `/` |
+| httpOnly refresh 쿠키 | `sc_refresh_token` | `bo_refresh_token` | 경로 `/api/auth` |
+| localStorage | `sc_user` | `bo_user` | 회원 정보의 UI 스냅샷 |
 
-`src/app/api/auth/social/login/route.ts`:
-- 프론트 → 백엔드 프록시 (CORS 이슈 회피)
-- 백엔드 응답의 accessToken → `sc_access_token` httpOnly 쿠키 설정
-- 백엔드 응답의 refreshToken → `sc_refresh_token` httpOnly 쿠키 설정 (`path: "/api/auth"`)
-- `refreshToken` / `accessToken` 은 JSON 응답 본문에 포함하지 않음 (JS 접근 차단)
-- `account` 객체는 JSON 응답으로 반환 → 클라이언트가 `sc_user` 로 localStorage 에 저장
+`AUTH_COOKIE_ENV=stage`이면 쿠키 이름에 `stage_`가 들어간다. 예: `sc_stage_access_token`, `bo_stage_access_token`. 프론트 서버와 백엔드의 환경 값이 일치해야 한다. 이름 정본은 각 앱의 `src/lib/cookie-names.ts`다.
 
-## 세션 저장 구조
+`sc_user`·`bo_user`에는 이메일 등 회원 정보가 포함될 수 있다. 인증 토큰이나 권한 판정의 근거로 쓰지 않으며 테스트·스크린샷에는 가상 데이터를 쓴다. core-front의 가입 제안 닉네임과 로그인 수단은 sessionStorage에 별도로 보관한다.
 
-| 저장소 | 키 | 내용 | 목적 |
-|--------|-----|------|------|
-| httpOnly 쿠키 | `sc_access_token` | JWT access token | 미들웨어 인증 게이팅 |
-| httpOnly 쿠키 | `sc_refresh_token` | refresh token (`path: /api/auth`) | 토큰 재발급 전용 |
-| localStorage | `sc_user` | `{ id, nickname, email, ... }` | 클라이언트 UI 렌더링 |
+쿠키 옵션은 `src/lib/cookies.ts`에 모은다. `httpOnly`, `sameSite: 'lax'`, production의 `secure`를 사용하며, 설정할 때와 삭제할 때의 `path`·`domain`을 맞춘다.
 
-`sc_access_token` 은 JS 에서 읽을 수 없고 미들웨어와 Route Handler 에서만 접근된다.
-`sc_user` 는 민감 정보를 담지 않으며 UI 표시용으로만 쓴다.
+## 토큰 만료와 로그아웃
 
-## 리프레시 토큰
-
-Google OAuth 는 `access_type: "online"` 으로 호출하므로 **Google 이 refresh token 을 발급하지 않는다**.
-앱 자체 refresh token 은 백엔드가 발급하며 `sc_refresh_token` httpOnly 쿠키에 저장된다.
-
-### 토큰 재발급 플로우
-
-```
-클라이언트 → POST /api/auth/refresh
-              ↓
-BFF (/api/auth/refresh)
-  → request.cookies 에서 sc_refresh_token 읽기
-  → 백엔드 POST /auth/refresh 호출
-  → 성공: sc_access_token 쿠키 갱신
-  → 실패(401): sc_access_token + sc_refresh_token 삭제, 401 반환
-```
-
-클라이언트는 API 호출에서 401 응답을 받으면 `/api/auth/refresh` 를 시도하고 성공 시 원래 요청을 재시도한다.
-
-### 로그아웃
-
-`/api/auth/logout` Route Handler 가 `sc_access_token` 과 `sc_refresh_token` 쿠키를 모두 삭제한다.
+- core-front에는 `POST /api/auth/refresh`가 있다. refresh 쿠키를 백엔드 `/auth/refresh`로 보내고 성공하면 access 쿠키를 갱신한다.
+- core-front 가입·닉네임 확인은 `lib/http.ts`로 백엔드를 직접 호출하며 `{ refreshOnUnauthorized: true }` 옵션으로 401이면 refresh 후 한 번 재시도한다.
+- **두 앱 모두 기본 `http()` 호출은 401 후 자동 갱신하지 않는다.** core-front에서 위 옵션을 지정한 요청만 한 번 갱신·재시도한다. 백오피스에는 refresh Route Handler도 없다. 라우트 존재만으로 자동 갱신이 된다고 보지 않는다.
+- core-front의 QueryCache는 조회 401에서 UI 세션을 비우며 공개 화면을 강제로 이동시키지 않는다.
+- 백오피스의 QueryCache·MutationCache는 401에서 세션·캐시를 비우고 `/login?next=...`로 이동한다.
+- 두 앱의 `logout()`은 UI 세션을 지우고 `POST /api/auth/logout`으로 httpOnly 쿠키를 삭제한다.
 
 ## 미들웨어
 
-`src/middleware.ts`:
-- `sc_access_token` 쿠키가 없으면 → `/login` 으로 리다이렉트
-- 로그인 페이지 접근 시 `sc_access_token` 있으면 → `/` 으로 리다이렉트
-- 공개 경로 (`/`, `/api/auth/*`) 는 통과
+미들웨어는 쿠키의 **존재만** 확인한다. 토큰의 유효성·역할은 백엔드가 판정한다.
 
-미들웨어는 토큰 유효성을 검증하지 않는다(서버 호출 없이). 만료된 토큰은 백엔드 API 에서 401 이 반환될 때 감지한다.
+| 앱 | 현재 처리 |
+|---|---|
+| core-front | 로케일 없는 경로에 기본 로케일 추가. `/{locale}/my` 하위·온보딩은 쿠키 없으면 로케일 로그인으로 이동하며 `next`에 경로와 쿼리를 보존 |
+| back-office-front | API·정적 파일 외 화면을 게이트. 쿠키 없으면 `/login?next=...`, 쿠키가 있는 상태의 `/login`은 `/`로 이동 |
 
-## back-office 인증
-
-`back-office-front` 는 별도 OAuth 앱을 등록하지 않고 **core-front (port 4700) 의 콜백 URI 를 재사용**한다.
-
-GCP Google Cloud Console 에 등록된 Authorized redirect URI 가 `http://localhost:4700/api/auth/callback` (또는 프로덕션 core-front 도메인) 하나뿐이므로, back-office 의 Google OAuth 팝업도 같은 URI 로 착지한다.
-
-back-office 에서 로그인 버튼을 누르면:
-1. 팝업이 열려 Google Consent → `core-front` 의 `/api/auth/callback` 착지
-2. `postMessage` 로 back-office 부모 창에 code 전달
-3. back-office 의 `/api/auth/social/login` BFF 로 code 전송
-
-**신규 환경 설정 시**: GCP redirect URI 에 core-front 도메인만 등록하면 된다.
+백오피스의 개발 우회는 `NODE_ENV=development`와 `BO_DEV_BYPASS_AUTH=1`이 동시에 필요하다. 실제 API 권한을 부여하는 기능은 아니다. 카탈로그는 우회를 끄고 테스트 쿠키·고정 응답으로 실행한다.
 
 ## 환경변수
 
-| 변수 | 설명 | 위치 |
-|------|------|------|
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth Client ID | `.env.local` |
-| `API_BASE_URL` | 백엔드 API 주소 | `.env.local` |
+| 변수 | 용도 |
+|---|---|
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | 브라우저 Google authorize URL의 Client ID |
+| `NEXT_PUBLIC_OAUTH_REDIRECT_URI` | Google 콜백 URI. 백오피스는 core-front 콜백 사용 |
+| `NEXT_PUBLIC_API_BASE_URL` | 브라우저에서 호출할 백엔드 주소 |
+| `API_BASE_URL` | 서버에서 호출할 백엔드 주소. 코드 교환 등에서 우선 사용 |
+| `AUTH_COOKIE_DOMAIN` | access 쿠키가 API 호스트에도 전달되도록 설정하는 도메인 |
+| `AUTH_COOKIE_ENV` | stage 등 환경별 쿠키 이름 분리 |
 
-`NEXT_PUBLIC_` 접두사 변수만 클라이언트 번들에 포함됨. 시크릿은 절대 `NEXT_PUBLIC_` 으로 시작하지 않도록 주의.
+설정 파일과 실제 값은 커밋하지 않는다. `NEXT_PUBLIC_*`는 클라이언트 번들에 포함되는 값이다.
+
+## 확인할 코드
+
+- [core-front 인증 함수](../../frontend/apps/core-front/src/features/auth/auth.ts) · [로그인 페이지](../../frontend/apps/core-front/src/app/[locale]/login/page.tsx)
+- [백오피스 코드 교환](../../frontend/apps/back-office-front/src/app/api/auth/social/login/route.ts)
+- [Google 콜백](../../frontend/apps/core-front/src/app/api/auth/callback/route.ts) · [refresh 라우트](../../frontend/apps/core-front/src/app/api/auth/refresh/route.ts)

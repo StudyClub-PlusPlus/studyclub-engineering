@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { planDraft, previewOf, validateEdit, validateKickoff, type Meeting, type MeetingDraft } from './meetings';
-import { wallParts, zonedInstant } from './time';
+import {
+  planDraft,
+  previewOf,
+  validateEdit,
+  validateKickoff,
+  type Meeting,
+  type MeetingDraft,
+} from '@/features/schedule/meetings';
+import { wallParts, zonedInstant } from '@/features/schedule/time';
 
 const NOW = new Date('2026-10-22T00:00:00Z');
 const KST = 'Asia/Seoul';

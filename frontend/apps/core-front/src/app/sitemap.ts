@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 
-import { getEvents, getStudies } from '@/lib/content';
+import { getEvents } from '@/features/events/server';
+import { getStudies } from '@/features/studies/server';
 import { DEFAULT_LOCALE, LOCALES } from '@/lib/i18n';
 import { SITE_URL } from '@/lib/seo';
 

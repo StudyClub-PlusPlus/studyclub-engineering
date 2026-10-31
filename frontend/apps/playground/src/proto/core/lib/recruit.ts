@@ -15,7 +15,8 @@ import type { Locale, Study } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { isValidZone, scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { formattingZone } from '@core/lib/time-zone-rules';
-import { recruitState, todayISO, toISODate, type RecruitState } from '@studyclub/mock';
+import { type RecruitState } from '@studyclub/types';
+import { recruitState, todayISO, toISODate } from '@studyclub/utils';
 
 export { recruitState, toISODate };
 export type { RecruitState };

@@ -12,7 +12,7 @@ import {
   type ProtoMeeting,
 } from '@core/lib/meetings';
 import { participantsOf, type Participant } from '@core/lib/schedule-board';
-import type { Study, StudyMeeting } from '@studyclub/mock';
+import type { Study, StudyMeeting } from '@studyclub/types';
 
 /**
  * 일정 표가 읽고 쓰는 곳. 표 모양은 하나이고, **어느 반의 회차인가**만 다르다.

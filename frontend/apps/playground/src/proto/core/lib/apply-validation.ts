@@ -1,4 +1,4 @@
-import type { ApplicationQuestion } from '@studyclub/mock';
+import type { ApplicationQuestion } from '@studyclub/types';
 
 /**
  * 스터디 신청 폼 — 유효값. 기획서 MIN / MAX / ENUM 과 같은 숫자다.

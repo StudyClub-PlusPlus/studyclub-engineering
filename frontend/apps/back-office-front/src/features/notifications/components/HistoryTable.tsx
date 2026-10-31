@@ -121,13 +121,7 @@ export function HistorySkeleton() {
 }
 
 /** 표 자리에 서는 안내 한 줄(+ 버튼). 비어도 표 자리의 높이를 지킨다. */
-export function HistoryNotice({
-  children,
-  action,
-}: {
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
+export function HistoryNotice({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className='flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--color-border)] p-10 text-center'>
       <p className='type-body-sm text-fg-secondary'>{children}</p>

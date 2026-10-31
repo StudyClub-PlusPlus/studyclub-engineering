@@ -5,14 +5,21 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { Locale } from '@studyclub/types';
 import { Button, Checkbox, toast, useImageUpload } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
+import { profileSchema, type ProfileFormValues } from './form-schema';
+import type { MarketingConsent } from './types';
 import { TimeZonePicker, zoneName } from '@/components/TimeZonePicker';
+import type { Account } from '@/features/account/types';
+import { logout, setUser, type SessionUser } from '@/features/auth/auth';
+import { isPreview } from '@/features/auth/preview';
+import { parseOnboardingFieldErrors } from '@/features/onboarding/model';
 import { DiscordRow } from '@/features/profile/DiscordRow';
 import { isSameNickname } from '@/features/profile/nickname';
+import { checkNicknameAvailability } from '@/features/profile/nickname-repository';
 import { initialOf } from '@/features/profile/photo';
 import {
   useAttachProfileImage,
@@ -21,16 +28,9 @@ import {
   useMarketingConsent,
   useRemoveProfileImage,
   useUpdateProfile,
-  type MarketingConsent,
 } from '@/features/profile/queries';
 import { track } from '@/lib/analytics';
-import { checkNicknameAvailability } from '@/lib/api/nicknames';
-import type { OnboardingAccount } from '@/lib/api/onboarding';
-import { logout, setUser, type SessionUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
 import { ApiError } from '@/lib/http';
-import { nicknameError, parseOnboardingFieldErrors } from '@/lib/onboarding';
-import { isPreview } from '@/lib/preview';
 import { uploadImage } from '@/lib/upload';
 
 /**
@@ -49,21 +49,9 @@ import { uploadImage } from '@/lib/upload';
 
 type NickStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
 type Tone = 'muted' | 'error' | 'ok';
-type ProfileFormValues = { nickname: string; timeZone: string };
 
 const NICKNAME_HINT = '2~20자 · 한글, 영문, 숫자, 밑줄(_)';
 const NICKNAME_TAKEN = '이미 사용중인 닉네임입니다';
-
-/** 형식 규칙은 온보딩과 같은 함수 하나를 쓴다 — 두 화면이 같은 닉네임을 두고 다른 말을 하면 안 된다. */
-function profileSchema(locale: Locale) {
-  return z.object({
-    nickname: z.string().superRefine((value, ctx) => {
-      const message = nicknameError(value, locale);
-      if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message });
-    }),
-    timeZone: z.string().min(1, '시간대를 다시 선택해 주세요'),
-  });
-}
 
 /** 체크 표시만 바뀌면 처리됐는지 알기 어렵다 — 어떤 값으로 언제 처리됐는지 알림으로 띄운다. */
 function consentMessage(consent: MarketingConsent): string {
@@ -76,7 +64,7 @@ function consentMessage(consent: MarketingConsent): string {
 }
 
 /** 서버 응답에서 세션에 담는 값만 고른다 — 조회와 저장 응답이 같은 모양이라 둘 다 이걸 쓴다. */
-function toSessionUser(account: OnboardingAccount): SessionUser {
+function toSessionUser(account: Account): SessionUser {
   return {
     id: account.id,
     email: account.email,
@@ -294,7 +282,7 @@ export function ProfileCard({
     return '사진을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요';
   }
 
-  function applyPhoto(account: OnboardingAccount) {
+  function applyPhoto(account: Account) {
     const next = toSessionUser(account);
     setUser(next);
     onUserChange(next);

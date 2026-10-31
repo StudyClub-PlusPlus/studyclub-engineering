@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
-import type { Locale } from '@/lib/content';
+import type { Locale } from '@studyclub/types';
 
 /** 로그인·온보딩에서는 로고와 언어 전환만 표시한다. */
 export function RegistrationNavigation({ children, locale }: { children: React.ReactNode; locale: Locale }) {

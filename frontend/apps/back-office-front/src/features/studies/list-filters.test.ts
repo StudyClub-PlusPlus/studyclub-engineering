@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { URL_DEFAULTS, headerSortOf, nextSortFor, resolveListFilters, serverListQuery } from '@/features/studies/list-filters';
+import {
+  URL_DEFAULTS,
+  headerSortOf,
+  nextSortFor,
+  resolveListFilters,
+  serverListQuery,
+} from '@/features/studies/list-filters';
 
 const query = (params: Record<string, string | string[]>) => serverListQuery(resolveListFilters(params));
 

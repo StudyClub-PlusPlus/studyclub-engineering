@@ -10,7 +10,8 @@ import { dowOf, isKickoff, type NavigatorGroup, type ScheduleRole } from '@core/
 import { regularScheduleDisplay } from '@core/lib/regular-schedule';
 import { navigatorNameOf } from '@core/lib/schedule-board';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
-import { getStudyCrew, type Study } from '@studyclub/mock';
+import { getStudyCrew } from '@studyclub/mock';
+import { type Study } from '@studyclub/types';
 import { Button } from '@studyclub/ui';
 import { ExternalLink, Info } from 'lucide-react';
 

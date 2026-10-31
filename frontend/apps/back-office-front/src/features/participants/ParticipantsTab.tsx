@@ -5,13 +5,12 @@ import { useState } from 'react';
 import { Badge, Button, Checkbox, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { useIsMutating } from '@tanstack/react-query';
 
-
-import { DiscardGroupChangesDialog } from './DiscardGroupChangesDialog';
-import { GroupsSection } from './GroupsSection';
-import { participantKeys, useParticipants } from './queries';
-import type { Participant, ParticipantsResponse } from './types';
-import { useGroupAssignment } from './use-group-assignment';
 import { TableCard } from '@/components/ui';
+import { DiscardGroupChangesDialog } from '@/features/participants/DiscardGroupChangesDialog';
+import { GroupsSection } from '@/features/participants/GroupsSection';
+import { participantKeys, useParticipants } from '@/features/participants/queries';
+import type { Participant, ParticipantsResponse } from '@/features/participants/types';
+import { useGroupAssignment } from '@/features/participants/use-group-assignment';
 import { ApiError } from '@/lib/http';
 import { useUrlState } from '@/lib/use-url-state';
 
@@ -304,7 +303,9 @@ function ParticipantAssignment({
                         disabled={busy || !active}
                         value={role}
                         onChange={(e) =>
-                          change([p.participantId], { participantRole: e.target.value as Participant['participantRole'] })
+                          change([p.participantId], {
+                            participantRole: e.target.value as Participant['participantRole'],
+                          })
                         }
                         // 네비게이터는 몇 안 된다. 긴 명단에서 바로 보이게 브랜드 테두리 · 굵은 글씨로 드러낸다 (스터디 목록 필터와 같은 모양)
                         className={cx('w-auto', role === 'LEADER' && 'border-brand font-semibold text-fg')}

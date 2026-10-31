@@ -5,8 +5,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Badge, Button, Checkbox, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
 import { CircleHelp, Mic, Undo2 } from 'lucide-react';
 
-import { attendanceRateOf, changedCount, cloneBook, nextStatus, STATUS_LABEL } from './book';
-import type { AttendanceBook as Book, AttendanceStatus } from '@/features/schedule/store';
+import { attendanceRateOf, changedCount, cloneBook, nextStatus, STATUS_LABEL } from '@/features/attendance/book';
+import type { AttendanceStatus, AttendanceBook as Book } from '@/features/schedule/store';
 
 /**
  * 출석부 — 크루 × 회차 격자. 명세: playground `console/studies/[id]/spec.ts` 의 `ATTENDANCE_SPEC`.

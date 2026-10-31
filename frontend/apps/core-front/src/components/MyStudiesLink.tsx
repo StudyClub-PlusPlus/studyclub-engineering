@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import { getUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import type { Locale } from '@studyclub/types';
+
+import { getUser } from '@/features/auth/auth';
 import { t } from '@/lib/i18n';
 
 /**

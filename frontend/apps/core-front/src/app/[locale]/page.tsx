@@ -1,15 +1,18 @@
 import Link from 'next/link';
 
+import type { Locale } from '@studyclub/types';
 import { ArrowRight } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { EventCard } from '@/components/EventCard';
-import { FeaturedStudies } from '@/components/FeaturedStudies';
 import { HeroCTADiscordLink, HeroCTAStudiesLink } from '@/components/HeroCTAButton';
 import { JoinCta } from '@/components/JoinCta';
 import { Marquee } from '@/components/Marquee';
-import { PAST_STUDIES, VOICES } from '@/lib/community-voices';
-import { getStudies, getEvents, getOperatorMap, getSite, type Locale } from '@/lib/content';
+import { getOperatorMap, getSite } from '@/features/community/server';
+import { PAST_STUDIES, VOICES } from '@/features/community/voices';
+import { EventCard } from '@/features/events/EventCard';
+import { getEvents } from '@/features/events/server';
+import { FeaturedStudies } from '@/features/studies/FeaturedStudies';
+import { getStudies } from '@/features/studies/server';
 import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 

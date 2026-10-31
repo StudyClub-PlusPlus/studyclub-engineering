@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-import { getSite } from '@/lib/content';
+import { getSite } from '@/features/community/server';
 import { isLocale } from '@/lib/i18n';
 import { SITE_NAME } from '@/lib/seo';
 

@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { StudyclubEvent } from '@studyclub/mock';
+import type { StudyclubEvent } from '@studyclub/types';
 import { Badge } from '@studyclub/ui';
 
-import { EventDialog } from '@/components/EventDialog';
-import { EVENT_TYPES } from '@/components/EventForm';
 import { TableCard } from '@/components/ui';
-import { tx, EVENT_TYPE_LABEL } from '@/lib/l10n';
+import { EventDialog } from '@/features/events/EventDialog';
+import { EVENT_TYPES } from '@/features/events/EventForm';
+import { EVENT_TYPE_LABEL, tx } from '@/lib/l10n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useUrlState } from '@/lib/use-url-state';
 

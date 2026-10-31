@@ -1,10 +1,10 @@
+import { CATEGORY_DISPLAY } from '@studyclub/utils';
 import { HttpResponse } from 'msw';
 
-import { CATEGORY_DISPLAY } from '../../constants/study';
+import { CAPTAIN_STUDY_IDS } from './meetings';
 import { studies } from '../../data';
 import { getStudyCrew } from '../../data/crew';
 import { mockClient, type MockResolveContext } from '../utils';
-import { CAPTAIN_STUDY_IDS } from './meetings';
 
 /** 스터디 카테고리 표시명 → API 키 (역매핑) */
 const CATEGORY_KEY: Record<string, string> = Object.fromEntries(

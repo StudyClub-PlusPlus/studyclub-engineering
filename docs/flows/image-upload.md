@@ -67,7 +67,7 @@ const thumb = useImageUpload({
 | 붙인 곳 | 방식 | 코드 |
 |---|---|---|
 | core-front 마이페이지 프로필 사진 | 고르면 바로 연결 (저장 버튼 없음) | `apps/core-front/src/features/profile/ProfileCard.tsx` |
-| back-office 스터디 등록·정보 탭 썸네일 | 고르면 미리보기, 「저장」 때 `thumbnailFileId` 로 연결 | `apps/back-office-front/src/components/StudyForm.tsx` (`ThumbnailField`) |
+| back-office 스터디 등록·정보 탭 썸네일 | 고르면 미리보기, 「저장」 때 `thumbnailFileId` 로 연결 | `apps/back-office-front/src/features/studies/StudyForm.tsx` (`ThumbnailField`) |
 
 - 두 앱 모두 `lib/upload.ts` 에 서버 호출 한 줄이 있다. 새 앱이면 같은 한 줄을 만든다
 - 폼 방식이면 **올리는 동안 다른 칸을 고쳐도 덮이지 않게** 최신 폼 값을 ref 로 들고 썸네일만 얹는다 (`ThumbnailField` 참고)

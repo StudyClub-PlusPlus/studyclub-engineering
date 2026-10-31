@@ -9,6 +9,7 @@ import {
   type FeedbackSubmitBody,
   type FeedbackType,
 } from './feedback';
+import { myFeedbackDetailSchema, myFeedbackItemSchema, myFeedbackPageSchema } from './response-schema';
 import { http } from '../../lib/http';
 import { uploadImage } from '../../lib/upload';
 
@@ -42,17 +43,17 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 /** GET /api/me/feedbacks — 접수 시각 내림차순은 서버가 정한다. `page` 는 1부터. */
 export function fetchMyFeedbacks(page: number): Promise<MyFeedbackPage> {
   const offset = (Math.max(1, page) - 1) * PAGE_SIZE;
-  return http<MyFeedbackPage>(`/api/me/feedbacks?offset=${offset}&limit=${PAGE_SIZE}`);
+  return http(`/api/me/feedbacks?offset=${offset}&limit=${PAGE_SIZE}`, myFeedbackPageSchema);
 }
 
 /** GET /api/me/feedbacks/{id} — 남의 것 · 없는 번호는 404 */
 export function fetchMyFeedback(id: number): Promise<MyFeedbackDetail> {
-  return http<MyFeedbackDetail>(`/api/me/feedbacks/${id}`);
+  return http(`/api/me/feedbacks/${id}`, myFeedbackDetailSchema);
 }
 
 /** POST /api/feedbacks — 201 이면 목록 한 줄과 같은 모양 */
 export function submitFeedback(body: FeedbackSubmitBody): Promise<MyFeedbackItem> {
-  return http<MyFeedbackItem>('/api/feedbacks', {
+  return http('/api/feedbacks', myFeedbackItemSchema, {
     method: 'POST',
     headers: JSON_HEADERS,
     body: JSON.stringify(body),

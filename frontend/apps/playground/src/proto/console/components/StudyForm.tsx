@@ -4,17 +4,10 @@ import { useRef, type ChangeEvent } from 'react';
 
 import { tx } from '@console/lib/l10n';
 import { MARKDOWN_HINT } from '@core/components/ApplicationFormUi';
-import {
-  STUDY_CATEGORIES,
-  categoriesOf,
-  latestCohort,
-  programs,
-  toISODate,
-  type Study,
-  type StudyKind,
-  type StudyTimezone,
-} from '@studyclub/mock';
+import { latestCohort, programs } from '@studyclub/mock';
+import { type Study, type StudyKind, type StudyTimezone } from '@studyclub/types';
 import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
+import { STUDY_CATEGORIES, categoriesOf, toISODate } from '@studyclub/utils';
 
 /**
  * 스터디 입력 폼 — **등록 팝업과 정보 탭이 나눠 쓴다.**
