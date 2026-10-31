@@ -769,7 +769,7 @@ describe('알림 템플릿 화면', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(JSON.parse(String(callsOf('POST')[0][1]?.body))).toEqual({
+    expect(JSON.parse(String(callsOf('POST')[0][2]?.body))).toEqual({
       eventType: 'USER_REGISTERED',
       subject: '둘째 환영 메일',
       body: '둘째 본문',

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
 import { ChevronLeft } from 'lucide-react';
 
@@ -11,7 +12,6 @@ import { LOAD_FAILED_MESSAGE, NOT_FOUND_MESSAGE, formatStamp, isNotFound, isOnbo
 import { FeedbackStatusBadge, FeedbackTypeBadge } from './FeedbackBadges';
 import { useMyFeedback, type MyFeedbackDetail as Detail } from './queries';
 import { useOnboardedAccount } from './useOnboardedAccount';
-import type { Locale } from '@/lib/content';
 import { PAGE, READ } from '@/lib/layout';
 
 /**

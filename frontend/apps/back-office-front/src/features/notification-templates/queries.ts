@@ -6,7 +6,7 @@ import {
   fetchNotificationTemplates,
   updateNotificationTemplate,
 } from '@/features/notification-templates/repository';
-import type { TemplateDraft } from '@/features/notification-templates/types';
+import type { NotificationTemplate, TemplateDraft } from '@/features/notification-templates/types';
 
 // 알림 템플릿 — 키·fetcher·훅을 한곳에.
 
@@ -19,11 +19,6 @@ export const notificationTemplateKeys = {
    */
   editor: (id?: number) => ['notification-template-editor', id] as const,
 };
-
-/**
- * 저장·삭제 요청의 제한 시간. 팝업은 요청 중에 닫히지 않으므로, 응답이 끝내 오지 않으면 닫을 길이 없어진다.
- * 시간이 지나면 요청을 끊고 실패로 알려 팝업을 닫을 수 있게 한다.
- */
 
 export function useNotificationTemplates() {
   return useQuery({

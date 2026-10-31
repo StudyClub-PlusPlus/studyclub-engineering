@@ -1,16 +1,11 @@
-// 백오피스 문의·오류 신고 — 목록·상세·처리(상태·회신·메모). 키·fetcher·훅을 한 파일에 둔다.
+// 백오피스 문의·오류 신고 — 목록·상세·처리(상태·회신·메모)의 키·훅. 서버 호출은 repository.ts.
 import { toast } from '@studyclub/ui';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { COPY } from '@/features/feedbacks/labels';
-import type {
-  ApiAdminFeedbackDetail,
-  ApiAdminFeedbackPage,
-  FeedbackFilter,
-  FeedbackPatch,
-  FeedbackStatus,
-} from '@/features/feedbacks/types';
-import { ApiError, http, qs } from '@/lib/http';
+import { fetchFeedback, fetchFeedbacks, patchFeedback } from '@/features/feedbacks/repository';
+import type { ApiAdminFeedbackDetail, FeedbackFilter, FeedbackStatus } from '@/features/feedbacks/types';
+import { ApiError } from '@/lib/http';
 
 /** 키는 넓은 것에서 좁은 것으로 쌓는다 — `['feedbacks']` 를 무효화하면 목록·상세가 전부 딸려 간다. */
 export const feedbackKeys = {
@@ -20,21 +15,10 @@ export const feedbackKeys = {
   detail: (id: number) => [...feedbackKeys.all, 'detail', id] as const,
 };
 
-/** 목록 요청 경로. 값이 없는 조건은 넣지 않는다 — 「전체」일 때 유형·상태를 서버에 보내지 않는다. */
-export function feedbacksPath(filter: FeedbackFilter): string {
-  return `/api/admin/feedbacks${qs({
-    type: filter.type,
-    status: filter.status,
-    q: filter.q?.trim(),
-    offset: filter.offset,
-    limit: filter.limit,
-  })}`;
-}
-
 export function useFeedbacks(filter: FeedbackFilter) {
   return useQuery({
     queryKey: feedbackKeys.list(filter),
-    queryFn: () => http<ApiAdminFeedbackPage>(feedbacksPath(filter)),
+    queryFn: () => fetchFeedbacks(filter),
     // 조건·페이지를 바꾸는 동안 이전 결과를 지우지 않는다 — 표가 깜빡이면 보던 자리를 잃는다.
     placeholderData: keepPreviousData,
   });
@@ -43,18 +27,8 @@ export function useFeedbacks(filter: FeedbackFilter) {
 export function useFeedback(id: number, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: feedbackKeys.detail(id),
-    queryFn: () => http<ApiAdminFeedbackDetail>(`/api/admin/feedbacks/${id}`),
+    queryFn: () => fetchFeedback(id),
     enabled: options.enabled ?? true,
-  });
-}
-
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
-
-function patchFeedback(id: number, body: FeedbackPatch) {
-  return http<ApiAdminFeedbackDetail>(`/api/admin/feedbacks/${id}`, {
-    method: 'PATCH',
-    headers: JSON_HEADERS,
-    body: JSON.stringify(body),
   });
 }
 

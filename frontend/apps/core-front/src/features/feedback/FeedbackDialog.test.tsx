@@ -12,7 +12,14 @@ import { feedbackKeys, type MyFeedbackPage } from './queries';
 import { API_BASE } from '../../lib/http';
 
 function respond(status: number, body: unknown) {
-  return vi.fn().mockResolvedValue({ ok: status >= 200 && status < 300, status, json: async () => body });
+  return vi
+    .fn()
+    .mockResolvedValue({
+      ok: status >= 200 && status < 300,
+      status,
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+    });
 }
 
 const created = { id: 241, type: 'BUG', title: '출석 버튼', status: 'RECEIVED', createdAt: '2026-10-25T08:12:40Z' };
@@ -175,7 +182,7 @@ describe('FeedbackDialog — 전송', () => {
     await user.click(screen.getByRole('button', { name: '전송' }));
     await waitFor(() => expect(screen.getByRole('button', { name: '전송' })).toBeDisabled());
 
-    finish({ ok: true, status: 201, json: async () => created });
+    finish({ ok: true, status: 201, json: async () => created, text: async () => JSON.stringify(created) });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });

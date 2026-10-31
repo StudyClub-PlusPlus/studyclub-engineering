@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
 import { Button, Pagination } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
@@ -12,7 +13,6 @@ import { FeedbackStatusBadge, FeedbackTypeBadge } from './FeedbackBadges';
 import { FeedbackDialog } from './FeedbackDialog';
 import { useMyFeedbacks } from './queries';
 import { useOnboardedAccount } from './useOnboardedAccount';
-import type { Locale } from '@/lib/content';
 import { PAGE } from '@/lib/layout';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
 
