@@ -15,13 +15,19 @@ import { t } from '@/lib/i18n';
  */
 export function MyStudiesLink({ locale }: { locale: Locale }) {
   const [signedIn, setSignedIn] = useState(false);
-  useEffect(() => setSignedIn(Boolean(getUser())), []);
+  useEffect(() => {
+    // 가입을 마치지 않았으면 내 스터디룸이 온보딩으로 돌려보낸다 — 헤더는 「가입 마무리」만 둔다
+    const user = getUser();
+    setSignedIn(Boolean(user) && user?.onboardingCompletedAt !== null);
+  }, []);
   if (!signedIn) return null;
 
   return (
     <Link
       href={`/${locale}/my/joined`}
-      className='hidden rounded-full border border-border px-4 py-2 type-label-lg text-fg transition-colors hover:border-border-interactive hover:bg-surface-2 sm:block'
+      className='sc-button hidden type-label-lg sm:inline-flex'
+      data-variant='secondary'
+      data-size='md'
     >
       {t({ ko: '내 스터디룸', en: 'My study room' }, locale)}
     </Link>
