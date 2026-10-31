@@ -26,7 +26,7 @@
 |--------|------|------|------|------|
 | GET | /api/admin/users | 회원 목록 — 필터·검색·페이지, 걸러진 뒤 총 인원. 이메일은 가려서 준다 | O (`@RequireAdmin`) | 구현완료 |
 | POST | /api/admin/users/{accountId}/email-reveals | 한 명의 이메일 원본 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
-| POST | /api/admin/users/{accountId}/discord-reveals | 한 명의 디스코드 아이디 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현중 |
+| POST | /api/admin/users/{accountId}/discord-reveals | 한 명의 디스코드 아이디 보기 — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
 | PATCH | /api/admin/users/{accountId}/system-role | 계정 권한 변경 (ADMIN ↔ MEMBER) — 감사 로그를 남긴다 | O (`@RequireAdmin`) | 구현완료 |
 | GET | /api/admin/role-permissions | 역할별 기본 권한표 | O (`@RequireAdmin`) | 구현완료 |
 | ~~GET~~ | ~~/accounts~~ | 옛 유저 목록 — **삭제됨** (#221, [아래](#옛-get-accounts-를-없앤다)) | O (`@RequireAdmin`, #178) | 삭제 |
