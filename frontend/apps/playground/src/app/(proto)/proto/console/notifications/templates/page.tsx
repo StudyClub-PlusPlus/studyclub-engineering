@@ -14,12 +14,16 @@ export const dynamic = 'force-static';
 
 export default function TemplatesAdmin() {
   const welcomeBody = readFileSync(join(process.cwd(), 'src/proto/mail/templates/user-registered-email.html'), 'utf8');
+  const feedbackBody = readFileSync(
+    join(process.cwd(), 'src/proto/mail/templates/feedback-replied-email.html'),
+    'utf8',
+  );
 
   return (
     <div data-anno='template:1'>
       <ScreenSpecRegistrar spec={SPEC} />
       <PageHeader title='알림' />
-      <TemplatesTable initialTemplates={createTemplates(welcomeBody)} />
+      <TemplatesTable initialTemplates={createTemplates(welcomeBody, feedbackBody)} />
     </div>
   );
 }
