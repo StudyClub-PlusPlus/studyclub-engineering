@@ -9,7 +9,6 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 
 import { fetchAccount, profileKeys } from '@/features/profile/queries';
-import { track } from '@/lib/analytics';
 import type { Locale } from '@/lib/content';
 import { DISCORD_LINK_READY, DiscordPopupError, linkDiscord, requestDiscordCode, unlinkDiscord } from '@/lib/discord';
 import { ApiError } from '@/lib/http';
@@ -76,10 +75,9 @@ export function DiscordRow({
     setBusy('link');
     setNotice(null);
     try {
-      await linkDiscord(accountId, await code);
+      await linkDiscord(accountId, code, 'my_page');
       // 연결 응답은 204 라 계정 이름이 없다 — 다시 받아 @이름을 보여 준다
       await getQueryClient().invalidateQueries({ queryKey: profileKeys.account(accountId) });
-      track({ name: 'My Discord Connected' });
       toast.success('디스코드를 연결했어요');
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) onExpired();

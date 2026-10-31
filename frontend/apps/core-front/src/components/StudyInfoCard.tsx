@@ -8,6 +8,7 @@ import { ChevronDown, FolderOpen } from 'lucide-react';
 
 import { RegularTime } from '@/components/RegularTime';
 import { useStudyMeetings } from '@/features/studies/queries';
+import { track } from '@/lib/analytics';
 import { apiMeetingsOf } from '@/lib/joined-detail';
 import { saveStudyRules } from '@/lib/joined-detail-api';
 import {
@@ -22,13 +23,24 @@ import {
 import { regularScheduleDisplay } from '@/lib/regular-schedule';
 import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
-function LinkButton({ label, href, icon }: { label: string; href: string; icon: React.ReactNode }) {
+function LinkButton({
+  label,
+  href,
+  icon,
+  onClick,
+}: {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
     <a
       href={href}
       target='_blank'
       rel='noopener noreferrer'
       title={href}
+      onClick={onClick}
       className='inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong px-3 type-label-lg text-fg-secondary hover:bg-surface-2 hover:text-fg'
     >
       {icon}
@@ -114,7 +126,12 @@ export function StudyInfoCard({
           <div className='flex flex-wrap items-center gap-1.5'>
             {leadingAction}
             {hasDiscord && discordHref && (
-              <LinkButton label='디스코드' href={discordHref} icon={<DiscordGlyph size={15} />} />
+              <LinkButton
+                label='디스코드'
+                href={discordHref}
+                icon={<DiscordGlyph size={15} />}
+                onClick={() => track({ name: 'Study Discord Opened', props: { study_id: String(study.id) } })}
+              />
             )}
             {hasDrive && driveHref && (
               <LinkButton

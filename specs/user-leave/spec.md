@@ -399,6 +399,12 @@ LOCKED 아님)로 잠그고 읽는다 — 폴링 스케줄러가 같은 순간 P
   대신 커밋 뒤 운영 알림 채널에 「회원 탈퇴」 알림(디스코드 ID·참여 중이던 스터디·네비게이터 여부)을 보내
   운영자가 손으로 정리할 수 있게 한다 ([ops-alerts](../ops-alerts/spec.md), 2026-10-30 #02-squad-discord 합의).
 
+## 퍼널·계측
+
+- 단계: 이탈. 화면 조회만 공통 `Page Viewed{page_name=account_leave}` 로 잡힌다
+- 탈퇴 완료 이벤트(`Account Deleted`)는 **보내지 않는다** (2026-10-31 결정). 사유를 계정과 잇지 않는다는 이 스펙·[POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) 의 설계와 부딪힌다 — Amplitude 에 보내면 user_id(회원 번호)와 사유가 외부에 함께 남고, 탈퇴한 회원의 식별자가 탈퇴 뒤에 외부로 나간다. 탈퇴 사유는 `ACCOUNT_LEAVE_REASON` 집계로만 본다
+- 다시 넣으려면 처리방침(법무) 확인이 먼저다. A/B 없음
+
 ## 완료 기준
 
 PRD 원문 그대로 — 구현 완료 판정 기준이다.
