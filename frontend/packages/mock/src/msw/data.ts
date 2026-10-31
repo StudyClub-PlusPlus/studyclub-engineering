@@ -15,7 +15,7 @@ export type ApiStudy = {
   timezone: 'KST' | 'PST' | 'BOTH' | null;
   status: 'DRAFT' | 'OPEN' | 'ONGOING' | 'ENDED' | 'CLOSED';
   phase: 'RECRUITING' | 'ONGOING' | 'CLOSED';
-  recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED';
+  recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED' | null;
   capacity: number | null;
   currentApplicants: number;
   recruitDeadlineAt: string | null;
