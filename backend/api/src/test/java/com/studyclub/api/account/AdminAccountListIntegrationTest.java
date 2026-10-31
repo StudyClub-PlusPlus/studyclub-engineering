@@ -478,7 +478,7 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 행마다 디스코드 연동 여부와 계정 이름. 미연동 크루도 권한 배지는 잠기지 않는다")
+    @DisplayName("성공 - 목록에는 디스코드 연동 여부만 보낸다. 원본은 개별 열람으로만 제공한다")
     void rowsCarryDiscordLink() {
         jdbcTemplate.update("UPDATE ACCOUNT SET DISCORD_ID = NULL WHERE ID = ?", CREW_ID);
         jdbcTemplate.update(
@@ -488,11 +488,11 @@ class AdminAccountListIntegrationTest {
 
         assertThat(itemById(response.getBody(), CREW_ID))
                 .containsEntry("roleChangeBlockedReason", null)
-                .containsEntry("discordLinked", false)
-                .containsEntry("discordHandle", null);
-        assertThat(itemById(response.getBody(), ADMIN_ID))
-                .containsEntry("discordLinked", true)
-                .containsEntry("discordHandle", "captain_h");
+                .containsEntry("discordLinked", false);
+        assertThat(itemById(response.getBody(), ADMIN_ID)).containsEntry("discordLinked", true);
+        items(response.getBody())
+                .forEach(item -> assertThat(item).doesNotContainKeys("discordHandle", "discordId"));
+        assertThat(response.getBody().toString()).doesNotContain("captain_h");
     }
 
     @Test

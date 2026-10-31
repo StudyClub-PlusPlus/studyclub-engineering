@@ -23,8 +23,6 @@ export type ApiAdminAccount = {
     | 'LAST_ADMIN_REQUIRED'
     | null;
   discordLinked: boolean;
-  /** 디스코드 username. 미연동이면 null */
-  discordHandle: string | null;
 };
 
 export type ApiAdminAccountPage = {
@@ -225,7 +223,6 @@ function toApi(a: MockAccountRecord, accounts: MockAccountRecord[]): ApiAdminAcc
     joinedAt: a.joinedAt,
     roleChangeBlockedReason: blockedReason(a, accounts),
     discordLinked: a.discordHandle !== null,
-    discordHandle: a.discordHandle,
   };
 }
 
@@ -283,6 +280,27 @@ async function revealEmail({ params }: MockResolveContext): Promise<{ id: number
   return HttpResponse.json({ id: account.id, email: account.email }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
+async function revealDiscord({
+  params,
+}: MockResolveContext): Promise<Response> {
+  const account = mockAdminAccounts.find(
+    (a) => a.id === Number(params.accountId),
+  );
+  if (!account?.discordHandle) {
+    return HttpResponse.json(
+      {
+        errorCode: "NOT_FOUND",
+        errorMessage: "연동된 디스코드 아이디를 찾을 수 없습니다.",
+      },
+      { status: 404 },
+    );
+  }
+  return HttpResponse.json(
+    { id: account.id, discordHandle: account.discordHandle },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
 async function changeRole({
   request,
   params,
@@ -328,6 +346,15 @@ export const accountsHandlers = mockClient.createHandlerGroup('/api/admin/users'
     presets: [
       { label: '성공', status: 200, response: revealEmail },
       { label: '404 없는 계정', status: 404, response: notFound },
+      { label: '403 캡틴 아님', status: 403, response: forbidden },
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/:accountId/discord-reveals',
+    presets: [
+      { label: '성공', status: 200, response: revealDiscord },
+      { label: '404 계정·아이디 없음', status: 404, response: notFound },
       { label: '403 캡틴 아님', status: 403, response: forbidden },
     ],
   },

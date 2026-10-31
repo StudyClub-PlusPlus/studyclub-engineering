@@ -22,7 +22,6 @@ function account(patch: Partial<ApiAdminAccount>): ApiAdminAccount {
     joinedAt: '2026-09-01T11:00:00Z',
     roleChangeBlockedReason: null,
     discordLinked: false,
-    discordHandle: null,
     ...patch,
   };
 }
@@ -79,6 +78,8 @@ describe('UsersTable', () => {
           rows={[account({ id: 27, name: null, maskedEmail: 'n***@example.com', dormant: true })]}
           revealed={new Map()}
           onReveal={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
         />,
       ),
     );
@@ -97,6 +98,8 @@ describe('UsersTable', () => {
           rows={[account({ id: 18 }), account({ id: 19, name: '나래', maskedEmail: 'n***@example.com' })]}
           revealed={new Map([[18, 'haneul@example.com']])}
           onReveal={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
         />,
       ),
     );
@@ -119,6 +122,8 @@ describe('UsersTable', () => {
           ]}
           revealed={new Map()}
           onReveal={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
         />,
       ),
     );
@@ -127,7 +132,17 @@ describe('UsersTable', () => {
   });
 
   it('결과가 없으면 안내 문구를 보인다', () => {
-    render(withQuery(<UsersTable rows={[]} revealed={new Map()} onReveal={() => {}} />));
+    render(
+      withQuery(
+        <UsersTable
+          rows={[]}
+          revealed={new Map()}
+          onReveal={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
+        />,
+      ),
+    );
     expect(screen.getByText('조건에 맞는 유저가 없습니다.')).toBeInTheDocument();
   });
 
@@ -138,6 +153,8 @@ describe('UsersTable', () => {
           rows={[account({ id: 3, systemRole: 'ADMIN', roleChangeBlockedReason: 'CANNOT_CHANGE_OWN_ROLE' })]}
           revealed={new Map()}
           onReveal={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
         />,
       ),
     );
@@ -223,20 +240,22 @@ describe('PermissionTables', () => {
 });
 
 describe('UsersTable 디스코드 칸', () => {
-  it('연동했으면 @username, 아니면 미연동', () => {
+  it('연동했으면 보기 버튼, 미연동이면 버튼 없이 상태만 표시한다', () => {
     render(
       withQuery(
         <UsersTable
-          rows={[
-            account({ id: 1, discordLinked: true, discordHandle: 'haneul_dc' }),
-            account({ id: 2, name: '바다', discordLinked: false, discordHandle: null }),
-          ]}
+          rows={[account({ id: 1, discordLinked: true }), account({ id: 2, name: '바다', discordLinked: false })]}
           revealed={new Map()}
           onReveal={() => {}}
+          revealedDiscord={new Map()}
+          onRevealDiscord={() => {}}
         />,
       ),
     );
-    expect(screen.getByText('@haneul_dc')).toBeInTheDocument();
+    expect(screen.getByText('연동')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '하늘 디스코드 아이디 보기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '바다 디스코드 아이디 보기' })).not.toBeInTheDocument();
+    expect(screen.queryByText('@haneul_dc')).not.toBeInTheDocument();
     expect(screen.getByText('미연동')).toBeInTheDocument();
   });
 });
