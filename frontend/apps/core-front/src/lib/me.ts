@@ -88,13 +88,6 @@ export function addApplication(app: Application) {
   writeJSON(APPLICATION_KEY, [...rest, app]);
 }
 
-export function cancelApplication(studyId: string) {
-  writeJSON(
-    APPLICATION_KEY,
-    getApplications().filter((a) => a.studyId !== studyId),
-  );
-}
-
 /* ── 디스코드 서버 별명 ─────────────────────────────────────────────────────── */
 // 연동 여부는 여기 두지 않는다 — 서버(GET /api/me 의 discordLinked)가 정본이다. lib/discord.ts
 
