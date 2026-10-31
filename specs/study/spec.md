@@ -233,8 +233,10 @@ private StudyDetailResponse toDetail(Study study) {
 - **인증**: `ACCOUNT.SYSTEM_ROLE=ADMIN` (`assertCaptain`)
 - **Query**: `category`(StudyCategory) · `studyKind`(STUDY/CLUB) · `status`(StudyStatus) · `studyId`(Long) — 모두 선택. `offset`(기본 0) · `limit`(기본 20) 페이지네이션 지원
 - **설명**: DRAFT 포함 전 상태. 등록 직후 스터디가 여기 나온다
-- **Response — 200**: `{ items: [{ studyId, title, status, category, studyKind, recruitmentCapacity, recruitmentStartAt, recruitDeadlineAt, startAt, timezone, hasApplicationForm }], total, offset, limit }` (`BackofficeStudyListResponse`)
-- **프론트엔드 사용처**: 아직 없음 — 콘솔 목록(`features/studies/queries.ts` `useStudies`)은 공개 `/api/studies` 를 부른다. 교체 여부는 팀 확인 중
+- **Response — 200**: `{ items: [{ studyId, programId, title, status, category, studyKind, recruitmentCapacity, currentApplicants, recruitStatus, recruitmentStartAt, recruitDeadlineAt, startAt, timezone, hasApplicationForm, authorNickname }], total, offset, limit }` (`BackofficeStudyListResponse`)
+  - `timezone` — 운영자가 고른 값 그대로(`STUDY.TIMEZONE`). `null` 이면 미정. 일정 문구로 추정하지 않는다 ([captain-list-all-studies](../../01-planning/stories/captain-list-all-studies/PRD.md) 2-3). 사이트 목록(`GET /api/studies`)의 판정값과 다르다
+  - `authorNickname` — 등록한 캡틴의 닉네임(`STUDY.CREATED_BY` → `ACCOUNT.NICKNAME`). 기록이 없으면 `null` (2026-10-31)
+- **프론트엔드 사용처**: back-office-front 스터디 관리 목록 — `lib/api.ts` `fetchStudies`(전부) · `fetchStudyListPage`(서버 페이지), 화면 `features/studies/StudiesTable.tsx`
 
 ---
 

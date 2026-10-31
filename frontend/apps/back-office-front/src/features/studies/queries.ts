@@ -132,3 +132,16 @@ export function useLinkStudyDiscord(studyId: number) {
     },
   });
 }
+
+/**
+ * 공개(= 모집 시작) · 공개 취소 — `POST /api/admin/studies/{id}/publish` · `/unpublish`.
+ * 목록은 서버 컴포넌트가 받으므로 부른 쪽이 `router.refresh()` 로 다시 받는다.
+ */
+export function usePublishStudy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studyId, publish }: { studyId: number; publish: boolean }) =>
+      http<null>(`/api/admin/studies/${studyId}/${publish ? 'publish' : 'unpublish'}`, { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: studyKeys.all }),
+  });
+}
