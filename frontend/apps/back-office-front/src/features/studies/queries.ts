@@ -10,7 +10,7 @@ import type {
   StudyCreatePayload,
   StudyUpdatePayload,
 } from '@/features/studies/types';
-import { http } from '@/lib/http';
+import { ApiError, http } from '@/lib/http';
 
 /**
  * 키는 넓은 것에서 좁은 것으로 쌓는다 — `['studies']` 를 무효화하면 아래가 전부 딸려 간다.
@@ -101,5 +101,47 @@ export function useDeleteStudy(studyId: number) {
       void queryClient.invalidateQueries({ queryKey: programKeys.all });
       return queryClient.invalidateQueries({ queryKey: [...studyKeys.all, 'list'] });
     },
+  });
+}
+
+/** 자동 연결이 안 된 스터디의 디스코드 연결을 재시도한다. 봇 호출은 자동 재시도하지 않는다. */
+export function useLinkStudyDiscord(studyId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (studyName: string) =>
+      http<{ discordStudyId: string; discordRoleId: string }>(`/api/admin/studies/${studyId}/discord-link`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ studyName }),
+      }),
+    retry: false,
+    onSuccess: async () => {
+      const queryKey = studyKeys.detail(studyId);
+      // POST 성공으로 연결은 확정됐다. 먼저 진행 중인 조회를 취소해 이전 false 응답이 덮어쓰지 못하게 한다.
+      await queryClient.cancelQueries({ queryKey });
+      queryClient.setQueryData<ApiStudyDetail>(queryKey, (detail) =>
+        detail ? { ...detail, discordLinked: true } : detail,
+      );
+      return queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error) => {
+      // 다른 운영자가 먼저 연결했을 수 있다. 이름 중복과 같은 409이므로 상세를 다시 확인한다.
+      if (error instanceof ApiError && error.status === 409) {
+        return queryClient.invalidateQueries({ queryKey: studyKeys.detail(studyId) });
+      }
+    },
+  });
+}
+
+/**
+ * 공개(= 모집 시작) · 공개 취소 — `POST /api/admin/studies/{id}/publish` · `/unpublish`.
+ * 목록은 서버 컴포넌트가 받으므로 부른 쪽이 `router.refresh()` 로 다시 받는다.
+ */
+export function usePublishStudy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studyId, publish }: { studyId: number; publish: boolean }) =>
+      http<null>(`/api/admin/studies/${studyId}/${publish ? 'publish' : 'unpublish'}`, { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: studyKeys.all }),
   });
 }

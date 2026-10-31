@@ -111,10 +111,11 @@ export default async function EventDetail({ params }: { params: Promise<{ locale
           href={event.link}
           target='_blank'
           rel='noreferrer'
-          className='m-6 mt-2 inline-flex justify-center items-center gap-2 rounded-full px-6 py-3 type-label-lg text-white shadow-sm transition-transform hover:scale-[1.02]'
-          style={{ background: 'var(--color-brand)' }}
+          className='sc-button m-6 mt-2 gap-2 type-label-lg'
+          data-variant='primary'
+          data-size='lg'
         >
-          {m('common.rsvp', locale)} <ArrowUpRight size={17} />
+          {m('common.rsvp', locale)} <ArrowUpRight size={20} aria-hidden='true' />
         </a>
       )}
         </aside>

@@ -29,6 +29,27 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("recipientUserId") Long recipientUserId);
 
     /**
+     * 회원 탈퇴 — 이 계정이 보낸 공지({@code REFERENCE_ID})의 메일 행을 잠그고 조회한다(보낸 사람 이름 비식별화). {@link
+     * #findByRecipientUserIdForUpdate} 와 같은 이유로 {@code FOR UPDATE} 다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "select n from Notification n where n.eventType = :eventType"
+                    + " and n.referenceId in :referenceIds order by n.id")
+    List<Notification> findByReferenceIdsForUpdate(
+            @Param("eventType") NotificationEventType eventType,
+            @Param("referenceIds") Collection<Long> referenceIds);
+
+    /** 이 사람이 보낸 알림 — 보낸 사람이 탈퇴할 때 보낸 사람 이름을 비식별화할 행을 잠그고 읽는다. 공지가 스터디 삭제로 사라져도 찾는다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            "select n from Notification n where n.eventType = :eventType"
+                    + " and n.senderAccountId = :senderAccountId order by n.id")
+    List<Notification> findBySenderAccountIdForUpdate(
+            @Param("eventType") NotificationEventType eventType,
+            @Param("senderAccountId") Long senderAccountId);
+
+    /**
      * 완료 처리(markSent/markFailed) 전용 — 행을 잠근다({@code AccountRepository.findByEmailForUpdate} 와 같은
      * 이유). 일반 {@code findById} 는 트랜잭션 시작 시점의 스냅샷을 읽을 뿐이라, 이 값을 읽어 자바에서 상태·lockedAt 을 확인한 뒤 저장하는 사이에
      * 다른 트랜잭션(재수거 등)이 같은 행을 먼저 바꿔도 알아채지 못하고 덮어쓸 수 있다 — 확인과 갱신이 원자적이지 않다는 리뷰 지적. {@code FOR UPDATE}
@@ -88,6 +109,20 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             """,
             nativeQuery = true)
     long countFiltered(@Param("eventType") String eventType, @Param("status") String status);
+
+    /**
+     * 공지별 메일 결과 — {@code REFERENCE_ID} 를 키로 상태별 건수를 한 번에 센다 (기록 목록이 공지마다 조회하지 않게 — N+1). 건수가 0인 상태는
+     * 행이 없다.
+     */
+    @Query(
+            "SELECT new com.studyclub.notification.NotificationStatusCount("
+                    + "n.referenceId, n.status, COUNT(n))"
+                    + " FROM Notification n"
+                    + " WHERE n.eventType = :eventType AND n.referenceId IN :referenceIds"
+                    + " GROUP BY n.referenceId, n.status")
+    List<NotificationStatusCount> countByReferenceAndStatus(
+            @Param("eventType") NotificationEventType eventType,
+            @Param("referenceIds") Collection<Long> referenceIds);
 
     /**
      * 다중 서버 환경에서 같은 PENDING 행을 두 인스턴스가 동시에 집어가지 않도록 잠근다. InnoDB 가 행 락 획득을 원자적으로 처리하므로 이 SELECT 자체가

@@ -8,6 +8,7 @@ import {
   EMPTY_FORM,
   StudyForm,
   formToCreatePayload,
+  type FormMode,
   serverErrorToField,
   validateStudyForm,
   type StudyFormErrors,
@@ -26,12 +27,20 @@ export function StudyCreateDialog({
   open,
   onClose,
   onConfirmed,
+  initial = EMPTY_FORM,
+  mode = 'create',
+  title = '스터디 등록',
 }: {
   open: boolean;
   onClose: () => void;
   onConfirmed?: () => void;
+  /** 열 때 채워 둘 값 — 클럽의 「다음 기수 만들기」는 그 클럽 · 최신 기수 값으로 연다 */
+  initial?: StudyFormValues;
+  /** next 면 프로그램 칸이 읽기 전용이다 */
+  mode?: Extract<FormMode, 'create' | 'next'>;
+  title?: string;
 }) {
-  const [form, setForm] = useState<StudyFormValues>(EMPTY_FORM);
+  const [form, setForm] = useState<StudyFormValues>(initial);
   const [errors, setErrors] = useState<StudyFormErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -42,11 +51,11 @@ export function StudyCreateDialog({
 
   useEffect(() => {
     if (!open) return;
-    setForm(EMPTY_FORM);
+    setForm(initial);
     setErrors({});
     setFailure(null);
     setDone(false);
-  }, [open]);
+  }, [open, initial]);
 
   function close() {
     if (busy) return;
@@ -80,7 +89,7 @@ export function StudyCreateDialog({
     <Modal
       open={open}
       onClose={close}
-      title='스터디 등록'
+      title={title}
       size='lg'
       footer={
         done ? (
@@ -115,7 +124,7 @@ export function StudyCreateDialog({
           )}
           {uploading && <p role='status' className='mb-3 type-body-sm text-fg-muted'>썸네일 업로드 중입니다.</p>}
           <fieldset disabled={busy} className='min-w-0'>
-            <StudyForm mode='create' value={form} errors={errors} onChange={setForm} onUploadingChange={setUploading} />
+            <StudyForm mode={mode} value={form} errors={errors} onChange={setForm} onUploadingChange={setUploading} />
           </fieldset>
         </>
       )}

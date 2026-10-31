@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { LayoutDashboard, BookOpen, CalendarDays, Users, Mail, MessageSquare, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, CalendarDays, Users, Mail, Megaphone, MessageSquare, LogOut } from 'lucide-react';
 
 import { getUser, logout, type SessionUser } from '@/lib/auth';
 
@@ -14,10 +14,12 @@ const NAV = [
   { href: '/events', label: '행사', icon: CalendarDays },
   // 스터디원 + 운영진을 "유저" 하나로 통합 (실제 DB 유저 표시)
   { href: '/users', label: '유저', icon: Users },
-  // 크루가 보낸 문의 · 개선 의견 · 오류 신고. PRD 는 「공지 아래, 알림 위」인데 공지 메뉴가 아직 없어 알림 바로 위에 둔다
+  // 크루가 보낸 문의 · 개선 의견 · 오류 신고.
   { href: '/feedbacks', label: '문의·오류 신고', icon: MessageSquare },
   // 알림 템플릿과 발송 이력은 한 메뉴의 두 탭이다 — 어느 쪽 화면에 있어도 「알림」이 활성이다
   { href: '/notifications', label: '알림', icon: Mail, also: ['/notification-templates'] },
+  // 사이트 전체 공지(캡틴이 올린다). 네비게이터의 반 공지(알림)와는 다른 메뉴다
+  { href: '/notices', label: '공지', icon: Megaphone },
 ];
 
 export function Sidebar() {

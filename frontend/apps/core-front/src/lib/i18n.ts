@@ -105,14 +105,9 @@ export const MESSAGES: Dict = {
   },
 
   'notices.title': { ko: '공지사항', en: 'Notices' },
-  'notices.subtitle': {
-    ko: '모집·개편·밋업 등 최신 소식.',
-    en: 'Latest news: recruiting, updates, and meetups.',
-  },
-  'notice_tag.notice': { ko: '공지', en: 'Notice' },
-  'notice_tag.update': { ko: '업데이트', en: 'Update' },
-  'notice_tag.recruit': { ko: '모집', en: 'Recruiting' },
-  'notice_tag.event': { ko: '행사', en: 'Event' },
+  'notices.empty': { ko: '등록된 공지가 없습니다.', en: 'No notices yet.' },
+  'notices.error': { ko: '공지를 불러오지 못했습니다. 다시 시도해 주세요.', en: 'Could not load notices. Please try again.' },
+  'notices.retry': { ko: '다시 시도', en: 'Try again' },
 
   'status.recruiting': { ko: '모집 중', en: 'Recruiting' },
   'status.ongoing': { ko: '진행 중', en: 'Ongoing' },

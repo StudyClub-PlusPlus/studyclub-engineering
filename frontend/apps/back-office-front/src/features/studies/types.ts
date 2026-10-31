@@ -27,6 +27,8 @@ export type ApiStudyDetail = {
   recruitDeadlineAt: string | null;
   startAt: string | null;
   endAt: string | null;
+  /** STUDY_DISCORD_LINK 행 존재 여부. 채널 URL 입력 여부와 별개다. */
+  discordLinked: boolean;
   discordChannelUrl: string | null;
   driveUrl: string | null;
 };

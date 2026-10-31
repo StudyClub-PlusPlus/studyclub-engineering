@@ -5,15 +5,21 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountConsentRepository;
+import com.studyclub.domain.account.AccountDeleted;
+import com.studyclub.domain.account.AccountIdentity;
 import com.studyclub.domain.account.AccountIdentityRepository;
 import com.studyclub.domain.account.AccountLeaveReason;
 import com.studyclub.domain.account.AccountLeaveReasonRepository;
 import com.studyclub.domain.account.AccountRepository;
+import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.LeaveReason;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.feedback.FeedbackImageRepository;
+import com.studyclub.domain.notice.StudyNoticeRepository;
+import com.studyclub.domain.participant.ParticipantRole;
+import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.proposal.StudyProposal;
@@ -24,12 +30,16 @@ import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import com.studyclub.notification.Notification;
+import com.studyclub.notification.NotificationEventType;
 import com.studyclub.notification.NotificationRepository;
 import com.studyclub.notification.NotificationStatus;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
@@ -55,6 +65,10 @@ public class AccountDeletionService {
     // 계정이라 원본을 더는 알 수 없다"는 같은 의미라 하나로 둔다. 따로 선언하면 나중에 문구를 바꿀 때
     // 한쪽만 고칠 위험이 있다.
     private static final String MASKED_PLACEHOLDER = "[탈퇴한 계정]";
+
+    /** 공지 메일의 보낸 사람 이름 자리 — 기록 목록이 탈퇴한 보낸 사람에게 쓰는 이름과 같다. */
+    private static final String WITHDRAWN_SENDER_NAME = "탈퇴한 회원";
+
     private static final String EMPTY_FORM_ANSWER = "{}";
 
     private final AccountRepository accountRepository;
@@ -69,9 +83,12 @@ public class AccountDeletionService {
     private final StudyProposalInterestRepository studyProposalInterestRepository;
     private final StudyApplicationRepository studyApplicationRepository;
     private final NotificationRepository notificationRepository;
+    private final StudyNoticeRepository studyNoticeRepository;
     private final FeedbackImageRepository feedbackImageRepository;
     private final ObjectMapper objectMapper;
     private final UploadService uploadService;
+    private final AppleOAuthClient appleOAuthClient;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void deleteAccount(Long accountId, LeaveReason reason) {
@@ -85,6 +102,14 @@ public class AccountDeletionService {
         // 사유는 계정과 잇지 않고 값만 쌓는다 — 집계용이라 개인과 이어질 필요가 없다.
         accountLeaveReasonRepository.save(new AccountLeaveReason(reason));
 
+        // 애플 연결 해제 — 앱스토어 심사 5.1.1(v). 실패해도 탈퇴는 계속한다 (AppleOAuthClient.revoke).
+        for (AccountIdentity identity : accountIdentityRepository.findByAccountId(accountId)) {
+            if (identity.getIssuer() == Issuer.APPLE
+                    && identity.getProviderRefreshToken() != null) {
+                appleOAuthClient.revoke(identity.getProviderRefreshToken());
+            }
+        }
+
         // 로그인 수단 파기 — 이 삭제가 빠지면 재가입 시 UNIQUE(ISSUER, PROVIDER_ACCOUNT_ID) 에 걸린다.
         accountIdentityRepository.deleteByAccountId(accountId);
 
@@ -96,7 +121,7 @@ public class AccountDeletionService {
         // 섞이는 것을 막기 위해 이 시각 이전 회차는 집계에 남기고 이후 회차만 제외한다(AttendanceRateCalculator).
         // 맡고 있던 네비게이터 자리도 이걸로 함께 사라진다. 공동 네비게이터가 남아 있는지는 판정하지 않는다
         // (인계 필요 여부는 시스템이 계산하지 않는다는 정책).
-        anonymizeParticipations(accountId);
+        List<StudyParticipant> onRoster = anonymizeParticipations(accountId);
 
         // 관심 표시 파기.
         studyBookmarkRepository.deleteByAccountId(accountId);
@@ -113,6 +138,17 @@ public class AccountDeletionService {
         // 알림 이력 — 이메일 원문·닉네임 스냅샷만 비식별화하고 행(발송 이력)은 남긴다.
         redactNotifications(accountId);
 
+        // 이 계정이 보낸 공지 — 받은 사람들의 메일 행에서 보낸 사람 이름을 비식별화한다 (specs/study-notice/spec.md).
+        redactSentNoticeMails(accountId);
+
+        // 운영자 알림 — 탈퇴는 디스코드 role 을 떼지 않아 운영자가 손으로 정리한다. 계정 값은 지우기 전에 담는다
+        // (specs/ops-alerts/spec.md).
+        eventPublisher.publishEvent(
+                AccountDeleted.of(
+                        account,
+                        onRoster.stream().map(StudyParticipant::getStudyId).distinct().toList(),
+                        onRoster.stream()
+                                .anyMatch(p -> p.getParticipantRole() == ParticipantRole.LEADER)));
         // 문의·오류 신고 — 문의 행은 남기고(「탈퇴한 사용자」) 첨부 이미지 행만 지운다. 파일은 아래 찜하기에 같이 걸린다
         // (specs/feedback/spec.md 「탈퇴 때」).
         feedbackImageRepository.deleteAllByFeedbackAccountId(accountId);
@@ -127,18 +163,27 @@ public class AccountDeletionService {
 
     // 참여 중단 · 발표 신청과 같은 분반 잠금을 먼저 쥔다 — 그 사이에 커밋된 참여 중단의 상태 · LEFT_AT 을 덮어쓰지 않는다 (share 10-18 D7).
     // 분반은 ID 오름차순으로 잠근다 — 여러 분반을 잠그는 참여 중단도 이 순서다. 디스코드 출석은 분반이 아니라 회차만, 같은 분반 ID 오름차순으로 잠근다
-    private void anonymizeParticipations(Long accountId) {
+    // 표시하기 직전에 명부에 있던(ACTIVE·PAUSED) 행을 돌려준다 — 디스코드 role 이 남아 있을 수 있는 곳이다
+    private List<StudyParticipant> anonymizeParticipations(Long accountId) {
         List<Long> groupIds = studyParticipantRepository.findStudyGroupIdsByAccountId(accountId);
         for (Long groupId : groupIds) {
             studyGroupRepository.findByIdForUpdate(groupId);
         }
         List<StudyParticipant> participations =
                 studyParticipantRepository.findByAccountIdForUpdate(accountId);
+        List<StudyParticipant> onRoster =
+                participations.stream()
+                        .filter(
+                                p ->
+                                        p.getStatus() == ParticipantStatus.ACTIVE
+                                                || p.getStatus() == ParticipantStatus.PAUSED)
+                        .toList();
         Instant deletedAt = Instant.now();
         for (StudyParticipant participation : participations) {
             participation.markDeletedDueToAccountDeletion(deletedAt);
         }
         releasePresenterSlots(groupIds, participations, deletedAt);
+        return onRoster;
     }
 
     // 떠난 사람이 맡은 예정 회차의 발표자 칸을 비운다 — 빈 칸이 다시 「신청」 으로 열린다. 지난 회차는 기록이라 둔다
@@ -189,6 +234,23 @@ public class AccountDeletionService {
         }
         log.warn("FORM_ANSWER 가 JSON 객체가 아니라 전체를 비웁니다. applicationId={}", applicationId);
         return EMPTY_FORM_ANSWER;
+    }
+
+    // 보낸 사람 ID 는 메일 행에 직접 있어서, 공지가 스터디 삭제로 사라졌어도 찾는다. 보낸 사람 ID 를 싣기 전에 만든 옛 행은 공지를 거쳐 찾는다
+    private void redactSentNoticeMails(Long accountId) {
+        Set<Notification> sentMails =
+                new LinkedHashSet<>(
+                        notificationRepository.findBySenderAccountIdForUpdate(
+                                NotificationEventType.STUDY_NOTICE, accountId));
+        List<Long> noticeIds = studyNoticeRepository.findIdsBySenderAccountId(accountId);
+        if (!noticeIds.isEmpty()) {
+            sentMails.addAll(
+                    notificationRepository.findByReferenceIdsForUpdate(
+                            NotificationEventType.STUDY_NOTICE, noticeIds));
+        }
+        for (Notification notification : sentMails) {
+            notification.redactSenderName(WITHDRAWN_SENDER_NAME);
+        }
     }
 
     private void redactNotifications(Long accountId) {

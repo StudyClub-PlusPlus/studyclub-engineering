@@ -107,7 +107,6 @@ public class AdminAccountQueryService {
                 account.getCreatedAt(),
                 // 판정은 엔티티 한 곳 — 권한 변경 API 가 거절할 때도 같은 메서드를 부른다
                 account.roleChangeBlockedReason(requesterId, adminCount),
-                account.isDiscordLinked(),
-                account.isDiscordLinked() ? account.getDiscordHandle() : null);
+                account.isDiscordLinked());
     }
 }

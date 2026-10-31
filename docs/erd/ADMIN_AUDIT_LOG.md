@@ -34,6 +34,7 @@
 | 값 | 뜻 | BEFORE / AFTER |
 |---|---|---|
 | `EMAIL_REVEAL` | 백오피스 회원 목록에서 한 명의 이메일 원본을 봤다 | NULL / NULL |
+| `DISCORD_REVEAL` | 백오피스 회원 목록에서 한 명의 디스코드 username을 봤다. 원문은 기록하지 않는다 | NULL / NULL |
 | `ROLE_CHANGE` | 계정 권한(`SYSTEM_ROLE`)을 바꿨다. 값이 실제로 바뀐 경우만 | `MEMBER` / `ADMIN` 등 |
 | `WITHDRAW` | 출석부에서 참여를 중단시켰다 ([study-participant](../../specs/study-participant/spec.md)). 이번에 중단된 행만. 행위자는 **네비게이터일 수도 있다** | 중단 직전 상태(`ACTIVE` · `PAUSED`) / 중단된 명부 행 ID — 한 사람이 스터디 여럿에 있어 계정 ID 만으로는 어느 행인지 모른다 |
 | `PARTICIPANT_ROLE` | 백오피스 신청자 탭에서 명부 행의 역할(네비게이터 지정 · 해제)을 바꿨다 ([study-group](../../specs/study-group/spec.md)). 역할이 실제로 바뀐 행만 | 변경 전 역할(`MEMBER` · `LEADER`) / 명부 행 ID — 역할은 둘뿐이라 변경 후 값은 BEFORE 의 반대다 |

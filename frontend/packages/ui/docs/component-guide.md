@@ -127,7 +127,7 @@ export function MyComponent({ variant = 'a', className, children, ...rest }: MyC
 // ✅ 문자열 전체를 맵에 넣는다 — Tailwind 정적 스캔을 보장
 const VARIANT: Record<MyVariant, string> = {
   primary:     'bg-brand text-on-brand hover:bg-brand-hover',
-  secondary:   'bg-surface-raised border border-border text-ink hover:border-border-interactive hover:bg-page-bg',
+  secondary:   'bg-surface-raised border border-button-secondary-border text-ink hover:border-border-interactive hover:bg-primary-light',
   destructive: 'bg-danger-fg text-on-primary hover:brightness-90',
 };
 
@@ -203,11 +203,21 @@ cx('p-4', className) // className='p-2' → 결과: 'p-2'
 ### 7-1. Button (§9-1)
 
 ```
-h-8 / h-10 / h-12  (sm/md/lg)
-rounded-control (8px)
+sm: 32px / px12 / gap4 / radius8 / icon14 / type-label-sm
+md: 40px / px16 / gap8 / radius9 / icon16 / type-label-lg (기본)
+lg: 48px / px20 / gap8 / radius10 / icon20 / type-label-lg
+variant: primary / secondary / tertiary / danger(테두리) / destructive(최종 확인 채움)
+텍스트 버튼 min-width: sm 64px / md 80px / lg 96px. 긴 레이블은 확장. 고밀도 sm은 className="min-w-0" 허용. IconButton 제외, 버튼 그룹 동일 너비 강제 없음.
+secondary 기본: 배경 #FFFFFF / 경계 1px solid #CBCFE5(button-secondary-border) / 글자 #282A43. tertiary: primary-dark 글자 + primary-light hover
+state: default / error. error는 빨간색 계열 유지, 레이블은 변경하지 않음
+실패 문구: 사용처에서 role=alert + aria-describedby 연결
 disabled → bg-disabled-bg / text-disabled-fg / shadow-none
-loading  → <Spinner /> + aria-busy + 폭 고정
-sm       → ::after 44px 터치 타깃
+loading → native disabled + aria-busy + 레이블/아이콘 그대로 표시. 내부 스피너 없음. 사용처에서 외부 role=status로 처리 상태 안내
+focus-visible → 버튼 전용 3px outline / offset 3px
+motion → 150ms. reduced-motion → transform 없음
+touch → sm/md 양축 44px 이상 타깃, 인접 타깃 간격 확보
+IconButton → 같은 높이의 정사각형 + icon prop + 필수 aria-label
+아이콘 API → leadingIcon / trailingIcon 유지
 ```
 
 ### 7-2. Input / Select / Textarea (§9-2)

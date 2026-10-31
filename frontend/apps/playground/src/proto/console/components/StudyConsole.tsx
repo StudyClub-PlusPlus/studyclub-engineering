@@ -15,6 +15,7 @@ import { StudyInfoTab } from '@console/components/StudyInfoTab';
 import { classView, FIRST_CLASS, type ClassView } from '@console/lib/class-view';
 import { classTime, hasSchedule, type StudyClass } from '@console/lib/classes';
 import { tx } from '@console/lib/l10n';
+import { useStudiesListHref } from '@console/lib/list-return';
 import { type ScheduleRule } from '@console/lib/schedule';
 import { seedClasses } from '@console/lib/seed-classes';
 import { ScheduleManager } from '@core/components/ScheduleManager';
@@ -26,6 +27,8 @@ import { dropPresenters } from '@core/lib/schedule-source';
 import {
   attendanceRate,
   getStudyCrew,
+  applyFormUrl,
+  lifecycleState,
   publishState,
   recruitState,
   toISODate,
@@ -172,8 +175,20 @@ export function StudyConsole({ study }: { study: Study }) {
     deadline === undefined
       ? undefined
       : Math.round((Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${todayISO()}T00:00:00Z`)) / 86_400_000);
+  // 목록에 걸어 둔 필터 · 정렬 · 페이지로 돌아간다
+  const listHref = useStudiesListHref();
+  // 사이트 공개 — 화면 상태로만 바꾼다(새로고침하면 되돌아간다). 목록 「스터디 공개」 칸과 같은 규칙 · 같은 확인 팝업
+  const [published, setPublished] = useState(() => publishState(study) !== 'draft');
+  const [publishConfirm, setPublishConfirm] = useState<boolean | null>(null);
   // 아직 켜지 않은 스터디는 사이트에 없다 — 헤더에서 그 사실을 알린다.
-  const draft = publishState(study) === 'draft';
+  const draft = !published;
+  const publishBlocked = published
+    ? lifecycleState(study) !== 'OPEN' && lifecycleState(study) !== 'DRAFT'
+      ? '진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.'
+      : undefined
+    : applyFormUrl(study) || study.applicationForm?.length
+      ? undefined
+      : '신청 폼을 먼저 연결하세요.';
 
   /** 반을 만들거나 이름을 바꾼다. 회차는 건드리지 않는다 — 회차는 일정 탭에서 일정을 정할 때 깔린다. */
   function saveClass(cls: StudyClass) {
@@ -310,7 +325,7 @@ export function StudyConsole({ study }: { study: Study }) {
   return (
     <div>
       <Link
-        href='/proto/console/studies'
+        href={listHref}
         className='inline-flex items-center gap-1.5 type-label-lg text-fg-secondary transition-colors hover:text-fg'
       >
         <ArrowLeft size={15} /> 스터디 관리
@@ -325,25 +340,81 @@ export function StudyConsole({ study }: { study: Study }) {
         <h1 data-anno='attendee:1-1' className='min-w-0 type-headline-md'>
           {tx(study.title)}
         </h1>
-        <div data-anno='attendee:1-2' className='flex shrink-0 items-center gap-2'>
-          {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
-          {study.program?.kind === 'club' && (
-            <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
-              다음 기수 만들기
-            </Button>
-          )}
-          <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
-            {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
-            {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
-            {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
-          </Badge>
-          {draft && (
-            <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
-              미공개
+        <div className='flex shrink-0 flex-col items-end gap-2'>
+          <div data-anno='attendee:1-2' className='flex items-center gap-2'>
+            {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
+            {study.program?.kind === 'club' && (
+              <Button size='sm' variant='secondary' leadingIcon={<Plus size={14} />} onClick={() => setNextOpen(true)}>
+                다음 기수 만들기
+              </Button>
+            )}
+            <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
+              {/* 마감까지 남은 날은 상태의 일부다 — 날짜를 보려고 탭을 옮기게 하지 않는다 */}
+              {/* 마감일 당일도 아직 신청을 받는다. 운영 화면이라 D-0 으로 적는다 — 「오늘 마감」은 신청을 재촉하는 말이다 */}
+              {open ? (dday === undefined ? '모집중' : `모집중 · D-${dday}`) : '모집 마감'}
             </Badge>
-          )}
+            {draft && (
+              <Badge tone='closingsoon' className='px-2.5 py-1 font-semibold'>
+                미공개
+              </Badge>
+            )}
+          </div>
+          {/* 사이트 공개 스위치 — 상세에서도 켜고 끈다. 막히면 이유를 바로 아래 글로 (백오피스 PublishSwitch 와 같다) */}
+          <div data-anno='attendee:1-3' className='flex flex-col items-end gap-1'>
+            <button
+              type='button'
+              role='switch'
+              aria-checked={published}
+              aria-disabled={publishBlocked ? true : undefined}
+              onClick={() => !publishBlocked && setPublishConfirm(!published)}
+              className={`inline-flex items-center gap-2 rounded-control px-1 py-0.5 type-label-lg text-fg-secondary outline-none focus-visible:shadow-[var(--ring)] ${publishBlocked ? 'opacity-60' : ''}`}
+            >
+              사이트 공개
+              <span
+                className={`relative h-5 w-9 rounded-full transition-colors duration-300 ease-in-out ${published ? 'bg-success-600' : 'bg-surface-3'}`}
+              >
+                <span
+                  className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${published ? 'translate-x-4 shadow' : ''}`}
+                />
+              </span>
+            </button>
+            {publishBlocked && <p className='type-label-sm text-fg-muted'>{publishBlocked}</p>}
+          </div>
         </div>
       </header>
+
+      <Modal
+        open={publishConfirm !== null}
+        onClose={() => setPublishConfirm(null)}
+        title={publishConfirm ? '스터디 공개' : '스터디 비공개'}
+        footer={
+          <>
+            {/* 결정을 묻는 모달 — 안전한 쪽이 기본 포커스를 받는다. Enter 로 실행되면 안 된다 (POL-0008) */}
+            <Button variant='secondary' data-autofocus onClick={() => setPublishConfirm(null)}>
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                if (publishConfirm !== null) setPublished(publishConfirm);
+                setPublishConfirm(null);
+              }}
+            >
+              {publishConfirm ? '공개' : '비공개로 전환'}
+            </Button>
+          </>
+        }
+      >
+        <div className='py-6 text-center'>
+          <p className='type-label-lg text-fg'>
+            ‘{tx(study.title)}’ {publishConfirm ? '스터디를 공개하시겠습니까?' : '스터디를 비공개로 전환하시겠습니까?'}
+          </p>
+          <p className='mt-1.5 type-body-sm text-fg-muted'>
+            {publishConfirm
+              ? '공개하면 오늘이 모집 시작일이 되고, 스터디 상태가 「개설」이 되어 사용자 사이트에 노출됩니다.'
+              : '사용자 사이트에서 내려가고 스터디 상태가 「작성 중」으로 돌아갑니다.'}
+          </p>
+        </div>
+      </Modal>
 
       {/*
         지표 카드를 두지 않는다. 넷 다 탭이 이미 말한다 —
