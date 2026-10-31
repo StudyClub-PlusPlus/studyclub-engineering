@@ -90,7 +90,8 @@ export function StudyInfoCard({
     meetings,
     viewerZone,
   );
-  const navigator = navigatorName ?? study.lead ?? '운영진';
+  // 네비게이터가 없으면 스터디를 연 캡틴이 맡는다 — 역할 이름으로 적는다 (POL-0001)
+  const navigator = navigatorName ?? study.lead ?? '캡틴';
   const hasDiscord = discordChannelUrl != null ? !!discordChannelUrl : canOpenDiscord(study);
   const discordHref = discordChannelUrl ?? discordUrl(study);
   const hasDrive = driveUrlOverride != null ? !!driveUrlOverride : canOpenDrive(study);

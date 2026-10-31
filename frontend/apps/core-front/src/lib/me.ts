@@ -8,10 +8,12 @@ import { API_BASE } from './http';
 /**
  * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청.
  *
- * 저장할 서버가 아직 없어 **브라우저에만** 남긴다(기기·브라우저가 바뀌면 사라진다).
- * 서버가 생기면 이 파일의 read/write 만 fetch 로 갈아끼우면 되고, 화면 코드는 그대로 둔다.
+ * 관심(찜)은 저장할 API 가 아직 없어 **브라우저에만** 남긴다(기기·브라우저가 바뀌면 사라진다).
+ * 서버는 조회(GET /api/me/bookmarks)만 있고 추가·해제는 스펙 작성 중이다 (specs/study-bookmark).
+ * 추가·해제 API 가 생기면 이 파일의 read/write 만 fetch 로 갈아끼우면 되고, 화면 코드는 그대로 둔다.
  *
- * TODO(api): GET/PUT /api/me/bookmarks · /api/me/applications
+ * 신청은 서버(POST·GET /api/studies/{id}/applications)가 정본이다. 여기 기록은 같은 브라우저에서 「신청 완료」를
+ * 바로 보여 주려는 캐시일 뿐이다.
  *
  * `getActiveNavigatorStudies` 만 예외 — 회원 탈퇴 경고는 로컬로 흉내낼 수 없어 실제
  * GET /api/me/studies 를 호출한다. 맨 아래 참고.
@@ -57,10 +59,8 @@ export function setBookmarked(studyId: string, on: boolean) {
 /* ── 스터디 신청 ─────────────────────────────────────────────────────────── */
 
 /**
- * 신청 상태.
- * - pending  : 운영진 확인 대기
- * - accepted : 승인 — 참여 중
- * 승인은 운영자 콘솔에서 처리하므로, 서버가 붙기 전까지는 pending 만 생긴다.
+ * 브라우저에 남긴 신청 기록의 상태 — 옛 프로토의 값이라 화면은 이 값으로 가르지 않는다.
+ * 신청에는 승인 단계가 없다 — 신청하면 곧 참여다 (POL-0004).
  */
 export type ApplicationStatus = 'pending' | 'accepted';
 
