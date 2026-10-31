@@ -6,6 +6,7 @@ import type { Study } from '@studyclub/mock';
 import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Mic, Plus, X } from 'lucide-react';
 
+import { track } from '@/lib/analytics';
 import { ApiError } from '@/lib/http';
 import { apiMeetingsOf, meetingRows } from '@/lib/joined-detail';
 import {
@@ -623,6 +624,10 @@ export function ScheduleTab({
       } else {
         await unregisterPresenter(Number(study.id), id, slot);
       }
+      track({
+        name: on ? 'Study Presenter Registered' : 'Study Presenter Unregistered',
+        props: { study_id: String(study.id), meeting_id: m.id, slot },
+      });
       setNotice(null);
       setAnnounce(
         on ? `${meetingLabel(m)} ${which}로 신청했습니다.` : `${meetingLabel(m)} ${which} 신청을 취소했습니다.`,

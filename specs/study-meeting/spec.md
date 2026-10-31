@@ -667,7 +667,9 @@ PRD 는 `SCHEDULED_AT` 경과만 말하지만, 디스코드 출석 체크가 예
 
 ## 퍼널·계측
 
-해당 없음 — 회차 · 발표 신청에 분석 이벤트가 없다. 지표 변화도 기대하지 않는다.
+- 단계: 재방문 (활성화 뒤 참여)
+- 이벤트 (front): 발표 신청·취소 성공에 `Study Presenter Registered` · `Study Presenter Unregistered` (`study_id`, `meeting_id`, `slot`). 회차 만들기·고치기·지우기(캡틴)에는 이벤트가 없다
+- 기대: 신청한 크루가 스터디룸에서 스스로 하는 행동을 보는 첫 신호. A/B 없음
 
 ## 범위 밖
 

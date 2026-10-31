@@ -148,7 +148,7 @@ export function EventBrowser({ events, locale }: { events: StudyclubEvent[]; loc
       {filtered.length > 0 ? (
         <div className='card divide-y divide-border overflow-hidden p-0'>
           {filtered.map((e) => (
-            <EventRow key={e.id} event={e} locale={locale} />
+            <EventRow key={e.id} event={e} locale={locale} source='events_list' />
           ))}
         </div>
       ) : (
