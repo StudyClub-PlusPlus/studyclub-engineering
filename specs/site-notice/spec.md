@@ -447,7 +447,7 @@ HTML 로 해석하지 않으므로 서버가 태그를 걸러 내거나 바꾸�
 
 ## 스키마
 
-**테이블 1개 추가** — [`SITE_NOTICE`](../../docs/erd/SITE_NOTICE.md). 마이그레이션은 `V41__site_notice.sql`, 엔티티는 `SiteNotice`.
+**테이블 1개 추가** — [`SITE_NOTICE`](../../docs/erd/SITE_NOTICE.md). 마이그레이션은 `V45__site_notice.sql`, 엔티티는 `SiteNotice`.
 
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|

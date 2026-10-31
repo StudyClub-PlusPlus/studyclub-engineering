@@ -129,7 +129,7 @@ flowchart LR
 |---|---|---|---|
 | FE | back-office-front 사이드바 「공지」 | 있음 — 알림 아래, 아이콘 메가폰 | 없음 |
 | FE | back-office-front `/notices` 목록 · 등록·편집 팝업 · 삭제 | 있음 — `features/site-notices` 가 API 연결 | 없음 |
-| BE | 공지 테이블 | `SITE_NOTICE` 있음 (V41) | 없음 |
+| BE | 공지 테이블 | `SITE_NOTICE` 있음 (V45) | 없음 |
 | BE | 공지 API | 구현완료 — [site-notice 스펙](../../../specs/site-notice/spec.md). 아래 표 | 없음 |
 
 - **범위 밖** — 본문 서식(굵게·밑줄·목록·링크) · 분류 · 상단 고정 · 예약 게시 · 초안 · 알림 메일 · 이미지 업로드 · 영어 본문 · 조회수
