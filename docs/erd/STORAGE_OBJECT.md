@@ -46,3 +46,5 @@ stateDiagram-v2
 - 인덱스 `idx_storage_object_status_created (STATUS, CREATED_AT)` — 정리 배치가 하루 지난 `PENDING` 을 찜할 때. `idx_storage_object_account_status (ACCOUNT_ID, STATUS)` — 올리기 전 그 계정의 `PENDING` 수(상한 20)를 셀 때.
 - `OBJECT_KEY` UNIQUE — 키는 UUID 라 저장소가 바뀌어도 겹칠 일이 없지만, 주소 → 행 조회가 하나만 돌아오게 보장한다.
 - 물리 삭제한다. 파일이 저장소에서 사라지면 행이 남아 있을 이유가 없다. `DELETING` 은 「지우는 중」 표시이지 보존 상태가 아니다.
+
+정리 작업은 시작 지연 1분, 실행 완료 후 하루 간격이다. 만료 PENDING 예약과 DELETING 재시도를 100건씩 처리한다. [공통 정리 스펙](../../specs/data-retention/spec.md).

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.support.BaseEntity;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -120,5 +122,58 @@ class FeedbackTest {
         assertThat(feedback.getAdminMemo()).isEqualTo("이스케이프 누락 의심");
         feedback.changeAdminMemo("");
         assertThat(feedback.getAdminMemo()).isNull();
+    }
+
+    @Test
+    @DisplayName("미답변은 접수일부터 1년 — 확인 상태와 메모는 기한을 늘리지 않는다")
+    void unansweredExpiresAtSubmissionAnniversary() throws Exception {
+        Feedback feedback = submittedAt("2025-10-31T03:04:05Z");
+        feedback.changeStatus(FeedbackStatus.SEEN);
+        feedback.changeAdminMemo("확인 중인 문의");
+        Instant expiresAt = Instant.parse("2026-10-31T03:04:05Z");
+
+        assertThat(feedback.isRetentionExpired(expiresAt.minusNanos(1))).isFalse();
+        assertThat(feedback.isRetentionExpired(expiresAt)).isTrue();
+    }
+
+    @Test
+    @DisplayName("답변한 문의는 첫 답변일부터 1년 — 답변 수정은 기한을 늘리지 않는다")
+    void answeredExpiresAtFirstReplyAnniversary() throws Exception {
+        Feedback feedback = submittedAt("2024-10-31T03:04:05Z");
+        feedback.reply("첫 번째 답변입니다.", CAPTAIN, Instant.parse("2025-11-30T03:04:05Z"));
+        feedback.reply("수정한 답변입니다.", OTHER_CAPTAIN, Instant.parse("2026-11-01T03:04:05Z"));
+        feedback.changeAdminMemo("추가로 남긴 운영 메모");
+
+        assertThat(feedback.isRetentionExpired(Instant.parse("2026-11-30T03:04:04.999999Z")))
+                .isFalse();
+        assertThat(feedback.isRetentionExpired(Instant.parse("2026-11-30T03:04:05Z"))).isTrue();
+    }
+
+    @Test
+    @DisplayName("윤년의 2월 29일 접수는 다음 해 2월 28일 같은 UTC 시각에 만료된다")
+    void leapDayExpiresOnLastDayOfFebruary() throws Exception {
+        Feedback feedback = submittedAt("2024-02-29T12:00:00Z");
+
+        assertThat(feedback.isRetentionExpired(Instant.parse("2025-02-28T11:59:59.999999Z")))
+                .isFalse();
+        assertThat(feedback.isRetentionExpired(Instant.parse("2025-02-28T12:00:00Z"))).isTrue();
+    }
+
+    @Test
+    @DisplayName("윤일을 포함한 1년은 366일 — 365일만 지났다고 미리 지우지 않는다")
+    void calendarYearCanBe366Days() throws Exception {
+        Feedback feedback = submittedAt("2023-03-01T12:00:00Z");
+
+        assertThat(feedback.isRetentionExpired(Instant.parse("2024-02-29T12:00:00Z"))).isFalse();
+        assertThat(feedback.isRetentionExpired(Instant.parse("2024-03-01T12:00:00Z"))).isTrue();
+    }
+
+    private static Feedback submittedAt(String createdAt) throws Exception {
+        Feedback feedback = newFeedback();
+        // 운영에서는 JPA Auditing 이 채우는 접수 시각을 테스트에서만 고정한다.
+        Field field = BaseEntity.class.getDeclaredField("createdAt");
+        field.setAccessible(true);
+        field.set(feedback, Instant.parse(createdAt));
+        return feedback;
     }
 }

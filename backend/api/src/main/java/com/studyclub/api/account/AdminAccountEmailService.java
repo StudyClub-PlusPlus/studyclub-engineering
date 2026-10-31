@@ -1,11 +1,11 @@
 package com.studyclub.api.account;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.audit.AdminAuditLog;
-import com.studyclub.domain.audit.AdminAuditLogRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,12 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminAccountEmailService {
 
     private final AccountRepository accountRepository;
-    private final AdminAuditLogRepository adminAuditLogRepository;
+    private final AdminAuditRecorder auditRecorder;
 
     public AdminAccountEmailService(
-            AccountRepository accountRepository, AdminAuditLogRepository adminAuditLogRepository) {
+            AccountRepository accountRepository, AdminAuditRecorder auditRecorder) {
         this.accountRepository = accountRepository;
-        this.adminAuditLogRepository = adminAuditLogRepository;
+        this.auditRecorder = auditRecorder;
     }
 
     /**
@@ -36,7 +36,7 @@ public class AdminAccountEmailService {
                         .findById(targetId)
                         .orElseThrow(
                                 () -> new BusinessException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다."));
-        adminAuditLogRepository.save(AdminAuditLog.emailReveal(actorId, target.getId()));
+        auditRecorder.record(AdminAuditLog.emailReveal(actorId, target.getId()));
         return new AdminAccountEmailResponse(target.getId(), target.getEmail());
     }
 }
