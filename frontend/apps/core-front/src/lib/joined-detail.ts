@@ -1,6 +1,7 @@
 import type { StudyMeeting } from '@studyclub/mock';
 
-import { isKickoff } from './meetings';
+import type { ApiMeetingList } from './joined-detail-api';
+import { isKickoff, wallParts, type NavigatorGroup, type ProtoMeeting } from './meetings';
 
 export type JoinedMeetingRow = StudyMeeting & { no: number };
 
@@ -12,4 +13,21 @@ export function meetingRows(meetings: StudyMeeting[]): JoinedMeetingRow[] {
     .filter((meeting) => meeting !== kickoff)
     .map((meeting, index) => ({ ...meeting, no: index + 1 }));
   return kickoff ? [{ ...kickoff, no: 0 }, ...regular] : regular;
+}
+
+export function apiMeetingsOf(data: ApiMeetingList | undefined, group: NavigatorGroup): ProtoMeeting[] {
+  return (data?.meetings ?? []).map((m) => {
+    const isKickoffMeeting = m.type === 'KICKOFF' || m.number === 0 || m.title === '킥오프';
+    return {
+      id: String(m.id),
+      no: isKickoffMeeting ? 0 : m.number,
+      kind: isKickoffMeeting ? 'kickoff' : undefined,
+      date: wallParts(new Date(m.scheduledAt), group.timeZone).date,
+      time: wallParts(new Date(m.scheduledAt), group.timeZone).time,
+      scheduledAt: m.scheduledAt,
+      title: m.title ?? (isKickoffMeeting ? '킥오프' : ''),
+      presenter1: m.presenter1 ? String(m.presenter1.participantId) : '',
+      presenter2: m.presenter2 ? String(m.presenter2.participantId) : '',
+    };
+  });
 }

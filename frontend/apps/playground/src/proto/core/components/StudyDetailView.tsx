@@ -3,13 +3,19 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-
 import { MarkdownLite } from '@core/components/ApplicationFormUi';
 import { ApplyButton } from '@core/components/ApplyButton';
 import type { Locale, Study } from '@core/lib/content';
 import { m, t } from '@core/lib/i18n';
 import { DETAIL_ASIDE, DETAIL_GRID, PAGE } from '@core/lib/layout';
-import { recruitBadge, studyStartValue, studyTimezoneLabel, toISODate } from '@core/lib/recruit';
+import {
+  confirmedRecruitSchedule,
+  recruitBadge,
+  studyStartValue,
+  studyTimezoneLabel,
+  toISODate,
+} from '@core/lib/recruit';
+import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
 import { getStudyCrew, recruitCapacity, studies as mockStudies } from '@studyclub/mock';
 import { categoryArtUrl, categoryMeta, categoryTint } from '@studyclub/ui';
 import { ArrowLeft, CalendarClock, Globe, Rocket } from 'lucide-react';
@@ -22,11 +28,14 @@ export function StudyDetailView({
   study: initialStudy,
   id,
   locale,
+  schedulePreview = false,
 }: {
   study: Study | null;
   id: string;
   locale: Locale;
+  schedulePreview?: boolean;
 }) {
+  const zone = useDisplayTimeZone();
   const [study, setStudy] = useState<Study | null>(initialStudy);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
@@ -45,7 +54,8 @@ export function StudyDetailView({
           }
           if (!isCancelled) {
             setErrorStatus(null);
-            const found = initialStudy ?? (mockStudies.find((s) => String(s.study_id) === id) as unknown as Study) ?? null;
+            const found =
+              initialStudy ?? (mockStudies.find((s) => String(s.study_id) === id) as unknown as Study) ?? null;
             setStudy(found);
           }
           return res.json();
@@ -86,7 +96,13 @@ export function StudyDetailView({
     return (
       <div className={`${PAGE} py-20 text-center`}>
         <p className='type-title-md text-fg-secondary'>
-          {t({ ko: '스터디 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.', en: 'Could not load study details. Please try again.' }, locale)}
+          {t(
+            {
+              ko: '스터디 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+              en: 'Could not load study details. Please try again.',
+            },
+            locale,
+          )}
         </p>
         <Link
           href={`/proto/core/${locale}/studies`}
@@ -109,14 +125,30 @@ export function StudyDetailView({
   const cap = recruitCapacity(study);
 
   // 목록 카드와 같은 정보를 칸으로 — 같은 개념은 같은 모양
+  const confirmed = confirmedRecruitSchedule(study, locale, zone);
   const facts = [
-    ...(study.schedule ? [{ icon: CalendarClock, label: t({ ko: '일정', en: 'Schedule' }, locale), value: t(study.schedule, locale) }] : []),
-    { icon: Globe, label: t({ ko: '시간대', en: 'Time zone' }, locale), value: studyTimezoneLabel(study, locale) },
+    ...(confirmed
+      ? [
+          {
+            icon: CalendarClock,
+            label: t({ ko: '확정 일정', en: 'Confirmed meeting' }, locale),
+            value: confirmed.label,
+          },
+        ]
+      : study.schedule
+        ? [{ icon: CalendarClock, label: t({ ko: '일정', en: 'Schedule' }, locale), value: t(study.schedule, locale) }]
+        : []),
+    {
+      icon: Globe,
+      label: t(confirmed ? { ko: '내 시간대', en: 'My time zone' } : { ko: '시간대', en: 'Time zone' }, locale),
+      value: confirmed?.zone ?? studyTimezoneLabel(study, locale),
+    },
     { icon: Rocket, label: t({ ko: '시작 예정일', en: 'Starts' }, locale), value: studyStartValue(study, locale) },
   ];
 
   return (
     <div className={`${PAGE} pb-16 pt-8`}>
+      {schedulePreview && <p className='mb-4 type-label-lg text-fg-secondary'>확정 일정 예시 · 시간대 변환 확인용</p>}
       {SPECS.map((spec) => (
         <ScreenSpecRegistrar key={spec.chip ?? spec.screen} spec={spec} />
       ))}
@@ -130,7 +162,10 @@ export function StudyDetailView({
       {/* 넓은 화면: 왼쪽 본문 + 오른쪽 고정 신청 카드. 좁은 화면은 위아래로 */}
       <div className={`mt-4 ${DETAIL_GRID}`}>
         <article className='card overflow-hidden'>
-          <header className='relative flex flex-col gap-3 overflow-hidden px-6 pb-7 pt-6 sm:px-8' style={{ background }}>
+          <header
+            className='relative flex flex-col gap-3 overflow-hidden px-6 pb-7 pt-6 sm:px-8'
+            style={{ background }}
+          >
             {artUrl && (
               <span
                 aria-hidden='true'
@@ -146,9 +181,7 @@ export function StudyDetailView({
               <CategoryIcon size={14} strokeWidth={1.75} className='shrink-0' />
               <span className='type-label-sm'>{categoryLabel}</span>
             </div>
-            <h1 className='pr-24 type-headline-lg text-fg sm:pr-40'>
-              {t(study.title, locale)}
-            </h1>
+            <h1 className='pr-24 type-headline-lg text-fg sm:pr-40'>{t(study.title, locale)}</h1>
             <p className='type-body-md text-fg-secondary sm:pr-40'>{t(study.summary, locale)}</p>
           </header>
 
@@ -186,7 +219,13 @@ export function StudyDetailView({
             </span>
             <span data-anno='view:4' className='type-label-sm text-fg-muted'>
               {study.program?.kind === 'club'
-                ? t({ ko: '클럽: 이전 기수 참여자는 새 기수에 신청 없이 자동으로 이어집니다.', en: 'Club: members carry over to new cohorts without re-applying.' }, locale)
+                ? t(
+                    {
+                      ko: '클럽: 이전 기수 참여자는 새 기수에 신청 없이 자동으로 이어집니다.',
+                      en: 'Club: members carry over to new cohorts without re-applying.',
+                    },
+                    locale,
+                  )
                 : t({ ko: '스터디: 참여하려면 신청이 필요합니다.', en: 'Study: you need to apply to join.' }, locale)}
             </span>
           </div>

@@ -9,6 +9,7 @@
     "start": "next start -p 4702",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
+    "test:timezones": "node scripts/check-timezones.mjs",
     "export-specs": "node scripts/export-specs.mjs"
   },
   "dependencies": {
