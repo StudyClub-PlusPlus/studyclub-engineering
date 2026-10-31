@@ -11,7 +11,7 @@ export const apiStudySchema = z.object({
   timezone: z.union([z.literal('KST'), z.literal('PST'), z.literal('BOTH'), z.null()]),
   status: z.enum(['DRAFT', 'OPEN', 'ONGOING', 'ENDED', 'CLOSED']),
   phase: z.union([z.literal('RECRUITING'), z.literal('ONGOING'), z.literal('CLOSED')]),
-  recruitStatus: z.union([z.literal('RECRUITING'), z.literal('RECRUIT_CLOSED')]),
+  recruitStatus: z.union([z.literal('RECRUITING'), z.literal('RECRUIT_CLOSED'), z.null()]),
   capacity: z.union([z.number(), z.null()]),
   currentApplicants: z.number(),
   recruitDeadlineAt: z.union([z.string(), z.null()]),
