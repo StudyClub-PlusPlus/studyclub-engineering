@@ -46,19 +46,13 @@ export function middleware(req: NextRequest) {
     return res;
   }
 
-  // 2) 정상 인증 모드
-  const token = req.cookies.get(ACCESS_COOKIE)?.value;
-  if (token) {
-    if (pathname === '/login') {
-      const url = req.nextUrl.clone();
-      url.pathname = '/';
-      url.search = '';
-      return NextResponse.redirect(url);
-    }
+  // 2) 로그인은 쿠키가 남아 있어도 연다. 쿠키 존재만으로는 서버의 인증 성공을 보장할 수 없다.
+  // 401 뒤 쿠키 정리에 실패해도 여기서 대시보드로 돌려보내면 무한 이동이 된다.
+  if (pathname === '/login') {
     return NextResponse.next();
   }
 
-  if (pathname === '/login') {
+  if (req.cookies.get(ACCESS_COOKIE)?.value) {
     return NextResponse.next();
   }
 
