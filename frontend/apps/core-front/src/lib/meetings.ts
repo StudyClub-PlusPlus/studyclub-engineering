@@ -2,6 +2,9 @@
 
 import type { Study, StudyMeeting } from '@studyclub/mock';
 
+import { scheduleZoneTitle, zoneAbbreviation, zoneSymbol } from '@/lib/schedule-timezone';
+import { formattingZone } from '@/lib/time-zone-rules';
+
 /**
  * 네비게이터가 관리하는 회차 (ERD `STUDY_MEETING`).
  *
@@ -161,7 +164,7 @@ export function withAdded(base: StudyMeeting[], studyId: string, zone = DEFAULT_
 function zonedParts(instant: Date, iana: string) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-US', {
-      timeZone: iana,
+      timeZone: formattingZone(iana, instant),
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -194,6 +197,23 @@ export function wallParts(instant: Date, iana: string): { date: string; time: st
   return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
 }
 
+export function wallInputErrors(date: string, time: string, zone: string): DraftErrors {
+  if (!date || !time)
+    return {
+      ...(!date && { date: '일자를 정해 주세요.' }),
+      ...(!time && { time: '시작 시각을 정해 주세요.' }),
+    };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    return { time: '올바른 날짜와 시각을 입력해 주세요.' };
+  }
+  const instant = zonedInstant(date, time, zone);
+  if (!Number.isFinite(instant.getTime())) return { time: '올바른 날짜와 시각을 입력해 주세요.' };
+  const roundTrip = wallParts(instant, zone);
+  return roundTrip.date === date && roundTrip.time === time
+    ? {}
+    : { time: '시간대 전환으로 존재하지 않는 시각입니다. 다른 시각을 선택해 주세요.' };
+}
+
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
 export function scheduleLabel(instant: Date, iana: string): string {
@@ -201,28 +221,12 @@ export function scheduleLabel(instant: Date, iana: string): string {
   return `${date} ${time}`;
 }
 
-export const DISPLAY_ZONES = [
-  { iana: 'Asia/Seoul', label: 'KST', name: '한국 시간' },
-  { iana: 'America/Los_Angeles', label: 'PDT', name: '미국 서부 시간' },
-] as const;
-
-export function zoneLabel(iana: string): string {
-  const known = DISPLAY_ZONES.find((z) => z.iana === iana)?.label;
-  if (known) return known;
-  try {
-    return (
-      new Intl.DateTimeFormat('en-US', { timeZone: iana, timeZoneName: 'short' })
-        .formatToParts(new Date())
-        .find((p) => p.type === 'timeZoneName')?.value ?? iana
-    );
-  } catch {
-    return iana;
-  }
+export function zoneLabel(iana: string, at?: Date): string {
+  return at ? zoneAbbreviation(iana, at) : zoneSymbol(iana);
 }
 
-export function zoneTitle(iana: string): string {
-  const name = DISPLAY_ZONES.find((z) => z.iana === iana)?.name ?? iana;
-  return `${name}(${zoneLabel(iana)})`;
+export function zoneTitle(iana: string, at?: Date): string {
+  return scheduleZoneTitle(iana, 'ko', at);
 }
 
 export function dayLabel(ymd: string): string {
@@ -282,6 +286,7 @@ export function planDraft(
   existing: StudyMeeting[],
   timeZone: string,
   now = new Date(),
+  calendarZone = timeZone,
 ): { errors: DraftErrors; plan?: MeetingPlan } {
   const errors: DraftErrors = {};
   if (!draft.date) errors.date = '일자를 정해 주세요.';
@@ -303,16 +308,26 @@ export function planDraft(
     return { errors };
   }
 
+  const invalidTime = dates.find((date) => Object.keys(wallInputErrors(date, draft.time, timeZone)).length > 0);
+  if (invalidTime) {
+    errors.time = `${invalidTime}: ${wallInputErrors(invalidTime, draft.time, timeZone).time}`;
+    return { errors };
+  }
+
   const byDate = new Map(existing.map((m) => [m.date, m]));
+  // 반복 요일·시각은 입력 지역 기준, 하루 한 회차와 킥오프 순서는 반의 날짜 기준이다.
+  const calendarDate = (date: string) => wallParts(zonedInstant(date, draft.time, timeZone), calendarZone).date;
   const past = (d: string) => zonedInstant(d, draft.time, timeZone).getTime() <= now.getTime();
+  // 정규 회차는 킥오프 다음에 온다 — 킥오프에서 일정을 정하기 때문이다.
   const kickoff = existing.find(isKickoff);
-  if (kickoff && dates[0] <= kickoff.date) {
-    errors.date = `킥오프(${dayLabel(kickoff.date)}) 뒤로만 회차를 만들 수 있습니다.`;
+  if (kickoff && calendarDate(dates[0]) <= kickoff.date) {
+    errors.date = `킥오프(${dayLabel(kickoff.date)}${calendarZone === timeZone ? '' : ` ${zoneTitle(calendarZone)} 기준`}) 뒤로만 회차를 만들 수 있습니다.`;
     return { errors };
   }
 
   if (draft.repeat === 'none') {
-    const same = byDate.get(draft.date);
+    const same = byDate.get(calendarDate(draft.date));
+    // 하루에 회차 하나 — 출석 버튼·주간 일정이 날짜로 회차를 찾는다.
     if (same) errors.date = `이 날에는 이미 ${same.no}회차가 있습니다.`;
     else if (past(draft.date)) errors.time = '지난 시각으로는 회차를 만들 수 없습니다.';
     if (Object.keys(errors).length) return { errors };
@@ -325,10 +340,16 @@ export function planDraft(
   }
   const skipped: Skip[] = [];
   const keep: string[] = [];
+  const plannedDays = new Set<string>();
   for (const d of dates) {
-    const same = byDate.get(d);
+    const day = calendarDate(d);
+    const same = byDate.get(day);
     if (same) skipped.push({ date: d, reason: `이미 ${same.no}회차` });
-    else keep.push(d);
+    else if (plannedDays.has(day)) skipped.push({ date: d, reason: '반 기준으로 이번 반복의 다른 회차와 같은 날' });
+    else {
+      keep.push(d);
+      plannedDays.add(day);
+    }
   }
   if (keep.length === 0) {
     errors.form = '고른 기간의 모든 날에 이미 회차가 있습니다.';
@@ -338,6 +359,7 @@ export function planDraft(
   return { errors, plan: { dates: keep, skipped } };
 }
 
+/** 회차 하나를 고칠 때의 검사. 자기 자신과는 겹침을 따지지 않는다. */
 export function validateEdit(
   edit: { date: string; time: string; title: string },
   selfId: string,
@@ -399,4 +421,39 @@ export function discordUrl(study: Study): string | undefined {
 
 export function driveUrl(study: Study): string | undefined {
   return study.driveUrl ?? undefined;
+}
+
+export function initialMeetingDraft(
+  group: NavigatorGroup,
+  existing: StudyMeeting[],
+  inputZone: string,
+  now = new Date(),
+): MeetingDraft {
+  const today = wallParts(now, group.timeZone).date;
+  const weekly = !existing.some((m) => !isKickoff(m)) && Boolean(group.weekdays?.length);
+  let date = defaultDate(existing, today);
+  if (weekly) {
+    date = addDaysYmd(today, 1);
+    while (!group.weekdays!.includes(dowOf(date))) date = addDaysYmd(date, 1);
+  }
+  if (!group.startAt)
+    return { date: wallParts(now, inputZone).date, time: '', title: '', repeat: 'none', until: '', weekdays: [] };
+  const wall = wallParts(zonedInstant(date, group.startAt, group.timeZone), inputZone);
+  const weekdays = weekly
+    ? [
+        ...new Set(
+          group.weekdays!.map((day) => {
+            const groupDate = addDaysYmd(date, (day - dowOf(date) + 7) % 7);
+            return dowOf(wallParts(zonedInstant(groupDate, group.startAt, group.timeZone), inputZone).date);
+          }),
+        ),
+      ].sort()
+    : [];
+  return {
+    ...wall,
+    title: '',
+    repeat: weekly ? 'weekly' : 'none',
+    until: weekly ? defaultUntil(wall.date, 'weekly') : '',
+    weekdays,
+  };
 }

@@ -6,7 +6,7 @@ export type ApiMeetingList = {
     id: number;
     name: string;
     timezone: string;
-    startTime: string;
+    startTime: string | null;
     navigatorName: string | null;
     rules: string | null;
   };
