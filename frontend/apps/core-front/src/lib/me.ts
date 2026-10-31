@@ -8,10 +8,12 @@ import { API_BASE } from './http';
 /**
  * 로그인한 회원의 개인 데이터 — 관심 스터디·스터디 신청.
  *
- * 저장할 서버가 아직 없어 **브라우저에만** 남긴다(기기·브라우저가 바뀌면 사라진다).
- * 서버가 생기면 이 파일의 read/write 만 fetch 로 갈아끼우면 되고, 화면 코드는 그대로 둔다.
+ * 관심(찜)은 저장할 API 가 아직 없어 **브라우저에만** 남긴다(기기·브라우저가 바뀌면 사라진다).
+ * 서버는 조회(GET /api/me/bookmarks)만 있고 추가·해제는 스펙 작성 중이다 (specs/study-bookmark).
+ * 추가·해제 API 가 생기면 이 파일의 read/write 만 fetch 로 갈아끼우면 되고, 화면 코드는 그대로 둔다.
  *
- * TODO(api): GET/PUT /api/me/bookmarks · /api/me/applications
+ * 신청은 서버(POST·GET /api/studies/{id}/applications)가 정본이다. 여기 기록은 같은 브라우저에서 「신청 완료」를
+ * 바로 보여 주려는 캐시일 뿐이다.
  *
  * `getActiveNavigatorStudies` 만 예외 — 회원 탈퇴 경고는 로컬로 흉내낼 수 없어 실제
  * GET /api/me/studies 를 호출한다. 맨 아래 참고.
@@ -57,10 +59,8 @@ export function setBookmarked(studyId: string, on: boolean) {
 /* ── 스터디 신청 ─────────────────────────────────────────────────────────── */
 
 /**
- * 신청 상태.
- * - pending  : 운영진 확인 대기
- * - accepted : 승인 — 참여 중
- * 승인은 운영자 콘솔에서 처리하므로, 서버가 붙기 전까지는 pending 만 생긴다.
+ * 브라우저에 남긴 신청 기록의 상태 — 옛 프로토의 값이라 화면은 이 값으로 가르지 않는다.
+ * 신청에는 승인 단계가 없다 — 신청하면 곧 참여다 (POL-0004).
  */
 export type ApplicationStatus = 'pending' | 'accepted';
 
@@ -86,13 +86,6 @@ export function getApplication(studyId: string): Application | undefined {
 export function addApplication(app: Application) {
   const rest = getApplications().filter((a) => a.studyId !== app.studyId);
   writeJSON(APPLICATION_KEY, [...rest, app]);
-}
-
-export function cancelApplication(studyId: string) {
-  writeJSON(
-    APPLICATION_KEY,
-    getApplications().filter((a) => a.studyId !== studyId),
-  );
 }
 
 /* ── 디스코드 서버 별명 ─────────────────────────────────────────────────────── */
@@ -128,54 +121,27 @@ export function getRegion(): MemberRegion {
   return regionOfTimeZone(getUser()?.timeZone);
 }
 
-/* ── 데모 데이터 ─────────────────────────────────────────────────────────── */
+/* ── 예전 데모 데이터 ──────────────────────────────────────────────────── */
 
 /**
- * 프로토타입 확인용 초기 데이터. 빈 화면만 보면 목록 레이아웃을 판단할 수 없어서,
- * 미리보기로 들어올 때 채운다. 버전이 같으면 다시 채우지 않으므로 직접 신청·취소한 결과는 남는다.
+ * 예전 개발 서버가 브라우저에 채운 더미 신청·관심(`sc_demo_seed` 표시). 실제 스터디 id 에 붙어 있어서
+ * MSW 를 꺼도 「신청함」·하트·마이페이지 목록이 더미로 보였다. 표시가 남은 브라우저에서 한 번 지운다.
  */
-const SEED_KEY = 'sc_demo_seed';
-/** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 7;
+const LEGACY_SEED_KEY = 'sc_demo_seed';
 
-export function seedDemoData() {
-  if (readJSON<number>(SEED_KEY, 0) >= SEED_VERSION) return;
-  writeJSON(SEED_KEY, SEED_VERSION);
-  {
-    writeJSON(APPLICATION_KEY, [
-      // 참여중 (ongoing → active)
-      { studyId: '11', appliedAt: '2026-07-28', status: 'accepted', region: 'KR' }, // early-bird-g3 (네비게이터)
-      { studyId: '18', appliedAt: '2026-07-20', status: 'accepted', region: 'KR' }, // claude-code-source-study
-      // 시작전 (recruiting → upcoming)
-      { studyId: '1',  appliedAt: '2026-08-11', status: 'accepted', region: 'KR' }, // ai-paper-study (캡틴)
-      { studyId: '3',  appliedAt: '2026-09-01', status: 'accepted', region: 'KR' }, // python-pandas-ml-coding
-      // 참여 종료 — 참여 중단 (ongoing이지만 withdrawn → ended)
-      { studyId: '19', appliedAt: '2026-07-15', status: 'accepted', region: 'KR' }, // system-design-interview-ongoing
-      // 참여 종료 — 완주 (closed → completed)
-      { studyId: '28', appliedAt: '2026-02-03', status: 'accepted', region: 'KR' }, // leetcode150-2026
-      { studyId: '24', appliedAt: '2025-11-12', status: 'accepted', region: 'KR' }, // sql-for-data-analysis
-      { studyId: '22', appliedAt: '2026-01-10', status: 'accepted', region: 'KR' }, // business-articles
-      { studyId: '23', appliedAt: '2026-03-05', status: 'accepted', region: 'KR' }, // ai-engineering-book-club
-      { studyId: '25', appliedAt: '2025-10-01', status: 'accepted', region: 'KR' }, // db1-db2
-      { studyId: '26', appliedAt: '2025-09-12', status: 'accepted', region: 'KR' }, // aws-cpc
-      // 승인 대기 (pending — 마이페이지에서 보임, 내 스터디 탭에는 안 나옴)
-      {
-        studyId: '2',
-        appliedAt: '2026-08-14',
-        status: 'pending',
-        region: 'KR',
-        cells: ['mon-evening', 'wed-evening', 'sun-afternoon'],
-        motivation: 'PyTorch로 직접 구현해보고 싶어 신청합니다.',
-      },
-    ] satisfies Application[]);
+export function dropLegacyDemoSeed() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (localStorage.getItem(LEGACY_SEED_KEY) === null) return;
+    for (const key of [APPLICATION_KEY, BOOKMARK_KEY, LEGACY_SEED_KEY]) localStorage.removeItem(key);
+  } catch {
+    // 저장소 접근 실패해도 화면 동작은 막지 않는다
   }
-  writeJSON(BOOKMARK_KEY, ['2', '7']); // pytorch-ai-coding, system-design-interview
 }
 
 /**
  * 회원 탈퇴 — 이 브라우저에 남은 회원별 데이터(관심·신청·출석·옛 디스코드 표시)를 지운다.
- * 로그인 세션(sc_user)은 `logout()` 이 지운다. 데모 시드 키(SEED_KEY)는 일부러 남긴다 — 지우면 다음
- * 미리보기 진입 때 더미가 다시 채워져 탈퇴한 사람의 데이터처럼 보인다.
+ * 로그인 세션(sc_user)은 `logout()` 이 지운다.
  */
 export function clearMyLocalData() {
   if (typeof window === 'undefined') return;
@@ -209,9 +175,7 @@ type MyStudyItem = {
  * 단순히 빈 배열을 돌려주면 이 둘이 똑같아 보여서, 조회가 실패했는데도 "맡은 스터디 없음"으로
  * 오인해 경고 없이 탈퇴가 진행될 수 있다(PR 리뷰 지적).
  */
-export type NavigatorStudiesResult =
-  | { status: 'ok'; studies: ActiveNavigatorStudy[] }
-  | { status: 'unknown' };
+export type NavigatorStudiesResult = { status: 'ok'; studies: ActiveNavigatorStudy[] } | { status: 'unknown' };
 
 /**
  * "맡은 진행 중인 스터디" = 네비게이터(LEADER)이고 relation 이 ONGOING(회차가 시작돼

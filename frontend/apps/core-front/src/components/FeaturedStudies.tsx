@@ -7,7 +7,7 @@ import { useStudies } from '@/features/studies/queries';
 import type { Locale, Operator } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 
-/** TODO(api): GET /api/studies — Featured 스터디 목록 */
+/** Featured 스터디 목록 — 서버가 GET /api/studies 로 받은 값을 넘겨받는다 */
 export function FeaturedStudies({ locale, leads }: { locale: Locale; leads: Record<string, Operator> }) {
   const { data: studies = [] } = useStudies({});
 

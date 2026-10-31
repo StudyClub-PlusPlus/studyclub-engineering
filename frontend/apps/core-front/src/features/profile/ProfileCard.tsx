@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Checkbox, Input, toast, useImageUpload } from '@studyclub/ui';
+import { Button, Checkbox, toast, useImageUpload } from '@studyclub/ui';
 import { Check, Pencil } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -41,7 +41,10 @@ import { uploadImage } from '@/lib/upload';
  *
  * 닉네임·시간대의 진본은 서버다. 저장에 성공하면 응답으로 세션 user 를 갱신한다.
  * 마케팅 수신 동의는 프로필 저장과 따로 간다 — 누르면 바로 바뀐다.
- * 프로필 사진도 저장 버튼 없이 고른 즉시 반영된다 — 올리기(번호 받기) 와 연결, 두 호출을 이어서 부른다.
+ *
+ * 레이아웃은 playground 마이페이지와 같다(이름 옆 연필 · 「이름 | 값」 줄 · 카드 밖 회원 탈퇴). 너비는 페이지 폭을 쓴다.
+ * 프로필 사진은 닉네임·이메일 왼쪽에 둔다. 저장 버튼 없이 고른 즉시 반영된다 — 올리기(번호 받기)와 연결, 두 호출을 이어서 부른다.
+ * playground 에는 사진이 없다 — 위치는 서비스에서 먼저 정했다 (crew-edit-profile PRD 「기획 확정 필요」).
  */
 
 type NickStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
@@ -109,6 +112,8 @@ export function ProfileCard({
   const [composing, setComposing] = useState(false);
   const [nickStatus, setNickStatus] = useState<NickStatus>('idle');
   const [problem, setProblem] = useState<'expired' | 'load' | 'server' | null>(null);
+  /** 방금 저장했다 — 잠깐 「저장됨」을 띄운다 */
+  const [savedFlash, setSavedFlash] = useState(false);
 
   const schema = useMemo(() => profileSchema(locale), [locale]);
   const {
@@ -220,6 +225,8 @@ export function ProfileCard({
     setUser(next);
     onUserChange(next);
     setEditing(false);
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1800);
   }
 
   /** 실패해도 입력은 지우지 않는다 — 편집 상태로 남겨 고쳐서 다시 저장하게 한다. */
@@ -317,180 +324,183 @@ export function ProfileCard({
   let cardClass = 'card mt-5 overflow-hidden';
   if (editing) cardClass = 'card mt-5';
 
+  const { ref: nicknameRef, ...nicknameField } = register('nickname');
+
   return (
-    // 이메일·사진·닉네임이 보이는 카드 — Clarity 녹화에서 가린다
-    <section className={cardClass} data-clarity-mask='true'>
-      <div className='flex items-start justify-between gap-4 px-6 pt-5'>
-        {/* 프로토에 사진이 없어 위치·문구는 임시. 고른 즉시 반영되는 별도 동작이라 저장 버튼과 묶지 않는다 */}
-        <div className='flex shrink-0 flex-col items-center gap-2'>
-          {user.picture ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.picture} alt='' className='h-16 w-16 rounded-full object-cover' />
-          ) : (
-            <div
-              aria-hidden='true'
-              className='grid h-16 w-16 place-items-center rounded-full bg-surface-2 type-headline-sm text-fg-secondary'
-            >
-              {initialOf(user.nickname, user.email)}
-            </div>
-          )}
-          {/* 미리보기 세션은 서버가 모르는 계정이라 사진 버튼을 두지 않는다 */}
-          {!preview && (
-            <div className='flex items-center gap-2 type-label-sm'>
-              <button
-                type='button'
-                onClick={photo.pick}
-                disabled={photoLocked}
-                className='text-fg-secondary underline-offset-4 hover:text-fg hover:underline disabled:opacity-50'
+    <>
+      {/* 이메일·닉네임이 보이는 카드 — Clarity 녹화에서 가린다 */}
+      <section className={cardClass} data-clarity-mask='true'>
+        <div className='flex items-start gap-4 px-6 pb-5 pt-6'>
+          {/* 사진 — 닉네임·이메일 왼쪽. 미리보기 세션은 서버가 모르는 계정이라 바꾸기·지우기를 두지 않는다 */}
+          <div className='flex shrink-0 flex-col items-center gap-1.5'>
+            {user.picture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.picture} alt='' className='h-14 w-14 rounded-full object-cover' />
+            ) : (
+              <div
+                aria-hidden='true'
+                className='grid h-14 w-14 place-items-center rounded-full bg-surface-2 type-title-lg text-fg-secondary'
               >
-                {photo.isUploading ? '올리는 중' : '사진 바꾸기'}
-              </button>
-              {user.picture && (
+                {initialOf(user.nickname, user.email)}
+              </div>
+            )}
+            {!preview && (
+              <div className='flex items-center gap-2 type-label-sm'>
                 <button
                   type='button'
-                  onClick={removePhoto}
+                  onClick={photo.pick}
                   disabled={photoLocked}
-                  className='text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline disabled:opacity-50'
+                  className='text-fg-secondary underline-offset-4 hover:text-fg hover:underline disabled:opacity-50'
                 >
-                  지우기
+                  {photo.isUploading ? '올리는 중' : '바꾸기'}
                 </button>
+                {user.picture && (
+                  <button
+                    type='button'
+                    onClick={removePhoto}
+                    disabled={photoLocked}
+                    className='text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline disabled:opacity-50'
+                  >
+                    지우기
+                  </button>
+                )}
+              </div>
+            )}
+            <input {...photo.inputProps} className='hidden' aria-label='프로필 사진 파일' />
+          </div>
+
+          <div className='min-w-0 flex-1 pt-2'>
+            {editing ? (
+              /* 이름이 있던 줄이 입력칸이 되고, 이메일 줄 자리에 상태 문구가 온다 — 카드 높이가 그대로다 */
+              <div>
+                <div className='flex items-center gap-2'>
+                  <input
+                    {...nicknameField}
+                    ref={nicknameRef}
+                    onCompositionStart={() => setComposing(true)}
+                    onCompositionEnd={() => setComposing(false)}
+                    onKeyDown={(e) => {
+                      if (composing) return;
+                      if (e.key === 'Enter') void save();
+                      if (e.key === 'Escape' && !saving) closeEditor();
+                    }}
+                    autoFocus
+                    autoComplete='nickname'
+                    maxLength={20}
+                    disabled={saving}
+                    aria-label='닉네임'
+                    aria-invalid={line.tone === 'error'}
+                    aria-describedby='profile-nickname-help'
+                    /* 테두리 대신 밑줄 — 상자로 만들면 그 줄만 키가 커져 카드가 달라 보인다 */
+                    className='min-w-0 flex-1 border-0 border-b-2 border-brand bg-transparent p-0 pb-0.5 type-title-lg text-fg outline-none'
+                  />
+                  <span className='tnum shrink-0 type-label-sm text-fg-placeholder'>{trimmedName.length}/20</span>
+                </div>
+                <p id='profile-nickname-help' className={`mt-1 truncate type-body-sm ${toneClass(line.tone)}`}>
+                  {line.text}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <div className='flex min-w-0 items-center gap-1.5'>
+                  <p className='truncate type-title-lg text-fg'>{user.nickname ?? user.email}</p>
+                  <button
+                    type='button'
+                    onClick={openEditor}
+                    disabled={opening}
+                    title='내 정보 수정'
+                    aria-label='내 정보 수정'
+                    className='grid h-7 w-7 shrink-0 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <Saved show={savedFlash} />
+                </div>
+                <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>
+              </div>
+            )}
+            {photo.error && (
+              <p role='alert' className='mt-1 type-label-sm text-error-700'>
+                {photo.error}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <dl className='divide-y divide-border border-t border-border type-body-sm'>
+          <Field label='시간대'>
+            {editing ? (
+              <div className='w-full max-w-xs'>
+                <TimeZonePicker
+                  value={draftZone}
+                  onChange={(zone) => setValue('timeZone', zone, { shouldValidate: true })}
+                  locale={locale}
+                  error={errors.timeZone?.message}
+                  disabled={saving}
+                  hideLabel
+                />
+              </div>
+            ) : (
+              <span className='font-semibold text-fg'>{zoneLabel}</span>
+            )}
+          </Field>
+
+          <Field label='디스코드'>
+            <DiscordRow accountId={user.id} locale={locale} preview={preview} onExpired={() => setProblem('expired')} />
+          </Field>
+
+          {/* 체크박스는 상태가 곧 결과다. 처리됐는지는 알림으로 알린다 */}
+          <Field label='마케팅 수신'>
+            <div className='min-w-0'>
+              <Checkbox
+                label='스터디 소식과 행사 안내를 이메일로 받기'
+                checked={consent.data?.agreed ?? false}
+                disabled={!consent.data || changeConsent.isPending}
+                onChange={(event) =>
+                  changeConsent.mutate(event.target.checked, {
+                    onSuccess: (saved) => toast.success(consentMessage(saved)),
+                  })
+                }
+              />
+              {consent.isError && (
+                <p role='alert' className='mt-1 type-label-sm text-error-700'>
+                  수신 동의 상태를 불러오지 못했습니다. 새로고침해 주세요
+                </p>
+              )}
+              {changeConsent.isError && (
+                <p role='alert' className='mt-1 type-label-sm text-error-700'>
+                  {consentChangeError}
+                </p>
               )}
             </div>
-          )}
-          <input {...photo.inputProps} className='hidden' aria-label='프로필 사진 파일' />
-        </div>
-        <div className='min-w-0 flex-1'>
-          {editing && (
-            <div className='max-w-sm'>
-              <Input
-                {...register('nickname')}
-                label='닉네임'
-                autoComplete='nickname'
-                onCompositionStart={() => setComposing(true)}
-                onCompositionEnd={() => setComposing(false)}
-                labelHint={`${trimmedName.length}/20`}
-                aria-invalid={line.tone === 'error'}
-                aria-describedby='profile-nickname-help'
-                disabled={saving}
-                autoFocus
-              />
-              <p
-                id='profile-nickname-help'
-                className={`mt-2 flex items-center gap-1.5 type-label-sm ${toneClass(line.tone)}`}
-              >
-                {line.tone === 'ok' && <Check size={13} aria-hidden='true' />}
-                {line.text}
-              </p>
-            </div>
-          )}
-          {!editing && (
-            <>
-              <p className='truncate type-title-lg text-fg'>{user.nickname ?? user.email}</p>
-              <p className='mt-0.5 truncate type-body-sm text-fg-muted'>{user.email}</p>
-            </>
-          )}
-        </div>
+          </Field>
+        </dl>
 
-        {!editing && (
-          <button
-            type='button'
-            onClick={openEditor}
-            disabled={opening}
-            title='내 정보 수정'
-            aria-label='내 정보 수정'
-            className='grid h-9 w-9 shrink-0 place-items-center rounded-control border border-border text-fg-secondary transition-colors hover:border-border-interactive hover:bg-surface-2 hover:text-fg'
-          >
-            <Pencil size={15} />
-          </button>
+        {problem === 'expired' && (
+          <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
+            로그인 시간이 만료됐어요.{' '}
+            <Link
+              href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/my`)}`}
+              onClick={() => void logout()}
+              className='font-semibold underline underline-offset-4'
+            >
+              다시 로그인
+            </Link>
+          </p>
         )}
-      </div>
+        {problem === 'load' && (
+          <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
+            내 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요
+          </p>
+        )}
+        {problem === 'server' && (
+          <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
+            저장하지 못했습니다. 잠시 후 다시 시도해 주세요
+          </p>
+        )}
 
-      {photo.error && (
-        <p role='alert' className='px-6 pt-2 type-label-sm text-error-700'>
-          {photo.error}
-        </p>
-      )}
-
-      {/* 값은 이름과 값 두 줄로만 세운다 — 칸을 나눠 담으면 몇 안 되는 값이 표처럼 보인다 */}
-      <dl className='mt-5 grid grid-cols-[4.5rem_1fr] items-baseline gap-x-6 gap-y-3 px-6 pb-5 type-body-sm'>
-        <dt className='text-fg-muted'>시간대</dt>
-        <dd className='min-w-0'>
-          {editing && (
-            <div className='max-w-xs'>
-              <TimeZonePicker
-                value={draftZone}
-                onChange={(zone) => setValue('timeZone', zone, { shouldValidate: true })}
-                locale={locale}
-                error={errors.timeZone?.message}
-                disabled={saving}
-                hideLabel
-              />
-            </div>
-          )}
-          {!editing && <span className='font-semibold text-fg'>{zoneLabel}</span>}
-        </dd>
-
-        <DiscordRow accountId={user.id} locale={locale} preview={preview} onExpired={() => setProblem('expired')} />
-
-        <dt className='text-fg-muted'>수신 동의</dt>
-        <dd className='min-w-0'>
-          <Checkbox
-            label='마케팅 정보 수신 동의'
-            checked={consent.data?.agreed ?? false}
-            disabled={!consent.data || changeConsent.isPending}
-            onChange={(event) =>
-              changeConsent.mutate(event.target.checked, {
-                onSuccess: (saved) => toast.success(consentMessage(saved)),
-              })
-            }
-          />
-          <p className='mt-1 type-label-sm text-fg-muted'>스터디 소식과 행사 안내를 이메일로 보내드려요</p>
-          {consent.isError && (
-            <p role='alert' className='mt-1 type-label-sm text-error-700'>
-              수신 동의 상태를 불러오지 못했습니다. 새로고침해 주세요
-            </p>
-          )}
-          {changeConsent.isError && (
-            <p role='alert' className='mt-1 type-label-sm text-error-700'>
-              {consentChangeError}
-            </p>
-          )}
-        </dd>
-      </dl>
-
-      {problem === 'expired' && (
-        <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
-          로그인 시간이 만료됐어요.{' '}
-          <Link
-            href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/my`)}`}
-            onClick={() => void logout()}
-            className='font-semibold underline underline-offset-4'
-          >
-            다시 로그인
-          </Link>
-        </p>
-      )}
-      {problem === 'load' && (
-        <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
-          내 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요
-        </p>
-      )}
-      {problem === 'server' && (
-        <p role='alert' className='border-t border-border px-6 py-3 type-label-sm text-error-700'>
-          저장하지 못했습니다. 잠시 후 다시 시도해 주세요
-        </p>
-      )}
-
-      {/* 닫는 줄 — 무거운 동작은 왼쪽 끝, 주액션은 오른쪽 끝. 로그아웃은 탈퇴 옆에서 잘못 눌려 헤더 메뉴에만 둔다 */}
-      <div className='flex items-center justify-between gap-3 border-t border-border px-6 py-3'>
-        <Link
-          href={`/${locale}/my/leave`}
-          className='type-label-sm text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
-        >
-          회원 탈퇴
-        </Link>
         {editing && (
-          <div className='flex items-center gap-2'>
+          <div className='flex justify-end gap-2 border-t border-border px-6 py-3'>
             <Button size='sm' variant='tertiary' onClick={closeEditor} disabled={saving}>
               취소
             </Button>
@@ -499,7 +509,46 @@ export function ProfileCard({
             </Button>
           </div>
         )}
+      </section>
+
+      {/* 찾을 수 있되 눈에 띄지 않게 — 카드 안 한 줄을 통째로 내주면 링크 하나에 무게가 실린다 */}
+      <div className='mt-3 px-1'>
+        <Link
+          href={`/${locale}/my/leave`}
+          className='type-label-sm text-fg-muted underline-offset-4 hover:text-fg-secondary hover:underline'
+        >
+          회원 탈퇴
+        </Link>
       </div>
-    </section>
+    </>
+  );
+}
+
+/** 내 정보 한 줄 — 이름은 왼쪽 고정 폭, 값과 동작은 오른쪽. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className='flex min-h-14 flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:gap-0'>
+      {/* 이름 칸은 고정 폭 — 값이 이름 바로 옆에서 시작해 한 줄로 읽힌다 */}
+      <dt className='shrink-0 whitespace-nowrap font-medium text-fg-secondary sm:w-28'>{label}</dt>
+      <dd className='flex min-w-0 flex-1 items-center gap-2'>{children}</dd>
+    </div>
+  );
+}
+
+/** 저장 직후 잠깐 뜨는 표시 — 정말 저장됐는지 알 수 있게 */
+function Saved({ show }: { show: boolean }) {
+  return (
+    <span
+      aria-live='polite'
+      className={`inline-flex items-center gap-0.5 type-label-sm text-success-700 transition-opacity duration-300 ${
+        show ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      {show && (
+        <>
+          <Check size={12} strokeWidth={3} /> 저장됨
+        </>
+      )}
+    </span>
   );
 }

@@ -9,7 +9,7 @@ import { Button, Modal, cx } from '@studyclub/ui';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 
 import { StudyInfoCard } from '@/components/StudyInfoCard';
-import { useStudyDetail, useStudyGroupInfo } from '@/features/studies/queries';
+import { useMyStudies, useStudyDetail, useStudyGroupInfo } from '@/features/studies/queries';
 import { getUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
@@ -76,6 +76,8 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
 
   const { data: study, isPending, isError } = useStudyDetail(Number(id));
   const { data: groupInfo, isPending: groupPending, isError: groupError } = useStudyGroupInfo(Number(id));
+  // 캡틴 여부는 내 스터디 명부(GET /api/me/studies 의 `captain`)가 정한다 — 회차 응답의 me 에는 캡틴 표시가 없다
+  const { data: myStudies } = useMyStudies();
 
   if (!ready || isPending || groupPending) {
     return <div className='px-6 py-16 text-center type-body-sm text-fg-secondary'>불러오는 중…</div>;
@@ -104,7 +106,9 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     startAt: groupInfo.studyGroup.startTime ?? '',
   };
   const canEdit = groupInfo.me.canEdit;
-  const captain = Boolean(groupInfo.me.captain || groupInfo.me.participantId === null);
+  // 명부에 없는 캡틴(신청하지 않음)은 participantId 가 null 이다. 신청한 캡틴은 명부의 captain 표시로 안다
+  const captainInRoster = Boolean(myStudies?.items.find((item) => item.studyId === Number(id))?.captain);
+  const captain = groupInfo.me.participantId === null || captainInRoster;
   const role: ScheduleRole = captain ? 'captain' : canEdit ? 'navigator' : 'crew';
 
   const tabs = [

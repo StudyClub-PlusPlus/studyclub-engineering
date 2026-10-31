@@ -50,8 +50,9 @@ export function SiteHeader({
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='hidden rounded-full px-4 py-2 type-label-lg text-white shadow-sm transition-colors sm:block'
-            style={{ background: 'var(--color-brand)' }}
+            className='sc-button hidden type-label-lg sm:inline-flex'
+            data-variant='tertiary'
+            data-size='md'
           >
             {m('nav.join', locale)}
           </a>

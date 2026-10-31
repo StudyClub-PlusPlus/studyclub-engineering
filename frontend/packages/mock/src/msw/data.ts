@@ -1,4 +1,4 @@
-import { CATEGORY_DISPLAY, studies as mockStudies } from '..';
+import { CATEGORY_DISPLAY, studies as mockStudies, toISODate } from '..';
 import type { ApplicationQuestion, Study } from '..';
 
 // ── 스터디 목록/상세 API 타입 ───────────────────────────────────────────
@@ -42,6 +42,10 @@ export type ApiStudyDetail = {
   endAt: string | null;
   discordChannelUrl: string | null;
   driveUrl: string | null;
+  /** 프로그램(시리즈) 이름 — 실제 API `StudyDetailResponse.programTitle`. 목은 프로그램을 따로 두지 않아 null */
+  programTitle: string | null;
+  /** 스터디에 디스코드 채널이 연결됐는지 — 실제 API `StudyDetailResponse.discordLinked` */
+  discordLinked: boolean;
 };
 
 export type ApiPage<T> = {
@@ -61,8 +65,24 @@ function categoryEnum(displayName: string): string {
   return DISPLAY_TO_ENUM[displayName] ?? displayName;
 }
 
+/**
+ * 날짜 → 실제 API 가 주는 시각. 백오피스는 날짜 입력을 서울 시각으로 저장한다
+ * (back-office-front StudyForm: 시작 · 종료 `00:00+09:00`, 모집 마감 `23:59:59+09:00`).
+ */
+function seoulInstant(date: string | undefined, time: string): string | null {
+  // 목 데이터에 `2026/03/21` 같은 표기가 섞여 있다 — yyyy-mm-dd 로 맞춘 뒤 읽고, 그래도 날짜가 아니면 null
+  const ymd = toISODate(date);
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
+  const at = new Date(`${ymd}T${time}+09:00`);
+  return Number.isNaN(at.getTime()) ? null : at.toISOString();
+}
+
 function isoDate(date?: string): string | null {
-  return date ? `${date}T00:00:00Z` : null;
+  return seoulInstant(date, '00:00:00');
+}
+
+function isoDeadline(date?: string): string | null {
+  return seoulInstant(date, '23:59:59');
 }
 
 function toPhase(status: Study['status']): ApiStudy['phase'] {
@@ -99,7 +119,7 @@ export function studyToApiStudy(s: Study): ApiStudy {
     recruitStatus: recruitClosed ? 'RECRUIT_CLOSED' : 'RECRUITING',
     capacity: s.seats?.total ?? null,
     currentApplicants: s.seats?.taken ?? 0,
-    recruitDeadlineAt: isoDate(s.recruitment?.deadline),
+    recruitDeadlineAt: isoDeadline(s.recruitment?.deadline),
     startAt: isoDate(s.startAt),
     endAt: isoDate(s.date),
     closingSoon: false,
@@ -121,13 +141,15 @@ export function studyToApiStudyDetail(s: Study): ApiStudyDetail {
     recruitStatus: recruitClosed ? 'RECRUIT_CLOSED' : 'RECRUITING',
     curriculum: null,
     capacity: s.seats?.total ?? null,
-    recruitDeadlineAt: isoDate(s.recruitment?.deadline),
+    recruitDeadlineAt: isoDeadline(s.recruitment?.deadline),
     schedule: s.schedule?.ko ?? null,
     timezone: toTimezone(s.timezone),
     startAt: isoDate(s.startAt),
     endAt: isoDate(s.date),
     discordChannelUrl: s.discord_url ?? null,
     driveUrl: s.driveUrl ?? null,
+    programTitle: null,
+    discordLinked: Boolean(s.discord_url),
   };
 }
 
@@ -162,7 +184,7 @@ export function findApiApplicationForm(studyId: number): ApiStudyApplicationForm
     title: s.applicationFormTitle ?? s.title.ko,
     description: s.applicationFormDescription ?? s.summary.ko ?? null,
     schedule: s.schedule?.ko ?? null,
-    recruitDeadline: isoDate(s.recruitment?.deadline),
+    recruitDeadline: isoDeadline(s.recruitment?.deadline),
     category: categoryEnum(s.category ?? ''),
     summary: s.summary.ko,
     detail: s.description?.ko ?? null,

@@ -4,6 +4,8 @@
 import { CATEGORY_DISPLAY, type Study, type StudyStatus } from '@studyclub/mock';
 import type { ApiPage, ApiStudy, ApiStudyApplicationForm, ApiStudyDetail } from '@studyclub/mock/msw';
 
+import { seoulDate } from './seoul-date';
+
 export type { ApiPage, ApiStudy, ApiStudyApplicationForm, ApiStudyDetail };
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -53,7 +55,7 @@ export function toStudy(api: ApiStudy): Study {
     seats: api.capacity ? { total: api.capacity, taken: api.currentApplicants } : undefined,
     recruitment: {
       status: api.recruitStatus !== 'RECRUITING' ? 'closed' : api.recruitDeadlineAt ? 'open' : 'always',
-      deadline: api.recruitDeadlineAt?.slice(0, 10),
+      deadline: seoulDate(api.recruitDeadlineAt),
     },
   };
 }
@@ -70,7 +72,7 @@ export function studyQuery(search: StudySearch): URLSearchParams {
   return q;
 }
 
-/** TODO(api): GET /api/studies — 서버 전용. 실패하면 던진다 — 호출자가 빈 상태나 에러 응답을 고른다. */
+/** GET /api/studies — 서버 전용. 실패하면 던진다 — 호출자가 빈 상태나 에러 응답을 고른다. */
 export async function fetchStudies(search: StudySearch = {}): Promise<Study[]> {
   const res = await fetch(`${API_BASE}/api/studies?${studyQuery(search)}`, {
     next: { revalidate: 60 }, // ISR: 60초마다 갱신
@@ -108,12 +110,12 @@ export function toStudyFromDetail(api: ApiStudyDetail): Study {
     driveUrl: api.driveUrl ?? undefined,
     recruitment: {
       status: api.recruitStatus !== 'RECRUITING' ? 'closed' : api.recruitDeadlineAt ? 'open' : 'always',
-      deadline: api.recruitDeadlineAt?.slice(0, 10),
+      deadline: seoulDate(api.recruitDeadlineAt),
     },
   };
 }
 
-/** TODO(api): GET /api/studies/{studyId} — 서버 전용. 실패하면 던진다. */
+/** GET /api/studies/{studyId} — 서버 전용. 실패하면 던진다. */
 export async function fetchStudy(studyId: number): Promise<Study> {
   const res = await fetch(`${API_BASE}/api/studies/${studyId}`, {
     next: { revalidate: 60 },
