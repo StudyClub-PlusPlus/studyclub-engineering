@@ -18,7 +18,7 @@ import {
   type NotificationStatus,
 } from '@console/lib/notifications';
 import { Badge, Button, Modal, Pagination, Select, toast } from '@studyclub/ui';
-import { Info, Loader2, RotateCw } from 'lucide-react';
+import { Loader2, RotateCw } from 'lucide-react';
 
 type Filter = 'all' | NotificationStatus;
 type EventFilter = 'all' | (typeof EVENT_FILTERS)[number]['value'];
@@ -204,7 +204,6 @@ export function NotificationsTable() {
             전체 재발송
           </Button>
         )}
-        <TimezoneNote />
         </div>
       </div>
 
@@ -331,50 +330,6 @@ export function NotificationsTable() {
       {/* 이력이 한 건이라도 있을 때만 — 공용 페이지 이동(이전 · 페이지 번호 · 다음). 한 페이지뿐이면 그리지 않는다 */}
       {total > 0 && <Pagination data-anno='history:3' page={page} total={pages} onChange={setPage} className='pt-1' />}
     </div>
-  );
-}
-
-/**
- * 표의 시각이 **어느 시간대 기준인지** 밝힌다 (POL-0006). 줄마다 약칭을 달면 같은 말이 스무 번
- * 반복되고, 한 줄로 깔아 두면 **늘 보이지만 거의 쓰이지 않는 글**이 표 위에 자리를 차지한다.
- * 표 오른쪽 위 ⓘ 안에 넣는다 — 궁금할 때만 열어 본다.
- */
-function TimezoneNote() {
-  const [zone, setZone] = useState('');
-  const [open, setOpen] = useState(false);
-  // 시간대는 브라우저만 안다 — 서버에서 그린 화면과 어긋나지 않게 마운트 뒤에 채운다
-  useEffect(() => {
-    const id = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const offset = new Intl.DateTimeFormat('ko-KR', { timeZoneName: 'short' })
-      .formatToParts(new Date())
-      .find((part) => part.type === 'timeZoneName')?.value;
-    setZone(offset ? `${id} · ${offset}` : id);
-  }, []);
-
-  const text = zone ? `표의 시각은 내 시간대 기준입니다 (${zone})` : '';
-
-  return (
-    <span data-anno='history:1-3' className='relative inline-flex'>
-      <button
-        type='button'
-        onClick={() => setOpen((v) => !v)}
-        onBlur={() => setOpen(false)}
-        aria-label='표의 시간대 기준'
-        aria-expanded={open}
-        title={text}
-        className='grid h-8 w-8 place-items-center rounded-full text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg'
-      >
-        <Info size={16} />
-      </button>
-      {open && text && (
-        <span
-          role='note'
-          className='absolute right-0 top-9 z-20 w-64 rounded-card border border-border bg-bg p-3 text-xs leading-relaxed text-fg-secondary shadow-lg'
-        >
-          {text}
-        </span>
-      )}
-    </span>
   );
 }
 

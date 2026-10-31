@@ -46,16 +46,6 @@ export const SPEC: ScreenSpec = {
       ],
     },
     {
-      n: '1-3',
-      title: '시간대 안내',
-      display: ['표 오른쪽 위 ⓘ. 누르면 「표의 시각은 내 시간대 기준입니다 (Asia/Seoul · GMT+9)」'],
-      policy: [
-        '**한 줄로 깔아 두지 않는다** — 늘 보이지만 거의 쓰이지 않는 글이 표 위에 자리를 차지한다. 궁금할 때만 열어 본다',
-        '줄마다 약칭을 달지 않는다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md)) — 스무 줄이면 같은 말이 스무 번이다',
-        '시간대 이름은 **보는 사람의 브라우저**가 정한다. 운영자가 고르는 값이 아니다',
-      ],
-    },
-    {
       n: '2',
       title: '이력 표',
       display: ['요청 시각 · 알림 조건 · 채널 · 수신 주소 · 상태 · 발송 시각'],
@@ -74,7 +64,7 @@ export const SPEC: ScreenSpec = {
         '상태는 **문구와 색을 함께** 쓴다. 색만으로 가르면 색을 못 가리는 사람이 읽을 수 없다',
         '상태에 **「발송」을 앞에 붙이지 않는다** — 열 이름이 이미 무엇의 상태인지 말한다. 「완료」는 **보냈다는 뜻**이지 받았다는 뜻이 아니다. 수신함 도착·읽음은 알 수 없다',
         '모르는 상태값이 오면 원문 코드를 회색으로 그대로 적는다. 빈칸으로 두지 않는다',
-        '시각은 **보는 사람의 시간대**로 적는다. 어느 시간대 기준인지는 **표 위에서 한 번만** 밝히고, 각 줄에는 시각만 적는다 ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md)). 읽을 수 없는 값이면 원문을 그대로 둔다',
+        '시각은 **보는 사람의 시계**로 적는다 — 화면 전체가 그 규칙이라 **어느 시간대인지 적지 않는다** ([POL-0006](https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies/POL-0006-timezone.md)). 약칭이 붙은 값(반·회차)만 예외다. 읽을 수 없는 값이면 원문을 그대로 둔다',
         'id·템플릿 id 는 화면에 내보내지 않는다 — 운영자가 쓸 일이 없다',
         '**재발송은 실패 건을 고치지 않는다.** 그 기록은 그대로 두고 새 건을 만든다 — 지우면 언제 왜 실패했는지가 사라지고, 같은 행을 고쳐 쓰면 한 번에 나간 건과 두 번 만에 나간 건을 가릴 수 없다',
         '성공·대기·처리 중인 건에는 재발송을 두지 않는다 — 같은 메일이 두 번 간다',
