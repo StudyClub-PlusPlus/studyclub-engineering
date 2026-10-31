@@ -15,7 +15,9 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
         <div>
           <div className='flex items-center gap-2 type-title-md'>
             <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
-            StudyClub
+            <span>
+              Study<span className='text-logo-accent'>Club</span>
+            </span>
           </div>
           <p className='mt-3 type-body-sm text-(--color-fg-muted)'>
             {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count.toLocaleString()}+
