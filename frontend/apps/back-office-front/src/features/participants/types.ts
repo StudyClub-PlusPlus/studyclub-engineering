@@ -29,7 +29,8 @@ export interface ParticipantsResponse {
 
 export interface GroupChange {
   participantId: number;
-  groupId: number;
+  groupId?: number;
+  participantRole?: Participant['participantRole'];
 }
 
 export interface GroupAssignmentsResponse {
