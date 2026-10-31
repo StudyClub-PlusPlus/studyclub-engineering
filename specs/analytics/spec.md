@@ -61,10 +61,10 @@
 | `Auth Google Login Clicked` · `Auth Apple Login Clicked` · `Auth OAuth Cancelled` · `Auth Login Completed{is_new_user}` · `Auth Login Failed` | 로그인 화면 |
 | `Onboarding Started` · `Onboarding Nickname Submitted` · `Onboarding Nickname Conflict` · `Onboarding Consents Agreed` · `Onboarding Completed` | 온보딩 |
 | `Study Filter Tab Changed` · `Study Category Filtered` · `Study Searched` · `Study Card Clicked` · `Hero CTA Clicked` · `Event Card Clicked` | 탐색 |
-| `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) | 하트 버튼 · 마이페이지 관심 스터디 |
+| `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) | 하트 버튼 · 찜한 스터디(`source=saved_page`, 해제만) |
 | `Study Apply CTA Clicked` · `Study Apply External Opened` · `Study Apply Dialog Opened` · `Study Apply Slots Selected` · `Study Apply Submitted` · `Study Apply Completed` · `Study Apply Failed` · `Study Apply Dialog Dismissed` | 신청 |
 | `My Discord Connected` | 신청 전 디스코드 연동 창 · 마이페이지 디스코드 줄 — OAuth 팝업으로 받은 코드가 연동 API 에서 204 일 때 (개발 서버는 목 연동) |
-| `My Application Cancelled` · `My Profile Updated` | 마이페이지 |
+| `My Profile Updated` | 마이페이지 |
 
 정의만 있고 보내지 않는 것: `Study Apply Motivation Entered` — 신청 폼에 지원 동기 입력란이 아직 없다.
 

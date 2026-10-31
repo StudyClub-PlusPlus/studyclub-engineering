@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { ChevronDown, DoorOpen, LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, DoorOpen, Heart, LogOut, UserRound } from 'lucide-react';
 
 import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
@@ -129,6 +129,15 @@ export function NavAuth({ locale }: { locale: Locale }) {
             <UserRound size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'My page' : '마이페이지'}
           </Link>
+          <Link
+            href={`/${locale}/my/saved`}
+            onClick={() => setOpen(false)}
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 type-label-lg text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+          >
+            <Heart size={16} className='text-[var(--color-fg-muted)]' />
+            {locale === 'en' ? 'Saved' : '찜한 스터디'}
+          </Link>
+          {/* 「문의·오류 신고」는 푸터에 있다 — 눌러야 나오는 자리에 두면 할 말이 생긴 사람이 찾지 못한다 */}
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
             type='button'
