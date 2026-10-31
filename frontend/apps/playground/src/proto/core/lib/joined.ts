@@ -1,10 +1,12 @@
-import { meetingsOf } from '@core/lib/attendance';
+import { meetingWindow, meetingsOf } from '@core/lib/attendance';
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
-import { isKickoff, meetingLabel, type ProtoMeeting } from '@core/lib/meetings';
-import { site, type MemberRegion, type Study, type StudyMeeting } from '@studyclub/mock';
+import { isKickoff, meetingLabel, wallParts, type ProtoMeeting } from '@core/lib/meetings';
+import { zoneAbbreviation } from '@core/lib/schedule-timezone';
+import { site, type Study, type StudyMeeting } from '@studyclub/mock';
 
-export type WallTz = 'KST' | 'PDT';
+/** IANA 시간대. */
+export type WallTz = string;
 export type MeetRegion = 'kr' | 'us' | 'both';
 
 /**
@@ -82,29 +84,15 @@ export function tagsOf(study: Study, locale: Locale, categoryLabel: string): str
   return tags;
 }
 
-/** 프로필 거주 지역 → 기본 표시 타임존. 북미만 PDT, 나머지는 KST. */
-export function userWallTz(region: MemberRegion): WallTz {
-  return region === 'NA' ? 'PDT' : 'KST';
-}
-
 /** 첫 회차 ~ 마지막 회차(킥오프 제외). 예정일(SCHEDULED_AT)을 고른 타임존 날짜로 붙인다. */
-export function durationOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
+export function durationOf(study: Study, locale: Locale, tz: WallTz = 'Asia/Seoul'): string {
   const meetings = meetingsOf(study).filter((m) => !isKickoff(m));
   if (meetings.length === 0) return locale === 'en' ? 'Dates TBD' : '기간 미정';
   const first = meetings[0];
   const last = meetings[meetings.length - 1];
-  const start = formatInTz(asKstInstant(first.date, meetingClock(study, first)), tz).date;
-  const end = formatInTz(asKstInstant(last.date, meetingClock(study, last)), tz).date;
+  const start = wallParts(meetingWindow(study, first).start, tz).date;
+  const end = wallParts(meetingWindow(study, last).start, tz).date;
   return `${start} ~ ${end}`;
-}
-
-/** 네비게이터가 시각을 정해 추가한 회차는 그 시각. 나머지는 스터디 일정 문구에서 뽑는다. */
-function meetingClock(study: Study, meeting: StudyMeeting): string {
-  const own = (meeting as ProtoMeeting).time;
-  if (own) return own;
-  const raw = study.schedule?.ko ?? '';
-  const m = raw.match(/(\d{1,2}):(\d{2})/);
-  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '20:00';
 }
 
 function parseYmd(ymd: string): Date {
@@ -131,13 +119,7 @@ export function mondayOf(ymd: string): string {
 }
 
 export function ymdInTz(at: Date, tz: WallTz): string {
-  const iana = tz === 'KST' ? 'Asia/Seoul' : 'America/Los_Angeles';
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: iana,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(at);
+  return wallParts(at, tz).date;
 }
 
 export type WeekHit = {
@@ -146,6 +128,7 @@ export type WeekHit = {
   title: string;
   no: number;
   time: string;
+  abbreviation: string;
 };
 
 export type WeekDay = {
@@ -171,10 +154,18 @@ export function weekDays(studies: Study[], locale: Locale, tz: WallTz, monday: s
   for (const study of studies) {
     if (lifeStatus(study) === 'ended') continue;
     for (const m of meetingsOf(study)) {
-      const { date, time } = formatInTz(asKstInstant(m.date, meetingClock(study, m)), tz);
+      const instant = meetingWindow(study, m).start;
+      const { date, time } = wallParts(instant, tz);
       if (date < monday || date > end) continue;
       const hits = byDate.get(date) ?? [];
-      hits.push({ studyId: study.id, meetingId: m.id, title: t(study.title, locale), no: m.no, time });
+      hits.push({
+        studyId: study.id,
+        meetingId: m.id,
+        title: t(study.title, locale),
+        no: m.no,
+        time,
+        abbreviation: zoneAbbreviation(tz, instant),
+      });
       byDate.set(date, hits);
     }
   }
@@ -195,53 +186,29 @@ export function weekDays(studies: Study[], locale: Locale, tz: WallTz, monday: s
   });
 }
 
-/** 일정 문구의 시각은 KST 로 적혀 있다고 본다. */
-function asKstInstant(date: string, clock: string): Date {
-  const [y, mo, d] = date.split('-').map(Number);
-  const [h, mi] = clock.split(':').map(Number);
-  return new Date(Date.UTC(y, mo - 1, d, h - 9, mi, 0));
-}
-
-function formatInTz(instant: Date, tz: WallTz): { date: string; time: string } {
-  const iana = tz === 'KST' ? 'Asia/Seoul' : 'America/Los_Angeles';
-  return {
-    date: new Intl.DateTimeFormat('en-CA', {
-      timeZone: iana,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(instant),
-    time: new Intl.DateTimeFormat('en-GB', {
-      timeZone: iana,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(instant),
-  };
-}
-
 /** 회차 예정일(SCHEDULED_AT)을 고른 타임존 날짜(yyyy-mm-dd)로. */
 export function meetingWallDate(study: Study, meeting: StudyMeeting, tz: WallTz): string {
-  return formatInTz(asKstInstant(meeting.date, meetingClock(study, meeting)), tz).date;
+  return wallParts(meetingWindow(study, meeting).start, tz).date;
 }
 
 /** 다가오는 회차. 참여 종료·완주는 없다. */
-export function upcomingMeeting(study: Study, tz: WallTz = 'KST'): StudyMeeting | undefined {
+export function upcomingMeeting(study: Study, tz: WallTz = 'Asia/Seoul'): StudyMeeting | undefined {
   const life = lifeStatus(study);
   if (life === 'ended') return undefined;
   const today = ymdInTz(new Date(), tz);
   const meetings = meetingsOf(study);
-  return life === 'upcoming' ? meetings[0] : meetings.find((m) => m.date >= today);
+  return meetings.find((m) => meetingWallDate(study, m, tz) >= today);
 }
 
 /** 다가오는 일정. 회차·날짜·시각을 선택한 타임존으로 붙인다. */
-export function upcomingOf(study: Study, locale: Locale, tz: WallTz = 'KST'): string {
+export function upcomingOf(study: Study, locale: Locale, tz: WallTz = 'Asia/Seoul'): string {
   const next = upcomingMeeting(study, tz);
   if (next) {
-    const { date, time } = formatInTz(asKstInstant(next.date, meetingClock(study, next)), tz);
+    const instant = meetingWindow(study, next).start;
+    const { date, time } = wallParts(instant, tz);
     // 킥오프는 이름이 곧 제목이다 — 「킥오프 · … · 킥오프」 로 두 번 쓰지 않는다.
     const title = isKickoff(next) ? undefined : (next as ProtoMeeting).title;
-    return `${meetingLabel(next)} · ${date} ${time}${title ? ` · ${title}` : ''}`;
+    return `${meetingLabel(next)} · ${date} ${time} ${zoneAbbreviation(tz, instant)}${title ? ` · ${title}` : ''}`;
   }
   if (lifeStatus(study) === 'ended') return locale === 'en' ? 'No upcoming meeting' : '다음 일정 없음';
   return study.schedule ? t(study.schedule, locale) : locale === 'en' ? 'No upcoming meeting' : '오늘 이후 회차 없음';

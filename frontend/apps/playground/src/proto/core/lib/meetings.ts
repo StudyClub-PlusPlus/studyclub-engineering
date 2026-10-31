@@ -1,5 +1,7 @@
 'use client';
 
+import { scheduleZoneTitle, zoneAbbreviation, zoneSymbol } from '@core/lib/schedule-timezone';
+import { formattingZone } from '@core/lib/time-zone-rules';
 import type { Study, StudyMeeting } from '@studyclub/mock';
 
 /**
@@ -34,9 +36,9 @@ export type ProtoMeeting = StudyMeeting & {
 export type NavigatorGroup = {
   id: string;
   name: string;
-  /** IANA (STUDY_GROUP.TIMEZONE). 회차 시각은 이 시간대 벽시계로 받고 보인다. */
+  /** IANA (STUDY_GROUP.TIMEZONE). 반의 기본 운영 시각·하루 한 회차 판정 기준. */
   timeZone: string;
-  /** 분반 정규 시작 시각 (STUDY_GROUP.START_AT). 새 회차의 기본값. */
+  /** 분반 정규 시작 시각 (STUDY_GROUP.START_AT). 새 회차의 기본값은 이를 프로필 시간대로 환산한다. */
   startAt: string;
   /** 분반 스터디 요일 (0=일 … 6=토, STUDY_GROUP.DAYS_OF_WEEK). 회차가 없는 반의 「회차 추가」가 이 요일 매주 반복으로 열린다. */
   weekdays?: number[];
@@ -145,6 +147,7 @@ function readJSON<T>(key: string): Record<string, T[]> {
 function writeJSON(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    window.dispatchEvent(new Event('sc:meetings-change'));
   } catch {
     // 저장 실패해도 화면 동작은 막지 않는다
   }
@@ -327,7 +330,7 @@ export function bookFromSchedule(meetings: ProtoMeeting[]) {
 function zonedParts(instant: Date, iana: string) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-US', {
-      timeZone: iana,
+      timeZone: formattingZone(iana, instant),
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -364,13 +367,31 @@ export function wallParts(instant: Date, iana: string): { date: string; time: st
   return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
 }
 
+/** 서머타임 시작 때 사라지는 시각을 다른 시각으로 조용히 바꿔 저장하지 않는다. */
+export function wallInputErrors(date: string, time: string, zone: string): DraftErrors {
+  if (!date || !time)
+    return {
+      ...(!date && { date: '일자를 정해 주세요.' }),
+      ...(!time && { time: '시작 시각을 정해 주세요.' }),
+    };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    return { time: '올바른 날짜와 시각을 입력해 주세요.' };
+  }
+  const instant = zonedInstant(date, time, zone);
+  if (!Number.isFinite(instant.getTime())) return { time: '올바른 날짜와 시각을 입력해 주세요.' };
+  const roundTrip = wallParts(instant, zone);
+  return roundTrip.date === date && roundTrip.time === time
+    ? {}
+    : { time: '시간대 전환으로 존재하지 않는 시각입니다. 다른 시각을 선택해 주세요.' };
+}
+
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
 /** `9/30(수) 20:30` — 고른 시간대의 벽시계로. */
 export function wallLabel(instant: Date, iana: string): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-US', {
-      timeZone: iana,
+      timeZone: formattingZone(iana, instant),
       month: 'numeric',
       day: 'numeric',
       weekday: 'short',
@@ -391,31 +412,19 @@ export function scheduleLabel(instant: Date, iana: string): string {
   return `${date} ${time}`;
 }
 
-/** 일정 표에서 고를 수 있는 시간대. 표의 일자·시각은 고른 시간대로 보이고 그 시간대로 고친다. 회차 추가 창은 분반 시간대. */
+/** 운영 콘솔의 출석부 표시 전환. 날짜 없는 버튼에는 PT를 쓴다. */
 export const DISPLAY_ZONES = [
-  { iana: 'Asia/Seoul', label: 'KST', name: '한국 시간' },
-  { iana: 'America/Los_Angeles', label: 'PDT', name: '미국 서부 시간' },
+  { iana: 'Asia/Seoul', label: '서울(KST)' },
+  { iana: 'America/Los_Angeles', label: 'LA(PT)' },
 ] as const;
 
-/** 시간대 약칭 (`KST`). 표시 목록에 없으면 브라우저가 주는 약칭 (`GMT+1` 등). */
-export function zoneLabel(iana: string): string {
-  const known = DISPLAY_ZONES.find((z) => z.iana === iana)?.label;
-  if (known) return known;
-  try {
-    return (
-      new Intl.DateTimeFormat('en-US', { timeZone: iana, timeZoneName: 'short' })
-        .formatToParts(new Date())
-        .find((p) => p.type === 'timeZoneName')?.value ?? iana
-    );
-  } catch {
-    return iana;
-  }
+/** 날짜가 주어지면 해당 회차의 약칭, 없으면 계절에 무관한 지역 약칭. */
+export function zoneLabel(iana: string, at?: Date): string {
+  return at ? zoneAbbreviation(iana, at) : zoneSymbol(iana);
 }
 
-/** 「한국 시간(KST)」 — 관리 화면 머리와 회차 추가 창이 쓰는 기준 시간대 이름. */
-export function zoneTitle(iana: string): string {
-  const name = DISPLAY_ZONES.find((z) => z.iana === iana)?.name ?? iana;
-  return `${name}(${zoneLabel(iana)})`;
+export function zoneTitle(iana: string, at?: Date): string {
+  return scheduleZoneTitle(iana, 'ko', at);
 }
 
 /** `9/30(수)` */
@@ -488,6 +497,7 @@ export function planDraft(
   existing: StudyMeeting[],
   timeZone: string,
   now = new Date(),
+  calendarZone = timeZone,
 ): { errors: DraftErrors; plan?: MeetingPlan } {
   const errors: DraftErrors = {};
   if (!draft.date) errors.date = '일자를 정해 주세요.';
@@ -509,17 +519,25 @@ export function planDraft(
     return { errors };
   }
 
+  const invalidTime = dates.find((date) => Object.keys(wallInputErrors(date, draft.time, timeZone)).length > 0);
+  if (invalidTime) {
+    errors.time = `${invalidTime}: ${wallInputErrors(invalidTime, draft.time, timeZone).time}`;
+    return { errors };
+  }
+
   const byDate = new Map(existing.map((m) => [m.date, m]));
+  // 반복 요일·시각은 입력 지역 기준, 하루 한 회차와 킥오프 순서는 반의 날짜 기준이다.
+  const calendarDate = (date: string) => wallParts(zonedInstant(date, draft.time, timeZone), calendarZone).date;
   const past = (d: string) => zonedInstant(d, draft.time, timeZone).getTime() <= now.getTime();
   // 정규 회차는 킥오프 다음에 온다 — 킥오프에서 일정을 정하기 때문이다.
   const kickoff = existing.find(isKickoff);
-  if (kickoff && dates[0] <= kickoff.date) {
-    errors.date = `킥오프(${dayLabel(kickoff.date)}) 뒤로만 회차를 만들 수 있습니다.`;
+  if (kickoff && calendarDate(dates[0]) <= kickoff.date) {
+    errors.date = `킥오프(${dayLabel(kickoff.date)}${calendarZone === timeZone ? '' : ` ${zoneTitle(calendarZone)} 기준`}) 뒤로만 회차를 만들 수 있습니다.`;
     return { errors };
   }
 
   if (draft.repeat === 'none') {
-    const same = byDate.get(draft.date);
+    const same = byDate.get(calendarDate(draft.date));
     // 하루에 회차 하나 — 출석 버튼·주간 일정이 날짜로 회차를 찾는다.
     if (same) errors.date = `이 날에는 이미 ${same.no}회차가 있습니다.`;
     else if (past(draft.date)) errors.time = '지난 시각으로는 회차를 만들 수 없습니다.';
@@ -533,10 +551,16 @@ export function planDraft(
   }
   const skipped: Skip[] = [];
   const keep: string[] = [];
+  const plannedDays = new Set<string>();
   for (const d of dates) {
-    const same = byDate.get(d);
+    const day = calendarDate(d);
+    const same = byDate.get(day);
     if (same) skipped.push({ date: d, reason: `이미 ${same.no}회차` });
-    else keep.push(d);
+    else if (plannedDays.has(day)) skipped.push({ date: d, reason: '반 기준으로 이번 반복의 다른 회차와 같은 날' });
+    else {
+      keep.push(d);
+      plannedDays.add(day);
+    }
   }
   if (keep.length === 0) {
     errors.form = '고른 기간의 모든 날에 이미 회차가 있습니다.';
@@ -588,6 +612,40 @@ export function defaultDate(existing: StudyMeeting[], today: string): string {
   let next = addDaysYmd(last, 7);
   while (next <= today) next = addDaysYmd(next, 7);
   return next;
+}
+
+/** 반의 다음 운영 일정을 같은 순간의 내 날짜·시각으로 환산해 추가 창을 채운다. */
+export function initialMeetingDraft(
+  group: NavigatorGroup,
+  existing: StudyMeeting[],
+  inputZone: string,
+  now = new Date(),
+): MeetingDraft {
+  const today = wallParts(now, group.timeZone).date;
+  const weekly = !existing.some((m) => !isKickoff(m)) && Boolean(group.weekdays?.length);
+  let date = defaultDate(existing, today);
+  if (weekly) {
+    date = addDaysYmd(today, 1);
+    while (!group.weekdays!.includes(dowOf(date))) date = addDaysYmd(date, 1);
+  }
+  const wall = wallParts(zonedInstant(date, group.startAt, group.timeZone), inputZone);
+  const weekdays = weekly
+    ? [
+        ...new Set(
+          group.weekdays!.map((day) => {
+            const groupDate = addDaysYmd(date, (day - dowOf(date) + 7) % 7);
+            return dowOf(wallParts(zonedInstant(groupDate, group.startAt, group.timeZone), inputZone).date);
+          }),
+        ),
+      ].sort()
+    : [];
+  return {
+    ...wall,
+    title: '',
+    repeat: weekly ? 'weekly' : 'none',
+    until: weekly ? defaultUntil(wall.date, 'weekly') : '',
+    weekdays,
+  };
 }
 
 /** 반복을 켰을 때의 기본 종료일 — 매주는 5회(4주 뒤), 매일은 2주. 둘 다 31일 안이다. */
