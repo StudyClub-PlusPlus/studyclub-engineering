@@ -83,8 +83,10 @@ export function StudyInfoCard({
   const { data: meetingData } = useStudyMeetings(Number(study.id), groupId);
   const meetings = apiMeetingsOf(meetingData, group);
   const first = meetings.find((m) => !isKickoff(m));
+  // 반에 시작 시각이 없으면(백오피스에서 안 정함) 첫 정규 회차의 시각을 쓴다 — 요일과 같은 방식
+  const startAt = group.startAt || first?.time || '';
   const time = regularScheduleDisplay(
-    { ...group, weekdays: group.weekdays ?? (first ? [dowOf(first.date)] : []) },
+    { ...group, startAt, weekdays: group.weekdays ?? (first ? [dowOf(first.date)] : []) },
     meetings,
     viewerZone,
   );
@@ -100,9 +102,7 @@ export function StudyInfoCard({
         <dl className='flex flex-wrap gap-x-6 gap-y-1 type-body-sm'>
           <div className='flex min-w-0 gap-2'>
             <dt className='shrink-0 text-fg-muted'>스터디 시간</dt>
-            <dd className='min-w-0 tnum font-semibold text-fg'>
-              {group.startAt ? <RegularTime summary={time} /> : '미정'}
-            </dd>
+            <dd className='min-w-0 tnum font-semibold text-fg'>{startAt ? <RegularTime summary={time} /> : '미정'}</dd>
           </div>
           <div className='flex gap-2'>
             <dt className='text-fg-muted'>네비게이터</dt>
