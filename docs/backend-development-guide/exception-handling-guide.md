@@ -60,6 +60,9 @@
 | `MEETING_DATE_CONFLICT` | 409 | 분반의 다른 회차와 같은 날 |
 | `CANNOT_CHANGE_OWN_ROLE` | 409 | 캡틴이 자기 계정 권한을 바꾸려 함 ([백오피스 회원 스펙](../../specs/admin-users/spec.md)) |
 | `LAST_ADMIN_REQUIRED` | 409 | 남은 마지막 캡틴을 크루로 내리려 함 |
+| `FEEDBACK_REPLY_REQUIRED` | 409 | 회신 없이 문의를 완료로 바꾸려 함 ([문의 스펙](../../specs/feedback/spec.md)) |
+| `FEEDBACK_ALREADY_ANSWERED` | 409 | 회신한 문의의 상태를 바꾸려 함 |
+| `TOO_MANY_REQUESTS` | 429 | 짧은 시간에 반복 요청 — 문의 제출 rate limit |
 | `EXTERNAL_SERVICE_ERROR` | 503 | 외부 연동 실패 (구글 OAuth 등) |
 | `INTERNAL_ERROR` | 500 | 예상하지 못한 오류 |
 

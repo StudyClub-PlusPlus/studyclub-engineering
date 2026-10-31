@@ -52,6 +52,8 @@ erDiagram
   ACCOUNT_LEAVE_REASON
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
+  ACCOUNT |o..o{ FEEDBACK : "제출자·완료 처리자 (FK 없음)"
+  FEEDBACK ||--o{ FEEDBACK_IMAGE : "첨부"
   STUDY_PROGRAM ||--o{ STUDY : "기수"
   STUDY ||--o{ STUDY_GROUP : "분반"
   STUDY_GROUP ||--o{ STUDY_MEETING : "회차"
@@ -87,6 +89,8 @@ erDiagram
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
+  ACCOUNT |o..o{ FEEDBACK : "제출자·완료 처리자 (FK 없음)"
+  FEEDBACK ||--o{ FEEDBACK_IMAGE : "첨부"
   NOTIFICATION {
     bigint ID PK
     varchar EVENT_TYPE
@@ -186,7 +190,7 @@ erDiagram
   STORAGE_OBJECT {
     bigint   ID                PK
     bigint   ACCOUNT_ID           "올린 사람 (FK 없음)"
-    varchar  PURPOSE              "PROFILE / STUDY_THUMBNAIL"
+    varchar  PURPOSE              "PROFILE / STUDY_THUMBNAIL / FEEDBACK"
     varchar  PROVIDER             "S3 / R2"
     varchar  OBJECT_KEY        UK "gigs/profiles/<UUID>.webp"
     varchar  CONTENT_TYPE
@@ -216,6 +220,34 @@ erDiagram
     datetime REMOVED_AT           "소프트 삭제. NULL = 게시 중"
     datetime CREATED_AT           "게시 시각"
     datetime UPDATED_AT           "마지막 수정"
+  }
+
+  FEEDBACK {
+    bigint   ID                PK
+    bigint   ACCOUNT_ID           "제출자 (FK 없음)"
+    varchar  TYPE                 "QUESTION / IDEA / BUG"
+    varchar  TITLE
+    varchar  CONTENT              "평문 2000자"
+    varchar  BROWSER              "Chrome 141 · macOS"
+    int      VIEWPORT_WIDTH
+    int      VIEWPORT_HEIGHT
+    varchar  STATUS               "NEW / SEEN / DONE — DONE 은 회신으로만"
+    bigint   DONE_BY_ACCOUNT_ID   "첫 회신 캡틴 (FK 없음)"
+    varchar  REPLY_CONTENT
+    datetime REPLIED_AT           "첫 회신 시각"
+    varchar  ADMIN_MEMO           "캡틴 전용"
+    datetime CREATED_AT           "접수 시각"
+    datetime UPDATED_AT
+  }
+
+  FEEDBACK_IMAGE {
+    bigint   ID                PK
+    bigint   FEEDBACK_ID          FK
+    bigint   STORAGE_OBJECT_ID    "업로드 행 (FK 없음)"
+    varchar  IMAGE_URL
+    int      DISPLAY_ORDER
+    datetime CREATED_AT
+    datetime UPDATED_AT
   }
 
   STUDY_PROGRAM {
@@ -399,6 +431,8 @@ erDiagram
 | 알림 | [STUDY_NOTICE](./STUDY_NOTICE.md) | 반 공지 발송 기록 (메일 결과는 NOTIFICATION, 디스코드 결과는 여기) | `DISCORD_STATUS` |
 | 알림 | [STUDY_NOTICE_RECIPIENT](./STUDY_NOTICE_RECIPIENT.md) | 반 공지를 받는 사람 (공지 한 건에 한 사람 한 행) | — |
 | 공지 | [SITE_NOTICE](./SITE_NOTICE.md) | 사이트 전체 공지 — 콘솔이 쓰고 사이트가 읽는다 | `REMOVED_AT` (소프트 삭제) |
+| 문의 | [FEEDBACK](./FEEDBACK.md) | 문의·오류 신고 — 크루가 보내고 콘솔이 처리 · 회신 | `STATUS` |
+| 문의 | [FEEDBACK_IMAGE](./FEEDBACK_IMAGE.md) | 문의 첨부 이미지 (최대 3장) | — |
 
 
 ## ERD 추가·변경 절차
