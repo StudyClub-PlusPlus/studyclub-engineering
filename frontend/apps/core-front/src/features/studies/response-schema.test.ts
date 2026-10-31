@@ -10,6 +10,10 @@ describe('study catalog response contract', () => {
   it.each(['DRAFT', 'OPEN', 'ONGOING', 'ENDED', 'CLOSED'])('accepts backend StudyStatus %s', (status) => {
     expect(apiStudySchema.safeParse({ ...apiStudies[0], status }).success).toBe(true);
   });
+  // 모집 회차가 없는 스터디는 recruitStatus 가 null 이다 — 목록이 이걸 거부하면 목록 전체가 빈 화면이 된다 (stage 2026-10-31)
+  it('accepts a study without a recruitment (recruitStatus null)', () => {
+    expect(apiStudySchema.safeParse({ ...apiStudies[0], recruitStatus: null }).success).toBe(true);
+  });
   it('rejects invalid nested records instead of hiding them as an empty list', () => {
     expect(apiStudySchema.array().safeParse([{ ...apiStudies[0], studyId: 'bad' }]).success).toBe(false);
   });
