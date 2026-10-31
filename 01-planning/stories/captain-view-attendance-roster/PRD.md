@@ -355,11 +355,11 @@ erDiagram
 
 | 구분 | 할 일 | 결정 |
 |---|---|---|
-| FE | 출석 탭: 모든 반 이어 보기 → 반 칩으로 한 반씩. 고른 반은 일정 탭과 공유, 미저장 시 반 전환 전 확인 | D3 |
-| FE | 작업 바를 출석부 카드 맨 위로. 「출석 적용」 버튼 제거(상태 고르면 바로 적용). 고르기 전 옅은 회색 | D1 · D2 · D13 |
+| FE | 출석 탭: 모든 반 이어 보기 → 반 칩으로 한 반씩. 고른 반은 일정 탭과 공유, 미저장 시 반 전환 전 확인 (반영) | D3 |
+| FE | 작업 바를 출석부 카드 맨 위로. 「출석 적용」 버튼 제거(상태 고르면 바로 적용). 고르기 전 옅은 회색 (반영) | D1 · D2 · D13 |
 | FE | 사용자 사이트 출석부와 같은 격자 변경(고정 열 · 칸 너비 · 일자만 · 상태 색 테두리 · 닉네임/디스코드 열 · 중단 예정 줄 · 「?」) | D5 · D6 · D8 · D9 |
-| BE | 관리자 출석 조회 응답에도 `discordNickname` 추가 (`/api/admin/studies/{id}/attendances`) | D6 |
-| BE | 관리자 출석 저장의 참여 중단도 중단 뒤 회차 발표자 비우기 ([참여 중단 PRD](../navigator-withdraw-participant/PRD.md#개발-범위)와 같은 규칙) | D7 |
+| BE | 관리자 출석 조회 응답에도 `discordNickname` 추가 (`/api/admin/studies/{id}/attendances`) — **남음**: 응답(`AttendanceResponse`)에 아직 없다. 백오피스 출석부는 참여 명단(`…/participants`)에서 붙여 그리므로 지금도 보인다. 사용자 사이트 출석부(`/api/me/…/attendances`)는 붙일 곳이 없어 비어 있다 | D6 |
+| BE | 관리자 출석 저장의 참여 중단도 중단 뒤 회차 발표자 비우기 ([참여 중단 PRD](../navigator-withdraw-participant/PRD.md#개발-범위)와 같은 규칙) (반영 — `AttendanceUpsertService` 가 `ParticipantWithdrawalService` 로 비운다) | D7 |
 
 ### 데이터
 

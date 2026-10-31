@@ -382,9 +382,9 @@ erDiagram
 |---|---|---|
 | FE | 표 제목 「회차」 → 「일정」 (탭 「출석」은 #278 에 있음) | D10 |
 | FE | 정보 카드: 캡틴에게 「백오피스 출석부」 버튼을 바로가기 줄 맨 앞(「디스코드」 왼쪽)에 | D4 |
-| FE | 백오피스 일정 탭: 제목 · 발표자 열 폭을 줄여 가로 스크롤 없이 | D12 |
+| FE | 백오피스 일정 탭: 제목 · 발표자 열 폭을 줄여 가로 스크롤 없이 (반영 — playground `ScheduleManager` compact 와 같은 폭: 표 최소 56rem · 제목 w-60) | D12 |
 | FE | 참여 중단 저장 뒤 일정 다시 불러오기. 중단 뒤 회차 발표자 칸이 비어 「신청」이 보인다 | D7 |
-| BE | 참여 중단 시 중단 뒤 회차의 발표자 비우기 ([참여 중단 PRD](../navigator-withdraw-participant/PRD.md#개발-범위)와 같은 작업) | D7 |
+| BE | 참여 중단 시 중단 뒤 회차의 발표자 비우기 ([참여 중단 PRD](../navigator-withdraw-participant/PRD.md#개발-범위)와 같은 작업) (반영 — `ParticipantWithdrawalService.releasePresenterSlots`) | D7 |
 
 ### 데이터
 
