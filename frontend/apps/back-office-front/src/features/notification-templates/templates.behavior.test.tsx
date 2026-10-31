@@ -334,8 +334,13 @@ describe('알림 템플릿 화면', () => {
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
 
+    // 제목 라벨만으로는 부족하다 — 편집 팝업이 빈 draft 로 먼저 그려진 뒤 useEffect 로 채운다.
+    // 채우기 전에 저장을 누르면 blocked 로 바로 return 해서 alert 가 안 뜬다 (CI 에서 재현).
     await screen.findByLabelText(/제목/);
     const dialog = screen.getByRole('dialog');
+    await waitFor(() => {
+      expect((within(dialog).getByLabelText(/제목/) as HTMLInputElement).value).toMatch(/회원가입/);
+    });
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain('이미 삭제된 템플릿');

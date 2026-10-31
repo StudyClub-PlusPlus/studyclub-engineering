@@ -9,5 +9,6 @@
 export const ZONES = [
   { zone: 'Asia/Seoul', ko: '한국 · 서울', en: 'Korea · Seoul' },
   { zone: 'America/New_York', ko: '북미 동부 · 뉴욕, 토론토', en: 'North America East · New York, Toronto' },
-  { zone: 'America/Vancouver', ko: '북미 서부 · 밴쿠버, LA', en: 'North America West · Vancouver, LA' },
+  { zone: 'America/Vancouver', ko: '북미 서부 · 밴쿠버', en: 'North America West · Vancouver' },
+  { zone: 'America/Los_Angeles', ko: '북미 서부 · LA', en: 'North America West · LA' },
 ] as const;

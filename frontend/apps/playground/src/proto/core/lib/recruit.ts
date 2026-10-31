@@ -74,18 +74,21 @@ export function studyTimezone(study: Study): StudyTimezone {
 /**
  * 카드·상세에 보이는 시간대 문구. **명시된 시간대만 사실대로 말한다.**
  *
- * `studyTimezone()` 의 `both` 는 "동시에 진행한다"가 아니라 "일정 문구에 표기가 없다"는 뜻이다(대부분의
- * 스터디가 여기 해당한다). 그걸 "동시 모집"이라 단정해 보여주면 없는 사실을 지어내는 것이라, 필터 버킷
- * 이름과 달리 화면 문구는 "시간대 미정"으로 정직하게 남긴다.
+ * 운영자가 고른 값이면 `BOTH` 도 「동시 진행(KST·PST)」이다. 고른 값 없이 `studyTimezone()` 이 `both` 를 낸 것은
+ * "동시에 진행한다"가 아니라 "일정 문구에 표기가 없다"는 뜻이라, 필터 버킷 이름과 달리 「시간대 미정」으로 남긴다.
  */
 const TIMEZONE_DISPLAY_LABEL: Record<StudyTimezone, { ko: string; en: string }> = {
   KST: { ko: 'KST', en: 'KST' },
   PST: { ko: 'PST', en: 'PST' },
-  both: { ko: '시간대 미정', en: 'Timezone TBD' },
+  both: { ko: '동시 진행(KST·PST)', en: 'Multiple timezones (KST·PST)' },
 };
 
+const UNKNOWN_TIMEZONE_LABEL = { ko: '시간대 미정', en: 'Timezone TBD' };
+
 export function studyTimezoneLabel(study: Study, locale: Locale): string {
-  return t(TIMEZONE_DISPLAY_LABEL[studyTimezone(study)], locale);
+  const tz = studyTimezone(study);
+  if (tz === 'both' && study.timezone !== 'both') return t(UNKNOWN_TIMEZONE_LABEL, locale);
+  return t(TIMEZONE_DISPLAY_LABEL[tz], locale);
 }
 
 /**
