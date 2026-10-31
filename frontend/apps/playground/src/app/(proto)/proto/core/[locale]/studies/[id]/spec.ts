@@ -13,6 +13,7 @@ import { APPLY_COMPLETE_SPEC, APPLY_SPEC, DISCORD_GATE_SPEC } from '@/proto/spec
 /** 스터디 상세보기 — 신청 버튼을 누르기 전, 상세 페이지 자체. */
 export const VIEW_SPEC: ScreenSpec = {
   screen: '스터디 상세',
+  notes: ['확정된 모임의 날짜·시각·원본 시간대가 모두 있는 경우에만 내 프로필 시간대로 표시한다. 프로필이 없으면 브라우저 시간대를 쓴다', '지역명과 해당 회차 날짜의 약칭을 함께 표시한다. 시간대 전환 메뉴는 두지 않는다', '미확정·시간대 미정·자유 문구는 그대로 표시하고 시작 예정일만으로 시간을 추측하지 않는다'],
   chip: '스터디 상세보기',
   scope: 'view',
   entries: [

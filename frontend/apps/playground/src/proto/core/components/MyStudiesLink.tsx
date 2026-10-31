@@ -23,7 +23,9 @@ export function MyStudiesLink({ locale }: { locale: Locale }) {
   return (
     <Link
       href={`/proto/core/${locale}/my/joined`}
-      className='hidden rounded-full border border-border-strong px-4 py-2 type-label-lg text-fg transition-colors hover:bg-surface-2 sm:block'
+      className='sc-button hidden type-label-lg sm:inline-flex'
+      data-variant='secondary'
+      data-size='md'
     >
       {t({ ko: '내 스터디룸', en: 'My study room' }, locale)}
     </Link>

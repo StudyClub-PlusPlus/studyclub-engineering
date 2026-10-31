@@ -112,7 +112,7 @@ export function DiscordRow({
   } else if (linked) {
     status = <span className='truncate font-semibold text-fg'>{handle ? `@${handle}` : '연결됨'}</span>;
     action = (
-      <Button size='sm' variant='ghost' onClick={disconnect} loading={busy === 'unlink'} disabled={busy !== null}>
+      <Button size='sm' variant='tertiary' onClick={disconnect} loading={busy === 'unlink'} disabled={busy !== null}>
         연결 해제
       </Button>
     );

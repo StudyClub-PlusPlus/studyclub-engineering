@@ -73,7 +73,7 @@ export function GroupsSection({
               <div className='ml-auto flex gap-2'>
                 <Button
                   size='sm'
-                  variant='ghost'
+                  variant='tertiary'
                   disabled={busy || editing !== null}
                   aria-label={`${group.name} 수정`}
                   onClick={() => setEditing(group.groupId)}

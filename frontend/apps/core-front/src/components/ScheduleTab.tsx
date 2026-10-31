@@ -7,7 +7,7 @@ import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from
 import { Mic, Plus, X } from 'lucide-react';
 
 import { ApiError } from '@/lib/http';
-import { meetingRows } from '@/lib/joined-detail';
+import { apiMeetingsOf, meetingRows } from '@/lib/joined-detail';
 import {
   createStudyMeetings,
   deleteStudyMeetings,
@@ -18,12 +18,13 @@ import {
   type ApiMeetingList,
 } from '@/lib/joined-detail-api';
 import {
-  addDaysYmd,
   dateWithDow,
   dayLabel,
-  defaultDate,
   defaultUntil,
-  DISPLAY_ZONES,
+  initialMeetingDraft,
+  wallInputErrors,
+  wallTimeChoices,
+  resolveWallInput,
   DOW_LABEL,
   dowOf,
   isKickoff,
@@ -32,7 +33,6 @@ import {
   planDraft,
   previewOf,
   REPEAT_SPAN_DAYS,
-  scheduleLabel,
   TITLE_MAX,
   validateEdit,
   wallParts,
@@ -45,6 +45,8 @@ import {
   type ProtoMeeting,
   type Repeat,
 } from '@/lib/meetings';
+import { SCHEDULE_ZONES, scheduleZoneTitle } from '@/lib/schedule-timezone';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 const CHECKBOX =
   'h-4 w-4 shrink-0 cursor-pointer rounded-xs border-border-strong accent-(--color-brand) focus-visible:outline-none focus-visible:shadow-(--ring)';
@@ -114,84 +116,55 @@ function PresenterCell({
   );
 }
 
-function apiMeetingsOf(data: ApiMeetingList | undefined, group: NavigatorGroup): ProtoMeeting[] {
-  return (data?.meetings ?? []).map((m) => {
-    const isKickoffMeeting = m.type === 'KICKOFF' || m.number === 0 || m.title === '킥오프';
-    return {
-      id: String(m.id),
-      no: isKickoffMeeting ? 0 : m.number,
-      kind: isKickoffMeeting ? 'kickoff' : undefined,
-      date: wallParts(new Date(m.scheduledAt), group.timeZone).date,
-      time: wallParts(new Date(m.scheduledAt), group.timeZone).time,
-      scheduledAt: m.scheduledAt,
-      title: m.title ?? (isKickoffMeeting ? '킥오프' : ''),
-      presenter1: m.presenter1 ? String(m.presenter1.participantId) : '',
-      presenter2: m.presenter2 ? String(m.presenter2.participantId) : '',
-    };
-  });
-}
-
-type PendingMeeting = { id: string; date: string; time: string; title: string };
+type PendingMeeting = { id: string; date: string; time: string; title: string; scheduledAt: string };
 
 function AddMeetingForm({
   group,
+  inputZone,
   existing,
   onClose,
   onAdded,
 }: {
   group: NavigatorGroup;
+  inputZone: string;
   existing: ProtoMeeting[];
   onClose: () => void;
-  onAdded: (input: { dates: string[]; time: string; title: string }) => void;
+  onAdded: (input: { scheduledAts: string[]; title: string }) => void;
 }) {
-  const [draft, setDraft] = useState<MeetingDraft>(() => {
-    // 오늘은 반 시간대 기준 — toISOString 은 UTC 라 KST 오전 9시 전에는 하루 전이 된다
-    const today = wallParts(new Date(), group.timeZone).date;
-    const regular = existing.filter((m) => !isKickoff(m));
-    if (regular.length === 0 && group.weekdays && group.weekdays.length > 0) {
-      const days = group.weekdays;
-      let date = addDaysYmd(today, 1);
-      while (!days.includes(dowOf(date))) date = addDaysYmd(date, 1);
-      return {
-        date,
-        time: group.startAt,
-        title: '',
-        repeat: 'weekly',
-        until: defaultUntil(date, 'weekly'),
-        weekdays: days,
-      };
-    }
-    return {
-      date: defaultDate(existing, today),
-      time: group.startAt,
-      title: '',
-      repeat: 'none',
-      until: '',
-      weekdays: [],
-    };
-  });
+  const [draft, setDraft] = useState<MeetingDraft>(() => initialMeetingDraft(group, existing, inputZone));
   const [errors, setErrors] = useState<DraftErrors>({});
   const [touched, setTouched] = useState(false);
 
-  const { errors: live, plan } = planDraft(draft, existing, group.timeZone);
+  const { errors: live, plan, ambiguousTimes = [] } = planDraft(draft, existing, inputZone, new Date(), group.timeZone);
 
   function change(patch: Partial<MeetingDraft>) {
     const next = { ...draft, ...patch };
+    if (patch.time !== undefined && patch.time !== draft.time) next.occurrences = {};
     if (patch.repeat && patch.repeat !== 'none' && !next.until) next.until = defaultUntil(next.date, patch.repeat);
     if (patch.repeat === 'weekly' && next.weekdays.length === 0 && next.date) next.weekdays = [dowOf(next.date)];
     setDraft(next);
-    if (touched) setErrors(planDraft(next, existing, group.timeZone).errors);
+    if (touched) setErrors(planDraft(next, existing, inputZone, new Date(), group.timeZone).errors);
   }
 
   function submit() {
     setTouched(true);
     setErrors(live);
     if (!plan) return;
-    onAdded({ dates: plan.dates, time: draft.time, title: draft.title.trim() });
+    onAdded({ scheduledAts: plan.scheduledAts, title: draft.title.trim() });
   }
 
-  const preview = plan ? previewOf(plan, existing) : undefined;
+  const preview = plan
+    ? previewOf(
+        {
+          ...plan,
+          dates: plan.scheduledAts.map((at) => wallParts(new Date(at), group.timeZone).date),
+        },
+        existing,
+      )
+    : undefined;
+  if (preview?.extendsTo && plan) preview.extendsTo = plan.dates[plan.dates.length - 1];
   const first = plan?.dates[0];
+  const firstInstant = plan ? new Date(plan.scheduledAts[0]) : undefined;
   const repeatOptions: { key: Repeat; label: string }[] = [
     { key: 'none', label: '반복 안 함' },
     { key: 'daily', label: '매일' },
@@ -209,13 +182,21 @@ function AddMeetingForm({
       open
       onClose={onClose}
       title='회차 추가'
-      description={`${group.name} · ${zoneTitle(group.timeZone)} 기준`}
+      description={`${group.name} · 내 시간대: ${zoneTitle(inputZone, firstInstant)}`}
       footer={
         <>
           <Button variant='secondary' onClick={onClose}>
             취소
           </Button>
-          <Button onClick={submit}>
+          <Button
+            onClick={submit}
+            disabled={
+              Boolean(live.until) ||
+              ambiguousTimes.some(
+                ({ date, choices }) => !choices.some((choice) => choice.scheduledAt === draft.occurrences?.[date]),
+              )
+            }
+          >
             {plan && plan.dates.length > 1 ? `회차 ${plan.dates.length}개 추가` : '추가'}
           </Button>
         </>
@@ -233,13 +214,32 @@ function AddMeetingForm({
           />
           <Input
             type='time'
-            label={`시작 시각 (${zoneLabel(group.timeZone)})`}
+            label={`시작 시각 (${zoneLabel(inputZone, firstInstant)})`}
             required
             value={draft.time}
             error={errors.time}
             onChange={(ev) => change({ time: ev.target.value })}
           />
         </div>
+
+        {ambiguousTimes.map(({ date, choices }) => (
+          <Select
+            key={date}
+            label={`${date} 시각 구분`}
+            helper='이날은 같은 시각이 두 번 있어요. 시계 전환 전후 중 하나를 선택해 주세요.'
+            value={choices.some((c) => c.scheduledAt === draft.occurrences?.[date]) ? draft.occurrences![date] : ''}
+            onChange={(e) => change({ occurrences: { ...draft.occurrences, [date]: e.target.value } })}
+          >
+            <option value='' disabled>
+              시각을 선택해 주세요
+            </option>
+            {choices.map((choice) => (
+              <option key={choice.scheduledAt} value={choice.scheduledAt}>
+                {choice.label}
+              </option>
+            ))}
+          </Select>
+        ))}
 
         <div className='flex flex-col gap-1.5'>
           <span className='type-label-lg text-ink'>반복</span>
@@ -303,7 +303,7 @@ function AddMeetingForm({
               min={draft.date}
               max={maxUntil(draft.date)}
               value={draft.until}
-              error={errors.until}
+              error={live.until ?? errors.until}
               onChange={(ev) => change({ until: ev.target.value })}
             />
           </div>
@@ -343,9 +343,22 @@ function AddMeetingForm({
                   </li>
                 )}
                 <li className='tnum'>
-                  {plan.dates.length > 1 ? '첫 회차 ' : ''}KST{' '}
-                  {scheduleLabel(zonedInstant(first, draft.time, group.timeZone), 'Asia/Seoul')} · PDT{' '}
-                  {scheduleLabel(zonedInstant(first, draft.time, group.timeZone), 'America/Los_Angeles')}
+                  {plan.dates.length > 1 ? '첫 회차 ' : ''}
+                  {first}
+                </li>
+                <li className='grid grid-cols-1 gap-x-4 gap-y-1 min-[400px]:grid-cols-2'>
+                  {SCHEDULE_ZONES.map(({ iana }) => {
+                    const at = firstInstant!;
+                    const local = wallParts(at, iana);
+                    const shift = Math.round((Date.parse(local.date) - Date.parse(first)) / 86_400_000);
+                    const day = shift === -1 ? '전날 ' : shift === 1 ? '다음 날 ' : shift ? `${local.date} ` : '';
+                    return (
+                      <span key={iana} className='tnum'>
+                        {zoneTitle(iana, at)} {day}
+                        {local.time}
+                      </span>
+                    );
+                  })}
                 </li>
                 {plan.skipped.length > 0 && (
                   <li className='text-warning-700'>
@@ -396,13 +409,17 @@ export function ScheduleTab({
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const myParticipantId = meetingData?.me.participantId ?? null;
-  const [zone, setZone] = useState<string>(
-    DISPLAY_ZONES.some((z) => z.iana === group.timeZone) ? group.timeZone : DISPLAY_ZONES[0].iana,
-  );
+  const viewerZone = useDisplayTimeZone();
+  const [inputZone, setInputZone] = useState<string | null>(null);
+  const zone = canEdit ? (inputZone ?? viewerZone) : viewerZone;
+  const [incompleteWalls, setIncompleteWalls] = useState<Record<string, { date: string; time: string }>>({});
   const [adding, setAdding] = useState(false);
   const [, setRevision] = useState(0);
   const [drafts, setDrafts] = useState<
-    Record<string, { date: string; time: string; title: string; presenter1: string; presenter2: string }>
+    Record<
+      string,
+      { date: string; time: string; title: string; presenter1: string; presenter2: string; scheduledAt?: string }
+    >
   >({});
   const [pendingAdds, setPendingAdds] = useState<PendingMeeting[]>([]);
   /** 체크박스로 고른 삭제 대상 회차 ID */
@@ -421,7 +438,7 @@ export function ScheduleTab({
     date: m.date,
     time: m.time,
     title: m.title,
-    scheduledAt: zonedInstant(m.date, m.time, group.timeZone).toISOString(),
+    scheduledAt: m.scheduledAt,
   }));
   const meetings = meetingRows([...apiMeetings, ...pendingMeetings]);
   const pendingIds = new Set(pendingAdds.map((m) => m.id));
@@ -509,7 +526,16 @@ export function ScheduleTab({
    * `new Date('yyyy-MM-ddTHH:mm')` 는 브라우저 시간대로 읽혀 PDT 사용자가 KST 반을 보면 16시간 어긋난다.
    * 고치는 중인 값(draft)이 아니라 저장된 값으로 본다 — 일자를 지난날로 고치는 순간 칸이 잠기면 안 된다.
    */
-  const startedOf = (m: ProtoMeeting) => zonedInstant(m.date, m.time ?? group.startAt, group.timeZone) <= new Date();
+  const startedOf = (m: ProtoMeeting) =>
+    meetingData?.meetings.find((row) => String(row.id) === m.id)?.started ||
+    new Date(m.scheduledAt ?? zonedInstant(m.date, m.time ?? group.startAt, group.timeZone).toISOString()) <=
+      new Date();
+  const instantOf = (m: ProtoMeeting) =>
+    new Date(
+      drafts[m.id]?.scheduledAt ??
+        m.scheduledAt ??
+        zonedInstant(m.date, m.time ?? group.startAt, group.timeZone).toISOString(),
+    );
 
   const value = (m: ProtoMeeting) =>
     drafts[m.id] ?? {
@@ -526,10 +552,19 @@ export function ScheduleTab({
   const errorsOf = (m: ProtoMeeting): DraftErrors & { presenter2?: string } => {
     const d = drafts[m.id];
     if (!d) return {};
-    const base = validateEdit({ date: d.date, time: d.time, title: d.title }, m.id, projected, group.timeZone);
+    const base = validateEdit(
+      { date: d.date, time: d.time, title: d.title, scheduledAt: d.scheduledAt ?? m.scheduledAt },
+      m.id,
+      projected,
+      group.timeZone,
+    );
     const same =
       d.presenter1 && d.presenter1 === d.presenter2 ? { presenter2: '발표자1과 다른 사람을 골라 주세요.' } : {};
-    return { ...base, ...same };
+    return {
+      ...base,
+      ...same,
+      ...(incompleteWalls[m.id] ? wallInputErrors(incompleteWalls[m.id].date, incompleteWalls[m.id].time, zone) : {}),
+    };
   };
 
   const errorCount = changedIds.reduce((n, id) => {
@@ -553,21 +588,30 @@ export function ScheduleTab({
   const update = (m: ProtoMeeting, patch: Partial<(typeof drafts)[string]>) =>
     setDrafts((cur) => ({ ...cur, [m.id]: { ...value(m), ...patch } }));
 
-  function shownWall(v: { date: string; time: string }): { date: string; time: string } {
-    if (!v.date || !v.time || zone === group.timeZone) return { date: v.date, time: v.time };
-    return wallParts(zonedInstant(v.date, v.time, group.timeZone), zone);
+  function shownWall(m: ProtoMeeting): { date: string; time: string } {
+    return incompleteWalls[m.id] ?? wallParts(instantOf(m), zone);
   }
 
-  function changeWall(m: ProtoMeeting, patch: { date?: string; time?: string }) {
-    const v = value(m);
-    const currentShown = shownWall(v);
-    const nextShown = { ...currentShown, ...patch };
-    if (!nextShown.date || !nextShown.time || zone === group.timeZone) {
-      update(m, nextShown);
+  function changeWall(m: ProtoMeeting, patch: { date?: string; time?: string }, selectedAt?: string) {
+    setInputZone(zone);
+    const nextShown = { ...shownWall(m), ...patch };
+    const resolved = resolveWallInput(nextShown.date, nextShown.time, zone, [
+      selectedAt,
+      drafts[m.id]?.scheduledAt,
+      m.scheduledAt,
+    ]);
+    if (!resolved.instant) {
+      setIncompleteWalls((cur) => ({ ...cur, [m.id]: nextShown }));
+      update(m, {});
       return;
     }
-    const converted = wallParts(zonedInstant(nextShown.date, nextShown.time, zone), group.timeZone);
-    update(m, converted);
+    setIncompleteWalls((cur) => {
+      const next = { ...cur };
+      delete next[m.id];
+      return next;
+    });
+    const at = resolved.instant;
+    update(m, { ...wallParts(at, group.timeZone), scheduledAt: at.toISOString() });
   }
 
   async function sign(m: ProtoMeeting, slot: 1 | 2, on: boolean) {
@@ -611,6 +655,7 @@ export function ScheduleTab({
     if (saving) return;
     setBulkConfirm(false);
     const ids = picked.map((m) => m.id);
+    setIncompleteWalls((cur) => Object.fromEntries(Object.entries(cur).filter(([id]) => !ids.includes(id))));
     // pending은 로컬에서만 제거, 저장된 것은 API 삭제
     const [localIds, apiIds] = ids.reduce<[string[], string[]]>(
       ([l, a], id) => (pendingIds.has(id) ? [[...l, id], a] : [l, [...a, id]]),
@@ -650,14 +695,19 @@ export function ScheduleTab({
   }
 
   const save = async () => {
-    if (saving) return;
+    if (saving || errorCount > 0) return;
     setSaving(true);
     setNotice(null);
     const pendingByTitle = new Map<string, PendingMeeting[]>();
     pendingAdds.forEach((m) => {
       const draft = drafts[m.id];
       const cur = pendingByTitle.get(draft?.title ?? m.title) ?? [];
-      cur.push({ ...m, ...(draft ? { date: draft.date, time: draft.time, title: draft.title } : {}) });
+      cur.push({
+        ...m,
+        ...(draft
+          ? { date: draft.date, time: draft.time, title: draft.title, scheduledAt: draft.scheduledAt ?? m.scheduledAt }
+          : {}),
+      });
       pendingByTitle.set(draft?.title ?? m.title, cur);
     });
     try {
@@ -666,7 +716,7 @@ export function ScheduleTab({
           [...pendingByTitle.entries()].map(([title, rows]) =>
             createStudyMeetings(Number(study.id), {
               studyGroupId: groupId,
-              scheduledAts: rows.map((r) => zonedInstant(r.date, r.time, group.timeZone).toISOString()),
+              scheduledAts: rows.map((r) => r.scheduledAt),
               title: title || undefined,
             }),
           ),
@@ -680,7 +730,7 @@ export function ScheduleTab({
           .filter(([id]) => !pendingIds.has(id))
           .map(([id, draft]) =>
             updateStudyMeeting(Number(study.id), Number(id), {
-              scheduledAt: zonedInstant(draft.date, draft.time, group.timeZone).toISOString(),
+              scheduledAt: draft.scheduledAt ?? apiMeetings.find((m) => m.id === id)!.scheduledAt!,
               title: draft.title,
               presenter1ParticipantId: draft.presenter1 ? Number(draft.presenter1) : null,
               presenter2ParticipantId: draft.presenter2 ? Number(draft.presenter2) : null,
@@ -696,6 +746,7 @@ export function ScheduleTab({
     }
     await refetchMeetings();
     setDrafts({});
+    setIncompleteWalls({});
     setPendingAdds([]);
     setAnnounce(meetings.length === 1 ? '회차를 저장했습니다.' : `회차 ${meetings.length}개를 저장했습니다.`);
     setRevision((n) => n + 1);
@@ -720,24 +771,32 @@ export function ScheduleTab({
               회차 추가
             </Button>
           )}
-          <div className='inline-flex rounded-pill bg-surface-2 p-1'>
-            {DISPLAY_ZONES.map((z) => {
-              return (
-                <Button
-                  key={z.iana}
-                  variant={zone === z.iana ? 'secondary' : 'ghost'}
-                  size='sm'
-                  type='button'
-                  onClick={() => setZone(z.iana)}
-                  className='rounded-pill px-3 py-1.5 type-label-sm'
-                >
-                  {z.label}
-                </Button>
-              );
-            })}
-          </div>
+          {canEdit ? (
+            <label className='flex items-center gap-2 type-label-sm text-fg-muted'>
+              시간대
+              <Select
+                aria-label='시간대'
+                value={zone}
+                disabled={Object.keys(incompleteWalls).length > 0}
+                onChange={(event) => setInputZone(event.target.value)}
+              >
+                {!SCHEDULE_ZONES.some((z) => z.iana === zone) && (
+                  <option value={zone}>{scheduleZoneTitle(zone)}</option>
+                )}
+                {SCHEDULE_ZONES.map(({ iana, label }) => (
+                  <option key={iana} value={iana}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          ) : (
+            <span className='type-label-sm text-fg-muted'>내 시간대: {scheduleZoneTitle(zone)}</span>
+          )}
         </div>
       </div>
+
+      {canEdit && <p className='type-label-sm text-fg-muted'>선택한 지역의 시간으로 입력해 주세요.</p>}
 
       {notice && (
         <p role='status' className='rounded-control bg-warning-50 px-3 py-2 type-label-lg text-warning-700'>
@@ -750,13 +809,23 @@ export function ScheduleTab({
 
       {adding && (
         <AddMeetingForm
+          key={viewerZone}
+          inputZone={viewerZone}
           group={group}
           existing={meetings}
           onClose={() => setAdding(false)}
-          onAdded={({ dates, time, title }) => {
+          onAdded={({ scheduledAts, title }) => {
             setPendingAdds((cur) => [
               ...cur,
-              ...dates.map((date, i) => ({ id: `pending-${Date.now()}-${i}`, date, time, title })),
+              ...scheduledAts.map((scheduledAt, i) => {
+                const at = new Date(scheduledAt);
+                return {
+                  id: `pending-${Date.now()}-${i}`,
+                  ...wallParts(at, group.timeZone),
+                  scheduledAt: at.toISOString(),
+                  title,
+                };
+              }),
             ]);
             setAdding(false);
             setRevision((n) => n + 1);
@@ -786,7 +855,7 @@ export function ScheduleTab({
                       삭제
                     </Button>
                     {picked.length > 0 && (
-                      <Button size='sm' variant='ghost' onClick={() => setChecked(new Set())}>
+                      <Button size='sm' variant='tertiary' onClick={() => setChecked(new Set())}>
                         선택 해제
                       </Button>
                     )}
@@ -797,11 +866,12 @@ export function ScheduleTab({
                     {errorCount > 0 && <p className='mr-1 type-label-sm text-error-700'>고칠 칸 {errorCount}개</p>}
                     {dirty && (
                       <Button
-                        variant='ghost'
+                        variant='tertiary'
                         size='sm'
                         disabled={saving}
                         onClick={() => {
                           setDrafts({});
+                          setIncompleteWalls({});
                           setPendingAdds([]);
                         }}
                       >
@@ -871,7 +941,16 @@ export function ScheduleTab({
                 {meetings.map((m) => {
                   const v = value(m);
                   const started = startedOf(m);
-                  const shown = shownWall(v);
+                  const shown = shownWall(m);
+                  const abbreviation = zoneLabel(zone, instantOf(m));
+                  const timeChoices = wallTimeChoices(shown.date, shown.time, zone);
+                  const selectedTime = incompleteWalls[m.id]
+                    ? ''
+                    : (timeChoices.find(
+                        (choice) =>
+                          Math.floor(Date.parse(choice.scheduledAt) / 60_000) ===
+                          Math.floor(instantOf(m).getTime() / 60_000),
+                      )?.scheduledAt ?? '');
                   const errors = errorsOf(m);
                   const changed = Boolean(drafts[m.id]) || pendingIds.has(m.id);
                   const canDelete = !isKickoff(m) && !started;
@@ -908,7 +987,7 @@ export function ScheduleTab({
                         {editable ? (
                           <Input
                             type='date'
-                            aria-label={`${meetingLabel(m)} 일자 (${zoneLabel(zone)})`}
+                            aria-label={`${meetingLabel(m)} 일자 (${abbreviation})`}
                             size='sm'
                             value={shown.date}
                             error={errors.date}
@@ -920,18 +999,40 @@ export function ScheduleTab({
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>
-                        {editable ? (
-                          <Input
-                            type='time'
-                            aria-label={`${meetingLabel(m)} 시작 시각 (${zoneLabel(zone)})`}
-                            size='sm'
-                            value={shown.time}
-                            error={errors.time}
-                            onChange={(e) => changeWall(m, { time: e.target.value })}
-                            className='w-full max-w-none px-2 py-1'
-                          />
-                        ) : (
-                          shown.time
+                        <div className='flex items-center justify-center gap-1.5'>
+                          {editable ? (
+                            <Input
+                              type='time'
+                              aria-label={`${meetingLabel(m)} 시작 시각 (${abbreviation})`}
+                              size='sm'
+                              value={shown.time}
+                              error={errors.time}
+                              onChange={(e) => changeWall(m, { time: e.target.value })}
+                              className='w-full max-w-none px-2 py-1'
+                            />
+                          ) : (
+                            shown.time
+                          )}
+                          <span className='shrink-0 type-label-sm text-fg-muted'>{abbreviation}</span>
+                        </div>
+                        {editable && timeChoices.length > 1 && (
+                          <div className='mt-2'>
+                            <Select
+                              size='sm'
+                              aria-label={`${meetingLabel(m)} 시각 구분`}
+                              value={selectedTime}
+                              onChange={(e) => changeWall(m, {}, e.target.value)}
+                            >
+                              <option value='' disabled>
+                                시각을 선택해 주세요
+                              </option>
+                              {timeChoices.map((choice) => (
+                                <option key={choice.scheduledAt} value={choice.scheduledAt}>
+                                  {choice.label.replace(`${shown.time} · `, '')}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
                         )}
                       </td>
                       <td className='px-2 py-3 text-center'>

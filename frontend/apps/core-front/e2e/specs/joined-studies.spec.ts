@@ -122,17 +122,11 @@ test.describe('내 스터디 (crew-joined-studies) — 기본 화면 및 인터�
     await expect(page.locator('ul li').first()).toBeVisible();
   });
 
-  test('타임존 토글(KST ↔ PDT) 동작', async ({ page }) => {
+  test('프로필 시간대로 표시하고 시간대 토글은 두지 않는다', async ({ page }) => {
     await page.goto('/ko/my/joined');
-
-    const pdtBtn = page.getByRole('tab', { name: 'PDT' });
-    const kstBtn = page.getByRole('tab', { name: 'KST' });
-
-    await pdtBtn.click();
-    await expect(pdtBtn).toHaveAttribute('aria-selected', 'true');
-
-    await kstBtn.click();
-    await expect(kstBtn).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByText(/내 시간대:/)).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'PDT' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'KST' })).toHaveCount(0);
   });
 
   test('주간 일정 이전 주 / 다음 주 이동', async ({ page }) => {
@@ -210,7 +204,6 @@ test.describe('내 스터디 상세 — 출석 탭 모바일 반응형', () => {
     await expect(toggleRules).toBeVisible();
   });
 });
-
 
 test.describe('내 스터디 상세 — 출석 탭 (10-18 기획 변경)', () => {
   test('닉네임 · 디스코드 닉네임 열이 있고, 「적용」 버튼 없이 출석 상태를 고르면 바로 반영된다', async ({ page }) => {

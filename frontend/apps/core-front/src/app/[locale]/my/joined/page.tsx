@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Badge, Button, Card, EmptyState, cx, Select } from '@studyclub/ui';
+import { Badge, Button, IconButton, Card, EmptyState, cx, Select } from '@studyclub/ui';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -25,7 +25,6 @@ import {
   mondayOf,
   upcomingMeeting,
   upcomingOf,
-  userWallTz,
   weekDays,
   ymdInTz,
   type LifeStatus,
@@ -33,8 +32,9 @@ import {
   type WeekDay,
 } from '@/lib/joined';
 import { PAGE } from '@/lib/layout';
-import { getRegion } from '@/lib/me';
 import { IS_DEV, syncPreview } from '@/lib/preview';
+import { scheduleZoneTitle } from '@/lib/schedule-timezone';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
 
 type Filter = 'all' | LifeStatus;
@@ -146,7 +146,6 @@ function WeekStrip({
   locale,
   wallTz,
   studies,
-  onWallTz,
   onPrev,
   onNext,
 }: {
@@ -155,7 +154,6 @@ function WeekStrip({
   locale: Locale;
   wallTz: WallTz;
   studies: JoinedStudy[];
-  onWallTz: (tz: WallTz) => void;
   onPrev: () => void;
   onNext: () => void;
 }) {
@@ -170,22 +168,10 @@ function WeekStrip({
           <span className='tnum font-semibold text-fg-muted'>{range}</span>
         </h2>
         <div className='flex items-center gap-2'>
-          <SegmentTabs
-            label='타임존'
-            value={wallTz}
-            options={[
-              { key: 'KST', label: 'KST' },
-              { key: 'PDT', label: 'PDT' },
-            ]}
-            onChange={onWallTz}
-          />
-          <div className='flex items-center'>
-            <Button variant='ghost' size='sm' aria-label='이전 주' onClick={onPrev}>
-              <ChevronLeft size={16} />
-            </Button>
-            <Button variant='ghost' size='sm' aria-label='다음 주' onClick={onNext}>
-              <ChevronRight size={16} />
-            </Button>
+          <span className='type-label-sm text-fg-muted'>내 시간대: {scheduleZoneTitle(wallTz, locale)}</span>
+          <div className='flex items-center gap-3'>
+            <IconButton variant='tertiary' size='sm' aria-label='이전 주' onClick={onPrev} icon={<ChevronLeft />} />
+            <IconButton variant='tertiary' size='sm' aria-label='다음 주' onClick={onNext} icon={<ChevronRight />} />
           </div>
         </div>
       </div>
@@ -200,9 +186,7 @@ function WeekStrip({
               <p className={cx('text-center type-label-sm', d.today ? 'text-primary-700' : 'text-fg-muted')}>
                 {d.label}
               </p>
-              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>
-                {d.day}
-              </p>
+              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>{d.day}</p>
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
                   const study = byId.get(hit.studyId);
@@ -212,7 +196,7 @@ function WeekStrip({
                     <li key={`${hit.studyId}-${hit.meetingId}`}>
                       <button
                         type='button'
-                        title={`${hit.time} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
+                        title={`${hit.time} ${hit.abbreviation} ${hit.title} ${hit.no === 0 ? '킥오프' : `${hit.no}회차`}`}
                         onClick={() => study && router.push(schedulePath(locale, study))}
                         className='block w-full rounded-sm border-l-[3px] px-1.5 py-1 text-left type-label-lg hover:brightness-[0.97]'
                         style={{
@@ -221,7 +205,9 @@ function WeekStrip({
                           color: accent,
                         }}
                       >
-                        <span className='tnum block type-label-sm opacity-75'>{hit.time}</span>
+                        <span className='tnum block type-label-sm opacity-75'>
+                          {hit.time} {hit.abbreviation}
+                        </span>
                         <span className='line-clamp-2 break-keep'>{hit.title}</span>
                       </button>
                     </li>
@@ -241,7 +227,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
   return (
     <nav className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page <= 1}
         leadingIcon={<ChevronLeft size={16} />}
@@ -267,7 +253,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
         );
       })}
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page >= pages}
         trailingIcon={<ChevronRight size={16} />}
@@ -388,12 +374,7 @@ function StudyItem({ study, locale, wallTz }: { study: JoinedStudy; locale: Loca
             <MissionClear book={book} />
           ) : (
             <div className='mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
-              <p
-                className={cx(
-                  'min-w-0',
-                  left ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg',
-                )}
-              >
+              <p className={cx('min-w-0', left ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg')}>
                 {upcomingOf(study, locale, wallTz)}
               </p>
             </div>
@@ -431,8 +412,9 @@ function MyJoinedPageContent() {
   const role = query.role as RoleFilter;
   const sort = (query.sort || defaultSortOf(filter)) as SortKey;
   const page = pageOf(query.page);
-  const [wallTz, setWallTz] = useState<WallTz>('KST');
-  const [weekStart, setWeekStart] = useState(() => mondayOf(ymdInTz(new Date(), 'KST')));
+  const wallTz = useDisplayTimeZone();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = addDays(mondayOf(ymdInTz(new Date(), wallTz)), weekOffset * 7);
   const listTop = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -446,9 +428,6 @@ function MyJoinedPageContent() {
       return;
     }
     setAccountId(u.id);
-    const tz = userWallTz(getRegion());
-    setWallTz(tz);
-    setWeekStart(mondayOf(ymdInTz(new Date(), tz)));
     setReady(true);
   }, [locale, router]);
 
@@ -503,9 +482,8 @@ function MyJoinedPageContent() {
         locale={locale}
         wallTz={wallTz}
         studies={mine}
-        onWallTz={setWallTz}
-        onPrev={() => setWeekStart(addDays(weekStart, -7))}
-        onNext={() => setWeekStart(addDays(weekStart, 7))}
+        onPrev={() => setWeekOffset((offset) => offset - 1)}
+        onNext={() => setWeekOffset((offset) => offset + 1)}
       />
 
       <div className='mt-5 flex flex-wrap items-center gap-2'>

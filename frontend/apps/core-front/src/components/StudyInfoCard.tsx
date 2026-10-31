@@ -6,19 +6,21 @@ import type { Study } from '@studyclub/mock';
 import { Button, DiscordGlyph, Textarea } from '@studyclub/ui';
 import { ChevronDown, FolderOpen } from 'lucide-react';
 
-import { meetingsOf } from '@/lib/attendance';
+import { RegularTime } from '@/components/RegularTime';
+import { useStudyMeetings } from '@/features/studies/queries';
+import { apiMeetingsOf } from '@/lib/joined-detail';
 import { saveStudyRules } from '@/lib/joined-detail-api';
 import {
   canOpenDiscord,
   canOpenDrive,
   discordUrl,
-  DOW_LABEL,
   dowOf,
   driveUrl,
   isKickoff,
-  zoneLabel,
   type NavigatorGroup,
 } from '@/lib/meetings';
+import { regularScheduleDisplay } from '@/lib/regular-schedule';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 function LinkButton({ label, href, icon }: { label: string; href: string; icon: React.ReactNode }) {
   return (
@@ -77,11 +79,15 @@ export function StudyInfoCard({
     });
     return () => cancelAnimationFrame(id);
   }, [rules, rulesExpanded]);
-  const first = meetingsOf(study).find((m) => !isKickoff(m));
-  const dow = first ? DOW_LABEL[dowOf(first.date)] : null;
-  const time = dow
-    ? `매주 ${dow}요일 ${group.startAt} ${zoneLabel(group.timeZone)}`
-    : `${group.startAt} ${zoneLabel(group.timeZone)}`;
+  const viewerZone = useDisplayTimeZone();
+  const { data: meetingData } = useStudyMeetings(Number(study.id), groupId);
+  const meetings = apiMeetingsOf(meetingData, group);
+  const first = meetings.find((m) => !isKickoff(m));
+  const time = regularScheduleDisplay(
+    { ...group, weekdays: group.weekdays ?? (first ? [dowOf(first.date)] : []) },
+    meetings,
+    viewerZone,
+  );
   const navigator = navigatorName ?? study.lead ?? '운영진';
   const hasDiscord = discordChannelUrl != null ? !!discordChannelUrl : canOpenDiscord(study);
   const discordHref = discordChannelUrl ?? discordUrl(study);
@@ -92,9 +98,11 @@ export function StudyInfoCard({
     <section className='card px-5 py-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <dl className='flex flex-wrap gap-x-6 gap-y-1 type-body-sm'>
-          <div className='flex gap-2'>
-            <dt className='text-fg-muted'>스터디 시간</dt>
-            <dd className='tnum font-semibold text-fg'>{time}</dd>
+          <div className='flex min-w-0 gap-2'>
+            <dt className='shrink-0 text-fg-muted'>스터디 시간</dt>
+            <dd className='min-w-0 tnum font-semibold text-fg'>
+              {group.startAt ? <RegularTime summary={time} /> : '미정'}
+            </dd>
           </div>
           <div className='flex gap-2'>
             <dt className='text-fg-muted'>네비게이터</dt>
