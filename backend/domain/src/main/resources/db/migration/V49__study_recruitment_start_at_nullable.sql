@@ -1,4 +1,4 @@
--- V46 — STUDY_RECRUITMENT.START_AT 을 NULL 허용으로. 모집 시작 시각은 공개(= 모집 시작)할 때 채우고, 등록 시점과 공개 취소 뒤에는 비운다.
+-- V49 — STUDY_RECRUITMENT.START_AT 을 NULL 허용으로. 모집 시작 시각은 공개(= 모집 시작)할 때 채우고, 등록 시점과 공개 취소 뒤에는 비운다.
 -- 지금까지는 NOT NULL 이라 등록이 now() 를 채웠고, 그래서 공개 전(DRAFT) 스터디의 신청 폼 저장이
 -- 「모집이 시작되어 신청 폼을 수정할 수 없습니다」로 막혔다 (specs/study 스터디 공개 · TODO(migration)).
 ALTER TABLE STUDY_RECRUITMENT

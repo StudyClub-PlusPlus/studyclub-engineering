@@ -17,7 +17,7 @@
 > 갱신: 2026-09-30 — 스터디 상세 FE 구현 완료(`StudyDetailView` + `useStudyDetail` 훅이 `GET /api/studies/{studyId}` 를 직접 호출). `sort` 파라미터 없음 확정 — 목록은 항상 최신순 고정.
 > 갱신: 2026-10-05 — 스키마 정리 반영(V26~V30): 정원은 최신 모집 회차(`RECRUITMENT_CAPACITY`), `SLUG`·`IS_HIDDEN`·`STUDY_DELIVERY_FORMAT` 삭제, `CREATED_BY` 추가. 목록 단계 필터도 최신 회차 신청 수 기준
 > 갱신: 2026-10-24 — `timezone` 구현(V40 `STUDY.TIMEZONE`). 등록·수정(사이트·백오피스)이 받고 상세가 준다. 목록·시간대 필터는 고른 값이 있으면 그 값, 없으면 `schedule` 문구로 판정한다
-> 갱신: 2026-10-30 — `STUDY_RECRUITMENT.START_AT` NULL 허용(V46). 등록은 비워 두고 공개할 때 채우며, 공개 취소하면 비운다 — 등록 직후 신청 폼이 「모집이 시작되어」로 잠기던 버그를 고친다. 기존 DRAFT 스터디의 값도 V46 가 비운다
+> 갱신: 2026-10-30 — `STUDY_RECRUITMENT.START_AT` NULL 허용(V49). 등록은 비워 두고 공개할 때 채우며, 공개 취소하면 비운다 — 등록 직후 신청 폼이 「모집이 시작되어」로 잠기던 버그를 고친다. 기존 DRAFT 스터디의 값도 V49 가 비운다
 
 ## 엔드포인트 목록
 
@@ -445,7 +445,7 @@ private StudyDetailResponse toDetail(Study study) {
 | 필드                       | 고정값                     | 비고                                                                                                                                          |
 | -------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | STUDY.STATUS               | `DRAFT`                    | 등록 후 ADMIN이 [공개(모집 시작)](#스터디-공개--공개-취소)로 OPEN 으로 전환                                                                   |
-| STUDY_RECRUITMENT.START_AT | `null`                     | 등록 시 비워 둔다(V46 부터 NULL 허용). 공개(`STATUS: DRAFT → OPEN`) 시 최신 회차 `START_AT` 을 `now()` 로 채우고, 공개 취소 시 `null` 로 되돌린다. 공개 판정 자체는 `STATUS` 로 한다 — `START_AT` 은 "모집이 언제 시작됐는가"를 기록하는 사실 데이터이고, 신청 폼 잠금이 이 값을 본다 |
+| STUDY_RECRUITMENT.START_AT | `null`                     | 등록 시 비워 둔다(V49 부터 NULL 허용). 공개(`STATUS: DRAFT → OPEN`) 시 최신 회차 `START_AT` 을 `now()` 로 채우고, 공개 취소 시 `null` 로 되돌린다. 공개 판정 자체는 `STATUS` 로 한다 — `START_AT` 은 "모집이 언제 시작됐는가"를 기록하는 사실 데이터이고, 신청 폼 잠금이 이 값을 본다 |
 | STUDY_PROGRAM.TITLE        | 요청의 `title`             | 새 프로그램일 때만. 프로그램 제목은 첫 기수 제목을 따른다                                                                                     |
 | STUDY.CREATED_BY           | 요청한 계정의 `ACCOUNT.ID` | 작성자. 인증 토큰의 계정으로 채우고 요청 바디로 받지 않는다. 등록 뒤 바뀌지 않는다 — PATCH 가 건드리지 않는다. 구현됨(V29). 이 값이 **담당 캡틴** 판정의 근거다 — 등록할 때 명부에 넣지 않는다. 참여하려면 신청한다 ([POL-0001](../../01-planning/_registry/policies/POL-0001-roles.md)) |
 
@@ -548,7 +548,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 - `publish(accountId, studyId)` · `unpublish(accountId, studyId)` — 캡틴 전용이라 진입 메서드 각각 하나. 첫 줄 `assertCaptain`. `create`·`delete` 패턴과 동일. `FromSite`/`ForBackOffice` 접미사 없음.
 - 신청 폼 판정: `study.getApplicationForm()` null 이거나 `questions` 배열 길이 0 → `APPLICATION_FORM_REQUIRED`. APPLICATION_FORM JSON 구조 정본: [study-application/spec.md §APPLICATION_FORM](../study-application/spec.md)
 - 상태 전이는 `Study` 엔티티의 의미 있는 메서드(`Study#publish()` · `Study#unpublish()`)로. setter 금지.
-- 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. 등록 시 `START_AT = null`, publish 시 `now()`, unpublish 시 `null` 로 되돌린다(V46). 신청서가 없으면 공개 취소 뒤 신청 폼을 다시 고칠 수 있다 — 이미 들어온 신청서가 있으면 그 신청서로 계속 잠긴다.
+- 최신 회차: `STUDY_RECRUITMENT` 에서 `id` MAX 인 행. 등록 시 `START_AT = null`, publish 시 `now()`, unpublish 시 `null` 로 되돌린다(V49). 신청서가 없으면 공개 취소 뒤 신청 폼을 다시 고칠 수 있다 — 이미 들어온 신청서가 있으면 그 신청서로 계속 잠긴다.
 
 ### 테스트 요구사항
 
