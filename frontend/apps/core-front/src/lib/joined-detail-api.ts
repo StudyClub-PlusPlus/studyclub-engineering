@@ -48,7 +48,8 @@ export type ApiAttendance = {
     captain: boolean;
     participantStatus: string;
     leftAt: string | null;
-    attendances: Array<{ meetingId: number; status: string }>;
+    /** status null = 미체크 (specs/attendance) */
+    attendances: Array<{ meetingId: number; status: string | null }>;
     attendanceRate: number | null;
   }>;
 };
