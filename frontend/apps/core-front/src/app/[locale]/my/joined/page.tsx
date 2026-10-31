@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Badge, Button, Card, EmptyState, cx, Select } from '@studyclub/ui';
+import { Badge, Button, IconButton, Card, EmptyState, cx, Select } from '@studyclub/ui';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -179,13 +179,9 @@ function WeekStrip({
             ]}
             onChange={onWallTz}
           />
-          <div className='flex items-center'>
-            <Button variant='ghost' size='sm' aria-label='이전 주' onClick={onPrev}>
-              <ChevronLeft size={16} />
-            </Button>
-            <Button variant='ghost' size='sm' aria-label='다음 주' onClick={onNext}>
-              <ChevronRight size={16} />
-            </Button>
+          <div className='flex items-center gap-3'>
+            <IconButton variant='tertiary' size='sm' aria-label='이전 주' onClick={onPrev} icon={<ChevronLeft />} />
+            <IconButton variant='tertiary' size='sm' aria-label='다음 주' onClick={onNext} icon={<ChevronRight />} />
           </div>
         </div>
       </div>
@@ -200,9 +196,7 @@ function WeekStrip({
               <p className={cx('text-center type-label-sm', d.today ? 'text-primary-700' : 'text-fg-muted')}>
                 {d.label}
               </p>
-              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>
-                {d.day}
-              </p>
+              <p className={cx('tnum text-center type-label-lg', d.today ? 'text-primary-700' : 'text-fg')}>{d.day}</p>
               <ul className='mt-1 flex min-h-10 flex-col gap-1'>
                 {d.hits.map((hit) => {
                   const study = byId.get(hit.studyId);
@@ -241,7 +235,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
   return (
     <nav className='mt-8 flex items-center justify-center gap-1' aria-label='목록 페이지'>
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page <= 1}
         leadingIcon={<ChevronLeft size={16} />}
@@ -267,7 +261,7 @@ function Pager({ page, pages, onChange }: { page: number; pages: number; onChang
         );
       })}
       <Button
-        variant='ghost'
+        variant='tertiary'
         size='sm'
         disabled={page >= pages}
         trailingIcon={<ChevronRight size={16} />}
@@ -388,12 +382,7 @@ function StudyItem({ study, locale, wallTz }: { study: JoinedStudy; locale: Loca
             <MissionClear book={book} />
           ) : (
             <div className='mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2'>
-              <p
-                className={cx(
-                  'min-w-0',
-                  left ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg',
-                )}
-              >
+              <p className={cx('min-w-0', left ? 'type-label-lg text-fg-muted' : 'type-title-md text-fg')}>
                 {upcomingOf(study, locale, wallTz)}
               </p>
             </div>

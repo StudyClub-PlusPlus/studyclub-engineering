@@ -21,7 +21,7 @@
 | 참여 중단 (사용자 사이트) | [study-participant/](./study-participant/) | 스펙작성중 | 출석 저장 `POST /api/studies/{studyId}/attendances` 에 `withdrawals[]` 추가 — 네비게이터가 출석부 저장 한 번에 출석과 참여 중단. 기획: [참여 중단](../01-planning/stories/navigator-withdraw-participant/PRD.md) |
 | 분반 · 참여 명단 (백오피스) | [study-group/](./study-group/) | 스펙작성중 | 참여 명단 · 네비게이터 지정 · 가능 시간 집계 · 반 만들기·수정·삭제 · 반 지정. 기획: [참석자](../01-planning/stories/captain-view-attendees/PRD.md) · [반 편성](../01-planning/stories/captain-assign-classes/PRD.md) |
 | 반 공지 | [study-notice/](./study-notice/) | 구현완료 | `/api/studies/{studyId}/groups/{groupId}/notices` — 네비게이터·담당 캡틴이 반 팀원에게 메일·디스코드로 보낸다 · 보내기 화면 값 · 보낸 기록. 기획: [반 공지](../01-planning/stories/navigator-study-notice/PRD.md) |
-| 사이트 공지 | [site-notice/](./site-notice/) | 스펙작성중 | `/api/notices` 읽기(비로그인 허용) · `/api/admin/notices` 등록·수정·소프트 삭제. 기획: [캡틴 공지 작성](../01-planning/stories/captain-post-notice/PRD.md) · [크루 공지 열람](../01-planning/stories/crew-view-notices/PRD.md) |
+| 사이트 공지 | [site-notice/](./site-notice/) | 구현완료 | `/api/notices` 읽기(비로그인 허용) · `/api/admin/notices` 등록·수정·소프트 삭제. 기획: [캡틴 공지 작성](../01-planning/stories/captain-post-notice/PRD.md) · [크루 공지 열람](../01-planning/stories/crew-view-notices/PRD.md) |
 | 문의·오류 신고 | [feedback/](./feedback/) | 스펙작성중 | `POST /api/feedbacks` · `/api/me/feedbacks` — 크루 제출·내 문의, `/api/admin/feedbacks` — 운영 목록·상세·상태·회신·메모. 회신 알림은 후속. 기획: [크루 제출](../01-planning/stories/crew-submit-feedback/PRD.md) · [캡틴 조회](../01-planning/stories/captain-view-feedbacks/PRD.md) |
 
 ## 도메인 외 스펙

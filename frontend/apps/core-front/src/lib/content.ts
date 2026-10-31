@@ -2,11 +2,20 @@
 // 스터디는 백엔드 API 에서 가져온다. 실패하면 예시 데이터로 메우지 않고 빈 목록·null 을 준다 —
 // 화면은 빈 상태를 그린다(상세는 클라이언트가 404·500 에 반응한다).
 // 행사는 기능 개발 전이라 예시 데이터(@studyclub/mock events)를 그대로 보여 준다 — 실제 지난 행사들이다.
-// 운영진·공지는 아직 API 가 없어 빈 목록이다. 사이트 설정(디스코드 초대·커뮤니티 규모)은 상수로 둔다.
-import type { Study, StudyclubEvent, Operator, Site, Announcement } from '@studyclub/mock';
+// 공지는 백엔드 API 에서 가져온다 — 등록 즉시 보여야 해서 캐시하지 않는다.
+// 운영진은 아직 API 가 없어 빈 목록이다. 사이트 설정(디스코드 초대·커뮤니티 규모)은 상수로 둔다.
+import type { Study, StudyclubEvent, Operator, Site } from '@studyclub/mock';
 import { events as eventsData, site as siteData } from '@studyclub/mock';
 
-import { fetchStudies, fetchStudy } from './api';
+import {
+  fetchNotice,
+  fetchNotices,
+  fetchStudies,
+  fetchStudy,
+  type ApiPage,
+  type ApiSiteNoticeDetail,
+  type ApiSiteNoticeSummary,
+} from './api';
 
 export type {
   Locale,
@@ -24,7 +33,6 @@ export type {
   Operator,
   Member,
   Site,
-  Announcement,
 } from '@studyclub/mock';
 
 /** 사용자 사이트용 스터디 목록. API 가 실패하면 빈 목록 — 예시 스터디로 메우지 않는다. */
@@ -70,10 +78,22 @@ export async function getOperatorMap(): Promise<Record<string, Operator>> {
   return Object.fromEntries(ops.map((o) => [o.id, o]));
 }
 
-// TODO(api): GET /api/announcements — 공지 API 가 생기면 연동. 그전까지는 lib/notices.ts 의 실제 공지(고정 먼저, 날짜 내림차순).
-export async function getNotices(): Promise<Announcement[]> {
-  const { NOTICES } = await import('./notices');
-  return NOTICES.map((n) => ({ id: n.id, title: n.title, date: n.date, pinned: n.pinned, tag: n.tag, body: n.summary })).sort(
-    (a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.date.localeCompare(a.date),
-  );
+/** 사이트 공지 목록 한 쪽. API 가 실패하면 null — 빈 목록으로 주면 화면이 「공지 없음」·없는 쪽 404 와 구분하지 못한다. */
+export async function getNotices(offset: number, limit: number): Promise<ApiPage<ApiSiteNoticeSummary> | null> {
+  try {
+    return await fetchNotices(offset, limit);
+  } catch (e) {
+    console.error('[content] GET /api/notices failed:', e);
+    return null;
+  }
+}
+
+/** 공지 한 건. 없거나 삭제됐으면 null(화면이 404). 서버 장애면 'failed' — 없는 공지로 위장하지 않고 화면이 오류 안내를 그린다. */
+export async function getNotice(noticeId: string): Promise<ApiSiteNoticeDetail | null | 'failed'> {
+  try {
+    return await fetchNotice(noticeId);
+  } catch (e) {
+    console.error(`[content] GET /api/notices/${noticeId} failed:`, e);
+    return 'failed';
+  }
 }

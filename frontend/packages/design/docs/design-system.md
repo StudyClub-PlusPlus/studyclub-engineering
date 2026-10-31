@@ -82,6 +82,7 @@
 |---|---|---|
 | `--color-border` | `#E2E1E9` | 기본 경계, 구분선, 비선택 컨트롤 |
 | `--color-border-strong` | `#8D90A3` | 선택된 input·control 경계 |
+| `--color-button-secondary-border` | `#CBCFE5` | Secondary 버튼 기본 1px 경계 |
 | `--color-border-interactive` | `#7A8BD8` | hover와 focus 경계 |
 | `--color-focus-ring` | `#7183DA` | 키보드 focus 전용 3px ring |
 | `--color-page-bg` | `#FBFCFF` | 페이지 기본 배경 |
@@ -185,8 +186,8 @@
 | type-body-lg | 18 | 30px | 0 | 400 | 리드 문단·긴 소개 |
 | type-body-md | 16 | 27px | 0 | 400 | 기본 본문·일반 폼 입력값/placeholder |
 | type-body-sm | 14 | 22px | 0 | 400 | 보조 설명·테이블 내용·조밀한 Console 폼 입력값 |
-| type-label-lg | 14 | 20px | 0 | 600 | 버튼(모든 크기)·탭·필드 라벨·목록 필터 선택값·목록 검색 입력값/placeholder |
-| type-label-sm | 12 | 18px | +0.005em | 500 | 배지·메타·타임스탬프·캡션 |
+| type-label-lg | 14 | 20px | 0 | 600 | md/lg 버튼·탭·필드 라벨·목록 필터 선택값·목록 검색 입력값/placeholder |
+| type-label-sm | 12 | 18px | +0.005em | 500 | sm 버튼·배지·메타·타임스탬프·캡션 |
 
 ### 3-3. 적용 규칙
 
@@ -239,7 +240,7 @@
 
 | Token | px | | 컴포넌트 권장(semantic) |
 |---|---|---|---|
-| radius-none | 0 | | `--radius-control` (버튼·입력·셀렉트) = **8** |
+| radius-none | 0 | | `--radius-control` (입력·셀렉트) = **8**, 버튼은 **8/9/10** |
 | radius-xs | 2 | | `--radius-chip` (필터칩·태그) = 8 |
 | radius-sm | 4 | | `--radius-card` = **16** |
 | radius-md | 8 | | `--radius-modal` = 20 (모바일 바텀시트 상단 24) |
@@ -300,7 +301,7 @@
         ↓ 별칭
 [2] 호환 별칭           → --color-brand, --color-fg, --color-surface-1 ...
         ↓ 참조
-[3] 컴포넌트           → .btn { background: var(--color-brand) }  ← HEX 금지
+[3] 컴포넌트           → .sc-button { background: var(--color-primary) }  ← HEX 금지
 ```
 
 **주요 semantic 토큰(발췌)** — 전체는 `tokens.css` 참고.
@@ -309,7 +310,7 @@
 |---|---|---|
 | `--color-primary` | `#5267D8` | 브랜드 기준 액션 |
 | `--color-primary-hover/active` | Cobalt 단계 | hover / pressed |
-| `--color-primary-light` | `#E9ECFF` | 선택·tonal 배경 |
+| `--color-primary-light` | `#E9ECFF` | 선택 영역·Secondary/Tertiary hover 배경 |
 | `--color-highlight` | `#FF805C` | 제한적 강조. 상태색으로 사용 금지 |
 | `--color-ink` | `#282A43` | 본문·헤딩 |
 | `--color-text-secondary/muted` | Cool neutral | 설명 / 메타데이터 |
@@ -350,7 +351,7 @@
 | `compat.css` | 구 토큰 점진적 마이그레이션 별칭 브리지 | 공용 |
 | `base.css` | `tokens` + `compat` + `html`/`body`/`.card`/`.card-hover`/`.no-scrollbar` | 공통 베이스 (Storybook 등) |
 | `core.css` | `base.css` + `.hero-glow` | `core-front`, `playground proto/core` |
-| `console-only.css` | 콘솔 밀도 오버라이드(`[data-app="console"]` 스코프) + `.bo-table` / `.btn`. base 없음 | `playground` (core.css 위에 추가) |
+| `console-only.css` | 콘솔 밀도 오버라이드(`[data-app="console"]` 스코프) + `.bo-table`. 버튼은 공통 `buttons.css` 소유 | `playground` (core.css 위에 추가) |
 | `console.css` | `base.css` + `console-only.css` | `back-office-front` |
 
 **앱별 `globals.css` 적용 형태**:
@@ -380,9 +381,8 @@
 | 변형 | 배경 | 텍스트 | hover | 용도 |
 |---|---|---|---|---|
 | Primary (solid) | brand(600) | 흰색 | brand-hover(700) | 화면당 1개 주요 액션 |
-| Tonal | primary-light | primary-dark | brightness 97% | 보조 주요 액션 |
-| Secondary (outline) | surface-raised + border | ink | page-bg / border-interactive | 취소·보조 |
-| Ghost | 투명 | text-secondary | cloud | 아이콘 버튼, 3차 액션 |
+| Secondary (outline) | surface-raised + button-secondary-border | ink | primary-light / border-interactive | 보조 행동 |
+| Tertiary | 투명 | primary-dark | primary-light | 취소·닫기·건너뛰기·낮은 우선순위 |
 | Danger (outline) | surface-raised + danger-fg 테두리 | danger-fg | danger-bg | 삭제·참여 중단을 **여는** 버튼 |
 | Destructive | danger-fg | on-primary | brightness 90% | 되돌릴 수 없는 **마지막 확인** (확인 모달의 「삭제」) |
 
@@ -392,14 +392,27 @@
 |---|---|---|
 | 주 행동 — 한 묶음에 하나 | 저장 · 만들기 · 회차 추가 | Primary |
 | 보조 행동 | 수정 · 반 추가 | Secondary |
-| 되돌리기 | 취소 · 변경 취소 · 선택 해제 | Ghost |
+| 되돌리기 | 취소 · 변경 취소 · 선택 해제 | Tertiary |
 | 지우기 · 내보내기를 연다 | 삭제 · 참여 중단 | Danger |
 | 지우기 마지막 확인 | 확인 모달의 「삭제」 | Destructive |
 
 - 한 줄에 함께 둘 때 되돌리기는 왼쪽, 주 행동은 오른쪽 끝.
 - 화면에서 `className` 으로 색을 덧칠해 변형을 흉내 내지 않는다 — 필요한 모양이 없으면 여기에 변형을 더한다.
 
-**사이즈**: sm h32/px12 · md h40/px16 · lg h48/px20. 라벨은 모두 `type-label-lg`. 라운딩 `--radius-control`(8). 모바일 터치 타깃 **최소 44px**(sm는 hit-area 패딩으로 보정). **disabled**: disabled-bg / disabled-fg / 그림자 없음. **loading**: 스피너 + 라벨 유지, 폭 고정.
+**사이즈**: 기본 md. sm 32px/px12/gap4/radius8/아이콘14/`type-label-sm`, md 40px/px16/gap8/radius9/아이콘16/`type-label-lg`, lg 48px/px20/gap8/radius10/아이콘20/`type-label-lg`.
+
+- 정본: `buttons.css`와 `@studyclub/ui`의 `Button`/`IconButton`. 버튼 전용 `radius-button-sm/md/lg`를 사용하므로 Console의 `radius-control`에 영향을 받지 않는다.
+- Secondary 기본 상태: 배경 `#FFFFFF`, 테두리 `1px solid #CBCFE5`(`--color-button-secondary-border`), 글자 `#282A43`. 입력 필드의 일반 `border`/선택 `border-strong` 규칙은 유지한다.
+- 텍스트 버튼 최소 너비: sm 64px / md 80px / lg 96px. 긴 레이블은 콘텐츠에 맞춰 확장한다. IconButton은 제외하며 정사각형 크기를 유지한다. 고밀도 콘솔·테이블의 sm은 `min-w-0`으로 해제할 수 있다. 버튼 그룹은 동일 너비를 강제하지 않는다(카탈로그 비교 예시 제외).
+- Hover: Y -1px, Pressed: scale .98 + 그림자 없음. 전환은 공통 `duration-fast` 150ms. Reduced Motion에서는 transform을 제거한다.
+- 버튼 전용 Focus-visible: focus-ring 색의 3px outline + 3px offset. 입력·셀렉트의 기존 포커스는 유지한다.
+- Disabled 및 Loading은 native `disabled`. Disabled bg/fg·그림자 없음·hover/pressed 차단·포커스 대상 제외. `aria-disabled`도 실제 비활성으로 처리한다.
+- Loading은 native disabled + `aria-busy=true`로 중복 실행을 막고, 원래 레이블과 아이콘을 계속 표시한다. 버튼 내부 스피너는 사용하지 않는다. 사용처에서 버튼 외부의 `role=status` 영역으로 처리 상태를 안내하고, 필요한 공간을 미리 확보해 레이아웃 이동을 막는다.
+- `state="error"`는 실패한 저장/제출 상태이며 Danger와 다르다. 레이블은 「저장」 그대로 유지한다. 사용처가 근처에 실패 문구를 `role="alert"`로 표시하고 `aria-describedby`로 연결한다. 재실행 중 Loading, 성공 시 Default, 실패 시 Error를 화면에서 제어한다.
+- Primary Error와 Destructive는 danger-fg 채움/on-primary, Secondary Error는 danger-bg/fg/테두리, Tertiary Error는 danger-bg/fg(테두리 없음). 모든 hover/pressed에서 빨간 계열 유지. 우선순위는 Disabled/Loading → Error/Destructive/Danger → Pressed → Hover → Default.
+- `leadingIcon`/`trailingIcon` API를 유지한다. 장식 아이콘은 aria-hidden. IconButton은 각 크기의 정사각형이며 `aria-label` 필수다.
+- 터치 장치에서는 sm/md의 클릭 영역을 양축 최소 44px로 확장한다. 인접 타깃이 겹치지 않도록 배치 간격을 확보한다. 주요 CTA 전체 너비는 레이아웃에서 `w-full sm:w-auto`처럼 지정한다.
+- Ghost는 Tertiary로 이름을 바꾼다. Tonal은 제거하며 보조 행동은 Secondary, 초기화/되돌리기는 Tertiary로 전환한다. Native button 속성(type, form, onClick, aria-*)은 유지한다.
 
 ### 9-2. Input / Select / Textarea
 
@@ -519,7 +532,7 @@
 | 선택된 입력 경계 | border-strong / page-bg | 3.08 | ✅ UI 3:1 |
 | Focus ring | focus-ring / page-bg | 3.43 | ✅ UI 3:1 |
 
-**규칙**: ① 상태는 색+텍스트+아이콘 3중 인코딩. ② 모집 중 chip은 success, 비상태 강조만 highlight. ③ 포커스는 항상 `--shadow-focus-ring`. ④ 장식 border는 3:1 미만을 허용하지만 입력·포커스·선택 경계는 3:1 이상. ⑤ disabled 요소는 대비 요건 면제(1.4.3). ⑥ 터치 타깃 24px 이상, 주요 액션 44px 권장.
+**규칙**: ① 상태는 색+텍스트+아이콘 3중 인코딩. ② 모집 중 chip은 success, 비상태 강조만 highlight. ③ 입력·선택 컨트롤 포커스는 `--shadow-focus-ring`, 버튼은 focus-ring 색의 3px outline + 3px offset. ④ 장식 border는 3:1 미만을 허용하지만 입력·포커스·선택 경계는 3:1 이상. ⑤ disabled 요소는 대비 요건 면제(1.4.3). ⑥ 버튼 터치 타깃은 양축 44px 이상 확보.
 
 ---
 

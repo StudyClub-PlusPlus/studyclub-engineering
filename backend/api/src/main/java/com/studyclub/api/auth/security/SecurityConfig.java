@@ -94,7 +94,13 @@ public class SecurityConfig {
                                                 PathPatternRequestMatcher.withDefaults()
                                                         .matcher(HttpMethod.GET, "/api/studies"),
                                                 PathPatternRequestMatcher.withDefaults()
-                                                        .matcher(HttpMethod.GET, "/api/studies/*"))
+                                                        .matcher(HttpMethod.GET, "/api/studies/*"),
+                                                // 사이트 공지는 비로그인 방문자도 읽는다. 두 패턴만 — /api/notices/** 를
+                                                // 통째로 열지 않는다
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(HttpMethod.GET, "/api/notices"),
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(HttpMethod.GET, "/api/notices/*"))
                                         .permitAll()
                                         .requestMatchers(
                                                 "/",

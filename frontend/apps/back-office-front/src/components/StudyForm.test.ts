@@ -12,6 +12,7 @@ import {
 import type { ApiStudyDetail } from '@/features/studies/types';
 
 const detail: ApiStudyDetail = {
+  discordLinked: false,
   id: 7,
   programId: 3,
   programTitle: 'AI 논문 스터디',
