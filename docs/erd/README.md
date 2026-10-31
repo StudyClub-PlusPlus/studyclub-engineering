@@ -44,6 +44,8 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  STUDY_NOTICE ||--o{ STUDY_NOTICE_RECIPIENT : "받는 사람"
+  STUDY_NOTICE |o..o{ NOTIFICATION : "메일 (REFERENCE_ID, FK 없음)"
   ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
   ACCOUNT ||--o{ ACCOUNT_CONSENT : "동의"
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
@@ -80,6 +82,8 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  STUDY_NOTICE ||--o{ STUDY_NOTICE_RECIPIENT : "받는 사람"
+  STUDY_NOTICE |o..o{ NOTIFICATION : "메일 (REFERENCE_ID, FK 없음)"
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
   ACCOUNT |o..o{ SITE_NOTICE : "작성한 캡틴 (FK 없음)"
   ACCOUNT ||--o{ STORAGE_OBJECT : "올린 파일 (FK 없음)"
@@ -90,12 +94,38 @@ erDiagram
     varchar RECIPIENT_VALUE
     bigint RECIPIENT_USER_ID
     bigint TEMPLATE_ID
+    bigint REFERENCE_ID "STUDY_NOTICE.ID 등 (FK 없음)"
+    bigint SENDER_ACCOUNT_ID "보낸 사람 ACCOUNT.ID (FK 없음)"
     json PAYLOAD
     varchar STATUS
     datetime LOCKED_AT
     varchar ERROR_TYPE
     datetime SCHEDULED_AT
     datetime SENT_AT
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  STUDY_NOTICE {
+    bigint ID PK
+    bigint STUDY_ID
+    bigint STUDY_GROUP_ID
+    bigint SENDER_ACCOUNT_ID
+    varchar TITLE
+    text BODY
+    boolean SEND_EMAIL
+    boolean SEND_DISCORD
+    varchar DISCORD_STATUS
+    varchar DISCORD_SKIP_REASON
+    datetime CREATED_AT
+    datetime UPDATED_AT
+  }
+
+  STUDY_NOTICE_RECIPIENT {
+    bigint ID PK
+    bigint NOTICE_ID FK
+    bigint ACCOUNT_ID
+    boolean DISCORD_MENTIONED
     datetime CREATED_AT
     datetime UPDATED_AT
   }
@@ -366,6 +396,8 @@ erDiagram
 
 | 알림 | [NOTIFICATION](./NOTIFICATION.md) | 알림 발송 이력 | `STATUS`, `ERROR_TYPE` |
 | 알림 | [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md) | 이벤트별 메일 문구 | — |
+| 알림 | [STUDY_NOTICE](./STUDY_NOTICE.md) | 반 공지 발송 기록 (메일 결과는 NOTIFICATION, 디스코드 결과는 여기) | `DISCORD_STATUS` |
+| 알림 | [STUDY_NOTICE_RECIPIENT](./STUDY_NOTICE_RECIPIENT.md) | 반 공지를 받는 사람 (공지 한 건에 한 사람 한 행) | — |
 | 공지 | [SITE_NOTICE](./SITE_NOTICE.md) | 사이트 전체 공지 — 콘솔이 쓰고 사이트가 읽는다 | `REMOVED_AT` (소프트 삭제) |
 
 

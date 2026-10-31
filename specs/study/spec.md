@@ -286,6 +286,7 @@ private StudyDetailResponse toDetail(Study study) {
   "startAt": "2026-10-15T00:00:00Z",
   "endAt": "2026-12-15T00:00:00Z",
   "discordChannelUrl": "https://discord.com/channels/123/456",
+  "discordLinked": false,
   "driveUrl": "https://drive.google.com/drive/folders/abc"
 }
 ```
@@ -311,6 +312,7 @@ private StudyDetailResponse toDetail(Study study) {
 | startAt | String | Y | 진행 시작 일시 (ISO 8601 UTC). `recruitDeadline`·`schedule` 과는 다른 값 | STUDY.START_AT |
 | endAt | String | Y | 종료일 (ISO 8601 UTC) | STUDY.END_AT |
 | discordChannelUrl | String | Y | 참고용 채널 링크 하나(주로 로비). 없으면 사이트 기본 초대 링크로 안내. **사이트 상세는 캡틴과 참여 중단이 아닌 참여자(네비게이터 포함)에게만 채우고 그 밖엔 null** ([share](../../docs/share/2026-09-30-study-detail-private-urls.md)). 자동화(채널 조회·삭제 감지)의 근거로 쓰지 않는다 — [상세](../../docs/erd/STUDY.md#채널-삭제와-closed) | STUDY.DISCORD_CHANNEL_URL |
+| discordLinked | Boolean | N | 저장된 디스코드 연결 여부. 채널 URL 유무와 무관하며, 미연결이면 백오피스에서 다시 연결할 수 있다 | STUDY_DISCORD_LINK 행 존재 여부 |
 | driveUrl | String | Y | 참고용 자료 드라이브 링크. 사이트 상세의 채움 조건은 `discordChannelUrl` 과 같다 | STUDY.DRIVE_URL |
 
 > **소스**: 이 필드가 어느 테이블·컬럼에서 오는지. 계산 필드는 `계산: {로직}`
@@ -742,3 +744,9 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
 - 저장 위치는 `STUDY.APPLICATION_FORM` (기수). 신청 행은 `STUDY_APPLICATION.RECRUITMENT_ID` (모집 회차)
 - 이름·이메일은 폼에 두지 않고 계정에서 읽는다. 디스코드 별명·참여 요일은 플랫폼 기본 문항
 - 질문 설명은 여러 줄 마크다운 원문
+
+## 퍼널·계측
+
+- 단계: 유입 → 활성화 (탐색 · 상세 · 신청 진입)
+- 이벤트 (front, 이 API 를 쓰는 화면): `Study Filter Tab Changed` · `Study Category Filtered` · `Study Searched` · `Study Card Clicked` · `Hero CTA Clicked`, 신청 진입은 `Study Apply *` ([study-application](../study-application/spec.md))
+- 이 문서로 바뀌는 이벤트는 없다. A/B 없음

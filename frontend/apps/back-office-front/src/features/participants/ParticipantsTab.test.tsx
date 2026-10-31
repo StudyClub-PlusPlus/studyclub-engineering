@@ -207,7 +207,8 @@ describe('참여자 반 편성', () => {
     mount();
     expect(await screen.findByText('참여 크루 2명')).toBeVisible();
     expect(screen.getByText('캡틴')).toBeVisible();
-    expect(screen.getByText('네비게이터')).toBeVisible();
+    expect(screen.getByRole('combobox', { name: '북미캡틴 역할' })).toHaveValue('LEADER');
+    expect(screen.getByRole('combobox', { name: '한국크루 역할' })).toHaveValue('MEMBER');
     expect(screen.getByRole('button', { name: '기본반 삭제' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '목요일반 삭제' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '빈반 삭제' })).toBeEnabled();
@@ -238,6 +239,59 @@ describe('참여자 반 편성', () => {
         }),
       ],
     ]);
+  });
+
+  it('행 역할 드롭다운 변경을 모았다가 저장 응답으로 화면을 맞춘다', async () => {
+    const fetch = mount();
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: '한국크루 역할' }), 'LEADER');
+    // 저장 뒤 재조회가 실패해도 PATCH 응답만으로 화면이 맞아야 한다
+    fetch.mockImplementation(async (_, init) =>
+      init.method
+        ? reply({ participants: [{ participantId: 41, groupId: 1, participantRole: 'LEADER' }] })
+        : reply({ errorMessage: '서버 오류가 발생했습니다.' }, 500),
+    );
+    expect(fetch.mock.calls.filter(([, init]) => init.method)).toHaveLength(0);
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await screen.findByText('저장했습니다.');
+    expect(fetch.mock.calls.filter(([, init]) => init.method)[0]?.[1]).toMatchObject({
+      method: 'PATCH',
+      body: JSON.stringify({ changes: [{ participantId: 41, participantRole: 'LEADER' }] }),
+    });
+    expect(screen.getByRole('combobox', { name: '한국크루 역할' })).toHaveValue('LEADER');
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('고른 크루의 반과 역할을 이어서 일괄 변경하고 이미 같은 값인 칸은 보내지 않는다', async () => {
+    const fetch = mount();
+    await userEvent.click(await screen.findByRole('checkbox', { name: '보이는 크루 전체 선택' }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '바꿀 역할' }), 'LEADER');
+    expect(screen.getByRole('combobox', { name: '바꿀 역할' })).toHaveValue('');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '바꿀 반' }), '2');
+    expect(screen.getByRole('combobox', { name: '한국크루 역할' })).toHaveValue('LEADER');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() =>
+      expect(JSON.parse(fetch.mock.calls.filter(([, init]) => init.method)[0]?.[1].body as string)).toEqual({
+        changes: [
+          { participantId: 41, participantRole: 'LEADER', groupId: 2 },
+          { participantId: 42, groupId: 2 },
+        ],
+      }),
+    );
+  });
+
+  it('역할 변경을 취소하거나 원래 역할로 되돌리면 저장할 것이 없다', async () => {
+    mount();
+    const role = await screen.findByRole('combobox', { name: '북미캡틴 역할' });
+    await userEvent.selectOptions(role, 'MEMBER');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: '북미캡틴 반' }), '2');
+    await userEvent.click(screen.getByRole('button', { name: '변경 취소' }));
+    expect(role).toHaveValue('LEADER');
+    expect(screen.getByRole('combobox', { name: '북미캡틴 반' })).toHaveValue('1');
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    await userEvent.selectOptions(role, 'MEMBER');
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled();
+    await userEvent.selectOptions(role, 'LEADER');
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   });
 
   it('필터에 숨은 선택 행은 일괄 변경하지 않는다', async () => {

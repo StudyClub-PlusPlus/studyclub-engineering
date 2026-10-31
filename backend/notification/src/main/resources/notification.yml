@@ -7,6 +7,7 @@ mail:
     from-address: ${MAIL_AUTH_FROM_ADDRESS:}
     access-key-id: ${MAIL_AUTH_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_AUTH_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_AUTH_REPLY_TO_ADDRESS:}
   news:
     configuration-set-name: ${MAIL_NEWS_CONFIGURATION_SET_NAME:}
     region: ${MAIL_NEWS_REGION:}
@@ -14,6 +15,7 @@ mail:
     from-address: ${MAIL_NEWS_FROM_ADDRESS:}
     access-key-id: ${MAIL_NEWS_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_NEWS_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_NEWS_REPLY_TO_ADDRESS:}
   notify:
     configuration-set-name: ${MAIL_NOTIFY_CONFIGURATION_SET_NAME:}
     region: ${MAIL_NOTIFY_REGION:}
@@ -21,6 +23,7 @@ mail:
     from-address: ${MAIL_NOTIFY_FROM_ADDRESS:}
     access-key-id: ${MAIL_NOTIFY_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_NOTIFY_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_NOTIFY_REPLY_TO_ADDRESS:}
   order:
     configuration-set-name: ${MAIL_ORDER_CONFIGURATION_SET_NAME:}
     region: ${MAIL_ORDER_REGION:}
@@ -28,6 +31,7 @@ mail:
     from-address: ${MAIL_ORDER_FROM_ADDRESS:}
     access-key-id: ${MAIL_ORDER_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_ORDER_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_ORDER_REPLY_TO_ADDRESS:}
   cs:
     configuration-set-name: ${MAIL_CS_CONFIGURATION_SET_NAME:}
     region: ${MAIL_CS_REGION:}
@@ -35,6 +39,7 @@ mail:
     from-address: ${MAIL_CS_FROM_ADDRESS:}
     access-key-id: ${MAIL_CS_ACCESS_KEY_ID:}
     secret-access-key: ${MAIL_CS_SECRET_ACCESS_KEY:}
+    reply-to-address: ${MAIL_CS_REPLY_TO_ADDRESS:}
 
 notification:
   polling:

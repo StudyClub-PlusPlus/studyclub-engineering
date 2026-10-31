@@ -7,6 +7,11 @@ import { http } from '@/lib/http';
 export const notificationTemplateKeys = {
   all: ['notification-templates'] as const,
   list: () => [...notificationTemplateKeys.all, 'list'] as const,
+  /**
+   * 편집 팝업이 열릴 때 읽는 값. `all` 밖에 둔다 — 저장 실패(409·404) 뒤 목록을 다시 읽을 때 열린 팝업의 값까지
+   * 취소·재조회되면 팝업이 불러오는 중으로 바뀐다.
+   */
+  editor: (id?: number) => ['notification-template-editor', id] as const,
 };
 
 const BASE = '/api/admin/notification-templates';
@@ -35,7 +40,7 @@ export function useNotificationTemplates() {
 /** 편집 시작 때마다 서버에서 읽는다. 단건 API가 없어 목록에서 해당 ID를 찾는다. */
 export function useNotificationTemplateForEdit(id?: number) {
   return useQuery({
-    queryKey: ['notification-template-editor', id],
+    queryKey: notificationTemplateKeys.editor(id),
     queryFn: async ({ signal }) => {
       const list = await fetchNotificationTemplates({ signal });
       return list.find((template) => template.id === id) ?? null;
@@ -59,7 +64,6 @@ export function useInvalidateTemplates() {
   };
 }
 
-// TODO(api): POST·PUT·DELETE /api/admin/notification-templates — 백엔드 구현 전이라 계약은 기획 PRD 의 API 표 기준이다.
 export function useCreateNotificationTemplate() {
   const invalidate = useInvalidateTemplates();
   return useMutation({
