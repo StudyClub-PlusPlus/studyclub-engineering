@@ -42,7 +42,7 @@ Google 콜백의 발신 대상은 자기 출처, 운영·stage 백오피스, 로
 - core-front 가입·닉네임 확인은 `lib/http.ts`로 백엔드를 직접 호출하며 `{ refreshOnUnauthorized: true }` 옵션으로 401이면 refresh 후 한 번 재시도한다.
 - **두 앱 모두 기본 `http()` 호출은 401 후 자동 갱신하지 않는다.** core-front에서 위 옵션을 지정한 요청만 한 번 갱신·재시도한다. 백오피스에는 refresh Route Handler도 없다. 라우트 존재만으로 자동 갱신이 된다고 보지 않는다.
 - core-front의 QueryCache는 조회 401에서 UI 세션을 비우며 공개 화면을 강제로 이동시키지 않는다.
-- 백오피스의 QueryCache·MutationCache는 401에서 세션·캐시를 비우고 `/login?next=...`로 이동한다.
+- 백오피스의 QueryCache·MutationCache는 401에서 `logout()`으로 세션·캐시와 httpOnly 쿠키를 정리한 뒤 `/login?next=...`로 이동한다. 동시 401은 한 번만 처리하며, 로그아웃 요청은 최대 10초 기다린다. 정리 실패·시간 초과에도 로그인 페이지를 열어 재인증할 수 있다.
 - 두 앱의 `logout()`은 UI 세션을 지우고 `POST /api/auth/logout`으로 httpOnly 쿠키를 삭제한다.
 
 ## 미들웨어
@@ -52,7 +52,7 @@ Google 콜백의 발신 대상은 자기 출처, 운영·stage 백오피스, 로
 | 앱 | 현재 처리 |
 |---|---|
 | core-front | 로케일 없는 경로에 기본 로케일 추가. `/{locale}/my` 하위·온보딩은 쿠키 없으면 로케일 로그인으로 이동하며 `next`에 경로와 쿼리를 보존 |
-| back-office-front | API·정적 파일 외 화면을 게이트. 쿠키 없으면 `/login?next=...`, 쿠키가 있는 상태의 `/login`은 `/`로 이동 |
+| back-office-front | API·정적 파일 외 화면을 게이트. 쿠키 없으면 `/login?next=...`. `/login`은 쿠키 존재와 무관하게 열어 인증 실패 후 무한 이동을 막는다 |
 
 백오피스의 개발 우회는 `NODE_ENV=development`와 `BO_DEV_BYPASS_AUTH=1`이 동시에 필요하다. 실제 API 권한을 부여하는 기능은 아니다. 카탈로그는 우회를 끄고 테스트 쿠키·고정 응답으로 실행한다.
 

@@ -79,9 +79,13 @@ export function clearSession(): void {
 /** 로그아웃 — localStorage 유저 제거 + 서버 라우트로 httpOnly 쿠키 제거. */
 export async function logout(): Promise<void> {
   clearSession();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch('/api/auth/logout', { method: 'POST', signal: controller.signal });
   } catch {
-    // 네트워크 실패해도 클라이언트 세션은 이미 지움
+    // 네트워크 실패·시간 초과에도 클라이언트 세션은 이미 지움. 로그인 화면에서 다시 인증할 수 있다.
+  } finally {
+    clearTimeout(timeout);
   }
 }
