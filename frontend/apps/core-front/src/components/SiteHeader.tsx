@@ -33,7 +33,7 @@ export function SiteHeader({
         <Link href={`/${locale}`} className='flex shrink-0 items-center gap-2 type-title-md'>
           <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
           <span>
-            Study<span className='text-[#FF805C]'>Club</span>
+            Study<span className='text-logo-accent'>Club</span>
           </span>
         </Link>
 
