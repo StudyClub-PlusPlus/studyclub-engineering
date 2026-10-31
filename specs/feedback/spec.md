@@ -3,7 +3,7 @@
 > ERD: [FEEDBACK](../../docs/erd/FEEDBACK.md) (신규) · [FEEDBACK_IMAGE](../../docs/erd/FEEDBACK_IMAGE.md) (신규) · [STORAGE_OBJECT](../../docs/erd/STORAGE_OBJECT.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
 > 생성일: 2026-10-25
 > 갱신: 2026-10-26 — PR #341 리뷰 반영. 플로팅 버튼 없음 · 상태는 회신과 묶는다 · `DELETED_AT` 없음 · 회신 알림은 후속 · rate limit 60초 1건 + 24시간 20건 · GIF 제외 · 이미지는 공개 폴더로 시작 · 탈퇴 때 첨부 이미지 파기 · 온보딩 필수 유지 ([결정 기록](#결정-기록))
-> 상태: 구현중 — `feat/feedback-impl` (마이그레이션 `V41__feedback.sql`)
+> 상태: 구현중 — `feat/feedback-impl` (마이그레이션 `V47__feedback.sql`)
 >
 > Story PRD:
 > - [크루는 캡틴에게 문의/오류신고를 제출할 수 있다](../../01-planning/stories/crew-submit-feedback/PRD.md)
