@@ -21,8 +21,11 @@ type ApiStudy = {
   recruitmentStartAt: string | null;
   recruitDeadlineAt: string | null;
   startAt: string | null;
-  timezone: string | null;
+  /** 운영자가 고른 값 그대로. null = 미정 */
+  timezone: 'KST' | 'PST' | 'BOTH' | null;
   hasApplicationForm: boolean;
+  /** 등록한 캡틴 닉네임. 기록이 없으면 null */
+  authorNickname: string | null;
 };
 
 type ApiPage = {
@@ -45,12 +48,6 @@ function mapStatus(status: StudyLifecycleStatus): StudyStatus {
   return 'recruiting';
 }
 
-const TIMEZONE_DISPLAY: Record<string, string> = {
-  KST: 'KST',
-  PST: 'PST',
-  BOTH: '동시 진행(KST·PST)',
-};
-
 function mapToStudy(api: ApiStudy): Study {
   const category = CATEGORY_DISPLAY[api.category] ?? api.category;
   const lifecycleStatus = mapLifecycleStatus(api.status);
@@ -71,11 +68,12 @@ function mapToStudy(api: ApiStudy): Study {
       kind: api.studyKind === 'CLUB' ? 'club' : 'study',
     },
     category,
-    schedule: api.timezone ? { ko: TIMEZONE_DISPLAY[api.timezone] ?? api.timezone, en: api.timezone } : undefined,
+    timezone: api.timezone === 'BOTH' ? 'both' : (api.timezone ?? undefined),
     date: api.startAt?.slice(0, 10),
     published: lifecycleStatus !== 'DRAFT',
     applicantCount: api.currentApplicants,
     hasApplicationForm: api.hasApplicationForm,
+    authorNickname: api.authorNickname ?? undefined,
     seats:
       api.recruitmentCapacity === null ? undefined : { total: api.recruitmentCapacity, taken: api.currentApplicants },
     recruitment: {

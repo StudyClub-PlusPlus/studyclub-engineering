@@ -278,6 +278,33 @@ export const adminStudiesHandlers = mockClient.createHandlerGroup('/api/admin/st
       { label: '서버 오류', status: 500, response: { errorMessage: '삭제에 실패했습니다.' } },
     ],
   },
+  // 공개(= 모집 시작) · 공개 취소 — 실제 서버는 204. mock 은 목록 상태를 바꾸지 않는다
+  {
+    method: 'POST',
+    path: '/:id/publish',
+    presets: [
+      { label: '성공', status: 204, response: null },
+      {
+        label: '신청 폼 없음',
+        status: 409,
+        response: { errorCode: 'APPLICATION_FORM_REQUIRED', errorMessage: '신청 폼을 먼저 연결하세요.' },
+      },
+      { label: '서버 오류', status: 500, response: { errorMessage: '공개하지 못했습니다.' } },
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/:id/unpublish',
+    presets: [
+      { label: '성공', status: 204, response: null },
+      {
+        label: '공개 중 아님',
+        status: 409,
+        response: { errorCode: 'CONFLICT', errorMessage: '공개 중인 스터디만 공개 취소할 수 있습니다.' },
+      },
+      { label: '서버 오류', status: 500, response: { errorMessage: '공개를 취소하지 못했습니다.' } },
+    ],
+  },
 ]);
 
 export const adminStudyProgramsHandlers = mockClient.createHandlerGroup(

@@ -56,18 +56,10 @@ function formatInline(text: string, keyPrefix: string): ReactNode[] {
 }
 
 /**
- * `keepBlankLines` — 빈 줄을 빈 줄 그대로 남긴다(`<br>` 한 줄). 빈 줄로 문단을 나눈 글(스터디 소개)이
- * `whitespace-pre-line` 으로 그리던 때처럼 보이게 한다. 신청 폼 설명은 지금처럼 버린다.
+ * 운영자가 쓴 마크다운 — 스터디 소개 · 신청 폼 설명 · 질문 설명. 줄마다 한 덩이로 그린다.
+ * 빈 줄은 빈 줄 그대로 남긴다(`<br>` 한 줄) — 빈 줄로 문단을 나눈 글이 붙어 보이지 않게.
  */
-export function MarkdownLite({
-  text,
-  className,
-  keepBlankLines = false,
-}: {
-  text: string;
-  className?: string;
-  keepBlankLines?: boolean;
-}) {
+export function MarkdownLite({ text, className }: { text: string; className?: string }) {
   const HEADER_CLASS: Record<number, string> = {
     1: 'type-title-md',
     2: 'type-title-md',
@@ -142,7 +134,7 @@ export function MarkdownLite({
     }
     flushList(`list-${idx}`);
     if (line.trim() === '') {
-      if (keepBlankLines) blocks.push(<br key={`br-${idx}`} />);
+      blocks.push(<br key={`br-${idx}`} />);
       return;
     }
     blocks.push(<p key={`p-${idx}`}>{formatInline(line, `p-${idx}`)}</p>);

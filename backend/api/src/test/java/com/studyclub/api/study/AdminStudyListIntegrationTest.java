@@ -96,8 +96,9 @@ class AdminStudyListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 응답에 제목·상태·카테고리·종류·모집정원이 조립된다")
+    @DisplayName("성공 - 응답에 제목·상태·카테고리·종류·모집정원·작성자가 조립된다. 시간대는 고른 값 그대로(없으면 null)")
     void responseFieldsAreAssembled() {
+        jdbcTemplate.update("UPDATE STUDY SET CREATED_BY = ? WHERE ID = ?", ADMIN_ID, STUDY_ID);
         var response =
                 rest.exchange(
                         "/api/admin/studies",
@@ -115,9 +116,13 @@ class AdminStudyListIntegrationTest {
                 .containsEntry("recruitmentCapacity", 20)
                 .containsEntry("hasApplicationForm", true)
                 .containsKeys("recruitmentStartAt", "recruitDeadlineAt")
+                .containsEntry("authorNickname", "studylist_" + ADMIN_ID)
+                .containsEntry("timezone", null)
                 .doesNotContainKey("leaderNickname");
 
         Map<String, Object> draft = itemById(response.getBody(), DRAFT_STUDY_ID);
+        // 작성자가 기록되지 않은 스터디 — 화면은 「—」
+        assertThat(draft).containsEntry("authorNickname", null);
         assertThat(draft).containsEntry("hasApplicationForm", false);
     }
 

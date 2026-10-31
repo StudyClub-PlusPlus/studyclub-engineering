@@ -6,6 +6,7 @@ import { notFound, useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
+import { useStudiesListHref } from '@/features/studies/list-return';
 import { useStudyDetail } from '@/features/studies/queries';
 
 export default function StudyApplicantsPage() {
@@ -13,11 +14,12 @@ export default function StudyApplicantsPage() {
   const studyId = /^\d+$/.test(id) ? Number(id) : NaN;
   if (!Number.isSafeInteger(studyId) || studyId <= 0) notFound();
   const study = useStudyDetail(studyId);
+  const listHref = useStudiesListHref();
 
   return (
     <div>
       <Link
-        href='/studies'
+        href={listHref}
         className='inline-flex items-center gap-1.5 type-label-lg text-brand hover:underline'
       >
         <ArrowLeft size={15} aria-hidden /> 스터디 관리

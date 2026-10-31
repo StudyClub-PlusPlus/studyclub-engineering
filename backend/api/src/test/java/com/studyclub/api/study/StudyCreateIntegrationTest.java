@@ -13,6 +13,7 @@ import com.studyclub.domain.study.StudyRepository;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +24,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -77,6 +79,8 @@ class StudyCreateIntegrationTest {
         var recruitment = recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId);
         assertThat(recruitment).isPresent();
         assertThat(recruitment.get().getRecruitDeadlineAt()).isNull();
+        // 모집 시작 시각은 공개할 때 채운다 — 등록 직후엔 비어 있다
+        assertThat(recruitment.get().getStartAt()).isNull();
 
         assertThat(
                         jdbcTemplate.queryForList(
@@ -84,6 +88,49 @@ class StudyCreateIntegrationTest {
                                 String.class,
                                 studyId))
                 .containsExactly("기본반");
+    }
+
+    @Test
+    @DisplayName("성공 - 등록 직후(공개 전)에는 신청 폼을 저장할 수 있다")
+    void applicationFormIsEditableRightAfterCreate() {
+        var created =
+                rest.postForEntity(
+                        "/api/admin/studies",
+                        authenticated(
+                                ADMIN_ID,
+                                Map.of(
+                                        "title",
+                                        "폼 먼저",
+                                        "oneLineSummary",
+                                        "소개",
+                                        "category",
+                                        "DATA")),
+                        Void.class);
+        String path = created.getHeaders().getLocation().getPath();
+
+        Map<String, Object> form =
+                Map.of(
+                        "title",
+                        "신청서",
+                        "questions",
+                        List.of(
+                                Map.of(
+                                        "id",
+                                        "motivation",
+                                        "label",
+                                        "지원 동기",
+                                        "type",
+                                        "TEXTAREA",
+                                        "required",
+                                        true)));
+        var response =
+                rest.exchange(
+                        path + "/application-form",
+                        HttpMethod.PUT,
+                        authenticated(ADMIN_ID, form),
+                        Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
@@ -126,6 +173,8 @@ class StudyCreateIntegrationTest {
         var recruitment = recruitmentRepository.findFirstByStudyIdOrderByIdDesc(studyId);
         assertThat(recruitment).isPresent();
         assertThat(recruitment.get().getRecruitDeadlineAt()).isNull();
+        // 모집 시작 시각은 공개할 때 채운다 — 등록 직후엔 비어 있다
+        assertThat(recruitment.get().getStartAt()).isNull();
     }
 
     @Test
