@@ -179,3 +179,144 @@ describe('FeedbackDialog — 전송', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });
+
+describe('FeedbackDialog — 첨부', () => {
+  type Reply = { ok: boolean; status: number; json: () => Promise<unknown> };
+  const uploaded = (fileId: number): Reply => ({
+    ok: true,
+    status: 201,
+    json: async () => ({ fileId, url: `https://cdn.test/${fileId}.png` }),
+  });
+  const uploadFailed: Reply = {
+    ok: false,
+    status: 400,
+    json: async () => ({ errorCode: 'INVALID_INPUT', errorMessage: '올릴 수 없는 파일입니다.' }),
+  };
+  const sendFailed: Reply = {
+    ok: false,
+    status: 500,
+    json: async () => ({ errorCode: 'INTERNAL_ERROR', errorMessage: 'boom' }),
+  };
+  const sent: Reply = { ok: true, status: 201, json: async () => created };
+
+  /** 파일 이름마다 응답을 손으로 푼다 — 업로드가 끝나는 순서를 테스트가 정한다 */
+  function stubServer(sendReplies: Reply[]) {
+    const pending = new Map<string, (reply: Reply) => void>();
+    const submits: { imageFileIds: number[] }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init: RequestInit) => {
+        if (url.endsWith('/api/uploads/images')) {
+          const { name } = (init.body as FormData).get('file') as File;
+          return new Promise<Reply>((resolve) => pending.set(name, resolve));
+        }
+        submits.push(JSON.parse(init.body as string));
+        return Promise.resolve(sendReplies.shift());
+      }),
+    );
+    return { pending, submits };
+  }
+
+  const png = (name: string) => new File(['x'], name, { type: 'image/png' });
+  const input = () => screen.getByTestId('feedback-image-input') as HTMLInputElement;
+  const finishUpload = async (pending: Map<string, (reply: Reply) => void>, name: string, reply: Reply) => {
+    await waitFor(() => expect(pending.has(name)).toBe(true));
+    pending.get(name)!(reply);
+  };
+  const sendEnabled = () => waitFor(() => expect(screen.getByRole('button', { name: '전송' })).toBeEnabled());
+
+  /** 오류 알림의 「다시 시도」 — 실제 알림처럼 실패 당시 만들어진 그 요소를 그대로 그려 누른다 */
+  async function clickToastRetry(user: ReturnType<typeof userEvent.setup>) {
+    const content = vi.mocked(toast.error).mock.calls.at(-1)![0] as ReactNode;
+    const { getByRole, unmount } = render(<>{content}</>);
+    await user.click(getByRole('button', { name: '다시 시도' }));
+    unmount();
+  }
+
+  beforeEach(() => {
+    let n = 0;
+    URL.createObjectURL = vi.fn(() => `blob:preview-${n++}`);
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  it('다시 시도는 지금 화면의 첨부를 보낸다 — 실패 뒤 사진을 바꾸면 바뀐 사진이 간다', async () => {
+    const { pending, submits } = stubServer([sendFailed, sent]);
+    const { user, onClose } = setup();
+    await fillValid(user);
+
+    await user.upload(input(), png('a.png'));
+    await finishUpload(pending, 'a.png', uploaded(11));
+    await sendEnabled();
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(submits[0].imageFileIds).toEqual([11]);
+
+    await user.click(screen.getByRole('button', { name: '첨부 이미지 1 빼기' }));
+    await user.upload(input(), png('b.png'));
+    await finishUpload(pending, 'b.png', uploaded(22));
+    await sendEnabled();
+
+    await clickToastRetry(user);
+
+    await waitFor(() => expect(submits).toHaveLength(2));
+    expect(submits[1].imageFileIds).toEqual([22]);
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it('새 사진이 올라가는 중이면 다시 시도가 보내지 않는다 — 다 올라간 뒤 누르면 함께 간다', async () => {
+    const { pending, submits } = stubServer([sendFailed, sent]);
+    const { user } = setup();
+    await fillValid(user);
+
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    await user.upload(input(), png('b.png'));
+
+    await clickToastRetry(user);
+    expect(submits).toHaveLength(1);
+
+    await finishUpload(pending, 'b.png', uploaded(22));
+    await sendEnabled();
+    await clickToastRetry(user);
+
+    await waitFor(() => expect(submits).toHaveLength(2));
+    expect(submits[1].imageFileIds).toEqual([22]);
+  });
+
+  it('올리는 중에 뺀 사진이 뒤늦게 실패해도 장수가 틀어지지 않는다 — 3장을 넘지 않고 오류도 띄우지 않는다', async () => {
+    const { pending, submits } = stubServer([sent]);
+    const { user } = setup();
+    await fillValid(user);
+
+    await user.upload(input(), [png('a.png'), png('b.png'), png('c.png')]);
+    await user.click(screen.getByRole('button', { name: '첨부 이미지 1 빼기' }));
+    await finishUpload(pending, 'a.png', uploadFailed);
+    await finishUpload(pending, 'b.png', uploaded(22));
+    await finishUpload(pending, 'c.png', uploaded(33));
+    await waitFor(() => expect(screen.getByText('2/3')).toBeInTheDocument());
+    expect(screen.queryByText('올릴 수 없는 파일입니다.')).not.toBeInTheDocument();
+
+    // 한 자리만 남았으니 둘 중 하나만 받는다
+    await user.upload(input(), [png('d.png'), png('e.png')]);
+    expect(await screen.findByText('이미지는 최대 3장까지 첨부할 수 있습니다.')).toBeInTheDocument();
+    expect(screen.getByText('3/3')).toBeInTheDocument();
+    await finishUpload(pending, 'd.png', uploaded(44));
+    expect(pending.has('e.png')).toBe(false);
+    await sendEnabled();
+
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    await waitFor(() => expect(submits).toHaveLength(1));
+    expect(submits[0].imageFileIds).toEqual([22, 33, 44]);
+  });
+
+  it('아직 첨부에 남아 있는 사진이 실패하면 빼고 사유를 띄운다', async () => {
+    const { pending } = stubServer([]);
+    const { user } = setup();
+
+    await user.upload(input(), png('a.png'));
+    await finishUpload(pending, 'a.png', uploadFailed);
+
+    expect(await screen.findByText('올릴 수 없는 파일입니다.')).toBeInTheDocument();
+    expect(screen.getByText('0/3')).toBeInTheDocument();
+  });
+});
