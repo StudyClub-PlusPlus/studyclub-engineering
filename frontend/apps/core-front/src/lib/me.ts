@@ -128,54 +128,27 @@ export function getRegion(): MemberRegion {
   return regionOfTimeZone(getUser()?.timeZone);
 }
 
-/* ── 데모 데이터 ─────────────────────────────────────────────────────────── */
+/* ── 예전 데모 데이터 ──────────────────────────────────────────────────── */
 
 /**
- * 프로토타입 확인용 초기 데이터. 빈 화면만 보면 목록 레이아웃을 판단할 수 없어서,
- * 미리보기로 들어올 때 채운다. 버전이 같으면 다시 채우지 않으므로 직접 신청·취소한 결과는 남는다.
+ * 예전 개발 서버가 브라우저에 채운 더미 신청·관심(`sc_demo_seed` 표시). 실제 스터디 id 에 붙어 있어서
+ * MSW 를 꺼도 「신청함」·하트·마이페이지 목록이 더미로 보였다. 표시가 남은 브라우저에서 한 번 지운다.
  */
-const SEED_KEY = 'sc_demo_seed';
-/** 더미 내용을 바꾸면 올린다 — 이미 한 번 열어본 브라우저에도 새 더미가 들어간다. */
-const SEED_VERSION = 7;
+const LEGACY_SEED_KEY = 'sc_demo_seed';
 
-export function seedDemoData() {
-  if (readJSON<number>(SEED_KEY, 0) >= SEED_VERSION) return;
-  writeJSON(SEED_KEY, SEED_VERSION);
-  {
-    writeJSON(APPLICATION_KEY, [
-      // 참여중 (ongoing → active)
-      { studyId: '11', appliedAt: '2026-07-28', status: 'accepted', region: 'KR' }, // early-bird-g3 (네비게이터)
-      { studyId: '18', appliedAt: '2026-07-20', status: 'accepted', region: 'KR' }, // claude-code-source-study
-      // 시작전 (recruiting → upcoming)
-      { studyId: '1',  appliedAt: '2026-08-11', status: 'accepted', region: 'KR' }, // ai-paper-study (캡틴)
-      { studyId: '3',  appliedAt: '2026-09-01', status: 'accepted', region: 'KR' }, // python-pandas-ml-coding
-      // 참여 종료 — 참여 중단 (ongoing이지만 withdrawn → ended)
-      { studyId: '19', appliedAt: '2026-07-15', status: 'accepted', region: 'KR' }, // system-design-interview-ongoing
-      // 참여 종료 — 완주 (closed → completed)
-      { studyId: '28', appliedAt: '2026-02-03', status: 'accepted', region: 'KR' }, // leetcode150-2026
-      { studyId: '24', appliedAt: '2025-11-12', status: 'accepted', region: 'KR' }, // sql-for-data-analysis
-      { studyId: '22', appliedAt: '2026-01-10', status: 'accepted', region: 'KR' }, // business-articles
-      { studyId: '23', appliedAt: '2026-03-05', status: 'accepted', region: 'KR' }, // ai-engineering-book-club
-      { studyId: '25', appliedAt: '2025-10-01', status: 'accepted', region: 'KR' }, // db1-db2
-      { studyId: '26', appliedAt: '2025-09-12', status: 'accepted', region: 'KR' }, // aws-cpc
-      // 승인 대기 (pending — 마이페이지에서 보임, 내 스터디 탭에는 안 나옴)
-      {
-        studyId: '2',
-        appliedAt: '2026-08-14',
-        status: 'pending',
-        region: 'KR',
-        cells: ['mon-evening', 'wed-evening', 'sun-afternoon'],
-        motivation: 'PyTorch로 직접 구현해보고 싶어 신청합니다.',
-      },
-    ] satisfies Application[]);
+export function dropLegacyDemoSeed() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (localStorage.getItem(LEGACY_SEED_KEY) === null) return;
+    for (const key of [APPLICATION_KEY, BOOKMARK_KEY, LEGACY_SEED_KEY]) localStorage.removeItem(key);
+  } catch {
+    // 저장소 접근 실패해도 화면 동작은 막지 않는다
   }
-  writeJSON(BOOKMARK_KEY, ['2', '7']); // pytorch-ai-coding, system-design-interview
 }
 
 /**
  * 회원 탈퇴 — 이 브라우저에 남은 회원별 데이터(관심·신청·출석·옛 디스코드 표시)를 지운다.
- * 로그인 세션(sc_user)은 `logout()` 이 지운다. 데모 시드 키(SEED_KEY)는 일부러 남긴다 — 지우면 다음
- * 미리보기 진입 때 더미가 다시 채워져 탈퇴한 사람의 데이터처럼 보인다.
+ * 로그인 세션(sc_user)은 `logout()` 이 지운다.
  */
 export function clearMyLocalData() {
   if (typeof window === 'undefined') return;
@@ -209,9 +182,7 @@ type MyStudyItem = {
  * 단순히 빈 배열을 돌려주면 이 둘이 똑같아 보여서, 조회가 실패했는데도 "맡은 스터디 없음"으로
  * 오인해 경고 없이 탈퇴가 진행될 수 있다(PR 리뷰 지적).
  */
-export type NavigatorStudiesResult =
-  | { status: 'ok'; studies: ActiveNavigatorStudy[] }
-  | { status: 'unknown' };
+export type NavigatorStudiesResult = { status: 'ok'; studies: ActiveNavigatorStudy[] } | { status: 'unknown' };
 
 /**
  * "맡은 진행 중인 스터디" = 네비게이터(LEADER)이고 relation 이 ONGOING(회차가 시작돼

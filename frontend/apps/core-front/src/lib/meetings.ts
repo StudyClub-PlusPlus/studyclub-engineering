@@ -9,10 +9,7 @@ import { formattingZone } from '@/lib/time-zone-rules';
  * 네비게이터가 관리하는 회차 (ERD `STUDY_MEETING`).
  *
  * 회차는 스터디가 아니라 **분반(STUDY_GROUP)** 에 붙는다. 네비게이터 권한도 맡은 분반 안에서만 선다.
- * 추가·삭제는 브라우저에만 남는다 — 저장할 서버가 아직 없다.
- *
- * TODO(api): POST   /api/studies/{id}/groups/{groupId}/meetings — { scheduledAt[](UTC), title? }
- *            DELETE /api/studies/{id}/groups/{groupId}/meetings/{meetingId}
+ * 회차 저장·삭제는 서버 API 가 맡는다 (`lib/joined-detail-api.ts`). 여기는 화면이 쓰는 타입과 시각 계산만 둔다.
  */
 
 export type ProtoMeeting = StudyMeeting & {
@@ -39,83 +36,11 @@ export const MANAGE_ROLE_LABEL: Record<ManageRole, string> = { navigator: '네�
 export type ScheduleRole = ManageRole | 'crew';
 export const SCHEDULE_ROLE_LABEL: Record<ScheduleRole, string> = { ...MANAGE_ROLE_LABEL, crew: '크루' };
 
-const DEFAULT_ZONE = 'Asia/Seoul';
-
 export const TITLE_MAX = 50;
 export const REPEAT_SPAN_DAYS = 31;
 
 export function maxUntil(date: string): string {
   return date ? addDaysYmd(date, REPEAT_SPAN_DAYS - 1) : '';
-}
-
-/* ── 저장소 ─────────────────────────────────────────────────────────────── */
-
-const ADDED_KEY = 'sc_added_meetings';
-const DELETED_KEY = 'sc_deleted_meetings';
-const EDITED_KEY = 'sc_edited_meetings';
-
-type Edit = {
-  scheduledAt?: string;
-  date?: string;
-  time?: string;
-  title?: string;
-  presenter1?: string;
-  presenter2?: string;
-};
-
-type Stored = Edit & { id: string; seriesId?: string };
-
-function readJSON<T>(key: string): Record<string, T[]> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as Record<string, T[]>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeJSON(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // 저장 실패해도 화면 동작은 막지 않는다
-  }
-}
-
-export function addMeetings(
-  studyId: string,
-  input: { dates: string[]; time: string; timeZone: string; title?: string; scheduledAts?: string[] },
-): void {
-  const store = readJSON<Stored>(ADDED_KEY);
-  const title = input.title?.trim() || undefined;
-  const stamp = Date.now();
-  const seriesId = input.dates.length > 1 ? `r${stamp}` : undefined;
-  const rows: Stored[] = input.dates.map((date, i) => ({
-    id: `${studyId}-a${stamp}-${i}`,
-    scheduledAt: input.scheduledAts?.[i] ?? zonedInstant(date, input.time, input.timeZone).toISOString(),
-    title,
-    seriesId,
-  }));
-  store[studyId] = [...(store[studyId] ?? []), ...rows];
-  writeJSON(ADDED_KEY, store);
-}
-
-function readEdits(): Record<string, Record<string, Edit>> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = localStorage.getItem(EDITED_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, Record<string, Edit>>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function withWall<T extends { scheduledAt?: string; date?: string; time?: string }>(row: T, timeZone: string): T {
-  const scheduledAt =
-    row.scheduledAt ?? (row.date && row.time ? zonedInstant(row.date, row.time, timeZone).toISOString() : undefined);
-  if (!scheduledAt) return row;
-  return { ...row, scheduledAt, ...wallParts(new Date(scheduledAt), timeZone) };
 }
 
 /* ── 킥오프 ─────────────────────────────────────────────────────────────── */
@@ -131,32 +56,6 @@ export function isKickoff(m: StudyMeeting): boolean {
 
 export function meetingLabel(m: StudyMeeting): string {
   return isKickoff(m) ? '킥오프' : `${m.no}회차`;
-}
-
-function kickoffOf(base: StudyMeeting[], studyId: string): ProtoMeeting | undefined {
-  const first = [...base].sort((a, b) => a.date.localeCompare(b.date))[0];
-  if (!first) return undefined;
-  return { id: `${studyId}-kickoff`, no: 0, date: addDaysYmd(first.date, -7), kind: 'kickoff', title: '킥오프' };
-}
-
-const wallKey = (m: StudyMeeting) => `${m.date} ${(m as ProtoMeeting).time ?? ''}`;
-
-export function withAdded(base: StudyMeeting[], studyId: string, zone = DEFAULT_ZONE): ProtoMeeting[] {
-  const added = (readJSON<Stored>(ADDED_KEY)[studyId] ?? []).map(
-    (m) => ({ ...withWall(m, zone), no: 0 }) as ProtoMeeting,
-  );
-  const deleted = new Set(readJSON<string>(DELETED_KEY)[studyId] ?? []);
-  const edits = readEdits()[studyId] ?? {};
-  const kickoff = kickoffOf(base, studyId);
-  const kept: ProtoMeeting[] = [...(kickoff ? [kickoff] : []), ...base]
-    .filter((m) => !deleted.has(m.id))
-    .map((m) => (edits[m.id] ? ({ ...m, ...withWall(edits[m.id], zone) } as ProtoMeeting) : m));
-  const all = [...kept, ...added];
-  const regular = all
-    .filter((m) => !isKickoff(m))
-    .sort((a, b) => wallKey(a).localeCompare(wallKey(b)))
-    .map((m, i) => ({ ...m, no: i + 1 }));
-  return [...all.filter(isKickoff).map((m) => ({ ...m, no: 0 })), ...regular];
 }
 
 /* ── 날짜·시각 ───────────────────────────────────────────────────────────── */
