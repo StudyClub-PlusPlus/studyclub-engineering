@@ -93,8 +93,8 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
     int claimExpiredPending(@Param("before") Instant before, @Param("now") Instant now);
 
     /**
-     * 탈퇴 — 그 계정의 프로필 사진과 연결 안 된 파일을 지우기로 찜한다. 다른 자원에 붙은 파일(스터디 썸네일 등)은 그 자원의 것이라 남긴다 — 운영자가 탈퇴해도 그가
-     * 올린 썸네일은 깨지지 않아야 한다. 이미 {@code DELETING} 인 행은 그대로.
+     * 탈퇴 — 그 계정의 프로필 사진 · 문의 첨부 이미지와 연결 안 된 파일을 지우기로 찜한다. 다른 자원에 붙은 파일(스터디 썸네일 등)은 그 자원의 것이라 남긴다 —
+     * 운영자가 탈퇴해도 그가 올린 썸네일은 깨지지 않아야 한다. 이미 {@code DELETING} 인 행은 그대로.
      */
     @Modifying(flushAutomatically = true)
     @Query(
@@ -105,7 +105,8 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
             WHERE s.accountId = :accountId
               AND (s.status = com.studyclub.domain.storage.StorageObjectStatus.PENDING
                    OR (s.status = com.studyclub.domain.storage.StorageObjectStatus.ATTACHED
-                       AND s.purpose = com.studyclub.domain.storage.StoragePurpose.PROFILE))
+                       AND s.purpose IN (com.studyclub.domain.storage.StoragePurpose.PROFILE,
+                                         com.studyclub.domain.storage.StoragePurpose.FEEDBACK)))
             """)
     int markDeletingByAccountId(@Param("accountId") Long accountId, @Param("now") Instant now);
 

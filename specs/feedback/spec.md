@@ -1,9 +1,9 @@
 # 문의·오류 신고 API Spec — 크루 제출 · 내 문의 · 운영 콘솔 처리
 
-> ERD: FEEDBACK · FEEDBACK_IMAGE (신규 — [데이터 모델](#데이터-모델). `docs/erd/` 문서는 구현 PR 에서 더한다) · [STORAGE_OBJECT](../../docs/erd/STORAGE_OBJECT.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
+> ERD: [FEEDBACK](../../docs/erd/FEEDBACK.md) (신규) · [FEEDBACK_IMAGE](../../docs/erd/FEEDBACK_IMAGE.md) (신규) · [STORAGE_OBJECT](../../docs/erd/STORAGE_OBJECT.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
 > 생성일: 2026-10-25
 > 갱신: 2026-10-26 — PR #341 리뷰 반영. 플로팅 버튼 없음 · 상태는 회신과 묶는다 · `DELETED_AT` 없음 · 회신 알림은 후속 · rate limit 60초 1건 + 24시간 20건 · GIF 제외 · 이미지는 공개 폴더로 시작 · 탈퇴 때 첨부 이미지 파기 · 온보딩 필수 유지 ([결정 기록](#결정-기록))
-> 상태: 스펙작성중 — 미확정 없음. 리뷰 승인 뒤 `스펙확정`
+> 상태: 구현중 — `feat/feedback-impl` (마이그레이션 `V41__feedback.sql`)
 >
 > Story PRD:
 > - [크루는 캡틴에게 문의/오류신고를 제출할 수 있다](../../01-planning/stories/crew-submit-feedback/PRD.md)
@@ -17,12 +17,12 @@
 
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
-| POST | /api/feedbacks | 문의·오류 신고 제출 — 이미지 번호를 잇고, 계정 기준 rate limit | O (`@RequireOnboarding`) | 스펙작성중 |
-| GET | /api/me/feedbacks | 내 문의 목록 — 본인 것만, 접수 시각 내림차순, 페이지 | O (`@RequireOnboarding`) | 스펙작성중 |
-| GET | /api/me/feedbacks/{feedbackId} | 내 문의 상세 — 본인 것만, 회신 포함 | O (`@RequireOnboarding`) | 스펙작성중 |
-| GET | /api/admin/feedbacks | 운영 목록 — 유형·상태·검색·페이지, 걸러진 뒤 총 건수 | O (`@RequireAdmin`) | 스펙작성중 |
-| GET | /api/admin/feedbacks/{feedbackId} | 운영 상세 — 제출 환경·회신·캡틴 전용 메모 포함 | O (`@RequireAdmin`) | 스펙작성중 |
-| PATCH | /api/admin/feedbacks/{feedbackId} | 상태 · 회신 · 캡틴 전용 메모 중 하나를 바꾼다. 첫 회신은 상태를 완료로 | O (`@RequireAdmin`) | 스펙작성중 |
+| POST | /api/feedbacks | 문의·오류 신고 제출 — 이미지 번호를 잇고, 계정 기준 rate limit | O (`@RequireOnboarding`) | 구현중 |
+| GET | /api/me/feedbacks | 내 문의 목록 — 본인 것만, 접수 시각 내림차순, 페이지 | O (`@RequireOnboarding`) | 구현중 |
+| GET | /api/me/feedbacks/{feedbackId} | 내 문의 상세 — 본인 것만, 회신 포함 | O (`@RequireOnboarding`) | 구현중 |
+| GET | /api/admin/feedbacks | 운영 목록 — 유형·상태·검색·페이지, 걸러진 뒤 총 건수 | O (`@RequireAdmin`) | 구현중 |
+| GET | /api/admin/feedbacks/{feedbackId} | 운영 상세 — 제출 환경·회신·캡틴 전용 메모 포함 | O (`@RequireAdmin`) | 구현중 |
+| PATCH | /api/admin/feedbacks/{feedbackId} | 상태 · 회신 · 캡틴 전용 메모 중 하나를 바꾼다. 첫 회신은 상태를 완료로 | O (`@RequireAdmin`) | 구현중 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -85,7 +85,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 
 [authz-guards](../authz-guards/spec.md) 대로 권한은 어노테이션으로만 건다. 서비스 안에서 권한 검사를 다시 하지 않는다.
 
-- `FeedbackController`(`/api/feedbacks`) · `MyFeedbackController`(`/api/me/feedbacks`) — 메서드에 `@RequireOnboarding`
+- `FeedbackController`(`/api/feedbacks` · `/api/me/feedbacks`, 크루 관객 하나) — 메서드에 `@RequireOnboarding`
 - `AdminFeedbackController`(`/api/admin/feedbacks`) — 클래스에 `@RequireAdmin`
 - 「본인 것만」은 권한이 아니라 **조회 조건**이다 — `WHERE ID = ? AND ACCOUNT_ID = 요청자`. 남의 것은 403 이 아니라 404 (있는지조차 알리지 않는다)
 
@@ -146,6 +146,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | STORAGE_OBJECT_ID | BIGINT | N | 연결한 업로드 행. ID 참조(FK 없음) — 탈퇴 때 이 행을 `DELETING` 으로 |
 | IMAGE_URL | VARCHAR(512) | N | 공개 주소 스냅샷 (`ACCOUNT.PROFILE_IMG_URL` 과 같은 방식) |
 | DISPLAY_ORDER | INT | N | 0부터. 요청 배열 순서 |
+| CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 
 - `UNIQUE(FEEDBACK_ID, DISPLAY_ORDER)`. 한 건에 최대 3행 — 엔티티가 지킨다
 - 인덱스 `idx_feedback_image_storage_object (STORAGE_OBJECT_ID)` — 탈퇴 때 지울 행을 찾는다
@@ -494,7 +495,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | items[].submitter | Object | N | 제출자. 늘 있다 (로그인해야 보낸다) | |
 | items[].submitter.nickname | String | Y | **null 이면 탈퇴** — 화면 「탈퇴한 사용자」 | ACCOUNT.NICKNAME (계산: `ACCOUNT_ID` 로 찾은 행이 없으면 null) |
 | items[].status | String | N | `NEW` \| `SEEN` \| `DONE` | FEEDBACK.STATUS |
-| items[].doneBy | Object | Y | 완료 처리자(첫 회신을 보낸 캡틴). **완료가 아니면 null** — 화면 「—」 | |
+| items[].doneBy | Object | Y | 완료 처리자(첫 회신을 보낸 캡틴). **완료가 아니면 null** — 화면 「-」 | |
 | items[].doneBy.nickname | String | Y | null 이면 그 캡틴이 탈퇴 — 화면 「탈퇴한 사용자」 | ACCOUNT.NICKNAME (`DONE_BY_ACCOUNT_ID`) |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면 「총 n건」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
@@ -572,7 +573,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | content | String | N | 평문 — 문자 그대로 출력 | FEEDBACK.CONTENT |
 | images | Array | N | 없으면 `[]` — 화면은 칸을 두지 않는다 | FEEDBACK_IMAGE (`DISPLAY_ORDER`) |
 | images[].url | String | N | | FEEDBACK_IMAGE.IMAGE_URL |
-| browser | String | Y | 「Chrome 141 · macOS」. 모르면 null — 화면 「—」 | FEEDBACK.BROWSER |
+| browser | String | Y | 「Chrome 141 · macOS」. 모르면 null — 화면 「-」 | FEEDBACK.BROWSER |
 | viewport | Object | Y | 화면이 안 보냈으면 null. 화면은 「390 × 844」 로 적는다 | |
 | viewport.width | Integer | N | | FEEDBACK.VIEWPORT_WIDTH |
 | viewport.height | Integer | N | | FEEDBACK.VIEWPORT_HEIGHT |
