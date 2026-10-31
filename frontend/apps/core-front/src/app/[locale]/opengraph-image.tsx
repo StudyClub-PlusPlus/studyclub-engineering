@@ -43,7 +43,7 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
         justifyContent: 'center',
         padding: '80px',
         background: '#0B1529',
-        color: '#ffffff',
+        color: 'white',
         fontFamily: 'sans-serif',
       }}
     >
