@@ -141,11 +141,12 @@ export function NoticesConsole() {
               <th>
                 <SortLabel label='제목' active={sort?.key === 'title' ? sort.dir : null} onChange={(d) => applySort('title', d)} />
               </th>
-              <th className='whitespace-nowrap'>작성자</th>
-              <th className='whitespace-nowrap'>
+              <th className='whitespace-nowrap text-center'>작성자</th>
+              {/* 제목만 왼쪽이다. 나머지는 값과 머리를 가운데로 맞춘다 — 날짜는 자릿수가 같아 가지런하다 */}
+              <th className='whitespace-nowrap text-center'>
                 <SortLabel label='게시일' active={sort?.key === 'postedAt' ? sort.dir : null} onChange={(d) => applySort('postedAt', d)} />
               </th>
-              <th className='whitespace-nowrap'>
+              <th className='whitespace-nowrap text-center'>
                 <SortLabel label='마지막 수정' active={sort?.key === 'updatedAt' ? sort.dir : null} onChange={(d) => applySort('updatedAt', d)} />
               </th>
             </tr>
@@ -162,9 +163,9 @@ export function NoticesConsole() {
                     <span className='truncate'>{n.title}</span>
                   </button>
                 </td>
-                <td data-anno='notice:4' className='whitespace-nowrap text-fg-secondary'>{n.author}</td>
-                <td className='tnum whitespace-nowrap text-fg-secondary'>{n.postedAt}</td>
-                <td className='tnum whitespace-nowrap text-fg-secondary'>{n.updatedAt}</td>
+                <td data-anno='notice:4' className='whitespace-nowrap text-center text-fg-secondary'>{n.author}</td>
+                <td className='tnum whitespace-nowrap text-center text-fg-secondary'>{n.postedAt}</td>
+                <td className='tnum whitespace-nowrap text-center text-fg-secondary'>{n.updatedAt}</td>
               </tr>
             ))}
             {pageRows.length === 0 && (

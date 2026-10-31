@@ -7,7 +7,7 @@ import { EVENT_TYPES } from '@console/components/EventForm';
 import { TableCard } from '@console/components/ui';
 import { tx, EVENT_TYPE_LABEL } from '@console/lib/l10n';
 import type { StudyclubEvent } from '@studyclub/mock';
-import { Badge } from '@studyclub/ui';
+import { Badge, Select, cx } from '@studyclub/ui';
 
 /**
  * 행사 관리 목록 — 스터디 목록과 같은 규칙.
@@ -43,19 +43,21 @@ function FilterSelect<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <select
+    <Select
+      size='sm'
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className={`h-9 rounded-control border bg-surface px-3 type-body-sm outline-none focus:border-brand ${
-        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg'
-      }`}
+      className={cx(
+        'h-9 w-auto shrink-0',
+        value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
+      )}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
