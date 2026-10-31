@@ -146,4 +146,6 @@ export async function linkDiscord(accountId: number, code: string): Promise<void
   getQueryClient().setQueryData<OnboardingAccount>(profileKeys.account(accountId), (prev) =>
     prev ? { ...prev, discordLinked: true } : prev,
   );
+  // 응답은 204 라 discordHandle 이 없다 — 계정 캐시를 버려 마이페이지가 @이름을 다시 받게 한다
+  await getQueryClient().invalidateQueries({ queryKey: profileKeys.account(accountId) });
 }
