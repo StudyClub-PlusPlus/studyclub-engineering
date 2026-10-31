@@ -104,7 +104,7 @@ export function ApplicationFormEditor({
 
   return (
     <form
-      className='mx-auto flex w-full max-w-2xl flex-col gap-3'
+      className='flex w-full flex-col gap-3'
       onSubmit={(event) => {
         void submit(event).catch(() => {});
       }}
@@ -272,7 +272,7 @@ export function ApplicationFormEditor({
                     <Button
                       type='button'
                       size='sm'
-                      variant='ghost'
+                      variant='tertiary'
                       leadingIcon={<Trash2 size={13} />}
                       onClick={(event) => {
                         event.stopPropagation();

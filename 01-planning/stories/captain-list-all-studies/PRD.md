@@ -144,7 +144,7 @@ erDiagram
     datetime START_AT "null이면 미정"
   }
   STUDY_RECRUITMENT {
-    datetime START_AT "등록/공개 시각. NOT NULL"
+    datetime START_AT "모집 시작 시각. 공개 때 채움. 공개 전 null"
     datetime RECRUIT_DEADLINE_AT
     int RECRUITMENT_CAPACITY "null이면 제한 없음"
   }
@@ -260,15 +260,15 @@ erDiagram
 
 ### 개발 범위
 
-> 2026-10-14 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
+> 2026-10-31 `beta` 기준. **지금 → 할 일**만 적는다. 다 끝나면 「할 일」이 모두 「없음」이 된다.
 > FE 「지금」은 실제 앱의 화면과 데이터 연결(API · mock)까지 본 값이다 — 완료 기준 하나하나의 동작은 따로 확인하지 않았다.
 > BE 「지금」은 스펙 엔드포인트 표의 상태 칸을 옮겨 적는다.
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front `/studies` (`StudiesTable`) | 있음 — 필터 · 「신청 폼 없는 것만」 · 정렬 · 페이지 · 위아래 가로 스크롤 | 작성자 열 (완료 기준 3) · 종류 칼럼·필터 빼기 · 「신청 폼 없는 것만」 토글 → 「신청 폼」 드롭다운(있음 · 없음) |
-| FE | 목록 데이터 | 사이트용 `GET /api/studies` 를 부른다 | `GET /api/admin/studies` 로 바꿀지 정한다 ([study 스펙](../../../specs/study/spec.md) 표의 메모) |
-| BE | `GET /api/admin/studies` | 구현완료 | 작성자(`CREATED_BY`) 닉네임을 응답에 넣는지 스펙에서 확인 |
+| FE | back-office-front `/studies` (`StudiesTable`) | 있음 — 검색 · 주제 · 상태 · 모집 · 공개 · 신청 폼(있음 · 없음) 필터 · 열 이름 정렬 · 작성자 열 · 페이지(「…」) · 위아래 가로 스크롤. 필터 · 정렬 · 페이지는 주소에 남는다 | 없음 |
+| FE | 목록 데이터 | `GET /api/admin/studies` — 서버가 처리할 수 있는 조건이면 20건씩, 아니면 전부 받아 화면이 거른다 | 없음 |
+| BE | `GET /api/admin/studies` | 구현완료 — `authorNickname` · 고른 그대로의 `timezone` 포함 | 없음 |
 
 · **데이터**
 

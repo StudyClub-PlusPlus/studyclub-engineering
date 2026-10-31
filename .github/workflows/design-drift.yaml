@@ -23,5 +23,5 @@ jobs:
       # import.meta.dirname 을 쓰므로 Node 20.11 이상.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: node scripts/check-component-drift.mjs --report

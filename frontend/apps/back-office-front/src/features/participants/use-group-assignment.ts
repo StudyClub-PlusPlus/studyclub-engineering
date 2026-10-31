@@ -7,6 +7,11 @@ import { participantKeys, useSaveGroupAssignments } from './queries';
 import type { Participant } from './types';
 import { blockHistoryNavigation } from '@/lib/history-guard';
 
+type Draft = Partial<Pick<Participant, 'groupId' | 'participantRole'>>;
+
+const fieldCount = (drafts: Record<number, Draft>) =>
+  Object.values(drafts).reduce((count, draft) => count + Object.keys(draft).length, 0);
+
 export function useGroupAssignment(
   studyId: number,
   participants: Participant[],
@@ -15,20 +20,20 @@ export function useGroupAssignment(
   const router = useRouter();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [pendingHistory, setPendingHistory] = useState<(() => void) | null>(null);
-  const [pendingChanges, setDrafts] = useState<Record<number, number>>({});
-  const drafts = Object.fromEntries(
-    Object.entries(pendingChanges).filter(([id, groupId]) => {
+  const [pendingChanges, setDrafts] = useState<Record<number, Draft>>({});
+  const drafts: Record<number, Draft> = Object.fromEntries(
+    Object.entries(pendingChanges).flatMap(([id, draft]) => {
       const participant = participants.find((p) => p.participantId === Number(id));
-      return (
-        participant &&
-        (participant.status === 'ACTIVE' || participant.status === 'PAUSED') &&
-        participant.groupId !== groupId
+      if (!participant || (participant.status !== 'ACTIVE' && participant.status !== 'PAUSED')) return [];
+      const changed = Object.fromEntries(
+        Object.entries(draft).filter(([key, value]) => participant[key as keyof Draft] !== value),
       );
+      return Object.keys(changed).length > 0 ? [[id, changed]] : [];
     }),
   );
-  // 재조회로 무의미해진 변경은 state 에서도 지운다. 남겨 두면 서버 반이 다시 바뀔 때 되살아난다.
-  // 렌더 중 갱신은 React 의 「props 에 맞춰 state 조정」 패턴이고, 길이가 같아지면 멈춘다.
-  if (Object.keys(drafts).length !== Object.keys(pendingChanges).length) setDrafts(drafts);
+  // 재조회로 무의미해진 변경은 state 에서도 지운다. 남겨 두면 서버 반·역할이 다시 바뀔 때 되살아난다.
+  // 렌더 중 갱신은 React 의 「props 에 맞춰 state 조정」 패턴이고, 칸 수가 같아지면 멈춘다.
+  if (fieldCount(drafts) !== fieldCount(pendingChanges)) setDrafts(drafts);
   const [notice, setNotice] = useState('');
   const mutation = useSaveGroupAssignments(studyId);
   const saving = useIsMutating({ mutationKey: participantKeys.assignments(studyId) }) > 0;
@@ -75,16 +80,14 @@ export function useGroupAssignment(
       document.removeEventListener('click', followLink, true);
     };
   }, [dirty, saving]);
-  function change(ids: number[], groupId: number) {
+  // 원래 값으로 되돌린 칸은 위 drafts 계산이 빼 준다.
+  function change(ids: number[], patch: Draft) {
     if (saving) return;
     setNotice('');
     mutation.reset();
     setDrafts((current) => {
       const next = { ...current };
-      for (const id of ids) {
-        if (participants.find((p) => p.participantId === id)?.groupId === groupId) delete next[id];
-        else next[id] = groupId;
-      }
+      for (const id of ids) next[id] = { ...next[id], ...patch };
       return next;
     });
   }
@@ -97,7 +100,7 @@ export function useGroupAssignment(
   function save() {
     if (!dirty || saving) return;
     mutation.mutate(
-      Object.entries(drafts).map(([id, groupId]) => ({ participantId: Number(id), groupId })),
+      Object.entries(drafts).map(([id, draft]) => ({ participantId: Number(id), ...draft })),
       {
         onSuccess: () => {
           setDrafts({});

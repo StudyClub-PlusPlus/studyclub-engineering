@@ -52,6 +52,7 @@
   /* ---- Border & focus ---- */
   --color-border:             #E2E1E9;
   --color-border-strong:      #8D90A3;
+  --color-button-secondary-border: #CBCFE5;
   --color-border-interactive: #7A8BD8;
   --color-focus-ring:         #7183DA;
 
@@ -170,7 +171,10 @@
   /* ---- Radius (semantic, 컴포넌트 권장값) ----
      비-inline @theme 에 두어 rounded-control/-card 유틸이 var()를 참조 →
      console.css 에서 :root 로 덮어쓰면 유틸까지 함께 바뀝니다. */
-  --radius-control: 8px;  /* 버튼·입력·셀렉트 */
+  --radius-control: 8px;  /* 입력·셀렉트. 버튼은 radius-button-* 사용 */
+  --radius-button-sm: 8px;
+  --radius-button-md: 9px;
+  --radius-button-lg: 10px;
   --radius-chip:    8px;  /* 필터칩·태그 */
   --radius-card:    16px;
   --radius-modal:   24px;
@@ -184,6 +188,8 @@
   --shadow-xl: 0 8px 16px rgba(23,25,35,.08), 0 24px 56px rgba(23,25,35,.16);
   --shadow-card: 0 16px 40px var(--color-shadow-tint);
   --shadow-focus-ring: 0 0 0 3px var(--color-focus-ring);
+  --color-danger-shadow-tint: rgba(169, 71, 64, 0.18);
+  --shadow-danger-hover: 0 7px 16px var(--color-danger-shadow-tint);
 
   /* ---- Motion ---- */
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
@@ -208,6 +214,7 @@
   --color-brand-subtle:       var(--color-primary-light);
   --color-brand-subtle-hover: var(--color-primary-light);
   --color-on-brand:           var(--color-on-primary);
+  --color-logo-accent:        #FF805C; /* 로고 워드마크 Club 오렌지 — 로고 전용, UI 강조색으로 쓰지 않는다 */
 
   /* Text */
   --color-fg:             var(--color-ink);

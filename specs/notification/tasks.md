@@ -43,3 +43,48 @@
 - [x] T031 재발송 UI — `canResend` 인 줄에만 한 건 재발송, 전체 재발송(목록 `status=FAILED&limit=100` 으로 id 를 모아 100건씩), 끝 추적(`?ids=`)과 토스트
 - [x] T032 MSW 핸들러 · 동작 테스트
 
+
+## 알림 템플릿 추가·수정·삭제 (2026-10-27)
+
+> Spec: [템플릿 쓰기 API](./spec.md#post-apiadminnotification-templates) · 마이그레이션 없음 — 이때는 조건당 한 건이라 `UNIQUE(EVENT_TYPE, CHANNEL)` 를 그대로 뒀다. 같은 조건 여럿은 아래 「같은 조건에 템플릿 여럿」(2026-10-30)에서 다룬다. 회원 탈퇴 조건은 이 범위 밖
+
+### 백엔드
+
+- [x] T040 `NotificationTemplate.create()` · `edit()` — 채널은 메일 고정, 수정자(`UPDATED_BY_ADMIN_ID`) 기록
+- [x] T041 `NotificationTemplateRequest` — 제목 255자, 본문 UTF-8 65,535바이트(`TEXT` 한도) 검증
+- [x] T042 `NotificationTemplateCommandService` — 같은 조건이 있으면 409(사전 조회 + 동시 요청의 `UNIQUE` 위반 변환), 없는 ID 404
+- [x] T043 `POST`(201)·`PUT`(200)·`DELETE`(204) `/api/admin/notification-templates` — 삭제해도 발송 이력은 남는다
+- [x] T044 테스트 — 엔티티 단위, 통합(성공·409·400·404·401/403, 바이트 경계, 삭제 후 이력 유지)
+- [x] T045 `./gradlew check`
+
+### 프론트
+
+- [x] T050 팝업 입력 제한 — 제목 255자(`maxLength`), 본문 65,535바이트(한도를 넘는 입력은 받지 않고 사용량 표시)
+- [x] T051 `TODO(api)` 제거, MSW 에 409 프리셋 추가, 동작 테스트
+
+
+## 같은 조건에 템플릿 여럿 (2026-10-30)
+
+> Spec: [갱신 2026-10-30](./spec.md) · 마이그레이션 V45 예정 (V44 는 반 공지 수신자 유니크 키 이름 변경에 사용. 번호는 구현 PR 병합 직전에 beta 최신으로 다시 확인) · 회원 탈퇴 조건은 이 범위 밖
+
+### 스펙·문서
+
+- [x] T060 notification 스펙 — 제약 제거, 추가·수정 409 삭제, 「지운 뒤의 동작」을 마지막 템플릿 기준으로
+- [x] T061 study-notice 스펙 — 템플릿 모두로 행 생성, 공지별 메일 건수는 수신자 기준(대표 상태)
+- [x] T062 ERD 2개 · PRD ST-030 개발 범위 · share 10-29 운영 규칙
+
+### 백엔드
+
+- [ ] T063 V45 — `uk_notification_template_event_channel` 제거, `(EVENT_TYPE, CHANNEL)` 일반 인덱스. 엔티티의 `@UniqueConstraint` 도 같이 바꾼다 (stage 는 SQL 을 손으로 한 번)
+- [ ] T064 `NotificationTemplateRepository` — 조건의 템플릿 목록(`id` 오름차순)·건수 조회, `findByEventTypeAndChannel` 제거
+- [ ] T065 `NotificationCreationService` — 웰컴(템플릿 수만큼 행, 0개면 로그만)·공지(수신자 × 템플릿, 0개면 롤백)
+- [ ] T066 `NotificationTemplateCommandService` — `rejectIfTaken`·유일 제약 → 409 변환 제거
+- [ ] T067 공지별 메일 건수 — 수신자 기준 집계 (`countByReferenceAndStatus` → 수신자별 대표 상태: 실패 > 대기 > 완료, `CANCELLED` 만이면 제외)
+- [ ] T068 테스트 — 단위(팬아웃 N × M, 0개), 통합(웰컴 2행, 공지 4행과 건수 ≤ 수신자 수, 409 케이스 정리, 탈퇴 N행, 재발송 한 행), 시딩 보조 코드 정리
+- [ ] T069 `./gradlew check`
+
+### 프론트
+
+- [ ] T070 MSW — 409 프리셋 삭제
+- [ ] T071 `TemplateDialog` — 409 분기·`DUPLICATE` 삭제, 삭제 확인 영향 안내를 목록에서 센 같은 조건의 템플릿 수(하나뿐이면 마지막)로 가른다
+- [ ] T072 동작 테스트, 로컬 Chrome 확인 (실 API)

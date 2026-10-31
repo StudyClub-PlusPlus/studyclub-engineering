@@ -1,6 +1,6 @@
 /**
- * 모집 상태의 **문구**만 담당한다. 판정 자체는 `@studyclub/mock` 이 정본 —
- * 운영자 콘솔과 사용자 사이트가 같은 함수를 써야 표기가 어긋나지 않는다.
+ * 모집 상태의 판정과 문구. 판정 규칙은 `@studyclub/mock` 의 `recruitState` 와 같고, 「오늘」만 서울 날짜로 읽는다
+ * — 마감일이 서울 23:59:59 로 저장되기 때문이다 (`lib/seoul-date.ts`). API 데이터는 서버 판정(`recruitStatus`)이 먼저 거른다.
  *
  * 신청은 외부 폼이 아니라 **사이트 자체**에서 받으므로 신청 링크 유무로 판정하지 않는다.
  * 판정 축은 **모집 마감일 하나**다.
@@ -11,13 +11,22 @@
  * 않고 마감일 유무로만 표현하므로, 등록 폼에서 마감일은 선택 입력이다.
  */
 
-import { recruitState, todayISO, toISODate, type RecruitState } from '@studyclub/mock';
+import { toISODate, type RecruitState } from '@studyclub/mock';
 
 import type { Locale, Study } from '@/lib/content';
 import { t } from '@/lib/i18n';
+import { seoulDate, seoulToday } from '@/lib/seoul-date';
 
-export { recruitState, toISODate };
+export { toISODate };
 export type { RecruitState };
+
+/** 모집 상태 — 마감일(서울 날짜)이 오늘(서울)보다 앞이면 마감. 마감일이 없으면 모집중. */
+export function recruitState(study: Study, now: Date = new Date()): RecruitState {
+  if (study.status !== 'recruiting' || study.recruitment?.status === 'closed') return 'closed';
+  const deadline = toISODate(study.recruitment?.deadline);
+  if (!deadline) return 'apply';
+  return deadline >= seoulToday(now) ? 'apply' : 'closed';
+}
 
 /** 카드 CTA 문구 — 행동을 지시한다. */
 const CTA_LABEL: Record<RecruitState, { ko: string; en: string }> = {
@@ -49,32 +58,38 @@ export function recruitDeadline(study: Study, locale: Locale): string | undefine
   return locale === 'ko' ? `마감 ${d}` : `Due ${d}`;
 }
 
-/** 시작일 표시값 — `STUDY.START_AT` 이 없으면 `미정`. */
+/** 시작일 표시값 — 서울 날짜. `STUDY.START_AT` 이 없으면 `미정`. */
 export function studyStartValue(study: Study, locale: Locale): string {
-  return toISODate(study.startAt) ?? t({ ko: '미정', en: 'TBD' }, locale);
+  return seoulDate(study.startAt) ?? t({ ko: '미정', en: 'TBD' }, locale);
 }
 
 /**
- * 스터디가 도는 시간대 — 목록 필터·목록/상세 표기가 **같은 판정**을 쓰도록 여기서 단일 정의한다.
- * 일정·킥오프 문구에 표기가 없으면 `both`(동시 모집)로 본다.
+ * 스터디가 도는 시간대 — 목록/상세 표기가 **같은 판정**을 쓰도록 여기서 단일 정의한다.
+ * 운영자가 고른 값(`STUDY.TIMEZONE`)이 있으면 그대로 쓴다. 값이 없으면 일정·킥오프 문구의
+ * `KST` / `PST`·`PDT` 표기로 추정하고, 그마저 없으면 모른다(`undefined`).
+ *
+ * 목록 응답은 서버가 이미 판정한 값을 주고(값이 없고 표기도 없으면 `BOTH`), 상세 응답은 저장된 값만 준다(#328).
  */
 export type StudyTimezone = 'KST' | 'PST' | 'both';
 
-export function studyTimezone(study: Study): StudyTimezone {
+export function studyTimezone(study: Study): StudyTimezone | undefined {
+  if (study.timezone) return study.timezone;
   const text = [study.schedule?.ko, study.schedule?.en, study.recruitment?.kickoff].filter(Boolean).join(' ');
   if (/PST|PDT/i.test(text)) return 'PST';
   if (/KST/i.test(text)) return 'KST';
-  return 'both';
+  return undefined;
 }
 
 const TIMEZONE_LABEL: Record<StudyTimezone, { ko: string; en: string }> = {
   KST: { ko: 'KST', en: 'KST' },
   PST: { ko: 'PST', en: 'PST' },
-  both: { ko: '동시 모집(KST·PST)', en: 'Multiple timezones (KST·PST)' },
+  both: { ko: '동시 진행(KST·PST)', en: 'Multiple timezones (KST·PST)' },
 };
 
+/** 목록 카드·상세의 시간대 문구. 모르는 시간대를 「동시 진행」이라 단정하지 않는다 — `시간대 미정`. */
 export function studyTimezoneLabel(study: Study, locale: Locale): string {
-  return t(TIMEZONE_LABEL[studyTimezone(study)], locale);
+  const tz = studyTimezone(study);
+  return t(tz ? TIMEZONE_LABEL[tz] : { ko: '시간대 미정', en: 'Timezone TBD' }, locale);
 }
 
 /**
@@ -82,18 +97,25 @@ export function studyTimezoneLabel(study: Study, locale: Locale): string {
  * 마감 임박(D-3 이내) 판정은 백엔드 `isClosingSoon()` 과 같은 기준(3일) —
  * [study-recruit-status/spec.md](../../../../specs/study-recruit-status/spec.md#판정-규칙) 참고.
  */
-export function recruitBadge(study: Study, locale: Locale): { label: string; dotClass: string } {
+export function recruitBadge(
+  study: Study,
+  locale: Locale,
+  now: Date = new Date(),
+): { label: string; dotClass: string } {
   if (study.status === 'ongoing') {
     return { label: t({ ko: '진행중', en: 'Ongoing' }, locale), dotClass: 'bg-inprogress-dot' };
   }
-  if (recruitState(study) === 'closed') {
+  if (recruitState(study, now) === 'closed') {
     return { label: t({ ko: '모집 마감', en: 'Closed' }, locale), dotClass: 'bg-closed-dot' };
   }
   const deadline = toISODate(study.recruitment?.deadline);
   if (!deadline) {
     return { label: t({ ko: '상시 모집', en: 'Always open' }, locale), dotClass: 'bg-recruiting-dot' };
   }
-  const days = Math.round((Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${todayISO()}T00:00:00Z`)) / 86_400_000);
+  // 두 날짜 모두 서울 기준 — 날짜 문자열끼리의 차이라 UTC 자정으로 견줘도 하루 단위가 맞는다
+  const days = Math.round(
+    (Date.parse(`${deadline}T00:00:00Z`) - Date.parse(`${seoulToday(now)}T00:00:00Z`)) / 86_400_000,
+  );
   const dLabel = days <= 0 ? 'D-DAY' : `D-${days}`;
   const closingSoon = days <= 3;
   return {

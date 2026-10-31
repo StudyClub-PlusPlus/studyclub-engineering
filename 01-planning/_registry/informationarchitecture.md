@@ -28,7 +28,6 @@
 | IA-011 | 스터디 일정 — 출석 탭 | `/my/joined/{id}/schedule/attendance` | IA-010 | ST-017 · ST-010 · ST-018 | 고치기 · 참여 중단(캡틴·네비게이터) · 보기(크루). 옛 `/my/joined/{id}/attendance` 는 여기로 보낸다 |
 | IA-038 | 스터디 일정 — 공지 탭 | `/my/joined/{id}/schedule/notice` | IA-010 | ST-016 | 받는 사람 고르기 · 메일·디스코드 보내기 · 보낸 공지 기록(캡틴·네비게이터만 보인다) |
 | IA-012 | 찜한 스터디 | `/my/saved` | IA-007 | — | **고아** — 찜 Story 가 없다 (스펙: `specs/study-bookmark`). 내 스터디에서 버튼은 뺐다 |
-| IA-013 | 옛 내 스터디(출석) | `/my/studies` | IA-007 | — | **고아** — 내 스터디(IA-009) 이전 화면. 정리 대상 |
 | IA-036 | 내 문의 | `/my/feedbacks` · `/my/feedbacks/{id}` | IA-007 | ST-035 | 목록 · 문의하기 팝업 · 상세(답변). 프로필 드롭다운에서 들어온다 |
 | IA-014 | 이용약관 | `/terms` | IA-001 | ST-014 | 푸터 링크 |
 | IA-015 | 개인정보 처리방침 | `/privacy` | IA-001 | ST-014 | 푸터 링크 |
@@ -138,7 +137,6 @@ IA-001 홈 /
 │  │     └─ IA-011 스터디 일정 — 출석 …/schedule/attendance
 │  │     └─ IA-038 스터디 일정 — 공지 …/schedule/notice
 │  ├─ IA-012 찜한 스터디 /my/saved            (고아)
-│  ├─ IA-013 옛 내 스터디 /my/studies         (고아)
 │  └─ IA-036 내 문의 /my/feedbacks
 ├─ IA-014 이용약관 /terms
 ├─ IA-015 개인정보 처리방침 /privacy

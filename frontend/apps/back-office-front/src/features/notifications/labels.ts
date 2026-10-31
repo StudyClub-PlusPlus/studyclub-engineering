@@ -40,7 +40,7 @@ export const STATUS_OPTIONS = (['PENDING', 'PROCESSING', 'SENT', 'FAILED'] as co
 /** 알림 조건 → 사람이 읽는 이름. 모르는 코드는 코드 그대로 적는다(빈칸보다 낫다). */
 const EVENT_LABEL: Record<string, string> = {
   USER_REGISTERED: '회원가입',
-  // 네비게이터가 반 팀원에게 보낸 공지 메일 (specs/study-notice). 템플릿은 시드로만 두고 추가 팝업의 선택지에는 넣지 않는다
+  // 네비게이터가 반 팀원에게 보낸 공지 메일 (specs/study-notice). 템플릿은 시드로 두되, 지웠을 때 다시 만들 수 있도록 추가 팝업의 선택지에도 둔다
   STUDY_NOTICE: '스터디 공지',
 };
 

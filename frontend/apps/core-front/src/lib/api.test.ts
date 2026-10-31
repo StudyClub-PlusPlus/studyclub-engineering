@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { studyQuery, toStudy } from './api';
+import { studyQuery, toStudy, toStudyFromDetail } from './api';
 
 const apiStudy = {
   studyId: 7,
@@ -16,7 +16,8 @@ const apiStudy = {
   recruitStatus: 'RECRUITING' as const,
   capacity: 30,
   currentApplicants: 12,
-  recruitDeadlineAt: '2026-09-30T15:00:00Z',
+  // 백오피스가 저장하는 값 — 서울 9월 30일 23:59:59. 화면은 서울 날짜로 읽는다 (lib/seoul-date.ts)
+  recruitDeadlineAt: '2026-09-30T14:59:59Z',
   startAt: '2026-10-01T00:00:00Z',
   endAt: null,
   closingSoon: false,
@@ -53,5 +54,41 @@ describe('toStudy', () => {
   it('마감 없이 모집 중이면 상시 모집, 모집이 닫혔으면 closed', () => {
     expect(toStudy({ ...apiStudy, recruitDeadlineAt: null }).recruitment?.status).toBe('always');
     expect(toStudy({ ...apiStudy, recruitStatus: 'RECRUIT_CLOSED' }).recruitment?.status).toBe('closed');
+  });
+});
+
+describe('시간대', () => {
+  it('운영자가 고른 값을 싣는다 — BOTH 는 both, null 은 비운다', () => {
+    expect(toStudy(apiStudy).timezone).toBe('KST');
+    expect(toStudy({ ...apiStudy, timezone: 'BOTH' }).timezone).toBe('both');
+    expect(toStudy({ ...apiStudy, timezone: null }).timezone).toBeUndefined();
+  });
+
+  it('상세도 같은 값을 싣는다', () => {
+    const detail = {
+      id: 7,
+      programId: 3,
+      title: '데일리 리트코드',
+      oneLineSummary: '매일 알고리즘 문제 풀이',
+      description: null,
+      category: 'ALGORITHM',
+      studyKind: 'STUDY' as const,
+      thumbnailUrl: null,
+      status: 'OPEN' as const,
+      recruitStatus: 'RECRUITING' as const,
+      curriculum: null,
+      capacity: 30,
+      recruitDeadlineAt: null,
+      schedule: null,
+      timezone: 'PST' as const,
+      startAt: null,
+      endAt: null,
+      discordChannelUrl: null,
+      driveUrl: null,
+      programTitle: null,
+      discordLinked: false,
+    };
+    expect(toStudyFromDetail(detail).timezone).toBe('PST');
+    expect(toStudyFromDetail({ ...detail, timezone: null }).timezone).toBeUndefined();
   });
 });

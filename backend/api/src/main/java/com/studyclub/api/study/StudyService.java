@@ -123,7 +123,7 @@ public class StudyService {
                         .studyId(study.getId())
                         .title(DEFAULT_RECRUITMENT_TITLE)
                         .description("")
-                        .startAt(now)
+                        // 모집 시작 시각은 비워 둔다 — 공개(= 모집 시작)할 때 채운다. 채워 두면 신청 폼이 잠긴다
                         .recruitDeadlineAt(request.recruitDeadline())
                         .build());
         // 신청자가 들어갈 반 — 반을 나눌지는 신청자를 보고 캡틴이 정한다
@@ -355,7 +355,8 @@ public class StudyService {
                                                 ErrorCode.NOT_FOUND, "스터디 프로그램을 찾을 수 없습니다.")),
                 applicantCount(latestRecruitment),
                 recruitDeadlineAt,
-                recruitmentCapacity);
+                recruitmentCapacity,
+                studyDiscordLinkRepository.existsByStudyId(study.getId()));
     }
 
     @Transactional
@@ -381,6 +382,10 @@ public class StudyService {
             throw new BusinessException(ErrorCode.CONFLICT, "공개 중인 스터디만 공개 취소할 수 있습니다.");
         }
         study.unpublish();
+        // 모집 시작 전으로 되돌린다 — 신청서가 없으면 신청 폼을 다시 고칠 수 있다
+        studyRecruitmentRepository
+                .findFirstByStudyIdOrderByIdDesc(studyId)
+                .ifPresent(recruitment -> recruitment.updateStartAt(null));
     }
 
     private void validateApplicationFormHasQuestions(String applicationForm) {

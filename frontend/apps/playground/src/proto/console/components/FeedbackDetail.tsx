@@ -196,7 +196,7 @@ export function FeedbackDetail({ id }: { id: string }) {
                 {f.reply && (
                   <Button
                     size='sm'
-                    variant='ghost'
+                    variant='tertiary'
                     onClick={() => {
                       setReply(f.reply?.body ?? '');
                       setEditingReply(false);

@@ -157,6 +157,27 @@
 봇의 에러 `detail` 은 응답에 싣지 않는다 (길드·역할 ID 같은 봇 내부 사정이다). 서버 로그에만 남긴다.
 예상 밖 예외는 메시지를 로그에 남기지 않는다 — 키 끝에 개행이 붙으면 JDK 가 헤더 값(= API 키)을 통째로 예외 메시지에 싣는다.
 
+## 봇 호출 로그 (STD-06)
+
+`DiscordBotClient.execute()` 가 모든 봇 호출을 중계하며 아래 포맷으로 남긴다.
+
+| 상황 | 레벨 | 포맷 |
+|------|------|------|
+| 성공 | INFO | `op={} requester={} studyId={} status=ok elapsedMs={}` |
+| 실패 | WARN | `op={} requester={} studyId={} status=failure reason={} elapsedMs={}` |
+
+- `op`: 봇 엔드포인트 이름 — `create-study` · `assign-role` · `remove-role` · `assign-navigator-role` · `remove-navigator-role` · `get-study-channels` · `send-message` · `send-alert-message` · `send-announcement-message`
+- `requester`: `X-Discord-User-ID` 값 (캡틴 디스코드 ID 또는 시스템 아이디)
+- `studyId`: `discordStudyId` (없으면 `null`)
+- `reason`: `CONFLICT` · `EXTERNAL_SERVICE_ERROR` · `HTTP-{상태코드}` · `봇_응답없음` · `요청생성_오류`
+
+남기지 않는 것: 메시지 본문, API 키, Discord 토큰.
+
+스터디 생성에는 성공 후 ID 쌍 로그가 하나 더 붙는다:
+```
+INFO op=create-study discordStudyId={} discordRoleId={}
+```
+
 ## 봇 호출 — 백엔드가 보내는 것
 
 ```
@@ -177,10 +198,16 @@ Idempotency-Key: {호출마다 새 UUID v4}
 
 해당 없음 — 스터디 ↔ 디스코드 채널 연결이다. 개인 계정 연동 이벤트 `My Discord Connected` 와는 다르다.
 
+## 백오피스 연결 상태 · 다시 연결 (DSC-10)
+
+- 상세 응답의 `discordLinked`는 `STUDY_DISCORD_LINK` 행 존재 여부다. 채널 URL 입력 여부와는 별개다.
+- 이번 구현은 미연결(`false`) 스터디에 「다시 연결」 버튼을 표시한다. 자동 연결 실패와 봇 설정 미비로 건너뛴 경우를 구분하지 않는다. 원인 구분이나 봇 설정 표시 기능은 포함하지 않는다.
+- 창에는 스터디 제목을 기본 이름으로 채운다. 운영자가 디스코드 생성용 이름(앞뒤 공백 제거 후 1~96자)을 바꿔 `studyName`으로 보낼 수 있다. 스터디 제목은 수정하지 않는다.
+- 실패하면 입력과 오류를 유지해 재시도할 수 있다. 연결이 확인되면 창을 닫는다. POST 성공은 상세 캐시에도 먼저 반영하며, 후속 조회가 일시적으로 실패하면 연결 상태를 유지하고 조회 재시도를 제공한다. 401·403·404에는 캐시 상세를 보여 주지 않는다.
+- 이전 요청의 응답을 받지 못했다면 이름을 바꾸기 전에 디스코드 생성 여부를 확인하도록 안내한다.
+
 ## 알려진 한계
 
 - **봇 성공 뒤 저장 실패** (DB 장애, 두 재시도가 동시에 다른 이름으로 들어와 늦은 쪽, 기다리는 사이 스터디 삭제) → 디스코드에 카테고리가 남고
   연결은 없다. ERROR 로그에 두 ID 를 남긴다. 수동으로 행을 넣어 붙인다 — 기존 ID 로 연결만 만드는 엔드포인트는 아직 없다.
-- **연결 실패를 화면이 모른다.** 등록 응답(201, 바디 없음)에 연결 여부가 없다. 백오피스가 알아야 하면 조회
-  엔드포인트나 응답 필드를 따로 정한다.
 - **스터디 삭제** 는 연결 행도 지우지만, 디스코드 카테고리·역할은 남는다 (봇에 삭제 API 가 없다).

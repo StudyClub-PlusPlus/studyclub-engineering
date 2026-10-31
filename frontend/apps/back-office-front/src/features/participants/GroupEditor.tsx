@@ -57,7 +57,7 @@ export function GroupEditor({
           />
         </div>
         <div className='ml-auto flex gap-2'>
-          <Button type='button' variant='ghost' onClick={onClose}>
+          <Button type='button' variant='tertiary' onClick={onClose}>
             취소
           </Button>
           <Button type='submit'>저장</Button>

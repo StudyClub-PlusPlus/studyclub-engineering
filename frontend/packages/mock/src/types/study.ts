@@ -101,6 +101,8 @@ export type Study = {
   applicantCount?: number;
   /** 백오피스 목록 API 가 계산한 신청 폼 존재 여부. 값이 있으면 applicationForm 보다 우선한다. */
   hasApplicationForm?: boolean;
+  /** 백오피스 목록 — 등록한 캡틴의 닉네임(`STUDY.CREATED_BY`). 기록이 없으면 비어 있다. */
+  authorNickname?: string;
   reviews?: StudyReview[];
   stats?: StudyStats;
   past_participants?: L10n[];

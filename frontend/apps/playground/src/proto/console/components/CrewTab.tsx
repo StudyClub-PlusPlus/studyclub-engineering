@@ -106,7 +106,7 @@ export function CrewTab({
             className='h-9 w-1/2 min-w-0 rounded-control border border-border-strong bg-bg px-3 type-body-sm text-neutral-900 outline-none focus:border-brand focus:shadow-[var(--ring)]'
           />
           <div className='ml-auto flex shrink-0 gap-1.5'>
-            <Button type='button' size='sm' variant='ghost' onClick={() => setRenaming(null)}>
+            <Button type='button' size='sm' variant='tertiary' onClick={() => setRenaming(null)}>
               취소
             </Button>
             <Button type='submit' size='sm'>
@@ -310,7 +310,7 @@ export function CrewTab({
                         onPick={(v) => applyBulk({ role: v as 'crew' | 'navigator' })}
                       />
                       {selected.length > 0 && (
-                        <Button size='sm' variant='ghost' onClick={() => setCheckedIds(new Set())}>
+                        <Button size='sm' variant='tertiary' onClick={() => setCheckedIds(new Set())}>
                           선택 해제
                         </Button>
                       )}
@@ -322,7 +322,7 @@ export function CrewTab({
                         {saved && changed === 0 ? '저장했습니다.' : ''}
                       </span>
                       {changed > 0 && (
-                        <Button variant='ghost' size='sm' onClick={discard}>
+                        <Button variant='tertiary' size='sm' onClick={discard}>
                           변경 취소
                         </Button>
                       )}
@@ -380,11 +380,15 @@ export function CrewTab({
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
-                    {/* 반 이동 = 이 값 변경 */}
-                    <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                    {/* 반 이동 = 이 값 변경. 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다 */}
+                    <div className='inline-flex'>
+                      <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                    </div>
                   </td>
                   <td data-anno='attendee:3-2' className='whitespace-nowrap'>
-                    <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
+                    <div className='inline-flex'>
+                      <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
+                    </div>
                   </td>
                 </tr>
               ))}

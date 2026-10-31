@@ -11,6 +11,7 @@ import { ThirdPartyAnalytics } from '@/components/ThirdPartyAnalytics';
 import { initAmplitude } from '@/lib/amplitude';
 import { captureFirstTouch, syncAnalyticsUser } from '@/lib/analytics';
 import { getUser, USER_CHANGED_EVENT } from '@/lib/auth';
+import { dropLegacyDemoSeed } from '@/lib/me';
 import { getQueryClient } from '@/lib/query-client';
 
 const MSWProvider = dynamic(() => import('@studyclub/mock/msw').then((m) => m.MSWProvider), { ssr: false });
@@ -34,6 +35,8 @@ function AmplitudeInit() {
 }
 
 function MswQueryInvalidator() {
+  // 예전 개발 서버가 채운 더미 신청·관심을 지운다 — MSW 를 꺼도 더미가 보였다
+  useEffect(() => dropLegacyDemoSeed(), []);
   useEffect(() => {
     const handler = () => {
       getQueryClient().invalidateQueries();

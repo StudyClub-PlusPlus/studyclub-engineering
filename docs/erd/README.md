@@ -95,6 +95,7 @@ erDiagram
     bigint RECIPIENT_USER_ID
     bigint TEMPLATE_ID
     bigint REFERENCE_ID "STUDY_NOTICE.ID 등 (FK 없음)"
+    bigint SENDER_ACCOUNT_ID "보낸 사람 ACCOUNT.ID (FK 없음)"
     json PAYLOAD
     varchar STATUS
     datetime LOCKED_AT
@@ -396,6 +397,7 @@ erDiagram
 | 알림 | [NOTIFICATION](./NOTIFICATION.md) | 알림 발송 이력 | `STATUS`, `ERROR_TYPE` |
 | 알림 | [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md) | 이벤트별 메일 문구 | — |
 | 알림 | [STUDY_NOTICE](./STUDY_NOTICE.md) | 반 공지 발송 기록 (메일 결과는 NOTIFICATION, 디스코드 결과는 여기) | `DISCORD_STATUS` |
+| 알림 | [STUDY_NOTICE_RECIPIENT](./STUDY_NOTICE_RECIPIENT.md) | 반 공지를 받는 사람 (공지 한 건에 한 사람 한 행) | — |
 | 공지 | [SITE_NOTICE](./SITE_NOTICE.md) | 사이트 전체 공지 — 콘솔이 쓰고 사이트가 읽는다 | `REMOVED_AT` (소프트 삭제) |
 
 

@@ -2,6 +2,7 @@
 
 import { TableCard } from '@/components/ui';
 import { AccountRoleCell } from '@/features/users/components/AccountRoleCell';
+import { DiscordCell } from '@/features/users/components/DiscordCell';
 import { EmailCell } from '@/features/users/components/EmailCell';
 import { displayName } from '@/features/users/labels';
 import type { ApiAdminAccount } from '@/features/users/types';
@@ -30,17 +31,6 @@ function NavigatorCell({ studies }: { studies: ApiAdminAccount['navigatorOf'] })
   );
 }
 
-/** 디스코드 칸 — 연동했으면 @username, 아니면 「미연동」. 연동·해제는 본인이 사이트 마이페이지에서 한다 */
-function DiscordCell({ linked, handle }: { linked: boolean; handle: string | null }) {
-  if (!linked) return <span className='text-fg-muted'>미연동</span>;
-  if (!handle) return <span className='text-fg'>연동됨</span>;
-  return (
-    <span className='block max-w-[16ch] truncate text-fg' title={`@${handle}`}>
-      @{handle}
-    </span>
-  );
-}
-
 /**
  * 회원 목록 표. 정렬·필터·페이지는 서버가 한다 — 받은 순서 그대로 그린다(화면에서 다시 섞으면 한 페이지 안에서만 섞인다).
  * 원본 이메일은 `revealed` 에 있는 줄만 보인다(페이지 state, 목록이 다시 오면 비워진다).
@@ -49,10 +39,18 @@ export function UsersTable({
   rows,
   revealed,
   onReveal,
+  onHide,
+  revealedDiscord,
+  onRevealDiscord,
+  onHideDiscord,
 }: {
   rows: ApiAdminAccount[];
   revealed: ReadonlyMap<number, string>;
   onReveal: (accountId: number, email: string) => void;
+  onHide: (accountId: number) => void;
+  revealedDiscord: ReadonlyMap<number, string>;
+  onRevealDiscord: (accountId: number, handle: string) => void;
+  onHideDiscord: (accountId: number) => void;
 }) {
   return (
     <TableCard>
@@ -80,13 +78,21 @@ export function UsersTable({
                 maskedEmail={a.maskedEmail}
                 revealedEmail={revealed.get(a.id)}
                 onReveal={onReveal}
+                onHide={onHide}
               />
             </td>
             <td>
               <AccountRoleCell account={a} />
             </td>
             <td className='whitespace-nowrap type-label-sm'>
-              <DiscordCell linked={a.discordLinked} handle={a.discordHandle} />
+              <DiscordCell
+                accountId={a.id}
+                displayName={displayName(a)}
+                linked={a.discordLinked}
+                revealedHandle={revealedDiscord.get(a.id)}
+                onReveal={onRevealDiscord}
+                onHide={onHideDiscord}
+              />
             </td>
             {/* 스터디 단위 역할이라 이름을 적는다 — 「네비게이터 ✓」만으로는 어느 스터디인지 알 수 없다 */}
             <td className='whitespace-nowrap type-label-sm text-fg-secondary'>

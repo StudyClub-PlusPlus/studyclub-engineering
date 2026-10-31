@@ -78,8 +78,8 @@ test.describe('인증 미들웨어', () => {
     await expect(page).toHaveURL(/next=%2Fko%2Fmy/);
   });
 
-  test('/ko/my/studies — 비로그인 시 /ko/login 으로 리다이렉트', async ({ page }) => {
-    await page.goto('/ko/my/studies');
+  test('/ko/my/saved — 비로그인 시 /ko/login 으로 리다이렉트', async ({ page }) => {
+    await page.goto('/ko/my/saved');
     await expect(page).toHaveURL(/\/ko\/login/);
   });
 

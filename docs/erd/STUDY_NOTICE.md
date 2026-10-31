@@ -5,7 +5,7 @@
 
 > 스펙: [study-notice](../../specs/study-notice/spec.md) · 정책: [POL-0010](../../01-planning/_registry/policies/POL-0010-study-notice.md)
 
-## 컬럼 — STUDY_NOTICE
+## 컬럼
 
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
@@ -21,26 +21,15 @@
 | DISCORD_SKIP_REASON | VARCHAR(30) | Y | `SKIPPED` 일 때만 |
 | CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity`. `CREATED_AT` 이 보낸 시각이다 |
 
-인덱스: `(STUDY_GROUP_ID, CREATED_AT)` — 기록 목록과 발송 한도(직전 발송 · 오늘 횟수)가 같은 인덱스를 탄다.
+인덱스:
 
-## 컬럼 — STUDY_NOTICE_RECIPIENT
-
-받는 사람 한 명당 한 행. 애그리거트 안이라 외래키를 둔다.
-
-| 컬럼 | 타입 | NULL | 설명 |
-|---|---|---|---|
-| ID | BIGINT PK | N | |
-| NOTICE_ID | BIGINT FK → STUDY_NOTICE | N | |
-| ACCOUNT_ID | BIGINT | N | ID 참조([ACCOUNT](./ACCOUNT.md)). 보낸 시점 명부의 사람 |
-| DISCORD_MENTIONED | BOOLEAN | N | 디스코드 글에서 멘션을 **요청했는가**. 봇이 글을 올린 뒤에 표시한다 — 보내기 전·건너뜀·실패는 false. 봇은 길드를 떠난 사람을 멘션에서 빼고도 204 를 주고 누구를 뺐는지 알려 주지 않아, 실제 알림을 받은 사람보다 많을 수 있다 |
-| CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
-
-`UNIQUE(NOTICE_ID, ACCOUNT_ID)`.
+- `idx_study_notice_group_created (STUDY_GROUP_ID, CREATED_AT)` — 기록 목록과 발송 한도(직전 발송 · 오늘 횟수)가 같은 인덱스를 탄다
+- `idx_study_notice_study (STUDY_ID)` — 스터디를 지울 때 그 스터디의 공지를 찾는다
 
 ## 관계
 
 - N : 1 [STUDY_GROUP](./STUDY_GROUP.md) · [STUDY](./STUDY.md) · [ACCOUNT](./ACCOUNT.md) — 모두 ID 참조뿐이다 (애그리거트 간, FK 없음)
-- 1 : N STUDY_NOTICE_RECIPIENT — 같은 애그리거트, FK
+- 1 : N [STUDY_NOTICE_RECIPIENT](./STUDY_NOTICE_RECIPIENT.md) — 같은 애그리거트, FK
 - 1 : N [NOTIFICATION](./NOTIFICATION.md) — `NOTIFICATION.REFERENCE_ID` = `STUDY_NOTICE.ID`, `EVENT_TYPE=STUDY_NOTICE`. 메일을 골랐을 때 받는 사람마다 한 행. FK 없음
 
 ## 상태 — DISCORD_STATUS

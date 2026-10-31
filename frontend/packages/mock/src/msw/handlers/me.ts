@@ -4,6 +4,7 @@ import { CATEGORY_DISPLAY } from '../../constants/study';
 import { studies } from '../../data';
 import { getStudyCrew } from '../../data/crew';
 import { mockClient, type MockResolveContext } from '../utils';
+import { CAPTAIN_STUDY_IDS } from './meetings';
 
 /** 스터디 카테고리 표시명 → API 키 (역매핑) */
 const CATEGORY_KEY: Record<string, string> = Object.fromEntries(
@@ -30,7 +31,8 @@ type MyStudyRelation = 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'WITHDRAWN';
 const ACCEPTED_IDS = new Set([1, 3, 9, 11, 18, 19, 20, 22, 23, 24, 25, 26, 28]);
 const WITHDRAWN_IDS = new Set([19]);
 const LEADER_IDS = new Set([11]);
-const CAPTAIN_IDS = new Set([1, 20]);
+// 캡틴 스터디는 회차 목(meetings.ts)과 같은 집합 — 두 목이 다르면 같은 스터디가 화면마다 다른 역할로 보인다
+const CAPTAIN_IDS = CAPTAIN_STUDY_IDS;
 
 const GROUP_ID_OFFSET = 1000;
 

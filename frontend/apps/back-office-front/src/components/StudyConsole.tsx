@@ -8,6 +8,7 @@ import { Badge, Button, Modal } from '@studyclub/ui';
 import { useIsMutating } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 
+import { NextCohortButton } from '@/components/NextCohortButton';
 import { StudyInfoTab } from '@/components/StudyInfoTab';
 import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
 import { ApplicationResultsTab } from '@/features/application-results/ApplicationResultsTab';
@@ -17,6 +18,8 @@ import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
 import { participantKeys, useParticipants } from '@/features/participants/queries';
 import { ScheduleTab } from '@/features/schedule/ScheduleTab';
 import { DISPLAY_ZONES } from '@/features/schedule/time';
+import { useStudiesListHref } from '@/features/studies/list-return';
+import { PublishSwitch } from '@/features/studies/PublishSwitch';
 import { CATEGORY_OPTIONS, STATUS_LABEL, type ApiStudyDetail } from '@/features/studies/types';
 import { useUrlState } from '@/lib/use-url-state';
 
@@ -160,6 +163,8 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
   const deadline = detail.recruitDeadlineAt
     ? new Date(detail.recruitDeadlineAt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
     : null;
+  // 목록에 걸어 둔 필터 · 페이지로 돌아간다
+  const listHref = useStudiesListHref();
   const unpublished = detail.status === 'DRAFT';
 
   return (
@@ -176,7 +181,7 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
         }}
       />
       <Link
-        href='/studies'
+        href={listHref}
         className='inline-flex items-center gap-1.5 type-label-lg text-fg-secondary transition-colors hover:text-fg'
       >
         <ArrowLeft size={15} /> 스터디 관리
@@ -197,11 +202,17 @@ export function StudyConsole({ detail }: { detail: ApiStudyDetail }) {
             )}
           </p>
         </div>
-        <div className='flex shrink-0 items-center gap-2'>
-          <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
-            {detail.status === 'OPEN' ? (open ? '모집중' : '모집 마감') : STATUS_LABEL[detail.status]}
-          </Badge>
-          {deadline && <span className='tnum type-label-sm text-fg-muted'>~{deadline}</span>}
+        <div className='flex shrink-0 flex-col items-end gap-2'>
+          <div className='flex items-center gap-2'>
+            {/* 기수를 잇는 것은 클럽뿐이다 — 스터디는 기수가 1개라 새 공고는 새 프로그램이다 */}
+            {detail.studyKind === 'CLUB' && <NextCohortButton detail={detail} />}
+            <Badge tone={open ? 'recruiting' : 'closed'} dot className='px-2.5 py-1 font-semibold'>
+              {detail.status === 'OPEN' ? (open ? '모집중' : '모집 마감') : STATUS_LABEL[detail.status]}
+            </Badge>
+            {deadline && <span className='tnum type-label-sm text-fg-muted'>~{deadline}</span>}
+          </div>
+          {/* 공개(= 모집 시작) 전환 — 목록 「스터디 공개」 칸과 같은 규칙 · 같은 확인 팝업 */}
+          <PublishSwitch detail={detail} />
         </div>
       </header>
 

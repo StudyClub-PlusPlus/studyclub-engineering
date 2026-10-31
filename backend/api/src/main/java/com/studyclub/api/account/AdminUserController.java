@@ -33,14 +33,17 @@ public class AdminUserController {
 
     private final AdminAccountQueryService adminAccountQueryService;
     private final AdminAccountEmailService adminAccountEmailService;
+    private final AdminAccountDiscordService adminAccountDiscordService;
     private final AdminAccountRoleService adminAccountRoleService;
 
     public AdminUserController(
             AdminAccountQueryService adminAccountQueryService,
             AdminAccountEmailService adminAccountEmailService,
+            AdminAccountDiscordService adminAccountDiscordService,
             AdminAccountRoleService adminAccountRoleService) {
         this.adminAccountQueryService = adminAccountQueryService;
         this.adminAccountEmailService = adminAccountEmailService;
+        this.adminAccountDiscordService = adminAccountDiscordService;
         this.adminAccountRoleService = adminAccountRoleService;
     }
 
@@ -74,6 +77,20 @@ public class AdminUserController {
                 // 원본이 브라우저·프록시 캐시에 남지 않게 한다
                 .cacheControl(CacheControl.noStore())
                 .body(adminAccountEmailService.reveal(requesterId, accountId));
+    }
+
+    @Operation(
+            summary = "디스코드 아이디 보기",
+            description =
+                    "캡틴만 호출 가능. 한 명의 디스코드 username을 돌려주고 감사 로그(DISCORD_REVEAL)를 남긴다. "
+                            + "기록이 안 남으면 원본도 안 나간다. 응답은 캐시하지 않는다(no-store).")
+    @PostMapping("/users/{accountId}/discord-reveals")
+    public ResponseEntity<AdminAccountDiscordResponse> revealDiscord(
+            Authentication authentication, @PathVariable Long accountId) {
+        Long requesterId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(adminAccountDiscordService.reveal(requesterId, accountId));
     }
 
     @Operation(

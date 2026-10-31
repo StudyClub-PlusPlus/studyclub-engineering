@@ -11,7 +11,9 @@ import { BulkSelect } from '@/components/BulkSelect';
 import { STATUS_LABEL, STATUS_STYLE, type MyStatus } from '@/lib/attendance';
 import { getUser } from '@/lib/auth';
 import { saveStudyAttendance, type ApiAttendance, type ApiMeetingList } from '@/lib/joined-detail-api';
-import { DISPLAY_ZONES, wallParts, type NavigatorGroup } from '@/lib/meetings';
+import { wallParts, type NavigatorGroup } from '@/lib/meetings';
+import { scheduleZoneTitle } from '@/lib/schedule-timezone';
+import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 
 const STATUS_RING: Record<MyStatus, string> = {
   present: 'ring-success-700',
@@ -41,11 +43,28 @@ function calcRate(row: Record<string, MyStatus | undefined> | undefined, skipIds
   return total === 0 ? undefined : Math.round((scored / total) * 100);
 }
 
-function buildCells(data: ApiAttendance | undefined): Record<string, Record<string, MyStatus | undefined>> {
+/**
+ * 응답 → 출석 칸. 미입력(null) 칸과 **시작 전 회차의 결석** 칸은 비운다 — 서버는 회차를 추가할 때 시작 전 회차에도
+ * 결석(`ABSENT`)을 미리 만든다. 비운 칸은 키를 두지 않아 미체크로 그려지고 출석률에서도 빠진다.
+ * 백오피스 출석부(`back-office-front/src/features/attendance/api.ts` toBook)와 같은 규칙.
+ */
+function buildCells(
+  data: ApiAttendance | undefined,
+  now: Date = new Date(),
+): Record<string, Record<string, MyStatus | undefined>> {
+  const upcoming = new Set(
+    (data?.meetings ?? []).filter((m) => Date.parse(m.scheduledAt) > now.getTime()).map((m) => m.id),
+  );
   return Object.fromEntries(
     (data?.participants ?? []).map((p) => [
       String(p.participantId),
-      Object.fromEntries(p.attendances.map((a) => [String(a.meetingId), a.status.toLowerCase() as MyStatus])),
+      Object.fromEntries(
+        p.attendances.flatMap((a) =>
+          a.status && !(a.status === 'ABSENT' && upcoming.has(a.meetingId))
+            ? [[String(a.meetingId), a.status.toLowerCase() as MyStatus]]
+            : [],
+        ),
+      ),
     ]),
   );
 }
@@ -193,9 +212,7 @@ export function AttendanceTabContent({
   canEdit: boolean;
 }) {
   const queryClient = useQueryClient();
-  const [zone, setZone] = useState<string>(
-    DISPLAY_ZONES.some((z) => z.iana === group.timeZone) ? group.timeZone : DISPLAY_ZONES[0].iana,
-  );
+  const zone = useDisplayTimeZone();
 
   // attendance API 와 meetings API 가 서로 다른 meeting ID를 쓸 수 있으므로,
   // 셀 조회 키(id)는 attendance API 기준으로 맞추고, 회차 번호·킥오프는 scheduledAt 으로 매칭한다.
@@ -445,7 +462,7 @@ export function AttendanceTabContent({
 
   return (
     <div>
-      {/* 제목 줄: 출석 · 전체 N · 「?」 + 오른쪽 KST/PDT 탭. 고른 수는 작업 바에만 */}
+      {/* 제목 줄: 출석 · 전체 N · 「?」 + 오른쪽 프로필 시간대. 고른 수는 작업 바에만 */}
       <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
         {/* 「?」는 제목 밖에 둔다 — 제목 안에 두면 설명 글이 제목 이름에 섞인다 */}
         <div className='flex items-center gap-1'>
@@ -456,22 +473,7 @@ export function AttendanceTabContent({
           <PresenterHelp />
         </div>
 
-        <div role='tablist' aria-label='회차 표시 시간대' className='ml-auto inline-flex rounded-pill bg-surface-2 p-1'>
-          {DISPLAY_ZONES.map((z) => {
-            return (
-              <Button
-                key={z.iana}
-                variant={zone === z.iana ? 'secondary' : 'ghost'}
-                size='sm'
-                type='button'
-                onClick={() => setZone(z.iana)}
-                className='rounded-pill px-3 py-1.5 type-label-sm'
-              >
-                {z.label}
-              </Button>
-            );
-          })}
-        </div>
+        <span className='ml-auto type-label-sm text-fg-muted'>내 시간대: {scheduleZoneTitle(zone)}</span>
       </div>
 
       {/* 출석 격자 */}
@@ -528,12 +530,12 @@ export function AttendanceTabContent({
               save={
                 <>
                   {selected.length > 0 && (
-                    <Button size='sm' variant='ghost' onClick={() => setPicked(new Set())}>
+                    <Button size='sm' variant='tertiary' onClick={() => setPicked(new Set())}>
                       선택 해제
                     </Button>
                   )}
                   {dirty && (
-                    <Button variant='ghost' size='sm' disabled={saving} onClick={revert}>
+                    <Button variant='tertiary' size='sm' disabled={saving} onClick={revert}>
                       변경 취소
                     </Button>
                   )}

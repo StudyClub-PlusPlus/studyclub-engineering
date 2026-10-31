@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +19,12 @@ import lombok.NoArgsConstructor;
  * ({@code STUDY_ATTENDANCE} 와 같은 원칙).
  */
 @Entity
-@Table(name = "STUDY_NOTICE_RECIPIENT")
+@Table(
+        name = "STUDY_NOTICE_RECIPIENT",
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_study_notice_recipient_notice_account",
+                        columnNames = {"NOTICE_ID", "ACCOUNT_ID"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StudyNoticeRecipient extends BaseEntity {

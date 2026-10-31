@@ -33,7 +33,8 @@ import { uploadImage } from '@/lib/upload';
  * **종류는 한 번 정하면 바꾸지 못한다.**
  */
 
-export type FormMode = 'create' | 'edit';
+/** create = 등록(프로그램을 고른다) · edit = 정보 탭(읽기 전용) · next = 클럽의 「다음 기수 만들기」(프로그램이 정해져 있다) */
+export type FormMode = 'create' | 'edit' | 'next';
 
 export type StudyKind = 'STUDY' | 'CLUB';
 
@@ -257,6 +258,23 @@ function CharCount({ len, max }: { len: number; max: number }) {
  * 단위 자원이다). 새 채널로 바꿨다면 그 칸만 고치면 된다. **시간대도 같은 이유로 물려받는다** — 기수가
  * 바뀌었다고 클럽이 다른 시간대로 옮겨가지는 않는다.
  */
+/**
+ * 클럽의 「다음 기수 만들기」가 여는 폼 (정보 탭 명세 1-2) — 프로그램은 이 클럽으로 정해져 있고,
+ * 제목은 프로그램 제목, 한 줄 소개 · 상세 설명 · 카테고리 · 시간대 · 채널 · 드라이브는 최신 기수의 것으로 채운다.
+ * 모집 마감일 · 진행 일정 · 정원 · 진행 시작일은 기수마다 달라 비워 둔다.
+ */
+export function nextCohortForm(latest: ApiStudyDetail): StudyFormValues {
+  return {
+    ...EMPTY_FORM,
+    programMode: 'existing',
+    programId: String(latest.programId),
+    kind: 'CLUB',
+    programTitle: latest.programTitle,
+    title: latest.programTitle,
+    ...cohortDefaults(latest),
+  };
+}
+
 function cohortDefaults(latest: ApiStudyDetail): Partial<StudyFormValues> {
   return {
     summary: latest.oneLineSummary,
@@ -335,13 +353,15 @@ function ProgramField({
   // 등록 모달에서만 부른다 — 정보 탭에서는 고를 일이 없어 요청하지 않는다
   const { data: clubs = [], isLoading } = useClubPrograms(mode === 'create');
 
-  if (mode === 'edit') {
+  if (mode === 'edit' || mode === 'next') {
     return (
       <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-control border border-border bg-surface-2 px-3 py-2.5 type-body-sm'>
         <span className='font-semibold text-neutral-800'>프로그램</span>
         <span className='min-w-0 truncate text-fg-secondary'>{value.programTitle}</span>
-        {/* 종류는 정하면 바꾸지 못한다 — 읽기 전용 */}
-        <span className='ml-auto type-label-sm text-fg-muted'>{KIND_LABEL[value.kind]} · 변경할 수 없음</span>
+        {/* 종류는 정하면 바꾸지 못한다 — 읽기 전용. 다음 기수는 이 클럽에 붙는다 */}
+        <span className='ml-auto type-label-sm text-fg-muted'>
+          {mode === 'next' ? `${KIND_LABEL[value.kind]}의 새 기수` : `${KIND_LABEL[value.kind]} · 변경할 수 없음`}
+        </span>
       </div>
     );
   }

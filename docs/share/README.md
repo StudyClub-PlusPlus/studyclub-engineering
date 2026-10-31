@@ -141,3 +141,5 @@
 | 2026-10-24 | [10-24 리드 · 디스코드 스쿼드 회의 — 권한은 백엔드가 보고 봇은 시킨 일만 한다, 캡틴은 디스코드 연동이 필수](2026-10-24-discord-squad-agreement.md) | 결정됨 · 질문 5 · 결정 1 은 10-27 번복 | 일부 (admin-users 스펙, 봇 API 문서) | 공유전 |
 | 2026-10-26 | [디스코드 서버 ID 설정 9개의 이름 앞에 `DISCORD_CONFIG_` 를 붙인다 — `.env` 를 고쳐야 한다](2026-10-26-discord-config-env-rename.md) | 결정됨 | 일부 (stage · 운영 환경 변수) | 공유전 |
 | 2026-10-27 | [캡틴에게 디스코드 연동은 필수가 아니다 — 10-24 결정 1 번복](2026-10-27-captain-discord-optional.md) | 결정됨 | 됨 (admin-users · study-application 스펙, BE · 백오피스) | 공유전 |
+| 2026-10-29 | [알림 템플릿 삭제는 서버가 막지 않는다 — 운영 규칙으로 다룬다](2026-10-29-notification-template-ops-rules.md) | 결정됨 | 됨 (notification 스펙 · 알림 템플릿 PRD · 백오피스) | 공유전 |
+| 2026-10-30 | [내 스터디는 프로필 시간대로 보고 입력한다 · 모집 화면은 유지](2026-10-30-study-profile-timezones.md) | 결정됨 | 됨 (POL-0006 · 내 스터디 PRD) | 공유전 |
