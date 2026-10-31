@@ -1,6 +1,7 @@
 'use client';
 
 import { seedMyAttendance } from '@core/lib/attendance';
+import { resolveDisplayZone } from '@core/lib/schedule-timezone';
 import type { MemberRegion } from '@studyclub/mock';
 
 /**
@@ -113,13 +114,14 @@ export function getRegion(): MemberRegion {
  */
 export function getTimeZone(): string {
   const saved = readJSON<string>(ZONE_KEY, '');
-  if (saved) return saved;
-  return getRegion() === 'KR' ? 'Asia/Seoul' : 'America/Vancouver';
+  const browser = typeof window === 'undefined' ? undefined : Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return resolveDisplayZone(saved, browser);
 }
 
 export function setTimeZone(zone: string) {
   writeJSON(ZONE_KEY, zone);
   setRegion(zone === 'Asia/Seoul' ? 'KR' : 'NA');
+  window.dispatchEvent(new Event('sc:timezone-change'));
 }
 
 export function setRegion(region: MemberRegion) {

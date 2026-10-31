@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/content';
+import { formattingZone } from '@/lib/time-zone-rules';
 
 /** POST /accounts/onboarding 에 보낼 폼 상태 (age14Confirmed 는 별도). */
 export type OnboardingDraft = {
@@ -10,12 +11,7 @@ export type OnboardingDraft = {
 };
 
 /** 한국 / 북미 동부 / 밴쿠버 / LA — 서머타임 정책 차이로 밴쿠버·LA 를 분리한다. */
-export const ONBOARDING_ZONES = [
-  'Asia/Seoul',
-  'America/New_York',
-  'America/Vancouver',
-  'America/Los_Angeles',
-] as const;
+export const ONBOARDING_ZONES = ['Asia/Seoul', 'America/New_York', 'America/Vancouver', 'America/Los_Angeles'] as const;
 export type OnboardingZone = (typeof ONBOARDING_ZONES)[number];
 
 const DRAFT_PREFIX = 'sc_onboarding_draft_';
@@ -33,11 +29,7 @@ export function readDraft(accountId: number): OnboardingDraft | null {
     if (!value || typeof value !== 'object') return null;
     const d = value as Record<string, unknown>;
     if (typeof d.nickname !== 'string' || typeof d.timeZone !== 'string') return null;
-    if (
-      ['termsOfServiceAgreed', 'privacyPolicyAgreed', 'marketingAgreed'].some(
-        (key) => typeof d[key] !== 'boolean',
-      )
-    ) {
+    if (['termsOfServiceAgreed', 'privacyPolicyAgreed', 'marketingAgreed'].some((key) => typeof d[key] !== 'boolean')) {
       return null;
     }
     return d as OnboardingDraft;
@@ -90,7 +82,7 @@ export function snapToOnboardingZone(iana: string): OnboardingZone | '' {
 function offsetMinutes(zone: string): number {
   const now = new Date();
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: zone,
+    timeZone: formattingZone(zone, now),
     timeZoneName: 'longOffset',
   }).formatToParts(now);
   const raw = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT';
@@ -202,7 +194,7 @@ export function withoutApplyIntent(path: string): string {
 export function zoneOffset(zone: string, now: Date): string {
   try {
     return (
-      new Intl.DateTimeFormat('en', { timeZone: zone, timeZoneName: 'longOffset' })
+      new Intl.DateTimeFormat('en', { timeZone: formattingZone(zone, now), timeZoneName: 'longOffset' })
         .formatToParts(now)
         .find((part) => part.type === 'timeZoneName')
         ?.value.replace('GMT', 'UTC') ?? ''
@@ -257,10 +249,7 @@ function mapNicknameServerReason(reason: string, ko: boolean): string {
     return ko ? '닉네임은 2~20자로 입력해 주세요' : 'Use 2 to 20 characters for your nickname.';
   }
   // 「밑줄만으로…」는 문자 규칙보다 먼저 — reason 에 '밑줄'이 들어 있어도 예약/불가 쪽으로 보낸다.
-  if (
-    /사용할 수 없는|예약|reserved|밑줄만|only[_ ]?underscore/i.test(reason) ||
-    lower.includes('account_')
-  ) {
+  if (/사용할 수 없는|예약|reserved|밑줄만|only[_ ]?underscore/i.test(reason) || lower.includes('account_')) {
     return ko ? '사용할 수 없는 닉네임입니다' : 'This nickname is reserved.';
   }
   if (/글자|숫자|밑줄|특수|문자|character|letter|underscore|emoji|공백|space/i.test(reason)) {

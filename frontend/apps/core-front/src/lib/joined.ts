@@ -1,12 +1,12 @@
 'use client';
 
-import { type MemberRegion } from '@studyclub/mock';
-
 import type { JoinedMeeting, JoinedStudy, ScheduleRole } from '@/features/my-studies/queries';
 import type { Locale } from '@/lib/content';
 import { t } from '@/lib/i18n';
+import { wallParts } from '@/lib/meetings';
+import { zoneAbbreviation } from '@/lib/schedule-timezone';
 
-export type WallTz = 'KST' | 'PDT';
+export type WallTz = string;
 
 /**
  * 크루가 보는 참여 상태. 스터디 진행이 아니라 나와의 관계다.
@@ -50,11 +50,6 @@ export function isCompleted(study: JoinedStudy): boolean {
   return endKindOf(study) === 'completed';
 }
 
-/** 프로필 거주 지역 → 기본 표시 타임존. 북미만 PDT, 나머지는 KST. */
-export function userWallTz(region: MemberRegion): WallTz {
-  return region === 'NA' ? 'PDT' : 'KST';
-}
-
 function parseYmd(ymd: string): Date {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d));
@@ -79,13 +74,7 @@ export function mondayOf(ymd: string): string {
 }
 
 export function ymdInTz(at: Date, tz: WallTz): string {
-  const iana = tz === 'KST' ? 'Asia/Seoul' : 'America/Los_Angeles';
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: iana,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(at);
+  return wallParts(at, tz).date;
 }
 
 /** 회차 길이 컬럼이 없어 예정 종료는 시작 + 120분으로 본다 (specs/my-studies 「화면이 응답에서 계산하는 것」). */
@@ -99,25 +88,11 @@ export function meetingEnd(meeting: JoinedMeeting): Date {
 }
 
 function formatInTz(instant: Date, tz: WallTz): { date: string; time: string } {
-  const iana = tz === 'KST' ? 'Asia/Seoul' : 'America/Los_Angeles';
-  return {
-    date: new Intl.DateTimeFormat('en-CA', {
-      timeZone: iana,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(instant),
-    time: new Intl.DateTimeFormat('en-GB', {
-      timeZone: iana,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(instant),
-  };
+  return wallParts(instant, tz);
 }
 
 /** 첫 회차 ~ 마지막 회차. 예정일(SCHEDULED_AT)을 고른 타임존 날짜로 붙인다. 킥오프(no === 0)는 제외한다. */
-export function durationOf(study: JoinedStudy, locale: Locale, tz: WallTz = 'KST'): string {
+export function durationOf(study: JoinedStudy, locale: Locale, tz: WallTz = 'Asia/Seoul'): string {
   const meetings = study.meetings.filter((m) => m.no !== 0);
   if (meetings.length === 0) return locale === 'en' ? 'Dates TBD' : '기간 미정';
   const start = formatInTz(new Date(meetings[0].scheduledAt), tz).date;
@@ -139,11 +114,11 @@ function meetingLabel(meeting: JoinedMeeting): string {
 }
 
 /** 다가오는 일정 문구. 회차·날짜·시각을 선택한 타임존으로 붙인다. */
-export function upcomingOf(study: JoinedStudy, locale: Locale, tz: WallTz = 'KST'): string {
+export function upcomingOf(study: JoinedStudy, locale: Locale, tz: WallTz = 'Asia/Seoul'): string {
   const next = upcomingMeeting(study);
   if (next) {
     const { date, time } = formatInTz(new Date(next.scheduledAt), tz);
-    return `${meetingLabel(next)} · ${date} ${time}`;
+    return `${meetingLabel(next)} · ${date} ${time} ${zoneAbbreviation(tz, new Date(next.scheduledAt))}`;
   }
   if (lifeStatus(study) === 'ended') return locale === 'en' ? 'No upcoming meeting' : '다음 일정 없음';
   return locale === 'en' ? 'No upcoming meeting' : '오늘 이후 회차 없음';
@@ -155,6 +130,7 @@ export type WeekHit = {
   title: string;
   no: number;
   time: string;
+  abbreviation: string;
 };
 
 export type WeekDay = {
@@ -183,7 +159,14 @@ export function weekDays(studies: JoinedStudy[], locale: Locale, tz: WallTz, mon
       const { date, time } = formatInTz(new Date(m.scheduledAt), tz);
       if (date < monday || date > end) continue;
       const hits = byDate.get(date) ?? [];
-      hits.push({ studyId: study.id, meetingId: m.id, title: t(study.title, locale), no: m.no, time });
+      hits.push({
+        studyId: study.id,
+        meetingId: m.id,
+        title: t(study.title, locale),
+        no: m.no,
+        time,
+        abbreviation: zoneAbbreviation(tz, new Date(m.scheduledAt)),
+      });
       byDate.set(date, hits);
     }
   }

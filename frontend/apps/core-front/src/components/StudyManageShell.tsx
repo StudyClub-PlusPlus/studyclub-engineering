@@ -101,7 +101,7 @@ export function StudyManageShell({ children }: { children: ReactNode }) {
     id: String(groupInfo.studyGroup.id),
     name: groupInfo.studyGroup.name,
     timeZone: groupInfo.studyGroup.timezone,
-    startAt: groupInfo.studyGroup.startTime,
+    startAt: groupInfo.studyGroup.startTime ?? '',
   };
   const canEdit = groupInfo.me.canEdit;
   const captain = Boolean(groupInfo.me.captain || groupInfo.me.participantId === null);
