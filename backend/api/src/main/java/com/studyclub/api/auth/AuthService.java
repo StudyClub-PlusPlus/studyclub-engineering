@@ -1,6 +1,5 @@
 package com.studyclub.api.auth;
 
-import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.api.auth.dto.AuthDtos.AccessTokenResponse;
 import com.studyclub.api.auth.dto.AuthDtos.AccountView;
 import com.studyclub.api.auth.dto.AuthDtos.AuthResponse;
@@ -16,35 +15,49 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private static final String PLATFORM_BACK_OFFICE = "BACK_OFFICE";
+    private static final String PROVIDER_APPLE = "apple";
 
     private final AccountRepository accountRepository;
     private final AccountRegistrar accountRegistrar;
     private final GoogleOAuthClient googleOAuthClient;
+    private final AppleOAuthClient appleOAuthClient;
     private final JwtService jwtService;
 
     public AuthService(
             AccountRepository accountRepository,
             AccountRegistrar accountRegistrar,
             GoogleOAuthClient googleOAuthClient,
+            AppleOAuthClient appleOAuthClient,
             JwtService jwtService) {
         this.accountRepository = accountRepository;
         this.accountRegistrar = accountRegistrar;
         this.googleOAuthClient = googleOAuthClient;
+        this.appleOAuthClient = appleOAuthClient;
         this.jwtService = jwtService;
     }
 
     // @Transactional 없음 — findOrRegister 가 실패한 트랜잭션을 버리고 새로 열어 재시도해야 한다.
-    public AuthResponse socialLogin(String code, String platform, String redirectOverride) {
+    /**
+     * @param provider {@code google}(생략 포함) 또는 {@code apple}
+     * @param redirectOverride 구글: null 이면 웹 콜백, iOS 는 빈 문자열. 애플: 사이트는 콜백, iOS 는 null
+     * @param name 애플만 — 앱이 첫 인가에서 받은 이름. 애플은 이름을 그때 한 번만 준다
+     */
+    public AuthResponse socialLogin(
+            String code, String provider, String platform, String redirectOverride, String name) {
         if (code == null || code.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "code 가 필요합니다.");
         }
-        GoogleUser g = googleOAuthClient.exchange(code, redirectOverride);
+        boolean apple = PROVIDER_APPLE.equalsIgnoreCase(provider);
+        SocialUser g =
+                apple
+                        ? appleOAuthClient.exchange(code, redirectOverride)
+                        : googleOAuthClient.exchange(code, redirectOverride);
 
         // 특이 케이스 — Gmail 은 항상 검증돼 있고, 외부 이메일로 만든 구글 계정 중 소유 확인을 안 끝낸 경우만 여기 걸린다.
         // 검증 안 된 이메일은 남의 것일 수 있으니 계정을 찾거나 만들지 않고 가입 자체를 안 받는다 (스펙: 가입 불가).
         if (g.email() == null || g.email().isBlank() || !g.emailVerified()) {
             throw new BusinessException(
-                    ErrorCode.SOCIAL_LOGIN_EMAIL_REQUIRED, "구글 계정의 이메일이 확인되지 않았습니다.");
+                    ErrorCode.SOCIAL_LOGIN_EMAIL_REQUIRED, "소셜 계정의 이메일이 확인되지 않았습니다.");
         }
         String email = g.email().toLowerCase();
 
@@ -56,11 +69,11 @@ public class AuthService {
             account = findOrRegister(g, email);
         }
 
-        // suggestedNickname 은 이번 로그인의 구글 name. DB 에 넣지 않고 응답에만 실린다 (스펙).
-        return issueFor(account, g.name());
+        // suggestedNickname 은 이번 로그인의 제공자 이름. DB 에 넣지 않고 응답에만 실린다 (스펙).
+        return issueFor(account, apple ? name : g.name());
     }
 
-    private Account findOrRegister(GoogleUser g, String email) {
+    private Account findOrRegister(SocialUser g, String email) {
         try {
             return accountRegistrar.findOrRegister(g, email);
         } catch (DataIntegrityViolationException e) {

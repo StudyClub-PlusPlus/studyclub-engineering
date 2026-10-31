@@ -37,13 +37,14 @@ export type AnalyticsEvent =
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
   | { name: 'Auth Google Login Clicked'; props: { popup_blocked: boolean } }
+  | { name: 'Auth Apple Login Clicked'; props: { popup_blocked: boolean } }
   | { name: 'Auth OAuth Cancelled'; props: { error: string } }
   | { name: 'Auth Login Completed'; props: { is_new_user: boolean; next_path: string } }
   | { name: 'Auth Login Failed'; props: { error_message: string; http_status: number } }
   // 공통 규약 이벤트 — 서비스마다 같은 이름이라 서비스끼리 퍼널을 겹쳐 볼 수 있다.
   // 가입 정본은 서버(user.registered)가 같은 이름으로 보낸다. 여기 것은 퍼널용 프론트 사본.
-  | { name: 'User Signed Up'; props: { method: 'google'; signup_surface: 'onboarding' } }
-  | { name: 'User Logged In'; props: { method: 'google' } }
+  | { name: 'User Signed Up'; props: { method: 'google' | 'apple'; signup_surface: 'onboarding' } }
+  | { name: 'User Logged In'; props: { method: 'google' | 'apple' } }
 
   // ── Onboarding ───────────────────────────────────────────────────────────────
   | { name: 'Onboarding Started'; props: { suggested_nickname: boolean } }
@@ -223,14 +224,14 @@ export function readGaClientId(
 }
 
 /** 가입 완료 지점 — 첫 유입을 유저 속성에 setOnce 로 남기고 `User Signed Up` 을 보낸다. */
-export function trackSignUp(): void {
+export function trackSignUp(method: 'google' | 'apple' = 'google'): void {
   if (typeof window === 'undefined') return;
   if (analyticsEnabled) {
     const identifyObj = new amplitude.Identify();
     for (const [k, v] of Object.entries(readFirstTouch())) identifyObj.setOnce(k, v);
     amplitude.identify(identifyObj);
   }
-  track({ name: 'User Signed Up', props: { method: 'google', signup_surface: 'onboarding' } });
+  track({ name: 'User Signed Up', props: { method, signup_surface: 'onboarding' } });
 }
 
 export function identifyUser(properties: Partial<UserProperties>): void {

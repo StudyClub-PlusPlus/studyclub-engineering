@@ -81,7 +81,7 @@ export function StudyCard({
           />
         )}
         {badge ? (
-          <span className='relative inline-flex w-fit items-center gap-1.5 rounded-pill bg-white/85 px-2.5 py-1 text-xs font-semibold text-fg shadow-sm backdrop-blur-md'>
+          <span className='relative inline-flex w-fit items-center gap-1.5 rounded-pill bg-white/85 px-2.5 py-1 type-label-sm text-fg shadow-sm backdrop-blur-md'>
             {badge.dotClassName && (
               <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', badge.dotClassName)} aria-hidden='true' />
             )}
@@ -91,21 +91,21 @@ export function StudyCard({
           <span />
         )}
         <div className='relative text-fg'>
-          <span className='flex items-center gap-1.5 text-xs font-semibold' style={{ color: ink }}>
+          <span className='flex items-center gap-1.5 type-label-sm' style={{ color: ink }}>
             <CategoryIcon size={12} strokeWidth={1.75} className='shrink-0' />
             {categoryLabel}
           </span>
           {/* 최대 2줄 — 넘치면 말줄임. 카드 높이를 균일하게 유지한다. */}
-          <h3 className='mt-1 line-clamp-2 break-keep text-base font-bold sm:text-xl leading-[1.3] tracking-tight'>{title}</h3>
+          <h3 className='mt-1 line-clamp-2 break-keep type-title-lg'>{title}</h3>
         </div>
       </div>
 
       {/* 본문 — 한 줄 소개와 정보 줄을 한 영역에 모은다. 별도 하단 바로 나누지 않는다. */}
       <div className='flex flex-1 flex-col gap-2 p-3 sm:gap-3 sm:p-5'>
-        {summary && <p className='line-clamp-2 text-xs leading-relaxed text-fg-secondary sm:text-sm'>{summary}</p>}
+        {summary && <p className='line-clamp-2 type-body-sm text-fg-secondary'>{summary}</p>}
 
         {details.length > 0 && (
-          <div className='space-y-1.5 text-xs text-fg-muted'>
+          <div className='space-y-1.5 type-label-sm text-fg-muted'>
             {details.map(({ icon: Icon, label }, i) => (
               <div key={i} className='flex min-w-0 items-center gap-2'>
                 <Icon size={13} strokeWidth={1.75} className='shrink-0' />

@@ -102,8 +102,8 @@ GET /api/v1/studies/{discordStudyId}/channels
 
 | 상태 | 언제 | 원인 |
 |------|------|------|
-| **409** | `DISCORD_GUILD_ID` 설정 없음 | 서버 설정 문제. [create-study](create-study.md#이-엔드포인트에서-나는-것) 와 같다 |
-| **404** | 봇이 `DISCORD_GUILD_ID` 길드를 찾지 못함 | 서버 설정 문제(ID 오타, 봇이 그 길드에 없음) |
+| **409** | `DISCORD_CONFIG_GUILD_ID` 설정 없음 | 서버 설정 문제. [create-study](create-study.md#이-엔드포인트에서-나는-것) 와 같다 |
+| **404** | 봇이 `DISCORD_CONFIG_GUILD_ID` 길드를 찾지 못함 | 서버 설정 문제(ID 오타, 봇이 그 길드에 없음) |
 | **400** | `discordStudyId` 가 snowflake 형식이 아님 | 요청자 잘못. 그대로 재시도해도 실패한다 |
 | **400** | `discordStudyId` 가 카테고리가 아닌 채널의 ID 임 (텍스트 · 음성 채널 등) | 위와 같음. 텍스트 채널 ID 를 카테고리 ID 자리에 넣은 경우가 흔하다 |
 | **404** | `discordStudyId` 카테고리를 봇이 찾지 못함 | 스터디 카테고리가 지워졌거나 없는 ID, 또는 봇에게 그 카테고리의 `View Channel` 권한이 없음 |

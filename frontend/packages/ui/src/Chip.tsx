@@ -23,7 +23,7 @@ export function FilterChip({ selected = false, selectMode = 'multi', className, 
       type='button'
       aria-pressed={selected}
       className={cx(
-        'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-3 text-sm font-medium',
+        'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-pill px-3 type-label-lg',
         'transition-[background-color,border-color,color] duration-fast ease-out',
         'focus-visible:outline-none focus-visible:shadow-(--ring)',
         solid

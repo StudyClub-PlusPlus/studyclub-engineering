@@ -62,7 +62,7 @@ export function KickoffDialog({
       }
     >
       <div className='flex flex-col gap-4 py-2'>
-        <p className='text-sm text-fg-secondary'>
+        <p className='type-body-sm text-fg-secondary'>
           규칙·일정·발표자를 정하는 첫 모임입니다. 네비게이터는 이 날을 고칠 수 없습니다.
         </p>
         {/* Input 은 칸 너비를 꽉 채운다(w-full) — 두 칸이 창 너비를 반씩 나눈다 */}

@@ -273,6 +273,13 @@ ACCOUNT_IDENTITY
 - 이메일은 **매번** 온다 → "이메일 없음" 거부에 걸릴 일이 사실상 없다.
 - '이메일 가리기' 면 중계 주소가 온다 → 위에서 정한 대로 그대로 저장.
 
+## 퍼널·계측
+
+- 단계: 가입
+- 이벤트 (front): `Onboarding Started` · `Onboarding Nickname Submitted` · `Onboarding Nickname Conflict` · `Onboarding Consents Agreed` · `Onboarding Completed`
+- 가입 확정 `User Signed Up` / `sign_up` 은 **서버 정본** (`user.registered` 커밋 뒤, insert_id `user_signed_up_account_{id}`). 프론트는 Amplitude 퍼널 사본만 보낸다
+- 이 문서로 바뀌는 이벤트는 없다. A/B 없음
+
 ## 미확정 (팀 결정)
 
 - **`ACCOUNT.EMAIL` 변경** — 자유 입력은 PRD 대로 안 함. 대신 **연결된 제공자 이메일 중 선택**은 허용하자는 제안 (애플 절 참고). 안 하면 애플(중계) 먼저 가입한 사람은 구글을 연결해도 알림을 영영 중계로 받는다. 자유 입력을 열려면 `UNIQUE(EMAIL)` 충돌 + 변경 인증 메일이 따라온다.
@@ -291,7 +298,7 @@ ACCOUNT_IDENTITY
 - `POST /accounts/onboarding` 성공으로 홈페이지 가입 완료 확정 후 연결 선택 안내.
 - 「스터디는 디스코드에서 진행돼요. 지금 연결할까요?」와 「지금 연결 / 나중에 하기」 제공.
 - 연결 실패·인증 취소·나중에 하기에도 가입 완료 상태 유지.
-- 연결 API는 `POST /api/me/discord/link` 재사용. 실제 OAuth 검증 및 연결 결과 조회는 후속 FE 작업.
-- 스터디 신청에서 진입한 경우 안전한 내부 복귀 주소와 선택 스터디 유지. 연결 성공 시 해당 신청 폼, 나중에 하기는 상세 화면으로 복귀.
-- 나중에 하기를 선택한 회원은 이후 신청하기를 누를 때 연결 확인.
-- Playground는 `?step=discord`와 안전한 `next`로 시뮬레이션. 실제 API 변경·운영 배포는 이 시안 반영 범위에서 제외.
+- 연결 API는 `POST /api/me/discord/link` 재사용. core-front 는 신청·마이페이지와 같은 OAuth 팝업(`requestDiscordCode`)으로 인가 코드를 받는다 (DSC-04).
+- 스터디 신청에서 진입한 경우 안전한 내부 복귀 주소와 선택 스터디 유지(`apply=1`). 연결 성공 시 해당 신청 폼, 「스터디 신청할 때 하기」는 상세 화면으로 복귀.
+- 「스터디 신청할 때 하기」를 선택한 회원은 이후 신청하기를 누를 때 연결 확인.
+- Playground·core-front 모두 `?step=discord`와 안전한 `next`를 쓴다.

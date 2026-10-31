@@ -68,6 +68,10 @@ public class SesMailClient implements MailClient {
         if (configurationSetName != null && !configurationSetName.isBlank()) {
             request.configurationSetName(configurationSetName);
         }
+        String replyTo = account.replyToAddress();
+        if (replyTo != null && !replyTo.isBlank()) {
+            request.replyToAddresses(replyTo);
+        }
         return request.build();
     }
 

@@ -88,14 +88,14 @@ function RegionDonut({ data }: { data: ApiCrewTimezones }) {
                 style={{ background: GROUP_COLOR[g.code] ?? GROUP_COLOR.UNKNOWN }}
               />
               {/* 지역 이름과 시간대는 한 덩어리다 */}
-              <span className='flex-1 whitespace-nowrap text-sm font-medium text-fg'>
+              <span className='flex-1 whitespace-nowrap type-label-lg text-fg'>
                 {label.region}
-                {label.zone && <span className='ml-1.5 text-xs text-fg-muted'>{label.zone}</span>}
+                {label.zone && <span className='ml-1.5 type-label-sm text-fg-muted'>{label.zone}</span>}
               </span>
-              <span className='tnum shrink-0 text-sm font-bold text-fg'>
+              <span className='tnum shrink-0 type-label-lg text-fg'>
                 {g.percentage === null ? '—' : `${Math.round(g.percentage)}%`}
               </span>
-              <span className='tnum w-14 shrink-0 text-right text-xs text-fg-muted'>{formatCount(g.count)}명</span>
+              <span className='tnum w-14 shrink-0 text-right type-label-sm text-fg-muted'>{formatCount(g.count)}명</span>
             </li>
           );
         })}

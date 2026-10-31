@@ -27,11 +27,11 @@ POST /api/v1/channels/alert/msg
 
 **봇은 요청자를 검사하지 않는다.** 누가 alert 를 올릴 수 있는지는 백엔드가 호출 전에 정한다
 ([공통 헤더](common-header.md#x-discord-user-id)). navigator 의 행동에서 비롯된 알림은 백엔드가
-`DISCORD_BOT_ID` 를 싣고 올린다 ([시스템 호출](common-header.md#시스템-호출)).
+`DISCORD_CONFIG_BOT_ID` 를 싣고 올린다 ([시스템 호출](common-header.md#시스템-호출)).
 
 alert 채널은 길드에 **이미 존재하는** 것이다. 이 엔드포인트는 만들지 않고, 찾지 못하면 보내지 말고 실패한다.
-**설정값 `DISCORD_ALERT_CHANNEL_ID` 로 ID 를 받는다** — 이름으로 찾지 않는다.
-`DISCORD_BULLETIN_CHANNEL_ID` 과 같은 방식이다. 역할 설정(`DISCORD_CAPTAIN_ROLE_ID` · `DISCORD_NAVIGATOR_ROLE_ID`)은 읽지 않는다.
+**설정값 `DISCORD_CONFIG_ALERT_CHANNEL_ID` 로 ID 를 받는다** — 이름으로 찾지 않는다.
+`DISCORD_CONFIG_BULLETIN_CHANNEL_ID` 과 같은 방식이다. 역할 설정(`DISCORD_CONFIG_CAPTAIN_ROLE_ID` · `DISCORD_CONFIG_NAVIGATOR_ROLE_ID`)은 읽지 않는다.
 
 ```jsonc
 { "msg": "알고리즘 스터디 1기가 완료 처리되었습니다. 역할 정리가 필요합니다." }
@@ -96,7 +96,7 @@ alert 채널은 길드에 **이미 존재하는** 것이다. 이 엔드포인트
 | **400** | `@everyone` · `@here` 를 지우고 나니 비었거나 공백만 남음 | 위와 같음 |
 | **400** | `msg` 가 1900자 초과 | 위와 같음. 잘라서 보내지 않는다 — 알림의 뒷부분이 조용히 사라지면 조치가 빠진다. 길이는 **가공 전** 값으로 잰다 |
 | **404** | alert 채널을 봇이 찾지 못함, 또는 그 ID 가 텍스트 채널이 아님 | **서버·길드 설정 문제**다. 채널이 지워졌거나, 봇에게 `View Channel` 권한이 없거나, 카테고리·음성 채널 ID 가 설정됨 |
-| **409** | `DISCORD_ALERT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
+| **409** | `DISCORD_CONFIG_ALERT_CHANNEL_ID` 가 설정되지 않음 (또는 숫자가 아니라 시작 시 버려짐) | 서버 설정 문제. 보낼 곳이 없으므로 보내지 말고 실패한다. |
 | **502** | Discord 가 전송을 거부 | 봇 권한 부족(alert 채널의 `Send Messages`), 그 밖의 Discord 5xx |
 | **503** | 봇 비활성 또는 아직 미연결 | `DISCORD_TOKEN` 미설정, 또는 기동 직후 `is_ready()` 가 아직 False |
 

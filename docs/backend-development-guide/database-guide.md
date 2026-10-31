@@ -129,20 +129,21 @@ SQL 자체 오류는 `beta` push 에서 잡는다.
 
 | 대상 | 규칙 | 예 |
 |------|------|-----|
-| 테이블 | **대문자**, 복수형 | `USERS`, `STUDIES`, `STUDY_MEMBERS` |
-| 컬럼 | 소문자 snake_case | `google_sub`, `created_at` |
-| 유니크 키 | `uk_{테이블}_{컬럼}` | `uk_users_email` |
-| 인덱스 | `idx_{테이블}_{컬럼}` | `idx_studies_status` |
-| 외래키 | `fk_{자식}_{부모}` | `fk_study_members_study` |
+| 테이블 | **대문자** snake_case, 단수형 | `ACCOUNT`, `STUDY_PARTICIPANT` |
+| 컬럼 | **대문자** snake_case | `ACCOUNT_ID`, `CREATED_AT` |
+| 유니크 키 | `uk_{테이블}_{컬럼}` (소문자) | `uk_study_attendance_meeting_account` |
+| 인덱스 | `idx_{테이블}_{컬럼}` (소문자) | `idx_study_notice_group_created` |
+| 외래키 | `fk_{자식}_{부모}` (소문자) | `fk_study_notice_recipient_notice` |
 
-**이 규칙은 코드가 강제한다** — `UpperCaseTableNamingStrategy` 가 물리 테이블 이름을 대문자로
-올린다. 그래도 엔티티에는 `@Table(name = "USERS")` 를 명시한다: 클래스 이름의 복수형·약어는
-전략이 알 수 없고, 파일만 읽고 실제 테이블 이름을 알 수 있어야 하기 때문이다.
+**이 규칙은 코드가 강제한다** — `UpperCaseTableNamingStrategy` 가 물리 테이블·컬럼 이름을 대문자로
+올린다. 그래도 엔티티에는 `@Table(name = "ACCOUNT")` · `@Column(name = "ACCOUNT_ID")` 를 명시한다: 클래스·필드
+이름과 다른 이름은 전략이 알 수 없고, 파일만 읽고 실제 이름을 알 수 있어야 하기 때문이다.
+마이그레이션 SQL 도 같은 대문자로 쓴다.
 
-> **ERD 문서는 컬럼도 대문자로 씁니다 — 모순이 아니다.** [`../erd/README.md`](../erd/README.md) 의
-> 표기(`CREATED_AT`)는 **설계 표기법**이고, 실제 DDL 컬럼은 소문자(`created_at`)다.
-> MySQL 은 컬럼 식별자를 **항상** 대소문자 구분 없이 다루므로 둘은 같은 컬럼을 가리킨다.
-> 테이블 이름만 다르다 — 리눅스에서 실제로 갈리기 때문에 물리 이름을 대문자로 고정한다.
+> **ERD 문서·DDL·엔티티가 모두 같은 대문자 표기(`CREATED_AT`)를 쓴다.** MySQL 은 컬럼 식별자를
+> **항상** 대소문자 구분 없이 다루므로 컬럼은 대소문자가 달라도 같은 컬럼이지만, 테이블 이름은
+> 리눅스에서 실제로 갈리기 때문에 대문자로 고정한다. 옛 마이그레이션(V1 의 `USERS`·`google_sub` 등)은
+> 이 규칙 이전 것이라 고치지 않는다 — 적용된 마이그레이션은 수정하지 않는다.
 
 > **왜 대문자인가** — 리눅스 MySQL 은 테이블 이름의 대소문자를 구분한다(`lower_case_table_names=0`).
 > 규칙이 없으면 `users` 와 `USERS` 가 **양쪽 다 존재하는** 상태가 만들어지고, 데이터가 갈라진 뒤에는

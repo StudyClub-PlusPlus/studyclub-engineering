@@ -3,10 +3,11 @@ package com.studyclub.api.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.studyclub.api.auth.GoogleOAuthClient.GoogleUser;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountIdentity;
 import com.studyclub.domain.account.AccountIdentityRepository;
@@ -50,6 +51,7 @@ class SocialLoginIntegrationTest {
     @Autowired EntityManager em;
 
     @MockitoBean GoogleOAuthClient google; // 구글 왕복만 가짜. 파이썬의 mock.patch 와 같다
+    @MockitoBean AppleOAuthClient apple;
 
     @BeforeEach
     void setUp() {
@@ -66,7 +68,15 @@ class SocialLoginIntegrationTest {
 
     private void googleReturns(String sub, String email, boolean emailVerified, String name) {
         when(google.exchange(anyString(), any()))
-                .thenReturn(new GoogleUser(sub, email, emailVerified, name, "https://img/pic.png"));
+                .thenReturn(
+                        new SocialUser(
+                                Issuer.GOOGLE,
+                                sub,
+                                email,
+                                emailVerified,
+                                name,
+                                "https://img/pic.png",
+                                null));
     }
 
     /** 로그인 API 를 실제로 쏜다 (core-front) */
@@ -336,5 +346,65 @@ class SocialLoginIntegrationTest {
         assertThat(account)
                 .containsEntry("role", "ADMIN")
                 .containsEntry("onboardingCompletedAt", null);
+    }
+
+    @Test
+    @DisplayName("성공 - 애플은 (APPLE, sub) 로 가입되고, 연결 해제용 refresh token 이 저장되고, 앱이 보낸 이름이 제안 닉네임이 된다")
+    @SuppressWarnings("unchecked")
+    void appleFirstLoginRegisters() {
+        // given — 애플이 비공개 릴레이 이메일로 답한다. 이름은 id_token 에 없어서 앱이 따로 보낸다
+        when(apple.exchange("apple-code", null))
+                .thenReturn(
+                        new SocialUser(
+                                Issuer.APPLE,
+                                "apple-sub-1",
+                                "abc@privaterelay.appleid.com",
+                                true,
+                                null,
+                                null,
+                                "apple-refresh-1"));
+
+        // when
+        ResponseEntity<Map> response =
+                rest.postForEntity(
+                        "/auth/social-login",
+                        Map.of(
+                                "code", "apple-code",
+                                "provider", "apple",
+                                "platform", "CORE",
+                                "name", "홍길동"),
+                        Map.class);
+
+        // then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().get("suggestedNickname")).isEqualTo("홍길동");
+        AccountIdentity identity =
+                identities
+                        .findByIssuerAndProviderAccountId(Issuer.APPLE, "apple-sub-1")
+                        .orElseThrow();
+        assertThat(identity.getProviderRefreshToken()).isEqualTo("apple-refresh-1");
+        assertThat(identities.findByIssuerAndProviderAccountId(Issuer.GOOGLE, "apple-sub-1"))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("성공 - iOS 앱이 보낸 빈 redirectUri 는 웹 콜백으로 바꾸지 않고 그대로 구글에 넘긴다")
+    void emptyRedirectUriIsPassedThrough() {
+        googleReturns(SUB, RAW_EMAIL, "홍길동");
+
+        rest.postForEntity(
+                "/auth/social-login",
+                Map.of(
+                        "code",
+                        "ios-code",
+                        "provider",
+                        "google",
+                        "platform",
+                        "CORE",
+                        "redirectUri",
+                        ""),
+                Map.class);
+
+        verify(google).exchange(eq("ios-code"), eq(""));
     }
 }

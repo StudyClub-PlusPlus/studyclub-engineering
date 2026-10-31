@@ -131,27 +131,27 @@ export function ApplyDiscordGate({
       }
     >
       <div className='flex flex-col gap-3 py-2'>
-        <p className='text-sm font-medium text-fg'>
+        <p className='type-label-lg text-fg'>
           {t({ ko: '스터디 신청 전 디스코드 연동은 필수입니다.', en: 'You must connect Discord before applying.' }, locale)}
         </p>
-        <p className='text-sm leading-relaxed text-fg-secondary'>
+        <p className='type-body-sm text-fg-secondary'>
           {t({ ko: '스터디는 디스코드에서 진행됩니다. 연동이 끝나면 신청 폼으로 이동합니다.', en: 'Studies run on Discord. After connecting, you continue to the application form.' }, locale)}
         </p>
         {!DISCORD_LINK_READY && (
-          <p role='status' className='text-sm leading-relaxed text-fg-secondary'>
+          <p role='status' className='type-body-sm text-fg-secondary'>
             {t({ ko: '디스코드 연동은 준비 중입니다. 운영진에게 문의해 주세요.', en: 'Discord connection is coming soon. Please contact the organizers.' }, locale)}
           </p>
         )}
         {notInGuild && (
           <div role='alert' className='flex flex-col gap-2 rounded-control bg-surface-2 p-3'>
-            <p className='text-sm leading-relaxed text-fg'>
+            <p className='type-body-sm text-fg'>
               {t({ ko: '스터디클럽 디스코드 서버에 아직 가입하지 않았습니다. 서버에 가입한 뒤 다시 연동해 주세요.', en: 'You have not joined the StudyClub Discord server yet. Join the server, then connect again.' }, locale)}
             </p>
             <a
               href={site.discord_invite}
               target='_blank'
               rel='noreferrer'
-              className='inline-flex items-center gap-1 self-start text-sm font-semibold text-brand hover:underline'
+              className='inline-flex items-center gap-1 self-start type-label-lg text-brand hover:underline'
             >
               {t({ ko: '디스코드 서버 가입하기', en: 'Join the Discord server' }, locale)}
               <ExternalLink size={14} aria-hidden />
@@ -159,7 +159,7 @@ export function ApplyDiscordGate({
           </div>
         )}
         {error && (
-          <p role='alert' className='text-xs text-error-700'>
+          <p role='alert' className='type-label-sm text-error-700'>
             {error}
           </p>
         )}

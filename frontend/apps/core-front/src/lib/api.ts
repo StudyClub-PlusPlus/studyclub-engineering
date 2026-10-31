@@ -29,6 +29,12 @@ function l10n(text: string): { ko: string; en: string } {
   return { ko: text, en: text };
 }
 
+/** 응답의 시간대. `null`(미정)은 비워 둔다 — 문구 추정은 `studyTimezone` 이 한다. */
+function toTimezone(tz: ApiStudy['timezone']): Study['timezone'] {
+  if (tz === 'BOTH') return 'both';
+  return tz ?? undefined;
+}
+
 export function toStudy(api: ApiStudy): Study {
   return {
     id: String(api.studyId),
@@ -41,6 +47,7 @@ export function toStudy(api: ApiStudy): Study {
     category: CATEGORY_DISPLAY[api.category] ?? api.category,
     image: api.thumbnailUrl ?? undefined,
     schedule: api.schedule ? l10n(api.schedule) : undefined,
+    timezone: toTimezone(api.timezone),
     date: api.endAt?.slice(0, 10),
     startAt: api.startAt ?? undefined,
     seats: api.capacity ? { total: api.capacity, taken: api.currentApplicants } : undefined,
@@ -95,6 +102,7 @@ export function toStudyFromDetail(api: ApiStudyDetail): Study {
     category: CATEGORY_DISPLAY[api.category] ?? api.category,
     image: api.thumbnailUrl ?? undefined,
     schedule: api.schedule ? l10n(api.schedule) : undefined,
+    timezone: toTimezone(api.timezone),
     startAt: api.startAt ?? undefined,
     discord_url: api.discordChannelUrl ?? undefined,
     driveUrl: api.driveUrl ?? undefined,

@@ -8,12 +8,13 @@ import { Button, Input } from '@studyclub/ui';
 import { AlertCircle, ArrowRight, Check } from 'lucide-react';
 
 import { OnboardingConsent } from '@/components/OnboardingConsent';
+import { OnboardingDiscord } from '@/components/OnboardingDiscord';
 import { TimeZonePicker } from '@/components/TimeZonePicker';
 import { readGaClientId, track, trackSignUp } from '@/lib/analytics';
 import { ApiError } from '@/lib/api/client';
 import { checkNicknameAvailability } from '@/lib/api/nicknames';
 import { completeOnboarding } from '@/lib/api/onboarding';
-import { getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/lib/auth';
+import { getLoginMethod, getSuggestedNickname, getUser, logout, setSuggestedNickname, setUser } from '@/lib/auth';
 import type { Locale } from '@/lib/content';
 import {
   clearDraft,
@@ -42,10 +43,15 @@ function OnboardingScreen() {
   const search = useSearchParams();
   const router = useRouter();
   const next = returnPath(search.get('next'), locale);
+  const discordStep = search.get('step') === 'discord';
   const [ready, setReady] = useState(false);
   const [accountId, setAccountId] = useState<number | null>(null);
 
   useEffect(() => {
+    if (discordStep) {
+      setReady(true);
+      return;
+    }
     const user = getUser();
     if (!user) {
       router.replace(
@@ -59,17 +65,19 @@ function OnboardingScreen() {
     }
     setAccountId(user.id);
     setReady(true);
-  }, [locale, next, router]);
+  }, [discordStep, locale, next, router]);
+
+  if (discordStep) return <OnboardingDiscord locale={locale} next={next} />;
 
   return (
     <div className='min-h-[80vh] bg-surface-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12'>
       <div className='mx-auto max-w-[540px]'>
         <header className='mb-7 text-center'>
-          <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 text-xs font-medium text-primary-700'>
+          <div className='mb-4 inline-flex items-center gap-1.5 rounded-full bg-brand-subtle px-3 py-1.5 type-label-sm text-primary-700'>
             <Check size={13} aria-hidden='true' />
             {locale === 'ko' ? 'Google 계정 연결 완료' : 'Google account connected'}
           </div>
-          <h1 className='break-keep text-2xl font-bold tracking-tight sm:text-[28px]'>
+          <h1 className='break-keep type-headline-lg sm:type-headline-lg'>
             {locale === 'ko' ? 'StudyClub에 오신 것을 환영해요' : 'Welcome to StudyClub'}
           </h1>
         </header>
@@ -79,7 +87,7 @@ function OnboardingScreen() {
           <div
             aria-busy='true'
             role='status'
-            className='rounded-card border border-border bg-bg p-8 text-sm text-fg-muted'
+            className='rounded-card border border-border bg-bg p-8 type-body-sm text-fg-muted'
           >
             {locale === 'ko' ? '가입 정보를 확인하고 있어요…' : 'Loading your profile…'}
           </div>
@@ -290,7 +298,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
       setSuggestedNickname(null);
       clearDraft(accountId);
       // 온보딩 최초 완료 = 가입 확정 (서버 user.registered 와 같은 지점)
-      trackSignUp();
+      trackSignUp(getLoginMethod());
       track({
         name: 'Onboarding Completed',
         props: {
@@ -298,7 +306,8 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
           marketing_agreed: draft.marketingAgreed,
         },
       });
-      router.replace(next);
+      // 가입 완료와 디스코드 연결은 독립 — 연결 선택 단계로 보낸다 (DSC-03)
+      router.replace(`/${locale}/onboarding?step=discord&next=${encodeURIComponent(next)}`);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
@@ -357,11 +366,11 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
       {topAlertText && (
         <div
           role='alert'
-          className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 text-sm text-error-700'
+          className='mb-6 rounded-control border border-error-600/20 bg-error-50 p-4 type-body-sm text-error-700'
         >
           <div className='flex items-start gap-2'>
             <AlertCircle size={17} className='mt-0.5 shrink-0' />
-            <p className='leading-relaxed'>{topAlertText}</p>
+            <p className=''>{topAlertText}</p>
           </div>
           {problem === 'expired' && (
             <Link
@@ -401,7 +410,7 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
           <p
             id='nickname-help'
             role={nickLine.tone === 'error' ? 'alert' : undefined}
-            className={`mt-2 flex items-center gap-1.5 text-xs leading-relaxed ${
+            className={`mt-2 flex items-center gap-1.5 type-label-sm ${
               nickLine.tone === 'ok'
                 ? 'text-success-700'
                 : nickLine.tone === 'error'
@@ -423,11 +432,11 @@ function OnboardingForm({ locale, next, accountId }: { locale: Locale; next: str
         />
 
         <section className='border-t border-border pt-6'>
-          <h2 className='mb-4 text-base font-semibold'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
+          <h2 className='mb-4 type-title-md'>{ko ? '약관 동의' : 'Terms and agreements'}</h2>
           {!ko && (
             <p
               role='note'
-              className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 text-xs leading-relaxed text-fg-muted'
+              className='mb-4 rounded-control bg-surface-1 px-3 py-2.5 type-label-sm text-fg-muted'
             >
               The documents below are currently available in Korean. English versions have not been provided yet.
             </p>

@@ -67,11 +67,11 @@ function BoardColumn({
     // 위아래 여백 32 + 제목 24 + 간격 8 + 행 44×5(4 + 「외 N개」) = 284px 를 늘 지킨다 — 건수가 들고 날 때 아래 차트가 밀리지 않게
     <div className={`flex min-h-71 flex-col px-5 py-4 ${className}`}>
       <div className='flex h-6 items-baseline gap-2'>
-        <h2 className='text-base font-bold'>{title}</h2>
+        <h2 className='type-title-md'>{title}</h2>
         {state.status === 'ok' && (
-          <span className='tnum text-sm font-bold text-fg-secondary'>{formatCount(state.data.total)}</span>
+          <span className='tnum type-label-lg text-fg-secondary'>{formatCount(state.data.total)}</span>
         )}
-        <Link href={listHref} className='ml-auto text-xs font-medium text-brand'>
+        <Link href={listHref} className='ml-auto type-label-sm text-brand'>
           전체 보기
         </Link>
       </div>
@@ -89,10 +89,10 @@ function BoardColumn({
         </>
       )}
       {state.status === 'error' && (
-        <p className='flex flex-1 items-center justify-center text-sm text-fg-muted'>{LOAD_FAILED}</p>
+        <p className='flex flex-1 items-center justify-center type-body-sm text-fg-muted'>{LOAD_FAILED}</p>
       )}
       {state.status === 'ok' && state.data.items.length === 0 && (
-        <p className='flex flex-1 items-center justify-center text-sm text-fg-muted'>{empty}</p>
+        <p className='flex flex-1 items-center justify-center type-body-sm text-fg-muted'>{empty}</p>
       )}
       {state.status === 'ok' && state.data.items.length > 0 && (
         <BoardRows board={state.data} listHref={listHref} withDeadline={withDeadline} />
@@ -121,7 +121,7 @@ function BoardRows({
             className='flex h-11 items-center gap-3 rounded-control px-1 transition-colors hover:bg-surface-2'
           >
             {/* 이름만 둔다 — 출석률·회차를 적으면 그 수를 설명할 자리가 없다 (PRD 3-1) */}
-            <span className='min-w-0 flex-1 truncate text-sm font-semibold'>{item.title}</span>
+            <span className='min-w-0 flex-1 truncate type-label-lg'>{item.title}</span>
             {withDeadline && <DeadlineCell item={item} asOf={board.asOf} timeZone={board.timeZone} />}
           </Link>
         </li>
@@ -130,7 +130,7 @@ function BoardRows({
         <li>
           <Link
             href={listHref}
-            className='flex h-11 items-center justify-center text-xs text-fg-muted hover:text-fg-secondary'
+            className='flex h-11 items-center justify-center type-label-sm text-fg-muted hover:text-fg-secondary'
           >
             외 {formatCount(rest)}개 스터디
           </Link>
@@ -144,7 +144,7 @@ function BoardRows({
 function DeadlineCell({ item, asOf, timeZone }: { item: ApiStudyBoardItem; asOf: string; timeZone: string }) {
   const { text, tone } = deadlineLabel(item, asOf, timeZone);
   return (
-    <span className={`tnum shrink-0 whitespace-nowrap text-right text-sm font-medium ${DEADLINE_TONE[tone]}`}>
+    <span className={`tnum shrink-0 whitespace-nowrap text-right type-label-lg ${DEADLINE_TONE[tone]}`}>
       {text}
     </span>
   );

@@ -27,11 +27,11 @@ public class Study extends BaseEntity {   // createdAt / updatedAt 이 자동으
 public abstract class BaseEntity {
 
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "CREATED_AT", nullable = false, updatable = false)
     private Instant createdAt;
 
     @LastModifiedDate
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "UPDATED_AT", nullable = false)
     private Instant updatedAt;
 }
 ```
@@ -42,7 +42,7 @@ public abstract class BaseEntity {
   엔티티마다 같은 코드가 복사되고, 한 군데만 빠뜨려도 "언제 만들어졌는지 모르는 행"이 생긴다.
 - **시각은 `Instant`(UTC).** `LocalDateTime` 을 쓰면 서버 타임존이 바뀔 때 과거 데이터의 의미가
   조용히 달라진다 — 스터디원이 3개 타임존에 흩어져 있어 특히 위험하다. 타임존 변환은 화면의 일이다.
-- 마이그레이션 SQL 에도 `created_at DATETIME(6) NOT NULL`, `updated_at DATETIME(6) NOT NULL` 을 같이 넣는다.
+- 마이그레이션 SQL 에도 `CREATED_AT DATETIME(6) NOT NULL`, `UPDATED_AT DATETIME(6) NOT NULL` 을 같이 넣는다.
 
 > ⚠️ `@EnableJpaAuditing` 한 줄을 지우면 **컴파일도 되고 엔티티 단위 테스트도 통과하는데
 > DB 에는 null 이 들어간다.** 그래서 `UserAuditingTest` 가 persist 까지 해서 값이 채워지는지 본다.
@@ -203,7 +203,7 @@ public class Study extends BaseEntity {
 ```
 
 - **`BaseEntity` 상속 필수** — 감사 컬럼을 손으로 만들지 않는다
-- **테이블 이름은 대문자**, 컬럼은 소문자 snake_case → [`database-guide.md`](database-guide.md#테이블컬럼-이름-규칙)
+- **테이블·컬럼 이름은 대문자 snake_case**, 테이블은 단수형 → [`database-guide.md`](database-guide.md#테이블컬럼-이름-규칙)
 - `@Enumerated(EnumType.STRING)` 필수 — ORDINAL 은 enum 순서 바뀌면 데이터 꼬임
 - `setter` 금지 → [`oop-guide.md`](oop-guide.md)
 - **애그리거트 사이는 ID 참조.** 객체로 물면 트랜잭션 경계가 흐려지고 cascade 가 번진다

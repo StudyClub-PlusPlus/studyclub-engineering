@@ -60,6 +60,13 @@ Spring POST /auth/social-login { code, provider, platform }
 - core `/[locale]/my`(수강생 A8) 신규 — 미로그인 `/login` 바운스, 로그인 시 account + 내 스터디(당분간 mock).
 - BO 전 페이지 로그인 게이트(미들웨어), `platform=BACK_OFFICE` 는 BO Next 라우트에서 강제. 응답 `user.role` 이 ADMIN 아니면 쿠키를 안 심는다(2차 차단).
 
+## 퍼널·계측
+
+- 단계: 가입 · 재방문 (로그인 화면)
+- 이벤트 (front): `Auth Google Login Clicked` · `Auth OAuth Cancelled` · `Auth Login Completed{is_new_user}` · `Auth Login Failed`, 온보딩을 마친 회원은 `User Logged In` / `login`
+- 가입 확정은 여기가 아니라 온보딩 완료다 (`User Signed Up`, [user-onboarding](../user-onboarding/spec.md))
+- 이 문서로 바뀌는 이벤트는 없다. A/B 없음
+
 ## 한계 / 후속
 
 - admin 컨트롤러 **롤가드는 후속** (zapp 도 미룸) — 로그인 게이트는 `SYSTEM_ROLE=ADMIN` 으로 옮겼고, 로그인 이후 요청의 ADMIN 가드(요청마다 DB 조회)는 후속.
@@ -73,4 +80,5 @@ Spring POST /auth/social-login { code, provider, platform }
 |---|---|---|
 | 2026-07-18 | 최초 작성 — 구글 로그인 + 최소 User(Spring 중심) + 로컬 MySQL/compose | 내부 이슈 `studyclub-plusplus-google-login` |
 | 2026-09-04 | User → Account 전면 개명, ddl-auto=validate + Flyway 전환, SystemRole(MEMBER\|ADMIN), googleSub 제거, AccountIdentity 분리, 신규 프로필 컬럼 반영 | ddlsetup 브랜치 작업 |
+| 2026-10-28 | iOS 앱 — `redirectUri` 를 빈 문자열로 보내면 그대로 구글에 넘긴다(생략만 웹 콜백). 애플은 [auth-apple-login](../auth-apple-login/spec.md) | iOS SDK serverAuthCode 는 콜백 없이 발급 |
 | 2026-09-16 | 백오피스 게이트 allowlist → `SYSTEM_ROLE=ADMIN`, 백오피스는 자동가입 없음(`SIGNUP_REQUIRED`), 프론트 `user.role` 2차 차단 | env allowlist 는 역할 부여 기능으로 이어질 수 없어 SYSTEM_ROLE 로 전환 |

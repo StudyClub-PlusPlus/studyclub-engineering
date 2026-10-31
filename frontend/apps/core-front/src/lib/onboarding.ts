@@ -182,6 +182,23 @@ export function returnPath(raw: string | null, locale: Locale): string {
   }
 }
 
+/**
+ * 신청하기 → 로그인·온보딩·디스코드 연결을 거치는 동안 「이 스터디 신청서를 열 의도」를 주소에 남긴다.
+ * 상세로 돌아온 뒤 ApplyButton 이 소비하고 지운다 (새로고침 때 반복 방지).
+ */
+export function withApplyIntent(path: string): string {
+  const url = new URL(path, 'https://studyclub.invalid');
+  url.searchParams.set('apply', '1');
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+/** 신청 의도만 제거하고 상세 주소는 남긴다 — 「스터디 신청할 때 하기」 복귀용. */
+export function withoutApplyIntent(path: string): string {
+  const url = new URL(path, 'https://studyclub.invalid');
+  url.searchParams.delete('apply');
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export function zoneOffset(zone: string, now: Date): string {
   try {
     return (

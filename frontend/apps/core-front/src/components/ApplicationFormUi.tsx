@@ -38,7 +38,7 @@ function formatInline(text: string, keyPrefix: string): ReactNode[] {
       }
     } else if (m[5] !== undefined) {
       nodes.push(
-        <code key={key} className='rounded-xs bg-surface-2 px-1 py-0.5 font-mono text-[0.85em]'>
+        <code key={key} className='rounded-xs bg-surface-2 px-1 py-0.5 font-mono type-label-sm'>
           {m[5]}
         </code>,
       );
@@ -55,14 +55,26 @@ function formatInline(text: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
-export function MarkdownLite({ text, className }: { text: string; className?: string }) {
+/**
+ * `keepBlankLines` — 빈 줄을 빈 줄 그대로 남긴다(`<br>` 한 줄). 빈 줄로 문단을 나눈 글(스터디 소개)이
+ * `whitespace-pre-line` 으로 그리던 때처럼 보이게 한다. 신청 폼 설명은 지금처럼 버린다.
+ */
+export function MarkdownLite({
+  text,
+  className,
+  keepBlankLines = false,
+}: {
+  text: string;
+  className?: string;
+  keepBlankLines?: boolean;
+}) {
   const HEADER_CLASS: Record<number, string> = {
-    1: 'text-lg font-bold',
-    2: 'text-base font-bold',
-    3: 'text-sm font-bold',
-    4: 'text-sm font-semibold',
-    5: 'text-sm font-semibold',
-    6: 'text-xs font-semibold',
+    1: 'type-title-md',
+    2: 'type-title-md',
+    3: 'type-label-lg',
+    4: 'type-label-lg',
+    5: 'type-label-lg',
+    6: 'type-label-sm',
   };
   const blocks: ReactNode[] = [];
   let listBuffer: string[] = [];
@@ -90,7 +102,7 @@ export function MarkdownLite({ text, className }: { text: string; className?: st
         codeBuffer = [];
       } else {
         blocks.push(
-          <pre key={`code-${idx}`} className='overflow-x-auto rounded-control bg-surface-2 px-3 py-2 text-xs'>
+          <pre key={`code-${idx}`} className='overflow-x-auto rounded-control bg-surface-2 px-3 py-2 type-label-sm'>
             <code className='font-mono'>{codeBuffer.join('\n')}</code>
           </pre>,
         );
@@ -129,7 +141,10 @@ export function MarkdownLite({ text, className }: { text: string; className?: st
       return;
     }
     flushList(`list-${idx}`);
-    if (line.trim() === '') return;
+    if (line.trim() === '') {
+      if (keepBlankLines) blocks.push(<br key={`br-${idx}`} />);
+      return;
+    }
     blocks.push(<p key={`p-${idx}`}>{formatInline(line, `p-${idx}`)}</p>);
   });
   flushList('list-end');
@@ -139,8 +154,8 @@ export function MarkdownLite({ text, className }: { text: string; className?: st
 export function FormHeaderCard({ title, summary }: { title: string; summary?: string }) {
   return (
     <section className={`relative ${formCardClass()} border-t-4 border-t-brand`}>
-      <h2 className='text-xl font-bold tracking-tight text-fg'>{title}</h2>
-      {summary && <MarkdownLite text={summary} className='mt-2 text-sm leading-relaxed text-fg-secondary' />}
+      <h2 className='type-title-lg text-fg'>{title}</h2>
+      {summary && <MarkdownLite text={summary} className='mt-2 type-body-sm text-fg-secondary' />}
     </section>
   );
 }
@@ -148,7 +163,7 @@ export function FormHeaderCard({ title, summary }: { title: string; summary?: st
 function QuestionLabel({ label, required, description }: { label: string; required?: boolean; description?: string }) {
   return (
     <div className='flex flex-col gap-0.5'>
-      <p className='text-sm font-medium text-neutral-800'>
+      <p className='type-label-lg text-neutral-800'>
         {label}
         {required && (
           <span className='ml-0.5 text-error-600' aria-hidden='true'>
@@ -156,7 +171,7 @@ function QuestionLabel({ label, required, description }: { label: string; requir
           </span>
         )}
       </p>
-      {description && <MarkdownLite text={description} className='text-xs leading-relaxed text-fg-muted' />}
+      {description && <MarkdownLite text={description} className='type-label-sm text-fg-muted' />}
     </div>
   );
 }
@@ -245,7 +260,7 @@ export function QuestionFillView({
                 }}
                 className='h-4 w-4 shrink-0 border-border-strong accent-(--color-brand)'
               />
-              <span className='text-sm text-neutral-800'>{o}</span>
+              <span className='type-body-sm text-neutral-800'>{o}</span>
             </label>
           ))}
           {q.allowOther && (
@@ -261,7 +276,7 @@ export function QuestionFillView({
                   }}
                   className='h-4 w-4 shrink-0 border-border-strong accent-(--color-brand)'
                 />
-                <span className='text-sm text-neutral-800'>기타:</span>
+                <span className='type-body-sm text-neutral-800'>기타:</span>
               </label>
               <input
                 maxLength={OTHER_ANSWER_MAX}
@@ -272,7 +287,7 @@ export function QuestionFillView({
                   onOtherToggle?.(true);
                   onOtherChange?.(ev.target.value);
                 }}
-                className='h-8 min-w-0 flex-1 border-0 border-b border-border bg-transparent px-1 text-sm focus:border-brand focus:outline-none'
+                className='h-8 min-w-0 flex-1 border-0 border-b border-border bg-transparent px-1 type-body-md focus:border-brand focus:outline-none'
               />
             </div>
           )}
@@ -308,7 +323,7 @@ export function QuestionFillView({
                 placeholder='내용을 입력해 주세요'
                 disabled={!otherChecked}
                 onChange={(ev) => onOtherChange?.(ev.target.value)}
-                className={`h-8 min-w-0 flex-1 border-0 border-b border-border bg-transparent px-1 text-sm focus:border-brand focus:outline-none ${!otherChecked ? 'cursor-not-allowed opacity-40' : ''}`}
+                className={`h-8 min-w-0 flex-1 border-0 border-b border-border bg-transparent px-1 type-body-md focus:border-brand focus:outline-none ${!otherChecked ? 'cursor-not-allowed opacity-40' : ''}`}
               />
             </div>
           )}

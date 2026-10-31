@@ -240,7 +240,7 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front 신청자 탭 | 있음 (#302) — `ParticipantsTab`: 참여 크루 명단 · 체크박스 반 · 역할 일괄 변경 · 저장 바. `ApplicationsTab` 은 지웠다. `CrewTab` 은 mock 이고 쓰지 않는다 | 명단 `GET` 이 생기면 실제 응답으로 확인. 그 밖은 10-18 변경 표 |
+| FE | back-office-front 신청자 탭 | 있음 (#302 · 역할 2026-10-31) — `ParticipantsTab`: 참여 크루 명단 · 행 반 · 역할 드롭다운 · 체크박스 반 · 역할 일괄 변경 · 저장 바. #302 는 반만 붙였고 역할(3-2 드롭다운 · 3-7 「역할 변경」)은 같은 저장 흐름에 2026-10-31 붙였다. `ApplicationsTab` 은 지웠다. `CrewTab` 은 mock 이고 쓰지 않는다 | 명단 `GET` 이 생기면 실제 응답으로 확인. 그 밖은 10-18 변경 표 |
 | BE | `GET /api/admin/studies/{studyId}/applications` 의 `completionRate` | 구현완료 | 신청자 탭에서 쓰지 않는다. 다른 화면이 쓰지 않으면 응답에서 뺄지 정한다 (→ [share 10-14](../../../docs/share/2026-10-14-class-title-and-captain-applies.md)) |
 | BE | `GET /api/admin/studies/{studyId}/participants` · `PATCH …/participants` (반 · 역할 일괄) | 구현완료 (#324) · 구현완료 (#303) | 없음 |
 

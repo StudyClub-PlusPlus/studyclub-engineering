@@ -9,7 +9,7 @@ import { useIsMutating } from '@tanstack/react-query';
 import { DiscardGroupChangesDialog } from './DiscardGroupChangesDialog';
 import { GroupsSection } from './GroupsSection';
 import { participantKeys, useParticipants } from './queries';
-import type { ParticipantsResponse } from './types';
+import type { Participant, ParticipantsResponse } from './types';
 import { useGroupAssignment } from './use-group-assignment';
 import { TableCard } from '@/components/ui';
 import { ApiError } from '@/lib/http';
@@ -18,6 +18,7 @@ import { useUrlState } from '@/lib/use-url-state';
 const FILTER_DEFAULTS = { region: 'all', group: 'all' };
 const FILTER_ALLOWED = { region: ['all', 'KR', 'NA', 'ETC'] };
 const REGION_LABELS = { KR: '한국', NA: '북미', ETC: '기타' };
+const ROLE_LABELS = { MEMBER: '크루', LEADER: '네비게이터' };
 
 export function ParticipantsTab({
   studyId,
@@ -102,7 +103,7 @@ function ParticipantAssignment({
       <GroupsSection studyId={studyId} data={data} disabled={busy || dirty} />
       <section aria-label='참여 크루' className='space-y-3'>
         <div className='space-y-2'>
-          <h2 className='font-bold'>참여 크루 {data.participantCount}명</h2>
+          <h2 className='font-semibold'>참여 크루 {data.participantCount}명</h2>
           <div className='flex flex-wrap gap-2'>
             {data.groups.length > 1 && (
               <Select aria-label='반 필터' value={group} onChange={(e) => setFilters({ group: e.target.value })}>
@@ -125,10 +126,10 @@ function ParticipantAssignment({
           </div>
         </div>
         {mutation.error && (
-          <p role='alert' className='text-sm text-error-600'>
+          <p role='alert' className='type-body-sm text-error-600'>
             {mutation.error instanceof ApiError
               ? mutation.error.message
-              : '반 변경을 저장하지 못했습니다. 변경 내용을 확인하고 다시 시도해 주세요.'}
+              : '반 · 역할 변경을 저장하지 못했습니다. 변경 내용을 확인하고 다시 시도해 주세요.'}
           </p>
         )}
         <TableCard
@@ -148,7 +149,7 @@ function ParticipantAssignment({
                         if (e.target.value)
                           change(
                             picked.map((p) => p.participantId),
-                            Number(e.target.value),
+                            { groupId: Number(e.target.value) },
                           );
                       }}
                     >
@@ -160,6 +161,25 @@ function ParticipantAssignment({
                       ))}
                     </Select>
                   )}
+                  <Select
+                    aria-label='바꿀 역할'
+                    value=''
+                    disabled={busy || picked.length === 0}
+                    onChange={(e) => {
+                      if (e.target.value)
+                        change(
+                          picked.map((p) => p.participantId),
+                          { participantRole: e.target.value as Participant['participantRole'] },
+                        );
+                    }}
+                  >
+                    <option value=''>역할 변경</option>
+                    {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
                   {picked.length > 0 && (
                     <Button
                       variant='ghost'
@@ -175,7 +195,7 @@ function ParticipantAssignment({
               }
               save={
                 <>
-                  <span role='status' className='text-sm text-fg-muted'>
+                  <span role='status' className='type-body-sm text-fg-muted'>
                     {notice}
                   </span>
                   {dirty && (
@@ -222,6 +242,7 @@ function ParticipantAssignment({
             {rows.map((p) => {
               const active = p.status === 'ACTIVE' || p.status === 'PAUSED';
               const failed = failedIds.has(p.participantId);
+              const role = drafts[p.participantId]?.participantRole ?? p.participantRole;
               return (
                 <tr
                   key={p.participantId}
@@ -254,8 +275,8 @@ function ParticipantAssignment({
                       <Select
                         aria-label={`${p.nickname} 반`}
                         disabled={busy || !active}
-                        value={drafts[p.participantId] ?? p.groupId}
-                        onChange={(e) => change([p.participantId], Number(e.target.value))}
+                        value={drafts[p.participantId]?.groupId ?? p.groupId}
+                        onChange={(e) => change([p.participantId], { groupId: Number(e.target.value) })}
                       >
                         {data.groups.map((g) => (
                           <option key={g.groupId} value={g.groupId}>
@@ -267,7 +288,24 @@ function ParticipantAssignment({
                       (data.groups.find((g) => g.groupId === p.groupId)?.name ?? '-')
                     )}
                   </td>
-                  <td>{p.participantRole === 'LEADER' ? '네비게이터' : '크루'}</td>
+                  <td>
+                    <Select
+                      aria-label={`${p.nickname} 역할`}
+                      disabled={busy || !active}
+                      value={role}
+                      onChange={(e) =>
+                        change([p.participantId], { participantRole: e.target.value as Participant['participantRole'] })
+                      }
+                      // 네비게이터는 몇 안 된다. 긴 명단에서 바로 보이게 브랜드 테두리 · 굵은 글씨로 드러낸다 (스터디 목록 필터와 같은 모양)
+                      className={role === 'LEADER' ? 'border-brand font-semibold text-fg' : undefined}
+                    >
+                      {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </Select>
+                  </td>
                 </tr>
               );
             })}

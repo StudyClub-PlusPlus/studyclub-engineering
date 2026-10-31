@@ -35,6 +35,7 @@ export const mockNotificationTemplates: ApiNotificationTemplate[] = [
 const notFound = { errorMessage: '템플릿을 찾을 수 없습니다.' };
 const serverError = { errorMessage: '서버 오류가 발생했습니다.' };
 const invalid = { errorMessage: '제목과 본문을 입력해 주세요.' };
+const taken = { errorMessage: '이미 이 알림 조건의 템플릿이 있습니다. 기존 템플릿을 수정하세요.' };
 
 /** 요청 바디를 읽어 저장된 모양으로 돌려준다. 목 서버라 목록(GET)에는 반영되지 않는다. */
 async function savedTemplate({ request, params }: { request: Request; params: Record<string, string | string[]> }) {
@@ -55,13 +56,14 @@ export const notificationTemplatesHandlers = mockClient.createHandlerGroup(
         { label: '서버 오류', status: 500, response: serverError },
       ],
     },
-    // TODO(api): 백엔드 구현 전 계약 — 기획 PRD(notification-template)의 API 표 기준
+    // 계약: specs/notification/spec.md — 같은 조건에 템플릿은 한 건뿐이라 이미 있으면 409
     {
       method: 'POST',
       path: '/',
       presets: [
         { label: '추가됨', status: 201, response: savedTemplate },
         { label: '400 잘못된 입력', status: 400, response: invalid },
+        { label: '409 이미 있는 조건', status: 409, response: taken },
         { label: '500 서버 오류', status: 500, response: serverError },
       ],
     },

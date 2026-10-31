@@ -61,7 +61,7 @@
   규칙은 만들지 않는다 — 디스코드에 보이는 이름 규칙은 운영이 정할 일이고, 한번 정하면 되돌리기 어렵다.
   대신 등록 경로에서는 연결을 비워 두고, 재시도 엔드포인트의 `studyName` 으로 다른 이름(예: `알고리즘 스터디 2기`)을
   보내게 한다.
-- 봇의 409 가 전부 이름 중복은 아니다. `DISCORD_GUILD_ID` 설정이 없어도 409 이고
+- 봇의 409 가 전부 이름 중복은 아니다. `DISCORD_CONFIG_GUILD_ID` 설정이 없어도 409 이고
   `detail` 로만 구분된다. `detail` 에 `with this name` 이 있을 때만 이름 중복(`409 CONFLICT`, 이름을 바꾸라는 안내)으로 보고,
   나머지 409 는 봇 설정 문제(`503`)로 본다. 설정 문제에 이름을 바꾸라고 하면 고칠 수 없는 걸 고치라는 말이 된다.
 - ⚠️ 이름 중복 409 는 다시 두 경우가 섞여 있다: (a) 진짜 다른 스터디가 그 이름을 쓰고 있음, (b) 우리 요청이 봇에서 성공했는데
@@ -157,6 +157,27 @@
 봇의 에러 `detail` 은 응답에 싣지 않는다 (길드·역할 ID 같은 봇 내부 사정이다). 서버 로그에만 남긴다.
 예상 밖 예외는 메시지를 로그에 남기지 않는다 — 키 끝에 개행이 붙으면 JDK 가 헤더 값(= API 키)을 통째로 예외 메시지에 싣는다.
 
+## 봇 호출 로그 (STD-06)
+
+`DiscordBotClient.execute()` 가 모든 봇 호출을 중계하며 아래 포맷으로 남긴다.
+
+| 상황 | 레벨 | 포맷 |
+|------|------|------|
+| 성공 | INFO | `op={} requester={} studyId={} status=ok elapsedMs={}` |
+| 실패 | WARN | `op={} requester={} studyId={} status=failure reason={} elapsedMs={}` |
+
+- `op`: 봇 엔드포인트 이름 — `create-study` · `assign-role` · `remove-role` · `assign-navigator-role` · `remove-navigator-role` · `get-study-channels` · `send-message` · `send-alert-message` · `send-announcement-message`
+- `requester`: `X-Discord-User-ID` 값 (캡틴 디스코드 ID 또는 시스템 아이디)
+- `studyId`: `discordStudyId` (없으면 `null`)
+- `reason`: `CONFLICT` · `EXTERNAL_SERVICE_ERROR` · `HTTP-{상태코드}` · `봇_응답없음` · `요청생성_오류`
+
+남기지 않는 것: 메시지 본문, API 키, Discord 토큰.
+
+스터디 생성에는 성공 후 ID 쌍 로그가 하나 더 붙는다:
+```
+INFO op=create-study discordStudyId={} discordRoleId={}
+```
+
 ## 봇 호출 — 백엔드가 보내는 것
 
 ```
@@ -172,6 +193,10 @@ Idempotency-Key: {호출마다 새 UUID v4}
 - **자동 재시도는 하지 않는다.** 봇은 같은 이름의 두 번째 요청에 409 를 주므로 재시도해도 ID 를 받을 수 없다.
 - 타임아웃: 연결 3초, 읽기 30초.
 - 응답의 두 ID 는 `^[0-9]{17,20}$` 로 검증한 뒤 저장한다 (컬럼이 `VARCHAR(20)` 이고, 봇도 신뢰 경계 밖이다).
+
+## 퍼널·계측
+
+해당 없음 — 스터디 ↔ 디스코드 채널 연결이다. 개인 계정 연동 이벤트 `My Discord Connected` 와는 다르다.
 
 ## 알려진 한계
 

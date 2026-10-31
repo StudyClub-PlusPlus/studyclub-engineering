@@ -311,7 +311,7 @@ export function StudyConsole({ study }: { study: Study }) {
     <div>
       <Link
         href='/proto/console/studies'
-        className='inline-flex items-center gap-1.5 text-sm font-medium text-fg-secondary transition-colors hover:text-fg'
+        className='inline-flex items-center gap-1.5 type-label-lg text-fg-secondary transition-colors hover:text-fg'
       >
         <ArrowLeft size={15} /> 스터디 관리
       </Link>
@@ -322,7 +322,7 @@ export function StudyConsole({ study }: { study: Study }) {
         헤더가 답할 질문은 둘뿐이다 — 지금 신청을 받는가, 사이트에 보이는가.
       */}
       <header data-anno='attendee:1' className='mt-3 flex flex-wrap items-start justify-between gap-4'>
-        <h1 data-anno='attendee:1-1' className='min-w-0 text-2xl font-extrabold tracking-tight'>
+        <h1 data-anno='attendee:1-1' className='min-w-0 type-headline-md'>
           {tx(study.title)}
         </h1>
         <div data-anno='attendee:1-2' className='flex shrink-0 items-center gap-2'>
@@ -356,7 +356,7 @@ export function StudyConsole({ study }: { study: Study }) {
             key={tb.key}
             type='button'
             onClick={() => requestTab(tb.key)}
-            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            className={`-mb-px border-b-2 px-4 py-2.5 type-label-lg transition-colors ${
               tab === tb.key ? 'border-brand text-fg' : 'border-transparent text-fg-muted hover:text-fg-secondary'
             }`}
           >
@@ -389,8 +389,8 @@ export function StudyConsole({ study }: { study: Study }) {
               {!hasSchedule(view.cls) && view.meetings.length === 0 ? (
                 // 신청자 탭에서 제목만으로 만든 반 — 언제 모일지 정해야 회차와 출석부가 생긴다
                 <div data-anno='schedule:14' className='card px-6 py-10 text-center'>
-                  <p className='text-sm font-semibold text-fg'>아직 이 반의 스터디 시간이 없습니다.</p>
-                  <p className='mt-1.5 text-sm text-fg-muted'>
+                  <p className='type-label-lg text-fg'>아직 이 반의 스터디 시간이 없습니다.</p>
+                  <p className='mt-1.5 type-body-sm text-fg-muted'>
                     요일 · 시각을 정한 뒤 일정 표의 「회차 추가」로 회차를 만듭니다. 그 요일 · 시각이 매주 반복으로
                     채워집니다.
                   </p>
@@ -444,8 +444,8 @@ export function StudyConsole({ study }: { study: Study }) {
             </div>
           ) : (
             <div data-anno='schedule:11' className='card px-6 py-10 text-center'>
-              <p className='text-sm font-semibold text-fg'>아직 반이 없습니다.</p>
-              <p className='mt-1.5 text-sm text-fg-muted'>
+              <p className='type-label-lg text-fg'>아직 반이 없습니다.</p>
+              <p className='mt-1.5 type-body-sm text-fg-muted'>
                 신청자 탭에서 반을 만들면 여기서 그 반이 언제 모일지 정할 수 있습니다.
               </p>
               <Button
@@ -557,7 +557,7 @@ export function StudyConsole({ study }: { study: Study }) {
           </>
         }
       >
-        <p data-anno='attendance:9 schedule:12' className='text-sm text-fg-secondary'>
+        <p data-anno='attendance:9 schedule:12' className='type-body-sm text-fg-secondary'>
           {LEAVE_COPY[dirtyTab ?? 'attendance']}
         </p>
       </Modal>

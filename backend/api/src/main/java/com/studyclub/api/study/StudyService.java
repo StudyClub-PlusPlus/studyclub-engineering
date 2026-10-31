@@ -9,6 +9,7 @@ import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.discord.StudyDiscordLinkRepository;
+import com.studyclub.domain.notice.StudyNoticeRepository;
 import com.studyclub.domain.participant.StudyParticipantRepository;
 import com.studyclub.domain.storage.StoragePurpose;
 import com.studyclub.domain.study.Study;
@@ -53,6 +54,7 @@ public class StudyService {
     private final StudyBookmarkRepository studyBookmarkRepository;
     private final StudyCaptainGuard studyCaptainGuard;
     private final StudyDiscordLinkRepository studyDiscordLinkRepository;
+    private final StudyNoticeRepository studyNoticeRepository;
     private final StudyApplicationFormService studyApplicationFormService;
     private final UploadService uploadService;
 
@@ -69,6 +71,7 @@ public class StudyService {
             StudyBookmarkRepository studyBookmarkRepository,
             StudyCaptainGuard studyCaptainGuard,
             StudyDiscordLinkRepository studyDiscordLinkRepository,
+            StudyNoticeRepository studyNoticeRepository,
             StudyApplicationFormService studyApplicationFormService,
             UploadService uploadService) {
         this.studyRepository = studyRepository;
@@ -83,6 +86,7 @@ public class StudyService {
         this.studyBookmarkRepository = studyBookmarkRepository;
         this.studyCaptainGuard = studyCaptainGuard;
         this.studyDiscordLinkRepository = studyDiscordLinkRepository;
+        this.studyNoticeRepository = studyNoticeRepository;
         this.studyApplicationFormService = studyApplicationFormService;
         this.uploadService = uploadService;
     }
@@ -282,10 +286,16 @@ public class StudyService {
                         .map(StudyRecruitment::getId)
                         .toList();
 
+        // 반 행을 ID 오름차순으로 먼저 잠근다 (탈퇴가 반을 잠그는 순서와 같다). 공지 발송은 반 행을 잠그고 저장하므로, 진행 중인 발송이 끝난 뒤에
+        // 공지를 지워야 그 발송의 공지가 삭제에서 빠지지 않는다. 이후의 발송은 반이 없어 404 다
+        groupIds.stream().sorted().forEach(studyGroupRepository::findByIdForUpdate);
+
         if (!groupIds.isEmpty()) {
             studyMeetingRepository.deleteByStudyGroupIdIn(groupIds);
         }
         studyAttendanceRepository.deleteByStudyId(studyId);
+        // 보낸 공지 기록 — 받는 사람 행까지 함께 지운다. 메일 발송 이력(NOTIFICATION)은 발송 이력이라 남긴다
+        studyNoticeRepository.deleteByStudyId(studyId);
         studyGroupRepository.deleteByStudyId(studyId);
         studyParticipantRepository.deleteByStudyId(studyId);
         if (!recruitmentIds.isEmpty()) {
