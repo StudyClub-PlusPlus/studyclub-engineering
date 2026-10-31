@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card } from '@console/components/DashboardCharts';
 import { TableCard } from '@console/components/ui';
 import { TYPE_LABEL } from '@core/components/ApplicationFormUi';
-import type { ApplicationQuestion, Crew, Study } from '@studyclub/mock';
+import type { ApplicationQuestion, Crew, Study } from '@studyclub/types';
 
 /**
  * 신청 결과 탭 — 캡틴이 설계한 신청 폼 추가 질문에 지원자들이 남긴 답을 모아본다.

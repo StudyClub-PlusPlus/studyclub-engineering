@@ -7,8 +7,9 @@ import { DiscordCell } from '@console/components/DiscordCell';
 import { TableCard } from '@console/components/ui';
 import { CLASS_TITLE_MAX, classLabel, type StudyClass } from '@console/lib/classes';
 import { EMPTY_RULE } from '@console/lib/schedule';
-import { MEMBER_REGIONS, type Crew } from '@studyclub/mock';
+import { type Crew } from '@studyclub/types';
 import { Badge, Button, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { MEMBER_REGIONS } from '@studyclub/utils';
 import { Plus } from 'lucide-react';
 
 /**
@@ -380,11 +381,15 @@ export function CrewTab({
                   <td className='whitespace-nowrap text-fg-secondary'>{c.email}</td>
                   <td className='whitespace-nowrap text-fg-secondary'>{regionLabel(c.region)}</td>
                   <td data-anno='class:2' className='whitespace-nowrap'>
-                    {/* 반 이동 = 이 값 변경 */}
-                    <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                    {/* 반 이동 = 이 값 변경. 칸 너비가 아니라 글자 너비로 — 화살표가 상자 안에 붙게 감싼다 */}
+                    <div className='inline-flex'>
+                      <ClassPick classes={classes} value={classOf(c.id)} onChange={(id) => pickClass(c.id, id)} />
+                    </div>
                   </td>
                   <td data-anno='attendee:3-2' className='whitespace-nowrap'>
-                    <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
+                    <div className='inline-flex'>
+                      <RolePick name={c.name} navigator={isNavigator(c.id)} onChange={(nav) => pickRole(c.id, nav)} />
+                    </div>
                   </td>
                 </tr>
               ))}

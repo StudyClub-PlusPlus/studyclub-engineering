@@ -6,7 +6,7 @@ import { EventDialog } from '@console/components/EventDialog';
 import { EVENT_TYPES } from '@console/components/EventForm';
 import { TableCard } from '@console/components/ui';
 import { tx, EVENT_TYPE_LABEL } from '@console/lib/l10n';
-import type { StudyclubEvent } from '@studyclub/mock';
+import type { StudyclubEvent } from '@studyclub/types';
 import { Badge } from '@studyclub/ui';
 
 /**

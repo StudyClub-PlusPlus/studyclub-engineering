@@ -11,6 +11,7 @@ import { AccountRoleCell } from '@/features/users/components/AccountRoleCell';
 import { RoleBadgeSelect } from '@/features/users/components/RoleBadgeSelect';
 import { DISCORD_NOTICE } from '@/features/users/labels';
 import type { ApiAdminAccount, ApiAdminAccountPage } from '@/features/users/types';
+import { useRevealedDiscordHandles } from '@/features/users/use-revealed-discord-handles';
 import { useRevealedEmails } from '@/features/users/use-revealed-emails';
 import { ApiError, http } from '@/lib/http';
 
@@ -76,7 +77,6 @@ function account(patch: Partial<ApiAdminAccount> = {}): ApiAdminAccount {
     joinedAt: '2026-09-01T11:00:00Z',
     roleChangeBlockedReason: null,
     discordLinked: false,
-    discordHandle: null,
     ...patch,
   };
 }
@@ -126,6 +126,21 @@ describe('useRevealedEmails — 목록이 바뀌면 다시 가린다', () => {
     expect(result.current.emails.get(18)).toBe(SECRET);
 
     rerender({ v: 2 });
+    expect(result.current.emails.size).toBe(0);
+  });
+
+  it('가린 이메일은 보관소에서 지우고 이전 목록의 늦은 응답도 버린다', () => {
+    const { result, rerender } = renderHook(({ v }) => useRevealedEmails(v), { initialProps: { v: 1 } });
+    const oldReveal = result.current.reveal;
+    act(() => {
+      oldReveal(18, SECRET);
+      oldReveal(19, 'other@example.com');
+    });
+    act(() => result.current.hide(18));
+    expect(result.current.emails.has(18)).toBe(false);
+    expect(result.current.emails.get(19)).toBe('other@example.com');
+    rerender({ v: 2 });
+    act(() => oldReveal(18, SECRET));
     expect(result.current.emails.size).toBe(0);
   });
 });
@@ -200,6 +215,198 @@ describe('이메일 보기', () => {
   });
 });
 
+describe('디스코드 보기', () => {
+  const HANDLE = 'sample_crew';
+  const revealCalls = () => httpMock.mock.calls.filter(([p]) => String(p).includes('/discord-reveals'));
+
+  function route(reveal: () => Promise<unknown>) {
+    httpMock.mockImplementation(async (path) => {
+      if (String(path).includes('/discord-reveals')) return reveal();
+      if (String(path).includes('/email-reveals')) return { id: 18, email: SECRET };
+      return pageOf([
+        account({ discordLinked: true }),
+        account({ id: 19, name: '나래', discordLinked: true }),
+        account({ id: 20, name: '바다', discordLinked: false }),
+      ]);
+    });
+  }
+
+  it('보기 전에는 원본이 없고, 처리 중 중복 클릭을 막으며 성공한 줄만 펼친다', async () => {
+    const d = deferred<{ id: number; discordHandle: string }>();
+    route(() => d.promise);
+    const { client } = renderWith(<UsersAdmin />);
+    const button = await screen.findByRole('button', { name: '하늘 디스코드 아이디 보기' });
+    expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '바다 디스코드 아이디 보기' })).not.toBeInTheDocument();
+    fireEvent.click(button);
+    // 같은 틱에 다시 눌러도 서버 요청은 한 번이다.
+    fireEvent.click(button);
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(button).toHaveTextContent('확인 중…');
+    expect(screen.getByRole('button', { name: '나래 디스코드 아이디 보기' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '하늘 이메일 보기' })).toBeEnabled();
+    expect(revealCalls()).toHaveLength(1);
+    expect(revealCalls()[0]).toEqual(['/api/admin/users/18/discord-reveals', expect.anything(), { method: 'POST' }]);
+
+    await act(async () => d.resolve({ id: 18, discordHandle: HANDLE }));
+    expect(await screen.findByText(`@${HANDLE}`)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '하늘 디스코드 아이디 보기' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '나래 디스코드 아이디 보기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '하늘 이메일 보기' })).toBeInTheDocument();
+    await waitFor(() => expect(client.getMutationCache().getAll()).toHaveLength(0));
+    expect(
+      JSON.stringify(
+        client
+          .getQueryCache()
+          .getAll()
+          .map((q) => q.state.data),
+      ),
+    ).not.toContain(HANDLE);
+  });
+
+  it('실패하면 원본은 숨겨두고 오류를 안내하며 다시 시도할 수 있다', async () => {
+    route(() => Promise.reject(new ApiError(500, '열람 기록을 저장하지 못했습니다.')));
+    renderWith(<UsersAdmin />);
+    const button = await screen.findByRole('button', { name: '하늘 디스코드 아이디 보기' });
+    fireEvent.click(button);
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('열람 기록을 저장하지 못했습니다.'));
+    expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument();
+    await waitFor(() => expect(button).toBeEnabled());
+  });
+
+  it('이메일과 독립적으로 펼치고, 목록 갱신 후 다시 보기는 새 요청을 보낸다', async () => {
+    route(() => Promise.resolve({ id: 18, discordHandle: HANDLE }));
+    const { client } = renderWith(<UsersAdmin />);
+    fireEvent.click(await screen.findByRole('button', { name: '하늘 이메일 보기' }));
+    expect(await screen.findByText(SECRET)).toBeInTheDocument();
+    expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '하늘 디스코드 아이디 보기' }));
+    expect(await screen.findByText(`@${HANDLE}`)).toBeInTheDocument();
+    expect(screen.getByText(SECRET)).toBeInTheDocument();
+
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['users'] });
+    });
+    await waitFor(() => expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument());
+    expect(screen.queryByText(SECRET)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '하늘 디스코드 아이디 보기' }));
+    expect(await screen.findByText(`@${HANDLE}`)).toBeInTheDocument();
+    expect(revealCalls()).toHaveLength(2);
+    expect(screen.queryByText(SECRET)).not.toBeInTheDocument();
+  });
+
+  it('목록 갱신 전 요청이 늦게 끝나도 새 목록에서 원본을 펼치지 않는다', async () => {
+    const d = deferred<{ id: number; discordHandle: string }>();
+    route(() => d.promise);
+    const { client } = renderWith(<UsersAdmin />);
+    fireEvent.click(await screen.findByRole('button', { name: '하늘 디스코드 아이디 보기' }));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['users'] });
+    });
+    await act(async () => d.resolve({ id: 18, discordHandle: HANDLE }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '하늘 디스코드 아이디 보기' })).toBeEnabled());
+    expect(screen.queryByText(`@${HANDLE}`)).not.toBeInTheDocument();
+    await waitFor(() => expect(client.getMutationCache().getAll()).toHaveLength(0));
+  });
+
+  it('같은 목록에서는 원본을 유지하고 목록 버전이 바뀌면 이전 결과도 버린다', () => {
+    const { result, rerender } = renderHook(({ v }) => useRevealedDiscordHandles(v), { initialProps: { v: 1 } });
+    const oldReveal = result.current.reveal;
+    act(() => oldReveal(18, HANDLE));
+    rerender({ v: 1 });
+    expect(result.current.handles.get(18)).toBe(HANDLE);
+    rerender({ v: 2 });
+    expect(result.current.handles.size).toBe(0);
+    act(() => oldReveal(18, HANDLE));
+    expect(result.current.handles.size).toBe(0);
+  });
+
+  it('가린 디스코드 원본은 보관소에서 지우고 다른 회원은 유지한다', () => {
+    const { result } = renderHook(() => useRevealedDiscordHandles(1));
+    act(() => {
+      result.current.reveal(18, HANDLE);
+      result.current.reveal(19, 'other_crew');
+    });
+    act(() => result.current.hide(18));
+    expect(result.current.handles.has(18)).toBe(false);
+    expect(result.current.handles.get(19)).toBe('other_crew');
+  });
+});
+
+describe('개인정보 열람 아이콘 토글', () => {
+  it.each([
+    {
+      label: '이메일',
+      path: 'email-reveals',
+      field: 'email',
+      value: SECRET,
+      next: 'changed@example.com',
+      prefix: '',
+      other: '디스코드 아이디',
+    },
+    {
+      label: '디스코드 아이디',
+      path: 'discord-reveals',
+      field: 'discordHandle',
+      value: 'sample_crew',
+      next: 'changed_crew',
+      prefix: '@',
+      other: '이메일',
+    },
+  ])(
+    '$label: 가리기는 요청 없이 원본을 지우고 다시 열기는 새 요청으로만 보여준다',
+    async ({ label, path, field, value, next, prefix, other }) => {
+      const user = userEvent.setup();
+      let requests = 0;
+      httpMock.mockImplementation(async (url) => {
+        if (String(url).endsWith(`/${path}`)) {
+          requests += 1;
+          if (requests === 2) throw new ApiError(500, '열람 기록을 저장하지 못했습니다.');
+          return { id: 18, [field]: requests === 1 ? value : next };
+        }
+        if (String(url).endsWith('/email-reveals')) return { id: 18, email: SECRET };
+        if (String(url).endsWith('/discord-reveals')) return { id: 18, discordHandle: 'other_handle' };
+        return pageOf([account({ discordLinked: true }), account({ id: 19, name: '나래', discordLinked: true })]);
+      });
+      const { client } = renderWith(<UsersAdmin />);
+      await user.click(await screen.findByRole('button', { name: `하늘 ${other} 보기` }));
+      expect(await screen.findByRole('button', { name: `하늘 ${other} 가리기` })).toBeEnabled();
+      await user.click(screen.getByRole('button', { name: `하늘 ${label} 보기` }));
+      expect(await screen.findByText(`${prefix}${value}`)).toBeInTheDocument();
+      const hide = screen.getByRole('button', { name: `하늘 ${label} 가리기` });
+      expect(hide).toHaveFocus();
+      // 같은 버튼의 키보드 조작으로도 가릴 수 있다.
+      await user.keyboard('{Enter}');
+      expect(screen.queryByText(`${prefix}${value}`)).not.toBeInTheDocument();
+      expect(screen.queryByTitle(`${prefix}${value}`)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: `하늘 ${label} 보기` })).toHaveFocus();
+      expect(screen.getByRole('button', { name: `하늘 ${other} 가리기` })).toBeEnabled();
+      expect(screen.getByRole('button', { name: `나래 ${label} 보기` })).toBeEnabled();
+      expect(requests).toBe(1);
+
+      // 가리기 뒤 실패한 열람은 보관했던 원본을 다시 보여주면 안 된다.
+      await user.click(screen.getByRole('button', { name: `하늘 ${label} 보기` }));
+      await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('열람 기록을 저장하지 못했습니다.'));
+      expect(screen.queryByText(`${prefix}${value}`)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: `하늘 ${label} 보기` })).toBeEnabled();
+      expect(requests).toBe(2);
+
+      await user.click(screen.getByRole('button', { name: `하늘 ${label} 보기` }));
+      expect(await screen.findByText(`${prefix}${next}`)).toBeInTheDocument();
+      expect(requests).toBe(3);
+      await waitFor(() => expect(client.getMutationCache().getAll()).toHaveLength(0));
+      expect(
+        JSON.stringify(
+          client
+            .getQueryCache()
+            .getAll()
+            .map((query) => query.state.data),
+        ),
+      ).not.toContain(next);
+    },
+  );
+});
+
 describe('권한 변경', () => {
   async function pick(name: RegExp | string, option: RegExp | string) {
     fireEvent.click(await screen.findByRole('button', { name }));
@@ -223,7 +430,7 @@ describe('권한 변경', () => {
     expect(toastMock).not.toHaveBeenCalled();
     const patch = httpMock.mock.calls.find(([p]) => String(p).includes('/system-role'))!;
     expect(patch[0]).toBe('/api/admin/users/18/system-role');
-    expect(patch[1]).toMatchObject({ method: 'PATCH', body: JSON.stringify({ systemRole: 'ADMIN' }) });
+    expect(patch[2]).toMatchObject({ method: 'PATCH', body: JSON.stringify({ systemRole: 'ADMIN' }) });
 
     const before = listCalls().length;
     await act(async () => d.resolve({ id: 18, systemRole: 'ADMIN' }));

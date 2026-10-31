@@ -2,10 +2,13 @@
 
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, DiscordGlyph, Textarea, cx } from '@studyclub/ui';
 import { ChevronDown, FolderOpen } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 
-import { RULES_MAX } from './meetings';
+import { groupRulesSchema, type GroupRulesValues } from '@/features/schedule/form-schemas';
+import { RULES_MAX } from '@/features/schedule/meetings';
 
 /** 정보 카드의 바로가기 — 아이콘과 이름만 보이고 새 창으로 연다. 주소는 가리키면 보인다. */
 function LinkButton({ label, href, icon }: { label: string; href: string; icon: ReactNode }) {
@@ -52,7 +55,11 @@ export function GroupInfoCard({
 }) {
   /** 처음엔 펼친다. 접으면 머리 줄만 남는다. 접어도 저장하지 않은 규칙 글은 남는다. */
   const [expanded, setExpanded] = useState(true);
-  const [draft, setDraft] = useState(rules);
+  const { watch, setValue, reset, handleSubmit } = useForm<GroupRulesValues>({
+    resolver: zodResolver(groupRulesSchema),
+    defaultValues: { rules },
+  });
+  const draft = watch('rules');
   const bodyId = useId();
 
   const dirty = draft.trim() !== rules.trim();
@@ -61,10 +68,10 @@ export function GroupInfoCard({
   }, [dirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
 
-  function save() {
-    onSaveRules(draft.trim());
-    setDraft(draft.trim());
-  }
+  const save = handleSubmit(({ rules }) => {
+    onSaveRules(rules.trim());
+    setValue('rules', rules.trim());
+  });
 
   return (
     <section className='card mb-5 px-5 py-4'>
@@ -124,11 +131,11 @@ export function GroupInfoCard({
             rows={4}
             showCount
             className='bg-surface-1 leading-relaxed'
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => setValue('rules', e.target.value, { shouldDirty: true })}
           />
           {dirty && (
             <div className='flex justify-end gap-2'>
-              <Button variant='secondary' size='sm' onClick={() => setDraft(rules)}>
+              <Button variant='secondary' size='sm' onClick={() => reset({ rules })}>
                 취소
               </Button>
               <Button size='sm' onClick={save}>

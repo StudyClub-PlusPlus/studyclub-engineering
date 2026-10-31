@@ -36,7 +36,7 @@ import { ME_ID, type Participant } from '@core/lib/schedule-board';
 import { studySource, type ScheduleSource } from '@core/lib/schedule-source';
 import { SCHEDULE_ZONES, scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
-import type { Study } from '@studyclub/mock';
+import type { Study } from '@studyclub/types';
 import { Button, Input, Modal, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
 import { Plus, X } from 'lucide-react';
 

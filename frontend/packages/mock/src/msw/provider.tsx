@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+
 import type { SetupWorker } from 'msw/browser';
 
 import { MSWContext, type HandlerConfig } from './context';
@@ -38,7 +39,7 @@ function buildActiveHandlers(groups: MockHandlerGroup[], config: HandlerConfig) 
         const state = config[handlerKey(h)];
         const preset = h.presets.find((p) => p.label === state?.presetLabel) ?? h.presets[0];
         return { ...h, preset };
-      }),
+      })
   );
 }
 
@@ -60,7 +61,7 @@ export function MSWProvider({
 }: MSWProviderProps) {
   const [ready, setReady] = useState(!enabled);
   const [handlerConfig, setHandlerConfig] = useState<HandlerConfig>(() =>
-    enabled ? defaultConfig(mockHandlerGroups) : {},
+    enabled ? defaultConfig(mockHandlerGroups) : {}
   );
   const workerRef = useRef<SetupWorker | null>(null);
 
@@ -91,9 +92,11 @@ export function MSWProvider({
     setHandlerConfig(next);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
     workerRef.current?.resetHandlers(
-      ...registerHandlers(buildActiveHandlers(mockHandlerGroups, next)),
+      ...registerHandlers(buildActiveHandlers(mockHandlerGroups, next))
     );
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('msw:config-change', { detail: next }));

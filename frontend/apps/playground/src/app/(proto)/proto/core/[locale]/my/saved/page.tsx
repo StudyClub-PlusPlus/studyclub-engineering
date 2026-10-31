@@ -9,7 +9,7 @@ import { userStudyPath, type Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { PAGE } from '@core/lib/layout';
 import { getBookmarks, setBookmarked } from '@core/lib/me';
-import { type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/types';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Button, Card, EmptyState } from '@studyclub/ui';
 import { Heart } from 'lucide-react';

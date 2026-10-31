@@ -1,8 +1,9 @@
+import type { Locale } from '@studyclub/types';
 import type { Metadata } from 'next';
 
-import { EventBrowser } from '@/components/EventBrowser';
 import { FollowStrip } from '@/components/SocialLinks';
-import { getEvents, type Locale } from '@/lib/content';
+import { EventBrowser } from '@/features/events/EventBrowser';
+import { getEvents } from '@/features/events/server';
 import { m } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 

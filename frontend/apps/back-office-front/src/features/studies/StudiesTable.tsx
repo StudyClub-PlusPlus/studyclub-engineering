@@ -4,20 +4,13 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  publishState,
-  recruitState,
-  toISODate,
-  applyFormUrl,
-  type Study,
-  type StudyLifecycleStatus,
-} from '@studyclub/mock';
-import { Badge, Select, cx, type BadgeTone } from '@studyclub/ui';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { type Study, type StudyLifecycleStatus } from '@studyclub/types';
+import { Badge, Pagination, Select, cx, type BadgeTone } from '@studyclub/ui';
+import { applyFormUrl, publishState, recruitState, toISODate } from '@studyclub/utils';
 
 import {
   CATEGORY_OPTIONS,
-  KIND_OPTIONS,
+  FORM_OPTIONS,
   LIST_PAGE_SIZE,
   PUBLISH_OPTIONS,
   RECRUIT_OPTIONS,
@@ -26,18 +19,22 @@ import {
   URL_DEFAULTS,
   effectiveSort,
   entryFilters,
-  sortOptionsFor,
-  type KindFilter,
+  headerSortOf,
+  nextSortFor,
+  type FormFilter,
   type PublishFilter,
   type RecruitFilter,
+  type SortColumn,
+  type SortDir,
   type SortOrder,
   type StudyListData,
   type StudyStatusFilter,
 } from '@/features/studies/list-filters';
+import { rememberStudiesListSearch } from '@/features/studies/list-return';
+import { PublishConfirmDialog, type PublishTarget } from '@/features/studies/PublishConfirmDialog';
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
-
 import './studies-table.css';
 
 /**
@@ -96,12 +93,50 @@ function byDefault(a: Study, b: Study): number {
   return da.localeCompare(db);
 }
 
-const COMPARATOR: Record<SortOrder, (a: Study, b: Study) => number> = {
-  all: byDefault,
-  title: byTitle,
-  recruitment: byRecruitment,
-  id: (a, b) => b.study_id - a.study_id,
+const LIFECYCLE_ORDER: StudyLifecycleStatus[] = ['DRAFT', 'OPEN', 'ONGOING', 'ENDED', 'CLOSED'];
+
+const TIMEZONE_LABEL: Record<NonNullable<Study['timezone']>, string> = {
+  KST: 'KST',
+  PST: 'PST',
+  both: '동시 진행(KST·PST)',
 };
+
+/** 열마다 무엇으로 줄 세울지 (PRD 9). 값이 없는(undefined) 행은 방향과 관계없이 늘 맨 뒤로 보낸다. */
+const SORT_VALUE: Record<SortColumn, (s: Study) => string | number | undefined> = {
+  program: (s) => (s.program ? Number(s.program.id) : undefined),
+  title: (s) => tx(s.title),
+  status: (s) => LIFECYCLE_ORDER.indexOf(lifecycleStatusOf(s)),
+  category: (s) => s.category || undefined,
+  timezone: (s) => (s.timezone ? TIMEZONE_LABEL[s.timezone] : undefined),
+  recruitStart: (s) => toISODate(s.recruitment?.start),
+  recruitEnd: (s) => (deadlineTime(s) === Number.POSITIVE_INFINITY ? undefined : deadlineTime(s)),
+  recruit: (s) => (recruitState(s) === 'apply' ? 0 : 1),
+  crew: (s) => summarize(s).applied,
+  startAt: (s) => toISODate(s.date),
+  form: (s) => (hasApplicationFormOf(s) ? 1 : 0),
+  publish: (s) => (publishState(s) === 'live' ? 1 : 0),
+  author: (s) => s.authorNickname || undefined,
+};
+
+function byColumn(key: SortColumn, dir: SortDir) {
+  return (a: Study, b: Study): number => {
+    const va = SORT_VALUE[key](a);
+    const vb = SORT_VALUE[key](b);
+    if (va === undefined || vb === undefined) return va === vb ? a.study_id - b.study_id : va === undefined ? 1 : -1;
+    const c = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), 'ko');
+    return (dir === 'asc' ? c : -c) || a.study_id - b.study_id;
+  };
+}
+
+/** 정렬 값 → 비교 함수. 대시보드 진입 순서(이름순 · 모집 마감순 · 최근 등록순)는 서버 정렬과 같은 결과를 낸다. */
+function comparatorOf(sort: SortOrder): (a: Study, b: Study) => number {
+  if (sort === 'all') return byDefault;
+  if (sort === 'title') return byTitle;
+  if (sort === 'recruitment') return byRecruitment;
+  if (sort === 'id') return (a, b) => b.study_id - a.study_id;
+  const [key, dir] = sort.split(':') as [SortColumn, SortDir];
+  return byColumn(key, dir);
+}
 
 const STUDY_STATUS_GUIDE = [
   {
@@ -157,6 +192,105 @@ function statusToneOf(status: StudyLifecycleStatus): BadgeTone {
   return 'closed';
 }
 
+/**
+ * 공개 설정 칸 — **공개는 여기서 켠다** (captain-publish-study 1 · 1-1). 누르면 바로 바뀌지 않고 확인 팝업이 먼저 뜬다.
+ *
+ * - 신청 폼이 없으면 공개하지 못한다 — 공개하는 순간 크루가 신청할 데 없는 스터디를 보게 된다
+ * - 서버는 작성 중(DRAFT)만 공개하고, 개설(OPEN)만 비공개로 돌린다. 진행 중·종료된 스터디는 누를 수 없다
+ * - 누를 수 없을 때 이유는 말풍선으로 — disabled 버튼에는 마우스 이벤트가 오지 않아 title 이 뜨지 않는다.
+ *   그래서 aria-disabled 로 막고(포커스·호버는 받는다) 「스터디 상태」 칸과 같은 말풍선을 띄운다.
+ *   커서는 기본 그대로 둔다 — 금지 커서와 말풍선이 함께 뜨면 무엇을 봐야 할지 헷갈린다
+ */
+function PublishCell({
+  live,
+  lifecycleStatus,
+  hasForm,
+  onToggle,
+}: {
+  live: boolean;
+  lifecycleStatus: StudyLifecycleStatus;
+  hasForm: boolean;
+  onToggle: (next: boolean) => void;
+}) {
+  const reason = live
+    ? lifecycleStatus === 'OPEN'
+      ? undefined
+      : '진행 중이거나 종료된 스터디는 비공개로 돌릴 수 없습니다.'
+    : hasForm
+      ? undefined
+      : '신청 폼을 먼저 연결하세요.';
+  const blocked = reason !== undefined;
+  const ref = useRef<HTMLButtonElement>(null);
+  const [tip, setTip] = useState<{ x: number; y: number } | null>(null);
+  const width = 220;
+
+  function showTip() {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!blocked || !rect) return;
+    const x = Math.min(Math.max(rect.left + rect.width / 2, width / 2 + 8), window.innerWidth - width / 2 - 8);
+    setTip({ x, y: rect.bottom + 6 });
+  }
+
+  return (
+    <span className='inline-flex'>
+      <button
+        ref={ref}
+        type='button'
+        onClick={() => !blocked && onToggle(!live)}
+        aria-disabled={blocked || undefined}
+        aria-describedby={blocked && tip ? 'publish-blocked-tip' : undefined}
+        onMouseEnter={showTip}
+        onMouseLeave={() => setTip(null)}
+        onFocus={showTip}
+        onBlur={() => setTip(null)}
+        title={blocked ? undefined : live ? '눌러서 비공개로 전환' : '눌러서 공개'}
+        className={cx(
+          'rounded-pill px-2.5 py-1 type-label-lg outline-none transition-colors focus-visible:shadow-[var(--ring)]',
+          live
+            ? blocked
+              ? 'cursor-default bg-success-50 text-success-700'
+              : 'bg-success-50 text-success-700 hover:bg-success-100'
+            : blocked
+              ? 'cursor-default bg-surface-2 text-fg-placeholder'
+              : 'bg-surface-2 text-fg-secondary hover:bg-neutral-200',
+        )}
+      >
+        {live ? '공개' : '미공개'}
+      </button>
+      {tip && (
+        <span
+          id='publish-blocked-tip'
+          role='tooltip'
+          style={{ position: 'fixed', left: tip.x, top: tip.y, width, transform: 'translateX(-50%)' }}
+          className='pointer-events-none z-50 whitespace-normal rounded-control bg-neutral-900 px-3 py-2 text-left type-label-sm text-white shadow-lg'
+        >
+          {reason}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * 정렬하는 열 머리 — **이름을 누른다** (PRD 9 · playground SortLabel 과 같다). 처음 누르면 오름차순, 다시 누르면 내림차순.
+ * 화살표를 그리지 않는다 — 지금 정렬 중인 열은 이름이 강조색이다.
+ */
+function SortLabel({ label, active, onClick }: { label: string; active: SortDir | null; onClick: () => void }) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      aria-label={`${label} ${active === 'asc' ? '내림차순으로' : '오름차순으로'} 정렬`}
+      className={cx(
+        'whitespace-nowrap rounded-sm text-left underline-offset-4 hover:underline',
+        active && 'text-brand',
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 function hasApplicationFormOf(study: Study): boolean {
   if (study.hasApplicationForm !== undefined) return study.hasApplicationForm;
   return Boolean(study.applicationForm?.length || applyFormUrl(study));
@@ -181,9 +315,9 @@ function FilterSelect<T extends string>({
       value={value}
       aria-label={label}
       onChange={(e) => onChange(e.target.value as T)}
-      // 검색 칸과 같은 높이(h-9). 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
+      // 높이는 Select size='sm'(h-8) 그대로. 걸러 낸 축은 브랜드 테두리 · 굵은 글씨로 드러낸다
       className={cx(
-        'h-9 w-auto',
+        'w-auto',
         value === 'all' ? 'border-border-strong text-fg-secondary' : 'border-brand font-semibold text-fg',
       )}
     >
@@ -289,12 +423,17 @@ export function StudiesTable({ list }: { list: StudyListData }) {
   // 조건·페이지는 URL 이 정본이다 — 운영 페이지에 들어갔다 뒤로 와도 걸어 둔 조건이 그대로다.
   // 조건을 바꾸면 페이지는 1로 돌아간다(같은 set 에서 함께 바꾼다).
   const [urlFilters, setUrlFilters] = useUrlState(URL_DEFAULTS, URL_ALLOWED);
+  /** 공개/비공개 전환 확인 팝업. 값이 있으면 열려 있다. */
+  const [confirm, setConfirm] = useState<PublishTarget | null>(null);
+
   // 대시보드에서 `?view=…` 로 들어왔으면 그 조건으로 바로 그리고(깜빡임 없이), 주소는 이 목록의 필터로 바꿔 쓴다
   const searchParams = useSearchParams();
-  const entry = useMemo(
-    () => entryFilters(searchParams.get('view'), searchParams.get('category')),
-    [searchParams],
-  );
+  // 상세의 「← 스터디 관리」가 이 조건으로 돌아오게 지금 주소의 쿼리를 적어 둔다
+  useEffect(() => {
+    const search = searchParams.toString();
+    rememberStudiesListSearch(search ? `?${search}` : '');
+  }, [searchParams]);
+  const entry = useMemo(() => entryFilters(searchParams.get('view'), searchParams.get('category')), [searchParams]);
   // 주소만 바꾼다(shallow) — router.replace 면 서버 컴포넌트가 목록 전체를 한 번 더 받는다
   useEffect(() => {
     if (entry) setUrlFilters(entry, { shallow: true });
@@ -307,10 +446,9 @@ export function StudiesTable({ list }: { list: StudyListData }) {
   );
   const category = filters.category;
   const studyStatus = filters.status as StudyStatusFilter;
-  const kind = filters.kind as KindFilter;
   const recruit = filters.recruit as RecruitFilter;
   const publish = filters.publish as PublishFilter;
-  const noFormOnly = filters.noForm === '1';
+  const form = filters.form as FormFilter;
   const sort = effectiveSort(filters.sort as SortOrder, studyStatus);
   const page = pageOf(filters.page);
   const setPage = (next: number) => setFilters({ page: String(next) });
@@ -340,24 +478,32 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     // 서버가 이미 거르고 정렬했다 — 다시 거르면 서버와 다른 뜻의 조건(「마감」 등)이 섞인다
     if (list.mode === 'server') return studies;
     const q = query.trim().toLowerCase();
-    return (
-      studies
-        .filter((s) => {
-          if (category !== 'all' && s.category !== category) return false;
-          if (studyStatus !== 'all' && lifecycleStatusOf(s) !== studyStatus) return false;
-          if (kind !== 'all' && (s.kind ?? 'study') !== kind) return false;
-          if (recruit !== 'all' && recruitState(s) !== recruit) return false;
-          if (publish !== 'all' && publishState(s) !== publish) return false;
-          if (noFormOnly && hasApplicationFormOf(s)) return false;
-          if (q) {
-            const hay = `${tx(s.title)} ${tx(s.summary)} ${s.category ?? ''}`.toLowerCase();
-            if (!hay.includes(q)) return false;
-          }
-          return true;
-        })
-        .sort(COMPARATOR[sort])
-    );
-  }, [list.mode, studies, query, category, studyStatus, kind, recruit, publish, noFormOnly, sort]);
+    return studies
+      .filter((s) => {
+        if (category !== 'all' && s.category !== category) return false;
+        if (studyStatus !== 'all' && lifecycleStatusOf(s) !== studyStatus) return false;
+        if (recruit !== 'all' && recruitState(s) !== recruit) return false;
+        if (publish !== 'all' && publishState(s) !== publish) return false;
+        if (form !== 'all' && hasApplicationFormOf(s) !== (form === 'has')) return false;
+        if (q) {
+          const hay = `${tx(s.title)} ${tx(s.summary)} ${s.category ?? ''}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      })
+      .sort(comparatorOf(sort));
+  }, [list.mode, studies, query, category, studyStatus, recruit, publish, form, sort]);
+  const headerSort = headerSortOf(sort);
+  /** 열 이름을 누른다 — 오름차순, 다시 누르면 내림차순 (PRD 9). 정렬을 바꾸면 1페이지로 */
+  const sortBy = (key: SortColumn) => setFilters({ sort: nextSortFor(sort, key), page: '1' });
+  const th = (key: SortColumn, label: string, className = 'whitespace-nowrap') => (
+    <th
+      className={className}
+      aria-sort={headerSort?.key === key ? (headerSort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
+      <SortLabel label={label} active={headerSort?.key === key ? headerSort.dir : null} onClick={() => sortBy(key)} />
+    </th>
+  );
 
   const total = list.mode === 'server' ? list.total : rows.length;
   const pageCount = Math.max(1, Math.ceil(total / LIST_PAGE_SIZE));
@@ -367,34 +513,18 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     list.mode === 'server' ? rows : rows.slice((currentPage - 1) * LIST_PAGE_SIZE, currentPage * LIST_PAGE_SIZE);
 
   return (
-    <div>
-      <div className='studies-status-guide mb-[14px] flex flex-wrap items-center gap-2 type-body-sm'>
-        <span className='mr-1 font-semibold text-fg-secondary'>스터디 상태</span>
-        {STUDY_STATUS_GUIDE.map((status, index) => (
-          <span key={status.label} className='inline-flex items-center gap-2'>
-            <StatusTooltip
-              tone={status.tone}
-              label={status.label}
-              description={status.description}
-              nextStep={status.nextStep}
-            />
-            {index < STUDY_STATUS_GUIDE.length - 1 && (
-              <ChevronRight size={16} className='text-fg-muted' aria-hidden='true' />
-            )}
-          </span>
-        ))}
-        <span className='type-label-sm text-fg-muted'>
-          모집중/마감은 상태가 아니라 모집 시작일·종료일과 정원으로 계산합니다
-        </span>
-      </div>
-      {/* 필터는 한 줄에 둔다. 좁으면 줄바꿈하지 않고 옆으로 넘긴다 (프로토 명세 list:4) */}
-      <div className='mb-5 flex flex-nowrap items-center gap-2 overflow-x-auto'>
+    // studies-list — 표 칸 너비 · 말줄임 CSS(studies-table.css)의 기준
+    <div className='studies-list'>
+      {/* 필터는 한 줄에 둔다. 좁으면 줄바꿈하지 않고 옆으로 넘긴다 (프로토 명세 list:4).
+          가로 스크롤 상자는 위아래로 넘친 것도 자른다 — 칸 테두리 · 포커스 링(3px)이 잘리지 않게 사방에 여백을 두고
+          좌우는 음수 여백으로 상쇄해 줄 위치는 그대로 둔다 */}
+      <div className='-mx-1 mb-4 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 py-1'>
         <input
           type='search'
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='제목 · 한 줄 소개 검색'
-          className='h-9 w-[188px] shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
+          className='h-8 w-[188px] shrink-0 rounded-control border border-border-strong bg-surface px-3 type-body-sm outline-none focus:border-brand'
         />
         <FilterSelect
           value={category}
@@ -407,7 +537,6 @@ export function StudiesTable({ list }: { list: StudyListData }) {
           onChange={(v) => setFilters({ status: v, sort: effectiveSort(filters.sort as SortOrder, v), page: '1' })}
           options={STATUS_OPTIONS}
         />
-        <FilterSelect value={kind} onChange={(v) => setFilters({ kind: v, page: '1' })} options={KIND_OPTIONS} />
         <FilterSelect
           value={recruit}
           onChange={(v) => setFilters({ recruit: v, page: '1' })}
@@ -418,32 +547,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
           onChange={(v) => setFilters({ publish: v, page: '1' })}
           options={PUBLISH_OPTIONS}
         />
-        <label className='inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-control border border-border-strong bg-surface px-3 type-body-sm text-fg-secondary'>
-          <input
-            type='checkbox'
-            checked={noFormOnly}
-            onChange={(e) => setFilters({ noForm: e.target.checked ? '1' : '', page: '1' })}
-            className='peer sr-only'
-          />
-          <span
-            className={`relative h-5 w-9 rounded-full transition-colors duration-300 ease-in-out ${
-              noFormOnly ? 'bg-brand' : 'bg-surface-3'
-            }`}
-          >
-            <span
-              className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                noFormOnly ? 'translate-x-4 shadow' : ''
-              }`}
-            />
-          </span>
-          신청 폼 없는 것만
-        </label>
-        <FilterSelect
-          value={sort}
-          onChange={(v) => setFilters({ sort: v, page: '1' })}
-          options={sortOptionsFor(studyStatus)}
-          label='정렬'
-        />
+        <FilterSelect value={form} onChange={(v) => setFilters({ form: v, page: '1' })} options={FORM_OPTIONS} />
         <span className='ml-auto shrink-0 whitespace-nowrap type-label-sm text-fg-muted'>{total}개</span>
       </div>
 
@@ -464,19 +568,19 @@ export function StudiesTable({ list }: { list: StudyListData }) {
           <table className='bo-table min-w-[1500px]'>
             <thead>
               <tr>
-                <th className='whitespace-nowrap'>P-ID</th>
-                <th>스터디명</th>
-                <th className='whitespace-nowrap'>스터디 상태</th>
-                <th className='whitespace-nowrap'>주제</th>
-                <th className='whitespace-nowrap'>종류</th>
-                <th className='whitespace-nowrap'>시간대</th>
-                <th className='whitespace-nowrap'>모집 시작일</th>
-                <th className='whitespace-nowrap'>모집 종료일</th>
-                <th className='whitespace-nowrap'>모집 상태</th>
-                <th className='whitespace-nowrap'>지원 현황</th>
-                <th className='whitespace-nowrap'>스터디 시작일</th>
-                <th className='whitespace-nowrap'>신청 폼</th>
-                <th className='whitespace-nowrap'>스터디 공개</th>
+                {th('program', 'P-ID')}
+                {th('title', '스터디', '')}
+                {th('status', '스터디 상태')}
+                {th('category', '주제')}
+                {th('timezone', '시간대')}
+                {th('recruitStart', '모집 시작일')}
+                {th('recruitEnd', '모집 종료일')}
+                {th('recruit', '모집 상태')}
+                {th('crew', '지원 현황')}
+                {th('startAt', '스터디 시작일')}
+                {th('form', '신청 폼')}
+                {th('publish', '공개 상태')}
+                {th('author', '작성자')}
               </tr>
             </thead>
             <tbody>
@@ -517,8 +621,9 @@ export function StudiesTable({ list }: { list: StudyListData }) {
                     <td className='whitespace-nowrap'>
                       <Badge tone='neutral'>{s.category ?? '—'}</Badge>
                     </td>
-                    <td className='whitespace-nowrap text-fg-secondary'>{s.kind === 'club' ? '클럽' : '스터디'}</td>
-                    <td className='whitespace-nowrap text-fg-secondary'>{s.schedule?.ko ?? '미정'}</td>
+                    <td className='whitespace-nowrap text-fg-secondary'>
+                      {s.timezone ? TIMEZONE_LABEL[s.timezone] : <span className='text-fg-muted'>미정</span>}
+                    </td>
                     <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
                       {displayDate(s.recruitment?.start)}
                     </td>
@@ -531,9 +636,13 @@ export function StudiesTable({ list }: { list: StudyListData }) {
                       </Badge>
                     </td>
                     <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
-                      {applied} / {capacity === undefined ? '제한 없음' : capacity}
+                      {/* 「현재/정원」 · 정원이 없으면 「현재 · 제한 없음」 (PRD 1) */}
+                      {applied}
+                      <span className='text-fg-muted'>{capacity === undefined ? ' · 제한 없음' : `/${capacity}`}</span>
                     </td>
-                    <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>{toISODate(s.date) ?? '미정'}</td>
+                    <td className='tnum whitespace-nowrap type-label-sm text-fg-secondary'>
+                      {toISODate(s.date) ?? '미정'}
+                    </td>
                     <td
                       className='whitespace-nowrap text-center type-body-sm'
                       aria-label={hasApplicationFormOf(s) ? '신청 폼 있음' : '신청 폼 없음'}
@@ -541,7 +650,15 @@ export function StudiesTable({ list }: { list: StudyListData }) {
                       {hasApplicationFormOf(s) ? '✓' : '—'}
                     </td>
                     <td className='whitespace-nowrap'>
-                      <Badge tone='neutral'>{publish === 'live' ? '공개' : '미공개'}</Badge>
+                      <PublishCell
+                        live={publish === 'live'}
+                        lifecycleStatus={lifecycleStatus}
+                        hasForm={hasApplicationFormOf(s)}
+                        onToggle={(next) => setConfirm({ studyId: Number(s.id), title: tx(s.title), next })}
+                      />
+                    </td>
+                    <td className='whitespace-nowrap type-label-sm text-fg-secondary'>
+                      {s.authorNickname ?? <span className='text-fg-muted'>—</span>}
                     </td>
                   </tr>
                 );
@@ -556,45 +673,16 @@ export function StudiesTable({ list }: { list: StudyListData }) {
             </tbody>
           </table>
         </div>
-        {pageCount > 1 && (
-          <div className='flex items-center justify-center gap-1.5 border-t border-border px-4 py-3'>
-            <button
-              type='button'
-              onClick={() => setPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              aria-label='이전 페이지'
-              className='inline-flex h-8 w-8 items-center justify-center rounded-full text-fg-secondary hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40'
-            >
-              <ChevronLeft size={16} aria-hidden='true' />
-            </button>
-            {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
-              <button
-                key={pageNumber}
-                type='button'
-                onClick={() => setPage(pageNumber)}
-                aria-label={pageNumber + '페이지'}
-                aria-current={currentPage === pageNumber ? 'page' : undefined}
-                className={
-                  currentPage === pageNumber
-                    ? 'inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand type-label-lg text-white'
-                    : 'inline-flex h-8 w-8 items-center justify-center rounded-full type-label-lg text-fg-secondary hover:bg-surface-2'
-                }
-              >
-                {pageNumber}
-              </button>
-            ))}
-            <button
-              type='button'
-              onClick={() => setPage(Math.min(pageCount, currentPage + 1))}
-              disabled={currentPage === pageCount}
-              aria-label='다음 페이지'
-              className='inline-flex h-8 w-8 items-center justify-center rounded-full text-fg-secondary hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40'
-            >
-              <ChevronRight size={16} aria-hidden='true' />
-            </button>
-          </div>
-        )}
+        {/* 이전 · 다음 · 번호(많으면 「…」). 한 페이지에 다 들어가면 그리지 않는다 (PRD 8) */}
+        <Pagination
+          className='border-t border-border px-4 py-3'
+          page={currentPage}
+          total={pageCount}
+          onChange={setPage}
+        />
       </div>
+
+      <PublishConfirmDialog target={confirm} onClose={() => setConfirm(null)} />
     </div>
   );
 }

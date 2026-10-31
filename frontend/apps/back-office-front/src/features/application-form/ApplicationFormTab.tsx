@@ -4,9 +4,9 @@ import { useEffect } from 'react';
 
 import { Button } from '@studyclub/ui';
 
-import { ApplicationFormEditor } from './ApplicationFormEditor';
-import { useApplicationForm, useSaveApplicationForm } from './queries';
-import { toFormValues } from './schema';
+import { ApplicationFormEditor } from '@/features/application-form/ApplicationFormEditor';
+import { useApplicationForm, useSaveApplicationForm } from '@/features/application-form/queries';
+import { toFormValues } from '@/features/application-form/schema';
 import type { ApiStudyDetail } from '@/features/studies/types';
 import { ApiError } from '@/lib/http';
 

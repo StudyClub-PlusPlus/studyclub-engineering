@@ -4,7 +4,8 @@
 // 1. 검색 리치 결과 (Course·Event 카드)
 // 2. GEO — AI 검색(ChatGPT·Perplexity·AI Overview)이 인용할 **사실 근거**.
 //    사람이 읽는 본문은 문장이라 인용이 흔들리지만 JSON-LD 는 값이라 그대로 인용된다.
-import type { Locale, Site, Study, StudyclubEvent } from './content';
+import type { Locale, Site, Study, StudyclubEvent } from '@studyclub/types';
+
 import { t } from './i18n';
 import { SITE_NAME, SITE_URL } from './seo';
 

@@ -2,6 +2,8 @@ package com.studyclub.api.study;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.account.Account;
+import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.application.StudyApplicationRepository;
 import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
@@ -14,6 +16,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +39,7 @@ public class BackofficeStudyListService {
     private final StudyApplicationRepository studyApplicationRepository;
     private final StudyRecruitmentRepository studyRecruitmentRepository;
     private final StudyProgramRepository studyProgramRepository;
+    private final AccountRepository accountRepository;
     private final ObjectMapper objectMapper;
 
     public BackofficeStudyListService(
@@ -43,11 +47,13 @@ public class BackofficeStudyListService {
             StudyApplicationRepository studyApplicationRepository,
             StudyRecruitmentRepository studyRecruitmentRepository,
             StudyProgramRepository studyProgramRepository,
+            AccountRepository accountRepository,
             ObjectMapper objectMapper) {
         this.backofficeStudyDao = backofficeStudyDao;
         this.studyApplicationRepository = studyApplicationRepository;
         this.studyRecruitmentRepository = studyRecruitmentRepository;
         this.studyProgramRepository = studyProgramRepository;
+        this.accountRepository = accountRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -156,6 +162,20 @@ public class BackofficeStudyListService {
                         .stream()
                         .collect(Collectors.toMap(StudyProgram::getId, p -> p));
 
+        // 작성자 닉네임 — 한 번에 받는다(행마다 부르면 N+1)
+        List<Long> authorIds =
+                studies.stream()
+                        .map(Study::getCreatedBy)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        Map<Long, String> authorNicknames =
+                authorIds.isEmpty()
+                        ? Map.of()
+                        : accountRepository.findAllById(authorIds).stream()
+                                .filter(a -> a.getNickname() != null)
+                                .collect(Collectors.toMap(Account::getId, Account::getNickname));
+
         return studies.stream()
                 .map(
                         study -> {
@@ -184,8 +204,11 @@ public class BackofficeStudyListService {
                                     recruitment != null ? recruitment.getStartAt() : null,
                                     deadline,
                                     study.getStartAt(),
-                                    study.timezone(),
-                                    hasQuestions(study.getApplicationForm()));
+                                    study.getTimezone(),
+                                    hasQuestions(study.getApplicationForm()),
+                                    study.getCreatedBy() == null
+                                            ? null
+                                            : authorNicknames.get(study.getCreatedBy()));
                         })
                 .toList();
     }

@@ -7,8 +7,8 @@ import type { NoticeFormValues } from '@console/components/NoticeForm';
 import { PageHeader } from '@console/components/ui';
 import { getUser } from '@console/lib/auth';
 import { seedNotices, type Notice } from '@console/lib/notices';
-import { todayISO } from '@studyclub/mock';
 import { Button, Pagination } from '@studyclub/ui';
+import { todayISO } from '@studyclub/utils';
 import { Plus } from 'lucide-react';
 
 /**

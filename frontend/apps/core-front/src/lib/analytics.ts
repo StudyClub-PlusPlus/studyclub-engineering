@@ -1,4 +1,5 @@
-import type { StudyStatus } from '@studyclub/mock';
+import type { StudyStatus } from '@studyclub/types';
+import { z } from 'zod';
 
 import { amplitude, analyticsEnabled, COMMON_PROPS, IS_PRODUCTION } from './amplitude';
 
@@ -11,12 +12,38 @@ type StudyBaseProps = {
   study_status?: StudyStatus;
 };
 
-type BookmarkSource = 'card_landing' | 'card_list' | 'detail' | 'my_page';
+type BookmarkSource = 'card_landing' | 'card_list' | 'detail' | 'saved_page';
+
+/** 디스코드 연동을 마친 화면 — 온보딩 디스코드 단계 · 신청 전 연동 창 · 마이페이지 디스코드 줄 */
+export type DiscordLinkSource = 'onboarding' | 'apply_gate' | 'my_page';
+
+/** 디스코드 연동 실패 사유 — 팝업 단계(cancelled·popup_blocked)와 연동 API 단계(나머지) */
+export type DiscordConnectFailReason =
+  'cancelled' | 'popup_blocked' | 'not_in_guild' | 'already_linked' | 'session_expired' | 'error';
 
 // ─── Page name enum ───────────────────────────────────────────────────────────
 
 export type PageName =
-  'landing' | 'studies_list' | 'study_detail' | 'events_list' | 'event_detail' | 'login' | 'onboarding' | 'my_page';
+  | 'landing'
+  | 'studies_list'
+  | 'study_detail'
+  | 'events_list'
+  | 'event_detail'
+  | 'notices_list'
+  | 'notice_detail'
+  | 'about'
+  | 'guide'
+  | 'terms'
+  | 'privacy'
+  | 'login'
+  | 'onboarding'
+  | 'my_page'
+  | 'my_studies'
+  | 'saved_studies'
+  | 'study_room_schedule'
+  | 'study_room_attendance'
+  | 'study_room_notice'
+  | 'account_leave';
 
 // ─── Event union ──────────────────────────────────────────────────────────────
 // 이벤트명: Title Case  /  프로퍼티명: snake_case  (Amplitude 공식 권장)
@@ -55,6 +82,7 @@ export type AnalyticsEvent =
       props: { terms_agreed: boolean; privacy_agreed: boolean; marketing_agreed: boolean };
     }
   | { name: 'Onboarding Completed'; props: { time_to_complete_sec: number; marketing_agreed: boolean } }
+  | { name: 'Onboarding Discord Skipped'; props: { after_not_in_guild: boolean } }
 
   // ── Study exploration ────────────────────────────────────────────────────────
   | {
@@ -108,9 +136,17 @@ export type AnalyticsEvent =
       props: { study_id: string; interaction_step: 'idle' | 'schedule' | 'slots' };
     }
 
+  // ── Study room (참여 중인 스터디) ─────────────────────────────────────────────
+  | { name: 'Study Presenter Registered'; props: { study_id: string; meeting_id: string; slot: 1 | 2 } }
+  | { name: 'Study Presenter Unregistered'; props: { study_id: string; meeting_id: string; slot: 1 | 2 } }
+  | { name: 'Study Discord Opened'; props: { study_id: string } }
+
   // ── My page ──────────────────────────────────────────────────────────────────
-  | { name: 'My Application Cancelled'; props: { study_id: string; applied_at: string; days_since_apply: number } }
-  | { name: 'My Discord Connected'; props?: Record<string, never> }
+  | { name: 'My Discord Connected'; props: { source: DiscordLinkSource } }
+  | {
+      name: 'Discord Connect Failed';
+      props: { source: DiscordLinkSource; reason: DiscordConnectFailReason; http_status: number | null };
+    }
   | { name: 'My Profile Updated'; props: { changed_fields: string[]; new_region: string } };
 
 // ─── User properties ─────────────────────────────────────────────────────────
@@ -202,7 +238,7 @@ export function captureFirstTouch(): void {
 
 function readFirstTouch(): Record<string, string> {
   try {
-    return JSON.parse(localStorage.getItem(FIRST_TOUCH_KEY) ?? '{}');
+    return z.record(z.string(), z.string()).parse(JSON.parse(localStorage.getItem(FIRST_TOUCH_KEY) ?? '{}'));
   } catch {
     return {};
   }

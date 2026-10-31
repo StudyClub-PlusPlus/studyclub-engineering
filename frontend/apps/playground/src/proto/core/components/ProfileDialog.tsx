@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
 import type { Locale } from '@core/lib/content';
 import { t } from '@core/lib/i18n';
 import { DISCORD_NICKNAME_EXAMPLE } from '@core/lib/me';
-import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
+import { type MemberRegion } from '@studyclub/types';
 import { Button, Input, Modal } from '@studyclub/ui';
+import { MEMBER_REGIONS } from '@studyclub/utils';
 
 /**
  * 내 정보 수정.

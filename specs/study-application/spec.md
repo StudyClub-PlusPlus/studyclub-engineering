@@ -137,7 +137,7 @@ ERD 문서 일부(`STUDY_APPLICATION.md`, `STUDY_RECRUITMENT.md`)는 아직 `STU
 ### 유효값 표
 
 trim 후 판정. 화면과 서버가 같은 표. 실패 카피는 화면용. API `errorMessage`에는 필드명과 사유 코드를 담는다.
-클라이언트 검증은 `frontend/apps/core-front/src/lib/apply-validation.ts`의 Zod 스키마 팩토리(`makeApplySchema` + `.superRefine()`)로 구현하여 일원화한다.
+클라이언트 검증은 `frontend/apps/core-front/src/features/applications/schema.ts`의 Zod 스키마 팩토리(`makeApplySchema` + `.superRefine()`)로 구현하여 일원화한다.
 
 신청 제출 Request에는 Bean Validation을 적용하지 않는다. 필수값 누락·요일 개수 초과·null 요일 항목은 도메인에서 검사해 각각 `필드명: empty`·`availableDays: max`·`availableDays: enum`으로 응답한다.
 
@@ -237,8 +237,8 @@ CHECKBOX의 미선택은 키 생략 또는 빈 배열로 표현한다. 배열 �
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/features/applications/queries.ts` (`useStudyApplicationForm`)
-- `frontend/apps/core-front/src/components/ApplyDialog.tsx`
-- `frontend/apps/core-front/src/components/ApplicationFormUi.tsx`
+- `frontend/apps/core-front/src/features/applications/ApplyDialog.tsx`
+- `frontend/apps/core-front/src/features/applications/ApplicationFormUi.tsx`
 - `frontend/apps/playground/src/proto/console/components/ApplicationFormTab.tsx`
 - `frontend/apps/playground/src/proto/core/components/ApplyDialog.tsx`
 
@@ -369,9 +369,8 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/features/applications/queries.ts` (`useSubmitApplication`)
-- `frontend/apps/core-front/src/components/ApplyDialog.tsx`
-- `frontend/apps/core-front/src/components/ApplyCompleteDialog.tsx`
-- `frontend/apps/core-front/src/lib/apply-validation.ts` (`makeApplySchema` Zod 팩토리)
+- `frontend/apps/core-front/src/features/applications/ApplyDialog.tsx`
+- `frontend/apps/core-front/src/features/applications/schema.ts` (`makeApplySchema` Zod 팩토리)
 - `frontend/apps/core-front/e2e/specs/study-apply.spec.ts`
 - `frontend/apps/playground/src/proto/core/components/ApplyButton.tsx`
 - `frontend/apps/playground/src/proto/core/components/ApplyDialog.tsx`
@@ -420,7 +419,7 @@ Location: /api/studies/{studyId}/applications/{applicationId}
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/features/applications/queries.ts` (`useMyApplication`)
-- `frontend/apps/core-front/src/components/ApplyButton.tsx`
+- `frontend/apps/core-front/src/features/applications/ApplyButton.tsx`
 - `frontend/apps/playground/src/proto/core/components/ApplyButton.tsx`
 
 ---
@@ -580,12 +579,12 @@ Playground는 OAuth 없이 연결 성공·실패·인증 취소를 시뮬레이�
 ### 퍼널·계측
 
 - 단계: 활성화 (신청 직전 게이트 — 연동이 막히면 신청이 없다)
-- 이벤트: 바뀌지 않는다. `My Discord Connected` (front) 는 이제 실제 연동 성공에서만 난다
+- 이벤트: `My Discord Connected{source=apply_gate}` (front) — 실제 연동 성공에서만 난다. `source` 로 온보딩·마이페이지 연동과 가른다. 실패는 `Discord Connect Failed{source=apply_gate, reason}` — 신청 직전에 서버 미가입(`not_in_guild`)으로 막히는 비율을 본다
 - 기대: 신청 버튼 클릭 대비 신청 제출 전환이 0 에서 회복. A/B 없음
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/components/ApplyDiscordGate.tsx` — 팝업은 `src/lib/discord.ts` 의 `requestDiscordCode`, 착지점은 `src/app/api/auth/discord/callback/route.ts`
+- `frontend/apps/core-front/src/features/applications/ApplyDiscordGate.tsx` — 팝업은 `src/lib/discord.ts` 의 `requestDiscordCode`, 착지점은 `src/app/api/auth/discord/callback/route.ts`
 - `frontend/apps/playground/src/proto/core/components/ApplyDiscordGate.tsx`
 
 ### 외부 연동 (SYS-02)

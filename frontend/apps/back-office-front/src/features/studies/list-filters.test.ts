@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { URL_DEFAULTS, resolveListFilters, serverListQuery } from '@/features/studies/list-filters';
+import {
+  URL_DEFAULTS,
+  headerSortOf,
+  nextSortFor,
+  resolveListFilters,
+  serverListQuery,
+} from '@/features/studies/list-filters';
 
 const query = (params: Record<string, string | string[]>) => serverListQuery(resolveListFilters(params));
 
@@ -18,8 +24,8 @@ describe('serverListQuery — 목록 필터를 GET /api/admin/studies Query 로 
 
   it('목록에서 고른 조건도 서버 Query 로 옮긴다 — 카테고리는 코드로, 페이지는 offset 으로', () => {
     expect(
-      query({ category: 'AI · ML', kind: 'club', recruit: 'apply', publish: 'draft', status: 'OPEN', sort: 'id', page: '3' }),
-    ).toBe('category=AI_ML&status=OPEN&studyKind=CLUB&recruitStatus=RECRUITING&visibility=PRIVATE&sort=ID_DESC&offset=40&limit=20');
+      query({ category: 'AI · ML', recruit: 'apply', publish: 'draft', status: 'OPEN', sort: 'id', page: '3' }),
+    ).toBe('category=AI_ML&status=OPEN&recruitStatus=RECRUITING&visibility=PRIVATE&sort=ID_DESC&offset=40&limit=20');
   });
 
   it('모집 마감순은 「개설」에서만 — 다른 상태면 최근 등록순으로 보낸다', () => {
@@ -30,7 +36,11 @@ describe('serverListQuery — 목록 필터를 GET /api/admin/studies Query 로 
     expect(query({ sort: 'all' })).toBeNull(); // 기본 순서
     expect(query({})).toBeNull();
     expect(query({ sort: 'title', q: '리딩' })).toBeNull();
-    expect(query({ sort: 'title', noForm: '1' })).toBeNull();
+    expect(query({ sort: 'title', form: 'none' })).toBeNull();
+    expect(query({ sort: 'title', form: 'has' })).toBeNull();
+    // 열 머리 정렬은 서버 정렬이 없다 — 「스터디」 열 오름차순(= title)만 서버가 정렬한다
+    expect(query({ sort: 'crew:desc' })).toBeNull();
+    expect(query({ sort: 'title:desc' })).toBeNull();
     // 화면의 「마감」은 진행 중 · 종료까지 포함한다 — 서버 RECRUIT_CLOSED(개설 기수만)와 뜻이 다르다
     expect(query({ sort: 'title', recruit: 'closed' })).toBeNull();
   });
@@ -42,5 +52,30 @@ describe('serverListQuery — 목록 필터를 GET /api/admin/studies Query 로 
       page: 'x',
     });
     expect(query({ status: 'NOPE', sort: 'title', page: 'x' })).toBe('sort=TITLE_ASC&offset=0&limit=20');
+  });
+});
+
+describe('열 머리 정렬 (captain-list-all-studies 9)', () => {
+  it('기본 순서 · 모집 마감순은 「모집 상태」 오름차순, 이름순은 「스터디」 오름차순으로 보인다. 최근 등록순은 강조하지 않는다', () => {
+    expect(headerSortOf('all')).toEqual({ key: 'recruit', dir: 'asc' });
+    expect(headerSortOf('recruitment')).toEqual({ key: 'recruit', dir: 'asc' });
+    expect(headerSortOf('title')).toEqual({ key: 'title', dir: 'asc' });
+    expect(headerSortOf('id')).toBeNull();
+    expect(headerSortOf('crew:desc')).toEqual({ key: 'crew', dir: 'desc' });
+  });
+
+  it('누르면 오름차순, 다시 누르면 내림차순 — 서버가 정렬할 수 있는 값으로 접는다', () => {
+    expect(nextSortFor('all', 'crew')).toBe('crew:asc');
+    expect(nextSortFor('crew:asc', 'crew')).toBe('crew:desc');
+    expect(nextSortFor('crew:desc', 'crew')).toBe('crew:asc');
+    expect(nextSortFor('crew:desc', 'title')).toBe('title'); // 이름 오름차순 = 서버 TITLE_ASC
+    expect(nextSortFor('title', 'title')).toBe('title:desc');
+    expect(nextSortFor('all', 'recruit')).toBe('recruit:desc'); // 기본이 이미 모집 상태 오름차순
+    expect(nextSortFor('recruit:desc', 'recruit')).toBe('all');
+  });
+
+  it('주소의 열 정렬 값은 허용 목록으로 읽는다', () => {
+    expect(resolveListFilters({ sort: 'author:desc' }).sort).toBe('author:desc');
+    expect(resolveListFilters({ sort: 'nope:asc' }).sort).toBe('all');
   });
 });

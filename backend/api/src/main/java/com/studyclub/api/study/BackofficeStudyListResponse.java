@@ -24,6 +24,14 @@ public record BackofficeStudyListResponse(
             Instant recruitmentStartAt,
             Instant recruitDeadlineAt,
             Instant startAt,
+            /**
+             * 운영자가 고른 값 그대로 — {@code null} 이면 미정. 일정 문구로 추정하지 않는다 (captain-list-all-studies 2-3).
+             */
             StudyTimezone timezone,
-            boolean hasApplicationForm) {}
+            boolean hasApplicationForm,
+            /**
+             * 등록한 캡틴의 닉네임({@code STUDY.CREATED_BY}). 기록이 없으면 {@code null} — 화면은 「—」
+             * (captain-list-all-studies 10).
+             */
+            String authorNickname) {}
 }

@@ -80,7 +80,7 @@
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/lib/me.ts` — `TODO(api): GET /api/me/bookmarks`
+- `frontend/apps/core-front/src/features/bookmarks/storage.ts` — `TODO(api): GET /api/me/bookmarks`
 
 ---
 

@@ -6,14 +6,15 @@
 //     온보딩 완료 여부는 쿠키만으로 알 수 없어, 미완료 분기는 로그인 응답·온보딩 페이지에서 처리한다.
 import { NextRequest, NextResponse } from 'next/server';
 
+import { legacyRedirectUrl } from '@studyclub/utils';
+
 import { ACCESS_COOKIE } from '@/lib/cookie-names';
 import { DEFAULT_LOCALE, isLocale } from '@/lib/i18n';
-import { legacyRedirectUrl } from '@/lib/legacy-domain';
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 0) 옛 도메인으로 들어오면 같은 경로의 studyclub.life 로 영구 이동 (lib/legacy-domain.ts)
+  // 0) 옛 도메인으로 들어오면 같은 경로의 studyclub.life 로 영구 이동 (@studyclub/utils)
   const legacy = legacyRedirectUrl(req.headers.get('x-forwarded-host') ?? req.headers.get('host'), pathname + req.nextUrl.search);
   if (legacy) return NextResponse.redirect(legacy, 301);
   const first = pathname.split('/')[1] ?? '';

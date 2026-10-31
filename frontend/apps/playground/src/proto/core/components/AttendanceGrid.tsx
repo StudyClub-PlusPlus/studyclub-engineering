@@ -12,7 +12,7 @@ import {
 } from '@core/lib/attendance-book';
 import { meetingWallDate, type WallTz } from '@core/lib/joined';
 import { isKickoff, meetingLabel } from '@core/lib/meetings';
-import { type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/types';
 import { cx } from '@studyclub/ui';
 
 /**

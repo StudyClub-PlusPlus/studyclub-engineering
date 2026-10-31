@@ -10,7 +10,7 @@ import {
   type EventFormErrors,
   type EventFormValues,
 } from '@console/components/EventForm';
-import type { StudyclubEvent } from '@studyclub/mock';
+import type { StudyclubEvent } from '@studyclub/types';
 import { Button, Modal } from '@studyclub/ui';
 
 /**

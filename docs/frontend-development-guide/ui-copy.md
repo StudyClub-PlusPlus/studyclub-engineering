@@ -16,11 +16,11 @@ AI 가 쓴 문구의 제일 흔한 표시가 **줄표**(em dash `—`, en dash `
 | 범위 (`2–20자`, `10–15명`) | `2~20자` · `2 to 20 characters` |
 | 표의 빈 값 | `-` 또는 `없음` |
 
-**자기검사: 0건이어야 한다** (문구를 고친 PR 마다):
+**문구 변경 시 검사한다.** 아래 검색은 주석·예시·기존 위반도 찾으므로 결과에서 실제 화면 문구를 확인한다. 현재 전체 코드가 0건이라는 뜻은 아니다.
 
 ```bash
-grep -rnE "—|–|ㅡ" --include="*.tsx" --include="*.ts" --include="*.json" frontend/apps/core-front/src \
-  | grep -vE ":[0-9]+:\s*(//|\*|/\*|\{/\*)" | grep -vE "//.*(—|–)"
+rg -n '—|–|ㅡ' frontend/apps/core-front/src frontend/apps/back-office-front/src frontend/packages/ui/src \
+  -g '*.tsx' -g '*.ts' -g '*.json'
 ```
 
 ## 2. 자간 벌린 대문자 라벨(킥커)을 쓰지 않는다
@@ -44,5 +44,9 @@ grep -rnE "—|–|ㅡ" --include="*.tsx" --include="*.ts" --include="*.json" fr
 
 ## 5. 숫자는 출처가 있을 때만
 
-회원 수 같은 숫자는 `packages/mock` 의 `site.community.member_count` 하나에서 읽는다. 문구에 숫자를 따로 박지 않는다
+현재 랜딩·푸터의 커뮤니티 회원 수는 `packages/mock`의 `site.community.member_count`에서 읽는다. 운영 대시보드의 실시간 집계는 API 응답을 사용한다. 문구에 숫자를 따로 박지 않는다
 (박혀 있으면 바뀔 때 한 곳만 고쳐진다). 천 단위는 `toLocaleString()`.
+
+## 6. 상태 문구와 스크린샷
+
+로딩·빈 결과·조회 실패·저장 실패를 구분한다. PRD 문구와 현재 구현이 다르면 대응표에 차이를 남기고, 예상 문구만으로 스크린샷을 통과 처리하지 않는다. [E2E 가이드](e2e-guide.md)를 참고한다.

@@ -5,15 +5,28 @@ import { useEffect, useRef } from 'react';
 
 import { track, identifyUser, type PageName } from '@/lib/analytics';
 
-function pathToPageName(path: string): PageName | null {
+/** 경로 → page_name. 다른 화면으로 곧장 넘기는 경로(`/my/joined/{id}` 등)는 null — 도착한 화면에서 센다. */
+export function pathToPageName(path: string): PageName | null {
   if (path === '') return 'landing';
   if (path === '/studies') return 'studies_list';
   if (/^\/studies\/\d+/.test(path)) return 'study_detail';
   if (path === '/events') return 'events_list';
   if (/^\/events\//.test(path)) return 'event_detail';
+  if (path === '/notices') return 'notices_list';
+  if (/^\/notices\//.test(path)) return 'notice_detail';
+  if (path === '/about') return 'about';
+  if (path === '/guide') return 'guide';
+  if (path === '/terms') return 'terms';
+  if (path === '/privacy') return 'privacy';
   if (path === '/login') return 'login';
   if (path === '/onboarding') return 'onboarding';
   if (path === '/my') return 'my_page';
+  if (path === '/my/joined') return 'my_studies';
+  if (path === '/my/saved') return 'saved_studies';
+  if (path === '/my/leave') return 'account_leave';
+  if (/^\/my\/joined\/\d+\/schedule\/attendance$/.test(path)) return 'study_room_attendance';
+  if (/^\/my\/joined\/\d+\/schedule\/notice$/.test(path)) return 'study_room_notice';
+  if (/^\/my\/joined\/\d+\/schedule$/.test(path)) return 'study_room_schedule';
   return null;
 }
 
@@ -39,8 +52,8 @@ export function PageViewTracker() {
       if (next) extra.next_path = next;
       if (document.referrer) extra.referrer = document.referrer;
     }
-    if (page_name === 'study_detail') {
-      const match = path.match(/^\/studies\/(\d+)/);
+    if (page_name === 'study_detail' || page_name.startsWith('study_room_')) {
+      const match = path.match(/^\/(?:studies|my\/joined)\/(\d+)/);
       if (match) extra.study_id = match[1];
     }
     if (page_name === 'studies_list') {

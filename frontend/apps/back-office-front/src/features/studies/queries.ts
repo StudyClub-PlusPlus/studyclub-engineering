@@ -1,16 +1,21 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import {
+  clubPrograms,
+  createStudy,
+  deleteStudy,
+  linkStudyDiscord,
+  publishStudy,
+  studyDetail,
+  updateStudy,
+} from '@/features/studies/repository';
+import type { ApiStudyDetail, StudyCreatePayload, StudyUpdatePayload } from '@/features/studies/types';
+import { ApiError } from '@/lib/http';
+
 // 스터디 조회·수정·삭제 — 키·fetcher·훅을 한 파일에 둔다.
 //
 // 키를 딕셔너리 하나에 모으지 않는다. 그건 도메인이 수십 개라 이름이 충돌할 때 필요한 장치다.
 // 여기서는 **이 기능을 고치는 사람이 이 파일만 열면 되는 것**이 더 중요하다.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-
-import type {
-  ApiStudyDetail,
-  ApiStudyProgram,
-  StudyCreatePayload,
-  StudyUpdatePayload,
-} from '@/features/studies/types';
-import { ApiError, http } from '@/lib/http';
 
 /**
  * 키는 넓은 것에서 좁은 것으로 쌓는다 — `['studies']` 를 무효화하면 아래가 전부 딸려 간다.
@@ -34,8 +39,7 @@ export const programKeys = {
 export function useClubPrograms(enabled: boolean) {
   return useQuery({
     queryKey: programKeys.clubs(),
-    queryFn: () =>
-      http<{ items: ApiStudyProgram[] }>('/api/admin/study-programs?studyKind=CLUB'),
+    queryFn: () => clubPrograms(),
     select: (page) => page.items,
     enabled,
   });
@@ -48,12 +52,10 @@ export function useClubPrograms(enabled: boolean) {
 export function useStudyDetail(studyId: number) {
   return useQuery({
     queryKey: studyKeys.detail(studyId),
-    queryFn: () => http<ApiStudyDetail>(`/api/admin/studies/${studyId}`),
+    queryFn: () => studyDetail(studyId),
     retry: false,
   });
 }
-
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 /**
  * 스터디 등록. 201 은 바디가 없고 `Location` 헤더만 온다 — 만들어진 id 가 필요하면 거기서 읽는다.
@@ -62,12 +64,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 export function useCreateStudy() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: StudyCreatePayload) =>
-      http<null>('/api/admin/studies', {
-        method: 'POST',
-        headers: JSON_HEADERS,
-        body: JSON.stringify(payload),
-      }),
+    mutationFn: (payload: StudyCreatePayload) => createStudy(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: programKeys.all });
       return queryClient.invalidateQueries({ queryKey: studyKeys.all });
@@ -79,12 +76,7 @@ export function useCreateStudy() {
 export function useUpdateStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: StudyUpdatePayload) =>
-      http<null>(`/api/admin/studies/${studyId}`, {
-        method: 'PATCH',
-        headers: JSON_HEADERS,
-        body: JSON.stringify(payload),
-      }),
+    mutationFn: (payload: StudyUpdatePayload) => updateStudy(studyId, payload),
     // 목록의 정원·마감도 바뀌므로 상세만이 아니라 스터디 전체를 무효화한다
     onSuccess: () => queryClient.invalidateQueries({ queryKey: studyKeys.all }),
   });
@@ -94,7 +86,7 @@ export function useUpdateStudy(studyId: number) {
 export function useDeleteStudy(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => http<null>(`/api/admin/studies/${studyId}`, { method: 'DELETE' }),
+    mutationFn: () => deleteStudy(studyId),
     onSuccess: () => {
       // 지워진 상세를 다시 불러오면 404 다 — 무효화하지 않고 캐시에서 뺀다
       queryClient.removeQueries({ queryKey: studyKeys.detail(studyId) });
@@ -108,12 +100,7 @@ export function useDeleteStudy(studyId: number) {
 export function useLinkStudyDiscord(studyId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (studyName: string) =>
-      http<{ discordStudyId: string; discordRoleId: string }>(`/api/admin/studies/${studyId}/discord-link`, {
-        method: 'POST',
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ studyName }),
-      }),
+    mutationFn: (studyName: string) => linkStudyDiscord(studyId, studyName),
     retry: false,
     onSuccess: async () => {
       const queryKey = studyKeys.detail(studyId);
@@ -130,5 +117,17 @@ export function useLinkStudyDiscord(studyId: number) {
         return queryClient.invalidateQueries({ queryKey: studyKeys.detail(studyId) });
       }
     },
+  });
+}
+
+/**
+ * 공개(= 모집 시작) · 공개 취소 — `POST /api/admin/studies/{id}/publish` · `/unpublish`.
+ * 목록은 서버 컴포넌트가 받으므로 부른 쪽이 `router.refresh()` 로 다시 받는다.
+ */
+export function usePublishStudy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studyId, publish }: { studyId: number; publish: boolean }) => publishStudy(studyId, publish),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: studyKeys.all }),
   });
 }
