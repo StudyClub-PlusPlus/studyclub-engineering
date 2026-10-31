@@ -234,6 +234,7 @@ export const attendanceHandlers = mockClient.createHandlerGroup('/api/me/studies
         label: '정상',
         status: 200,
         response: (context: MockResolveContext) =>
+          // 참여자 discordNickname 은 스펙에 있고(10-18 D6) 백엔드가 아직 내리지 않는다 — 목은 먼저 채워 둔다
           responseFor(context) ??
           HttpResponse.json(
             { errorCode: 'NOT_FOUND', errorMessage: '스터디를 찾을 수 없습니다.' },

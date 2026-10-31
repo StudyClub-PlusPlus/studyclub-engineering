@@ -766,15 +766,11 @@ export function ScheduleTab({
         </h2>
 
         <div className='ml-auto flex items-center gap-2'>
-          {canEdit && (
-            <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
-              회차 추가
-            </Button>
-          )}
           {canEdit ? (
             <label className='flex items-center gap-2 type-label-sm text-fg-muted'>
               시간대
               <Select
+                size='sm'
                 aria-label='시간대'
                 value={zone}
                 disabled={Object.keys(incompleteWalls).length > 0}
@@ -792,6 +788,12 @@ export function ScheduleTab({
             </label>
           ) : (
             <span className='type-label-sm text-fg-muted'>내 시간대: {scheduleZoneTitle(zone)}</span>
+          )}
+          {canEdit && (
+            // 시간대를 고른 뒤 그 시간대로 회차를 더한다 — 셀렉트 오른쪽 (playground ScheduleManager 와 같은 순서)
+            <Button size='sm' leadingIcon={<Plus size={15} />} onClick={() => setAdding(true)}>
+              회차 추가
+            </Button>
           )}
         </div>
       </div>

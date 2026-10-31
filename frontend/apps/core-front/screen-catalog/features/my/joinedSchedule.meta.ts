@@ -118,4 +118,22 @@ export const joinedScheduleScreenStates: ScreenStateDef[] = [
     },
     screenshot: { fullPage: true },
   },
+
+  // ─── 공지 탭 (Notice) ─────────────────────────────────────────────────────
+  {
+    id: 'my-joined-notice--captain',
+    label: '내 스터디 공지 — 캡틴 (공지 쓰기 & 보낸 공지)',
+    pageId: 'my-joined-notice',
+    rationale:
+      '캡틴이 공지 탭에 들어왔을 때 받는 사람 고르기 · 공지 쓰기 · 보낸 공지 기록이 일정 · 출석 탭과 같은 너비로 렌더링되는지 확인한다.',
+    recipe: {
+      storage: CREW_STORAGE,
+      render: { url: '/ko/my/joined/1/schedule/notice' },
+    },
+    viewports: ['desktop'],
+    assertions: {
+      visible: ['h1'],
+    },
+    screenshot: { fullPage: true },
+  },
 ];

@@ -11,7 +11,7 @@ type StudyBaseProps = {
   study_status?: StudyStatus;
 };
 
-type BookmarkSource = 'card_landing' | 'card_list' | 'detail' | 'my_page';
+type BookmarkSource = 'card_landing' | 'card_list' | 'detail' | 'saved_page';
 
 // ─── Page name enum ───────────────────────────────────────────────────────────
 
@@ -109,7 +109,6 @@ export type AnalyticsEvent =
     }
 
   // ── My page ──────────────────────────────────────────────────────────────────
-  | { name: 'My Application Cancelled'; props: { study_id: string; applied_at: string; days_since_apply: number } }
   | { name: 'My Discord Connected'; props?: Record<string, never> }
   | { name: 'My Profile Updated'; props: { changed_fields: string[]; new_region: string } };
 

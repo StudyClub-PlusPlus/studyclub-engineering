@@ -16,7 +16,7 @@ import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@/lib/layout';
 import { recruitBadge, studyStartValue, studyTimezoneLabel, toISODate } from '@/lib/recruit';
 import { SITE_URL } from '@/lib/seo';
 
-/** TODO(api): GET /api/studies/{id} — 스터디 상세 조회 */
+/** 스터디 상세 — GET /api/studies/{id}. `initial` 은 서버가 첫 HTML 용으로 받은 값 */
 export function StudyDetailView({ id, locale, initial }: { id: number; locale: Locale; initial?: Study | null }) {
   const { data: study, error, isPending } = useStudyDetail(id, initial);
 
