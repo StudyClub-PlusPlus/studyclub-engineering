@@ -71,6 +71,16 @@ class FeedbackTest {
     }
 
     @Test
+    @DisplayName("나노초 시각도 DB 정밀도에 맞춘다 — 첫 응답과 재조회가 같은 회신 시각을 반환한다")
+    void firstReplyUsesDatabasePrecision() {
+        Feedback feedback = newFeedback();
+
+        feedback.reply("처음 보낸 회신입니다.", CAPTAIN, Instant.parse("2026-10-26T01:00:00.123456789Z"));
+
+        assertThat(feedback.getRepliedAt()).isEqualTo(Instant.parse("2026-10-26T01:00:00.123456Z"));
+    }
+
+    @Test
     @DisplayName("회신을 고치면 내용만 바뀐다 — 시각 · 상태 · 처리자는 그대로")
     void editingReplyKeepsTimeAndOwner() {
         Feedback feedback = newFeedback();
