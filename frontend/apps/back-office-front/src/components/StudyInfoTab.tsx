@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Button, Modal } from '@studyclub/ui';
 
+import { StudyDiscordLinkDialog } from '@/components/StudyDiscordLinkDialog';
 import {
   StudyForm,
   detailToForm,
@@ -32,6 +33,7 @@ export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetai
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showDiscordLink, setShowDiscordLink] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const update = useUpdateStudy(detail.id);
@@ -42,6 +44,11 @@ export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetai
     onSavingChange?.(busy);
     return () => onSavingChange?.(false);
   }, [busy, onSavingChange]);
+
+  // 직접 연결 성공과 다른 운영자의 선행 연결 모두, 확인된 연결 상태를 기준으로 창을 닫는다.
+  useEffect(() => {
+    if (detail.discordLinked) setShowDiscordLink(false);
+  }, [detail.discordLinked]);
 
   // 저장 뒤 서버 값을 다시 받으면 그 값으로 폼을 맞춘다 — 서버가 다듬은 값(공백 제거 등)을 보여 준다
   useEffect(() => {
@@ -90,6 +97,24 @@ export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetai
 
   return (
     <div className='card px-6 py-5'>
+      <section aria-label='디스코드 연결' className='mb-6 flex flex-wrap items-center gap-3 border-b border-border pb-4'>
+        <span className='type-label-lg'>디스코드 연결</span>
+        <span role='status' className='type-body-sm text-fg-muted'>
+          {detail.discordLinked ? '연결됨' : '미연결'}
+        </span>
+        {detail.discordLinked === false && (
+          <Button
+            variant='secondary'
+            disabled={busy || dirty}
+            onClick={() => setShowDiscordLink(true)}
+          >
+            다시 연결
+          </Button>
+        )}
+        {detail.discordLinked === false && dirty && (
+          <p className='type-body-sm text-fg-muted'>변경 사항을 저장한 뒤 다시 연결해 주세요.</p>
+        )}
+      </section>
       <fieldset disabled={busy} className='min-w-0' aria-label='스터디 정보'>
         <StudyForm mode='edit' value={form} errors={errors} onChange={change} onUploadingChange={setUploading} />
       </fieldset>
@@ -114,6 +139,9 @@ export function StudyInfoTab({ detail, onSavingChange }: { detail: ApiStudyDetai
         </div>
       </div>
 
+      {showDiscordLink && (
+        <StudyDiscordLinkDialog studyId={detail.id} title={detail.title} onClose={() => setShowDiscordLink(false)} />
+      )}
       <Modal
         open={confirmDelete}
         onClose={() => {
