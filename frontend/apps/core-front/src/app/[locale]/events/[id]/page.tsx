@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import type { Locale } from '@studyclub/types';
 import { ArrowLeft, CalendarDays, MapPin, Tag, ArrowUpRight } from 'lucide-react';
 import type { Metadata } from 'next';
 
-import { getEvent, getEvents, type Locale } from '@/lib/content';
-import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/lib/event-details';
+import { EVENT_DETAILS, EVENT_KINDS, EVENT_VOICES } from '@/features/events/content';
+import { getEvent, getEvents } from '@/features/events/server';
 import { m, t } from '@/lib/i18n';
 import { JsonLd, breadcrumbJsonLd, eventJsonLd } from '@/lib/jsonld';
 import { PAGE, DETAIL_GRID, DETAIL_ASIDE } from '@/lib/layout';

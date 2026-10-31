@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 // 백엔드 API 를 브라우저에서 직접 부른다. 중계(BFF) 라우트를 두지 않는다.
 //
 // 인증은 **쿠키**로 간다 — 액세스 토큰은 httpOnly 라 JS 가 값을 읽어 Authorization 헤더를 만들 수
@@ -20,6 +22,13 @@ export class ApiError extends Error {
   }
 }
 
+export class ApiResponseError extends Error {
+  constructor(readonly cause: unknown) {
+    super('서버 응답 형식이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.');
+    this.name = 'ApiResponseError';
+  }
+}
+
 /** 백엔드 오류 바디는 `{ errorCode, errorMessage }` 다. */
 function messageOf(body: unknown, status: number): string {
   if (body && typeof body === 'object') {
@@ -30,15 +39,23 @@ function messageOf(body: unknown, status: number): string {
   return `요청에 실패했습니다 (${status})`;
 }
 
-export async function http<T>(path: string, init?: RequestInit): Promise<T> {
+export async function http<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     cache: 'no-store',
     credentials: 'include', // 쿠키 인증 — 빼면 전부 401 이다
     ...init,
   });
-  const body = await res.json().catch(() => null);
+  const text = await res.text();
+  let body: unknown = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch (error) {
+    if (res.ok) throw new ApiResponseError(error);
+  }
   if (!res.ok) throw new ApiError(res.status, messageOf(body, res.status));
-  return body as T;
+  const result = schema.safeParse(body);
+  if (!result.success) throw new ApiResponseError(result.error);
+  return result.data;
 }
 
 /** 쿼리스트링 — 값이 없는 조건은 넣지 않는다(빈 문자열이 필터로 잡히면 결과가 달라진다). */

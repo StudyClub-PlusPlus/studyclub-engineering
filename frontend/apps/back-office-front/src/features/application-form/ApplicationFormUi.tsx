@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
 
-import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
+import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/types';
 import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { Pencil, X } from 'lucide-react';
 
-import { allowsOther } from './question';
+import { allowsOther } from '@/features/application-form/question';
 
 const TEXT_ANSWER_MAX = 200;
 const TEXTAREA_ANSWER_MAX = 2_000;
@@ -253,7 +253,9 @@ export function FormHeaderCard({
 
 export function OptionMarker({ type, index }: { type: ApplicationQuestionType; index?: number }) {
   if (type === 'select') {
-    return <span className='w-5 shrink-0 text-center type-label-sm tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>;
+    return (
+      <span className='w-5 shrink-0 text-center type-label-sm tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>
+    );
   }
   if (type === 'checkbox') {
     return <span className='h-4 w-4 shrink-0 rounded-xs border border-border' aria-hidden />;

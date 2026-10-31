@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
+import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/types';
 import { Button, Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -14,9 +14,9 @@ import {
   MARKDOWN_HINT,
   OptionEditor,
   QuestionFillView,
-} from './ApplicationFormUi';
-import { allowsOther, needsOptions, QUESTION_TYPES, TYPE_LABEL } from './question';
-import { applicationFormSchema, type ApplicationFormValues } from './schema';
+} from '@/features/application-form/ApplicationFormUi';
+import { allowsOther, needsOptions, QUESTION_TYPES, TYPE_LABEL } from '@/features/application-form/question';
+import { applicationFormSchema, type ApplicationFormValues } from '@/features/application-form/schema';
 
 const HEADER_ID = '__form-header__';
 const DISCORD_QUESTION: ApplicationQuestion = {

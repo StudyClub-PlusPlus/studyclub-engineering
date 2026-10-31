@@ -1,23 +1,27 @@
-// 운영 대시보드 — 키·fetcher·훅을 한 파일에 둔다.
-// 영역마다 따로 부른다. 하나가 실패해도 나머지는 그린다 (PRD §3 API · spec 2.4).
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
+import {
+  attendanceTrend,
+  crewTimezones,
+  dashboardSummary,
+  studiesByCategory,
+  studyBoard,
+} from '@/features/dashboard/repository';
 import type {
   ApiAttendanceTrend,
-  ApiCrewTimezones,
   ApiDashboardSummary,
-  ApiStudiesByCategory,
   ApiStudyBoard,
   StudyBoardView,
 } from '@/features/dashboard/types';
-import { http, qs } from '@/lib/http';
+
+// 운영 대시보드 — 키·fetcher·훅을 한 파일에 둔다.
+// 영역마다 따로 부른다. 하나가 실패해도 나머지는 그린다 (PRD §3 API · spec 2.4).
 
 /** 보드 칸마다 보여 주는 최대 행 수. 나머지는 「외 N개」로 접는다. */
-export const BOARD_PREVIEW = 4;
+
 /** 추세 구간. 서버는 12만 받는다. */
-export const TREND_WEEKS = 12;
 
 /**
  * 시간대를 받는 API 는 시간대를 키에 넣는다 — 시간대가 다르면 주간 집계·날짜가 다른 응답이다 (spec 4.1).
@@ -69,7 +73,7 @@ export function useViewerTimeZone(): { ready: boolean; timeZone: string | undefi
 export function useDashboardSummary(timeZone: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: dashboardKeys.summary(timeZone),
-    queryFn: () => http<ApiDashboardSummary>(`/api/admin/stats/summary${qs({ timeZone })}`),
+    queryFn: () => dashboardSummary(timeZone),
     enabled,
     ...ON_ENTRY,
   });
@@ -78,8 +82,7 @@ export function useDashboardSummary(timeZone: string | undefined, enabled: boole
 export function useStudyBoard(view: StudyBoardView, timeZone: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: dashboardKeys.board(view, timeZone),
-    queryFn: () =>
-      http<ApiStudyBoard>(`/api/admin/stats/study-board${qs({ view, limit: BOARD_PREVIEW, timeZone })}`),
+    queryFn: () => studyBoard(view, timeZone),
     enabled,
     ...ON_ENTRY,
   });
@@ -89,7 +92,7 @@ export function useStudyBoard(view: StudyBoardView, timeZone: string | undefined
 export function useCrewTimezones() {
   return useQuery({
     queryKey: dashboardKeys.crewTimezones(),
-    queryFn: () => http<ApiCrewTimezones>('/api/admin/stats/crew-timezones'),
+    queryFn: () => crewTimezones(),
     ...ON_ENTRY,
   });
 }
@@ -97,8 +100,7 @@ export function useCrewTimezones() {
 export function useAttendanceTrend(timeZone: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: dashboardKeys.trend(timeZone),
-    queryFn: () =>
-      http<ApiAttendanceTrend>(`/api/admin/stats/attendance-trend${qs({ weeks: TREND_WEEKS, timeZone })}`),
+    queryFn: () => attendanceTrend(timeZone),
     enabled,
     ...ON_ENTRY,
   });
@@ -108,7 +110,7 @@ export function useAttendanceTrend(timeZone: string | undefined, enabled: boolea
 export function useStudiesByCategory() {
   return useQuery({
     queryKey: dashboardKeys.categories(),
-    queryFn: () => http<ApiStudiesByCategory>('/api/admin/stats/studies-by-category'),
+    queryFn: () => studiesByCategory(),
     ...ON_ENTRY,
   });
 }
@@ -159,3 +161,5 @@ export function useDashboardConsistency({
     void queryClient.invalidateQueries({ queryKey: dashboardKeys.trendAll() });
   }, [zoneMismatch, weekMismatch, queryClient]);
 }
+
+export { BOARD_PREVIEW, TREND_WEEKS } from './repository';

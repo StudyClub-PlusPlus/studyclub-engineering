@@ -4,16 +4,16 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import type { Locale, Study } from '@studyclub/types';
 import { Button, Card, EmptyState, categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Heart } from 'lucide-react';
 
+import { getUser } from '@/features/auth/auth';
+import { getBookmarks, setBookmarked } from '@/features/bookmarks/storage';
 import { useStudies } from '@/features/studies/queries';
 import { track } from '@/lib/analytics';
-import { getUser } from '@/lib/auth';
-import type { Locale, Study } from '@/lib/content';
 import { t } from '@/lib/i18n';
 import { PAGE } from '@/lib/layout';
-import { getBookmarks, setBookmarked } from '@/lib/me';
 
 /**
  * 찜한 스터디 — 프로필 드롭다운의 「찜한 스터디」 목적지. 참여 목록과 섞지 않는다.

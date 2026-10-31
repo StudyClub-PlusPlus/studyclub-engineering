@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { Button, Checkbox, Input, Modal, Segmented, Select, SelectionCount, TableActionBar, cx } from '@studyclub/ui';
+import { Button, Checkbox, cx, Input, Modal, Segmented, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
 import { Plus } from 'lucide-react';
 
-import { AddMeetingDialog } from './AddMeetingDialog';
-import { KickoffDialog } from './KickoffDialog';
+import { AddMeetingDialog } from '@/features/schedule/AddMeetingDialog';
+import { KickoffDialog } from '@/features/schedule/KickoffDialog';
 import {
   isKickoff,
   meetingLabel,
@@ -16,9 +16,9 @@ import {
   type Meeting,
   type Person,
   type ScheduleGroup,
-} from './meetings';
-import type { MeetingPatch } from './store';
-import { dateWithDow, dayLabel, DISPLAY_ZONES, wallParts, zonedInstant, zoneLabel } from './time';
+} from '@/features/schedule/meetings';
+import type { MeetingPatch } from '@/features/schedule/store';
+import { dateWithDow, dayLabel, DISPLAY_ZONES, wallParts, zonedInstant, zoneLabel } from '@/features/schedule/time';
 
 /**
  * 일정 표 — 고른 반의 회차. 사용자 사이트 스터디 일정 표와 같은 표다 (navigator-register-sessions PRD §3 ~ §10).

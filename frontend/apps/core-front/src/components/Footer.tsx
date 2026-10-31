@@ -1,10 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import type { Locale, Site } from '@studyclub/types';
 import { ArrowUpRight } from 'lucide-react';
 
 import { SocialIcons } from './SocialLinks';
-import type { Locale, Site } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 
 

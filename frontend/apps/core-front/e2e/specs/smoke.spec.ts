@@ -128,6 +128,11 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
   test('로그인 + 디스코드 연동 시 신청 다이얼로그 열림', async ({ page }) => {
     // 클라이언트 인증 및 디스코드 연동 세션 주입
     await stubApiMe(page);
+    await page
+      .context()
+      .addCookies([
+        { name: 'sc_access_token', value: 'e2e', url: `http://localhost:${process.env.APP_PORT ?? '4700'}` },
+      ]);
     await page.addInitScript(() => {
       localStorage.setItem(
         'sc_user',
@@ -137,6 +142,8 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           nickname: '테스트크루',
           picture: null,
           role: 'MEMBER',
+          timeZone: 'Asia/Seoul',
+          onboardingCompletedAt: '2026-01-01T00:00:00Z',
         }),
       );
       localStorage.setItem('msw-discord-linked', 'true');
@@ -151,6 +158,11 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
 
   test('폼 미제출 시 에러 메시지 표시', async ({ page }) => {
     await stubApiMe(page);
+    await page
+      .context()
+      .addCookies([
+        { name: 'sc_access_token', value: 'e2e', url: `http://localhost:${process.env.APP_PORT ?? '4700'}` },
+      ]);
     await page.addInitScript(() => {
       localStorage.setItem(
         'sc_user',
@@ -160,6 +172,8 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           nickname: '테스트크루',
           picture: null,
           role: 'MEMBER',
+          timeZone: 'Asia/Seoul',
+          onboardingCompletedAt: '2026-01-01T00:00:00Z',
         }),
       );
       localStorage.setItem('msw-discord-linked', 'true');
@@ -167,17 +181,28 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
     });
 
     await page.goto('/ko/studies/3');
-    await page.getByRole('button', { name: /신청하기|Apply/i }).first().click();
+    await page
+      .getByRole('button', { name: /신청하기|Apply/i })
+      .first()
+      .click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
     // 입력하지 않고 신청 클릭
-    await page.getByRole('dialog').getByRole('button', { name: /^신청$|^Apply$/i }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /^신청$|^Apply$/i })
+      .click();
     // 검증 에러 노출
     await expect(page.getByRole('dialog').getByRole('alert').first()).toBeVisible();
   });
 
   test('Esc 키로 다이얼로그 닫힘', async ({ page }) => {
     await stubApiMe(page);
+    await page
+      .context()
+      .addCookies([
+        { name: 'sc_access_token', value: 'e2e', url: `http://localhost:${process.env.APP_PORT ?? '4700'}` },
+      ]);
     await page.addInitScript(() => {
       localStorage.setItem(
         'sc_user',
@@ -187,6 +212,8 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
           nickname: '테스트크루',
           picture: null,
           role: 'MEMBER',
+          timeZone: 'Asia/Seoul',
+          onboardingCompletedAt: '2026-01-01T00:00:00Z',
         }),
       );
       localStorage.setItem('msw-discord-linked', 'true');
@@ -194,7 +221,10 @@ test.describe('스터디 신청 폼 (ApplyDialog)', () => {
     });
 
     await page.goto('/ko/studies/3');
-    await page.getByRole('button', { name: /신청하기|Apply/i }).first().click();
+    await page
+      .getByRole('button', { name: /신청하기|Apply/i })
+      .first()
+      .click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).not.toBeVisible();

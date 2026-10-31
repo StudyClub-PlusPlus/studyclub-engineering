@@ -15,16 +15,16 @@ import {
   useSaveRules,
   useSetKickoff,
   useUpdateMeetings,
-} from './api';
-import { distinctNames, useCrew } from './crew';
-import { GroupInfoCard } from './GroupInfoCard';
-import { GroupPicker } from './GroupPicker';
-import { useScheduleGroups, withServerTz } from './groups';
-import { GroupTimeDialog } from './GroupTimeDialog';
-import { groupTimeLabel, hasTime } from './meetings';
-import { ScheduleTable } from './ScheduleTable';
-import { saveGroupTime } from './store';
-import { zonedInstant } from './time';
+} from '@/features/schedule/api';
+import { distinctNames, useCrew } from '@/features/schedule/crew';
+import { GroupInfoCard } from '@/features/schedule/GroupInfoCard';
+import { GroupPicker } from '@/features/schedule/GroupPicker';
+import { useScheduleGroups, withServerTz } from '@/features/schedule/groups';
+import { GroupTimeDialog } from '@/features/schedule/GroupTimeDialog';
+import { groupTimeLabel, hasTime } from '@/features/schedule/meetings';
+import { ScheduleTable } from '@/features/schedule/ScheduleTable';
+import { saveGroupTime } from '@/features/schedule/store';
+import { zonedInstant } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
 /**

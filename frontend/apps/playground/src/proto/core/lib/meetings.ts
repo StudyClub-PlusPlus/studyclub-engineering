@@ -2,7 +2,7 @@
 
 import { scheduleZoneTitle, zoneAbbreviation, zoneSymbol } from '@core/lib/schedule-timezone';
 import { formattingZone } from '@core/lib/time-zone-rules';
-import type { Study, StudyMeeting } from '@studyclub/mock';
+import type { Study, StudyMeeting } from '@studyclub/types';
 
 /**
  * 네비게이터가 관리하는 회차 (ERD `STUDY_MEETING`).

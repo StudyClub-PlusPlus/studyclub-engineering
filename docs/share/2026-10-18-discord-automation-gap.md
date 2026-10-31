@@ -45,7 +45,7 @@
 - `ACCOUNT.DISCORD_ID` 칸은 있다. 그런데 **값을 넣는 코드가 없다** (`Account.java` 에 읽는 메서드만 있음).
 - 연동 API `POST /api/me/discord/link` 는 스펙만 있다 ([study-application 스펙 §디스코드 계정 연동](../../specs/study-application/spec.md)). — 10-21 구현 (#298), 10-27 화면 OAuth 팝업 연결 (#369)
 - 사용자 사이트의 「디스코드 연동」 버튼은 **가짜다.** 0.4초 기다렸다가 성공한 척한다
-  (`frontend/apps/core-front/src/components/ApplyDiscordGate.tsx` — `TODO(api)`).
+  (`frontend/apps/core-front/src/features/applications/ApplyDiscordGate.tsx` — `TODO(api)`).
 - 그래서 벌어지는 일:
   - **스터디 생성**: 캡틴 계정에 디스코드 ID 가 없다. 봇을 부르지 않고 경고 로그만 남긴다. 스터디는 정상으로 만들어진다.
   - **스터디 신청**: 디스코드 ID 가 없으면 「디스코드 연동이 필요합니다」(403)로 막힌다.

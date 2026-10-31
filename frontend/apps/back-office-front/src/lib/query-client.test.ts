@@ -1,9 +1,9 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
-import { ApiError } from './http';
-import { handleUnauthorized } from './query-client';
+import { ApiError } from '@/lib/http';
+import { handleUnauthorized } from '@/lib/query-client';
 
-vi.mock('./auth', () => ({ clearSession: vi.fn() }));
+vi.mock('@/features/auth/auth', () => ({ clearSession: vi.fn() }));
 
 afterEach(() => vi.unstubAllGlobals());
 

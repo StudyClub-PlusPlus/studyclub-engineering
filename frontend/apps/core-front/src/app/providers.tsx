@@ -8,10 +8,10 @@ import { QueryClientProvider } from '@tanstack/react-query';
 
 import { PageViewTracker } from '@/components/PageViewTracker';
 import { ThirdPartyAnalytics } from '@/components/ThirdPartyAnalytics';
+import { dropLegacyDemoSeed } from '@/features/account/local-state';
+import { getUser, USER_CHANGED_EVENT } from '@/features/auth/auth';
 import { initAmplitude } from '@/lib/amplitude';
 import { captureFirstTouch, syncAnalyticsUser } from '@/lib/analytics';
-import { getUser, USER_CHANGED_EVENT } from '@/lib/auth';
-import { dropLegacyDemoSeed } from '@/lib/me';
 import { getQueryClient } from '@/lib/query-client';
 
 const MSWProvider = dynamic(() => import('@studyclub/mock/msw').then((m) => m.MSWProvider), { ssr: false });

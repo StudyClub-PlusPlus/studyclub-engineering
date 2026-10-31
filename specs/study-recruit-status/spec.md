@@ -15,7 +15,7 @@
 배치가 필요해진다. 계산은 마감일·정원·신청자 수 셋이면 끝나므로 컬럼도 배치도 없다.
 
 지금 프론트는 `cohort.status`(라이프사이클)를 모집 상태로 겸해서 쓰고 있다 —
-`frontend/apps/core-front/src/lib/api.ts:38` 의 `DRAFT → 'recruiting'` 매핑이 그 흔적이다.
+`frontend/apps/core-front/src/features/studies/model.ts` 의 `DRAFT → 'recruiting'` 매핑이 그 흔적이다.
 이 스펙이 두 축을 분리한다.
 
 ## 두 축을 겹치지 않는다
@@ -66,7 +66,7 @@ recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_C
 
 **표시용 수와 정원용 수를 나누지 않고 쿼리 하나를 고쳤다.** 프론트가 이미 이 값을
 `seats: { total: capacity, taken: currentApplicants }` 로 그리고 있어
-(`frontend/apps/core-front/src/lib/api.ts`), 두 수가 갈리면 정원 20 에 `21/20` 이 찍힌다.
+(`frontend/apps/core-front/src/features/studies/model.ts`), 두 수가 갈리면 정원 20 에 `21/20` 이 찍힌다.
 "N명 신청" 표시와 "정원 도달" 판정은 같은 수여야 한다.
 
 > 대기자(`WAITLISTED`) 를 **만드는** 로직은 이 스펙 범위 밖 — 이슈 50 (정원 관리·대기자).
@@ -152,8 +152,8 @@ recruitmentCapacity != null && 신청자수 >= recruitmentCapacity → RECRUIT_C
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/lib/api.ts` — `mapStatus()` 가 `cohort.status` 로 모집 상태를
-  흉내내던 걸 `cohort.recruitStatus` 로 교체
+- `frontend/apps/core-front/src/features/studies/model.ts` — `toStudy()` 가 모집 상태를 `recruitStatus` 로 그린다 (예전 `mapStatus()` 가
+  `cohort.status` 로 흉내내던 것을 교체)
 - 스터디 목록 상태 필터 (지연 · 아연)
 
 ---

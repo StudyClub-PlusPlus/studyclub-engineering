@@ -1,8 +1,9 @@
 'use client';
 
-import { ScheduleTab } from '@/components/ScheduleTab';
-import { useManage } from '@/components/StudyManageShell';
-import { useStudyAttendance, useStudyMeetings } from '@/features/studies/queries';
+import { useStudyAttendance } from '@/features/attendance/queries';
+import { useStudyMeetings } from '@/features/schedule/queries';
+import { ScheduleTab } from '@/features/schedule/ScheduleTab';
+import { useManage } from '@/features/schedule/StudyManageShell';
 
 export default function StudyManageSchedulePage() {
   const { study, group, groupId, canEdit, setDirty } = useManage();

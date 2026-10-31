@@ -3,9 +3,9 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ParticipantsTab } from './ParticipantsTab';
-import { participantKeys } from './queries';
-import type { ParticipantsResponse } from './types';
+import { ParticipantsTab } from '@/features/participants/ParticipantsTab';
+import { participantKeys } from '@/features/participants/queries';
+import type { ParticipantsResponse } from '@/features/participants/types';
 
 const memoryUrl = vi.hoisted(() => {
   let search = '';
@@ -338,7 +338,12 @@ describe('참여자 반 편성', () => {
     const response = structuredClone(data);
     const fetch = mount(response, async (url, init) => {
       if (init.method === 'POST') {
-        response.groups.push({ groupId: 4, name: JSON.parse(init.body as string).name, isDefault: false, canDelete: true });
+        response.groups.push({
+          groupId: 4,
+          name: JSON.parse(init.body as string).name,
+          isDefault: false,
+          canDelete: true,
+        });
         return reply({ groupId: 4, name: '새반' }, 201);
       }
       if (init.method === 'PATCH') {

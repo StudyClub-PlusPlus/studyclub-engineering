@@ -1,15 +1,9 @@
 import { HttpResponse } from 'msw';
 
+import { getStudyMeetingIds, CAPTAIN_STUDY_IDS, NAVIGATOR_STUDY_IDS, withdrawnState, getWithdrawnParticipants } from './meetings';
 import { studies } from '../../data';
 import { getStudyCrew } from '../../data/crew';
 import { currentUserName, mockClient, type MockResolveContext } from '../utils';
-import {
-  getStudyMeetingIds,
-  CAPTAIN_STUDY_IDS,
-  NAVIGATOR_STUDY_IDS,
-  withdrawnState,
-  getWithdrawnParticipants,
-} from './meetings';
 
 const STATUS: Record<string, string> = {
   present: 'PRESENT',

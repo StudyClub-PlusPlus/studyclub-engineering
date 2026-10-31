@@ -31,7 +31,7 @@ import { getApplications } from '@core/lib/me';
 import { SCHEDULE_ROLE_LABEL, isKickoff, manageAccessOf, type ScheduleRole } from '@core/lib/meetings';
 import { scheduleZoneTitle } from '@core/lib/schedule-timezone';
 import { useDisplayTimeZone } from '@core/lib/use-display-timezone';
-import { type Study } from '@studyclub/mock';
+import { type Study } from '@studyclub/types';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Badge, Button, IconButton, Card, EmptyState, Select, cx } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';

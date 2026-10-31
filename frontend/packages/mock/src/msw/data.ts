@@ -1,5 +1,7 @@
-import { CATEGORY_DISPLAY, studies as mockStudies, toISODate } from '..';
-import type { ApplicationQuestion, Study } from '..';
+import type { Study } from '@studyclub/types';
+import { CATEGORY_DISPLAY, toISODate } from '@studyclub/utils';
+
+import { studies as mockStudies } from '..';
 
 // ── 스터디 목록/상세 API 타입 ───────────────────────────────────────────
 export type ApiStudy = {
@@ -11,9 +13,9 @@ export type ApiStudy = {
   thumbnailUrl: string | null;
   schedule: string | null;
   timezone: 'KST' | 'PST' | 'BOTH' | null;
-  status: 'DRAFT' | 'OPEN' | 'CLOSED';
+  status: 'DRAFT' | 'OPEN' | 'ONGOING' | 'ENDED' | 'CLOSED';
   phase: 'RECRUITING' | 'ONGOING' | 'CLOSED';
-  recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED';
+  recruitStatus: 'RECRUITING' | 'RECRUIT_CLOSED' | null;
   capacity: number | null;
   currentApplicants: number;
   recruitDeadlineAt: string | null;
@@ -42,8 +44,8 @@ export type ApiStudyDetail = {
   endAt: string | null;
   discordChannelUrl: string | null;
   driveUrl: string | null;
-  /** 프로그램(시리즈) 이름 — 실제 API `StudyDetailResponse.programTitle`. 목은 프로그램을 따로 두지 않아 null */
-  programTitle: string | null;
+  /** 프로그램(시리즈) 이름. 별도 프로그램이 없는 예시 스터디는 자신의 제목을 사용한다. */
+  programTitle: string;
   /** 스터디에 디스코드 채널이 연결됐는지 — 실제 API `StudyDetailResponse.discordLinked` */
   discordLinked: boolean;
 };
@@ -58,7 +60,7 @@ export type ApiPage<T> = {
 // ── 변환 헬퍼 ─────────────────────────────────────────────────────────
 
 const DISPLAY_TO_ENUM: Record<string, string> = Object.fromEntries(
-  Object.entries(CATEGORY_DISPLAY).map(([k, v]) => [v, k]),
+  Object.entries(CATEGORY_DISPLAY).map(([k, v]) => [v, k])
 );
 
 function categoryEnum(displayName: string): string {
@@ -104,7 +106,8 @@ function toTimezone(tz?: Study['timezone']): ApiStudy['timezone'] {
 }
 
 export function studyToApiStudy(s: Study): ApiStudy {
-  const recruitClosed = s.status === 'closed' || s.status === 'ongoing' || s.recruitment?.status === 'closed';
+  const recruitClosed =
+    s.status === 'closed' || s.status === 'ongoing' || s.recruitment?.status === 'closed';
   return {
     studyId: s.study_id,
     title: s.title.ko,
@@ -114,7 +117,7 @@ export function studyToApiStudy(s: Study): ApiStudy {
     thumbnailUrl: s.image ?? null,
     schedule: s.schedule?.ko ?? null,
     timezone: toTimezone(s.timezone),
-    status: toStudyStatus(s.status) as ApiStudy['status'],
+    status: toStudyStatus(s.status),
     phase: toPhase(s.status),
     recruitStatus: recruitClosed ? 'RECRUIT_CLOSED' : 'RECRUITING',
     capacity: s.seats?.total ?? null,
@@ -127,7 +130,8 @@ export function studyToApiStudy(s: Study): ApiStudy {
 }
 
 export function studyToApiStudyDetail(s: Study): ApiStudyDetail {
-  const recruitClosed = s.status === 'closed' || s.status === 'ongoing' || s.recruitment?.status === 'closed';
+  const recruitClosed =
+    s.status === 'closed' || s.status === 'ongoing' || s.recruitment?.status === 'closed';
   return {
     id: s.study_id,
     programId: s.study_id,
@@ -148,7 +152,7 @@ export function studyToApiStudyDetail(s: Study): ApiStudyDetail {
     endAt: isoDate(s.date),
     discordChannelUrl: s.discord_url ?? null,
     driveUrl: s.driveUrl ?? null,
-    programTitle: null,
+    programTitle: s.program?.title.ko ?? s.title.ko,
     discordLinked: Boolean(s.discord_url),
   };
 }

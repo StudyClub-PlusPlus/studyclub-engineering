@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-- [세 줄 요약](#세-줄-요약)
+- [핵심 원칙](#핵심-원칙)
 - [인증 — 쿠키를 실어 보낸다](#인증--쿠키를-실어-보낸다)
 - [어디에 두나 — 기능 옆에](#어디에-두나--기능-옆에)
 - [서버 상태는 TanStack Query 로](#서버-상태는-tanstack-query-로)
@@ -14,13 +14,13 @@
 - [응답 형태 주의](#응답-형태-주의)
 - [판정을 다시 하지 않는다](#판정을-다시-하지-않는다)
 
-## 세 줄 요약
+## 핵심 원칙
 
-1. 브라우저가 **백엔드를 직접 부른다.** 중계(BFF) 라우트를 만들지 않는다 — 인증은 **쿠키**로 간다
+1. 일반 기능 API는 브라우저가 **백엔드를 직접 부른다.** 인증 코드 교환·쿠키 설정은 앱의 인증 Route Handler를 거친다 — [인증 흐름](auth-flow.md)
 2. 조회는 `useEffect + fetch` 가 아니라 **`useQuery`** 로 한다
 3. fetcher·쿼리 키·훅은 **그 기능 폴더 안에** 둔다 (`src/features/<기능>/queries.ts`)
 4. 목록의 **필터·검색·페이지·탭은 URL 쿼리**에 둔다 (`useSearchParams`). `useState` 로 들고 있지 않는다
-4. 모집 중인지·정원이 찼는지·출석률 같은 **판정은 응답 필드를 그린다.** 날짜·숫자로 다시 계산하지 않는다
+5. 모집 중인지·정원이 찼는지·출석률 같은 **판정은 응답 필드를 그린다.** 날짜·숫자로 다시 계산하지 않는다
 
 ## 인증 — 쿠키를 실어 보낸다
 
@@ -73,15 +73,17 @@ Server Action 은 **직렬로 실행**되어 병렬 조회를 전제하는 쿼�
 
 ```
 src/features/studies/
-├── types.ts          # 응답 타입 + 화면이 쓰는 행 모델 + 변환
-├── queries.ts        # 쿼리 키 + fetcher + useXxx 훅
+├── types.ts          # 화면 모델 및 스키마에서 추론한 타입
+├── response-schema.ts # 외부 응답의 Zod 검증
+├── repository.ts     # HTTP 요청 + 응답 검증 경계
+├── queries.ts        # 쿼리 키 + useXxx 훅 + 캐시 무효화
 └── StudiesTable.tsx  # 이 기능에서만 쓰는 컴포넌트
 ```
 
 | 기준 | 어디에 |
 |---|---|
 | 한 기능에서만 쓴다 | `src/features/<기능>/` — 타입·fetcher·훅·전용 컴포넌트를 **같이** |
-| 여러 기능이 쓴다 | `src/components/`(UI) · `src/lib/`(순수 유틸: `http.ts`, `auth.ts`) |
+| 여러 기능이 쓴다 | `src/components/`(UI) · `src/lib/`(앱 기반: `http.ts`, `query-client.ts`) |
 | 라우트 | `src/app/` — 페이지는 **조립만** 한다. fetch 를 직접 쓰지 않는다 |
 | 서버 라우트 | `src/app/api/` — **인증(쿠키 심기·지우기)만.** 데이터 중계용으로 만들지 않는다 |
 
@@ -98,7 +100,7 @@ src/features/studies/
 export function useStudies(filter: StudyFilter) {
   return useQuery({
     queryKey: studyKeys.list(filter),
-    queryFn: () => http<ApiStudyPage>(`/api/studies${qs({ ...filter, limit: 100 })}`), // http 가 API_BASE 를 붙인다
+    queryFn: () => getStudies({ ...filter, limit: 100 }), // repository 함수가 HTTP 요청·응답 검증을 담당
     select: (page) => ({ rows: page.items.map(toRow), total: page.total }),
     placeholderData: (previous) => previous, // 타이핑 중 목록이 깜빡이지 않게
   });
@@ -122,7 +124,7 @@ export function getQueryClient() {
 
 - **서버에서 하나를 공유하면 A 의 캐시가 B 에게 보인다** — 요청마다 새로 만든다
 - **컴포넌트 본문에서 `new QueryClient()` 를 하면** 매 렌더 캐시가 날아간다
-- `useState` 로 만들지 않는다 — suspense 경계가 없으면 첫 렌더에서 버려진다 (TanStack Advanced SSR 가이드)
+- 현재 Provider는 `useState(() => getQueryClient())`로 참조를 보관한다. 실제 생성·재사용 책임은 `getQueryClient()`에 있으며 컴포넌트마다 새 인스턴스를 만드는 방식과 다르다.
 
 기본값:
 
@@ -199,7 +201,7 @@ useEffect(() => {
 
 ```ts
 const { mutate } = useMutation({
-  mutationFn: (body) => http('/api/admin/...', { method: 'PUT', body: JSON.stringify(body) }),
+  mutationFn: (body) => updateStudy(body), // repository에서 응답 스키마까지 검증
   onSuccess: () => queryClient.invalidateQueries({ queryKey: studyKeys.all }),
 });
 ```
@@ -212,10 +214,10 @@ const { mutate } = useMutation({
 
 ## 에러와 401
 
-- 화면은 `error.message` 를 그대로 보여준다. 메시지 생성은 `lib/http.ts` 한 곳에서 한다
-  (백엔드는 `errorMessage`, BFF 자체 오류는 `message`)
-- **401 은 화면마다 처리하지 않는다.** 세션이 끊긴 것이라 할 일이 로그인 하나뿐이다 —
-  `QueryCache` 의 전역 `onError` 에서 세션을 비우고 `/login` 으로 보낸다
+- `lib/http.ts`는 백엔드의 `errorMessage` 또는 인증 라우트의 `message`를 `ApiError`로 변환한다. 화면은 필요하면 상태 코드별 안내 문구를 선택한다. 신청 폼의 403·409 등이 예다.
+- core-front의 QueryCache는 조회 401에서 UI 세션을 비운다. 공개 화면은 강제 이동하지 않는다.
+- 백오피스의 QueryCache·MutationCache는 401에서 세션·캐시를 비우고 로그인으로 이동한다.
+- 기본 `http()` 호출에는 자동 refresh·재시도가 없다. core-front 가입·닉네임 확인은 네 번째 인자 `{ refreshOnUnauthorized: true }`로 한 번 갱신·재시도한다. [인증 흐름](auth-flow.md)을 참고한다.
 
 ## 서버 컴포넌트로 충분한 경우
 
@@ -250,5 +252,37 @@ const open = api.recruitStatus === 'RECRUITING';
 
 - **필드가 없으면 만들지 않는다.** 스펙에 필드를 추가해 백엔드에 요청하고 `// TODO(api): recruitStatus 필요` 를 남긴다
 - **mock 데이터에도 판정 필드를 넣는다.** 화면 코드가 mock 과 실제 API 를 같은 경로로 읽어야 교체할 때 판정 로직이 따라오지 않는다
-- `packages/mock` 의 `recruitState()` 같은 공유 함수에 판정 축(시작일·정원·인원)을 더하지 않는다 — 크루 사이트·백오피스·playground 가 같이 흔들린다
+- `@studyclub/utils`의 `recruitState()` 같은 공유 함수에 판정 축(시작일·정원·인원)을 더하지 않는다 — 크루 사이트·백오피스·playground 가 같이 흔들린다
 - 해도 되는 것: 날짜·숫자 표시 형식, 받은 값으로 정렬·필터, 입력 중 검증(최종은 서버), 낙관적 업데이트
+
+화면 상태 검증은 [E2E 가이드](e2e-guide.md)를 따른다. 고정 응답으로 만든 오류·저장 완료 캡처는 실제 API의 권한·저장 동작을 검증한 근거와 구분한다.
+
+### core-front의 전송 계층
+
+기능별 `repository.ts`가 HTTP 호출, `queries.ts`가 React Query 캐시를 담당한다. 공개 페이지의 서버 조회·오류 처리는 `features/<기능>/server.ts`에 둔다.
+기존 `lib/api.ts`·`lib/content.ts`·`lib/joined-detail-api.ts`의 경유 import는 사용하지 않는다. 구조는 [프로젝트 구조](project-structure.md#core-front-기능별-구조)를 참고한다.
+
+core-front의 데이터 API는 `lib/http.ts`로 백엔드를 직접 호출한다. 가입 완료(`/accounts/onboarding`)·닉네임 확인(`/api/nicknames/availability`)은 네 번째 인자에 `{ refreshOnUnauthorized: true }`를 지정해 401일 때 `/api/auth/refresh`로 쿠키를 갱신하고 한 번 재시도한다. 기본 요청에는 자동 갱신을 적용하지 않는다. 데이터 중계용 BFF 클라이언트·프록시·Route Handler는 제거했으며, 인증 쿠키를 설정·삭제하는 `/api/auth/*` 라우트는 유지한다.
+
+백오피스의 일정·출석 repository도 `lib/http.ts`를 직접 사용한다. 별도 `lib/httpClient` 래퍼는 제거했다.
+
+### 공용 타입과 API 타입
+
+`Locale`·`L10n`·공용 도메인 모델은 `@studyclub/types`에서 직접 가져온다. 날짜·표시 변환 함수는 `@studyclub/utils`를 사용한다. 기능별 요청·응답 타입과 Zod 스키마는 `features/<기능>/`에 둔다. 현재 공유 MSW 응답 DTO·변환 코드는 `@studyclub/mock/msw`에 남아 있으며, 모든 API 타입이 types로 이동한 것은 아니다.
+
+### API 응답의 런타임 검증
+
+두 앱의 `http`는 `http(path, responseSchema, init?, options?)` 형태로 응답 스키마를 필수로 받는다(네 번째 갱신 옵션은 core-front). TypeScript 제네릭이나 `as T`만으로 응답을 신뢰하지 않는다. 기능별 `response-schema.ts`에서 중첩 객체·배열·nullable/optional 필드를 실제 서버 계약에 맞춰 선언한다. 서버 조회와 파일 업로드처럼 공통 `http`를 사용하지 않는 경계도 응답을 파싱한다.
+
+```ts
+// features/<기능>/repository.ts
+import { z } from 'zod';
+import { http } from '@/lib/http';
+
+const resultSchema = z.object({ id: z.number(), title: z.string() });
+export function getResult(id: number) {
+  return http(`/api/results/${id}`, resultSchema);
+}
+```
+
+성공 HTTP 상태여도 응답 형식이 맞지 않으면 검증 오류로 실패한다. 상세 스키마 오류를 사용자에게 그대로 표시하지 않고 안내 문구로 처리한다. 서버의 4xx·5xx는 기존 `ApiError` 처리 경로를 유지한다. 비어 있는 성공 응답을 허용하는 엔드포인트는 `z.null()` 등 그 계약을 명시한다. 임의의 `z.any()`·검사 없는 `z.custom<T>()`로 검증을 우회하지 않는다.

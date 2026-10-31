@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { LayoutDashboard, BookOpen, CalendarDays, Users, Mail, Megaphone, LogOut } from 'lucide-react';
+import { BookOpen, CalendarDays, LayoutDashboard, LogOut, Mail, Megaphone, Users } from 'lucide-react';
 
-import { getUser, logout, type SessionUser } from '@/lib/auth';
+import { getUser, logout, type SessionUser } from '@/features/auth/auth';
 
 const NAV = [
   { href: '/', label: '대시보드', icon: LayoutDashboard, exact: true },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { toBook, toUpdates } from './api';
-import type { ApiAttendance } from './repository';
+import { toBook, toUpdates } from '@/features/attendance/api';
+import type { ApiAttendance } from '@/features/attendance/repository';
 import { toUpdateBody } from '@/features/schedule/api';
 
 const participant = (id: number, attendances: ApiAttendance['participants'][number]['attendances']) => ({

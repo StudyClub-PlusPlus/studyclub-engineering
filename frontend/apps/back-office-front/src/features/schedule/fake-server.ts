@@ -1,8 +1,9 @@
-// 테스트용 가짜 서버 — 일정 · 출석 탭이 부르는 API 를 메모리로 흉내 낸다. 앱 코드는 import 하지 않는다.
-// 경로 · 본문 · 응답 모양은 백엔드 컨트롤러와 같다 (specs/study-meeting · specs/attendance · specs/study-group).
-import type { ApiGroupMeetings } from './repository';
 import type { ApiAttendance } from '@/features/attendance/repository';
 import type { ParticipantsResponse } from '@/features/participants/types';
+import type { ApiGroupMeetings } from '@/features/schedule/repository';
+
+// 테스트용 가짜 서버 — 일정 · 출석 탭이 부르는 API 를 메모리로 흉내 낸다. 앱 코드는 import 하지 않는다.
+// 경로 · 본문 · 응답 모양은 백엔드 컨트롤러와 같다 (specs/study-meeting · specs/attendance · specs/study-group).
 
 type Status = 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED';
 

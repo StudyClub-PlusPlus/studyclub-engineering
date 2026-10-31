@@ -1,5 +1,5 @@
 // 경량 i18n — 정적 UI 문자열 사전 (ko/en).
-import type { L10n, Locale } from './content';
+import type { L10n, Locale } from '@studyclub/types';
 
 export const LOCALES: Locale[] = ['ko', 'en'];
 export const DEFAULT_LOCALE: Locale = 'ko';

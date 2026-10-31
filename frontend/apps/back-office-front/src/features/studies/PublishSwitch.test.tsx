@@ -15,16 +15,30 @@ function renderWithClient(ui: ReactElement) {
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
-const detail = (patch: Partial<ApiStudyDetail>) => ({ id: 7, title: '데일리 리트코드', status: 'DRAFT', ...patch }) as ApiStudyDetail;
+const detail = (patch: Partial<ApiStudyDetail>) =>
+  ({ id: 7, title: '데일리 리트코드', status: 'DRAFT', ...patch }) as ApiStudyDetail;
 
 /** 신청 폼 조회 · 공개 호출을 나눠 응답한다. */
 function mockApi(questions: number, publishStatus = 204) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
     if (url.endsWith('/application-form')) {
-      return new Response(JSON.stringify({ title: '', description: null, questions: Array.from({ length: questions }, (_, i) => ({ id: `q${i}` })) }), {
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify({
+          studyId: 7,
+          title: '',
+          description: null,
+          questions: Array.from({ length: questions }, (_, i) => ({
+            id: `q${i}`,
+            label: '질문',
+            type: 'TEXT',
+            required: false,
+          })),
+        }),
+        {
+          status: 200,
+        },
+      );
     }
     return new Response(null, { status: publishStatus });
   });

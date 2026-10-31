@@ -1,4 +1,6 @@
-import type { GroupTime, ScheduleGroup } from './meetings';
+import { z } from 'zod';
+
+import type { GroupTime, ScheduleGroup } from '@/features/schedule/meetings';
 
 /**
  * 일정 탭의 브라우저 저장소 — **반의 스터디 시간(요일 · 시각)만** 남는다.
@@ -25,7 +27,12 @@ export type MeetingPatch = {
   presenter2?: string | null;
 };
 
-type StoredTime = Pick<GroupTime, 'weekdays' | 'time'>;
+const storedTimeSchema = z.object({
+  weekdays: z.array(z.number().int().min(0).max(6)),
+  time: z.union([z.literal(''), z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)]),
+});
+type StoredTime = z.infer<typeof storedTimeSchema>;
+const storedTimesSchema = z.record(z.string(), storedTimeSchema);
 
 const keyOf = (studyId: number) => `bo_schedule_time:${studyId}`;
 
@@ -33,7 +40,7 @@ function read(studyId: number): Record<string, StoredTime> {
   if (typeof window === 'undefined') return {};
   try {
     const raw = localStorage.getItem(keyOf(studyId));
-    return raw ? (JSON.parse(raw) as Record<string, StoredTime>) : {};
+    return raw ? storedTimesSchema.parse(JSON.parse(raw)) : {};
   } catch {
     return {};
   }

@@ -3,7 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { buildGoogleAuthUrl, isConfigured, setUser } from '@/lib/auth';
+import { buildGoogleAuthUrl, isConfigured, setUser } from '@/features/auth/auth';
+import { loginResponseSchema } from '@/features/auth/response-schema';
 
 // useSearchParams() 는 next build 프리렌더 시 Suspense 경계가 필요.
 export default function BackOfficeLoginPage() {
@@ -49,7 +50,13 @@ function BackOfficeLoginForm() {
           }
           throw new Error(data?.errorMessage ?? data?.message ?? `로그인 실패 (${res.status})`);
         }
-        if (data.account) setUser(data.account);
+        const { account } = loginResponseSchema.parse(data);
+        setUser({
+          ...account,
+          email: account.email ?? '',
+          nickname: account.nickname ?? null,
+          picture: account.picture ?? null,
+        });
         router.replace(next);
       } catch (e) {
         setError(e instanceof Error ? e.message : '로그인 중 오류가 발생했습니다.');

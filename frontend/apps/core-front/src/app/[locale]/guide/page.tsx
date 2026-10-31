@@ -1,10 +1,11 @@
 import Link from 'next/link';
 
+import type { Locale, L10n } from '@studyclub/types';
 import { BookOpen, Flag, HelpCircle, Sparkles, Star, UserPlus, Users } from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
-import { getSite, type Locale, type L10n } from '@/lib/content';
+import { getSite } from '@/features/community/server';
 import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 

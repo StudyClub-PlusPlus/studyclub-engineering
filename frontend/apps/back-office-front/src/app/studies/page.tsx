@@ -1,8 +1,8 @@
-import { StudyCreateButton } from '@/components/StudyCreateButton';
 import { PageHeader } from '@/components/ui';
 import { resolveListFilters, serverListQuery, type StudyListData } from '@/features/studies/list-filters';
+import { fetchStudies, fetchStudyListPage } from '@/features/studies/server';
 import { StudiesTable } from '@/features/studies/StudiesTable';
-import { fetchStudies, fetchStudyListPage } from '@/lib/api';
+import { StudyCreateButton } from '@/features/studies/StudyCreateButton';
 
 export const metadata = { title: '스터디' };
 

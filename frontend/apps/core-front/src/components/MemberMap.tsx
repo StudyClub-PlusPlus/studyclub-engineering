@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 
-import type { Locale } from '@/lib/content';
-import { REGIONS, project, tzLabel } from '@/lib/regions';
+import type { Locale } from '@studyclub/types';
+
+import { REGIONS, project, tzLabel } from '@/features/community/regions';
 
 /**
  * 크루가 있는 곳 — 점 지도(public/about-art/world-dots.svg, Natural Earth 110m 육지) 위에 지역 핀.
