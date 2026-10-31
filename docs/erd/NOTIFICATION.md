@@ -27,7 +27,8 @@
 ## 관계
 
 - N : 1 [ACCOUNT](./ACCOUNT.md), ID 참조뿐 FK 는 없다(애그리거트 간 참조 — database-guide.md 외래키 정책). 계정이 삭제돼도 RECIPIENT_USER_ID 는 DB 가 자동으로 지워주지 않는다.
-- N : 1 [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md), 마찬가지로 ID 참조뿐이라 사용 중인 템플릿도 삭제될 수 있다 — 편집 화면이 없어 이번 구현에서는 실제로 일어나지 않는다.
+- N : 1 [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md), 마찬가지로 ID 참조뿐이라 사용 중인 템플릿도 삭제될 수 있다 — 백오피스에서 템플릿을 지울 수 있고, 지운 템플릿을 가리키는 `PENDING` 행은 발송 때 `TEMPLATE_MISSING` 으로 실패한다.
+- **같은 조건에 템플릿이 N개면 알림 한 건(가입 한 번, 공지 수신자 한 명)마다 이 테이블에 N행이 생긴다** — 행마다 `TEMPLATE_ID` 가 다르다. 재발송·탈퇴 비식별화·`CANCELLED` 전이는 행 단위라 그대로다. `STUDY_NOTICE` 의 공지별 메일 건수는 행 수가 아니라 받는 사람(`RECIPIENT_USER_ID`) 수 기준으로 센다([study-notice 스펙](../../specs/study-notice/spec.md)).
 
 ## 상태 — STATUS
 

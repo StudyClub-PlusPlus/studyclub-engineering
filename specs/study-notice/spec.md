@@ -156,7 +156,7 @@ sequenceDiagram
 2. `StudyNotice.sendBlock(lastSentAt, todayCount, now)` 로 한도를 판정한다. 막히면 429
 3. `participantIds` 가 모두 이 반의 `ACTIVE`·`PAUSED` 인지 확인한다. 하나라도 아니면 400 (일부만 보내지 않는다)
 4. 공지와 수신자를 저장하고 `study_notice.sent` 를 발행한다
-5. `BEFORE_COMMIT` 리스너가 `EMAIL` 이 있으면 받는 사람마다 `NOTIFICATION` 행(`STUDY_NOTICE`/`EMAIL`, `PENDING`)을 같은 트랜잭션에 만든다. 템플릿이 없으면 예외 → 전체 롤백.
+5. `BEFORE_COMMIT` 리스너가 `EMAIL` 이 있으면 받는 사람마다, **`STUDY_NOTICE` 조건의 템플릿마다** `NOTIFICATION` 행(`STUDY_NOTICE`/`EMAIL`, `PENDING`)을 같은 트랜잭션에 만든다 — 템플릿이 둘이면 받는 사람 한 명에게 메일 두 통(행 두 개)이다. 템플릿이 하나도 없으면 예외 → 전체 롤백. ([notification 스펙](../notification/spec.md): 같은 조건에 템플릿 여럿)
    받는 사람의 **계정 행은 잠그지 않고** 읽는다 — 탈퇴는 계정 → 반 순서로 잠그는데 보내기는 반을 먼저 잠그므로, 계정까지 잠그면 순서가 뒤집혀 교착이 난다. 이미 쥔 반 행 락이 같은 반 멤버의 탈퇴와 직렬화한다
 6. 커밋 뒤 `AFTER_COMMIT @Async` 리스너가 `DISCORD` 가 있으면 봇을 부른다
 
@@ -221,13 +221,13 @@ sequenceDiagram
 | items[].sentAt | String(ISO-8601) | N | | STUDY_NOTICE.CREATED_AT |
 | items[].recipientCount | Integer | N | | 계산: STUDY_NOTICE_RECIPIENT 행 수 |
 | items[].email.requested | Boolean | N | 메일을 골랐는가 | STUDY_NOTICE.SEND_EMAIL |
-| items[].email.pending / sent / failed | Integer | N | 받는 사람 수 기준. `PENDING`·`PROCESSING` 은 pending, `CANCELLED` 는 세지 않는다 | 계산: NOTIFICATION(`REFERENCE_ID`=noticeId) 를 STATUS 별로 센 값. 메일을 안 골랐으면 0 |
+| items[].email.pending / sent / failed | Integer | N | **받는 사람 수 기준**이다 — 템플릿이 여럿이라 한 사람에게 메일 행이 여러 개여도 한 명으로 센다(셋의 합이 `recipientCount` 를 넘지 않는다). 받는 사람마다 그 사람의 행들을 **대표 상태 하나**로 줄인다: 한 행이라도 `FAILED` 면 failed, 아니면 한 행이라도 `PENDING`·`PROCESSING` 이면 pending, 아니면 `SENT` 가 있으면 sent. `CANCELLED` 만 있는 사람은 세지 않는다 | 계산: NOTIFICATION(`EVENT_TYPE`=`STUDY_NOTICE`, `REFERENCE_ID`=noticeId) 를 받는 사람(`RECIPIENT_USER_ID`)별로 묶어 STATUS 로 줄인 값. 메일을 안 골랐으면 0 |
 | items[].discord.requested | Boolean | N | 디스코드를 골랐는가 | STUDY_NOTICE.SEND_DISCORD |
 | items[].discord.status | String | N | `NOT_REQUESTED` · `PENDING` · `SENT` · `SKIPPED` · `FAILED`. **보낸 지 10분이 넘은 `PENDING` 은 `FAILED` 로 내려준다** (서버 재시작 · 비동기 큐 넘침으로 작업이 사라진 경우). DB 값은 그대로 두며, 작업이 뒤늦게 끝나면 `SENT` 로 기록되어 저절로 바로잡힌다 | 계산: `StudyNotice.effectiveDiscordStatus(...)` |
 | items[].discord.skipReason | String | Y | `SKIPPED` 일 때만. `BOT_NOT_CONFIGURED` · `NO_DISCORD_CHANNEL` · `SENDER_NOT_LINKED` · `NO_TEXT_CHANNEL` | STUDY_NOTICE.DISCORD_SKIP_REASON |
 | items[].discord.mentionedCount | Integer | N | 멘션을 요청한 사람 수 (연동한 사람). 봇은 길드를 떠난 사람을 멘션에서 빼고도 204 를 주고 누구를 뺐는지 알려 주지 않으므로, 실제 알림을 받은 수보다 많을 수 있다 | 계산: `DISCORD_MENTIONED = true` 인 수 |
 
-메일을 센 값은 **목록 한 번에 `GROUP BY` 로 센다** (공지마다 쿼리하지 않는다 — N+1).
+메일을 센 값은 **목록 한 번에 센다** (공지마다 쿼리하지 않는다 — N+1). 공지 여러 건의 `(REFERENCE_ID, RECIPIENT_USER_ID, STATUS)` 를 중복 없이 한 번에 읽어 서버에서 받는 사람별 대표 상태로 줄인다.
 
 ### Error Responses
 
