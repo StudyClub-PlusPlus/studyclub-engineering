@@ -94,14 +94,15 @@ export function EventDialog({
           <>
             {/* 삭제는 저장 버튼과 멀리 떨어뜨린다 — 잘못 누르면 되돌릴 수 없다 */}
             {editing && (
-              <button
+              <Button
                 type='button'
+                variant='danger'
                 onClick={() => setConfirmDelete(true)}
                 disabled={saving}
-                className='mr-auto h-10 type-label-lg text-error-600 underline-offset-4 hover:underline disabled:opacity-50'
+                className='mr-auto'
               >
                 행사 삭제
-              </button>
+              </Button>
             )}
             <Button onClick={handleSubmit} loading={saving}>
               {editing ? '저장' : '등록'}

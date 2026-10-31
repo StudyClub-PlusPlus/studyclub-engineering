@@ -109,7 +109,7 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
           {rows.map((t) => (
             <tr key={t.id}>
               <td className='whitespace-nowrap'>
-                <Button variant='ghost' size='sm' className='-ml-2 font-semibold' onClick={() => openEdit(t)}>
+                <Button variant='tertiary' size='sm' className='-ml-2' onClick={() => openEdit(t)}>
                   {TRIGGER_LABEL[t.trigger] ?? t.trigger}
                 </Button>
               </td>

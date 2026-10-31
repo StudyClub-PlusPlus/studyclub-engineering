@@ -461,7 +461,7 @@ export function AttendanceTabContent({
             return (
               <Button
                 key={z.iana}
-                variant={zone === z.iana ? 'secondary' : 'ghost'}
+                variant={zone === z.iana ? 'secondary' : 'tertiary'}
                 size='sm'
                 type='button'
                 onClick={() => setZone(z.iana)}
@@ -528,12 +528,12 @@ export function AttendanceTabContent({
               save={
                 <>
                   {selected.length > 0 && (
-                    <Button size='sm' variant='ghost' onClick={() => setPicked(new Set())}>
+                    <Button size='sm' variant='tertiary' onClick={() => setPicked(new Set())}>
                       선택 해제
                     </Button>
                   )}
                   {dirty && (
-                    <Button variant='ghost' size='sm' disabled={saving} onClick={revert}>
+                    <Button variant='tertiary' size='sm' disabled={saving} onClick={revert}>
                       변경 취소
                     </Button>
                   )}

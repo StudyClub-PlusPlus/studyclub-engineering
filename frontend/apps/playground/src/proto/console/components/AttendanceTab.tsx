@@ -633,7 +633,7 @@ export function AttendanceTab({
                         참여 중단
                       </Button>
                       {selected.length > 0 && (
-                        <Button size='sm' variant='ghost' onClick={() => setPicked(new Set())}>
+                        <Button size='sm' variant='tertiary' onClick={() => setPicked(new Set())}>
                           선택 해제
                         </Button>
                       )}
@@ -656,7 +656,7 @@ export function AttendanceTab({
                   readOnly ? undefined : (
                     <>
                       {dirty && (
-                        <Button variant='ghost' size='sm' onClick={revert} disabled={saving}>
+                        <Button variant='tertiary' size='sm' onClick={revert} disabled={saving}>
                           변경 취소
                         </Button>
                       )}

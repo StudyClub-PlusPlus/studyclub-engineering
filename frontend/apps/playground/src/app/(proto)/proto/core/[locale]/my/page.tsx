@@ -259,7 +259,7 @@ export default function MyPage() {
             {discord ? (
               <>
                 <span className='truncate font-semibold text-fg'>@{discord.handle}</span>
-                <Button size='sm' variant='ghost' onClick={disconnectDiscord}>
+                <Button size='sm' variant='tertiary' onClick={disconnectDiscord}>
                   연결 해제
                 </Button>
               </>
@@ -309,7 +309,7 @@ export default function MyPage() {
         </dl>
         {editing && (
           <div className='flex justify-end gap-2 border-t border-border px-6 py-3'>
-            <Button size='sm' variant='ghost' onClick={() => setEditing(false)}>
+            <Button size='sm' variant='tertiary' onClick={() => setEditing(false)}>
               취소
             </Button>
             <Button size='sm' onClick={saveProfile} disabled={profileBlocked}>
