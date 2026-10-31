@@ -1,7 +1,7 @@
 /**
  * 알림 템플릿 (프로토 mock).
  *
- * 문구를 보고·더하고·고치고·지운다. 회원가입은 메일 시안 HTML, 문의 회신은 일반 텍스트 예시다.
+ * 문구를 보고·더하고·고치고·지운다. 회원가입과 문의 회신은 메일 시안 HTML을 함께 쓴다.
  *
  * TODO(api): GET·POST /api/admin/notification-templates · PUT·DELETE /api/admin/notification-templates/{id}
  */
@@ -40,8 +40,8 @@ export type NotificationTemplate = {
 
 export const TEMPLATE_CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일' };
 
-/** 회원가입 HTML 은 서버 페이지에서 기존 메일 시안 파일을 읽어 전달한다. */
-export const createTemplates = (welcomeBody: string): NotificationTemplate[] => [
+/** 서버 페이지에서 회원가입·문의 회신 메일 시안 파일을 읽어 전달한다. */
+export const createTemplates = (welcomeBody: string, feedbackBody: string): NotificationTemplate[] => [
   {
     id: 1,
     trigger: 'USER_REGISTERED',
@@ -54,16 +54,8 @@ export const createTemplates = (welcomeBody: string): NotificationTemplate[] => 
     id: 2,
     trigger: 'FEEDBACK_REPLIED',
     channel: 'EMAIL',
-    subject: '[StudyClub] 문의하신 내용에 답변이 등록되었습니다',
-    body: `안녕하세요, {{nickname}}님.
-
-보내 주신 문의에 답변이 등록되었습니다.
-아래 링크에서 확인해 주세요.
-
-{{link}}
-
-감사합니다.
-StudyClub 드림`,
-    updatedAt: '2026-10-19T00:00:00Z',
+    subject: '[StudyClub] 문의에 답변이 등록됐어요',
+    body: feedbackBody,
+    updatedAt: '2026-10-31T00:00:00Z',
   },
 ];

@@ -2,8 +2,9 @@
 
 > ERD: [FEEDBACK](../../docs/erd/FEEDBACK.md) (신규) · [FEEDBACK_IMAGE](../../docs/erd/FEEDBACK_IMAGE.md) (신규) · [STORAGE_OBJECT](../../docs/erd/STORAGE_OBJECT.md) · [ACCOUNT](../../docs/erd/ACCOUNT.md)
 > 생성일: 2026-10-25
-> 갱신: 2026-10-26 — PR #341 리뷰 반영. 플로팅 버튼 없음 · 상태는 회신과 묶는다 · `DELETED_AT` 없음 · 회신 알림은 후속 · rate limit 60초 1건 + 24시간 20건 · GIF 제외 · 이미지는 공개 폴더로 시작 · 탈퇴 때 첨부 이미지 파기 · 온보딩 필수 유지 ([결정 기록](#결정-기록))
-> 상태: 구현중 — `feat/feedback-impl` (마이그레이션 `V47__feedback.sql`)
+> 갱신: 2026-10-31 — 첫 회신 HTML 메일 알림 구현. [회신 알림](#회신-알림) 참고.
+> 갱신: 2026-10-26 — PR #341 리뷰 반영. 플로팅 버튼 없음 · 상태는 회신과 묶는다 · `DELETED_AT` 없음 · 회신 알림은 아래 2026-10-31 갱신 참고 · rate limit 60초 1건 + 24시간 20건 · GIF 제외 · 이미지는 공개 폴더로 시작 · 탈퇴 때 첨부 이미지 파기 · 온보딩 필수 유지 ([결정 기록](#결정-기록))
+> 상태: 구현중 — `feat/feedback-impl` (마이그레이션 `V51__feedback.sql`)
 >
 > Story PRD:
 > - [크루는 캡틴에게 문의/오류신고를 제출할 수 있다](../../01-planning/stories/crew-submit-feedback/PRD.md)
@@ -106,7 +107,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | 사용자 PRD — 제출 본문에 `userAgent` | 본문에 받지 않고 **요청 헤더 `User-Agent`** 를 서버가 「브라우저 · OS」로 줄여 저장. 원문은 저장하지 않는다 | 브라우저가 늘 보내는 값이라 화면이 따로 실을 필요가 없다. PRD 의 「브라우저·OS 와 화면 크기뿐」을 저장 단계에서 지킨다 — 원문 UA 에는 기기 모델명 등 더 많은 정보가 있다 |
 | 운영 PRD — 상태는 미확인 · 확인 · 완료, 고르면 바로 저장 | 완료는 회신으로만. 회신 뒤에는 상태를 바꾸지 못한다 | 제출자의 「답변 완료」와 실제 답변을 맞춘다 (리뷰) — [상태](#상태--회신과-묶는다) |
 | 운영 PRD — 처리 「삭제 — 소프트 삭제」 | 삭제 API 도 `DELETED_AT` 컬럼도 없다 | 두 화면 모두 삭제 버튼이 없다. 필요해지면 기능과 컬럼을 같이 만든다 (리뷰) |
-| 운영 PRD — 회신 알림 「문의 회신」 | **이번 범위에서 뺀다** | 범위 (리뷰) — [후속](#후속-개발) |
+| 운영 PRD — 회신 알림 「문의 회신」 | 첫 회신에 HTML 메일을 예약한다. 수정은 다시 보내지 않는다 | 2026-10-31 후속 구현 — [회신 알림](#회신-알림) |
 | 운영 PRD — 목록 `submitterNickname` · `doneBy` | `submitter: { nickname }` · `doneBy: { nickname } \| null` | 「완료가 아님」(`doneBy = null`)과 「완료한 캡틴이 탈퇴함」(`doneBy.nickname = null`)을 가르기 위해 |
 
 ---
@@ -642,7 +643,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 
 ### 처리 규칙
 
-트랜잭션의 첫 조회로 그 `FEEDBACK` 행을 잠근다(`SELECT … FOR UPDATE`). 두 캡틴이 동시에 첫 회신을 보내도 완료 처리자 · 회신 시각이 한 번만 정해지게 하기 위해서다.
+회신 요청은 제출자의 `ACCOUNT` 행 → `FEEDBACK` 행 순으로 잠근다(`SELECT … FOR UPDATE`). 계정 번호는 스칼라 조회로 읽어 오래된 문의 엔티티를 영속성 컨텍스트에 남기지 않는다. 탈퇴도 계정을 먼저 잠그므로 메일 예약과 탈퇴 비식별화가 직렬화된다. 상태·메모 요청은 `FEEDBACK` 행만 잠근다. 두 캡틴이 동시에 첫 회신을 보내도 완료 처리자 · 회신 시각이 한 번만 정해지게 하기 위해서다.
 
 **`status`** — `Feedback.changeStatus(next)`
 - 지금과 같은 값 → 아무것도 바꾸지 않고 200
@@ -651,7 +652,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 - 그 밖(`NEW` ↔ `SEEN`) → 바꾼다
 
 **`reply`** — `Feedback.reply(content, 요청자, now)`
-- **첫 회신** (`REPLY_CONTENT IS NULL`): `REPLY_CONTENT` · `REPLIED_AT = now` 저장, `STATUS = DONE`, `DONE_BY_ACCOUNT_ID = 요청자`
+- **첫 회신** (`REPLY_CONTENT IS NULL`): `REPLY_CONTENT` · `REPLIED_AT = now` 저장, `STATUS = DONE`, `DONE_BY_ACCOUNT_ID = 요청자`. `feedback.replied` 이벤트를 발행하고 같은 트랜잭션에서 아래 회신 알림을 예약한다
 - **회신 수정** (`REPLY_CONTENT IS NOT NULL`): `REPLY_CONTENT` 만 바꾼다. `REPLIED_AT` · `STATUS` · 완료 처리자 그대로 (PRD 「고치는 것은 새 회신이 아니다」)
 
 **`adminMemo`** — `ADMIN_MEMO` 만 바꾼다. 다른 컬럼은 그대로
@@ -711,15 +712,28 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 
 ---
 
+## 회신 알림
+
+- 첫 회신에만 `feedback.replied` 이벤트를 발행한다. `Feedback.reply` 의 반환값과 문의 행 잠금으로 재요청·동시 요청에도 한 번만 예약한다. 수정·메모·상태 변경은 발행하지 않는다. 과거 회신의 소급 발송은 없다.
+- `FeedbackReplyEmailListener` 는 `BEFORE_COMMIT` 에 `FEEDBACK_REPLIED / EMAIL` 등록된 템플릿마다 알림 행을 하나씩 만든다. 기본 템플릿은 하나이며, 같은 조건에 여럿이면 기존 알림 정책대로 모두 보낸다. **회신·DONE·알림 예약은 함께 커밋**하고, 템플릿 누락·행 저장 실패는 예외를 삼키지 않고 모두 롤백한다. 요청 중에 외부 메일 서비스는 호출하지 않는다.
+- 제출자가 이미 탈퇴했다면 회신은 저장하되 메일은 만들지 않는다. 예약 뒤 탈퇴하면 기존 탈퇴 흐름이 대기 행을 `CANCELLED` 로 바꾸고 수신 주소·닉네임을 비식별화한다.
+- `NOTIFICATION.REFERENCE_ID = FEEDBACK.ID`, `RECIPIENT_USER_ID = 제출자`. payload 는 `nickname` · `feedbackUrl` 두 값뿐이다. 문의 제목·본문·회신·이미지·캡틴 메모·캡틴 이름은 넣지 않는다.
+- 링크는 서버 설정 `notification.site-base-url` (`NOTIFICATION_SITE_BASE_URL`, 로컬 기본 `http://localhost:4700`) + `/ko/my/feedbacks/{id}` 다. stage 는 `https://stage.studyclub.life`, 운영은 `https://studyclub.life` 로 설정한다. 요청 헤더나 요청 본문에서 사이트 주소를 받지 않는다. 로그인 후 원래 문의로 돌아오고, 본인 문의만 조회할 수 있다.
+- 제목은 `[StudyClub] 문의에 답변이 등록됐어요`. HTML 본문은 [시안](../../frontend/apps/playground/src/proto/mail/templates/feedback-replied-email.html)과 동일하며, `V52__feedback_replied_email.sql` 로 기본 템플릿을 등록한다. stage 는 Flyway 가 꺼져 있어 같은 SQL 을 한 번 적용한다.
+- 실제 발송은 기존 폴러·HTML 렌더러·메일 클라이언트를 사용한다. 전송 실패는 알림만 `FAILED`, 회신과 `DONE` 은 유지한다. 자동 재발송은 없고 운영자가 발송 이력에서 같은 행을 재발송한다.
+- 백오피스 알림 템플릿 조건·발송 이력에 「문의 회신」을 표시한다. 마지막 템플릿을 지우면 새 첫 회신 저장이 실패하므로 삭제 확인에서 이를 안내한다.
+- ops 알림·분석 이벤트는 추가하지 않는다.
+
+---
+
 ## 후속 개발
 
 이번 범위에서 뺐고, 다시 꺼낼 때 여기서 시작한다.
 
-1. **회신 알림** — 첫 회신 때 제출자에게 메일. [notification](../notification/spec.md) 구조대로 이벤트 `FEEDBACK_REPLIED` 하나와 리스너를 더한다. 템플릿을 만드는 API 가 아직 없어 마이그레이션으로 「문의 회신」 템플릿을 시딩해야 하고, 문구는 기획이 정한다. 백오피스 알림 템플릿 조건 · 발송 이력 필터에 「문의 회신」 추가 (`back-office-front/src/features/notifications/labels.ts` · `features/notification-templates/types.ts`). 회신 수정은 알림을 다시 내지 않는다
-2. **첨부 이미지 비공개** — 지금은 `gigs/feedbacks/` 공개 폴더다. 오류 신고 스크린샷에 이메일 · 닉네임이 찍힐 수 있다. 비공개 폴더 + 짧게 사는 서명 URL 로 바꾼다 — 업로드 서비스에 비공개 경로가 새로 필요하다. 11월 초 피드백 기간 (리뷰)
-3. **온보딩 전 제출** — 온보딩에서 막힌 사람이 바로 신고할 수 있게. 동의 전 수집이 되므로 정책 확인이 먼저이고, 문의 전용 업로드(또는 공용 업로드의 가드 변경) · 내 문의 화면의 온보딩 강제 이동 예외 · 운영 화면의 「온보딩 전 사용자」 표시가 필요하다
-4. **삭제** — 필요해지면 `DELETE /api/admin/feedbacks/{id}` 와 `DELETED_AT` 컬럼을 같이 만든다
-5. **GIF 첨부** — `ImageSanitizer` 에 GIF 판정 · 메타데이터 제거를 더한다
+1. **첨부 이미지 비공개** — 지금은 `gigs/feedbacks/` 공개 폴더다. 오류 신고 스크린샷에 이메일 · 닉네임이 찍힐 수 있다. 비공개 폴더 + 짧게 사는 서명 URL 로 바꾼다 — 업로드 서비스에 비공개 경로가 새로 필요하다. 11월 초 피드백 기간 (리뷰)
+2. **온보딩 전 제출** — 온보딩에서 막힌 사람이 바로 신고할 수 있게. 동의 전 수집이 되므로 정책 확인이 먼저이고, 문의 전용 업로드(또는 공용 업로드의 가드 변경) · 내 문의 화면의 온보딩 강제 이동 예외 · 운영 화면의 「온보딩 전 사용자」 표시가 필요하다
+3. **삭제** — 필요해지면 `DELETE /api/admin/feedbacks/{id}` 와 `DELETED_AT` 컬럼을 같이 만든다
+4. **GIF 첨부** — `ImageSanitizer` 에 GIF 판정 · 메타데이터 제거를 더한다
 
 ---
 
@@ -741,6 +755,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | 2026-10-26 | 캡틴 메모 2000자 | PR #341 리뷰 |
 | 2026-10-26 | 삭제 API · `DELETED_AT` 없음 | PR #341 리뷰 |
 | 2026-10-26 | 회신 알림은 후속 | PR #341 리뷰 |
+| 2026-10-31 | 첫 회신 메일 구현, 회신·예약 원자적 저장, 과거 회신 소급 발송 없음 | 기획 확인 |
 | 2026-10-26 | 탈퇴 때 첨부 이미지 파기, 문의 행은 남김 | PR #341 리뷰 |
 | 2026-10-26 | 온보딩 필수 유지 — 동의 전 수집 · 공용 업로드 범위 | PR #341 리뷰 답변 |
 | 2026-10-28 | 개인정보처리방침 수집 항목 · 보유 기간은 MVP 출시 전에 고친다 | PR #373 리뷰 |

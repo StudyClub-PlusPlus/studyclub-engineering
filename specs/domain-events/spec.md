@@ -38,7 +38,7 @@ Java 모양:
 - 구독: 발행하는 서비스와 **다른 빈**에 `@TransactionalEventListener(phase = AFTER_COMMIT)`.
   같은 빈 안에 두면 프록시를 안 거쳐 `@Async` 가 무시된다
 - 요청을 막으면 안 되는 구독자는 `@Async` 를 붙이고 `fallbackExecution = true` (트랜잭션 밖 발행도 받는다)
-- **예외 — 아웃박스 행을 만드는 구독자는 `BEFORE_COMMIT`.** 메일처럼 잃으면 안 되는 부수효과는 구독자가 `NOTIFICATION` 행을 만들고 폴러가 보낸다. 이 행은 사실(공지 저장)과 **같은 트랜잭션에서** 커밋되어야 「사실은 있는데 메일 행이 없는」 상태가 생기지 않는다. 그래서 `BEFORE_COMMIT` 으로 받고, 행 생성이 실패하면 **예외를 삼키지 않고** 트랜잭션 전체를 롤백한다. 실제 발송(SES)은 커밋 뒤 폴러가 하므로 요청 트랜잭션에 외부 호출이 들어가지 않는다 (`study_notice.sent` → `StudyNoticeEmailListener`)
+- **예외 — 아웃박스 행을 만드는 구독자는 `BEFORE_COMMIT`.** 메일처럼 잃으면 안 되는 부수효과는 구독자가 `NOTIFICATION` 행을 만들고 폴러가 보낸다. 이 행은 사실(공지 저장)과 **같은 트랜잭션에서** 커밋되어야 「사실은 있는데 메일 행이 없는」 상태가 생기지 않는다. 그래서 `BEFORE_COMMIT` 으로 받고, 행 생성이 실패하면 **예외를 삼키지 않고** 트랜잭션 전체를 롤백한다. 실제 발송(SES)은 커밋 뒤 폴러가 하므로 요청 트랜잭션에 외부 호출이 들어가지 않는다 (`study_notice.sent` → `StudyNoticeEmailListener`, `feedback.replied` → `FeedbackReplyEmailListener`)
 - 구독자는 예외를 삼키고 warn/error 로그만 남긴다 — 이미 커밋된 사실을 되돌릴 수 없다. 로그에는 `eventId` 를 남긴다
 
 ### 전달 보장
@@ -60,6 +60,7 @@ ops 알림처럼 잃어도 되는 부수효과에 맞다. 잃으면 안 되는 �
 | `study_participant.role_changed` | `StudyParticipantRoleChanged` (domain.participant) | 백오피스 「반 · 역할 한 번에 바꾸기」에서 역할이 실제로 바뀐 명부 행마다 1개. 반만 바뀐 행 · 같은 역할로 보낸 행은 발행하지 않는다 ([study-group](../study-group/spec.md)) | `study_participant` · participantId · 바꾼 캡틴 | `studyId` · `participantId` · `accountId` · `previousRole` · `newRole` | `StudyRoleSyncListener` — LEADER 로 바뀌거나 LEADER 에서 바뀐 행마다 navigator role 을 명부에 맞춘다 (DSC-08) |
 | `study_participant.withdrawn` | `StudyParticipantWithdrawn` (domain.participant) | 출석부에서 참여 중단 — 이번에 중단된 명부 행마다 1개. 이미 중단된 행은 발행하지 않는다 ([study-participant](../study-participant/spec.md)) | `study_participant` · participantId · 중단시킨 네비게이터·담당 캡틴 | `studyId` · `participantId` · `accountId` · `participantRole`(중단 직전) · `discordUserId`(중단 시점, 미연동이면 null — 구독자가 돌기 전에 연결을 해제해도 옛 계정에서 role 을 뗀다) | `StudyRoleSyncListener` — 디스코드 스터디 role 을 명부에 맞춘다 (DSC-09). 중단된 사람이 LEADER 면 navigator role 도 맞춘다 (DSC-09) |
 | `study_notice.sent` | `StudyNoticeSent` (domain.notice) | 네비게이터·담당 캡틴이 반 공지를 보냄 — 공지 1건마다 1개 ([study-notice](../study-notice/spec.md)) | `study_notice` · noticeId · 보낸 사람 | `noticeId` · `studyId` · `studyGroupId` · `senderAccountId` · `sendEmail` · `sendDiscord` · `recipientCount` (제목·본문·주소는 싣지 않는다) | `StudyNoticeEmailListener` (`BEFORE_COMMIT`, 동기 — 받는 사람마다 메일 행 생성) · `StudyNoticeDiscordListener` (`@Async`, 로비 채널에 글 + 멘션). ops 알림은 보내지 않는다 |
+| `feedback.replied` | `FeedbackReplied` (domain.feedback) | 캡틴의 첫 회신 저장. 회신 수정은 발행하지 않는다 ([feedback](../feedback/spec.md#회신-알림)) | `feedback` · feedbackId · 답변한 캡틴 | `feedbackId` · `accountId`(제출자). 답변·주소·닉네임은 싣지 않는다 | `FeedbackReplyEmailListener` (`BEFORE_COMMIT`, 동기 — 회신과 같은 트랜잭션에 메일 예약. 실패하면 회신도 롤백). ops 알림 없음 |
 
 가입 이벤트는 새로 만들지 않고 기존 `UserRegisteredEvent` 를 그대로 쓴다 — 같은 사실에 이벤트가 둘이면 구독자가 어느 쪽을 들을지 갈린다.
 

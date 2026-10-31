@@ -20,6 +20,7 @@ import {
   BODY_MAX_BYTES,
   bodyHelp,
   deleteImpact,
+  moveImpact,
   SUBJECT_MAX_LENGTH,
   TEMPLATE_CONDITIONS,
   utf8Bytes,
@@ -34,7 +35,6 @@ const SAVE_FAILED = '저장하지 못했습니다. 잠시 후 다시 시도해 �
 const DELETE_FAILED = '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 const GONE = '이미 삭제된 템플릿입니다. 목록을 새로 불러왔습니다.';
 const BODY_LIMIT = `본문은 ${BODY_MAX_BYTES.toLocaleString()}바이트까지 입력할 수 있습니다.`;
-const DUPLICATE = '이미 이 알림 조건의 템플릿이 있습니다. 기존 템플릿을 수정하세요.';
 
 /**
  * 알림 템플릿 추가·수정 팝업.
@@ -63,18 +63,23 @@ export function TemplateDialog(props: { open: boolean; onClose: () => void; temp
       </Modal>
     );
   }
-  return <TemplateEditor {...props} template={fresh.data} />;
+  return (
+    <TemplateEditor {...props} template={fresh.data.template} sameConditionCount={fresh.data.sameConditionCount} />
+  );
 }
 
 function TemplateEditor({
   open,
   onClose,
   template,
+  sameConditionCount = 1,
 }: {
   open: boolean;
   onClose: () => void;
   /** 지정하면 수정, 없으면 추가. */
   template?: NotificationTemplate;
+  /** 수정 중인 템플릿의 조건에 있는 템플릿 수(자기 자신 포함). 삭제 확인의 영향 안내를 가른다. */
+  sameConditionCount?: number;
 }) {
   const editing = Boolean(template);
   const { watch, setValue, reset, handleSubmit } = useForm<TemplateValues>({
@@ -95,7 +100,12 @@ function TemplateEditor({
   const refresh = useInvalidateTemplates();
   const busy = create.isPending || update.isPending || remove.isPending;
   const blocked = !templateSchema.safeParse(draft).success;
-  const impact = template ? deleteImpact(template.eventType) : null;
+  const impact = template ? deleteImpact(template.eventType, sameConditionCount) : null;
+  // 조건을 다른 것으로 바꾸면 원래 조건에서 이 템플릿이 빠진다 — 마지막이었다면 삭제와 같은 결과라 저장 전에 알린다
+  const moveWarning =
+    template && draft.eventType !== template.eventType
+      ? moveImpact(template.eventType, eventLabel(template.eventType), sameConditionCount)
+      : null;
 
   useEffect(() => {
     if (!open) return;
@@ -122,11 +132,6 @@ function TemplateEditor({
       setError(GONE);
       void refresh();
       return true;
-    }
-    // 이미 있는 조건(409)은 입력을 고치는 문제가 아니라 알림이다 — 토스트로 알리고 팝업은 그대로 둔다
-    if (err instanceof ApiError && err.status === 409) {
-      toast.error(err.message || DUPLICATE);
-      return false;
     }
     // 4xx 는 서버가 이유를 말해 준다(입력 오류 등) — 다시 눌러도 같은 결과라 그 말을 그대로 보여 준다
     const reason = err instanceof ApiError && err.status >= 400 && err.status < 500 ? err.message : null;
@@ -214,7 +219,11 @@ function TemplateEditor({
           <p className='mt-3 type-body-sm text-fg-muted'>
             이 문구로는 더 이상 메일이 나가지 않으며 되돌릴 수 없습니다. 지난 발송 이력은 남습니다.
           </p>
-          {impact && <p className='mt-2 type-body-sm text-danger-fg'>{impact}</p>}
+          {impact && (
+            <p className={`mt-2 type-body-sm ${impact.severe ? 'text-danger-fg' : 'text-fg-secondary'}`}>
+              {impact.message}
+            </p>
+          )}
         </div>
       ) : (
         <div className='flex flex-col gap-4'>
@@ -232,6 +241,11 @@ function TemplateEditor({
               </option>
             ))}
           </Select>
+          {moveWarning && (
+            <p role='status' className='-mt-2 type-body-sm text-danger-fg'>
+              {moveWarning}
+            </p>
+          )}
           <Input
             label='제목'
             disabled={busy}

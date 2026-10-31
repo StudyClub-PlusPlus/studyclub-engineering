@@ -1,4 +1,4 @@
--- V47 — 문의·오류 신고 (specs/feedback/spec.md, docs/erd/FEEDBACK.md, docs/erd/FEEDBACK_IMAGE.md)
+-- V51 — 문의·오류 신고 (specs/feedback/spec.md, docs/erd/FEEDBACK.md, docs/erd/FEEDBACK_IMAGE.md)
 -- 크루가 보낸 문의 한 건과 캡틴의 처리(상태 · 회신 · 메모)가 FEEDBACK 한 행이다. 첨부 이미지는 FEEDBACK_IMAGE.
 -- ACCOUNT 와는 FK 를 걸지 않는다 (애그리거트 간 참조) — 탈퇴로 계정이 지워져도 문의는 남고 「탈퇴한 사용자」로 보인다.
 -- STATUS = DONE ⇔ REPLY_CONTENT 있음 ⇔ DONE_BY_ACCOUNT_ID 있음 은 엔티티(Feedback)가 지킨다. 삭제 컬럼은 두지 않는다.

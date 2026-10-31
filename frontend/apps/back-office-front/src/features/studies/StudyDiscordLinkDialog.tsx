@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef } from 'react';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Input, Modal } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
@@ -25,21 +27,29 @@ export function StudyDiscordLinkDialog({
     defaultValues: { name: title },
   });
   const link = useLinkStudyDiscord(studyId);
+  const submitting = useRef(false);
   const submit = handleSubmit(({ name }) => {
-    if (link.isPending) return;
-    link.mutate(name);
+    // 비동기 입력 검증 뒤의 콜백이 겹쳐도 isPending 재렌더 전에 두 번째 요청을 막는다.
+    if (submitting.current || link.isPending) return;
+    submitting.current = true;
+    link.mutate(name, {
+      onSettled: () => {
+        submitting.current = false;
+      },
+    });
   });
+  const close = () => {
+    if (!submitting.current && !link.isPending) onClose();
+  };
 
   return (
     <Modal
       open
       title='디스코드 다시 연결'
-      onClose={() => {
-        if (!link.isPending) onClose();
-      }}
+      onClose={close}
       footer={
         <>
-          <Button variant='secondary' disabled={link.isPending} onClick={onClose}>
+          <Button variant='secondary' disabled={link.isPending} onClick={close}>
             취소
           </Button>
           <Button loading={link.isPending} disabled={link.isPending} onClick={submit}>

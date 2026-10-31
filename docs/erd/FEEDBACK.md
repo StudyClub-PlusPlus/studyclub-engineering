@@ -2,7 +2,7 @@
 
 크루가 사이트 「내 문의」에서 보낸 문의 · 개선 의견 · 오류 신고 한 건과, 캡틴의 처리(상태 · 회신 · 캡틴 전용 메모)가 한 행이다. 첨부 이미지는 [FEEDBACK_IMAGE](./FEEDBACK_IMAGE.md).
 
-> 스펙: [feedback](../../specs/feedback/spec.md) · 마이그레이션 `V47__feedback.sql`
+> 스펙: [feedback](../../specs/feedback/spec.md) · 마이그레이션 `V51__feedback.sql`
 
 ## 컬럼
 

@@ -14,6 +14,10 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     /** 내 문의 상세 — 남의 것과 없는 번호를 가르지 않는다. */
     Optional<Feedback> findByIdAndAccountId(Long id, Long accountId);
 
+    /** 계정 → 문의 순서로 잠그기 위한 ID 조회. 잠금 전 엔티티를 읽으면 동시 회신의 옛 상태가 캐시에 남는다. */
+    @Query("select f.accountId from Feedback f where f.id = :id")
+    Optional<Long> findAccountIdById(@Param("id") Long id);
+
     /** 운영 처리 — 두 캡틴이 동시에 첫 회신을 보내도 완료 처리자 · 회신 시각이 한 번만 정해지게 행을 잠근다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select f from Feedback f where f.id = :id")

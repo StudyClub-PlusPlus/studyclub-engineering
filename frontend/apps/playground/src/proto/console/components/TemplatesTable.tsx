@@ -214,7 +214,11 @@ export function TemplatesTable({ initialTemplates }: { initialTemplates: Notific
                           value={draft.body}
                           onChange={(e) => setDraft({ ...draft, body: e.target.value })}
                           placeholder={'안녕하세요, {{nickname}}님.\n\n…'}
-                          helper='{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                          helper={
+                            draft.trigger === 'FEEDBACK_REPLIED'
+                              ? '{{nickname}} 으로 닉네임, {{feedbackUrl}} 로 답변 확인 링크 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                              : '{{nickname}} 으로 닉네임 삽입. HTML과 일반 텍스트를 입력할 수 있습니다.'
+                          }
                         />
                       </div>
                     ),
