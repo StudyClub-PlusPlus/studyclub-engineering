@@ -17,6 +17,7 @@ import type { Locale, Study } from '@/lib/content';
 import { ApiError } from '@/lib/http';
 import { m, t } from '@/lib/i18n';
 import { addApplication, getApplication, getDiscordNickname, getRegion, setDiscordNickname } from '@/lib/me';
+import { seoulDate } from '@/lib/seoul-date';
 
 function StudyFormHeader({
   study,
@@ -29,7 +30,7 @@ function StudyFormHeader({
 }) {
   const cats = categoriesOf(study);
   const schedule = form?.schedule ? form.schedule : t({ ko: '일정 미정', en: 'Schedule TBD' }, locale);
-  const deadline = form?.recruitDeadline?.slice(0, 10);
+  const deadline = seoulDate(form?.recruitDeadline);
   const deadlineLabel = deadline
     ? t({ ko: `${deadline}까지 모집`, en: `Apply by ${deadline}` }, locale)
     : t({ ko: '모집 기한 미정', en: 'Deadline TBD' }, locale);

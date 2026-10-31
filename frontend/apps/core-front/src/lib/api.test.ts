@@ -16,7 +16,8 @@ const apiStudy = {
   recruitStatus: 'RECRUITING' as const,
   capacity: 30,
   currentApplicants: 12,
-  recruitDeadlineAt: '2026-09-30T15:00:00Z',
+  // 백오피스가 저장하는 값 — 서울 9월 30일 23:59:59. 화면은 서울 날짜로 읽는다 (lib/seoul-date.ts)
+  recruitDeadlineAt: '2026-09-30T14:59:59Z',
   startAt: '2026-10-01T00:00:00Z',
   endAt: null,
   closingSoon: false,

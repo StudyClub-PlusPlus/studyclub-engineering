@@ -4,6 +4,8 @@
 import { CATEGORY_DISPLAY, type Study, type StudyStatus } from '@studyclub/mock';
 import type { ApiPage, ApiStudy, ApiStudyApplicationForm, ApiStudyDetail } from '@studyclub/mock/msw';
 
+import { seoulDate } from './seoul-date';
+
 export type { ApiPage, ApiStudy, ApiStudyApplicationForm, ApiStudyDetail };
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -53,7 +55,7 @@ export function toStudy(api: ApiStudy): Study {
     seats: api.capacity ? { total: api.capacity, taken: api.currentApplicants } : undefined,
     recruitment: {
       status: api.recruitStatus !== 'RECRUITING' ? 'closed' : api.recruitDeadlineAt ? 'open' : 'always',
-      deadline: api.recruitDeadlineAt?.slice(0, 10),
+      deadline: seoulDate(api.recruitDeadlineAt),
     },
   };
 }
@@ -108,7 +110,7 @@ export function toStudyFromDetail(api: ApiStudyDetail): Study {
     driveUrl: api.driveUrl ?? undefined,
     recruitment: {
       status: api.recruitStatus !== 'RECRUITING' ? 'closed' : api.recruitDeadlineAt ? 'open' : 'always',
-      deadline: api.recruitDeadlineAt?.slice(0, 10),
+      deadline: seoulDate(api.recruitDeadlineAt),
     },
   };
 }
