@@ -42,6 +42,8 @@ mail:
     reply-to-address: ${MAIL_CS_REPLY_TO_ADDRESS:}
 
 notification:
+  # 메일의 답변 확인 링크. stage/prod 는 각각의 사용자 사이트 주소를 주입한다.
+  site-base-url: ${NOTIFICATION_SITE_BASE_URL:http://localhost:4700}
   polling:
     fixed-delay-ms: ${NOTIFICATION_POLLING_FIXED_DELAY_MS:30000}
     batch-size: ${NOTIFICATION_POLLING_BATCH_SIZE:100}

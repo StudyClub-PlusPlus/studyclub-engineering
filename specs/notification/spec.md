@@ -5,6 +5,7 @@
 > Story PRD: [알림 템플릿](../../01-planning/stories/notification-template/PRD.md) (ST-030) · [발송 이력](../../01-planning/stories/notification-history/PRD.md) (ST-032)
 > 정책: [POL-0009 알림](../../01-planning/_registry/policies/POL-0009-notification.md)
 > 같은 아웃박스·폴러로 나가는 두 번째 알림: 반 공지(`STUDY_NOTICE`) — [study-notice/spec.md](../study-notice/spec.md). 이 문서의 `NOTIFICATION` 컬럼에 `REFERENCE_ID` 가 더해진다 ([ERD](../../docs/erd/NOTIFICATION.md)) · [POL-0008 화면 공통 규칙](../../01-planning/_registry/policies/POL-0008-screen-rules.md)
+> 문의 회신(`FEEDBACK_REPLIED`)도 같은 예약·폴러·재발송 흐름을 쓴다. 첫 회신에서만 예약하며 상세 계약은 [feedback](../feedback/spec.md#회신-알림).
 > 생성일: 2026-09-12 · 상태: 구현중
 > 갱신: 2026-10-30 — **같은 조건에 템플릿 여럿.** `UNIQUE(EVENT_TYPE, CHANNEL)` 를 걷어내고(일반 인덱스만 둔다) 추가·수정의 409 를 없앴다. 조건이 생기면 그 조건의 템플릿 **모두**로 알림 행을 만든다(수신자 × 템플릿). 같은 조건·같은 제목도 막지 않는다. 삭제 확인 화면이 지우는 것이 그 조건의 마지막인지는 목록에서 센다(응답 필드를 더하지 않는다) — 회원 탈퇴 조건은 이 갱신의 대상이 아니다
 > 갱신: 2026-10-27 — **템플릿 추가·수정·삭제**(`POST`·`PUT`·`DELETE /api/admin/notification-templates`) 계약 추가. 이때는 같은 조건에 템플릿이 한 건뿐이었다(`UNIQUE(EVENT_TYPE, CHANNEL)`) — 위 2026-10-30 갱신으로 여럿이 가능해졌다
@@ -168,14 +169,14 @@ WHERE status = 'PROCESSING'
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | 쓰는 값은 `USER_REGISTERED`(웰컴메일)와 `STUDY_NOTICE`(반 공지, [study-notice](../study-notice/spec.md)) 둘. 다른 종류는 코드에 없음 |
+| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED`(웰컴메일) · `STUDY_NOTICE`(반 공지) · `FEEDBACK_REPLIED`(첫 문의 회신) |
 | RECIPIENT_TYPE | VARCHAR(20) | N | 이번 구현에서 쓰는 값은 `EMAIL` 뿐. `DISCORD` 는 정의하지 않는다 |
 | RECIPIENT_VALUE | VARCHAR(255) | N | 발송 시점 이메일 스냅샷 (나중에 회원이 이메일을 바꿔도 이 값은 그대로) |
 | RECIPIENT_USER_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음 — 애그리거트 간 참조는 ID+인덱스만) — 웰컴메일은 항상 본인 수신이라 이번 구현에서는 NULL 이 나오지 않는다. 컬럼 자체는 nullable(운영 공용 발송 등 미래 대비) |
 | TEMPLATE_ID | BIGINT | N | ID 참조(NOTIFICATION_TEMPLATE, FK 없음) |
-| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 STUDY_NOTICE.ID (FK 없음). 웰컴메일은 NULL |
+| REFERENCE_ID | BIGINT | Y | 이 알림을 만든 쪽의 ID 참조 — `STUDY_NOTICE` 면 STUDY_NOTICE.ID, `FEEDBACK_REPLIED` 면 FEEDBACK.ID (FK 없음). 웰컴메일은 NULL |
 | SENDER_ACCOUNT_ID | BIGINT | Y | 보낸 사람의 ACCOUNT.ID 참조 (FK 없음). 공지 메일만 채운다 — 보낸 사람이 탈퇴하면 이 값으로 그가 보낸 메일 행을 찾아 보낸 사람 이름을 비식별화한다 |
-| PAYLOAD | JSON | N | `USER_REGISTERED` 는 `{"nickname": "..."}`, `STUDY_NOTICE` 는 `{"studyTitle","groupName","senderName","title","body"}`. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
+| PAYLOAD | JSON | N | `USER_REGISTERED` 는 `{"nickname": "..."}`, `STUDY_NOTICE` 는 `{"studyTitle","groupName","senderName","title","body"}`, `FEEDBACK_REPLIED` 는 `{"nickname","feedbackUrl"}`. 리스너가 INSERT 시점에 `ACCOUNT.NICKNAME` 을 읽어 스냅샷 (발송 시점에 다시 조회하지 않음 — RECIPIENT_VALUE 와 같은 이유) |
 | STATUS | VARCHAR(20) | N | `PENDING`/`PROCESSING`/`SENT`/`FAILED`/`CANCELLED` |
 | LOCKED_AT | DATETIME(6) | Y | PROCESSING 전환 시각. 재수거 판단 기준이자 클레임 토큰 — 재수거로 값이 바뀌면 이전 클레임의 완료 처리를 무시한다 |
 | ERROR_TYPE | VARCHAR(30) | Y | FAILED 일 때만. `TEMPLATE_MISSING`/`INVALID_RECIPIENT`/`PROVIDER_ERROR`/`UNKNOWN`. 자동 재시도 판단에는 안 쓴다(이번 구현엔 자동 재시도가 없음) — 실패 원인을 나중에 사람이 보기 위한 값 |
@@ -194,10 +195,10 @@ WHERE status = 'PROCESSING'
 | 컬럼 | 타입 | NULL | 설명 |
 |---|---|---|---|
 | ID | BIGINT PK | N | |
-| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` · `STUDY_NOTICE` |
+| EVENT_TYPE | VARCHAR(40) | N | `USER_REGISTERED` · `STUDY_NOTICE` · `FEEDBACK_REPLIED` |
 | CHANNEL | VARCHAR(20) | N | `EMAIL` |
 | SUBJECT | VARCHAR(255) | N | |
-| BODY | TEXT | N | 치환 변수는 조건마다 다르다 — `USER_REGISTERED` 는 `{{nickname}}`, `STUDY_NOTICE` 는 `{{studyTitle}}`·`{{groupName}}`·`{{senderName}}`·`{{title}}`·`{{body}}`. 태그(`<`)로 시작하면 HTML 본문 — 아래 [본문 형식](#본문-형식--html--텍스트-대체본) |
+| BODY | TEXT | N | 치환 변수는 조건마다 다르다 — `USER_REGISTERED` 는 `{{nickname}}`, `STUDY_NOTICE` 는 `{{studyTitle}}`·`{{groupName}}`·`{{senderName}}`·`{{title}}`·`{{body}}`, `FEEDBACK_REPLIED` 는 `{{nickname}}`·`{{feedbackUrl}}`. 태그(`<`)로 시작하면 HTML 본문 — 아래 [본문 형식](#본문-형식--html--텍스트-대체본) |
 | UPDATED_AT | DATETIME(6) | N | `BaseEntity` |
 | UPDATED_BY_ADMIN_ID | BIGINT | Y | ID 참조(ACCOUNT, FK 없음) — 추가·수정한 캡틴. 마이그레이션이 만든 행은 NULL |
 
@@ -361,6 +362,7 @@ stateDiagram-v2
 |---|---|---|
 | `USER_REGISTERED` (회원가입) | `{{nickname}}` | 알림 행을 만들지 못하고 에러 로그만 남긴다. 가입은 영향이 없다(`AFTER_COMMIT`) |
 | `STUDY_NOTICE` (스터디 공지) | `{{studyTitle}}` `{{groupName}}` `{{senderName}}` `{{title}}` `{{body}}` | **메일을 포함한 공지는 저장 자체가 롤백된다**(메일 행 생성이 공지와 같은 트랜잭션 `BEFORE_COMMIT` — `IllegalStateException`). 메일과 디스코드를 함께 보내는 공지는 커밋이 없어 디스코드 글도 올라가지 않는다. 디스코드만 보내는 공지는 템플릿을 조회하지 않아 영향이 없다 ([study-notice 스펙](../study-notice/spec.md)) |
+| `FEEDBACK_REPLIED` (문의 회신) | `{{nickname}}` `{{feedbackUrl}}` | **첫 회신·완료 저장이 롤백된다**. 예약을 회신과 같은 트랜잭션에서 만들기 때문이다. 이미 있는 답변 수정에는 영향이 없다 ([feedback](../feedback/spec.md#회신-알림)) |
 
 - 서버는 마지막 템플릿의 삭제·조건 변경을 막지 않는다. 대신 백오피스가 영향을 알린다. **삭제 확인**: 마지막이 아니면 「이 템플릿의 메일만 멈춘다」, 마지막이면 위 표의 조건별 영향. **수정 팝업에서 조건을 바꿀 때**: 원래 조건에서 이 템플릿이 마지막이면 저장 전에 같은 조건별 영향(「조건을 바꿔 저장하면 …」)을 알린다. 다른 템플릿이 남아 있으면 알리지 않는다. 저장은 막지 않는다. 마지막인지는 화면이 이미 받은 목록(페이지네이션 없이 전체)에서 같은 조건의 템플릿 수로 센다 — 안내 문구만 가르는 판정이고 서버는 삭제를 막지 않으므로 응답 필드를 따로 두지 않는다. 목록이 페이지네이션이나 조건 필터를 갖게 되면 서버 필드로 올린다. 본문 칸 아래 안내도 그 조건의 치환 변수를 알린다. (→ [share 10-29](../../docs/share/2026-10-29-notification-template-ops-rules.md))
   서버가 조건에 없는 치환 변수를 막지는 않는다 — 렌더러는 모르는 `{{x}}` 를 그대로 남기므로, 조건을 바꾸면 변수가 맞지 않는 문구가 저장될 수 있다 (후속)

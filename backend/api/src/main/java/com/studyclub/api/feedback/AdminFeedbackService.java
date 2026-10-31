@@ -9,6 +9,7 @@ import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.feedback.Feedback;
 import com.studyclub.domain.feedback.FeedbackImageRepository;
+import com.studyclub.domain.feedback.FeedbackReplied;
 import com.studyclub.domain.feedback.FeedbackRepository;
 import com.studyclub.domain.feedback.FeedbackStatus;
 import com.studyclub.domain.feedback.FeedbackType;
@@ -23,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,16 +48,19 @@ public class AdminFeedbackService {
     private final FeedbackImageRepository feedbackImageRepository;
     private final FeedbackQueryDao feedbackQueryDao;
     private final AccountRepository accountRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AdminFeedbackService(
             FeedbackRepository feedbackRepository,
             FeedbackImageRepository feedbackImageRepository,
             FeedbackQueryDao feedbackQueryDao,
-            AccountRepository accountRepository) {
+            AccountRepository accountRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.feedbackRepository = feedbackRepository;
         this.feedbackImageRepository = feedbackImageRepository;
         this.feedbackQueryDao = feedbackQueryDao;
         this.accountRepository = accountRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -98,8 +103,8 @@ public class AdminFeedbackService {
     }
 
     /**
-     * {@code status} · {@code reply} · {@code adminMemo} 중 하나만 바꾼다. 첫 조회로 행을 잠근다 — 두 캡틴이 동시에 첫 회신을
-     * 보내도 완료 처리자 · 회신 시각이 한 번만 정해진다.
+     * {@code status} · {@code reply} · {@code adminMemo} 중 하나만 바꾼다. 회신은 계정 → 문의, 나머지는 문의 행을 잠근다 — 두
+     * 캡틴이 동시에 첫 회신을 보내도 완료 처리자 · 회신 시각이 한 번만 정해진다.
      *
      * @param body 요청 본문 그대로. 키가 있는데 값이 null 인 것과 키가 없는 것을 가르기 위해 맵으로 받는다
      */
@@ -107,6 +112,13 @@ public class AdminFeedbackService {
     public AdminFeedbackDetailResponse patch(
             Long requesterId, Long feedbackId, Map<String, Object> body) {
         String key = singleKey(body);
+        if (REPLY.equals(key)) {
+            // 탈퇴와 같은 순서(계정 → 문의)로 잠근다. 예약 뒤 탈퇴는 방금 만든 메일까지 비식별화하고,
+            // 탈퇴가 먼저면 리스너가 수신자 없음으로 건너뛴다. 문의 엔티티는 아래 잠금 조회에서 처음 읽는다.
+            feedbackRepository
+                    .findAccountIdById(feedbackId)
+                    .ifPresent(accountRepository::findByIdForUpdate);
+        }
         Feedback feedback = find(feedbackRepository.findByIdForUpdate(feedbackId));
         String value = (String) body.get(key);
         switch (key) {
@@ -114,7 +126,9 @@ public class AdminFeedbackService {
             case REPLY -> {
                 String reply = FeedbackService.trimmed(value);
                 FeedbackService.requireLength(REPLY, reply, Feedback.REPLY_MIN, Feedback.REPLY_MAX);
-                feedback.reply(reply, requesterId, Instant.now());
+                if (feedback.reply(reply, requesterId, Instant.now())) {
+                    eventPublisher.publishEvent(FeedbackReplied.of(feedback));
+                }
             }
             case ADMIN_MEMO -> {
                 if (value.length() > Feedback.ADMIN_MEMO_MAX) {

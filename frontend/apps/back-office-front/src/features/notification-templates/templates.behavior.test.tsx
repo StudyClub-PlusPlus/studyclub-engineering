@@ -553,6 +553,17 @@ describe('알림 템플릿 화면', () => {
     expect(within(dialog).queryByRole('status')).toBeNull();
   });
 
+  it('문의 회신은 링크 변수를 안내하고 마지막 템플릿 삭제가 첫 답변을 막는다고 알린다', async () => {
+    fakeServer([tpl({ eventType: 'FEEDBACK_REPLIED', subject: '[StudyClub] 문의에 답변이 등록됐어요' })]);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '문의 회신' }));
+    await screen.findByLabelText(/제목/);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(/feedbackUrl/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: '템플릿 삭제' }));
+    expect(within(dialog).getByText(/문의에 첫 답변을 등록할 수 없습니다/)).toBeInTheDocument();
+  });
+
   it('스터디 공지 템플릿의 삭제 확인은 메일 포함 공지가 막히고 디스코드만 보내는 공지는 영향이 없다고 알린다', async () => {
     fakeServer([tpl({ id: 2, eventType: 'STUDY_NOTICE', subject: '[StudyClub] {{studyTitle}} 공지' })]);
     renderPage();
@@ -612,7 +623,7 @@ describe('알림 템플릿 화면', () => {
     const options = within(dialog)
       .getAllByRole('option')
       .map((o) => o.textContent);
-    expect(options).toEqual(['회원가입', '스터디 공지']);
+    expect(options).toEqual(['회원가입', '스터디 공지', '문의 회신']);
   });
 
   it('지운 스터디 공지 템플릿은 추가 팝업에서 조건을 골라 다시 만든다', async () => {

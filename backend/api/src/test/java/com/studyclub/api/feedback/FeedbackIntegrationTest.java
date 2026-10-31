@@ -70,11 +70,24 @@ class FeedbackIntegrationTest {
     @Autowired AccountDeletionService accountDeletionService;
     @Autowired JdbcTemplate jdbc;
     @MockitoBean ObjectStorage storage;
+    @Autowired com.studyclub.notification.NotificationTemplateRepository templates;
 
     @BeforeEach
     void setUp() {
         rest.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
         UploadTestSupport.stubInMemory(storage);
+        if (templates
+                .findAllByEventTypeAndChannelOrderByIdAsc(
+                        com.studyclub.notification.NotificationEventType.FEEDBACK_REPLIED,
+                        com.studyclub.notification.NotificationChannel.EMAIL)
+                .isEmpty()) {
+            templates.save(
+                    new com.studyclub.notification.NotificationTemplate(
+                            com.studyclub.notification.NotificationEventType.FEEDBACK_REPLIED,
+                            com.studyclub.notification.NotificationChannel.EMAIL,
+                            "문의 답변 등록",
+                            "{{nickname}} {{feedbackUrl}}"));
+        }
     }
 
     // ---- 도우미 -------------------------------------------------------------------------------

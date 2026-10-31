@@ -90,6 +90,10 @@ const CONDITION_GUIDE: Record<string, { bodyHelp: string; stopEffect: string }> 
     bodyHelp: `{{nickname}} 으로 닉네임 삽입. ${BODY_FORMAT_HELP}`,
     stopEffect: '새로 가입한 회원에게 웰컴 메일이 나가지 않습니다.',
   },
+  FEEDBACK_REPLIED: {
+    bodyHelp: `{{nickname}} 으로 닉네임, {{feedbackUrl}} 로 답변 확인 링크를 삽입할 수 있습니다. ${BODY_FORMAT_HELP}`,
+    stopEffect: '문의에 첫 답변을 등록할 수 없습니다. 이미 등록한 답변 수정은 가능합니다.',
+  },
   STUDY_NOTICE: {
     bodyHelp: `{{studyTitle}} 스터디 이름, {{groupName}} 반 이름, {{senderName}} 보낸 사람, {{title}} 공지 제목, {{body}} 공지 본문을 삽입할 수 있습니다. ${BODY_FORMAT_HELP}`,
     stopEffect:
@@ -137,7 +141,7 @@ export function moveImpact(eventType: string, label: string, sameConditionCount:
  * 스터디 공지도 둔다 — 시드된 템플릿을 지우면 메일을 포함한 공지가 막히는데, 선택지가 없으면 화면에서 다시 만들 길이 없다.
  * 이미 템플릿이 있는 조건도 고를 수 있다 — 같은 조건에 템플릿을 여럿 두면 그 조건이 생길 때 모두 나간다.
  */
-const SELECTABLE_EVENTS = ['USER_REGISTERED', 'STUDY_NOTICE'];
+const SELECTABLE_EVENTS = ['USER_REGISTERED', 'STUDY_NOTICE', 'FEEDBACK_REPLIED'];
 
 export const TEMPLATE_CONDITIONS: { value: string; label: string }[] = SELECTABLE_EVENTS.map((value) => ({
   value,

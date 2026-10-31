@@ -199,7 +199,7 @@ function ReplySection({ detail }: { detail: ApiAdminFeedbackDetail }) {
         {!first && (
           <Button
             size='sm'
-            variant='ghost'
+            variant='tertiary'
             disabled={mutation.isPending}
             onClick={() => {
               setDraft(detail.reply?.content ?? '');
