@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 
-import { EventCreateButton } from '@/components/EventCreateButton';
 import { PageHeader } from '@/components/ui';
+import { EventCreateButton } from '@/features/events/EventCreateButton';
 import { EventsTable } from '@/features/events/EventsTable';
 
 export const metadata = { title: '행사' };

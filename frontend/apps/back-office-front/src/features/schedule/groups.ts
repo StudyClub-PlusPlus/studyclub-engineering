@@ -2,11 +2,11 @@
 
 import { useMemo } from 'react';
 
-import type { ScheduleGroup } from './meetings';
-import type { ApiGroupMeetings } from './repository';
-import { groupsFromServer } from './store';
-import type { StudyTz } from './time';
 import { useParticipants } from '@/features/participants/queries';
+import type { ScheduleGroup } from '@/features/schedule/meetings';
+import type { ApiGroupMeetings } from '@/features/schedule/repository';
+import { groupsFromServer } from '@/features/schedule/store';
+import type { StudyTz } from '@/features/schedule/time';
 
 /**
  * 일정 · 출석 탭의 반 — 신청자 탭에서 만든 서버 반(참여 명단 `groups[]`)이다. 반이 둘 이상이면 반 칩이 선다.

@@ -107,8 +107,9 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const nextKey = useRef(0);
-  // 올리는 도중 붙여넣기·끌어 놓기가 겹쳐도 3장을 넘지 않게 — 렌더를 기다리지 않는 현재 장수
-  const countRef = useRef(0);
+  // 올리는 도중 붙여넣기·끌어 놓기가 겹쳐도 3장을 넘지 않게 — 렌더를 기다리지 않는 지금 첨부의 번호들.
+  // 장수를 숫자로 따로 세지 않는다: 올리는 중에 뺀 사진이 뒤늦게 실패해도 두 번 빠지지 않는다
+  const attachedKeys = useRef(new Set<number>());
   const previews = useRef(new Set<string>());
   const alive = useRef(true);
 
@@ -129,6 +130,7 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
   const sending = submit.isPending;
 
   function drop(key: number) {
+    attachedKeys.current.delete(key);
     setAttachments((list) => {
       const target = list.find((a) => a.key === key);
       if (target) {
@@ -137,20 +139,21 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
       }
       return list.filter((a) => a.key !== key);
     });
-    countRef.current = Math.max(0, countRef.current - 1);
   }
 
   async function upload(file: File) {
     const key = nextKey.current++;
     const preview = URL.createObjectURL(file);
     previews.current.add(preview);
+    attachedKeys.current.add(key);
     setAttachments((list) => [...list, { key, preview }]);
     try {
       const { fileId } = await uploadFeedbackImage(file);
       if (!alive.current) return;
       setAttachments((list) => list.map((a) => (a.key === key ? { ...a, fileId } : a)));
     } catch (err) {
-      if (!alive.current) return;
+      // 이미 뺀 사진의 실패는 할 일도, 알릴 것도 없다
+      if (!alive.current || !attachedKeys.current.has(key)) return;
       drop(key);
       setImageError(uploadErrorMessage(err));
     }
@@ -158,7 +161,7 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
 
   function attach(files: File[]) {
     setImageError(null);
-    const room = IMAGE_MAX_COUNT - countRef.current;
+    const room = IMAGE_MAX_COUNT - attachedKeys.current.size;
     if (room <= 0) {
       setImageError(IMAGE_COUNT_ERROR);
       return;
@@ -173,9 +176,7 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
       ok.push(file);
     }
     if (ok.length > room) setImageError(IMAGE_COUNT_ERROR);
-    const accepted = ok.slice(0, room);
-    countRef.current += accepted.length;
-    accepted.forEach((file) => void upload(file));
+    ok.slice(0, room).forEach((file) => void upload(file));
   }
 
   const send = handleSubmit(async (values) => {
@@ -199,10 +200,9 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
             <button
               type='button'
               className='shrink-0 font-semibold text-primary-600 underline-offset-2 hover:underline'
-              onClick={() => {
-                toast.dismiss(ERROR_TOAST_ID);
-                void send();
-              }}
+              // 이 알림은 실패한 그때 그려졌다. 지금 화면의 첨부·상태로 보내도록 가장 최근의 send 를 부른다.
+              // 올리는 중이면 send 가 보내지 않고, 알림은 남아 있어 다 올라간 뒤 다시 누를 수 있다
+              onClick={() => void latestSend.current()}
             >
               다시 시도
             </button>
@@ -211,6 +211,10 @@ function FeedbackDialogBody({ accountId, onClose, onSent }: Omit<FeedbackDialogP
         { id: ERROR_TOAST_ID, duration: 8000 },
       );
     }
+  });
+  const latestSend = useRef(send);
+  useEffect(() => {
+    latestSend.current = send;
   });
 
   return (

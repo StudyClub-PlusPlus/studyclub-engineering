@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 
 import { OTHER_ANSWER_MAX, TEXT_ANSWER_MAX, TEXTAREA_ANSWER_MAX } from '@core/lib/apply-validation';
-import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
+import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/types';
 import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { Pencil, X } from 'lucide-react';
 

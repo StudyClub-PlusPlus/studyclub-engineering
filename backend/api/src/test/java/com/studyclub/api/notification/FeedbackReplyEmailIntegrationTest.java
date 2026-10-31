@@ -72,7 +72,7 @@ class FeedbackReplyEmailIntegrationTest {
         seedSql =
                 Files.readString(
                         Path.of(
-                                "../notification/src/main/resources/db/migration/V48__feedback_replied_email.sql"));
+                                "../notification/src/main/resources/db/migration/V52__feedback_replied_email.sql"));
         jdbc.execute(seedSql);
         crew = account(SystemRole.MEMBER);
         captain = account(SystemRole.ADMIN);

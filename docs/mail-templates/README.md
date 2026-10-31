@@ -15,7 +15,7 @@
 - 프로토에서 추가·저장한 내용은 현재 화면에서만 유지되고 새로고침하면 사라진다. 반영할 HTML 은 본문 편집 칸에서 복사해 시안 파일에 붙여 PR 을 낸다
 - playground 는 DB 를 읽지 않는다. DB 에 지금 무엇이 있는지는 백오피스 「알림 템플릿」에서 본다
 
-문의 회신 시안은 가입메일의 카드·버튼 디자인을 사용한다. 답변 본문·첨부 이미지·캡틴 메모는 메일에 넣지 않고, 로그인 후 해당 문의의 답변을 확인하도록 안내한다. `{{feedbackUrl}}` 은 `NOTIFICATION_SITE_BASE_URL` 과 `/ko/my/feedbacks/{id}` 로 만든 전체 URL 이다. `V48__feedback_replied_email.sql` 이 같은 HTML을 등록하고, 첫 회신 트랜잭션에서 알림을 예약한다.
+문의 회신 시안은 가입메일의 카드·버튼 디자인을 사용한다. 답변 본문·첨부 이미지·캡틴 메모는 메일에 넣지 않고, 로그인 후 해당 문의의 답변을 확인하도록 안내한다. `{{feedbackUrl}}` 은 `NOTIFICATION_SITE_BASE_URL` 과 `/ko/my/feedbacks/{id}` 로 만든 전체 URL 이다. `V52__feedback_replied_email.sql` 이 같은 HTML을 등록하고, 첫 회신 트랜잭션에서 알림을 예약한다.
 
 ## 제목 규칙
 
@@ -76,6 +76,7 @@ HTML 본문은 아래 세 가지와 **같이** 나가야 깨지지 않는다 —
 ## 문의 회신 배포
 
 - `NOTIFICATION_SITE_BASE_URL` 을 명시하면 그 주소가 우선한다. 없으면 기존 `APP_ENV` 에 따라 로컬(`local`, 미설정 포함) `http://localhost:4700`, stage `https://stage.studyclub.life`, 운영(`production`) `https://studyclub.life` 를 사용한다. 다른 환경 이름은 주소를 명시해야 한다. 프로토의 localhost:4713 주소를 넣지 않는다.
-- #373 문의 구현이 전제다. 기존 V41 이 반 공지 마이그레이션과 충돌하여 미병합 문의 스키마를 `V47__feedback.sql` 로 옮겼다. V46 은 같은 조건의 복수 템플릿이다.
-- Flyway 를 쓰는 환경은 V47·V48 을 적용한다. stage 는 Hibernate 가 문의 테이블을 만들고, `backend/notification/src/main/resources/db/migration/V48__feedback_replied_email.sql` 을 한 번 실행해 템플릿을 등록한다. 또는 백오피스 알림 템플릿에서 「문의 회신」 조건으로 같은 제목·HTML을 등록한다. 기존 문의 회신 템플릿이 있으면 중복 등록하거나 덮어쓰지 않는다.
+- #373 문의 구현을 포함한다. 운영 `main`의 최신 버전 V49 다음으로 V50(복수 템플릿) · V51(문의 테이블) · V52(회신 메일 시드)를 적용한다. 운영에 포함되지 않았던 V46·V47·V48의 번호를 정리한 것으로, 이미 배포된 V1~V45·V49 파일은 바꾸지 않는다.
+- 이전 PR 버전의 V46·V47·V48을 **로컬 Flyway DB에 직접 적용했다면**, 새 번호로 실행하기 전에 해당 로컬 DB의 적용 이력을 확인한다. 기존 파일의 이름 변경만으로 그 DB의 이력이 바뀌지는 않는다. stage는 Flyway를 사용하지 않아 적용 이력 변경이 필요 없다.
+- Flyway 를 쓰는 환경은 V50·V51·V52를 적용한다. stage 는 Hibernate 가 문의 테이블을 만들고, `backend/notification/src/main/resources/db/migration/V52__feedback_replied_email.sql` 을 한 번 실행해 템플릿을 등록한다. 또는 백오피스 알림 템플릿에서 「문의 회신」 조건으로 같은 제목·HTML을 등록한다. 기존 문의 회신 템플릿이 있으면 중복 등록하거나 덮어쓰지 않는다.
 - HTML과 기존 메일 클라이언트의 일반 텍스트 대체본을 함께 보낸다. 과거 문의를 대상으로 알림을 생성하는 작업은 없다.

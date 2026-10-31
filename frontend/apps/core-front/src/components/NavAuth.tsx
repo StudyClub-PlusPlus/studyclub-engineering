@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { ChevronDown, DoorOpen, LogOut, UserRound } from 'lucide-react';
+import type { Locale } from '@studyclub/types';
+import { ChevronDown, DoorOpen, Heart, LogOut, UserRound } from 'lucide-react';
 
-import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import { getUser, logout, USER_CHANGED_EVENT, type SessionUser } from '@/features/auth/auth';
+import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/features/auth/preview';
 import { announceMenuOpen, closeOnOtherMenu } from '@/lib/header-menus';
-import { IS_DEV, enterPreview as startPreview, syncPreview } from '@/lib/preview';
 
 export function NavAuth({ locale }: { locale: Locale }) {
   const router = useRouter();
@@ -51,7 +51,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
     return (
       <Link
         href={`/${locale}/onboarding`}
-        className='rounded-full bg-brand px-4 py-2 type-label-lg text-on-brand'
+        className='sc-button type-label-lg'
+        data-variant='tertiary'
+        data-size='md'
       >
         {locale === 'en' ? 'Finish sign-up' : '가입 마무리'}
       </Link>
@@ -63,7 +65,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
       <div className='flex items-center gap-2'>
         <Link
           href={`/${locale}/login`}
-          className='whitespace-nowrap rounded-full border border-[var(--color-border)] px-4 py-2 type-label-lg text-[var(--color-fg)] transition-colors hover:bg-[var(--color-surface-subtle)]'
+          className='sc-button type-label-lg'
+          data-variant='secondary'
+          data-size='md'
         >
           {locale === 'en' ? 'Log in' : '로그인'}
         </Link>
@@ -72,7 +76,9 @@ export function NavAuth({ locale }: { locale: Locale }) {
             type='button'
             onClick={enterPreview}
             title='로그인 없이 마이페이지 보기 (로컬 개발 서버 전용)'
-            className='rounded-full border border-dashed border-[var(--color-border)] px-3 py-2 type-label-lg text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-interactive)] hover:bg-[var(--color-surface-subtle)]'
+            className='sc-button type-label-lg'
+            data-variant='tertiary'
+            data-size='md'
           >
             MY
           </button>
@@ -123,6 +129,15 @@ export function NavAuth({ locale }: { locale: Locale }) {
             <UserRound size={16} className='text-[var(--color-fg-muted)]' />
             {locale === 'en' ? 'My page' : '마이페이지'}
           </Link>
+          <Link
+            href={`/${locale}/my/saved`}
+            onClick={() => setOpen(false)}
+            className='flex items-center gap-2.5 rounded-lg px-3 py-2 type-label-lg text-[var(--color-fg)] hover:bg-[var(--color-surface-subtle)]'
+          >
+            <Heart size={16} className='text-[var(--color-fg-muted)]' />
+            {locale === 'en' ? 'Saved' : '찜한 스터디'}
+          </Link>
+          {/* 「문의·오류 신고」는 푸터에 있다 — 눌러야 나오는 자리에 두면 할 말이 생긴 사람이 찾지 못한다 */}
           <div className='my-1 h-px bg-[var(--color-border)]' />
           <button
             type='button'

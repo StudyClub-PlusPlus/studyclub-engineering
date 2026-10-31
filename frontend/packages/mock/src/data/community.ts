@@ -1,4 +1,4 @@
-import type { Announcement, Member, Operator, StudyclubEvent } from '../types';
+import type { Announcement, Member, Operator, StudyclubEvent } from '@studyclub/types';
 
 // ── announcements (공지사항) ──────────────────────────────────────────
 export const announcements: Announcement[] = [

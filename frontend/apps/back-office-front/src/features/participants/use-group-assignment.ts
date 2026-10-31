@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 
 import { useIsMutating } from '@tanstack/react-query';
 
-import { participantKeys, useSaveGroupAssignments } from './queries';
-import type { Participant } from './types';
+import { participantKeys, useSaveGroupAssignments } from '@/features/participants/queries';
+import type { Participant } from '@/features/participants/types';
 import { blockHistoryNavigation } from '@/lib/history-guard';
 
 type Draft = Partial<Pick<Participant, 'groupId' | 'participantRole'>>;

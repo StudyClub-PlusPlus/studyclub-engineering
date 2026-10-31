@@ -1,4 +1,4 @@
-import type { ScheduleGroup } from './meetings';
+import type { ScheduleGroup } from '@/features/schedule/meetings';
 
 /**
  * 반 칩 한 줄 — 일정 탭과 출석 탭이 고른 반을 같이 쓴다. 반이 하나면 두지 않는다.

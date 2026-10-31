@@ -1,8 +1,14 @@
-// 알림 템플릿 — 키·fetcher·훅을 한곳에.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import {
+  createNotificationTemplate,
+  deleteNotificationTemplate,
+  fetchNotificationTemplates,
+  updateNotificationTemplate,
+} from '@/features/notification-templates/repository';
 import type { NotificationTemplate, TemplateDraft } from '@/features/notification-templates/types';
-import { http } from '@/lib/http';
+
+// 알림 템플릿 — 키·fetcher·훅을 한곳에.
 
 export const notificationTemplateKeys = {
   all: ['notification-templates'] as const,
@@ -14,19 +20,10 @@ export const notificationTemplateKeys = {
   editor: (id?: number) => ['notification-template-editor', id] as const,
 };
 
-const BASE = '/api/admin/notification-templates';
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
-
 /**
  * 저장·삭제 요청의 제한 시간. 팝업은 요청 중에 닫히지 않으므로, 응답이 끝내 오지 않으면 닫을 길이 없어진다.
  * 시간이 지나면 요청을 끊고 실패로 알려 팝업을 닫을 수 있게 한다.
  */
-export const TEMPLATE_REQUEST_TIMEOUT_MS = 15_000;
-const timeout = () => AbortSignal.timeout(TEMPLATE_REQUEST_TIMEOUT_MS);
-
-function fetchNotificationTemplates({ signal }: { signal: AbortSignal }): Promise<NotificationTemplate[]> {
-  return http<NotificationTemplate[]>(BASE, { signal });
-}
 
 export function useNotificationTemplates() {
   return useQuery({
@@ -72,13 +69,7 @@ export function useInvalidateTemplates() {
 export function useCreateNotificationTemplate() {
   const invalidate = useInvalidateTemplates();
   return useMutation({
-    mutationFn: (draft: TemplateDraft) =>
-      http<NotificationTemplate>(BASE, {
-        method: 'POST',
-        headers: JSON_HEADERS,
-        body: JSON.stringify(draft),
-        signal: timeout(),
-      }),
+    mutationFn: (draft: TemplateDraft) => createNotificationTemplate(draft),
     onSuccess: () => invalidate(),
   });
 }
@@ -86,13 +77,7 @@ export function useCreateNotificationTemplate() {
 export function useUpdateNotificationTemplate() {
   const invalidate = useInvalidateTemplates();
   return useMutation({
-    mutationFn: ({ id, draft }: { id: number; draft: TemplateDraft }) =>
-      http<NotificationTemplate>(`${BASE}/${id}`, {
-        method: 'PUT',
-        headers: JSON_HEADERS,
-        body: JSON.stringify(draft),
-        signal: timeout(),
-      }),
+    mutationFn: ({ id, draft }: { id: number; draft: TemplateDraft }) => updateNotificationTemplate(id, draft),
     onSuccess: () => invalidate(),
   });
 }
@@ -100,7 +85,9 @@ export function useUpdateNotificationTemplate() {
 export function useDeleteNotificationTemplate() {
   const invalidate = useInvalidateTemplates();
   return useMutation({
-    mutationFn: (id: number) => http<null>(`${BASE}/${id}`, { method: 'DELETE', signal: timeout() }),
+    mutationFn: (id: number) => deleteNotificationTemplate(id),
     onSuccess: () => invalidate(),
   });
 }
+
+export { TEMPLATE_REQUEST_TIMEOUT_MS } from './repository';

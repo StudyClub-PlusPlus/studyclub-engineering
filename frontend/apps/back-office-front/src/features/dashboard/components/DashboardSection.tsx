@@ -43,7 +43,9 @@ export function DashboardSection({
 
 /** 카드 안 가운데 안내 — 빈 상태와 실패에 같이 쓴다. 높이를 지켜 화면이 들썩이지 않게 한다. */
 export function CardMessage({ children, minHeight = 'min-h-32' }: { children: ReactNode; minHeight?: string }) {
-  return <p className={`flex items-center justify-center text-center type-body-sm text-fg-muted ${minHeight}`}>{children}</p>;
+  return (
+    <p className={`flex items-center justify-center text-center type-body-sm text-fg-muted ${minHeight}`}>{children}</p>
+  );
 }
 
 /** 로딩 자리 — 카드 크기를 지키는 회색 막대 (spec 2.4 권장). */

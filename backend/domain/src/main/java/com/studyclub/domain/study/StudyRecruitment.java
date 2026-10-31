@@ -38,7 +38,8 @@ public class StudyRecruitment extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "START_AT", nullable = false)
+    /** 모집 시작 시각 — 공개(= 모집 시작)할 때 채우고 공개 취소하면 비운다. {@code null} = 아직 모집 전. */
+    @Column(name = "START_AT")
     private Instant startAt;
 
     @Column(name = "RECRUIT_DEADLINE_AT")

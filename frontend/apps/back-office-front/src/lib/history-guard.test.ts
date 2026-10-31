@@ -1,7 +1,7 @@
 import { waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { blockHistoryNavigation, trackHistoryNavigation } from './history-guard';
+import { blockHistoryNavigation, trackHistoryNavigation } from '@/lib/history-guard';
 
 const key = 'studyclubHistoryIndex';
 

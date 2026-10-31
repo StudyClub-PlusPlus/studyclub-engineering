@@ -214,6 +214,7 @@
   --color-brand-subtle:       var(--color-primary-light);
   --color-brand-subtle-hover: var(--color-primary-light);
   --color-on-brand:           var(--color-on-primary);
+  --color-logo-accent:        #FF805C; /* 로고 워드마크 Club 오렌지 — 로고 전용, UI 강조색으로 쓰지 않는다 */
 
   /* Text */
   --color-fg:             var(--color-ink);

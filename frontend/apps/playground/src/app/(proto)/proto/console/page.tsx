@@ -5,7 +5,8 @@ import { KpiCard } from '@console/components/KpiCard';
 import { StudyStatusBoard } from '@console/components/StudyStatusBoard';
 import { aggregate } from '@console/lib/dashboard';
 import { tx } from '@console/lib/l10n';
-import { events, todayISO } from '@studyclub/mock';
+import { events } from '@studyclub/mock';
+import { todayISO } from '@studyclub/utils';
 
 import { SPEC } from './spec';
 import { ScreenSpecRegistrar } from '@/proto/annotate';

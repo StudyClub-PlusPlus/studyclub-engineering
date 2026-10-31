@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Input, Modal, Select, Tabs, Textarea, toast } from '@studyclub/ui';
+import { useForm } from 'react-hook-form';
 
 import { TemplatePreview } from '@/features/notification-templates/components/TemplatePreview';
+import { templateSchema, TemplateValues } from '@/features/notification-templates/form-schema';
 import {
   useCreateNotificationTemplate,
   useDeleteNotificationTemplate,
@@ -13,13 +16,13 @@ import {
   useUpdateNotificationTemplate,
 } from '@/features/notification-templates/queries';
 import {
-  BODY_MAX_BYTES,
-  SUBJECT_MAX_LENGTH,
-  TEMPLATE_CONDITIONS,
   applyBodyEdit,
+  BODY_MAX_BYTES,
   bodyHelp,
   deleteImpact,
   moveImpact,
+  SUBJECT_MAX_LENGTH,
+  TEMPLATE_CONDITIONS,
   utf8Bytes,
   type NotificationTemplate,
   type TemplateDraft,
@@ -79,7 +82,12 @@ function TemplateEditor({
   sameConditionCount?: number;
 }) {
   const editing = Boolean(template);
-  const [draft, setDraft] = useState<TemplateDraft>(EMPTY);
+  const { watch, setValue, reset, handleSubmit } = useForm<TemplateValues>({
+    resolver: zodResolver(templateSchema),
+    defaultValues: EMPTY,
+    mode: 'onChange',
+  });
+  const draft = watch();
   const [bodyTab, setBodyTab] = useState('edit');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +99,7 @@ function TemplateEditor({
   const remove = useDeleteNotificationTemplate();
   const refresh = useInvalidateTemplates();
   const busy = create.isPending || update.isPending || remove.isPending;
-  const blocked = !draft.subject.trim() || !draft.body.trim();
+  const blocked = !templateSchema.safeParse(draft).success;
   const impact = template ? deleteImpact(template.eventType, sameConditionCount) : null;
   // 조건을 다른 것으로 바꾸면 원래 조건에서 이 템플릿이 빠진다 — 마지막이었다면 삭제와 같은 결과라 저장 전에 알린다
   const moveWarning =
@@ -101,7 +109,7 @@ function TemplateEditor({
 
   useEffect(() => {
     if (!open) return;
-    setDraft(template ? { eventType: template.eventType, subject: template.subject, body: template.body } : EMPTY);
+    reset(template ? { eventType: template.eventType, subject: template.subject, body: template.body } : EMPTY);
     setBodyTab('edit');
     setConfirmDelete(false);
     setError(null);
@@ -131,7 +139,7 @@ function TemplateEditor({
     return false;
   }
 
-  function save() {
+  const save = handleSubmit((draft) => {
     if (blocked || busy || gone) return;
     setError(null);
     const body: TemplateDraft = { ...draft, subject: draft.subject.trim() };
@@ -142,7 +150,7 @@ function TemplateEditor({
     };
     if (template) update.mutate({ id: template.id, draft: body }, done);
     else create.mutate(body, done);
-  }
+  });
 
   function destroy() {
     if (!template || busy) return;
@@ -225,7 +233,7 @@ function TemplateEditor({
             disabled={busy}
             required
             value={draft.eventType}
-            onChange={(e) => setDraft({ ...draft, eventType: e.target.value })}
+            onChange={(e) => setValue('eventType', e.target.value, { shouldDirty: true, shouldValidate: true })}
           >
             {conditions.map((c) => (
               <option key={c.value} value={c.value}>
@@ -245,7 +253,7 @@ function TemplateEditor({
             maxLength={SUBJECT_MAX_LENGTH}
             labelHint={`${draft.subject.length.toLocaleString()} / ${SUBJECT_MAX_LENGTH.toLocaleString()}자`}
             value={draft.subject}
-            onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+            onChange={(e) => setValue('subject', e.target.value, { shouldDirty: true, shouldValidate: true })}
             placeholder='[StudyClub] 회원가입을 환영합니다'
           />
           <Tabs
@@ -268,7 +276,7 @@ function TemplateEditor({
                       onChange={(e) => {
                         const field = e.target;
                         const edit = applyBodyEdit(draft.body, field.value, BODY_MAX_BYTES);
-                        setDraft({ ...draft, body: edit.value });
+                        setValue('body', edit.value, { shouldDirty: true, shouldValidate: true });
                         if (edit.caret === null) return;
                         toast(BODY_LIMIT, { id: 'template-body-limit' });
                         // 값을 되돌리면 커서가 끝으로 튄다 — 친 자리로 돌려 놓는다

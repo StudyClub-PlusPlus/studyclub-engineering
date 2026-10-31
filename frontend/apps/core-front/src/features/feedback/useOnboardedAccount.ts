@@ -3,9 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { getUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
-import { IS_DEV, syncPreview } from '@/lib/preview';
+import type { Locale } from '@studyclub/types';
+
+import { getUser } from '@/features/auth/auth';
+import { IS_DEV, syncPreview } from '@/features/auth/preview';
 
 /**
  * 내 문의는 로그인 · 온보딩을 마친 계정만 쓴다 (스펙 「온보딩 전 계정은 쓰지 못한다」).

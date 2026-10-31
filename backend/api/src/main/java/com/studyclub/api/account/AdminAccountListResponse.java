@@ -14,7 +14,7 @@ public record AdminAccountListResponse(
      * @param navigatorOf 담당 스터디. 없으면 빈 목록
      * @param dormant 참여 중인 스터디가 하나도 없다 (계정 상태가 아니라 참여 이력으로 판정)
      * @param roleChangeBlockedReason 지금 이 행의 권한을 바꿀 수 없는 이유. 바꿀 수 있으면 null
-     * @param discordHandle 연동한 디스코드 username. 미연동이면 null — 숫자 디스코드 ID 는 내보내지 않는다
+     * @param discordLinked 디스코드 연동 여부. username과 숫자 ID는 목록에 내보내지 않는다
      */
     public record AccountSummary(
             Long id,
@@ -25,8 +25,7 @@ public record AdminAccountListResponse(
             boolean dormant,
             Instant joinedAt,
             RoleChangeBlockedReason roleChangeBlockedReason,
-            boolean discordLinked,
-            String discordHandle) {}
+            boolean discordLinked) {}
 
     public record NavigatorStudy(Long studyId, String title) {}
 }

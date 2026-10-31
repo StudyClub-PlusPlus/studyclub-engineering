@@ -65,7 +65,7 @@
 
 ## 같은 조건에 템플릿 여럿 (2026-10-30)
 
-> Spec: [갱신 2026-10-30](./spec.md) · 마이그레이션 V46 (V44 는 반 공지 수신자 유니크 키 이름 변경, V45 는 사이트 공지가 사용. 열린 PR #394 도 V46 을 쓰므로 번호는 병합 직전에 beta 최신으로 다시 확인) · 회원 탈퇴 조건은 이 범위 밖
+> Spec: [갱신 2026-10-30](./spec.md) · 마이그레이션 V50 (운영 main의 V49 다음 번호. 문의 테이블 V51 · 회신 메일 시드 V52) · 회원 탈퇴 조건은 이 범위 밖
 
 ### 스펙·문서
 
@@ -75,7 +75,7 @@
 
 ### 백엔드
 
-- [x] T063 V46 — `uk_notification_template_event_channel` 제거, `(EVENT_TYPE, CHANNEL)` 일반 인덱스. 엔티티의 `@UniqueConstraint` 도 같이 바꾼다 (stage 는 SQL 을 손으로 한 번)
+- [x] T063 V50 — `uk_notification_template_event_channel` 제거, `(EVENT_TYPE, CHANNEL)` 일반 인덱스. 엔티티의 `@UniqueConstraint` 도 같이 바꾼다 (stage 는 SQL 을 손으로 한 번)
 - [x] T064 `NotificationTemplateRepository` — 조건의 템플릿 목록(`id` 오름차순)·건수 조회, `findByEventTypeAndChannel` 제거
 - [x] T065 `NotificationCreationService` — 웰컴(템플릿 수만큼 행, 0개면 로그만)·공지(수신자 × 템플릿, 0개면 롤백)
 - [x] T066 `NotificationTemplateCommandService` — `rejectIfTaken`·유일 제약 → 409 변환 제거
@@ -89,6 +89,6 @@
 - [x] T071 `TemplateDialog` — 409 분기·`DUPLICATE` 삭제, 삭제 확인 영향 안내를 목록에서 센 같은 조건의 템플릿 수(하나뿐이면 마지막)로 가른다
 - [x] T072 동작 테스트
 - [x] T076 수정 팝업에서 조건을 바꿀 때의 영향 안내 (PR #384 리뷰) — 원래 조건의 마지막 템플릿을 다른 조건으로 옮기면 저장 전에 그 조건의 알림이 멈춘다고 알린다. 저장은 막지 않는다
-- [x] T073 빈 MySQL 8 에 V1..V46 적용 + `ddl-auto=validate` 부팅 (`backend-migration-check` 와 같은 방식, 로컬 임시 컨테이너)
+- [x] T073 빈 MySQL 8 에 V1..V52 적용 + `ddl-auto=validate` 부팅 (`backend-migration-check` 와 같은 방식, 로컬 임시 컨테이너)
 - [x] T074 로컬 Chrome 확인 (임시 MySQL + 실 API, 임시 JWT) — 같은 조건에 둘째 템플릿 추가(409 없음), 삭제 확인 안내(마지막이 아닐 때/마지막), 조건 변경 안내(마지막이면 빨간 안내, 다른 템플릿이 남거나 되돌리면 없음), 가입 한 번에 알림 행 2개와 발송 이력 화면, 스터디 공지 4행(수신자 2 × 템플릿 2)과 기록의 건수가 받는 사람 수 기준(대기·완료·실패·취소 혼합 4가지)임을 실제 MySQL 에서 확인
-- [ ] T075 stage 수동 SQL (코드 배포 후 `SHOW INDEX FROM NOTIFICATION_TEMPLATE` 로 제약 이름 확인 → V46 SQL 실행)
+- [ ] T075 stage 수동 SQL (코드 배포 후 `SHOW INDEX FROM NOTIFICATION_TEMPLATE` 로 제약 이름 확인 → V50 SQL 실행)

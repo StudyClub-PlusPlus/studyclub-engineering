@@ -71,12 +71,18 @@ describe('모집 마감 칸 (3-2) — 서버 표시 코드로 고르고, 임박�
 
   it('닫힌 것만 따로 구분한다 — 마감 경과·정원 마감', () => {
     expect(
-      deadlineLabel({ recruitDeadlineAt: '2026-09-15T14:59:00Z', deadlineBadge: 'DEADLINE_PASSED' }, AS_OF, 'Asia/Seoul'),
+      deadlineLabel(
+        { recruitDeadlineAt: '2026-09-15T14:59:00Z', deadlineBadge: 'DEADLINE_PASSED' },
+        AS_OF,
+        'Asia/Seoul',
+      ),
     ).toEqual({ text: '~09-15 (마감 경과)', tone: 'closed' });
-    expect(deadlineLabel({ recruitDeadlineAt: deadline, deadlineBadge: 'CAPACITY_FULL' }, AS_OF, 'Asia/Seoul')).toEqual({
-      text: '~09-18 (정원 마감)',
-      tone: 'closed',
-    });
+    expect(deadlineLabel({ recruitDeadlineAt: deadline, deadlineBadge: 'CAPACITY_FULL' }, AS_OF, 'Asia/Seoul')).toEqual(
+      {
+        text: '~09-18 (정원 마감)',
+        tone: 'closed',
+      },
+    );
     expect(deadlineLabel({ recruitDeadlineAt: null, deadlineBadge: 'CAPACITY_FULL' }, AS_OF, 'Asia/Seoul').text).toBe(
       '정원 마감',
     );

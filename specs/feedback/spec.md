@@ -4,7 +4,7 @@
 > 생성일: 2026-10-25
 > 갱신: 2026-10-31 — 첫 회신 HTML 메일 알림 구현. [회신 알림](#회신-알림) 참고.
 > 갱신: 2026-10-26 — PR #341 리뷰 반영. 플로팅 버튼 없음 · 상태는 회신과 묶는다 · `DELETED_AT` 없음 · 회신 알림은 아래 2026-10-31 갱신 참고 · rate limit 60초 1건 + 24시간 20건 · GIF 제외 · 이미지는 공개 폴더로 시작 · 탈퇴 때 첨부 이미지 파기 · 온보딩 필수 유지 ([결정 기록](#결정-기록))
-> 상태: 구현중 — `feat/feedback-impl` (마이그레이션 `V41__feedback.sql`)
+> 상태: 구현중 — `feat/feedback-impl` (마이그레이션 `V51__feedback.sql`)
 >
 > Story PRD:
 > - [크루는 캡틴에게 문의/오류신고를 제출할 수 있다](../../01-planning/stories/crew-submit-feedback/PRD.md)
@@ -708,7 +708,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 
 ## 출시 전 확인
 
-- **개인정보처리방침** — 문의 본문 · 첨부 이미지 · 브라우저 · OS · 화면 크기를 서버에 저장하는 것은 새 수집이다. [legal-placeholders](../../docs/legal/legal-placeholders.md#도입-예정-서비스와-그때-해야-할-개정) 의 원칙(「현재 처리하고 있는 사실만 적는다」 · 시행 전 공지)대로, 이 기능을 켜기 전에 방침의 수집 항목 · 보유 기간을 고칠지 운영진이 확인한다. 지금 방침의 「문의」는 메일(Google Workspace) 접수 기준이다
+- **개인정보처리방침 — MVP 출시 전에 고친다** (후속 항목, PR #373 리뷰). 문의 본문 · 첨부 이미지 · 브라우저 · OS · 화면 크기를 서버에 저장하는 것은 새 수집이다. [legal-placeholders](../../docs/legal/legal-placeholders.md#도입-예정-서비스와-그때-해야-할-개정) 의 원칙(「현재 처리하고 있는 사실만 적는다」 · 시행 전 공지)대로 수집 항목 · 보유 기간을 함께 고친다. 지금 방침의 「문의」는 메일(Google Workspace) 접수 기준이다
 
 ---
 
@@ -719,7 +719,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 - 제출자가 이미 탈퇴했다면 회신은 저장하되 메일은 만들지 않는다. 예약 뒤 탈퇴하면 기존 탈퇴 흐름이 대기 행을 `CANCELLED` 로 바꾸고 수신 주소·닉네임을 비식별화한다.
 - `NOTIFICATION.REFERENCE_ID = FEEDBACK.ID`, `RECIPIENT_USER_ID = 제출자`. payload 는 `nickname` · `feedbackUrl` 두 값뿐이다. 문의 제목·본문·회신·이미지·캡틴 메모·캡틴 이름은 넣지 않는다.
 - 링크는 서버 설정 `notification.site-base-url` (`NOTIFICATION_SITE_BASE_URL`, 로컬 기본 `http://localhost:4700`) + `/ko/my/feedbacks/{id}` 다. stage 는 `https://stage.studyclub.life`, 운영은 `https://studyclub.life` 로 설정한다. 요청 헤더나 요청 본문에서 사이트 주소를 받지 않는다. 로그인 후 원래 문의로 돌아오고, 본인 문의만 조회할 수 있다.
-- 제목은 `[StudyClub] 문의에 답변이 등록됐어요`. HTML 본문은 [시안](../../frontend/apps/playground/src/proto/mail/templates/feedback-replied-email.html)과 동일하며, `V48__feedback_replied_email.sql` 로 기본 템플릿을 등록한다. stage 는 Flyway 가 꺼져 있어 같은 SQL 을 한 번 적용한다.
+- 제목은 `[StudyClub] 문의에 답변이 등록됐어요`. HTML 본문은 [시안](../../frontend/apps/playground/src/proto/mail/templates/feedback-replied-email.html)과 동일하며, `V52__feedback_replied_email.sql` 로 기본 템플릿을 등록한다. stage 는 Flyway 가 꺼져 있어 같은 SQL 을 한 번 적용한다.
 - 실제 발송은 기존 폴러·HTML 렌더러·메일 클라이언트를 사용한다. 전송 실패는 알림만 `FAILED`, 회신과 `DONE` 은 유지한다. 자동 재발송은 없고 운영자가 발송 이력에서 같은 행을 재발송한다.
 - 백오피스 알림 템플릿 조건·발송 이력에 「문의 회신」을 표시한다. 마지막 템플릿을 지우면 새 첫 회신 저장이 실패하므로 삭제 확인에서 이를 안내한다.
 - ops 알림·분석 이벤트는 추가하지 않는다.
@@ -758,6 +758,7 @@ API 는 어디서 팝업을 여는지와 상관없다. 화면 쪽 결정만 적�
 | 2026-10-31 | 첫 회신 메일 구현, 회신·예약 원자적 저장, 과거 회신 소급 발송 없음 | 기획 확인 |
 | 2026-10-26 | 탈퇴 때 첨부 이미지 파기, 문의 행은 남김 | PR #341 리뷰 |
 | 2026-10-26 | 온보딩 필수 유지 — 동의 전 수집 · 공용 업로드 범위 | PR #341 리뷰 답변 |
+| 2026-10-28 | 개인정보처리방침 수집 항목 · 보유 기간은 MVP 출시 전에 고친다 | PR #373 리뷰 |
 
 ## 미확정
 

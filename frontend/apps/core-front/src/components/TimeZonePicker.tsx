@@ -2,10 +2,10 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
 import { Check, ChevronDown } from 'lucide-react';
 
-import type { Locale } from '@/lib/content';
-import { ONBOARDING_ZONES, zoneOffset } from '@/lib/onboarding';
+import { ONBOARDING_ZONES, zoneOffset } from '@/features/onboarding/model';
 
 const ZONES = [
   { zone: 'Asia/Seoul', ko: '한국 · 서울', en: 'Korea · Seoul' },

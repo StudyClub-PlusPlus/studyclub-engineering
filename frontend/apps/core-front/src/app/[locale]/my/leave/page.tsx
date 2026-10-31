@@ -7,12 +7,16 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { Locale } from '@studyclub/types';
 import { Button, Select } from '@studyclub/ui';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 
-import { deleteAccount, getUser, type LeaveReason } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
-import { clearMyLocalData, getActiveNavigatorStudies, type ActiveNavigatorStudy } from '@/lib/me';
+import { clearMyLocalData } from '@/features/account/local-state';
+import { getActiveNavigatorStudies, type ActiveNavigatorStudy } from '@/features/account/repository';
+import { leaveFormSchema, type LeaveFormValues } from '@/features/account/schema';
+import { deleteAccount, getUser, type LeaveReason } from '@/features/auth/auth';
 
 const UNKNOWN_WARNING_TITLE = '담당 스터디 여부를 확인하지 못했습니다';
 const UNKNOWN_WARNING_BODY =
@@ -32,12 +36,15 @@ export default function LeavePage() {
   const [ready, setReady] = useState(false);
   const [navigatorStudies, setNavigatorStudies] = useState<ActiveNavigatorStudy[]>([]);
   // 조회 자체가 실패해 "맡은 스터디가 없다"고 확정할 수 없는 경우 — 빈 배열과 구분해야 한다
-  // (lib/me.ts: NavigatorStudiesResult 참고). 조용히 빈 경고로 처리하면 네트워크가 불안정한
+  // (features/account/repository.ts: NavigatorStudiesResult 참고). 조용히 빈 경고로 처리하면 네트워크가 불안정한
   // 순간에 네비게이터가 경고 없이 탈퇴해버릴 수 있다.
   const [navigatorCheckFailed, setNavigatorCheckFailed] = useState(false);
   // "다시 확인" 버튼 전용 로딩 — 최초 조회(ready 이전)와는 별개다.
   const [checking, setChecking] = useState(false);
-  const [reason, setReason] = useState<LeaveReason | ''>('');
+  const { register, handleSubmit } = useForm<LeaveFormValues>({
+    resolver: zodResolver(leaveFormSchema),
+    defaultValues: { reason: '' },
+  });
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +76,7 @@ export default function LeavePage() {
   const blockedByCheckFailure = navigatorCheckFailed;
   const requiresConfirmation = hasNavigatorWarning;
 
-  async function handleLeaveClick() {
+  async function handleLeaveClick({ reason }: LeaveFormValues) {
     if (blockedByCheckFailure) {
       return;
     }
@@ -119,12 +126,7 @@ export default function LeavePage() {
       </header>
 
       <div className='mt-6'>
-        <Select
-          label='탈퇴 사유'
-          helper='선택하지 않아도 탈퇴할 수 있습니다.'
-          value={reason}
-          onChange={(e) => setReason(e.target.value as LeaveReason | '')}
-        >
+        <Select label='탈퇴 사유' helper='선택하지 않아도 탈퇴할 수 있습니다.' {...register('reason')}>
           <option value=''>사유 선택</option>
           {REASON_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -147,9 +149,7 @@ export default function LeavePage() {
                   <li key={s.studyId}>· {s.title}</li>
                 ))}
               </ul>
-              <p className='mt-2 text-fg'>
-                캡틴에게 탈퇴 사실을 꼭 공유해 주시길 바랍니다.
-              </p>
+              <p className='mt-2 text-fg'>캡틴에게 탈퇴 사실을 꼭 공유해 주시길 바랍니다.</p>
             </>
           ) : (
             <>
@@ -158,12 +158,7 @@ export default function LeavePage() {
               </p>
               <p className='mt-2 text-fg'>{UNKNOWN_WARNING_BODY}</p>
               <div className='mt-3 flex justify-end'>
-                <Button
-                  variant='secondary'
-                  size='sm'
-                  loading={checking}
-                  onClick={checkNavigatorStudies}
-                >
+                <Button variant='secondary' size='sm' loading={checking} onClick={checkNavigatorStudies}>
                   다시 확인
                 </Button>
               </div>
@@ -177,7 +172,7 @@ export default function LeavePage() {
                 <Button variant='secondary' size='sm' onClick={() => setConfirming(false)}>
                   탈퇴 취소
                 </Button>
-                <Button variant='destructive' size='sm' loading={pending} onClick={handleLeaveClick}>
+                <Button variant='destructive' size='sm' loading={pending} onClick={handleSubmit(handleLeaveClick)}>
                   탈퇴
                 </Button>
               </div>
@@ -202,7 +197,7 @@ export default function LeavePage() {
             variant='destructive'
             loading={pending}
             disabled={blockedByCheckFailure}
-            onClick={handleLeaveClick}
+            onClick={handleSubmit(handleLeaveClick)}
           >
             탈퇴하기
           </Button>

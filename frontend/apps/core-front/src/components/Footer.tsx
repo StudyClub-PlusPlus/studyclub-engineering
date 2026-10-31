@@ -1,10 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import type { Locale, Site } from '@studyclub/types';
 import { ArrowUpRight } from 'lucide-react';
 
 import { SocialIcons } from './SocialLinks';
-import type { Locale, Site } from '@/lib/content';
 import { m, t } from '@/lib/i18n';
 
 
@@ -15,7 +15,9 @@ export function Footer({ locale, site }: { locale: Locale; site: Site }) {
         <div>
           <div className='flex items-center gap-2 type-title-md'>
             <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
-            StudyClub
+            <span>
+              Study<span className='text-logo-accent'>Club</span>
+            </span>
           </div>
           <p className='mt-3 type-body-sm text-(--color-fg-muted)'>
             {m('footer.tagline', locale)} · {t(site.community.region, locale)} · {site.community.member_count.toLocaleString()}+

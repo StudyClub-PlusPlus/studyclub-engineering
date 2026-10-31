@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
 
-import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/mock';
+import type { ApplicationQuestion, ApplicationQuestionType } from '@studyclub/types';
 import { Checkbox, Input, Select, Textarea } from '@studyclub/ui';
 import { Pencil, X } from 'lucide-react';
 
-import { allowsOther } from './question';
+import { allowsOther } from '@/features/application-form/question';
 
 const TEXT_ANSWER_MAX = 200;
 const TEXTAREA_ANSWER_MAX = 2_000;
@@ -79,6 +79,10 @@ function formatInline(text: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
+/**
+ * 신청 폼 설명 · 질문 설명의 마크다운 — 사이트(core-front)와 같은 규칙으로 그린다.
+ * 빈 줄은 빈 줄 그대로 남긴다(`<br>` 한 줄) — 빈 줄로 문단을 나눈 글이 붙어 보이지 않게.
+ */
 export function MarkdownLite({ text, className }: { text: string; className?: string }) {
   const blocks: ReactNode[] = [];
   let listBuffer: string[] = [];
@@ -148,7 +152,10 @@ export function MarkdownLite({ text, className }: { text: string; className?: st
     }
 
     flushList(`list-${idx}`);
-    if (line.trim() === '') return;
+    if (line.trim() === '') {
+      blocks.push(<br key={`br-${idx}`} />);
+      return;
+    }
     blocks.push(<p key={`p-${idx}`}>{formatInline(line, `p-${idx}`)}</p>);
   });
   if (codeBuffer !== null) {
@@ -246,7 +253,9 @@ export function FormHeaderCard({
 
 export function OptionMarker({ type, index }: { type: ApplicationQuestionType; index?: number }) {
   if (type === 'select') {
-    return <span className='w-5 shrink-0 text-center type-label-sm tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>;
+    return (
+      <span className='w-5 shrink-0 text-center type-label-sm tabular-nums text-fg-muted'>{(index ?? 0) + 1}.</span>
+    );
   }
   if (type === 'checkbox') {
     return <span className='h-4 w-4 shrink-0 rounded-xs border border-border' aria-hidden />;

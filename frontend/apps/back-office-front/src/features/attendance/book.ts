@@ -1,4 +1,4 @@
-import { attendanceRate } from '@studyclub/mock';
+import { attendanceRate } from '@studyclub/utils';
 
 import type { AttendanceBook, AttendanceStatus } from '@/features/schedule/store';
 

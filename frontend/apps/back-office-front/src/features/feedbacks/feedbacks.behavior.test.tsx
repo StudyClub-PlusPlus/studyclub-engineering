@@ -95,15 +95,19 @@ function page(items: ApiAdminFeedback[], total = items.length, offset = 0): ApiA
 
 function renderWith(ui: ReactNode) {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: 60_000, refetchOnWindowFocus: false }, mutations: { retry: false } },
+    defaultOptions: {
+      queries: { retry: false, staleTime: 60_000, refetchOnWindowFocus: false },
+      mutations: { retry: false },
+    },
   });
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
-const listCalls = () => httpMock.mock.calls.map((c) => String(c[0])).filter((p) => p.startsWith('/api/admin/feedbacks?'));
-const patchCalls = () => httpMock.mock.calls.filter((c) => c[1]?.method === 'PATCH');
+const listCalls = () =>
+  httpMock.mock.calls.map((c) => String(c[0])).filter((p) => p.startsWith('/api/admin/feedbacks?'));
+const patchCalls = () => httpMock.mock.calls.filter((c) => c[2]?.method === 'PATCH');
 const detailReads = () =>
-  httpMock.mock.calls.filter((c) => String(c[0]) === '/api/admin/feedbacks/241' && c[1]?.method !== 'PATCH');
+  httpMock.mock.calls.filter((c) => String(c[0]) === '/api/admin/feedbacks/241' && c[2]?.method !== 'PATCH');
 
 /** 표 안만 본다 — 필터의 <option>(미확인·완료 …)과 뱃지 문구가 겹친다. */
 const table = () => within(screen.getByRole('table'));
@@ -123,7 +127,14 @@ describe('운영 목록', () => {
       page(
         [
           item({ id: 3, status: 'NEW', doneBy: null }),
-          item({ id: 2, type: 'QUESTION', title: '클럽이랑 스터디는 뭐가 다른가요', submitter: { nickname: null }, status: 'DONE', doneBy: { nickname: '세린' } }),
+          item({
+            id: 2,
+            type: 'QUESTION',
+            title: '클럽이랑 스터디는 뭐가 다른가요',
+            submitter: { nickname: null },
+            status: 'DONE',
+            doneBy: { nickname: '세린' },
+          }),
           item({ id: 1, type: 'IDEA', title: '다크 모드', status: 'DONE', doneBy: { nickname: null } }),
         ],
         24,
@@ -151,7 +162,10 @@ describe('운영 목록', () => {
     expect(within(rows[2]!).queryByText('-')).not.toBeInTheDocument();
 
     // 제목은 한 줄로 자르고, 가리키면 전체 제목이 뜬다
-    expect(within(rows[1]!).getByText('클럽이랑 스터디는 뭐가 다른가요')).toHaveAttribute('title', '클럽이랑 스터디는 뭐가 다른가요');
+    expect(within(rows[1]!).getByText('클럽이랑 스터디는 뭐가 다른가요')).toHaveAttribute(
+      'title',
+      '클럽이랑 스터디는 뭐가 다른가요',
+    );
     // 총 건수는 걸러진 뒤 전체 — 보이는 줄 수가 아니다
     expect(screen.getByTestId('feedback-total')).toHaveTextContent('총 24건');
     // 24건 = 2쪽 — 페이지 번호가 선다
@@ -225,7 +239,9 @@ describe('운영 목록', () => {
 
       await vi.advanceTimersByTimeAsync(150);
       await waitFor(() => expect(memoryUrl.get()).toBe('q=%EC%B6%9C%EC%84%9D'));
-      await waitFor(() => expect(listCalls().some((p) => p.includes('q=%EC%B6%9C%EC%84%9D') && p.includes('offset=0'))).toBe(true));
+      await waitFor(() =>
+        expect(listCalls().some((p) => p.includes('q=%EC%B6%9C%EC%84%9D') && p.includes('offset=0'))).toBe(true),
+      );
     } finally {
       vi.useRealTimers();
     }
@@ -277,9 +293,12 @@ describe('운영 목록', () => {
 });
 
 /** 상세 서버 흉내 — GET 은 `current`, PATCH 는 `onPatch` 가 정한다. */
-function detailServer(initial: ApiAdminFeedbackDetail, onPatch: (body: Record<string, unknown>) => Promise<ApiAdminFeedbackDetail>) {
+function detailServer(
+  initial: ApiAdminFeedbackDetail,
+  onPatch: (body: Record<string, unknown>) => Promise<ApiAdminFeedbackDetail>,
+) {
   const state = { current: initial };
-  httpMock.mockImplementation(async (path: string, init?: RequestInit) => {
+  httpMock.mockImplementation(async (path: string, _schema: unknown, init?: RequestInit) => {
     if (init?.method === 'PATCH') {
       const next = await onPatch(JSON.parse(String(init.body)) as Record<string, unknown>);
       state.current = next;
@@ -313,7 +332,10 @@ describe('운영 상세', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '첨부 이미지 2 크게 보기' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByRole('img', { name: '첨부 이미지 2' })).toHaveAttribute('src', 'https://cdn.example/b.webp');
+    expect(within(dialog).getByRole('img', { name: '첨부 이미지 2' })).toHaveAttribute(
+      'src',
+      'https://cdn.example/b.webp',
+    );
   });
 
   it('첨부가 없으면 칸을 두지 않고, 모르는 브라우저·화면 크기는 「-」, 탈퇴한 제출자는 「탈퇴한 사용자」', async () => {
@@ -392,7 +414,7 @@ describe('상태 — selectableStatuses 대로 그린다', () => {
     fireEvent.click(screen.getByRole('option', { name: /^확인/ }));
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('상태를 변경했습니다.'));
-    expect(JSON.parse(String(patchCalls()[0]![1]?.body))).toEqual({ status: 'SEEN' });
+    expect(JSON.parse(String(patchCalls()[0]![2]?.body))).toEqual({ status: 'SEEN' });
     expect(screen.getByRole('button', { name: '상태 확인, 바꾸기' })).toBeInTheDocument();
     expect(detailReads()).toHaveLength(1);
   });
@@ -458,7 +480,7 @@ describe('회신', () => {
     fireEvent.click(screen.getByRole('button', { name: '전송' }));
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('회신을 보냈습니다.'));
-    expect(JSON.parse(String(patchCalls()[0]![1]?.body))).toEqual({ reply: REPLY });
+    expect(JSON.parse(String(patchCalls()[0]![2]?.body))).toEqual({ reply: REPLY });
     expect(screen.getByTestId('feedback-reply')).toHaveTextContent(REPLY);
     expect(screen.getByRole('button', { name: '수정' })).toBeInTheDocument();
     expect(screen.getByTestId('status-locked')).toHaveTextContent('완료');
@@ -486,7 +508,10 @@ describe('회신', () => {
       doneBy: { nickname: '세린' },
       reply: { content: REPLY, repliedAt: '2026-10-25T09:00:00Z' },
     });
-    detailServer(replied, async (body) => ({ ...replied, reply: { content: String(body.reply), repliedAt: '2026-10-25T09:00:00Z' } }));
+    detailServer(replied, async (body) => ({
+      ...replied,
+      reply: { content: String(body.reply), repliedAt: '2026-10-25T09:00:00Z' },
+    }));
     renderWith(<FeedbackDetailPage />);
 
     fireEvent.click(await screen.findByRole('button', { name: '수정' }));
@@ -496,7 +521,7 @@ describe('회신', () => {
     fireEvent.click(within(input.closest('section')!).getByRole('button', { name: '저장' }));
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('회신을 고쳤습니다.'));
-    expect(JSON.parse(String(patchCalls()[0]![1]?.body))).toEqual({ reply: `${REPLY} 곧 연락드릴게요.` });
+    expect(JSON.parse(String(patchCalls()[0]![2]?.body))).toEqual({ reply: `${REPLY} 곧 연락드릴게요.` });
     expect(screen.getByTestId('feedback-reply')).toHaveTextContent(`${REPLY} 곧 연락드릴게요.`);
   });
 });
@@ -517,7 +542,7 @@ describe('캡틴 전용 메모', () => {
     fireEvent.click(save());
 
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('저장했습니다.'));
-    expect(JSON.parse(String(patchCalls()[0]![1]?.body))).toEqual({ adminMemo: '' });
+    expect(JSON.parse(String(patchCalls()[0]![2]?.body))).toEqual({ adminMemo: '' });
     expect(save()).toBeDisabled();
   });
 

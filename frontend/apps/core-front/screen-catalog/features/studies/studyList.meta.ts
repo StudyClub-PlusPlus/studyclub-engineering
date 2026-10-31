@@ -3,6 +3,15 @@ import type { ScreenStateDef } from '../../types';
 export const studyScreenStates: ScreenStateDef[] = [
   {
     id: 'study-list--default',
+    prdScenarios: [
+      'CORE-ST-006-V01',
+      'CORE-ST-006-S01',
+      'CORE-ST-006-S04',
+      'CORE-ST-006-S05',
+      'CORE-ST-006-S06',
+      'CORE-ST-006-S07',
+      'CORE-ST-006-S08',
+    ],
     label: '스터디 목록 — 기본',
     pageId: 'study-list',
     rationale: '스터디 카드 그리드가 올바르게 렌더되는지 확인한다.',
@@ -17,6 +26,7 @@ export const studyScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'study-detail--recruiting',
+    prdScenarios: ['CORE-ST-007-V01', 'CORE-ST-007-S01'],
     label: '스터디 상세 — 모집 중 (study_id=1, ai-paper-study, status=OPEN, recruitStatus=RECRUITING)',
     pageId: 'study-detail',
     // spec: study/spec — status=OPEN + study-recruit-status — recruitStatus=RECRUITING → 신청하기 버튼 표시
@@ -32,6 +42,7 @@ export const studyScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'study-detail--ongoing',
+    prdScenarios: ['CORE-ST-007-V04'],
     label: '스터디 상세 — 진행 중 (study_id=19, system-design-interview-ongoing, status=ONGOING, recruitStatus=null)',
     pageId: 'study-detail',
     // spec: study-recruit-status — status != OPEN 이면 recruitStatus=null → 신청 불가 상태 표시
@@ -47,6 +58,7 @@ export const studyScreenStates: ScreenStateDef[] = [
   },
   {
     id: 'study-detail--not-found',
+    prdScenarios: ['CORE-ST-007-V06', 'CORE-ST-007-S03', 'CORE-ST-008-V20'],
     label: '스터디 상세 — 존재하지 않는 ID (study_id=9999)',
     pageId: 'study-detail',
     rationale: 'StudyDetailView가 404 응답을 받았을 때 찾을 수 없음 안내를 올바르게 렌더하는지 확인한다.',
@@ -56,12 +68,13 @@ export const studyScreenStates: ScreenStateDef[] = [
     viewports: ['desktop'],
     assertions: {
       visible: ['main'],
-      text: { 'main': '스터디를 찾을 수 없어요' },
+      text: { main: '스터디를 찾을 수 없어요' },
     },
     screenshot: { fullPage: false },
   },
   {
-    id: 'study-apply--modal',
+    id: 'study-detail--application-form',
+    prdScenarios: ['CORE-ST-008-V03', 'CORE-ST-008-S01'],
     label: '스터디 신청 모달 — 기본 (study_id=6, past-project-review)',
     pageId: 'study-detail',
     rationale: '스터디 상세에서 신청하기 클릭 시 뜨는 신청 폼 모달과 질문 필드들이 올바르게 렌더링되는지 확인한다.',
@@ -75,6 +88,8 @@ export const studyScreenStates: ScreenStateDef[] = [
             nickname: '테스트',
             picture: null,
             role: 'MEMBER',
+            // 가입을 마친 회원 — 없으면 「신청하기」가 온보딩으로 보낸다
+            onboardingCompletedAt: '2026-08-01T00:00:00Z',
           },
         },
         // 연동 여부는 GET /api/me 의 discordLinked — 개발 서버의 MSW 목이 진짜 응답에 이 값을 덧붙인다
@@ -100,10 +115,12 @@ export const studyScreenStates: ScreenStateDef[] = [
     screenshot: { fullPage: false },
   },
   {
-    id: 'study-apply--discord-gate',
+    id: 'study-detail--discord-gate',
+    prdScenarios: ['CORE-ST-008-V08', 'CORE-ST-008-S03'],
     label: '디스코드 연동 모달 — 미연동 크루 (study_id=6)',
     pageId: 'study-detail',
-    rationale: 'GET /api/me 의 discordLinked 가 false 인 크루가 신청하기를 누르면 신청 폼 대신 디스코드 연동 모달이 뜨는지 확인한다.',
+    rationale:
+      'GET /api/me 의 discordLinked 가 false 인 크루가 신청하기를 누르면 신청 폼 대신 디스코드 연동 모달이 뜨는지 확인한다.',
     recipe: {
       storage: [
         {
@@ -114,6 +131,8 @@ export const studyScreenStates: ScreenStateDef[] = [
             nickname: '테스트',
             picture: null,
             role: 'MEMBER',
+            // 가입을 마친 회원 — 없으면 「신청하기」가 온보딩으로 보낸다
+            onboardingCompletedAt: '2026-08-01T00:00:00Z',
           },
         },
         { key: 'msw-discord-linked', value: false },

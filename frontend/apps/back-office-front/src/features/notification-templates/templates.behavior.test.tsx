@@ -51,7 +51,7 @@ function tpl(patch: Partial<NotificationTemplate> = {}): NotificationTemplate {
 function fakeServer(initial: NotificationTemplate[], failWith?: { method: string; status: number; message?: string }) {
   let db = initial.map((t) => ({ ...t }));
   let nextId = Math.max(0, ...db.map((t) => t.id)) + 1;
-  httpMock.mockImplementation(async (path, init) => {
+  httpMock.mockImplementation(async (path, _schema, init) => {
     const method = init?.method ?? 'GET';
     if (failWith && failWith.method === method) throw new ApiError(failWith.status, failWith.message ?? '실패');
     if (method === 'GET') return db;
@@ -85,7 +85,7 @@ function renderPage() {
   );
 }
 
-const callsOf = (method: string) => httpMock.mock.calls.filter(([, init]) => (init?.method ?? 'GET') === method);
+const callsOf = (method: string) => httpMock.mock.calls.filter(([, , init]) => (init?.method ?? 'GET') === method);
 
 describe('알림 템플릿 화면', () => {
   beforeEach(() => {
@@ -155,7 +155,7 @@ describe('알림 템플릿 화면', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    const [path, init] = callsOf('POST')[0]!;
+    const [path, , init] = callsOf('POST')[0]!;
     expect(path).toBe(BASE);
     expect(JSON.parse(String(init?.body))).toEqual({ eventType: 'USER_REGISTERED', subject: '새 문구', body: BODY });
 
@@ -188,7 +188,7 @@ describe('알림 템플릿 화면', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    const [path, init] = callsOf('PUT')[0]!;
+    const [path, , init] = callsOf('PUT')[0]!;
     expect(path).toBe(`${BASE}/1`);
     expect(JSON.parse(String(init?.body))).toEqual({ eventType: 'USER_REGISTERED', subject: '바뀐 제목', body: BODY });
     await screen.findByText('바뀐 제목');
@@ -220,7 +220,7 @@ describe('알림 템플릿 화면', () => {
 
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(JSON.parse(String(callsOf('PUT')[0]![1]?.body))).toEqual({ eventType: 'USER_REGISTERED', subject, body });
+    expect(JSON.parse(String(callsOf('PUT')[0]![2]?.body))).toEqual({ eventType: 'USER_REGISTERED', subject, body });
   });
 
   it('일반 텍스트의 태그 모양 글자를 실행하지 않고 줄바꿈과 변수 원문을 표시한다', async () => {
@@ -385,9 +385,9 @@ describe('알림 템플릿 화면', () => {
     fakeServer([tpl()]);
     let release!: () => void;
     const base = httpMock.getMockImplementation()!;
-    httpMock.mockImplementation(async (path, init) => {
+    httpMock.mockImplementation(async (path, _schema, init) => {
       if (init?.method === 'PUT') await new Promise<void>((resolve) => (release = resolve));
-      return base(path, init);
+      return base(path, _schema, init);
     });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
@@ -413,15 +413,15 @@ describe('알림 템플릿 화면', () => {
     const dialog = screen.getByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     await waitFor(() => expect(callsOf('PUT')).toHaveLength(1));
-    expect(callsOf('PUT')[0]![1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(callsOf('PUT')[0]![2]?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it('요청 시간이 지나 끊기면 실패로 알리고 팝업을 닫을 수 있다', async () => {
     fakeServer([tpl()]);
     const base = httpMock.getMockImplementation()!;
-    httpMock.mockImplementation(async (path, init) => {
+    httpMock.mockImplementation(async (path, _schema, init) => {
       if (init?.method === 'PUT') throw new DOMException('요청 시간 초과', 'TimeoutError');
-      return base(path, init);
+      return base(path, _schema, init);
     });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
@@ -642,7 +642,7 @@ describe('알림 템플릿 화면', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    const [path, init] = callsOf('POST')[0]!;
+    const [path, , init] = callsOf('POST')[0]!;
     expect(path).toBe(BASE);
     expect(JSON.parse(String(init?.body))).toEqual({
       eventType: 'STUDY_NOTICE',
@@ -769,7 +769,7 @@ describe('알림 템플릿 화면', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '추가' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(JSON.parse(String(callsOf('POST')[0][1]?.body))).toEqual({
+    expect(JSON.parse(String(callsOf('POST')[0][2]?.body))).toEqual({
       eventType: 'USER_REGISTERED',
       subject: '둘째 환영 메일',
       body: '둘째 본문',
@@ -843,12 +843,12 @@ describe('알림 템플릿 화면', () => {
     fakeServer([tpl()]);
     const base = httpMock.getMockImplementation()!;
     let reject!: (reason: Error) => void;
-    httpMock.mockImplementation(async (path, init) =>
+    httpMock.mockImplementation(async (path, _schema, init) =>
       init?.method === 'PUT'
         ? new Promise((_resolve, fail) => {
             reject = fail;
           })
-        : base(path, init),
+        : base(path, _schema, init),
     );
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));
@@ -871,7 +871,7 @@ describe('알림 템플릿 화면', () => {
     let latest!: (value: NotificationTemplate[]) => void;
     let gets = 0;
     let oldSignal: AbortSignal | undefined;
-    httpMock.mockImplementation(async (_path, init) => {
+    httpMock.mockImplementation(async (_path, _schema, init) => {
       if (init?.method === 'POST') return tpl({ subject: '새 문구' });
       if (++gets === 1) {
         oldSignal = init?.signal as AbortSignal;
@@ -902,9 +902,9 @@ describe('알림 템플릿 화면', () => {
     fakeServer([tpl()]);
     const base = httpMock.getMockImplementation()!;
     let gets = 0;
-    httpMock.mockImplementation(async (path, init) => {
+    httpMock.mockImplementation(async (path, _schema, init) => {
       if ((!init?.method || init.method === 'GET') && ++gets === 3) throw new ApiError(500, '목록 실패');
-      return base(path, init);
+      return base(path, _schema, init);
     });
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: '회원가입' }));

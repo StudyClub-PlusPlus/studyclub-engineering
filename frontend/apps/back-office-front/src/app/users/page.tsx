@@ -14,6 +14,7 @@ import { UsersTable } from '@/features/users/components/UsersTable';
 import { TAB_OPTIONS } from '@/features/users/labels';
 import { useUsers } from '@/features/users/queries';
 import { USER_PAGE_SIZE, type UserFilter, type UserRole } from '@/features/users/types';
+import { useRevealedDiscordHandles } from '@/features/users/use-revealed-discord-handles';
 import { useRevealedEmails } from '@/features/users/use-revealed-emails';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
@@ -58,7 +59,8 @@ function UsersAdminContent() {
   );
 
   const { data, error, isPending, isPlaceholderData, dataUpdatedAt } = useUsers(filter);
-  const { emails, reveal } = useRevealedEmails(dataUpdatedAt);
+  const { emails, reveal, hide } = useRevealedEmails(dataUpdatedAt);
+  const { handles, reveal: revealDiscord, hide: hideDiscord } = useRevealedDiscordHandles(dataUpdatedAt);
 
   // 권한을 바꾼 뒤 필터 결과가 줄면 지금 페이지가 범위 밖일 수 있다(서버는 빈 items + 실제 total).
   // 에러가 아니므로 total 로 마지막 페이지를 계산해 다시 부른다(결과가 아예 없으면 첫 페이지).
@@ -119,7 +121,17 @@ function UsersAdminContent() {
       {isPending && !error ? (
         <p className='py-10 text-center type-body-sm text-fg-muted'>불러오는 중…</p>
       ) : (
-        data && <UsersTable rows={data.items} revealed={emails} onReveal={reveal} />
+        data && (
+          <UsersTable
+            rows={data.items}
+            revealed={emails}
+            onReveal={reveal}
+            onHide={hide}
+            revealedDiscord={handles}
+            onRevealDiscord={revealDiscord}
+            onHideDiscord={hideDiscord}
+          />
+        )
       )}
 
       <Pagination page={page} total={pageCount} onChange={setPage} className='mt-4' />

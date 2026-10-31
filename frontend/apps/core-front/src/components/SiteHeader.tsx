@@ -1,11 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import type { Locale } from '@studyclub/types';
+
 import { MobileNav } from '@/components/MobileNav';
 import { MyStudiesLink } from '@/components/MyStudiesLink';
 import { NavAuth } from '@/components/NavAuth';
 import { NavLinks } from '@/components/NavLinks';
-import type { Locale } from '@/lib/content';
 import { m } from '@/lib/i18n';
 
 export function SiteHeader({
@@ -32,7 +33,9 @@ export function SiteHeader({
       <div className='mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6 md:gap-7'>
         <Link href={`/${locale}`} className='flex shrink-0 items-center gap-2 type-title-md'>
           <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
-          StudyClub
+          <span>
+            Study<span className='text-logo-accent'>Club</span>
+          </span>
         </Link>
 
         <NavLinks links={links} mentoring={mentoring} />
@@ -48,8 +51,9 @@ export function SiteHeader({
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='hidden rounded-full px-4 py-2 type-label-lg text-white shadow-sm transition-colors sm:block'
-            style={{ background: 'var(--color-brand)' }}
+            className='sc-button hidden type-label-lg sm:inline-flex'
+            data-variant='tertiary'
+            data-size='md'
           >
             {m('nav.join', locale)}
           </a>

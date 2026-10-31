@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { LIFECYCLE_HINT, LIFECYCLE_LABEL, LIFECYCLE_ORDER } from '@console/components/lifecycle';
 import { ACCOUNT_ROLES, PERMISSIONS, PERMISSION_GROUPS, ROLE_LABEL, scopeOf } from '@console/lib/roles';
 import { ZONES } from '@core/lib/zones';
-import { STUDY_CATEGORIES } from '@studyclub/mock';
+import { STUDY_CATEGORIES } from '@studyclub/utils';
 
 const REPO = 'https://github.com/StudyClub-PlusPlus/studyclub-engineering/blob/beta/01-planning/_registry/policies';
 

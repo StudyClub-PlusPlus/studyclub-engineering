@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 
-import { getUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
+import { getUser } from '@/features/auth/auth';
 import { announceMenuOpen, closeOnOtherMenu } from '@/lib/header-menus';
 import { t } from '@/lib/i18n';
 

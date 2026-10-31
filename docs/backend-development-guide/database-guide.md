@@ -63,8 +63,9 @@ stage 의 두 값은 k8s `studyclub-api-stage-env` 시크릿이 넣는다. **pro
 - 마이그레이션 SQL 이 실제 MySQL 에서 돈다
 - 엔티티 매핑과 마이그레이션이 만든 스키마가 일치한다 (`validate` 통과)
 
-stage 를 리허설로 쓰는 것보다 정확하다 — CI 는 **항상 빈 DB 에서 시작**하기 때문이다.
-stage DB 는 누적된 상태라 "우연히 되는" 경우가 생긴다.
+빈 DB 검사는 최초 설치를 검증한다. 버전 검사 CI는 **운영 `main`에 있는 SQL이 보존되고 새 버전이 그보다 큰지**도 검사한다. 빈 DB 검사만으로는 이미 적용된 버전보다 낮은 파일을 뒤늦게 추가하는 오류를 잡지 못한다.
+
+실제 업데이트는 `NotificationMigrationUpgradeIntegrationTest`로 검증한다. 별도 MySQL DB와 `main` SQL을 내보낸 폴더를 각각 `MIGRATION_UPGRADE_DB_URL`·`MIGRATION_BASELINE_DIR`로 지정하고 DB 계정은 `MIGRATION_UPGRADE_DB_USERNAME`·`MIGRATION_UPGRADE_DB_PASSWORD`로 전달한다. 운영 DB가 아닌 임시 DB에서만 실행한다. 기존 이력·문구 보존, 복수 템플릿 저장, 문의 테이블·회신 시드 생성 및 재실행을 검사한다.
 
 > **stage 는 prod 와 다른 DB 다** (2026-08-31 분리). 그전까지 stage 가 prod 인스턴스의 같은 스키마를
 > 그대로 썼기 때문에, 그 상태로 `update` 를 켰다면 **stage 배포가 운영 컬럼을 바꿨다.**
@@ -85,6 +86,7 @@ backend/notification/src/main/resources/db/migration/  ← 알림 모듈도 쓴�
 번호가 겹치면 터진다.** (2026-10-03 기준 domain `V1~V13`·`V15~V25` + notification `V14`)
 
 1. **이름은 `V{번호}__{스네이크_설명}.sql`.** 번호는 이어서 증가. 밑줄 두 개(`__`)다.
+   운영 `main`에 반영된 최신 번호보다 커야 한다. 번호가 비어 있어도 이미 적용된 최신 버전 아래에 추가하면 기본 Flyway 검증이 실패한다.
    정수만 쓴다 — 소수 버전(`V22.1`)도 접두 0(`V026`)도 안 된다.
    Flyway 는 `V026` 과 `V26` 을 **같은 26** 으로 본다.
 2. **적용된 마이그레이션은 절대 수정하지 않는다.** Flyway 는 체크섬을 저장하므로
@@ -114,7 +116,7 @@ bash backend/scripts/check-migration-versions.sh
 # ✓ 마이그레이션 25개 · 번호 중복 없음 · 최신 V25 → 다음은 V26
 ```
 
-CI 는 같은 스크립트를 PR 마다 돌린다(`migration-version` 워크플로). 이 체크는
+CI 는 같은 스크립트를 PR 마다 돌린다(`migration-version` 워크플로). CI에서는 `main`을 읽어 새 파일의 번호가 운영 최신 번호보다 큰지, 기존 SQL이 변경·삭제되지 않았는지도 확인한다. 로컬에서는 `origin/main`이 있으면 같은 검사를 하고, 별도 기준은 `MIGRATION_BASELINE_REF`로 지정할 수 있다. 이 체크는
 `beta` 브랜치 보호의 **필수 조건**이고 "Require branches to be up to date" 가 켜져 있다 —
 그래서 머지 버튼을 누르기 전에 **최신 base 기준으로 다시 검사**된다. 둘이 한 쌍이어야
 작동한다. base 가 움직여도 워크플로가 자동 재실행되지는 않아서, up-to-date 요구가
