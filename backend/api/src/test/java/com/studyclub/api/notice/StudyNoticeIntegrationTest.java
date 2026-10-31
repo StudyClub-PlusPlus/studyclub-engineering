@@ -843,6 +843,97 @@ class StudyNoticeIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 같은 조건에 템플릿이 둘이면 받는 사람마다 메일 행이 둘이다 (행마다 templateId 가 다르다)")
+    void twoTemplatesCreateTwoRowsPerRecipient() {
+        NotificationTemplate second = secondNoticeTemplate();
+
+        var response =
+                post(
+                        collection(),
+                        sendBody("첫 공지", "본문", List.of("EMAIL"), member, paused),
+                        LEADER_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).containsEntry("recipientCount", 2);
+        List<Notification> mails = noticeMails();
+        assertThat(mails).hasSize(4);
+        assertThat(mails)
+                .extracting(Notification::getRecipientUserId)
+                .containsExactlyInAnyOrder(MEMBER_ID, MEMBER_ID, PAUSED_ID, PAUSED_ID);
+        assertThat(mails.stream().map(Notification::getTemplateId).distinct().toList())
+                .hasSize(2)
+                .contains(second.getId());
+        assertThat(mails)
+                .allSatisfy(n -> assertThat(n.getStatus()).isEqualTo(NotificationStatus.PENDING));
+    }
+
+    @Test
+    @DisplayName("성공 - 기록의 메일 건수는 행 수가 아니라 받는 사람 수 기준이다 (한 명이 한 통 실패하면 실패 1명)")
+    void listCountsRecipientsNotRows() {
+        NotificationTemplate second = secondNoticeTemplate();
+        post(collection(), sendBody("첫 공지", "본문", List.of("EMAIL"), member, paused), LEADER_ID);
+        Long firstTemplateId = firstNoticeTemplateIdOtherThan(second.getId());
+
+        // member: 한 통 완료, 한 통 실패 → 실패 1명 / paused: 둘 다 완료 → 완료 1명
+        markMail(MEMBER_ID, firstTemplateId, "SENT");
+        markMail(MEMBER_ID, second.getId(), "FAILED");
+        markMail(PAUSED_ID, firstTemplateId, "SENT");
+        markMail(PAUSED_ID, second.getId(), "SENT");
+
+        Map<String, Object> email = emailCountsOfFirstItem();
+
+        assertThat(email)
+                .containsEntry("requested", true)
+                .containsEntry("pending", 0)
+                .containsEntry("sent", 1)
+                .containsEntry("failed", 1);
+    }
+
+    @Test
+    @DisplayName("성공 - 한 통은 완료, 한 통은 대기인 사람은 대기 1명으로 센다 (합이 받는 사람 수를 넘지 않는다)")
+    void listCountsPendingWhenOneRowIsStillPending() {
+        NotificationTemplate second = secondNoticeTemplate();
+        var sent =
+                post(
+                        collection(),
+                        sendBody("첫 공지", "본문", List.of("EMAIL"), member, paused),
+                        LEADER_ID);
+        assertThat(sent.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Long firstTemplateId = firstNoticeTemplateIdOtherThan(second.getId());
+
+        markMail(MEMBER_ID, firstTemplateId, "SENT"); // member 의 나머지 한 통은 PENDING
+        markMail(PAUSED_ID, firstTemplateId, "SENT");
+        markMail(PAUSED_ID, second.getId(), "SENT");
+
+        Map<String, Object> email = emailCountsOfFirstItem();
+
+        assertThat(email)
+                .containsEntry("pending", 1)
+                .containsEntry("sent", 1)
+                .containsEntry("failed", 0);
+    }
+
+    @Test
+    @DisplayName("성공 - 탈퇴로 취소된 사람은 템플릿이 둘이어도 세지 않는다")
+    void listSkipsCancelledRecipients() {
+        NotificationTemplate second = secondNoticeTemplate();
+        post(collection(), sendBody("첫 공지", "본문", List.of("EMAIL"), member, paused), LEADER_ID);
+        Long firstTemplateId = firstNoticeTemplateIdOtherThan(second.getId());
+
+        markMail(MEMBER_ID, firstTemplateId, "CANCELLED");
+        markMail(MEMBER_ID, second.getId(), "CANCELLED");
+        markMail(PAUSED_ID, firstTemplateId, "SENT");
+        markMail(PAUSED_ID, second.getId(), "SENT");
+
+        Map<String, Object> email = emailCountsOfFirstItem();
+
+        assertThat(email)
+                .containsEntry("pending", 0)
+                .containsEntry("sent", 1)
+                .containsEntry("failed", 0);
+    }
+
+    @Test
     @DisplayName("성공 - 보낸 사람이 탈퇴했으면 「탈퇴한 회원」, 기록이 없으면 빈 목록")
     void listWithdrawnSenderAndEmpty() {
         assertThat((List<?>) get(collection(), LEADER_ID).getBody().get("items")).isEmpty();
@@ -904,6 +995,44 @@ class StudyNoticeIntegrationTest {
         var response = post(collection(), body, LEADER_ID);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    private NotificationTemplate secondNoticeTemplate() {
+        return templateRepo.save(
+                new NotificationTemplate(
+                        NotificationEventType.STUDY_NOTICE,
+                        NotificationChannel.EMAIL,
+                        "[StudyClub] 새 공지가 도착했어요",
+                        "<p>{{title}}</p>"));
+    }
+
+    private Long firstNoticeTemplateIdOtherThan(Long otherId) {
+        return templateRepo
+                .findAllByEventTypeAndChannelOrderByIdAsc(
+                        NotificationEventType.STUDY_NOTICE, NotificationChannel.EMAIL)
+                .stream()
+                .map(NotificationTemplate::getId)
+                .filter(id -> !id.equals(otherId))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private void markMail(Long recipientId, Long templateId, String status) {
+        jdbcTemplate.update(
+                "UPDATE NOTIFICATION SET STATUS = ? WHERE RECIPIENT_USER_ID = ? AND TEMPLATE_ID = ?",
+                status,
+                recipientId,
+                templateId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> emailCountsOfFirstItem() {
+        ResponseEntity<Map> response = get(collection(), LEADER_ID);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> item =
+                ((List<Map<String, Object>>) response.getBody().get("items")).get(0);
+        assertThat(item).containsEntry("recipientCount", 2);
+        return (Map<String, Object>) item.get("email");
     }
 
     private List<Notification> noticeMails() {

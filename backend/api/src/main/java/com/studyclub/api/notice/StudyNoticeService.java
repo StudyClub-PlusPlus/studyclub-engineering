@@ -19,11 +19,13 @@ import com.studyclub.domain.study.StudyGroup;
 import com.studyclub.domain.study.StudyGroupRepository;
 import com.studyclub.domain.study.StudyRepository;
 import com.studyclub.notification.NotificationEventType;
+import com.studyclub.notification.NotificationRecipientStatus;
 import com.studyclub.notification.NotificationRepository;
-import com.studyclub.notification.NotificationStatusCount;
+import com.studyclub.notification.NotificationStatus;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -233,20 +235,40 @@ public class StudyNoticeService {
         return new StudyNoticeListResponse(items, total, start, pageSize);
     }
 
-    /** 메일 행을 상태별로 센 값 — [대기, 완료, 실패]. 탈퇴로 취소된 건은 세지 않는다. */
+    /**
+     * 메일을 받는 사람 수 기준으로 센 값 — [대기, 완료, 실패]. 같은 조건의 템플릿이 여럿이면 한 사람에게 메일 행이 여러 개라, 사람마다 행들을 대표 상태 하나로
+     * 줄여 센다({@link NotificationStatus#representative}). 탈퇴로 취소된 사람은 세지 않는다.
+     */
     private Map<Long, long[]> mailCounts(Collection<Long> noticeIds) {
-        Map<Long, long[]> result = new HashMap<>();
-        for (NotificationStatusCount row :
-                notificationRepository.countByReferenceAndStatus(
+        Map<Long, Map<Long, Set<NotificationStatus>>> byNoticeAndRecipient = new HashMap<>();
+        for (NotificationRecipientStatus row :
+                notificationRepository.findRecipientStatuses(
                         NotificationEventType.STUDY_NOTICE, noticeIds)) {
-            long[] counts = result.computeIfAbsent(row.referenceId(), k -> new long[3]);
-            switch (row.status()) {
-                case PENDING, PROCESSING -> counts[0] += row.count();
-                case SENT -> counts[1] += row.count();
-                case FAILED -> counts[2] += row.count();
-                case CANCELLED -> {}
-            }
+            byNoticeAndRecipient
+                    .computeIfAbsent(row.referenceId(), k -> new HashMap<>())
+                    .computeIfAbsent(
+                            row.recipientUserId(), k -> EnumSet.noneOf(NotificationStatus.class))
+                    .add(row.status());
         }
+        Map<Long, long[]> result = new HashMap<>();
+        byNoticeAndRecipient.forEach(
+                (noticeId, recipients) -> {
+                    long[] counts = new long[3];
+                    for (Set<NotificationStatus> statuses : recipients.values()) {
+                        Optional<NotificationStatus> status =
+                                NotificationStatus.representative(statuses);
+                        if (status.isEmpty()) {
+                            continue;
+                        }
+                        switch (status.get()) {
+                            case PENDING, PROCESSING -> counts[0]++;
+                            case SENT -> counts[1]++;
+                            case FAILED -> counts[2]++;
+                            case CANCELLED -> {}
+                        }
+                    }
+                    result.put(noticeId, counts);
+                });
         return result;
     }
 

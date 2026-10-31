@@ -111,16 +111,16 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     long countFiltered(@Param("eventType") String eventType, @Param("status") String status);
 
     /**
-     * 공지별 메일 결과 — {@code REFERENCE_ID} 를 키로 상태별 건수를 한 번에 센다 (기록 목록이 공지마다 조회하지 않게 — N+1). 건수가 0인 상태는
-     * 행이 없다.
+     * 공지별 메일 결과 — 받는 사람마다 가진 상태를 {@code REFERENCE_ID} 별로 한 번에 읽는다 (기록 목록이 공지마다 조회하지 않게 — N+1). 같은
+     * 조건의 템플릿이 여럿이면 한 사람에게 행이 여러 개라, 건수는 행 수가 아니라 받는 사람별 대표 상태로 센다 ({@link
+     * NotificationStatus#representative}). {@code DISTINCT} 로 같은 (공지, 사람, 상태)는 한 번만 온다.
      */
     @Query(
-            "SELECT new com.studyclub.notification.NotificationStatusCount("
-                    + "n.referenceId, n.status, COUNT(n))"
+            "SELECT DISTINCT new com.studyclub.notification.NotificationRecipientStatus("
+                    + "n.referenceId, n.recipientUserId, n.status)"
                     + " FROM Notification n"
-                    + " WHERE n.eventType = :eventType AND n.referenceId IN :referenceIds"
-                    + " GROUP BY n.referenceId, n.status")
-    List<NotificationStatusCount> countByReferenceAndStatus(
+                    + " WHERE n.eventType = :eventType AND n.referenceId IN :referenceIds")
+    List<NotificationRecipientStatus> findRecipientStatuses(
             @Param("eventType") NotificationEventType eventType,
             @Param("referenceIds") Collection<Long> referenceIds);
 

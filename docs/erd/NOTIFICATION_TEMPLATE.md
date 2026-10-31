@@ -28,8 +28,8 @@
 
 ## 제약
 
-- 유일 제약은 없다 — **같은 조건(`EVENT_TYPE`, `CHANNEL`)에 템플릿을 여럿 둘 수 있고, 그 조건이 생기면 모두 발송한다.** 같은 조건·같은 제목도 막지 않는다. (V14 의 `UNIQUE(EVENT_TYPE, CHANNEL)` 은 V45 가 걷어낸다.)
-- 인덱스 `idx_notification_template_event_channel (EVENT_TYPE, CHANNEL)` — 조건의 템플릿 목록 조회용 (V45).
+- 유일 제약은 없다 — **같은 조건(`EVENT_TYPE`, `CHANNEL`)에 템플릿을 여럿 둘 수 있고, 그 조건이 생기면 모두 발송한다.** 같은 조건·같은 제목도 막지 않는다. (V14 의 `UNIQUE(EVENT_TYPE, CHANNEL)` 은 V46 이 걷어낸다.)
+- 인덱스 `idx_notification_template_event_channel (EVENT_TYPE, CHANNEL)` — 조건의 템플릿 목록 조회용 (V46).
 - 인덱스 `idx_notification_template_updated_by_admin (UPDATED_BY_ADMIN_ID)`.
 - 이벤트는 USER_REGISTERED · STUDY_NOTICE(V42 시딩), 채널은 EMAIL 뿐이다. 조건마다 템플릿은 여럿일 수 있다.
 - 조건에 템플릿이 하나도 없을 때의 영향은 조건마다 다르다 — STUDY_NOTICE 는 메일을 포함한 공지가 롤백된다([notification 스펙](../../specs/notification/spec.md)). 여럿 중 하나를 지우면 그 템플릿의 메일만 멈춘다.
