@@ -30,7 +30,9 @@ export function SiteHeader({
       <div className='mx-auto flex h-16 max-w-6xl items-center gap-7 px-6'>
         <Link href={`/proto/core/${locale}`} className='flex items-center gap-2 type-title-md'>
           <Image src='/logo-mark.png' alt='' width={28} height={28} className='h-7 w-7' />
-          StudyClub
+          <span>
+            Study<span className='text-[#FF805C]'>Club</span>
+          </span>
         </Link>
 
         <NavLinks
