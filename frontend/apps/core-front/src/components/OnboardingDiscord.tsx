@@ -85,6 +85,7 @@ export function OnboardingDiscord({ locale, next }: { locale: Locale; next: stri
   }, [locale, next, router]);
 
   function skip() {
+    track({ name: 'Onboarding Discord Skipped', props: { after_not_in_guild: notInGuild } });
     setError(null);
     setNotInGuild(false);
     router.replace(withoutApplyIntent(next));
@@ -105,10 +106,9 @@ export function OnboardingDiscord({ locale, next }: { locale: Locale; next: stri
     setError(null);
     setNotInGuild(false);
     try {
-      await linkDiscord(user.id, await code);
+      await linkDiscord(user.id, code, 'onboarding');
       // linkDiscord 가 캐시를 무효화하지만, 마이페이지로 가기 전에 한 번 더 맞춰 둔다 (DiscordRow 와 동일)
       await getQueryClient().invalidateQueries({ queryKey: profileKeys.account(user.id) });
-      track({ name: 'My Discord Connected' });
       setLinking(false);
       // 팝업을 연 채 다른 페이지로 이동했으면 목적지로 끌어가지 않는다
       if (!onPage.current) return;
