@@ -75,7 +75,7 @@ HTML 본문은 아래 세 가지와 **같이** 나가야 깨지지 않는다 —
 
 ## 문의 회신 배포
 
-- `NOTIFICATION_SITE_BASE_URL`: 로컬 `http://localhost:4700`(기본), stage `https://stage.studyclub.life`, 운영 `https://studyclub.life`. 실제 발송 전에 대상 환경의 주소를 주입한다. 프로토의 localhost:4713 주소를 넣지 않는다.
+- `NOTIFICATION_SITE_BASE_URL` 을 명시하면 그 주소가 우선한다. 없으면 기존 `APP_ENV` 에 따라 로컬(`local`, 미설정 포함) `http://localhost:4700`, stage `https://stage.studyclub.life`, 운영(`production`) `https://studyclub.life` 를 사용한다. 다른 환경 이름은 주소를 명시해야 한다. 프로토의 localhost:4713 주소를 넣지 않는다.
 - #373 문의 구현이 전제다. 기존 V41 이 반 공지 마이그레이션과 충돌하여 미병합 문의 스키마를 `V47__feedback.sql` 로 옮겼다. V46 은 같은 조건의 복수 템플릿이다.
-- Flyway 를 쓰는 환경은 V47·V48 을 적용한다. stage 는 Hibernate 가 문의 테이블을 만들고, `backend/notification/src/main/resources/db/migration/V48__feedback_replied_email.sql` 을 한 번 실행해 템플릿을 등록한다. 기존 문의 회신 템플릿이 있으면 덮어쓰지 않는다.
+- Flyway 를 쓰는 환경은 V47·V48 을 적용한다. stage 는 Hibernate 가 문의 테이블을 만들고, `backend/notification/src/main/resources/db/migration/V48__feedback_replied_email.sql` 을 한 번 실행해 템플릿을 등록한다. 또는 백오피스 알림 템플릿에서 「문의 회신」 조건으로 같은 제목·HTML을 등록한다. 기존 문의 회신 템플릿이 있으면 중복 등록하거나 덮어쓰지 않는다.
 - HTML과 기존 메일 클라이언트의 일반 텍스트 대체본을 함께 보낸다. 과거 문의를 대상으로 알림을 생성하는 작업은 없다.
