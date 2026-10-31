@@ -57,6 +57,12 @@ dependencies {
     testRuntimeOnly("com.h2database:h2")
 }
 
+tasks.withType<Test>().configureEach {
+    // 전체 통합 테스트의 Spring 컨텍스트·H2 데이터가 기본 힙 한도를 넘을 수 있다.
+    // 테스트 JVM에만 적용한다. 애플리케이션 실행·배포 메모리는 변경하지 않는다.
+    maxHeapSize = "2g"
+}
+
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     // Stable output name consumed by the Dockerfile runner stage.
     archiveFileName.set("app.jar")

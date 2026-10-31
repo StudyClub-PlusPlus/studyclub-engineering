@@ -87,6 +87,10 @@ const STUDIES: Study[] = [
   study(9, '작성 중', { lifecycleStatus: 'DRAFT', published: false, category: '데이터' }),
 ];
 
+function page(studies: Study[]) {
+  return { mode: 'server' as const, studies, total: studies.length, offset: 0, limit: 20 };
+}
+
 /** 화면에 그려진 스터디 이름 — 표의 순서대로. */
 const titles = () =>
   screen
@@ -134,128 +138,53 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
     expect(entryFilters('cumulative', 'NOPE')).toMatchObject({ category: 'all' });
   });
 
-  it('모집중 전체 보기 — 개설만, 모집중 먼저 마감 시각 순(없으면 끝), 그다음 마감. 주소는 목록 필터로 바뀐다', async () => {
+  it('모집 보드 진입 필터를 주소에 표시하고 서버 목록 순서를 유지한다', async () => {
     memoryUrl.set('view=recruitment');
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
-
-    expect(titles()).toEqual(['모집 이른 시각', '모집 늦은 시각', '모집 마감 없음', '마감 지남', '마감 정원']);
+    const result = page([STUDIES[1]!, STUDIES[0]!, STUDIES[4]!]);
+    render(<StudiesTable list={result} />);
+    expect(titles()).toEqual(['모집 이른 시각', '모집 늦은 시각', '마감 지남']);
     await waitFor(() => expect(urlParams()).toEqual({ status: 'OPEN', sort: 'recruitment' }));
   });
 
-  it('카테고리 진행중 — 그 카테고리의 진행 중을 이름순으로', async () => {
-    memoryUrl.set('view=ongoing&category=AI_ML');
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
-
-    expect(titles()).toEqual(['가 진행', '하 진행']);
-    await waitFor(() =>
-      expect(urlParams()).toEqual({ category: 'AI · ML', status: 'ONGOING', publish: 'live', sort: 'title' }),
-    );
-  });
-
-  it('카테고리 누적 — 작성 중을 뺀 전체를 최근 등록순으로', () => {
-    memoryUrl.set('view=cumulative&category=DATA');
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
-
-    expect(titles()).toEqual(['나 진행']);
-  });
-
-  it('모집 마감순에서 상태를 「개설」이 아닌 것으로 바꾸면 최근 등록순이 된다', async () => {
-    memoryUrl.set('status=OPEN&sort=recruitment');
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
-
+  it('개설 외 상태를 선택하면 모집 보드 전용 정렬을 해제하고 첫 페이지를 요청한다', () => {
+    memoryUrl.set('status=OPEN&sort=recruitment&page=2');
+    render(<StudiesTable list={page(STUDIES)} />);
     fireEvent.change(screen.getByDisplayValue('개설'), { target: { value: 'all' } });
-    await waitFor(() => expect(urlParams()).toEqual({ sort: 'id' }));
-    expect(titles().slice(0, 3)).toEqual(['작성 중', '나 진행', '가 진행']);
+    expect(urlParams()).toEqual({ sort: 'id' });
   });
 
-  it('카테고리 없이 들어와도 주소를 목록 필터로 옮겨 적는다 — 진행중 · 누적', async () => {
-    memoryUrl.set('view=ongoing');
-    const { unmount } = render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
-    expect(titles()).toEqual(['가 진행', '나 진행', '하 진행']);
-    await waitFor(() => expect(urlParams()).toEqual({ status: 'ONGOING', sort: 'title' }));
-    unmount();
-
-    memoryUrl.set('view=cumulative');
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
-    await waitFor(() => expect(urlParams()).toEqual({ publish: 'live', sort: 'id' }));
-  });
-
-  it('주소를 옮겨 적기 전에 조건을 바꿔도 진입 조건 위에 얹는다', () => {
-    memoryUrl.set('view=ongoing&category=AI_ML');
-    // 옮겨 적기가 아직 안 된 상태를 만든다
-    vi.mocked(window.history.replaceState).mockImplementation(() => {});
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
-
-    fireEvent.change(screen.getByDisplayValue('신청 폼 전체'), { target: { value: 'none' } });
-    expect(urlParams()).toEqual({
-      category: 'AI · ML',
-      status: 'ONGOING',
-      publish: 'live',
-      sort: 'title',
-      form: 'none',
-    });
-  });
-
-  it('이름이 같으면 기수 ID 순, 마감 시각이 같으면 이름·ID 순 — 서버 정렬과 같다', () => {
-    const tied = [
-      ongoing(31, '같은 이름'),
-      ongoing(30, '같은 이름'),
-      study(41, '나 같은 마감', { recruitment: { status: 'open', deadline: '2026-09-18T14:59:00Z' } }),
-      study(40, '가 같은 마감', { recruitment: { status: 'open', deadline: '2026-09-18T14:59:00Z' } }),
-    ];
-    memoryUrl.set('status=ONGOING&sort=title');
-    const { unmount } = render(<StudiesTable list={{ mode: 'all', studies: tied }} />);
-    expect(
-      screen
-        .getAllByRole('link')
-        .map((a) => a.getAttribute('href'))
-        .filter((h) => h?.startsWith('/studies/')),
-    ).toEqual(['/studies/30', '/studies/31']);
-    unmount();
-
-    memoryUrl.set('status=OPEN&sort=recruitment');
-    render(<StudiesTable list={{ mode: 'all', studies: tied }} />);
-    expect(
-      screen
-        .getAllByRole('link')
-        .map((a) => a.textContent)
-        .filter((t) => t?.includes('같은 마감')),
-    ).toEqual(['가 같은 마감', '나 같은 마감']);
-  });
-
-  it('열 이름을 누르면 오름차순, 다시 누르면 내림차순 — 정렬 드롭다운 · 종류 필터는 없다 (captain-list-all-studies 4 · 9)', () => {
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
-
-    expect(screen.queryByRole('combobox', { name: '정렬' })).toBeNull();
-    expect(screen.queryByDisplayValue('종류 전체')).toBeNull();
-    // 기본 순서는 「모집 상태」 오름차순으로 강조된다
+  it('열 머리 정렬은 주소를 바꾸며 기존 응답을 로컬에서 재정렬하지 않는다', () => {
+    render(<StudiesTable list={page(STUDIES)} />);
+    const before = titles();
     expect(screen.getByRole('columnheader', { name: /모집 상태/ })).toHaveAttribute('aria-sort', 'ascending');
-
     fireEvent.click(screen.getByRole('button', { name: '스터디 오름차순으로 정렬' }));
     expect(urlParams()).toEqual({ sort: 'title' });
     fireEvent.click(screen.getByRole('button', { name: '스터디 내림차순으로 정렬' }));
     expect(urlParams()).toEqual({ sort: 'title:desc' });
-    expect(titles()[0]).toBe('하 진행');
+    expect(titles()).toEqual(before);
   });
 
-  it('신청 폼 있음 · 없음으로 거른다', () => {
-    memoryUrl.set('form=none');
-    render(
-      <StudiesTable
-        list={{ mode: 'all', studies: [...STUDIES, study(50, '폼 없음', { hasApplicationForm: false })] }}
-      />,
-    );
-    const shown = screen.getAllByRole('link').map((a) => a.textContent);
-    expect(shown).toContain('폼 없음');
-    expect(shown.filter((t) => STUDIES.some((x) => x.title.ko === t))).toEqual([]);
+  it('넓은 마감·신청 폼·검색 조건이 있어도 받은 페이지를 다시 거르지 않는다', () => {
+    memoryUrl.set('recruit=closed&form=none&q=서버검색');
+    render(<StudiesTable list={page([STUDIES[5]!])} />);
+    expect(titles()).toEqual(['하 진행']);
+    expect(screen.getByDisplayValue('마감')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('없음')).toBeInTheDocument();
   });
 
-  it('주소에 view 가 없으면 지금까지처럼 기본 순서로 그린다 — 주소를 건드리지 않는다', () => {
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
+  it('필터 변경은 검색·다른 조건을 보존하고 페이지를 초기화한다', () => {
+    memoryUrl.set('status=OPEN&q=AI&page=3');
+    render(<StudiesTable list={page(STUDIES)} />);
+    fireEvent.change(screen.getByDisplayValue('신청 폼 전체'), { target: { value: 'none' } });
+    expect(urlParams()).toEqual({ status: 'OPEN', q: 'AI', form: 'none' });
+  });
 
-    // 기본 순서는 이 PR 전과 같다 — 마감일이 오늘 이후인(여기서는 마감 없는) 모집중이 맨 앞
-    expect(titles()[0]).toBe('모집 마감 없음');
-    expect(memoryUrl.get()).toBe('');
+  it('검색은 입력 직후 요청하지 않고 300ms 후 첫 페이지 주소에 반영한다', async () => {
+    memoryUrl.set('page=2');
+    render(<StudiesTable list={page(STUDIES)} />);
+    fireEvent.change(screen.getByPlaceholderText('제목 · 한 줄 소개 검색'), { target: { value: 'AI' } });
+    expect(urlParams()).toEqual({ page: '2' });
+    await waitFor(() => expect(urlParams()).toEqual({ q: 'AI' }));
   });
 });
 
@@ -304,7 +233,7 @@ describe('서버가 자른 한 페이지 (list.mode = server)', () => {
 describe('목록으로 돌아오는 주소 — 상세의 「← 스터디 관리」', () => {
   it('지금 걸린 필터를 탭 저장소에 적고, 필터를 바꾸면 같이 바뀐다', async () => {
     memoryUrl.set('status=OPEN&publish=live');
-    render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
+    render(<StudiesTable list={page(STUDIES)} />);
     expect(sessionStorage.getItem('bo:studies-list-search')).toBe('?status=OPEN&publish=live');
 
     memoryUrl.set('');
@@ -321,7 +250,7 @@ describe('공개 설정 (captain-publish-study 1 · 1-1 · 4)', () => {
   });
   const open = study(22, '개설');
   const running = ongoing(23, '진행 중');
-  const list = { mode: 'all' as const, studies: [draft, draftNoForm, open, running] };
+  const list = page([draft, draftNoForm, open, running]);
   const rowOf = (title: string) => screen.getByRole('link', { name: title }).closest('tr')!;
   const toggleOf = (title: string) =>
     [...rowOf(title).querySelectorAll('button')].find((b) => b.textContent === '공개' || b.textContent === '미공개')!;

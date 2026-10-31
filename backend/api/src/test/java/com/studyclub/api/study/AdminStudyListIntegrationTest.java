@@ -373,6 +373,9 @@ class AdminStudyListIntegrationTest {
                 "studyId",
                 "visibility",
                 "recruitStatus",
+                "recruitFilter",
+                "keyword",
+                "hasApplicationForm",
                 "sort",
                 "offset",
                 "limit"
@@ -388,6 +391,45 @@ class AdminStudyListIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "recruitFilter=UNKNOWN",
+                "recruitFilter=NOT_RECRUITING&recruitStatus=RECRUITING",
+                "hasApplicationForm=yes",
+                "hasApplicationForm=1",
+                "hasApplicationForm=bad",
+                "sort=UNKNOWN",
+                "limit=101",
+                "offset=-1"
+            })
+    @DisplayName("실패 - 잘못된 필터·중복 모집 축·페이지 범위는 400이다")
+    void rejectsInvalidListQueries(String query) {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?" + query,
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
+    @DisplayName("성공 - 관리자 전용 마감 필터는 DRAFT도 포함하고 상태 필터와 함께 적용한다")
+    void broadClosedFilterAndStatus() {
+        var response =
+                rest.exchange(
+                        "/api/admin/studies?recruitFilter=NOT_RECRUITING&status=DRAFT&keyword=드래프트&sort=STATUS_ASC",
+                        HttpMethod.GET,
+                        authenticatedRequest(ADMIN_ID),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyIds(response.getBody())).containsExactly(DRAFT_STUDY_ID);
+        assertThat(itemById(response.getBody(), DRAFT_STUDY_ID))
+                .containsEntry("recruitStatus", null);
     }
 
     @Test

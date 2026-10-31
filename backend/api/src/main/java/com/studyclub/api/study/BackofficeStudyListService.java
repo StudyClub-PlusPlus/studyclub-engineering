@@ -5,7 +5,6 @@ import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.application.StudyApplicationRepository;
-import com.studyclub.domain.study.RecruitStatus;
 import com.studyclub.domain.study.Study;
 import com.studyclub.domain.study.StudyProgram;
 import com.studyclub.domain.study.StudyProgramRepository;
@@ -13,7 +12,6 @@ import com.studyclub.domain.study.StudyRecruitment;
 import com.studyclub.domain.study.StudyRecruitmentRepository;
 import com.studyclub.domain.study.StudyStatus;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,18 +57,18 @@ public class BackofficeStudyListService {
 
     public BackofficeStudyListResponse getStudies(
             BackofficeStudyListFilter filter, int offset, int limit) {
+        return getStudies(filter, offset, limit, Instant.now());
+    }
+
+    /** 대시보드 보드와 목록이 같은 기준 시각으로 모집 여부를 판정한다. */
+    public BackofficeStudyListResponse getStudies(
+            BackofficeStudyListFilter filter, int offset, int limit, Instant asOf) {
         validate(filter, offset, limit);
-        Instant asOf = Instant.now();
-
-        if (needsInMemoryRecruitPipeline(filter)) {
-            return listWithRecruitPipeline(filter, asOf, offset, limit);
-        }
-
-        long total = backofficeStudyDao.count(filter);
+        long total = backofficeStudyDao.count(filter, asOf);
         if (total == 0) {
             return new BackofficeStudyListResponse(List.of(), 0, offset, limit);
         }
-        List<Study> studies = backofficeStudyDao.getStudies(filter, offset, limit);
+        List<Study> studies = backofficeStudyDao.getStudies(filter, asOf, offset, limit);
         if (studies.isEmpty()) {
             return new BackofficeStudyListResponse(List.of(), total, offset, limit);
         }
@@ -78,6 +76,13 @@ public class BackofficeStudyListService {
     }
 
     private void validate(BackofficeStudyListFilter filter, int offset, int limit) {
+        if (filter.recruitStatus() != null && filter.recruitFilter() != null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT, "recruitStatus와 recruitFilter는 함께 지정할 수 없습니다.");
+        }
+        if (filter.keyword() != null && filter.keyword().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "keyword 값이 비어 있습니다.");
+        }
         if (offset < 0 || limit < 1 || limit > 100) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "offset·limit 이 올바르지 않습니다.");
         }
@@ -86,50 +91,6 @@ public class BackofficeStudyListService {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT, "sort=RECRUITMENT 는 status=OPEN 과 함께 요청해야 합니다.");
         }
-    }
-
-    private static boolean needsInMemoryRecruitPipeline(BackofficeStudyListFilter filter) {
-        return filter.recruitStatus() != null
-                || filter.effectiveSort() == BackofficeStudySort.RECRUITMENT;
-    }
-
-    private BackofficeStudyListResponse listWithRecruitPipeline(
-            BackofficeStudyListFilter filter, Instant asOf, int offset, int limit) {
-        List<Study> studies = backofficeStudyDao.getAllMatching(filter);
-        List<BackofficeStudyListResponse.StudySummary> all = toSummaries(studies, asOf);
-
-        if (filter.recruitStatus() != null) {
-            all = all.stream().filter(s -> s.recruitStatus() == filter.recruitStatus()).toList();
-        }
-
-        if (filter.effectiveSort() == BackofficeStudySort.RECRUITMENT) {
-            all = all.stream().sorted(recruitmentComparator()).toList();
-        } else if (filter.effectiveSort() == BackofficeStudySort.TITLE_ASC) {
-            all =
-                    all.stream()
-                            .sorted(
-                                    Comparator.comparing(
-                                                    BackofficeStudyListResponse.StudySummary::title,
-                                                    Comparator.nullsLast(String::compareTo))
-                                            .thenComparing(
-                                                    BackofficeStudyListResponse.StudySummary
-                                                            ::studyId))
-                            .toList();
-        } else {
-            all =
-                    all.stream()
-                            .sorted(
-                                    Comparator.comparing(
-                                                    BackofficeStudyListResponse.StudySummary
-                                                            ::studyId)
-                                            .reversed())
-                            .toList();
-        }
-
-        long total = all.size();
-        int from = Math.min(offset, all.size());
-        int to = Math.min(offset + limit, all.size());
-        return new BackofficeStudyListResponse(all.subList(from, to), total, offset, limit);
     }
 
     private List<BackofficeStudyListResponse.StudySummary> toSummaries(
@@ -211,21 +172,6 @@ public class BackofficeStudyListService {
                                             : authorNicknames.get(study.getCreatedBy()));
                         })
                 .toList();
-    }
-
-    /** 모집 보드와 같은 정렬 — RECRUITING 먼저, 마감 시각 오름차순(없으면 마지막), 동률은 제목·기수 ID. */
-    static Comparator<BackofficeStudyListResponse.StudySummary> recruitmentComparator() {
-        return Comparator.comparingInt(
-                        (BackofficeStudyListResponse.StudySummary s) ->
-                                s.recruitStatus() == RecruitStatus.RECRUITING ? 0 : 1)
-                .thenComparing(s -> s.recruitDeadlineAt() == null ? 1 : 0)
-                .thenComparing(
-                        BackofficeStudyListResponse.StudySummary::recruitDeadlineAt,
-                        Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(
-                        BackofficeStudyListResponse.StudySummary::title,
-                        Comparator.nullsLast(String::compareTo))
-                .thenComparing(BackofficeStudyListResponse.StudySummary::studyId);
     }
 
     private boolean hasQuestions(String applicationForm) {
