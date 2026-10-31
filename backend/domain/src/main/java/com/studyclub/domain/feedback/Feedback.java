@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -151,7 +152,8 @@ public class Feedback extends BaseEntity {
         boolean first = !isAnswered();
         this.replyContent = content;
         if (first) {
-            this.repliedAt = now;
+            // DATETIME(6) 정밀도에 맞춰 첫 응답과 DB 재조회 뒤의 회신 시각을 같게 유지한다.
+            this.repliedAt = now.truncatedTo(ChronoUnit.MICROS);
             this.status = FeedbackStatus.DONE;
             this.doneByAccountId = adminAccountId;
         }
