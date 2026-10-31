@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+/** null · 없음을 모두 받아 없음(undefined)으로 맞춘다. */
+function optionalFromNull<T extends z.ZodType>(schema: T) {
+  return schema.nullish().transform((value) => value ?? undefined);
+}
+
 export const apiMyApplicationSchema = z.object({
   applied: z.boolean(),
   applicationId: z.union([z.number(), z.null()]),
@@ -27,10 +32,11 @@ export const apiStudyApplicationFormSchema = z.object({
         z.literal('SELECT'),
       ]),
       required: z.boolean(),
-      placeholder: z.string().optional(),
-      description: z.string().optional(),
-      options: z.array(z.string()).optional(),
-      allowOther: z.boolean().optional(),
+      // 서버는 해당 없는 칸을 null 로 보낸다(텍스트형 질문의 options · allowOther 등) — 화면은 「없음」(undefined)으로 다룬다
+      placeholder: optionalFromNull(z.string()),
+      description: optionalFromNull(z.string()),
+      options: optionalFromNull(z.array(z.string())),
+      allowOther: optionalFromNull(z.boolean()),
     }),
   ),
 });
