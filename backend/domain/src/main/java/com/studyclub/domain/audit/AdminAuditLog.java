@@ -13,19 +13,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
- * 운영 감사 로그 — 캡틴이 개인정보를 보거나 권한을 바꾼 일. 어떤 애그리거트에도 속하지 않는 insert-only 로그다 (specs/admin-users/spec.md
- * 「감사 로그」).
- *
- * <p><b>계정 ID 와 행위만 담는다.</b> 이메일·닉네임을 넣으면 회원이 탈퇴해도 이 테이블에 개인정보가 남는다. {@code ACCOUNT} 와 FK 를 걸지 않는
- * 것도 같은 이유다 — 계정이 지워져도 기록은 남고, 남은 ID 로는 더 이상 사람을 되짚을 수 없다.
- *
- * <p>ACTION 과 BEFORE/AFTER 조합이 어긋나지 않게 생성자는 막고 정적 팩토리로만 만든다.
- */
+/** 운영 행위의 최소 스냅샷. 계정 삭제 뒤에도 ID·IP는 개인정보일 수 있어 접근 제한과 만료 파기를 적용한다. */
 @Entity
 @Table(
         name = "ADMIN_AUDIT_LOG",
@@ -33,7 +27,8 @@ import lombok.NoArgsConstructor;
             @Index(
                     name = "idx_admin_audit_log_target",
                     columnList = "TARGET_ACCOUNT_ID, CREATED_AT"),
-            @Index(name = "idx_admin_audit_log_actor", columnList = "ACTOR_ACCOUNT_ID, CREATED_AT")
+            @Index(name = "idx_admin_audit_log_actor", columnList = "ACTOR_ACCOUNT_ID, CREATED_AT"),
+            @Index(name = "idx_admin_audit_log_created", columnList = "CREATED_AT, ID")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -58,6 +53,70 @@ public class AdminAuditLog extends BaseEntity {
 
     @Column(name = "AFTER_VALUE", length = 20)
     private String afterValue;
+
+    @Column(name = "ACTOR_IP", length = 45)
+    private String actorIp;
+
+    @Column(name = "PARTICIPANT_ID")
+    private Long participantId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "PARTICIPANT_ROLE", length = 20)
+    private ParticipantRole participantRole;
+
+    @Column(name = "REASON", length = 30)
+    private String reason;
+
+    /** 요청 문맥에서 검증된 접속 주소를 신규 로그에 담는다. */
+    public void captureActorIp(String ip) {
+        if (id != null || actorIp != null) {
+            throw new IllegalStateException("이미 저장한 감사 기록의 접속 주소는 변경할 수 없습니다.");
+        }
+        this.actorIp = ip;
+    }
+
+    public boolean isRetentionExpired(Instant now, int accessYears) {
+        if (accessYears != 1 && accessYears != 2) {
+            throw new IllegalArgumentException("접속기록 보관 기간은 1년 또는 2년입니다.");
+        }
+        if (action == AdminAuditAction.WITHDRAW && participantRole == null) {
+            return false;
+        }
+        int years =
+                switch (action) {
+                    case EMAIL_REVEAL, DISCORD_REVEAL -> accessYears;
+                    case WITHDRAW -> participantRole == ParticipantRole.LEADER ? 3 : accessYears;
+                    case ROLE_CHANGE, PARTICIPANT_ROLE, ACCOUNT_ROLE_REVOKE, PARTICIPANT_REVOKE ->
+                            3;
+                };
+        return !now.isBefore(getCreatedAt().atZone(ZoneOffset.UTC).plusYears(years).toInstant());
+    }
+
+    public static AdminAuditLog accountRoleRevoked(Long accountId) {
+        AdminAuditLog log =
+                new AdminAuditLog(
+                        accountId,
+                        AdminAuditAction.ACCOUNT_ROLE_REVOKE,
+                        accountId,
+                        SystemRole.ADMIN.name(),
+                        "NONE");
+        log.reason = "ACCOUNT_DELETION";
+        return log;
+    }
+
+    public static AdminAuditLog participantRoleRevoked(Long accountId, Long participantId) {
+        AdminAuditLog log =
+                new AdminAuditLog(
+                        accountId,
+                        AdminAuditAction.PARTICIPANT_REVOKE,
+                        accountId,
+                        ParticipantRole.LEADER.name(),
+                        "NONE");
+        log.participantId = participantId;
+        log.participantRole = ParticipantRole.LEADER;
+        log.reason = "ACCOUNT_DELETION";
+        return log;
+    }
 
     private AdminAuditLog(
             Long actorAccountId,
@@ -107,13 +166,18 @@ public class AdminAuditLog extends BaseEntity {
             Long actorAccountId,
             Long targetAccountId,
             Long participantId,
-            ParticipantStatus before) {
-        return new AdminAuditLog(
-                actorAccountId,
-                AdminAuditAction.WITHDRAW,
-                targetAccountId,
-                before.name(),
-                String.valueOf(participantId));
+            ParticipantStatus before,
+            ParticipantRole role) {
+        AdminAuditLog log =
+                new AdminAuditLog(
+                        actorAccountId,
+                        AdminAuditAction.WITHDRAW,
+                        targetAccountId,
+                        before.name(),
+                        String.valueOf(participantId));
+        log.participantId = participantId;
+        log.participantRole = role;
+        return log;
     }
 
     /**
@@ -124,11 +188,15 @@ public class AdminAuditLog extends BaseEntity {
      */
     public static AdminAuditLog participantRoleChange(
             Long actorAccountId, Long targetAccountId, Long participantId, ParticipantRole before) {
-        return new AdminAuditLog(
-                actorAccountId,
-                AdminAuditAction.PARTICIPANT_ROLE,
-                targetAccountId,
-                before.name(),
-                String.valueOf(participantId));
+        AdminAuditLog log =
+                new AdminAuditLog(
+                        actorAccountId,
+                        AdminAuditAction.PARTICIPANT_ROLE,
+                        targetAccountId,
+                        before.name(),
+                        String.valueOf(participantId));
+        log.participantId = participantId;
+        log.participantRole = before;
+        return log;
     }
 }

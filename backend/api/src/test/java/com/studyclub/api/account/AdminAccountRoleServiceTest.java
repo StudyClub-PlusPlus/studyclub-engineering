@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
+import com.studyclub.api.audit.ClientIpResolver;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
@@ -42,7 +44,10 @@ class AdminAccountRoleServiceTest {
     void setUp() {
         accountRepository = mock(AccountRepository.class);
         auditRepository = mock(AdminAuditLogRepository.class);
-        service = new AdminAccountRoleService(accountRepository, auditRepository);
+        service =
+                new AdminAccountRoleService(
+                        accountRepository,
+                        new AdminAuditRecorder(auditRepository, new ClientIpResolver("")));
     }
 
     @Test

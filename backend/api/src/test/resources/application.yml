@@ -39,6 +39,13 @@ notification:
     enabled: false
 
 # 업로드 정리 배치도 같은 이유로 끈다. 배치 테스트는 cleanUp() 을 직접 부른다.
+feedback:
+  retention:
+    enabled: false
+
 upload:
   cleanup:
     enabled: false
+
+cleanup:
+  enabled: false
