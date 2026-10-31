@@ -158,9 +158,9 @@ erDiagram
 
 | 구분 | 대상 | 지금 | 할 일 |
 |---|---|---|---|
-| FE | back-office-front `/users` | 있음 — 목록 · 검색 · 이메일 펼치기 API 연결 | 없음 |
+| FE | back-office-front `/users` | 있음 — 목록 · 검색 · 이메일·디스코드 개별 열람 API 연결 | 없음 |
 | BE | `GET /api/admin/users` · 이메일 펼치기 | 구현완료 | 없음 |
-| BE | `POST /api/admin/users/{accountId}/discord-reveals` | 구현중 — 2026-10-31, 이메일과 같은 개별 열람·감사 기록 | 검토 후 배포 |
+| BE | `POST /api/admin/users/{accountId}/discord-reveals` | 구현완료 — 2026-10-31, 이메일과 같은 개별 열람·감사 기록 | 없음 |
 
 ### 데이터
 
