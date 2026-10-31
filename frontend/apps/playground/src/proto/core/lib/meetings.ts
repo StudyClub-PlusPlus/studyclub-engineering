@@ -155,7 +155,7 @@ function writeJSON(key: string, value: unknown) {
 
 export function addMeetings(
   studyId: string,
-  input: { dates: string[]; time: string; timeZone: string; title?: string },
+  input: { dates: string[]; time: string; timeZone: string; title?: string; scheduledAts?: string[] },
 ): void {
   const store = readJSON<Stored>(ADDED_KEY);
   const title = input.title?.trim() || undefined;
@@ -164,7 +164,7 @@ export function addMeetings(
   const seriesId = input.dates.length > 1 ? `r${stamp}` : undefined;
   const rows: Stored[] = input.dates.map((date, i) => ({
     id: `${studyId}-a${stamp}-${i}`,
-    scheduledAt: zonedInstant(date, input.time, input.timeZone).toISOString(),
+    scheduledAt: input.scheduledAts?.[i] ?? zonedInstant(date, input.time, input.timeZone).toISOString(),
     title,
     seriesId,
   }));
@@ -187,6 +187,7 @@ export function deleteMeetings(studyId: string, ids: string[]): void {
 
 /** 회차 한 줄에서 바꾸는 값. 넘긴 것만 바꾼다. 발표자 `null` 은 비우기. */
 export type MeetingPatch = {
+  scheduledAt?: string;
   date?: string;
   time?: string;
   title?: string;
@@ -200,7 +201,8 @@ export type MeetingPatch = {
  */
 export function patchMeeting(studyId: string, id: string, patch: MeetingPatch, timeZone: string): void {
   const next: Edit = {};
-  if (patch.date && patch.time) next.scheduledAt = zonedInstant(patch.date, patch.time, timeZone).toISOString();
+  if (patch.scheduledAt) next.scheduledAt = patch.scheduledAt;
+  else if (patch.date && patch.time) next.scheduledAt = zonedInstant(patch.date, patch.time, timeZone).toISOString();
   if (patch.title !== undefined) next.title = patch.title.trim() || undefined;
   if (patch.presenter1 !== undefined) next.presenter1 = patch.presenter1 ?? undefined;
   if (patch.presenter2 !== undefined) next.presenter2 = patch.presenter2 ?? undefined;
@@ -368,21 +370,62 @@ export function wallParts(instant: Date, iana: string): { date: string; time: st
 }
 
 /** 서머타임 시작 때 사라지는 시각을 다른 시각으로 조용히 바꿔 저장하지 않는다. */
-export function wallInputErrors(date: string, time: string, zone: string): DraftErrors {
+export type WallTimeChoice = { scheduledAt: string; label: string };
+
+/** 같은 날짜·시각에 해당하는 모든 순간을 전환 전후의 시차로 찾는다. */
+export function wallTimeChoices(date: string, time: string, zone: string): WallTimeChoice[] {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return [];
+  const guess = Date.parse(`${date}T${time}:00Z`);
+  if (!Number.isFinite(guess)) return [];
+  const offsets = new Set([-2, -1, 0, 1, 2].map((day) => offsetMs(new Date(guess + day * 86_400_000), zone)));
+  const instants = [...offsets]
+    .map((offset) => new Date(guess - offset))
+    .filter((at) => {
+      const wall = wallParts(at, zone);
+      return wall.date === date && wall.time === time;
+    })
+    .sort((a, b) => a.getTime() - b.getTime());
+  return instants.map((at, index) => ({
+    scheduledAt: at.toISOString(),
+    label: `${time} · ${instants.length > 1 ? `시계 전환 ${index === 0 ? '전' : '후'} ` : ''}(${zoneLabel(zone, at)})`,
+  }));
+}
+
+/** 같은 날짜·시각으로 돌아오면 원래 순간을 유지한다. 새 중복 시각은 사용자가 골라야 한다. */
+export function resolveWallInput(
+  date: string,
+  time: string,
+  zone: string,
+  preferred: (string | undefined)[] = [],
+): { errors: DraftErrors; instant?: Date; choices: WallTimeChoice[] } {
+  const choices = wallTimeChoices(date, time, zone);
   if (!date || !time)
     return {
-      ...(!date && { date: '일자를 정해 주세요.' }),
-      ...(!time && { time: '시작 시각을 정해 주세요.' }),
+      choices,
+      errors: {
+        ...(!date && { date: '일자를 정해 주세요.' }),
+        ...(!time && { time: '시작 시각을 정해 주세요.' }),
+      },
     };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-    return { time: '올바른 날짜와 시각을 입력해 주세요.' };
+  if (choices.length === 0)
+    return {
+      choices,
+      errors: { time: '올바른 날짜와 시각을 입력해 주세요. 시계 전환으로 사라지는 시각은 선택할 수 없어요.' },
+    };
+  for (const value of preferred) {
+    if (!value) continue;
+    const at = new Date(value);
+    if (!Number.isFinite(at.getTime())) continue;
+    const wall = wallParts(at, zone);
+    if (wall.date === date && wall.time === time) return { choices, errors: {}, instant: at };
   }
-  const instant = zonedInstant(date, time, zone);
-  if (!Number.isFinite(instant.getTime())) return { time: '올바른 날짜와 시각을 입력해 주세요.' };
-  const roundTrip = wallParts(instant, zone);
-  return roundTrip.date === date && roundTrip.time === time
-    ? {}
-    : { time: '시간대 전환으로 존재하지 않는 시각입니다. 다른 시각을 선택해 주세요.' };
+  if (choices.length > 1)
+    return { choices, errors: { time: '같은 시각이 두 번 있어요. 시계 전환 전후 중 하나를 선택해 주세요.' } };
+  return { choices, errors: {}, instant: new Date(choices[0].scheduledAt) };
+}
+
+export function wallInputErrors(date: string, time: string, zone: string): DraftErrors {
+  return resolveWallInput(date, time, zone).errors;
 }
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -463,6 +506,8 @@ export type MeetingDraft = {
   until: string;
   /** 매주 반복의 요일. 0 = 일 … 6 = 토. */
   weekdays: number[];
+  /** 중복되는 현지 시각에서 사용자가 선택한 날짜별 UTC 순간. */
+  occurrences?: Record<string, string>;
 };
 
 export type DraftErrors = Partial<Record<keyof MeetingDraft | 'form', string>>;
@@ -470,6 +515,7 @@ export type DraftErrors = Partial<Record<keyof MeetingDraft | 'form', string>>;
 export type Skip = { date: string; reason: string };
 
 export type MeetingPlan = {
+  scheduledAts: string[];
   /** 실제로 만들어질 날짜들. */
   dates: string[];
   /** 반복 중 건너뛴 날짜와 이유. */
@@ -498,7 +544,7 @@ export function planDraft(
   timeZone: string,
   now = new Date(),
   calendarZone = timeZone,
-): { errors: DraftErrors; plan?: MeetingPlan } {
+): { errors: DraftErrors; plan?: MeetingPlan; ambiguousTimes?: { date: string; choices: WallTimeChoice[] }[] } {
   const errors: DraftErrors = {};
   if (!draft.date) errors.date = '일자를 정해 주세요.';
   if (!draft.time) errors.time = '시작 시각을 정해 주세요.';
@@ -514,73 +560,82 @@ export function planDraft(
   if (errors.date || errors.time || errors.until || errors.weekdays) return { errors };
 
   const dates = expand(draft);
-  if (dates.length === 0) {
-    errors.form = '고른 기간에 반복할 요일이 없습니다. 요일이나 종료일을 바꿔 주세요.';
-    return { errors };
-  }
-
-  const invalidTime = dates.find((date) => Object.keys(wallInputErrors(date, draft.time, timeZone)).length > 0);
-  if (invalidTime) {
-    errors.time = `${invalidTime}: ${wallInputErrors(invalidTime, draft.time, timeZone).time}`;
-    return { errors };
-  }
-
+  if (dates.length === 0)
+    return { errors: { form: '고른 기간에 반복할 요일이 없습니다. 요일이나 종료일을 바꿔 주세요.' } };
+  const resolved = dates.map((date) => ({
+    date,
+    ...resolveWallInput(date, draft.time, timeZone, [draft.occurrences?.[date]]),
+  }));
+  const ambiguousTimes = resolved.filter((r) => r.choices.length > 1).map(({ date, choices }) => ({ date, choices }));
+  const invalid = resolved.find((r) => !r.instant);
+  if (invalid) return { errors: { ...errors, time: `${invalid.date}: ${invalid.errors.time}` }, ambiguousTimes };
+  const instants = new Map(resolved.map((r) => [r.date, r.instant!]));
+  const calendarDate = (date: string) => wallParts(instants.get(date)!, calendarZone).date;
+  const past = (date: string) => instants.get(date)!.getTime() <= now.getTime();
   const byDate = new Map(existing.map((m) => [m.date, m]));
-  // 반복 요일·시각은 입력 지역 기준, 하루 한 회차와 킥오프 순서는 반의 날짜 기준이다.
-  const calendarDate = (date: string) => wallParts(zonedInstant(date, draft.time, timeZone), calendarZone).date;
-  const past = (d: string) => zonedInstant(d, draft.time, timeZone).getTime() <= now.getTime();
-  // 정규 회차는 킥오프 다음에 온다 — 킥오프에서 일정을 정하기 때문이다.
   const kickoff = existing.find(isKickoff);
   if (kickoff && calendarDate(dates[0]) <= kickoff.date) {
     errors.date = `킥오프(${dayLabel(kickoff.date)}${calendarZone === timeZone ? '' : ` ${zoneTitle(calendarZone)} 기준`}) 뒤로만 회차를 만들 수 있습니다.`;
-    return { errors };
+    return { errors, ambiguousTimes };
   }
-
-  if (draft.repeat === 'none') {
-    const same = byDate.get(calendarDate(draft.date));
-    // 하루에 회차 하나 — 출석 버튼·주간 일정이 날짜로 회차를 찾는다.
-    if (same) errors.date = `이 날에는 이미 ${same.no}회차가 있습니다.`;
-    else if (past(draft.date)) errors.time = '지난 시각으로는 회차를 만들 수 없습니다.';
-    if (Object.keys(errors).length) return { errors };
-    return { errors, plan: { dates, skipped: [] } };
-  }
-
   if (past(dates[0])) {
     errors.time = '첫 회차가 지난 시각입니다. 시작 일자나 시각을 바꿔 주세요.';
-    return { errors };
+    return { errors, ambiguousTimes };
   }
+
   const skipped: Skip[] = [];
   const keep: string[] = [];
   const plannedDays = new Set<string>();
-  for (const d of dates) {
-    const day = calendarDate(d);
+  for (const date of dates) {
+    const day = calendarDate(date);
     const same = byDate.get(day);
-    if (same) skipped.push({ date: d, reason: `이미 ${same.no}회차` });
-    else if (plannedDays.has(day)) skipped.push({ date: d, reason: '반 기준으로 이번 반복의 다른 회차와 같은 날' });
+    if (same && draft.repeat === 'none') {
+      errors.date = `이 날에는 이미 ${same.no}회차가 있습니다.`;
+      return { errors, ambiguousTimes };
+    }
+    if (same) skipped.push({ date, reason: `이미 ${same.no}회차` });
+    else if (plannedDays.has(day)) skipped.push({ date, reason: '반 기준으로 이번 반복의 다른 회차와 같은 날' });
     else {
-      keep.push(d);
+      keep.push(date);
       plannedDays.add(day);
     }
   }
-  if (keep.length === 0) {
-    errors.form = '고른 기간의 모든 날에 이미 회차가 있습니다.';
-    return { errors };
+  if (keep.length === 0)
+    return { errors: { ...errors, form: '고른 기간의 모든 날에 이미 회차가 있습니다.' }, ambiguousTimes };
+
+  // 서버는 생성할 회차의 반 현지 날짜 max-min <= 30일을 검사한다. 입력 지역의 31일과 별개다.
+  const calendarDates = keep.map(calendarDate).sort();
+  const lastAllowed = maxUntil(calendarDates[0]);
+  if (calendarDates[calendarDates.length - 1] > lastAllowed) {
+    const inputUntil = keep.filter((date) => calendarDate(date) <= lastAllowed).at(-1)!;
+    errors.until = `${zoneTitle(calendarZone)} 기준으로 ${REPEAT_SPAN_DAYS}일 범위를 넘어요. 입력 종료일을 ${inputUntil}까지로 줄여 주세요.`;
+    return { errors, ambiguousTimes };
   }
-  if (Object.keys(errors).length) return { errors };
-  return { errors, plan: { dates: keep, skipped } };
+  if (Object.keys(errors).length) return { errors, ambiguousTimes };
+  return {
+    errors,
+    ambiguousTimes,
+    plan: { dates: keep, skipped, scheduledAts: keep.map((date) => instants.get(date)!.toISOString()) },
+  };
 }
 
 /** 회차 하나를 고칠 때의 검사. 자기 자신과는 겹침을 따지지 않는다. */
 export function validateEdit(
-  edit: { date: string; time: string; title: string },
+  edit: { date: string; time: string; title: string; scheduledAt?: string },
   selfId: string,
   existing: StudyMeeting[],
   timeZone: string,
   now = new Date(),
 ): DraftErrors {
   const others = existing.filter((m) => m.id !== selfId);
-  const errors = planDraft({ ...edit, repeat: 'none', until: '', weekdays: [] }, others, timeZone, now).errors;
-  const self = existing.find((m) => m.id === selfId);
+  const self = existing.find((m) => m.id === selfId) as ProtoMeeting | undefined;
+  const scheduledAt = edit.scheduledAt ?? self?.scheduledAt;
+  const errors = planDraft(
+    { ...edit, repeat: 'none', until: '', weekdays: [], occurrences: scheduledAt ? { [edit.date]: scheduledAt } : {} },
+    others,
+    timeZone,
+    now,
+  ).errors;
   const firstRegular = others.filter((m) => !isKickoff(m))[0];
   if (self && isKickoff(self) && !errors.date && firstRegular && edit.date >= firstRegular.date) {
     errors.date = `킥오프는 1회차(${dayLabel(firstRegular.date)})보다 앞이어야 합니다.`;
@@ -589,7 +644,7 @@ export function validateEdit(
 }
 
 /** 새 회차들이 몇 회차부터 몇 회차가 되는지, 뒤 회차 몇 개가 밀리는지, 기간이 늘어나는지. */
-export function previewOf(plan: MeetingPlan, all_: StudyMeeting[]) {
+export function previewOf(plan: Pick<MeetingPlan, 'dates'>, all_: StudyMeeting[]) {
   // 킥오프는 번호(0)를 따로 갖는다 — 정규 회차 번호만 센다.
   const existing = all_.filter((m) => !isKickoff(m));
   const all = [...existing.map((m) => m.date), ...plan.dates].sort();

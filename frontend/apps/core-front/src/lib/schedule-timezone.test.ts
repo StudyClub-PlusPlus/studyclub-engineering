@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { initialMeetingDraft, planDraft, wallInputErrors, wallParts, zonedInstant } from './meetings';
+import {
+  initialMeetingDraft,
+  planDraft,
+  resolveWallInput,
+  wallTimeChoices,
+  validateEdit,
+  wallInputErrors,
+  wallParts,
+  zonedInstant,
+} from './meetings';
 import { zoneOffset } from './onboarding';
 import { regularScheduleDisplay } from './regular-schedule';
 import { resolveDisplayZone, SCHEDULE_ZONES, zoneAbbreviation } from './schedule-timezone';
@@ -85,5 +94,73 @@ describe('profile-based study times', () => {
         seoul,
       ).errors.time,
     ).toBeTruthy();
+  });
+});
+
+describe('DST input boundaries', () => {
+  const daily = {
+    date: '2026-10-31',
+    until: '2026-11-30',
+    time: '10:30',
+    title: '',
+    repeat: 'daily' as const,
+    weekdays: [],
+  };
+
+  it('checks the actual group calendar span before allowing a 31-day profile recurrence', () => {
+    const blocked = planDraft(daily, [], east, now, seoul);
+    expect(blocked.plan).toBeUndefined();
+    expect(blocked.errors.until).toContain('서울(KST)');
+    expect(blocked.errors.until).toContain('2026-11-29');
+    const corrected = planDraft({ ...daily, until: '2026-11-29' }, [], east, now, seoul).plan!;
+    expect(corrected.scheduledAts).toHaveLength(30);
+    expect(wallParts(new Date(corrected.scheduledAts[0]), seoul).date).toBe('2026-10-31');
+    expect(wallParts(new Date(corrected.scheduledAts.at(-1)!), seoul).date).toBe('2026-11-30');
+    expect(planDraft({ ...daily, time: '09:30' }, [], east, now, seoul).plan?.dates).toHaveLength(31);
+  });
+
+  it('measures retained meetings, allowing a full input range when a conflicting endpoint is skipped', () => {
+    const result = planDraft(daily, [{ id: 'last', no: 1, date: '2026-12-01' }], east, now, seoul);
+    expect(result.errors).toEqual({});
+    expect(result.plan?.dates).toHaveLength(30);
+    expect(result.plan?.skipped[0].date).toBe('2026-11-30');
+  });
+
+  it('preserves the original repeated hour including seconds when the same wall time is entered again', () => {
+    const original = '2026-11-01T06:30:15.123Z';
+    expect(resolveWallInput('2026-11-01', '01:30', east, [original]).instant?.toISOString()).toBe(original);
+    expect(resolveWallInput('2026-11-01', '01:30', east).instant).toBeUndefined();
+    expect(wallTimeChoices('2026-11-01', '01:30', east).map((c) => c.scheduledAt)).toEqual([
+      '2026-11-01T05:30:00.000Z',
+      '2026-11-01T06:30:00.000Z',
+    ]);
+    expect(wallTimeChoices('2026-11-01', '01:30', la)).toHaveLength(2);
+    expect(wallTimeChoices('2026-11-01', '01:30', vancouver)).toHaveLength(1);
+    expect(wallTimeChoices('2027-03-14', '02:30', east)).toHaveLength(0);
+  });
+
+  it('requires a date-specific choice in recurring additions and preserves the selected instant', () => {
+    const draft = { ...daily, date: '2026-11-01', until: '2026-11-02', time: '01:30' };
+    const missing = planDraft(draft, [], east, now, seoul);
+    expect(missing.plan).toBeUndefined();
+    expect(missing.ambiguousTimes?.map((r) => r.date)).toEqual(['2026-11-01']);
+    const chosen = planDraft(
+      { ...draft, occurrences: { '2026-11-01': '2026-11-01T06:30:00.000Z' } },
+      [],
+      east,
+      now,
+      seoul,
+    );
+    expect(chosen.plan?.scheduledAts).toEqual(['2026-11-01T06:30:00.000Z', '2026-11-02T06:30:00.000Z']);
+    expect(
+      planDraft({ ...draft, occurrences: { '2026-11-01': '2026-11-01T07:30:00.000Z' } }, [], east, now, seoul).plan,
+    ).toBeUndefined();
+  });
+
+  it('validates the selected second occurrence as future even after the first one has passed', () => {
+    const edit = { date: '2026-11-01', time: '01:30', title: '', scheduledAt: '2026-11-01T06:30:00.000Z' };
+    expect(validateEdit(edit, 'one', [{ ...edit, id: 'one', no: 1 }], east, new Date('2026-11-01T05:45:00Z'))).toEqual(
+      {},
+    );
   });
 });

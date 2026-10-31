@@ -131,9 +131,7 @@ export const ATTENDEE_SPEC: ScreenSpec = {
       policy: [
         '한 칸 바꿀 때마다 저장하지 않는다 — 여러 명을 옮기는 도중의 어중간한 편성이 남는다. 일정 표 · 출석부와 같은 방식',
       ],
-      data: [
-        'PATCH …/participants 한 번 — 바뀐 줄만 changes[] 로. 하나라도 거절되면 아무것도 바뀌지 않는다. 미구현',
-      ],
+      data: ['PATCH …/participants 한 번 — 바뀐 줄만 changes[] 로. 하나라도 거절되면 아무것도 바뀌지 않는다. 미구현'],
     },
     {
       n: '3-3',
@@ -441,7 +439,10 @@ export const SCHEDULE_SPEC: ScreenSpec = {
       n: '7-1',
       title: '일자 (반복이면 시작 일자)',
       display: ['필수. 반의 마지막 회차 다음 주 운영 일정을 내 날짜·시각으로 환산해 채운다'],
-      policy: ['한 번만 만들 때 반의 날짜로 환산해서 같은 날에 이미 회차가 있으면 막는다', '킥오프 날이나 그 앞이면 막는다'],
+      policy: [
+        '한 번만 만들 때 반의 날짜로 환산해서 같은 날에 이미 회차가 있으면 막는다',
+        '킥오프 날이나 그 앞이면 막는다',
+      ],
       when: '「회차 추가」를 눌렀을 때',
     },
     {
@@ -451,6 +452,7 @@ export const SCHEDULE_SPEC: ScreenSpec = {
       policy: [
         '내 프로필 시간대로 받는다(없으면 브라우저 → 서울). 라벨에 입력 날짜의 약칭을 붙이고 UTC로 보낸다 (POL-0006)',
         '첫 회차가 지금보다 이르면 막는다',
+        '같은 현지 시각이 두 번 존재하는 날짜만 시계 전환 전/후를 고른다. 선택한 UTC 순간을 미리보기부터 저장까지 유지하며, 선택 전에는 추가할 수 없다',
       ],
       when: '「회차 추가」를 눌렀을 때',
     },
@@ -473,7 +475,10 @@ export const SCHEDULE_SPEC: ScreenSpec = {
       n: '7-4',
       title: '종료일',
       display: ['필수. 「이 날까지 · 시작부터 최대 31일」'],
-      policy: ['시작 일자 포함 31일 안에서만 고른다'],
+      policy: [
+        '시작 일자 포함 31일 안에서만 고른다',
+        '겹치는 날을 제외한 생성 회차의 반 날짜 차이도 30일 이하여야 한다. 넘으면 추가 전에 입력 종료일을 어디까지 줄일지 안내하고 임의로 회차를 빼지 않는다',
+      ],
       when: '반복이 매일 또는 매주일 때',
     },
     {
@@ -486,7 +491,9 @@ export const SCHEDULE_SPEC: ScreenSpec = {
     {
       n: '7-6',
       title: '미리보기',
-      display: ['몇 회차로 들어가는지 · 제목 옆 기준 날짜 · 서울(KST) / 뉴욕·토론토(EDT/EST) / 밴쿠버(PCT) / LA(PDT/PST) 시각은 2열(좁은 화면은 1열), 날짜가 다르면 전날·다음 날 표시 · 반복은 첫 회차 기준 · 건너뛰는 날과 이유 · 번호가 밀리는 기존 회차 수'],
+      display: [
+        '몇 회차로 들어가는지 · 제목 옆 기준 날짜 · 서울(KST) / 뉴욕·토론토(EDT/EST) / 밴쿠버(PCT) / LA(PDT/PST) 시각은 2열(좁은 화면은 1열), 날짜가 다르면 전날·다음 날 표시 · 반복은 첫 회차 기준 · 건너뛰는 날과 이유 · 번호가 밀리는 기존 회차 수',
+      ],
       policy: ['반복 중 이미 회차가 있는 날은 막지 않고 건너뛴다'],
       when: '「회차 추가」를 눌렀을 때',
     },
@@ -500,8 +507,14 @@ export const SCHEDULE_SPEC: ScreenSpec = {
     {
       n: '8',
       title: '시간대',
-      display: ['시간대 선택 메뉴: 서울(KST) / 뉴욕·토론토(ET) / 밴쿠버(PCT) / LA(PT). 처음엔 내 프로필 시간대', '선택한 지역의 시간으로 입력해 주세요.'],
+      display: [
+        '시간대 선택 메뉴: 서울(KST) / 뉴욕·토론토(ET) / 밴쿠버(PCT) / LA(PT). 처음엔 내 프로필 시간대',
+        '선택한 지역의 시간으로 입력해 주세요.',
+      ],
       behavior: ['누르면 표의 일자·시각이 그 시간대로 바뀐다'],
+      policy: [
+        '기존과 같은 날짜·시각을 다시 입력하면 원래 UTC 순간을 유지한다. 새 중복 시각은 전환 전/후 선택이 필요하며, 고르기 전에는 저장·시간대 전환을 막는다',
+      ],
       when: '반이 하나 이상일 때',
     },
     {
@@ -542,7 +555,10 @@ export const SCHEDULE_SPEC: ScreenSpec = {
         '정규 회차가 없어도 정할 수 있다. 회차를 추가해도 킥오프는 생기지 않는다',
         '출석 행은 만들지 않는다. 기록이 없으면 출석부 킥오프 칸은 빈 칸이다',
       ],
-      data: ['STUDY_MEETING.MEETING_TYPE = KICKOFF · SCHEDULED_AT', 'PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff'],
+      data: [
+        'STUDY_MEETING.MEETING_TYPE = KICKOFF · SCHEDULED_AT',
+        'PUT /api/admin/studies/{studyId}/groups/{groupId}/kickoff',
+      ],
       when: '반을 골랐을 때',
     },
     {

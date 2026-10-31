@@ -30,7 +30,7 @@ export type ScheduleSource = {
   /** 발표자로 고를 수 있는 그 반 참가자. */
   people: Participant[];
   /** 추가 입력의 시간대. 생략하면 반 기준이며, 프로필 기준 입력도 UTC로 저장한다. */
-  add: (input: { dates: string[]; time: string; title?: string; timeZone?: string }) => void;
+  add: (input: { dates: string[]; time: string; title?: string; timeZone?: string; scheduledAts?: string[] }) => void;
   patch: (id: string, patch: MeetingPatch) => void;
   remove: (id: string) => void;
   /** 킥오프를 정하거나 옮긴다. 백오피스(캡틴)만 있다: 사용자 사이트의 네비게이터는 킥오프를 고치지 않는다. */

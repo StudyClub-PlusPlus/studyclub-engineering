@@ -24,6 +24,8 @@ import {
   wallLabel,
   wallParts,
   wallInputErrors,
+  wallTimeChoices,
+  resolveWallInput,
   type DraftErrors,
   type MeetingDraft,
   type NavigatorGroup,
@@ -108,6 +110,7 @@ export function ScheduleManager({
 
   const saved = (m: ProtoMeeting): RowDraft => ({
     ...wallParts(src.startOf(m), group.timeZone),
+    scheduledAt: src.startOf(m).toISOString(),
     title: m.title ?? '',
     presenter1: m.presenter1 ?? '',
     presenter2: m.presenter2 ?? '',
@@ -168,25 +171,29 @@ export function ScheduleManager({
   }
 
   /**
-   * 일자·시각 칸은 지금 고른 시간대로 보이고 그 시간대로 받는다. 고친 줄은 분반 시간대 벽시계로 들고 있다가
-   * 저장할 때 UTC 로 바꾼다 — 어느 탭에서 고쳐도 같은 순간이 저장된다.
+   * 일자·시각 칸은 지금 고른 시간대로 받고, 선택한 UTC 순간을 함께 보관한다.
+   * 반복되는 현지 시각도 시간대를 전환하거나 저장할 때 다시 해석하지 않는다.
    */
   function shownWall(v: RowDraft): { date: string; time: string } {
-    if (!v.date || !v.time || zone === group.timeZone) return { date: v.date, time: v.time };
-    return wallParts(zonedInstant(v.date, v.time, group.timeZone), zone);
+    return wallParts(new Date(v.scheduledAt), zone);
   }
 
-  function changeWall(m: ProtoMeeting, patch: { date?: string; time?: string }) {
+  function changeWall(m: ProtoMeeting, patch: { date?: string; time?: string }, selectedAt?: string) {
     // 입력 중 프로필이 바뀌어도 작성 중인 숫자의 시간대는 유지한다.
     setInputZone(zone);
     const next = { ...(incompleteWalls[m.id] ?? shownWall(valueOf(m))), ...patch };
-    if (Object.keys(wallInputErrors(next.date, next.time, zone)).length > 0) {
+    const resolved = resolveWallInput(next.date, next.time, zone, [
+      selectedAt,
+      drafts[m.id]?.scheduledAt,
+      src.startOf(m).toISOString(),
+    ]);
+    if (!resolved.instant) {
       setAnnounce('');
       setIncompleteWalls((walls) => ({ ...walls, [m.id]: next }));
       return;
     }
     setIncompleteWalls((walls) => Object.fromEntries(Object.entries(walls).filter(([id]) => id !== m.id)));
-    change(m, zone === group.timeZone ? next : wallParts(zonedInstant(next.date, next.time, zone), group.timeZone));
+    change(m, { ...wallParts(resolved.instant, group.timeZone), scheduledAt: resolved.instant.toISOString() });
   }
 
   function saveAll() {
@@ -198,7 +205,7 @@ export function ScheduleManager({
       // 발표자 칸은 고치기 시작할 때와 달라진 것만 보낸다 — 그 사이 크루가 신청한 칸을 옛 값(빈칸)으로 덮지 않는다.
       // TODO(api): PUT /api/studies/{studyId}/meetings/{meetingId} — 바뀐 줄마다, 바꾼 발표자 칸만.
       src.patch(id, {
-        ...((v.date !== before.date || v.time !== before.time) && { date: v.date, time: v.time }),
+        ...(v.scheduledAt !== before.scheduledAt && { scheduledAt: v.scheduledAt }),
         title: v.title,
         ...(v.presenter1 !== before.presenter1 && { presenter1: v.presenter1 || null }),
         ...(v.presenter2 !== before.presenter2 && { presenter2: v.presenter2 || null }),
@@ -457,7 +464,15 @@ export function ScheduleManager({
                   // 킥오프는 표에서 고치지 않는다. 캡틴이 「킥오프 정하기」로만 (사용자 사이트에서는 아무도)
                   const editable = canEdit && !past && !kickoff;
                   const wall = incompleteWalls[m.id] ?? shownWall(v);
-                  const rowInstant = v.date && v.time ? zonedInstant(v.date, v.time, group.timeZone) : start;
+                  const rowInstant = new Date(v.scheduledAt);
+                  const timeChoices = wallTimeChoices(wall.date, wall.time, zone);
+                  const selectedTime = incompleteWalls[m.id]
+                    ? ''
+                    : (timeChoices.find(
+                        (choice) =>
+                          Math.floor(Date.parse(choice.scheduledAt) / 60_000) ===
+                          Math.floor(rowInstant.getTime() / 60_000),
+                      )?.scheduledAt ?? '');
                   const abbreviation = zoneLabel(zone, rowInstant);
                   const cell = 'border-t border-border px-2 py-1.5 align-top';
 
@@ -562,17 +577,38 @@ export function ScheduleManager({
                       </td>
                       <td className={cn(cell, 'tnum')}>
                         {editable ? (
-                          <div className='grid grid-cols-[minmax(7.5rem,1fr)_auto] items-start gap-2'>
-                            <CellInput
-                              type='time'
-                              label={`${meetingLabel(m)} 시작 시각 (${abbreviation})`}
-                              value={wall.time}
-                              error={errors.time}
-                              onChange={(time) => changeWall(m, { time })}
-                            />
-                            <span className='flex h-8 items-center whitespace-nowrap type-label-sm text-fg-muted'>
-                              {abbreviation}
-                            </span>
+                          <div>
+                            <div className='grid grid-cols-[minmax(7.5rem,1fr)_auto] items-start gap-2'>
+                              <CellInput
+                                type='time'
+                                label={`${meetingLabel(m)} 시작 시각 (${abbreviation})`}
+                                value={wall.time}
+                                error={errors.time}
+                                onChange={(time) => changeWall(m, { time })}
+                              />
+                              <span className='flex h-8 items-center whitespace-nowrap type-label-sm text-fg-muted'>
+                                {abbreviation}
+                              </span>
+                            </div>
+                            {timeChoices.length > 1 && (
+                              <div className='mt-2'>
+                                <Select
+                                  size='sm'
+                                  aria-label={`${meetingLabel(m)} 시각 구분`}
+                                  value={selectedTime}
+                                  onChange={(e) => changeWall(m, {}, e.target.value)}
+                                >
+                                  <option value='' disabled>
+                                    시각을 선택해 주세요
+                                  </option>
+                                  {timeChoices.map((choice) => (
+                                    <option key={choice.scheduledAt} value={choice.scheduledAt}>
+                                      {choice.label.replace(`${wall.time} · `, '')}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className='inline-block py-1.5'>
@@ -641,12 +677,20 @@ export function ScheduleManager({
 
 /* ── 표 칸 ─────────────────────────────────────────────────────────────── */
 
-type RowDraft = { date: string; time: string; title: string; presenter1: string; presenter2: string };
+type RowDraft = {
+  date: string;
+  time: string;
+  title: string;
+  presenter1: string;
+  presenter2: string;
+  scheduledAt: string;
+};
 
 type RowErrors = DraftErrors & { presenter2?: string };
 
 function sameRow(a: RowDraft, b: RowDraft): boolean {
   return (
+    a.scheduledAt === b.scheduledAt &&
     a.date === b.date &&
     a.time === b.time &&
     a.title.trim() === b.title.trim() &&
@@ -856,16 +900,17 @@ function AddForm({
   const [touched, setTouched] = useState(false);
 
   const existing = source.meetings();
-  const { errors: live, plan } = planDraft(draft, existing, inputZone, new Date(), group.timeZone);
+  const { errors: live, plan, ambiguousTimes = [] } = planDraft(draft, existing, inputZone, new Date(), group.timeZone);
 
   function groupPreview(plan: NonNullable<ReturnType<typeof planDraft>['plan']>) {
-    const dates = plan.dates.map((date) => wallParts(zonedInstant(date, draft.time, inputZone), group.timeZone).date);
+    const dates = plan.scheduledAts.map((at) => wallParts(new Date(at), group.timeZone).date);
     const preview = previewOf({ ...plan, dates }, existing);
     return { ...preview, extendsTo: preview.extendsTo ? plan.dates.at(-1) : undefined };
   }
 
   function change(patch: Partial<MeetingDraft>) {
     const next = { ...draft, ...patch };
+    if (patch.time !== undefined && patch.time !== draft.time) next.occurrences = {};
     if (patch.repeat && patch.repeat !== 'none' && !next.until) next.until = defaultUntil(next.date, patch.repeat);
     // 매주를 처음 고르면 시작 날짜의 요일을 켜 둔다 — 빈 채로 두면 무엇을 눌러야 할지 모른다.
     if (patch.repeat === 'weekly' && next.weekdays.length === 0 && next.date) next.weekdays = [dowOf(next.date)];
@@ -879,19 +924,25 @@ function AddForm({
     setErrors(live);
     if (!plan) return;
     const { from } = groupPreview(plan);
-    source.add({ dates: plan.dates, time: draft.time, title: draft.title, timeZone: inputZone });
+    source.add({
+      dates: plan.dates,
+      scheduledAts: plan.scheduledAts,
+      time: draft.time,
+      title: draft.title,
+      timeZone: inputZone,
+    });
     const first = plan.dates[0];
     const last = plan.dates[plan.dates.length - 1];
     onAdded(
       plan.dates.length === 1
-        ? `${from}회차 · ${wallLabel(zonedInstant(first, draft.time, inputZone), inputZone)}`
+        ? `${from}회차 · ${wallLabel(new Date(plan.scheduledAts[0]), inputZone)}`
         : `회차 ${plan.dates.length}개 · ${dayLabel(first)} ~ ${dayLabel(last)} ${draft.time}`,
     );
   }
 
   const preview = plan ? groupPreview(plan) : undefined;
   const first = plan?.dates[0];
-  const firstInstant = first ? zonedInstant(first, draft.time, inputZone) : undefined;
+  const firstInstant = plan ? new Date(plan.scheduledAts[0]) : undefined;
   const repeatOptions: { key: Repeat; label: string }[] = [
     { key: 'none', label: '반복 안 함' },
     { key: 'daily', label: '매일' },
@@ -917,7 +968,15 @@ function AddForm({
             취소
           </Button>
           <span data-anno='schedule:7-7'>
-            <Button onClick={submit}>
+            <Button
+              onClick={submit}
+              disabled={
+                Boolean(live.until) ||
+                ambiguousTimes.some(
+                  ({ date, choices }) => !choices.some((choice) => choice.scheduledAt === draft.occurrences?.[date]),
+                )
+              }
+            >
               {plan && plan.dates.length > 1 ? `회차 ${plan.dates.length}개 추가` : '추가'}
             </Button>
           </span>
@@ -947,6 +1006,25 @@ function AddForm({
             />
           </div>
         </div>
+
+        {ambiguousTimes.map(({ date, choices }) => (
+          <Select
+            key={date}
+            label={`${date} 시각 구분`}
+            helper='이날은 같은 시각이 두 번 있어요. 시계 전환 전후 중 하나를 선택해 주세요.'
+            value={choices.some((c) => c.scheduledAt === draft.occurrences?.[date]) ? draft.occurrences![date] : ''}
+            onChange={(e) => change({ occurrences: { ...draft.occurrences, [date]: e.target.value } })}
+          >
+            <option value='' disabled>
+              시각을 선택해 주세요
+            </option>
+            {choices.map((choice) => (
+              <option key={choice.scheduledAt} value={choice.scheduledAt}>
+                {choice.label}
+              </option>
+            ))}
+          </Select>
+        ))}
 
         <div data-anno='schedule:7-3' className='flex flex-col gap-1.5'>
           <span className='type-label-lg text-neutral-800'>반복</span>
@@ -1010,7 +1088,7 @@ function AddForm({
               min={draft.date}
               max={maxUntil(draft.date)}
               value={draft.until}
-              error={errors.until}
+              error={live.until ?? errors.until}
               onChange={(ev) => change({ until: ev.target.value })}
             />
           </div>

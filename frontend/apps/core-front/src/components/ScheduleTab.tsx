@@ -23,6 +23,8 @@ import {
   defaultUntil,
   initialMeetingDraft,
   wallInputErrors,
+  wallTimeChoices,
+  resolveWallInput,
   DOW_LABEL,
   dowOf,
   isKickoff,
@@ -127,16 +129,17 @@ function AddMeetingForm({
   inputZone: string;
   existing: ProtoMeeting[];
   onClose: () => void;
-  onAdded: (input: { dates: string[]; time: string; title: string }) => void;
+  onAdded: (input: { scheduledAts: string[]; title: string }) => void;
 }) {
   const [draft, setDraft] = useState<MeetingDraft>(() => initialMeetingDraft(group, existing, inputZone));
   const [errors, setErrors] = useState<DraftErrors>({});
   const [touched, setTouched] = useState(false);
 
-  const { errors: live, plan } = planDraft(draft, existing, inputZone, new Date(), group.timeZone);
+  const { errors: live, plan, ambiguousTimes = [] } = planDraft(draft, existing, inputZone, new Date(), group.timeZone);
 
   function change(patch: Partial<MeetingDraft>) {
     const next = { ...draft, ...patch };
+    if (patch.time !== undefined && patch.time !== draft.time) next.occurrences = {};
     if (patch.repeat && patch.repeat !== 'none' && !next.until) next.until = defaultUntil(next.date, patch.repeat);
     if (patch.repeat === 'weekly' && next.weekdays.length === 0 && next.date) next.weekdays = [dowOf(next.date)];
     setDraft(next);
@@ -147,21 +150,21 @@ function AddMeetingForm({
     setTouched(true);
     setErrors(live);
     if (!plan) return;
-    onAdded({ dates: plan.dates, time: draft.time, title: draft.title.trim() });
+    onAdded({ scheduledAts: plan.scheduledAts, title: draft.title.trim() });
   }
 
   const preview = plan
     ? previewOf(
         {
           ...plan,
-          dates: plan.dates.map((date) => wallParts(zonedInstant(date, draft.time, inputZone), group.timeZone).date),
+          dates: plan.scheduledAts.map((at) => wallParts(new Date(at), group.timeZone).date),
         },
         existing,
       )
     : undefined;
   if (preview?.extendsTo && plan) preview.extendsTo = plan.dates[plan.dates.length - 1];
   const first = plan?.dates[0];
-  const firstInstant = first ? zonedInstant(first, draft.time, inputZone) : undefined;
+  const firstInstant = plan ? new Date(plan.scheduledAts[0]) : undefined;
   const repeatOptions: { key: Repeat; label: string }[] = [
     { key: 'none', label: '반복 안 함' },
     { key: 'daily', label: '매일' },
@@ -185,7 +188,15 @@ function AddMeetingForm({
           <Button variant='secondary' onClick={onClose}>
             취소
           </Button>
-          <Button onClick={submit}>
+          <Button
+            onClick={submit}
+            disabled={
+              Boolean(live.until) ||
+              ambiguousTimes.some(
+                ({ date, choices }) => !choices.some((choice) => choice.scheduledAt === draft.occurrences?.[date]),
+              )
+            }
+          >
             {plan && plan.dates.length > 1 ? `회차 ${plan.dates.length}개 추가` : '추가'}
           </Button>
         </>
@@ -210,6 +221,25 @@ function AddMeetingForm({
             onChange={(ev) => change({ time: ev.target.value })}
           />
         </div>
+
+        {ambiguousTimes.map(({ date, choices }) => (
+          <Select
+            key={date}
+            label={`${date} 시각 구분`}
+            helper='이날은 같은 시각이 두 번 있어요. 시계 전환 전후 중 하나를 선택해 주세요.'
+            value={choices.some((c) => c.scheduledAt === draft.occurrences?.[date]) ? draft.occurrences![date] : ''}
+            onChange={(e) => change({ occurrences: { ...draft.occurrences, [date]: e.target.value } })}
+          >
+            <option value='' disabled>
+              시각을 선택해 주세요
+            </option>
+            {choices.map((choice) => (
+              <option key={choice.scheduledAt} value={choice.scheduledAt}>
+                {choice.label}
+              </option>
+            ))}
+          </Select>
+        ))}
 
         <div className='flex flex-col gap-1.5'>
           <span className='type-label-lg text-ink'>반복</span>
@@ -273,7 +303,7 @@ function AddMeetingForm({
               min={draft.date}
               max={maxUntil(draft.date)}
               value={draft.until}
-              error={errors.until}
+              error={live.until ?? errors.until}
               onChange={(ev) => change({ until: ev.target.value })}
             />
           </div>
@@ -522,7 +552,12 @@ export function ScheduleTab({
   const errorsOf = (m: ProtoMeeting): DraftErrors & { presenter2?: string } => {
     const d = drafts[m.id];
     if (!d) return {};
-    const base = validateEdit({ date: d.date, time: d.time, title: d.title }, m.id, projected, group.timeZone);
+    const base = validateEdit(
+      { date: d.date, time: d.time, title: d.title, scheduledAt: d.scheduledAt ?? m.scheduledAt },
+      m.id,
+      projected,
+      group.timeZone,
+    );
     const same =
       d.presenter1 && d.presenter1 === d.presenter2 ? { presenter2: '발표자1과 다른 사람을 골라 주세요.' } : {};
     return {
@@ -557,10 +592,15 @@ export function ScheduleTab({
     return incompleteWalls[m.id] ?? wallParts(instantOf(m), zone);
   }
 
-  function changeWall(m: ProtoMeeting, patch: { date?: string; time?: string }) {
+  function changeWall(m: ProtoMeeting, patch: { date?: string; time?: string }, selectedAt?: string) {
     setInputZone(zone);
     const nextShown = { ...shownWall(m), ...patch };
-    if (Object.keys(wallInputErrors(nextShown.date, nextShown.time, zone)).length) {
+    const resolved = resolveWallInput(nextShown.date, nextShown.time, zone, [
+      selectedAt,
+      drafts[m.id]?.scheduledAt,
+      m.scheduledAt,
+    ]);
+    if (!resolved.instant) {
       setIncompleteWalls((cur) => ({ ...cur, [m.id]: nextShown }));
       update(m, {});
       return;
@@ -570,7 +610,7 @@ export function ScheduleTab({
       delete next[m.id];
       return next;
     });
-    const at = zonedInstant(nextShown.date, nextShown.time, zone);
+    const at = resolved.instant;
     update(m, { ...wallParts(at, group.timeZone), scheduledAt: at.toISOString() });
   }
 
@@ -774,11 +814,11 @@ export function ScheduleTab({
           group={group}
           existing={meetings}
           onClose={() => setAdding(false)}
-          onAdded={({ dates, time, title }) => {
+          onAdded={({ scheduledAts, title }) => {
             setPendingAdds((cur) => [
               ...cur,
-              ...dates.map((date, i) => {
-                const at = zonedInstant(date, time, viewerZone);
+              ...scheduledAts.map((scheduledAt, i) => {
+                const at = new Date(scheduledAt);
                 return {
                   id: `pending-${Date.now()}-${i}`,
                   ...wallParts(at, group.timeZone),
@@ -903,6 +943,14 @@ export function ScheduleTab({
                   const started = startedOf(m);
                   const shown = shownWall(m);
                   const abbreviation = zoneLabel(zone, instantOf(m));
+                  const timeChoices = wallTimeChoices(shown.date, shown.time, zone);
+                  const selectedTime = incompleteWalls[m.id]
+                    ? ''
+                    : (timeChoices.find(
+                        (choice) =>
+                          Math.floor(Date.parse(choice.scheduledAt) / 60_000) ===
+                          Math.floor(instantOf(m).getTime() / 60_000),
+                      )?.scheduledAt ?? '');
                   const errors = errorsOf(m);
                   const changed = Boolean(drafts[m.id]) || pendingIds.has(m.id);
                   const canDelete = !isKickoff(m) && !started;
@@ -967,6 +1015,25 @@ export function ScheduleTab({
                           )}
                           <span className='shrink-0 type-label-sm text-fg-muted'>{abbreviation}</span>
                         </div>
+                        {editable && timeChoices.length > 1 && (
+                          <div className='mt-2'>
+                            <Select
+                              size='sm'
+                              aria-label={`${meetingLabel(m)} 시각 구분`}
+                              value={selectedTime}
+                              onChange={(e) => changeWall(m, {}, e.target.value)}
+                            >
+                              <option value='' disabled>
+                                시각을 선택해 주세요
+                              </option>
+                              {timeChoices.map((choice) => (
+                                <option key={choice.scheduledAt} value={choice.scheduledAt}>
+                                  {choice.label.replace(`${shown.time} · `, '')}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                        )}
                       </td>
                       <td className='px-2 py-3 text-center'>
                         {editable ? (

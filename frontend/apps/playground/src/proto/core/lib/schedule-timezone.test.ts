@@ -7,6 +7,8 @@ import {
   patchMeeting,
   planDraft,
   wallInputErrors,
+  wallTimeChoices,
+  resolveWallInput,
   wallLabel,
   wallParts,
   withAdded,
@@ -161,6 +163,39 @@ const springDaily = planDraft(
 assert.deepEqual(springDaily.plan?.dates, ['2027-03-13']);
 assert.equal(springDaily.plan?.skipped[0]?.date, '2027-03-14');
 
+// 입력 지역의 31일이 반 달력의 32일에 걸치면 저장 전에 종료일을 줄이도록 안내한다.
+const longDaily = { ...lateDraft, date: '2026-10-31', time: '10:30', repeat: 'daily' as const, until: '2026-11-30' };
+const longResult = planDraft(longDaily, [], east, fixtureNow, seoul);
+assert.equal(longResult.plan, undefined);
+assert.match(longResult.errors.until!, /2026-11-29/);
+assert.equal(planDraft({ ...longDaily, until: '2026-11-29' }, [], east, fixtureNow, seoul).plan?.dates.length, 30);
+assert.equal(
+  planDraft(longDaily, [{ id: 'occupied', no: 1, date: '2026-12-01' }], east, fixtureNow, seoul).plan?.dates.length,
+  30,
+);
+// 같은 01:30의 두 순간을 구분하고, 기존 두 번째 순간은 초 단위까지 유지한다.
+const secondOccurrence = '2026-11-01T06:30:00.000Z';
+assert.deepEqual(
+  wallTimeChoices('2026-11-01', '01:30', east).map((c) => c.scheduledAt),
+  ['2026-11-01T05:30:00.000Z', secondOccurrence],
+);
+assert.equal(wallTimeChoices('2026-11-01', '01:30', vancouver).length, 1);
+assert.equal(resolveWallInput('2026-11-01', '01:30', east).instant, undefined);
+assert.equal(
+  resolveWallInput('2026-11-01', '01:30', east, ['2026-11-01T06:30:42.000Z']).instant?.toISOString(),
+  '2026-11-01T06:30:42.000Z',
+);
+const ambiguousDraft = { ...longDaily, date: '2026-11-01', time: '01:30', until: '2026-11-02' };
+assert.equal(planDraft(ambiguousDraft, [], east, fixtureNow, seoul).plan, undefined);
+const chosenRepeat = planDraft(
+  { ...ambiguousDraft, occurrences: { '2026-11-01': secondOccurrence } },
+  [],
+  east,
+  fixtureNow,
+  seoul,
+).plan!;
+assert.deepEqual(chosenRepeat.scheduledAts, [secondOccurrence, '2026-11-02T06:30:00.000Z']);
+
 // 실제 저장 경로를 거쳐, UTC 일정이 주간 캘린더에서 KST로 재해석되지 않는지 확인한다.
 const memory = new Map<string, string>();
 Object.defineProperty(globalThis, 'localStorage', {
@@ -173,6 +208,22 @@ Object.defineProperty(globalThis, 'localStorage', {
 Object.defineProperty(globalThis, 'window', { configurable: true, value: { dispatchEvent: () => true } });
 setTimeZone(east);
 assert.equal(getTimeZone(), east);
+const ambiguousSource = classSource({ key: 'ambiguous-repeat', base: [], timeZone: east, time: '01:30', people: [] });
+ambiguousSource.add({
+  dates: chosenRepeat.dates,
+  scheduledAts: chosenRepeat.scheduledAts,
+  time: '01:30',
+  timeZone: east,
+});
+assert.deepEqual(
+  ambiguousSource.meetings().map((m) => m.scheduledAt),
+  chosenRepeat.scheduledAts,
+);
+const ambiguousMeeting = ambiguousSource.meetings()[0];
+ambiguousSource.patch(ambiguousMeeting.id, { title: '제목만 변경' });
+assert.equal(ambiguousSource.meetings()[0].scheduledAt, secondOccurrence);
+ambiguousSource.patch(ambiguousMeeting.id, { scheduledAt: '2026-11-01T05:30:00.000Z' });
+assert.equal(ambiguousSource.meetings()[0].scheduledAt, '2026-11-01T05:30:00.000Z');
 const ddia = studies.find((s) => s.id === 'ddia-2nd')!;
 const profileSource = studySource(ddia, seoul);
 profileSource.add({ dates: ['2026-11-25'], time: '06:30', timeZone: east });

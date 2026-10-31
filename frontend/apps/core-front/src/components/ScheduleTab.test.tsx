@@ -150,3 +150,78 @@ describe('schedule timezone interaction', () => {
     expect(screen.getAllByText('06:30')).toHaveLength(3);
   });
 });
+
+describe('DST review regressions', () => {
+  it('retains the saved second occurrence after clearing and re-entering the same date and time', async () => {
+    const original = '2026-11-01T06:30:00Z';
+    setup(true, { ...data, meetings: [{ ...data.meetings[0], scheduledAt: original }] });
+    fireEvent.change(screen.getByLabelText('1회차 시작 시각 (EST)'), { target: { value: '' } });
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('1회차 시작 시각 (EST)'), { target: { value: '01:30' } });
+    fireEvent.change(screen.getByLabelText('1회차 일자 (EST)'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('1회차 일자 (EST)'), { target: { value: '2026-11-01' } });
+    fireEvent.change(screen.getByLabelText('시간대'), { target: { value: 'Asia/Seoul' } });
+    expect(screen.getByLabelText('1회차 시작 시각 (KST)')).toHaveValue('15:30');
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() =>
+      expect(updateStudyMeeting).toHaveBeenCalledWith(
+        20,
+        1,
+        expect.objectContaining({ scheduledAt: '2026-11-01T06:30:00.000Z' }),
+      ),
+    );
+  });
+
+  it('asks before saving a newly entered ambiguous time and saves the selected occurrence', async () => {
+    setup(true, { ...data, meetings: [{ ...data.meetings[0], scheduledAt: '2026-11-01T07:30:00Z' }] });
+    fireEvent.change(screen.getByLabelText('1회차 시작 시각 (EST)'), { target: { value: '01:30' } });
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByLabelText('시간대')).toBeDisabled();
+    expect(screen.getByLabelText('1회차 시각 구분')).toHaveValue('');
+    fireEvent.change(screen.getByLabelText('1회차 시각 구분'), { target: { value: '2026-11-01T06:30:00.000Z' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() =>
+      expect(updateStudyMeeting).toHaveBeenCalledWith(
+        20,
+        1,
+        expect.objectContaining({ scheduledAt: '2026-11-01T06:30:00.000Z' }),
+      ),
+    );
+  });
+
+  it('shows the group-calendar limit before adding and accepts the corrected end date', () => {
+    setup(true, { ...data, meetings: [] });
+    fireEvent.click(screen.getByRole('button', { name: '회차 추가' }));
+    const modal = within(screen.getByRole('dialog'));
+    fireEvent.change(modal.getByLabelText('일자', { exact: false }), { target: { value: '2026-10-31' } });
+    fireEvent.change(modal.getByLabelText(/시작 시각/), { target: { value: '10:30' } });
+    fireEvent.click(modal.getByRole('button', { name: '매일' }));
+    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2026-11-30' } });
+    expect(modal.getByText(/서울\(KST\) 기준으로 31일 범위를 넘어요/)).toBeInTheDocument();
+    expect(modal.getByRole('button', { name: '추가' })).toBeDisabled();
+    expect(createStudyMeetings).not.toHaveBeenCalled();
+    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2026-11-29' } });
+    expect(modal.getByRole('button', { name: '회차 30개 추가' })).toBeEnabled();
+  });
+
+  it('carries an explicitly selected recurring occurrence through preview, pending rows, and the API', async () => {
+    setup(true, { ...data, meetings: [] });
+    fireEvent.click(screen.getByRole('button', { name: '회차 추가' }));
+    const modal = within(screen.getByRole('dialog'));
+    fireEvent.change(modal.getByLabelText('일자', { exact: false }), { target: { value: '2026-11-01' } });
+    fireEvent.change(modal.getByLabelText(/시작 시각/), { target: { value: '01:30' } });
+    fireEvent.click(modal.getByRole('button', { name: '매일' }));
+    fireEvent.change(modal.getByLabelText(/종료일/), { target: { value: '2026-11-02' } });
+    expect(modal.getByRole('button', { name: '추가' })).toBeDisabled();
+    fireEvent.change(modal.getByLabelText('2026-11-01 시각 구분'), { target: { value: '2026-11-01T06:30:00.000Z' } });
+    expect(modal.getByText(/서울\(KST\) 15:30/)).toBeInTheDocument();
+    fireEvent.click(modal.getByRole('button', { name: '회차 2개 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() =>
+      expect(createStudyMeetings).toHaveBeenCalledWith(
+        20,
+        expect.objectContaining({ scheduledAts: ['2026-11-01T06:30:00.000Z', '2026-11-02T06:30:00.000Z'] }),
+      ),
+    );
+  });
+});
