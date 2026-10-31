@@ -425,7 +425,8 @@ export function ApplyDialog({
             <Button
               onClick={() => {
                 close();
-                router.push(`/${locale}/my`);
+                // 내 스터디룸 — 기본 탭(참여중)에는 아직 시작 전인 새 스터디가 없어 「전체」로 연다
+                router.push(`/${locale}/my/joined?status=all`);
               }}
             >
               {t({ ko: '내 스터디룸 보러 가기', en: 'Go to My study room' }, locale)}
@@ -444,15 +445,21 @@ export function ApplyDialog({
       }
     >
       {done ? (
-        <p className='py-6 text-center type-body-sm text-fg-secondary'>
-          {t(
-            {
-              ko: '신청이 접수되었습니다. 승인 결과는 이메일로 안내됩니다.',
-              en: "Your application was received. We'll email you the result.",
-            },
-            locale,
-          )}
-        </p>
+        // 신청하면 곧 참여다 — 승인 대기가 없다 (POL-0004)
+        <div className='flex flex-col gap-2 py-4 type-body-sm'>
+          <p className='text-fg'>
+            {t(
+              {
+                ko: '스터디 신청이 완료되었습니다. 내 스터디룸으로 이동할까요?',
+                en: 'Your application is in. Go to My study room?',
+              },
+              locale,
+            )}
+          </p>
+          <p className='text-fg-secondary'>
+            {t({ ko: '제출한 내용은 수정할 수 없습니다.', en: 'Submitted answers cannot be edited.' }, locale)}
+          </p>
+        </div>
       ) : (
         <div className='-mx-6 -my-4 h-full bg-surface-1 px-6 py-4'>
           <div className='flex flex-col gap-3'>
