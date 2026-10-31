@@ -17,5 +17,9 @@ public enum AdminAuditAction {
      * 백오피스 신청자 탭에서 명부 행의 역할(네비게이터)을 바꿨다 (specs/study-group/spec.md). BEFORE 에 변경 전 역할, AFTER 에 명부 행
      * ID. 역할은 {@code LEADER} · {@code MEMBER} 둘뿐이라 변경 후 값은 BEFORE 의 반대다.
      */
-    PARTICIPANT_ROLE
+    PARTICIPANT_ROLE,
+    /** 캡틴 계정 탈퇴에 따른 시스템 권한 말소. */
+    ACCOUNT_ROLE_REVOKE,
+    /** 활동 중인 네비게이터의 계정 탈퇴에 따른 참여 권한 말소. */
+    PARTICIPANT_REVOKE
 }

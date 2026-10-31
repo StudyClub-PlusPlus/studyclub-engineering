@@ -5,7 +5,7 @@
 > 프로토타입: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/leave` (`/proto/core/ko/my/leave`)
 > 관련: [user-onboarding/spec.md](../user-onboarding/spec.md) — 완료 뒤 같은 계정 재가입은 온보딩 흐름 그대로 탄다. [notification/spec.md](../notification/spec.md) — NOTIFICATION 스냅샷 비식별화가 이 스펙과 맞물린다. [study-application/spec.md](../study-application/spec.md) — FORM_ANSWER.discordNickname 비식별화가 이 스펙과 맞물린다. `frontend/apps/playground/src/proto/core/lib/legal.ts` — 이용약관 제11조·개인정보처리방침 제4·9조 (법령상 보존 근거). [POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) — 회원 데이터와 탈퇴 정책 (이 스펙과 같은 내용의 기획 정본). [feedback/spec.md](../feedback/spec.md#탈퇴-때) — 문의 첨부 이미지 파기가 이 스펙과 맞물린다.
 > 생성일: 2026-09-19
-> 갱신: 2026-10-26 — 문의·오류 신고(`FEEDBACK`) 추가. 첨부 이미지는 파기, 문의 행은 남긴다 (PR #341 리뷰)
+> 갱신: 2026-10-31 — 문의 첨부 이미지는 탈퇴 때 파기하고, 문의 행은 첫 답변일부터 1년(미답변은 접수일부터 1년)까지만 보관한다 ([결정](../../docs/share/2026-10-31-feedback-retention.md))
 > 상태: 스펙작성중
 
 ## 엔드포인트 목록
@@ -75,11 +75,11 @@
    - `NOTIFICATION` WHERE `RECIPIENT_USER_ID=accountId` 인 행의 `RECIPIENT_VALUE`·`PAYLOAD.nickname` 을 비식별 처리한다(행은 유지, 발송 이력 자체는 지우지 않는다). `STATUS=PENDING` 인 행은 추가로 `CANCELLED` 로 전환한다 — [알림 비식별화](#알림-비식별화) 참고.
    - `STUDY_PROPOSAL` WHERE `PROPOSER_ACCOUNT_ID=accountId` AND `STATUS=OPEN` → `STATUS=CLOSED` 로 전환한다. `CONTENT`·`PROPOSED_AT` 은 그대로 둔다. `ACCEPTED`/`REJECTED`/이미 `CLOSED` 인 행은 이미 종결 상태라 건드리지 않는다 — [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) 참고.
    - `STUDY_APPLICATION` WHERE `ACCOUNT_ID=accountId` 인 행의 `FORM_ANSWER.discordNickname` 을 고정 마스킹 값으로 치환한다(`availableDays`·`scheduleAgreed`·`answers` 는 그대로 둔다). 행 자체는 지우지 않는다 — [STUDY_APPLICATION 의 FORM_ANSWER.discordNickname](#study_application-의-form_answerdiscordnickname) 참고.
-   - `FEEDBACK` WHERE `ACCOUNT_ID=accountId` 의 `FEEDBACK_IMAGE` 를 모아, 가리키는 `STORAGE_OBJECT` 를 `DELETING` 으로 바꾸고 `FEEDBACK_IMAGE` 행을 물리 삭제한다 (문의 첨부 이미지 파기). `FEEDBACK` 행 자체는 남긴다 — [문의·오류 신고 스펙 「탈퇴 때」](../feedback/spec.md#탈퇴-때).
+   - `FEEDBACK` WHERE `ACCOUNT_ID=accountId` 의 `FEEDBACK_IMAGE` 를 모아, 가리키는 `STORAGE_OBJECT` 를 `DELETING` 으로 바꾸고 `FEEDBACK_IMAGE` 행을 물리 삭제한다 (문의 첨부 이미지 파기). `FEEDBACK` 행 자체는 보유 기간까지 남긴다. 탈퇴가 보유 기간을 늘리지는 않는다 — [문의·오류 신고 스펙 「탈퇴 때」](../feedback/spec.md#탈퇴-때).
    - `ACCOUNT_CONSENT` WHERE `ACCOUNT_ID=accountId` 전부 물리 삭제 (동의 이력 파기). Flyway 스키마에는 `fk_account_consent_account ... ON DELETE CASCADE` 가 있지만, stage(Hibernate `ddl-auto: update`)·테스트(H2)는 FK 없이 스키마를 만들어 cascade 에 기댈 수 없으므로 코드가 명시적으로 지운다.
    - `ACCOUNT` 행 삭제 (프로필 파기). 지우기 전에 `PROFILE_IMG_URL` 을 읽어 둔다.
    - `STUDY_ATTENDANCE`·`STUDY_REVIEW`·(방금 `discordNickname` 만 마스킹한) `STUDY_APPLICATION`·(방금 `CLOSED` 로 바뀐) `STUDY_PROPOSAL` 은 이 이상 **행 자체를 더 건드리지 않는다.** 이들의 `ACCOUNT_ID`/`PROPOSER_ACCOUNT_ID` 는 FK 가 아니라 인덱스뿐이라(`database-guide.md` 외래키 정책) DB 무결성 오류 없이 그대로 남고, 참조할 `ACCOUNT` 행 자체가 없어져 더는 사람으로 되짚을 수 없다 — 이것으로 "개인을 식별할 수 없도록 처리한 뒤 남긴다"가 성립한다. 별도 컬럼 변경(NULL 처리 등)이 필요 없다. 조회 계층은 이 ID 로 `ACCOUNT` 조회가 실패하면 "탈퇴한 회원"으로 표시한다(신규 요구사항 — 기존에 이런 실패 케이스를 다루지 않았다면 이번에 추가).
-5. 같은 트랜잭션 안에서 읽어 둔 `PROFILE_IMG_URL` 이 우리가 올린 사진(공개 주소 접두어로 시작)이면 그 `STORAGE_OBJECT` 행을 `DELETING` 으로 바꾼다. 이 계정의 연결 안 된(`PENDING`) 업로드도 전부 `DELETING` 으로. 구글 사진 주소·`null` 이면 건너뛴다. 4 에서 `DELETING` 으로 바꾼 문의 첨부 이미지도 같이 지운다. **커밋 뒤** `DELETING` 행의 S3 파일과 행을 지운다 — [프로필 사진 스펙](../profile-image/spec.md) 의 업로드 서비스를 그대로 부른다. 지우기에 실패해도 탈퇴는 성공으로 답한다. 행이 `DELETING` 으로 남아 정리 배치가 한 시간 뒤 다시 지운다. S3 호출은 트랜잭션 밖이다 — 외부 호출 동안 DB 잠금을 잡지 않는다.
+5. 같은 트랜잭션 안에서 읽어 둔 `PROFILE_IMG_URL` 이 우리가 올린 사진(공개 주소 접두어로 시작)이면 그 `STORAGE_OBJECT` 행을 `DELETING` 으로 바꾼다. 이 계정의 연결 안 된(`PENDING`) 업로드도 전부 `DELETING` 으로. 구글 사진 주소·`null` 이면 건너뛴다. 4 에서 `DELETING` 으로 바꾼 문의 첨부 이미지도 같이 지운다. **커밋 뒤** `DELETING` 행의 S3 파일과 행을 지운다 — [프로필 사진 스펙](../profile-image/spec.md) 의 업로드 서비스를 그대로 부른다. 지우기에 실패해도 탈퇴는 성공으로 답한다. 행이 `DELETING` 으로 남아 정리 배치가 다음 일일 실행에서 다시 지운다. S3 호출은 트랜잭션 밖이다 — 외부 호출 동안 DB 잠금을 잡지 않는다.
 6. `204 No Content`.
 
 ### 발급된 토큰은 서버가 무효화하지 못한다 — 알려진 한계
@@ -275,9 +275,7 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 박혀 있다.** `ACCOUNT` 를 지워도 이 문자열은 `STUDY_APPLICATION` 자신의 컬럼 값이라 그대로 남는다 —
 `NOTIFICATION.PAYLOAD.nickname` 이 별개 컬럼이라 지우지 않으면 안 지워지는 것과 같은 이유다.
 
-그래서 이 필드 하나만 콕 집어 마스킹한다. `FORM_ANSWER` 의 나머지 값(`availableDays`·
-`scheduleAgreed`·`answers`)은 개인 식별값이 아니고 모집 회차별 운영 통계에 쓰일 수 있어 그대로
-둔다 — 행 전체를 지우거나 통째로 마스킹하지 않는다.
+현재 코드는 이 필드만 마스킹하고 `FORM_ANSWER`의 나머지 값은 남긴다. 다만 자유입력 `answers`에도 개인정보가 들어갈 수 있으므로 익명 통계로 간주하지 않는다. 통계 방식 개발 전 운영자 수동 파기는 별도 운영 절차로 관리한다. 이번 정리 작업에는 신청서 답변 자동 파기를 추가하지 않는다.
 
 **`FORM_ANSWER` 가 JSON 객체가 아니면 전체를 비운다.** 배열·스칼라·깨진 JSON 은 `discordNickname` 이 어디 있는지 알 수 없다.
 원본을 두면 개인정보가 남을 수 있고, 예외를 던지면 그 행 하나 때문에 회원이 탈퇴를 못 하므로 `{}` 로 대체하고 로그에는
@@ -286,10 +284,7 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 **캡틴의 신청 결과 조회는 탈퇴한 신청자를 "탈퇴한 회원"으로 보여준다.** 신청서 행이 남으므로 `ACCOUNT` 와 LEFT JOIN 해서
 `applicantName` 은 `탈퇴한 회원`, `email` 은 null 로 내려준다. INNER JOIN 이면 탈퇴한 신청자가 목록에서 사라진다.
 
-이 결정은 [`specs/study-application/spec.md`](../study-application/spec.md#미확정)의
-"[NEEDS CLARIFICATION] 신청 행 삭제·계정 탈퇴 이후 법정 최소 보관 기간"에 대한 답이기도 하다 —
-행은 보존하고(법정 최소 보관 기간을 신경 쓸 필요가 애초에 없어진다), 그 안의 개인 식별 필드만
-비식별한다.
+신청서의 나머지 개인정보 보관·파기 정책은 [신청 스펙의 미확정 사항](../study-application/spec.md#미확정)과 함께 별도로 정리한다. 행을 남긴다는 이유만으로 보관 기한 검토가 불필요해지지는 않는다.
 
 ## 삭제 · 보존 정책 요약
 
@@ -308,7 +303,7 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 | `STUDY_PROPOSAL` (제안 본문) | `STATUS=OPEN` 인 것만 `CLOSED` 로 전환, 행·본문 보존 | [STUDY_PROPOSAL 처리](#study_proposal-처리--기존-상태-전이-재사용) — 제3자 관심 표시 보호 |
 | `NOTIFICATION` (알림 이력) | 보존 + PII 필드만 비식별 | [알림 비식별화](#알림-비식별화) |
 | 문의 첨부 이미지 (S3 `gigs/feedbacks/…`, `STORAGE_OBJECT` 행, `FEEDBACK_IMAGE` 행) | 트랜잭션 안에서 `STORAGE_OBJECT` 를 `DELETING`·`FEEDBACK_IMAGE` 삭제, 커밋 뒤 S3 파일·행 삭제 | 프로필 사진과 같은 이유 — 주소만 지우면 파일이 공개 주소에 남는다 (2026-10-26, PR #341) |
-| `FEEDBACK` (문의·오류 신고 본문·회신·메모) | 보존, 손대지 않음 | `STUDY_REVIEW` 와 같은 매커니즘으로 자동 비식별 — 운영 화면에는 「탈퇴한 사용자」. 본문에 사람이 직접 쓴 개인정보가 남을 수 있는 점도 같다 (2026-10-26, PR #341) |
+| `FEEDBACK` (문의·오류 신고 본문·회신·메모) | 첫 답변일부터 1년, 미답변은 접수일부터 1년까지 보존한 뒤 자동 물리 삭제 | 탈퇴로 기준일을 바꾸지 않는다. 운영 화면에는 「탈퇴한 사용자」로 보이지만 자유입력 내용에는 개인정보가 남을 수 있다 ([결정](../../docs/share/2026-10-31-feedback-retention.md)) |
 | 탈퇴 사유 | `ACCOUNT_LEAVE_REASON` 신규 1행, 계정과 미연결 | "사유만 쌓는다" |
 
 `STUDY_REVIEW`·`STUDY_ATTENDANCE` 는 같은 근거로 같은 처리를 받는다 — FK 없는 인덱스 컬럼이라
@@ -456,3 +451,8 @@ PRD 원문 그대로 — 구현 완료 판정 기준이다.
 - 기존 계정 삭제 처리에 포함된 연동 정보 삭제 설명. 디스코드 계정 자체 삭제·디스코드 서버 탈퇴 의미로 사용하지 않음.
 - 참여 중 스터디에 따른 디스코드 단독 연결 해제 제한과 회원 탈퇴는 별개. 탈퇴는 기존 계정 삭제 정책 적용.
 - Playground는 예시 회원 데이터·연동 상태·세션을 초기화하며 실제 `DELETE /api/me`를 호출하지 않음.
+
+
+## 탈퇴에 따른 권한 말소 감사 기록 (2026-10-31)
+
+기존 `ACCOUNT_LEAVE_REASON`은 계정 ID 없는 탈퇴 사유 집계로 유지한다. 별도로 `ADMIN_AUDIT_LOG`에 본인을 행위자·대상으로 캡틴 권한 말소 `ACCOUNT_ROLE_REVOKE`를 남긴다. ACTIVE/PAUSED 네비게이터 참여는 행마다 `PARTICIPANT_REVOKE`를 남긴다. 이미 중단·완료된 참여는 중복 기록하지 않는다. IP·이전 역할·참여 ID·`REASON=ACCOUNT_DELETION`을 담고 생성일부터 3년 보관한다. 저장 실패 시 탈퇴 DB 변경도 롤백한다. [공통 정리 스펙](../data-retention/spec.md).

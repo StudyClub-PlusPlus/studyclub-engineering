@@ -80,6 +80,7 @@ class AdminAccountEmailRevealIntegrationTest {
                 .containsEntry("email", TARGET_EMAIL);
         List<Map<String, Object>> rows = auditRows();
         assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).get("ACTOR_IP")).isNotNull();
         assertThat(rows.get(0))
                 .containsEntry("ACTION", "EMAIL_REVEAL")
                 .containsEntry("ACTOR_ACCOUNT_ID", ADMIN_ID)
@@ -105,6 +106,7 @@ class AdminAccountEmailRevealIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         List<Map<String, Object>> rows = auditRows();
         assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).get("ACTOR_IP")).isNotNull();
         assertThat(rows.get(0))
                 .containsEntry("ACTOR_ACCOUNT_ID", ADMIN_ID)
                 .containsEntry("TARGET_ACCOUNT_ID", ADMIN_ID);
@@ -203,7 +205,7 @@ class AdminAccountEmailRevealIntegrationTest {
     /** 이 테스트의 계정이 행위자이거나 대상인 감사 행. */
     private List<Map<String, Object>> auditRows() {
         return jdbcTemplate.queryForList(
-                "SELECT ACTION, ACTOR_ACCOUNT_ID, TARGET_ACCOUNT_ID, BEFORE_VALUE, AFTER_VALUE"
+                "SELECT ACTOR_IP, ACTION, ACTOR_ACCOUNT_ID, TARGET_ACCOUNT_ID, BEFORE_VALUE, AFTER_VALUE"
                         + " FROM ADMIN_AUDIT_LOG WHERE ACTOR_ACCOUNT_ID IN (?, ?, ?)"
                         + " OR TARGET_ACCOUNT_ID IN (?, ?, ?, ?) ORDER BY ID",
                 ADMIN_ID,

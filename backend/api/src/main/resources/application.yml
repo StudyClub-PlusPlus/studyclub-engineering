@@ -94,7 +94,11 @@ upload:
   pending-retention-hours: 24    # 이 시간 지나도 연결 없으면 정리 배치가 지운다
   cleanup:
     enabled: true
-    fixed-delay-ms: 3600000      # 한 시간
+
+# 문의 보유 기간: 첫 답변부터 1년, 미답변은 접수부터 1년 (specs/feedback/spec.md).
+feedback:
+  retention:
+    enabled: true
 
 # 인증 쿠키 (JwtAuthFilter). stage·운영·사이트·백오피스가 같은 상위 도메인에 쿠키를 심으므로
 # - cookie-env: 쿠키 이름에 넣을 환경 이름. stage 만 "stage" (sc_stage_access_token). 운영·로컬은 비워 기존 이름
@@ -179,3 +183,16 @@ management:
         http.server.requests: true
       slo:
         http.server.requests: 100ms,500ms,1s,2s
+
+# 정리 작업은 전용 실행기에서 실행 완료 후 하루 간격. 알림의 30초 폴링은 별도다.
+cleanup:
+  enabled: ${CLEANUP_ENABLED:true}
+  fixed-delay-ms: ${CLEANUP_FIXED_DELAY_MS:86400000}
+  initial-delay-ms: ${CLEANUP_INITIAL_DELAY_MS:60000}
+
+audit:
+  trusted-proxies: ${AUDIT_TRUSTED_PROXIES:}
+  retention:
+    enabled: ${AUDIT_RETENTION_ENABLED:true}
+    # 2년 의무 대상 여부를 운영 적용 전에 확인한다 (specs/data-retention/spec.md).
+    access-years: ${AUDIT_ACCESS_RETENTION_YEARS:1}
