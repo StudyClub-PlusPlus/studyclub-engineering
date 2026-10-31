@@ -30,12 +30,16 @@ frontend/                # Node 워크스페이스(turbo) — 프론트 루트
   packages/
     design/              # 디자인 토큰 & 정본 CSS (@studyclub/design — base, core, console)
     ui/                  # 공용 UI 컴포넌트 (@studyclub/ui — Storybook 포함)
-    mock/                # 하드코딩 mock 데이터 + 공유 타입 + MSW 유틸리티 (@studyclub/mock)
+    mock/                # mock 데이터 + MSW API 계층 (@studyclub/mock)
+    types/               # 공용 도메인·국제화 타입 (@studyclub/types)
+    utils/               # 공용 함수·상수 (@studyclub/utils)
 01-planning/             # 기획 — stories/{story-name}/PRD.md · _registry/(스토리 목록·정책 POL-####)
 specs/                   # API 스펙 — specs/{도메인}/spec.md
 backend/                 # Spring Boot 4 멀티모듈 (Gradle) — api / domain / common
   api/  domain/  common/
 ```
+
+공용 타입은 `@studyclub/types`, 공용 함수·상수는 `@studyclub/utils`에서 직접 가져온다. mock은 이를 재수출하지 않는다.
 
 ### packages/mock 상세 구조
 
@@ -44,23 +48,11 @@ frontend/packages/mock/
 ├── package.json
 ├── tsconfig.json
 └── src/
-    ├── index.ts                     # 패키지 최상위 진입점 (types, data re-export)
-    ├── types.ts                     # 하위 호환성을 위한 types, constants, utils 통합 export
+    ├── index.ts                     # mock 데이터·설정 진입점
     │
     ├── constants/                   # 상수 정의
-    │   ├── study.ts                 # 카테고리 표시명, 신청 폼 템플릿 등
+    │   ├── study.ts                 # 예시 신청 폼 템플릿
     │   ├── community.ts
-    │   └── index.ts
-    │
-    ├── types/                       # 도메인 모델 인터페이스/타입 정의
-    │   ├── study.ts                 # Study, StudyProgram, Recruitment 등
-    │   ├── crew.ts
-    │   ├── community.ts
-    │   └── index.ts
-    │
-    ├── utils/                       # 날짜/텍스트 포맷팅 등 유틸 함수
-    │   ├── study.ts
-    │   ├── crew.ts
     │   └── index.ts
     │
     ├── data/                        # 순수 Mock 데이터 소스
@@ -224,8 +216,8 @@ cd backend && ./gradlew :api:bootRun           # JDK 25 필요. Gradle 은 wrapp
 
 #### FE 핵심 요약
 
-1. **관심사 분리** — 페이지(데이터 fetch) / 컴포넌트(렌더링) / lib(로직·API) 역할 구분
-2. **API 레이어** — `lib/api/` 에 모아두고 컴포넌트에서 직접 fetch 하지 않는다
+1. **관심사 분리** — 페이지(조립) / features(기능 API·규칙·화면) / lib(앱 공통 기반) / packages(앱 간 공유) 역할 구분
+2. **API 레이어** — `features/<기능>/repository.ts`에 HTTP 요청을, `queries.ts`에 React Query 훅을 둔다. 전송은 앱의 `lib/http.ts`를 사용하고 응답 Zod 스키마를 필수로 전달한다. 입력 폼은 기능별 스키마와 RHF `zodResolver`를 연결한다
 3. **Server Component 기본** — `'use client'` 는 인터랙션 필요한 말단에만
 4. **Mock 교체** — `// TODO(api)` 검색 → mock import 를 API 함수 호출로 교체
 5. **판정을 다시 하지 않는다** — `recruitStatus` 같은 응답 필드를 그린다. 날짜·숫자로 재계산 금지, 없으면 스펙에 요청 ([api-integration §판정](docs/frontend-development-guide/api-integration.md#판정을-다시-하지-않는다))

@@ -1,7 +1,7 @@
 // 로그아웃 — httpOnly access 쿠키를 서버측에서 제거 (JS 로는 httpOnly 쿠키를 못 지움).
 import { NextResponse } from 'next/server';
 
-import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth';
+import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/features/auth/auth';
 import { clearAccess, clearRefresh } from '@/lib/cookies';
 
 export async function POST() {

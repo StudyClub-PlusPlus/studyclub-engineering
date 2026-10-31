@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 
-import type { Study } from '@studyclub/mock';
+import type { Study } from '@studyclub/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -88,7 +88,11 @@ const STUDIES: Study[] = [
 ];
 
 /** 화면에 그려진 스터디 이름 — 표의 순서대로. */
-const titles = () => screen.getAllByRole('link').map((a) => a.textContent).filter((t) => STUDIES.some((s) => s.title.ko === t));
+const titles = () =>
+  screen
+    .getAllByRole('link')
+    .map((a) => a.textContent)
+    .filter((t) => STUDIES.some((s) => s.title.ko === t));
 const urlParams = () => Object.fromEntries(new URLSearchParams(memoryUrl.get()));
 
 beforeEach(() => {
@@ -107,10 +111,20 @@ afterEach(() => {
 
 describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 4.4)', () => {
   it('view 를 이 목록의 필터·정렬로 바꾸고 나머지 조건은 비운다', () => {
-    expect(entryFilters('ongoing', null)).toMatchObject({ status: 'ONGOING', publish: 'all', category: 'all', sort: 'title' });
+    expect(entryFilters('ongoing', null)).toMatchObject({
+      status: 'ONGOING',
+      publish: 'all',
+      category: 'all',
+      sort: 'title',
+    });
     expect(entryFilters('ongoing', 'AI_ML')).toMatchObject({ status: 'ONGOING', publish: 'live', category: 'AI · ML' });
     expect(entryFilters('recruitment', null)).toMatchObject({ status: 'OPEN', recruit: 'all', sort: 'recruitment' });
-    expect(entryFilters('cumulative', 'DATA')).toMatchObject({ status: 'all', publish: 'live', category: '데이터', sort: 'id' });
+    expect(entryFilters('cumulative', 'DATA')).toMatchObject({
+      status: 'all',
+      publish: 'live',
+      category: '데이터',
+      sort: 'id',
+    });
     expect(entryFilters('ongoing', null)).toMatchObject({ view: '', q: '', form: 'all', page: '1' });
   });
 
@@ -173,7 +187,13 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
     render(<StudiesTable list={{ mode: 'all', studies: STUDIES }} />);
 
     fireEvent.change(screen.getByDisplayValue('신청 폼 전체'), { target: { value: 'none' } });
-    expect(urlParams()).toEqual({ category: 'AI · ML', status: 'ONGOING', publish: 'live', sort: 'title', form: 'none' });
+    expect(urlParams()).toEqual({
+      category: 'AI · ML',
+      status: 'ONGOING',
+      publish: 'live',
+      sort: 'title',
+      form: 'none',
+    });
   });
 
   it('이름이 같으면 기수 ID 순, 마감 시각이 같으면 이름·ID 순 — 서버 정렬과 같다', () => {
@@ -185,18 +205,22 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
     ];
     memoryUrl.set('status=ONGOING&sort=title');
     const { unmount } = render(<StudiesTable list={{ mode: 'all', studies: tied }} />);
-    expect(screen.getAllByRole('link').map((a) => a.getAttribute('href')).filter((h) => h?.startsWith('/studies/'))).toEqual([
-      '/studies/30',
-      '/studies/31',
-    ]);
+    expect(
+      screen
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('href'))
+        .filter((h) => h?.startsWith('/studies/')),
+    ).toEqual(['/studies/30', '/studies/31']);
     unmount();
 
     memoryUrl.set('status=OPEN&sort=recruitment');
     render(<StudiesTable list={{ mode: 'all', studies: tied }} />);
-    expect(screen.getAllByRole('link').map((a) => a.textContent).filter((t) => t?.includes('같은 마감'))).toEqual([
-      '가 같은 마감',
-      '나 같은 마감',
-    ]);
+    expect(
+      screen
+        .getAllByRole('link')
+        .map((a) => a.textContent)
+        .filter((t) => t?.includes('같은 마감')),
+    ).toEqual(['가 같은 마감', '나 같은 마감']);
   });
 
   it('열 이름을 누르면 오름차순, 다시 누르면 내림차순 — 정렬 드롭다운 · 종류 필터는 없다 (captain-list-all-studies 4 · 9)', () => {
@@ -216,7 +240,11 @@ describe('대시보드 진입 주소 → 목록 필터·정렬 (specs/dashboard 
 
   it('신청 폼 있음 · 없음으로 거른다', () => {
     memoryUrl.set('form=none');
-    render(<StudiesTable list={{ mode: 'all', studies: [...STUDIES, study(50, '폼 없음', { hasApplicationForm: false })] }} />);
+    render(
+      <StudiesTable
+        list={{ mode: 'all', studies: [...STUDIES, study(50, '폼 없음', { hasApplicationForm: false })] }}
+      />,
+    );
     const shown = screen.getAllByRole('link').map((a) => a.textContent);
     expect(shown).toContain('폼 없음');
     expect(shown.filter((t) => STUDIES.some((x) => x.title.ko === t))).toEqual([]);
@@ -286,7 +314,11 @@ describe('목록으로 돌아오는 주소 — 상세의 「← 스터디 관리
 
 describe('공개 설정 (captain-publish-study 1 · 1-1 · 4)', () => {
   const draft = study(20, '작성 중 폼 있음', { lifecycleStatus: 'DRAFT', published: false });
-  const draftNoForm = study(21, '작성 중 폼 없음', { lifecycleStatus: 'DRAFT', published: false, hasApplicationForm: false });
+  const draftNoForm = study(21, '작성 중 폼 없음', {
+    lifecycleStatus: 'DRAFT',
+    published: false,
+    hasApplicationForm: false,
+  });
   const open = study(22, '개설');
   const running = ongoing(23, '진행 중');
   const list = { mode: 'all' as const, studies: [draft, draftNoForm, open, running] };
@@ -308,7 +340,9 @@ describe('공개 설정 (captain-publish-study 1 · 1-1 · 4)', () => {
       expect.stringMatching(/\/api\/admin\/studies\/20\/publish$/),
       expect.objectContaining({ method: 'POST' }),
     );
-    await waitFor(() => expect(screen.queryByText('‘작성 중 폼 있음’ 스터디를 공개하시겠습니까?')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText('‘작성 중 폼 있음’ 스터디를 공개하시겠습니까?')).not.toBeInTheDocument(),
+    );
   });
 
   it('공개를 누르면 비공개 확인을 묻고 unpublish 를 부른다. 취소하면 아무것도 부르지 않는다', async () => {
@@ -353,9 +387,12 @@ describe('공개 설정 (captain-publish-study 1 · 1-1 · 4)', () => {
 
   it('서버가 거절하면 팝업에 이유를 보이고 목록을 다시 받지 않는다', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ errorCode: 'APPLICATION_FORM_REQUIRED', errorMessage: '신청 폼을 먼저 연결하세요.' }), {
-        status: 409,
-      }),
+      new Response(
+        JSON.stringify({ errorCode: 'APPLICATION_FORM_REQUIRED', errorMessage: '신청 폼을 먼저 연결하세요.' }),
+        {
+          status: 409,
+        },
+      ),
     );
     render(<StudiesTable list={list} />);
 

@@ -11,8 +11,17 @@ import { FeedbackDialog } from './FeedbackDialog';
 import { feedbackKeys, type MyFeedbackPage } from './queries';
 import { API_BASE } from '../../lib/http';
 
+function response(status: number, body: unknown) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+  };
+}
+
 function respond(status: number, body: unknown) {
-  return vi.fn().mockResolvedValue({ ok: status >= 200 && status < 300, status, json: async () => body });
+  return vi.fn().mockResolvedValue(response(status, body));
 }
 
 const created = { id: 241, type: 'BUG', title: '출석 버튼', status: 'RECEIVED', createdAt: '2026-10-25T08:12:40Z' };
@@ -175,29 +184,17 @@ describe('FeedbackDialog — 전송', () => {
     await user.click(screen.getByRole('button', { name: '전송' }));
     await waitFor(() => expect(screen.getByRole('button', { name: '전송' })).toBeDisabled());
 
-    finish({ ok: true, status: 201, json: async () => created });
+    finish(response(201, created));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });
 
 describe('FeedbackDialog — 첨부', () => {
-  type Reply = { ok: boolean; status: number; json: () => Promise<unknown> };
-  const uploaded = (fileId: number): Reply => ({
-    ok: true,
-    status: 201,
-    json: async () => ({ fileId, url: `https://cdn.test/${fileId}.png` }),
-  });
-  const uploadFailed: Reply = {
-    ok: false,
-    status: 400,
-    json: async () => ({ errorCode: 'INVALID_INPUT', errorMessage: '올릴 수 없는 파일입니다.' }),
-  };
-  const sendFailed: Reply = {
-    ok: false,
-    status: 500,
-    json: async () => ({ errorCode: 'INTERNAL_ERROR', errorMessage: 'boom' }),
-  };
-  const sent: Reply = { ok: true, status: 201, json: async () => created };
+  type Reply = ReturnType<typeof response>;
+  const uploaded = (fileId: number): Reply => response(201, { fileId, url: `https://cdn.test/${fileId}.png` });
+  const uploadFailed = response(400, { errorCode: 'INVALID_INPUT', errorMessage: '올릴 수 없는 파일입니다.' });
+  const sendFailed = response(500, { errorCode: 'INTERNAL_ERROR', errorMessage: 'boom' });
+  const sent = response(201, created);
 
   /** 파일 이름마다 응답을 손으로 푼다 — 업로드가 끝나는 순서를 테스트가 정한다 */
   function stubServer(sendReplies: Reply[]) {

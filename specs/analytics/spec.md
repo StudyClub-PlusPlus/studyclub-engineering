@@ -49,6 +49,7 @@
 | 로그인 | `User Logged In` | `login` | method=`google`·`apple` | front | 온보딩을 마친 회원의 로그인 완료 |
 | 활성화 | `Activated` | `activated` | activation_action=`study_applied`, study_id (GA4 는 activation_action 만) | server (GA4: server(MP)) | 계정의 **첫** 스터디 신청 저장 (`study_application.submitted`) |
 
+- `page_name` 값 (경로 → 이름, `PageViewTracker` 의 `pathToPageName`): `landing` · `studies_list` · `study_detail` · `events_list` · `event_detail` · `notices_list` · `notice_detail` · `about` · `guide` · `terms` · `privacy` · `login` · `onboarding` · `my_page` · `my_studies`(`/my/joined`) · `saved_studies`(`/my/saved`) · `account_leave`(`/my/leave`) · `study_room_schedule` · `study_room_attendance` · `study_room_notice`(`/my/joined/{id}/schedule[/attendance|/notice]`). `study_detail` · `study_room_*` 는 `study_id` 를 함께 보낸다. 곧장 다른 화면으로 넘기는 경로(`/my/joined/{id}`, `/my/joined/{id}/attendance`)는 세지 않는다
 - 서버 이벤트 `insert_id` 는 결정적이다: `user_signed_up_account_{id}` · `activated_account_{id}` — 재전송돼도 Amplitude 가 중복을 지운다
 - 서버는 커밋 뒤·비동기로 보내고 실패는 삼킨다 ([domain-events](../domain-events/spec.md))
 - GA4 서버 전송 client_id: 가입 = 온보딩 요청 바디 `gaClientId`(`_ga` 쿠키). 없으면, 그리고 활성화는 항상 합성 `srv.<회원 번호>` — **유입 귀속 안 됨**
@@ -60,11 +61,15 @@
 |---|---|
 | `Auth Google Login Clicked` · `Auth Apple Login Clicked` · `Auth OAuth Cancelled` · `Auth Login Completed{is_new_user}` · `Auth Login Failed` | 로그인 화면 |
 | `Onboarding Started` · `Onboarding Nickname Submitted` · `Onboarding Nickname Conflict` · `Onboarding Consents Agreed` · `Onboarding Completed` | 온보딩 |
+| `Onboarding Discord Skipped{after_not_in_guild}` | 온보딩 디스코드 단계의 「건너뛰기」. `after_not_in_guild` = 서버 미가입 안내를 본 뒤에 건너뛰었나 |
 | `Study Filter Tab Changed` · `Study Category Filtered` · `Study Searched` · `Study Card Clicked` · `Hero CTA Clicked` · `Event Card Clicked` | 탐색 |
-| `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) | 하트 버튼 · 마이페이지 관심 스터디 |
+| `Study Bookmarked` · `Study Unbookmarked` (`study_id`, `source`) | 하트 버튼 · 찜한 스터디(`source=saved_page`, 해제만) |
 | `Study Apply CTA Clicked` · `Study Apply External Opened` · `Study Apply Dialog Opened` · `Study Apply Slots Selected` · `Study Apply Submitted` · `Study Apply Completed` · `Study Apply Failed` · `Study Apply Dialog Dismissed` | 신청 |
-| `My Discord Connected` | 신청 전 디스코드 연동 창 · 마이페이지 디스코드 줄 — OAuth 팝업으로 받은 코드가 연동 API 에서 204 일 때 (개발 서버는 목 연동) |
-| `My Application Cancelled` · `My Profile Updated` | 마이페이지 |
+| `My Discord Connected` (`source`=`onboarding`·`apply_gate`·`my_page`) | 온보딩 디스코드 단계 · 신청 전 디스코드 연동 창 · 마이페이지 디스코드 줄 — OAuth 팝업으로 받은 코드가 연동 API 에서 204 일 때 (개발 서버는 목 연동). 연동 함수 `linkDiscord` 안에서만 보낸다 — 연동 화면이 늘어도 빠지지 않는다 |
+| `Discord Connect Failed` (`source`, `reason`=`cancelled`·`popup_blocked`·`not_in_guild`·`already_linked`·`session_expired`·`error`, `http_status`) | 위 세 곳에서 연동이 실패했을 때 — 팝업 단계(창 닫기·차단)와 연동 API 단계(403 서버 미가입 · 409 다른 계정에 연결됨 · 401 · 그 외) 모두. `linkDiscord` 안에서만 보낸다 |
+| `My Profile Updated` | 마이페이지 |
+| `Study Presenter Registered` · `Study Presenter Unregistered` (`study_id`, `meeting_id`, `slot`) | 스터디룸 일정 탭 — 발표자 신청·취소 API 가 성공했을 때 |
+| `Study Discord Opened` (`study_id`) | 스터디룸 정보 카드의 「디스코드」 버튼 (스터디 채널로 이동) |
 
 정의만 있고 보내지 않는 것: `Study Apply Motivation Entered` — 신청 폼에 지원 동기 입력란이 아직 없다.
 

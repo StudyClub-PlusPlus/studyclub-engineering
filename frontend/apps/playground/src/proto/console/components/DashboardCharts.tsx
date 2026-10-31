@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import type { TrendPoint } from '@console/lib/dashboard';
-import { MEMBER_REGIONS, type MemberRegion } from '@studyclub/mock';
+import { type MemberRegion } from '@studyclub/types';
+import { MEMBER_REGIONS } from '@studyclub/utils';
 
 /**
  * 대시보드 차트.

@@ -3,16 +3,9 @@ import { Button, Input } from '@studyclub/ui';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { useEditGroup } from './queries';
+import { schema } from '@/features/participants/form-schema';
+import { useEditGroup } from '@/features/participants/queries';
 import { ApiError } from '@/lib/http';
-
-const schema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, '반 제목을 입력해 주세요.')
-    .refine((name) => [...name].length <= 20, '반 제목은 20자까지 입력할 수 있습니다.'),
-});
 
 export function GroupEditor({
   studyId,

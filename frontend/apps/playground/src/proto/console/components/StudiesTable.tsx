@@ -9,21 +9,10 @@ import { TIMEZONE_LABEL } from '@console/components/StudyForm';
 import { tx } from '@console/lib/l10n';
 import { rememberStudiesListSearch } from '@console/lib/list-return';
 import { studyAuthor } from '@console/lib/users';
-import {
-  STUDY_CATEGORIES,
-  applyFormUrl,
-  categoriesOf,
-  getStudyCrew,
-  lifecycleState,
-  publishState,
-  recruitCapacity,
-  recruitState,
-  toISODate,
-  todayISO,
-  type LifecycleState,
-  type Study,
-} from '@studyclub/mock';
+import { getStudyCrew, recruitCapacity } from '@studyclub/mock';
+import { type LifecycleState, type Study } from '@studyclub/types';
 import { Badge, Button, Modal, Pagination, Select, cx } from '@studyclub/ui';
+import { STUDY_CATEGORIES, applyFormUrl, categoriesOf, lifecycleState, publishState, recruitState, toISODate, todayISO } from '@studyclub/utils';
 import { Check, Minus } from 'lucide-react';
 
 /**

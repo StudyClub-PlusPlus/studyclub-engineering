@@ -7,7 +7,7 @@
 // TODO(api): GET /api/users — role 포함한 유저 목록으로 교체.
 
 import { getStudyCrew, studies } from '@studyclub/mock';
-import type { MemberRegion, Study } from '@studyclub/mock';
+import type { MemberRegion, Study } from '@studyclub/types';
 
 import type { AccountRole } from './roles';
 

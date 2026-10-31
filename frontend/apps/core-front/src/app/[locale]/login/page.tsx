@@ -3,7 +3,6 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { track } from '@/lib/analytics';
 import {
   appleRedirectUri,
   buildAppleAuthUrl,
@@ -12,14 +11,15 @@ import {
   setLoginMethod,
   setSuggestedNickname,
   setUser,
-} from '@/lib/auth';
-import type { SessionUser } from '@/lib/auth';
+} from '@/features/auth/auth';
 import {
   LOGIN_NOT_CONFIGURED_MESSAGE,
   loginErrorFromCaught,
   loginErrorFromExchange,
   loginErrorFromOAuthPopup,
-} from '@/lib/login-errors';
+} from '@/features/auth/login-errors';
+import { exchangeSocialLogin } from '@/features/auth/repository';
+import { track } from '@/lib/analytics';
 
 type Provider = 'google' | 'apple';
 const PROVIDER_LABEL = { google: 'Google', apple: 'Apple' } as const;
@@ -52,18 +52,14 @@ function LoginForm() {
       try {
         // 애플은 authorize 때 쓴 콜백을 교환에도 실어야 한다. 이름은 첫 인가에만 온다
         const extra = provider === 'apple' ? { redirectUri: appleRedirectUri(), name: name || undefined } : {};
-        const res = await fetch('/api/auth/social/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, provider, ...extra }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          httpStatus = res.status;
-          throw new Error(loginErrorFromExchange(res.status, data, PROVIDER_LABEL[provider]));
+        const result = await exchangeSocialLogin({ code, provider, ...extra });
+        if (!result.ok) {
+          httpStatus = result.status;
+          throw new Error(loginErrorFromExchange(result.status, result.body, PROVIDER_LABEL[provider]));
         }
+        const data = result.data;
         if (data.account) {
-          const account = data.account as SessionUser;
+          const account = data.account;
           setUser(account);
           setLoginMethod(provider);
           if (typeof data.suggestedNickname === 'string' && data.suggestedNickname.trim()) {

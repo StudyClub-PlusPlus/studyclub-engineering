@@ -1,3 +1,5 @@
+# PRD 연결 정본: docs/frontend-development-guide/core-e2e-prd-map.md
+# 설명용 명세. 실제 실행 범위는 .meta.ts의 assertions·steps이며 전체 행동 완료를 뜻하지 않는다.
 Feature: 내 스터디 상세 — 일정 및 출석 (navigator-register-sessions, navigator-edit-attendance, crew-apply-presenter)
 
   Background:
@@ -71,3 +73,8 @@ Feature: 내 스터디 상세 — 일정 및 출석 (navigator-register-sessions
     When 기존과 다른 새 중복 시각을 입력한다
     Then 시계 전환 전후 선택이 나타나고 고르기 전에는 저장과 시간대 전환이 비활성화된다
     And 고른 순간을 미리보기부터 저장까지 유지한다
+
+  Scenario: 캡틴 — 공지 탭
+    When /ko/my/joined/1/schedule/notice 페이지에 접속한다
+    Then 받는 사람 고르기 · 공지 쓰기 · 보낸 공지 기록이 보인다
+    And 공지 화면은 일정 · 출석 탭과 같은 너비다

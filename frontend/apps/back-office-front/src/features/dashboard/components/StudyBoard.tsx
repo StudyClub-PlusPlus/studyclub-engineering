@@ -144,8 +144,6 @@ function BoardRows({
 function DeadlineCell({ item, asOf, timeZone }: { item: ApiStudyBoardItem; asOf: string; timeZone: string }) {
   const { text, tone } = deadlineLabel(item, asOf, timeZone);
   return (
-    <span className={`tnum shrink-0 whitespace-nowrap text-right type-label-lg ${DEADLINE_TONE[tone]}`}>
-      {text}
-    </span>
+    <span className={`tnum shrink-0 whitespace-nowrap text-right type-label-lg ${DEADLINE_TONE[tone]}`}>{text}</span>
   );
 }

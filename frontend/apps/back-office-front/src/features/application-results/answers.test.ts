@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { answerText, answerValues, summarizeAnswers } from './answers';
-import type { ApplicationResult, ResultQuestion } from './types';
+import { answerText, answerValues, summarizeAnswers } from '@/features/application-results/answers';
+import type { ApplicationResult, ResultQuestion } from '@/features/application-results/types';
 
 const question: ResultQuestion = { id: 'q', label: '질문', type: 'CHECKBOX', options: ['A', 'B'], allowOther: true };
 function applications(values: (string | string[] | undefined)[]): ApplicationResult[] {

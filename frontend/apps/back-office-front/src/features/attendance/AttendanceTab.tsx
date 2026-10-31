@@ -5,8 +5,8 @@ import { useMemo } from 'react';
 import { Button, Segmented, toast } from '@studyclub/ui';
 import { CalendarPlus } from 'lucide-react';
 
-import { toBook, toUpdates, useGroupAttendance, useSaveAttendance } from './api';
-import { AttendanceBook, type BookColumn, type BookRow } from './AttendanceBook';
+import { toBook, toUpdates, useGroupAttendance, useSaveAttendance } from '@/features/attendance/api';
+import { AttendanceBook, type BookColumn, type BookRow } from '@/features/attendance/AttendanceBook';
 import { toMeetings, useGroupMeetings } from '@/features/schedule/api';
 import { useCrew } from '@/features/schedule/crew';
 import { GroupPicker } from '@/features/schedule/GroupPicker';

@@ -100,7 +100,7 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 호출하도록 후속 작업한다.
 
 - **프론트가 할 수 있는 것**: 탈퇴 성공 직후 로그인 중인 **이 브라우저**에서는 즉시 로그아웃 상태로
-  만든다. `frontend/apps/core-front/src/lib/auth.ts` 의 `logout()`(localStorage 사용자 정보 제거 +
+  만든다. `frontend/apps/core-front/src/features/auth/auth.ts` 의 `logout()`(localStorage 사용자 정보 제거 +
   `POST /api/auth/logout` 으로 httpOnly 쿠키 제거)을 탈퇴 성공 콜백에서 그대로 호출한다 — 새 로직을
   만들지 않고 로그아웃과 동일한 정리를 재사용한다. 단, 이건 "이 브라우저의 흔적 정리"일 뿐 다른
   기기에 남아 있는 토큰이나 탈취된 토큰까지 막지는 못한다.
@@ -127,9 +127,9 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 
 ### 프론트엔드 사용처
 
-- `frontend/apps/core-front/src/components/ProfileDialog.tsx` — "내 정보 수정" 모달(현재 이름·거주지역 편집) 콘텐츠 맨 아래, footer 위에 탈퇴 진입 링크 추가. `/my/page.tsx` 의 "내 정보 수정" 버튼이 이미 로그아웃 버튼 바로 옆에 있으므로, 그 버튼 자체나 그 옆이 아니라 **버튼을 눌러 연 모달 안**에 둬야 PRD 의 "헤더 메뉴에 두면 로그아웃 옆에서 잘못 눌린다"는 경고를 지킨다
+- `frontend/apps/core-front/src/features/profile/ProfileCard.tsx` — 카드 밖 아래에 탈퇴 진입 링크. (최초 구현 당시에는 `components/ProfileDialog.tsx` "내 정보 수정" 모달(현재 이름·거주지역 편집) 콘텐츠 맨 아래, footer 위에 탈퇴 진입 링크 추가. `/my/page.tsx` 의 "내 정보 수정" 버튼이 이미 로그아웃 버튼 바로 옆에 있으므로, 그 버튼 자체나 그 옆이 아니라 **버튼을 눌러 연 모달 안**에 둬야 PRD 의 "헤더 메뉴에 두면 로그아웃 옆에서 잘못 눌린다"는 경고를 지킨다)
 - `frontend/apps/core-front/src/app/[locale]/my/leave/page.tsx` — 신규 탈퇴 화면 (프로토타입과 같은 경로 패턴). 모달이 아닌 별도 지면이다 — 이 모달에서 링크를 누르면 모달이 닫히고 이 경로로 이동한다
-- `frontend/apps/core-front/src/lib/me.ts` — `TODO(api): DELETE /api/me`
+- `frontend/apps/core-front/src/features/auth/auth.ts` — `deleteAccount(reason)` 가 `DELETE /api/me` 를 부른다
 - 참고 UX: `frontend/apps/playground/src/app/(proto)/proto/core/[locale]/my/leave/page.tsx` (구 프로토타입 — 맡은 스터디가 있으면 막는 옛 정책이라 본 스펙과 화면 구성이 다르다. 안내 문구·레이아웃만 참고하고 "막는다" 로직은 가져오지 않는다)
 
 ---
@@ -152,7 +152,7 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 ### 프론트 판정 로직
 
 ```ts
-// frontend/apps/core-front/src/lib/me.ts: getActiveNavigatorStudies()
+// frontend/apps/core-front/src/features/account/repository.ts: getActiveNavigatorStudies()
 items.filter(
   (s) => s.relation === 'ONGOING' && s.participantRole === 'LEADER',
 )
@@ -398,6 +398,12 @@ LOCKED 아님)로 잠그고 읽는다 — 폴링 스케줄러가 같은 순간 P
   작업이라 이 스펙(백엔드 API 계약)이 다루지 않는다 — 디스코드 스쿼드와 별도로 맞춘다.
   대신 커밋 뒤 운영 알림 채널에 「회원 탈퇴」 알림(디스코드 ID·참여 중이던 스터디·네비게이터 여부)을 보내
   운영자가 손으로 정리할 수 있게 한다 ([ops-alerts](../ops-alerts/spec.md), 2026-10-30 #02-squad-discord 합의).
+
+## 퍼널·계측
+
+- 단계: 이탈. 화면 조회만 공통 `Page Viewed{page_name=account_leave}` 로 잡힌다
+- 탈퇴 완료 이벤트(`Account Deleted`)는 **보내지 않는다** (2026-10-31 결정). 사유를 계정과 잇지 않는다는 이 스펙·[POL-0007](../../01-planning/_registry/policies/POL-0007-account-data.md) 의 설계와 부딪힌다 — Amplitude 에 보내면 user_id(회원 번호)와 사유가 외부에 함께 남고, 탈퇴한 회원의 식별자가 탈퇴 뒤에 외부로 나간다. 탈퇴 사유는 `ACCOUNT_LEAVE_REASON` 집계로만 본다
+- 다시 넣으려면 처리방침(법무) 확인이 먼저다. A/B 없음
 
 ## 완료 기준
 

@@ -1,16 +1,18 @@
-// 출석 탭의 서버 상태 — 명부 응답을 출석부 모양으로 바꾸고(`toBook` · `toUpdates`), React Query 로 읽고 쓴다.
-// 서버 호출 자체는 `repository.ts` 에 있다. 열(회차)은 일정 탭과 같은 반 회차 목록(`schedule/api.ts` 의 `useGroupMeetings`)이다.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import attendanceRepository, {
+import attendanceRepository from './repository';
+import {
   type ApiAttendance,
   type ApiAttendanceStatus as ApiStatus,
   type AttendanceSavePayload,
   type AttendanceUpdate,
-} from './repository';
+} from '@/features/attendance/repository';
 import { scheduleKeys } from '@/features/schedule/api';
 import type { AttendanceBook, AttendanceStatus } from '@/features/schedule/store';
 import { studyKeys } from '@/features/studies/queries';
+
+// 출석 탭의 서버 상태 — 명부 응답을 출석부 모양으로 바꾸고(`toBook` · `toUpdates`), React Query 로 읽고 쓴다.
+// 서버 호출 자체는 `repository.ts` 에 있다. 열(회차)은 일정 탭과 같은 반 회차 목록(`schedule/api.ts` 의 `useGroupMeetings`)이다.
 
 const FROM_API: Record<ApiStatus, AttendanceStatus> = {
   PRESENT: 'present',

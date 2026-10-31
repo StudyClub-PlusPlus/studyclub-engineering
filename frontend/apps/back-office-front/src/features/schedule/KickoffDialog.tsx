@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Input, Modal } from '@studyclub/ui';
+import { useForm } from 'react-hook-form';
 
-import { DEFAULT_TIME, isKickoff, validateKickoff, type Meeting, type ScheduleGroup } from './meetings';
-import { addDaysYmd, dayLabel, wallParts, zoneLabel, zoneTitle } from './time';
+import { kickoffSchema, type KickoffValues } from '@/features/schedule/form-schemas';
+import { DEFAULT_TIME, isKickoff, type Meeting, type ScheduleGroup } from '@/features/schedule/meetings';
+import { addDaysYmd, dayLabel, wallParts, zoneLabel, zoneTitle } from '@/features/schedule/time';
 
 /**
  * 「킥오프 정하기」(없을 때) · 「킥오프 수정」(있을 때) — 반의 0회차를 캡틴이 정한다 (spec 결정 11, share 10-22).
@@ -31,19 +32,24 @@ export function KickoffDialog({
     .filter((m) => !isKickoff(m))
     .map((m) => m.date)
     .sort()[0];
-  const [date, setDate] = useState(
-    () => current?.date ?? (firstRegular ? addDaysYmd(firstRegular, -7) : wallParts(new Date(), tz).date),
-  );
-  const [time, setTime] = useState(() => current?.time ?? (group.time.time || DEFAULT_TIME));
-  const [touched, setTouched] = useState(false);
-
-  const errors = validateKickoff({ date, time }, existing);
-  const shown = touched ? errors : {};
-
-  function submit() {
-    setTouched(true);
-    if (errors.date || errors.time) return;
-    onSave({ date, time }, `${dayLabel(date)} ${time}`);
+  const {
+    watch,
+    setValue,
+    handleSubmit,
+    trigger,
+    formState: { errors: shown, isSubmitted },
+  } = useForm<KickoffValues>({
+    resolver: zodResolver(kickoffSchema(existing)),
+    defaultValues: {
+      date: current?.date ?? (firstRegular ? addDaysYmd(firstRegular, -7) : wallParts(new Date(), tz).date),
+      time: current?.time ?? (group.time.time || DEFAULT_TIME),
+    },
+  });
+  const { date, time } = watch();
+  const submit = handleSubmit(({ date, time }) => onSave({ date, time }, `${dayLabel(date)} ${time}`));
+  function change(field: keyof KickoffValues, value: string) {
+    setValue(field, value, { shouldDirty: true });
+    if (isSubmitted) void trigger();
   }
 
   return (
@@ -72,16 +78,16 @@ export function KickoffDialog({
             label='일자'
             required
             value={date}
-            error={shown.date}
-            onChange={(ev) => setDate(ev.target.value)}
+            error={shown.date?.message}
+            onChange={(ev) => change('date', ev.target.value)}
           />
           <Input
             type='time'
             label={`시작 시각 (${zoneLabel(tz)})`}
             required
             value={time}
-            error={shown.time}
-            onChange={(ev) => setTime(ev.target.value)}
+            error={shown.time?.message}
+            onChange={(ev) => change('time', ev.target.value)}
           />
         </div>
       </div>

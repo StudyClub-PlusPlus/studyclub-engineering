@@ -1,6 +1,6 @@
+import type { Locale } from '@studyclub/types';
 import { MessageCircle } from 'lucide-react';
 
-import type { Locale } from '@/lib/content';
 import { m } from '@/lib/i18n';
 
 export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: string }) {
@@ -22,10 +22,11 @@ export function JoinCta({ locale, discordUrl }: { locale: Locale; discordUrl: st
             href={discordUrl}
             target='_blank'
             rel='noreferrer'
-            className='mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 type-label-lg shadow-sm transition-transform hover:scale-[1.03]'
-            style={{ color: 'var(--color-brand)' }}
+            className='sc-button mt-6 gap-2 type-label-lg'
+            data-variant='secondary'
+            data-size='lg'
           >
-            <MessageCircle size={17} /> {m('nav.join', locale)}
+            <MessageCircle size={20} aria-hidden='true' /> {m('nav.join', locale)}
           </a>
         </div>
 

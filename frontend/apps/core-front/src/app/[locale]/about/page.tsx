@@ -1,13 +1,27 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-import { ArrowRight, BookOpen, Calendar, Globe2, MessageCircle } from 'lucide-react';
+import type { L10n, Locale } from '@studyclub/types';
+import {
+  ArrowRight,
+  BookOpen,
+  BookOpenText,
+  Calendar,
+  CalendarDays,
+  Flag,
+  Globe2,
+  Megaphone,
+  MessageCircle,
+  MessageCircleQuestion,
+  TrendingUp,
+  UsersRound,
+} from 'lucide-react';
 import type { Metadata } from 'next';
 
 import { JoinCta } from '@/components/JoinCta';
 import { MemberMap } from '@/components/MemberMap';
 import { RegionClocks } from '@/components/RegionClocks';
-import { getSite, getOperators, type L10n, type Locale } from '@/lib/content';
+import { getSite, getOperators } from '@/features/community/server';
 import { m, t } from '@/lib/i18n';
 import { pageMetadata } from '@/lib/seo';
 
@@ -44,8 +58,14 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       name: { ko: '네비게이터', en: 'Navigator' },
       tagline: { ko: '스터디 하나를 이끄는 진행자', en: 'The guide who leads a study' },
       points: [
-        { ko: '일정·출석·발표 순서를 챙기며 스터디를 끝까지 이끕니다.', en: 'Keeps the schedule, attendance, and presenter rotation on track.' },
-        { ko: '스터디의 디스코드 채널을 운영하고 크루의 질문을 받습니다.', en: "Runs the study's Discord channel and answers Crew questions." },
+        {
+          ko: '일정·출석·발표 순서를 챙기며 스터디를 끝까지 이끕니다.',
+          en: 'Keeps the schedule, attendance, and presenter rotation on track.',
+        },
+        {
+          ko: '스터디의 디스코드 채널을 운영하고 크루의 질문을 받습니다.',
+          en: "Runs the study's Discord channel and answers Crew questions.",
+        },
       ],
     },
     {
@@ -53,30 +73,75 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       name: { ko: '캡틴', en: 'Captain' },
       tagline: { ko: '커뮤니티를 운영하는 운영진', en: 'Volunteer organizers of the community' },
       points: [
-        { ko: '스터디 초기 세팅(모집 광고 · 디스코드 · 킥오프)을 도와줍니다.', en: 'Handle the initial setup: recruiting, Discord, and kickoff.' },
+        {
+          ko: '스터디 초기 세팅(모집 광고 · 디스코드 · 킥오프)을 도와줍니다.',
+          en: 'Handle the initial setup: recruiting, Discord, and kickoff.',
+        },
         { ko: '누구나 캡틴에 지원할 수 있습니다.', en: 'Anyone can apply to become a Captain.' },
       ],
     },
   ];
 
   // 소개 본문 — 운영진이 쓴 원래 설명 (2026-10-18). 문단 · 두 가지 문제 · 그래서 만든 것 순서.
-  const intro: L10n[] = [
+  const headline: L10n = {
+    ko: '혼자 공부는 지속하기 어렵습니다.\n같이 하면 지속 가능성이 훨씬 높아집니다.',
+    en: "Studying alone is hard to sustain.\nStudying together makes it far more likely you'll keep going.",
+  };
+  const benefits: { icon: typeof BookOpen; accent?: boolean; title: L10n; body: L10n }[] = [
     {
-      ko: '혼자 공부는 지속하기 어렵습니다. 하지만 스터디 그룹으로 같이 하면 지속 가능성을 훨씬 높일 수 있습니다. 스터디원들과 일정한 진도를 꾸준히 나가므로 포기하지 않게 되고, 모르는 걸 물어볼 수도 있고, 다른 사람들의 경험에서 배울 수도 있습니다. 게다가 오랫동안 같이 하므로 사람과 사람의 네트워킹이 실제로 이뤄집니다.',
-      en: "Studying alone is hard to sustain. Studying in a group makes it far more likely you'll keep going. You move forward at a steady pace with others so you don't give up, you can ask what you don't know, and you learn from other people's experience. And because you stay together for a long time, real connections form between people.",
+      icon: TrendingUp,
+      title: { ko: '꾸준한 진도', en: 'A steady pace' },
+      body: {
+        ko: '스터디원들과 일정한 진도를 꾸준히 나가므로 포기하지 않게 됩니다.',
+        en: "You move forward at a steady pace with others, so you don't give up.",
+      },
     },
     {
-      ko: '하지만 스터디 그룹으로 뭔가 공부하려고 할 때, 두 가지 문제가 나옵니다.',
-      en: 'But when you try to study something as a group, two problems come up.',
+      icon: MessageCircleQuestion,
+      title: { ko: '물어볼 사람', en: 'Someone to ask' },
+      body: { ko: '모르는 걸 바로 물어볼 수 있습니다.', en: "You can ask what you don't know." },
     },
+    {
+      icon: BookOpenText,
+      title: { ko: '남의 경험', en: "Others' experience" },
+      body: { ko: '다른 사람들의 경험에서 배울 수 있습니다.', en: "You learn from other people's experience." },
+    },
+    {
+      icon: UsersRound,
+      accent: true,
+      title: { ko: '진짜 네트워킹', en: 'Real connections' },
+      body: {
+        ko: '오랫동안 같이 하므로 사람과 사람의 네트워킹이 실제로 이뤄집니다.',
+        en: 'Because you stay together for a long time, real connections form between people.',
+      },
+    },
+  ];
+  const problemsLead: L10n = {
+    ko: '하지만 스터디 그룹으로 공부하려고 할 때, 두 가지 문제가 나옵니다.',
+    en: 'But when you try to study as a group, two problems come up.',
+  };
+  const sources: L10n[] = [
+    { ko: '페이스북 그룹', en: 'Facebook groups' },
+    { ko: '네이버 카페', en: 'Online forums' },
+    { ko: '오픈 카톡방', en: 'Open chat rooms' },
+  ];
+  const buildSteps: { icon: typeof BookOpen; label: L10n }[] = [
+    { icon: Megaphone, label: { ko: '모집', en: 'Recruit' } },
+    { icon: Flag, label: { ko: '리딩', en: 'Lead' } },
+    { icon: CalendarDays, label: { ko: '정하기', en: 'Decide' } },
   ];
   const problems: { q: L10n; a: L10n[] }[] = [
     {
       q: { ko: '원하는 스터디 그룹을 어디서 찾을 수 있을까요?', en: 'Where can I find the study group I want?' },
       a: [
         {
-          ko: '페이스북 그룹, 네이버 카페, 오픈 카톡방 등 여러 곳을 찾아볼 수 있지만, 찾는 노력도 꽤 들고, 원하는 스터디가 없거나, 스터디가 이미 진행 중이라 중간에 못 들어갈 수도 있습니다.',
-          en: "You can look in Facebook groups, online forums, and open chat rooms, but searching takes real effort, the study you want may not exist, or it may already be underway so you can't join midway.",
+          ko: '여러 곳을 찾아봐야 해서 찾는 노력이 꽤 듭니다.',
+          en: 'You have to look in many places, which takes real effort.',
+        },
+        { ko: '원하는 스터디가 없을 수 있습니다.', en: 'The study you want may not exist.' },
+        {
+          ko: '이미 진행 중이라 중간에 못 들어갈 수도 있습니다.',
+          en: "It may already be underway, so you can't join midway.",
         },
       ],
     },
@@ -86,11 +151,14 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         en: "I couldn't find a good one. How do I start my own?",
       },
       a: [
-        { ko: '지나가는 아무한테나 물어봐 모집할 수도 없고, 매번 물어보기도 힘듭니다.', en: "You can't recruit by asking random people, and asking every time is exhausting." },
+        {
+          ko: '지나가는 아무한테나 물어봐 모집할 수도 없고, 매번 물어보기도 힘듭니다.',
+          en: "You can't recruit by asking random people, and asking every time is exhausting.",
+        },
         { ko: '누군가 강하게 리딩하지 않으면 흐지부지됩니다.', en: 'Without someone leading firmly, it fizzles out.' },
         {
-          ko: '어떻게 모집했다 해도, 언제 할지, 어떤 플랫폼으로 할지, 무슨 강의나 교재로 할지 등 결정에 에너지를 많이 써서, 막상 스터디 때는 에너지가 없어 집중하지 못합니다.',
-          en: "Even once you've gathered people, deciding when to meet, which platform to use, and which course or book to follow drains so much energy that there's little left for the study itself.",
+          ko: '언제, 어떤 플랫폼으로, 무슨 교재로 할지 정하는 데 에너지를 다 써서 막상 스터디에 집중하지 못합니다.',
+          en: "Deciding when to meet, which platform to use, and which course or book to follow drains so much energy that there's little left for the study itself.",
         },
       ],
     },
@@ -133,11 +201,17 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   const networking: { title: L10n; body: L10n }[] = [
     {
       title: { ko: '현업 엔지니어와 함께', en: 'Study with working engineers' },
-      body: { ko: '미국·한국 현직자의 경험을 스터디에서 바로 들어요.', en: 'Hear real experience from engineers in the US and Korea.' },
+      body: {
+        ko: '미국·한국 현직자의 경험을 스터디에서 바로 들어요.',
+        en: 'Hear real experience from engineers in the US and Korea.',
+      },
     },
     {
       title: { ko: '레퍼럴과 커리어', en: 'Referrals and careers' },
-      body: { ko: '레퍼럴을 부탁하고, 이직·인터뷰 경험을 나눠요.', en: 'Ask for referrals and share interview and job-change stories.' },
+      body: {
+        ko: '레퍼럴을 부탁하고, 이직·인터뷰 경험을 나눠요.',
+        en: 'Ask for referrals and share interview and job-change stories.',
+      },
     },
     {
       title: { ko: '온라인 너머 오프라인', en: 'Beyond online' },
@@ -177,23 +251,103 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         <p className='mt-3 type-body-lg text-[var(--color-fg-muted)] type-prose'>{m('about.subtitle', locale)}</p>
       </header>
 
-      <div className='card mt-10 p-8'>
-        <div className='flex max-w-3xl flex-col gap-4 type-body-lg text-[var(--color-fg)]'>
-          {intro.map((p, i) => (
-            <p key={i}>{t(p, locale)}</p>
-          ))}
+      <section className='card mt-10 flex flex-col gap-10 p-6 sm:p-10'>
+        <div className='flex max-w-3xl flex-col gap-3'>
+          <span className='type-label-lg' style={{ color: 'var(--color-brand)' }}>
+            {t({ ko: '왜 스터디 그룹인가요', en: 'Why study groups' }, locale)}
+          </span>
+          <h2 className='whitespace-pre-line type-headline-md text-[var(--color-fg)]'>{t(headline, locale)}</h2>
         </div>
-        <div className='mt-6 grid gap-4 md:grid-cols-2'>
+
+        <ul className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+          {benefits.map((b, i) => (
+            <li
+              key={i}
+              className='flex flex-col gap-3 rounded-2xl p-6'
+              style={{
+                background: b.accent
+                  ? 'color-mix(in srgb, var(--color-logo-accent) 10%, var(--color-bg))'
+                  : 'var(--color-brand-subtle)',
+              }}
+            >
+              <span className='grid h-12 w-12 place-items-center rounded-xl bg-[var(--color-bg)]'>
+                <b.icon
+                  size={24}
+                  style={{ color: b.accent ? 'var(--color-logo-accent)' : 'var(--color-brand)' }}
+                  aria-hidden
+                />
+              </span>
+              <strong className='type-title-md text-[var(--color-fg)]'>{t(b.title, locale)}</strong>
+              <p className='type-body-md text-[var(--color-fg-muted)]'>{t(b.body, locale)}</p>
+            </li>
+          ))}
+        </ul>
+
+        <div className='flex items-center gap-4'>
+          <span className='hidden h-px flex-1 bg-[var(--color-border)] sm:block' />
+          <p className='text-center type-title-md text-[var(--color-fg)]'>{t(problemsLead, locale)}</p>
+          <span className='hidden h-px flex-1 bg-[var(--color-border)] sm:block' />
+        </div>
+
+        <div className='grid gap-5 md:grid-cols-2'>
           {problems.map((pr, i) => (
-            <div key={i} className='rounded-xl border border-[var(--color-border)] p-5'>
-              <h3 className='type-title-md text-[var(--color-fg)]'>
-                <span style={{ color: 'var(--color-brand)' }}>{i + 1}. </span>
+            <div key={i} className='flex flex-col gap-5 rounded-2xl border border-[var(--color-border)] p-6 sm:p-8'>
+              <h3 className='flex items-start gap-3 type-title-md text-[var(--color-fg)]'>
+                <span
+                  className='grid h-8 w-8 shrink-0 place-items-center rounded-full type-label-lg text-[var(--color-fg-on-color)]'
+                  style={{ background: 'var(--color-brand)' }}
+                >
+                  {i + 1}
+                </span>
                 {t(pr.q, locale)}
               </h3>
-              <ul className='mt-3 flex flex-col gap-2'>
+              <div className='flex flex-col items-center gap-4 rounded-xl bg-[var(--color-surface-1)] p-6' aria-hidden>
+                {i === 0 ? (
+                  <>
+                    <div className='flex flex-wrap justify-center gap-2'>
+                      {sources.map((src, j) => (
+                        <span
+                          key={j}
+                          className='rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-1.5 type-body-sm'
+                        >
+                          {t(src, locale)}
+                        </span>
+                      ))}
+                      <span className='rounded-full border border-dashed border-[var(--color-border)] px-3.5 py-1.5 type-body-sm text-[var(--color-fg-muted)]'>
+                        …
+                      </span>
+                    </div>
+                    <span className='h-6 w-px border-l border-dashed border-[var(--color-border)]' />
+                    <span
+                      className='grid h-14 w-14 place-items-center rounded-full border-2 bg-[var(--color-bg)] type-headline-sm'
+                      style={{ borderColor: 'var(--color-brand)', color: 'var(--color-brand)' }}
+                    >
+                      ?
+                    </span>
+                  </>
+                ) : (
+                  <div className='flex w-full items-center justify-between gap-2'>
+                    {buildSteps.map((st, j) => (
+                      <div key={j} className='contents'>
+                        {j > 0 && <ArrowRight size={18} className='shrink-0 text-[var(--color-fg-faint)]' />}
+                        <div className='flex flex-1 flex-col items-center gap-2'>
+                          <span className='grid h-12 w-12 place-items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)]'>
+                            <st.icon size={22} className='text-[var(--color-fg)]' />
+                          </span>
+                          <span className='type-label-lg text-[var(--color-fg)]'>{t(st.label, locale)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <ul className='flex flex-col gap-2.5'>
                 {pr.a.map((line, j) => (
-                  <li key={j} className='flex items-start gap-2 type-body-md text-[var(--color-fg-muted)]'>
-                    <span className='mt-2.5 h-1 w-1 shrink-0 rounded-full bg-[var(--color-fg-faint)]' />
+                  <li key={j} className='flex items-start gap-2.5 type-body-md text-[var(--color-fg-muted)]'>
+                    <span
+                      className='mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full'
+                      style={{ background: 'var(--color-logo-accent)' }}
+                    />
                     {t(line, locale)}
                   </li>
                 ))}
@@ -201,12 +355,39 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
             </div>
           ))}
         </div>
-        <p className='mt-6 max-w-3xl type-title-md text-[var(--color-fg)]'>{t(outro, locale)}</p>
-      </div>
+
+        <div
+          className='flex flex-col gap-4 rounded-2xl p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8'
+          style={{ background: 'var(--color-neutral-950)' }}
+        >
+          <p className='max-w-3xl type-title-md text-[var(--color-fg-on-color)]'>{t(outro, locale)}</p>
+          <div className='flex shrink-0 gap-2'>
+            {[
+              { ko: '제안', en: 'Propose' },
+              { ko: '모집', en: 'Recruit' },
+            ].map((l, j) => (
+              <span
+                key={j}
+                className='rounded-full border border-[var(--color-neutral-700)] px-3.5 py-1.5 type-body-sm text-[var(--color-fg-on-color)]'
+              >
+                {t(l, locale)}
+              </span>
+            ))}
+            <span
+              className='rounded-full px-3.5 py-1.5 type-label-lg text-[var(--color-neutral-950)]'
+              style={{ background: 'var(--color-logo-accent)' }}
+            >
+              {t({ ko: '진행', en: 'Run' }, locale)}
+            </span>
+          </div>
+        </div>
+      </section>
 
       {/* 우리의 이야기 — 실리콘밸리에서 시작해 한국까지 */}
       <div className='mt-10'>
-        <h2 className='type-title-lg'>{t({ ko: '실리콘밸리에서 시작했어요', en: 'It started in Silicon Valley' }, locale)}</h2>
+        <h2 className='type-title-lg'>
+          {t({ ko: '실리콘밸리에서 시작했어요', en: 'It started in Silicon Valley' }, locale)}
+        </h2>
         <p className='mt-2 max-w-3xl type-body-md text-[var(--color-fg-muted)]'>
           {t(
             {
@@ -228,7 +409,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </ol>
         <ul className='mt-4 grid gap-3 sm:grid-cols-3'>
           {networking.map((n, i) => (
-            <li key={i} className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 type-body-md'>
+            <li
+              key={i}
+              className='rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 type-body-md'
+            >
               <span className='font-semibold'>{t(n.title, locale)}</span>
               <span className='text-[var(--color-fg-muted)]'> {t(n.body, locale)}</span>
             </li>
@@ -239,9 +423,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       {/* 역할 — 크루 · 네비게이터 · 캡틴 */}
       <div className='mt-10'>
         <h2 className='type-title-lg'>{m('about.roles_title', locale)}</h2>
-        <p className='mt-2 max-w-3xl type-body-md text-[var(--color-fg-muted)]'>
-          {m('about.roles_body', locale)}
-        </p>
+        <p className='mt-2 max-w-3xl type-body-md text-[var(--color-fg-muted)]'>{m('about.roles_body', locale)}</p>
         <div className='mt-5 grid gap-4 md:grid-cols-3'>
           {roles.map((r) => (
             <section
@@ -256,7 +438,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
               <ul className='mt-4 flex flex-col gap-2.5'>
                 {r.points.map((p, i) => (
                   <li key={i} className='flex items-start gap-2 type-body-md text-[var(--color-fg)]'>
-                    <span className='mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full' style={{ background: 'var(--color-brand)' }} />
+                    <span
+                      className='mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full'
+                      style={{ background: 'var(--color-brand)' }}
+                    />
                     {t(p, locale)}
                   </li>
                 ))}
@@ -302,7 +487,9 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
       {/* 지금 각 지역의 시간 */}
       <div className='mt-10'>
-        <h2 className='mb-4 type-title-lg'>{t({ ko: '지금, 각 지역의 시간', en: 'Right now, around the world' }, locale)}</h2>
+        <h2 className='mb-4 type-title-lg'>
+          {t({ ko: '지금, 각 지역의 시간', en: 'Right now, around the world' }, locale)}
+        </h2>
         <RegionClocks locale={locale} />
       </div>
 

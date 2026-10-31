@@ -9,7 +9,7 @@ import { Providers } from '@/app/providers';
 import { Footer } from '@/components/Footer';
 import { RegistrationNavigation } from '@/components/RegistrationNavigation';
 import { SiteHeader } from '@/components/SiteHeader';
-import { getSite } from '@/lib/content';
+import { getSite } from '@/features/community/server';
 import { LOCALES, isLocale, m } from '@/lib/i18n';
 import { JsonLd, organizationJsonLd, webSiteJsonLd } from '@/lib/jsonld';
 import { IS_INDEXABLE, SITE_NAME, SITE_URL, alternatesFor } from '@/lib/seo';

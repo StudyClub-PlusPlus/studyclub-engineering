@@ -179,7 +179,7 @@ export default function StudyManageNoticesPage() {
       <ScreenSpecRegistrar spec={MANAGE_SPEC} />
       <ScreenSpecRegistrar spec={SPEC} />
 
-      <div className='max-w-2xl space-y-6'>
+      <div className='space-y-6'>
         <section data-anno='notice:1' className='card space-y-5 p-6'>
           <h2 className='text-base font-bold text-fg'>공지 쓰기</h2>
 

@@ -3,8 +3,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ApplicationFormTab } from './ApplicationFormTab';
-import { applicationFormSchema, toFormValues, toPayload } from './schema';
+import { ApplicationFormTab } from '@/features/application-form/ApplicationFormTab';
+import { applicationFormSchema, toFormValues, toPayload } from '@/features/application-form/schema';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
 const study = { id: 106, title: '테스트 스터디', oneLineSummary: '함께 공부합니다.' } as ApiStudyDetail;

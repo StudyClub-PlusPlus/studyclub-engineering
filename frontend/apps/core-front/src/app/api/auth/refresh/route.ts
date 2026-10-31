@@ -2,7 +2,8 @@
 // fetch wrapper 에서 401 수신 시 이 라우트를 호출하고 원래 요청을 재시도한다.
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth';
+import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/features/auth/auth';
+import { tokenResponseSchema } from '@/features/auth/response-schema';
 import { accessCookie, clearAccess, clearRefresh } from '@/lib/cookies';
 
 const API_BASE = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -32,7 +33,11 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  const data = await upstream.json().catch(() => ({}));
+  const raw = await upstream.json().catch(() => null);
+  const parsed = tokenResponseSchema.safeParse(raw);
+  if (!parsed.success) return NextResponse.json({ message: '백엔드 응답 형식이 올바르지 않습니다.' }, { status: 502 });
+  const data = parsed.data;
+
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ACCESS_COOKIE, data.accessToken, accessCookie(data.accessTokenExpiresIn ?? 60 * 60 * 24 * 7));
   return res;

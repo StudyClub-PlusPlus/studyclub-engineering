@@ -1,8 +1,10 @@
-// BO 전 페이지 로그인 게이트 — access 쿠키(bo_access_token) 없으면 /login 으로.
 import { NextRequest, NextResponse } from 'next/server';
 
+import { legacyRedirectUrl } from '@studyclub/utils';
+
 import { ACCESS_COOKIE } from '@/lib/cookie-names';
-import { legacyRedirectUrl } from '@/lib/legacy-domain';
+
+// BO 전 페이지 로그인 게이트 — access 쿠키(bo_access_token) 없으면 /login 으로.
 
 /**
  * 로컬 UI 작업용 게이트 우회.
@@ -20,8 +22,11 @@ const DEV_BYPASS = process.env.NODE_ENV === 'development' && process.env.BO_DEV_
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 0) 옛 도메인으로 들어오면 같은 경로의 studyclub.life 로 영구 이동 (lib/legacy-domain.ts)
-  const legacy = legacyRedirectUrl(req.headers.get('x-forwarded-host') ?? req.headers.get('host'), pathname + req.nextUrl.search);
+  // 0) 옛 도메인으로 들어오면 같은 경로의 studyclub.life 로 영구 이동 (@studyclub/utils)
+  const legacy = legacyRedirectUrl(
+    req.headers.get('x-forwarded-host') ?? req.headers.get('host'),
+    pathname + req.nextUrl.search,
+  );
   if (legacy) return NextResponse.redirect(legacy, 301);
 
   // 1) 로컬 개발 우회 모드

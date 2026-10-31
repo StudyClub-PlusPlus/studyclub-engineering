@@ -192,7 +192,7 @@ private StudyDetailResponse toDetail(Study study) {
 | keyword  | String | N    | 제목·소개 부분일치 검색 (대소문자 무관)                                                                                           |
 | status   | String | N    | 모집 상태 필터. `recruiting` / `ongoing` / `closed`                                                                               |
 | timezone | String | N    | 시간대 필터. `KST` / `PST` / `both`                                                                                               |
-| category | String | N    | 분야 필터 (API enum 값, 예: `AI_ML`·`ALGORITHM`). 유효값은 [CATEGORY_DISPLAY](../../frontend/apps/core-front/src/lib/api.ts) 참고 |
+| category | String | N    | 분야 필터 (API enum 값, 예: `AI_ML`·`ALGORITHM`). 유효값은 [CATEGORY_DISPLAY](../../frontend/packages/utils/src/constants.ts) 참고 |
 
 > **정렬**: 지원하지 않는다 — 항상 최신순(등록 순번) 고정.
 
@@ -348,7 +348,7 @@ private StudyDetailResponse toDetail(Study study) {
 ### 프론트엔드 사용처
 
 - `frontend/apps/core-front/src/app/[locale]/studies/[id]/page.tsx` — 상세 페이지
-- `frontend/apps/core-front/src/lib/content.ts` — `getStudy(id)` mock 함수
+- `frontend/apps/core-front/src/features/studies/server.ts` — `getStudy(id)`
 - 운영 콘솔은 이 경로를 쓰지 않는다 — 아래 `GET /api/admin/studies/{studyId}` 를 쓴다
 - 구현: `StudyService#getDetail(studyId, accountId)`. 공개 판정은 `STATUS != DRAFT` 하나 — `Study#isPubliclyVisible`(OPEN 만)과 다르다.
   숨김 플래그(`IS_HIDDEN`)는 V27 에서 삭제했다 — 목록(`StudyListJpqlDao`)도 `STATUS != DRAFT` 하나로 거른다
@@ -653,7 +653,7 @@ FE가 "신청 폼을 먼저 연결하세요." 안내를 별도로 표시해야 �
   목록 응답·목록 단계 필터(JPQL)·상세의 모집 상태 판정이 모두 같은 회차의 정원과 신청 수를 비교한다. 모집 회차가 없으면 정원 수정은 404 다
 - `timezone` 은 `STUDY.TIMEZONE`(V40) 에 저장한다. `KST`·`PST`·`BOTH` 밖의 값은 본문 변환 단계에서 400 이다(필드 사유 없이 `INVALID_INPUT`) — `category` 와 같다
 - 운영 콘솔(정보 탭)은 **바뀐 칸만** 보낸다. 마감이 지난 스터디의 다른 칸을 고칠 때 지난 `recruitDeadline` 을 다시 보내면 400 이다
-- 프론트엔드 사용처: `frontend/apps/back-office-front/src/components/StudyInfoTab.tsx` (DELETE 도 같은 파일) — 호출은 `features/studies/queries.ts` `useUpdateStudy`. `/api/admin/studies/{studyId}` 로 옮긴다
+- 프론트엔드 사용처: `frontend/apps/back-office-front/src/features/studies/StudyInfoTab.tsx` (DELETE 도 같은 파일) — 호출은 `features/studies/queries.ts` `useUpdateStudy`. `/api/admin/studies/{studyId}` 로 옮긴다
 
 ### Response — 204 No Content
 

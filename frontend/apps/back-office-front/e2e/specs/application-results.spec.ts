@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+import { studyDetailFixture } from '../fixtures/study-detail';
+// PRD 부분 연결: BO-ST-024-S01/S04 (보기 전환·긴 답변 일부)
+// 전체 대응표: docs/frontend-development-guide/admin-e2e-prd-map.md
+
 test('신청 결과 질문별·응답자별 전환, 새로고침과 모바일 답변 조회', async ({ page, context, baseURL }) => {
   await context.addCookies([{ name: 'bo_access_token', value: 'test-only', url: baseURL! }]);
   await context.addInitScript(() =>
@@ -23,6 +27,10 @@ test('신청 결과 질문별·응답자별 전환, 새로고침과 모바일 �
           'Access-Control-Allow-Methods': 'GET,OPTIONS',
         },
       });
+      return;
+    }
+    if (path.endsWith('/application-form')) {
+      await route.fulfill({ json: { studyId: 20, title: '신청 폼', description: null, questions: [] } });
       return;
     }
     if (path.endsWith('/applications')) {
@@ -51,6 +59,7 @@ test('신청 결과 질문별·응답자별 전환, 새로고침과 모바일 �
     } else
       await route.fulfill({
         json: {
+          ...studyDetailFixture(),
           id: 20,
           title: '신청 결과 테스트',
           oneLineSummary: '신청 결과 조회 테스트',

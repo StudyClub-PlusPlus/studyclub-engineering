@@ -6,7 +6,7 @@ import { Button, cx } from '@studyclub/ui';
 
 import { discordResultLabel, mailResultLabel, mergeNoticePages } from '../model';
 import { useNotices } from '../queries';
-import type { ApiNoticeItem } from '@/lib/study-notice-api';
+import type { ApiNoticeItem } from '@/features/study-notices/types';
 
 /** 보는 사람의 시간대로 「월/일 시:분」. */
 const when = (iso: string) =>

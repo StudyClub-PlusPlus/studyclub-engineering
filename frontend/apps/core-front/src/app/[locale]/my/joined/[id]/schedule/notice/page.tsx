@@ -1,6 +1,6 @@
 'use client';
 
-import { useManage } from '@/components/StudyManageShell';
+import { useManage } from '@/features/schedule/StudyManageShell';
 import { NoticeTab } from '@/features/study-notices/components/NoticeTab';
 
 export default function StudyManageNoticePage() {

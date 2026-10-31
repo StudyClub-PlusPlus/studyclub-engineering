@@ -7,7 +7,6 @@ import { NoticeHistory } from '@/features/study-notices/components/NoticeHistory
 import { composeView } from '@/features/study-notices/model';
 import { useNoticeCompose } from '@/features/study-notices/queries';
 import { ApiError } from '@/lib/http';
-import { FORM } from '@/lib/layout';
 
 /**
  * 공지 탭: 네비게이터(캡틴)가 자기 반 팀원 중 고른 사람에게 메일·디스코드로 공지를 보낸다 (ST-016, POL-0010).
@@ -45,7 +44,8 @@ export function NoticeTab({ studyId, groupId, canEdit }: { studyId: number; grou
   }
 
   return (
-    <div className={`${FORM} space-y-6`}>
+    // 일정 · 출석 탭과 같은 너비 — 셸(max-w-6xl) 폭을 그대로 쓴다
+    <div className='space-y-6'>
       {view.staleError && (
         <div
           role='alert'

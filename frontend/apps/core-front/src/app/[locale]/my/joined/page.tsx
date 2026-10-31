@@ -4,16 +4,15 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { Locale } from '@studyclub/types';
 import { Badge, Button, IconButton, Card, EmptyState, cx, Select } from '@studyclub/ui';
 import { categoryGradient, categoryMeta } from '@studyclub/ui';
 import { Award, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { SegmentTabs } from '@/components/SegmentTabs';
-import { useMyStudies, type JoinedStudy } from '@/features/my-studies/queries';
-import { bookScore, myAttendanceBook, type MyAttendanceBook } from '@/lib/attendance-book';
-import { getUser } from '@/lib/auth';
-import type { Locale } from '@/lib/content';
-import { t } from '@/lib/i18n';
+import { bookScore, myAttendanceBook, type MyAttendanceBook } from '@/features/attendance/book';
+import { getUser } from '@/features/auth/auth';
+import { IS_DEV, syncPreview } from '@/features/auth/preview';
 import {
   LEFT_BADGE,
   LIFE_LABEL,
@@ -30,11 +29,13 @@ import {
   type LifeStatus,
   type WallTz,
   type WeekDay,
-} from '@/lib/joined';
+} from '@/features/my-studies/model';
+import { useMyStudies } from '@/features/my-studies/queries';
+import { type JoinedStudy } from '@/features/my-studies/types';
+import { useDisplayTimeZone } from '@/features/profile/use-display-timezone';
+import { scheduleZoneTitle } from '@/features/schedule/timezone';
+import { t } from '@/lib/i18n';
 import { PAGE } from '@/lib/layout';
-import { IS_DEV, syncPreview } from '@/lib/preview';
-import { scheduleZoneTitle } from '@/lib/schedule-timezone';
-import { useDisplayTimeZone } from '@/lib/use-display-timezone';
 import { pageOf, useUrlState } from '@/lib/use-url-state';
 
 type Filter = 'all' | LifeStatus;

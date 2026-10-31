@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { ClassPicker } from '@console/components/ClassPicker';
 import { hasSchedule, type StudyClass } from '@console/lib/classes';
-import { attendanceRate, type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/mock';
+import { type AttendanceStatus, type Crew, type Study, type StudyMeeting } from '@studyclub/types';
 import { Badge, Button, Modal, Select, SelectionCount, TableActionBar } from '@studyclub/ui';
+import { attendanceRate } from '@studyclub/utils';
 import { CalendarPlus, CircleHelp, Mic, Undo2 } from 'lucide-react';
 
 /**
