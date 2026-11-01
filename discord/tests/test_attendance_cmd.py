@@ -125,10 +125,22 @@ def test_result_without_a_meeting_number_shows_no_number():
     assert "None" not in message
 
 
-def test_result_shows_the_kickoff_as_meeting_zero():
-    message = format_result(AttendanceResult(groups=[MarkedGroup(70, 0, False, ["1"])]), {})
+def test_result_shows_the_meeting_title():
+    group = MarkedGroup(70, 1, False, ["1"], meeting_type="REGULAR", meeting_title="OT")
 
-    assert "· 0번 회차 — 1명" in message
+    message = format_result(AttendanceResult(groups=[group]), {})
+
+    assert "· 1번 회차 「OT」 — 1명" in message
+
+
+def test_result_names_the_kickoff_without_a_number_or_title():
+    """Its title is always 킥오프, so 킥오프 「킥오프」 would only repeat it."""
+    group = MarkedGroup(70, 0, False, ["1"], meeting_type="KICKOFF", meeting_title="킥오프")
+
+    message = format_result(AttendanceResult(groups=[group]), {})
+
+    assert "· 킥오프 — 1명" in message
+    assert "0번" not in message
 
 
 def test_result_with_nothing_marked_says_so():

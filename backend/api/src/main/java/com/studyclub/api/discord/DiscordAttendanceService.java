@@ -188,7 +188,12 @@ public class DiscordAttendanceService {
             }
             groups.add(
                     new DiscordAttendanceResponse.MarkedGroup(
-                            groupId, picked.get().number(), picked.get().started(), marked));
+                            groupId,
+                            picked.get().number(),
+                            picked.get().meeting().getMeetingType().name(),
+                            picked.get().meeting().getTitle(),
+                            picked.get().started(),
+                            marked));
         }
 
         return new DiscordAttendanceResponse(

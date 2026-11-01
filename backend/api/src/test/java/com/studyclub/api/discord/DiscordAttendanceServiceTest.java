@@ -192,15 +192,15 @@ class DiscordAttendanceServiceTest {
     }
 
     @Test
-    @DisplayName("회차_행_ID_가_아니라_분반_회차_번호를_돌려준다")
-    void 회차_행_ID_가_아니라_분반_회차_번호를_돌려준다() {
+    @DisplayName("회차_행_ID_가_아니라_분반_회차_번호와_종류_제목을_돌려준다")
+    void 회차_행_ID_가_아니라_분반_회차_번호와_종류_제목을_돌려준다() {
         // 행 ID 는 모든 스터디가 같이 쓰는 번호라, 분반 첫 회차가 28 일 수 있다 (2026-11-01).
         StudyMeeting kickoff =
                 withId(StudyMeeting.kickoff(GROUP_A, Instant.now().minus(7, ChronoUnit.DAYS)), 27L);
         StudyMeeting first =
                 withId(
                         StudyMeeting.schedule(
-                                GROUP_A, Instant.now().plus(30, ChronoUnit.MINUTES), null),
+                                GROUP_A, Instant.now().plus(30, ChronoUnit.MINUTES), "OT"),
                         28L);
         StudyMeeting second =
                 withId(
@@ -215,13 +215,18 @@ class DiscordAttendanceServiceTest {
 
         assertThat(response.groups())
                 .singleElement()
-                .satisfies(g -> assertThat(g.studyMeetingNumber()).isEqualTo(1));
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            assertThat(g.meetingType()).isEqualTo("REGULAR");
+                            assertThat(g.meetingTitle()).isEqualTo("OT");
+                        });
         verifyMarkedOn(GROUP_A, 28L);
     }
 
     @Test
-    @DisplayName("진행_중인_킥오프에_찍히면_회차_번호는_0")
-    void 진행_중인_킥오프에_찍히면_회차_번호는_0() {
+    @DisplayName("진행_중인_킥오프에_찍히면_회차_번호는_0_종류는_KICKOFF")
+    void 진행_중인_킥오프에_찍히면_회차_번호는_0_종류는_KICKOFF() {
         StudyMeeting kickoff =
                 withId(
                         StudyMeeting.kickoff(GROUP_A, Instant.now().minus(1, ChronoUnit.HOURS)),
@@ -240,7 +245,12 @@ class DiscordAttendanceServiceTest {
 
         assertThat(response.groups())
                 .singleElement()
-                .satisfies(g -> assertThat(g.studyMeetingNumber()).isZero());
+                .satisfies(
+                        g -> {
+                            assertThat(g.studyMeetingNumber()).isZero();
+                            assertThat(g.meetingType()).isEqualTo("KICKOFF");
+                            assertThat(g.meetingTitle()).isEqualTo("킥오프");
+                        });
         verifyMarkedOn(GROUP_A, 27L);
     }
 

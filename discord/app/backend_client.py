@@ -25,6 +25,9 @@ class MarkedGroup:
     study_meeting_number: int | None
     meeting_started: bool
     marked: list[str]
+    # "KICKOFF" or "REGULAR"; None from a backend that predates the field.
+    meeting_type: str | None = None
+    meeting_title: str | None = None
 
 
 @dataclass(frozen=True)
@@ -115,6 +118,8 @@ def _parse(body: dict) -> AttendanceResult:
                 study_meeting_number=group.get("studyMeetingNumber"),
                 meeting_started=bool(group.get("meetingStarted")),
                 marked=list(group.get("marked") or []),
+                meeting_type=group.get("meetingType"),
+                meeting_title=group.get("meetingTitle"),
             )
             for group in body.get("groups") or []
         ],

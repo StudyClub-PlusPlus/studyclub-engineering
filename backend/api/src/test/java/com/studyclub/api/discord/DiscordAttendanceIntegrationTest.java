@@ -181,6 +181,7 @@ class DiscordAttendanceIntegrationTest {
                 .satisfies(
                         g -> {
                             assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            assertThat(g.meetingType()).isEqualTo("REGULAR");
                             assertThat(g.meetingStarted()).isFalse();
                             assertThat(g.marked())
                                     .containsExactlyInAnyOrder(

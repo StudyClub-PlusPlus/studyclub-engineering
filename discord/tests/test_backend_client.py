@@ -60,6 +60,8 @@ async def test_parses_every_bucket(capture):
                 {
                     "studyGroupId": 70,
                     "studyMeetingNumber": 3,
+                    "meetingType": "REGULAR",
+                    "meetingTitle": "OT",
                     "meetingStarted": True,
                     "marked": ["1", "2"],
                 }
@@ -75,6 +77,8 @@ async def test_parses_every_bucket(capture):
     assert result.marked_count == 2
     assert result.groups[0].study_group_id == 70
     assert result.groups[0].study_meeting_number == 3
+    assert result.groups[0].meeting_type == "REGULAR"
+    assert result.groups[0].meeting_title == "OT"
     assert result.groups[0].meeting_started is True
     assert result.unmatched == ["3"]
     assert result.not_participant == ["4"]
