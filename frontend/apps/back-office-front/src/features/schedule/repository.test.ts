@@ -68,6 +68,24 @@ describe('일정 API 전송', () => {
       expect(init).toMatchObject({ credentials: 'include', headers: { 'Content-Type': 'application/json' } });
   });
 
+  it('반 스터디 시간 수정은 200 과 수정한 반을 받는다 — 빈 응답으로 보지 않는다', async () => {
+    const saved = {
+      groupId: 3,
+      name: '반',
+      daysOfWeek: ['wed', 'fri'],
+      startTime: '12:03',
+      timezone: 'America/New_York',
+    };
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(saved), { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    const payload = { daysOfWeek: ['wed', 'fri'], startTime: '12:03', timezone: 'America/New_York' };
+    await expect(repository.updateGroupTime(10, 3, payload)).resolves.toEqual(saved);
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(new URL(url).pathname).toBe('/api/admin/studies/10/groups/3');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body)).toEqual(payload);
+  });
+
   it('서버 오류의 상태 코드와 메시지를 보존한다', async () => {
     vi.stubGlobal(
       'fetch',
