@@ -202,7 +202,7 @@ CREATE TABLE STUDY_DISCORD_LINK (
   "groups": [
     {
       "studyGroupId": 70,
-      "studyMeetingId": 41,
+      "studyMeetingNumber": 1,
       "meetingStarted": true,
       "marked": ["1327394882193883136"]
     }
@@ -216,7 +216,7 @@ CREATE TABLE STUDY_DISCORD_LINK (
 | 필드 | 뜻 |
 |---|---|
 | `groups[].studyGroupId` | 출석이 찍힌 반 |
-| `groups[].studyMeetingId` | 그 반에서 실제로 찍힌 회차 |
+| `groups[].studyMeetingNumber` | 그 반에서 실제로 찍힌 회차의 회차 번호(킥오프 0). 행 ID(`STUDY_MEETING.ID`)가 아니다 — 일정 화면 `meetings[].number` 와 같은 계산(`MeetingSchedule.numbersOf`). 봇은 「N번 회차」로 적는다 |
 | `groups[].meetingStarted` | 이 호출이 그 회차를 시작시켰으면 `true` (판정 2번) |
 | `groups[].marked` | 그 반에서 출석 처리된 디스코드 유저 |
 | `unmatched` | 계정 연동이 안 된 유저 |

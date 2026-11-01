@@ -117,6 +117,20 @@ def test_result_reports_each_group_and_every_excluded_bucket():
     assert "지금 모이는 중이 아닌 반 1명 — 사람6" in message
 
 
+def test_result_without_a_meeting_number_shows_no_number():
+    """Better no number than a row id posing as one."""
+    message = format_result(AttendanceResult(groups=[MarkedGroup(70, None, False, ["1"])]), {})
+
+    assert "· 회차 — 1명" in message
+    assert "None" not in message
+
+
+def test_result_shows_the_kickoff_as_meeting_zero():
+    message = format_result(AttendanceResult(groups=[MarkedGroup(70, 0, False, ["1"])]), {})
+
+    assert "· 0번 회차 — 1명" in message
+
+
 def test_result_with_nothing_marked_says_so():
     """All unmatched is a normal outcome before account linking exists."""
     message = format_result(AttendanceResult(unmatched=["1", "2"]), {"1": "가", "2": "나"})

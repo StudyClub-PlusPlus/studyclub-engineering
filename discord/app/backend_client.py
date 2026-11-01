@@ -20,7 +20,9 @@ REQUEST_TIMEOUT_SECONDS = 10.0
 @dataclass(frozen=True)
 class MarkedGroup:
     study_group_id: int
-    study_meeting_id: int
+    # The group's own meeting number (kickoff 0), not the STUDY_MEETING row id.
+    # None only from a backend that predates the field.
+    study_meeting_number: int | None
     meeting_started: bool
     marked: list[str]
 
@@ -110,7 +112,7 @@ def _parse(body: dict) -> AttendanceResult:
         groups=[
             MarkedGroup(
                 study_group_id=group["studyGroupId"],
-                study_meeting_id=group["studyMeetingId"],
+                study_meeting_number=group.get("studyMeetingNumber"),
                 meeting_started=bool(group.get("meetingStarted")),
                 marked=list(group.get("marked") or []),
             )

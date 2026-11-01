@@ -98,7 +98,8 @@ def format_result(result: AttendanceResult, names_by_id: dict[str, str]) -> str:
         lines.append(f"✅ 출석 {result.marked_count}명 체크했습니다.{group_word}")
         for group in result.groups[:MAX_GROUPS_SHOWN]:
             started = " · 회차를 시작했습니다" if group.meeting_started else ""
-            lines.append(f"· {group.study_meeting_id}번 회차 — {len(group.marked)}명{started}")
+            number = "" if group.study_meeting_number is None else f"{group.study_meeting_number}번 "
+            lines.append(f"· {number}회차 — {len(group.marked)}명{started}")
         hidden = len(result.groups) - MAX_GROUPS_SHOWN
         if hidden > 0:
             lines.append(f"· 외 {hidden}개 반")

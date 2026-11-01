@@ -180,7 +180,7 @@ class DiscordAttendanceIntegrationTest {
                 .singleElement()
                 .satisfies(
                         g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(meeting.getId());
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
                             assertThat(g.meetingStarted()).isFalse();
                             assertThat(g.marked())
                                     .containsExactlyInAnyOrder(

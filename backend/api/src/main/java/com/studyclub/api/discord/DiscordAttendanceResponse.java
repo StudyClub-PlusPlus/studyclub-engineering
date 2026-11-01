@@ -19,8 +19,13 @@ public record DiscordAttendanceResponse(
         List<String> noMeeting) {
 
     /**
+     * @param studyMeetingNumber 찍힌 회차의 번호 — 킥오프 0, 정규 회차는 예정 시각 순서로 1부터. 행 ID({@code
+     *     STUDY_MEETING.ID})가 아니다
      * @param meetingStarted 이 호출이 예정 회차를 시작시켰으면 true
      */
     public record MarkedGroup(
-            Long studyGroupId, Long studyMeetingId, boolean meetingStarted, List<String> marked) {}
+            Long studyGroupId,
+            int studyMeetingNumber,
+            boolean meetingStarted,
+            List<String> marked) {}
 }

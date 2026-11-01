@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -76,7 +77,8 @@ class DiscordAttendanceServiceTest {
                 .satisfies(
                         g -> {
                             assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
-                            assertThat(g.studyMeetingId()).isEqualTo(1L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_A, 1L);
                             assertThat(g.meetingStarted()).isFalse();
                         });
         assertThat(upcoming.getStartAt()).isNull();
@@ -97,7 +99,8 @@ class DiscordAttendanceServiceTest {
                 .singleElement()
                 .satisfies(
                         g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(2L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_A, 2L);
                             assertThat(g.meetingStarted()).isTrue();
                         });
         assertThat(upcoming.getStartAt()).isNotNull();
@@ -159,7 +162,8 @@ class DiscordAttendanceServiceTest {
                 .singleElement()
                 .satisfies(
                         g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(5L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(2);
+                            verifyMarkedOn(GROUP_A, 5L);
                             assertThat(g.meetingStarted()).isTrue();
                         });
     }
@@ -181,9 +185,63 @@ class DiscordAttendanceServiceTest {
                 .singleElement()
                 .satisfies(
                         g -> {
-                            assertThat(g.studyMeetingId()).isEqualTo(7L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(2);
+                            verifyMarkedOn(GROUP_A, 7L);
                             assertThat(g.meetingStarted()).isFalse();
                         });
+    }
+
+    @Test
+    @DisplayName("회차_행_ID_가_아니라_분반_회차_번호를_돌려준다")
+    void 회차_행_ID_가_아니라_분반_회차_번호를_돌려준다() {
+        // 행 ID 는 모든 스터디가 같이 쓰는 번호라, 분반 첫 회차가 28 일 수 있다 (2026-11-01).
+        StudyMeeting kickoff =
+                withId(StudyMeeting.kickoff(GROUP_A, Instant.now().minus(7, ChronoUnit.DAYS)), 27L);
+        StudyMeeting first =
+                withId(
+                        StudyMeeting.schedule(
+                                GROUP_A, Instant.now().plus(30, ChronoUnit.MINUTES), null),
+                        28L);
+        StudyMeeting second =
+                withId(
+                        StudyMeeting.schedule(
+                                GROUP_A, Instant.now().plus(7, ChronoUnit.DAYS), null),
+                        29L);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(kickoff, first, second));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(g -> assertThat(g.studyMeetingNumber()).isEqualTo(1));
+        verifyMarkedOn(GROUP_A, 28L);
+    }
+
+    @Test
+    @DisplayName("진행_중인_킥오프에_찍히면_회차_번호는_0")
+    void 진행_중인_킥오프에_찍히면_회차_번호는_0() {
+        StudyMeeting kickoff =
+                withId(
+                        StudyMeeting.kickoff(GROUP_A, Instant.now().minus(1, ChronoUnit.HOURS)),
+                        27L);
+        kickoff.start(Instant.now().minus(1, ChronoUnit.HOURS));
+        StudyMeeting first =
+                withId(
+                        StudyMeeting.schedule(
+                                GROUP_A, Instant.now().plus(7, ChronoUnit.DAYS), null),
+                        28L);
+        givenOneGroupStudy();
+        givenMeetings(GROUP_A, List.of(kickoff, first));
+        givenAccounts();
+
+        DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());
+
+        assertThat(response.groups())
+                .singleElement()
+                .satisfies(g -> assertThat(g.studyMeetingNumber()).isZero());
+        verifyMarkedOn(GROUP_A, 27L);
     }
 
     @Test
@@ -222,7 +280,8 @@ class DiscordAttendanceServiceTest {
                 .anySatisfy(
                         g -> {
                             assertThat(g.studyGroupId()).isEqualTo(GROUP_A);
-                            assertThat(g.studyMeetingId()).isEqualTo(1L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_A, 1L);
                             assertThat(g.marked())
                                     .containsExactlyInAnyOrder(
                                             LEADER_DISCORD_ID, MEMBER_DISCORD_ID);
@@ -230,7 +289,8 @@ class DiscordAttendanceServiceTest {
                 .anySatisfy(
                         g -> {
                             assertThat(g.studyGroupId()).isEqualTo(GROUP_B);
-                            assertThat(g.studyMeetingId()).isEqualTo(9L);
+                            assertThat(g.studyMeetingNumber()).isEqualTo(1);
+                            verifyMarkedOn(GROUP_B, 9L);
                             assertThat(g.marked()).containsExactly(OTHER_GROUP_DISCORD_ID);
                         });
         assertThat(response.noMeeting()).isEmpty();
@@ -387,6 +447,12 @@ class DiscordAttendanceServiceTest {
 
     private void givenMeetings(Long groupId, List<StudyMeeting> meetings) {
         when(studyMeetingRepository.findByStudyGroupIdForUpdate(groupId)).thenReturn(meetings);
+    }
+
+    /** 응답은 번호만 주므로 어느 회차 행에 찍혔는지는 출석 쓰기로 본다. */
+    private void verifyMarkedOn(Long groupId, Long meetingId) {
+        verify(studyAttendanceRepository, atLeastOnce())
+                .markPresent(any(), eq(STUDY_ID), eq(groupId), eq(meetingId), any());
     }
 
     private void givenAccounts() {
