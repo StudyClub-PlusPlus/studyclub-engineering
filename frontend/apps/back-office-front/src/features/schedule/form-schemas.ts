@@ -35,7 +35,7 @@ export function kickoffSchema(existing: Meeting[]) {
 export const groupTimeSchema = z.object({
   weekdays: weekdays.min(1, '요일을 하나 이상 골라 주세요.'),
   time,
-  tz: z.enum(['Asia/Seoul', 'America/Los_Angeles']),
+  tz: z.enum(['Asia/Seoul', 'America/New_York', 'America/Vancouver', 'America/Los_Angeles']),
 });
 export type GroupTimeValues = z.infer<typeof groupTimeSchema>;
 export const groupRulesSchema = z.object({ rules: z.string().max(RULES_MAX) });

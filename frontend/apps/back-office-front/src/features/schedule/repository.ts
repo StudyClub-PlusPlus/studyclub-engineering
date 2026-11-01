@@ -39,6 +39,13 @@ export type ApiGroupMeetings = {
   meetings: ApiMeeting[];
 };
 
+/** 반 스터디 시간 — 보낸 필드만 바꾼다. */
+export type GroupTimePayload = {
+  daysOfWeek: string[] | null;
+  startTime: string | null;
+  timezone: string | null;
+};
+
 /** 반은 경로로 보낸다. */
 export type MeetingCreatePayload = {
   /** 반복은 화면이 날짜로 펼쳐 보낸다(결정 8). UTC ISO. */
@@ -57,6 +64,14 @@ export type MeetingUpdatePayload = {
 const adminGroup = (studyId: number, groupId: number) => `/api/admin/studies/${studyId}/groups/${groupId}`;
 
 const scheduleRepository = {
+  /** 반 스터디 시간(요일 · 시간대)을 바꾼다. daysOfWeek · timezone 보낸 것만 반영. 204. */
+  updateGroupTime(studyId: number, groupId: number, payload: GroupTimePayload) {
+    return http(`${adminGroup(studyId, groupId)}`, emptyResponseSchema, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  },
   /** 반 회차 목록 — 킥오프 · 제목 · 발표자 · 규칙 포함. 다른 스터디의 반이면 404. */
   fetchMeetings(studyId: number, groupId: number, signal?: AbortSignal) {
     return http(`${adminGroup(studyId, groupId)}/meetings`, apiGroupMeetingsSchema, { signal });
