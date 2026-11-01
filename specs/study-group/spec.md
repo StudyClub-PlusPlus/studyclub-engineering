@@ -3,7 +3,7 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
-> 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V50 마이그레이션)
+> 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V53 마이그레이션)
 > 갱신: 2026-10-23 — 참여 명단 `groups[].isDefault` 추가 (기본 반 칩을 서버 판정으로)
 > 갱신: 2026-10-21 — 한 사람씩 바꾸던 `PATCH …/{participantId}/role` · `…/group` 을 일괄 `PATCH …/participants` 하나로 합쳤다
 > 상태: 구현완료
@@ -321,7 +321,7 @@
 
 ## 데이터 변경
 
-- ✅ `STUDY_GROUP` 에 `DAYS_OF_WEEK VARCHAR(30) NULL` 추가 — V50 마이그레이션 완료. 스터디 시간 수정 창과 「회차 추가」 기본 요일이 읽는다. 시작일 · 종료일 컬럼은 두지 않는다(기간은 회차에서 계산)
+- ✅ `STUDY_GROUP` 에 `DAYS_OF_WEEK VARCHAR(30) NULL` 추가 — V53 마이그레이션 완료. 스터디 시간 수정 창과 「회차 추가」 기본 요일이 읽는다. 시작일 · 종료일 컬럼은 두지 않는다(기간은 회차에서 계산)
 - ✅ `ErrorCode` 에 `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` 추가
 
 ## 프론트엔드 사용처
