@@ -14,6 +14,7 @@ import {
   useGroupMeetings,
   useSaveRules,
   useSetKickoff,
+  useUpdateGroupTime,
   useUpdateMeetings,
 } from '@/features/schedule/api';
 import { distinctNames, useCrew } from '@/features/schedule/crew';
@@ -23,7 +24,7 @@ import { useScheduleGroups, withServerTz } from '@/features/schedule/groups';
 import { GroupTimeDialog } from '@/features/schedule/GroupTimeDialog';
 import { groupTimeLabel, hasTime } from '@/features/schedule/meetings';
 import { ScheduleTable } from '@/features/schedule/ScheduleTable';
-import { saveGroupTime } from '@/features/schedule/store';
+import { saveGroupWeekdays } from '@/features/schedule/store';
 import { zonedInstant } from '@/features/schedule/time';
 import type { ApiStudyDetail } from '@/features/studies/types';
 
@@ -108,6 +109,7 @@ export function ScheduleTab({
   const deleteMeetings = useDeleteMeetings(studyId, writeGroupId);
   const saveRules = useSaveRules(studyId, writeGroupId);
   const setKickoff = useSetKickoff(studyId, writeGroupId);
+  const updateGroupTime = useUpdateGroupTime(studyId, writeGroupId);
   /** 서버가 막으면(403 · 409 · 400) 그 문구를 그대로 띄운다 — 표는 다시 읽어 서버 값으로 돌아간다. */
   const onError = (fallback: string) => (err: Error) => toast.error(err.message || fallback);
 
@@ -191,9 +193,14 @@ export function ScheduleTab({
           group={group}
           onClose={() => setTimeOpen(false)}
           onSave={(time) => {
-            saveGroupTime(studyId, group.id, time);
-            setTimeOpen(false);
+            // weekdays 는 참여 명단 GET 응답에 없어 localStorage 에 남긴다 (store.ts TODO)
+            saveGroupWeekdays(studyId, group.id, time.weekdays);
             setRev((n) => n + 1);
+            setTimeOpen(false);
+            updateGroupTime.mutate(
+              { weekdays: time.weekdays, time: time.time, tz: time.tz },
+              { onError: onError('스터디 시간을 저장하지 못했습니다.') },
+            );
           }}
         />
       )}

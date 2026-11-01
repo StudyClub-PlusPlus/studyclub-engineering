@@ -22,6 +22,7 @@ export type FakeState = {
   meetings: FakeMeeting[];
   rules: Record<number, string | null>;
   timezone: Record<number, string>;
+  startTime: Record<number, string | null>;
   /** `${participantId}:${meetingId}` → 상태 */
   attendance: Record<string, Status>;
   leftAt: Record<number, string>;
@@ -40,6 +41,7 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
     meetings: [],
     rules: {},
     timezone: {},
+    startTime: {},
     attendance: {},
     leftAt: {},
     ...structuredClone(init),
@@ -65,7 +67,7 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
         id: groupId,
         name: group.name,
         timezone: state.timezone[groupId] ?? 'Asia/Seoul',
-        startTime: null,
+        startTime: state.startTime[groupId] ?? null,
         navigatorName: null,
         rules: state.rules[groupId] ?? null,
       },
@@ -162,6 +164,20 @@ export function fakeServer(init: Partial<FakeState> & { participants: Participan
       const gone = new Set(body.meetingIds as number[]);
       state.meetings = state.meetings.filter((x) => !gone.has(x.id));
       return noContent();
+    }
+    if (method === 'PATCH' && (m = path.match(/^\/api\/admin\/studies\/(\d+)\/groups\/(\d+)$/))) {
+      const groupId = Number(m[2]);
+      const group = state.participants.groups.find((g) => g.groupId === groupId);
+      if (!group) return fail(404, '반을 찾을 수 없습니다.');
+      if (body.timezone != null) state.timezone[groupId] = body.timezone as string;
+      if (body.startTime != null) state.startTime[groupId] = body.startTime as string;
+      return ok({
+        groupId,
+        name: group.name,
+        daysOfWeek: body.daysOfWeek ?? null,
+        startTime: state.startTime[groupId] ?? null,
+        timezone: state.timezone[groupId] ?? 'Asia/Seoul',
+      });
     }
     if (method === 'PUT' && (m = path.match(/^\/api\/admin\/studies\/\d+\/groups\/(\d+)\/rules$/))) {
       state.rules[Number(m[1])] = body.rules as string | null;

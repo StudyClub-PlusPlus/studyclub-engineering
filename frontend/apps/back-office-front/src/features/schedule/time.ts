@@ -7,18 +7,26 @@
  * playground `proto/core/lib/meetings.ts` · `proto/console/lib/schedule.ts` 와 같은 계산이다.
  */
 
-/** 반이 도는 시간대. 모이는 권역이 한국과 미국 서부 둘뿐이다. */
-export type StudyTz = 'Asia/Seoul' | 'America/Los_Angeles';
+/** 반이 도는 시간대 — POL-0006 에서 허용하는 4개 IANA 값. */
+export type StudyTz =
+  | 'Asia/Seoul'
+  | 'America/New_York'
+  | 'America/Vancouver'
+  | 'America/Los_Angeles';
 
 export const STUDY_TZS: { key: StudyTz; label: string }[] = [
-  { key: 'Asia/Seoul', label: '한국' },
-  { key: 'America/Los_Angeles', label: '미국 서부' },
+  { key: 'Asia/Seoul', label: '한국 · 서울' },
+  { key: 'America/New_York', label: '북미 동부 · 뉴욕' },
+  { key: 'America/Vancouver', label: '북미 서부 · 밴쿠버' },
+  { key: 'America/Los_Angeles', label: '북미 서부 · LA' },
 ];
 
 /** 일정 표에서 고를 수 있는 시간대. 표의 일자·시각은 고른 시간대로 보이고 그 시간대로 고친다. */
 export const DISPLAY_ZONES = [
   { iana: 'Asia/Seoul', label: 'KST', name: '한국 시간' },
-  { iana: 'America/Los_Angeles', label: 'PDT', name: '미국 서부 시간' },
+  { iana: 'America/New_York', label: 'ET', name: '북미 동부 시간' },
+  { iana: 'America/Vancouver', label: 'PCT', name: '북미 서부 시간 (밴쿠버)' },
+  { iana: 'America/Los_Angeles', label: 'PT', name: '북미 서부 시간 (LA)' },
 ] as const;
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -71,11 +79,20 @@ export function scheduleLabel(instant: Date, iana: string): string {
   return `${date} ${time}`;
 }
 
-/** 시간대 약칭. 미국 서부는 그날 기준으로 PDT(−7) · PST(−8). */
+/**
+ * 시간대 약칭. 날짜 있는 순간의 실제 약어(서머타임 반영).
+ * 밴쿠버는 2026-03-08 이후 연중 UTC-7 고정(PCT) — LA(PT)와 독립적으로 계산한다.
+ */
 export function tzAbbr(iana: string, at = new Date()): string {
   if (iana === 'Asia/Seoul') return 'KST';
-  if (iana === 'America/Los_Angeles') return offsetMs(at, iana) === -7 * 3_600_000 ? 'PDT' : 'PST';
-  return iana;
+  if (iana === 'America/Vancouver') return 'PCT'; // 연중 UTC-7 고정
+  const known = DISPLAY_ZONES.find((z) => z.iana === iana);
+  if (known) return known.label;
+  return (
+    new Intl.DateTimeFormat('en-US', { timeZone: iana, timeZoneName: 'short' })
+      .formatToParts(at)
+      .find((p) => p.type === 'timeZoneName')?.value ?? iana
+  );
 }
 
 /** 표 머리·칸 이름의 시간대 약칭. 시간대 탭과 같은 글자를 쓴다. */
@@ -116,10 +133,13 @@ function clockIn(at: Date, iana: string): string {
   return `${DOW[dowOf(date)]} ${time} ${tzAbbr(iana, at)}`;
 }
 
-/** 다른 시간대에서는 몇 시인가. 요일까지 적는다 — 목 21:00 KST 는 미국에서 수요일이다. */
+/**
+ * 다른 시간대에서는 몇 시인가. 요일까지 적는다 — 목 21:00 KST 는 미국에서 수요일이다.
+ * 한국 → 뉴욕, 북미 → 서울로 비교 시간대를 잡는다.
+ */
 export function otherClock(weekdays: number[], time: string, tz: StudyTz, today = new Date()): string | undefined {
   if (!time || weekdays.length === 0) return undefined;
-  const other: StudyTz = tz === 'Asia/Seoul' ? 'America/Los_Angeles' : 'Asia/Seoul';
+  const other: StudyTz = tz === 'Asia/Seoul' ? 'America/New_York' : 'Asia/Seoul';
   // 기간이 없으니 오늘 이후 첫 그 요일로 환산한다
   let sample = wallParts(today, tz).date;
   while (dowOf(sample) !== weekdays[0]) sample = addDaysYmd(sample, 1);

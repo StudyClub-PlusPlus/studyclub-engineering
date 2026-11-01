@@ -3,9 +3,10 @@
 > ERD: [STUDY_GROUP](../../docs/erd/STUDY_GROUP.md) · [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md) · [STUDY_MEETING](../../docs/erd/STUDY_MEETING.md) · [STUDY_APPLICATION](../../docs/erd/STUDY_APPLICATION.md)
 > 정책: [POL-0001 역할과 권한](../../01-planning/_registry/policies/POL-0001-roles.md) · [POL-0006 시간대와 지역](../../01-planning/_registry/policies/POL-0006-timezone.md)
 > 생성일: 2026-10-06
+> 갱신: 2026-11-01 — `PATCH /{groupId}` 구현완료 — daysOfWeek · startTime · timezone 추가 (V54 마이그레이션)
 > 갱신: 2026-10-23 — 참여 명단 `groups[].isDefault` 추가 (기본 반 칩을 서버 판정으로)
 > 갱신: 2026-10-21 — 한 사람씩 바꾸던 `PATCH …/{participantId}/role` · `…/group` 을 일괄 `PATCH …/participants` 하나로 합쳤다
-> 상태: 스펙작성중
+> 상태: 구현완료
 >
 > Story PRD:
 > - [캡틴은 개별 스터디의 참석자를 볼 수 있다.](../../01-planning/stories/captain-view-attendees/PRD.md)
@@ -18,7 +19,7 @@
 | GET | /api/admin/studies/{studyId}/participants | 참여 명단 (반 · 담당) | O (ADMIN) | 구현완료 |
 | PATCH | /api/admin/studies/{studyId}/participants | 반 지정 · 이동 + 네비게이터 지정 · 해제를 한 번에 (신청자 탭 「저장」) | O (ADMIN) | 구현완료 |
 | POST | /api/admin/studies/{studyId}/groups | 반 만들기 (제목만. 회차 없음) | O (ADMIN) | 구현완료 |
-| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현중 (제목만 구현완료. 스터디 시간은 아직) |
+| PATCH | /api/admin/studies/{studyId}/groups/{groupId} | 반 제목 · 스터디 시간(요일 · 시각 · 시간대) 수정. 회차는 만들지 않는다 | O (ADMIN) | 구현완료 |
 | DELETE | /api/admin/studies/{studyId}/groups/{groupId} | 반 삭제 (빈 반만) | O (ADMIN) | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
@@ -248,21 +249,23 @@
 }
 ```
 
+보낸 필드만 반영한다. null(또는 키 없음)이면 기존 값을 그대로 유지한다.
+
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | name | String | N | 반 제목. 앞뒤 공백을 자르고 1~20자(코드포인트 기준) |
 | daysOfWeek | String[] | N | `mon` ~ `sun`, 1개 이상 |
-| startTime | String (HH:mm, 분반 현지) | N | |
-| timezone | String (IANA) | N | [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 값 |
+| startTime | String (HH:mm, 분반 현지) | N | timezone 없으면 `Asia/Seoul` 기준으로 저장 |
+| timezone | String (IANA) | N | [POL-0006](../../01-planning/_registry/policies/POL-0006-timezone.md) 의 4개 값 중 하나 |
 
 기간(시작일 · 종료일)은 받지 않는다. 반의 기간은 저장하지 않고 첫 회차 ~ 마지막 회차로 계산한다.
 
-> **구현 범위 (1차)**: 지금은 `name` 만 받고 응답도 `{ "groupId", "name" }` 이다. `daysOfWeek` · `startTime` · `timezone` 은 `DAYS_OF_WEEK` 마이그레이션(「데이터 변경」) 뒤에 붙인다.
-
 ### 서버 동작
 
-- 보낸 필드만 `NAME` · `DAYS_OF_WEEK` · `START_AT` · `TIMEZONE` 에 쓴다
+- null(키 없음 포함)이면 바꾸지 않는다
 - 이름 중복 규칙은 「반 만들기」와 같다 — 같은 스터디의 다른 반과 이름(대소문자 무시)이 겹치면 409 `CONFLICT`. 지금 이름 그대로 보내면 통과
+- `timezone` 만 바뀌고 `startTime` 이 없으면 벽시계 시각을 유지한 채 `START_AT` Instant 를 새 시간대로 재계산한다
+- `startTime` 을 보낼 때 반에 `timezone` 이 없으면 `Asia/Seoul` 기준으로 저장한다 — 회차 조회(`MeetingSchedule.zoneOf`)와 같은 기본값
 - 회차 · 출석은 건드리지 않는다. 회차는 [회차 스펙](../study-meeting/spec.md)의 추가 · 수정 · 삭제로만 바뀐다
 - 이미 있는 회차의 시각은 따라 바뀌지 않는다 — 회차마다 `SCHEDULED_AT` 을 갖는다
 
@@ -276,7 +279,7 @@
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | 빈 바디 · 이름 길이 밖 · 요일 0개 · 요일 키 밖 · 시각 형식 밖 · 시간대 밖 |
+| 400 | INVALID_INPUT | 이름 길이 밖 · 요일 0개 · 요일 키 밖 · startTime HH:mm 형식 밖 · 시간대 목록 밖 |
 | 401 · 403 | UNAUTHORIZED · FORBIDDEN | |
 | 404 | NOT_FOUND | 없는 스터디 · 반 |
 | 409 | CONFLICT | 이 스터디의 다른 반과 이름이 같음 |
@@ -316,15 +319,15 @@
 
 ---
 
-## 데이터 변경 (필요)
+## 데이터 변경
 
-- `STUDY_GROUP` 에 `DAYS_OF_WEEK` (VARCHAR, NULL 허용) 추가 — 스터디 시간 수정 창과 「회차 추가」 기본 요일이 읽는다. 시작일 · 종료일 컬럼은 두지 않는다(기간은 회차에서 계산)
-- `ErrorCode` 에 `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` 추가
+- ✅ `STUDY_GROUP` 에 `DAYS_OF_WEEK VARCHAR(30) NULL` 추가 — V54 마이그레이션 완료. 스터디 시간 수정 창과 「회차 추가」 기본 요일이 읽는다. 시작일 · 종료일 컬럼은 두지 않는다(기간은 회차에서 계산)
+- ✅ `ErrorCode` 에 `PARTICIPANT_NOT_ACTIVE(409)` · `GROUP_NOT_EMPTY(409)` 추가
 
 ## 프론트엔드 사용처
 
 - back-office-front 스터디 상세 · `/studies/{id}/applicants` — `features/participants/ParticipantsTab.tsx`: 명단 · 반 생성/제목 수정/삭제 · 개별/일괄 반 · 역할(크루 · 네비게이터) 변경 후 한 번에 저장 — 한 줄에 `groupId` · `participantRole` 중 바뀐 것만 싣는다. 참여 명단 GET · 일괄 PATCH는 위 계약에 연결했으며 BE 구현 후 실제 연동 검증이 필요하다.
-- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정은 화면은 있고 브라우저 저장소에 남는다. 이 API 가 시간 칸을 받으면 붙인다
+- back-office-front 일정 탭 — 스터디 시간 정하기 · 수정(`GroupTimeDialog`)이 이 PATCH 로 `daysOfWeek` · `startTime` · `timezone` 을 저장한다. 요일(`weekdays`)은 참여 명단 GET 응답에 없어 브라우저 저장소에도 함께 남긴다 — 해당 GET 이 `daysOfWeek` 를 반환하면 제거 예정
 - 역할 변경 프로토: playground `console/studies/{id}` 신청자 탭
 
 ## 퍼널·계측
