@@ -13,7 +13,7 @@
 | Method | Path | 설명 | 인증 | 상태 |
 |--------|------|------|------|------|
 | DELETE | `/api/me` | 로그인한 본인 계정을 즉시·영구 삭제 (탈퇴) | O | 구현완료 |
-| GET | `/api/me/studies` | `specs/my-studies/spec.md` 가 정본인 기존 엔드포인트. 응답의 `relation`·`participantRole` 을 탈퇴 화면의 "맡은 진행 중인 스터디" 경고 판정에 재사용 | O | 구현완료 |
+| GET | `/api/me/studies` | `specs/my-studies/spec.md` 가 정본인 기존 엔드포인트. 응답의 `relation`·`participantRole` 을 탈퇴 화면의 크루·네비게이터 목록에 재사용 | O | 구현완료 |
 
 상태: `스펙작성중` → `스펙확정` → `구현중` → `구현완료`
 
@@ -21,8 +21,8 @@
 
 ## 개요
 
-마이페이지(내 정보 수정 맨 아래)에서 진입하는 지면형(모달 아님) 화면. 안내 두 줄 → 탈퇴 사유(선택) →
-(네비게이터로 맡은 진행 중인 스터디가 있으면 경고 + 재확인) → 탈퇴 → 즉시 처리 → 홈.
+마이페이지(내 정보 수정 맨 아래)에서 진입하는 지면형(모달 아님) 화면. 탈퇴 안내 → 탈퇴 사유(선택) →
+역할별 진행 중인 스터디 안내 → (네비게이터로 맡은 스터디가 있으면 재확인) → 탈퇴 → 즉시 처리 → 홈.
 
 - **유예 없음.** 탈퇴 요청이 성공하면 그 요청 안에서 계정과 관련 데이터가 바로 사라진다. "탈퇴 예약 후 N일 뒤 삭제" 같은 중간 상태는 두지 않는다.
 - **막지 않는다.** 네비게이터(맡은 스터디의 `LEADER`)여도 서버는 탈퇴를 거부하지 않는다. 프론트가 한 번 더 확인만 받는다 — [정책 근거](#네비게이터-경고--왜-막지-않는가).
@@ -146,23 +146,23 @@ access(7일)·refresh(30일) 토큰 모두 서명 검증만 하는 순수 statel
 > 필드를 서버가 내려주는 것)과 달리 지금은 **프론트가** `relation`·`participantRole` 조합으로
 > 판정한다 — 아래 [프론트 판정 로직](#프론트-판정-로직) 참고.
 
-"맡은 진행 중인 스터디"는 `GET /api/me/studies`(`specs/my-studies/spec.md`)가 이미 내려주는
-`items[].relation`·`items[].participantRole` 로 판정한다. 새 필드를 추가하지 않는다.
+크루로 참여 중인 스터디와 네비게이터로 맡은 스터디는 `GET /api/me/studies`(`specs/my-studies/spec.md`)가
+이미 내려주는 `items[].relation`·`items[].participantRole` 로 판정한다. 한 번 조회해 두 목록으로 나누며 새 필드를 추가하지 않는다.
 
 ### 프론트 판정 로직
 
 ```ts
-// frontend/apps/core-front/src/features/account/repository.ts: getActiveNavigatorStudies()
-items.filter(
-  (s) => s.relation === 'ONGOING' && s.participantRole === 'LEADER',
-)
+// frontend/apps/core-front/src/features/account/repository.ts: getLeaveStudies()
+const crewStudies = items.filter((s) => s.relation === 'ONGOING' && s.participantRole === 'MEMBER');
+const navigatorStudies = items.filter((s) => s.relation === 'ONGOING' && s.participantRole === 'LEADER');
 ```
 
 - `relation === 'ONGOING'` — 회차가 이미 시작됐고(`STUDY.START_AT <= now`) 명부 상태가
   `ACTIVE`/`PAUSED`(`MyStudyQueryService.relation()`). `UPCOMING`(시작 전)은 빠져도 멈출 게 없고,
   `COMPLETED`·`WITHDRAWN` 은 이미 끝났다 — [네비게이터 경고 정책](#네비게이터-경고--왜-막지-않는가)과
   같은 기준이다. 원래 안의 `STUDY.STATUS=OPEN` 대신 실제 시작일을 쓰는 점만 다르고 의도는 같다.
-- `participantRole = LEADER` — 네비게이터만 대상.
+- `participantRole = MEMBER` 는 크루 안내, `LEADER` 는 네비게이터 안내 대상이다. 역할이 `null`인 캡틴 전용 항목은 두 목록에서 제외한다.
+- 계정의 전역 권한이나 `captain` 값으로 크루 참여를 제외하지 않는다. 캡틴도 해당 스터디에서 `MEMBER`로 참여하고 있으면 크루 안내를 본다.
 - 판정을 프론트에 둔 이유: 서버가 `isActiveNavigator` 를 따로 계산해 내려주려면 `my-studies` 응답에
   이 기능 전용 필드를 또 얹어야 하는데, 이미 있는 `relation` 이 사실상 같은 정보를 담고 있어
   중복이다. "서버가 판정을 끝낸 불린 하나만 본다"는 원래 설계 의도보다, 이미 있는 필드를 재사용해
@@ -205,10 +205,18 @@ API 를 불렀을 때 403 을 받는 모순처럼 보인다.
 **프론트는 이 API 를 조건 없이 호출한다** — "지금 이 계정이 온보딩을 완료했는가"를 먼저 판단해서
 호출 여부를 정하려면, 그 판단에 쓸 데이터를 프론트가 어딘가에서 이미 들고 있어야 하는데
 (예: `GET /api/me` 를 별도로 먼저 불러서 `onboardingCompletedAt` 을 확인) 지금 core-front 에는
-그런 온보딩 상태 추적이 전혀 없다 — 없는 것을 추가로 만들 이유가 없다. 대신 **`200` 이외의 모든
-응답(온보딩 미완료의 `403 ONBOARDING_REQUIRED` 포함)을 "맡은 스터디 없음"과 동일하게 처리**한다 —
-빈 배열로 취급하고 경고 상자를 그냥 안 띄운다. 위 문단이 이미 증명하듯 온보딩 미완료 계정은 어차피
-빈 결과와 동치이므로, 에러를 구분하지 않고 뭉뚱그려도 정확성을 잃지 않는다.
+그런 판단을 추가하지 않고, 기존 탈퇴 화면처럼 **403 응답은 확인된 빈 목록으로 처리**한다.
+네트워크 오류·401·5xx·응답 형식 오류는 빈 목록과 구분한 `unknown`이다. 이때는 스터디 목록을
+확인하지 못했다는 안내와 「다시 확인」 버튼을 보여주고, 재조회에 성공할 때까지 탈퇴를 비활성화한다.
+
+### 역할별 안내 화면
+
+- 노란색 박스 안에 **역할과 개수 → 스터디 이름 목록 → 안내문** 순서로 표시한다. 크루 박스 다음에 네비게이터 박스를 둔다.
+- 크루: 「크루로 참여 중인 스터디 N개」 / 「담당 네비게이터에게 탈퇴 사실을 알리고, 참여 중단을 요청해 주시기 바랍니다.」
+- 네비게이터: 「네비게이터로 맡은 스터디 N개」 / 「담당 캡틴에게 탈퇴 사실을 알리고, 스터디 인계 방법을 상의해 주시기 바랍니다.」
+- 목록이 없는 역할의 박스는 숨긴다. 두 역할이 있으면 두 박스, 둘 다 없으면 박스를 표시하지 않는다. 시작 전·참여 종료 항목은 위 판정 기준에 따라 제외한다.
+- 「내 스터디 확인하기」 링크는 표시하지 않는다.
+- 크루에게 별도 재확인이나 참여 중단 완료·담당자 승인을 요구하지 않는다. 네비게이터의 기존 「그래도 탈퇴하시겠습니까?」 재확인은 유지한다.
 
 ### Error Responses
 
