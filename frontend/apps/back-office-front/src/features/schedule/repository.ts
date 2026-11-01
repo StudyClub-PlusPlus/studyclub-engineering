@@ -1,4 +1,8 @@
-import { apiGroupMeetingsSchema, emptyResponseSchema } from '@/features/schedule/response-schema';
+import {
+  apiGroupMeetingsSchema,
+  emptyResponseSchema,
+  groupUpdateResponseSchema,
+} from '@/features/schedule/response-schema';
 import { http } from '@/lib/http';
 
 // 일정 탭의 서버 호출 (specs/study-meeting/spec.md). 화면 모양으로 바꾸는 것 · 캐시는 `api.ts` 가 한다.
@@ -64,9 +68,9 @@ export type MeetingUpdatePayload = {
 const adminGroup = (studyId: number, groupId: number) => `/api/admin/studies/${studyId}/groups/${groupId}`;
 
 const scheduleRepository = {
-  /** 반 스터디 시간(요일 · 시간대)을 바꾼다. daysOfWeek · timezone 보낸 것만 반영. 204. */
+  /** 반 스터디 시간(요일 · 시각 · 시간대)을 바꾼다. 보낸 것만 반영. 200 — 수정한 반을 돌려준다. */
   updateGroupTime(studyId: number, groupId: number, payload: GroupTimePayload) {
-    return http(`${adminGroup(studyId, groupId)}`, emptyResponseSchema, {
+    return http(`${adminGroup(studyId, groupId)}`, groupUpdateResponseSchema, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
