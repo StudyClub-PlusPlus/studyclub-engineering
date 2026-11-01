@@ -196,12 +196,10 @@ export function ScheduleTab({
             // weekdays 는 참여 명단 GET 응답에 없어 localStorage 에 남긴다 (store.ts TODO)
             saveGroupWeekdays(studyId, group.id, time.weekdays);
             setRev((n) => n + 1);
+            setTimeOpen(false);
             updateGroupTime.mutate(
               { weekdays: time.weekdays, time: time.time, tz: time.tz },
-              {
-                onSuccess: () => setTimeOpen(false),
-                onError: onError('스터디 시간을 저장하지 못했습니다.'),
-              },
+              { onError: onError('스터디 시간을 저장하지 못했습니다.') },
             );
           }}
         />
