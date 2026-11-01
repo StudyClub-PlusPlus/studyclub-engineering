@@ -16,7 +16,7 @@
 | NAME | VARCHAR(255) | N | 반 제목. `A반` · `미국 금요일반`. 캡틴이 짓는다 — API 가 앞뒤 공백을 자르고 20자(코드포인트) 이하로 받는다 ([study-group 스펙](../../specs/study-group/spec.md)) |
 | START_AT | DATETIME | Y | 분반 정규 시작 시각. `LocalDate.EPOCH` 기준 Instant 로 저장 — 시각(HH:mm)만 뜻이 있고 날짜는 무시한다 |
 | TIMEZONE | VARCHAR(64) | Y | IANA. 회차 시각 기준 시간대 |
-| DAYS_OF_WEEK | VARCHAR(30) | Y | 스터디 요일. 쉼표 구분 소문자 3자 키(`mon,thu`). 미정이면 NULL (V53) |
+| DAYS_OF_WEEK | VARCHAR(30) | Y | 스터디 요일. 쉼표 구분 소문자 3자 키(`mon,thu`). 미정이면 NULL (V54) |
 | CAPACITY | INT | Y | 분반 정원 |
 | RULES | VARCHAR(500) | Y | 스터디 규칙 (500자 이하 — 운영 중인 시트의 규칙은 150~350자). 킥오프에서 정하고 네비게이터·캡틴이 고친다. 참여자 전원이 본다 |
 
