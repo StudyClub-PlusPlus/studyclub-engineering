@@ -149,11 +149,13 @@ class DiscordAttendanceServiceTest {
     @DisplayName("시작할_회차_후보가_2개면_예정_시각이_가장_가까운_것을_고른다")
     void 시작할_회차_후보가_2개면_예정_시각이_가장_가까운_것을_고른다() {
         givenOneGroupStudy();
+        // 실제 조회처럼 예정 시각 순. 가장 가까운 후보를 가운데 두어 "첫 번째/마지막을 고른다" 도 잡는다.
         givenMeetings(
                 GROUP_A,
                 List.of(
-                        meeting(4L, GROUP_A, Instant.now().plus(50, ChronoUnit.MINUTES), false),
-                        meeting(5L, GROUP_A, Instant.now().plus(10, ChronoUnit.MINUTES), false)));
+                        meeting(4L, GROUP_A, Instant.now().minus(50, ChronoUnit.MINUTES), false),
+                        meeting(5L, GROUP_A, Instant.now().plus(10, ChronoUnit.MINUTES), false),
+                        meeting(6L, GROUP_A, Instant.now().plus(50, ChronoUnit.MINUTES), false)));
         givenAccounts();
 
         DiscordAttendanceResponse response = service.mark(DISCORD_STUDY_ID, request());

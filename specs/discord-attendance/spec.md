@@ -205,8 +205,6 @@ CREATE TABLE STUDY_DISCORD_LINK (
       "studyMeetingNumber": 1,
       "meetingType": "REGULAR",
       "meetingTitle": "OT",
-      "meetingType": "REGULAR",
-      "meetingTitle": "OT",
       "meetingStarted": true,
       "marked": ["1327394882193883136"]
     }
@@ -223,8 +221,6 @@ CREATE TABLE STUDY_DISCORD_LINK (
 | `groups[].studyMeetingNumber` | 그 반에서 실제로 찍힌 회차의 회차 번호(킥오프 0). 행 ID(`STUDY_MEETING.ID`)가 아니다 — 일정 화면 `meetings[].number` 와 같은 계산(`MeetingSchedule.numbersOf`). 봇은 「N번 회차」로 적는다 |
 | `groups[].meetingType` | `KICKOFF` · `REGULAR`. 봇은 킥오프를 번호·제목 없이 「킥오프」로 적는다 (킥오프 제목은 「킥오프」 고정) |
 | `groups[].meetingTitle` | 회차 제목. 없으면 null. 봇은 정규 회차에 `1번 회차 「OT」` 처럼 붙인다 |
-| `groups[].meetingType` | `KICKOFF` · `REGULAR`. 봇은 킥오프를 번호 대신 「킥오프」로 적는다 |
-| `groups[].meetingTitle` | 회차 제목. 없으면 null. 봇은 `1번 회차 「OT」` · `킥오프 「OT」` 처럼 붙인다 — 킥오프가 만들어질 때의 기본 제목 「킥오프」는 반복하지 않는다 |
 | `groups[].meetingStarted` | 이 호출이 그 회차를 시작시켰으면 `true` (판정 2번) |
 | `groups[].marked` | 그 반에서 출석 처리된 디스코드 유저 |
 | `unmatched` | 계정 연동이 안 된 유저 |
