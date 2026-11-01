@@ -4,6 +4,7 @@ import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,6 +13,8 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(
@@ -38,6 +41,10 @@ public class StudyGroup extends BaseEntity {
 
     @Column(length = 64)
     private String timezone;
+
+    @Column(name = "DAYS_OF_WEEK", length = 30)
+    @Convert(converter = DaysOfWeekConverter.class)
+    private List<String> daysOfWeek;
 
     private Integer capacity;
 
@@ -113,6 +120,10 @@ public class StudyGroup extends BaseEntity {
         return timezone;
     }
 
+    public List<String> getDaysOfWeek() {
+        return daysOfWeek;
+    }
+
     public Integer getCapacity() {
         return capacity;
     }
@@ -121,9 +132,40 @@ public class StudyGroup extends BaseEntity {
         return rules;
     }
 
+    private static final Set<String> VALID_DAYS =
+            Set.of("mon", "tue", "wed", "thu", "fri", "sat", "sun");
+
     /** 반 제목을 바꾼다. 길이·공백 규칙은 {@link #normalizeName} 이 본다. */
     public void changeName(String name) {
         this.name = normalizeName(name);
+    }
+
+    /** 시간대를 바꾼다. null 이면 미정으로 되돌린다. */
+    public void changeTimezone(String timezone) {
+        this.timezone = timezone;
+    }
+
+    /** 정규 시작 시각을 바꾼다. null 이면 미정으로 되돌린다. */
+    public void changeStartAt(Instant startAt) {
+        this.startAt = startAt;
+    }
+
+    /** 요일 목록을 바꾼다. null 이면 미정으로 되돌린다. 값이 있으면 {@code mon}~{@code sun} 만 허용하고 1개 이상이어야 한다. */
+    public void changeDaysOfWeek(List<String> daysOfWeek) {
+        if (daysOfWeek == null) {
+            this.daysOfWeek = null;
+            return;
+        }
+        if (daysOfWeek.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "daysOfWeek: 요일을 1개 이상 선택하세요.");
+        }
+        for (String day : daysOfWeek) {
+            if (!VALID_DAYS.contains(day)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_INPUT, "daysOfWeek: 유효하지 않은 요일 값입니다 — " + day);
+            }
+        }
+        this.daysOfWeek = List.copyOf(daysOfWeek);
     }
 
     /**
