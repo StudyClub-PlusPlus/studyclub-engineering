@@ -20,7 +20,9 @@
 | PARTICIPANT_ID | BIGINT | Y | 참여 관련 신규 로그의 대상 명부 행 ID. FK 없음 |
 | PARTICIPANT_ROLE | VARCHAR(20) | Y | 행위 직전 MEMBER/LEADER. 과거 행의 역할은 추정하지 않음 |
 | REASON | VARCHAR(30) | Y | 계정 탈퇴 권한 말소는 ACCOUNT_DELETION, 그 밖에는 NULL |
-| CREATED_AT / UPDATED_AT | DATETIME | N | `BaseEntity`. CREATED_AT 이 행위 시각. UPDATED_AT 은 갱신되지 않는다 (insert-only) |
+| RETENTION_POLICY | VARCHAR(40) | Y | 적용한 종류·버전 코드. 초기화 전만 NULL, 코드 목록은 공통 스펙 참조 |
+| EXPIRES_AT | DATETIME(6) | Y | 저장한 만료 시각. 초기화 전·과거 역할 미상 보류는 NULL |
+| CREATED_AT / UPDATED_AT | DATETIME(6) | N | `BaseEntity`. CREATED_AT 이 행위 시각. 과거 보관 메타데이터 초기화 시 UPDATED_AT만 갱신될 수 있음 |
 
 ## 관계
 
@@ -32,7 +34,7 @@
 
 ## 상태 — ACTION
 
-저장하는 상태는 없다 (insert-only). `ACTION` 은 무슨 일이었는지를 가르는 값이다.
+운영 행위의 내용은 저장 후 수정하지 않는다. `ACTION` 은 무슨 일이었는지를 가르는 값이다.
 
 | 값 | 뜻 | BEFORE / AFTER |
 |---|---|---|
@@ -41,7 +43,6 @@
 | `ROLE_CHANGE` | 계정 권한(`SYSTEM_ROLE`)을 바꿨다. 값이 실제로 바뀐 경우만 | `MEMBER` / `ADMIN` 등 |
 | `WITHDRAW` | 출석부에서 참여를 중단시켰다 ([study-participant](../../specs/study-participant/spec.md)). 이번에 중단된 행만. 행위자는 **네비게이터일 수도 있다** | 중단 직전 상태(`ACTIVE` · `PAUSED`) / 중단된 명부 행 ID — 한 사람이 스터디 여럿에 있어 계정 ID 만으로는 어느 행인지 모른다 |
 | `PARTICIPANT_ROLE` | 백오피스 신청자 탭에서 명부 행의 역할(네비게이터 지정 · 해제)을 바꿨다 ([study-group](../../specs/study-group/spec.md)). 역할이 실제로 바뀐 행만 | 변경 전 역할(`MEMBER` · `LEADER`) / 명부 행 ID — 역할은 둘뿐이라 변경 후 값은 BEFORE 의 반대다 |
-
 | `ACCOUNT_ROLE_REVOKE` | 캡틴 본인의 계정 탈퇴로 권한 말소 | ADMIN / NONE |
 | `PARTICIPANT_REVOKE` | ACTIVE/PAUSED 네비게이터의 계정 탈퇴로 권한 말소. 참여 행마다 1건 | LEADER / NONE |
 
@@ -49,14 +50,16 @@
 
 - 인덱스 `(TARGET_ACCOUNT_ID, CREATED_AT)` — 「이 사람에게 무슨 일이 있었나」
 - 인덱스 `(ACTOR_ACCOUNT_ID, CREATED_AT)` — 「이 캡틴이 무엇을 했나」
-- 인덱스 `(CREATED_AT, ID)` — 만료 후보 검사
+- 인덱스 `(CREATED_AT, ID)` — 발생 시각 조회
+- 인덱스 `(EXPIRES_AT, ID)` — 저장한 만료일로 삭제 후보 검사
 - 기록은 그 행위와 **같은 트랜잭션**에서 쓴다. 기록이 실패하면 행위도 일어나지 않는다 (앱 레벨)
 - 고치거나 지우는 API 는 없다
 
 ## 보관과 파기
 
-- 이메일·디스코드 조회와 MEMBER 참여 중단: 행위 시각부터 1년. 법정 2년 의무 대상은 설정으로 2년 적용한다.
+- 이메일·디스코드 조회와 MEMBER 참여 중단: 행위 시각부터 1년. 법정 2년 의무 대상은 신규 기록에 설정으로 2년을 적용한다. 기존 기한은 별도 검토 없이 바꾸지 않는다.
 - 역할 부여·변경·말소와 LEADER 참여 중단: 행위 시각부터 3년.
 - 역할 스냅샷이 없는 과거 WITHDRAW: 자동 삭제 보류, 보류 수 관측. 현재 역할로 과거를 추정하지 않는다.
-- 하루 간격으로 달력상 만료를 확인하고 행을 물리 삭제한다. 신규 컬럼은 V53으로 추가하며 기존 값은 NULL로 둔다.
+- 하루 간격으로 저장한 `EXPIRES_AT`을 확인하고 만료 행을 물리 삭제한다. 실행 시점의 설정으로 다시 계산하지 않는다.
+- IP·당시 역할은 V53, 규칙·만료일은 V55로 추가한다. 현재 과거 기록은 테스트 데이터이므로 당시 V1으로 초기화한다. 조회 1년·권한 3년을 원래 생성일에 더하며, 역할 미상은 보류한다. 이미 채운 규칙·만료일은 재실행해도 유지한다.
 - 실제 적용 전 2년 의무 여부·프록시 신뢰 범위를 확인한다. 상세 기준은 [공통 스펙](../../specs/data-retention/spec.md)에 둔다.

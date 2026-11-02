@@ -95,6 +95,7 @@ class FeedbackTest {
         assertThat(firstAgain).isFalse();
         assertThat(feedback.getReplyContent()).isEqualTo("고친 회신입니다. 링크를 더했어요.");
         assertThat(feedback.getRepliedAt()).isEqualTo(first);
+        assertThat(feedback.getExpiresAt()).isEqualTo(Instant.parse("2027-10-26T01:00:00Z"));
         assertThat(feedback.getDoneByAccountId()).isEqualTo(CAPTAIN);
         assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.DONE);
     }
@@ -174,6 +175,7 @@ class FeedbackTest {
         Field field = BaseEntity.class.getDeclaredField("createdAt");
         field.setAccessible(true);
         field.set(feedback, Instant.parse(createdAt));
+        feedback.initializeRetention();
         return feedback;
     }
 }
