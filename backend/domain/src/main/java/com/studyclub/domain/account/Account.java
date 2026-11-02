@@ -2,6 +2,7 @@ package com.studyclub.domain.account;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.participant.ParticipationPeriod;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +14,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
  * 회원. 프로필·지역·디스코드 연결. 인증 수단은 AccountIdentity 로 분리.
@@ -171,6 +174,18 @@ public class Account extends BaseEntity {
 
     public Instant getOnboardingCompletedAt() {
         return onboardingCompletedAt;
+    }
+
+    /** 최근 180일간 명부 참여와 로그인이 모두 없는 회원. 캡틴도 같고, 기록 미확인은 제외한다. */
+    public boolean isDormant(
+            Instant lastLoginAt, List<ParticipationPeriod> participationPeriods, Instant asOf) {
+        Instant cutoff = asOf.minus(180, ChronoUnit.DAYS);
+        return getCreatedAt() != null
+                && getCreatedAt().isBefore(cutoff)
+                && lastLoginAt != null
+                && lastLoginAt.isBefore(cutoff)
+                && participationPeriods != null
+                && participationPeriods.stream().allMatch(period -> period.endedBefore(cutoff));
     }
 
     public void setNickname(String nickname) {

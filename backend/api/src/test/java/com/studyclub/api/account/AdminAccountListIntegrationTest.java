@@ -57,7 +57,7 @@ class AdminAccountListIntegrationTest {
     private static final long MEMBER_ID = 9902L;
     private static final long NAVIGATOR_ID = 9903L;
     private static final long CREW_ID = 9904L;
-    private static final long DORMANT_ID = 9905L;
+    private static final long RECENT_INACTIVE_ID = 9905L;
     private static final long NOT_ONBOARDED_ID = 9906L;
     private static final long CAPTAIN_PARTICIPANT_ID = 9907L;
     private static final long BUSY_CREW_ID = 9908L;
@@ -72,7 +72,7 @@ class AdminAccountListIntegrationTest {
                     MEMBER_ID,
                     NAVIGATOR_ID,
                     CREW_ID,
-                    DORMANT_ID,
+                    RECENT_INACTIVE_ID,
                     NOT_ONBOARDED_ID,
                     CAPTAIN_PARTICIPANT_ID,
                     BUSY_CREW_ID,
@@ -99,7 +99,7 @@ class AdminAccountListIntegrationTest {
                     BUSY_CREW_ID,
                     CREW_ID,
                     MEMBER_ID,
-                    DORMANT_ID,
+                    RECENT_INACTIVE_ID,
                     TIE_HIGH_ID,
                     TIE_LOW_ID);
 
@@ -116,7 +116,7 @@ class AdminAccountListIntegrationTest {
         insertAccount(MEMBER_ID, SystemRole.MEMBER, true, base.minus(1, ChronoUnit.DAYS));
         insertAccount(NAVIGATOR_ID, SystemRole.MEMBER, true, base.minus(4, ChronoUnit.DAYS));
         insertAccount(CREW_ID, SystemRole.MEMBER, true, base.minus(2, ChronoUnit.DAYS));
-        insertAccount(DORMANT_ID, SystemRole.MEMBER, true, base.minus(3, ChronoUnit.DAYS));
+        insertAccount(RECENT_INACTIVE_ID, SystemRole.MEMBER, true, base.minus(3, ChronoUnit.DAYS));
         insertAccount(NOT_ONBOARDED_ID, SystemRole.MEMBER, false, base.minus(5, ChronoUnit.DAYS));
         insertAccount(
                 CAPTAIN_PARTICIPANT_ID, SystemRole.ADMIN, true, base.minus(20, ChronoUnit.DAYS));
@@ -198,13 +198,13 @@ class AdminAccountListIntegrationTest {
                 base.minus(5, ChronoUnit.DAYS));
         // 하차·완주는 지난 일 — 담당에도 참여에도 안 센다
         insertParticipant(
-                DORMANT_ID,
+                RECENT_INACTIVE_ID,
                 STUDY_A,
                 ParticipantRole.LEADER,
                 ParticipantStatus.WITHDRAWN,
                 base.minus(9, ChronoUnit.DAYS));
         insertParticipant(
-                DORMANT_ID,
+                RECENT_INACTIVE_ID,
                 STUDY_B,
                 ParticipantRole.MEMBER,
                 ParticipantStatus.COMPLETED,
@@ -262,13 +262,13 @@ class AdminAccountListIntegrationTest {
     }
 
     @Test
-    @DisplayName("성공 - 하차·완주한 스터디는 담당에도 참여에도 안 센다 (휴면)")
+    @DisplayName("성공 - 하차·완주한 명부는 담당에서 빠지지만 신규 회원을 휴면으로 표시하지 않는다")
     void withdrawnAndCompletedRowsAreNotCounted() {
         var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
 
-        Map<String, Object> dormant = itemById(response.getBody(), DORMANT_ID);
+        Map<String, Object> dormant = itemById(response.getBody(), RECENT_INACTIVE_ID);
         assertThat(navigatorOf(dormant)).isEmpty();
-        assertThat(dormant).containsEntry("dormant", true);
+        assertThat(dormant).containsEntry("dormant", false);
     }
 
     @Test
@@ -322,7 +322,7 @@ class AdminAccountListIntegrationTest {
                         BUSY_CREW_ID,
                         CREW_ID,
                         MEMBER_ID,
-                        DORMANT_ID,
+                        RECENT_INACTIVE_ID,
                         TIE_HIGH_ID,
                         TIE_LOW_ID);
         assertThat(itemById(response.getBody(), NAVIGATOR_ID))
@@ -579,6 +579,126 @@ class AdminAccountListIntegrationTest {
         assertThat(response.getBody()).containsEntry("errorCode", "FORBIDDEN");
     }
 
+    @Test
+    @DisplayName("휴면은 모든 로그인 수단의 최신 시각을 본다 — 캡틴도 같고 신규·로그인 미확인은 제외")
+    void dormantUsesLatestLoginAndRegistration() {
+        prepareOldAccounts();
+        jdbcTemplate.update(
+                "UPDATE ACCOUNT SET CREATED_AT = ? WHERE ID = ?",
+                Timestamp.from(Instant.now()),
+                MEMBER_ID);
+        jdbcTemplate.update("DELETE FROM ACCOUNT_IDENTITY WHERE ACCOUNT_ID = ?", CREW_ID);
+        insertIdentity(ADMIN_ID, "APPLE", Instant.now());
+
+        var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(itemById(response.getBody(), ADMIN_ID)).containsEntry("dormant", false);
+        assertThat(itemById(response.getBody(), CAPTAIN_PARTICIPANT_ID))
+                .containsEntry("dormant", true);
+        assertThat(itemById(response.getBody(), RECENT_INACTIVE_ID)).containsEntry("dormant", true);
+        assertThat(itemById(response.getBody(), MEMBER_ID)).containsEntry("dormant", false);
+        assertThat(itemById(response.getBody(), CREW_ID)).containsEntry("dormant", false);
+    }
+
+    @Test
+    @DisplayName("명부의 모든 상태와 스터디 종료·하차일을 조회한다 — 현재 참여 수만으로 휴면을 판단하지 않는다")
+    void dormantUsesParticipationPeriods() {
+        prepareOldAccounts();
+        Instant now = Instant.now();
+        Instant joined = now.minus(300, ChronoUnit.DAYS);
+        Instant oldEnd = now.minus(200, ChronoUnit.DAYS);
+        jdbcTemplate.update(
+                "UPDATE STUDY SET END_AT = ?, STATUS = 'ENDED' WHERE ID = ?",
+                Timestamp.from(oldEnd),
+                STUDY_A);
+        jdbcTemplate.update(
+                "UPDATE STUDY SET END_AT = ?, STATUS = 'ENDED' WHERE ID = ?",
+                Timestamp.from(now.minus(7, ChronoUnit.DAYS)),
+                STUDY_B);
+        insertParticipant(
+                CREW_ID, STUDY_A, ParticipantRole.MEMBER, ParticipantStatus.ACTIVE, joined);
+        insertParticipant(
+                RECENT_INACTIVE_ID,
+                STUDY_B,
+                ParticipantRole.MEMBER,
+                ParticipantStatus.COMPLETED,
+                joined);
+        insertParticipant(
+                PAUSED_NAVIGATOR_ID,
+                STUDY_C,
+                ParticipantRole.LEADER,
+                ParticipantStatus.PAUSED,
+                joined);
+        insertParticipant(
+                NAVIGATOR_ID, STUDY_C, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN, joined);
+        jdbcTemplate.update(
+                "UPDATE STUDY_PARTICIPANT SET LEFT_AT = ? WHERE ACCOUNT_ID = ?",
+                Timestamp.from(now.minus(30, ChronoUnit.DAYS)),
+                NAVIGATOR_ID);
+        insertParticipant(
+                TIE_LOW_ID, STUDY_A, ParticipantRole.MEMBER, ParticipantStatus.WITHDRAWN, joined);
+        jdbcTemplate.update(
+                "UPDATE STUDY_PARTICIPANT SET LEFT_AT = ? WHERE ACCOUNT_ID = ?",
+                Timestamp.from(now.minus(30, ChronoUnit.DAYS)),
+                TIE_LOW_ID);
+        insertParticipant(
+                TIE_HIGH_ID, STUDY_C, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED, joined);
+        insertParticipant(
+                SAME_STUDY_LEADER_ID,
+                999999L,
+                ParticipantRole.MEMBER,
+                ParticipantStatus.ACTIVE,
+                joined);
+        insertParticipant(
+                BUSY_CREW_ID, STUDY_A, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED, joined);
+        insertParticipant(
+                BUSY_CREW_ID, STUDY_B, ParticipantRole.MEMBER, ParticipantStatus.COMPLETED, joined);
+
+        var response = get("/api/admin/users?q=" + PREFIX, ADMIN_ID);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(itemById(response.getBody(), CREW_ID)).containsEntry("dormant", true);
+        assertThat(itemById(response.getBody(), TIE_LOW_ID)).containsEntry("dormant", true);
+        for (long id :
+                List.of(
+                        RECENT_INACTIVE_ID,
+                        PAUSED_NAVIGATOR_ID,
+                        NAVIGATOR_ID,
+                        TIE_HIGH_ID,
+                        SAME_STUDY_LEADER_ID,
+                        BUSY_CREW_ID)) {
+            assertThat(itemById(response.getBody(), id))
+                    .as("account %s", id)
+                    .containsEntry("dormant", false);
+        }
+    }
+
+    private void prepareOldAccounts() {
+        String ids = inClause(ACCOUNT_IDS.size());
+        jdbcTemplate.update(
+                "DELETE FROM STUDY_PARTICIPANT WHERE ACCOUNT_ID IN (" + ids + ")",
+                ACCOUNT_IDS.toArray());
+        for (long id : ACCOUNT_IDS) {
+            jdbcTemplate.update(
+                    "UPDATE ACCOUNT SET CREATED_AT = ? WHERE ID = ?",
+                    Timestamp.from(Instant.now().minus(400, ChronoUnit.DAYS)),
+                    id);
+            insertIdentity(id, "GOOGLE", Instant.now().minus(200, ChronoUnit.DAYS));
+        }
+    }
+
+    private void insertIdentity(long accountId, String issuer, Instant loginAt) {
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbcTemplate.update(
+                "INSERT INTO ACCOUNT_IDENTITY (ACCOUNT_ID, ISSUER, PROVIDER_ACCOUNT_ID, PROVIDER_EMAIL, LAST_LOGIN_AT, CREATED_AT, UPDATED_AT) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                accountId,
+                issuer,
+                "dormancy-" + accountId,
+                "dormancy-" + accountId + "@example.com",
+                Timestamp.from(loginAt),
+                now,
+                now);
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
@@ -623,6 +743,9 @@ class AdminAccountListIntegrationTest {
 
     private void cleanSeedRows() {
         String accountIn = inClause(ACCOUNT_IDS.size());
+        jdbcTemplate.update(
+                "DELETE FROM ACCOUNT_IDENTITY WHERE ACCOUNT_ID IN (" + accountIn + ")",
+                ACCOUNT_IDS.toArray());
         jdbcTemplate.update(
                 "DELETE FROM STUDY_PARTICIPANT WHERE ACCOUNT_ID IN (" + accountIn + ")",
                 ACCOUNT_IDS.toArray());
