@@ -49,15 +49,19 @@
 
 ### 2.2. 조회자 시간대
 
-1. 프론트는 페이지 진입·새로고침 때 `Intl.DateTimeFormat().resolvedOptions().timeZone`을 읽는다.
-2. 감지한 값이 있으면 요약·현황 보드·출석 추세 API에 같은 `timeZone` Query를 전달한다.
-3. 감지에 실패하거나 값이 없으면 세 API 모두 `timeZone` Query를 생략한다.
-4. Query를 생략하면 서버는 유효한 `ACCOUNT.TIME_ZONE`을 사용한다. 회원 설정도 없거나 유효하지 않으면 `UTC`를 사용한다.
-5. 서버는 적용한 시간대를 응답의 `timeZone`으로 반환한다. 프론트는 이 값으로 날짜를 표시한다.
+1. 프론트는 페이지 진입·새로고침 때 브라우저 시간대를 읽는다. 유효한 값이면 요약·현황 보드·출석 추세 API에 같은 `timeZone` Query를 전달한다. 이 값은 프로필 시간대를 사용할 수 없을 때만 쓰는 대체값이다.
+2. 감지에 실패하거나 값이 없거나 유효하지 않으면 세 API 모두 `timeZone` Query를 생략한다.
+3. 서버는 요청마다 로그인한 운영진의 현재 `ACCOUNT.TIME_ZONE`을 읽는다. 유효한 프로필 시간대를 Query보다 우선한다.
+4. 프로필 시간대가 없거나 유효하지 않으면 Query를 사용한다. Query도 없으면 `Asia/Seoul`을 사용한다.
+5. 서버는 최종 시간대를 응답의 `timeZone`으로 반환한다. 주간 집계와 프론트의 갱신 시각·모집 날짜·D-day는 이 값을 사용한다.
 
-브라우저 시간대가 회원 설정과 다르면 브라우저 시간대를 우선한다. 이 조회는 `ACCOUNT.TIME_ZONE`을 변경하지 않는다. 시간대 변경은 다음 조회에서 다시 감지한다.
+우선순위는 **현재 프로필 → 브라우저 → 서울**이다. 온보딩 이후 변경한 프로필도 적용한다. 이 조회는 `ACCOUNT.TIME_ZONE`을 변경하지 않는다.
 
-명시한 Query가 빈 값이거나 유효하지 않으면 서버는 400 `INVALID_INPUT`을 반환한다. 이 경우 다른 시간대로 대체하지 않는다.
+프로필 변경은 다음 대시보드 진입·새로고침 때 반영한다. 캐시가 있어도 다시 조회한다. 열린 화면은 프로필 변경·탭 복귀·네트워크 재연결만으로 자동 갱신하지 않는다. 조회 중 응답 기준이 어긋나면 2.3절의 재조회 규칙을 적용한다.
+
+명시한 Query가 빈 값이거나 유효하지 않으면 프로필 유무와 관계없이 400 `INVALID_INPUT`을 반환한다. 프로필을 읽는 DB 조회가 실패하면 해당 API 요청은 조회 실패로 처리한다. 이를 프로필 값 누락으로 간주하여 브라우저·서울로 대체하지 않는다.
+
+관련 결정: [11-01 대시보드 프로필 시간대 우선](../../docs/share/2026-11-01-dashboard-profile-timezone.md).
 
 ### 2.3. 주간 구간
 
@@ -382,12 +386,12 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 - Path Parameter·Request Body는 없다. Query는 각 API 표를 따른다.
 - 성공 응답에는 `success`·`data` 래퍼를 추가하지 않는다. enum은 대문자를 사용한다.
 - `asOf`·`recruitDeadlineAt` 등 시각은 UTC ISO 8601로 전달한다.
-- 요약·현황 보드·추세 API는 선택 Query `timeZone`을 받고 적용한 값을 반환한다.
+- 요약·현황 보드·추세 API는 브라우저 대체값인 선택 Query `timeZone`을 받는다. 응답의 `timeZone`은 프로필을 우선해 선택한 최종 값이므로 Query와 다를 수 있다.
 - `timeZone`에는 유효한 IANA 시간대 ID 또는 `UTC`를 허용한다. 온보딩 선택지로 제한하지 않는다. 생략·오류 처리는 2.2절을 따른다.
-- 시간대별 결과를 캐시하면 적용한 시간대를 캐시 키에 포함한다.
+- 서버가 시간대별 집계 결과를 캐시하면 최종 적용 시간대를 캐시 키에 포함한다. 프론트 요청 캐시는 브라우저 대체값을 구분한다. 세션 변경 시 캐시를 비우고, 대시보드 진입마다 재조회하여 최신 프로필을 반영한다.
 - 프론트 주소의 `view`는 목록 필터를 선택하는 값이다. `/api/admin/studies`에 그대로 전달하지 않는다.
 
-예시의 날짜·수치는 설명용이다. 시간대가 있는 예시는 `timeZone=America%2FNew_York` 요청 기준이다.
+예시의 날짜·수치는 설명용이다. 시간대가 있는 예시는 조회자의 프로필이 `America/New_York`인 경우다. 같은 시간대의 Query를 보내도 결과는 같다.
 
 | HTTP | errorCode | 조건 |
 |---|---|---|
@@ -477,7 +481,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | 필드 | 타입 | NULL | 의미·소스 |
 |---|---|---|---|
 | asOf | ISO 8601 datetime | N | 서버의 집계 기준 시각 |
-| timeZone | String | N | 요청 Query 또는 생략 시 회원 설정 → UTC로 결정한 최종 적용 시간대. 주간 집계와 갱신 시각 표시에 사용 |
+| timeZone | String | N | 현재 프로필 → 브라우저 Query → 서울로 결정한 최종 시간대. 주간 집계와 갱신 시각 표시에 사용 |
 | activeCrew | Long | N | 2-1의 고유 ACCOUNT_ID 수 |
 | activeEnrollments | Long | N | 2-1의 고유 (ACCOUNT_ID, STUDY_ID) 수. 분모와 일치하는 범위 확인용 |
 | studiesPerCrew | Double | Y | activeEnrollments / activeCrew. 분모 0이면 null |
@@ -570,7 +574,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 ### 4.4. GET /api/admin/studies
 
-기존 관리자 목록의 필드와 페이지 응답을 유지한다. 공개·모집 필터, 정렬, `items[].recruitStatus`를 추가한다.
+기존 관리자 목록의 필드와 페이지 응답을 유지한다. 검색·필터·정렬·페이지 추출은 서버에서 처리한다. 프론트는 전체 목록을 모아서 다시 거르거나 정렬하지 않는다.
 
 | Query | 타입 | 허용값·기본값 |
 |---|---|---|
@@ -580,19 +584,48 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | studyId | Long | 특정 `STUDY.ID`. 생략 시 제한 없음 |
 | visibility | Enum | `PUBLIC / PRIVATE`. 생략 시 전체 |
 | recruitStatus | Enum | `RECRUITING / RECRUIT_CLOSED`. 생략 시 모집 조건 없음 |
-| sort | Enum | `ID_DESC / TITLE_ASC / RECRUITMENT`. 기본 `ID_DESC` |
+| recruitFilter | Enum | `RECRUITING / NOT_RECRUITING`. 관리자 목록의 모집중 / 마감 필터. 생략 시 전체 |
+| keyword | String | 제목·한 줄 소개의 부분 검색. 앞뒤 공백 제거, 대소문자 구분 없음. 생략 시 검색 안 함 |
+| hasApplicationForm | Boolean | `true / false`. 신청 폼 있음 / 없음. 생략 시 전체 |
+| sort | Enum | 아래 정렬 표 참조. 생략 시 기존 API 기본값 `ID_DESC` 유지. 일반 목록 화면은 `RECRUITMENT_FIRST`를 명시 |
 | offset | Integer | 기본 0. 0 이상 |
 | limit | Integer | 기본 20. 1 이상 100 이하 |
 
 - `PUBLIC`은 `STATUS != DRAFT`, `PRIVATE`는 `STATUS = DRAFT`다.
 - `recruitStatus`를 지정하면 `OPEN`인 기수에 화면 3-2의 모집 판정을 적용한다.
+- `recruitFilter=RECRUITING`은 공통 모집 판정이 `RECRUITING`인 기수다. `NOT_RECRUITING`은 그 외 전부다. `OPEN`의 `RECRUIT_CLOSED`와 `DRAFT / ONGOING / ENDED / CLOSED`를 포함한다. 응답의 `recruitStatus` 의미는 변경하지 않는다.
+- `recruitStatus`와 `recruitFilter`는 동시에 지정할 수 없다. 함께 보내면 400이다. 상태·공개·검색 등 나머지 조건은 모집 필터와 함께 적용한다.
+- `keyword`는 `%`·`_`도 입력 문자로 검색한다. 검색 결과는 제목 또는 한 줄 소개에 검색어를 포함해야 한다.
+- 신청 폼은 `STUDY.APPLICATION_FORM`의 질문 배열에 항목이 있으면 있음이다. 기존 객체의 `questions` 배열과 배열 형식을 모두 지원한다. 빈 배열·누락·읽을 수 없는 값은 없음이다. 응답의 `hasApplicationForm`과 같은 기준을 적용한다.
 - `ID_DESC`는 기수 ID 내림차순이다. `TITLE_ASC`는 제목·기수 ID 오름차순이다.
 - `RECRUITMENT`는 화면 3-2의 정렬이다. `status=OPEN`과 함께 요청해야 한다. 다른 상태 또는 상태 생략은 400이다.
+- `RECRUITMENT_FIRST`는 전체 상태에서 모집중을 먼저, 각 묶음에서 마감 시각 오름차순으로 정렬한다. 마감 시각이 없으면 묶음의 마지막이다. 동률은 제목·기수 ID 오름차순이다.
 - 서버는 요청마다 하나의 기준 시각으로 모집 필터·정렬을 계산한다.
-- 서버는 필터 → 정렬 → 페이지 추출 순서로 처리한다. `total`은 페이지 추출 전의 전체 건수다.
+- DB 조회에 필터·정렬·페이지 범위를 적용한다. 모집 판정에는 최신 모집 회차와 해당 회차의 신청서 수를 사용한다. 공통 `Study.recruitStatus()`와 결과가 같아야 한다. 조회한 페이지의 응답만 조립한다.
+- `total`은 동일한 필터를 적용한 페이지 추출 전 건수다. 여러 페이지를 이동하는 동안의 DB 스냅샷까지 고정하지는 않는다.
 - 전달한 필터는 모두 적용한다. 유효한 조건끼리 충돌하면 `200, total=0, items=[]`를 반환한다.
 - 지원하지 않는 enum·빈 필터·잘못된 숫자 형식·페이지 범위는 400 `INVALID_INPUT`이다.
 - 끝을 넘는 `offset`은 200과 `items=[]`를 반환한다. 실제 `total`은 유지한다.
+
+#### 열별 정렬
+
+각 열은 아래 접두어에 `_ASC` 또는 `_DESC`를 붙인다. 값이 없으면 방향과 무관하게 마지막이다. 동률은 기수 ID 오름차순이다. 문자열은 DB의 문자열 비교 순서를 사용한다.
+
+| 열 | sort 접두어 | 비교 기준 |
+|---|---|---|
+| P-ID | `PROGRAM` | 프로그램 ID |
+| 스터디 | `TITLE` | 제목 |
+| 상태 | `STATUS` | `DRAFT → OPEN → ONGOING → ENDED → CLOSED` |
+| 주제 | `CATEGORY` | 주제의 한국어 표시명 |
+| 시간대 | `TIMEZONE` | `KST → PST → BOTH` |
+| 모집 시작일 | `RECRUIT_START` | 최신 모집 회차 시작 시각 |
+| 모집 종료일 | `RECRUIT_END` | 최신 모집 회차 마감 시각 |
+| 모집 상태 | `RECRUIT` | 모집중 → 그 외. 오름차순은 `RECRUITMENT_FIRST`와 같은 순서, 내림차순 동률은 기수 ID |
+| 지원 현황 | `APPLICANTS` | 최신 모집 회차 신청서 수 |
+| 스터디 시작일 | `START_AT` | 스터디 시작 시각 |
+| 신청 폼 | `FORM` | 없음 → 있음 |
+| 공개 상태 | `VISIBILITY` | 미공개 → 공개 |
+| 작성자 | `AUTHOR` | 작성자 닉네임. 계정·닉네임이 없으면 마지막 |
 
 #### 프론트 주소와 요청 연결
 
@@ -600,6 +633,7 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 
 | 프론트 주소의 진입 조건 | 목록 API Query |
 |---|---|
+| 일반 목록 `/studies` | `sort=RECRUITMENT_FIRST` |
 | `view=ongoing` | `status=ONGOING&sort=TITLE_ASC` |
 | `view=recruitment` | `status=OPEN&sort=RECRUITMENT` |
 | `view=ongoing&category={code}` | `category={code}&status=ONGOING&visibility=PUBLIC&sort=TITLE_ASC` |
@@ -609,6 +643,8 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 - 페이지를 넘기면 필터·정렬을 유지한다. 필터를 바꾸면 `offset`을 0으로 초기화한다.
 - 상태를 `OPEN` 이외로 바꾸면 `RECRUITMENT` 정렬을 `ID_DESC`로 변경한다.
 - 백오피스 프론트는 `/api/admin/studies`를 호출한다. 응답 타입·행 변환에 관리자 목록 계약을 적용한다.
+- 일반 목록에서도 모든 검색·필터·열별 정렬을 API에 전달한다. 모집 ‘마감’은 `recruitFilter=NOT_RECRUITING`, 신청 폼 ‘있음/없음’은 `hasApplicationForm=true/false`로 전달한다. 검색 입력은 300ms 동안 변경이 없으면 요청한다.
+- 목록의 전체 건수가 10,000건을 넘어도 해당 페이지를 조회한다. 전체 자료를 받기 위한 반복 요청이나 전체 건수 상한을 두지 않는다.
 
 #### 응답
 
@@ -769,7 +805,8 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | 출석 참여 기간 | `JOINED_AT`·집계 상한 경계 포함. 탈퇴·하차 전 기록 보존. `LEFT_AT` 누락 시 해당 참여자 제외 |
 | 출석 점수·빈 값 | 모두 `EXCUSED` 거나 미입력이면 분모 0 → `null`. 결석만 있으면 0% |
 | 공통 계산 | 같은 대상·시각이면 기존 출석 계산과 분자·분모 일치. 백분율 변환은 서버에서 한 번만 수행 |
-| 시간대 선택 | 브라우저 우선. 감지 실패는 회원 설정 → UTC. 명시한 무효 값은 대체하지 않고 400 |
+| 시간대 선택 | 현재 프로필 우선. 프로필 누락·무효는 브라우저 → 서울. 명시한 무효 Query는 400. 프로필 DB 조회 실패는 요청 실패 |
+| 프로필 변경 | 열린 화면은 자동 갱신하지 않음. 캐시가 있어도 재진입·새로고침 시 최신 프로필로 조회 |
 | 주간 경계 | 월요일 경계·서머타임 반영. `weekStart` 날짜를 UTC로 재해석하지 않음 |
 | 조회 중 기준 변경 | 기준 주가 다르면 요약·추세 재조회. 응답 시간대가 다르면 전체 재조회 |
 | 주간 비교·평균 | 직전 주 고정. 분모 0이면 증감 숨김. 12주 평균은 유효 주별 동일 가중치 |
@@ -779,6 +816,9 @@ KST·ET·PT는 차트 그룹 코드다. 실제 날짜 계산에는 IANA 시간�
 | 모집 표시 | 시각 경과 → 정원 마감 → 오늘 마감 → 임박 순서 적용. 마감 `null` 처리 확인 |
 | 보드·목록 일치 | 같은 데이터·시각이면 보드 total·첫 4건이 전체 목록과 일치. 마감된 `OPEN` 기수 포함 |
 | 목록 필터·페이지 | 주소에 맞는 필터 선택. 필터 → 정렬 → 페이지 추출. 끝을 넘는 offset에도 실제 total 유지 |
+| 일반 목록의 서버 조회 | 검색·신청 폼·모집 마감·모든 열별 정렬을 서버에 전달. 10,000건 초과 시에도 해당 페이지만 조회. 프론트의 전체 조회 없음 |
+| 모집 마감 필터 | 단독 선택은 모집중이 아닌 전체 상태. `status=OPEN`과 함께 선택하면 모집이 마감된 개설 기수만 포함. 기존 `recruitStatus`의 의미 유지 |
+| 목록 판정·성능 | SQL 모집 필터와 공통 엔티티의 결과 일치. 신청 폼 필터와 응답 값 일치. 페이지 밖의 스터디 엔티티를 전체 적재하지 않음 |
 | 카테고리 | 단일 카테고리 합계 = 고유 기수 수. 누적에서 `DRAFT` 제외. 행 클릭 후 목록 total 일치 |
 | 부분 실패 | 실패한 묶음의 필드 생략·errors 반환. 정상 영역 유지. 실패를 0·null로 대체하지 않음 |
 | 빈 화면·로딩·클릭 | 카드별 빈 문구, 갱신 시각 누락, 커뮤니티 멤버의 전체 유저 목록·기수 상세·전체 보기 연결 확인. 활성 크루 카드 이동은 기획 확정 후 검증 기준 반영 |

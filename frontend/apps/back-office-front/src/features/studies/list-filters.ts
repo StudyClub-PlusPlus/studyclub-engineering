@@ -5,10 +5,7 @@ import { CATEGORY_DISPLAY, STUDY_CATEGORIES } from '@studyclub/utils';
  * 스터디 관리 목록의 필터·정렬·페이지 — 서버 컴포넌트(`app/studies/page.tsx`)와 화면(`StudiesTable`)이 같이 쓴다.
  * 그래서 `'use client'` 파일에 두지 않는다.
  *
- * 목록은 두 가지로 받는다.
- * - **서버 페이지** — 걸린 조건을 모두 `GET /api/admin/studies` Query 로 옮길 수 있을 때. 서버가 거르고 정렬해 20건씩 준다
- *   (specs/dashboard 4.4). 대시보드 「전체 보기」·카테고리 행에서 들어온 목록이 이쪽이다
- * - **전체** — 서버에 없는 조건(검색 · 신청 폼 · 「마감」 · 기본 순서 · 열 머리 정렬)이 하나라도 걸렸을 때. 전부 받아 화면이 거른다
+ * 모든 조건을 목록 API로 보내고 서버가 정렬한 한 페이지를 받는다 (specs/dashboard 4.4).
  *
  * 필터 · 정렬은 PRD captain-list-all-studies 기준이다 — 검색 · 주제 · 상태 · 모집 · 공개 · 신청 폼(있음 · 없음), 열 이름을 눌러 정렬.
  */
@@ -60,7 +57,7 @@ export const FORM_OPTIONS: { value: FormFilter; label: string }[] = [
  * - `all` — 기본 순서: 모집중 먼저, 그 안에서 모집 종료일이 가까운 순. 화면에는 「모집 상태」 열 오름차순으로 보인다
  * - `title` · `recruitment` · `id` — 대시보드 「전체 보기」·카테고리 행이 여는 순서 (specs/dashboard 4.4 — TITLE_ASC · RECRUITMENT ·
  *   ID_DESC). 서버가 정렬해 준다. `title` 은 「스터디」 열 오름차순과 같다
- * - `<열>:<asc|desc>` — 그 밖의 열 머리 정렬. 전체를 받아 화면이 정렬한다
+ * - `<열>:<asc|desc>` — 그 밖의 열 머리 정렬. 해당 서버 정렬로 변환한다
  */
 export const SORT_COLUMNS = [
   'program',
@@ -180,40 +177,51 @@ const CATEGORY_CODE: Record<string, string> = Object.fromEntries(
   Object.entries(CATEGORY_DISPLAY).map(([code, label]) => [label, code]),
 );
 
-const SERVER_SORT: Partial<Record<SortOrder, string>> = {
-  title: 'TITLE_ASC',
-  recruitment: 'RECRUITMENT',
-  id: 'ID_DESC',
+const COLUMN_SERVER_SORT: Record<SortColumn, string> = {
+  program: 'PROGRAM',
+  title: 'TITLE',
+  status: 'STATUS',
+  category: 'CATEGORY',
+  timezone: 'TIMEZONE',
+  recruitStart: 'RECRUIT_START',
+  recruitEnd: 'RECRUIT_END',
+  recruit: 'RECRUIT',
+  crew: 'APPLICANTS',
+  startAt: 'START_AT',
+  form: 'FORM',
+  publish: 'VISIBILITY',
+  author: 'AUTHOR',
 };
 
-/**
- * 목록 필터 → `GET /api/admin/studies` Query (specs/dashboard 4.4). 서버에 없는 조건이 걸려 있으면 null — 전체를 받아 화면이 거른다.
- *
- * - 검색 · 신청 폼 — 서버 Query 가 없다
- * - 모집 「마감」 — 화면은 모집중이 아닌 것 전부(진행 중 · 종료 포함), 서버 `RECRUIT_CLOSED` 는 개설 기수만이라 뜻이 다르다
- * - 기본 순서 · 열 머리 정렬(이름 오름차순 밖) — 서버 정렬에 없다
- */
-export function serverListQuery(filters: ListFilters): string | null {
-  const status = filters.status as StudyStatusFilter;
-  const sort = SERVER_SORT[effectiveSort(filters.sort as SortOrder, status)];
-  if (filters.q.trim() || filters.form !== 'all' || filters.recruit === 'closed' || !sort) return null;
+function serverSort(sort: SortOrder): string {
+  if (sort === 'all') return 'RECRUITMENT_FIRST';
+  if (sort === 'title') return 'TITLE_ASC';
+  if (sort === 'recruitment') return 'RECRUITMENT';
+  if (sort === 'id') return 'ID_DESC';
+  const [key, direction] = sort.split(':') as [SortColumn, SortDir];
+  return `${COLUMN_SERVER_SORT[key]}_${direction.toUpperCase()}`;
+}
 
+/** 모든 조건을 관리자 목록 API로 전달한다. NOT_RECRUITING은 OPEN 외 상태도 포함하는 목록 전용 필터다. */
+export function serverListQuery(filters: ListFilters): string {
+  const status = filters.status as StudyStatusFilter;
+  const sort = serverSort(effectiveSort(filters.sort as SortOrder, status));
   const query = new URLSearchParams();
-  if (filters.category !== 'all') {
-    const code = CATEGORY_CODE[filters.category];
-    if (!code) return null;
-    query.set('category', code);
+  if (filters.category !== 'all' && CATEGORY_CODE[filters.category]) {
+    query.set('category', CATEGORY_CODE[filters.category]);
   }
   if (status !== 'all') query.set('status', status);
-  if (filters.recruit === 'apply') query.set('recruitStatus', 'RECRUITING');
+  if (filters.recruit !== 'all') {
+    query.set('recruitFilter', filters.recruit === 'apply' ? 'RECRUITING' : 'NOT_RECRUITING');
+  }
   if (filters.publish !== 'all') query.set('visibility', filters.publish === 'live' ? 'PUBLIC' : 'PRIVATE');
+  if (filters.q.trim()) query.set('keyword', filters.q.trim());
+  if (filters.form !== 'all') query.set('hasApplicationForm', String(filters.form === 'has'));
   query.set('sort', sort);
   query.set('offset', String((listPageOf(filters.page) - 1) * LIST_PAGE_SIZE));
   query.set('limit', String(LIST_PAGE_SIZE));
   return query.toString();
 }
 
-/** 서버 컴포넌트가 목록 화면에 넘기는 것 — 서버가 자른 한 페이지, 또는 화면이 거를 전체. */
-export type StudyListData =
-  | { mode: 'server'; studies: Study[]; total: number; offset: number; limit: number }
-  | { mode: 'all'; studies: Study[] };
+/** 서버가 필터·정렬·페이지 구분을 완료한 목록. */
+export type StudyListData = { mode: 'server'; studies: Study[]; total: number; offset: number; limit: number };

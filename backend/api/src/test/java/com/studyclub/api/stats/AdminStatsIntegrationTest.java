@@ -15,6 +15,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -162,6 +164,29 @@ class AdminStatsIntegrationTest {
     }
 
     @Test
+    @DisplayName("성공 - 모집 보드와 전체 보기는 같은 DB 필터·정렬을 사용한다")
+    void recruitmentBoardMatchesAdminListOrder() {
+        var board =
+                rest.exchange(
+                        "/api/admin/stats/study-board?view=RECRUITMENT",
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+        var list =
+                rest.exchange(
+                        "/api/admin/studies?status=OPEN&sort=RECRUITMENT&offset=0&limit=20",
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+        assertThat(board.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(studyIds(board.getBody()))
+                .isEqualTo(studyIds(list.getBody()).stream().limit(4).toList());
+        assertThat(((Number) board.getBody().get("total")).longValue())
+                .isEqualTo(((Number) list.getBody().get("total")).longValue());
+    }
+
+    @Test
     @DisplayName("성공 - study-board RECRUITMENT 는 신청서 수로 정원 마감·CLOSING_SOON")
     void recruitmentBoardCapacityAndClosingSoon() {
         var response =
@@ -226,7 +251,39 @@ class AdminStatsIntegrationTest {
         @SuppressWarnings("unchecked")
         List<?> points = (List<?>) trend.getBody().get("points");
         assertThat(points).hasSize(12);
-        assertThat(trend.getBody()).containsEntry("timeZone", "UTC");
+        assertThat(trend.getBody()).containsEntry("timeZone", "Asia/Seoul");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "/summary?timeZone=America/Toronto",
+                "/study-board?view=ONGOING&timeZone=America/Toronto",
+                "/study-board?view=RECRUITMENT&timeZone=America/Toronto",
+                "/attendance-trend?weeks=12&timeZone=America/Toronto"
+            })
+    @DisplayName("현재 프로필 우선 — 프로필 변경·누락·무효 값은 다음 요청에서 반영한다")
+    void endpointsUseCurrentProfileThenBrowser(String path) {
+        for (String profile :
+                new String[] {"Asia/Seoul", "America/Los_Angeles", null, "Not/AZone"}) {
+            jdbcTemplate.update("UPDATE ACCOUNT SET TIME_ZONE = ? WHERE ID = ?", profile, ADMIN_ID);
+            var response =
+                    rest.exchange(
+                            "/api/admin/stats" + path, HttpMethod.GET, auth(ADMIN_ID), Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            String expected =
+                    profile == null || profile.equals("Not/AZone") ? "America/Toronto" : profile;
+            assertThat(response.getBody()).containsEntry("timeZone", expected);
+        }
+        jdbcTemplate.update("UPDATE ACCOUNT SET TIME_ZONE = NULL WHERE ID = ?", ADMIN_ID);
+        var response =
+                rest.exchange(
+                        "/api/admin/stats" + path.replace("timeZone=America/Toronto", ""),
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
     }
 
     @Test

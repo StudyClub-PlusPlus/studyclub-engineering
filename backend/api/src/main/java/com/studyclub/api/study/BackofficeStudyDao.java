@@ -1,15 +1,13 @@
 package com.studyclub.api.study;
 
 import com.studyclub.domain.study.Study;
+import java.time.Instant;
 import java.util.List;
 
 interface BackofficeStudyDao {
 
-    /** DB 에서 페이지를 자른다. 모집 상태 필터·RECRUITMENT 정렬은 서비스가 메모리에서 한다. */
-    List<Study> getStudies(BackofficeStudyListFilter filter, int offset, int limit);
+    /** 검색·모집·신청 폼을 포함한 모든 조건과 정렬을 DB에서 적용한 페이지. */
+    List<Study> getStudies(BackofficeStudyListFilter filter, Instant asOf, int offset, int limit);
 
-    long count(BackofficeStudyListFilter filter);
-
-    /** 모집 상태·RECRUITMENT 정렬용 — 필터만 걸고 전체를 가져온다. */
-    List<Study> getAllMatching(BackofficeStudyListFilter filter);
+    long count(BackofficeStudyListFilter filter, Instant asOf);
 }

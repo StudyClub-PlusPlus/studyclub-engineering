@@ -13,7 +13,31 @@ public record BackofficeStudyListFilter(
         Long studyId,
         StudyVisibility visibility,
         RecruitStatus recruitStatus,
-        BackofficeStudySort sort) {
+        BackofficeStudySort sort,
+        String keyword,
+        Boolean hasApplicationForm,
+        AdminStudyRecruitFilter recruitFilter) {
+
+    public BackofficeStudyListFilter(
+            StudyCategory category,
+            StudyKind studyKind,
+            StudyStatus status,
+            Long studyId,
+            StudyVisibility visibility,
+            RecruitStatus recruitStatus,
+            BackofficeStudySort sort) {
+        this(
+                category,
+                studyKind,
+                status,
+                studyId,
+                visibility,
+                recruitStatus,
+                sort,
+                null,
+                null,
+                null);
+    }
 
     public BackofficeStudySort effectiveSort() {
         return sort == null ? BackofficeStudySort.ID_DESC : sort;

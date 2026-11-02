@@ -6,12 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type Study, type StudyLifecycleStatus } from '@studyclub/types';
 import { Badge, Pagination, Select, cx, type BadgeTone } from '@studyclub/ui';
-import { applyFormUrl, publishState, recruitState, toISODate } from '@studyclub/utils';
+import { applyFormUrl, publishState, toISODate } from '@studyclub/utils';
 
 import {
   CATEGORY_OPTIONS,
   FORM_OPTIONS,
-  LIST_PAGE_SIZE,
   PUBLISH_OPTIONS,
   RECRUIT_OPTIONS,
   STATUS_OPTIONS,
@@ -34,7 +33,7 @@ import { rememberStudiesListSearch } from '@/features/studies/list-return';
 import { PublishConfirmDialog, type PublishTarget } from '@/features/studies/PublishConfirmDialog';
 import { STATUS_LABEL, tx } from '@/lib/l10n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
-import { pageOf, useUrlState } from '@/lib/use-url-state';
+import { useUrlState } from '@/lib/use-url-state';
 import './studies-table.css';
 
 /**
@@ -46,97 +45,14 @@ import './studies-table.css';
  * 행에 편집·삭제 버튼을 두지 않는다. 스터디 이름을 누르면 **운영 페이지**로 들어가고, 거기서
  * 크루 승인·출석·정보 수정을 모두 한다.
  *
- * 받은 목록이 서버가 자른 한 페이지면(`list.mode === 'server'`) 그대로 그리고, 전체면 여기서 거르고 정렬해 자른다
- * (어느 쪽으로 받을지는 list-filters 의 serverListQuery).
+ * 모든 조건은 서버에 전달한다. 받은 한 페이지의 순서와 전체 건수를 그대로 표시한다.
  */
-
-/** 문자열 비교 — 서버 정렬(제목 → 기수 ID)과 같은 결과가 나오도록 로캘을 타지 않는다. */
-function compareText(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-function byTitle(a: Study, b: Study): number {
-  return compareText(tx(a.title), tx(b.title)) || a.study_id - b.study_id;
-}
-
-/** 마감 시각(ms). 없거나 읽을 수 없으면 맨 끝으로 보낸다. */
-function deadlineTime(study: Study): number {
-  const raw = study.recruitment?.deadline;
-  const at = raw ? Date.parse(raw) : NaN;
-  if (!Number.isNaN(at)) return at;
-  const date = toISODate(raw);
-  const day = date ? Date.parse(date) : NaN;
-  return Number.isNaN(day) ? Number.POSITIVE_INFINITY : day;
-}
-
-/**
- * 모집 마감순 (spec 3-2 · 4.4 RECRUITMENT). 모집중을 먼저, 마감을 나중에 — 모집 상태는 서버 판정
- * (`recruitStatus` → `recruitment.status`) 그대로 쓴다. 각 묶음은 마감 시각이 빠른 순, 마감이 없으면 끝.
- */
-function byRecruitment(a: Study, b: Study): number {
-  const ra = a.recruitment?.status === 'open' ? 0 : 1;
-  const rb = b.recruitment?.status === 'open' ? 0 : 1;
-  if (ra !== rb) return ra - rb;
-  const da = deadlineTime(a);
-  const db = deadlineTime(b);
-  if (da !== db) return da < db ? -1 : 1;
-  return byTitle(a, b);
-}
-
-/** 이 목록의 기본 순서 — 운영자가 손댈 것부터: 모집중 먼저, 그 안에서 마감이 빠른 순. 마감일 없는 상시 모집은 모집중의 끝. */
-function byDefault(a: Study, b: Study): number {
-  const ra = recruitState(a) === 'apply' ? 0 : 1;
-  const rb = recruitState(b) === 'apply' ? 0 : 1;
-  if (ra !== rb) return ra - rb;
-  const da = toISODate(a.recruitment?.deadline) ?? '9999-99-99';
-  const db = toISODate(b.recruitment?.deadline) ?? '9999-99-99';
-  return da.localeCompare(db);
-}
-
-const LIFECYCLE_ORDER: StudyLifecycleStatus[] = ['DRAFT', 'OPEN', 'ONGOING', 'ENDED', 'CLOSED'];
 
 const TIMEZONE_LABEL: Record<NonNullable<Study['timezone']>, string> = {
   KST: 'KST',
   PST: 'PST',
   both: '동시 진행(KST·PST)',
 };
-
-/** 열마다 무엇으로 줄 세울지 (PRD 9). 값이 없는(undefined) 행은 방향과 관계없이 늘 맨 뒤로 보낸다. */
-const SORT_VALUE: Record<SortColumn, (s: Study) => string | number | undefined> = {
-  program: (s) => (s.program ? Number(s.program.id) : undefined),
-  title: (s) => tx(s.title),
-  status: (s) => LIFECYCLE_ORDER.indexOf(lifecycleStatusOf(s)),
-  category: (s) => s.category || undefined,
-  timezone: (s) => (s.timezone ? TIMEZONE_LABEL[s.timezone] : undefined),
-  recruitStart: (s) => toISODate(s.recruitment?.start),
-  recruitEnd: (s) => (deadlineTime(s) === Number.POSITIVE_INFINITY ? undefined : deadlineTime(s)),
-  recruit: (s) => (recruitState(s) === 'apply' ? 0 : 1),
-  crew: (s) => summarize(s).applied,
-  startAt: (s) => toISODate(s.date),
-  form: (s) => (hasApplicationFormOf(s) ? 1 : 0),
-  publish: (s) => (publishState(s) === 'live' ? 1 : 0),
-  author: (s) => s.authorNickname || undefined,
-};
-
-function byColumn(key: SortColumn, dir: SortDir) {
-  return (a: Study, b: Study): number => {
-    const va = SORT_VALUE[key](a);
-    const vb = SORT_VALUE[key](b);
-    if (va === undefined || vb === undefined) return va === vb ? a.study_id - b.study_id : va === undefined ? 1 : -1;
-    const c = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), 'ko');
-    return (dir === 'asc' ? c : -c) || a.study_id - b.study_id;
-  };
-}
-
-/** 정렬 값 → 비교 함수. 대시보드 진입 순서(이름순 · 모집 마감순 · 최근 등록순)는 서버 정렬과 같은 결과를 낸다. */
-function comparatorOf(sort: SortOrder): (a: Study, b: Study) => number {
-  if (sort === 'all') return byDefault;
-  if (sort === 'title') return byTitle;
-  if (sort === 'recruitment') return byRecruitment;
-  if (sort === 'id') return (a, b) => b.study_id - a.study_id;
-  const [key, dir] = sort.split(':') as [SortColumn, SortDir];
-  return byColumn(key, dir);
-}
 
 const STUDY_STATUS_GUIDE = [
   {
@@ -434,7 +350,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     rememberStudiesListSearch(search ? `?${search}` : '');
   }, [searchParams]);
   const entry = useMemo(() => entryFilters(searchParams.get('view'), searchParams.get('category')), [searchParams]);
-  // 주소만 바꾼다(shallow) — router.replace 면 서버 컴포넌트가 목록 전체를 한 번 더 받는다
+  // 주소만 바꾼다(shallow) — router.replace 면 서버 컴포넌트가 같은 페이지를 한 번 더 받는다
   useEffect(() => {
     if (entry) setUrlFilters(entry, { shallow: true });
   }, [entry, setUrlFilters]);
@@ -450,9 +366,8 @@ export function StudiesTable({ list }: { list: StudyListData }) {
   const publish = filters.publish as PublishFilter;
   const form = filters.form as FormFilter;
   const sort = effectiveSort(filters.sort as SortOrder, studyStatus);
-  const page = pageOf(filters.page);
   const setPage = (next: number) => setFilters({ page: String(next) });
-  // 검색 입력칸 글자는 화면 state — 목록은 바로 거르고, 멈추면(300ms) URL 에 쓴다
+  // 검색 입력칸 글자는 화면 state — 입력이 멈추면(300ms) URL에 쓰고 서버에서 조회한다
   const [query, setQuery] = useState(filters.q);
   const debouncedQuery = useDebouncedValue(query, 300);
   useEffect(() => {
@@ -473,26 +388,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     }
   };
 
-  const studies = list.studies;
-  const rows = useMemo(() => {
-    // 서버가 이미 거르고 정렬했다 — 다시 거르면 서버와 다른 뜻의 조건(「마감」 등)이 섞인다
-    if (list.mode === 'server') return studies;
-    const q = query.trim().toLowerCase();
-    return studies
-      .filter((s) => {
-        if (category !== 'all' && s.category !== category) return false;
-        if (studyStatus !== 'all' && lifecycleStatusOf(s) !== studyStatus) return false;
-        if (recruit !== 'all' && recruitState(s) !== recruit) return false;
-        if (publish !== 'all' && publishState(s) !== publish) return false;
-        if (form !== 'all' && hasApplicationFormOf(s) !== (form === 'has')) return false;
-        if (q) {
-          const hay = `${tx(s.title)} ${tx(s.summary)} ${s.category ?? ''}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      })
-      .sort(comparatorOf(sort));
-  }, [list.mode, studies, query, category, studyStatus, recruit, publish, form, sort]);
+  const rows = list.studies;
   const headerSort = headerSortOf(sort);
   /** 열 이름을 누른다 — 오름차순, 다시 누르면 내림차순 (PRD 9). 정렬을 바꾸면 1페이지로 */
   const sortBy = (key: SortColumn) => setFilters({ sort: nextSortFor(sort, key), page: '1' });
@@ -505,12 +401,11 @@ export function StudiesTable({ list }: { list: StudyListData }) {
     </th>
   );
 
-  const total = list.mode === 'server' ? list.total : rows.length;
-  const pageCount = Math.max(1, Math.ceil(total / LIST_PAGE_SIZE));
-  // 서버 페이지는 서버가 실제로 준 위치를 따른다 — 끝을 넘는 주소면 서버가 마지막 페이지를 줬다(lib/api.ts)
-  const currentPage = list.mode === 'server' ? Math.floor(list.offset / list.limit) + 1 : Math.min(page, pageCount);
-  const pageRows =
-    list.mode === 'server' ? rows : rows.slice((currentPage - 1) * LIST_PAGE_SIZE, currentPage * LIST_PAGE_SIZE);
+  const total = list.total;
+  const pageCount = Math.max(1, Math.ceil(total / list.limit));
+  // 삭제로 페이지 범위를 벗어나면 server.ts가 조회한 마지막 페이지를 표시한다.
+  const currentPage = Math.floor(list.offset / list.limit) + 1;
+  const pageRows = rows;
 
   return (
     // studies-list — 표 칸 너비 · 말줄임 CSS(studies-table.css)의 기준
@@ -585,7 +480,7 @@ export function StudiesTable({ list }: { list: StudyListData }) {
             </thead>
             <tbody>
               {pageRows.map((s) => {
-                const open = recruitState(s) === 'apply';
+                const open = s.recruitment?.status === 'open';
                 const publish = publishState(s);
                 const crewStat = summarize(s);
                 const capacity = s.recruitment?.capacity ?? s.seats?.total;

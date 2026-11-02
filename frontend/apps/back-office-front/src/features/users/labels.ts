@@ -51,3 +51,5 @@ export function displayName(account: Pick<ApiAdminAccount, 'name' | 'maskedEmail
   if (account.name) return account.name;
   return account.maskedEmail.split('@')[0] || account.maskedEmail;
 }
+
+export const DORMANCY_DESCRIPTION = '최근 180일간 스터디 참여 및 로그인 기록이 없는 회원';
