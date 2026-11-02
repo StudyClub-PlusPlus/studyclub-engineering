@@ -1,12 +1,12 @@
 package com.studyclub.api.participant;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.api.study.StudyCaptainGuard;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.audit.AdminAuditLog;
-import com.studyclub.domain.audit.AdminAuditLogRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
@@ -45,7 +45,7 @@ public class ParticipantWithdrawalService {
     private final StudyGroupRepository studyGroupRepository;
     private final StudyParticipantRepository studyParticipantRepository;
     private final StudyMeetingRepository studyMeetingRepository;
-    private final AdminAuditLogRepository adminAuditLogRepository;
+    private final AdminAuditRecorder auditRecorder;
     private final StudyCaptainGuard studyCaptainGuard;
     private final ApplicationEventPublisher eventPublisher;
     private final AccountRepository accountRepository;
@@ -55,7 +55,7 @@ public class ParticipantWithdrawalService {
             StudyGroupRepository studyGroupRepository,
             StudyParticipantRepository studyParticipantRepository,
             StudyMeetingRepository studyMeetingRepository,
-            AdminAuditLogRepository adminAuditLogRepository,
+            AdminAuditRecorder auditRecorder,
             StudyCaptainGuard studyCaptainGuard,
             ApplicationEventPublisher eventPublisher,
             AccountRepository accountRepository) {
@@ -63,7 +63,7 @@ public class ParticipantWithdrawalService {
         this.studyGroupRepository = studyGroupRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyMeetingRepository = studyMeetingRepository;
-        this.adminAuditLogRepository = adminAuditLogRepository;
+        this.auditRecorder = auditRecorder;
         this.studyCaptainGuard = studyCaptainGuard;
         this.eventPublisher = eventPublisher;
         this.accountRepository = accountRepository;
@@ -194,9 +194,13 @@ public class ParticipantWithdrawalService {
             return false;
         }
         studyParticipantRepository.save(target);
-        adminAuditLogRepository.save(
+        auditRecorder.record(
                 AdminAuditLog.withdraw(
-                        actorAccountId, target.getAccountId(), target.getId(), before));
+                        actorAccountId,
+                        target.getAccountId(),
+                        target.getId(),
+                        before,
+                        target.getParticipantRole()));
         return true;
     }
 

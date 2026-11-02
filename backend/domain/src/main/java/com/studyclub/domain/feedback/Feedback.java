@@ -2,6 +2,7 @@ package com.studyclub.domain.feedback;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.retention.RetentionPolicy;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,6 +12,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -27,7 +29,8 @@ import java.util.List;
         name = "FEEDBACK",
         indexes = {
             @Index(name = "idx_feedback_account_created", columnList = "ACCOUNT_ID, CREATED_AT"),
-            @Index(name = "idx_feedback_created", columnList = "CREATED_AT")
+            @Index(name = "idx_feedback_created", columnList = "CREATED_AT"),
+            @Index(name = "idx_feedback_expiry", columnList = "EXPIRES_AT, ID")
         })
 public class Feedback extends BaseEntity {
 
@@ -87,6 +90,13 @@ public class Feedback extends BaseEntity {
     @Column(name = "ADMIN_MEMO", length = ADMIN_MEMO_MAX)
     private String adminMemo;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "RETENTION_POLICY", length = 40)
+    private RetentionPolicy retentionPolicy;
+
+    @Column(name = "EXPIRES_AT")
+    private Instant expiresAt;
+
     protected Feedback() {}
 
     /** 새 문의는 늘 「미확인」으로 시작한다. 길이 검증은 호출자(제출 서비스)가 끝낸 뒤다. */
@@ -110,6 +120,19 @@ public class Feedback extends BaseEntity {
 
     public boolean isAnswered() {
         return replyContent != null;
+    }
+
+    /** Auditing 리스너가 생성일을 채운 뒤 호출한다. 기존 테스트 행의 초기화도 같은 규칙을 쓴다. */
+    @PrePersist
+    public void initializeRetention() {
+        if (retentionPolicy != null) return;
+        retentionPolicy = RetentionPolicy.FEEDBACK_V1;
+        expiresAt = retentionPolicy.expiresAt(repliedAt == null ? getCreatedAt() : repliedAt);
+    }
+
+    /** 이미 저장한 기한으로만 판정한다. 메타데이터가 없는 과거 행은 먼저 초기화해야 한다. */
+    public boolean isRetentionExpired(Instant now) {
+        return retentionPolicy != null && expiresAt != null && !expiresAt.isAfter(now);
     }
 
     /** 제출자에게 보이는 상태. 운영 단계(미확인 · 확인)는 묶어서 「접수」다. */
@@ -156,6 +179,9 @@ public class Feedback extends BaseEntity {
             this.repliedAt = now.truncatedTo(ChronoUnit.MICROS);
             this.status = FeedbackStatus.DONE;
             this.doneByAccountId = adminAccountId;
+            // 초기화 전 과거 문의도 첫 회신과 같은 트랜잭션에서 V1으로 채운다.
+            initializeRetention();
+            this.expiresAt = retentionPolicy.expiresAt(repliedAt);
         }
         return first;
     }
@@ -211,6 +237,14 @@ public class Feedback extends BaseEntity {
 
     public Instant getRepliedAt() {
         return repliedAt;
+    }
+
+    public RetentionPolicy getRetentionPolicy() {
+        return retentionPolicy;
+    }
+
+    public Instant getExpiresAt() {
+        return expiresAt;
     }
 
     public String getAdminMemo() {

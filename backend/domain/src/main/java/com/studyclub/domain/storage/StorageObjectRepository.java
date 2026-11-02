@@ -3,6 +3,7 @@ package com.studyclub.domain.storage;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -78,7 +79,7 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
             @Param("now") Instant now);
 
     /**
-     * 정리 배치 1단계 — 올린 지 {@code before} 보다 오래된 {@code PENDING} 을 전부 {@code DELETING} 으로 찜한다. 배치가 먼저
+     * 정리 배치 1단계 — 후보 ID 중 {@code before} 보다 오래된 {@code PENDING} 을 {@code DELETING} 으로 찜한다. 배치가 먼저
      * 찜하면 그 뒤에 온 연결은 {@link #attach} 의 {@code PENDING} 조건에 안 맞아 실패한다. 어느 순서든 한쪽만 이긴다.
      */
     @Modifying(flushAutomatically = true)
@@ -87,10 +88,22 @@ public interface StorageObjectRepository extends JpaRepository<StorageObject, Lo
             UPDATE StorageObject s
             SET s.status = com.studyclub.domain.storage.StorageObjectStatus.DELETING,
                 s.updatedAt = :now
-            WHERE s.status = com.studyclub.domain.storage.StorageObjectStatus.PENDING
+            WHERE s.id IN :ids
+              AND s.status = com.studyclub.domain.storage.StorageObjectStatus.PENDING
               AND s.createdAt < :before
             """)
-    int claimExpiredPending(@Param("before") Instant before, @Param("now") Instant now);
+    int claimExpiredPending(
+            @Param("ids") List<Long> ids,
+            @Param("before") Instant before,
+            @Param("now") Instant now);
+
+    @Query(
+            "SELECT s.id FROM StorageObject s WHERE s.id > :afterId AND s.status = com.studyclub.domain.storage.StorageObjectStatus.PENDING AND s.createdAt < :before ORDER BY s.id")
+    List<Long> findExpiredPendingIds(
+            @Param("afterId") long afterId, @Param("before") Instant before, Pageable pageable);
+
+    List<StorageObject> findByStatusAndIdGreaterThanOrderByIdAsc(
+            StorageObjectStatus status, long afterId, Pageable pageable);
 
     /**
      * 탈퇴 — 그 계정의 프로필 사진 · 문의 첨부 이미지와 연결 안 된 파일을 지우기로 찜한다. 다른 자원에 붙은 파일(스터디 썸네일 등)은 그 자원의 것이라 남긴다 —

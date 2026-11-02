@@ -1,5 +1,6 @@
 package com.studyclub.api.auth;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.api.upload.UploadService;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
@@ -13,8 +14,10 @@ import com.studyclub.domain.account.AccountLeaveReasonRepository;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.Issuer;
 import com.studyclub.domain.account.LeaveReason;
+import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.application.StudyApplication;
 import com.studyclub.domain.application.StudyApplicationRepository;
+import com.studyclub.domain.audit.AdminAuditLog;
 import com.studyclub.domain.bookmark.StudyBookmarkRepository;
 import com.studyclub.domain.feedback.FeedbackImageRepository;
 import com.studyclub.domain.notice.StudyNoticeRepository;
@@ -87,6 +90,7 @@ public class AccountDeletionService {
     private final FeedbackImageRepository feedbackImageRepository;
     private final ObjectMapper objectMapper;
     private final UploadService uploadService;
+    private final AdminAuditRecorder auditRecorder;
     private final AppleOAuthClient appleOAuthClient;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -153,6 +157,10 @@ public class AccountDeletionService {
         // (specs/feedback/spec.md 「탈퇴 때」).
         feedbackImageRepository.deleteAllByFeedbackAccountId(accountId);
 
+        if (account.getSystemRole() == SystemRole.ADMIN) {
+            auditRecorder.record(AdminAuditLog.accountRoleRevoked(accountId));
+        }
+
         // 계정·프로필 삭제.
         accountRepository.delete(account);
         // 사진 파일 — 주소만 지우면 파일이 공개 주소에 남는다. 이 계정의 프로필 사진 · 문의 첨부 · 연결 안 된 파일을 DELETING 으로 찜하고
@@ -178,6 +186,12 @@ public class AccountDeletionService {
                                         p.getStatus() == ParticipantStatus.ACTIVE
                                                 || p.getStatus() == ParticipantStatus.PAUSED)
                         .toList();
+        for (StudyParticipant participant : onRoster) {
+            if (participant.getParticipantRole() == ParticipantRole.LEADER) {
+                auditRecorder.record(
+                        AdminAuditLog.participantRoleRevoked(accountId, participant.getId()));
+            }
+        }
         Instant deletedAt = Instant.now();
         for (StudyParticipant participation : participations) {
             participation.markDeletedDueToAccountDeletion(deletedAt);

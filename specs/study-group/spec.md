@@ -157,7 +157,7 @@
 
    > 비유: 학원에서 반을 옮기면 **지난 수업 출석부**는 옛 반에 그대로 남고, **다음 수업부터** 새 반 출석부에 이름이 올라간다. 옛 반 출석부의 앞으로 칸은 지운다.
 6. 지금 값과 같은 필드는 건너뛴다 — 같은 값만 보낸 줄도 200
-7. 역할이 실제로 바뀐 줄마다 [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) 한 줄(`ACTION = PARTICIPANT_ROLE` · `BEFORE` = 변경 전 역할 · `AFTER` = 명부 행 ID)을 같은 트랜잭션에 남기고, `study_participant.role_changed` 를 발행한다 (`previousRole` · `newRole`). 반만 바뀐 줄은 발행하지 않는다. 구독자(디스코드 네비게이터 role, DSC-08)는 커밋 뒤에 받는다 — 페이로드는 [domain-events](../domain-events/spec.md) 에 COM-01 로 올린다
+7. 접속 IP·직전 역할·참여 ID를 함께 기록하고 행위 시각부터 3년 보관한 뒤 삭제한다 ([공통 정리 스펙](../data-retention/spec.md)). 역할이 실제로 바뀐 줄마다 [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) 한 줄(`ACTION = PARTICIPANT_ROLE` · `BEFORE` = 변경 전 역할 · `AFTER` = 명부 행 ID)을 같은 트랜잭션에 남기고, `study_participant.role_changed` 를 발행한다 (`previousRole` · `newRole`). 반만 바뀐 줄은 발행하지 않는다. 구독자(디스코드 네비게이터 role, DSC-08)는 커밋 뒤에 받는다 — 페이로드는 [domain-events](../domain-events/spec.md) 에 COM-01 로 올린다
 
 ### Response — 200
 
