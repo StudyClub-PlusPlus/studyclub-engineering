@@ -150,7 +150,7 @@ flowchart LR
 | BE | `GET /api/admin/notification-templates` | 구현완료 — `AdminNotificationController` · 통합 테스트 있음. 같은 조건의 템플릿이 여럿이면 `id` 오름차순으로 모두 준다 | 없음 |
 | BE | `POST /api/admin/notification-templates` | 구현완료 — 같은 조건·같은 제목도 막지 않는다(409 없음). 제목 255자 · 본문 65,535바이트 검증 · 통합 테스트 있음 ([스펙](../../../specs/notification/spec.md)) | 없음 |
 | BE | `PUT` · `DELETE /api/admin/notification-templates/{id}` | 구현완료 — 조건을 다른 템플릿이 쓰는 조건으로 바꿔도 수정된다. 삭제해도 발송 이력은 남는다(이력은 템플릿을 ID 로만 참조) · 통합 테스트 있음 | 없음 |
-| BE | 같은 조건 템플릿 여럿 | 구현완료 — V46 이 `UNIQUE(EVENT_TYPE, CHANNEL)` 를 걷어내고, 조건이 생기면 그 조건의 템플릿 모두로 알림 행을 만든다(웰컴: 가입 한 번에 템플릿 수만큼, 스터디 공지: 받는 사람 × 템플릿). 공지별 메일 건수는 받는 사람 수 기준으로 센다 (완료 기준 5) | 없음. stage 는 Flyway 가 꺼져 있어 SQL 을 손으로 한 번 실행한다 |
+| BE | 같은 조건 템플릿 여럿 | 구현완료 — V50 이 `UNIQUE(EVENT_TYPE, CHANNEL)` 를 걷어내고, 조건이 생기면 그 조건의 템플릿 모두로 알림 행을 만든다(웰컴: 가입 한 번에 템플릿 수만큼, 스터디 공지: 받는 사람 × 템플릿). 공지별 메일 건수는 받는 사람 수 기준으로 센다 (완료 기준 5) | 없음. stage 는 Flyway 가 꺼져 있어 SQL 을 손으로 한 번 실행한다 |
 | BE | 알림 조건 「회원 탈퇴」 | 없음 — `NotificationEventType` 은 `USER_REGISTERED` · `STUDY_NOTICE` · `FEEDBACK_REPLIED`. 탈퇴는 이벤트를 내지 않는다 | 탈퇴 이벤트 발행 · `USER_WITHDRAWN`(가칭) 추가 · 리스너 (완료 기준 4) |
 
 - **범위 밖** — 메일 외 채널, 삭제 되돌리기
