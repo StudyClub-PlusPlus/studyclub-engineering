@@ -15,6 +15,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -249,7 +251,39 @@ class AdminStatsIntegrationTest {
         @SuppressWarnings("unchecked")
         List<?> points = (List<?>) trend.getBody().get("points");
         assertThat(points).hasSize(12);
-        assertThat(trend.getBody()).containsEntry("timeZone", "UTC");
+        assertThat(trend.getBody()).containsEntry("timeZone", "Asia/Seoul");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "/summary?timeZone=America/Toronto",
+                "/study-board?view=ONGOING&timeZone=America/Toronto",
+                "/study-board?view=RECRUITMENT&timeZone=America/Toronto",
+                "/attendance-trend?weeks=12&timeZone=America/Toronto"
+            })
+    @DisplayName("현재 프로필 우선 — 프로필 변경·누락·무효 값은 다음 요청에서 반영한다")
+    void endpointsUseCurrentProfileThenBrowser(String path) {
+        for (String profile :
+                new String[] {"Asia/Seoul", "America/Los_Angeles", null, "Not/AZone"}) {
+            jdbcTemplate.update("UPDATE ACCOUNT SET TIME_ZONE = ? WHERE ID = ?", profile, ADMIN_ID);
+            var response =
+                    rest.exchange(
+                            "/api/admin/stats" + path, HttpMethod.GET, auth(ADMIN_ID), Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            String expected =
+                    profile == null || profile.equals("Not/AZone") ? "America/Toronto" : profile;
+            assertThat(response.getBody()).containsEntry("timeZone", expected);
+        }
+        jdbcTemplate.update("UPDATE ACCOUNT SET TIME_ZONE = NULL WHERE ID = ?", ADMIN_ID);
+        var response =
+                rest.exchange(
+                        "/api/admin/stats" + path.replace("timeZone=America/Toronto", ""),
+                        HttpMethod.GET,
+                        auth(ADMIN_ID),
+                        Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("timeZone", "Asia/Seoul");
     }
 
     @Test
