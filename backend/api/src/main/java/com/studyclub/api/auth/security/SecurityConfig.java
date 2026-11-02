@@ -100,7 +100,12 @@ public class SecurityConfig {
                                                 PathPatternRequestMatcher.withDefaults()
                                                         .matcher(HttpMethod.GET, "/api/notices"),
                                                 PathPatternRequestMatcher.withDefaults()
-                                                        .matcher(HttpMethod.GET, "/api/notices/*"))
+                                                        .matcher(HttpMethod.GET, "/api/notices/*"),
+                                                // 웹 푸시 공개키 — 로그인 전에도 「알림 받기」 버튼을 그릴지 정한다
+                                                PathPatternRequestMatcher.withDefaults()
+                                                        .matcher(
+                                                                HttpMethod.GET,
+                                                                "/api/web-push/config"))
                                         .permitAll()
                                         .requestMatchers(
                                                 "/",

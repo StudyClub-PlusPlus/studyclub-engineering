@@ -16,6 +16,7 @@ import type { ReactNode } from 'react';
 const TABS = [
   { href: '/notification-templates', label: '알림 템플릿' },
   { href: '/notifications', label: '발송 이력' },
+  { href: '/web-push', label: '푸시 보내기' },
 ];
 
 export function NotificationTabs({ action }: { action?: ReactNode }) {

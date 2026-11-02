@@ -43,13 +43,14 @@ const EVENT_LABEL: Record<string, string> = {
   FEEDBACK_REPLIED: '문의 회신',
   // 네비게이터가 반 팀원에게 보낸 공지 메일 (specs/study-notice). 템플릿은 시드로 두되, 지웠을 때 다시 만들 수 있도록 추가 팝업의 선택지에도 둔다
   STUDY_NOTICE: '스터디 공지',
+  ADMIN_PUSH: '푸시 보내기',
 };
 
 export function eventLabel(eventType: string): string {
   return EVENT_LABEL[eventType] ?? eventType;
 }
 
-const CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일' };
+const CHANNEL_LABEL: Record<string, string> = { EMAIL: '메일', WEB_PUSH: '웹 푸시' };
 
 export function channelLabel(recipientType: string): string {
   return CHANNEL_LABEL[recipientType] ?? recipientType;
