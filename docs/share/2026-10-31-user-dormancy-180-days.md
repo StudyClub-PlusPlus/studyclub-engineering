@@ -4,7 +4,7 @@
   - 01-planning/stories/captain-list-users/PRD.md — 됨
   - specs/admin-users/spec.md — 됨 (180일 판정 계약)
   - playground 운영 콘솔 유저 — 됨 (이 브랜치)
-  - 실제 회원 목록 API · 백오피스 — 구현됨 (배포 전)
+  - 실제 회원 목록 API · 백오피스 — 됨 (2026-11-01 스테이지 검증)
 ---
 
 # 180일간 명부 참여와 로그인이 모두 없는 회원만 휴면으로 표시한다
@@ -46,4 +46,12 @@ Alex는 최근 백오피스 로그인, Robin은 200일간 로그인·참여가 �
 
 서버는 기존 `ACCOUNT_IDENTITY.LAST_LOGIN_AT`의 최댓값과 명부의 `JOINED_AT`·`LEFT_AT`, 스터디 `END_AT`으로 판정한다. 새 DB 컬럼이나 기존 기록 보정은 필요하지 않다. 필요한 날짜가 없는 과거 기록은 휴면 표시를 보류한다. 프론트는 서버의 `dormant` 값을 그대로 표시하며 목록 안내와 툴팁을 제공한다.
 
-목록 정렬과 권한은 그대로다. 코드 반영과 배포는 구분한다. 현재 브랜치의 변경을 배포하기 전에는 실제 서비스에 기존 기준이 표시된다.
+목록 정렬과 권한은 그대로다.
+
+## 스테이지 검증 (2026-11-01)
+
+- `develop` 반영 커밋: [`44dca036`](https://github.com/StudyClub-PlusPlus/studyclub-engineering/commit/44dca036c2a3543aea3ef09425121ffa53bb8bb2).
+- [백엔드 배포](https://github.com/StudyClub-PlusPlus/studyclub-engineering/actions/runs/41375818828)와 [백오피스 배포](https://github.com/StudyClub-PlusPlus/studyclub-engineering/actions/runs/41375818793) 성공 후 [스테이지 회원 목록](https://back-office-stage.studyclub.life/users)에서 실제 응답을 확인했다. 배포 작업 성공 직후에는 이전 응답이 잠시 남아, 최신 화면과 API 응답까지 별도로 확인했다.
+- 두 페이지의 회원 목록, 캡틴·네비게이터·크루 필터가 모두 HTTP 200을 반환했다. 가입 180일 이내인 회원의 `dormant`가 false이고, 화면의 휴면 설명과 검색 빈 결과도 정상이다. 기존 회원 데이터를 변경하지 않았다.
+- 180일 경계, 오래된 로그인과 명부, 하차·완주·중복 명부·기록 누락은 자동 테스트로 검증했다. 최신 develop 기준 백엔드 전체 검사: 1,304건 중 1,303건 통과·기존 1건 건너뜀. 백오피스 테스트 484건과 빌드·코드 검사도 통과했다.
+- 이 확인은 스테이지 기준이다. 운영 배포와 기본 브랜치 반영은 별도다.
