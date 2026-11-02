@@ -171,7 +171,7 @@ class AuditRetentionIntegrationTest {
         seed(AdminAuditLog.emailReveal(1L, 2L), "2024-01-01T00:00:00Z");
         doThrow(new IllegalStateException("test"))
                 .when(repository)
-                .deleteExpiredIds(java.util.List.of(first.getId()));
+                .deleteExpiredIds(java.util.List.of(first.getId()), NOW);
         var result = service.cleanUp(NOW);
         assertThat(result.deleted()).isEqualTo(1);
         assertThat(result.failed()).isEqualTo(1);
@@ -181,21 +181,30 @@ class AuditRetentionIntegrationTest {
     }
 
     @Test
-    @DisplayName("2년 보관 설정은 1년 지난 조회 기록을 보존한다")
-    void twoYearRequirement() {
-        seed(AdminAuditLog.emailReveal(1L, 2L), "2025-10-31T12:00:00Z");
-        seed(AdminAuditLog.emailReveal(1L, 2L), "2024-10-31T12:00:00Z");
-        assertThat(new AuditRetentionService(repository, manager, 2).cleanUp(NOW).deleted())
-                .isEqualTo(1);
-        assertThat(repository.count()).isEqualTo(1);
+    @DisplayName("삭제는 현재 설정이나 생성일 계산 대신 저장한 만료일을 따른다")
+    void honorsStoredExpiry() {
+        AdminAuditLog entry = seed(AdminAuditLog.emailReveal(1L, 2L), "2020-01-01T00:00:00Z");
+        Instant expiry = NOW.plusSeconds(60);
+        jdbc.update(
+                "UPDATE ADMIN_AUDIT_LOG SET EXPIRES_AT=? WHERE ID=?",
+                Timestamp.from(expiry),
+                entry.getId());
+        assertThat(service.cleanUp(NOW).deleted()).isZero();
+        assertThat(repository.findById(entry.getId()).orElseThrow().getExpiresAt())
+                .isEqualTo(expiry);
+        assertThat(service.cleanUp(expiry).deleted()).isEqualTo(1);
     }
 
     private AdminAuditLog seed(AdminAuditLog entry, String createdAt) {
         entry = repository.save(entry);
         jdbc.update(
-                "UPDATE ADMIN_AUDIT_LOG SET CREATED_AT=? WHERE ID=?",
+                "UPDATE ADMIN_AUDIT_LOG SET CREATED_AT=?, EXPIRES_AT=? WHERE ID=?",
                 Timestamp.from(Instant.parse(createdAt)),
+                entry.getRetentionPolicy().expiresAt(Instant.parse(createdAt)) == null
+                        ? null
+                        : Timestamp.from(
+                                entry.getRetentionPolicy().expiresAt(Instant.parse(createdAt))),
                 entry.getId());
-        return entry;
+        return repository.findById(entry.getId()).orElseThrow();
     }
 }

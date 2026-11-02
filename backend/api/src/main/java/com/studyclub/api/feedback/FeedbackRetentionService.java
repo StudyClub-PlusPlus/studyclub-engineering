@@ -1,6 +1,7 @@
 package com.studyclub.api.feedback;
 
 import com.studyclub.api.cleanup.CleanupResult;
+import com.studyclub.api.cleanup.RetentionBackfillService;
 import com.studyclub.api.upload.UploadService;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.feedback.Feedback;
@@ -10,7 +11,6 @@ import com.studyclub.domain.feedback.FeedbackRepository;
 import com.studyclub.domain.storage.StorageObject;
 import com.studyclub.domain.storage.StoragePurpose;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -33,13 +33,16 @@ public class FeedbackRetentionService {
     private final AccountRepository accountRepository;
     private final UploadService uploadService;
     private final TransactionTemplate transaction;
+    private final RetentionBackfillService backfill;
 
     public FeedbackRetentionService(
             FeedbackRepository feedbackRepository,
             FeedbackImageRepository imageRepository,
             AccountRepository accountRepository,
             UploadService uploadService,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            RetentionBackfillService backfill) {
+        this.backfill = backfill;
         this.feedbackRepository = feedbackRepository;
         this.imageRepository = imageRepository;
         this.accountRepository = accountRepository;
@@ -53,15 +56,14 @@ public class FeedbackRetentionService {
     }
 
     public CleanupResult cleanUpWithResult(Instant now) {
-        // 1년은 최소 365일. 후보를 넓게 잡고, 잠금 뒤 윤년을 포함한 실제 만료일을 판정한다.
-        Instant before = now.minus(365, ChronoUnit.DAYS);
+        backfill.backfillFeedback();
         long afterId = 0;
         int deleted = 0;
         int failed = 0;
         while (true) {
             List<Long> ids =
                     feedbackRepository.findRetentionCandidateIds(
-                            afterId, before, PageRequest.of(0, BATCH_SIZE));
+                            afterId, now, PageRequest.of(0, BATCH_SIZE));
             if (ids.isEmpty()) {
                 break;
             }

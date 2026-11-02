@@ -3,6 +3,7 @@ package com.studyclub.domain.audit;
 import com.studyclub.domain.account.SystemRole;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
+import com.studyclub.domain.retention.RetentionPolicy;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,9 +13,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,7 +29,8 @@ import lombok.NoArgsConstructor;
                     name = "idx_admin_audit_log_target",
                     columnList = "TARGET_ACCOUNT_ID, CREATED_AT"),
             @Index(name = "idx_admin_audit_log_actor", columnList = "ACTOR_ACCOUNT_ID, CREATED_AT"),
-            @Index(name = "idx_admin_audit_log_created", columnList = "CREATED_AT, ID")
+            @Index(name = "idx_admin_audit_log_created", columnList = "CREATED_AT, ID"),
+            @Index(name = "idx_admin_audit_log_expiry", columnList = "EXPIRES_AT, ID")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -67,6 +69,13 @@ public class AdminAuditLog extends BaseEntity {
     @Column(name = "REASON", length = 30)
     private String reason;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "RETENTION_POLICY", length = 40)
+    private RetentionPolicy retentionPolicy;
+
+    @Column(name = "EXPIRES_AT")
+    private Instant expiresAt;
+
     /** 요청 문맥에서 검증된 접속 주소를 신규 로그에 담는다. */
     public void captureActorIp(String ip) {
         if (id != null || actorIp != null) {
@@ -75,21 +84,49 @@ public class AdminAuditLog extends BaseEntity {
         this.actorIp = ip;
     }
 
-    public boolean isRetentionExpired(Instant now, int accessYears) {
+    /** 현재 설정은 신규 로그에만 적용하며, 저장 후 규칙 변경은 허용하지 않는다. */
+    public void selectRetentionPolicy(int accessYears) {
+        if (id != null || retentionPolicy != null) {
+            throw new IllegalStateException("이미 정한 감사 기록의 보관 규칙은 변경할 수 없습니다.");
+        }
+        retentionPolicy = policyFor(accessYears);
+    }
+
+    @PrePersist
+    protected void initializeNewRetention() {
+        if (retentionPolicy == null) retentionPolicy = policyFor(1);
+        expiresAt = retentionPolicy.expiresAt(getCreatedAt());
+    }
+
+    /** 기존 테스트 기록은 당시 V1(조회 1년)로만 초기화한다. 이미 채운 값은 보존한다. */
+    public void initializeLegacyRetention() {
+        if (retentionPolicy != null) return;
+        initializeNewRetention();
+    }
+
+    private RetentionPolicy policyFor(int accessYears) {
         if (accessYears != 1 && accessYears != 2) {
             throw new IllegalArgumentException("접속기록 보관 기간은 1년 또는 2년입니다.");
         }
-        if (action == AdminAuditAction.WITHDRAW && participantRole == null) {
-            return false;
-        }
-        int years =
-                switch (action) {
-                    case EMAIL_REVEAL, DISCORD_REVEAL -> accessYears;
-                    case WITHDRAW -> participantRole == ParticipantRole.LEADER ? 3 : accessYears;
-                    case ROLE_CHANGE, PARTICIPANT_ROLE, ACCOUNT_ROLE_REVOKE, PARTICIPANT_REVOKE ->
-                            3;
-                };
-        return !now.isBefore(getCreatedAt().atZone(ZoneOffset.UTC).plusYears(years).toInstant());
+        RetentionPolicy accessPolicy =
+                accessYears == 1
+                        ? RetentionPolicy.AUDIT_ACCESS_V1
+                        : RetentionPolicy.AUDIT_ACCESS_TWO_YEARS_V1;
+        return switch (action) {
+            case EMAIL_REVEAL, DISCORD_REVEAL -> accessPolicy;
+            case WITHDRAW ->
+                    participantRole == null
+                            ? RetentionPolicy.AUDIT_WITHDRAW_UNCLASSIFIED_V1
+                            : participantRole == ParticipantRole.LEADER
+                                    ? RetentionPolicy.AUDIT_AUTHORITY_V1
+                                    : accessPolicy;
+            case ROLE_CHANGE, PARTICIPANT_ROLE, ACCOUNT_ROLE_REVOKE, PARTICIPANT_REVOKE ->
+                    RetentionPolicy.AUDIT_AUTHORITY_V1;
+        };
+    }
+
+    public boolean isRetentionExpired(Instant now) {
+        return retentionPolicy != null && expiresAt != null && !expiresAt.isAfter(now);
     }
 
     public static AdminAuditLog accountRoleRevoked(Long accountId) {

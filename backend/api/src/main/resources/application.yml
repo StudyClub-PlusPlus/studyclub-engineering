@@ -195,4 +195,5 @@ audit:
   retention:
     enabled: ${AUDIT_RETENTION_ENABLED:true}
     # 2년 의무 대상 여부를 운영 적용 전에 확인한다 (specs/data-retention/spec.md).
+    # 신규 기록에만 적용. 기존 행은 저장된 규칙·만료일을 유지한다.
     access-years: ${AUDIT_ACCESS_RETENTION_YEARS:1}
