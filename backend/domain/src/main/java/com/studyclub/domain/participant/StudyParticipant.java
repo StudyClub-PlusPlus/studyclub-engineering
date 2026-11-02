@@ -2,6 +2,7 @@ package com.studyclub.domain.participant;
 
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
+import com.studyclub.domain.study.StudyStatus;
 import com.studyclub.domain.support.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -72,6 +73,24 @@ public class StudyParticipant extends BaseEntity {
      */
     @Column(name = "LEFT_AT")
     private Instant leftAt;
+
+    /**
+     * 휴면 판정에 쓰는 명부 참여 기간. 현재 상태만 보지 않고 스터디 종료·하차 시각까지 본다. 스터디가 없거나 하차 시각이 누락된 옛 기록은 종료 시각 미확인으로
+     * 남긴다.
+     */
+    public ParticipationPeriod participationPeriod(StudyStatus studyStatus, Instant studyEndAt) {
+        if (studyStatus == null || status == null) {
+            return new ParticipationPeriod(joinedAt, null);
+        }
+        Instant endedAt = studyEndAt;
+        if (status == ParticipantStatus.WITHDRAWN || status == ParticipantStatus.DELETED) {
+            endedAt = leftAt;
+            if (leftAt != null && studyEndAt != null && studyEndAt.isBefore(leftAt)) {
+                endedAt = studyEndAt;
+            }
+        }
+        return new ParticipationPeriod(joinedAt, endedAt);
+    }
 
     /**
      * 신청 제출 = 명부 편입. 신청자는 그 스터디의 기본 반에 들어가고, 캡틴이 반을 나누면 「크루의 반 지정」으로 옮긴다
