@@ -62,6 +62,8 @@ class RetentionBackfillIntegrationTest {
         new TransactionTemplate(manager).executeWithoutResult(status -> recorder.record(audit));
         Feedback savedFeedback = feedbacks.findById(feedback.getId()).orElseThrow();
         AdminAuditLog savedAudit = audits.findById(audit.getId()).orElseThrow();
+        assertThat(savedFeedback.getCreatedAt()).isEqualTo(feedback.getCreatedAt());
+        assertThat(savedAudit.getCreatedAt()).isEqualTo(audit.getCreatedAt());
         assertThat(savedFeedback.getRetentionPolicy()).isEqualTo(RetentionPolicy.FEEDBACK_V1);
         assertThat(savedFeedback.getExpiresAt())
                 .isEqualTo(RetentionPolicy.FEEDBACK_V1.expiresAt(savedFeedback.getCreatedAt()));
