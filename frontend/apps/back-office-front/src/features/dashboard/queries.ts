@@ -24,7 +24,7 @@ import type {
 /** 추세 구간. 서버는 12만 받는다. */
 
 /**
- * 시간대를 받는 API 는 시간대를 키에 넣는다 — 시간대가 다르면 주간 집계·날짜가 다른 응답이다 (spec 4.1).
+ * 서버가 프로필을 우선하므로 키의 시간대는 브라우저 대체값이다. 프로필 변경은 진입 시 재조회로 반영한다.
  * `['dashboard']` 를 무효화하면 전부 다시 부른다.
  */
 export const dashboardKeys = {
@@ -43,14 +43,17 @@ export const dashboardKeys = {
  * 들어올 때마다 다시 읽는다 (spec 2.1). 앱 기본값(1분)이면 1분 안에 돌아왔을 때 옛 수가 그대로 남는다.
  * 다시 읽는 동안에는 받아 둔 값을 그대로 보인다 — 실패하면 그 카드만 실패로 바꾼다(이전 값을 남기지 않는다).
  */
-const ON_ENTRY = { staleTime: 0 } as const;
+const ON_ENTRY = { staleTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false } as const;
 
 /** 서버 렌더 — 브라우저 시간대를 아직 못 읽었다. */
 const NOT_READ = null;
 
 function detectTimeZone(): string {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!zone) return '';
+    new Intl.DateTimeFormat('en-US', { timeZone: zone });
+    return zone;
   } catch {
     return '';
   }
@@ -59,13 +62,14 @@ function detectTimeZone(): string {
 const noSubscription = () => () => {};
 
 /**
- * 조회자 시간대 (spec 2.2). 페이지에 들어올 때 브라우저에서 읽는다.
+ * 브라우저 대체 시간대 (spec 2.2). 페이지에 들어올 때 읽어 서버에 전달한다.
  *
  * - `ready` 가 false 면 서버 렌더다 — 시간대를 쓰는 요청을 아직 보내지 않는다.
- * - 읽지 못하면 `timeZone` 이 undefined 다 — Query 를 빼고 보내면 서버가 회원 설정 → UTC 로 정한다.
+ * - 서버는 현재 프로필 → 브라우저 Query → 서울 순서로 선택한다. 최종 시간대는 응답으로 받는다.
+ * - 읽지 못하거나 유효하지 않으면 Query를 생략한다. 서버가 현재 프로필 → 서울로 정한다.
  * 이 조회는 회원 설정(ACCOUNT.TIME_ZONE)을 바꾸지 않는다.
  */
-export function useViewerTimeZone(): { ready: boolean; timeZone: string | undefined } {
+export function useBrowserTimeZoneFallback(): { ready: boolean; timeZone: string | undefined } {
   const value = useSyncExternalStore(noSubscription, detectTimeZone, () => NOT_READ);
   return { ready: value !== NOT_READ, timeZone: value || undefined };
 }
@@ -119,7 +123,7 @@ export function useStudiesByCategory() {
  * 영역마다 따로 부르므로 그 사이에 기준이 바뀔 수 있다 (spec 2.3). 어긋나면 **한 번만** 다시 부른다.
  *
  * - 요약·보드·추세의 `timeZone` 이 서로 다르면 — 전체를 다시 부른다
- *   (Query 를 뺐을 때 그 사이 회원 설정이 바뀐 경우다)
+ *   (조회 사이에 회원 설정이 바뀐 경우다)
  * - 요약의 이번 주와 추세의 이번 주가 다르면 — 조회 중에 주가 바뀐 것이다. 요약·추세를 함께 다시 부른다
  *
  * 다시 불러도 어긋나면 그대로 둔다 — 경계 시각에 걸리면 계속 부르다 끝나지 않을 수 있다.
