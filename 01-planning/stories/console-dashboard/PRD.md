@@ -1,7 +1,7 @@
 # 캡틴은 운영 현황을 한 화면에서 볼 수 있다.
 
 기준 프로토타입: 운영 콘솔 › 대시보드 — https://playground.studyclub.life/proto/console
-관련 결정: [10-15 대시보드 주간 출석률의 「주」를 어느 시계로 자를까](../../../docs/share/2026-10-15-dashboard-week-boundary.md) · [10-15 대시보드 화면 표시는 PRD 를 따른다](../../../docs/share/2026-10-15-dashboard-display-follows-prd.md)
+관련 결정: [11-01 대시보드 프로필 시간대 우선](../../../docs/share/2026-11-01-dashboard-profile-timezone.md) · [10-15 대시보드 주간 출석률의 「주」를 어느 시계로 자를까](../../../docs/share/2026-10-15-dashboard-week-boundary.md) · [10-15 대시보드 화면 표시는 PRD 를 따른다](../../../docs/share/2026-10-15-dashboard-display-follows-prd.md)
 
 ## 1. 기본설명
 
@@ -176,6 +176,14 @@
 
 <!-- spec:end dashboard -->
 
+### 조회자 시간대
+
+- 현재 프로필 → 브라우저 → 서울 순서로 선택한다. 온보딩 이후 변경한 프로필도 적용한다.
+- 갱신 시각·모집 날짜·D-day와 주간 출석 집계에 같은 시간대를 적용한다. 한 주는 해당 시간대의 월요일 00:00부터다.
+- 프로필 변경은 다음 대시보드 진입·새로고침 때 반영한다. 열린 화면은 자동 갱신하지 않는다.
+- 프로필 DB 조회 실패는 조회 오류다. 브라우저 시간대로 대체하지 않는다.
+- 세부 계약은 [대시보드 명세 2.2](../../../specs/dashboard/spec.md#22-조회자-시간대)를 따른다.
+
 ### 비고
 
 - 추세 차트만 최근 12주를 본다. 나머지는 전기간이다
@@ -201,6 +209,7 @@
 | FE | back-office-front `/` 대시보드 | 있음 — 스터디 목록만 API, KPI · 추세 · 분포 · 행사는 mock (`app/page.tsx` 의 `TODO(api)`) | 아래 통계 API(구현완료)로 mock 을 걷어 낸다 |
 | BE | `GET /api/admin/studies` | 구현완료 | 없음 |
 | BE | `GET /api/admin/stats/summary` · `study-board` · `crew-timezones` · `attendance-trend` · `studies-by-category` | 구현완료 — `AdminStatsController` · `AdminStatsIntegrationTest` | 없음 |
+| FE·BE | 대시보드 조회자 시간대 | 프로필 우선 적용 — 브라우저는 대체값이며 프로필 변경은 다음 조회에 반영 | 없음 |
 | BE | 예정 행사 | 없음 — 행사 API 가 없다 | 범위를 정한다 (행사 스토리 없음) |
 
 ### 데이터 관계
