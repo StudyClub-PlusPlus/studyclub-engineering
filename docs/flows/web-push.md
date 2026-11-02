@@ -45,6 +45,16 @@ sequenceDiagram
 
 1. stage 백엔드에 VAPID 키 3개를 넣는다 (환경별 다른 키)
 2. V56 의 템플릿 INSERT 를 stage DB 에 한 번 적용한다 (stage 는 Flyway off)
+   - 그 전에 enum 칸부터 넓힌다. stage 는 Hibernate update 가 `NOTIFICATION.EVENT_TYPE`·`RECIPIENT_TYPE`, `NOTIFICATION_TEMPLATE.EVENT_TYPE`·`CHANNEL` 을 MySQL ENUM 으로 만들어 뒀고, update 는 새 값(`ADMIN_PUSH`·`WEB_PUSH`)을 추가하지 않는다. 안 넓히면 INSERT 와 발송이 실패한다
+   ```sql
+   ALTER TABLE NOTIFICATION
+     MODIFY EVENT_TYPE ENUM('FEEDBACK_REPLIED','STUDY_NOTICE','USER_REGISTERED','ADMIN_PUSH') NOT NULL,
+     MODIFY RECIPIENT_TYPE ENUM('EMAIL','WEB_PUSH') NOT NULL;
+   ALTER TABLE NOTIFICATION_TEMPLATE
+     MODIFY EVENT_TYPE ENUM('FEEDBACK_REPLIED','STUDY_NOTICE','USER_REGISTERED','ADMIN_PUSH') NOT NULL,
+     MODIFY CHANNEL ENUM('EMAIL','WEB_PUSH') NOT NULL;
+   ```
+   - 2026-11-03 stage 에 적용했다. prod 는 Flyway 라 VARCHAR 이고 해당 없다
 3. 캡틴 계정으로 stage 사이트 마이페이지 → 「알림 켜기」
 4. stage 백오피스 → 알림 → 푸시 보내기 → 「나에게 (테스트)」
 5. 30초 안에 알림이 오고, 발송 이력에 「웹 푸시 · 기기 #N · 완료」가 남는다
