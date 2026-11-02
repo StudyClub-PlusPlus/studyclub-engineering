@@ -1,13 +1,17 @@
 ---
 name: prototype
-description: "유저스토리 하나의 playground 프로토타입을 생성·수정하고, PR 전에 그 프로토타입을 근거로 Story PRD 와 API 스펙을 갱신한다. prototype-agent 스킬 규약을 따른다."
+description: "유저스토리 하나의 playground 프로토타입을 생성·수정하고, PR 전에 그 프로토타입을 근거로 Story PRD 와 API 스펙을 갱신한다. prototype-agent 스킬 규약을 따른다. 유저스토리 화면을 playground 에 새로 만들거나 고칠 때, 프로토 PR 전에 PRD·spec.ts·스펙·레지스트리를 맞출 때 쓴다. 「프로토타입 만들어」「프로토 고쳐」「playground 에 화면 추가」「PRD 갱신」「/prototype {정규문장}」"
 ---
 
 # /prototype — 유저스토리 프로토타입 → 문서
 
 한 유저스토리의 playground 프로토타입을 만들거나 고치고, **PR 올리기 전에** 그 프로토타입을 근거로 문서를 맞춘다.
-규약의 정본은 [prototype-agent](https://github.com/StudyClub-PlusPlus/prototype-agent) 의 `SKILL.md` 와 `references/prd-guide.md` 다.
-작업 전에 둘 다 읽는다.
+규약의 정본은 [prototype-agent](https://github.com/StudyClub-PlusPlus/prototype-agent) 레포의 두 파일이다. 작업 전에 둘 다 읽는다.
+
+- [`SKILL.md`](https://github.com/StudyClub-PlusPlus/prototype-agent/blob/main/SKILL.md)
+- [`references/prd-guide.md`](https://github.com/StudyClub-PlusPlus/prototype-agent/blob/main/references/prd-guide.md) (아래 「prd-guide §…」는 이 파일의 절)
+
+이 레포에는 사본이 없다. `gh api repos/StudyClub-PlusPlus/prototype-agent/contents/{경로} -H 'Accept: application/vnd.github.raw'` 로 읽는다.
 
 ## 사용법
 
@@ -15,7 +19,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 /prototype {USER_STORY}
 ```
 
-`{USER_STORY}` 는 정규문장 그대로 받는다. 목록은 [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 의 유저스토리 표다.
+`{USER_STORY}` 는 정규문장 그대로 받는다. 목록은 [`01-planning/_registry/stories.md`](../../../01-planning/_registry/stories.md) 의 유저스토리 표다.
 
 ```
 /prototype 네비게이터로서, 스터디별 공지를 등록할 수 있다.
@@ -23,9 +27,9 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 ## 전제
 
-- **레지스트리 모드**로 동작한다. Story 는 [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 의 `ST-###` 행이다.
+- **레지스트리 모드**로 동작한다. Story 는 [`01-planning/_registry/stories.md`](../../../01-planning/_registry/stories.md) 의 `ST-###` 행이다.
   새 Story·화면이면 같은 파일 맨 위 번호 대장(NUMBER LEDGER)에서 `ST`·`IA` 번호를 받고, 같은 커밋에서 `next` 를 +1 한다
-- 여러 Story 에 걸치는 규칙은 PRD 에 값을 쓰지 않고 [`POL-####`](../../01-planning/_registry/policies.md) 를 가리킨다
+- 여러 Story 에 걸치는 규칙은 PRD 에 값을 쓰지 않고 [`POL-####`](../../../01-planning/_registry/policies.md) 를 가리킨다
 - Story 폴더 이름(`{story-name}`)은 kebab-case, `{actor}-{행동}` (예: `crew-edit-profile`, `captain-publish-study`)
 - 표에 이미 PRD 가 걸린 Story 면 **수정**, PRD 칸이 비어 있으면 **생성**이다
 
@@ -64,7 +68,7 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 
 ### PRD.md — `01-planning/stories/{story-name}/PRD.md`
 
-- prototype-agent `references/prd-guide.md` 의 Story PRD 구성을 따른다
+- prd-guide 의 Story PRD 구성을 따른다
   - 제목 = 정규문장 · `기준 프로토타입:` 한 줄
   - §1 기본설명 (흐름 다이어그램 · 완료 기준) · §2 화면명세 (`spec.ts` 번호와 1:1) · §3 시스템 요건 · §4 미확정
 - **§3 맨 앞에 `### 개발 범위` 표를 둔다** — `| 구분 | 대상 | 지금 | 할 일 |`. 기준일과 `beta` 를 머리에 적는다
@@ -88,14 +92,14 @@ description: "유저스토리 하나의 playground 프로토타입을 생성·�
 ### SPEC.md — API 계약
 
 - 이 레포의 API 계약은 `specs/{도메인}/spec.md` 다. Story 폴더에 따로 만들지 않는다
-- 프로토의 `TODO(api)` 와 PRD §3 의 API 가 스펙의 엔드포인트 목록에 있는지 확인한다. 없으면 [`/spec`](./spec.md) 규약으로 추가한다
+- 프로토의 `TODO(api)` 와 PRD §3 의 API 가 스펙의 엔드포인트 목록에 있는지 확인한다. 없으면 [`/spec`](../spec/SKILL.md) 규약으로 추가한다
 - 스펙 헤더의 `Story PRD:` 에 PRD 링크를 건다
 
 ### 인덱스
 
-- [`01-planning/_registry/stories.md`](../../01-planning/_registry/stories.md) 유저스토리 표의 PRD · 프로토 · Spec 칸에 링크를 건다
-- 새 화면이면 [`01-planning/_registry/informationarchitecture.md`](../../01-planning/_registry/informationarchitecture.md) 에 `IA-###` 노드를 추가한다
-- 새 도메인 스펙이면 [`specs/README.md`](../../specs/README.md) 표에도 한 줄 추가한다
+- [`01-planning/_registry/stories.md`](../../../01-planning/_registry/stories.md) 유저스토리 표의 PRD · 프로토 · Spec 칸에 링크를 건다
+- 새 화면이면 [`01-planning/_registry/informationarchitecture.md`](../../../01-planning/_registry/informationarchitecture.md) 에 `IA-###` 노드를 추가한다
+- 새 도메인 스펙이면 [`specs/README.md`](../../../specs/README.md) 표에도 한 줄 추가한다
 
 ## 3. PR
 
