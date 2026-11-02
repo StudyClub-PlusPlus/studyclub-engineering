@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { PermissionTables } from '@/features/users/components/PermissionTables';
 import { RoleBadgeSelect } from '@/features/users/components/RoleBadgeSelect';
 import { UsersTable } from '@/features/users/components/UsersTable';
-import { BLOCKED_REASON_MESSAGE, TAB_OPTIONS, displayName } from '@/features/users/labels';
+import { BLOCKED_REASON_MESSAGE, DORMANCY_DESCRIPTION, TAB_OPTIONS, displayName } from '@/features/users/labels';
 import { usersPath } from '@/features/users/queries';
 import type { ApiAdminAccount, ApiRolePermissions, UserRole } from '@/features/users/types';
 
@@ -87,7 +87,8 @@ describe('UsersTable', () => {
     );
     const row = screen.getAllByRole('row')[1]!;
     expect(within(row).getByText('n***')).toBeInTheDocument();
-    expect(within(row).getByText('휴면')).toBeInTheDocument();
+    expect(within(row).getByText('휴면')).toHaveAccessibleDescription(`휴면: ${DORMANCY_DESCRIPTION}`);
+    expect(within(row).getByText('휴면')).toHaveAttribute('title', DORMANCY_DESCRIPTION);
     // 가린 이메일과 「보기」
     expect(within(row).getByText('n***@example.com')).toBeInTheDocument();
     expect(within(row).getByRole('button', { name: 'n*** 이메일 보기' })).toBeInTheDocument();

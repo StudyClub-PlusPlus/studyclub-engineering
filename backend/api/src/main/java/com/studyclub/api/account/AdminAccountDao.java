@@ -1,6 +1,8 @@
 package com.studyclub.api.account;
 
 import com.studyclub.domain.account.Account;
+import com.studyclub.domain.participant.ParticipationPeriod;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -14,7 +16,12 @@ interface AdminAccountDao {
     /** 계정들이 담당(네비게이터)하는 스터디. 계정마다 편입 최신순. */
     List<NavigatorRow> getNavigatorStudies(Collection<Long> accountIds);
 
-    record AccountRow(Account account, long participatingStudyCount) {}
+    /** 한 페이지의 모든 명부 이력. 종료한 명부와 참조 스터디가 없는 행도 빠뜨리지 않는다. */
+    List<ParticipationRow> getParticipationPeriods(Collection<Long> accountIds);
+
+    record AccountRow(Account account, long participatingStudyCount, Instant lastLoginAt) {}
+
+    record ParticipationRow(Long accountId, ParticipationPeriod period) {}
 
     record NavigatorRow(Long accountId, Long studyId, String title) {}
 }
