@@ -18,6 +18,7 @@ import {
   type RoleKey,
   type Scope,
 } from '@console/lib/roles';
+import { DORMANCY_DESCRIPTION } from '@console/lib/user-dormancy';
 import { consoleUsers, studyTitleById, type ConsoleUser } from '@console/lib/users';
 import { Badge, Modal, Pagination, toast, type BadgeTone } from '@studyclub/ui';
 import { Check, ChevronDown, Eye, EyeOff, Info, Loader2, Minus } from 'lucide-react';
@@ -394,6 +395,10 @@ export function UsersTable() {
         <span className='tnum ml-auto type-body-sm text-fg-muted'>총 {filtered.length}명</span>
       </div>
 
+      <p id='user-dormancy-description' className='mb-3 type-label-sm text-fg-muted'>
+        휴면: {DORMANCY_DESCRIPTION}
+      </p>
+
       <div>
         <TableCard anno='list:3'>
           <thead>
@@ -411,7 +416,15 @@ export function UsersTable() {
               <tr key={m.id}>
                 <td className='whitespace-nowrap font-semibold'>
                   {m.name}
-                  {m.status === 'dormant' && <span className='ml-1.5 type-label-sm text-fg-muted'>휴면</span>}
+                  {m.status === 'dormant' && (
+                    <span
+                      className='ml-1.5 type-label-sm text-fg-muted'
+                      title={DORMANCY_DESCRIPTION}
+                      aria-describedby='user-dormancy-description'
+                    >
+                      휴면
+                    </span>
+                  )}
                 </td>
                 <EmailCell email={m.email} />
                 {/* 스터디가 디스코드에서 돌아간다 — 이어져 있지 않으면 권한을 올려도 합류하지 못한다.
