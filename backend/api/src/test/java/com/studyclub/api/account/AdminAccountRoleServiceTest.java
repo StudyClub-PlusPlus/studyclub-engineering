@@ -47,7 +47,7 @@ class AdminAccountRoleServiceTest {
         service =
                 new AdminAccountRoleService(
                         accountRepository,
-                        new AdminAuditRecorder(auditRepository, new ClientIpResolver("")));
+                        new AdminAuditRecorder(auditRepository, new ClientIpResolver(""), 1));
     }
 
     @Test

@@ -22,6 +22,7 @@ import com.studyclub.domain.feedback.FeedbackImageRepository;
 import com.studyclub.domain.feedback.FeedbackRepository;
 import com.studyclub.domain.feedback.FeedbackStatus;
 import com.studyclub.domain.feedback.FeedbackType;
+import com.studyclub.domain.retention.RetentionPolicy;
 import com.studyclub.domain.storage.StorageObject;
 import com.studyclub.domain.storage.StorageObjectRepository;
 import com.studyclub.domain.storage.StorageObjectStatus;
@@ -319,6 +320,21 @@ class FeedbackRetentionIntegrationTest {
         verify(storage).delete(attachment.getObjectKey());
     }
 
+    @Test
+    @DisplayName("과거 생성일이 오래됐어도 저장한 만료일 전에는 삭제하지 않는다")
+    void honorsStoredExpiry() {
+        Feedback entry = feedback(OLD, null);
+        Instant expiry = NOW.plusSeconds(60);
+        jdbc.update(
+                "UPDATE FEEDBACK SET EXPIRES_AT=? WHERE ID=?",
+                Timestamp.from(expiry),
+                entry.getId());
+        assertThat(service.cleanUp(NOW)).isZero();
+        assertThat(feedbacks.findById(entry.getId()).orElseThrow().getExpiresAt())
+                .isEqualTo(expiry);
+        assertThat(service.cleanUp(expiry)).isEqualTo(1);
+    }
+
     private Feedback feedback(String createdAt, String repliedAt) {
         Feedback feedback =
                 new Feedback(
@@ -335,10 +351,13 @@ class FeedbackRetentionIntegrationTest {
         }
         feedback = feedbacks.saveAndFlush(feedback);
         jdbc.update(
-                "update FEEDBACK set CREATED_AT = ? where ID = ?",
+                "update FEEDBACK set CREATED_AT = ?, EXPIRES_AT = ? where ID = ?",
                 Timestamp.from(Instant.parse(createdAt)),
+                Timestamp.from(
+                        RetentionPolicy.FEEDBACK_V1.expiresAt(
+                                Instant.parse(repliedAt == null ? createdAt : repliedAt))),
                 feedback.getId());
-        return feedback;
+        return feedbacks.findById(feedback.getId()).orElseThrow();
     }
 
     private StorageObject image(Feedback feedback, int order) {
