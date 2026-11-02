@@ -44,6 +44,8 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  ACCOUNT ||--o{ WEB_PUSH_SUBSCRIPTION : "기기"
+  WEB_PUSH_SUBSCRIPTION |o--o{ NOTIFICATION : "웹 푸시 수신처"
   STUDY_NOTICE ||--o{ STUDY_NOTICE_RECIPIENT : "받는 사람"
   STUDY_NOTICE |o..o{ NOTIFICATION : "메일 (REFERENCE_ID, FK 없음)"
   ACCOUNT ||--o{ ACCOUNT_IDENTITY : "로그인 수단"
@@ -84,6 +86,8 @@ erDiagram
   ACCOUNT |o--o{ NOTIFICATION : "수신 계정"
   ACCOUNT |o--o{ NOTIFICATION_TEMPLATE : "수정 관리자"
   NOTIFICATION_TEMPLATE ||--o{ NOTIFICATION : "문구"
+  ACCOUNT ||--o{ WEB_PUSH_SUBSCRIPTION : "기기"
+  WEB_PUSH_SUBSCRIPTION |o--o{ NOTIFICATION : "웹 푸시 수신처"
   STUDY_NOTICE ||--o{ STUDY_NOTICE_RECIPIENT : "받는 사람"
   STUDY_NOTICE |o..o{ NOTIFICATION : "메일 (REFERENCE_ID, FK 없음)"
   ACCOUNT |o..o{ ADMIN_AUDIT_LOG : "행위자·대상 (FK 없음)"
@@ -436,6 +440,7 @@ erDiagram
 
 | 알림 | [NOTIFICATION](./NOTIFICATION.md) | 알림 발송 이력 | `STATUS`, `ERROR_TYPE` |
 | 알림 | [NOTIFICATION_TEMPLATE](./NOTIFICATION_TEMPLATE.md) | 이벤트별 메일 문구 | — |
+| 알림 | [WEB_PUSH_SUBSCRIPTION](./WEB_PUSH_SUBSCRIPTION.md) | 기기별 웹 푸시 구독 | — |
 | 알림 | [STUDY_NOTICE](./STUDY_NOTICE.md) | 반 공지 발송 기록 (메일 결과는 NOTIFICATION, 디스코드 결과는 여기) | `DISCORD_STATUS` |
 | 알림 | [STUDY_NOTICE_RECIPIENT](./STUDY_NOTICE_RECIPIENT.md) | 반 공지를 받는 사람 (공지 한 건에 한 사람 한 행) | — |
 | 공지 | [SITE_NOTICE](./SITE_NOTICE.md) | 사이트 전체 공지 — 콘솔이 쓰고 사이트가 읽는다 | `REMOVED_AT` (소프트 삭제) |
