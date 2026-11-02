@@ -11,6 +11,7 @@ import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
 import com.studyclub.domain.participant.StudyParticipantRepository;
+import com.studyclub.domain.study.MeetingSchedule;
 import com.studyclub.domain.study.StudyMeeting;
 import com.studyclub.domain.study.StudyMeetingRepository;
 import java.time.Duration;
@@ -187,7 +188,12 @@ public class DiscordAttendanceService {
             }
             groups.add(
                     new DiscordAttendanceResponse.MarkedGroup(
-                            groupId, meetingId, picked.get().started(), marked));
+                            groupId,
+                            picked.get().number(),
+                            picked.get().meeting().getMeetingType().name(),
+                            picked.get().meeting().getTitle(),
+                            picked.get().started(),
+                            marked));
         }
 
         return new DiscordAttendanceResponse(
@@ -203,6 +209,7 @@ public class DiscordAttendanceService {
         List<StudyMeeting> meetings =
                 studyMeetingRepository.findByStudyGroupIdForUpdate(studyGroupId);
         Instant now = Instant.now();
+        Map<Long, Integer> numbers = MeetingSchedule.numbersOf(meetings);
 
         // 후보가 여럿이어도 거절하지 않는다. 한 스터디가 보이스 채널을 두 개 쓰고 각각 세션이 열려 있는 건
         // 깨진 데이터가 아니라 정상 운영이다 (2026-09-24 #111 리뷰, 김민정). 가장 최근에 시작한 회차 =
@@ -212,7 +219,9 @@ public class DiscordAttendanceService {
                         .filter(StudyMeeting::isInProgress)
                         .max(Comparator.comparing(StudyMeeting::getStartAt));
         if (inProgress.isPresent()) {
-            return Optional.of(new PickedMeeting(inProgress.get(), false));
+            return Optional.of(
+                    new PickedMeeting(
+                            inProgress.get(), false, numbers.get(inProgress.get().getId())));
         }
 
         // 시작할 회차도 같은 규칙 — 예정 시각이 지금에 가장 가까운 것.
@@ -229,7 +238,7 @@ public class DiscordAttendanceService {
 
         StudyMeeting meeting = startable.get();
         meeting.start(now);
-        return Optional.of(new PickedMeeting(meeting, true));
+        return Optional.of(new PickedMeeting(meeting, true, numbers.get(meeting.getId())));
     }
 
     private boolean withinWindow(Instant scheduledAt, Instant now) {
@@ -250,5 +259,5 @@ public class DiscordAttendanceService {
             List<String> notParticipant,
             Map<String, Long> accountIdByDiscordId) {}
 
-    private record PickedMeeting(StudyMeeting meeting, boolean started) {}
+    private record PickedMeeting(StudyMeeting meeting, boolean started, int number) {}
 }

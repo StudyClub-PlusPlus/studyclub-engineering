@@ -117,6 +117,32 @@ def test_result_reports_each_group_and_every_excluded_bucket():
     assert "지금 모이는 중이 아닌 반 1명 — 사람6" in message
 
 
+def test_result_without_a_meeting_number_shows_no_number():
+    """Better no number than a row id posing as one."""
+    message = format_result(AttendanceResult(groups=[MarkedGroup(70, None, False, ["1"])]), {})
+
+    assert "· 회차 — 1명" in message
+    assert "None" not in message
+
+
+def test_result_shows_the_meeting_title():
+    group = MarkedGroup(70, 1, False, ["1"], meeting_type="REGULAR", meeting_title="OT")
+
+    message = format_result(AttendanceResult(groups=[group]), {})
+
+    assert "· 1번 회차 「OT」 — 1명" in message
+
+
+def test_result_names_the_kickoff_without_a_number_or_title():
+    """Its title is always 킥오프, so 킥오프 「킥오프」 would only repeat it."""
+    group = MarkedGroup(70, 0, False, ["1"], meeting_type="KICKOFF", meeting_title="킥오프")
+
+    message = format_result(AttendanceResult(groups=[group]), {})
+
+    assert "· 킥오프 — 1명" in message
+    assert "0번" not in message
+
+
 def test_result_with_nothing_marked_says_so():
     """All unmatched is a normal outcome before account linking exists."""
     message = format_result(AttendanceResult(unmatched=["1", "2"]), {"1": "가", "2": "나"})

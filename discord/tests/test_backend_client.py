@@ -59,7 +59,9 @@ async def test_parses_every_bucket(capture):
             "groups": [
                 {
                     "studyGroupId": 70,
-                    "studyMeetingId": 41,
+                    "studyMeetingNumber": 3,
+                    "meetingType": "REGULAR",
+                    "meetingTitle": "OT",
                     "meetingStarted": True,
                     "marked": ["1", "2"],
                 }
@@ -74,10 +76,26 @@ async def test_parses_every_bucket(capture):
 
     assert result.marked_count == 2
     assert result.groups[0].study_group_id == 70
+    assert result.groups[0].study_meeting_number == 3
+    assert result.groups[0].meeting_type == "REGULAR"
+    assert result.groups[0].meeting_title == "OT"
     assert result.groups[0].meeting_started is True
     assert result.unmatched == ["3"]
     assert result.not_participant == ["4"]
     assert result.no_meeting == ["5"]
+
+
+@pytest.mark.asyncio
+async def test_a_backend_without_the_meeting_number_still_parses(capture):
+    """Attendance is already written by then; a missing number must not turn into an error."""
+    capture["response"] = httpx.Response(
+        200, json={"groups": [{"studyGroupId": 70, "studyMeetingId": 28, "marked": ["1"]}]}
+    )
+
+    result = await mark_attendances(BASE, "k", "900", "1", ["1"])
+
+    assert result.groups[0].study_meeting_number is None
+    assert result.marked_count == 1
 
 
 @pytest.mark.asyncio
