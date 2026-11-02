@@ -1,5 +1,6 @@
 package com.studyclub.api.upload;
 
+import com.studyclub.api.cleanup.CleanupResult;
 import com.studyclub.api.storage.ObjectStorage;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -174,6 +176,14 @@ public class UploadService {
         return Optional.empty();
     }
 
+    /** ID 로 연결한 자원의 파일만 찜한다. 호출자가 자원 잠금·삭제 권한을 확인하고 같은 트랜잭션에서 부른다. */
+    public Optional<StorageObject> markDeletingByIdForPurpose(
+            Long fileId, StoragePurpose purpose, Instant now) {
+        return repository.markDeletingForPurpose(fileId, purpose, now) == 1
+                ? repository.findById(fileId)
+                : Optional.empty();
+    }
+
     /**
      * 탈퇴 — 그 계정의 프로필 사진 · 문의 첨부 이미지와 연결 안 된 파일을 찜하고 돌려준다. 스터디 썸네일 등 자원에 붙은 파일은 남긴다. 호출자의 트랜잭션 안에서
      * 부른다.
@@ -204,30 +214,52 @@ public class UploadService {
     }
 
     /**
-     * 정리 배치. 1단계 — 하루 지난 {@code PENDING} 을 {@code DELETING} 으로 찜한다. 2단계 — {@code DELETING} 행을 전부 읽어
-     * 하나씩 파일 삭제 → 행 삭제. 교체·지우기·탈퇴가 남긴 것도 같이 치운다.
+     * 정리 배치. 1단계 — 하루 지난 {@code PENDING} 을 100개씩 {@code DELETING} 으로 찜한다. 2단계 — {@code DELETING} 행을
+     * 100개씩 읽어 하나씩 파일 삭제 → 행 삭제. 교체·지우기·탈퇴가 남긴 것도 같이 치운다.
      *
      * <p>찜하기를 먼저 하는 이유는 연결과의 경쟁이다. 어느 순서든 한쪽만 이긴다. 서버 두 대가 2단계에서 같은 행을 집어도 저장소는 없는 키를 지워도 성공이라 괜찮다.
      * 설정이 없으면 아무것도 안 한다.
      */
     public void cleanUp(Instant now) {
-        ObjectStorage storage = storageFor(activeProvider());
-        if (!storage.isConfigured()) {
-            return;
+        cleanUpWithResult(now);
+    }
+
+    public CleanupResult cleanUpWithResult(Instant now) {
+        if (!storageFor(activeProvider()).isConfigured()) {
+            return CleanupResult.unavailable();
         }
         Instant before = now.minus(pendingRetention);
-        Integer claimed =
-                transaction.execute(status -> repository.claimExpiredPending(before, now));
-        List<StorageObject> deleting = repository.findAllByStatus(StorageObjectStatus.DELETING);
-        int deleted = 0;
-        for (StorageObject object : deleting) {
-            if (deleteQuietly(object)) {
-                deleted++;
+        long afterId = 0;
+        int failed = 0;
+        while (true) {
+            List<Long> ids =
+                    repository.findExpiredPendingIds(afterId, before, PageRequest.of(0, 100));
+            if (ids.isEmpty()) break;
+            try {
+                newTransaction.executeWithoutResult(
+                        status -> repository.claimExpiredPending(ids, before, now));
+            } catch (RuntimeException e) {
+                failed += ids.size();
+                log.warn("업로드 삭제 예약 실패 error={}", e.getClass().getSimpleName());
             }
+            afterId = ids.getLast();
+            if (ids.size() < 100) break;
         }
-        if (claimed != null && claimed > 0 || !deleting.isEmpty()) {
-            log.info("업로드 정리 — 만료 찜 {}건, 삭제 {}/{}건", claimed, deleted, deleting.size());
+        afterId = 0;
+        int deleted = 0;
+        while (true) {
+            List<StorageObject> objects =
+                    repository.findByStatusAndIdGreaterThanOrderByIdAsc(
+                            StorageObjectStatus.DELETING, afterId, PageRequest.of(0, 100));
+            if (objects.isEmpty()) break;
+            for (StorageObject object : objects) {
+                if (deleteQuietly(object)) deleted++;
+                else failed++;
+            }
+            afterId = objects.getLast().getId();
+            if (objects.size() < 100) break;
         }
+        return CleanupResult.completed(deleted, failed);
     }
 
     /** 파일 삭제 → 행 삭제. 실패해도 던지지 않는다 — 행이 {@code DELETING} 으로 남아 다음 배치가 다시 시도한다. */
@@ -238,10 +270,9 @@ public class UploadService {
             return true;
         } catch (RuntimeException e) {
             log.warn(
-                    "파일 삭제 실패 — 배치가 다시 시도한다 id={} key={}",
+                    "파일 삭제 실패 — 배치가 다시 시도한다 id={} error={}",
                     object.getId(),
-                    object.getObjectKey(),
-                    e);
+                    e.getClass().getSimpleName());
             return false;
         }
     }

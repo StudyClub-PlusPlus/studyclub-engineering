@@ -2,7 +2,9 @@ package com.studyclub.domain.feedback;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -22,6 +24,22 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select f from Feedback f where f.id = :id")
     Optional<Feedback> findByIdForUpdate(@Param("id") Long id);
+
+    /** 후보만 읽는다. 잠금 뒤 최신 저장 만료일로 다시 판정한다. */
+    @Query(
+            """
+            select f.id from Feedback f
+            where f.id > :afterId
+              and f.retentionPolicy is not null and f.expiresAt <= :now
+            order by f.id
+            """)
+    List<Long> findRetentionCandidateIds(
+            @Param("afterId") long afterId, @Param("now") Instant now, Pageable pageable);
+
+    /** 초기화와 첫 회신이 경쟁해도 최신 행을 잠근 뒤 규칙을 채운다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from Feedback f where f.retentionPolicy is null order by f.id")
+    List<Feedback> findWithoutRetentionForUpdate(Pageable pageable);
 
     /** rate limit — 이 계정이 {@code after} 뒤에 보낸 건수. */
     long countByAccountIdAndCreatedAtAfter(Long accountId, Instant after);

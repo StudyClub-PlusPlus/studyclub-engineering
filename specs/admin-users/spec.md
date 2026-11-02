@@ -2,6 +2,7 @@
 
 > 갱신: 2026-10-31 — 디스코드 아이디도 이메일과 같은 개별 열람·감사 기록 방식으로 제공한다. 목록에는 연동 여부만 보낸다.
 > 갱신: 2026-10-31 — 이메일·디스코드 모두 플레이그라운드의 눈 아이콘 보기·가리기를 반영한다. 가리면 원본을 지우고, 다시 열 때 새 요청과 감사 기록을 남긴다.
+> 갱신: 2026-11-01 — [180일간 명부 참여·로그인이 모두 없는 회원만 휴면으로 표시](../../docs/share/2026-10-31-user-dormancy-180-days.md)하는 기준을 실제 회원 목록 API와 백오피스에도 적용한다.
 
 > ERD: [ACCOUNT](../../docs/erd/ACCOUNT.md), [STUDY_PARTICIPANT](../../docs/erd/STUDY_PARTICIPANT.md), [STUDY](../../docs/erd/STUDY.md), [ADMIN_AUDIT_LOG](../../docs/erd/ADMIN_AUDIT_LOG.md) (신규)
 > 생성일: 2026-10-01
@@ -11,7 +12,7 @@
 > 갱신: 2026-10-08 — `beta` 반영: 기획 폴더 `01-planning/` 이동, POL-0001 담당 캡틴 = `STUDY.CREATED_BY`·반 편성 때 명부 편입(#208)
 > 갱신: 2026-10-08 — **기획 문서(PRD)에 적힌 이름을 따른다** — 경로 `/api/admin/users`·`…/system-role`, 역할 필터 `role`, 에러 코드 `CANNOT_CHANGE_OWN_ROLE`·`LAST_ADMIN_REQUIRED`, 스펙 위치 `specs/admin-users/` (옛 `specs/admin-accounts/` 에서 옮김). 동작은 PR #163 합의 그대로 ([PRD 와 다른 곳](#기획-문서와-다른-곳))
 > 갱신: 2026-10-14 — POL-0001 반 편성 때 명부 편입 원복. 담당 캡틴은 신청했을 때만 명부에 있다
-> 상태: 구현완료 (2026-10-10, PR #219 · #221) — 남은 미확정 1건 (감사 로그 보관 기간)
+> 상태: 구현완료 (2026-10-10, PR #219 · #221)
 >
 > Story PRD:
 > - [캡틴으로서, 전체 회원 리스트를 조회할 수 있다](../../01-planning/stories/captain-list-users/PRD.md)
@@ -188,13 +189,26 @@
 | items[].navigatorOf | Array | N | 담당 스터디. 없으면 `[]`. 편입 최신순 — 화면은 첫 개만 적고 나머지는 개수로 접는다 | 계산: STUDY_PARTICIPANT (`PARTICIPANT_ROLE = LEADER`, `STATUS ∈ {ACTIVE, PAUSED}`), `JOINED_AT DESC` |
 | items[].navigatorOf[].studyId | Long | N | | STUDY.ID |
 | items[].navigatorOf[].title | String | N | | STUDY.TITLE |
-| items[].dormant | Boolean | N | 「휴면」 표기. 계정 상태가 아니라 참여 이력으로 판정한다 | 계산: 참여 중인 스터디 수 = 0 |
+| items[].dormant | Boolean | N | 「휴면」 표기. 최근 180일간 명부 참여와 로그인이 모두 없을 때만 true | 계산: `Account.isDormant` — 아래 휴면 판정 기준 |
 | items[].joinedAt | String | N | 가입일. UTC ISO 8601 | ACCOUNT.CREATED_AT |
 | items[].roleChangeBlockedReason | String | Y | 이 행의 권한을 지금 바꿀 수 없는 이유. 바꿀 수 있으면 null. 아래 표 | 계산: `Account.roleChangeBlockedReason(요청자 ID, ADMIN 수)` — 권한 변경 API 의 거절도 같은 메서드 |
 | items[].discordLinked | Boolean | N | 디스코드 계정 연동 여부 — 목록 「디스코드」 칸 (2026-10-27) | 계산: `ACCOUNT.DISCORD_ID` 있음 |
 | total | Long | N | 걸러진 뒤 전체 수 — 화면의 「총 N명」 | 계산: COUNT |
 | offset | Integer | N | 요청 값 그대로 | |
 | limit | Integer | N | 요청 값 그대로 | |
+
+### 휴면 판정
+
+- 요청당 한 번 정한 현재 시각에서 180 × 24시간을 뺀 시각을 경계로 삼는다. 경계 시각의 기록도 최근 기록이다.
+- `ACCOUNT.CREATED_AT`과 모든 로그인 수단의 `MAX(ACCOUNT_IDENTITY.LAST_LOGIN_AT)`이 모두 경계보다 과거여야 한다. 사이트·백오피스 로그인은 같은 기록을 갱신한다. 화면 열람과 토큰 갱신은 새 로그인으로 세지 않는다.
+- 명부는 역할·반·상태와 무관하게 모두 확인한다. `JOINED_AT`부터 참여 종료까지를 참여 기간으로 보고, 모든 참여 기간이 경계 전에 끝났을 때만 휴면이다.
+  - ACTIVE·PAUSED: 스터디 `END_AT`까지 참여한다. 종료일이 없으면 현재 참여 중이거나 종료 시각 미확인이므로 휴면으로 단정하지 않는다.
+  - COMPLETED: 스터디 `END_AT`까지 참여했다.
+  - WITHDRAWN·DELETED: `LEFT_AT`까지 참여했다. 스터디 `END_AT`이 있으면 둘 중 이른 시각을 쓴다.
+- 가입일·최근 로그인일이 없거나, 명부가 참조하는 스터디가 없거나, 참여 시작·종료일이 누락/역전되어 있으면 `false`다. 명부 행이 전혀 없는 것은 참여 이력이 없다는 뜻이다.
+- 캡틴도 같은 기준이다. 가입 후 180일 이내면 휴면이 아니다. 로그인 수단을 합친 최신 로그인일이 존재하면 일부 수단의 날짜가 비어 있어도 그 최신값을 쓴다.
+- 참여 중인 스터디 수는 기존 목록 정렬에만 쓴다. 휴면 기준 변경으로 정렬·권한·접근 가능 여부는 바뀌지 않는다.
+- 화면은 서버의 `dormant`를 그대로 표시한다. 목록 위 안내와 휴면 툴팁은 「최근 180일간 스터디 참여 및 로그인 기록이 없는 회원」이다.
 
 디스코드 아이디 원본(`discordHandle`)과 숫자 ID 는 목록 응답에 포함하지 않는다. 원본은 [디스코드 보기](#디스코드-보기)로만 제공한다.
 
@@ -289,7 +303,7 @@ Query Parameters / Request Body 없음.
 
 ### 미확정
 
-- 보관 기간과 자동 삭제는 기존 [감사 로그 미확정](#미확정)을 따른다. 이번 변경에는 자동 삭제를 추가하지 않는다.
+- 보관 기간·접속 IP·자동 삭제는 [공통 정리 스펙](../data-retention/spec.md)을 따른다.
 
 ---
 
@@ -557,12 +571,12 @@ Query Parameters / Request Body 없음.
 | `DISCORD_REVEAL` | [디스코드 보기](#디스코드-보기) 성공 | NULL / NULL |
 | `ROLE_CHANGE` | [계정 권한 변경](#계정-권한-변경)으로 값이 실제로 바뀜 | `MEMBER` / `ADMIN` 처럼 변경 전후 `SYSTEM_ROLE` |
 
-- **개인정보를 담지 않는다.** 계정 ID 와 행위만 남긴다. 이메일·닉네임을 넣으면 회원이 탈퇴해도 이 테이블에 개인정보가 남는다.
-- `ACCOUNT` 와 FK 를 걸지 않는다 (애그리거트 사이 — [database-guide](../../docs/backend-development-guide/database-guide.md#외래키-정책)). 회원이 탈퇴해 `ACCOUNT` 행이 지워져도 기록은 남고, 남은 ID 로는 더 이상 사람을 되짚을 수 없다 — [user-leave](../user-leave/spec.md) 의 「식별할 수 없게 처리한 뒤 남긴다」와 같은 방식이다.
+- 이메일·닉네임 원문은 복제하지 않는다. 계정 ID·행위·접속 IP와 필요한 역할 스냅샷을 저장한다. ID·IP도 개인정보일 수 있으므로 접근 제한과 파기 기준을 적용한다.
+- `ACCOUNT` 와 FK를 걸지 않는다. 탈퇴 후에도 정해진 기한까지 남기되 자동 파기한다.
 - 기록은 **그 행위와 같은 트랜잭션**에서 쓴다. 기록이 실패하면 행위도 일어나지 않는다.
-- insert-only 다. 고치거나 지우는 API 는 없다.
+- 고치거나 지우는 API는 없다. 보관 기한이 끝난 행은 자동 정리에서 지운다.
 - `DISCORD_REVEAL`은 기존 `ACTION VARCHAR(20)`에 들어가는 새 값이다. 컬럼·테이블 추가나 스키마 변경은 없다.
-- 보관 기간은 [미확정](#미확정). 정해지면 그보다 오래된 행을 지우는 작업을 따로 둔다.
+- 이메일·디스코드 조회는 1년(법정 대상이면 2년 설정), 권한 변경·탈퇴 말소는 3년. [공통 정리 스펙](../data-retention/spec.md)과 [ERD](../../docs/erd/ADMIN_AUDIT_LOG.md)를 따른다.
 - 기록을 조회하는 화면·API 는 이 스펙 범위 밖이다. 필요해지면 별도 스펙으로 연다.
 
 ---
@@ -637,7 +651,7 @@ Query Parameters / Request Body 없음.
 - 회원 상세 화면 · 초대 · 정지 · 탈퇴 처리 · 명단 내보내기(CSV)
 - 정지 계정 — `ACCOUNT` 에 정지 상태가 없다. 생기면 목록 포함 여부를 그때 정한다
 - ~~`CO_LEADER` 제거 — 별도 작업 (POL-0001)~~ — 2026-10-09 완료 (V35)
-- 감사 로그 조회 화면·API, 보관 기간이 지난 기록을 지우는 작업 — 보관 기간이 정해진 뒤 별도로
+- 감사 로그 조회 화면·API는 별도. 만료 자동 삭제는 [공통 정리 스펙](../data-retention/spec.md)에서 구현한다.
 - 이메일 보기 횟수 제한
 - 디스코드 역할 자동 연동 — 운영자가 수동으로 바꾼다 ([위](#디스코드-역할은-자동으로-바꾸지-않는다))
 
@@ -656,7 +670,7 @@ Query Parameters / Request Body 없음.
 
 ## 미확정
 
-- [NEEDS CLARIFICATION] **감사 로그 보관 기간** — 운영진 확인 중. 개인정보 접속기록은 1년 이상 보관하라는 기준(개인정보의 안전성 확보조치 기준)이 있는 것으로 알고 있어 그 이상을 제안한다. 근거 조항은 확인 뒤 여기에 적는다
+- 감사 로그 보관 기준은 2026-10-31 확정. 운영 적용 전 2년 의무 대상 여부는 실제 규모·항목으로 확인한다 ([공통 정리 스펙](../data-retention/spec.md)).
 - 권한 「변경 중」·실패 안내의 화면 모양 — 디자인에서 정한다. API 계약에는 영향 없음. 정해지기 전까지 실패는 `errorMessage` 토스트. 이메일·디스코드 열람 아이콘과 처리 중 표시는 위 프론트엔드 사용처를 따른다.
 - 이메일·디스코드 열람·가리기와 감사 기록은 Story PRD에 반영했다. Notion 반영 여부는 별도 확인한다.
 - **이메일 검색 방식** — PRD 는 닉네임·이메일 부분 일치, 이 스펙은 이메일 전체 일치(PR #163 합의, 마스킹과 함께). 기획 반영 대기 ([기획 문서와 다른 곳](#기획-문서와-다른-곳))

@@ -1,12 +1,12 @@
 package com.studyclub.api.studygroup;
 
+import com.studyclub.api.audit.AdminAuditRecorder;
 import com.studyclub.common.error.BusinessException;
 import com.studyclub.common.error.ErrorCode;
 import com.studyclub.domain.attendance.AttendanceStatus;
 import com.studyclub.domain.attendance.StudyAttendance;
 import com.studyclub.domain.attendance.StudyAttendanceRepository;
 import com.studyclub.domain.audit.AdminAuditLog;
-import com.studyclub.domain.audit.AdminAuditLogRepository;
 import com.studyclub.domain.participant.ParticipantRole;
 import com.studyclub.domain.participant.ParticipantStatus;
 import com.studyclub.domain.participant.StudyParticipant;
@@ -41,7 +41,7 @@ public class AdminStudyParticipantService {
     private final StudyGroupRepository studyGroupRepository;
     private final StudyMeetingRepository studyMeetingRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
-    private final AdminAuditLogRepository adminAuditLogRepository;
+    private final AdminAuditRecorder auditRecorder;
     private final ApplicationEventPublisher eventPublisher;
 
     public AdminStudyParticipantService(
@@ -50,14 +50,14 @@ public class AdminStudyParticipantService {
             StudyGroupRepository studyGroupRepository,
             StudyMeetingRepository studyMeetingRepository,
             StudyAttendanceRepository studyAttendanceRepository,
-            AdminAuditLogRepository adminAuditLogRepository,
+            AdminAuditRecorder auditRecorder,
             ApplicationEventPublisher eventPublisher) {
         this.studyRepository = studyRepository;
         this.studyParticipantRepository = studyParticipantRepository;
         this.studyGroupRepository = studyGroupRepository;
         this.studyMeetingRepository = studyMeetingRepository;
         this.studyAttendanceRepository = studyAttendanceRepository;
-        this.adminAuditLogRepository = adminAuditLogRepository;
+        this.auditRecorder = auditRecorder;
         this.eventPublisher = eventPublisher;
     }
 
@@ -309,7 +309,7 @@ public class AdminStudyParticipantService {
             }
             ParticipantRole previous = p.getParticipantRole();
             p.changeRole(c.participantRole());
-            adminAuditLogRepository.save(
+            auditRecorder.record(
                     AdminAuditLog.participantRoleChange(
                             actorAccountId, p.getAccountId(), p.getId(), previous));
             events.add(StudyParticipantRoleChanged.of(actorAccountId, p, previous));

@@ -14,7 +14,7 @@ import {
   useDashboardSummary,
   useStudiesByCategory,
   useStudyBoard,
-  useViewerTimeZone,
+  useBrowserTimeZoneFallback,
 } from '@/features/dashboard/queries';
 
 /**
@@ -25,8 +25,8 @@ import {
  * 한 곳이 실패해도 나머지는 그린다. 수는 모두 서버가 센 값을 그대로 그린다.
  */
 export default function Dashboard() {
-  // 조회자 시간대 — 주간 집계·갱신 시각·마감 날짜가 이 시간대를 따른다. 요약·보드·추세에 같은 값을 보낸다
-  const { ready, timeZone } = useViewerTimeZone();
+  // 브라우저 값은 대체값이다. 서버가 프로필을 우선하고, 화면은 각 응답의 timeZone을 사용한다.
+  const { ready, timeZone } = useBrowserTimeZoneFallback();
   const summary = useDashboardSummary(timeZone, ready);
   const ongoing = useStudyBoard('ONGOING', timeZone, ready);
   const recruitment = useStudyBoard('RECRUITMENT', timeZone, ready);

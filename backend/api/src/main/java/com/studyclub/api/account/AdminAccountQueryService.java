@@ -2,6 +2,7 @@ package com.studyclub.api.account;
 
 import com.studyclub.api.account.AdminAccountDao.AccountRow;
 import com.studyclub.api.account.AdminAccountDao.NavigatorRow;
+import com.studyclub.api.account.AdminAccountDao.ParticipationRow;
 import com.studyclub.api.account.AdminAccountListFilter.Role;
 import com.studyclub.api.account.AdminAccountListResponse.AccountSummary;
 import com.studyclub.api.account.AdminAccountListResponse.NavigatorStudy;
@@ -11,6 +12,8 @@ import com.studyclub.common.privacy.EmailMasking;
 import com.studyclub.domain.account.Account;
 import com.studyclub.domain.account.AccountRepository;
 import com.studyclub.domain.account.SystemRole;
+import com.studyclub.domain.participant.ParticipationPeriod;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -57,6 +60,14 @@ public class AdminAccountQueryService {
 
         List<AccountRow> rows = adminAccountDao.getAccounts(normalized, offset, limit);
         List<Long> accountIds = rows.stream().map(row -> row.account().getId()).toList();
+        Instant asOf = Instant.now();
+        Map<Long, List<ParticipationPeriod>> participationPeriods =
+                adminAccountDao.getParticipationPeriods(accountIds).stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        ParticipationRow::accountId,
+                                        Collectors.mapping(
+                                                ParticipationRow::period, Collectors.toList())));
         Map<Long, List<NavigatorStudy>> navigatorOf =
                 adminAccountDao.getNavigatorStudies(accountIds).stream()
                         .collect(
@@ -78,7 +89,10 @@ public class AdminAccountQueryService {
                                                 navigatorOf.getOrDefault(
                                                         row.account().getId(), List.of()),
                                                 requesterId,
-                                                adminCount))
+                                                adminCount,
+                                                participationPeriods.getOrDefault(
+                                                        row.account().getId(), List.of()),
+                                                asOf))
                         .toList();
         return new AdminAccountListResponse(items, total, offset, limit);
     }
@@ -94,7 +108,12 @@ public class AdminAccountQueryService {
     }
 
     private static AccountSummary toSummary(
-            AccountRow row, List<NavigatorStudy> navigatorOf, Long requesterId, long adminCount) {
+            AccountRow row,
+            List<NavigatorStudy> navigatorOf,
+            Long requesterId,
+            long adminCount,
+            List<ParticipationPeriod> participationPeriods,
+            Instant asOf) {
         Account account = row.account();
         return new AccountSummary(
                 account.getId(),
@@ -103,7 +122,7 @@ public class AdminAccountQueryService {
                 EmailMasking.mask(account.getEmail()),
                 account.getSystemRole(),
                 navigatorOf,
-                row.participatingStudyCount() == 0,
+                account.isDormant(row.lastLoginAt(), participationPeriods, asOf),
                 account.getCreatedAt(),
                 // 판정은 엔티티 한 곳 — 권한 변경 API 가 거절할 때도 같은 메서드를 부른다
                 account.roleChangeBlockedReason(requesterId, adminCount),
