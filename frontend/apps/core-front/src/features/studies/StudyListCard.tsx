@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import type { Locale, Operator, Study } from '@studyclub/types';
+import type { Locale, Study } from '@studyclub/types';
 import { StudyCard } from '@studyclub/ui';
 import { CalendarClock, Globe, Rocket } from 'lucide-react';
 
@@ -28,7 +28,6 @@ export function StudyListCard({
 }: {
   study: Study;
   locale: Locale;
-  lead?: Operator;
   index?: number;
   source?: 'landing' | 'studies_list';
 }) {
@@ -62,7 +61,7 @@ export function StudyListCard({
             study_category: study.category,
             study_status: study.status,
             source,
-            card_position: index ?? 0,
+            card_position: index ?? -1,
           },
         })
       }
