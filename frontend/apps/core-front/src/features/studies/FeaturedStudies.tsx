@@ -39,7 +39,6 @@ export function FeaturedStudies({ locale, leads }: { locale: Locale; leads: Reco
             key={s.id}
             study={s}
             locale={locale}
-            lead={s.lead ? leads[s.lead] : undefined}
             index={i}
             source='landing'
           />
