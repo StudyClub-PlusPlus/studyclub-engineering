@@ -254,7 +254,7 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 | updates | array | Y | 1개 이상. 빈 배열 → 400. **`withdrawals` 가 있으면 빈 배열이어도 된다** (두 경로 모두) |
 | updates[].meetingId | Long | Y | studyId에 속한 StudyMeeting.id여야 함 → 아니면 400 |
 | updates[].participantId | Long | Y | studyId에 속한 StudyParticipant.id여야 함 → 아니면 400 |
-| updates[].status | String | Y | `PRESENT \| LATE \| ABSENT \| EXCUSED`. 허용값 외 → 400 |
+| updates[].status | String | **nullable** | `PRESENT \| LATE \| ABSENT \| EXCUSED` 또는 **`null`**. `null` = 해당 출석 행 삭제(미체크 되돌리기). 허용값 외 문자열 → 400 |
 | updates[] 내 (meetingId, participantId) 중복 | — | — | 금지 → 400 |
 
 > **`withdrawals[]` (2026-10-20 구현)** — 사용자 사이트 경로(`/api/me/…`)는 요청에 `withdrawals[]`(참여 중단할 명부 행 ID)를 받아, 출석부 「저장」 한 번에 출석과 참여 중단을 같은 트랜잭션으로 반영한다. 「`updates` 빈 배열 → 400」은 「`updates` · `withdrawals` 가 모두 비면 400」이 된다. `withdrawals` 를 보내지 않는 호출은 지금과 같다. ~~백오피스 경로(`/api/admin/…`)는 `withdrawals` 가 오면 400.~~ → **바뀜 (2026-10-23 기획 결정)**: 백오피스 경로도 `withdrawals[]` 를 받는다. 중단은 **담당 캡틴**만, 대상은 크루 · 네비게이터. `withdrawals` 없이 출석만 고치는 것은 지금처럼 캡틴 누구나. 필드 · 권한 · 대상 제한은 [참여 중단 스펙](../study-participant/spec.md).
@@ -268,8 +268,9 @@ DELETED 는 `markDeletedDueToAccountDeletion(deletedAt)` 이 채운다. **하차
 각 `updates[]` 항목마다:
 
 1. `participantId`로 `account_id`를 조회한다.
-2. `(study_meeting_id, account_id)` 에 `INSERT ... ON DUPLICATE KEY UPDATE STATUS` 한 문장으로 쓴다 — 없으면 생성, 있으면 status 만 교체.
-3. 배치 전체를 하나의 트랜잭션으로 묶음 (all-or-nothing).
+2. `updates[].status` 가 **`null`** 이면 `(study_meeting_id, account_id)` 행을 **DELETE** 한다 — 미체크 상태로 되돌리기. 행이 없으면 no-op.
+3. `status` 가 non-null 이면 `(study_meeting_id, account_id)` 에 `INSERT ... ON DUPLICATE KEY UPDATE STATUS` 한 문장으로 쓴다 — 없으면 생성, 있으면 status 만 교체.
+4. 배치 전체를 하나의 트랜잭션으로 묶음 (all-or-nothing).
 
 > 갱신: 2026-10-02 — 「기존 row 조회 → 있으면 update, 없으면 insert」 를 한 문장 upsert 로 바꿨다. 조회와 저장을 나누면 MySQL REPEATABLE READ 에서 조회가 트랜잭션 스냅샷을 읽어, 그 사이 다른 요청(디스코드 출석·다른 upsert)이 만든 행을 못 보고 다시 INSERT 하다 unique 위반 → 500 이 났다. 한 문장이면 DB 가 최신 행으로 판정해 충돌 자체가 없다 (디스코드 출석 `markPresent` 와 같은 방식). 회차 삭제와의 경합은 [회차 스펙 「잠금」](../study-meeting/spec.md#잠금).
 
@@ -281,7 +282,7 @@ last-write-wins, 낙관적 잠금 없음. 같은 칸을 동시에 고치면 나�
 
 | 상태 | errorCode | 조건 |
 |------|-----------|------|
-| 400 | INVALID_INPUT | updates가 빈 배열 |
+| 400 | INVALID_INPUT | `updates` 와 `withdrawals` 가 모두 빈 배열 |
 | 403 | FORBIDDEN | 캡틴(SYSTEM_ROLE=ADMIN)이 아님 · `withdrawals` 가 있는데 담당 캡틴이 아님 |
 | 404 | NOT_FOUND | 존재하지 않는 studyId |
 | 400 | INVALID_INPUT | updates[].meetingId가 스터디 소속 아니거나 존재하지 않음 |

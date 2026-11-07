@@ -43,27 +43,26 @@ export function toBook(res: ApiAttendance, now: Date = new Date()): AttendanceBo
   );
 }
 
-/**
- * 저장할 칸 — 지금 열(회차)에서 값이 바뀐 칸만. 서버는 칸을 비우지 못한다(상태는 필수) —
- * 저장된 값을 미체크로 되돌린 칸은 `cleared` 로 따로 센다.
- */
+/** 저장할 칸 — 지금 열(회차)에서 값이 바뀐 칸만. status = null 은 미체크로 되돌리기(행 삭제). */
 export function toUpdates(
   saved: AttendanceBook,
   next: AttendanceBook,
   columnIds: string[],
-): { updates: AttendanceUpdate[]; cleared: number } {
+): { updates: AttendanceUpdate[] } {
   const updates: AttendanceUpdate[] = [];
-  let cleared = 0;
   for (const pid of new Set([...Object.keys(saved), ...Object.keys(next)])) {
     for (const mid of columnIds) {
       const before = saved[pid]?.[mid];
       const after = next[pid]?.[mid];
       if (before === after) continue;
-      if (after === undefined) cleared += 1;
-      else updates.push({ meetingId: Number(mid), participantId: Number(pid), status: TO_API[after] });
+      if (after === undefined) {
+        updates.push({ meetingId: Number(mid), participantId: Number(pid), status: null });
+      } else {
+        updates.push({ meetingId: Number(mid), participantId: Number(pid), status: TO_API[after] });
+      }
     }
   }
-  return { updates, cleared };
+  return { updates };
 }
 
 /** 참여를 중단한 사람까지 — 출석부 맨 아래 흐린 줄로 남는다. */
